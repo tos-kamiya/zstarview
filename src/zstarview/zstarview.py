@@ -326,7 +326,9 @@ def draw_cross_gauge(screen: pygame.Surface, color: tuple[int, int, int], x: int
     pygame.draw.line(screen, color, (x, y + cross_inner_len), (x, y + cross_outer_len), 1)
 
 
-def rotate_points_at_max_azimuth_gap(points: list[tuple[float, float]], azimuths: list[float]) -> list[tuple[float, float]]:
+def rotate_points_at_max_azimuth_gap(
+    points: list[tuple[float, float]], azimuths: list[float]
+) -> list[tuple[float, float]]:
     """
     Rotates points to avoid a large azimuth jump in the middle of the line.
 
@@ -531,6 +533,40 @@ def get_screen_geometry(screen: pygame.Surface) -> tuple[tuple[int, int], int]:
     return (center, radius)
 
 
+def show_splash_until_thread_finishes(screen, font, message: str, thread: threading.Thread):
+    """
+    Show splash screen with message while a background thread is running.
+    Respond to OS events to avoid hang detection.
+
+    Args:
+        screen: Pygame screen surface.
+        font: Pygame font object.
+        message: Message to display.
+        thread: Thread to monitor for completion.
+    """
+    dot_count = 0
+    last_update = 0
+
+    while thread.is_alive():
+        now = time.time()
+        if now - last_update > 0.5:
+            dot_count = (dot_count + 1) % 4
+            dots = "." * dot_count
+            text = message + dots
+            screen.fill((0, 0, 0))
+            label = font.render(text, True, (255, 255, 255))
+            rect = label.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2))
+            screen.blit(label, rect)
+            pygame.display.flip()
+            last_update = now
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+        time.sleep(0.01)
+
+
 def main():
     """
     Main entry point for the star sky visualizer.
@@ -553,24 +589,42 @@ def main():
             return
         else:
             city = candidate_cities[0]
-    print("Loading star data ...", file=sys.stderr)
-    star_catalog = load_star_catalog(stars_csv_file)
+
     lat, lon = city_table[city]
-    stars, calc_time, calc_location = update_star_positions(star_catalog, lat, lon)
-    print("Done.", file=sys.stderr)
-    stars_lock = threading.Lock()
+
+    star_catalog = None
+    stars = calc_time = calc_location = None
+    celestial_equator_points_norm = ecliptic_points_norm = None
+
+    def background_data_loader():
+        nonlocal star_catalog, lat, lon, stars, calc_time, calc_location, celestial_equator_points_norm, ecliptic_points_norm
+        star_catalog = load_star_catalog(stars_csv_file)
+        stars, calc_time, calc_location = update_star_positions(star_catalog, lat, lon)
+        for p, s in PLANET_SYMBOLS.items():
+            emoji_surfaces[p] = render_emoji(s, emoji_font_path)
+        celestial_equator_points_norm = calculate_celestial_equator_points_norm(calc_location, calc_time)
+        ecliptic_points_norm = calculate_ecliptic_points_norm(calc_location, calc_time)
+
+    loading_thread = threading.Thread(target=background_data_loader)
+    loading_thread.start()
+
     pygame.init()
+    splash_size = (600, 300)
+    splash = pygame.display.set_mode(splash_size)
+    pygame.display.set_caption(f"Zenith Star View - {city}")
+    font = pygame.font.SysFont(None, 32)
+    show_splash_until_thread_finishes(splash, font, "Loading star data...", loading_thread)
+
+    stars_lock = threading.Lock()
+
     screen_size = (800, 800)
     screen = pygame.display.set_mode(screen_size, pygame.RESIZABLE)
     pygame.display.set_caption(f"Zenith Star View - {city}")
-    fullscreen = False
-    for p, s in PLANET_SYMBOLS.items():
-        emoji_surfaces[p] = render_emoji(s, emoji_font_path)
-    celestial_equator_points_norm = calculate_celestial_equator_points_norm(calc_location, calc_time)
-    ecliptic_points_norm = calculate_ecliptic_points_norm(calc_location, calc_time)
+
     with stars_lock:
         planets = get_visible_planets(lat, lon)
         draw_sky(screen, stars, planets, calc_location, calc_time, celestial_equator_points_norm, ecliptic_points_norm)
+
     new_stars = []
     new_calc_time = None
     new_calc_location = None
@@ -587,6 +641,7 @@ def main():
                 new_calc_location = updated_calc_location
                 new_stars_ready = True
 
+    fullscreen = False
     running = True
     thread = threading.Thread(target=background_updater, daemon=True)
     thread.start()
