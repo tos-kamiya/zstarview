@@ -7,6 +7,7 @@ import os.path
 import sys
 import threading
 import time
+from zoneinfo import ZoneInfo
 
 # --- PyQt5 Imports ---
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QSplashScreen
@@ -33,9 +34,7 @@ import skyfield.api
 # --- Constants and Data Loading (mostly unchanged) ---
 _dir = os.path.dirname(os.path.abspath(__file__))
 
-EMOJI_FONT_PATH = os.path.join(
-    _dir, "data", "Noto_Sans_Symbols", "NotoSansSymbols-VariableFont_wght.ttf"
-)
+EMOJI_FONT_PATH = os.path.join(_dir, "data", "Noto_Sans_Symbols", "NotoSansSymbols-VariableFont_wght.ttf")
 CITY_COORD_FILE = os.path.join(_dir, "data", "cities1000.txt")
 STARS_CSV_FILE = os.path.join(_dir, "data", "stars.csv")
 
@@ -46,21 +45,38 @@ HORIZON_LINE_COLOR = QColor(40, 40, 40)
 CELESTIAL_EQUATOR_COLOR = QColor(40, 40, 40)
 ECLIPTIC_COLOR = QColor(80, 60, 0)
 
+PLANET_SYMBOLS = {
+    "sun": "☀",
+    "moon": "🌛",
+    "mercury": "☿",
+    "venus": "♀",
+    "mars": "♂",
+    "jupiter barycenter": "♃",
+    "saturn barycenter": "♄",
+}
 
-def load_city_coords(filename: str) -> dict[str, tuple[float, float]]:
-    """Loads data: load city coords."""
+
+def load_city_coords(filename: str) -> dict[str, tuple[float, float, str]]:
+    """
+    Loads city coordinates and timezone from the data file.
+
+    Returns:
+        dict[str, tuple[float, float, str]]: A dict mapping city key to (latitude, longitude, timezone_name).
+    """
     city_table = {}
     with open(filename, encoding="utf-8") as f:
         for line in f:
             cols = line.strip().split("\t")
-            if len(cols) < 15:
+            # タイムゾーン情報を含む列があるかチェック
+            if len(cols) < 18:
                 continue
             name = cols[1]
             lat = float(cols[4])
             lon = float(cols[5])
             country = cols[8]
+            timezone_name = cols[17]  # タイムゾーン情報を取得
             key = f"{country.lower()}/{name.lower()}"
-            city_table[key] = (lat, lon)
+            city_table[key] = (lat, lon, timezone_name)
     return city_table
 
 
@@ -107,9 +123,7 @@ def load_star_catalog(filename: str) -> list[dict[str, object]]:
                 vmag = float(row["Vmag"])
                 bv = float(row["B-V"])
                 coord = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame="icrs")
-                star_catalog.append(
-                    {"name": name, "coord": coord, "vmag": vmag, "bv": bv}
-                )
+                star_catalog.append({"name": name, "coord": coord, "vmag": vmag, "bv": bv})
             except Exception:
                 continue
     return star_catalog
@@ -149,14 +163,7 @@ def estimate_magnitude(body_name, observer, t: Time, planets: dict) -> float | N
     i = phase_angle.degrees
     mag = 5 * math.log10(r * delta)
     if body_name == "mercury":
-        mag += (
-            -0.613
-            + 6.328e-2 * i
-            - 1.738e-3 * i**2
-            + 2.956e-5 * i**3
-            - 2.814e-7 * i**4
-            + 1.058e-9 * i**5
-        )
+        mag += -0.613 + 6.328e-2 * i - 1.738e-3 * i**2 + 2.956e-5 * i**3 - 2.814e-7 * i**4 + 1.058e-9 * i**5
     elif body_name == "venus":
         mag += -4.47 + 1.03e-2 * i + 3.69e-4 * i**2 - 2.81e-6 * i**3 + 8.94e-9 * i**4
     elif body_name == "mars":
@@ -171,20 +178,7 @@ def estimate_magnitude(body_name, observer, t: Time, planets: dict) -> float | N
     return mag
 
 
-PLANET_SYMBOLS = {
-    "sun": "☀",
-    "moon": "🌛",
-    "mercury": "☿",
-    "venus": "♀",
-    "mars": "♂",
-    "jupiter barycenter": "♃",
-    "saturn barycenter": "♄",
-}
-
-
-def get_visible_planets(
-    lat: float, lon: float, astropy_time: Time
-) -> list[dict[str, object]]:
+def get_visible_planets(lat: float, lon: float, astropy_time: Time) -> list[dict[str, object]]:
     """Gets visible planets using a given astropy Time object."""
     ts = skyfield.api.load.timescale()
     t = ts.from_astropy(astropy_time)
@@ -235,9 +229,7 @@ def rotate_points_at_max_azimuth_gap(
     return points[max_index:] + points[:max_index]
 
 
-def calculate_celestial_equator_points_norm(
-    location: EarthLocation, time: Time
-) -> list[tuple[float, float]]:
+def calculate_celestial_equator_points_norm(location: EarthLocation, time: Time) -> list[tuple[float, float]]:
     """Calculates calculate celestial equator points norm."""
     points, azimuths = [], []
     for ra_deg in range(0, 360, 5):
@@ -250,9 +242,7 @@ def calculate_celestial_equator_points_norm(
     return rotate_points_at_max_azimuth_gap(points, azimuths)
 
 
-def calculate_ecliptic_points_norm(
-    location: EarthLocation, time: Time
-) -> list[tuple[float, float]]:
+def calculate_ecliptic_points_norm(location: EarthLocation, time: Time) -> list[tuple[float, float]]:
     """Calculates calculate ecliptic points norm."""
     points, azimuths = [], []
     for lon_deg in range(0, 360, 5):
@@ -280,6 +270,8 @@ class SkyData:
     stars: list[dict[str, object]]
     celestial_equator_points: list[tuple[float, float]]
     ecliptic_points: list[tuple[float, float]]
+    timezone_name: str
+    city_name: str
 
 
 # --- PyQt5 UI Classes ---
@@ -310,13 +302,17 @@ class SkyWidget(QWidget):
 
     def get_screen_geometry(self) -> tuple[QPoint, int]:
         """Calculates the center and radius of the sky circle."""
-        center = QPoint(self.width() // 2, self.height() // 2)
-        radius = int(min(self.width(), self.height()) * 0.9) // 2
+        width = self.width()
+        height = self.height()
+        center = QPoint(width // 2, height // 2)
+
+        s1, s2 = (width, height) if width > height else (height, width)
+
+        radius = max(50, int(s1 * 0.7 + s2 * 0.3) // 2 - 10)
+
         return center, radius
 
-    def to_screen_xy(
-        self, nx: float, ny: float, center: QPoint, radius: int
-    ) -> QPointF:
+    def to_screen_xy(self, nx: float, ny: float, center: QPoint, radius: int) -> QPointF:
         """Converts normalized coordinates to screen coordinates."""
         return QPointF(center.x() + nx * radius, center.y() + ny * radius)
 
@@ -376,19 +372,13 @@ class SkyWidget(QWidget):
     def draw_celestial_lines(self, painter: QPainter, center: QPoint, radius: int):
         """Draws the celestial equator and ecliptic lines."""
         if len(self.sky_data.celestial_equator_points) >= 2:
-            points = [
-                self.to_screen_xy(nx, ny, center, radius)
-                for nx, ny in self.sky_data.celestial_equator_points
-            ]
+            points = [self.to_screen_xy(nx, ny, center, radius) for nx, ny in self.sky_data.celestial_equator_points]
             poly = QPolygonF(points)
             painter.setPen(QPen(CELESTIAL_EQUATOR_COLOR, 1, Qt.DashLine))
             painter.drawPolyline(poly)
 
         if len(self.sky_data.ecliptic_points) >= 2:
-            points = [
-                self.to_screen_xy(nx, ny, center, radius)
-                for nx, ny in self.sky_data.ecliptic_points
-            ]
+            points = [self.to_screen_xy(nx, ny, center, radius) for nx, ny in self.sky_data.ecliptic_points]
             poly = QPolygonF(points)
             painter.setPen(QPen(ECLIPTIC_COLOR, 1, Qt.SolidLine))
             painter.drawPolyline(poly)
@@ -397,9 +387,7 @@ class SkyWidget(QWidget):
         """Draws the stars."""
         painter.setCompositionMode(QPainter.CompositionMode_Plus)
         for star in self.sky_data.stars:
-            pos = self.to_screen_xy(
-                *altaz_to_normalized_xy(star["alt"], star["az"]), center, radius
-            )
+            pos = self.to_screen_xy(*altaz_to_normalized_xy(star["alt"], star["az"]), center, radius)
             color = bv_to_color(star["bv"])
             rad = mag_to_radius(star["vmag"]) * radius / 2000
 
@@ -426,9 +414,7 @@ class SkyWidget(QWidget):
     def draw_planets(self, painter: QPainter, center: QPoint, radius: int):
         """Draws the planets, Sun, and Moon."""
         for body in self.sky_data.planets:
-            pos = self.to_screen_xy(
-                *altaz_to_normalized_xy(body["alt"], body["az"]), center, radius
-            )
+            pos = self.to_screen_xy(*altaz_to_normalized_xy(body["alt"], body["az"]), center, radius)
             name = body.get("name")
 
             if name == "sun":
@@ -442,9 +428,7 @@ class SkyWidget(QWidget):
                 painter.setPen(TEXT_COLOR)
                 painter.drawText(pos, body["symbol"])
 
-    def draw_moon(
-        self, painter: QPainter, center: QPointF, radius: float, phase_angle_deg: float
-    ):
+    def draw_moon(self, painter: QPainter, center: QPointF, radius: float, phase_angle_deg: float):
         """Draws the Moon with its correct phase."""
         painter.setPen(Qt.NoPen)
         painter.setBrush(QColor(230, 230, 230))
@@ -455,9 +439,7 @@ class SkyWidget(QWidget):
         x_offset = radius * math.cos(phase_rad)
 
         painter.setBrush(Qt.black)
-        rect = QRectF(
-            center.x() - x_offset, center.y() - radius, 2 * x_offset, 2 * radius
-        )
+        rect = QRectF(center.x() - x_offset, center.y() - radius, 2 * x_offset, 2 * radius)
         painter.drawChord(
             QRectF(center.x() - radius, center.y() - radius, 2 * radius, 2 * radius),
             90 * 16,
@@ -469,18 +451,10 @@ class SkyWidget(QWidget):
         cross_outer_len, cross_inner_len = 15, 4
         x, y = center.x(), center.y()
         painter.setPen(QPen(color, 1))
-        painter.drawLine(
-            QPointF(x - cross_outer_len, y), QPointF(x - cross_inner_len, y)
-        )
-        painter.drawLine(
-            QPointF(x + cross_inner_len, y), QPointF(x + cross_outer_len, y)
-        )
-        painter.drawLine(
-            QPointF(x, y - cross_outer_len), QPointF(x, y - cross_inner_len)
-        )
-        painter.drawLine(
-            QPointF(x, y + cross_inner_len), QPointF(x, y + cross_outer_len)
-        )
+        painter.drawLine(QPointF(x - cross_outer_len, y), QPointF(x - cross_inner_len, y))
+        painter.drawLine(QPointF(x + cross_inner_len, y), QPointF(x + cross_outer_len, y))
+        painter.drawLine(QPointF(x, y - cross_outer_len), QPointF(x, y - cross_inner_len))
+        painter.drawLine(QPointF(x, y + cross_inner_len), QPointF(x, y + cross_outer_len))
 
     def update_highlight(self, center: QPoint, radius: int):
         """Finds the celestial object closest to the mouse cursor."""
@@ -489,22 +463,31 @@ class SkyWidget(QWidget):
 
         all_objects = self.sky_data.stars + self.sky_data.planets
         for obj in all_objects:
-            pos = self.to_screen_xy(
-                *altaz_to_normalized_xy(obj["alt"], obj["az"]), center, radius
-            )
-            dist_sq = (self.mouse_pos.x() - pos.x()) ** 2 + (
-                self.mouse_pos.y() - pos.y()
-            ) ** 2
+            pos = self.to_screen_xy(*altaz_to_normalized_xy(obj["alt"], obj["az"]), center, radius)
+            dist_sq = (self.mouse_pos.x() - pos.x()) ** 2 + (self.mouse_pos.y() - pos.y()) ** 2
             if dist_sq < min_dist:
                 min_dist = dist_sq
                 self.highlighted_object = (obj, pos)
 
     def draw_overlay_text(self, painter: QPainter, center: QPoint, radius: int):
         """Draws time info and the label for the highlighted object."""
-        time_text = self.sky_data.time.to_datetime().strftime("%Y-%m-%d %H:%M:%S UTC")
+
+        utc_time = self.sky_data.time
+        tz_name = self.sky_data.timezone_name
+        time_text = ""
+        try:
+            local_tz = ZoneInfo(tz_name)
+            local_dt = utc_time.to_datetime(timezone=local_tz)
+            time_text = local_dt.strftime("%Y-%m-%d %H:%M:%S %Z")
+        except Exception:
+            time_text = utc_time.to_datetime().strftime("%Y-%m-%d %H:%M:%S UTC")
+
         painter.setPen(QColor(180, 180, 180))
         painter.setFont(self.text_font)
         painter.drawText(QPoint(10, 20), time_text)
+
+        city_name_text = self.sky_data.city_name.replace("/", " - ").title()
+        painter.drawText(QPoint(10, 40), city_name_text)
 
         if self.highlighted_object:
             obj, pos = self.highlighted_object
@@ -525,18 +508,17 @@ class SkyWidget(QWidget):
 class MainWindow(QMainWindow):
     """The main application window."""
 
-    # Signal to receive updated sky data from a background thread
     data_updated = pyqtSignal(object)
+    initial_data_loaded = pyqtSignal()
 
-    def __init__(self, city_name: str, coords: tuple, star_catalog: list):
+    def __init__(self, city_name: str, city_data: tuple, star_catalog: list):
         super().__init__()
         self.city_name = city_name
-        self.lat, self.lon = coords
+        # 緯度、経度、タイムゾーン名をアンパック
+        self.lat, self.lon, self.tz_name = city_data
         self.star_catalog = star_catalog
 
-        self.setWindowTitle(
-            f"Zenith Star View - {self.city_name.replace('/', ' - ').title()}"
-        )
+        self.setWindowTitle(f"Zenith Star View - {self.city_name.replace('/', ' - ').title()}")
         self.setGeometry(100, 100, 800, 800)
 
         self.sky_widget = SkyWidget(self)
@@ -544,20 +526,16 @@ class MainWindow(QMainWindow):
 
         self.data_updated.connect(self.on_data_updated)
 
-        # Timer for periodic updates
         self.update_timer = QTimer(self)
         self.update_timer.timeout.connect(self.start_background_update)
 
         self.start_background_update(is_initial_load=True)
 
-    # This signal is emitted when the initial data load is complete
-    initial_data_loaded = pyqtSignal()
-
     def on_data_updated(self, sky_data: SkyData):
         """Slot to handle new data from the background thread."""
         self.sky_widget.set_sky_data(sky_data)
         if not self.update_timer.isActive():
-            self.update_timer.start(5 * 60 * 1000)  # Update every 5 minutes
+            self.update_timer.start(5 * 60 * 1000)
             self.initial_data_loaded.emit()
 
     def update_sky_data_in_background(self):
@@ -565,16 +543,20 @@ class MainWindow(QMainWindow):
         try:
             now = datetime.now(timezone.utc)
             time_obj = Time(now)
-            stars, loc = update_star_positions(
-                self.star_catalog, self.lat, self.lon, time_obj
-            )
+            stars, loc = update_star_positions(self.star_catalog, self.lat, self.lon, time_obj)
             planets = get_visible_planets(self.lat, self.lon, time_obj)
-            celestial_equator_points = calculate_celestial_equator_points_norm(
-                loc, time_obj
-            )
+            celestial_equator_points = calculate_celestial_equator_points_norm(loc, time_obj)
             ecliptic_points = calculate_ecliptic_points_norm(loc, time_obj)
+
             sky_data = SkyData(
-                loc, time_obj, planets, stars, celestial_equator_points, ecliptic_points
+                loc,
+                time_obj,
+                planets,
+                stars,
+                celestial_equator_points,
+                ecliptic_points,
+                timezone_name=self.tz_name,
+                city_name=self.city_name,
             )
             self.data_updated.emit(sky_data)
         except Exception as e:
@@ -648,18 +630,15 @@ def main():
         time.sleep(3)
         return
 
-    splash.showMessage(
-        f"Calculating sky for {city.title()}...", Qt.AlignCenter, Qt.white
-    )
+    splash.showMessage(f"Calculating sky for {city.title()}...", Qt.AlignCenter, Qt.white)
     app.processEvents()
 
-    lat, lon = city_table[city]
-    main_win = MainWindow(city, (lat, lon), star_catalog)
+    # lat, lon = city_table[city] の行を修正
+    lat, lon, tz_name = city_table[city]
+    main_win = MainWindow(city, (lat, lon, tz_name), star_catalog)
 
     # When the initial data is loaded, show the main window and close the splash screen
-    main_win.initial_data_loaded.connect(
-        lambda: (main_win.show(), splash.finish(main_win))
-    )
+    main_win.initial_data_loaded.connect(lambda: (main_win.show(), splash.finish(main_win)))
 
     sys.exit(app.exec_())
 
