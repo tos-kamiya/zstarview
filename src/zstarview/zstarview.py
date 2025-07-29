@@ -3,7 +3,9 @@ import csv
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import math
+from multiprocessing import Process, Pipe
 import os.path
+import pickle
 import sys
 import threading
 import time
@@ -135,7 +137,7 @@ def update_star_positions(
     """Updates update star positions."""
     location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg)
     visible_stars = []
-    for star in star_catalog:
+    for i, star in enumerate(star_catalog):
         altaz = star["coord"].transform_to(AltAz(obstime=time_obj, location=location))
         if altaz.alt.deg > 0:
             visible_stars.append(
@@ -147,6 +149,8 @@ def update_star_positions(
                     "name": star["name"],
                 }
             )
+        if (i + 1) % 500 == 0:
+            time.sleep(0)
     return (visible_stars, location)
 
 
@@ -264,7 +268,7 @@ def calculate_ecliptic_points_norm(location: EarthLocation, time: Time) -> list[
 class SkyData:
     """Container for all calculated sky data for a specific time and location."""
 
-    location: EarthLocation
+    location: tuple[float, float]  # (lat, lon)
     time: Time
     planets: list[dict[str, object]]
     stars: list[dict[str, object]]
@@ -549,7 +553,7 @@ class MainWindow(QMainWindow):
             ecliptic_points = calculate_ecliptic_points_norm(loc, time_obj)
 
             sky_data = SkyData(
-                loc,
+                (self.lat, self.lon),
                 time_obj,
                 planets,
                 stars,
