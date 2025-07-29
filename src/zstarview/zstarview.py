@@ -47,6 +47,9 @@ HORIZON_LINE_COLOR = QColor(40, 40, 40)
 CELESTIAL_EQUATOR_COLOR = QColor(40, 40, 40)
 ECLIPTIC_COLOR = QColor(80, 60, 0)
 
+VIEWER_LOCATION_HEIGHT = 1.0  # km
+
+
 PLANET_SYMBOLS = {
     "sun": "☀",
     "moon": "🌛",
@@ -96,6 +99,12 @@ def bv_to_color(bv: float) -> QColor:
         return QColor(255, 204, 111)
 
 
+def angle_below_horizon(h_km, R=6371):
+    ratio = R / (R + h_km)
+    theta_rad = math.acos(ratio)
+    return math.degrees(theta_rad)
+
+
 def mag_to_radius(vmag: float) -> float:
     """Mag to radius."""
     base_radius = 7.0
@@ -136,10 +145,12 @@ def update_star_positions(
 ) -> tuple[list[dict[str, object]], EarthLocation]:
     """Updates update star positions."""
     location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg)
+    a = angle_below_horizon(VIEWER_LOCATION_HEIGHT)
+
     visible_stars = []
     for i, star in enumerate(star_catalog):
         altaz = star["coord"].transform_to(AltAz(obstime=time_obj, location=location))
-        if altaz.alt.deg > 0:
+        if altaz.alt.deg > -a:
             visible_stars.append(
                 {
                     "alt": altaz.alt.deg,
@@ -188,13 +199,14 @@ def get_visible_planets(lat: float, lon: float, astropy_time: Time) -> list[dict
     t = ts.from_astropy(astropy_time)
     planets = skyfield.api.load("de421.bsp")
     observer = planets["earth"] + Topos(latitude_degrees=lat, longitude_degrees=lon)
+    a = angle_below_horizon(VIEWER_LOCATION_HEIGHT)
 
     visible_bodies = []
     for name, symbol in PLANET_SYMBOLS.items():
         planet = planets[name]
         astrometric = observer.at(t).observe(planet).apparent()
         alt, az, _ = astrometric.altaz()
-        if alt.degrees > 0:
+        if alt.degrees > -a:
             mag = estimate_magnitude(name, observer, t, planets)
             body = {
                 "alt": alt.degrees,
@@ -239,7 +251,7 @@ def calculate_celestial_equator_points_norm(location: EarthLocation, time: Time)
     for ra_deg in range(0, 360, 5):
         coord = SkyCoord(ra=ra_deg * u.deg, dec=0 * u.deg, frame="icrs")
         altaz = coord.transform_to(AltAz(obstime=time, location=location))
-        if altaz.alt.deg > 0:
+        if altaz.alt.deg > -2:
             nx, ny = altaz_to_normalized_xy(altaz.alt.deg, altaz.az.deg)
             points.append((nx, ny))
             azimuths.append(altaz.az.deg)
@@ -257,7 +269,7 @@ def calculate_ecliptic_points_norm(location: EarthLocation, time: Time) -> list[
         )
         icrs = ecl.transform_to("icrs")
         altaz = icrs.transform_to(AltAz(obstime=time, location=location))
-        if altaz.alt.deg > 0:
+        if altaz.alt.deg > -2:
             nx, ny = altaz_to_normalized_xy(altaz.alt.deg, altaz.az.deg)
             points.append((nx, ny))
             azimuths.append(altaz.az.deg)
