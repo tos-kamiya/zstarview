@@ -1,4 +1,5 @@
 import csv
+from dataclasses import dataclass
 from datetime import datetime, timezone
 import math
 import os.path
@@ -16,19 +17,19 @@ import skyfield.api
 
 _dir = os.path.dirname(os.path.abspath(__file__))
 
-emoji_font_path = os.path.join(_dir, "data", "Noto_Sans_Symbols", "NotoSansSymbols-VariableFont_wght.ttf")
-text_color = (120, 120, 120)
-font_size = 24
+EMOJI_FONT_PATH = os.path.join(_dir, "data", "Noto_Sans_Symbols", "NotoSansSymbols-VariableFont_wght.ttf")
+CITY_COORD_FILE = os.path.join(_dir, "data", "cities1000.txt")
+STARS_CSV_FILE = os.path.join(_dir, "data", "stars.csv")
 
-guide_color = (40, 40, 40)
-celestial_equator_color = (40, 40, 40)
-ecliptic_color = (80, 60, 0)
+TEXT_COLOR = (120, 120, 120)
+TEXT_FONT_SIZE = 24
 
-city_coord_file = os.path.join(_dir, "data", "cities1000.txt")
-stars_csv_file = os.path.join(_dir, "data", "stars.csv")
+HORIZON_LINE_COLOR = (40, 40, 40)
+CELESTIAL_EQUATOR_COLOR = (40, 40, 40)
+ECLIPTIC_COLOR = (80, 60, 0)
 
 
-def render_emoji(emoji, font_path: str, size: int = font_size) -> pygame.Surface:
+def render_emoji(emoji, font_path: str, size: int = TEXT_FONT_SIZE) -> pygame.Surface:
     """
     Render emoji.
 
@@ -41,7 +42,7 @@ def render_emoji(emoji, font_path: str, size: int = font_size) -> pygame.Surface
         pygame.Surface: Description.
     """
     font = pygame.font.Font(font_path, size)
-    surface = font.render(emoji, True, text_color)
+    surface = font.render(emoji, True, TEXT_COLOR)
     return surface
 
 
@@ -156,7 +157,7 @@ def load_star_catalog(filename: str) -> list[dict[str, object]]:
 
 
 def update_star_positions(
-    star_catalog: list[dict[str, object]], lat: float, lon: float
+    star_catalog: list[dict[str, object]], lat: float, lon: float, time_obj: Time
 ) -> tuple[list[dict[str, object]], Time, EarthLocation]:
     """
     Updates update star positions.
@@ -169,8 +170,6 @@ def update_star_positions(
     Returns:
         tuple[list[dict[str, object]], Time, EarthLocation]: Description.
     """
-    now = datetime.now(timezone.utc)
-    time_obj = Time(now)
     location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg)
     visible_stars = []
     for star in star_catalog:
@@ -179,7 +178,7 @@ def update_star_positions(
             visible_stars.append(
                 {"alt": altaz.alt.deg, "az": altaz.az.deg, "vmag": star["vmag"], "bv": star["bv"], "name": star["name"]}
             )
-    return (visible_stars, now, location)
+    return (visible_stars, location)
 
 
 def estimate_magnitude(body_name, observer, t: Time, planets: list[dict[str, object]]) -> float | None:
@@ -232,21 +231,23 @@ PLANET_SYMBOLS = {
 }
 
 
-def get_visible_planets(lat: float, lon: float) -> list[dict[str, object]]:
+def get_visible_planets(lat: float, lon: float, astropy_time: Time) -> list[dict[str, object]]:
     """
-    Gets get visible planets.
+    Gets visible planets using a given astropy Time object.
 
     Args:
-        lat (float): Description.
-        lon (float): Description.
+        lat (float): Latitude in degrees.
+        lon (float): Longitude in degrees.
+        astropy_time (Time): Astropy Time object.
 
     Returns:
-        list[dict[str, object]]: Description.
+        list[dict[str, object]]: List of visible planets with their positions.
     """
     ts = skyfield.api.load.timescale()
-    t = ts.now()
+    t = ts.from_astropy(astropy_time)  # ← astropy -> skyfield の変換
     planets = skyfield.api.load("de421.bsp")
     observer = planets["earth"] + Topos(latitude_degrees=lat, longitude_degrees=lon)
+
     visible_bodies = []
     for name, symbol in PLANET_SYMBOLS.items():
         planet = planets[name]
@@ -261,6 +262,7 @@ def get_visible_planets(lat: float, lon: float) -> list[dict[str, object]]:
                 body["phase_angle"] = moon_phase_angle(observer, t, planets)
             visible_bodies.append(body)
     return visible_bodies
+
 
 
 def moon_phase_angle(observer, t: Time, planets: list[dict[str, object]]) -> float:
@@ -402,36 +404,39 @@ def calculate_ecliptic_points_norm(location: EarthLocation, time: Time) -> list[
     return rotate_points_at_max_azimuth_gap(points, azimuths)
 
 
+@dataclass
+class SkyData:
+    location: EarthLocation
+    time: Time
+    planets: list[dict[str, object]]
+    stars: list[dict[str, object]]
+    celestial_equator_points: list[tuple[float, float]]
+    ecliptic_points: list[tuple[float, float]]
+
+
 def draw_sky(
     screen: pygame.Surface,
-    stars: list[dict[str, object]],
-    planets: list[dict[str, object]],
-    location: EarthLocation,
-    calc_time: Time,
-    celestial_equator_points_norm: list[tuple[float, float]],
-    ecliptic_points_norm: list[tuple[float, float]],
+    sky_data: SkyData,
 ):
     """
     Draws graphical elements: draw sky.
 
     Args:
         screen (pygame.Surface): Description.
-        stars (list[dict[str, object]]): Description.
-        planets (list[dict[str, object]]): Description.
-        location (EarthLocation): Description.
-        calc_time (Time): Description.
-        celestial_equator_points_norm (list[tuple[float, float]]): Description.
-        ecliptic_points_norm (list[tuple[float, float]]): Description.
+        sky_data (SkyData): Data for stars, planets, etc.
     """
-    font = pygame.font.SysFont(None, font_size)
+    stars = sky_data.stars
+    planets = sky_data.planets
+
+    font = pygame.font.SysFont(None, TEXT_FONT_SIZE)
     screen.fill((0, 0, 0))
     center, radius = get_screen_geometry(screen)
-    pygame.draw.circle(screen, guide_color, center, radius, 1)
+    pygame.draw.circle(screen, HORIZON_LINE_COLOR, center, radius, 1)
 
     def to_screen_xy(nx, ny):
         return (center[0] + nx * radius, center[1] + ny * radius)
 
-    time_text = font.render(calc_time.strftime("%Y-%m-%d %H:%M:%S UTC"), True, (180, 180, 180))
+    time_text = font.render(sky_data.time.strftime("%Y-%m-%d %H:%M:%S UTC"), True, (180, 180, 180))
     screen.blit(time_text, (10, 10))
     directions = {"N": 0, "NE": 45, "E": 90, "SE": 135, "S": 180, "SW": 225, "W": 270, "NW": 315}
     for label, angle in directions.items():
@@ -440,12 +445,13 @@ def draw_sky(
         text = font.render(label, True, (150, 150, 150))
         text_rect = text.get_rect(center=(x, y))
         screen.blit(text, text_rect)
-    if len(celestial_equator_points_norm) >= 2:
-        points = [to_screen_xy(nx, ny) for nx, ny in celestial_equator_points_norm]
-        pygame.draw.lines(screen, celestial_equator_color, False, points, 1)
-    if len(ecliptic_points_norm) >= 2:
-        points = [to_screen_xy(nx, ny) for nx, ny in ecliptic_points_norm]
-        pygame.draw.lines(screen, ecliptic_color, False, points, 1)
+    if len(sky_data.celestial_equator_points) >= 2:
+        points = [to_screen_xy(nx, ny) for nx, ny in sky_data.celestial_equator_points]
+        pygame.draw.lines(screen, CELESTIAL_EQUATOR_COLOR, False, points, 1)
+    if len(sky_data.ecliptic_points) >= 2:
+        points = [to_screen_xy(nx, ny) for nx, ny in sky_data.ecliptic_points]
+        pygame.draw.lines(screen, ECLIPTIC_COLOR, False, points, 1)
+
     mouse_x, mouse_y = pygame.mouse.get_pos()
     highlight = None
     min_dist = 9999
@@ -473,11 +479,11 @@ def draw_sky(
         x, y = planet_screen_coords[body["name"]]
         name = body.get("name") or ""
         if name == "sun":
-            draw_cross_gauge(screen, text_color, x, y)
+            draw_cross_gauge(screen, TEXT_COLOR, x, y)
         elif name == "moon":
             moon_radius = 0.5 / 2 * (radius / 90)
             draw_moon(screen, x, y, moon_radius, body["phase_angle"])
-            draw_cross_gauge(screen, text_color, x, y)
+            draw_cross_gauge(screen, TEXT_COLOR, x, y)
         else:
             emoji_surface = emoji_surfaces.get(name)
             if emoji_surface:
@@ -507,9 +513,9 @@ def draw_sky(
             screen.blit(surface, (int(x - center_px), int(y - center_px)), special_flags=pygame.BLEND_RGBA_ADD)
     if highlight:
         obj, x, y = highlight
-        pygame.draw.circle(screen, text_color, (int(x), int(y)), 10, 2)
+        pygame.draw.circle(screen, TEXT_COLOR, (int(x), int(y)), 10, 2)
         name = obj.get("name") or ""
-        label = font.render(name, True, text_color)
+        label = font.render(name, True, TEXT_COLOR)
         screen.blit(label, (x + 15, y - 15))
     pygame.display.flip()
 
@@ -571,7 +577,7 @@ def main():
     """
     Main entry point for the star sky visualizer.
     """
-    city_table = load_city_coords(city_coord_file)
+    city_table = load_city_coords(CITY_COORD_FILE)
     city = "Tokyo"
     if len(sys.argv) >= 2:
         city = sys.argv[1]
@@ -591,55 +597,64 @@ def main():
             city = candidate_cities[0]
 
     lat, lon = city_table[city]
+    star_catalog = load_star_catalog(STARS_CSV_FILE)
 
-    star_catalog = None
-    stars = calc_time = calc_location = None
-    celestial_equator_points_norm = ecliptic_points_norm = None
+    sky_data = None
 
     def background_data_loader():
-        nonlocal star_catalog, lat, lon, stars, calc_time, calc_location, celestial_equator_points_norm, ecliptic_points_norm
-        star_catalog = load_star_catalog(stars_csv_file)
-        stars, calc_time, calc_location = update_star_positions(star_catalog, lat, lon)
-        for p, s in PLANET_SYMBOLS.items():
-            emoji_surfaces[p] = render_emoji(s, emoji_font_path)
-        celestial_equator_points_norm = calculate_celestial_equator_points_norm(calc_location, calc_time)
-        ecliptic_points_norm = calculate_ecliptic_points_norm(calc_location, calc_time)
+        nonlocal sky_data
+        try:
+            now = datetime.now(timezone.utc)
+            time_obj = Time(now)
+            stars, loc = update_star_positions(star_catalog, lat, lon, time_obj)
+            planets = get_visible_planets(lat, lon, time_obj)
+            celestial_equator_points = calculate_celestial_equator_points_norm(loc, time_obj)
+            ecliptic_points = calculate_ecliptic_points_norm(loc, time_obj)
+            sky_data = SkyData(loc, time_obj, planets, stars, celestial_equator_points, ecliptic_points)
+        except Exception as e:
+            import traceback
+
+            print("Error in background_data_loader():", file=sys.stderr)
+            traceback.print_exc()
 
     loading_thread = threading.Thread(target=background_data_loader)
     loading_thread.start()
 
     pygame.init()
+    for p, s in PLANET_SYMBOLS.items():
+        emoji_surfaces[p] = render_emoji(s, EMOJI_FONT_PATH)
+
     splash_size = (600, 300)
     splash = pygame.display.set_mode(splash_size)
     pygame.display.set_caption(f"Zenith Star View - {city}")
     font = pygame.font.SysFont(None, 32)
     show_splash_until_thread_finishes(splash, font, "Loading star data...", loading_thread)
 
-    stars_lock = threading.Lock()
+    assert sky_data is not None
 
     screen_size = (800, 800)
     screen = pygame.display.set_mode(screen_size, pygame.RESIZABLE)
     pygame.display.set_caption(f"Zenith Star View - {city}")
 
-    with stars_lock:
-        planets = get_visible_planets(lat, lon)
-        draw_sky(screen, stars, planets, calc_location, calc_time, celestial_equator_points_norm, ecliptic_points_norm)
+    sky_data_lock = threading.Lock()
 
-    new_stars = []
-    new_calc_time = None
-    new_calc_location = None
-    new_stars_ready = False
+    with sky_data_lock:
+        draw_sky(screen, sky_data)
+
+    new_sky_data = None
 
     def background_updater():
-        nonlocal new_stars, new_calc_time, new_calc_location, new_stars_ready
+        nonlocal new_sky_data
         while running:
             time.sleep(300)
-            updated_stars, updated_calc_time, updated_calc_location = update_star_positions(star_catalog, lat, lon)
-            with stars_lock:
-                new_stars = updated_stars
-                new_calc_time = updated_calc_time
-                new_calc_location = updated_calc_location
-                new_stars_ready = True
+            now = datetime.now(timezone.utc)
+            time_obj = Time(now)
+            stars, loc = update_star_positions(star_catalog, lat, lon, time_obj)
+            planets = get_visible_planets(lat, lon, time_obj)
+            celestial_equator_points = calculate_celestial_equator_points_norm(loc, time_obj)
+            ecliptic_points = calculate_ecliptic_points_norm(loc, time_obj)
+            with sky_data_lock:
+                new_sky_data = SkyData(loc, time_obj, planets, stars, celestial_equator_points, ecliptic_points)
 
     fullscreen = False
     running = True
@@ -659,19 +674,11 @@ def main():
                 if pygame.mouse.get_pos() != last_mouse_pos:
                     last_mouse_pos = pygame.mouse.get_pos()
                     redraw_needed = True
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 3:
-                    fullscreen = not fullscreen
-                    if fullscreen:
-                        screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
-                    else:
-                        screen = pygame.display.set_mode(screen_size, pygame.RESIZABLE)
-                    redraw_needed = True
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F11:
                     fullscreen = not fullscreen
                     if fullscreen:
-                        screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+                        screen = pygame.display.set_mode(screen_size, pygame.RESIZABLE | pygame.NOFRAME)
                     else:
                         screen = pygame.display.set_mode(screen_size, pygame.RESIZABLE)
                     redraw_needed = True
@@ -680,26 +687,12 @@ def main():
                         fullscreen = False
                         screen = pygame.display.set_mode(screen_size, pygame.RESIZABLE)
                         redraw_needed = True
-        with stars_lock:
-            if new_stars_ready:
-                stars = new_stars
-                calc_time = new_calc_time
-                calc_location = new_calc_location
-                planets = get_visible_planets(lat, lon)
-                celestial_equator_points_norm = calculate_celestial_equator_points_norm(calc_location, calc_time)
-                ecliptic_points_norm = calculate_ecliptic_points_norm(calc_location, calc_time)
-                new_stars_ready = False
+        with sky_data_lock:
+            if new_sky_data is not None:
+                sky_data, new_sky_data = new_sky_data, None
                 redraw_needed = True
             if redraw_needed:
-                draw_sky(
-                    screen,
-                    stars,
-                    planets,
-                    calc_location,
-                    calc_time,
-                    celestial_equator_points_norm,
-                    ecliptic_points_norm,
-                )
+                draw_sky(screen, sky_data)
         time.sleep(0.05)
     pygame.quit()
 
