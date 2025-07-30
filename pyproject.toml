@@ -24,6 +24,8 @@ dependencies = [
   "PyQt5",
   "astropy",
   "skyfield",
+  "numpy",
+  "Pillow>=10",
 ]
 
 [project.urls]

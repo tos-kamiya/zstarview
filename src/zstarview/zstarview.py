@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 import csv
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import math
-from multiprocessing import Process, Pipe
 import os.path
-import pickle
 import sys
 import threading
 import time
@@ -32,6 +30,21 @@ from astropy.time import Time
 import astropy.units as u
 from skyfield.api import Topos
 import skyfield.api
+
+import numpy as np
+from PIL import Image
+
+
+import numpy as np
+from PyQt5.QtGui import QImage, QPixmap
+
+def pil2qpixmap(img):
+    arr = np.array(img.convert("RGBA"))
+    h, w, ch = arr.shape
+    bytes_per_line = ch * w
+    qimg = QImage(arr.data, w, h, bytes_per_line, QImage.Format_RGBA8888)
+    return QPixmap.fromImage(qimg)
+
 
 # --- Constants and Data Loading (mostly unchanged) ---
 _dir = os.path.dirname(os.path.abspath(__file__))
@@ -97,6 +110,37 @@ def bv_to_color(bv: float) -> QColor:
         return QColor(255, 210, 161)
     else:
         return QColor(255, 204, 111)
+
+
+def render_moon_phase_img(size, sun_dir_3d, view_dir_3d, moon_color=(230, 230, 230), dark_color=(30, 30, 30)):
+    """
+    観測者から見た月相の球体画像を生成
+    """
+    cx, cy = size // 2, size // 2
+    r = size // 2
+    img = np.zeros((size, size, 3), dtype=np.uint8)
+    for y in range(size):
+        for x in range(size):
+            dx = (x - cx) / r
+            dy = (y - cy) / r
+            if dx**2 + dy**2 > 1:
+                continue
+            dz = np.sqrt(1 - dx**2 - dy**2)
+            surf_norm = np.array([dx, dy, dz])
+            surf_norm /= np.linalg.norm(surf_norm)
+            # 観測方向へ
+            view = np.dot(surf_norm, view_dir_3d)
+            if view < 0:
+                continue  # 裏側は描かない
+            # 太陽光
+            light = np.dot(surf_norm, sun_dir_3d)
+            if light > 0:
+                c = np.array(moon_color) * light
+                c = np.clip(c, 0, 255)
+            else:
+                c = np.array(dark_color)
+            img[y, x] = c
+    return Image.fromarray(img)
 
 
 def angle_below_horizon(h_km, R=6371):
@@ -244,6 +288,30 @@ def calculate_ecliptic_points_norm(location: EarthLocation, time: Time) -> list[
             nx, ny = altaz_to_normalized_xy(altaz.alt.deg, altaz.az.deg)
             points.append((nx, ny))
     return rotate_points_at_max_gap(points)
+
+
+def calc_sun_angle_on_moon(moon_altaz, sun_altaz):
+    """
+    画面（北上、東左）上での太陽方向角度を返す（ラジアン、y上方向=0、時計回り正）
+    """
+    m_alt, m_az = moon_altaz
+    s_alt, s_az = sun_altaz
+
+    # 月の位置を中心とした天球座標上で太陽の方向ベクトル
+    # 方位角の差分（azは北=0,東=90,南=180,西=270）  
+    # 画面座標系ではy+が北（上）、x-が東（左）
+
+    # 太陽が月に対してどちらの方位にあるか
+    d_az = math.radians(s_az - m_az)
+    d_alt = math.radians(s_alt - m_alt)
+
+    # 画面上の相対的な太陽方向ベクトル（x左=東、y上=北）
+    dx = -math.sin(d_az) * math.cos(math.radians(s_alt))
+    dy = math.sin(d_alt)
+
+    # (dx, dy)から北を上にした画面での角度（北=0, 東=90, 南=180, 西=270、時計回り正）
+    angle = math.atan2(dx, dy)
+    return angle
 
 
 @dataclass
@@ -399,6 +467,14 @@ class SkyWidget(QWidget):
 
     def draw_planets(self, painter: QPainter, center: QPoint, radius: int):
         """Draws the planets, Sun, and Moon."""
+        sun_altaz = None
+        moon_altaz = None
+        for body in self.sky_data.planets:
+            if body["name"] == "sun":
+                sun_altaz = (body["alt"], body["az"])
+            if body["name"] == "moon":
+                moon_altaz = (body["alt"], body["az"])
+
         for body in self.sky_data.planets:
             pos = self.to_screen_xy(*altaz_to_normalized_xy(body["alt"], body["az"]), center, radius)
             name = body.get("name")
@@ -407,30 +483,36 @@ class SkyWidget(QWidget):
                 self.draw_cross_gauge(painter, TEXT_COLOR, pos)
             elif name == "moon":
                 moon_radius = 0.5 / 2 * (radius / 90.0)
-                self.draw_moon(painter, pos, moon_radius, body["phase_angle"])
-                self.draw_cross_gauge(painter, TEXT_COLOR, pos)
+                self.draw_moon(
+                    painter, pos, moon_radius, body["phase_angle"],
+                    sun_altaz=sun_altaz, moon_altaz=moon_altaz
+                )
             else:
                 painter.setFont(self.emoji_font)
                 painter.setPen(TEXT_COLOR)
                 painter.drawText(pos, body["symbol"])
 
-    def draw_moon(self, painter: QPainter, center: QPointF, radius: float, phase_angle_deg: float):
-        """Draws the Moon with its correct phase."""
-        painter.setPen(Qt.NoPen)
-        painter.setBrush(QColor(230, 230, 230))
-        painter.drawEllipse(center, radius, radius)  # Draw the illuminated part
+    def draw_moon(self, painter, center, radius, phase_angle_deg, sun_altaz=None, moon_altaz=None):
+        img_size = int(radius * 2)
+        if img_size < 5:
+            img_size = 5
 
-        # Draw the dark part (shadow)
-        phase_rad = math.radians(phase_angle_deg - 90)  # Adjust for calculation
-        x_offset = radius * math.cos(phase_rad)
+        view_dir = np.array([0, 0, 1])
+        phase_angle_rad = math.radians(phase_angle_deg)
+        sun_dir = np.array([np.sin(phase_angle_rad), 0, -np.cos(phase_angle_rad)])
+        sun_dir /= np.linalg.norm(sun_dir)
+        moon_img_pil = render_moon_phase_img(img_size, sun_dir, view_dir)
 
-        painter.setBrush(Qt.black)
-        rect = QRectF(center.x() - x_offset, center.y() - radius, 2 * x_offset, 2 * radius)
-        painter.drawChord(
-            QRectF(center.x() - radius, center.y() - radius, 2 * radius, 2 * radius),
-            90 * 16,
-            -180 * 16,
-        )
+        rotate_deg = 0
+        if sun_altaz is not None and moon_altaz is not None:
+            angle = calc_sun_angle_on_moon(moon_altaz, sun_altaz)
+            rotate_deg = -math.degrees(angle) - 90
+
+        moon_img_pil = moon_img_pil.rotate(rotate_deg, resample=Image.BICUBIC, expand=False)
+
+        pixmap = pil2qpixmap(moon_img_pil)
+        target_rect = QRectF(center.x() - img_size / 2, center.y() - img_size / 2, img_size, img_size)
+        painter.drawPixmap(target_rect, pixmap, QRectF(0, 0, img_size, img_size))
 
     def draw_cross_gauge(self, painter: QPainter, color: QColor, center: QPointF):
         """Draws a cross gauge symbol."""
