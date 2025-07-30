@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import argparse
 import csv
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -336,6 +337,7 @@ class SkyWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.enlarge_moon = False
         self.sky_data = None
         self.highlighted_object = None
         self.mouse_pos = QPoint()
@@ -348,6 +350,9 @@ class SkyWidget(QWidget):
 
         self.setMouseTracking(True)
         self.setMinimumSize(400, 400)
+
+    def set_enlarge_moon(self, enlarge_moon: bool):
+        self.enlarge_moon = enlarge_moon
 
     def set_sky_data(self, data: SkyData):
         """Receives new sky data and triggers a repaint."""
@@ -482,17 +487,18 @@ class SkyWidget(QWidget):
             if name == "sun":
                 self.draw_cross_gauge(painter, TEXT_COLOR, pos)
             elif name == "moon":
-                moon_radius = 0.5 / 2 * (radius / 90.0)
+                moon_radius = (0.5 if not self.enlarge_moon else 1.5) / 2 * (radius / 90.0)
                 self.draw_moon(
                     painter, pos, moon_radius, body["phase_angle"],
-                    sun_altaz=sun_altaz, moon_altaz=moon_altaz
+                    sun_altaz=sun_altaz, moon_altaz=moon_altaz, opacity=1.0 if not self.enlarge_moon else 0.7
                 )
+                self.draw_cross_gauge(painter, TEXT_COLOR, pos)
             else:
                 painter.setFont(self.emoji_font)
                 painter.setPen(TEXT_COLOR)
                 painter.drawText(pos, body["symbol"])
 
-    def draw_moon(self, painter, center, radius, phase_angle_deg, sun_altaz=None, moon_altaz=None):
+    def draw_moon(self, painter, center, radius, phase_angle_deg, sun_altaz=None, moon_altaz=None, opacity=1.0):
         img_size = int(radius * 2)
         if img_size < 5:
             img_size = 5
@@ -512,7 +518,10 @@ class SkyWidget(QWidget):
 
         pixmap = pil2qpixmap(moon_img_pil)
         target_rect = QRectF(center.x() - img_size / 2, center.y() - img_size / 2, img_size, img_size)
+        painter.save()
+        painter.setOpacity(opacity)
         painter.drawPixmap(target_rect, pixmap, QRectF(0, 0, img_size, img_size))
+        painter.restore()
 
     def draw_cross_gauge(self, painter: QPainter, color: QColor, center: QPointF):
         """Draws a cross gauge symbol."""
@@ -579,17 +588,19 @@ class MainWindow(QMainWindow):
     data_updated = pyqtSignal(object)
     initial_data_loaded = pyqtSignal()
 
-    def __init__(self, city_name: str, city_data: tuple, star_catalog: list):
+    def __init__(self, city_name: str, city_data: tuple, star_catalog: list, delta_t: timedelta, enlarge_moon: bool):
         super().__init__()
         self.city_name = city_name
-        # 緯度、経度、タイムゾーン名をアンパック
         self.lat, self.lon, self.tz_name = city_data
         self.star_catalog = star_catalog
+        self.delta_t = delta_t
+        self.enlarge_moon = enlarge_moon
 
         self.setWindowTitle(f"Zenith Star View - {self.city_name.replace('/', ' - ').title()}")
         self.setGeometry(100, 100, 800, 800)
 
         self.sky_widget = SkyWidget(self)
+        self.sky_widget.set_enlarge_moon(self.enlarge_moon)
         self.setCentralWidget(self.sky_widget)
 
         self.data_updated.connect(self.on_data_updated)
@@ -609,7 +620,7 @@ class MainWindow(QMainWindow):
     def update_sky_data_in_background(self):
         """Performs the heavy calculations for sky data."""
         try:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(timezone.utc) + self.delta_t
             time_obj = Time(now)
             stars, loc = update_star_positions(self.star_catalog, self.lat, self.lon, time_obj)
             planets = get_visible_planets(self.lat, self.lon, time_obj)
@@ -657,17 +668,39 @@ class MainWindow(QMainWindow):
             super().keyPressEvent(event)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Star sky visualizer"
+    )
+    parser.add_argument(
+        "city",
+        type=str,
+        default="Tokyo",
+        help="City name (default: Tokyo)"
+    )
+    parser.add_argument(
+        "-H", "--hours",
+        type=float,
+        default=0,
+        help="Number of hours to add to current time (default: 0)"
+    )
+    parser.add_argument(
+        "-D", "--days",
+        type=float,
+        default=0,
+        help="Number of days to add to current time (default: 0)"
+    )
+    parser.add_argument(
+        "-M", "--enlarge-moon",
+        action="store_true",
+        help="Show the moon in 3x size.",
+    )
+    return parser.parse_args()
+
+
 def main():
     """Main entry point for the star sky visualizer."""
     app = QApplication(sys.argv)
-
-    # Show a splash screen while loading initial data
-    pixmap = QPixmap(400, 200)
-    pixmap.fill(Qt.black)
-    splash = QSplashScreen(pixmap, Qt.WindowStaysOnTopHint)
-    splash.show()
-    splash.showMessage("Loading city and star data...", Qt.AlignCenter, Qt.white)
-    app.processEvents()
 
     try:
         city_table = load_city_coords(CITY_COORD_FILE)
@@ -676,9 +709,8 @@ def main():
         time.sleep(3)
         return
 
-    city = "Tokyo"
-    if len(sys.argv) >= 2:
-        city = sys.argv[1]
+    args = parse_args()
+    city = args.city
     city = city.lower()
     if city not in city_table:
         candidate_cities = [c for c in city_table.keys() if c.endswith("/" + city)]
@@ -691,6 +723,19 @@ def main():
         else:
             city = candidate_cities[0]
 
+    delta_hours = args.hours
+    delta_days = args.days
+
+    delta_t = timedelta(days=delta_days, hours=delta_hours)
+
+    # Show a splash screen while loading initial data
+    pixmap = QPixmap(400, 200)
+    pixmap.fill(Qt.black)
+    splash = QSplashScreen(pixmap, Qt.WindowStaysOnTopHint)
+    splash.show()
+    splash.showMessage("Loading city and star data...", Qt.AlignCenter, Qt.white)
+    app.processEvents()
+
     try:
         star_catalog = load_star_catalog(STARS_CSV_FILE)
     except FileNotFoundError:
@@ -701,9 +746,8 @@ def main():
     splash.showMessage(f"Calculating sky for {city.title()}...", Qt.AlignCenter, Qt.white)
     app.processEvents()
 
-    # lat, lon = city_table[city] の行を修正
     lat, lon, tz_name = city_table[city]
-    main_win = MainWindow(city, (lat, lon, tz_name), star_catalog)
+    main_win = MainWindow(city, (lat, lon, tz_name), star_catalog, delta_t, enlarge_moon=args.enlarge_moon)
 
     # When the initial data is loaded, show the main window and close the splash screen
     main_win.initial_data_loaded.connect(lambda: (main_win.show(), splash.finish(main_win)))
