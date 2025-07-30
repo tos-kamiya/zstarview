@@ -11,7 +11,6 @@ import time
 from typing import Any, cast
 from zoneinfo import ZoneInfo
 
-# --- PyQt5 Imports ---
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QSplashScreen
 from PyQt5.QtGui import (
     QPainter,
@@ -25,17 +24,16 @@ from PyQt5.QtGui import (
     QRadialGradient,
     QImage,
 )
-from PyQt5.QtCore import Qt, QPoint, QPointF, QRectF, QSize, QTimer, pyqtSignal, QObject
+from PyQt5.QtCore import Qt, QPoint, QPointF, QRectF, QTimer, pyqtSignal, QObject
 
-# --- Astropy and Skyfield Imports (unchanged) ---
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, GeocentricTrueEcliptic
 from astropy.time import Time
 import astropy.units as u
-from skyfield.api import Topos, Star
+from skyfield.api import Topos
 import skyfield.api
 
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image
 
 
 def pil2qpixmap(img: Image.Image) -> QPixmap:
@@ -151,12 +149,6 @@ def angle_below_horizon(h_km: float, R: float = 6371) -> float:
     return math.degrees(theta_rad)
 
 
-def mag_to_radius(vmag: float) -> float:
-    """Mag to radius."""
-    base_radius = 7.0
-    return max(0.1, base_radius * 10 ** (-0.2 * vmag))
-
-
 def altaz_to_normalized_xy(alt: float, az: float) -> tuple[float, float]:
     """Altaz to normalized xy."""
     alt = float(alt)
@@ -199,13 +191,7 @@ def update_star_positions(
         altaz = coord.transform_to(AltAz(obstime=time_obj, location=location))
         if altaz.alt.deg > -a:
             visible_stars.append(
-                {
-                    "alt": altaz.alt.deg,
-                    "az": altaz.az.deg,
-                    "vmag": star["vmag"],
-                    "bv": star["bv"],
-                    "name": star["name"],
-                }
+                StarData(name=star["name"], alt=altaz.alt.deg, az=altaz.az.deg, vmag=star["vmag"], bv=star["bv"])
             )
         if (i + 1) % 500 == 0:
             time.sleep(0)
@@ -226,15 +212,18 @@ def get_visible_planets(lat: float, lon: float, astropy_time: Time) -> list[dict
         astrometric = observer.at(t).observe(planet).apparent()
         alt, az, _ = astrometric.altaz()
         if alt.degrees > -a:
-            body: dict[str, object] = {
-                "alt": alt.degrees,
-                "az": az.degrees,
-                "symbol": symbol,
-                "name": name,
-            }
+            phase_angle = None
             if name == "moon":
-                body["phase_angle"] = moon_phase_angle(observer, t, planets)
-            visible_bodies.append(body)
+                phase_angle = moon_phase_angle(observer, t, planets)
+            visible_bodies.append(
+                PlanetBody(
+                    name=name,
+                    alt=alt.degrees,
+                    az=az.degrees,
+                    symbol=symbol,
+                    phase_angle=phase_angle,
+                )
+            )
     return visible_bodies
 
 
@@ -319,13 +308,31 @@ def calc_sun_angle_on_moon(moon_altaz: tuple[float, float], sun_altaz: tuple[flo
 
 
 @dataclass
+class StarData:
+    name: str
+    alt: float
+    az: float
+    vmag: float
+    bv: float
+
+
+@dataclass
+class PlanetBody:
+    name: str
+    alt: float
+    az: float
+    symbol: str
+    phase_angle: float | None = None  # moonのみ
+
+
+@dataclass
 class SkyData:
     """Container for all calculated sky data for a specific time and location."""
 
     location: tuple[float, float]  # (lat, lon)
     time: Time
-    planets: list[dict[str, object]]
-    stars: list[dict[str, object]]
+    planets: list[dict[str, PlanetBody]]
+    stars: list[dict[str, StarData]]
     celestial_equator_points: list[tuple[float, float]]
     ecliptic_points: list[tuple[float, float]]
     timezone_name: str
@@ -352,9 +359,7 @@ def find_highlighted_object(
 
     all_objects = sky_data.stars + sky_data.planets
     for obj in all_objects:
-        pos = to_screen_xy(
-            *altaz_to_normalized_xy(cast(float, obj["alt"]), cast(float, obj["az"])), center, radius
-        )
+        pos = to_screen_xy(*altaz_to_normalized_xy(obj.alt, obj.az), center, radius)
         dist_sq = (mouse_pos.x() - pos.x()) ** 2 + (mouse_pos.y() - pos.y()) ** 2
         if dist_sq < min_dist:
             min_dist = dist_sq
@@ -401,13 +406,16 @@ def draw_celestial_lines(painter: QPainter, center: QPoint, radius: int, sky_dat
         painter.drawPolyline(poly)
 
 
-def draw_stars(painter: QPainter, center: QPoint, radius: int, sky_data: SkyData):
+def draw_stars(painter: QPainter, center: QPoint, radius: int, sky_data: SkyData, star_base_radius: float):
     """Draws the stars."""
+    def mag_to_radius(vmag: float) -> float:
+        return max(0.1, star_base_radius * 10 ** (-0.2 * vmag)) * radius / 2000
+
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
     for star in sky_data.stars:
-        pos = to_screen_xy(*altaz_to_normalized_xy(cast(float, star["alt"]), cast(float, star["az"])), center, radius)
-        color = bv_to_color(cast(float, star["bv"]))
-        rad = mag_to_radius(cast(float, star["vmag"])) * radius / 2000
+        pos = to_screen_xy(*altaz_to_normalized_xy(star.alt, star.az), center, radius)
+        color = bv_to_color(star.bv)
+        rad = mag_to_radius(star.vmag)
 
         # 半径が1.0ピクセル未満の星は、最小サイズ(2x2)で描画する
         if rad < 1.0:
@@ -482,24 +490,22 @@ def draw_planets(
     sun_altaz = None
     moon_altaz = None
     for body in sky_data.planets:
-        if body["name"] == "sun":
-            sun_altaz = (cast(float, body["alt"]), cast(float, body["az"]))
-        if body["name"] == "moon":
-            moon_altaz = (cast(float, body["alt"]), cast(float, body["az"]))
+        if body.name == "sun":
+            sun_altaz = (body.alt, body.az)
+        if body.name == "moon":
+            moon_altaz = (body.alt, body.az)
 
     for body in sky_data.planets:
-        pos = to_screen_xy(*altaz_to_normalized_xy(cast(float, body["alt"]), cast(float, body["az"])), center, radius)
-        name = body.get("name")
-
-        if name == "sun":
+        pos = to_screen_xy(*altaz_to_normalized_xy(body.alt, body.az), center, radius)
+        if body.name == "sun":
             draw_cross_gauge(painter, TEXT_COLOR, pos)
-        elif name == "moon":
+        elif body.name == "moon":
             moon_radius = (0.5 if not enlarge_moon else 1.5) / 2 * (radius / 90.0)
             draw_moon(
                 painter,
                 pos,
                 moon_radius,
-                cast(float, body["phase_angle"]),
+                body.phase_angle if body.phase_angle is not None else 0.0,
                 sun_altaz=sun_altaz,
                 moon_altaz=moon_altaz,
                 opacity=1.0 if not enlarge_moon else 0.7,
@@ -508,7 +514,7 @@ def draw_planets(
         else:
             painter.setFont(emoji_font)
             painter.setPen(TEXT_COLOR)
-            painter.drawText(pos, cast(str, body["symbol"]))
+            painter.drawText(pos, body.symbol)
 
 
 def draw_overlay_text(
@@ -542,12 +548,9 @@ def draw_overlay_text(
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawEllipse(pos, 10, 10)
 
-        name = obj.get("name") or ""
+        name = obj.name or ""
         painter.setPen(TEXT_COLOR)
         painter.drawText(QPointF(pos.x() + 15, pos.y() - 15), str(name))
-
-
-# --- PyQt5 UI Classes ---
 
 
 class SkyWidget(QWidget):
@@ -556,6 +559,7 @@ class SkyWidget(QWidget):
     def __init__(self, parent: QObject | None = None):
         super().__init__(parent)
         self.enlarge_moon = False
+        self.star_base_radius = 7.0
         self.sky_data: SkyData | None = None
         self.mouse_pos = QPoint()
 
@@ -567,6 +571,9 @@ class SkyWidget(QWidget):
 
         self.setMouseTracking(True)
         self.setMinimumSize(400, 400)
+
+    def set_star_base_radius(self, star_base_radius: float):
+        self.star_base_radius = star_base_radius
 
     def set_enlarge_moon(self, enlarge_moon: bool):
         self.enlarge_moon = enlarge_moon
@@ -609,7 +616,7 @@ class SkyWidget(QWidget):
         highlighted_object = find_highlighted_object(self.sky_data, self.mouse_pos, center, radius)
 
         # Draw stars and planets
-        draw_stars(painter, center, radius, self.sky_data)
+        draw_stars(painter, center, radius, self.sky_data, self.star_base_radius)
         draw_planets(painter, center, radius, self.sky_data, self.enlarge_moon, self.emoji_font)
 
         # Draw info text and highlighted object label
@@ -635,6 +642,7 @@ class MainWindow(QMainWindow):
         star_catalog: list[dict[str, object]],
         delta_t: timedelta,
         enlarge_moon: bool,
+        star_base_radius: float,
     ):
         super().__init__()
         self.city_name = city_name
@@ -642,12 +650,14 @@ class MainWindow(QMainWindow):
         self.star_catalog = star_catalog
         self.delta_t = delta_t
         self.enlarge_moon = enlarge_moon
+        self.star_base_radius = star_base_radius
 
         self.setWindowTitle(f"Zenith Star View - {self.city_name.replace('/', ' - ').title()}")
         self.setGeometry(100, 100, 800, 800)
 
         self.sky_widget = SkyWidget(self)
         self.sky_widget.set_enlarge_moon(self.enlarge_moon)
+        self.sky_widget.set_star_base_radius(self.star_base_radius)
         self.setCentralWidget(self.sky_widget)
 
         self.data_updated.connect(self.on_data_updated)
@@ -725,9 +735,17 @@ def parse_args() -> argparse.Namespace:
         "-D", "--days", type=float, default=0, help="Number of days to add to current time (default: 0)"
     )
     parser.add_argument(
-        "-M", "--enlarge-moon",
+        "-m",
+        "--enlarge-moon",
         action="store_true",
         help="Show the moon in 3x size.",
+    )
+    parser.add_argument(
+        "-s",
+        "--star-base-radius",
+        type=float,
+        default=10.0,
+        help="Base size of stars (default: 10.0)"
     )
     return parser.parse_args()
 
@@ -784,7 +802,13 @@ def main():
     show_splash_message(f"Calculating sky for {city.title()}...", Qt.GlobalColor.white)
 
     lat, lon, tz_name = city_table[city]
-    main_win = MainWindow(city, (lat, lon, tz_name), star_catalog, delta_t, enlarge_moon=args.enlarge_moon)
+    main_win = MainWindow(
+        city, 
+        (lat, lon, tz_name), 
+        star_catalog, 
+        delta_t, 
+        enlarge_moon=args.enlarge_moon,
+        star_base_radius=args.star_base_radius)
 
     # When the initial data is loaded, show the main window and close the splash screen
     main_win.initial_data_loaded.connect(main_win.show)
