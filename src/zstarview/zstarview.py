@@ -165,39 +165,6 @@ def update_star_positions(
     return (visible_stars, location)
 
 
-def estimate_magnitude(body_name, observer, t: Time, planets: dict) -> float | None:
-    """Estimate magnitude."""
-    planet = planets[body_name]
-
-    if body_name == "moon":  # Skyfield provides moon magnitude
-        return planet.magnitude
-
-    sun = planets["sun"]
-    obs_to_planet = observer.at(t).observe(planet).apparent()
-    r = planet.at(t).observe(sun).apparent().distance().au
-    delta = obs_to_planet.distance().au
-
-    phase_angle = obs_to_planet.separation_from(planet.at(t).observe(sun).apparent())
-    i = phase_angle.degrees
-    mag = 0
-    if body_name == "mercury":
-        mag += -0.613 + 6.328e-2 * i - 1.738e-3 * i**2 + 2.956e-5 * i**3 - 2.814e-7 * i**4 + 1.058e-9 * i**5
-    elif body_name == "venus":
-        mag += -4.47 + 1.03e-2 * i + 3.69e-4 * i**2 - 2.81e-6 * i**3 + 8.94e-9 * i**4
-    elif body_name == "mars":
-        mag += -1.52 + 0.016 * i
-    elif body_name == "jupiter barycenter":
-        mag += -9.40 + 0.005 * i
-    elif body_name == "saturn barycenter":
-        # Simplified, ring effects ignored
-        mag += -8.88
-    else:
-        return None
-
-    mag += 5 * math.log10(r * delta)
-    return mag
-
-
 def get_visible_planets(lat: float, lon: float, astropy_time: Time) -> list[dict[str, object]]:
     """Gets visible planets using a given astropy Time object."""
     ts = skyfield.api.load.timescale()
@@ -212,12 +179,10 @@ def get_visible_planets(lat: float, lon: float, astropy_time: Time) -> list[dict
         astrometric = observer.at(t).observe(planet).apparent()
         alt, az, _ = astrometric.altaz()
         if alt.degrees > -a:
-            mag = estimate_magnitude(name, observer, t, planets)
             body = {
                 "alt": alt.degrees,
                 "az": az.degrees,
                 "symbol": symbol,
-                "mag": mag,
                 "name": name,
             }
             if name == "moon":
@@ -235,37 +200,38 @@ def moon_phase_angle(observer, t: Time, planets: list[dict[str, object]]) -> flo
     return e_to_moon.separation_from(e_to_sun).degrees
 
 
-def rotate_points_at_max_azimuth_gap(
-    points: list[tuple[float, float]], azimuths: list[float]
-) -> list[tuple[float, float]]:
+def rotate_points_at_max_gap(points: list[tuple[float, float]]) -> list[tuple[float, float]]:
     """Rotates points to avoid a large azimuth jump in the middle of the line."""
     if len(points) < 2:
         return points
-    max_gap, max_index = -1, 0
-    for i in range(1, len(azimuths)):
-        delta = abs(azimuths[i] - azimuths[i - 1])
-        delta = min(delta, 360 - delta)
+    max_gap = 0
+    for i, (p1, p2) in enumerate(zip(points, points[1:] + points[:1])):
+        delta = (p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2
         if delta > max_gap:
             max_gap, max_index = delta, i
-    return points[max_index:] + points[:max_index]
+
+    # Make the 'max_index' item the last one of the list
+    if max_index == len(points) - 1:
+        return points[:]
+    else:
+        return points[max_index + 1 :] + points[: max_index + 1]
 
 
 def calculate_celestial_equator_points_norm(location: EarthLocation, time: Time) -> list[tuple[float, float]]:
     """Calculates calculate celestial equator points norm."""
-    points, azimuths = [], []
+    points = []
     for ra_deg in range(0, 360, 5):
         coord = SkyCoord(ra=ra_deg * u.deg, dec=0 * u.deg, frame="icrs")
         altaz = coord.transform_to(AltAz(obstime=time, location=location))
         if altaz.alt.deg > -2:
             nx, ny = altaz_to_normalized_xy(altaz.alt.deg, altaz.az.deg)
             points.append((nx, ny))
-            azimuths.append(altaz.az.deg)
-    return rotate_points_at_max_azimuth_gap(points, azimuths)
+    return rotate_points_at_max_gap(points)
 
 
 def calculate_ecliptic_points_norm(location: EarthLocation, time: Time) -> list[tuple[float, float]]:
     """Calculates calculate ecliptic points norm."""
-    points, azimuths = [], []
+    points = []
     for lon_deg in range(0, 360, 5):
         ecl = SkyCoord(
             lon=lon_deg * u.deg,
@@ -277,8 +243,7 @@ def calculate_ecliptic_points_norm(location: EarthLocation, time: Time) -> list[
         if altaz.alt.deg > -2:
             nx, ny = altaz_to_normalized_xy(altaz.alt.deg, altaz.az.deg)
             points.append((nx, ny))
-            azimuths.append(altaz.az.deg)
-    return rotate_points_at_max_azimuth_gap(points, azimuths)
+    return rotate_points_at_max_gap(points)
 
 
 @dataclass
