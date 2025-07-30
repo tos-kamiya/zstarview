@@ -167,16 +167,19 @@ def update_star_positions(
 
 def estimate_magnitude(body_name, observer, t: Time, planets: dict) -> float | None:
     """Estimate magnitude."""
-    sun = planets["sun"]
     planet = planets[body_name]
+
+    if body_name == "moon":  # Skyfield provides moon magnitude
+        return planet.magnitude
+
+    sun = planets["sun"]
     obs_to_planet = observer.at(t).observe(planet).apparent()
     r = planet.at(t).observe(sun).apparent().distance().au
     delta = obs_to_planet.distance().au
-    if body_name == "moon":  # Skyfield provides moon magnitude
-        return planet.magnitude
+
     phase_angle = obs_to_planet.separation_from(planet.at(t).observe(sun).apparent())
     i = phase_angle.degrees
-    mag = 5 * math.log10(r * delta)
+    mag = 0
     if body_name == "mercury":
         mag += -0.613 + 6.328e-2 * i - 1.738e-3 * i**2 + 2.956e-5 * i**3 - 2.814e-7 * i**4 + 1.058e-9 * i**5
     elif body_name == "venus":
@@ -190,6 +193,8 @@ def estimate_magnitude(body_name, observer, t: Time, planets: dict) -> float | N
         mag += -8.88
     else:
         return None
+
+    mag += 5 * math.log10(r * delta)
     return mag
 
 
