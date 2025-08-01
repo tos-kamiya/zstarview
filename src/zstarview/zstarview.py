@@ -117,10 +117,15 @@ def bv_to_color(bv: float) -> QColor:
 
 
 def render_moon_phase_img(
-    size: int, sun_dir_3d: np.ndarray, view_dir_3d: np.ndarray, moon_color=(230, 230, 230), dark_color=(30, 30, 30)
+    size: int,
+    sun_dir_3d: np.ndarray,
+    view_dir_3d: np.ndarray,
+    moon_color=(230, 230, 230),
+    dark_color=(30, 30, 30),
+    earthshine_factor=0.15  # 地球照の強さ（0〜1）
 ) -> Image.Image:
     """
-    観測者から見た月相の球体画像を生成
+    観測者から見た月相の球体画像を生成（地球照を含む）
     """
     cx, cy = size // 2, size // 2
     r = size // 2
@@ -134,17 +139,17 @@ def render_moon_phase_img(
             dz = np.sqrt(1 - dx**2 - dy**2)
             surf_norm = np.array([dx, dy, dz])
             surf_norm /= np.linalg.norm(surf_norm)
-            # 観測方向へ
             view = np.dot(surf_norm, view_dir_3d)
             if view < 0:
                 continue  # 裏側は描かない
-            # 太陽光
+
             light = np.dot(surf_norm, sun_dir_3d)
             if light > 0:
                 c = np.array(moon_color) * light
-                c = np.clip(c, 0, 255)
             else:
-                c = np.array(dark_color)
+                # 地球照（暗い側を少し明るくする）
+                c = np.array(dark_color) * earthshine_factor
+            c = np.clip(c, 0, 255)
             img_array[y, x] = c
     return Image.fromarray(img_array)
 
@@ -507,7 +512,7 @@ def draw_planets(
         if body.name == "sun":
             draw_cross_gauge(painter, TEXT_COLOR, pos)
         elif body.name == "moon":
-            moon_radius = (0.5 if not enlarge_moon else 1.5) / 2 * (radius / 90.0)
+            moon_radius = 0.5 * (1 if not enlarge_moon else 3) / 2 * (radius / 90.0)
             draw_moon(
                 painter,
                 pos,
