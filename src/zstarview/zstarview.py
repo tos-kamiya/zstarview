@@ -5,12 +5,14 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 import math
 import os.path
+from pathlib import Path
 import sys
 import threading
 import time
 from typing import Any, cast
 from zoneinfo import ZoneInfo
 
+from appdirs import user_cache_dir
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QSplashScreen
 from PyQt5.QtGui import (
     QPainter,
@@ -29,11 +31,15 @@ from PyQt5.QtCore import Qt, QPoint, QPointF, QRectF, QTimer, pyqtSignal, QObjec
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, GeocentricTrueEcliptic
 from astropy.time import Time
 import astropy.units as u
-from skyfield.api import Topos
+from skyfield.api import Loader, Topos
 import skyfield.api
 
 import numpy as np
 from PIL import Image
+
+cache_path = Path(user_cache_dir(appname="zstarview", appauthor="tos-kamiya"))
+cache_path.mkdir(parents=True, exist_ok=True)
+starfield_load = Loader(str(cache_path))
 
 
 def pil2qpixmap(img: Image.Image) -> QPixmap:
@@ -202,7 +208,7 @@ def get_visible_planets(lat: float, lon: float, astropy_time: Time) -> list[dict
     """Gets visible planets using a given astropy Time object."""
     ts = skyfield.api.load.timescale()
     t = ts.from_astropy(astropy_time)
-    planets = skyfield.api.load("de421.bsp")
+    planets = starfield_load("de421.bsp")
     observer = planets["earth"] + Topos(latitude_degrees=lat, longitude_degrees=lon)
     a = angle_below_horizon(VIEWER_LOCATION_HEIGHT)
 
