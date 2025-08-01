@@ -396,7 +396,7 @@ def draw_celestial_lines(painter: QPainter, center: QPoint, radius: int, sky_dat
     if len(sky_data.celestial_equator_points) >= 2:
         points = [to_screen_xy(nx, ny, center, radius) for nx, ny in sky_data.celestial_equator_points]
         poly = QPolygonF(points)
-        painter.setPen(QPen(CELESTIAL_EQUATOR_COLOR, 1, Qt.PenStyle.DashLine))
+        painter.setPen(QPen(CELESTIAL_EQUATOR_COLOR, 2, Qt.PenStyle.DashLine))
         painter.drawPolyline(poly)
 
     if len(sky_data.ecliptic_points) >= 2:
@@ -408,23 +408,24 @@ def draw_celestial_lines(painter: QPainter, center: QPoint, radius: int, sky_dat
 
 def draw_stars(painter: QPainter, center: QPoint, radius: int, sky_data: SkyData, star_base_radius: float):
     """Draws the stars."""
-    def mag_to_radius(vmag: float) -> float:
-        return max(0.1, star_base_radius * 10 ** (-0.2 * vmag)) * radius / 2000
+    def mag_to_size(vmag: float) -> float:
+        return max(0.1, star_base_radius * 10 ** (-0.2 * vmag)) * radius / 500
 
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
     for star in sky_data.stars:
         pos = to_screen_xy(*altaz_to_normalized_xy(star.alt, star.az), center, radius)
         color = bv_to_color(star.bv)
-        rad = mag_to_radius(star.vmag)
+        siz = mag_to_size(star.vmag)
 
-        # 半径が1.0ピクセル未満の星は、最小サイズ(2x2)で描画する
-        if rad < 1.0:
-            alpha_value = min(1.0, max(0.1, rad * 1.5))
+        # サイズが4.0未満の星は、最小サイズ(2x2)で描画する
+        if siz < 4.0:
+            alpha_value = min(1.0, max(0.1, siz/4.0))
             color.setAlphaF(alpha_value)
 
             painter.fillRect(QRectF(pos.x() - 1, pos.y() - 1, 2, 2), color)
-        else:  # 半径が1.0ピクセル以上の大きな星は、グラデーション付きの円で描画
-            gradient = QRadialGradient(pos, rad)
+        else:  # サイズが4.0以上の大きな星は、グラデーション付きの円で描画
+            r = math.sqrt(siz)
+            gradient = QRadialGradient(pos, r)
             gradient.setColorAt(0, color)
 
             color_transparent = QColor(color)
@@ -433,7 +434,7 @@ def draw_stars(painter: QPainter, center: QPoint, radius: int, sky_data: SkyData
 
             painter.setBrush(QBrush(gradient))
             painter.setPen(Qt.PenStyle.NoPen)
-            painter.drawEllipse(pos, rad, rad)
+            painter.drawEllipse(pos, r, r)
 
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)  # Reset mode
 
