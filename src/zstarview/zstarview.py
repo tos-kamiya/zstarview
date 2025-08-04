@@ -756,8 +756,8 @@ def parse_args() -> argparse.Namespace:
         "-s",
         "--star-base-radius",
         type=float,
-        default=10.0,
-        help="Base size of stars (default: 10.0)"
+        default=15.0,
+        help="Base size of stars (default: 15.0)"
     )
     return parser.parse_args()
 
