@@ -7,6 +7,8 @@ Zenith Star Viewは、地球上の任意の都市を指定して、頭上の星�
 - 明るい恒星、惑星、天の赤道、黄道をリアルタイムで描画
 - 都市名で場所を指定可能（GeoNames 収録）
 
+![](docs/images/screenshot1.png)
+
 ## インストール方法（推奨：`pipx`）
 
 [`pipx`](https://pypa.github.io/pipx/) を使ってインストールする想定です。

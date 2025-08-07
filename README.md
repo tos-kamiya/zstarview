@@ -7,6 +7,8 @@ Zenith Star View is an application that displays the starry sky from any city on
 - Renders bright stars, planets, the celestial equator, and the ecliptic in real-time.
 - Specify location by city name (from GeoNames).
 
+![](docs/images/screenshot1.png)
+
 ## Installation (Recommended: `pipx`)
 
 It is intended to be installed using [`pipx`](https://pypa.github.io/pipx/).
