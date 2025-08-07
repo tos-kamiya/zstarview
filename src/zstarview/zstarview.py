@@ -13,18 +13,18 @@ from typing import Any, cast
 from zoneinfo import ZoneInfo
 
 from appdirs import user_cache_dir
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QSplashScreen
+from PyQt5.QtWidgets import QApplication, QMainWindow, QSizeGrip, QSplashScreen, QWidget
 from PyQt5.QtGui import (
-    QPainter,
+    QBrush,
     QColor,
     QFont,
-    QPen,
-    QBrush,
-    QPolygonF,
-    QPixmap,
     QFontDatabase,
-    QRadialGradient,
     QImage,
+    QPainter,
+    QPen,
+    QPixmap,
+    QPolygonF,
+    QRadialGradient,
 )
 from PyQt5.QtCore import Qt, QPoint, QPointF, QRectF, QTimer, pyqtSignal, QObject
 
@@ -577,7 +577,7 @@ def draw_overlay_text(
     painter.setFont(text_font)
     painter.drawText(QPoint(10, 20), time_text)
 
-    city_name_text = sky_data.city_name.replace("/", " - ").title()
+    city_name_text = sky_data.city_name.title()
     painter.drawText(QPoint(10, 40), city_name_text)
 
     if highlighted_object:
@@ -601,81 +601,7 @@ def get_screen_geometry(width: int, height: int, alt: float) -> tuple[QPoint, in
     return center, radius
 
 
-class SkyWidget(QWidget):
-    """The main widget for drawing the sky chart."""
-
-    def __init__(self, parent: QObject | None = None):
-        super().__init__(parent)
-        self.enlarge_moon = False
-        self.star_base_radius = 7.0
-        self.sky_data: SkyData | None = None
-        self.mouse_pos = QPoint()
-
-        # Load emoji font
-        font_id = QFontDatabase.addApplicationFont(EMOJI_FONT_PATH)
-        font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
-        self.emoji_font = QFont(font_family, TEXT_FONT_SIZE + 4)
-        self.text_font = QFont("Arial", TEXT_FONT_SIZE)
-
-        self.setMouseTracking(True)
-        self.setMinimumSize(400, 400)
-
-    def set_star_base_radius(self, star_base_radius: float):
-        self.star_base_radius = star_base_radius
-
-    def set_enlarge_moon(self, enlarge_moon: bool):
-        self.enlarge_moon = enlarge_moon
-
-    def set_sky_data(self, data: SkyData):
-        """Receives new sky data and triggers a repaint."""
-        self.sky_data = data
-        self.update()  # Schedule a repaint
-
-    def paintEvent(self, event: QObject | None):
-        """The main drawing method, called whenever the widget needs to be repainted."""
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-        alt = self.sky_data.view_center[0]
-        center, radius = get_screen_geometry(self.width(), self.height(), alt)
-
-        i = 3
-        painter.fillRect(self.rect(), QColor(i * 7, i * 7, i * 7))
-        for i in [2, 1, 0]:
-            fov = 90 + i * 10
-            col = QColor(i * 7, i * 7, i * 7)
-            f = fov / 90
-            ellipse_radius = int(radius * f)
-            painter.setBrush(col)
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.drawEllipse(center, ellipse_radius, ellipse_radius)
-
-        if not self.sky_data:
-            painter.setPen(Qt.GlobalColor.white)
-            painter.setFont(QFont("Arial", 16))
-            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "Loading sky data...")
-            return
-
-        draw_celestial_lines(painter, center, radius, self.sky_data)
-        draw_direction_labels(painter, center, radius, self.sky_data.view_center, self.text_font)
-
-        highlighted_object = find_highlighted_object(self.sky_data, self.mouse_pos, center, radius)
-
-        draw_stars(painter, center, radius, self.sky_data, self.star_base_radius)
-        draw_planets(painter, center, radius, self.sky_data, self.enlarge_moon, self.emoji_font)
-
-        draw_overlay_text(painter, self.sky_data, highlighted_object, self.text_font)
-
-    def mouseMoveEvent(self, event: QObject | None):
-        """Tracks the mouse position and triggers a repaint to update the highlight."""
-        if event:
-            self.mouse_pos = event.pos()
-        self.update()
-
-
-class MainWindow(QMainWindow):
-    """The main application window."""
-
+class SkyWindow(QWidget):
     data_updated = pyqtSignal(object)
     initial_data_loaded = pyqtSignal()
 
@@ -698,30 +624,111 @@ class MainWindow(QMainWindow):
         self.star_base_radius = star_base_radius
         self.view_center = view_center
 
-        self.setWindowTitle(f"Zenith Star View - {self.city_name.replace('/', ' - ').title()}")
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setWindowFlags(Qt.FramelessWindowHint)
+        self.setWindowTitle(f"Zenith Star View - {self.city_name.title()}")
         self.setGeometry(100, 100, 800, 800)
 
-        self.sky_widget = SkyWidget(self)
-        self.sky_widget.set_enlarge_moon(self.enlarge_moon)
-        self.sky_widget.set_star_base_radius(self.star_base_radius)
-        self.setCentralWidget(self.sky_widget)
+        # サイズグリップ
+        self.size_grip = QSizeGrip(self)
+        self.size_grip.setFixedSize(24, 24)
+        self.size_grip.raise_()
+
+        # 描画用フォント
+        font_id = QFontDatabase.addApplicationFont(EMOJI_FONT_PATH)
+        font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
+        self.emoji_font = QFont(font_family, TEXT_FONT_SIZE + 4)
+        self.text_font = QFont("Arial", TEXT_FONT_SIZE)
+
+        self.setMouseTracking(True)
+        self.setMinimumSize(400, 400)
+        self.sky_data: SkyData | None = None
+        self.mouse_pos = QPoint()
 
         self.data_updated.connect(self.on_data_updated)
-
         self.update_timer = QTimer(self)
         self.update_timer.timeout.connect(self.start_background_update)
 
         self.start_background_update(is_initial_load=True)
 
+    def resizeEvent(self, event):
+        grip_size = self.size_grip.size()
+        self.size_grip.move(self.width() - grip_size.width(), self.height() - grip_size.height())
+        super().resizeEvent(event)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self._drag_active = True
+            self._drag_pos = event.globalPos() - self.frameGeometry().topLeft()
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        if getattr(self, "_drag_active", False) and event.buttons() & Qt.LeftButton:
+            self.move(event.globalPos() - self._drag_pos)
+            event.accept()
+        else:
+            self.mouse_pos = event.pos()
+            self.update()
+
+    def mouseReleaseEvent(self, event):
+        self._drag_active = False
+        event.accept()
+
+    def set_star_base_radius(self, star_base_radius: float):
+        self.star_base_radius = star_base_radius
+
+    def set_enlarge_moon(self, enlarge_moon: bool):
+        self.enlarge_moon = enlarge_moon
+
+    def set_sky_data(self, data: SkyData):
+        self.sky_data = data
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        if not self.sky_data:
+            painter.setPen(Qt.GlobalColor.white)
+            painter.setFont(QFont("Arial", 16))
+            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "Loading sky data...")
+            return
+
+        alt = self.sky_data.view_center[0]
+        center, radius = get_screen_geometry(self.width(), self.height(), alt)
+
+        painter.setCompositionMode(QPainter.CompositionMode_Clear)
+        painter.fillRect(self.rect(), Qt.transparent)
+
+        painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
+
+        col = QColor(0, 0, 0, 190)
+        painter.fillRect(self.rect(), col)
+        col = QColor(0, 0, 0, 90)
+        for i in [4, 3, 2, 1, 0]:
+            fov = 90 + i * 8
+            f = fov / 90
+            ellipse_radius = int(radius * f)
+            painter.setBrush(col)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawEllipse(center, ellipse_radius, ellipse_radius)
+
+        draw_celestial_lines(painter, center, radius, self.sky_data)
+        draw_direction_labels(painter, center, radius, self.sky_data.view_center, self.text_font)
+
+        highlighted_object = find_highlighted_object(self.sky_data, self.mouse_pos, center, radius)
+
+        draw_stars(painter, center, radius, self.sky_data, self.star_base_radius)
+        draw_planets(painter, center, radius, self.sky_data, self.enlarge_moon, self.emoji_font)
+        draw_overlay_text(painter, self.sky_data, highlighted_object, self.text_font)
+
     def on_data_updated(self, sky_data: SkyData):
-        """Slot to handle new data from the background thread."""
-        self.sky_widget.set_sky_data(sky_data)
+        self.set_sky_data(sky_data)
         if not self.update_timer.isActive():
             self.update_timer.start(5 * 60 * 1000)
             self.initial_data_loaded.emit()
 
     def update_sky_data_in_background(self):
-        """Performs the heavy calculations for sky data."""
         try:
             now = datetime.now(timezone.utc) + self.delta_t
             time_obj = Time(now)
@@ -750,7 +757,6 @@ class MainWindow(QMainWindow):
             traceback.print_exc()
 
     def start_background_update(self, is_initial_load: bool = False):
-        """Starts a new thread to calculate sky data."""
         if is_initial_load:
             print("Performing initial data load...")
         else:
@@ -759,8 +765,7 @@ class MainWindow(QMainWindow):
         thread.daemon = True
         thread.start()
 
-    def keyPressEvent(self, event: QObject | None):
-        """Handles key presses for fullscreen toggle."""
+    def keyPressEvent(self, event):
         if event and event.key() == Qt.Key.Key_F11:
             if self.isFullScreen():
                 self.showNormal()
@@ -769,6 +774,8 @@ class MainWindow(QMainWindow):
         elif event and event.key() == Qt.Key.Key_Escape:
             if self.isFullScreen():
                 self.showNormal()
+        elif event and event.key() == Qt.Key.Key_Q:
+            QApplication.quit()
         else:
             super().keyPressEvent(event)
 
@@ -843,7 +850,7 @@ def main():
     show_splash_message(f"Calculating sky for {city.title()}...", Qt.GlobalColor.white)
 
     lat, lon, tz_name = city_table[city]
-    main_win = MainWindow(
+    main_win = SkyWindow(
         city,
         (lat, lon, tz_name),
         star_catalog,
