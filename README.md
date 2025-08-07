@@ -14,7 +14,7 @@ Zenith Star View is an application that displays the starry sky from any city on
 It is intended to be installed using [`pipx`](https://pypa.github.io/pipx/).
 
 ```bash
-pipx install git+https://github.com/yourusername/zstarview.git
+pipx install git+https://github.com/tos-kamiya/zstarview.git
 ```
 
 ## Usage

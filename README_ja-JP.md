@@ -14,7 +14,7 @@ Zenith Star Viewは、地球上の任意の都市を指定して、頭上の星�
 [`pipx`](https://pypa.github.io/pipx/) を使ってインストールする想定です。
 
 ```bash
-pipx install git+https://github.com/yourusername/zstarview.git
+pipx install git+https://github.com/tos-kamiya/zstarview.git
 ````
 
 ## 使い方
