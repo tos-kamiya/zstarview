@@ -9,11 +9,11 @@ from pathlib import Path
 import sys
 import threading
 import time
-from typing import Any, cast
+from typing import Any, cast, List, Dict, Tuple, Union, Optional
 from zoneinfo import ZoneInfo
 
 from appdirs import user_cache_dir
-from PyQt5.QtWidgets import QApplication, QMainWindow, QSizeGrip, QSplashScreen, QWidget
+from PyQt5.QtWidgets import QApplication, QSizeGrip, QSplashScreen, QWidget
 from PyQt5.QtGui import (
     QBrush,
     QColor,
@@ -25,8 +25,12 @@ from PyQt5.QtGui import (
     QPixmap,
     QPolygonF,
     QRadialGradient,
+    QMouseEvent,
+    QKeyEvent,
+    QPaintEvent,
+    QResizeEvent,
 )
-from PyQt5.QtCore import Qt, QPoint, QPointF, QRectF, QTimer, pyqtSignal, QObject
+from PyQt5.QtCore import Qt, QPoint, QPointF, QRectF, QTimer, pyqtSignal
 
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, GeocentricTrueEcliptic
 from astropy.time import Time
@@ -37,12 +41,44 @@ import skyfield.api
 import numpy as np
 from PIL import Image
 
+from pathlib import Path
+from os import path
+import math
+import csv
+import sys
+import threading
+import time
+import argparse
+from datetime import datetime, timedelta, timezone
+from typing import Dict, Tuple, List, Any, Optional, Union, cast
+from dataclasses import dataclass
+from zoneinfo import ZoneInfo
+
+from PyQt5.QtWidgets import QApplication, QSplashScreen, QWidget, QSizeGrip
+from PyQt5.QtGui import QPixmap, QPainter, QColor, QPen, QFont, QBrush, QPolygonF, QRadialGradient, QImage, QMouseEvent, QKeyEvent, QPaintEvent
+from PyQt5.QtCore import Qt, QPoint, QPointF, QRectF, QTimer, pyqtSignal, QObject
+
+
+# --- Helper Functions ---
+
+
+def user_cache_dir(appname: str, appauthor: str) -> str:
+    """Get the user's cache directory."""
+    if sys.platform == "win32":
+        return os.path.join(os.environ["LOCALAPPDATA"], appauthor, appname)
+    elif sys.platform == "darwin":
+        return os.path.join(os.path.expanduser("~/"), "Library/Caches", appauthor, appname)
+    else:
+        return os.path.join(os.path.expanduser("~/"), ".cache/", appname)
+
+
 cache_path = Path(user_cache_dir(appname="zstarview", appauthor="tos-kamiya"))
 cache_path.mkdir(parents=True, exist_ok=True)
 starfield_load = Loader(str(cache_path))
 
 
 def pil2qpixmap(img: Image.Image) -> QPixmap:
+    """Converts a PIL Image to a PyQt5 QPixmap."""
     arr = np.array(img.convert("RGBA"))
     h, w, ch = arr.shape
     bytes_per_line = ch * w
@@ -50,7 +86,7 @@ def pil2qpixmap(img: Image.Image) -> QPixmap:
     return QPixmap.fromImage(qimg)
 
 
-# --- Constants and Data Loading (mostly unchanged) ---
+# --- Constants and Data Loading ---
 _dir = os.path.dirname(os.path.abspath(__file__))
 
 EMOJI_FONT_PATH = os.path.join(_dir, "data", "Noto_Sans_Symbols", "NotoSansSymbols-VariableFont_wght.ttf")
@@ -89,32 +125,61 @@ PLANET_SYMBOLS = {
 }
 
 
-def load_city_coords(filename: str) -> dict[str, tuple[float, float, str]]:
-    """
-    Loads city coordinates and timezone from the data file.
+@dataclass
+class StarData:
+    name: str
+    alt: float
+    az: float
+    vmag: float
+    bv: float
 
-    Returns:
-        dict[str, tuple[float, float, str]]: A dict mapping city key to (latitude, longitude, timezone_name).
-    """
+
+@dataclass
+class PlanetBody:
+    name: str
+    alt: float
+    az: float
+    symbol: str
+    phase_angle: Optional[float] = None  # moon only
+
+
+@dataclass
+class SkyData:
+    """Container for all calculated sky data for a specific time and location."""
+
+    location: Tuple[float, float]  # (lat, lon)
+    time: Time
+    planets: List[PlanetBody]
+    stars: List[StarData]
+    celestial_equator_points: List[Tuple[float, float]]
+    ecliptic_points: List[Tuple[float, float]]
+    horizon_points: List[Tuple[float, float]]
+    timezone_name: str
+    city_name: str
+    view_center: Tuple[float, float] = (90.0, 180.0)
+
+
+def load_city_coords(filename: str) -> Dict[str, Tuple[float, float, str]]:
+    """Loads city coordinates and timezone from the data file."""
     city_table = {}
     with open(filename, encoding="utf-8") as f:
         for line in f:
-            cols = line.strip().split("	")
-            # タイムゾーン情報を含む列があるかチェック
+            cols = line.strip().split("\t")
+            # Check if the row has enough columns including timezone information
             if len(cols) < 18:
                 continue
             name = cols[1]
             lat = float(cols[4])
             lon = float(cols[5])
             country = cols[8]
-            timezone_name = cols[17]  # タイムゾーン情報を取得
+            timezone_name = cols[17]  # Get timezone information
             key = f"{country.lower()}/{name.lower()}"
             city_table[key] = (lat, lon, timezone_name)
     return city_table
 
 
 def bv_to_color(bv: float) -> QColor:
-    """Bv to color."""
+    """Converts a B-V color index to a QColor."""
     if bv < 0.0:
         return QColor(170, 191, 255)
     elif bv < 0.3:
@@ -128,11 +193,14 @@ def bv_to_color(bv: float) -> QColor:
 
 
 def render_moon_phase_img(
-    size: int, sun_dir_3d: np.ndarray, view_dir_3d: np.ndarray, moon_color=(230, 230, 230), dark_color=(30, 30, 30), earthshine_factor=0.15  # 地球照の強さ（0〜1）
+    size: int,
+    sun_dir_3d: np.ndarray,
+    view_dir_3d: np.ndarray,
+    moon_color: Tuple[int, int, int] = (230, 230, 230),
+    dark_color: Tuple[int, int, int] = (30, 30, 30),
+    earthshine_factor: float = 0.15,
 ) -> Image.Image:
-    """
-    観測者から見た月相の球体画像を生成（地球照を含む）
-    """
+    """Generates a spherical image of the moon phase as seen by the observer, including earthshine."""
     cx, cy = size // 2, size // 2
     r = size // 2
     img_array = np.zeros((size, size, 3), dtype=np.uint8)
@@ -147,56 +215,56 @@ def render_moon_phase_img(
             surf /= np.linalg.norm(surf)
             view = np.dot(surf, view_dir_3d)
             if view < 0:
-                continue  # 裏側は描かない
+                continue  # Don't draw the back side
 
             light = np.dot(surf, sun_dir_3d)
             if light > 0:
                 c = np.array(moon_color) * light
             else:
-                # 地球照（暗い側を少し明るくする）
+                # Earthshine (make the dark side slightly brighter)
                 c = np.array(dark_color) * earthshine_factor
             c = np.clip(c, 0, 255)
             img_array[y, x] = c
     return Image.fromarray(img_array)
 
 
-def altaz_to_custom_center_xy(alt: float, az: float, view_center: tuple[float, float]) -> tuple[float, float]:
+def altaz_to_custom_center_xy(alt: float, az: float, view_center: Tuple[float, float]) -> Tuple[float, float]:
+    """Converts altitude and azimuth coordinates to custom screen coordinates relative to a view center."""
     center_alt, center_az = view_center
 
-    # 度→ラジアン
+    # Convert degrees to radians
     alt1 = math.radians(center_alt)
     az1 = math.radians(center_az)
     alt2 = math.radians(alt)
     az2 = math.radians(az)
 
-    # 球面三角法による角距離
+    # Angular distance using spherical trigonometry
     cos_theta = math.sin(alt1) * math.sin(alt2) + math.cos(alt1) * math.cos(alt2) * math.cos(az2 - az1)
     theta = math.acos(cos_theta)  # [radian]
 
-    # 「θ=0」（中心方向）を中心、「θ=π/2」（90°、垂直方向差）を円周に
+    # Map angular distance to a normalized radius (0 at center, 1 at 90 degrees difference)
     r = theta / (math.pi / 2)
-    # ただしθがπ/2を超える（見えない反対側）の場合、r > 1になる
+    # If theta exceeds pi/2 (object is on the unseen opposite side), r > 1
 
-    # 星のazimuth方向（中心方向から見てどちら側か）を計算
-    # azimuth差からxyを作る場合、azimuth基準を「中心からの方向」とする
-    # ここでは簡便に「星のazimuth（az2）」を使う（投影の種類によって調整可能）
+    # Calculate the direction of the star relative to the view center
+    # For simplicity, using the star's azimuth (can be adjusted based on projection type)
 
-    # 投影方向
+    # Projection direction
     dx = math.cos(alt2) * math.sin(az2 - az1)
     dy = math.cos(alt1) * math.sin(alt2) - math.sin(alt1) * math.cos(alt2) * math.cos(az2 - az1)
-    # 正規化
+    # Normalize
     length = math.hypot(dx, dy)
     if length != 0:
         dx /= length
         dy /= length
     nx = r * dx
-    ny = -r * dy  # y軸方向の符号は表示系に応じて調整
+    ny = -r * dy  # Adjust y-axis sign according to display system
 
     return (nx, ny)
 
 
-def load_star_catalog(filename: str) -> list[dict[str, object]]:
-    """Loads data: load star catalog."""
+def load_star_catalog(filename: str) -> List[Dict[str, Any]]:
+    """Loads the star catalog from a CSV file."""
     star_catalog = []
     with open(filename, newline="") as csvfile:
         reader = csv.DictReader(csvfile)
@@ -214,8 +282,8 @@ def load_star_catalog(filename: str) -> list[dict[str, object]]:
     return star_catalog
 
 
-def update_star_positions(star_catalog: list[dict[str, object]], lat: float, lon: float, time_obj: Time, view_center: tuple[float, float]) -> tuple[list[dict[str, object]], EarthLocation]:
-    """Updates update star positions."""
+def update_star_positions(star_catalog: List[Dict[str, Any]], lat: float, lon: float, time_obj: Time, view_center: Tuple[float, float]) -> Tuple[List[StarData], EarthLocation]:
+    """Updates the positions of stars based on the given time and location."""
     location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg)
 
     visible_stars = []
@@ -229,8 +297,8 @@ def update_star_positions(star_catalog: list[dict[str, object]], lat: float, lon
     return (visible_stars, location)
 
 
-def get_visible_planets(lat: float, lon: float, astropy_time: Time, view_center: tuple[float, float]) -> list[dict[str, object]]:
-    """Gets visible planets using a given astropy Time object."""
+def get_visible_planets(lat: float, lon: float, astropy_time: Time, view_center: Tuple[float, float]) -> List[PlanetBody]:
+    """Calculates and returns a list of visible planets."""
     ts = skyfield.api.load.timescale()
     t = ts.from_astropy(astropy_time)
     planets = starfield_load("de421.bsp")
@@ -258,7 +326,7 @@ def get_visible_planets(lat: float, lon: float, astropy_time: Time, view_center:
 
 
 def moon_phase_angle(observer: Topos, t: skyfield.timelib.Time, planets: Any) -> float:
-    """Moon phase angle."""
+    """Calculates the phase angle of the Moon."""
     moon = planets["moon"]
     sun = planets["sun"]
     e_to_moon = observer.at(t).observe(moon).apparent()
@@ -266,7 +334,8 @@ def moon_phase_angle(observer: Topos, t: skyfield.timelib.Time, planets: Any) ->
     return e_to_moon.separation_from(e_to_sun).degrees
 
 
-def is_in_fov(alt: float, az: float, view_center: tuple[float, float]) -> bool:
+def is_in_fov(alt: float, az: float, view_center: Tuple[float, float]) -> bool:
+    """Checks if a celestial object is within the field of view."""
     center_alt, center_az = view_center
     alt1, az1 = math.radians(center_alt), math.radians(center_az)
     alt2, az2 = math.radians(alt), math.radians(az)
@@ -275,9 +344,10 @@ def is_in_fov(alt: float, az: float, view_center: tuple[float, float]) -> bool:
     return math.degrees(theta) <= FIELD_OF_VIEW_DEG / 2
 
 
-def calculate_horizon_points(location: EarthLocation, time: Time, view_center: tuple[float, float]) -> list[tuple[float, float]]:
+def calculate_horizon_points(location: EarthLocation, time: Time, view_center: Tuple[float, float]) -> List[Tuple[float, float]]:
+    """Calculates points along the horizon for drawing."""
     points = []
-    alt = 0.0  # 地平線
+    alt = 0.0  # Horizon
     for az in range(0, 360 + 5, 5):
         if not is_in_fov(alt, az, view_center):
             continue
@@ -286,7 +356,8 @@ def calculate_horizon_points(location: EarthLocation, time: Time, view_center: t
     return points
 
 
-def calculate_celestial_equator_points(location: EarthLocation, time: Time, view_center: tuple[float, float]) -> list[tuple[float, float]]:
+def calculate_celestial_equator_points(location: EarthLocation, time: Time, view_center: Tuple[float, float]) -> List[Tuple[float, float]]:
+    """Calculates points along the celestial equator for drawing."""
     a = 5
     points = []
     for ra_deg in range(0, 360 + 5, 5):
@@ -298,7 +369,8 @@ def calculate_celestial_equator_points(location: EarthLocation, time: Time, view
     return points
 
 
-def calculate_ecliptic_points(location: EarthLocation, time: Time, view_center: tuple[float, float]) -> list[tuple[float, float]]:
+def calculate_ecliptic_points(location: EarthLocation, time: Time, view_center: Tuple[float, float]) -> List[Tuple[float, float]]:
+    """Calculates points along the ecliptic for drawing."""
     points = []
     for lon_deg in range(0, 360 + 5, 5):
         ecl = SkyCoord(
@@ -314,65 +386,26 @@ def calculate_ecliptic_points(location: EarthLocation, time: Time, view_center: 
     return points
 
 
-def calc_sun_angle_on_moon(moon_altaz: tuple[float, float], sun_altaz: tuple[float, float]) -> float:
-    """
-    画面（北上、東左）上での太陽方向角度を返す（ラジアン、y上方向=0、時計回り正）
-    """
+def calc_sun_angle_on_moon(moon_altaz: Tuple[float, float], sun_altaz: Tuple[float, float]) -> float:
+    """Calculates the angle of the sun relative to the moon on the screen."""
     m_alt, m_az = moon_altaz
     s_alt, s_az = sun_altaz
 
-    # 月の位置を中心とした天球座標上で太陽の方向ベクトル
-    # 方位角の差分（azは北=0,東=90,南=180,西=270）
-    # 画面座標系ではy+が北（上）、x-が東（左）
+    # Relative direction of the sun on the celestial sphere with respect to the moon
+    # Azimuth difference (azimuth: North=0, East=90, South=180, West=270)
+    # In screen coordinates, y+ is North (up), x- is East (left)
 
-    # 太陽が月に対してどちらの方位にあるか
+    # Which direction is the sun relative to the moon?
     d_az = math.radians(s_az - m_az)
     d_alt = math.radians(s_alt - m_alt)
 
-    # 画面上の相対的な太陽方向ベクトル（x左=東、y上=北）
+    # Relative sun direction vector on screen (x-left=East, y-up=North)
     dx = -math.sin(d_az) * math.cos(math.radians(s_alt))
     dy = math.sin(d_alt)
 
-    # (dx, dy)から北を上にした画面での角度（北=0, 東=90, 南=180, 西=270、時計回り正）
+    # Angle on screen from (dx, dy) with North as up (North=0, East=90, South=180, West=270, clockwise positive)
     angle = math.atan2(dx, dy)
     return angle
-
-
-@dataclass
-class StarData:
-    name: str
-    alt: float
-    az: float
-    vmag: float
-    bv: float
-
-
-@dataclass
-class PlanetBody:
-    name: str
-    alt: float
-    az: float
-    symbol: str
-    phase_angle: float | None = None  # moonのみ
-
-
-@dataclass
-class SkyData:
-    """Container for all calculated sky data for a specific time and location."""
-
-    location: tuple[float, float]  # (lat, lon)
-    time: Time
-    planets: list[dict[str, PlanetBody]]
-    stars: list[dict[str, StarData]]
-    celestial_equator_points: list[tuple[float, float]]
-    ecliptic_points: list[tuple[float, float]]
-    horizon_points: list[tuple[float, float]]
-    timezone_name: str
-    city_name: str
-    view_center: tuple[float, float] = (90.0, 180.0)
-
-
-# --- Drawing Functions ---
 
 
 def to_screen_xy(nx: float, ny: float, center: QPoint, radius: int) -> QPointF:
@@ -380,7 +413,7 @@ def to_screen_xy(nx: float, ny: float, center: QPoint, radius: int) -> QPointF:
     return QPointF(center.x() + nx * radius, center.y() + ny * radius)
 
 
-def find_highlighted_object(sky_data: SkyData | None, mouse_pos: QPoint, center: QPoint, radius: int) -> tuple[object, QPointF] | None:
+def find_highlighted_object(sky_data: Optional[SkyData], mouse_pos: QPoint, center: QPoint, radius: int) -> Optional[Tuple[Union[StarData, PlanetBody], QPointF]]:
     """Finds the celestial object closest to the mouse cursor, within FOV."""
     min_dist = 30**2  # squared pixels
     highlighted_object = None
@@ -390,7 +423,7 @@ def find_highlighted_object(sky_data: SkyData | None, mouse_pos: QPoint, center:
 
     all_objects = sky_data.stars + sky_data.planets
     for obj in all_objects:
-        # 視野内判定
+        # Check if within field of view
         if not is_in_fov(obj.alt, obj.az, sky_data.view_center):
             continue
         nx, ny = altaz_to_custom_center_xy(obj.alt, obj.az, sky_data.view_center)
@@ -402,8 +435,10 @@ def find_highlighted_object(sky_data: SkyData | None, mouse_pos: QPoint, center:
     return highlighted_object
 
 
-def split_by_gaps(points: list[tuple[float, float]]) -> list[list[tuple[float, float]]]:
-    def dist(p1: tuple[float, float], p2: tuple[float, float]) -> float:
+def split_by_gaps(points: List[Tuple[float, float]]) -> List[List[Tuple[float, float]]]:
+    """Splits a list of points into fragments based on gaps between consecutive points."""
+
+    def dist(p1: Tuple[float, float], p2: Tuple[float, float]) -> float:
         return math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
 
     fragments = [[]]
@@ -416,6 +451,7 @@ def split_by_gaps(points: list[tuple[float, float]]) -> list[list[tuple[float, f
 
 
 def draw_celestial_lines(painter: QPainter, center: QPoint, radius: int, sky_data: SkyData):
+    """Draws celestial lines (equator, ecliptic, horizon) on the screen."""
     point_list_pen_styles = [
         (sky_data.celestial_equator_points, (CELESTIAL_EQUATOR_COLOR, 2, Qt.PenStyle.DashLine)),
         (sky_data.ecliptic_points, (ECLIPTIC_COLOR, 2, Qt.PenStyle.DotLine)),
@@ -431,7 +467,7 @@ def draw_celestial_lines(painter: QPainter, center: QPoint, radius: int, sky_dat
 
 
 def draw_stars(painter: QPainter, center: QPoint, radius: int, sky_data: SkyData, star_base_radius: float):
-    """Draws the stars."""
+    """Draws the stars on the screen."""
 
     def mag_to_size(vmag: float) -> float:
         return max(0.1, star_base_radius * 10 ** (-0.2 * vmag)) * radius / 500
@@ -444,13 +480,13 @@ def draw_stars(painter: QPainter, center: QPoint, radius: int, sky_data: SkyData
         color = bv_to_color(star.bv)
         siz = mag_to_size(star.vmag)
 
-        # サイズが4.0未満の星は、最小サイズ(2x2)で描画する
+        # For stars smaller than 4.0, draw as a minimum size (2x2) square
         if siz < 4.0:
             alpha_value = min(1.0, max(0.1, siz / 4.0))
             color.setAlphaF(alpha_value)
 
             painter.fillRect(QRectF(pos.x() - 1, pos.y() - 1, 2, 2), color)
-        else:  # サイズが4.0以上の大きな星は、グラデーション付きの円で描画
+        else:  # For larger stars (size >= 4.0), draw as a gradient circle
             r = math.sqrt(siz)
             gradient = QRadialGradient(pos, r)
             gradient.setColorAt(0, color)
@@ -467,7 +503,7 @@ def draw_stars(painter: QPainter, center: QPoint, radius: int, sky_data: SkyData
 
 
 def draw_cross_gauge(painter: QPainter, color: QColor, center: QPointF):
-    """Draws a cross gauge symbol."""
+    """Draws a cross gauge symbol at the given center point."""
     cross_outer_len, cross_inner_len = 15, 4
     x, y = center.x(), center.y()
     painter.setPen(QPen(color, 1))
@@ -482,10 +518,11 @@ def draw_moon(
     center: QPointF,
     radius: float,
     phase_angle_deg: float,
-    sun_altaz: tuple[float, float] | None = None,
-    moon_altaz: tuple[float, float] | None = None,
+    sun_altaz: Optional[Tuple[float, float]] = None,
+    moon_altaz: Optional[Tuple[float, float]] = None,
     opacity: float = 1.0,
 ):
+    """Draws the moon with its phase and earthshine."""
     img_size = int(radius * 2)
     if img_size < 5:
         img_size = 5
@@ -512,9 +549,9 @@ def draw_moon(
 
 
 def draw_planets(painter: QPainter, center: QPoint, radius: int, sky_data: SkyData, enlarge_moon: bool, emoji_font: QFont):
-    """Draws the planets, Sun, and Moon."""
-    sun_altaz = None
-    moon_altaz = None
+    """Draws the planets, Sun, and Moon on the screen."""
+    sun_altaz: Optional[Tuple[float, float]] = None
+    moon_altaz: Optional[Tuple[float, float]] = None
     for body in sky_data.planets:
         if body.name == "sun":
             sun_altaz = (body.alt, body.az)
@@ -543,7 +580,8 @@ def draw_planets(painter: QPainter, center: QPoint, radius: int, sky_data: SkyDa
             painter.drawText(pos, body.symbol)
 
 
-def draw_direction_labels(painter: QPainter, center: QPoint, radius: int, view_center: tuple[float, float], text_font: QFont):
+def draw_direction_labels(painter: QPainter, center: QPoint, radius: int, view_center: Tuple[float, float], text_font: QFont):
+    """Draws direction labels (N, E, S, W) on the screen."""
     painter.setPen(TEXT_COLOR)
     painter.setFont(text_font)
     alt = 0
@@ -558,10 +596,10 @@ def draw_direction_labels(painter: QPainter, center: QPoint, radius: int, view_c
 def draw_overlay_text(
     painter: QPainter,
     sky_data: SkyData,
-    highlighted_object: tuple[dict[str, object], QPointF] | None,
+    highlighted_object: Optional[Tuple[Union[StarData, PlanetBody], QPointF]],
     text_font: QFont,
 ):
-    """Draws time info and the label for the highlighted object."""
+    """Draws time information, city name, and the label for the highlighted object."""
 
     utc_time = sky_data.time
     tz_name = sky_data.timezone_name
@@ -591,7 +629,8 @@ def draw_overlay_text(
         painter.drawText(QPointF(pos.x() + 15, pos.y() - 15), str(name))
 
 
-def get_screen_geometry(width: int, height: int, alt: float) -> tuple[QPoint, int]:
+def get_screen_geometry(width: int, height: int, alt: float) -> Tuple[QPoint, int]:
+    """Calculates the center and radius for drawing based on window size and view altitude."""
     margin_x = 10
     margin_y = 10
     radius = (width - margin_x * 2) // 2
@@ -608,13 +647,14 @@ class SkyWindow(QWidget):
     def __init__(
         self,
         city_name: str,
-        city_data: tuple[float, float, str],
-        star_catalog: list[dict[str, object]],
+        city_data: Tuple[float, float, str],
+        star_catalog: List[Dict[str, Any]],
         delta_t: timedelta,
         enlarge_moon: bool,
         star_base_radius: float,
-        view_center: tuple[float, float],
+        view_center: Tuple[float, float],
     ):
+        """Initializes the SkyWindow."""
         super().__init__()
         self.city_name = city_name
         self.lat, self.lon, self.tz_name = city_data
@@ -629,12 +669,12 @@ class SkyWindow(QWidget):
         self.setWindowTitle(f"Zenith Star View - {self.city_name.title()}")
         self.setGeometry(100, 100, 800, 800)
 
-        # サイズグリップ
+        # Size grip
         self.size_grip = QSizeGrip(self)
         self.size_grip.setFixedSize(24, 24)
         self.size_grip.raise_()
 
-        # 描画用フォント
+        # Fonts for drawing
         font_id = QFontDatabase.addApplicationFont(EMOJI_FONT_PATH)
         font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
         self.emoji_font = QFont(font_family, TEXT_FONT_SIZE + 4)
@@ -642,7 +682,7 @@ class SkyWindow(QWidget):
 
         self.setMouseTracking(True)
         self.setMinimumSize(400, 400)
-        self.sky_data: SkyData | None = None
+        self.sky_data: Optional[SkyData] = None
         self.mouse_pos = QPoint()
 
         self.data_updated.connect(self.on_data_updated)
@@ -651,18 +691,21 @@ class SkyWindow(QWidget):
 
         self.start_background_update(is_initial_load=True)
 
-    def resizeEvent(self, event):
+    def resizeEvent(self, event: QResizeEvent):
+        """Handles the resize event for the window."""
         grip_size = self.size_grip.size()
         self.size_grip.move(self.width() - grip_size.width(), self.height() - grip_size.height())
         super().resizeEvent(event)
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QMouseEvent):
+        """Handles mouse press events for window dragging."""
         if event.button() == Qt.LeftButton:
             self._drag_active = True
             self._drag_pos = event.globalPos() - self.frameGeometry().topLeft()
             event.accept()
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event: QMouseEvent):
+        """Handles mouse move events for window dragging and object highlighting."""
         if getattr(self, "_drag_active", False) and event.buttons() & Qt.LeftButton:
             self.move(event.globalPos() - self._drag_pos)
             event.accept()
@@ -670,21 +713,26 @@ class SkyWindow(QWidget):
             self.mouse_pos = event.pos()
             self.update()
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        """Handles mouse release events."""
         self._drag_active = False
         event.accept()
 
     def set_star_base_radius(self, star_base_radius: float):
+        """Sets the base radius for stars."""
         self.star_base_radius = star_base_radius
 
     def set_enlarge_moon(self, enlarge_moon: bool):
+        """Sets whether the moon should be enlarged."""
         self.enlarge_moon = enlarge_moon
 
     def set_sky_data(self, data: SkyData):
+        """Sets the sky data and triggers a repaint."""
         self.sky_data = data
         self.update()
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QPaintEvent):
+        """Handles the paint event for drawing the sky."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
@@ -723,12 +771,14 @@ class SkyWindow(QWidget):
         draw_overlay_text(painter, self.sky_data, highlighted_object, self.text_font)
 
     def on_data_updated(self, sky_data: SkyData):
+        """Slot to receive updated sky data and trigger a repaint."""
         self.set_sky_data(sky_data)
         if not self.update_timer.isActive():
             self.update_timer.start(5 * 60 * 1000)
             self.initial_data_loaded.emit()
 
     def update_sky_data_in_background(self):
+        """Updates sky data in a background thread and emits data_updated signal."""
         try:
             now = datetime.now(timezone.utc) + self.delta_t
             time_obj = Time(now)
@@ -757,6 +807,7 @@ class SkyWindow(QWidget):
             traceback.print_exc()
 
     def start_background_update(self, is_initial_load: bool = False):
+        """Starts a background thread to update sky data."""
         if is_initial_load:
             print("Performing initial data load...")
         else:
@@ -765,7 +816,8 @@ class SkyWindow(QWidget):
         thread.daemon = True
         thread.start()
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event: QKeyEvent):
+        """Handles key press events."""
         if event and event.key() == Qt.Key.Key_F11:
             if self.isFullScreen():
                 self.showNormal()
@@ -781,6 +833,7 @@ class SkyWindow(QWidget):
 
 
 def parse_args() -> argparse.Namespace:
+    """Parses command-line arguments."""
     parser = argparse.ArgumentParser(description="Star sky visualizer")
     parser.add_argument("city", type=str, default="Tokyo", help="City name (default: Tokyo)")
     parser.add_argument("-H", "--hours", type=float, default=0, help="Number of hours to add to current time (default: 0)")
