@@ -60,11 +60,12 @@ STARS_CSV_FILE = os.path.join(_dir, "data", "stars.csv")
 TEXT_COLOR = QColor(120, 120, 120)
 TEXT_FONT_SIZE = 14
 
-HORIZON_LINE_COLOR = QColor(40, 40, 40)
+HORIZON_LINE_COLOR = QColor(40, 50, 40)
 CELESTIAL_EQUATOR_COLOR = QColor(40, 40, 40)
 ECLIPTIC_COLOR = QColor(80, 60, 0)
 
-FIELD_OF_VIEW_DEG = 200
+FIELD_OF_VIEW_DEG = 240
+ANGLE_BELOW_HORIZON = 2
 
 DIRECTIONS = {
     "N": 0,
@@ -216,13 +217,12 @@ def load_star_catalog(filename: str) -> list[dict[str, object]]:
 def update_star_positions(star_catalog: list[dict[str, object]], lat: float, lon: float, time_obj: Time, view_center: tuple[float, float]) -> tuple[list[dict[str, object]], EarthLocation]:
     """Updates update star positions."""
     location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg)
-    a = 5
 
     visible_stars = []
     for i, star in enumerate(star_catalog):
         coord = cast(SkyCoord, star["coord"])
         altaz = coord.transform_to(AltAz(obstime=time_obj, location=location))
-        if altaz.alt.deg > -a and is_in_fov(altaz.alt.deg, altaz.az.deg, view_center):
+        if altaz.alt.deg > -ANGLE_BELOW_HORIZON and is_in_fov(altaz.alt.deg, altaz.az.deg, view_center):
             visible_stars.append(StarData(name=star["name"], alt=altaz.alt.deg, az=altaz.az.deg, vmag=star["vmag"], bv=star["bv"]))
         if (i + 1) % 500 == 0:
             time.sleep(0)
@@ -235,14 +235,13 @@ def get_visible_planets(lat: float, lon: float, astropy_time: Time, view_center:
     t = ts.from_astropy(astropy_time)
     planets = starfield_load("de421.bsp")
     observer = planets["earth"] + Topos(latitude_degrees=lat, longitude_degrees=lon)
-    a = 5
 
     visible_bodies = []
     for name, symbol in PLANET_SYMBOLS.items():
         planet = planets[name]
         astrometric = observer.at(t).observe(planet).apparent()
         alt, az, _ = astrometric.altaz()
-        if alt.degrees > -a and is_in_fov(alt.degrees, az.degrees, view_center):
+        if alt.degrees > -ANGLE_BELOW_HORIZON and is_in_fov(alt.degrees, az.degrees, view_center):
             phase_angle = None
             if name == "moon":
                 phase_angle = moon_phase_angle(observer, t, planets)
@@ -300,7 +299,6 @@ def calculate_celestial_equator_points(location: EarthLocation, time: Time, view
 
 
 def calculate_ecliptic_points(location: EarthLocation, time: Time, view_center: tuple[float, float]) -> list[tuple[float, float]]:
-    a = 5
     points = []
     for lon_deg in range(0, 360 + 5, 5):
         ecl = SkyCoord(
@@ -310,7 +308,7 @@ def calculate_ecliptic_points(location: EarthLocation, time: Time, view_center: 
         )
         icrs = ecl.transform_to("icrs")
         altaz = icrs.transform_to(AltAz(obstime=time, location=location))
-        if altaz.alt.deg > -a and is_in_fov(altaz.alt.deg, altaz.az.deg, view_center):
+        if altaz.alt.deg > -ANGLE_BELOW_HORIZON and is_in_fov(altaz.alt.deg, altaz.az.deg, view_center):
             nx, ny = altaz_to_custom_center_xy(altaz.alt.deg, altaz.az.deg, view_center)
             points.append((nx, ny))
     return points
@@ -637,7 +635,20 @@ class SkyWidget(QWidget):
         """The main drawing method, called whenever the widget needs to be repainted."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.fillRect(self.rect(), Qt.GlobalColor.black)
+
+        alt = self.sky_data.view_center[0]
+        center, radius = get_screen_geometry(self.width(), self.height(), alt)
+
+        i = 3
+        painter.fillRect(self.rect(), QColor(i * 7, i * 7, i * 7))
+        for i in [2, 1, 0]:
+            fov = 90 + i * 10
+            col = QColor(i * 7, i * 7, i * 7)
+            f = fov / 90
+            ellipse_radius = int(radius * f)
+            painter.setBrush(col)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawEllipse(center, ellipse_radius, ellipse_radius)
 
         if not self.sky_data:
             painter.setPen(Qt.GlobalColor.white)
@@ -645,22 +656,14 @@ class SkyWidget(QWidget):
             painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "Loading sky data...")
             return
 
-        alt = self.sky_data.view_center[0]
-        center, radius = get_screen_geometry(self.width(), self.height(), alt)
-
+        draw_celestial_lines(painter, center, radius, self.sky_data)
         draw_direction_labels(painter, center, radius, self.sky_data.view_center, self.text_font)
 
-        # Draw celestial lines
-        draw_celestial_lines(painter, center, radius, self.sky_data)
-
-        # Determine highlighted object
         highlighted_object = find_highlighted_object(self.sky_data, self.mouse_pos, center, radius)
 
-        # Draw stars and planets
         draw_stars(painter, center, radius, self.sky_data, self.star_base_radius)
         draw_planets(painter, center, radius, self.sky_data, self.enlarge_moon, self.emoji_font)
 
-        # Draw info text and highlighted object label
         draw_overlay_text(painter, self.sky_data, highlighted_object, self.text_font)
 
     def mouseMoveEvent(self, event: QObject | None):
