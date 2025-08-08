@@ -683,7 +683,7 @@ class SkyWindow(QWidget):
         self.setMouseTracking(True)
         self.setMinimumSize(400, 400)
         self.sky_data: Optional[SkyData] = None
-        self.mouse_pos = QPoint()
+        self.mouse_pos: Optional[QPoint] = None
 
         self.data_updated.connect(self.on_data_updated)
         self.update_timer = QTimer(self)
@@ -704,6 +704,12 @@ class SkyWindow(QWidget):
             self._drag_pos = event.globalPos() - self.frameGeometry().topLeft()
             event.accept()
 
+
+    def leaveEvent(self, event):
+        self.mouse_pos = None
+        self.update()
+        event.accept()
+
     def mouseMoveEvent(self, event: QMouseEvent):
         """Handles mouse move events for window dragging and object highlighting."""
         if getattr(self, "_drag_active", False) and event.buttons() & Qt.LeftButton:
@@ -712,6 +718,7 @@ class SkyWindow(QWidget):
         else:
             self.mouse_pos = event.pos()
             self.update()
+            event.accept()
 
     def mouseReleaseEvent(self, event: QMouseEvent):
         """Handles mouse release events."""
@@ -764,10 +771,12 @@ class SkyWindow(QWidget):
         draw_celestial_lines(painter, center, radius, self.sky_data)
         draw_direction_labels(painter, center, radius, self.sky_data.view_center, self.text_font)
 
-        highlighted_object = find_highlighted_object(self.sky_data, self.mouse_pos, center, radius)
-
         draw_stars(painter, center, radius, self.sky_data, self.star_base_radius)
         draw_planets(painter, center, radius, self.sky_data, self.enlarge_moon, self.emoji_font)
+
+        highlighted_object = None
+        if self.mouse_pos is not None:
+            highlighted_object = find_highlighted_object(self.sky_data, self.mouse_pos, center, radius)
         draw_overlay_text(painter, self.sky_data, highlighted_object, self.text_font)
 
     def on_data_updated(self, sky_data: SkyData):
