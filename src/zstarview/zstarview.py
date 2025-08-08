@@ -3,6 +3,7 @@ import argparse
 import csv
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+import json
 import math
 import os.path
 from pathlib import Path
@@ -30,7 +31,7 @@ from PyQt5.QtGui import (
     QResizeEvent,
 )
 
-from appdirs import user_cache_dir
+from appdirs import user_cache_dir, user_config_dir
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, GeocentricTrueEcliptic
 from astropy.time import Time
 import astropy.units as u
@@ -40,10 +41,30 @@ import skyfield.api
 import numpy as np
 from PIL import Image
 
+APP_ID = "zstarview"
+APP_AUTHOR = "tos-kamiya"
+
 # --- Helper Functions ---
-cache_path = Path(user_cache_dir(appname="zstarview", appauthor="tos-kamiya"))
+cache_path = Path(user_cache_dir(appname=APP_ID, appauthor=APP_AUTHOR))
 cache_path.mkdir(parents=True, exist_ok=True)
 starfield_load = Loader(str(cache_path))
+
+config_dir = Path(user_config_dir(APP_ID, APP_AUTHOR))
+config_dir.mkdir(parents=True, exist_ok=True)
+config_file = config_dir / "config.json"
+
+
+def load_last_city() -> str | None:
+    try:
+        data = json.loads(config_file.read_text(encoding="utf-8"))
+        return data.get("city")
+    except FileNotFoundError:
+        return None
+    except json.JSONDecodeError:
+        return None
+
+def save_last_city(city: str) -> None:
+    config_file.write_text(json.dumps({"city": city}, ensure_ascii=False), encoding="utf-8")
 
 
 def pil2qpixmap(img: Image.Image) -> QPixmap:
@@ -838,7 +859,7 @@ class SkyWindow(QMainWindow):
 def parse_args() -> argparse.Namespace:
     """Parses command-line arguments."""
     parser = argparse.ArgumentParser(description="Star sky visualizer")
-    parser.add_argument("city", type=str, nargs="?", default="Tokyo", help="City name (default: Tokyo)")
+    parser.add_argument("city", type=str, nargs="?", default="", help="City name (default: same as the last run)")
     parser.add_argument("-H", "--hours", type=float, default=0, help="Number of hours to add to current time (default: 0)")
     parser.add_argument("-D", "--days", type=float, default=0, help="Number of days to add to current time (default: 0)")
     parser.add_argument(
@@ -873,8 +894,10 @@ def main():
 
     app.setWindowIcon(QIcon(APP_ICON_FILE))
 
+    last_city = load_last_city()
+
     args = parse_args()
-    city = args.city
+    city = args.city or last_city or "Tokyo"
     city = city.lower()
     if city not in city_table:
         candidate_cities = [c for c in city_table.keys() if c.endswith("/" + city)]
@@ -886,6 +909,8 @@ def main():
             return
         else:
             city = candidate_cities[0]
+
+    print(f"City: {city}")
 
     delta_hours = args.hours
     delta_days = args.days
@@ -922,6 +947,8 @@ def main():
     # When the initial data is loaded, show the main window and close the splash screen
     main_win.initial_data_loaded.connect(main_win.show)
     main_win.initial_data_loaded.connect(splash.close)
+
+    save_last_city(city)
 
     sys.exit(app.exec())
 
