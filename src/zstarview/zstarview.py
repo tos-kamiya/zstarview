@@ -102,7 +102,7 @@ def main():
     try:
         star_catalog = load_star_catalog(STARS_CSV_FILE)
     except FileNotFoundError:
-        show_splash_message("Error: stars.csv not found.", Qt.GlobalColor.red)
+        show_splash_message(f"Error: star data file not found: {STARS_CSV_FILE}", Qt.GlobalColor.red)
         time.sleep(3)
         return
 
