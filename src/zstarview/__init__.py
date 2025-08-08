@@ -2,3 +2,4 @@
 #
 # SPDX-License-Identifier: MIT
 from .zstarview import main
+from .make_desktop_file import main as make_desktop_file_main
