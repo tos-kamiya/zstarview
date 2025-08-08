@@ -41,7 +41,16 @@ zstarview [options] [city]
 | `-Z`, `--view-center-az VIEW_CENTER_AZ`     | Viewing azimuth angle \[deg] (0=N, 90=E, 180=S, 270=W). | `180`   |
 | `-A`, `--view-center-alt VIEW_CENTER_ALT`   | Viewing altitude angle \[deg] (90=zenith, 0=horizon).   | `90`    |
 
-By default, the view shows the sky from the specified city (or the last used city if omitted), looking south (`-Z 180`) towards the zenith (`-A 90`). In this view, the bottom of the screen is South, and the left side is East.
+**About the View Center Options**
+
+The `-Z` (azimuth) and `-A` (altitude) options specify the center of the displayed sky.
+
+By default, `-Z 180` (facing south) and `-A 90` (zenith) are used.  
+In this view, the bottom of the screen is south, the left side is east, and the display is a circular view looking straight up toward the zenith.
+
+For example, setting `-Z 90` (facing east) and `-A 10` (altitude 10°, i.e., looking 10° above the horizon)  
+will produce a roughly semicircular sky view.  
+--> This will capture the eastern sky showing the [Summer Triangle (Vega, Altair, Deneb)](docs/images/screenshot2.png).
 
 ### Key Operations
 
