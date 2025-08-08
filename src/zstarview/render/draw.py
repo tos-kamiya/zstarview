@@ -17,7 +17,7 @@ from ..paths import (
     HORIZON_LINE_COLOR,
     TEXT_COLOR,
 )
-from ..types import PlanetBody, SkyData, StarData
+from ..types import PlanetBody, ScreenGeometry, SkyData, StarData, ViewerData
 from ..astro import altaz_to_normalized_xy, calculate_sun_angle_on_moon, is_in_fov
 from ..utils.image import generate_moon_phase_image
 from ..utils.qt import pil2qpixmap
@@ -37,12 +37,17 @@ def bv_to_qcolor(bv: float) -> QColor:
         return QColor(255, 204, 111)
 
 
-def normalized_to_screen_xy(nx: float, ny: float, center: QPoint, radius: int) -> QPointF:
+def normalized_to_screen_xy(nx: float, ny: float, geometry: ScreenGeometry) -> QPointF:
     """Convert normalized coordinates to screen coordinates."""
-    return QPointF(center.x() + nx * radius, center.y() + ny * radius)
+    return QPointF(geometry.center[0] + nx * geometry.radius, geometry.center[1] + ny * geometry.radius)
 
 
-def find_highlighted_object(sky_data: Optional[SkyData], mouse_pos: QPoint, center: QPoint, radius: int) -> Optional[Tuple[Union[StarData, PlanetBody], QPointF]]:
+def find_highlighted_object(
+    sky_data: Optional[SkyData],
+    viewer_data: ViewerData,
+    mouse_pos: QPoint,
+    geometry: ScreenGeometry,
+) -> Optional[Tuple[Union[StarData, PlanetBody], QPointF]]:
     """Find the nearest celestial object to the mouse cursor within the FOV."""
     min_dist = 30**2  # squared pixels
     highlighted_object = None
@@ -52,10 +57,10 @@ def find_highlighted_object(sky_data: Optional[SkyData], mouse_pos: QPoint, cent
 
     all_objects = sky_data.stars + sky_data.planets
     for obj in all_objects:
-        if not is_in_fov(obj.alt, obj.az, sky_data.view_center):
+        if not is_in_fov(obj.alt, obj.az, viewer_data.view_center):
             continue
-        nx, ny = altaz_to_normalized_xy(obj.alt, obj.az, sky_data.view_center)
-        pos = normalized_to_screen_xy(nx, ny, center, radius)
+        nx, ny = altaz_to_normalized_xy(obj.alt, obj.az, viewer_data.view_center)
+        pos = normalized_to_screen_xy(nx, ny, geometry)
         dist_sq = (mouse_pos.x() - pos.x()) ** 2 + (mouse_pos.y() - pos.y()) ** 2
         if dist_sq < min_dist:
             min_dist = dist_sq
@@ -63,11 +68,11 @@ def find_highlighted_object(sky_data: Optional[SkyData], mouse_pos: QPoint, cent
     return highlighted_object
 
 
-def draw_radial_background(painter: QPainter, rect: QRectF, center: QPoint, radius: int):
-    assert radius >= 10
+def draw_radial_background(painter: QPainter, rect: QRectF, geometry: ScreenGeometry):
+    assert geometry.radius >= 10
     fov_middle = 90 + (FIELD_OF_VIEW_DEG / 2 - 90) / 2
-    r90 = float(radius)
-    r_fov = float(radius * (fov_middle / 90))
+    r90 = float(geometry.radius)
+    r_fov = float(geometry.radius * (fov_middle / 90))
     r_max = float(r_fov * 1.5)
     step_px = 0.5
 
@@ -77,7 +82,8 @@ def draw_radial_background(painter: QPainter, rect: QRectF, center: QPoint, radi
     def col(r, s):
         return QColor(0, 0, 0, max(0, 255 - (s + int(150 * (r - r90) / r_max))))
 
-    g = QRadialGradient(center, r_max)
+    c = geometry.center
+    g = QRadialGradient(QPoint(c[0], c[1]), r_max)
     g.setColorAt(pos(0), col(r90, 0))
     g.setColorAt(pos(r90), col(r90, 0))
     g.setColorAt(pos(r90 + step_px), col(r90, 10))
@@ -107,7 +113,7 @@ def split_by_gaps(points: List[Tuple[float, float]]) -> List[List[Tuple[float, f
     return fragments
 
 
-def draw_sky_reference_lines(painter: QPainter, center: QPoint, radius: int, sky_data: SkyData):
+def draw_sky_reference_lines(painter: QPainter, geometry: ScreenGeometry, sky_data: SkyData):
     """Draw equator, ecliptic, and horizon polylines."""
     point_list_pen_styles = [
         (sky_data.celestial_equator_points, (CELESTIAL_EQUATOR_COLOR, 2, Qt.PenStyle.DashLine)),
@@ -117,23 +123,23 @@ def draw_sky_reference_lines(painter: QPainter, center: QPoint, radius: int, sky
     for points, pen_style in point_list_pen_styles:
         for frag in split_by_gaps(points):
             if len(frag) >= 2:
-                pts = [normalized_to_screen_xy(nx, ny, center, radius) for nx, ny in frag]
+                pts = [normalized_to_screen_xy(nx, ny, geometry) for nx, ny in frag]
                 poly = QPolygonF(pts)
                 painter.setPen(QPen(*pen_style))
                 painter.drawPolyline(poly)
 
 
-def draw_stars(painter: QPainter, center: QPoint, radius: int, sky_data: SkyData, star_base_radius: float):
+def draw_stars(painter: QPainter, geometry: ScreenGeometry, sky_data: SkyData, viewer_data: ViewerData, star_base_radius: float):
     """Draw stars as plus-blended points or soft disks based on magnitude."""
 
     def mag_to_size(vmag: float) -> float:
-        return max(0.1, star_base_radius * 10 ** (-0.2 * vmag)) * radius / 500
+        return max(0.1, star_base_radius * 10 ** (-0.2 * vmag)) * geometry.radius / 500
 
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
     for star in sky_data.stars:
-        if not is_in_fov(star.alt, star.az, sky_data.view_center):
+        if not is_in_fov(star.alt, star.az, viewer_data.view_center):
             continue
-        pos = normalized_to_screen_xy(*altaz_to_normalized_xy(star.alt, star.az, sky_data.view_center), center, radius)
+        pos = normalized_to_screen_xy(*altaz_to_normalized_xy(star.alt, star.az, viewer_data.view_center), geometry)
         color = bv_to_qcolor(star.bv)
         siz = mag_to_size(star.vmag)
 
@@ -202,9 +208,9 @@ def draw_moon(
 
 def draw_planets(
     painter: QPainter,
-    center: QPoint,
-    radius: int,
+    geometry: ScreenGeometry,
     sky_data: SkyData,
+    viewer_data: ViewerData,
     enlarge_moon: bool,
     emoji_font: QFont,
 ):
@@ -217,11 +223,11 @@ def draw_planets(
             moon_altaz = (body.alt, body.az)
 
     for body in sky_data.planets:
-        pos = normalized_to_screen_xy(*altaz_to_normalized_xy(body.alt, body.az, sky_data.view_center), center, radius)
+        pos = normalized_to_screen_xy(*altaz_to_normalized_xy(body.alt, body.az, viewer_data.view_center), geometry)
         if body.name == "sun":
             draw_gauge_cross(painter, TEXT_COLOR, pos)
         elif body.name == "moon":
-            moon_radius = 0.5 * (1 if not enlarge_moon else 3) / 2 * (radius / 90.0)
+            moon_radius = 0.5 * (1 if not enlarge_moon else 3) / 2 * (geometry.radius / 90.0)
             draw_moon(
                 painter,
                 pos,
@@ -238,7 +244,7 @@ def draw_planets(
             painter.drawText(pos, body.symbol)
 
 
-def draw_direction_labels(painter: QPainter, center: QPoint, radius: int, view_center: Tuple[float, float], text_font: QFont):
+def draw_direction_labels(painter: QPainter, geometry: ScreenGeometry, view_center: Tuple[float, float], text_font: QFont):
     painter.setPen(TEXT_COLOR)
     painter.setFont(text_font)
     alt = 0
@@ -246,18 +252,19 @@ def draw_direction_labels(painter: QPainter, center: QPoint, radius: int, view_c
         if not is_in_fov(alt, az, view_center):
             continue
         nx, ny = altaz_to_normalized_xy(alt, az, view_center)
-        pos = normalized_to_screen_xy(nx, ny, center, radius)
+        pos = normalized_to_screen_xy(nx, ny, geometry)
         painter.drawText(pos, label)
 
 
 def draw_overlay_info(
     painter: QPainter,
     sky_data: SkyData,
+    viewer_data: ViewerData,
     highlighted_object: Optional[Tuple[Union[StarData, PlanetBody], QPointF]],
     text_font: QFont,
 ):
     utc_time = sky_data.time
-    tz_name = sky_data.timezone_name
+    tz_name = viewer_data.timezone_name
     time_text = ""
     try:
         local_tz = ZoneInfo(tz_name)
@@ -270,7 +277,7 @@ def draw_overlay_info(
     painter.setFont(text_font)
     painter.drawText(QPoint(10, 20), time_text)
 
-    city_name_text = sky_data.city_name.title()
+    city_name_text = viewer_data.city_name.title()
     painter.drawText(QPoint(10, 40), city_name_text)
 
     if highlighted_object:
@@ -284,12 +291,12 @@ def draw_overlay_info(
         painter.drawText(QPointF(pos.x() + 15, pos.y() - 15), str(name))
 
 
-def get_screen_geometry(width: int, height: int, alt: float) -> Tuple[QPoint, int]:
+def get_screen_geometry(width: int, height: int, alt: float) -> ScreenGeometry:
     """Calculate the center and radius for drawing based on window size and view altitude."""
     margin_x = 10
     margin_y = 10
     radius = (width - margin_x * 2) // 2
     ud = 90
     dd = alt
-    center = QPoint(radius + margin_x, int((height - margin_y * 2) * ud / (ud + dd)) + margin_y)
-    return center, radius
+    center = int(radius + margin_x), int((height - margin_y * 2) * ud / (ud + dd) + margin_y)
+    return ScreenGeometry(center, radius)

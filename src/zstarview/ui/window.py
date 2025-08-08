@@ -19,7 +19,7 @@ from PyQt5.QtWidgets import QMainWindow, QSizeGrip, QApplication
 import astropy
 
 from ..paths import EMOJI_FONT_PATH, TEXT_FONT_SIZE, APP_ICON_FILE
-from ..types import SkyData
+from ..types import SkyData, ViewerData
 from ..astro import (
     calculate_visible_stars,
     calculate_visible_planets,
@@ -50,17 +50,22 @@ class SkyWindow(QMainWindow):
         super().__init__()
         self.setWindowIcon(QIcon(APP_ICON_FILE))
 
-        self.city_name = city_name
-        self.lat, self.lon, self.tz_name = city_data
+        lat, lon, tz_name = city_data
+        self.viewer_data = ViewerData(
+            location=(lat, lon),
+            timezone_name=tz_name,
+            city_name=city_name,
+            view_center=view_center,
+        )
+
         self.star_catalog = star_catalog
         self.delta_t = delta_t
         self.enlarge_moon = enlarge_moon
         self.star_base_radius = star_base_radius
-        self.view_center = view_center
 
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setWindowFlags(Qt.FramelessWindowHint)
-        self.setWindowTitle(f"Zenith Star View - {self.city_name.title()}")
+        self.setWindowTitle(f"Zenith Star View - {self.viewer_data.city_name.title()}")
         self.setGeometry(100, 100, 800, 800)
 
         # Size grip
@@ -134,26 +139,26 @@ class SkyWindow(QMainWindow):
             painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "Loading sky data...")
             return
 
-        alt = self.sky_data.view_center[0]
-        center, radius = render_draw.get_screen_geometry(self.width(), self.height(), alt)
+        alt = self.viewer_data.view_center[0]
+        geometry = render_draw.get_screen_geometry(self.width(), self.height(), alt)
 
         painter.setCompositionMode(QPainter.CompositionMode_Clear)
         painter.fillRect(self.rect(), Qt.transparent)
 
         painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
 
-        render_draw.draw_radial_background(painter, self.rect(), center, radius)
+        render_draw.draw_radial_background(painter, self.rect(), geometry)
 
-        render_draw.draw_sky_reference_lines(painter, center, radius, self.sky_data)
-        render_draw.draw_direction_labels(painter, center, radius, self.sky_data.view_center, self.text_font)
+        render_draw.draw_sky_reference_lines(painter, geometry, self.sky_data)
+        render_draw.draw_direction_labels(painter, geometry, self.viewer_data.view_center, self.text_font)
 
-        render_draw.draw_stars(painter, center, radius, self.sky_data, self.star_base_radius)
-        render_draw.draw_planets(painter, center, radius, self.sky_data, self.enlarge_moon, self.emoji_font)
+        render_draw.draw_stars(painter, geometry, self.sky_data, self.viewer_data, self.star_base_radius)
+        render_draw.draw_planets(painter, geometry, self.sky_data, self.viewer_data, self.enlarge_moon, self.emoji_font)
 
         highlighted_object = None
         if self.mouse_pos is not None:
-            highlighted_object = render_draw.find_highlighted_object(self.sky_data, self.mouse_pos, center, radius)
-        render_draw.draw_overlay_info(painter, self.sky_data, highlighted_object, self.text_font)
+            highlighted_object = render_draw.find_highlighted_object(self.sky_data, self.viewer_data, self.mouse_pos, geometry)
+        render_draw.draw_overlay_info(painter, self.sky_data, self.viewer_data, highlighted_object, self.text_font)
 
     def on_data_updated(self, sky_data: SkyData):
         self.set_sky_data(sky_data)
@@ -165,22 +170,19 @@ class SkyWindow(QMainWindow):
         try:
             now = datetime.now(timezone.utc) + self.delta_t
             time_obj = astropy.time.Time(now)
-            stars, loc = calculate_visible_stars(self.star_catalog, self.lat, self.lon, time_obj, self.view_center)
-            planets = calculate_visible_planets(self.lat, self.lon, time_obj, self.view_center)
-            celestial_equator_points = calculate_celestial_equator_points(loc, time_obj, self.view_center)
-            ecliptic_points = calculate_ecliptic_points(loc, time_obj, self.view_center)
-            horizon_points = calculate_horizon_points(loc, time_obj, self.view_center)
+            lat, lon = self.viewer_data.location
+            stars, loc = calculate_visible_stars(self.star_catalog, lat, lon, time_obj, self.viewer_data.view_center)
+            planets = calculate_visible_planets(lat, lon, time_obj, self.viewer_data.view_center)
+            celestial_equator_points = calculate_celestial_equator_points(loc, time_obj, self.viewer_data.view_center)
+            ecliptic_points = calculate_ecliptic_points(loc, time_obj, self.viewer_data.view_center)
+            horizon_points = calculate_horizon_points(loc, time_obj, self.viewer_data.view_center)
             sky_data = SkyData(
-                (self.lat, self.lon),
-                time_obj,
-                planets,
-                stars,
-                celestial_equator_points,
-                ecliptic_points,
-                horizon_points,
-                timezone_name=self.tz_name,
-                city_name=self.city_name,
-                view_center=self.view_center,
+                time=time_obj,
+                planets=planets,
+                stars=stars,
+                celestial_equator_points=celestial_equator_points,
+                ecliptic_points=ecliptic_points,
+                horizon_points=horizon_points,
             )
             self.data_updated.emit(sky_data)
         except Exception as e:
