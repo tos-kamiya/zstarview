@@ -12,26 +12,25 @@ import time
 from typing import Any, cast, List, Dict, Tuple, Union, Optional
 from zoneinfo import ZoneInfo
 
-from appdirs import user_cache_dir
-from PyQt5.QtWidgets import QApplication, QSizeGrip, QSplashScreen, QWidget
+from PyQt5.QtWidgets import QApplication, QSizeGrip, QSplashScreen, QMainWindow
+from PyQt5.QtCore import Qt, QPoint, QPointF, QRectF, QSize, QTimer, pyqtSignal
+from PyQt5.QtGui import QKeyEvent, QMouseEvent, QPaintEvent
 from PyQt5.QtGui import (
     QBrush,
     QColor,
     QFont,
     QFontDatabase,
+    QIcon,
     QImage,
     QPainter,
     QPen,
     QPixmap,
     QPolygonF,
     QRadialGradient,
-    QMouseEvent,
-    QKeyEvent,
-    QPaintEvent,
     QResizeEvent,
 )
-from PyQt5.QtCore import Qt, QPoint, QPointF, QRectF, QTimer, pyqtSignal
 
+from appdirs import user_cache_dir
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, GeocentricTrueEcliptic
 from astropy.time import Time
 import astropy.units as u
@@ -41,35 +40,7 @@ import skyfield.api
 import numpy as np
 from PIL import Image
 
-from pathlib import Path
-from os import path
-import math
-import csv
-import sys
-import threading
-import time
-import argparse
-from datetime import datetime, timedelta, timezone
-from typing import Dict, Tuple, List, Any, Optional, Union, cast
-from dataclasses import dataclass
-from zoneinfo import ZoneInfo
-
-from PyQt5.QtWidgets import QApplication, QSplashScreen, QWidget, QSizeGrip
-from PyQt5.QtGui import QPixmap, QPainter, QColor, QPen, QFont, QBrush, QPolygonF, QRadialGradient, QImage, QMouseEvent, QKeyEvent, QPaintEvent
-from PyQt5.QtCore import Qt, QPoint, QPointF, QRectF, QTimer, pyqtSignal, QObject
-
-
 # --- Helper Functions ---
-def user_cache_dir(appname: str, appauthor: str) -> str:
-    """Get the user's cache directory."""
-    if sys.platform == "win32":
-        return os.path.join(os.environ["LOCALAPPDATA"], appauthor, appname)
-    elif sys.platform == "darwin":
-        return os.path.join(os.path.expanduser("~/"), "Library/Caches", appauthor, appname)
-    else:
-        return os.path.join(os.path.expanduser("~/"), ".cache/", appname)
-
-
 cache_path = Path(user_cache_dir(appname="zstarview", appauthor="tos-kamiya"))
 cache_path.mkdir(parents=True, exist_ok=True)
 starfield_load = Loader(str(cache_path))
@@ -90,6 +61,7 @@ _dir = os.path.dirname(os.path.abspath(__file__))
 EMOJI_FONT_PATH = os.path.join(_dir, "data", "Noto_Sans_Symbols", "NotoSansSymbols-VariableFont_wght.ttf")
 CITY_COORD_FILE = os.path.join(_dir, "data", "cities1000.txt")
 STARS_CSV_FILE = os.path.join(_dir, "data", "stars.csv")
+APP_ICON_FILE = os.path.join(_dir, "data", "app_icon.ico")
 
 TEXT_COLOR = QColor(120, 120, 120)
 TEXT_FONT_SIZE = 14
@@ -435,18 +407,21 @@ def find_highlighted_object(sky_data: Optional[SkyData], mouse_pos: QPoint, cent
 
 def draw_radial_background(painter: QPainter, rect: QRectF, center: QPoint, radius: int):
     assert radius >= 10
-    fov_middle = 90 + (FIELD_OF_VIEW_DEG/2 - 90)/2
-    r90   = float(radius * (90  / 90))   # = radius
-    r_fov  = float(radius * (fov_middle / 90))
+    fov_middle = 90 + (FIELD_OF_VIEW_DEG / 2 - 90) / 2
+    r90 = float(radius * (90 / 90))  # = radius
+    r_fov = float(radius * (fov_middle / 90))
     r_max = float(r_fov * 1.5)
     step_px = 0.5
 
-    def pos(r): return max(0.0, min(1.0, r / r_max))
-    def col(r, s): return QColor(0, 0, 0, max(0, 255 - (s + int(150 * (r-r90) / r_max))))
+    def pos(r):
+        return max(0.0, min(1.0, r / r_max))
+
+    def col(r, s):
+        return QColor(0, 0, 0, max(0, 255 - (s + int(150 * (r - r90) / r_max))))
 
     g = QRadialGradient(center, r_max)
 
-    g.setColorAt(pos(0),   col(r90, 0))
+    g.setColorAt(pos(0), col(r90, 0))
     g.setColorAt(pos(r90), col(r90, 0))
 
     g.setColorAt(pos(r90 + step_px), col(r90, 10))
@@ -667,7 +642,7 @@ def get_screen_geometry(width: int, height: int, alt: float) -> Tuple[QPoint, in
     return center, radius
 
 
-class SkyWindow(QWidget):
+class SkyWindow(QMainWindow):
     data_updated = pyqtSignal(object)
     initial_data_loaded = pyqtSignal()
 
@@ -683,6 +658,8 @@ class SkyWindow(QWidget):
     ):
         """Initializes the SkyWindow."""
         super().__init__()
+        self.setWindowIcon(QIcon(APP_ICON_FILE))
+
         self.city_name = city_name
         self.lat, self.lon, self.tz_name = city_data
         self.star_catalog = star_catalog
@@ -730,7 +707,6 @@ class SkyWindow(QWidget):
             self._drag_active = True
             self._drag_pos = event.globalPos() - self.frameGeometry().topLeft()
             event.accept()
-
 
     def leaveEvent(self, event):
         self.mouse_pos = None
@@ -862,7 +838,7 @@ class SkyWindow(QWidget):
 def parse_args() -> argparse.Namespace:
     """Parses command-line arguments."""
     parser = argparse.ArgumentParser(description="Star sky visualizer")
-    parser.add_argument("city", type=str, default="Tokyo", help="City name (default: Tokyo)")
+    parser.add_argument("city", type=str, nargs="?", default="Tokyo", help="City name (default: Tokyo)")
     parser.add_argument("-H", "--hours", type=float, default=0, help="Number of hours to add to current time (default: 0)")
     parser.add_argument("-D", "--days", type=float, default=0, help="Number of days to add to current time (default: 0)")
     parser.add_argument(
@@ -880,6 +856,7 @@ def parse_args() -> argparse.Namespace:
 def main():
     """Main entry point for the star sky visualizer."""
     app = QApplication(sys.argv)
+
     splash = QSplashScreen(QPixmap(400, 200), Qt.WindowType.WindowStaysOnTopHint)
     splash.show()
 
@@ -893,6 +870,8 @@ def main():
         show_splash_message("Error: cities1000.txt not found.", Qt.GlobalColor.red)
         time.sleep(3)
         return
+
+    app.setWindowIcon(QIcon(APP_ICON_FILE))
 
     args = parse_args()
     city = args.city
