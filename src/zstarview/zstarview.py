@@ -178,7 +178,7 @@ def load_city_coords(filename: str) -> Dict[str, Tuple[float, float, str]]:
     return city_table
 
 
-def bv_to_color(bv: float) -> QColor:
+def bv_to_qcolor(bv: float) -> QColor:
     """Converts a B-V color index to a QColor."""
     if bv < 0.0:
         return QColor(170, 191, 255)
@@ -192,7 +192,7 @@ def bv_to_color(bv: float) -> QColor:
         return QColor(255, 204, 111)
 
 
-def render_moon_phase_img(
+def generate_moon_phase_image(
     size: int,
     sun_dir_3d: np.ndarray,
     view_dir_3d: np.ndarray,
@@ -228,7 +228,7 @@ def render_moon_phase_img(
     return Image.fromarray(img_array)
 
 
-def altaz_to_custom_center_xy(alt: float, az: float, view_center: Tuple[float, float]) -> Tuple[float, float]:
+def altaz_to_normalized_xy(alt: float, az: float, view_center: Tuple[float, float]) -> Tuple[float, float]:
     """Converts altitude and azimuth coordinates to custom screen coordinates relative to a view center."""
     center_alt, center_az = view_center
 
@@ -282,8 +282,8 @@ def load_star_catalog(filename: str) -> List[Dict[str, Any]]:
     return star_catalog
 
 
-def update_star_positions(star_catalog: List[Dict[str, Any]], lat: float, lon: float, time_obj: Time, view_center: Tuple[float, float]) -> Tuple[List[StarData], EarthLocation]:
-    """Updates the positions of stars based on the given time and location."""
+def calculate_visible_stars(star_catalog: List[Dict[str, Any]], lat: float, lon: float, time_obj: Time, view_center: Tuple[float, float]) -> Tuple[List[StarData], EarthLocation]:
+    """Calculates the positions of stars based on the given time and location."""
     location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg)
 
     visible_stars = []
@@ -297,7 +297,7 @@ def update_star_positions(star_catalog: List[Dict[str, Any]], lat: float, lon: f
     return (visible_stars, location)
 
 
-def get_visible_planets(lat: float, lon: float, astropy_time: Time, view_center: Tuple[float, float]) -> List[PlanetBody]:
+def calculate_visible_planets(lat: float, lon: float, astropy_time: Time, view_center: Tuple[float, float]) -> List[PlanetBody]:
     """Calculates and returns a list of visible planets."""
     ts = skyfield.api.load.timescale()
     t = ts.from_astropy(astropy_time)
@@ -312,7 +312,7 @@ def get_visible_planets(lat: float, lon: float, astropy_time: Time, view_center:
         if alt.degrees > -ANGLE_BELOW_HORIZON and is_in_fov(alt.degrees, az.degrees, view_center):
             phase_angle = None
             if name == "moon":
-                phase_angle = moon_phase_angle(observer, t, planets)
+                phase_angle = calculate_moon_phase_angle(observer, t, planets)
             visible_bodies.append(
                 PlanetBody(
                     name=name,
@@ -325,7 +325,7 @@ def get_visible_planets(lat: float, lon: float, astropy_time: Time, view_center:
     return visible_bodies
 
 
-def moon_phase_angle(observer: Topos, t: skyfield.timelib.Time, planets: Any) -> float:
+def calculate_moon_phase_angle(observer: Topos, t: skyfield.timelib.Time, planets: Any) -> float:
     """Calculates the phase angle of the Moon."""
     moon = planets["moon"]
     sun = planets["sun"]
@@ -351,7 +351,7 @@ def calculate_horizon_points(location: EarthLocation, time: Time, view_center: T
     for az in range(0, 360 + 5, 5):
         if not is_in_fov(alt, az, view_center):
             continue
-        nx, ny = altaz_to_custom_center_xy(alt, az, view_center)
+        nx, ny = altaz_to_normalized_xy(alt, az, view_center)
         points.append((nx, ny))
     return points
 
@@ -364,7 +364,7 @@ def calculate_celestial_equator_points(location: EarthLocation, time: Time, view
         coord = SkyCoord(ra=ra_deg * u.deg, dec=0 * u.deg, frame="icrs")
         altaz = coord.transform_to(AltAz(obstime=time, location=location))
         if altaz.alt.deg > -a and is_in_fov(altaz.alt.deg, altaz.az.deg, view_center):
-            nx, ny = altaz_to_custom_center_xy(altaz.alt.deg, altaz.az.deg, view_center)
+            nx, ny = altaz_to_normalized_xy(altaz.alt.deg, altaz.az.deg, view_center)
             points.append((nx, ny))
     return points
 
@@ -381,12 +381,12 @@ def calculate_ecliptic_points(location: EarthLocation, time: Time, view_center: 
         icrs = ecl.transform_to("icrs")
         altaz = icrs.transform_to(AltAz(obstime=time, location=location))
         if altaz.alt.deg > -ANGLE_BELOW_HORIZON and is_in_fov(altaz.alt.deg, altaz.az.deg, view_center):
-            nx, ny = altaz_to_custom_center_xy(altaz.alt.deg, altaz.az.deg, view_center)
+            nx, ny = altaz_to_normalized_xy(altaz.alt.deg, altaz.az.deg, view_center)
             points.append((nx, ny))
     return points
 
 
-def calc_sun_angle_on_moon(moon_altaz: Tuple[float, float], sun_altaz: Tuple[float, float]) -> float:
+def calculate_sun_angle_on_moon(moon_altaz: Tuple[float, float], sun_altaz: Tuple[float, float]) -> float:
     """Calculates the angle of the sun relative to the moon on the screen."""
     m_alt, m_az = moon_altaz
     s_alt, s_az = sun_altaz
@@ -408,7 +408,7 @@ def calc_sun_angle_on_moon(moon_altaz: Tuple[float, float], sun_altaz: Tuple[flo
     return angle
 
 
-def to_screen_xy(nx: float, ny: float, center: QPoint, radius: int) -> QPointF:
+def normalized_to_screen_xy(nx: float, ny: float, center: QPoint, radius: int) -> QPointF:
     """Converts normalized coordinates to screen coordinates."""
     return QPointF(center.x() + nx * radius, center.y() + ny * radius)
 
@@ -426,8 +426,8 @@ def find_highlighted_object(sky_data: Optional[SkyData], mouse_pos: QPoint, cent
         # Check if within field of view
         if not is_in_fov(obj.alt, obj.az, sky_data.view_center):
             continue
-        nx, ny = altaz_to_custom_center_xy(obj.alt, obj.az, sky_data.view_center)
-        pos = to_screen_xy(nx, ny, center, radius)
+        nx, ny = altaz_to_normalized_xy(obj.alt, obj.az, sky_data.view_center)
+        pos = normalized_to_screen_xy(nx, ny, center, radius)
         dist_sq = (mouse_pos.x() - pos.x()) ** 2 + (mouse_pos.y() - pos.y()) ** 2
         if dist_sq < min_dist:
             min_dist = dist_sq
@@ -450,7 +450,7 @@ def split_by_gaps(points: List[Tuple[float, float]]) -> List[List[Tuple[float, f
     return fragments
 
 
-def draw_celestial_lines(painter: QPainter, center: QPoint, radius: int, sky_data: SkyData):
+def draw_sky_reference_lines(painter: QPainter, center: QPoint, radius: int, sky_data: SkyData):
     """Draws celestial lines (equator, ecliptic, horizon) on the screen."""
     point_list_pen_styles = [
         (sky_data.celestial_equator_points, (CELESTIAL_EQUATOR_COLOR, 2, Qt.PenStyle.DashLine)),
@@ -460,7 +460,7 @@ def draw_celestial_lines(painter: QPainter, center: QPoint, radius: int, sky_dat
     for points, pen_style in point_list_pen_styles:
         for frag in split_by_gaps(points):
             if len(frag) >= 2:
-                points = [to_screen_xy(nx, ny, center, radius) for nx, ny in frag]
+                points = [normalized_to_screen_xy(nx, ny, center, radius) for nx, ny in frag]
                 poly = QPolygonF(points)
                 painter.setPen(QPen(*pen_style))
                 painter.drawPolyline(poly)
@@ -476,8 +476,8 @@ def draw_stars(painter: QPainter, center: QPoint, radius: int, sky_data: SkyData
     for star in sky_data.stars:
         if not is_in_fov(star.alt, star.az, sky_data.view_center):
             continue
-        pos = to_screen_xy(*altaz_to_custom_center_xy(star.alt, star.az, sky_data.view_center), center, radius)
-        color = bv_to_color(star.bv)
+        pos = normalized_to_screen_xy(*altaz_to_normalized_xy(star.alt, star.az, sky_data.view_center), center, radius)
+        color = bv_to_qcolor(star.bv)
         siz = mag_to_size(star.vmag)
 
         # For stars smaller than 4.0, draw as a minimum size (2x2) square
@@ -502,7 +502,7 @@ def draw_stars(painter: QPainter, center: QPoint, radius: int, sky_data: SkyData
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)  # Reset mode
 
 
-def draw_cross_gauge(painter: QPainter, color: QColor, center: QPointF):
+def draw_gauge_cross(painter: QPainter, color: QColor, center: QPointF):
     """Draws a cross gauge symbol at the given center point."""
     cross_outer_len, cross_inner_len = 15, 4
     x, y = center.x(), center.y()
@@ -531,11 +531,11 @@ def draw_moon(
     phase_angle_rad = math.radians(phase_angle_deg)
     sun_dir = np.array([np.sin(phase_angle_rad), 0, -np.cos(phase_angle_rad)])
     sun_dir /= np.linalg.norm(sun_dir)
-    moon_img_pil = render_moon_phase_img(img_size, sun_dir, view_dir)
+    moon_img_pil = generate_moon_phase_image(img_size, sun_dir, view_dir)
 
     rotate_deg = 0
     if sun_altaz is not None and moon_altaz is not None:
-        angle = calc_sun_angle_on_moon(moon_altaz, sun_altaz)
+        angle = calculate_sun_angle_on_moon(moon_altaz, sun_altaz)
         rotate_deg = -math.degrees(angle) - 90
 
     moon_img_pil = moon_img_pil.rotate(rotate_deg, resample=Image.Resampling.BICUBIC, expand=False)
@@ -559,9 +559,9 @@ def draw_planets(painter: QPainter, center: QPoint, radius: int, sky_data: SkyDa
             moon_altaz = (body.alt, body.az)
 
     for body in sky_data.planets:
-        pos = to_screen_xy(*altaz_to_custom_center_xy(body.alt, body.az, sky_data.view_center), center, radius)
+        pos = normalized_to_screen_xy(*altaz_to_normalized_xy(body.alt, body.az, sky_data.view_center), center, radius)
         if body.name == "sun":
-            draw_cross_gauge(painter, TEXT_COLOR, pos)
+            draw_gauge_cross(painter, TEXT_COLOR, pos)
         elif body.name == "moon":
             moon_radius = 0.5 * (1 if not enlarge_moon else 3) / 2 * (radius / 90.0)
             draw_moon(
@@ -573,7 +573,7 @@ def draw_planets(painter: QPainter, center: QPoint, radius: int, sky_data: SkyDa
                 moon_altaz=moon_altaz,
                 opacity=1.0 if not enlarge_moon else 0.7,
             )
-            draw_cross_gauge(painter, TEXT_COLOR, pos)
+            draw_gauge_cross(painter, TEXT_COLOR, pos)
         else:
             painter.setFont(emoji_font)
             painter.setPen(TEXT_COLOR)
@@ -588,12 +588,12 @@ def draw_direction_labels(painter: QPainter, center: QPoint, radius: int, view_c
     for label, az in DIRECTIONS.items():
         if not is_in_fov(alt, az, view_center):
             continue
-        nx, ny = altaz_to_custom_center_xy(alt, az, view_center)
-        pos = to_screen_xy(nx, ny, center, radius)
+        nx, ny = altaz_to_normalized_xy(alt, az, view_center)
+        pos = normalized_to_screen_xy(nx, ny, center, radius)
         painter.drawText(pos, label)
 
 
-def draw_overlay_text(
+def draw_overlay_info(
     painter: QPainter,
     sky_data: SkyData,
     highlighted_object: Optional[Tuple[Union[StarData, PlanetBody], QPointF]],
@@ -768,7 +768,7 @@ class SkyWindow(QWidget):
             painter.setPen(Qt.PenStyle.NoPen)
             painter.drawEllipse(center, ellipse_radius, ellipse_radius)
 
-        draw_celestial_lines(painter, center, radius, self.sky_data)
+        draw_sky_reference_lines(painter, center, radius, self.sky_data)
         draw_direction_labels(painter, center, radius, self.sky_data.view_center, self.text_font)
 
         draw_stars(painter, center, radius, self.sky_data, self.star_base_radius)
@@ -777,7 +777,7 @@ class SkyWindow(QWidget):
         highlighted_object = None
         if self.mouse_pos is not None:
             highlighted_object = find_highlighted_object(self.sky_data, self.mouse_pos, center, radius)
-        draw_overlay_text(painter, self.sky_data, highlighted_object, self.text_font)
+        draw_overlay_info(painter, self.sky_data, highlighted_object, self.text_font)
 
     def on_data_updated(self, sky_data: SkyData):
         """Slot to receive updated sky data and trigger a repaint."""
@@ -791,8 +791,8 @@ class SkyWindow(QWidget):
         try:
             now = datetime.now(timezone.utc) + self.delta_t
             time_obj = Time(now)
-            stars, loc = update_star_positions(self.star_catalog, self.lat, self.lon, time_obj, self.view_center)
-            planets = get_visible_planets(self.lat, self.lon, time_obj, self.view_center)
+            stars, loc = calculate_visible_stars(self.star_catalog, self.lat, self.lon, time_obj, self.view_center)
+            planets = calculate_visible_planets(self.lat, self.lon, time_obj, self.view_center)
             celestial_equator_points = calculate_celestial_equator_points(loc, time_obj, self.view_center)
             ecliptic_points = calculate_ecliptic_points(loc, time_obj, self.view_center)
             horizon_points = calculate_horizon_points(loc, time_obj, self.view_center)
