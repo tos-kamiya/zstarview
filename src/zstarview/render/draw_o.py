@@ -131,13 +131,6 @@ def _draw_vectorized_stars(painter: QPainter, positions: List[QPointF], sizes: n
 
     small_star_mask = sizes < 4.0
 
-    # Draw small stars in bulk
-    painter.setPen(Qt.PenStyle.NoPen)
-    for i, (pos, size, color, alpha) in enumerate(zip(positions, sizes, colors, alphas)):
-        if small_star_mask[i]:
-            color.setAlphaF(float(alpha))
-            painter.fillRect(QRectF(pos.x() - 1, pos.y() - 1, 2, 2), color)
-
     # Draw large stars
     painter.setPen(Qt.PenStyle.NoPen)
     for i, (pos, size, color) in enumerate(zip(positions, sizes, colors)):
@@ -150,6 +143,13 @@ def _draw_vectorized_stars(painter: QPainter, positions: List[QPointF], sizes: n
             gradient.setColorAt(1, color_transparent)
             painter.setBrush(gradient)
             painter.drawEllipse(pos, r, r)
+
+    # Draw small stars in bulk
+    painter.setPen(Qt.PenStyle.NoPen)
+    for i, (pos, size, color, alpha) in enumerate(zip(positions, sizes, colors, alphas)):
+        if small_star_mask[i]:
+            color.setAlphaF(float(alpha))
+            painter.fillRect(QRectF(pos.x() - 1, pos.y() - 1, 2, 2), color)
 
 
 # # Standalone vectorized field-of-view check function
