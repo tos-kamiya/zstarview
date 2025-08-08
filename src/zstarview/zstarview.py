@@ -60,8 +60,6 @@ from PyQt5.QtCore import Qt, QPoint, QPointF, QRectF, QTimer, pyqtSignal, QObjec
 
 
 # --- Helper Functions ---
-
-
 def user_cache_dir(appname: str, appauthor: str) -> str:
     """Get the user's cache directory."""
     if sys.platform == "win32":
@@ -435,6 +433,35 @@ def find_highlighted_object(sky_data: Optional[SkyData], mouse_pos: QPoint, cent
     return highlighted_object
 
 
+def draw_radial_background(painter: QPainter, rect: QRectF, center: QPoint, radius: int):
+    assert radius >= 10
+    fov_middle = 90 + (FIELD_OF_VIEW_DEG/2 - 90)/2
+    r90   = float(radius * (90  / 90))   # = radius
+    r_fov  = float(radius * (fov_middle / 90))
+    r_max = float(r_fov * 1.5)
+    step_px = 0.5
+
+    def pos(r): return max(0.0, min(1.0, r / r_max))
+    def col(r, s): return QColor(0, 0, 0, max(0, 255 - (s + int(150 * (r-r90) / r_max))))
+
+    g = QRadialGradient(center, r_max)
+
+    g.setColorAt(pos(0),   col(r90, 0))
+    g.setColorAt(pos(r90), col(r90, 0))
+
+    g.setColorAt(pos(r90 + step_px), col(r90, 10))
+    g.setColorAt(pos(r_fov), col(r_fov, 10))
+
+    g.setColorAt(pos(r_fov + step_px), col(r_fov, 20))
+    g.setColorAt(1.0, col(r_max, 20))
+
+    painter.save()
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(g)
+    painter.drawRect(rect)
+    painter.restore()
+
+
 def split_by_gaps(points: List[Tuple[float, float]]) -> List[List[Tuple[float, float]]]:
     """Splits a list of points into fragments based on gaps between consecutive points."""
 
@@ -757,16 +784,7 @@ class SkyWindow(QWidget):
 
         painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
 
-        col = QColor(0, 0, 0, 190)
-        painter.fillRect(self.rect(), col)
-        col = QColor(0, 0, 0, 90)
-        for i in [4, 3, 2, 1, 0]:
-            fov = 90 + i * 8
-            f = fov / 90
-            ellipse_radius = int(radius * f)
-            painter.setBrush(col)
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.drawEllipse(center, ellipse_radius, ellipse_radius)
+        draw_radial_background(painter, self.rect(), center, radius)
 
         draw_sky_reference_lines(painter, center, radius, self.sky_data)
         draw_direction_labels(painter, center, radius, self.sky_data.view_center, self.text_font)
