@@ -32,8 +32,8 @@ with open(input_file, "r") as infile, open(output_file, "w") as outfile:
             dem = int(line[86:88].strip())
             desec = int(line[88:90].strip())
 
-            vmag = float(line[102:106].strip())
-            bv = float(line[107:113].strip())
+            vmag = float(line[102:107].strip())
+            bv = float(line[109:114].strip())
 
             ra_deg = hms_to_decimal(rah, ram, ras)
             dec_deg = dms_to_decimal(des, ded, dem, desec)
