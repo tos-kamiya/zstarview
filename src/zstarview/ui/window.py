@@ -28,6 +28,7 @@ from ..astro import (
     calculate_horizon_points,
 )
 from ..render import draw as render_draw
+from ..render import draw_o as render_draw_o
 
 
 class SkyWindow(QMainWindow):
@@ -152,7 +153,9 @@ class SkyWindow(QMainWindow):
         render_draw.draw_sky_reference_lines(painter, geometry, self.sky_data)
         render_draw.draw_direction_labels(painter, geometry, self.viewer_data.view_center, self.text_font)
 
-        render_draw.draw_stars(painter, geometry, self.sky_data, self.viewer_data, self.star_base_radius)
+        render_draw_o.draw_stars_fully_vectorized(painter, geometry, self.sky_data, self.viewer_data, self.star_base_radius)
+        # render_draw.draw_stars(painter, geometry, self.sky_data, self.viewer_data, self.star_base_radius)
+
         render_draw.draw_planets(painter, geometry, self.sky_data, self.viewer_data, self.enlarge_moon, self.emoji_font)
 
         highlighted_object = None
