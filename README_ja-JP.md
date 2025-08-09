@@ -40,6 +40,7 @@ zstarview [options] [city]
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | 星の基本サイズを指定します。                                | `15.0` |
 | `-Z`, `--view-center-az VIEW_CENTER_AZ`     | 表示中心の方位角を度単位で指定します (0=北, 90=東, 180=南, 270=西)。 | `180`  |
 | `-A`, `--view-center-alt VIEW_CENTER_ALT`   | 表示中心の高度を度単位で指定します (90=天頂, 0=地平線)。             | `90`   |
+| `-V`, `--vmag-threshold V_MAG_THRESHOLD`    | 表示する恒星の等級（明るさ）の上限を指定します。                      | `7.0`  |
 
 **表示中心に関するオプションについて**
 
@@ -49,6 +50,12 @@ zstarview [options] [city]
 
 例えば、`-Z 90` （東向き）、`-A 10` （高度10度＝地面から10度見上げる）にすると、おおよそ半円型で星空が表示されます。  
 → 東の空に [夏の大三角（ベガ、アルタイル、デネブ）](docs/images/screenshot2.png) を捉えた表示
+
+**等級の上限に関するオプションについて**
+
+`-V 等級` で指定した等級までの明るさの星を描画します。デフォルトは `-V 7.0` です。例えば、8.0等級を指定すると、約4万1千個の星が描画されます。この値が大きいと処理が重くなります。
+
+→ [8.0等級](docs/images/screenshot3.png) まで表示
 
 ### キー操作
 
@@ -92,16 +99,18 @@ zstarview-make-desktop-file --write
 
 ただし、 **同梱されているデータ** はそれぞれのライセンスに従って再配布されます。
 
-| ファイル                                         | 内容               | 出典                                                                       | ライセンス                                                                                                                      |
-| -------------------------------------------- | ---------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| `data/cities1000.txt`                        | 人口1000人以上の都市一覧   | [GeoNames](https://download.geonames.org/export/dump/)                   | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                  |
-| `data/catalog`                               | Hipparcos 恒星カタログ | [CDS Strasbourg](https://cdsarc.cds.unistra.fr/viz-bin/cat/V/50)         | [ODbL](https://www.data.gouv.fr/licences) または [CC BY-NC 3.0 IGO](https://creativecommons.org/licenses/by-nc/3.0/igo/)（非商用） |
-| `data/NotoSansSymbols-VariableFont_wght.ttf` | 惑星記号表示用フォント      | [Google Fonts](https://fonts.google.com/noto/specimen/Noto+Sans+Symbols) | [SIL Open Font License 1.1](https://openfontlicense.org)                                                                   |
+| ファイル                                         | 内容                                               | 出典                                                                       | ライセンス                                                                                                                      |
+| ------------------------------------------------ | -------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `data/cities1000.txt`                            | 人口1000人以上の都市一覧                           | [GeoNames](https://download.geonames.org/export/dump/)                     | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                       |
+| `data/stars/hip_main.dat`                                   | Hipparcos および Tycho カタログ（ESA 1997）        | [CDS Strasbourg](https://cdsarc.cds.unistra.fr/ftp/I/239/)                 | [ODbL](https://www.data.gouv.fr/licences) または [CC BY-NC 3.0 IGO](https://creativecommons.org/licenses/by-nc/3.0/igo/)（非商用） |
+| `data/stars/IAU-Catalog-of-Star-Names.csv`             | IAU 恒星名作業部会 (WGSN) による恒星固有名カタログ | [exopla.net](https://exopla.net/star-names/modern-iau-star-names/)         | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                       |
+| `data/NotoSansSymbols-VariableFont_wght.ttf`     | 惑星記号表示用フォント                             | [Google Fonts](https://fonts.google.com/noto/specimen/Noto+Sans+Symbols)   | [SIL Open Font License 1.1](https://openfontlicense.org)                                                                        |
 
 ## クレジット
 
 * 天文データを提供していただいている CDS Strasbourg および ESA Hipparcos Mission に感謝します。
-* 都市データ GeoNames に基づいています。データの提供に感謝いたします。
-* フォントは Google Noto Project を利用しています。感謝いたします。
-* ウィンドウタイトル「Zenith Star View」は ChatGPT の提案に由来しています。
-* Gemini および ChatGPT に、仕様の相談、コード生成、デバッグなど、多くの助力をいただいています。感謝いたします。
+* 都市データは GeoNames に基づいています。
+* 恒星の固有名は IAU 恒星名作業部会 (WGSN) による承認済みリスト（[exopla.net](https://exopla.net/star-names/modern-iau-star-names/) 経由）を使用しています。
+* フォントは Google Noto Project を利用しています。
+* ウィンドウタイトル「Zenith Star View」は ChatGPT の提案に由来します。
+* Gemini および ChatGPT に、仕様の相談、コード生成、デバッグなど、多くの助力をいただきました。

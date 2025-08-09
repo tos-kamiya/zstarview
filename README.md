@@ -40,6 +40,7 @@ zstarview [options] [city]
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | Base size of stars.                                     | `15.0`  |
 | `-Z`, `--view-center-az VIEW_CENTER_AZ`     | Viewing azimuth angle \[deg] (0=N, 90=E, 180=S, 270=W). | `180`   |
 | `-A`, `--view-center-alt VIEW_CENTER_ALT`   | Viewing altitude angle \[deg] (90=zenith, 0=horizon).   | `90`    |
+| `-V`, `--vmag-threshold V_MAG_THRESHOLD`    | Maximum visual magnitude of stars to display.               | `7.0`   |
 
 **About the View Center Options**
 
@@ -50,7 +51,15 @@ In this view, the bottom of the screen is south, the left side is east, and the 
 
 For example, setting `-Z 90` (facing east) and `-A 10` (altitude 10°, i.e., looking 10° above the horizon)  
 will produce a roughly semicircular sky view.  
---> This will capture the eastern sky showing the [Summer Triangle (Vega, Altair, Deneb)](docs/images/screenshot2.png).
+→ This will capture the eastern sky showing the [Summer Triangle (Vega, Altair, Deneb)](docs/images/screenshot2.png).
+
+**About magnitude threshold**
+
+Use `-V magnitude` to limit the displayed stars to those brighter than the given magnitude.
+The default is `-V 7.0`. For example, specifying 8.0 will display about 41k stars.
+Note that higher values will increase rendering time.
+
+→ Example: display up to [magnitude 8.0](docs/images/screenshot3.png)
 
 ### Key Operations
 
@@ -98,13 +107,15 @@ However, the **included data** is redistributed according to their respective li
 | File                                         | Content                                          | Source                                                                   | License                                                                                                                             |
 | -------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
 | `data/cities1000.txt`                        | List of cities with a population of 1000 or more | [GeoNames](https://download.geonames.org/export/dump/)                   | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                           |
-| `data/catalog`                               | Hipparcos Star Catalog                           | [CDS Strasbourg](https://cdsarc.cds.unistra.fr/viz-bin/cat/V/50)         | [ODbL](https://www.data.gouv.fr/licences) or [CC BY-NC 3.0 IGO](https://creativecommons.org/licenses/by-nc/3.0/igo/) Non-commercial |
+| `data/stars/hip_main.dat`                               | Hipparcos and Tycho Catalogues (ESA 1997)        | [CDS Strasbourg](https://cdsarc.cds.unistra.fr/ftp/I/239/)               | [ODbL](https://www.data.gouv.fr/licences) or [CC BY-NC 3.0 IGO](https://creativecommons.org/licenses/by-nc/3.0/igo/) Non-commercial |
+| `data/stars/IAU-Catalog-of-Star-Names.csv`         | IAU Working Group on Star Names (WGSN) catalog of approved star names | [exopla.net](https://exopla.net/star-names/modern-iau-star-names/)       | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                           |
 | `data/NotoSansSymbols-VariableFont_wght.ttf` | Font for displaying planetary symbols            | [Google Fonts](https://fonts.google.com/noto/specimen/Noto+Sans+Symbols) | [SIL Open Font License 1.1](https://openfontlicense.org)                                                                            |
 
 ## Credits
 
 * Astronomical data provided by CDS Strasbourg and the ESA Hipparcos Mission.
 * City data based on GeoNames.
+* Star proper names provided by the IAU Working Group on Star Names (via [exopla.net](https://exopla.net/star-names/modern-iau-star-names/)).
 * Fonts provided by the Google Noto Project.
 * The window title "Zenith Star View" was suggested by ChatGPT.
 * Specification discussions, code generation, and debugging were greatly assisted by Gemini and ChatGPT.
