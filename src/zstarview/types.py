@@ -4,6 +4,14 @@ from typing import List, Tuple, Optional
 import astropy
 
 
+@dataclass(slots=True)
+class StarRecord:
+    name: str
+    coord: astropy.coordinates.SkyCoord   # ICRS
+    vmag: float
+    bv: float
+
+
 @dataclass
 class StarData:
     name: str

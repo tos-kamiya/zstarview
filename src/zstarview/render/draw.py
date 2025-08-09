@@ -144,7 +144,7 @@ def draw_stars(painter: QPainter, geometry: ScreenGeometry, sky_data: SkyData, v
         siz = mag_to_size(star.vmag)
 
         if siz < 4.0:
-            alpha_value = min(1.0, max(0.1, siz / 4.0))
+            alpha_value = min(1.0, max(0.25, siz / 4.0))
             color.setAlphaF(alpha_value)
             painter.fillRect(QRectF(pos.x() - 1, pos.y() - 1, 2, 2), color)
         else:

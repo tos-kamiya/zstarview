@@ -196,7 +196,7 @@ class SkyWindow(QMainWindow):
 
     def start_background_update(self, is_initial_load: bool = False):
         if is_initial_load:
-            print("Performing initial data load...")
+            print("Calculating initial sky data..")
         else:
             print("Updating sky data...")
         thread = threading.Thread(target=self.update_sky_data_in_background)

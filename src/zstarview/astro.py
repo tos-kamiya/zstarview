@@ -17,7 +17,7 @@ from .paths import (
     FIELD_OF_VIEW_DEG,
     PLANET_SYMBOLS,
 )
-from .types import PlanetBody, StarData
+from .types import PlanetBody, StarData, StarRecord
 
 
 # Skyfield ephemeris cache loader (separate from UI)
@@ -71,20 +71,22 @@ def load_star_catalog(filename: str) -> List[Dict[str, Any]]:
 
 
 def calculate_visible_stars(
-    star_catalog: List[Dict[str, Any]],
+    star_catalog: List[StarRecord],
     lat: float,
     lon: float,
-    time_obj: astropy.time.Time,
+    time_obj,
     view_center: Tuple[float, float],
 ) -> Tuple[List[StarData], EarthLocation]:
     """Compute visible stars and return them with the observer location."""
     location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg)
+    altaz_frame = AltAz(obstime=time_obj, location=location)  # ← フレームは1回だけ作成
     visible_stars: List[StarData] = []
     for i, star in enumerate(star_catalog):
-        coord = cast(SkyCoord, star["coord"])
-        altaz = coord.transform_to(AltAz(obstime=time_obj, location=location))
+        altaz = star.coord.transform_to(altaz_frame)
         if altaz.alt.deg > -ANGLE_BELOW_HORIZON and is_in_fov(altaz.alt.deg, altaz.az.deg, view_center):
-            visible_stars.append(StarData(name=star["name"], alt=altaz.alt.deg, az=altaz.az.deg, vmag=star["vmag"], bv=star["bv"]))
+            visible_stars.append(
+                StarData(name=star.name, alt=altaz.alt.deg, az=altaz.az.deg, vmag=star.vmag, bv=star.bv)
+            )
         if (i + 1) % 500 == 0:
             _time.sleep(0)
     return (visible_stars, location)

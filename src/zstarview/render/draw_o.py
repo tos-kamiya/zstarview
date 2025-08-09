@@ -45,7 +45,7 @@ def draw_stars_fully_vectorized(painter: QPainter, geometry: ScreenGeometry, sky
 
     # Vectorized calculation of alpha values for small stars
     small_star_mask = sizes < 4.0
-    alphas = np.where(small_star_mask, np.clip(sizes / 4.0, 0.1, 1.0), 1.0)
+    alphas = np.where(small_star_mask, np.clip(sizes / 4.0, 0.25, 1.0), 1.0)
 
     # Perform drawing
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)

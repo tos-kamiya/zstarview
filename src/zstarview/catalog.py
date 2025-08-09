@@ -1,8 +1,10 @@
 import csv
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from astropy.coordinates import SkyCoord
 import astropy.units as u
+
+from .types import StarRecord
 
 
 def load_city_coords(filename: str) -> Dict[str, Tuple[float, float, str]]:
@@ -26,23 +28,31 @@ def load_city_coords(filename: str) -> Dict[str, Tuple[float, float, str]]:
     return city_table
 
 
-def load_star_catalog(filename: str) -> List[Dict[str, Any]]:
+def load_star_catalog(filename: str, vmag_threshold: Optional[float] = 7.0) -> List[StarRecord]:
     """Loads the star catalog from a CSV file.
 
     Each row contains: name, SkyCoord, Vmag, B-V.
+    If vmag_threshold is not None, keeps only rows with Vmag <= threshold.
     """
-    star_catalog: List[Dict[str, Any]] = []
-    with open(filename, newline="") as csvfile:
+    result: List[StarRecord] = []
+    with open(filename, newline="", encoding="utf-8") as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
             try:
-                ra = float(row["RA"]) * 15
-                name = row["Name"]
+                v_raw = row.get("Vmag")
+                if v_raw is None or v_raw == "":
+                    continue
+                v = float(v_raw)
+                if (vmag_threshold is not None) and (v > vmag_threshold):
+                    continue
+
+                ra_h = float(row["RAh"])          # RAh（時間）想定
                 dec = float(row["Dec"])
-                vmag = float(row["Vmag"])
-                bv = float(row["B-V"])
-                coord = SkyCoord(ra=ra * u.deg, dec=dec * u.deg, frame="icrs")
-                star_catalog.append({"name": name, "coord": coord, "vmag": vmag, "bv": bv})
+                bv = float(row["B-V"]) if row.get("B-V") else float("nan")
+                name = row.get("Name", "")
+                coord = SkyCoord(ra=(ra_h * 15.0) * u.deg, dec=dec * u.deg, frame="icrs")
+                result.append(StarRecord(name=name, coord=coord, vmag=v, bv=bv))
             except Exception:
                 continue
-    return star_catalog
+    return result
+

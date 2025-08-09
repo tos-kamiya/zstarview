@@ -38,6 +38,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("-H", "--hours", type=float, default=0, help="Number of hours to add to current time (default: 0)")
     parser.add_argument("-D", "--days", type=float, default=0, help="Number of days to add to current time (default: 0)")
     parser.add_argument(
+        "-V", "--vmag-limit",
+        type=float,
+        default=7.0,
+        help="Limit stars to Vmag <= this value (default: 7.0). Use a larger number to show more stars."
+    )
+    parser.add_argument(
         "-m",
         "--enlarge-moon",
         action="store_true",
@@ -100,11 +106,14 @@ def main():
     show_splash_message("Loading city and star data...", Qt.GlobalColor.white)
 
     try:
-        star_catalog = load_star_catalog(STARS_CSV_FILE)
+        star_catalog = load_star_catalog(STARS_CSV_FILE, vmag_threshold=args.vmag_limit)
     except FileNotFoundError:
         show_splash_message(f"Error: star data file not found: {STARS_CSV_FILE}", Qt.GlobalColor.red)
         time.sleep(3)
         return
+
+    limit_str = args.vmag_limit if args.vmag_limit is not None else "no limit"
+    print(f"Loaded {len(star_catalog)} stars (Vmag ≤ {limit_str})")
 
     show_splash_message(f"Calculating sky for {city.title()}...", Qt.GlobalColor.white)
 
