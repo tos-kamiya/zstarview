@@ -21,6 +21,7 @@ from .paths import (
     CITY_COORD_FILE,
     STARS_CSV_FILE,
     APP_ICON_FILE,
+    DIRECTIONS,
 )
 from .config import load_last_city, save_last_city
 from .catalog import load_city_coords, load_star_catalog
@@ -29,6 +30,26 @@ from .ui.window import SkyWindow
 # --- Helper Functions ---
 cache_path = Path(user_cache_dir(appname=APP_ID, appauthor=APP_AUTHOR))
 cache_path.mkdir(parents=True, exist_ok=True)
+
+
+def _parse_azimuth(value: str) -> float:
+    """Parse azimuth given as degrees or compass points.
+
+    Examples:
+      - "180" -> 180.0
+      - "E" -> 90.0
+      - "NE" -> 45.0
+      - "WNW" -> 292.5
+    """
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        pass
+
+    compass = value.strip().upper()
+    if compass in DIRECTIONS:
+        return float(DIRECTIONS[compass])
+    raise argparse.ArgumentTypeError(f"Invalid azimuth: {value!r}. Use degrees (e.g., 180) or compass (e.g., N, NE, E).")
 
 
 def parse_args() -> argparse.Namespace:
@@ -50,7 +71,16 @@ def parse_args() -> argparse.Namespace:
         help="Show the moon in 3x size.",
     )
     parser.add_argument("-s", "--star-base-radius", type=float, default=15.0, help="Base size of stars (default: 15.0)")
-    parser.add_argument("-Z", "--view-center-az", type=float, default=180.0, help="Viewing azimuth angle [deg] (0=N, 90=E, 180=S, 270=W; default=180)")
+    parser.add_argument(
+        "-Z",
+        "--view-center-az",
+        type=_parse_azimuth,
+        default=180.0,
+        help=(
+            "Viewing azimuth angle [deg or compass] "
+            "(0=N, 90=E, 180=S, 270=W; also accepts N, NE, E, SE, S, SW, W, NW; default=180)"
+        ),
+    )
     parser.add_argument("-A", "--view-center-alt", type=float, default=90.0, help="Viewing altitude angle [deg] (90=zenith, 0=horizon; default=90)")
     return parser.parse_args()
 
