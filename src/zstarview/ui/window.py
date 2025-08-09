@@ -152,6 +152,7 @@ class SkyWindow(QMainWindow):
 
         render_draw.draw_sky_reference_lines(painter, geometry, self.sky_data)
         render_draw.draw_direction_labels(painter, geometry, self.viewer_data.view_center, self.text_font)
+        render_draw.draw_zenith_marker(painter, geometry, self.viewer_data.view_center)
 
         render_draw_o.draw_stars_fully_vectorized(painter, geometry, self.sky_data, self.viewer_data, self.star_base_radius)
         # render_draw.draw_stars(painter, geometry, self.sky_data, self.viewer_data, self.star_base_radius)
@@ -196,7 +197,7 @@ class SkyWindow(QMainWindow):
 
     def start_background_update(self, is_initial_load: bool = False):
         if is_initial_load:
-            print("Calculating initial sky data..")
+            print("Calculating initial sky data...")
         else:
             print("Updating sky data...")
         thread = threading.Thread(target=self.update_sky_data_in_background)

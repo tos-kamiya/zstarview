@@ -73,7 +73,7 @@ def draw_radial_background(painter: QPainter, rect: QRectF, geometry: ScreenGeom
     fov_middle = 90 + (FIELD_OF_VIEW_DEG / 2 - 90) / 2
     r90 = float(geometry.radius)
     r_fov = float(geometry.radius * (fov_middle / 90))
-    r_max = float(r_fov * 1.5)
+    r_max = float(r_fov * 1.4)
     step_px = 0.5
 
     def pos(r):
@@ -169,6 +169,24 @@ def draw_gauge_cross(painter: QPainter, color: QColor, center: QPointF):
     painter.drawLine(QPointF(x + cross_inner_len, y), QPointF(x + cross_outer_len, y))
     painter.drawLine(QPointF(x, y - cross_outer_len), QPointF(x, y - cross_inner_len))
     painter.drawLine(QPointF(x, y + cross_inner_len), QPointF(x, y + cross_outer_len))
+
+
+def draw_zenith_marker(painter: QPainter, geometry: ScreenGeometry, view_center: Tuple[float, float]):
+    alt_zenith = 90.0
+    az_ref = view_center[1]
+
+    if not is_in_fov(alt_zenith, az_ref, view_center):
+        return
+
+    nx, ny = altaz_to_normalized_xy(alt_zenith, az_ref, view_center)
+    pos = normalized_to_screen_xy(nx, ny, geometry)
+
+    s = 7
+    x, y = pos.x(), pos.y()
+
+    painter.setPen(QPen(TEXT_COLOR, 1))
+    painter.drawLine(QPointF(x - s, y - s), QPointF(x + s, y + s))
+    painter.drawLine(QPointF(x - s, y + s), QPointF(x + s, y - s))
 
 
 def draw_moon(
