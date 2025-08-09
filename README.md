@@ -38,7 +38,7 @@ zstarview [options] [city]
 | `-D`, `--days DAYS`                         | Number of days to add to the current time.              | `0`     |
 | `-m`, `--enlarge-moon`                      | Show the moon in 3x size.                               |         |
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | Base size of stars.                                     | `15.0`  |
-| `-Z`, `--view-center-az VIEW_CENTER_AZ`     | Viewing azimuth angle \[deg] (0=N, 90=E, 180=S, 270=W). | `180`   |
+| `-Z`, `--view-center-az VIEW_CENTER_AZ`     | Viewing azimuth \[deg or 16-point compass] (0=N, 90=E, 180=S, 270=W; accepts N, NNE, NE, ENE, E, ESE, SE, SSE, S, SSW, SW, WSW, W, WNW, NW, NNW; case-insensitive). | `180`   |
 | `-A`, `--view-center-alt VIEW_CENTER_ALT`   | Viewing altitude angle \[deg] (90=zenith, 0=horizon).   | `90`    |
 | `-V`, `--vmag-threshold V_MAG_THRESHOLD`    | Maximum visual magnitude of stars to display.               | `7.0`   |
 
@@ -52,6 +52,8 @@ In this view, the bottom of the screen is south, the left side is east, and the 
 For example, setting `-Z 90` (facing east) and `-A 10` (altitude 10°, i.e., looking 10° above the horizon)  
 will produce a roughly semicircular sky view.  
 → This will capture the eastern sky showing the [Summer Triangle (Vega, Altair, Deneb)](docs/images/screenshot2.png).
+
+Azimuth can be given in degrees or compass points (case-insensitive). Examples: `-Z E`, `-Z ne`, `-Z SSW` (202.5°).
 
 **About magnitude threshold**
 

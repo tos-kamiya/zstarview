@@ -38,7 +38,7 @@ zstarview [options] [city]
 | `-D`, `--days DAYS`                         | 現在時刻に加算する日数を指定します。                            | `0`    |
 | `-m`, `--enlarge-moon`                      | 月を3倍の大きさで表示します。                               |        |
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | 星の基本サイズを指定します。                                | `15.0` |
-| `-Z`, `--view-center-az VIEW_CENTER_AZ`     | 表示中心の方位角を度単位で指定します (0=北, 90=東, 180=南, 270=西)。 | `180`  |
+| `-Z`, `--view-center-az VIEW_CENTER_AZ`     | 表示中心の方位角を度または16方位の方位記号で指定します (0=北, 90=東, 180=南, 270=西。`N`, `NNE`, `NE`, `ENE`, `E`, `ESE`, `SE`, `SSE`, `S`, `SSW`, `SW`, `WSW`, `W`, `WNW`, `NW`, `NNW` を受け付けます。大文字小文字どちらでも可)。 | `180`  |
 | `-A`, `--view-center-alt VIEW_CENTER_ALT`   | 表示中心の高度を度単位で指定します (90=天頂, 0=地平線)。             | `90`   |
 | `-V`, `--vmag-threshold V_MAG_THRESHOLD`    | 表示する恒星の等級（明るさ）の上限を指定します。                      | `7.0`  |
 
@@ -50,6 +50,8 @@ zstarview [options] [city]
 
 例えば、`-Z 90` （東向き）、`-A 10` （高度10度＝地面から10度見上げる）にすると、おおよそ半円型で星空が表示されます。  
 → 東の空に [夏の大三角（ベガ、アルタイル、デネブ）](docs/images/screenshot2.png) を捉えた表示
+
+方位角 `-Z` は度数または方位記号（大小区別なし）で指定できます。例: `-Z E`, `-Z ne`, `-Z SSW`（= 202.5°）。
 
 **等級の上限に関するオプションについて**
 
