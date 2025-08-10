@@ -14,11 +14,14 @@ from PyQt5.QtGui import (
     QMouseEvent,
     QKeyEvent,
 )
-from PyQt5.QtWidgets import QMainWindow, QSizeGrip, QApplication
+from PyQt5.QtWidgets import QMainWindow, QSizeGrip, QApplication, QPushButton, QMenu
 
 import astropy
 
-from ..paths import EMOJI_FONT_PATH, EMOJI_FONT_SIZE, TEXT_FONT_PATH, TEXT_FONT_SIZE, APP_ICON_FILE
+from ..__about__ import __version__
+
+from ..paths import EMOJI_FONT_PATH, EMOJI_FONT_SIZE, TEXT_FONT_PATH, TEXT_FONT_SIZE
+from ..paths import APP_ICON_FILE, GUI_BUTTON_SIZE, GUI_MENU_TEXT_COLOR
 from ..types import SkyData, ViewerData
 from ..astro import (
     calculate_visible_stars,
@@ -71,15 +74,15 @@ class SkyWindow(QMainWindow):
 
         # Size grip
         self.size_grip = QSizeGrip(self)
-        self.size_grip.setFixedSize(24, 24)
+        self.size_grip.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
         self.size_grip.raise_()
+
+        self._add_hamburger_menu()
 
         # Fonts for drawing
         emoji_font_id = QFontDatabase.addApplicationFont(EMOJI_FONT_PATH)
         emoji_font_family = QFontDatabase.applicationFontFamilies(emoji_font_id)[0]
         self.emoji_font = QFont(emoji_font_family, EMOJI_FONT_SIZE)
-        import os
-        print(os.path.exists(TEXT_FONT_PATH))
         text_font_id = QFontDatabase.addApplicationFont(TEXT_FONT_PATH)
         text_font_family = QFontDatabase.applicationFontFamilies(text_font_id)[0]
         self.text_font = QFont(text_font_family, TEXT_FONT_SIZE)
@@ -95,10 +98,56 @@ class SkyWindow(QMainWindow):
 
         self.start_background_update(is_initial_load=True)
 
+    def _add_hamburger_menu(self):
+        self.menu_button = QPushButton("☰", self)
+        self.menu_button.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
+        self.menu_button.setStyleSheet(
+            "QPushButton { border: none; font-size: 18px; background-color: transparent; color: " + GUI_MENU_TEXT_COLOR + "; }"
+            "QPushButton:hover { color: white; }"
+            "QPushButton:menu-indicator { image: none; }"
+        )
+        self.menu_button.clicked.connect(self.show_menu)
+
+        self.menu = QMenu(self)
+        self.menu.setStyleSheet(
+            """
+            QMenu {
+                background-color: #333;
+                color: white;
+                border: 1px solid #555;
+            }
+            QMenu::item:selected {
+                background-color: #555;
+            }
+        """
+        )
+        fullscreen_action = self.menu.addAction("Fullscreen (F11)")
+        fullscreen_action.triggered.connect(self.toggle_fullscreen)
+        exit_action = self.menu.addAction("Exit (Q)")
+        exit_action.triggered.connect(QApplication.quit)
+
+        self.menu.addSeparator()
+        version_action = self.menu.addAction(f"Version {__version__}")
+        version_action.setEnabled(False)
+
     def resizeEvent(self, event: QResizeEvent):
         grip_size = self.size_grip.size()
         self.size_grip.move(self.width() - grip_size.width(), self.height() - grip_size.height())
+
+        button_size = self.menu_button.size()
+        self.menu_button.move(self.width() - button_size.width() - 8, 8)
+
         super().resizeEvent(event)
+
+    def show_menu(self):
+        menu_pos = self.menu_button.mapToGlobal(QPoint(0, self.menu_button.height()))
+        self.menu.exec_(menu_pos)
+
+    def toggle_fullscreen(self):
+        if self.isFullScreen():
+            self.showNormal()
+        else:
+            self.showFullScreen()
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.LeftButton:
@@ -210,10 +259,7 @@ class SkyWindow(QMainWindow):
 
     def keyPressEvent(self, event: QKeyEvent):
         if event and event.key() == Qt.Key.Key_F11:
-            if self.isFullScreen():
-                self.showNormal()
-            else:
-                self.showFullScreen()
+            self.toggle_fullscreen()
         elif event and event.key() == Qt.Key.Key_Escape:
             if self.isFullScreen():
                 self.showNormal()

@@ -18,6 +18,9 @@ CITY_COORD_FILE = os.path.join(_dir, "data", "cities1000.txt")
 STARS_CSV_FILE = os.path.join(_dir, "data", "stars.csv")
 APP_ICON_FILE = os.path.join(_dir, "data", "app_icon.ico")
 
+# Window UI
+GUI_MENU_TEXT_COLOR = "#787878"
+GUI_BUTTON_SIZE = 30
 
 # UI constants
 TEXT_COLOR = QColor(120, 120, 120)
