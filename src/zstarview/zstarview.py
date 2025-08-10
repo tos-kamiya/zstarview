@@ -12,6 +12,7 @@ from PySide6.QtGui import (
     QIcon,
     QPixmap,
 )
+from PySide6.QtGui import QGuiApplication
 
 from appdirs import user_cache_dir
 
@@ -23,6 +24,7 @@ from .paths import (
     APP_ICON_FILE,
     DIRECTIONS,
 )
+from .__about__ import __version__
 from .config import load_last_city, save_last_city
 from .catalog import load_city_coords, load_star_catalog
 from .ui.window import SkyWindow
@@ -80,6 +82,13 @@ def parse_args() -> argparse.Namespace:
 def main():
     """Main entry point for the star sky visualizer."""
     app = QApplication(sys.argv)
+    # Ensure GNOME/Wayland associates the window with our desktop file
+    QGuiApplication.setDesktopFileName(APP_ID)
+    app.setApplicationName("Zenith Star View")
+    app.setApplicationDisplayName("Zenith Star View")
+    app.setOrganizationName(APP_AUTHOR)
+    app.setApplicationVersion(__version__)
+    app.setWindowIcon(QIcon(APP_ICON_FILE))
 
     splash = QSplashScreen(QPixmap(400, 200), Qt.WindowType.WindowStaysOnTopHint)
     splash.show()
@@ -95,7 +104,7 @@ def main():
         time.sleep(3)
         return
 
-    app.setWindowIcon(QIcon(APP_ICON_FILE))
+    # Icon already set above; keep runtime consistent
 
     last_city = load_last_city()
 

@@ -4,9 +4,8 @@ import os.path
 
 _dir = os.path.dirname(os.path.abspath(__file__))
 
-from .paths import APP_ID
+from .paths import APP_ID, APP_ICON_FILE
 
-APP_ICON_FILE = os.path.join(_dir, "data", "icon-256.png")
 APP_COMMAND = "zstarview"
 DESKTOP_FILE = f"{APP_ID}.desktop"
 

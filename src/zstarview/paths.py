@@ -16,7 +16,7 @@ TEXT_FONT_PATH = os.path.join(_dir, "data", "Noto_Sans", "NotoSans-VariableFont_
 EMOJI_FONT_PATH = os.path.join(_dir, "data", "Noto_Sans_Symbols", "NotoSansSymbols-VariableFont_wght.ttf")
 CITY_COORD_FILE = os.path.join(_dir, "data", "cities1000.txt")
 STARS_CSV_FILE = os.path.join(_dir, "data", "stars.csv")
-APP_ICON_FILE = os.path.join(_dir, "data", "app_icon.ico")
+APP_ICON_FILE = os.path.join(_dir, "data", "icon-256.png")
 
 # Window UI
 GUI_MENU_TEXT_COLOR = "#787878"
