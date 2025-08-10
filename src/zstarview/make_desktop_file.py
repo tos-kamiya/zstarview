@@ -44,7 +44,6 @@ def main():
         wmclass=APP_ID,
     )
 
-    print(f"{out_path=}")
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(content)
     os.chmod(out_path, 0o644)

@@ -68,4 +68,6 @@ exclude_lines = [
 
 [project.gui-scripts]
 zstarview = "zstarview:main"
+
+[project.scripts]
 zstarview-make-desktop-file = "zstarview:make_desktop_file_main"
