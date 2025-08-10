@@ -58,12 +58,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("city", type=str, nargs="?", default="", help="City name (default: same as the last run)")
     parser.add_argument("-H", "--hours", type=float, default=0, help="Number of hours to add to current time (default: 0)")
     parser.add_argument("-D", "--days", type=float, default=0, help="Number of days to add to current time (default: 0)")
-    parser.add_argument(
-        "-V", "--vmag-limit",
-        type=float,
-        default=7.0,
-        help="Limit stars to Vmag <= this value (default: 7.0). Use a larger number to show more stars."
-    )
+    parser.add_argument("-V", "--vmag-limit", type=float, default=7.0, help="Limit stars to Vmag <= this value (default: 7.0). Use a larger number to show more stars.")
     parser.add_argument(
         "-m",
         "--enlarge-moon",
@@ -76,10 +71,7 @@ def parse_args() -> argparse.Namespace:
         "--view-center-az",
         type=_parse_azimuth,
         default=180.0,
-        help=(
-            "Viewing azimuth angle [deg or compass] "
-            "(0=N, 90=E, 180=S, 270=W; also accepts N, NE, E, SE, S, SW, W, NW; default=180)"
-        ),
+        help=("Viewing azimuth angle [deg or compass] " "(0=N, 90=E, 180=S, 270=W; also accepts N, NE, E, SE, S, SW, W, NW; default=180)"),
     )
     parser.add_argument("-A", "--view-center-alt", type=float, default=90.0, help="Viewing altitude angle [deg] (90=zenith, 0=horizon; default=90)")
     return parser.parse_args()

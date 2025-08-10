@@ -7,7 +7,7 @@ import astropy
 @dataclass(slots=True)
 class StarRecord:
     name: str
-    coord: astropy.coordinates.SkyCoord   # ICRS
+    coord: astropy.coordinates.SkyCoord  # ICRS
     vmag: float
     bv: float
 

@@ -1,7 +1,7 @@
 import math
 import time as _time
 from pathlib import Path
-from typing import Any, Dict, List, Tuple, cast
+from typing import Any, Dict, List, Tuple
 
 from appdirs import user_cache_dir
 import astropy
@@ -79,14 +79,12 @@ def calculate_visible_stars(
 ) -> Tuple[List[StarData], EarthLocation]:
     """Compute visible stars and return them with the observer location."""
     location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg)
-    altaz_frame = AltAz(obstime=time_obj, location=location)  # ← フレームは1回だけ作成
+    altaz_frame = AltAz(obstime=time_obj, location=location)
     visible_stars: List[StarData] = []
     for i, star in enumerate(star_catalog):
         altaz = star.coord.transform_to(altaz_frame)
         if altaz.alt.deg > -ANGLE_BELOW_HORIZON and is_in_fov(altaz.alt.deg, altaz.az.deg, view_center):
-            visible_stars.append(
-                StarData(name=star.name, alt=altaz.alt.deg, az=altaz.az.deg, vmag=star.vmag, bv=star.bv)
-            )
+            visible_stars.append(StarData(name=star.name, alt=altaz.alt.deg, az=altaz.az.deg, vmag=star.vmag, bv=star.bv))
         if (i + 1) % 500 == 0:
             _time.sleep(0)
     return (visible_stars, location)

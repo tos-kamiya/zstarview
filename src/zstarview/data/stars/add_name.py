@@ -12,10 +12,11 @@ Output:
 import argparse
 import csv
 
+
 def load_iau(file):
     hip_map = {}
     bayer_map = {}
-    with open(file, newline='', encoding='utf-8') as f:
+    with open(file, newline="", encoding="utf-8") as f:
         r = csv.DictReader(f)
         for row in r:
             name = row["proper names"].strip()
@@ -29,6 +30,7 @@ def load_iau(file):
                 bayer_map[bayer] = name
     return hip_map, bayer_map
 
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--stars", default="stars_hip.csv", help="stars_hip.csv from Hipparcos")
@@ -38,8 +40,7 @@ def main():
 
     hip_map, bayer_map = load_iau(args.iau)
 
-    with open(args.stars, newline='', encoding='utf-8') as fin, \
-         open(args.output, 'w', newline='', encoding='utf-8') as fout:
+    with open(args.stars, newline="", encoding="utf-8") as fin, open(args.output, "w", newline="", encoding="utf-8") as fout:
         r = csv.DictReader(fin)
         fieldnames = r.fieldnames
         w = csv.DictWriter(fout, fieldnames=fieldnames)
@@ -59,6 +60,7 @@ def main():
             w.writerow(row)
 
     print(f"Done. Output written to {args.output}")
+
 
 if __name__ == "__main__":
     main()

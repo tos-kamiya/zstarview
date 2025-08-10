@@ -46,7 +46,7 @@ def load_star_catalog(filename: str, vmag_threshold: Optional[float] = 7.0) -> L
                 if (vmag_threshold is not None) and (v > vmag_threshold):
                     continue
 
-                ra_h = float(row["RAh"])          # RAh（時間）想定
+                ra_h = float(row["RAh"])  # RAh（時間）想定
                 dec = float(row["Dec"])
                 bv = float(row["B-V"]) if row.get("B-V") else float("nan")
                 name = row.get("Name", "")
@@ -55,4 +55,3 @@ def load_star_catalog(filename: str, vmag_threshold: Optional[float] = 7.0) -> L
             except Exception:
                 continue
     return result
-
