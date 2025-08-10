@@ -1,6 +1,6 @@
 import os
 import os.path
-from PyQt5.QtGui import QColor
+from PySide6.QtGui import QColor
 
 
 # Application identifiers

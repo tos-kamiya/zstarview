@@ -5,8 +5,8 @@ import numpy as np
 from PIL import Image
 from zoneinfo import ZoneInfo
 
-from PyQt5.QtCore import QPoint, QPointF, QRectF, Qt
-from PyQt5.QtGui import QColor, QFont, QPainter, QPen, QPolygonF, QRadialGradient
+from PySide6.QtCore import QPoint, QPointF, QRectF, Qt
+from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF, QRadialGradient
 
 from ..paths import (
     CELESTIAL_EQUATOR_COLOR,

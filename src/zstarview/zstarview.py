@@ -5,9 +5,9 @@ from pathlib import Path
 import sys
 import time
 
-from PyQt5.QtWidgets import QApplication, QSplashScreen
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import (
+from PySide6.QtWidgets import QApplication, QSplashScreen
+from PySide6.QtCore import Qt
+from PySide6.QtGui import (
     QColor,
     QIcon,
     QPixmap,

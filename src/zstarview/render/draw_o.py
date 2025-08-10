@@ -3,9 +3,9 @@ import numpy as np
 import time as _time
 from typing import Tuple, List
 
-from PyQt5.QtCore import QPointF, QRectF
-from PyQt5.QtGui import QPainter, QColor, QRadialGradient
-from PyQt5.QtCore import Qt
+from PySide6.QtCore import QPointF, QRectF
+from PySide6.QtGui import QPainter, QColor, QRadialGradient
+from PySide6.QtCore import Qt
 
 from ..paths import FIELD_OF_VIEW_DEG
 from ..types import ScreenGeometry, SkyData, ViewerData

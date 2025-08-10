@@ -22,7 +22,7 @@ classifiers = [
 ]
 dependencies = [
   "appdirs",
-  "PyQt5",
+  "PySide6",
   "astropy",
   "skyfield",
   "numpy",

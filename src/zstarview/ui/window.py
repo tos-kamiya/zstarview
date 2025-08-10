@@ -3,8 +3,8 @@ import threading
 import sys
 from typing import Any, Dict, List, Optional, Tuple
 
-from PyQt5.QtCore import Qt, QPoint, QTimer
-from PyQt5.QtGui import (
+from PySide6.QtCore import Qt, QPoint, QTimer
+from PySide6.QtGui import (
     QFont,
     QFontDatabase,
     QIcon,
@@ -14,7 +14,7 @@ from PyQt5.QtGui import (
     QMouseEvent,
     QKeyEvent,
 )
-from PyQt5.QtWidgets import QMainWindow, QSizeGrip, QApplication, QPushButton, QMenu
+from PySide6.QtWidgets import QMainWindow, QSizeGrip, QApplication, QPushButton, QMenu
 
 import astropy
 
@@ -36,10 +36,10 @@ from ..render import draw_o as render_draw_o
 
 class SkyWindow(QMainWindow):
     # Using Qt signal objects requires attribute creation at runtime; avoid type hints here
-    from PyQt5.QtCore import pyqtSignal
+    from PySide6.QtCore import Signal
 
-    data_updated = pyqtSignal(object)
-    initial_data_loaded = pyqtSignal()
+    data_updated = Signal(object)
+    initial_data_loaded = Signal()
 
     def __init__(
         self,
@@ -68,7 +68,8 @@ class SkyWindow(QMainWindow):
         self.star_base_radius = star_base_radius
 
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setWindowFlags(Qt.FramelessWindowHint)
+        # Preserve existing flags and add Frameless; improves drag behavior on Qt6
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
         self.setWindowTitle(f"Zenith Star View - {self.viewer_data.city_name.title()}")
         self.setGeometry(100, 100, 800, 800)
 
@@ -91,6 +92,8 @@ class SkyWindow(QMainWindow):
         self.setMinimumSize(400, 400)
         self.sky_data: Optional[SkyData] = None
         self.mouse_pos: Optional[QPoint] = None
+        self._drag_active: bool = False
+        self._drag_pos: QPoint = QPoint(0, 0)
 
         self.data_updated.connect(self.on_data_updated)
         self.update_timer = QTimer(self)
@@ -109,18 +112,6 @@ class SkyWindow(QMainWindow):
         self.menu_button.clicked.connect(self.show_menu)
 
         self.menu = QMenu(self)
-        self.menu.setStyleSheet(
-            """
-            QMenu {
-                background-color: #333;
-                color: white;
-                border: 1px solid #555;
-            }
-            QMenu::item:selected {
-                background-color: #555;
-            }
-        """
-        )
         fullscreen_action = self.menu.addAction("Fullscreen (F11)")
         fullscreen_action.triggered.connect(self.toggle_fullscreen)
         exit_action = self.menu.addAction("Exit (Q)")
@@ -141,7 +132,7 @@ class SkyWindow(QMainWindow):
 
     def show_menu(self):
         menu_pos = self.menu_button.mapToGlobal(QPoint(0, self.menu_button.height()))
-        self.menu.exec_(menu_pos)
+        self.menu.exec(menu_pos)
 
     def toggle_fullscreen(self):
         if self.isFullScreen():
@@ -151,8 +142,31 @@ class SkyWindow(QMainWindow):
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.LeftButton:
+            # Ignore drags initiated on interactive child widgets
+            child = self.childAt(event.pos())
+            if child in (self.menu_button, self.size_grip):
+                super().mousePressEvent(event)
+                return
+
+            # On Wayland (and some platforms), top-level window move must be delegated
+            try:
+                wh = self.windowHandle()
+                if wh is not None:
+                    try:
+                        if bool(wh.startSystemMove()):
+                            event.accept()
+                            return
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
             self._drag_active = True
-            self._drag_pos = event.globalPos() - self.frameGeometry().topLeft()
+            try:
+                global_pos = event.globalPosition().toPoint()  # Qt6 API
+            except AttributeError:
+                global_pos = event.globalPos()  # Fallback for Qt5-style
+            self._drag_pos = global_pos - self.frameGeometry().topLeft()
             event.accept()
 
     def leaveEvent(self, event):
@@ -162,7 +176,12 @@ class SkyWindow(QMainWindow):
 
     def mouseMoveEvent(self, event: QMouseEvent):
         if getattr(self, "_drag_active", False) and event.buttons() & Qt.LeftButton:
-            self.move(event.globalPos() - self._drag_pos)
+            try:
+                global_pos = event.globalPosition().toPoint()
+            except AttributeError:
+                global_pos = event.globalPos()
+            target_pos = global_pos - self._drag_pos
+            self.move(target_pos)
             event.accept()
         else:
             self.mouse_pos = event.pos()
