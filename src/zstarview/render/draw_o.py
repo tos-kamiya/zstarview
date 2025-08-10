@@ -1,5 +1,6 @@
 import math
 import numpy as np
+import time as _time
 from typing import Tuple, List
 
 from PyQt5.QtCore import QPointF, QRectF
@@ -36,6 +37,8 @@ def draw_stars_fully_vectorized(painter: QPainter, geometry: ScreenGeometry, sky
     visible_vmags = vmags[fov_mask]
     visible_bvs = [bvs[i] for i in np.where(fov_mask)[0]]
 
+    _time.sleep(0)
+
     # Vectorized coordinate transformation and size calculation
     positions = _vectorized_altaz_to_screen(visible_alts, visible_azs, viewer_data, geometry)
     sizes = np.maximum(0.1, star_base_radius * (10.0 ** (-0.2 * visible_vmags))) * geometry.radius / 500.0
@@ -46,6 +49,8 @@ def draw_stars_fully_vectorized(painter: QPainter, geometry: ScreenGeometry, sky
     # Vectorized calculation of alpha values for small stars
     small_star_mask = sizes < 4.0
     alphas = np.where(small_star_mask, np.clip(sizes / 4.0, 0.08, 1.0), 1.0)
+
+    _time.sleep(0)
 
     # Perform drawing
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
@@ -157,18 +162,18 @@ def _draw_vectorized_stars(painter: QPainter, positions: List[QPointF], sizes: n
 #                         view_center: Tuple[float, float]) -> np.ndarray:
 #     """
 #     Run a vectorized field-of-view check for multiple coordinates.
-# 
+#
 #     Args:
 #         alts: Array of altitudes (degrees)
 #         azs: Array of azimuths (degrees)
 #         view_center: Center coordinates of the view (alt, az)
 #         field_of_view_deg: Field of view in degrees
-# 
+#
 #     Returns:
 #         Boolean array indicating whether each coordinate is within the field of view.
 #     """
 #     return _vectorized_is_in_fov(alts, azs, view_center)
-# 
+#
 # # Wrapper for compatibility with the original single-coordinate function
 # def is_in_fov_single(alt: float, az: float, view_center: Tuple[float, float]) -> bool:
 #     """Field-of-view check for a single coordinate (compatible with the original function)."""
