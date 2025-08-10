@@ -17,6 +17,8 @@ Zenith Star View は、地球上の任意の都市を指定して、頭上の星
 pipx install git+https://github.com/tos-kamiya/zstarview.git
 ```
 
+> 注記（X11 環境・Ubuntu/Debian）: X11 セッションでは Qt の xcb プラグインが実行時に `libxcb-cursor0` を必要とする場合があります。`sudo apt install libxcb-cursor0` によりインストールしてください。
+
 ## 使い方
 
 ```bash

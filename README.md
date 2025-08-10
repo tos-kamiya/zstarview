@@ -17,6 +17,8 @@ It is intended to be installed using [`pipx`](https://pypa.github.io/pipx/).
 pipx install git+https://github.com/tos-kamiya/zstarview.git
 ```
 
+> Note (X11 on Ubuntu/Debian): On X11 sessions, Qt's xcb platform plugin may require `libxcb-cursor0` at runtime. Install it with: `sudo apt install libxcb-cursor0`.
+
 ## Usage
 
 ```bash
