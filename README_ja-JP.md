@@ -106,7 +106,7 @@ zstarview-make-desktop-file --write
 | `data/cities1000.txt`                            | 人口1000人以上の都市一覧                           | [GeoNames](https://download.geonames.org/export/dump/)                     | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                       |
 | `data/stars/hip_main.dat`                                   | Hipparcos および Tycho カタログ（ESA 1997）        | [CDS Strasbourg](https://cdsarc.cds.unistra.fr/ftp/I/239/)                 | [ODbL](https://www.data.gouv.fr/licences) または [CC BY-NC 3.0 IGO](https://creativecommons.org/licenses/by-nc/3.0/igo/)（非商用） |
 | `data/stars/IAU-Catalog-of-Star-Names.csv`             | IAU 恒星名作業部会 (WGSN) による恒星固有名カタログ | [exopla.net](https://exopla.net/star-names/modern-iau-star-names/)         | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                       |
-| `data/NotoSansSymbols-VariableFont_wght.ttf`     | 惑星記号表示用フォント                             | [Google Fonts](https://fonts.google.com/noto/specimen/Noto+Sans+Symbols)   | [SIL Open Font License 1.1](https://openfontlicense.org)                                                                        |
+| `data/Noto_Sans/*`, `data/Noto_Sans_Symbols/*`     | テキスト / 惑星記号表示フォント                             | [Google Fonts](https://fonts.google.com/)   | [SIL Open Font License 1.1](https://openfontlicense.org)                                                                        |
 
 ## クレジット
 

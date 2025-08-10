@@ -111,7 +111,7 @@ However, the **included data** is redistributed according to their respective li
 | `data/cities1000.txt`                        | List of cities with a population of 1000 or more | [GeoNames](https://download.geonames.org/export/dump/)                   | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                           |
 | `data/stars/hip_main.dat`                               | Hipparcos and Tycho Catalogues (ESA 1997)        | [CDS Strasbourg](https://cdsarc.cds.unistra.fr/ftp/I/239/)               | [ODbL](https://www.data.gouv.fr/licences) or [CC BY-NC 3.0 IGO](https://creativecommons.org/licenses/by-nc/3.0/igo/) Non-commercial |
 | `data/stars/IAU-Catalog-of-Star-Names.csv`         | IAU Working Group on Star Names (WGSN) catalog of approved star names | [exopla.net](https://exopla.net/star-names/modern-iau-star-names/)       | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                           |
-| `data/NotoSansSymbols-VariableFont_wght.ttf` | Font for displaying planetary symbols            | [Google Fonts](https://fonts.google.com/noto/specimen/Noto+Sans+Symbols) | [SIL Open Font License 1.1](https://openfontlicense.org)                                                                            |
+|  `data/Noto_Sans/*`, `data/Noto_Sans_Symbols/*` | Font for displaying text / planetary symbols            | [Google Fonts](https://fonts.google.com/) | [SIL Open Font License 1.1](https://openfontlicense.org)                                                                            |
 
 ## Credits
 
