@@ -18,7 +18,7 @@ from PyQt5.QtWidgets import QMainWindow, QSizeGrip, QApplication
 
 import astropy
 
-from ..paths import EMOJI_FONT_PATH, TEXT_FONT_SIZE, APP_ICON_FILE
+from ..paths import EMOJI_FONT_PATH, EMOJI_FONT_SIZE, TEXT_FONT_PATH, TEXT_FONT_SIZE, APP_ICON_FILE
 from ..types import SkyData, ViewerData
 from ..astro import (
     calculate_visible_stars,
@@ -75,10 +75,14 @@ class SkyWindow(QMainWindow):
         self.size_grip.raise_()
 
         # Fonts for drawing
-        font_id = QFontDatabase.addApplicationFont(EMOJI_FONT_PATH)
-        font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
-        self.emoji_font = QFont(font_family, TEXT_FONT_SIZE + 4)
-        self.text_font = QFont("Arial", TEXT_FONT_SIZE)
+        emoji_font_id = QFontDatabase.addApplicationFont(EMOJI_FONT_PATH)
+        emoji_font_family = QFontDatabase.applicationFontFamilies(emoji_font_id)[0]
+        self.emoji_font = QFont(emoji_font_family, EMOJI_FONT_SIZE)
+        import os
+        print(os.path.exists(TEXT_FONT_PATH))
+        text_font_id = QFontDatabase.addApplicationFont(TEXT_FONT_PATH)
+        text_font_family = QFontDatabase.applicationFontFamilies(text_font_id)[0]
+        self.text_font = QFont(text_font_family, TEXT_FONT_SIZE)
 
         self.setMouseTracking(True)
         self.setMinimumSize(400, 400)
@@ -136,7 +140,7 @@ class SkyWindow(QMainWindow):
 
         if not self.sky_data:
             painter.setPen(Qt.GlobalColor.white)
-            painter.setFont(QFont("Arial", 16))
+            painter.setFont(self.text_font)
             painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "Loading sky data...")
             return
 

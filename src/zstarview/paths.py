@@ -12,6 +12,7 @@ APP_AUTHOR = "tos-kamiya"
 _dir = os.path.dirname(os.path.abspath(__file__))
 
 # Data file paths
+TEXT_FONT_PATH = os.path.join(_dir, "data", "Noto_Sans", "NotoSans-VariableFont_wdth,wght.ttf")
 EMOJI_FONT_PATH = os.path.join(_dir, "data", "Noto_Sans_Symbols", "NotoSansSymbols-VariableFont_wght.ttf")
 CITY_COORD_FILE = os.path.join(_dir, "data", "cities1000.txt")
 STARS_CSV_FILE = os.path.join(_dir, "data", "stars.csv")
@@ -20,7 +21,8 @@ APP_ICON_FILE = os.path.join(_dir, "data", "app_icon.ico")
 
 # UI constants
 TEXT_COLOR = QColor(120, 120, 120)
-TEXT_FONT_SIZE = 14
+TEXT_FONT_SIZE = 10
+EMOJI_FONT_SIZE = 18
 
 HORIZON_LINE_COLOR = QColor(40, 50, 40)
 CELESTIAL_EQUATOR_COLOR = QColor(40, 40, 40)
