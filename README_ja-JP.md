@@ -89,7 +89,7 @@ zstarview-make-desktop-file --write
 
 * Python 3.10+
 * [`appdirs`](https://pypi.org/project/appdirs/)
-* [`PyQt5`](https://pypi.org/project/PyQt5/)
+* [`PySide6`](https://pypi.org/project/PySide6/)
 * [`astropy`](https://pypi.org/project/astropy/)
 * [`skyfield`](https://pypi.org/project/skyfield/)
 * [`numpy`](https://pypi.org/project/numpy/)
