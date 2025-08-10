@@ -58,10 +58,10 @@ Azimuth can be given in degrees or compass points (case-insensitive). Examples: 
 **About magnitude threshold**
 
 Use `-V magnitude` to limit the displayed stars to those brighter than the given magnitude.
-The default is `-V 7.0`. For example, specifying 8.0 will display about 41k stars.
+The default is `-V 7.0`. For example, specifying 9.0 will display about 83k stars.
 Note that higher values will increase rendering time.
 
-→ Example: display up to [magnitude 8.0](docs/images/screenshot3.png)
+→ Example: display up to [magnitude 9.0](docs/images/screenshot3.png).
 
 ### Key Operations
 
