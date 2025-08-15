@@ -1,24 +1,8 @@
 from dataclasses import dataclass
-from typing import List, Tuple, Optional
+from typing import Dict, List, Optional, Tuple
 
 import astropy
-
-
-@dataclass(slots=True)
-class StarRecord:
-    name: str
-    coord: astropy.coordinates.SkyCoord  # ICRS
-    vmag: float
-    bv: float
-
-
-@dataclass
-class StarData:
-    name: str
-    alt: float
-    az: float
-    vmag: float
-    bv: float
+import numpy as np
 
 
 @dataclass
@@ -46,7 +30,7 @@ class SkyData:
 
     time: astropy.time.Time
     planets: List[PlanetBody]
-    stars: List[StarData]
+    stars: Dict[str, np.ndarray]
     celestial_equator_points: List[Tuple[float, float]]
     ecliptic_points: List[Tuple[float, float]]
     horizon_points: List[Tuple[float, float]]

@@ -27,6 +27,7 @@ dependencies = [
   "skyfield",
   "numpy",
   "Pillow>=10",
+  "polars",
 ]
 
 [project.urls]

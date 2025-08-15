@@ -1,5 +1,5 @@
 import math
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from PIL import Image
@@ -16,29 +16,52 @@ from ..paths import (
     HORIZON_LINE_COLOR,
     TEXT_COLOR,
 )
-from ..types import PlanetBody, ScreenGeometry, SkyData, StarData, ViewerData
+from ..types import PlanetBody, ScreenGeometry, SkyData, ViewerData
 from ..astro import altaz_to_normalized_xy, calculate_sun_angle_on_moon, is_in_fov
 from ..utils.image import generate_moon_phase_image
 from ..utils.qt import pil2qpixmap
 
 
-def bv_to_qcolor(bv: float) -> QColor:
-    """Convert a B-V color index to a QColor."""
-    if bv < 0.0:
-        return QColor(170, 191, 255)
-    elif bv < 0.3:
-        return QColor(202, 215, 255)
-    elif bv < 0.6:
-        return QColor(248, 247, 255)
-    elif bv < 1.0:
-        return QColor(255, 210, 161)
-    else:
-        return QColor(255, 204, 111)
+def bv_to_rgb_vectorized(bv: np.ndarray) -> np.ndarray:
+    """Vectorized conversion of B-V color index to RGB tuples."""
+    # First, initialize all stars to the default color (Orange-ish)
+    # The output will be an array of shape (number_of_stars, 3)
+    rgb = np.full((bv.shape[0], 3), [255, 204, 111], dtype=int)
+
+    # Overwrite rows with the correct color based on conditions
+    rgb[bv < 0.0] = [170, 191, 255]  # Blueish
+    rgb[(bv >= 0.0) & (bv < 0.3)] = [202, 215, 255]  # White-Blue
+    rgb[(bv >= 0.3) & (bv < 0.6)] = [248, 247, 255]  # White
+    rgb[(bv >= 0.6) & (bv < 1.0)] = [255, 210, 161]  # Yellowish
+    return rgb
 
 
-def normalized_to_screen_xy(nx: float, ny: float, geometry: ScreenGeometry) -> QPointF:
-    """Convert normalized coordinates to screen coordinates."""
-    return QPointF(geometry.center[0] + nx * geometry.radius, geometry.center[1] + ny * geometry.radius)
+def altaz_to_normalized_xy_vectorized(
+    alt: np.ndarray, az: np.ndarray, view_center: Tuple[float, float]
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Vectorized conversion of alt/az to normalized screen coordinates."""
+    center_alt, center_az = view_center
+    alt1, az1 = np.radians(center_alt), np.radians(center_az)
+    alt2, az2 = np.radians(alt), np.radians(az)
+
+    cos_theta = np.sin(alt1) * np.sin(alt2) + np.cos(alt1) * np.cos(alt2) * np.cos(az2 - az1)
+    theta = np.arccos(np.clip(cos_theta, -1.0, 1.0))
+
+    r = theta / (math.pi / 2)
+
+    dx = np.cos(alt2) * np.sin(az2 - az1)
+    dy = np.cos(alt1) * np.sin(alt2) - np.sin(alt1) * np.cos(alt2) * np.cos(az2 - az1)
+    length = np.hypot(dx, dy)
+    # Avoid division by zero for objects at the pole
+    length[length == 0] = 1.0
+    nx = r * dx / length
+    ny = -r * dy / length
+    return (nx, ny)
+
+
+def normalized_to_screen_xy_vectorized(nx: np.ndarray, ny: np.ndarray, geometry: ScreenGeometry) -> Tuple[np.ndarray, np.ndarray]:
+    """Vectorized conversion of normalized coordinates to screen coordinates."""
+    return (geometry.center[0] + nx * geometry.radius, geometry.center[1] + ny * geometry.radius)
 
 
 def find_highlighted_object(
@@ -46,24 +69,36 @@ def find_highlighted_object(
     viewer_data: ViewerData,
     mouse_pos: QPoint,
     geometry: ScreenGeometry,
-) -> Optional[Tuple[Union[StarData, PlanetBody], QPointF]]:
-    """Find the nearest celestial object to the mouse cursor within the FOV."""
-    min_dist = 30**2  # squared pixels
+) -> Optional[Tuple[Dict[str, Union[str, float]], QPointF]]:
+    """Find the nearest celestial object to the mouse cursor (vectorized for stars)."""
+    min_dist_sq = 30**2  # squared pixels
     highlighted_object = None
 
     if not sky_data:
         return None
 
-    all_objects = sky_data.stars + sky_data.planets
-    for obj in all_objects:
-        if not is_in_fov(obj.alt, obj.az, viewer_data.view_center):
-            continue
-        nx, ny = altaz_to_normalized_xy(obj.alt, obj.az, viewer_data.view_center)
+    # Handle stars first (vectorized)
+    stars = sky_data.stars
+    if stars["alt"].size > 0:
+        nx, ny = altaz_to_normalized_xy_vectorized(stars["alt"], stars["az"], viewer_data.view_center)
+        x, y = normalized_to_screen_xy_vectorized(nx, ny, geometry)
+        dist_sq = (mouse_pos.x() - x) ** 2 + (mouse_pos.y() - y) ** 2
+        closest_star_idx = np.argmin(dist_sq)
+        if dist_sq[closest_star_idx] < min_dist_sq:
+            min_dist_sq = dist_sq[closest_star_idx]
+            # Reconstruct a dictionary for the single highlighted star
+            highlighted_star = {key: val[closest_star_idx] for key, val in stars.items()}
+            highlighted_object = (highlighted_star, QPointF(x[closest_star_idx], y[closest_star_idx]))
+
+    # Handle planets (scalar)
+    for body in sky_data.planets:
+        nx, ny = altaz_to_normalized_xy(body.alt, body.az, viewer_data.view_center)
         pos = normalized_to_screen_xy(nx, ny, geometry)
         dist_sq = (mouse_pos.x() - pos.x()) ** 2 + (mouse_pos.y() - pos.y()) ** 2
-        if dist_sq < min_dist:
-            min_dist = dist_sq
-            highlighted_object = (obj, pos)
+        if dist_sq < min_dist_sq:
+            min_dist_sq = dist_sq
+            highlighted_object = (body, pos)  # body is already an object/dataclass
+
     return highlighted_object
 
 
@@ -129,33 +164,66 @@ def draw_sky_reference_lines(painter: QPainter, geometry: ScreenGeometry, sky_da
 
 
 def draw_stars(painter: QPainter, geometry: ScreenGeometry, sky_data: SkyData, viewer_data: ViewerData, star_base_radius: float):
-    """Draw stars as plus-blended points or soft disks based on magnitude."""
+    """Draw stars using vectorized calculations and batched drawing for small stars."""
+    stars = sky_data.stars
+    if stars["alt"].size == 0:
+        return
 
-    def mag_to_size(vmag: float) -> float:
-        return max(0.1, star_base_radius * 10 ** (-0.2 * vmag)) * geometry.radius / 500
+    # 1. Vectorized calculations for all stars
+    nx, ny = altaz_to_normalized_xy_vectorized(stars["alt"], stars["az"], viewer_data.view_center)
+    x, y = normalized_to_screen_xy_vectorized(nx, ny, geometry)
+    sizes = np.maximum(0.1, star_base_radius * 10 ** (-0.2 * stars["vmag"])) * geometry.radius / 500
+    bv_clamped = np.nan_to_num(stars["bv"], nan=0.45)
+    rgb_colors = bv_to_rgb_vectorized(bv_clamped)
 
-    painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
-    for star in sky_data.stars:
-        if not is_in_fov(star.alt, star.az, viewer_data.view_center):
-            continue
-        pos = normalized_to_screen_xy(*altaz_to_normalized_xy(star.alt, star.az, viewer_data.view_center), geometry)
-        color = bv_to_qcolor(star.bv)
-        siz = mag_to_size(star.vmag)
+    # 2. Split stars into small and large
+    large_star_threshold = 4.0
+    small_star_mask = sizes < large_star_threshold
+    large_star_mask = ~small_star_mask
 
-        if siz < 4.0:
-            alpha_value = min(1.0, max(0.08, siz / 4.0))
-            color.setAlphaF(alpha_value)
-            painter.fillRect(QRectF(pos.x() - 1, pos.y() - 1, 2, 2), color)
-        else:
-            r = math.sqrt(siz)
-            gradient = QRadialGradient(pos, r)
+    painter.setPen(Qt.PenStyle.NoPen)
+
+    # 3. Draw large stars individually for high quality
+    if np.any(large_star_mask):
+        large_x, large_y, large_sizes, large_rgb = (
+            x[large_star_mask],
+            y[large_star_mask],
+            sizes[large_star_mask],
+            rgb_colors[large_star_mask],
+        )
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
+        for i in range(len(large_x)):
+            pos = QPointF(large_x[i], large_y[i])
+            color = QColor(int(large_rgb[i][0]), int(large_rgb[i][1]), int(large_rgb[i][2]))
+            radius = math.sqrt(large_sizes[i])
+
+            gradient = QRadialGradient(pos, radius)
             gradient.setColorAt(0, color)
             color_transparent = QColor(color)
             color_transparent.setAlpha(0)
             gradient.setColorAt(1, color_transparent)
             painter.setBrush(gradient)
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.drawEllipse(pos, r, r)
+            painter.drawEllipse(pos, radius, radius)
+
+    # 4. Draw small stars in batches
+    if np.any(small_star_mask):
+        small_x, small_y, small_sizes, small_rgb = (
+            x[small_star_mask],
+            y[small_star_mask],
+            sizes[small_star_mask],
+            rgb_colors[small_star_mask],
+        )
+        unique_colors = np.unique(small_rgb, axis=0)
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
+        for r, g, b in unique_colors:
+            color = QColor(int(r), int(g), int(b))
+            painter.setBrush(color)
+            mask = np.all(small_rgb == (r, g, b), axis=1)
+            rects = [
+                QRectF(cx - s / 2, cy - s / 2, s, s)
+                for cx, cy, s in zip(small_x[mask], small_y[mask], small_sizes[mask])
+            ]
+            painter.drawRects(rects)
 
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
 
@@ -277,7 +345,7 @@ def draw_overlay_info(
     painter: QPainter,
     sky_data: SkyData,
     viewer_data: ViewerData,
-    highlighted_object: Optional[Tuple[Union[StarData, PlanetBody], QPointF]],
+    highlighted_object: Optional[Tuple[Dict[str, Union[str, float]], QPointF]],
     text_font: QFont,
 ):
     utc_time = sky_data.time
@@ -303,7 +371,11 @@ def draw_overlay_info(
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawEllipse(pos, 10, 10)
 
-        name = obj.name or ""
+        # Handle both PlanetBody (dataclass) and star (dict)
+        if hasattr(obj, 'name'):
+            name = obj.name or ""
+        else:
+            name = obj.get("name", "")
         painter.setPen(TEXT_COLOR)
         painter.drawText(QPointF(pos.x() + 15, pos.y() - 15), str(name))
 
@@ -317,3 +389,8 @@ def get_screen_geometry(width: int, height: int, alt: float) -> ScreenGeometry:
     dd = alt
     center = int(radius + margin_x), int((height - margin_y * 2) * ud / (ud + dd) + margin_y)
     return ScreenGeometry(center, radius)
+
+
+def normalized_to_screen_xy(nx: float, ny: float, geometry: ScreenGeometry) -> QPointF:
+    """Convert normalized coordinates to screen coordinates."""
+    return QPointF(geometry.center[0] + nx * geometry.radius, geometry.center[1] + ny * geometry.radius)

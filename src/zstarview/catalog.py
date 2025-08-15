@@ -1,10 +1,6 @@
-import csv
 from typing import Dict, List, Optional, Tuple
 
-from astropy.coordinates import SkyCoord
-import astropy.units as u
-
-from .types import StarRecord
+import polars as pl
 
 
 def load_city_coords(filename: str) -> Dict[str, Tuple[float, float, str]]:
@@ -28,30 +24,17 @@ def load_city_coords(filename: str) -> Dict[str, Tuple[float, float, str]]:
     return city_table
 
 
-def load_star_catalog(filename: str, vmag_threshold: Optional[float] = 7.0) -> List[StarRecord]:
-    """Loads the star catalog from a CSV file.
+def load_star_catalog(filename: str, vmag_threshold: Optional[float] = 7.0) -> pl.DataFrame:
+    """Loads the star catalog from a CSV file using Polars.
 
-    Each row contains: name, SkyCoord, Vmag, B-V.
     If vmag_threshold is not None, keeps only rows with Vmag <= threshold.
+    Returns a Polars DataFrame.
     """
-    result: List[StarRecord] = []
-    with open(filename, newline="", encoding="utf-8") as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            try:
-                v_raw = row.get("Vmag")
-                if v_raw is None or v_raw == "":
-                    continue
-                v = float(v_raw)
-                if (vmag_threshold is not None) and (v > vmag_threshold):
-                    continue
-
-                ra_h = float(row["RAh"])  # RAh（時間）想定
-                dec = float(row["Dec"])
-                bv = float(row["B-V"]) if row.get("B-V") else float("nan")
-                name = row.get("Name", "")
-                coord = SkyCoord(ra=(ra_h * 15.0) * u.deg, dec=dec * u.deg, frame="icrs")
-                result.append(StarRecord(name=name, coord=coord, vmag=v, bv=bv))
-            except Exception:
-                continue
-    return result
+    # Use fill_null to handle empty strings for name, etc.
+    df = pl.read_csv(filename, try_parse_dates=False, null_values="").fill_null("")
+    if vmag_threshold is not None:
+        # Vmag can be empty string, cast to float handles this (becomes null)
+        # then filter out nulls and values > threshold
+        vmag_col = pl.col("Vmag").cast(pl.Float64, strict=False)
+        df = df.filter((vmag_col.is_not_null()) & (vmag_col <= vmag_threshold))
+    return df

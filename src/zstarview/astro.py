@@ -9,6 +9,8 @@ import astropy.units as u
 from astropy.coordinates import AltAz, EarthLocation, GeocentricTrueEcliptic, SkyCoord
 from skyfield.api import Loader, Topos
 import skyfield.api
+import numpy as np
+import polars as pl
 
 from .paths import (
     APP_AUTHOR,
@@ -17,7 +19,7 @@ from .paths import (
     FIELD_OF_VIEW_DEG,
     PLANET_SYMBOLS,
 )
-from .types import PlanetBody, StarData, StarRecord
+from .types import PlanetBody
 
 
 # Skyfield ephemeris cache loader (separate from UI)
@@ -63,6 +65,21 @@ def is_in_fov(alt: float, az: float, view_center: Tuple[float, float]) -> bool:
     return math.degrees(theta) <= FIELD_OF_VIEW_DEG / 2
 
 
+def is_in_fov_vectorized(alt: np.ndarray, az: np.ndarray, view_center: Tuple[float, float]) -> np.ndarray:
+    """Vectorized check if targets at (alt, az) are within the field of view."""
+    center_alt, center_az = view_center
+    alt1, az1 = np.radians(center_alt), np.radians(center_az)
+    alt2, az2 = np.radians(alt), np.radians(az)
+
+    cos_theta = np.sin(alt1) * np.sin(alt2) + np.cos(alt1) * np.cos(alt2) * np.cos(az2 - az1)
+
+    # Clip to avoid domain errors with arccos
+    cos_theta = np.clip(cos_theta, -1.0, 1.0)
+    theta = np.arccos(cos_theta)
+
+    return np.degrees(theta) <= FIELD_OF_VIEW_DEG / 2
+
+
 def load_star_catalog(filename: str) -> List[Dict[str, Any]]:
     # Re-exported from catalog; avoid import cycles if needed elsewhere
     from .catalog import load_star_catalog as _load
@@ -71,22 +88,44 @@ def load_star_catalog(filename: str) -> List[Dict[str, Any]]:
 
 
 def calculate_visible_stars(
-    star_catalog: List[StarRecord],
+    star_df: pl.DataFrame,
     lat: float,
     lon: float,
-    time_obj,
+    time_obj: astropy.time.Time,
     view_center: Tuple[float, float],
-) -> Tuple[List[StarData], EarthLocation]:
+) -> Tuple[Dict[str, np.ndarray], EarthLocation]:
     """Compute visible stars and return them with the observer location."""
     location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg)
     altaz_frame = AltAz(obstime=time_obj, location=location)
-    visible_stars: List[StarData] = []
-    for i, star in enumerate(star_catalog):
-        altaz = star.coord.transform_to(altaz_frame)
-        if altaz.alt.deg > -ANGLE_BELOW_HORIZON and is_in_fov(altaz.alt.deg, altaz.az.deg, view_center):
-            visible_stars.append(StarData(name=star.name, alt=altaz.alt.deg, az=altaz.az.deg, vmag=star.vmag, bv=star.bv))
-        if (i + 1) % 500 == 0:
-            _time.sleep(0)
+
+    # Get data as numpy arrays, ensure numeric types
+    ra_h = star_df["RAh"].cast(pl.Float64, strict=False).to_numpy()
+    dec = star_df["Dec"].cast(pl.Float64, strict=False).to_numpy()
+    vmag = star_df["Vmag"].cast(pl.Float64, strict=False).to_numpy()
+    # B-V can be NaN if empty
+    bv = star_df["B-V"].cast(pl.Float64, strict=False).fill_null(np.nan).to_numpy()
+    name = star_df["Name"].to_numpy()
+
+    # Create a single SkyCoord object for all stars
+    coords = SkyCoord(ra=(ra_h * 15.0) * u.deg, dec=dec * u.deg, frame="icrs")
+
+    # Transform all coordinates at once
+    altaz_coords = coords.transform_to(altaz_frame)
+    alt = altaz_coords.alt.deg
+    az = altaz_coords.az.deg
+
+    # Vectorized visibility check
+    in_view_mask = (alt > -ANGLE_BELOW_HORIZON) & is_in_fov_vectorized(alt, az, view_center)
+
+    # Filter the results using the boolean mask
+    visible_stars = {
+        "name": name[in_view_mask],
+        "alt": alt[in_view_mask],
+        "az": az[in_view_mask],
+        "vmag": vmag[in_view_mask],
+        "bv": bv[in_view_mask],
+    }
+
     return (visible_stars, location)
 
 
