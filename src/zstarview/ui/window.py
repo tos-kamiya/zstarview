@@ -94,6 +94,7 @@ class SkyWindow(QMainWindow):
         self.mouse_pos: Optional[QPoint] = None
         self._drag_active: bool = False
         self._drag_pos: QPoint = QPoint(0, 0)
+        self._is_calculation_running: bool = False
 
         self.data_updated.connect(self.on_data_updated)
         self.update_timer = QTimer(self)
@@ -240,6 +241,7 @@ class SkyWindow(QMainWindow):
         if not self.update_timer.isActive():
             self.update_timer.start(5 * 60 * 1000)
             self.initial_data_loaded.emit()
+        self._is_calculation_running = False
 
     def update_sky_data_in_background(self):
         try:
@@ -266,7 +268,11 @@ class SkyWindow(QMainWindow):
 
             traceback.print_exc()
 
-    def start_background_update(self, is_initial_load: bool = False):
+    def start_background_update(self, is_initial_load: bool = False) -> bool:
+        if self._is_calculation_running:
+            return False
+        self._is_calculation_running = True
+
         if is_initial_load:
             print("Calculating initial sky data...")
         else:
@@ -274,6 +280,7 @@ class SkyWindow(QMainWindow):
         thread = threading.Thread(target=self.update_sky_data_in_background)
         thread.daemon = True
         thread.start()
+        return True
 
     def keyPressEvent(self, event: QKeyEvent):
         if event and event.key() == Qt.Key.Key_F11:
