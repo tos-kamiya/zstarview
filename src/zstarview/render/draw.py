@@ -163,68 +163,109 @@ def draw_sky_reference_lines(painter: QPainter, geometry: ScreenGeometry, sky_da
                 painter.drawPolyline(poly)
 
 
-def draw_stars(painter: QPainter, geometry: ScreenGeometry, sky_data: SkyData, viewer_data: ViewerData, star_base_radius: float):
-    """Draw stars using vectorized calculations and batched drawing for small stars."""
+def draw_stars(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    sky_data: SkyData,
+    viewer_data: ViewerData,
+    star_base_radius: float,
+):
+    """Draw stars using vectorized calculations.
+    Brightness is represented primarily by area (from visual magnitude),
+    with additive blending. Small stars are batched as rectangles; large
+    stars are drawn as soft disks with a radial gradient but with the
+    same area to keep the magnitude→area mapping consistent.
+    """
     stars = sky_data.stars
-    if stars["alt"].size == 0:
-        return
 
-    # 1. Vectorized calculations for all stars
-    nx, ny = altaz_to_normalized_xy_vectorized(stars["alt"], stars["az"], viewer_data.view_center)
+    # 1) mag → relative luminance → pixel area
+    #    Base: L_raw = 10^(-0.4 * (vmag - v_ref))
+    #    Then apply a tone curve (beta < 1) to tame very bright stars.
+    nx, ny = altaz_to_normalized_xy_vectorized(
+        stars["alt"], stars["az"], viewer_data.view_center
+    )
     x, y = normalized_to_screen_xy_vectorized(nx, ny, geometry)
-    sizes = np.maximum(0.1, star_base_radius * 10 ** (-0.2 * stars["vmag"])) * geometry.radius / 500
-    bv_clamped = np.nan_to_num(stars["bv"], nan=0.45)
-    rgb_colors = bv_to_rgb_vectorized(bv_clamped)
 
-    # 2. Split stars into small and large
-    large_star_threshold = 4.0
-    small_star_mask = sizes < large_star_threshold
+    vmag = stars["vmag"]
+    bv_clamped = np.nan_to_num(stars["bv"], nan=0.45)
+    rgb_colors = bv_to_rgb_vectorized(bv_clamped)  # assumes 0–255
+
+    v_ref = 1.0  # reference mag
+    L_raw = 10.0 ** (-0.4 * (vmag - v_ref))
+    beta = 0.8  # 0.7–1.0: lower → less blow-up for very bright stars
+    L = np.power(L_raw, beta)
+
+    # Area scale: keep visuals relatively stable vs. widget radius.
+    # base_linear_px is a "baseline linear size (px)" which we square to get area.
+    base_linear_px = (geometry.radius / 500.0) * float(star_base_radius)
+    base_area_px = max(0.5, base_linear_px * base_linear_px)  # avoid < 1 px²
+    area_px = base_area_px * L
+
+    # Clamp area to stabilize density and avoid extremes.
+    min_area_px = 1.2                           # ~1–2 px² improves visibility
+    max_area_px = (geometry.radius * 0.03) ** 2 # size-dependent upper bound
+    area_px = np.clip(area_px, min_area_px, max_area_px)
+
+    # 2) Split by *linear* size while preserving the area semantics:
+    #    small stars: square with side s = sqrt(area)
+    #    large stars: soft disk with radius r = sqrt(area/pi)
+    small_linear_px = np.sqrt(area_px)               # square side length
+    large_radius_px = np.sqrt(area_px / np.pi)       # disk radius
+
+    # Threshold is on *linear* size.
+    large_star_threshold_px = 4.0   # ≥ ~4 px → draw as soft disk
+    small_star_mask = small_linear_px < large_star_threshold_px
     large_star_mask = ~small_star_mask
 
     painter.setPen(Qt.PenStyle.NoPen)
 
-    # 3. Draw large stars individually for high quality
+    # 3) Large stars: soft disk with the same area, via radial gradient.
     if np.any(large_star_mask):
-        large_x, large_y, large_sizes, large_rgb = (
-            x[large_star_mask],
-            y[large_star_mask],
-            sizes[large_star_mask],
-            rgb_colors[large_star_mask],
-        )
+        lx = x[large_star_mask]; ly = y[large_star_mask]
+        lr = large_radius_px[large_star_mask]
+        lrgb = rgb_colors[large_star_mask]
+
         painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
-        for i in range(len(large_x)):
-            pos = QPointF(large_x[i], large_y[i])
-            color = QColor(int(large_rgb[i][0]), int(large_rgb[i][1]), int(large_rgb[i][2]))
-            radius = math.sqrt(large_sizes[i])
+        # Peak alpha is constant (total added light is governed by area).
+        alpha_peak = 220  # tune in ~190–255
+        for i in range(len(lx)):
+            pos = QPointF(float(lx[i]), float(ly[i]))
+            r = float(lr[i])
+            base = QColor(int(lrgb[i][0]), int(lrgb[i][1]), int(lrgb[i][2]))
+            c0 = QColor(base); c0.setAlpha(alpha_peak)
+            c1 = QColor(base); c1.setAlpha(0)
+            g = QRadialGradient(pos, r)
+            g.setColorAt(0.0, c0)
+            g.setColorAt(1.0, c1)
+            painter.setBrush(g)
+            painter.drawEllipse(pos, r, r)
 
-            gradient = QRadialGradient(pos, radius)
-            gradient.setColorAt(0, color)
-            color_transparent = QColor(color)
-            color_transparent.setAlpha(128)
-            gradient.setColorAt(1, color_transparent)
-            painter.setBrush(gradient)
-            painter.drawEllipse(pos, radius, radius)
-
-    # 4. Draw small stars in batches
+    # 4) Small stars: fixed alpha + area (squares), drawn in batches.
     if np.any(small_star_mask):
-        small_x, small_y, small_sizes, small_rgb = (
-            x[small_star_mask],
-            y[small_star_mask],
-            sizes[small_star_mask],
-            rgb_colors[small_star_mask],
+        sx = x[small_star_mask]; sy = y[small_star_mask]
+        sL = small_linear_px[small_star_mask]
+        srgb = rgb_colors[small_star_mask]
+
+        # Fixed alpha so that area is the primary carrier of brightness.
+        alpha_small = 180  # ~150–220
+        # Batch by RGBA (alpha fixed; RGB-only batching also works).
+        rgba = np.column_stack(
+            [srgb, np.full(len(srgb), alpha_small, dtype=np.uint8)]
         )
-        unique_colors = np.unique(small_rgb, axis=0)
+        unique_rgba = np.unique(rgba, axis=0)
+
         painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
-        for r, g, b in unique_colors:
-            color = QColor(int(r), int(g), int(b))
+        for r, g, b, a in unique_rgba:
+            mask = np.all(rgba == (r, g, b, a), axis=1)
+            color = QColor(int(r), int(g), int(b), int(a))
             painter.setBrush(color)
-            mask = np.all(small_rgb == (r, g, b), axis=1)
             rects = [
-                QRectF(cx - s / 2, cy - s / 2, s, s)
-                for cx, cy, s in zip(small_x[mask], small_y[mask], small_sizes[mask])
+                QRectF(float(cx) - s / 2.0, float(cy) - s / 2.0, float(s), float(s))
+                for cx, cy, s in zip(sx[mask], sy[mask], sL[mask])
             ]
             painter.drawRects(rects)
 
+    # Reset composition mode.
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
 
 

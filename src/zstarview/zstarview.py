@@ -60,14 +60,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("city", type=str, nargs="?", default="", help="City name (default: same as the last run)")
     parser.add_argument("-H", "--hours", type=float, default=0, help="Number of hours to add to current time (default: 0)")
     parser.add_argument("-D", "--days", type=float, default=0, help="Number of days to add to current time (default: 0)")
-    parser.add_argument("-V", "--vmag-limit", type=float, default=7.0, help="Limit stars to Vmag <= this value (default: 7.0). Use a larger number to show more stars.")
+    parser.add_argument("-V", "--vmag-limit", type=float, default=6.0, help="Limit stars to Vmag <= this value (default: 6.0). Use a larger number to show more stars.")
     parser.add_argument(
         "-m",
         "--enlarge-moon",
         action="store_true",
         help="Show the moon in 3x size.",
     )
-    parser.add_argument("-s", "--star-base-radius", type=float, default=15.0, help="Base size of stars (default: 15.0)")
+    parser.add_argument("-s", "--star-base-radius", type=float, default=10.0, help="Base size of stars (default: 10.0)")
     parser.add_argument(
         "-Z",
         "--view-center-az",
