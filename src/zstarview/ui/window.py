@@ -52,6 +52,9 @@ class SkyWindow(QMainWindow):
         view_center: Tuple[float, float],
     ):
         super().__init__()
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setFocus(Qt.FocusReason.ActiveWindowFocusReason)
+
         self.setWindowIcon(QIcon(APP_ICON_FILE))
 
         lat, lon, tz_name = city_data
@@ -61,6 +64,8 @@ class SkyWindow(QMainWindow):
             city_name=city_name,
             view_center=view_center,
         )
+
+        self._rotation_step = 5.0  # degrees
 
         self.star_catalog = star_catalog
         self.delta_t = delta_t
@@ -113,8 +118,16 @@ class SkyWindow(QMainWindow):
         self.menu_button.clicked.connect(self.show_menu)
 
         self.menu = QMenu(self)
+        rotate_left = self.menu.addAction(f"Rotate Left (-{self._rotation_step:.0f}°)")
+        rotate_left.triggered.connect(lambda: self._rotate_view(d_az=-self._rotation_step))
+        rotate_right = self.menu.addAction(f"Rotate Right (+{self._rotation_step:.0f}°)")
+        rotate_right.triggered.connect(lambda: self._rotate_view(d_az=+self._rotation_step))
+
+        self.menu.addSeparator()
         fullscreen_action = self.menu.addAction("Fullscreen (F11)")
         fullscreen_action.triggered.connect(self.toggle_fullscreen)
+
+        self.menu.addSeparator()
         exit_action = self.menu.addAction("Exit (Q)")
         exit_action.triggered.connect(QApplication.quit)
 
@@ -243,11 +256,18 @@ class SkyWindow(QMainWindow):
             self.initial_data_loaded.emit()
         self._is_calculation_running = False
 
+    def request_sky_update(self):
+        """Request a sky update, but only if no update is currently running."""
+        f = self.start_background_update()
+        if not f:
+            print("Warning: sky-data updating canceled.")
+
     def update_sky_data_in_background(self):
         try:
             now = datetime.now(timezone.utc) + self.delta_t
             time_obj = astropy.time.Time(now)
             lat, lon = self.viewer_data.location
+            # Pass the latest view_center to the calculation function
             stars, loc = calculate_visible_stars(self.star_catalog, lat, lon, time_obj, self.viewer_data.view_center)
             planets = calculate_visible_planets(lat, lon, time_obj, self.viewer_data.view_center)
             celestial_equator_points = calculate_celestial_equator_points(loc, time_obj, self.viewer_data.view_center)
@@ -282,13 +302,35 @@ class SkyWindow(QMainWindow):
         thread.start()
         return True
 
+    def _rotate_view(self, d_alt: float = 0.0, d_az: float = 0.0):
+        alt, az = self.viewer_data.view_center
+        alt = max(0.0, min(90.0, alt + d_alt))
+        az = (az + d_az) % 360.0
+        self.viewer_data.view_center = (alt, az)
+        self.request_sky_update()
+
     def keyPressEvent(self, event: QKeyEvent):
-        if event and event.key() == Qt.Key.Key_F11:
+        if not event:
+            super().keyPressEvent(event)
+            return
+
+        key = event.key()
+
+        # View control
+        if key == Qt.Key.Key_Left:
+            self._rotate_view(d_az=-self._rotation_step)
+            event.accept()
+        elif key == Qt.Key.Key_Right:
+            self._rotate_view(d_az=self._rotation_step)
+            event.accept()
+
+        # Window control
+        if key == Qt.Key.Key_F11:
             self.toggle_fullscreen()
-        elif event and event.key() == Qt.Key.Key_Escape:
+        elif key == Qt.Key.Key_Escape:
             if self.isFullScreen():
                 self.showNormal()
-        elif event and event.key() == Qt.Key.Key_Q:
+        elif key == Qt.Key.Key_Q:
             QApplication.quit()
         else:
             super().keyPressEvent(event)

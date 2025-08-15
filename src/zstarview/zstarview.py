@@ -129,6 +129,7 @@ def main():
 
     delta_t = timedelta(days=delta_days, hours=delta_hours)
     view_center = (args.view_center_alt, args.view_center_az)
+    view_center = (min(90.0, max(0.0, view_center[0])), view_center[1] % 360)
 
     # Show a splash screen while loading initial data
     pixmap = QPixmap(400, 200)

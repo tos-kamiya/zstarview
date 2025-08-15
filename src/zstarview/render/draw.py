@@ -348,9 +348,9 @@ def draw_overlay_info(
     highlighted_object: Optional[Tuple[Dict[str, Union[str, float]], QPointF]],
     text_font: QFont,
 ):
+    # ---- Local time ----
     utc_time = sky_data.time
     tz_name = viewer_data.timezone_name
-    time_text = ""
     try:
         local_tz = ZoneInfo(tz_name)
         local_dt = utc_time.to_datetime(timezone=local_tz)
@@ -362,20 +362,37 @@ def draw_overlay_info(
     painter.setFont(text_font)
     painter.drawText(QPoint(10, 20), time_text)
 
+    # ---- City name ----
     city_name_text = viewer_data.city_name.title()
     painter.drawText(QPoint(10, 40), city_name_text)
 
+    # ---- View direction（Alt/Az）----
+    alt_deg, az_deg = viewer_data.view_center
+
+    def az_to_compass(az: float) -> str:
+        names = [
+            "N", "NNE", "NE", "ENE",
+            "E", "ESE", "SE", "SSE",
+            "S", "SSW", "SW", "WSW",
+            "W", "WNW", "NW", "NNW",
+        ]
+        idx = int(((az % 360) + 11.25) // 22.5) % 16
+        return names[idx]
+
+    compass = az_to_compass(az_deg)
+    deg = "\N{DEGREE SIGN}"
+    view_text = f"View: Alt {alt_deg:.0f}{deg}  Az {az_deg:.0f}{deg} ({compass})"
+    painter.drawText(QPoint(10, 60), view_text)
+
+    # ---- Star/planet highlight ----
     if highlighted_object:
         obj, pos = highlighted_object
         painter.setPen(QPen(TEXT_COLOR, 2))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawEllipse(pos, 10, 10)
 
-        # Handle both PlanetBody (dataclass) and star (dict)
-        if hasattr(obj, 'name'):
-            name = obj.name or ""
-        else:
-            name = obj.get("name", "")
+        # PlanetBody(dataclass) or star(dict)
+        name = getattr(obj, "name", "") if hasattr(obj, "name") else obj.get("name", "")
         painter.setPen(TEXT_COLOR)
         painter.drawText(QPointF(pos.x() + 15, pos.y() - 15), str(name))
 
