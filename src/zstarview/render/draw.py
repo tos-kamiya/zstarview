@@ -59,7 +59,9 @@ def altaz_to_normalized_xy_vectorized(
     return (nx, ny)
 
 
-def normalized_to_screen_xy_vectorized(nx: np.ndarray, ny: np.ndarray, geometry: ScreenGeometry) -> Tuple[np.ndarray, np.ndarray]:
+def normalized_to_screen_xy_vectorized(
+    nx: np.ndarray, ny: np.ndarray, geometry: ScreenGeometry
+) -> Tuple[np.ndarray, np.ndarray]:
     """Vectorized conversion of normalized coordinates to screen coordinates."""
     return (geometry.center[0] + nx * geometry.radius, geometry.center[1] + ny * geometry.radius)
 
@@ -181,9 +183,7 @@ def draw_stars(
     # 1) mag → relative luminance → pixel area
     #    Base: L_raw = 10^(-0.4 * (vmag - v_ref))
     #    Then apply a tone curve (beta < 1) to tame very bright stars.
-    nx, ny = altaz_to_normalized_xy_vectorized(
-        stars["alt"], stars["az"], viewer_data.view_center
-    )
+    nx, ny = altaz_to_normalized_xy_vectorized(stars["alt"], stars["az"], viewer_data.view_center)
     x, y = normalized_to_screen_xy_vectorized(nx, ny, geometry)
 
     vmag = stars["vmag"]
@@ -202,18 +202,18 @@ def draw_stars(
     area_px = base_area_px * L
 
     # Clamp area to stabilize density and avoid extremes.
-    min_area_px = 1.2                           # ~1–2 px² improves visibility
-    max_area_px = (geometry.radius * 0.03) ** 2 # size-dependent upper bound
+    min_area_px = 1.2  # ~1–2 px² improves visibility
+    max_area_px = (geometry.radius * 0.03) ** 2  # size-dependent upper bound
     area_px = np.clip(area_px, min_area_px, max_area_px)
 
     # 2) Split by *linear* size while preserving the area semantics:
     #    small stars: square with side s = sqrt(area)
     #    large stars: soft disk with radius r = sqrt(area/pi)
-    small_linear_px = np.sqrt(area_px)               # square side length
-    large_radius_px = np.sqrt(area_px / np.pi)       # disk radius
+    small_linear_px = np.sqrt(area_px)  # square side length
+    large_radius_px = np.sqrt(area_px / np.pi)  # disk radius
 
     # Threshold is on *linear* size.
-    large_star_threshold_px = 4.0   # ≥ ~4 px → draw as soft disk
+    large_star_threshold_px = 4.0  # ≥ ~4 px → draw as soft disk
     small_star_mask = small_linear_px < large_star_threshold_px
     large_star_mask = ~small_star_mask
 
@@ -221,7 +221,8 @@ def draw_stars(
 
     # 3) Large stars: soft disk with the same area, via radial gradient.
     if np.any(large_star_mask):
-        lx = x[large_star_mask]; ly = y[large_star_mask]
+        lx = x[large_star_mask]
+        ly = y[large_star_mask]
         lr = large_radius_px[large_star_mask]
         lrgb = rgb_colors[large_star_mask]
 
@@ -232,8 +233,10 @@ def draw_stars(
             pos = QPointF(float(lx[i]), float(ly[i]))
             r = float(lr[i])
             base = QColor(int(lrgb[i][0]), int(lrgb[i][1]), int(lrgb[i][2]))
-            c0 = QColor(base); c0.setAlpha(alpha_peak)
-            c1 = QColor(base); c1.setAlpha(0)
+            c0 = QColor(base)
+            c0.setAlpha(alpha_peak)
+            c1 = QColor(base)
+            c1.setAlpha(0)
             g = QRadialGradient(pos, r)
             g.setColorAt(0.0, c0)
             g.setColorAt(1.0, c1)
@@ -242,16 +245,15 @@ def draw_stars(
 
     # 4) Small stars: fixed alpha + area (squares), drawn in batches.
     if np.any(small_star_mask):
-        sx = x[small_star_mask]; sy = y[small_star_mask]
+        sx = x[small_star_mask]
+        sy = y[small_star_mask]
         sL = small_linear_px[small_star_mask]
         srgb = rgb_colors[small_star_mask]
 
         # Fixed alpha so that area is the primary carrier of brightness.
         alpha_small = 180  # ~150–220
         # Batch by RGBA (alpha fixed; RGB-only batching also works).
-        rgba = np.column_stack(
-            [srgb, np.full(len(srgb), alpha_small, dtype=np.uint8)]
-        )
+        rgba = np.column_stack([srgb, np.full(len(srgb), alpha_small, dtype=np.uint8)])
         unique_rgba = np.unique(rgba, axis=0)
 
         painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
@@ -370,7 +372,9 @@ def draw_planets(
             painter.drawText(pos, body.symbol)
 
 
-def draw_direction_labels(painter: QPainter, geometry: ScreenGeometry, view_center: Tuple[float, float], text_font: QFont):
+def draw_direction_labels(
+    painter: QPainter, geometry: ScreenGeometry, view_center: Tuple[float, float], text_font: QFont
+):
     painter.setPen(TEXT_COLOR)
     painter.setFont(text_font)
     alt = 0
@@ -412,10 +416,22 @@ def draw_overlay_info(
 
     def az_to_compass(az: float) -> str:
         names = [
-            "N", "NNE", "NE", "ENE",
-            "E", "ESE", "SE", "SSE",
-            "S", "SSW", "SW", "WSW",
-            "W", "WNW", "NW", "NNW",
+            "N",
+            "NNE",
+            "NE",
+            "ENE",
+            "E",
+            "ESE",
+            "SE",
+            "SSE",
+            "S",
+            "SSW",
+            "SW",
+            "WSW",
+            "W",
+            "WNW",
+            "NW",
+            "NNW",
         ]
         idx = int(((az % 360) + 11.25) // 22.5) % 16
         return names[idx]

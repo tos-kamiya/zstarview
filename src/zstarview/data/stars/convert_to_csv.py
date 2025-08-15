@@ -27,7 +27,10 @@ def main():
     ap.add_argument("input", default="hip_main.dat", nargs="?", help="Path to hip_main.dat (I/239)")  # hip_main.dat
     ap.add_argument("-o", "--output", default="stars_hip.csv")
     args = ap.parse_args()
-    with open(args.input, "r", encoding="ascii", errors="ignore") as fin, open(args.output, "w", newline="", encoding="utf-8") as fout:
+    with (
+        open(args.input, "r", encoding="ascii", errors="ignore") as fin,
+        open(args.output, "w", newline="", encoding="utf-8") as fout,
+    ):
         w = csv.writer(fout)
         w.writerow(["HIP", "HR", "Name", "RAh", "Dec", "Vmag", "B-V"])
         n = 0
@@ -35,7 +38,17 @@ def main():
             rec = parse(L)
             if not rec:
                 continue
-            w.writerow([rec["HIP"], "", "", f'{rec["RA"]:.6f}', f'{rec["Dec"]:.6f}', f'{rec["Vmag"]:.2f}' if rec["Vmag"] is not None else "", f'{rec["BmV"]:.2f}' if rec["BmV"] is not None else ""])
+            w.writerow(
+                [
+                    rec["HIP"],
+                    "",
+                    "",
+                    f'{rec["RA"]:.6f}',
+                    f'{rec["Dec"]:.6f}',
+                    f'{rec["Vmag"]:.2f}' if rec["Vmag"] is not None else "",
+                    f'{rec["BmV"]:.2f}' if rec["BmV"] is not None else "",
+                ]
+            )
             n += 1
     print("wrote", n, "rows to", args.output)
 

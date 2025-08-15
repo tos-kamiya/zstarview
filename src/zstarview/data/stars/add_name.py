@@ -34,13 +34,20 @@ def load_iau(file):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--stars", default="stars_hip.csv", help="stars_hip.csv from Hipparcos")
-    ap.add_argument("--iau", default="IAU-Catalog of Star Names (always up to date).csv", help="IAU-Catalog of Star Names CSV from exopla.net")  # https://exopla.net/star-names/modern-iau-star-names/
+    ap.add_argument(
+        "--iau",
+        default="IAU-Catalog of Star Names (always up to date).csv",
+        help="IAU-Catalog of Star Names CSV from exopla.net",
+    )  # https://exopla.net/star-names/modern-iau-star-names/
     ap.add_argument("-o", "--output", default="stars.csv")
     args = ap.parse_args()
 
     hip_map, bayer_map = load_iau(args.iau)
 
-    with open(args.stars, newline="", encoding="utf-8") as fin, open(args.output, "w", newline="", encoding="utf-8") as fout:
+    with (
+        open(args.stars, newline="", encoding="utf-8") as fin,
+        open(args.output, "w", newline="", encoding="utf-8") as fout,
+    ):
         r = csv.DictReader(fin)
         fieldnames = r.fieldnames
         w = csv.DictWriter(fout, fieldnames=fieldnames)

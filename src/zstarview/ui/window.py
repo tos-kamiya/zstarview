@@ -111,7 +111,9 @@ class SkyWindow(QMainWindow):
         self.menu_button = QPushButton("☰", self)
         self.menu_button.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
         self.menu_button.setStyleSheet(
-            "QPushButton { border: none; font-size: 18px; background-color: transparent; color: " + GUI_MENU_TEXT_COLOR + "; }"
+            "QPushButton { border: none; font-size: 18px; background-color: transparent; color: "
+            + GUI_MENU_TEXT_COLOR
+            + "; }"
             "QPushButton:hover { color: white; }"
             "QPushButton:menu-indicator { image: none; }"
         )
@@ -246,7 +248,9 @@ class SkyWindow(QMainWindow):
 
         highlighted_object = None
         if self.mouse_pos is not None:
-            highlighted_object = render_draw.find_highlighted_object(self.sky_data, self.viewer_data, self.mouse_pos, geometry)
+            highlighted_object = render_draw.find_highlighted_object(
+                self.sky_data, self.viewer_data, self.mouse_pos, geometry
+            )
         render_draw.draw_overlay_info(painter, self.sky_data, self.viewer_data, highlighted_object, self.text_font)
 
     def on_data_updated(self, sky_data: SkyData):

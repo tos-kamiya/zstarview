@@ -171,7 +171,9 @@ def calculate_visible_planets(
     return visible_bodies
 
 
-def calculate_horizon_points(location: EarthLocation, time: astropy.time.Time, view_center: Tuple[float, float]) -> List[Tuple[float, float]]:
+def calculate_horizon_points(
+    location: EarthLocation, time: astropy.time.Time, view_center: Tuple[float, float]
+) -> List[Tuple[float, float]]:
     """Generate points along the horizon for drawing."""
     points: List[Tuple[float, float]] = []
     alt = 0.0
@@ -183,7 +185,9 @@ def calculate_horizon_points(location: EarthLocation, time: astropy.time.Time, v
     return points
 
 
-def calculate_celestial_equator_points(location: EarthLocation, time: astropy.time.Time, view_center: Tuple[float, float]) -> List[Tuple[float, float]]:
+def calculate_celestial_equator_points(
+    location: EarthLocation, time: astropy.time.Time, view_center: Tuple[float, float]
+) -> List[Tuple[float, float]]:
     """Generate points along the celestial equator for drawing."""
     a = 5
     points: List[Tuple[float, float]] = []
@@ -196,7 +200,9 @@ def calculate_celestial_equator_points(location: EarthLocation, time: astropy.ti
     return points
 
 
-def calculate_ecliptic_points(location: EarthLocation, time: astropy.time.Time, view_center: Tuple[float, float]) -> List[Tuple[float, float]]:
+def calculate_ecliptic_points(
+    location: EarthLocation, time: astropy.time.Time, view_center: Tuple[float, float]
+) -> List[Tuple[float, float]]:
     """Generate points along the ecliptic for drawing."""
     points: List[Tuple[float, float]] = []
     for lon_deg in range(0, 360 + 5, 5):
