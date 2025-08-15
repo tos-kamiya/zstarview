@@ -93,16 +93,6 @@ zstarview-make-desktop-file --write
 > **Note:** This launcher integration is only intended for GNOME-based environments.
 > It is not required on other desktop environments, and may not work as intended elsewhere.
 
-## Dependencies
-
-* Python 3.10+
-* [`appdirs`](https://pypi.org/project/appdirs/)
-* [`PySide6`](https://pypi.org/project/PySide6/)
-* [`astropy`](https://pypi.org/project/astropy/)
-* [`skyfield`](https://pypi.org/project/skyfield/)
-* [`numpy`](https://pypi.org/project/numpy/)
-* [`Pillow`](https://pypi.org/project/Pillow/)
-
 ## License
 
 This software is provided under the [MIT](LICENSE.txt) License.

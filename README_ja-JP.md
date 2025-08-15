@@ -88,16 +88,6 @@ zstarview-make-desktop-file --write
 > **注:** このランチャー機能は GNOME 系環境専用です。
 > 他のデスクトップ環境では不要、または正しく動作しない場合があります。
 
-## 依存パッケージ
-
-* Python 3.10+
-* [`appdirs`](https://pypi.org/project/appdirs/)
-* [`PySide6`](https://pypi.org/project/PySide6/)
-* [`astropy`](https://pypi.org/project/astropy/)
-* [`skyfield`](https://pypi.org/project/skyfield/)
-* [`numpy`](https://pypi.org/project/numpy/)
-* [`Pillow`](https://pypi.org/project/Pillow/)
-
 ## ライセンス
 
 このソフトウェアは [MIT](LICENSE.txt) の下で提供されています。
