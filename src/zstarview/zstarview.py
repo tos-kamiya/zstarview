@@ -79,7 +79,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Show the moon in 3x size.",
     )
-    parser.add_argument("-s", "--star-base-radius", type=float, default=10.0, help="Base size of stars (default: 10.0)")
+    parser.add_argument("-s", "--star-base-radius", type=float, default=8.0, help="Base size of stars (default: 8.0)")
     parser.add_argument(
         "-Z",
         "--view-center-az",
@@ -179,6 +179,7 @@ def main():
         enlarge_moon=args.enlarge_moon,
         star_base_radius=args.star_base_radius,
         view_center=view_center,
+        vmag_limit=args.vmag_limit,
     )
 
     # When the initial data is loaded, show the main window and close the splash screen

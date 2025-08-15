@@ -202,7 +202,7 @@ def draw_stars(
     area_px = base_area_px * L
 
     # Clamp area to stabilize density and avoid extremes.
-    min_area_px = 1.2  # ~1–2 px² improves visibility
+    min_area_px = 0.5  # ~1–2 px² improves visibility
     max_area_px = (geometry.radius * 0.03) ** 2  # size-dependent upper bound
     area_px = np.clip(area_px, min_area_px, max_area_px)
 
@@ -243,27 +243,37 @@ def draw_stars(
             painter.setBrush(g)
             painter.drawEllipse(pos, r, r)
 
-    # 4) Small stars: fixed alpha + area (squares), drawn in batches.
+    # 4) Small stars: fixed-but-gently-scaled alpha + area (squares), batched.
     if np.any(small_star_mask):
-        sx = x[small_star_mask]
-        sy = y[small_star_mask]
-        sL = small_linear_px[small_star_mask]
+        sx = x[small_star_mask]; sy = y[small_star_mask]
+        sA = area_px[small_star_mask]
+        sL = np.sqrt(sA)  # side length from area
         srgb = rgb_colors[small_star_mask]
 
-        # Fixed alpha so that area is the primary carrier of brightness.
-        alpha_small = 180  # ~150–220
-        # Batch by RGBA (alpha fixed; RGB-only batching also works).
-        rgba = np.column_stack([srgb, np.full(len(srgb), alpha_small, dtype=np.uint8)])
+        # Base alpha kept modest so faint stars don't pop as dots.
+        # Then lift α slightly with area (subtle, gamma<1).
+        alpha_base  = 140                    # try 130–160
+        alpha_gain  = 50                     # how much to lift at the upper end (30–60)
+        alpha_scale = np.power(np.clip(sA / 4.0, 0.0, 1.0), 0.75)  # area vs. 2x2px reference
+        alpha_f     = np.clip(alpha_base + alpha_gain * alpha_scale, 60, 210)
+
+        # Quantize alpha to reduce unique RGBA buckets → faster & less banding
+        # e.g., to ~8–12 steps:
+        step = 12
+        alpha_u8 = (np.round(alpha_f / step) * step).astype(np.uint8)
+
+        # Batch by RGBA
+        rgba = np.column_stack([srgb, alpha_u8])
         unique_rgba = np.unique(rgba, axis=0)
 
         painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
         for r, g, b, a in unique_rgba:
-            mask = np.all(rgba == (r, g, b, a), axis=1)
+            m = np.all(rgba == (r, g, b, a), axis=1)  # mask within small-star subset
             color = QColor(int(r), int(g), int(b), int(a))
             painter.setBrush(color)
             rects = [
-                QRectF(float(cx) - s / 2.0, float(cy) - s / 2.0, float(s), float(s))
-                for cx, cy, s in zip(sx[mask], sy[mask], sL[mask])
+                QRectF(float(cx) - float(s)/2.0, float(cy) - float(s)/2.0, float(s), float(s))
+                for cx, cy, s in zip(sx[m], sy[m], sL[m])
             ]
             painter.drawRects(rects)
 
@@ -390,9 +400,14 @@ def draw_overlay_info(
     painter: QPainter,
     sky_data: SkyData,
     viewer_data: ViewerData,
+    vmag_limit: float,
     highlighted_object: Optional[Tuple[Dict[str, Union[str, float]], QPointF]],
     text_font: QFont,
 ):
+    line_height = 20
+    line_x = 10
+    line_y = 0
+
     # ---- Local time ----
     utc_time = sky_data.time
     tz_name = viewer_data.timezone_name
@@ -405,13 +420,14 @@ def draw_overlay_info(
 
     painter.setPen(QColor(180, 180, 180))
     painter.setFont(text_font)
-    painter.drawText(QPoint(10, 20), time_text)
+    line_y += line_height
+    painter.drawText(QPoint(line_x, line_y), time_text)
 
-    # ---- City name ----
+    # ---- City, view direction（Alt/Az）----
     city_name_text = viewer_data.city_name.title()
-    painter.drawText(QPoint(10, 40), city_name_text)
+    line_y += line_height
+    painter.drawText(QPoint(line_x, line_y), city_name_text)
 
-    # ---- View direction（Alt/Az）----
     alt_deg, az_deg = viewer_data.view_center
 
     def az_to_compass(az: float) -> str:
@@ -438,8 +454,12 @@ def draw_overlay_info(
 
     compass = az_to_compass(az_deg)
     deg = "\N{DEGREE SIGN}"
-    view_text = f"View: Alt {alt_deg:.0f}{deg}  Az {az_deg:.0f}{deg} ({compass})"
-    painter.drawText(QPoint(10, 60), view_text)
+    view_text = f"Alt {alt_deg:.0f}{deg}  Az {az_deg:.0f}{deg} ({compass})"
+    line_y += line_height
+    painter.drawText(QPoint(line_x, line_y), view_text)
+
+    line_y += line_height
+    painter.drawText(QPoint(line_x, line_y), f"Vmag limit {vmag_limit:.1f}")
 
     # ---- Star/planet highlight ----
     if highlighted_object:

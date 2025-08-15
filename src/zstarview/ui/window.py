@@ -50,6 +50,7 @@ class SkyWindow(QMainWindow):
         enlarge_moon: bool,
         star_base_radius: float,
         view_center: Tuple[float, float],
+        vmag_limit: float,
     ):
         super().__init__()
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
@@ -71,6 +72,7 @@ class SkyWindow(QMainWindow):
         self.delta_t = delta_t
         self.enlarge_moon = enlarge_moon
         self.star_base_radius = star_base_radius
+        self.vmag_limit = vmag_limit
 
         self.setAttribute(Qt.WA_TranslucentBackground)
         # Preserve existing flags and add Frameless; improves drag behavior on Qt6
@@ -251,7 +253,7 @@ class SkyWindow(QMainWindow):
             highlighted_object = render_draw.find_highlighted_object(
                 self.sky_data, self.viewer_data, self.mouse_pos, geometry
             )
-        render_draw.draw_overlay_info(painter, self.sky_data, self.viewer_data, highlighted_object, self.text_font)
+        render_draw.draw_overlay_info(painter, self.sky_data, self.viewer_data, self.vmag_limit, highlighted_object, self.text_font)
 
     def on_data_updated(self, sky_data: SkyData):
         self.set_sky_data(sky_data)
