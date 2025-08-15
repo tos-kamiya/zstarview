@@ -67,7 +67,7 @@ Note that higher values will increase rendering time.
 
 ### Key Operations
 
-* **← / →**: Rotate view azimuth by ±5° (configurable)
+* **← / →**: Rotate view azimuth by ±5°
 * **F11**: Toggle fullscreen display
 * **ESC**: Exit fullscreen
 * **Q**: Quit
