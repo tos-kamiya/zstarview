@@ -200,7 +200,7 @@ def draw_stars(painter: QPainter, geometry: ScreenGeometry, sky_data: SkyData, v
             gradient = QRadialGradient(pos, radius)
             gradient.setColorAt(0, color)
             color_transparent = QColor(color)
-            color_transparent.setAlpha(0)
+            color_transparent.setAlpha(128)
             gradient.setColorAt(1, color_transparent)
             painter.setBrush(gradient)
             painter.drawEllipse(pos, radius, radius)
