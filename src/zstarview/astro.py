@@ -1,7 +1,6 @@
 import math
-import time as _time
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from appdirs import user_cache_dir
 import astropy
@@ -215,5 +214,63 @@ def calculate_ecliptic_points(
             points.append((nx, ny))
     return points
 
+def calculate_moon_render_data(
+    sun_altaz: Optional[Tuple[float, float]],
+    moon_altaz: Optional[Tuple[float, float]],
+    view_center: Tuple[float, float],
+) -> Tuple[np.ndarray, float]:
+    """
+    Calculates all necessary data for rendering the moon.
 
+    Returns a tuple of:
+    - sun_dir_in_moon_frame: 3D vector of the sun's direction in the moon's local frame.
+    - screen_rotation_deg: The angle to rotate the moon image on the screen.
+    """
 
+    # Helper to convert Alt/Az to a 3D vector in the observer's reference frame.
+    # Y-up, X-East, Z-North (Right-handed system)
+    def altaz_to_cartesian(alt: float, az: float) -> np.ndarray:
+        alt_rad = math.radians(alt)
+        az_rad = math.radians(az)  # Azimuth is measured from North (0) towards East (90)
+        x = math.cos(alt_rad) * math.sin(az_rad)
+        y = math.sin(alt_rad)
+        z = math.cos(alt_rad) * math.cos(az_rad)
+        return np.array([x, y, z])
+
+    sun_dir_in_observer_frame = None
+    if sun_altaz:
+        sun_dir_in_observer_frame = altaz_to_cartesian(sun_altaz[0], sun_altaz[1])
+
+    sun_dir_in_moon_frame = np.array([0.0, 0.0, 0.0])
+    if sun_dir_in_observer_frame is not None and moon_altaz is not None:
+        moon_vec = altaz_to_cartesian(moon_altaz[0], moon_altaz[1])
+        z_axis = -moon_vec / np.linalg.norm(moon_vec)
+        zenith_vec = np.array([0.0, 1.0, 0.0])
+        y_axis = zenith_vec - np.dot(zenith_vec, z_axis) * z_axis
+        y_axis /= np.linalg.norm(y_axis)
+        x_axis = np.cross(y_axis, z_axis)
+
+        sun_dir_in_moon_frame = np.array([
+            np.dot(sun_dir_in_observer_frame, x_axis),
+            np.dot(sun_dir_in_observer_frame, y_axis),
+            np.dot(sun_dir_in_observer_frame, z_axis),
+        ])
+
+    # Calculate the screen rotation for the moon image
+    screen_rotation_deg = 0
+    if moon_altaz:
+        # Get screen coordinates for the moon's center and a point just "above" it
+        m_alt, m_az = moon_altaz
+        nx_center, ny_center = altaz_to_normalized_xy(m_alt, m_az, view_center)
+        nx_up, ny_up = altaz_to_normalized_xy(m_alt + 0.1, m_az, view_center)
+
+        # Calculate the angle of the "up" direction on the screen
+        dx = nx_up - nx_center
+        dy = ny_up - ny_center
+        if abs(dx) > 1e-6 or abs(dy) > 1e-6:
+            screen_up_angle_rad = math.atan2(dy, dx)
+            # The image's "up" is vertical (points to -Y), so rotate to match the screen's "up"
+            # After user feedback, the correct rotation is to flip the sign.
+            screen_rotation_deg = -(math.degrees(screen_up_angle_rad) - 90)
+
+    return sun_dir_in_moon_frame, screen_rotation_deg

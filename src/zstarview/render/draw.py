@@ -17,7 +17,7 @@ from ..paths import (
     TEXT_COLOR,
 )
 from ..types import ScreenGeometry, SkyData, ViewerData
-from ..astro import altaz_to_normalized_xy, is_in_fov
+from ..astro import altaz_to_normalized_xy, is_in_fov, calculate_moon_render_data
 from ..utils.image import generate_moon_phase_image
 from ..utils.qt import pil2qpixmap
 
@@ -357,20 +357,6 @@ def draw_planets(
         if body.name == "moon":
             moon_altaz = (body.alt, body.az)
 
-    # Helper to convert Alt/Az to a 3D vector in the observer's reference frame.
-    # Y-up, X-East, Z-North (Right-handed system)
-    def altaz_to_cartesian(alt: float, az: float) -> np.ndarray:
-        alt_rad = math.radians(alt)
-        az_rad = math.radians(az)  # Azimuth is measured from North (0) towards East (90)
-        x = math.cos(alt_rad) * math.sin(az_rad)
-        y = math.sin(alt_rad)
-        z = math.cos(alt_rad) * math.cos(az_rad)
-        return np.array([x, y, z])
-
-    sun_dir_in_observer_frame = None
-    if sun_altaz:
-        sun_dir_in_observer_frame = altaz_to_cartesian(sun_altaz[0], sun_altaz[1])
-
     for body in sky_data.planets:
         if not body.is_visible:
             continue
@@ -379,37 +365,11 @@ def draw_planets(
         if body.name == "sun":
             draw_gauge_cross(painter, TEXT_COLOR, pos)
         elif body.name == "moon":
-            sun_dir_in_moon_frame = np.array([0.0, 0.0, 0.0])
-            if sun_dir_in_observer_frame is not None and moon_altaz is not None:
-                moon_vec = altaz_to_cartesian(moon_altaz[0], moon_altaz[1])
-                z_axis = -moon_vec / np.linalg.norm(moon_vec)
-                zenith_vec = np.array([0.0, 1.0, 0.0])
-                y_axis = zenith_vec - np.dot(zenith_vec, z_axis) * z_axis
-                y_axis /= np.linalg.norm(y_axis)
-                x_axis = np.cross(y_axis, z_axis)
+            sun_dir_in_moon_frame, screen_rotation_deg = calculate_moon_render_data(
+                sun_altaz, moon_altaz, viewer_data.view_center
+            )
 
-                sun_dir_in_moon_frame = np.array([
-                    np.dot(sun_dir_in_observer_frame, x_axis),
-                    np.dot(sun_dir_in_observer_frame, y_axis),
-                    np.dot(sun_dir_in_observer_frame, z_axis),
-                ])
-
-            # Calculate the screen rotation for the moon image
-            screen_rotation_deg = 0
             moon_radius = 0.5 * moon_zoom / 2 * (geometry.radius / 90.0)
-            if moon_altaz:
-                # Get screen coordinates for the moon's center and a point just "above" it
-                m_alt, m_az = moon_altaz
-                nx_center, ny_center = altaz_to_normalized_xy(m_alt, m_az, viewer_data.view_center)
-                nx_up, ny_up = altaz_to_normalized_xy(m_alt + 0.1, m_az, viewer_data.view_center)
-                
-                # Calculate the angle of the "up" direction on the screen
-                dx = nx_up - nx_center
-                dy = ny_up - ny_center
-                if abs(dx) > 1e-6 or abs(dy) > 1e-6:
-                    screen_up_angle_rad = math.atan2(dy, dx)
-                    # The image's "up" is vertical, so rotate to match the screen's "up"
-                    screen_rotation_deg = -(math.degrees(screen_up_angle_rad) - 90)
 
             draw_moon(
                 painter,
@@ -419,6 +379,7 @@ def draw_planets(
                 screen_rotation_deg=screen_rotation_deg,
                 opacity=1.0 if not enlarge_moon else 0.7,
             )
+
             draw_gauge_cross(painter, TEXT_COLOR, pos)
         else:
             painter.setFont(emoji_font)
