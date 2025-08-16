@@ -38,7 +38,7 @@ zstarview [options] [city]
 | `-h`, `--help`                              | Show this help message and exit.                        |         |
 | `-H`, `--hours HOURS`                       | Number of hours to add to the current time.             | `0`     |
 | `-D`, `--days DAYS`                         | Number of days to add to the current time.              | `0`     |
-| `-m`, `--enlarge-moon`                      | Show the moon in 3x size.                               |         |
+| `-m`, `--enlarge-moon`                      | Show the moon in 5x size.                               |         |
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | Base size of stars.                                     | `8.0`  |
 | `-Z`, `--view-center-az VIEW_CENTER_AZ`     | Viewing azimuth \[deg or 16-point compass] (0=N, 90=E, 180=S, 270=W; accepts N, NNE, NE, ENE, E, ESE, SE, SSE, S, SSW, SW, WSW, W, WNW, NW, NNW; case-insensitive). | `180`   |
 | `-A`, `--view-center-alt VIEW_CENTER_ALT`   | Viewing altitude angle \[deg] (90=zenith, 0=horizon).   | `90`    |
@@ -68,6 +68,7 @@ Note that higher values will increase rendering time.
 ### Key Operations
 
 * **← / →**: Rotate view azimuth by ±5°
+* **M**: Toggle moon enlarged to 5x size
 * **F11**: Toggle fullscreen display
 * **ESC**: Exit fullscreen
 * **Q**: Quit
