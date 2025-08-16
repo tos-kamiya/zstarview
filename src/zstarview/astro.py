@@ -216,13 +216,4 @@ def calculate_ecliptic_points(
     return points
 
 
-def calculate_sun_angle_on_moon(moon_altaz: Tuple[float, float], sun_altaz: Tuple[float, float]) -> float:
-    """Angle of the sun relative to the moon on screen (radians)."""
-    m_alt, m_az = moon_altaz
-    s_alt, s_az = sun_altaz
-    d_az = math.radians(s_az - m_az)
-    d_alt = math.radians(s_alt - m_alt)
-    dx = -math.sin(d_az) * math.cos(math.radians(s_alt))
-    dy = math.sin(d_alt)
-    angle = math.atan2(dx, dy)
-    return angle
+
