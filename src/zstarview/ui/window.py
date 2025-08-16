@@ -18,7 +18,7 @@ from ..paths import APP_ICON_FILE, GUI_BUTTON_SIZE, GUI_MENU_TEXT_COLOR
 from ..types import SkyData, ViewerData
 from ..astro import (
     calculate_visible_stars,
-    calculate_visible_planets,
+    calculate_planets,
     calculate_celestial_equator_points,
     calculate_ecliptic_points,
     calculate_horizon_points,
@@ -291,7 +291,7 @@ class SkyWindow(QMainWindow):
             lat, lon = self.viewer_data.location
             # Pass the latest view_center to the calculation function
             stars, loc = calculate_visible_stars(self.star_catalog, lat, lon, time_obj, self.viewer_data.view_center)
-            planets = calculate_visible_planets(lat, lon, time_obj, self.viewer_data.view_center)
+            planets = calculate_planets(lat, lon, time_obj, self.viewer_data.view_center)
             celestial_equator_points = calculate_celestial_equator_points(loc, time_obj, self.viewer_data.view_center)
             ecliptic_points = calculate_ecliptic_points(loc, time_obj, self.viewer_data.view_center)
             horizon_points = calculate_horizon_points(loc, time_obj, self.viewer_data.view_center)

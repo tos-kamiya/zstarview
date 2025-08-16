@@ -138,37 +138,38 @@ def calculate_moon_phase_angle(observer: Topos, t: skyfield.timelib.Time, planet
     return e_to_moon.separation_from(e_to_sun).degrees
 
 
-def calculate_visible_planets(
+def calculate_planets(
     lat: float,
     lon: float,
     astropy_time: astropy.time.Time,
     view_center: Tuple[float, float],
 ) -> List[PlanetBody]:
-    """Calculate visible bodies (Sun, Moon, planets)."""
+    """Calculate all planetary bodies (Sun, Moon, planets)."""
     ts = skyfield.api.load.timescale()
     t = ts.from_astropy(astropy_time)
     planets = _starfield_load("de421.bsp")
     observer = planets["earth"] + Topos(latitude_degrees=lat, longitude_degrees=lon)
 
-    visible_bodies: List[PlanetBody] = []
+    bodies: List[PlanetBody] = []
     for name, symbol in PLANET_SYMBOLS.items():
         planet = planets[name]
         astrometric = observer.at(t).observe(planet).apparent()
         alt, az, _ = astrometric.altaz()
-        if alt.degrees > -ANGLE_BELOW_HORIZON and is_in_fov(alt.degrees, az.degrees, view_center):
-            phase_angle = None
-            if name == "moon":
-                phase_angle = calculate_moon_phase_angle(observer, t, planets)
-            visible_bodies.append(
-                PlanetBody(
-                    name=name,
-                    alt=alt.degrees,
-                    az=az.degrees,
-                    symbol=symbol,
-                    phase_angle=phase_angle,
-                )
+        is_visible = alt.degrees > -ANGLE_BELOW_HORIZON and is_in_fov(alt.degrees, az.degrees, view_center)
+        phase_angle = None
+        if name == "moon":
+            phase_angle = calculate_moon_phase_angle(observer, t, planets)
+        bodies.append(
+            PlanetBody(
+                name=name,
+                alt=alt.degrees,
+                az=az.degrees,
+                symbol=symbol,
+                is_visible=is_visible,
+                phase_angle=phase_angle,
             )
-    return visible_bodies
+        )
+    return bodies
 
 
 def calculate_horizon_points(

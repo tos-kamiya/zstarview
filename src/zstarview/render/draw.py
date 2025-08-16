@@ -94,6 +94,8 @@ def find_highlighted_object(
 
     # Handle planets (scalar)
     for body in sky_data.planets:
+        if not body.is_visible:
+            continue
         nx, ny = altaz_to_normalized_xy(body.alt, body.az, viewer_data.view_center)
         pos = normalized_to_screen_xy(nx, ny, geometry)
         dist_sq = (mouse_pos.x() - pos.x()) ** 2 + (mouse_pos.y() - pos.y()) ** 2
@@ -362,6 +364,9 @@ def draw_planets(
             moon_altaz = (body.alt, body.az)
 
     for body in sky_data.planets:
+        if not body.is_visible:
+            continue
+
         pos = normalized_to_screen_xy(*altaz_to_normalized_xy(body.alt, body.az, viewer_data.view_center), geometry)
         if body.name == "sun":
             draw_gauge_cross(painter, TEXT_COLOR, pos)

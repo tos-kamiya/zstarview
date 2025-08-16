@@ -11,6 +11,7 @@ class PlanetBody:
     alt: float
     az: float
     symbol: str
+    is_visible: bool
     phase_angle: Optional[float] = None  # moon only
 
 
