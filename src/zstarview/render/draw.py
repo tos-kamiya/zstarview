@@ -16,7 +16,7 @@ from ..paths import (
     HORIZON_LINE_COLOR,
     TEXT_COLOR,
 )
-from ..types import PlanetBody, ScreenGeometry, SkyData, ViewerData
+from ..types import ScreenGeometry, SkyData, ViewerData
 from ..astro import altaz_to_normalized_xy, calculate_sun_angle_on_moon, is_in_fov
 from ..utils.image import generate_moon_phase_image
 from ..utils.qt import pil2qpixmap
@@ -352,6 +352,7 @@ def draw_planets(
     enlarge_moon: bool,
     emoji_font: QFont,
 ):
+    moon_zoom = 5 if enlarge_moon else 1
     sun_altaz: Optional[Tuple[float, float]] = None
     moon_altaz: Optional[Tuple[float, float]] = None
     for body in sky_data.planets:
@@ -365,7 +366,7 @@ def draw_planets(
         if body.name == "sun":
             draw_gauge_cross(painter, TEXT_COLOR, pos)
         elif body.name == "moon":
-            moon_radius = 0.5 * (1 if not enlarge_moon else 3) / 2 * (geometry.radius / 90.0)
+            moon_radius = 0.5 * moon_zoom / 2 * (geometry.radius / 90.0)
             draw_moon(
                 painter,
                 pos,
@@ -401,6 +402,7 @@ def draw_overlay_info(
     sky_data: SkyData,
     viewer_data: ViewerData,
     vmag_limit: float,
+    enlarge_moon: bool,
     highlighted_object: Optional[Tuple[Dict[str, Union[str, float]], QPointF]],
     text_font: QFont,
 ):
@@ -460,6 +462,10 @@ def draw_overlay_info(
 
     line_y += line_height
     painter.drawText(QPoint(line_x, line_y), f"Vmag limit {vmag_limit:.1f}")
+
+    if enlarge_moon:
+        line_y += line_height
+        painter.drawText(QPoint(line_x, line_y), "Moon size: 5x")
 
     # ---- Star/planet highlight ----
     if highlighted_object:

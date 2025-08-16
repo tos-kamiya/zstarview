@@ -1,19 +1,11 @@
 from datetime import datetime, timedelta, timezone
 import threading
 import sys
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Optional, Tuple
 
 from PySide6.QtCore import Qt, QPoint, QTimer
-from PySide6.QtGui import (
-    QFont,
-    QFontDatabase,
-    QIcon,
-    QPainter,
-    QResizeEvent,
-    QPaintEvent,
-    QMouseEvent,
-    QKeyEvent,
-)
+from PySide6.QtGui import QFont, QFontDatabase, QIcon, QPainter
+from PySide6.QtGui import QAction, QKeyEvent, QMouseEvent, QPaintEvent, QResizeEvent
 from PySide6.QtWidgets import QMainWindow, QSizeGrip, QApplication, QPushButton, QMenu
 
 import astropy
@@ -53,6 +45,8 @@ class SkyWindow(QMainWindow):
         vmag_limit: float,
     ):
         super().__init__()
+        self._rotation_step: float = 5.0  # degrees
+
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setFocus(Qt.FocusReason.ActiveWindowFocusReason)
 
@@ -66,13 +60,14 @@ class SkyWindow(QMainWindow):
             view_center=view_center,
         )
 
-        self._rotation_step = 5.0  # degrees
-
         self.star_catalog = star_catalog
         self.delta_t = delta_t
         self.enlarge_moon = enlarge_moon
         self.star_base_radius = star_base_radius
         self.vmag_limit = vmag_limit
+
+        self.enlarge_moon = enlarge_moon
+        self._action_enlarge_moon = None
 
         self.setAttribute(Qt.WA_TranslucentBackground)
         # Preserve existing flags and add Frameless; improves drag behavior on Qt6
@@ -127,6 +122,13 @@ class SkyWindow(QMainWindow):
         rotate_right = self.menu.addAction(f"Rotate Right (+{self._rotation_step:.0f}°)")
         rotate_right.triggered.connect(lambda: self._rotate_view(d_az=+self._rotation_step))
 
+        toggle_enlarge_moon_action = QAction("Enlarge Moon (M)", self)
+        toggle_enlarge_moon_action.setCheckable(True)
+        toggle_enlarge_moon_action.setChecked(self.enlarge_moon)
+        toggle_enlarge_moon_action.triggered.connect(self.toggle_enlarge_moon)
+        self.menu.addAction(toggle_enlarge_moon_action)
+        self._action_enlarge_moon = toggle_enlarge_moon_action
+
         self.menu.addSeparator()
         fullscreen_action = self.menu.addAction("Fullscreen (F11)")
         fullscreen_action.triggered.connect(self.toggle_fullscreen)
@@ -151,6 +153,12 @@ class SkyWindow(QMainWindow):
     def show_menu(self):
         menu_pos = self.menu_button.mapToGlobal(QPoint(0, self.menu_button.height()))
         self.menu.exec(menu_pos)
+
+    def toggle_enlarge_moon(self):
+        self.enlarge_moon = not self.enlarge_moon
+        if self._action_enlarge_moon is not None and self._action_enlarge_moon.isChecked() != self.enlarge_moon:
+            self._action_enlarge_moon.setChecked(self.enlarge_moon)
+        self.update()  # Redraw
 
     def toggle_fullscreen(self):
         if self.isFullScreen():
@@ -233,6 +241,12 @@ class SkyWindow(QMainWindow):
         alt = self.viewer_data.view_center[0]
         geometry = render_draw.get_screen_geometry(self.width(), self.height(), alt)
 
+        highlighted_object = None
+        if self.mouse_pos is not None:
+            highlighted_object = render_draw.find_highlighted_object(
+                self.sky_data, self.viewer_data, self.mouse_pos, geometry
+            )
+
         painter.setCompositionMode(QPainter.CompositionMode_Clear)
         painter.fillRect(self.rect(), Qt.transparent)
 
@@ -246,14 +260,16 @@ class SkyWindow(QMainWindow):
 
         render_draw.draw_stars(painter, geometry, self.sky_data, self.viewer_data, self.star_base_radius)
 
-        render_draw.draw_planets(painter, geometry, self.sky_data, self.viewer_data, self.enlarge_moon, self.emoji_font)
+        enlarge_moon = self.enlarge_moon
+        if highlighted_object is not None:
+            obj = highlighted_object[0]
+            name = getattr(obj, "name", "") if hasattr(obj, "name") else obj.get("name", "")
+            enlarge_moon = enlarge_moon or name == "moon"
+        render_draw.draw_planets(painter, geometry, self.sky_data, self.viewer_data, enlarge_moon, self.emoji_font)
 
-        highlighted_object = None
-        if self.mouse_pos is not None:
-            highlighted_object = render_draw.find_highlighted_object(
-                self.sky_data, self.viewer_data, self.mouse_pos, geometry
-            )
-        render_draw.draw_overlay_info(painter, self.sky_data, self.viewer_data, self.vmag_limit, highlighted_object, self.text_font)
+        render_draw.draw_overlay_info(
+            painter, self.sky_data, self.viewer_data, self.vmag_limit, enlarge_moon, highlighted_object, self.text_font
+        )
 
     def on_data_updated(self, sky_data: SkyData):
         self.set_sky_data(sky_data)
@@ -328,6 +344,11 @@ class SkyWindow(QMainWindow):
             event.accept()
         elif key == Qt.Key.Key_Right:
             self._rotate_view(d_az=self._rotation_step)
+            event.accept()
+
+        # Moon size
+        if key == Qt.Key.Key_M:
+            self.toggle_enlarge_moon()
             event.accept()
 
         # Window control
