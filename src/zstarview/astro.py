@@ -214,6 +214,7 @@ def calculate_ecliptic_points(
             points.append((nx, ny))
     return points
 
+
 def calculate_moon_render_data(
     sun_altaz: Optional[Tuple[float, float]],
     moon_altaz: Optional[Tuple[float, float]],
@@ -243,7 +244,15 @@ def calculate_moon_render_data(
 
     sun_dir_in_moon_frame = np.array([0.0, 0.0, 0.0])
     if sun_dir_in_observer_frame is not None and moon_altaz is not None:
-        moon_vec = altaz_to_cartesian(moon_altaz[0], moon_altaz[1])
+        m_alt, m_az = moon_altaz
+
+        # If the moon is very close to zenith or nadir (alt ~ +/-90 deg),
+        # the calculation for the local coordinate frame can become unstable.
+        # To avoid this singularity, we perturb the altitude slightly.
+        if abs(m_alt) > 89.9999:
+            m_alt = math.copysign(89.9999, m_alt)
+
+        moon_vec = altaz_to_cartesian(m_alt, m_az)
         z_axis = -moon_vec / np.linalg.norm(moon_vec)
         zenith_vec = np.array([0.0, 1.0, 0.0])
         y_axis = zenith_vec - np.dot(zenith_vec, z_axis) * z_axis
