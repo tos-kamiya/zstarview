@@ -67,6 +67,12 @@ PLANET_SYMBOLS = {
     "mars": "♂",
     "jupiter": "♃",
     "saturn": "♄",
+    "uranus": "♅",
+    "neptune": "♆",
+    "pluto": "♇",
+    "ceres": "⚳",
+    "pallas": "⚴",
+    "vesta": "⚵",
 }
 
 PLANET_IDS = {
@@ -75,7 +81,14 @@ PLANET_IDS = {
     "mercury": 199,
     "venus": 299,
     "earth": 399,
-    "mars": 4,  # MARS BARYCENTER
-    "jupiter": 5,  # JUPITER BARYCENTER
-    "saturn": 6,  # SATURN BARYCENTER
+    "mars": 4,  # BARYCENTER
+    "jupiter": 5,  # BARYCENTER
+    "saturn": 6,  # BARYCENTER
+    "uranus": 7,  # BARYCENTER
+    "neptune": 8,  # BARYCENTER
+    "pluto": 9,  # BARYCENTER
+    "ceres": 1,
+    "pallas": 2,
+    "vesta": 4,
 }
+
