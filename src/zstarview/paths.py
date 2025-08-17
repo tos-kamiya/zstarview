@@ -80,7 +80,6 @@ PLANET_IDS = {
     "moon": 301,
     "mercury": 199,
     "venus": 299,
-    "earth": 399,
     "mars": 4,  # BARYCENTER
     "jupiter": 5,  # BARYCENTER
     "saturn": 6,  # BARYCENTER
