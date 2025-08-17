@@ -38,24 +38,43 @@ zstarview [options] [city]
 | `-h`, `--help`                              | Show this help message and exit.                        |         |
 | `-H`, `--hours HOURS`                       | Number of hours to add to the current time.             | `0`     |
 | `-D`, `--days DAYS`                         | Number of days to add to the current time.              | `0`     |
+| `--datetime "YYYY-MM-DD HH:MM:SS [TZ]"`     | Specify an absolute date/time (UTC if no TZ given).     |         |
 | `-m`, `--enlarge-moon`                      | Show the moon in 5x size.                               |         |
-| `-s`, `--star-base-radius STAR_BASE_RADIUS` | Base size of stars.                                     | `8.0`  |
-| `-Z`, `--view-center-az VIEW_CENTER_AZ`     | Viewing azimuth \[deg or 16-point compass] (0=N, 90=E, 180=S, 270=W; accepts N, NNE, NE, ENE, E, ESE, SE, SSE, S, SSW, SW, WSW, W, WNW, NW, NNW; case-insensitive). | `180`   |
-| `-A`, `--view-center-alt VIEW_CENTER_ALT`   | Viewing altitude angle \[deg] (90=zenith, 0=horizon).   | `90`    |
-| `-V`, `--vmag-threshold V_MAG_THRESHOLD`    | Maximum visual magnitude of stars to display.               | `6.0`   |
+| `-s`, `--star-base-radius STAR_BASE_RADIUS` | Base size of stars.                                     | `8.0`   |
+| `-Z`, `--view-center-az VIEW_CENTER_AZ`     | Viewing azimuth (degrees or compass points).            | `180`   |
+| `-A`, `--view-center-alt VIEW_CENTER_ALT`   | Viewing altitude angle (90=zenith, 0=horizon).          | `90`    |
+| `-V`, `--vmag-threshold V_MAG_THRESHOLD`    | Maximum visual magnitude of stars to display.           | `6.0`   |
 
-**About the View Center Options**
+**About the datetime option**
+
+Use `--datetime "YYYY-MM-DD HH:MM:SS [TZ]"` to specify an absolute date and time.  
+If no timezone (TZ) is specified, UTC is assumed.
+
+You can specify the timezone as:
+- A common abbreviation (JST, UTC, GMT, KST, HKT, AWST, ACST, AEST, NZST, NZDT, MSK, EAT)
+- A full IANA timezone name (e.g., `Asia/Tokyo`, `Europe/Moscow`)
+- A UTC offset (e.g., `UTC+9`, `UTC-07:30`)
+
+Example:
+
+```bash
+zstarview --datetime "2025-08-17 21:00:00 JST" Tokyo
+```
+
+**About the view center options**
 
 The `-Z` (azimuth) and `-A` (altitude) options specify the center of the displayed sky.
 
-By default, `-Z 180` (facing south) and `-A 90` (zenith) are used.  
+By default, `-Z 180` (facing south) and `-A 90` (zenith) are used.
 In this view, the bottom of the screen is south, the left side is east, and the display is a circular view looking straight up toward the zenith.
 
-For example, setting `-Z 90` (facing east) and `-A 10` (altitude 10°, i.e., looking 10° above the horizon)  
-will produce a roughly semicircular sky view.  
+For example, setting `-Z 90` (facing east) and `-A 10` (altitude 10°, i.e., looking 10° above the horizon)
+will produce a roughly semicircular sky view.
 → This will capture the eastern sky showing the [Summer Triangle (Vega, Altair, Deneb)](docs/images/screenshot2.png).
 
-Azimuth can be given in degrees or compass points (case-insensitive). Examples: `-Z E`, `-Z ne`, `-Z SSW` (202.5°).
+Azimuth can be given in degrees or compass points (case-insensitive).
+Examples: `-Z E`, `-Z ne`, `-Z SSW` (202.5°).
+(Compass mapping: 0=N, 90=E, 180=S, 270=W; accepts N, NNE, NE, ENE, E, ESE, SE, SSE, S, SSW, SW, WSW, W, WNW, NW, NNW.)
 
 **About magnitude threshold**
 
