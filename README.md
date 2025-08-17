@@ -134,3 +134,31 @@ However, the **included data** is redistributed according to their respective li
 * Fonts provided by the Google Noto Project.
 * The window title "Zenith Star View" was suggested by ChatGPT.
 * Specification discussions, code generation, and debugging were greatly assisted by Gemini and ChatGPT.
+
+## Appendix: Lunar eclipses in 2025
+
+You can preview the two total lunar eclipses of 2025 by specifying the datetime and city.
+
+### March 13-14, 2025 (Total Lunar Eclipse, visible in the Americas)
+
+```bash
+zstarview --datetime "2025-03-14 02:58:43 America/New_York" "New York City"
+zstarview --datetime "2025-03-13 23:58:43 America/Los_Angeles" "US/Los Angeles"
+zstarview --datetime "2025-03-13 20:58:43 HST" "Honolulu"
+zstarview --datetime "2025-03-14 00:58:43 America/Mexico_City" "Mexico City"
+zstarview --datetime "2025-03-14 03:58:43 America/Sao_Paulo" "BR/São Paulo"
+```
+
+### September 7-8, 2025 (Total Lunar Eclipse, visible in Asia, Europe, Africa, Oceania)
+
+```bash
+zstarview --datetime "2025-09-08 03:12:00 JST" "Tokyo"
+zstarview --datetime "2025-09-08 03:11:47 KST" "Seoul"
+zstarview --datetime "2025-09-08 02:11:47 Asia/Shanghai" "Beijing"
+zstarview --datetime "2025-09-08 01:11:47 Asia/Bangkok" "Bangkok"
+zstarview --datetime "2025-09-07 23:41:47 Asia/Kolkata" "New Delhi"
+zstarview --datetime "2025-09-07 21:11:47 Europe/Istanbul" "Istanbul"
+zstarview --datetime "2025-09-07 21:11:47 EAT" "Nairobi"
+zstarview --datetime "2025-09-08 04:11:47 Australia/Sydney" "Sydney"
+zstarview --datetime "2025-09-08 06:11:47 Pacific/Auckland" "Auckland"
+```
