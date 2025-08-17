@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import sys
 import time
+from zoneinfo import ZoneInfo
 
 from PySide6.QtWidgets import QApplication, QSplashScreen
 from PySide6.QtCore import Qt
@@ -27,6 +28,7 @@ from .__about__ import __version__
 from .config import load_last_city, save_last_city
 from .catalog import load_city_coords, load_star_catalog
 from .ui.window import SkyWindow
+from .utils.timezone_parser import parse_tz_string
 
 # --- Helper Functions ---
 cache_path = Path(user_cache_dir(appname=APP_ID, appauthor=APP_AUTHOR))
@@ -72,7 +74,7 @@ def parse_args() -> argparse.Namespace:
         "--datetime",
         type=str,
         default=None,
-        help="Set an absolute UTC date and time in 'YYYY-MM-DD HH:MM:SS' format. Overrides --hours and --days.",
+        help="Set an absolute date and time in 'YYYY-MM-DD HH:MM:SS [TZ]' format. If TZ is omitted, UTC is assumed. Overrides --hours and --days.",
     )
 
     parser.add_argument(
@@ -163,14 +165,33 @@ def main():
             return
 
         try:
-            target_time_utc = datetime.strptime(
-                args.datetime, "%Y-%m-%d %H:%M:%S"
-            ).replace(tzinfo=timezone.utc)
+            # Split the datetime string to check for a timezone suffix
+            parts = args.datetime.split(' ')
+            dt_str_naive = ' '.join(parts[:2])  # YYYY-MM-DD HH:MM:SS
+            tz_str = None
+            if len(parts) > 2:  # If there's a third part, it might be the timezone
+                tz_str = parts[2]
+
+            dt_naive = datetime.strptime(dt_str_naive, "%Y-%m-%d %H:%M:%S")
+
+            if tz_str:
+                try:
+                    tz = parse_tz_string(tz_str)
+                    dt_local = dt_naive.replace(tzinfo=tz)
+                    target_time_utc = dt_local.astimezone(timezone.utc)
+                except Exception as e:
+                    print(f"Error: Invalid timezone '{tz_str}'. {e}", file=sys.stderr)
+                    return
+            else:
+                # If no timezone specified, assume UTC
+                target_time_utc = dt_naive.replace(tzinfo=timezone.utc)
+
             now_utc = datetime.now(timezone.utc)
             delta_t = target_time_utc - now_utc
+
         except ValueError:
             print(
-                f"Error: Invalid datetime format: {args.datetime}. Use 'YYYY-MM-DD HH:MM:SS'.",
+                f"Error: Invalid datetime format: {args.datetime}. Use 'YYYY-MM-DD HH:MM:SS [TZ]'.",
                 file=sys.stderr,
             )
             return
