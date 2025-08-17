@@ -83,9 +83,12 @@ def is_in_fov_vectorized(alt: np.ndarray, az: np.ndarray, view_center: Tuple[flo
 
 
 def load_star_catalog(filename: str) -> List[Dict[str, Any]]:
-    # Re-exported from catalog; avoid import cycles if needed elsewhere
-    from .catalog import load_star_catalog as _load
+    """Load the star catalog from file.
 
+    This function re-exports the implementation from `catalog` to
+    avoid circular imports when used elsewhere.
+    """
+    from .catalog import load_star_catalog as _load
     return _load(filename)
 
 
@@ -141,43 +144,52 @@ def calculate_moon_phase_angle(observer: Topos, t: skyfield.timelib.Time, planet
 
 
 def calculate_lunar_eclipse_data(t: astropy.time.Time, observer) -> EclipseInfo:
-    # データロード
+    """Calculate lunar eclipse parameters for a given time and observer.
+
+    Returns an `EclipseInfo` object containing:
+    - whether an eclipse occurs,
+    - the eclipse type (penumbral, partial, total),
+    - shadow center alt/az,
+    - umbra and penumbra angular radii,
+    - apparent moon radius.
+    """
+    # Load planetary ephemerides
     planets = _starfield_load("de440s.bsp")
     earth = planets["earth"]
     sun = planets["sun"]
     moon = planets["moon"]
 
-    # GCRS上の地球中心から見た太陽と月の位置
+    # Sun and Moon positions from Earth's center in GCRS
     sun_pos = earth.at(t).observe(sun)
     moon_pos = earth.at(t).observe(moon)
 
-    # 太陽と月の分離角（180°に近くないなら即除外）
+    # Exclude if Sun-Moon separation is not close to 180°
     separation_deg = sun_pos.separation_from(moon_pos).degrees
     if abs(separation_deg - 180.0) > 3.0:
         return EclipseInfo(is_eclipse=False)
 
-    # 天体定数
+    # Astronomical constants
     R_earth_km = 6371.0
     R_sun_km = 696340.0
     R_moon_km = 1737.4
 
-    # 距離（地球中心）
+    # Distances from Earth's center
     D_sun_km = sun_pos.distance().km
     D_moon_km = moon_pos.distance().km
 
-    # 各角半径（地球中心）
+    # Angular radii
     earth_ang_rad = math.asin(R_earth_km / D_moon_km)
     sun_ang_rad = math.asin(R_sun_km / D_sun_km)
     moon_ang_rad = math.asin(R_moon_km / D_moon_km)
 
-    # 本影・半影の半径
+    # Umbra and penumbra radii
     umbra_radius_rad = max(0.0, earth_ang_rad - sun_ang_rad)
     penumbra_radius_rad = earth_ang_rad + sun_ang_rad
 
-    # 角距離：太陽と月の間の分離角→180°基準に変換して影中心との距離とみなす
+    # Angular distance between shadow center and Moon
     d_rad = math.radians(180.0 - separation_deg)
 
-    # 食の種類判定（rad）
+    # Classify eclipse type
     if d_rad > (penumbra_radius_rad + moon_ang_rad):
         eclipse_type = "none"
     elif d_rad > (umbra_radius_rad + moon_ang_rad):
@@ -187,7 +199,7 @@ def calculate_lunar_eclipse_data(t: astropy.time.Time, observer) -> EclipseInfo:
     else:
         eclipse_type = "total"
 
-    # 本影中心（太陽の反対方向）を観測者から見る
+    # Shadow center as seen from the observer (opposite Sun direction)
     sun_apparent = observer.at(t).observe(sun).apparent()
     s_alt, s_az, _ = sun_apparent.altaz()
     shadow_center_alt = -s_alt.degrees
