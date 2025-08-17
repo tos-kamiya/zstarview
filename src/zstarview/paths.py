@@ -58,13 +58,24 @@ DIRECTIONS = {
 }
 
 
-# Symbols for bodies
+# Planet labels/ids
 PLANET_SYMBOLS = {
     "sun": "☀",
     "moon": "🌛",
     "mercury": "☿",
     "venus": "♀",
     "mars": "♂",
-    "jupiter barycenter": "♃",
-    "saturn barycenter": "♄",
+    "jupiter": "♃",
+    "saturn": "♄",
+}
+
+PLANET_IDS = {
+    "sun": 10,
+    "moon": 301,
+    "mercury": 199,
+    "venus": 299,
+    "earth": 399,
+    "mars": 4,  # MARS BARYCENTER
+    "jupiter": 5,  # JUPITER BARYCENTER
+    "saturn": 6,  # SATURN BARYCENTER
 }

@@ -60,9 +60,7 @@ def _parse_azimuth(value: str) -> float:
 def parse_args() -> argparse.Namespace:
     """Parses command-line arguments."""
     parser = argparse.ArgumentParser(description="Star sky visualizer")
-    parser.add_argument(
-        "city", type=str, nargs="?", default="", help="City name (default: same as the last run)"
-    )
+    parser.add_argument("city", type=str, nargs="?", default="", help="City name (default: same as the last run)")
     time_group = parser.add_argument_group("Time settings")
     time_group.add_argument(
         "-H", "--hours", type=float, default=0, help="Number of hours to add to current time (default: 0)"
@@ -90,9 +88,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Show the moon in 3x size.",
     )
-    parser.add_argument(
-        "-s", "--star-base-radius", type=float, default=8.0, help="Base size of stars (default: 8.0)"
-    )
+    parser.add_argument("-s", "--star-base-radius", type=float, default=8.0, help="Base size of stars (default: 8.0)")
     parser.add_argument(
         "-Z",
         "--view-center-az",
@@ -161,15 +157,13 @@ def main():
     # --- Determine the time for calculation ---
     if args.datetime:
         if args.hours != 0 or args.days != 0:
-            print(
-                "Error: --datetime cannot be used with --hours or --days.", file=sys.stderr
-            )
+            print("Error: --datetime cannot be used with --hours or --days.", file=sys.stderr)
             return
 
         try:
             # Split the datetime string to check for a timezone suffix
-            parts = args.datetime.split(' ')
-            dt_str_naive = ' '.join(parts[:2])  # YYYY-MM-DD HH:MM:SS
+            parts = args.datetime.split(" ")
+            dt_str_naive = " ".join(parts[:2])  # YYYY-MM-DD HH:MM:SS
             tz_str = None
             if len(parts) > 2:  # If there's a third part, it might be the timezone
                 tz_str = parts[2]
@@ -210,13 +204,9 @@ def main():
     show_splash_message("Loading city and star data...", Qt.GlobalColor.white)
 
     try:
-        star_catalog = load_star_catalog(
-            STARS_CSV_FILE, vmag_threshold=args.vmag_limit
-        )
+        star_catalog = load_star_catalog(STARS_CSV_FILE, vmag_threshold=args.vmag_limit)
     except FileNotFoundError:
-        show_splash_message(
-            f"Error: star data file not found: {STARS_CSV_FILE}", Qt.GlobalColor.red
-        )
+        show_splash_message(f"Error: star data file not found: {STARS_CSV_FILE}", Qt.GlobalColor.red)
         time.sleep(3)
         return
 

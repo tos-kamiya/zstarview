@@ -10,6 +10,7 @@ class EclipseInfo:
     """Contains data about a lunar eclipse for rendering."""
 
     is_eclipse: bool = False
+    eclipse_type: Optional[str] = (None,)
     # Alt/Az of the center of the Earth's shadow
     shadow_center_alt: float = 0.0
     shadow_center_az: float = 0.0

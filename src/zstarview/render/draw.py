@@ -6,7 +6,7 @@ from PIL import Image
 from zoneinfo import ZoneInfo
 
 from PySide6.QtCore import QPoint, QPointF, QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF, QRadialGradient
+from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen, QPolygonF, QRadialGradient
 
 from ..paths import (
     CELESTIAL_EQUATOR_COLOR,
@@ -20,6 +20,8 @@ from ..types import ScreenGeometry, SkyData, ViewerData
 from ..astro import altaz_to_normalized_xy, is_in_fov, calculate_moon_render_data
 from ..utils.image import generate_moon_phase_image
 from ..utils.qt import pil2qpixmap
+
+DEBUG_ECLIPSE = True
 
 
 def bv_to_rgb_vectorized(bv: np.ndarray) -> np.ndarray:
@@ -247,17 +249,18 @@ def draw_stars(
 
     # 4) Small stars: fixed-but-gently-scaled alpha + area (squares), batched.
     if np.any(small_star_mask):
-        sx = x[small_star_mask]; sy = y[small_star_mask]
+        sx = x[small_star_mask]
+        sy = y[small_star_mask]
         sA = area_px[small_star_mask]
         sL = np.sqrt(sA)  # side length from area
         srgb = rgb_colors[small_star_mask]
 
         # Base alpha kept modest so faint stars don't pop as dots.
         # Then lift α slightly with area (subtle, gamma<1).
-        alpha_base  = 140                    # try 130–160
-        alpha_gain  = 50                     # how much to lift at the upper end (30–60)
+        alpha_base = 140  # try 130–160
+        alpha_gain = 50  # how much to lift at the upper end (30–60)
         alpha_scale = np.power(np.clip(sA / 4.0, 0.0, 1.0), 0.75)  # area vs. 2x2px reference
-        alpha_f     = np.clip(alpha_base + alpha_gain * alpha_scale, 60, 210)
+        alpha_f = np.clip(alpha_base + alpha_gain * alpha_scale, 60, 210)
 
         # Quantize alpha to reduce unique RGBA buckets → faster & less banding
         # e.g., to ~8–12 steps:
@@ -274,7 +277,7 @@ def draw_stars(
             color = QColor(int(r), int(g), int(b), int(a))
             painter.setBrush(color)
             rects = [
-                QRectF(float(cx) - float(s)/2.0, float(cy) - float(s)/2.0, float(s), float(s))
+                QRectF(float(cx) - float(s) / 2.0, float(cy) - float(s) / 2.0, float(s), float(s))
                 for cx, cy, s in zip(sx[m], sy[m], sL[m])
             ]
             painter.drawRects(rects)
@@ -318,25 +321,33 @@ def draw_moon(
     sun_dir_in_moon_frame: np.ndarray,
     screen_rotation_deg: float,
     opacity: float = 1.0,
+    base_color: Optional[QColor] = None,
 ):
     """Draw the moon with phase based on the sun's direction vector and apply screen rotation."""
-    img_size = int(radius * 2)
-    if img_size < 5:
-        img_size = 5
+    img_size = max(5, int(math.ceil(radius * 2.0)))
+    view_dir = np.array([0, 0, 1], dtype=float)
+    if base_color is not None:
+        tint_rgba = (base_color.red(), base_color.green(), base_color.blue(), base_color.alpha())
+    else:
+        tint_rgba = None
+    moon_img_pil = generate_moon_phase_image(img_size, sun_dir_in_moon_frame, view_dir, tint_color=tint_rgba)
 
-    # The moon image is generated from a viewpoint looking along the Z-axis.
-    view_dir = np.array([0, 0, 1])
-    moon_img_pil = generate_moon_phase_image(img_size, sun_dir_in_moon_frame, view_dir)
-
-    # Rotate the image to account for the projection's effect on orientation.
     if abs(screen_rotation_deg) > 0.1:
         moon_img_pil = moon_img_pil.rotate(screen_rotation_deg, resample=Image.Resampling.BICUBIC, expand=False)
 
     pixmap = pil2qpixmap(moon_img_pil)
     target_rect = QRectF(center.x() - img_size / 2, center.y() - img_size / 2, img_size, img_size)
+
     painter.save()
     painter.setOpacity(opacity)
     painter.drawPixmap(target_rect, pixmap, QRectF(0, 0, img_size, img_size))
+
+    if base_color is not None:
+        painter.setCompositionMode(QPainter.CompositionMode_SourceAtop)
+        painter.setBrush(base_color)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawEllipse(center, radius, radius)
+
     painter.restore()
 
 
@@ -349,14 +360,14 @@ def draw_planets(
     emoji_font: QFont,
 ):
     moon_zoom = 5 if enlarge_moon else 1
-    sun_altaz: Optional[Tuple[float, float]] = None
-    moon_altaz: Optional[Tuple[float, float]] = None
-    moon_body = None  # Store the whole moon object
+    moon_body = None
+    sun_altaz = None
+    moon_altaz = None
 
     for body in sky_data.planets:
         if body.name == "sun":
             sun_altaz = (body.alt, body.az)
-        if body.name == "moon":
+        elif body.name == "moon":
             moon_altaz = (body.alt, body.az)
             moon_body = body
 
@@ -365,19 +376,27 @@ def draw_planets(
             continue
 
         pos = normalized_to_screen_xy(
-            *altaz_to_normalized_xy(body.alt, body.az, viewer_data.view_center), geometry
+            *altaz_to_normalized_xy(body.alt, body.az, viewer_data.view_center),
+            geometry,
         )
+
         if body.name == "sun":
             draw_gauge_cross(painter, TEXT_COLOR, pos)
-        elif body.name == "moon" and moon_body:  # Check moon_body exists
+
+        elif body.name == "moon" and moon_body:
             sun_dir_in_moon_frame, screen_rotation_deg = calculate_moon_render_data(
                 sun_altaz, moon_altaz, viewer_data.view_center
             )
-
-            # moon's angular radius is ~0.25 deg. Screen radius is 90 deg.
             moon_radius_px = (0.25 / 90.0) * geometry.radius * moon_zoom
 
-            # Draw the moon with its phase
+            eclipse = body.eclipse_info
+            base_color = None
+            if eclipse and eclipse.is_eclipse:
+                if eclipse.eclipse_type == "partial":
+                    base_color = QColor(30, 0, 0, 60)
+                elif eclipse.eclipse_type == "total":
+                    base_color = QColor(40, 10, 10, 180)
+
             draw_moon(
                 painter,
                 pos,
@@ -385,48 +404,10 @@ def draw_planets(
                 sun_dir_in_moon_frame=sun_dir_in_moon_frame,
                 screen_rotation_deg=screen_rotation_deg,
                 opacity=1.0 if not enlarge_moon else 0.7,
+                base_color=base_color,
             )
-
-            # --- Draw Lunar Eclipse Shadow ---
-            eclipse_info = moon_body.eclipse_info
-
-            if eclipse_info and eclipse_info.is_eclipse:
-                # Get screen coordinates of the shadow's center
-                shadow_pos = normalized_to_screen_xy(
-                    *altaz_to_normalized_xy(
-                        eclipse_info.shadow_center_alt,
-                        eclipse_info.shadow_center_az,
-                        viewer_data.view_center,
-                    ),
-                    geometry,
-                )
-
-                # Calculate shadow radii in pixels, scaling relative to the moon's angular radius
-                if eclipse_info.moon_radius_deg > 1e-6:
-                    px_per_deg = moon_radius_px / eclipse_info.moon_radius_deg
-                    penumbra_radius_px = (
-                        eclipse_info.penumbra_radius_deg * px_per_deg
-                    )
-                    umbra_radius_px = eclipse_info.umbra_radius_deg * px_per_deg
-
-                    painter.save()
-                    painter.setPen(Qt.PenStyle.NoPen)
-
-                    # Draw Penumbra (larger, lighter shadow)
-                    penumbra_color = QColor(0, 0, 0, 100)
-                    painter.setBrush(penumbra_color)
-                    painter.drawEllipse(
-                        shadow_pos, penumbra_radius_px, penumbra_radius_px
-                    )
-
-                    # Draw Umbra (smaller, darker shadow)
-                    umbra_color = QColor(40, 10, 10, 220)  # Dark reddish
-                    painter.setBrush(umbra_color)
-                    painter.drawEllipse(shadow_pos, umbra_radius_px, umbra_radius_px)
-
-                    painter.restore()
-
             draw_gauge_cross(painter, TEXT_COLOR, pos)
+
         else:
             painter.setFont(emoji_font)
             painter.setPen(TEXT_COLOR)

@@ -9,22 +9,19 @@ TZ_ABBREV_MAP: dict[str, str] = {
     "UTC": "UTC",
     "GMT": "Etc/GMT",
     "JST": "Asia/Tokyo",
-
     # East Asia
     "KST": "Asia/Seoul",
     "HKT": "Asia/Hong_Kong",
-
     # Pacific / Oceania
-    "HST": "Pacific/Honolulu",     # UTC-10, no DST
-    "AWST": "Australia/Perth",     # UTC+8, no DST
+    "HST": "Pacific/Honolulu",  # UTC-10, no DST
+    "AWST": "Australia/Perth",  # UTC+8, no DST
     "ACST": "Australia/Adelaide",  # UTC+9:30, auto-switches to ACDT
-    "AEST": "Australia/Sydney",    # UTC+10, auto-switches to AEDT
-    "NZST": "Pacific/Auckland",    # Standard time
-    "NZDT": "Pacific/Auckland",    # Daylight time handled by same zone
-
+    "AEST": "Australia/Sydney",  # UTC+10, auto-switches to AEDT
+    "NZST": "Pacific/Auckland",  # Standard time
+    "NZDT": "Pacific/Auckland",  # Daylight time handled by same zone
     # Europe / Africa
-    "MSK": "Europe/Moscow",        # UTC+3, no DST
-    "EAT": "Africa/Nairobi",       # UTC+3, no DST
+    "MSK": "Europe/Moscow",  # UTC+3, no DST
+    "EAT": "Africa/Nairobi",  # UTC+3, no DST
 }
 
 # Regex to support UTC±offset formats like "UTC+9", "UTC-07", "UTC+09:30"
@@ -32,6 +29,7 @@ UTC_OFFSET_RE = re.compile(
     r"^UTC(?P<sign>[+-])(?P<h>\d{1,2})(?::?(?P<m>\d{2}))?$",
     re.IGNORECASE,
 )
+
 
 def parse_tz_string(tz_str: str):
     """
