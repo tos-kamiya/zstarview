@@ -146,6 +146,8 @@ def main():
     if city not in city_table:
         candidate_cities = [c for c in city_table.keys() if c.endswith("/" + city)]
         if not candidate_cities:
+            candidate_cities = [c for c in city_table.keys() if city in c]
+        if not candidate_cities:
             print(f"Unknown city: {city}")
             return
         elif len(candidate_cities) > 1:
