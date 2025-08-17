@@ -351,34 +351,80 @@ def draw_planets(
     moon_zoom = 5 if enlarge_moon else 1
     sun_altaz: Optional[Tuple[float, float]] = None
     moon_altaz: Optional[Tuple[float, float]] = None
+    moon_body = None  # Store the whole moon object
+
     for body in sky_data.planets:
         if body.name == "sun":
             sun_altaz = (body.alt, body.az)
         if body.name == "moon":
             moon_altaz = (body.alt, body.az)
+            moon_body = body
 
     for body in sky_data.planets:
         if not body.is_visible:
             continue
 
-        pos = normalized_to_screen_xy(*altaz_to_normalized_xy(body.alt, body.az, viewer_data.view_center), geometry)
+        pos = normalized_to_screen_xy(
+            *altaz_to_normalized_xy(body.alt, body.az, viewer_data.view_center), geometry
+        )
         if body.name == "sun":
             draw_gauge_cross(painter, TEXT_COLOR, pos)
-        elif body.name == "moon":
+        elif body.name == "moon" and moon_body:  # Check moon_body exists
             sun_dir_in_moon_frame, screen_rotation_deg = calculate_moon_render_data(
                 sun_altaz, moon_altaz, viewer_data.view_center
             )
 
-            moon_radius = 0.5 * moon_zoom / 2 * (geometry.radius / 90.0)
+            # moon's angular radius is ~0.25 deg. Screen radius is 90 deg.
+            moon_radius_px = (0.25 / 90.0) * geometry.radius * moon_zoom
 
+            # Draw the moon with its phase
             draw_moon(
                 painter,
                 pos,
-                moon_radius,
+                moon_radius_px,
                 sun_dir_in_moon_frame=sun_dir_in_moon_frame,
                 screen_rotation_deg=screen_rotation_deg,
                 opacity=1.0 if not enlarge_moon else 0.7,
             )
+
+            # --- Draw Lunar Eclipse Shadow ---
+            eclipse_info = moon_body.eclipse_info
+
+            if eclipse_info and eclipse_info.is_eclipse:
+                # Get screen coordinates of the shadow's center
+                shadow_pos = normalized_to_screen_xy(
+                    *altaz_to_normalized_xy(
+                        eclipse_info.shadow_center_alt,
+                        eclipse_info.shadow_center_az,
+                        viewer_data.view_center,
+                    ),
+                    geometry,
+                )
+
+                # Calculate shadow radii in pixels, scaling relative to the moon's angular radius
+                if eclipse_info.moon_radius_deg > 1e-6:
+                    px_per_deg = moon_radius_px / eclipse_info.moon_radius_deg
+                    penumbra_radius_px = (
+                        eclipse_info.penumbra_radius_deg * px_per_deg
+                    )
+                    umbra_radius_px = eclipse_info.umbra_radius_deg * px_per_deg
+
+                    painter.save()
+                    painter.setPen(Qt.PenStyle.NoPen)
+
+                    # Draw Penumbra (larger, lighter shadow)
+                    penumbra_color = QColor(0, 0, 0, 100)
+                    painter.setBrush(penumbra_color)
+                    painter.drawEllipse(
+                        shadow_pos, penumbra_radius_px, penumbra_radius_px
+                    )
+
+                    # Draw Umbra (smaller, darker shadow)
+                    umbra_color = QColor(40, 10, 10, 220)  # Dark reddish
+                    painter.setBrush(umbra_color)
+                    painter.drawEllipse(shadow_pos, umbra_radius_px, umbra_radius_px)
+
+                    painter.restore()
 
             draw_gauge_cross(painter, TEXT_COLOR, pos)
         else:

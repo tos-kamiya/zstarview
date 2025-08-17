@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 import argparse
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import sys
 import time
@@ -59,13 +58,23 @@ def _parse_azimuth(value: str) -> float:
 def parse_args() -> argparse.Namespace:
     """Parses command-line arguments."""
     parser = argparse.ArgumentParser(description="Star sky visualizer")
-    parser.add_argument("city", type=str, nargs="?", default="", help="City name (default: same as the last run)")
     parser.add_argument(
+        "city", type=str, nargs="?", default="", help="City name (default: same as the last run)"
+    )
+    time_group = parser.add_argument_group("Time settings")
+    time_group.add_argument(
         "-H", "--hours", type=float, default=0, help="Number of hours to add to current time (default: 0)"
     )
-    parser.add_argument(
+    time_group.add_argument(
         "-D", "--days", type=float, default=0, help="Number of days to add to current time (default: 0)"
     )
+    time_group.add_argument(
+        "--datetime",
+        type=str,
+        default=None,
+        help="Set an absolute UTC date and time in 'YYYY-MM-DD HH:MM:SS' format. Overrides --hours and --days.",
+    )
+
     parser.add_argument(
         "-V",
         "--vmag-limit",
@@ -79,7 +88,9 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Show the moon in 3x size.",
     )
-    parser.add_argument("-s", "--star-base-radius", type=float, default=8.0, help="Base size of stars (default: 8.0)")
+    parser.add_argument(
+        "-s", "--star-base-radius", type=float, default=8.0, help="Base size of stars (default: 8.0)"
+    )
     parser.add_argument(
         "-Z",
         "--view-center-az",
@@ -125,8 +136,6 @@ def main():
         time.sleep(3)
         return
 
-    # Icon already set above; keep runtime consistent
-
     last_city = load_last_city()
 
     args = parse_args()
@@ -145,10 +154,29 @@ def main():
 
     print(f"City: {city}")
 
-    delta_hours = args.hours
-    delta_days = args.days
+    # --- Determine the time for calculation ---
+    if args.datetime:
+        if args.hours != 0 or args.days != 0:
+            print(
+                "Error: --datetime cannot be used with --hours or --days.", file=sys.stderr
+            )
+            return
 
-    delta_t = timedelta(days=delta_days, hours=delta_hours)
+        try:
+            target_time_utc = datetime.strptime(
+                args.datetime, "%Y-%m-%d %H:%M:%S"
+            ).replace(tzinfo=timezone.utc)
+            now_utc = datetime.now(timezone.utc)
+            delta_t = target_time_utc - now_utc
+        except ValueError:
+            print(
+                f"Error: Invalid datetime format: {args.datetime}. Use 'YYYY-MM-DD HH:MM:SS'.",
+                file=sys.stderr,
+            )
+            return
+    else:
+        delta_t = timedelta(days=args.days, hours=args.hours)
+
     view_center = (args.view_center_alt, args.view_center_az)
     view_center = (min(90.0, max(0.0, view_center[0])), view_center[1] % 360)
 
@@ -159,9 +187,13 @@ def main():
     show_splash_message("Loading city and star data...", Qt.GlobalColor.white)
 
     try:
-        star_catalog = load_star_catalog(STARS_CSV_FILE, vmag_threshold=args.vmag_limit)
+        star_catalog = load_star_catalog(
+            STARS_CSV_FILE, vmag_threshold=args.vmag_limit
+        )
     except FileNotFoundError:
-        show_splash_message(f"Error: star data file not found: {STARS_CSV_FILE}", Qt.GlobalColor.red)
+        show_splash_message(
+            f"Error: star data file not found: {STARS_CSV_FILE}", Qt.GlobalColor.red
+        )
         time.sleep(3)
         return
 
@@ -189,7 +221,3 @@ def main():
     save_last_city(city)
 
     sys.exit(app.exec())
-
-
-if __name__ == "__main__":
-    main()

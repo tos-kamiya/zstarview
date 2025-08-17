@@ -18,7 +18,7 @@ from .paths import (
     FIELD_OF_VIEW_DEG,
     PLANET_SYMBOLS,
 )
-from .types import PlanetBody
+from .types import EclipseInfo, PlanetBody
 
 
 # Skyfield ephemeris cache loader (separate from UI)
@@ -137,6 +137,78 @@ def calculate_moon_phase_angle(observer: Topos, t: skyfield.timelib.Time, planet
     return e_to_moon.separation_from(e_to_sun).degrees
 
 
+def calculate_lunar_eclipse_data(
+    t: skyfield.timelib.Time, observer: skyfield.api.Topos
+) -> EclipseInfo:
+    """
+    Calculates lunar eclipse data for a given time.
+    All calculations are done in the GCRS (geocentric) frame.
+    """
+    planets = _starfield_load("de421.bsp")
+    earth = planets["earth"]
+    sun = planets["sun"]
+    moon = planets["moon"]
+
+    # Get geocentric positions
+    sun_pos = earth.at(t).observe(sun)
+    moon_pos = earth.at(t).observe(moon)
+
+    # Check for basic eclipse condition (opposition)
+    separation_deg = sun_pos.separation_from(moon_pos).degrees
+    if abs(separation_deg - 180.0) > 3.0:  # Generous margin for ecliptic latitude
+        return EclipseInfo(is_eclipse=False)
+
+    # Constants for radii calculation (in km)
+    R_earth_km = 6371.0
+    R_sun_km = 696340.0
+    R_moon_km = 1737.4
+
+    # Distances
+    D_sun_km = sun_pos.distance().km
+    D_moon_km = moon_pos.distance().km
+
+    # Angular radius of Earth as seen from Moon (in radians)
+    earth_angular_radius_from_moon = math.asin(R_earth_km / D_moon_km)
+
+    # Angular radius of Sun as seen from Earth/Moon (in radians)
+    sun_angular_radius_from_earth = math.asin(R_sun_km / D_sun_km)
+
+    # Angular radii of Earth's shadow cones at the Moon's distance
+    # Umbra: Earth's apparent radius minus Sun's apparent radius
+    umbra_radius_rad = earth_angular_radius_from_moon - sun_angular_radius_from_earth
+    # Penumbra: Earth's apparent radius plus Sun's apparent radius
+    penumbra_radius_rad = earth_angular_radius_from_moon + sun_angular_radius_from_earth
+
+    # Handle negative umbra radius (Moon in antumbra)
+    if umbra_radius_rad < 0:
+        umbra_radius_rad = 0.0  # No total eclipse possible, only partial/penumbral
+
+    # Distance between the center of the Moon and the center of the shadow
+    d_rad = np.radians(180.0 - separation_deg)
+
+    # Check if the Moon's disk intersects with the penumbra
+    if d_rad > (penumbra_radius_rad + np.radians(R_moon_km / D_moon_km)):
+        return EclipseInfo(is_eclipse=False)
+
+    # Eclipse is happening, calculate rendering data
+    # Get the position of the anti-solar point as seen by the observer
+    sun_astrometric = observer.at(t).observe(sun).apparent()
+    s_alt, s_az, _ = sun_astrometric.altaz()
+
+    # Anti-solar point is at the opposite side of the sky
+    shadow_center_alt = -s_alt.degrees
+    shadow_center_az = (s_az.degrees + 180) % 360
+
+    return EclipseInfo(
+        is_eclipse=True,
+        shadow_center_alt=shadow_center_alt,
+        shadow_center_az=shadow_center_az,
+        umbra_radius_deg=np.degrees(umbra_radius_rad),
+        penumbra_radius_deg=np.degrees(penumbra_radius_rad),
+        moon_radius_deg=np.degrees(R_moon_km / D_moon_km),
+    )
+
+
 def calculate_planets(
     lat: float,
     lon: float,
@@ -149,15 +221,25 @@ def calculate_planets(
     planets = _starfield_load("de421.bsp")
     observer = planets["earth"] + Topos(latitude_degrees=lat, longitude_degrees=lon)
 
+    # Calculate eclipse data for this specific time
+    eclipse_data = calculate_lunar_eclipse_data(t, observer)
+
     bodies: List[PlanetBody] = []
     for name, symbol in PLANET_SYMBOLS.items():
         planet = planets[name]
         astrometric = observer.at(t).observe(planet).apparent()
         alt, az, _ = astrometric.altaz()
-        is_visible = alt.degrees > -ANGLE_BELOW_HORIZON and is_in_fov(alt.degrees, az.degrees, view_center)
+        is_visible = (
+            alt.degrees > -ANGLE_BELOW_HORIZON
+            and is_in_fov(alt.degrees, az.degrees, view_center)
+        )
+
         phase_angle = None
+        current_eclipse_info = None
         if name == "moon":
             phase_angle = calculate_moon_phase_angle(observer, t, planets)
+            current_eclipse_info = eclipse_data
+
         bodies.append(
             PlanetBody(
                 name=name,
@@ -166,6 +248,7 @@ def calculate_planets(
                 symbol=symbol,
                 is_visible=is_visible,
                 phase_angle=phase_angle,
+                eclipse_info=current_eclipse_info,
             )
         )
     return bodies
@@ -206,10 +289,15 @@ def calculate_ecliptic_points(
     """Generate points along the ecliptic for drawing."""
     points: List[Tuple[float, float]] = []
     for lon_deg in range(0, 360 + 5, 5):
-        ecl = SkyCoord(lon=lon_deg * u.deg, lat=0 * u.deg, frame=GeocentricTrueEcliptic(obstime=time))
+        ecl = SkyCoord(
+            lon=lon_deg * u.deg, lat=0 * u.deg, frame=GeocentricTrueEcliptic(obstime=time)
+        )
         icrs = ecl.transform_to("icrs")
         altaz = icrs.transform_to(AltAz(obstime=time, location=location))
-        if altaz.alt.deg > -ANGLE_BELOW_HORIZON and is_in_fov(altaz.alt.deg, altaz.az.deg, view_center):
+        if (
+            altaz.alt.deg > -ANGLE_BELOW_HORIZON
+            and is_in_fov(altaz.alt.deg, altaz.az.deg, view_center)
+        ):
             nx, ny = altaz_to_normalized_xy(altaz.alt.deg, altaz.az.deg, view_center)
             points.append((nx, ny))
     return points

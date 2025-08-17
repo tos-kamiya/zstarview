@@ -6,6 +6,20 @@ import numpy as np
 
 
 @dataclass
+class EclipseInfo:
+    """Contains data about a lunar eclipse for rendering."""
+
+    is_eclipse: bool = False
+    # Alt/Az of the center of the Earth's shadow
+    shadow_center_alt: float = 0.0
+    shadow_center_az: float = 0.0
+    # Angular radii in degrees
+    umbra_radius_deg: float = 0.0
+    penumbra_radius_deg: float = 0.0
+    moon_radius_deg: float = 0.0
+
+
+@dataclass
 class PlanetBody:
     name: str
     alt: float
@@ -13,6 +27,7 @@ class PlanetBody:
     symbol: str
     is_visible: bool
     phase_angle: Optional[float] = None  # moon only
+    eclipse_info: Optional[EclipseInfo] = None  # moon only
 
 
 @dataclass
