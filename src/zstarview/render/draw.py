@@ -6,7 +6,7 @@ from PIL import Image
 from zoneinfo import ZoneInfo
 
 from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF, QRadialGradient, QImage
+from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen, QPolygonF, QRadialGradient, QImage
 
 from ..paths import (
     CELESTIAL_EQUATOR_COLOR,
@@ -569,81 +569,6 @@ def get_sun_color(sun_alt_deg: float) -> tuple[float, float, float]:
     return _lerp_color(night_color, day_color, fade)
 
 
-
-# EPS = 1e-3  # 天頂の特異を避けるための余白
-
-
-# def clamp_alt(alt: float, alt_min: float = -60.0, alt_max: float = 89.5) -> float:
-#     # alt_max は 90 より少し小さく
-#     if alt < alt_min: 
-#         return alt_min
-#     if alt > alt_max:
-#         return alt_max
-#     # ぴったり90°は避ける
-#     if abs(alt - 90.0) < EPS:
-#         return 90.0 - EPS
-#     return alt
-
-
-# def screen_to_altaz_equidistant(
-#     x: int, y: int,
-#     geometry: ScreenGeometry,
-#     view_center: tuple[float, float],  # (alt_c, az_c)
-#     fov_deg: float,
-# ) -> tuple[float, float]:
-#     """
-#     画面上の点(x,y)を、視線中心(view_center)を軸とした(alt, az)に変換する。
-#     方位は 北=0°, 東=90°（時計回り）を満たす。天頂付近の不安定性を回避。
-#     """
-#     cx, cy = geometry.center
-#     R = geometry.radius
-#     dx = x - cx
-#     dy = y - cy
-#     rho = math.hypot(dx, dy)
-#     if rho == 0 or R <= 0:
-#         return view_center
-
-#     # 平面方位 ψ: 北(上)=0°, 時計回り増加
-#     psi = math.atan2(dx, -dy)
-
-#     # 距離→角度（方位等距投影）
-#     # まれな丸め誤差で rho > R になるのを防ぐ保険
-#     rho_ratio = min(rho / R, 1.0)
-#     theta = math.radians(rho_ratio * (fov_deg * 0.5))
-
-#     alt_c, az_c = view_center
-#     alt_c = clamp_alt(alt_c)
-#     lat1 = math.radians(alt_c)
-#     lon1 = math.radians(az_c)
-
-#     sin_lat1 = math.sin(lat1)
-#     cos_lat1 = math.cos(lat1)
-#     sin_theta = math.sin(theta)
-#     cos_theta = math.cos(theta)
-#     cos_psi = math.cos(psi)
-#     sin_psi = math.sin(psi)
-
-#     # φ2（=alt2）
-#     sin_lat2 = sin_lat1 * cos_theta + cos_lat1 * sin_theta * cos_psi
-#     sin_lat2 = max(-1.0, min(1.0, sin_lat2))
-#     lat2 = math.asin(sin_lat2)
-#     cos_lat2 = math.cos(lat2)
-
-#     # λ2（=az2）
-#     if abs(cos_lat2) < 1e-6:
-#         # 天頂/天底で方位は未定義 → 連続性の観点で中心の方位を保持
-#         lon2 = lon1
-#     else:
-#         # 前進式（安定）：Δλ = atan2( sinψ sinθ cosφ1, cosθ − sinφ1 sinφ2 )
-#         y_ = sin_psi * sin_theta * cos_lat1
-#         x_ = cos_theta - sin_lat1 * sin_lat2
-#         lon2 = lon1 + math.atan2(y_, x_)
-
-#     alt = math.degrees(lat2)
-#     az  = (math.degrees(lon2) + 360.0) % 360.0
-#     return alt, az
-
-
 def get_sky_color(view_altaz: Tuple[float, float], sun_altaz: Tuple[float, float]) -> tuple[float, float, float]:
     # 日没後は緩やかに暗く（-10°で完全に暗い、0°で昼側へ）
     sun_alt_deg, sun_az_deg = sun_altaz
@@ -686,86 +611,6 @@ def _smoothstep(edge0: float, edge1: float, x: float) -> float:
     return t * t * (3.0 - 2.0 * t)
 
 
-# def draw_sky_color_disc(
-#     painter: QPainter,
-#     geometry: ScreenGeometry,
-#     view_center: Tuple[float, float],  # (alt, az)
-#     sun_altaz: Tuple[float, float],  # (alt, az)
-#     fov_deg: float,
-#     *,
-#     exposure: float = 1.0,
-#     saturation: float = 1.2,
-#     ground_color: Tuple[float, float, float] = (1.0, 0.0, 0.0),
-#     alpha: float = 1.0,
-# ) -> None:
-#     """天球ディスク（center=geometry.center, radius=geometry.radius）を空色で塗る。
-#     """
-#     R = int(geometry.radius)
-#     if R < 2:
-#         return
-
-#     cx, cy = geometry.center
-#     buf_w = buf_h = R * 2
-#     x0 = int(cx - R)
-#     y0 = int(cy - R)
-#     r2 = R * R
-
-#     img = QImage(buf_w, buf_h, QImage.Format.Format_ARGB32)
-#     img.fill(QColor(0, 0, 0, 0))
-
-#     # 走査
-#     by_printed = set()  # debug
-#     for by in range(0, buf_h):
-#         # 実画面Y（丸めの歪み低減）
-#         y = y0 + by
-#         dy_b = by - R
-#         dy2 = dy_b * dy_b
-#         for bx in range(0, buf_w):
-#             dx_b = bx - R
-#             if (dx_b * dx_b + dy2) > r2:
-#                 continue  # ディスク外
-
-#             # 実画面X
-#             x = x0 + bx
-
-#             # 1) 画面→(alt, az)
-#             altaz = screen_to_altaz_equidistant(x, y, geometry, view_center, fov_deg)
-
-#             # 2) 空色（リニアRGB想定）
-#             r, g, b = get_sky_color(altaz, sun_altaz)
-
-#             # 3) 彩度調整＆露出（リニア）
-#             col = r * 0.299 + g * 0.587 + b * 0.114
-#             r, g, b = _lerp_color((col, col, col), (r, g, b), saturation)
-#             r *= exposure; g *= exposure; b *= exposure
-
-#             # 地平線下（-5〜0°でフェードイン）
-#             alt = altaz[0]
-#             if by % 10 == 0 and by not in by_printed:  # debug
-#                 by_printed.add(by)  # debug
-#                 print(f"{view_center[0]=}, {geometry.radius=}, {by=}, {alt=}")  # debug
-
-#             if abs(alt) <= 0.3:
-#                 img.setPixel(bx, by, QColor(0, 255, 0, 255).rgba())
-#                 continue
-
-#             if alt < 0.0:
-#                 # t = _clamp01((alt + 5.0) / 5.0)
-#                 # r, g, b = _lerp_color(ground_color, (r, g, b), t)
-#                 r, g, b = ground_color
-
-#             # 4) クリップ＆書き込み
-#             r = _clamp01(r); g = _clamp01(g); b = _clamp01(b)
-#             img.setPixel(bx, by, QColor.fromRgbF(r, g, b, alpha).rgba())
-
-#     # 描画
-#     painter.save()
-#     painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
-#     target_rect = QRect(cx - R, cy - R, 2 * R, 2 * R)
-#     painter.drawImage(target_rect, img)
-#     painter.restore()
-
-
 def _lerp_color(a: Tuple[float,float,float],
                 b: Tuple[float,float,float], t: float) -> Tuple[float,float,float]:
     return (a[0] + (b[0]-a[0]) * t,
@@ -795,106 +640,148 @@ def _fwd_offset_altaz(alt_c: float, az_c: float,
     az  = (math.degrees(λ2) + 360.0) % 360.0
     return alt, az
 
+def _alpha_from_alt(alt: float, alpha: float, fade_hi: float = 0.0, fade_lo: float = -2.0) -> float:
+    """alt に応じてアルファを返す。
+       alt >= fade_hi  → alpha（=1相当）
+       fade_lo < alt < fade_hi → 線形フェード
+       alt <= fade_lo → 0（描かない）
+    """
+    if alt <= fade_lo:
+        return 0.0
+    if alt >= fade_hi:
+        return alpha
+    t = (alt - fade_lo) / (fade_hi - fade_lo)   # [fade_hi, fade_lo]→[0,1]
+    return alpha * t
+
 def draw_sky_color_disc(
     painter: QPainter,
-    geometry,                           # ScreenGeometry(center, radius)
+    geometry: ScreenGeometry,
     view_center: Tuple[float, float],   # (alt, az)
     sun_altaz: Tuple[float, float],     # (alt, az)
     *,
     exposure: float = 1.0,
     saturation: float = 1.2,
-    ground_color: Tuple[float, float, float] = (0.0, 0.0, 0.0),
     alpha: float = 1.0,
-    ring_step_px: int = 1,          # 同心円リングの間隔（おおよそのピクセル）
-    sample_pitch_px: float = 1.0,   # 各リング上の目標サンプル間隔（px）
-    min_ang_samples: int = 8,       # 各リングの最小サンプル数
-    dot_size: int = 1,              # 打点サイズ（1=1px, 2=2x2 ...）
+    # --- サンプリング密度（画質と速度のつまみ）---
+    ring_step_px: int = 6,            # ★半径方向の目標ピクセル間隔（自動でΔθを決める基準）
+    sample_pitch_px: float = 6.0,     # 各リング上の目標サンプル間隔（px）
+    min_ang_samples: int = 8,         # 各リングの最小サンプル数
+    dot_size: int = 14,                # タイル（正方形）の一辺(px)：だいたい 2*ring_step_px が目安
+    # --- Δθ 推定の安定化パラメータ ---
+    deriv_probe_deg: float = 0.25,    # dr/dθ の有限差分用の小さな角度（度）
+    min_theta_step_deg: float = 0.2,  # Δθ の下限（度）
+    max_theta_step_deg: float = 6.0,  # Δθ の上限（度）
 ) -> None:
     """
-    既存の altaz_to_normalized_xy(alt,az,view_center) と normalized_to_screen_xy(nx,ny,geometry)
-    を使って、天球ディスクをリング×方位のサンプルで塗る。
+    半径方向のステップ（Δθ）を、画面上のピクセル距離が `ring_step_px` 前後になるよう動的決定。
+    円周方向は、リングの“実測半径”から周長/ピッチでサンプル数を決める。
     """
+    assert altaz_to_normalized_xy and normalized_to_screen_xy and get_sky_color
+
     R = int(geometry.radius)
     if R < 2:
         return
 
-    cx, cy = geometry.center
+    # center の取り出し（QPoint/QPointF/Tuple に対応）
+    c = geometry.center
+    cx = c.x() if hasattr(c, "x") else c[0]
+    cy = c.y() if hasattr(c, "y") else c[1]
+
     img_w = img_h = R * 2
     img = QImage(img_w, img_h, QImage.Format.Format_ARGB32)
-    img.fill(QColor(0, 0, 0, 0))  # 透明で開始（下地を生かせる）
+    img.fill(QColor(0, 0, 0, 0))  # 透明
 
-    theta_max = 90.0
+    ip = QPainter(img)
+    ip.setRenderHint(QPainter.RenderHint.Antialiasing, False)
+    ip.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, False)
+
+    # 円クリップ
+    path = QPainterPath()
+    path.addEllipse(R - R, R - R, 2*R, 2*R)  # 中心 (R,R), 半径 R の円
+    ip.setClipPath(path)
+
+    # 天頂特異回避のクランプ
+    EPS = 0.01
     alt_c, az_c = view_center
+    if alt_c <= -90.0: alt_c = -(90.0 - EPS)
+    if alt_c >=  90.0: alt_c =  (90.0 - EPS)
 
-    # リングを「見かけのスクリーン半径」ベースで等間隔にする
-    # そのために、リングごとに1点だけ前進写像して r_px を計測 → 円周長からサンプル数を決める
-    # スクリーン半径に対する角距離の近似は使わないので、既存投影に完全追従します。
-    # 粗密は ring_step_px / sample_pitch_px / dot_size で調整してください。
-    rho_px = 0
+    # 正規化仕様に合わせて、外周は常に 90°
+    theta_max = 90.0
+
+    # 局所半径 r_px(θ) を“実測”する関数
+    def screen_radius_px(theta_deg: float) -> float:
+        alt_p, az_p = _fwd_offset_altaz(alt_c, az_c, theta_deg, 0.0)
+        nx, ny = altaz_to_normalized_xy(alt_p, az_p, (alt_c, az_c))
+        s = normalized_to_screen_xy(nx, ny, geometry)
+        sx, sy = s.x(), s.y()
+        return max(0.0, math.hypot(sx - cx, sy - cy))
+
+    # 角度を 0→90° まで進める（Δθ は動的）
+    theta = 0.0
+    half = max(1, int(dot_size // 2))
     while True:
-        # そのリングに対応する角距離を線形対応で近似
-        theta_deg = theta_max * (rho_px / R)
+        # 現在リングの半径（px）
+        r_px = screen_radius_px(theta)
 
-        # そのリングのスクリーン半径を前進写像で“実測”
-        alt_probe, az_probe = _fwd_offset_altaz(alt_c, az_c, theta_deg, 0.0)
-        nx_probe, ny_probe = altaz_to_normalized_xy(alt_probe, az_probe, view_center)
-        s = normalized_to_screen_xy(nx_probe, ny_probe, geometry)
-        sx_probe, sy_probe = s.x(), s.y()
-        r_px = math.hypot(sx_probe - cx, sy_probe - cy)
-
-        # 円周長からサンプル数を見積もり
+        # 円周方向サンプル数
         circumference = max(1.0, 2.0 * math.pi * r_px)
-        n_ang = max(min_ang_samples, int(round(circumference / max(0.5, sample_pitch_px))))
+        n_ang = max(min_ang_samples, int(round(circumference / max(1.0, float(sample_pitch_px)))))
 
+        # リング塗り
         for i in range(n_ang):
             psi_deg = (360.0 * i) / n_ang  # 北0°/東90°/時計回り
-            # 1) 中心から(θ,ψ)だけ進めた(alt,az)
-            alt, az = _fwd_offset_altaz(alt_c, az_c, theta_deg, psi_deg)
 
-            # 2) 既存前進写像でスクリーン座標へ
-            nx, ny = altaz_to_normalized_xy(alt, az, view_center)
+            # (θ,ψ) → (alt,az)
+            alt, az = _fwd_offset_altaz(alt_c, az_c, theta, psi_deg)
+
+            # (alt,az) → スクリーン
+            nx, ny = altaz_to_normalized_xy(alt, az, (alt_c, az_c))
             s = normalized_to_screen_xy(nx, ny, geometry)
             sx, sy = s.x(), s.y()
-            xi, yi = int(round(sx)), int(round(sy))
+            xi = int(round(sx - (cx - R)))
+            yi = int(round(sy - (cy - R)))
 
-            # ディスク内チェック
-            dx, dy = xi - cx, yi - cy
-            if dx*dx + dy*dy > R*R + 1:
-                continue
-            if not (cx - R <= xi < cx + R and cy - R <= yi < cy + R):
+            if xi < 0 or xi >= img_w or yi < 0 or yi >= img_h:
                 continue
 
-            # 3) 色（地面下はベタで ground_color。透明で抜きたいなら continue に変更）
-            if alt < 0.0:
-                rr, gg, bb = ground_color
-                aa = 1.0
-            else:
-                rr, gg, bb = get_sky_color((alt, az), sun_altaz)
-                gray = rr*0.299 + gg*0.587 + bb*0.114
-                rr, gg, bb = _lerp_color((gray, gray, gray), (rr, gg, bb), saturation)
-                rr *= exposure; gg *= exposure; bb *= exposure
-                rr = _clamp01(rr); gg = _clamp01(gg); bb = _clamp01(bb)
-                aa = alpha
+            aa = _alpha_from_alt(alt, alpha, fade_hi=1.0, fade_lo=-1.0)
+            if aa <= 0.0:
+                continue
 
-            # 4) ドットで描く（穴埋め用に dot_size>1 も可）
-            half = max(0, dot_size // 2)
-            for oy in range(-half, half + 1):
-                yy = yi + oy
-                if yy < cy - R or yy >= cy + R: 
-                    continue
-                for ox in range(-half, half + 1):
-                    xx = xi + ox
-                    if xx < cx - R or xx >= cx + R:
-                        continue
-                    ddx, ddy = xx - cx, yy - cy
-                    if ddx*ddx + ddy*ddy > R*R + 1:
-                        continue
-                    img.setPixel(xx - (cx - R), yy - (cy - R),
-                                 QColor.fromRgbF(rr, gg, bb, aa).rgba())
+            rr, gg, bb = get_sky_color((alt, az), sun_altaz)
+            gray = rr*0.299 + gg*0.587 + bb*0.114
+            rr, gg, bb = _lerp_color((gray, gray, gray), (rr, gg, bb), saturation)
+            rr *= exposure; gg *= exposure; bb *= exposure
+            rr = _clamp01(rr); gg = _clamp01(gg); bb = _clamp01(bb)
 
-        rho_px += max(1, ring_step_px)
-        if rho_px > R:
+            ip.fillRect(xi - half, yi - half, 2*half, 2*half, QColor.fromRgbF(rr, gg, bb, aa))
+
+        # 終了判定（最後に 90° のリングを必ず描く）
+        if theta >= theta_max - 1e-6:
             break
+
+        # ---- Δθ を画面距離から決定：Δθ ≈ ring_step_px / (dr_px/dθ) ----
+        # 有限差分で dr/dθ を推定
+        probe = min(deriv_probe_deg, theta_max - theta)
+        r_next = screen_radius_px(theta + probe)
+        dr_dtheta = (r_next - r_px) / max(1e-6, probe)
+
+        if dr_dtheta <= 1e-6:
+            dtheta = max_theta_step_deg  # 安全側（ほぼ変化しない/端での数値誤差対策）
+        else:
+            dtheta = float(ring_step_px) / dr_dtheta
+
+        # 角度ステップを制限
+        dtheta = max(min_theta_step_deg, min(max_theta_step_deg, dtheta))
+
+        # # 終端に合わせて調整
+        # if theta + dtheta > theta_max:
+        #     dtheta = theta_max - theta
+
+        theta += dtheta
+
+    ip.end()
 
     # 貼り付け
     painter.save()
