@@ -9,6 +9,11 @@ Zenith Star View は、地球上の任意の都市を指定して、頭上の星
 
 ![](docs/images/screenshot1.png)
 
+- オプション `-A 仰角` により、水平線を向いたときの空も表示可能
+- 空の状況をわかりやすくするため、空の色（のシミュレーション）を薄く重ねて表示(バージョン 0.8.2)
+
+![](docs/images/screenshot4.png)
+
 ## インストール方法（推奨：`pipx`）
 
 [`pipx`](https://pypa.github.io/pipx/) を使ってインストールする想定です。

@@ -9,6 +9,11 @@ Zenith Star View is an application that displays the starry sky from any city on
 
 ![](docs/images/screenshot1.png)
 
+- With the option `-A altitude`, you can also view the horizon-level sky
+- To make the sky situation easier to understand, a simulated sky color is lightly overlaid (since version 0.8.2)
+
+![](docs/images/screenshot4.png)
+
 ## Installation (Recommended: `pipx`)
 
 It is intended to be installed using [`pipx`](https://pypa.github.io/pipx/).
