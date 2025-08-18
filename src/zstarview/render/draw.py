@@ -1,5 +1,5 @@
 import math
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from PIL import Image
@@ -16,7 +16,7 @@ from ..paths import (
     HORIZON_LINE_COLOR,
     TEXT_COLOR,
 )
-from ..types import ScreenGeometry, SkyData, ViewerData
+from ..types import ScreenGeometry, SkyData, ViewerData, CelestialObject
 from ..astro import altaz_to_normalized_xy, is_in_fov, calculate_moon_render_data
 from ..utils.image import generate_moon_phase_image
 from ..utils.qt import pil2qpixmap
@@ -25,7 +25,15 @@ DEBUG_ECLIPSE = True
 
 
 def bv_to_rgb_vectorized(bv: np.ndarray) -> np.ndarray:
-    """Vectorized conversion of B-V color index to RGB tuples."""
+    """
+    Vectorized conversion of B-V color index to RGB tuples.
+
+    Args:
+        bv: A NumPy array of B-V color indices.
+
+    Returns:
+        A NumPy array of RGB color tuples, where each tuple is of type int.
+    """
     # First, initialize all stars to the default color (Orange-ish)
     # The output will be an array of shape (number_of_stars, 3)
     rgb = np.full((bv.shape[0], 3), [255, 204, 111], dtype=int)
@@ -41,7 +49,22 @@ def bv_to_rgb_vectorized(bv: np.ndarray) -> np.ndarray:
 def altaz_to_normalized_xy_vectorized(
     alt: np.ndarray, az: np.ndarray, view_center: Tuple[float, float]
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Vectorized conversion of alt/az to normalized screen coordinates."""
+    """
+    Vectorized conversion of altitude/azimuth to normalized screen coordinates.
+
+    This function projects spherical coordinates (altitude and azimuth) onto a 2D
+    plane using a stereographic projection. The projection is centered on the
+    `view_center` coordinates.
+
+    Args:
+        alt: A NumPy array of altitude values in degrees.
+        az: A NumPy array of azimuth values in degrees.
+        view_center: A tuple containing the (altitude, azimuth) of the view center in degrees.
+
+    Returns:
+        A tuple of two NumPy arrays (nx, ny), representing the normalized x and y
+        coordinates on the screen. The coordinates are in the range [-1, 1].
+    """
     center_alt, center_az = view_center
     alt1, az1 = np.radians(center_alt), np.radians(center_az)
     alt2, az2 = np.radians(alt), np.radians(az)
@@ -64,7 +87,20 @@ def altaz_to_normalized_xy_vectorized(
 def normalized_to_screen_xy_vectorized(
     nx: np.ndarray, ny: np.ndarray, geometry: ScreenGeometry
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Vectorized conversion of normalized coordinates to screen coordinates."""
+    """
+    Vectorized conversion of normalized coordinates to screen coordinates.
+
+    This function maps normalized coordinates (in the range [-1, 1]) to the
+    actual pixel coordinates on the screen, based on the provided screen geometry.
+
+    Args:
+        nx: A NumPy array of normalized x coordinates.
+        ny: A NumPy array of normalized y coordinates.
+        geometry: A ScreenGeometry object containing the screen's center and radius.
+
+    Returns:
+        A tuple of two NumPy arrays (x, y), representing the screen coordinates.
+    """
     return (geometry.center[0] + nx * geometry.radius, geometry.center[1] + ny * geometry.radius)
 
 
@@ -73,10 +109,27 @@ def find_highlighted_object(
     viewer_data: ViewerData,
     mouse_pos: QPoint,
     geometry: ScreenGeometry,
-) -> Optional[Tuple[Dict[str, Union[str, float]], QPointF]]:
-    """Find the nearest celestial object to the mouse cursor (vectorized for stars)."""
+) -> Optional[Tuple[CelestialObject, QPointF]]:
+    """
+    Find the nearest celestial object to the mouse cursor.
+
+    This function searches for the closest star or planet to the given mouse
+    position. It performs a vectorized search for stars and a scalar search for
+    planets to optimize performance.
+
+    Args:
+        sky_data: A SkyData object containing information about celestial objects.
+        viewer_data: A ViewerData object containing the viewer's location and time.
+        mouse_pos: The QPoint representing the current mouse cursor position.
+        geometry: A ScreenGeometry object for coordinate transformations.
+
+    Returns:
+        A tuple containing the highlighted celestial object (as a dictionary or
+        a CelestialObject) and its screen position (QPointF), or None if no
+        object is close enough to the cursor.
+    """
     min_dist_sq = 30**2  # squared pixels
-    highlighted_object = None
+    highlighted_object: Optional[Tuple[CelestialObject, QPointF]] = None
 
     if not sky_data:
         return None
@@ -91,7 +144,7 @@ def find_highlighted_object(
         if dist_sq[closest_star_idx] < min_dist_sq:
             min_dist_sq = dist_sq[closest_star_idx]
             # Reconstruct a dictionary for the single highlighted star
-            highlighted_star = {key: val[closest_star_idx] for key, val in stars.items()}
+            highlighted_star: CelestialObject = {key: val[closest_star_idx] for key, val in stars.items()}
             highlighted_object = (highlighted_star, QPointF(x[closest_star_idx], y[closest_star_idx]))
 
     # Handle planets (scalar)
@@ -108,7 +161,19 @@ def find_highlighted_object(
     return highlighted_object
 
 
-def draw_radial_background(painter: QPainter, rect: QRectF, geometry: ScreenGeometry):
+def draw_radial_background(painter: QPainter, rect: QRectF, geometry: ScreenGeometry) -> None:
+    """
+    Draws a radial gradient background to represent the sky.
+
+    This function creates a subtle radial gradient to simulate the sky's
+    appearance, with a darker tone towards the zenith and a slightly
+    lighter tone towards the horizon.
+
+    Args:
+        painter: The QPainter object to use for drawing.
+        rect: The QRectF defining the area to fill with the background.
+        geometry: A ScreenGeometry object for calculating gradient parameters.
+    """
     assert geometry.radius >= 10
     fov_middle = 90 + (FIELD_OF_VIEW_DEG / 2 - 90) / 2
     r90 = float(geometry.radius)
@@ -116,14 +181,14 @@ def draw_radial_background(painter: QPainter, rect: QRectF, geometry: ScreenGeom
     r_max = float(r_fov * 1.4)
     step_px = 0.5
 
-    def pos(r):
+    def pos(r: float) -> float:
         return max(0.0, min(1.0, r / r_max))
 
-    def col(r, s):
+    def col(r: float, s: float) -> QColor:
         return QColor(0, 0, 0, max(0, 255 - (s + int(150 * (r - r90) / r_max))))
 
     c = geometry.center
-    g = QRadialGradient(QPoint(c[0], c[1]), r_max)
+    g = QRadialGradient(QPointF(c[0], c[1]), r_max)
     g.setColorAt(pos(0), col(r90, 0))
     g.setColorAt(pos(r90), col(r90, 0))
     g.setColorAt(pos(r90 + step_px), col(r90, 10))
@@ -139,7 +204,16 @@ def draw_radial_background(painter: QPainter, rect: QRectF, geometry: ScreenGeom
 
 
 def split_by_gaps(points: List[Tuple[float, float]]) -> List[List[Tuple[float, float]]]:
-    """Split a polyline by gaps to avoid drawing large jumps."""
+    """
+    Split a polyline by large gaps to avoid drawing long, straight lines
+    across the screen when a celestial path wraps around.
+
+    Args:
+        points: A list of (x, y) tuples representing the polyline.
+
+    Returns:
+        A list of polyline fragments, where each fragment is a list of points.
+    """
 
     def dist(p1: Tuple[float, float], p2: Tuple[float, float]) -> float:
         return math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
@@ -153,9 +227,16 @@ def split_by_gaps(points: List[Tuple[float, float]]) -> List[List[Tuple[float, f
     return fragments
 
 
-def draw_sky_reference_lines(painter: QPainter, geometry: ScreenGeometry, sky_data: SkyData):
-    """Draw equator, ecliptic, and horizon polylines."""
-    point_list_pen_styles = [
+def draw_sky_reference_lines(painter: QPainter, geometry: ScreenGeometry, sky_data: SkyData) -> None:
+    """
+    Draw celestial reference lines like the equator, ecliptic, and horizon.
+
+    Args:
+        painter: The QPainter to use for drawing.
+        geometry: The screen geometry for coordinate conversion.
+        sky_data: The data containing the points for the reference lines.
+    """
+    point_list_pen_styles: List[Tuple[List[Tuple[float, float]], Tuple[QColor, int, Qt.PenStyle]]] = [
         (sky_data.celestial_equator_points, (CELESTIAL_EQUATOR_COLOR, 2, Qt.PenStyle.DashLine)),
         (sky_data.ecliptic_points, (ECLIPTIC_COLOR, 2, Qt.PenStyle.DotLine)),
         (sky_data.horizon_points, (HORIZON_LINE_COLOR, 2, Qt.PenStyle.SolidLine)),
@@ -165,7 +246,7 @@ def draw_sky_reference_lines(painter: QPainter, geometry: ScreenGeometry, sky_da
             if len(frag) >= 2:
                 pts = [normalized_to_screen_xy(nx, ny, geometry) for nx, ny in frag]
                 poly = QPolygonF(pts)
-                painter.setPen(QPen(*pen_style))
+                painter.setPen(QPen(pen_style[0], pen_style[1], pen_style[2]))
                 painter.drawPolyline(poly)
 
 
@@ -175,16 +256,25 @@ def draw_stars(
     sky_data: SkyData,
     viewer_data: ViewerData,
     star_base_radius: float,
-):
-    """Draw stars using vectorized calculations.
-    Brightness is represented primarily by area (from visual magnitude),
-    with additive blending. Small stars are batched as rectangles; large
-    stars are drawn as soft disks with a radial gradient but with the
-    same area to keep the magnitude→area mapping consistent.
+) -> None:
+    """
+    Draw stars using vectorized calculations for efficiency.
+
+    Brightness is represented primarily by area (calculated from visual magnitude),
+    with additive blending for a more realistic effect. Small stars are batched
+    and drawn as rectangles, while larger stars are rendered as soft disks with
+    a radial gradient, maintaining a consistent magnitude-to-area mapping.
+
+    Args:
+        painter: The QPainter object for drawing.
+        geometry: The screen geometry for coordinate conversions.
+        sky_data: The data containing star information (positions, magnitudes, etc.).
+        viewer_data: The viewer's data, including the view center.
+        star_base_radius: A base radius for scaling star sizes.
     """
     stars = sky_data.stars
 
-    # 1) mag → relative luminance → pixel area
+    # 1) mag -> relative luminance -> pixel area
     #    Base: L_raw = 10^(-0.4 * (vmag - v_ref))
     #    Then apply a tone curve (beta < 1) to tame very bright stars.
     nx, ny = altaz_to_normalized_xy_vectorized(stars["alt"], stars["az"], viewer_data.view_center)
@@ -192,21 +282,21 @@ def draw_stars(
 
     vmag = stars["vmag"]
     bv_clamped = np.nan_to_num(stars["bv"], nan=0.45)
-    rgb_colors = bv_to_rgb_vectorized(bv_clamped)  # assumes 0–255
+    rgb_colors = bv_to_rgb_vectorized(bv_clamped)  # assumes 0-255
 
     v_ref = 1.0  # reference mag
     L_raw = 10.0 ** (-0.4 * (vmag - v_ref))
-    beta = 0.8  # 0.7–1.0: lower → less blow-up for very bright stars
+    beta = 0.8  # 0.7-1.0: lower -> less blow-up for very bright stars
     L = np.power(L_raw, beta)
 
     # Area scale: keep visuals relatively stable vs. widget radius.
     # base_linear_px is a "baseline linear size (px)" which we square to get area.
     base_linear_px = (geometry.radius / 500.0) * float(star_base_radius)
-    base_area_px = max(0.5, base_linear_px * base_linear_px)  # avoid < 1 px²
+    base_area_px = max(0.5, base_linear_px * base_linear_px)  # avoid < 1 px^2
     area_px = base_area_px * L
 
     # Clamp area to stabilize density and avoid extremes.
-    min_area_px = 0.5  # ~1–2 px² improves visibility
+    min_area_px = 0.5  # ~1-2 px^2 improves visibility
     max_area_px = (geometry.radius * 0.03) ** 2  # size-dependent upper bound
     area_px = np.clip(area_px, min_area_px, max_area_px)
 
@@ -217,7 +307,7 @@ def draw_stars(
     large_radius_px = np.sqrt(area_px / np.pi)  # disk radius
 
     # Threshold is on *linear* size.
-    large_star_threshold_px = 4.0  # ≥ ~4 px → draw as soft disk
+    large_star_threshold_px = 4.0  # >= ~4 px -> draw as soft disk
     small_star_mask = small_linear_px < large_star_threshold_px
     large_star_mask = ~small_star_mask
 
@@ -232,7 +322,7 @@ def draw_stars(
 
         painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
         # Peak alpha is constant (total added light is governed by area).
-        alpha_peak = 220  # tune in ~190–255
+        alpha_peak = 220  # tune in ~190-255
         for i in range(len(lx)):
             pos = QPointF(float(lx[i]), float(ly[i]))
             r = float(lr[i])
@@ -256,14 +346,14 @@ def draw_stars(
         srgb = rgb_colors[small_star_mask]
 
         # Base alpha kept modest so faint stars don't pop as dots.
-        # Then lift α slightly with area (subtle, gamma<1).
-        alpha_base = 140  # try 130–160
-        alpha_gain = 50  # how much to lift at the upper end (30–60)
+        # Then lift alpha slightly with area (subtle, gamma<1).
+        alpha_base = 140  # try 130-160
+        alpha_gain = 50  # how much to lift at the upper end (30-60)
         alpha_scale = np.power(np.clip(sA / 4.0, 0.0, 1.0), 0.75)  # area vs. 2x2px reference
         alpha_f = np.clip(alpha_base + alpha_gain * alpha_scale, 60, 210)
 
-        # Quantize alpha to reduce unique RGBA buckets → faster & less banding
-        # e.g., to ~8–12 steps:
+        # Quantize alpha to reduce unique RGBA buckets -> faster & less banding
+        # e.g., to ~8-12 steps:
         step = 12
         alpha_u8 = (np.round(alpha_f / step) * step).astype(np.uint8)
 
@@ -286,7 +376,18 @@ def draw_stars(
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
 
 
-def draw_gauge_cross(painter: QPainter, color: QColor, center: QPointF):
+def draw_gauge_cross(painter: QPainter, color: QColor, center: QPointF) -> None:
+    """
+    Draws a cross-shaped gauge marker.
+
+    This is used to indicate the position of certain celestial objects, like
+    the Sun or the Moon.
+
+    Args:
+        painter: The QPainter to use for drawing.
+        color: The color of the cross.
+        center: The center point (QPointF) of the cross.
+    """
     cross_outer_len, cross_inner_len = 15, 4
     x, y = center.x(), center.y()
     painter.setPen(QPen(color, 1))
@@ -296,7 +397,15 @@ def draw_gauge_cross(painter: QPainter, color: QColor, center: QPointF):
     painter.drawLine(QPointF(x, y + cross_inner_len), QPointF(x, y + cross_outer_len))
 
 
-def draw_zenith_marker(painter: QPainter, geometry: ScreenGeometry, view_center: Tuple[float, float]):
+def draw_zenith_marker(painter: QPainter, geometry: ScreenGeometry, view_center: Tuple[float, float]) -> None:
+    """
+    Draws a marker at the zenith (the point directly overhead).
+
+    Args:
+        painter: The QPainter to use for drawing.
+        geometry: The screen geometry for coordinate conversion.
+        view_center: The current view center (altitude, azimuth).
+    """
     alt_zenith = 90.0
     az_ref = view_center[1]
 
@@ -322,8 +431,22 @@ def draw_moon(
     screen_rotation_deg: float,
     opacity: float = 1.0,
     base_color: Optional[QColor] = None,
-):
-    """Draw the moon with phase based on the sun's direction vector and apply screen rotation."""
+) -> None:
+    """
+    Draw the moon with its correct phase and orientation.
+
+    The moon's phase is determined by the sun's direction vector relative to
+    the moon. The image is also rotated to match the screen orientation.
+
+    Args:
+        painter: The QPainter for drawing.
+        center: The center position of the moon on the screen.
+        radius: The radius of the moon in pixels.
+        sun_dir_in_moon_frame: The direction vector of the sun in the moon's reference frame.
+        screen_rotation_deg: The rotation angle of the screen in degrees.
+        opacity: The opacity of the moon image.
+        base_color: An optional QColor to tint the moon, used for eclipses.
+    """
     img_size = max(5, int(math.ceil(radius * 2.0)))
     view_dir = np.array([0, 0, 1], dtype=float)
     if base_color is not None:
@@ -343,7 +466,7 @@ def draw_moon(
     painter.drawPixmap(target_rect, pixmap, QRectF(0, 0, img_size, img_size))
 
     if base_color is not None:
-        painter.setCompositionMode(QPainter.CompositionMode_SourceAtop)
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceAtop)
         painter.setBrush(base_color)
         painter.setPen(Qt.PenStyle.NoPen)
         painter.drawEllipse(center, radius, radius)
@@ -358,11 +481,26 @@ def draw_planets(
     viewer_data: ViewerData,
     enlarge_moon: bool,
     emoji_font: QFont,
-):
+) -> None:
+    """
+    Draw the planets, including the Sun and Moon.
+
+    This function iterates through the planets in the sky data, calculates their
+    screen positions, and draws them. The Sun is drawn as a gauge cross, the
+    Moon is drawn with its phase, and other planets are represented by emoji symbols.
+
+    Args:
+        painter: The QPainter for drawing.
+        geometry: The screen geometry for coordinate conversion.
+        sky_data: The data containing planet information.
+        viewer_data: The viewer's data for position calculations.
+        enlarge_moon: A boolean indicating whether to draw the moon larger.
+        emoji_font: The QFont to use for drawing planet symbols.
+    """
     moon_zoom = 5 if enlarge_moon else 1
     moon_body = None
-    sun_altaz = None
-    moon_altaz = None
+    sun_altaz: Optional[Tuple[float, float]] = None
+    moon_altaz: Optional[Tuple[float, float]] = None
 
     for body in sky_data.planets:
         if body.name == "sun":
@@ -383,14 +521,14 @@ def draw_planets(
         if body.name == "sun":
             draw_gauge_cross(painter, TEXT_COLOR, pos)
 
-        elif body.name == "moon" and moon_body:
+        elif body.name == "moon" and moon_body and sun_altaz and moon_altaz:
             sun_dir_in_moon_frame, screen_rotation_deg = calculate_moon_render_data(
                 sun_altaz, moon_altaz, viewer_data.view_center
             )
             moon_radius_px = (0.25 / 90.0) * geometry.radius * moon_zoom
 
             eclipse = body.eclipse_info
-            base_color = None
+            base_color: Optional[QColor] = None
             if eclipse and eclipse.is_eclipse:
                 if eclipse.eclipse_type == "partial":
                     base_color = QColor(30, 0, 0, 60)
@@ -416,10 +554,19 @@ def draw_planets(
 
 def draw_direction_labels(
     painter: QPainter, geometry: ScreenGeometry, view_center: Tuple[float, float], text_font: QFont
-):
+) -> None:
+    """
+    Draw compass direction labels (N, S, E, W) on the horizon.
+
+    Args:
+        painter: The QPainter for drawing.
+        geometry: The screen geometry for coordinate conversion.
+        view_center: The current view center to determine which labels are visible.
+        text_font: The QFont to use for the labels.
+    """
     painter.setPen(TEXT_COLOR)
     painter.setFont(text_font)
-    alt = 0
+    alt = 0.0
     for label, az in DIRECTIONS.items():
         if not is_in_fov(alt, az, view_center):
             continue
@@ -434,9 +581,24 @@ def draw_overlay_info(
     viewer_data: ViewerData,
     vmag_limit: float,
     enlarge_moon: bool,
-    highlighted_object: Optional[Tuple[Dict[str, Union[str, float]], QPointF]],
+    highlighted_object: Optional[Tuple[CelestialObject, QPointF]],
     text_font: QFont,
-):
+) -> None:
+    """
+    Draws overlay text information on the screen.
+
+    This includes the current time, location, view direction, magnitude limit,
+    and information about any highlighted celestial object.
+
+    Args:
+        painter: The QPainter for drawing.
+        sky_data: The data containing the current time.
+        viewer_data: The data containing viewer location and view direction.
+        vmag_limit: The current visual magnitude limit for stars.
+        enlarge_moon: A boolean indicating if the moon is enlarged.
+        highlighted_object: The currently highlighted object, if any.
+        text_font: The QFont to use for the text.
+    """
     line_height = 20
     line_x = 10
     line_y = 0
@@ -456,7 +618,7 @@ def draw_overlay_info(
     line_y += line_height
     painter.drawText(QPoint(line_x, line_y), time_text)
 
-    # ---- City, view direction（Alt/Az）----
+    # ---- City, view direction (Alt/Az) ----
     city_name_text = viewer_data.city_name.title()
     line_y += line_height
     painter.drawText(QPoint(line_x, line_y), city_name_text)
@@ -464,23 +626,10 @@ def draw_overlay_info(
     alt_deg, az_deg = viewer_data.view_center
 
     def az_to_compass(az: float) -> str:
+        """Converts azimuth in degrees to a compass direction string."""
         names = [
-            "N",
-            "NNE",
-            "NE",
-            "ENE",
-            "E",
-            "ESE",
-            "SE",
-            "SSE",
-            "S",
-            "SSW",
-            "SW",
-            "WSW",
-            "W",
-            "WNW",
-            "NW",
-            "NNW",
+            "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
+            "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW",
         ]
         idx = int(((az % 360) + 11.25) // 22.5) % 16
         return names[idx]
@@ -512,100 +661,150 @@ def draw_overlay_info(
 
 
 def get_screen_geometry(width: int, height: int, alt: float) -> ScreenGeometry:
-    """Calculate the center and radius for drawing based on window size and view altitude."""
+    """
+    Calculate the center and radius for drawing based on window size and view altitude.
+
+    Args:
+        width: The width of the drawing area.
+        height: The height of the drawing area.
+        alt: The altitude of the view center.
+
+    Returns:
+        A ScreenGeometry object with the calculated center and radius.
+    """
     margin_x = 10
     margin_y = 10
     radius = (width - margin_x * 2) // 2
-    ud = 90
+    ud = 90.0
     dd = alt
-    center = int(radius + margin_x), int((height - margin_y * 2) * ud / (ud + dd) + margin_y)
+    center = (
+        int(radius + margin_x),
+        int((height - margin_y * 2) * ud / (ud + dd) + margin_y)
+    )
     return ScreenGeometry(center, radius)
 
 
 def normalized_to_screen_xy(nx: float, ny: float, geometry: ScreenGeometry) -> QPointF:
-    """Convert normalized coordinates to screen coordinates."""
+    """
+    Convert normalized coordinates to screen coordinates.
+
+    Args:
+        nx: Normalized x-coordinate (-1 to 1).
+        ny: Normalized y-coordinate (-1 to 1).
+        geometry: The screen geometry.
+
+    Returns:
+        The corresponding screen coordinates as a QPointF.
+    """
     return QPointF(geometry.center[0] + nx * geometry.radius, geometry.center[1] + ny * geometry.radius)
 
 
-def _deg2rad(d): return d * math.pi / 180.0
-def _clamp01(x): return max(0.0, min(1.0, x))
+def _deg2rad(d: float) -> float:
+    """Converts degrees to radians."""
+    return d * math.pi / 180.0
 
-def _angle_between(alt1_deg, az1_deg, alt2_deg, az2_deg) -> float:
+def _clamp01(x: float) -> float:
+    """Clamps a value to the range [0, 1]."""
+    return max(0.0, min(1.0, x))
+
+def _angle_between(alt1_deg: float, az1_deg: float, alt2_deg: float, az2_deg: float) -> float:
+    """
+    Calculates the angular distance between two points on the celestial sphere.
+
+    Args:
+        alt1_deg: Altitude of the first point in degrees.
+        az1_deg: Azimuth of the first point in degrees.
+        alt2_deg: Altitude of the second point in degrees.
+        az2_deg: Azimuth of the second point in degrees.
+
+    Returns:
+        The angular distance in radians.
+    """
     a1, z1 = _deg2rad(alt1_deg), _deg2rad(az1_deg)
     a2, z2 = _deg2rad(alt2_deg), _deg2rad(az2_deg)
     cos_g = (math.sin(a1)*math.sin(a2) + math.cos(a1)*math.cos(a2)*math.cos(z2 - z1))
     cos_g = max(-1.0, min(1.0, cos_g))
     return math.acos(cos_g)
 
-# 色を混ぜる関数
-def _lerp_color(c1, c2, t):
-    t = _clamp01(t)
-    return (
-        c1[0] * (1-t) + c2[0] * t,
-        c1[1] * (1-t) + c2[1] * t,
-        c1[2] * (1-t) + c2[2] * t,
-    )
+# --- ▼ Phenomenon Imitation Model ▼ ---
 
-# --- ▼ 現象模倣モデル ▼ ---
-
-def get_sun_color(sun_alt_deg: float) -> tuple[float, float, float]:
+def get_sun_color(sun_alt_deg: float) -> Tuple[float, float, float]:
     """
-    ステップ1: 太陽の高度に基づいて太陽光の色を決める
-    """
-    # 色を定義
-    zenith_color = (0.3, 0.5, 1.0)  # 天頂にあるときの色 (青)
-    horizon_color = (1.0, 0.8, 0.4) # 地平線にあるときの色 (オレンジ)
-    night_color = (0.01, 0.02, 0.05) # 夜の色 (濃紺)
+    Step 1: Determine the color of sunlight based on the sun's altitude.
 
-    # 太陽高度 -5度(日没) から 90度(天頂) の範囲を 0-1 に正規化
+    Args:
+        sun_alt_deg: The sun's altitude in degrees.
+
+    Returns:
+        A tuple of (r, g, b) float values representing the sun's color.
+    """
+    # Define colors
+    zenith_color = (0.3, 0.5, 1.0)  # Color at zenith (blue)
+    horizon_color = (1.0, 0.8, 0.4) # Color at horizon (orange)
+    night_color = (0.01, 0.02, 0.05) # Night color (dark blue)
+
+    # Normalize sun altitude from -5 degrees (sunset) to 90 degrees (zenith) to a 0-1 range
     t = _clamp01((sun_alt_deg + 5.0) / 95.0)
 
-    # 昼の色 (地平線〜天頂)
+    # Daytime color (horizon to zenith)
     day_color = _lerp_color(horizon_color, zenith_color, t)
-    
-    # 昼と夜の色を混ぜる (太陽が地平線近くで急激に暗くなるのを表現)
-    fade = _clamp01((sun_alt_deg) / 10.0) # 0〜10度でフェード
-    
+
+    # Mix day and night colors (to represent the rapid darkening near the horizon)
+    fade = _clamp01(sun_alt_deg / 10.0) # Fade between 0 and 10 degrees
+
     return _lerp_color(night_color, day_color, fade)
 
 
-def get_sky_color(view_altaz: Tuple[float, float], sun_altaz: Tuple[float, float]) -> tuple[float, float, float]:
-    # 日没後は緩やかに暗く（-10°で完全に暗い、0°で昼側へ）
+def get_sky_color(view_altaz: Tuple[float, float], sun_altaz: Tuple[float, float]) -> Tuple[float, float, float]:
+    """
+    Calculates the sky color for a given viewing direction and sun position.
+
+    Args:
+        view_altaz: A tuple of (altitude, azimuth) for the viewing direction.
+        sun_altaz: A tuple of (altitude, azimuth) for the sun's position.
+
+    Returns:
+        A tuple of (r, g, b) float values for the sky color.
+    """
+    # After sunset, it gradually darkens (completely dark at -10°, towards day at 0°)
     sun_alt_deg, sun_az_deg = sun_altaz
     view_alt_deg, view_az_deg = view_altaz
 
     if sun_alt_deg <= -10.0:
         return (0.0, 0.0, 0.0)
 
-    # 基本の太陽色（0..1想定：できればリニアRGB）
+    # Basic sun color (assumed 0..1: preferably linear RGB)
     sun_color = get_sun_color(sun_alt_deg)
 
-    # 1) 太陽との角度による明るさ（天頂でも安定）
-    gamma = _angle_between(view_alt_deg, view_az_deg, sun_alt_deg, sun_az_deg)  # [0..π]
+    # 1) Brightness based on angle to the sun (stable even at zenith)
+    gamma = _angle_between(view_alt_deg, view_az_deg, sun_alt_deg, sun_az_deg)  # [0..pi]
     cosg = math.cos(gamma)
     brightness = (1.0 + cosg) * 0.5          # 0..1
-    brightness = brightness ** 2.0            # 日向を強調
+    brightness = brightness ** 2.0            # Emphasize the sun-facing direction
 
-    # 2) 高度に応じたトーン（天頂は濃く、地平は白っぽく）
-    t = _clamp01(view_alt_deg / 90.0)         # 0(地平) → 1(天頂)
-    zenith_darkness = 0.5 + 0.5 * t           # 0.5..1.0（天頂ほど暗く）
-    horizon_whiteness = (1.0 - t) * 0.3       # 0.3..0.0（地平ほど白混ぜ）
+    # 2) Tone based on altitude (darker at zenith, whitish at horizon)
+    t = _clamp01(view_alt_deg / 90.0)         # 0(horizon) -> 1(zenith)
+    zenith_darkness = 0.5 + 0.5 * t           # 0.5..1.0 (darker towards zenith)
+    horizon_whiteness = (1.0 - t) * 0.3       # 0.3..0.0 (whiter towards horizon)
 
-    # 3) トワイライト補正（-10..0°を0..1で補間）
+    # 3) Twilight correction (interpolate -10..0° to 0..1)
     if sun_alt_deg < 0.0:
         twilight = _smoothstep(-10.0, 0.0, sun_alt_deg)  # 0..1
     else:
         twilight = 1.0
 
-    # 合成（簡易：白のミックス + 日向寄与）
+    # Composite (simple: mix of white + sun contribution)
     r = sun_color[0] * brightness * zenith_darkness * twilight + horizon_whiteness * twilight
     g = sun_color[1] * brightness * zenith_darkness * twilight + horizon_whiteness * twilight
     b = sun_color[2] * brightness * zenith_darkness * twilight + horizon_whiteness * twilight
 
-    # 4) クリップ（最終安全）
+    # 4) Clip (final safety)
     return (_clamp01(r), _clamp01(g), _clamp01(b))
 
 def _smoothstep(edge0: float, edge1: float, x: float) -> float:
+    """
+    Performs a smooth Hermite interpolation between 0 and 1 when edge0 < x < edge1.
+    """
     # Hermite smoothstep
     t = _clamp01((x - edge0) / (edge1 - edge0))
     return t * t * (3.0 - 2.0 * t)
@@ -613,44 +812,69 @@ def _smoothstep(edge0: float, edge1: float, x: float) -> float:
 
 def _lerp_color(a: Tuple[float,float,float],
                 b: Tuple[float,float,float], t: float) -> Tuple[float,float,float]:
+    """
+    Linearly interpolates between two colors.
+    """
     return (a[0] + (b[0]-a[0]) * t,
             a[1] + (b[1]-a[1]) * t,
             a[2] + (b[2]-a[2]) * t)
 
 def _fwd_offset_altaz(alt_c: float, az_c: float,
                       theta_deg: float, psi_deg: float) -> Tuple[float, float]:
-    """中心(alt_c,az_c)から角距離theta, 方位psi（北0°/東90°/時計回り）だけ進めた(alt,az)。"""
-    φ1  = math.radians(alt_c)
-    λ1  = math.radians(az_c)
-    θ   = math.radians(theta_deg)
-    ψ   = math.radians(psi_deg)
+    """
+    Calculates the (alt, az) of a point that is at an angular distance 'theta'
+    and direction 'psi' from a center point (alt_c, az_c).
 
-    sinφ1, cosφ1 = math.sin(φ1), math.cos(φ1)
-    sinθ, cosθ   = math.sin(θ), math.cos(θ)
+    Args:
+        alt_c: Center altitude in degrees.
+        az_c: Center azimuth in degrees.
+        theta_deg: Angular distance from the center in degrees.
+        psi_deg: Direction from the center in degrees (0° North, 90° East, clockwise).
 
-    sinφ2 = sinφ1 * cosθ + cosφ1 * sinθ * math.cos(ψ)
-    sinφ2 = max(-1.0, min(1.0, sinφ2))
-    φ2 = math.asin(sinφ2)
+    Returns:
+        A tuple of (altitude, azimuth) in degrees for the new point.
+    """
+    phi1  = math.radians(alt_c)
+    lambda1  = math.radians(az_c)
+    theta   = math.radians(theta_deg)
+    psi   = math.radians(psi_deg)
 
-    y = math.sin(ψ) * sinθ * cosφ1
-    x = cosθ - sinφ1 * sinφ2
-    λ2 = λ1 + math.atan2(y, x)
+    sin_phi1, cos_phi1 = math.sin(phi1), math.cos(phi1)
+    sin_theta, cos_theta   = math.sin(theta), math.cos(theta)
 
-    alt = math.degrees(φ2)
-    az  = (math.degrees(λ2) + 360.0) % 360.0
+    sin_phi2 = sin_phi1 * cos_theta + cos_phi1 * sin_theta * math.cos(psi)
+    sin_phi2 = max(-1.0, min(1.0, sin_phi2))
+    phi2 = math.asin(sin_phi2)
+
+    y = math.sin(psi) * sin_theta * cos_phi1
+    x = cos_theta - sin_phi1 * sin_phi2
+    lambda2 = lambda1 + math.atan2(y, x)
+
+    alt = math.degrees(phi2)
+    az  = (math.degrees(lambda2) + 360.0) % 360.0
     return alt, az
 
 def _alpha_from_alt(alt: float, alpha: float, fade_hi: float = 0.0, fade_lo: float = -2.0) -> float:
-    """alt に応じてアルファを返す。
-       alt >= fade_hi  → alpha（=1相当）
-       fade_lo < alt < fade_hi → 線形フェード
-       alt <= fade_lo → 0（描かない）
+    """
+    Returns an alpha value based on altitude, for fading near the horizon.
+       alt >= fade_hi  -> alpha (equivalent to 1)
+       fade_lo < alt < fade_hi -> linear fade
+       alt <= fade_lo -> 0 (not drawn)
+
+    Args:
+        alt: The altitude in degrees.
+        alpha: The base alpha value.
+        fade_hi: The altitude above which alpha is at its maximum.
+        fade_lo: The altitude below which alpha is zero.
+
+    Returns:
+        The calculated alpha value.
     """
     if alt <= fade_lo:
         return 0.0
     if alt >= fade_hi:
         return alpha
-    t = (alt - fade_lo) / (fade_hi - fade_lo)   # [fade_hi, fade_lo]→[0,1]
+    t = (alt - fade_lo) / (fade_hi - fade_lo)   # [fade_hi, fade_lo] -> [0,1]
     return alpha * t
 
 def draw_sky_color_disc(
@@ -662,19 +886,39 @@ def draw_sky_color_disc(
     exposure: float = 1.0,
     saturation: float = 1.2,
     alpha: float = 1.0,
-    # --- サンプリング密度（画質と速度のつまみ）---
-    ring_step_px: int = 6,            # ★半径方向の目標ピクセル間隔（自動でΔθを決める基準）
-    sample_pitch_px: float = 6.0,     # 各リング上の目標サンプル間隔（px）
-    min_ang_samples: int = 8,         # 各リングの最小サンプル数
-    dot_size: int = 14,                # タイル（正方形）の一辺(px)：だいたい 2*ring_step_px が目安
-    # --- Δθ 推定の安定化パラメータ ---
-    deriv_probe_deg: float = 0.25,    # dr/dθ の有限差分用の小さな角度（度）
-    min_theta_step_deg: float = 0.2,  # Δθ の下限（度）
-    max_theta_step_deg: float = 6.0,  # Δθ の上限（度）
+    # --- Sampling density (knobs for quality vs. speed) ---
+    ring_step_px: int = 6,            # Target pixel interval in the radial direction (basis for determining Δθ)
+    sample_pitch_px: float = 6.0,     # Target sample interval on each ring (px)
+    min_ang_samples: int = 8,         # Minimum number of samples for each ring
+    dot_size: int = 12,               # Side length of the tile (square) in px: roughly 2*ring_step_px is a guideline
+    # --- Parameters for stabilizing Δθ estimation ---
+    deriv_probe_deg: float = 0.25,    # Small angle (degrees) for finite difference of dr/dθ
+    min_theta_step_deg: float = 0.2,  # Lower limit for Δθ (degrees)
+    max_theta_step_deg: float = 6.0,  # Upper limit for Δθ (degrees)
 ) -> None:
     """
-    半径方向のステップ（Δθ）を、画面上のピクセル距離が `ring_step_px` 前後になるよう動的決定。
-    円周方向は、リングの“実測半径”から周長/ピッチでサンプル数を決める。
+    Draws the sky color disc with dynamic sampling.
+
+    The radial step (Δθ) is dynamically determined so that the on-screen
+    pixel distance is around `ring_step_px`. The number of samples in the
+    circumferential direction is determined by the "measured radius" of the
+    ring and the sample pitch.
+
+    Args:
+        painter: The QPainter to draw with.
+        geometry: The screen geometry.
+        view_center: The (alt, az) of the view center.
+        sun_altaz: The (alt, az) of the sun.
+        exposure: Exposure adjustment for the final color.
+        saturation: Saturation adjustment for the final color.
+        alpha: Overall alpha transparency.
+        ring_step_px: Target pixel distance for radial steps.
+        sample_pitch_px: Target pixel distance for circumferential samples.
+        min_ang_samples: Minimum number of circumferential samples.
+        dot_size: The size of the colored dots to draw.
+        deriv_probe_deg: Probe angle for derivative estimation.
+        min_theta_step_deg: Minimum angular step.
+        max_theta_step_deg: Maximum angular step.
     """
     assert altaz_to_normalized_xy and normalized_to_screen_xy and get_sky_color
 
@@ -682,65 +926,67 @@ def draw_sky_color_disc(
     if R < 2:
         return
 
-    # center の取り出し（QPoint/QPointF/Tuple に対応）
+    # Extract center (supports QPoint/QPointF/Tuple)
     c = geometry.center
     cx = c.x() if hasattr(c, "x") else c[0]
     cy = c.y() if hasattr(c, "y") else c[1]
 
     img_w = img_h = R * 2
     img = QImage(img_w, img_h, QImage.Format.Format_ARGB32)
-    img.fill(QColor(0, 0, 0, 0))  # 透明
+    img.fill(QColor(0, 0, 0, 0))  # Transparent
 
     ip = QPainter(img)
     ip.setRenderHint(QPainter.RenderHint.Antialiasing, False)
     ip.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, False)
 
-    # 円クリップ
+    # Clip to a circle
     path = QPainterPath()
-    path.addEllipse(R - R, R - R, 2*R, 2*R)  # 中心 (R,R), 半径 R の円
+    path.addEllipse(0, 0, 2*R, 2*R)  # Circle at (0,0) with radius R in image coords
     ip.setClipPath(path)
 
-    # 天頂特異回避のクランプ
+    # Clamp to avoid zenith singularity
     EPS = 0.01
     alt_c, az_c = view_center
     if alt_c <= -90.0: alt_c = -(90.0 - EPS)
     if alt_c >=  90.0: alt_c =  (90.0 - EPS)
 
-    # 正規化仕様に合わせて、外周は常に 90°
+    # The outer circumference is always 90° to match the normalization spec
     theta_max = 90.0
 
-    # 局所半径 r_px(θ) を“実測”する関数
+    # Function to "measure" the local radius r_px(θ)
     def screen_radius_px(theta_deg: float) -> float:
         alt_p, az_p = _fwd_offset_altaz(alt_c, az_c, theta_deg, 0.0)
         nx, ny = altaz_to_normalized_xy(alt_p, az_p, (alt_c, az_c))
+        # Convert to image coordinates relative to image center (R, R)
         s = normalized_to_screen_xy(nx, ny, geometry)
         sx, sy = s.x(), s.y()
         return max(0.0, math.hypot(sx - cx, sy - cy))
 
-    # 角度を 0→90° まで進める（Δθ は動的）
+    # Advance angle from 0 to 90° (Δθ is dynamic)
     theta = 0.0
     half = max(1, int(dot_size // 2))
     while True:
-        # 現在リングの半径（px）
+        # Current ring radius (px)
         r_px = screen_radius_px(theta)
 
-        # 円周方向サンプル数
+        # Number of circumferential samples
         circumference = max(1.0, 2.0 * math.pi * r_px)
         n_ang = max(min_ang_samples, int(round(circumference / max(1.0, float(sample_pitch_px)))))
 
-        # リング塗り
+        # Fill the ring
         for i in range(n_ang):
-            psi_deg = (360.0 * i) / n_ang  # 北0°/東90°/時計回り
+            psi_deg = (360.0 * i) / n_ang  # 0° North, 90° East, clockwise
 
-            # (θ,ψ) → (alt,az)
+            # (θ,ψ) -> (alt,az)
             alt, az = _fwd_offset_altaz(alt_c, az_c, theta, psi_deg)
 
-            # (alt,az) → スクリーン
+            # (alt,az) -> screen -> image coordinates
             nx, ny = altaz_to_normalized_xy(alt, az, (alt_c, az_c))
             s = normalized_to_screen_xy(nx, ny, geometry)
-            sx, sy = s.x(), s.y()
-            xi = int(round(sx - (cx - R)))
-            yi = int(round(sy - (cy - R)))
+            # Convert to image coordinates (origin at top-left of the QImage)
+            xi = int(round(s.x() - (cx - R)))
+            yi = int(round(s.y() - (cy - R)))
+
 
             if xi < 0 or xi >= img_w or yi < 0 or yi >= img_h:
                 continue
@@ -757,35 +1003,31 @@ def draw_sky_color_disc(
 
             ip.fillRect(xi - half, yi - half, 2*half, 2*half, QColor.fromRgbF(rr, gg, bb, aa))
 
-        # 終了判定（最後に 90° のリングを必ず描く）
+        # Termination condition (ensure the 90° ring is always drawn)
         if theta >= theta_max - 1e-6:
             break
 
-        # ---- Δθ を画面距離から決定：Δθ ≈ ring_step_px / (dr_px/dθ) ----
-        # 有限差分で dr/dθ を推定
+        # ---- Determine Δθ from screen distance: Δθ ≈ ring_step_px / (dr_px/dθ) ----
+        # Estimate dr/dθ using finite differences
         probe = min(deriv_probe_deg, theta_max - theta)
         r_next = screen_radius_px(theta + probe)
         dr_dtheta = (r_next - r_px) / max(1e-6, probe)
 
         if dr_dtheta <= 1e-6:
-            dtheta = max_theta_step_deg  # 安全側（ほぼ変化しない/端での数値誤差対策）
+            dtheta = max_theta_step_deg  # Safe side (almost no change / numerical error at edges)
         else:
             dtheta = float(ring_step_px) / dr_dtheta
 
-        # 角度ステップを制限
+        # Limit the angle step
         dtheta = max(min_theta_step_deg, min(max_theta_step_deg, dtheta))
-
-        # # 終端に合わせて調整
-        # if theta + dtheta > theta_max:
-        #     dtheta = theta_max - theta
 
         theta += dtheta
 
     ip.end()
 
-    # 貼り付け
+    # Paste the generated image onto the main painter
     painter.save()
     painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
-    target_rect = QRect(cx - R, cy - R, 2*R, 2*R)
+    target_rect = QRect(int(cx - R), int(cy - R), 2*R, 2*R)
     painter.drawImage(target_rect, img)
     painter.restore()

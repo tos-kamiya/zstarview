@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import astropy
 import numpy as np
@@ -59,3 +59,5 @@ class ScreenGeometry:
 
     center: Tuple[int, int]
     radius: int
+
+CelestialObject = Union[PlanetBody, Dict[str, Any]]
