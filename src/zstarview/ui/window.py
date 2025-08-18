@@ -14,7 +14,7 @@ import polars as pl
 from ..__about__ import __version__
 
 from ..paths import EMOJI_FONT_PATH, EMOJI_FONT_SIZE, TEXT_FONT_PATH, TEXT_FONT_SIZE
-from ..paths import APP_ICON_FILE, GUI_BUTTON_SIZE, GUI_MENU_TEXT_COLOR
+from ..paths import APP_ICON_FILE, GUI_BUTTON_SIZE, GUI_MENU_TEXT_COLOR, WINDOW_HEIGHT, WINDOW_WIDTH
 from ..types import SkyData, ViewerData
 from ..astro import (
     calculate_visible_stars,
@@ -73,7 +73,7 @@ class SkyWindow(QMainWindow):
         # Preserve existing flags and add Frameless; improves drag behavior on Qt6
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
         self.setWindowTitle(f"Zenith Star View - {self.viewer_data.city_name.title()}")
-        self.setGeometry(100, 100, 800, 800)
+        self.setGeometry(100, 100, WINDOW_WIDTH, WINDOW_HEIGHT)
 
         # Size grip
         self.size_grip = QSizeGrip(self)
@@ -253,6 +253,12 @@ class SkyWindow(QMainWindow):
         painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
 
         render_draw.draw_radial_background(painter, self.rect(), geometry)
+        sun_altaz = None
+        for body in self.sky_data.planets:
+            if body.name == "sun":
+                sun_altaz = (body.alt, body.az)
+        if sun_altaz:
+            render_draw.draw_sky_color_disc(painter, geometry, self.viewer_data.view_center, sun_altaz)
 
         render_draw.draw_sky_reference_lines(painter, geometry, self.sky_data)
         render_draw.draw_direction_labels(painter, geometry, self.viewer_data.view_center, self.text_font)

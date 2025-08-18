@@ -21,6 +21,8 @@ APP_ICON_FILE = os.path.join(_dir, "data", "icon-256.png")
 # Window UI
 GUI_MENU_TEXT_COLOR = "#787878"
 GUI_BUTTON_SIZE = 30
+WINDOW_WIDTH = 200
+WINDOW_HEIGHT = 200
 
 # UI constants
 TEXT_COLOR = QColor(120, 120, 120)

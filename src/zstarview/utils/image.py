@@ -1,6 +1,7 @@
+from typing import Optional, Tuple
+
 import numpy as np
 from PIL import Image
-from typing import Optional, Tuple
 
 
 def generate_moon_phase_image(
