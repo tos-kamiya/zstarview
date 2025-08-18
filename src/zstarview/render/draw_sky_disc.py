@@ -1,7 +1,7 @@
 import math
 from typing import Tuple
 
-from PySide6.QtGui import QColor, QImage, QPainter, QPainterPath
+from PySide6.QtGui import QColor, QImage, QPainter, QPainterPath, Qt
 
 from ..astro import altaz_to_normalized_xy
 from ..types import ScreenGeometry
@@ -247,16 +247,19 @@ def draw_sky_color_disc(
 
     img_w = img_h = R * 2
     img = QImage(img_w, img_h, QImage.Format.Format_ARGB32)
-    img.fill(QColor(0, 0, 0, 0))  # Transparent
+    img.fill(QColor(0, 0, 0, 0))
 
     ip = QPainter(img)
-    ip.setRenderHint(QPainter.RenderHint.Antialiasing, False)
-    ip.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, False)
+    # ip.setRenderHint(QPainter.RenderHint.Antialiasing, False)
+    # ip.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, False)
+    ip.setPen(Qt.PenStyle.NoPen)
 
     # Clip to a circle
     path = QPainterPath()
     path.addEllipse(0, 0, 2*R, 2*R)  # Circle at (0,0) with radius R in image coords
     ip.setClipPath(path)
+
+    ip.fillRect(0, 0, 2*R, 2*R, QColor.fromRgbF(0.0, 0.0, 0.0, 1.0))
 
     # Clamp to avoid zenith singularity
     EPS = 0.01
@@ -303,17 +306,18 @@ def draw_sky_color_disc(
             if xi < 0 or xi >= img_w or yi < 0 or yi >= img_h:
                 continue
 
-            aa = _alpha_from_alt(alt, alpha, fade_hi=1.0, fade_lo=-1.0)
+            aa = _alpha_from_alt(alt, alpha, fade_hi=0.5, fade_lo=-2.5)
             if aa <= 0.0:
                 continue
 
             rr, gg, bb = get_sky_color((alt, az), sun_altaz)
             gray = rr*0.299 + gg*0.587 + bb*0.114
             rr, gg, bb = _lerp_color((gray, gray, gray), (rr, gg, bb), saturation)
-            rr *= exposure; gg *= exposure; bb *= exposure
+            ea = exposure * aa
+            rr *= ea; gg *= ea; bb *= ea
             rr = _clamp01(rr); gg = _clamp01(gg); bb = _clamp01(bb)
 
-            ip.fillRect(xi - half, yi - half, 2*half, 2*half, QColor.fromRgbF(rr, gg, bb, aa))
+            ip.fillRect(xi - half, yi - half, 2*half, 2*half, QColor.fromRgbF(rr, gg, bb, 1.0))
 
         # Termination condition (ensure the 90° ring is always drawn)
         if theta >= theta_max - 1e-6:

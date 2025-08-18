@@ -42,6 +42,7 @@ class SkyWindow(QMainWindow):
         view_center: Tuple[float, float],
         star_catalog: pl.DataFrame,
         delta_t: timedelta = timedelta(days=0, hours=0),
+        sky_disc_alpha: float = 0.3,
         enlarge_moon: bool = False,
         star_base_radius: float = 8.0,
         vmag_limit: float = 6.0,
@@ -51,6 +52,7 @@ class SkyWindow(QMainWindow):
 
         self.star_catalog = star_catalog
         self.delta_t = delta_t
+        self.sky_disc_alpha = sky_disc_alpha
         self.enlarge_moon = enlarge_moon
         self.star_base_radius = star_base_radius
         self.vmag_limit = vmag_limit
@@ -292,6 +294,8 @@ class SkyWindow(QMainWindow):
         )
 
     def _handle_sky_disc_drawing(self, painter, geometry):
+        if self.sky_disc_alpha <= 0.0:
+            return
         sun_altaz = None
         for body in self.sky_data.planets:
             if body.name == "sun":
@@ -309,7 +313,7 @@ class SkyWindow(QMainWindow):
             ):
                 print("Updating sky disc...")
                 self._sky_disc_cache_image = zstarview.render.draw_sky_disc.draw_sky_color_disc(
-                    geometry, self.viewer_data.view_center, sun_altaz
+                    geometry, self.viewer_data.view_center, sun_altaz, alpha=self.sky_disc_alpha,
                 )
                 self._sky_disc_cache_key = current_cache_key
 

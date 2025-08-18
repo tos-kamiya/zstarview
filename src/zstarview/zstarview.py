@@ -86,7 +86,7 @@ def parse_args() -> argparse.Namespace:
         "-m",
         "--enlarge-moon",
         action="store_true",
-        help="Show the moon in 3x size.",
+        help="Show the moon in 5x size.",
     )
     parser.add_argument("-s", "--star-base-radius", type=float, default=8.0, help="Base size of stars (default: 8.0)")
     parser.add_argument(
@@ -105,6 +105,16 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=90.0,
         help="Viewing altitude angle [deg] (90=zenith, 0=horizon; default=90)",
+    )
+
+    parser.add_argument(
+        "--sky-opacity",
+        type=float,
+        default=0.25,
+        help=(
+            "Opacity of the simulated sky-color disc (0.0 - 1.0, default: 0.25). "
+            "Set to 0.0 to disable sky-color rendering."
+        )
     )
     return parser.parse_args()
 
@@ -153,6 +163,9 @@ def main():
             city = candidate_cities[0]
 
     print(f"City: {city}")
+
+    sky_opacity = min(1.0, max(0.0, args.sky_opacity))
+    star_base_radius = max(2.0, args.star_base_radius)
 
     # --- Determine the time for calculation ---
     if args.datetime:
@@ -222,8 +235,9 @@ def main():
         view_center,
         star_catalog,
         delta_t,
+        sky_disc_alpha=sky_opacity,
         enlarge_moon=args.enlarge_moon,
-        star_base_radius=args.star_base_radius,
+        star_base_radius=star_base_radius,
         vmag_limit=args.vmag_limit,
     )
 

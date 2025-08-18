@@ -236,18 +236,31 @@ def draw_sky_reference_lines(painter: QPainter, geometry: ScreenGeometry, sky_da
         geometry: The screen geometry for coordinate conversion.
         sky_data: The data containing the points for the reference lines.
     """
-    point_list_pen_styles: List[Tuple[List[Tuple[float, float]], Tuple[QColor, int, Qt.PenStyle]]] = [
-        (sky_data.celestial_equator_points, (CELESTIAL_EQUATOR_COLOR, 2, Qt.PenStyle.DashLine)),
-        (sky_data.ecliptic_points, (ECLIPTIC_COLOR, 2, Qt.PenStyle.DotLine)),
-        (sky_data.horizon_points, (HORIZON_LINE_COLOR, 2, Qt.PenStyle.SolidLine)),
+    point_list_pen_styles: List[Tuple[List[Tuple[float, float]], Tuple[QColor, int, List[int]]]] = [
+        (sky_data.celestial_equator_points, (CELESTIAL_EQUATOR_COLOR, 2, [6, 3])),
+        (sky_data.ecliptic_points, (ECLIPTIC_COLOR, 2, [2, 2])),
+        (sky_data.horizon_points, (HORIZON_LINE_COLOR, 2, [10, 1])),
     ]
-    for points, pen_style in point_list_pen_styles:
+
+    painter.save()
+    for points, (color, width, style) in point_list_pen_styles:
         for frag in split_by_gaps(points):
-            if len(frag) >= 2:
-                pts = [QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in frag]
-                poly = QPolygonF(pts)
-                painter.setPen(QPen(pen_style[0], pen_style[1], pen_style[2]))
-                painter.drawPolyline(poly)
+            if len(frag) < 2:
+                continue
+            pts = [QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in frag]
+            poly = QPolygonF(pts)
+
+            base = QPen(color.darker(230), width, Qt.PenStyle.SolidLine)
+            base.setCosmetic(True)
+            painter.setPen(base)
+            painter.drawPolyline(poly)
+
+            fg = QPen(color, width)
+            fg.setCosmetic(True)
+            fg.setDashPattern(style)
+            painter.setPen(fg)
+            painter.drawPolyline(poly)
+    painter.restore()
 
 
 def draw_stars(
