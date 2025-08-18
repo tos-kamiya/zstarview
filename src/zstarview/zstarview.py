@@ -219,11 +219,11 @@ def main():
     main_win = SkyWindow(
         city,
         (lat, lon, tz_name),
+        view_center,
         star_catalog,
         delta_t,
         enlarge_moon=args.enlarge_moon,
         star_base_radius=args.star_base_radius,
-        view_center=view_center,
         vmag_limit=args.vmag_limit,
     )
 

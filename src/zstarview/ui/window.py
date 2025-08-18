@@ -4,12 +4,14 @@ import sys
 from typing import Optional, Tuple
 
 from PySide6.QtCore import Qt, QPoint, QTimer
-from PySide6.QtGui import QFont, QFontDatabase, QIcon, QPainter
+from PySide6.QtGui import QFont, QFontDatabase, QIcon, QPainter, QImage
 from PySide6.QtGui import QAction, QKeyEvent, QMouseEvent, QPaintEvent, QResizeEvent
 from PySide6.QtWidgets import QMainWindow, QSizeGrip, QApplication, QPushButton, QMenu
 
 import astropy
 import polars as pl
+
+import zstarview.render.draw_sky_disc
 
 from ..__about__ import __version__
 
@@ -30,27 +32,28 @@ class SkyWindow(QMainWindow):
     # Using Qt signal objects requires attribute creation at runtime; avoid type hints here
     from PySide6.QtCore import Signal
 
-    data_updated = Signal(object)
+    sky_data_calculated = Signal(object)
     initial_data_loaded = Signal()
 
     def __init__(
         self,
         city_name: str,
         city_data: Tuple[float, float, str],
-        star_catalog: pl.DataFrame,
-        delta_t: timedelta,
-        enlarge_moon: bool,
-        star_base_radius: float,
         view_center: Tuple[float, float],
-        vmag_limit: float,
+        star_catalog: pl.DataFrame,
+        delta_t: timedelta = timedelta(days=0, hours=0),
+        enlarge_moon: bool = False,
+        star_base_radius: float = 8.0,
+        vmag_limit: float = 6.0,
     ):
         super().__init__()
         self._rotation_step: float = 5.0  # degrees
 
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.setFocus(Qt.FocusReason.ActiveWindowFocusReason)
-
-        self.setWindowIcon(QIcon(APP_ICON_FILE))
+        self.star_catalog = star_catalog
+        self.delta_t = delta_t
+        self.enlarge_moon = enlarge_moon
+        self.star_base_radius = star_base_radius
+        self.vmag_limit = vmag_limit
 
         lat, lon, tz_name = city_data
         self.viewer_data = ViewerData(
@@ -59,20 +62,18 @@ class SkyWindow(QMainWindow):
             city_name=city_name,
             view_center=view_center,
         )
+        self.setWindowTitle(f"Zenith Star View - {self.viewer_data.city_name.title()}")
 
-        self.star_catalog = star_catalog
-        self.delta_t = delta_t
-        self.enlarge_moon = enlarge_moon
-        self.star_base_radius = star_base_radius
-        self.vmag_limit = vmag_limit
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setFocus(Qt.FocusReason.ActiveWindowFocusReason)
 
-        self.enlarge_moon = enlarge_moon
-        self._action_enlarge_moon = None
+        self.setWindowIcon(QIcon(APP_ICON_FILE))
 
+        self.setMinimumSize(400, 400)
         self.setAttribute(Qt.WA_TranslucentBackground)
+
         # Preserve existing flags and add Frameless; improves drag behavior on Qt6
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
-        self.setWindowTitle(f"Zenith Star View - {self.viewer_data.city_name.title()}")
         self.setGeometry(100, 100, WINDOW_WIDTH, WINDOW_HEIGHT)
 
         # Size grip
@@ -80,6 +81,13 @@ class SkyWindow(QMainWindow):
         self.size_grip.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
         self.size_grip.raise_()
 
+        self.setMouseTracking(True)
+        self.mouse_pos: Optional[QPoint] = None
+        self._drag_active: bool = False
+        self._drag_pos: QPoint = QPoint(0, 0)
+
+        # Menu
+        self._action_enlarge_moon = None
         self._add_hamburger_menu()
 
         # Fonts for drawing
@@ -90,17 +98,20 @@ class SkyWindow(QMainWindow):
         text_font_family = QFontDatabase.applicationFontFamilies(text_font_id)[0]
         self.text_font = QFont(text_font_family, TEXT_FONT_SIZE)
 
-        self.setMouseTracking(True)
-        self.setMinimumSize(400, 400)
-        self.sky_data: Optional[SkyData] = None
-        self.mouse_pos: Optional[QPoint] = None
-        self._drag_active: bool = False
-        self._drag_pos: QPoint = QPoint(0, 0)
-        self._is_calculation_running: bool = False
+        self.sky_data_calculated.connect(self._on_sky_data_calculated)
 
-        self.data_updated.connect(self.on_data_updated)
-        self.update_timer = QTimer(self)
-        self.update_timer.timeout.connect(self.start_background_update)
+        self.sky_data: Optional[SkyData] = None
+        self._is_sky_data_calculation_running: bool = False
+        self._sky_data_update_timer = QTimer(self)
+        self._sky_data_update_timer.timeout.connect(self.start_background_update)
+
+        self._sky_disc_cache_image: Optional[QImage] = None
+        self._sky_disc_cache_key: Optional[tuple] = None
+
+        self._resize_ongoing_timer = QTimer(self)
+        self._resize_ongoing_timer.setSingleShot(True)
+        self._resize_ongoing_timer.setInterval(1000)  # 1000ms
+        self._resize_ongoing_timer.timeout.connect(self.update)
 
         self.start_background_update(is_initial_load=True)
 
@@ -147,6 +158,12 @@ class SkyWindow(QMainWindow):
 
         button_size = self.menu_button.size()
         self.menu_button.move(self.width() - button_size.width() - 8, 8)
+
+        # invalidate sky-disc image
+        self._sky_disc_cache_image = None
+        self._sky_disc_cache_key = None
+
+        self._resize_ongoing_timer.start()
 
         super().resizeEvent(event)
 
@@ -253,12 +270,9 @@ class SkyWindow(QMainWindow):
         painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
 
         render_draw.draw_radial_background(painter, self.rect(), geometry)
-        sun_altaz = None
-        for body in self.sky_data.planets:
-            if body.name == "sun":
-                sun_altaz = (body.alt, body.az)
-        if sun_altaz:
-            render_draw.draw_sky_color_disc(painter, geometry, self.viewer_data.view_center, sun_altaz)
+
+        if not self._resize_ongoing_timer.isActive():  # skip sky-disc image generation during window resizing
+            self._handle_sky_disc_drawing(painter, geometry)
 
         render_draw.draw_sky_reference_lines(painter, geometry, self.sky_data)
         render_draw.draw_direction_labels(painter, geometry, self.viewer_data.view_center, self.text_font)
@@ -277,12 +291,41 @@ class SkyWindow(QMainWindow):
             painter, self.sky_data, self.viewer_data, self.vmag_limit, enlarge_moon, highlighted_object, self.text_font
         )
 
-    def on_data_updated(self, sky_data: SkyData):
+    def _handle_sky_disc_drawing(self, painter, geometry):
+        sun_altaz = None
+        for body in self.sky_data.planets:
+            if body.name == "sun":
+                sun_altaz = (body.alt, body.az)
+        if sun_altaz:
+            current_cache_key = (
+                geometry.center,
+                geometry.radius,
+                self.viewer_data.view_center,
+                sun_altaz,
+            )
+            if (
+                self._sky_disc_cache_image is None
+                or self._sky_disc_cache_key != current_cache_key
+            ):
+                print("Updating sky disc...")
+                self._sky_disc_cache_image = zstarview.render.draw_sky_disc.draw_sky_color_disc(
+                    geometry, self.viewer_data.view_center, sun_altaz
+                )
+                self._sky_disc_cache_key = current_cache_key
+
+            # Draw the cached image
+            painter.drawImage(
+                int(geometry.center[0] - geometry.radius),
+                int(geometry.center[1] - geometry.radius),
+                self._sky_disc_cache_image,
+            )
+
+    def _on_sky_data_calculated(self, sky_data: SkyData):
         self.set_sky_data(sky_data)
-        if not self.update_timer.isActive():
-            self.update_timer.start(5 * 60 * 1000)
+        if not self._sky_data_update_timer.isActive():
+            self._sky_data_update_timer.start(5 * 60 * 1000)
             self.initial_data_loaded.emit()
-        self._is_calculation_running = False
+        self._is_sky_data_calculation_running = False
 
     def request_sky_update(self):
         """Request a sky update, but only if no update is currently running."""
@@ -309,7 +352,7 @@ class SkyWindow(QMainWindow):
                 ecliptic_points=ecliptic_points,
                 horizon_points=horizon_points,
             )
-            self.data_updated.emit(sky_data)
+            self.sky_data_calculated.emit(sky_data)
         except Exception as e:
             print(f"Error in background update thread: {e}", file=sys.stderr)
             import traceback
@@ -317,9 +360,9 @@ class SkyWindow(QMainWindow):
             traceback.print_exc()
 
     def start_background_update(self, is_initial_load: bool = False) -> bool:
-        if self._is_calculation_running:
+        if self._is_sky_data_calculation_running:
             return False
-        self._is_calculation_running = True
+        self._is_sky_data_calculation_running = True
 
         if is_initial_load:
             print("Calculating initial sky data...")
