@@ -3,7 +3,6 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import sys
 import time
-from zoneinfo import ZoneInfo
 
 from PySide6.QtWidgets import QApplication, QSplashScreen
 from PySide6.QtCore import Qt
@@ -122,10 +121,11 @@ def parse_args() -> argparse.Namespace:
 def main():
     """Main entry point for the star sky visualizer."""
     app = QApplication(sys.argv)
+    app_name = "Zenith Star View"
     # Ensure GNOME/Wayland associates the window with our desktop file
     QGuiApplication.setDesktopFileName(APP_ID)
-    app.setApplicationName("Zenith Star View")
-    app.setApplicationDisplayName("Zenith Star View")
+    app.setApplicationName(app_name)
+    app.setApplicationDisplayName(app_name)
     app.setOrganizationName(APP_AUTHOR)
     app.setApplicationVersion(__version__)
     app.setWindowIcon(QIcon(APP_ICON_FILE))
@@ -134,7 +134,7 @@ def main():
     splash.show()
 
     def show_splash_message(message: str, color: QColor):
-        splash.showMessage(message, Qt.AlignmentFlag.AlignCenter, color)
+        splash.showMessage(f"{app_name} ver. {__version__}\n{message}", Qt.AlignmentFlag.AlignCenter, color)
         app.processEvents()
 
     try:
