@@ -42,8 +42,8 @@ class ViewerData:
 
 
 @dataclass
-class SkyData:
-    """Container for all calculated sky data for a specific time."""
+class CelestialData:
+    """Container for all calculated celestial data for a specific time."""
 
     time: astropy.time.Time
     planets: List[PlanetBody]

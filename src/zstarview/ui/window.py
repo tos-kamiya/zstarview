@@ -17,7 +17,7 @@ from ..__about__ import __version__
 
 from ..paths import EMOJI_FONT_PATH, EMOJI_FONT_SIZE, TEXT_FONT_PATH, TEXT_FONT_SIZE
 from ..paths import APP_ICON_FILE, GUI_BUTTON_SIZE, GUI_MENU_TEXT_COLOR, WINDOW_HEIGHT, WINDOW_WIDTH
-from ..types import SkyData, ViewerData
+from ..types import CelestialData, ViewerData
 from ..astro import (
     calculate_visible_stars,
     calculate_planets,
@@ -32,7 +32,7 @@ class SkyWindow(QMainWindow):
     # Using Qt signal objects requires attribute creation at runtime; avoid type hints here
     from PySide6.QtCore import Signal
 
-    sky_data_calculated = Signal(object)
+    celestial_data_calculated = Signal(object)
     initial_data_loaded = Signal()
 
     def __init__(
@@ -100,12 +100,12 @@ class SkyWindow(QMainWindow):
         text_font_family = QFontDatabase.applicationFontFamilies(text_font_id)[0]
         self.text_font = QFont(text_font_family, TEXT_FONT_SIZE)
 
-        self.sky_data_calculated.connect(self._on_sky_data_calculated)
+        self.celestial_data_calculated.connect(self._on_celestial_data_calculated)
 
-        self.sky_data: Optional[SkyData] = None
-        self._is_sky_data_calculation_running: bool = False
-        self._sky_data_update_timer = QTimer(self)
-        self._sky_data_update_timer.timeout.connect(self.start_background_update)
+        self.celestial_data: Optional[CelestialData] = None
+        self._is_celestial_data_calculation_running: bool = False
+        self._celestial_data_update_timer = QTimer(self)
+        self._celestial_data_update_timer.timeout.connect(self.start_background_celestial_data_update)
 
         self._sky_disc_cache_image: Optional[QImage] = None
         self._sky_disc_cache_key: Optional[tuple] = None
@@ -115,7 +115,7 @@ class SkyWindow(QMainWindow):
         self._resize_ongoing_timer.setInterval(1000)  # 1000ms
         self._resize_ongoing_timer.timeout.connect(self.update)
 
-        self.start_background_update(is_initial_load=True)
+        self.start_background_celestial_data_update(is_initial_load=True)
 
     def _add_hamburger_menu(self):
         self.menu_button = QPushButton("☰", self)
@@ -243,18 +243,18 @@ class SkyWindow(QMainWindow):
     def set_enlarge_moon(self, enlarge_moon: bool):
         self.enlarge_moon = enlarge_moon
 
-    def set_sky_data(self, data: SkyData):
-        self.sky_data = data
+    def set_celestial_data(self, data: CelestialData):
+        self.celestial_data = data
         self.update()
 
     def paintEvent(self, event: QPaintEvent):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
 
-        if not self.sky_data:
+        if not self.celestial_data:
             painter.setPen(Qt.GlobalColor.white)
             painter.setFont(self.text_font)
-            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "Loading sky data...")
+            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "Loading celestial data...")
             return
 
         alt = self.viewer_data.view_center[0]
@@ -263,7 +263,7 @@ class SkyWindow(QMainWindow):
         highlighted_object = None
         if self.mouse_pos is not None:
             highlighted_object = render_draw.find_highlighted_object(
-                self.sky_data, self.viewer_data, self.mouse_pos, geometry
+                self.celestial_data, self.viewer_data, self.mouse_pos, geometry
             )
 
         painter.setCompositionMode(QPainter.CompositionMode_Clear)
@@ -276,28 +276,28 @@ class SkyWindow(QMainWindow):
         if not self._resize_ongoing_timer.isActive():  # skip sky-disc image generation during window resizing
             self._handle_sky_disc_drawing(painter, geometry)
 
-        render_draw.draw_sky_reference_lines(painter, geometry, self.sky_data)
+        render_draw.draw_sky_reference_lines(painter, geometry, self.celestial_data)
         render_draw.draw_direction_labels(painter, geometry, self.viewer_data.view_center, self.text_font)
         render_draw.draw_zenith_marker(painter, geometry, self.viewer_data.view_center)
 
-        render_draw.draw_stars(painter, geometry, self.sky_data, self.viewer_data, self.star_base_radius)
+        render_draw.draw_stars(painter, geometry, self.celestial_data, self.viewer_data, self.star_base_radius)
 
         enlarge_moon = self.enlarge_moon
         if highlighted_object is not None:
             obj = highlighted_object[0]
             name = getattr(obj, "name", "") if hasattr(obj, "name") else obj.get("name", "")
             enlarge_moon = enlarge_moon or name == "moon"
-        render_draw.draw_planets(painter, geometry, self.sky_data, self.viewer_data, enlarge_moon, self.emoji_font)
+        render_draw.draw_planets(painter, geometry, self.celestial_data, self.viewer_data, enlarge_moon, self.emoji_font)
 
         render_draw.draw_overlay_info(
-            painter, self.sky_data, self.viewer_data, self.vmag_limit, enlarge_moon, highlighted_object, self.text_font
+            painter, self.celestial_data, self.viewer_data, self.vmag_limit, enlarge_moon, highlighted_object, self.text_font
         )
 
     def _handle_sky_disc_drawing(self, painter, geometry):
         if self.sky_disc_alpha <= 0.0:
             return
         sun_altaz = None
-        for body in self.sky_data.planets:
+        for body in self.celestial_data.planets:
             if body.name == "sun":
                 sun_altaz = (body.alt, body.az)
         if sun_altaz:
@@ -324,20 +324,20 @@ class SkyWindow(QMainWindow):
                 self._sky_disc_cache_image,
             )
 
-    def _on_sky_data_calculated(self, sky_data: SkyData):
-        self.set_sky_data(sky_data)
-        if not self._sky_data_update_timer.isActive():
-            self._sky_data_update_timer.start(5 * 60 * 1000)
+    def _on_celestial_data_calculated(self, celestial_data: CelestialData):
+        self.set_celestial_data(celestial_data)
+        if not self._celestial_data_update_timer.isActive():
+            self._celestial_data_update_timer.start(5 * 60 * 1000)
             self.initial_data_loaded.emit()
-        self._is_sky_data_calculation_running = False
+        self._is_celestial_data_calculation_running = False
 
-    def request_sky_update(self):
-        """Request a sky update, but only if no update is currently running."""
-        f = self.start_background_update()
+    def request_celestial_data_update(self):
+        """Request a celestial data update, but only if no update is currently running."""
+        f = self.start_background_celestial_data_update()
         if not f:
-            print("Warning: sky-data updating canceled.")
+            print("Warning: celestial-data updating canceled.")
 
-    def update_sky_data_in_background(self):
+    def update_celestial_data_in_background(self):
         try:
             now = datetime.now(timezone.utc) + self.delta_t
             time_obj = astropy.time.Time(now)
@@ -348,7 +348,7 @@ class SkyWindow(QMainWindow):
             celestial_equator_points = calculate_celestial_equator_points(loc, time_obj, self.viewer_data.view_center)
             ecliptic_points = calculate_ecliptic_points(loc, time_obj, self.viewer_data.view_center)
             horizon_points = calculate_horizon_points(loc, time_obj, self.viewer_data.view_center)
-            sky_data = SkyData(
+            celestial_data = CelestialData(
                 time=time_obj,
                 planets=planets,
                 stars=stars,
@@ -356,23 +356,23 @@ class SkyWindow(QMainWindow):
                 ecliptic_points=ecliptic_points,
                 horizon_points=horizon_points,
             )
-            self.sky_data_calculated.emit(sky_data)
+            self.celestial_data_calculated.emit(celestial_data)
         except Exception as e:
             print(f"Error in background update thread: {e}", file=sys.stderr)
             import traceback
 
             traceback.print_exc()
 
-    def start_background_update(self, is_initial_load: bool = False) -> bool:
-        if self._is_sky_data_calculation_running:
+    def start_background_celestial_data_update(self, is_initial_load: bool = False) -> bool:
+        if self._is_celestial_data_calculation_running:
             return False
-        self._is_sky_data_calculation_running = True
+        self._is_celestial_data_calculation_running = True
 
         if is_initial_load:
-            print("Calculating initial sky data...")
+            print("Calculating initial celestial data...")
         else:
-            print("Updating sky data...")
-        thread = threading.Thread(target=self.update_sky_data_in_background)
+            print("Updating celestial data...")
+        thread = threading.Thread(target=self.update_celestial_data_in_background)
         thread.daemon = True
         thread.start()
         return True
@@ -382,7 +382,7 @@ class SkyWindow(QMainWindow):
         alt = max(0.0, min(90.0, alt + d_alt))
         az = (az + d_az) % 360.0
         self.viewer_data.view_center = (alt, az)
-        self.request_sky_update()
+        self.request_celestial_data_update()
 
     def keyPressEvent(self, event: QKeyEvent):
         if not event:

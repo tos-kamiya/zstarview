@@ -16,7 +16,7 @@ from ..paths import (
     HORIZON_LINE_COLOR,
     TEXT_COLOR,
 )
-from ..types import ScreenGeometry, SkyData, ViewerData, CelestialObject
+from ..types import ScreenGeometry, CelestialData, ViewerData, CelestialObject
 from ..astro import altaz_to_normalized_xy, is_in_fov, calculate_moon_render_data
 from ..utils.image import generate_moon_phase_image
 from ..utils.qt import pil2qpixmap
@@ -105,7 +105,7 @@ def normalized_to_screen_xy_vectorized(
 
 
 def find_highlighted_object(
-    sky_data: Optional[SkyData],
+    celestial_data: Optional[CelestialData],
     viewer_data: ViewerData,
     mouse_pos: QPoint,
     geometry: ScreenGeometry,
@@ -118,7 +118,7 @@ def find_highlighted_object(
     planets to optimize performance.
 
     Args:
-        sky_data: A SkyData object containing information about celestial objects.
+        celestial_data: A CelestialData object containing information about celestial objects.
         viewer_data: A ViewerData object containing the viewer's location and time.
         mouse_pos: The QPoint representing the current mouse cursor position.
         geometry: A ScreenGeometry object for coordinate transformations.
@@ -131,11 +131,11 @@ def find_highlighted_object(
     min_dist_sq = 30**2  # squared pixels
     highlighted_object: Optional[Tuple[CelestialObject, QPointF]] = None
 
-    if not sky_data:
+    if not celestial_data:
         return None
 
     # Handle stars first (vectorized)
-    stars = sky_data.stars
+    stars = celestial_data.stars
     if stars["alt"].size > 0:
         nx, ny = altaz_to_normalized_xy_vectorized(stars["alt"], stars["az"], viewer_data.view_center)
         x, y = normalized_to_screen_xy_vectorized(nx, ny, geometry)
@@ -148,7 +148,7 @@ def find_highlighted_object(
             highlighted_object = (highlighted_star, QPointF(x[closest_star_idx], y[closest_star_idx]))
 
     # Handle planets (scalar)
-    for body in sky_data.planets:
+    for body in celestial_data.planets:
         if not body.is_visible:
             continue
         nx, ny = altaz_to_normalized_xy(body.alt, body.az, viewer_data.view_center)
@@ -227,19 +227,19 @@ def split_by_gaps(points: List[Tuple[float, float]]) -> List[List[Tuple[float, f
     return fragments
 
 
-def draw_sky_reference_lines(painter: QPainter, geometry: ScreenGeometry, sky_data: SkyData) -> None:
+def draw_sky_reference_lines(painter: QPainter, geometry: ScreenGeometry, celestial_data: CelestialData) -> None:
     """
     Draw celestial reference lines like the equator, ecliptic, and horizon.
 
     Args:
         painter: The QPainter to use for drawing.
         geometry: The screen geometry for coordinate conversion.
-        sky_data: The data containing the points for the reference lines.
+        celestial_data: The data containing the points for the reference lines.
     """
     point_list_pen_styles: List[Tuple[List[Tuple[float, float]], Tuple[QColor, int, List[int]]]] = [
-        (sky_data.celestial_equator_points, (CELESTIAL_EQUATOR_COLOR, 2, [6, 3])),
-        (sky_data.ecliptic_points, (ECLIPTIC_COLOR, 2, [2, 2])),
-        (sky_data.horizon_points, (HORIZON_LINE_COLOR, 2, [10, 1])),
+        (celestial_data.celestial_equator_points, (CELESTIAL_EQUATOR_COLOR, 2, [6, 3])),
+        (celestial_data.ecliptic_points, (ECLIPTIC_COLOR, 2, [2, 2])),
+        (celestial_data.horizon_points, (HORIZON_LINE_COLOR, 2, [10, 1])),
     ]
 
     painter.save()
@@ -266,7 +266,7 @@ def draw_sky_reference_lines(painter: QPainter, geometry: ScreenGeometry, sky_da
 def draw_stars(
     painter: QPainter,
     geometry: ScreenGeometry,
-    sky_data: SkyData,
+    celestial_data: CelestialData,
     viewer_data: ViewerData,
     star_base_radius: float,
 ) -> None:
@@ -281,11 +281,11 @@ def draw_stars(
     Args:
         painter: The QPainter object for drawing.
         geometry: The screen geometry for coordinate conversions.
-        sky_data: The data containing star information (positions, magnitudes, etc.).
+        celestial_data: The data containing star information (positions, magnitudes, etc.).
         viewer_data: The viewer's data, including the view center.
         star_base_radius: A base radius for scaling star sizes.
     """
-    stars = sky_data.stars
+    stars = celestial_data.stars
 
     # 1) mag -> relative luminance -> pixel area
     #    Base: L_raw = 10^(-0.4 * (vmag - v_ref))
@@ -489,7 +489,7 @@ def draw_moon(
 def draw_planets(
     painter: QPainter,
     geometry: ScreenGeometry,
-    sky_data: SkyData,
+    celestial_data: CelestialData,
     viewer_data: ViewerData,
     enlarge_moon: bool,
     emoji_font: QFont,
@@ -504,7 +504,7 @@ def draw_planets(
     Args:
         painter: The QPainter for drawing.
         geometry: The screen geometry for coordinate conversion.
-        sky_data: The data containing planet information.
+        celestial_data: The data containing planet information.
         viewer_data: The viewer's data for position calculations.
         enlarge_moon: A boolean indicating whether to draw the moon larger.
         emoji_font: The QFont to use for drawing planet symbols.
@@ -514,14 +514,14 @@ def draw_planets(
     sun_altaz: Optional[Tuple[float, float]] = None
     moon_altaz: Optional[Tuple[float, float]] = None
 
-    for body in sky_data.planets:
+    for body in celestial_data.planets:
         if body.name == "sun":
             sun_altaz = (body.alt, body.az)
         elif body.name == "moon":
             moon_altaz = (body.alt, body.az)
             moon_body = body
 
-    for body in sky_data.planets:
+    for body in celestial_data.planets:
         if not body.is_visible:
             continue
 
@@ -591,7 +591,7 @@ def draw_direction_labels(
 
 def draw_overlay_info(
     painter: QPainter,
-    sky_data: SkyData,
+    celestial_data: CelestialData,
     viewer_data: ViewerData,
     vmag_limit: float,
     enlarge_moon: bool,
@@ -606,7 +606,7 @@ def draw_overlay_info(
 
     Args:
         painter: The QPainter for drawing.
-        sky_data: The data containing the current time.
+        celestial_data: The data containing the current time.
         viewer_data: The data containing viewer location and view direction.
         vmag_limit: The current visual magnitude limit for stars.
         enlarge_moon: A boolean indicating if the moon is enlarged.
@@ -618,7 +618,7 @@ def draw_overlay_info(
     line_y = 0
 
     # ---- Local time ----
-    utc_time = sky_data.time
+    utc_time = celestial_data.time
     tz_name = viewer_data.timezone_name
     try:
         local_tz = ZoneInfo(tz_name)
