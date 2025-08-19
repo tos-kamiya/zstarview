@@ -194,6 +194,46 @@ def get_sky_color(view_altaz: Tuple[float, float], sun_altaz: Tuple[float, float
     return (_clamp01(r), _clamp01(g), _clamp01(b))
 
 
+def grade_color(
+    rr: float, gg: float, bb: float,
+    *,
+    saturation: float = 1.0,
+    exposure: float = 1.0,
+    gamma: float = 1.0,
+    luma_model: str = "BT.601",  # or "BT.709"
+) -> tuple[float, float, float]:
+    """
+    Sky-disc-only color grading:
+      1) luma-based saturation (BT.601/709)
+      2) exposure scaling
+      3) simple power-law gamma (on current space)
+    Assumes rr,gg,bb in [0,1] and *not* premultiplied.
+    """
+    # --- Luma ---
+    if luma_model == "BT.709":
+        wR, wG, wB = 0.2126, 0.7152, 0.0722
+    else:  # BT.601 (default)
+        wR, wG, wB = 0.299, 0.587, 0.114
+    luma = rr*wR + gg*wG + bb*wB
+
+    # --- Saturation: lerp(gray, original, s) ---
+    rr = luma + (rr - luma) * saturation
+    gg = luma + (gg - luma) * saturation
+    bb = luma + (bb - luma) * saturation
+
+    # --- Exposure ---
+    rr *= exposure; gg *= exposure; bb *= exposure
+
+    # --- Gamma (simple power-law) ---
+    if gamma > 0.0 and gamma != 1.0:
+        inv = 1.0 / gamma
+        rr = max(0.0, rr) ** inv
+        gg = max(0.0, gg) ** inv
+        bb = max(0.0, bb) ** inv
+
+    return _clamp01(rr), _clamp01(gg), _clamp01(bb)
+
+
 def draw_sky_color_disc(
     geometry: ScreenGeometry,
     view_center: Tuple[float, float],   # (alt, az)
@@ -252,12 +292,14 @@ def draw_sky_color_disc(
     ip = QPainter(img)
     ip.setPen(Qt.PenStyle.NoPen)
 
-    # Clip to a circle
-    path = QPainterPath()
-    path.addEllipse(0, 0, 2*R, 2*R)  # Circle at (0,0) with radius R in image coords
-    ip.setClipPath(path)
+    # Pseudo clip to a circle
+    ip.setCompositionMode(QPainter.CompositionMode_Source)
+    ip.setBrush(QColor(0, 0, 0, 255))
+    ip.drawEllipse(0, 0, 2*R, 2*R)
+    ip.setCompositionMode(QPainter.CompositionMode_SourceAtop)  # no alpha drawing hereafter
 
-    ip.fillRect(0, 0, 2*R, 2*R, QColor.fromRgbF(0.0, 0.0, 0.0, 1.0))
+    # Draw the background disc
+    ip.fillRect(0, 0, 2*R, 2*R, QColor(0, 0, 0, 255))
 
     # Clamp to avoid zenith singularity
     EPS = 0.01
@@ -275,6 +317,8 @@ def draw_sky_color_disc(
         # Convert to image coordinates relative to image center (R, R)
         sx, sy = normalized_to_screen_xy(nx, ny, geometry)
         return max(0.0, math.hypot(sx - cx, sy - cy))
+
+    gamma = (1.0 - alpha) * 0.2 + 1.0 if alpha < 1.0 else 1.0
 
     # Advance angle from 0 to 90° (Δθ is dynamic)
     theta = 0.0
@@ -309,12 +353,14 @@ def draw_sky_color_disc(
                 continue
 
             rr, gg, bb = get_sky_color((alt, az), sun_altaz)
-            gray = rr*0.299 + gg*0.587 + bb*0.114
-            rr, gg, bb = _lerp_color((gray, gray, gray), (rr, gg, bb), saturation)
-            ea = exposure * aa
-            rr *= ea; gg *= ea; bb *= ea
-            rr = _clamp01(rr); gg = _clamp01(gg); bb = _clamp01(bb)
+            rr, gg, bb = grade_color(
+                rr, gg, bb,
+                saturation=saturation,
+                exposure=exposure,
+                gamma=gamma,
+            )
 
+            rr *= aa; gg *= aa; bb *= aa
             ip.fillRect(xi - half, yi - half, 2*half, 2*half, QColor.fromRgbF(rr, gg, bb, 1.0))
 
         # Termination condition (ensure the 90° ring is always drawn)
