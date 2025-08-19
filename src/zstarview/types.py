@@ -60,4 +60,5 @@ class ScreenGeometry:
     center: Tuple[int, int]
     radius: int
 
+
 CelestialObject = Union[PlanetBody, Dict[str, Any]]

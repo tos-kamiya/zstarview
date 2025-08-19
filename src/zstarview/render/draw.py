@@ -642,8 +642,22 @@ def draw_overlay_info(
     def az_to_compass(az: float) -> str:
         """Converts azimuth in degrees to a compass direction string."""
         names = [
-            "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
-            "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW",
+            "N",
+            "NNE",
+            "NE",
+            "ENE",
+            "E",
+            "ESE",
+            "SE",
+            "SSE",
+            "S",
+            "SSW",
+            "SW",
+            "WSW",
+            "W",
+            "WNW",
+            "NW",
+            "NNW",
         ]
         idx = int(((az % 360) + 11.25) // 22.5) % 16
         return names[idx]
@@ -691,10 +705,7 @@ def get_screen_geometry(width: int, height: int, alt: float) -> ScreenGeometry:
     radius = (width - margin_x * 2) // 2
     ud = 90.0
     dd = alt
-    center = (
-        int(radius + margin_x),
-        int((height - margin_y * 2) * ud / (ud + dd) + margin_y)
-    )
+    center = (int(radius + margin_x), int((height - margin_y * 2) * ud / (ud + dd) + margin_y))
     return ScreenGeometry(center, radius)
 
 

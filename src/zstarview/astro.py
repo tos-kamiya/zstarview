@@ -89,6 +89,7 @@ def load_star_catalog(filename: str) -> List[Dict[str, Any]]:
     avoid circular imports when used elsewhere.
     """
     from .catalog import load_star_catalog as _load
+
     return _load(filename)
 
 

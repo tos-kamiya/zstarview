@@ -106,7 +106,7 @@ class SkyWindow(DraggableWindow):
 
         self.celestial_data: Optional[CelestialData] = None
 
-        self._sky_disc_base_size:int = 1024
+        self._sky_disc_base_size: int = 1024
         self._sky_disc_image: Optional[QImage] = None
 
         self.start_background_sky_data_update(is_initial_load=True)
@@ -233,10 +233,18 @@ class SkyWindow(DraggableWindow):
             obj = highlighted_object[0]
             name = getattr(obj, "name", "") if hasattr(obj, "name") else obj.get("name", "")
             enlarge_moon = enlarge_moon or name == "moon"
-        render_draw.draw_planets(painter, geometry, self.celestial_data, self.viewer_data, enlarge_moon, self.emoji_font)
+        render_draw.draw_planets(
+            painter, geometry, self.celestial_data, self.viewer_data, enlarge_moon, self.emoji_font
+        )
 
         render_draw.draw_overlay_info(
-            painter, self.celestial_data, self.viewer_data, self.vmag_limit, enlarge_moon, highlighted_object, self.text_font
+            painter,
+            self.celestial_data,
+            self.viewer_data,
+            self.vmag_limit,
+            enlarge_moon,
+            highlighted_object,
+            self.text_font,
         )
 
     def _draw_sky_disc_scaled(self, painter: QPainter, geometry):

@@ -6,9 +6,7 @@ from PySide6.QtGui import QColor, QImage, QPainter, QPainterPath, Qt, QLinearGra
 
 from ..astro import altaz_to_normalized_xy
 from ..types import ScreenGeometry
-from .draw import (
-    normalized_to_screen_xy
-)
+from .draw import normalized_to_screen_xy
 
 
 def _alpha_from_alt(alt: float, alpha: float, fade_hi: float = 0.0, fade_lo: float = -2.0) -> float:
@@ -31,12 +29,11 @@ def _alpha_from_alt(alt: float, alpha: float, fade_hi: float = 0.0, fade_lo: flo
         return 0.0
     if alt >= fade_hi:
         return alpha
-    t = (alt - fade_lo) / (fade_hi - fade_lo)   # [fade_hi, fade_lo] -> [0,1]
+    t = (alt - fade_lo) / (fade_hi - fade_lo)  # [fade_hi, fade_lo] -> [0,1]
     return alpha * t
 
 
-def _fwd_offset_altaz(alt_c: float, az_c: float,
-                      theta_deg: float, psi_deg: float) -> Tuple[float, float]:
+def _fwd_offset_altaz(alt_c: float, az_c: float, theta_deg: float, psi_deg: float) -> Tuple[float, float]:
     """
     Calculates the (alt, az) of a point that is at an angular distance 'theta'
     and direction 'psi' from a center point (alt_c, az_c).
@@ -50,13 +47,13 @@ def _fwd_offset_altaz(alt_c: float, az_c: float,
     Returns:
         A tuple of (altitude, azimuth) in degrees for the new point.
     """
-    phi1  = math.radians(alt_c)
-    lambda1  = math.radians(az_c)
-    theta   = math.radians(theta_deg)
-    psi   = math.radians(psi_deg)
+    phi1 = math.radians(alt_c)
+    lambda1 = math.radians(az_c)
+    theta = math.radians(theta_deg)
+    psi = math.radians(psi_deg)
 
     sin_phi1, cos_phi1 = math.sin(phi1), math.cos(phi1)
-    sin_theta, cos_theta   = math.sin(theta), math.cos(theta)
+    sin_theta, cos_theta = math.sin(theta), math.cos(theta)
 
     sin_phi2 = sin_phi1 * cos_theta + cos_phi1 * sin_theta * math.cos(psi)
     sin_phi2 = max(-1.0, min(1.0, sin_phi2))
@@ -67,7 +64,7 @@ def _fwd_offset_altaz(alt_c: float, az_c: float,
     lambda2 = lambda1 + math.atan2(y, x)
 
     alt = math.degrees(phi2)
-    az  = (math.degrees(lambda2) + 360.0) % 360.0
+    az = (math.degrees(lambda2) + 360.0) % 360.0
     return alt, az
 
 
@@ -105,19 +102,16 @@ def _angle_between(alt1_deg: float, az1_deg: float, alt2_deg: float, az2_deg: fl
     """
     a1, z1 = _deg2rad(alt1_deg), _deg2rad(az1_deg)
     a2, z2 = _deg2rad(alt2_deg), _deg2rad(az2_deg)
-    cos_g = (math.sin(a1)*math.sin(a2) + math.cos(a1)*math.cos(a2)*math.cos(z2 - z1))
+    cos_g = math.sin(a1) * math.sin(a2) + math.cos(a1) * math.cos(a2) * math.cos(z2 - z1)
     cos_g = max(-1.0, min(1.0, cos_g))
     return math.acos(cos_g)
 
 
-def _lerp_color(a: Tuple[float,float,float],
-                b: Tuple[float,float,float], t: float) -> Tuple[float,float,float]:
+def _lerp_color(a: Tuple[float, float, float], b: Tuple[float, float, float], t: float) -> Tuple[float, float, float]:
     """
     Linearly interpolates between two colors.
     """
-    return (a[0] + (b[0]-a[0]) * t,
-            a[1] + (b[1]-a[1]) * t,
-            a[2] + (b[2]-a[2]) * t)
+    return (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t)
 
 
 def get_sun_color(sun_alt_deg: float) -> Tuple[float, float, float]:
@@ -132,8 +126,8 @@ def get_sun_color(sun_alt_deg: float) -> Tuple[float, float, float]:
     """
     # Define colors
     zenith_color = (0.3, 0.5, 1.0)  # Color at zenith (blue)
-    horizon_color = (1.0, 0.8, 0.4) # Color at horizon (orange)
-    night_color = (0.01, 0.02, 0.05) # Night color (dark blue)
+    horizon_color = (1.0, 0.8, 0.4)  # Color at horizon (orange)
+    night_color = (0.01, 0.02, 0.05)  # Night color (dark blue)
 
     # Normalize sun altitude from -5 degrees (sunset) to 90 degrees (zenith) to a 0-1 range
     t = _clamp01((sun_alt_deg + 5.0) / 95.0)
@@ -142,7 +136,7 @@ def get_sun_color(sun_alt_deg: float) -> Tuple[float, float, float]:
     day_color = _lerp_color(horizon_color, zenith_color, t)
 
     # Mix day and night colors (to represent the rapid darkening near the horizon)
-    fade = _clamp01(sun_alt_deg / 10.0) # Fade between 0 and 10 degrees
+    fade = _clamp01(sun_alt_deg / 10.0)  # Fade between 0 and 10 degrees
 
     return _lerp_color(night_color, day_color, fade)
 
@@ -171,13 +165,13 @@ def get_sky_color(view_altaz: Tuple[float, float], sun_altaz: Tuple[float, float
     # 1) Brightness based on angle to the sun (stable even at zenith)
     gamma = _angle_between(view_alt_deg, view_az_deg, sun_alt_deg, sun_az_deg)  # [0..pi]
     cosg = math.cos(gamma)
-    brightness = (1.0 + cosg) * 0.5          # 0..1
-    brightness = brightness ** 2.0            # Emphasize the sun-facing direction
+    brightness = (1.0 + cosg) * 0.5  # 0..1
+    brightness = brightness**2.0  # Emphasize the sun-facing direction
 
     # 2) Tone based on altitude (darker at zenith, whitish at horizon)
-    t = _clamp01(view_alt_deg / 90.0)         # 0(horizon) -> 1(zenith)
-    zenith_darkness = 0.5 + 0.5 * t           # 0.5..1.0 (darker towards zenith)
-    horizon_whiteness = (1.0 - t) * 0.3       # 0.3..0.0 (whiter towards horizon)
+    t = _clamp01(view_alt_deg / 90.0)  # 0(horizon) -> 1(zenith)
+    zenith_darkness = 0.5 + 0.5 * t  # 0.5..1.0 (darker towards zenith)
+    horizon_whiteness = (1.0 - t) * 0.3  # 0.3..0.0 (whiter towards horizon)
 
     # 3) Twilight correction (interpolate -10..0° to 0..1)
     if sun_alt_deg < 0.0:
@@ -195,7 +189,9 @@ def get_sky_color(view_altaz: Tuple[float, float], sun_altaz: Tuple[float, float
 
 
 def grade_color(
-    rr: float, gg: float, bb: float,
+    rr: float,
+    gg: float,
+    bb: float,
     *,
     saturation: float = 1.0,
     exposure: float = 1.0,
@@ -214,7 +210,7 @@ def grade_color(
         wR, wG, wB = 0.2126, 0.7152, 0.0722
     else:  # BT.601 (default)
         wR, wG, wB = 0.299, 0.587, 0.114
-    luma = rr*wR + gg*wG + bb*wB
+    luma = rr * wR + gg * wG + bb * wB
 
     # --- Saturation: lerp(gray, original, s) ---
     rr = luma + (rr - luma) * saturation
@@ -222,7 +218,9 @@ def grade_color(
     bb = luma + (bb - luma) * saturation
 
     # --- Exposure ---
-    rr *= exposure; gg *= exposure; bb *= exposure
+    rr *= exposure
+    gg *= exposure
+    bb *= exposure
 
     # --- Gamma (simple power-law) ---
     if gamma > 0.0 and gamma != 1.0:
@@ -236,17 +234,17 @@ def grade_color(
 
 def draw_sky_color_disc(
     geometry: ScreenGeometry,
-    view_center: Tuple[float, float],   # (alt, az)
-    sun_altaz: Tuple[float, float],     # (alt, az)
+    view_center: Tuple[float, float],  # (alt, az)
+    sun_altaz: Tuple[float, float],  # (alt, az)
     *,
     exposure: float = 1.0,
     saturation: float = 1.2,
     alpha: float = 1.0,
     # --- Sampling density (knobs for quality vs. speed) ---
-    sample_step_px: int = 10,          # Target pixel interval (basis for determining Δθ)
-    min_ang_samples: int = 8,         # Minimum number of samples for each ring
+    sample_step_px: int = 10,  # Target pixel interval (basis for determining Δθ)
+    min_ang_samples: int = 8,  # Minimum number of samples for each ring
     # --- Parameters for stabilizing Δθ estimation ---
-    deriv_probe_deg: float = 0.25,    # Small angle (degrees) for finite difference of dr/dθ
+    deriv_probe_deg: float = 0.25,  # Small angle (degrees) for finite difference of dr/dθ
     min_theta_step_deg: float = 0.2,  # Lower limit for Δθ (degrees)
     max_theta_step_deg: float = 6.0,  # Upper limit for Δθ (degrees)
 ) -> QImage:
@@ -278,7 +276,7 @@ def draw_sky_color_disc(
 
     R = int(geometry.radius)
     if R < 2:
-        return QImage(2*R, 2*R, QImage.Format.Format_ARGB32_Premultiplied)
+        return QImage(2 * R, 2 * R, QImage.Format.Format_ARGB32_Premultiplied)
 
     sample_step_px = max(2, min(R // 80, sample_step_px))
     tile_size = int(sample_step_px * 1.5 + 1)
@@ -295,17 +293,19 @@ def draw_sky_color_disc(
     # Pseudo clip to a circle
     ip.setCompositionMode(QPainter.CompositionMode_Source)
     ip.setBrush(QColor(0, 0, 0, 255))
-    ip.drawEllipse(0, 0, 2*R, 2*R)
+    ip.drawEllipse(0, 0, 2 * R, 2 * R)
     ip.setCompositionMode(QPainter.CompositionMode_SourceAtop)  # no alpha drawing hereafter
 
     # Draw the background disc
-    ip.fillRect(0, 0, 2*R, 2*R, QColor(0, 0, 0, 255))
+    ip.fillRect(0, 0, 2 * R, 2 * R, QColor(0, 0, 0, 255))
 
     # Clamp to avoid zenith singularity
     EPS = 0.01
     alt_c, az_c = view_center
-    if alt_c <= -90.0: alt_c = -(90.0 - EPS)
-    if alt_c >=  90.0: alt_c =  (90.0 - EPS)
+    if alt_c <= -90.0:
+        alt_c = -(90.0 - EPS)
+    if alt_c >= 90.0:
+        alt_c = 90.0 - EPS
 
     # The outer circumference is always 90° to match the normalization spec
     theta_max = 90.0
@@ -354,14 +354,18 @@ def draw_sky_color_disc(
 
             rr, gg, bb = get_sky_color((alt, az), sun_altaz)
             rr, gg, bb = grade_color(
-                rr, gg, bb,
+                rr,
+                gg,
+                bb,
                 saturation=saturation,
                 exposure=exposure,
                 gamma=gamma,
             )
 
-            rr *= aa; gg *= aa; bb *= aa
-            ip.fillRect(xi - half, yi - half, 2*half, 2*half, QColor.fromRgbF(rr, gg, bb, 1.0))
+            rr *= aa
+            gg *= aa
+            bb *= aa
+            ip.fillRect(xi - half, yi - half, 2 * half, 2 * half, QColor.fromRgbF(rr, gg, bb, 1.0))
 
         # Termination condition (ensure the 90° ring is always drawn)
         if theta >= theta_max - 1e-6:

@@ -39,23 +39,18 @@ def _clamp01(x: float) -> float:
     return 0.0 if x < 0.0 else 1.0 if x > 1.0 else x
 
 
-def _lerp_color(a: Tuple[float, float, float],
-                b: Tuple[float, float, float],
-                t: float) -> Tuple[float, float, float]:
+def _lerp_color(a: Tuple[float, float, float], b: Tuple[float, float, float], t: float) -> Tuple[float, float, float]:
     # Simple linear interpolation; if you want "saturation boost" behavior,
     # pass t>1.0 (works as extrapolation)
-    return (a[0] + (b[0] - a[0]) * t,
-            a[1] + (b[1] - a[1]) * t,
-            a[2] + (b[2] - a[2]) * t)
+    return (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t)
 
 
 def _angle_between(alt1_deg, az1_deg, alt2_deg, az2_deg) -> float:
     a1, z1 = math.radians(alt1_deg), math.radians(az1_deg)
     a2, z2 = math.radians(alt2_deg), math.radians(az2_deg)
     d_az = z2 - z1
-    d_az = (d_az + math.pi) % (2*math.pi) - math.pi
-    cos_g = (math.sin(a1)*math.sin(a2) +
-             math.cos(a1)*math.cos(a2)*math.cos(d_az))
+    d_az = (d_az + math.pi) % (2 * math.pi) - math.pi
+    cos_g = math.sin(a1) * math.sin(a2) + math.cos(a1) * math.cos(a2) * math.cos(d_az)
     cos_g = max(-1.0, min(1.0, cos_g))
     return math.acos(cos_g)
 
@@ -82,8 +77,9 @@ def _smoothstep(edge0: float, edge1: float, x: float) -> float:
     return t * t * (3.0 - 2.0 * t)
 
 
-def get_sky_color(view_alt_deg: float, view_az_deg: float,
-                  sun_alt_deg: float, sun_az_deg: float) -> Tuple[float, float, float]:
+def get_sky_color(
+    view_alt_deg: float, view_az_deg: float, sun_alt_deg: float, sun_az_deg: float
+) -> Tuple[float, float, float]:
     """
     Simple, stable heuristic sky color. Linear RGB in [0,1].
     Designed to be numerically stable even when view_alt_deg == 90.
@@ -97,9 +93,9 @@ def get_sky_color(view_alt_deg: float, view_az_deg: float,
     cosg = math.cos(gamma)
     brightness = ((1.0 + cosg) * 0.5) ** 2.0  # emphasize near the sun
 
-    t_alt = _clamp01(view_alt_deg / 90.0)        # 0 at horizon, 1 at zenith
-    zenith_darkness = 0.5 + 0.5 * t_alt          # 0.5..1.0
-    horizon_whiteness = (1.0 - t_alt) * 0.3      # 0.3..0.0
+    t_alt = _clamp01(view_alt_deg / 90.0)  # 0 at horizon, 1 at zenith
+    zenith_darkness = 0.5 + 0.5 * t_alt  # 0.5..1.0
+    horizon_whiteness = (1.0 - t_alt) * 0.3  # 0.3..0.0
 
     twilight = 1.0 if sun_alt_deg >= 0.0 else _smoothstep(-10.0, 0.0, sun_alt_deg)
 
@@ -109,12 +105,13 @@ def get_sky_color(view_alt_deg: float, view_az_deg: float,
 
     return (_clamp01(r), _clamp01(g), _clamp01(b))
 
+
 EPS = 1e-3  # 天頂の特異を避けるための余白
 
 
 def clamp_alt(alt: float, alt_min: float = -60.0, alt_max: float = 89.5) -> float:
     # alt_max は 90 より少し小さく
-    if alt < alt_min: 
+    if alt < alt_min:
         return alt_min
     if alt > alt_max:
         return alt_max
@@ -128,10 +125,7 @@ def clamp_alt(alt: float, alt_min: float = -60.0, alt_max: float = 89.5) -> floa
 # Projection: screen → (alt, az)
 # -----------------------------
 def screen_to_altaz_equidistant(
-    x: int, y: int,
-    geometry: "ScreenGeometry",
-    view_center: Tuple[float, float],  # (alt_c, az_c)
-    fov_deg: float
+    x: int, y: int, geometry: "ScreenGeometry", view_center: Tuple[float, float], fov_deg: float  # (alt_c, az_c)
 ) -> Tuple[float, float]:
     """
     Azimuthal equidistant projection inverse:
@@ -240,14 +234,18 @@ def draw_sky_color_disc(
             # 3) saturation & exposure in linear space
             gray = r * 0.299 + g * 0.587 + b * 0.114
             r, g, b = _lerp_color((gray, gray, gray), (r, g, b), saturation)
-            r *= exposure; g *= exposure; b *= exposure
+            r *= exposure
+            g *= exposure
+            b *= exposure
 
             # ground fade: -5..0° → 0..1
             if alt < 0.0:
                 t = _clamp01((alt + 5.0) / 5.0)
                 r, g, b = _lerp_color(ground_color, (r, g, b), t)
 
-            r = _clamp01(r); g = _clamp01(g); b = _clamp01(b)
+            r = _clamp01(r)
+            g = _clamp01(g)
+            b = _clamp01(b)
             img.setPixel(bx, by, QColor.fromRgbF(r, g, b).rgb())
 
     painter.save()
@@ -268,7 +266,7 @@ def main():
     ap.add_argument("--sun-alt", type=float, default=20.0)
     ap.add_argument("--sun-az", type=float, default=270.0)  # W
     ap.add_argument("--center-alt", type=float, default=90.0)  # zenith
-    ap.add_argument("--center-az", type=float, default=0.0)    # north
+    ap.add_argument("--center-az", type=float, default=0.0)  # north
     ap.add_argument("--scale", type=float, default=1.0)
     ap.add_argument("--pixel-step", type=int, default=1)
     ap.add_argument("--exposure", type=float, default=1.0)

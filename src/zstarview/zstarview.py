@@ -113,7 +113,7 @@ def parse_args() -> argparse.Namespace:
         help=(
             "Opacity of the simulated sky-color disc (0.0 - 1.0, default: 0.25). "
             "Set to 0.0 to disable sky-color rendering."
-        )
+        ),
     )
     return parser.parse_args()
 

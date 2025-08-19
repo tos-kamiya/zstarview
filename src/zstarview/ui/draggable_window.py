@@ -9,6 +9,7 @@ class DraggableWindow(QMainWindow):
     - Falls back to manual dragging otherwise.
     - Supports registering child widgets that disable dragging when clicked.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._drag_active = False
