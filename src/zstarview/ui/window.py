@@ -11,13 +11,7 @@ from PySide6.QtWidgets import QMainWindow, QSizeGrip, QApplication, QPushButton,
 import astropy
 import polars as pl
 
-import zstarview.render.draw_sky_disc
-
 from ..__about__ import __version__
-
-from ..paths import EMOJI_FONT_PATH, EMOJI_FONT_SIZE, TEXT_FONT_PATH, TEXT_FONT_SIZE
-from ..paths import APP_ICON_FILE, GUI_BUTTON_SIZE, GUI_MENU_TEXT_COLOR, WINDOW_HEIGHT, WINDOW_WIDTH
-from ..types import CelestialData, ViewerData
 from ..astro import (
     calculate_visible_stars,
     calculate_planets,
@@ -25,10 +19,15 @@ from ..astro import (
     calculate_ecliptic_points,
     calculate_horizon_points,
 )
+from .draggable_window import DraggableWindow
+from ..paths import EMOJI_FONT_PATH, EMOJI_FONT_SIZE, TEXT_FONT_PATH, TEXT_FONT_SIZE
+from ..paths import APP_ICON_FILE, GUI_BUTTON_SIZE, GUI_MENU_TEXT_COLOR, WINDOW_HEIGHT, WINDOW_WIDTH
 from ..render import draw as render_draw
+from ..render import draw_sky_disc
+from ..types import CelestialData, ViewerData
 
 
-class SkyWindow(QMainWindow):
+class SkyWindow(DraggableWindow):
     # Using Qt signal objects requires attribute creation at runtime; avoid type hints here
     from PySide6.QtCore import Signal
 
@@ -78,19 +77,19 @@ class SkyWindow(QMainWindow):
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
         self.setGeometry(100, 100, WINDOW_WIDTH, WINDOW_HEIGHT)
 
+        self.setMouseTracking(True)
+        self.mouse_pos: Optional[QPoint] = None
+
         # Size grip
         self.size_grip = QSizeGrip(self)
         self.size_grip.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
         self.size_grip.raise_()
 
-        self.setMouseTracking(True)
-        self.mouse_pos: Optional[QPoint] = None
-        self._drag_active: bool = False
-        self._drag_pos: QPoint = QPoint(0, 0)
-
         # Menu
         self._action_enlarge_moon = None
         self._add_hamburger_menu()
+
+        self.add_drag_exclusions([self.menu_button, self.size_grip])
 
         # Fonts for drawing
         emoji_font_id = QFontDatabase.addApplicationFont(EMOJI_FONT_PATH)
@@ -174,56 +173,14 @@ class SkyWindow(QMainWindow):
         else:
             self.showFullScreen()
 
-    def mousePressEvent(self, event: QMouseEvent):
-        if event.button() == Qt.LeftButton:
-            # Ignore drags initiated on interactive child widgets
-            child = self.childAt(event.pos())
-            if child in (self.menu_button, self.size_grip):
-                super().mousePressEvent(event)
-                return
-
-            # On Wayland (and some platforms), top-level window move must be delegated
-            try:
-                wh = self.windowHandle()
-                if wh is not None:
-                    try:
-                        if bool(wh.startSystemMove()):
-                            event.accept()
-                            return
-                    except Exception:
-                        pass
-            except Exception:
-                pass
-
-            self._drag_active = True
-            try:
-                global_pos = event.globalPosition().toPoint()  # Qt6 API
-            except AttributeError:
-                global_pos = event.globalPos()  # Fallback for Qt5-style
-            self._drag_pos = global_pos - self.frameGeometry().topLeft()
-            event.accept()
-
     def leaveEvent(self, event):
         self.mouse_pos = None
         self.update()
         event.accept()
 
     def mouseMoveEvent(self, event: QMouseEvent):
-        if getattr(self, "_drag_active", False) and event.buttons() & Qt.LeftButton:
-            try:
-                global_pos = event.globalPosition().toPoint()
-            except AttributeError:
-                global_pos = event.globalPos()
-            target_pos = global_pos - self._drag_pos
-            self.move(target_pos)
-            event.accept()
-        else:
-            self.mouse_pos = event.pos()
-            self.update()
-            event.accept()
-
-    def mouseReleaseEvent(self, event: QMouseEvent):
-        self._drag_active = False
+        self.mouse_pos = event.pos()
+        self.update()
         event.accept()
 
     def set_star_base_radius(self, star_base_radius: float):
@@ -344,7 +301,7 @@ class SkyWindow(QMainWindow):
                 base = self._sky_disc_base_size
                 fixed_geom = render_draw.get_screen_geometry(base, base, self.viewer_data.view_center[0])
 
-                sky_disc_img = zstarview.render.draw_sky_disc.draw_sky_color_disc(
+                sky_disc_img = draw_sky_disc.draw_sky_color_disc(
                     fixed_geom,
                     self.viewer_data.view_center,
                     sun_altaz,
