@@ -318,7 +318,7 @@ def draw_sky_color_disc(
         sx, sy = normalized_to_screen_xy(nx, ny, geometry)
         return max(0.0, math.hypot(sx - cx, sy - cy))
 
-    gamma = (1.0 - alpha) * 0.2 + 1.0 if alpha < 1.0 else 1.0
+    gamma = (1.0 - alpha) * 0.15 + 1.0 if alpha < 1.0 else 1.0
 
     # Advance angle from 0 to 90° (Δθ is dynamic)
     theta = 0.0

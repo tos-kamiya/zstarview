@@ -77,9 +77,7 @@ def _smoothstep(edge0: float, edge1: float, x: float) -> float:
     return t * t * (3.0 - 2.0 * t)
 
 
-def get_sky_color(
-    view_alt_deg: float, view_az_deg: float, sun_alt_deg: float, sun_az_deg: float
-) -> Tuple[float, float, float]:
+def get_sky_color(view_alt_deg: float, view_az_deg: float, sun_alt_deg: float, sun_az_deg: float) -> Tuple[float, float, float]:
     """
     Simple, stable heuristic sky color. Linear RGB in [0,1].
     Designed to be numerically stable even when view_alt_deg == 90.

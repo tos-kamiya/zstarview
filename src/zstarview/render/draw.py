@@ -6,7 +6,7 @@ from PIL import Image
 from zoneinfo import ZoneInfo
 
 from PySide6.QtCore import QPoint, QPointF, QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF, QRadialGradient
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen, QPolygonF, QRadialGradient, QPainterPath
 
 from ..paths import (
     CELESTIAL_EQUATOR_COLOR,
@@ -15,6 +15,7 @@ from ..paths import (
     FIELD_OF_VIEW_DEG,
     HORIZON_LINE_COLOR,
     TEXT_COLOR,
+    TEXT_FONT_SIZE,
 )
 from ..types import ScreenGeometry, CelestialData, ViewerData, CelestialObject
 from ..astro import altaz_to_normalized_xy, is_in_fov, calculate_moon_render_data
@@ -46,9 +47,7 @@ def bv_to_rgb_vectorized(bv: np.ndarray) -> np.ndarray:
     return rgb
 
 
-def altaz_to_normalized_xy_vectorized(
-    alt: np.ndarray, az: np.ndarray, view_center: Tuple[float, float]
-) -> Tuple[np.ndarray, np.ndarray]:
+def altaz_to_normalized_xy_vectorized(alt: np.ndarray, az: np.ndarray, view_center: Tuple[float, float]) -> Tuple[np.ndarray, np.ndarray]:
     """
     Vectorized conversion of altitude/azimuth to normalized screen coordinates.
 
@@ -84,9 +83,7 @@ def altaz_to_normalized_xy_vectorized(
     return (nx, ny)
 
 
-def normalized_to_screen_xy_vectorized(
-    nx: np.ndarray, ny: np.ndarray, geometry: ScreenGeometry
-) -> Tuple[np.ndarray, np.ndarray]:
+def normalized_to_screen_xy_vectorized(nx: np.ndarray, ny: np.ndarray, geometry: ScreenGeometry) -> Tuple[np.ndarray, np.ndarray]:
     """
     Vectorized conversion of normalized coordinates to screen coordinates.
 
@@ -159,6 +156,30 @@ def find_highlighted_object(
             highlighted_object = (body, QPointF(px, py))  # body is already an object/dataclass
 
     return highlighted_object
+
+
+def draw_outlined_text(
+    painter: QPainter,
+    text: str,
+    pos: QPointF,
+    font: QFont,
+    text_color: QColor = QColor(255, 255, 255),
+    outline_color: QColor = QColor.fromRgbF(0, 0, 0, 0.3),
+    outline_width: float = 3.0,
+):
+    painter.save()
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+    path = QPainterPath()
+    path.addText(pos, font, text)
+
+    pen = QPen(outline_color, outline_width)
+    painter.setPen(pen)
+    painter.drawPath(path)
+
+    painter.fillPath(path, text_color)
+
+    painter.restore()
 
 
 def draw_radial_background(painter: QPainter, rect: QRectF, geometry: ScreenGeometry) -> None:
@@ -237,9 +258,9 @@ def draw_sky_reference_lines(painter: QPainter, geometry: ScreenGeometry, celest
         celestial_data: The data containing the points for the reference lines.
     """
     point_list_pen_styles: List[Tuple[List[Tuple[float, float]], Tuple[QColor, int, List[int]]]] = [
-        (celestial_data.celestial_equator_points, (CELESTIAL_EQUATOR_COLOR, 2, [6, 3])),
-        (celestial_data.ecliptic_points, (ECLIPTIC_COLOR, 2, [2, 2])),
-        (celestial_data.horizon_points, (HORIZON_LINE_COLOR, 2, [10, 1])),
+        (celestial_data.celestial_equator_points, (CELESTIAL_EQUATOR_COLOR, 1, [8, 4])),
+        (celestial_data.ecliptic_points, (ECLIPTIC_COLOR, 1, [3, 3])),
+        (celestial_data.horizon_points, (HORIZON_LINE_COLOR, 1, [10, 1])),
     ]
 
     painter.save()
@@ -250,12 +271,13 @@ def draw_sky_reference_lines(painter: QPainter, geometry: ScreenGeometry, celest
             pts = [QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in frag]
             poly = QPolygonF(pts)
 
-            base = QPen(color.darker(230), width, Qt.PenStyle.SolidLine)
+            bc = QColor.fromRgbF(0, 0, 0, 0.3)
+            base = QPen(bc, width + 2, Qt.PenStyle.SolidLine)
             base.setCosmetic(True)
             painter.setPen(base)
             painter.drawPolyline(poly)
 
-            fg = QPen(color, width)
+            fg = QPen(QColor(*color), width)
             fg.setCosmetic(True)
             fg.setDashPattern(style)
             painter.setPen(fg)
@@ -379,10 +401,7 @@ def draw_stars(
             m = np.all(rgba == (r, g, b, a), axis=1)  # mask within small-star subset
             color = QColor(int(r), int(g), int(b), int(a))
             painter.setBrush(color)
-            rects = [
-                QRectF(float(cx) - float(s) / 2.0, float(cy) - float(s) / 2.0, float(s), float(s))
-                for cx, cy, s in zip(sx[m], sy[m], sL[m])
-            ]
+            rects = [QRectF(float(cx) - float(s) / 2.0, float(cy) - float(s) / 2.0, float(s), float(s)) for cx, cy, s in zip(sx[m], sy[m], sL[m])]
             painter.drawRects(rects)
 
     # Reset composition mode.
@@ -430,7 +449,7 @@ def draw_zenith_marker(painter: QPainter, geometry: ScreenGeometry, view_center:
 
     s = 7
 
-    painter.setPen(QPen(TEXT_COLOR, 1))
+    painter.setPen(QPen(QColor(*TEXT_COLOR), 1))
     painter.drawLine(QPointF(x - s, y - s), QPointF(x + s, y + s))
     painter.drawLine(QPointF(x - s, y + s), QPointF(x + s, y - s))
 
@@ -521,6 +540,8 @@ def draw_planets(
             moon_altaz = (body.alt, body.az)
             moon_body = body
 
+    text_color = QColor(*TEXT_COLOR)
+
     for body in celestial_data.planets:
         if not body.is_visible:
             continue
@@ -533,12 +554,10 @@ def draw_planets(
         )
 
         if body.name == "sun":
-            draw_gauge_cross(painter, TEXT_COLOR, pos)
+            draw_gauge_cross(painter, text_color, pos)
 
         elif body.name == "moon" and moon_body and sun_altaz and moon_altaz:
-            sun_dir_in_moon_frame, screen_rotation_deg = calculate_moon_render_data(
-                sun_altaz, moon_altaz, viewer_data.view_center
-            )
+            sun_dir_in_moon_frame, screen_rotation_deg = calculate_moon_render_data(sun_altaz, moon_altaz, viewer_data.view_center)
             moon_radius_px = (0.25 / 90.0) * geometry.radius * moon_zoom
 
             eclipse = body.eclipse_info
@@ -558,17 +577,13 @@ def draw_planets(
                 opacity=1.0 if not enlarge_moon else 0.7,
                 base_color=base_color,
             )
-            draw_gauge_cross(painter, TEXT_COLOR, pos)
+            draw_gauge_cross(painter, text_color, pos)
 
         else:
-            painter.setFont(emoji_font)
-            painter.setPen(TEXT_COLOR)
-            painter.drawText(pos, body.symbol)
+            draw_outlined_text(painter, body.symbol, pos, emoji_font, text_color)
 
 
-def draw_direction_labels(
-    painter: QPainter, geometry: ScreenGeometry, view_center: Tuple[float, float], text_font: QFont
-) -> None:
+def draw_direction_labels(painter: QPainter, geometry: ScreenGeometry, view_center: Tuple[float, float], text_font: QFont) -> None:
     """
     Draw compass direction labels (N, S, E, W) on the horizon.
 
@@ -578,7 +593,8 @@ def draw_direction_labels(
         view_center: The current view center to determine which labels are visible.
         text_font: The QFont to use for the labels.
     """
-    painter.setPen(TEXT_COLOR)
+    text_color = QColor(*TEXT_COLOR)
+    painter.setPen(text_color)
     painter.setFont(text_font)
     alt = 0.0
     for label, az in DIRECTIONS.items():
@@ -586,7 +602,7 @@ def draw_direction_labels(
             continue
         nx, ny = altaz_to_normalized_xy(alt, az, view_center)
         pos = QPointF(*normalized_to_screen_xy(nx, ny, geometry))
-        painter.drawText(pos, label)
+        draw_outlined_text(painter, label, pos, text_font, text_color)
 
 
 def draw_overlay_info(
@@ -613,9 +629,17 @@ def draw_overlay_info(
         highlighted_object: The currently highlighted object, if any.
         text_font: The QFont to use for the text.
     """
-    line_height = 20
-    line_x = 10
+    text_color = QColor(*TEXT_COLOR)
+
+    line_spacing = QFontMetrics(text_font).lineSpacing()
+    line_height = int(line_spacing * 1.2)
+    line_x = line_spacing
     line_y = 0
+
+    def print_line(message: str):
+        nonlocal line_x, line_y
+        line_y += line_height
+        draw_outlined_text(painter, message, QPointF(line_x, line_y), text_font, text_color)
 
     # ---- Local time ----
     utc_time = celestial_data.time
@@ -627,15 +651,11 @@ def draw_overlay_info(
     except Exception:
         time_text = utc_time.to_datetime().strftime("%Y-%m-%d %H:%M:%S UTC")
 
-    painter.setPen(QColor(180, 180, 180))
-    painter.setFont(text_font)
-    line_y += line_height
-    painter.drawText(QPoint(line_x, line_y), time_text)
+    print_line(time_text)
 
     # ---- City, view direction (Alt/Az) ----
     city_name_text = viewer_data.city_name.title()
-    line_y += line_height
-    painter.drawText(QPoint(line_x, line_y), city_name_text)
+    print_line(city_name_text)
 
     alt_deg, az_deg = viewer_data.view_center
 
@@ -665,27 +685,23 @@ def draw_overlay_info(
     compass = az_to_compass(az_deg)
     deg = "\N{DEGREE SIGN}"
     view_text = f"Alt {alt_deg:.0f}{deg}  Az {az_deg:.0f}{deg} ({compass})"
-    line_y += line_height
-    painter.drawText(QPoint(line_x, line_y), view_text)
+    print_line(view_text)
 
-    line_y += line_height
-    painter.drawText(QPoint(line_x, line_y), f"Vmag limit {vmag_limit:.1f}")
+    print_line(f"Vmag limit {vmag_limit:.1f}")
 
     if enlarge_moon:
-        line_y += line_height
-        painter.drawText(QPoint(line_x, line_y), "Moon size: 5x")
+        print_line("Moon size: 5x")
 
     # ---- Star/planet highlight ----
     if highlighted_object:
         obj, pos = highlighted_object
-        painter.setPen(QPen(TEXT_COLOR, 2))
+        painter.setPen(QPen(text_color, 2))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawEllipse(pos, 10, 10)
 
         # PlanetBody(dataclass) or star(dict)
         name = getattr(obj, "name", "") if hasattr(obj, "name") else obj.get("name", "")
-        painter.setPen(TEXT_COLOR)
-        painter.drawText(QPointF(pos.x() + 15, pos.y() - 15), str(name))
+        draw_outlined_text(painter, name, QPointF(pos.x() + 15, pos.y() - 15), text_font, text_color)
 
 
 def get_screen_geometry(width: int, height: int, alt: float) -> ScreenGeometry:

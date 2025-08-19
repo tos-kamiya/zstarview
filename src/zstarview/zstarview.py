@@ -51,9 +51,7 @@ def _parse_azimuth(value: str) -> float:
     compass = value.strip().upper()
     if compass in DIRECTIONS:
         return float(DIRECTIONS[compass])
-    raise argparse.ArgumentTypeError(
-        f"Invalid azimuth: {value!r}. Use degrees (e.g., 180) or compass (e.g., N, NE, E)."
-    )
+    raise argparse.ArgumentTypeError(f"Invalid azimuth: {value!r}. Use degrees (e.g., 180) or compass (e.g., N, NE, E).")
 
 
 def parse_args() -> argparse.Namespace:
@@ -61,12 +59,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Star sky visualizer")
     parser.add_argument("city", type=str, nargs="?", default="", help="City name (default: same as the last run)")
     time_group = parser.add_argument_group("Time settings")
-    time_group.add_argument(
-        "-H", "--hours", type=float, default=0, help="Number of hours to add to current time (default: 0)"
-    )
-    time_group.add_argument(
-        "-D", "--days", type=float, default=0, help="Number of days to add to current time (default: 0)"
-    )
+    time_group.add_argument("-H", "--hours", type=float, default=0, help="Number of hours to add to current time (default: 0)")
+    time_group.add_argument("-D", "--days", type=float, default=0, help="Number of days to add to current time (default: 0)")
     time_group.add_argument(
         "--datetime",
         type=str,
@@ -93,10 +87,7 @@ def parse_args() -> argparse.Namespace:
         "--view-center-az",
         type=_parse_azimuth,
         default=180.0,
-        help=(
-            "Viewing azimuth angle [deg or compass] "
-            "(0=N, 90=E, 180=S, 270=W; also accepts N, NE, E, SE, S, SW, W, NW; default=180)"
-        ),
+        help=("Viewing azimuth angle [deg or compass] " "(0=N, 90=E, 180=S, 270=W; also accepts N, NE, E, SE, S, SW, W, NW; default=180)"),
     )
     parser.add_argument(
         "-A",
@@ -109,11 +100,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--sky-opacity",
         type=float,
-        default=0.25,
-        help=(
-            "Opacity of the simulated sky-color disc (0.0 - 1.0, default: 0.25). "
-            "Set to 0.0 to disable sky-color rendering."
-        ),
+        default=0.2,
+        help=("Opacity of the simulated sky-color disc (0.0 - 1.0, default: 0.2). " "Set to 0.0 to disable sky-color rendering."),
     )
     return parser.parse_args()
 

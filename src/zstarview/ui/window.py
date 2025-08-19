@@ -115,9 +115,7 @@ class SkyWindow(DraggableWindow):
         self.menu_button = QPushButton("☰", self)
         self.menu_button.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
         self.menu_button.setStyleSheet(
-            "QPushButton { border: none; font-size: 18px; background-color: transparent; color: "
-            + GUI_MENU_TEXT_COLOR
-            + "; }"
+            "QPushButton { border: none; font-size: 18px; background-color: transparent; color: " + "#%02x%02x%02x" % GUI_MENU_TEXT_COLOR + "; }"
             "QPushButton:hover { color: white; }"
             "QPushButton:menu-indicator { image: none; }"
         )
@@ -209,9 +207,7 @@ class SkyWindow(DraggableWindow):
 
         highlighted_object = None
         if self.mouse_pos is not None:
-            highlighted_object = render_draw.find_highlighted_object(
-                self.celestial_data, self.viewer_data, self.mouse_pos, geometry
-            )
+            highlighted_object = render_draw.find_highlighted_object(self.celestial_data, self.viewer_data, self.mouse_pos, geometry)
 
         painter.setCompositionMode(QPainter.CompositionMode_Clear)
         painter.fillRect(self.rect(), Qt.transparent)
@@ -233,9 +229,7 @@ class SkyWindow(DraggableWindow):
             obj = highlighted_object[0]
             name = getattr(obj, "name", "") if hasattr(obj, "name") else obj.get("name", "")
             enlarge_moon = enlarge_moon or name == "moon"
-        render_draw.draw_planets(
-            painter, geometry, self.celestial_data, self.viewer_data, enlarge_moon, self.emoji_font
-        )
+        render_draw.draw_planets(painter, geometry, self.celestial_data, self.viewer_data, enlarge_moon, self.emoji_font)
 
         render_draw.draw_overlay_info(
             painter,

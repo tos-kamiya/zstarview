@@ -1,6 +1,5 @@
 import os
 import os.path
-from PySide6.QtGui import QColor
 
 
 # Application identifiers
@@ -19,23 +18,23 @@ STARS_CSV_FILE = os.path.join(_dir, "data", "stars.csv")
 APP_ICON_FILE = os.path.join(_dir, "data", "icon-256.png")
 
 # Window UI
-GUI_MENU_TEXT_COLOR = "#787878"
+GUI_MENU_TEXT_COLOR = (128, 128, 128)
 GUI_BUTTON_SIZE = 30
 WINDOW_WIDTH = 500
 WINDOW_HEIGHT = 500
 
 # UI constants
-TEXT_COLOR = QColor(120, 120, 120)
-TEXT_FONT_SIZE = 10
-EMOJI_FONT_SIZE = 18
+TEXT_COLOR = (180, 180, 180)
+TEXT_FONT_SIZE = 11
+EMOJI_FONT_SIZE = 16
 
-HORIZON_LINE_COLOR = QColor(45, 70, 45)
-CELESTIAL_EQUATOR_COLOR = QColor(60, 60, 60)
-ECLIPTIC_COLOR = QColor(90, 65, 0)
+HORIZON_LINE_COLOR = (72, 127, 71)
+CELESTIAL_EQUATOR_COLOR = (139, 139, 136)
+ECLIPTIC_COLOR = (236, 173, 2)
 
 
 # Rendering / FOV
-FIELD_OF_VIEW_DEG = 235
+FIELD_OF_VIEW_DEG = 230
 ANGLE_BELOW_HORIZON = 2
 
 
