@@ -1,7 +1,8 @@
 import math
 from typing import Tuple
 
-from PySide6.QtGui import QColor, QImage, QPainter, QPainterPath, Qt
+import numpy as np
+from PySide6.QtGui import QColor, QImage, QPainter, QPainterPath, Qt, QLinearGradient, QBrush
 
 from ..astro import altaz_to_normalized_xy
 from ..types import ScreenGeometry
@@ -202,10 +203,8 @@ def draw_sky_color_disc(
     saturation: float = 1.2,
     alpha: float = 1.0,
     # --- Sampling density (knobs for quality vs. speed) ---
-    ring_step_px: int = 6,            # Target pixel interval in the radial direction (basis for determining Δθ)
-    sample_pitch_px: float = 6.0,     # Target sample interval on each ring (px)
+    sample_step_px: int = 10,          # Target pixel interval (basis for determining Δθ)
     min_ang_samples: int = 8,         # Minimum number of samples for each ring
-    dot_size: int = 12,               # Side length of the tile (square) in px: roughly 2*ring_step_px is a guideline
     # --- Parameters for stabilizing Δθ estimation ---
     deriv_probe_deg: float = 0.25,    # Small angle (degrees) for finite difference of dr/dθ
     min_theta_step_deg: float = 0.2,  # Lower limit for Δθ (degrees)
@@ -215,7 +214,7 @@ def draw_sky_color_disc(
     Draws the sky color disc with dynamic sampling and returns it as a QImage.
 
     The radial step (Δθ) is dynamically determined so that the on-screen
-    pixel distance is around `ring_step_px`. The number of samples in the
+    pixel distance is around `sample_step_px`. The number of samples in the
     circumferential direction is determined by the "measured radius" of the
     ring and the sample pitch.
 
@@ -226,10 +225,8 @@ def draw_sky_color_disc(
         exposure: Exposure adjustment for the final color.
         saturation: Saturation adjustment for the final color.
         alpha: Overall alpha transparency.
-        ring_step_px: Target pixel distance for radial steps.
-        sample_pitch_px: Target pixel distance for circumferential samples.
+        sample_step_px: Target pixel distance steps.
         min_ang_samples: Minimum number of circumferential samples.
-        dot_size: The size of the colored dots to draw.
         deriv_probe_deg: Probe angle for derivative estimation.
         min_theta_step_deg: Minimum angular step.
         max_theta_step_deg: Maximum angular step.
@@ -243,15 +240,16 @@ def draw_sky_color_disc(
     if R < 2:
         return QImage(2*R, 2*R, QImage.Format.Format_ARGB32_Premultiplied)
 
+    sample_step_px = max(2, min(R // 80, sample_step_px))
+    tile_size = int(sample_step_px * 1.5 + 1)
+
     cx, cy = geometry.center
 
     img_w = img_h = R * 2
-    img = QImage(img_w, img_h, QImage.Format.Format_ARGB32)
+    img = QImage(img_w, img_h, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(QColor(0, 0, 0, 0))
 
     ip = QPainter(img)
-    # ip.setRenderHint(QPainter.RenderHint.Antialiasing, False)
-    # ip.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, False)
     ip.setPen(Qt.PenStyle.NoPen)
 
     # Clip to a circle
@@ -280,14 +278,14 @@ def draw_sky_color_disc(
 
     # Advance angle from 0 to 90° (Δθ is dynamic)
     theta = 0.0
-    half = max(1, int(dot_size // 2))
+    half = max(1, int(tile_size // 2))
     while True:
         # Current ring radius (px)
         r_px = screen_radius_px(theta)
 
         # Number of circumferential samples
         circumference = max(1.0, 2.0 * math.pi * r_px)
-        n_ang = max(min_ang_samples, int(round(circumference / max(1.0, float(sample_pitch_px)))))
+        n_ang = max(min_ang_samples, int(round(circumference / max(1.0, float(sample_step_px)))))
 
         # Fill the ring
         for i in range(n_ang):
@@ -323,7 +321,7 @@ def draw_sky_color_disc(
         if theta >= theta_max - 1e-6:
             break
 
-        # ---- Determine Δθ from screen distance: Δθ ≈ ring_step_px / (dr_px/dθ) ----
+        # ---- Determine Δθ from screen distance: Δθ ≈ sample_step_px / (dr_px/dθ) ----
         # Estimate dr/dθ using finite differences
         probe = min(deriv_probe_deg, theta_max - theta)
         r_next = screen_radius_px(theta + probe)
@@ -332,7 +330,7 @@ def draw_sky_color_disc(
         if dr_dtheta <= 1e-6:
             dtheta = max_theta_step_deg  # Safe side (almost no change / numerical error at edges)
         else:
-            dtheta = float(ring_step_px) / dr_dtheta
+            dtheta = float(sample_step_px) / dr_dtheta
 
         # Limit the angle step
         dtheta = max(min_theta_step_deg, min(max_theta_step_deg, dtheta))
@@ -340,4 +338,5 @@ def draw_sky_color_disc(
         theta += dtheta
 
     ip.end()
+
     return img
