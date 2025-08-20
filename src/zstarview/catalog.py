@@ -1,27 +1,6 @@
-from typing import Dict, Optional, Tuple
+from typing import Optional
 
 import polars as pl
-
-
-def load_city_coords(filename: str) -> Dict[str, Tuple[float, float, str]]:
-    """Loads city coordinates and timezone from the data file.
-
-    Returns a dict keyed by "{country}/{name}" (lowercase) -> (lat, lon, tz).
-    """
-    city_table: Dict[str, Tuple[float, float, str]] = {}
-    with open(filename, encoding="utf-8") as f:
-        for line in f:
-            cols = line.strip().split("\t")
-            if len(cols) < 18:
-                continue
-            name = cols[1]
-            lat = float(cols[4])
-            lon = float(cols[5])
-            country = cols[8]
-            timezone_name = cols[17]
-            key = f"{country.lower()}/{name.lower()}"
-            city_table[key] = (lat, lon, timezone_name)
-    return city_table
 
 
 def load_star_catalog(filename: str, vmag_threshold: Optional[float] = 7.0) -> pl.DataFrame:

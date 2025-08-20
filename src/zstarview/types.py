@@ -6,11 +6,11 @@ import numpy as np
 
 
 @dataclass
-class EclipseInfo:
+class LunarEclipseInfo:
     """Contains data about a lunar eclipse for rendering."""
 
     is_eclipse: bool = False
-    eclipse_type: Optional[str] = (None,)
+    eclipse_type: Optional[str] = None
     # Alt/Az of the center of the Earth's shadow
     shadow_center_alt: float = 0.0
     shadow_center_az: float = 0.0
@@ -21,6 +21,15 @@ class EclipseInfo:
 
 
 @dataclass
+class SolarEclipseInfo:
+    """Contains data about a solar eclipse for rendering / dimming."""
+    is_eclipse: bool = False
+    eclipse_type: Optional[str] = None   # "partial" / "annular" / "total" / None
+    sep_deg: float = 0.0                 # Sun–Moon center separation [deg]
+    obscuration: float = 0.0             # Fraction of the Sun's disk obscured by the Moon [0.0, 1.0]
+
+
+@dataclass
 class PlanetBody:
     name: str
     alt: float
@@ -28,7 +37,8 @@ class PlanetBody:
     symbol: str
     is_visible: bool
     phase_angle: Optional[float] = None  # moon only
-    eclipse_info: Optional[EclipseInfo] = None  # moon only
+    lunar_eclipse_info: Optional[LunarEclipseInfo] = None  # moon only
+    solar_eclipse_info: Optional[SolarEclipseInfo] = None  # sun only
 
 
 @dataclass

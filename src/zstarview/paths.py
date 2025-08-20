@@ -14,14 +14,15 @@ _dir = os.path.dirname(os.path.abspath(__file__))
 TEXT_FONT_PATH = os.path.join(_dir, "data", "Noto_Sans", "NotoSans-VariableFont_wdth,wght.ttf")
 EMOJI_FONT_PATH = os.path.join(_dir, "data", "Noto_Sans_Symbols", "NotoSansSymbols-VariableFont_wght.ttf")
 CITY_COORD_FILE = os.path.join(_dir, "data", "cities1000.txt")
+CITY_ADMIN1_CODES_FILE = os.path.join(_dir, "data", "admin1CodesASCII.txt")
 STARS_CSV_FILE = os.path.join(_dir, "data", "stars.csv")
 APP_ICON_FILE = os.path.join(_dir, "data", "icon-256.png")
 
 # Window UI
 GUI_MENU_TEXT_COLOR = (128, 128, 128)
 GUI_BUTTON_SIZE = 30
-WINDOW_WIDTH = 500
-WINDOW_HEIGHT = 500
+WINDOW_WIDTH = 600
+WINDOW_HEIGHT = 600
 
 # UI constants
 TEXT_COLOR = (180, 180, 180)
@@ -31,6 +32,8 @@ EMOJI_FONT_SIZE = 16
 HORIZON_LINE_COLOR = (72, 127, 71)
 CELESTIAL_EQUATOR_COLOR = (139, 139, 136)
 ECLIPTIC_COLOR = (236, 173, 2)
+
+SKY_UPDATE_INTERVAL = 3 * 60  # seconds
 
 
 # Rendering / FOV

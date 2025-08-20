@@ -21,7 +21,7 @@ from ..astro import altaz_to_normalized_xy, is_in_fov, calculate_moon_render_dat
 from ..utils.image import generate_moon_phase_image
 from ..utils.qt import pil2qpixmap
 
-DEBUG_ECLIPSE = True
+DEBUG_ECLIPSE = False
 
 
 def bv_to_rgb_vectorized(bv: np.ndarray) -> np.ndarray:
@@ -559,7 +559,7 @@ def draw_planets(
             sun_dir_in_moon_frame, screen_rotation_deg = calculate_moon_render_data(sun_altaz, moon_altaz, viewer_data.view_center)
             moon_radius_px = (0.25 / 90.0) * geometry.radius * moon_zoom
 
-            eclipse = body.eclipse_info
+            eclipse = body.lunar_eclipse_info
             base_color: Optional[QColor] = None
             if eclipse and eclipse.is_eclipse:
                 if eclipse.eclipse_type == "partial":

@@ -1,10 +1,10 @@
 import math
-from typing import Tuple
+from typing import Optional, Tuple
 
 from PySide6.QtGui import QColor, QImage, QPainter, Qt
 
 from ..astro import altaz_to_normalized_xy
-from ..types import ScreenGeometry
+from ..types import ScreenGeometry, SolarEclipseInfo
 from .draw import normalized_to_screen_xy
 
 
@@ -237,6 +237,7 @@ def draw_sky_color_disc(
     exposure: float = 1.0,
     saturation: float = 1.2,
     alpha: float = 1.0,
+    eclipse_factor: float = 1.0,
     # --- Sampling density (knobs for quality vs. speed) ---
     sample_step_px: int = 10,  # Target pixel interval (basis for determining Δθ)
     min_ang_samples: int = 8,  # Minimum number of samples for each ring
@@ -260,6 +261,7 @@ def draw_sky_color_disc(
         exposure: Exposure adjustment for the final color.
         saturation: Saturation adjustment for the final color.
         alpha: Overall alpha transparency.
+        eclipse_factor: Multiplicative factor to darken the sky during a solar eclipse (set < 1.0 to simulate dimming).
         sample_step_px: Target pixel distance steps.
         min_ang_samples: Minimum number of circumferential samples.
         deriv_probe_deg: Probe angle for derivative estimation.
@@ -359,7 +361,8 @@ def draw_sky_color_disc(
                 gamma=gamma,
             )
 
-            rr *= cutoff; gg *= cutoff; bb *= cutoff
+            ce = cutoff * eclipse_factor
+            rr *= ce; gg *= ce; bb *= ce
             ip.fillRect(xi - half, yi - half, 2 * half, 2 * half, QColor.fromRgbF(rr, gg, bb, 1.0))
 
         # Termination condition (ensure the 90° ring is always drawn)

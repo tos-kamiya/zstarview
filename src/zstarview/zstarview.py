@@ -1,6 +1,7 @@
 import argparse
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import re
 import sys
 import time
 
@@ -19,14 +20,16 @@ from .paths import (
     APP_ID,
     APP_AUTHOR,
     CITY_COORD_FILE,
+    CITY_ADMIN1_CODES_FILE,
     STARS_CSV_FILE,
     APP_ICON_FILE,
     DIRECTIONS,
 )
 from .__about__ import __version__
 from .config import load_last_city, save_last_city
-from .catalog import load_city_coords, load_star_catalog
+from .catalog import load_star_catalog
 from .ui.window import SkyWindow
+from .utils.resolve_city import load_admin1_names, resolve_city, resolve_city_by_name, resolve_city_by_geonameid
 from .utils.timezone_parser import parse_tz_string
 
 # --- Helper Functions ---
@@ -125,32 +128,51 @@ def main():
         splash.showMessage(f"{app_name} ver. {__version__}\n{message}", Qt.AlignmentFlag.AlignCenter, color)
         app.processEvents()
 
+    bright_red = QColor(255, 100, 100)
+
+    print("Loading city data...", file=sys.stderr)
     try:
-        city_table = load_city_coords(CITY_COORD_FILE)
+        admin1_map = load_admin1_names(CITY_ADMIN1_CODES_FILE)
     except FileNotFoundError:
-        show_splash_message("Error: cities1000.txt not found.", Qt.GlobalColor.red)
-        time.sleep(3)
+        print("Error: admin1CodesASCII.txt not found.", file=sys.stderr)
         return
 
     last_city = load_last_city()
 
     args = parse_args()
     city = args.city or last_city or "Tokyo"
-    city = city.lower()
-    if city not in city_table:
-        candidate_cities = [c for c in city_table.keys() if c.endswith("/" + city)]
-        if not candidate_cities:
-            candidate_cities = [c for c in city_table.keys() if city in c]
-        if not candidate_cities:
-            print(f"Unknown city: {city}")
-            return
-        elif len(candidate_cities) > 1:
-            print(f"Specify explicit country name: {candidate_cities}")
-            return
-        else:
-            city = candidate_cities[0]
 
-    print(f"City: {city}")
+    recs = []
+    try:
+        if re.match(r"^\d+$", args.city):
+            # If input is just a geonameid, resolve it directly
+            rec = resolve_city_by_geonameid(int(args.city), CITY_COORD_FILE)
+            if rec:
+                recs.append(rec)
+            else:
+                print(f"Error: No city found for geonameid {args.city}", file=sys.stderr)
+                return
+        else:
+            if not "/" in args.city:
+                recs = resolve_city_by_name(args.city, CITY_COORD_FILE, admin1_map)
+            else:
+                recs = resolve_city(args.city, CITY_COORD_FILE, admin1_map)
+            if recs:
+                print(f"Found {len(recs)} match(es) for '{args.city}':")
+                for rec in recs:
+                    print(f"- {rec.cc}/{rec.name}, lat: {rec.lat:.6f}, lon: {rec.lon:.6f}, tz: {rec.tz}  (geonameid={rec.geonameid})")
+                if len(recs) > 1:
+                    print(f"Warning: Multiple matches found for '{args.city}'", file=sys.stderr)
+            else:
+                print(f"Error: No match for '{args.city}'", file=sys.stderr)
+                return
+    except FileNotFoundError:
+        print("Error: cities1000.txt not found.", file=sys.stderr)
+        return
+
+    city = recs[0]  # Take the city with the highest population
+    city_str = f"{city.cc}/{city.name}"
+    print(f"City: {city_str}")
 
     sky_opacity = min(1.0, max(0.0, args.sky_opacity))
     star_base_radius = max(2.0, args.star_base_radius)
@@ -207,19 +229,18 @@ def main():
     try:
         star_catalog = load_star_catalog(STARS_CSV_FILE, vmag_threshold=args.vmag_limit)
     except FileNotFoundError:
-        show_splash_message(f"Error: star data file not found: {STARS_CSV_FILE}", Qt.GlobalColor.red)
+        show_splash_message(f"Error: star data file not found: {STARS_CSV_FILE}", bright_red)
         time.sleep(3)
         return
 
     limit_str = args.vmag_limit if args.vmag_limit is not None else "no limit"
     print(f"Loaded {len(star_catalog)} stars (Vmag ≤ {limit_str})")
 
-    show_splash_message(f"Calculating sky for {city.title()}...", Qt.GlobalColor.white)
+    show_splash_message(f"Calculating sky for {city_str}...", Qt.GlobalColor.white)
 
-    lat, lon, tz_name = city_table[city]
     main_win = SkyWindow(
-        city,
-        (lat, lon, tz_name),
+        city_str,
+        (city.lat, city.lon, city.tz),
         view_center,
         star_catalog,
         delta_t,
@@ -233,6 +254,6 @@ def main():
     main_win.initial_data_loaded.connect(main_win.show)
     main_win.initial_data_loaded.connect(splash.close)
 
-    save_last_city(city)
+    save_last_city(city_str)
 
     sys.exit(app.exec())

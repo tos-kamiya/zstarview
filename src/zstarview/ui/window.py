@@ -18,13 +18,17 @@ from ..astro import (
     calculate_celestial_equator_points,
     calculate_ecliptic_points,
     calculate_horizon_points,
+    eclipse_factor_from_info,
 )
 from .draggable_window import DraggableWindow
 from ..paths import EMOJI_FONT_PATH, EMOJI_FONT_SIZE, TEXT_FONT_PATH, TEXT_FONT_SIZE
 from ..paths import APP_ICON_FILE, GUI_BUTTON_SIZE, GUI_MENU_TEXT_COLOR, WINDOW_HEIGHT, WINDOW_WIDTH
+from ..paths import SKY_UPDATE_INTERVAL
 from ..render import draw as render_draw
 from ..render import draw_sky_disc
 from ..types import CelestialData, ViewerData
+
+DEBUG_ECLIPSE = True
 
 
 class SkyWindow(DraggableWindow):
@@ -260,7 +264,7 @@ class SkyWindow(DraggableWindow):
         # use the timer's inactive state as an indicator that this is the first load.
         # This ensures the splash screen is closed and the main window is shown only once.
         if not self._sky_data_update_timer.isActive():
-            self._sky_data_update_timer.start(5 * 60 * 1000)
+            self._sky_data_update_timer.start(SKY_UPDATE_INTERVAL * 1000)
             self.initial_data_loaded.emit()
 
         self._is_sky_data_calculation_running = False
@@ -292,10 +296,19 @@ class SkyWindow(DraggableWindow):
                 horizon_points=horizon_points,
             )
 
+            if DEBUG_ECLIPSE:
+                for body in planets:
+                    if body.name == "sun" and body.solar_eclipse_info.is_eclipse:
+                        print("Info: Solar eclipse detected")
+                    if body.name == "moon" and body.lunar_eclipse_info.is_eclipse:
+                        print("Info: Lunar eclipse detected")
+
             sun_altaz = None
+            solar_eclipse_info = None
             for body in planets:
-                if getattr(body, "name", "") == "sun":
+                if body.name == "sun":
                     sun_altaz = (body.alt, body.az)
+                    solar_eclipse_info = body.solar_eclipse_info
                     break
 
             sky_disc_img = None
@@ -303,11 +316,13 @@ class SkyWindow(DraggableWindow):
                 base = self._sky_disc_base_size
                 fixed_geom = render_draw.get_screen_geometry(base, base, self.viewer_data.view_center[0])
 
+                ef = eclipse_factor_from_info(solar_eclipse_info)
                 sky_disc_img = draw_sky_disc.draw_sky_color_disc(
                     fixed_geom,
                     self.viewer_data.view_center,
                     sun_altaz,
                     alpha=self.sky_disc_alpha,
+                    eclipse_factor=ef,
                 )
 
             payload = {"celestial": celestial_data, "sky_disc": sky_disc_img}

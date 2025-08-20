@@ -19,7 +19,7 @@ from .paths import (
     PLANET_SYMBOLS,
     PLANET_IDS,
 )
-from .types import EclipseInfo, PlanetBody
+from .types import LunarEclipseInfo, PlanetBody, SolarEclipseInfo
 
 
 # Skyfield ephemeris cache loader (separate from UI)
@@ -142,7 +142,7 @@ def calculate_moon_phase_angle(observer: Topos, t: skyfield.timelib.Time, planet
     return e_to_moon.separation_from(e_to_sun).degrees
 
 
-def calculate_lunar_eclipse_data(t: astropy.time.Time, observer) -> EclipseInfo:
+def calculate_lunar_eclipse_data(t: astropy.time.Time, observer) -> LunarEclipseInfo:
     """Calculate lunar eclipse parameters for a given time and observer.
 
     Returns an `EclipseInfo` object containing:
@@ -165,7 +165,7 @@ def calculate_lunar_eclipse_data(t: astropy.time.Time, observer) -> EclipseInfo:
     # Exclude if Sun-Moon separation is not close to 180°
     separation_deg = sun_pos.separation_from(moon_pos).degrees
     if abs(separation_deg - 180.0) > 3.0:
-        return EclipseInfo(is_eclipse=False)
+        return LunarEclipseInfo(is_eclipse=False)
 
     # Astronomical constants
     R_earth_km = 6371.0
@@ -204,7 +204,7 @@ def calculate_lunar_eclipse_data(t: astropy.time.Time, observer) -> EclipseInfo:
     shadow_center_alt = -s_alt.degrees
     shadow_center_az = (s_az.degrees + 180.0) % 360.0
 
-    return EclipseInfo(
+    return LunarEclipseInfo(
         is_eclipse=(eclipse_type != "none"),
         eclipse_type=eclipse_type,
         shadow_center_alt=shadow_center_alt,
@@ -213,6 +213,94 @@ def calculate_lunar_eclipse_data(t: astropy.time.Time, observer) -> EclipseInfo:
         penumbra_radius_deg=math.degrees(penumbra_radius_rad),
         moon_radius_deg=math.degrees(moon_ang_rad),
     )
+
+
+SUN_RADIUS_KM  = 695700.0
+MOON_RADIUS_KM = 1737.4
+
+def _angular_radius_rad(radius_km: float, distance_km: float) -> float:
+    """見かけ角半径 [rad] = asin(R / D)（小角近似より厳密）。"""
+    x = radius_km / max(1e-9, distance_km)
+    return math.asin(max(-1.0, min(1.0, x)))
+
+def _circle_overlap_area_fraction(R: float, r: float, d: float) -> float:
+    """
+    2円（半径 R, r、中心距離 d）の重なり面積 / 太陽円面積（πR^2）。
+    R, r, d は同一単位（ここではラジアンの“角半径”）。
+    """
+    # 分離
+    if d >= R + r:
+        return 0.0
+    # 内包（小さい円が完全に入る）
+    if d <= abs(R - r):
+        return (min(R, r) ** 2) / (R ** 2)
+
+    R2, r2 = R*R, r*r
+    # 角度（セグメント角）
+    alpha = math.acos((d*d + R2 - r2) / (2.0 * d * R))
+    beta  = math.acos((d*d + r2 - R2) / (2.0 * d * r))
+    # レンズ面積（Brahmagupta 型の平方根項）
+    lens = R2*alpha + r2*beta - 0.5 * math.sqrt(
+        max(0.0, (-d + R + r) * (d + R - r) * (d - R + r) * (d + R + r))
+    )
+    return lens / (math.pi * R2)
+
+
+def calculate_solar_eclipse_data(t: astropy.time.Time, observer) -> SolarEclipseInfo:
+    planets = _starfield_load("de440s.bsp")
+    sun = planets["sun"]
+    moon = planets["moon"]
+
+    # 観測者のトポセントリック・見かけ位置
+    obs = observer.at(t)
+    sun_app  = obs.observe(sun).apparent()
+    moon_app = obs.observe(moon).apparent()
+
+    # 中心間角距離
+    sep = sun_app.separation_from(moon_app)
+    sep_deg = sep.degrees
+    sep_rad = sep.radians
+
+    # 見かけ角半径（距離から都度算出）
+    D_sun_km  = sun_app.distance().km
+    D_moon_km = moon_app.distance().km
+    sun_rad  = _angular_radius_rad(SUN_RADIUS_KM,  D_sun_km)   # [rad]
+    moon_rad = _angular_radius_rad(MOON_RADIUS_KM, D_moon_km)  # [rad]
+
+    # 面積食分（必要になったら SolarEclipseInfo にフィールド追加して返してください）
+    obscuration = _circle_overlap_area_fraction(sun_rad, moon_rad, sep_rad)
+
+    # 種別判定
+    if sep_rad >= sun_rad + moon_rad or obscuration <= 0.0:
+        eclipse_type = "none"
+    elif sep_rad <= abs(sun_rad - moon_rad):
+        # 小さい方が完全に内包される：月>太陽なら皆既、太陽>月なら金環
+        eclipse_type = "total" if moon_rad >= sun_rad else "annular"
+    else:
+        eclipse_type = "partial"
+
+    return SolarEclipseInfo(
+        is_eclipse = (eclipse_type != "none"),
+        eclipse_type = eclipse_type,
+        sep_deg = float(sep_deg),
+        obscuration = obscuration,
+    )
+
+
+def eclipse_factor_from_info(info: Optional[SolarEclipseInfo]) -> float:
+    """Return dimming factor in [0,1]. 1=no eclipse (no dim)."""
+    if not info or not info.is_eclipse or info.obscuration <= 1e-3:
+        return 1.0
+    obsc = max(0.0, min(1.0, info.obscuration))
+
+    # 体感モデル：~90%超から急に暗い
+    f0 = 0.92
+    is_total = (info.eclipse_type == "total")
+    k = 10.0 if is_total else 7.5
+
+    s = 1.0 / (1.0 + math.exp(k * (obsc - f0)))  # 1→0
+    min_l = 0.02 if is_total else 0.15           # 皆既はより暗く
+    return min_l + (1.0 - min_l) * s
 
 
 def calculate_planets(
@@ -227,9 +315,6 @@ def calculate_planets(
     planets = _starfield_load("de440s.bsp")
     observer = planets["earth"] + Topos(latitude_degrees=lat, longitude_degrees=lon)
 
-    # Calculate eclipse data for this specific time
-    eclipse_data = calculate_lunar_eclipse_data(t, observer)
-
     bodies: List[PlanetBody] = []
     for name, symbol in PLANET_SYMBOLS.items():
         planet_id = PLANET_IDS[name]
@@ -238,11 +323,13 @@ def calculate_planets(
         alt, az, _ = astrometric.altaz()
         is_visible = alt.degrees > -ANGLE_BELOW_HORIZON and is_in_fov(alt.degrees, az.degrees, view_center)
 
-        phase_angle = None
-        current_eclipse_info = None
+        pa = lei = None
         if name == "moon":
-            phase_angle = calculate_moon_phase_angle(observer, t, planets)
-            current_eclipse_info = eclipse_data
+            pa = calculate_moon_phase_angle(observer, t, planets)
+            lei = calculate_lunar_eclipse_data(t, observer)
+        sei = None
+        if name == "sun":
+            sei = calculate_solar_eclipse_data(t, observer)
 
         bodies.append(
             PlanetBody(
@@ -251,8 +338,9 @@ def calculate_planets(
                 az=az.degrees,
                 symbol=symbol,
                 is_visible=is_visible,
-                phase_angle=phase_angle,
-                eclipse_info=current_eclipse_info,
+                phase_angle=pa,
+                lunar_eclipse_info=lei,
+                solar_eclipse_info=sei,
             )
         )
     return bodies
