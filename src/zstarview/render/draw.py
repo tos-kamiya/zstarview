@@ -6,7 +6,7 @@ from PIL import Image
 from zoneinfo import ZoneInfo
 
 from PySide6.QtCore import QPoint, QPointF, QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen, QPolygonF, QRadialGradient, QPainterPath
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPainterPath, QPen, QPolygonF, QRadialGradient
 
 from ..paths import (
     CELESTIAL_EQUATOR_COLOR,
@@ -15,7 +15,6 @@ from ..paths import (
     FIELD_OF_VIEW_DEG,
     HORIZON_LINE_COLOR,
     TEXT_COLOR,
-    TEXT_FONT_SIZE,
 )
 from ..types import ScreenGeometry, CelestialData, ViewerData, CelestialObject
 from ..astro import altaz_to_normalized_xy, is_in_fov, calculate_moon_render_data
@@ -241,7 +240,7 @@ def split_by_gaps(points: List[Tuple[float, float]]) -> List[List[Tuple[float, f
 
     fragments: List[List[Tuple[float, float]]] = [[]]
     for p in points:
-        if not fragments[-1] or dist(p, fragments[-1][-1]) < 0.3:
+        if not fragments[-1] or dist(p, fragments[-1][-1]) < 0.2:
             fragments[-1].append(p)
         else:
             fragments.append([p])
@@ -594,6 +593,7 @@ def draw_direction_labels(painter: QPainter, geometry: ScreenGeometry, view_cent
         text_font: The QFont to use for the labels.
     """
     text_color = QColor(*TEXT_COLOR)
+    text_color.setAlphaF(0.7)
     painter.setPen(text_color)
     painter.setFont(text_font)
     alt = 0.0
@@ -602,7 +602,7 @@ def draw_direction_labels(painter: QPainter, geometry: ScreenGeometry, view_cent
             continue
         nx, ny = altaz_to_normalized_xy(alt, az, view_center)
         pos = QPointF(*normalized_to_screen_xy(nx, ny, geometry))
-        draw_outlined_text(painter, label, pos, text_font, text_color)
+        painter.drawText(pos, label)
 
 
 def draw_overlay_info(

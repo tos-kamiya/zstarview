@@ -8,8 +8,6 @@ import astropy.units as u
 from astropy.coordinates import AltAz, EarthLocation, GeocentricTrueEcliptic, SkyCoord
 from skyfield.api import Loader, Topos
 import skyfield.api
-from skyfield.positionlib import ICRF
-from skyfield.starlib import Star
 import numpy as np
 import polars as pl
 

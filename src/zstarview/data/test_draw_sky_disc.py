@@ -85,22 +85,35 @@ def get_sky_color(view_alt_deg: float, view_az_deg: float, sun_alt_deg: float, s
     if sun_alt_deg <= -10.0:
         return (0.0, 0.0, 0.0)
 
+    # Basic sun color (assumed 0..1: preferably linear RGB)
     sun_color = get_sun_color(sun_alt_deg)
 
-    gamma = _angle_between(view_alt_deg, view_az_deg, sun_alt_deg, sun_az_deg)
-    cosg = math.cos(gamma)
-    brightness = ((1.0 + cosg) * 0.5) ** 2.0  # emphasize near the sun
+    # 1) Brightness based on angle to the sun (stable even at zenith)
+    sun_angle = _angle_between(view_alt_deg, view_az_deg, sun_alt_deg, sun_az_deg)  # [0..pi]
+    cosg = math.cos(sun_angle)
+    brightness = (1.0 + cosg) * 0.5  # 0..1
+    brightness = brightness**2.0  # Emphasize the sun-facing direction
 
-    t_alt = _clamp01(view_alt_deg / 90.0)  # 0 at horizon, 1 at zenith
-    zenith_darkness = 0.5 + 0.5 * t_alt  # 0.5..1.0
-    horizon_whiteness = (1.0 - t_alt) * 0.3  # 0.3..0.0
+    # 2) Tone based on altitude (darker at zenith, whitish at horizon)
+    t = _clamp01(view_alt_deg / 90.0)  # 0(horizon) -> 1(zenith)
+    zenith_dim = 1.0 - 0.35 * t  # 1.0..0.65 (darker towards zenith)
+    horizon_mix = (1.0 - t) * 0.2  # 0.2..0.0 (whiter towards horizon)
 
-    twilight = 1.0 if sun_alt_deg >= 0.0 else _smoothstep(-10.0, 0.0, sun_alt_deg)
+    # 3) Twilight correction (interpolate -10..0° to 0..1)
+    if sun_alt_deg < 0.0:
+        twilight = _smoothstep(-10.0, 0.0, sun_alt_deg)  # 0..1
+    else:
+        twilight = 1.0
 
-    r = sun_color[0] * brightness * zenith_darkness * twilight + horizon_whiteness * twilight
-    g = sun_color[1] * brightness * zenith_darkness * twilight + horizon_whiteness * twilight
-    b = sun_color[2] * brightness * zenith_darkness * twilight + horizon_whiteness * twilight
+    # Composite
+    r, g, b = _lerp_color(
+        (sun_color[0] * brightness, sun_color[1] * brightness, sun_color[2] * brightness), 
+        (1.0, 1.0, 1.0), 
+        horizon_mix * twilight,
+    )
+    r *= zenith_dim; g *= zenith_dim; b *= zenith_dim
 
+    # Clip (final safety)
     return (_clamp01(r), _clamp01(g), _clamp01(b))
 
 

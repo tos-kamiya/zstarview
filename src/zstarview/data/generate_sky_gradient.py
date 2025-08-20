@@ -64,6 +64,11 @@ def get_sun_color(sun_alt_deg: float) -> tuple[float, float, float]:
     return _lerp_color(night_color, day_color, fade)
 
 
+def _smoothstep(edge0: float, edge1: float, x: float) -> float:
+    t = _clamp01((x - edge0) / (edge1 - edge0))
+    return t * t * (3.0 - 2.0 * t)
+
+
 def get_sky_color(view_alt_deg: float, view_az_deg: float, sun_alt_deg: float, sun_az_deg: float):
     """
     ステップ2: 視線と太陽の角度に基づいて最終的な空の色を決める
@@ -76,29 +81,35 @@ def get_sky_color(view_alt_deg: float, view_az_deg: float, sun_alt_deg: float, s
         return (0, 0, 0)
 
     # 2. 視線と太陽のなす角から、明るさ(不透明度)を決める
-    gamma_rad = _angle_between(view_alt_deg, view_az_deg, sun_alt_deg, sun_az_deg)
+    sun_angle = _angle_between(view_alt_deg, view_az_deg, sun_alt_deg, sun_az_deg)
 
-    # 太陽方向を1, 反対側を0とする
-    # cos(gamma) は -1〜1 なので、(1+cos)/2 で 0〜1 に変換
-    brightness = (1.0 + math.cos(gamma_rad)) / 2.0
+    # 1) Brightness based on angle to the sun (stable even at zenith)
+    sun_angle = _angle_between(view_alt_deg, view_az_deg, sun_alt_deg, sun_az_deg)  # [0..pi]
+    cosg = math.cos(sun_angle)
+    brightness = (1.0 + cosg) * 0.5  # 0..1
+    brightness = brightness**2.0  # Emphasize the sun-facing direction
 
-    # 太陽の周りをより明るく強調する (べき乗でカーブを調整)
-    brightness = brightness**2.0
+    # 2) Tone based on altitude (darker at zenith, whitish at horizon)
+    t = _clamp01(view_alt_deg / 90.0)  # 0(horizon) -> 1(zenith)
+    zenith_dim = 1.0 - 0.35 * t  # 1.0..0.65 (darker towards zenith)
+    horizon_mix = (1.0 - t) * 0.2  # 0.2..0.0 (whiter towards horizon)
 
-    # 3. 視線の高度による色の変化
-    # 天頂は暗く(色が濃く)、地平線は明るく(白っぽく)なる効果
-    horizon_fade = _clamp01(view_alt_deg / 90.0)
-    zenith_darkness = 1.0 - (1.0 - horizon_fade) * 0.5  # 天頂を50%暗くする
-    horizon_whiteness = (1.0 - horizon_fade) * 0.3  # 地平線を30%白っぽくする
+    # 3) Twilight correction (interpolate -10..0° to 0..1)
+    if sun_alt_deg < 0.0:
+        twilight = _smoothstep(-10.0, 0.0, sun_alt_deg)  # 0..1
+    else:
+        twilight = 1.0
 
-    # 4. 全てを合成
-    final_color = (
-        sun_color[0] * brightness * zenith_darkness + horizon_whiteness,
-        sun_color[1] * brightness * zenith_darkness + horizon_whiteness,
-        sun_color[2] * brightness * zenith_darkness + horizon_whiteness,
+    # Composite
+    r, g, b = _lerp_color(
+        (sun_color[0] * brightness, sun_color[1] * brightness, sun_color[2] * brightness), 
+        (1.0, 1.0, 1.0), 
+        horizon_mix * twilight,
     )
+    r *= zenith_dim; g *= zenith_dim; b *= zenith_dim
 
-    return final_color
+    # Clip (final safety)
+    return (_clamp01(r), _clamp01(g), _clamp01(b))
 
 
 # --- ▼ メイン処理 ▼ ---

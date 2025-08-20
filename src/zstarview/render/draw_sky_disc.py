@@ -1,15 +1,14 @@
 import math
 from typing import Tuple
 
-import numpy as np
-from PySide6.QtGui import QColor, QImage, QPainter, QPainterPath, Qt, QLinearGradient, QBrush
+from PySide6.QtGui import QColor, QImage, QPainter, Qt
 
 from ..astro import altaz_to_normalized_xy
 from ..types import ScreenGeometry
 from .draw import normalized_to_screen_xy
 
 
-def _alpha_from_alt(alt: float, alpha: float, fade_hi: float = 0.0, fade_lo: float = -2.0) -> float:
+def _ground_cutoff(alt: float, alpha: float, fade_hi: float = 0.0, fade_lo: float = -2.0) -> float:
     """
     Returns an alpha value based on altitude, for fading near the horizon.
        alt >= fade_hi  -> alpha (equivalent to 1)
@@ -163,15 +162,15 @@ def get_sky_color(view_altaz: Tuple[float, float], sun_altaz: Tuple[float, float
     sun_color = get_sun_color(sun_alt_deg)
 
     # 1) Brightness based on angle to the sun (stable even at zenith)
-    gamma = _angle_between(view_alt_deg, view_az_deg, sun_alt_deg, sun_az_deg)  # [0..pi]
-    cosg = math.cos(gamma)
+    sun_angle = _angle_between(view_alt_deg, view_az_deg, sun_alt_deg, sun_az_deg)  # [0..pi]
+    cosg = math.cos(sun_angle)
     brightness = (1.0 + cosg) * 0.5  # 0..1
     brightness = brightness**2.0  # Emphasize the sun-facing direction
 
     # 2) Tone based on altitude (darker at zenith, whitish at horizon)
     t = _clamp01(view_alt_deg / 90.0)  # 0(horizon) -> 1(zenith)
-    zenith_darkness = 0.5 + 0.5 * t  # 0.5..1.0 (darker towards zenith)
-    horizon_whiteness = (1.0 - t) * 0.3  # 0.3..0.0 (whiter towards horizon)
+    zenith_dim = 1.0 - 0.35 * t  # 1.0..0.65 (darker towards zenith)
+    horizon_mix = (1.0 - t) * 0.3  # 0.3..0.0 (whiter towards horizon)
 
     # 3) Twilight correction (interpolate -10..0° to 0..1)
     if sun_alt_deg < 0.0:
@@ -179,12 +178,15 @@ def get_sky_color(view_altaz: Tuple[float, float], sun_altaz: Tuple[float, float
     else:
         twilight = 1.0
 
-    # Composite (simple: mix of white + sun contribution)
-    r = sun_color[0] * brightness * zenith_darkness * twilight + horizon_whiteness * twilight
-    g = sun_color[1] * brightness * zenith_darkness * twilight + horizon_whiteness * twilight
-    b = sun_color[2] * brightness * zenith_darkness * twilight + horizon_whiteness * twilight
+    # Composite
+    r, g, b = _lerp_color(
+        (sun_color[0] * brightness, sun_color[1] * brightness, sun_color[2] * brightness), 
+        (1.0, 1.0, 1.0), 
+        horizon_mix * twilight,
+    )
+    r *= zenith_dim; g *= zenith_dim; b *= zenith_dim
 
-    # 4) Clip (final safety)
+    # Clip (final safety)
     return (_clamp01(r), _clamp01(g), _clamp01(b))
 
 
@@ -196,7 +198,6 @@ def grade_color(
     saturation: float = 1.0,
     exposure: float = 1.0,
     gamma: float = 1.0,
-    luma_model: str = "BT.601",  # or "BT.709"
 ) -> tuple[float, float, float]:
     """
     Sky-disc-only color grading:
@@ -206,11 +207,7 @@ def grade_color(
     Assumes rr,gg,bb in [0,1] and *not* premultiplied.
     """
     # --- Luma ---
-    if luma_model == "BT.709":
-        wR, wG, wB = 0.2126, 0.7152, 0.0722
-    else:  # BT.601 (default)
-        wR, wG, wB = 0.299, 0.587, 0.114
-    luma = rr * wR + gg * wG + bb * wB
+    luma = rr * 0.299 + gg * 0.587 + bb * 0.114  # BT.601
 
     # --- Saturation: lerp(gray, original, s) ---
     rr = luma + (rr - luma) * saturation
@@ -278,7 +275,7 @@ def draw_sky_color_disc(
     if R < 2:
         return QImage(2 * R, 2 * R, QImage.Format.Format_ARGB32_Premultiplied)
 
-    sample_step_px = max(2, min(R // 80, sample_step_px))
+    sample_step_px = max(2, min(R // 128, sample_step_px))
     tile_size = int(sample_step_px * 1.5 + 1)
 
     cx, cy = geometry.center
@@ -318,7 +315,7 @@ def draw_sky_color_disc(
         sx, sy = normalized_to_screen_xy(nx, ny, geometry)
         return max(0.0, math.hypot(sx - cx, sy - cy))
 
-    gamma = (1.0 - alpha) * 0.15 + 1.0 if alpha < 1.0 else 1.0
+    gamma = (1.0 - alpha) * 0.2 + 1.0 if alpha < 1.0 else 1.0
 
     # Advance angle from 0 to 90° (Δθ is dynamic)
     theta = 0.0
@@ -338,6 +335,10 @@ def draw_sky_color_disc(
             # (θ,ψ) -> (alt,az)
             alt, az = _fwd_offset_altaz(alt_c, az_c, theta, psi_deg)
 
+            cutoff = _ground_cutoff(alt, alpha, fade_hi=0.5, fade_lo=-2.0)
+            if cutoff <= 0.0:
+                continue
+
             # (alt,az) -> screen -> image coordinates
             nx, ny = altaz_to_normalized_xy(alt, az, (alt_c, az_c))
             sx, sy = normalized_to_screen_xy(nx, ny, geometry)
@@ -346,10 +347,6 @@ def draw_sky_color_disc(
             yi = int(round(sy - (cy - R)))
 
             if xi < 0 or xi >= img_w or yi < 0 or yi >= img_h:
-                continue
-
-            aa = _alpha_from_alt(alt, alpha, fade_hi=0.5, fade_lo=-2.5)
-            if aa <= 0.0:
                 continue
 
             rr, gg, bb = get_sky_color((alt, az), sun_altaz)
@@ -362,9 +359,7 @@ def draw_sky_color_disc(
                 gamma=gamma,
             )
 
-            rr *= aa
-            gg *= aa
-            bb *= aa
+            rr *= cutoff; gg *= cutoff; bb *= cutoff
             ip.fillRect(xi - half, yi - half, 2 * half, 2 * half, QColor.fromRgbF(rr, gg, bb, 1.0))
 
         # Termination condition (ensure the 90° ring is always drawn)
