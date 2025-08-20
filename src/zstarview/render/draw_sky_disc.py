@@ -1,6 +1,7 @@
 import math
 from typing import Optional, Tuple
 
+import numpy as np
 from PySide6.QtGui import QColor, QImage, QPainter, Qt
 
 from ..astro import altaz_to_normalized_xy
@@ -67,23 +68,13 @@ def _fwd_offset_altaz(alt_c: float, az_c: float, theta_deg: float, psi_deg: floa
     return alt, az
 
 
-def _clamp01(x: float) -> float:
-    """Clamps a value to the range [0, 1]."""
-    return max(0.0, min(1.0, x))
-
-
 def _smoothstep(edge0: float, edge1: float, x: float) -> float:
     """
     Performs a smooth Hermite interpolation between 0 and 1 when edge0 < x < edge1.
     """
     # Hermite smoothstep
-    t = _clamp01((x - edge0) / (edge1 - edge0))
+    t = np.clip((x - edge0) / (edge1 - edge0), 0.0, 1.0)
     return t * t * (3.0 - 2.0 * t)
-
-
-def _deg2rad(d: float) -> float:
-    """Converts degrees to radians."""
-    return d * math.pi / 180.0
 
 
 def _angle_between(alt1_deg: float, az1_deg: float, alt2_deg: float, az2_deg: float) -> float:
@@ -99,21 +90,21 @@ def _angle_between(alt1_deg: float, az1_deg: float, alt2_deg: float, az2_deg: fl
     Returns:
         The angular distance in radians.
     """
-    a1, z1 = _deg2rad(alt1_deg), _deg2rad(az1_deg)
-    a2, z2 = _deg2rad(alt2_deg), _deg2rad(az2_deg)
+    a1, z1 = math.radians(alt1_deg), math.radians(az1_deg)
+    a2, z2 = math.radians(alt2_deg), math.radians(az2_deg)
     cos_g = math.sin(a1) * math.sin(a2) + math.cos(a1) * math.cos(a2) * math.cos(z2 - z1)
     cos_g = max(-1.0, min(1.0, cos_g))
     return math.acos(cos_g)
 
 
-def _lerp_color(a: Tuple[float, float, float], b: Tuple[float, float, float], t: float) -> Tuple[float, float, float]:
+def _lerp_color(a: np.ndarray, b: np.ndarray, t: float) -> np.ndarray:
     """
     Linearly interpolates between two colors.
     """
-    return (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t)
+    return a + (b - a) * t
 
 
-def get_sun_color(sun_alt_deg: float) -> Tuple[float, float, float]:
+def get_sun_color(sun_alt_deg: float) -> np.ndarray:
     """
     Step 1: Determine the color of sunlight based on the sun's altitude.
 
@@ -121,26 +112,26 @@ def get_sun_color(sun_alt_deg: float) -> Tuple[float, float, float]:
         sun_alt_deg: The sun's altitude in degrees.
 
     Returns:
-        A tuple of (r, g, b) float values representing the sun's color.
+        A numpy array of (r, g, b) float values representing the sun's color.
     """
     # Define colors
-    zenith_color = (0.3, 0.5, 1.0)  # Color at zenith (blue)
-    horizon_color = (1.0, 0.8, 0.4)  # Color at horizon (orange)
-    night_color = (0.01, 0.02, 0.05)  # Night color (dark blue)
+    zenith_color = np.array([0.3, 0.5, 1.0])  # Color at zenith (blue)
+    horizon_color = np.array([1.0, 0.8, 0.4])  # Color at horizon (orange)
+    night_color = np.array([0.01, 0.02, 0.05])  # Night color (dark blue)
 
     # Normalize sun altitude from -5 degrees (sunset) to 90 degrees (zenith) to a 0-1 range
-    t = _clamp01((sun_alt_deg + 5.0) / 95.0)
+    t = np.clip((sun_alt_deg + 5.0) / 95.0, 0.0, 1.0)
 
     # Daytime color (horizon to zenith)
     day_color = _lerp_color(horizon_color, zenith_color, t)
 
     # Mix day and night colors (to represent the rapid darkening near the horizon)
-    fade = _clamp01(sun_alt_deg / 10.0)  # Fade between 0 and 10 degrees
+    fade = np.clip(sun_alt_deg / 10.0, 0.0, 1.0)  # Fade between 0 and 10 degrees
 
     return _lerp_color(night_color, day_color, fade)
 
 
-def get_sky_color(view_altaz: Tuple[float, float], sun_altaz: Tuple[float, float]) -> Tuple[float, float, float]:
+def get_sky_color(view_altaz: Tuple[float, float], sun_altaz: Tuple[float, float]) -> np.ndarray:
     """
     Calculates the sky color for a given viewing direction and sun position.
 
@@ -149,14 +140,14 @@ def get_sky_color(view_altaz: Tuple[float, float], sun_altaz: Tuple[float, float
         sun_altaz: A tuple of (altitude, azimuth) for the sun's position.
 
     Returns:
-        A tuple of (r, g, b) float values for the sky color.
+        A numpy array of (r, g, b) float values for the sky color.
     """
     # After sunset, it gradually darkens (completely dark at -10°, towards day at 0°)
     sun_alt_deg, sun_az_deg = sun_altaz
     view_alt_deg, view_az_deg = view_altaz
 
     if sun_alt_deg <= -10.0:
-        return (0.0, 0.0, 0.0)
+        return np.array([0.0, 0.0, 0.0])
 
     # Basic sun color (assumed 0..1: preferably linear RGB)
     sun_color = get_sun_color(sun_alt_deg)
@@ -168,7 +159,7 @@ def get_sky_color(view_altaz: Tuple[float, float], sun_altaz: Tuple[float, float
     brightness = brightness**2.0  # Emphasize the sun-facing direction
 
     # 2) Tone based on altitude (darker at zenith, whitish at horizon)
-    t = _clamp01(view_alt_deg / 90.0)  # 0(horizon) -> 1(zenith)
+    t = np.clip(view_alt_deg / 90.0, 0.0, 1.0)  # 0(horizon) -> 1(zenith)
     zenith_dim = 1.0 - 0.35 * t  # 1.0..0.65 (darker towards zenith)
     horizon_mix = (1.0 - t) * 0.3  # 0.3..0.0 (whiter towards horizon)
 
@@ -179,56 +170,46 @@ def get_sky_color(view_altaz: Tuple[float, float], sun_altaz: Tuple[float, float
         twilight = 1.0
 
     # Composite
-    r, g, b = _lerp_color(
-        (sun_color[0] * brightness, sun_color[1] * brightness, sun_color[2] * brightness),
-        (1.0, 1.0, 1.0),
+    color = _lerp_color(
+        sun_color * brightness,
+        np.array([1.0, 1.0, 1.0]),
         horizon_mix * twilight,
     )
-    r *= zenith_dim
-    g *= zenith_dim
-    b *= zenith_dim
+    color *= zenith_dim
 
     # Clip (final safety)
-    return (_clamp01(r), _clamp01(g), _clamp01(b))
+    return np.clip(color, 0.0, 1.0)
 
 
 def grade_color(
-    rr: float,
-    gg: float,
-    bb: float,
+    color: np.ndarray,
     *,
     saturation: float = 1.0,
     exposure: float = 1.0,
     gamma: float = 1.0,
-) -> tuple[float, float, float]:
+) -> np.ndarray:
     """
     Sky-disc-only color grading:
       1) luma-based saturation (BT.601/709)
       2) exposure scaling
       3) simple power-law gamma (on current space)
-    Assumes rr,gg,bb in [0,1] and *not* premultiplied.
+    Assumes color is a numpy array in [0,1] and *not* premultiplied.
     """
     # --- Luma ---
-    luma = rr * 0.299 + gg * 0.587 + bb * 0.114  # BT.601
+    luma = np.dot(color, np.array([0.299, 0.587, 0.114]))  # BT.601
 
     # --- Saturation: lerp(gray, original, s) ---
-    rr = luma + (rr - luma) * saturation
-    gg = luma + (gg - luma) * saturation
-    bb = luma + (bb - luma) * saturation
+    color = luma + (color - luma) * saturation
 
     # --- Exposure ---
-    rr *= exposure
-    gg *= exposure
-    bb *= exposure
+    color *= exposure
 
     # --- Gamma (simple power-law) ---
     if gamma > 0.0 and gamma != 1.0:
         inv = 1.0 / gamma
-        rr = max(0.0, rr) ** inv
-        gg = max(0.0, gg) ** inv
-        bb = max(0.0, bb) ** inv
+        color = np.power(np.maximum(0.0, color), inv)
 
-    return _clamp01(rr), _clamp01(gg), _clamp01(bb)
+    return np.clip(color, 0.0, 1.0)
 
 
 def draw_sky_color_disc(
@@ -353,21 +334,16 @@ def draw_sky_color_disc(
             if xi < 0 or xi >= img_w or yi < 0 or yi >= img_h:
                 continue
 
-            rr, gg, bb = get_sky_color((alt, az), sun_altaz)
-            rr, gg, bb = grade_color(
-                rr,
-                gg,
-                bb,
+            color = get_sky_color((alt, az), sun_altaz)
+            color = grade_color(
+                color,
                 saturation=saturation,
                 exposure=exposure,
                 gamma=gamma,
             )
 
-            ce = cutoff * eclipse_factor
-            rr *= ce
-            gg *= ce
-            bb *= ce
-            ip.fillRect(xi - half, yi - half, 2 * half, 2 * half, QColor.fromRgbF(rr, gg, bb, 1.0))
+            color *= cutoff * eclipse_factor
+            ip.fillRect(xi - half, yi - half, 2 * half, 2 * half, QColor.fromRgbF(*color, 1.0))
 
         # Termination condition (ensure the 90° ring is always drawn)
         if theta >= theta_max - 1e-6:
