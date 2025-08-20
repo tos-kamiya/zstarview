@@ -2,17 +2,20 @@
 
 See the starry sky, even when it's cloudy or the sun is out.
 
-Zenith Star View is an application that displays the starry sky from any city on Earth.
+**Zenith Star View** is an application that displays the starry sky from any city on Earth.  
+The name emphasizes the *zenith*—the point directly overhead—conveying the experience of looking straight up into the night sky from your location.
 
-- Renders bright stars, planets, the celestial equator, and the ecliptic in real-time.
-- Specify location by city name (from GeoNames).
+**Features:**
 
-![](docs/images/screenshot1.png)
+- Real-time rendering of bright stars, planets, the celestial equator, and the ecliptic.
+- Location specified by city name (based on GeoNames).
 
-- With the option `-A altitude`, you can also view the horizon-level sky
-- To make the sky situation easier to understand, a simulated sky color is lightly overlaid (since version 0.8.2)
+  ![](docs/images/screenshot1.png)
 
-![](docs/images/screenshot4.png)
+- Optional `-A altitude` to shift the view toward the horizon.
+- Simulated sky colors overlaid to give context to the scene (since version 0.8.2).
+
+  ![](docs/images/screenshot4.png)
 
 ## Installation (Recommended: `pipx`)
 
@@ -79,7 +82,8 @@ In this view, the bottom of the screen is south, the left side is east, and the 
 
 For example, setting `-Z 90` (facing east) and `-A 10` (altitude 10°, i.e., looking 10° above the horizon)
 will produce a roughly semicircular sky view.
-→ This will capture the eastern sky showing the [Summer Triangle (Vega, Altair, Deneb)](docs/images/screenshot2.png).
+
+→ This will capture the eastern sky showing the Summer Triangle (Vega, Altair, Deneb) [<img width="40px" src="docs/images/screenshot2t.png" />](docs/images/screenshot2.png)
 
 Azimuth can be given in degrees or compass points (case-insensitive).
 Examples: `-Z E`, `-Z ne`, `-Z SSW` (202.5°).
@@ -91,7 +95,7 @@ Use `-V magnitude` to limit the displayed stars to those brighter than the given
 The default is `-V 6.0`. For example, specifying 9.0 will display about 83k stars.
 Note that higher values will increase rendering time.
 
-→ Example: display up to [magnitude 9.0](docs/images/screenshot3.png).
+→ Example: display up to magnitude 9.0 [<img width="40px" src="docs/images/screenshot3t.png" />](docs/images/screenshot3.png)
 
 ### Key Operations
 
@@ -130,7 +134,7 @@ However, the **included data** is redistributed according to their respective li
 
 | File                                         | Content                                          | Source                                                                   | License                                                                                                                             |
 | -------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `data/cities1000.txt`                        | List of cities with a population of 1000 or more | [GeoNames](https://download.geonames.org/export/dump/)                   | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                           |
+| `data/cities1000.txt`, `admin1CodesASCII.txt`      | List of cities with a population of 1000 or more | [GeoNames](https://download.geonames.org/export/dump/)                   | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                           |
 | `data/stars/hip_main.dat`                               | Hipparcos and Tycho Catalogues (ESA 1997)        | [CDS Strasbourg](https://cdsarc.cds.unistra.fr/ftp/I/239/)               | [ODbL](https://www.data.gouv.fr/licences) or [CC BY-NC 3.0 IGO](https://creativecommons.org/licenses/by-nc/3.0/igo/) Non-commercial |
 | `data/stars/IAU-Catalog-of-Star-Names.csv`         | IAU Working Group on Star Names (WGSN) catalog of approved star names | [exopla.net](https://exopla.net/star-names/modern-iau-star-names/)       | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                           |
 |  `data/Noto_Sans/*`, `data/Noto_Sans_Symbols/*` | Font for displaying text / planetary symbols            | [Google Fonts](https://fonts.google.com/) | [SIL Open Font License 1.1](https://openfontlicense.org)                                                                            |
@@ -144,30 +148,7 @@ However, the **included data** is redistributed according to their respective li
 * The window title "Zenith Star View" was suggested by ChatGPT.
 * Specification discussions, code generation, and debugging were greatly assisted by Gemini and ChatGPT.
 
-## Appendix: Lunar eclipses in 2025
+## Appendix
 
-You can preview the two total lunar eclipses of 2025 by specifying the datetime and city.
+→ [Lunar eclipses in 2025, Solar eclipses 2026-2028](docs/appendix-eclipses.md)
 
-### March 13-14, 2025 (Total Lunar Eclipse, visible in the Americas)
-
-```bash
-zstarview --datetime "2025-03-14 02:58:43 America/New_York" "New York City"
-zstarview --datetime "2025-03-13 23:58:43 America/Los_Angeles" "US/Los Angeles"
-zstarview --datetime "2025-03-13 20:58:43 HST" "Honolulu"
-zstarview --datetime "2025-03-14 00:58:43 America/Mexico_City" "Mexico City"
-zstarview --datetime "2025-03-14 03:58:43 America/Sao_Paulo" "BR/São Paulo"
-```
-
-### September 7-8, 2025 (Total Lunar Eclipse, visible in Asia, Europe, Africa, Oceania)
-
-```bash
-zstarview --datetime "2025-09-08 03:12:00 JST" "Tokyo"
-zstarview --datetime "2025-09-08 03:11:47 KST" "Seoul"
-zstarview --datetime "2025-09-08 02:11:47 Asia/Shanghai" "Beijing"
-zstarview --datetime "2025-09-08 01:11:47 Asia/Bangkok" "Bangkok"
-zstarview --datetime "2025-09-07 23:41:47 Asia/Kolkata" "New Delhi"
-zstarview --datetime "2025-09-07 21:11:47 Europe/Istanbul" "Istanbul"
-zstarview --datetime "2025-09-07 21:11:47 EAT" "Nairobi"
-zstarview --datetime "2025-09-08 04:11:47 Australia/Sydney" "Sydney"
-zstarview --datetime "2025-09-08 06:11:47 Pacific/Auckland" "Auckland"
-```

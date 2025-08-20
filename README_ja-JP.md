@@ -2,17 +2,21 @@
 
 雲があっても、太陽が出ていても、満天の星空を。
 
-Zenith Star View は、地球上の任意の都市を指定して、頭上の星空を描画するアプリケーションです。
+**Zenith Star View** は、地球上の任意の都市から見える星空を表示するアプリケーションです。  
+名前の *zenith*（天頂）は、観測者の真上の一点を意味し、その場に立って夜空を見上げる感覚を表しています。
+
+**特徴:**
 
 - 明るい恒星、惑星、天の赤道、黄道をリアルタイムで描画
-- 都市名で場所を指定可能（GeoNames 収録）
+- 都市名で場所を指定可能（GeoNames に基づく）
 
-![](docs/images/screenshot1.png)
+  ![](docs/images/screenshot1.png)
 
-- オプション `-A 仰角` により、水平線を向いたときの空も表示可能
-- 空の状況をわかりやすくするため、空の色（のシミュレーション）を薄く重ねて表示(バージョン 0.8.2)
+- オプション `-A altitude` により、表示中心を地平線方向に変更可能
+- 星空の状況をわかりやすくするため、空の色を軽く重ねて表示（バージョン 0.8.2 以降）
 
-![](docs/images/screenshot4.png)
+  ![](docs/images/screenshot4.png)
+
 
 ## インストール方法（推奨：`pipx`）
 
@@ -78,7 +82,8 @@ zstarview --datetime "2025-08-17 21:00:00 JST" Tokyo
 デフォルトでは `-Z 180`（南向き）、`-A 90`（天頂）です。画面下が南、画面左が東で、天頂を見上げたような円形の表示になります。
 
 例えば、`-Z 90`（東向き）、`-A 10`（高度10度＝地平線から10度見上げる）にすると、おおよそ半円型で星空が表示されます。
-→ 東の空に [夏の大三角（ベガ、アルタイル、デネブ）](docs/images/screenshot2.png) を捉えた表示
+
+→ 東の空に夏の大三角（ベガ、アルタイル、デネブ）を捉えた表示 [<img width="40px" src="docs/images/screenshot2t.png" />](docs/images/screenshot2.png)
 
 方位角は度数または16方位の方位記号（大小区別なし）で指定できます。
 例: `-Z E`, `-Z ne`, `-Z SSW`（= 202.5°）。
@@ -90,7 +95,7 @@ zstarview --datetime "2025-08-17 21:00:00 JST" Tokyo
 デフォルトは `-V 6.0` です。例えば 9.0 等級を指定すると、約8万3千個の星が描画されます。
 この値を大きくすると処理が重くなる点に注意してください。
 
-→ [9.0等級](docs/images/screenshot3.png) まで表示
+→ 9.0等級まで表示 [<img width="40px" src="docs/images/screenshot3t.png" />](docs/images/screenshot3.png)
 
 ### キー操作
 
@@ -128,7 +133,7 @@ zstarview-make-desktop-file --write
 
 | ファイル                                         | 内容                                               | 出典                                                                       | ライセンス                                                                                                                      |
 | ------------------------------------------------ | -------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `data/cities1000.txt`                            | 人口1000人以上の都市一覧                           | [GeoNames](https://download.geonames.org/export/dump/)                     | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                       |
+| `data/cities1000.txt`, `admin1CodesASCII.txt` | 人口1000人以上の都市一覧                           | [GeoNames](https://download.geonames.org/export/dump/)                     | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                       |
 | `data/stars/hip_main.dat`                                   | Hipparcos および Tycho カタログ（ESA 1997）        | [CDS Strasbourg](https://cdsarc.cds.unistra.fr/ftp/I/239/)                 | [ODbL](https://www.data.gouv.fr/licences) または [CC BY-NC 3.0 IGO](https://creativecommons.org/licenses/by-nc/3.0/igo/)（非商用） |
 | `data/stars/IAU-Catalog-of-Star-Names.csv`             | IAU 恒星名作業部会 (WGSN) による恒星固有名カタログ | [exopla.net](https://exopla.net/star-names/modern-iau-star-names/)         | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                       |
 | `data/Noto_Sans/*`, `data/Noto_Sans_Symbols/*`     | テキスト / 惑星記号表示フォント                             | [Google Fonts](https://fonts.google.com/)   | [SIL Open Font License 1.1](https://openfontlicense.org)                                                                        |
@@ -142,30 +147,6 @@ zstarview-make-desktop-file --write
 * ウィンドウタイトル「Zenith Star View」は ChatGPT の提案に由来します。
 * Gemini および ChatGPT に、仕様の相談、コード生成、デバッグなど、多くの助力をいただきました。
 
-## 付録：2025年の月食のプレビュー
+## 付録
 
-2025年に観測可能な**2回の皆既月食**を、日時と都市を指定してプレビューできます。
-
-### 2025年3月13〜14日（アメリカ大陸で見られる皆既月食）
-
-```bash
-zstarview --datetime "2025-03-14 02:58:43 America/New_York" "New York City"
-zstarview --datetime "2025-03-13 23:58:43 America/Los_Angeles" "US/Los Angeles"
-zstarview --datetime "2025-03-13 20:58:43 HST" "Honolulu"
-zstarview --datetime "2025-03-14 00:58:43 America/Mexico_City" "Mexico City"
-zstarview --datetime "2025-03-14 03:58:43 America/Sao_Paulo" "BR/São Paulo"
-```
-
-### 2025年9月7〜8日（アジア・ヨーロッパ・アフリカ・オセアニアで見られる皆既月食）
-
-```bash
-zstarview --datetime "2025-09-08 03:12:00 JST" "Tokyo"
-zstarview --datetime "2025-09-08 03:11:47 KST" "Seoul"
-zstarview --datetime "2025-09-08 02:11:47 Asia/Shanghai" "Beijing"
-zstarview --datetime "2025-09-08 01:11:47 Asia/Bangkok" "Bangkok"
-zstarview --datetime "2025-09-07 23:41:47 Asia/Kolkata" "New Delhi"
-zstarview --datetime "2025-09-07 21:11:47 Europe/Istanbul" "Istanbul"
-zstarview --datetime "2025-09-07 21:11:47 EAT" "Nairobi"
-zstarview --datetime "2025-09-08 04:11:47 Australia/Sydney" "Sydney"
-zstarview --datetime "2025-09-08 06:11:47 Pacific/Auckland" "Auckland"
-```
+→ [2025年の月食, 2026〜2028年の皆既日食](docs/appendix-eclipses-ja_JP.md)
