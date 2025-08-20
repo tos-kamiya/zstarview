@@ -102,11 +102,13 @@ def get_sky_color(view_alt_deg: float, view_az_deg: float, sun_alt_deg: float, s
 
     # Composite
     r, g, b = _lerp_color(
-        (sun_color[0] * brightness, sun_color[1] * brightness, sun_color[2] * brightness), 
-        (1.0, 1.0, 1.0), 
+        (sun_color[0] * brightness, sun_color[1] * brightness, sun_color[2] * brightness),
+        (1.0, 1.0, 1.0),
         horizon_mix * twilight,
     )
-    r *= zenith_dim; g *= zenith_dim; b *= zenith_dim
+    r *= zenith_dim
+    g *= zenith_dim
+    b *= zenith_dim
 
     # Clip (final safety)
     return (_clamp01(r), _clamp01(g), _clamp01(b))

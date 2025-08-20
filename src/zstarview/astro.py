@@ -215,34 +215,35 @@ def calculate_lunar_eclipse_data(t: astropy.time.Time, observer) -> LunarEclipse
     )
 
 
-SUN_RADIUS_KM  = 695700.0
+SUN_RADIUS_KM = 695700.0
 MOON_RADIUS_KM = 1737.4
 
+
 def _angular_radius_rad(radius_km: float, distance_km: float) -> float:
-    """見かけ角半径 [rad] = asin(R / D)（小角近似より厳密）。"""
+    """Apparent angular radius [rad] = asin(R / D) (more precise than small-angle approximation)."""
     x = radius_km / max(1e-9, distance_km)
     return math.asin(max(-1.0, min(1.0, x)))
 
+
 def _circle_overlap_area_fraction(R: float, r: float, d: float) -> float:
     """
-    2円（半径 R, r、中心距離 d）の重なり面積 / 太陽円面積（πR^2）。
-    R, r, d は同一単位（ここではラジアンの“角半径”）。
+    Calculates the overlapping area of two circles (radii R, r; center distance d)
+    divided by the area of the solar disk (πR^2).
+    R, r, and d are in the same units (here, angular radius in radians).
     """
-    # 分離
+    # Separated
     if d >= R + r:
         return 0.0
-    # 内包（小さい円が完全に入る）
+    # Contained (the smaller circle is completely inside the larger one)
     if d <= abs(R - r):
-        return (min(R, r) ** 2) / (R ** 2)
+        return (min(R, r) ** 2) / (R**2)
 
-    R2, r2 = R*R, r*r
-    # 角度（セグメント角）
-    alpha = math.acos((d*d + R2 - r2) / (2.0 * d * R))
-    beta  = math.acos((d*d + r2 - R2) / (2.0 * d * r))
-    # レンズ面積（Brahmagupta 型の平方根項）
-    lens = R2*alpha + r2*beta - 0.5 * math.sqrt(
-        max(0.0, (-d + R + r) * (d + R - r) * (d - R + r) * (d + R + r))
-    )
+    R2, r2 = R * R, r * r
+    # Angles (segment angles)
+    alpha = math.acos((d * d + R2 - r2) / (2.0 * d * R))
+    beta = math.acos((d * d + r2 - R2) / (2.0 * d * r))
+    # Lens area (Brahmagupta's formula-like square root term)
+    lens = R2 * alpha + r2 * beta - 0.5 * math.sqrt(max(0.0, (-d + R + r) * (d + R - r) * (d - R + r) * (d + R + r)))
     return lens / (math.pi * R2)
 
 
@@ -251,39 +252,39 @@ def calculate_solar_eclipse_data(t: astropy.time.Time, observer) -> SolarEclipse
     sun = planets["sun"]
     moon = planets["moon"]
 
-    # 観測者のトポセントリック・見かけ位置
+    # Observer's topocentric apparent position
     obs = observer.at(t)
-    sun_app  = obs.observe(sun).apparent()
+    sun_app = obs.observe(sun).apparent()
     moon_app = obs.observe(moon).apparent()
 
-    # 中心間角距離
+    # Angular distance between centers
     sep = sun_app.separation_from(moon_app)
     sep_deg = sep.degrees
     sep_rad = sep.radians
 
-    # 見かけ角半径（距離から都度算出）
-    D_sun_km  = sun_app.distance().km
+    # Apparent angular radius (calculated from distance each time)
+    D_sun_km = sun_app.distance().km
     D_moon_km = moon_app.distance().km
-    sun_rad  = _angular_radius_rad(SUN_RADIUS_KM,  D_sun_km)   # [rad]
+    sun_rad = _angular_radius_rad(SUN_RADIUS_KM, D_sun_km)  # [rad]
     moon_rad = _angular_radius_rad(MOON_RADIUS_KM, D_moon_km)  # [rad]
 
-    # 面積食分（必要になったら SolarEclipseInfo にフィールド追加して返してください）
+    # Obscuration (area fraction of the Sun obscured by the Moon)
     obscuration = _circle_overlap_area_fraction(sun_rad, moon_rad, sep_rad)
 
-    # 種別判定
+    # Determine eclipse type
     if sep_rad >= sun_rad + moon_rad or obscuration <= 0.0:
         eclipse_type = "none"
     elif sep_rad <= abs(sun_rad - moon_rad):
-        # 小さい方が完全に内包される：月>太陽なら皆既、太陽>月なら金環
+        # The smaller circle is completely contained: total if Moon > Sun, annular if Sun > Moon
         eclipse_type = "total" if moon_rad >= sun_rad else "annular"
     else:
         eclipse_type = "partial"
 
     return SolarEclipseInfo(
-        is_eclipse = (eclipse_type != "none"),
-        eclipse_type = eclipse_type,
-        sep_deg = float(sep_deg),
-        obscuration = obscuration,
+        is_eclipse=(eclipse_type != "none"),
+        eclipse_type=eclipse_type,
+        sep_deg=float(sep_deg),
+        obscuration=obscuration,
     )
 
 
@@ -293,13 +294,14 @@ def eclipse_factor_from_info(info: Optional[SolarEclipseInfo]) -> float:
         return 1.0
     obsc = max(0.0, min(1.0, info.obscuration))
 
-    # 体感モデル：~90%超から急に暗い
+    # Perceptual model: gets dark suddenly after ~90%
     f0 = 0.92
-    is_total = (info.eclipse_type == "total")
+    is_total = info.eclipse_type == "total"
     k = 10.0 if is_total else 7.5
 
     s = 1.0 / (1.0 + math.exp(k * (obsc - f0)))  # 1→0
-    min_l = 0.02 if is_total else 0.15           # 皆既はより暗く
+    # Totality is darker
+    min_l = 0.02 if is_total else 0.15
     return min_l + (1.0 - min_l) * s
 
 

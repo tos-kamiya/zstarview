@@ -180,11 +180,13 @@ def get_sky_color(view_altaz: Tuple[float, float], sun_altaz: Tuple[float, float
 
     # Composite
     r, g, b = _lerp_color(
-        (sun_color[0] * brightness, sun_color[1] * brightness, sun_color[2] * brightness), 
-        (1.0, 1.0, 1.0), 
+        (sun_color[0] * brightness, sun_color[1] * brightness, sun_color[2] * brightness),
+        (1.0, 1.0, 1.0),
         horizon_mix * twilight,
     )
-    r *= zenith_dim; g *= zenith_dim; b *= zenith_dim
+    r *= zenith_dim
+    g *= zenith_dim
+    b *= zenith_dim
 
     # Clip (final safety)
     return (_clamp01(r), _clamp01(g), _clamp01(b))
@@ -362,7 +364,9 @@ def draw_sky_color_disc(
             )
 
             ce = cutoff * eclipse_factor
-            rr *= ce; gg *= ce; bb *= ce
+            rr *= ce
+            gg *= ce
+            bb *= ce
             ip.fillRect(xi - half, yi - half, 2 * half, 2 * half, QColor.fromRgbF(rr, gg, bb, 1.0))
 
         # Termination condition (ensure the 90° ring is always drawn)

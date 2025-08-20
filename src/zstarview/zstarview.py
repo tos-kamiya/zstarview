@@ -140,7 +140,8 @@ def main():
     last_city = load_last_city()
 
     args = parse_args()
-    city = args.city or last_city or "Tokyo"
+    if not args.city:
+        args.city = last_city or "Tokyo"
 
     recs = []
     try:

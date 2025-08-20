@@ -6,22 +6,23 @@ import re
 
 # ---------- data model ----------
 
+
 @dataclass(frozen=True)
 class CityRec:
     geonameid: int
-    name: str                 # cities1000.txt の name（現地語）
+    name: str  # The name of the city in the local language, from cities1000.txt.
     asciiname: str
     lat: float
     lon: float
-    cc: str                   # 国コード（例: 'JP'）
-    admin1_code: str          # 州コード（例: '34'）
-    admin1_name: Optional[str]  # 州名（例: 'Saitama'）; 未解決なら None
+    cc: str  # Country code (e.g., 'JP').
+    admin1_code: str  # Admin1 code (e.g., for a state or province).
+    admin1_name: Optional[str]  # Admin1 name (e.g., 'Saitama'); None if not resolved.
     pop: int
     tz: str
 
     @classmethod
     def from_cols(cls, cols: List[str], admin1_name: Optional[str] = None) -> "CityRec":
-        """cities1000.txt 1行の分割結果から生成。admin1_name は必要なら別途付与。"""
+        """Creates a CityRec from a split line of cities1000.txt. The admin1_name can be added separately."""
         return cls(
             geonameid=int(cols[0]),
             name=cols[1],
@@ -35,19 +36,23 @@ class CityRec:
             tz=cols[17],
         )
 
+
 # -------------------------
 # Helpers
 # -------------------------
 
+
 def _nfkc_casefold(s: str) -> str:
     return unicodedata.normalize("NFKC", s).casefold().strip()
 
+
 def _strip_diacritics(s: str) -> str:
-    # アクセント類を除去
+    """Removes diacritics from a string."""
     return "".join(ch for ch in unicodedata.normalize("NFKD", s) if unicodedata.category(ch) != "Mn")
 
+
 def _norm(s: str) -> str:
-    # 大小/全半角の揺れ + アクセント除去 + 余分な空白除去 + よく出る記号の揺れを統一
+    """Normalizes a string by case-folding, removing diacritics, stripping extra whitespace, and standardizing common symbols."""
     s = _nfkc_casefold(s)
     s = _strip_diacritics(s)
     s = s.replace("’", "").replace("'", "")
@@ -55,8 +60,9 @@ def _norm(s: str) -> str:
     s = " ".join(s.split())
     return s
 
+
 def _variants(s: str) -> List[str]:
-    # ハイフン/空白のゆらぎを吸収する派生キー
+    """Generates variations of a string to account for hyphens and spaces."""
     v = {_norm(s)}
     base = next(iter(v))
     if "-" in base:
@@ -67,8 +73,9 @@ def _variants(s: str) -> List[str]:
         v.add(base.replace(" ", ""))
     return list(v)
 
+
 def load_admin1_names(path: str) -> Dict[Tuple[str, str], str]:
-    """admin1CodesASCII.txt を (CC, admin1_code) -> ASCII州名 に読み込む。"""
+    """Loads admin1CodesASCII.txt into a mapping from (country_code, admin1_code) to an ASCII admin1 name."""
     mapping: Dict[Tuple[str, str], str] = {}
     with open(path, encoding="utf-8") as f:
         for line in f:
@@ -76,12 +83,13 @@ def load_admin1_names(path: str) -> Dict[Tuple[str, str], str]:
             if len(parts) < 3 or "." not in parts[0]:
                 continue
             cc, adm1 = parts[0].split(".", 1)
-            name = parts[2] or parts[1]  # ASCIIName 優先
+            name = parts[2] or parts[1]  # Prefer ASCIIName
             mapping[(cc, adm1)] = name
     return mapping
 
+
 def _row_matches(cols: List[str], query_variants: set[str]) -> bool:
-    """1行の name/asciiname/alternatenames のいずれかが query に一致するか。"""
+    """Checks if the name, asciiname, or alternatenames in a row match any of the query variants."""
     # name
     for k in _variants(cols[1]):
         if k in query_variants:
@@ -91,7 +99,7 @@ def _row_matches(cols: List[str], query_variants: set[str]) -> bool:
         for k in _variants(cols[2]):
             if k in query_variants:
                 return True
-    # alternatenames（カンマ区切り）
+    # alternatenames (comma-separated)
     if cols[3]:
         for alt in cols[3].split(","):
             if not alt:
@@ -101,20 +109,22 @@ def _row_matches(cols: List[str], query_variants: set[str]) -> bool:
                     return True
     return False
 
+
 # -------------------------
 # Core utilities
 # -------------------------
+
 
 def resolve_city(
     cc_slash_name: str,
     cities_path: str = "cities1000.txt",
     admin1_map: Optional[Dict[Tuple[str, str], str]] = None,
 ) -> List[CityRec]:
-    """
-    'CC/CityNameOrAlias' を cities1000.txt の name/asciiname/alternatenames で検索し、
-    ヒットした CityRec のリストを人口降順（同値は geonameid 昇順）で返す。
-    - 一致は「完全一致」（正規化+ゆらぎ吸収後）
-    - 警告やprintは行わない（ユーティリティ関数用）
+    """Resolves a 'CC/CityNameOrAlias' string by searching the name, asciiname, and alternatenames fields in cities1000.txt.
+
+    Returns a list of matching CityRec objects, sorted by population (descending)
+    and then geonameid (ascending). Matching is exact (after normalization and
+    variation handling). This function does not print warnings.
     """
     if "/" not in cc_slash_name:
         raise ValueError("Input must be 'CC/CityName' (e.g., 'ES/Zaragoza').")
@@ -140,15 +150,17 @@ def resolve_city(
     matches.sort(key=lambda r: (-r.pop, r.geonameid))
     return matches
 
+
 def resolve_city_by_name(
     name: str,
     cities_path: str = "cities1000.txt",
     admin1_map: Optional[Dict[Tuple[str, str], str]] = None,
 ) -> List[CityRec]:
-    """
-    都市名または別名（name/asciiname/alternatenames のいずれか）で検索し、
-    ヒットした CityRec のリストを人口降順（同値は geonameid 昇順）で返す。
-    国コードは指定しない（全世界から該当を列挙）。
+    """Resolves a city by its name or alias (searching name, asciiname, and alternatenames).
+
+    Returns a list of matching CityRec objects, sorted by population (descending)
+    and then geonameid (ascending). Does not filter by country code (searches
+    worldwide).
     """
     query_variants = set(_variants(name))
     matches: List[CityRec] = []
@@ -174,6 +186,7 @@ def resolve_city_by_geonameid(
     cities_path: str = "cities1000.txt",
     admin1_map: Optional[Dict[Tuple[str, str], str]] = None,
 ) -> Optional[CityRec]:
+    """Resolves a city by its geonameid."""
     with open(cities_path, encoding="utf-8") as f:
         for line in f:
             if not line.strip():
@@ -190,9 +203,12 @@ def resolve_city_by_geonameid(
                 return rec
     return None
 
+
 # ---------- CLI ----------
 
+
 def main():
+    """CLI for resolving city names."""
     import sys
 
     ap = argparse.ArgumentParser(description="Resolve 'CC/CityName' in cities1000.txt, warn on multis, pick largest by population.")
@@ -227,6 +243,7 @@ def main():
                 print(f"{rec.cc}/{rec.name}, lat: {rec.lat:.6f}, lon: {rec.lon:.6f}, tz: {rec.tz}  (geonameid={rec.geonameid})")
         else:
             print(f"No match for '{args.city}'", file=sys.stderr)
+
 
 if __name__ == "__main__":
     main()

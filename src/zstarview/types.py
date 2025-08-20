@@ -23,10 +23,11 @@ class LunarEclipseInfo:
 @dataclass
 class SolarEclipseInfo:
     """Contains data about a solar eclipse for rendering / dimming."""
+
     is_eclipse: bool = False
-    eclipse_type: Optional[str] = None   # "partial" / "annular" / "total" / None
-    sep_deg: float = 0.0                 # Sun–Moon center separation [deg]
-    obscuration: float = 0.0             # Fraction of the Sun's disk obscured by the Moon [0.0, 1.0]
+    eclipse_type: Optional[str] = None  # "partial" / "annular" / "total" / None
+    sep_deg: float = 0.0  # Sun–Moon center separation [deg]
+    obscuration: float = 0.0  # Fraction of the Sun's disk obscured by the Moon [0.0, 1.0]
 
 
 @dataclass

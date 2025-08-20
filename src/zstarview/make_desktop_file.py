@@ -23,6 +23,7 @@ StartupWMClass={wmclass}
 
 
 def main():
+    """Generates a .desktop file for the application."""
     parser = argparse.ArgumentParser(description=".desktop file generator for Zenith Star View")
     parser.add_argument(
         "--write",

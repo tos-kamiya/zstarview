@@ -12,6 +12,7 @@ _config_file = _config_dir / "config.json"
 
 
 def load_last_city() -> str | None:
+    """Loads the last used city from the config file."""
     try:
         data = json.loads(_config_file.read_text(encoding="utf-8"))
         return data.get("city")
@@ -22,4 +23,5 @@ def load_last_city() -> str | None:
 
 
 def save_last_city(city: str) -> None:
+    """Saves the last used city to the config file."""
     _config_file.write_text(json.dumps({"city": city}, ensure_ascii=False), encoding="utf-8")

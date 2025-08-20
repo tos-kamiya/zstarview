@@ -50,6 +50,7 @@ class SkyWindow(DraggableWindow):
         star_base_radius: float = 8.0,
         vmag_limit: float = 6.0,
     ):
+        """Initializes the SkyWindow."""
         super().__init__()
         self._rotation_step: float = 5.0  # degrees
 
@@ -116,6 +117,7 @@ class SkyWindow(DraggableWindow):
         self.start_background_sky_data_update(is_initial_load=True)
 
     def _add_hamburger_menu(self):
+        """Adds a hamburger menu to the window."""
         self.menu_button = QPushButton("☰", self)
         self.menu_button.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
         self.menu_button.setStyleSheet(
@@ -151,6 +153,7 @@ class SkyWindow(DraggableWindow):
         version_action.setEnabled(False)
 
     def resizeEvent(self, event: QResizeEvent):
+        """Handles the window resize event."""
         grip_size = self.size_grip.size()
         self.size_grip.move(self.width() - grip_size.width(), self.height() - grip_size.height())
 
@@ -160,42 +163,51 @@ class SkyWindow(DraggableWindow):
         super().resizeEvent(event)
 
     def show_menu(self):
+        """Shows the hamburger menu."""
         menu_pos = self.menu_button.mapToGlobal(QPoint(0, self.menu_button.height()))
         self.menu.exec(menu_pos)
 
     def toggle_enlarge_moon(self):
+        """Toggles the moon enlargement."""
         self.enlarge_moon = not self.enlarge_moon
         if self._action_enlarge_moon is not None and self._action_enlarge_moon.isChecked() != self.enlarge_moon:
             self._action_enlarge_moon.setChecked(self.enlarge_moon)
         self.update()  # Redraw
 
     def toggle_fullscreen(self):
+        """Toggles fullscreen mode."""
         if self.isFullScreen():
             self.showNormal()
         else:
             self.showFullScreen()
 
     def leaveEvent(self, event):
+        """Handles the mouse leave event."""
         self.mouse_pos = None
         self.update()
         event.accept()
 
     def mouseMoveEvent(self, event: QMouseEvent):
+        """Handles the mouse move event."""
         self.mouse_pos = event.pos()
         self.update()
         event.accept()
 
     def set_star_base_radius(self, star_base_radius: float):
+        """Sets the base radius for stars."""
         self.star_base_radius = star_base_radius
 
     def set_enlarge_moon(self, enlarge_moon: bool):
+        """Sets the enlarge moon flag."""
         self.enlarge_moon = enlarge_moon
 
     def set_sky_data(self, data: CelestialData):
+        """Sets the celestial data."""
         self.celestial_data = data
         self.update()
 
     def paintEvent(self, event: QPaintEvent):
+        """Handles the paint event."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
@@ -246,6 +258,7 @@ class SkyWindow(DraggableWindow):
         )
 
     def _draw_sky_disc_scaled(self, painter: QPainter, geometry):
+        """Draws the scaled sky disc."""
         img = self._sky_disc_image
         if img is None or self.sky_disc_alpha <= 0.0:
             return
@@ -257,6 +270,7 @@ class SkyWindow(DraggableWindow):
         painter.drawImage(QRect(x, y, w, h), img)
 
     def _on_sky_data_calculated(self, payload):
+        """Handles the sky data calculated signal."""
         self.set_sky_data(payload["celestial"])
         self._sky_disc_image = payload["sky_disc"]
 
@@ -276,6 +290,7 @@ class SkyWindow(DraggableWindow):
             print("Warning: celestial data/sky disc image updating canceled.")
 
     def update_sky_data_in_background(self):
+        """Updates the sky data in a background thread."""
         try:
             now = datetime.now(timezone.utc) + self.delta_t
             time_obj = astropy.time.Time(now)
@@ -334,6 +349,7 @@ class SkyWindow(DraggableWindow):
             traceback.print_exc()
 
     def start_background_sky_data_update(self, is_initial_load: bool = False) -> bool:
+        """Starts a background thread to update the sky data."""
         if self._is_sky_data_calculation_running:
             return False
         self._is_sky_data_calculation_running = True
@@ -348,6 +364,7 @@ class SkyWindow(DraggableWindow):
         return True
 
     def _rotate_view(self, d_alt: float = 0.0, d_az: float = 0.0):
+        """Rotates the view."""
         alt, az = self.viewer_data.view_center
         alt = max(0.0, min(90.0, alt + d_alt))
         az = (az + d_az) % 360.0
@@ -355,6 +372,7 @@ class SkyWindow(DraggableWindow):
         self.request_sky_data_update()
 
     def keyPressEvent(self, event: QKeyEvent):
+        """Handles key press events."""
         if not event:
             super().keyPressEvent(event)
             return

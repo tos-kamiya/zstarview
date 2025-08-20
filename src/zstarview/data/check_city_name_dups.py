@@ -12,6 +12,7 @@ from typing import List, Dict, Tuple
 import argparse
 import sys
 
+
 @dataclass
 class CityRec:
     geonameid: int
@@ -40,6 +41,7 @@ class CityRec:
             tz=cols[17],
         )
 
+
 def load_admin1_names(path: str) -> Dict[Tuple[str, str], str]:
     """Load admin1CodesASCII.txt as (cc, admin1_code) -> state name."""
     mapping: Dict[Tuple[str, str], str] = {}
@@ -55,6 +57,7 @@ def load_admin1_names(path: str) -> Dict[Tuple[str, str], str]:
     except FileNotFoundError:
         print(f"[warn] admin1CodesASCII.txt not found: {path}", file=sys.stderr)
     return mapping
+
 
 def find_name_duplicates(path: str, case_insensitive: bool = False) -> Dict[Tuple[str, str], List[CityRec]]:
     groups: Dict[Tuple[str, str], List[CityRec]] = {}
@@ -73,31 +76,31 @@ def find_name_duplicates(path: str, case_insensitive: bool = False) -> Dict[Tupl
             groups.setdefault(key, []).append(rec)
     return {k: v for k, v in groups.items() if len(v) > 1}
 
+
 def main():
     ap = argparse.ArgumentParser(description="List (CC, name) duplicates from cities1000.txt with state names")
     ap.add_argument("--file", "-f", default="cities1000.txt", help="Path to cities1000.txt")
     ap.add_argument("--admin1", default="admin1CodesASCII.txt", help="Path to admin1CodesASCII.txt")
-    ap.add_argument("--case-insensitive", action="store_true",
-                    help="Case-insensitive comparison on city name")
+    ap.add_argument("--case-insensitive", action="store_true", help="Case-insensitive comparison on city name")
     args = ap.parse_args()
 
     admin1_map = load_admin1_names(args.admin1)
     dups = find_name_duplicates(args.file, case_insensitive=args.case_insensitive)
 
     total_groups = 0
-    for (cc, name) in sorted(dups.keys(), key=lambda x: (x[0], x[1])):
+    for cc, name in sorted(dups.keys(), key=lambda x: (x[0], x[1])):
         records = sorted(dups[(cc, name)], key=lambda r: (-r.pop, r.geonameid))
         print(f"{cc}/{name}  (matches: {len(records)})")
         for r in records:
             state_name = admin1_map.get((r.cc, r.admin1), r.admin1 or "?")
-            print(f"  - geonameid={r.geonameid}  state={state_name}  "
-                  f"lat={r.lat:.6f}  lon={r.lon:.6f}  pop={r.pop}  tz={r.tz}")
+            print(f"  - geonameid={r.geonameid}  state={state_name}  " f"lat={r.lat:.6f}  lon={r.lon:.6f}  pop={r.pop}  tz={r.tz}")
         total_groups += 1
 
     if total_groups == 0:
         print("No duplicates found.")
     else:
         print(f"\nTotal duplicate groups: {total_groups}")
+
 
 if __name__ == "__main__":
     main()
