@@ -483,16 +483,24 @@ def draw_moon(
         tint_rgba = (base_color.red(), base_color.green(), base_color.blue(), base_color.alpha())
     else:
         tint_rgba = None
-    moon_img_pil = generate_moon_phase_image(img_size, sun_dir_in_moon_frame, view_dir, tint_color=tint_rgba)
+    moon_img_pil = generate_moon_phase_image(
+        img_size, sun_dir_in_moon_frame, view_dir, tint_color=tint_rgba
+    )
 
     if abs(screen_rotation_deg) > 0.1:
-        moon_img_pil = moon_img_pil.rotate(screen_rotation_deg, resample=Image.Resampling.BICUBIC, expand=False)
+        moon_img_pil = moon_img_pil.rotate(
+            screen_rotation_deg,
+            resample=Image.Resampling.BICUBIC,
+            expand=False,
+            fillcolor=(0, 0, 0, 0),  # keep transparency outside the rotated bounds
+        )
 
-    pixmap = pil2qpixmap(moon_img_pil)
+    pixmap = pil2qpixmap(moon_img_pil)  # should handle RGBA → QPixmap with alpha
     target_rect = QRectF(center.x() - img_size / 2, center.y() - img_size / 2, img_size, img_size)
 
     painter.save()
     painter.setOpacity(opacity)
+    # If you ever see halos, try: painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
     painter.drawPixmap(target_rect, pixmap, QRectF(0, 0, img_size, img_size))
 
     if base_color is not None:

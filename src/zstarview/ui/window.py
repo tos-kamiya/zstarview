@@ -329,7 +329,7 @@ class SkyWindow(DraggableWindow):
             sky_disc_img = None
             if self.sky_disc_alpha > 0.0 and sun_altaz is not None:
                 base = self._sky_disc_base_size
-                fixed_geom = render_draw.get_screen_geometry(base, base, self.viewer_data.view_center[0])
+                fixed_geom = render_draw.get_screen_geometry(base, base, base // 2)
 
                 ef = eclipse_factor_from_info(solar_eclipse_info)
                 sky_disc_img = draw_sky_disc.draw_sky_color_disc(
