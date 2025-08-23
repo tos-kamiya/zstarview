@@ -9,6 +9,9 @@ from ..types import ScreenGeometry, SolarEclipseInfo
 from .draw import normalized_to_screen_xy
 
 
+TURBIDITY = 5   # 2 (clear blue sky) to 10 (hazy white sky)
+
+
 def _ground_cutoff(alt: float, alpha: float, fade_hi: float = 0.0, fade_lo: float = -2.0) -> float:
     """
     Returns an alpha value based on altitude, for fading near the horizon.
@@ -115,69 +118,84 @@ def get_sun_color(sun_alt_deg: float) -> np.ndarray:
         A numpy array of (r, g, b) float values representing the sun's color.
     """
     # Define colors
-    zenith_color = np.array([0.3, 0.5, 1.0])  # Color at zenith (blue)
+    zenith_color = np.array([0.3, 0.48, 0.96])  # Color at zenith (blue)
     horizon_color = np.array([1.0, 0.8, 0.4])  # Color at horizon (orange)
     night_color = np.array([0.01, 0.02, 0.05])  # Night color (dark blue)
 
-    # Normalize sun altitude from -5 degrees (sunset) to 90 degrees (zenith) to a 0-1 range
-    t = np.clip((sun_alt_deg + 5.0) / 95.0, 0.0, 1.0)
+    # Normalize sun altitude from -20 degrees (sunset) to 90 degrees (zenith) to a 0-1 range
+    t = np.clip((sun_alt_deg + 20.0) / 110.0, 0.0, 1.0)
+    t = math.pow(t, 0.8)
 
     # Daytime color (horizon to zenith)
     day_color = _lerp_color(horizon_color, zenith_color, t)
 
     # Mix day and night colors (to represent the rapid darkening near the horizon)
-    fade = np.clip(sun_alt_deg / 10.0, 0.0, 1.0)  # Fade between 0 and 10 degrees
+    fade = np.clip((sun_alt_deg - 1.0) / 11.0, 0.0, 1.0)  # Fade between -1 and 10 degrees
 
     return _lerp_color(night_color, day_color, fade)
 
 
 def get_sky_color(view_altaz: Tuple[float, float], sun_altaz: Tuple[float, float]) -> np.ndarray:
     """
-    Calculates the sky color for a given viewing direction and sun position.
+    Calculate the sky color for a given viewing direction and sun position.
+
+    This function models the sky color based on:
+    - Sun altitude and azimuth (position of the sun).
+    - Viewing direction (altitude, azimuth).
+    - Atmospheric turbidity, which controls how clear (deep blue) or hazy
+      (whitish and desaturated) the sky appears.
 
     Args:
-        view_altaz: A tuple of (altitude, azimuth) for the viewing direction.
-        sun_altaz: A tuple of (altitude, azimuth) for the sun's position.
+        view_altaz: Tuple (altitude_deg, azimuth_deg) of the viewing direction.
+        sun_altaz: Tuple (altitude_deg, azimuth_deg) of the sun's position.
 
     Returns:
-        A numpy array of (r, g, b) float values for the sky color.
+        np.ndarray: RGB color (float values 0..1) representing the sky color.
     """
-    # After sunset, it gradually darkens (completely dark at -10°, towards day at 0°)
     sun_alt_deg, sun_az_deg = sun_altaz
     view_alt_deg, view_az_deg = view_altaz
 
     if sun_alt_deg <= -10.0:
+        # Completely dark if the sun is more than 10° below the horizon
         return np.array([0.0, 0.0, 0.0])
 
-    # Basic sun color (assumed 0..1: preferably linear RGB)
     sun_color = get_sun_color(sun_alt_deg)
 
-    # 1) Brightness based on angle to the sun (stable even at zenith)
+    # --- Turbidity effect (0..1 normalized) ---
+    tau = np.clip((TURBIDITY - 2.0) / (10.0 - 2.0), 0.0, 1.0)  # 2.0..10.0 -> 0..1
+
+    # 1) Brightness in the sun-facing direction
+    #    Higher turbidity reduces directional contrast (lower exponent).
     sun_angle = _angle_between(view_alt_deg, view_az_deg, sun_alt_deg, sun_az_deg)  # [0..pi]
     cosg = math.cos(sun_angle)
-    brightness = (1.0 + cosg) * 0.5  # 0..1
-    brightness = brightness**2.0  # Emphasize the sun-facing direction
+    f = max(0.0, cosg)  # set to 0 on the antisolar side
+    exp = 2.0 - 0.6 * tau  # tau=0 -> 2.0, tau=1 -> 1.4
+    brightness = f ** exp
 
-    # 2) Tone based on altitude (darker at zenith, whitish at horizon)
+    # 2) Altitude tone factor
     t = np.clip(view_alt_deg / 90.0, 0.0, 1.0)  # 0(horizon) -> 1(zenith)
-    zenith_dim = 1.0 - 0.35 * t  # 1.0..0.65 (darker towards zenith)
-    horizon_mix = (1.0 - t) * 0.3  # 0.3..0.0 (whiter towards horizon)
 
-    # 3) Twilight correction (interpolate -10..0° to 0..1)
+    # Darkening toward zenith
+    # Higher turbidity reduces the darkening (sky looks brighter/whiter at the zenith).
+    zenith_dim_coef = 0.30 * (1.0 - 0.5 * tau)   # halved at tau=1
+    zenith_dim = 1.0 - zenith_dim_coef * t
+
+    # White mixing near the horizon
+    # Higher turbidity increases the amount of white mixed in.
+    horizon_k = 0.30 * (0.8 + 0.6 * tau)
+    horizon_mix = (1.0 - t) * horizon_k
+
+    # Twilight correction (smooth transition -10..0°)
     if sun_alt_deg < 0.0:
-        twilight = _smoothstep(-10.0, 0.0, sun_alt_deg)  # 0..1
+        twilight = _smoothstep(-10.0, 0.0, sun_alt_deg)
     else:
         twilight = 1.0
 
-    # Composite
-    color = _lerp_color(
-        sun_color * brightness,
-        np.array([1.0, 1.0, 1.0]),
-        horizon_mix * twilight,
-    )
+    # Composite color
+    lit = sun_color * brightness
+    color = _lerp_color(lit, np.array([1.0, 1.0, 1.0]), horizon_mix * twilight)
     color *= zenith_dim
 
-    # Clip (final safety)
     return np.clip(color, 0.0, 1.0)
 
 
