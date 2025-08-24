@@ -2,7 +2,6 @@ import math
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from appdirs import user_cache_dir
 import astropy
 import astropy.units as u
 from astropy.coordinates import AltAz, EarthLocation, GeocentricTrueEcliptic, SkyCoord
@@ -14,6 +13,7 @@ import polars as pl
 from .paths import (
     APP_AUTHOR,
     APP_ID,
+    CACHE_PATH,
     ANGLE_BELOW_HORIZON,
     FIELD_OF_VIEW_DEG,
     PLANET_SYMBOLS,
@@ -23,7 +23,7 @@ from .types import LunarEclipseInfo, PlanetBody, SolarEclipseInfo
 
 
 # Skyfield ephemeris cache loader (separate from UI)
-_cache_path = Path(user_cache_dir(appname=APP_ID, appauthor=APP_AUTHOR))
+_cache_path = Path(CACHE_PATH)
 _cache_path.mkdir(parents=True, exist_ok=True)
 _starfield_load = Loader(str(_cache_path))
 

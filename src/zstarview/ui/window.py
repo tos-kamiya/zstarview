@@ -3,13 +3,17 @@ import threading
 import sys
 from typing import Optional, Tuple
 
-from PySide6.QtCore import Qt, QPoint, QTimer, QRect
+from PySide6.QtCore import Qt, QPoint, QTimer, QRect, Signal
 from PySide6.QtGui import QFont, QFontDatabase, QIcon, QPainter, QImage
 from PySide6.QtGui import QAction, QKeyEvent, QMouseEvent, QPaintEvent, QResizeEvent
 from PySide6.QtWidgets import QMainWindow, QSizeGrip, QApplication, QPushButton, QMenu
 
 import astropy
 import polars as pl
+
+from ..clouddisc import CloudDisc, CloudDiscConfig
+
+from PIL import Image  # Pillow
 
 from ..__about__ import __version__
 from ..astro import (
@@ -21,20 +25,18 @@ from ..astro import (
     eclipse_factor_from_info,
 )
 from .draggable_window import DraggableWindow
+from ..paths import CACHE_PATH
 from ..paths import EMOJI_FONT_PATH, EMOJI_FONT_SIZE, TEXT_FONT_PATH, TEXT_FONT_SIZE
-from ..paths import APP_ICON_FILE, GUI_BUTTON_SIZE, GUI_MENU_TEXT_COLOR, WINDOW_HEIGHT, WINDOW_WIDTH
-from ..paths import SKY_UPDATE_INTERVAL
+from ..paths import APP_ICON_FILE, GUI_BUTTON_SIZE, GUI_MENU_TEXT_COLOR, WINDOW_HEIGHT, WINDOW_HEIGHT, WINDOW_WIDTH
+from ..paths import SKY_UPDATE_INTERVAL, CLOUD_UPDATE_INTERVAL
 from ..render import draw as render_draw
 from ..render import draw_sky_disc
 from ..types import CelestialData, ViewerData
 
-DEBUG_ECLIPSE = True
+DEBUG_ECLIPSES = True
 
 
 class SkyWindow(DraggableWindow):
-    # Using Qt signal objects requires attribute creation at runtime; avoid type hints here
-    from PySide6.QtCore import Signal
-
     sky_data_calculated = Signal(object)
     initial_data_loaded = Signal()
 
@@ -49,6 +51,7 @@ class SkyWindow(DraggableWindow):
         enlarge_moon: bool = False,
         star_base_radius: float = 8.0,
         vmag_limit: float = 6.0,
+        clouds_alpha: float = 0.5,
     ):
         """Initializes the SkyWindow."""
         super().__init__()
@@ -60,6 +63,11 @@ class SkyWindow(DraggableWindow):
         self.enlarge_moon = enlarge_moon
         self.star_base_radius = star_base_radius
         self.vmag_limit = vmag_limit
+
+        # --- added: clouds alpha
+        self.clouds_alpha: float = max(0.0, min(1.0, clouds_alpha))
+        if delta_t.total_seconds() != 0.0:
+            self.clouds_alpha = 0.0  # can not obtain time-shifted cloud data, but just the current one
 
         lat, lon, tz_name = city_data
         self.viewer_data = ViewerData(
@@ -114,7 +122,39 @@ class SkyWindow(DraggableWindow):
         self._sky_disc_base_size: int = 1024
         self._sky_disc_image: Optional[QImage] = None
 
+        # --- added: CloudDisc & timers/flags/cache
+        self._cloud_img: Optional[QImage] = None
+        self._cloud_meta: Optional[dict] = None
+        self._is_cloud_update_running: bool = False
+        self._cloud_update_pending: bool = False
+        self._last_cloud_az: Optional[float] = None
+        self._last_cloud_time_utc: Optional[datetime] = None
+
+        self._cloud_update_timer = QTimer(self)
+        self._cloud_update_timer.setInterval(CLOUD_UPDATE_INTERVAL * 1000)
+        self._cloud_update_timer.timeout.connect(lambda: self.start_background_cloud_update(reason="timer"))
+
+        self._clouddisc = None
+        clouddisc_config = CloudDiscConfig(
+            cache_dir=CACHE_PATH,
+            sat_priority=("AUTO",),
+            bt_warm_k=310.0,
+            bt_cold_k=190.0,
+            gamma=1.6,
+            alt_min_deg=-2.0,
+            search_back_minutes=120,
+            edge_antialias=False,
+        )
+        try:
+            self._clouddisc = CloudDisc(clouddisc_config)
+        except Exception as e:
+            print(f"[warn] CloudDisc init failed: {e}", file=sys.stderr)
+
+        # 初期ロード開始
         self.start_background_sky_data_update(is_initial_load=True)
+        # 雲も初回生成（非同期）
+        if self._clouddisc and self.clouds_alpha > 0.0:
+            self.start_background_cloud_update(reason="initial")
 
     def _add_hamburger_menu(self):
         """Adds a hamburger menu to the window."""
@@ -232,7 +272,11 @@ class SkyWindow(DraggableWindow):
 
         render_draw.draw_radial_background(painter, self.rect(), geometry)
 
+        # 背景の空色ディスク
         self._draw_sky_disc_scaled(painter, geometry)
+
+        # --- added: clouds disc (over the sky color, under stars)
+        self._draw_clouds_scaled(painter, geometry)
 
         render_draw.draw_sky_reference_lines(painter, geometry, self.celestial_data)
         render_draw.draw_direction_labels(painter, geometry, self.viewer_data.view_center, self.text_font)
@@ -269,16 +313,32 @@ class SkyWindow(DraggableWindow):
 
         painter.drawImage(QRect(x, y, w, h), img)
 
+    # --- added: draw clouds
+    def _draw_clouds_scaled(self, painter: QPainter, geometry):
+        """Draws the scaled cloud disc with alpha."""
+        if self._cloud_img is None or self.clouds_alpha <= 0.0:
+            return
+
+        x = int(geometry.center[0] - geometry.radius)
+        y = int(geometry.center[1] - geometry.radius)
+        w = h = int(geometry.radius * 2)
+
+        painter.save()
+        painter.setOpacity(self.clouds_alpha)
+        painter.drawImage(QRect(x, y, w, h), self._cloud_img)
+        painter.restore()
+
     def _on_sky_data_calculated(self, payload):
         """Handles the sky data calculated signal."""
         self.set_sky_data(payload["celestial"])
         self._sky_disc_image = payload["sky_disc"]
 
         # Emit the "initial_data_loaded" signal only once:
-        # use the timer's inactive state as an indicator that this is the first load.
-        # This ensures the splash screen is closed and the main window is shown only once.
         if not self._sky_data_update_timer.isActive():
             self._sky_data_update_timer.start(SKY_UPDATE_INTERVAL * 1000)
+            # --- start clouds periodic timer once window is up
+            if self._clouddisc and self.clouds_alpha > 0.0 and not self._cloud_update_timer.isActive():
+                self._cloud_update_timer.start()
             self.initial_data_loaded.emit()
 
         self._is_sky_data_calculation_running = False
@@ -311,7 +371,7 @@ class SkyWindow(DraggableWindow):
                 horizon_points=horizon_points,
             )
 
-            if DEBUG_ECLIPSE:
+            if DEBUG_ECLIPSES:
                 for body in planets:
                     if body.name == "sun" and body.solar_eclipse_info.is_eclipse:
                         print("Info: Solar eclipse detected")
@@ -345,7 +405,6 @@ class SkyWindow(DraggableWindow):
         except Exception as e:
             print(f"Error in background update thread: {e}", file=sys.stderr)
             import traceback
-
             traceback.print_exc()
 
     def start_background_sky_data_update(self, is_initial_load: bool = False) -> bool:
@@ -363,13 +422,77 @@ class SkyWindow(DraggableWindow):
         thread.start()
         return True
 
+    # --- added: PIL -> QImage helper
+    @staticmethod
+    def _pil_to_qimage_rgba(pil_img: "Image.Image") -> QImage:
+        """Convert a Pillow image (any mode) to QImage (RGBA8888)."""
+        if pil_img.mode != "RGBA":
+            pil_img = pil_img.convert("RGBA")
+        w, h = pil_img.size
+        buf = pil_img.tobytes("raw", "RGBA")
+        qimg = QImage(buf, w, h, w * 4, QImage.Format.Format_RGBA8888)
+        return qimg.copy()  # deep copy to own the buffer
+
+    # --- added: clouds background worker
+    def start_background_cloud_update(self, reason: str = "manual"):
+        """Kick a background cloud generation if conditions allow."""
+        if not (self._clouddisc and self.clouds_alpha > 0.0):
+            return
+
+        if self._is_cloud_update_running:
+            # 連打時の取りこぼしを避けるためペンディングを立てる
+            self._cloud_update_pending = True
+            return
+
+        self._is_cloud_update_running = True
+        t = threading.Thread(target=self._update_cloud_in_background, args=(reason,))
+        t.daemon = True
+        t.start()
+
+    def _update_cloud_in_background(self, reason: str):
+        """Generate cloud disc via CloudDisc in a worker thread."""
+        try:
+            lat, lon = self.viewer_data.location
+            alt, az = self.viewer_data.view_center
+
+            print(f"[clouds] updating (reason={reason}, alt={alt:.1f}, az={az:.1f})")
+
+            # CloudDisc は内部で時刻を選んでくれる render_now を利用
+            pil_img, meta = self._clouddisc.render_now(
+                lat=lat, lon=lon, alt=float(alt), az=float(az), radius_px=self._sky_disc_base_size
+            )
+
+            qimg = self._pil_to_qimage_rgba(pil_img)
+
+            # 反映
+            self._cloud_img = qimg
+            self._cloud_meta = meta
+            self._last_cloud_az = az
+            self._last_cloud_time_utc = datetime.now(timezone.utc)
+
+            # 画面更新
+            self.update()
+        except Exception as e:
+            print(f"[clouds] update failed: {e}", file=sys.stderr)
+            import traceback
+            traceback.print_exc()
+        finally:
+            self._is_cloud_update_running = False
+            # ペンディングが立っていたらもう一度キック
+            if self._cloud_update_pending:
+                self._cloud_update_pending = False
+                self.start_background_cloud_update(reason="pending")
+
     def _rotate_view(self, d_alt: float = 0.0, d_az: float = 0.0):
         """Rotates the view."""
         alt, az = self.viewer_data.view_center
-        alt = max(0.0, min(90.0, alt + d_alt))
-        az = (az + d_az) % 360.0
-        self.viewer_data.view_center = (alt, az)
+        new_alt = max(0.0, min(90.0, alt + d_alt))
+        new_az = (az + d_az) % 360.0
+        self.viewer_data.view_center = (new_alt, new_az)
+
         self.request_sky_data_update()
+
+        self.start_background_cloud_update(reason="az-change")
 
     def keyPressEvent(self, event: QKeyEvent):
         """Handles key press events."""

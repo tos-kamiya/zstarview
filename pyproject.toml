@@ -28,6 +28,14 @@ dependencies = [
   "numpy",
   "Pillow>=10",
   "polars",
+
+  "boto3",
+  "botocore",
+  "xarray",
+  "h5netcdf",
+  "h5py",
+  "pyproj",
+  "satpy",
 ]
 
 [project.urls]

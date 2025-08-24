@@ -14,11 +14,10 @@ from PySide6.QtGui import (
 )
 from PySide6.QtGui import QGuiApplication
 
-from appdirs import user_cache_dir
-
 from .paths import (
     APP_ID,
     APP_AUTHOR,
+    CACHE_PATH,
     CITY_COORD_FILE,
     CITY_ADMIN1_CODES_FILE,
     STARS_CSV_FILE,
@@ -33,8 +32,8 @@ from .utils.resolve_city import load_admin1_names, resolve_city, resolve_city_by
 from .utils.timezone_parser import parse_tz_string
 
 # --- Helper Functions ---
-cache_path = Path(user_cache_dir(appname=APP_ID, appauthor=APP_AUTHOR))
-cache_path.mkdir(parents=True, exist_ok=True)
+_cache_path = Path(CACHE_PATH)
+_cache_path.mkdir(parents=True, exist_ok=True)
 
 
 def _parse_azimuth(value: str) -> float:

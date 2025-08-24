@@ -1,6 +1,7 @@
 import os
 import os.path
 
+from appdirs import user_cache_dir
 
 # Application identifiers
 APP_ID = "zstarview"
@@ -17,6 +18,7 @@ CITY_COORD_FILE = os.path.join(_dir, "data", "cities1000.txt")
 CITY_ADMIN1_CODES_FILE = os.path.join(_dir, "data", "admin1CodesASCII.txt")
 STARS_CSV_FILE = os.path.join(_dir, "data", "stars.csv")
 APP_ICON_FILE = os.path.join(_dir, "data", "icon-256.png")
+CACHE_PATH = user_cache_dir(appname=APP_ID, appauthor=APP_AUTHOR)
 
 # Window UI
 GUI_MENU_TEXT_COLOR = (128, 128, 128)
@@ -34,7 +36,7 @@ CELESTIAL_EQUATOR_COLOR = (139, 139, 136)
 ECLIPTIC_COLOR = (236, 173, 2)
 
 SKY_UPDATE_INTERVAL = 3 * 60  # seconds
-
+CLOUD_UPDATE_INTERVAL = 10 * 60  # seconds
 
 # Rendering / FOV
 FIELD_OF_VIEW_DEG = 230
