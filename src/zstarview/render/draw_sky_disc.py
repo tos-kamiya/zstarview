@@ -300,12 +300,9 @@ def draw_sky_color_disc(
     ip.fillRect(0, 0, 2 * R, 2 * R, QColor(0, 0, 0, 255))
 
     # Clamp to avoid zenith singularity
-    EPS = 0.01
+    EPS = 1e-3
     alt_c, az_c = view_center
-    if alt_c <= -90.0:
-        alt_c = -(90.0 - EPS)
-    if alt_c >= 90.0:
-        alt_c = 90.0 - EPS
+    alt_c = max(-(90.0 - EPS), min(90.0 - EPS, alt_c))
 
     # The outer circumference is always 90° to match the normalization spec
     theta_max = 90.0

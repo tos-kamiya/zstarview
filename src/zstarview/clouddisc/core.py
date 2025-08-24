@@ -26,6 +26,9 @@ class CloudDisc:
         """現在UTC(10分丸め)の雲量LA画像を 2R×2R で返す"""
         when = self._now_rounded()
 
+        EPS = 1e-3
+        alt = max(-(90.0 - EPS), min(90.0 - EPS, alt))
+
         # 1) 衛星の自動選択 or 優先順
         sat = pick_satellite(lat, lon, priority=self.cfg.sat_priority)
 
@@ -47,7 +50,7 @@ class CloudDisc:
         try:
             lon_grid, lat_grid, mask_inside = az_project_lonlat_grid(
                 lat0=lat, lon0=lon, alt0=alt, az0=az,
-                radius_px=radius_px, cloud_shell_km=6371.0+7.0,  # Earth+7km
+                radius_px=radius_px + 1, cloud_shell_km=6371.0+7.0,  # Earth+7km
                 alt_min_deg=self.cfg.alt_min_deg
             )
         except Exception as e:
@@ -56,6 +59,7 @@ class CloudDisc:
         # 5) サンプル→BT→LA
         #    サンプルは NaN を許容。mask_inside で円内のみ使う
         bt = sampler(lon_grid, lat_grid)  # np.float32 / NaN含む
+
         img = bt_to_LA(
             bt=bt, mask_inside=mask_inside,
             bt_warm=self.cfg.bt_warm_k, bt_cold=self.cfg.bt_cold_k,

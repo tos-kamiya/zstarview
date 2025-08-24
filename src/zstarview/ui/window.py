@@ -4,7 +4,7 @@ import sys
 from typing import Optional, Tuple
 
 from PySide6.QtCore import Qt, QPoint, QTimer, QRect, Signal
-from PySide6.QtGui import QFont, QFontDatabase, QIcon, QPainter, QImage
+from PySide6.QtGui import QFont, QFontDatabase, QIcon, QImage, QPainter, QPainterPath
 from PySide6.QtGui import QAction, QKeyEvent, QMouseEvent, QPaintEvent, QResizeEvent
 from PySide6.QtWidgets import QMainWindow, QSizeGrip, QApplication, QPushButton, QMenu
 
@@ -12,8 +12,6 @@ import astropy
 import polars as pl
 
 from ..clouddisc import CloudDisc, CloudDiscConfig
-
-from PIL import Image  # Pillow
 
 from ..__about__ import __version__
 from ..astro import (
@@ -32,6 +30,7 @@ from ..paths import SKY_UPDATE_INTERVAL, CLOUD_UPDATE_INTERVAL
 from ..render import draw as render_draw
 from ..render import draw_sky_disc
 from ..types import CelestialData, ViewerData
+from ..utils.qt import pil_to_qimage
 
 DEBUG_ECLIPSES = True
 
@@ -51,7 +50,7 @@ class SkyWindow(DraggableWindow):
         enlarge_moon: bool = False,
         star_base_radius: float = 8.0,
         vmag_limit: float = 6.0,
-        clouds_alpha: float = 0.5,
+        clouds_alpha: float = 1.0,
     ):
         """Initializes the SkyWindow."""
         super().__init__()
@@ -123,6 +122,7 @@ class SkyWindow(DraggableWindow):
         self._sky_disc_image: Optional[QImage] = None
 
         # --- added: CloudDisc & timers/flags/cache
+        self._cloud_base_size: int = 128
         self._cloud_img: Optional[QImage] = None
         self._cloud_meta: Optional[dict] = None
         self._is_cloud_update_running: bool = False
@@ -143,7 +143,7 @@ class SkyWindow(DraggableWindow):
             gamma=1.6,
             alt_min_deg=-2.0,
             search_back_minutes=120,
-            edge_antialias=False,
+            edge_antialias=True,
         )
         try:
             self._clouddisc = CloudDisc(clouddisc_config)
@@ -325,6 +325,9 @@ class SkyWindow(DraggableWindow):
 
         painter.save()
         painter.setOpacity(self.clouds_alpha)
+        path = QPainterPath()
+        path.addEllipse(QRect(x, y, w, h))
+        painter.setClipPath(path)
         painter.drawImage(QRect(x, y, w, h), self._cloud_img)
         painter.restore()
 
@@ -422,18 +425,6 @@ class SkyWindow(DraggableWindow):
         thread.start()
         return True
 
-    # --- added: PIL -> QImage helper
-    @staticmethod
-    def _pil_to_qimage_rgba(pil_img: "Image.Image") -> QImage:
-        """Convert a Pillow image (any mode) to QImage (RGBA8888)."""
-        if pil_img.mode != "RGBA":
-            pil_img = pil_img.convert("RGBA")
-        w, h = pil_img.size
-        buf = pil_img.tobytes("raw", "RGBA")
-        qimg = QImage(buf, w, h, w * 4, QImage.Format.Format_RGBA8888)
-        return qimg.copy()  # deep copy to own the buffer
-
-    # --- added: clouds background worker
     def start_background_cloud_update(self, reason: str = "manual"):
         """Kick a background cloud generation if conditions allow."""
         if not (self._clouddisc and self.clouds_alpha > 0.0):
@@ -459,10 +450,10 @@ class SkyWindow(DraggableWindow):
 
             # CloudDisc は内部で時刻を選んでくれる render_now を利用
             pil_img, meta = self._clouddisc.render_now(
-                lat=lat, lon=lon, alt=float(alt), az=float(az), radius_px=self._sky_disc_base_size
+                lat=lat, lon=lon, alt=float(alt), az=float(az), radius_px=self._cloud_base_size
             )
 
-            qimg = self._pil_to_qimage_rgba(pil_img)
+            qimg = pil_to_qimage(pil_img)
 
             # 反映
             self._cloud_img = qimg
