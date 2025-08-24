@@ -122,9 +122,9 @@ def get_sun_color(sun_alt_deg: float) -> np.ndarray:
     horizon_color = np.array([1.0, 0.8, 0.4])  # Color at horizon (orange)
     night_color = np.array([0.01, 0.02, 0.05])  # Night color (dark blue)
 
-    # Normalize sun altitude from -20 degrees (sunset) to 90 degrees (zenith) to a 0-1 range
-    t = np.clip((sun_alt_deg + 20.0) / 110.0, 0.0, 1.0)
-    t = math.pow(t, 0.8)
+    # Normalize sun altitude from -2 degrees (sunset) to 90 degrees (zenith) to a 0-1 range
+    t = np.clip((sun_alt_deg - 2.0) / 92.0, 0.0, 1.0)
+    t = math.pow(t, 0.4)
 
     # Daytime color (horizon to zenith)
     day_color = _lerp_color(horizon_color, zenith_color, t)
@@ -182,7 +182,7 @@ def get_sky_color(view_altaz: Tuple[float, float], sun_altaz: Tuple[float, float
 
     # White mixing near the horizon
     # Higher turbidity increases the amount of white mixed in.
-    horizon_k = 0.30 * (0.8 + 0.6 * tau)
+    horizon_k = 0.25 * (0.8 + 0.6 * tau)
     horizon_mix = (1.0 - t) * horizon_k
 
     # Twilight correction (smooth transition -10..0°)
