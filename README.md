@@ -80,7 +80,7 @@ The `-Z` (azimuth) and `-A` (altitude) options specify the center of the display
 By default, `-Z 180` (facing south) and `-A 90` (zenith) are used.
 In this view, the bottom of the screen is south, the left side is east, and the display is a circular view looking straight up toward the zenith.
 
-For example, setting `-Z 90` (facing east) and `-A 10` (altitude 10°, i.e., looking 10° above the horizon)
+For example, setting `-Z 90` (facing east) and `-A 5` (altitude 5°, i.e., looking 5° above the horizon)
 will produce a roughly semicircular sky view.
 
 → This will capture the eastern sky showing the Summer Triangle (Vega, Altair, Deneb) [<img width="40px" src="docs/images/screenshot2t.png" />](docs/images/screenshot2.png)
