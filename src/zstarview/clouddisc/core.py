@@ -22,7 +22,12 @@ class CloudDisc:
         t = dt.datetime.now(dt.timezone.utc).replace(second=0, microsecond=0)
         return t.replace(minute=(t.minute // 10) * 10)
 
-    def render_now(self, lat: float, lon: float, alt: float, az: float, radius_px: int, brightness_as_alpha: bool = False):
+    def render_now(
+        self,
+        lat: float, lon: float, alt: float, az: float, radius_px: int,
+        fov_deg: float = 90.0,
+        brightness_as_alpha: bool = False,
+    ):
         """現在UTC(10分丸め)の雲量LA画像を 2R×2R で返す"""
         when = self._now_rounded()
 
@@ -48,25 +53,22 @@ class CloudDisc:
         # 3) (lon,lat)->BT[K] のサンプラ作成
         sampler = build_bt_sampler(da, sub_lon)
 
-        # 4) AZ投影で (2R×2R) の lon/lat グリッドを作る
-        try:
-            lon_grid, lat_grid, mask_inside = az_project_lonlat_grid(
-                lat0=lat, lon0=lon, alt0=alt, az0=az,
-                radius_px=radius_px + 1, cloud_shell_km=6371.0+5.0,  # Earth+5km
-                alt_min_deg=self.cfg.alt_min_deg
-            )
-        except Exception as e:
-            raise RenderError(f"Projection failed: {e}") from e
+        lon_grid, lat_grid, mask_inside = az_project_lonlat_grid(
+            lat0=lat, lon0=lon, alt0=alt, az0=az,
+            radius_px=radius_px + 1,
+            cloud_shell_km=6371.0+5.0,
+            alt_min_deg=self.cfg.alt_min_deg,
+            fov_deg=fov_deg,
+        )
 
-        # 5) サンプル→BT→LA
-        #    サンプルは NaN を許容。mask_inside で円内のみ使う
-        bt = sampler(lon_grid, lat_grid)  # np.float32 / NaN含む
+        bt = sampler(lon_grid, lat_grid)
 
         img = bt_to_LA(
-            bt=bt, mask_inside=mask_inside,
+            bt=bt,
+            mask_inside=mask_inside,
             bt_warm=self.cfg.bt_warm_k, bt_cold=self.cfg.bt_cold_k,
+            gamma=self.cfg.gamma,
             brightness_as_alpha=brightness_as_alpha,
-            gamma=self.cfg.gamma, edge_antialias=self.cfg.edge_antialias
         )
 
         meta = CloudMeta(

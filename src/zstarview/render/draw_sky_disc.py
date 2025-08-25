@@ -119,12 +119,12 @@ def get_sun_color(sun_alt_deg: float) -> np.ndarray:
     """
     # Define colors
     zenith_color = np.array([0.3, 0.48, 0.96])  # Color at zenith (blue)
-    horizon_color = np.array([1.0, 0.8, 0.4])  # Color at horizon (orange)
+    horizon_color = np.array([1.0, 0.61, 0.32])  # Color at horizon (orange)
     night_color = np.array([0.01, 0.02, 0.05])  # Night color (dark blue)
 
-    # Normalize sun altitude from -2 degrees (sunset) to 90 degrees (zenith) to a 0-1 range
-    t = np.clip((sun_alt_deg - 2.0) / 92.0, 0.0, 1.0)
-    t = math.pow(t, 0.4)
+    # Normalize sun altitude from -7 degrees (sunset) to 90 degrees (zenith) to a 0-1 range
+    t = np.clip((sun_alt_deg - 7.0) / 97.0, 0.0, 1.0)
+    t = math.pow(t, 0.6)
 
     # Daytime color (horizon to zenith)
     day_color = _lerp_color(horizon_color, zenith_color, t)
@@ -239,6 +239,7 @@ def draw_sky_color_disc(
     saturation: float = 1.2,
     alpha: float = 1.0,
     eclipse_factor: float = 1.0,
+    fov_deg: float = 90.0,
     # --- Sampling density (knobs for quality vs. speed) ---
     sample_step_px: int = 10,  # Target pixel interval (basis for determining Δθ)
     min_ang_samples: int = 8,  # Minimum number of samples for each ring
@@ -305,7 +306,7 @@ def draw_sky_color_disc(
     alt_c = max(-(90.0 - EPS), min(90.0 - EPS, alt_c))
 
     # The outer circumference is always 90° to match the normalization spec
-    theta_max = 90.0
+    theta_max = fov_deg
 
     # Function to "measure" the local radius r_px(θ)
     def screen_radius_px(theta_deg: float) -> float:

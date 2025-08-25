@@ -140,7 +140,7 @@ class SkyWindow(DraggableWindow):
             sat_priority=("AUTO",),
             bt_warm_k=310.0,
             bt_cold_k=190.0,
-            gamma=1.6,
+            gamma=1.2,
             alt_min_deg=-2.0,
             search_back_minutes=120,
             edge_antialias=True,
@@ -401,6 +401,7 @@ class SkyWindow(DraggableWindow):
                     sun_altaz,
                     alpha=self.sky_disc_alpha,
                     eclipse_factor=ef,
+                    fov_deg=93,
                 )
 
             payload = {"celestial": celestial_data, "sky_disc": sky_disc_img}
@@ -446,12 +447,15 @@ class SkyWindow(DraggableWindow):
             lat, lon = self.viewer_data.location
             alt, az = self.viewer_data.view_center
 
-            print(f"Updating clouds...")
+            if reason == "initial":
+                print("Fetching initial could data...")
+            else:
+                print("Updating cloud data...")
 
             # CloudDisc は内部で時刻を選んでくれる render_now を利用
             pil_img, meta = self._clouddisc.render_now(
                 lat=lat, lon=lon, alt=float(alt), az=float(az), radius_px=self._cloud_base_size,
-                brightness_as_alpha=True,
+                fov_deg=93, brightness_as_alpha=True,
             )
 
             qimg = pil_to_qimage(pil_img)
