@@ -1,8 +1,17 @@
+import warnings
+warnings.filterwarnings(
+    "ignore",
+    message="You will likely lose important projection information when converting to a PROJ string",
+    category=UserWarning,
+    module="pyproj.crs.crs",
+)
+
+import sys
 import numpy as np
 import xarray as xr
 from pyproj import Transformer, CRS
 
-def build_bt_sampler(da: xr.DataArray):
+def build_bt_sampler(da: xr.DataArray, sub_lon: float):
     """
     geostationary 固定格子の DataArray(BT[K]) に対して、
     (lon, lat) -> BT[K] を返すベクトル化サンプラを構築する。
@@ -17,31 +26,9 @@ def build_bt_sampler(da: xr.DataArray):
       3) 範囲外は NaN、範囲内は data[iy, ix] を返す
     """
     area = da.attrs.get("area", None)
-    if area is None:
-        # 互換フォールバック: 2D lon/lat がある場合のみ、簡易最近傍
-        if "lon" in da.coords and "lat" in da.coords and da.lon.ndim == 2 and da.lat.ndim == 2:
-            lon2 = da.lon.values
-            lat2 = da.lat.values
-            data = np.asarray(da.values, dtype=np.float32)
-            flat = np.column_stack([lon2.ravel(), lat2.ravel()])
-            data_flat = data.ravel()
-
-            def sampler(lon, lat):
-                xy = np.column_stack([lon.ravel(), lat.ravel()])
-                out = np.full(lon.size, np.nan, dtype=np.float32)
-                step = 20000
-                for i0 in range(0, xy.shape[0], step):
-                    blk = xy[i0:i0+step]
-                    d2 = (flat[:, 0, None] - blk[:, 0])**2 + (flat[:, 1, None] - blk[:, 1])**2
-                    idx = np.argmin(d2, axis=0)
-                    out[i0:i0+step] = data_flat[idx]
-                return out.reshape(lon.shape)
-            return sampler
-
-        raise RuntimeError(
-            "BT sampler: 'area' attribute not present and no 2D lon/lat coords; "
-            "ensure you open data with Satpy readers (abi_l2_nc / ahi_hsd / ahi_l2_nc)."
-        )
+    if area is not None:
+        crs = getattr(area, "crs", None) or CRS.from_dict(area.proj_dict)
+        sub_lon = float(crs.to_dict().get("lon_0", sub_lon))  # 既定値は上で入れた -75.2/-137.0
 
     # --- area から投影と格子情報を取得 ---
     # extent の順序は (min_x, min_y, max_x, max_y)

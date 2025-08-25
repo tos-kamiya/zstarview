@@ -22,7 +22,7 @@ class CloudDisc:
         t = dt.datetime.now(dt.timezone.utc).replace(second=0, microsecond=0)
         return t.replace(minute=(t.minute // 10) * 10)
 
-    def render_now(self, lat: float, lon: float, alt: float, az: float, radius_px: int):
+    def render_now(self, lat: float, lon: float, alt: float, az: float, radius_px: int, brightness_as_alpha: bool = False):
         """現在UTC(10分丸め)の雲量LA画像を 2R×2R で返す"""
         when = self._now_rounded()
 
@@ -33,10 +33,12 @@ class CloudDisc:
         sat = pick_satellite(lat, lon, priority=self.cfg.sat_priority)
 
         # 2) プロバイダでデータ取得（BT[K]の DataArray と投影情報を得る）
+        sat_used = sat
         if sat in ("G16", "G18"):
-            da, used_time, src_paths = self.goes.fetch_bt_c13(sat=sat, when_utc=when)
+            res, sat_used = self.goes.fetch_bt_c13_with_failover(sat=sat, when_utc=when)
+            da, used_time, src_paths = res
             product = "CMIPF-C13"
-            sub_lon = -75.2 if sat=="G16" else -137.0
+            sub_lon = -75.2 if (sat_used == "G16") else -137.0
         elif sat == "HIMAWARI":
             da, used_time, src_paths, sub_lon = self.hima.fetch_bt_c13(when_utc=when)  # sub_lon ~ 140.7
             product = "HSD-B13" if len(src_paths) > 1 else "ISatSS-B13"
@@ -44,13 +46,13 @@ class CloudDisc:
             raise VisibilityError("No suitable satellite")
 
         # 3) (lon,lat)->BT[K] のサンプラ作成
-        sampler = build_bt_sampler(da)
+        sampler = build_bt_sampler(da, sub_lon)
 
         # 4) AZ投影で (2R×2R) の lon/lat グリッドを作る
         try:
             lon_grid, lat_grid, mask_inside = az_project_lonlat_grid(
                 lat0=lat, lon0=lon, alt0=alt, az0=az,
-                radius_px=radius_px + 1, cloud_shell_km=6371.0+7.0,  # Earth+7km
+                radius_px=radius_px + 1, cloud_shell_km=6371.0+5.0,  # Earth+5km
                 alt_min_deg=self.cfg.alt_min_deg
             )
         except Exception as e:
@@ -63,10 +65,11 @@ class CloudDisc:
         img = bt_to_LA(
             bt=bt, mask_inside=mask_inside,
             bt_warm=self.cfg.bt_warm_k, bt_cold=self.cfg.bt_cold_k,
+            brightness_as_alpha=brightness_as_alpha,
             gamma=self.cfg.gamma, edge_antialias=self.cfg.edge_antialias
         )
 
         meta = CloudMeta(
-            satellite=sat, product=product, time_utc=used_time, src_paths=src_paths
+            satellite=sat_used, product=product, time_utc=used_time, src_paths=src_paths
         )
         return img, meta

@@ -47,10 +47,10 @@ class SkyWindow(DraggableWindow):
         star_catalog: pl.DataFrame,
         delta_t: timedelta = timedelta(days=0, hours=0),
         sky_disc_alpha: float = 0.3,
+        cloud_disc_alpha: float = 0.6,
         enlarge_moon: bool = False,
         star_base_radius: float = 8.0,
         vmag_limit: float = 6.0,
-        clouds_alpha: float = 1.0,
     ):
         """Initializes the SkyWindow."""
         super().__init__()
@@ -64,9 +64,9 @@ class SkyWindow(DraggableWindow):
         self.vmag_limit = vmag_limit
 
         # --- added: clouds alpha
-        self.clouds_alpha: float = max(0.0, min(1.0, clouds_alpha))
+        self.cloud_disc_alpha: float = max(0.0, min(1.0, cloud_disc_alpha))
         if delta_t.total_seconds() != 0.0:
-            self.clouds_alpha = 0.0  # can not obtain time-shifted cloud data, but just the current one
+            self.cloud_disc_alpha = 0.0  # can not obtain time-shifted cloud data, but just the current one
 
         lat, lon, tz_name = city_data
         self.viewer_data = ViewerData(
@@ -153,7 +153,7 @@ class SkyWindow(DraggableWindow):
         # 初期ロード開始
         self.start_background_sky_data_update(is_initial_load=True)
         # 雲も初回生成（非同期）
-        if self._clouddisc and self.clouds_alpha > 0.0:
+        if self._clouddisc and self.cloud_disc_alpha > 0.0:
             self.start_background_cloud_update(reason="initial")
 
     def _add_hamburger_menu(self):
@@ -316,7 +316,7 @@ class SkyWindow(DraggableWindow):
     # --- added: draw clouds
     def _draw_clouds_scaled(self, painter: QPainter, geometry):
         """Draws the scaled cloud disc with alpha."""
-        if self._cloud_img is None or self.clouds_alpha <= 0.0:
+        if self._cloud_img is None or self.cloud_disc_alpha <= 0.0:
             return
 
         x = int(geometry.center[0] - geometry.radius)
@@ -324,7 +324,7 @@ class SkyWindow(DraggableWindow):
         w = h = int(geometry.radius * 2)
 
         painter.save()
-        painter.setOpacity(self.clouds_alpha)
+        painter.setOpacity(self.cloud_disc_alpha)
         path = QPainterPath()
         path.addEllipse(QRect(x, y, w, h))
         painter.setClipPath(path)
@@ -340,7 +340,7 @@ class SkyWindow(DraggableWindow):
         if not self._sky_data_update_timer.isActive():
             self._sky_data_update_timer.start(SKY_UPDATE_INTERVAL * 1000)
             # --- start clouds periodic timer once window is up
-            if self._clouddisc and self.clouds_alpha > 0.0 and not self._cloud_update_timer.isActive():
+            if self._clouddisc and self.cloud_disc_alpha > 0.0 and not self._cloud_update_timer.isActive():
                 self._cloud_update_timer.start()
             self.initial_data_loaded.emit()
 
@@ -427,7 +427,7 @@ class SkyWindow(DraggableWindow):
 
     def start_background_cloud_update(self, reason: str = "manual"):
         """Kick a background cloud generation if conditions allow."""
-        if not (self._clouddisc and self.clouds_alpha > 0.0):
+        if not (self._clouddisc and self.cloud_disc_alpha > 0.0):
             return
 
         if self._is_cloud_update_running:
@@ -446,11 +446,12 @@ class SkyWindow(DraggableWindow):
             lat, lon = self.viewer_data.location
             alt, az = self.viewer_data.view_center
 
-            print(f"[clouds] updating (reason={reason}, alt={alt:.1f}, az={az:.1f})")
+            print(f"Updating clouds...")
 
             # CloudDisc は内部で時刻を選んでくれる render_now を利用
             pil_img, meta = self._clouddisc.render_now(
-                lat=lat, lon=lon, alt=float(alt), az=float(az), radius_px=self._cloud_base_size
+                lat=lat, lon=lon, alt=float(alt), az=float(az), radius_px=self._cloud_base_size,
+                brightness_as_alpha=True,
             )
 
             qimg = pil_to_qimage(pil_img)
@@ -464,7 +465,7 @@ class SkyWindow(DraggableWindow):
             # 画面更新
             self.update()
         except Exception as e:
-            print(f"[clouds] update failed: {e}", file=sys.stderr)
+            print(f"Warn: clouds update failed: {e}", file=sys.stderr)
             import traceback
             traceback.print_exc()
         finally:

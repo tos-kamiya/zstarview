@@ -105,10 +105,17 @@ def parse_args() -> argparse.Namespace:
         default=0.2,
         help=("Opacity of the simulated sky-color disc (0.0 - 1.0, default: 0.2). " "Set to 0.0 to disable sky-color rendering."),
     )
+    parser.add_argument(
+        "--cloud-opacity",
+        type=float,
+        default=0.4,
+        help=("Opacity of the cloud disc (0.0 - 1.0, default: 0.2). " "Set to 0.0 to disable cloud rendering."),
+    )
     return parser.parse_args()
 
 
 def main():
+    # TODO add cloud-cache clean-up feature
     """Main entry point for the star sky visualizer."""
     app = QApplication(sys.argv)
     app_name = "Zenith Star View"
@@ -174,8 +181,9 @@ def main():
     city_str = f"{city.cc}/{city.name}"
     print(f"City: {city_str}")
 
-    sky_opacity = min(1.0, max(0.0, args.sky_opacity))
     star_base_radius = max(2.0, args.star_base_radius)
+    sky_opacity = min(1.0, max(0.0, args.sky_opacity))
+    cloud_opacity = min(1.0, max(0.0, args.cloud_opacity))
 
     # --- Determine the time for calculation ---
     if args.datetime:
@@ -245,6 +253,7 @@ def main():
         star_catalog,
         delta_t,
         sky_disc_alpha=sky_opacity,
+        cloud_disc_alpha=cloud_opacity,
         enlarge_moon=args.enlarge_moon,
         star_base_radius=star_base_radius,
         vmag_limit=args.vmag_limit,

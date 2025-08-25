@@ -1,3 +1,11 @@
+import warnings
+warnings.filterwarnings(
+    "ignore",
+    message="invalid value encountered in log",
+    category=RuntimeWarning,
+    module="dask._task_spec",  # Satpyのdask実行パスで出る行をピンポイント抑制
+)
+
 import numpy as np
 from PIL import Image
 
@@ -9,9 +17,14 @@ def _bt_to_weight(bt, bt_warm, bt_cold):
     w = np.nan_to_num(w, nan=0.0, posinf=1.0, neginf=0.0)
     return w
 
-def bt_to_LA(bt: np.ndarray, mask_inside: np.ndarray,
-             bt_warm: float, bt_cold: float, gamma: float,
-             edge_antialias: bool=False):
+def bt_to_LA(
+    bt: np.ndarray,
+    mask_inside: np.ndarray,
+    bt_warm: float, bt_cold: float,
+    gamma: float,
+    brightness_as_alpha: bool = False,
+    edge_antialias: bool = False
+):
     """BT[K]→グレイスケール(L)と円形アルファ(A)のLA画像"""
     w = _bt_to_weight(bt, bt_warm, bt_cold)
     if gamma is not None and gamma != 1.0:
@@ -49,5 +62,8 @@ def bt_to_LA(bt: np.ndarray, mask_inside: np.ndarray,
         MAX_ALPHA = 220
         A[ring] = np.minimum(gauss[ring] * MAX_ALPHA, 255.0).astype(np.uint8)
 
+    if brightness_as_alpha:
+        la = np.dstack([A, L])
+    else:
         la = np.dstack([L, A])
     return Image.fromarray(la, mode="LA")
