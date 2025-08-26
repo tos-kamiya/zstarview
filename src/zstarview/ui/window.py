@@ -37,38 +37,68 @@ from ..utils.qt import pil_to_qimage, qimage_to_pil
 DEBUG_ECLIPSES = True
 
 
-def tint_white_cloud_with_skyR_qimage(
+def tint_cloud_gray_with_skyR_qimage(
     sky_qimg: QImage,
-    cloud_white_alpha_qimg: QImage,
+    cloud_gray_qimg: QImage,
     factor: float = 0.3,
-    warm_rgb=(255, 220, 200)
+    warm_rgb=(255, 156, 82),
+    keep_alpha: bool = False,
 ) -> QImage:
     """
-    白+アルファの雲画像に、空のR成分で暖色を付加したレイヤを作る。
+    グレー雲画像(L=雲の濃さ)に、空画像のR成分で暖色をブレンドして着色する。
+    出力はRGBA (Aはデフォルト255)。Plus合成を想定。
+
+    Args:
+        sky_qimg: 背景の空(QImage)。Rチャンネルを参照する。
+        cloud_gray_qimg: 雲のグレー画像(QImage.Format_Grayscale8相当)。
+                         画素値0..255が雲の強さ(白=強)。
+        factor: 空の赤さ→暖色の寄り具合の係数。0..1くらいで調整。
+        warm_rgb: 暖色のRGB。白(255,255,255)とこの色の間を補間する。
+        keep_alpha: cloud_gray_qimgにαがあるならそれをAに使う（なければ255）。
+
+    Returns:
+        QImage (RGBA Premultiplied推奨)
     """
-    # QImage→PIL
-    cloud_white_alpha_qimg.save("tmp.png")
-    sky_pil   = qimage_to_pil(sky_qimg)
-    cloud_pil = qimage_to_pil(cloud_white_alpha_qimg).convert("LA")
-
+    # --- QImage -> PIL
+    sky_pil   = qimage_to_pil(sky_qimg).convert("RGB")
+    # cloudはLまたはLAどちらでもOKにする
+    cloud_pil = qimage_to_pil(cloud_gray_qimg)
+    if cloud_pil.mode not in ("L", "LA"):
+        cloud_pil = cloud_pil.convert("LA")  # 保険
     Wc, Hc = cloud_pil.size
+
+    # 空を雲サイズへ
     sky_resized = sky_pil.resize((Wc, Hc), Image.BILINEAR)
-    sky_arr = np.array(sky_resized, dtype=np.uint8)
-    cloud_arr = np.array(cloud_pil, dtype=np.uint8)  # (H,W,2)
+    sky_arr = np.array(sky_resized, dtype=np.uint8)  # (H,W,3)
 
-    alpha = cloud_arr[..., 1]  # 雲の量
+    # 雲の強さ（L）。必要ならαも取得
+    if cloud_pil.mode == "LA":
+        L_arr = np.array(cloud_pil.getchannel("L"), dtype=np.uint8)
+        A_arr = np.array(cloud_pil.getchannel("A"), dtype=np.uint8)
+    else:
+        L_arr = np.array(cloud_pil, dtype=np.uint8)
+        A_arr = None
+
+    # ---- 色づけロジック ----
+    # 空のRを0..1に正規化し、factorでスケール → k: 白↔暖色の混合率
     sky_R = sky_arr[..., 0].astype(np.float32) / 255.0
+    k = np.clip(factor * sky_R, 0.0, 1.0)[..., None]  # (H,W,1)
 
-    k = np.clip(factor * sky_R, 0.0, 1.0)[..., None]
-    white = np.array([255,255,255], dtype=np.float32)
-    warm  = np.array(warm_rgb, dtype=np.float32)
+    white = np.array([255, 255, 255], dtype=np.float32)
+    warm  = np.array(warm_rgb,       dtype=np.float32)
+    base_color = white * (1.0 - k) + warm * k  # (H,W,3) 0..255
 
-    tinted_rgb = (white*(1-k) + warm*k).astype(np.uint8)
+    # 雲の明るさL(0..255)でスケール（L=0で黒、L=255でbase_colorそのまま）
+    Lf = (L_arr.astype(np.float32) / 255.0)[..., None]  # (H,W,1)
+    rgb = (base_color * Lf).clip(0, 255).astype(np.uint8)
 
-    out = np.zeros((Hc, Wc, 4), dtype=np.uint8)
-    out[...,0:3] = tinted_rgb
-    out[...,3]   = alpha
+    # アルファ：既定は255（合成時はsetOpacityやCompositionで調整）
+    if keep_alpha and A_arr is not None:
+        A = A_arr
+    else:
+        A = np.full((Hc, Wc), 255, dtype=np.uint8)
 
+    out = np.dstack([rgb, A])  # (H,W,4)
     tinted_pil = Image.fromarray(out, "RGBA")
     return pil_to_qimage(tinted_pil, premultiplied=True)
 
@@ -178,7 +208,7 @@ class SkyWindow(DraggableWindow):
             sat_priority=("AUTO",),
             bt_warm_k=310.0,
             bt_cold_k=190.0,
-            alt_min_deg=-1.0,
+            alt_min_deg=0.0,
             search_back_minutes=120,
         )
         try:
@@ -357,17 +387,18 @@ class SkyWindow(DraggableWindow):
 
         img = self._cloud_img
         if self._sky_disc_image is not None:
-            img = tint_white_cloud_with_skyR_qimage(self._sky_disc_image, self._cloud_img, factor=0.2)
+            img = tint_cloud_gray_with_skyR_qimage(self._sky_disc_image, self._cloud_img, factor=0.2)
 
         x = int(geometry.center[0] - geometry.radius)
         y = int(geometry.center[1] - geometry.radius)
         w = h = int(geometry.radius * 2)
 
-        painter.save()
-        painter.setOpacity(self.cloud_disc_alpha)
         path = QPainterPath()
         path.addEllipse(QRect(x, y, w, h))
+        painter.save()
         painter.setClipPath(path)
+        painter.setOpacity(self.cloud_disc_alpha)
+        painter.setCompositionMode(QPainter.CompositionMode_Plus)
         painter.drawImage(QRect(x, y, w, h), img)
         painter.restore()
 
@@ -495,8 +526,9 @@ class SkyWindow(DraggableWindow):
             # CloudDisc は内部で時刻を選んでくれる render_now を利用
             pil_img, meta = self._clouddisc.render_now(
                 lat=lat, lon=lon, alt=float(alt), az=float(az), radius_px=self._cloud_base_size,
-                mask_fov_deg=93, brightness_as_alpha=True,
+                mask_fov_deg=93,
             )
+            pil_img.save("tmp.png")  # debug
 
             qimg = pil_to_qimage(pil_img)
 

@@ -123,14 +123,14 @@ def get_sun_color(sun_alt_deg: float) -> np.ndarray:
     night_color = np.array([0.01, 0.02, 0.05])  # Night color (dark blue)
 
     # Normalize sun altitude from -7 degrees (sunset) to 90 degrees (zenith) to a 0-1 range
-    t = np.clip((sun_alt_deg - 7.0) / 97.0, 0.0, 1.0)
-    t = math.pow(t, 0.6)
+    t = np.clip((sun_alt_deg + 7.0) / 97.0, 0.0, 1.0)
+    t = math.pow(t, 0.4)
 
     # Daytime color (horizon to zenith)
     day_color = _lerp_color(horizon_color, zenith_color, t)
 
     # Mix day and night colors (to represent the rapid darkening near the horizon)
-    fade = np.clip((sun_alt_deg - 1.0) / 11.0, 0.0, 1.0)  # Fade between -1 and 10 degrees
+    fade = np.clip((sun_alt_deg + 2.0) / 12.0, 0.0, 1.0)  # Fade between -2 and -10 degrees
 
     return _lerp_color(night_color, day_color, fade)
 
