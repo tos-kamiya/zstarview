@@ -32,19 +32,39 @@ class VisibilityError(RuntimeError):
     ...
 
 
-class DataNotFoundError(RuntimeError):
+class CloudDiscError(RuntimeError):
+    """
+    Base class for all clouddisc exceptions.
+    Carries optional CloudMeta-like context for uniform handling.
+    """
+    def __init__(self, message: str = "", *, meta: "CloudMeta | None" = None):
+        super().__init__(message)
+        self.meta = meta
+
+
+class DataNotFoundError(CloudDiscError):
     """Raised when satellite data is not found for the requested time."""
 
     ...
+    # Inherits meta from CloudDiscError
 
 
-class DownloadError(RuntimeError):
+class DownloadError(CloudDiscError):
     """Raised when an error occurs while downloading satellite data."""
 
-    ...
+    def __init__(
+        self,
+        message: str = "",
+        *,
+        transient: bool = True,
+        meta: "CloudMeta | None" = None
+    ):
+        super().__init__(message, meta=meta)
+        self.transient = transient
 
 
 class RenderError(RuntimeError):
     """Raised when an error occurs during the rendering process."""
 
     ...
+    # Inherits meta from CloudDiscError

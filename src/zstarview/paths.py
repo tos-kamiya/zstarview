@@ -1,7 +1,7 @@
 import os
 import os.path
 
-from appdirs import user_cache_dir
+from appdirs import user_cache_dir, user_log_dir
 
 # Application identifiers
 APP_ID = "zstarview"
@@ -19,6 +19,7 @@ CITY_ADMIN1_CODES_FILE = os.path.join(_dir, "data", "admin1CodesASCII.txt")
 STARS_CSV_FILE = os.path.join(_dir, "data", "stars.csv")
 APP_ICON_FILE = os.path.join(_dir, "data", "icon-256.png")
 CACHE_PATH = user_cache_dir(appname=APP_ID, appauthor=APP_AUTHOR)
+LOG_PATH = user_log_dir(appname=APP_ID, appauthor=APP_AUTHOR)
 
 # Window UI
 GUI_MENU_TEXT_COLOR = (128, 128, 128)

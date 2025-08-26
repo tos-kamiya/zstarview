@@ -236,7 +236,7 @@ def main():
             for rec in recs:
                 print(f"{rec.cc}/{rec.name}, lat: {rec.lat:.6f}, lon: {rec.lon:.6f}, tz: {rec.tz}  (geonameid={rec.geonameid})")
     else:
-        recs = resolve_city(args.city, args.file, admin1_map)
+        recs = do_resolve_city(args.city, args.file, admin1_map)
         if recs:
             print(f"Found {len(recs)} match(es) for '{args.city}':")
             for rec in recs:

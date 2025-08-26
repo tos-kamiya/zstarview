@@ -1,3 +1,6 @@
+import logging
+logger = logging.getLogger(__name__)
+
 from datetime import datetime, timedelta, timezone
 import threading
 import sys
@@ -14,6 +17,7 @@ from PIL import Image
 import polars as pl
 
 from ..clouddisc import CloudDisc, CloudDiscConfig
+from ..clouddisc import VisibilityError, CloudDiscError, DataNotFoundError, DownloadError, RenderError
 
 from ..__about__ import __version__
 from ..astro import (
@@ -214,7 +218,7 @@ class SkyWindow(DraggableWindow):
         try:
             self._clouddisc = CloudDisc(clouddisc_config)
         except Exception as e:
-            print(f"[warn] CloudDisc init failed: {e}", file=sys.stderr)
+            logger.warning(f"CloudDisc init failed: {e}")
 
         # 初期ロード開始
         self.start_background_sky_data_update(is_initial_load=True)
@@ -387,7 +391,7 @@ class SkyWindow(DraggableWindow):
 
         img = self._cloud_img
         if self._sky_disc_image is not None:
-            img = tint_cloud_gray_with_skyR_qimage(self._sky_disc_image, self._cloud_img, factor=0.2)
+            img = tint_cloud_gray_with_skyR_qimage(self._sky_disc_image, self._cloud_img, factor=0.5)
 
         x = int(geometry.center[0] - geometry.radius)
         y = int(geometry.center[1] - geometry.radius)
@@ -421,7 +425,7 @@ class SkyWindow(DraggableWindow):
         """Request a celestial data/sky disc image update, but only if no update is currently running."""
         f = self.start_background_sky_data_update()
         if not f:
-            print("Warning: celestial data/sky disc image updating canceled.")
+            logger.warning("Warning: celestial data/sky disc image updating canceled.")
 
     def update_sky_data_in_background(self):
         """Updates the sky data in a background thread."""
@@ -448,9 +452,9 @@ class SkyWindow(DraggableWindow):
             if DEBUG_ECLIPSES:
                 for body in planets:
                     if body.name == "sun" and body.solar_eclipse_info.is_eclipse:
-                        print("Info: Solar eclipse detected")
+                        logger.debug("Solar eclipse detected")
                     if body.name == "moon" and body.lunar_eclipse_info.is_eclipse:
-                        print("Info: Lunar eclipse detected")
+                        logger.debug("Lunar eclipse detected")
 
             sun_altaz = None
             solar_eclipse_info = None
@@ -478,7 +482,7 @@ class SkyWindow(DraggableWindow):
             payload = {"celestial": celestial_data, "sky_disc": sky_disc_img}
             self.sky_data_calculated.emit(payload)
         except Exception as e:
-            print(f"Error in background update thread: {e}", file=sys.stderr)
+            logger.error(f"Error in background update thread: {e}")
             import traceback
             traceback.print_exc()
 
@@ -489,9 +493,9 @@ class SkyWindow(DraggableWindow):
         self._is_sky_data_calculation_running = True
 
         if is_initial_load:
-            print("Calculating initial sky data...")
+            logger.info("Calculating initial sky data...")
         else:
-            print("Updating sky data...")
+            logger.info("Updating sky data...")
         thread = threading.Thread(target=self.update_sky_data_in_background)
         thread.daemon = True
         thread.start()
@@ -519,29 +523,36 @@ class SkyWindow(DraggableWindow):
             alt, az = self.viewer_data.view_center
 
             if reason == "initial":
-                print("Fetching initial could data...")
+                logger.info("Fetching initial could data...")
             else:
-                print("Updating cloud data...")
+                logger.info("Updating cloud data...")
 
-            # CloudDisc は内部で時刻を選んでくれる render_now を利用
-            pil_img, meta = self._clouddisc.render_now(
-                lat=lat, lon=lon, alt=float(alt), az=float(az), radius_px=self._cloud_base_size,
-                mask_fov_deg=93,
-            )
-            pil_img.save("tmp.png")  # debug
+            try:
+                pil_img, meta = self._clouddisc.render_now(
+                    lat=lat, lon=lon, alt=float(alt), az=float(az),
+                    radius_px=self._cloud_base_size, mask_fov_deg=93,
+                )
+                qimg = pil_to_qimage(pil_img)
+                self._cloud_img = qimg
+                self._cloud_meta = meta
+            except VisibilityError as e:
+                logger.error("Invalid params for cloud-disc image generation: %s", e)
+            except DownloadError as e:
+                logger.warning("Network/S3 download error (transient=%s): %s", e.transient, e)
+            except DataNotFoundError as e:
+                logger.info("Satellite data not found in search window: %s", e)
+            except RenderError as e:
+                logger.error("Failed to decode/render satellite data: %s", e)
+            except CloudDiscError as e:  # 保険
+                logger.error("Unexpected clouddisc error: %s", e)
 
-            qimg = pil_to_qimage(pil_img)
-
-            # 反映
-            self._cloud_img = qimg
-            self._cloud_meta = meta
             self._last_cloud_az = az
             self._last_cloud_time_utc = datetime.now(timezone.utc)
 
             # 画面更新
             self.update()
         except Exception as e:
-            print(f"Warn: clouds update failed: {e}", file=sys.stderr)
+            logger.error(f"Warn: clouds update failed: {e}")
             import traceback
             traceback.print_exc()
         finally:

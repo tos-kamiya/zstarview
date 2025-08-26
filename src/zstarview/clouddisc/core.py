@@ -3,6 +3,7 @@ Core module for CloudDisc rendering.
 """
 
 import datetime as dt
+import logging
 from typing import Tuple
 
 from PIL import Image
@@ -16,6 +17,8 @@ from .render.grayscale import convert_bt_to_la_image
 from .sampling.bt_sampler import build_bt_sampler
 from .types import CloudMeta, VisibilityError
 
+
+logger = logging.getLogger(__name__)
 
 class CloudDisc:
     """
@@ -77,7 +80,23 @@ class CloudDisc:
             A tuple containing the rendered LA image and metadata.
 
         Raises:
-            VisibilityError: If no suitable satellite is found for the given location.
+            VisibilityError:
+                Raised when no suitable satellite is found for the given location.
+            DataNotFoundError:
+                Raised when no satellite data is found within the search window
+                (e.g., no matching files in S3).
+            DownloadError:
+                Raised when a network or S3 I/O error occurs during listing or
+                downloading. Includes a `transient` flag indicating whether
+                retry may succeed.
+            RenderError:
+                Raised when downloaded files are present but cannot be decoded
+                or processed (e.g., Satpy/xarray failure).
+            Note:
+                All exceptions except for VisibilityError represent environmental or
+                data-availability problems. Callers may choose to retry, fall back,
+                or continue without a cloud image. All these exceptions inherit from
+                CloudDiscError, so catching CloudDiscError will handle them together.
         """
         when = self._now_rounded()
 
@@ -87,6 +106,7 @@ class CloudDisc:
 
         # 1) Automatically select the best satellite based on location, or follow priority list.
         sat = pick_satellite(lat, lon, priority=self.cfg.sat_priority)
+        logger.info("Selected satellite=%s", sat, extra={"lat": lat, "lon": lon})
 
         # 2) Fetch data from the provider (gets BT[K] DataArray and projection info)
         sat_used = sat
@@ -100,6 +120,7 @@ class CloudDisc:
             product = "HSD-B13" if len(src_paths) > 1 else "ISatSS-B13"
         else:
             raise VisibilityError("No suitable satellite")
+        logger.info("Using %s (%s) time=%s", sat_used if sat in ("G16","G18") else "HIMAWARI", product, used_time.isoformat())
 
         # 3) Create a sampler for (lon,lat) -> BT[K]
         sampler = build_bt_sampler(da, sub_lon)
