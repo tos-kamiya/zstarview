@@ -1,5 +1,6 @@
 import logging
 logger = logging.getLogger(__name__)
+logging.getLogger("satpy.readers.core.utils").setLevel(logging.WARNING)  # suppress "[INFO] satpy.readers.core.utils: Using temp file for BZ2 decompression: /tmp/..."
 
 import argparse
 from datetime import datetime, timedelta, timezone
