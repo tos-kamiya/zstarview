@@ -102,8 +102,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--sky-opacity",
         type=float,
-        default=0.25,
-        help=("Opacity of the simulated sky-color disc (0.0 - 1.0, default: 0.25). " "Set to 0.0 to disable sky-color rendering."),
+        default=0.2,
+        help=("Opacity of the simulated sky-color disc (0.0 - 1.0, default: 0.2). " "Set to 0.0 to disable sky-color rendering."),
     )
     parser.add_argument(
         "--cloud-opacity",

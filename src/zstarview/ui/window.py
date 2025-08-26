@@ -9,6 +9,8 @@ from PySide6.QtGui import QAction, QKeyEvent, QMouseEvent, QPaintEvent, QResizeE
 from PySide6.QtWidgets import QMainWindow, QSizeGrip, QApplication, QPushButton, QMenu
 
 import astropy
+import numpy as np
+from PIL import Image
 import polars as pl
 
 from ..clouddisc import CloudDisc, CloudDiscConfig
@@ -30,9 +32,45 @@ from ..paths import SKY_UPDATE_INTERVAL, CLOUD_UPDATE_INTERVAL
 from ..render import draw as render_draw
 from ..render import draw_sky_disc
 from ..types import CelestialData, ViewerData
-from ..utils.qt import pil_to_qimage
+from ..utils.qt import pil_to_qimage, qimage_to_pil
 
 DEBUG_ECLIPSES = True
+
+
+def tint_white_cloud_with_skyR_qimage(
+    sky_qimg: QImage,
+    cloud_white_alpha_qimg: QImage,
+    factor: float = 0.3,
+    warm_rgb=(255, 220, 200)
+) -> QImage:
+    """
+    白+アルファの雲画像に、空のR成分で暖色を付加したレイヤを作る。
+    """
+    # QImage→PIL
+    cloud_white_alpha_qimg.save("tmp.png")
+    sky_pil   = qimage_to_pil(sky_qimg)
+    cloud_pil = qimage_to_pil(cloud_white_alpha_qimg).convert("LA")
+
+    Wc, Hc = cloud_pil.size
+    sky_resized = sky_pil.resize((Wc, Hc), Image.BILINEAR)
+    sky_arr = np.array(sky_resized, dtype=np.uint8)
+    cloud_arr = np.array(cloud_pil, dtype=np.uint8)  # (H,W,2)
+
+    alpha = cloud_arr[..., 1]  # 雲の量
+    sky_R = sky_arr[..., 0].astype(np.float32) / 255.0
+
+    k = np.clip(factor * sky_R, 0.0, 1.0)[..., None]
+    white = np.array([255,255,255], dtype=np.float32)
+    warm  = np.array(warm_rgb, dtype=np.float32)
+
+    tinted_rgb = (white*(1-k) + warm*k).astype(np.uint8)
+
+    out = np.zeros((Hc, Wc, 4), dtype=np.uint8)
+    out[...,0:3] = tinted_rgb
+    out[...,3]   = alpha
+
+    tinted_pil = Image.fromarray(out, "RGBA")
+    return pil_to_qimage(tinted_pil, premultiplied=True)
 
 
 class SkyWindow(DraggableWindow):
@@ -140,10 +178,8 @@ class SkyWindow(DraggableWindow):
             sat_priority=("AUTO",),
             bt_warm_k=310.0,
             bt_cold_k=190.0,
-            gamma=1.2,
-            alt_min_deg=-2.0,
+            alt_min_deg=-1.0,
             search_back_minutes=120,
-            edge_antialias=True,
         )
         try:
             self._clouddisc = CloudDisc(clouddisc_config)
@@ -319,6 +355,10 @@ class SkyWindow(DraggableWindow):
         if self._cloud_img is None or self.cloud_disc_alpha <= 0.0:
             return
 
+        img = self._cloud_img
+        if self._sky_disc_image is not None:
+            img = tint_white_cloud_with_skyR_qimage(self._sky_disc_image, self._cloud_img, factor=0.2)
+
         x = int(geometry.center[0] - geometry.radius)
         y = int(geometry.center[1] - geometry.radius)
         w = h = int(geometry.radius * 2)
@@ -328,7 +368,7 @@ class SkyWindow(DraggableWindow):
         path = QPainterPath()
         path.addEllipse(QRect(x, y, w, h))
         painter.setClipPath(path)
-        painter.drawImage(QRect(x, y, w, h), self._cloud_img)
+        painter.drawImage(QRect(x, y, w, h), img)
         painter.restore()
 
     def _on_sky_data_calculated(self, payload):
@@ -401,7 +441,7 @@ class SkyWindow(DraggableWindow):
                     sun_altaz,
                     alpha=self.sky_disc_alpha,
                     eclipse_factor=ef,
-                    fov_deg=93,
+                    mask_fov_deg=93,
                 )
 
             payload = {"celestial": celestial_data, "sky_disc": sky_disc_img}
@@ -455,7 +495,7 @@ class SkyWindow(DraggableWindow):
             # CloudDisc は内部で時刻を選んでくれる render_now を利用
             pil_img, meta = self._clouddisc.render_now(
                 lat=lat, lon=lon, alt=float(alt), az=float(az), radius_px=self._cloud_base_size,
-                fov_deg=93, brightness_as_alpha=True,
+                mask_fov_deg=93, brightness_as_alpha=True,
             )
 
             qimg = pil_to_qimage(pil_img)

@@ -26,3 +26,11 @@ def pil2qpixmap(img: Image.Image, premultiplied: bool = True) -> QPixmap:
     """Convert a PIL Image to QPixmap. premultiplied=True is recommended for smooth edges."""
     return QPixmap.fromImage(pil_to_qimage(img, premultiplied=premultiplied))
 
+
+def qimage_to_pil(qimg: QImage) -> Image.Image:
+    """QImage → Pillow Image (RGBA)"""
+    qimg = qimg.convertToFormat(QImage.Format.Format_RGBA8888)
+    w, h = qimg.width(), qimg.height()
+    ptr = qimg.bits()
+    arr = np.frombuffer(ptr, np.uint8).reshape((h, w, 4)).copy()
+    return Image.fromarray(arr, "RGBA")

@@ -239,7 +239,7 @@ def draw_sky_color_disc(
     saturation: float = 1.2,
     alpha: float = 1.0,
     eclipse_factor: float = 1.0,
-    fov_deg: float = 90.0,
+    mask_fov_deg: float = 90.0,
     # --- Sampling density (knobs for quality vs. speed) ---
     sample_step_px: int = 10,  # Target pixel interval (basis for determining Δθ)
     min_ang_samples: int = 8,  # Minimum number of samples for each ring
@@ -264,6 +264,7 @@ def draw_sky_color_disc(
         saturation: Saturation adjustment for the final color.
         alpha: Overall alpha transparency.
         eclipse_factor: Multiplicative factor to darken the sky during a solar eclipse (set < 1.0 to simulate dimming).
+        mask_fov_deg: Full field-of-view angle for the visibility mask.
         sample_step_px: Target pixel distance steps.
         min_ang_samples: Minimum number of circumferential samples.
         deriv_probe_deg: Probe angle for derivative estimation.
@@ -306,7 +307,7 @@ def draw_sky_color_disc(
     alt_c = max(-(90.0 - EPS), min(90.0 - EPS, alt_c))
 
     # The outer circumference is always 90° to match the normalization spec
-    theta_max = fov_deg
+    theta_max = mask_fov_deg
 
     # Function to "measure" the local radius r_px(θ)
     def screen_radius_px(theta_deg: float) -> float:
