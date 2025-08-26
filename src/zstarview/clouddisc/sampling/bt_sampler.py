@@ -1,4 +1,17 @@
+"""
+Builds a sampler function for resampling geostationary satellite data.
+"""
+
 import warnings
+from typing import Callable
+
+import numpy as np
+import xarray as xr
+from pyproj import CRS, Transformer
+
+# Suppress a UserWarning from pyproj when creating a CRS from a proj string,
+# as the area definition from Satpy often triggers this. The information loss
+# is acceptable for this use case.
 warnings.filterwarnings(
     "ignore",
     message="You will likely lose important projection information when converting to a PROJ string",
@@ -6,132 +19,125 @@ warnings.filterwarnings(
     module="pyproj.crs.crs",
 )
 
-import sys
-import numpy as np
-import xarray as xr
-from pyproj import Transformer, CRS
 
-def build_bt_sampler(da: xr.DataArray, sub_lon: float):
+def build_bt_sampler(da: xr.DataArray, sub_lon: float) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
     """
-    geostationary 固定格子の DataArray(BT[K]) に対して、
-    (lon, lat) -> BT[K] を返すベクトル化サンプラを構築する。
+    Builds a vectorized sampler function for a geostationary grid.
 
-    前提:
-      - DataArray に satpy が付与する area 定義 (da.attrs["area"]) が存在すること
-        (GOES: abi_l2_nc / Himawari: ahi_hsd, ahi_l2_nc)
-      - da は 2D（y, x）であること
-    方式:
-      1) 入力 lon/lat を area の投影系へ変換 (pyproj)
-      2) area_extent と shape から最近傍の配列インデックス (iy, ix) を算出
-      3) 範囲外は NaN、範囲内は data[iy, ix] を返す
+    This function takes a DataArray of brightness temperatures on a fixed
+    geostationary projection and returns a new function. This new function
+    (the "sampler") can take arrays of longitude and latitude and return the
+    corresponding brightness temperature for each point, using NaN-aware
+    bilinear interpolation.
+
+    Args:
+        da: The input DataArray containing brightness temperatures. It is
+            expected to have an `area` attribute provided by Satpy, which
+            defines the geostationary projection.
+        sub_lon: The sub-satellite longitude, used as a fallback if not
+                 present in the area definition.
+
+    Returns:
+        A sampler function that takes (longitude, latitude) numpy arrays
+        and returns a numpy array of interpolated brightness temperatures.
     """
-    area = da.attrs.get("area", None)
-    if area is not None:
-        crs = getattr(area, "crs", None) or CRS.from_dict(area.proj_dict)
-        sub_lon = float(crs.to_dict().get("lon_0", sub_lon))  # 既定値は上で入れた -75.2/-137.0
+    area = da.attrs.get("area")
+    if area is None:
+        raise ValueError("Input DataArray must have an 'area' attribute from Satpy.")
 
-    # --- area から投影と格子情報を取得 ---
-    # extent の順序は (min_x, min_y, max_x, max_y)
+    # --- 1. Extract projection and grid information from the area definition ---
     min_x, min_y, max_x, max_y = area.area_extent
-    height, width = area.shape  # (rows, cols)
-    dx = (max_x - min_x) / width
-    dy = (max_y - min_y) / height
+    height, width = area.shape
+    pixel_size_x = (max_x - min_x) / width
+    pixel_size_y = (max_y - min_y) / height
 
-    # DataArray 実体
-    data = np.asarray(da.compute().values, dtype=np.float32)
+    # Get the underlying numpy data
+    grid_data = np.asarray(da.compute().values, dtype=np.float32)
 
-    # pyproj CRS: 新しめの pyresample は area.crs を持つ。無ければ proj_dict から作る。
-    target_crs = getattr(area, "crs", None)
-    if target_crs is None:
-        # proj_dict は PROJ のパラメータ dict
-        target_crs = CRS.from_dict(area.proj_dict)
-
-    # lon/lat(deg) -> 投影 (x,y)
+    # Create the coordinate transformer from lon/lat (EPSG:4326) to the satellite's projection
+    target_crs = getattr(area, "crs", CRS.from_dict(area.proj_dict))
     transformer = Transformer.from_crs("EPSG:4326", target_crs, always_xy=True)
 
     def sampler(lon: np.ndarray, lat: np.ndarray) -> np.ndarray:
-        # 1) 投影
-        x, y = transformer.transform(lon, lat)
+        """
+        Performs bilinear interpolation on the source grid for the given lon/lat points.
+        """
+        # --- 2. Project lon/lat coordinates to the satellite's grid coordinates (x, y) ---
+        projected_x, projected_y = transformer.transform(lon, lat)
 
-        # 2) まず有限判定（投影で NaN/inf になった点は即座に無効化）
-        finite = np.isfinite(x) & np.isfinite(y)
+        # --- 3. Convert projected (x, y) to floating-point pixel indices (ix, iy) ---
+        # First, identify points that are valid for projection
+        finite_mask = np.isfinite(projected_x) & np.isfinite(projected_y)
 
-        # 3) 浮動小数の画素位置を計算（ここでは丸めない）
-        #    ※ まだ整数化しない（NaN を cast しないため）
-        ix_f = (x - min_x) / dx
-        iy_f = (max_y - y) / dy  # 行0が上なので y を反転
+        # Calculate floating point indices.
+        # Using np.full allows us to handle non-finite points gracefully.
+        ix_f = np.full(lon.shape, np.nan, dtype=np.float32)
+        iy_f = np.full(lon.shape, np.nan, dtype=np.float32)
 
-        # 4) 画像範囲内かどうか（浮動小数の段階で判定）
-        in_bounds = (
-            (ix_f >= 0.0) & (ix_f <= (width - 1)) &
-            (iy_f >= 0.0) & (iy_f <= (height - 1))
-        )
+        ix_f[finite_mask] = (projected_x[finite_mask] - min_x) / pixel_size_x
+        # The y-axis is inverted (row 0 is at the top, corresponding to max_y)
+        iy_f[finite_mask] = (max_y - projected_y[finite_mask]) / pixel_size_y
 
-        # 5) 双一次補間（有効点のみ）
-        out = np.full(lon.shape, np.nan, dtype=np.float32)
-        valid = finite & in_bounds
-        if np.any(valid):
-            # 有効点の浮動小数座標
-            ixv = ix_f[valid]
-            iyv = iy_f[valid]
+        # --- 4. Perform NaN-aware bilinear interpolation ---
+        # Initialize output array with NaNs
+        output_bt = np.full(lon.shape, np.nan, dtype=np.float32)
 
-            ix0 = np.floor(ixv).astype(np.int32)
-            iy0 = np.floor(iyv).astype(np.int32)
-            ix1 = ix0 + 1
-            iy1 = iy0 + 1
+        # Identify points that fall within the grid boundaries for interpolation
+        # (i.e., where we can form a 2x2 box of pixels)
+        in_bounds_mask = (ix_f >= 0.0) & (ix_f < (width - 1)) & (iy_f >= 0.0) & (iy_f < (height - 1))
+        valid_mask = finite_mask & in_bounds_mask
 
-            wx = ixv - ix0  # 0..1
-            wy = iyv - iy0
+        if not np.any(valid_mask):
+            return output_bt  # Return all NaNs if no points are valid
 
-            # 範囲外（右端/下端で +1 がはみ出す）を除外
-            ok = (
-                (ix0 >= 0) & (iy0 >= 0) &
-                (ix1 < width) & (iy1 < height)
-            )
+        # Get coordinates and weights for valid points only
+        ix_valid = ix_f[valid_mask]
+        iy_valid = iy_f[valid_mask]
 
-            # まず最近傍のフォールバックを用意（補間NG点向け）
-            ix_nn = np.rint(ixv).astype(np.int32)
-            iy_nn = np.rint(iyv).astype(np.int32)
-            nn_ok = (
-                (ix_nn >= 0) & (ix_nn < width) &
-                (iy_nn >= 0) & (iy_nn < height)
-            )
-            tmp = np.full(ixv.shape, np.nan, dtype=np.float32)
-            tmp[nn_ok] = data[iy_nn[nn_ok], ix_nn[nn_ok]]
+        # Get the integer indices of the top-left corner of the 4-pixel box
+        ix0 = np.floor(ix_valid).astype(np.int32)
+        iy0 = np.floor(iy_valid).astype(np.int32)
+        ix1 = ix0 + 1
+        iy1 = iy0 + 1
 
-            if np.any(ok):
-                # 4隅の値を引く
-                v00 = data[iy0[ok], ix0[ok]]
-                v10 = data[iy0[ok], ix1[ok]]
-                v01 = data[iy1[ok], ix0[ok]]
-                v11 = data[iy1[ok], ix1[ok]]
+        # Get the fractional part of the indices, which are the interpolation weights
+        wx = ix_valid - ix0
+        wy = iy_valid - iy0
 
-                # 重み
-                wx_ok = wx[ok]; wy_ok = wy[ok]
-                w00 = (1 - wx_ok) * (1 - wy_ok)
-                w10 = (     wx_ok) * (1 - wy_ok)
-                w01 = (1 - wx_ok) * (     wy_ok)
-                w11 = (     wx_ok) * (     wy_ok)
+        # Get the values of the four surrounding pixels
+        v00 = grid_data[iy0, ix0]
+        v10 = grid_data[iy0, ix1]
+        v01 = grid_data[iy1, ix0]
+        v11 = grid_data[iy1, ix1]
 
-                # NaN をもつ画素は重み0にして再正規化
-                m00 = np.isfinite(v00); m10 = np.isfinite(v10)
-                m01 = np.isfinite(v01); m11 = np.isfinite(v11)
-                w00 *= m00; w10 *= m10; w01 *= m01; w11 *= m11
-                ws = w00 + w10 + w01 + w11
+        # --- 5. Handle NaNs in the source data ---
+        # If a surrounding pixel is NaN, its contribution to the interpolation is 0.
+        # We adjust the weights accordingly.
+        m00 = np.isfinite(v00)
+        m10 = np.isfinite(v10)
+        m01 = np.isfinite(v01)
+        m11 = np.isfinite(v11)
 
-                # 補間値（ws==0 はそのまま NaN → 後で最近傍が入る）
-                interp = (np.where(m00, v00*w00, 0.0) +
-                        np.where(m10, v10*w10, 0.0) +
-                        np.where(m01, v01*w01, 0.0) +
-                        np.where(m11, v11*w11, 0.0))
-                # 正規化
-                good = ws > 0
-                interp[good] /= ws[good]
+        w00 = (1 - wx) * (1 - wy) * m00
+        w10 = wx * (1 - wy) * m10
+        w01 = (1 - wx) * wy * m01
+        w11 = wx * wy * m11
 
-                # ok のところは補間値で上書き
-                tmp[ok] = interp
+        total_weight = w00 + w10 + w01 + w11
 
-            out[valid] = tmp
-        return out
+        # Perform the interpolation
+        interp_values = np.nan_to_num(v00) * w00 + np.nan_to_num(v10) * w10 + np.nan_to_num(v01) * w01 + np.nan_to_num(v11) * w11
+
+        # Normalize the result by the total weight
+        # If total_weight is 0 (all 4 neighbors were NaN), the result will be 0.
+        # We replace these with NaN.
+        good_weights = total_weight > 1e-6
+        interp_values[good_weights] /= total_weight[good_weights]
+        interp_values[~good_weights] = np.nan
+
+        # Place the interpolated values into the output array
+        output_bt[valid_mask] = interp_values
+
+        return output_bt
 
     return sampler
