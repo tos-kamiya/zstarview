@@ -194,7 +194,7 @@ class SkyWindow(DraggableWindow):
         self._sky_disc_image: Optional[QImage] = None
 
         # --- added: CloudDisc & timers/flags/cache
-        self._cloud_base_size: int = 128
+        self._cloud_base_size: int = 512
         self._cloud_img: Optional[QImage] = None
         self._cloud_meta: Optional[dict] = None
         self._is_cloud_update_running: bool = False
@@ -210,9 +210,9 @@ class SkyWindow(DraggableWindow):
         clouddisc_config = CloudDiscConfig(
             cache_dir=CACHE_PATH,
             sat_priority=("AUTO",),
-            bt_warm_k=310.0,
-            bt_cold_k=190.0,
-            alt_min_deg=0.0,
+            bt_warm_k=300.0,
+            bt_cold_k=200.0,
+            alt_min_deg=-1.0,
             search_back_minutes=120,
         )
         try:
@@ -530,7 +530,7 @@ class SkyWindow(DraggableWindow):
             try:
                 pil_img, meta = self._clouddisc.render_now(
                     lat=lat, lon=lon, alt=float(alt), az=float(az),
-                    radius_px=self._cloud_base_size, mask_fov_deg=93,
+                    radius_px=self._cloud_base_size, edge_fov_deg=90, mask_fov_deg=93,
                 )
                 qimg = pil_to_qimage(pil_img)
                 self._cloud_img = qimg

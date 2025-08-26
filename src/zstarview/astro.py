@@ -62,7 +62,7 @@ def is_in_fov(alt: float, az: float, view_center: Tuple[float, float]) -> bool:
     alt2, az2 = math.radians(alt), math.radians(az)
     cos_theta = math.sin(alt1) * math.sin(alt2) + math.cos(alt1) * math.cos(alt2) * math.cos(az2 - az1)
     theta = math.acos(min(1.0, max(-1.0, cos_theta)))
-    return math.degrees(theta) <= FIELD_OF_VIEW_DEG / 2
+    return math.degrees(theta) <= FIELD_OF_VIEW_DEG
 
 
 def is_in_fov_vectorized(alt: np.ndarray, az: np.ndarray, view_center: Tuple[float, float]) -> np.ndarray:
@@ -77,7 +77,7 @@ def is_in_fov_vectorized(alt: np.ndarray, az: np.ndarray, view_center: Tuple[flo
     cos_theta = np.clip(cos_theta, -1.0, 1.0)
     theta = np.arccos(cos_theta)
 
-    return np.degrees(theta) <= FIELD_OF_VIEW_DEG / 2
+    return np.degrees(theta) <= FIELD_OF_VIEW_DEG
 
 
 def load_star_catalog(filename: str) -> List[Dict[str, Any]]:

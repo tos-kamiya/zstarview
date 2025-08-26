@@ -53,6 +53,7 @@ class CloudDisc:
         alt: float,
         az: float,
         radius_px: int,
+        edge_fov_deg: float = 90.0,
         mask_fov_deg: float = 90.0,
         brightness_as_alpha: bool = False,
     ) -> tuple[Image.Image, CloudMeta]:
@@ -134,6 +135,7 @@ class CloudDisc:
             radius_px=radius_px + 1,
             cloud_shell_km=6371.0 + 5.0,  # Earth radius + cloud height
             alt_min_deg=self.cfg.alt_min_deg,
+            edge_fov_deg=edge_fov_deg,
             mask_fov_deg=mask_fov_deg,
         )
 

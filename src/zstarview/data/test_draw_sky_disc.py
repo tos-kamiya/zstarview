@@ -26,7 +26,7 @@ from PySide6.QtWidgets import QApplication
 # -----------------------------
 # Config & helpers
 # -----------------------------
-FIELD_OF_VIEW_DEG = 200.0  # adjust as needed
+FIELD_OF_VIEW_DEG = 100.0  # adjust as needed
 
 
 @dataclass
@@ -58,18 +58,24 @@ def _angle_between(alt1_deg, az1_deg, alt2_deg, az2_deg) -> float:
 # -----------------------------
 # Sky color model (simple)
 # -----------------------------
-def get_sun_color(sun_alt_deg: float) -> Tuple[float, float, float]:
+def get_sun_color(sun_alt_deg: float) -> np.ndarray:
     """
-    Very crude daylight tint by solar altitude.
-    Return linear RGB in [0,1].
-    - High sun: bluer sky light
-    - Low sun: warmer tint
+    Determine the color of sunlight based on the sun's altitude.
+    Returns (r, g, b) in the range [0,1].
     """
-    t = _clamp01((sun_alt_deg + 6.0) / 36.0)  # ~[-6,30] → [0,1]
-    # interpolate between warm (low) and cool (high)
-    warm = (1.0, 0.85, 0.70)  # warm tint
-    cool = (0.75, 0.85, 1.0)  # cool tint
-    return _lerp_color(warm, cool, t)
+    zenith_color  = np.array([0.3, 0.48, 0.96])   # zenith (blue)
+    horizon_color = np.array([1.0, 0.61, 0.32])   # horizon (orange)
+    night_color   = np.array([0.01, 0.02, 0.05])  # night (dark blue)
+
+    # Normalize sun altitude from -7° (sunset) to 90° (zenith) → [0,1], with gamma-ish shaping
+    t = float(np.clip((sun_alt_deg + 7.0) / 97.0, 0.0, 1.0))
+    t = math.pow(t, 0.35)
+
+    day_color = _lerp_color(horizon_color, zenith_color, t)
+
+    # Rapid darkening near/below horizon
+    fade = float(np.clip((-sun_alt_deg + 1.0) / 6.0, 0.0, 1.0))  # between +1° and -8°
+    return _lerp_color(day_color, night_color, fade)
 
 
 def _smoothstep(edge0: float, edge1: float, x: float) -> float:
@@ -157,7 +163,7 @@ def screen_to_altaz_equidistant(
     psi = math.atan2(dx, -dy)  # compass bearing: up/N=0, CW positive
 
     rho_ratio = min(rho / R, 1.0)
-    theta = math.radians(rho_ratio * (fov_deg * 0.5))  # angular distance from center
+    theta = math.radians(rho_ratio * fov_deg)  # angular distance from center
 
     alt_c, az_c = view_center
     alt_c = clamp_alt(alt_c)

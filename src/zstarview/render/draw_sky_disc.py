@@ -109,30 +109,22 @@ def _lerp_color(a: np.ndarray, b: np.ndarray, t: float) -> np.ndarray:
 
 def get_sun_color(sun_alt_deg: float) -> np.ndarray:
     """
-    Step 1: Determine the color of sunlight based on the sun's altitude.
-
-    Args:
-        sun_alt_deg: The sun's altitude in degrees.
-
-    Returns:
-        A numpy array of (r, g, b) float values representing the sun's color.
+    Determine the color of sunlight based on the sun's altitude.
+    Returns (r, g, b) in the range [0,1].
     """
-    # Define colors
-    zenith_color = np.array([0.3, 0.48, 0.96])  # Color at zenith (blue)
-    horizon_color = np.array([1.0, 0.61, 0.32])  # Color at horizon (orange)
-    night_color = np.array([0.01, 0.02, 0.05])  # Night color (dark blue)
+    zenith_color  = np.array([0.3, 0.55, 0.98])   # zenith (blue)
+    horizon_color = np.array([0.95, 0.50, 0.30])   # horizon (orange)
+    night_color   = np.array([0.01, 0.02, 0.05])  # night (dark blue)
 
-    # Normalize sun altitude from -7 degrees (sunset) to 90 degrees (zenith) to a 0-1 range
-    t = np.clip((sun_alt_deg + 7.0) / 97.0, 0.0, 1.0)
-    t = math.pow(t, 0.4)
+    # Normalize sun altitude from -7° (sunset) to 90° (zenith) → [0,1], with gamma-ish shaping
+    t = float(np.clip((sun_alt_deg + 7.0) / 97.0, 0.0, 1.0))
+    t = math.pow(t, 0.35)
 
-    # Daytime color (horizon to zenith)
     day_color = _lerp_color(horizon_color, zenith_color, t)
 
-    # Mix day and night colors (to represent the rapid darkening near the horizon)
-    fade = np.clip((sun_alt_deg + 2.0) / 12.0, 0.0, 1.0)  # Fade between -2 and -10 degrees
-
-    return _lerp_color(night_color, day_color, fade)
+    # Rapid darkening near/below horizon
+    fade = float(np.clip((-sun_alt_deg + 1.0) / 6.0, 0.0, 1.0))  # between +1° and -8°
+    return _lerp_color(day_color, night_color, fade)
 
 
 def get_sky_color(view_altaz: Tuple[float, float], sun_altaz: Tuple[float, float]) -> np.ndarray:
@@ -182,7 +174,7 @@ def get_sky_color(view_altaz: Tuple[float, float], sun_altaz: Tuple[float, float
 
     # White mixing near the horizon
     # Higher turbidity increases the amount of white mixed in.
-    horizon_k = 0.25 * (0.8 + 0.6 * tau)
+    horizon_k = 0.4 * (0.8 + 0.6 * tau)
     horizon_mix = (1.0 - t) * horizon_k
 
     # Twilight correction (smooth transition -10..0°)

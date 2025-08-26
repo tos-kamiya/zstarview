@@ -19,9 +19,9 @@ def deg2rad(degrees: float) -> float:
     return degrees * math.pi / 180.0
 
 
-def rad2deg(radians: float) -> float:
-    """Converts radians to degrees."""
-    return radians * 180.0 / math.pi
+# def rad2deg(radians: float) -> float:
+#     """Converts radians to degrees."""
+#     return radians * 180.0 / math.pi
 
 
 def enu_basis(lat_deg: float, lon_deg: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -94,41 +94,37 @@ def azalt_to_dir_ecef(az_deg: float, alt_deg: float, lat0_deg: float, lon0_deg: 
     return direction_vector / (np.linalg.norm(direction_vector) or 1.0)
 
 
-def line_sphere_intersection(origin: np.ndarray, direction: np.ndarray, radius_km: float) -> Optional[float]:
-    """
-    Finds the intersection of a line (ray) and a sphere.
+# def line_sphere_intersection(origin: np.ndarray, direction: np.ndarray, radius_km: float) -> Optional[float]:
+#     """
+#     Finds the intersection of a line (ray) and a sphere.
 
-    Solves the equation |origin + t * direction| = radius_km for t.
+#     Solves the equation |origin + t * direction| = radius_km for t.
 
-    Args:
-        origin: The origin of the line (e.g., observer's ECEF position).
-        direction: The normalized direction vector of the line.
-        radius_km: The radius of the sphere.
+#     Args:
+#         origin: The origin of the line (e.g., observer's ECEF position).
+#         direction: The normalized direction vector of the line.
+#         radius_km: The radius of the sphere.
 
-    Returns:
-        The smallest positive distance (t) to an intersection, or None if no intersection.
-    """
-    # Quadratic equation coefficients for t: a*t^2 + b*t + c = 0
-    # Since direction is normalized, a = 1.
-    b = 2.0 * np.dot(origin, direction)
-    c = np.dot(origin, origin) - radius_km * radius_km
+#     Returns:
+#         The smallest positive distance (t) to an intersection, or None if no intersection.
+#     """
+#     # Quadratic equation coefficients for t: a*t^2 + b*t + c = 0
+#     # Since direction is normalized, a = 1.
+#     b = 2.0 * np.dot(origin, direction)
+#     c = np.dot(origin, origin) - radius_km * radius_km
 
-    discriminant = b * b - 4.0 * c
-    if discriminant < 0:
-        return None
+#     discriminant = b * b - 4.0 * c
+#     if discriminant < 0:
+#         return None
 
-    sqrt_discriminant = math.sqrt(discriminant)
-    t1 = (-b - sqrt_discriminant) / 2.0
-    t2 = (-b + sqrt_discriminant) / 2.0
+#     sqrt_discriminant = math.sqrt(discriminant)
+#     t1 = (-b - sqrt_discriminant) / 2.0
+#     t2 = (-b + sqrt_discriminant) / 2.0
 
-    # Find the smallest positive intersection distance
-    positive_intersections = [t for t in (t1, t2) if t > 1e-6]
-    return min(positive_intersections) if positive_intersections else None
+#     # Find the smallest positive intersection distance
+#     positive_intersections = [t for t in (t1, t2) if t > 1e-6]
+#     return min(positive_intersections) if positive_intersections else None
 
-
-from typing import Tuple
-import numpy as np
-import math
 
 def az_project_lonlat_grid(
     lat0_deg: float,
@@ -147,17 +143,17 @@ def az_project_lonlat_grid(
 
     Scale vs. Mask:
         - Projection scale is determined by `edge_fov_deg`:
-          the image disc of radius `radius_px` corresponds to a full field-of-view
-          of `edge_fov_deg` (center → rim = edge_fov_deg/2).
+          the image disc of radius `radius_px` corresponds to a field-of-view
+          of `edge_fov_deg` (center → rim = edge_fov_deg).
         - Visibility masking is controlled separately by `mask_fov_deg`:
           pixels are considered inside if their angular distance from the center
-          is <= mask_fov_deg/2 and altitude >= alt_min_deg.
+          is <= mask_fov_deg and altitude >= alt_min_deg.
         - Setting mask_fov_deg > edge_fov_deg allows drawing beyond the disc
           into the square corners of the image.
 
     Geometric limit:
         - The farthest angular distance covered by the image *corners* is
-          (edge_fov_deg/2) * √2.
+          (edge_fov_deg) * √2.
         - Thus the maximum meaningful mask_fov_deg is approximately:
               edge_fov_deg * √2
         - A ValueError is raised if mask_fov_deg exceeds this limit.
@@ -170,8 +166,8 @@ def az_project_lonlat_grid(
         radius_px: Radius of the output disc in pixels (image is 2R × 2R).
         cloud_shell_km: Radius of the cloud sphere in kilometers.
         alt_min_deg: Minimum altitude to be considered visible (horizon cutoff).
-        mask_fov_deg: Full field-of-view angle for the visibility mask.
-        edge_fov_deg: Full field-of-view angle that the *disc* represents
+        mask_fov_deg: Field-of-view angle for the visibility mask.
+        edge_fov_deg: Field-of-view angle that the *disc* represents
                       (projection scaling).
 
     Returns:
@@ -192,8 +188,9 @@ def az_project_lonlat_grid(
             f"`mask_fov_deg` ({mask_fov_deg}°) exceeds geometric limit for edge_fov_deg={edge_fov_deg}°. "
             f"Maximum allowed ≈ {fov_limit:.2f}°."
         )
-    if edge_fov_deg <= 0 or edge_fov_deg > 170:
-        raise ValueError("`edge_fov_deg` must be in (0, 170].")
+
+    if edge_fov_deg <= 0 or edge_fov_deg > 180:
+        raise ValueError("`edge_fov_deg` must be in (0, 180].")
     if mask_fov_deg <= 0:
         raise ValueError("`mask_fov_deg` must be > 0.")
 
@@ -203,7 +200,7 @@ def az_project_lonlat_grid(
     pixel_radius = np.hypot(x, y)
 
     # --- Projection scale: disc rim (r = R) → rho = edge_fov_deg/2 ---
-    rho_deg = ((edge_fov_deg * 0.5) * pixel_radius / radius_px).astype(np.float32)
+    rho_deg = (edge_fov_deg * pixel_radius / radius_px).astype(np.float32)
 
     # --- Observer position and view basis (ECEF) ---
     observer_pos_ecef = geodetic_to_ecef(lat0_deg, lon0_deg)
@@ -226,7 +223,7 @@ def az_project_lonlat_grid(
     # --- Visibility masks ---
     alt_rad = np.arcsin(np.dot(d, up_vec))
     visible_mask = (np.degrees(alt_rad) >= alt_min_deg)
-    fov_mask = (rho_deg <= (mask_fov_deg * 0.5) + 1e-6)
+    fov_mask = (rho_deg <= mask_fov_deg + 1e-6)
     mask_inside = fov_mask & visible_mask
 
     # --- Intersect with the cloud shell ---

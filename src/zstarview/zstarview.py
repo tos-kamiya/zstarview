@@ -116,8 +116,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cloud-opacity",
         type=float,
-        default=0.2,
-        help=("Opacity of the clouds (0.0 - 1.0, default: 0.2). " "Set to 0.0 to disable cloud rendering."),
+        default=0.0,
+        help=("Opacity of the clouds (0.0 - 1.0, default: 0.0). " "Set to 0.0 to disable cloud rendering."),
     )
     return parser.parse_args()
 
@@ -310,14 +310,14 @@ def main() -> None:
     # TODO add cloud-cache clean-up feature
     """Main entry point for the star sky visualizer."""
 
+    app_name = "Zenith Star View"
+    app = setup_app(app_name)
+    args = parse_args()
+
     root_logger = setup_root_logger()
     logger.info("Zenith Star View starting...")
 
-    app_name = "Zenith Star View"
-    app = setup_app(app_name)
     splash, splash_handler = setup_splash_and_attach_logger(app, app_name, root_logger)
-
-    args = parse_args()
 
     try:
         city = _startup_resolve_city(args.city)

@@ -195,7 +195,7 @@ def draw_radial_background(painter: QPainter, rect: QRectF, geometry: ScreenGeom
         geometry: A ScreenGeometry object for calculating gradient parameters.
     """
     assert geometry.radius >= 10
-    fov_middle = 90 + (FIELD_OF_VIEW_DEG / 2 - 90) / 2
+    fov_middle = 90 + (FIELD_OF_VIEW_DEG - 90) / 2
     r90 = float(geometry.radius)
     r_fov = float(geometry.radius * (fov_middle / 90))
     r_max = float(r_fov * 1.4)
