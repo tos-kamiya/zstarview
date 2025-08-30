@@ -65,10 +65,7 @@ def tint_cloud_gray_with_skyR_qimage(
     """
     # --- QImage -> PIL
     sky_pil   = qimage_to_pil(sky_qimg).convert("RGB")
-    # cloudはLまたはLAどちらでもOKにする
     cloud_pil = qimage_to_pil(cloud_gray_qimg)
-    if cloud_pil.mode not in ("L", "LA"):
-        cloud_pil = cloud_pil.convert("LA")  # 保険
     Wc, Hc = cloud_pil.size
 
     # 空を雲サイズへ
@@ -105,6 +102,60 @@ def tint_cloud_gray_with_skyR_qimage(
     out = np.dstack([rgb, A])  # (H,W,4)
     tinted_pil = Image.fromarray(out, "RGBA")
     return pil_to_qimage(tinted_pil, premultiplied=True)
+
+from typing import Optional
+from PySide6.QtGui import QImage, QPainter, QBrush, QPen, QColor, QPixmap, QPainterPath
+from PySide6.QtCore import Qt, QRect, QPoint
+import math
+
+# 互換：alphaChannel未使用の実装で上書き
+def cloud_with_hatched_alpha_no_alphaChannel(
+    cloud_img: QImage,
+    disc_rect: QRect,
+    tile_px: int = 12,
+    line_px: int = 6,
+    angle_deg: float = 45.0,
+    strength: int = 255,
+    # thickness_scale: float = 1.0,
+    phase_px: float = 0.0,
+) -> QImage:
+    out = cloud_img.convertToFormat(QImage.Format_ARGB32_Premultiplied)
+    w, h = disc_rect.width(), disc_rect.height()
+
+    # ストライプ（透明RGBA）
+    hatch = QImage(w, h, QImage.Format_ARGB32_Premultiplied)
+    hatch.fill(Qt.transparent)
+
+    # 円盤クリップ付きのペイント面
+    painter = QPainter(hatch)
+    painter.setRenderHint(QPainter.Antialiasing, True)
+    path = QPainterPath(); path.addEllipse(0, 0, w, h)
+    painter.setClipPath(path)
+
+    # 連続直線ストライプを描く
+    L = int(math.hypot(w, h))
+    painter.save()
+    painter.translate(w/2, h/2)
+    painter.rotate(angle_deg)
+    painter.setPen(Qt.NoPen)
+    color = QColor(0, 0, 0, max(0, min(255, strength)))
+    pitch = max(1, int(tile_px))
+    band  = max(1, line_px)
+    # band  = max(1, int(round(line_px * thickness_scale)))
+    y = -L + (phase_px % pitch)
+    while y <= L:
+        painter.fillRect(-L, int(y - band/2), 2*L, band, color)
+        y += pitch
+    painter.restore()
+    painter.end()
+
+    # “抜き”適用：DestinationOut（= 雲のαからhatch分を減算）
+    p = QPainter(out)
+    p.setCompositionMode(QPainter.CompositionMode_DestinationOut)
+    p.drawImage(disc_rect.topLeft(), hatch)
+    p.end()
+
+    return out
 
 
 class SkyWindow(DraggableWindow):
@@ -210,8 +261,8 @@ class SkyWindow(DraggableWindow):
         clouddisc_config = CloudDiscConfig(
             cache_dir=CACHE_PATH,
             sat_priority=("AUTO",),
-            bt_warm_k=300.0,
-            bt_cold_k=200.0,
+            bt_warm_k=310.0,
+            bt_cold_k=190.0,
             alt_min_deg=-1.0,
             search_back_minutes=120,
         )
@@ -390,12 +441,24 @@ class SkyWindow(DraggableWindow):
             return
 
         img = self._cloud_img
-        if self._sky_disc_image is not None:
-            img = tint_cloud_gray_with_skyR_qimage(self._sky_disc_image, self._cloud_img, factor=0.5)
+        # if self._sky_disc_image is not None:
+        #     img = tint_cloud_gray_with_skyR_qimage(self._sky_disc_image, self._cloud_img, factor=0.5)
 
         x = int(geometry.center[0] - geometry.radius)
         y = int(geometry.center[1] - geometry.radius)
         w = h = int(geometry.radius * 2)
+
+        disc = QRect(0, 0, img.width(), img.height())
+
+        # 元の img はそのまま、新しい画像 new_img を作る
+        new_img = cloud_with_hatched_alpha_no_alphaChannel(
+            img, disc,
+            tile_px=8,               # ストライプ間隔（ピッチ）
+            line_px=4,                # 基本太さ
+            angle_deg=45,
+            strength=255,
+            phase_px=0.0,             # 必要なら微調整
+        )
 
         path = QPainterPath()
         path.addEllipse(QRect(x, y, w, h))
@@ -403,7 +466,7 @@ class SkyWindow(DraggableWindow):
         painter.setClipPath(path)
         painter.setOpacity(self.cloud_disc_alpha)
         painter.setCompositionMode(QPainter.CompositionMode_Plus)
-        painter.drawImage(QRect(x, y, w, h), img)
+        painter.drawImage(QRect(x, y, w, h), new_img)
         painter.restore()
 
     def _on_sky_data_calculated(self, payload):
