@@ -20,7 +20,7 @@ warnings.filterwarnings(
 )
 
 
-def build_bt_sampler(da: xr.DataArray, sub_lon: float) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
+def build_bt_sampler(da: xr.DataArray) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
     """
     Builds a vectorized sampler function for a geostationary grid.
 
@@ -34,8 +34,6 @@ def build_bt_sampler(da: xr.DataArray, sub_lon: float) -> Callable[[np.ndarray, 
         da: The input DataArray containing brightness temperatures. It is
             expected to have an `area` attribute provided by Satpy, which
             defines the geostationary projection.
-        sub_lon: The sub-satellite longitude, used as a fallback if not
-                 present in the area definition.
 
     Returns:
         A sampler function that takes (longitude, latitude) numpy arrays

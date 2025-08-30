@@ -51,6 +51,8 @@ def geodetic_to_ecef(lat_deg: float, lon_deg: float, r_km: float = EARTH_R_KM) -
     Converts geodetic coordinates (latitude, longitude) to Earth-Centered,
     Earth-Fixed (ECEF) Cartesian coordinates.
 
+    Can handle scalar or numpy array inputs.
+
     Args:
         lat_deg: Latitude in degrees.
         lon_deg: Longitude in degrees.
@@ -58,16 +60,19 @@ def geodetic_to_ecef(lat_deg: float, lon_deg: float, r_km: float = EARTH_R_KM) -
 
     Returns:
         The ECEF coordinates [x, y, z] as a numpy array.
+        Shape is (3,) for scalar inputs, (N, 3) for array inputs of length N.
     """
     lat, lon = deg2rad(lat_deg), deg2rad(lon_deg)
-    cos_lat, sin_lat = math.cos(lat), math.sin(lat)
-    cos_lon, sin_lon = math.cos(lon), math.sin(lon)
+    cos_lat, sin_lat = np.cos(lat), np.sin(lat)
+    cos_lon, sin_lon = np.cos(lon), np.sin(lon)
 
     x = r_km * cos_lat * cos_lon
     y = r_km * cos_lat * sin_lon
     z = r_km * sin_lat
 
-    return np.array([x, y, z], dtype=float)
+    # For scalar inputs, this produces a (3,) array.
+    # For array inputs (N,), this produces a (N, 3) array.
+    return np.array([x, y, z], dtype=float).T
 
 
 def azalt_to_dir_ecef(az_deg: float, alt_deg: float, lat0_deg: float, lon0_deg: float) -> np.ndarray:

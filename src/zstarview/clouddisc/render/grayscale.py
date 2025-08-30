@@ -47,7 +47,6 @@ def convert_bt_to_la_image(
     mask_inside: np.ndarray,
     bt_warm: float,
     bt_cold: float,
-    brightness_as_alpha: bool = False,
 ) -> Image.Image:
     """
     Converts a brightness temperature (BT) array to a grayscale-alpha (LA) image.
@@ -65,7 +64,6 @@ def convert_bt_to_la_image(
                      visible disc (above horizon and within FOV).
         bt_warm: The temperature (K) to map to black (0).
         bt_cold: The temperature (K) to map to white (255).
-        brightness_as_alpha: If True, use brightness for the alpha channel.
 
     Returns:
         A PIL Image object in "LA" mode.
@@ -78,22 +76,8 @@ def convert_bt_to_la_image(
     a_mask = np.zeros_like(l_gray, dtype=np.uint8)
     a_mask[mask_inside] = 255
 
-    if brightness_as_alpha:
-        # Mode 2: Luminance is solid white, Alpha is the brightness
-
-        # L channel is solid white inside the mask
-        l_channel = np.zeros_like(l_gray, dtype=np.uint8)
-        l_channel[mask_inside] = 255
-
-        # A channel is the brightness, but only inside the mask
-        a_channel = np.zeros_like(l_gray, dtype=np.uint8)
-        a_channel[mask_inside] = l_gray[mask_inside]
-
-        la_data = np.dstack([l_channel, a_channel])
-    else:
-        # Mode 1: Standard grayscale image with a hard mask
-        l_channel = l_gray
-        a_channel = a_mask
-        la_data = np.dstack([l_channel, a_channel])
+    l_channel = l_gray
+    a_channel = a_mask
+    la_data = np.dstack([l_channel, a_channel])
 
     return Image.fromarray(la_data, mode="LA")

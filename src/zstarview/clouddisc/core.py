@@ -55,7 +55,6 @@ class CloudDisc:
         radius_px: int,
         edge_fov_deg: float = 90.0,
         mask_fov_deg: float = 90.0,
-        brightness_as_alpha: bool = False,
     ) -> tuple[Image.Image, CloudMeta]:
         """
         Renders a cloud image for the current time (rounded to 10 minutes).
@@ -74,8 +73,8 @@ class CloudDisc:
             alt: Observer's altitude in degrees.
             az: Observer's azimuth in degrees.
             radius_px: The radius of the output image in pixels. The final image will be (2*R, 2*R).
-            fov_deg: Field of view in degrees.
-            brightness_as_alpha: If True, use brightness for the alpha channel.
+            edge_fov_deg: Field of view in degrees.
+            mask_fov_deg: Field-of-view angle for the visibility mask.
 
         Returns:
             A tuple containing the rendered LA image and metadata.
@@ -115,16 +114,15 @@ class CloudDisc:
             res, sat_used = self.goes.fetch_bt_c13_with_failover(sat=sat, when_utc=when)
             da, used_time, src_paths = res
             product = "CMIPF-C13"
-            sub_lon = -75.2 if (sat_used == "G16") else -137.0
         elif sat == "HIMAWARI":
-            da, used_time, src_paths, sub_lon = self.hima.fetch_bt_c13(when_utc=when)  # sub_lon ~ 140.7
+            da, used_time, src_paths = self.hima.fetch_bt_c13(when_utc=when)
             product = "HSD-B13" if len(src_paths) > 1 else "ISatSS-B13"
         else:
             raise VisibilityError("No suitable satellite")
         logger.info("Using %s (%s) time=%s", sat_used if sat in ("G16","G18") else "HIMAWARI", product, used_time.isoformat())
 
         # 3) Create a sampler for (lon,lat) -> BT[K]
-        sampler = build_bt_sampler(da, sub_lon)
+        sampler = build_bt_sampler(da)
 
         # 4) Project a lon/lat grid for the given viewing perspective
         lon_grid, lat_grid, mask_inside = az_project_lonlat_grid(
@@ -148,7 +146,6 @@ class CloudDisc:
             mask_inside=mask_inside,
             bt_warm=self.cfg.bt_warm_k,
             bt_cold=self.cfg.bt_cold_k,
-            brightness_as_alpha=brightness_as_alpha,
         )
 
         meta = CloudMeta(satellite=sat_used, product=product, time_utc=used_time, src_paths=src_paths)

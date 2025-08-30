@@ -171,7 +171,7 @@ class HimaProvider:
                     return bucket, keys[-1], search_time  # Return the latest one
         return None, None, None
 
-    def fetch_bt_c13(self, when_utc: dt.datetime) -> Tuple[xr.DataArray, dt.datetime, List[Path], float]:
+    def fetch_bt_c13(self, when_utc: dt.datetime) -> Tuple[xr.DataArray, dt.datetime, List[Path]]:
         """
         Fetches Himawari band 13 brightness temperature data.
 
@@ -182,7 +182,7 @@ class HimaProvider:
             when_utc: The target UTC time.
 
         Returns:
-            A tuple containing (DataArray[K], used_time, [paths], sub-satellite_longitude).
+            A tuple containing (DataArray[K], used_time, [paths]).
 
         Raises:
             DataNotFoundError: If no data is found within the search window.
@@ -204,7 +204,7 @@ class HimaProvider:
                 raise RenderError("Failed to decode Himawari HSD B13", meta=meta) from e
             # Himawari sub-satellite longitude is ~140.7 E
             used_time = hsd_time.replace(minute=(hsd_time.minute // 10) * 10, second=0, microsecond=0, tzinfo=dt.timezone.utc)
-            return da, used_time, paths, 140.7
+            return da, used_time, paths
 
         # --- 2. Fallback to ISatSS data (lower quality) ---
         logger.info("HSD not found, fallback to ISatSS ...")
@@ -222,7 +222,7 @@ class HimaProvider:
                                  time_utc=is_time.replace(tzinfo=dt.timezone.utc), src_paths=[])
                 raise RenderError("Failed to decode Himawari ISatSS B13", meta=meta) from e
             used_time = is_time.replace(minute=(is_time.minute // 10) * 10, second=0, microsecond=0, tzinfo=dt.timezone.utc)
-            return da, used_time, [path], 140.7
+            return da, used_time, [path]
 
         meta = CloudMeta(satellite="HIMAWARI", product="HSD/ISatSS-B13",
                          time_utc=when_utc.replace(tzinfo=dt.timezone.utc), src_paths=[])
