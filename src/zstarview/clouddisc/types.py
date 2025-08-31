@@ -37,6 +37,7 @@ class CloudDiscError(RuntimeError):
     Base class for all clouddisc exceptions.
     Carries optional CloudMeta-like context for uniform handling.
     """
+
     def __init__(self, message: str = "", *, meta: "CloudMeta | None" = None):
         super().__init__(message)
         self.meta = meta
@@ -52,13 +53,7 @@ class DataNotFoundError(CloudDiscError):
 class DownloadError(CloudDiscError):
     """Raised when an error occurs while downloading satellite data."""
 
-    def __init__(
-        self,
-        message: str = "",
-        *,
-        transient: bool = True,
-        meta: "CloudMeta | None" = None
-    ):
+    def __init__(self, message: str = "", *, transient: bool = True, meta: "CloudMeta | None" = None):
         super().__init__(message, meta=meta)
         self.transient = transient
 

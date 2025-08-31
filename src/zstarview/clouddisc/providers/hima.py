@@ -25,7 +25,7 @@ from ..config import CloudDiscConfig
 from ..types import DataNotFoundError, DownloadError, RenderError, CloudMeta
 
 # Default S3 client configuration for anonymous access with retries.
-# 短いタイムアウト・最小リトライで「早く失敗」
+# "Fail fast" with short timeouts and minimal retries.
 _S3CFG = Config(
     signature_version=UNSIGNED,
     retries={"max_attempts": 1, "mode": "standard"},
@@ -99,8 +99,7 @@ class HimaProvider:
             with tmp_path.open("wb") as f:
                 self.s3.download_fileobj(bucket, key, f)
         except Exception as e:
-            meta = CloudMeta(satellite="HIMAWARI", product="HSD-B13" if "L1b" in key or "FLDK" in key else "ISatSS-B13",
-                             time_utc=dt.datetime.utcnow().replace(tzinfo=dt.timezone.utc), src_paths=[])
+            meta = CloudMeta(satellite="HIMAWARI", product="HSD-B13" if "L1b" in key or "FLDK" in key else "ISatSS-B13", time_utc=dt.datetime.utcnow().replace(tzinfo=dt.timezone.utc), src_paths=[])
             raise DownloadError(f"Failed to download s3://{bucket}/{key}", transient=True, meta=meta) from e
         tmp_path.replace(dst)
         return dst
@@ -121,8 +120,7 @@ class HimaProvider:
             pages = paginator.paginate(Bucket=bucket, Prefix=prefix)
             return [obj["Key"] for page in pages for obj in page.get("Contents", [])]
         except Exception as e:
-            meta = CloudMeta(satellite="HIMAWARI", product="HSD-B13", 
-                             time_utc=dt.datetime.utcnow().replace(tzinfo=dt.timezone.utc), src_paths=[])
+            meta = CloudMeta(satellite="HIMAWARI", product="HSD-B13", time_utc=dt.datetime.utcnow().replace(tzinfo=dt.timezone.utc), src_paths=[])
             raise DownloadError(f"Failed to list s3://{bucket}/{prefix}", transient=True, meta=meta) from e
 
     def _find_hsd(self, when_utc: dt.datetime) -> Tuple[Optional[str], Optional[List[str]], Optional[dt.datetime]]:
@@ -143,8 +141,7 @@ class HimaProvider:
                 if keys:
                     keys.sort()
                     if DEBUG_HIMA:
-                        logger.debug("Found %d HSD segments in s3://%s/%s", len(keys), bucket, prefix,
-                                     extra={"sat": "HIMAWARI", "bucket": bucket, "prefix": prefix})
+                        logger.debug("Found %d HSD segments in s3://%s/%s", len(keys), bucket, prefix, extra={"sat": "HIMAWARI", "bucket": bucket, "prefix": prefix})
                     return bucket, keys, search_time
         return None, None, None
 
@@ -166,8 +163,7 @@ class HimaProvider:
                 if keys:
                     keys.sort()
                     if DEBUG_HIMA:
-                        logger.debug("Found ISatSS file in s3://%s/%s", bucket, prefix,
-                                     extra={"sat": "HIMAWARI", "bucket": bucket, "prefix": prefix})
+                        logger.debug("Found ISatSS file in s3://%s/%s", bucket, prefix, extra={"sat": "HIMAWARI", "bucket": bucket, "prefix": prefix})
                     return bucket, keys[-1], search_time  # Return the latest one
         return None, None, None
 
@@ -199,8 +195,7 @@ class HimaProvider:
             except DownloadError:
                 raise
             except Exception as e:
-                meta = CloudMeta(satellite="HIMAWARI", product="HSD-B13",
-                                 time_utc=hsd_time.replace(tzinfo=dt.timezone.utc), src_paths=[])
+                meta = CloudMeta(satellite="HIMAWARI", product="HSD-B13", time_utc=hsd_time.replace(tzinfo=dt.timezone.utc), src_paths=[])
                 raise RenderError("Failed to decode Himawari HSD B13", meta=meta) from e
             # Himawari sub-satellite longitude is ~140.7 E
             used_time = hsd_time.replace(minute=(hsd_time.minute // 10) * 10, second=0, microsecond=0, tzinfo=dt.timezone.utc)
@@ -218,12 +213,10 @@ class HimaProvider:
             except DownloadError:
                 raise
             except Exception as e:
-                meta = CloudMeta(satellite="HIMAWARI", product="ISatSS-B13",
-                                 time_utc=is_time.replace(tzinfo=dt.timezone.utc), src_paths=[])
+                meta = CloudMeta(satellite="HIMAWARI", product="ISatSS-B13", time_utc=is_time.replace(tzinfo=dt.timezone.utc), src_paths=[])
                 raise RenderError("Failed to decode Himawari ISatSS B13", meta=meta) from e
             used_time = is_time.replace(minute=(is_time.minute // 10) * 10, second=0, microsecond=0, tzinfo=dt.timezone.utc)
             return da, used_time, [path]
 
-        meta = CloudMeta(satellite="HIMAWARI", product="HSD/ISatSS-B13",
-                         time_utc=when_utc.replace(tzinfo=dt.timezone.utc), src_paths=[])
+        meta = CloudMeta(satellite="HIMAWARI", product="HSD/ISatSS-B13", time_utc=when_utc.replace(tzinfo=dt.timezone.utc), src_paths=[])
         raise DataNotFoundError("Himawari B13 not found in search window", meta=meta)

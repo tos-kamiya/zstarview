@@ -189,10 +189,7 @@ def az_project_lonlat_grid(
     # --- Validate parameters ---
     fov_limit = edge_fov_deg * math.sqrt(2.0)
     if mask_fov_deg > fov_limit + 1e-6:
-        raise ValueError(
-            f"`mask_fov_deg` ({mask_fov_deg}°) exceeds geometric limit for edge_fov_deg={edge_fov_deg}°. "
-            f"Maximum allowed ≈ {fov_limit:.2f}°."
-        )
+        raise ValueError(f"`mask_fov_deg` ({mask_fov_deg}°) exceeds geometric limit for edge_fov_deg={edge_fov_deg}°. " f"Maximum allowed ≈ {fov_limit:.2f}°.")
 
     if edge_fov_deg <= 0 or edge_fov_deg > 180:
         raise ValueError("`edge_fov_deg` must be in (0, 180].")
@@ -227,8 +224,8 @@ def az_project_lonlat_grid(
 
     # --- Visibility masks ---
     alt_rad = np.arcsin(np.dot(d, up_vec))
-    visible_mask = (np.degrees(alt_rad) >= alt_min_deg)
-    fov_mask = (rho_deg <= mask_fov_deg + 1e-6)
+    visible_mask = np.degrees(alt_rad) >= alt_min_deg
+    fov_mask = rho_deg <= mask_fov_deg + 1e-6
     mask_inside = fov_mask & visible_mask
 
     # --- Intersect with the cloud shell ---
@@ -238,7 +235,7 @@ def az_project_lonlat_grid(
     b_quad = 2.0 * np.sum(observer_pos_ecef * d, axis=2)
     c_quad = np.dot(observer_pos_ecef, observer_pos_ecef) - cloud_shell_km * cloud_shell_km
     discriminant = b_quad * b_quad - 4.0 * c_quad
-    valid = (discriminant >= 0)
+    valid = discriminant >= 0
 
     sqrt_disc = np.sqrt(np.maximum(discriminant, 0.0))
     t1 = (-b_quad - sqrt_disc) / 2.0

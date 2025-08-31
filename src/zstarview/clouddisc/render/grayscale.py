@@ -68,6 +68,11 @@ def convert_bt_to_la_image(
     Returns:
         A PIL Image object in "LA" mode.
     """
+
+    if bt_warm <= bt_cold + 0.5:
+        mid = 0.5 * (bt_warm + bt_cold)
+        bt_cold, bt_warm = mid - 0.25, mid + 0.25
+
     # 1) Calculate base brightness (0-255) from temperature
     weight = _bt_to_weight(bt, bt_warm, bt_cold)
     l_gray = (weight * 255.0).astype(np.uint8)

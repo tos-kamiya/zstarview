@@ -62,7 +62,7 @@ class GoesProvider:
         Returns:
             A boto3 S3 client instance.
         """
-        # 短いタイムアウト・最小リトライで「早く失敗」
+        # "Fail fast" with short timeouts and minimal retries.
         cfg = Config(
             signature_version=UNSIGNED,
             retries={"max_attempts": 1, "mode": "standard"},
@@ -90,24 +90,20 @@ class GoesProvider:
         prefix = f"ABI-L2-CMIPF/{t.year:04d}/{_doy(t):03d}/{t.hour:02d}/"
         s3 = self._s3(bucket)
         if DEBUG_GOES:
-            logger.debug("Listing s3://%s/%s (region=%s)", bucket, prefix, s3.meta.region_name,
-                         extra={"sat": "G16" if bucket.endswith("16") else "G18", "bucket": bucket, "prefix": prefix})
+            logger.debug("Listing s3://%s/%s (region=%s)", bucket, prefix, s3.meta.region_name, extra={"sat": "G16" if bucket.endswith("16") else "G18", "bucket": bucket, "prefix": prefix})
 
         try:
             paginator = s3.get_paginator("list_objects_v2")
             pages = paginator.paginate(Bucket=bucket, Prefix=prefix)
         except Exception as e:
-            # DNS/Timeout などは DownloadError(transient=True)
-            meta = CloudMeta(satellite="G16" if bucket.endswith("16") else "G18",
-                             product="CMIPF-C13", time_utc=t.replace(tzinfo=dt.timezone.utc),
-                             src_paths=[])
+            # Treat DNS/Timeout errors as transient.
+            meta = CloudMeta(satellite="G16" if bucket.endswith("16") else "G18", product="CMIPF-C13", time_utc=t.replace(tzinfo=dt.timezone.utc), src_paths=[])
             raise DownloadError(f"Failed to list s3://{bucket}/{prefix}", transient=True, meta=meta) from e
 
         keys = [obj["Key"] for page in pages for obj in page.get("Contents", []) or []]
 
         if DEBUG_GOES:
-            logger.debug("Found %d objects under %s", len(keys), prefix,
-                         extra={"sat": meta.satellite if 'meta' in locals() else "GOES", "bucket": bucket, "prefix": prefix})
+            logger.debug("Found %d objects under %s", len(keys), prefix, extra={"sat": meta.satellite if "meta" in locals() else "GOES", "bucket": bucket, "prefix": prefix})
 
         self._list_cache[cache_key] = keys
         return keys
@@ -131,16 +127,13 @@ class GoesProvider:
         tmp_path = dst.with_suffix(dst.suffix + ".tmp")
         s3 = self._s3(bucket)
 
-        logger.info("Downloading s3://%s/%s", bucket, key,
-                    extra={"sat": "G16" if bucket.endswith("16") else "G18", "bucket": bucket, "key": key})
+        logger.info("Downloading s3://%s/%s", bucket, key, extra={"sat": "G16" if bucket.endswith("16") else "G18", "bucket": bucket, "key": key})
         try:
             with tmp_path.open("wb") as f:
                 s3.download_fileobj(bucket, key, f)
         except Exception as e:
-            meta = CloudMeta(satellite="G16" if bucket.endswith("16") else "G18",
-                             product="CMIPF-C13", time_utc=dt.datetime.utcnow().replace(tzinfo=dt.timezone.utc),
-                             src_paths=[])
-            # S3 404 など恒久的エラーは transient=False にしたいが、ここでは判定が難しいので True を既定
+            meta = CloudMeta(satellite="G16" if bucket.endswith("16") else "G18", product="CMIPF-C13", time_utc=dt.datetime.utcnow().replace(tzinfo=dt.timezone.utc), src_paths=[])
+            # Permanent errors like S3 404 should have transient=False, but it's hard to determine here, so default to True.
             raise DownloadError(f"Failed to download s3://{bucket}/{key}", transient=True, meta=meta) from e
         tmp_path.replace(dst)
         return dst
@@ -187,8 +180,7 @@ class GoesProvider:
                 used_time = search_time.replace(minute=(search_time.minute // 10) * 10, second=0, microsecond=0, tzinfo=dt.timezone.utc)
                 return da, used_time, [path]
             except Exception as e:
-                logger.warning("Satpy load failed for %s: %s (fallback=xarray)", Path(key).name, e,
-                               extra={"sat": sat, "bucket": bucket})
+                logger.warning("Satpy load failed for %s: %s (fallback=xarray)", Path(key).name, e, extra={"sat": sat, "bucket": bucket})
                 # Fallback: Try opening with xarray directly. The variable name is often 'CMI'.
                 try:
                     with xr.open_dataset(path, engine="netcdf4") as ds:
@@ -197,15 +189,12 @@ class GoesProvider:
                             used_time = search_time.replace(minute=(search_time.minute // 10) * 10, second=0, microsecond=0, tzinfo=dt.timezone.utc)
                             return da, used_time, [path]
                 except Exception as ex:
-                    logger.error("xarray fallback failed for %s: %s", Path(key).name, ex,
-                                 extra={"sat": sat, "bucket": bucket})
+                    logger.error("xarray fallback failed for %s: %s", Path(key).name, ex, extra={"sat": sat, "bucket": bucket})
                     # If both fail, continue to the next candidate time
 
         return None  # Not found in the given time window
 
-    def fetch_bt_c13_with_failover(
-        self, sat: str, when_utc: dt.datetime, extra_back_minutes: int = 30
-    ) -> Tuple[Tuple[xr.DataArray, dt.datetime, List[Path]], str]:
+    def fetch_bt_c13_with_failover(self, sat: str, when_utc: dt.datetime, extra_back_minutes: int = 30) -> Tuple[Tuple[xr.DataArray, dt.datetime, List[Path]], str]:
         """
         Fetches C13 data with failover and retry logic.
 
@@ -227,8 +216,7 @@ class GoesProvider:
         secondary = "G18" if sat == "G16" else "G16"
 
         # 1st pass: Use the standard search window
-        logger.info("Searching GOES (primary=%s, window=%dmin)", primary, self.cfg.search_back_minutes,
-                    extra={"sat": primary})
+        logger.info("Searching GOES (primary=%s, window=%dmin)", primary, self.cfg.search_back_minutes, extra={"sat": primary})
         res = self._fetch_bt_c13_once(primary, when_utc, self.cfg.search_back_minutes)
         if res:
             return res, primary
@@ -250,6 +238,5 @@ class GoesProvider:
         if res:
             return res, secondary
 
-        meta = CloudMeta(satellite=primary, product="CMIPF-C13",
-                         time_utc=when_utc.replace(tzinfo=dt.timezone.utc), src_paths=[])
+        meta = CloudMeta(satellite=primary, product="CMIPF-C13", time_utc=when_utc.replace(tzinfo=dt.timezone.utc), src_paths=[])
         raise DataNotFoundError("GOES CMIPF C13 not found (after failover and widened window)", meta=meta)
