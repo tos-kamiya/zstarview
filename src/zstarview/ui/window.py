@@ -1,19 +1,21 @@
 import logging
 logger = logging.getLogger(__name__)
 
+from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
+import math
 import threading
 import sys
-from typing import Optional, Tuple
+from typing import Any, Dict, Hashable, Optional, Tuple
+
 
 from PySide6.QtCore import Qt, QPoint, QTimer, QRect, Signal
-from PySide6.QtGui import QFont, QFontDatabase, QIcon, QImage, QPainter, QPainterPath
+from PySide6.QtGui import QColor, QFont, QFontDatabase, QIcon, QImage, QPainter, QPainterPath
 from PySide6.QtGui import QAction, QKeyEvent, QMouseEvent, QPaintEvent, QResizeEvent
 from PySide6.QtWidgets import QMainWindow, QSizeGrip, QApplication, QPushButton, QMenu
 
 import astropy
 import numpy as np
-from PIL import Image
 import polars as pl
 
 from ..clouddisc import CloudDisc, CloudDiscConfig
@@ -33,178 +35,189 @@ from ..paths import CACHE_PATH
 from ..paths import EMOJI_FONT_PATH, EMOJI_FONT_SIZE, TEXT_FONT_PATH, TEXT_FONT_SIZE
 from ..paths import APP_ICON_FILE, GUI_BUTTON_SIZE, GUI_MENU_TEXT_COLOR, WINDOW_HEIGHT, WINDOW_HEIGHT, WINDOW_WIDTH
 from ..paths import SKY_UPDATE_INTERVAL, CLOUD_UPDATE_INTERVAL
+from ..paths import HatchConfig, CLOUD_HATCH_DEFAULT
 from ..render import draw as render_draw
 from ..render import draw_sky_disc
 from ..types import CelestialData, ViewerData
-from ..utils.qt import pil_to_qimage, qimage_to_pil
+from ..utils.qt import pil_to_qimage, qimage_to_np_rgba, np_rgba_to_qimage
 
 DEBUG_ECLIPSES = True
 
 
-def tint_cloud_gray_with_skyR_qimage(
-    sky_qimg: QImage,
-    cloud_gray_qimg: QImage,
-    factor: float = 0.3,
-    warm_rgb=(255, 156, 82),
-    keep_alpha: bool = False,
-) -> QImage:
-    """
-    グレー雲画像(L=雲の濃さ)に、空画像のR成分で暖色をブレンドして着色する。
-    出力はRGBA (Aはデフォルト255)。Plus合成を想定。
+class _LRU:
+    """Tiny LRU cache for QImage/ndarray blobs keyed by hashable tuples."""
+    def __init__(self, max_items: int = 16):
+        self.max = max_items
+        self._d: "OrderedDict[Hashable, Any]" = OrderedDict()
 
-    Args:
-        sky_qimg: 背景の空(QImage)。Rチャンネルを参照する。
-        cloud_gray_qimg: 雲のグレー画像(QImage.Format_Grayscale8相当)。
-                         画素値0..255が雲の強さ(白=強)。
-        factor: 空の赤さ→暖色の寄り具合の係数。0..1くらいで調整。
-        warm_rgb: 暖色のRGB。白(255,255,255)とこの色の間を補間する。
-        keep_alpha: cloud_gray_qimgにαがあるならそれをAに使う（なければ255）。
+    def get(self, key: Hashable):
+        v = self._d.get(key)
+        if v is not None:
+            self._d.move_to_end(key)
+        return v
 
-    Returns:
-        QImage (RGBA Premultiplied推奨)
-    """
-    # --- QImage -> PIL
-    sky_pil   = qimage_to_pil(sky_qimg).convert("RGB")
-    cloud_pil = qimage_to_pil(cloud_gray_qimg)
-    Wc, Hc = cloud_pil.size
+    def set(self, key: Hashable, val: Any):
+        self._d[key] = val
+        self._d.move_to_end(key)
+        if len(self._d) > self.max:
+            self._d.popitem(last=False)
 
-    # 空を雲サイズへ
-    sky_resized = sky_pil.resize((Wc, Hc), Image.BILINEAR)
-    sky_arr = np.array(sky_resized, dtype=np.uint8)  # (H,W,3)
 
-    # 雲の強さ（L）。必要ならαも取得
-    if cloud_pil.mode == "LA":
-        L_arr = np.array(cloud_pil.getchannel("L"), dtype=np.uint8)
-        A_arr = np.array(cloud_pil.getchannel("A"), dtype=np.uint8)
-    else:
-        L_arr = np.array(cloud_pil, dtype=np.uint8)
-        A_arr = None
-
-    # ---- 色づけロジック ----
-    # 空のRを0..1に正規化し、factorでスケール → k: 白↔暖色の混合率
-    sky_R = sky_arr[..., 0].astype(np.float32) / 255.0
-    k = np.clip(factor * sky_R, 0.0, 1.0)[..., None]  # (H,W,1)
-
-    white = np.array([255, 255, 255], dtype=np.float32)
-    warm  = np.array(warm_rgb,       dtype=np.float32)
-    base_color = white * (1.0 - k) + warm * k  # (H,W,3) 0..255
-
-    # 雲の明るさL(0..255)でスケール（L=0で黒、L=255でbase_colorそのまま）
-    Lf = (L_arr.astype(np.float32) / 255.0)[..., None]  # (H,W,1)
-    rgb = (base_color * Lf).clip(0, 255).astype(np.uint8)
-
-    # アルファ：既定は255（合成時はsetOpacityやCompositionで調整）
-    if keep_alpha and A_arr is not None:
-        A = A_arr
-    else:
-        A = np.full((Hc, Wc), 255, dtype=np.uint8)
-
-    out = np.dstack([rgb, A])  # (H,W,4)
-    tinted_pil = Image.fromarray(out, "RGBA")
-    return pil_to_qimage(tinted_pil, premultiplied=True)
-
-from typing import Optional
-from PySide6.QtGui import QImage, QPainter, QBrush, QPen, QColor, QPixmap, QPainterPath
-from PySide6.QtCore import Qt, QRect, QPoint
-import math
-
-# 互換：alphaChannel未使用の実装で上書き
-def cloud_with_hatched_alpha_no_alphaChannel(
+def cloud_with_hatched_alpha(
     cloud_img: QImage,
     disc_rect: QRect,
-    tile_px: int,
-    line_px: int,
-    angle_deg: float = 45.0,
-    strength: int = 255,
-    # thickness_scale: float = 1.0,
-    phase_px: float = 0.0,
+    hatch_cfg: HatchConfig,
+    hatch_cache: Optional["_LRU"] = None,
 ) -> QImage:
-    out = cloud_img.convertToFormat(QImage.Format_ARGB32_Premultiplied)
+    """
+    雲画像にハッチ状のアルファ抜きを適用する。
+    回転AAによる幅ブレを避けるため、NumPyで最終サイズの二値（＋端1px勾配）マスクを生成する。
+    """
+    assert cloud_img.width() == disc_rect.width() and cloud_img.height() == disc_rect.height(), \
+        "Hatch must be generated at the final display size before composition."
+
+    # 出力をPremultipliedに
+    out = cloud_img if cloud_img.format() == QImage.Format_ARGB32_Premultiplied \
+        else cloud_img.convertToFormat(QImage.Format_ARGB32_Premultiplied)
+
     w, h = disc_rect.width(), disc_rect.height()
 
-    # ストライプ（透明RGBA）
-    hatch = QImage(w, h, QImage.Format_ARGB32_Premultiplied)
-    hatch.fill(Qt.transparent)
+    (tile_px, line_px, ang_key, strength_i, pha_key, edge) = hatch_cfg.as_key()
+    pitch = max(1.0, float(tile_px))
+    band  = float(max(1, int(line_px)))
+    ang   = float(ang_key)
+    pha   = float(pha_key)
+    strength_i = int(strength_i)
 
-    # 円盤クリップ付きのペイント面
-    painter = QPainter(hatch)
-    painter.setRenderHint(QPainter.Antialiasing, True)
-    path = QPainterPath(); path.addEllipse(0, 0, w, h)
-    painter.setClipPath(path)
+    hatch_key = ("hatch_np", w, h, pitch, band, ang_key, strength_i, pha_key, edge)
 
-    # 連続直線ストライプを描く
-    L = int(math.hypot(w, h))
-    painter.save()
-    painter.translate(w/2, h/2)
-    painter.rotate(angle_deg)
-    painter.setPen(Qt.NoPen)
-    color = QColor(0, 0, 0, max(0, min(255, strength)))
-    pitch = max(1, tile_px)
-    band  = max(1, line_px)
-    # band  = max(1, int(round(line_px * thickness_scale)))
-    y = -L + (phase_px % pitch)
-    while y <= L:
-        painter.fillRect(-L, int(y - band/2), 2*L, band, color)
-        y += pitch
-    painter.restore()
-    painter.end()
+    cache = hatch_cache
+    hatch = cache.get(hatch_key) if cache is not None else None
+    if hatch is None:
+        # --- NumPyでハッチαマスクを生成（0..255）
+        # 画像中心原点（ピクセル中心合わせ）
+        cy = (h - 1) * 0.5
+        cx = (w - 1) * 0.5
 
-    # “抜き”適用：DestinationOut（= 雲のαからhatch分を減算）
+        # 回転座標 u による縞: (u + phase) % pitch < band
+        theta = np.deg2rad(ang)
+        ct, st = -math.cos(theta), math.sin(theta)
+
+        # グリッド（float32で十分）
+        y = (np.arange(h, dtype=np.float32) - cy)[:, None]
+        x = (np.arange(w, dtype=np.float32) - cx)[None, :]
+
+        # 目的の回転方向に合わせて基準座標を作る
+        # 画面座標(x,y) → パターン座標(u,v)
+        # u =  x*ct + y*st   （u軸に沿って平行縞）
+        u = x * ct + y * st
+        u = u + pha  # 位相
+
+        # 0..pitch の範囲に折り返し
+        umod = np.mod(u, pitch)
+
+        # 中央部（硬い二値）
+        inside = umod < band
+
+        # ★ 境界を“わずかに”ソフトに（見た目を立たせるが、幅はブレさせない）
+        if edge > 0.0:
+            # 0 付近と band 付近で 0..1 の線形ランプ
+            near_low  = np.clip((edge - umod) / max(1e-6, edge), 0.0, 1.0)
+            near_high = np.clip((edge - (band - umod)) / max(1e-6, edge), 0.0, 1.0)
+            edge_ramp = np.maximum(near_low, near_high)  # 端から内側に1px分だけ勾配
+
+            # αは「中央は最大、端は勾配」で作る
+            alpha = np.where(inside, 1.0, 0.0)
+            # 端の勾配を上書き（中央の1px近辺のみ有効）
+            edge_zone = (umod < edge) | (umod > (band - edge))
+            alpha = np.where(edge_zone & inside, np.maximum(alpha, edge_ramp), alpha)
+        else:
+            alpha = np.where(inside, 1.0, 0.0)
+
+        alpha_u8 = (alpha * int(np.clip(strength_i, 0, 255))).astype(np.uint8)
+
+        # 円盤外は完全透明に（プレマルチ前提でRGB=0, A=0）
+        # ここで円マスクを作ってαに適用
+        rr = min(cx, cy)
+        r2 = (x - 0.0)**2 + (y - 0.0)**2
+        disc_mask = (r2 <= (rr + 0.25)**2)
+        alpha_u8 = np.where(disc_mask, alpha_u8, 0)
+
+        # RGBAにしてQImage化（RGB=0でOK。DestinationOutでαだけ使う）
+        hatch_rgba = np.zeros((h, w, 4), dtype=np.uint8)
+        hatch_rgba[..., 3] = alpha_u8
+        hatch = np_rgba_to_qimage(hatch_rgba)  # Premultipliedに変換される実装ならそれでOK
+
+        if cache is not None:
+            cache.set(hatch_key, hatch)
+
+    # --- αカットアウト
     p = QPainter(out)
     p.setCompositionMode(QPainter.CompositionMode_DestinationOut)
-    p.drawImage(disc_rect.topLeft(), hatch)
+    p.drawImage(disc_rect.topLeft(), hatch)  # サイズ一致前提
     p.end()
 
     return out
 
 
-def qimage_to_np_rgba(qimg: QImage) -> np.ndarray:
-    """QImage -> np.ndarray (H,W,4) RGBA8888。QImageから独立したコピー。"""
-    qimg = qimg.convertToFormat(QImage.Format_RGBA8888)
-    w, h = qimg.width(), qimg.height()
-    bpl = qimg.bytesPerLine()
-    buf = qimg.constBits().tobytes()  # ← PySide6はmemoryview。tobytes()で確実に取る
-    arr = np.frombuffer(buf, dtype=np.uint8).reshape(h, bpl)
-    arr = arr[:, : w * 4].reshape(h, w, 4).copy()  # copyでQImageと独立
-    return arr
-
-def np_rgba_to_qimage(arr: np.ndarray) -> QImage:
-    """np.ndarray (H,W,4) uint8 -> QImage RGBA8888（バッファ所有権はQImage側）。"""
-    h, w, c = arr.shape
-    assert c == 4 and arr.dtype == np.uint8
-    qimg = QImage(arr.data, w, h, w * 4, QImage.Format_RGBA8888)
-    return qimg.copy()
-
-def compose_cloud_over_sky_scaled(
+def _compose_cloud_over_sky_no_global_cache(
     sky_img: QImage,
     cloud_img_rgba: QImage,
     dest_rect: QRect,
     cloud_opacity: float = 1.0,
-    gray_mix: float = 1.0
+    gray_mix: float = 1.0,
 ) -> QImage:
+    """グローバルキャッシュを使わない合成（描画サイズ変化/元画像更新時のみ呼ばれる前提）。"""
     w, h = dest_rect.width(), dest_rect.height()
 
-    # 先に目的サイズへ拡大（Qtの補間を統一）
-    sky_s   = sky_img.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
-    cloud_s = cloud_img_rgba.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+    # スケール（呼び出し側で合わせている想定だが、保険でサイズ確認）
+    if sky_img.width() != w or sky_img.height() != h:
+        sky_img = sky_img.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+    if cloud_img_rgba.width() != w or cloud_img_rgba.height() != h:
+        cloud_img_rgba = cloud_img_rgba.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
 
-    # QImage -> ndarray
-    sky_np   = qimage_to_np_rgba(sky_s).astype(np.float32)
-    cloud_np = qimage_to_np_rgba(cloud_s).astype(np.float32)
+    sky_np   = qimage_to_np_rgba(sky_img).astype(np.uint8)     # (h,w,4)
+    cloud_np = qimage_to_np_rgba(cloud_img_rgba).astype(np.uint8)
 
-    # 空のグレー化（NTSC係数）
-    Y = 0.299 * sky_np[..., 0] + 0.587 * sky_np[..., 1] + 0.114 * sky_np[..., 2]
-    gray_rgb = np.stack([Y, Y, Y], axis=-1)
+    # グレースケール（整数近似）
+    r = sky_np[..., 0].astype(np.uint16)
+    g = sky_np[..., 1].astype(np.uint16)
+    b = sky_np[..., 2].astype(np.uint16)
+    gray_u8 = ((77 * r + 150 * g + 29 * b) >> 8).astype(np.uint8)  # (h,w)
 
-    a = (cloud_np[..., 3] / 255.0) * float(np.clip(gray_mix, 0.0, 1.0))
-    base_rgb = (1.0 - a)[..., None] * sky_np[..., :3] + a[..., None] * gray_rgb
+    a = (cloud_np[..., 3].astype(np.float32) / 255.0) * float(np.clip(gray_mix, 0.0, 1.0))
+    a8 = (np.clip(a, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint16)  # (h,w)
+    inv_a8 = (255 - a8).astype(np.uint16)
 
-    add = cloud_np[..., :3] * float(np.clip(cloud_opacity, 0.0, 1.0))
-    out_rgb = np.clip(base_rgb + add, 0, 255).astype(np.uint8)
+    sky_rgb_u16  = sky_np[..., :3].astype(np.uint16)
+    gray_rgb_u16 = np.repeat(gray_u8[:, :, None], 3, axis=2).astype(np.uint16)
+
+    base_u16 = (inv_a8[:, :, None] * sky_rgb_u16 + a8[:, :, None] * gray_rgb_u16) // 255
+
+    cop = float(np.clip(cloud_opacity, 0.0, 1.0))
+    if cop > 0.0:
+        add_u16 = (cloud_np[..., :3].astype(np.uint16) * int(round(cop * 255))) // 255
+        out_u16 = base_u16 + add_u16
+        np.minimum(out_u16, 255, out=out_u16)
+    else:
+        out_u16 = base_u16
 
     out = np.empty((h, w, 4), dtype=np.uint8)
-    out[..., :3] = out_rgb
+    out[..., :3] = out_u16.astype(np.uint8)
     out[..., 3]  = 255
+
+    cy = (h - 1) * 0.5
+    cx = (w - 1) * 0.5
+    rr = min(cx, cy)  # 画像サイズぴったりの円
+    # ピクセル中心合わせ（+0.5/-0.5）でジャギ減
+    y = np.arange(h, dtype=np.float32)[:, None]
+    x = np.arange(w, dtype=np.float32)[None, :]
+    r2 = (x - cx)**2 + (y - cy)**2
+    mask = r2 <= (rr + 0.25)**2   # ほんのわずか内側に寄せてリング抑制
+    # 外側はアルファ=0、RGBもプレマルチ的に0へ
+    out[..., 3][~mask] = 0
+    out[..., :3][~mask] = 0
+
     return np_rgba_to_qimage(out)
 
 
@@ -321,6 +334,10 @@ class SkyWindow(DraggableWindow):
         except Exception as e:
             logger.warning(f"CloudDisc init failed: {e}")
 
+        self._composited_img: Optional[QImage] = None
+        self._composite_key: Optional[Tuple] = None  # ("comp", sky_ck, cloud_ck, w, h, cloud_alpha, hatch_params)
+        self._hatch_cache = _LRU(max_items=8)
+
         # 初期ロード開始
         self.start_background_sky_data_update(is_initial_load=True)
         # 雲も初回生成（非同期）
@@ -370,6 +387,9 @@ class SkyWindow(DraggableWindow):
 
         button_size = self.menu_button.size()
         self.menu_button.move(self.width() - button_size.width() - 8, 8)
+
+        self._composite_key = None
+        self._composited_img = None
 
         super().resizeEvent(event)
 
@@ -443,11 +463,7 @@ class SkyWindow(DraggableWindow):
 
         render_draw.draw_radial_background(painter, self.rect(), geometry)
 
-        # 背景の空色ディスク
-        self._draw_sky_disc_scaled(painter, geometry)
-
-        # --- added: clouds disc (over the sky color, under stars)
-        self._draw_clouds_scaled(painter, geometry)
+        self._draw_sky_and_clouds_scaled(painter, geometry)
 
         render_draw.draw_sky_reference_lines(painter, geometry, self.celestial_data)
         render_draw.draw_direction_labels(painter, geometry, self.viewer_data.view_center, self.text_font)
@@ -472,63 +488,77 @@ class SkyWindow(DraggableWindow):
             self.text_font,
         )
 
-    def _draw_sky_disc_scaled(self, painter: QPainter, geometry):
-        """Draws the scaled sky disc."""
-        img = self._sky_disc_image
-        if img is None or self.sky_disc_alpha <= 0.0:
+    def _draw_sky_and_clouds_scaled(self, painter: QPainter, geometry):
+        """空色ディスクと雲ディスクを一括で合成し、1回の drawImage で描画。"""
+        # どちらも無効なら描かない
+        if (self._sky_disc_image is None or self.sky_disc_alpha <= 0.0) and \
+        (self._cloud_img is None or self.cloud_disc_alpha <= 0.0):
             return
 
         x = int(geometry.center[0] - geometry.radius)
         y = int(geometry.center[1] - geometry.radius)
         w = h = int(geometry.radius * 2)
 
-        painter.drawImage(QRect(x, y, w, h), img)
+        sky_ck   = int(self._sky_disc_image.cacheKey()) if self._sky_disc_image else 0
+        cloud_ck = int(self._cloud_img.cacheKey()) if self._cloud_img else 0
 
-    # --- added: draw clouds
-    def _draw_clouds_scaled(self, painter: QPainter, geometry):
-        """Draws the scaled cloud disc with alpha."""
-        if self._cloud_img is None or self.cloud_disc_alpha <= 0.0:
-            return
+        hatch_cfg = CLOUD_HATCH_DEFAULT
+        comp_key = ("comp", sky_ck, cloud_ck, w, h, float(self.cloud_disc_alpha), hatch_cfg.as_key())
 
-        img = self._cloud_img
+        # キーが同じなら再計算しない
+        if self._composite_key != comp_key or self._composited_img is None:
+            # 1) 必要サイズへスケーリング
+            def _scaled(qimg: Optional[QImage]) -> Optional[QImage]:
+                if qimg is None:
+                    return None
+                if qimg.width() == w and qimg.height() == h:
+                    return qimg
+                return qimg.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
 
-        x = int(geometry.center[0] - geometry.radius)
-        y = int(geometry.center[1] - geometry.radius)
-        w = h = int(geometry.radius * 2)
+            sky_s   = _scaled(self._sky_disc_image)
+            cloud_s = _scaled(self._cloud_img)
 
-        disc = QRect(0, 0, img.width(), img.height())
+            # 2) 雲のハッチ（ある場合のみ）
+            if cloud_s is not None and self.cloud_disc_alpha > 0.0:
+                disc = QRect(0, 0, w, h)
+                cloud_s = cloud_with_hatched_alpha(cloud_s, disc, hatch_cfg, self._hatch_cache)
 
-        # 元の img はそのまま、新しい画像 new_img を作る
-        new_img = cloud_with_hatched_alpha_no_alphaChannel(
-            img, disc,
-            tile_px=8,               # ストライプ間隔（ピッチ）
-            line_px=7,                # 基本太さ
-            angle_deg=45,
-            strength=255,
-            phase_px=0.0,             # 必要なら微調整
-        )
+            # 3) 合成
+            if cloud_s is None or self.cloud_disc_alpha <= 0.0:
+                # 雲なし → 空だけ
+                composited = sky_s if sky_s is not None else QImage(w, h, QImage.Format_ARGB32_Premultiplied)
+                if composited is None or composited.isNull():
+                    # 念のため透過で埋める
+                    composited = QImage(w, h, QImage.Format_ARGB32_Premultiplied)
+                    composited.fill(Qt.transparent)
+            else:
+                # 雲あり → グレーブレンド＋雲のRGB加算（従来のロジック）
+                # compose_cloud_over_sky_scaled を「キャッシュ非依存」版に差し替えたものを使う
+                composited = _compose_cloud_over_sky_no_global_cache(
+                    sky_img = sky_s if sky_s is not None else QImage(w, h, QImage.Format_ARGB32_Premultiplied),
+                    cloud_img_rgba = cloud_s,
+                    dest_rect = QRect(0, 0, w, h),
+                    cloud_opacity = float(self.cloud_disc_alpha * 0.5),
+                    gray_mix = 1.0,
+                )
 
-        composited = compose_cloud_over_sky_scaled(
-            sky_img=self._sky_disc_image,              # 元の空（カラー）
-            cloud_img_rgba=new_img,                # ハッチ適用済み雲（白+α）
-            dest_rect=QRect(0, 0, w, h),           # 出力サイズ（ローカル0,0基準）
-            cloud_opacity=float(self.cloud_disc_alpha * 0.4),   # 0..1
-            gray_mix=1.0                           # 1.0で雲部はしっかりグレー側へ寄る
-        )
+            self._composited_img = composited
+            self._composite_key = comp_key
 
-        path = QPainterPath()
-        path.addEllipse(QRect(x, y, w, h))
-
+        # 4) 描画
         painter.save()
-        painter.setClipPath(path)
-        painter.setCompositionMode(QPainter.CompositionMode_Source)
-        painter.drawImage(QRect(x, y, w, h), composited)
+        painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        painter.drawImage(QRect(x, y, w, h), self._composited_img)  # クリップしない（合成画像に円形アルファが入っている）
         painter.restore()
 
     def _on_sky_data_calculated(self, payload):
         """Handles the sky data calculated signal."""
         self.set_sky_data(payload["celestial"])
         self._sky_disc_image = payload["sky_disc"]
+
+        self._composite_key = None
+        self._composited_img = None
 
         # Emit the "initial_data_loaded" signal only once:
         if not self._sky_data_update_timer.isActive():
@@ -654,6 +684,9 @@ class SkyWindow(DraggableWindow):
                 qimg = pil_to_qimage(pil_img)
                 self._cloud_img = qimg
                 self._cloud_meta = meta
+
+                self._composite_key = None
+                self._composited_img = None
             except VisibilityError as e:
                 logger.error("Invalid params for cloud-disc image generation: %s", e)
             except DownloadError as e:

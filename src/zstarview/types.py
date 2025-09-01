@@ -73,3 +73,25 @@ class ScreenGeometry:
 
 
 CelestialObject = Union[PlanetBody, Dict[str, Any]]
+
+
+@dataclass(frozen=True, slots=True)
+class HatchConfig:
+    """雲ハッチの固定パラメータセット."""
+    tile_px: int           # 縞のピッチ（px）
+    line_px: int           # 縞の線幅（px）
+    angle_deg: float       # 縞の傾き（deg）
+    strength: int          # α強度（0..255）
+    phase_px: float        # 位相シフト（px）
+    edge_px: float         # 縞エッジのソフト化幅（px）
+
+    def as_key(self) -> tuple:
+        """キャッシュ用の厳密キー（浮動小数は丸める）"""
+        return (
+            int(self.tile_px),
+            int(self.line_px),
+            round(float(self.angle_deg), 6),
+            int(max(0, min(255, self.strength))),
+            round(float(self.phase_px) % max(1.0, float(self.tile_px)), 6),
+            max(0.0, float(self.edge_px)),
+        )

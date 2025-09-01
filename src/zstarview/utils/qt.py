@@ -4,33 +4,107 @@ from PySide6.QtGui import QImage, QPixmap
 
 
 def pil_to_qimage(img: Image.Image, premultiplied: bool = True) -> QImage:
-    """Convert a PIL Image to QImage. If premultiplied=True, return ARGB32_Premultiplied."""
+    """
+    Convert a Pillow (PIL) Image to a QImage.
+
+    Args:
+        img (Image.Image): Input Pillow image.
+        premultiplied (bool, optional): If True, the returned QImage will be
+            in ARGB32_Premultiplied format (recommended for better blending
+            and performance in Qt). If False, the QImage will remain
+            in RGBA8888 format.
+
+    Returns:
+        QImage: The converted QImage instance.
+    """
     if img.mode != "RGBA":
         img = img.convert("RGBA")
     w, h = img.size
     buf = img.tobytes("raw", "RGBA")  # RGBA (straight alpha)
 
-    # まずは RGBA8888（非プレマルチ）として QImage を作る（この時点ではバッファ非所有）
+    # Create QImage in RGBA8888 (non-premultiplied).
+    # At this point, the buffer is not owned by QImage.
     qimg = QImage(buf, w, h, w * 4, QImage.Format.Format_RGBA8888)
 
     if premultiplied:
-        # 並び変換 + プレマルチ化 + 所有権確保 を一括でやってくれる
+        # Convert to ARGB32_Premultiplied.
+        # This ensures proper alpha blending and transfers buffer ownership.
         qimg = qimg.convertToFormat(QImage.Format.Format_ARGB32_Premultiplied)
     else:
-        # 非プレマルチのまま使う場合は deep copy して所有権を Qt 側に渡す
+        # Make a deep copy to ensure QImage owns the buffer.
         qimg = qimg.copy()
 
     return qimg
 
-def pil2qpixmap(img: Image.Image, premultiplied: bool = True) -> QPixmap:
-    """Convert a PIL Image to QPixmap. premultiplied=True is recommended for smooth edges."""
-    return QPixmap.fromImage(pil_to_qimage(img, premultiplied=premultiplied))
-
 
 def qimage_to_pil(qimg: QImage) -> Image.Image:
-    """QImage → Pillow Image (RGBA)"""
+    """
+    Convert a QImage to a Pillow (PIL) Image in RGBA format.
+
+    Args:
+        qimg (QImage): Input QImage.
+
+    Returns:
+        Image.Image: Converted Pillow image in RGBA mode.
+    """
     qimg = qimg.convertToFormat(QImage.Format.Format_RGBA8888)
     w, h = qimg.width(), qimg.height()
     ptr = qimg.bits()
     arr = np.frombuffer(ptr, np.uint8).reshape((h, w, 4)).copy()
     return Image.fromarray(arr, "RGBA")
+
+
+def pil2qpixmap(img: Image.Image, premultiplied: bool = True) -> QPixmap:
+    """
+    Convert a Pillow (PIL) Image to a QPixmap.
+
+    Args:
+        img (Image.Image): Input Pillow image.
+        premultiplied (bool, optional): If True, conversion is done with
+            ARGB32_Premultiplied format, which is recommended for smoother
+            edges and proper blending.
+
+    Returns:
+        QPixmap: Converted QPixmap object.
+    """
+    return QPixmap.fromImage(pil_to_qimage(img, premultiplied=premultiplied))
+
+
+def qimage_to_np_rgba(qimg: QImage) -> np.ndarray:
+    """
+    Convert a QImage to a NumPy array (H, W, 4) in RGBA8888 format.
+
+    The returned array is a deep copy and independent from the QImage.
+
+    Args:
+        qimg (QImage): Input QImage.
+
+    Returns:
+        np.ndarray: A NumPy array of shape (height, width, 4), dtype=uint8,
+            representing RGBA8888 pixel data.
+    """
+    qimg = qimg.convertToFormat(QImage.Format_RGBA8888)
+    w, h = qimg.width(), qimg.height()
+    bpl = qimg.bytesPerLine()
+    # In PySide6, bits() returns a memoryview. Convert explicitly to bytes.
+    buf = qimg.constBits().tobytes()
+    arr = np.frombuffer(buf, dtype=np.uint8).reshape(h, bpl)
+    arr = arr[:, : w * 4].reshape(h, w, 4).copy()  # Ensure independence from QImage
+    return arr
+
+
+def np_rgba_to_qimage(arr: np.ndarray) -> QImage:
+    """
+    Convert a NumPy RGBA array (H, W, 4) to a QImage in RGBA8888 format.
+
+    Args:
+        arr (np.ndarray): Input NumPy array of shape (height, width, 4) and dtype=uint8.
+
+    Returns:
+        QImage: Converted QImage in RGBA8888 format. The buffer is copied
+            so that QImage owns the memory.
+    """
+    h, w, c = arr.shape
+    assert c == 4 and arr.dtype == np.uint8, "Input must be (H,W,4) uint8 array"
+    qimg = QImage(arr.data, w, h, w * 4, QImage.Format_RGBA8888)
+    return qimg.copy()

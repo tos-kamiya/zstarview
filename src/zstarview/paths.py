@@ -3,6 +3,8 @@ import os.path
 
 from appdirs import user_cache_dir, user_log_dir
 
+from .types import HatchConfig
+
 # Application identifiers
 APP_ID = "zstarview"
 APP_AUTHOR = "tos-kamiya"
@@ -43,6 +45,15 @@ CLOUD_UPDATE_INTERVAL = 10 * 60  # seconds
 FIELD_OF_VIEW_DEG = 115
 ANGLE_BELOW_HORIZON = 2
 
+# Cloud hatch parameters
+CLOUD_HATCH_DEFAULT = HatchConfig(
+    tile_px=10,
+    line_px=6,
+    angle_deg=45.0,
+    strength=255,
+    phase_px=0.0,
+    edge_px=1.0,
+)
 
 # Direction labels (16-point compass rose)
 DIRECTIONS = {
