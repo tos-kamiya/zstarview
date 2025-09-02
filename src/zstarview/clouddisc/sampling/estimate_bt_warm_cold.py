@@ -93,7 +93,7 @@ def estimate_bt_warm_from_equator_band(
     """
     area = da_b13.attrs.get("area", None)
     if area is None:
-        return 310.0
+        return 310.0, np.array([], dtype=np.float32)
 
     lons = np.arange(lon_center_deg - delta_lon, lon_center_deg + delta_lon + 1, step_deg)
     sample_arr = []
