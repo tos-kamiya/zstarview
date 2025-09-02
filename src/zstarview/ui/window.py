@@ -1,16 +1,15 @@
 import logging
 logger = logging.getLogger(__name__)
 
-from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 import math
 import threading
 import sys
-from typing import Any, Dict, Hashable, Optional, Tuple
+from typing import Optional, Tuple
 
 
 from PySide6.QtCore import Qt, QPoint, QTimer, QRect, Signal
-from PySide6.QtGui import QColor, QFont, QFontDatabase, QIcon, QImage, QPainter, QPainterPath
+from PySide6.QtGui import QColor, QFont, QFontDatabase, QIcon, QImage, QPainter, QPixmap
 from PySide6.QtGui import QAction, QKeyEvent, QMouseEvent, QPaintEvent, QResizeEvent
 from PySide6.QtWidgets import QMainWindow, QSizeGrip, QApplication, QPushButton, QMenu
 
@@ -44,117 +43,44 @@ from ..utils.qt import pil_to_qimage, qimage_to_np_rgba, np_rgba_to_qimage
 DEBUG_ECLIPSES = True
 
 
-class _LRU:
-    """Tiny LRU cache for QImage/ndarray blobs keyed by hashable tuples."""
-    def __init__(self, max_items: int = 16):
-        self.max = max_items
-        self._d: "OrderedDict[Hashable, Any]" = OrderedDict()
+def make_hatch_tile_qimage(W: int, H: int, line_px: int, strength: int) -> QImage:
+    """指定サイズのハッチタイルを生成 (ARGB32_Premultiplied)."""
+    norm = math.sqrt(W*W + H*H)
+    P = W * H
+    band_u = max(1, int(round(line_px * norm)))
 
-    def get(self, key: Hashable):
-        v = self._d.get(key)
-        if v is not None:
-            self._d.move_to_end(key)
-        return v
+    xs = np.arange(W, dtype=np.int32)[None, :]
+    ys = np.arange(H, dtype=np.int32)[:, None]
+    u = H * xs - W * ys
+    u_mod = np.mod(u, P)
+    dist = np.minimum(u_mod, P - u_mod)
+    mask = dist <= (band_u / 2)
 
-    def set(self, key: Hashable, val: Any):
-        self._d[key] = val
-        self._d.move_to_end(key)
-        if len(self._d) > self.max:
-            self._d.popitem(last=False)
+    arr = np.zeros((H, W, 4), dtype=np.uint8)
+    arr[..., 0:3] = 0
+    arr[..., 3] = 0
+    arr[..., 3][mask] = np.uint8(np.clip(strength, 0, 255))
+
+    buf = arr.tobytes()
+    qimg = QImage(buf, W, H, QImage.Format_ARGB32_Premultiplied)
+    return qimg.copy()
 
 
-def cloud_with_hatched_alpha(
-    cloud_img: QImage,
-    disc_rect: QRect,
-    hatch_cfg: HatchConfig,
-    hatch_cache: Optional["_LRU"] = None,
-) -> QImage:
-    """
-    雲画像にハッチ状のアルファ抜きを適用する。
-    回転AAによる幅ブレを避けるため、NumPyで最終サイズの二値（＋端1px勾配）マスクを生成する。
-    """
-    assert cloud_img.width() == disc_rect.width() and cloud_img.height() == disc_rect.height(), \
-        "Hatch must be generated at the final display size before composition."
-
-    # 出力をPremultipliedに
+def cloud_with_hatched_alpha(cloud_img: QImage, hatch_cfg: HatchConfig) -> QImage:
+    """雲画像にハッチマスクを適用."""
     out = cloud_img if cloud_img.format() == QImage.Format_ARGB32_Premultiplied \
         else cloud_img.convertToFormat(QImage.Format_ARGB32_Premultiplied)
 
-    w, h = disc_rect.width(), disc_rect.height()
+    hatch_tile = make_hatch_tile_qimage(
+        hatch_cfg.tile_w_px,
+        hatch_cfg.tile_h_px,
+        hatch_cfg.line_px,
+        hatch_cfg.strength,
+    )
 
-    (tile_px, line_px, ang_key, strength_i, pha_key, edge) = hatch_cfg.as_key()
-    pitch = max(1.0, float(tile_px))
-    band  = float(max(1, int(line_px)))
-    ang   = float(ang_key)
-    pha   = float(pha_key)
-    strength_i = int(strength_i)
-
-    hatch_key = ("hatch_np", w, h, pitch, band, ang_key, strength_i, pha_key, edge)
-
-    cache = hatch_cache
-    hatch = cache.get(hatch_key) if cache is not None else None
-    if hatch is None:
-        # --- NumPyでハッチαマスクを生成（0..255）
-        # 画像中心原点（ピクセル中心合わせ）
-        cy = (h - 1) * 0.5
-        cx = (w - 1) * 0.5
-
-        # 回転座標 u による縞: (u + phase) % pitch < band
-        theta = np.deg2rad(ang)
-        ct, st = -math.cos(theta), math.sin(theta)
-
-        # グリッド（float32で十分）
-        y = (np.arange(h, dtype=np.float32) - cy)[:, None]
-        x = (np.arange(w, dtype=np.float32) - cx)[None, :]
-
-        # 目的の回転方向に合わせて基準座標を作る
-        # 画面座標(x,y) → パターン座標(u,v)
-        # u =  x*ct + y*st   （u軸に沿って平行縞）
-        u = x * ct + y * st
-        u = u + pha  # 位相
-
-        # 0..pitch の範囲に折り返し
-        umod = np.mod(u, pitch)
-
-        # 中央部（硬い二値）
-        inside = umod < band
-
-        # ★ 境界を“わずかに”ソフトに（見た目を立たせるが、幅はブレさせない）
-        if edge > 0.0:
-            # 0 付近と band 付近で 0..1 の線形ランプ
-            near_low  = np.clip((edge - umod) / max(1e-6, edge), 0.0, 1.0)
-            near_high = np.clip((edge - (band - umod)) / max(1e-6, edge), 0.0, 1.0)
-            edge_ramp = np.maximum(near_low, near_high)  # 端から内側に1px分だけ勾配
-
-            # αは「中央は最大、端は勾配」で作る
-            alpha = np.where(inside, 1.0, 0.0)
-            # 端の勾配を上書き（中央の1px近辺のみ有効）
-            edge_zone = (umod < edge) | (umod > (band - edge))
-            alpha = np.where(edge_zone & inside, np.maximum(alpha, edge_ramp), alpha)
-        else:
-            alpha = np.where(inside, 1.0, 0.0)
-
-        alpha_u8 = (alpha * int(np.clip(strength_i, 0, 255))).astype(np.uint8)
-
-        # 円盤外は完全透明に（プレマルチ前提でRGB=0, A=0）
-        # ここで円マスクを作ってαに適用
-        rr = min(cx, cy)
-        r2 = (x - 0.0)**2 + (y - 0.0)**2
-        disc_mask = (r2 <= (rr + 0.25)**2)
-        alpha_u8 = np.where(disc_mask, alpha_u8, 0)
-
-        # RGBAにしてQImage化（RGB=0でOK。DestinationOutでαだけ使う）
-        hatch_rgba = np.zeros((h, w, 4), dtype=np.uint8)
-        hatch_rgba[..., 3] = alpha_u8
-        hatch = np_rgba_to_qimage(hatch_rgba)  # Premultipliedに変換される実装ならそれでOK
-
-        if cache is not None:
-            cache.set(hatch_key, hatch)
-
-    # --- αカットアウト
     p = QPainter(out)
     p.setCompositionMode(QPainter.CompositionMode_DestinationOut)
-    p.drawImage(disc_rect.topLeft(), hatch)  # サイズ一致前提
+    p.drawTiledPixmap(out.rect(), QPixmap.fromImage(hatch_tile))
     p.end()
 
     return out
@@ -308,7 +234,7 @@ class SkyWindow(DraggableWindow):
         self._sky_disc_image: Optional[QImage] = None
 
         # --- added: CloudDisc & timers/flags/cache
-        self._cloud_base_size: int = 512
+        self._cloud_base_size: int = 256
         self._cloud_img: Optional[QImage] = None
         self._cloud_meta: Optional[dict] = None
         self._is_cloud_update_running: bool = False
@@ -336,7 +262,6 @@ class SkyWindow(DraggableWindow):
 
         self._composited_img: Optional[QImage] = None
         self._composite_key: Optional[Tuple] = None  # ("comp", sky_ck, cloud_ck, w, h, cloud_alpha, hatch_params)
-        self._hatch_cache = _LRU(max_items=8)
 
         # 初期ロード開始
         self.start_background_sky_data_update(is_initial_load=True)
@@ -502,8 +427,7 @@ class SkyWindow(DraggableWindow):
         sky_ck   = int(self._sky_disc_image.cacheKey()) if self._sky_disc_image else 0
         cloud_ck = int(self._cloud_img.cacheKey()) if self._cloud_img else 0
 
-        hatch_cfg = CLOUD_HATCH_DEFAULT
-        comp_key = ("comp", sky_ck, cloud_ck, w, h, float(self.cloud_disc_alpha), hatch_cfg.as_key())
+        comp_key = ("comp", sky_ck, cloud_ck, w, h, float(self.cloud_disc_alpha))
 
         # キーが同じなら再計算しない
         if self._composite_key != comp_key or self._composited_img is None:
@@ -520,8 +444,7 @@ class SkyWindow(DraggableWindow):
 
             # 2) 雲のハッチ（ある場合のみ）
             if cloud_s is not None and self.cloud_disc_alpha > 0.0:
-                disc = QRect(0, 0, w, h)
-                cloud_s = cloud_with_hatched_alpha(cloud_s, disc, hatch_cfg, self._hatch_cache)
+                cloud_s = cloud_with_hatched_alpha(cloud_s, CLOUD_HATCH_DEFAULT)
 
             # 3) 合成
             if cloud_s is None or self.cloud_disc_alpha <= 0.0:
@@ -538,7 +461,7 @@ class SkyWindow(DraggableWindow):
                     sky_img = sky_s if sky_s is not None else QImage(w, h, QImage.Format_ARGB32_Premultiplied),
                     cloud_img_rgba = cloud_s,
                     dest_rect = QRect(0, 0, w, h),
-                    cloud_opacity = float(self.cloud_disc_alpha * 0.5),
+                    cloud_opacity = float(self.cloud_disc_alpha * 0.8),
                     gray_mix = 1.0,
                 )
 

@@ -1,17 +1,15 @@
+from dataclasses import dataclass
 import os
 import os.path
 
 from appdirs import user_cache_dir, user_log_dir
 
-from .types import HatchConfig
+# Base directory of this package
+_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Application identifiers
 APP_ID = "zstarview"
 APP_AUTHOR = "tos-kamiya"
-
-
-# Base directory of this package
-_dir = os.path.dirname(os.path.abspath(__file__))
 
 # Data file paths
 TEXT_FONT_PATH = os.path.join(_dir, "data", "Noto_Sans", "NotoSans-VariableFont_wdth,wght.ttf")
@@ -44,16 +42,6 @@ CLOUD_UPDATE_INTERVAL = 10 * 60  # seconds
 # Rendering / FOV
 FIELD_OF_VIEW_DEG = 115
 ANGLE_BELOW_HORIZON = 2
-
-# Cloud hatch parameters
-CLOUD_HATCH_DEFAULT = HatchConfig(
-    tile_px=10,
-    line_px=6,
-    angle_deg=45.0,
-    strength=255,
-    phase_px=0.0,
-    edge_px=1.0,
-)
 
 # Direction labels (16-point compass rose)
 DIRECTIONS = {
@@ -108,3 +96,13 @@ PLANET_IDS = {
     "pallas": 2,
     "vesta": 4,
 }
+
+@dataclass(frozen=True, slots=True)
+class HatchConfig:
+    """雲ハッチのパラメータ."""
+    tile_w_px: int
+    tile_h_px: int
+    line_px: int
+    strength: int
+
+CLOUD_HATCH_DEFAULT = HatchConfig(20, 19, 6, 255)
