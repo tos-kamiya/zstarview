@@ -1,5 +1,11 @@
+# -*- coding: utf-8 -*-
 """
-Utilities for cleaning up the cache directory.
+Provides a generic, rule-based utility for cleaning up cache directories.
+
+This module defines a flexible cache cleaning mechanism. You can define
+`CleanupSpec` objects to specify which files to keep or delete based on
+glob patterns, regular expressions, or custom predicate functions. It is used
+to prevent the satellite data cache from growing indefinitely.
 """
 
 from dataclasses import dataclass, field
@@ -10,17 +16,15 @@ from typing import List, Callable, Optional, Pattern
 @dataclass
 class CleanupSpec:
     """
-    Specifies the rules for cleaning up a certain kind of data in the cache.
+    Defines a set of rules for cleaning up a specific subdirectory in the cache.
 
     Attributes:
-        kind: The type of data, corresponding to a subdirectory in the cache root.
+        kind: The name of the subdirectory in the cache root to which this spec applies.
         keep_globs: A list of glob patterns. Files matching any of these will be kept.
-        keep_regexes: A list of compiled regular expressions. Files with paths matching
-                      any of these will be kept.
-        keep_pred: An optional function that takes a Path object and returns True if
-                   the file should be kept.
+        keep_regexes: A list of compiled regex patterns to match against the full file path.
+        keep_pred: An optional function that takes a Path and returns True to keep the file.
         skip_if_inprogress: If True, skips cleanup for a file if a corresponding
-                            '.inprogress' file exists.
+                            `.inprogress` file exists, indicating a download is active.
     """
 
     kind: str
@@ -33,15 +37,15 @@ class CleanupSpec:
 @dataclass
 class CleanupReport:
     """
-    A report summarizing the results of a cache cleanup operation.
+    Summarizes the results of a cache cleanup operation.
 
     Attributes:
         scanned: The total number of files scanned.
         kept: The number of files that were kept.
         deleted: The number of files that were deleted.
         emptied_dirs: The number of empty directories that were removed.
-        errors: The number of errors encountered during cleanup.
-        dry_run: True if the cleanup was a dry run (no actual deletions).
+        errors: The number of errors encountered during the process.
+        dry_run: True if no actual file deletions were performed.
     """
 
     scanned: int
@@ -59,76 +63,64 @@ def cleanup_cache(root: Path, specs: List[CleanupSpec], *, dry_run=False) -> Cle
     Args:
         root: The root directory of the cache.
         specs: A list of CleanupSpec objects defining the cleanup rules.
-        dry_run: If True, simulates the cleanup without actually deleting anything.
+        dry_run: If True, simulates the cleanup without actually deleting files or directories.
 
     Returns:
-        A CleanupReport object summarizing the operation.
+        A CleanupReport object summarizing the results of the operation.
     """
     scanned = kept = deleted = emptied = errors = 0
     kinds = {s.kind: s for s in specs}
+
     for kind, spec in kinds.items():
         base = root / kind
-        if not base.exists():
+        if not base.is_dir():
             continue
 
-        # --- File Deletion Phase ---
+        # --- Phase 1: File Deletion ---
+        # Iterate through all files in the subdirectory.
         all_files = [p for p in base.rglob("*") if p.is_file()]
         for file_path in all_files:
             scanned += 1
             should_keep = False
 
-            # Rule 1: Skip if an '.inprogress' file exists
+            # Apply rules in order to decide whether to keep the file.
             if spec.skip_if_inprogress and file_path.with_suffix(file_path.suffix + ".inprogress").exists():
                 should_keep = True
 
-            # Rule 2: Check against glob patterns
-            if not should_keep:
-                for glob_pattern in spec.keep_globs:
-                    if file_path.match(glob_pattern):
-                        should_keep = True
-                        break
+            if not should_keep and any(file_path.match(p) for p in spec.keep_globs):
+                should_keep = True
 
-            # Rule 3: Check against regex patterns
-            if not should_keep and spec.keep_regexes:
-                for regex_pattern in spec.keep_regexes:
-                    if regex_pattern.search(str(file_path)):
-                        should_keep = True
-                        break
+            if not should_keep and spec.keep_regexes and any(r.search(str(file_path)) for r in spec.keep_regexes):
+                should_keep = True
 
-            # Rule 4: Check against predicate function
             if not should_keep and spec.keep_pred:
                 try:
                     if spec.keep_pred(file_path):
                         should_keep = True
                 except Exception:
-                    errors += 1  # Error in predicate function
+                    errors += 1
 
-            # Perform action based on the decision
+            # Perform the final action.
             if should_keep:
                 kept += 1
             else:
-                # Delete the file
                 try:
                     if not dry_run:
                         file_path.unlink(missing_ok=True)
                     deleted += 1
-                except Exception:
+                except OSError:
                     errors += 1
 
-        # --- Empty Directory Cleanup Phase ---
-        # Iterate from deepest to shallowest to remove empty directories
+        # --- Phase 2: Empty Directory Cleanup ---
+        # Iterate from the deepest directories upwards to remove empty ones.
         all_dirs = sorted([d for d in base.rglob("*") if d.is_dir()], key=lambda p: len(p.parts), reverse=True)
-
         for dir_path in all_dirs:
-            if dir_path.is_dir():
-                try:
-                    # Check if the directory is empty
-                    if not any(dir_path.iterdir()):
-                        if not dry_run:
-                            dir_path.rmdir()
-                        emptied += 1
-                except Exception:
-                    # This can happen if the directory is deleted in another process, etc.
-                    errors += 1
+            try:
+                if not any(dir_path.iterdir()):
+                    if not dry_run:
+                        dir_path.rmdir()
+                    emptied += 1
+            except OSError:
+                errors += 1
 
     return CleanupReport(scanned, kept, deleted, emptied, errors, dry_run)

@@ -1,9 +1,10 @@
+# -*- coding: utf-8 -*-
 """
 Data provider for GOES-R series satellites (GOES-16 and GOES-18).
 
 This module fetches Cloud and Moisture Imagery Product (CMIPF) data from the
-NOAA Open Data Dissemination (NODD) program on AWS S3.
-It specifically targets channel 13 (longwave infrared) to get brightness temperatures.
+NOAA Open Data Dissemination (NODD) program on AWS S3. It specifically targets
+channel 13 (longwave infrared) to get brightness temperatures for cloud rendering.
 """
 
 import datetime as dt
@@ -18,14 +19,12 @@ from botocore.config import Config
 from satpy import Scene
 
 from ..config import CloudDiscConfig
-from ..types import DataNotFoundError, DownloadError, RenderError, CloudMeta
+from ..types import DataNotFoundError, DownloadError, CloudMeta
 
-# S3 bucket names for GOES satellites
+# --- Constants ---
 _GOES_BUCKET = {"G16": "noaa-goes16", "G18": "noaa-goes18"}
-# Corresponding AWS regions for the buckets
 _GOES_REGION = {"noaa-goes16": "us-east-1", "noaa-goes18": "us-west-2"}
 
-DEBUG_GOES = False
 logger = logging.getLogger(__name__)
 
 
@@ -37,34 +36,21 @@ def _doy(dt_utc: dt.datetime) -> int:
 class GoesProvider:
     """
     A provider for fetching GOES-R ABI L2 CMIPF data from AWS S3.
+
+    This class handles the logic for finding the correct data files on S3,
+    downloading them to a local cache, and loading them into an xarray DataArray.
     """
 
     def __init__(self, cfg: CloudDiscConfig):
-        """
-        Initializes the GoesProvider.
-
-        Args:
-            cfg: The application configuration.
-        """
         self.cfg = cfg
         self.root = cfg.cache_root() / "goes_cmipf"
         self.root.mkdir(parents=True, exist_ok=True)
         self._list_cache: Dict[Tuple, Any] = {}
-        # TODO: Implement a cleanup mechanism for _list_cache (e.g., every 24 hours).
 
     def _s3(self, bucket: str) -> boto3.client:
-        """
-        Creates an anonymous S3 client for the specified bucket.
-
-        Args:
-            bucket: The name of the S3 bucket.
-
-        Returns:
-            A boto3 S3 client instance.
-        """
-        # "Fail fast" with short timeouts and minimal retries.
+        """Creates an anonymous boto3 S3 client for the specified bucket."""
         cfg = Config(
-            signature_version=UNSIGNED,
+            signature_version=UNSIGNED,  # No credentials needed for public bucket
             retries={"max_attempts": 1, "mode": "standard"},
             connect_timeout=5,
             read_timeout=30,
@@ -73,15 +59,8 @@ class GoesProvider:
 
     def _list_hour(self, bucket: str, t: dt.datetime) -> List[str]:
         """
-        Lists all object keys for a given hour in the S3 bucket.
-        Results are cached in memory.
-
-        Args:
-            bucket: The S3 bucket name.
-            t: The UTC datetime.
-
-        Returns:
-            A list of S3 object keys.
+        Lists all object keys for a given hour in the S3 bucket, with in-memory caching.
+        The S3 path is structured as `ABI-L2-CMIPF/YYYY/DOY/HH/`.
         """
         cache_key = (bucket, t.year, _doy(t), t.hour)
         if cache_key in self._list_cache:
@@ -89,36 +68,21 @@ class GoesProvider:
 
         prefix = f"ABI-L2-CMIPF/{t.year:04d}/{_doy(t):03d}/{t.hour:02d}/"
         s3 = self._s3(bucket)
-        if DEBUG_GOES:
-            logger.debug("Listing s3://%s/%s (region=%s)", bucket, prefix, s3.meta.region_name, extra={"sat": "G16" if bucket.endswith("16") else "G18", "bucket": bucket, "prefix": prefix})
+        logger.debug("Listing s3://%s/%s", bucket, prefix)
 
         try:
             paginator = s3.get_paginator("list_objects_v2")
-            pages = paginator.paginate(Bucket=bucket, Prefix=prefix)
+            keys = [obj["Key"] for page in paginator.paginate(Bucket=bucket, Prefix=prefix) for obj in page.get("Contents", []) or []]
         except Exception as e:
-            # Treat DNS/Timeout errors as transient.
-            meta = CloudMeta(satellite="G16" if bucket.endswith("16") else "G18", product="CMIPF-C13", time_utc=t.replace(tzinfo=dt.timezone.utc), src_paths=[])
-            raise DownloadError(f"Failed to list s3://{bucket}/{prefix}", transient=True, meta=meta) from e
+            meta = CloudMeta(satellite="G16" if "16" in bucket else "G18", product="CMIPF-C13", time_utc=t, src_paths=[])
+            raise DownloadError(f"Failed to list S3 bucket s3://{bucket}/{prefix}", transient=True, meta=meta) from e
 
-        keys = [obj["Key"] for page in pages for obj in page.get("Contents", []) or []]
-
-        if DEBUG_GOES:
-            logger.debug("Found %d objects under %s", len(keys), prefix, extra={"sat": meta.satellite if "meta" in locals() else "GOES", "bucket": bucket, "prefix": prefix})
-
+        logger.debug("Found %d objects under %s", len(keys), prefix)
         self._list_cache[cache_key] = keys
         return keys
 
     def _download(self, bucket: str, key: str) -> Path:
-        """
-        Downloads a file from S3, caching it locally.
-
-        Args:
-            bucket: The S3 bucket name.
-            key: The S3 object key.
-
-        Returns:
-            The local path to the downloaded file.
-        """
+        """Downloads a file from S3, caching it locally using an atomic write."""
         dst = self.root / bucket / key
         if dst.exists():
             return dst
@@ -127,116 +91,95 @@ class GoesProvider:
         tmp_path = dst.with_suffix(dst.suffix + ".tmp")
         s3 = self._s3(bucket)
 
-        logger.info("Downloading s3://%s/%s", bucket, key, extra={"sat": "G16" if bucket.endswith("16") else "G18", "bucket": bucket, "key": key})
+        logger.info("Downloading s3://%s/%s", bucket, key)
         try:
             with tmp_path.open("wb") as f:
                 s3.download_fileobj(bucket, key, f)
+            tmp_path.replace(dst)  # Atomic move
         except Exception as e:
-            meta = CloudMeta(satellite="G16" if bucket.endswith("16") else "G18", product="CMIPF-C13", time_utc=dt.datetime.utcnow().replace(tzinfo=dt.timezone.utc), src_paths=[])
-            # Permanent errors like S3 404 should have transient=False, but it's hard to determine here, so default to True.
+            meta = CloudMeta(satellite="G16" if "16" in bucket else "G18", product="CMIPF-C13", time_utc=dt.datetime.now(dt.timezone.utc), src_paths=[])
             raise DownloadError(f"Failed to download s3://{bucket}/{key}", transient=True, meta=meta) from e
-        tmp_path.replace(dst)
+        finally:
+            if tmp_path.exists():
+                tmp_path.unlink(missing_ok=True)
         return dst
 
     def _fetch_bt_c13_once(self, sat: str, when_utc: dt.datetime, search_back_minutes: int) -> Optional[Tuple[xr.DataArray, dt.datetime, List[Path]]]:
         """
-        Searches for and loads a single C13 brightness temperature file for a given satellite and time window.
-
-        Args:
-            sat: The satellite to use ("G16" or "G18").
-            when_utc: The target UTC time.
-            search_back_minutes: The number of minutes to search backward from the target time.
-
-        Returns:
-            A tuple (data_array, used_time, [path]) if found, otherwise None.
+        Searches for and loads a single C13 brightness temp file for a given satellite and time.
         """
         bucket = _GOES_BUCKET[sat]
 
-        # Iterate backwards from the target time in 10-minute intervals
+        # Iterate backwards from the target time to find the most recent available file.
         for mback in range(0, search_back_minutes + 1, 10):
             search_time = when_utc - dt.timedelta(minutes=mback)
             keys = self._list_hour(bucket, search_time)
             if not keys:
                 continue
 
-            # Filter for Channel 13 (C13) files
-            keys_c13 = [k for k in keys if ("-M6C13_" in k or "-C13_" in k)]
+            # Filter for Channel 13 (C13) files and get the latest one.
+            keys_c13 = sorted([k for k in keys if "-M6C13_" in k or "-C13_" in k])
             if not keys_c13:
                 continue
-
-            # The latest file in the hour is the most recent one
-            keys_c13.sort()
             key = keys_c13[-1]
-            if DEBUG_GOES:
-                logger.debug("Candidate C13: %s", Path(key).name, extra={"sat": sat, "bucket": bucket})
 
             path = self._download(bucket, key)
 
             try:
-                # Try loading with Satpy, which handles projection info correctly
+                # Use Satpy to load the NetCDF file, as it correctly handles projection info.
                 scn = Scene(reader="abi_l2_nc", filenames=[str(path)])
                 scn.load(["C13"])
                 da = scn["C13"].astype("float32").compute()
                 used_time = search_time.replace(minute=(search_time.minute // 10) * 10, second=0, microsecond=0, tzinfo=dt.timezone.utc)
                 return da, used_time, [path]
             except Exception as e:
-                logger.warning("Satpy load failed for %s: %s (fallback=xarray)", Path(key).name, e, extra={"sat": sat, "bucket": bucket})
-                # Fallback: Try opening with xarray directly. The variable name is often 'CMI'.
+                logger.warning("Satpy load failed for %s (%s), trying xarray fallback", Path(key).name, e)
+                # If Satpy fails, try a direct xarray read as a fallback.
                 try:
                     with xr.open_dataset(path, engine="netcdf4") as ds:
                         if "CMI" in ds.variables:
                             da = ds["CMI"].astype("float32").compute()
-                            used_time = search_time.replace(minute=(search_time.minute // 10) * 10, second=0, microsecond=0, tzinfo=dt.timezone.utc)
                             return da, used_time, [path]
                 except Exception as ex:
-                    logger.error("xarray fallback failed for %s: %s", Path(key).name, ex, extra={"sat": sat, "bucket": bucket})
-                    # If both fail, continue to the next candidate time
-
-        return None  # Not found in the given time window
+                    logger.error("xarray fallback failed for %s: %s", Path(key).name, ex)
+        return None
 
     def fetch_bt_c13_with_failover(self, sat: str, when_utc: dt.datetime, extra_back_minutes: int = 30) -> Tuple[Tuple[xr.DataArray, dt.datetime, List[Path]], str]:
         """
-        Fetches C13 data with failover and retry logic.
+        Fetches C13 data with a two-pass failover strategy.
 
-        It first tries the primary satellite. If that fails, it tries the secondary one.
-        If both fail, it widens the search window by `extra_back_minutes` and retries both.
+        Pass 1: Tries the primary satellite, then the secondary, with the standard search window.
+        Pass 2: If Pass 1 fails, it widens the search window and retries both satellites.
 
         Args:
             sat: The primary satellite to try first ("G16" or "G18").
             when_utc: The target UTC time.
-            extra_back_minutes: Extra minutes to add to the search window on the second pass.
+            extra_back_minutes: Extra minutes to add to the search window for the second pass.
 
         Returns:
-            A tuple containing ((data_array, used_time, [path]), used_satellite_name).
+            A tuple: ((data_array, used_time, [path]), used_satellite_name).
 
         Raises:
-            DataNotFoundError: If no data can be found after all attempts.
+            DataNotFoundError: If no data is found after all attempts.
         """
-        primary = sat
-        secondary = "G18" if sat == "G16" else "G16"
+        primary, secondary = sat, "G18" if sat == "G16" else "G16"
 
-        # 1st pass: Use the standard search window
-        logger.info("Searching GOES (primary=%s, window=%dmin)", primary, self.cfg.search_back_minutes, extra={"sat": primary})
-        res = self._fetch_bt_c13_once(primary, when_utc, self.cfg.search_back_minutes)
-        if res:
+        # --- Pass 1: Standard search window ---
+        logger.info("Searching GOES (primary=%s, window=%dmin)", primary, self.cfg.search_back_minutes)
+        if res := self._fetch_bt_c13_once(primary, when_utc, self.cfg.search_back_minutes):
             return res, primary
 
-        logger.info("No data from %s, trying failover=%s", primary, secondary, extra={"sat": secondary})
-        res = self._fetch_bt_c13_once(secondary, when_utc, self.cfg.search_back_minutes)
-        if res:
+        logger.info("No data from %s, trying failover satellite %s", primary, secondary)
+        if res := self._fetch_bt_c13_once(secondary, when_utc, self.cfg.search_back_minutes):
             return res, secondary
 
-        # 2nd pass: Widen the search window and retry
+        # --- Pass 2: Widened search window ---
         widen_minutes = self.cfg.search_back_minutes + extra_back_minutes
         logger.info("Widening search window to %d minutes and retrying both satellites", widen_minutes)
-
-        res = self._fetch_bt_c13_once(primary, when_utc, widen_minutes)
-        if res:
+        if res := self._fetch_bt_c13_once(primary, when_utc, widen_minutes):
             return res, primary
-
-        res = self._fetch_bt_c13_once(secondary, when_utc, widen_minutes)
-        if res:
+        if res := self._fetch_bt_c13_once(secondary, when_utc, widen_minutes):
             return res, secondary
 
-        meta = CloudMeta(satellite=primary, product="CMIPF-C13", time_utc=when_utc.replace(tzinfo=dt.timezone.utc), src_paths=[])
-        raise DataNotFoundError("GOES CMIPF C13 not found (after failover and widened window)", meta=meta)
+        meta = CloudMeta(satellite=primary, product="CMIPF-C13", time_utc=when_utc, src_paths=[])
+        raise DataNotFoundError("GOES CMIPF C13 data not found after all attempts", meta=meta)

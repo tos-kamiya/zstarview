@@ -34,7 +34,7 @@ from ..paths import CACHE_PATH
 from ..paths import EMOJI_FONT_PATH, EMOJI_FONT_SIZE, TEXT_FONT_PATH, TEXT_FONT_SIZE
 from ..paths import APP_ICON_FILE, GUI_BUTTON_SIZE, GUI_MENU_TEXT_COLOR, WINDOW_HEIGHT, WINDOW_HEIGHT, WINDOW_WIDTH
 from ..paths import SKY_UPDATE_INTERVAL, CLOUD_UPDATE_INTERVAL
-from ..paths import HatchConfig, CLOUD_HATCH_DEFAULT
+from ..paths import HatchConfig, CLOUD_HATCH_DEFAULT, CLOUD_SHELL_KM
 from ..render import draw as render_draw
 from ..render import draw_sky_disc
 from ..types import CelestialData, ViewerData
@@ -461,7 +461,7 @@ class SkyWindow(DraggableWindow):
                     sky_img = sky_s if sky_s is not None else QImage(w, h, QImage.Format_ARGB32_Premultiplied),
                     cloud_img_rgba = cloud_s,
                     dest_rect = QRect(0, 0, w, h),
-                    cloud_opacity = float(self.cloud_disc_alpha * 0.8),
+                    cloud_opacity = self.cloud_disc_alpha,
                     gray_mix = 1.0,
                 )
 
@@ -603,6 +603,7 @@ class SkyWindow(DraggableWindow):
                 pil_img, meta = self._clouddisc.render_now(
                     lat=lat, lon=lon, alt=float(alt), az=float(az),
                     radius_px=self._cloud_base_size, edge_fov_deg=90, mask_fov_deg=93,
+                    cloud_shell_km=CLOUD_SHELL_KM,
                 )
                 qimg = pil_to_qimage(pil_img)
                 self._cloud_img = qimg
