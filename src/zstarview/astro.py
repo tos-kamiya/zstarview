@@ -11,8 +11,6 @@ import numpy as np
 import polars as pl
 
 from .paths import (
-    APP_AUTHOR,
-    APP_ID,
     CACHE_PATH,
     ANGLE_BELOW_HORIZON,
     FIELD_OF_VIEW_DEG,

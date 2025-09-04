@@ -1,40 +1,78 @@
 #!/usr/bin/env python3
-import math
+# -*- coding: utf-8 -*-
+"""
+Generates a color gradient chart for the sunlight color model.
+
+This script renders a horizontal color band that visualizes the output of the
+`get_sun_color` function over the full range of sun altitudes from -90° to +90°.
+The resulting image is useful for debugging and tuning the sky color algorithm.
+"""
+
 import argparse
+import math
 from pathlib import Path
+from typing import Tuple
+
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+
 def _lerp_color(a: np.ndarray, b: np.ndarray, t: float) -> np.ndarray:
-    """Linearly interpolates between two colors."""
+    """Linearly interpolates between two colors represented as NumPy arrays."""
     return a + (b - a) * t
+
 
 def get_sun_color(sun_alt_deg: float) -> np.ndarray:
     """
-    Determine the color of sunlight based on the sun's altitude.
-    Returns (r, g, b) in the range [0,1].
+    Determines the color of sunlight based on the sun's altitude.
+
+    Args:
+        sun_alt_deg: The sun's altitude in degrees (-90 to +90).
+
+    Returns:
+        A NumPy array representing the (r, g, b) color in the range [0, 1].
     """
-    zenith_color  = np.array([0.3, 0.55, 0.98])   # zenith (blue)
-    horizon_color = np.array([0.95, 0.50, 0.30])   # horizon (orange)
-    night_color   = np.array([0.01, 0.02, 0.05])  # night (dark blue)
+    # Define key colors for different sun altitudes.
+    zenith_color = np.array([0.3, 0.55, 0.98])  # Deep blue for when the sun is at zenith.
+    horizon_color = np.array([0.95, 0.50, 0.30])  # Orange for when the sun is at the horizon.
+    night_color = np.array([0.01, 0.02, 0.05])  # Dark blue for night.
 
-    # Normalize sun altitude from -7° (sunset) to 90° (zenith) → [0,1], with gamma-ish shaping
+    # --- Calculate daytime color ---
+    # Normalize sun altitude from -7° (below horizon) to 90° (zenith) to a [0,1] range.
     t = float(np.clip((sun_alt_deg + 7.0) / 97.0, 0.0, 1.0))
+    # Apply a power function to create a more natural, non-linear transition.
     t = math.pow(t, 0.35)
-
     day_color = _lerp_color(horizon_color, zenith_color, t)
 
-    # Rapid darkening near/below horizon
-    fade = float(np.clip((-sun_alt_deg + 1.0) / 6.0, 0.0, 1.0))  # between +1° and -8°
+    # --- Fade to night color ---
+    # Create a rapid fade to darkness as the sun sets (from +1° to -5°).
+    fade = float(np.clip((-sun_alt_deg + 1.0) / 6.0, 0.0, 1.0))
     return _lerp_color(day_color, night_color, fade)
 
-def _text_size(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont):
-    """Pillowのバージョン差を吸収してテキストサイズを返す"""
+
+def _text_size(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont) -> Tuple[int, int]:
+    """
+    Calculates the bounding box size of a text string, handling Pillow version differences.
+
+    Pillow versions 9.2.0 and later use `draw.textbbox`, while older versions
+    use `draw.textsize`. This function provides a compatible way to get the text size.
+
+    Args:
+        draw: The ImageDraw object.
+        text: The text string to measure.
+        font: The font to use.
+
+    Returns:
+        A tuple (width, height) of the rendered text.
+    """
     try:
+        # Modern Pillow versions
         bbox = draw.textbbox((0, 0), text, font=font)
         return bbox[2] - bbox[0], bbox[3] - bbox[1]
-    except Exception:
+    except AttributeError:
+        # Older Pillow versions
         return draw.textsize(text, font=font)
+
 
 def render_sun_color_band(
     width_px: int = 1800,
@@ -44,32 +82,46 @@ def render_sun_color_band(
     show_ticks: bool = True,
     show_title: bool = True,
     transparent: bool = False,
-):
+) -> str:
     """
-    Render a horizontal color band for sun_alt_deg in [-90, 90] and save as PNG.
+    Renders a horizontal color band visualizing sunlight color vs. sun altitude.
+
+    The band covers the range from -90 to +90 degrees. It can optionally include
+    a title and tick marks for reference.
+
+    Args:
+        width_px: The total width of the output image.
+        height_px: The total height of the output image.
+        margin_px: The margin around the color band.
+        outfile: The path to save the output PNG file.
+        show_ticks: Whether to draw the altitude tick marks and axis.
+        show_title: Whether to draw the title text.
+        transparent: If True, the background will be transparent; otherwise, it will be white.
+
+    Returns:
+        The path to the saved output file.
     """
-    # 下地はRGBAで作って、必要なら最後に白背景へ合成
+    # Create a transparent RGBA canvas to draw on.
     img = Image.new("RGBA", (int(width_px), int(height_px)), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
 
-    # 帯の矩形
+    # Define the rectangle for the color band.
     x0, y0 = margin_px, margin_px
     x1, y1 = width_px - margin_px, height_px - margin_px
     band_w = max(1, x1 - x0)
-    band_h = max(1, y1 - y0)
 
-    # 縦線で塗りつぶし（x を -90..90 に線形対応）
+    # Fill the band by drawing a vertical line for each pixel, corresponding to a sun altitude.
     for i in range(band_w):
-        t = i / (band_w - 1)
-        sun_alt = -90.0 + t * 180.0
+        t = i / (band_w - 1)  # Normalize pixel position to [0, 1]
+        sun_alt = -90.0 + t * 180.0  # Map to altitude range [-90, 90]
         rgb = np.clip(get_sun_color(sun_alt), 0.0, 1.0)
         color = tuple(int(round(c * 255.0)) for c in rgb)
         draw.line([(x0 + i, y0), (x0 + i, y1)], fill=color, width=1)
 
-    # 目盛り・軸
+    # --- Draw annotations (ticks and title) ---
     try:
         font = ImageFont.truetype("DejaVuSans.ttf", 14)
-    except Exception:
+    except IOError:
         font = ImageFont.load_default()
 
     if show_ticks:
@@ -83,32 +135,45 @@ def render_sun_color_band(
                 label = f"{deg}°"
                 tw, th = _text_size(draw, label, font)
                 if axis_y + 8 + th < height_px:
-                    draw.text((x - tw // 2, axis_y + 8), label, fill=(0, 0, 0, 255), font=font)
+                    draw.text(
+                        (x - tw // 2, axis_y + 8),
+                        label,
+                        fill=(0, 0, 0, 255),
+                        font=font,
+                    )
 
     if show_title:
         title = "Sunlight Color vs. Sun Altitude (−90° to +90°)"
         tw, th = _text_size(draw, title, font)
-        draw.text(((width_px - tw) // 2, max(2, (margin_px - th) // 2)),
-                  title, fill=(0, 0, 0, 255), font=font)
+        draw.text(
+            ((width_px - tw) // 2, max(2, (margin_px - th) // 2)),
+            title,
+            fill=(0, 0, 0, 255),
+            font=font,
+        )
 
-    # 出力
+    # --- Save the final image ---
     if transparent:
         img.save(outfile, format="PNG")
     else:
+        # Create a white background and paste the RGBA image onto it.
         bg = Image.new("RGB", (width_px, height_px), (255, 255, 255))
-        bg.paste(img, mask=img.split()[-1])
+        bg.paste(img, mask=img.split()[-1])  # Use alpha channel as mask
         bg.save(outfile, format="PNG")
+
     return outfile
 
-def main():
-    p = argparse.ArgumentParser(description="Render sunlight color band for sun_alt in [-90, 90].")
+
+def main() -> None:
+    """Parses command-line arguments and runs the rendering function."""
+    p = argparse.ArgumentParser(description="Render a color band showing sunlight color vs. sun altitude.")
     p.add_argument("--outfile", type=Path, default=Path("sun_color_band.png"))
     p.add_argument("--width", type=int, default=1800)
     p.add_argument("--height", type=int, default=160)
     p.add_argument("--margin", type=int, default=40)
-    p.add_argument("--no-ticks", action="store_true", help="Hide ticks/axis.")
-    p.add_argument("--no-title", action="store_true", help="Hide title.")
-    p.add_argument("--transparent", action="store_true", help="Save with transparent background.")
+    p.add_argument("--no-ticks", action="store_true", help="Hide ticks and axis labels.")
+    p.add_argument("--no-title", action="store_true", help="Hide the title.")
+    p.add_argument("--transparent", action="store_true", help="Save with a transparent background.")
     args = p.parse_args()
 
     render_sun_color_band(
@@ -120,6 +185,8 @@ def main():
         show_title=not args.no_title,
         transparent=args.transparent,
     )
+    print(f"Saved color band to '{args.outfile}'")
+
 
 if __name__ == "__main__":
     main()

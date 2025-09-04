@@ -2,180 +2,198 @@
 # -*- coding: utf-8 -*-
 
 """
-Minimal tester for draw_sky_color_disc.
-- Renders a sky-color disc to a QImage and saves it as PNG.
-- Center of view is zenith (alt=90°) by default to reproduce/check the N–S seam.
-- Requires: PySide6
+Minimal tester for the sky disc rendering logic.
+
+This script renders a sky-color disc to a QImage and saves it as a PNG file.
+It is useful for visually debugging the projection and color models without
+running the full application.
+
+Example:
+    python test_draw_sky_disc.py --width 256 --height 256 --fov 200 \
+      --sun-alt 15 --sun-az 270 --center-alt 90 --center-az 0 \
+      --outfile sky_test.png
 """
 
-"""
-python test_draw_sky_disc.py --width 256 --height 256 --fov 200 \
-  --sun-alt 15 --sun-az 270 --center-alt 90 --center-az 0 \
-  --outfile sky_test.png
-"""
-
-import math
 import argparse
+import math
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Callable, Optional, Tuple
 
-from PySide6.QtGui import QImage, QColor, QPainter
+import numpy as np
 from PySide6.QtCore import QRect
+from PySide6.QtGui import QColor, QImage, QPainter, QPixmap
 from PySide6.QtWidgets import QApplication
 
-# -----------------------------
-# Config & helpers
-# -----------------------------
-FIELD_OF_VIEW_DEG = 100.0  # adjust as needed
+# Default field of view for the projection if not specified.
+FIELD_OF_VIEW_DEG = 100.0
 
 
 @dataclass
 class ScreenGeometry:
+    """Simple container for screen space geometry."""
+
     center: Tuple[int, int]
     radius: int
 
 
+# -----------------------------
+# Math and Color Helpers
+# -----------------------------
+
+
 def _clamp01(x: float) -> float:
+    """Clamps a value to the [0, 1] range."""
     return 0.0 if x < 0.0 else 1.0 if x > 1.0 else x
 
 
-def _lerp_color(a: Tuple[float, float, float], b: Tuple[float, float, float], t: float) -> Tuple[float, float, float]:
-    # Simple linear interpolation; if you want "saturation boost" behavior,
-    # pass t>1.0 (works as extrapolation)
-    return (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t)
+def _lerp_color(a: np.ndarray, b: np.ndarray, t: float) -> np.ndarray:
+    """Linearly interpolates between two colors represented as NumPy arrays."""
+    return a + (b - a) * t
 
 
-def _angle_between(alt1_deg, az1_deg, alt2_deg, az2_deg) -> float:
+def _angle_between(alt1_deg: float, az1_deg: float, alt2_deg: float, az2_deg: float) -> float:
+    """Calculates the angular separation between two points in alt-az coordinates."""
     a1, z1 = math.radians(alt1_deg), math.radians(az1_deg)
     a2, z2 = math.radians(alt2_deg), math.radians(az2_deg)
     d_az = z2 - z1
+
+    # Ensure d_az is in [-pi, pi] for numerical stability
     d_az = (d_az + math.pi) % (2 * math.pi) - math.pi
+
     cos_g = math.sin(a1) * math.sin(a2) + math.cos(a1) * math.cos(a2) * math.cos(d_az)
-    cos_g = max(-1.0, min(1.0, cos_g))
+    cos_g = max(-1.0, min(1.0, cos_g))  # Clamp to handle potential floating point errors
     return math.acos(cos_g)
 
 
-# -----------------------------
-# Sky color model (simple)
-# -----------------------------
-def get_sun_color(sun_alt_deg: float) -> np.ndarray:
-    """
-    Determine the color of sunlight based on the sun's altitude.
-    Returns (r, g, b) in the range [0,1].
-    """
-    zenith_color  = np.array([0.3, 0.48, 0.96])   # zenith (blue)
-    horizon_color = np.array([1.0, 0.61, 0.32])   # horizon (orange)
-    night_color   = np.array([0.01, 0.02, 0.05])  # night (dark blue)
-
-    # Normalize sun altitude from -7° (sunset) to 90° (zenith) → [0,1], with gamma-ish shaping
-    t = float(np.clip((sun_alt_deg + 7.0) / 97.0, 0.0, 1.0))
-    t = math.pow(t, 0.35)
-
-    day_color = _lerp_color(horizon_color, zenith_color, t)
-
-    # Rapid darkening near/below horizon
-    fade = float(np.clip((-sun_alt_deg + 1.0) / 6.0, 0.0, 1.0))  # between +1° and -8°
-    return _lerp_color(day_color, night_color, fade)
-
-
 def _smoothstep(edge0: float, edge1: float, x: float) -> float:
+    """Performs a smooth Hermite interpolation between 0 and 1."""
     t = _clamp01((x - edge0) / (edge1 - edge0))
     return t * t * (3.0 - 2.0 * t)
 
 
-def get_sky_color(view_alt_deg: float, view_az_deg: float, sun_alt_deg: float, sun_az_deg: float) -> Tuple[float, float, float]:
+# -----------------------------
+# Sky and Sun Color Model
+# -----------------------------
+
+
+def get_sun_color(sun_alt_deg: float) -> np.ndarray:
     """
-    Simple, stable heuristic sky color. Linear RGB in [0,1].
-    Designed to be numerically stable even when view_alt_deg == 90.
+    Determines the color of sunlight based on the sun's altitude.
+
+    Args:
+        sun_alt_deg: The sun's altitude in degrees (-90 to +90).
+
+    Returns:
+        A NumPy array representing the (r, g, b) color in the range [0, 1].
+    """
+    # Define key colors for different sun altitudes.
+    zenith_color = np.array([0.3, 0.55, 0.98])  # Deep blue for when the sun is at zenith.
+    horizon_color = np.array([0.95, 0.50, 0.30])  # Orange for when the sun is at the horizon.
+    night_color = np.array([0.01, 0.02, 0.05])  # Dark blue for night.
+
+    # --- Calculate daytime color ---
+    # Normalize sun altitude from -7° (below horizon) to 90° (zenith) to a [0,1] range.
+    t = float(np.clip((sun_alt_deg + 7.0) / 97.0, 0.0, 1.0))
+    # Apply a power function to create a more natural, non-linear transition.
+    t = math.pow(t, 0.35)
+    day_color = _lerp_color(horizon_color, zenith_color, t)
+
+    # --- Fade to night color ---
+    # Create a rapid fade to darkness as the sun sets (from +1° to -5°).
+    fade = float(np.clip((-sun_alt_deg + 1.0) / 6.0, 0.0, 1.0))
+    return _lerp_color(day_color, night_color, fade)
+
+
+def get_sky_color(view_alt_deg: float, view_az_deg: float, sun_alt_deg: float, sun_az_deg: float) -> np.ndarray:
+    """
+    Calculates a simple, stable heuristic sky color.
+
+    The color is returned as linear RGB in the [0, 1] range. This model is
+    designed to be numerically stable, especially when viewing the zenith.
+
+    Returns:
+        A NumPy array for the (r, g, b) color.
     """
     if sun_alt_deg <= -10.0:
-        return (0.0, 0.0, 0.0)
+        return np.array([0.0, 0.0, 0.0])
 
-    # Basic sun color (assumed 0..1: preferably linear RGB)
+    # 1. Get the base sunlight color.
     sun_color = get_sun_color(sun_alt_deg)
 
-    # 1) Brightness based on angle to the sun (stable even at zenith)
-    sun_angle = _angle_between(view_alt_deg, view_az_deg, sun_alt_deg, sun_az_deg)  # [0..pi]
+    # 2. Determine brightness based on the angle between the view direction and the sun.
+    sun_angle = _angle_between(view_alt_deg, view_az_deg, sun_alt_deg, sun_az_deg)
     cosg = math.cos(sun_angle)
-    brightness = (1.0 + cosg) * 0.5  # 0..1
+    brightness = (1.0 + cosg) * 0.5  # Range [0, 1]
     brightness = brightness**2.0  # Emphasize the sun-facing direction
 
-    # 2) Tone based on altitude (darker at zenith, whitish at horizon)
-    t = _clamp01(view_alt_deg / 90.0)  # 0(horizon) -> 1(zenith)
-    zenith_dim = 1.0 - 0.35 * t  # 1.0..0.65 (darker towards zenith)
-    horizon_mix = (1.0 - t) * 0.2  # 0.2..0.0 (whiter towards horizon)
+    # 3. Adjust tone based on viewing altitude (darker at zenith, whitish at horizon).
+    t = _clamp01(view_alt_deg / 90.0)  # 0 (horizon) -> 1 (zenith)
+    zenith_dim = 1.0 - 0.35 * t  # Becomes darker (0.65x) towards the zenith.
+    horizon_mix = (1.0 - t) * 0.2  # Becomes whiter (20%) towards the horizon.
 
-    # 3) Twilight correction (interpolate -10..0° to 0..1)
-    if sun_alt_deg < 0.0:
-        twilight = _smoothstep(-10.0, 0.0, sun_alt_deg)  # 0..1
-    else:
-        twilight = 1.0
+    # 4. Apply a twilight factor to smoothly transition from day to night.
+    twilight = _smoothstep(-10.0, 0.0, sun_alt_deg) if sun_alt_deg < 0.0 else 1.0
 
-    # Composite
-    r, g, b = _lerp_color(
-        (sun_color[0] * brightness, sun_color[1] * brightness, sun_color[2] * brightness),
-        (1.0, 1.0, 1.0),
-        horizon_mix * twilight,
-    )
-    r *= zenith_dim
-    g *= zenith_dim
-    b *= zenith_dim
+    # 5. Composite the final color.
+    base_sky = sun_color * brightness
+    horizon_color = np.array([1.0, 1.0, 1.0])
+    rgb = _lerp_color(base_sky, horizon_color, horizon_mix * twilight)
+    rgb *= zenith_dim
 
-    # Clip (final safety)
-    return (_clamp01(r), _clamp01(g), _clamp01(b))
+    return np.clip(rgb, 0.0, 1.0)
 
 
-EPS = 1e-3  # 天頂の特異を避けるための余白
+# A small epsilon to avoid singularities at the zenith.
+EPS = 1e-3
 
 
 def clamp_alt(alt: float, alt_min: float = -60.0, alt_max: float = 89.5) -> float:
-    # alt_max は 90 より少し小さく
+    """Clamps altitude to a safe range, avoiding the exact zenith."""
     if alt < alt_min:
         return alt_min
     if alt > alt_max:
         return alt_max
-    # ぴったり90°は避ける
+    # Avoid the singularity at exactly 90 degrees.
     if abs(alt - 90.0) < EPS:
         return 90.0 - EPS
     return alt
 
 
 # -----------------------------
-# Projection: screen → (alt, az)
+# Projection: screen -> (alt, az)
 # -----------------------------
-def screen_to_altaz_equidistant(
-    x: int, y: int, geometry: "ScreenGeometry", view_center: Tuple[float, float], fov_deg: float  # (alt_c, az_c)
-) -> Tuple[float, float]:
+def screen_to_altaz_equidistant(x: int, y: int, geometry: ScreenGeometry, view_center: Tuple[float, float], fov_deg: float) -> Tuple[float, float]:
     """
-    Azimuthal equidistant projection inverse:
-    - Disk radius maps to FOV/2.
-    - Alt: 0=horizon, 90=zenith
-    - Az:  0=N, 90=E (clockwise)
+    Inverse azimuthal equidistant projection.
+
+    Maps a screen coordinate (x, y) to a celestial coordinate (altitude, azimuth).
+    - The disc radius maps to half the field of view.
+    - Altitude: 0° is the horizon, 90° is the zenith.
+    - Azimuth: 0° is North, 90° is East (clockwise).
     """
     cx, cy = geometry.center
     R = geometry.radius
-    dx = x - cx
-    dy = y - cy
+    dx, dy = x - cx, y - cy
     rho = math.hypot(dx, dy)
+
     if rho == 0 or R <= 0:
         return view_center
 
-    psi = math.atan2(dx, -dy)  # compass bearing: up/N=0, CW positive
+    # Angle on screen (0 is up/North, clockwise is positive)
+    psi = math.atan2(dx, -dy)
 
+    # Angular distance from the center of the view
     rho_ratio = min(rho / R, 1.0)
-    theta = math.radians(rho_ratio * fov_deg)  # angular distance from center
+    theta = math.radians(rho_ratio * fov_deg)
 
+    # Spherical trigonometry to find the new alt/az
     alt_c, az_c = view_center
     alt_c = clamp_alt(alt_c)
-    lat1 = math.radians(alt_c)
-    lon1 = math.radians(az_c)
+    lat1, lon1 = math.radians(alt_c), math.radians(az_c)
 
-    sin_lat1 = math.sin(lat1)
-    cos_lat1 = math.cos(lat1)
-    sin_theta = math.sin(theta)
-    cos_theta = math.cos(theta)
-    sin_psi = math.sin(psi)
-    cos_psi = math.cos(psi)
+    sin_lat1, cos_lat1 = math.sin(lat1), math.cos(lat1)
+    sin_theta, cos_theta = math.sin(theta), math.cos(theta)
+    sin_psi, cos_psi = math.sin(psi), math.cos(psi)
 
     sin_lat2 = sin_lat1 * cos_theta + cos_lat1 * sin_theta * cos_psi
     sin_lat2 = max(-1.0, min(1.0, sin_lat2))
@@ -183,7 +201,7 @@ def screen_to_altaz_equidistant(
     cos_lat2 = math.cos(lat2)
 
     if abs(cos_lat2) < 1e-6:
-        lon2 = lon1  # az undefined at zenith/nadir -> keep center az for continuity
+        lon2 = lon1  # Azimuth is undefined at zenith/nadir
     else:
         y_ = sin_psi * sin_theta * cos_lat1
         x_ = cos_theta - sin_lat1 * sin_lat2
@@ -195,11 +213,11 @@ def screen_to_altaz_equidistant(
 
 
 # -----------------------------
-# The disc renderer under test
+# The Disc Renderer Under Test
 # -----------------------------
 def draw_sky_color_disc(
     painter: QPainter,
-    geometry: "ScreenGeometry",
+    geometry: ScreenGeometry,
     view_center: Tuple[float, float],
     sun_alt: float,
     sun_az: float,
@@ -210,8 +228,9 @@ def draw_sky_color_disc(
     exposure: float = 1.0,
     saturation: float = 1.2,
     ground_color: Tuple[float, float, float] = (0.1, 0.1, 0.1),
-    to_altaz=None,
+    to_altaz: Optional[Callable] = None,
 ) -> None:
+    """Renders the sky color disc onto a QPainter."""
     if to_altaz is None:
         to_altaz = screen_to_altaz_equidistant
 
@@ -223,50 +242,47 @@ def draw_sky_color_disc(
     buf_R = int(round(R * scale))
     if buf_R < 2:
         return
+
     buf_w = buf_h = buf_R * 2
     inv_scale = 1.0 / scale
-    x0 = cx - R
-    y0 = cy - R
-    r2 = buf_R * buf_R
+    x0, y0 = cx - R, cy - R
+    r2_buf = buf_R * buf_R
 
     img = QImage(buf_w, buf_h, QImage.Format.Format_RGB32)
     img.fill(QColor(0, 0, 0))
 
-    # raster
+    # Iterate over each pixel in the buffer, calculate its color, and set it.
     for by in range(0, buf_h, pixel_step):
         y = int(round(y0 + by * inv_scale))
         dy_b = by - buf_R
-        dy2 = dy_b * dy_b
         for bx in range(0, buf_w, pixel_step):
             dx_b = bx - buf_R
-            if (dx_b * dx_b + dy2) > r2:
-                continue  # outside disc
+            if (dx_b * dx_b + dy_b * dy_b) > r2_buf:
+                continue  # Skip pixels outside the disc
 
             x = int(round(x0 + bx * inv_scale))
 
-            # 1) to alt/az
+            # 1. Project screen pixel to sky coordinate
             alt, az = to_altaz(x, y, geometry, view_center, fov_deg)
 
-            # 2) linear RGB base
-            r, g, b = get_sky_color(alt, az, sun_alt, sun_az)
+            # 2. Get base color from the model
+            rgb = get_sky_color(alt, az, sun_alt, sun_az)
 
-            # 3) saturation & exposure in linear space
-            gray = r * 0.299 + g * 0.587 + b * 0.114
-            r, g, b = _lerp_color((gray, gray, gray), (r, g, b), saturation)
-            r *= exposure
-            g *= exposure
-            b *= exposure
+            # 3. Apply saturation and exposure adjustments
+            gray = np.dot(rgb, [0.299, 0.587, 0.114])
+            rgb = _lerp_color(np.array([gray, gray, gray]), rgb, saturation)
+            rgb *= exposure
 
-            # ground fade: -5..0° → 0..1
+            # 4. Fade to ground color below the horizon
             if alt < 0.0:
-                t = _clamp01((alt + 5.0) / 5.0)
-                r, g, b = _lerp_color(ground_color, (r, g, b), t)
+                t = _clamp01((alt + 5.0) / 5.0)  # Fade between -5 and 0 degrees
+                rgb = _lerp_color(np.array(ground_color), rgb, t)
 
-            r = _clamp01(r)
-            g = _clamp01(g)
-            b = _clamp01(b)
-            img.setPixel(bx, by, QColor.fromRgbF(r, g, b).rgb())
+            # 5. Convert to final color and set pixel
+            rgb = np.clip(rgb, 0.0, 1.0)
+            img.setPixel(bx, by, QColor.fromRgbF(rgb[0], rgb[1], rgb[2]).rgb())
 
+    # Draw the generated image to the painter.
     painter.save()
     painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
     target_rect = QRect(cx - R, cy - R, 2 * R, 2 * R)
@@ -275,44 +291,42 @@ def draw_sky_color_disc(
 
 
 # -----------------------------
-# Main: generate a small test PNG
+# Main: Generate a Test PNG
 # -----------------------------
-def main():
-    ap = argparse.ArgumentParser()
+def main() -> None:
+    """Parses arguments and runs the test rendering."""
+    ap = argparse.ArgumentParser(description="Test utility for sky disc rendering.")
     ap.add_argument("--width", type=int, default=320)
     ap.add_argument("--height", type=int, default=320)
     ap.add_argument("--fov", type=float, default=FIELD_OF_VIEW_DEG)
     ap.add_argument("--sun-alt", type=float, default=20.0)
-    ap.add_argument("--sun-az", type=float, default=270.0)  # W
-    ap.add_argument("--center-alt", type=float, default=90.0)  # zenith
-    ap.add_argument("--center-az", type=float, default=0.0)  # north
-    ap.add_argument("--scale", type=float, default=1.0)
-    ap.add_argument("--pixel-step", type=int, default=1)
+    ap.add_argument("--sun-az", type=float, default=270.0, help="(0=N, 90=E)")
+    ap.add_argument("--center-alt", type=float, default=90.0)
+    ap.add_argument("--center-az", type=float, default=0.0)
+    ap.add_argument("--scale", type=float, default=1.0, help="Internal render scale.")
+    ap.add_argument("--pixel-step", type=int, default=1, help="Render every Nth pixel.")
     ap.add_argument("--exposure", type=float, default=1.0)
     ap.add_argument("--saturation", type=float, default=1.2)
     ap.add_argument("--outfile", type=str, default="sky_test.png")
     args = ap.parse_args()
 
+    # A QApplication is needed to handle QImage and QPainter.
     app = QApplication([])
 
     W, H = args.width, args.height
-    # Compute geometry: center and radius similar to your get_screen_geometry
+    # A simplified geometry calculation for this test script.
     margin_x, margin_y = 10, 10
     radius = max(2, (W - margin_x * 2) // 2)
-    # Place center vertically at middle for testing (simplify)
     center = (W // 2, H // 2)
     geometry = ScreenGeometry(center=center, radius=radius)
 
-    # Prepare an image canvas
+    # Prepare an image canvas.
     canvas = QImage(W, H, QImage.Format.Format_RGB32)
     canvas.fill(QColor(0, 0, 0))
 
     painter = QPainter(canvas)
 
-    # Optional: draw your dark radial background first (simplified here)
-    painter.fillRect(0, 0, W, H, QColor(0, 0, 0))
-
-    # Draw the sky-color disc
+    # Draw the sky-color disc.
     draw_sky_color_disc(
         painter=painter,
         geometry=geometry,
@@ -329,9 +343,9 @@ def main():
 
     painter.end()
 
-    # Save
+    # Save the final image.
     ok = canvas.save(args.outfile, "PNG")
-    print(f"Saved: {args.outfile}, ok={ok}")
+    print(f"Saved: {args.outfile}, Success: {ok}")
 
 
 if __name__ == "__main__":

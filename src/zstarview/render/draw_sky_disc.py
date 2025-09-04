@@ -9,7 +9,7 @@ from ..types import ScreenGeometry, SolarEclipseInfo
 from .draw import normalized_to_screen_xy
 
 
-TURBIDITY = 5   # 2 (clear blue sky) to 10 (hazy white sky)
+TURBIDITY = 5  # 2 (clear blue sky) to 10 (hazy white sky)
 
 
 def _ground_cutoff(alt: float, alpha: float, fade_hi: float = 0.0, fade_lo: float = -2.0) -> float:
@@ -112,9 +112,9 @@ def get_sun_color(sun_alt_deg: float) -> np.ndarray:
     Determine the color of sunlight based on the sun's altitude.
     Returns (r, g, b) in the range [0,1].
     """
-    zenith_color  = np.array([0.3, 0.55, 0.98])   # zenith (blue)
-    horizon_color = np.array([0.95, 0.50, 0.30])   # horizon (orange)
-    night_color   = np.array([0.01, 0.02, 0.05])  # night (dark blue)
+    zenith_color = np.array([0.3, 0.55, 0.98])  # zenith (blue)
+    horizon_color = np.array([0.95, 0.50, 0.30])  # horizon (orange)
+    night_color = np.array([0.01, 0.02, 0.05])  # night (dark blue)
 
     # Normalize sun altitude from -7° (sunset) to 90° (zenith) → [0,1], with gamma-ish shaping
     t = float(np.clip((sun_alt_deg + 7.0) / 97.0, 0.0, 1.0))
@@ -162,14 +162,14 @@ def get_sky_color(view_altaz: Tuple[float, float], sun_altaz: Tuple[float, float
     cosg = math.cos(sun_angle)
     f = max(0.0, cosg)  # set to 0 on the antisolar side
     exp = 2.0 - 0.6 * tau  # tau=0 -> 2.0, tau=1 -> 1.4
-    brightness = f ** exp
+    brightness = f**exp
 
     # 2) Altitude tone factor
     t = np.clip(view_alt_deg / 90.0, 0.0, 1.0)  # 0(horizon) -> 1(zenith)
 
     # Darkening toward zenith
     # Higher turbidity reduces the darkening (sky looks brighter/whiter at the zenith).
-    zenith_dim_coef = 0.30 * (1.0 - 0.5 * tau)   # halved at tau=1
+    zenith_dim_coef = 0.30 * (1.0 - 0.5 * tau)  # halved at tau=1
     zenith_dim = 1.0 - zenith_dim_coef * t
 
     # White mixing near the horizon

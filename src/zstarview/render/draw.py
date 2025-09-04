@@ -483,9 +483,7 @@ def draw_moon(
         tint_rgba = (base_color.red(), base_color.green(), base_color.blue(), base_color.alpha())
     else:
         tint_rgba = None
-    moon_img_pil = generate_moon_phase_image(
-        img_size, sun_dir_in_moon_frame, view_dir, tint_color=tint_rgba
-    )
+    moon_img_pil = generate_moon_phase_image(img_size, sun_dir_in_moon_frame, view_dir, tint_color=tint_rgba)
 
     if abs(screen_rotation_deg) > 0.1:
         moon_img_pil = moon_img_pil.rotate(

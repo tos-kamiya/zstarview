@@ -99,12 +99,13 @@ PLANET_IDS = {
     "vesta": 4,
 }
 
+
 @dataclass(frozen=True, slots=True)
 class HatchConfig:
-    """雲ハッチのパラメータ."""
     tile_w_px: int
     tile_h_px: int
     line_px: int
     strength: int
 
-CLOUD_HATCH_DEFAULT = HatchConfig(20, 19, 6, 255)
+
+CLOUD_HATCH_DEFAULT = HatchConfig(20, 19, 8, 255)

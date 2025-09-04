@@ -1,4 +1,5 @@
 import logging
+
 logger = logging.getLogger(__name__)
 logging.getLogger("satpy.readers.core.utils").setLevel(logging.WARNING)  # suppress "[INFO] satpy.readers.core.utils: Using temp file for BZ2 decompression: /tmp/..."
 
@@ -8,7 +9,7 @@ from pathlib import Path
 import re
 import sys
 import time
-from typing import Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 from PySide6.QtWidgets import QApplication, QSplashScreen
 from PySide6.QtCore import Qt
@@ -114,35 +115,55 @@ def parse_args() -> argparse.Namespace:
         help=("Opacity of the simulated sky-color disc (0.0 - 1.0, default: 0.2). " "Set to 0.0 to disable sky-color rendering."),
     )
     parser.add_argument(
-        "--cloud-opacity",
+        "-c", "--cloud-opacity",
         type=float,
-        default=0.0,
-        help=("Opacity of the clouds (0.0 - 1.0, default: 0.0). " "Set to 0.0 to disable cloud rendering."),
+        default=0.2,
+        help=("Opacity of the clouds (0.0 - 1.0, default: 0.2). " "Set to 0.0 to disable cloud rendering."),
     )
     return parser.parse_args()
 
 
 class SplashLogHandler(logging.Handler):
-    """スプラッシュにログを流す一時ハンドラ"""
-    def __init__(self, show_fn):
+    """A temporary log handler to display logs on the splash screen."""
+
+    def __init__(self, show_fn: Callable[[str, QColor], None]):
+        """
+        Initializes the SplashLogHandler.
+
+        Args:
+            show_fn: A function that takes a message string and a QColor
+                     and displays it on the splash screen.
+        """
         super().__init__()
         self.show_fn = show_fn
-        # スプラッシュ用に少し短め＆視認性の良いフォーマットに
+        # Use a concise and visible format for the splash screen.
         self.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 
     def emit(self, record: logging.LogRecord) -> None:
+        """
+        Formats and emits a log record to the splash screen.
+
+        Args:
+            record: The log record to process.
+        """
         try:
             msg = self.format(record)
-            # レベルで色分け（任意）
-            color = (Qt.GlobalColor.white if record.levelno < logging.WARNING
-                     else QColor(255, 200, 120) if record.levelno < logging.ERROR
-                     else QColor(255, 100, 100))
+            # Color-code messages based on log level.
+            color = Qt.GlobalColor.white if record.levelno < logging.WARNING else QColor(255, 200, 120) if record.levelno < logging.ERROR else QColor(255, 100, 100)
             self.show_fn(msg, color)
         except Exception:
             self.handleError(record)
 
 
 def setup_root_logger() -> logging.Logger:
+    """
+    Configures and returns the root logger for the application.
+
+    Sets up logging to both stderr and a file (`app.log`).
+
+    Returns:
+        The configured root logger instance.
+    """
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -156,9 +177,7 @@ def setup_root_logger() -> logging.Logger:
 
     file_handler = logging.FileHandler(log_path, encoding="utf-8")
     file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(logging.Formatter(
-        "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-    ))
+    file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
     root_logger.addHandler(file_handler)
 
     logger.info("Logging to file: %s", log_path)
@@ -167,6 +186,15 @@ def setup_root_logger() -> logging.Logger:
 
 
 def setup_app(app_name: str) -> QApplication:
+    """
+    Initializes and configures the QApplication instance.
+
+    Args:
+        app_name: The name of the application.
+
+    Returns:
+        The configured QApplication instance.
+    """
     app = QApplication(sys.argv)
     QGuiApplication.setDesktopFileName(APP_ID)
     app.setApplicationName(app_name)
@@ -176,11 +204,25 @@ def setup_app(app_name: str) -> QApplication:
     app.setWindowIcon(QIcon(APP_ICON_FILE))
     return app
 
+
 def setup_splash_and_attach_logger(
     app: QApplication,
     app_name: str,
     root_logger: logging.Logger,
 ) -> Tuple[QSplashScreen, SplashLogHandler]:
+    """
+    Creates a splash screen and attaches a log handler to it.
+
+    This allows startup logs to be displayed on the splash screen.
+
+    Args:
+        app: The QApplication instance.
+        app_name: The name of the application.
+        root_logger: The root logger to attach the splash handler to.
+
+    Returns:
+        A tuple containing the QSplashScreen and SplashLogHandler instances.
+    """
     splash = QSplashScreen(QPixmap(400, 200), Qt.WindowType.WindowStaysOnTopHint)
     pixmap = QPixmap(400, 200)
     pixmap.fill(Qt.GlobalColor.black)
@@ -190,6 +232,7 @@ def setup_splash_and_attach_logger(
     def show_splash_message(message: str, color: QColor):
         splash.showMessage(f"{app_name} ver. {__version__}\n{message}", Qt.AlignmentFlag.AlignCenter, color)
         app.processEvents()
+
     splash_handler = SplashLogHandler(show_splash_message)
 
     root_logger.addHandler(splash_handler)
@@ -199,10 +242,23 @@ def setup_splash_and_attach_logger(
 
 class StartupAbortError(Exception):
     """Abort the startup sequence (handled by main to show splash for 3s)."""
+
     ...
 
 
 def _startup_resolve_city(args_city: Optional[str]) -> CityRec:
+    """
+    Resolves the target city from arguments or last used city.
+
+    Args:
+        args_city: The city name from command-line arguments.
+
+    Returns:
+        The resolved city record.
+
+    Raises:
+        StartupAbortError: If city data cannot be loaded or the city cannot be found.
+    """
     last_city = load_last_city()
     if not args_city:
         args_city = last_city or "Tokyo"
@@ -252,6 +308,20 @@ def _startup_resolve_city(args_city: Optional[str]) -> CityRec:
 
 
 def _startup_parse_time_arguments(args_datetime: Optional[str], args_days: int, args_hours: int) -> timedelta:
+    """
+    Parses time-related arguments and returns a timedelta from now.
+
+    Args:
+        args_datetime: The absolute datetime string.
+        args_days: The number of days to add.
+        args_hours: The number of hours to add.
+
+    Returns:
+        A timedelta object representing the offset from the current UTC time.
+
+    Raises:
+        StartupAbortError: If the arguments are invalid.
+    """
     if not args_datetime:
         delta_t = timedelta(days=args_days, hours=args_hours)
         return delta_t
@@ -293,12 +363,24 @@ def _startup_parse_time_arguments(args_datetime: Optional[str], args_days: int, 
 
 
 def _startup_load_stars(args_vmag_limit: Optional[float]) -> pl.DataFrame:
+    """
+    Loads the star catalog from the source file.
+
+    Args:
+        args_vmag_limit: The magnitude limit for visible stars.
+
+    Returns:
+        A Polars DataFrame containing the star catalog.
+
+    Raises:
+        StartupAbortError: If the star catalog file cannot be found.
+    """
     logger.info("Loading city and star data...")
 
     try:
         star_catalog = load_star_catalog(STARS_CSV_FILE, vmag_threshold=args_vmag_limit)
     except FileNotFoundError:
-        logger.error("Fail to load file: {STARS_CSV_FILE}")
+        logger.error(f"Fail to load file: {STARS_CSV_FILE}")
         raise StartupAbortError()
 
     limit_str = args_vmag_limit if args_vmag_limit is not None else "no limit"
@@ -347,11 +429,17 @@ def main() -> None:
         vmag_limit=args.vmag_limit,
     )
 
-    # When the initial data is loaded, show the main window and close the splash screen
     def _on_initial_loaded():
+        """
+        Handles the signal that initial data has been loaded.
+
+        Shows the main window, closes the splash screen, and removes the
+        temporary splash screen log handler.
+        """
         main_win.show()
         splash.close()
         root_logger.removeHandler(splash_handler)
+
     main_win.initial_data_loaded.connect(_on_initial_loaded)
 
     save_last_city(city_str)
