@@ -1,126 +1,72 @@
 # -*- coding: utf-8 -*-
 """
-Provides a generic, rule-based utility for cleaning up cache directories.
-
-This module defines a flexible cache cleaning mechanism. You can define
-`CleanupSpec` objects to specify which files to keep or delete based on
-glob patterns, regular expressions, or custom predicate functions. It is used
-to prevent the satellite data cache from growing indefinitely.
+Provides utility for cleaning up cache directories.
 """
 
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Callable, Optional, Pattern
+from datetime import datetime, timedelta, timezone
 
 
-@dataclass
-class CleanupSpec:
+def cleanup_satellite_cache(root: Path, *, hours: int = 24, dry_run: bool = False) -> None:
     """
-    Defines a set of rules for cleaning up a specific subdirectory in the cache.
-
-    Attributes:
-        kind: The name of the subdirectory in the cache root to which this spec applies.
-        keep_globs: A list of glob patterns. Files matching any of these will be kept.
-        keep_regexes: A list of compiled regex patterns to match against the full file path.
-        keep_pred: An optional function that takes a Path and returns True to keep the file.
-        skip_if_inprogress: If True, skips cleanup for a file if a corresponding
-                            `.inprogress` file exists, indicating a download is active.
+    Clean up satellite cache directories (goes_cmipf and hima_hsd).
+    Deletes files older than `hours` while keeping the most recent file
+    in each subdirectory and skipping files with an active .inprogress marker.
     """
+    now = datetime.now(timezone.utc)
+    ttl = timedelta(hours=hours)
 
-    kind: str
-    keep_globs: List[str]
-    keep_regexes: List[Pattern] = field(default_factory=list)
-    keep_pred: Optional[Callable[[Path], bool]] = None
-    skip_if_inprogress: bool = True
+    # 衛星データディレクトリを固定
+    targets = ["goes_cmipf", "hima_hsd"]
 
-
-@dataclass
-class CleanupReport:
-    """
-    Summarizes the results of a cache cleanup operation.
-
-    Attributes:
-        scanned: The total number of files scanned.
-        kept: The number of files that were kept.
-        deleted: The number of files that were deleted.
-        emptied_dirs: The number of empty directories that were removed.
-        errors: The number of errors encountered during the process.
-        dry_run: True if no actual file deletions were performed.
-    """
-
-    scanned: int
-    kept: int
-    deleted: int
-    emptied_dirs: int
-    errors: int
-    dry_run: bool
-
-
-def cleanup_cache(root: Path, specs: List[CleanupSpec], *, dry_run=False) -> CleanupReport:
-    """
-    Cleans up the cache directory based on a list of cleanup specifications.
-
-    Args:
-        root: The root directory of the cache.
-        specs: A list of CleanupSpec objects defining the cleanup rules.
-        dry_run: If True, simulates the cleanup without actually deleting files or directories.
-
-    Returns:
-        A CleanupReport object summarizing the results of the operation.
-    """
-    scanned = kept = deleted = emptied = errors = 0
-    kinds = {s.kind: s for s in specs}
-
-    for kind, spec in kinds.items():
+    for kind in targets:
         base = root / kind
         if not base.is_dir():
             continue
 
-        # --- Phase 1: File Deletion ---
-        # Iterate through all files in the subdirectory.
-        all_files = [p for p in base.rglob("*") if p.is_file()]
-        for file_path in all_files:
-            scanned += 1
-            should_keep = False
+        # ディレクトリごとにファイルを集めて新しい順にソート
+        per_dir = {}
+        for f in base.rglob("*"):
+            if f.is_file():
+                per_dir.setdefault(f.parent, []).append(f)
 
-            # Apply rules in order to decide whether to keep the file.
-            if spec.skip_if_inprogress and file_path.with_suffix(file_path.suffix + ".inprogress").exists():
-                should_keep = True
+        for dir_path, files in per_dir.items():
+            files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
 
-            if not should_keep and any(file_path.match(p) for p in spec.keep_globs):
-                should_keep = True
+            for idx, file_path in enumerate(files):
+                # 直近1個は残す
+                if idx == 0:
+                    continue
 
-            if not should_keep and spec.keep_regexes and any(r.search(str(file_path)) for r in spec.keep_regexes):
-                should_keep = True
+                # ダウンロード中は残す
+                if file_path.with_suffix(file_path.suffix + ".inprogress").exists():
+                    continue
 
-            if not should_keep and spec.keep_pred:
                 try:
-                    if spec.keep_pred(file_path):
-                        should_keep = True
+                    mtime = datetime.fromtimestamp(file_path.stat().st_mtime, tz=timezone.utc)
                 except Exception:
-                    errors += 1
+                    continue  # 取得失敗時は安全側で残す
 
-            # Perform the final action.
-            if should_keep:
-                kept += 1
-            else:
+                # TTLを超えていたら削除
+                if (now - mtime) > ttl:
+                    if dry_run:
+                        print(f"[dry-run] delete {file_path}")
+                    else:
+                        try:
+                            file_path.unlink()
+                            print(f"deleted {file_path}")
+                        except OSError as e:
+                            print(f"error deleting {file_path}: {e}")
+
+        # 空ディレクトリを削除
+        for d in sorted(base.rglob("*"), key=lambda p: len(p.parts), reverse=True):
+            if d.is_dir():
                 try:
-                    if not dry_run:
-                        file_path.unlink(missing_ok=True)
-                    deleted += 1
+                    if not any(d.iterdir()):
+                        if dry_run:
+                            print(f"[dry-run] rmdir {d}")
+                        else:
+                            d.rmdir()
+                            print(f"removed empty dir {d}")
                 except OSError:
-                    errors += 1
-
-        # --- Phase 2: Empty Directory Cleanup ---
-        # Iterate from the deepest directories upwards to remove empty ones.
-        all_dirs = sorted([d for d in base.rglob("*") if d.is_dir()], key=lambda p: len(p.parts), reverse=True)
-        for dir_path in all_dirs:
-            try:
-                if not any(dir_path.iterdir()):
-                    if not dry_run:
-                        dir_path.rmdir()
-                    emptied += 1
-            except OSError:
-                errors += 1
-
-    return CleanupReport(scanned, kept, deleted, emptied, errors, dry_run)
+                    pass

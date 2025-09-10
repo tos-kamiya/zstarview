@@ -63,20 +63,20 @@ class DataNotFoundError(CloudDiscError):
 
 
 class DownloadError(CloudDiscError):
-    """Raised when an error occurs while downloading satellite data.
+    """Raised when an error occurs while downloading satellite data."""
 
-    Attributes:
-        transient: If True, the error is likely temporary (e.g., network issue)
-                   and retrying later might succeed. If False, the error is likely
-                   permanent (e.g., file not on server).
-    """
-
-    def __init__(self, message: str = "", *, transient: bool = True, meta: Optional[CloudMeta] = None):
+    def __init__(self, message: str = "", *, meta: Optional[CloudMeta] = None):
         super().__init__(message, meta=meta)
-        self.transient = transient
+
+
+class TimeoutError(DownloadError):
+    """Raised when a download operation times out."""
+
+    pass
 
 
 class RenderError(CloudDiscError):
     """Raised when an error occurs during the image rendering process."""
 
     pass
+

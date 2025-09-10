@@ -33,6 +33,7 @@ class CloudDiscConfig:
                      visible and thus a viable data source.
         search_back_minutes: The time window in minutes to search backward for satellite
                              data if the most recent data is not available.
+        connect_timeout, read_timeout: Timeout values for downloading IR data from satellite.
     """
 
     cache_dir: Optional[Path] = None
@@ -41,6 +42,8 @@ class CloudDiscConfig:
     bt_cold_k: float = 190.0
     alt_min_deg: float = -2.0
     search_back_minutes: int = 120
+    connect_timeout: float = 5.0
+    read_timeout: float = 30.0
 
     def cache_root(self) -> Path:
         """

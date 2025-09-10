@@ -10,6 +10,7 @@ from a specific observer's perspective.
 import datetime as dt
 import logging
 from typing import Tuple
+from dataclasses import replace
 
 from PIL import Image
 
@@ -38,13 +39,17 @@ class CloudDisc:
     - Image rendering
     """
 
-    def __init__(self, cfg: CloudDiscConfig):
+    def __init__(self, cfg: CloudDiscConfig, **kwargs):
         """
         Initializes the CloudDisc renderer.
 
         Args:
             cfg: An instance of CloudDiscConfig containing the configuration.
+            **kwargs: Additional configuration options to override `cfg`.
         """
+        if kwargs:
+            cfg = replace(cfg, **kwargs)
+
         self.cfg: CloudDiscConfig = cfg
         self.goes: GoesProvider = GoesProvider(cfg)
         self.hima: HimaProvider = HimaProvider(cfg)

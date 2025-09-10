@@ -16,10 +16,11 @@ import boto3
 import xarray as xr
 from botocore import UNSIGNED
 from botocore.config import Config
+from botocore.exceptions import ConnectTimeoutError, ReadTimeoutError
 from satpy import Scene
 
 from ..config import CloudDiscConfig
-from ..types import DataNotFoundError, DownloadError, CloudMeta
+from ..types import DataNotFoundError, DownloadError, CloudMeta, TimeoutError
 
 # --- Constants ---
 _GOES_BUCKET = {"G16": "noaa-goes16", "G18": "noaa-goes18"}
@@ -52,8 +53,8 @@ class GoesProvider:
         cfg = Config(
             signature_version=UNSIGNED,  # No credentials needed for public bucket
             retries={"max_attempts": 1, "mode": "standard"},
-            connect_timeout=5,
-            read_timeout=30,
+            connect_timeout=self.cfg.connect_timeout,
+            read_timeout=self.cfg.read_timeout,
         )
         return boto3.client("s3", region_name=_GOES_REGION[bucket], config=cfg)
 
@@ -73,9 +74,12 @@ class GoesProvider:
         try:
             paginator = s3.get_paginator("list_objects_v2")
             keys = [obj["Key"] for page in paginator.paginate(Bucket=bucket, Prefix=prefix) for obj in page.get("Contents", []) or []]
+        except (ConnectTimeoutError, ReadTimeoutError) as e:
+            meta = CloudMeta(satellite="G16" if "16" in bucket else "G18", product="CMIPF-C13", time_utc=t, src_paths=[])
+            raise TimeoutError(f"Timeout while listing S3 bucket s3://{bucket}/{prefix}", meta=meta) from e
         except Exception as e:
             meta = CloudMeta(satellite="G16" if "16" in bucket else "G18", product="CMIPF-C13", time_utc=t, src_paths=[])
-            raise DownloadError(f"Failed to list S3 bucket s3://{bucket}/{prefix}", transient=True, meta=meta) from e
+            raise DownloadError(f"Failed to list S3 bucket s3://{bucket}/{prefix}", meta=meta) from e
 
         logger.debug("Found %d objects under %s", len(keys), prefix)
         self._list_cache[cache_key] = keys
@@ -96,9 +100,12 @@ class GoesProvider:
             with tmp_path.open("wb") as f:
                 s3.download_fileobj(bucket, key, f)
             tmp_path.replace(dst)  # Atomic move
+        except (ConnectTimeoutError, ReadTimeoutError) as e:
+            meta = CloudMeta(satellite="G16" if "16" in bucket else "G18", product="CMIPF-C13", time_utc=dt.datetime.now(dt.timezone.utc), src_paths=[])
+            raise TimeoutError(f"Timeout while downloading s3://{bucket}/{key}", meta=meta) from e
         except Exception as e:
             meta = CloudMeta(satellite="G16" if "16" in bucket else "G18", product="CMIPF-C13", time_utc=dt.datetime.now(dt.timezone.utc), src_paths=[])
-            raise DownloadError(f"Failed to download s3://{bucket}/{key}", transient=True, meta=meta) from e
+            raise DownloadError(f"Failed to download s3://{bucket}/{key}", meta=meta) from e
         finally:
             if tmp_path.exists():
                 tmp_path.unlink(missing_ok=True)
