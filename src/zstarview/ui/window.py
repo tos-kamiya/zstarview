@@ -48,6 +48,7 @@ from ..clouddisc import (
     CloudDiscError,
     DataNotFoundError,
     DownloadError,
+    TimeoutError,
     RenderError,
     VisibilityError,
 )
@@ -65,6 +66,7 @@ from ..paths import (
     SKY_UPDATE_INTERVAL,
     TEXT_FONT_PATH,
     TEXT_FONT_SIZE,
+    STATUS_LINE_FONT_SIZE,
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
 )
@@ -331,6 +333,7 @@ class SkyWindow(DraggableWindow):
         text_font_id = QFontDatabase.addApplicationFont(TEXT_FONT_PATH)
         text_font_family = QFontDatabase.applicationFontFamilies(text_font_id)[0]
         self.text_font = QFont(text_font_family, TEXT_FONT_SIZE)
+        self.status_line_font = QFont(text_font_family, STATUS_LINE_FONT_SIZE)
 
         # --- Data Update Timers and State ---
         self.sky_data_calculated.connect(self._on_sky_data_calculated)
@@ -371,6 +374,9 @@ class SkyWindow(DraggableWindow):
         # --- Composition Cache ---
         self._composited_img: Optional[QImage] = None
         self._composite_key: Optional[Tuple] = None
+
+        # --- Cloud error banner (cleared when next cloud update starts) ---
+        self._cloud_banner_text: Optional[str] = None
 
         # --- Initial Data Load ---
         self.start_background_sky_data_update(is_initial_load=True)
@@ -566,6 +572,15 @@ class SkyWindow(DraggableWindow):
             highlighted_object,
             self.text_font,
         )
+
+        # 7. Draw persistent cloud error message (bottom-left), if any
+        if self._cloud_banner_text:
+            render_draw.draw_status_line_text(
+                painter=painter,
+                message=self._cloud_banner_text,
+                status_line_font=self.status_line_font,
+                viewport_rect=self.rect(),
+            )
 
     def _draw_sky_and_clouds_scaled(self, painter: QPainter, geometry: ScreenGeometry) -> None:
         """
@@ -770,6 +785,9 @@ class SkyWindow(DraggableWindow):
             self._cloud_update_pending = True
             return
 
+        self._cloud_banner_text = "Clouds: downloading…"   # 例: "雲データ: ダウンロード中…"
+        self.update()
+
         self._is_cloud_update_running = True
         t = threading.Thread(target=self._update_cloud_in_background, args=(reason,))
         t.daemon = True
@@ -812,16 +830,27 @@ class SkyWindow(DraggableWindow):
                 # Invalidate composition cache to force a redraw with new clouds
                 self._composite_key = None
                 self._composited_img = None
+
+                self._cloud_banner_text = None
             except VisibilityError as e:
                 logger.error("Invalid params for cloud-disc image generation: %s", e)
             except DownloadError as e:
-                logger.warning("Network/S3 download error (transient=%s): %s", e.transient, e)
+                logger.warning("Network/S3 download error: %s", e)
+                self._cloud_banner_text = "Clouds: Network/S3 download error"
+                self.update()
+            except TimeoutError as e:
+                logger.warning("Clouds fetch timed out: %s", e)
+                self._cloud_banner_text = "Clouds: Clouds fetch timed out"
+                self.update()
             except DataNotFoundError as e:
                 logger.info("Satellite data not found in search window: %s", e)
+                self._cloud_banner_text = "Clouds: Satellite data not found in search window"
             except RenderError as e:
                 logger.error("Failed to decode/render satellite data: %s", e)
+                self._cloud_banner_text = "Clouds: Failed to decode/render satellite data"
             except CloudDiscError as e:
                 logger.error("Unexpected clouddisc error: %s", e)
+                self._cloud_banner_text = "Clouds: Unexpected clouddisc error"
 
             self._last_cloud_az = az
             self._last_cloud_time_utc = datetime.now(timezone.utc)

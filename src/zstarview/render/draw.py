@@ -5,7 +5,7 @@ import numpy as np
 from PIL import Image
 from zoneinfo import ZoneInfo
 
-from PySide6.QtCore import QPoint, QPointF, QRectF, Qt
+from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPainterPath, QPen, QPolygonF, QRadialGradient
 
 from ..paths import (
@@ -15,6 +15,7 @@ from ..paths import (
     FIELD_OF_VIEW_DEG,
     HORIZON_LINE_COLOR,
     TEXT_COLOR,
+    STATUS_LINE_COLOR,
 )
 from ..types import ScreenGeometry, CelestialData, ViewerData, CelestialObject
 from ..astro import altaz_to_normalized_xy, is_in_fov, calculate_moon_render_data
@@ -708,6 +709,39 @@ def draw_overlay_info(
         # PlanetBody(dataclass) or star(dict)
         name = getattr(obj, "name", "") if hasattr(obj, "name") else obj.get("name", "")
         draw_outlined_text(painter, name, QPointF(pos.x() + 15, pos.y() - 15), text_font, text_color)
+
+
+def draw_status_line_text(
+    painter: QPainter,
+    message: str,
+    status_line_font: QFont,
+    viewport_rect: QRect,
+) -> None:
+    """
+    Draws a single-line error message at the bottom-left corner, using the same
+    outlined text style as draw_overlay_info.
+
+    Args:
+        painter: QPainter to draw with.
+        message: Error message text (single line).
+        text_font: Font used for the overlay text.
+        viewport_rect: Target drawing rect (typically the window rect()).
+    """
+    if not message:
+        return
+
+    color = QColor(*STATUS_LINE_COLOR)
+
+    painter.save()
+    painter.setFont(status_line_font)
+
+    fm = painter.fontMetrics()
+    margin = fm.lineSpacing()
+    baseline_y = viewport_rect.bottom() - margin // 4
+    x = margin
+
+    draw_outlined_text(painter, "> " + message, QPointF(x, baseline_y), status_line_font, color)
+    painter.restore()
 
 
 def get_screen_geometry(width: int, height: int, alt: float) -> ScreenGeometry:
