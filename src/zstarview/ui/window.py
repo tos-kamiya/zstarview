@@ -797,7 +797,7 @@ class SkyWindow(DraggableWindow):
             self._cloud_update_pending = True
             return
 
-        self._cloud_banner_text = "Clouds: downloading…"   # 例: "雲データ: ダウンロード中…"
+        self._cloud_banner_text = "Clouds: downloading…"  # 例: "雲データ: ダウンロード中…"
         self.update()
 
         self._is_cloud_update_running = True

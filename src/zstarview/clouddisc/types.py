@@ -79,4 +79,3 @@ class RenderError(CloudDiscError):
     """Raised when an error occurs during the image rendering process."""
 
     pass
-

@@ -1,7 +1,9 @@
 import logging
 
 logger = logging.getLogger(__name__)
-logging.getLogger("satpy.readers.core.utils").setLevel(logging.WARNING)  # suppress "[INFO] satpy.readers.core.utils: Using temp file for BZ2 decompression: /tmp/..."
+logging.getLogger("satpy.readers.core.utils").setLevel(
+    logging.WARNING
+)  # suppress "[INFO] satpy.readers.core.utils: Using temp file for BZ2 decompression: /tmp/..."
 
 import argparse
 from datetime import datetime, timedelta, timezone
@@ -115,7 +117,8 @@ def parse_args() -> argparse.Namespace:
         help=("Opacity of the simulated sky-color disc (0.0 - 1.0, default: 0.2). " "Set to 0.0 to disable sky-color rendering."),
     )
     parser.add_argument(
-        "-c", "--cloud-opacity",
+        "-c",
+        "--cloud-opacity",
         type=float,
         default=0.2,
         help=("Opacity of the clouds (0.0 - 1.0, default: 0.2). " "Set to 0.0 to disable cloud rendering."),
@@ -149,7 +152,9 @@ class SplashLogHandler(logging.Handler):
         try:
             msg = self.format(record)
             # Color-code messages based on log level.
-            color = Qt.GlobalColor.white if record.levelno < logging.WARNING else QColor(255, 200, 120) if record.levelno < logging.ERROR else QColor(255, 100, 100)
+            color = (
+                Qt.GlobalColor.white if record.levelno < logging.WARNING else QColor(255, 200, 120) if record.levelno < logging.ERROR else QColor(255, 100, 100)
+            )
             self.show_fn(msg, color)
         except Exception:
             self.handleError(record)
@@ -389,7 +394,6 @@ def _startup_load_stars(args_vmag_limit: Optional[float]) -> pl.DataFrame:
 
 
 def main() -> None:
-    # TODO add cloud-cache clean-up feature
     """Main entry point for the star sky visualizer."""
 
     app_name = "Zenith Star View"

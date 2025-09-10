@@ -151,7 +151,9 @@ class GoesProvider:
                     logger.error("xarray fallback failed for %s: %s", Path(key).name, ex)
         return None
 
-    def fetch_bt_c13_with_failover(self, sat: str, when_utc: dt.datetime, extra_back_minutes: int = 30) -> Tuple[Tuple[xr.DataArray, dt.datetime, List[Path]], str]:
+    def fetch_bt_c13_with_failover(
+        self, sat: str, when_utc: dt.datetime, extra_back_minutes: int = 30
+    ) -> Tuple[Tuple[xr.DataArray, dt.datetime, List[Path]], str]:
         """
         Fetches C13 data with a two-pass failover strategy.
 

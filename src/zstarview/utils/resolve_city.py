@@ -327,7 +327,11 @@ def main():
         print(f"Found {len(recs)} match(es) for '{query}':")
         for rec in recs:
             admin_info = f", {rec.admin1_name}" if rec.admin1_name else ""
-            print(f"  - {rec.cc}/{rec.name}{admin_info} | " f"lat: {rec.lat:.6f}, lon: {rec.lon:.6f}, tz: {rec.tz}, pop: {rec.pop} " f"(geonameid={rec.geonameid})")
+            print(
+                f"  - {rec.cc}/{rec.name}{admin_info} | "
+                f"lat: {rec.lat:.6f}, lon: {rec.lon:.6f}, tz: {rec.tz}, pop: {rec.pop} "
+                f"(geonameid={rec.geonameid})"
+            )
     else:
         print(f"No match found for '{query}'", file=sys.stderr)
 
