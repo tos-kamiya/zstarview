@@ -51,6 +51,7 @@ from ..clouddisc import (
     TimeoutError,
     RenderError,
     VisibilityError,
+    cleanup_satellite_cache,
 )
 from ..paths import (
     APP_ICON_FILE,
@@ -355,6 +356,10 @@ class SkyWindow(DraggableWindow):
         self._cloud_update_timer = QTimer(self)
         self._cloud_update_timer.setInterval(CLOUD_UPDATE_INTERVAL * 1000)
         self._cloud_update_timer.timeout.connect(lambda: self.start_background_cloud_update(reason="timer"))
+
+        # --- Cache Cleanup Counter ---
+        self._cleanup_counter: int = 0
+        self._cleanup_interval: int = 10  # Run cleanup every 10 cloud updates
 
         # --- CloudDisc Service Initialization ---
         self._clouddisc: Optional[CloudDisc] = None
@@ -779,6 +784,13 @@ class SkyWindow(DraggableWindow):
         if not (self._clouddisc and self.cloud_disc_alpha > 0.0):
             return
 
+        # Run cache cleanup in a background thread periodically.
+        if self._cleanup_counter % self._cleanup_interval == 0:
+            cleanup_thread = threading.Thread(target=self._cleanup_cache)
+            cleanup_thread.daemon = True
+            cleanup_thread.start()
+        self._cleanup_counter += 1
+
         if self._is_cloud_update_running:
             # If an update is already running, flag that another one is pending.
             # This prevents dropping requests during rapid view changes.
@@ -865,6 +877,16 @@ class SkyWindow(DraggableWindow):
             if self._cloud_update_pending:
                 self._cloud_update_pending = False
                 self.start_background_cloud_update(reason="pending")
+
+    def _cleanup_cache(self) -> None:
+        if not self._clouddisc:
+            return
+        try:
+            logger.info("Running satellite cache cleanup...")
+            cleanup_satellite_cache(self._clouddisc.cfg.cache_root())
+            logger.info("Done: Satellite cache cleanup.")
+        except Exception as e:
+            logger.error(f"Error during cache cleanup: {e}", exc_info=True)
 
     def _rotate_view(self, d_alt: float = 0.0, d_az: float = 0.0) -> None:
         """
