@@ -123,6 +123,13 @@ def parse_args() -> argparse.Namespace:
         default=0.2,
         help=("Opacity of the clouds (0.0 - 1.0, default: 0.2). " "Set to 0.0 to disable cloud rendering."),
     )
+    parser.add_argument(
+        "-i",
+        "--sky-update-interval",
+        type=int,
+        default=3 * 60,
+        help=("Interval for updating stars/sky-color disc in sec. (default: 180)."),
+    )
     return parser.parse_args()
 
 
@@ -418,6 +425,7 @@ def main() -> None:
     star_base_radius = max(2.0, args.star_base_radius)
     sky_opacity = min(1.0, max(0.0, args.sky_opacity))
     cloud_opacity = min(1.0, max(0.0, args.cloud_opacity))
+    sky_update_interval = max(1, args.sky_update_interval)
 
     city_str = f"{city.cc}/{city.name}"
     main_win = SkyWindow(
@@ -431,6 +439,7 @@ def main() -> None:
         enlarge_moon=args.enlarge_moon,
         star_base_radius=star_base_radius,
         vmag_limit=args.vmag_limit,
+        sky_update_interval=sky_update_interval,
     )
 
     def _on_initial_loaded():

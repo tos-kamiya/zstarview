@@ -268,6 +268,7 @@ class SkyWindow(DraggableWindow):
         enlarge_moon: bool = False,
         star_base_radius: float = 8.0,
         vmag_limit: float = 6.0,
+        sky_update_interval: int = 3 * 60  # sec
     ) -> None:
         """
         Initializes the SkyWindow.
@@ -293,6 +294,7 @@ class SkyWindow(DraggableWindow):
         self.enlarge_moon = enlarge_moon
         self.star_base_radius = star_base_radius
         self.vmag_limit = vmag_limit
+        self.sky_update_interval = sky_update_interval
 
         # Cloud opacity is disabled if we are looking at a time-shifted view,
         # as we can only fetch current cloud data.
@@ -675,7 +677,7 @@ class SkyWindow(DraggableWindow):
 
         # On the very first load, start the periodic update timers.
         if not self._sky_data_update_timer.isActive():
-            self._sky_data_update_timer.start(SKY_UPDATE_INTERVAL * 1000)
+            self._sky_data_update_timer.start(self.sky_update_interval * 1000)
             if self._clouddisc and self.cloud_disc_alpha > 0.0 and not self._cloud_update_timer.isActive():
                 self._cloud_update_timer.start()
             self.initial_data_loaded.emit()
