@@ -170,7 +170,7 @@ Qt の xcb プラグインが `libxcb-cursor0` を必要とする場合があり
 CPU性能によっては星空の自動更新が負荷になる場合があります。様子を見ながら更新間隔を長く（数値を大きく）して負荷を下げてください（例: `-i 300` で5分ごと）。余裕があれば短くして構いません。
 
 ### ログの確認
-ターミナル（端末）から起動すると起動メッセージやエラーを確認できます: `zstarview` または `python -m zstarview.zstarview`
+ターミナル（端末）から起動すると起動メッセージやエラーを確認できます: `zstarview`
 併せてログファイルにも出力されます（OSに依存）。例:
 - Linux: `~/.cache/zstarview/logs/app.log`
 - macOS: `~/Library/Logs/zstarview/app.log`

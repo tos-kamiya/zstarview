@@ -182,7 +182,7 @@ You can still explore stars/planets and sky colors without cloud overlays.
 Frequent sky updates can be CPU‑intensive on lower‑end machines. Increase the interval to reduce load (e.g., `-i 300` for every 5 minutes). Lower it only if your machine can keep up.
 
 ### Viewing Logs
-Launching from a terminal shows startup messages and errors: `zstarview` or `python -m zstarview.zstarview`.
+Launching from a terminal shows startup messages and errors: `zstarview`.
 Logs are also written to a file (platform‑dependent). Examples:
 - Linux: `~/.cache/zstarview/logs/app.log`
 - macOS: `~/Library/Logs/zstarview/app.log`
