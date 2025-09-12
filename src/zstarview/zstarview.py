@@ -284,25 +284,26 @@ def _startup_resolve_city(args_city: Optional[str]) -> CityRec:
             lat_str, lon_str = [s.strip() for s in args_city.split(";")]
 
             def _parse_coord(s: str, dirs: str) -> float:
-                s_upper = s.upper()
-                sign = 1.0
+                s_upper = s.strip().upper()
 
-                # Determine sign from direction characters (N, S, E, W)
-                if any(d in s_upper for d in "SW"):
-                    if not any(d in dirs for d in "SW"):
-                        raise ValueError(f"Invalid direction in '{s}'")
-                    sign = -1.0
-                elif any(d in s_upper for d in "NE"):
-                    if not any(d in dirs for d in "NE"):
-                        raise ValueError(f"Invalid direction in '{s}'")
+                # Extract direction letters (N, S, E, W) that appear in the string
+                found = {ch for ch in s_upper if ch in "NSEW"}
+                allowed = set(dirs)
 
-                # Extract numeric part
+                # Ensure any direction letters used are valid for the current axis
+                if found and not found.issubset(allowed):
+                    raise ValueError(f"Invalid direction in '{s}' (expected one of {sorted(allowed)}).")
+
+                # Determine sign: S or W implies negative
+                sign = -1.0 if (("S" in found) or ("W" in found)) else 1.0
+
+                # Remove non-numeric characters (keep digits, dot, minus)
                 val_str = re.sub(r"[^0-9.-]", "", s)
                 if not val_str:
                     raise ValueError(f"No numeric value found in '{s}'")
                 val = float(val_str)
 
-                # Apply sign based on direction character, but respect existing sign on the number
+                # Explicit negative number takes precedence over direction sign
                 return val if val < 0 else val * sign
 
             lat = _parse_coord(lat_str, "NS")
@@ -370,7 +371,14 @@ def _startup_resolve_city(args_city: Optional[str]) -> CityRec:
 
     city = recs[0]  # Take the city with the highest population
 
-    city_str = f"{city.cc}/{city.name}"
+    # Save city/coordinates for next launch
+    if getattr(city, "geonameid", 0) == 0:
+        # Coordinate-based input: save as "lat;lon" string
+        city_str = f"{city.lat:.6f};{city.lon:.6f}"
+    else:
+        # Named city: save as "CC/Name"
+        city_str = f"{city.cc}/{city.name}"
+    save_last_city(city_str)
     logger.info(f"City: {city_str}")
 
     return city
