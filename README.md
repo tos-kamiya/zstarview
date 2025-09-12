@@ -180,12 +180,14 @@ This software is provided under the [MIT](LICENSE.txt) License.
 
 However, the **included data** is redistributed according to their respective licenses.
 
+All paths below are relative to `src/zstarview/data/`.
+
 | File                                                           | Content                                          | Source                                                             | License                                                                                                                             |
 | -------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `src/zstarview/data/cities1000.txt`, `src/zstarview/data/admin1CodesASCII.txt` | List of cities with a population of 1000 or more | [GeoNames](https://download.geonames.org/export/dump/)             | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                           |
-| `src/zstarview/data/stars/hip_main.dat.zip`                    | Hipparcos and Tycho Catalogues (ESA 1997)        | [CDS Strasbourg](https://cdsarc.cds.unistra.fr/ftp/I/239/)         | [ODbL](https://www.data.gouv.fr/licences) or [CC BY-NC 3.0 IGO](https://creativecommons.org/licenses/by-nc/3.0/igo/) Non-commercial |
-| `src/zstarview/data/stars/IAU-Catalog of Star Names (always up to date).csv` | IAU WGSN catalog of approved star names          | [exopla.net](https://exopla.net/star-names/modern-iau-star-names/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                           |
-| `src/zstarview/data/Noto_Sans/*`, `src/zstarview/data/Noto_Sans_Symbols/*`   | Font for displaying text / planetary symbols     | [Google Fonts](https://fonts.google.com/)                          | [SIL Open Font License 1.1](https://openfontlicense.org)                                                                            |
+| `cities1000.txt`, `admin1CodesASCII.txt`                       | List of cities with a population of 1000 or more | [GeoNames](https://download.geonames.org/export/dump/)             | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                           |
+| `stars/hip_main.dat.zip`                                       | Hipparcos and Tycho Catalogues (ESA 1997)        | [CDS Strasbourg](https://cdsarc.cds.unistra.fr/ftp/I/239/)         | [ODbL](https://www.data.gouv.fr/licences) or [CC BY-NC 3.0 IGO](https://creativecommons.org/licenses/by-nc/3.0/igo/) Non-commercial |
+| `stars/IAU-Catalog of Star Names (always up to date).csv`      | IAU WGSN catalog of approved star names          | [exopla.net](https://exopla.net/star-names/modern-iau-star-names/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                           |
+| `Noto_Sans/*`, `Noto_Sans_Symbols/*`                           | Font for displaying text / planetary symbols     | [Google Fonts](https://fonts.google.com/)                          | [SIL Open Font License 1.1](https://openfontlicense.org)                                                                            |
 
 ## Credits
 
