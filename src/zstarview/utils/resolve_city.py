@@ -12,7 +12,7 @@ import re
 import sys
 import unicodedata
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 # ---------- Data Model ----------
 
@@ -131,7 +131,7 @@ def load_admin1_names(path: str) -> Dict[Tuple[str, str], str]:
     return mapping
 
 
-def _row_matches(cols: List[str], query_variants: set[str]) -> bool:
+def _row_matches(cols: List[str], query_variants: Set[str]) -> bool:
     """
     Checks if a city row matches any of the query variants.
 

@@ -75,7 +75,7 @@ class CloudDisc:
         edge_fov_deg: float = 90.0,
         mask_fov_deg: float = 90.0,
         cloud_shell_km: float = 6371.0 + 5.0,  # 5km above Earth's surface
-    ) -> tuple[Image.Image, CloudMeta]:
+    ) -> Tuple[Image.Image, CloudMeta]:
         """
         Renders a cloud image for the current time from the observer's perspective.
 

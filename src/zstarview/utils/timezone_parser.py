@@ -9,12 +9,13 @@ libraries.
 
 import re
 from datetime import timedelta, timezone
+from typing import Dict, Union
 from zoneinfo import ZoneInfo
 
 # A mapping of common, unambiguous time zone abbreviations to their corresponding
 # IANA database names. This provides a convenient shortcut for users.
 # DST (Daylight Saving Time) is handled automatically by the IANA zone.
-TZ_ABBREV_MAP: dict[str, str] = {
+TZ_ABBREV_MAP: Dict[str, str] = {
     # Core
     "UTC": "UTC",
     "GMT": "Etc/GMT",
@@ -41,7 +42,7 @@ UTC_OFFSET_RE = re.compile(
 )
 
 
-def parse_tz_string(tz_str: str) -> timezone | ZoneInfo:
+def parse_tz_string(tz_str: str) -> Union[timezone, ZoneInfo]:
     """
     Parses a time zone string and returns a corresponding tzinfo object.
 

@@ -11,7 +11,7 @@ import math
 import sys
 import threading
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import astropy
 import numpy as np
@@ -661,7 +661,7 @@ class SkyWindow(DraggableWindow):
         painter.drawImage(QRect(x, y, w, h), self._composited_img)
         painter.restore()
 
-    def _on_sky_data_calculated(self, payload: dict) -> None:
+    def _on_sky_data_calculated(self, payload: Dict) -> None:
         """
         Slot to handle the arrival of newly calculated sky data from the worker thread.
 
@@ -799,7 +799,7 @@ class SkyWindow(DraggableWindow):
             self._cloud_update_pending = True
             return
 
-        self._cloud_banner_text = "Clouds: downloading…"  # 例: "雲データ: ダウンロード中…"
+        self._cloud_banner_text = "Clouds: downloading…"  # e.g., "Clouds: Downloading..."
         self.update()
 
         self._is_cloud_update_running = True

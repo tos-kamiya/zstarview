@@ -11,7 +11,7 @@ from pathlib import Path
 import re
 import sys
 import time
-from typing import Callable, Optional, Tuple
+from typing import Callable, List, Optional, Tuple
 
 from PySide6.QtWidgets import QApplication, QSplashScreen
 from PySide6.QtCore import Qt
@@ -340,7 +340,7 @@ def _startup_resolve_city(args_city: Optional[str]) -> CityRec:
         logger.error("Fail to load admin1CodesASCII.txt.")
         raise StartupAbortError()
 
-    recs = []
+    recs: List[CityRec] = []
     try:
         if re.match(r"^\d+$", args_city):
             # If input is just a geonameid, resolve it directly
@@ -402,7 +402,7 @@ def _parse_flexible_time(time_str: str) -> Tuple[int, int, int]:
 
 
 
-# 置き換え：_startup_parse_time_arguments()
+# TODO: This function name is confusingly similar to _startup_parse_time_arguments; consider renaming.
 def _startup_parse_time_arguments(args_datetime: Optional[str], args_days: int, args_hours: int) -> timedelta:
     """
     Parses time-related arguments and returns a timedelta from now.

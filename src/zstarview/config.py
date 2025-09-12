@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from typing import Optional
 
 from appdirs import user_config_dir
 
@@ -11,7 +12,7 @@ _config_dir.mkdir(parents=True, exist_ok=True)
 _config_file = _config_dir / "config.json"
 
 
-def load_last_city() -> str | None:
+def load_last_city() -> Optional[str]:
     """Loads the last used city from the config file."""
     try:
         data = json.loads(_config_file.read_text(encoding="utf-8"))
