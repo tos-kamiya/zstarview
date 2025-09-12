@@ -4,7 +4,7 @@ import os.path
 
 _dir = os.path.dirname(os.path.abspath(__file__))
 
-from .paths import APP_ID, APP_ICON_FILE
+from .paths import APP_ID, APP_ICON_FILE, APP_DISPLAY_NAME
 
 APP_COMMAND = "zstarview"
 DESKTOP_FILE = f"{APP_ID}.desktop"
@@ -12,7 +12,7 @@ DESKTOP_FILE = f"{APP_ID}.desktop"
 DESKTOP_TEMPLATE = """[Desktop Entry]
 Type=Application
 Version=1.0
-Name=Zenith Star View
+Name={app_name}
 Comment=Interactive night sky viewer
 Exec={exec_cmd}
 Icon={icon_path}
@@ -24,7 +24,7 @@ StartupWMClass={wmclass}
 
 def main():
     """Generates a .desktop file for the application."""
-    parser = argparse.ArgumentParser(description=".desktop file generator for Zenith Star View")
+    parser = argparse.ArgumentParser(description=f".desktop file generator for {APP_DISPLAY_NAME}")
     parser.add_argument(
         "--write",
         action="store_true",
@@ -39,6 +39,7 @@ def main():
     out_path = os.path.join(out_dir, DESKTOP_FILE)
 
     content = DESKTOP_TEMPLATE.format(
+        app_name=APP_DISPLAY_NAME,
         exec_cmd=exec_cmd,
         icon_path=APP_ICON_FILE,
         wmclass=APP_ID,

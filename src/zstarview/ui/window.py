@@ -55,6 +55,7 @@ from ..clouddisc import (
 )
 from ..paths import (
     APP_ICON_FILE,
+    APP_DISPLAY_NAME,
     CACHE_PATH,
     CLOUD_HATCH_DEFAULT,
     CLOUD_SHELL_KM,
@@ -310,7 +311,7 @@ class SkyWindow(DraggableWindow):
             city_name=city_name,
             view_center=view_center,
         )
-        self.setWindowTitle(f"Zenith Star View - {self.viewer_data.city_name.title()}")
+        self.setWindowTitle(f"{APP_DISPLAY_NAME} - {self.viewer_data.city_name.title()}")
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setFocus(Qt.FocusReason.ActiveWindowFocusReason)
         self.setWindowIcon(QIcon(APP_ICON_FILE))

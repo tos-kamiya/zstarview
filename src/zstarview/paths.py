@@ -10,6 +10,8 @@ _dir = os.path.dirname(os.path.abspath(__file__))
 # Application identifiers
 APP_ID = "zstarview"
 APP_AUTHOR = "tos-kamiya"
+# Human‑readable display name
+APP_DISPLAY_NAME = "Zenith Star View"
 
 # Data file paths
 TEXT_FONT_PATH = os.path.join(_dir, "data", "Noto_Sans", "NotoSans-VariableFont_wdth,wght.ttf")
@@ -105,3 +107,6 @@ class HatchConfig:
 
 
 CLOUD_HATCH_DEFAULT = HatchConfig(20, 19, 8, 255)
+
+# Skyfield ephemeris kernel filename
+EPHEMERIS_FILENAME = "de440s.bsp"

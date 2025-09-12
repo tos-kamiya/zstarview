@@ -27,6 +27,7 @@ import polars as pl
 from .paths import (
     APP_ID,
     APP_AUTHOR,
+    APP_DISPLAY_NAME,
     CACHE_PATH,
     LOG_PATH,
     CITY_COORD_FILE,
@@ -496,12 +497,12 @@ def _startup_load_stars(args_vmag_limit: Optional[float]) -> pl.DataFrame:
 def main() -> None:
     """Main entry point for the star sky visualizer."""
 
-    app_name = "Zenith Star View"
+    app_name = APP_DISPLAY_NAME
     app = setup_app(app_name)
     args = parse_args()
 
     root_logger = setup_root_logger()
-    logger.info("Zenith Star View starting...")
+    logger.info(f"{APP_DISPLAY_NAME} starting...")
 
     splash, splash_handler = setup_splash_and_attach_logger(app, app_name, root_logger)
 
