@@ -94,6 +94,28 @@ class SkyWindow(DraggableWindow):
     sky_data_calculated = Signal(object)
     initial_data_loaded = Signal()
 
+    # TODO(SkyDataWorker): Split sky data background computation into a QObject
+    #   class (e.g., ui/sky_worker.py) with:
+    #   - Signal: data_ready(object)  # {'celestial': CelestialData, 'sky_disc': QImage|None}
+    #   - Method: update(lat, lon, view_center, star_catalog, sky_disc_alpha)
+    #   - Responsibility: run calculate_visible_stars/planets/lines + sky disc
+    #   - Threading: start a Python thread internally; emit results via Signal
+    #   Wiring here:
+    #   - Replace start_background_sky_data_update/update_sky_data_in_background
+    #     with worker.update(...); connect worker.data_ready -> _on_sky_data_calculated
+    #   - Keep timers in SkyWindow; first-load handling stays here
+
+    # TODO(CloudController): Extract cloud fetching to a QObject controller
+    #   (e.g., ui/cloud_controller.py) with:
+    #   - Signals: cloud_ready(QImage|None, dict|None), status(str|None)
+    #   - Methods: update(lat, lon, view_center, radius_px, params)
+    #   - Responsibility: call CloudDisc.render_now, manage running/pending state,
+    #     cleanup cadence, and set status messages; no UI painting.
+    #   Wiring here:
+    #   - Replace start_background_cloud_update/_update_cloud_in_background with
+    #     controller.update(...); on signals: update cloud_state + compositor.invalidate()
+    #   - Optionally move cleanup timer here; for now Window retains QTimer
+
     def __init__(
         self,
         city_name: str,
