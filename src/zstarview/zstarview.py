@@ -261,21 +261,76 @@ class StartupAbortError(Exception):
 def _startup_resolve_city(args_city: Optional[str]) -> CityRec:
     """
     Resolves the target city from arguments or last used city.
+    Also handles direct latitude/longitude input like "35.68;139.76" or "N35.68;E139.76".
 
     Args:
-        args_city: The city name from command-line arguments.
+        args_city: The city name or lat;lon string from command-line arguments.
 
     Returns:
         The resolved city record.
 
     Raises:
-        StartupAbortError: If city data cannot be loaded or the city cannot be found.
+        StartupAbortError: If data cannot be loaded or the location cannot be resolved.
     """
     last_city = load_last_city()
     if not args_city:
         args_city = last_city or "Tokyo"
 
-    # load city data
+    # Handle direct latitude/longitude input
+    if ";" in args_city:
+        try:
+            lat_str, lon_str = [s.strip() for s in args_city.split(";")]
+
+            def _parse_coord(s: str, dirs: str) -> float:
+                s_upper = s.upper()
+                sign = 1.0
+
+                # Determine sign from direction characters (N, S, E, W)
+                if any(d in s_upper for d in "SW"):
+                    if not any(d in dirs for d in "SW"):
+                        raise ValueError(f"Invalid direction in '{s}'")
+                    sign = -1.0
+                elif any(d in s_upper for d in "NE"):
+                    if not any(d in dirs for d in "NE"):
+                        raise ValueError(f"Invalid direction in '{s}'")
+
+                # Extract numeric part
+                val_str = re.sub(r"[^0-9.-]", "", s)
+                if not val_str:
+                    raise ValueError(f"No numeric value found in '{s}'")
+                val = float(val_str)
+
+                # Apply sign based on direction character, but respect existing sign on the number
+                return val if val < 0 else val * sign
+
+            lat = _parse_coord(lat_str, "NS")
+            lon = _parse_coord(lon_str, "EW")
+
+            if not (-90 <= lat <= 90):
+                raise ValueError(f"Latitude out of range (-90 to 90): {lat}")
+            if not (-180 <= lon <= 180):
+                raise ValueError(f"Longitude out of range (-180 to 180): {lon}")
+
+            logger.info(f"Parsed location: Lat={lat:.6f}, Lon={lon:.6f}, Timezone=UTC")
+
+            name = f"Lat: {lat:.2f}, Lon: {lon:.2f}"
+            return CityRec(
+                geonameid=0,
+                name=name,
+                asciiname=name,
+                lat=lat,
+                lon=lon,
+                cc="",
+                admin1_code="",
+                admin1_name=None,
+                pop=0,
+                tz="UTC",
+            )
+        except (ValueError, IndexError) as e:
+            logger.error(f"Invalid latitude/longitude format: '{args_city}'. {e}")
+            raise StartupAbortError()
+
+    # --- City name resolution logic ---
     logger.info("Loading city data...")
     try:
         admin1_map = load_admin1_names(CITY_ADMIN1_CODES_FILE)
