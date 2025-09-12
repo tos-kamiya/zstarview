@@ -22,7 +22,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtGui import QGuiApplication
 
-import pandas as pl
+import polars as pl
 
 from .paths import (
     APP_ID,
