@@ -78,7 +78,9 @@ def parse_args() -> argparse.Namespace:
         "--datetime",
         type=str,
         default=None,
-        help="Set an absolute date and time in 'YYYY-MM-DD HH:MM:SS [TZ]' format. If TZ is omitted, UTC is assumed. Overrides --hours and --days.",
+        help=("Set an absolute date and time in 'YYYY-MM-DD HH[:MM[:SS]] [TZ]' format "
+            "(e.g., '2025-09-12 9', '2025-09-12 09:00', '2025-09-12 9:0:0 JST'). "
+            "If TZ is omitted, UTC is assumed. Overrides --hours and --days."),
     )
 
     parser.add_argument(
@@ -374,20 +376,38 @@ def _startup_resolve_city(args_city: Optional[str]) -> CityRec:
     return city
 
 
+def _parse_flexible_time(time_str: str) -> Tuple[int, int, int]:
+    """
+    Parse time string that may omit minutes/seconds.
+    Accepts:
+      - "H" or "HH"
+      - "H:M" or "HH:MM"
+      - "H:M:S" or "HH:MM:SS"
+    Returns (hour, minute, second)
+    """
+    m = re.fullmatch(r"\s*(\d{1,2})(?::(\d{1,2}))?(?::(\d{1,2}))?\s*", time_str)
+    if not m:
+        raise ValueError(f"Invalid time: {time_str!r}. Use HH, HH:MM, or HH:MM:SS.")
+    h = int(m.group(1))
+    mi = int(m.group(2)) if m.group(2) is not None else 0
+    s = int(m.group(3)) if m.group(3) is not None else 0
+
+    if not (0 <= h <= 23):
+        raise ValueError(f"Hour out of range (0-23): {h}")
+    if not (0 <= mi <= 59):
+        raise ValueError(f"Minute out of range (0-59): {mi}")
+    if not (0 <= s <= 59):
+        raise ValueError(f"Second out of range (0-59): {s}")
+    return h, mi, s
+
+
+
+# 置き換え：_startup_parse_time_arguments()
 def _startup_parse_time_arguments(args_datetime: Optional[str], args_days: int, args_hours: int) -> timedelta:
     """
     Parses time-related arguments and returns a timedelta from now.
 
-    Args:
-        args_datetime: The absolute datetime string.
-        args_days: The number of days to add.
-        args_hours: The number of hours to add.
-
-    Returns:
-        A timedelta object representing the offset from the current UTC time.
-
-    Raises:
-        StartupAbortError: If the arguments are invalid.
+    Supports --datetime in 'YYYY-MM-DD HH[:MM[:SS]] [TZ]' (TZ optional).
     """
     if not args_datetime:
         delta_t = timedelta(days=args_days, hours=args_hours)
@@ -398,14 +418,24 @@ def _startup_parse_time_arguments(args_datetime: Optional[str], args_days: int, 
         raise StartupAbortError()
 
     try:
-        # Split the datetime string to check for a timezone suffix
-        parts = args_datetime.split(" ")
-        dt_str_naive = " ".join(parts[:2])  # YYYY-MM-DD HH:MM:SS
-        tz_str = None
-        if len(parts) > 2:  # If there's a third part, it might be the timezone
-            tz_str = parts[2]
+        parts = args_datetime.split()
+        if len(parts) < 2:
+            raise ValueError("Missing time part. Use 'YYYY-MM-DD HH[:MM[:SS]] [TZ]'.")
 
-        dt_naive = datetime.strptime(dt_str_naive, "%Y-%m-%d %H:%M:%S")
+        date_str = parts[0]
+        time_str = parts[1]
+        tz_str = parts[2] if len(parts) >= 3 else None
+
+        # parse date (strict)
+        try:
+            date_only = datetime.strptime(date_str, "%Y-%m-%d")
+        except ValueError:
+            raise ValueError(f"Invalid date: {date_str!r}. Use YYYY-MM-DD.")
+
+        # parse flexible time
+        h, mi, s = _parse_flexible_time(time_str)
+
+        dt_naive = date_only.replace(hour=h, minute=mi, second=s)
 
         if tz_str:
             try:
@@ -422,8 +452,8 @@ def _startup_parse_time_arguments(args_datetime: Optional[str], args_days: int, 
         now_utc = datetime.now(timezone.utc)
         delta_t = target_time_utc - now_utc
 
-    except ValueError:
-        logger.error(f"Invalid datetime format: {args_datetime}. Use 'YYYY-MM-DD HH:MM:SS [TZ]'.")
+    except ValueError as e:
+        logger.error(f"{e} Input was: {args_datetime!r}")
         raise StartupAbortError()
 
     return delta_t
