@@ -7,19 +7,15 @@ for the application. It handles rendering the celestial objects, sky background,
 clouds, and all user interactions like rotation, zooming, and object highlighting.
 """
 import logging
-import math
-import sys
 import threading
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple
 
 import astropy
-import numpy as np
 import polars as pl
-from PySide6.QtCore import QEvent, QPoint, QRect, Qt, QTimer, Signal
+from PySide6.QtCore import QEvent, QPoint, Qt, QTimer, Signal
 from PySide6.QtGui import (
     QAction,
-    QColor,
     QFont,
     QFontDatabase,
     QIcon,
@@ -28,10 +24,9 @@ from PySide6.QtGui import (
     QMouseEvent,
     QPainter,
     QPaintEvent,
-    QPixmap,
     QResizeEvent,
 )
-from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QPushButton, QSizeGrip
+from PySide6.QtWidgets import QApplication, QMenu, QPushButton, QSizeGrip
 
 from ..__about__ import __version__
 from ..astro import (
@@ -57,15 +52,12 @@ from ..paths import (
     APP_ICON_FILE,
     APP_DISPLAY_NAME,
     CACHE_PATH,
-    CLOUD_HATCH_DEFAULT,
     CLOUD_SHELL_KM,
     CLOUD_UPDATE_INTERVAL,
     EMOJI_FONT_PATH,
     EMOJI_FONT_SIZE,
     GUI_BUTTON_SIZE,
     GUI_MENU_TEXT_COLOR,
-    HatchConfig,
-    SKY_UPDATE_INTERVAL,
     TEXT_FONT_PATH,
     TEXT_FONT_SIZE,
     STATUS_LINE_FONT_SIZE,
@@ -75,8 +67,10 @@ from ..paths import (
 from ..render import draw as render_draw
 from ..render import draw_sky_disc
 from ..types import CelestialData, ScreenGeometry, ViewerData
-from ..utils.qt import np_rgba_to_qimage, pil_to_qimage, qimage_to_np_rgba
+from ..utils.qt import pil_to_qimage
 from .draggable_window import DraggableWindow
+from .composite import SkyCompositorCache
+from .cloud_state import CloudImageState
 
 logger = logging.getLogger(__name__)
 
@@ -84,164 +78,7 @@ logger = logging.getLogger(__name__)
 DEBUG_ECLIPSES = True
 
 
-def make_hatch_tile_qimage(W: int, H: int, line_px: int, strength: int) -> QImage:
-    """
-    Generates a hatch tile image for masking.
-
-    Creates a QImage with a diagonal line pattern (hatch). This tile can be
-    used to create a stylized, less realistic look for UI elements like clouds.
-    The format is ARGB32_Premultiplied for direct use with QPainter.
-
-    Args:
-        W: The width of the tile in pixels.
-        H: The height of the tile in pixels.
-        line_px: The thickness of the hatch lines in pixels.
-        strength: The alpha value (0-255) of the hatch lines.
-
-    Returns:
-        A QImage containing the generated hatch pattern.
-    """
-    norm = math.sqrt(W * W + H * H)
-    P = W * H
-    band_u = max(1, int(round(line_px * norm)))
-
-    # Create a coordinate grid
-    xs = np.arange(W, dtype=np.int32)[None, :]
-    ys = np.arange(H, dtype=np.int32)[:, None]
-
-    # Calculate the distance from the diagonal line for each pixel
-    u = H * xs - W * ys
-    u_mod = np.mod(u, P)
-    dist = np.minimum(u_mod, P - u_mod)
-    mask = dist <= (band_u / 2)
-
-    # Create the image buffer
-    arr = np.zeros((H, W, 4), dtype=np.uint8)
-    arr[..., 0:3] = 0  # Black color
-    arr[..., 3] = 0  # Transparent background
-    arr[..., 3][mask] = np.uint8(np.clip(strength, 0, 255))  # Apply alpha to lines
-
-    # Convert numpy array to QImage
-    buf = arr.tobytes()
-    qimg = QImage(buf, W, H, QImage.Format_ARGB32_Premultiplied)
-    return qimg.copy()
-
-
-def cloud_with_hatched_alpha(cloud_img: QImage, hatch_cfg: HatchConfig) -> QImage:
-    """
-    Applies a hatch mask to a cloud image's alpha channel.
-
-    This function takes a cloud image and uses a generated hatch pattern to
-    modify its transparency. The hatch pattern is drawn using the
-    `CompositionMode_DestinationOut` mode, effectively "erasing" parts of the
-    cloud image's alpha channel to create a stylized, hatched appearance.
-
-    Args:
-        cloud_img: The source cloud image (must be convertible to ARGB32_Premultiplied).
-        hatch_cfg: Configuration for the hatch pattern.
-
-    Returns:
-        A new QImage with the hatch pattern applied to its alpha channel.
-    """
-    # Ensure the image is in the correct format for painter operations
-    out = cloud_img if cloud_img.format() == QImage.Format_ARGB32_Premultiplied else cloud_img.convertToFormat(QImage.Format_ARGB32_Premultiplied)
-
-    hatch_tile = make_hatch_tile_qimage(
-        hatch_cfg.tile_w_px,
-        hatch_cfg.tile_h_px,
-        hatch_cfg.line_px,
-        hatch_cfg.strength,
-    )
-
-    # Paint the hatch tile over the image to modify its alpha channel
-    p = QPainter(out)
-    p.setCompositionMode(QPainter.CompositionMode_DestinationOut)
-    p.drawTiledPixmap(out.rect(), QPixmap.fromImage(hatch_tile))
-    p.end()
-
-    return out
-
-
-def _compose_cloud_over_sky_no_global_cache(
-    sky_img: QImage,
-    cloud_img_rgba: QImage,
-    dest_rect: QRect,
-    cloud_opacity: float = 1.0,
-    gray_mix: float = 1.0,
-) -> QImage:
-    """
-    Composes cloud and sky images without using a global cache.
-
-    This function is intended for use when the draw size changes or when the
-    source images are updated. It performs a complex blend:
-    1. The sky is partially desaturated to grayscale based on `gray_mix`.
-    2. The cloud's color is added on top, controlled by `cloud_opacity`.
-    3. The final image is clipped to a circle.
-
-    Args:
-        sky_img: The background sky image.
-        cloud_img_rgba: The foreground cloud image with an alpha channel.
-        dest_rect: The target rectangle for the composition.
-        cloud_opacity: The opacity of the cloud color overlay (0.0 to 1.0).
-        gray_mix: The factor for desaturating the sky behind the clouds (0.0 to 1.0).
-
-    Returns:
-        The composed QImage.
-    """
-    w, h = dest_rect.width(), dest_rect.height()
-
-    # Ensure images are scaled to the destination size (as a safeguard)
-    if sky_img.width() != w or sky_img.height() != h:
-        sky_img = sky_img.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
-    if cloud_img_rgba.width() != w or cloud_img_rgba.height() != h:
-        cloud_img_rgba = cloud_img_rgba.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
-
-    sky_np = qimage_to_np_rgba(sky_img).astype(np.uint8)
-    cloud_np = qimage_to_np_rgba(cloud_img_rgba).astype(np.uint8)
-
-    # --- Grayscale conversion of the sky (integer approximation) ---
-    r = sky_np[..., 0].astype(np.uint16)
-    g = sky_np[..., 1].astype(np.uint16)
-    b = sky_np[..., 2].astype(np.uint16)
-    gray_u8 = ((77 * r + 150 * g + 29 * b) >> 8).astype(np.uint8)
-
-    # --- Blend sky with its grayscale version based on cloud alpha ---
-    a = (cloud_np[..., 3].astype(np.float32) / 255.0) * float(np.clip(gray_mix, 0.0, 1.0))
-    a8 = (np.clip(a, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint16)
-    inv_a8 = 255 - a8
-
-    sky_rgb_u16 = sky_np[..., :3].astype(np.uint16)
-    gray_rgb_u16 = np.repeat(gray_u8[:, :, None], 3, axis=2).astype(np.uint16)
-
-    # This creates the base layer: sky that becomes grayer where clouds are denser.
-    base_u16 = (inv_a8[:, :, None] * sky_rgb_u16 + a8[:, :, None] * gray_rgb_u16) // 255
-
-    # --- Add cloud color on top ---
-    cop = float(np.clip(cloud_opacity, 0.0, 1.0))
-    if cop > 0.0:
-        add_u16 = (cloud_np[..., :3].astype(np.uint16) * int(round(cop * 255))) // 255
-        out_u16 = base_u16 + add_u16
-        np.minimum(out_u16, 255, out=out_u16)  # Clamp to 255
-    else:
-        out_u16 = base_u16
-
-    # --- Final assembly and circular mask ---
-    out = np.empty((h, w, 4), dtype=np.uint8)
-    out[..., :3] = out_u16.astype(np.uint8)
-    out[..., 3] = 255  # Start with a fully opaque alpha channel
-
-    # Create a circular mask to make the final disc shape
-    cy, cx = (h - 1) * 0.5, (w - 1) * 0.5
-    rr = min(cx, cy)
-    y, x = np.arange(h, dtype=np.float32)[:, None], np.arange(w, dtype=np.float32)[None, :]
-    r2 = (x - cx) ** 2 + (y - cy) ** 2
-    mask = r2 <= (rr + 0.25) ** 2  # Anti-aliasing trick to reduce jagged edges
-
-    # Apply the mask: pixels outside the circle become transparent
-    out[..., 3][~mask] = 0
-    out[..., :3][~mask] = 0  # Premultiply alpha
-
-    return np_rgba_to_qimage(out)
+# compositing helpers and cache moved to ui/composite.py
 
 
 class SkyWindow(DraggableWindow):
@@ -350,19 +187,12 @@ class SkyWindow(DraggableWindow):
 
         # --- Cloud Data State and Cache ---
         self._cloud_base_size: int = 256
-        self._cloud_img: Optional[QImage] = None
-        self._cloud_meta: Optional[dict] = None
+        self.cloud_state = CloudImageState()
         self._is_cloud_update_running: bool = False
         self._cloud_update_pending: bool = False
-        self._last_cloud_az: Optional[float] = None
-        self._last_cloud_time_utc: Optional[datetime] = None
         self._cloud_update_timer = QTimer(self)
         self._cloud_update_timer.setInterval(CLOUD_UPDATE_INTERVAL * 1000)
         self._cloud_update_timer.timeout.connect(lambda: self.start_background_cloud_update(reason="timer"))
-
-        # --- Cache Cleanup Counter ---
-        self._cleanup_counter: int = 0
-        self._cleanup_interval: int = 10  # Run cleanup every 10 cloud updates
 
         # --- CloudDisc Service Initialization ---
         self._clouddisc: Optional[CloudDisc] = None
@@ -379,12 +209,10 @@ class SkyWindow(DraggableWindow):
         except Exception as e:
             logger.warning(f"CloudDisc init failed: {e}")
 
-        # --- Composition Cache ---
-        self._composited_img: Optional[QImage] = None
-        self._composite_key: Optional[Tuple] = None
+        # --- Composition Cache (moved to dedicated class) ---
+        self._compositor = SkyCompositorCache()
 
-        # --- Cloud error banner (cleared when next cloud update starts) ---
-        self._cloud_banner_text: Optional[str] = None
+        # Cloud error banner is kept inside CloudImageState
 
         # --- Initial Data Load ---
         self.start_background_sky_data_update(is_initial_load=True)
@@ -428,13 +256,6 @@ class SkyWindow(DraggableWindow):
         version_action.setEnabled(False)
 
     def resizeEvent(self, event: QResizeEvent) -> None:
-        """
-        Handles the window resize event. Repositions UI elements like the
-        size grip and menu button.
-
-        Args:
-            event: The QResizeEvent.
-        """
         grip_size = self.size_grip.size()
         self.size_grip.move(self.width() - grip_size.width(), self.height() - grip_size.height())
 
@@ -442,52 +263,32 @@ class SkyWindow(DraggableWindow):
         self.menu_button.move(self.width() - button_size.width() - 8, 8)
 
         # Invalidate the composition cache since the size has changed
-        self._composite_key = None
-        self._composited_img = None
+        self._compositor.invalidate()
 
         super().resizeEvent(event)
 
     def show_menu(self) -> None:
-        """Shows the hamburger menu at the button's position."""
         menu_pos = self.menu_button.mapToGlobal(QPoint(0, self.menu_button.height()))
         self.menu.exec(menu_pos)
 
     def toggle_enlarge_moon(self) -> None:
-        """Toggles the moon enlargement feature and triggers a redraw."""
         self.enlarge_moon = not self.enlarge_moon
         if self._action_enlarge_moon is not None and self._action_enlarge_moon.isChecked() != self.enlarge_moon:
             self._action_enlarge_moon.setChecked(self.enlarge_moon)
         self.update()  # Redraw with the new setting
 
     def toggle_fullscreen(self) -> None:
-        """Toggles the window's fullscreen state."""
         if self.isFullScreen():
             self.showNormal()
         else:
             self.showFullScreen()
 
     def leaveEvent(self, event: QEvent) -> None:
-        """
-        Handles the mouse leaving the window area.
-
-        Args:
-            event: The QEvent.
-        """
         self.mouse_pos = None
         self.update()
         event.accept()
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
-        """
-        Handles the mouse move event to track the cursor for highlighting.
-
-        Note: This implementation overrides the base class's dragging
-        functionality. Dragging is handled by the native system move or is
-        unavailable if that fails.
-
-        Args:
-            event: The QMouseEvent.
-        """
         self.mouse_pos = event.pos()
         self.update()  # Trigger a repaint to show hover effects
         # We accept the event to prevent it from propagating further.
@@ -503,26 +304,10 @@ class SkyWindow(DraggableWindow):
         self.enlarge_moon = enlarge_moon
 
     def set_sky_data(self, data: CelestialData) -> None:
-        """
-        Sets the celestial data and triggers a repaint.
-
-        Args:
-            data: The new CelestialData to display.
-        """
         self.celestial_data = data
         self.update()
 
     def paintEvent(self, event: QPaintEvent) -> None:
-        """
-        The main paint event handler for the window.
-
-        This method is responsible for drawing all visual elements in the correct
-        order: background, sky/clouds, reference lines, celestial objects, and
-        overlay text.
-
-        Args:
-            event: The QPaintEvent.
-        """
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
@@ -552,7 +337,13 @@ class SkyWindow(DraggableWindow):
         render_draw.draw_radial_background(painter, self.rect(), geometry)
 
         # 3. Draw the composited sky and cloud disc
-        self._draw_sky_and_clouds_scaled(painter, geometry)
+        self._compositor.draw(
+            painter,
+            geometry,
+            self._sky_disc_image,
+            self.cloud_state.image,
+            cloud_alpha=self.cloud_disc_alpha,
+        )
 
         # 4. Draw reference lines (horizon, equator, etc.)
         render_draw.draw_sky_reference_lines(painter, geometry, self.celestial_data)
@@ -582,85 +373,15 @@ class SkyWindow(DraggableWindow):
         )
 
         # 7. Draw persistent cloud error message (bottom-left), if any
-        if self._cloud_banner_text:
+        if self.cloud_state.banner_text:
             render_draw.draw_status_line_text(
                 painter=painter,
-                message=self._cloud_banner_text,
+                message=self.cloud_state.banner_text,
                 status_line_font=self.status_line_font,
                 viewport_rect=self.rect(),
             )
 
-    def _draw_sky_and_clouds_scaled(self, painter: QPainter, geometry: ScreenGeometry) -> None:
-        """
-        Composes and draws the sky and cloud discs in a single operation.
-
-        This method handles scaling, caching, and compositing of the sky and
-        cloud images to optimize rendering performance. The final composited
-        image is drawn once.
-
-        Args:
-            painter: The QPainter to draw with.
-            geometry: The screen geometry for the current view.
-        """
-        # If both layers are disabled, there's nothing to draw.
-        if (self._sky_disc_image is None or self.sky_disc_alpha <= 0.0) and (self._cloud_img is None or self.cloud_disc_alpha <= 0.0):
-            return
-
-        # Define the destination rectangle for the disc
-        x = int(geometry.center[0] - geometry.radius)
-        y = int(geometry.center[1] - geometry.radius)
-        w = h = int(geometry.radius * 2)
-
-        # --- Caching Logic ---
-        # Create a key to identify the current state. If the key matches the
-        # cached key, we can reuse the previously composited image.
-        sky_ck = int(self._sky_disc_image.cacheKey()) if self._sky_disc_image else 0
-        cloud_ck = int(self._cloud_img.cacheKey()) if self._cloud_img else 0
-        comp_key = ("comp", sky_ck, cloud_ck, w, h, float(self.cloud_disc_alpha))
-
-        if self._composite_key != comp_key or self._composited_img is None:
-            # --- 1. Scale source images to the required size ---
-            def _scaled(qimg: Optional[QImage]) -> Optional[QImage]:
-                if qimg is None:
-                    return None
-                if qimg.width() == w and qimg.height() == h:
-                    return qimg
-                return qimg.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
-
-            sky_s = _scaled(self._sky_disc_image)
-            cloud_s = _scaled(self._cloud_img)
-
-            # --- 2. Apply hatch effect to clouds if enabled ---
-            if cloud_s is not None and self.cloud_disc_alpha > 0.0:
-                cloud_s = cloud_with_hatched_alpha(cloud_s, CLOUD_HATCH_DEFAULT)
-
-            # --- 3. Composite the layers ---
-            if cloud_s is None or self.cloud_disc_alpha <= 0.0:
-                # No clouds, just use the sky image.
-                composited = sky_s if sky_s is not None else QImage(w, h, QImage.Format_ARGB32_Premultiplied)
-                if composited is None or composited.isNull():
-                    composited = QImage(w, h, QImage.Format_ARGB32_Premultiplied)
-                    composited.fill(Qt.transparent)
-            else:
-                # Clouds are present, perform the full composition.
-                composited = _compose_cloud_over_sky_no_global_cache(
-                    sky_img=sky_s if sky_s is not None else QImage(w, h, QImage.Format_ARGB32_Premultiplied),
-                    cloud_img_rgba=cloud_s,
-                    dest_rect=QRect(0, 0, w, h),
-                    cloud_opacity=self.cloud_disc_alpha * 0.7,
-                    gray_mix=1.0,
-                )
-
-            # Cache the result
-            self._composited_img = composited
-            self._composite_key = comp_key
-
-        # --- 4. Draw the final composited image ---
-        painter.save()
-        painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
-        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
-        painter.drawImage(QRect(x, y, w, h), self._composited_img)
-        painter.restore()
+    # Composited drawing handled by SkyCompositorCache
 
     def _on_sky_data_calculated(self, payload: Dict) -> None:
         """
@@ -673,8 +394,7 @@ class SkyWindow(DraggableWindow):
         self._sky_disc_image = payload["sky_disc"]
 
         # Invalidate the composition cache
-        self._composite_key = None
-        self._composited_img = None
+        self._compositor.invalidate()
 
         # On the very first load, start the periodic update timers.
         if not self._sky_data_update_timer.isActive():
@@ -755,15 +475,6 @@ class SkyWindow(DraggableWindow):
             logger.error(f"Error in background sky update thread: {e}", exc_info=True)
 
     def start_background_sky_data_update(self, is_initial_load: bool = False) -> bool:
-        """
-        Starts a background thread to update the sky data.
-
-        Args:
-            is_initial_load: True if this is the first data load.
-
-        Returns:
-            True if the update was started, False if an update was already running.
-        """
         if self._is_sky_data_calculation_running:
             return False
         self._is_sky_data_calculation_running = True
@@ -778,21 +489,14 @@ class SkyWindow(DraggableWindow):
         return True
 
     def start_background_cloud_update(self, reason: str = "manual") -> None:
-        """
-        Kicks off a background cloud image generation if conditions allow.
-
-        Args:
-            reason: A string indicating why the update was triggered (e.g., "initial", "timer").
-        """
         if not (self._clouddisc and self.cloud_disc_alpha > 0.0):
             return
 
         # Run cache cleanup in a background thread periodically.
-        if self._cleanup_counter % self._cleanup_interval == 0:
+        if self.cloud_state.tick_cleanup():
             cleanup_thread = threading.Thread(target=self._cleanup_cache)
             cleanup_thread.daemon = True
             cleanup_thread.start()
-        self._cleanup_counter += 1
 
         if self._is_cloud_update_running:
             # If an update is already running, flag that another one is pending.
@@ -800,7 +504,7 @@ class SkyWindow(DraggableWindow):
             self._cloud_update_pending = True
             return
 
-        self._cloud_banner_text = "Clouds: downloading…"  # e.g., "Clouds: Downloading..."
+        self.cloud_state.set_error_banner("Clouds: downloading…")  # e.g., "Clouds: Downloading..."
         self.update()
 
         self._is_cloud_update_running = True
@@ -809,15 +513,6 @@ class SkyWindow(DraggableWindow):
         t.start()
 
     def _update_cloud_in_background(self, reason: str) -> None:
-        """
-        Fetches and renders the cloud disc in a worker thread.
-
-        This method uses the CloudDisc service to get the latest satellite
-        imagery and render it for the current view.
-
-        Args:
-            reason: The reason for the update.
-        """
         try:
             lat, lon = self.viewer_data.location
             alt, az = self.viewer_data.view_center
@@ -839,37 +534,33 @@ class SkyWindow(DraggableWindow):
                     cloud_shell_km=CLOUD_SHELL_KM,
                 )
                 qimg = pil_to_qimage(pil_img)
-                self._cloud_img = qimg
-                self._cloud_meta = meta
+                self.cloud_state.set_result(
+                    qimg, meta, az=az, time_utc=datetime.now(timezone.utc)
+                )
 
                 # Invalidate composition cache to force a redraw with new clouds
-                self._composite_key = None
-                self._composited_img = None
-
-                self._cloud_banner_text = None
+                self._compositor.invalidate()
             except VisibilityError as e:
                 logger.error("Invalid params for cloud-disc image generation: %s", e)
             except DownloadError as e:
                 logger.warning("Network/S3 download error: %s", e)
-                self._cloud_banner_text = "Clouds: Network/S3 download error"
+                self.cloud_state.set_error_banner("Clouds: Network/S3 download error")
                 self.update()
             except TimeoutError as e:
                 logger.warning("Clouds fetch timed out: %s", e)
-                self._cloud_banner_text = "Clouds: Clouds fetch timed out"
+                self.cloud_state.set_error_banner("Clouds: Clouds fetch timed out")
                 self.update()
             except DataNotFoundError as e:
                 logger.info("Satellite data not found in search window: %s", e)
-                self._cloud_banner_text = "Clouds: Satellite data not found in search window"
+                self.cloud_state.set_error_banner("Clouds: Satellite data not found in search window")
             except RenderError as e:
                 logger.error("Failed to decode/render satellite data: %s", e)
-                self._cloud_banner_text = "Clouds: Failed to decode/render satellite data"
+                self.cloud_state.set_error_banner("Clouds: Failed to decode/render satellite data")
             except CloudDiscError as e:
                 logger.error("Unexpected clouddisc error: %s", e)
-                self._cloud_banner_text = "Clouds: Unexpected clouddisc error"
+                self.cloud_state.set_error_banner("Clouds: Unexpected clouddisc error")
 
-            self._last_cloud_az = az
-            self._last_cloud_time_utc = datetime.now(timezone.utc)
-
+            
             # Trigger a repaint on the main thread
             self.update()
         except Exception as e:
@@ -892,13 +583,6 @@ class SkyWindow(DraggableWindow):
             logger.error(f"Error during cache cleanup: {e}", exc_info=True)
 
     def _rotate_view(self, d_alt: float = 0.0, d_az: float = 0.0) -> None:
-        """
-        Rotates the view by a given delta in altitude and azimuth.
-
-        Args:
-            d_alt: The change in altitude (degrees).
-            d_az: The change in azimuth (degrees).
-        """
         alt, az = self.viewer_data.view_center
         new_alt = max(0.0, min(90.0, alt + d_alt))
         new_az = (az + d_az) % 360.0
@@ -909,12 +593,6 @@ class SkyWindow(DraggableWindow):
         self.start_background_cloud_update(reason="az-change")
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
-        """
-        Handles key press events for controlling the application.
-
-        Args:
-            event: The QKeyEvent.
-        """
         if not event:
             super().keyPressEvent(event)
             return
