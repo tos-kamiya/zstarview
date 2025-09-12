@@ -178,6 +178,9 @@ Cloud rendering downloads satellite imagery from public S3 buckets (Himawari / N
 If your network is slow or unavailable, disable clouds with `-c 0`.
 You can still explore stars/planets and sky colors without cloud overlays.
 
+> Note: On the very first launch, the app downloads a planetary ephemeris file (`de440s.bsp`).
+> This requires network connectivity once. After it is cached, the app can run offline (especially with clouds disabled).
+
 ### Sky Update Interval and CPU Load
 Frequent sky updates can be CPU‑intensive on lower‑end machines. Increase the interval to reduce load (e.g., `-i 300` for every 5 minutes). Lower it only if your machine can keep up.
 
