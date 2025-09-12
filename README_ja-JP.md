@@ -156,13 +156,25 @@ zstarview-make-desktop-file --write
 
 ## トラブルシューティング
 
-- X11（Ubuntu/Debian）で起動しない/アイコンが出ない:
-  - Qt の xcb プラグインが `libxcb-cursor0` を必要とする場合があります。
-  - `sudo apt install libxcb-cursor0` を実行してください。
+### X11（Ubuntu/Debian）
+Qt の xcb プラグインが `libxcb-cursor0` を必要とする場合があります。
+以下でインストールしてください：
 
-- ネットワークが遅い/オフラインで使いたい:
-  - 雲の描画は S3 から衛星画像を取得します。回線が細い/オフラインのときは `-c 0` で雲描画を無効化してください。
-  - 雲を無効化しても恒星・惑星・空の色の表示は利用できます。
+`sudo apt install libxcb-cursor0`
+
+### ネットワークが遅い/オフラインで使いたい
+雲の描画は S3 から衛星画像を取得します。回線が細い/オフラインのときは `-c 0` で雲描画を無効化してください。
+雲を無効化しても恒星・惑星・空の色の表示は利用できます。
+
+### 星空の更新間隔とCPU負荷
+CPU性能によっては星空の自動更新が負荷になる場合があります。様子を見ながら更新間隔を長く（数値を大きく）して負荷を下げてください（例: `-i 300` で5分ごと）。余裕があれば短くして構いません。
+
+### ログの確認
+ターミナル（端末）から起動すると起動メッセージやエラーを確認できます: `zstarview` または `python -m zstarview.zstarview`
+併せてログファイルにも出力されます（OSに依存）。例:
+- Linux: `~/.cache/zstarview/logs/app.log`
+- macOS: `~/Library/Logs/zstarview/app.log`
+- Windows: `%LOCALAPPDATA%/tos-kamiya/zstarview/Logs/app.log`
 
 ## ライセンス
 

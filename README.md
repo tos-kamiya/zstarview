@@ -167,12 +167,26 @@ zstarview-make-desktop-file --write
 
 ## Troubleshooting
 
-- X11 (Ubuntu/Debian): Qt's xcb platform plugin may require `libxcb-cursor0` at runtime. Install with:
-  - `sudo apt install libxcb-cursor0`
+### X11 (Ubuntu/Debian)
+Qt's xcb platform plugin may require `libxcb-cursor0` at runtime.
+Install it with:
 
-- Slow or unstable network / offline use:
-  - Cloud rendering downloads satellite imagery from public S3 buckets (Himawari / NOAA GOES) and relies on heavy dependencies. If your network is slow or unavailable, disable clouds with `-c 0`.
-  - You can still explore stars/planets and sky colors without cloud overlays.
+`sudo apt install libxcb-cursor0`
+
+### Slow or Unstable Network / Offline Use
+Cloud rendering downloads satellite imagery from public S3 buckets (Himawari / NOAA GOES) and relies on heavy dependencies.
+If your network is slow or unavailable, disable clouds with `-c 0`.
+You can still explore stars/planets and sky colors without cloud overlays.
+
+### Sky Update Interval and CPU Load
+Frequent sky updates can be CPU‑intensive on lower‑end machines. Increase the interval to reduce load (e.g., `-i 300` for every 5 minutes). Lower it only if your machine can keep up.
+
+### Viewing Logs
+Launching from a terminal shows startup messages and errors: `zstarview` or `python -m zstarview.zstarview`.
+Logs are also written to a file (platform‑dependent). Examples:
+- Linux: `~/.cache/zstarview/logs/app.log`
+- macOS: `~/Library/Logs/zstarview/app.log`
+- Windows: `%LOCALAPPDATA%/tos-kamiya/zstarview/Logs/app.log`
 
 ## License
 
