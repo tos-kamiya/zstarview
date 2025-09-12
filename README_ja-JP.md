@@ -8,12 +8,13 @@
 **特徴:**
 
 - 明るい恒星、惑星、天の赤道、黄道をリアルタイムで描画
+- 太陽・月・主要惑星に対応。小惑星（アステロイド）は未対応です。
 - 都市名で場所を指定可能（GeoNames に基づく）
 
   ![](docs/images/screenshot1.png)
 
-- オプション `-A altitude` により、表示中心を地平線方向に変更可能
-- 星空の状況をわかりやすくするため、空の色や雲を重ねて表示。
+- 表示中心を `-A`（高度）/`-Z`（方位）で調整可能
+- リアルタイムの衛星雲画像（Himawari/GOES）を縞模様（ハッチ）のオーバーレイとして重ねて表示します。
 
   ![](docs/images/screenshot4.png)
 
@@ -26,7 +27,7 @@
 pipx install git+https://github.com/tos-kamiya/zstarview.git
 ```
 
-> 注記（X11 環境・Ubuntu/Debian）: X11 セッションでは Qt の xcb プラグインが実行時に `libxcb-cursor0` を必要とする場合があります。`sudo apt install libxcb-cursor0` によりインストールしてください。
+> 注記: X11 ライブラリやネットワークが細い場合の回避策などは「トラブルシューティング」を参照してください。
 
 ## 使い方
 
@@ -59,9 +60,7 @@ zstarview [options] [city]
 
 ※1 これらのオプションを指定してリアルタイムではない星空を表示した場合には、雲は描かれません。
 
-※2 雲の描画は気象衛星（Himawari, GOES）の赤外線データを S3 バケットから取得して行います。
-そのため **ある程度高速なネットワーク接続が前提** です。オフライン環境や回線が遅い場合には、  
-`-c 0` を指定して雲描画を無効化することを推奨します。
+※2 雲の描画は気象衛星（Himawari, GOES）の赤外線データを S3 バケットから取得して行います。ネットワーク関連の注意や回避策は「トラブルシューティング」を参照してください。
 
 **表示中心オプションについて**
 
@@ -155,6 +154,16 @@ zstarview-make-desktop-file --write
 > **注:** このランチャー機能は GNOME 系環境専用です。
 > 他のデスクトップ環境では不要、または正しく動作しない場合があります。
 
+## トラブルシューティング
+
+- X11（Ubuntu/Debian）で起動しない/アイコンが出ない:
+  - Qt の xcb プラグインが `libxcb-cursor0` を必要とする場合があります。
+  - `sudo apt install libxcb-cursor0` を実行してください。
+
+- ネットワークが遅い/オフラインで使いたい:
+  - 雲の描画は S3 から衛星画像を取得します。回線が細い/オフラインのときは `-c 0` で雲描画を無効化してください。
+  - 雲を無効化しても恒星・惑星・空の色の表示は利用できます。
+
 ## ライセンス
 
 このソフトウェアは [MIT](LICENSE.txt) の下で提供されています。
@@ -163,10 +172,10 @@ zstarview-make-desktop-file --write
 
 | ファイル                                         | 内容                                               | 出典                                                                       | ライセンス                                                                                                                      |
 | ------------------------------------------------ | -------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `data/cities1000.txt`, `admin1CodesASCII.txt` | 人口1000人以上の都市一覧                           | [GeoNames](https://download.geonames.org/export/dump/)                     | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                       |
-| `data/stars/hip_main.dat`                                   | Hipparcos および Tycho カタログ（ESA 1997）        | [CDS Strasbourg](https://cdsarc.cds.unistra.fr/ftp/I/239/)                 | [ODbL](https://www.data.gouv.fr/licences) または [CC BY-NC 3.0 IGO](https://creativecommons.org/licenses/by-nc/3.0/igo/)（非商用） |
-| `data/stars/IAU-Catalog-of-Star-Names.csv`             | IAU 恒星名作業部会 (WGSN) による恒星固有名カタログ | [exopla.net](https://exopla.net/star-names/modern-iau-star-names/)         | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                       |
-| `data/Noto_Sans/*`, `data/Noto_Sans_Symbols/*`     | テキスト / 惑星記号表示フォント                             | [Google Fonts](https://fonts.google.com/)   | [SIL Open Font License 1.1](https://openfontlicense.org)                                                                        |
+| `src/zstarview/data/cities1000.txt`, `src/zstarview/data/admin1CodesASCII.txt` | 人口1000人以上の都市一覧                           | [GeoNames](https://download.geonames.org/export/dump/)                     | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                       |
+| `src/zstarview/data/stars/hip_main.dat.zip`                                   | Hipparcos および Tycho カタログ（ESA 1997）        | [CDS Strasbourg](https://cdsarc.cds.unistra.fr/ftp/I/239/)                 | [ODbL](https://www.data.gouv.fr/licences) または [CC BY-NC 3.0 IGO](https://creativecommons.org/licenses/by-nc/3.0/igo/)（非商用） |
+| `src/zstarview/data/stars/IAU-Catalog of Star Names (always up to date).csv`             | IAU 恒星名作業部会 (WGSN) による恒星固有名カタログ | [exopla.net](https://exopla.net/star-names/modern-iau-star-names/)         | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                       |
+| `src/zstarview/data/Noto_Sans/*`, `src/zstarview/data/Noto_Sans_Symbols/*`     | テキスト / 惑星記号表示フォント                             | [Google Fonts](https://fonts.google.com/)   | [SIL Open Font License 1.1](https://openfontlicense.org)                                                                        |
 
 ## クレジット
 

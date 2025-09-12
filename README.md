@@ -8,11 +8,14 @@ The name emphasizes the *zenith*—the point directly overhead—conveying the e
 **Features:**
 
 - Real-time rendering of bright stars, planets, the celestial equator, and the ecliptic.
+- Supports Sun, Moon, and major planets. Minor planets (asteroids) are not displayed yet.
 - Location specified by city name (based on GeoNames), or directly by latitude/longitude.
-- Optional `-A altitude` to shift the view toward the horizon.
-- Simulated sky colors and cloud overlays for context.
 
   ![](docs/images/screenshot1.png)
+
+- Adjustable view center: `-A` (altitude) and `-Z` (azimuth).
+- Real-time satellite cloud imagery (Himawari/GOES), rendered as a stylized hatched (striped) overlay.
+
   ![](docs/images/screenshot4.png)
 
 ## Installation (Recommended: `pipx`)
@@ -23,8 +26,7 @@ It is intended to be installed using [`pipx`](https://pypa.github.io/pipx/).
 pipx install git+https://github.com/tos-kamiya/zstarview.git
 ```
 
-> Note (X11 on Ubuntu/Debian): On X11 sessions, Qt's xcb platform plugin may require `libxcb-cursor0` at runtime. Install it with:
-> `sudo apt install libxcb-cursor0`.
+> Note: Troubleshooting tips (including X11 libraries and slow network) are summarized below.
 
 ## Usage
 
@@ -58,7 +60,7 @@ zstarview [options] [city]
 \*1 When using non-realtime sky options (`--hours`, `--days`, `--datetime`), cloud rendering will not be shown.  
 
 \*2 Cloud rendering uses infrared data from meteorological satellites (**Himawari** and **NOAA GOES** series), retrieved from their public S3 buckets.  
-   A reasonably fast network connection is required. If you are offline or your connection is slow, it is recommended to disable cloud rendering with `-c 0`.
+   See Troubleshooting for tips on slow networks or offline use (e.g., disabling clouds with `-c 0`).
 
 **About the view center options**
 
@@ -129,6 +131,11 @@ zstarview "35.68;139.76"
 zstarview "N35.68;E139.76" --datetime "2025-09-12 21 JST"
 ```
 
+Time zone examples for `--datetime`:
+
+- IANA zone name: `--datetime "2025-09-12 21 Asia/Tokyo"`
+- UTC offset: `--datetime "2025-09-12 21 UTC+9"`
+
 ### Key Operations
 
 * **← / →**: Rotate view azimuth by ±5°
@@ -158,18 +165,27 @@ zstarview-make-desktop-file --write
 > **Note:** This launcher integration is only intended for GNOME-based environments.
 > It is not required on other desktop environments, and may not work as intended elsewhere.
 
+## Troubleshooting
+
+- X11 (Ubuntu/Debian): Qt's xcb platform plugin may require `libxcb-cursor0` at runtime. Install with:
+  - `sudo apt install libxcb-cursor0`
+
+- Slow or unstable network / offline use:
+  - Cloud rendering downloads satellite imagery from public S3 buckets (Himawari / NOAA GOES) and relies on heavy dependencies. If your network is slow or unavailable, disable clouds with `-c 0`.
+  - You can still explore stars/planets and sky colors without cloud overlays.
+
 ## License
 
 This software is provided under the [MIT](LICENSE.txt) License.
 
 However, the **included data** is redistributed according to their respective licenses.
 
-| File                                           | Content                                          | Source                                                             | License                                                                                                                             |
-| ---------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `data/cities1000.txt`, `admin1CodesASCII.txt`  | List of cities with a population of 1000 or more | [GeoNames](https://download.geonames.org/export/dump/)             | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                           |
-| `data/stars/hip_main.dat`                      | Hipparcos and Tycho Catalogues (ESA 1997)        | [CDS Strasbourg](https://cdsarc.cds.unistra.fr/ftp/I/239/)         | [ODbL](https://www.data.gouv.fr/licences) or [CC BY-NC 3.0 IGO](https://creativecommons.org/licenses/by-nc/3.0/igo/) Non-commercial |
-| `data/stars/IAU-Catalog-of-Star-Names.csv`     | IAU WGSN catalog of approved star names          | [exopla.net](https://exopla.net/star-names/modern-iau-star-names/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                           |
-| `data/Noto_Sans/*`, `data/Noto_Sans_Symbols/*` | Font for displaying text / planetary symbols     | [Google Fonts](https://fonts.google.com/)                          | [SIL Open Font License 1.1](https://openfontlicense.org)                                                                            |
+| File                                                           | Content                                          | Source                                                             | License                                                                                                                             |
+| -------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `src/zstarview/data/cities1000.txt`, `src/zstarview/data/admin1CodesASCII.txt` | List of cities with a population of 1000 or more | [GeoNames](https://download.geonames.org/export/dump/)             | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                           |
+| `src/zstarview/data/stars/hip_main.dat.zip`                    | Hipparcos and Tycho Catalogues (ESA 1997)        | [CDS Strasbourg](https://cdsarc.cds.unistra.fr/ftp/I/239/)         | [ODbL](https://www.data.gouv.fr/licences) or [CC BY-NC 3.0 IGO](https://creativecommons.org/licenses/by-nc/3.0/igo/) Non-commercial |
+| `src/zstarview/data/stars/IAU-Catalog of Star Names (always up to date).csv` | IAU WGSN catalog of approved star names          | [exopla.net](https://exopla.net/star-names/modern-iau-star-names/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                           |
+| `src/zstarview/data/Noto_Sans/*`, `src/zstarview/data/Noto_Sans_Symbols/*`   | Font for displaying text / planetary symbols     | [Google Fonts](https://fonts.google.com/)                          | [SIL Open Font License 1.1](https://openfontlicense.org)                                                                            |
 
 ## Credits
 
