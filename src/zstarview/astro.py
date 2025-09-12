@@ -16,6 +16,7 @@ from .paths import (
     FIELD_OF_VIEW_DEG,
     PLANET_SYMBOLS,
     PLANET_IDS,
+    EPHEMERIS_FILENAME,
 )
 from .types import LunarEclipseInfo, PlanetBody, SolarEclipseInfo
 
@@ -151,7 +152,7 @@ def calculate_lunar_eclipse_data(t: astropy.time.Time, observer) -> LunarEclipse
     - apparent moon radius.
     """
     # Load planetary ephemerides
-    planets = _starfield_load("de440s.bsp")
+    planets = _starfield_load(EPHEMERIS_FILENAME)
     earth = planets["earth"]
     sun = planets["sun"]
     moon = planets["moon"]
@@ -246,7 +247,7 @@ def _circle_overlap_area_fraction(R: float, r: float, d: float) -> float:
 
 
 def calculate_solar_eclipse_data(t: astropy.time.Time, observer) -> SolarEclipseInfo:
-    planets = _starfield_load("de440s.bsp")
+    planets = _starfield_load(EPHEMERIS_FILENAME)
     sun = planets["sun"]
     moon = planets["moon"]
 
@@ -312,7 +313,7 @@ def calculate_planets(
     """Calculate all planetary bodies (Sun, Moon, planets)."""
     ts = skyfield.api.load.timescale()
     t = ts.from_astropy(astropy_time)
-    planets = _starfield_load("de440s.bsp")
+    planets = _starfield_load(EPHEMERIS_FILENAME)
     observer = planets["earth"] + Topos(latitude_degrees=lat, longitude_degrees=lon)
 
     bodies: List[PlanetBody] = []
