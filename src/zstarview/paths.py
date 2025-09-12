@@ -80,9 +80,6 @@ PLANET_SYMBOLS = {
     "uranus": "♅",
     "neptune": "♆",
     "pluto": "♇",
-    "ceres": "⚳",
-    "pallas": "⚴",
-    "vesta": "⚵",
 }
 
 PLANET_IDS = {
@@ -96,9 +93,6 @@ PLANET_IDS = {
     "uranus": 7,  # BARYCENTER
     "neptune": 8,  # BARYCENTER
     "pluto": 9,  # BARYCENTER
-    "ceres": 1,
-    "pallas": 2,
-    "vesta": 4,
 }
 
 
