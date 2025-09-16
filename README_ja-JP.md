@@ -2,7 +2,7 @@
 
 雲があっても、太陽が出ていても、満天の星空を。
 
-**Zenith Star View** は、地球上の任意の都市から見える星空を表示するアプリケーションです。  
+**Zenith Star View** は、地球上の任意の都市から見える星空を表示するアプリケーションです。
 名前の *zenith*（天頂）は、観測者の真上の一点を意味し、その場に立って夜空を見上げる感覚を表しています。
 
 **特徴:**
@@ -86,8 +86,8 @@ zstarview [options] [city]
 
 **日時指定オプションについて**
 
-`--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"` で絶対的な日時を指定できます。  
-時刻部分は「時」だけ、「時:分」、「時:分:秒」のいずれも使用可能です。  
+`--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"` で絶対的な日時を指定できます。
+時刻部分は「時」だけ、「時:分」、「時:分:秒」のいずれも使用可能です。
 タイムゾーン（TZ）を省略した場合は UTC として扱われます。
 
 タイムゾーンは以下のいずれかの形式で指定できます：
@@ -157,8 +157,20 @@ zstarview-make-desktop-file --write
 ## トラブルシューティング
 
 ### X11（Ubuntu/Debian）
+
 Qt の xcb プラグインが `libxcb-cursor0` を必要とする場合があります。
-以下でインストールしてください：
+X11/Wayland を意識していないと分かりづらいですが、ターミナル（コンソール）から実行すると次のようなエラーが表示されます：
+
+```sh
+$ zsterview
+qt.qpa.plugin: From 6.5.0, xcb-cursor0 or libxcb-cursor0 is needed to load the Qt xcb platform plugin.
+qt.qpa.plugin: Could not load the Qt platform plugin "xcb" in "" even though it was found.
+This application failed to start because no Qt platform plugin could be initialized. Reinstalling the application may fix this problem.
+
+Available platform plugins are: eglfs, offscreen, wayland-egl, linuxfb, wayland, minimal, xcb, vkkhrdisplay, minimalegl, vnc.
+```
+
+この場合は以下で `libxcb-cursor0` をインストールしてください：
 
 `sudo apt install libxcb-cursor0`
 
@@ -173,7 +185,7 @@ Qt の xcb プラグインが `libxcb-cursor0` を必要とする場合があり
 CPU性能によっては星空の自動更新が負荷になる場合があります。様子を見ながら更新間隔を長く（数値を大きく）して負荷を下げてください（例: `-i 300` で5分ごと）。余裕があれば短くして構いません。
 
 ### ログの確認
-ターミナル（端末）から起動すると起動メッセージやエラーを確認できます: `zstarview`
+ターミナル（端末）から `$ zstarview` により起動すると、起動メッセージやエラーを確認できます。
 併せてログファイルにも出力されます（OSに依存）。例:
 - Linux: `~/.cache/zstarview/logs/app.log`
 - macOS: `~/Library/Logs/zstarview/app.log`

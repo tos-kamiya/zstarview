@@ -2,7 +2,7 @@
 
 See the starry sky, even when it's cloudy or the sun is out.
 
-**Zenith Star View** is an application that displays the starry sky from any city on Earth.  
+**Zenith Star View** is an application that displays the starry sky from any city on Earth.
 The name emphasizes the *zenith*—the point directly overhead—conveying the experience of looking straight up into the night sky from your location.
 
 **Features:**
@@ -57,9 +57,9 @@ zstarview [options] [city]
 | `-D`, `--days DAYS`                         | Number of days to add to the current time. \*1                               | `0`     |
 | `--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"` | Specify an absolute date/time. Time may be given as `HH`, `HH:MM`, or `HH:MM:SS`. If no TZ is specified, UTC is assumed. \*1 |         |
 
-\*1 When using non-realtime sky options (`--hours`, `--days`, `--datetime`), cloud rendering will not be shown.  
+\*1 When using non-realtime sky options (`--hours`, `--days`, `--datetime`), cloud rendering will not be shown.
 
-\*2 Cloud rendering uses infrared data from meteorological satellites (**Himawari** and **NOAA GOES** series), retrieved from their public S3 buckets.  
+\*2 Cloud rendering uses infrared data from meteorological satellites (**Himawari** and **NOAA GOES** series), retrieved from their public S3 buckets.
    See Troubleshooting for tips on slow networks or offline use (e.g., disabling clouds with `-c 0`).
 
 **About the view center options**
@@ -169,7 +169,18 @@ zstarview-make-desktop-file --write
 
 ### X11 (Ubuntu/Debian)
 Qt's xcb platform plugin may require `libxcb-cursor0` at runtime.
-Install it with:
+If you're not watching for X11 vs Wayland differences, this can be confusing — running from a terminal may show errors like:
+
+```sh
+$ zsterview
+qt.qpa.plugin: From 6.5.0, xcb-cursor0 or libxcb-cursor0 is needed to load the Qt xcb platform plugin.
+qt.qpa.plugin: Could not load the Qt platform plugin "xcb" in "" even though it was found.
+This application failed to start because no Qt platform plugin could be initialized. Reinstalling the application may fix this problem.
+
+Available platform plugins are: eglfs, offscreen, wayland-egl, linuxfb, wayland, minimal, xcb, vkkhrdisplay, minimalegl, vnc.
+```
+
+Install the missing `libcxb-cursor0` package with:
 
 `sudo apt install libxcb-cursor0`
 
@@ -185,7 +196,7 @@ You can still explore stars/planets and sky colors without cloud overlays.
 Frequent sky updates can be CPU‑intensive on lower‑end machines. Increase the interval to reduce load (e.g., `-i 300` for every 5 minutes). Lower it only if your machine can keep up.
 
 ### Viewing Logs
-Launching from a terminal shows startup messages and errors: `zstarview`.
+Launching from a terminal as `$ zstarview` shows startup messages and errors.
 Logs are also written to a file (platform‑dependent). Examples:
 - Linux: `~/.cache/zstarview/logs/app.log`
 - macOS: `~/Library/Logs/zstarview/app.log`
