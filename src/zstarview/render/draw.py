@@ -353,11 +353,12 @@ def draw_stars(
         lx = x[large_star_mask]
         ly = y[large_star_mask]
         lr = large_radius_px[large_star_mask]
+        lvmag = vmag[large_star_mask]
         lrgb = rgb_colors[large_star_mask]
 
         painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
         # Peak alpha is constant (total added light is governed by area).
-        alpha_peak = 220  # tune in ~190-255
+        alpha_peak = 238  # daytime/cloud visibility boost
         for i in range(len(lx)):
             pos = QPointF(float(lx[i]), float(ly[i]))
             r = float(lr[i])
@@ -372,6 +373,61 @@ def draw_stars(
             painter.setBrush(g)
             painter.drawEllipse(pos, r, r)
 
+            # Bright-star accent: subtle dark rim + star-like spikes.
+            # Applied only to very bright stars to avoid clutter.
+            vm = float(lvmag[i])
+            if vm <= 1.2:
+                painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
+                painter.setBrush(Qt.BrushStyle.NoBrush)
+
+                rim_alpha = 88 if vm <= 0.0 else 68
+                rim_pen = QPen(QColor(0, 0, 0, rim_alpha), max(1.0, r * 0.16))
+                rim_pen.setCosmetic(True)
+                painter.setPen(rim_pen)
+                painter.drawEllipse(pos, r * 1.03, r * 1.03)
+
+                painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Screen)
+
+                spike_len = r * (2.0 if vm <= 0.0 else 1.6)
+                inner = max(0.45, r * 0.40)
+                base_half = max(0.6, r * 0.28)
+                core_half = max(0.35, r * 0.14)
+
+                x0, y0 = pos.x(), pos.y()
+
+                def _draw_spike(angle_deg: float, outer_scale: float = 1.0) -> None:
+                    a = math.radians(angle_deg)
+                    ux, uy = math.cos(a), math.sin(a)
+                    px, py = -uy, ux
+
+                    out = spike_len * outer_scale
+                    tip = QPointF(x0 + ux * out, y0 + uy * out)
+                    b1 = QPointF(x0 + ux * inner + px * base_half, y0 + uy * inner + py * base_half)
+                    b2 = QPointF(x0 + ux * inner - px * base_half, y0 + uy * inner - py * base_half)
+
+                    # broad soft ray
+                    broad_color = QColor(255, 255, 255, 120 if vm <= 0.0 else 95)
+                    painter.setPen(Qt.PenStyle.NoPen)
+                    painter.setBrush(broad_color)
+                    painter.drawPolygon(QPolygonF([b1, b2, tip]))
+
+                    # inner brighter ray
+                    c1 = QPointF(x0 + ux * (inner * 0.95) + px * core_half, y0 + uy * (inner * 0.95) + py * core_half)
+                    c2 = QPointF(x0 + ux * (inner * 0.95) - px * core_half, y0 + uy * (inner * 0.95) - py * core_half)
+                    tip2 = QPointF(x0 + ux * (out * 0.82), y0 + uy * (out * 0.82))
+                    bright_color = QColor(255, 255, 255, 175 if vm <= 0.0 else 145)
+                    painter.setBrush(bright_color)
+                    painter.drawPolygon(QPolygonF([c1, c2, tip2]))
+
+                for deg in (0.0, 90.0, 180.0, 270.0):
+                    _draw_spike(deg, 1.0)
+
+                if vm <= 0.5:
+                    for deg in (45.0, 135.0, 225.0, 315.0):
+                        _draw_spike(deg, 0.78)
+
+                painter.setPen(Qt.PenStyle.NoPen)
+
     # 4) Small stars: fixed-but-gently-scaled alpha + area (squares), batched.
     if np.any(small_star_mask):
         sx = x[small_star_mask]
@@ -382,10 +438,10 @@ def draw_stars(
 
         # Base alpha kept modest so faint stars don't pop as dots.
         # Then lift alpha slightly with area (subtle, gamma<1).
-        alpha_base = 140  # try 130-160
-        alpha_gain = 50  # how much to lift at the upper end (30-60)
+        alpha_base = 165  # stronger base for bright backgrounds
+        alpha_gain = 72  # stronger lift near upper end
         alpha_scale = np.power(np.clip(sA / 4.0, 0.0, 1.0), 0.75)  # area vs. 2x2px reference
-        alpha_f = np.clip(alpha_base + alpha_gain * alpha_scale, 60, 210)
+        alpha_f = np.clip(alpha_base + alpha_gain * alpha_scale, 80, 238)
 
         # Quantize alpha to reduce unique RGBA buckets -> faster & less banding
         # e.g., to ~8-12 steps:
