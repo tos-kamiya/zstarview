@@ -21,11 +21,11 @@ import numpy as np
 import xarray as xr
 from botocore import UNSIGNED
 from botocore.config import Config
-from botocore.exceptions import ConnectTimeoutError, ReadTimeoutError
 from satpy import Scene
 
 from ..config import CloudDiscConfig
-from ..types import DataNotFoundError, DownloadError, RenderError, CloudMeta, TimeoutError
+from ..types import DataNotFoundError, DownloadError, RenderError, CloudMeta
+from ._s3_io import download_s3_object, list_s3_keys
 
 # --- Constants ---
 _HIMA_BUCKETS = ["noaa-himawari9", "noaa-himawari8"]  # Priority: H9 over H8
@@ -70,39 +70,28 @@ class HimaProvider:
     def _download(self, bucket: str, key: str, root: Path) -> Path:
         """Downloads a file from S3, caching it locally using an atomic write."""
         dst = root / bucket / key
-        if dst.exists():
-            return dst
-
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        tmp_path = dst.with_suffix(dst.suffix + ".tmp")
 
         logger.info("Downloading s3://%s/%s", bucket, key)
-        try:
-            with tmp_path.open("wb") as f:
-                self._s3().download_fileobj(bucket, key, f)
-            tmp_path.replace(dst)
-        except (ConnectTimeoutError, ReadTimeoutError) as e:
-            meta = CloudMeta(satellite="HIMAWARI", product="HSD/ISatSS-B13", time_utc=dt.datetime.now(dt.timezone.utc), src_paths=[])
-            raise TimeoutError(f"Timeout while downloading s3://{bucket}/{key}", meta=meta) from e
-        except Exception as e:
-            meta = CloudMeta(satellite="HIMAWARI", product="HSD/ISatSS-B13", time_utc=dt.datetime.now(dt.timezone.utc), src_paths=[])
-            raise DownloadError(f"Failed to download s3://{bucket}/{key}", meta=meta) from e
-        finally:
-            if tmp_path.exists():
-                tmp_path.unlink(missing_ok=True)
-        return dst
+        return download_s3_object(
+            s3_client=self._s3(),
+            bucket=bucket,
+            key=key,
+            dst=dst,
+            satellite="HIMAWARI",
+            product="HSD/ISatSS-B13",
+            time_utc=dt.datetime.now(dt.timezone.utc),
+        )
 
     def _list(self, bucket: str, prefix: str) -> List[str]:
         """Lists all object keys under a given S3 prefix."""
-        try:
-            paginator = self._s3().get_paginator("list_objects_v2")
-            return [obj["Key"] for page in paginator.paginate(Bucket=bucket, Prefix=prefix) for obj in page.get("Contents", []) or []]
-        except (ConnectTimeoutError, ReadTimeoutError) as e:
-            meta = CloudMeta(satellite="HIMAWARI", product="HSD/ISatSS-B13", time_utc=dt.datetime.now(dt.timezone.utc), src_paths=[])
-            raise TimeoutError(f"Timeout while listing s3://{bucket}/{prefix}", meta=meta) from e
-        except Exception as e:
-            meta = CloudMeta(satellite="HIMAWARI", product="HSD/ISatSS-B13", time_utc=dt.datetime.now(dt.timezone.utc), src_paths=[])
-            raise DownloadError(f"Failed to list s3://{bucket}/{prefix}", meta=meta) from e
+        return list_s3_keys(
+            s3_client=self._s3(),
+            bucket=bucket,
+            prefix=prefix,
+            satellite="HIMAWARI",
+            product="HSD/ISatSS-B13",
+            time_utc=dt.datetime.now(dt.timezone.utc),
+        )
 
     def _find_hsd(self, when_utc: dt.datetime) -> Tuple[Optional[str], Optional[List[str]], Optional[dt.datetime]]:
         """Finds Himawari Standard Data (HSD) files for a given time."""

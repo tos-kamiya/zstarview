@@ -16,11 +16,11 @@ import boto3
 import xarray as xr
 from botocore import UNSIGNED
 from botocore.config import Config
-from botocore.exceptions import ConnectTimeoutError, ReadTimeoutError
 from satpy import Scene
 
 from ..config import CloudDiscConfig
-from ..types import DataNotFoundError, DownloadError, CloudMeta, TimeoutError
+from ..types import DataNotFoundError, CloudMeta
+from ._s3_io import download_s3_object, list_s3_keys
 
 # --- Constants ---
 _GOES_BUCKET = {"G16": "noaa-goes16", "G18": "noaa-goes18"}
@@ -71,15 +71,15 @@ class GoesProvider:
         s3 = self._s3(bucket)
         logger.debug("Listing s3://%s/%s", bucket, prefix)
 
-        try:
-            paginator = s3.get_paginator("list_objects_v2")
-            keys = [obj["Key"] for page in paginator.paginate(Bucket=bucket, Prefix=prefix) for obj in page.get("Contents", []) or []]
-        except (ConnectTimeoutError, ReadTimeoutError) as e:
-            meta = CloudMeta(satellite="G16" if "16" in bucket else "G18", product="CMIPF-C13", time_utc=t, src_paths=[])
-            raise TimeoutError(f"Timeout while listing S3 bucket s3://{bucket}/{prefix}", meta=meta) from e
-        except Exception as e:
-            meta = CloudMeta(satellite="G16" if "16" in bucket else "G18", product="CMIPF-C13", time_utc=t, src_paths=[])
-            raise DownloadError(f"Failed to list S3 bucket s3://{bucket}/{prefix}", meta=meta) from e
+        keys = list_s3_keys(
+            s3_client=s3,
+            bucket=bucket,
+            prefix=prefix,
+            satellite="G16" if "16" in bucket else "G18",
+            product="CMIPF-C13",
+            time_utc=t,
+            uri_label=f"S3 bucket s3://{bucket}/{prefix}",
+        )
 
         logger.debug("Found %d objects under %s", len(keys), prefix)
         self._list_cache[cache_key] = keys
@@ -88,28 +88,18 @@ class GoesProvider:
     def _download(self, bucket: str, key: str) -> Path:
         """Downloads a file from S3, caching it locally using an atomic write."""
         dst = self.root / bucket / key
-        if dst.exists():
-            return dst
-
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        tmp_path = dst.with_suffix(dst.suffix + ".tmp")
         s3 = self._s3(bucket)
 
         logger.info("Downloading s3://%s/%s", bucket, key)
-        try:
-            with tmp_path.open("wb") as f:
-                s3.download_fileobj(bucket, key, f)
-            tmp_path.replace(dst)  # Atomic move
-        except (ConnectTimeoutError, ReadTimeoutError) as e:
-            meta = CloudMeta(satellite="G16" if "16" in bucket else "G18", product="CMIPF-C13", time_utc=dt.datetime.now(dt.timezone.utc), src_paths=[])
-            raise TimeoutError(f"Timeout while downloading s3://{bucket}/{key}", meta=meta) from e
-        except Exception as e:
-            meta = CloudMeta(satellite="G16" if "16" in bucket else "G18", product="CMIPF-C13", time_utc=dt.datetime.now(dt.timezone.utc), src_paths=[])
-            raise DownloadError(f"Failed to download s3://{bucket}/{key}", meta=meta) from e
-        finally:
-            if tmp_path.exists():
-                tmp_path.unlink(missing_ok=True)
-        return dst
+        return download_s3_object(
+            s3_client=s3,
+            bucket=bucket,
+            key=key,
+            dst=dst,
+            satellite="G16" if "16" in bucket else "G18",
+            product="CMIPF-C13",
+            time_utc=dt.datetime.now(dt.timezone.utc),
+        )
 
     def _fetch_bt_c13_once(self, sat: str, when_utc: dt.datetime, search_back_minutes: int) -> Optional[Tuple[xr.DataArray, dt.datetime, List[Path]]]:
         """
