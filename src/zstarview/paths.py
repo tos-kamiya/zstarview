@@ -106,7 +106,7 @@ class HatchConfig:
     strength: int
 
 
-CLOUD_HATCH_DEFAULT = HatchConfig(20, 19, 8, 255)
+CLOUD_HATCH_DEFAULT = HatchConfig(20, 19, 4, 90)
 
 # Skyfield ephemeris kernel filename
 EPHEMERIS_FILENAME = "de440s.bsp"

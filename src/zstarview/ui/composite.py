@@ -102,6 +102,11 @@ def compose_cloud_over_sky(
     gray_rgb_u16 = np.repeat(gray_u8[:, :, None], 3, axis=2).astype(np.uint16)
     base_u16 = (inv_a8[:, :, None] * sky_rgb_u16 + a8[:, :, None] * gray_rgb_u16) // 255
 
+    # Improve cloud/sky separation: darken cloud-covered regions slightly.
+    # This keeps cloud shape visible even when hatch is weak or disabled.
+    darken = 1.0 - (0.45 * a)
+    base_u16 = np.clip(base_u16.astype(np.float32) * darken[:, :, None], 0.0, 255.0).astype(np.uint16)
+
     cop = float(np.clip(cloud_opacity, 0.0, 1.0))
     if cop > 0.0:
         add_u16 = (cloud_np[..., :3].astype(np.uint16) * int(round(cop * 255))) // 255
@@ -208,4 +213,3 @@ class SkyCompositorCache:
         painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
         painter.drawImage(QRect(x, y, w, h), self._composited_img)
         painter.restore()
-
