@@ -630,7 +630,10 @@ def draw_planets(
             moon_altaz = (body.alt, body.az)
             moon_body = body
 
-    text_color, outline_color = get_text_style(preset)
+    # Keep planet symbols on their legacy style because they are usually
+    # drawn over the sky disc, where the original contrast is preferred.
+    text_color = QColor(*TEXT_COLOR)
+    outline_color = QColor.fromRgbF(0, 0, 0, 0.3)
 
     for body in celestial_data.planets:
         if not body.is_visible:
