@@ -25,6 +25,15 @@ from ..utils.qt import pil2qpixmap
 DEBUG_ECLIPSE = False
 
 
+def get_text_style(preset: str = "night") -> Tuple[QColor, QColor]:
+    """Return (text_color, outline_color) tuned for the selected visual preset."""
+    if preset == "bright-bg":
+        return QColor(18, 29, 48), QColor(245, 250, 255, 210)
+    if preset == "day":
+        return QColor(22, 33, 52), QColor(238, 245, 255, 200)
+    return QColor(*TEXT_COLOR), QColor.fromRgbF(0, 0, 0, 0.3)
+
+
 def bv_to_rgb_vectorized(bv: np.ndarray) -> np.ndarray:
     """
     Vectorized conversion of B-V color index to RGB tuples.
@@ -182,7 +191,13 @@ def draw_outlined_text(
     painter.restore()
 
 
-def draw_radial_background(painter: QPainter, rect: QRectF, geometry: ScreenGeometry) -> None:
+def draw_radial_background(
+    painter: QPainter,
+    rect: QRectF,
+    geometry: ScreenGeometry,
+    *,
+    preset: str = "night",
+) -> None:
     """
     Draws a radial gradient background to represent the sky.
 
@@ -205,8 +220,25 @@ def draw_radial_background(painter: QPainter, rect: QRectF, geometry: ScreenGeom
     def pos(r: float) -> float:
         return max(0.0, min(1.0, r / r_max))
 
-    def col(r: float, s: float) -> QColor:
-        return QColor(0, 0, 0, max(0, 255 - (s + int(150 * (r - r90) / r_max))))
+    if preset == "bright-bg":
+        def col(r: float, s: float) -> QColor:
+            t = max(0.0, min(1.0, (r - r90) / max(1.0, r_max - r90)))
+            rr = int(232 - 40 * t)
+            gg = int(240 - 48 * t)
+            bb = int(252 - 58 * t)
+            aa = max(0, 248 - (s + int(120 * t)))
+            return QColor(rr, gg, bb, aa)
+    elif preset == "day":
+        def col(r: float, s: float) -> QColor:
+            t = max(0.0, min(1.0, (r - r90) / max(1.0, r_max - r90)))
+            rr = int(180 - 62 * t)
+            gg = int(196 - 78 * t)
+            bb = int(230 - 95 * t)
+            aa = max(0, 220 - (s + int(140 * t)))
+            return QColor(rr, gg, bb, aa)
+    else:
+        def col(r: float, s: float) -> QColor:
+            return QColor(0, 0, 0, max(0, 255 - (s + int(150 * (r - r90) / r_max))))
 
     c = geometry.center
     g = QRadialGradient(QPointF(c[0], c[1]), r_max)
@@ -291,6 +323,7 @@ def draw_stars(
     celestial_data: CelestialData,
     viewer_data: ViewerData,
     star_base_radius: float,
+    visibility_boost: float = 1.0,
 ) -> None:
     """
     Draw stars using vectorized calculations for efficiency.
@@ -308,6 +341,7 @@ def draw_stars(
         star_base_radius: A base radius for scaling star sizes.
     """
     stars = celestial_data.stars
+    visibility_boost = float(np.clip(visibility_boost, 0.7, 2.0))
 
     # 1) mag -> relative luminance -> pixel area
     #    Base: L_raw = 10^(-0.4 * (vmag - v_ref))
@@ -353,11 +387,12 @@ def draw_stars(
         lx = x[large_star_mask]
         ly = y[large_star_mask]
         lr = large_radius_px[large_star_mask]
+        lvmag = vmag[large_star_mask]
         lrgb = rgb_colors[large_star_mask]
 
         painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
         # Peak alpha is constant (total added light is governed by area).
-        alpha_peak = 220  # tune in ~190-255
+        alpha_peak = int(np.clip(round(238 * visibility_boost), 120, 255))
         for i in range(len(lx)):
             pos = QPointF(float(lx[i]), float(ly[i]))
             r = float(lr[i])
@@ -372,6 +407,63 @@ def draw_stars(
             painter.setBrush(g)
             painter.drawEllipse(pos, r, r)
 
+            # Bright-star accent: subtle dark rim + star-like spikes.
+            # Applied only to very bright stars to avoid clutter.
+            vm = float(lvmag[i])
+            if vm <= 1.2:
+                painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
+                painter.setBrush(Qt.BrushStyle.NoBrush)
+
+                rim_alpha = int(np.clip(round((88 if vm <= 0.0 else 68) * visibility_boost), 40, 180))
+                rim_pen = QPen(QColor(0, 0, 0, rim_alpha), max(1.0, r * 0.16))
+                rim_pen.setCosmetic(True)
+                painter.setPen(rim_pen)
+                painter.drawEllipse(pos, r * 1.03, r * 1.03)
+
+                painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Screen)
+
+                spike_len = r * (2.0 if vm <= 0.0 else 1.6)
+                inner = max(0.45, r * 0.40)
+                base_half = max(0.6, r * 0.28)
+                core_half = max(0.35, r * 0.14)
+
+                x0, y0 = pos.x(), pos.y()
+
+                def _draw_spike(angle_deg: float, outer_scale: float = 1.0) -> None:
+                    a = math.radians(angle_deg)
+                    ux, uy = math.cos(a), math.sin(a)
+                    px, py = -uy, ux
+
+                    out = spike_len * outer_scale
+                    tip = QPointF(x0 + ux * out, y0 + uy * out)
+                    b1 = QPointF(x0 + ux * inner + px * base_half, y0 + uy * inner + py * base_half)
+                    b2 = QPointF(x0 + ux * inner - px * base_half, y0 + uy * inner - py * base_half)
+
+                    # broad soft ray
+                    broad_alpha = int(np.clip(round((120 if vm <= 0.0 else 95) * visibility_boost), 60, 220))
+                    broad_color = QColor(255, 255, 255, broad_alpha)
+                    painter.setPen(Qt.PenStyle.NoPen)
+                    painter.setBrush(broad_color)
+                    painter.drawPolygon(QPolygonF([b1, b2, tip]))
+
+                    # inner brighter ray
+                    c1 = QPointF(x0 + ux * (inner * 0.95) + px * core_half, y0 + uy * (inner * 0.95) + py * core_half)
+                    c2 = QPointF(x0 + ux * (inner * 0.95) - px * core_half, y0 + uy * (inner * 0.95) - py * core_half)
+                    tip2 = QPointF(x0 + ux * (out * 0.82), y0 + uy * (out * 0.82))
+                    bright_alpha = int(np.clip(round((175 if vm <= 0.0 else 145) * visibility_boost), 90, 255))
+                    bright_color = QColor(255, 255, 255, bright_alpha)
+                    painter.setBrush(bright_color)
+                    painter.drawPolygon(QPolygonF([c1, c2, tip2]))
+
+                for deg in (0.0, 90.0, 180.0, 270.0):
+                    _draw_spike(deg, 1.0)
+
+                if vm <= 0.5:
+                    for deg in (45.0, 135.0, 225.0, 315.0):
+                        _draw_spike(deg, 0.78)
+
+                painter.setPen(Qt.PenStyle.NoPen)
+
     # 4) Small stars: fixed-but-gently-scaled alpha + area (squares), batched.
     if np.any(small_star_mask):
         sx = x[small_star_mask]
@@ -382,10 +474,10 @@ def draw_stars(
 
         # Base alpha kept modest so faint stars don't pop as dots.
         # Then lift alpha slightly with area (subtle, gamma<1).
-        alpha_base = 140  # try 130-160
-        alpha_gain = 50  # how much to lift at the upper end (30-60)
+        alpha_base = int(np.clip(round(165 * visibility_boost), 80, 238))
+        alpha_gain = int(np.clip(round(72 * visibility_boost), 24, 120))
         alpha_scale = np.power(np.clip(sA / 4.0, 0.0, 1.0), 0.75)  # area vs. 2x2px reference
-        alpha_f = np.clip(alpha_base + alpha_gain * alpha_scale, 60, 210)
+        alpha_f = np.clip(alpha_base + alpha_gain * alpha_scale, 80, 238)
 
         # Quantize alpha to reduce unique RGBA buckets -> faster & less banding
         # e.g., to ~8-12 steps:
@@ -518,6 +610,8 @@ def draw_planets(
     viewer_data: ViewerData,
     enlarge_moon: bool,
     emoji_font: QFont,
+    *,
+    preset: str = "night",
 ) -> None:
     """
     Draw the planets, including the Sun and Moon.
@@ -546,7 +640,10 @@ def draw_planets(
             moon_altaz = (body.alt, body.az)
             moon_body = body
 
+    # Keep planet symbols on their legacy style because they are usually
+    # drawn over the sky disc, where the original contrast is preferred.
     text_color = QColor(*TEXT_COLOR)
+    outline_color = QColor.fromRgbF(0, 0, 0, 0.3)
 
     for body in celestial_data.planets:
         if not body.is_visible:
@@ -586,10 +683,17 @@ def draw_planets(
             draw_gauge_cross(painter, text_color, pos)
 
         else:
-            draw_outlined_text(painter, body.symbol, pos, emoji_font, text_color)
+            draw_outlined_text(painter, body.symbol, pos, emoji_font, text_color, outline_color)
 
 
-def draw_direction_labels(painter: QPainter, geometry: ScreenGeometry, view_center: Tuple[float, float], text_font: QFont) -> None:
+def draw_direction_labels(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    view_center: Tuple[float, float],
+    text_font: QFont,
+    *,
+    preset: str = "night",
+) -> None:
     """
     Draw compass direction labels (N, S, E, W) on the horizon.
 
@@ -599,9 +703,11 @@ def draw_direction_labels(painter: QPainter, geometry: ScreenGeometry, view_cent
         view_center: The current view center to determine which labels are visible.
         text_font: The QFont to use for the labels.
     """
+    # Keep compass labels on their original style because they are usually
+    # drawn over the sky disc, where the legacy contrast works best.
     text_color = QColor(*TEXT_COLOR)
     text_color.setAlphaF(0.7)
-    painter.setPen(text_color)
+    outline_color = QColor.fromRgbF(0, 0, 0, 0.3)
     painter.setFont(text_font)
     alt = 0.0
     for label, az in DIRECTIONS.items():
@@ -609,7 +715,15 @@ def draw_direction_labels(painter: QPainter, geometry: ScreenGeometry, view_cent
             continue
         nx, ny = altaz_to_normalized_xy(alt, az, view_center)
         pos = QPointF(*normalized_to_screen_xy(nx, ny, geometry))
-        painter.drawText(pos, label)
+        draw_outlined_text(
+            painter,
+            label,
+            pos,
+            text_font,
+            text_color,
+            outline_color,
+            outline_width=2.5,
+        )
 
 
 def draw_overlay_info(
@@ -620,6 +734,8 @@ def draw_overlay_info(
     enlarge_moon: bool,
     highlighted_object: Optional[Tuple[CelestialObject, QPointF]],
     text_font: QFont,
+    *,
+    preset: str = "night",
 ) -> None:
     """
     Draws overlay text information on the screen.
@@ -636,7 +752,7 @@ def draw_overlay_info(
         highlighted_object: The currently highlighted object, if any.
         text_font: The QFont to use for the text.
     """
-    text_color = QColor(*TEXT_COLOR)
+    text_color, outline_color = get_text_style(preset)
 
     line_spacing = QFontMetrics(text_font).lineSpacing()
     line_height = int(line_spacing * 1.2)
@@ -646,7 +762,7 @@ def draw_overlay_info(
     def print_line(message: str):
         nonlocal line_x, line_y
         line_y += line_height
-        draw_outlined_text(painter, message, QPointF(line_x, line_y), text_font, text_color)
+        draw_outlined_text(painter, message, QPointF(line_x, line_y), text_font, text_color, outline_color)
 
     # ---- Local time ----
     utc_time = celestial_data.time
@@ -708,7 +824,7 @@ def draw_overlay_info(
 
         # PlanetBody(dataclass) or star(dict)
         name = getattr(obj, "name", "") if hasattr(obj, "name") else obj.get("name", "")
-        draw_outlined_text(painter, name, QPointF(pos.x() + 15, pos.y() - 15), text_font, text_color)
+        draw_outlined_text(painter, name, QPointF(pos.x() + 15, pos.y() - 15), text_font, text_color, outline_color)
 
 
 def draw_status_line_text(
@@ -716,6 +832,8 @@ def draw_status_line_text(
     message: str,
     status_line_font: QFont,
     viewport_rect: QRect,
+    *,
+    preset: str = "night",
 ) -> None:
     """
     Draws a single-line error message at the bottom-left corner, using the same
@@ -730,7 +848,15 @@ def draw_status_line_text(
     if not message:
         return
 
-    color = QColor(*STATUS_LINE_COLOR)
+    if preset == "bright-bg":
+        color = QColor(64, 22, 22)
+        outline_color = QColor(255, 245, 245, 220)
+    elif preset == "day":
+        color = QColor(78, 26, 26)
+        outline_color = QColor(250, 242, 242, 215)
+    else:
+        color = QColor(*STATUS_LINE_COLOR)
+        outline_color = QColor.fromRgbF(0, 0, 0, 0.3)
 
     painter.save()
     painter.setFont(status_line_font)
@@ -740,7 +866,7 @@ def draw_status_line_text(
     baseline_y = viewport_rect.bottom() - margin // 4
     x = margin
 
-    draw_outlined_text(painter, "> " + message, QPointF(x, baseline_y), status_line_font, color)
+    draw_outlined_text(painter, "> " + message, QPointF(x, baseline_y), status_line_font, color, outline_color)
     painter.restore()
 
 

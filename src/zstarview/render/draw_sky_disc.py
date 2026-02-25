@@ -107,6 +107,23 @@ def _lerp_color(a: np.ndarray, b: np.ndarray, t: float) -> np.ndarray:
     return a + (b - a) * t
 
 
+def _luma_bt601(color: np.ndarray) -> float:
+    """Return BT.601 luma from RGB in [0,1]."""
+    return float(np.dot(color, np.array([0.299, 0.587, 0.114])))
+
+
+def _soft_clip_luma(color: np.ndarray, max_luma: float) -> np.ndarray:
+    """
+    Keep hue/chroma while compressing highlights above `max_luma`.
+
+    This helps preserve stars when sky layers are intentionally strong.
+    """
+    y = _luma_bt601(color)
+    if y <= 1e-6 or y <= max_luma:
+        return color
+    return np.clip(color * (max_luma / y), 0.0, 1.0)
+
+
 def get_sun_color(sun_alt_deg: float) -> np.ndarray:
     """
     Determine the color of sunlight based on the sun's altitude.
@@ -148,45 +165,42 @@ def get_sky_color(view_altaz: Tuple[float, float], sun_altaz: Tuple[float, float
     view_alt_deg, view_az_deg = view_altaz
 
     if sun_alt_deg <= -10.0:
-        # Completely dark if the sun is more than 10° below the horizon
         return np.array([0.0, 0.0, 0.0])
 
-    sun_color = get_sun_color(sun_alt_deg)
+    tau = np.clip((TURBIDITY - 2.0) / 8.0, 0.0, 1.0)  # 2..10 -> 0..1
+    t_alt = np.clip(view_alt_deg / 90.0, 0.0, 1.0)  # horizon->zenith
+    sun_up = _smoothstep(-8.0, 6.0, sun_alt_deg)
+    twilight = _smoothstep(-10.0, 0.0, sun_alt_deg)
 
-    # --- Turbidity effect (0..1 normalized) ---
-    tau = np.clip((TURBIDITY - 2.0) / (10.0 - 2.0), 0.0, 1.0)  # 2.0..10.0 -> 0..1
+    # Base sky gradient: warm near horizon, cool at zenith.
+    horizon_day = np.array([0.98, 0.70, 0.45])
+    zenith_day = np.array([0.18, 0.42, 0.93])
+    base = _lerp_color(horizon_day, zenith_day, t_alt)
 
-    # 1) Brightness in the sun-facing direction
-    #    Higher turbidity reduces directional contrast (lower exponent).
-    sun_angle = _angle_between(view_alt_deg, view_az_deg, sun_alt_deg, sun_az_deg)  # [0..pi]
-    cosg = math.cos(sun_angle)
-    f = max(0.0, cosg)  # set to 0 on the antisolar side
-    exp = 2.0 - 0.6 * tau  # tau=0 -> 2.0, tau=1 -> 1.4
-    brightness = f**exp
+    # Turbidity washes colors toward white, especially near horizon.
+    haze = (0.22 + 0.48 * (1.0 - t_alt)) * (0.65 + 0.55 * tau)
+    base = _lerp_color(base, np.array([1.0, 1.0, 1.0]), haze)
 
-    # 2) Altitude tone factor
-    t = np.clip(view_alt_deg / 90.0, 0.0, 1.0)  # 0(horizon) -> 1(zenith)
+    # Sun-facing anisotropy glow.
+    sun_angle = _angle_between(view_alt_deg, view_az_deg, sun_alt_deg, sun_az_deg)
+    f = max(0.0, math.cos(sun_angle))
+    glow = f ** (1.9 - 0.55 * tau)
+    sun_tint = _lerp_color(np.array([1.0, 0.82, 0.58]), np.array([1.0, 0.92, 0.78]), tau)
+    color = base + sun_tint * (0.52 * glow * sun_up)
 
-    # Darkening toward zenith
-    # Higher turbidity reduces the darkening (sky looks brighter/whiter at the zenith).
-    zenith_dim_coef = 0.30 * (1.0 - 0.5 * tau)  # halved at tau=1
-    zenith_dim = 1.0 - zenith_dim_coef * t
+    # Anti-solar cool tint to keep chromatic structure (prevents flat white disc).
+    anti = max(0.0, math.cos(math.pi - sun_angle))
+    anti_boost = anti ** 2.2
+    color += np.array([0.06, 0.10, 0.20]) * (0.24 * anti_boost * sun_up)
 
-    # White mixing near the horizon
-    # Higher turbidity increases the amount of white mixed in.
-    horizon_k = 0.4 * (0.8 + 0.6 * tau)
-    horizon_mix = (1.0 - t) * horizon_k
+    # Twilight transition and night blend.
+    night = np.array([0.01, 0.02, 0.05])
+    color = _lerp_color(night, color, twilight)
 
-    # Twilight correction (smooth transition -10..0°)
-    if sun_alt_deg < 0.0:
-        twilight = _smoothstep(-10.0, 0.0, sun_alt_deg)
-    else:
-        twilight = 1.0
-
-    # Composite color
-    lit = sun_color * brightness
-    color = _lerp_color(lit, np.array([1.0, 1.0, 1.0]), horizon_mix * twilight)
-    color *= zenith_dim
+    # Preserve stars by capping sky luminance while retaining hue/chroma.
+    # This enables raising alpha without washing out stars too aggressively.
+    max_luma = 0.28 + 0.20 * sun_up  # night~0.28, day~0.48
+    color = _soft_clip_luma(color, max_luma=max_luma)
 
     return np.clip(color, 0.0, 1.0)
 
@@ -219,6 +233,9 @@ def grade_color(
         inv = 1.0 / gamma
         color = np.power(np.maximum(0.0, color), inv)
 
+    # Soft shoulder to avoid milky clipping in bright regions.
+    color = color / (1.0 + 0.35 * color)
+
     return np.clip(color, 0.0, 1.0)
 
 
@@ -227,8 +244,8 @@ def draw_sky_color_disc(
     view_center: Tuple[float, float],  # (alt, az)
     sun_altaz: Tuple[float, float],  # (alt, az)
     *,
-    exposure: float = 1.0,
-    saturation: float = 1.2,
+    exposure: float = 1.14,
+    saturation: float = 1.35,
     alpha: float = 1.0,
     eclipse_factor: float = 1.0,
     mask_fov_deg: float = 90.0,

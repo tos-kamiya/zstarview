@@ -109,7 +109,9 @@ class SkyWindow(DraggableWindow):
         enlarge_moon: bool = False,
         star_base_radius: float = 8.0,
         vmag_limit: float = 6.0,
-        sky_update_interval: int = 3 * 60  # sec
+        sky_update_interval: int = 3 * 60,  # sec
+        visual_preset: str = "day",
+        star_visibility_boost: float = 1.0,
     ) -> None:
         """
         Initializes the SkyWindow.
@@ -125,6 +127,8 @@ class SkyWindow(DraggableWindow):
             enlarge_moon: Whether to draw the Moon larger than its true scale.
             star_base_radius: Base radius for drawing stars.
             vmag_limit: The faintest star magnitude to display.
+            visual_preset: UI visual preset name.
+            star_visibility_boost: Multiplier for star visibility on bright presets.
         """
         super().__init__()
         self._rotation_step: float = 5.0  # degrees
@@ -136,6 +140,8 @@ class SkyWindow(DraggableWindow):
         self.star_base_radius = star_base_radius
         self.vmag_limit = vmag_limit
         self.sky_update_interval = sky_update_interval
+        self.visual_preset = visual_preset
+        self.star_visibility_boost = max(0.7, min(2.0, float(star_visibility_boost)))
 
         # Cloud opacity is disabled if we are looking at a time-shifted view,
         # as we can only fetch current cloud data.
@@ -310,7 +316,8 @@ class SkyWindow(DraggableWindow):
 
         # If data is not yet loaded, show a loading message.
         if not self.celestial_data:
-            painter.setPen(Qt.GlobalColor.white)
+            loading_color, _ = render_draw.get_text_style(self.visual_preset)
+            painter.setPen(loading_color)
             painter.setFont(self.text_font)
             painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "Loading celestial data...")
             return
@@ -330,7 +337,7 @@ class SkyWindow(DraggableWindow):
         painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
 
         # 2. Draw the radial gradient background
-        render_draw.draw_radial_background(painter, self.rect(), geometry)
+        render_draw.draw_radial_background(painter, self.rect(), geometry, preset=self.visual_preset)
 
         # 3. Draw the composited sky and cloud disc
         self._compositor.draw(
@@ -343,11 +350,24 @@ class SkyWindow(DraggableWindow):
 
         # 4. Draw reference lines (horizon, equator, etc.)
         render_draw.draw_sky_reference_lines(painter, geometry, self.celestial_data)
-        render_draw.draw_direction_labels(painter, geometry, self.viewer_data.view_center, self.text_font)
+        render_draw.draw_direction_labels(
+            painter,
+            geometry,
+            self.viewer_data.view_center,
+            self.text_font,
+            preset=self.visual_preset,
+        )
         render_draw.draw_zenith_marker(painter, geometry, self.viewer_data.view_center)
 
         # 5. Draw celestial objects
-        render_draw.draw_stars(painter, geometry, self.celestial_data, self.viewer_data, self.star_base_radius)
+        render_draw.draw_stars(
+            painter,
+            geometry,
+            self.celestial_data,
+            self.viewer_data,
+            self.star_base_radius,
+            visibility_boost=self.star_visibility_boost,
+        )
 
         # Enlarge moon if the global flag is set or if it's being hovered over.
         enlarge_moon = self.enlarge_moon
@@ -355,7 +375,15 @@ class SkyWindow(DraggableWindow):
             obj = highlighted_object[0]
             name = getattr(obj, "name", "") if hasattr(obj, "name") else obj.get("name", "")
             enlarge_moon = enlarge_moon or name == "moon"
-        render_draw.draw_planets(painter, geometry, self.celestial_data, self.viewer_data, enlarge_moon, self.emoji_font)
+        render_draw.draw_planets(
+            painter,
+            geometry,
+            self.celestial_data,
+            self.viewer_data,
+            enlarge_moon,
+            self.emoji_font,
+            preset=self.visual_preset,
+        )
 
         # 6. Draw overlay information text
         render_draw.draw_overlay_info(
@@ -366,6 +394,7 @@ class SkyWindow(DraggableWindow):
             enlarge_moon,
             highlighted_object,
             self.text_font,
+            preset=self.visual_preset,
         )
 
         # 7. Draw persistent cloud error message (bottom-left), if any
@@ -375,6 +404,7 @@ class SkyWindow(DraggableWindow):
                 message=self.cloud_state.banner_text,
                 status_line_font=self.status_line_font,
                 viewport_rect=self.rect(),
+                preset=self.visual_preset,
             )
 
     # Composited drawing handled by SkyCompositorCache
