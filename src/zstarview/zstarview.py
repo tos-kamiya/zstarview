@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import re
 import sys
+import threading
 import time
 from typing import Callable, List, Optional, Tuple
 
@@ -149,6 +150,7 @@ class SplashLogHandler(logging.Handler):
         """
         super().__init__()
         self.show_fn = show_fn
+        self._main_thread_id = threading.get_ident()
         # Use a concise and visible format for the splash screen.
         self.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 
@@ -160,6 +162,10 @@ class SplashLogHandler(logging.Handler):
             record: The log record to process.
         """
         try:
+            # QSplashScreen painting must run on the main thread.
+            # Background worker logs are still handled by other log handlers.
+            if threading.get_ident() != self._main_thread_id:
+                return
             msg = self.format(record)
             # Color-code messages based on log level.
             color = (
