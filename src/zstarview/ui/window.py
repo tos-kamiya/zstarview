@@ -296,14 +296,6 @@ class SkyWindow(DraggableWindow):
         # This is why the manual drag in DraggableWindow does not work.
         event.accept()
 
-    def set_star_base_radius(self, star_base_radius: float) -> None:
-        """Sets the base radius for drawing stars."""
-        self.star_base_radius = star_base_radius
-
-    def set_enlarge_moon(self, enlarge_moon: bool) -> None:
-        """Sets the enlarge moon flag."""
-        self.enlarge_moon = enlarge_moon
-
     def set_sky_data(self, data: CelestialData) -> None:
         self.celestial_data = data
         self.update()

@@ -26,10 +26,6 @@ class CloudImageState:
     cleanup_interval: int = 10
     cleanup_counter: int = field(default=0, init=False)
 
-    def invalidate(self) -> None:
-        self.image = None
-        self.meta = None
-
     def set_result(self, image: QImage, meta: Optional[dict], *, az: float, time_utc: datetime) -> None:
         self.image = image
         self.meta = meta
@@ -40,12 +36,8 @@ class CloudImageState:
     def set_error_banner(self, text: str) -> None:
         self.banner_text = text
 
-    def clear_banner(self) -> None:
-        self.banner_text = None
-
     def tick_cleanup(self) -> bool:
         """Increment the cleanup counter; return True when it's time to clean."""
         run = (self.cleanup_counter % self.cleanup_interval) == 0
         self.cleanup_counter += 1
         return run
-
