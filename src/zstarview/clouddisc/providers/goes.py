@@ -88,6 +88,10 @@ class GoesProvider:
     def _download(self, bucket: str, key: str) -> Path:
         """Downloads a file from S3, caching it locally using an atomic write."""
         dst = self.root / bucket / key
+        if dst.exists():
+            logger.info("Using cached file: %s", dst)
+            return dst
+
         s3 = self._s3(bucket)
 
         logger.info("Downloading s3://%s/%s", bucket, key)

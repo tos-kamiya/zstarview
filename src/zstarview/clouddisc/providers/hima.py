@@ -70,6 +70,9 @@ class HimaProvider:
     def _download(self, bucket: str, key: str, root: Path) -> Path:
         """Downloads a file from S3, caching it locally using an atomic write."""
         dst = root / bucket / key
+        if dst.exists():
+            logger.info("Using cached file: %s", dst)
+            return dst
 
         logger.info("Downloading s3://%s/%s", bucket, key)
         return download_s3_object(
