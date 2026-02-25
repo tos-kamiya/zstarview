@@ -9,9 +9,8 @@ clouds, and all user interactions like rotation, zooming, and object highlightin
 import logging
 import threading
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
-import astropy
 import polars as pl
 from PySide6.QtCore import QEvent, QPoint, Qt, QTimer, Signal
 from PySide6.QtGui import (
@@ -29,14 +28,6 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import QApplication, QMenu, QPushButton, QSizeGrip
 
 from ..__about__ import __version__
-from ..astro import (
-    calculate_celestial_equator_points,
-    calculate_ecliptic_points,
-    calculate_horizon_points,
-    calculate_planets,
-    calculate_visible_stars,
-    eclipse_factor_from_info,
-)
 from ..clouddisc import (
     CloudDisc,
     CloudDiscConfig,
@@ -65,12 +56,12 @@ from ..paths import (
     WINDOW_WIDTH,
 )
 from ..render import draw as render_draw
-from ..render import draw_sky_disc
-from ..types import CelestialData, ScreenGeometry, ViewerData
+from ..types import CelestialData, ViewerData
 from ..utils.qt import pil_to_qimage
 from .draggable_window import DraggableWindow
 from .composite import SkyCompositorCache
 from .cloud_state import CloudImageState
+from .sky_worker import SkyDataWorker
 
 logger = logging.getLogger(__name__)
 
@@ -90,20 +81,8 @@ class SkyWindow(DraggableWindow):
     handles user input for interaction.
     """
 
-    # Signals for cross-thread communication
-    sky_data_calculated = Signal(object)
+    # Signal emitted when initial sky data is fully loaded and window can be shown.
     initial_data_loaded = Signal()
-
-    # TODO(SkyDataWorker): Split sky data background computation into a QObject
-    #   class (e.g., ui/sky_worker.py) with:
-    #   - Signal: data_ready(object)  # {'celestial': CelestialData, 'sky_disc': QImage|None}
-    #   - Method: update(lat, lon, view_center, star_catalog, sky_disc_alpha)
-    #   - Responsibility: run calculate_visible_stars/planets/lines + sky disc
-    #   - Threading: start a Python thread internally; emit results via Signal
-    #   Wiring here:
-    #   - Replace start_background_sky_data_update/update_sky_data_in_background
-    #     with worker.update(...); connect worker.data_ready -> _on_sky_data_calculated
-    #   - Keep timers in SkyWindow; first-load handling stays here
 
     # TODO(CloudController): Extract cloud fetching to a QObject controller
     #   (e.g., ui/cloud_controller.py) with:
@@ -199,8 +178,8 @@ class SkyWindow(DraggableWindow):
         self.status_line_font = QFont(text_font_family, STATUS_LINE_FONT_SIZE)
 
         # --- Data Update Timers and State ---
-        self.sky_data_calculated.connect(self._on_sky_data_calculated)
-        self._is_sky_data_calculation_running: bool = False
+        self._sky_worker = SkyDataWorker(self)
+        self._sky_worker.data_ready.connect(self._on_sky_data_calculated)
         self._sky_data_update_timer = QTimer(self)
         self._sky_data_update_timer.timeout.connect(self.start_background_sky_data_update)
         self.celestial_data: Optional[CelestialData] = None
@@ -425,90 +404,29 @@ class SkyWindow(DraggableWindow):
                 self._cloud_update_timer.start()
             self.initial_data_loaded.emit()
 
-        self._is_sky_data_calculation_running = False
-
     def request_sky_data_update(self) -> None:
         """Requests a sky data update if one is not already in progress."""
         if not self.start_background_sky_data_update():
             logger.warning("Sky data update request ignored; an update is already running.")
 
-    def update_sky_data_in_background(self) -> None:
-        """
-        Performs the calculation of celestial data in a background thread.
-
-        This function calculates the positions of stars, planets, and other
-        celestial phenomena. It also generates the sky color disc. The results
-        are emitted via a signal to the main thread.
-        """
-        try:
-            now = datetime.now(timezone.utc) + self.delta_t
-            time_obj = astropy.time.Time(now)
-            lat, lon = self.viewer_data.location
-
-            # Calculate all celestial object positions based on the current time and view
-            stars, loc = calculate_visible_stars(self.star_catalog, lat, lon, time_obj, self.viewer_data.view_center)
-            planets = calculate_planets(lat, lon, time_obj, self.viewer_data.view_center)
-            celestial_equator_points = calculate_celestial_equator_points(loc, time_obj, self.viewer_data.view_center)
-            ecliptic_points = calculate_ecliptic_points(loc, time_obj, self.viewer_data.view_center)
-            horizon_points = calculate_horizon_points(loc, time_obj, self.viewer_data.view_center)
-            celestial_data = CelestialData(
-                time=time_obj,
-                planets=planets,
-                stars=stars,
-                celestial_equator_points=celestial_equator_points,
-                ecliptic_points=ecliptic_points,
-                horizon_points=horizon_points,
-            )
-
-            if DEBUG_ECLIPSES:
-                for body in planets:
-                    if body.name == "sun" and body.solar_eclipse_info.is_eclipse:
-                        logger.debug("Solar eclipse detected")
-                    if body.name == "moon" and body.lunar_eclipse_info.is_eclipse:
-                        logger.debug("Lunar eclipse detected")
-
-            # Generate the sky color disc based on the Sun's position
-            sun_altaz = None
-            solar_eclipse_info = None
-            for body in planets:
-                if body.name == "sun":
-                    sun_altaz = (body.alt, body.az)
-                    solar_eclipse_info = body.solar_eclipse_info
-                    break
-
-            sky_disc_img = None
-            if self.sky_disc_alpha > 0.0 and sun_altaz is not None:
-                base = self._sky_disc_base_size
-                fixed_geom = render_draw.get_screen_geometry(base, base, base // 2)
-                ef = eclipse_factor_from_info(solar_eclipse_info)
-                sky_disc_img = draw_sky_disc.draw_sky_color_disc(
-                    fixed_geom,
-                    self.viewer_data.view_center,
-                    sun_altaz,
-                    alpha=self.sky_disc_alpha,
-                    eclipse_factor=ef,
-                    mask_fov_deg=93,
-                )
-
-            # Emit the results to the main thread
-            payload = {"celestial": celestial_data, "sky_disc": sky_disc_img}
-            self.sky_data_calculated.emit(payload)
-        except Exception as e:
-            logger.error(f"Error in background sky update thread: {e}", exc_info=True)
-
     def start_background_sky_data_update(self, is_initial_load: bool = False) -> bool:
-        if self._is_sky_data_calculation_running:
-            return False
-        self._is_sky_data_calculation_running = True
-
-        if is_initial_load:
-            logger.info("Calculating initial sky data...")
-        else:
-            logger.info("Updating sky data...")
-        thread = threading.Thread(target=self.update_sky_data_in_background)
-        thread.daemon = True
-        thread.start()
-        return True
+        lat, lon = self.viewer_data.location
+        started = self._sky_worker.update(
+            lat=lat,
+            lon=lon,
+            view_center=self.viewer_data.view_center,
+            star_catalog=self.star_catalog,
+            delta_t=self.delta_t,
+            sky_disc_alpha=self.sky_disc_alpha,
+            sky_disc_base_size=self._sky_disc_base_size,
+            debug_eclipses=DEBUG_ECLIPSES,
+        )
+        if started:
+            if is_initial_load:
+                logger.info("Calculating initial sky data...")
+            else:
+                logger.info("Updating sky data...")
+        return started
 
     def start_background_cloud_update(self, reason: str = "manual") -> None:
         if not (self._clouddisc and self.cloud_disc_alpha > 0.0):
