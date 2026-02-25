@@ -83,6 +83,8 @@ class SkyWindow(DraggableWindow):
 
     # Signal emitted when initial sky data is fully loaded and window can be shown.
     initial_data_loaded = Signal()
+    # Signal to request repaint safely from background threads.
+    cloud_repaint_requested = Signal()
 
     # TODO(CloudController): Extract cloud fetching to a QObject controller
     #   (e.g., ui/cloud_controller.py) with:
@@ -180,6 +182,7 @@ class SkyWindow(DraggableWindow):
         # --- Data Update Timers and State ---
         self._sky_worker = SkyDataWorker(self)
         self._sky_worker.data_ready.connect(self._on_sky_data_calculated)
+        self.cloud_repaint_requested.connect(self.update)
         self._sky_data_update_timer = QTimer(self)
         self._sky_data_update_timer.timeout.connect(self.start_background_sky_data_update)
         self.celestial_data: Optional[CelestialData] = None
@@ -477,11 +480,11 @@ class SkyWindow(DraggableWindow):
             except DownloadError as e:
                 logger.warning("Network/S3 download error: %s", e)
                 self.cloud_state.set_error_banner("Clouds: Network/S3 download error")
-                self.update()
+                self.cloud_repaint_requested.emit()
             except TimeoutError as e:
                 logger.warning("Clouds fetch timed out: %s", e)
                 self.cloud_state.set_error_banner("Clouds: Clouds fetch timed out")
-                self.update()
+                self.cloud_repaint_requested.emit()
             except DataNotFoundError as e:
                 logger.info("Satellite data not found in search window: %s", e)
                 self.cloud_state.set_error_banner("Clouds: Satellite data not found in search window")
@@ -494,7 +497,7 @@ class SkyWindow(DraggableWindow):
 
             
             # Trigger a repaint on the main thread
-            self.update()
+            self.cloud_repaint_requested.emit()
         except Exception as e:
             logger.error(f"Cloud update failed: {e}", exc_info=True)
         finally:
