@@ -1,3 +1,5 @@
 cloud_tile_cache/
 dev-samples/
 node_modules/
+__pycache__/
+*.py[cod]
