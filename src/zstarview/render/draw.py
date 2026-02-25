@@ -25,10 +25,12 @@ from ..utils.qt import pil2qpixmap
 DEBUG_ECLIPSE = False
 
 
-def get_text_style(preset: str = "classic") -> Tuple[QColor, QColor]:
+def get_text_style(preset: str = "night") -> Tuple[QColor, QColor]:
     """Return (text_color, outline_color) tuned for the selected visual preset."""
     if preset == "bright-bg":
         return QColor(18, 29, 48), QColor(245, 250, 255, 210)
+    if preset == "day":
+        return QColor(22, 33, 52), QColor(238, 245, 255, 200)
     return QColor(*TEXT_COLOR), QColor.fromRgbF(0, 0, 0, 0.3)
 
 
@@ -194,7 +196,7 @@ def draw_radial_background(
     rect: QRectF,
     geometry: ScreenGeometry,
     *,
-    preset: str = "classic",
+    preset: str = "night",
 ) -> None:
     """
     Draws a radial gradient background to represent the sky.
@@ -225,6 +227,14 @@ def draw_radial_background(
             gg = int(240 - 48 * t)
             bb = int(252 - 58 * t)
             aa = max(0, 248 - (s + int(120 * t)))
+            return QColor(rr, gg, bb, aa)
+    elif preset == "day":
+        def col(r: float, s: float) -> QColor:
+            t = max(0.0, min(1.0, (r - r90) / max(1.0, r_max - r90)))
+            rr = int(180 - 62 * t)
+            gg = int(196 - 78 * t)
+            bb = int(230 - 95 * t)
+            aa = max(0, 220 - (s + int(140 * t)))
             return QColor(rr, gg, bb, aa)
     else:
         def col(r: float, s: float) -> QColor:
@@ -601,7 +611,7 @@ def draw_planets(
     enlarge_moon: bool,
     emoji_font: QFont,
     *,
-    preset: str = "classic",
+    preset: str = "night",
 ) -> None:
     """
     Draw the planets, including the Sun and Moon.
@@ -682,7 +692,7 @@ def draw_direction_labels(
     view_center: Tuple[float, float],
     text_font: QFont,
     *,
-    preset: str = "classic",
+    preset: str = "night",
 ) -> None:
     """
     Draw compass direction labels (N, S, E, W) on the horizon.
@@ -725,7 +735,7 @@ def draw_overlay_info(
     highlighted_object: Optional[Tuple[CelestialObject, QPointF]],
     text_font: QFont,
     *,
-    preset: str = "classic",
+    preset: str = "night",
 ) -> None:
     """
     Draws overlay text information on the screen.
@@ -823,7 +833,7 @@ def draw_status_line_text(
     status_line_font: QFont,
     viewport_rect: QRect,
     *,
-    preset: str = "classic",
+    preset: str = "night",
 ) -> None:
     """
     Draws a single-line error message at the bottom-left corner, using the same
@@ -841,6 +851,9 @@ def draw_status_line_text(
     if preset == "bright-bg":
         color = QColor(64, 22, 22)
         outline_color = QColor(255, 245, 245, 220)
+    elif preset == "day":
+        color = QColor(78, 26, 26)
+        outline_color = QColor(250, 242, 242, 215)
     else:
         color = QColor(*STATUS_LINE_COLOR)
         outline_color = QColor.fromRgbF(0, 0, 0, 0.3)

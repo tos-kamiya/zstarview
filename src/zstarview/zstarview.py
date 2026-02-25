@@ -93,6 +93,21 @@ def _parse_azimuth(value: str) -> float:
     raise argparse.ArgumentTypeError(f"Invalid azimuth: {value!r}. Use degrees (e.g., 180) or compass (e.g., N, NE, E).")
 
 
+def _parse_visual_preset(value: str) -> str:
+    """Parse visual preset."""
+    key = (value or "").strip().lower()
+    allowed = {
+        "night": "night",
+        "day": "day",
+        "bright-bg": "bright-bg",
+    }
+    if key in allowed:
+        return allowed[key]
+    raise argparse.ArgumentTypeError(
+        f"Invalid visual preset: {value!r}. Use one of: night, day, bright-bg."
+    )
+
+
 def parse_args() -> argparse.Namespace:
     """Parses command-line arguments."""
     parser = argparse.ArgumentParser(description="Star sky visualizer")
@@ -160,10 +175,10 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--visual-preset",
-        type=str,
-        choices=("classic", "bright-bg"),
-        default="classic",
-        help="Visual preset for background and star contrast (default: classic).",
+        type=_parse_visual_preset,
+        default="day",
+        metavar="{night,day,bright-bg}",
+        help="Visual preset for background and star contrast (default: day).",
     )
     return parser.parse_args()
 
@@ -557,7 +572,7 @@ def main() -> None:
     cloud_opacity = min(1.0, max(0.0, args.cloud_opacity))
     sky_update_interval = max(1, args.sky_update_interval)
     visual_preset = args.visual_preset
-    star_visibility_boost = 1.12 if visual_preset == "bright-bg" else 1.0
+    star_visibility_boost = 1.12 if visual_preset == "bright-bg" else 1.05 if visual_preset == "day" else 1.0
 
     city_str = f"{city.cc}/{city.name}"
     main_win = SkyWindow(
