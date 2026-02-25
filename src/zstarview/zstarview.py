@@ -18,6 +18,8 @@ from PySide6.QtWidgets import QApplication, QSplashScreen
 from PySide6.QtCore import Qt
 from PySide6.QtGui import (
     QColor,
+    QLinearGradient,
+    QPainter,
     QIcon,
     QPixmap,
 )
@@ -47,6 +49,28 @@ from .utils.timezone_parser import parse_tz_string
 # --- Helper Functions ---
 _cache_path = Path(CACHE_PATH)
 _cache_path.mkdir(parents=True, exist_ok=True)
+
+SPLASH_INFO_COLOR = QColor(18, 29, 48)
+SPLASH_WARN_COLOR = QColor(130, 82, 20)
+SPLASH_ERROR_COLOR = QColor(146, 34, 34)
+
+
+def _build_splash_pixmap(width: int = 400, height: int = 200) -> QPixmap:
+    """Create a bright-bg-like splash background."""
+    pixmap = QPixmap(width, height)
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pixmap)
+    grad = QLinearGradient(0, 0, width, height)
+    grad.setColorAt(0.0, QColor(236, 244, 255))
+    grad.setColorAt(0.55, QColor(214, 227, 246))
+    grad.setColorAt(1.0, QColor(186, 204, 232))
+    painter.fillRect(0, 0, width, height, grad)
+
+    # Subtle frame to separate splash from desktop background.
+    painter.setPen(QColor(148, 167, 194))
+    painter.drawRect(0, 0, width - 1, height - 1)
+    painter.end()
+    return pixmap
 
 
 def _parse_azimuth(value: str) -> float:
@@ -134,6 +158,13 @@ def parse_args() -> argparse.Namespace:
         default=3 * 60,
         help=("Interval for updating stars/sky-color disc in sec. (default: 180)."),
     )
+    parser.add_argument(
+        "--visual-preset",
+        type=str,
+        choices=("classic", "bright-bg"),
+        default="classic",
+        help="Visual preset for background and star contrast (default: classic).",
+    )
     return parser.parse_args()
 
 
@@ -169,7 +200,7 @@ class SplashLogHandler(logging.Handler):
             msg = self.format(record)
             # Color-code messages based on log level.
             color = (
-                Qt.GlobalColor.white if record.levelno < logging.WARNING else QColor(255, 200, 120) if record.levelno < logging.ERROR else QColor(255, 100, 100)
+                SPLASH_INFO_COLOR if record.levelno < logging.WARNING else SPLASH_WARN_COLOR if record.levelno < logging.ERROR else SPLASH_ERROR_COLOR
             )
             self.show_fn(msg, color)
         except Exception:
@@ -245,8 +276,7 @@ def setup_splash_and_attach_logger(
         A tuple containing the QSplashScreen and SplashLogHandler instances.
     """
     splash = QSplashScreen(QPixmap(400, 200), Qt.WindowType.WindowStaysOnTopHint)
-    pixmap = QPixmap(400, 200)
-    pixmap.fill(Qt.GlobalColor.black)
+    pixmap = _build_splash_pixmap(400, 200)
     splash.setPixmap(pixmap)
     splash.show()
 
@@ -526,6 +556,8 @@ def main() -> None:
     sky_opacity = min(1.0, max(0.0, args.sky_opacity))
     cloud_opacity = min(1.0, max(0.0, args.cloud_opacity))
     sky_update_interval = max(1, args.sky_update_interval)
+    visual_preset = args.visual_preset
+    star_visibility_boost = 1.12 if visual_preset == "bright-bg" else 1.0
 
     city_str = f"{city.cc}/{city.name}"
     main_win = SkyWindow(
@@ -540,6 +572,8 @@ def main() -> None:
         star_base_radius=star_base_radius,
         vmag_limit=args.vmag_limit,
         sky_update_interval=sky_update_interval,
+        visual_preset=visual_preset,
+        star_visibility_boost=star_visibility_boost,
     )
 
     def _on_initial_loaded():
