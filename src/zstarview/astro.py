@@ -79,17 +79,6 @@ def is_in_fov_vectorized(alt: np.ndarray, az: np.ndarray, view_center: Tuple[flo
     return np.degrees(theta) <= FIELD_OF_VIEW_DEG
 
 
-def load_star_catalog(filename: str) -> List[Dict[str, Any]]:
-    """Load the star catalog from file.
-
-    This function re-exports the implementation from `catalog` to
-    avoid circular imports when used elsewhere.
-    """
-    from .catalog import load_star_catalog as _load
-
-    return _load(filename)
-
-
 def calculate_visible_stars(
     star_df: pl.DataFrame,
     lat: float,
