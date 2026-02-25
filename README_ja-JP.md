@@ -218,4 +218,6 @@ CPU性能によっては星空の自動更新が負荷になる場合があり�
 
 ## 付録
 
+→ [仕様書](docs/specification.md), [設計書](docs/design.md)
+
 → [2025年の月食, 2026〜2028年の皆既日食](docs/appendix-eclipses-ja_JP.md)

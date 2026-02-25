@@ -229,4 +229,6 @@ All paths below are relative to `src/zstarview/data/`.
 
 ## Appendix
 
+→ [Specification](docs/specification.md), [Design](docs/design.md)
+
 → [Lunar eclipses in 2025, Solar eclipses 2026-2028](docs/appendix-eclipses.md)

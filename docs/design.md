@@ -1,0 +1,137 @@
+# zstarview 設計書（初版）
+
+最終更新: 2026-02-26
+
+## 1. 設計方針
+
+- UI責務と計算責務を分離する。
+- 長時間処理はバックグラウンドスレッドで実行する。
+- 失敗しやすい外部I/O（S3）を局所化し、例外をドメイン例外に正規化する。
+- 描画は純粋関数寄りに保ち、状態管理は `SkyWindow` に集約する。
+
+## 2. モジュール構成
+
+### 2.1 エントリ/起動
+
+- `src/zstarview/zstarview.py`
+  - CLI引数解析
+  - ログ初期化
+  - 都市解決・時刻解釈・星カタログ読み込み
+  - `SkyWindow` 起動
+
+### 2.2 ドメイン計算
+
+- `src/zstarview/astro.py`
+  - 天体位置計算
+  - 可視判定
+  - 補助線（地平線/赤道/黄道）点列生成
+  - 食情報計算
+
+### 2.3 描画
+
+- `src/zstarview/render/draw.py`
+  - 背景、星、惑星、ラベル、オーバーレイ描画
+- `src/zstarview/render/draw_sky_disc.py`
+  - 太陽高度・食係数を用いた空色ディスク生成
+
+### 2.4 UI
+
+- `src/zstarview/ui/window.py`
+  - メインウィンドウ
+  - 入力イベント
+  - タイマー管理
+  - ワーカー連携と描画統合
+- `src/zstarview/ui/sky_worker.py`
+  - 星空更新計算（天体計算 + 空色ディスク）をバックグラウンドで実行
+  - `data_ready` シグナルで結果返却
+- `src/zstarview/ui/composite.py`
+  - 空色/雲合成、ハッチ処理、合成キャッシュ
+- `src/zstarview/ui/cloud_state.py`
+  - 雲画像・メタ・バナーの状態保持
+
+### 2.5 クラウドデータ
+
+- `src/zstarview/clouddisc/core.py`
+  - 衛星選択、投影、サンプリング、画像化のオーケストレーション
+- `src/zstarview/clouddisc/providers/goes.py`
+- `src/zstarview/clouddisc/providers/hima.py`
+- `src/zstarview/clouddisc/providers/_s3_io.py`
+  - S3一覧/ダウンロードの共通I/Oヘルパー
+  - タイムアウト/一般失敗を `TimeoutError` / `DownloadError` へ正規化
+
+## 3. 主要データ構造
+
+- `types.ViewerData`
+  - 観測地点、タイムゾーン、都市名、視点中心
+- `types.CelestialData`
+  - 描画対象の天体データ一式
+- `clouddisc.types.CloudMeta`
+  - クラウド画像のデータソース情報
+
+## 4. 処理フロー
+
+### 4.1 起動フロー
+
+1. `main()` が CLI とロガーを初期化。
+2. `_startup_resolve_city()` で地点を決定し、次回用設定を保存。
+3. 時刻オフセットと星カタログを読み込み。
+4. `SkyWindow` を生成し、初回データ読み込み後に表示。
+
+### 4.2 星空更新フロー
+
+1. `SkyWindow.start_background_sky_data_update()` が `SkyDataWorker.update()` を呼ぶ。
+2. `SkyDataWorker` がバックグラウンドスレッドで天体計算と空色ディスク生成。
+3. `data_ready` シグナルで `SkyWindow._on_sky_data_calculated()` に反映。
+
+### 4.3 雲更新フロー
+
+1. `SkyWindow.start_background_cloud_update()` が更新スレッドを起動。
+2. `CloudDisc.render_now()` が衛星データ取得〜投影〜画像化を実行。
+3. `CloudImageState` を更新。
+4. 再描画要求は `cloud_repaint_requested` シグナルでUIスレッドへ配送。
+
+## 5. スレッドモデル
+
+- UIスレッド:
+  - Qtイベントループ、描画、ウィジェット状態更新
+- バックグラウンド:
+  - 星空計算: `SkyDataWorker`
+  - 雲更新: `SkyWindow` 管理スレッド
+  - キャッシュ清掃: 雲更新側の補助スレッド
+
+注意:
+- UI操作（再描画要求を含む）はシグナル経由でUIスレッドに戻す。
+
+## 6. エラーモデル
+
+- 起動系エラー:
+  - `StartupAbortError` で起動シーケンスを中断
+- クラウド系エラー:
+  - `CloudDiscError` 派生（`TimeoutError`, `DownloadError`, `DataNotFoundError`, `RenderError`）
+  - UIはバナー表示し、更新ループは継続
+
+## 7. 設定/永続化
+
+- 設定ファイル:
+  - `~/.config/zstarview/config.json`
+- 保存情報:
+  - 最終地点（都市形式または座標形式）
+- キャッシュ:
+  - 衛星データ・エフェメリスはキャッシュディレクトリに配置
+
+## 8. テスト戦略（現状と推奨）
+
+- 現状:
+  - 軽量な回帰テストを追加済み
+    - 起動時地点保存経路のガード
+    - 共通S3 I/Oの例外変換
+- 推奨:
+  - `astro.py` の純計算関数テストを拡張
+  - `ui` はシグナル発火と状態遷移を中心にモックテスト
+  - ネットワーク実アクセスを避け、providerはモック前提で検証
+
+## 9. 今後の設計課題
+
+- 雲更新ロジックを `CloudController` へ抽出し、`SkyWindow` の責務をさらに削減する。
+- 描画パイプラインの入力データ契約（型/単位）を明文化する。
+- 仕様変更時に追従しやすいよう、CLI仕様と内部データ仕様の対応表を追加する。
