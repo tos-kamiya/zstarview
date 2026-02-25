@@ -549,6 +549,4 @@ def main() -> None:
 
     main_win.initial_data_loaded.connect(_on_initial_loaded)
 
-    save_last_city(city_str)
-
     sys.exit(app.exec())
