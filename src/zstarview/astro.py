@@ -336,7 +336,7 @@ def calculate_planets(
     return bodies
 
 
-def calculate_horizon_points(location: EarthLocation, time: astropy.time.Time, view_center: Tuple[float, float]) -> List[Tuple[float, float]]:
+def calculate_horizon_points(view_center: Tuple[float, float]) -> List[Tuple[float, float]]:
     """Generate points along the horizon for drawing."""
     points: List[Tuple[float, float]] = []
     alt = 0.0

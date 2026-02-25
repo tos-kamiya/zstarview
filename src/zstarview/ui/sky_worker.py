@@ -97,7 +97,7 @@ class SkyDataWorker(QObject):
             planets = calculate_planets(lat, lon, time_obj, view_center)
             celestial_equator_points = calculate_celestial_equator_points(loc, time_obj, view_center)
             ecliptic_points = calculate_ecliptic_points(loc, time_obj, view_center)
-            horizon_points = calculate_horizon_points(loc, time_obj, view_center)
+            horizon_points = calculate_horizon_points(view_center)
             celestial_data = CelestialData(
                 time=time_obj,
                 planets=planets,
