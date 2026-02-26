@@ -6,7 +6,7 @@ from PIL import Image
 from zoneinfo import ZoneInfo
 
 from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPainterPath, QPen, QPolygonF, QRadialGradient
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPainterPath, QPen, QPolygonF, QRadialGradient
 
 from ..paths import (
     CELESTIAL_EQUATOR_COLOR,
@@ -438,23 +438,37 @@ def draw_stars(
 
                     out = spike_len * outer_scale
                     tip = QPointF(x0 + ux * out, y0 + uy * out)
+                    base_center = QPointF(x0 + ux * inner, y0 + uy * inner)
                     b1 = QPointF(x0 + ux * inner + px * base_half, y0 + uy * inner + py * base_half)
                     b2 = QPointF(x0 + ux * inner - px * base_half, y0 + uy * inner - py * base_half)
 
-                    # broad soft ray
-                    broad_alpha = int(np.clip(round((120 if vm <= 0.0 else 95) * visibility_boost), 60, 220))
-                    broad_color = QColor(255, 255, 255, broad_alpha)
+                    # Broad soft ray with fade toward the tip.
+                    broad_alpha = int(np.clip(round((88 if vm <= 0.0 else 70) * visibility_boost), 40, 170))
                     painter.setPen(Qt.PenStyle.NoPen)
-                    painter.setBrush(broad_color)
+                    broad_grad = QLinearGradient(base_center, tip)
+                    broad_head = QColor(255, 255, 255, broad_alpha)
+                    broad_mid = QColor(255, 255, 255, int(broad_alpha * 0.35))
+                    broad_tail = QColor(255, 255, 255, 0)
+                    broad_grad.setColorAt(0.0, broad_head)
+                    broad_grad.setColorAt(0.55, broad_mid)
+                    broad_grad.setColorAt(1.0, broad_tail)
+                    painter.setBrush(broad_grad)
                     painter.drawPolygon(QPolygonF([b1, b2, tip]))
 
-                    # inner brighter ray
+                    # Inner brighter ray with steeper transparency falloff.
                     c1 = QPointF(x0 + ux * (inner * 0.95) + px * core_half, y0 + uy * (inner * 0.95) + py * core_half)
                     c2 = QPointF(x0 + ux * (inner * 0.95) - px * core_half, y0 + uy * (inner * 0.95) - py * core_half)
                     tip2 = QPointF(x0 + ux * (out * 0.82), y0 + uy * (out * 0.82))
-                    bright_alpha = int(np.clip(round((175 if vm <= 0.0 else 145) * visibility_boost), 90, 255))
-                    bright_color = QColor(255, 255, 255, bright_alpha)
-                    painter.setBrush(bright_color)
+                    bright_alpha = int(np.clip(round((130 if vm <= 0.0 else 105) * visibility_boost), 65, 200))
+                    inner_base = QPointF(x0 + ux * (inner * 0.95), y0 + uy * (inner * 0.95))
+                    bright_grad = QLinearGradient(inner_base, tip2)
+                    bright_head = QColor(255, 255, 255, bright_alpha)
+                    bright_mid = QColor(255, 255, 255, int(bright_alpha * 0.4))
+                    bright_tail = QColor(255, 255, 255, 0)
+                    bright_grad.setColorAt(0.0, bright_head)
+                    bright_grad.setColorAt(0.45, bright_mid)
+                    bright_grad.setColorAt(1.0, bright_tail)
+                    painter.setBrush(bright_grad)
                     painter.drawPolygon(QPolygonF([c1, c2, tip2]))
 
                 for deg in (0.0, 90.0, 180.0, 270.0):
