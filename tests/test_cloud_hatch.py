@@ -36,6 +36,35 @@ def test_cloud_hatch_reduces_rgb_and_alpha_together() -> None:
     assert int(out[..., :3][cut].max()) == 0
 
 
+def test_cloud_hatch_flattens_alpha_within_each_cloud_band() -> None:
+    h, w = 64, 64
+    arr = np.zeros((h, w, 4), dtype=np.uint8)
+    arr[..., :3] = 255
+    # Deliberately include variation so flattening effect is observable.
+    arr[..., 3] = np.tile(np.linspace(0, 255, w, dtype=np.uint8), (h, 1))
+
+    cfg = HatchConfig(20, 19, 8, 255)
+    out = qimage_to_np_rgba(cloud_with_hatched_alpha(np_rgba_to_qimage(arr), cfg))
+
+    xs = np.arange(w, dtype=np.int32)[None, :]
+    ys = np.arange(h, dtype=np.int32)[:, None]
+    period = max(2, int(round(np.hypot(cfg.tile_w_px, cfg.tile_h_px) * 0.5)))
+    band = max(1, int(round(cfg.line_px)))
+    u = xs - ys
+    u_mod = np.mod(u, period)
+    dist = np.minimum(u_mod, period - u_mod)
+    keep_mask = dist > (band / 2.0)
+    stripe_id = np.floor_divide(u, period)
+
+    # In cloud bands (keep_mask), alpha should be constant per stripe.
+    for sid in np.unique(stripe_id[keep_mask]):
+        m = keep_mask & (stripe_id == sid)
+        if int(np.count_nonzero(m)) <= 1:
+            continue
+        uniq_alpha = np.unique(out[..., 3][m])
+        assert len(uniq_alpha) == 1
+
+
 def test_compose_cloud_addition_is_weighted_by_cloud_alpha() -> None:
     sky = np.zeros((8, 8, 4), dtype=np.uint8)
     sky[..., :3] = 20

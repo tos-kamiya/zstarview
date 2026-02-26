@@ -61,6 +61,31 @@ def cloud_with_hatched_alpha(cloud_img: QImage, hatch_cfg: HatchConfig) -> QImag
     u_mod = np.mod(u, period)
     dist = np.minimum(u_mod, period - u_mod)
     line_mask = dist <= (band / 2.0)
+    keep_mask = ~line_mask
+
+    # Convert the "cloud band" into a cloud-amount indicator:
+    # for each diagonal band (same stripe index), flatten alpha to the
+    # band-average value so cloud contours are not visible inside the band.
+    # Only include on-disc pixels (RGB>0 for this cloud layer) in the average.
+    stripe_id = np.floor_divide(u, period)
+    inside_disc = cloud[..., 0] > 0
+    avg_mask = keep_mask & inside_disc
+    if np.any(avg_mask):
+        # Work in normalized alpha [0.0, 1.0].
+        src_alpha01 = cloud[..., 3].astype(np.float32) / 255.0
+        uniq = np.unique(stripe_id[avg_mask])
+        for sid in uniq:
+            stripe_mask = avg_mask & (stripe_id == sid)
+            if not np.any(stripe_mask):
+                continue
+            vals = src_alpha01[stripe_mask]
+            s = 0.0
+            for v in vals:
+                s += float(v)
+            n = int(vals.size)
+            avg = (s / n) if n > 0 else 0.0
+            src_alpha01[stripe_mask] = avg
+        cloud[..., 3] = np.clip(np.round(src_alpha01 * 255.0), 0, 255).astype(np.uint8)
 
     erase = float(np.clip(hatch_cfg.strength, 0, 255)) / 255.0
     keep = 1.0 - erase
