@@ -512,11 +512,11 @@ def draw_stars(
 
         # Batch by RGBA
         rgba = np.column_stack([srgb, alpha_u8])
-        unique_rgba = np.unique(rgba, axis=0)
+        unique_rgba, rgba_group = np.unique(rgba, axis=0, return_inverse=True)
 
         painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
-        for r, g, b, a in unique_rgba:
-            m = np.all(rgba == (r, g, b, a), axis=1)  # mask within small-star subset
+        for i, (r, g, b, a) in enumerate(unique_rgba):
+            m = rgba_group == i  # mask within small-star subset
             color = QColor(int(r), int(g), int(b), int(a))
             painter.setBrush(color)
             rects = [QRectF(float(cx) - float(s) / 2.0, float(cy) - float(s) / 2.0, float(s), float(s)) for cx, cy, s in zip(sx[m], sy[m], sL[m])]
