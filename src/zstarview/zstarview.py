@@ -63,7 +63,7 @@ def _get_splash_palette(visual_preset: str) -> tuple[list[QColor], QColor, QColo
             QColor(66, 84, 118),
             QColor(214, 228, 255),
         )
-    if visual_preset == "bright-bg":
+    if visual_preset == "white":
         return (
             [QColor(244, 250, 255), QColor(224, 236, 250), QColor(196, 214, 238)],
             QColor(158, 178, 206),
@@ -116,18 +116,18 @@ def _parse_azimuth(value: str) -> float:
     raise argparse.ArgumentTypeError(f"Invalid azimuth: {value!r}. Use degrees (e.g., 180) or compass (e.g., N, NE, E).")
 
 
-def _parse_visual_preset(value: str) -> str:
-    """Parse visual preset."""
+def _parse_theme(value: str) -> str:
+    """Parse theme preset."""
     key = (value or "").strip().lower()
     allowed = {
         "night": "night",
         "day": "day",
-        "bright-bg": "bright-bg",
+        "white": "white",
     }
     if key in allowed:
         return allowed[key]
     raise argparse.ArgumentTypeError(
-        f"Invalid visual preset: {value!r}. Use one of: night, day, bright-bg."
+        f"Invalid theme: {value!r}. Use one of: night, day, white."
     )
 
 
@@ -197,11 +197,12 @@ def parse_args() -> argparse.Namespace:
         help=("Interval for updating stars/sky-color disc in sec. (default: 180)."),
     )
     parser.add_argument(
-        "--visual-preset",
-        type=_parse_visual_preset,
+        "-t",
+        "--theme",
+        type=_parse_theme,
         default="day",
-        metavar="{night,day,bright-bg}",
-        help="Visual preset for background and star contrast (default: day).",
+        metavar="{night,day,white}",
+        help="Theme preset for background and star contrast (default: day).",
     )
     return parser.parse_args()
 
@@ -581,7 +582,7 @@ def main() -> None:
     root_logger = setup_root_logger()
     logger.info(f"{APP_DISPLAY_NAME} starting...")
 
-    splash, splash_handler = setup_splash_and_attach_logger(app, app_name, root_logger, args.visual_preset)
+    splash, splash_handler = setup_splash_and_attach_logger(app, app_name, root_logger, args.theme)
 
     try:
         city = _startup_resolve_city(args.city)
@@ -597,8 +598,8 @@ def main() -> None:
     sky_opacity = min(1.0, max(0.0, args.sky_opacity))
     cloud_opacity = min(1.0, max(0.0, args.cloud_opacity))
     sky_update_interval = max(1, args.sky_update_interval)
-    visual_preset = args.visual_preset
-    star_visibility_boost = 1.12 if visual_preset == "bright-bg" else 1.05 if visual_preset == "day" else 1.0
+    visual_preset = args.theme
+    star_visibility_boost = 1.12 if visual_preset == "white" else 1.05 if visual_preset == "day" else 1.0
 
     city_str = f"{city.cc}/{city.name}"
     main_win = SkyWindow(

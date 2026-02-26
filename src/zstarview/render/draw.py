@@ -27,7 +27,7 @@ DEBUG_ECLIPSE = False
 
 def get_text_style(preset: str = "night") -> Tuple[QColor, QColor]:
     """Return (text_color, outline_color) tuned for the selected visual preset."""
-    if preset == "bright-bg":
+    if preset == "white":
         return QColor(18, 29, 48), QColor(245, 250, 255, 210)
     if preset == "day":
         return QColor(22, 33, 52), QColor(238, 245, 255, 200)
@@ -220,7 +220,7 @@ def draw_radial_background(
     def pos(r: float) -> float:
         return max(0.0, min(1.0, r / r_max))
 
-    if preset == "bright-bg":
+    if preset == "white":
         def col(r: float, s: float) -> QColor:
             t = max(0.0, min(1.0, (r - r90) / max(1.0, r_max - r90)))
             rr = int(232 - 40 * t)
@@ -234,11 +234,13 @@ def draw_radial_background(
             rr = int(180 - 62 * t)
             gg = int(196 - 78 * t)
             bb = int(230 - 95 * t)
-            aa = max(0, 220 - (s + int(140 * t)))
+            # Keep "day" visibly lighter/more transparent than "white".
+            aa = max(0, 170 - (s + int(120 * t)))
             return QColor(rr, gg, bb, aa)
     else:
         def col(r: float, s: float) -> QColor:
-            return QColor(0, 0, 0, max(0, 255 - (s + int(150 * (r - r90) / r_max))))
+            t = max(0.0, min(1.0, (r - r90) / max(1.0, r_max - r90)))
+            return QColor(0, 0, 0, max(0, 205 - (s + int(130 * t))))
 
     c = geometry.center
     g = QRadialGradient(QPointF(c[0], c[1]), r_max)
@@ -848,7 +850,7 @@ def draw_status_line_text(
     if not message:
         return
 
-    if preset == "bright-bg":
+    if preset == "white":
         color = QColor(64, 22, 22)
         outline_color = QColor(255, 245, 245, 220)
     elif preset == "day":
