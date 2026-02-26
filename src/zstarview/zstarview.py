@@ -131,6 +131,28 @@ def _parse_theme(value: str) -> str:
     )
 
 
+def _parse_cloud_stripe(value: str) -> Tuple[int, float]:
+    """Parse cloud stripe style as 'count,width_factor' (e.g. '50,0.2')."""
+    text = (value or "").strip()
+    parts = [p.strip() for p in text.split(",")]
+    if len(parts) != 2:
+        raise argparse.ArgumentTypeError(
+            f"Invalid cloud stripe style: {value!r}. Use 'count,width' (e.g. 50,0.2)."
+        )
+    try:
+        count = int(parts[0])
+        width = float(parts[1])
+    except ValueError as e:
+        raise argparse.ArgumentTypeError(
+            f"Invalid cloud stripe style: {value!r}. Use numeric 'count,width'."
+        ) from e
+    if count < 0 or width < 0:
+        raise argparse.ArgumentTypeError(
+            f"Invalid cloud stripe style: {value!r}. count and width must be >= 0."
+        )
+    return count, width
+
+
 def parse_args() -> argparse.Namespace:
     """Parses command-line arguments."""
     parser = argparse.ArgumentParser(description="Star sky visualizer")
@@ -188,6 +210,16 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=0.2,
         help=("Opacity of the clouds (0.0 - 1.0, default: 0.2). " "Set to 0.0 to disable cloud rendering."),
+    )
+    parser.add_argument(
+        "--cloud-stripe",
+        type=_parse_cloud_stripe,
+        default=(50, 0.2),
+        metavar="COUNT,WIDTH",
+        help=(
+            "Cloud stripe style as 'count,width' (default: 50,0.2). "
+            "If either value is 0, cloud rendering is disabled."
+        ),
     )
     parser.add_argument(
         "-i",
@@ -597,6 +629,9 @@ def main() -> None:
     star_base_radius = max(2.0, args.star_base_radius)
     sky_opacity = min(1.0, max(0.0, args.sky_opacity))
     cloud_opacity = min(1.0, max(0.0, args.cloud_opacity))
+    cloud_stripe_count, cloud_stripe_width = args.cloud_stripe
+    if cloud_stripe_count == 0 or cloud_stripe_width == 0.0:
+        cloud_opacity = 0.0
     sky_update_interval = max(1, args.sky_update_interval)
     visual_preset = args.theme
     star_visibility_boost = 1.12 if visual_preset == "white" else 1.05 if visual_preset == "day" else 1.0
@@ -616,6 +651,7 @@ def main() -> None:
         sky_update_interval=sky_update_interval,
         visual_preset=visual_preset,
         star_visibility_boost=star_visibility_boost,
+        cloud_stripe_style=(cloud_stripe_count, cloud_stripe_width),
     )
 
     def _on_initial_loaded():
