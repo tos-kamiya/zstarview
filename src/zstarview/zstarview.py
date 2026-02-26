@@ -180,6 +180,12 @@ def parse_args() -> argparse.Namespace:
         metavar="{night,day,bright-bg}",
         help="Visual preset for background and star contrast (default: day).",
     )
+    parser.add_argument(
+        "--debug-cloud-dump-dir",
+        type=str,
+        default="",
+        help="Directory to save cloud-disc debug images (RGBA and alpha) on each cloud update.",
+    )
     return parser.parse_args()
 
 
@@ -573,6 +579,7 @@ def main() -> None:
     sky_update_interval = max(1, args.sky_update_interval)
     visual_preset = args.visual_preset
     star_visibility_boost = 1.12 if visual_preset == "bright-bg" else 1.05 if visual_preset == "day" else 1.0
+    debug_cloud_dump_dir = Path(args.debug_cloud_dump_dir).expanduser() if args.debug_cloud_dump_dir else None
 
     city_str = f"{city.cc}/{city.name}"
     main_win = SkyWindow(
@@ -589,6 +596,7 @@ def main() -> None:
         sky_update_interval=sky_update_interval,
         visual_preset=visual_preset,
         star_visibility_boost=star_visibility_boost,
+        debug_cloud_dump_dir=debug_cloud_dump_dir,
     )
 
     def _on_initial_loaded():

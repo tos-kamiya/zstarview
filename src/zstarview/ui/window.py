@@ -9,9 +9,11 @@ clouds, and all user interactions like rotation, zooming, and object highlightin
 import logging
 import threading
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Dict, Optional, Tuple
 
 import polars as pl
+from PIL import Image
 from PySide6.QtCore import QEvent, QPoint, Qt, QTimer, Signal
 from PySide6.QtGui import (
     QAction,
@@ -57,9 +59,9 @@ from ..paths import (
 )
 from ..render import draw as render_draw
 from ..types import CelestialData, ViewerData
-from ..utils.qt import pil_to_qimage
+from ..utils.qt import pil_to_qimage, qimage_to_np_rgba
 from .draggable_window import DraggableWindow
-from .composite import SkyCompositorCache
+from .composite import SkyCompositorCache, cloud_with_hatched_alpha
 from .cloud_state import CloudImageState
 from .sky_worker import SkyDataWorker
 
@@ -112,6 +114,7 @@ class SkyWindow(DraggableWindow):
         sky_update_interval: int = 3 * 60,  # sec
         visual_preset: str = "day",
         star_visibility_boost: float = 1.0,
+        debug_cloud_dump_dir: Optional[Path] = None,
     ) -> None:
         """
         Initializes the SkyWindow.
@@ -129,6 +132,7 @@ class SkyWindow(DraggableWindow):
             vmag_limit: The faintest star magnitude to display.
             visual_preset: UI visual preset name.
             star_visibility_boost: Multiplier for star visibility on bright presets.
+            debug_cloud_dump_dir: Optional output directory for cloud-disc debug images.
         """
         super().__init__()
         self._rotation_step: float = 5.0  # degrees
@@ -142,6 +146,7 @@ class SkyWindow(DraggableWindow):
         self.sky_update_interval = sky_update_interval
         self.visual_preset = visual_preset
         self.star_visibility_boost = max(0.7, min(2.0, float(star_visibility_boost)))
+        self._debug_cloud_dump_dir = debug_cloud_dump_dir
 
         # Cloud opacity is disabled if we are looking at a time-shifted view,
         # as we can only fetch current cloud data.
@@ -499,6 +504,7 @@ class SkyWindow(DraggableWindow):
                     cloud_shell_km=CLOUD_SHELL_KM,
                 )
                 qimg = pil_to_qimage(pil_img)
+                self._dump_cloud_debug_images(pil_img=pil_img, reason=reason, source_time_utc=meta.time_utc)
                 self.cloud_state.set_result(
                     qimg, meta, az=az, time_utc=datetime.now(timezone.utc)
                 )
@@ -536,6 +542,42 @@ class SkyWindow(DraggableWindow):
             if self._cloud_update_pending:
                 self._cloud_update_pending = False
                 self.start_background_cloud_update(reason="pending")
+
+    def _dump_cloud_debug_images(self, pil_img, reason: str, source_time_utc: datetime) -> None:
+        """Save cloud-disc debug images (RGBA + alpha visualization) when enabled."""
+        if self._debug_cloud_dump_dir is None:
+            return
+        try:
+            out_dir = self._debug_cloud_dump_dir
+            out_dir.mkdir(parents=True, exist_ok=True)
+            stamp = source_time_utc.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            safe_reason = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in reason)
+            stem = f"cloud_disc_{stamp}_{safe_reason}"
+
+            rgba = pil_img.convert("RGBA")
+            raw_rgba_path = out_dir / f"{stem}_raw_rgba.png"
+            raw_alpha_path = out_dir / f"{stem}_raw_alpha.png"
+            rgba.save(raw_rgba_path, format="PNG")
+            rgba.getchannel("A").save(raw_alpha_path, format="PNG")
+
+            qimg = pil_to_qimage(rgba)
+            hatch_cfg = self._compositor._hatch_cfg
+            hatched_qimg = cloud_with_hatched_alpha(qimg, hatch_cfg)
+            hatched_rgba_path = out_dir / f"{stem}_hatched_rgba.png"
+            hatched_alpha_path = out_dir / f"{stem}_hatched_alpha.png"
+            hatched_qimg.save(str(hatched_rgba_path), "PNG")
+            hatched_np = qimage_to_np_rgba(hatched_qimg)
+            Image.fromarray(hatched_np[..., 3], mode="L").save(hatched_alpha_path, format="PNG")
+
+            logger.info(
+                "Saved cloud debug images: %s, %s, %s, %s",
+                raw_rgba_path,
+                raw_alpha_path,
+                hatched_rgba_path,
+                hatched_alpha_path,
+            )
+        except Exception as e:
+            logger.warning("Failed to save cloud debug images: %s", e)
 
     def _cleanup_cache(self) -> None:
         if not self._clouddisc:
