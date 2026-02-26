@@ -55,19 +55,42 @@ SPLASH_WARN_COLOR = QColor(130, 82, 20)
 SPLASH_ERROR_COLOR = QColor(146, 34, 34)
 
 
-def _build_splash_pixmap(width: int = 400, height: int = 200) -> QPixmap:
-    """Create a bright-bg-like splash background."""
+def _get_splash_palette(visual_preset: str) -> tuple[list[QColor], QColor, QColor]:
+    """Return gradient colors, frame color, and default message color for splash."""
+    if visual_preset == "night":
+        return (
+            [QColor(16, 20, 34), QColor(10, 14, 25), QColor(6, 9, 17)],
+            QColor(66, 84, 118),
+            QColor(214, 228, 255),
+        )
+    if visual_preset == "white":
+        return (
+            [QColor(244, 250, 255), QColor(224, 236, 250), QColor(196, 214, 238)],
+            QColor(158, 178, 206),
+            QColor(19, 31, 50),
+        )
+    # day
+    return (
+        [QColor(236, 244, 255), QColor(214, 227, 246), QColor(186, 204, 232)],
+        QColor(148, 167, 194),
+        QColor(18, 29, 48),
+    )
+
+
+def _build_splash_pixmap(visual_preset: str, width: int = 400, height: int = 200) -> QPixmap:
+    """Create a splash background matching the selected visual preset."""
+    grad_colors, frame_color, _ = _get_splash_palette(visual_preset)
     pixmap = QPixmap(width, height)
     pixmap.fill(Qt.GlobalColor.transparent)
     painter = QPainter(pixmap)
     grad = QLinearGradient(0, 0, width, height)
-    grad.setColorAt(0.0, QColor(236, 244, 255))
-    grad.setColorAt(0.55, QColor(214, 227, 246))
-    grad.setColorAt(1.0, QColor(186, 204, 232))
+    grad.setColorAt(0.0, grad_colors[0])
+    grad.setColorAt(0.55, grad_colors[1])
+    grad.setColorAt(1.0, grad_colors[2])
     painter.fillRect(0, 0, width, height, grad)
 
     # Subtle frame to separate splash from desktop background.
-    painter.setPen(QColor(148, 167, 194))
+    painter.setPen(frame_color)
     painter.drawRect(0, 0, width - 1, height - 1)
     painter.end()
     return pixmap
@@ -93,18 +116,18 @@ def _parse_azimuth(value: str) -> float:
     raise argparse.ArgumentTypeError(f"Invalid azimuth: {value!r}. Use degrees (e.g., 180) or compass (e.g., N, NE, E).")
 
 
-def _parse_visual_preset(value: str) -> str:
-    """Parse visual preset."""
+def _parse_theme(value: str) -> str:
+    """Parse theme preset."""
     key = (value or "").strip().lower()
     allowed = {
         "night": "night",
         "day": "day",
-        "bright-bg": "bright-bg",
+        "white": "white",
     }
     if key in allowed:
         return allowed[key]
     raise argparse.ArgumentTypeError(
-        f"Invalid visual preset: {value!r}. Use one of: night, day, bright-bg."
+        f"Invalid theme: {value!r}. Use one of: night, day, white."
     )
 
 
@@ -174,11 +197,12 @@ def parse_args() -> argparse.Namespace:
         help=("Interval for updating stars/sky-color disc in sec. (default: 180)."),
     )
     parser.add_argument(
-        "--visual-preset",
-        type=_parse_visual_preset,
-        default="day",
-        metavar="{night,day,bright-bg}",
-        help="Visual preset for background and star contrast (default: day).",
+        "-t",
+        "--theme",
+        type=_parse_theme,
+        default="night",
+        metavar="{night,day,white}",
+        help="Theme preset for background and star contrast (default: night).",
     )
     return parser.parse_args()
 
@@ -186,7 +210,7 @@ def parse_args() -> argparse.Namespace:
 class SplashLogHandler(logging.Handler):
     """A temporary log handler to display logs on the splash screen."""
 
-    def __init__(self, show_fn: Callable[[str, QColor], None]):
+    def __init__(self, show_fn: Callable[[str, QColor], None], info_color: QColor):
         """
         Initializes the SplashLogHandler.
 
@@ -197,6 +221,7 @@ class SplashLogHandler(logging.Handler):
         super().__init__()
         self.show_fn = show_fn
         self._main_thread_id = threading.get_ident()
+        self._info_color = info_color
         # Use a concise and visible format for the splash screen.
         self.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
 
@@ -215,7 +240,7 @@ class SplashLogHandler(logging.Handler):
             msg = self.format(record)
             # Color-code messages based on log level.
             color = (
-                SPLASH_INFO_COLOR if record.levelno < logging.WARNING else SPLASH_WARN_COLOR if record.levelno < logging.ERROR else SPLASH_ERROR_COLOR
+                self._info_color if record.levelno < logging.WARNING else SPLASH_WARN_COLOR if record.levelno < logging.ERROR else SPLASH_ERROR_COLOR
             )
             self.show_fn(msg, color)
         except Exception:
@@ -276,6 +301,7 @@ def setup_splash_and_attach_logger(
     app: QApplication,
     app_name: str,
     root_logger: logging.Logger,
+    visual_preset: str,
 ) -> Tuple[QSplashScreen, SplashLogHandler]:
     """
     Creates a splash screen and attaches a log handler to it.
@@ -291,7 +317,8 @@ def setup_splash_and_attach_logger(
         A tuple containing the QSplashScreen and SplashLogHandler instances.
     """
     splash = QSplashScreen(QPixmap(400, 200), Qt.WindowType.WindowStaysOnTopHint)
-    pixmap = _build_splash_pixmap(400, 200)
+    _, _, info_color = _get_splash_palette(visual_preset)
+    pixmap = _build_splash_pixmap(visual_preset, 400, 200)
     splash.setPixmap(pixmap)
     splash.show()
 
@@ -299,7 +326,7 @@ def setup_splash_and_attach_logger(
         splash.showMessage(f"{app_name} ver. {__version__}\n{message}", Qt.AlignmentFlag.AlignCenter, color)
         app.processEvents()
 
-    splash_handler = SplashLogHandler(show_splash_message)
+    splash_handler = SplashLogHandler(show_splash_message, info_color)
 
     root_logger.addHandler(splash_handler)
 
@@ -555,7 +582,7 @@ def main() -> None:
     root_logger = setup_root_logger()
     logger.info(f"{APP_DISPLAY_NAME} starting...")
 
-    splash, splash_handler = setup_splash_and_attach_logger(app, app_name, root_logger)
+    splash, splash_handler = setup_splash_and_attach_logger(app, app_name, root_logger, args.theme)
 
     try:
         city = _startup_resolve_city(args.city)
@@ -571,8 +598,8 @@ def main() -> None:
     sky_opacity = min(1.0, max(0.0, args.sky_opacity))
     cloud_opacity = min(1.0, max(0.0, args.cloud_opacity))
     sky_update_interval = max(1, args.sky_update_interval)
-    visual_preset = args.visual_preset
-    star_visibility_boost = 1.12 if visual_preset == "bright-bg" else 1.05 if visual_preset == "day" else 1.0
+    visual_preset = args.theme
+    star_visibility_boost = 1.12 if visual_preset == "white" else 1.05 if visual_preset == "day" else 1.0
 
     city_str = f"{city.cc}/{city.name}"
     main_win = SkyWindow(

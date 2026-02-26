@@ -14,7 +14,7 @@ from typing import Optional, Tuple
 
 import numpy as np
 from PySide6.QtCore import QRect, Qt
-from PySide6.QtGui import QImage, QPainter, QPixmap
+from PySide6.QtGui import QImage, QPainter
 
 from ..paths import CLOUD_HATCH_DEFAULT, HatchConfig
 from ..types import ScreenGeometry
@@ -24,14 +24,15 @@ from ..utils.qt import np_rgba_to_qimage, qimage_to_np_rgba
 def make_hatch_tile_qimage(W: int, H: int, line_px: int, strength: int) -> QImage:
     """Generate a diagonal hatch tile as a QImage (ARGB32_Premultiplied)."""
     norm = math.sqrt(W * W + H * H)
-    P = W * H
-    band_u = max(1, int(round(line_px * norm)))
+    period = max(1, int(round(norm * 0.5)))
+    band_u = max(1, int(round(line_px)))
 
     xs = np.arange(W, dtype=np.int32)[None, :]
     ys = np.arange(H, dtype=np.int32)[:, None]
-    u = H * xs - W * ys
-    u_mod = np.mod(u, P)
-    dist = np.minimum(u_mod, P - u_mod)
+    # Enforce exact 45-degree hatch lines: x - y = const.
+    u = xs - ys
+    u_mod = np.mod(u, period)
+    dist = np.minimum(u_mod, period - u_mod)
     mask = dist <= (band_u / 2)
 
     arr = np.zeros((H, W, 4), dtype=np.uint8)
@@ -44,25 +45,35 @@ def make_hatch_tile_qimage(W: int, H: int, line_px: int, strength: int) -> QImag
 
 
 def cloud_with_hatched_alpha(cloud_img: QImage, hatch_cfg: HatchConfig) -> QImage:
-    """Apply a hatch tile to the alpha of the cloud image (destination-out)."""
-    out = (
-        cloud_img
-        if cloud_img.format() == QImage.Format_ARGB32_Premultiplied
-        else cloud_img.convertToFormat(QImage.Format_ARGB32_Premultiplied)
-    )
+    """Apply continuous 45-degree hatch directly to alpha (no tile seams)."""
+    out = cloud_img if cloud_img.format() == QImage.Format_RGBA8888 else cloud_img.convertToFormat(QImage.Format_RGBA8888)
+    cloud = qimage_to_np_rgba(out).astype(np.uint8)
 
-    hatch_tile = make_hatch_tile_qimage(
-        hatch_cfg.tile_w_px,
-        hatch_cfg.tile_h_px,
-        hatch_cfg.line_px,
-        hatch_cfg.strength,
-    )
+    h, w = cloud.shape[:2]
+    xs = np.arange(w, dtype=np.int32)[None, :]
+    ys = np.arange(h, dtype=np.int32)[:, None]
 
-    p = QPainter(out)
-    p.setCompositionMode(QPainter.CompositionMode_DestinationOut)
-    p.drawTiledPixmap(out.rect(), QPixmap.fromImage(hatch_tile))
-    p.end()
-    return out
+    period = max(2, int(round(math.hypot(hatch_cfg.tile_w_px, hatch_cfg.tile_h_px) * 0.5)))
+    band = max(1, int(round(hatch_cfg.line_px)))
+
+    # Exact 45-degree lines: x - y = const, repeated by period.
+    u = xs - ys
+    u_mod = np.mod(u, period)
+    dist = np.minimum(u_mod, period - u_mod)
+    line_mask = dist <= (band / 2.0)
+
+    erase = float(np.clip(hatch_cfg.strength, 0, 255)) / 255.0
+    keep = 1.0 - erase
+
+    # Match DestinationOut semantics: attenuate both alpha and premultiplied color.
+    rgb = cloud[..., :3].astype(np.float32)
+    alpha = cloud[..., 3].astype(np.float32)
+    rgb[line_mask] = rgb[line_mask] * keep
+    alpha[line_mask] = alpha[line_mask] * keep
+
+    cloud[..., :3] = np.clip(np.round(rgb), 0, 255).astype(np.uint8)
+    cloud[..., 3] = np.clip(np.round(alpha), 0, 255).astype(np.uint8)
+    return np_rgba_to_qimage(cloud)
 
 
 def compose_cloud_over_sky(
@@ -102,15 +113,13 @@ def compose_cloud_over_sky(
     gray_rgb_u16 = np.repeat(gray_u8[:, :, None], 3, axis=2).astype(np.uint16)
     base_u16 = (inv_a8[:, :, None] * sky_rgb_u16 + a8[:, :, None] * gray_rgb_u16) // 255
 
-    # Improve cloud/sky separation: darken cloud-covered regions slightly.
-    # This keeps cloud shape visible even when hatch is weak or disabled.
-    darken = 1.0 - (0.45 * a)
-    base_u16 = np.clip(base_u16.astype(np.float32) * darken[:, :, None], 0.0, 255.0).astype(np.uint16)
-
     cop = float(np.clip(cloud_opacity, 0.0, 1.0))
     if cop > 0.0:
-        add_u16 = (cloud_np[..., :3].astype(np.uint16) * int(round(cop * 255))) // 255
-        out_u16 = base_u16 + add_u16
+        cop_u16 = int(round(cop * 255))
+        cloud_rgb_u32 = cloud_np[..., :3].astype(np.uint32)
+        cloud_a_u32 = cloud_np[..., 3].astype(np.uint32)[:, :, None]
+        add_u32 = (cloud_rgb_u32 * cloud_a_u32 * np.uint32(cop_u16)) // np.uint32(255 * 255)
+        out_u16 = base_u16 + add_u32.astype(np.uint16)
         np.minimum(out_u16, 255, out=out_u16)
     else:
         out_u16 = base_u16

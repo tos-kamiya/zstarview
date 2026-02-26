@@ -15,6 +15,7 @@ import polars as pl
 from PySide6.QtCore import QEvent, QPoint, Qt, QTimer, Signal
 from PySide6.QtGui import (
     QAction,
+    QCloseEvent,
     QFont,
     QFontDatabase,
     QIcon,
@@ -110,7 +111,7 @@ class SkyWindow(DraggableWindow):
         star_base_radius: float = 8.0,
         vmag_limit: float = 6.0,
         sky_update_interval: int = 3 * 60,  # sec
-        visual_preset: str = "day",
+        visual_preset: str = "night",
         star_visibility_boost: float = 1.0,
     ) -> None:
         """
@@ -189,6 +190,10 @@ class SkyWindow(DraggableWindow):
         self._sky_worker = SkyDataWorker(self)
         self._sky_worker.data_ready.connect(self._on_sky_data_calculated)
         self.cloud_repaint_requested.connect(self.update)
+        self._is_shutting_down: bool = False
+        app = QApplication.instance()
+        if app is not None:
+            app.aboutToQuit.connect(self._begin_shutdown)
         self._sky_data_update_timer = QTimer(self)
         self._sky_data_update_timer.timeout.connect(self.start_background_sky_data_update)
         self.celestial_data: Optional[CelestialData] = None
@@ -281,6 +286,27 @@ class SkyWindow(DraggableWindow):
         menu_pos = self.menu_button.mapToGlobal(QPoint(0, self.menu_button.height()))
         self.menu.exec(menu_pos)
 
+    def _begin_shutdown(self) -> None:
+        """Stop scheduling new background work while the app is closing."""
+        if self._is_shutting_down:
+            return
+        self._is_shutting_down = True
+        self._cloud_update_pending = False
+        self._sky_worker.shutdown()
+        if self._sky_data_update_timer.isActive():
+            self._sky_data_update_timer.stop()
+        if self._cloud_update_timer.isActive():
+            self._cloud_update_timer.stop()
+
+    def _safe_request_cloud_repaint(self) -> None:
+        """Best-effort repaint request; ignores teardown-time signal errors."""
+        if self._is_shutting_down:
+            return
+        try:
+            self.cloud_repaint_requested.emit()
+        except RuntimeError:
+            logger.debug("Skip cloud repaint emit during shutdown.")
+
     def toggle_enlarge_moon(self) -> None:
         self.enlarge_moon = not self.enlarge_moon
         if self._action_enlarge_moon is not None and self._action_enlarge_moon.isChecked() != self.enlarge_moon:
@@ -297,6 +323,10 @@ class SkyWindow(DraggableWindow):
         self.mouse_pos = None
         self.update()
         event.accept()
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        self._begin_shutdown()
+        super().closeEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         self.mouse_pos = event.pos()
@@ -454,6 +484,8 @@ class SkyWindow(DraggableWindow):
         return started
 
     def start_background_cloud_update(self, reason: str = "manual") -> None:
+        if self._is_shutting_down:
+            return
         if not (self._clouddisc and self.cloud_disc_alpha > 0.0):
             return
 
@@ -510,11 +542,11 @@ class SkyWindow(DraggableWindow):
             except DownloadError as e:
                 logger.warning("Network/S3 download error: %s", e)
                 self.cloud_state.set_error_banner("Clouds: Network/S3 download error")
-                self.cloud_repaint_requested.emit()
+                self._safe_request_cloud_repaint()
             except TimeoutError as e:
                 logger.warning("Clouds fetch timed out: %s", e)
                 self.cloud_state.set_error_banner("Clouds: Clouds fetch timed out")
-                self.cloud_repaint_requested.emit()
+                self._safe_request_cloud_repaint()
             except DataNotFoundError as e:
                 logger.info("Satellite data not found in search window: %s", e)
                 self.cloud_state.set_error_banner("Clouds: Satellite data not found in search window")
@@ -527,13 +559,13 @@ class SkyWindow(DraggableWindow):
 
             
             # Trigger a repaint on the main thread
-            self.cloud_repaint_requested.emit()
+            self._safe_request_cloud_repaint()
         except Exception as e:
             logger.error(f"Cloud update failed: {e}", exc_info=True)
         finally:
             self._is_cloud_update_running = False
             # If another update was requested while this one was running, start it now.
-            if self._cloud_update_pending:
+            if self._cloud_update_pending and not self._is_shutting_down:
                 self._cloud_update_pending = False
                 self.start_background_cloud_update(reason="pending")
 

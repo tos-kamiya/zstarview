@@ -45,6 +45,7 @@
   - `--vmag-limit`, `--star-base-radius`
   - `--sky-opacity`, `--cloud-opacity`
   - `--enlarge-moon`, `--sky-update-interval`
+  - `-t`, `--theme`（`night` / `day` / `white`）
 - `city` は以下を受け入れる:
   - 都市名 (`Tokyo`)
   - `CC/City` 形式 (`JP/Tokyo`)
@@ -79,6 +80,7 @@
   - CloudDiscで衛星データから雲画像生成
   - 更新中/失敗時のバナー表示
   - 再描画要求はQtシグナル経由でUIスレッドに配送
+  - 終了シーケンス開始後は新規更新を停止し、終了時の再描画シグナル送出は抑止する
 
 ### 5.5 雲表示の制約
 

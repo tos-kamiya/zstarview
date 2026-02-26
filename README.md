@@ -53,6 +53,7 @@ zstarview [options] [city]
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | Base size of stars.                                                         | `8.0`   |
 | `-V`, `--vmag-limit V_MAG_LIMIT`            | Maximum visual magnitude of stars to display.                               | `6.0`   |
 | `-i`, `--sky-update-interval SECONDS`       | Interval for updating stars/sky-color disc in seconds.                      | `180`   |
+| `-t`, `--theme {night,day,white}`           | Theme preset for background and star contrast.                              | `night` |
 | `-H`, `--hours HOURS`                       | Number of hours to add to the current time. \*1                              | `0`     |
 | `-D`, `--days DAYS`                         | Number of days to add to the current time. \*1                               | `0`     |
 | `--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"` | Specify an absolute date/time. Time may be given as `HH`, `HH:MM`, or `HH:MM:SS`. If no TZ is specified, UTC is assumed. \*1 |         |

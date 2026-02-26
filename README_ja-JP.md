@@ -54,6 +54,7 @@ zstarview [options] [city]
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | 星の基本サイズを指定します。                                       | `8.0`    |
 | `-V`, `--vmag-limit V_MAG_LIMIT`            | 表示する恒星の等級（明るさ）の上限を指定します。                          | `6.0`    |
 | `-i`, `--sky-update-interval SKY_UPDATE_INTERVAL` | 星空を更新する時間間隔（秒） を指定します。 | `180` |
+| `-t`, `--theme {night,day,white}` | 背景と星の見え方のテーマを指定します。 | `night` |
 | `-H`, `--hours HOURS`                       | 現在時刻に加算する時間数を指定します。※1                                 | `0`      |
 | `-D`, `--days DAYS`                         | 現在時刻に加算する日数を指定します。※1                                  | `0`      |
 | `--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"` | 絶対的な日時を指定します。時刻は「時」「時:分」「時:分:秒」のいずれかで指定できます。タイムゾーン（TZ）を省略した場合はUTC。※1 |          |
