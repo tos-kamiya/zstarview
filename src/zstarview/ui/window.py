@@ -60,7 +60,7 @@ from ..render import draw as render_draw
 from ..types import CelestialData, ViewerData
 from ..utils.qt import pil_to_qimage
 from .draggable_window import DraggableWindow
-from .composite import SkyCompositorCache
+from .composite import SkyCompositorCache, build_stripe_density_field
 from .cloud_state import CloudImageState
 from .sky_worker import SkyDataWorker
 
@@ -376,6 +376,7 @@ class SkyWindow(DraggableWindow):
             self._sky_disc_image,
             self.cloud_state.image,
             cloud_alpha=self.cloud_disc_alpha,
+            stripe_density=self.cloud_state.stripe_density,
         )
 
         # 4. Draw reference lines (horizon, equator, etc.)
@@ -531,8 +532,13 @@ class SkyWindow(DraggableWindow):
                     cloud_shell_km=CLOUD_SHELL_KM,
                 )
                 qimg = pil_to_qimage(pil_img)
+                stripe_density = build_stripe_density_field(qimg)
                 self.cloud_state.set_result(
-                    qimg, meta, az=az, time_utc=datetime.now(timezone.utc)
+                    qimg,
+                    meta,
+                    az=az,
+                    time_utc=datetime.now(timezone.utc),
+                    stripe_density=stripe_density,
                 )
 
                 # Invalidate composition cache to force a redraw with new clouds
