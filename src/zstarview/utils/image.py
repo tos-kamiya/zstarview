@@ -3,7 +3,6 @@
 Image generation utilities, such as creating celestial body sprites.
 """
 
-import math
 from typing import Optional, Tuple
 
 import numpy as np
@@ -52,68 +51,54 @@ def generate_moon_phase_image(
     cx = cy = size // 2
     r = size // 2
     img = np.zeros((size, size, 4), dtype=np.uint8)  # RGBA buffer
+    if r <= 0:
+        return Image.fromarray(img, mode="RGBA")
 
-    # Pre-cast colors and parameters for performance
-    moon_rgb = np.array(moon_color, dtype=np.float32)
-    dark_rgb = np.array(dark_color, dtype=np.float32)
-    use_tint = tint_color is not None
-    if use_tint:
+    # Pre-cast colors and vectors for vectorized shading.
+    moon_rgb = np.asarray(moon_color, dtype=np.float32)
+    dark_rgb = np.asarray(dark_color, dtype=np.float32)
+    sun_dir = np.asarray(sun_dir_3d, dtype=np.float32)
+    view_dir = np.asarray(view_dir_3d, dtype=np.float32)
+
+    xs = (np.arange(size, dtype=np.float32) - float(cx)) / float(r)
+    ys = (np.arange(size, dtype=np.float32) - float(cy)) / float(r)
+    dx, dy = np.meshgrid(xs, ys)
+    d2 = dx * dx + dy * dy
+    disc_mask = d2 <= 1.0
+
+    dz = np.zeros_like(dx, dtype=np.float32)
+    dz[disc_mask] = np.sqrt(np.maximum(0.0, 1.0 - d2[disc_mask]))
+    normals = np.stack((dx, dy, dz), axis=-1)
+
+    # Culls the back side of the moon.
+    view_dot = normals @ view_dir
+    visible_mask = disc_mask & (view_dot > 0.0)
+    if not np.any(visible_mask):
+        return Image.fromarray(img, mode="RGBA")
+
+    light = normals @ sun_dir
+    sunlit_mask = visible_mask & (light > 0.0)
+    dark_mask = visible_mask & ~sunlit_mask
+
+    rgb = np.zeros((size, size, 3), dtype=np.float32)
+    rgb[sunlit_mask] = moon_rgb[None, :] * light[sunlit_mask, None]
+    rgb[dark_mask] = dark_rgb[None, :] * float(earthshine_factor)
+
+    if tint_color is not None:
         tr, tg, tb, ta = tint_color
-        tint_rgb = np.array([tr, tg, tb], dtype=np.float32)
         tint_a = float(ta) / 255.0
+        if tint_a > 0.0:
+            tint_rgb = np.asarray([tr, tg, tb], dtype=np.float32)
+            rgb[visible_mask] = (1.0 - tint_a) * rgb[visible_mask] + tint_a * tint_rgb[None, :]
 
-    # Iterate over each pixel in the output image
-    for y in range(size):
-        dy_px = y - cy
-        for x in range(size):
-            dx_px = x - cx
+    alpha = np.zeros((size, size), dtype=np.float32)
+    if edge_soft_px > 0.0:
+        dist_to_rim_px = (1.0 - np.sqrt(np.clip(d2, 0.0, 1.0))) * float(r)
+        alpha_factor = np.clip(dist_to_rim_px / float(edge_soft_px), 0.0, 1.0)
+        alpha[visible_mask] = 255.0 * alpha_factor[visible_mask]
+    else:
+        alpha[visible_mask] = 255.0
 
-            # Convert pixel coordinates to normalized disc coordinates (-1.0 to 1.0)
-            dx = dx_px / r
-            dy = dy_px / r
-            d2 = dx * dx + dy * dy
-
-            # Skip pixels outside the circular disc of the moon
-            if d2 > 1.0:
-                continue
-
-            # Project the 2D disc coordinate to a 3D surface normal on a unit sphere.
-            # The z-component points towards the viewer.
-            dz = math.sqrt(max(0.0, 1.0 - d2))
-            surf_normal = np.array([dx, dy, dz], dtype=np.float32)
-
-            # Check if this part of the surface is visible to the viewer.
-            # This culls the back side of the moon.
-            view_dot = float(np.dot(surf_normal, view_dir_3d))
-            if view_dot <= 0.0:
-                continue
-
-            # --- Shading Calculation ---
-            # Calculate Lambertian shading based on the angle to the sun.
-            light = float(np.dot(surf_normal, sun_dir_3d))
-            if light > 0.0:
-                # Sunlit side
-                c = moon_rgb * light
-            else:
-                # Dark side (with earthshine)
-                c = dark_rgb * earthshine_factor
-
-            # --- Tinting ---
-            # Apply an optional color tint (e.g., for a lunar eclipse).
-            if use_tint and tint_a > 0.0:
-                c = (1.0 - tint_a) * c + tint_a * tint_rgb
-
-            # --- Anti-aliasing ---
-            # Feather the alpha channel at the moon's rim to reduce jagged edges.
-            if edge_soft_px > 0.0:
-                dist_to_rim_px = (1.0 - math.sqrt(d2)) * r
-                alpha_factor = np.clip(dist_to_rim_px / edge_soft_px, 0.0, 1.0)
-                a = 255.0 * alpha_factor
-            else:
-                a = 255.0
-
-            # Write the final RGBA value to the image buffer, clamping values.
-            img[y, x, :3] = np.clip(c, 0.0, 255.0).astype(np.uint8)
-            img[y, x, 3] = int(a)
-
+    img[..., :3] = np.clip(rgb, 0.0, 255.0).astype(np.uint8)
+    img[..., 3] = np.clip(alpha, 0.0, 255.0).astype(np.uint8)
     return Image.fromarray(img, mode="RGBA")
