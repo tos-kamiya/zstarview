@@ -47,7 +47,7 @@ def make_hatch_tile_qimage(W: int, H: int, line_px: int, strength: int) -> QImag
 def cloud_with_hatched_alpha(cloud_img: QImage, hatch_cfg: HatchConfig) -> QImage:
     """Apply continuous 45-degree hatch directly to alpha (no tile seams)."""
     out = cloud_img if cloud_img.format() == QImage.Format_RGBA8888 else cloud_img.convertToFormat(QImage.Format_RGBA8888)
-    cloud = qimage_to_np_rgba(out).astype(np.uint8)
+    cloud = qimage_to_np_rgba(out)
 
     h, w = cloud.shape[:2]
     xs = np.arange(w, dtype=np.int32)[None, :]
@@ -118,21 +118,21 @@ def compose_cloud_over_sky(
     if cloud_img_rgba.width() != w or cloud_img_rgba.height() != h:
         cloud_img_rgba = cloud_img_rgba.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
 
-    sky_np = qimage_to_np_rgba(sky_img).astype(np.uint8)
-    cloud_np = qimage_to_np_rgba(cloud_img_rgba).astype(np.uint8)
+    sky_np = qimage_to_np_rgba(sky_img)
+    cloud_np = qimage_to_np_rgba(cloud_img_rgba)
 
-    r = sky_np[..., 0].astype(np.uint16)
-    g = sky_np[..., 1].astype(np.uint16)
-    b = sky_np[..., 2].astype(np.uint16)
+    sky_rgb_u16 = sky_np[..., :3].astype(np.uint16)
+    r = sky_rgb_u16[..., 0]
+    g = sky_rgb_u16[..., 1]
+    b = sky_rgb_u16[..., 2]
     gray_u8 = ((77 * r + 150 * g + 29 * b) >> 8).astype(np.uint8)
 
     a = (cloud_np[..., 3].astype(np.float32) / 255.0) * float(np.clip(gray_mix, 0.0, 1.0))
     a8 = (np.clip(a, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint16)
     inv_a8 = 255 - a8
 
-    sky_rgb_u16 = sky_np[..., :3].astype(np.uint16)
-    gray_rgb_u16 = np.repeat(gray_u8[:, :, None], 3, axis=2).astype(np.uint16)
-    base_u16 = (inv_a8[:, :, None] * sky_rgb_u16 + a8[:, :, None] * gray_rgb_u16) // 255
+    gray_u16 = gray_u8.astype(np.uint16)
+    base_u16 = (inv_a8[:, :, None] * sky_rgb_u16 + a8[:, :, None] * gray_u16[:, :, None]) // 255
 
     cop = float(np.clip(cloud_opacity, 0.0, 1.0))
     if cop > 0.0:
@@ -151,7 +151,7 @@ def compose_cloud_over_sky(
 
     cy, cx = (h - 1) * 0.5, (w - 1) * 0.5
     rr = min(cx, cy)
-    y, x = np.arange(h, dtype=np.float32)[:, None], np.arange(w, dtype=np.float32)[None, :]
+    y, x = np.ogrid[:h, :w]
     r2 = (x - cx) ** 2 + (y - cy) ** 2
     mask = r2 <= (rr + 0.25) ** 2
     out[..., 3][~mask] = 0
