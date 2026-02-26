@@ -115,8 +115,11 @@ def compose_cloud_over_sky(
 
     cop = float(np.clip(cloud_opacity, 0.0, 1.0))
     if cop > 0.0:
-        add_u16 = (cloud_np[..., :3].astype(np.uint16) * int(round(cop * 255))) // 255
-        out_u16 = base_u16 + add_u16
+        cop_u16 = int(round(cop * 255))
+        cloud_rgb_u32 = cloud_np[..., :3].astype(np.uint32)
+        cloud_a_u32 = cloud_np[..., 3].astype(np.uint32)[:, :, None]
+        add_u32 = (cloud_rgb_u32 * cloud_a_u32 * np.uint32(cop_u16)) // np.uint32(255 * 255)
+        out_u16 = base_u16 + add_u32.astype(np.uint16)
         np.minimum(out_u16, 255, out=out_u16)
     else:
         out_u16 = base_u16

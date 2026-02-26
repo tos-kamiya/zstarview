@@ -58,15 +58,15 @@ def convert_bt_to_la_image(
     Converts a brightness temperature (BT) array to a grayscale-alpha (LA) image.
 
     The output is an "LA" mode Pillow Image, which has two 8-bit channels:
-    - L: Luminance (grayscale value), representing cloud brightness.
-    - A: Alpha (transparency), used here as a hard mask for the visible disc.
+    - L: Luminance (grayscale value), fixed to white for visible pixels.
+    - A: Alpha (transparency), representing cloud amount (0=clear, 255=thick cloud).
 
     Args:
         bt: A NumPy array of brightness temperatures in Kelvin.
         mask_inside: A boolean NumPy array where True indicates pixels inside the
                      visible disc (i.e., above the horizon and within the FOV).
-        bt_warm: The temperature (K) to map to black (L=0).
-        bt_cold: The temperature (K) to map to white (L=255).
+        bt_warm: The temperature (K) mapped to alpha 0.
+        bt_cold: The temperature (K) mapped to alpha 255.
 
     Returns:
         A Pillow Image object in "LA" mode.
@@ -76,13 +76,14 @@ def convert_bt_to_la_image(
         mid = 0.5 * (bt_warm + bt_cold)
         bt_cold, bt_warm = mid - 0.25, mid + 0.25
 
-    # 1. Calculate the base luminance (grayscale) channel from temperature.
+    # 1. Convert BT to cloud amount in [0,1].
     weight = _bt_to_weight(bt, bt_warm, bt_cold)
-    l_channel = (weight * 255.0).astype(np.uint8)
 
-    # 2. Create a hard alpha mask based on the visible area.
-    a_channel = np.zeros_like(l_channel, dtype=np.uint8)
-    a_channel[mask_inside] = 255
+    # 2. Keep cloud color white and encode cloud amount in alpha.
+    l_channel = np.zeros_like(weight, dtype=np.uint8)
+    l_channel[mask_inside] = 255
+    a_channel = np.zeros_like(weight, dtype=np.uint8)
+    a_channel[mask_inside] = (weight[mask_inside] * 255.0).astype(np.uint8)
 
     # 3. Stack the L and A channels together to create the final LA image data.
     la_data = np.dstack([l_channel, a_channel])
