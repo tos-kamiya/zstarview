@@ -35,6 +35,8 @@ pipx install git+https://github.com/tos-kamiya/zstarview.git
 zstarview [options] [city]
 ```
 
+> 注記（Ubuntu/Wayland, GNOME）: ターミナル起動時にタスクバーのアイコンが表示されない場合は、後述の [`.desktop` ランチャーの生成（GNOME専用）](#desktop-ランチャーの生成gnome専用) を実行してください。
+
 ### 引数
 
 | 引数     | 説明                                                          | デフォルト              |

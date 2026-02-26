@@ -34,6 +34,8 @@ pipx install git+https://github.com/tos-kamiya/zstarview.git
 zstarview [options] [city]
 ```
 
+> Note (Ubuntu/Wayland, GNOME): If the taskbar icon does not appear when launching from a terminal, follow the steps in [Generating a `.desktop` launcher (GNOME only)](#generating-a-desktop-launcher-gnome-only).
+
 ### Argument
 
 | Argument | Description                                                                                                                                                                                                                                                           | Default                           |
