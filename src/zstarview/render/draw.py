@@ -305,15 +305,25 @@ def draw_sky_reference_lines(painter: QPainter, geometry: ScreenGeometry, celest
             pts = [QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in frag]
             poly = QPolygonF(pts)
 
-            bc = QColor.fromRgbF(0, 0, 0, 0.3)
-            base = QPen(bc, width + 2, Qt.PenStyle.SolidLine)
+            # Use a tinted outline (same hue) instead of black to avoid dark gaps
+            # on bright or highly transparent backgrounds.
+            base_color = QColor(*color)
+            base_color.setAlpha(70)
+            base = QPen(base_color, width + 2, Qt.PenStyle.SolidLine)
             base.setCosmetic(True)
+            # Keep the outline only under visible dash segments.
+            # This avoids black "gaps" on bright/transparent backgrounds.
+            base.setDashPattern(style)
+            base.setCapStyle(Qt.PenCapStyle.RoundCap)
+            base.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
             painter.setPen(base)
             painter.drawPolyline(poly)
 
             fg = QPen(QColor(*color), width)
             fg.setCosmetic(True)
             fg.setDashPattern(style)
+            fg.setCapStyle(Qt.PenCapStyle.RoundCap)
+            fg.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
             painter.setPen(fg)
             painter.drawPolyline(poly)
     painter.restore()
