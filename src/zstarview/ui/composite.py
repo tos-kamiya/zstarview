@@ -73,18 +73,14 @@ def cloud_with_hatched_alpha(cloud_img: QImage, hatch_cfg: HatchConfig) -> QImag
     if np.any(avg_mask):
         # Work in normalized alpha [0.0, 1.0].
         src_alpha01 = cloud[..., 3].astype(np.float32) / 255.0
-        uniq = np.unique(stripe_id[avg_mask])
-        for sid in uniq:
-            stripe_mask = avg_mask & (stripe_id == sid)
-            if not np.any(stripe_mask):
-                continue
-            vals = src_alpha01[stripe_mask]
-            s = 0.0
-            for v in vals:
-                s += float(v)
-            n = int(vals.size)
-            avg = (s / n) if n > 0 else 0.0
-            src_alpha01[stripe_mask] = avg
+        stripe_idx = stripe_id[avg_mask].astype(np.int64, copy=False)
+        alpha_vals = src_alpha01[avg_mask].astype(np.float64, copy=False)
+        sid_min = int(stripe_idx.min())
+        sid_norm = stripe_idx - sid_min
+        sums = np.bincount(sid_norm, weights=alpha_vals)
+        counts = np.bincount(sid_norm)
+        means = np.divide(sums, counts, out=np.zeros_like(sums), where=counts > 0)
+        src_alpha01[avg_mask] = means[sid_norm].astype(np.float32, copy=False)
         cloud[..., 3] = np.clip(np.round(src_alpha01 * 255.0), 0, 255).astype(np.uint8)
 
     erase = float(np.clip(hatch_cfg.strength, 0, 255)) / 255.0
