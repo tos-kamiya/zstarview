@@ -9,6 +9,7 @@ This module provides:
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 import math
 from typing import Optional, Tuple
 
@@ -19,6 +20,18 @@ from PySide6.QtGui import QImage, QPainter
 from ..paths import CLOUD_HATCH_DEFAULT, HatchConfig
 from ..types import ScreenGeometry
 from ..utils.qt import np_rgba_to_qimage, qimage_to_np_rgba
+
+
+@dataclass(frozen=True)
+class StripeDensityField:
+    """Compact cloud-density field in normalized 45-degree (u, v) space."""
+
+    density: np.ndarray  # float32 in [0,1], shape=(bins_u, bins_v)
+    u_min: float
+    u_max: float
+    v_min: float
+    v_max: float
+    source_cache_key: int
 
 
 def make_hatch_tile_qimage(W: int, H: int, line_px: int, strength: int) -> QImage:
@@ -95,6 +108,104 @@ def cloud_with_hatched_alpha(cloud_img: QImage, hatch_cfg: HatchConfig) -> QImag
     cloud[..., :3] = np.clip(np.round(rgb), 0, 255).astype(np.uint8)
     cloud[..., 3] = np.clip(np.round(alpha), 0, 255).astype(np.uint8)
     return np_rgba_to_qimage(cloud)
+
+
+def build_stripe_density_field(cloud_img: QImage, *, bins: int = 192) -> StripeDensityField:
+    """Build a compact density field from a cloud image in normalized (u, v) space."""
+    cloud = qimage_to_np_rgba(cloud_img if cloud_img.format() == QImage.Format_RGBA8888 else cloud_img.convertToFormat(QImage.Format_RGBA8888))
+    h, w = cloud.shape[:2]
+
+    alpha01 = cloud[..., 3].astype(np.float32) / 255.0
+    inside = alpha01 > 0.0
+    if not np.any(inside):
+        density = np.zeros((bins, bins), dtype=np.float32)
+        return StripeDensityField(density=density, u_min=-2.0, u_max=2.0, v_min=-2.0, v_max=2.0, source_cache_key=int(cloud_img.cacheKey()))
+
+    cy, cx = (h - 1) * 0.5, (w - 1) * 0.5
+    r = max(1.0, min(cx, cy))
+    y, x = np.ogrid[:h, :w]
+    xn = (x - cx) / r
+    yn = (y - cy) / r
+    u = xn - yn
+    v = xn + yn
+
+    u_min, u_max = -2.0, 2.0
+    v_min, v_max = -2.0, 2.0
+    bins_u = max(32, int(bins))
+    bins_v = bins_u
+
+    u_idx = np.clip(((u - u_min) * (bins_u / (u_max - u_min))).astype(np.int32), 0, bins_u - 1)
+    v_idx = np.clip(((v - v_min) * (bins_v / (v_max - v_min))).astype(np.int32), 0, bins_v - 1)
+
+    ids = (u_idx[inside] * bins_v + v_idx[inside]).astype(np.int64, copy=False)
+    vals = alpha01[inside].astype(np.float64, copy=False)
+    size = bins_u * bins_v
+    sums = np.bincount(ids, weights=vals, minlength=size)
+    counts = np.bincount(ids, minlength=size)
+    means = np.divide(sums, counts, out=np.zeros_like(sums), where=counts > 0).astype(np.float32, copy=False)
+    density = means.reshape((bins_u, bins_v))
+
+    return StripeDensityField(
+        density=density,
+        u_min=u_min,
+        u_max=u_max,
+        v_min=v_min,
+        v_max=v_max,
+        source_cache_key=int(cloud_img.cacheKey()),
+    )
+
+
+def render_hatched_cloud_from_density(
+    density: StripeDensityField,
+    width: int,
+    height: int,
+    hatch_cfg: HatchConfig,
+    *,
+    target_stripes: int = 30,
+) -> QImage:
+    """Render a sharp hatch cloud image from density field at the target window size."""
+    w = max(1, int(width))
+    h = max(1, int(height))
+
+    diameter_px = float(min(w, h))
+    period = int(np.clip(round(diameter_px / max(1, int(target_stripes))), 14, 64))
+    band = max(1, int(round(period * 0.15)))
+
+    xs = np.arange(w, dtype=np.int32)[None, :]
+    ys = np.arange(h, dtype=np.int32)[:, None]
+    u_pix = xs - ys
+    u_mod = np.mod(u_pix, period)
+    dist = np.minimum(u_mod, period - u_mod)
+    line_mask = dist <= (band / 2.0)
+
+    cy, cx = (h - 1) * 0.5, (w - 1) * 0.5
+    rr = min(cx, cy)
+    y, x = np.ogrid[:h, :w]
+    inside_disc = ((x - cx) ** 2 + (y - cy) ** 2) <= (rr + 0.25) ** 2
+    draw_mask = line_mask & inside_disc
+
+    out = np.zeros((h, w, 4), dtype=np.uint8)
+    if not np.any(draw_mask):
+        return np_rgba_to_qimage(out)
+
+    r = max(1.0, rr)
+    xn = (x - cx) / r
+    yn = (y - cy) / r
+    u = xn - yn
+    v = xn + yn
+
+    bins_u, bins_v = density.density.shape
+    u_idx = np.clip(((u - density.u_min) * (bins_u / (density.u_max - density.u_min))).astype(np.int32), 0, bins_u - 1)
+    v_idx = np.clip(((v - density.v_min) * (bins_v / (density.v_max - density.v_min))).astype(np.int32), 0, bins_v - 1)
+
+    sampled = density.density[u_idx, v_idx]
+    strength = float(np.clip(hatch_cfg.strength, 0, 255)) / 255.0
+    alpha = np.zeros((h, w), dtype=np.float32)
+    alpha[draw_mask] = sampled[draw_mask] * 255.0 * strength
+
+    out[..., :3][draw_mask] = 255
+    out[..., 3] = np.clip(np.round(alpha), 0, 255).astype(np.uint8)
+    return np_rgba_to_qimage(out)
 
 
 def compose_cloud_over_sky(
@@ -188,6 +299,7 @@ class SkyCompositorCache:
         cloud_img: Optional[QImage],
         *,
         cloud_alpha: float,
+        stripe_density: Optional[StripeDensityField] = None,
     ) -> None:
         """Composite the sky/cloud layers (with cache) and draw into painter."""
         if (sky_img is None) and (cloud_img is None or cloud_alpha <= 0.0):
@@ -199,13 +311,14 @@ class SkyCompositorCache:
 
         sky_ck = int(sky_img.cacheKey()) if sky_img else 0
         cloud_ck = int(cloud_img.cacheKey()) if cloud_img else 0
+        density_ck = int(stripe_density.source_cache_key) if stripe_density is not None else 0
         hatch_key = (
             self._hatch_cfg.tile_w_px,
             self._hatch_cfg.tile_h_px,
             self._hatch_cfg.line_px,
             self._hatch_cfg.strength,
         )
-        comp_key = ("comp", sky_ck, cloud_ck, w, h, float(cloud_alpha), hatch_key, self._cloud_opacity_scale, self._gray_mix)
+        comp_key = ("comp", sky_ck, cloud_ck, density_ck, w, h, float(cloud_alpha), hatch_key, self._cloud_opacity_scale, self._gray_mix)
 
         if self._composite_key != comp_key or self._composited_img is None:
             def _scaled(qimg: Optional[QImage]) -> Optional[QImage]:
@@ -219,7 +332,15 @@ class SkyCompositorCache:
             cloud_s = _scaled(cloud_img)
 
             if cloud_s is not None and cloud_alpha > 0.0:
-                cloud_s = cloud_with_hatched_alpha(cloud_s, self._hatch_cfg)
+                if stripe_density is not None:
+                    cloud_s = render_hatched_cloud_from_density(
+                        stripe_density,
+                        w,
+                        h,
+                        self._hatch_cfg,
+                    )
+                else:
+                    cloud_s = cloud_with_hatched_alpha(cloud_s, self._hatch_cfg)
 
             if cloud_s is None or cloud_alpha <= 0.0:
                 composited = sky_s if sky_s is not None else QImage(w, h, QImage.Format_ARGB32_Premultiplied)

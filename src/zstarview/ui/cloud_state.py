@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from PySide6.QtGui import QImage
 
@@ -18,6 +18,7 @@ from PySide6.QtGui import QImage
 @dataclass
 class CloudImageState:
     image: Optional[QImage] = None
+    stripe_density: Optional[Any] = None
     meta: Optional[dict] = None
     banner_text: Optional[str] = None
     last_az: Optional[float] = None
@@ -26,8 +27,17 @@ class CloudImageState:
     cleanup_interval: int = 10
     cleanup_counter: int = field(default=0, init=False)
 
-    def set_result(self, image: QImage, meta: Optional[dict], *, az: float, time_utc: datetime) -> None:
+    def set_result(
+        self,
+        image: QImage,
+        meta: Optional[dict],
+        *,
+        az: float,
+        time_utc: datetime,
+        stripe_density: Optional[Any] = None,
+    ) -> None:
         self.image = image
+        self.stripe_density = stripe_density
         self.meta = meta
         self.last_az = az
         self.last_time_utc = time_utc

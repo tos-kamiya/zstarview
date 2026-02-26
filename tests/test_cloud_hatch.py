@@ -2,7 +2,12 @@ import numpy as np
 from PySide6.QtCore import QRect
 
 from zstarview.paths import HatchConfig
-from zstarview.ui.composite import cloud_with_hatched_alpha, compose_cloud_over_sky
+from zstarview.ui.composite import (
+    build_stripe_density_field,
+    cloud_with_hatched_alpha,
+    compose_cloud_over_sky,
+    render_hatched_cloud_from_density,
+)
 from zstarview.ui.composite import make_hatch_tile_qimage
 from zstarview.utils.qt import np_rgba_to_qimage, qimage_to_np_rgba
 
@@ -88,3 +93,20 @@ def test_compose_cloud_addition_is_weighted_by_cloud_alpha() -> None:
     assert int(out[1, 1, 0]) == 20
     # Alpha=255 cloud pixel should be brighter due to additive cloud term.
     assert int(out[4, 4, 0]) > 20
+
+
+def test_density_hatch_keeps_stripes_sparse_on_larger_canvas() -> None:
+    base = np.zeros((128, 128, 4), dtype=np.uint8)
+    base[..., :3] = 255
+    base[..., 3] = 180
+
+    density = build_stripe_density_field(np_rgba_to_qimage(base), bins=96)
+    cfg = HatchConfig(20, 19, 8, 255)
+
+    small = qimage_to_np_rgba(render_hatched_cloud_from_density(density, 200, 200, cfg))
+    large = qimage_to_np_rgba(render_hatched_cloud_from_density(density, 800, 800, cfg))
+
+    # Larger canvas should not increase stripe occupancy; it should stay sparse or become sparser.
+    small_ratio = float(np.mean(small[..., 3] > 0))
+    large_ratio = float(np.mean(large[..., 3] > 0))
+    assert large_ratio <= small_ratio + 0.05
