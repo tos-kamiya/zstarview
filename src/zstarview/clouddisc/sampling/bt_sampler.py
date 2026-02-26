@@ -60,11 +60,25 @@ def build_bt_sampler(da: xr.DataArray) -> Callable[[np.ndarray, np.ndarray], np.
     target_crs = getattr(area, "crs", CRS.from_dict(area.proj_dict))
     transformer = Transformer.from_crs("EPSG:4326", target_crs, always_xy=True)
 
+    # Reuse float index buffers across calls when input shape is unchanged.
+    ix_f_buf: np.ndarray | None = None
+    iy_f_buf: np.ndarray | None = None
+    buf_shape: tuple[int, ...] | None = None
+
     # --- 3. Define and return the sampler function ---
     def sampler(lon: np.ndarray, lat: np.ndarray) -> np.ndarray:
         """
         Performs bilinear interpolation on the source grid for the given lon/lat points.
         """
+        nonlocal ix_f_buf, iy_f_buf, buf_shape
+        if lon.shape != lat.shape:
+            raise ValueError("lon and lat must have the same shape")
+
+        if buf_shape != lon.shape or ix_f_buf is None or iy_f_buf is None:
+            ix_f_buf = np.empty(lon.shape, dtype=np.float32)
+            iy_f_buf = np.empty(lon.shape, dtype=np.float32)
+            buf_shape = lon.shape
+
         # Project lon/lat coordinates to the satellite's grid coordinates (x, y).
         projected_x, projected_y = transformer.transform(lon, lat)
 
@@ -72,8 +86,10 @@ def build_bt_sampler(da: xr.DataArray) -> Callable[[np.ndarray, np.ndarray], np.
         # Points that cannot be projected (e.g., on the other side of the Earth)
         # will result in non-finite values, which we handle with a mask.
         finite_mask = np.isfinite(projected_x) & np.isfinite(projected_y)
-        ix_f = np.full(lon.shape, np.nan, dtype=np.float32)
-        iy_f = np.full(lon.shape, np.nan, dtype=np.float32)
+        ix_f = ix_f_buf
+        iy_f = iy_f_buf
+        ix_f.fill(np.nan)
+        iy_f.fill(np.nan)
         ix_f[finite_mask] = (projected_x[finite_mask] - min_x) / pixel_size_x
         iy_f[finite_mask] = (max_y - projected_y[finite_mask]) / pixel_size_y  # Y-axis is inverted
 
@@ -106,7 +122,7 @@ def build_bt_sampler(da: xr.DataArray) -> Callable[[np.ndarray, np.ndarray], np.
 
         # Perform the weighted sum of non-NaN neighbors.
         total_weight = w00 + w10 + w01 + w11
-        interp_values = np.nan_to_num(v00) * w00 + np.nan_to_num(v10) * w10 + np.nan_to_num(v01) * w01 + np.nan_to_num(v11) * w11
+        interp_values = np.where(m00, v00, 0.0) * w00 + np.where(m10, v10, 0.0) * w10 + np.where(m01, v01, 0.0) * w01 + np.where(m11, v11, 0.0) * w11
 
         # Normalize the result and handle cases where all neighbors were NaN.
         good_weights = total_weight > 1e-6
