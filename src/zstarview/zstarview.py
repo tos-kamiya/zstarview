@@ -200,9 +200,9 @@ def parse_args() -> argparse.Namespace:
         "-t",
         "--theme",
         type=_parse_theme,
-        default="day",
+        default="night",
         metavar="{night,day,white}",
-        help="Theme preset for background and star contrast (default: day).",
+        help="Theme preset for background and star contrast (default: night).",
     )
     return parser.parse_args()
 
