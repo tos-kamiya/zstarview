@@ -41,6 +41,12 @@ class SkyDataWorker(QObject):
         super().__init__(parent)
         self._lock = threading.Lock()
         self._running = False
+        self._stopping = False
+
+    def shutdown(self) -> None:
+        """Stop accepting/emitting updates during application shutdown."""
+        with self._lock:
+            self._stopping = True
 
     def update(
         self,
@@ -56,7 +62,7 @@ class SkyDataWorker(QObject):
     ) -> bool:
         """Start background computation if idle; return False when already running."""
         with self._lock:
-            if self._running:
+            if self._stopping or self._running:
                 return False
             self._running = True
 
@@ -137,7 +143,14 @@ class SkyDataWorker(QObject):
                 )
 
             payload: Dict[str, object] = {"celestial": celestial_data, "sky_disc": sky_disc_img}
-            self.data_ready.emit(payload)
+            with self._lock:
+                if self._stopping:
+                    return
+            try:
+                self.data_ready.emit(payload)
+            except RuntimeError:
+                # QObject can be deleted while background thread is still unwinding.
+                logger.debug("Skip sky data emit during shutdown.")
         except Exception as e:
             logger.error("Error in background sky update thread: %s", e, exc_info=True)
         finally:
