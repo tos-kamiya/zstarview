@@ -161,15 +161,18 @@ def render_hatched_cloud_from_density(
     height: int,
     hatch_cfg: HatchConfig,
     *,
-    target_stripes: int = 30,
+    target_stripes: int = 50,
+    width_factor: float = 0.2,
 ) -> QImage:
     """Render a sharp hatch cloud image from density field at the target window size."""
     w = max(1, int(width))
     h = max(1, int(height))
 
     diameter_px = float(min(w, h))
-    period = int(np.clip(round(diameter_px / max(1, int(target_stripes))), 14, 64))
-    band = max(1, int(round(period * 0.15)))
+    stripes = max(1, int(target_stripes))
+    wf = max(0.01, float(width_factor))
+    period = int(np.clip(round(diameter_px / stripes), 14, 64))
+    band = max(1, int(round(period * wf)))
 
     xs = np.arange(w, dtype=np.int32)[None, :]
     ys = np.arange(h, dtype=np.int32)[:, None]
@@ -280,10 +283,14 @@ class SkyCompositorCache:
         hatch_cfg: HatchConfig = CLOUD_HATCH_DEFAULT,
         cloud_opacity_scale: float = 0.7,
         gray_mix: float = 1.0,
+        cloud_target_stripes: int = 50,
+        cloud_stripe_width_factor: float = 0.2,
     ) -> None:
         self._hatch_cfg = hatch_cfg
         self._cloud_opacity_scale = cloud_opacity_scale
         self._gray_mix = gray_mix
+        self._cloud_target_stripes = max(1, int(cloud_target_stripes))
+        self._cloud_stripe_width_factor = max(0.01, float(cloud_stripe_width_factor))
         self._composited_img: Optional[QImage] = None
         self._composite_key: Optional[Tuple] = None
 
@@ -318,7 +325,20 @@ class SkyCompositorCache:
             self._hatch_cfg.line_px,
             self._hatch_cfg.strength,
         )
-        comp_key = ("comp", sky_ck, cloud_ck, density_ck, w, h, float(cloud_alpha), hatch_key, self._cloud_opacity_scale, self._gray_mix)
+        comp_key = (
+            "comp",
+            sky_ck,
+            cloud_ck,
+            density_ck,
+            w,
+            h,
+            float(cloud_alpha),
+            hatch_key,
+            self._cloud_opacity_scale,
+            self._gray_mix,
+            self._cloud_target_stripes,
+            self._cloud_stripe_width_factor,
+        )
 
         if self._composite_key != comp_key or self._composited_img is None:
             def _scaled(qimg: Optional[QImage]) -> Optional[QImage]:
@@ -338,6 +358,8 @@ class SkyCompositorCache:
                         w,
                         h,
                         self._hatch_cfg,
+                        target_stripes=self._cloud_target_stripes,
+                        width_factor=self._cloud_stripe_width_factor,
                     )
                 else:
                     cloud_s = cloud_with_hatched_alpha(cloud_s, self._hatch_cfg)

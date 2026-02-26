@@ -113,6 +113,7 @@ class SkyWindow(DraggableWindow):
         sky_update_interval: int = 3 * 60,  # sec
         visual_preset: str = "night",
         star_visibility_boost: float = 1.0,
+        cloud_stripe_style: Tuple[int, float] = (50, 0.2),
     ) -> None:
         """
         Initializes the SkyWindow.
@@ -225,7 +226,11 @@ class SkyWindow(DraggableWindow):
             logger.warning(f"CloudDisc init failed: {e}")
 
         # --- Composition Cache (moved to dedicated class) ---
-        self._compositor = SkyCompositorCache()
+        target_stripes, width_factor = cloud_stripe_style
+        self._compositor = SkyCompositorCache(
+            cloud_target_stripes=int(target_stripes),
+            cloud_stripe_width_factor=float(width_factor),
+        )
 
         # Cloud error banner is kept inside CloudImageState
 
