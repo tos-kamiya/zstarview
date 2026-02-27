@@ -176,8 +176,8 @@
 ## 10. 入力データ契約の明文化プラン（DONE / INPROGRESS）
 
 状態:
-- `DONE`: 1, 2, 3
-- `INPROGRESS`: 4, 5
+- `DONE`: 1, 2, 3, 4, 5
+- `INPROGRESS`: なし
 
 目的:
 - 角度・座標系・単位の取り違えを防止し、関数間契約を読み取れる状態にする。
@@ -200,19 +200,15 @@ DONE:
      - `types.py` に `StarsTable(TypedDict)` を追加。
      - `CelestialData.stars` と `calculate_visible_stars()` の戻り型を `StarsTable` へ変更。
 
-INPROGRESS:
-
 4. 中: 正規化座標の仕様ドキュメントを実装へ一致
-   - 対象:
-     - `render/draw.py` の `altaz_to_normalized_xy_vectorized(...)` docstring
-   - 方針:
-     - 「`[-1, 1]` に収まる」という誤解を避け、`90deg -> 1.0` 基準であることを明記する。
+   - 実施:
+     - `render/draw.py` の `altaz_to_normalized_xy_vectorized(...)` docstring を
+       実装仕様（`90deg -> 1.0`、`1.0`超過あり得る）へ更新。
 
 5. 低: パラメータ命名の単位接尾辞化
-   - 対象:
-     - `render/draw.py` などの `alt`, `radius` など短名引数
-   - 方針:
-     - `alt_deg`, `radius_px`, `cloud_shell_km` などへ段階的にリネームする。
+   - 実施:
+     - `render/draw.py` で `alt/width/height/radius` 主要引数を
+       `view_alt_deg/width_px/height_px/radius_px` へリネーム。
 
 実施順:
 - `1 -> 2 -> 4 -> 3 -> 5`
