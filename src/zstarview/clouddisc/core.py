@@ -18,7 +18,7 @@ from .config import CloudDiscConfig
 from .projectors.az import az_project_lonlat_grid
 from .providers.goes import GoesProvider
 from .providers.hima import HimaProvider
-from .providers.select import pick_satellite
+from .providers.select import pick_satellite, visible_satellites
 from .render.grayscale import convert_bt_to_la_image
 from .sampling.bt_sampler import build_bt_sampler
 from .sampling.estimate_bt_warm_cold import estimate_bt_warm_from_equator_band, estimate_bt_cold_hybrid
@@ -113,7 +113,12 @@ class CloudDisc:
         # Step 2: Fetch data from the provider. This returns a DataArray of brightness temperatures.
         sat_used = sat
         if sat in ("G16", "G18"):
-            res, sat_used = self.goes.fetch_bt_c13_with_failover(sat=sat, when_utc=when)
+            goes_visible = tuple(visible_satellites(lat, lon, ("G16", "G18")))
+            res, sat_used = self.goes.fetch_bt_c13_with_failover(
+                sat=sat,
+                when_utc=when,
+                allowed_sats=goes_visible,
+            )
             da, used_time, src_paths = res
             product = "CMIPF-C13"
         elif sat == "HIMAWARI":

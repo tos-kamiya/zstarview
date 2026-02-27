@@ -146,7 +146,11 @@ class GoesProvider:
         return None
 
     def fetch_bt_c13_with_failover(
-        self, sat: str, when_utc: dt.datetime, extra_back_minutes: int = 30
+        self,
+        sat: str,
+        when_utc: dt.datetime,
+        extra_back_minutes: int = 30,
+        allowed_sats: Optional[Tuple[str, ...]] = None,
     ) -> Tuple[Tuple[xr.DataArray, dt.datetime, List[Path]], str]:
         """
         Fetches C13 data with a two-pass failover strategy.
@@ -165,24 +169,31 @@ class GoesProvider:
         Raises:
             DataNotFoundError: If no data is found after all attempts.
         """
-        primary, secondary = sat, "G18" if sat == "G16" else "G16"
+        if allowed_sats is None:
+            allowed = ("G16", "G18")
+        else:
+            allowed = tuple(s for s in allowed_sats if s in ("G16", "G18"))
+
+        if sat in allowed:
+            order = [sat] + [s for s in allowed if s != sat]
+        else:
+            order = list(allowed)
+        if not order:
+            meta = CloudMeta(satellite=sat, product="CMIPF-C13", time_utc=when_utc, src_paths=[])
+            raise DataNotFoundError("No allowed GOES satellites for this location", meta=meta)
 
         # --- Pass 1: Standard search window ---
-        logger.info("Searching GOES (primary=%s, window=%dmin)", primary, self.cfg.search_back_minutes)
-        if res := self._fetch_bt_c13_once(primary, when_utc, self.cfg.search_back_minutes):
-            return res, primary
-
-        logger.info("No data from %s, trying failover satellite %s", primary, secondary)
-        if res := self._fetch_bt_c13_once(secondary, when_utc, self.cfg.search_back_minutes):
-            return res, secondary
+        logger.info("Searching GOES (order=%s, window=%dmin)", ",".join(order), self.cfg.search_back_minutes)
+        for sat_name in order:
+            if res := self._fetch_bt_c13_once(sat_name, when_utc, self.cfg.search_back_minutes):
+                return res, sat_name
 
         # --- Pass 2: Widened search window ---
         widen_minutes = self.cfg.search_back_minutes + extra_back_minutes
-        logger.info("Widening search window to %d minutes and retrying both satellites", widen_minutes)
-        if res := self._fetch_bt_c13_once(primary, when_utc, widen_minutes):
-            return res, primary
-        if res := self._fetch_bt_c13_once(secondary, when_utc, widen_minutes):
-            return res, secondary
+        logger.info("Widening search window to %d minutes and retrying order=%s", widen_minutes, ",".join(order))
+        for sat_name in order:
+            if res := self._fetch_bt_c13_once(sat_name, when_utc, widen_minutes):
+                return res, sat_name
 
-        meta = CloudMeta(satellite=primary, product="CMIPF-C13", time_utc=when_utc, src_paths=[])
+        meta = CloudMeta(satellite=order[0], product="CMIPF-C13", time_utc=when_utc, src_paths=[])
         raise DataNotFoundError("GOES CMIPF C13 data not found after all attempts", meta=meta)
