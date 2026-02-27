@@ -70,13 +70,13 @@ def geodetic_to_ecef(lat_deg: float, lon_deg: float, r_km: float = EARTH_R_KM) -
     return np.array([x, y, z], dtype=float).T
 
 
-def azalt_to_dir_ecef(az_deg: float, alt_deg: float, lat0_deg: float, lon0_deg: float) -> np.ndarray:
+def altaz_to_dir_ecef(alt_deg: float, az_deg: float, lat0_deg: float, lon0_deg: float) -> np.ndarray:
     """
-    Converts a local Azimuth/Altitude direction to a normalized ECEF direction vector.
+    Converts a local Altitude/Azimuth direction to a normalized ECEF direction vector.
 
     Args:
-        az_deg: Azimuth in degrees (0=N, 90=E).
         alt_deg: Altitude (elevation) in degrees.
+        az_deg: Azimuth in degrees (0=N, 90=E).
         lat0_deg: Observer's latitude in degrees.
         lon0_deg: Observer's longitude in degrees.
 
@@ -92,6 +92,17 @@ def azalt_to_dir_ecef(az_deg: float, alt_deg: float, lat0_deg: float, lon0_deg: 
     direction_vector = sin_alt * up + cos_alt * (sin_az * east + cos_az * north)
 
     return direction_vector / (np.linalg.norm(direction_vector) or 1.0)
+
+
+def azalt_to_dir_ecef(az_deg: float, alt_deg: float, lat0_deg: float, lon0_deg: float) -> np.ndarray:
+    """Backward-compatible wrapper of `altaz_to_dir_ecef`.
+
+    NOTE:
+        New code should call `altaz_to_dir_ecef(alt_deg, az_deg, ...)`.
+        This wrapper keeps the legacy `(az_deg, alt_deg, ...)` order.
+        OBSOLETE: Keep only for backward compatibility; do not use in new code.
+    """
+    return altaz_to_dir_ecef(alt_deg, az_deg, lat0_deg, lon0_deg)
 
 
 def az_project_lonlat_grid(
@@ -145,7 +156,7 @@ def az_project_lonlat_grid(
     # --- Step 2: Define the observer's reference frame in ECEF coordinates ---
     observer_pos_ecef = geodetic_to_ecef(lat0_deg, lon0_deg)
     _, _, up_vec = enu_basis(lat0_deg, lon0_deg)
-    center_view_dir = azalt_to_dir_ecef(az0_deg, alt0_deg, lat0_deg, lon0_deg)
+    center_view_dir = altaz_to_dir_ecef(alt0_deg, az0_deg, lat0_deg, lon0_deg)
 
     # Create an orthonormal basis for the view plane (tangent plane).
     ty_unnormalized = up_vec - np.dot(up_vec, center_view_dir) * center_view_dir
