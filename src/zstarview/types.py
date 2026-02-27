@@ -46,6 +46,7 @@ class PlanetBody:
     az: AzDeg  # azimuth in degrees (0=N, 90=E)
     symbol: str
     is_visible: bool
+    vmag: Optional[float] = None  # planets (except sun/moon) when available
     phase_angle: Optional[float] = None  # moon only
     lunar_eclipse_info: Optional[LunarEclipseInfo] = None  # moon only
     solar_eclipse_info: Optional[SolarEclipseInfo] = None  # sun only

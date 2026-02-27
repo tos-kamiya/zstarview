@@ -81,6 +81,17 @@ def compute_flare_profile(vmag: float, core_radius_px: float) -> Tuple[float, fl
     return core_scale, flare_outer_px
 
 
+def planet_disc_style_from_vmag(vmag: Optional[float]) -> Tuple[float, int]:
+    """Return (radius_px, alpha) for a planet disc marker."""
+    if vmag is None or not math.isfinite(float(vmag)):
+        return 3.0, 200
+    # Reuse star-like brightness mapping so brighter planets appear stronger.
+    strength = flare_strength_from_vmag(float(vmag))
+    radius_px = 2.4 + 3.2 * strength
+    alpha = int(np.clip(round(125 + 130 * strength), 110, 255))
+    return radius_px, alpha
+
+
 def altaz_to_normalized_xy_vectorized(
     alt_deg: np.ndarray,
     az_deg: np.ndarray,
@@ -570,7 +581,14 @@ def draw_stars(
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
 
 
-def draw_gauge_cross(painter: QPainter, color: QColor, center: QPointF) -> None:
+def draw_gauge_cross(
+    painter: QPainter,
+    color: QColor,
+    center: QPointF,
+    *,
+    scale: float = 1.0,
+    pen_width: float = 1.0,
+) -> None:
     """
     Draws a cross-shaped gauge marker.
 
@@ -582,9 +600,11 @@ def draw_gauge_cross(painter: QPainter, color: QColor, center: QPointF) -> None:
         color: The color of the cross.
         center: The center point (QPointF) of the cross.
     """
-    cross_outer_len, cross_inner_len = 15, 4
+    scale = max(0.5, float(scale))
+    cross_outer_len = int(round(15 * scale))
+    cross_inner_len = max(1, int(round(4 * scale)))
     x, y = center.x(), center.y()
-    painter.setPen(QPen(color, 1))
+    painter.setPen(QPen(color, float(pen_width)))
     painter.drawLine(QPointF(x - cross_outer_len, y), QPointF(x - cross_inner_len, y))
     painter.drawLine(QPointF(x + cross_inner_len, y), QPointF(x + cross_outer_len, y))
     painter.drawLine(QPointF(x, y - cross_outer_len), QPointF(x, y - cross_inner_len))
@@ -726,6 +746,30 @@ def _draw_moon_planet(
     draw_gauge_cross(painter, cross_color, pos)
 
 
+def draw_planet_disc(
+    painter: QPainter,
+    pos: QPointF,
+    color: QColor,
+    *,
+    radius_px: float,
+    alpha: int,
+) -> None:
+    """Draw a soft circular marker for planets, similar to star rendering."""
+    r = max(1.5, float(radius_px))
+    c0 = QColor(color)
+    c0.setAlpha(int(np.clip(alpha, 1, 255)))
+    c1 = QColor(color)
+    c1.setAlpha(0)
+    g = QRadialGradient(pos, r)
+    g.setColorAt(0.0, c0)
+    g.setColorAt(1.0, c1)
+    painter.save()
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(g)
+    painter.drawEllipse(pos, r, r)
+    painter.restore()
+
+
 def draw_solar_system_bodies(
     painter: QPainter,
     geometry: ScreenGeometry,
@@ -740,7 +784,7 @@ def draw_solar_system_bodies(
 
     This function iterates through bodies in the sky data, calculates their
     screen positions, and draws them. The Sun is drawn as a gauge cross, the
-    Moon is drawn with its phase. Other planets are represented by gauge crosses.
+    Moon is drawn with its phase. Other planets are represented by circular markers.
 
     Args:
         painter: The QPainter for drawing.
@@ -782,7 +826,11 @@ def draw_solar_system_bodies(
             )
 
         else:
-            draw_gauge_cross(painter, text_color, pos)
+            radius_px, alpha = planet_disc_style_from_vmag(body.vmag)
+            marker_color = QColor(text_color)
+            marker_color.setAlpha(alpha)
+            draw_planet_disc(painter, pos, marker_color, radius_px=radius_px, alpha=alpha)
+            draw_gauge_cross(painter, text_color, pos, scale=0.8, pen_width=1.0)
 
 
 def draw_direction_labels(

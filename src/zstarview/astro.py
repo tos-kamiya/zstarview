@@ -7,6 +7,7 @@ import astropy.units as u
 from astropy.coordinates import AltAz, EarthLocation, GeocentricTrueEcliptic, SkyCoord
 from skyfield.api import Loader, Topos
 import skyfield.api
+from skyfield.magnitudelib import planetary_magnitude
 import numpy as np
 import polars as pl
 
@@ -312,6 +313,14 @@ def calculate_planets(
         astrometric = observer.at(t).observe(planet).apparent()
         alt, az, _ = astrometric.altaz()
         is_visible = alt.degrees > -ANGLE_BELOW_HORIZON and is_in_fov(alt.degrees, az.degrees, view_center)
+        vmag = None
+        if name not in ("sun", "moon"):
+            try:
+                value = float(planetary_magnitude(astrometric))
+                if np.isfinite(value):
+                    vmag = value
+            except Exception:
+                vmag = None
 
         pa = lei = None
         if name == "moon":
@@ -328,6 +337,7 @@ def calculate_planets(
                 az=az.degrees,
                 symbol=symbol,
                 is_visible=is_visible,
+                vmag=vmag,
                 phase_angle=pa,
                 lunar_eclipse_info=lei,
                 solar_eclipse_info=sei,
