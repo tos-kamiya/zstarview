@@ -732,7 +732,6 @@ def draw_solar_system_bodies(
     celestial_data: CelestialData,
     viewer_data: ViewerData,
     enlarge_moon: bool,
-    emoji_font: QFont,
     *,
     preset: str = "night",
 ) -> None:
@@ -741,7 +740,7 @@ def draw_solar_system_bodies(
 
     This function iterates through bodies in the sky data, calculates their
     screen positions, and draws them. The Sun is drawn as a gauge cross, the
-    Moon is drawn with its phase, and other planets are represented by emoji symbols.
+    Moon is drawn with its phase. Other planets are represented by gauge crosses.
 
     Args:
         painter: The QPainter for drawing.
@@ -749,14 +748,11 @@ def draw_solar_system_bodies(
         celestial_data: The data containing solar system body information.
         viewer_data: The viewer's data for position calculations.
         enlarge_moon: A boolean indicating whether to draw the moon larger.
-        emoji_font: The QFont to use for drawing planet symbols.
     """
     moon_body, sun_altaz, moon_altaz = _collect_sun_moon_context(celestial_data.planets)
 
-    # Keep planet symbols on their legacy style because they are usually
-    # drawn over the sky disc, where the original contrast is preferred.
+    # Keep body markers in a stable high-contrast color over the sky disc.
     text_color = QColor(*TEXT_COLOR)
-    outline_color = QColor.fromRgbF(0, 0, 0, 0.3)
 
     for body in celestial_data.planets:
         if not body.is_visible:
@@ -786,7 +782,7 @@ def draw_solar_system_bodies(
             )
 
         else:
-            draw_outlined_text(painter, body.symbol, pos, emoji_font, text_color, outline_color)
+            draw_gauge_cross(painter, text_color, pos)
 
 
 def draw_direction_labels(

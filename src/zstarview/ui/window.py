@@ -38,8 +38,6 @@ from ..paths import (
     APP_DISPLAY_NAME,
     CACHE_PATH,
     CLOUD_UPDATE_INTERVAL,
-    EMOJI_FONT_PATH,
-    EMOJI_FONT_SIZE,
     GUI_BUTTON_SIZE,
     GUI_MENU_TEXT_COLOR,
     TEXT_FONT_PATH,
@@ -179,9 +177,6 @@ class SkyWindow(DraggableWindow):
         self.add_drag_exclusions([self.menu_button, self.size_grip])
 
         # --- Fonts ---
-        emoji_font_id = QFontDatabase.addApplicationFont(EMOJI_FONT_PATH)
-        emoji_font_family = QFontDatabase.applicationFontFamilies(emoji_font_id)[0]
-        self.emoji_font = QFont(emoji_font_family, EMOJI_FONT_SIZE)
         text_font_id = QFontDatabase.addApplicationFont(TEXT_FONT_PATH)
         text_font_family = QFontDatabase.applicationFontFamilies(text_font_id)[0]
         self.text_font = QFont(text_font_family, TEXT_FONT_SIZE)
@@ -468,7 +463,6 @@ class SkyWindow(DraggableWindow):
             self.celestial_data,
             self.viewer_data,
             enlarge_moon,
-            self.emoji_font,
             preset=self.visual_preset,
         )
 

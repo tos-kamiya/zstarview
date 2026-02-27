@@ -1,0 +1,66 @@
+from __future__ import annotations
+
+import astropy.time
+import numpy as np
+from PySide6.QtCore import QPoint
+
+from zstarview.render import draw as render_draw
+from zstarview.types import CelestialData, PlanetBody, ScreenGeometry, ViewerData
+
+
+def _empty_celestial_data(planets: list[PlanetBody]) -> CelestialData:
+    return CelestialData(
+        time=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
+        planets=planets,
+        stars={
+            "name": np.array([], dtype=object),
+            "alt": np.array([], dtype=float),
+            "az": np.array([], dtype=float),
+            "vmag": np.array([], dtype=float),
+            "bv": np.array([], dtype=float),
+        },
+        celestial_equator_points=[],
+        ecliptic_points=[],
+        horizon_points=[],
+    )
+
+
+def test_planets_are_drawn_with_gauge_cross(monkeypatch) -> None:
+    calls: list[str] = []
+
+    def fake_draw_gauge_cross(_painter, _color, _center) -> None:
+        calls.append("cross")
+
+    monkeypatch.setattr(render_draw, "draw_gauge_cross", fake_draw_gauge_cross)
+
+    mars = PlanetBody(name="mars", alt=45.0, az=180.0, symbol="♂", is_visible=True)
+    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
+    geometry = ScreenGeometry(center=(100, 100), radius=80)
+
+    render_draw.draw_solar_system_bodies(
+        painter=object(),
+        geometry=geometry,
+        celestial_data=_empty_celestial_data([mars]),
+        viewer_data=viewer,
+        enlarge_moon=False,
+    )
+
+    assert calls == ["cross"]
+
+
+def test_hover_can_identify_planet_name() -> None:
+    mars = PlanetBody(name="mars", alt=45.0, az=180.0, symbol="♂", is_visible=True)
+    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
+    geometry = ScreenGeometry(center=(120, 90), radius=70)
+    mouse_pos = QPoint(120, 90)
+
+    highlighted = render_draw.find_highlighted_object(
+        _empty_celestial_data([mars]),
+        viewer,
+        mouse_pos,
+        geometry,
+    )
+
+    assert highlighted is not None
+    obj, _ = highlighted
+    assert getattr(obj, "name", "") == "mars"
