@@ -40,10 +40,13 @@
   - メインウィンドウ
   - 入力イベント
   - タイマー管理
-  - ワーカー連携と描画統合
+  - ワーカー/コントローラ連携と描画統合
 - `src/zstarview/ui/sky_worker.py`
   - 星空更新計算（天体計算 + 空色ディスク）をバックグラウンドで実行
   - `data_ready` シグナルで結果返却
+- `src/zstarview/ui/cloud_controller.py`
+  - 雲更新（取得・例外正規化・running/pending制御・清掃トリガ）をバックグラウンドで実行
+  - `cloud_started` / `cloud_ready` / `cloud_failed` シグナルでUIへ通知
 - `src/zstarview/ui/composite.py`
   - 空色/雲合成、ハッチ処理、合成キャッシュ
 - `src/zstarview/ui/cloud_state.py`
@@ -91,11 +94,11 @@
 
 ### 4.3 雲更新フロー
 
-1. `SkyWindow.start_background_cloud_update()` が更新スレッドを起動。
-2. `CloudDisc.render_now()` が衛星データ取得〜投影〜画像化を実行。
-3. `CloudImageState` を更新。
-4. 再描画要求は `cloud_repaint_requested` シグナルでUIスレッドへ配送。
-5. 終了開始時（`aboutToQuit` / `closeEvent`）は更新タイマー停止・停止フラグ設定を行い、以後の再描画シグナル送出を抑止。
+1. `SkyWindow.start_background_cloud_update()` が `CloudController.update()` を呼ぶ。
+2. `CloudController` が `CloudDisc.render_now()` を実行し、例外をUI向けステータスへ正規化。
+3. `cloud_ready` / `cloud_failed` シグナルで `SkyWindow` に結果を返す。
+4. `SkyWindow` が `CloudImageState` と合成キャッシュを更新し、再描画要求をUIスレッドへ配送。
+5. 終了開始時（`aboutToQuit` / `closeEvent`）はタイマー停止に加えて `CloudController.shutdown()` を呼び、以後の更新受付を抑止。
 
 ## 5. スレッドモデル
 
@@ -140,7 +143,7 @@
 
 ## 9. 今後の設計課題
 
-- 雲更新ロジックを `CloudController` へ抽出し、`SkyWindow` の責務をさらに削減する。
+- `CloudController` 抽出後の責務整理は、必要時に再評価する（現時点では `SkyWindow` 側との分担は実用上バランスが取れている）。
 - 描画パイプラインの入力データ契約（型/単位）を明文化する。
 - 仕様変更時に追従しやすいよう、CLI仕様と内部データ仕様の対応表を追加する。
 - ダイナミックなタイムシフト操作（`-H` のGUI版）を追加する。

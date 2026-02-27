@@ -7,8 +7,7 @@ for the application. It handles rendering the celestial objects, sky background,
 clouds, and all user interactions like rotation, zooming, and object highlighting.
 """
 import logging
-import threading
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Dict, Optional, Tuple
 
 import polars as pl
@@ -32,20 +31,12 @@ from ..__about__ import __version__
 from ..clouddisc import (
     CloudDisc,
     CloudDiscConfig,
-    CloudDiscError,
-    DataNotFoundError,
-    DownloadError,
-    TimeoutError,
-    RenderError,
-    VisibilityError,
-    cleanup_satellite_cache,
 )
 from ..clouddisc.providers.select import pick_satellite
 from ..paths import (
     APP_ICON_FILE,
     APP_DISPLAY_NAME,
     CACHE_PATH,
-    CLOUD_SHELL_KM,
     CLOUD_UPDATE_INTERVAL,
     EMOJI_FONT_PATH,
     EMOJI_FONT_SIZE,
@@ -58,10 +49,10 @@ from ..paths import (
 )
 from ..render import draw as render_draw
 from ..types import CelestialData, ViewerData
-from ..utils.qt import pil_to_qimage
 from .draggable_window import DraggableWindow
-from .composite import SkyCompositorCache, build_stripe_density_field
+from .composite import SkyCompositorCache
 from .cloud_state import CloudImageState
+from .cloud_controller import CloudController
 from .sky_worker import SkyDataWorker
 
 logger = logging.getLogger(__name__)
@@ -96,17 +87,6 @@ class SkyWindow(DraggableWindow):
     initial_data_loaded = Signal()
     # Signal to request repaint safely from background threads.
     cloud_repaint_requested = Signal()
-
-    # TODO(CloudController): Extract cloud fetching to a QObject controller
-    #   (e.g., ui/cloud_controller.py) with:
-    #   - Signals: cloud_ready(QImage|None, dict|None), status(str|None)
-    #   - Methods: update(lat, lon, view_center, radius_px, params)
-    #   - Responsibility: call CloudDisc.render_now, manage running/pending state,
-    #     cleanup cadence, and set status messages; no UI painting.
-    #   Wiring here:
-    #   - Replace start_background_cloud_update/_update_cloud_in_background with
-    #     controller.update(...); on signals: update cloud_state + compositor.invalidate()
-    #   - Optionally move cleanup timer here; for now Window retains QTimer
 
     def __init__(
         self,
@@ -224,8 +204,7 @@ class SkyWindow(DraggableWindow):
         # --- Cloud Data State and Cache ---
         self._cloud_base_size: int = 256
         self.cloud_state = CloudImageState()
-        self._is_cloud_update_running: bool = False
-        self._cloud_update_pending: bool = False
+        self._cloud_controller: Optional[CloudController] = None
         self._cloud_update_timer = QTimer(self)
         self._cloud_update_timer.setInterval(CLOUD_UPDATE_INTERVAL * 1000)
         self._cloud_update_timer.timeout.connect(lambda: self.start_background_cloud_update(reason="timer"))
@@ -244,6 +223,11 @@ class SkyWindow(DraggableWindow):
             self._clouddisc = CloudDisc(clouddisc_config)
         except Exception as e:
             logger.warning(f"CloudDisc init failed: {e}")
+        if self._clouddisc is not None:
+            self._cloud_controller = CloudController(self._clouddisc, self)
+            self._cloud_controller.cloud_started.connect(self._on_cloud_started)
+            self._cloud_controller.cloud_ready.connect(self._on_cloud_ready)
+            self._cloud_controller.cloud_failed.connect(self._on_cloud_failed)
         if self._action_toggle_clouds is not None:
             self._action_toggle_clouds.setEnabled(self._cloud_toggle_supported and self._clouddisc is not None)
 
@@ -324,8 +308,9 @@ class SkyWindow(DraggableWindow):
         if self._is_shutting_down:
             return
         self._is_shutting_down = True
-        self._cloud_update_pending = False
         self._sky_worker.shutdown()
+        if self._cloud_controller is not None:
+            self._cloud_controller.shutdown()
         if self._sky_data_update_timer.isActive():
             self._sky_data_update_timer.stop()
         if self._cloud_update_timer.isActive():
@@ -558,107 +543,48 @@ class SkyWindow(DraggableWindow):
     def start_background_cloud_update(self, reason: str = "manual") -> None:
         if self._is_shutting_down:
             return
-        if not (self._clouddisc and self.cloud_disc_alpha > 0.0):
+        if not (self._cloud_controller and self.cloud_disc_alpha > 0.0):
             return
+        lat, lon = self.viewer_data.location
+        alt, az = self.viewer_data.view_center
+        self._cloud_controller.update(
+            lat=lat,
+            lon=lon,
+            alt=alt,
+            az=az,
+            radius_px=self._cloud_base_size,
+            reason=reason,
+        )
 
-        # Run cache cleanup in a background thread periodically.
-        if self.cloud_state.tick_cleanup():
-            cleanup_thread = threading.Thread(target=self._cleanup_cache)
-            cleanup_thread.daemon = True
-            cleanup_thread.start()
-
-        if self._is_cloud_update_running:
-            # If an update is already running, flag that another one is pending.
-            # This prevents dropping requests during rapid view changes.
-            self._cloud_update_pending = True
-            return
-
-        self.cloud_state.current_satellite = self._predicted_cloud_satellite()
-        self.cloud_state.set_error_banner("Clouds: downloading…")  # e.g., "Clouds: Downloading..."
+    def _on_cloud_started(self, payload: Dict) -> None:
+        sat = str(payload.get("satellite", "")).strip()
+        banner = str(payload.get("banner", "")).strip()
+        if sat:
+            self.cloud_state.current_satellite = sat
+        if banner:
+            self.cloud_state.set_error_banner(banner)
         self.update()
 
-        self._is_cloud_update_running = True
-        t = threading.Thread(target=self._update_cloud_in_background, args=(reason,))
-        t.daemon = True
-        t.start()
+    def _on_cloud_ready(self, payload: Dict) -> None:
+        self.cloud_state.set_result(
+            payload["image"],
+            payload.get("meta"),
+            az=float(payload["az"]),
+            time_utc=payload["time_utc"],
+            stripe_density=payload.get("stripe_density"),
+        )
+        self._compositor.invalidate()
+        self._safe_request_cloud_repaint()
 
-    def _update_cloud_in_background(self, reason: str) -> None:
-        try:
-            lat, lon = self.viewer_data.location
-            alt, az = self.viewer_data.view_center
-
-            if reason == "initial":
-                logger.info("Fetching initial cloud data...")
-            else:
-                logger.info("Updating cloud data...")
-
-            try:
-                pil_img, meta = self._clouddisc.render_now(
-                    lat=lat,
-                    lon=lon,
-                    alt=float(alt),
-                    az=float(az),
-                    radius_px=self._cloud_base_size,
-                    edge_fov_deg=90,
-                    mask_fov_deg=93,
-                    cloud_shell_km=CLOUD_SHELL_KM,
-                )
-                qimg = pil_to_qimage(pil_img)
-                stripe_density = build_stripe_density_field(qimg)
-                self.cloud_state.set_result(
-                    qimg,
-                    meta,
-                    az=az,
-                    time_utc=datetime.now(timezone.utc),
-                    stripe_density=stripe_density,
-                )
-
-                # Invalidate composition cache to force a redraw with new clouds
-                self._compositor.invalidate()
-            except VisibilityError as e:
-                logger.error("Invalid params for cloud-disc image generation: %s", e)
-                self.cloud_state.image = None
-                self.cloud_state.stripe_density = None
-                self.cloud_state.set_error_banner("Clouds: no supported satellite for this region")
-            except DownloadError as e:
-                logger.warning("Network/S3 download error: %s", e)
-                self.cloud_state.set_error_banner("Clouds: Network/S3 download error")
-                self._safe_request_cloud_repaint()
-            except TimeoutError as e:
-                logger.warning("Clouds fetch timed out: %s", e)
-                self.cloud_state.set_error_banner("Clouds: Clouds fetch timed out")
-                self._safe_request_cloud_repaint()
-            except DataNotFoundError as e:
-                logger.info("Satellite data not found in search window: %s", e)
-                self.cloud_state.set_error_banner("Clouds: Satellite data not found in search window")
-            except RenderError as e:
-                logger.error("Failed to decode/render satellite data: %s", e)
-                self.cloud_state.set_error_banner("Clouds: Failed to decode/render satellite data")
-            except CloudDiscError as e:
-                logger.error("Unexpected clouddisc error: %s", e)
-                self.cloud_state.set_error_banner("Clouds: Unexpected clouddisc error")
-
-            
-            # Trigger a repaint on the main thread
-            self._safe_request_cloud_repaint()
-        except Exception as e:
-            logger.error(f"Cloud update failed: {e}", exc_info=True)
-        finally:
-            self._is_cloud_update_running = False
-            # If another update was requested while this one was running, start it now.
-            if self._cloud_update_pending and not self._is_shutting_down:
-                self._cloud_update_pending = False
-                self.start_background_cloud_update(reason="pending")
-
-    def _cleanup_cache(self) -> None:
-        if not self._clouddisc:
-            return
-        try:
-            logger.info("Running satellite cache cleanup...")
-            cleanup_satellite_cache(self._clouddisc.cfg.cache_root())
-            logger.info("Done: Satellite cache cleanup.")
-        except Exception as e:
-            logger.error(f"Error during cache cleanup: {e}", exc_info=True)
+    def _on_cloud_failed(self, payload: Dict) -> None:
+        banner = str(payload.get("banner", "")).strip()
+        clear_image = bool(payload.get("clear_image"))
+        if clear_image:
+            self.cloud_state.image = None
+            self.cloud_state.stripe_density = None
+        if banner:
+            self.cloud_state.set_error_banner(banner)
+        self._safe_request_cloud_repaint()
 
     def _rotate_view(self, d_alt: float = 0.0, d_az: float = 0.0) -> None:
         alt, az = self.viewer_data.view_center
