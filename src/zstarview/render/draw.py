@@ -58,6 +58,29 @@ def bv_to_rgb_vectorized(bv: np.ndarray) -> np.ndarray:
     return rgb
 
 
+def flare_strength_from_vmag(vmag: float) -> float:
+    """Return monotonic flare strength [0, 1] for all magnitudes."""
+    vmag_bright = -1.5
+    vmag_faint = 6.0
+    t = (vmag_faint - float(vmag)) / (vmag_faint - vmag_bright)
+    t = max(0.0, min(1.0, t))
+    return t**1.35
+
+
+def compute_flare_profile(vmag: float, core_radius_px: float) -> Tuple[float, float]:
+    """Compute (core_scale, flare_outer_px) for a star.
+
+    `flare_outer_px` is the additional radial reach from the core radius.
+    If `flare_outer_px < 1.0`, flare should not be drawn.
+    """
+    strength = flare_strength_from_vmag(vmag)
+    flare_outer_px = float(core_radius_px) * (0.65 * strength)
+    if flare_outer_px < 1.0:
+        return 1.0, 0.0
+    core_scale = 1.0 / math.sqrt(1.0 + 0.9 * strength)
+    return core_scale, flare_outer_px
+
+
 def altaz_to_normalized_xy_vectorized(
     alt_deg: np.ndarray,
     az_deg: np.ndarray,
@@ -427,7 +450,10 @@ def draw_stars(
         alpha_peak = int(np.clip(round(238 * visibility_boost), 120, 255))
         for i in range(len(lx)):
             pos = QPointF(float(lx[i]), float(ly[i]))
-            r = float(lr[i])
+            raw_r = float(lr[i])
+            vm = float(lvmag[i])
+            core_scale, flare_outer_px = compute_flare_profile(vm, raw_r)
+            r = raw_r * core_scale
             base = QColor(int(lrgb[i][0]), int(lrgb[i][1]), int(lrgb[i][2]))
             c0 = QColor(base)
             c0.setAlpha(alpha_peak)
@@ -439,14 +465,12 @@ def draw_stars(
             painter.setBrush(g)
             painter.drawEllipse(pos, r, r)
 
-            # Bright-star accent: subtle dark rim + star-like spikes.
-            # Applied only to very bright stars to avoid clutter.
-            vm = float(lvmag[i])
-            if vm <= 1.2:
+            if flare_outer_px >= 1.0:
                 painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
                 painter.setBrush(Qt.BrushStyle.NoBrush)
 
-                rim_alpha = int(np.clip(round((88 if vm <= 0.0 else 68) * visibility_boost), 40, 180))
+                flare_strength = flare_strength_from_vmag(vm)
+                rim_alpha = int(np.clip(round((45.0 + 55.0 * flare_strength) * visibility_boost), 35, 170))
                 rim_pen = QPen(QColor(0, 0, 0, rim_alpha), max(1.0, r * 0.16))
                 rim_pen.setCosmetic(True)
                 painter.setPen(rim_pen)
@@ -454,7 +478,7 @@ def draw_stars(
 
                 painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Screen)
 
-                spike_len = r * (2.0 if vm <= 0.0 else 1.6)
+                spike_len = r + flare_outer_px
                 inner = max(0.45, r * 0.40)
                 base_half = max(0.6, r * 0.28)
                 core_half = max(0.35, r * 0.14)
@@ -473,7 +497,7 @@ def draw_stars(
                     b2 = QPointF(x0 + ux * inner - px * base_half, y0 + uy * inner - py * base_half)
 
                     # Broad soft ray with fade toward the tip.
-                    broad_alpha = int(np.clip(round((88 if vm <= 0.0 else 70) * visibility_boost), 40, 170))
+                    broad_alpha = int(np.clip(round((40.0 + 78.0 * flare_strength) * visibility_boost), 30, 180))
                     painter.setPen(Qt.PenStyle.NoPen)
                     broad_grad = QLinearGradient(base_center, tip)
                     broad_head = QColor(255, 255, 255, broad_alpha)
@@ -489,7 +513,7 @@ def draw_stars(
                     c1 = QPointF(x0 + ux * (inner * 0.95) + px * core_half, y0 + uy * (inner * 0.95) + py * core_half)
                     c2 = QPointF(x0 + ux * (inner * 0.95) - px * core_half, y0 + uy * (inner * 0.95) - py * core_half)
                     tip2 = QPointF(x0 + ux * (out * 0.82), y0 + uy * (out * 0.82))
-                    bright_alpha = int(np.clip(round((130 if vm <= 0.0 else 105) * visibility_boost), 65, 200))
+                    bright_alpha = int(np.clip(round((55.0 + 132.0 * flare_strength) * visibility_boost), 45, 210))
                     inner_base = QPointF(x0 + ux * (inner * 0.95), y0 + uy * (inner * 0.95))
                     bright_grad = QLinearGradient(inner_base, tip2)
                     bright_head = QColor(255, 255, 255, bright_alpha)
@@ -504,7 +528,7 @@ def draw_stars(
                 for deg in (0.0, 90.0, 180.0, 270.0):
                     _draw_spike(deg, 1.0)
 
-                if vm <= 0.5:
+                if flare_strength >= 0.45:
                     for deg in (45.0, 135.0, 225.0, 315.0):
                         _draw_spike(deg, 0.78)
 
