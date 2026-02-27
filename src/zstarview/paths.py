@@ -15,7 +15,6 @@ APP_DISPLAY_NAME = "Zenith Star View"
 
 # Data file paths
 TEXT_FONT_PATH = os.path.join(_dir, "data", "Noto_Sans", "NotoSans-VariableFont_wdth,wght.ttf")
-EMOJI_FONT_PATH = os.path.join(_dir, "data", "Noto_Sans_Symbols", "NotoSansSymbols-VariableFont_wght.ttf")
 CITY_COORD_FILE = os.path.join(_dir, "data", "cities1000.txt")
 CITY_ADMIN1_CODES_FILE = os.path.join(_dir, "data", "admin1CodesASCII.txt")
 STARS_CSV_FILE = os.path.join(_dir, "data", "stars.csv")
@@ -32,7 +31,6 @@ WINDOW_HEIGHT = 600
 # UI constants
 TEXT_COLOR = (180, 180, 180)
 TEXT_FONT_SIZE = 11
-EMOJI_FONT_SIZE = 16
 STATUS_LINE_COLOR = (190, 190, 160)
 STATUS_LINE_FONT_SIZE = 8
 
