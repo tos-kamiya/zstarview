@@ -17,7 +17,7 @@ from ..paths import (
     TEXT_COLOR,
     STATUS_LINE_COLOR,
 )
-from ..types import ScreenGeometry, CelestialData, ViewerData, CelestialObject
+from ..types import ScreenGeometry, CelestialData, ViewerData, CelestialObject, PlanetBody
 from ..astro import altaz_to_normalized_xy, is_in_fov, calculate_moon_render_data
 from ..utils.image import generate_moon_phase_image
 from ..utils.qt import pil2qpixmap
@@ -644,7 +644,60 @@ def draw_moon(
     painter.restore()
 
 
-def draw_planets(
+def _collect_sun_moon_context(planets: List[PlanetBody]) -> Tuple[Optional[PlanetBody], Optional[Tuple[float, float]], Optional[Tuple[float, float]]]:
+    """Collect moon body and sun/moon alt-az pairs from planet list."""
+    moon_body: Optional[PlanetBody] = None
+    sun_altaz: Optional[Tuple[float, float]] = None
+    moon_altaz: Optional[Tuple[float, float]] = None
+    for body in planets:
+        if body.name == "sun":
+            sun_altaz = (body.alt, body.az)
+        elif body.name == "moon":
+            moon_altaz = (body.alt, body.az)
+            moon_body = body
+    return moon_body, sun_altaz, moon_altaz
+
+
+def _moon_eclipse_overlay_color(body: PlanetBody) -> Optional[QColor]:
+    """Return overlay color for lunar eclipse rendering, if needed."""
+    eclipse = body.lunar_eclipse_info
+    if not eclipse or not eclipse.is_eclipse:
+        return None
+    if eclipse.eclipse_type == "partial":
+        return QColor(30, 0, 0, 60)
+    if eclipse.eclipse_type == "total":
+        return QColor(40, 10, 10, 180)
+    return None
+
+
+def _draw_moon_planet(
+    painter: QPainter,
+    pos: QPointF,
+    geometry: ScreenGeometry,
+    body: PlanetBody,
+    viewer_data: ViewerData,
+    sun_altaz: Tuple[float, float],
+    moon_altaz: Tuple[float, float],
+    enlarge_moon: bool,
+    cross_color: QColor,
+) -> None:
+    """Draw moon phase disc (with eclipse tint) and its gauge marker."""
+    moon_zoom = 5 if enlarge_moon else 1
+    sun_dir_in_moon_frame, screen_rotation_deg = calculate_moon_render_data(sun_altaz, moon_altaz, viewer_data.view_center)
+    moon_radius_px = (0.25 / 90.0) * geometry.radius * moon_zoom
+    draw_moon(
+        painter,
+        pos,
+        moon_radius_px,
+        sun_dir_in_moon_frame=sun_dir_in_moon_frame,
+        screen_rotation_deg=screen_rotation_deg,
+        opacity=1.0 if not enlarge_moon else 0.7,
+        base_color=_moon_eclipse_overlay_color(body),
+    )
+    draw_gauge_cross(painter, cross_color, pos)
+
+
+def draw_solar_system_bodies(
     painter: QPainter,
     geometry: ScreenGeometry,
     celestial_data: CelestialData,
@@ -655,31 +708,21 @@ def draw_planets(
     preset: str = "night",
 ) -> None:
     """
-    Draw the planets, including the Sun and Moon.
+    Draw major solar system bodies (Sun, Moon, and planets).
 
-    This function iterates through the planets in the sky data, calculates their
+    This function iterates through bodies in the sky data, calculates their
     screen positions, and draws them. The Sun is drawn as a gauge cross, the
     Moon is drawn with its phase, and other planets are represented by emoji symbols.
 
     Args:
         painter: The QPainter for drawing.
         geometry: The screen geometry for coordinate conversion.
-        celestial_data: The data containing planet information.
+        celestial_data: The data containing solar system body information.
         viewer_data: The viewer's data for position calculations.
         enlarge_moon: A boolean indicating whether to draw the moon larger.
         emoji_font: The QFont to use for drawing planet symbols.
     """
-    moon_zoom = 5 if enlarge_moon else 1
-    moon_body = None
-    sun_altaz: Optional[Tuple[float, float]] = None
-    moon_altaz: Optional[Tuple[float, float]] = None
-
-    for body in celestial_data.planets:
-        if body.name == "sun":
-            sun_altaz = (body.alt, body.az)
-        elif body.name == "moon":
-            moon_altaz = (body.alt, body.az)
-            moon_body = body
+    moon_body, sun_altaz, moon_altaz = _collect_sun_moon_context(celestial_data.planets)
 
     # Keep planet symbols on their legacy style because they are usually
     # drawn over the sky disc, where the original contrast is preferred.
@@ -701,27 +744,17 @@ def draw_planets(
             draw_gauge_cross(painter, text_color, pos)
 
         elif body.name == "moon" and moon_body and sun_altaz and moon_altaz:
-            sun_dir_in_moon_frame, screen_rotation_deg = calculate_moon_render_data(sun_altaz, moon_altaz, viewer_data.view_center)
-            moon_radius_px = (0.25 / 90.0) * geometry.radius * moon_zoom
-
-            eclipse = body.lunar_eclipse_info
-            base_color: Optional[QColor] = None
-            if eclipse and eclipse.is_eclipse:
-                if eclipse.eclipse_type == "partial":
-                    base_color = QColor(30, 0, 0, 60)
-                elif eclipse.eclipse_type == "total":
-                    base_color = QColor(40, 10, 10, 180)
-
-            draw_moon(
+            _draw_moon_planet(
                 painter,
                 pos,
-                moon_radius_px,
-                sun_dir_in_moon_frame=sun_dir_in_moon_frame,
-                screen_rotation_deg=screen_rotation_deg,
-                opacity=1.0 if not enlarge_moon else 0.7,
-                base_color=base_color,
+                geometry,
+                body,
+                viewer_data,
+                sun_altaz,
+                moon_altaz,
+                enlarge_moon,
+                text_color,
             )
-            draw_gauge_cross(painter, text_color, pos)
 
         else:
             draw_outlined_text(painter, body.symbol, pos, emoji_font, text_color, outline_color)

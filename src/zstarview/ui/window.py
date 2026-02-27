@@ -462,7 +462,7 @@ class SkyWindow(DraggableWindow):
             obj = highlighted_object[0]
             name = getattr(obj, "name", "") if hasattr(obj, "name") else obj.get("name", "")
             enlarge_moon = enlarge_moon or name == "moon"
-        render_draw.draw_planets(
+        render_draw.draw_solar_system_bodies(
             painter,
             geometry,
             self.celestial_data,
