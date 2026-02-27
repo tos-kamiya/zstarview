@@ -41,11 +41,14 @@ def test_meteosat_visibility_available_in_experimental_mode() -> None:
     assert "METEOSAT" in sats
 
 
-def test_pick_satellite_auto_keeps_existing_provider_set_for_now() -> None:
-    # Guardrail for PR1: selection groundwork is added, but runtime routing
-    # still targets currently implemented providers only.
-    sat = pick_satellite(51.5072, -0.1276, ("AUTO",))
-    assert sat in {"G16", "G18", "HIMAWARI"}
+def test_pick_satellite_auto_can_include_meteosat_when_requested() -> None:
+    sat = pick_satellite(
+        51.5072,
+        -0.1276,
+        ("AUTO",),
+        include_experimental=True,
+    )
+    assert sat == "METEOSAT"
 
 
 def test_pick_satellite_can_select_meteosat_in_manual_mode() -> None:

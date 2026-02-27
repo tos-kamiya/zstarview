@@ -108,16 +108,21 @@ class CloudDisc:
         eps = 1e-3
         alt = max(-(90.0 - eps), min(90.0 - eps, alt))
 
-        # Step 1: Automatically select the best satellite based on location or config priority.
+        # Step 1: Ensure the location is covered by currently supported providers.
+        supported_visible = tuple(visible_satellites(lat, lon, ("G16", "G18", "HIMAWARI")))
+        if not supported_visible:
+            raise VisibilityError("No supported satellite for this region")
+
+        # Step 2: Automatically select the best satellite based on location or config priority.
         sat = pick_satellite(
             lat,
             lon,
             priority=self.cfg.sat_priority,
-            include_experimental=True,
+            include_experimental=False,
         )
         logger.info("Selected satellite=%s for observer at (lat=%.2f, lon=%.2f)", sat, lat, lon)
 
-        # Step 2: Fetch data from the provider. This returns a DataArray of brightness temperatures.
+        # Step 3: Fetch data from the provider. This returns a DataArray of brightness temperatures.
         sat_used = sat
         if sat in ("G16", "G18"):
             goes_visible = tuple(visible_satellites(lat, lon, ("G16", "G18")))

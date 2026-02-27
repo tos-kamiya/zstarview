@@ -40,6 +40,7 @@ from ..clouddisc import (
     VisibilityError,
     cleanup_satellite_cache,
 )
+from ..clouddisc.providers.select import pick_satellite
 from ..paths import (
     APP_ICON_FILE,
     APP_DISPLAY_NAME,
@@ -339,6 +340,24 @@ class SkyWindow(DraggableWindow):
         except RuntimeError:
             logger.debug("Skip cloud repaint emit during shutdown.")
 
+    def _predicted_cloud_satellite(self) -> str:
+        lat, lon = self.viewer_data.location
+        return pick_satellite(lat, lon, ("AUTO",), include_experimental=False)
+
+    def _cloud_status_line(self) -> str:
+        sat = self.cloud_state.current_satellite or self._predicted_cloud_satellite()
+        if self.cloud_state.banner_text:
+            detail = self.cloud_state.banner_text.removeprefix("Clouds:").strip()
+            return f"Clouds [{sat}]: {detail}"
+        meta = self.cloud_state.meta
+        if meta is not None:
+            try:
+                t = meta.time_utc.strftime("%H:%MZ")
+                return f"Clouds [{meta.satellite}]: {meta.product} {t}"
+            except Exception:
+                pass
+        return f"Clouds [{sat}]: idle"
+
     def toggle_enlarge_moon(self) -> None:
         self.enlarge_moon = not self.enlarge_moon
         if self._action_enlarge_moon is not None and self._action_enlarge_moon.isChecked() != self.enlarge_moon:
@@ -480,11 +499,11 @@ class SkyWindow(DraggableWindow):
             preset=self.visual_preset,
         )
 
-        # 7. Draw persistent cloud error message (bottom-left), if any
-        if self.cloud_state.banner_text:
+        # 7. Draw persistent cloud status line (bottom-left)
+        if self.cloud_disc_alpha > 0.0 or self.cloud_state.banner_text:
             render_draw.draw_status_line_text(
                 painter=painter,
-                message=self.cloud_state.banner_text,
+                message=self._cloud_status_line(),
                 status_line_font=self.status_line_font,
                 viewport_rect=self.rect(),
                 preset=self.visual_preset,
@@ -554,6 +573,7 @@ class SkyWindow(DraggableWindow):
             self._cloud_update_pending = True
             return
 
+        self.cloud_state.current_satellite = self._predicted_cloud_satellite()
         self.cloud_state.set_error_banner("Clouds: downloading…")  # e.g., "Clouds: Downloading..."
         self.update()
 
@@ -597,6 +617,9 @@ class SkyWindow(DraggableWindow):
                 self._compositor.invalidate()
             except VisibilityError as e:
                 logger.error("Invalid params for cloud-disc image generation: %s", e)
+                self.cloud_state.image = None
+                self.cloud_state.stripe_density = None
+                self.cloud_state.set_error_banner("Clouds: no supported satellite for this region")
             except DownloadError as e:
                 logger.warning("Network/S3 download error: %s", e)
                 self.cloud_state.set_error_banner("Clouds: Network/S3 download error")
