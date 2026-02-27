@@ -1,8 +1,17 @@
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, TypeAlias
 
 import astropy
 import numpy as np
+
+# --- Unit-oriented type aliases (contract clarity) ---
+Deg: TypeAlias = float
+AltDeg: TypeAlias = Deg
+AzDeg: TypeAlias = Deg
+LatDeg: TypeAlias = Deg
+LonDeg: TypeAlias = Deg
+LocationLatLon: TypeAlias = Tuple[LatDeg, LonDeg]
+ViewCenterAltAz: TypeAlias = Tuple[AltDeg, AzDeg]
 
 
 @dataclass
@@ -33,23 +42,57 @@ class SolarEclipseInfo:
 @dataclass
 class PlanetBody:
     name: str
-    alt: float
-    az: float
+    alt: AltDeg  # altitude in degrees
+    az: AzDeg  # azimuth in degrees (0=N, 90=E)
     symbol: str
     is_visible: bool
     phase_angle: Optional[float] = None  # moon only
     lunar_eclipse_info: Optional[LunarEclipseInfo] = None  # moon only
     solar_eclipse_info: Optional[SolarEclipseInfo] = None  # sun only
 
+    @property
+    def alt_deg(self) -> AltDeg:
+        """Altitude in degrees (alias for `alt`)."""
+        return self.alt
+
+    @alt_deg.setter
+    def alt_deg(self, value: AltDeg) -> None:
+        self.alt = value
+
+    @property
+    def az_deg(self) -> AzDeg:
+        """Azimuth in degrees (alias for `az`, 0=N, 90=E)."""
+        return self.az
+
+    @az_deg.setter
+    def az_deg(self, value: AzDeg) -> None:
+        self.az = value
+
 
 @dataclass
 class ViewerData:
     """Contains information about the observer."""
 
-    location: Tuple[float, float]  # (lat, lon)
+    location: LocationLatLon  # (lat_deg, lon_deg)
     timezone_name: str
     city_name: str
-    view_center: Tuple[float, float] = (90.0, 180.0)
+    view_center: ViewCenterAltAz = (90.0, 180.0)  # (alt_deg, az_deg)
+
+    @property
+    def lat_deg(self) -> LatDeg:
+        return self.location[0]
+
+    @property
+    def lon_deg(self) -> LonDeg:
+        return self.location[1]
+
+    @property
+    def view_alt_deg(self) -> AltDeg:
+        return self.view_center[0]
+
+    @property
+    def view_az_deg(self) -> AzDeg:
+        return self.view_center[1]
 
 
 @dataclass
