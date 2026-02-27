@@ -31,6 +31,8 @@ def get_text_style(preset: str = "night") -> Tuple[QColor, QColor]:
         return QColor(18, 29, 48), QColor(245, 250, 255, 210)
     if preset == "day":
         return QColor(22, 33, 52), QColor(238, 245, 255, 200)
+    if preset == "black":
+        return QColor(246, 249, 255), QColor(2, 2, 3, 236)
     return QColor(*TEXT_COLOR), QColor.fromRgbF(0, 0, 0, 0.3)
 
 
@@ -223,20 +225,33 @@ def draw_radial_background(
     if preset == "white":
         def col(r: float, s: float) -> QColor:
             t = max(0.0, min(1.0, (r - r90) / max(1.0, r_max - r90)))
-            rr = int(232 - 40 * t)
-            gg = int(240 - 48 * t)
-            bb = int(252 - 58 * t)
+            gray = int(246 - 54 * t)
             aa = max(0, 248 - (s + int(120 * t)))
-            return QColor(rr, gg, bb, aa)
+            return QColor(gray, gray, gray, aa)
     elif preset == "day":
         def col(r: float, s: float) -> QColor:
             t = max(0.0, min(1.0, (r - r90) / max(1.0, r_max - r90)))
-            rr = int(180 - 62 * t)
-            gg = int(196 - 78 * t)
-            bb = int(230 - 95 * t)
+            # Keep day palette bright, but slightly blue-leaning.
+            rr = int(230 - 28 * t)
+            gg = int(242 - 34 * t)
+            bb = int(255 - 34 * t)
             # Keep "day" visibly lighter/more transparent than "white".
             aa = max(0, 170 - (s + int(120 * t)))
             return QColor(rr, gg, bb, aa)
+    elif preset == "night":
+        def col(r: float, s: float) -> QColor:
+            t = max(0.0, min(1.0, (r - r90) / max(1.0, r_max - r90)))
+            rr = int(10 - 7 * t)
+            gg = int(12 - 9 * t)
+            bb = int(16 - 11 * t)
+            aa = max(0, 236 - (s + int(95 * t)))
+            return QColor(rr, gg, bb, aa)
+    elif preset == "black":
+        def col(r: float, s: float) -> QColor:
+            t = max(0.0, min(1.0, (r - r90) / max(1.0, r_max - r90)))
+            gray = int(4 - 3 * t)
+            aa = max(0, 255 - (s + int(45 * t)))
+            return QColor(gray, gray, gray, aa)
     else:
         def col(r: float, s: float) -> QColor:
             t = max(0.0, min(1.0, (r - r90) / max(1.0, r_max - r90)))
@@ -880,6 +895,9 @@ def draw_status_line_text(
     elif preset == "day":
         color = QColor(78, 26, 26)
         outline_color = QColor(250, 242, 242, 215)
+    elif preset == "black":
+        color = QColor(255, 220, 220)
+        outline_color = QColor(2, 2, 3, 236)
     else:
         color = QColor(*STATUS_LINE_COLOR)
         outline_color = QColor.fromRgbF(0, 0, 0, 0.3)

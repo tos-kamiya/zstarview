@@ -59,20 +59,26 @@ def _get_splash_palette(visual_preset: str) -> tuple[list[QColor], QColor, QColo
     """Return gradient colors, frame color, and default message color for splash."""
     if visual_preset == "night":
         return (
-            [QColor(16, 20, 34), QColor(10, 14, 25), QColor(6, 9, 17)],
-            QColor(66, 84, 118),
-            QColor(214, 228, 255),
+            [QColor(12, 14, 20), QColor(8, 10, 14), QColor(4, 6, 9)],
+            QColor(70, 76, 92),
+            QColor(228, 236, 250),
+        )
+    if visual_preset == "black":
+        return (
+            [QColor(6, 6, 6), QColor(3, 3, 3), QColor(0, 0, 0)],
+            QColor(56, 56, 64),
+            QColor(244, 248, 255),
         )
     if visual_preset == "white":
         return (
-            [QColor(244, 250, 255), QColor(224, 236, 250), QColor(196, 214, 238)],
+            [QColor(252, 252, 252), QColor(234, 234, 234), QColor(206, 206, 206)],
             QColor(158, 178, 206),
             QColor(19, 31, 50),
         )
     # day
     return (
-        [QColor(236, 244, 255), QColor(214, 227, 246), QColor(186, 204, 232)],
-        QColor(148, 167, 194),
+        [QColor(240, 248, 255), QColor(226, 240, 252), QColor(206, 228, 246)],
+        QColor(158, 182, 206),
         QColor(18, 29, 48),
     )
 
@@ -123,11 +129,12 @@ def _parse_theme(value: str) -> str:
         "night": "night",
         "day": "day",
         "white": "white",
+        "black": "black",
     }
     if key in allowed:
         return allowed[key]
     raise argparse.ArgumentTypeError(
-        f"Invalid theme: {value!r}. Use one of: night, day, white."
+        f"Invalid theme: {value!r}. Use one of: night, day, white, black."
     )
 
 
@@ -233,7 +240,7 @@ def parse_args() -> argparse.Namespace:
         "--theme",
         type=_parse_theme,
         default="night",
-        metavar="{night,day,white}",
+        metavar="{night,day,white,black}",
         help="Theme preset for background and star contrast (default: night).",
     )
     return parser.parse_args()
