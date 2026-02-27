@@ -173,36 +173,34 @@
     - PR2: 速度プリセット/リセット導入と境界条件調整
     - PR3: 必要に応じてキー割当の設定化
 
-## 10. 入力データ契約の明文化プラン（INPROGRESS）
+## 10. 入力データ契約の明文化プラン（DONE / INPROGRESS）
 
-状態: `INPROGRESS`
+状態:
+- `DONE`: 1, 2, 3
+- `INPROGRESS`: 4, 5
 
 目的:
 - 角度・座標系・単位の取り違えを防止し、関数間契約を読み取れる状態にする。
 - 既存挙動を壊さず、段階的に契約を強化する。
 
-優先度付き修正プラン:
+DONE:
 
 1. 高: `alt/az` 引数順の統一（誤用バグ予防）
-   - 対象:
-     - `clouddisc/projectors/az.py` の `azalt_to_dir_ecef(...)`
-     - `astro.py` の `altaz_to_normalized_xy(...)`
-   - 方針:
-     - 公開APIは `(alt_deg, az_deg, ...)` に統一する。
-     - 移行期間は互換ラッパーを残し、既存呼び出しを段階移行する。
+   - 実施:
+     - `clouddisc/projectors/az.py` に `altaz_to_dir_ecef(alt_deg, az_deg, ...)` を導入。
+     - 旧 `azalt_to_dir_ecef(...)` は互換ラッパーを経て削除済み。
 
 2. 高: 型定義に単位・順序を反映
-   - 対象:
-     - `types.py` の `ViewerData`, `PlanetBody`
-   - 方針:
-     - `alt_deg/az_deg/lat_deg/lon_deg` の命名・注釈を導入する。
-     - `view_center` は `ViewCenter` 型エイリアス（`Tuple[AltDeg, AzDeg]`）を導入する。
+   - 実施:
+     - `types.py` に `AltDeg/AzDeg/LatDeg/LonDeg/ViewCenterAltAz` を導入。
+     - `ViewerData`, `PlanetBody` に `*_deg` 明示アクセサを追加（既存フィールド互換を維持）。
 
 3. 中: `stars` 構造の契約を型化
-   - 対象:
-     - `types.py` の `CelestialData.stars: Dict[str, np.ndarray]`
-   - 方針:
-     - `TypedDict` または dataclass でキー集合（`name/alt_deg/az_deg/vmag/bv`）を固定する。
+   - 実施:
+     - `types.py` に `StarsTable(TypedDict)` を追加。
+     - `CelestialData.stars` と `calculate_visible_stars()` の戻り型を `StarsTable` へ変更。
+
+INPROGRESS:
 
 4. 中: 正規化座標の仕様ドキュメントを実装へ一致
    - 対象:
