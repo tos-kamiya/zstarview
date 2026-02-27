@@ -53,7 +53,6 @@ from ..paths import (
     TEXT_FONT_PATH,
     TEXT_FONT_SIZE,
     STATUS_LINE_FONT_SIZE,
-    WINDOW_HEIGHT,
     WINDOW_WIDTH,
 )
 from ..render import draw as render_draw
@@ -71,6 +70,16 @@ DEBUG_ECLIPSES = True
 
 
 # compositing helpers and cache moved to ui/composite.py
+
+
+def _initial_height_ratio_for_altitude(altitude_deg: float) -> float:
+    """Map altitude [0, 90] to initial height ratio [0.65, 1.0].
+
+    At low altitudes we keep extra vertical headroom so the upper sky region
+    does not feel cramped (roughly enough for ~120 deg effective FOV at A=0).
+    """
+    alt = max(0.0, min(90.0, float(altitude_deg)))
+    return 0.65 + 0.35 * (alt / 90.0)
 
 
 class SkyWindow(DraggableWindow):
@@ -163,10 +172,16 @@ class SkyWindow(DraggableWindow):
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setFocus(Qt.FocusReason.ActiveWindowFocusReason)
         self.setWindowIcon(QIcon(APP_ICON_FILE))
-        self.setMinimumSize(400, 400)
+        initial_alt = self.viewer_data.view_center[0]
+        height_ratio = _initial_height_ratio_for_altitude(initial_alt)
+        initial_width = WINDOW_WIDTH
+        initial_height = max(220, int(round(initial_width * height_ratio)))
+        min_width = 400
+        min_height = max(220, int(round(min_width * height_ratio)))
+        self.setMinimumSize(min_width, min_height)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
-        self.setGeometry(100, 100, WINDOW_WIDTH, WINDOW_HEIGHT)
+        self.setGeometry(100, 100, initial_width, initial_height)
         self.setMouseTracking(True)
         self.mouse_pos: Optional[QPoint] = None
 
