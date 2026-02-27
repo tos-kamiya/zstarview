@@ -9,6 +9,7 @@ from typing import Tuple, List
 # Defines the sub-satellite longitude (the longitude directly below the satellite)
 # for each available geostationary satellite.
 SAT_LON = {"G16": -75.2, "G18": -137.0, "HIMAWARI": 140.7}
+MAX_VISIBLE_CENTRAL_ANGLE_DEG = 81.3
 
 
 def central_angle_deg(lat_deg: float, lon_deg: float, sub_lon_deg: float) -> float:
@@ -41,6 +42,26 @@ def central_angle_deg(lat_deg: float, lon_deg: float, sub_lon_deg: float) -> flo
     return math.degrees(math.acos(cos_angle))
 
 
+def is_satellite_visible(lat: float, lon: float, sat_name: str, max_angle_deg: float = MAX_VISIBLE_CENTRAL_ANGLE_DEG) -> bool:
+    """Return True if a geostationary satellite is above the visibility angle."""
+    if sat_name not in SAT_LON:
+        return False
+    return central_angle_deg(lat, lon, SAT_LON[sat_name]) <= max_angle_deg
+
+
+def visible_satellites(lat: float, lon: float, sat_names: Tuple[str, ...], max_angle_deg: float = MAX_VISIBLE_CENTRAL_ANGLE_DEG) -> List[str]:
+    """Return visible satellites from sat_names ordered by smaller central angle first."""
+    visible: List[Tuple[float, str]] = []
+    for sat in sat_names:
+        if sat not in SAT_LON:
+            continue
+        angle = central_angle_deg(lat, lon, SAT_LON[sat])
+        if angle <= max_angle_deg:
+            visible.append((angle, sat))
+    visible.sort()
+    return [sat for _, sat in visible]
+
+
 def pick_satellite(lat: float, lon: float, priority: Tuple[str, ...] = ("AUTO",)) -> str:
     """
     Selects the best satellite for a given location based on visibility and priority.
@@ -65,9 +86,7 @@ def pick_satellite(lat: float, lon: float, priority: Tuple[str, ...] = ("AUTO",)
         candidates: List[Tuple[float, str]] = []
         for sat, sub_lon in SAT_LON.items():
             angle = central_angle_deg(lat, lon, sub_lon)
-            # 81.3 degrees is the approximate maximum central angle for a geostationary
-            # satellite to be visible above the horizon.
-            if angle <= 81.3:
+            if angle <= MAX_VISIBLE_CENTRAL_ANGLE_DEG:
                 candidates.append((angle, sat))
 
         if not candidates:

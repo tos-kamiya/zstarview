@@ -1,0 +1,40 @@
+from __future__ import annotations
+
+import datetime as dt
+
+import numpy as np
+import pytest
+import xarray as xr
+
+from zstarview.clouddisc.config import CloudDiscConfig
+from zstarview.clouddisc.providers.goes import GoesProvider
+from zstarview.clouddisc.types import DataNotFoundError
+
+
+def _dummy_result() -> tuple[xr.DataArray, dt.datetime, list]:
+    da = xr.DataArray(np.zeros((2, 2), dtype=np.float32))
+    used = dt.datetime(2026, 2, 27, 12, 50, tzinfo=dt.timezone.utc)
+    return da, used, []
+
+
+def test_goes_failover_respects_allowed_satellites(tmp_path, monkeypatch) -> None:
+    provider = GoesProvider(CloudDiscConfig(cache_dir=tmp_path))
+    calls: list[str] = []
+
+    def fake_once(sat: str, when_utc: dt.datetime, search_back_minutes: int):
+        del when_utc, search_back_minutes
+        calls.append(sat)
+        if sat == "G18":
+            return _dummy_result()
+        return None
+
+    monkeypatch.setattr(provider, "_fetch_bt_c13_once", fake_once)
+
+    with pytest.raises(DataNotFoundError):
+        provider.fetch_bt_c13_with_failover(
+            sat="G16",
+            when_utc=dt.datetime(2026, 2, 27, 13, 0, tzinfo=dt.timezone.utc),
+            allowed_sats=("G16",),
+        )
+
+    assert set(calls) == {"G16"}
