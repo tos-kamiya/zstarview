@@ -26,11 +26,11 @@ def _empty_celestial_data(planets: list[PlanetBody]) -> CelestialData:
 
 
 def test_planets_are_drawn_with_disc_and_cross_markers(monkeypatch) -> None:
-    disc_calls: list[tuple[float, int]] = []
+    disc_calls: list[tuple[float, int, tuple[int, int, int, int]]] = []
     cross_calls: list[tuple[float, float]] = []
 
-    def fake_draw_planet_disc(_painter, _pos, _color, *, radius_px=1.0, alpha=255) -> None:
-        disc_calls.append((radius_px, alpha))
+    def fake_draw_planet_disc(_painter, _pos, color, *, radius_px=1.0, alpha=255) -> None:
+        disc_calls.append((radius_px, alpha, color.getRgb()))
 
     def fake_draw_gauge_cross(_painter, _color, _center, *, scale=1.0, pen_width=1.0) -> None:
         cross_calls.append((scale, pen_width))
@@ -53,7 +53,10 @@ def test_planets_are_drawn_with_disc_and_cross_markers(monkeypatch) -> None:
     assert len(disc_calls) == 1
     assert disc_calls[0][0] > 0.0
     assert disc_calls[0][1] > 0
+    r, g, b, _ = disc_calls[0][2]
+    assert r > g and r > b
     assert len(cross_calls) == 1
+    assert cross_calls[0][0] < 1.0
 
 
 def test_hover_can_identify_planet_name() -> None:

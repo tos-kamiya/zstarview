@@ -85,11 +85,28 @@ def planet_disc_style_from_vmag(vmag: Optional[float]) -> Tuple[float, int]:
     """Return (radius_px, alpha) for a planet disc marker."""
     if vmag is None or not math.isfinite(float(vmag)):
         return 3.0, 200
+    # Keep explicit clipping here for readability: very bright planets saturate at -1.5.
+    vmag_clipped = float(np.clip(float(vmag), -1.5, 6.0))
     # Reuse star-like brightness mapping so brighter planets appear stronger.
-    strength = flare_strength_from_vmag(float(vmag))
+    strength = flare_strength_from_vmag(vmag_clipped)
     radius_px = 2.4 + 3.2 * strength
     alpha = int(np.clip(round(125 + 130 * strength), 110, 255))
     return radius_px, alpha
+
+
+def planet_marker_color(name: str) -> QColor:
+    """Return display color for a planet marker."""
+    palette = {
+        "mercury": QColor(190, 190, 182),
+        "venus": QColor(245, 226, 176),
+        "mars": QColor(232, 126, 96),
+        "jupiter": QColor(224, 188, 141),
+        "saturn": QColor(226, 214, 154),
+        "uranus": QColor(157, 224, 218),
+        "neptune": QColor(108, 152, 234),
+        "pluto": QColor(194, 166, 132),
+    }
+    return QColor(palette.get(name, QColor(*TEXT_COLOR)))
 
 
 def altaz_to_normalized_xy_vectorized(
@@ -754,18 +771,13 @@ def draw_planet_disc(
     radius_px: float,
     alpha: int,
 ) -> None:
-    """Draw a soft circular marker for planets, similar to star rendering."""
+    """Draw a no-flare solid circular marker for planets."""
     r = max(1.5, float(radius_px))
-    c0 = QColor(color)
-    c0.setAlpha(int(np.clip(alpha, 1, 255)))
-    c1 = QColor(color)
-    c1.setAlpha(0)
-    g = QRadialGradient(pos, r)
-    g.setColorAt(0.0, c0)
-    g.setColorAt(1.0, c1)
+    fill = QColor(color)
+    fill.setAlpha(int(np.clip(alpha, 1, 255)))
     painter.save()
     painter.setPen(Qt.PenStyle.NoPen)
-    painter.setBrush(g)
+    painter.setBrush(fill)
     painter.drawEllipse(pos, r, r)
     painter.restore()
 
@@ -827,10 +839,11 @@ def draw_solar_system_bodies(
 
         else:
             radius_px, alpha = planet_disc_style_from_vmag(body.vmag)
-            marker_color = QColor(text_color)
+            marker_color = planet_marker_color(body.name)
             marker_color.setAlpha(alpha)
             draw_planet_disc(painter, pos, marker_color, radius_px=radius_px, alpha=alpha)
-            draw_gauge_cross(painter, text_color, pos, scale=0.8, pen_width=1.0)
+            # Keep planet cross markers shorter than the Moon/Sun gauge marker.
+            draw_gauge_cross(painter, text_color, pos, scale=0.55, pen_width=1.0)
 
 
 def draw_direction_labels(
