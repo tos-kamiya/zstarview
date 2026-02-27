@@ -15,3 +15,9 @@ def test_planet_disc_style_handles_missing_vmag() -> None:
     radius, alpha = planet_disc_style_from_vmag(None)
     assert radius > 0.0
     assert alpha > 0
+
+
+def test_planet_disc_style_explicitly_clips_very_bright_values() -> None:
+    saturated = planet_disc_style_from_vmag(-1.5)
+    brighter_input = planet_disc_style_from_vmag(-4.9)
+    assert brighter_input == saturated
