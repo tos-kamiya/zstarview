@@ -341,7 +341,7 @@ def setup_splash_and_attach_logger(
     app_name: str,
     root_logger: logging.Logger,
     visual_preset: str,
-) -> Tuple[QSplashScreen, SplashLogHandler]:
+) -> Tuple[QSplashScreen, SplashLogHandler, Callable[[str], None]]:
     """
     Creates a splash screen and attaches a log handler to it.
 
@@ -361,15 +361,31 @@ def setup_splash_and_attach_logger(
     splash.setPixmap(pixmap)
     splash.show()
 
+    context_line = ""
+
+    def set_splash_context(line: str) -> None:
+        nonlocal context_line
+        context_line = line.strip()
+
     def show_splash_message(message: str, color: QColor):
-        splash.showMessage(f"{app_name} ver. {__version__}\n{message}", Qt.AlignmentFlag.AlignCenter, color)
+        header = f"{app_name} ver. {__version__}"
+        if context_line:
+            header += f"\n{context_line}"
+        splash.showMessage(f"{header}\n{message}", Qt.AlignmentFlag.AlignCenter, color)
         app.processEvents()
 
     splash_handler = SplashLogHandler(show_splash_message, info_color)
 
     root_logger.addHandler(splash_handler)
 
-    return splash, splash_handler
+    return splash, splash_handler, set_splash_context
+
+
+def _format_splash_location(city: CityRec) -> str:
+    """Create a concise location label for splash screen context."""
+    if getattr(city, "geonameid", 0) == 0:
+        return f"Location: {city.name}"
+    return f"Location: {city.cc}/{city.name}"
 
 
 class StartupAbortError(Exception):
@@ -621,10 +637,11 @@ def main() -> None:
     root_logger = setup_root_logger()
     logger.info(f"{APP_DISPLAY_NAME} starting...")
 
-    splash, splash_handler = setup_splash_and_attach_logger(app, app_name, root_logger, args.theme)
+    splash, splash_handler, set_splash_context = setup_splash_and_attach_logger(app, app_name, root_logger, args.theme)
 
     try:
         city = _startup_resolve_city(args.city)
+        set_splash_context(_format_splash_location(city))
         delta_t = _startup_parse_time_arguments(args.datetime, args.days, args.hours)
         star_catalog = _startup_load_stars(args.vmag_limit)
     except StartupAbortError:
