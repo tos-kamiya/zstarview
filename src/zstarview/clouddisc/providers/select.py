@@ -4,12 +4,29 @@ Utilities for selecting the best geostationary satellite for a given location.
 """
 
 import math
-from typing import Tuple, List
+from typing import Dict, Tuple, List
 
 # Defines the sub-satellite longitude (the longitude directly below the satellite)
 # for each available geostationary satellite.
-SAT_LON = {"G16": -75.2, "G18": -137.0, "HIMAWARI": 140.7}
+SAT_LON: Dict[str, float] = {
+    "G16": -75.2,
+    "G18": -137.0,
+    "HIMAWARI": 140.7,
+}
+# Experimental satellites that are not yet connected in core/provider routing.
+# METEOSAT Prime is approximated at 0.0 deg for visibility geometry.
+EXPERIMENTAL_SAT_LON: Dict[str, float] = {
+    "METEOSAT": 0.0,
+}
 MAX_VISIBLE_CENTRAL_ANGLE_DEG = 81.3
+
+
+def _sat_lon_map(*, include_experimental: bool) -> Dict[str, float]:
+    if not include_experimental:
+        return SAT_LON
+    merged = dict(SAT_LON)
+    merged.update(EXPERIMENTAL_SAT_LON)
+    return merged
 
 
 def central_angle_deg(lat_deg: float, lon_deg: float, sub_lon_deg: float) -> float:
@@ -42,27 +59,49 @@ def central_angle_deg(lat_deg: float, lon_deg: float, sub_lon_deg: float) -> flo
     return math.degrees(math.acos(cos_angle))
 
 
-def is_satellite_visible(lat: float, lon: float, sat_name: str, max_angle_deg: float = MAX_VISIBLE_CENTRAL_ANGLE_DEG) -> bool:
+def is_satellite_visible(
+    lat: float,
+    lon: float,
+    sat_name: str,
+    max_angle_deg: float = MAX_VISIBLE_CENTRAL_ANGLE_DEG,
+    *,
+    include_experimental: bool = False,
+) -> bool:
     """Return True if a geostationary satellite is above the visibility angle."""
-    if sat_name not in SAT_LON:
+    sat_lon_map = _sat_lon_map(include_experimental=include_experimental)
+    if sat_name not in sat_lon_map:
         return False
-    return central_angle_deg(lat, lon, SAT_LON[sat_name]) <= max_angle_deg
+    return central_angle_deg(lat, lon, sat_lon_map[sat_name]) <= max_angle_deg
 
 
-def visible_satellites(lat: float, lon: float, sat_names: Tuple[str, ...], max_angle_deg: float = MAX_VISIBLE_CENTRAL_ANGLE_DEG) -> List[str]:
+def visible_satellites(
+    lat: float,
+    lon: float,
+    sat_names: Tuple[str, ...],
+    max_angle_deg: float = MAX_VISIBLE_CENTRAL_ANGLE_DEG,
+    *,
+    include_experimental: bool = False,
+) -> List[str]:
     """Return visible satellites from sat_names ordered by smaller central angle first."""
+    sat_lon_map = _sat_lon_map(include_experimental=include_experimental)
     visible: List[Tuple[float, str]] = []
     for sat in sat_names:
-        if sat not in SAT_LON:
+        if sat not in sat_lon_map:
             continue
-        angle = central_angle_deg(lat, lon, SAT_LON[sat])
+        angle = central_angle_deg(lat, lon, sat_lon_map[sat])
         if angle <= max_angle_deg:
             visible.append((angle, sat))
     visible.sort()
     return [sat for _, sat in visible]
 
 
-def pick_satellite(lat: float, lon: float, priority: Tuple[str, ...] = ("AUTO",)) -> str:
+def pick_satellite(
+    lat: float,
+    lon: float,
+    priority: Tuple[str, ...] = ("AUTO",),
+    *,
+    include_experimental: bool = False,
+) -> str:
     """
     Selects the best satellite for a given location based on visibility and priority.
 
@@ -98,9 +137,10 @@ def pick_satellite(lat: float, lon: float, priority: Tuple[str, ...] = ("AUTO",)
         return candidates[0][1]
 
     # --- Manual Priority Mode ---
+    sat_lon_map = _sat_lon_map(include_experimental=include_experimental)
     # Iterate through the user-provided list and return the first valid satellite.
     for sat_name in priority:
-        if sat_name in SAT_LON:
+        if sat_name in sat_lon_map:
             return sat_name
 
     # As a final fallback, if the priority list is misconfigured or empty.

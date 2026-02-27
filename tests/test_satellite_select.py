@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from zstarview.clouddisc.providers.select import is_satellite_visible, visible_satellites
+from zstarview.clouddisc.providers.select import (
+    is_satellite_visible,
+    pick_satellite,
+    visible_satellites,
+)
 
 
 def test_goes_visibility_for_europe_examples() -> None:
@@ -18,3 +22,37 @@ def test_visible_satellites_returns_angle_sorted_subset() -> None:
     # For Tokyo, HIMAWARI is expected to be the closest visible satellite.
     assert sats
     assert sats[0] == "HIMAWARI"
+
+
+def test_meteosat_visibility_available_in_experimental_mode() -> None:
+    # London should see METEOSAT geometry when experimental satellites are included.
+    assert is_satellite_visible(
+        51.5072,
+        -0.1276,
+        "METEOSAT",
+        include_experimental=True,
+    )
+    sats = visible_satellites(
+        51.5072,
+        -0.1276,
+        ("G16", "G18", "METEOSAT"),
+        include_experimental=True,
+    )
+    assert "METEOSAT" in sats
+
+
+def test_pick_satellite_auto_keeps_existing_provider_set_for_now() -> None:
+    # Guardrail for PR1: selection groundwork is added, but runtime routing
+    # still targets currently implemented providers only.
+    sat = pick_satellite(51.5072, -0.1276, ("AUTO",))
+    assert sat in {"G16", "G18", "HIMAWARI"}
+
+
+def test_pick_satellite_can_select_meteosat_in_manual_mode() -> None:
+    sat = pick_satellite(
+        51.5072,
+        -0.1276,
+        ("METEOSAT", "G16"),
+        include_experimental=True,
+    )
+    assert sat == "METEOSAT"

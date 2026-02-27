@@ -18,6 +18,7 @@ from .config import CloudDiscConfig
 from .projectors.az import az_project_lonlat_grid
 from .providers.goes import GoesProvider
 from .providers.hima import HimaProvider
+from .providers.meteosat import MeteosatProvider
 from .providers.select import pick_satellite, visible_satellites
 from .render.grayscale import convert_bt_to_la_image
 from .sampling.bt_sampler import build_bt_sampler
@@ -53,6 +54,7 @@ class CloudDisc:
         self.cfg: CloudDiscConfig = cfg
         self.goes: GoesProvider = GoesProvider(cfg)
         self.hima: HimaProvider = HimaProvider(cfg)
+        self.meteosat: MeteosatProvider = MeteosatProvider(cfg)
 
     def _now_rounded(self) -> dt.datetime:
         """
@@ -107,7 +109,12 @@ class CloudDisc:
         alt = max(-(90.0 - eps), min(90.0 - eps, alt))
 
         # Step 1: Automatically select the best satellite based on location or config priority.
-        sat = pick_satellite(lat, lon, priority=self.cfg.sat_priority)
+        sat = pick_satellite(
+            lat,
+            lon,
+            priority=self.cfg.sat_priority,
+            include_experimental=True,
+        )
         logger.info("Selected satellite=%s for observer at (lat=%.2f, lon=%.2f)", sat, lat, lon)
 
         # Step 2: Fetch data from the provider. This returns a DataArray of brightness temperatures.
@@ -124,6 +131,9 @@ class CloudDisc:
         elif sat == "HIMAWARI":
             da, used_time, src_paths = self.hima.fetch_bt_c13(when_utc=when)
             product = "HSD-B13" if len(src_paths) > 1 else "ISatSS-B13"
+        elif sat == "METEOSAT":
+            da, used_time, src_paths = self.meteosat.fetch_bt_c13(when_utc=when)
+            product = "SEVIRI-IR"
         else:
             raise VisibilityError(f"No suitable satellite provider found for '{sat}'")
         logger.info("Using %s (%s) data from time=%s", sat_used, product, used_time.isoformat())
