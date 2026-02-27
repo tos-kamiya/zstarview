@@ -1,6 +1,6 @@
 import math
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import astropy
 import astropy.units as u
@@ -18,7 +18,7 @@ from .paths import (
     PLANET_IDS,
     EPHEMERIS_FILENAME,
 )
-from .types import LunarEclipseInfo, PlanetBody, SolarEclipseInfo
+from .types import LunarEclipseInfo, PlanetBody, SolarEclipseInfo, StarsTable
 
 
 # Skyfield ephemeris cache loader (separate from UI)
@@ -85,7 +85,7 @@ def calculate_visible_stars(
     lon: float,
     time_obj: astropy.time.Time,
     view_center: Tuple[float, float],
-) -> Tuple[Dict[str, np.ndarray], EarthLocation]:
+) -> Tuple[StarsTable, EarthLocation]:
     """Compute visible stars and return them with the observer location."""
     location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg)
     altaz_frame = AltAz(obstime=time_obj, location=location)
@@ -110,7 +110,7 @@ def calculate_visible_stars(
     in_view_mask = (alt > -ANGLE_BELOW_HORIZON) & is_in_fov_vectorized(alt, az, view_center)
 
     # Filter the results using the boolean mask
-    visible_stars = {
+    visible_stars: StarsTable = {
         "name": name[in_view_mask],
         "alt": alt[in_view_mask],
         "az": az[in_view_mask],

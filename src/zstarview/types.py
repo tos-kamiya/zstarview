@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, Union, TypeAlias
+from typing import Any, Dict, List, Optional, Tuple, Union, TypeAlias, TypedDict
 
 import astropy
 import numpy as np
@@ -101,7 +101,7 @@ class CelestialData:
 
     time: astropy.time.Time
     planets: List[PlanetBody]
-    stars: Dict[str, np.ndarray]
+    stars: "StarsTable"
     celestial_equator_points: List[Tuple[float, float]]
     ecliptic_points: List[Tuple[float, float]]
     horizon_points: List[Tuple[float, float]]
@@ -116,3 +116,21 @@ class ScreenGeometry:
 
 
 CelestialObject = Union[PlanetBody, Dict[str, Any]]
+
+
+class StarsTable(TypedDict):
+    """Vectorized star table contract used across astro -> render.
+
+    All arrays must be aligned by index and share the same length.
+    - name: star display names
+    - alt: altitude [deg]
+    - az: azimuth [deg] (0=N, 90=E)
+    - vmag: visual magnitude
+    - bv: B-V color index
+    """
+
+    name: np.ndarray
+    alt: np.ndarray
+    az: np.ndarray
+    vmag: np.ndarray
+    bv: np.ndarray
