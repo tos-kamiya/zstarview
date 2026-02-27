@@ -153,11 +153,14 @@ class SkyWindow(DraggableWindow):
         self.sky_update_interval = sky_update_interval
         self.visual_preset = visual_preset
         self.star_visibility_boost = max(0.7, min(2.0, float(star_visibility_boost)))
+        self._cloud_toggle_supported = delta_t.total_seconds() == 0.0
 
         # Cloud opacity is disabled if we are looking at a time-shifted view,
         # as we can only fetch current cloud data.
-        self.cloud_disc_alpha: float = max(0.0, min(1.0, cloud_disc_alpha))
-        if delta_t.total_seconds() != 0.0:
+        requested_cloud_alpha = max(0.0, min(1.0, cloud_disc_alpha))
+        self._cloud_alpha_when_enabled = requested_cloud_alpha if requested_cloud_alpha > 0.0 else 0.2
+        self.cloud_disc_alpha: float = requested_cloud_alpha
+        if not self._cloud_toggle_supported:
             self.cloud_disc_alpha = 0.0
 
         # --- Viewer and Window Setup ---
@@ -190,6 +193,7 @@ class SkyWindow(DraggableWindow):
         self.size_grip.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
         self.size_grip.raise_()
         self._action_enlarge_moon: Optional[QAction] = None
+        self._action_toggle_clouds: Optional[QAction] = None
         self._add_hamburger_menu()
         self.add_drag_exclusions([self.menu_button, self.size_grip])
 
@@ -239,6 +243,8 @@ class SkyWindow(DraggableWindow):
             self._clouddisc = CloudDisc(clouddisc_config)
         except Exception as e:
             logger.warning(f"CloudDisc init failed: {e}")
+        if self._action_toggle_clouds is not None:
+            self._action_toggle_clouds.setEnabled(self._cloud_toggle_supported and self._clouddisc is not None)
 
         # --- Composition Cache (moved to dedicated class) ---
         target_stripes, width_factor = cloud_stripe_style
@@ -277,6 +283,12 @@ class SkyWindow(DraggableWindow):
         toggle_enlarge_moon_action.triggered.connect(self.toggle_enlarge_moon)
         self.menu.addAction(toggle_enlarge_moon_action)
         self._action_enlarge_moon = toggle_enlarge_moon_action
+        toggle_clouds_action = QAction("Clouds", self)
+        toggle_clouds_action.setCheckable(True)
+        toggle_clouds_action.setChecked(self.cloud_disc_alpha > 0.0)
+        toggle_clouds_action.triggered.connect(self.toggle_clouds)
+        self.menu.addAction(toggle_clouds_action)
+        self._action_toggle_clouds = toggle_clouds_action
 
         self.menu.addSeparator()
         fullscreen_action = self.menu.addAction("Fullscreen (F11)")
@@ -332,6 +344,26 @@ class SkyWindow(DraggableWindow):
         if self._action_enlarge_moon is not None and self._action_enlarge_moon.isChecked() != self.enlarge_moon:
             self._action_enlarge_moon.setChecked(self.enlarge_moon)
         self.update()  # Redraw with the new setting
+
+    def toggle_clouds(self) -> None:
+        if not self._cloud_toggle_supported or self._clouddisc is None:
+            if self._action_toggle_clouds is not None:
+                self._action_toggle_clouds.setChecked(False)
+            return
+
+        enable_clouds = self.cloud_disc_alpha <= 0.0
+        self.cloud_disc_alpha = self._cloud_alpha_when_enabled if enable_clouds else 0.0
+        if self._action_toggle_clouds is not None and self._action_toggle_clouds.isChecked() != enable_clouds:
+            self._action_toggle_clouds.setChecked(enable_clouds)
+
+        if enable_clouds:
+            self.start_background_cloud_update(reason="toggle-on")
+            if self._sky_data_update_timer.isActive() and not self._cloud_update_timer.isActive():
+                self._cloud_update_timer.start()
+        elif self._cloud_update_timer.isActive():
+            self._cloud_update_timer.stop()
+
+        self.update()
 
     def toggle_fullscreen(self) -> None:
         if self.isFullScreen():
