@@ -122,15 +122,16 @@ def pick_satellite(
     """
     # --- Automatic Selection Mode ---
     if "AUTO" in priority:
+        sat_lon_map = _sat_lon_map(include_experimental=include_experimental)
         candidates: List[Tuple[float, str]] = []
-        for sat, sub_lon in SAT_LON.items():
+        for sat, sub_lon in sat_lon_map.items():
             angle = central_angle_deg(lat, lon, sub_lon)
             if angle <= MAX_VISIBLE_CENTRAL_ANGLE_DEG:
                 candidates.append((angle, sat))
 
         if not candidates:
             # If no satellite is technically visible, find the one that is closest.
-            candidates = [(central_angle_deg(lat, lon, slon), s) for s, slon in SAT_LON.items()]
+            candidates = [(central_angle_deg(lat, lon, slon), s) for s, slon in sat_lon_map.items()]
 
         # Sort by angle (smallest first) to find the best candidate.
         candidates.sort()
