@@ -94,17 +94,6 @@ def altaz_to_dir_ecef(alt_deg: float, az_deg: float, lat0_deg: float, lon0_deg: 
     return direction_vector / (np.linalg.norm(direction_vector) or 1.0)
 
 
-def azalt_to_dir_ecef(az_deg: float, alt_deg: float, lat0_deg: float, lon0_deg: float) -> np.ndarray:
-    """Backward-compatible wrapper of `altaz_to_dir_ecef`.
-
-    NOTE:
-        New code should call `altaz_to_dir_ecef(alt_deg, az_deg, ...)`.
-        This wrapper keeps the legacy `(az_deg, alt_deg, ...)` order.
-        OBSOLETE: Keep only for backward compatibility; do not use in new code.
-    """
-    return altaz_to_dir_ecef(alt_deg, az_deg, lat0_deg, lon0_deg)
-
-
 def az_project_lonlat_grid(
     lat0_deg: float,
     lon0_deg: float,
