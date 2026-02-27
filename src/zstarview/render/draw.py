@@ -58,7 +58,11 @@ def bv_to_rgb_vectorized(bv: np.ndarray) -> np.ndarray:
     return rgb
 
 
-def altaz_to_normalized_xy_vectorized(alt: np.ndarray, az: np.ndarray, view_center: Tuple[float, float]) -> Tuple[np.ndarray, np.ndarray]:
+def altaz_to_normalized_xy_vectorized(
+    alt_deg: np.ndarray,
+    az_deg: np.ndarray,
+    view_center_altaz_deg: Tuple[float, float],
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Vectorized conversion of altitude/azimuth to normalized screen coordinates.
 
@@ -67,17 +71,18 @@ def altaz_to_normalized_xy_vectorized(alt: np.ndarray, az: np.ndarray, view_cent
     `view_center` coordinates.
 
     Args:
-        alt: A NumPy array of altitude values in degrees.
-        az: A NumPy array of azimuth values in degrees.
-        view_center: A tuple containing the (altitude, azimuth) of the view center in degrees.
+        alt_deg: A NumPy array of altitude values in degrees.
+        az_deg: A NumPy array of azimuth values in degrees.
+        view_center_altaz_deg: `(view_alt_deg, view_az_deg)` in degrees.
 
     Returns:
-        A tuple of two NumPy arrays (nx, ny), representing the normalized x and y
-        coordinates on the screen. The coordinates are in the range [-1, 1].
+        A tuple `(nx, ny)` of normalized screen coordinates.
+        The normalization is `r_norm = angular_distance_deg / 90`, so values can
+        exceed `1.0` when the angular distance is larger than 90 degrees.
     """
-    center_alt, center_az = view_center
+    center_alt, center_az = view_center_altaz_deg
     alt1, az1 = np.radians(center_alt), np.radians(center_az)
-    alt2, az2 = np.radians(alt), np.radians(az)
+    alt2, az2 = np.radians(alt_deg), np.radians(az_deg)
 
     cos_theta = np.sin(alt1) * np.sin(alt2) + np.cos(alt1) * np.cos(alt2) * np.cos(az2 - az1)
     theta = np.arccos(np.clip(cos_theta, -1.0, 1.0))
@@ -590,7 +595,7 @@ def draw_zenith_marker(painter: QPainter, geometry: ScreenGeometry, view_center:
 def draw_moon(
     painter: QPainter,
     center: QPointF,
-    radius: float,
+    radius_px: float,
     sun_dir_in_moon_frame: np.ndarray,
     screen_rotation_deg: float,
     opacity: float = 1.0,
@@ -605,13 +610,13 @@ def draw_moon(
     Args:
         painter: The QPainter for drawing.
         center: The center position of the moon on the screen.
-        radius: The radius of the moon in pixels.
+        radius_px: The radius of the moon in pixels.
         sun_dir_in_moon_frame: The direction vector of the sun in the moon's reference frame.
         screen_rotation_deg: The rotation angle of the screen in degrees.
         opacity: The opacity of the moon image.
         base_color: An optional QColor to tint the moon, used for eclipses.
     """
-    img_size = max(5, int(math.ceil(radius * 2.0)))
+    img_size = max(5, int(math.ceil(radius_px * 2.0)))
     view_dir = np.array([0, 0, 1], dtype=float)
     if base_color is not None:
         tint_rgba = (base_color.red(), base_color.green(), base_color.blue(), base_color.alpha())
@@ -639,7 +644,7 @@ def draw_moon(
         painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceAtop)
         painter.setBrush(base_color)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawEllipse(center, radius, radius)
+        painter.drawEllipse(center, radius_px, radius_px)
 
     painter.restore()
 
@@ -947,25 +952,25 @@ def draw_status_line_text(
     painter.restore()
 
 
-def get_screen_geometry(width: int, height: int, alt: float) -> ScreenGeometry:
+def get_screen_geometry(width_px: int, height_px: int, view_alt_deg: float) -> ScreenGeometry:
     """
     Calculate the center and radius for drawing based on window size and view altitude.
 
     Args:
-        width: The width of the drawing area.
-        height: The height of the drawing area.
-        alt: The altitude of the view center.
+        width_px: The width of the drawing area in pixels.
+        height_px: The height of the drawing area in pixels.
+        view_alt_deg: The altitude of the view center in degrees.
 
     Returns:
         A ScreenGeometry object with the calculated center and radius.
     """
     margin_x = 10
     margin_y = 10
-    radius = (width - margin_x * 2) // 2
+    radius_px = (width_px - margin_x * 2) // 2
     ud = 90.0
-    dd = alt
-    center = (int(radius + margin_x), int((height - margin_y * 2) * ud / (ud + dd) + margin_y))
-    return ScreenGeometry(center, radius)
+    dd = view_alt_deg
+    center = (int(radius_px + margin_x), int((height_px - margin_y * 2) * ud / (ud + dd) + margin_y))
+    return ScreenGeometry(center, radius_px)
 
 
 def normalized_to_screen_xy(nx: float, ny: float, geometry: ScreenGeometry) -> Tuple[float, float]:
