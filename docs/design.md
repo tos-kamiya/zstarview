@@ -58,15 +58,9 @@
   - 衛星選択、投影、サンプリング、画像化のオーケストレーション
 - `src/zstarview/clouddisc/providers/goes.py`
 - `src/zstarview/clouddisc/providers/hima.py`
-- `src/zstarview/clouddisc/providers/meteosat.py`
 - `src/zstarview/clouddisc/providers/_s3_io.py`
   - S3一覧/ダウンロードの共通I/Oヘルパー
   - タイムアウト/一般失敗を `TimeoutError` / `DownloadError` へ正規化
-
-補足（段階導入）:
-- `providers/select.py` には将来プロバイダ向けの実験衛星定義を先行追加する場合がある。
-- 実験衛星は `core.py` 側の provider 分岐へ接続されるまで `AUTO` 選択対象には含めない。
-- `providers/meteosat.py` は PR3 で `core.py` に接続済み。現時点では `AUTO` には含めず、手動優先順位での選択対象とする。
 
 ## 3. 主要データ構造
 

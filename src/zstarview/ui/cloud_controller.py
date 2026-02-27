@@ -97,7 +97,7 @@ class CloudController(QObject):
         return run
 
     def _predicted_satellite(self, lat: float, lon: float) -> str:
-        return pick_satellite(lat, lon, ("AUTO",), include_experimental=False)
+        return pick_satellite(lat, lon, ("AUTO",))
 
     def _cleanup_cache(self) -> None:
         try:

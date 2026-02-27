@@ -327,7 +327,7 @@ class SkyWindow(DraggableWindow):
 
     def _predicted_cloud_satellite(self) -> str:
         lat, lon = self.viewer_data.location
-        return pick_satellite(lat, lon, ("AUTO",), include_experimental=False)
+        return pick_satellite(lat, lon, ("AUTO",))
 
     def _cloud_status_line(self) -> str:
         sat = self.cloud_state.current_satellite or self._predicted_cloud_satellite()
