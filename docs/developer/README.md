@@ -6,6 +6,8 @@
 
 - `docs/developer/uv-workflow.md`
   - `uv` 環境でのセットアップ、実行、テスト、型チェック、ビルド手順
+- `docs/developer/cloud-snapshot-script.md`
+  - 都市指定でリアルタイム雲画像（PNG）を保存する開発用スクリプトの使い方
 
 ## Notes
 
