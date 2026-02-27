@@ -28,7 +28,7 @@ uv run -p .venv/bin/python scripts/save_cloud_snapshot.py "35.68;139.76" --meta 
 - `--meta`: メタデータJSONの出力先
 - `--alt`, `--az`: 視線方向（既定: `90`, `180`）
 - `--radius-px`: 画像半径ピクセル（既定: `256`）
-- `--sat-priority`: 優先衛星（例: `AUTO`, `METEOSAT,G16,G18,HIMAWARI`）
+- `--sat-priority`: 優先衛星（例: `AUTO`, `G16,G18,HIMAWARI`）
 - `--search-back-minutes`: 過去データ探索幅（分）
 
 ## 出力内容
