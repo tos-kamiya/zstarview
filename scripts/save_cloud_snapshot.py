@@ -135,7 +135,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--sat-priority",
         default="AUTO",
-        help="Satellite priority CSV (e.g., AUTO or HIMAWARI,G18,G16).",
+        help="Satellite priority CSV (e.g., AUTO or METEOSAT,G16,G18,HIMAWARI).",
     )
     p.add_argument(
         "--search-back-minutes",
