@@ -23,7 +23,13 @@ The name emphasizes the *zenith*—the point directly overhead—conveying the e
 It is intended to be installed using [`pipx`](https://pypa.github.io/pipx/).
 
 ```bash
-pipx install git+https://github.com/tos-kamiya/zstarview.git
+pipx install zstarview
+```
+
+Upgrade:
+
+```bash
+pipx upgrade zstarview
 ```
 
 > Note: Troubleshooting tips (including X11 libraries and slow network) are summarized below.
