@@ -24,7 +24,13 @@
 [`pipx`](https://pypa.github.io/pipx/) を使ってインストールする想定です。
 
 ```bash
-pipx install git+https://github.com/tos-kamiya/zstarview.git
+pipx install zstarview
+```
+
+アップグレード:
+
+```bash
+pipx upgrade zstarview
 ```
 
 > 注記: X11 ライブラリやネットワークが細い場合の回避策などは「トラブルシューティング」を参照してください。
