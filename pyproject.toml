@@ -44,6 +44,11 @@ dependencies = [
   "satpy",
 ]
 
+[project.optional-dependencies]
+dev = [
+  "pytest",
+]
+
 [project.urls]
 Documentation = "https://github.com/tos-kamiya/zstarview#readme"
 Issues = "https://github.com/tos-kamiya/zstarview/issues"

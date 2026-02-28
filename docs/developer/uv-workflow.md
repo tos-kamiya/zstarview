@@ -11,12 +11,13 @@
 
 ```bash
 uv venv --python 3.12
-uv pip install -p .venv/bin/python -e .
+uv pip install -p .venv/bin/python -e ".[dev]"
 ```
 
 補足:
 - 既存環境を作り直す場合は `uv venv --clear --python 3.12` を使用。
 - Python 3.10+ が対象です。
+- `.[dev]` を付けると開発用依存（例: `pytest`）も同時に導入されます。
 
 ## 2. アプリ実行
 
@@ -81,6 +82,6 @@ uv run -p .venv/bin/python -m build
 ## 5. トラブルシューティング
 
 - `pytest` で `botocore` が見つからない場合:
-  - 依存が未インストールの可能性があるため、再度 `uv pip install -p .venv/bin/python -e .` を実行。
+  - 依存が未インストールの可能性があるため、再度 `uv pip install -p .venv/bin/python -e ".[dev]"` を実行。
 - Linux/X11 で Qt 起動に失敗する場合:
   - `README.md` の X11 セクション（`libxcb-cursor0`）を参照。
