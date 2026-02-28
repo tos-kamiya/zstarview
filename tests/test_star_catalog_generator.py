@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import importlib.util
 from pathlib import Path
 import sys
@@ -85,3 +86,22 @@ def test_merge_catalogs_adds_non_duplicate_faint_tycho() -> None:
     )
     assert len(merged) == 2
     assert {r.source_catalog for r in merged} == {"hip", "tyc2"}
+
+
+def test_parse_tycho_i259_dir_reads_gz_line(tmp_path: Path) -> None:
+    mod = _load_module()
+    i259 = tmp_path / "I-259"
+    i259.mkdir(parents=True)
+    sample = (
+        "0001 00013 1| |  1.12558209|  2.26739400|   27.7|   -0.5|  9| 12| 1.2| 1.2|"
+        "1990.76|1989.25| 8|1.0|0.8|1.0|0.7|10.488|0.038| 8.670|0.015|999|T|         |"
+        "  1.12551889|  2.26739556|1.81|1.52|  9.3| 12.7| |-0.2"
+    )
+    with gzip.open(i259 / "tyc2.dat.00.gz", "wt", encoding="ascii") as f:
+        f.write(sample + "\n")
+    rows = mod.parse_tycho_i259_dir(i259, max_vmag=9.0)
+    assert len(rows) == 1
+    r = rows[0]
+    assert r.source_catalog == "tyc2"
+    assert r.tyc_id == "0001-00013-1"
+    assert r.vmag < 9.0

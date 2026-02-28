@@ -6,3 +6,4 @@ package.json
 package-lock.json
 __pycache__/
 *.py[cod]
+src/zstarview/data/I-259/

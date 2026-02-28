@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import gzip
 import math
 import zipfile
 from dataclasses import dataclass
@@ -170,6 +171,58 @@ def parse_tycho_csv(path: Optional[Path], *, max_vmag: float) -> List[StarRec]:
     return out
 
 
+def parse_tycho_i259_dir(path: Optional[Path], *, max_vmag: float) -> List[StarRec]:
+    """Parse Tycho-2 I/259 split files (tyc2.dat.00.gz ... tyc2.dat.19.gz)."""
+    if path is None:
+        return []
+    if not path.exists():
+        raise FileNotFoundError(f"I/259 directory not found: {path}")
+
+    files = sorted(path.glob("tyc2.dat.*.gz"))
+    if not files:
+        raise FileNotFoundError(f"No tyc2.dat.*.gz files found under: {path}")
+
+    out: List[StarRec] = []
+    for fp in files:
+        with gzip.open(fp, "rt", encoding="ascii", errors="ignore") as f:
+            for line in f:
+                if not line:
+                    continue
+                # Byte positions are from I/259 ReadMe (1-based).
+                tyc1 = line[0:4].strip()
+                tyc2 = line[5:10].strip()
+                tyc3 = line[11:12].strip()
+                ra_deg = _fnum(line[15:27])  # RAmdeg (J2000 mean)
+                dec_deg = _fnum(line[28:40])  # DEmdeg (J2000 mean)
+                bt = _fnum(line[110:116])  # BTmag
+                vt = _fnum(line[123:129])  # VTmag
+                hip = line[142:148].strip()
+                if ra_deg is None or dec_deg is None:
+                    continue
+                vmag = vt if vt is not None else bt
+                if vmag is None or vmag > max_vmag:
+                    continue
+                bv: Optional[float] = None
+                if bt is not None and vt is not None:
+                    # ReadMe note (7): approximate Johnson B-V.
+                    bv = 0.850 * (bt - vt)
+                tyc_id = "-".join(x for x in (tyc1, tyc2, tyc3) if x)
+                out.append(
+                    StarRec(
+                        source_catalog="tyc2",
+                        source_id=f"TYC{tyc_id}" if tyc_id else f"TYCROW{len(out)+1}",
+                        ra_hours=ra_deg / 15.0,
+                        dec_deg=dec_deg,
+                        vmag=vmag,
+                        bv=bv,
+                        name="",
+                        hip_id=int(hip) if hip.isdigit() else None,
+                        tyc_id=tyc_id or None,
+                    )
+                )
+    return out
+
+
 def _ang_sep_deg(ra1_deg: float, dec1_deg: float, ra2_deg: float, dec2_deg: float) -> float:
     ra1 = math.radians(ra1_deg)
     ra2 = math.radians(ra2_deg)
@@ -297,8 +350,8 @@ def write_catalog(path: Path, rows: Sequence[StarRec]) -> None:
                     r.name,
                     _fmt_float(r.ra_hours, 6),
                     _fmt_float(r.dec_deg, 6),
-                    _fmt_float(r.vmag, 2),
-                    _fmt_float(r.bv, 2),
+                    _fmt_float(r.vmag, 3),
+                    _fmt_float(r.bv, 3),
                     r.source_catalog,
                     r.source_id,
                     r.tyc_id or "",
@@ -342,7 +395,11 @@ def _print_stats(label: str, rows: Sequence[StarRec]) -> None:
 def build_catalog(args: argparse.Namespace) -> None:
     iau_map = _load_iau_name_map(args.iau_csv)
     hip = parse_hipparcos(args.hip_main, max_vmag=args.max_vmag, iau_name_by_hip=iau_map)
-    tyc = parse_tycho_csv(args.tycho_csv, max_vmag=args.max_vmag)
+    tyc: List[StarRec] = []
+    if args.tycho_csv is not None:
+        tyc.extend(parse_tycho_csv(args.tycho_csv, max_vmag=args.max_vmag))
+    if args.tycho_i259_dir is not None:
+        tyc.extend(parse_tycho_i259_dir(args.tycho_i259_dir, max_vmag=args.max_vmag))
     merged = merge_catalogs(
         hip,
         tyc,
@@ -383,6 +440,13 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=None,
         help="Optional Tycho-2 normalized CSV (must include RA/Dec/Vmag-like columns).",
+    )
+    default_i259 = here.parent / "I-259"
+    ap.add_argument(
+        "--tycho-i259-dir",
+        type=Path,
+        default=default_i259 if default_i259.exists() else None,
+        help="Optional Tycho-2 I/259 directory (tyc2.dat.*.gz).",
     )
     ap.add_argument(
         "--iau-csv",
