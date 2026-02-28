@@ -1,98 +1,24 @@
 import math
-from typing import Optional, Tuple
+from typing import Tuple
 
 import numpy as np
-from PySide6.QtGui import QColor, QImage, QPainter, Qt
+from PySide6.QtGui import QImage
 
-from ..astro import altaz_to_normalized_xy
-from ..types import ScreenGeometry, SolarEclipseInfo
-from .draw import normalized_to_screen_xy
+from ..types import ScreenGeometry
+from ..utils.qt import np_rgba_to_qimage
 
 
 TURBIDITY = 5  # 2 (clear blue sky) to 10 (hazy white sky)
 
 
-def _ground_cutoff(alt: float, alpha: float, fade_hi: float = 0.0, fade_lo: float = -2.0) -> float:
-    """
-    Returns an alpha value based on altitude, for fading near the horizon.
-       alt >= fade_hi  -> alpha (equivalent to 1)
-       fade_lo < alt < fade_hi -> linear fade
-       alt <= fade_lo -> 0 (not drawn)
-
-    Args:
-        alt: The altitude in degrees.
-        alpha: The base alpha value.
-        fade_hi: The altitude above which alpha is at its maximum.
-        fade_lo: The altitude below which alpha is zero.
-
-    Returns:
-        The calculated alpha value.
-    """
-    if alt <= fade_lo:
-        return 0.0
-    if alt >= fade_hi:
-        return alpha
-    t = (alt - fade_lo) / (fade_hi - fade_lo)  # [fade_hi, fade_lo] -> [0,1]
-    return alpha * t
-
-
-def _fwd_offset_altaz(alt_c: float, az_c: float, theta_deg: float, psi_deg: float) -> Tuple[float, float]:
-    """
-    Calculates the (alt, az) of a point that is at an angular distance 'theta'
-    and direction 'psi' from a center point (alt_c, az_c).
-
-    Args:
-        alt_c: Center altitude in degrees.
-        az_c: Center azimuth in degrees.
-        theta_deg: Angular distance from the center in degrees.
-        psi_deg: Direction from the center in degrees (0° North, 90° East, clockwise).
-
-    Returns:
-        A tuple of (altitude, azimuth) in degrees for the new point.
-    """
-    phi1 = math.radians(alt_c)
-    lambda1 = math.radians(az_c)
-    theta = math.radians(theta_deg)
-    psi = math.radians(psi_deg)
-
-    sin_phi1, cos_phi1 = math.sin(phi1), math.cos(phi1)
-    sin_theta, cos_theta = math.sin(theta), math.cos(theta)
-
-    sin_phi2 = sin_phi1 * cos_theta + cos_phi1 * sin_theta * math.cos(psi)
-    sin_phi2 = max(-1.0, min(1.0, sin_phi2))
-    phi2 = math.asin(sin_phi2)
-
-    y = math.sin(psi) * sin_theta * cos_phi1
-    x = cos_theta - sin_phi1 * sin_phi2
-    lambda2 = lambda1 + math.atan2(y, x)
-
-    alt = math.degrees(phi2)
-    az = (math.degrees(lambda2) + 360.0) % 360.0
-    return alt, az
-
-
 def _smoothstep(edge0: float, edge1: float, x: float) -> float:
-    """
-    Performs a smooth Hermite interpolation between 0 and 1 when edge0 < x < edge1.
-    """
-    # Hermite smoothstep
+    """Performs a smooth Hermite interpolation between 0 and 1."""
     t = np.clip((x - edge0) / (edge1 - edge0), 0.0, 1.0)
-    return t * t * (3.0 - 2.0 * t)
+    return float(t * t * (3.0 - 2.0 * t))
 
 
 def _angle_between(alt1_deg: float, az1_deg: float, alt2_deg: float, az2_deg: float) -> float:
-    """
-    Calculates the angular distance between two points on the celestial sphere.
-
-    Args:
-        alt1_deg: Altitude of the first point in degrees.
-        az1_deg: Azimuth of the first point in degrees.
-        alt2_deg: Altitude of the second point in degrees.
-        az2_deg: Azimuth of the second point in degrees.
-
-    Returns:
-        The angular distance in radians.
-    """
+    """Calculates angular distance between two sky directions."""
     a1, z1 = math.radians(alt1_deg), math.radians(az1_deg)
     a2, z2 = math.radians(alt2_deg), math.radians(az2_deg)
     cos_g = math.sin(a1) * math.sin(a2) + math.cos(a1) * math.cos(a2) * math.cos(z2 - z1)
@@ -101,9 +27,7 @@ def _angle_between(alt1_deg: float, az1_deg: float, alt2_deg: float, az2_deg: fl
 
 
 def _lerp_color(a: np.ndarray, b: np.ndarray, t: float) -> np.ndarray:
-    """
-    Linearly interpolates between two colors.
-    """
+    """Linearly interpolates between two colors."""
     return a + (b - a) * t
 
 
@@ -113,11 +37,7 @@ def _luma_bt601(color: np.ndarray) -> float:
 
 
 def _soft_clip_luma(color: np.ndarray, max_luma: float) -> np.ndarray:
-    """
-    Keep hue/chroma while compressing highlights above `max_luma`.
-
-    This helps preserve stars when sky layers are intentionally strong.
-    """
+    """Keep hue/chroma while compressing highlights above `max_luma`."""
     y = _luma_bt601(color)
     if y <= 1e-6 or y <= max_luma:
         return color
@@ -125,84 +45,157 @@ def _soft_clip_luma(color: np.ndarray, max_luma: float) -> np.ndarray:
 
 
 def get_sun_color(sun_alt_deg: float) -> np.ndarray:
-    """
-    Determine the color of sunlight based on the sun's altitude.
-    Returns (r, g, b) in the range [0,1].
-    """
-    zenith_color = np.array([0.3, 0.55, 0.98])  # zenith (blue)
-    horizon_color = np.array([0.95, 0.50, 0.30])  # horizon (orange)
-    night_color = np.array([0.01, 0.02, 0.05])  # night (dark blue)
+    """Determine sunlight color based on sun altitude."""
+    zenith_color = np.array([0.3, 0.55, 0.98])
+    horizon_color = np.array([0.95, 0.50, 0.30])
+    night_color = np.array([0.01, 0.02, 0.05])
 
-    # Normalize sun altitude from -7° (sunset) to 90° (zenith) → [0,1], with gamma-ish shaping
     t = float(np.clip((sun_alt_deg + 7.0) / 97.0, 0.0, 1.0))
     t = math.pow(t, 0.35)
 
     day_color = _lerp_color(horizon_color, zenith_color, t)
-
-    # Rapid darkening near/below horizon
-    fade = float(np.clip((-sun_alt_deg + 1.0) / 6.0, 0.0, 1.0))  # between +1° and -8°
+    fade = float(np.clip((-sun_alt_deg + 1.0) / 6.0, 0.0, 1.0))
     return _lerp_color(day_color, night_color, fade)
 
 
 def get_sky_color(view_altaz: Tuple[float, float], sun_altaz: Tuple[float, float]) -> np.ndarray:
-    """
-    Calculate the sky color for a given viewing direction and sun position.
-
-    This function models the sky color based on:
-    - Sun altitude and azimuth (position of the sun).
-    - Viewing direction (altitude, azimuth).
-    - Atmospheric turbidity, which controls how clear (deep blue) or hazy
-      (whitish and desaturated) the sky appears.
-
-    Args:
-        view_altaz: Tuple (altitude_deg, azimuth_deg) of the viewing direction.
-        sun_altaz: Tuple (altitude_deg, azimuth_deg) of the sun's position.
-
-    Returns:
-        np.ndarray: RGB color (float values 0..1) representing the sky color.
-    """
+    """Calculate the sky color for one viewing direction."""
     sun_alt_deg, sun_az_deg = sun_altaz
     view_alt_deg, view_az_deg = view_altaz
 
     if sun_alt_deg <= -10.0:
         return np.array([0.0, 0.0, 0.0])
 
-    tau = np.clip((TURBIDITY - 2.0) / 8.0, 0.0, 1.0)  # 2..10 -> 0..1
-    t_alt = np.clip(view_alt_deg / 90.0, 0.0, 1.0)  # horizon->zenith
+    tau = np.clip((TURBIDITY - 2.0) / 8.0, 0.0, 1.0)
+    t_alt = np.clip(view_alt_deg / 90.0, 0.0, 1.0)
     sun_up = _smoothstep(-8.0, 6.0, sun_alt_deg)
     twilight = _smoothstep(-10.0, 0.0, sun_alt_deg)
 
-    # Base sky gradient: warm near horizon, cool at zenith.
     horizon_day = np.array([0.98, 0.70, 0.45])
     zenith_day = np.array([0.18, 0.42, 0.93])
     base = _lerp_color(horizon_day, zenith_day, t_alt)
 
-    # Turbidity washes colors toward white, especially near horizon.
     haze = (0.22 + 0.48 * (1.0 - t_alt)) * (0.65 + 0.55 * tau)
     base = _lerp_color(base, np.array([1.0, 1.0, 1.0]), haze)
 
-    # Sun-facing anisotropy glow.
     sun_angle = _angle_between(view_alt_deg, view_az_deg, sun_alt_deg, sun_az_deg)
     f = max(0.0, math.cos(sun_angle))
     glow = f ** (1.9 - 0.55 * tau)
     sun_tint = _lerp_color(np.array([1.0, 0.82, 0.58]), np.array([1.0, 0.92, 0.78]), tau)
     color = base + sun_tint * (0.52 * glow * sun_up)
 
-    # Anti-solar cool tint to keep chromatic structure (prevents flat white disc).
     anti = max(0.0, math.cos(math.pi - sun_angle))
     anti_boost = anti ** 2.2
     color += np.array([0.06, 0.10, 0.20]) * (0.24 * anti_boost * sun_up)
 
-    # Twilight transition and night blend.
     night = np.array([0.01, 0.02, 0.05])
     color = _lerp_color(night, color, twilight)
 
-    # Preserve stars by capping sky luminance while retaining hue/chroma.
-    # This enables raising alpha without washing out stars too aggressively.
-    max_luma = 0.28 + 0.20 * sun_up  # night~0.28, day~0.48
+    max_luma = 0.28 + 0.20 * sun_up
     color = _soft_clip_luma(color, max_luma=max_luma)
 
     return np.clip(color, 0.0, 1.0)
+
+
+def _inverse_project_disc(
+    radius_px: int,
+    view_center: Tuple[float, float],
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Inverse-project all pixels inside the unit disc to (alt, az)."""
+    size = radius_px * 2
+    ys = (np.arange(size, dtype=np.float32) - radius_px) / float(radius_px)
+    xs = (np.arange(size, dtype=np.float32) - radius_px) / float(radius_px)
+    nx, ny = np.meshgrid(xs, ys)
+
+    rr2 = nx * nx + ny * ny
+    inside = rr2 <= 1.0
+    if not np.any(inside):
+        return np.array([], dtype=np.float32), np.array([], dtype=np.float32), inside
+
+    r = np.sqrt(rr2[inside]).astype(np.float32)
+    theta = r * (np.pi / 2.0)
+
+    # Bearing from local north (clockwise): north=(0,-1), east=(1,0).
+    psi = np.arctan2(nx[inside], -ny[inside])
+
+    alt_c, az_c = view_center
+    eps = 1e-3
+    phi1 = np.float32(math.radians(np.clip(alt_c, -90.0 + eps, 90.0 - eps)))
+    lam1 = np.float32(math.radians(az_c))
+
+    sin_phi1 = np.sin(phi1)
+    cos_phi1 = np.cos(phi1)
+    sin_theta = np.sin(theta)
+    cos_theta = np.cos(theta)
+
+    sin_phi2 = sin_phi1 * cos_theta + cos_phi1 * sin_theta * np.cos(psi)
+    sin_phi2 = np.clip(sin_phi2, -1.0, 1.0)
+    phi2 = np.arcsin(sin_phi2)
+
+    y = np.sin(psi) * sin_theta * cos_phi1
+    x = cos_theta - sin_phi1 * sin_phi2
+    lam2 = lam1 + np.arctan2(y, x)
+
+    alt = np.degrees(phi2).astype(np.float32)
+    az = (np.degrees(lam2) + 360.0) % 360.0
+    return alt, az.astype(np.float32), inside
+
+
+def _get_sky_color_vectorized(
+    view_alt_deg: np.ndarray,
+    view_az_deg: np.ndarray,
+    sun_altaz: Tuple[float, float],
+) -> np.ndarray:
+    """Vectorized sky color model for many sky directions at once."""
+    sun_alt_deg, sun_az_deg = sun_altaz
+    n = view_alt_deg.shape[0]
+    if n == 0:
+        return np.zeros((0, 3), dtype=np.float32)
+    if sun_alt_deg <= -10.0:
+        return np.zeros((n, 3), dtype=np.float32)
+
+    tau = float(np.clip((TURBIDITY - 2.0) / 8.0, 0.0, 1.0))
+    t_alt = np.clip(view_alt_deg / 90.0, 0.0, 1.0)
+    sun_up = _smoothstep(-8.0, 6.0, sun_alt_deg)
+    twilight = _smoothstep(-10.0, 0.0, sun_alt_deg)
+
+    horizon_day = np.array([0.98, 0.70, 0.45], dtype=np.float32)
+    zenith_day = np.array([0.18, 0.42, 0.93], dtype=np.float32)
+    base = horizon_day[None, :] + (zenith_day - horizon_day)[None, :] * t_alt[:, None]
+
+    haze = (0.22 + 0.48 * (1.0 - t_alt)) * (0.65 + 0.55 * tau)
+    base = base + (1.0 - base) * haze[:, None]
+
+    a1 = np.radians(view_alt_deg)
+    z1 = np.radians(view_az_deg)
+    a2 = math.radians(sun_alt_deg)
+    z2 = math.radians(sun_az_deg)
+    cos_g = np.sin(a1) * math.sin(a2) + np.cos(a1) * math.cos(a2) * np.cos(z2 - z1)
+    cos_g = np.clip(cos_g, -1.0, 1.0)
+    sun_angle = np.arccos(cos_g)
+
+    f = np.maximum(0.0, np.cos(sun_angle))
+    glow = f ** (1.9 - 0.55 * tau)
+    sun_tint = np.array([1.0, 0.82, 0.58], dtype=np.float32) + (
+        np.array([1.0, 0.92, 0.78], dtype=np.float32) - np.array([1.0, 0.82, 0.58], dtype=np.float32)
+    ) * tau
+    color = base + sun_tint[None, :] * (0.52 * glow * sun_up)[:, None]
+
+    anti = np.maximum(0.0, np.cos(np.pi - sun_angle))
+    anti_boost = anti**2.2
+    color += np.array([0.06, 0.10, 0.20], dtype=np.float32)[None, :] * (0.24 * anti_boost * sun_up)[:, None]
+
+    night = np.array([0.01, 0.02, 0.05], dtype=np.float32)
+    color = night[None, :] + (color - night[None, :]) * twilight
+
+    max_luma = 0.28 + 0.20 * sun_up
+    luma = np.sum(color * np.array([0.299, 0.587, 0.114], dtype=np.float32)[None, :], axis=1)
+    scale = np.ones_like(luma)
+    clip_mask = luma > max_luma
+    scale[clip_mask] = max_luma / np.maximum(luma[clip_mask], 1e-6)
+    color = color * scale[:, None]
+
+    return np.clip(color, 0.0, 1.0).astype(np.float32)
 
 
 def grade_color(
@@ -219,21 +212,15 @@ def grade_color(
       3) simple power-law gamma (on current space)
     Assumes color is a numpy array in [0,1] and *not* premultiplied.
     """
-    # --- Luma ---
-    luma = np.dot(color, np.array([0.299, 0.587, 0.114]))  # BT.601
+    luma = np.sum(color * np.array([0.299, 0.587, 0.114], dtype=np.float32)[None, :], axis=1, keepdims=True)
 
-    # --- Saturation: lerp(gray, original, s) ---
     color = luma + (color - luma) * saturation
-
-    # --- Exposure ---
     color *= exposure
 
-    # --- Gamma (simple power-law) ---
     if gamma > 0.0 and gamma != 1.0:
         inv = 1.0 / gamma
         color = np.power(np.maximum(0.0, color), inv)
 
-    # Soft shoulder to avoid milky clipping in bright regions.
     color = color / (1.0 + 0.35 * color)
 
     return np.clip(color, 0.0, 1.0)
@@ -241,156 +228,48 @@ def grade_color(
 
 def draw_sky_color_disc(
     geometry: ScreenGeometry,
-    view_center: Tuple[float, float],  # (alt, az)
-    sun_altaz: Tuple[float, float],  # (alt, az)
+    view_center: Tuple[float, float],
+    sun_altaz: Tuple[float, float],
     *,
     exposure: float = 1.14,
     saturation: float = 1.35,
     alpha: float = 1.0,
     eclipse_factor: float = 1.0,
     mask_fov_deg: float = 90.0,
-    # --- Sampling density (knobs for quality vs. speed) ---
-    sample_step_px: int = 10,  # Target pixel interval (basis for determining Δθ)
-    min_ang_samples: int = 8,  # Minimum number of samples for each ring
-    # --- Parameters for stabilizing Δθ estimation ---
-    deriv_probe_deg: float = 0.25,  # Small angle (degrees) for finite difference of dr/dθ
-    min_theta_step_deg: float = 0.2,  # Lower limit for Δθ (degrees)
-    max_theta_step_deg: float = 6.0,  # Upper limit for Δθ (degrees)
+    sample_step_px: int = 10,
+    min_ang_samples: int = 8,
+    deriv_probe_deg: float = 0.25,
+    min_theta_step_deg: float = 0.2,
+    max_theta_step_deg: float = 6.0,
 ) -> QImage:
     """
-    Draws the sky color disc with dynamic sampling and returns it as a QImage.
+    Draw sky color disc using one-pass NumPy inverse projection.
 
-    The radial step (Δθ) is dynamically determined so that the on-screen
-    pixel distance is around `sample_step_px`. The number of samples in the
-    circumferential direction is determined by the "measured radius" of the
-    ring and the sample pitch.
-
-    Args:
-        geometry: The screen geometry.
-        view_center: The (alt, az) of the view center.
-        sun_altaz: The (alt, az) of the sun.
-        exposure: Exposure adjustment for the final color.
-        saturation: Saturation adjustment for the final color.
-        alpha: Overall alpha transparency.
-        eclipse_factor: Multiplicative factor to darken the sky during a solar eclipse (set < 1.0 to simulate dimming).
-        mask_fov_deg: Full field-of-view angle for the visibility mask.
-        sample_step_px: Target pixel distance steps.
-        min_ang_samples: Minimum number of circumferential samples.
-        deriv_probe_deg: Probe angle for derivative estimation.
-        min_theta_step_deg: Minimum angular step.
-        max_theta_step_deg: Maximum angular step.
-
-    Returns:
-        A QImage of the rendered sky disc.
+    The disc is always rendered as a full circle (no horizon clipping inside the disc).
+    Unused legacy sampling parameters are kept for call-site compatibility.
     """
-    assert altaz_to_normalized_xy and normalized_to_screen_xy and get_sky_color
+    _ = (mask_fov_deg, sample_step_px, min_ang_samples, deriv_probe_deg, min_theta_step_deg, max_theta_step_deg)
 
-    R = int(geometry.radius)
-    if R < 2:
-        return QImage(2 * R, 2 * R, QImage.Format.Format_ARGB32_Premultiplied)
+    radius = int(geometry.radius)
+    size = max(2, radius * 2)
+    if radius < 1:
+        return QImage(size, size, QImage.Format.Format_ARGB32_Premultiplied)
 
-    sample_step_px = max(2, min(R // 128, sample_step_px))
-    tile_size = int(sample_step_px * 1.5 + 1)
+    alt, az, inside = _inverse_project_disc(radius, view_center)
 
-    cx, cy = geometry.center
+    rgba = np.zeros((size, size, 4), dtype=np.uint8)
+    if alt.size == 0:
+        return np_rgba_to_qimage(rgba).convertToFormat(QImage.Format.Format_ARGB32_Premultiplied)
 
-    img_w = img_h = R * 2
-    img = QImage(img_w, img_h, QImage.Format.Format_ARGB32_Premultiplied)
-    img.fill(QColor(0, 0, 0, 0))
-
-    ip = QPainter(img)
-    ip.setPen(Qt.PenStyle.NoPen)
-
-    # Pseudo clip to a circle
-    ip.setCompositionMode(QPainter.CompositionMode_Source)
-    ip.setBrush(QColor(0, 0, 0, 255))
-    ip.drawEllipse(0, 0, 2 * R, 2 * R)
-    ip.setCompositionMode(QPainter.CompositionMode_SourceAtop)  # no alpha drawing hereafter
-
-    # Draw the background disc
-    ip.fillRect(0, 0, 2 * R, 2 * R, QColor(0, 0, 0, 255))
-
-    # Clamp to avoid zenith singularity
-    EPS = 1e-3
-    alt_c, az_c = view_center
-    alt_c = max(-(90.0 - EPS), min(90.0 - EPS, alt_c))
-
-    # The outer circumference is always 90° to match the normalization spec
-    theta_max = mask_fov_deg
-
-    # Function to "measure" the local radius r_px(θ)
-    def screen_radius_px(theta_deg: float) -> float:
-        alt_p, az_p = _fwd_offset_altaz(alt_c, az_c, theta_deg, 0.0)
-        nx, ny = altaz_to_normalized_xy(alt_p, az_p, (alt_c, az_c))
-        # Convert to image coordinates relative to image center (R, R)
-        sx, sy = normalized_to_screen_xy(nx, ny, geometry)
-        return max(0.0, math.hypot(sx - cx, sy - cy))
-
+    colors = _get_sky_color_vectorized(alt, az, sun_altaz)
     gamma = (1.0 - alpha) * 0.2 + 1.0 if alpha < 1.0 else 1.0
+    colors = grade_color(colors, saturation=saturation, exposure=exposure, gamma=gamma)
+    # Keep legacy behavior: sky opacity controls disc color intensity.
+    colors *= max(0.0, float(alpha)) * max(0.0, float(eclipse_factor))
+    colors = np.clip(colors, 0.0, 1.0)
 
-    # Advance angle from 0 to 90° (Δθ is dynamic)
-    theta = 0.0
-    half = max(1, int(tile_size // 2))
-    while True:
-        # Current ring radius (px)
-        r_px = screen_radius_px(theta)
+    rgb_u8 = np.clip(np.round(colors * 255.0), 0, 255).astype(np.uint8)
+    rgba[..., 3][inside] = 255
+    rgba[..., :3][inside] = rgb_u8
 
-        # Number of circumferential samples
-        circumference = max(1.0, 2.0 * math.pi * r_px)
-        n_ang = max(min_ang_samples, int(round(circumference / max(1.0, float(sample_step_px)))))
-
-        # Fill the ring
-        for i in range(n_ang):
-            psi_deg = (360.0 * i) / n_ang  # 0° North, 90° East, clockwise
-
-            # (θ,ψ) -> (alt,az)
-            alt, az = _fwd_offset_altaz(alt_c, az_c, theta, psi_deg)
-
-            cutoff = _ground_cutoff(alt, alpha, fade_hi=0.5, fade_lo=-2.0)
-            if cutoff <= 0.0:
-                continue
-
-            # (alt,az) -> screen -> image coordinates
-            nx, ny = altaz_to_normalized_xy(alt, az, (alt_c, az_c))
-            sx, sy = normalized_to_screen_xy(nx, ny, geometry)
-            # Convert to image coordinates (origin at top-left of the QImage)
-            xi = int(round(sx - (cx - R)))
-            yi = int(round(sy - (cy - R)))
-
-            if xi < 0 or xi >= img_w or yi < 0 or yi >= img_h:
-                continue
-
-            color = get_sky_color((alt, az), sun_altaz)
-            color = grade_color(
-                color,
-                saturation=saturation,
-                exposure=exposure,
-                gamma=gamma,
-            )
-
-            color *= cutoff * eclipse_factor
-            ip.fillRect(xi - half, yi - half, 2 * half, 2 * half, QColor.fromRgbF(*color, 1.0))
-
-        # Termination condition (ensure the 90° ring is always drawn)
-        if theta >= theta_max - 1e-6:
-            break
-
-        # ---- Determine Δθ from screen distance: Δθ ≈ sample_step_px / (dr_px/dθ) ----
-        # Estimate dr/dθ using finite differences
-        probe = min(deriv_probe_deg, theta_max - theta)
-        r_next = screen_radius_px(theta + probe)
-        dr_dtheta = (r_next - r_px) / max(1e-6, probe)
-
-        if dr_dtheta <= 1e-6:
-            dtheta = max_theta_step_deg  # Safe side (almost no change / numerical error at edges)
-        else:
-            dtheta = float(sample_step_px) / dr_dtheta
-
-        # Limit the angle step
-        dtheta = max(min_theta_step_deg, min(max_theta_step_deg, dtheta))
-
-        theta += dtheta
-
-    ip.end()
-
-    return img
+    return np_rgba_to_qimage(rgba).convertToFormat(QImage.Format.Format_ARGB32_Premultiplied)
