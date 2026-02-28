@@ -92,7 +92,8 @@
 2. `CloudController` が `CloudDisc.render_now()` を実行し、例外をUI向けステータスへ正規化。
 3. `cloud_ready` / `cloud_failed` シグナルで `SkyWindow` に結果を返す。
 4. `SkyWindow` が `CloudImageState` と合成キャッシュを更新し、再描画要求をUIスレッドへ配送。
-5. 終了開始時（`aboutToQuit` / `closeEvent`）はタイマー停止に加えて `CloudController.shutdown()` を呼び、以後の更新受付を抑止。
+5. `cloud_failed` 受信時はバナー表示に加え、雲画像とストライプ密度をクリアし、雲は描画しない。
+6. 終了開始時（`aboutToQuit` / `closeEvent`）はタイマー停止に加えて `CloudController.shutdown()` を呼び、以後の更新受付を抑止。
 
 ## 5. スレッドモデル
 
@@ -113,7 +114,8 @@
   - `StartupAbortError` で起動シーケンスを中断
 - クラウド系エラー:
   - `CloudDiscError` 派生（`TimeoutError`, `DownloadError`, `DataNotFoundError`, `RenderError`）
-  - UIはバナー表示し、更新ループは継続
+  - UIはバナー表示し、当該時点の雲レイヤーはクリアして非表示
+  - 更新ループは継続
 
 ## 7. 設定/永続化
 
@@ -150,6 +152,14 @@
     - 晴天域の薄い縞ノイズを抑制しつつ、閾値近傍の点滅（on/off）を軽減する。
   - 懸念と検証観点:
     - 薄雲の見え方が弱くなり過ぎないかを、快晴・薄雲・前線域の3ケースで目視比較する。
+
+- 雲の地平線下マージン設定（実装済み）
+  - 方針:
+    - 雲表示はヒント用途のため、地平線下の描画マージンは設けない。
+  - 実装内容:
+    - `alt_min_deg` は実運用値・デフォルト値ともに `0.0` へ統一する。
+  - 補足:
+    - 幾何学的な完全クリップではなく、投影時の可視判定しきい値で運用する。
 
 - 地平線方位マーカーを「地平線垂直の固定長マーカー線」に変更（実装済み）
   - 背景:
