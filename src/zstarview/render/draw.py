@@ -855,7 +855,7 @@ def draw_direction_labels(
     preset: str = "night",
 ) -> None:
     """
-    Draw compass direction labels (N, S, E, W) on the horizon.
+    Draw compass direction labels and horizon markers on the horizon.
 
     Args:
         painter: The QPainter for drawing.
@@ -866,26 +866,77 @@ def draw_direction_labels(
     # Match direction labels to the horizon line color.
     text_color = QColor(*HORIZON_LINE_COLOR)
     outline_color = QColor.fromRgbF(0, 0, 0, 0.3)
-    tick_pen = QPen(QColor(*HORIZON_LINE_COLOR), 1.6)
-    tick_pen.setCosmetic(True)
-    tick_half_len_px = max(4.0, min(10.0, geometry.radius * 0.015))
+    marker_color = QColor(*HORIZON_LINE_COLOR)
+    marker_pen = QPen(marker_color, 1.6)
+    marker_pen.setCosmetic(True)
+    marker_half_len_px = 6.0  # constant visual length regardless of view altitude
+    marker_hit_radius_px = 4.0
+    tangent_probe_deg = 0.6
+    label_outward_offset_px = 4.0
     painter.setFont(text_font)
+    fm = QFontMetrics(text_font)
     alt = 0.0
     for label, az in DIRECTIONS.items():
         if not is_in_fov(alt, az, view_center):
             continue
         nx, ny = altaz_to_normalized_xy(alt, az, view_center)
         pos = QPointF(*normalized_to_screen_xy(nx, ny, geometry))
-        # Short vertical tick to indicate the exact horizon direction.
-        painter.setPen(tick_pen)
+
+        # Estimate local horizon tangent from azimuth finite difference.
+        az_prev = (az - tangent_probe_deg + 360.0) % 360.0
+        az_next = (az + tangent_probe_deg) % 360.0
+        p_prev = QPointF(*normalized_to_screen_xy(*altaz_to_normalized_xy(alt, az_prev, view_center), geometry))
+        p_next = QPointF(*normalized_to_screen_xy(*altaz_to_normalized_xy(alt, az_next, view_center), geometry))
+        tx = p_next.x() - p_prev.x()
+        ty = p_next.y() - p_prev.y()
+        t_norm = math.hypot(tx, ty)
+        if t_norm <= 1e-6:
+            rx = pos.x() - geometry.center[0]
+            ry = pos.y() - geometry.center[1]
+            tx, ty = -ry, rx
+            t_norm = math.hypot(tx, ty)
+        if t_norm <= 1e-6:
+            tx, ty, t_norm = 1.0, 0.0, 1.0
+        ux, uy = tx / t_norm, ty / t_norm
+        # Draw a marker line perpendicular to the local horizon tangent.
+        nxp, nyp = -uy, ux
+        painter.save()
+        painter.setPen(marker_pen)
         painter.drawLine(
-            QPointF(pos.x(), pos.y() - tick_half_len_px),
-            QPointF(pos.x(), pos.y() + tick_half_len_px),
+            QPointF(pos.x() - nxp * marker_half_len_px, pos.y() - nyp * marker_half_len_px),
+            QPointF(pos.x() + nxp * marker_half_len_px, pos.y() + nyp * marker_half_len_px),
         )
+        painter.restore()
+
+        label_pos = QPointF(pos)
+        # Baseline-relative bounds for draw_outlined_text(path.addText baseline semantics).
+        bounds = fm.tightBoundingRect(label)
+        label_rect = QRectF(
+            label_pos.x() + bounds.x(),
+            label_pos.y() + bounds.y(),
+            bounds.width(),
+            bounds.height(),
+        )
+        # If label and marker overlap, push label slightly outward from disc center.
+        nearest_x = min(max(pos.x(), label_rect.left()), label_rect.right())
+        nearest_y = min(max(pos.y(), label_rect.top()), label_rect.bottom())
+        dx0 = pos.x() - nearest_x
+        dy0 = pos.y() - nearest_y
+        overlap = (dx0 * dx0 + dy0 * dy0) <= (marker_hit_radius_px**2)
+        if overlap:
+            ox = pos.x() - geometry.center[0]
+            oy = pos.y() - geometry.center[1]
+            norm = math.hypot(ox, oy)
+            if norm > 1e-6:
+                label_pos = QPointF(
+                    label_pos.x() + (ox / norm) * label_outward_offset_px,
+                    label_pos.y() + (oy / norm) * label_outward_offset_px,
+                )
+
         draw_outlined_text(
             painter,
             label,
-            pos,
+            label_pos,
             text_font,
             text_color,
             outline_color,
