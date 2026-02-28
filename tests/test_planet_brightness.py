@@ -29,6 +29,8 @@ def test_planet_bloom_profile_gets_stronger_for_very_bright_planets() -> None:
     assert very_bright[0] > at_clip[0]
     assert very_bright[1] >= at_clip[1]
     assert very_bright[2] >= at_clip[2]
+    # Guardrail: keep halo size in a restrained range.
+    assert very_bright[0] <= 3.0 * 2.5
 
 
 def test_planet_bloom_profile_is_disabled_for_faint_planets() -> None:
