@@ -214,6 +214,18 @@ Logs are also written to a file (platform‑dependent). Examples:
 - macOS: `~/Library/Logs/zstarview/app.log`
 - Windows: `%LOCALAPPDATA%/tos-kamiya/zstarview/Logs/app.log`
 
+## Star Catalog Regeneration (Developer)
+
+Use the catalog generator script:
+
+```bash
+uv run -p .venv/bin/python src/zstarview/data/stars/generate_star_catalog.py
+```
+
+Detailed options (including optional Tycho-2 input and split outputs):
+
+- `docs/developer/star-catalog-generation.md`
+
 ## License
 
 This software is provided under the [MIT](LICENSE.txt) License.

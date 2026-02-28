@@ -202,6 +202,18 @@ CPU性能によっては星空の自動更新が負荷になる場合があり�
 - macOS: `~/Library/Logs/zstarview/app.log`
 - Windows: `%LOCALAPPDATA%/tos-kamiya/zstarview/Logs/app.log`
 
+## 星カタログ再生成（開発者向け）
+
+カタログ生成スクリプトは以下で実行できます。
+
+```bash
+uv run -p .venv/bin/python src/zstarview/data/stars/generate_star_catalog.py
+```
+
+Tycho-2 入力や分割出力を含む詳細オプションは次を参照してください。
+
+- `docs/developer/star-catalog-generation.md`
+
 ## ライセンス
 
 このソフトウェアは [MIT](LICENSE.txt) の下で提供されています。
