@@ -13,7 +13,7 @@ GROUND_TINT_RGB = np.array([0.12, 0.19, 0.27], dtype=np.float32)
 GROUND_TINT_STRENGTH = 0.2
 GROUND_BASE_DARKNESS = 0.03
 NEVER_RISES_TINT_RGB = np.array([0.42, 0.07, 0.07], dtype=np.float32)
-NEVER_RISES_TINT_STRENGTH = 0.08
+NEVER_RISES_TINT_STRENGTH = 0.16
 
 
 def _smoothstep(edge0: float, edge1: float, x: float) -> float:
@@ -271,6 +271,20 @@ def draw_sky_color_disc(
     gamma = (1.0 - alpha) * 0.2 + 1.0 if alpha < 1.0 else 1.0
     colors = grade_color(colors, saturation=saturation, exposure=exposure, gamma=gamma)
 
+    below_horizon = alt < 0.0
+    if np.any(below_horizon):
+        s = np.float32(GROUND_TINT_STRENGTH)
+        base = colors[below_horizon] * np.float32(GROUND_BASE_DARKNESS)
+        colors[below_horizon] = base * (1.0 - s) + GROUND_TINT_RGB[None, :] * s
+    # Keep sky opacity for the upper sky only.
+    # Ground tint should stay visible regardless of sky_opacity.
+    sky_scale = max(0.0, float(alpha))
+    eclipse_scale = max(0.0, float(eclipse_factor))
+    if np.any(below_horizon):
+        colors[~below_horizon] *= sky_scale * eclipse_scale
+        colors[below_horizon] *= eclipse_scale
+    else:
+        colors *= sky_scale * eclipse_scale
     # Mark declinations that never rise at the observer latitude.
     never_rises = np.zeros_like(alt, dtype=bool)
     if observer_lat_deg is not None:
@@ -292,21 +306,6 @@ def draw_sky_color_disc(
             never_rises = dec >= threshold
         else:
             never_rises = np.zeros_like(dec, dtype=bool)
-
-    below_horizon = alt < 0.0
-    if np.any(below_horizon):
-        s = np.float32(GROUND_TINT_STRENGTH)
-        base = colors[below_horizon] * np.float32(GROUND_BASE_DARKNESS)
-        colors[below_horizon] = base * (1.0 - s) + GROUND_TINT_RGB[None, :] * s
-    # Keep sky opacity for the upper sky only.
-    # Ground tint should stay visible regardless of sky_opacity.
-    sky_scale = max(0.0, float(alpha))
-    eclipse_scale = max(0.0, float(eclipse_factor))
-    if np.any(below_horizon):
-        colors[~below_horizon] *= sky_scale * eclipse_scale
-        colors[below_horizon] *= eclipse_scale
-    else:
-        colors *= sky_scale * eclipse_scale
     # Apply never-rises tint at the end so it survives ground-side darkening.
     if np.any(never_rises):
         colors[never_rises] = np.clip(
