@@ -863,11 +863,12 @@ def draw_direction_labels(
         view_center: The current view center to determine which labels are visible.
         text_font: The QFont to use for the labels.
     """
-    # Keep compass labels on their original style because they are usually
-    # drawn over the sky disc, where the legacy contrast works best.
-    text_color = QColor(*TEXT_COLOR)
-    text_color.setAlphaF(0.7)
+    # Match direction labels to the horizon line color.
+    text_color = QColor(*HORIZON_LINE_COLOR)
     outline_color = QColor.fromRgbF(0, 0, 0, 0.3)
+    tick_pen = QPen(QColor(*HORIZON_LINE_COLOR), 1.6)
+    tick_pen.setCosmetic(True)
+    tick_half_len_px = max(4.0, min(10.0, geometry.radius * 0.015))
     painter.setFont(text_font)
     alt = 0.0
     for label, az in DIRECTIONS.items():
@@ -875,6 +876,12 @@ def draw_direction_labels(
             continue
         nx, ny = altaz_to_normalized_xy(alt, az, view_center)
         pos = QPointF(*normalized_to_screen_xy(nx, ny, geometry))
+        # Short vertical tick to indicate the exact horizon direction.
+        painter.setPen(tick_pen)
+        painter.drawLine(
+            QPointF(pos.x(), pos.y() - tick_half_len_px),
+            QPointF(pos.x(), pos.y() + tick_half_len_px),
+        )
         draw_outlined_text(
             painter,
             label,
@@ -944,25 +951,9 @@ def draw_overlay_info(
 
     def az_to_compass(az: float) -> str:
         """Converts azimuth in degrees to a compass direction string."""
-        names = [
-            "N",
-            "NNE",
-            "NE",
-            "ENE",
-            "E",
-            "ESE",
-            "SE",
-            "SSE",
-            "S",
-            "SSW",
-            "SW",
-            "WSW",
-            "W",
-            "WNW",
-            "NW",
-            "NNW",
-        ]
-        idx = int(((az % 360) + 11.25) // 22.5) % 16
+        names = tuple(DIRECTIONS.keys())
+        sector = 360.0 / len(names)
+        idx = int(((az % 360.0) + sector / 2.0) // sector) % len(names)
         return names[idx]
 
     compass = az_to_compass(az_deg)
