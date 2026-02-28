@@ -48,6 +48,29 @@ def _bt_to_weight(bt: np.ndarray, bt_warm: float, bt_cold: float) -> np.ndarray:
     return weight
 
 
+def _smoothstep(edge0: float, edge1: float, x: np.ndarray) -> np.ndarray:
+    """Vectorized smoothstep for gently ramping values in [edge0, edge1]."""
+    t = np.clip((x - edge0) / max(1e-6, (edge1 - edge0)), 0.0, 1.0)
+    return t * t * (3.0 - 2.0 * t)
+
+
+def _suppress_low_cloud_weight(
+    weight: np.ndarray,
+    *,
+    floor: float = 0.03,
+    knee: float = 0.08,
+) -> np.ndarray:
+    """Suppress low cloud amounts so faint clear-sky stripes are less visible."""
+    floor = float(np.clip(floor, 0.0, 0.95))
+    knee = float(np.clip(max(knee, floor + 1e-6), floor + 1e-6, 0.99))
+
+    # 1) Hard floor to remove tiny cloud/noise values.
+    base = np.clip((weight - floor) / max(1e-6, (1.0 - floor)), 0.0, 1.0)
+    # 2) Smooth gain near the knee so faint clouds do not pop abruptly.
+    gain = _smoothstep(floor, knee, weight)
+    return np.clip(base * gain, 0.0, 1.0)
+
+
 def convert_bt_to_la_image(
     bt: np.ndarray,
     mask_inside: np.ndarray,
@@ -78,6 +101,7 @@ def convert_bt_to_la_image(
 
     # 1. Convert BT to cloud amount in [0,1].
     weight = _bt_to_weight(bt, bt_warm, bt_cold)
+    weight = _suppress_low_cloud_weight(weight)
 
     # 2. Keep cloud color white and encode cloud amount in alpha.
     l_channel = np.zeros_like(weight, dtype=np.uint8)

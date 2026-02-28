@@ -33,3 +33,17 @@ def test_convert_bt_to_la_image_encodes_cloudiness_in_alpha() -> None:
     assert int(a[0, 2]) == 255
     assert 0 < int(a[0, 1]) < 255
     assert int(a[1, 0]) == 0
+
+
+def test_convert_bt_to_la_image_suppresses_very_low_cloud_amount() -> None:
+    bt = np.array([[307.6, 304.0, 300.4, 250.0]], dtype=np.float32)
+    mask_inside = np.array([[True, True, True, True]], dtype=bool)
+
+    img = convert_bt_to_la_image(bt, mask_inside, bt_warm=310.0, bt_cold=190.0)
+    a = np.asarray(img.convert("LA"), dtype=np.uint8)[..., 1]
+
+    # weight ~= 0.02 should be cut to zero.
+    assert int(a[0, 0]) == 0
+    # Around knee region, alpha should ramp gently and stay below dense cloud.
+    assert 0 < int(a[0, 1]) <= int(a[0, 2])
+    assert int(a[0, 2]) < int(a[0, 3])
