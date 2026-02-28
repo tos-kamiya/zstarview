@@ -85,3 +85,7 @@ uv run -p .venv/bin/python -m build
   - 依存が未インストールの可能性があるため、再度 `uv pip install -p .venv/bin/python -e ".[dev]"` を実行。
 - Linux/X11 で Qt 起動に失敗する場合:
   - `README.md` の X11 セクション（`libxcb-cursor0`）を参照。
+
+## 6. 関連ドキュメント
+
+- 星カタログ再生成: `docs/developer/star-catalog-generation.md`
