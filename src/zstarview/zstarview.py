@@ -189,7 +189,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Show the moon in 5x size.",
     )
-    parser.add_argument("-s", "--star-base-radius", type=float, default=8.0, help="Base size of stars (default: 8.0)")
+    parser.add_argument("-s", "--star-base-radius", type=float, default=6.0, help="Base size of stars (default: 6.0)")
     parser.add_argument(
         "-Z",
         "--view-center-az",

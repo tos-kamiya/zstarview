@@ -97,7 +97,7 @@ class SkyWindow(DraggableWindow):
         sky_disc_alpha: float = 0.3,
         cloud_disc_alpha: float = 0.6,
         enlarge_moon: bool = False,
-        star_base_radius: float = 8.0,
+        star_base_radius: float = 6.0,
         vmag_limit: float = 6.0,
         sky_update_interval: int = 3 * 60,  # sec
         visual_preset: str = "night",
