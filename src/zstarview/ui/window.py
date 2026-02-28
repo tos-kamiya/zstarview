@@ -462,6 +462,7 @@ class SkyWindow(DraggableWindow):
             self.celestial_data,
             self.viewer_data,
             enlarge_moon,
+            text_font=self.text_font,
             preset=self.visual_preset,
         )
 
