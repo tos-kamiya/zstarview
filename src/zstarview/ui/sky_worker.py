@@ -137,6 +137,7 @@ class SkyDataWorker(QObject):
                     fixed_geom,
                     view_center,
                     sun_altaz,
+                    observer_lat_deg=lat,
                     alpha=sky_disc_alpha,
                     eclipse_factor=ef,
                     mask_fov_deg=93,

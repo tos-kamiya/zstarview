@@ -12,6 +12,8 @@ TURBIDITY = 5  # 2 (clear blue sky) to 10 (hazy white sky)
 GROUND_TINT_RGB = np.array([0.12, 0.19, 0.27], dtype=np.float32)
 GROUND_TINT_STRENGTH = 0.2
 GROUND_BASE_DARKNESS = 0.03
+NEVER_RISES_TINT_RGB = np.array([0.42, 0.07, 0.07], dtype=np.float32)
+NEVER_RISES_TINT_STRENGTH = 0.08
 
 
 def _smoothstep(edge0: float, edge1: float, x: float) -> float:
@@ -233,6 +235,7 @@ def draw_sky_color_disc(
     geometry: ScreenGeometry,
     view_center: Tuple[float, float],
     sun_altaz: Tuple[float, float],
+    observer_lat_deg: float | None = None,
     *,
     exposure: float = 1.14,
     saturation: float = 1.35,
@@ -267,6 +270,29 @@ def draw_sky_color_disc(
     colors = _get_sky_color_vectorized(alt, az, sun_altaz)
     gamma = (1.0 - alpha) * 0.2 + 1.0 if alpha < 1.0 else 1.0
     colors = grade_color(colors, saturation=saturation, exposure=exposure, gamma=gamma)
+
+    # Mark declinations that never rise at the observer latitude.
+    never_rises = np.zeros_like(alt, dtype=bool)
+    if observer_lat_deg is not None:
+        lat = float(np.clip(observer_lat_deg, -90.0, 90.0))
+        lat_rad = math.radians(lat)
+        alt_rad = np.radians(alt)
+        az_rad = np.radians(az)
+        # Convert (alt, az, lat) to declination:
+        # sin(dec) = sin(alt)*sin(lat) + cos(alt)*cos(lat)*cos(az)
+        # (az: 0=N, 90=E)
+        sin_dec = np.sin(alt_rad) * math.sin(lat_rad) + np.cos(alt_rad) * math.cos(lat_rad) * np.cos(az_rad)
+        sin_dec = np.clip(sin_dec, -1.0, 1.0)
+        dec = np.degrees(np.arcsin(sin_dec))
+        if lat > 0.0:
+            threshold = lat - 90.0
+            never_rises = dec <= threshold
+        elif lat < 0.0:
+            threshold = lat + 90.0
+            never_rises = dec >= threshold
+        else:
+            never_rises = np.zeros_like(dec, dtype=bool)
+
     below_horizon = alt < 0.0
     if np.any(below_horizon):
         s = np.float32(GROUND_TINT_STRENGTH)
@@ -281,6 +307,13 @@ def draw_sky_color_disc(
         colors[below_horizon] *= eclipse_scale
     else:
         colors *= sky_scale * eclipse_scale
+    # Apply never-rises tint at the end so it survives ground-side darkening.
+    if np.any(never_rises):
+        colors[never_rises] = np.clip(
+            colors[never_rises] + NEVER_RISES_TINT_RGB[None, :] * np.float32(NEVER_RISES_TINT_STRENGTH),
+            0.0,
+            1.0,
+        )
     colors = np.clip(colors, 0.0, 1.0)
 
     rgb_u8 = np.clip(np.round(colors * 255.0), 0, 255).astype(np.uint8)
