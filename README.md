@@ -148,6 +148,7 @@ Time zone examples for `--datetime`:
 ### Key Operations
 
 * **← / →**: Rotate view azimuth by ±5°
+* **↑ / ↓**: Change view altitude by ±5° (clamped to 0°..90°)
 * **M**: Toggle moon enlarged to 5x size
 * **F11**: Toggle fullscreen display
 * **ESC**: Exit fullscreen
