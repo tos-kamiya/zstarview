@@ -10,7 +10,7 @@
   - `src/zstarview/data/stars/generate_star_catalog.py`
 - 入力:
   - Hipparcos: `hip_main.dat` または `hip_main.dat.zip`
-  - Tycho-2: 正規化済み CSV（任意）
+  - Tycho-2: 正規化済み CSV（任意）または I/259 ディレクトリ（`tyc2.dat.*.gz`）
   - IAU 名称 CSV（任意。HIP への名前付け）
 
 ## 2. Hipparcos のみで生成
@@ -29,14 +29,28 @@ uv run -p .venv/bin/python src/zstarview/data/stars/generate_star_catalog.py
 
 ## 3. Tycho-2 を追加して生成
 
+### 3.1 正規化CSVを使う場合
+
 ```bash
 uv run -p .venv/bin/python src/zstarview/data/stars/generate_star_catalog.py \
   --tycho-csv /path/to/tycho2_normalized.csv
 ```
 
+### 3.2 I/259生データを使う場合
+
+`src/zstarview/data/I-259/` が存在すれば、既定で自動読込されます。
+明示する場合は以下です。
+
+```bash
+uv run -p .venv/bin/python src/zstarview/data/stars/generate_star_catalog.py \
+  --tycho-i259-dir src/zstarview/data/I-259
+```
+
 ## 4. 主なパラメータ
 
 - `--max-vmag`: 生成上限等級（既定: `9.0`）
+- `--tycho-csv`: Tycho-2 正規化CSV入力
+- `--tycho-i259-dir`: Tycho-2 I/259 ディレクトリ入力（`tyc2.dat.*.gz`）
 - `--hip-priority-vmag`: この等級以下は Hipparcos を優先（既定: `6.0`）
 - `--dup-sep-arcsec`: 重複判定の角距離しきい値（既定: `5.0`）
 - `--dup-mag-diff`: 重複判定の等級差しきい値（既定: `0.75`）
