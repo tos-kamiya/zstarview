@@ -47,7 +47,6 @@ CLOUD_SHELL_KM = 6371.0 + 5.0  # 5km above Earth's surface
 FIELD_OF_VIEW_DEG = 100
 STAR_FIELD_OF_VIEW_DEG = 95
 BACKGROUND_FIELD_OF_VIEW_DEG = 105
-ANGLE_BELOW_HORIZON = 2
 
 # Direction labels (8-point compass rose)
 DIRECTIONS = {

@@ -94,6 +94,33 @@ def planet_disc_style_from_vmag(vmag: Optional[float]) -> Tuple[float, int]:
     return radius_px, alpha
 
 
+def planet_bloom_profile_from_vmag(vmag: Optional[float], core_radius_px: float) -> Tuple[float, int, int]:
+    """Return bloom profile as (radius_px, center_alpha, mid_alpha).
+
+    Planet disk size remains clipped at -1.5 mag via `planet_disc_style_from_vmag`,
+    while this bloom profile uses the raw magnitude to express extra brightness
+    for very bright planets (e.g. Venus).
+    """
+    if vmag is None or not math.isfinite(float(vmag)):
+        return 0.0, 0, 0
+
+    vm = float(np.clip(float(vmag), -6.0, 6.0))
+    # Base term follows existing clipped brightness behavior.
+    base = flare_strength_from_vmag(float(np.clip(vm, -1.5, 6.0)))
+    # Extra term activates only when brighter than -1.5.
+    extra = max(0.0, min(1.0, (-1.5 - vm) / 4.5))
+    strength = 0.45 * base + 0.55 * extra
+
+    if strength < 0.08:
+        return 0.0, 0, 0
+
+    r_core = max(1.0, float(core_radius_px))
+    bloom_radius = r_core * (2.0 + 2.8 * strength)
+    center_alpha = int(np.clip(round(20 + 130 * strength), 12, 200))
+    mid_alpha = int(np.clip(round(8 + 85 * strength), 6, 160))
+    return bloom_radius, center_alpha, mid_alpha
+
+
 def planet_marker_color(name: str) -> QColor:
     """Return display color for a planet marker."""
     palette = {
@@ -213,7 +240,8 @@ def find_highlighted_object(
 
     # Handle planets (scalar)
     for body in celestial_data.planets:
-        if not body.is_visible:
+        # For planets, allow below-horizon display as long as they are in the current FOV.
+        if not is_in_fov(body.alt, body.az, viewer_data.view_center):
             continue
         nx, ny = altaz_to_normalized_xy(body.alt, body.az, viewer_data.view_center)
         px, py = normalized_to_screen_xy(nx, ny, geometry)
@@ -778,6 +806,40 @@ def draw_planet_disc(
     painter.restore()
 
 
+def draw_planet_bloom(
+    painter: QPainter,
+    pos: QPointF,
+    color: QColor,
+    *,
+    core_radius_px: float,
+    vmag: Optional[float],
+) -> None:
+    """Draw a soft additive bloom around a planet marker."""
+    bloom_radius, center_alpha, mid_alpha = planet_bloom_profile_from_vmag(vmag, core_radius_px)
+    if bloom_radius <= 0.0 or center_alpha <= 0:
+        return
+
+    c0 = QColor(color)
+    c0.setAlpha(center_alpha)
+    c1 = QColor(color)
+    c1.setAlpha(mid_alpha)
+    c2 = QColor(color)
+    c2.setAlpha(0)
+
+    gradient = QRadialGradient(pos, bloom_radius)
+    gradient.setColorAt(0.0, c0)
+    gradient.setColorAt(0.45, c1)
+    gradient.setColorAt(1.0, c2)
+
+    painter.save()
+    # Additive blend to emulate bloom-like luminous spill.
+    painter.setCompositionMode(QPainter.CompositionMode_Plus)
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(gradient)
+    painter.drawEllipse(pos, bloom_radius, bloom_radius)
+    painter.restore()
+
+
 def draw_solar_system_bodies(
     painter: QPainter,
     geometry: ScreenGeometry,
@@ -785,6 +847,7 @@ def draw_solar_system_bodies(
     viewer_data: ViewerData,
     enlarge_moon: bool,
     *,
+    text_font: Optional[QFont] = None,
     preset: str = "night",
 ) -> None:
     """
@@ -805,9 +868,16 @@ def draw_solar_system_bodies(
 
     # Keep body markers in a stable high-contrast color over the sky disc.
     text_color = QColor(*TEXT_COLOR)
+    label_text_color, label_outline_color = get_text_style(preset)
+    if text_font is not None:
+        painter.setFont(text_font)
+        label_font = text_font
+    else:
+        label_font = painter.font() if hasattr(painter, "font") else QFont()
 
     for body in celestial_data.planets:
-        if not body.is_visible:
+        # Draw planets if they are in-view, even below horizon.
+        if not is_in_fov(body.alt, body.az, viewer_data.view_center):
             continue
 
         pos = QPointF(
@@ -836,10 +906,19 @@ def draw_solar_system_bodies(
         else:
             radius_px, alpha = planet_disc_style_from_vmag(body.vmag)
             marker_color = planet_marker_color(body.name)
+            draw_planet_bloom(painter, pos, marker_color, core_radius_px=radius_px, vmag=body.vmag)
             marker_color.setAlpha(alpha)
             draw_planet_disc(painter, pos, marker_color, radius_px=radius_px, alpha=alpha)
             # Keep planet cross markers shorter than the Moon/Sun gauge marker.
             draw_gauge_cross(painter, text_color, pos, scale=0.55, pen_width=1.0)
+            draw_outlined_text(
+                painter,
+                body.name,
+                QPointF(pos.x() + 12.0, pos.y() - 10.0),
+                label_font,
+                label_text_color,
+                label_outline_color,
+            )
 
 
 def draw_direction_labels(

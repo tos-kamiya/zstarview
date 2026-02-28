@@ -13,7 +13,6 @@ import polars as pl
 
 from .paths import (
     CACHE_PATH,
-    ANGLE_BELOW_HORIZON,
     FIELD_OF_VIEW_DEG,
     STAR_FIELD_OF_VIEW_DEG,
     PLANET_SYMBOLS,
@@ -319,7 +318,7 @@ def calculate_planets(
         planet = planets[planet_id]
         astrometric = observer.at(t).observe(planet).apparent()
         alt, az, _ = astrometric.altaz()
-        is_visible = alt.degrees > -ANGLE_BELOW_HORIZON and is_in_fov(alt.degrees, az.degrees, view_center)
+        is_visible = is_in_fov(alt.degrees, az.degrees, view_center)
         vmag = None
         if name not in ("sun", "moon"):
             try:
