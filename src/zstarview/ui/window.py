@@ -43,6 +43,7 @@ from ..paths import (
     TEXT_FONT_PATH,
     TEXT_FONT_SIZE,
     STATUS_LINE_FONT_SIZE,
+    WINDOW_HEIGHT,
     WINDOW_WIDTH,
 )
 from ..render import draw as render_draw
@@ -154,12 +155,10 @@ class SkyWindow(DraggableWindow):
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setFocus(Qt.FocusReason.ActiveWindowFocusReason)
         self.setWindowIcon(QIcon(APP_ICON_FILE))
-        initial_alt = self.viewer_data.view_center[0]
-        height_ratio = _initial_height_ratio_for_altitude(initial_alt)
         initial_width = WINDOW_WIDTH
-        initial_height = max(220, int(round(initial_width * height_ratio)))
+        initial_height = WINDOW_HEIGHT
         min_width = 400
-        min_height = max(220, int(round(min_width * height_ratio)))
+        min_height = 400
         self.setMinimumSize(min_width, min_height)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)

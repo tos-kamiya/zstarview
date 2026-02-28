@@ -108,7 +108,7 @@ def calculate_visible_stars(
     az = altaz_coords.az.deg
 
     # Vectorized visibility check
-    in_view_mask = (alt > -ANGLE_BELOW_HORIZON) & is_in_fov_vectorized(alt, az, view_center)
+    in_view_mask = is_in_fov_vectorized(alt, az, view_center)
 
     # Filter the results using the boolean mask
     visible_stars: StarsTable = {
@@ -360,12 +360,11 @@ def calculate_horizon_points(view_center: Tuple[float, float]) -> List[Tuple[flo
 
 def calculate_celestial_equator_points(location: EarthLocation, time: astropy.time.Time, view_center: Tuple[float, float]) -> List[Tuple[float, float]]:
     """Generate points along the celestial equator for drawing."""
-    a = 5
     points: List[Tuple[float, float]] = []
     for ra_deg in range(0, 360 + 5, 5):
         coord = SkyCoord(ra=ra_deg * u.deg, dec=0 * u.deg, frame="icrs")
         altaz = coord.transform_to(AltAz(obstime=time, location=location))
-        if altaz.alt.deg > -a and is_in_fov(altaz.alt.deg, altaz.az.deg, view_center):
+        if is_in_fov(altaz.alt.deg, altaz.az.deg, view_center):
             nx, ny = altaz_to_normalized_xy(altaz.alt.deg, altaz.az.deg, view_center)
             points.append((nx, ny))
     return points
@@ -378,7 +377,7 @@ def calculate_ecliptic_points(location: EarthLocation, time: astropy.time.Time, 
         ecl = SkyCoord(lon=lon_deg * u.deg, lat=0 * u.deg, frame=GeocentricTrueEcliptic(obstime=time))
         icrs = ecl.transform_to("icrs")
         altaz = icrs.transform_to(AltAz(obstime=time, location=location))
-        if altaz.alt.deg > -ANGLE_BELOW_HORIZON and is_in_fov(altaz.alt.deg, altaz.az.deg, view_center):
+        if is_in_fov(altaz.alt.deg, altaz.az.deg, view_center):
             nx, ny = altaz_to_normalized_xy(altaz.alt.deg, altaz.az.deg, view_center)
             points.append((nx, ny))
     return points
