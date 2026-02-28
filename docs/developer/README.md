@@ -13,3 +13,4 @@
 
 - 新しい設計判断や運用フローを追加したら、ここに短いノートを増やしてください。
 - 仕様/設計の本体は `docs/specification.md`, `docs/design.md` を更新してください。
+- 開発環境セットアップ時は `docs/developer/uv-workflow.md` の `uv pip install -e ".[dev]"` を使用してください。
