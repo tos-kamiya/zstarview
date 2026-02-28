@@ -44,7 +44,7 @@ CLOUD_UPDATE_INTERVAL = 10 * 60  # seconds
 CLOUD_SHELL_KM = 6371.0 + 5.0  # 5km above Earth's surface
 
 # Rendering / FOV
-FIELD_OF_VIEW_DEG = 105
+FIELD_OF_VIEW_DEG = 100
 ANGLE_BELOW_HORIZON = 2
 
 # Direction labels (8-point compass rose)
