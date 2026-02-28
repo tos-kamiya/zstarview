@@ -109,15 +109,16 @@ def planet_bloom_profile_from_vmag(vmag: Optional[float], core_radius_px: float)
     base = flare_strength_from_vmag(float(np.clip(vm, -1.5, 6.0)))
     # Extra term activates only when brighter than -1.5.
     extra = max(0.0, min(1.0, (-1.5 - vm) / 4.5))
-    strength = 0.45 * base + 0.55 * extra
+    strength = 0.60 * base + 0.40 * extra
 
-    if strength < 0.08:
+    if strength < 0.12:
         return 0.0, 0, 0
 
     r_core = max(1.0, float(core_radius_px))
-    bloom_radius = r_core * (2.0 + 2.8 * strength)
-    center_alpha = int(np.clip(round(20 + 130 * strength), 12, 200))
-    mid_alpha = int(np.clip(round(8 + 85 * strength), 6, 160))
+    # Keep bloom close to VR look (halo roughly up to ~2.4x core radius).
+    bloom_radius = r_core * (1.20 + 1.20 * strength)
+    center_alpha = int(np.clip(round(10 + 58 * strength), 8, 90))
+    mid_alpha = int(np.clip(round(4 + 34 * strength), 3, 60))
     return bloom_radius, center_alpha, mid_alpha
 
 
