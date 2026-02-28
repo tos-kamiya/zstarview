@@ -10,7 +10,8 @@ from ..utils.qt import np_rgba_to_qimage
 
 TURBIDITY = 5  # 2 (clear blue sky) to 10 (hazy white sky)
 GROUND_TINT_RGB = np.array([0.12, 0.19, 0.27], dtype=np.float32)
-GROUND_TINT_STRENGTH = 0.30
+GROUND_TINT_STRENGTH = 0.2
+GROUND_BASE_DARKNESS = 0.03
 
 
 def _smoothstep(edge0: float, edge1: float, x: float) -> float:
@@ -269,9 +270,17 @@ def draw_sky_color_disc(
     below_horizon = alt < 0.0
     if np.any(below_horizon):
         s = np.float32(GROUND_TINT_STRENGTH)
-        colors[below_horizon] = colors[below_horizon] * (1.0 - s) + GROUND_TINT_RGB[None, :] * s
-    # Keep legacy behavior: sky opacity controls disc color intensity.
-    colors *= max(0.0, float(alpha)) * max(0.0, float(eclipse_factor))
+        base = colors[below_horizon] * np.float32(GROUND_BASE_DARKNESS)
+        colors[below_horizon] = base * (1.0 - s) + GROUND_TINT_RGB[None, :] * s
+    # Keep sky opacity for the upper sky only.
+    # Ground tint should stay visible regardless of sky_opacity.
+    sky_scale = max(0.0, float(alpha))
+    eclipse_scale = max(0.0, float(eclipse_factor))
+    if np.any(below_horizon):
+        colors[~below_horizon] *= sky_scale * eclipse_scale
+        colors[below_horizon] *= eclipse_scale
+    else:
+        colors *= sky_scale * eclipse_scale
     colors = np.clip(colors, 0.0, 1.0)
 
     rgb_u8 = np.clip(np.round(colors * 255.0), 0, 255).astype(np.uint8)
