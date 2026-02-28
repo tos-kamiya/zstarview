@@ -15,6 +15,7 @@ from .paths import (
     CACHE_PATH,
     ANGLE_BELOW_HORIZON,
     FIELD_OF_VIEW_DEG,
+    STAR_FIELD_OF_VIEW_DEG,
     PLANET_SYMBOLS,
     PLANET_IDS,
     EPHEMERIS_FILENAME,
@@ -55,17 +56,23 @@ def altaz_to_normalized_xy(alt: float, az: float, view_center: Tuple[float, floa
     return (nx, ny)
 
 
-def is_in_fov(alt: float, az: float, view_center: Tuple[float, float]) -> bool:
+def is_in_fov(alt: float, az: float, view_center: Tuple[float, float], *, fov_deg: float = FIELD_OF_VIEW_DEG) -> bool:
     """Check if a target at (alt, az) is within the field of view relative to view_center."""
     center_alt, center_az = view_center
     alt1, az1 = math.radians(center_alt), math.radians(center_az)
     alt2, az2 = math.radians(alt), math.radians(az)
     cos_theta = math.sin(alt1) * math.sin(alt2) + math.cos(alt1) * math.cos(alt2) * math.cos(az2 - az1)
     theta = math.acos(min(1.0, max(-1.0, cos_theta)))
-    return math.degrees(theta) <= FIELD_OF_VIEW_DEG
+    return math.degrees(theta) <= fov_deg
 
 
-def is_in_fov_vectorized(alt: np.ndarray, az: np.ndarray, view_center: Tuple[float, float]) -> np.ndarray:
+def is_in_fov_vectorized(
+    alt: np.ndarray,
+    az: np.ndarray,
+    view_center: Tuple[float, float],
+    *,
+    fov_deg: float = FIELD_OF_VIEW_DEG,
+) -> np.ndarray:
     """Vectorized check if targets at (alt, az) are within the field of view."""
     center_alt, center_az = view_center
     alt1, az1 = np.radians(center_alt), np.radians(center_az)
@@ -77,7 +84,7 @@ def is_in_fov_vectorized(alt: np.ndarray, az: np.ndarray, view_center: Tuple[flo
     cos_theta = np.clip(cos_theta, -1.0, 1.0)
     theta = np.arccos(cos_theta)
 
-    return np.degrees(theta) <= FIELD_OF_VIEW_DEG
+    return np.degrees(theta) <= fov_deg
 
 
 def calculate_visible_stars(
@@ -108,7 +115,7 @@ def calculate_visible_stars(
     az = altaz_coords.az.deg
 
     # Vectorized visibility check
-    in_view_mask = is_in_fov_vectorized(alt, az, view_center)
+    in_view_mask = is_in_fov_vectorized(alt, az, view_center, fov_deg=STAR_FIELD_OF_VIEW_DEG)
 
     # Filter the results using the boolean mask
     visible_stars: StarsTable = {
