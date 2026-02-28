@@ -1077,22 +1077,23 @@ def draw_status_line_text(
 
 def get_screen_geometry(width_px: int, height_px: int, view_alt_deg: float) -> ScreenGeometry:
     """
-    Calculate the center and radius for drawing based on window size and view altitude.
+    Calculate a fixed circular viewport geometry.
 
     Args:
         width_px: The width of the drawing area in pixels.
         height_px: The height of the drawing area in pixels.
-        view_alt_deg: The altitude of the view center in degrees.
+        view_alt_deg: Unused (kept for call-site compatibility).
 
     Returns:
         A ScreenGeometry object with the calculated center and radius.
     """
+    _ = view_alt_deg
     margin_x = 10
     margin_y = 10
-    radius_px = (width_px - margin_x * 2) // 2
-    ud = 90.0
-    dd = view_alt_deg
-    center = (int(radius_px + margin_x), int((height_px - margin_y * 2) * ud / (ud + dd) + margin_y))
+    avail_w = max(2, int(width_px) - margin_x * 2)
+    avail_h = max(2, int(height_px) - margin_y * 2)
+    radius_px = max(1, min(avail_w // 2, avail_h // 2))
+    center = (int(width_px) // 2, int(height_px) // 2)
     return ScreenGeometry(center, radius_px)
 
 

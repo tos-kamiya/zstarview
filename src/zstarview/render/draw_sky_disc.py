@@ -9,6 +9,8 @@ from ..utils.qt import np_rgba_to_qimage
 
 
 TURBIDITY = 5  # 2 (clear blue sky) to 10 (hazy white sky)
+GROUND_TINT_RGB = np.array([0.12, 0.19, 0.27], dtype=np.float32)
+GROUND_TINT_STRENGTH = 0.30
 
 
 def _smoothstep(edge0: float, edge1: float, x: float) -> float:
@@ -264,6 +266,10 @@ def draw_sky_color_disc(
     colors = _get_sky_color_vectorized(alt, az, sun_altaz)
     gamma = (1.0 - alpha) * 0.2 + 1.0 if alpha < 1.0 else 1.0
     colors = grade_color(colors, saturation=saturation, exposure=exposure, gamma=gamma)
+    below_horizon = alt < 0.0
+    if np.any(below_horizon):
+        s = np.float32(GROUND_TINT_STRENGTH)
+        colors[below_horizon] = colors[below_horizon] * (1.0 - s) + GROUND_TINT_RGB[None, :] * s
     # Keep legacy behavior: sky opacity controls disc color intensity.
     colors *= max(0.0, float(alpha)) * max(0.0, float(eclipse_factor))
     colors = np.clip(colors, 0.0, 1.0)
