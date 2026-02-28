@@ -101,7 +101,7 @@ def az_project_lonlat_grid(
     az0_deg: float,
     radius_px: int,
     cloud_shell_km: float,
-    alt_min_deg: float = -2.0,
+    alt_min_deg: float = 0.0,
     mask_fov_deg: float = 90.0,
     edge_fov_deg: float = 90.0,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
