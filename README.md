@@ -15,6 +15,7 @@ The name emphasizes the *zenith*—the point directly overhead—conveying the e
 
 - Adjustable view center: `-A` (altitude) and `-Z` (azimuth).
 - Real-time satellite cloud imagery (Himawari/GOES), rendered as a stylized hatched (striped) overlay.
+- Below the horizon (ground side) is shown with a subtle tint to improve orientation.
 - A red tint marks the *never-rises* celestial region for the current latitude (e.g., when facing north in Sydney).
 
   ![](docs/images/screenshot5.png)
