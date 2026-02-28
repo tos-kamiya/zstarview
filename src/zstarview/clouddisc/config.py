@@ -40,7 +40,7 @@ class CloudDiscConfig:
     sat_priority: Tuple[str, ...] = field(default_factory=lambda: ("AUTO",))
     bt_warm_k: float = 310.0
     bt_cold_k: float = 190.0
-    alt_min_deg: float = -2.0
+    alt_min_deg: float = 0.0
     search_back_minutes: int = 120
     connect_timeout: float = 5.0
     read_timeout: float = 30.0

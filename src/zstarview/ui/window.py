@@ -211,7 +211,7 @@ class SkyWindow(DraggableWindow):
             sat_priority=("AUTO",),
             bt_warm_k=310.0,
             bt_cold_k=190.0,
-            alt_min_deg=-1.0,
+            alt_min_deg=0.0,
             search_back_minutes=120,
         )
         try:
@@ -572,10 +572,9 @@ class SkyWindow(DraggableWindow):
 
     def _on_cloud_failed(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
-        clear_image = bool(payload.get("clear_image"))
-        if clear_image:
-            self.cloud_state.image = None
-            self.cloud_state.stripe_density = None
+        self.cloud_state.image = None
+        self.cloud_state.stripe_density = None
+        self._compositor.invalidate()
         if banner:
             self.cloud_state.set_error_banner(banner)
         self._safe_request_cloud_repaint()
