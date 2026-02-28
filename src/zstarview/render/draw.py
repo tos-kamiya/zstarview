@@ -1073,7 +1073,7 @@ def draw_status_line_text(
 
 def get_screen_geometry(width_px: int, height_px: int, view_alt_deg: float) -> ScreenGeometry:
     """
-    Calculate a fixed circular viewport geometry.
+    Calculate circular viewport geometry.
 
     Args:
         width_px: The width of the drawing area in pixels.
@@ -1082,14 +1082,31 @@ def get_screen_geometry(width_px: int, height_px: int, view_alt_deg: float) -> S
 
     Returns:
         A ScreenGeometry object with the calculated center and radius.
+
+    Layout rule:
+        - Tall/square-ish windows: centered circle that fits inside the window.
+        - Wide windows (width >= height): keep the disc top tangent to the top
+          margin and maximize radius so the current horizon sits near the bottom.
+          Radius is also limited by horizontal space.
     """
     _ = view_alt_deg
     margin_x = 10
     margin_y = 10
     avail_w = max(2, int(width_px) - margin_x * 2)
     avail_h = max(2, int(height_px) - margin_y * 2)
-    radius_px = max(1, min(avail_w // 2, avail_h // 2))
-    center = (int(width_px) // 2, int(height_px) // 2)
+    alt = max(0.0, min(90.0, float(view_alt_deg)))
+
+    if width_px >= height_px:
+        # horizon_y ~= margin + radius * (1 + alt/90)
+        # Choose radius from height so horizon is near the bottom, but never
+        # exceed horizontal fit.
+        r_height = int(avail_h / (1.0 + alt / 90.0))
+        r_width = avail_w // 2
+        radius_px = max(1, min(r_width, r_height))
+        center = (int(width_px) // 2, margin_y + radius_px)
+    else:
+        radius_px = max(1, min(avail_w // 2, avail_h // 2))
+        center = (int(width_px) // 2, int(height_px) // 2)
     return ScreenGeometry(center, radius_px)
 
 
