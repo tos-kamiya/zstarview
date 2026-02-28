@@ -630,27 +630,23 @@ def draw_gauge_cross(
 
 def draw_zenith_marker(painter: QPainter, geometry: ScreenGeometry, view_center: Tuple[float, float]) -> None:
     """
-    Draws a marker at the zenith (the point directly overhead).
+    Draws markers at zenith and nadir.
 
     Args:
         painter: The QPainter to use for drawing.
         geometry: The screen geometry for coordinate conversion.
         view_center: The current view center (altitude, azimuth).
     """
-    alt_zenith = 90.0
     az_ref = view_center[1]
-
-    if not is_in_fov(alt_zenith, az_ref, view_center):
-        return
-
-    nx, ny = altaz_to_normalized_xy(alt_zenith, az_ref, view_center)
-    x, y = normalized_to_screen_xy(nx, ny, geometry)
-
     s = 7
-
     painter.setPen(QPen(QColor(*TEXT_COLOR), 1))
-    painter.drawLine(QPointF(x - s, y - s), QPointF(x + s, y + s))
-    painter.drawLine(QPointF(x - s, y + s), QPointF(x + s, y - s))
+    for alt in (90.0, -90.0):
+        if not is_in_fov(alt, az_ref, view_center):
+            continue
+        nx, ny = altaz_to_normalized_xy(alt, az_ref, view_center)
+        x, y = normalized_to_screen_xy(nx, ny, geometry)
+        painter.drawLine(QPointF(x - s, y - s), QPointF(x + s, y + s))
+        painter.drawLine(QPointF(x - s, y + s), QPointF(x + s, y - s))
 
 
 def draw_moon(

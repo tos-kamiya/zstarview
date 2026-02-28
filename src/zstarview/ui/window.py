@@ -586,7 +586,7 @@ class SkyWindow(DraggableWindow):
 
         # Request updates for both sky and clouds since the view has changed.
         self.request_sky_data_update()
-        self.start_background_cloud_update(reason="az-change")
+        self.start_background_cloud_update(reason="view-change")
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if not event:
@@ -601,6 +601,12 @@ class SkyWindow(DraggableWindow):
             event.accept()
         elif key == Qt.Key.Key_Right:
             self._rotate_view(d_az=self._rotation_step)
+            event.accept()
+        elif key == Qt.Key.Key_Up:
+            self._rotate_view(d_alt=self._rotation_step)
+            event.accept()
+        elif key == Qt.Key.Key_Down:
+            self._rotate_view(d_alt=-self._rotation_step)
             event.accept()
 
         # --- Toggles ---
