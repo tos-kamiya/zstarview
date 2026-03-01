@@ -498,7 +498,7 @@ def draw_stars(
     area_px = base_area_px * L
 
     # Clamp area to stabilize density and avoid extremes.
-    min_area_px = 0.35  # keep faint stars visible while reducing floor lifting
+    min_area_px = 0.1  # keep faint stars visible while avoiding excessive floor lifting
     max_area_px = (geometry.radius * 0.03) ** 2  # size-dependent upper bound
     area_px = np.clip(area_px, min_area_px, max_area_px)
 
