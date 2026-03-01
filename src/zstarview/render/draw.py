@@ -538,7 +538,11 @@ def draw_stars(
     if canvas_uint8.size == 0:
         return
 
-    image = QImage(canvas_uint8.data, width_px, height_px, width_px * 3, QImage.Format_RGB888).copy()
+    alpha = (np.any(canvas_uint8 > 0, axis=2)).astype(np.uint8) * 255
+    rgba = np.zeros((height_px, width_px, 4), dtype=np.uint8)
+    rgba[:, :, :3] = canvas_uint8
+    rgba[:, :, 3] = alpha
+    image = QImage(rgba.data, width_px, height_px, width_px * 4, QImage.Format_RGBA8888).copy()
     painter.save()
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
     painter.drawImage(0, 0, image)
