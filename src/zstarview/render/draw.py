@@ -610,8 +610,20 @@ def draw_stars(
     outside_background = ~is_in_fov_vectorized(alt, az, viewer_data.view_center, fov_deg=BACKGROUND_FIELD_OF_VIEW_DEG1)
     skip_background_stars = outside_background & (size_px <= 2)
     valid = (x1_clamped > x0_clamped) & (y1_clamped > y0_clamped) & (size_px > 0) & (~skip_background_stars)
-    indices = np.nonzero(valid)[0]
-    for idx in indices:
+    size_one = size_px == 1
+    single_mask = valid & size_one
+    multi_mask = valid & ~size_one
+
+    flat_canvas = canvas.reshape(-1, 3)
+    single_indices = np.nonzero(single_mask)[0]
+    if single_indices.size > 0:
+        x_single = x0_clamped[single_indices]
+        y_single = y0_clamped[single_indices]
+        flat_idx = y_single * width_px + x_single
+        np.add.at(flat_canvas, flat_idx, star_colors[single_indices])
+
+    multi_indices = np.nonzero(multi_mask)[0]
+    for idx in multi_indices:
         canvas[y0_clamped[idx]:y1_clamped[idx], x0_clamped[idx]:x1_clamped[idx], :] += star_colors[idx]
 
     np.clip(canvas, 0.0, 255.0, out=canvas)
