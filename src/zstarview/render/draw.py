@@ -1,6 +1,8 @@
 import math
 from typing import List, Optional, Tuple
 
+import hashlib
+import logging
 import numpy as np
 from PIL import Image
 from zoneinfo import ZoneInfo
@@ -17,12 +19,49 @@ from ..paths import (
     TEXT_COLOR,
     STATUS_LINE_COLOR,
 )
-from ..types import ScreenGeometry, CelestialData, ViewerData, CelestialObject, PlanetBody
+from ..types import ScreenGeometry, CelestialData, ViewerData, CelestialObject, PlanetBody, StarsTable
 from ..astro import altaz_to_normalized_xy, is_in_fov, calculate_moon_render_data
 from ..utils.image import generate_moon_phase_image
 from ..utils.qt import pil2qpixmap
 
 DEBUG_ECLIPSE = False
+logger = logging.getLogger(__name__)
+
+_star_render_cache: tuple[tuple, QImage] | None = None
+
+
+def _array_hash(arr: np.ndarray) -> str:
+    if arr.size == 0:
+        return "empty"
+    return hashlib.md5(arr.tobytes()).hexdigest()
+
+
+def _star_cache_key(
+    alt: np.ndarray,
+    az: np.ndarray,
+    size_factor: np.ndarray,
+    color_factor_base: np.ndarray,
+    celestial_time_value: float,
+    view_center: Tuple[float, float],
+    geometry: ScreenGeometry,
+    star_base_radius: float,
+    visibility_boost: float,
+    draw_vmag_limit: float | None,
+) -> tuple:
+    return (
+        _array_hash(alt),
+        _array_hash(az),
+        _array_hash(size_factor),
+        _array_hash(color_factor_base),
+        float(celestial_time_value),
+        view_center[0],
+        view_center[1],
+        geometry.center,
+        geometry.radius,
+        float(star_base_radius),
+        float(visibility_boost),
+        None if draw_vmag_limit is None else float(draw_vmag_limit),
+    )
 
 
 def get_text_style(preset: str = "night") -> Tuple[QColor, QColor]:
@@ -515,6 +554,26 @@ def draw_stars(
     area_ratio = np.clip(expected_area / drawn_area, 0.0, 1.0)
     star_colors = rgb_colors * color_factor[:, None] * area_ratio[:, None]
 
+    cache_key = _star_cache_key(
+        alt,
+        az,
+        size_factor,
+        color_factor_base,
+        celestial_data.time.jd,
+        viewer_data.view_center,
+        geometry,
+        star_base_radius,
+        visibility_boost,
+        draw_vmag_limit,
+    )
+    global _star_render_cache
+    if _star_render_cache and _star_render_cache[0] == cache_key:
+        painter.save()
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
+        painter.drawImage(0, 0, _star_render_cache[1])
+        painter.restore()
+        return
+
     canvas = np.zeros((height_px, width_px, 3), dtype=np.float32)
 
     ix = np.round(x).astype(int)
@@ -549,6 +608,8 @@ def draw_stars(
     painter.save()
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
     painter.drawImage(0, 0, image)
+    logger.debug("Generated star buffer (%d stars) and cached image", len(size_px))
+    _star_render_cache = (cache_key, image)
 
     painter.restore()
     # Reset composition mode.
