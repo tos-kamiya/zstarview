@@ -125,7 +125,6 @@ class SkyWindow(DraggableWindow):
         super().__init__()
         self._rotation_step: float = 5.0  # degrees
         self._interaction_idle_ms: int = 300
-        self._interaction_vmag_cap: float = 7.0
         self._interaction_mode: bool = False
 
         self.star_catalog = star_catalog
@@ -322,11 +321,9 @@ class SkyWindow(DraggableWindow):
         self.update()
 
     def _effective_draw_vmag_limit(self) -> float:
-        return render_draw.effective_star_draw_vmag_limit(
-            self.vmag_limit,
-            self._interaction_mode,
-            self._interaction_vmag_cap,
-        )
+        # Keep drawing at the user-specified quality while interaction updates
+        # are driven by full (FOV-filtered) recalculation requests.
+        return float(self.vmag_limit)
 
     def show_menu(self) -> None:
         menu_pos = self.menu_button.mapToGlobal(QPoint(0, self.menu_button.height()))
@@ -655,12 +652,8 @@ class SkyWindow(DraggableWindow):
         new_az = (az + d_az) % 360.0
         self.viewer_data.view_center = (new_alt, new_az)
 
-        # Request fresh LOD6 sky data first; avoid drawing stale clipped data
-        # from the previous view center during active rotation.
-        self.request_sky_data_update(
-            star_vmag_limit=self._interaction_vmag_cap,
-            star_apply_fov_filter=False,
-        )
+        # Recalculate sky data for the current full quality on each key input.
+        self.request_sky_data_update()
         self.start_background_cloud_update(reason="view-change")
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
