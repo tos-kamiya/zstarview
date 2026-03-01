@@ -639,9 +639,8 @@ class SkyWindow(DraggableWindow):
         new_az = (az + d_az) % 360.0
         self.viewer_data.view_center = (new_alt, new_az)
 
-        # Draw immediately with interaction LOD using the latest cached sky data,
-        # then refresh sky/cloud data in the background.
-        self.update()
+        # Request fresh LOD6 sky data first; avoid drawing stale clipped data
+        # from the previous view center during active rotation.
         self.request_sky_data_update(star_vmag_limit=self._interaction_vmag_cap)
         self.start_background_cloud_update(reason="view-change")
 
