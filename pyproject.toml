@@ -60,6 +60,19 @@ path = "src/zstarview/__about__.py"
 [tool.hatch.metadata]
 package-data = { zstarview = ["data/**/*"] }
 
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src",
+  "/tests",
+  "/docs",
+  "/scripts/save_cloud_snapshot.py",
+  "/README.md",
+  "/README_ja-JP.md",
+  "/LICENSE.txt",
+  "/pyproject.toml",
+  "/uv.lock",
+]
+
 [tool.hatch.envs.types]
 extra-dependencies = [
   "mypy>=1.0.0",
