@@ -7,11 +7,13 @@ for the application. It handles rendering the celestial objects, sky background,
 clouds, and all user interactions like rotation, zooming, and object highlighting.
 """
 import logging
-from datetime import timedelta
+import time
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional, Tuple
 
+import astropy.time
 import polars as pl
-from PySide6.QtCore import QEvent, QPoint, Qt, QTimer, Signal
+from PySide6.QtCore import QEvent, QPoint, QPointF, Qt, QTimer, Signal
 from PySide6.QtGui import (
     QAction,
     QCloseEvent,
@@ -28,7 +30,7 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import QApplication, QMenu, QPushButton, QSizeGrip
 
 from ..__about__ import __version__
-from ..astro import StarCatalogArrays, prepare_star_catalog_arrays
+from ..astro import StarCatalogArrays, prepare_star_catalog_arrays, radec_to_altaz
 from ..clouddisc import (
     CloudDisc,
     CloudDiscConfig,
@@ -53,6 +55,11 @@ from .draggable_window import DraggableWindow
 from .composite import SkyCompositorCache
 from .cloud_state import CloudImageState
 from .cloud_controller import CloudController
+from .famous_star_dialog import FamousStarJumpDialog
+from .famous_star_shortcuts import (
+    FamousStarShortcut,
+    build_famous_star_shortcuts,
+)
 from .sky_worker import SkyDataWorker
 
 logger = logging.getLogger(__name__)
@@ -133,6 +140,10 @@ class SkyWindow(DraggableWindow):
             star_catalog,
             max_vmag=6.0,
         )
+        self._famous_stars_by_band = build_famous_star_shortcuts(star_catalog, max_vmag=2.0)
+        self._jump_highlight_name: Optional[str] = None
+        self._jump_highlight_altaz: Optional[Tuple[float, float]] = None
+        self._jump_highlight_until_ms: float = 0.0
         self.delta_t = delta_t
         self.sky_disc_alpha = sky_disc_alpha
         self.enlarge_moon = enlarge_moon
@@ -271,6 +282,8 @@ class SkyWindow(DraggableWindow):
         rotate_left.triggered.connect(lambda: self._rotate_view(d_az=-self._rotation_step))
         rotate_right = self.menu.addAction(f"Rotate Right (+{self._rotation_step:.0f}°)")
         rotate_right.triggered.connect(lambda: self._rotate_view(d_az=+self._rotation_step))
+        jump_famous_star = self.menu.addAction("Jump to Famous Star...")
+        jump_famous_star.triggered.connect(self._open_famous_star_jump_dialog)
 
         toggle_enlarge_moon_action = QAction("Enlarge Moon (M)", self)
         toggle_enlarge_moon_action.setCheckable(True)
@@ -329,6 +342,41 @@ class SkyWindow(DraggableWindow):
     def show_menu(self) -> None:
         menu_pos = self.menu_button.mapToGlobal(QPoint(0, self.menu_button.height()))
         self.menu.exec(menu_pos)
+
+    def _current_time_obj(self) -> astropy.time.Time:
+        now = datetime.now(timezone.utc) + self.delta_t
+        return astropy.time.Time(now)
+
+    def _open_famous_star_jump_dialog(self) -> None:
+        dialog = FamousStarJumpDialog(self._famous_stars_by_band, self)
+        if dialog.exec() == 0:
+            return
+        star = dialog.selected_star()
+        if star is None:
+            return
+        self._jump_to_famous_star(star)
+
+    def _jump_to_famous_star(self, star: FamousStarShortcut) -> None:
+        lat, lon = self.viewer_data.location
+        alt, az = radec_to_altaz(
+            star.ra_hours,
+            star.dec_deg,
+            lat,
+            lon,
+            self._current_time_obj(),
+        )
+        new_alt = max(0.0, min(90.0, float(alt)))
+        new_az = float(az) % 360.0
+        self.viewer_data.view_center = (new_alt, new_az)
+
+        # Mark the selected result for 3s using the same overlay highlight style.
+        self._jump_highlight_name = star.name
+        self._jump_highlight_altaz = (new_alt, new_az)
+        self._jump_highlight_until_ms = (time.monotonic() * 1000.0) + 3000.0
+
+        self._begin_interaction_mode()
+        self.request_sky_data_update()
+        self.update()
 
     def _begin_shutdown(self) -> None:
         """Stop scheduling new background work while the app is closing."""
@@ -422,6 +470,45 @@ class SkyWindow(DraggableWindow):
         self.celestial_data = data
         self.update()
 
+    def _active_jump_highlight_object(
+        self,
+        geometry,
+    ):
+        if not self._jump_highlight_name:
+            return None
+        if time.monotonic() * 1000.0 > self._jump_highlight_until_ms:
+            self._jump_highlight_name = None
+            self._jump_highlight_altaz = None
+            self._jump_highlight_until_ms = 0.0
+            return None
+        if not self.celestial_data:
+            return None
+
+        target_name = self._jump_highlight_name
+        stars = self.celestial_data.stars
+        best_idx = None
+        best_vmag = float("inf")
+        for idx, raw_name in enumerate(stars["name"]):
+            name = str(raw_name).strip()
+            if name != target_name:
+                continue
+            vmag = float(stars["vmag"][idx])
+            if vmag < best_vmag:
+                best_vmag = vmag
+                best_idx = idx
+
+        if best_idx is not None:
+            alt = float(stars["alt"][best_idx])
+            az = float(stars["az"][best_idx])
+        elif self._jump_highlight_altaz is not None:
+            alt, az = self._jump_highlight_altaz
+        else:
+            return None
+
+        nx, ny = render_draw.altaz_to_normalized_xy(alt, az, self.viewer_data.view_center)
+        px, py = render_draw.normalized_to_screen_xy(nx, ny, geometry)
+        return ({"name": target_name}, QPointF(px, py))
+
     def paintEvent(self, event: QPaintEvent) -> None:
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
@@ -443,6 +530,9 @@ class SkyWindow(DraggableWindow):
         highlighted_object = None
         if self.mouse_pos is not None:
             highlighted_object = render_draw.find_highlighted_object(self.celestial_data, self.viewer_data, self.mouse_pos, geometry)
+        jump_highlight = self._active_jump_highlight_object(geometry)
+        if jump_highlight is not None:
+            highlighted_object = jump_highlight
 
         # 1. Clear the background to be fully transparent
         painter.setCompositionMode(QPainter.CompositionMode_Clear)
