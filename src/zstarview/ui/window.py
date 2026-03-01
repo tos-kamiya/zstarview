@@ -206,6 +206,7 @@ class SkyWindow(DraggableWindow):
         self._sky_update_pending: bool = False
         self._pending_star_vmag_limit: Optional[float] = None
         self._pending_star_apply_fov_filter: bool = True
+        self._cloud_repaint_deferred: bool = False
         self.celestial_data: Optional[CelestialData] = None
         self._sky_disc_base_size: int = 1024
         self._sky_disc_image: Optional[QImage] = None
@@ -551,6 +552,10 @@ class SkyWindow(DraggableWindow):
                 star_apply_fov_filter=self._pending_star_apply_fov_filter,
             )
 
+        if self._cloud_repaint_deferred and not self._interaction_mode:
+            self._cloud_repaint_deferred = False
+            self._safe_request_cloud_repaint()
+
     def request_sky_data_update(
         self,
         star_vmag_limit: Optional[float] = None,
@@ -633,6 +638,9 @@ class SkyWindow(DraggableWindow):
             stripe_density=payload.get("stripe_density"),
         )
         self._compositor.invalidate()
+        if self._interaction_mode:
+            self._cloud_repaint_deferred = True
+            return
         self._safe_request_cloud_repaint()
 
     def _on_cloud_failed(self, payload: Dict) -> None:
@@ -642,6 +650,9 @@ class SkyWindow(DraggableWindow):
         self._compositor.invalidate()
         if banner:
             self.cloud_state.set_error_banner(banner)
+        if self._interaction_mode:
+            self._cloud_repaint_deferred = True
+            return
         self._safe_request_cloud_repaint()
 
     def _rotate_view(self, d_alt: float = 0.0, d_az: float = 0.0) -> None:
