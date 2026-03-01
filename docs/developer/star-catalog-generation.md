@@ -21,11 +21,12 @@ uv run -p .venv/bin/python src/zstarview/data/stars/generate_star_catalog.py
 
 既定では以下を出力します。
 
-- `src/zstarview/data/stars.csv`（統合版, `vmag <= 9`）
+- `src/zstarview/data/stars.csv`（統合版, `vmag <= 10`）
 - `src/zstarview/data/stars/stars_base.csv`（`<= 6`）
 - `src/zstarview/data/stars/stars_extra7.csv`（`6 < ... <= 7`）
 - `src/zstarview/data/stars/stars_extra8.csv`（`7 < ... <= 8`）
 - `src/zstarview/data/stars/stars_extra9.csv`（`8 < ... <= 9`）
+- `src/zstarview/data/stars/stars_extra10.csv`（`9 < ... <= 10`）
 
 ## 3. Tycho-2 を追加して生成
 
@@ -48,7 +49,7 @@ uv run -p .venv/bin/python src/zstarview/data/stars/generate_star_catalog.py \
 
 ## 4. 主なパラメータ
 
-- `--max-vmag`: 生成上限等級（既定: `9.0`）
+- `--max-vmag`: 生成上限等級（既定: `9.0`。例: `10.0`）
 - `--tycho-csv`: Tycho-2 正規化CSV入力
 - `--tycho-i259-dir`: Tycho-2 I/259 ディレクトリ入力（`tyc2.dat.*.gz`）
 - `--hip-priority-vmag`: この等級以下は Hipparcos を優先（既定: `6.0`）
@@ -61,4 +62,4 @@ uv run -p .venv/bin/python src/zstarview/data/stars/generate_star_catalog.py \
 
 - 生成ログで件数・欠損率を確認する
 - `vmag <= 6` の件数/見え方が大きく崩れていないことを確認する
-- `vmag <= 9` で天の川の連続性が改善していることを確認する
+- `vmag <= 9` および `<= 10` で目的に応じた密度になっていることを確認する

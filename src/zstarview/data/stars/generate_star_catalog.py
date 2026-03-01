@@ -365,6 +365,7 @@ def _split_ranges(rows: Sequence[StarRec]) -> Dict[str, List[StarRec]]:
         "extra7": [],
         "extra8": [],
         "extra9": [],
+        "extra10": [],
     }
     for r in rows:
         if r.vmag <= 6.0:
@@ -375,6 +376,8 @@ def _split_ranges(rows: Sequence[StarRec]) -> Dict[str, List[StarRec]]:
             out["extra8"].append(r)
         elif r.vmag <= 9.0:
             out["extra9"].append(r)
+        elif r.vmag <= 10.0:
+            out["extra10"].append(r)
     return out
 
 
@@ -414,6 +417,7 @@ def build_catalog(args: argparse.Namespace) -> None:
     write_catalog(args.output_dir / "stars_extra7.csv", split["extra7"])
     write_catalog(args.output_dir / "stars_extra8.csv", split["extra8"])
     write_catalog(args.output_dir / "stars_extra9.csv", split["extra9"])
+    write_catalog(args.output_dir / "stars_extra10.csv", split["extra10"])
 
     _print_stats("hip_input", hip)
     _print_stats("tycho_input", tyc)
@@ -422,6 +426,7 @@ def build_catalog(args: argparse.Namespace) -> None:
     _print_stats("merged_extra7", split["extra7"])
     _print_stats("merged_extra8", split["extra8"])
     _print_stats("merged_extra9", split["extra9"])
+    _print_stats("merged_extra10", split["extra10"])
     print(f"wrote: {args.output}")
     print(f"wrote split files under: {args.output_dir}")
 
