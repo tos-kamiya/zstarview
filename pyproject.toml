@@ -72,6 +72,18 @@ include = [
   "/pyproject.toml",
   "/uv.lock",
 ]
+exclude = [
+  "/src/zstarview/data/Noto_Sans.zip",
+  "/src/zstarview/data/cities1000.zip",
+  "/src/zstarview/data/stars/hip_main.dat.zip",
+]
+
+[tool.hatch.build.targets.wheel]
+exclude = [
+  "/src/zstarview/data/Noto_Sans.zip",
+  "/src/zstarview/data/cities1000.zip",
+  "/src/zstarview/data/stars/hip_main.dat.zip",
+]
 
 [tool.hatch.envs.types]
 extra-dependencies = [
