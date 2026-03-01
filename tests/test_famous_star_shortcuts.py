@@ -4,8 +4,9 @@ from zstarview.ui.famous_star_shortcuts import (
     DEC_BAND_EQUATOR,
     DEC_BAND_NORTH,
     DEC_BAND_SOUTH,
-    build_famous_star_shortcuts,
+    build_named_star_shortcuts,
     classify_declination_band,
+    flatten_named_star_shortcuts,
 )
 
 
@@ -16,7 +17,7 @@ def test_classify_declination_band_thresholds() -> None:
     assert classify_declination_band(-19.99) == DEC_BAND_EQUATOR
 
 
-def test_build_famous_star_shortcuts_filters_groups_and_dedupes() -> None:
+def test_build_named_star_shortcuts_filters_groups_and_dedupes() -> None:
     df = pl.DataFrame(
         {
             "Name": ["", "Sirius", "Sirius", "Vega", "Canopus", "Altair"],
@@ -26,7 +27,7 @@ def test_build_famous_star_shortcuts_filters_groups_and_dedupes() -> None:
         }
     )
 
-    grouped = build_famous_star_shortcuts(df, max_vmag=2.0)
+    grouped = build_named_star_shortcuts(df, max_vmag=2.0)
 
     assert len(grouped[DEC_BAND_NORTH]) == 1
     assert grouped[DEC_BAND_NORTH][0].name == "Vega"
@@ -37,3 +38,31 @@ def test_build_famous_star_shortcuts_filters_groups_and_dedupes() -> None:
 
     assert len(grouped[DEC_BAND_SOUTH]) == 1
     assert grouped[DEC_BAND_SOUTH][0].name == "Canopus"
+
+
+def test_flatten_named_star_shortcuts_sorts_globally() -> None:
+    df = pl.DataFrame(
+        {
+            "Name": ["Canopus", "Vega", "Sirius"],
+            "RAh": [6.4, 18.6, 6.75],
+            "Dec": [-52.7, 38.7, -16.7],
+            "Vmag": [-0.62, 0.03, -1.44],
+        }
+    )
+    grouped = build_named_star_shortcuts(df, max_vmag=2.0)
+    flat = flatten_named_star_shortcuts(grouped)
+    assert [s.name for s in flat] == ["Sirius", "Canopus", "Vega"]
+
+
+def test_build_named_star_shortcuts_without_vmag_limit_keeps_faint_named() -> None:
+    df = pl.DataFrame(
+        {
+            "Name": ["BrightStar", "FaintStar"],
+            "RAh": [1.0, 2.0],
+            "Dec": [30.0, -30.0],
+            "Vmag": [1.0, 7.9],
+        }
+    )
+    grouped = build_named_star_shortcuts(df, max_vmag=None)
+    flat = flatten_named_star_shortcuts(grouped)
+    assert [s.name for s in flat] == ["BrightStar", "FaintStar"]

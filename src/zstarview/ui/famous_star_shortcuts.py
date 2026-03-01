@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Helpers for famous-star jump shortcuts."""
+"""Helpers for named-star jump shortcuts."""
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import polars as pl
 
@@ -15,7 +15,7 @@ DEC_BANDS = (DEC_BAND_NORTH, DEC_BAND_EQUATOR, DEC_BAND_SOUTH)
 
 
 @dataclass(frozen=True)
-class FamousStarShortcut:
+class NamedStarShortcut:
     name: str
     ra_hours: float
     dec_deg: float
@@ -31,8 +31,8 @@ def classify_declination_band(dec_deg: float) -> str:
     return DEC_BAND_EQUATOR
 
 
-def build_famous_star_shortcuts(star_catalog: pl.DataFrame, max_vmag: float = 2.0) -> Dict[str, List[FamousStarShortcut]]:
-    """Build famous-star candidates grouped by declination band.
+def build_named_star_shortcuts(star_catalog: pl.DataFrame, max_vmag: Optional[float] = 2.0) -> Dict[str, List[NamedStarShortcut]]:
+    """Build named-star candidates grouped by declination band.
 
     Rules:
     - Name must be non-empty.
@@ -40,8 +40,8 @@ def build_famous_star_shortcuts(star_catalog: pl.DataFrame, max_vmag: float = 2.
     - For duplicate names, keep the brightest entry (lowest Vmag).
     - Sort each band by Vmag asc, then name asc.
     """
-    bands: Dict[str, List[FamousStarShortcut]] = {key: [] for key in DEC_BANDS}
-    best_by_name: dict[str, FamousStarShortcut] = {}
+    bands: Dict[str, List[NamedStarShortcut]] = {key: [] for key in DEC_BANDS}
+    best_by_name: dict[str, NamedStarShortcut] = {}
 
     rows = (
         star_catalog.select(["Name", "RAh", "Dec", "Vmag"])
@@ -59,11 +59,11 @@ def build_famous_star_shortcuts(star_catalog: pl.DataFrame, max_vmag: float = 2.
             vmag = float(row["Vmag"])
         except (TypeError, ValueError):
             continue
-        if vmag > float(max_vmag):
+        if max_vmag is not None and vmag > float(max_vmag):
             continue
 
         band = classify_declination_band(dec)
-        candidate = FamousStarShortcut(
+        candidate = NamedStarShortcut(
             name=name,
             ra_hours=ra_h,
             dec_deg=dec,
@@ -80,3 +80,12 @@ def build_famous_star_shortcuts(star_catalog: pl.DataFrame, max_vmag: float = 2.
     for key in DEC_BANDS:
         bands[key].sort(key=lambda s: (s.vmag, s.name.casefold()))
     return bands
+
+
+def flatten_named_star_shortcuts(stars_by_band: Dict[str, List[NamedStarShortcut]]) -> List[NamedStarShortcut]:
+    """Flatten grouped shortcuts to a single list sorted by brightness then name."""
+    out: List[NamedStarShortcut] = []
+    for key in DEC_BANDS:
+        out.extend(stars_by_band.get(key, []))
+    out.sort(key=lambda s: (s.vmag, s.name.casefold()))
+    return out
