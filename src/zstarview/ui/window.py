@@ -206,6 +206,7 @@ class SkyWindow(DraggableWindow):
         self._interaction_idle_timer.timeout.connect(self._end_interaction_mode)
         self._sky_update_pending: bool = False
         self._pending_star_vmag_limit: Optional[float] = None
+        self._pending_star_apply_fov_filter: bool = True
         self.celestial_data: Optional[CelestialData] = None
         self._sky_disc_base_size: int = 1024
         self._sky_disc_image: Optional[QImage] = None
@@ -548,22 +549,36 @@ class SkyWindow(DraggableWindow):
         # If a request came in while worker was busy, run one catch-up update
         # using the latest view center/time once current payload is applied.
         if self._sky_update_pending and not self._is_shutting_down:
-            self.request_sky_data_update(self._pending_star_vmag_limit)
+            self.request_sky_data_update(
+                self._pending_star_vmag_limit,
+                star_apply_fov_filter=self._pending_star_apply_fov_filter,
+            )
 
-    def request_sky_data_update(self, star_vmag_limit: Optional[float] = None) -> None:
+    def request_sky_data_update(
+        self,
+        star_vmag_limit: Optional[float] = None,
+        *,
+        star_apply_fov_filter: bool = True,
+    ) -> None:
         """Requests a sky data update if one is not already in progress."""
-        if self.start_background_sky_data_update(star_vmag_limit=star_vmag_limit):
+        if self.start_background_sky_data_update(
+            star_vmag_limit=star_vmag_limit,
+            star_apply_fov_filter=star_apply_fov_filter,
+        ):
             self._sky_update_pending = False
             self._pending_star_vmag_limit = None
+            self._pending_star_apply_fov_filter = True
             return
         self._sky_update_pending = True
         self._pending_star_vmag_limit = star_vmag_limit
+        self._pending_star_apply_fov_filter = star_apply_fov_filter
         logger.debug("Sky data update deferred; worker is busy.")
 
     def start_background_sky_data_update(
         self,
         is_initial_load: bool = False,
         star_vmag_limit: Optional[float] = None,
+        star_apply_fov_filter: bool = True,
     ) -> bool:
         lat, lon = self.viewer_data.location
         use_lod6_catalog = star_vmag_limit is not None and float(star_vmag_limit) <= 6.0
@@ -575,6 +590,7 @@ class SkyWindow(DraggableWindow):
             view_center=self.viewer_data.view_center,
             star_catalog=star_catalog,
             star_vmag_limit=worker_star_vmag_limit,
+            star_apply_fov_filter=star_apply_fov_filter,
             delta_t=self.delta_t,
             sky_disc_alpha=self.sky_disc_alpha,
             sky_disc_base_size=self._sky_disc_base_size,
@@ -641,7 +657,10 @@ class SkyWindow(DraggableWindow):
 
         # Request fresh LOD6 sky data first; avoid drawing stale clipped data
         # from the previous view center during active rotation.
-        self.request_sky_data_update(star_vmag_limit=self._interaction_vmag_cap)
+        self.request_sky_data_update(
+            star_vmag_limit=self._interaction_vmag_cap,
+            star_apply_fov_filter=False,
+        )
         self.start_background_cloud_update(reason="view-change")
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
