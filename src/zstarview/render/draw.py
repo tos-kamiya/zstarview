@@ -599,12 +599,25 @@ def draw_stars(
         sL = np.sqrt(sA)  # side length from area
         srgb = rgb_colors[small_star_mask]
 
+        # Rescue sub-pixel stars by expanding only stars smaller than 1 px.
+        # Compensate alpha by area ratio so perceived brightness does not jump.
+        subpixel_mask = sL < 1.0
+        if np.any(subpixel_mask):
+            rescue_min_side_px = 1.25
+            sL_boosted = sL.copy()
+            sL_boosted[subpixel_mask] = np.maximum(sL_boosted[subpixel_mask], rescue_min_side_px)
+            area_scale = np.ones_like(sL, dtype=np.float64)
+            area_scale[subpixel_mask] = np.clip(sA[subpixel_mask] / np.maximum(sL_boosted[subpixel_mask] ** 2, 1e-6), 0.08, 1.0)
+            sL = sL_boosted
+        else:
+            area_scale = np.ones_like(sL, dtype=np.float64)
+
         # Base alpha kept modest so faint stars don't pop as dots.
         # Then lift alpha slightly with area (subtle, gamma<1).
         alpha_base = int(np.clip(round(165 * visibility_boost), 80, 238))
         alpha_gain = int(np.clip(round(72 * visibility_boost), 24, 120))
         alpha_scale = np.power(np.clip(sA / 4.0, 0.0, 1.0), 0.75)  # area vs. 2x2px reference
-        alpha_f = np.clip(alpha_base + alpha_gain * alpha_scale, 80, 238)
+        alpha_f = np.clip((alpha_base + alpha_gain * alpha_scale) * area_scale, 36, 238)
 
         # Quantize alpha to reduce unique RGBA buckets -> faster & less banding
         # e.g., to ~8-12 steps:
