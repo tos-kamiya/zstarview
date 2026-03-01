@@ -27,12 +27,23 @@ _cache_path = Path(CACHE_PATH)
 _cache_path.mkdir(parents=True, exist_ok=True)
 _starfield_load = Loader(str(_cache_path))
 
+_ICRS_UNIT_BASIS = SkyCoord(
+    ra=np.array([0.0, 90.0, 0.0]) * u.deg,
+    dec=np.array([0.0, 0.0, 90.0]) * u.deg,
+    frame="icrs",
+)
+
 
 class StarCatalogArrays(TypedDict):
     """Pre-normalized star catalog arrays for fast repeated sky updates."""
 
     ra_h: np.ndarray
     dec: np.ndarray
+    ra_rad: np.ndarray
+    dec_rad: np.ndarray
+    sin_dec: np.ndarray
+    cos_dec: np.ndarray
+    unit_vectors: np.ndarray
     vmag: np.ndarray
     bv: np.ndarray
     name: np.ndarray
@@ -42,6 +53,17 @@ def prepare_star_catalog_arrays(star_df: pl.DataFrame, *, max_vmag: float | None
     """Normalize a Polars star catalog to NumPy arrays once at startup."""
     ra_h = star_df["RAh"].cast(pl.Float64, strict=False).to_numpy()
     dec = star_df["Dec"].cast(pl.Float64, strict=False).to_numpy()
+    ra_rad = np.radians(ra_h * 15.0)
+    dec_rad = np.radians(dec)
+    sin_dec = np.sin(dec_rad)
+    cos_dec = np.cos(dec_rad)
+    unit_vectors = np.column_stack(
+        (
+            cos_dec * np.cos(ra_rad),
+            cos_dec * np.sin(ra_rad),
+            sin_dec,
+        )
+    )
     vmag = star_df["Vmag"].cast(pl.Float64, strict=False).to_numpy()
     bv = star_df["B-V"].cast(pl.Float64, strict=False).fill_null(np.nan).to_numpy()
     name = star_df["Name"].to_numpy()
@@ -50,6 +72,11 @@ def prepare_star_catalog_arrays(star_df: pl.DataFrame, *, max_vmag: float | None
         mask = vmag <= float(max_vmag)
         ra_h = ra_h[mask]
         dec = dec[mask]
+        ra_rad = ra_rad[mask]
+        dec_rad = dec_rad[mask]
+        sin_dec = sin_dec[mask]
+        cos_dec = cos_dec[mask]
+        unit_vectors = unit_vectors[mask]
         vmag = vmag[mask]
         bv = bv[mask]
         name = name[mask]
@@ -57,6 +84,11 @@ def prepare_star_catalog_arrays(star_df: pl.DataFrame, *, max_vmag: float | None
     return {
         "ra_h": ra_h,
         "dec": dec,
+        "ra_rad": ra_rad,
+        "dec_rad": dec_rad,
+        "sin_dec": sin_dec,
+        "cos_dec": cos_dec,
+        "unit_vectors": unit_vectors,
         "vmag": vmag,
         "bv": bv,
         "name": name,
@@ -121,6 +153,26 @@ def is_in_fov_vectorized(
     return np.degrees(theta) <= fov_deg
 
 
+def build_icrs_to_altaz_matrix(time_obj: astropy.time.Time, location: EarthLocation) -> np.ndarray:
+    """Return a 3×3 rotation matrix from ICRS to the AltAz frame."""
+    altaz_frame = AltAz(obstime=time_obj, location=location)
+    transformed = _ICRS_UNIT_BASIS.transform_to(altaz_frame)
+    return transformed.cartesian.xyz.to_value(u.one)
+
+
+def apply_icrs_to_altaz_matrix(unit_vectors: np.ndarray, matrix: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    """Rotate ICRS unit vectors with the precomputed matrix and return alt/az."""
+    altaz_cart = (matrix @ unit_vectors.T).T  # Shape: (N, 3)
+    north = altaz_cart[:, 0]
+    east = altaz_cart[:, 1]
+    up = altaz_cart[:, 2]
+
+    alt_rad = np.arcsin(np.clip(up, -1.0, 1.0))
+    az_rad = np.arctan2(east, north)
+    az_deg = np.degrees(np.mod(az_rad, math.tau))
+    return np.degrees(alt_rad), az_deg
+
+
 def calculate_visible_stars(
     star_source: pl.DataFrame | StarCatalogArrays,
     lat: float,
@@ -132,7 +184,6 @@ def calculate_visible_stars(
 ) -> Tuple[StarsTable, EarthLocation]:
     """Compute visible stars and return them with the observer location."""
     location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg)
-    altaz_frame = AltAz(obstime=time_obj, location=location)
 
     source_is_df = isinstance(star_source, pl.DataFrame)
     if source_is_df:
@@ -141,8 +192,7 @@ def calculate_visible_stars(
         cat = star_source
 
     # Get pre-normalized arrays
-    ra_h = cat["ra_h"]
-    dec = cat["dec"]
+    unit_vectors = cat["unit_vectors"]
     vmag = cat["vmag"]
     bv = cat["bv"]
     name = cat["name"]
@@ -159,19 +209,13 @@ def calculate_visible_stars(
                 "bv": np.array([], dtype=float),
             }
             return (empty, location)
-        ra_h = ra_h[mag_mask]
-        dec = dec[mag_mask]
+        unit_vectors = unit_vectors[mag_mask]
         vmag = vmag[mag_mask]
         bv = bv[mag_mask]
         name = name[mag_mask]
 
-    # Create a single SkyCoord object for all stars
-    coords = SkyCoord(ra=(ra_h * 15.0) * u.deg, dec=dec * u.deg, frame="icrs")
-
-    # Transform all coordinates at once
-    altaz_coords = coords.transform_to(altaz_frame)
-    alt = altaz_coords.alt.deg
-    az = altaz_coords.az.deg
+    matrix = build_icrs_to_altaz_matrix(time_obj, location)
+    alt, az = apply_icrs_to_altaz_matrix(unit_vectors, matrix)
 
     if apply_fov_filter:
         # Vectorized visibility check
