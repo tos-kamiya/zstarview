@@ -156,6 +156,15 @@ Time zone examples for `--datetime`:
 * **ESC**: Exit fullscreen
 * **Q**: Quit
 
+### Menu Operations (Named Stars)
+
+From the hamburger menu (`☰`), you can use:
+
+* **Jump to Named Star...**: Choose from representative named stars (`Vmag <= 2.0`), grouped into North / Equatorial / South, then jump the view center to that star.
+* **Search Named Stars...**: Search across all named stars in the catalog (about 443 names), then jump to the selected star.
+
+After a jump/search, the selected star is highlighted for about 3 seconds using the same UI style as mouse hover (circle marker + name label).
+
 ## Generating a `.desktop` launcher (GNOME only)
 
 On GNOME-based environments (including Ubuntu Dock and DockToPanel),
