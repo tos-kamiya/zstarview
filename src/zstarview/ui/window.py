@@ -318,7 +318,7 @@ class SkyWindow(DraggableWindow):
             return
         self._interaction_mode = False
         self.request_sky_data_update()
-        self.update()
+        self.start_background_cloud_update(reason="view-change-idle")
 
     def _effective_draw_vmag_limit(self) -> float:
         # Keep drawing at the user-specified quality while interaction updates
@@ -623,7 +623,6 @@ class SkyWindow(DraggableWindow):
             self.cloud_state.current_satellite = sat
         if banner:
             self.cloud_state.set_error_banner(banner)
-        self.update()
 
     def _on_cloud_ready(self, payload: Dict) -> None:
         self.cloud_state.set_result(
@@ -654,7 +653,6 @@ class SkyWindow(DraggableWindow):
 
         # Recalculate sky data for the current full quality on each key input.
         self.request_sky_data_update()
-        self.start_background_cloud_update(reason="view-change")
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if not event:
