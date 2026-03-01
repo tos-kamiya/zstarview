@@ -58,6 +58,13 @@ def bv_to_rgb_vectorized(bv: np.ndarray) -> np.ndarray:
     return rgb
 
 
+def effective_star_draw_vmag_limit(base_limit: float, interaction_mode: bool, interaction_cap: float = 7.0) -> float:
+    """Return the effective Vmag limit for the current draw pass."""
+    if not interaction_mode:
+        return float(base_limit)
+    return float(min(base_limit, interaction_cap))
+
+
 def flare_strength_from_vmag(vmag: float) -> float:
     """Return monotonic flare strength [0, 1] for all magnitudes."""
     vmag_bright = -1.5
@@ -436,6 +443,7 @@ def draw_stars(
     viewer_data: ViewerData,
     star_base_radius: float,
     visibility_boost: float = 1.0,
+    draw_vmag_limit: Optional[float] = None,
 ) -> None:
     """
     Draw stars using vectorized calculations for efficiency.
@@ -455,14 +463,27 @@ def draw_stars(
     stars = celestial_data.stars
     visibility_boost = float(np.clip(visibility_boost, 0.7, 2.0))
 
+    vmag = stars["vmag"]
+    if draw_vmag_limit is not None:
+        draw_mask = vmag <= float(draw_vmag_limit)
+        if not np.any(draw_mask):
+            return
+        alt = stars["alt"][draw_mask]
+        az = stars["az"][draw_mask]
+        vmag = vmag[draw_mask]
+        bv = stars["bv"][draw_mask]
+    else:
+        alt = stars["alt"]
+        az = stars["az"]
+        bv = stars["bv"]
+
     # 1) mag -> relative luminance -> pixel area
     #    Base: L_raw = 10^(-0.4 * (vmag - v_ref))
     #    Then apply a tone curve (beta < 1) to tame very bright stars.
-    nx, ny = altaz_to_normalized_xy_vectorized(stars["alt"], stars["az"], viewer_data.view_center)
+    nx, ny = altaz_to_normalized_xy_vectorized(alt, az, viewer_data.view_center)
     x, y = normalized_to_screen_xy_vectorized(nx, ny, geometry)
 
-    vmag = stars["vmag"]
-    bv_clamped = np.nan_to_num(stars["bv"], nan=0.45)
+    bv_clamped = np.nan_to_num(bv, nan=0.45)
     rgb_colors = bv_to_rgb_vectorized(bv_clamped)  # assumes 0-255
 
     v_ref = 1.0  # reference mag

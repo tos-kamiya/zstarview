@@ -123,6 +123,9 @@ class SkyWindow(DraggableWindow):
         """
         super().__init__()
         self._rotation_step: float = 5.0  # degrees
+        self._interaction_idle_ms: int = 300
+        self._interaction_vmag_cap: float = 7.0
+        self._interaction_mode: bool = False
 
         self.star_catalog = star_catalog
         self.delta_t = delta_t
@@ -191,6 +194,10 @@ class SkyWindow(DraggableWindow):
             app.aboutToQuit.connect(self._begin_shutdown)
         self._sky_data_update_timer = QTimer(self)
         self._sky_data_update_timer.timeout.connect(self.start_background_sky_data_update)
+        self._interaction_idle_timer = QTimer(self)
+        self._interaction_idle_timer.setSingleShot(True)
+        self._interaction_idle_timer.setInterval(self._interaction_idle_ms)
+        self._interaction_idle_timer.timeout.connect(self._end_interaction_mode)
         self.celestial_data: Optional[CelestialData] = None
         self._sky_disc_base_size: int = 1024
         self._sky_disc_image: Optional[QImage] = None
@@ -282,6 +289,7 @@ class SkyWindow(DraggableWindow):
         version_action.setEnabled(False)
 
     def resizeEvent(self, event: QResizeEvent) -> None:
+        self._begin_interaction_mode()
         grip_size = self.size_grip.size()
         self.size_grip.move(self.width() - grip_size.width(), self.height() - grip_size.height())
 
@@ -292,6 +300,23 @@ class SkyWindow(DraggableWindow):
         self._compositor.invalidate()
 
         super().resizeEvent(event)
+
+    def _begin_interaction_mode(self) -> None:
+        self._interaction_mode = True
+        self._interaction_idle_timer.start()
+
+    def _end_interaction_mode(self) -> None:
+        if not self._interaction_mode:
+            return
+        self._interaction_mode = False
+        self.update()
+
+    def _effective_draw_vmag_limit(self) -> float:
+        return render_draw.effective_star_draw_vmag_limit(
+            self.vmag_limit,
+            self._interaction_mode,
+            self._interaction_vmag_cap,
+        )
 
     def show_menu(self) -> None:
         menu_pos = self.menu_button.mapToGlobal(QPoint(0, self.menu_button.height()))
@@ -448,6 +473,7 @@ class SkyWindow(DraggableWindow):
             self.viewer_data,
             self.star_base_radius,
             visibility_boost=self.star_visibility_boost,
+            draw_vmag_limit=self._effective_draw_vmag_limit(),
         )
 
         # Enlarge moon if the global flag is set or if it's being hovered over.
@@ -580,6 +606,7 @@ class SkyWindow(DraggableWindow):
         self._safe_request_cloud_repaint()
 
     def _rotate_view(self, d_alt: float = 0.0, d_az: float = 0.0) -> None:
+        self._begin_interaction_mode()
         alt, az = self.viewer_data.view_center
         new_alt = max(0.0, min(90.0, alt + d_alt))
         new_az = (az + d_az) % 360.0
