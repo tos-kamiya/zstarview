@@ -55,10 +55,12 @@ from .draggable_window import DraggableWindow
 from .composite import SkyCompositorCache
 from .cloud_state import CloudImageState
 from .cloud_controller import CloudController
-from .famous_star_dialog import FamousStarJumpDialog
+from .famous_star_dialog import NamedStarJumpDialog
+from .famous_star_search_dialog import NamedStarSearchDialog
 from .famous_star_shortcuts import (
-    FamousStarShortcut,
-    build_famous_star_shortcuts,
+    NamedStarShortcut,
+    build_named_star_shortcuts,
+    flatten_named_star_shortcuts,
 )
 from .sky_worker import SkyDataWorker
 
@@ -140,7 +142,10 @@ class SkyWindow(DraggableWindow):
             star_catalog,
             max_vmag=6.0,
         )
-        self._famous_stars_by_band = build_famous_star_shortcuts(star_catalog, max_vmag=2.0)
+        self._named_stars_by_band = build_named_star_shortcuts(star_catalog, max_vmag=2.0)
+        self._named_stars_search_all = flatten_named_star_shortcuts(
+            build_named_star_shortcuts(star_catalog, max_vmag=None)
+        )
         self._jump_highlight_name: Optional[str] = None
         self._jump_highlight_altaz: Optional[Tuple[float, float]] = None
         self._jump_highlight_until_ms: float = 0.0
@@ -282,8 +287,10 @@ class SkyWindow(DraggableWindow):
         rotate_left.triggered.connect(lambda: self._rotate_view(d_az=-self._rotation_step))
         rotate_right = self.menu.addAction(f"Rotate Right (+{self._rotation_step:.0f}°)")
         rotate_right.triggered.connect(lambda: self._rotate_view(d_az=+self._rotation_step))
-        jump_famous_star = self.menu.addAction("Jump to Famous Star...")
-        jump_famous_star.triggered.connect(self._open_famous_star_jump_dialog)
+        jump_named_star = self.menu.addAction("Jump to Named Star...")
+        jump_named_star.triggered.connect(self._open_named_star_jump_dialog)
+        search_named_star = self.menu.addAction("Search Named Stars...")
+        search_named_star.triggered.connect(self._open_named_star_search_dialog)
 
         toggle_enlarge_moon_action = QAction("Enlarge Moon (M)", self)
         toggle_enlarge_moon_action.setCheckable(True)
@@ -347,16 +354,25 @@ class SkyWindow(DraggableWindow):
         now = datetime.now(timezone.utc) + self.delta_t
         return astropy.time.Time(now)
 
-    def _open_famous_star_jump_dialog(self) -> None:
-        dialog = FamousStarJumpDialog(self._famous_stars_by_band, self)
+    def _open_named_star_jump_dialog(self) -> None:
+        dialog = NamedStarJumpDialog(self._named_stars_by_band, self)
         if dialog.exec() == 0:
             return
         star = dialog.selected_star()
         if star is None:
             return
-        self._jump_to_famous_star(star)
+        self._jump_to_named_star(star)
 
-    def _jump_to_famous_star(self, star: FamousStarShortcut) -> None:
+    def _open_named_star_search_dialog(self) -> None:
+        dialog = NamedStarSearchDialog(self._named_stars_search_all, self)
+        if dialog.exec() == 0:
+            return
+        star = dialog.selected_star()
+        if star is None:
+            return
+        self._jump_to_named_star(star)
+
+    def _jump_to_named_star(self, star: NamedStarShortcut) -> None:
         lat, lon = self.viewer_data.location
         alt, az = radec_to_altaz(
             star.ra_hours,

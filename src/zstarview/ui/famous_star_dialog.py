@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Dialog for selecting a famous star to jump to."""
+"""Dialog for selecting a named star to jump to."""
 from __future__ import annotations
 
 from typing import Dict, List, Optional
@@ -19,12 +19,12 @@ from .famous_star_shortcuts import (
     DEC_BAND_EQUATOR,
     DEC_BAND_NORTH,
     DEC_BAND_SOUTH,
-    FamousStarShortcut,
+    NamedStarShortcut,
 )
 
 
-class FamousStarJumpDialog(QDialog):
-    def __init__(self, stars_by_band: Dict[str, List[FamousStarShortcut]], parent: QWidget | None = None) -> None:
+class NamedStarJumpDialog(QDialog):
+    def __init__(self, stars_by_band: Dict[str, List[NamedStarShortcut]], parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Jump to Famous Star")
         self.setModal(True)
@@ -55,7 +55,7 @@ class FamousStarJumpDialog(QDialog):
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
 
-    def selected_star(self) -> Optional[FamousStarShortcut]:
+    def selected_star(self) -> Optional[NamedStarShortcut]:
         widget = self._tabs.currentWidget()
         if not isinstance(widget, QListWidget):
             return None
@@ -63,7 +63,7 @@ class FamousStarJumpDialog(QDialog):
         if item is None:
             return None
         star = item.data(Qt.ItemDataRole.UserRole)
-        return star if isinstance(star, FamousStarShortcut) else None
+        return star if isinstance(star, NamedStarShortcut) else None
 
     def _on_item_double_clicked(self, _item: QListWidgetItem) -> None:
         self.accept()
