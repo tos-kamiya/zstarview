@@ -11,7 +11,8 @@ from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt
 from PySide6.QtGui import QImage, QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPainterPath, QPen, QPolygonF, QRadialGradient
 
 from ..paths import (
-    BACKGROUND_FIELD_OF_VIEW_DEG,
+    BACKGROUND_FIELD_OF_VIEW_DEG1,
+    BACKGROUND_FIELD_OF_VIEW_DEG2,
     CELESTIAL_EQUATOR_COLOR,
     DIRECTIONS,
     ECLIPTIC_COLOR,
@@ -344,7 +345,7 @@ def draw_radial_background(
         geometry: A ScreenGeometry object for calculating gradient parameters.
     """
     assert geometry.radius >= 10
-    fov_middle = 90 + (BACKGROUND_FIELD_OF_VIEW_DEG - 90) / 2
+    fov_middle = BACKGROUND_FIELD_OF_VIEW_DEG1 + (BACKGROUND_FIELD_OF_VIEW_DEG2 - BACKGROUND_FIELD_OF_VIEW_DEG1) / 2
     r90 = float(geometry.radius)
     r_fov = float(geometry.radius * (fov_middle / 90))
     r_max = float(r_fov * 1.4)
