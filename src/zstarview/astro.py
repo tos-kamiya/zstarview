@@ -1,6 +1,6 @@
 import math
 from pathlib import Path
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple, TypedDict
 
 import astropy
 import astropy.units as u
@@ -26,6 +26,41 @@ from .types import LunarEclipseInfo, PlanetBody, SolarEclipseInfo, StarsTable
 _cache_path = Path(CACHE_PATH)
 _cache_path.mkdir(parents=True, exist_ok=True)
 _starfield_load = Loader(str(_cache_path))
+
+
+class StarCatalogArrays(TypedDict):
+    """Pre-normalized star catalog arrays for fast repeated sky updates."""
+
+    ra_h: np.ndarray
+    dec: np.ndarray
+    vmag: np.ndarray
+    bv: np.ndarray
+    name: np.ndarray
+
+
+def prepare_star_catalog_arrays(star_df: pl.DataFrame, *, max_vmag: float | None = None) -> StarCatalogArrays:
+    """Normalize a Polars star catalog to NumPy arrays once at startup."""
+    ra_h = star_df["RAh"].cast(pl.Float64, strict=False).to_numpy()
+    dec = star_df["Dec"].cast(pl.Float64, strict=False).to_numpy()
+    vmag = star_df["Vmag"].cast(pl.Float64, strict=False).to_numpy()
+    bv = star_df["B-V"].cast(pl.Float64, strict=False).fill_null(np.nan).to_numpy()
+    name = star_df["Name"].to_numpy()
+
+    if max_vmag is not None:
+        mask = vmag <= float(max_vmag)
+        ra_h = ra_h[mask]
+        dec = dec[mask]
+        vmag = vmag[mask]
+        bv = bv[mask]
+        name = name[mask]
+
+    return {
+        "ra_h": ra_h,
+        "dec": dec,
+        "vmag": vmag,
+        "bv": bv,
+        "name": name,
+    }
 
 
 def altaz_to_normalized_xy(alt: float, az: float, view_center: Tuple[float, float]) -> Tuple[float, float]:
@@ -87,7 +122,7 @@ def is_in_fov_vectorized(
 
 
 def calculate_visible_stars(
-    star_df: pl.DataFrame,
+    star_source: pl.DataFrame | StarCatalogArrays,
     lat: float,
     lon: float,
     time_obj: astropy.time.Time,
@@ -98,15 +133,20 @@ def calculate_visible_stars(
     location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg)
     altaz_frame = AltAz(obstime=time_obj, location=location)
 
-    # Get data as numpy arrays, ensure numeric types
-    ra_h = star_df["RAh"].cast(pl.Float64, strict=False).to_numpy()
-    dec = star_df["Dec"].cast(pl.Float64, strict=False).to_numpy()
-    vmag = star_df["Vmag"].cast(pl.Float64, strict=False).to_numpy()
-    # B-V can be NaN if empty
-    bv = star_df["B-V"].cast(pl.Float64, strict=False).fill_null(np.nan).to_numpy()
-    name = star_df["Name"].to_numpy()
+    source_is_df = isinstance(star_source, pl.DataFrame)
+    if source_is_df:
+        cat = prepare_star_catalog_arrays(star_source, max_vmag=max_vmag)
+    else:
+        cat = star_source
 
-    if max_vmag is not None:
+    # Get pre-normalized arrays
+    ra_h = cat["ra_h"]
+    dec = cat["dec"]
+    vmag = cat["vmag"]
+    bv = cat["bv"]
+    name = cat["name"]
+
+    if max_vmag is not None and not source_is_df:
         vlim = float(max_vmag)
         mag_mask = vmag <= vlim
         if not np.any(mag_mask):
