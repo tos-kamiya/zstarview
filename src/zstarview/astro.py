@@ -190,7 +190,6 @@ def calculate_visible_stars(
     time_obj: astropy.time.Time,
     view_center: Tuple[float, float],
     max_vmag: float | None = None,
-    apply_fov_filter: bool = True,
 ) -> Tuple[StarsTable, EarthLocation]:
     """Compute visible stars and return them with the observer location."""
     location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg)
@@ -232,12 +231,7 @@ def calculate_visible_stars(
 
     matrix = build_icrs_to_altaz_matrix(time_obj, location)
     alt, az = apply_icrs_to_altaz_matrix(unit_vectors, matrix)
-
-    if apply_fov_filter:
-        # Vectorized visibility check
-        in_view_mask = is_in_fov_vectorized(alt, az, view_center, fov_deg=STAR_FIELD_OF_VIEW_DEG)
-    else:
-        in_view_mask = np.ones_like(alt, dtype=bool)
+    in_view_mask = is_in_fov_vectorized(alt, az, view_center, fov_deg=STAR_FIELD_OF_VIEW_DEG)
 
     # Filter the results using the boolean mask
     visible_stars: StarsTable = {

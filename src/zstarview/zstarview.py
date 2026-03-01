@@ -5,6 +5,8 @@ logging.getLogger("satpy.readers.core.utils").setLevel(
     logging.WARNING
 )  # suppress "[INFO] satpy.readers.core.utils: Using temp file for BZ2 decompression: /tmp/..."
 
+# logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+
 import argparse
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
