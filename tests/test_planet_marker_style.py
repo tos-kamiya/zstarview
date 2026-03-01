@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import astropy.time
 import numpy as np
-from PySide6.QtCore import QPoint
+from PySide6.QtCore import QPoint, QPointF
+from PySide6.QtGui import QFont
+from PySide6.QtWidgets import QApplication
 
 from zstarview.render import draw as render_draw
 from zstarview.types import CelestialData, PlanetBody, ScreenGeometry, ViewerData
@@ -23,6 +25,30 @@ def _empty_celestial_data(planets: list[PlanetBody]) -> CelestialData:
         ecliptic_points=[],
         horizon_points=[],
     )
+
+
+def _celestial_data_with_stars(stars: dict[str, np.ndarray]) -> CelestialData:
+    return CelestialData(
+        time=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
+        planets=[],
+        stars=stars,
+        celestial_equator_points=[],
+        ecliptic_points=[],
+        horizon_points=[],
+    )
+
+
+def _star_table(names: list[str], alt: float = 45.0, az: float = 180.0) -> dict[str, np.ndarray]:
+    count = len(names)
+    return {
+        "name": np.array(names, dtype=object),
+        "alt": np.full(count, alt, dtype=float),
+        "az": np.full(count, az, dtype=float),
+        "vmag": np.linspace(1.0, 5.0, count, dtype=float),
+        "bv": np.zeros(count, dtype=float),
+        "size_factor": np.ones(count, dtype=float),
+        "color_factor_base": np.ones(count, dtype=float),
+    }
 
 
 def test_planets_are_drawn_with_disc_and_cross_markers(monkeypatch) -> None:
@@ -121,3 +147,75 @@ def test_planet_draw_and_hover_ignore_horizon_visibility_flag(monkeypatch) -> No
         geometry,
     )
     assert highlighted is not None
+app = QApplication.instance() or QApplication([])
+
+
+def test_hover_ignores_unnamed_stars() -> None:
+    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
+    geometry = ScreenGeometry(center=(120, 90), radius=70)
+    mouse_pos = QPoint(120, 90)
+
+    stars = _star_table(names=["", "Sirius"])
+    highlighted = render_draw.find_highlighted_object(
+        _celestial_data_with_stars(stars),
+        viewer,
+        mouse_pos,
+        geometry,
+    )
+
+    assert highlighted is not None
+    obj, _ = highlighted
+    assert obj.get("name") == "Sirius"
+
+
+def test_hover_returns_none_without_named_star() -> None:
+    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
+    geometry = ScreenGeometry(center=(120, 90), radius=70)
+    mouse_pos = QPoint(120, 90)
+
+    stars = _star_table(names=["", ""])
+    highlighted = render_draw.find_highlighted_object(
+        _celestial_data_with_stars(stars),
+        viewer,
+        mouse_pos,
+        geometry,
+    )
+
+    assert highlighted is None
+
+
+def test_overlay_skips_label_for_planet(monkeypatch) -> None:
+    class DummyPainter:
+        def setPen(self, *_args, **_kwargs) -> None:
+            pass
+
+        def setBrush(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawEllipse(self, *_args, **_kwargs) -> None:
+            pass
+
+    painter = DummyPainter()
+    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
+    geometry = ScreenGeometry(center=(120, 90), radius=70)
+    planet = PlanetBody(name="mars", alt=45.0, az=180.0, symbol="♂", is_visible=True)
+    highlighted_object = (planet, QPointF(120.0, 90.0))
+
+    label_calls: list[str] = []
+
+    def fake_draw_outlined_text(_painter, text, *_args, **_kwargs) -> None:
+        label_calls.append(text)
+
+    monkeypatch.setattr(render_draw, "draw_outlined_text", fake_draw_outlined_text)
+
+    render_draw.draw_overlay_info(
+        painter,
+        _empty_celestial_data([]),
+        viewer,
+        vmag_limit=6.0,
+        enlarge_moon=False,
+        highlighted_object=highlighted_object,
+        text_font=QFont(),
+    )
+
+    assert "mars" not in label_calls

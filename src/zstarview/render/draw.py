@@ -21,7 +21,12 @@ from ..paths import (
     STATUS_LINE_COLOR,
 )
 from ..types import ScreenGeometry, CelestialData, ViewerData, CelestialObject, PlanetBody, StarsTable
-from ..astro import altaz_to_normalized_xy, is_in_fov, is_in_fov_vectorized, calculate_moon_render_data
+from ..astro import (
+    altaz_to_normalized_xy,
+    is_in_fov,
+    is_in_fov_vectorized,
+    calculate_moon_render_data,
+)
 from ..utils.image import generate_moon_phase_image
 from ..utils.qt import pil2qpixmap
 
@@ -270,21 +275,32 @@ def find_highlighted_object(
     min_dist_sq = 30**2  # squared pixels
     highlighted_object: Optional[Tuple[CelestialObject, QPointF]] = None
 
+    def _has_named_star(name: object) -> bool:
+        if name is None:
+            return False
+        return bool(str(name).strip())
+
     if not celestial_data:
         return None
 
     # Handle stars first (vectorized)
     stars = celestial_data.stars
     if stars["alt"].size > 0:
-        nx, ny = altaz_to_normalized_xy_vectorized(stars["alt"], stars["az"], viewer_data.view_center)
-        x, y = normalized_to_screen_xy_vectorized(nx, ny, geometry)
-        dist_sq = (mouse_pos.x() - x) ** 2 + (mouse_pos.y() - y) ** 2
-        closest_star_idx = np.argmin(dist_sq)
-        if dist_sq[closest_star_idx] < min_dist_sq:
-            min_dist_sq = dist_sq[closest_star_idx]
-            # Reconstruct a dictionary for the single highlighted star
-            highlighted_star: CelestialObject = {key: val[closest_star_idx] for key, val in stars.items()}
-            highlighted_object = (highlighted_star, QPointF(x[closest_star_idx], y[closest_star_idx]))
+        names = np.asarray(stars["name"], dtype=object)
+        name_mask = np.array([_has_named_star(value) for value in names], dtype=bool)
+        if np.any(name_mask):
+            valid_indices = np.nonzero(name_mask)[0]
+            alt_named = stars["alt"][name_mask]
+            az_named = stars["az"][name_mask]
+            nx, ny = altaz_to_normalized_xy_vectorized(alt_named, az_named, viewer_data.view_center)
+            x, y = normalized_to_screen_xy_vectorized(nx, ny, geometry)
+            dist_sq = (mouse_pos.x() - x) ** 2 + (mouse_pos.y() - y) ** 2
+            closest_idx = np.argmin(dist_sq)
+            if dist_sq[closest_idx] < min_dist_sq:
+                min_dist_sq = dist_sq[closest_idx]
+                original_idx = valid_indices[closest_idx]
+                highlighted_star: CelestialObject = {key: val[original_idx] for key, val in stars.items()}
+                highlighted_object = (highlighted_star, QPointF(x[closest_idx], y[closest_idx]))
 
     # Handle planets (scalar)
     for body in celestial_data.planets:
@@ -1093,8 +1109,9 @@ def draw_overlay_info(
         painter.drawEllipse(pos, 10, 10)
 
         # PlanetBody(dataclass) or star(dict)
-        name = getattr(obj, "name", "") if hasattr(obj, "name") else obj.get("name", "")
-        draw_outlined_text(painter, name, QPointF(pos.x() + 15, pos.y() - 15), text_font, text_color, outline_color)
+        if not isinstance(obj, PlanetBody):
+            name = getattr(obj, "name", "") if hasattr(obj, "name") else obj.get("name", "")
+            draw_outlined_text(painter, name, QPointF(pos.x() + 15, pos.y() - 15), text_font, text_color, outline_color)
 
 
 def draw_status_line_text(
