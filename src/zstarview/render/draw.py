@@ -21,7 +21,7 @@ from ..paths import (
     STATUS_LINE_COLOR,
 )
 from ..types import ScreenGeometry, CelestialData, ViewerData, CelestialObject, PlanetBody, StarsTable
-from ..astro import altaz_to_normalized_xy, is_in_fov, calculate_moon_render_data
+from ..astro import altaz_to_normalized_xy, is_in_fov, is_in_fov_vectorized, calculate_moon_render_data
 from ..utils.image import generate_moon_phase_image
 from ..utils.qt import pil2qpixmap
 
@@ -591,7 +591,9 @@ def draw_stars(
     x1_clamped = np.clip(x1, 0, width_px)
     y1_clamped = np.clip(y1, 0, height_px)
 
-    valid = (x1_clamped > x0_clamped) & (y1_clamped > y0_clamped) & (size_px > 0)
+    outside_background = ~is_in_fov_vectorized(alt, az, viewer_data.view_center, fov_deg=BACKGROUND_FIELD_OF_VIEW_DEG1)
+    skip_background_stars = outside_background & (size_px <= 2)
+    valid = (x1_clamped > x0_clamped) & (y1_clamped > y0_clamped) & (size_px > 0) & (~skip_background_stars)
     indices = np.nonzero(valid)[0]
     for idx in indices:
         canvas[y0_clamped[idx]:y1_clamped[idx], x0_clamped[idx]:x1_clamped[idx], :] += star_colors[idx]
