@@ -6,7 +6,7 @@ from PIL import Image
 from zoneinfo import ZoneInfo
 
 from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPainterPath, QPen, QPolygonF, QRadialGradient
+from PySide6.QtGui import QImage, QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPainterPath, QPen, QPolygonF, QRadialGradient
 
 from ..paths import (
     BACKGROUND_FIELD_OF_VIEW_DEG,
@@ -442,16 +442,19 @@ def draw_stars(
     celestial_data: CelestialData,
     viewer_data: ViewerData,
     star_base_radius: float,
+    *,
     visibility_boost: float = 1.0,
     draw_vmag_limit: Optional[float] = None,
+    viewport_size: Tuple[int, int] | None = None,
 ) -> None:
     """
-    Draw stars using vectorized calculations for efficiency.
+    Draw stars using a numpy canvas that paints uniformly sized rectangles.
 
-    Brightness is represented primarily by area (calculated from visual magnitude),
-    with additive blending for a more realistic effect. Small stars are batched
-    and drawn as rectangles, while larger stars are rendered as soft disks with
-    a radial gradient, maintaining a consistent magnitude-to-area mapping.
+    The visual area of each star is derived from its magnitude (a 1st-magnitude
+    star maps to a 6×6 rectangle), and the color intensity is reduced for stars
+    whose calculated area falls below 1 pixel². The resulting RGB canvas is
+    converted into a `QImage` and blended additively to the painter before
+    drawing other objects.
 
     Args:
         painter: The QPainter object for drawing.
@@ -459,204 +462,88 @@ def draw_stars(
         celestial_data: The data containing star information (positions, magnitudes, etc.).
         viewer_data: The viewer's data, including the view center.
         star_base_radius: A base radius for scaling star sizes.
+        visibility_boost: Multiplier for the overall star colors.
+        draw_vmag_limit: Optional override to skip fainter stars entirely.
+        viewport_size: Optional `(width, height)` of the drawing area, used to create the numpy canvas; if omitted, defaults to the painter's clip rect.
     """
     stars = celestial_data.stars
     visibility_boost = float(np.clip(visibility_boost, 0.7, 2.0))
 
-    vmag = stars["vmag"]
     if draw_vmag_limit is not None:
-        draw_mask = vmag <= float(draw_vmag_limit)
+        draw_mask = stars["vmag"] <= float(draw_vmag_limit)
         if not np.any(draw_mask):
             return
         alt = stars["alt"][draw_mask]
         az = stars["az"][draw_mask]
-        vmag = vmag[draw_mask]
         bv = stars["bv"][draw_mask]
+        size_factor = stars["size_factor"][draw_mask]
+        color_factor_base = stars["color_factor_base"][draw_mask]
     else:
         alt = stars["alt"]
         az = stars["az"]
         bv = stars["bv"]
+        size_factor = stars["size_factor"]
+        color_factor_base = stars["color_factor_base"]
 
-    # 1) mag -> relative luminance -> pixel area
-    #    Base: L_raw = 10^(-0.4 * (vmag - v_ref))
-    #    Then apply a tone curve (beta < 1) to tame very bright stars.
+    width_px = None
+    height_px = None
+    if viewport_size:
+        width_px = max(1, int(viewport_size[0]))
+        height_px = max(1, int(viewport_size[1]))
+    else:
+        width_px = painter.viewport().width()
+        height_px = painter.viewport().height()
+
+    if width_px <= 0 or height_px <= 0:
+        return
+
+    # Convert directions to pixel centers.
     nx, ny = altaz_to_normalized_xy_vectorized(alt, az, viewer_data.view_center)
     x, y = normalized_to_screen_xy_vectorized(nx, ny, geometry)
 
     bv_clamped = np.nan_to_num(bv, nan=0.45)
-    rgb_colors = bv_to_rgb_vectorized(bv_clamped)  # assumes 0-255
+    rgb_colors = bv_to_rgb_vectorized(bv_clamped).astype(np.float32)
 
-    v_ref = 1.0  # reference mag
-    L_raw = 10.0 ** (-0.4 * (vmag - v_ref))
-    beta = 0.8  # 0.7-1.0: lower -> less blow-up for very bright stars
-    L = np.power(L_raw, beta)
+    max_size = max(12.0, float(max(1.0, star_base_radius)))
+    size_float = float(star_base_radius) * size_factor
+    size_px = np.clip(np.round(size_float), 1, int(max_size)).astype(int)
 
-    # Area scale: keep visuals relatively stable vs. widget radius.
-    # base_linear_px is a "baseline linear size (px)" which we square to get area.
-    base_linear_px = (geometry.radius / 500.0) * float(star_base_radius)
-    base_area_px = max(0.5, base_linear_px * base_linear_px)  # avoid < 1 px^2
-    area_px = base_area_px * L
+    color_factor = np.clip(0.1 + 0.9 * color_factor_base, 0.0, 1.0) * visibility_boost
+    color_factor = np.clip(color_factor, 0.0, 1.0)
+    star_colors = rgb_colors * color_factor[:, None]
 
-    # Clamp area to stabilize density and avoid extremes.
-    min_area_px = 0.1  # keep faint stars visible while avoiding excessive floor lifting
-    max_area_px = (geometry.radius * 0.03) ** 2  # size-dependent upper bound
-    area_px = np.clip(area_px, min_area_px, max_area_px)
+    canvas = np.zeros((height_px, width_px, 3), dtype=np.float32)
 
-    # 2) Split by *linear* size while preserving the area semantics:
-    #    small stars: square with side s = sqrt(area)
-    #    large stars: soft disk with radius r = sqrt(area/pi)
-    small_linear_px = np.sqrt(area_px)  # square side length
-    large_radius_px = np.sqrt(area_px / np.pi)  # disk radius
+    ix = np.round(x).astype(int)
+    iy = np.round(y).astype(int)
 
-    # Threshold is on *linear* size.
-    large_star_threshold_px = 4.0  # >= ~4 px -> draw as soft disk
-    small_star_mask = small_linear_px < large_star_threshold_px
-    large_star_mask = ~small_star_mask
+    half = (size_px // 2).astype(int)
+    x0 = ix - half
+    y0 = iy - half
+    x1 = x0 + size_px
+    y1 = y0 + size_px
 
-    painter.setPen(Qt.PenStyle.NoPen)
+    x0_clamped = np.clip(x0, 0, width_px)
+    y0_clamped = np.clip(y0, 0, height_px)
+    x1_clamped = np.clip(x1, 0, width_px)
+    y1_clamped = np.clip(y1, 0, height_px)
 
-    # 3) Large stars: soft disk with the same area, via radial gradient.
-    if np.any(large_star_mask):
-        lx = x[large_star_mask]
-        ly = y[large_star_mask]
-        lr = large_radius_px[large_star_mask]
-        lvmag = vmag[large_star_mask]
-        lrgb = rgb_colors[large_star_mask]
+    valid = (x1_clamped > x0_clamped) & (y1_clamped > y0_clamped) & (size_px > 0)
+    indices = np.nonzero(valid)[0]
+    for idx in indices:
+        canvas[y0_clamped[idx]:y1_clamped[idx], x0_clamped[idx]:x1_clamped[idx], :] += star_colors[idx]
 
-        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
-        # Peak alpha is constant (total added light is governed by area).
-        alpha_peak = int(np.clip(round(238 * visibility_boost), 120, 255))
-        for i in range(len(lx)):
-            pos = QPointF(float(lx[i]), float(ly[i]))
-            raw_r = float(lr[i])
-            vm = float(lvmag[i])
-            core_scale, flare_outer_px = compute_flare_profile(vm, raw_r)
-            r = raw_r * core_scale
-            base = QColor(int(lrgb[i][0]), int(lrgb[i][1]), int(lrgb[i][2]))
-            c0 = QColor(base)
-            c0.setAlpha(alpha_peak)
-            c1 = QColor(base)
-            c1.setAlpha(0)
-            g = QRadialGradient(pos, r)
-            g.setColorAt(0.0, c0)
-            g.setColorAt(1.0, c1)
-            painter.setBrush(g)
-            painter.drawEllipse(pos, r, r)
+    np.clip(canvas, 0.0, 255.0, out=canvas)
+    canvas_uint8 = np.ascontiguousarray(canvas.astype(np.uint8))
+    if canvas_uint8.size == 0:
+        return
 
-            if flare_outer_px >= 1.0:
-                painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
-                painter.setBrush(Qt.BrushStyle.NoBrush)
+    image = QImage(canvas_uint8.data, width_px, height_px, width_px * 3, QImage.Format_RGB888).copy()
+    painter.save()
+    painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
+    painter.drawImage(0, 0, image)
 
-                flare_strength = flare_strength_from_vmag(vm)
-                rim_alpha = int(np.clip(round((45.0 + 55.0 * flare_strength) * visibility_boost), 35, 170))
-                rim_pen = QPen(QColor(0, 0, 0, rim_alpha), max(1.0, r * 0.16))
-                rim_pen.setCosmetic(True)
-                painter.setPen(rim_pen)
-                painter.drawEllipse(pos, r * 1.03, r * 1.03)
-
-                painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Screen)
-
-                spike_len = r + flare_outer_px
-                inner = max(0.45, r * 0.40)
-                base_half = max(0.6, r * 0.28)
-                core_half = max(0.35, r * 0.14)
-
-                x0, y0 = pos.x(), pos.y()
-
-                def _draw_spike(angle_deg: float, outer_scale: float = 1.0) -> None:
-                    a = math.radians(angle_deg)
-                    ux, uy = math.cos(a), math.sin(a)
-                    px, py = -uy, ux
-
-                    out = spike_len * outer_scale
-                    tip = QPointF(x0 + ux * out, y0 + uy * out)
-                    base_center = QPointF(x0 + ux * inner, y0 + uy * inner)
-                    b1 = QPointF(x0 + ux * inner + px * base_half, y0 + uy * inner + py * base_half)
-                    b2 = QPointF(x0 + ux * inner - px * base_half, y0 + uy * inner - py * base_half)
-
-                    # Broad soft ray with fade toward the tip.
-                    broad_alpha = int(np.clip(round((40.0 + 78.0 * flare_strength) * visibility_boost), 30, 180))
-                    painter.setPen(Qt.PenStyle.NoPen)
-                    broad_grad = QLinearGradient(base_center, tip)
-                    broad_head = QColor(255, 255, 255, broad_alpha)
-                    broad_mid = QColor(255, 255, 255, int(broad_alpha * 0.35))
-                    broad_tail = QColor(255, 255, 255, 0)
-                    broad_grad.setColorAt(0.0, broad_head)
-                    broad_grad.setColorAt(0.55, broad_mid)
-                    broad_grad.setColorAt(1.0, broad_tail)
-                    painter.setBrush(broad_grad)
-                    painter.drawPolygon(QPolygonF([b1, b2, tip]))
-
-                    # Inner brighter ray with steeper transparency falloff.
-                    c1 = QPointF(x0 + ux * (inner * 0.95) + px * core_half, y0 + uy * (inner * 0.95) + py * core_half)
-                    c2 = QPointF(x0 + ux * (inner * 0.95) - px * core_half, y0 + uy * (inner * 0.95) - py * core_half)
-                    tip2 = QPointF(x0 + ux * (out * 0.82), y0 + uy * (out * 0.82))
-                    bright_alpha = int(np.clip(round((55.0 + 132.0 * flare_strength) * visibility_boost), 45, 210))
-                    inner_base = QPointF(x0 + ux * (inner * 0.95), y0 + uy * (inner * 0.95))
-                    bright_grad = QLinearGradient(inner_base, tip2)
-                    bright_head = QColor(255, 255, 255, bright_alpha)
-                    bright_mid = QColor(255, 255, 255, int(bright_alpha * 0.4))
-                    bright_tail = QColor(255, 255, 255, 0)
-                    bright_grad.setColorAt(0.0, bright_head)
-                    bright_grad.setColorAt(0.45, bright_mid)
-                    bright_grad.setColorAt(1.0, bright_tail)
-                    painter.setBrush(bright_grad)
-                    painter.drawPolygon(QPolygonF([c1, c2, tip2]))
-
-                for deg in (0.0, 90.0, 180.0, 270.0):
-                    _draw_spike(deg, 1.0)
-
-                if flare_strength >= 0.45:
-                    for deg in (45.0, 135.0, 225.0, 315.0):
-                        _draw_spike(deg, 0.78)
-
-                painter.setPen(Qt.PenStyle.NoPen)
-
-    # 4) Small stars: fixed-but-gently-scaled alpha + area (squares), batched.
-    if np.any(small_star_mask):
-        sx = x[small_star_mask]
-        sy = y[small_star_mask]
-        sA = area_px[small_star_mask]
-        sL = np.sqrt(sA)  # side length from area
-        srgb = rgb_colors[small_star_mask]
-
-        # Rescue sub-pixel stars by expanding only stars smaller than 1 px.
-        # Compensate alpha by area ratio so perceived brightness does not jump.
-        subpixel_mask = sL < 1.0
-        if np.any(subpixel_mask):
-            rescue_min_side_px = 1.25
-            sL_boosted = sL.copy()
-            sL_boosted[subpixel_mask] = np.maximum(sL_boosted[subpixel_mask], rescue_min_side_px)
-            area_scale = np.ones_like(sL, dtype=np.float64)
-            area_scale[subpixel_mask] = np.clip(sA[subpixel_mask] / np.maximum(sL_boosted[subpixel_mask] ** 2, 1e-6), 0.08, 1.0)
-            sL = sL_boosted
-        else:
-            area_scale = np.ones_like(sL, dtype=np.float64)
-
-        # Base alpha kept modest so faint stars don't pop as dots.
-        # Then lift alpha slightly with area (subtle, gamma<1).
-        alpha_base = int(np.clip(round(165 * visibility_boost), 80, 238))
-        alpha_gain = int(np.clip(round(72 * visibility_boost), 24, 120))
-        alpha_scale = np.power(np.clip(sA / 4.0, 0.0, 1.0), 0.75)  # area vs. 2x2px reference
-        alpha_f = np.clip((alpha_base + alpha_gain * alpha_scale) * area_scale, 36, 238)
-
-        # Quantize alpha to reduce unique RGBA buckets -> faster & less banding
-        # e.g., to ~8-12 steps:
-        step = 12
-        alpha_u8 = (np.round(alpha_f / step) * step).astype(np.uint8)
-
-        # Batch by RGBA
-        rgba = np.column_stack([srgb, alpha_u8])
-        unique_rgba, rgba_group = np.unique(rgba, axis=0, return_inverse=True)
-
-        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
-        for i, (r, g, b, a) in enumerate(unique_rgba):
-            m = rgba_group == i  # mask within small-star subset
-            color = QColor(int(r), int(g), int(b), int(a))
-            painter.setBrush(color)
-            rects = [QRectF(float(cx) - float(s) / 2.0, float(cy) - float(s) / 2.0, float(s), float(s)) for cx, cy, s in zip(sx[m], sy[m], sL[m])]
-            painter.drawRects(rects)
-
+    painter.restore()
     # Reset composition mode.
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
 
