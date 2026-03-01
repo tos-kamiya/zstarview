@@ -57,7 +57,6 @@ class SkyDataWorker(QObject):
         view_center: Tuple[float, float],
         star_catalog: pl.DataFrame | StarCatalogArrays,
         star_vmag_limit: float | None = None,
-        star_apply_fov_filter: bool = True,
         delta_t: timedelta,
         sky_disc_alpha: float,
         sky_disc_base_size: int,
@@ -77,7 +76,6 @@ class SkyDataWorker(QObject):
                 "view_center": view_center,
                 "star_catalog": star_catalog,
                 "star_vmag_limit": star_vmag_limit,
-                "star_apply_fov_filter": star_apply_fov_filter,
                 "delta_t": delta_t,
                 "sky_disc_alpha": sky_disc_alpha,
                 "sky_disc_base_size": sky_disc_base_size,
@@ -96,7 +94,6 @@ class SkyDataWorker(QObject):
         view_center: Tuple[float, float],
         star_catalog: pl.DataFrame | StarCatalogArrays,
         star_vmag_limit: float | None,
-        star_apply_fov_filter: bool,
         delta_t: timedelta,
         sky_disc_alpha: float,
         sky_disc_base_size: int,
@@ -113,7 +110,6 @@ class SkyDataWorker(QObject):
                 time_obj,
                 view_center,
                 max_vmag=star_vmag_limit,
-                apply_fov_filter=star_apply_fov_filter,
             )
             planets = calculate_planets(lat, lon, time_obj, view_center)
             celestial_equator_points = calculate_celestial_equator_points(loc, time_obj, view_center)
