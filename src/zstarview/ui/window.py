@@ -199,6 +199,7 @@ class SkyWindow(DraggableWindow):
         self._interaction_idle_timer.setInterval(self._interaction_idle_ms)
         self._interaction_idle_timer.timeout.connect(self._end_interaction_mode)
         self._sky_update_pending: bool = False
+        self._pending_star_vmag_limit: Optional[float] = None
         self.celestial_data: Optional[CelestialData] = None
         self._sky_disc_base_size: int = 1024
         self._sky_disc_image: Optional[QImage] = None
@@ -310,6 +311,7 @@ class SkyWindow(DraggableWindow):
         if not self._interaction_mode:
             return
         self._interaction_mode = False
+        self.request_sky_data_update()
         self.update()
 
     def _effective_draw_vmag_limit(self) -> float:
@@ -540,23 +542,30 @@ class SkyWindow(DraggableWindow):
         # If a request came in while worker was busy, run one catch-up update
         # using the latest view center/time once current payload is applied.
         if self._sky_update_pending and not self._is_shutting_down:
-            self.request_sky_data_update()
+            self.request_sky_data_update(self._pending_star_vmag_limit)
 
-    def request_sky_data_update(self) -> None:
+    def request_sky_data_update(self, star_vmag_limit: Optional[float] = None) -> None:
         """Requests a sky data update if one is not already in progress."""
-        if self.start_background_sky_data_update():
+        if self.start_background_sky_data_update(star_vmag_limit=star_vmag_limit):
             self._sky_update_pending = False
+            self._pending_star_vmag_limit = None
             return
         self._sky_update_pending = True
+        self._pending_star_vmag_limit = star_vmag_limit
         logger.debug("Sky data update deferred; worker is busy.")
 
-    def start_background_sky_data_update(self, is_initial_load: bool = False) -> bool:
+    def start_background_sky_data_update(
+        self,
+        is_initial_load: bool = False,
+        star_vmag_limit: Optional[float] = None,
+    ) -> bool:
         lat, lon = self.viewer_data.location
         started = self._sky_worker.update(
             lat=lat,
             lon=lon,
             view_center=self.viewer_data.view_center,
             star_catalog=self.star_catalog,
+            star_vmag_limit=star_vmag_limit,
             delta_t=self.delta_t,
             sky_disc_alpha=self.sky_disc_alpha,
             sky_disc_base_size=self._sky_disc_base_size,
@@ -624,7 +633,7 @@ class SkyWindow(DraggableWindow):
         # Draw immediately with interaction LOD using the latest cached sky data,
         # then refresh sky/cloud data in the background.
         self.update()
-        self.request_sky_data_update()
+        self.request_sky_data_update(star_vmag_limit=self._interaction_vmag_cap)
         self.start_background_cloud_update(reason="view-change")
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
