@@ -92,6 +92,7 @@ def calculate_visible_stars(
     lon: float,
     time_obj: astropy.time.Time,
     view_center: Tuple[float, float],
+    max_vmag: float | None = None,
 ) -> Tuple[StarsTable, EarthLocation]:
     """Compute visible stars and return them with the observer location."""
     location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg)
@@ -104,6 +105,24 @@ def calculate_visible_stars(
     # B-V can be NaN if empty
     bv = star_df["B-V"].cast(pl.Float64, strict=False).fill_null(np.nan).to_numpy()
     name = star_df["Name"].to_numpy()
+
+    if max_vmag is not None:
+        vlim = float(max_vmag)
+        mag_mask = vmag <= vlim
+        if not np.any(mag_mask):
+            empty: StarsTable = {
+                "name": name[:0],
+                "alt": np.array([], dtype=float),
+                "az": np.array([], dtype=float),
+                "vmag": np.array([], dtype=float),
+                "bv": np.array([], dtype=float),
+            }
+            return (empty, location)
+        ra_h = ra_h[mag_mask]
+        dec = dec[mag_mask]
+        vmag = vmag[mag_mask]
+        bv = bv[mag_mask]
+        name = name[mag_mask]
 
     # Create a single SkyCoord object for all stars
     coords = SkyCoord(ra=(ra_h * 15.0) * u.deg, dec=dec * u.deg, frame="icrs")
