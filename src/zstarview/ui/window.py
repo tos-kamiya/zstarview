@@ -28,6 +28,7 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import QApplication, QMenu, QPushButton, QSizeGrip
 
 from ..__about__ import __version__
+from ..astro import StarCatalogArrays, prepare_star_catalog_arrays
 from ..clouddisc import (
     CloudDisc,
     CloudDiscConfig,
@@ -128,8 +129,10 @@ class SkyWindow(DraggableWindow):
         self._interaction_mode: bool = False
 
         self.star_catalog = star_catalog
-        self.star_catalog_lod6 = star_catalog.filter(
-            pl.col("Vmag").cast(pl.Float64, strict=False) <= 6.0
+        self.star_catalog_full_np: StarCatalogArrays = prepare_star_catalog_arrays(star_catalog)
+        self.star_catalog_lod6_np: StarCatalogArrays = prepare_star_catalog_arrays(
+            star_catalog,
+            max_vmag=6.0,
         )
         self.delta_t = delta_t
         self.sky_disc_alpha = sky_disc_alpha
@@ -564,7 +567,7 @@ class SkyWindow(DraggableWindow):
     ) -> bool:
         lat, lon = self.viewer_data.location
         use_lod6_catalog = star_vmag_limit is not None and float(star_vmag_limit) <= 6.0
-        star_catalog = self.star_catalog_lod6 if use_lod6_catalog else self.star_catalog
+        star_catalog = self.star_catalog_lod6_np if use_lod6_catalog else self.star_catalog_full_np
         worker_star_vmag_limit = None if use_lod6_catalog else star_vmag_limit
         started = self._sky_worker.update(
             lat=lat,

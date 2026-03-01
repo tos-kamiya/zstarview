@@ -18,6 +18,7 @@ from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QImage
 
 from ..astro import (
+    StarCatalogArrays,
     calculate_celestial_equator_points,
     calculate_ecliptic_points,
     calculate_horizon_points,
@@ -54,7 +55,7 @@ class SkyDataWorker(QObject):
         lat: float,
         lon: float,
         view_center: Tuple[float, float],
-        star_catalog: pl.DataFrame,
+        star_catalog: pl.DataFrame | StarCatalogArrays,
         star_vmag_limit: float | None = None,
         delta_t: timedelta,
         sky_disc_alpha: float,
@@ -91,7 +92,7 @@ class SkyDataWorker(QObject):
         lat: float,
         lon: float,
         view_center: Tuple[float, float],
-        star_catalog: pl.DataFrame,
+        star_catalog: pl.DataFrame | StarCatalogArrays,
         star_vmag_limit: float | None,
         delta_t: timedelta,
         sky_disc_alpha: float,
