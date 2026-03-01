@@ -508,9 +508,12 @@ def draw_stars(
     size_float = float(star_base_radius) * size_factor
     size_px = np.clip(np.round(size_float), 1, int(max_size)).astype(int)
 
-    color_factor = np.clip(0.1 + 0.9 * color_factor_base, 0.0, 1.0) * visibility_boost
+    color_factor = np.clip(0.15 + 0.85 * color_factor_base, 0.0, 1.0) * visibility_boost
     color_factor = np.clip(color_factor, 0.0, 1.0)
-    star_colors = rgb_colors * color_factor[:, None]
+    drawn_area = np.maximum(1.0, size_px.astype(float) ** 2)
+    expected_area = size_float**2
+    area_ratio = np.clip(expected_area / drawn_area, 0.0, 1.0)
+    star_colors = rgb_colors * color_factor[:, None] * area_ratio[:, None]
 
     canvas = np.zeros((height_px, width_px, 3), dtype=np.float32)
 
