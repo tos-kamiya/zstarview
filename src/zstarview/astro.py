@@ -191,6 +191,21 @@ def calculate_visible_stars(
     return (visible_stars, location)
 
 
+def radec_to_altaz(
+    ra_hours: float,
+    dec_deg: float,
+    lat: float,
+    lon: float,
+    time_obj: astropy.time.Time,
+) -> Tuple[float, float]:
+    """Convert ICRS RA/Dec to topocentric Alt/Az for a given observer/time."""
+    location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg)
+    altaz_frame = AltAz(obstime=time_obj, location=location)
+    coords = SkyCoord(ra=(float(ra_hours) * 15.0) * u.deg, dec=float(dec_deg) * u.deg, frame="icrs")
+    altaz_coords = coords.transform_to(altaz_frame)
+    return float(altaz_coords.alt.deg), float(altaz_coords.az.deg)
+
+
 def calculate_moon_phase_angle(observer: Topos, t: skyfield.timelib.Time, planets: Any) -> float:
     """Calculate the phase angle of the Moon (Sun-Moon separation at observer)."""
     moon = planets["moon"]
