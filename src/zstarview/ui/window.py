@@ -128,6 +128,9 @@ class SkyWindow(DraggableWindow):
         self._interaction_mode: bool = False
 
         self.star_catalog = star_catalog
+        self.star_catalog_lod6 = star_catalog.filter(
+            pl.col("Vmag").cast(pl.Float64, strict=False) <= 6.0
+        )
         self.delta_t = delta_t
         self.sky_disc_alpha = sky_disc_alpha
         self.enlarge_moon = enlarge_moon
@@ -560,12 +563,15 @@ class SkyWindow(DraggableWindow):
         star_vmag_limit: Optional[float] = None,
     ) -> bool:
         lat, lon = self.viewer_data.location
+        use_lod6_catalog = star_vmag_limit is not None and float(star_vmag_limit) <= 6.0
+        star_catalog = self.star_catalog_lod6 if use_lod6_catalog else self.star_catalog
+        worker_star_vmag_limit = None if use_lod6_catalog else star_vmag_limit
         started = self._sky_worker.update(
             lat=lat,
             lon=lon,
             view_center=self.viewer_data.view_center,
-            star_catalog=self.star_catalog,
-            star_vmag_limit=star_vmag_limit,
+            star_catalog=star_catalog,
+            star_vmag_limit=worker_star_vmag_limit,
             delta_t=self.delta_t,
             sky_disc_alpha=self.sky_disc_alpha,
             sky_disc_base_size=self._sky_disc_base_size,
