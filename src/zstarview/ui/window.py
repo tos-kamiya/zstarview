@@ -198,6 +198,7 @@ class SkyWindow(DraggableWindow):
         self._interaction_idle_timer.setSingleShot(True)
         self._interaction_idle_timer.setInterval(self._interaction_idle_ms)
         self._interaction_idle_timer.timeout.connect(self._end_interaction_mode)
+        self._sky_update_pending: bool = False
         self.celestial_data: Optional[CelestialData] = None
         self._sky_disc_base_size: int = 1024
         self._sky_disc_image: Optional[QImage] = None
@@ -536,10 +537,18 @@ class SkyWindow(DraggableWindow):
                 self._cloud_update_timer.start()
             self.initial_data_loaded.emit()
 
+        # If a request came in while worker was busy, run one catch-up update
+        # using the latest view center/time once current payload is applied.
+        if self._sky_update_pending and not self._is_shutting_down:
+            self.request_sky_data_update()
+
     def request_sky_data_update(self) -> None:
         """Requests a sky data update if one is not already in progress."""
-        if not self.start_background_sky_data_update():
-            logger.warning("Sky data update request ignored; an update is already running.")
+        if self.start_background_sky_data_update():
+            self._sky_update_pending = False
+            return
+        self._sky_update_pending = True
+        logger.debug("Sky data update deferred; worker is busy.")
 
     def start_background_sky_data_update(self, is_initial_load: bool = False) -> bool:
         lat, lon = self.viewer_data.location
@@ -612,7 +621,9 @@ class SkyWindow(DraggableWindow):
         new_az = (az + d_az) % 360.0
         self.viewer_data.view_center = (new_alt, new_az)
 
-        # Request updates for both sky and clouds since the view has changed.
+        # Draw immediately with interaction LOD using the latest cached sky data,
+        # then refresh sky/cloud data in the background.
+        self.update()
         self.request_sky_data_update()
         self.start_background_cloud_update(reason="view-change")
 
