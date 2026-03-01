@@ -156,7 +156,7 @@ class SkyWindow(DraggableWindow):
         self.vmag_limit = vmag_limit
         self.sky_update_interval = sky_update_interval
         self.visual_preset = visual_preset
-        self.star_visibility_boost = max(0.7, min(2.0, float(star_visibility_boost)))
+        self.star_visibility_boost = star_visibility_boost
         self._cloud_toggle_supported = delta_t.total_seconds() == 0.0
 
         # Cloud opacity is disabled if we are looking at a time-shifted view,
@@ -588,6 +588,7 @@ class SkyWindow(DraggableWindow):
             self.star_base_radius,
             visibility_boost=self.star_visibility_boost,
             draw_vmag_limit=self._effective_draw_vmag_limit(),
+            viewport_size=(self.width(), self.height()),
         )
 
         # Enlarge moon if the global flag is set or if it's being hovered over.

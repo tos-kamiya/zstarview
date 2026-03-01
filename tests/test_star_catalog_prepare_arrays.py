@@ -99,6 +99,28 @@ def test_prepare_star_catalog_arrays_computes_unit_vectors() -> None:
     np.testing.assert_allclose(out["unit_vectors"], expected_vectors)
 
 
+def test_prepare_star_catalog_arrays_computes_size_and_color() -> None:
+    df = pl.DataFrame(
+        {
+            "RAh": [0.0, 1.0],
+            "Dec": [0.0, 0.0],
+            "Vmag": [0.0, 5.0],
+            "B-V": [0.0, 0.0],
+            "Name": ["bright", "faint"],
+        }
+    )
+
+    out = prepare_star_catalog_arrays(df)
+    v_ref = 1.0
+    L_raw = 10.0 ** (-0.4 * (out["vmag"] - v_ref))
+
+    expected_sizes = np.power(np.clip(L_raw, 0.0, 1.0), 0.3)
+    expected_colors = np.clip(np.power(L_raw, 0.6), 0.0, 1.0)
+
+    np.testing.assert_allclose(out["size_scale"], expected_sizes)
+    np.testing.assert_allclose(out["color_base"], expected_colors)
+
+
 def test_icrs_to_altaz_matrix_matches_skycoord() -> None:
     df = pl.DataFrame(
         {

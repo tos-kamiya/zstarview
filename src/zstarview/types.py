@@ -135,3 +135,7 @@ class StarsTable(TypedDict):
     az: np.ndarray
     vmag: np.ndarray
     bv: np.ndarray
+    size_factor: np.ndarray
+    color_factor_base: np.ndarray
+    size_factor: np.ndarray
+    color_factor_base: np.ndarray

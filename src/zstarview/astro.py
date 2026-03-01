@@ -46,6 +46,8 @@ class StarCatalogArrays(TypedDict):
     unit_vectors: np.ndarray
     vmag: np.ndarray
     bv: np.ndarray
+    size_scale: np.ndarray
+    color_base: np.ndarray
     name: np.ndarray
 
 
@@ -67,6 +69,10 @@ def prepare_star_catalog_arrays(star_df: pl.DataFrame, *, max_vmag: float | None
     vmag = star_df["Vmag"].cast(pl.Float64, strict=False).to_numpy()
     bv = star_df["B-V"].cast(pl.Float64, strict=False).fill_null(np.nan).to_numpy()
     name = star_df["Name"].to_numpy()
+    v_ref = 1.0
+    L_raw = 10.0 ** (-0.4 * (vmag - v_ref))
+    size_scale = np.power(np.clip(L_raw, 0.0, 1.0), 0.3)
+    color_base = np.clip(np.power(L_raw, 0.6), 0.0, 1.0)
 
     if max_vmag is not None:
         mask = vmag <= float(max_vmag)
@@ -80,6 +86,8 @@ def prepare_star_catalog_arrays(star_df: pl.DataFrame, *, max_vmag: float | None
         vmag = vmag[mask]
         bv = bv[mask]
         name = name[mask]
+        size_scale = size_scale[mask]
+        color_base = color_base[mask]
 
     return {
         "ra_h": ra_h,
@@ -91,6 +99,8 @@ def prepare_star_catalog_arrays(star_df: pl.DataFrame, *, max_vmag: float | None
         "unit_vectors": unit_vectors,
         "vmag": vmag,
         "bv": bv,
+        "size_scale": size_scale,
+        "color_base": color_base,
         "name": name,
     }
 
@@ -195,6 +205,8 @@ def calculate_visible_stars(
     unit_vectors = cat["unit_vectors"]
     vmag = cat["vmag"]
     bv = cat["bv"]
+    size_scale = cat["size_scale"]
+    color_base = cat["color_base"]
     name = cat["name"]
 
     if max_vmag is not None and not source_is_df:
@@ -207,12 +219,16 @@ def calculate_visible_stars(
                 "az": np.array([], dtype=float),
                 "vmag": np.array([], dtype=float),
                 "bv": np.array([], dtype=float),
+                "size_factor": np.array([], dtype=float),
+                "color_factor_base": np.array([], dtype=float),
             }
             return (empty, location)
         unit_vectors = unit_vectors[mag_mask]
         vmag = vmag[mag_mask]
         bv = bv[mag_mask]
         name = name[mag_mask]
+        size_scale = size_scale[mag_mask]
+        color_base = color_base[mag_mask]
 
     matrix = build_icrs_to_altaz_matrix(time_obj, location)
     alt, az = apply_icrs_to_altaz_matrix(unit_vectors, matrix)
@@ -230,6 +246,8 @@ def calculate_visible_stars(
         "az": az[in_view_mask],
         "vmag": vmag[in_view_mask],
         "bv": bv[in_view_mask],
+        "size_factor": size_scale[in_view_mask],
+        "color_factor_base": color_base[in_view_mask],
     }
 
     return (visible_stars, location)
