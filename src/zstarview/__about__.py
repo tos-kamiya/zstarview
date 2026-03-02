@@ -1,4 +1,4 @@
 # SPDX-FileCopyrightText: 2025-present Toshihiro Kamiya <kamiya@mbj.nifty.com>
 #
 # SPDX-License-Identifier: MIT
-__version__ = "0.18.2"
+__version__ = "0.19.0"
