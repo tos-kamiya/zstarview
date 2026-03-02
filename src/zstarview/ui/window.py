@@ -112,6 +112,7 @@ class SkyWindow(DraggableWindow):
         sky_update_interval: int = 60,  # sec
         visual_preset: str = "night",
         star_visibility_boost: float = 1.0,
+        vmag_brightness_scale: float = -0.39,
         cloud_stripe_style: Tuple[int, float] = (50, 0.2),
     ) -> None:
         """
@@ -130,6 +131,7 @@ class SkyWindow(DraggableWindow):
             vmag_limit: The faintest star magnitude to display.
             visual_preset: UI visual preset name.
             star_visibility_boost: Multiplier for star visibility on bright presets.
+            vmag_brightness_scale: Slope applied to magnitude for color intensity (negative number).
         """
         super().__init__()
         self._rotation_step: float = 5.0  # degrees
@@ -137,10 +139,14 @@ class SkyWindow(DraggableWindow):
         self._interaction_mode: bool = False
 
         self.star_catalog = star_catalog
-        self.star_catalog_full_np: StarCatalogArrays = prepare_star_catalog_arrays(star_catalog)
+        self.vmag_brightness_scale = vmag_brightness_scale
+        self.star_catalog_full_np: StarCatalogArrays = prepare_star_catalog_arrays(
+            star_catalog, vmag_brightness_scale=self.vmag_brightness_scale
+        )
         self.star_catalog_lod6_np: StarCatalogArrays = prepare_star_catalog_arrays(
             star_catalog,
             max_vmag=6.0,
+            vmag_brightness_scale=self.vmag_brightness_scale,
         )
         self._named_stars_by_band = build_named_star_shortcuts(star_catalog, max_vmag=2.0)
         self._named_stars_search_all = flatten_named_star_shortcuts(
