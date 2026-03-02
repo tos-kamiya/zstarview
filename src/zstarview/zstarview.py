@@ -1,4 +1,5 @@
 import logging
+import math
 
 logger = logging.getLogger(__name__)
 logging.getLogger("satpy.readers.core.utils").setLevel(
@@ -162,6 +163,23 @@ def _parse_cloud_stripe(value: str) -> Tuple[int, float]:
     return count, width
 
 
+_VMAG_MULTIPLIER_MIN = 10.0 ** 0.2
+_VMAG_MULTIPLIER_MAX = 10.0 ** 0.4
+
+
+def _parse_vmag_brightness_multiplier(value: str) -> float:
+    """Parse the brightness multiplier used per magnitude difference."""
+    try:
+        multiplier = float(value)
+    except (TypeError, ValueError) as exc:
+        raise argparse.ArgumentTypeError(f"Invalid magnitude brightness multiplier: {value!r}") from exc
+    if not (_VMAG_MULTIPLIER_MIN <= multiplier <= _VMAG_MULTIPLIER_MAX):
+        raise argparse.ArgumentTypeError(
+            f"Value must be between {_VMAG_MULTIPLIER_MIN:.2f} and {_VMAG_MULTIPLIER_MAX:.2f}."
+        )
+    return multiplier
+
+
 def parse_args() -> argparse.Namespace:
     """Parses command-line arguments."""
     parser = argparse.ArgumentParser(description="Star sky visualizer")
@@ -184,6 +202,12 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=6.0,
         help="Limit stars to Vmag <= this value (default: 6.0). Use a larger number to show more stars.",
+    )
+    parser.add_argument(
+        "--vmag-brightness-multiplier",
+        type=_parse_vmag_brightness_multiplier,
+        default=2.5,
+        help="Brightness multiplier per magnitude step (allowed range: 1.58–2.512, default: 2.5; 2.512 is the classical Pogson value).",
     )
     parser.add_argument(
         "-m",
@@ -661,6 +685,7 @@ def main() -> None:
     sky_update_interval = max(1, args.sky_update_interval)
     visual_preset = args.theme
     star_visibility_boost = 1.12 if visual_preset == "white" else 1.05 if visual_preset == "day" else 1.0
+    vmag_brightness_scale = -math.log10(args.vmag_brightness_multiplier)
 
     city_str = f"{city.cc}/{city.name}"
     main_win = SkyWindow(
@@ -677,6 +702,7 @@ def main() -> None:
         sky_update_interval=sky_update_interval,
         visual_preset=visual_preset,
         star_visibility_boost=star_visibility_boost,
+        vmag_brightness_scale=vmag_brightness_scale,
         cloud_stripe_style=(cloud_stripe_count, cloud_stripe_width),
     )
 

@@ -63,6 +63,7 @@ zstarview [options] [city]
 | `-m`, `--enlarge-moon`                      | 月を5倍に拡大して表示します。                                      |          |
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | 2等星の基本サイズを指定します。                                   | `4.0`    |
 | `-V`, `--vmag-limit V_MAG_LIMIT`            | 表示する恒星の等級（明るさ）の上限を指定します。                          | `6.0`    |
+| `--vmag-brightness-multiplier MULTIPLIER`   | 等級1段階あたりの光量変化倍率（`1.58`〜`2.512`、デフォルト：`2.5`。Pogson の定義は `2.512` です）。 ※3 | `2.5`   |
 | `-i`, `--sky-update-interval SKY_UPDATE_INTERVAL` | 星空を更新する時間間隔（秒） を指定します。 | `60` |
 | `-t`, `--theme {night,day,white,black}` | 背景と星の見え方のテーマを指定します。 | `night` |
 | `-H`, `--hours HOURS`                       | 現在時刻に加算する時間数を指定します。※1                                 | `0`      |
@@ -72,6 +73,8 @@ zstarview [options] [city]
 ※1 これらのオプションを指定してリアルタイムではない星空を表示した場合には、雲は描かれません。
 
 ※2 雲の描画は気象衛星（Himawari, GOES）の赤外線データを S3 バケットから取得して行います。ネットワーク関連の注意や回避策は「トラブルシューティング」を参照してください。
+
+※3 Pogson の定義では 5 等級差 = 100 倍なので、等級1段階あたりの光量倍数は \(100^{1/5} \approx 2.512\) です。`--vmag-brightness-multiplier` の上限はこの値です。
 
 **表示中心オプションについて**
 

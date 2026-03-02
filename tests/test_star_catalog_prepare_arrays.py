@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import astropy.time
 import astropy.units as u
+import math
 import numpy as np
 import polars as pl
 from astropy.coordinates import AltAz, EarthLocation, SkyCoord
@@ -110,9 +111,11 @@ def test_prepare_star_catalog_arrays_computes_size_and_color() -> None:
         }
     )
 
-    out = prepare_star_catalog_arrays(df)
+    multiplier = 2.5
+    scale = -math.log10(multiplier)
+    out = prepare_star_catalog_arrays(df, vmag_brightness_scale=scale)
     v_ref = 1.0
-    L_raw = 10.0 ** (-0.4 * (out["vmag"] - v_ref))
+    L_raw = 10.0 ** (scale * (out["vmag"] - v_ref))
 
     expected_sizes = np.power(np.clip(L_raw, 0.0, 1.0), 0.3)
     expected_colors = np.clip(np.power(L_raw, 0.6), 0.0, 1.0)

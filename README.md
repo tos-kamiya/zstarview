@@ -62,6 +62,7 @@ zstarview [options] [city]
 | `-m`, `--enlarge-moon`                      | Show the moon in 5x size.                                                   |         |
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | Base size of 2nd-magnitude stars.                                           | `4.0`   |
 | `-V`, `--vmag-limit V_MAG_LIMIT`            | Maximum visual magnitude of stars to display.                               | `6.0`   |
+| `--vmag-brightness-multiplier MULTIPLIER`   | Brightness multiplier per magnitude step (allowed range 1.58–2.512, default `2.5`; 2.512 is the historical Pogson ratio). \*3 | `2.5`   |
 | `-i`, `--sky-update-interval SECONDS`       | Interval for updating stars/sky-color disc in seconds.                      | `60`   |
 | `-t`, `--theme {night,day,white,black}`     | Theme preset for background and star contrast.                              | `night` |
 | `-H`, `--hours HOURS`                       | Number of hours to add to the current time. \*1                              | `0`     |
@@ -72,6 +73,8 @@ zstarview [options] [city]
 
 \*2 Cloud rendering uses infrared data from meteorological satellites (**Himawari** and **NOAA GOES** series), retrieved from their public S3 buckets.
    See Troubleshooting for tips on slow networks or offline use (e.g., disabling clouds with `-c 0`).
+
+\3* The brightest-magnitude multiplier cannot exceed the classical Pogson value of \(100^{1/5}\approx2.512\).
 
 **About the view center options**
 

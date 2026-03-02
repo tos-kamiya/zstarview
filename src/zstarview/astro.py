@@ -51,7 +51,12 @@ class StarCatalogArrays(TypedDict):
     name: np.ndarray
 
 
-def prepare_star_catalog_arrays(star_df: pl.DataFrame, *, max_vmag: float | None = None) -> StarCatalogArrays:
+def prepare_star_catalog_arrays(
+    star_df: pl.DataFrame,
+    *,
+    max_vmag: float | None = None,
+    vmag_brightness_scale: float = -0.39,
+) -> StarCatalogArrays:
     """Normalize a Polars star catalog to NumPy arrays once at startup."""
     ra_h = star_df["RAh"].cast(pl.Float64, strict=False).to_numpy()
     dec = star_df["Dec"].cast(pl.Float64, strict=False).to_numpy()
@@ -70,7 +75,8 @@ def prepare_star_catalog_arrays(star_df: pl.DataFrame, *, max_vmag: float | None
     bv = star_df["B-V"].cast(pl.Float64, strict=False).fill_null(np.nan).to_numpy()
     name = star_df["Name"].to_numpy()
     v_ref = 1.0
-    L_raw = 10.0 ** (-0.4 * (vmag - v_ref))
+    scale = float(vmag_brightness_scale)
+    L_raw = 10.0 ** (scale * (vmag - v_ref))
     size_scale = np.power(np.clip(L_raw, 0.0, 1.0), 0.3)
     color_base = np.clip(np.power(L_raw, 0.6), 0.0, 1.0)
 
