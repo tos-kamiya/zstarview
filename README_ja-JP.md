@@ -61,7 +61,7 @@ zstarview [options] [city]
 | `-c`, `--cloud-opacity CLOUD_OPACITY`                 | 雲の不透明度を指定します（0.0〜1.0）。0.0で描画を無効化します。※2 | `0.2`   |
 | `--sky-opacity SKY_OPACITY`                 | 空の色ディスクの不透明度を指定します（0.0〜1.0）。0.0で描画を無効化します。 | `0.2`   |
 | `-m`, `--enlarge-moon`                      | 月を5倍に拡大して表示します。                                      |          |
-| `-s`, `--star-base-radius STAR_BASE_RADIUS` | 星の基本サイズを指定します。                                       | `6.0`    |
+| `-s`, `--star-base-radius STAR_BASE_RADIUS` | 2等星の基本サイズを指定します。                                   | `4.0`    |
 | `-V`, `--vmag-limit V_MAG_LIMIT`            | 表示する恒星の等級（明るさ）の上限を指定します。                          | `6.0`    |
 | `-i`, `--sky-update-interval SKY_UPDATE_INTERVAL` | 星空を更新する時間間隔（秒） を指定します。 | `180` |
 | `-t`, `--theme {night,day,white,black}` | 背景と星の見え方のテーマを指定します。 | `night` |
