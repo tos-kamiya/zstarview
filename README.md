@@ -16,7 +16,7 @@ The name emphasizes the *zenith*—the point directly overhead—conveying the e
 - Adjustable view center: `-A` (altitude) and `-Z` (azimuth).
 - Real-time satellite cloud imagery (Himawari/GOES), rendered as a stylized hatched (striped) overlay.
 - Below the horizon (ground side) is shown with a subtle tint to improve orientation.
-- A red tint marks the *never-rises* celestial region for the current latitude (e.g., when facing north in Sydney).
+- A red tint marks the *never-rises* celestial region for the current latitude.
 
   ![](docs/images/screenshot5.png)
 
@@ -80,10 +80,10 @@ The `-Z` (azimuth) and `-A` (altitude) options specify the center of the display
 By default, `-Z 180` (facing south) and `-A 90` (zenith) are used.
 In this view, the bottom of the screen is south, the left side is east, and the display is a circular view looking straight up toward the zenith.
 
-For example, setting `-Z 90` (facing east) and `-A 5` (altitude 5°, i.e., looking 5° above the horizon)
-will produce a roughly semicircular sky view.
+For example, setting `-Z 90` (facing east) and `-A 25` (altitude 25° above the horizon) produces a sky view toward the eastern sky.  
+The screenshot below shows the Summer Triangle (Vega, Altair, and Deneb) rendered using this configuration.
 
-→ Eastern sky showing the Summer Triangle (Vega, Altair, Deneb) [<img width="40px" src="docs/images/screenshot2t.png" />](docs/images/screenshot2.png)
+[→ Example: Eastern sky at 25° altitude showing the Summer Triangle](docs/images/screenshot2.png)
 
 Azimuth can be given in degrees or compass points (case-insensitive).
 Examples: `-Z E`, `-Z ne`, `-Z SSW` (202.5°).
@@ -92,10 +92,10 @@ Examples: `-Z E`, `-Z ne`, `-Z SSW` (202.5°).
 **About magnitude limit**
 
 Use `-V magnitude` to limit the displayed stars to those brighter than the given magnitude.
-The default is `-V 6.0`. For example, specifying 9.0 will display about 83,000 stars.
+The default is `-V 6.0`. For example, specifying 10.0 will display about 324,000 stars.
 Note that higher values will increase rendering time.
 
-→ Example: display up to magnitude 9.0 [<img width="40px" src="docs/images/screenshot3t.png" />](docs/images/screenshot3.png)
+[→ Example: display up to magnitude 10.0](docs/images/screenshot3.png)
 
 **About the datetime option**
 
