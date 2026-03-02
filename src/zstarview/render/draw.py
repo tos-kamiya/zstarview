@@ -36,12 +36,33 @@ logger = logging.getLogger(__name__)
 _star_render_cache: tuple[tuple, QImage] | None = None
 _MAG2_TO_MAG1_SIZE_SCALE = 10.0 ** 0.12
 _DIAMOND_OVERLAY_GAIN = 0.85
+_SINGLE_STAR_GAUSSIAN_STRENGTH = 0.12
 
 
 def _array_hash(arr: np.ndarray) -> str:
     if arr.size == 0:
         return "empty"
     return hashlib.md5(arr.tobytes()).hexdigest()
+
+
+def _apply_weak_gaussian3x3_rgb(arr: np.ndarray, strength: float) -> np.ndarray:
+    """Apply a very weak 3x3 Gaussian only to reduce salt-like 1px star noise."""
+    s = float(np.clip(strength, 0.0, 1.0))
+    if s <= 0.0:
+        return arr
+    p = np.pad(arr, ((1, 1), (1, 1), (0, 0)), mode="constant")
+    g = (
+        p[:-2, :-2, :]
+        + 2.0 * p[:-2, 1:-1, :]
+        + p[:-2, 2:, :]
+        + 2.0 * p[1:-1, :-2, :]
+        + 4.0 * p[1:-1, 1:-1, :]
+        + 2.0 * p[1:-1, 2:, :]
+        + p[2:, :-2, :]
+        + 2.0 * p[2:, 1:-1, :]
+        + p[2:, 2:, :]
+    ) / 16.0
+    return arr * (1.0 - s) + g * s
 
 
 def _star_cache_key(
@@ -619,13 +640,15 @@ def draw_stars(
     single_mask = valid & size_one
     multi_mask = valid & ~size_one
 
-    flat_canvas = canvas.reshape(-1, 3)
     single_indices = np.nonzero(single_mask)[0]
     if single_indices.size > 0:
+        single_layer = np.zeros_like(canvas)
+        flat_single = single_layer.reshape(-1, 3)
         x_single = x0_clamped[single_indices]
         y_single = y0_clamped[single_indices]
         flat_idx = y_single * width_px + x_single
-        np.add.at(flat_canvas, flat_idx, star_colors[single_indices])
+        np.add.at(flat_single, flat_idx, star_colors[single_indices])
+        canvas += _apply_weak_gaussian3x3_rgb(single_layer, _SINGLE_STAR_GAUSSIAN_STRENGTH)
 
     multi_indices = np.nonzero(multi_mask)[0]
     for idx in multi_indices:
