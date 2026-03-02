@@ -9,7 +9,7 @@ clouds, and all user interactions like rotation, zooming, and object highlightin
 import logging
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import astropy.time
 import polars as pl
@@ -537,11 +537,9 @@ class SkyWindow(DraggableWindow):
             painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "Loading celestial data...")
             return
 
-        # --- Main Drawing Sequence ---
         alt = self.viewer_data.view_center[0]
         geometry = render_draw.get_screen_geometry(self.width(), self.height(), alt)
 
-        # Determine if any object is under the mouse cursor
         highlighted_object = None
         if self.mouse_pos is not None:
             highlighted_object = render_draw.find_highlighted_object(self.celestial_data, self.viewer_data, self.mouse_pos, geometry)
@@ -549,15 +547,33 @@ class SkyWindow(DraggableWindow):
         if jump_highlight is not None:
             highlighted_object = jump_highlight
 
-        # 1. Clear the background to be fully transparent
+        self._clear_background_layer(painter)
+        self._draw_background_layer(painter, geometry)
+        self._draw_sky_cloud_layers(painter, geometry)
+        self._draw_terrain_layers(painter, geometry)
+        self._draw_star_layer(painter, geometry)
+
+        enlarge_moon = self.enlarge_moon
+        if highlighted_object is not None:
+            obj = highlighted_object[0]
+            name = getattr(obj, "name", "") if hasattr(obj, "name") else obj.get("name", "")
+            enlarge_moon = enlarge_moon or name == "moon"
+
+        self._draw_planet_layer(painter, geometry, enlarge_moon)
+        self._draw_overlay_layer(painter, highlighted_object, enlarge_moon)
+        self._draw_status_line(painter)
+
+    def _clear_background_layer(self, painter: QPainter) -> None:
+        painter.save()
         painter.setCompositionMode(QPainter.CompositionMode_Clear)
         painter.fillRect(self.rect(), Qt.transparent)
         painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
+        painter.restore()
 
-        # 2. Draw the radial gradient background
+    def _draw_background_layer(self, painter: QPainter, geometry: render_draw.ScreenGeometry) -> None:
         render_draw.draw_radial_background(painter, self.rect(), geometry, preset=self.visual_preset)
 
-        # 3. Draw the composited sky and cloud disc
+    def _draw_sky_cloud_layers(self, painter: QPainter, geometry: render_draw.ScreenGeometry) -> None:
         self._compositor.draw(
             painter,
             geometry,
@@ -567,7 +583,7 @@ class SkyWindow(DraggableWindow):
             stripe_density=self.cloud_state.stripe_density,
         )
 
-        # 4. Draw reference lines (horizon, equator, etc.)
+    def _draw_terrain_layers(self, painter: QPainter, geometry: render_draw.ScreenGeometry) -> None:
         render_draw.draw_sky_reference_lines(painter, geometry, self.celestial_data)
         render_draw.draw_direction_labels(
             painter,
@@ -578,7 +594,7 @@ class SkyWindow(DraggableWindow):
         )
         render_draw.draw_zenith_marker(painter, geometry, self.viewer_data.view_center)
 
-        # 5. Draw celestial objects
+    def _draw_star_layer(self, painter: QPainter, geometry: render_draw.ScreenGeometry) -> None:
         render_draw.draw_stars(
             painter,
             geometry,
@@ -590,12 +606,7 @@ class SkyWindow(DraggableWindow):
             viewport_size=(self.width(), self.height()),
         )
 
-        # Enlarge moon if the global flag is set or if it's being hovered over.
-        enlarge_moon = self.enlarge_moon
-        if highlighted_object is not None:
-            obj = highlighted_object[0]
-            name = getattr(obj, "name", "") if hasattr(obj, "name") else obj.get("name", "")
-            enlarge_moon = enlarge_moon or name == "moon"
+    def _draw_planet_layer(self, painter: QPainter, geometry: render_draw.ScreenGeometry, enlarge_moon: bool) -> None:
         render_draw.draw_solar_system_bodies(
             painter,
             geometry,
@@ -606,7 +617,7 @@ class SkyWindow(DraggableWindow):
             preset=self.visual_preset,
         )
 
-        # 6. Draw overlay information text
+    def _draw_overlay_layer(self, painter: QPainter, highlighted_object: Any | None, enlarge_moon: bool) -> None:
         render_draw.draw_overlay_info(
             painter,
             self.celestial_data,
@@ -618,7 +629,7 @@ class SkyWindow(DraggableWindow):
             preset=self.visual_preset,
         )
 
-        # 7. Draw persistent cloud status line (bottom-left)
+    def _draw_status_line(self, painter: QPainter) -> None:
         if self.cloud_disc_alpha > 0.0 or self.cloud_state.banner_text:
             render_draw.draw_status_line_text(
                 painter=painter,
