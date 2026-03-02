@@ -8,7 +8,7 @@ from PIL import Image
 from zoneinfo import ZoneInfo
 
 from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt
-from PySide6.QtGui import QImage, QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPainterPath, QPen, QPolygonF, QRadialGradient
+from PySide6.QtGui import QImage, QColor, QFont, QFontMetrics, QPainter, QPainterPath, QPen, QPolygonF, QRadialGradient
 
 from ..paths import (
     BACKGROUND_FIELD_OF_VIEW_DEG1,
@@ -20,7 +20,7 @@ from ..paths import (
     TEXT_COLOR,
     STATUS_LINE_COLOR,
 )
-from ..types import ScreenGeometry, CelestialData, ViewerData, CelestialObject, PlanetBody, StarsTable
+from ..types import ScreenGeometry, CelestialData, ViewerData, CelestialObject, PlanetBody
 from ..astro import (
     altaz_to_normalized_xy,
     is_in_fov,
@@ -34,6 +34,8 @@ DEBUG_ECLIPSE = False
 logger = logging.getLogger(__name__)
 
 _star_render_cache: tuple[tuple, QImage] | None = None
+_MAG2_TO_MAG1_SIZE_SCALE = 10.0 ** 0.12
+_DIAMOND_OVERLAY_GAIN = 0.85
 
 
 def _array_hash(arr: np.ndarray) -> str:
@@ -531,12 +533,14 @@ def draw_stars(
             return
         alt = stars["alt"][draw_mask]
         az = stars["az"][draw_mask]
+        vmag = stars["vmag"][draw_mask]
         bv = stars["bv"][draw_mask]
         size_factor = stars["size_factor"][draw_mask]
         color_factor_base = stars["color_factor_base"][draw_mask]
     else:
         alt = stars["alt"]
         az = stars["az"]
+        vmag = stars["vmag"]
         bv = stars["bv"]
         size_factor = stars["size_factor"]
         color_factor_base = stars["color_factor_base"]
@@ -560,8 +564,9 @@ def draw_stars(
     bv_clamped = np.nan_to_num(bv, nan=0.45)
     rgb_colors = bv_to_rgb_vectorized(bv_clamped).astype(np.float32)
 
+    # `star_base_radius` is defined as the apparent square size of a 2nd-magnitude star.
     max_size = max(12.0, float(max(1.0, star_base_radius)))
-    size_float = float(star_base_radius) * size_factor
+    size_float = float(star_base_radius) * _MAG2_TO_MAG1_SIZE_SCALE * size_factor
     size_px = np.clip(np.round(size_float), 1, int(max_size)).astype(int)
 
     color_factor = np.clip(0.15 + 0.85 * color_factor_base, 0.0, 1.0) * visibility_boost
@@ -625,6 +630,27 @@ def draw_stars(
     multi_indices = np.nonzero(multi_mask)[0]
     for idx in multi_indices:
         canvas[y0_clamped[idx]:y1_clamped[idx], x0_clamped[idx]:x1_clamped[idx], :] += star_colors[idx]
+
+    # Overlay a rotated square (diamond) for bright stars to emphasize stars above 2nd magnitude.
+    bright_indices = np.nonzero(valid & (vmag < 2.0))[0]
+    if bright_indices.size > 0:
+        bright_scale = np.power(10.0, 0.12 * np.clip(2.0 - vmag[bright_indices], 0.0, 4.0))
+        for local_i, idx in enumerate(bright_indices):
+            cx = float(ix[idx])
+            cy = float(iy[idx])
+            half_diag = max(0.5, 0.5 * float(size_px[idx]) * float(bright_scale[local_i]))
+            xmin = max(0, int(math.floor(cx - half_diag)))
+            xmax = min(width_px, int(math.ceil(cx + half_diag + 1.0)))
+            ymin = max(0, int(math.floor(cy - half_diag)))
+            ymax = min(height_px, int(math.ceil(cy + half_diag + 1.0)))
+            if xmin >= xmax or ymin >= ymax:
+                continue
+            xs = np.arange(xmin, xmax, dtype=np.float32)[None, :]
+            ys = np.arange(ymin, ymax, dtype=np.float32)[:, None]
+            mask = (np.abs(xs - cx) + np.abs(ys - cy)) <= half_diag
+            if not np.any(mask):
+                continue
+            canvas[ymin:ymax, xmin:xmax, :][mask] += star_colors[idx] * _DIAMOND_OVERLAY_GAIN
 
     np.clip(canvas, 0.0, 255.0, out=canvas)
     canvas_uint8 = np.ascontiguousarray(canvas.astype(np.uint8))

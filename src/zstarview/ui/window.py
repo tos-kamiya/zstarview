@@ -107,7 +107,7 @@ class SkyWindow(DraggableWindow):
         sky_disc_alpha: float = 0.3,
         cloud_disc_alpha: float = 0.6,
         enlarge_moon: bool = False,
-        star_base_radius: float = 6.0,
+        star_base_radius: float = 4.0,
         vmag_limit: float = 6.0,
         sky_update_interval: int = 3 * 60,  # sec
         visual_preset: str = "night",
@@ -126,7 +126,7 @@ class SkyWindow(DraggableWindow):
             sky_disc_alpha: Opacity of the daytime sky color overlay.
             cloud_disc_alpha: Opacity of the cloud layer.
             enlarge_moon: Whether to draw the Moon larger than its true scale.
-            star_base_radius: Base radius for drawing stars.
+            star_base_radius: Base size for 2nd-magnitude stars.
             vmag_limit: The faintest star magnitude to display.
             visual_preset: UI visual preset name.
             star_visibility_boost: Multiplier for star visibility on bright presets.

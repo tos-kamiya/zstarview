@@ -60,7 +60,7 @@ zstarview [options] [city]
 | `-c`, `--cloud-opacity CLOUD_OPACITY`       | Opacity of cloud rendering (0.0–1.0). Use 0.0 to disable. \*2                | `0.2`   |
 | `--sky-opacity SKY_OPACITY`                 | Opacity of the simulated sky-color disc (0.0–1.0). Use 0.0 to disable.      | `0.2`   |
 | `-m`, `--enlarge-moon`                      | Show the moon in 5x size.                                                   |         |
-| `-s`, `--star-base-radius STAR_BASE_RADIUS` | Base size of stars.                                                         | `6.0`   |
+| `-s`, `--star-base-radius STAR_BASE_RADIUS` | Base size of 2nd-magnitude stars.                                           | `4.0`   |
 | `-V`, `--vmag-limit V_MAG_LIMIT`            | Maximum visual magnitude of stars to display.                               | `6.0`   |
 | `-i`, `--sky-update-interval SECONDS`       | Interval for updating stars/sky-color disc in seconds.                      | `180`   |
 | `-t`, `--theme {night,day,white,black}`     | Theme preset for background and star contrast.                              | `night` |
