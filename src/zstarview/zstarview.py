@@ -234,8 +234,8 @@ def parse_args() -> argparse.Namespace:
         "-i",
         "--sky-update-interval",
         type=int,
-        default=3 * 60,
-        help=("Interval for updating stars/sky-color disc in sec. (default: 180)."),
+        default=60,
+        help=("Interval for updating stars/sky-color disc in sec. (default: 60)."),
     )
     parser.add_argument(
         "-t",
