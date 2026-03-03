@@ -71,19 +71,26 @@ logger = logging.getLogger(__name__)
 DEBUG_ECLIPSES = True
 
 
-def compute_star_render_surface_size(width_px: int, height_px: int, expected_width_px: int) -> tuple[int, int]:
+def compute_star_render_surface_size(
+    width_px: int,
+    height_px: int,
+    disc_width_px: int,
+    expected_width_px: int,
+) -> tuple[int, int]:
     """Return internal star-render surface size.
 
-    - No downsample when `width_px <= expected_width_px`.
-    - Above threshold, scale follows `(width / expected) ** -0.5`.
-      Equivalent width: `expected * sqrt(width / expected)`.
+    - No downsample when `disc_width_px <= expected_width_px`.
+    - Above threshold, effective rendered disc width follows:
+      `expected_width_px * sqrt(disc_width_px / expected_width_px)`.
     """
     w = max(1, int(width_px))
     h = max(1, int(height_px))
+    disc_w = max(1, int(disc_width_px))
     base = max(1, int(expected_width_px))
-    if w <= base:
+    if disc_w <= base:
         return (w, h)
-    scale = math.sqrt(float(base) / float(w))
+    rendered_disc_w = float(base) * math.sqrt(float(disc_w) / float(base))
+    scale = rendered_disc_w / float(disc_w)
     return (
         max(1, int(round(w * scale))),
         max(1, int(round(h * scale))),
@@ -237,6 +244,7 @@ class SkyWindow(DraggableWindow):
         self._sky_update_pending: bool = False
         self._pending_star_vmag_limit: Optional[float] = None
         self._cloud_repaint_deferred: bool = False
+        self._last_star_render_stats: Optional[tuple[int, int, int, int]] = None
         self.celestial_data: Optional[CelestialData] = None
         self._sky_disc_base_size: int = 1024
         self._sky_disc_image: Optional[QImage] = None
@@ -605,12 +613,26 @@ class SkyWindow(DraggableWindow):
         render_draw.draw_zenith_marker(painter, geometry, self.viewer_data.view_center)
 
     def _draw_star_layer(self, painter: QPainter, geometry: render_draw.ScreenGeometry) -> None:
+        win_w = self.width()
+        win_h = self.height()
         low_w, low_h = compute_star_render_surface_size(
-            self.width(),
-            self.height(),
+            win_w,
+            win_h,
+            geometry.radius * 2,
             self._star_render_expected_width,
         )
-        if low_w == self.width() and low_h == self.height():
+        stats = (win_w, win_h, low_w, low_h)
+        if stats != self._last_star_render_stats:
+            logger.info(
+                "Star render resolution: window=%dx%d draw=%dx%d",
+                win_w,
+                win_h,
+                low_w,
+                low_h,
+            )
+            self._last_star_render_stats = stats
+
+        if low_w == win_w and low_h == win_h:
             render_draw.draw_stars(
                 painter,
                 geometry,
@@ -619,7 +641,7 @@ class SkyWindow(DraggableWindow):
                 self.star_base_radius,
                 visibility_boost=self.star_visibility_boost,
                 draw_vmag_limit=self.vmag_limit,
-                viewport_size=(self.width(), self.height()),
+                viewport_size=(win_w, win_h),
             )
             return
 
@@ -628,8 +650,8 @@ class SkyWindow(DraggableWindow):
         low_painter = QPainter(low_img)
         low_painter.setRenderHint(QPainter.Antialiasing, False)
         low_painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
-        sx = low_w / max(1.0, float(self.width()))
-        sy = low_h / max(1.0, float(self.height()))
+        sx = low_w / max(1.0, float(win_w))
+        sy = low_h / max(1.0, float(win_h))
         low_geometry = render_draw.ScreenGeometry(
             center=(
                 int(round(geometry.center[0] * sx)),
