@@ -163,12 +163,15 @@
     - 3カテゴリ分割で一覧操作が過密にならない（初期データで北12/赤道15/南21）。
     - 既存ショートカット（矢印/F11/Q/M）と競合しない。
 
+- DSO（銀河・星団）カタログ生成基盤
+  - OpenNGC を `pyongc`（開発依存）経由で取り込み、`src/zstarview/data/dso.csv` を生成するスクリプトを追加した。
+  - 生成物は `Id, Name, Type, RAh, Dec, Vmag, MajorArcmin, MinorArcmin, PAdeg, SourceCatalog` を基本カラムとする。
+  - 初期対象は `Type in {galaxy, open_cluster, globular_cluster}` かつ `Vmag <= 12.0`。
+  - ランタイム依存には `pyongc` を追加せず、「生成して同梱」方式を維持する。
+
 ## 10. 今後の設計課題
 
-- [INPROGRESS] DSO（銀河・星団・星雲）カタログ導入
-  - OpenNGC は `pyongc` を開発時依存として利用し、生成スクリプトで `dso.csv` を作る（ランタイム依存には追加しない）。
-  - 生成物は `Id, Name, Type, RAh, Dec, Vmag, MajorArcmin, MinorArcmin, PAdeg, SourceCatalog` を基本カラムとする。
-  - 恒星カタログと同様に「生成して同梱」方式を採用し、配布時の外部データ取得を不要にする。
+- DSO（銀河・星団）表示の描画/LOD/ラベル仕様を確定し、UIへ統合する。
 - `CloudController` 抽出後の責務整理は、必要時に再評価する（現時点では `SkyWindow` 側との分担は実用上バランスが取れている）。
 - 描画パイプラインの入力データ契約（型/単位）は規約化済み。将来の変更は `docs/developer/input-data-contract.md` に従う。
 - 仕様変更時に追従しやすいよう、CLI仕様と内部データ仕様の対応表を追加する。
