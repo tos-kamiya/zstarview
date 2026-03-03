@@ -10,16 +10,17 @@ import logging
 import math
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
 import astropy.time
 import polars as pl
-from PySide6.QtCore import QEvent, QPoint, QPointF, Qt, QTimer, Signal
+from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, Qt, QTimer, Signal
 from PySide6.QtGui import (
     QAction,
     QCloseEvent,
     QFont,
     QFontDatabase,
+    QGuiApplication,
     QIcon,
     QImage,
     QKeyEvent,
@@ -50,6 +51,7 @@ from ..paths import (
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
 )
+from ..config import load_last_window_geometry, save_last_window_geometry
 from ..render import draw as render_draw
 from ..types import CelestialData, ViewerData
 from .draggable_window import DraggableWindow
@@ -69,6 +71,7 @@ logger = logging.getLogger(__name__)
 
 
 DEBUG_ECLIPSES = True
+WindowGeometryArg = Union[str, Tuple[int, int, int, int]]
 
 
 def compute_star_render_surface_size(
@@ -129,6 +132,7 @@ class SkyWindow(DraggableWindow):
         vmag_brightness_scale: float = -0.39,
         cloud_stripe_style: Tuple[int, float] = (50, 0.2),
         star_render_expected_width: int = 600,
+        window_geometry_arg: Optional[WindowGeometryArg] = None,
     ) -> None:
         """
         Initializes the SkyWindow.
@@ -201,6 +205,8 @@ class SkyWindow(DraggableWindow):
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setFocus(Qt.FocusReason.ActiveWindowFocusReason)
         self.setWindowIcon(QIcon(APP_ICON_FILE))
+        initial_x = 100
+        initial_y = 100
         initial_width = WINDOW_WIDTH
         initial_height = WINDOW_HEIGHT
         min_width = 400
@@ -208,7 +214,22 @@ class SkyWindow(DraggableWindow):
         self.setMinimumSize(min_width, min_height)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
-        self.setGeometry(100, 100, initial_width, initial_height)
+        requested_geometry: Optional[Tuple[int, int, int, int]] = None
+        if window_geometry_arg == "restore":
+            requested_geometry = load_last_window_geometry()
+        elif isinstance(window_geometry_arg, tuple):
+            requested_geometry = window_geometry_arg
+        if requested_geometry is not None:
+            initial_x, initial_y, initial_width, initial_height = requested_geometry
+        initial_x, initial_y, initial_width, initial_height = self._clamp_window_geometry_to_screen(
+            initial_x,
+            initial_y,
+            initial_width,
+            initial_height,
+            min_width=min_width,
+            min_height=min_height,
+        )
+        self.setGeometry(initial_x, initial_y, initial_width, initial_height)
         self.setMouseTracking(True)
         self.mouse_pos: Optional[QPoint] = None
 
@@ -489,8 +510,47 @@ class SkyWindow(DraggableWindow):
         event.accept()
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        g = self.geometry()
+        save_last_window_geometry(g.x(), g.y(), g.width(), g.height())
         self._begin_shutdown()
         super().closeEvent(event)
+
+    @staticmethod
+    def _clamp_window_geometry_to_screen(
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+        *,
+        min_width: int,
+        min_height: int,
+    ) -> Tuple[int, int, int, int]:
+        width = max(int(width), int(min_width))
+        height = max(int(height), int(min_height))
+
+        screens = QGuiApplication.screens()
+        if not screens:
+            return int(x), int(y), width, height
+
+        candidate = QRect(int(x), int(y), width, height)
+        available_rect = None
+        for screen in screens:
+            rect = screen.availableGeometry()
+            if rect.intersects(candidate):
+                available_rect = rect
+                break
+        if available_rect is None:
+            primary = QGuiApplication.primaryScreen()
+            available_rect = primary.availableGeometry() if primary is not None else screens[0].availableGeometry()
+
+        width = min(width, max(1, available_rect.width()))
+        height = min(height, max(1, available_rect.height()))
+
+        max_x = available_rect.right() - width + 1
+        max_y = available_rect.bottom() - height + 1
+        x = min(max(int(x), available_rect.left()), max_x)
+        y = min(max(int(y), available_rect.top()), max_y)
+        return x, y, width, height
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         self.mouse_pos = event.pos()
