@@ -70,19 +70,6 @@ logger = logging.getLogger(__name__)
 DEBUG_ECLIPSES = True
 
 
-# compositing helpers and cache moved to ui/composite.py
-
-
-def _initial_height_ratio_for_altitude(altitude_deg: float) -> float:
-    """Map altitude [0, 90] to initial height ratio [0.65, 1.0].
-
-    At low altitudes we keep extra vertical headroom so the upper sky region
-    does not feel cramped (roughly enough for ~120 deg effective FOV at A=0).
-    """
-    alt = max(0.0, min(90.0, float(altitude_deg)))
-    return 0.65 + 0.35 * (alt / 90.0)
-
-
 class SkyWindow(DraggableWindow):
     """
     The main application window, displaying the sky view.
@@ -346,11 +333,6 @@ class SkyWindow(DraggableWindow):
         self.request_sky_data_update()
         self.start_background_cloud_update(reason="view-change-idle")
 
-    def _effective_draw_vmag_limit(self) -> float:
-        # Keep drawing at the user-specified quality while interaction updates
-        # are driven by full (FOV-filtered) recalculation requests.
-        return float(self.vmag_limit)
-
     def show_menu(self) -> None:
         menu_pos = self.menu_button.mapToGlobal(QPoint(0, self.menu_button.height()))
         self.menu.exec(menu_pos)
@@ -608,7 +590,7 @@ class SkyWindow(DraggableWindow):
             self.viewer_data,
             self.star_base_radius,
             visibility_boost=self.star_visibility_boost,
-            draw_vmag_limit=self._effective_draw_vmag_limit(),
+            draw_vmag_limit=self.vmag_limit,
             viewport_size=(self.width(), self.height()),
         )
 

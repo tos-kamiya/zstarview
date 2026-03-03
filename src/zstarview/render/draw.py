@@ -30,7 +30,6 @@ from ..astro import (
 from ..utils.image import generate_moon_phase_image
 from ..utils.qt import pil2qpixmap
 
-DEBUG_ECLIPSE = False
 logger = logging.getLogger(__name__)
 
 _star_render_cache: tuple[tuple, QImage] | None = None
@@ -124,13 +123,6 @@ def bv_to_rgb_vectorized(bv: np.ndarray) -> np.ndarray:
     rgb[(bv >= 0.3) & (bv < 0.6)] = [248, 247, 255]  # White
     rgb[(bv >= 0.6) & (bv < 1.0)] = [255, 210, 161]  # Yellowish
     return rgb
-
-
-def effective_star_draw_vmag_limit(base_limit: float, interaction_mode: bool, interaction_cap: float = 7.0) -> float:
-    """Return the effective Vmag limit for the current draw pass."""
-    if not interaction_mode:
-        return float(base_limit)
-    return float(min(base_limit, interaction_cap))
 
 
 def flare_strength_from_vmag(vmag: float) -> float:
