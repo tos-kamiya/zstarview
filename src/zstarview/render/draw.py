@@ -627,10 +627,14 @@ def draw_stars(
 
     outside_background = ~is_in_fov_vectorized(alt, az, viewer_data.view_center, fov_deg=BACKGROUND_FIELD_OF_VIEW_DEG1)
     skip_background_stars = outside_background & (size_px <= 2)
-    valid = (x1_clamped > x0_clamped) & (y1_clamped > y0_clamped) & (size_px > 0) & (~skip_background_stars)
+    valid_base = (x1_clamped > x0_clamped) & (y1_clamped > y0_clamped) & (size_px > 0) & (~skip_background_stars)
     size_one = size_px == 1
-    single_mask = valid & size_one
-    multi_mask = valid & ~size_one
+    size_two = size_px == 2
+    single_mask = valid_base & size_one
+    size2_full_fit = (x0 >= 0) & (y0 >= 0) & (x1 <= width_px) & (y1 <= height_px)
+    size2_mask = valid_base & size_two & size2_full_fit
+    multi_mask = valid_base & ~(size_one | size_two)
+    valid = single_mask | size2_mask | multi_mask
 
     single_indices = np.nonzero(single_mask)[0]
     if single_indices.size > 0:
@@ -641,6 +645,20 @@ def draw_stars(
         flat_idx = y_single * width_px + x_single
         np.add.at(flat_single, flat_idx, star_colors[single_indices])
         canvas += _apply_weak_gaussian3x3_rgb(single_layer, _SINGLE_STAR_GAUSSIAN_STRENGTH)
+
+    size2_indices = np.nonzero(size2_mask)[0]
+    if size2_indices.size > 0:
+        size2_layer = np.zeros_like(canvas)
+        flat_size2 = size2_layer.reshape(-1, 3)
+        x_size2 = x0[size2_indices]
+        y_size2 = y0[size2_indices]
+        base_idx = y_size2 * width_px + x_size2
+        colors_size2 = star_colors[size2_indices]
+        np.add.at(flat_size2, base_idx, colors_size2)
+        np.add.at(flat_size2, base_idx + 1, colors_size2)
+        np.add.at(flat_size2, base_idx + width_px, colors_size2)
+        np.add.at(flat_size2, base_idx + width_px + 1, colors_size2)
+        canvas += size2_layer
 
     multi_indices = np.nonzero(multi_mask)[0]
     for idx in multi_indices:
