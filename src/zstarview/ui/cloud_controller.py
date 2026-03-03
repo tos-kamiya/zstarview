@@ -147,22 +147,22 @@ class CloudController(QObject):
                 )
             except VisibilityError as e:
                 logger.error("Invalid params for cloud-disc image generation: %s", e)
-                self.cloud_failed.emit({"banner": "Clouds: no supported satellite for this region", "clear_image": True})
+                self.cloud_failed.emit({"banner": "Clouds: no supported satellite for this region"})
             except DownloadError as e:
                 logger.warning("Network/S3 download error: %s", e)
-                self.cloud_failed.emit({"banner": "Clouds: Network/S3 download error", "clear_image": True})
+                self.cloud_failed.emit({"banner": "Clouds: Network/S3 download error"})
             except TimeoutError as e:
                 logger.warning("Clouds fetch timed out: %s", e)
-                self.cloud_failed.emit({"banner": "Clouds: Clouds fetch timed out", "clear_image": True})
+                self.cloud_failed.emit({"banner": "Clouds: Clouds fetch timed out"})
             except DataNotFoundError as e:
                 logger.info("Satellite data not found in search window: %s", e)
-                self.cloud_failed.emit({"banner": "Clouds: Satellite data not found in search window", "clear_image": True})
+                self.cloud_failed.emit({"banner": "Clouds: Satellite data not found in search window"})
             except RenderError as e:
                 logger.error("Failed to decode/render satellite data: %s", e)
-                self.cloud_failed.emit({"banner": "Clouds: Failed to decode/render satellite data", "clear_image": True})
+                self.cloud_failed.emit({"banner": "Clouds: Failed to decode/render satellite data"})
             except CloudDiscError as e:
                 logger.error("Unexpected clouddisc error: %s", e)
-                self.cloud_failed.emit({"banner": "Clouds: Unexpected clouddisc error", "clear_image": True})
+                self.cloud_failed.emit({"banner": "Clouds: Unexpected clouddisc error"})
         except Exception as e:
             logger.error("Cloud update failed: %s", e, exc_info=True)
         finally:

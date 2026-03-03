@@ -151,7 +151,6 @@ class SkyDataWorker(QObject):
                     observer_lat_deg=lat,
                     alpha=sky_disc_alpha,
                     eclipse_factor=ef,
-                    mask_fov_deg=93,
                 )
 
             payload: Dict[str, object] = {"celestial": celestial_data, "sky_disc": sky_disc_img}
