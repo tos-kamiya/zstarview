@@ -17,7 +17,7 @@ APP_DISPLAY_NAME = "Zenith Star View"
 TEXT_FONT_PATH = os.path.join(_dir, "data", "Noto_Sans", "NotoSans-VariableFont_wdth,wght.ttf")
 CITY_COORD_FILE = os.path.join(_dir, "data", "cities1000.txt")
 CITY_ADMIN1_CODES_FILE = os.path.join(_dir, "data", "admin1CodesASCII.txt")
-STARS_CSV_FILE = os.path.join(_dir, "data", "stars.csv")
+STARS_CSV_FILE = os.path.join(_dir, "data", "stars", "stars_base.csv")
 APP_ICON_FILE = os.path.join(_dir, "data", "icon-256.png")
 CACHE_PATH = user_cache_dir(appname=APP_ID, appauthor=APP_AUTHOR)
 LOG_PATH = user_log_dir(appname=APP_ID, appauthor=APP_AUTHOR)

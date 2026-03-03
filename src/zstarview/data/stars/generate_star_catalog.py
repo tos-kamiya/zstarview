@@ -366,6 +366,7 @@ def _split_ranges(rows: Sequence[StarRec]) -> Dict[str, List[StarRec]]:
         "extra8": [],
         "extra9": [],
         "extra10": [],
+        "extra_faint": [],
     }
     for r in rows:
         if r.vmag <= 6.0:
@@ -378,6 +379,8 @@ def _split_ranges(rows: Sequence[StarRec]) -> Dict[str, List[StarRec]]:
             out["extra9"].append(r)
         elif r.vmag <= 10.0:
             out["extra10"].append(r)
+        else:
+            out["extra_faint"].append(r)
     return out
 
 
@@ -411,13 +414,13 @@ def build_catalog(args: argparse.Namespace) -> None:
         dup_mag_diff=args.dup_mag_diff,
     )
 
-    write_catalog(args.output, merged)
     split = _split_ranges(merged)
     write_catalog(args.output_dir / "stars_base.csv", split["base"])
     write_catalog(args.output_dir / "stars_extra7.csv", split["extra7"])
     write_catalog(args.output_dir / "stars_extra8.csv", split["extra8"])
     write_catalog(args.output_dir / "stars_extra9.csv", split["extra9"])
     write_catalog(args.output_dir / "stars_extra10.csv", split["extra10"])
+    write_catalog(args.output_dir / "stars_extra_faint.csv", split["extra_faint"])
 
     _print_stats("hip_input", hip)
     _print_stats("tycho_input", tyc)
@@ -427,7 +430,7 @@ def build_catalog(args: argparse.Namespace) -> None:
     _print_stats("merged_extra8", split["extra8"])
     _print_stats("merged_extra9", split["extra9"])
     _print_stats("merged_extra10", split["extra10"])
-    print(f"wrote: {args.output}")
+    _print_stats("merged_extra_faint", split["extra_faint"])
     print(f"wrote split files under: {args.output_dir}")
 
 
@@ -460,16 +463,10 @@ def parse_args() -> argparse.Namespace:
         help="Optional IAU proper-name CSV for HIP name fill.",
     )
     ap.add_argument(
-        "--output",
-        type=Path,
-        default=here.parent / "stars.csv",
-        help="Output merged CSV path (legacy-compatible columns).",
-    )
-    ap.add_argument(
         "--output-dir",
         type=Path,
         default=here,
-        help="Directory to write split catalogs (base/extra7/8/9).",
+        help="Directory to write split catalogs (base/extra7/8/9/10/faint).",
     )
     ap.add_argument("--max-vmag", type=float, default=9.0)
     ap.add_argument("--hip-priority-vmag", type=float, default=6.0)
