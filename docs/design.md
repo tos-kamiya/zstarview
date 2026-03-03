@@ -165,6 +165,10 @@
 
 ## 10. 今後の設計課題
 
+- [INPROGRESS] DSO（銀河・星団・星雲）カタログ導入
+  - OpenNGC は `pyongc` を開発時依存として利用し、生成スクリプトで `dso.csv` を作る（ランタイム依存には追加しない）。
+  - 生成物は `Id, Name, Type, RAh, Dec, Vmag, MajorArcmin, MinorArcmin, PAdeg, SourceCatalog` を基本カラムとする。
+  - 恒星カタログと同様に「生成して同梱」方式を採用し、配布時の外部データ取得を不要にする。
 - `CloudController` 抽出後の責務整理は、必要時に再評価する（現時点では `SkyWindow` 側との分担は実用上バランスが取れている）。
 - 描画パイプラインの入力データ契約（型/単位）は規約化済み。将来の変更は `docs/developer/input-data-contract.md` に従う。
 - 仕様変更時に追従しやすいよう、CLI仕様と内部データ仕様の対応表を追加する。
