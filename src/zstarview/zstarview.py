@@ -15,7 +15,7 @@ import re
 import sys
 import threading
 import time
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple, Union
 
 from PySide6.QtWidgets import QApplication, QSplashScreen
 from PySide6.QtCore import Qt
@@ -192,6 +192,28 @@ def _parse_positive_int(value: str) -> int:
     return out
 
 
+WindowGeometryArg = Union[str, Tuple[int, int, int, int]]
+
+
+def _parse_window_geometry(value: str) -> WindowGeometryArg:
+    """Parse window geometry as 'restore' or 'x,y,width,height'."""
+    text = (value or "").strip()
+    if text.lower() == "restore":
+        return "restore"
+    parts = [p.strip() for p in text.split(",")]
+    if len(parts) != 4:
+        raise argparse.ArgumentTypeError(
+            f"Invalid window geometry: {value!r}. Use 'restore' or 'x,y,width,height'."
+        )
+    try:
+        x, y, width, height = (int(p) for p in parts)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            f"Invalid window geometry: {value!r}. Use integers for x,y,width,height."
+        ) from exc
+    return (x, y, width, height)
+
+
 def parse_args() -> argparse.Namespace:
     """Parses command-line arguments."""
     parser = argparse.ArgumentParser(description="Star sky visualizer")
@@ -236,6 +258,17 @@ def parse_args() -> argparse.Namespace:
         help=(
             "Expected window width for full-resolution star rendering (default: 600). "
             "When the celestial disc width exceeds this, the star layer uses square-root scaling."
+        ),
+    )
+    parser.add_argument(
+        "--window-geometry",
+        type=_parse_window_geometry,
+        default=None,
+        metavar="restore|X,Y,W,H",
+        help=(
+            "Window position and size. "
+            "Use 'restore' to load the last saved geometry, "
+            "or 'x,y,width,height' to set explicit values."
         ),
     )
     parser.add_argument(
@@ -727,6 +760,7 @@ def main() -> None:
         vmag_brightness_scale=vmag_brightness_scale,
         cloud_stripe_style=(cloud_stripe_count, cloud_stripe_width),
         star_render_expected_width=args.expected_render_width,
+        window_geometry_arg=args.window_geometry,
     )
 
     def _on_initial_loaded():

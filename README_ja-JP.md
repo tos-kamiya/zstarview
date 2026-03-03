@@ -63,6 +63,7 @@ zstarview [options] [city]
 | `-m`, `--enlarge-moon`                      | 月を5倍に拡大して表示します。                                      |          |
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | 2等星の基本サイズを指定します。                                   | `4.0`    |
 | `-w`, `--expected-render-width EXPECTED_RENDER_WIDTH` | 恒星をフル解像度で描画する想定ウィンドウ幅を指定します。天球幅がこの値を超える場合、恒星レイヤーは平方根スケーリングで描画します。 | `600` |
+| `--window-geometry restore\|X,Y,W,H` | 初期ウィンドウ位置と大きさを指定します。`restore` で前回終了時の位置/サイズを復元し、`X,Y,W,H` で整数値を直接指定できます。 |          |
 | `-V`, `--vmag-limit V_MAG_LIMIT`            | 表示する恒星の等級（明るさ）の上限を指定します。                          | `6.0`    |
 | `--vmag-brightness-multiplier MULTIPLIER`   | 等級1段階あたりの光量変化倍率（`1.58`〜`2.512`、デフォルト：`2.5`。Pogson の定義は `2.512` です）。 ※3 | `2.5`   |
 | `-i`, `--sky-update-interval SKY_UPDATE_INTERVAL` | 星空を更新する時間間隔（秒） を指定します。 | `60` |
