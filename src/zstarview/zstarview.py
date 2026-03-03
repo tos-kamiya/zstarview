@@ -229,6 +229,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("-s", "--star-base-radius", type=float, default=4.0, help="Base size of 2nd-magnitude stars (default: 4.0)")
     parser.add_argument(
+        "-w",
         "--expected-render-width",
         type=_parse_positive_int,
         default=WINDOW_WIDTH,
