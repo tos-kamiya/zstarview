@@ -229,12 +229,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("-s", "--star-base-radius", type=float, default=4.0, help="Base size of 2nd-magnitude stars (default: 4.0)")
     parser.add_argument(
-        "--star-render-expected-width",
+        "--expected-render-width",
         type=_parse_positive_int,
         default=WINDOW_WIDTH,
         help=(
             "Expected window width for full-resolution star rendering (default: 600). "
-            "When width exceeds this, star layer scale follows (width/expected)^-0.5."
+            "When the celestial disc width exceeds this, the star layer uses square-root scaling."
         ),
     )
     parser.add_argument(
@@ -725,7 +725,7 @@ def main() -> None:
         star_visibility_boost=star_visibility_boost,
         vmag_brightness_scale=vmag_brightness_scale,
         cloud_stripe_style=(cloud_stripe_count, cloud_stripe_width),
-        star_render_expected_width=args.star_render_expected_width,
+        star_render_expected_width=args.expected_render_width,
     )
 
     def _on_initial_loaded():
