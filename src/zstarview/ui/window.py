@@ -733,6 +733,7 @@ class SkyWindow(DraggableWindow):
 
         painter.save()
         painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
         painter.drawImage(self.rect(), low_img)
         painter.restore()
 
