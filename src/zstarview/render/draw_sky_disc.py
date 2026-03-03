@@ -10,10 +10,10 @@ from ..utils.qt import np_rgba_to_qimage
 
 TURBIDITY = 5  # 2 (clear blue sky) to 10 (hazy white sky)
 GROUND_TINT_RGB = np.array([0.12, 0.19, 0.27], dtype=np.float32)
-GROUND_TINT_STRENGTH = 0.2
+GROUND_TINT_STRENGTH = 0.3
 GROUND_BASE_DARKNESS = 0.03
 NEVER_RISES_TINT_RGB = np.array([0.42, 0.07, 0.07], dtype=np.float32)
-NEVER_RISES_TINT_STRENGTH = 0.16
+NEVER_RISES_TINT_STRENGTH = 0.2
 
 
 def _smoothstep(edge0: float, edge1: float, x: float) -> float:
