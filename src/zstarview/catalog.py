@@ -5,32 +5,46 @@ from typing import List, Optional
 import polars as pl
 
 
+def _resolve_split_dir(filename: str) -> Optional[Path]:
+    path = Path(filename)
+    if path.name == "stars.csv":
+        return path.parent / "stars"
+    if path.name == "stars_base.csv":
+        return path.parent
+    if path.is_dir():
+        return path
+    return None
+
+
 def _split_files_for_threshold(filename: str, vmag_threshold: Optional[float]) -> Optional[List[Path]]:
     """Return split catalog files for threshold-based loading, if available."""
+    split_dir = _resolve_split_dir(filename)
+    if split_dir is None:
+        return None
+
+    base = split_dir / "stars_base.csv"
+    extra7 = split_dir / "stars_extra7.csv"
+    extra8 = split_dir / "stars_extra8.csv"
+    extra9 = split_dir / "stars_extra9.csv"
+    extra10 = split_dir / "stars_extra10.csv"
+    extra_faint = split_dir / "stars_extra_faint.csv"
+
     if vmag_threshold is None or not math.isfinite(float(vmag_threshold)):
-        return None
-
-    base_csv = Path(filename)
-    # Only apply split-loading policy to canonical stars.csv.
-    if base_csv.name != "stars.csv":
-        return None
-
-    split_dir = base_csv.parent / "stars"
-    files: List[Path] = [split_dir / "stars_base.csv"]
+        files = [p for p in (base, extra7, extra8, extra9, extra10, extra_faint) if p.exists()]
+        return files if files else None
 
     t = float(vmag_threshold)
+    files: List[Path] = [base]
     if t > 6.0:
-        files.append(split_dir / "stars_extra7.csv")
+        files.append(extra7)
     if t > 7.0:
-        files.append(split_dir / "stars_extra8.csv")
+        files.append(extra8)
     if t > 8.0:
-        files.append(split_dir / "stars_extra9.csv")
+        files.append(extra9)
     if t > 9.0:
-        files.append(split_dir / "stars_extra10.csv")
-
-    # For >10.0 we currently rely on the unified stars.csv.
+        files.append(extra10)
     if t > 10.0:
-        return None
+        files.append(extra_faint)
 
     return files if all(p.exists() for p in files) else None
 

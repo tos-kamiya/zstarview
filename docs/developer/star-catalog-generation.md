@@ -19,14 +19,19 @@
 uv run -p .venv/bin/python src/zstarview/data/stars/generate_star_catalog.py
 ```
 
+補足:
+
+- 生成結果は分割CSVのみです（`stars_base.csv`, `stars_extra7/8/9/10.csv`, `stars_extra_faint.csv`）。
+- 旧形式の統合 `src/zstarview/data/stars.csv` は現行ランタイムでは使用しません。
+
 既定では以下を出力します。
 
-- `src/zstarview/data/stars.csv`（統合版, `vmag <= 10`）
 - `src/zstarview/data/stars/stars_base.csv`（`<= 6`）
 - `src/zstarview/data/stars/stars_extra7.csv`（`6 < ... <= 7`）
 - `src/zstarview/data/stars/stars_extra8.csv`（`7 < ... <= 8`）
 - `src/zstarview/data/stars/stars_extra9.csv`（`8 < ... <= 9`）
 - `src/zstarview/data/stars/stars_extra10.csv`（`9 < ... <= 10`）
+- `src/zstarview/data/stars/stars_extra_faint.csv`（`> 10`）
 
 ## 3. Tycho-2 を追加して生成
 
@@ -55,7 +60,6 @@ uv run -p .venv/bin/python src/zstarview/data/stars/generate_star_catalog.py \
 - `--hip-priority-vmag`: この等級以下は Hipparcos を優先（既定: `6.0`）
 - `--dup-sep-arcsec`: 重複判定の角距離しきい値（既定: `5.0`）
 - `--dup-mag-diff`: 重複判定の等級差しきい値（既定: `0.75`）
-- `--output`: 統合出力先 CSV
 - `--output-dir`: 分割出力先ディレクトリ
 
 ## 5. 検証観点
@@ -63,3 +67,9 @@ uv run -p .venv/bin/python src/zstarview/data/stars/generate_star_catalog.py \
 - 生成ログで件数・欠損率を確認する
 - `vmag <= 6` の件数/見え方が大きく崩れていないことを確認する
 - `vmag <= 9` および `<= 10` で目的に応じた密度になっていることを確認する
+- `vmag > 10` の星が `stars_extra_faint.csv` にのみ出力されることを確認する
+
+## 6. 互換運用メモ
+
+- 古い開発環境で `src/zstarview/data/stars.csv` が残っていても、現行コードは `src/zstarview/data/stars/stars_base.csv` を起点に分割読み込みします。
+- データ更新時は統合CSVを作らず、分割CSV一式を更新してください。
