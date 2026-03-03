@@ -41,6 +41,7 @@ from .paths import (
     STARS_CSV_FILE,
     APP_ICON_FILE,
     DIRECTIONS,
+    WINDOW_WIDTH,
 )
 from .__about__ import __version__
 from .config import load_last_city, save_last_city
@@ -180,6 +181,17 @@ def _parse_vmag_brightness_multiplier(value: str) -> float:
     return multiplier
 
 
+def _parse_positive_int(value: str) -> int:
+    """Parse a strictly positive integer."""
+    try:
+        out = int(value)
+    except (TypeError, ValueError) as exc:
+        raise argparse.ArgumentTypeError(f"Invalid positive integer: {value!r}") from exc
+    if out <= 0:
+        raise argparse.ArgumentTypeError("Value must be > 0.")
+    return out
+
+
 def parse_args() -> argparse.Namespace:
     """Parses command-line arguments."""
     parser = argparse.ArgumentParser(description="Star sky visualizer")
@@ -216,6 +228,15 @@ def parse_args() -> argparse.Namespace:
         help="Show the moon in 5x size.",
     )
     parser.add_argument("-s", "--star-base-radius", type=float, default=4.0, help="Base size of 2nd-magnitude stars (default: 4.0)")
+    parser.add_argument(
+        "--star-render-expected-width",
+        type=_parse_positive_int,
+        default=WINDOW_WIDTH,
+        help=(
+            "Expected window width for full-resolution star rendering (default: 600). "
+            "When width exceeds this, star layer scale follows (width/expected)^-0.5."
+        ),
+    )
     parser.add_argument(
         "-Z",
         "--view-center-az",
@@ -704,6 +725,7 @@ def main() -> None:
         star_visibility_boost=star_visibility_boost,
         vmag_brightness_scale=vmag_brightness_scale,
         cloud_stripe_style=(cloud_stripe_count, cloud_stripe_width),
+        star_render_expected_width=args.star_render_expected_width,
     )
 
     def _on_initial_loaded():

@@ -7,6 +7,7 @@ for the application. It handles rendering the celestial objects, sky background,
 clouds, and all user interactions like rotation, zooming, and object highlighting.
 """
 import logging
+import math
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple
@@ -70,6 +71,25 @@ logger = logging.getLogger(__name__)
 DEBUG_ECLIPSES = True
 
 
+def compute_star_render_surface_size(width_px: int, height_px: int, expected_width_px: int) -> tuple[int, int]:
+    """Return internal star-render surface size.
+
+    - No downsample when `width_px <= expected_width_px`.
+    - Above threshold, scale follows `(width / expected) ** -0.5`.
+      Equivalent width: `expected * sqrt(width / expected)`.
+    """
+    w = max(1, int(width_px))
+    h = max(1, int(height_px))
+    base = max(1, int(expected_width_px))
+    if w <= base:
+        return (w, h)
+    scale = math.sqrt(float(base) / float(w))
+    return (
+        max(1, int(round(w * scale))),
+        max(1, int(round(h * scale))),
+    )
+
+
 class SkyWindow(DraggableWindow):
     """
     The main application window, displaying the sky view.
@@ -101,6 +121,7 @@ class SkyWindow(DraggableWindow):
         star_visibility_boost: float = 1.0,
         vmag_brightness_scale: float = -0.39,
         cloud_stripe_style: Tuple[int, float] = (50, 0.2),
+        star_render_expected_width: int = 600,
     ) -> None:
         """
         Initializes the SkyWindow.
@@ -150,6 +171,7 @@ class SkyWindow(DraggableWindow):
         self.sky_update_interval = sky_update_interval
         self.visual_preset = visual_preset
         self.star_visibility_boost = star_visibility_boost
+        self._star_render_expected_width = max(1, int(star_render_expected_width))
         self._cloud_toggle_supported = delta_t.total_seconds() == 0.0
 
         # Cloud opacity is disabled if we are looking at a time-shifted view,
@@ -583,16 +605,54 @@ class SkyWindow(DraggableWindow):
         render_draw.draw_zenith_marker(painter, geometry, self.viewer_data.view_center)
 
     def _draw_star_layer(self, painter: QPainter, geometry: render_draw.ScreenGeometry) -> None:
+        low_w, low_h = compute_star_render_surface_size(
+            self.width(),
+            self.height(),
+            self._star_render_expected_width,
+        )
+        if low_w == self.width() and low_h == self.height():
+            render_draw.draw_stars(
+                painter,
+                geometry,
+                self.celestial_data,
+                self.viewer_data,
+                self.star_base_radius,
+                visibility_boost=self.star_visibility_boost,
+                draw_vmag_limit=self.vmag_limit,
+                viewport_size=(self.width(), self.height()),
+            )
+            return
+
+        low_img = QImage(low_w, low_h, QImage.Format.Format_ARGB32_Premultiplied)
+        low_img.fill(Qt.GlobalColor.transparent)
+        low_painter = QPainter(low_img)
+        low_painter.setRenderHint(QPainter.Antialiasing, False)
+        low_painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
+        sx = low_w / max(1.0, float(self.width()))
+        sy = low_h / max(1.0, float(self.height()))
+        low_geometry = render_draw.ScreenGeometry(
+            center=(
+                int(round(geometry.center[0] * sx)),
+                int(round(geometry.center[1] * sy)),
+            ),
+            radius=max(1, int(round(geometry.radius * min(sx, sy)))),
+        )
         render_draw.draw_stars(
-            painter,
-            geometry,
+            low_painter,
+            low_geometry,
             self.celestial_data,
             self.viewer_data,
             self.star_base_radius,
             visibility_boost=self.star_visibility_boost,
             draw_vmag_limit=self.vmag_limit,
-            viewport_size=(self.width(), self.height()),
+            viewport_size=(low_w, low_h),
         )
+        low_painter.end()
+
+        painter.save()
+        painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
+        painter.drawImage(self.rect(), low_img)
+        painter.restore()
 
     def _draw_planet_layer(self, painter: QPainter, geometry: render_draw.ScreenGeometry, enlarge_moon: bool) -> None:
         render_draw.draw_solar_system_bodies(
