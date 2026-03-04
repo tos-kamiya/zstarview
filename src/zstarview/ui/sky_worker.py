@@ -183,6 +183,7 @@ class SkyDataWorker(QObject):
                 )
 
             payload: Dict[str, object] = {"celestial": celestial_data, "sky_disc": sky_disc_img}
+            payload["view_center"] = (float(view_center[0]), float(view_center[1]))
             with self._lock:
                 if self._stopping:
                     return

@@ -283,6 +283,7 @@ class SkyWindow(DraggableWindow):
         self.celestial_data: Optional[CelestialData] = None
         self._sky_disc_base_size: int = 1024
         self._sky_disc_image: Optional[QImage] = None
+        self._render_view_center: Tuple[float, float] = tuple(self.viewer_data.view_center)
 
         # --- Cloud Data State and Cache ---
         self._cloud_base_size: int = 256
@@ -597,9 +598,18 @@ class SkyWindow(DraggableWindow):
         # This is why the manual drag in DraggableWindow does not work.
         event.accept()
 
-    def set_sky_data(self, data: CelestialData) -> None:
+    def set_sky_data(self, data: CelestialData, *, trigger_update: bool = True) -> None:
         self.celestial_data = data
-        self.update()
+        if trigger_update:
+            self.update()
+
+    def _viewer_data_for_render(self) -> ViewerData:
+        return ViewerData(
+            location=self.viewer_data.location,
+            timezone_name=self.viewer_data.timezone_name,
+            city_name=self.viewer_data.city_name,
+            view_center=self._render_view_center,
+        )
 
     def _active_jump_highlight_object(
         self,
@@ -636,7 +646,7 @@ class SkyWindow(DraggableWindow):
         else:
             return None
 
-        nx, ny = render_draw.altaz_to_normalized_xy(alt, az, self.viewer_data.view_center)
+        nx, ny = render_draw.altaz_to_normalized_xy(alt, az, self._render_view_center)
         px, py = render_draw.normalized_to_screen_xy(nx, ny, geometry)
         return ({"name": target_name}, QPointF(px, py))
 
@@ -653,15 +663,26 @@ class SkyWindow(DraggableWindow):
             painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "Loading celestial data...")
             return
 
-        alt = self.viewer_data.view_center[0]
+        render_viewer = self._viewer_data_for_render()
+        alt = render_viewer.view_center[0]
         geometry = render_draw.get_screen_geometry(self.width(), self.height(), alt)
 
         highlighted_object = None
         highlighted_dso = None
         if self.mouse_pos is not None:
-            highlighted_object = render_draw.find_highlighted_object(self.celestial_data, self.viewer_data, self.mouse_pos, geometry)
+            highlighted_object = render_draw.find_highlighted_object(
+                self.celestial_data,
+                render_viewer,
+                self.mouse_pos,
+                geometry,
+            )
             if self.show_dso:
-                highlighted_dso = render_draw.find_highlighted_dso(self.celestial_data, self.viewer_data, self.mouse_pos, geometry)
+                highlighted_dso = render_draw.find_highlighted_dso(
+                    self.celestial_data,
+                    render_viewer,
+                    self.mouse_pos,
+                    geometry,
+                )
         jump_highlight = self._active_jump_highlight_object(geometry)
         if jump_highlight is not None:
             highlighted_object = jump_highlight
@@ -669,8 +690,8 @@ class SkyWindow(DraggableWindow):
         self._clear_background_layer(painter)
         self._draw_background_layer(painter, geometry)
         self._draw_sky_cloud_layers(painter, geometry)
-        self._draw_terrain_layers(painter, geometry, highlighted_dso)
-        self._draw_star_layer(painter, geometry)
+        self._draw_terrain_layers(painter, geometry, render_viewer, highlighted_dso)
+        self._draw_star_layer(painter, geometry, render_viewer)
 
         enlarge_moon = self.enlarge_moon
         if highlighted_object is not None:
@@ -678,8 +699,8 @@ class SkyWindow(DraggableWindow):
             name = getattr(obj, "name", "") if hasattr(obj, "name") else obj.get("name", "")
             enlarge_moon = enlarge_moon or name == "moon"
 
-        self._draw_planet_layer(painter, geometry, enlarge_moon)
-        self._draw_overlay_layer(painter, geometry, highlighted_object, highlighted_dso, enlarge_moon)
+        self._draw_planet_layer(painter, geometry, render_viewer, enlarge_moon)
+        self._draw_overlay_layer(painter, geometry, render_viewer, highlighted_object, highlighted_dso, enlarge_moon)
         self._draw_status_line(painter)
 
     def _clear_background_layer(self, painter: QPainter) -> None:
@@ -707,6 +728,7 @@ class SkyWindow(DraggableWindow):
         self,
         painter: QPainter,
         geometry: render_draw.ScreenGeometry,
+        render_viewer: ViewerData,
         highlighted_dso: Any | None,
     ) -> None:
         if self.show_dso:
@@ -714,13 +736,13 @@ class SkyWindow(DraggableWindow):
                 painter,
                 geometry,
                 self.celestial_data,
-                self.viewer_data,
+                render_viewer,
                 preset=self.visual_preset,
             )
             render_draw.draw_dso_hover_info(
                 painter,
                 geometry,
-                self.viewer_data,
+                render_viewer,
                 highlighted_dso,
                 self.text_font,
                 preset=self.visual_preset,
@@ -729,13 +751,13 @@ class SkyWindow(DraggableWindow):
         render_draw.draw_direction_labels(
             painter,
             geometry,
-            self.viewer_data.view_center,
+            render_viewer.view_center,
             self.text_font,
             preset=self.visual_preset,
         )
-        render_draw.draw_zenith_marker(painter, geometry, self.viewer_data.view_center)
+        render_draw.draw_zenith_marker(painter, geometry, render_viewer.view_center)
 
-    def _draw_star_layer(self, painter: QPainter, geometry: render_draw.ScreenGeometry) -> None:
+    def _draw_star_layer(self, painter: QPainter, geometry: render_draw.ScreenGeometry, render_viewer: ViewerData) -> None:
         win_w = self.width()
         win_h = self.height()
         low_w, low_h = compute_star_render_surface_size(
@@ -760,7 +782,7 @@ class SkyWindow(DraggableWindow):
                 painter,
                 geometry,
                 self.celestial_data,
-                self.viewer_data,
+                render_viewer,
                 self.star_base_radius,
                 visibility_boost=self.star_visibility_boost,
                 draw_vmag_limit=self.vmag_limit,
@@ -786,7 +808,7 @@ class SkyWindow(DraggableWindow):
             low_painter,
             low_geometry,
             self.celestial_data,
-            self.viewer_data,
+            render_viewer,
             self.star_base_radius,
             visibility_boost=self.star_visibility_boost,
             draw_vmag_limit=self.vmag_limit,
@@ -800,12 +822,18 @@ class SkyWindow(DraggableWindow):
         painter.drawImage(self.rect(), low_img)
         painter.restore()
 
-    def _draw_planet_layer(self, painter: QPainter, geometry: render_draw.ScreenGeometry, enlarge_moon: bool) -> None:
+    def _draw_planet_layer(
+        self,
+        painter: QPainter,
+        geometry: render_draw.ScreenGeometry,
+        render_viewer: ViewerData,
+        enlarge_moon: bool,
+    ) -> None:
         render_draw.draw_solar_system_bodies(
             painter,
             geometry,
             self.celestial_data,
-            self.viewer_data,
+            render_viewer,
             enlarge_moon,
             text_font=self.text_font,
             preset=self.visual_preset,
@@ -815,6 +843,7 @@ class SkyWindow(DraggableWindow):
         self,
         painter: QPainter,
         geometry: render_draw.ScreenGeometry,
+        render_viewer: ViewerData,
         highlighted_object: Any | None,
         highlighted_dso: Any | None,
         enlarge_moon: bool,
@@ -823,7 +852,7 @@ class SkyWindow(DraggableWindow):
             painter,
             geometry,
             self.celestial_data,
-            self.viewer_data,
+            render_viewer,
             self.vmag_limit,
             enlarge_moon,
             highlighted_dso,
@@ -851,11 +880,13 @@ class SkyWindow(DraggableWindow):
         Args:
             payload: A dictionary containing the 'celestial' data and 'sky_disc' image.
         """
-        self.set_sky_data(payload["celestial"])
+        self._render_view_center = tuple(payload.get("view_center", self.viewer_data.view_center))
+        self.celestial_data = payload["celestial"]
         self._sky_disc_image = payload["sky_disc"]
 
         # Invalidate the composition cache
         self._compositor.invalidate()
+        self.update()
 
         # On the very first load, start the periodic update timers.
         if not self._sky_data_update_timer.isActive():
