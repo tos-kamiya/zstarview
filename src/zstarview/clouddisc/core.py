@@ -9,6 +9,7 @@ from a specific observer's perspective.
 
 import datetime as dt
 import logging
+import os
 from typing import Optional, Tuple
 from dataclasses import replace
 
@@ -27,6 +28,11 @@ from .types import CloudMeta, CloudSourceData, RenderKey, SourceKey, VisibilityE
 
 
 logger = logging.getLogger(__name__)
+
+
+def _ang_diff_deg(a: np.ndarray, b_deg: float) -> np.ndarray:
+    """Return wrapped absolute angular difference in degrees."""
+    return np.abs((a - float(b_deg) + 180.0) % 360.0 - 180.0)
 
 
 class CloudDisc:
@@ -280,6 +286,18 @@ class CloudDisc:
         else:
             coverage_ratio = 1.0
         missing_mask = mask_inside & ~finite_bt
+        if os.getenv("ZSTARVIEW_CLOUD_FORCE_MISSING_WEDGE", "").strip() in {"1", "true", "TRUE", "yes", "YES"}:
+            # Build debug wedge in observer-relative geodesic bearing space so it follows camera changes.
+            lat0 = np.deg2rad(float(lat))
+            lon0 = np.deg2rad(float(lon))
+            lat2 = np.deg2rad(lat_grid)
+            lon2 = np.deg2rad(lon_grid)
+            dlon = lon2 - lon0
+            x = np.sin(dlon) * np.cos(lat2)
+            y = np.cos(lat0) * np.sin(lat2) - np.sin(lat0) * np.cos(lat2) * np.cos(dlon)
+            bearing = (np.degrees(np.arctan2(x, y)) + 360.0) % 360.0
+            wedge = mask_inside & np.isfinite(bearing) & (_ang_diff_deg(bearing, render_key.az_deg) <= 8.0)
+            missing_mask = missing_mask | wedge
 
         # Step 6: Estimate the warm and cold brightness temperature thresholds. These values
         # are used to map the temperature range to the grayscale color range, enhancing contrast.

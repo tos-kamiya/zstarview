@@ -8,7 +8,6 @@ all UI painting/state updates in the window class.
 from __future__ import annotations
 
 import logging
-import os
 import threading
 from datetime import datetime, timezone
 from typing import Optional
@@ -251,7 +250,6 @@ class CloudController(QObject):
                 mask_fov_deg=93,
                 cloud_shell_km=CLOUD_SHELL_KM,
             )
-            missing_mask = self._apply_debug_missing_wedge(missing_mask)
             logger.info(
                 "Cloud render ready (request_id=%s, sat=%s, product=%s, data_time=%s, coverage=%.1f%%)",
                 request_id,
@@ -297,20 +295,3 @@ class CloudController(QObject):
             if next_req is not None:
                 worker = threading.Thread(target=self._run_render_update, kwargs=next_req, daemon=True)
                 worker.start()
-
-    @staticmethod
-    def _apply_debug_missing_wedge(mask: np.ndarray) -> np.ndarray:
-        """Optionally force a visible missing-data wedge for manual verification."""
-        if os.getenv("ZSTARVIEW_CLOUD_FORCE_MISSING_WEDGE", "").strip() not in {"1", "true", "TRUE", "yes", "YES"}:
-            return mask
-        out = np.array(mask, copy=True)
-        h, w = out.shape
-        if h <= 0 or w <= 0:
-            return out
-        ys, xs = np.ogrid[:h, :w]
-        cx, cy = (w - 1) * 0.5, (h - 1) * 0.5
-        # A narrow 20-degree wedge centered around azimuth-like screen direction.
-        ang = np.arctan2(-(ys - cy), xs - cx)
-        wedge = np.abs(ang) < np.deg2rad(10.0)
-        out[wedge] = 1
-        return out
