@@ -62,6 +62,7 @@ zstarview [options] [city]
 | `-Z`, `--view-center-az VIEW_CENTER_AZ`     | 表示中心の方位角を指定します。                                     | `180`    |
 | `-A`, `--view-center-alt VIEW_CENTER_ALT`   | 表示中心の高度角を指定します（90=天頂、0=地平線）。                       | `90`     |
 | `-c`, `--cloud-opacity CLOUD_OPACITY`                 | 雲の不透明度を指定します（0.0〜1.0）。0.0で描画を無効化します。※2 | `0.2`   |
+| `--cloud-missing-tint-opacity OPACITY` | 雲欠損領域の黄色ティント不透明度を指定します（0.0〜1.0）。 | `0.176` |
 | `--sky-opacity SKY_OPACITY`                 | 空の色ディスクの不透明度を指定します（0.0〜1.0）。0.0で描画を無効化します。 | `0.2`   |
 | `-m`, `--enlarge-moon`                      | 月を5倍に拡大して表示します。                                      |          |
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | 2等星の基本サイズを指定します。                                   | `4.0`    |

@@ -43,6 +43,7 @@ from .paths import (
     APP_ICON_FILE,
     DIRECTIONS,
     WINDOW_WIDTH,
+    CLOUD_MISSING_TINT_RGBA,
 )
 from .__about__ import __version__
 from .config import load_last_city, save_last_city
@@ -308,6 +309,15 @@ def parse_args() -> argparse.Namespace:
         help=(
             "Cloud stripe style as 'count,width' (default: 50,0.2). "
             "If either value is 0, cloud rendering is disabled."
+        ),
+    )
+    parser.add_argument(
+        "--cloud-missing-tint-opacity",
+        type=float,
+        default=float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0,
+        help=(
+            "Opacity for missing-cloud-data tint (0.0 - 1.0, default: "
+            f"{float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0:.3f})."
         ),
     )
     parser.add_argument(
@@ -750,6 +760,7 @@ def main() -> None:
     star_base_radius = max(2.0, args.star_base_radius)
     sky_opacity = min(1.0, max(0.0, args.sky_opacity))
     cloud_opacity = min(1.0, max(0.0, args.cloud_opacity))
+    cloud_missing_tint_opacity = min(1.0, max(0.0, args.cloud_missing_tint_opacity))
     cloud_stripe_count, cloud_stripe_width = args.cloud_stripe
     if cloud_stripe_count == 0 or cloud_stripe_width == 0.0:
         cloud_opacity = 0.0
@@ -776,6 +787,7 @@ def main() -> None:
         star_visibility_boost=star_visibility_boost,
         vmag_brightness_scale=vmag_brightness_scale,
         cloud_stripe_style=(cloud_stripe_count, cloud_stripe_width),
+        cloud_missing_tint_opacity=cloud_missing_tint_opacity,
         star_render_expected_width=args.expected_render_width,
         window_geometry_arg=args.window_geometry,
     )
