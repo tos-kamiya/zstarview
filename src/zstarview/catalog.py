@@ -30,23 +30,23 @@ def _split_files_for_threshold(filename: str, vmag_threshold: Optional[float]) -
     extra_faint = split_dir / "stars_extra_faint.csv"
 
     if vmag_threshold is None or not math.isfinite(float(vmag_threshold)):
-        files = [p for p in (base, extra7, extra8, extra9, extra10, extra_faint) if p.exists()]
-        return files if files else None
+        all_files = [p for p in (base, extra7, extra8, extra9, extra10, extra_faint) if p.exists()]
+        return all_files if all_files else None
 
     t = float(vmag_threshold)
-    files: List[Path] = [base]
+    selected_files: List[Path] = [base]
     if t > 6.0:
-        files.append(extra7)
+        selected_files.append(extra7)
     if t > 7.0:
-        files.append(extra8)
+        selected_files.append(extra8)
     if t > 8.0:
-        files.append(extra9)
+        selected_files.append(extra9)
     if t > 9.0:
-        files.append(extra10)
+        selected_files.append(extra10)
     if t > 10.0:
-        files.append(extra_faint)
+        selected_files.append(extra_faint)
 
-    return files if all(p.exists() for p in files) else None
+    return selected_files if all(p.exists() for p in selected_files) else None
 
 
 def load_star_catalog(filename: str, vmag_threshold: Optional[float] = 7.0) -> pl.DataFrame:

@@ -43,7 +43,7 @@ def cleanup_satellite_cache(root: Path, *, hours: int = 24, dry_run: bool = Fals
             continue
 
         # Group files by parent directory
-        per_dir = {}
+        per_dir: dict[Path, list[Path]] = {}
         for f in base.rglob("*"):
             if f.is_file():
                 per_dir.setdefault(f.parent, []).append(f)

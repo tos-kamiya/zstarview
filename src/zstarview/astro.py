@@ -1,6 +1,6 @@
 import math
 from pathlib import Path
-from typing import Any, List, Optional, Tuple, TypedDict
+from typing import Any, List, Optional, Tuple, TypedDict, cast
 
 import astropy
 import astropy.units as u
@@ -253,9 +253,9 @@ def calculate_visible_stars(
 
     source_is_df = isinstance(star_source, pl.DataFrame)
     if source_is_df:
-        cat = prepare_star_catalog_arrays(star_source, max_vmag=max_vmag)
+        cat = prepare_star_catalog_arrays(cast(pl.DataFrame, star_source), max_vmag=max_vmag)
     else:
-        cat = star_source
+        cat = cast(StarCatalogArrays, star_source)
 
     # Get pre-normalized arrays
     unit_vectors = cat["unit_vectors"]
@@ -658,7 +658,7 @@ def calculate_moon_render_data(
         )
 
     # Calculate the screen rotation for the moon image
-    screen_rotation_deg = 0
+    screen_rotation_deg = 0.0
     if moon_altaz:
         # Get screen coordinates for the moon's center and a point just "above" it
         m_alt, m_az = moon_altaz

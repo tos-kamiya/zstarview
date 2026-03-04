@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import math
-from typing import Optional, Tuple
+from typing import Optional, Tuple, cast
 
 import numpy as np
 from PySide6.QtCore import QRect, Qt
@@ -143,7 +143,7 @@ def build_stripe_density_field(cloud_img: QImage, *, bins: int = 192) -> StripeD
     sums = np.bincount(ids, weights=vals, minlength=size)
     counts = np.bincount(ids, minlength=size)
     means = np.divide(sums, counts, out=np.zeros_like(sums), where=counts > 0).astype(np.float32, copy=False)
-    density = means.reshape((bins_u, bins_v))
+    density = cast(np.ndarray, np.asarray(means, dtype=np.float32).reshape((bins_u, bins_v)))
 
     return StripeDensityField(
         density=density,
@@ -349,7 +349,12 @@ class SkyCompositorCache:
         self._gray_mix = gray_mix
         self._cloud_target_stripes = max(1, int(cloud_target_stripes))
         self._cloud_stripe_width_factor = max(0.01, float(cloud_stripe_width_factor))
-        self._missing_tint_rgba = tuple(int(np.clip(v, 0, 255)) for v in missing_tint_rgba)
+        self._missing_tint_rgba: Tuple[int, int, int, int] = (
+            int(np.clip(missing_tint_rgba[0], 0, 255)),
+            int(np.clip(missing_tint_rgba[1], 0, 255)),
+            int(np.clip(missing_tint_rgba[2], 0, 255)),
+            int(np.clip(missing_tint_rgba[3], 0, 255)),
+        )
         self._composited_img: Optional[QImage] = None
         self._composite_key: Optional[Tuple] = None
 

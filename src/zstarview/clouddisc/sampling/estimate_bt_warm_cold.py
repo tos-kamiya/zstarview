@@ -137,7 +137,7 @@ def estimate_bt_cold_hybrid(
         loc_std = float(np.nanstd(vals))
 
     # 2. Calculate the cold temperature from the global equatorial samples.
-    bt_cold_eq = _percentile_ignore_nan(eq_samples, cold_eq_p)
+    bt_cold_eq = _percentile_ignore_nan(eq_samples.tolist(), cold_eq_p)
 
     # 3. Determine the blending factor `beta` based on local variance.
     #    If the local standard deviation is low, the scene is likely clear, so we

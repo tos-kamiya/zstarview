@@ -170,7 +170,7 @@ class GoesProvider:
             DataNotFoundError: If no data is found after all attempts.
         """
         if allowed_sats is None:
-            allowed = ("G16", "G18")
+            allowed: Tuple[str, ...] = ("G16", "G18")
         else:
             allowed = tuple(s for s in allowed_sats if s in ("G16", "G18"))
 
