@@ -17,7 +17,7 @@ import numpy as np
 from PySide6.QtCore import QRect, Qt
 from PySide6.QtGui import QImage, QPainter
 
-from ..paths import CLOUD_HATCH_DEFAULT, CLOUD_MISSING_HATCH_DEFAULT, CLOUD_MISSING_TINT_RGBA, HatchConfig
+from ..paths import CLOUD_HATCH_DEFAULT, CLOUD_MISSING_TINT_RGBA, HatchConfig
 from ..types import ScreenGeometry
 from ..utils.qt import np_rgba_to_qimage, qimage_to_np_rgba
 
@@ -274,14 +274,13 @@ def compose_cloud_over_sky(
     return np_rgba_to_qimage(out)
 
 
-def overlay_missing_with_hatch(
+def overlay_missing_tint(
     base_img: QImage,
     missing_mask_img: QImage,
     *,
-    hatch_cfg: HatchConfig = CLOUD_MISSING_HATCH_DEFAULT,
     tint_rgba: Tuple[int, int, int, int] = CLOUD_MISSING_TINT_RGBA,
 ) -> QImage:
-    """Overlay missing-data regions with a faint yellow hatch."""
+    """Overlay missing-data regions with a faint yellow solid tint."""
     w, h = base_img.width(), base_img.height()
     if missing_mask_img.width() != w or missing_mask_img.height() != h:
         missing_mask_img = missing_mask_img.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
@@ -299,19 +298,8 @@ def overlay_missing_with_hatch(
     if not np.any(valid):
         return np_rgba_to_qimage(out)
 
-    xs = np.arange(w, dtype=np.int32)[None, :]
-    ys = np.arange(h, dtype=np.int32)[:, None]
-    period = max(2, int(round(math.hypot(hatch_cfg.tile_w_px, hatch_cfg.tile_h_px) * 0.5)))
-    band = max(1, int(round(hatch_cfg.line_px)))
-    u = xs - ys
-    u_mod = np.mod(u, period)
-    dist = np.minimum(u_mod, period - u_mod)
-    line_mask = dist <= (band / 2.0)
-
     tint_r, tint_g, tint_b, tint_a = (int(np.clip(v, 0, 255)) for v in tint_rgba)
-    hatch_strength = float(np.clip(hatch_cfg.strength, 0, 255)) / 255.0
     alpha01 = (float(tint_a) / 255.0) * m
-    alpha01[line_mask] = alpha01[line_mask] * hatch_strength
 
     # Blend tint into RGB only where missing-mask is present; preserve source alpha.
     out_rgb = out[..., :3].astype(np.float32)
@@ -333,7 +321,6 @@ class SkyCompositorCache:
         gray_mix: float = 1.0,
         cloud_target_stripes: int = 50,
         cloud_stripe_width_factor: float = 0.2,
-        missing_hatch_cfg: HatchConfig = CLOUD_MISSING_HATCH_DEFAULT,
         missing_tint_rgba: Tuple[int, int, int, int] = CLOUD_MISSING_TINT_RGBA,
     ) -> None:
         self._hatch_cfg = hatch_cfg
@@ -341,7 +328,6 @@ class SkyCompositorCache:
         self._gray_mix = gray_mix
         self._cloud_target_stripes = max(1, int(cloud_target_stripes))
         self._cloud_stripe_width_factor = max(0.01, float(cloud_stripe_width_factor))
-        self._missing_hatch_cfg = missing_hatch_cfg
         self._missing_tint_rgba = tuple(int(np.clip(v, 0, 255)) for v in missing_tint_rgba)
         self._composited_img: Optional[QImage] = None
         self._composite_key: Optional[Tuple] = None
@@ -379,13 +365,6 @@ class SkyCompositorCache:
             self._hatch_cfg.line_px,
             self._hatch_cfg.strength,
         )
-        missing_hatch_key = (
-            self._missing_hatch_cfg.tile_w_px,
-            self._missing_hatch_cfg.tile_h_px,
-            self._missing_hatch_cfg.line_px,
-            self._missing_hatch_cfg.strength,
-            self._missing_tint_rgba,
-        )
         comp_key = (
             "comp",
             sky_ck,
@@ -396,7 +375,7 @@ class SkyCompositorCache:
             h,
             float(cloud_alpha),
             hatch_key,
-            missing_hatch_key,
+            self._missing_tint_rgba,
             self._cloud_opacity_scale,
             self._gray_mix,
             self._cloud_target_stripes,
@@ -442,10 +421,9 @@ class SkyCompositorCache:
                     gray_mix=self._gray_mix,
                 )
             if missing_s is not None:
-                composited = overlay_missing_with_hatch(
+                composited = overlay_missing_tint(
                     composited,
                     missing_s,
-                    hatch_cfg=self._missing_hatch_cfg,
                     tint_rgba=self._missing_tint_rgba,
                 )
 

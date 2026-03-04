@@ -35,6 +35,16 @@ def _ang_diff_deg(a: np.ndarray, b_deg: float) -> np.ndarray:
     return np.abs((a - float(b_deg) + 180.0) % 360.0 - 180.0)
 
 
+def _env_float(name: str, default: float) -> float:
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return float(default)
+    try:
+        return float(raw)
+    except ValueError:
+        return float(default)
+
+
 class CloudDisc:
     """
     A class to render cloud images from satellite data.
@@ -296,7 +306,10 @@ class CloudDisc:
             x = np.sin(dlon) * np.cos(lat2)
             y = np.cos(lat0) * np.sin(lat2) - np.sin(lat0) * np.cos(lat2) * np.cos(dlon)
             bearing = (np.degrees(np.arctan2(x, y)) + 360.0) % 360.0
-            wedge = mask_inside & np.isfinite(bearing) & (_ang_diff_deg(bearing, render_key.az_deg) <= 8.0)
+            # Use world-fixed bearing so azimuth panning moves the wedge on screen.
+            wedge_az = _env_float("ZSTARVIEW_CLOUD_FORCE_MISSING_AZ_DEG", 0.0) % 360.0
+            wedge_width = max(0.5, min(60.0, _env_float("ZSTARVIEW_CLOUD_FORCE_MISSING_WIDTH_DEG", 8.0)))
+            wedge = mask_inside & np.isfinite(bearing) & (_ang_diff_deg(bearing, wedge_az) <= wedge_width)
             missing_mask = missing_mask | wedge
 
         # Step 6: Estimate the warm and cold brightness temperature thresholds. These values

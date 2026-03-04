@@ -3,8 +3,7 @@ from __future__ import annotations
 import numpy as np
 from PySide6.QtGui import QImage, QPainter
 
-from zstarview.paths import HatchConfig
-from zstarview.ui.composite import SkyCompositorCache, overlay_missing_with_hatch
+from zstarview.ui.composite import SkyCompositorCache, overlay_missing_tint
 from zstarview.types import ScreenGeometry
 from zstarview.utils.qt import np_rgba_to_qimage, qimage_to_np_rgba
 
@@ -18,10 +17,9 @@ def test_overlay_missing_with_hatch_tints_only_missing_region() -> None:
     missing[4:12, 4:12, 3] = 255
 
     out = qimage_to_np_rgba(
-        overlay_missing_with_hatch(
+        overlay_missing_tint(
             np_rgba_to_qimage(base),
             np_rgba_to_qimage(missing),
-            hatch_cfg=HatchConfig(20, 19, 8, 255),
             tint_rgba=(255, 220, 80, 90),
         )
     )
