@@ -179,6 +179,7 @@ class SkyWindow(DraggableWindow):
             self.dso_catalog_np = None
         else:
             self.dso_catalog_np = prepare_deep_sky_catalog_arrays(dso_catalog)
+        self.show_dso: bool = self.dso_catalog_np is not None
         self._named_stars_by_band = build_named_star_shortcuts(star_catalog, max_vmag=2.0)
         self._named_stars_search_all = flatten_named_star_shortcuts(
             build_named_star_shortcuts(star_catalog, max_vmag=None)
@@ -251,6 +252,7 @@ class SkyWindow(DraggableWindow):
         self.size_grip.raise_()
         self._action_enlarge_moon: Optional[QAction] = None
         self._action_toggle_clouds: Optional[QAction] = None
+        self._action_toggle_dso: Optional[QAction] = None
         self._add_hamburger_menu()
         self.add_drag_exclusions([self.menu_button, self.size_grip])
 
@@ -359,6 +361,13 @@ class SkyWindow(DraggableWindow):
         toggle_clouds_action.triggered.connect(self.toggle_clouds)
         self.menu.addAction(toggle_clouds_action)
         self._action_toggle_clouds = toggle_clouds_action
+        toggle_dso_action = QAction("DSO", self)
+        toggle_dso_action.setCheckable(True)
+        toggle_dso_action.setChecked(self.show_dso)
+        toggle_dso_action.setEnabled(self.dso_catalog_np is not None)
+        toggle_dso_action.triggered.connect(self.toggle_dso)
+        self.menu.addAction(toggle_dso_action)
+        self._action_toggle_dso = toggle_dso_action
 
         self.menu.addSeparator()
         fullscreen_action = self.menu.addAction("Fullscreen (F11)")
@@ -510,6 +519,17 @@ class SkyWindow(DraggableWindow):
 
         self.update()
 
+    def toggle_dso(self) -> None:
+        if self.dso_catalog_np is None:
+            self.show_dso = False
+            if self._action_toggle_dso is not None:
+                self._action_toggle_dso.setChecked(False)
+            return
+        self.show_dso = not self.show_dso
+        if self._action_toggle_dso is not None and self._action_toggle_dso.isChecked() != self.show_dso:
+            self._action_toggle_dso.setChecked(self.show_dso)
+        self.update()
+
     def toggle_fullscreen(self) -> None:
         if self.isFullScreen():
             self.showNormal()
@@ -634,7 +654,8 @@ class SkyWindow(DraggableWindow):
         highlighted_dso = None
         if self.mouse_pos is not None:
             highlighted_object = render_draw.find_highlighted_object(self.celestial_data, self.viewer_data, self.mouse_pos, geometry)
-            highlighted_dso = render_draw.find_highlighted_dso(self.celestial_data, self.viewer_data, self.mouse_pos, geometry)
+            if self.show_dso:
+                highlighted_dso = render_draw.find_highlighted_dso(self.celestial_data, self.viewer_data, self.mouse_pos, geometry)
         jump_highlight = self._active_jump_highlight_object(geometry)
         if jump_highlight is not None:
             highlighted_object = jump_highlight
@@ -681,21 +702,22 @@ class SkyWindow(DraggableWindow):
         geometry: render_draw.ScreenGeometry,
         highlighted_dso: Any | None,
     ) -> None:
-        render_draw.draw_deep_sky_shapes(
-            painter,
-            geometry,
-            self.celestial_data,
-            self.viewer_data,
-            preset=self.visual_preset,
-        )
-        render_draw.draw_dso_hover_info(
-            painter,
-            geometry,
-            self.viewer_data,
-            highlighted_dso,
-            self.text_font,
-            preset=self.visual_preset,
-        )
+        if self.show_dso:
+            render_draw.draw_deep_sky_shapes(
+                painter,
+                geometry,
+                self.celestial_data,
+                self.viewer_data,
+                preset=self.visual_preset,
+            )
+            render_draw.draw_dso_hover_info(
+                painter,
+                geometry,
+                self.viewer_data,
+                highlighted_dso,
+                self.text_font,
+                preset=self.visual_preset,
+            )
         render_draw.draw_sky_reference_lines(painter, geometry, self.celestial_data)
         render_draw.draw_direction_labels(
             painter,
