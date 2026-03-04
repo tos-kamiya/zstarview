@@ -8,6 +8,7 @@ The name emphasizes the *zenith*—the point directly overhead—conveying the e
 **Features:**
 
 - Real-time rendering of bright stars, planets, the celestial equator, and the ecliptic.
+- Named deep-sky objects (galaxies/open clusters/globular clusters) are shown as soft blue extents; DSO hover is independent from star hover.
 - Supports Sun, Moon, and major planets. Minor planets (asteroids) are not displayed yet.
 - Location specified by city name (based on GeoNames), or directly by latitude/longitude.
 
