@@ -12,6 +12,7 @@ import logging
 from typing import Optional, Tuple
 from dataclasses import replace
 
+import numpy as np
 from PIL import Image
 
 from .config import CloudDiscConfig
@@ -150,6 +151,33 @@ class CloudDisc:
         cloud_shell_km: float = 6371.0 + 5.0,
     ) -> Tuple[Image.Image, CloudMeta]:
         """Render a cloud image from pre-fetched source data."""
+        img, meta, _missing_mask, _coverage_ratio = self.render_from_source_with_coverage(
+            source=source,
+            lat=lat,
+            lon=lon,
+            alt=alt,
+            az=az,
+            radius_px=radius_px,
+            edge_fov_deg=edge_fov_deg,
+            mask_fov_deg=mask_fov_deg,
+            cloud_shell_km=cloud_shell_km,
+        )
+        return img, meta
+
+    def render_from_source_with_coverage(
+        self,
+        *,
+        source: CloudSourceData,
+        lat: float,
+        lon: float,
+        alt: float,
+        az: float,
+        radius_px: int,
+        edge_fov_deg: float = 90.0,
+        mask_fov_deg: float = 90.0,
+        cloud_shell_km: float = 6371.0 + 5.0,
+    ) -> Tuple[Image.Image, CloudMeta, np.ndarray, float]:
+        """Render from pre-fetched source and return missing-data mask/coverage."""
         render_key = RenderKey(
             source=source.source_key,
             alt_deg=alt,
@@ -224,7 +252,7 @@ class CloudDisc:
         lon: float,
         render_key: RenderKey,
         cloud_shell_km: float,
-    ) -> Tuple[Image.Image, CloudMeta]:
+    ) -> Tuple[Image.Image, CloudMeta, np.ndarray, float]:
         # Step 3: Create a sampler function: (lon, lat) -> Brightness Temperature [K]
         sampler = build_bt_sampler(source.data_array)
 
@@ -244,6 +272,14 @@ class CloudDisc:
 
         # Step 5: Sample the brightness temperatures for each point in the projected grid.
         bt = sampler(lon_grid, lat_grid)
+        finite_bt = np.isfinite(bt)
+        inside_count = int(np.count_nonzero(mask_inside))
+        if inside_count > 0:
+            valid_inside = int(np.count_nonzero(mask_inside & finite_bt))
+            coverage_ratio = float(valid_inside) / float(inside_count)
+        else:
+            coverage_ratio = 1.0
+        missing_mask = mask_inside & ~finite_bt
 
         # Step 6: Estimate the warm and cold brightness temperature thresholds. These values
         # are used to map the temperature range to the grayscale color range, enhancing contrast.
@@ -266,4 +302,4 @@ class CloudDisc:
             time_utc=source.time_utc,
             src_paths=source.src_paths,
         )
-        return img, meta
+        return img, meta, missing_mask.astype(np.uint8), coverage_ratio

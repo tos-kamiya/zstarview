@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime as dt
 from pathlib import Path
 
+import numpy as np
 from PIL import Image
 
 from zstarview.clouddisc.types import CloudMeta, CloudSourceData, SourceKey
@@ -32,8 +33,15 @@ class _FakeCloudDisc:
             src_paths=[Path("/tmp/fake.nc")],
         )
 
-    def render_from_source(self, **kwargs):
-        return Image.new("RGBA", (8, 8), (255, 255, 255, 255)), self._meta
+    def render_from_source_with_coverage(self, **kwargs):
+        radius_px = kwargs.get("radius_px")
+        size = int(radius_px) * 2 if isinstance(radius_px, int) else 8
+        return (
+            Image.new("RGBA", (size, size), (255, 255, 255, 255)),
+            self._meta,
+            np.zeros((size, size), dtype=np.uint8),
+            1.0,
+        )
 
 
 def test_cloud_render_discards_stale_request_id() -> None:
