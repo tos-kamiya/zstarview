@@ -944,6 +944,7 @@ class SkyWindow(DraggableWindow):
             time_utc=payload["time_utc"],
             stripe_density=payload.get("stripe_density"),
             missing_mask=payload.get("missing_mask"),
+            coverage_ratio=payload.get("coverage_ratio"),
             source_key=payload.get("source_key"),
             request_id=payload.get("request_id"),
         )

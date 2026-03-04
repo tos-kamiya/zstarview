@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import numpy as np
+
 from zstarview.ui.cloud_controller import CloudController
 
 
@@ -7,7 +9,7 @@ class _DummyCloudDisc:
     def fetch_source(self, *, lat: float, lon: float):  # pragma: no cover - not used
         raise RuntimeError("unused")
 
-    def render_from_source(self, **kwargs):  # pragma: no cover - not used
+    def render_from_source_with_coverage(self, **kwargs):  # pragma: no cover - not used
         raise RuntimeError("unused")
 
 
@@ -46,3 +48,9 @@ def test_source_completion_queues_rerender_when_render_is_running() -> None:
 
     assert controller._pending_render_request is not None
     assert controller._pending_render_request["request_id"] == 10
+
+
+def test_debug_missing_wedge_disabled_by_default() -> None:
+    mask = np.zeros((32, 32), dtype=np.uint8)
+    out = CloudController._apply_debug_missing_wedge(mask)
+    assert np.array_equal(out, mask)
