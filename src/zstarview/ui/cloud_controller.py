@@ -175,10 +175,13 @@ class CloudController(QObject):
                             self._pending_render_request = None
                         elif self._last_render_request is not None:
                             rerender_req = dict(self._last_render_request)
-                        if rerender_req is not None and not self._render_is_running:
-                            self._render_is_running = True
-                        else:
-                            rerender_req = None
+                        if rerender_req is not None:
+                            if not self._render_is_running:
+                                self._render_is_running = True
+                            else:
+                                # Keep latest rerender request queued while current render is running.
+                                self._pending_render_request = dict(rerender_req)
+                                rerender_req = None
                 if rerender_req is not None:
                     worker = threading.Thread(target=self._run_render_update, kwargs=rerender_req, daemon=True)
                     worker.start()
