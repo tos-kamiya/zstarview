@@ -694,6 +694,7 @@ class SkyWindow(DraggableWindow):
             self.cloud_state.image,
             cloud_alpha=self.cloud_disc_alpha,
             stripe_density=self.cloud_state.stripe_density,
+            missing_mask=self.cloud_state.missing_mask,
         )
 
     def _draw_terrain_layers(
@@ -942,6 +943,7 @@ class SkyWindow(DraggableWindow):
             az=float(payload["az"]),
             time_utc=payload["time_utc"],
             stripe_density=payload.get("stripe_density"),
+            missing_mask=payload.get("missing_mask"),
             source_key=payload.get("source_key"),
             request_id=payload.get("request_id"),
         )
@@ -954,6 +956,7 @@ class SkyWindow(DraggableWindow):
     def _on_cloud_failed(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         self.cloud_state.image = None
+        self.cloud_state.missing_mask = None
         self.cloud_state.stripe_density = None
         self._compositor.invalidate()
         if banner:

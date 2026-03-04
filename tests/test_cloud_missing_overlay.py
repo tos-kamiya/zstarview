@@ -1,0 +1,78 @@
+from __future__ import annotations
+
+import numpy as np
+from PySide6.QtGui import QImage, QPainter
+
+from zstarview.paths import HatchConfig
+from zstarview.ui.composite import SkyCompositorCache, overlay_missing_with_hatch
+from zstarview.types import ScreenGeometry
+from zstarview.utils.qt import np_rgba_to_qimage, qimage_to_np_rgba
+
+
+def test_overlay_missing_with_hatch_tints_only_missing_region() -> None:
+    base = np.zeros((16, 16, 4), dtype=np.uint8)
+    base[..., :3] = 30
+    base[..., 3] = 255
+
+    missing = np.zeros((16, 16, 4), dtype=np.uint8)
+    missing[4:12, 4:12, 3] = 255
+
+    out = qimage_to_np_rgba(
+        overlay_missing_with_hatch(
+            np_rgba_to_qimage(base),
+            np_rgba_to_qimage(missing),
+            hatch_cfg=HatchConfig(20, 19, 8, 255),
+            tint_rgba=(255, 220, 80, 90),
+        )
+    )
+
+    assert int(out[1, 1, 0]) == 30
+    assert int(out[8, 8, 0]) > 30
+
+
+def test_compositor_cache_key_includes_missing_mask() -> None:
+    sky = np.zeros((64, 64, 4), dtype=np.uint8)
+    sky[..., :3] = 20
+    sky[..., 3] = 255
+    cloud = np.zeros((64, 64, 4), dtype=np.uint8)
+    cloud[..., :3] = 255
+    cloud[..., 3] = 80
+
+    missing_none = np.zeros((64, 64, 4), dtype=np.uint8)
+    missing_half = np.zeros((64, 64, 4), dtype=np.uint8)
+    missing_half[:, :32, 3] = 255
+
+    geom = ScreenGeometry(center=(32, 32), radius=32)
+    compositor = SkyCompositorCache()
+
+    canvas1 = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
+    canvas1.fill(0)
+    p1 = QPainter(canvas1)
+    compositor.draw(
+        p1,
+        geom,
+        np_rgba_to_qimage(sky),
+        np_rgba_to_qimage(cloud),
+        cloud_alpha=0.4,
+        stripe_density=None,
+        missing_mask=np_rgba_to_qimage(missing_none),
+    )
+    p1.end()
+
+    canvas2 = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
+    canvas2.fill(0)
+    p2 = QPainter(canvas2)
+    compositor.draw(
+        p2,
+        geom,
+        np_rgba_to_qimage(sky),
+        np_rgba_to_qimage(cloud),
+        cloud_alpha=0.4,
+        stripe_density=None,
+        missing_mask=np_rgba_to_qimage(missing_half),
+    )
+    p2.end()
+
+    arr1 = qimage_to_np_rgba(canvas1)
+    arr2 = qimage_to_np_rgba(canvas2)
+    assert np.any(arr1 != arr2)

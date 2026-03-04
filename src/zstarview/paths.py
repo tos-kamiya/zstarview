@@ -99,6 +99,8 @@ class HatchConfig:
 
 
 CLOUD_HATCH_DEFAULT = HatchConfig(20, 19, 8, 255)
+CLOUD_MISSING_HATCH_DEFAULT = HatchConfig(20, 19, 8, 160)
+CLOUD_MISSING_TINT_RGBA = (255, 220, 80, 45)
 
 # Skyfield ephemeris kernel filename
 EPHEMERIS_FILENAME = "de440s.bsp"
