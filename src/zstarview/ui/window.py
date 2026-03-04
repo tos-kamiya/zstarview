@@ -942,6 +942,8 @@ class SkyWindow(DraggableWindow):
             az=float(payload["az"]),
             time_utc=payload["time_utc"],
             stripe_density=payload.get("stripe_density"),
+            source_key=payload.get("source_key"),
+            request_id=payload.get("request_id"),
         )
         self._compositor.invalidate()
         if self._interaction_mode:
