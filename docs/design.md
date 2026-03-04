@@ -1,6 +1,6 @@
 # zstarview 設計書（初版）
 
-最終更新: 2026-03-04
+最終更新: 2026-03-05
 
 ## 1. 設計方針
 
@@ -46,7 +46,7 @@
   - 星空更新計算（天体計算 + 空色ディスク）をバックグラウンドで実行
   - `data_ready` シグナルで結果返却
 - `src/zstarview/ui/cloud_controller.py`
-  - 雲更新（取得・例外正規化・running/pending制御・清掃トリガ）をバックグラウンドで実行
+  - 雲更新（ソース取得/レンダリング分離・例外正規化・running/pending制御・清掃トリガ）をバックグラウンドで実行
   - `cloud_started` / `cloud_ready` / `cloud_failed` シグナルでUIへ通知
 - `src/zstarview/ui/composite.py`
   - 空色/雲合成、ハッチ処理、合成キャッシュ
@@ -90,11 +90,12 @@
 ### 4.3 雲更新フロー
 
 1. `SkyWindow.start_background_cloud_update()` が `CloudController.update()` を呼ぶ。
-2. `CloudController` が `CloudDisc.render_now()` を実行し、例外をUI向けステータスへ正規化。
-3. `cloud_ready` / `cloud_failed` シグナルで `SkyWindow` に結果を返す。
-4. `SkyWindow` が `CloudImageState` と合成キャッシュを更新し、再描画要求をUIスレッドへ配送。
-5. `cloud_failed` 受信時はバナー表示に加え、雲画像とストライプ密度をクリアし、雲は描画しない。
-6. 終了開始時（`aboutToQuit` / `closeEvent`）はタイマー停止に加えて `CloudController.shutdown()` を呼び、以後の更新受付を抑止。
+2. `CloudController` は `SourceKey`（衛星・時刻スロット）でソース取得を管理し、`RenderKey`（`SourceKey` + 視点情報）で描画要求を管理する。
+3. ソース取得は `fetch_source()`、描画は `render_from_source_with_coverage()` で分離実行する。
+4. 描画結果は `request_id` で世代管理し、`latest-request-wins`（古い結果は破棄）を適用する。
+5. `cloud_ready` で `image` + `missing_mask` + `coverage_ratio` を `SkyWindow` へ渡し、合成時に欠損領域へ薄い黄色ティントを重畳する。
+6. `cloud_failed` 受信時はバナー表示に加え、雲画像と欠損マスクをクリアする。
+7. 終了開始時（`aboutToQuit` / `closeEvent`）はタイマー停止に加えて `CloudController.shutdown()` を呼び、以後の更新受付を抑止。
 
 ## 5. スレッドモデル
 
@@ -116,6 +117,7 @@
 - クラウド系エラー:
   - `CloudDiscError` 派生（`TimeoutError`, `DownloadError`, `DataNotFoundError`, `RenderError`）
   - UIはバナー表示し、当該時点の雲レイヤーはクリアして非表示
+  - 取得成功だが投影可能領域に欠損がある場合はエラー扱いにせず、部分描画 + 欠損ティントで継続表示
   - 更新ループは継続
 
 ## 7. 設定/永続化
