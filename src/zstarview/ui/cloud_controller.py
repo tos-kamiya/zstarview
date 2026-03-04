@@ -249,6 +249,13 @@ class CloudController(QObject):
                 mask_fov_deg=93,
                 cloud_shell_km=CLOUD_SHELL_KM,
             )
+            logger.info(
+                "Cloud render ready (request_id=%s, sat=%s, product=%s, data_time=%s)",
+                request_id,
+                getattr(meta, "satellite", "?"),
+                getattr(meta, "product", "?"),
+                getattr(meta, "time_utc", "?"),
+            )
             qimg = pil_to_qimage(pil_img)
             stripe_density = build_stripe_density_field(qimg)
 
