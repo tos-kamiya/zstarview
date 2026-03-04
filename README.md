@@ -16,6 +16,8 @@ The name emphasizes the *zenith*—the point directly overhead—conveying the e
 
 - Adjustable view center: `-A` (altitude) and `-Z` (azimuth).
 - Real-time satellite cloud imagery (Himawari/GOES), rendered as a stylized hatched (striped) overlay.
+- Cloud fetch and cloud render are decoupled: camera moves can re-render from cached source data immediately.
+- When satellite coverage is partial, missing regions are shown with a faint yellow tint.
 - Below the horizon (ground side) is shown with a subtle tint to improve orientation.
 - A red tint marks the *never-rises* celestial region for the current latitude.
 
@@ -215,6 +217,10 @@ Install the missing `libcxb-cursor0` package with:
 Cloud rendering downloads satellite imagery from public S3 buckets (Himawari / NOAA GOES) and relies on heavy dependencies.
 If your network is slow or unavailable, disable clouds with `-c 0`.
 You can still explore stars/planets and sky colors without cloud overlays.
+
+Cloud status text uses `idle` / `downloading` / `partial`:
+- `downloading`: fetching source imagery from S3
+- `partial`: rendered with available data only; missing regions are tinted faint yellow
 
 > Note: On the very first launch, the app downloads a planetary ephemeris file (`de440s.bsp`).
 > This requires network connectivity once. After it is cached, the app can run offline (especially with clouds disabled).
