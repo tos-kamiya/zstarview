@@ -704,7 +704,11 @@ def draw_dso_hover_info(
     *,
     preset: str = "night",
 ) -> None:
-    """Draw DSO hover overlay shape (intended to be placed behind stars)."""
+    """Draw DSO hover overlay shape (intended to be placed behind stars).
+
+    Hover style keeps the filled body at catalog size and adds a larger
+    (3x) blue outline ring for emphasis.
+    """
     if not highlighted_dso:
         return
     obj, _ = highlighted_dso
@@ -719,8 +723,21 @@ def draw_dso_hover_info(
     else:
         hover_pen = QColor(110, 195, 255, 230)
         hover_fill = QColor(110, 185, 255, 62)
-    painter.setPen(QPen(hover_pen, 2.6))
+    base_poly = _dso_ellipse_polygon(
+        alt_deg=alt,
+        az_deg=az,
+        major_arcmin=major_arcmin,
+        minor_arcmin=minor_arcmin,
+        pa_deg=pa_deg if math.isfinite(pa_deg) else 0.0,
+        viewer_data=viewer_data,
+        geometry=geometry,
+        gain=_DSO_SHAPE_SIZE_GAIN,
+        samples=60,
+    )
+    painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(hover_fill)
+    painter.drawPolygon(base_poly)
+
     hover_poly = _dso_ellipse_polygon(
         alt_deg=alt,
         az_deg=az,
@@ -732,6 +749,8 @@ def draw_dso_hover_info(
         gain=_DSO_HOVER_SIZE_GAIN,
         samples=60,
     )
+    painter.setPen(QPen(hover_pen, 2.6))
+    painter.setBrush(Qt.BrushStyle.NoBrush)
     painter.drawPolygon(hover_poly)
 
 
