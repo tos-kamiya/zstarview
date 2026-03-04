@@ -89,7 +89,7 @@ class GoesProvider:
         """Downloads a file from S3, caching it locally using an atomic write."""
         dst = self.root / bucket / key
         if dst.exists():
-            logger.info("Using cached file: %s", dst)
+            logger.debug("Using cached file: %s", dst)
             return dst
 
         s3 = self._s3(bucket)
