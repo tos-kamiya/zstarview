@@ -103,6 +103,7 @@ class CelestialData:
     time: astropy.time.Time
     planets: List[PlanetBody]
     stars: "StarsTable"
+    deep_sky_objects: "DeepSkyTable"
     celestial_equator_points: List[Tuple[float, float]]
     ecliptic_points: List[Tuple[float, float]]
     horizon_points: List[Tuple[float, float]]
@@ -137,3 +138,17 @@ class StarsTable(TypedDict):
     bv: np.ndarray
     size_factor: np.ndarray
     color_factor_base: np.ndarray
+
+
+class DeepSkyTable(TypedDict):
+    """Vectorized deep-sky table contract used across astro -> render."""
+
+    id: np.ndarray
+    name: np.ndarray
+    type: np.ndarray
+    alt: np.ndarray
+    az: np.ndarray
+    vmag: np.ndarray
+    major_arcmin: np.ndarray
+    minor_arcmin: np.ndarray
+    pa_deg: np.ndarray

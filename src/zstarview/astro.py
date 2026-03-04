@@ -19,7 +19,7 @@ from .paths import (
     PLANET_IDS,
     EPHEMERIS_FILENAME,
 )
-from .types import LunarEclipseInfo, PlanetBody, SolarEclipseInfo, StarsTable
+from .types import DeepSkyTable, LunarEclipseInfo, PlanetBody, SolarEclipseInfo, StarsTable
 
 
 # Skyfield ephemeris cache loader (separate from UI)
@@ -49,6 +49,21 @@ class StarCatalogArrays(TypedDict):
     size_scale: np.ndarray
     color_base: np.ndarray
     name: np.ndarray
+
+
+class DeepSkyCatalogArrays(TypedDict):
+    """Pre-normalized deep-sky catalog arrays for fast repeated sky updates."""
+
+    id: np.ndarray
+    name: np.ndarray
+    type: np.ndarray
+    ra_h: np.ndarray
+    dec: np.ndarray
+    unit_vectors: np.ndarray
+    vmag: np.ndarray
+    major_arcmin: np.ndarray
+    minor_arcmin: np.ndarray
+    pa_deg: np.ndarray
 
 
 def prepare_star_catalog_arrays(
@@ -108,6 +123,42 @@ def prepare_star_catalog_arrays(
         "size_scale": size_scale,
         "color_base": color_base,
         "name": name,
+    }
+
+
+def prepare_deep_sky_catalog_arrays(dso_df: pl.DataFrame) -> DeepSkyCatalogArrays:
+    """Normalize a DSO catalog to NumPy arrays once at startup."""
+    ids = dso_df["Id"].to_numpy()
+    names = dso_df["Name"].to_numpy()
+    types = dso_df["Type"].to_numpy()
+    ra_h = dso_df["RAh"].cast(pl.Float64, strict=False).to_numpy()
+    dec = dso_df["Dec"].cast(pl.Float64, strict=False).to_numpy()
+    ra_rad = np.radians(ra_h * 15.0)
+    dec_rad = np.radians(dec)
+    sin_dec = np.sin(dec_rad)
+    cos_dec = np.cos(dec_rad)
+    unit_vectors = np.column_stack(
+        (
+            cos_dec * np.cos(ra_rad),
+            cos_dec * np.sin(ra_rad),
+            sin_dec,
+        )
+    )
+    vmag = dso_df["Vmag"].cast(pl.Float64, strict=False).fill_null(np.nan).to_numpy()
+    major_arcmin = dso_df["MajorArcmin"].cast(pl.Float64, strict=False).fill_null(np.nan).to_numpy()
+    minor_arcmin = dso_df["MinorArcmin"].cast(pl.Float64, strict=False).fill_null(np.nan).to_numpy()
+    pa_deg = dso_df["PAdeg"].cast(pl.Float64, strict=False).fill_null(np.nan).to_numpy()
+    return {
+        "id": ids,
+        "name": names,
+        "type": types,
+        "ra_h": ra_h,
+        "dec": dec,
+        "unit_vectors": unit_vectors,
+        "vmag": vmag,
+        "major_arcmin": major_arcmin,
+        "minor_arcmin": minor_arcmin,
+        "pa_deg": pa_deg,
     }
 
 
@@ -251,6 +302,31 @@ def calculate_visible_stars(
     }
 
     return (visible_stars, location)
+
+
+def calculate_visible_deep_sky_objects(
+    dso_catalog: DeepSkyCatalogArrays,
+    lat: float,
+    lon: float,
+    time_obj: astropy.time.Time,
+    view_center: Tuple[float, float],
+) -> DeepSkyTable:
+    """Compute visible deep-sky objects and return vectorized rows."""
+    location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg)
+    matrix = build_icrs_to_altaz_matrix(time_obj, location)
+    alt, az = apply_icrs_to_altaz_matrix(dso_catalog["unit_vectors"], matrix)
+    in_view_mask = is_in_fov_vectorized(alt, az, view_center, fov_deg=STAR_FIELD_OF_VIEW_DEG)
+    return {
+        "id": dso_catalog["id"][in_view_mask],
+        "name": dso_catalog["name"][in_view_mask],
+        "type": dso_catalog["type"][in_view_mask],
+        "alt": alt[in_view_mask],
+        "az": az[in_view_mask],
+        "vmag": dso_catalog["vmag"][in_view_mask],
+        "major_arcmin": dso_catalog["major_arcmin"][in_view_mask],
+        "minor_arcmin": dso_catalog["minor_arcmin"][in_view_mask],
+        "pa_deg": dso_catalog["pa_deg"][in_view_mask],
+    }
 
 
 def radec_to_altaz(

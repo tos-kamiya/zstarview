@@ -68,3 +68,11 @@ def load_star_catalog(filename: str, vmag_threshold: Optional[float] = 7.0) -> p
         vmag_col = pl.col("Vmag").cast(pl.Float64, strict=False)
         df = df.filter((vmag_col.is_not_null()) & (vmag_col <= vmag_threshold))
     return df
+
+
+def load_dso_catalog(filename: str) -> pl.DataFrame:
+    """Load DSO catalog CSV and keep rows that have valid RA/Dec."""
+    df = pl.read_csv(filename, try_parse_dates=False, null_values="").fill_null("")
+    ra = pl.col("RAh").cast(pl.Float64, strict=False)
+    dec = pl.col("Dec").cast(pl.Float64, strict=False)
+    return df.filter(ra.is_not_null() & dec.is_not_null())

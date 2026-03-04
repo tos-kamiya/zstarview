@@ -467,7 +467,7 @@ name = "importlib-metadata"
 version = "8.7.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "zipp" },
+    { name = "zipp", marker = "python_full_version < '3.14'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f3/49/3b30cad09e7771a4982d9975a8cbf64f00d4a1ececb53297f1d9a7be1b10/importlib_metadata-8.7.1.tar.gz", hash = "sha256:49fef1ae6440c182052f407c8d34a68f72efc36db9ca90dc0113398f2fdde8bb", size = 57107, upload-time = "2025-12-21T10:00:19.278Z" }
 wheels = [
@@ -1137,6 +1137,20 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/0e/5b/a16dcf152140400752c9232edaaac5d3079a58ac3ac1c2672edbfddf0e35/pykdtree-1.4.3-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:a332bd906347e0769363051ff4f67d9aa985b30a8ad4f25ff9538247cd0dda03", size = 498328, upload-time = "2025-08-06T11:11:28.47Z" },
     { url = "https://files.pythonhosted.org/packages/5d/2a/7729c6cdd3af4fa336b89eb4f4428409be8e8b97b1682dfd68efe674b977/pykdtree-1.4.3-cp314-cp314t-win_amd64.whl", hash = "sha256:bee5fa72ba2b37a731465d6b7e933701af438ce0c72de471bd6a4f9b76c68e33", size = 74061, upload-time = "2025-08-06T11:11:29.371Z" },
     { url = "https://files.pythonhosted.org/packages/a0/50/cfc0d7d0385168ba7888c28696028670e86d4d2346be52c99bf1ea643c61/pykdtree-1.4.3-cp314-cp314t-win_arm64.whl", hash = "sha256:74f042f39ac8ba599d4b767c8e9162e5e34b108f217a68e9f89f059620f62253", size = 58909, upload-time = "2025-08-06T11:11:30.238Z" },
+]
+
+[[package]]
+name = "pyongc"
+version = "1.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1a/a6/53353af618954d701ad435ada2ed059f3014f56f47d9fdd6348932566e45/pyongc-1.2.0.tar.gz", hash = "sha256:7fffae1407a2fad8d33319b20c4839ea066a76776b79c312f93d43641c0df4ac", size = 3260685, upload-time = "2025-07-09T15:59:00.633Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c0/ec/4fcec7fe37c7320d5b0b5e18bb13e807f73ee1aa69369fe045c5a035263d/pyongc-1.2.0-py3-none-any.whl", hash = "sha256:ee90bc76a69f859be20d05fed0ae032873116bc6b5d3e8c24570ede53eeeab05", size = 2347719, upload-time = "2025-07-09T15:58:57.33Z" },
 ]
 
 [[package]]
@@ -2204,6 +2218,7 @@ dependencies = [
 
 [package.optional-dependencies]
 dev = [
+    { name = "pyongc" },
     { name = "pytest" },
 ]
 
@@ -2218,6 +2233,7 @@ requires-dist = [
     { name = "numpy" },
     { name = "pillow", specifier = ">=10" },
     { name = "polars" },
+    { name = "pyongc", marker = "extra == 'dev'" },
     { name = "pyproj" },
     { name = "pyside6" },
     { name = "pytest", marker = "extra == 'dev'" },
