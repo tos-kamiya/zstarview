@@ -20,6 +20,7 @@ from ..clouddisc.types import RenderKey, SourceKey
 @dataclass
 class CloudImageState:
     image: Optional[QImage] = None
+    missing_mask: Optional[QImage] = None
     stripe_density: Optional[Any] = None
     meta: Optional[Any] = None
     banner_text: Optional[str] = None
@@ -40,6 +41,7 @@ class CloudImageState:
         az: float,
         time_utc: datetime,
         stripe_density: Optional[Any] = None,
+        missing_mask: Optional[QImage] = None,
         source_key: Optional[SourceKey] = None,
         render_key: Optional[RenderKey] = None,
         request_id: Optional[int] = None,
@@ -47,6 +49,7 @@ class CloudImageState:
         missing_mask_key: Optional[int] = None,
     ) -> None:
         self.image = image
+        self.missing_mask = missing_mask
         self.stripe_density = stripe_density
         self.meta = meta
         sat = getattr(meta, "satellite", None) if meta is not None else None
