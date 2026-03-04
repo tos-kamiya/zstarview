@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 from PySide6.QtGui import QImage, QPainter
 
-from zstarview.ui.composite import SkyCompositorCache, overlay_missing_tint
+from zstarview.ui.composite import SkyCompositorCache, mask_cloud_alpha_by_missing, overlay_missing_tint
 from zstarview.types import ScreenGeometry
 from zstarview.utils.qt import np_rgba_to_qimage, qimage_to_np_rgba
 
@@ -74,3 +74,15 @@ def test_compositor_cache_key_includes_missing_mask() -> None:
     arr1 = qimage_to_np_rgba(canvas1)
     arr2 = qimage_to_np_rgba(canvas2)
     assert np.any(arr1 != arr2)
+
+
+def test_mask_cloud_alpha_by_missing_cuts_cloud_pixels() -> None:
+    cloud = np.zeros((12, 12, 4), dtype=np.uint8)
+    cloud[..., :3] = 255
+    cloud[..., 3] = 180
+    missing = np.zeros((12, 12, 4), dtype=np.uint8)
+    missing[3:9, 4:10, 3] = 255
+
+    out = qimage_to_np_rgba(mask_cloud_alpha_by_missing(np_rgba_to_qimage(cloud), np_rgba_to_qimage(missing)))
+    assert int(out[1, 1, 3]) == 180
+    assert int(out[5, 6, 3]) == 0

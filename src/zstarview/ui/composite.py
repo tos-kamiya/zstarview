@@ -310,6 +310,27 @@ def overlay_missing_tint(
     return np_rgba_to_qimage(out)
 
 
+def mask_cloud_alpha_by_missing(
+    cloud_img: QImage,
+    missing_mask_img: QImage,
+) -> QImage:
+    """Set cloud alpha to zero where missing-mask alpha is present."""
+    w, h = cloud_img.width(), cloud_img.height()
+    if missing_mask_img.width() != w or missing_mask_img.height() != h:
+        missing_mask_img = missing_mask_img.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+    cloud = qimage_to_np_rgba(cloud_img if cloud_img.format() == QImage.Format_RGBA8888 else cloud_img.convertToFormat(QImage.Format_RGBA8888))
+    missing = qimage_to_np_rgba(
+        missing_mask_img
+        if missing_mask_img.format() == QImage.Format_RGBA8888
+        else missing_mask_img.convertToFormat(QImage.Format_RGBA8888)
+    )
+    cut = missing[..., 3] > 0
+    if np.any(cut):
+        cloud[..., 3][cut] = 0
+        cloud[..., :3][cut] = 0
+    return np_rgba_to_qimage(cloud)
+
+
 class SkyCompositorCache:
     """Manage compositing and reuse the last composited image via a cache key."""
 
@@ -406,6 +427,8 @@ class SkyCompositorCache:
                     )
                 else:
                     cloud_s = cloud_with_hatched_alpha(cloud_s, self._hatch_cfg)
+                if missing_s is not None:
+                    cloud_s = mask_cloud_alpha_by_missing(cloud_s, missing_s)
 
             if cloud_s is None or cloud_alpha <= 0.0:
                 composited = sky_s if sky_s is not None else QImage(w, h, QImage.Format_ARGB32_Premultiplied)
