@@ -56,6 +56,7 @@ from ..paths import (
     STATUS_LINE_FONT_SIZE,
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
+    CLOUD_MISSING_TINT_RGBA,
 )
 from ..config import load_last_window_geometry, save_last_window_geometry
 from ..render import draw as render_draw
@@ -138,6 +139,7 @@ class SkyWindow(DraggableWindow):
         star_visibility_boost: float = 1.0,
         vmag_brightness_scale: float = -0.39,
         cloud_stripe_style: Tuple[int, float] = (50, 0.2),
+        cloud_missing_tint_opacity: float = float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0,
         star_render_expected_width: int = 600,
         window_geometry_arg: Optional[WindowGeometryArg] = None,
     ) -> None:
@@ -317,9 +319,17 @@ class SkyWindow(DraggableWindow):
 
         # --- Composition Cache (moved to dedicated class) ---
         target_stripes, width_factor = cloud_stripe_style
+        missing_tint_alpha = int(round(255.0 * max(0.0, min(1.0, float(cloud_missing_tint_opacity)))))
+        missing_tint_rgba = (
+            int(CLOUD_MISSING_TINT_RGBA[0]),
+            int(CLOUD_MISSING_TINT_RGBA[1]),
+            int(CLOUD_MISSING_TINT_RGBA[2]),
+            missing_tint_alpha,
+        )
         self._compositor = SkyCompositorCache(
             cloud_target_stripes=int(target_stripes),
             cloud_stripe_width_factor=float(width_factor),
+            missing_tint_rgba=missing_tint_rgba,
         )
 
         # Cloud error banner is kept inside CloudImageState
