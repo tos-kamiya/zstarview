@@ -25,6 +25,7 @@ from ..clouddisc import (
     VisibilityError,
     cleanup_satellite_cache,
 )
+from ..clouddisc.types import CloudSourceData
 from ..clouddisc.providers.select import pick_satellite
 from ..paths import CLOUD_SHELL_KM
 from ..utils.qt import np_rgba_to_qimage, pil_to_qimage
@@ -48,7 +49,7 @@ class CloudController(QObject):
         self._pending_source_request: Optional[dict] = None
         self._pending_render_request: Optional[dict] = None
         self._last_render_request: Optional[dict] = None
-        self._latest_source = None
+        self._latest_source: Optional[CloudSourceData] = None
         self._latest_request_id = 0
         self._stopping = False
         self._cleanup_counter = 0

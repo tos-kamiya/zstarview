@@ -104,7 +104,7 @@ def qimage_to_np_rgba(qimg: QImage) -> np.ndarray:
     bpl = qimg.bytesPerLine()
 
     # In PySide6, bits() returns a memoryview. Convert to bytes for frombuffer.
-    buf = qimg.constBits().tobytes()
+    buf = bytes(qimg.constBits())
     arr = np.frombuffer(buf, dtype=np.uint8).reshape(h, bpl)
 
     # Remove any extra padding at the end of each scanline and ensure the
