@@ -483,11 +483,17 @@ class SkyWindow(DraggableWindow):
         sat = self.cloud_state.current_satellite or self._predicted_cloud_satellite()
         if self.cloud_state.banner_text:
             detail = self.cloud_state.banner_text.removeprefix("Clouds:").strip()
+            if "download" in detail.lower():
+                return f"Clouds [{sat}]: downloading"
             return f"Clouds [{sat}]: {detail}"
         meta = self.cloud_state.meta
         if meta is not None:
             try:
                 t = meta.time_utc.strftime("%H:%MZ")
+                coverage = self.cloud_state.coverage_ratio
+                if coverage is not None and coverage < 0.999:
+                    pct = int(round(max(0.0, min(1.0, float(coverage))) * 100.0))
+                    return f"Clouds [{meta.satellite}]: partial {pct}% {t}"
                 return f"Clouds [{meta.satellite}]: {meta.product} {t}"
             except Exception:
                 pass
