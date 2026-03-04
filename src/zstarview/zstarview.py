@@ -39,13 +39,14 @@ from .paths import (
     CITY_COORD_FILE,
     CITY_ADMIN1_CODES_FILE,
     STARS_CSV_FILE,
+    DSO_CSV_FILE,
     APP_ICON_FILE,
     DIRECTIONS,
     WINDOW_WIDTH,
 )
 from .__about__ import __version__
 from .config import load_last_city, save_last_city
-from .catalog import load_star_catalog
+from .catalog import load_dso_catalog, load_star_catalog
 from .ui.window import SkyWindow
 from .utils.resolve_city import CityRec, load_admin1_names, resolve_city, resolve_city_by_name, resolve_city_by_geonameid
 from .utils.timezone_parser import parse_tz_string
@@ -708,6 +709,20 @@ def _startup_load_stars(args_vmag_limit: Optional[float]) -> pl.DataFrame:
     return star_catalog
 
 
+def _startup_load_dso() -> Optional[pl.DataFrame]:
+    """Load optional DSO catalog used for shape overlays."""
+    try:
+        dso_catalog = load_dso_catalog(DSO_CSV_FILE)
+    except FileNotFoundError:
+        logger.info("DSO catalog not found: %s (shape overlay disabled)", DSO_CSV_FILE)
+        return None
+    except Exception:
+        logger.warning("Failed to load DSO catalog: %s", DSO_CSV_FILE, exc_info=True)
+        return None
+    logger.info("Loaded %d DSO rows", len(dso_catalog))
+    return dso_catalog
+
+
 def main() -> None:
     """Main entry point for the star sky visualizer."""
 
@@ -725,6 +740,7 @@ def main() -> None:
         set_splash_context(_format_splash_location(city))
         delta_t = _startup_parse_time_arguments(args.datetime, args.days, args.hours)
         star_catalog = _startup_load_stars(args.vmag_limit)
+        dso_catalog = _startup_load_dso()
     except StartupAbortError:
         time.sleep(3)
         return
@@ -748,7 +764,8 @@ def main() -> None:
         (city.lat, city.lon, city.tz),
         view_center,
         star_catalog,
-        delta_t,
+        dso_catalog=dso_catalog,
+        delta_t=delta_t,
         sky_disc_alpha=sky_opacity,
         cloud_disc_alpha=cloud_opacity,
         enlarge_moon=args.enlarge_moon,

@@ -13,13 +13,16 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, Tuple
 
 import astropy
+import numpy as np
 import polars as pl
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QImage
 
 from ..astro import (
+    DeepSkyCatalogArrays,
     StarCatalogArrays,
     calculate_celestial_equator_points,
+    calculate_visible_deep_sky_objects,
     calculate_ecliptic_points,
     calculate_horizon_points,
     calculate_planets,
@@ -56,6 +59,7 @@ class SkyDataWorker(QObject):
         lon: float,
         view_center: Tuple[float, float],
         star_catalog: pl.DataFrame | StarCatalogArrays,
+        dso_catalog: DeepSkyCatalogArrays | None = None,
         star_vmag_limit: float | None = None,
         delta_t: timedelta,
         sky_disc_alpha: float,
@@ -75,6 +79,7 @@ class SkyDataWorker(QObject):
                 "lon": lon,
                 "view_center": view_center,
                 "star_catalog": star_catalog,
+                "dso_catalog": dso_catalog,
                 "star_vmag_limit": star_vmag_limit,
                 "delta_t": delta_t,
                 "sky_disc_alpha": sky_disc_alpha,
@@ -93,6 +98,7 @@ class SkyDataWorker(QObject):
         lon: float,
         view_center: Tuple[float, float],
         star_catalog: pl.DataFrame | StarCatalogArrays,
+        dso_catalog: DeepSkyCatalogArrays | None,
         star_vmag_limit: float | None,
         delta_t: timedelta,
         sky_disc_alpha: float,
@@ -111,6 +117,28 @@ class SkyDataWorker(QObject):
                 view_center,
                 max_vmag=star_vmag_limit,
             )
+            if dso_catalog is None:
+                empty_obj = np.array([], dtype=object)
+                empty_float = np.array([], dtype=float)
+                deep_sky_objects = {
+                    "id": empty_obj,
+                    "name": empty_obj,
+                    "type": empty_obj,
+                    "alt": empty_float,
+                    "az": empty_float,
+                    "vmag": empty_float,
+                    "major_arcmin": empty_float,
+                    "minor_arcmin": empty_float,
+                    "pa_deg": empty_float,
+                }
+            else:
+                deep_sky_objects = calculate_visible_deep_sky_objects(
+                    dso_catalog,
+                    lat,
+                    lon,
+                    time_obj,
+                    view_center,
+                )
             planets = calculate_planets(lat, lon, time_obj, view_center)
             celestial_equator_points = calculate_celestial_equator_points(loc, time_obj, view_center)
             ecliptic_points = calculate_ecliptic_points(loc, time_obj, view_center)
@@ -119,6 +147,7 @@ class SkyDataWorker(QObject):
                 time=time_obj,
                 planets=planets,
                 stars=stars,
+                deep_sky_objects=deep_sky_objects,
                 celestial_equator_points=celestial_equator_points,
                 ecliptic_points=ecliptic_points,
                 horizon_points=horizon_points,

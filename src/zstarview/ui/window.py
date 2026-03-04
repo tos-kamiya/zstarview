@@ -32,7 +32,13 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import QApplication, QMenu, QPushButton, QSizeGrip
 
 from ..__about__ import __version__
-from ..astro import StarCatalogArrays, prepare_star_catalog_arrays, radec_to_altaz
+from ..astro import (
+    DeepSkyCatalogArrays,
+    StarCatalogArrays,
+    prepare_deep_sky_catalog_arrays,
+    prepare_star_catalog_arrays,
+    radec_to_altaz,
+)
 from ..clouddisc import (
     CloudDisc,
     CloudDiscConfig,
@@ -120,6 +126,7 @@ class SkyWindow(DraggableWindow):
         city_data: Tuple[float, float, str],
         view_center: Tuple[float, float],
         star_catalog: pl.DataFrame,
+        dso_catalog: Optional[pl.DataFrame] = None,
         delta_t: timedelta = timedelta(days=0, hours=0),
         sky_disc_alpha: float = 0.3,
         cloud_disc_alpha: float = 0.6,
@@ -167,6 +174,11 @@ class SkyWindow(DraggableWindow):
             max_vmag=6.0,
             vmag_brightness_scale=self.vmag_brightness_scale,
         )
+        self.dso_catalog_np: Optional[DeepSkyCatalogArrays]
+        if dso_catalog is None:
+            self.dso_catalog_np = None
+        else:
+            self.dso_catalog_np = prepare_deep_sky_catalog_arrays(dso_catalog)
         self._named_stars_by_band = build_named_star_shortcuts(star_catalog, max_vmag=2.0)
         self._named_stars_search_all = flatten_named_star_shortcuts(
             build_named_star_shortcuts(star_catalog, max_vmag=None)
@@ -619,8 +631,10 @@ class SkyWindow(DraggableWindow):
         geometry = render_draw.get_screen_geometry(self.width(), self.height(), alt)
 
         highlighted_object = None
+        highlighted_dso = None
         if self.mouse_pos is not None:
             highlighted_object = render_draw.find_highlighted_object(self.celestial_data, self.viewer_data, self.mouse_pos, geometry)
+            highlighted_dso = render_draw.find_highlighted_dso(self.celestial_data, self.viewer_data, self.mouse_pos, geometry)
         jump_highlight = self._active_jump_highlight_object(geometry)
         if jump_highlight is not None:
             highlighted_object = jump_highlight
@@ -628,7 +642,7 @@ class SkyWindow(DraggableWindow):
         self._clear_background_layer(painter)
         self._draw_background_layer(painter, geometry)
         self._draw_sky_cloud_layers(painter, geometry)
-        self._draw_terrain_layers(painter, geometry)
+        self._draw_terrain_layers(painter, geometry, highlighted_dso)
         self._draw_star_layer(painter, geometry)
 
         enlarge_moon = self.enlarge_moon
@@ -638,7 +652,7 @@ class SkyWindow(DraggableWindow):
             enlarge_moon = enlarge_moon or name == "moon"
 
         self._draw_planet_layer(painter, geometry, enlarge_moon)
-        self._draw_overlay_layer(painter, highlighted_object, enlarge_moon)
+        self._draw_overlay_layer(painter, geometry, highlighted_object, highlighted_dso, enlarge_moon)
         self._draw_status_line(painter)
 
     def _clear_background_layer(self, painter: QPainter) -> None:
@@ -661,7 +675,27 @@ class SkyWindow(DraggableWindow):
             stripe_density=self.cloud_state.stripe_density,
         )
 
-    def _draw_terrain_layers(self, painter: QPainter, geometry: render_draw.ScreenGeometry) -> None:
+    def _draw_terrain_layers(
+        self,
+        painter: QPainter,
+        geometry: render_draw.ScreenGeometry,
+        highlighted_dso: Any | None,
+    ) -> None:
+        render_draw.draw_deep_sky_shapes(
+            painter,
+            geometry,
+            self.celestial_data,
+            self.viewer_data,
+            preset=self.visual_preset,
+        )
+        render_draw.draw_dso_hover_info(
+            painter,
+            geometry,
+            self.viewer_data,
+            highlighted_dso,
+            self.text_font,
+            preset=self.visual_preset,
+        )
         render_draw.draw_sky_reference_lines(painter, geometry, self.celestial_data)
         render_draw.draw_direction_labels(
             painter,
@@ -748,13 +782,22 @@ class SkyWindow(DraggableWindow):
             preset=self.visual_preset,
         )
 
-    def _draw_overlay_layer(self, painter: QPainter, highlighted_object: Any | None, enlarge_moon: bool) -> None:
+    def _draw_overlay_layer(
+        self,
+        painter: QPainter,
+        geometry: render_draw.ScreenGeometry,
+        highlighted_object: Any | None,
+        highlighted_dso: Any | None,
+        enlarge_moon: bool,
+    ) -> None:
         render_draw.draw_overlay_info(
             painter,
+            geometry,
             self.celestial_data,
             self.viewer_data,
             self.vmag_limit,
             enlarge_moon,
+            highlighted_dso,
             highlighted_object,
             self.text_font,
             preset=self.visual_preset,
@@ -832,6 +875,7 @@ class SkyWindow(DraggableWindow):
             lon=lon,
             view_center=self.viewer_data.view_center,
             star_catalog=star_catalog,
+            dso_catalog=self.dso_catalog_np,
             star_vmag_limit=worker_star_vmag_limit,
             delta_t=self.delta_t,
             sky_disc_alpha=self.sky_disc_alpha,
