@@ -857,6 +857,7 @@ class SkyWindow(DraggableWindow):
             geometry,
             render_viewer.view_center,
             self.text_font,
+            self.mouse_pos,
             preset=self.visual_preset,
         )
         render_draw.draw_zenith_marker(painter, geometry, render_viewer.view_center)

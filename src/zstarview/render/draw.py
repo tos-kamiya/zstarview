@@ -1521,6 +1521,7 @@ def draw_direction_labels(
     geometry: ScreenGeometry,
     view_center: Tuple[float, float],
     text_font: QFont,
+    mouse_pos: Optional[QPoint] = None,
     *,
     preset: str = "night",
 ) -> None:
@@ -1543,6 +1544,9 @@ def draw_direction_labels(
     marker_hit_radius_px = 4.0
     tangent_probe_deg = 0.6
     label_outward_offset_px = 4.0
+    hide_near_mouse_px = 28.0
+    mouse_x = float(mouse_pos.x()) if mouse_pos is not None else None
+    mouse_y = float(mouse_pos.y()) if mouse_pos is not None else None
     painter.setFont(text_font)
     fm = QFontMetrics(text_font)
     alt = 0.0
@@ -1602,6 +1606,12 @@ def draw_direction_labels(
                     label_pos.x() + (ox / norm) * label_outward_offset_px,
                     label_pos.y() + (oy / norm) * label_outward_offset_px,
                 )
+
+        if mouse_x is not None and mouse_y is not None:
+            dx = label_pos.x() - mouse_x
+            dy = label_pos.y() - mouse_y
+            if (dx * dx + dy * dy) <= (hide_near_mouse_px * hide_near_mouse_px):
+                continue
 
         draw_outlined_text(
             painter,
