@@ -1,7 +1,7 @@
 import math
 import re
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import hashlib
 import logging
@@ -43,6 +43,71 @@ _DSO_SHAPE_SIZE_GAIN = 1.0
 _DSO_HOVER_SIZE_GAIN = 3.0
 _DSO_SHAPE_MIN_MAJOR_ARCMIN = 15.0
 _DSO_CATALOG_LIKE_NAME_RE = re.compile(r"^(M\d+|NGC\d+|IC\d+|MEL\d+|MWSC\d+)$", re.IGNORECASE)
+
+
+def _text_bounds_at_baseline(text: str, font: QFont, baseline_pos: QPointF) -> QRectF:
+    fm = QFontMetrics(font)
+    bounds = fm.tightBoundingRect(text)
+    return QRectF(
+        baseline_pos.x() + bounds.x(),
+        baseline_pos.y() + bounds.y(),
+        bounds.width(),
+        bounds.height(),
+    )
+
+
+def _rect_overlaps_any(rect: QRectF, others: List[QRectF], pad_px: float = 2.0) -> bool:
+    if not others:
+        return False
+    test = rect.adjusted(-pad_px, -pad_px, pad_px, pad_px)
+    return any(test.intersects(other.adjusted(-pad_px, -pad_px, pad_px, pad_px)) for other in others)
+
+
+def draw_label_candidates(
+    painter: QPainter,
+    candidates: List[Dict[str, Any]],
+    text_font: QFont,
+) -> None:
+    """Draw label candidates as the final label layer with overlap avoidance."""
+    if not candidates:
+        return
+    reservations: List[QRectF] = []
+    offsets = (
+        (0.0, 0.0),
+        (12.0, 0.0),
+        (-12.0, 0.0),
+        (0.0, -12.0),
+        (0.0, 12.0),
+        (20.0, -10.0),
+        (-20.0, -10.0),
+    )
+    painter.save()
+    painter.setFont(text_font)
+    ordered = sorted(candidates, key=lambda c: int(c.get("priority", 999)))
+    for cand in ordered:
+        text = str(cand.get("text", "")).strip()
+        if not text:
+            continue
+        anchor = cand.get("pos")
+        if not isinstance(anchor, QPointF):
+            continue
+        text_color = cand.get("text_color")
+        outline_color = cand.get("outline_color")
+        if not isinstance(text_color, QColor) or not isinstance(outline_color, QColor):
+            continue
+        placed = False
+        for dx, dy in offsets:
+            pos = QPointF(anchor.x() + dx, anchor.y() + dy)
+            rect = _text_bounds_at_baseline(text, text_font, pos)
+            if _rect_overlaps_any(rect, reservations):
+                continue
+            draw_outlined_text(painter, text, pos, text_font, text_color, outline_color)
+            reservations.append(rect)
+            placed = True
+            break
+        if not placed:
+            continue
+    painter.restore()
 
 
 def _is_named_dso(name: object, obj_id: object) -> bool:
@@ -698,6 +763,8 @@ def draw_asterisms(
     viewer_data: ViewerData,
     highlighted_object: Optional[Tuple[CelestialObject, QPointF]],
     text_font: QFont,
+    label_reservations: Optional[List[QRectF]] = None,
+    label_candidates: Optional[List[Dict[str, Any]]] = None,
     *,
     preset: str = "night",
 ) -> None:
@@ -782,15 +849,28 @@ def draw_asterisms(
         else:
             text_color = QColor(110, 195, 255, 230)
         _, outline_text_color = get_text_style(preset)
-        draw_outlined_text(
-            painter,
-            asterism.name,
-            label_pos,
-            text_font,
-            text_color,
-            outline_text_color,
-            outline_width=2.4,
-        )
+        if label_candidates is not None:
+            label_candidates.append(
+                {
+                    "text": asterism.name,
+                    "pos": label_pos,
+                    "text_color": text_color,
+                    "outline_color": outline_text_color,
+                    "priority": 30,
+                }
+            )
+        else:
+            draw_outlined_text(
+                painter,
+                asterism.name,
+                label_pos,
+                text_font,
+                text_color,
+                outline_text_color,
+                outline_width=2.4,
+            )
+            if label_reservations is not None:
+                label_reservations.append(_text_bounds_at_baseline(asterism.name, text_font, label_pos))
 
     painter.restore()
 
@@ -1341,6 +1421,10 @@ def draw_solar_system_bodies(
     enlarge_moon: bool,
     *,
     text_font: Optional[QFont] = None,
+    label_candidates: Optional[List[Dict[str, Any]]] = None,
+    label_reservations: Optional[List[QRectF]] = None,
+    draw_markers: bool = True,
+    draw_labels: bool = True,
     preset: str = "night",
 ) -> None:
     """
@@ -1380,34 +1464,52 @@ def draw_solar_system_bodies(
             )
         )
 
-        if body.name == "sun":
-            draw_gauge_cross(painter, text_color, pos)
+        if draw_markers:
+            if body.name == "sun":
+                draw_gauge_cross(painter, text_color, pos)
+            elif body.name == "moon" and moon_body and sun_altaz and moon_altaz:
+                _draw_moon_planet(
+                    painter,
+                    pos,
+                    geometry,
+                    body,
+                    viewer_data,
+                    sun_altaz,
+                    moon_altaz,
+                    enlarge_moon,
+                    text_color,
+                )
+            else:
+                radius_px, alpha = planet_disc_style_from_vmag(body.vmag)
+                marker_color = planet_marker_color(body.name)
+                draw_planet_bloom(painter, pos, marker_color, core_radius_px=radius_px, vmag=body.vmag)
+                marker_color.setAlpha(alpha)
+                draw_planet_disc(painter, pos, marker_color, radius_px=radius_px, alpha=alpha)
+                # Keep planet cross markers shorter than the Moon/Sun gauge marker.
+                draw_gauge_cross(painter, text_color, pos, scale=0.55, pen_width=1.0)
 
-        elif body.name == "moon" and moon_body and sun_altaz and moon_altaz:
-            _draw_moon_planet(
-                painter,
-                pos,
-                geometry,
-                body,
-                viewer_data,
-                sun_altaz,
-                moon_altaz,
-                enlarge_moon,
-                text_color,
-            )
-
-        else:
-            radius_px, alpha = planet_disc_style_from_vmag(body.vmag)
-            marker_color = planet_marker_color(body.name)
-            draw_planet_bloom(painter, pos, marker_color, core_radius_px=radius_px, vmag=body.vmag)
-            marker_color.setAlpha(alpha)
-            draw_planet_disc(painter, pos, marker_color, radius_px=radius_px, alpha=alpha)
-            # Keep planet cross markers shorter than the Moon/Sun gauge marker.
-            draw_gauge_cross(painter, text_color, pos, scale=0.55, pen_width=1.0)
+        if draw_labels and body.name != "sun":
+            label_pos = QPointF(pos.x() + 12.0, pos.y() - 10.0)
+            if label_candidates is not None:
+                label_candidates.append(
+                    {
+                        "text": body.name,
+                        "pos": label_pos,
+                        "text_color": label_text_color,
+                        "outline_color": label_outline_color,
+                        "priority": 40,
+                    }
+                )
+                continue
+            if label_reservations is not None:
+                rect = _text_bounds_at_baseline(body.name, label_font, label_pos)
+                if _rect_overlaps_any(rect, label_reservations):
+                    continue
+                label_reservations.append(rect)
             draw_outlined_text(
                 painter,
                 body.name,
-                QPointF(pos.x() + 12.0, pos.y() - 10.0),
+                label_pos,
                 label_font,
                 label_text_color,
                 label_outline_color,
@@ -1522,6 +1624,8 @@ def draw_overlay_info(
     highlighted_dso: Optional[Tuple[CelestialObject, QPointF]],
     highlighted_object: Optional[Tuple[CelestialObject, QPointF]],
     text_font: QFont,
+    label_candidates: Optional[List[Dict[str, Any]]] = None,
+    label_reservations: Optional[List[QRectF]] = None,
     *,
     preset: str = "night",
 ) -> None:
@@ -1614,14 +1718,27 @@ def draw_overlay_info(
         if dso_name:
             bounds = hover_poly.boundingRect()
             label_pos = QPointF(bounds.right() + 10.0, bounds.top() - 6.0)
-            draw_outlined_text(
-                painter,
-                dso_name,
-                label_pos,
-                text_font,
-                dso_label_color,
-                outline_color,
-            )
+            if label_candidates is not None:
+                label_candidates.append(
+                    {
+                        "text": dso_name,
+                        "pos": label_pos,
+                        "text_color": dso_label_color,
+                        "outline_color": outline_color,
+                        "priority": 20,
+                    }
+                )
+            else:
+                draw_outlined_text(
+                    painter,
+                    dso_name,
+                    label_pos,
+                    text_font,
+                    dso_label_color,
+                    outline_color,
+                )
+                if label_reservations is not None:
+                    label_reservations.append(_text_bounds_at_baseline(dso_name, text_font, label_pos))
 
     # ---- Star/planet highlight ----
     if highlighted_object:
@@ -1633,7 +1750,21 @@ def draw_overlay_info(
         # PlanetBody(dataclass) or star(dict)
         if not isinstance(obj, PlanetBody):
             name = getattr(obj, "name", "") if hasattr(obj, "name") else obj.get("name", "")
-            draw_outlined_text(painter, name, QPointF(pos.x() + 15, pos.y() - 15), text_font, text_color, outline_color)
+            label_pos = QPointF(pos.x() + 15, pos.y() - 15)
+            if label_candidates is not None:
+                label_candidates.append(
+                    {
+                        "text": str(name),
+                        "pos": label_pos,
+                        "text_color": text_color,
+                        "outline_color": outline_color,
+                        "priority": 10,
+                    }
+                )
+            else:
+                draw_outlined_text(painter, name, label_pos, text_font, text_color, outline_color)
+                if label_reservations is not None:
+                    label_reservations.append(_text_bounds_at_baseline(str(name), text_font, label_pos))
 
 
 def draw_status_line_text(

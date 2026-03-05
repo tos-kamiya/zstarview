@@ -14,7 +14,7 @@ from typing import Any, Dict, Optional, Tuple, Union
 
 import astropy.time
 import polars as pl
-from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, Qt, QTimer, Signal
+from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import (
     QAction,
     QCloseEvent,
@@ -753,7 +753,17 @@ class SkyWindow(DraggableWindow):
         self._clear_background_layer(painter)
         self._draw_background_layer(painter, geometry)
         self._draw_sky_cloud_layers(painter, geometry)
-        self._draw_terrain_layers(painter, geometry, render_viewer, highlighted_object, highlighted_dso)
+        label_reservations: list[QRectF] = []
+        label_candidates: list[dict[str, Any]] = []
+        self._draw_terrain_layers(
+            painter,
+            geometry,
+            render_viewer,
+            highlighted_object,
+            highlighted_dso,
+            label_reservations,
+            label_candidates,
+        )
         self._draw_star_layer(painter, geometry, render_viewer)
 
         enlarge_moon = self.enlarge_moon
@@ -762,8 +772,24 @@ class SkyWindow(DraggableWindow):
             name = getattr(obj, "name", "") if hasattr(obj, "name") else obj.get("name", "")
             enlarge_moon = enlarge_moon or name == "moon"
 
-        self._draw_planet_layer(painter, geometry, render_viewer, enlarge_moon)
-        self._draw_overlay_layer(painter, geometry, render_viewer, highlighted_object, highlighted_dso, enlarge_moon)
+        self._draw_planet_layer(
+            painter,
+            geometry,
+            render_viewer,
+            enlarge_moon,
+            label_candidates,
+        )
+        self._draw_overlay_layer(
+            painter,
+            geometry,
+            render_viewer,
+            highlighted_object,
+            highlighted_dso,
+            enlarge_moon,
+            label_reservations,
+            label_candidates,
+        )
+        self._draw_label_layer(painter, label_candidates)
         self._draw_status_line(painter)
 
     def _clear_background_layer(self, painter: QPainter) -> None:
@@ -794,6 +820,8 @@ class SkyWindow(DraggableWindow):
         render_viewer: ViewerData,
         highlighted_object: Any | None,
         highlighted_dso: Any | None,
+        label_reservations: list[QRectF],
+        label_candidates: list[dict[str, Any]],
     ) -> None:
         if self.show_dso:
             render_draw.draw_deep_sky_shapes(
@@ -819,6 +847,8 @@ class SkyWindow(DraggableWindow):
                 render_viewer,
                 highlighted_object,
                 self.text_font,
+                label_reservations,
+                label_candidates=label_candidates,
                 preset=self.visual_preset,
             )
         render_draw.draw_sky_reference_lines(painter, geometry, self.celestial_data)
@@ -902,6 +932,7 @@ class SkyWindow(DraggableWindow):
         geometry: render_draw.ScreenGeometry,
         render_viewer: ViewerData,
         enlarge_moon: bool,
+        label_candidates: list[dict[str, Any]],
     ) -> None:
         render_draw.draw_solar_system_bodies(
             painter,
@@ -910,6 +941,8 @@ class SkyWindow(DraggableWindow):
             render_viewer,
             enlarge_moon,
             text_font=self.text_font,
+            label_candidates=label_candidates,
+            draw_labels=False,
             preset=self.visual_preset,
         )
 
@@ -921,6 +954,8 @@ class SkyWindow(DraggableWindow):
         highlighted_object: Any | None,
         highlighted_dso: Any | None,
         enlarge_moon: bool,
+        label_reservations: list[QRectF],
+        label_candidates: list[dict[str, Any]],
     ) -> None:
         render_draw.draw_overlay_info(
             painter,
@@ -932,7 +967,16 @@ class SkyWindow(DraggableWindow):
             highlighted_dso,
             highlighted_object,
             self.text_font,
+            label_candidates=label_candidates,
+            label_reservations=label_reservations,
             preset=self.visual_preset,
+        )
+
+    def _draw_label_layer(self, painter: QPainter, label_candidates: list[dict[str, Any]]) -> None:
+        render_draw.draw_label_candidates(
+            painter,
+            label_candidates,
+            self.text_font,
         )
 
     def _draw_status_line(self, painter: QPainter) -> None:
