@@ -732,18 +732,18 @@ def draw_asterisms(
         return
 
     if preset in ("white", "day"):
-        line_color = QColor(26, 114, 214, 200)
-        outline_color = QColor(190, 220, 250, 96)
+        line_color = QColor(26, 114, 214, 70)
+        outline_color = QColor(190, 220, 250, 28)
     else:
-        line_color = QColor(120, 190, 255, 190)
-        outline_color = QColor(32, 76, 130, 108)
+        line_color = QColor(120, 190, 255, 60)
+        outline_color = QColor(32, 76, 130, 36)
 
     painter.save()
     outline_pen = QPen(outline_color, 3.2)
     outline_pen.setCosmetic(True)
     outline_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
     outline_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-    line_pen = QPen(line_color, 1.2)
+    line_pen = QPen(line_color, 2.0)
     line_pen.setCosmetic(True)
     line_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
     line_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
