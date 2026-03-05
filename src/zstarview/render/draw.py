@@ -63,6 +63,13 @@ def _rect_overlaps_any(rect: QRectF, others: List[QRectF], pad_px: float = 2.0) 
     return any(test.intersects(other.adjusted(-pad_px, -pad_px, pad_px, pad_px)) for other in others)
 
 
+def _rect_overlap_count(rect: QRectF, others: List[QRectF], pad_px: float = 2.0) -> int:
+    if not others:
+        return 0
+    test = rect.adjusted(-pad_px, -pad_px, pad_px, pad_px)
+    return sum(1 for other in others if test.intersects(other.adjusted(-pad_px, -pad_px, pad_px, pad_px)))
+
+
 def _clamp_baseline_pos_to_viewport(
     text: str,
     font: QFont,
@@ -110,6 +117,14 @@ def draw_label_candidates(
         (0.0, 12.0),
         (20.0, -10.0),
         (-20.0, -10.0),
+        (24.0, 0.0),
+        (-24.0, 0.0),
+        (0.0, -24.0),
+        (0.0, 24.0),
+        (30.0, -14.0),
+        (-30.0, -14.0),
+        (30.0, 14.0),
+        (-30.0, 14.0),
     )
     painter.save()
     painter.setFont(text_font)
@@ -126,17 +141,30 @@ def draw_label_candidates(
         outline_color = cand.get("outline_color")
         if not isinstance(text_color, QColor) or not isinstance(outline_color, QColor):
             continue
+        hide_on_overlap = bool(cand.get("hide_on_overlap", False))
         placed = False
+        best_nonfree: Optional[Tuple[int, float, QPointF, QRectF]] = None
         for dx, dy in offsets:
             pos = QPointF(anchor.x() + dx, anchor.y() + dy)
             pos = _clamp_baseline_pos_to_viewport(text, text_font, pos, viewport)
             rect = _text_bounds_at_baseline(text, text_font, pos)
-            if _rect_overlaps_any(rect, reservations):
+            overlap_count = _rect_overlap_count(rect, reservations)
+            if overlap_count > 0:
+                if not hide_on_overlap:
+                    distance2 = (pos.x() - anchor.x()) ** 2 + (pos.y() - anchor.y()) ** 2
+                    score = (overlap_count, distance2, pos, rect)
+                    if best_nonfree is None or score[:2] < best_nonfree[:2]:
+                        best_nonfree = score
                 continue
             draw_outlined_text(painter, text, pos, text_font, text_color, outline_color)
             reservations.append(rect)
             placed = True
             break
+        if not placed and not hide_on_overlap and best_nonfree is not None:
+            _, _, pos, rect = best_nonfree
+            draw_outlined_text(painter, text, pos, text_font, text_color, outline_color)
+            reservations.append(rect)
+            placed = True
         if not placed:
             continue
     painter.restore()
@@ -1530,6 +1558,7 @@ def draw_solar_system_bodies(
                         "text_color": label_text_color,
                         "outline_color": label_outline_color,
                         "priority": 40,
+                        "hide_on_overlap": True,
                     }
                 )
                 continue
