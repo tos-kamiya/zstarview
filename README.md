@@ -71,6 +71,8 @@ zstarview [options] [city]
 | `-V`, `--vmag-limit V_MAG_LIMIT`            | Maximum visual magnitude of stars to display.                               | `6.0`   |
 | `--vmag-brightness-multiplier MULTIPLIER`   | Brightness multiplier per magnitude step (allowed range 1.58–2.512, default `2.5`; 2.512 is the historical Pogson ratio). \*3 | `2.5`   |
 | `-i`, `--sky-update-interval SECONDS`       | Interval for updating stars/sky-color disc in seconds.                      | `60`   |
+| `--show-dso-initial true\|false`            | Whether DSO overlays are shown at startup.                                  | auto (`show` when catalog is available) |
+| `--show-asterisms-initial true\|false`      | Whether asterism overlays are shown at startup.                             | `show` |
 | `-t`, `--theme {night,day,white,black}`     | Theme preset for background and star contrast.                              | `night` |
 | `-H`, `--hours HOURS`                       | Number of hours to add to the current time. \*1                              | `0`     |
 | `-D`, `--days DAYS`                         | Number of days to add to the current time. \*1                               | `0`     |

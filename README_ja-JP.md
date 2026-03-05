@@ -72,6 +72,8 @@ zstarview [options] [city]
 | `-V`, `--vmag-limit V_MAG_LIMIT`            | 表示する恒星の等級（明るさ）の上限を指定します。                          | `6.0`    |
 | `--vmag-brightness-multiplier MULTIPLIER`   | 等級1段階あたりの光量変化倍率（`1.58`〜`2.512`、デフォルト：`2.5`。Pogson の定義は `2.512` です）。 ※3 | `2.5`   |
 | `-i`, `--sky-update-interval SKY_UPDATE_INTERVAL` | 星空を更新する時間間隔（秒） を指定します。 | `60` |
+| `--show-dso-initial true\|false` | 起動時にDSOを表示するかを指定します。 | 自動（カタログがあれば表示） |
+| `--show-asterisms-initial true\|false` | 起動時に星座（アステリウム）を表示するかを指定します。 | 表示 |
 | `-t`, `--theme {night,day,white,black}` | 背景と星の見え方のテーマを指定します。 | `night` |
 | `-H`, `--hours HOURS`                       | 現在時刻に加算する時間数を指定します。※1                                 | `0`      |
 | `-D`, `--days DAYS`                         | 現在時刻に加算する日数を指定します。※1                                  | `0`      |
