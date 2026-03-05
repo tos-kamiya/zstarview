@@ -63,6 +63,36 @@ def _rect_overlaps_any(rect: QRectF, others: List[QRectF], pad_px: float = 2.0) 
     return any(test.intersects(other.adjusted(-pad_px, -pad_px, pad_px, pad_px)) for other in others)
 
 
+def _clamp_baseline_pos_to_viewport(
+    text: str,
+    font: QFont,
+    baseline_pos: QPointF,
+    viewport: QRectF,
+    *,
+    margin_px: float = 2.0,
+) -> QPointF:
+    """Shift baseline position so text bounds stay inside viewport."""
+    rect = _text_bounds_at_baseline(text, font, baseline_pos)
+    dx = 0.0
+    dy = 0.0
+    left = viewport.left() + margin_px
+    right = viewport.right() - margin_px
+    top = viewport.top() + margin_px
+    bottom = viewport.bottom() - margin_px
+
+    if rect.left() < left:
+        dx += left - rect.left()
+    elif rect.right() > right:
+        dx -= rect.right() - right
+
+    if rect.top() < top:
+        dy += top - rect.top()
+    elif rect.bottom() > bottom:
+        dy -= rect.bottom() - bottom
+
+    return QPointF(baseline_pos.x() + dx, baseline_pos.y() + dy)
+
+
 def draw_label_candidates(
     painter: QPainter,
     candidates: List[Dict[str, Any]],
@@ -83,6 +113,7 @@ def draw_label_candidates(
     )
     painter.save()
     painter.setFont(text_font)
+    viewport = QRectF(painter.viewport())
     ordered = sorted(candidates, key=lambda c: int(c.get("priority", 999)))
     for cand in ordered:
         text = str(cand.get("text", "")).strip()
@@ -98,6 +129,7 @@ def draw_label_candidates(
         placed = False
         for dx, dy in offsets:
             pos = QPointF(anchor.x() + dx, anchor.y() + dy)
+            pos = _clamp_baseline_pos_to_viewport(text, text_font, pos, viewport)
             rect = _text_bounds_at_baseline(text, text_font, pos)
             if _rect_overlaps_any(rect, reservations):
                 continue
