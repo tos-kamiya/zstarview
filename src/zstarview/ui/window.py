@@ -943,7 +943,7 @@ class SkyWindow(DraggableWindow):
             enlarge_moon,
             text_font=self.text_font,
             label_candidates=label_candidates,
-            draw_labels=False,
+            draw_labels=True,
             preset=self.visual_preset,
         )
 

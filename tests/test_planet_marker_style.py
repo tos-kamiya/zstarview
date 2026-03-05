@@ -119,7 +119,7 @@ def test_planets_are_drawn_with_disc_and_cross_markers(monkeypatch) -> None:
     assert bloom_calls[0][0] > 0.0
     assert len(cross_calls) == 1
     assert cross_calls[0][0] < 1.0
-    assert label_calls == ["mars"]
+    assert label_calls == ["Mars"]
 
 
 def test_hover_can_identify_planet_name() -> None:
