@@ -49,6 +49,7 @@ class StarCatalogArrays(TypedDict):
     size_scale: np.ndarray
     color_base: np.ndarray
     name: np.ndarray
+    source_id: np.ndarray
 
 
 class DeepSkyCatalogArrays(TypedDict):
@@ -89,6 +90,10 @@ def prepare_star_catalog_arrays(
     vmag = star_df["Vmag"].cast(pl.Float64, strict=False).to_numpy()
     bv = star_df["B-V"].cast(pl.Float64, strict=False).fill_null(np.nan).to_numpy()
     name = star_df["Name"].to_numpy()
+    if "SourceId" in star_df.columns:
+        source_id = star_df["SourceId"].fill_null("").to_numpy()
+    else:
+        source_id = np.full(vmag.shape, "", dtype=object)
     v_ref = 1.0
     scale = float(vmag_brightness_scale)
     L_raw = 10.0 ** (scale * (vmag - v_ref))
@@ -107,6 +112,7 @@ def prepare_star_catalog_arrays(
         vmag = vmag[mask]
         bv = bv[mask]
         name = name[mask]
+        source_id = source_id[mask]
         size_scale = size_scale[mask]
         color_base = color_base[mask]
 
@@ -123,6 +129,7 @@ def prepare_star_catalog_arrays(
         "size_scale": size_scale,
         "color_base": color_base,
         "name": name,
+        "source_id": source_id,
     }
 
 
@@ -264,6 +271,7 @@ def calculate_visible_stars(
     size_scale = cat["size_scale"]
     color_base = cat["color_base"]
     name = cat["name"]
+    source_id = cat["source_id"]
 
     if max_vmag is not None and not source_is_df:
         vlim = float(max_vmag)
@@ -271,6 +279,7 @@ def calculate_visible_stars(
         if not np.any(mag_mask):
             empty: StarsTable = {
                 "name": name[:0],
+                "source_id": source_id[:0],
                 "alt": np.array([], dtype=float),
                 "az": np.array([], dtype=float),
                 "vmag": np.array([], dtype=float),
@@ -283,6 +292,7 @@ def calculate_visible_stars(
         vmag = vmag[mag_mask]
         bv = bv[mag_mask]
         name = name[mag_mask]
+        source_id = source_id[mag_mask]
         size_scale = size_scale[mag_mask]
         color_base = color_base[mag_mask]
 
@@ -293,6 +303,7 @@ def calculate_visible_stars(
     # Filter the results using the boolean mask
     visible_stars: StarsTable = {
         "name": name[in_view_mask],
+        "source_id": source_id[in_view_mask],
         "alt": alt[in_view_mask],
         "az": az[in_view_mask],
         "vmag": vmag[in_view_mask],

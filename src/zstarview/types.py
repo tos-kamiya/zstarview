@@ -132,6 +132,7 @@ class StarsTable(TypedDict):
     """
 
     name: np.ndarray
+    source_id: np.ndarray
     alt: np.ndarray
     az: np.ndarray
     vmag: np.ndarray

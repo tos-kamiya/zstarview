@@ -72,6 +72,7 @@ from .famous_star_shortcuts import (
     build_named_star_shortcuts,
     flatten_named_star_shortcuts,
 )
+from ..asterisms import ASTERISM_KEYS_BY_SOURCE_ID
 from .sky_worker import SkyDataWorker
 
 logger = logging.getLogger(__name__)
@@ -182,6 +183,7 @@ class SkyWindow(DraggableWindow):
         else:
             self.dso_catalog_np = prepare_deep_sky_catalog_arrays(dso_catalog)
         self.show_dso: bool = self.dso_catalog_np is not None
+        self.show_asterisms: bool = True
         self._named_stars_by_band = build_named_star_shortcuts(star_catalog, max_vmag=2.0)
         self._named_stars_search_all = flatten_named_star_shortcuts(
             build_named_star_shortcuts(star_catalog, max_vmag=None)
@@ -255,6 +257,7 @@ class SkyWindow(DraggableWindow):
         self._action_enlarge_moon: Optional[QAction] = None
         self._action_toggle_clouds: Optional[QAction] = None
         self._action_toggle_dso: Optional[QAction] = None
+        self._action_toggle_asterisms: Optional[QAction] = None
         self._add_hamburger_menu()
         self.add_drag_exclusions([self.menu_button, self.size_grip])
 
@@ -274,6 +277,10 @@ class SkyWindow(DraggableWindow):
             app.aboutToQuit.connect(self._begin_shutdown)
         self._sky_data_update_timer = QTimer(self)
         self._sky_data_update_timer.timeout.connect(self.start_background_sky_data_update)
+        self._asterism_check_timer = QTimer(self)
+        self._asterism_check_timer.setInterval(1000)
+        self._asterism_check_timer.timeout.connect(self._on_asterism_check_tick)
+        self._asterism_check_timer.start()
         self._interaction_idle_timer = QTimer(self)
         self._interaction_idle_timer.setSingleShot(True)
         self._interaction_idle_timer.setInterval(self._interaction_idle_ms)
@@ -379,6 +386,12 @@ class SkyWindow(DraggableWindow):
         toggle_dso_action.triggered.connect(self.toggle_dso)
         self.menu.addAction(toggle_dso_action)
         self._action_toggle_dso = toggle_dso_action
+        toggle_asterisms_action = QAction("Asterisms", self)
+        toggle_asterisms_action.setCheckable(True)
+        toggle_asterisms_action.setChecked(self.show_asterisms)
+        toggle_asterisms_action.triggered.connect(self.toggle_asterisms)
+        self.menu.addAction(toggle_asterisms_action)
+        self._action_toggle_asterisms = toggle_asterisms_action
 
         self.menu.addSeparator()
         fullscreen_action = self.menu.addAction("Fullscreen (F11)")
@@ -474,8 +487,38 @@ class SkyWindow(DraggableWindow):
             self._cloud_controller.shutdown()
         if self._sky_data_update_timer.isActive():
             self._sky_data_update_timer.stop()
+        if self._asterism_check_timer.isActive():
+            self._asterism_check_timer.stop()
         if self._cloud_update_timer.isActive():
             self._cloud_update_timer.stop()
+
+    def _on_asterism_check_tick(self) -> None:
+        if self._is_shutting_down:
+            return
+        if not self.show_asterisms:
+            return
+        if self.mouse_pos is None or self.celestial_data is None:
+            return
+
+        render_viewer = self._viewer_data_for_render()
+        geometry = render_draw.get_screen_geometry(self.width(), self.height(), render_viewer.view_center[0])
+        highlighted = render_draw.find_highlighted_object(
+            self.celestial_data,
+            render_viewer,
+            self.mouse_pos,
+            geometry,
+        )
+        if highlighted is None:
+            return
+        obj, _ = highlighted
+        if not isinstance(obj, dict):
+            return
+        source_id = str(obj.get("source_id", "")).strip()
+        if not source_id:
+            return
+        if source_id not in ASTERISM_KEYS_BY_SOURCE_ID:
+            return
+        self.update()
 
     def _safe_request_cloud_repaint(self) -> None:
         """Best-effort repaint request; ignores teardown-time signal errors."""
@@ -545,6 +588,12 @@ class SkyWindow(DraggableWindow):
         self.show_dso = not self.show_dso
         if self._action_toggle_dso is not None and self._action_toggle_dso.isChecked() != self.show_dso:
             self._action_toggle_dso.setChecked(self.show_dso)
+        self.update()
+
+    def toggle_asterisms(self) -> None:
+        self.show_asterisms = not self.show_asterisms
+        if self._action_toggle_asterisms is not None and self._action_toggle_asterisms.isChecked() != self.show_asterisms:
+            self._action_toggle_asterisms.setChecked(self.show_asterisms)
         self.update()
 
     def toggle_fullscreen(self) -> None:
@@ -700,7 +749,7 @@ class SkyWindow(DraggableWindow):
         self._clear_background_layer(painter)
         self._draw_background_layer(painter, geometry)
         self._draw_sky_cloud_layers(painter, geometry)
-        self._draw_terrain_layers(painter, geometry, render_viewer, highlighted_dso)
+        self._draw_terrain_layers(painter, geometry, render_viewer, highlighted_object, highlighted_dso)
         self._draw_star_layer(painter, geometry, render_viewer)
 
         enlarge_moon = self.enlarge_moon
@@ -739,6 +788,7 @@ class SkyWindow(DraggableWindow):
         painter: QPainter,
         geometry: render_draw.ScreenGeometry,
         render_viewer: ViewerData,
+        highlighted_object: Any | None,
         highlighted_dso: Any | None,
     ) -> None:
         if self.show_dso:
@@ -754,6 +804,16 @@ class SkyWindow(DraggableWindow):
                 geometry,
                 render_viewer,
                 highlighted_dso,
+                self.text_font,
+                preset=self.visual_preset,
+            )
+        if self.show_asterisms:
+            render_draw.draw_asterisms(
+                painter,
+                geometry,
+                self.celestial_data,
+                render_viewer,
+                highlighted_object,
                 self.text_font,
                 preset=self.visual_preset,
             )
