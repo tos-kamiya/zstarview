@@ -385,6 +385,14 @@ def planet_marker_color(name: str) -> QColor:
     return QColor(palette.get(name, QColor(*TEXT_COLOR)))
 
 
+def body_label_text(name: str) -> str:
+    """Return a display label for a solar-system body name."""
+    label = name.strip()
+    if not label:
+        return label
+    return label.title()
+
+
 def altaz_to_normalized_xy_vectorized(
     alt_deg: np.ndarray,
     az_deg: np.ndarray,
@@ -1549,11 +1557,12 @@ def draw_solar_system_bodies(
                 draw_gauge_cross(painter, text_color, pos, scale=0.55, pen_width=1.0)
 
         if draw_labels and body.name != "sun":
+            label_text = body_label_text(body.name)
             label_pos = QPointF(pos.x() + 12.0, pos.y() - 10.0)
             if label_candidates is not None:
                 label_candidates.append(
                     {
-                        "text": body.name,
+                        "text": label_text,
                         "pos": label_pos,
                         "text_color": label_text_color,
                         "outline_color": label_outline_color,
@@ -1563,13 +1572,13 @@ def draw_solar_system_bodies(
                 )
                 continue
             if label_reservations is not None:
-                rect = _text_bounds_at_baseline(body.name, label_font, label_pos)
+                rect = _text_bounds_at_baseline(label_text, label_font, label_pos)
                 if _rect_overlaps_any(rect, label_reservations):
                     continue
                 label_reservations.append(rect)
             draw_outlined_text(
                 painter,
-                body.name,
+                label_text,
                 label_pos,
                 label_font,
                 label_text_color,
