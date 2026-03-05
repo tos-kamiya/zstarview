@@ -1,6 +1,7 @@
 import math
 import re
-from typing import List, Optional, Tuple
+from datetime import datetime
+from typing import Dict, List, Optional, Tuple
 
 import hashlib
 import logging
@@ -28,6 +29,7 @@ from ..astro import (
     is_in_fov_vectorized,
     calculate_moon_render_data,
 )
+from ..asterisms import pick_rotating_asterism
 from ..utils.image import generate_moon_phase_image
 from ..utils.qt import pil2qpixmap
 
@@ -626,6 +628,108 @@ def draw_sky_reference_lines(painter: QPainter, geometry: ScreenGeometry, celest
             fg.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
             painter.setPen(fg)
             painter.drawPolyline(poly)
+    painter.restore()
+
+
+def draw_asterisms(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    celestial_data: CelestialData,
+    viewer_data: ViewerData,
+    highlighted_object: Optional[Tuple[CelestialObject, QPointF]],
+    text_font: QFont,
+    *,
+    preset: str = "night",
+) -> None:
+    """Draw hovered-star asterisms using visible stars by SourceId."""
+    if highlighted_object is None:
+        return
+    hovered_obj, _ = highlighted_object
+    if not isinstance(hovered_obj, dict):
+        return
+    hovered_source_id = str(hovered_obj.get("source_id", "")).strip()
+    if not hovered_source_id:
+        return
+    second_slot = int(datetime.now().timestamp()) // 3
+    asterism = pick_rotating_asterism(hovered_source_id, second_slot)
+    if asterism is None:
+        return
+
+    stars = celestial_data.stars
+    source_ids = np.asarray(stars["source_id"], dtype=object)
+    if source_ids.size == 0:
+        return
+
+    star_altaz_by_source: Dict[str, Tuple[float, float]] = {}
+    for idx, raw_source in enumerate(source_ids):
+        source_id = str(raw_source).strip()
+        if not source_id:
+            continue
+        if source_id in star_altaz_by_source:
+            continue
+        star_altaz_by_source[source_id] = (float(stars["alt"][idx]), float(stars["az"][idx]))
+    if not star_altaz_by_source:
+        return
+
+    if preset in ("white", "day"):
+        line_color = QColor(26, 114, 214, 200)
+        outline_color = QColor(190, 220, 250, 96)
+    else:
+        line_color = QColor(120, 190, 255, 190)
+        outline_color = QColor(32, 76, 130, 108)
+
+    painter.save()
+    outline_pen = QPen(outline_color, 3.2)
+    outline_pen.setCosmetic(True)
+    outline_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    outline_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+    line_pen = QPen(line_color, 1.2)
+    line_pen.setCosmetic(True)
+    line_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    line_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+
+    label_points: List[QPointF] = []
+    for source_a, source_b in asterism.segments():
+        pos_a = star_altaz_by_source.get(source_a)
+        pos_b = star_altaz_by_source.get(source_b)
+        if pos_a is None or pos_b is None:
+            continue
+        if not is_in_fov(pos_a[0], pos_a[1], viewer_data.view_center):
+            continue
+        if not is_in_fov(pos_b[0], pos_b[1], viewer_data.view_center):
+            continue
+        nx1, ny1 = altaz_to_normalized_xy(pos_a[0], pos_a[1], viewer_data.view_center)
+        nx2, ny2 = altaz_to_normalized_xy(pos_b[0], pos_b[1], viewer_data.view_center)
+        x1, y1 = normalized_to_screen_xy(nx1, ny1, geometry)
+        x2, y2 = normalized_to_screen_xy(nx2, ny2, geometry)
+        p1 = QPointF(x1, y1)
+        p2 = QPointF(x2, y2)
+        painter.setPen(outline_pen)
+        painter.drawLine(p1, p2)
+        painter.setPen(line_pen)
+        painter.drawLine(p1, p2)
+        label_points.append(p1)
+        label_points.append(p2)
+
+    if label_points:
+        cx = sum(pt.x() for pt in label_points) / len(label_points)
+        cy = sum(pt.y() for pt in label_points) / len(label_points)
+        label_pos = QPointF(cx + 8.0, cy - 8.0)
+        if preset in ("white", "day"):
+            text_color = QColor(40, 122, 220, 220)
+        else:
+            text_color = QColor(110, 195, 255, 230)
+        _, outline_text_color = get_text_style(preset)
+        draw_outlined_text(
+            painter,
+            asterism.name,
+            label_pos,
+            text_font,
+            text_color,
+            outline_text_color,
+            outline_width=2.4,
+        )
+
     painter.restore()
 
 
