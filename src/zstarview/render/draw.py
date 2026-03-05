@@ -584,6 +584,66 @@ def split_by_gaps(points: List[Tuple[float, float]]) -> List[List[Tuple[float, f
     return fragments
 
 
+def _altaz_to_neu_unit(alt_deg: float, az_deg: float) -> np.ndarray:
+    """Convert Alt/Az to a unit vector in local North-East-Up coordinates."""
+    alt = math.radians(float(alt_deg))
+    az = math.radians(float(az_deg))
+    c_alt = math.cos(alt)
+    return np.array(
+        [
+            c_alt * math.cos(az),  # north
+            c_alt * math.sin(az),  # east
+            math.sin(alt),         # up
+        ],
+        dtype=float,
+    )
+
+
+def _neu_unit_to_altaz(vec: np.ndarray) -> Tuple[float, float]:
+    """Convert local North-East-Up unit vector to Alt/Az (deg)."""
+    north = float(vec[0])
+    east = float(vec[1])
+    up = float(np.clip(float(vec[2]), -1.0, 1.0))
+    alt_deg = math.degrees(math.asin(up))
+    az_deg = math.degrees(math.atan2(east, north)) % 360.0
+    return alt_deg, az_deg
+
+
+def _great_circle_altaz_points(
+    start_alt: float,
+    start_az: float,
+    end_alt: float,
+    end_az: float,
+) -> List[Tuple[float, float]]:
+    """Sample great-circle points from start to end (both included)."""
+    v0 = _altaz_to_neu_unit(start_alt, start_az)
+    v1 = _altaz_to_neu_unit(end_alt, end_az)
+    dot = float(np.clip(np.dot(v0, v1), -1.0, 1.0))
+    omega = math.acos(dot)
+    if omega < 1.0e-6:
+        return [(float(start_alt), float(start_az)), (float(end_alt), float(end_az))]
+
+    # Segment density grows with angular separation while staying bounded.
+    sep_deg = math.degrees(omega)
+    samples = max(8, min(64, int(sep_deg / 2.0) + 6))
+    sin_omega = math.sin(omega)
+    if abs(sin_omega) < 1.0e-8:
+        return [(float(start_alt), float(start_az)), (float(end_alt), float(end_az))]
+
+    out: List[Tuple[float, float]] = []
+    for i in range(samples + 1):
+        t = i / samples
+        w0 = math.sin((1.0 - t) * omega) / sin_omega
+        w1 = math.sin(t * omega) / sin_omega
+        v = (w0 * v0) + (w1 * v1)
+        norm = float(np.linalg.norm(v))
+        if norm <= 1.0e-12:
+            continue
+        alt_i, az_i = _neu_unit_to_altaz(v / norm)
+        out.append((alt_i, az_i))
+    return out
+
+
 def draw_sky_reference_lines(painter: QPainter, geometry: ScreenGeometry, celestial_data: CelestialData) -> None:
     """
     Draw celestial reference lines like the equator, ecliptic, and horizon.
@@ -698,18 +758,20 @@ def draw_asterisms(
             continue
         if not is_in_fov(pos_b[0], pos_b[1], viewer_data.view_center):
             continue
-        nx1, ny1 = altaz_to_normalized_xy(pos_a[0], pos_a[1], viewer_data.view_center)
-        nx2, ny2 = altaz_to_normalized_xy(pos_b[0], pos_b[1], viewer_data.view_center)
-        x1, y1 = normalized_to_screen_xy(nx1, ny1, geometry)
-        x2, y2 = normalized_to_screen_xy(nx2, ny2, geometry)
-        p1 = QPointF(x1, y1)
-        p2 = QPointF(x2, y2)
-        painter.setPen(outline_pen)
-        painter.drawLine(p1, p2)
-        painter.setPen(line_pen)
-        painter.drawLine(p1, p2)
-        label_points.append(p1)
-        label_points.append(p2)
+        arc_altaz = _great_circle_altaz_points(pos_a[0], pos_a[1], pos_b[0], pos_b[1])
+        arc_points: List[Tuple[float, float]] = []
+        for alt_i, az_i in arc_altaz:
+            nx_i, ny_i = altaz_to_normalized_xy(alt_i, az_i, viewer_data.view_center)
+            arc_points.append((nx_i, ny_i))
+        for frag in split_by_gaps(arc_points):
+            if len(frag) < 2:
+                continue
+            poly = QPolygonF([QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in frag])
+            painter.setPen(outline_pen)
+            painter.drawPolyline(poly)
+            painter.setPen(line_pen)
+            painter.drawPolyline(poly)
+            label_points.extend(poly)
 
     if label_points:
         cx = sum(pt.x() for pt in label_points) / len(label_points)
