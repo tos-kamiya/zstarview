@@ -83,7 +83,16 @@ zstarview [options] [city]
 \*2 Cloud rendering uses infrared data from meteorological satellites (**Himawari** and **NOAA GOES** series), retrieved from their public S3 buckets.
    See Troubleshooting for tips on slow networks or offline use (e.g., disabling clouds with `-c 0`).
 
-\3* The brightest-magnitude multiplier cannot exceed the classical Pogson value of \(100^{1/5}\approx2.512\).
+*3 The brightest-magnitude multiplier cannot exceed the classical Pogson value of \(100^{1/5}\approx2.512\).
+
+**Overlay visibility at startup**
+
+Use these options to control initial overlay states without post-launch menu operations:
+
+```bash
+# Start with DSO hidden and asterisms visible
+zstarview --show-dso-initial false --show-asterisms-initial true Tokyo
+```
 
 **About the view center options**
 
@@ -168,12 +177,14 @@ Time zone examples for `--datetime`:
 * **ESC**: Exit fullscreen
 * **Q**: Quit
 
-### Menu Operations (Named Stars)
+### Menu Operations
 
 From the hamburger menu (`☰`), you can use:
 
 * **Jump to Named Star...**: Choose from representative named stars (`Vmag <= 2.0`), grouped into North / Equatorial / South, then jump the view center to that star.
 * **Search Named Stars...**: Search across all named stars in the catalog (about 443 names), then jump to the selected star.
+* **DSO**: Toggle deep-sky object overlays on/off.
+* **Asterisms**: Toggle asterism overlays on/off (when enabled, they appear only on member-star hover).
 
 After a jump/search, the selected star is highlighted for about 3 seconds using the same UI style as mouse hover (circle marker + name label).
 
@@ -214,7 +225,7 @@ Qt's xcb platform plugin may require `libxcb-cursor0` at runtime.
 If you're not watching for X11 vs Wayland differences, this can be confusing — running from a terminal may show errors like:
 
 ```sh
-$ zsterview
+$ zstarview
 qt.qpa.plugin: From 6.5.0, xcb-cursor0 or libxcb-cursor0 is needed to load the Qt xcb platform plugin.
 qt.qpa.plugin: Could not load the Qt platform plugin "xcb" in "" even though it was found.
 This application failed to start because no Qt platform plugin could be initialized. Reinstalling the application may fix this problem.
@@ -222,7 +233,7 @@ This application failed to start because no Qt platform plugin could be initiali
 Available platform plugins are: eglfs, offscreen, wayland-egl, linuxfb, wayland, minimal, xcb, vkkhrdisplay, minimalegl, vnc.
 ```
 
-Install the missing `libcxb-cursor0` package with:
+Install the missing `libxcb-cursor0` package with:
 
 `sudo apt install libxcb-cursor0`
 

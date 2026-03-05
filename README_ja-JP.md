@@ -85,6 +85,15 @@ zstarview [options] [city]
 
 ※3 Pogson の定義では 5 等級差 = 100 倍なので、等級1段階あたりの光量倍数は \(100^{1/5} \approx 2.512\) です。`--vmag-brightness-multiplier` の上限はこの値です。
 
+**起動時のオーバーレイ表示設定**
+
+起動時の初期表示をメニュー操作なしで切り替えるには、次を使います。
+
+```bash
+# DSOは非表示、アステリウムは表示で起動
+zstarview --show-dso-initial false --show-asterisms-initial true Tokyo
+```
+
 **表示中心オプションについて**
 
 `-Z`（方位角）と `-A`（高度角）のオプションで、画面の表示中心を指定できます。
@@ -153,17 +162,20 @@ zstarview "N35.68;E139.76" --datetime "2025-09-12 21 JST"
 ### キー操作
 
 * **← / →**: 視線の方位を ±5° 回転
+* **↑ / ↓**: 視線の高度を ±5° 変更（0°..90°にクランプ）
 * **M**: 月の5倍表示をトグル
 * **F11**: フルスクリーン表示の切り替え
 * **ESC**: フルスクリーンから復帰
 * **Q**: 終了
 
-### メニュー操作（固有名のある恒星）
+### メニュー操作
 
 ハンバーガーメニュー（`☰`）から次を利用できます。
 
 * **Jump to Named Star...**: 代表的な固有名星（`Vmag <= 2.0`）を北天 / 赤道付近 / 南天で選んで、視点中心をその星へ移動します。
 * **Search Named Stars...**: カタログ中の固有名付き恒星（約443件）を横断検索し、選択した星へ移動します。
+* **DSO**: DSOオーバーレイの表示/非表示を切り替えます。
+* **Asterisms**: 星座（アステリウム）オーバーレイの表示/非表示を切り替えます（有効時も、表示はホバー時のみ）。
 
 ジャンプ/検索の確定後は約3秒間、マウスホバー時と同じ見た目（円マーカー + 名称ラベル）で対象星を強調表示します。
 
@@ -205,7 +217,7 @@ Qt の xcb プラグインが `libxcb-cursor0` を必要とする場合があり
 X11/Wayland を意識していないと分かりづらいですが、ターミナル（コンソール）から実行すると次のようなエラーが表示されます：
 
 ```sh
-$ zsterview
+$ zstarview
 qt.qpa.plugin: From 6.5.0, xcb-cursor0 or libxcb-cursor0 is needed to load the Qt xcb platform plugin.
 qt.qpa.plugin: Could not load the Qt platform plugin "xcb" in "" even though it was found.
 This application failed to start because no Qt platform plugin could be initialized. Reinstalling the application may fix this problem.
