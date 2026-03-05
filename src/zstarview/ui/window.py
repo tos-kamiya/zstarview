@@ -143,6 +143,8 @@ class SkyWindow(DraggableWindow):
         cloud_missing_tint_opacity: float = float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0,
         star_render_expected_width: int = 600,
         window_geometry_arg: Optional[WindowGeometryArg] = None,
+        show_dso_initial: Optional[bool] = None,
+        show_asterisms_initial: Optional[bool] = None,
     ) -> None:
         """
         Initializes the SkyWindow.
@@ -183,7 +185,9 @@ class SkyWindow(DraggableWindow):
         else:
             self.dso_catalog_np = prepare_deep_sky_catalog_arrays(dso_catalog)
         self.show_dso: bool = self.dso_catalog_np is not None
-        self.show_asterisms: bool = True
+        if show_dso_initial is not None:
+            self.show_dso = bool(show_dso_initial) and self.dso_catalog_np is not None
+        self.show_asterisms: bool = True if show_asterisms_initial is None else bool(show_asterisms_initial)
         self._named_stars_by_band = build_named_star_shortcuts(star_catalog, max_vmag=2.0)
         self._named_stars_search_all = flatten_named_star_shortcuts(
             build_named_star_shortcuts(star_catalog, max_vmag=None)

@@ -194,6 +194,18 @@ def _parse_positive_int(value: str) -> int:
     return out
 
 
+def _parse_bool(value: str) -> bool:
+    """Parse boolean values for CLI options."""
+    text = (value or "").strip().lower()
+    if text in {"true", "t", "1", "yes", "y", "on"}:
+        return True
+    if text in {"false", "f", "0", "no", "n", "off"}:
+        return False
+    raise argparse.ArgumentTypeError(
+        f"Invalid boolean value: {value!r}. Use true/false."
+    )
+
+
 WindowGeometryArg = Union[str, Tuple[int, int, int, int]]
 
 
@@ -326,6 +338,20 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=60,
         help=("Interval for updating stars/sky-color disc in sec. (default: 60)."),
+    )
+    parser.add_argument(
+        "--show-dso-initial",
+        type=_parse_bool,
+        default=None,
+        metavar="true|false",
+        help="Whether to show DSO overlays at startup (true/false).",
+    )
+    parser.add_argument(
+        "--show-asterisms-initial",
+        type=_parse_bool,
+        default=None,
+        metavar="true|false",
+        help="Whether to show asterism overlays at startup (true/false).",
     )
     parser.add_argument(
         "-t",
@@ -790,6 +816,8 @@ def main() -> None:
         cloud_missing_tint_opacity=cloud_missing_tint_opacity,
         star_render_expected_width=args.expected_render_width,
         window_geometry_arg=args.window_geometry,
+        show_dso_initial=args.show_dso_initial,
+        show_asterisms_initial=args.show_asterisms_initial,
     )
 
     def _on_initial_loaded():
