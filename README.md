@@ -9,6 +9,7 @@ The name emphasizes the *zenith*—the point directly overhead—conveying the e
 
 - Real-time rendering of bright stars, planets, the celestial equator, and the ecliptic.
 - Named deep-sky objects (galaxies/open clusters/globular clusters) are shown as soft blue extents; DSO hover is independent from star hover.
+- Asterism overlay (not IAU constellations): appears when hovering a member star, with 3-second rotation when multiple asterisms share that star.
 - Supports Sun, Moon, and major planets. Minor planets (asteroids) are not displayed yet.
 - Location specified by city name (based on GeoNames), or directly by latitude/longitude.
 
@@ -173,6 +174,15 @@ From the hamburger menu (`☰`), you can use:
 * **Search Named Stars...**: Search across all named stars in the catalog (about 443 names), then jump to the selected star.
 
 After a jump/search, the selected star is highlighted for about 3 seconds using the same UI style as mouse hover (circle marker + name label).
+
+### Supported Asterisms
+
+These overlays are **asterisms** (popular line patterns), not formal IAU constellation boundaries.
+
+- Winter: `Winter Triangle`, `Orion's Belt`, `Orion's Sword`, `Winter Hexagon`, `Hyades V`
+- Spring: `Big Dipper`, `Little Dipper`, `Spring Triangle`, `Arc to Arcturus`, `Leo Sickle`
+- Summer: `Summer Triangle`, `Northern Cross`, `Teapot`, `Keystone`, `Coathanger`
+- Autumn: `Great Square of Pegasus`, `Circlet of Pisces`, `Water Jar of Aquarius`, `Andromeda Chain`, `Autumn Triangle`
 
 ## Generating a `.desktop` launcher (GNOME only)
 
