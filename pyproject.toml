@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "zstarview"
 dynamic = ["version"]
 description = "Transparent desktop sky viewer with stars, planets, eclipses, and optional real-time satellite cloud overlay."
-readme = { file = "README.md", content-type = "text/markdown" }
+readme = { file = "README_pypi.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
 license = "MIT"
 keywords = ["astronomy", "planetarium", "sky", "desktop", "pyside6", "satellite", "clouds"]
@@ -52,6 +52,7 @@ dev = [
 ]
 
 [project.urls]
+Homepage = "https://github.com/tos-kamiya/zstarview"
 Documentation = "https://github.com/tos-kamiya/zstarview#readme"
 Issues = "https://github.com/tos-kamiya/zstarview/issues"
 Source = "https://github.com/tos-kamiya/zstarview"
@@ -69,6 +70,7 @@ include = [
   "/docs",
   "/scripts/save_cloud_snapshot.py",
   "/README.md",
+  "/README_pypi.md",
   "/README_ja-JP.md",
   "/LICENSE.txt",
   "/pyproject.toml",
