@@ -4,6 +4,7 @@ from zstarview.ui.famous_star_shortcuts import (
     DEC_BAND_EQUATOR,
     DEC_BAND_NORTH,
     DEC_BAND_SOUTH,
+    build_search_jump_targets,
     build_named_star_shortcuts,
     classify_declination_band,
     flatten_named_star_shortcuts,
@@ -66,3 +67,22 @@ def test_build_named_star_shortcuts_without_vmag_limit_keeps_faint_named() -> No
     grouped = build_named_star_shortcuts(df, max_vmag=None)
     flat = flatten_named_star_shortcuts(grouped)
     assert [s.name for s in flat] == ["BrightStar", "FaintStar"]
+
+
+def test_build_search_jump_targets_includes_asterisms() -> None:
+    df = pl.DataFrame(
+        {
+            "Name": ["Theta", "Seven", "Gamma", "Kappa", "Lambda", "TX", "Iota", "Sirius"],
+            "RAh": [23.46, 23.80, 23.29, 23.45, 23.70, 23.77, 23.66, 6.75],
+            "Dec": [6.38, -2.76, 3.28, 1.25, 1.78, 3.49, 5.63, -16.7],
+            "Vmag": [4.27, 5.49, 3.70, 4.95, 4.49, 4.95, 4.13, -1.44],
+            "SourceId": ["HIP115830", "HIP117375", "HIP114971", "HIP115738", "HIP116928", "HIP117245", "HIP116771", "HIP32349"],
+        }
+    )
+
+    targets = build_search_jump_targets(df)
+
+    assert any(t.label == "Sirius" and t.kind == "star" for t in targets)
+    circlet = next(t for t in targets if t.label == "Circlet of Pisces")
+    assert circlet.kind == "asterism"
+    assert circlet.subtitle == "Asterism"

@@ -69,8 +69,9 @@ from .famous_star_dialog import NamedStarJumpDialog
 from .famous_star_search_dialog import NamedStarSearchDialog
 from .famous_star_shortcuts import (
     NamedStarShortcut,
+    SearchJumpTarget,
+    build_search_jump_targets,
     build_named_star_shortcuts,
-    flatten_named_star_shortcuts,
 )
 from ..asterisms import ASTERISM_KEYS_BY_SOURCE_ID
 from .sky_worker import SkyDataWorker
@@ -189,9 +190,7 @@ class SkyWindow(DraggableWindow):
             self.show_dso = bool(show_dso_initial) and self.dso_catalog_np is not None
         self.show_asterisms: bool = True if show_asterisms_initial is None else bool(show_asterisms_initial)
         self._named_stars_by_band = build_named_star_shortcuts(star_catalog, max_vmag=2.0)
-        self._named_stars_search_all = flatten_named_star_shortcuts(
-            build_named_star_shortcuts(star_catalog, max_vmag=None)
-        )
+        self._named_stars_search_all = build_search_jump_targets(star_catalog)
         self._jump_highlight_name: Optional[str] = None
         self._jump_highlight_altaz: Optional[Tuple[float, float]] = None
         self._jump_highlight_until_ms: float = 0.0
@@ -454,32 +453,42 @@ class SkyWindow(DraggableWindow):
         dialog = NamedStarSearchDialog(self._named_stars_search_all, self)
         if dialog.exec() == 0:
             return
-        star = dialog.selected_star()
-        if star is None:
+        target = dialog.selected_target()
+        if target is None:
             return
-        self._jump_to_named_star(star)
+        self._jump_to_search_target(target)
 
-    def _jump_to_named_star(self, star: NamedStarShortcut) -> None:
-        lat, lon = self.viewer_data.location
+    def _jump_to_search_target(self, target: SearchJumpTarget) -> None:
         alt, az = radec_to_altaz(
-            star.ra_hours,
-            star.dec_deg,
-            lat,
-            lon,
+            target.ra_hours,
+            target.dec_deg,
+            self.viewer_data.location[0],
+            self.viewer_data.location[1],
             self._current_time_obj(),
         )
         new_alt = max(0.0, min(90.0, float(alt)))
         new_az = float(az) % 360.0
         self.viewer_data.view_center = (new_alt, new_az)
 
-        # Mark the selected result for 3s using the same overlay highlight style.
-        self._jump_highlight_name = star.name
+        self._jump_highlight_name = target.label
         self._jump_highlight_altaz = (new_alt, new_az)
         self._jump_highlight_until_ms = (time.monotonic() * 1000.0) + 3000.0
 
         self._begin_interaction_mode()
         self.request_sky_data_update()
         self.update()
+
+    def _jump_to_named_star(self, star: NamedStarShortcut) -> None:
+        self._jump_to_search_target(
+            SearchJumpTarget(
+                label=star.name,
+                ra_hours=star.ra_hours,
+                dec_deg=star.dec_deg,
+                kind="star",
+                subtitle=f"Vmag {star.vmag:.2f}",
+                sort_key=(star.vmag, star.name.casefold()),
+            )
+        )
 
     def _begin_shutdown(self) -> None:
         """Stop scheduling new background work while the app is closing."""

@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 from typing import Dict, List, Optional
 
 import polars as pl
+
+from ..asterisms import ASTERISMS
 
 
 DEC_BAND_NORTH = "north"
@@ -21,6 +24,16 @@ class NamedStarShortcut:
     dec_deg: float
     vmag: float
     band: str
+
+
+@dataclass(frozen=True)
+class SearchJumpTarget:
+    label: str
+    ra_hours: float
+    dec_deg: float
+    kind: str
+    sort_key: tuple[float, str]
+    subtitle: str = ""
 
 
 def classify_declination_band(dec_deg: float) -> str:
@@ -89,3 +102,66 @@ def flatten_named_star_shortcuts(stars_by_band: Dict[str, List[NamedStarShortcut
         out.extend(stars_by_band.get(key, []))
     out.sort(key=lambda s: (s.vmag, s.name.casefold()))
     return out
+
+
+def _circular_mean_hours(values: List[float]) -> float:
+    if not values:
+        return 0.0
+    angles = [math.tau * (value / 24.0) for value in values]
+    x = sum(math.cos(angle) for angle in angles)
+    y = sum(math.sin(angle) for angle in angles)
+    if x == 0.0 and y == 0.0:
+        return values[0] % 24.0
+    angle = math.atan2(y, x)
+    if angle < 0.0:
+        angle += math.tau
+    return (angle / math.tau) * 24.0
+
+
+def build_search_jump_targets(star_catalog: pl.DataFrame) -> List[SearchJumpTarget]:
+    """Build search targets for both named stars and asterisms."""
+    targets: List[SearchJumpTarget] = []
+
+    for star in flatten_named_star_shortcuts(build_named_star_shortcuts(star_catalog, max_vmag=None)):
+        targets.append(
+            SearchJumpTarget(
+                label=star.name,
+                ra_hours=star.ra_hours,
+                dec_deg=star.dec_deg,
+                kind="star",
+                subtitle=f"Vmag {star.vmag:.2f}",
+                sort_key=(star.vmag, star.name.casefold()),
+            )
+        )
+
+    rows = star_catalog.select(["SourceId", "RAh", "Dec"]).iter_rows(named=True)
+    by_source_id: dict[str, tuple[float, float]] = {}
+    for row in rows:
+        source_id_raw = row.get("SourceId")
+        source_id = str(source_id_raw).strip() if source_id_raw is not None else ""
+        if not source_id:
+            continue
+        try:
+            by_source_id[source_id] = (float(row["RAh"]), float(row["Dec"]))
+        except (TypeError, ValueError):
+            continue
+
+    for asterism in ASTERISMS:
+        coords = [by_source_id[source_id] for source_id in asterism.source_ids if source_id in by_source_id]
+        if not coords:
+            continue
+        ra_values = [ra for ra, _ in coords]
+        dec_values = [dec for _, dec in coords]
+        targets.append(
+            SearchJumpTarget(
+                label=asterism.name,
+                ra_hours=_circular_mean_hours(ra_values),
+                dec_deg=sum(dec_values) / float(len(dec_values)),
+                kind="asterism",
+                subtitle="Asterism",
+                sort_key=(99.0, asterism.name.casefold()),
+            )
+        )
+
+    targets.sort(key=lambda t: t.sort_key)
+    return targets

@@ -66,7 +66,7 @@ def test_draw_asterisms_draws_dim_overlay_without_hover(monkeypatch) -> None:
     geometry = ScreenGeometry(center=(120, 90), radius=70)
     viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
     celestial_data = _celestial_data_with_asterism_star_positions()
-    asterism = Asterism("test", "Test Asterism", "all", ("HIP1", "HIP2"))
+    asterism = Asterism("test", "Test Asterism", "all", (("HIP1", "HIP2"),))
 
     monkeypatch.setattr(render_draw, "ASTERISMS", (asterism,))
 
@@ -87,7 +87,7 @@ def test_draw_asterisms_hover_adds_bright_overlay_and_label(monkeypatch) -> None
     geometry = ScreenGeometry(center=(120, 90), radius=70)
     viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
     celestial_data = _celestial_data_with_asterism_star_positions()
-    asterism = Asterism("test", "Test Asterism", "all", ("HIP1", "HIP2"))
+    asterism = Asterism("test", "Test Asterism", "all", (("HIP1", "HIP2"),))
     label_candidates: list[dict[str, object]] = []
 
     monkeypatch.setattr(render_draw, "ASTERISMS", (asterism,))
