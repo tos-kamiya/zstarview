@@ -36,8 +36,7 @@ def test_asterism_key_lookup_by_source_id() -> None:
 
 
 def test_pick_rotating_asterism_uses_slot_modulo() -> None:
-    source_id = "HIP113963"  # included in multiple autumn asterisms
-    keys = ASTERISM_KEYS_BY_SOURCE_ID[source_id]
+    source_id, keys = next((source_id, keys) for source_id, keys in ASTERISM_KEYS_BY_SOURCE_ID.items() if len(keys) >= 2)
     assert len(keys) >= 2
     first = pick_rotating_asterism(source_id, 0)
     second = pick_rotating_asterism(source_id, 1)
