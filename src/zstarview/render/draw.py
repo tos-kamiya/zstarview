@@ -29,7 +29,7 @@ from ..astro import (
     is_in_fov_vectorized,
     calculate_moon_render_data,
 )
-from ..asterisms import ASTERISMS, pick_rotating_asterism
+from ..asterisms import ASTERISMS, ASTERISM_REQUIRED_SOURCE_IDS, pick_rotating_asterism
 from ..utils.image import generate_moon_phase_image
 from ..utils.qt import pil2qpixmap
 
@@ -484,6 +484,11 @@ def find_highlighted_object(
             return False
         return bool(str(name).strip())
 
+    def _is_asterism_member(source_id: object) -> bool:
+        if source_id is None:
+            return False
+        return str(source_id).strip() in ASTERISM_REQUIRED_SOURCE_IDS
+
     if not celestial_data:
         return None
 
@@ -491,11 +496,15 @@ def find_highlighted_object(
     stars = celestial_data.stars
     if stars["alt"].size > 0:
         names = np.asarray(stars["name"], dtype=object)
-        name_mask = np.array([_has_named_star(value) for value in names], dtype=bool)
-        if np.any(name_mask):
-            valid_indices = np.nonzero(name_mask)[0]
-            alt_named = stars["alt"][name_mask]
-            az_named = stars["az"][name_mask]
+        source_ids = np.asarray(stars["source_id"], dtype=object)
+        hover_mask = np.array(
+            [_has_named_star(name) or _is_asterism_member(source_id) for name, source_id in zip(names, source_ids)],
+            dtype=bool,
+        )
+        if np.any(hover_mask):
+            valid_indices = np.nonzero(hover_mask)[0]
+            alt_named = stars["alt"][hover_mask]
+            az_named = stars["az"][hover_mask]
             nx, ny = altaz_to_normalized_xy_vectorized(alt_named, az_named, viewer_data.view_center)
             x, y = normalized_to_screen_xy_vectorized(nx, ny, geometry)
             dist_sq = (mouse_pos.x() - x) ** 2 + (mouse_pos.y() - y) ** 2

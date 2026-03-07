@@ -9,7 +9,7 @@ The name emphasizes the *zenith*—the point directly overhead—conveying the e
 
 - Real-time rendering of bright stars, planets, the celestial equator, and the ecliptic.
 - Named deep-sky objects (galaxies/open clusters/globular clusters) are shown as soft blue extents; DSO hover is independent from star hover.
-- Asterism overlay (not IAU constellations): appears when hovering a member star, with 3-second rotation when multiple asterisms share that star.
+- Asterism overlay (not IAU constellations): shown as dim ambient lines; hovering a member star brightens the matching pattern and shows its label, with 3-second rotation when multiple asterisms share that star.
 - Supports Sun, Moon, and major planets. Minor planets (asteroids) are not displayed yet.
 - Location specified by city name (based on GeoNames), or directly by latitude/longitude.
 - Adjustable view center: `-A` (altitude) and `-Z` (azimuth).
@@ -181,7 +181,7 @@ From the hamburger menu (`☰`), you can use:
 * **Jump to Named Star...**: Choose from representative named stars (`Vmag <= 2.0`), grouped into North / Equatorial / South, then jump the view center to that star.
 * **Search Named Stars...**: Search across all named stars in the catalog (about 443 names), then jump to the selected star.
 * **DSO**: Toggle deep-sky object overlays on/off.
-* **Asterisms**: Toggle asterism overlays on/off (when enabled, they appear only on member-star hover).
+* **Asterisms**: Toggle asterism overlays on/off (when enabled, dim overlays stay visible; hovering a member star brightens the matching asterism and shows its label).
 
 After a jump/search, the selected star is highlighted for about 3 seconds using the same UI style as mouse hover (circle marker + name label).
 

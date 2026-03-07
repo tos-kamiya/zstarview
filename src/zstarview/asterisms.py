@@ -87,6 +87,7 @@ ASTERISMS: tuple[Asterism, ...] = (
         "Teapot",
         "summer",
         (
+            (_hip(93864), _hip(92855)),
             (_hip(93864), _hip(93506)),
             (_hip(93506), _hip(92104)),
             (_hip(92104), _hip(92855)),
@@ -99,7 +100,7 @@ ASTERISMS: tuple[Asterism, ...] = (
             (_hip(93506), _hip(90185)),
         ),
     ),
-    Asterism("keystone", "Keystone", "summer", _path_edges(_hip(83207), _hip(81693), _hip(84379), _hip(86974), _hip(83207))),
+    Asterism("keystone", "Keystone", "summer", _path_edges(_hip(84380), _hip(81833), _hip(81693), _hip(83207), _hip(84380))),
     Asterism(
         "coathanger",
         "Coathanger",
