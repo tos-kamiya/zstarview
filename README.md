@@ -12,9 +12,6 @@ The name emphasizes the *zenith*—the point directly overhead—conveying the e
 - Asterism overlay (not IAU constellations): appears when hovering a member star, with 3-second rotation when multiple asterisms share that star.
 - Supports Sun, Moon, and major planets. Minor planets (asteroids) are not displayed yet.
 - Location specified by city name (based on GeoNames), or directly by latitude/longitude.
-
-  ![](docs/images/screenshot1.png)
-
 - Adjustable view center: `-A` (altitude) and `-Z` (azimuth).
 - Real-time satellite cloud imagery (Himawari/GOES), rendered as a stylized hatched (striped) overlay.
 - Cloud fetch and cloud render are decoupled: camera moves can re-render from cached source data immediately.
@@ -22,7 +19,7 @@ The name emphasizes the *zenith*—the point directly overhead—conveying the e
 - Below the horizon (ground side) is shown with a subtle tint to improve orientation.
 - A red tint marks the *never-rises* celestial region for the current latitude.
 
-  ![](docs/images/screenshot5.png)
+  ![](docs/images/screenshot1.png)
 
 ## Installation (Recommended: `pipx`)
 
