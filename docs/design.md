@@ -189,7 +189,7 @@
   - 目的:
     - 画面の恒星ホバーを起点に、その恒星を含む代表的アステリウムを文脈表示し、常時表示による過密を避ける。
   - データモデル:
-    - `asterisms.py` に `Asterism(key, name, season, path)` を定義し、`path` は恒星カタログの `SourceId`（`HIP...`）で記述する。
+    - `asterisms.py` に `Asterism(key, name, edges)` を定義し、`edges` は恒星カタログの `SourceId`（`HIP...`）同士の線分集合で記述する。
     - `ASTERISM_KEYS_BY_SOURCE_ID` で「恒星 -> 所属アステリウム一覧」を逆引きする。
   - 表示ルール:
     - 起動時の有効/無効はメニュー状態に従う（デフォルト有効、CLIで `--show-asterisms-initial` により上書き可能）。
