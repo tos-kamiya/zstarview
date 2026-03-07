@@ -29,7 +29,7 @@ from ..astro import (
     is_in_fov_vectorized,
     calculate_moon_render_data,
 )
-from ..asterisms import pick_rotating_asterism
+from ..asterisms import ASTERISMS, pick_rotating_asterism
 from ..utils.image import generate_moon_phase_image
 from ..utils.qt import pil2qpixmap
 
@@ -836,19 +836,7 @@ def draw_asterisms(
     *,
     preset: str = "night",
 ) -> None:
-    """Draw hovered-star asterisms using visible stars by SourceId."""
-    if highlighted_object is None:
-        return
-    hovered_obj, _ = highlighted_object
-    if not isinstance(hovered_obj, dict):
-        return
-    hovered_source_id = str(hovered_obj.get("source_id", "")).strip()
-    if not hovered_source_id:
-        return
-    second_slot = int(datetime.now().timestamp()) // 3
-    asterism = pick_rotating_asterism(hovered_source_id, second_slot)
-    if asterism is None:
-        return
+    """Draw dim asterisms always, and brighten the hovered selection with a label."""
 
     stars = celestial_data.stars
     source_ids = np.asarray(stars["source_id"], dtype=object)
@@ -867,46 +855,70 @@ def draw_asterisms(
         return
 
     if preset in ("white", "day"):
-        line_color = QColor(26, 114, 214, 70)
-        outline_color = QColor(190, 220, 250, 28)
+        base_line_color = QColor(26, 114, 214, 26)
+        base_outline_color = QColor(190, 220, 250, 10)
+        highlight_line_color = QColor(26, 114, 214, 124)
+        highlight_outline_color = QColor(190, 220, 250, 52)
     else:
-        line_color = QColor(120, 190, 255, 60)
-        outline_color = QColor(32, 76, 130, 36)
+        base_line_color = QColor(82, 142, 214, 18)
+        base_outline_color = QColor(24, 48, 86, 8)
+        highlight_line_color = QColor(120, 190, 255, 92)
+        highlight_outline_color = QColor(32, 76, 130, 44)
 
     painter.save()
-    outline_pen = QPen(outline_color, 3.2)
-    outline_pen.setCosmetic(True)
-    outline_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-    outline_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-    line_pen = QPen(line_color, 2.0)
-    line_pen.setCosmetic(True)
-    line_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-    line_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+    def _make_pen(color: QColor, width: float) -> QPen:
+        pen = QPen(color, width)
+        pen.setCosmetic(True)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        return pen
+
+    def _draw_one_asterism(asterism: Any, outline_pen: QPen, line_pen: QPen) -> List[QPointF]:
+        label_points: List[QPointF] = []
+        for source_a, source_b in asterism.segments():
+            pos_a = star_altaz_by_source.get(source_a)
+            pos_b = star_altaz_by_source.get(source_b)
+            if pos_a is None or pos_b is None:
+                continue
+            if not is_in_fov(pos_a[0], pos_a[1], viewer_data.view_center):
+                continue
+            if not is_in_fov(pos_b[0], pos_b[1], viewer_data.view_center):
+                continue
+            arc_altaz = _great_circle_altaz_points(pos_a[0], pos_a[1], pos_b[0], pos_b[1])
+            arc_points: List[Tuple[float, float]] = []
+            for alt_i, az_i in arc_altaz:
+                nx_i, ny_i = altaz_to_normalized_xy(alt_i, az_i, viewer_data.view_center)
+                arc_points.append((nx_i, ny_i))
+            for frag in split_by_gaps(arc_points):
+                if len(frag) < 2:
+                    continue
+                poly = QPolygonF([QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in frag])
+                painter.setPen(outline_pen)
+                painter.drawPolyline(poly)
+                painter.setPen(line_pen)
+                painter.drawPolyline(poly)
+                label_points.extend(poly)
+        return label_points
+
+    base_outline_pen = _make_pen(base_outline_color, 3.4)
+    base_line_pen = _make_pen(base_line_color, 2.1)
+    for asterism in ASTERISMS:
+        _draw_one_asterism(asterism, base_outline_pen, base_line_pen)
+
+    highlighted_asterism = None
+    if highlighted_object is not None:
+        hovered_obj, _ = highlighted_object
+        if isinstance(hovered_obj, dict):
+            hovered_source_id = str(hovered_obj.get("source_id", "")).strip()
+            if hovered_source_id:
+                second_slot = int(datetime.now().timestamp()) // 3
+                highlighted_asterism = pick_rotating_asterism(hovered_source_id, second_slot)
 
     label_points: List[QPointF] = []
-    for source_a, source_b in asterism.segments():
-        pos_a = star_altaz_by_source.get(source_a)
-        pos_b = star_altaz_by_source.get(source_b)
-        if pos_a is None or pos_b is None:
-            continue
-        if not is_in_fov(pos_a[0], pos_a[1], viewer_data.view_center):
-            continue
-        if not is_in_fov(pos_b[0], pos_b[1], viewer_data.view_center):
-            continue
-        arc_altaz = _great_circle_altaz_points(pos_a[0], pos_a[1], pos_b[0], pos_b[1])
-        arc_points: List[Tuple[float, float]] = []
-        for alt_i, az_i in arc_altaz:
-            nx_i, ny_i = altaz_to_normalized_xy(alt_i, az_i, viewer_data.view_center)
-            arc_points.append((nx_i, ny_i))
-        for frag in split_by_gaps(arc_points):
-            if len(frag) < 2:
-                continue
-            poly = QPolygonF([QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in frag])
-            painter.setPen(outline_pen)
-            painter.drawPolyline(poly)
-            painter.setPen(line_pen)
-            painter.drawPolyline(poly)
-            label_points.extend(poly)
+    if highlighted_asterism is not None:
+        highlight_outline_pen = _make_pen(highlight_outline_color, 3.2)
+        highlight_line_pen = _make_pen(highlight_line_color, 2.0)
+        label_points = _draw_one_asterism(highlighted_asterism, highlight_outline_pen, highlight_line_pen)
 
     if label_points:
         cx = sum(pt.x() for pt in label_points) / len(label_points)
@@ -920,7 +932,7 @@ def draw_asterisms(
         if label_candidates is not None:
             label_candidates.append(
                 {
-                    "text": asterism.name,
+                    "text": highlighted_asterism.name,
                     "pos": label_pos,
                     "text_color": text_color,
                     "outline_color": outline_text_color,
@@ -930,7 +942,7 @@ def draw_asterisms(
         else:
             draw_outlined_text(
                 painter,
-                asterism.name,
+                highlighted_asterism.name,
                 label_pos,
                 text_font,
                 text_color,
@@ -938,7 +950,7 @@ def draw_asterisms(
                 outline_width=2.4,
             )
             if label_reservations is not None:
-                label_reservations.append(_text_bounds_at_baseline(asterism.name, text_font, label_pos))
+                label_reservations.append(_text_bounds_at_baseline(highlighted_asterism.name, text_font, label_pos))
 
     painter.restore()
 
