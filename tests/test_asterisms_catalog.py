@@ -30,6 +30,7 @@ def test_asterism_key_lookup_by_source_id() -> None:
     assert "summer_triangle" in ASTERISM_KEYS_BY_SOURCE_ID["HIP91262"]
     assert "southern_cross" in ASTERISM_KEYS_BY_SOURCE_ID["HIP60718"]
     assert "southern_pointers" in ASTERISM_KEYS_BY_SOURCE_ID["HIP71683"]
+    assert "keystone" in ASTERISM_KEYS_BY_SOURCE_ID["HIP84380"]
     assert "cassiopeia_w" in ASTERISM_KEYS_BY_SOURCE_ID["HIP3179"]
     assert "jobs_coffin" in ASTERISM_KEYS_BY_SOURCE_ID["HIP101769"]
 

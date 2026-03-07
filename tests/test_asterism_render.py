@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import astropy.time
 import numpy as np
-from PySide6.QtCore import QPointF
+from PySide6.QtCore import QPoint, QPointF
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication
 
@@ -105,3 +105,50 @@ def test_draw_asterisms_hover_adds_bright_overlay_and_label(monkeypatch) -> None
 
     assert painter.polyline_count == 4
     assert [c["text"] for c in label_candidates] == ["Test Asterism"]
+
+
+def test_find_highlighted_object_accepts_unnamed_asterism_member(monkeypatch) -> None:
+    geometry = ScreenGeometry(center=(120, 90), radius=70)
+    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
+    celestial_data = CelestialData(
+        time=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
+        planets=[],
+        stars={
+            "name": np.array([""], dtype=object),
+            "source_id": np.array(["HIP1"], dtype=object),
+            "alt": np.array([45.0], dtype=float),
+            "az": np.array([180.0], dtype=float),
+            "vmag": np.array([3.0], dtype=float),
+            "bv": np.zeros(1, dtype=float),
+            "size_factor": np.ones(1, dtype=float),
+            "color_factor_base": np.ones(1, dtype=float),
+        },
+        deep_sky_objects={
+            "id": np.array([], dtype=object),
+            "name": np.array([], dtype=object),
+            "type": np.array([], dtype=object),
+            "alt": np.array([], dtype=float),
+            "az": np.array([], dtype=float),
+            "vmag": np.array([], dtype=float),
+            "major_arcmin": np.array([], dtype=float),
+            "minor_arcmin": np.array([], dtype=float),
+            "pa_deg": np.array([], dtype=float),
+        },
+        celestial_equator_points=[],
+        ecliptic_points=[],
+        horizon_points=[],
+    )
+
+    monkeypatch.setattr(render_draw, "ASTERISM_REQUIRED_SOURCE_IDS", frozenset({"HIP1"}))
+
+    highlighted = render_draw.find_highlighted_object(
+        celestial_data=celestial_data,
+        viewer_data=viewer,
+        mouse_pos=QPoint(120, 90),
+        geometry=geometry,
+    )
+
+    assert highlighted is not None
+    obj, _ = highlighted
+    assert isinstance(obj, dict)
+    assert obj["source_id"] == "HIP1"
