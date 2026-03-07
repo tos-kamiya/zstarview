@@ -1,18 +1,13 @@
-import csv
 from pathlib import Path
 
+from zstarview.catalog import load_star_catalog
 from zstarview.asterisms import ASTERISMS, ASTERISM_KEYS_BY_SOURCE_ID, pick_rotating_asterism
 
 
 def _catalog_source_ids() -> set[str]:
     csv_path = Path(__file__).resolve().parents[1] / "src" / "zstarview" / "data" / "stars" / "stars_base.csv"
-    out: set[str] = set()
-    with csv_path.open(newline="", encoding="utf-8") as f:
-        for row in csv.DictReader(f):
-            source_id = (row.get("SourceId") or "").strip()
-            if source_id:
-                out.add(source_id)
-    return out
+    df = load_star_catalog(str(csv_path), vmag_threshold=None)
+    return {str(source_id).strip() for source_id in df.get_column("SourceId").to_list() if str(source_id).strip()}
 
 
 def test_asterism_definitions_present() -> None:
@@ -24,7 +19,7 @@ def test_asterism_source_ids_exist_in_catalog() -> None:
     source_ids = _catalog_source_ids()
     missing: list[str] = []
     for asterism in ASTERISMS:
-        for source_id in asterism.path:
+        for source_id in asterism.source_ids:
             if source_id not in source_ids:
                 missing.append(f"{asterism.key}:{source_id}")
     assert not missing
@@ -33,6 +28,10 @@ def test_asterism_source_ids_exist_in_catalog() -> None:
 def test_asterism_key_lookup_by_source_id() -> None:
     assert "winter_triangle" in ASTERISM_KEYS_BY_SOURCE_ID["HIP32349"]
     assert "summer_triangle" in ASTERISM_KEYS_BY_SOURCE_ID["HIP91262"]
+    assert "southern_cross" in ASTERISM_KEYS_BY_SOURCE_ID["HIP60718"]
+    assert "southern_pointers" in ASTERISM_KEYS_BY_SOURCE_ID["HIP71683"]
+    assert "cassiopeia_w" in ASTERISM_KEYS_BY_SOURCE_ID["HIP3179"]
+    assert "jobs_coffin" in ASTERISM_KEYS_BY_SOURCE_ID["HIP101769"]
 
 
 def test_pick_rotating_asterism_uses_slot_modulo() -> None:

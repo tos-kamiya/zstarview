@@ -4,6 +4,8 @@ from typing import List, Optional
 
 import polars as pl
 
+from .asterisms import ASTERISM_REQUIRED_SOURCE_IDS
+
 
 def _resolve_split_dir(filename: str) -> Optional[Path]:
     path = Path(filename)
@@ -49,6 +51,48 @@ def _split_files_for_threshold(filename: str, vmag_threshold: Optional[float]) -
     return selected_files if all(p.exists() for p in selected_files) else None
 
 
+def _all_split_files(filename: str) -> List[Path]:
+    split_dir = _resolve_split_dir(filename)
+    if split_dir is None:
+        return []
+    files = [
+        split_dir / "stars_base.csv",
+        split_dir / "stars_extra7.csv",
+        split_dir / "stars_extra8.csv",
+        split_dir / "stars_extra9.csv",
+        split_dir / "stars_extra10.csv",
+        split_dir / "stars_extra_faint.csv",
+    ]
+    return [p for p in files if p.exists()]
+
+
+def _read_star_csv(path: Path) -> pl.DataFrame:
+    return pl.read_csv(str(path), try_parse_dates=False, null_values="").fill_null("")
+
+
+def _append_required_asterism_rows(df: pl.DataFrame, filename: str, selected_files: List[Path]) -> pl.DataFrame:
+    if not ASTERISM_REQUIRED_SOURCE_IDS:
+        return df
+    present_ids = set(df.get_column("SourceId").to_list()) if "SourceId" in df.columns else set()
+    needed_ids = set(ASTERISM_REQUIRED_SOURCE_IDS) - present_ids
+    if not needed_ids:
+        return df
+
+    extra_parts: List[pl.DataFrame] = []
+    for path in _all_split_files(filename):
+        if path in selected_files or not needed_ids:
+            continue
+        part = _read_star_csv(path).filter(pl.col("SourceId").is_in(sorted(needed_ids)))
+        if part.height == 0:
+            continue
+        extra_parts.append(part)
+        needed_ids -= set(part.get_column("SourceId").to_list())
+
+    if not extra_parts:
+        return df
+    return pl.concat([df, *extra_parts], how="vertical_relaxed")
+
+
 def load_star_catalog(filename: str, vmag_threshold: Optional[float] = 7.0) -> pl.DataFrame:
     """Loads the star catalog from a CSV file using Polars.
 
@@ -57,8 +101,9 @@ def load_star_catalog(filename: str, vmag_threshold: Optional[float] = 7.0) -> p
     """
     split_files = _split_files_for_threshold(filename, vmag_threshold)
     if split_files is not None:
-        parts = [pl.read_csv(str(p), try_parse_dates=False, null_values="").fill_null("") for p in split_files]
+        parts = [_read_star_csv(p) for p in split_files]
         df = pl.concat(parts, how="vertical_relaxed")
+        df = _append_required_asterism_rows(df, filename, split_files)
     else:
         # Use fill_null to handle empty strings for name, etc.
         df = pl.read_csv(filename, try_parse_dates=False, null_values="").fill_null("")
@@ -66,7 +111,8 @@ def load_star_catalog(filename: str, vmag_threshold: Optional[float] = 7.0) -> p
         # Vmag can be empty string, cast to float handles this (becomes null)
         # then filter out nulls and values > threshold
         vmag_col = pl.col("Vmag").cast(pl.Float64, strict=False)
-        df = df.filter((vmag_col.is_not_null()) & (vmag_col <= vmag_threshold))
+        required_mask = pl.col("SourceId").is_in(sorted(ASTERISM_REQUIRED_SOURCE_IDS)) if ASTERISM_REQUIRED_SOURCE_IDS else pl.lit(False)
+        df = df.filter((vmag_col.is_not_null()) & ((vmag_col <= vmag_threshold) | required_mask))
     return df
 
 

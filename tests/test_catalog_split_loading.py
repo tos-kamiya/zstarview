@@ -54,3 +54,18 @@ def test_load_star_catalog_uses_extra10_and_faint_when_available(tmp_path: Path)
     df = load_star_catalog(str(base_csv), vmag_threshold=10.8)
     ids = set(df.get_column("SourceId").to_list())
     assert ids == {"HIP2", "TYC10", "TYC11"}
+
+
+def test_load_star_catalog_keeps_required_asterism_stars_from_extra_files(tmp_path: Path) -> None:
+    split_dir = tmp_path / "stars"
+    base_csv = split_dir / "stars_base.csv"
+
+    _write_rows(split_dir / "stars_base.csv", ["2,,,0,0,5.5,0.1,hip,HIP2,\n"])
+    _write_rows(split_dir / "stars_extra7.csv", [])
+    _write_rows(split_dir / "stars_extra8.csv", [])
+    _write_rows(split_dir / "stars_extra9.csv", ["92104,,,18.77,-27.34,8.12,0.59,hip,HIP92104,\n"])
+
+    df = load_star_catalog(str(base_csv), vmag_threshold=6.0)
+    ids = set(df.get_column("SourceId").to_list())
+    assert "HIP2" in ids
+    assert "HIP92104" in ids

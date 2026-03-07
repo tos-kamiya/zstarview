@@ -15,27 +15,28 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .famous_star_shortcuts import NamedStarShortcut
+from .famous_star_shortcuts import SearchJumpTarget
 
 
 class NamedStarSearchDialog(QDialog):
-    def __init__(self, stars: List[NamedStarShortcut], parent: QWidget | None = None) -> None:
+    def __init__(self, targets: List[SearchJumpTarget], parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Search Named Stars")
+        self.setWindowTitle("Search Stars and Asterisms")
         self.setModal(True)
         self.resize(460, 460)
 
         layout = QVBoxLayout(self)
         self._search = QLineEdit(self)
-        self._search.setPlaceholderText("Type star name...")
+        self._search.setPlaceholderText("Type star or asterism name...")
         self._search.textChanged.connect(self._apply_filter)
         layout.addWidget(self._search)
 
         self._list = QListWidget(self)
         self._list.itemDoubleClicked.connect(self._on_item_double_clicked)
-        for star in stars:
-            item = QListWidgetItem(f"{star.name}  (Vmag {star.vmag:.2f})", self._list)
-            item.setData(Qt.ItemDataRole.UserRole, star)
+        for target in targets:
+            suffix = f"  ({target.subtitle})" if target.subtitle else ""
+            item = QListWidgetItem(f"{target.label}{suffix}", self._list)
+            item.setData(Qt.ItemDataRole.UserRole, target)
         layout.addWidget(self._list)
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel, parent=self)
@@ -44,25 +45,26 @@ class NamedStarSearchDialog(QDialog):
         layout.addWidget(buttons)
         self._select_first_visible()
 
-    def selected_star(self) -> Optional[NamedStarShortcut]:
+    def selected_target(self) -> Optional[SearchJumpTarget]:
         item = self._list.currentItem()
         if item is None:
             return None
-        star = item.data(Qt.ItemDataRole.UserRole)
-        return star if isinstance(star, NamedStarShortcut) else None
+        target = item.data(Qt.ItemDataRole.UserRole)
+        return target if isinstance(target, SearchJumpTarget) else None
 
     def _apply_filter(self, text: str) -> None:
         query = text.strip().casefold()
         for i in range(self._list.count()):
             item = self._list.item(i)
-            star = item.data(Qt.ItemDataRole.UserRole)
-            if not isinstance(star, NamedStarShortcut):
+            target = item.data(Qt.ItemDataRole.UserRole)
+            if not isinstance(target, SearchJumpTarget):
                 item.setHidden(True)
                 continue
             if not query:
                 item.setHidden(False)
                 continue
-            item.setHidden(query not in star.name.casefold())
+            haystack = f"{target.label} {target.subtitle}".casefold()
+            item.setHidden(query not in haystack)
         self._select_first_visible()
 
     def _select_first_visible(self) -> None:
