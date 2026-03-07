@@ -864,13 +864,13 @@ def draw_asterisms(
         return
 
     if preset in ("white", "day"):
-        base_line_color = QColor(26, 114, 214, 26)
-        base_outline_color = QColor(190, 220, 250, 10)
+        base_line_color = QColor(26, 114, 214, 20)
+        base_outline_color = QColor(190, 220, 250, 8)
         highlight_line_color = QColor(26, 114, 214, 124)
         highlight_outline_color = QColor(190, 220, 250, 52)
     else:
-        base_line_color = QColor(82, 142, 214, 18)
-        base_outline_color = QColor(24, 48, 86, 8)
+        base_line_color = QColor(82, 142, 214, 14)
+        base_outline_color = QColor(24, 48, 86, 6)
         highlight_line_color = QColor(120, 190, 255, 92)
         highlight_outline_color = QColor(32, 76, 130, 44)
 
@@ -909,8 +909,8 @@ def draw_asterisms(
                 label_points.extend(poly)
         return label_points
 
-    base_outline_pen = _make_pen(base_outline_color, 3.4)
-    base_line_pen = _make_pen(base_line_color, 2.1)
+    base_outline_pen = _make_pen(base_outline_color, 4.0)
+    base_line_pen = _make_pen(base_line_color, 2.5)
     for asterism in ASTERISMS:
         _draw_one_asterism(asterism, base_outline_pen, base_line_pen)
 

@@ -74,7 +74,12 @@ ASTERISMS: tuple[Asterism, ...] = (
     Asterism(
         "northern_cross",
         "Northern Cross",
-        _path_edges(_hip(102098), _hip(100453), _hip(95947), _hip(100453), _hip(97165), _hip(100453), _hip(102488)),
+        (
+            (_hip(102098), _hip(100453)),
+            (_hip(100453), _hip(95947)),
+            (_hip(100453), _hip(97165)),
+            (_hip(100453), _hip(102488)),
+        ),
     ),
     Asterism(
         "teapot",
