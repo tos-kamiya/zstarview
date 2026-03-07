@@ -189,10 +189,10 @@ After a jump/search, the selected star is highlighted for about 3 seconds using 
 
 These overlays are **asterisms** (popular line patterns), not formal IAU constellation boundaries.
 
-- Winter: `Winter Triangle`, `Orion's Belt`, `Orion's Sword`, `Winter Hexagon`, `Hyades V`
-- Spring: `Big Dipper`, `Little Dipper`, `Spring Triangle`, `Arc to Arcturus`, `Leo Sickle`
-- Summer: `Summer Triangle`, `Northern Cross`, `Teapot`, `Keystone`, `Coathanger`
-- Autumn: `Great Square of Pegasus`, `Circlet of Pisces`, `Water Jar of Aquarius`, `Andromeda Chain`, `Autumn Triangle`
+- Winter: `Winter Triangle`, `Orion's Belt`, `Winter Hexagon`, `Southern Cross`, `Southern Pointers`, `Diamond Cross`, `False Cross`
+- Spring: `Big Dipper`, `Little Dipper`, `Spring Triangle`, `Arc to Arcturus`, `Leo Sickle`, `Southern Triangle`
+- Summer: `Summer Triangle`, `Northern Cross`, `Teapot`, `Keystone`
+- Autumn: `Great Square of Pegasus`, `Circlet of Pisces`, `Water Jar of Aquarius`, `Cassiopeia W`, `House of Cepheus`, `Job's Coffin`
 
 ## Generating a `.desktop` launcher (GNOME only)
 

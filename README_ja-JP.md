@@ -9,7 +9,7 @@
 
 - 明るい恒星、惑星、天の赤道、黄道をリアルタイムで描画
 - 名前付きのDSO（銀河/散開星団/球状星団）を薄い青系の領域として表示。DSOホバーは恒星ホバーと独立して動作
-- 星座（アステリウム）表示に対応。恒星ホバー時に表示し、同一恒星に複数ある場合は3秒ごとに切り替え
+- 星座（アステリウム）表示に対応。暗い線で常時表示し、構成星にホバーすると該当アステリズムを明るく強調してラベルを表示。同一恒星に複数ある場合は3秒ごとに切り替え
 - 太陽・月・主要惑星に対応。小惑星（アステロイド）は未対応です。
 - 都市名で場所を指定可能（GeoNames に基づく）
 - 表示中心を `-A`（高度）/`-Z`（方位）で調整可能
@@ -181,10 +181,10 @@ zstarview "N35.68;E139.76" --datetime "2025-09-12 21 JST"
 ここでの「星座（アステリウム）」は、見かけ上の星の並びを結んだ通称パターンです。  
 **IAU（国際天文学連合）が定義する正式な88星座の境界とは別概念**です。
 
-- 冬: `Winter Triangle`（冬の大三角）, `Orion's Belt`（オリオンの三ツ星）, `Orion's Sword`, `Winter Hexagon`（冬のダイヤモンド）, `Hyades V`
-- 春: `Big Dipper`（北斗七星）, `Little Dipper`, `Spring Triangle`, `Arc to Arcturus`, `Leo Sickle`
-- 夏: `Summer Triangle`（夏の大三角）, `Northern Cross`（北十字）, `Teapot`, `Keystone`, `Coathanger`
-- 秋: `Great Square of Pegasus`（ペガススの四辺形）, `Circlet of Pisces`, `Water Jar of Aquarius`, `Andromeda Chain`, `Autumn Triangle`
+- 冬: `Winter Triangle`（冬の大三角）, `Orion's Belt`（オリオンの三ツ星）, `Winter Hexagon`（冬のダイヤモンド）, `Southern Cross`（南十字）, `Southern Pointers`, `Diamond Cross`, `False Cross`
+- 春: `Big Dipper`（北斗七星）, `Little Dipper`, `Spring Triangle`, `Arc to Arcturus`, `Leo Sickle`, `Southern Triangle`
+- 夏: `Summer Triangle`（夏の大三角）, `Northern Cross`（北十字）, `Teapot`, `Keystone`
+- 秋: `Great Square of Pegasus`（ペガススの四辺形）, `Circlet of Pisces`, `Water Jar of Aquarius`, `Cassiopeia W`, `House of Cepheus`, `Job's Coffin`
 
 ## `.desktop` ランチャーの生成（GNOME専用）
 
