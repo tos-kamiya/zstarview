@@ -101,18 +101,6 @@ ASTERISMS: tuple[Asterism, ...] = (
         ),
     ),
     Asterism("keystone", "Keystone", "summer", _path_edges(_hip(84380), _hip(81833), _hip(81693), _hip(83207), _hip(84380))),
-    Asterism(
-        "coathanger",
-        "Coathanger",
-        "summer",
-        _path_edges(_hip(94703), _hip(95498), _hip(96275), _hip(96757), _hip(97365), _hip(96275), _hip(96837), _hip(96516)),
-    ),
-    Asterism(
-        "scorpion_hook",
-        "Scorpion Hook",
-        "summer",
-        _path_edges(_hip(78820), _hip(78401), _hip(80763), _hip(80112), _hip(82396), _hip(86228), _hip(85927)),
-    ),
     # Autumn
     Asterism(
         "great_square_of_pegasus",
@@ -124,19 +112,29 @@ ASTERISMS: tuple[Asterism, ...] = (
         "circlet_of_pisces",
         "Circlet of Pisces",
         "autumn",
-        _path_edges(_hip(115830), _hip(117375), _hip(114971), _hip(115738), _hip(116928), _hip(117245), _hip(116771), _hip(115830)),
+        _path_edges(_hip(114971), _hip(115227), _hip(115830), _hip(116771), _hip(117245), _hip(116928), _hip(115738), _hip(114971)),
     ),
-    Asterism("water_jar_of_aquarius", "Water Jar of Aquarius", "autumn", _path_edges(_hip(106278), _hip(109074), _hip(110395), _hip(113136), _hip(110003), _hip(109074))),
-    Asterism("andromeda_chain", "Andromeda Chain", "autumn", _path_edges(_hip(677), _hip(5447), _hip(9640))),
-    Asterism("autumn_triangle", "Autumn Triangle", "autumn", _path_edges(_hip(113963), _hip(9884), _hip(113368), _hip(113963))),
+    Asterism("water_jar_of_aquarius", "Water Jar of Aquarius", "autumn", 
+        (
+            (_hip(110960), _hip(111497)),
+            (_hip(110960), _hip(110395)),
+            (_hip(110960), _hip(110672)),
+        )
+    ),
     Asterism("cassiopeia_w", "Cassiopeia W", "autumn", _path_edges(_hip(746), _hip(3179), _hip(4427), _hip(6686), _hip(8886))),
     Asterism(
         "house_of_cepheus",
         "House of Cepheus",
         "autumn",
-        _path_edges(_hip(116727), _hip(112724), _hip(106032), _hip(102422), _hip(105199), _hip(109492), _hip(116727)),
+        _path_edges(_hip(109492), _hip(105199), _hip(106032), _hip(116727), _hip(112724), _hip(109492))
+        + ((_hip(106032), _hip(112724)),),
     ),
-    Asterism("jobs_coffin", "Job's Coffin", "autumn", _path_edges(_hip(101769), _hip(102281), _hip(102532), _hip(101958), _hip(101769))),
+    Asterism(
+        "jobs_coffin",
+        "Job's Coffin",
+        "autumn",
+        _path_edges(_hip(101769), _hip(102281), _hip(102532), _hip(101958), _hip(101769)) + ((_hip(101769), _hip(101421)),),
+    ),
 )
 
 ASTERISM_KEYS_BY_SOURCE_ID: dict[str, tuple[str, ...]] = {}
