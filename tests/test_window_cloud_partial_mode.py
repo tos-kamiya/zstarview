@@ -7,6 +7,7 @@ import numpy as np
 
 from zstarview.ui.cloud_state import CloudImageState
 from zstarview.ui.window import SkyWindow
+from zstarview.ui.window_state import SkyWindowState
 from zstarview.utils.qt import np_rgba_to_qimage
 
 
@@ -21,9 +22,8 @@ class _DummyCompositor:
 def test_on_cloud_ready_sets_partial_fields() -> None:
     dummy = SimpleNamespace()
     dummy.cloud_state = CloudImageState(banner_text="Clouds: downloading…")
+    dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
     dummy._compositor = _DummyCompositor()
-    dummy._interaction_mode = False
-    dummy._cloud_repaint_deferred = False
     repaint_calls: list[str] = []
     dummy._safe_request_cloud_repaint = lambda: repaint_calls.append("repaint")
 

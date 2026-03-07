@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 from zstarview.types import ViewerData
 from zstarview.ui.window import SkyWindow
+from zstarview.ui.window_state import SkyWindowState
 
 
 class _DummyTimer:
@@ -43,7 +44,7 @@ def test_viewer_data_for_render_uses_render_view_center() -> None:
         city_name="Tokyo",
         view_center=(20.0, 30.0),
     )
-    dummy._render_view_center = (60.0, 210.0)
+    dummy.state = SkyWindowState(render_view_center=(60.0, 210.0))
 
     got = SkyWindow._viewer_data_for_render(dummy)
     assert got.view_center == (60.0, 210.0)
@@ -58,9 +59,7 @@ def test_on_sky_data_calculated_updates_render_snapshot_once() -> None:
         city_name="Tokyo",
         view_center=(20.0, 30.0),
     )
-    dummy._render_view_center = (20.0, 30.0)
-    dummy.celestial_data = None
-    dummy._sky_disc_image = None
+    dummy.state = SkyWindowState(render_view_center=(20.0, 30.0))
     dummy._compositor = _DummyCompositor()
     dummy._sky_data_update_timer = _DummyTimer(active=True)
     dummy._cloud_update_timer = _DummyTimer(active=False)
@@ -68,11 +67,7 @@ def test_on_sky_data_calculated_updates_render_snapshot_once() -> None:
     dummy.cloud_disc_alpha = 0.2
     dummy.sky_update_interval = 60
     dummy.initial_data_loaded = _DummySignal()
-    dummy._sky_update_pending = False
     dummy._is_shutting_down = False
-    dummy._pending_star_vmag_limit = None
-    dummy._cloud_repaint_deferred = False
-    dummy._interaction_mode = False
     dummy.request_sky_data_update = lambda *_args, **_kwargs: None
     dummy._safe_request_cloud_repaint = lambda: None
 
@@ -88,8 +83,8 @@ def test_on_sky_data_calculated_updates_render_snapshot_once() -> None:
     }
     SkyWindow._on_sky_data_calculated(dummy, payload)
 
-    assert dummy._render_view_center == (15.0, 120.0)
-    assert dummy.celestial_data is celestial
-    assert dummy._sky_disc_image is sky_disc
+    assert dummy.state.render_view_center == (15.0, 120.0)
+    assert dummy.state.celestial_data is celestial
+    assert dummy.state.sky_disc_image is sky_disc
     assert dummy._compositor.invalidated is True
     assert update_calls == ["update"]
