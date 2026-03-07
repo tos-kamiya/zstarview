@@ -4,10 +4,15 @@ import logging
 import math
 
 from .cli_args import (
-    WindowGeometryArg,
     _parse_theme,
     _parse_window_geometry,
     parse_args,
+)
+from .ui.window_inputs import (
+    prepare_window_catalogs,
+    prepare_window_runtime_options,
+    prepare_window_user_options,
+    prepare_window_viewer_data,
 )
 from .paths import APP_DISPLAY_NAME
 from .startup import (
@@ -50,41 +55,46 @@ def main() -> None:
 
     view_center = (args.view_center_alt, args.view_center_az)
     view_center = (min(90.0, max(0.0, view_center[0])), view_center[1] % 360)
-    star_base_radius = max(2.0, args.star_base_radius)
-    sky_opacity = min(1.0, max(0.0, args.sky_opacity))
-    cloud_opacity = min(1.0, max(0.0, args.cloud_opacity))
-    cloud_missing_tint_opacity = min(1.0, max(0.0, args.cloud_missing_tint_opacity))
     cloud_stripe_count, cloud_stripe_width = args.cloud_stripe
-    if cloud_stripe_count == 0 or cloud_stripe_width == 0.0:
-        cloud_opacity = 0.0
-    sky_update_interval = max(1, args.sky_update_interval)
     visual_preset = args.theme
     star_visibility_boost = 1.12 if visual_preset == "white" else 1.05 if visual_preset == "day" else 1.0
     vmag_brightness_scale = -math.log10(args.vmag_brightness_multiplier)
+    catalogs = prepare_window_catalogs(
+        star_catalog,
+        dso_catalog=dso_catalog,
+        vmag_brightness_scale=vmag_brightness_scale,
+    )
 
     city_str = f"{city.cc}/{city.name}"
-    main_win = SkyWindow(
+    viewer_data = prepare_window_viewer_data(
         city_str,
         (city.lat, city.lon, city.tz),
         view_center,
-        star_catalog,
-        dso_catalog=dso_catalog,
-        delta_t=delta_t,
-        sky_disc_alpha=sky_opacity,
-        cloud_disc_alpha=cloud_opacity,
+    )
+    user_options = prepare_window_user_options(
+        sky_disc_alpha=args.sky_opacity,
+        cloud_disc_alpha=0.0 if cloud_stripe_count == 0 or cloud_stripe_width == 0.0 else args.cloud_opacity,
         enlarge_moon=args.enlarge_moon,
-        star_base_radius=star_base_radius,
+        star_base_radius=args.star_base_radius,
         vmag_limit=args.vmag_limit,
-        sky_update_interval=sky_update_interval,
         visual_preset=visual_preset,
         star_visibility_boost=star_visibility_boost,
-        vmag_brightness_scale=vmag_brightness_scale,
-        cloud_stripe_style=(cloud_stripe_count, cloud_stripe_width),
-        cloud_missing_tint_opacity=cloud_missing_tint_opacity,
-        star_render_expected_width=args.expected_render_width,
-        window_geometry_arg=args.window_geometry,
         show_dso_initial=args.show_dso_initial,
         show_asterisms_initial=args.show_asterisms_initial,
+    )
+    runtime_options = prepare_window_runtime_options(
+        delta_t=delta_t,
+        sky_update_interval=args.sky_update_interval,
+        cloud_stripe_style=(cloud_stripe_count, cloud_stripe_width),
+        cloud_missing_tint_opacity=args.cloud_missing_tint_opacity,
+        star_render_expected_width=args.expected_render_width,
+        window_geometry_arg=args.window_geometry,
+    )
+    main_win = SkyWindow(
+        viewer_data,
+        catalogs,
+        user_options=user_options,
+        runtime_options=runtime_options,
     )
 
     def _on_initial_loaded():

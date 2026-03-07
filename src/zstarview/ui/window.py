@@ -10,11 +10,10 @@ import logging
 import math
 import time
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 import astropy.time
-import polars as pl
-from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, QRectF, Qt, QTimer, Signal
+from PySide6.QtCore import QEvent, QPoint, QRect, Qt, QTimer, Signal
 from PySide6.QtGui import (
     QAction,
     QCloseEvent,
@@ -22,21 +21,14 @@ from PySide6.QtGui import (
     QFontDatabase,
     QGuiApplication,
     QIcon,
-    QImage,
     QKeyEvent,
     QMouseEvent,
-    QPainter,
-    QPaintEvent,
     QResizeEvent,
 )
 from PySide6.QtWidgets import QApplication, QMenu, QPushButton, QSizeGrip
 
 from ..__about__ import __version__
 from ..astro import (
-    DeepSkyCatalogArrays,
-    StarCatalogArrays,
-    prepare_deep_sky_catalog_arrays,
-    prepare_star_catalog_arrays,
     radec_to_altaz,
 )
 from ..clouddisc import (
@@ -67,14 +59,11 @@ from .cloud_state import CloudImageState
 from .cloud_controller import CloudController
 from .famous_star_dialog import NamedStarJumpDialog
 from .famous_star_search_dialog import NamedStarSearchDialog
-from .famous_star_shortcuts import (
-    NamedStarShortcut,
-    SearchJumpTarget,
-    build_search_jump_targets,
-    build_named_star_shortcuts,
-)
+from .famous_star_shortcuts import NamedStarShortcut, SearchJumpTarget
 from ..asterisms import ASTERISM_KEYS_BY_SOURCE_ID
 from .sky_worker import SkyDataWorker
+from .window_inputs import PreparedWindowCatalogs
+from .window_inputs import SkyWindowRuntimeOptions, SkyWindowUserOptions
 from .window_render import SkyWindowRenderMixin
 from .window_state import SkyWindowState
 from .window_updates import SkyWindowUpdatesMixin
@@ -82,7 +71,6 @@ from .window_updates import SkyWindowUpdatesMixin
 logger = logging.getLogger(__name__)
 
 
-DEBUG_ECLIPSES = True
 WindowGeometryArg = Union[str, Tuple[int, int, int, int]]
 
 
@@ -112,6 +100,43 @@ def compute_star_render_surface_size(
     )
 
 
+def _clamp_window_geometry_to_screen(
+    x: int,
+    y: int,
+    width: int,
+    height: int,
+    *,
+    min_width: int,
+    min_height: int,
+) -> Tuple[int, int, int, int]:
+    width = max(int(width), int(min_width))
+    height = max(int(height), int(min_height))
+
+    screens = QGuiApplication.screens()
+    if not screens:
+        return int(x), int(y), width, height
+
+    candidate = QRect(int(x), int(y), width, height)
+    available_rect = None
+    for screen in screens:
+        rect = screen.availableGeometry()
+        if rect.intersects(candidate):
+            available_rect = rect
+            break
+    if available_rect is None:
+        primary = QGuiApplication.primaryScreen()
+        available_rect = primary.availableGeometry() if primary is not None else screens[0].availableGeometry()
+
+    width = min(width, max(1, available_rect.width()))
+    height = min(height, max(1, available_rect.height()))
+
+    max_x = available_rect.right() - width + 1
+    max_y = available_rect.bottom() - height + 1
+    x = min(max(int(x), available_rect.left()), max_x)
+    y = min(max(int(y), available_rect.top()), max_y)
+    return x, y, width, height
+
+
 class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
     """
     The main application window, displaying the sky view.
@@ -129,99 +154,56 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
 
     def __init__(
         self,
-        city_name: str,
-        city_data: Tuple[float, float, str],
-        view_center: Tuple[float, float],
-        star_catalog: pl.DataFrame,
-        dso_catalog: Optional[pl.DataFrame] = None,
-        delta_t: timedelta = timedelta(days=0, hours=0),
-        sky_disc_alpha: float = 0.3,
-        cloud_disc_alpha: float = 0.6,
-        enlarge_moon: bool = False,
-        star_base_radius: float = 4.0,
-        vmag_limit: float = 6.0,
-        sky_update_interval: int = 60,  # sec
-        visual_preset: str = "night",
-        star_visibility_boost: float = 1.0,
-        vmag_brightness_scale: float = -0.39,
-        cloud_stripe_style: Tuple[int, float] = (50, 0.2),
-        cloud_missing_tint_opacity: float = float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0,
-        star_render_expected_width: int = 600,
-        window_geometry_arg: Optional[WindowGeometryArg] = None,
-        show_dso_initial: Optional[bool] = None,
-        show_asterisms_initial: Optional[bool] = None,
+        viewer_data: ViewerData,
+        catalogs: PreparedWindowCatalogs,
+        user_options: SkyWindowUserOptions = SkyWindowUserOptions(),
+        runtime_options: SkyWindowRuntimeOptions = SkyWindowRuntimeOptions(),
     ) -> None:
         """
         Initializes the SkyWindow.
 
         Args:
-            city_name: The name of the observer's city.
-            city_data: A tuple of (latitude, longitude, timezone_name).
-            view_center: The initial view center (altitude, azimuth) in degrees.
-            star_catalog: A Polars DataFrame containing the star catalog.
-            delta_t: Time offset from the current time.
-            sky_disc_alpha: Opacity of the daytime sky color overlay.
-            cloud_disc_alpha: Opacity of the cloud layer.
-            enlarge_moon: Whether to draw the Moon larger than its true scale.
-            star_base_radius: Base size for 2nd-magnitude stars.
-            vmag_limit: The faintest star magnitude to display.
-            visual_preset: UI visual preset name.
-            star_visibility_boost: Multiplier for star visibility on bright presets.
-            vmag_brightness_scale: Slope applied to magnitude for color intensity (negative number).
+            viewer_data: Prepared observer/view state for the window.
+            catalogs: Precomputed catalog data used by rendering and named-star jumps.
+            user_options: User-facing display and toggle options.
+            runtime_options: Runtime scheduling and window-hosting options.
         """
         super().__init__()
-        self.star_catalog = star_catalog
-        self.vmag_brightness_scale = vmag_brightness_scale
-        self.star_catalog_full_np: StarCatalogArrays = prepare_star_catalog_arrays(
-            star_catalog, vmag_brightness_scale=self.vmag_brightness_scale
-        )
-        self.star_catalog_lod6_np: StarCatalogArrays = prepare_star_catalog_arrays(
-            star_catalog,
-            max_vmag=6.0,
-            vmag_brightness_scale=self.vmag_brightness_scale,
-        )
-        self.dso_catalog_np: Optional[DeepSkyCatalogArrays]
-        if dso_catalog is None:
-            self.dso_catalog_np = None
-        else:
-            self.dso_catalog_np = prepare_deep_sky_catalog_arrays(dso_catalog)
+        self.star_catalog_full_np = catalogs.star_catalog_full_np
+        self.star_catalog_lod6_np = catalogs.star_catalog_lod6_np
+        self.dso_catalog_np = catalogs.dso_catalog_np
         self.show_dso: bool = self.dso_catalog_np is not None
-        if show_dso_initial is not None:
-            self.show_dso = bool(show_dso_initial) and self.dso_catalog_np is not None
-        self.show_asterisms: bool = True if show_asterisms_initial is None else bool(show_asterisms_initial)
-        self._named_stars_by_band = build_named_star_shortcuts(star_catalog, max_vmag=2.0)
-        self._named_stars_search_all = build_search_jump_targets(star_catalog)
-        self.delta_t = delta_t
-        self.sky_disc_alpha = sky_disc_alpha
-        self.enlarge_moon = enlarge_moon
-        self.star_base_radius = star_base_radius
-        self.vmag_limit = vmag_limit
-        self.sky_update_interval = sky_update_interval
-        self.visual_preset = visual_preset
-        self.star_visibility_boost = star_visibility_boost
-        self._star_render_expected_width = max(1, int(star_render_expected_width))
-        self._cloud_toggle_supported = delta_t.total_seconds() == 0.0
+        if user_options.show_dso_initial is not None:
+            self.show_dso = bool(user_options.show_dso_initial) and self.dso_catalog_np is not None
+        self.show_asterisms: bool = (
+            True if user_options.show_asterisms_initial is None else bool(user_options.show_asterisms_initial)
+        )
+        self._named_stars_by_band = catalogs.named_stars_by_band
+        self._named_stars_search_all = catalogs.named_stars_search_all
+        self.delta_t = runtime_options.delta_t
+        self.sky_disc_alpha = user_options.sky_disc_alpha
+        self.enlarge_moon = user_options.enlarge_moon
+        self.star_base_radius = user_options.star_base_radius
+        self.vmag_limit = user_options.vmag_limit
+        self.sky_update_interval = runtime_options.sky_update_interval
+        self.visual_preset = user_options.visual_preset
+        self.star_visibility_boost = user_options.star_visibility_boost
+        self._star_render_expected_width = runtime_options.star_render_expected_width
+        self._cloud_toggle_supported = runtime_options.delta_t.total_seconds() == 0.0
 
         # Cloud opacity is disabled if we are looking at a time-shifted view,
         # as we can only fetch current cloud data.
-        requested_cloud_alpha = max(0.0, min(1.0, cloud_disc_alpha))
+        requested_cloud_alpha = user_options.cloud_disc_alpha
         self._cloud_alpha_when_enabled = requested_cloud_alpha if requested_cloud_alpha > 0.0 else 0.2
         self.cloud_disc_alpha: float = requested_cloud_alpha
         if not self._cloud_toggle_supported:
             self.cloud_disc_alpha = 0.0
 
         # --- Viewer and Window Setup ---
-        lat, lon, tz_name = city_data
-        self.viewer_data = ViewerData(
-            location=(lat, lon),
-            timezone_name=tz_name,
-            city_name=city_name,
-            view_center=view_center,
-        )
+        self.viewer_data = viewer_data
         self.state = SkyWindowState(
             render_view_center=tuple(self.viewer_data.view_center),
         )
-        self._debug_eclipses = DEBUG_ECLIPSES
         self.setWindowTitle(f"{APP_DISPLAY_NAME} - {self.viewer_data.city_name.title()}")
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setFocus(Qt.FocusReason.ActiveWindowFocusReason)
@@ -236,13 +218,13 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
         requested_geometry: Optional[Tuple[int, int, int, int]] = None
-        if window_geometry_arg == "restore":
+        if runtime_options.window_geometry_arg == "restore":
             requested_geometry = load_last_window_geometry()
-        elif isinstance(window_geometry_arg, tuple):
-            requested_geometry = window_geometry_arg
+        elif isinstance(runtime_options.window_geometry_arg, tuple):
+            requested_geometry = runtime_options.window_geometry_arg
         if requested_geometry is not None:
             initial_x, initial_y, initial_width, initial_height = requested_geometry
-        initial_x, initial_y, initial_width, initial_height = self._clamp_window_geometry_to_screen(
+        initial_x, initial_y, initial_width, initial_height = _clamp_window_geometry_to_screen(
             initial_x,
             initial_y,
             initial_width,
@@ -270,23 +252,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.status_line_font = QFont(text_font_family, STATUS_LINE_FONT_SIZE)
 
         # --- Data Update Timers and State ---
-        self._sky_worker = SkyDataWorker(self)
-        self._sky_worker.data_ready.connect(self._on_sky_data_calculated)
-        self.cloud_repaint_requested.connect(self.update)
         self._is_shutting_down: bool = False
-        app = QApplication.instance()
-        if app is not None:
-            app.aboutToQuit.connect(self._begin_shutdown)
-        self._sky_data_update_timer = QTimer(self)
-        self._sky_data_update_timer.timeout.connect(self.start_background_sky_data_update)
-        self._asterism_check_timer = QTimer(self)
-        self._asterism_check_timer.setInterval(1000)
-        self._asterism_check_timer.timeout.connect(self._on_asterism_check_tick)
-        self._asterism_check_timer.start()
-        self._interaction_idle_timer = QTimer(self)
-        self._interaction_idle_timer.setSingleShot(True)
-        self._interaction_idle_timer.setInterval(self.state.interaction_idle_ms)
-        self._interaction_idle_timer.timeout.connect(self._end_interaction_mode)
+        self._setup_update_infrastructure()
 
         # --- Cloud Data State and Cache ---
         self.cloud_state = CloudImageState()
@@ -318,8 +285,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self._action_toggle_clouds.setEnabled(self._cloud_toggle_supported and self._clouddisc is not None)
 
         # --- Composition Cache (moved to dedicated class) ---
-        target_stripes, width_factor = cloud_stripe_style
-        missing_tint_alpha = int(round(255.0 * max(0.0, min(1.0, float(cloud_missing_tint_opacity)))))
+        target_stripes, width_factor = runtime_options.cloud_stripe_style
+        missing_tint_alpha = int(round(255.0 * runtime_options.cloud_missing_tint_opacity))
         missing_tint_rgba = (
             int(CLOUD_MISSING_TINT_RGBA[0]),
             int(CLOUD_MISSING_TINT_RGBA[1]),
@@ -338,6 +305,29 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.start_background_sky_data_update(is_initial_load=True)
         if self._clouddisc and self.cloud_disc_alpha > 0.0:
             self.start_background_cloud_update(reason="initial")
+
+    def _setup_update_infrastructure(self) -> None:
+        """Initialize timers, worker, and signal wiring for background updates."""
+        self._sky_worker = SkyDataWorker(self)
+        self._sky_worker.data_ready.connect(self._on_sky_data_calculated)
+        self.cloud_repaint_requested.connect(self.update)
+
+        app = QApplication.instance()
+        if app is not None:
+            app.aboutToQuit.connect(self._begin_shutdown)
+
+        self._sky_data_update_timer = QTimer(self)
+        self._sky_data_update_timer.timeout.connect(self.start_background_sky_data_update)
+
+        self._asterism_check_timer = QTimer(self)
+        self._asterism_check_timer.setInterval(1000)
+        self._asterism_check_timer.timeout.connect(self._on_asterism_check_tick)
+        self._asterism_check_timer.start()
+
+        self._interaction_idle_timer = QTimer(self)
+        self._interaction_idle_timer.setSingleShot(True)
+        self._interaction_idle_timer.setInterval(self.state.interaction_idle_ms)
+        self._interaction_idle_timer.timeout.connect(self._end_interaction_mode)
 
     def _add_hamburger_menu(self) -> None:
         """Adds a hamburger menu button and its corresponding actions."""
@@ -523,15 +513,9 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             return
         self.update()
 
-    def _safe_request_cloud_repaint(self) -> None:
-        return SkyWindowUpdatesMixin._safe_request_cloud_repaint(self)
-
     def _predicted_cloud_satellite(self) -> str:
         lat, lon = self.viewer_data.location
         return pick_satellite(lat, lon, ("AUTO",))
-
-    def _cloud_status_line(self) -> str:
-        return SkyWindowUpdatesMixin._cloud_status_line(self)
 
     def toggle_enlarge_moon(self) -> None:
         self.enlarge_moon = not self.enlarge_moon
@@ -593,197 +577,12 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._begin_shutdown()
         super().closeEvent(event)
 
-    @staticmethod
-    def _clamp_window_geometry_to_screen(
-        x: int,
-        y: int,
-        width: int,
-        height: int,
-        *,
-        min_width: int,
-        min_height: int,
-    ) -> Tuple[int, int, int, int]:
-        width = max(int(width), int(min_width))
-        height = max(int(height), int(min_height))
-
-        screens = QGuiApplication.screens()
-        if not screens:
-            return int(x), int(y), width, height
-
-        candidate = QRect(int(x), int(y), width, height)
-        available_rect = None
-        for screen in screens:
-            rect = screen.availableGeometry()
-            if rect.intersects(candidate):
-                available_rect = rect
-                break
-        if available_rect is None:
-            primary = QGuiApplication.primaryScreen()
-            available_rect = primary.availableGeometry() if primary is not None else screens[0].availableGeometry()
-
-        width = min(width, max(1, available_rect.width()))
-        height = min(height, max(1, available_rect.height()))
-
-        max_x = available_rect.right() - width + 1
-        max_y = available_rect.bottom() - height + 1
-        x = min(max(int(x), available_rect.left()), max_x)
-        y = min(max(int(y), available_rect.top()), max_y)
-        return x, y, width, height
-
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         self.state.mouse_pos = event.pos()
         self.update()  # Trigger a repaint to show hover effects
         # We accept the event to prevent it from propagating further.
         # This is why the manual drag in DraggableWindow does not work.
         event.accept()
-
-    def set_sky_data(self, data: CelestialData, *, trigger_update: bool = True) -> None:
-        self.state.celestial_data = data
-        if trigger_update:
-            self.update()
-
-    def _viewer_data_for_render(self) -> ViewerData:
-        return SkyWindowRenderMixin._viewer_data_for_render(self)
-
-    def _active_jump_highlight_object(
-        self,
-        geometry,
-    ):
-        return SkyWindowRenderMixin._active_jump_highlight_object(self, geometry)
-
-    def paintEvent(self, event: QPaintEvent) -> None:
-        return SkyWindowRenderMixin.paintEvent(self, event)
-
-    def _clear_background_layer(self, painter: QPainter) -> None:
-        return SkyWindowRenderMixin._clear_background_layer(self, painter)
-
-    def _draw_background_layer(self, painter: QPainter, geometry: render_draw.ScreenGeometry) -> None:
-        return SkyWindowRenderMixin._draw_background_layer(self, painter, geometry)
-
-    def _draw_sky_cloud_layers(self, painter: QPainter, geometry: render_draw.ScreenGeometry) -> None:
-        return SkyWindowRenderMixin._draw_sky_cloud_layers(self, painter, geometry)
-
-    def _draw_terrain_layers(
-        self,
-        painter: QPainter,
-        geometry: render_draw.ScreenGeometry,
-        celestial_data: CelestialData,
-        render_viewer: ViewerData,
-        highlighted_object: Any | None,
-        highlighted_dso: Any | None,
-        label_reservations: list[QRectF],
-        label_candidates: list[dict[str, Any]],
-    ) -> None:
-        return SkyWindowRenderMixin._draw_terrain_layers(
-            self,
-            painter,
-            geometry,
-            celestial_data,
-            render_viewer,
-            highlighted_object,
-            highlighted_dso,
-            label_reservations,
-            label_candidates,
-        )
-
-    def _draw_star_layer(
-        self,
-        painter: QPainter,
-        geometry: render_draw.ScreenGeometry,
-        celestial_data: CelestialData,
-        render_viewer: ViewerData,
-    ) -> None:
-        return SkyWindowRenderMixin._draw_star_layer(
-            self,
-            painter,
-            geometry,
-            celestial_data,
-            render_viewer,
-        )
-
-    def _draw_planet_layer(
-        self,
-        painter: QPainter,
-        geometry: render_draw.ScreenGeometry,
-        celestial_data: CelestialData,
-        render_viewer: ViewerData,
-        enlarge_moon: bool,
-        label_candidates: list[dict[str, Any]],
-    ) -> None:
-        return SkyWindowRenderMixin._draw_planet_layer(
-            self,
-            painter,
-            geometry,
-            celestial_data,
-            render_viewer,
-            enlarge_moon,
-            label_candidates,
-        )
-
-    def _draw_overlay_layer(
-        self,
-        painter: QPainter,
-        geometry: render_draw.ScreenGeometry,
-        celestial_data: CelestialData,
-        render_viewer: ViewerData,
-        highlighted_object: Any | None,
-        highlighted_dso: Any | None,
-        enlarge_moon: bool,
-        label_reservations: list[QRectF],
-        label_candidates: list[dict[str, Any]],
-    ) -> None:
-        return SkyWindowRenderMixin._draw_overlay_layer(
-            self,
-            painter,
-            geometry,
-            celestial_data,
-            render_viewer,
-            highlighted_object,
-            highlighted_dso,
-            enlarge_moon,
-            label_reservations,
-            label_candidates,
-        )
-
-    def _draw_label_layer(self, painter: QPainter, label_candidates: list[dict[str, Any]]) -> None:
-        return SkyWindowRenderMixin._draw_label_layer(self, painter, label_candidates)
-
-    def _draw_status_line(self, painter: QPainter) -> None:
-        return SkyWindowRenderMixin._draw_status_line(self, painter)
-
-    # Composited drawing handled by SkyCompositorCache
-
-    def _on_sky_data_calculated(self, payload: Dict) -> None:
-        return SkyWindowUpdatesMixin._on_sky_data_calculated(self, payload)
-
-    def request_sky_data_update(
-        self,
-        star_vmag_limit: Optional[float] = None,
-    ) -> None:
-        return SkyWindowUpdatesMixin.request_sky_data_update(self, star_vmag_limit)
-
-    def start_background_sky_data_update(
-        self,
-        is_initial_load: bool = False,
-        star_vmag_limit: Optional[float] = None,
-    ) -> bool:
-        return SkyWindowUpdatesMixin.start_background_sky_data_update(
-            self,
-            is_initial_load=is_initial_load,
-            star_vmag_limit=star_vmag_limit,
-        )
-
-    def start_background_cloud_update(self, reason: str = "manual") -> None:
-        return SkyWindowUpdatesMixin.start_background_cloud_update(self, reason)
-
-    def _on_cloud_started(self, payload: Dict) -> None:
-        return SkyWindowUpdatesMixin._on_cloud_started(self, payload)
-
-    def _on_cloud_ready(self, payload: Dict) -> None:
-        return SkyWindowUpdatesMixin._on_cloud_ready(self, payload)
-
-    def _on_cloud_failed(self, payload: Dict) -> None:
-        return SkyWindowUpdatesMixin._on_cloud_failed(self, payload)
 
     def _rotate_view(self, d_alt: float = 0.0, d_az: float = 0.0) -> None:
         self._begin_interaction_mode()

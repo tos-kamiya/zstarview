@@ -64,7 +64,6 @@ class SkyDataWorker(QObject):
         delta_t: timedelta,
         sky_disc_alpha: float,
         sky_disc_base_size: int,
-        debug_eclipses: bool = False,
     ) -> bool:
         """Start background computation if idle; return False when already running."""
         with self._lock:
@@ -84,7 +83,6 @@ class SkyDataWorker(QObject):
                 "delta_t": delta_t,
                 "sky_disc_alpha": sky_disc_alpha,
                 "sky_disc_base_size": sky_disc_base_size,
-                "debug_eclipses": debug_eclipses,
             },
             daemon=True,
         )
@@ -103,7 +101,6 @@ class SkyDataWorker(QObject):
         delta_t: timedelta,
         sky_disc_alpha: float,
         sky_disc_base_size: int,
-        debug_eclipses: bool,
     ) -> None:
         try:
             now = datetime.now(timezone.utc) + delta_t
@@ -152,13 +149,6 @@ class SkyDataWorker(QObject):
                 ecliptic_points=ecliptic_points,
                 horizon_points=horizon_points,
             )
-
-            if debug_eclipses:
-                for body in planets:
-                    if body.name == "sun" and body.solar_eclipse_info.is_eclipse:
-                        logger.debug("Solar eclipse detected")
-                    if body.name == "moon" and body.lunar_eclipse_info.is_eclipse:
-                        logger.debug("Lunar eclipse detected")
 
             sun_altaz = None
             solar_eclipse_info = None

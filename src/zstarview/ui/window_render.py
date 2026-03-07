@@ -13,67 +13,26 @@ from ..types import CelestialData, ViewerData
 logger = logging.getLogger(__name__)
 
 
-def _get_state_value(obj, name: str, *, legacy_name: str, default=None):
-    state = getattr(obj, "state", None)
-    if state is not None and hasattr(state, name):
-        return getattr(state, name)
-    return getattr(obj, legacy_name, default)
-
-
-def _set_state_value(obj, name: str, value, *, legacy_name: str) -> None:
-    state = getattr(obj, "state", None)
-    if state is not None and hasattr(state, name):
-        setattr(state, name, value)
-    setattr(obj, legacy_name, value)
-
-
 class SkyWindowRenderMixin:
     def _viewer_data_for_render(self) -> ViewerData:
         return ViewerData(
             location=self.viewer_data.location,
             timezone_name=self.viewer_data.timezone_name,
             city_name=self.viewer_data.city_name,
-            view_center=_get_state_value(
-                self,
-                "render_view_center",
-                legacy_name="_render_view_center",
-                default=self.viewer_data.view_center,
-            ),
+            view_center=self.state.render_view_center,
         )
 
     def _active_jump_highlight_object(self, geometry):
-        jump_highlight_name = _get_state_value(
-            self,
-            "jump_highlight_name",
-            legacy_name="_jump_highlight_name",
-        )
+        jump_highlight_name = self.state.jump_highlight_name
         if not jump_highlight_name:
             return None
-        jump_highlight_until_ms = _get_state_value(
-            self,
-            "jump_highlight_until_ms",
-            legacy_name="_jump_highlight_until_ms",
-            default=0.0,
-        )
+        jump_highlight_until_ms = self.state.jump_highlight_until_ms
         if time.monotonic() * 1000.0 > jump_highlight_until_ms:
-            _set_state_value(
-                self,
-                "jump_highlight_name", None, legacy_name="_jump_highlight_name"
-            )
-            _set_state_value(
-                self,
-                "jump_highlight_altaz", None, legacy_name="_jump_highlight_altaz"
-            )
-            _set_state_value(
-                self,
-                "jump_highlight_until_ms", 0.0, legacy_name="_jump_highlight_until_ms"
-            )
+            self.state.jump_highlight_name = None
+            self.state.jump_highlight_altaz = None
+            self.state.jump_highlight_until_ms = 0.0
             return None
-        celestial_data = _get_state_value(
-            self,
-            "celestial_data",
-            legacy_name="celestial_data",
-        )
+        celestial_data = self.state.celestial_data
         if not celestial_data:
             return None
 
@@ -94,11 +53,7 @@ class SkyWindowRenderMixin:
             alt = float(stars["alt"][best_idx])
             az = float(stars["az"][best_idx])
         else:
-            jump_highlight_altaz = _get_state_value(
-                self,
-                "jump_highlight_altaz",
-                legacy_name="_jump_highlight_altaz",
-            )
+            jump_highlight_altaz = self.state.jump_highlight_altaz
             if jump_highlight_altaz is not None:
                 alt, az = jump_highlight_altaz
             else:
@@ -107,12 +62,7 @@ class SkyWindowRenderMixin:
         nx, ny = render_draw.altaz_to_normalized_xy(
             alt,
             az,
-            _get_state_value(
-                self,
-                "render_view_center",
-                legacy_name="_render_view_center",
-                default=self.viewer_data.view_center,
-            ),
+            self.state.render_view_center,
         )
         px, py = render_draw.normalized_to_screen_xy(nx, ny, geometry)
         return ({"name": target_name}, QPointF(px, py))
@@ -122,11 +72,7 @@ class SkyWindowRenderMixin:
         painter.setRenderHint(QPainter.Antialiasing)
         painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
 
-        celestial_data = _get_state_value(
-            self,
-            "celestial_data",
-            legacy_name="celestial_data",
-        )
+        celestial_data = self.state.celestial_data
         if celestial_data is None:
             loading_color, _ = render_draw.get_text_style(self.visual_preset)
             painter.setPen(loading_color)
@@ -142,7 +88,7 @@ class SkyWindowRenderMixin:
 
         highlighted_object = None
         highlighted_dso = None
-        mouse_pos = _get_state_value(self, "mouse_pos", legacy_name="mouse_pos")
+        mouse_pos = self.state.mouse_pos
         if mouse_pos is not None:
             highlighted_object = render_draw.find_highlighted_object(
                 celestial_data,
@@ -222,11 +168,7 @@ class SkyWindowRenderMixin:
         self._compositor.draw(
             painter,
             geometry,
-            _get_state_value(
-                self,
-                "sky_disc_image",
-                legacy_name="_sky_disc_image",
-            ),
+            self.state.sky_disc_image,
             self.cloud_state.image,
             cloud_alpha=self.cloud_disc_alpha,
             stripe_density=self.cloud_state.stripe_density,
@@ -278,7 +220,7 @@ class SkyWindowRenderMixin:
             geometry,
             render_viewer.view_center,
             self.text_font,
-            _get_state_value(self, "mouse_pos", legacy_name="mouse_pos"),
+            self.state.mouse_pos,
             preset=self.visual_preset,
         )
         render_draw.draw_zenith_marker(painter, geometry, render_viewer.view_center)
@@ -299,11 +241,7 @@ class SkyWindowRenderMixin:
             self._star_render_expected_width,
         )
         stats = (win_w, win_h, low_w, low_h)
-        last_star_render_stats = _get_state_value(
-            self,
-            "last_star_render_stats",
-            legacy_name="_last_star_render_stats",
-        )
+        last_star_render_stats = self.state.last_star_render_stats
         if stats != last_star_render_stats:
             logger.info(
                 "Star render resolution: window=%dx%d draw=%dx%d",
@@ -312,12 +250,7 @@ class SkyWindowRenderMixin:
                 low_w,
                 low_h,
             )
-            _set_state_value(
-                self,
-                "last_star_render_stats",
-                stats,
-                legacy_name="_last_star_render_stats",
-            )
+            self.state.last_star_render_stats = stats
 
         if low_w == win_w and low_h == win_h:
             render_draw.draw_stars(

@@ -6,20 +6,6 @@ from typing import Dict, Optional
 logger = logging.getLogger(__name__)
 
 
-def _get_state_value(obj, name: str, *, legacy_name: str, default=None):
-    state = getattr(obj, "state", None)
-    if state is not None and hasattr(state, name):
-        return getattr(state, name)
-    return getattr(obj, legacy_name, default)
-
-
-def _set_state_value(obj, name: str, value, *, legacy_name: str) -> None:
-    state = getattr(obj, "state", None)
-    if state is not None and hasattr(state, name):
-        setattr(state, name, value)
-    setattr(obj, legacy_name, value)
-
-
 class SkyWindowUpdatesMixin:
     def _safe_request_cloud_repaint(self) -> None:
         """Best-effort repaint request; ignores teardown-time signal errors."""
@@ -51,24 +37,11 @@ class SkyWindowUpdatesMixin:
         return f"Clouds [{sat}]: idle"
 
     def _on_sky_data_calculated(self, payload: Dict) -> None:
-        _set_state_value(
-            self,
-            "render_view_center",
-            tuple(payload.get("view_center", self.viewer_data.view_center)),
-            legacy_name="_render_view_center",
+        self.state.render_view_center = tuple(
+            payload.get("view_center", self.viewer_data.view_center)
         )
-        _set_state_value(
-            self,
-            "celestial_data",
-            payload["celestial"],
-            legacy_name="celestial_data",
-        )
-        _set_state_value(
-            self,
-            "sky_disc_image",
-            payload["sky_disc"],
-            legacy_name="_sky_disc_image",
-        )
+        self.state.celestial_data = payload["celestial"]
+        self.state.sky_disc_image = payload["sky_disc"]
 
         self._compositor.invalidate()
         self.update()
@@ -83,37 +56,13 @@ class SkyWindowUpdatesMixin:
                 self._cloud_update_timer.start()
             self.initial_data_loaded.emit()
 
-        if _get_state_value(
-            self,
-            "sky_update_pending",
-            legacy_name="_sky_update_pending",
-            default=False,
-        ) and not self._is_shutting_down:
+        if self.state.sky_update_pending and not self._is_shutting_down:
             self.request_sky_data_update(
-                _get_state_value(
-                    self,
-                    "pending_star_vmag_limit",
-                    legacy_name="_pending_star_vmag_limit",
-                ),
+                self.state.pending_star_vmag_limit,
             )
 
-        if _get_state_value(
-            self,
-            "cloud_repaint_deferred",
-            legacy_name="_cloud_repaint_deferred",
-            default=False,
-        ) and not _get_state_value(
-            self,
-            "interaction_mode",
-            legacy_name="_interaction_mode",
-            default=False,
-        ):
-            _set_state_value(
-                self,
-                "cloud_repaint_deferred",
-                False,
-                legacy_name="_cloud_repaint_deferred",
-            )
+        if self.state.cloud_repaint_deferred and not self.state.interaction_mode:
+            self.state.cloud_repaint_deferred = False
             self._safe_request_cloud_repaint()
 
     def request_sky_data_update(
@@ -123,31 +72,11 @@ class SkyWindowUpdatesMixin:
         if self.start_background_sky_data_update(
             star_vmag_limit=star_vmag_limit,
         ):
-            _set_state_value(
-                self,
-                "sky_update_pending",
-                False,
-                legacy_name="_sky_update_pending",
-            )
-            _set_state_value(
-                self,
-                "pending_star_vmag_limit",
-                None,
-                legacy_name="_pending_star_vmag_limit",
-            )
+            self.state.sky_update_pending = False
+            self.state.pending_star_vmag_limit = None
             return
-        _set_state_value(
-            self,
-            "sky_update_pending",
-            True,
-            legacy_name="_sky_update_pending",
-        )
-        _set_state_value(
-            self,
-            "pending_star_vmag_limit",
-            star_vmag_limit,
-            legacy_name="_pending_star_vmag_limit",
-        )
+        self.state.sky_update_pending = True
+        self.state.pending_star_vmag_limit = star_vmag_limit
         logger.debug("Sky data update deferred; worker is busy.")
 
     def start_background_sky_data_update(
@@ -168,13 +97,7 @@ class SkyWindowUpdatesMixin:
             star_vmag_limit=worker_star_vmag_limit,
             delta_t=self.delta_t,
             sky_disc_alpha=self.sky_disc_alpha,
-            sky_disc_base_size=_get_state_value(
-                self,
-                "sky_disc_base_size",
-                legacy_name="_sky_disc_base_size",
-                default=1024,
-            ),
-            debug_eclipses=self._debug_eclipses,
+            sky_disc_base_size=self.state.sky_disc_base_size,
         )
         if started:
             if is_initial_load:
@@ -195,12 +118,7 @@ class SkyWindowUpdatesMixin:
             lon=lon,
             alt=alt,
             az=az,
-            radius_px=_get_state_value(
-                self,
-                "cloud_base_size",
-                legacy_name="_cloud_base_size",
-                default=256,
-            ),
+            radius_px=self.state.cloud_base_size,
             reason=reason,
         )
 
@@ -225,18 +143,8 @@ class SkyWindowUpdatesMixin:
             request_id=payload.get("request_id"),
         )
         self._compositor.invalidate()
-        if _get_state_value(
-            self,
-            "interaction_mode",
-            legacy_name="_interaction_mode",
-            default=False,
-        ):
-            _set_state_value(
-                self,
-                "cloud_repaint_deferred",
-                True,
-                legacy_name="_cloud_repaint_deferred",
-            )
+        if self.state.interaction_mode:
+            self.state.cloud_repaint_deferred = True
             return
         self._safe_request_cloud_repaint()
 
@@ -248,17 +156,7 @@ class SkyWindowUpdatesMixin:
         self._compositor.invalidate()
         if banner:
             self.cloud_state.set_error_banner(banner)
-        if _get_state_value(
-            self,
-            "interaction_mode",
-            legacy_name="_interaction_mode",
-            default=False,
-        ):
-            _set_state_value(
-                self,
-                "cloud_repaint_deferred",
-                True,
-                legacy_name="_cloud_repaint_deferred",
-            )
+        if self.state.interaction_mode:
+            self.state.cloud_repaint_deferred = True
             return
         self._safe_request_cloud_repaint()
