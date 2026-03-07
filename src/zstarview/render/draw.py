@@ -10,7 +10,16 @@ from PIL import Image
 from zoneinfo import ZoneInfo
 
 from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt
-from PySide6.QtGui import QImage, QColor, QFont, QFontMetrics, QPainter, QPainterPath, QPen, QPolygonF, QRadialGradient
+from PySide6.QtGui import (
+    QFont,
+    QFontMetrics,
+    QImage,
+    QColor,
+    QPainter,
+    QPen,
+    QPolygonF,
+    QRadialGradient,
+)
 
 from ..paths import (
     BACKGROUND_FIELD_OF_VIEW_DEG1,
@@ -30,6 +39,28 @@ from ..astro import (
     calculate_moon_render_data,
 )
 from ..asterisms import ASTERISMS, ASTERISM_REQUIRED_SOURCE_IDS, pick_rotating_asterism
+from .geometry import (
+    altaz_to_normalized_xy_vectorized,
+    get_screen_geometry,
+    normalized_to_screen_xy,
+    normalized_to_screen_xy_vectorized,
+)
+from .photometry import (
+    body_label_text,
+    bv_to_rgb_vectorized,
+    compute_flare_profile,
+    flare_strength_from_vmag,
+    planet_bloom_profile_from_vmag,
+    planet_disc_style_from_vmag,
+    planet_marker_color,
+)
+from .text import (
+    _text_bounds_at_baseline,
+    draw_label_candidates,
+    draw_outlined_text,
+    draw_status_line_text,
+    get_text_style,
+)
 from ..utils.image import generate_moon_phase_image
 from ..utils.qt import pil2qpixmap
 
@@ -43,131 +74,6 @@ _DSO_SHAPE_SIZE_GAIN = 1.0
 _DSO_HOVER_SIZE_GAIN = 3.0
 _DSO_SHAPE_MIN_MAJOR_ARCMIN = 15.0
 _DSO_CATALOG_LIKE_NAME_RE = re.compile(r"^(M\d+|NGC\d+|IC\d+|MEL\d+|MWSC\d+)$", re.IGNORECASE)
-
-
-def _text_bounds_at_baseline(text: str, font: QFont, baseline_pos: QPointF) -> QRectF:
-    fm = QFontMetrics(font)
-    bounds = fm.tightBoundingRect(text)
-    return QRectF(
-        baseline_pos.x() + bounds.x(),
-        baseline_pos.y() + bounds.y(),
-        bounds.width(),
-        bounds.height(),
-    )
-
-
-def _rect_overlaps_any(rect: QRectF, others: List[QRectF], pad_px: float = 2.0) -> bool:
-    if not others:
-        return False
-    test = rect.adjusted(-pad_px, -pad_px, pad_px, pad_px)
-    return any(test.intersects(other.adjusted(-pad_px, -pad_px, pad_px, pad_px)) for other in others)
-
-
-def _rect_overlap_count(rect: QRectF, others: List[QRectF], pad_px: float = 2.0) -> int:
-    if not others:
-        return 0
-    test = rect.adjusted(-pad_px, -pad_px, pad_px, pad_px)
-    return sum(1 for other in others if test.intersects(other.adjusted(-pad_px, -pad_px, pad_px, pad_px)))
-
-
-def _clamp_baseline_pos_to_viewport(
-    text: str,
-    font: QFont,
-    baseline_pos: QPointF,
-    viewport: QRectF,
-    *,
-    margin_px: float = 2.0,
-) -> QPointF:
-    """Shift baseline position so text bounds stay inside viewport."""
-    rect = _text_bounds_at_baseline(text, font, baseline_pos)
-    dx = 0.0
-    dy = 0.0
-    left = viewport.left() + margin_px
-    right = viewport.right() - margin_px
-    top = viewport.top() + margin_px
-    bottom = viewport.bottom() - margin_px
-
-    if rect.left() < left:
-        dx += left - rect.left()
-    elif rect.right() > right:
-        dx -= rect.right() - right
-
-    if rect.top() < top:
-        dy += top - rect.top()
-    elif rect.bottom() > bottom:
-        dy -= rect.bottom() - bottom
-
-    return QPointF(baseline_pos.x() + dx, baseline_pos.y() + dy)
-
-
-def draw_label_candidates(
-    painter: QPainter,
-    candidates: List[Dict[str, Any]],
-    text_font: QFont,
-) -> None:
-    """Draw label candidates as the final label layer with overlap avoidance."""
-    if not candidates:
-        return
-    reservations: List[QRectF] = []
-    offsets = (
-        (0.0, 0.0),
-        (12.0, 0.0),
-        (-12.0, 0.0),
-        (0.0, -12.0),
-        (0.0, 12.0),
-        (20.0, -10.0),
-        (-20.0, -10.0),
-        (24.0, 0.0),
-        (-24.0, 0.0),
-        (0.0, -24.0),
-        (0.0, 24.0),
-        (30.0, -14.0),
-        (-30.0, -14.0),
-        (30.0, 14.0),
-        (-30.0, 14.0),
-    )
-    painter.save()
-    painter.setFont(text_font)
-    viewport = QRectF(painter.viewport())
-    ordered = sorted(candidates, key=lambda c: int(c.get("priority", 999)))
-    for cand in ordered:
-        text = str(cand.get("text", "")).strip()
-        if not text:
-            continue
-        anchor = cand.get("pos")
-        if not isinstance(anchor, QPointF):
-            continue
-        text_color = cand.get("text_color")
-        outline_color = cand.get("outline_color")
-        if not isinstance(text_color, QColor) or not isinstance(outline_color, QColor):
-            continue
-        hide_on_overlap = bool(cand.get("hide_on_overlap", False))
-        placed = False
-        best_nonfree: Optional[Tuple[int, float, QPointF, QRectF]] = None
-        for dx, dy in offsets:
-            pos = QPointF(anchor.x() + dx, anchor.y() + dy)
-            pos = _clamp_baseline_pos_to_viewport(text, text_font, pos, viewport)
-            rect = _text_bounds_at_baseline(text, text_font, pos)
-            overlap_count = _rect_overlap_count(rect, reservations)
-            if overlap_count > 0:
-                if not hide_on_overlap:
-                    distance2 = (pos.x() - anchor.x()) ** 2 + (pos.y() - anchor.y()) ** 2
-                    score = (overlap_count, distance2, pos, rect)
-                    if best_nonfree is None or score[:2] < best_nonfree[:2]:
-                        best_nonfree = score
-                continue
-            draw_outlined_text(painter, text, pos, text_font, text_color, outline_color)
-            reservations.append(rect)
-            placed = True
-            break
-        if not placed and not hide_on_overlap and best_nonfree is not None:
-            _, _, pos, rect = best_nonfree
-            draw_outlined_text(painter, text, pos, text_font, text_color, outline_color)
-            reservations.append(rect)
-            placed = True
-        if not placed:
-            continue
-    painter.restore()
 
 
 def _is_named_dso(name: object, obj_id: object) -> bool:
@@ -273,185 +179,6 @@ def _star_cache_key(
     )
 
 
-def get_text_style(preset: str = "night") -> Tuple[QColor, QColor]:
-    """Return (text_color, outline_color) tuned for the selected visual preset."""
-    if preset == "white":
-        return QColor(18, 29, 48), QColor(245, 250, 255, 210)
-    if preset == "day":
-        return QColor(22, 33, 52), QColor(238, 245, 255, 200)
-    if preset == "black":
-        return QColor(246, 249, 255), QColor(2, 2, 3, 236)
-    return QColor(*TEXT_COLOR), QColor.fromRgbF(0, 0, 0, 0.3)
-
-
-def bv_to_rgb_vectorized(bv: np.ndarray) -> np.ndarray:
-    """
-    Vectorized conversion of B-V color index to RGB tuples.
-
-    Args:
-        bv: A NumPy array of B-V color indices.
-
-    Returns:
-        A NumPy array of RGB color tuples, where each tuple is of type int.
-    """
-    # First, initialize all stars to the default color (Orange-ish)
-    # The output will be an array of shape (number_of_stars, 3)
-    rgb = np.full((bv.shape[0], 3), [255, 204, 111], dtype=int)
-
-    # Overwrite rows with the correct color based on conditions
-    rgb[bv < 0.0] = [170, 191, 255]  # Blueish
-    rgb[(bv >= 0.0) & (bv < 0.3)] = [202, 215, 255]  # White-Blue
-    rgb[(bv >= 0.3) & (bv < 0.6)] = [248, 247, 255]  # White
-    rgb[(bv >= 0.6) & (bv < 1.0)] = [255, 210, 161]  # Yellowish
-    return rgb
-
-
-def flare_strength_from_vmag(vmag: float) -> float:
-    """Return monotonic flare strength [0, 1] for all magnitudes."""
-    vmag_bright = -1.5
-    vmag_faint = 6.0
-    t = (vmag_faint - float(vmag)) / (vmag_faint - vmag_bright)
-    t = max(0.0, min(1.0, t))
-    return t**1.35
-
-
-def compute_flare_profile(vmag: float, core_radius_px: float) -> Tuple[float, float]:
-    """Compute (core_scale, flare_outer_px) for a star.
-
-    `flare_outer_px` is the additional radial reach from the core radius.
-    If `flare_outer_px < 1.0`, flare should not be drawn.
-    """
-    strength = flare_strength_from_vmag(vmag)
-    flare_outer_px = float(core_radius_px) * (0.65 * strength)
-    if flare_outer_px < 1.0:
-        return 1.0, 0.0
-    core_scale = 1.0 / math.sqrt(1.0 + 0.9 * strength)
-    return core_scale, flare_outer_px
-
-
-def planet_disc_style_from_vmag(vmag: Optional[float]) -> Tuple[float, int]:
-    """Return (radius_px, alpha) for a planet disc marker."""
-    if vmag is None or not math.isfinite(float(vmag)):
-        return 3.0, 200
-    # Keep explicit clipping here for readability: very bright planets saturate at -1.5.
-    vmag_clipped = float(np.clip(float(vmag), -1.5, 6.0))
-    # Reuse star-like brightness mapping so brighter planets appear stronger.
-    strength = flare_strength_from_vmag(vmag_clipped)
-    radius_px = 2.4 + 3.2 * strength
-    alpha = int(np.clip(round(125 + 130 * strength), 110, 255))
-    return radius_px, alpha
-
-
-def planet_bloom_profile_from_vmag(vmag: Optional[float], core_radius_px: float) -> Tuple[float, int, int]:
-    """Return bloom profile as (radius_px, center_alpha, mid_alpha).
-
-    Planet disk size remains clipped at -1.5 mag via `planet_disc_style_from_vmag`,
-    while this bloom profile uses the raw magnitude to express extra brightness
-    for very bright planets (e.g. Venus).
-    """
-    if vmag is None or not math.isfinite(float(vmag)):
-        return 0.0, 0, 0
-
-    vm = float(np.clip(float(vmag), -6.0, 6.0))
-    # Base term follows existing clipped brightness behavior.
-    base = flare_strength_from_vmag(float(np.clip(vm, -1.5, 6.0)))
-    # Extra term activates only when brighter than -1.5.
-    extra = max(0.0, min(1.0, (-1.5 - vm) / 4.5))
-    strength = 0.60 * base + 0.40 * extra
-
-    if strength < 0.12:
-        return 0.0, 0, 0
-
-    r_core = max(1.0, float(core_radius_px))
-    # Keep bloom close to VR look (halo roughly up to ~2.4x core radius).
-    bloom_radius = r_core * (1.20 + 1.20 * strength)
-    center_alpha = int(np.clip(round(10 + 58 * strength), 8, 90))
-    mid_alpha = int(np.clip(round(4 + 34 * strength), 3, 60))
-    return bloom_radius, center_alpha, mid_alpha
-
-
-def planet_marker_color(name: str) -> QColor:
-    """Return display color for a planet marker."""
-    palette = {
-        "mercury": QColor(190, 190, 182),
-        "venus": QColor(245, 226, 176),
-        "mars": QColor(232, 126, 96),
-        "jupiter": QColor(224, 188, 141),
-        "saturn": QColor(226, 214, 154),
-        "uranus": QColor(157, 224, 218),
-        "neptune": QColor(108, 152, 234),
-        "pluto": QColor(194, 166, 132),
-    }
-    return QColor(palette.get(name, QColor(*TEXT_COLOR)))
-
-
-def body_label_text(name: str) -> str:
-    """Return a display label for a solar-system body name."""
-    label = name.strip()
-    if not label:
-        return label
-    return label.title()
-
-
-def altaz_to_normalized_xy_vectorized(
-    alt_deg: np.ndarray,
-    az_deg: np.ndarray,
-    view_center_altaz_deg: Tuple[float, float],
-) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Vectorized conversion of altitude/azimuth to normalized screen coordinates.
-
-    This function projects spherical coordinates (altitude and azimuth) onto a 2D
-    plane using a stereographic projection. The projection is centered on the
-    `view_center` coordinates.
-
-    Args:
-        alt_deg: A NumPy array of altitude values in degrees.
-        az_deg: A NumPy array of azimuth values in degrees.
-        view_center_altaz_deg: `(view_alt_deg, view_az_deg)` in degrees.
-
-    Returns:
-        A tuple `(nx, ny)` of normalized screen coordinates.
-        The normalization is `r_norm = angular_distance_deg / 90`, so values can
-        exceed `1.0` when the angular distance is larger than 90 degrees.
-    """
-    center_alt, center_az = view_center_altaz_deg
-    alt1, az1 = np.radians(center_alt), np.radians(center_az)
-    alt2, az2 = np.radians(alt_deg), np.radians(az_deg)
-
-    cos_theta = np.sin(alt1) * np.sin(alt2) + np.cos(alt1) * np.cos(alt2) * np.cos(az2 - az1)
-    theta = np.arccos(np.clip(cos_theta, -1.0, 1.0))
-
-    r = theta / (math.pi / 2)
-
-    dx = np.cos(alt2) * np.sin(az2 - az1)
-    dy = np.cos(alt1) * np.sin(alt2) - np.sin(alt1) * np.cos(alt2) * np.cos(az2 - az1)
-    length = np.hypot(dx, dy)
-    # Avoid division by zero for objects at the pole
-    length[length == 0] = 1.0
-    nx = r * dx / length
-    ny = -r * dy / length
-    return (nx, ny)
-
-
-def normalized_to_screen_xy_vectorized(nx: np.ndarray, ny: np.ndarray, geometry: ScreenGeometry) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Vectorized conversion of normalized coordinates to screen coordinates.
-
-    This function maps normalized coordinates (in the range [-1, 1]) to the
-    actual pixel coordinates on the screen, based on the provided screen geometry.
-
-    Args:
-        nx: A NumPy array of normalized x coordinates.
-        ny: A NumPy array of normalized y coordinates.
-        geometry: A ScreenGeometry object containing the screen's center and radius.
-
-    Returns:
-        A tuple of two NumPy arrays (x, y), representing the screen coordinates.
-    """
-    return (geometry.center[0] + nx * geometry.radius, geometry.center[1] + ny * geometry.radius)
-
-
 def find_highlighted_object(
     celestial_data: Optional[CelestialData],
     viewer_data: ViewerData,
@@ -496,7 +223,10 @@ def find_highlighted_object(
     stars = celestial_data.stars
     if stars["alt"].size > 0:
         names = np.asarray(stars["name"], dtype=object)
-        source_ids = np.asarray(stars["source_id"], dtype=object)
+        source_ids = np.asarray(
+            stars.get("source_id", np.full(names.shape, "", dtype=object)),
+            dtype=object,
+        )
         hover_mask = np.array(
             [_has_named_star(name) or _is_asterism_member(source_id) for name, source_id in zip(names, source_ids)],
             dtype=bool,
@@ -596,30 +326,6 @@ def find_highlighted_dso(
             near_best = (candidate, QPointF(x, y))
 
     return best if best is not None else near_best
-
-
-def draw_outlined_text(
-    painter: QPainter,
-    text: str,
-    pos: QPointF,
-    font: QFont,
-    text_color: QColor = QColor(255, 255, 255),
-    outline_color: QColor = QColor.fromRgbF(0, 0, 0, 0.3),
-    outline_width: float = 3.0,
-):
-    painter.save()
-    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-
-    path = QPainterPath()
-    path.addText(pos, font, text)
-
-    pen = QPen(outline_color, outline_width)
-    painter.setPen(pen)
-    painter.drawPath(path)
-
-    painter.fillPath(path, text_color)
-
-    painter.restore()
 
 
 def draw_radial_background(
@@ -1866,103 +1572,3 @@ def draw_overlay_info(
                 draw_outlined_text(painter, name, label_pos, text_font, text_color, outline_color)
                 if label_reservations is not None:
                     label_reservations.append(_text_bounds_at_baseline(str(name), text_font, label_pos))
-
-
-def draw_status_line_text(
-    painter: QPainter,
-    message: str,
-    status_line_font: QFont,
-    viewport_rect: QRect,
-    *,
-    preset: str = "night",
-) -> None:
-    """
-    Draws a single-line error message at the bottom-left corner, using the same
-    outlined text style as draw_overlay_info.
-
-    Args:
-        painter: QPainter to draw with.
-        message: Error message text (single line).
-        text_font: Font used for the overlay text.
-        viewport_rect: Target drawing rect (typically the window rect()).
-    """
-    if not message:
-        return
-
-    if preset == "white":
-        color = QColor(64, 22, 22)
-        outline_color = QColor(255, 245, 245, 220)
-    elif preset == "day":
-        color = QColor(78, 26, 26)
-        outline_color = QColor(250, 242, 242, 215)
-    elif preset == "black":
-        color = QColor(255, 220, 220)
-        outline_color = QColor(2, 2, 3, 236)
-    else:
-        color = QColor(*STATUS_LINE_COLOR)
-        outline_color = QColor.fromRgbF(0, 0, 0, 0.3)
-
-    painter.save()
-    painter.setFont(status_line_font)
-
-    fm = painter.fontMetrics()
-    margin = fm.lineSpacing()
-    baseline_y = viewport_rect.bottom() - margin // 4
-    x = margin
-
-    draw_outlined_text(painter, "> " + message, QPointF(x, baseline_y), status_line_font, color, outline_color)
-    painter.restore()
-
-
-def get_screen_geometry(width_px: int, height_px: int, view_alt_deg: float) -> ScreenGeometry:
-    """
-    Calculate circular viewport geometry.
-
-    Args:
-        width_px: The width of the drawing area in pixels.
-        height_px: The height of the drawing area in pixels.
-        view_alt_deg: Unused (kept for call-site compatibility).
-
-    Returns:
-        A ScreenGeometry object with the calculated center and radius.
-
-    Layout rule:
-        - Tall/square-ish windows: centered circle that fits inside the window.
-        - Wide windows (width >= height): keep the disc top tangent to the top
-          margin and maximize radius so the current horizon sits near the bottom.
-          Radius is also limited by horizontal space.
-    """
-    _ = view_alt_deg
-    margin_x = 10
-    margin_y = 10
-    avail_w = max(2, int(width_px) - margin_x * 2)
-    avail_h = max(2, int(height_px) - margin_y * 2)
-    alt = max(0.0, min(90.0, float(view_alt_deg)))
-
-    if width_px >= height_px:
-        # horizon_y ~= margin + radius * (1 + alt/90)
-        # Choose radius from height so horizon is near the bottom, but never
-        # exceed horizontal fit.
-        r_height = int(avail_h / (1.0 + alt / 90.0))
-        r_width = avail_w // 2
-        radius_px = max(1, min(r_width, r_height))
-        center = (int(width_px) // 2, margin_y + radius_px)
-    else:
-        radius_px = max(1, min(avail_w // 2, avail_h // 2))
-        center = (int(width_px) // 2, int(height_px) // 2)
-    return ScreenGeometry(center, radius_px)
-
-
-def normalized_to_screen_xy(nx: float, ny: float, geometry: ScreenGeometry) -> Tuple[float, float]:
-    """
-    Convert normalized coordinates to screen coordinates.
-
-    Args:
-        nx: Normalized x-coordinate (-1 to 1).
-        ny: Normalized y-coordinate (-1 to 1).
-        geometry: The screen geometry.
-
-    Returns:
-        The corresponding screen coordinates.
-    """
-    return geometry.center[0] + nx * geometry.radius, geometry.center[1] + ny * geometry.radius
