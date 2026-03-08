@@ -6,6 +6,9 @@
 
 - `docs/developer/uv-workflow.md`
   - `uv` 環境でのセットアップ、実行、テスト、型チェック、ビルド手順
+- `docs/developer/python-version-test-matrix.md`
+  - CPython 3.10 / 3.11 / 3.12 / 3.13 で `pytest` / `mypy` を確認する手順
+  - 自動実行スクリプト `scripts/run_python_matrix.sh` の使い方
 - `docs/developer/cloud-snapshot-script.md`
   - 都市指定でリアルタイム雲画像（PNG）を保存する開発用スクリプトの使い方
 - `docs/developer/star-catalog-generation.md`
