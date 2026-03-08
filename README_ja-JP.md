@@ -16,6 +16,7 @@
 - リアルタイムの衛星雲画像（Himawari/GOES）を縞模様（ハッチ）のオーバーレイとして重ねて表示します。
 - 雲データ取得と雲レイヤー生成は分離されており、カメラ（方位/仰角）変更時はキャッシュ済みソースから即座に再描画します。
 - 衛星データが部分的な場合、欠損領域は薄い黄色ティントで表示します。
+- Copernicus DEM を使った地形地平線オーバーレイを、控えめな茶色のスカイラインとして表示できます。
 - 地平線より下（地面側）は、向きの把握を助けるため薄いティントで表示します。
 - 観測地の緯度に対して昇らない天球領域（never-rises）を赤いティントで表示します。
 
@@ -62,6 +63,7 @@ zstarview [options] [city]
 | `-c`, `--cloud-opacity CLOUD_OPACITY`                 | 雲の不透明度を指定します（0.0〜1.0）。0.0で描画を無効化します。※2 | `0.2`   |
 | `--cloud-missing-tint-opacity OPACITY` | 雲欠損領域の黄色ティント不透明度を指定します（0.0〜1.0）。 | `0.176` |
 | `--sky-opacity SKY_OPACITY`                 | 空の色ディスクの不透明度を指定します（0.0〜1.0）。0.0で描画を無効化します。 | `0.2`   |
+| `--terrain-horizon-opacity OPACITY` | 地形地平線ポリラインの不透明度を指定します（0.0〜1.0）。0.0で DEM ダウンロード・地形地平線計算・描画を無効化します。※4 | `0.25` |
 | `-m`, `--enlarge-moon`                      | 月を5倍に拡大して表示します。                                      |          |
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | 2等星の基本サイズを指定します。                                   | `4.0`    |
 | `-w`, `--expected-render-width EXPECTED_RENDER_WIDTH` | 恒星をフル解像度で描画する想定ウィンドウ幅を指定します。天球幅がこの値を超える場合、恒星レイヤーは平方根スケーリングで描画します。 | `600` |
@@ -81,6 +83,8 @@ zstarview [options] [city]
 ※2 雲の描画は気象衛星（Himawari, GOES）の赤外線データを S3 バケットから取得して行います。ネットワーク関連の注意や回避策は「トラブルシューティング」を参照してください。
 
 ※3 Pogson の定義では 5 等級差 = 100 倍なので、等級1段階あたりの光量倍数は \(100^{1/5} \approx 2.512\) です。`--vmag-brightness-multiplier` の上限はこの値です。
+
+※4 地形地平線表示は初回利用時に Copernicus DEM タイルをダウンロードし、以後はローカルキャッシュを再利用します。
 
 **起動時のオーバーレイ表示設定**
 
@@ -173,6 +177,7 @@ zstarview "N35.68;E139.76" --datetime "2025-09-12 21 JST"
 * **Search Named Stars...**: カタログ中の固有名付き恒星（約443件）を横断検索し、選択した星へ移動します。
 * **DSO**: DSOオーバーレイの表示/非表示を切り替えます。
 * **Asterisms**: 星座（アステリウム）オーバーレイの表示/非表示を切り替えます（有効時は暗い線を常時表示し、構成星にホバーすると該当アステリズムを明るく強調してラベルを表示します）。
+* **Terrain Horizon**: 地形地平線オーバーレイの表示/非表示を切り替えます。CLI で `--terrain-horizon-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
 
 ジャンプ/検索の確定後は約3秒間、マウスホバー時と同じ見た目（円マーカー + 名称ラベル）で対象星を強調表示します。
 
@@ -228,7 +233,8 @@ Available platform plugins are: eglfs, offscreen, wayland-egl, linuxfb, wayland,
 
 ### ネットワークが遅い/オフラインで使いたい
 雲の描画は S3 から衛星画像を取得します。回線が細い/オフラインのときは `-c 0` で雲描画を無効化してください。
-雲を無効化しても恒星・惑星・空の色の表示は利用できます。
+地形地平線表示は初回に Copernicus DEM タイルをダウンロードし、その後はローカルキャッシュを再利用します。DEM ダウンロードを避けたい場合は `--terrain-horizon-opacity 0` を指定してください。
+雲や地形地平線を無効化しても恒星・惑星・空の色の表示は利用できます。
 
 雲ステータス表示は `idle` / `downloading` / `partial` を使います。
 - `downloading`: S3 から衛星ソースを取得中
@@ -273,6 +279,7 @@ Tycho-2 入力や分割出力を含む詳細オプションは次を参照して
 | `stars/hip_main.dat.zip`                                   | Hipparcos および Tycho カタログ（ESA 1997）        | [CDS Strasbourg](https://cdsarc.cds.unistra.fr/ftp/I/239/)                 | [ODbL](https://www.data.gouv.fr/licences) または [CC BY-NC 3.0 IGO](https://creativecommons.org/licenses/by-nc/3.0/igo/)（非商用） |
 | `I-259/tyc2.dat.*.gz`, `I-259/ReadMe`                      | Tycho-2 主カタログ（I/259）                        | [CDS Strasbourg](https://cdsarc.cds.unistra.fr/ftp/I/259/)                 | [ODbL](https://www.data.gouv.fr/licences) または [CC BY-NC 3.0 IGO](https://creativecommons.org/licenses/by-nc/3.0/igo/)（非商用） |
 | `dso.csv`                                                   | DSO（銀河/散開星団/球状星団）カタログ（OpenNGC 由来の生成データ） | [OpenNGC](https://github.com/mattiaverga/OpenNGC)（[PyOngc](https://github.com/mattiaverga/PyOngc) 経由で生成） | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)（OpenNGC データベース） |
+| アプリのキャッシュディレクトリ配下にオンデマンドで保存される地形 DEM キャッシュ | 地形地平線用の地形データ（Copernicus DEM GLO-90） | [Copernicus DEM / Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM)（アプリは公開 AWS 配布を利用） | Copernicus DEM 向け ESA User Licence（Copernicus Contributing Mission data access terms） |
 | `stars/IAU-Catalog of Star Names (always up to date).csv`             | IAU 恒星名作業部会 (WGSN) による恒星固有名カタログ | [exopla.net](https://exopla.net/star-names/modern-iau-star-names/)         | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                       |
 | `Noto_Sans/*`     | テキスト表示フォント                             | [Google Fonts](https://fonts.google.com/)   | [SIL Open Font License 1.1](https://openfontlicense.org)                                                                        |
 
@@ -282,6 +289,7 @@ Tycho-2 入力や分割出力を含む詳細オプションは次を参照して
 * 都市データは GeoNames に基づいています。
 * 恒星の固有名は IAU 恒星名作業部会 (WGSN) による承認済みリスト（[exopla.net](https://exopla.net/star-names/modern-iau-star-names/) 経由）を使用しています。
 * 雲データは気象衛星 **Himawari**（提供: JMA）および **NOAA GOES** シリーズ（提供: NOAA/NESDIS）による赤外線観測データを、それぞれの S3 公開バケットから取得して利用しています。
+* 地形地平線データは **Copernicus DEM GLO-90** に基づいており、欧州委員会のために ESA が管理するデータを、アプリでは公開 AWS 配布とローカルキャッシュを通じて利用しています。
 * フォントは Google Noto Project を利用しています。
 * ウィンドウタイトル「Zenith Star View」は ChatGPT の提案に由来します。
 * Gemini および ChatGPT に、仕様の相談、コード生成、デバッグなど、多くの助力をいただきました。
