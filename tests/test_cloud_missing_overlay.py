@@ -130,7 +130,7 @@ def test_compositor_terrain_profile_tints_ground_below_terrain_horizon() -> None
     arr_terrain = qimage_to_np_rgba(canvas_terrain)
 
     assert np.array_equal(arr_flat[24, 32, :3], np.array([100, 100, 100], dtype=np.uint8))
-    assert np.array_equal(arr_terrain[24, 32, :3], np.array([61, 55, 47], dtype=np.uint8))
+    assert np.array_equal(arr_terrain[24, 32, :3], np.array([93, 76, 33], dtype=np.uint8))
 
 
 def test_compositor_ground_tint_opacity_zero_makes_ground_fill_black() -> None:
@@ -158,3 +158,29 @@ def test_compositor_ground_tint_opacity_zero_makes_ground_fill_black() -> None:
 
     arr = qimage_to_np_rgba(canvas)
     assert np.array_equal(arr[24, 32, :3], np.array([0, 0, 0], dtype=np.uint8))
+
+
+def test_compositor_reapplies_never_rises_tint_after_ground_fill() -> None:
+    sky = np.zeros((64, 64, 4), dtype=np.uint8)
+    sky[..., :3] = 100
+    sky[..., 3] = 255
+
+    geom = ScreenGeometry(center=(32, 32), radius=32)
+    compositor = SkyCompositorCache(ground_tint_opacity=1.0)
+
+    canvas = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
+    canvas.fill(0)
+    painter = QPainter(canvas)
+    compositor.draw(
+        painter,
+        geom,
+        np_rgba_to_qimage(sky),
+        None,
+        cloud_alpha=0.0,
+        view_center=(0.0, 180.0),
+        observer_lat_deg=35.0,
+    )
+    painter.end()
+
+    arr = qimage_to_np_rgba(canvas)
+    assert np.array_equal(arr[40, 32, :3], np.array([112, 79, 36], dtype=np.uint8))
