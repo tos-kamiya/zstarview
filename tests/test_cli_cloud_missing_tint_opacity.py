@@ -34,3 +34,9 @@ def test_parse_args_overlay_visibility_override(monkeypatch) -> None:
     args = parse_args()
     assert args.show_dso_initial is False
     assert args.show_asterisms_initial is True
+
+
+def test_parse_args_observer_height_override(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "--observer-height-m", "123.4"])
+    args = parse_args()
+    assert math.isclose(float(args.observer_height_m), 123.4, rel_tol=0.0, abs_tol=1e-9)

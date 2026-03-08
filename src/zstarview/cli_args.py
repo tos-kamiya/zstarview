@@ -88,6 +88,17 @@ def _parse_positive_int(value: str) -> int:
     return out
 
 
+def _parse_non_negative_float(value: str) -> float:
+    """Parse a float >= 0."""
+    try:
+        out = float(value)
+    except (TypeError, ValueError) as exc:
+        raise argparse.ArgumentTypeError(f"Invalid non-negative float: {value!r}") from exc
+    if out < 0.0:
+        raise argparse.ArgumentTypeError("Value must be >= 0.")
+    return out
+
+
 def _parse_bool(value: str) -> bool:
     """Parse boolean values for CLI options."""
     text = (value or "").strip().lower()
@@ -127,7 +138,7 @@ def parse_args() -> argparse.Namespace:
         type=str,
         nargs="?",
         default="",
-        help="City name (default: same as the last run)",
+        help="Location name: city, lat;lon, or tower name (default: same as the last run)",
     )
     time_group = parser.add_argument_group("Time settings")
     time_group.add_argument(
@@ -218,6 +229,15 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=90.0,
         help="Viewing altitude angle [deg] (90=zenith, 0=horizon; default=90)",
+    )
+    parser.add_argument(
+        "--observer-height-m",
+        type=_parse_non_negative_float,
+        default=None,
+        help=(
+            "Observer height above local ground in meters. "
+            "Default: 1.7 for city/latlon, tower height for tower-name input."
+        ),
     )
 
     parser.add_argument(

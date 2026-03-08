@@ -17,10 +17,12 @@
 - 角度: `*_deg`
 - ピクセル: `*_px`
 - 距離(km): `*_km`
+- 高さ(m): `*_height_m`
+- 標高/絶対高度(m): `*_elevation_m`
 - 時間差: `timedelta` を使い、生の時間数値は境界でのみ扱う。
 
 例:
-- `view_alt_deg`, `width_px`, `height_px`, `radius_px`, `cloud_shell_km`
+- `view_alt_deg`, `width_px`, `height_px`, `radius_px`, `cloud_shell_km`, `observer_height_m`
 
 ## 3. 型規約
 
@@ -29,6 +31,20 @@
   - `LocationLatLon`, `ViewCenterAltAz`
 - 星空テーブルは `StarsTable(TypedDict)` を使い、キー契約を固定する:
   - `name`, `alt`, `az`, `vmag`, `bv`
+- 観測者情報は少なくとも以下を一貫して保持する:
+  - `location`: `(lat_deg, lon_deg)`
+  - `observer_height_m`: 地面からの高さ[m]
+
+## 3.1 観測者高さの契約
+
+- 公開CLIでは `observer_height_m` を扱う。
+- 値の意味は「地面からの高さ[m]」であり、海抜の絶対標高ではない。
+- 既定値:
+  - 都市名/緯度経度入力: `1.7`
+  - タワー入力: viewpoint データの `height_m`
+- 地形地平線側では `observer_ground_m + observer_height_m` の形で使う。
+- 天体計算側でも同じ `observer_height_m` を `EarthLocation` / `Topos` へ通す。
+- 将来 `observer_elevation_m` を公開する場合でも、内部では `observer_height_m` と混同しない。
 
 ## 4. API互換と移行
 
@@ -47,6 +63,7 @@
 ## 6. レビュー観点（チェックリスト）
 
 - 引数名に単位が含まれているか（`*_deg/*_px/*_km`）。
+- 高さが `height` なのか `elevation` なのか命名で区別されているか。
 - `alt/az` の順序が規約どおりか。
 - 観測者座標系と画面座標系が混在していないか。
 - 型注釈が `types.py` の契約に沿っているか。

@@ -43,12 +43,14 @@ def test_viewer_data_for_render_uses_render_view_center() -> None:
         timezone_name="Asia/Tokyo",
         city_name="Tokyo",
         view_center=(20.0, 30.0),
+        observer_height_m=123.0,
     )
     dummy.state = SkyWindowState(render_view_center=(60.0, 210.0))
 
     got = SkyWindow._viewer_data_for_render(dummy)
     assert got.view_center == (60.0, 210.0)
     assert got.location == (35.0, 139.0)
+    assert got.observer_height_m == 123.0
 
 
 def test_on_sky_data_calculated_updates_render_snapshot_once() -> None:
@@ -58,6 +60,7 @@ def test_on_sky_data_calculated_updates_render_snapshot_once() -> None:
         timezone_name="Asia/Tokyo",
         city_name="Tokyo",
         view_center=(20.0, 30.0),
+        observer_height_m=1.7,
     )
     dummy.state = SkyWindowState(render_view_center=(20.0, 30.0))
     dummy._compositor = _DummyCompositor()

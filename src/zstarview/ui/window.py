@@ -214,7 +214,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.state = SkyWindowState(
             render_view_center=tuple(self.viewer_data.view_center),
         )
-        self.setWindowTitle(f"{APP_DISPLAY_NAME} - {self.viewer_data.city_name.title()}")
+        self.setWindowTitle(f"{APP_DISPLAY_NAME} - {self.viewer_data.city_name}")
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setFocus(Qt.FocusReason.ActiveWindowFocusReason)
         self.setWindowIcon(QIcon(APP_ICON_FILE))
@@ -535,6 +535,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             target.dec_deg,
             self.viewer_data.location[0],
             self.viewer_data.location[1],
+            self.viewer_data.observer_height_m,
             self._current_time_obj(),
         )
         target_alt = float(alt)

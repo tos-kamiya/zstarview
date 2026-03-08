@@ -1,0 +1,15 @@
+from __future__ import annotations
+
+from zstarview.startup import _startup_resolve_city
+
+
+def test_startup_resolve_city_accepts_tower_name(monkeypatch) -> None:
+    monkeypatch.setattr("zstarview.startup.load_last_city", lambda: None)
+    monkeypatch.setattr("zstarview.startup.save_last_city", lambda _value: None)
+    location = _startup_resolve_city("Tokyo Skytree")
+    assert location.kind == "tower"
+    assert location.display_name == "Tokyo Skytree"
+    assert location.observer_height_m == 634.0
+    assert abs(location.lat - 35.710055555) < 1e-6
+    assert abs(location.lon - 139.810722222) < 1e-6
+    assert location.tz == "Asia/Tokyo"

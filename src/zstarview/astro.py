@@ -252,12 +252,13 @@ def calculate_visible_stars(
     star_source: pl.DataFrame | StarCatalogArrays,
     lat: float,
     lon: float,
+    observer_height_m: float,
     time_obj: astropy.time.Time,
     view_center: Tuple[float, float],
     max_vmag: float | None = None,
 ) -> Tuple[StarsTable, EarthLocation]:
     """Compute visible stars and return them with the observer location."""
-    location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg)
+    location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg, height=observer_height_m * u.m)
 
     source_is_df = isinstance(star_source, pl.DataFrame)
     if source_is_df:
@@ -320,11 +321,12 @@ def calculate_visible_deep_sky_objects(
     dso_catalog: DeepSkyCatalogArrays,
     lat: float,
     lon: float,
+    observer_height_m: float,
     time_obj: astropy.time.Time,
     view_center: Tuple[float, float],
 ) -> DeepSkyTable:
     """Compute visible deep-sky objects and return vectorized rows."""
-    location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg)
+    location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg, height=observer_height_m * u.m)
     matrix = build_icrs_to_altaz_matrix(time_obj, location)
     alt, az = apply_icrs_to_altaz_matrix(dso_catalog["unit_vectors"], matrix)
     in_view_mask = is_in_fov_vectorized(alt, az, view_center, fov_deg=STAR_FIELD_OF_VIEW_DEG)
@@ -346,10 +348,11 @@ def radec_to_altaz(
     dec_deg: float,
     lat: float,
     lon: float,
+    observer_height_m: float,
     time_obj: astropy.time.Time,
 ) -> Tuple[float, float]:
     """Convert ICRS RA/Dec to topocentric Alt/Az for a given observer/time."""
-    location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg)
+    location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg, height=observer_height_m * u.m)
     altaz_frame = AltAz(obstime=time_obj, location=location)
     coords = SkyCoord(ra=(float(ra_hours) * 15.0) * u.deg, dec=float(dec_deg) * u.deg, frame="icrs")
     altaz_coords = coords.transform_to(altaz_frame)
@@ -531,6 +534,7 @@ def eclipse_factor_from_info(info: Optional[SolarEclipseInfo]) -> float:
 def calculate_planets(
     lat: float,
     lon: float,
+    observer_height_m: float,
     astropy_time: astropy.time.Time,
     view_center: Tuple[float, float],
 ) -> List[PlanetBody]:
@@ -538,7 +542,11 @@ def calculate_planets(
     ts = skyfield.api.load.timescale()
     t = ts.from_astropy(astropy_time)
     planets = _starfield_load(EPHEMERIS_FILENAME)
-    observer = planets["earth"] + Topos(latitude_degrees=lat, longitude_degrees=lon)
+    observer = planets["earth"] + Topos(
+        latitude_degrees=lat,
+        longitude_degrees=lon,
+        elevation_m=observer_height_m,
+    )
 
     bodies: List[PlanetBody] = []
     for name, symbol in PLANET_SYMBOLS.items():

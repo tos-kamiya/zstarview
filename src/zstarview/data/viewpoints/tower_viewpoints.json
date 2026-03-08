@@ -1,0 +1,1434 @@
+{
+  "source": "wikidata",
+  "source_query_result": "dev-samples/wikidata_tower_query_raw_result_2026-03-08.json",
+  "normalization": {
+    "deduplicate_by": "qid",
+    "height_rule": "max",
+    "coord_rule": "first",
+    "classes_rule": "distinct_sorted",
+    "excluded_name_patterns": [
+      "fire tower",
+      "fire lookout",
+      "forest fire",
+      "lookout tower"
+    ],
+    "min_height_m": 100.0,
+    "require_observation_tower": true,
+    "observation_tower_qid": "Q1440300",
+    "labels_rule": "preserve only en/ja labels present in input rows",
+    "preferred_label_languages": [
+      "en",
+      "ja"
+    ],
+    "wikidata_label_fetch": "fetched"
+  },
+  "items": [
+    {
+      "id": "wikidata:Q57965",
+      "name": "Tokyo Skytree",
+      "names": [
+        "Tokyo Skytree",
+        "東京スカイツリー"
+      ],
+      "labels": {
+        "en": "Tokyo Skytree",
+        "ja": "東京スカイツリー"
+      },
+      "qid": "Q57965",
+      "latitude_deg": 35.710055555,
+      "longitude_deg": 139.810722222,
+      "height_m": 634.0,
+      "classes": [
+        "テレビ塔",
+        "展望塔",
+        "通信塔",
+        "電波塔"
+      ],
+      "class_qids": [
+        "Q1068623",
+        "Q11166728",
+        "Q1440300",
+        "Q1798641"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q57965",
+      "location_arg": "35.710056;139.810722",
+      "slug": "Tokyo_Skytree"
+    },
+    {
+      "id": "wikidata:Q168400",
+      "name": "Canton Tower",
+      "names": [
+        "Canton Tower",
+        "広州塔"
+      ],
+      "labels": {
+        "en": "Canton Tower",
+        "ja": "広州塔"
+      },
+      "qid": "Q168400",
+      "latitude_deg": 23.1092,
+      "longitude_deg": 113.319147222,
+      "height_m": 600.0,
+      "classes": [
+        "テレビ塔",
+        "展望塔",
+        "通信塔"
+      ],
+      "class_qids": [
+        "Q11166728",
+        "Q1440300",
+        "Q1798641"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q168400",
+      "location_arg": "23.109200;113.319147",
+      "slug": "Canton_Tower"
+    },
+    {
+      "id": "wikidata:Q134883",
+      "name": "CN Tower",
+      "names": [
+        "CN Tower",
+        "CNタワー"
+      ],
+      "labels": {
+        "en": "CN Tower",
+        "ja": "CNタワー"
+      },
+      "qid": "Q134883",
+      "latitude_deg": 43.642752777,
+      "longitude_deg": -79.387147222,
+      "height_m": 553.3,
+      "classes": [
+        "テレビ塔",
+        "展望塔",
+        "通信塔"
+      ],
+      "class_qids": [
+        "Q11166728",
+        "Q1440300",
+        "Q1798641"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q134883",
+      "location_arg": "43.642753;-79.387147",
+      "slug": "CN_Tower"
+    },
+    {
+      "id": "wikidata:Q223207",
+      "name": "Oriental Pearl Tower",
+      "names": [
+        "Oriental Pearl Tower",
+        "東方明珠電視塔"
+      ],
+      "labels": {
+        "en": "Oriental Pearl Tower",
+        "ja": "東方明珠電視塔"
+      },
+      "qid": "Q223207",
+      "latitude_deg": 31.241669444,
+      "longitude_deg": 121.494716666,
+      "height_m": 468.0,
+      "classes": [
+        "テレビ塔",
+        "展望塔",
+        "通信塔"
+      ],
+      "class_qids": [
+        "Q11166728",
+        "Q1440300",
+        "Q1798641"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q223207",
+      "location_arg": "31.241669;121.494717",
+      "slug": "Oriental_Pearl_Tower"
+    },
+    {
+      "id": "wikidata:Q622796",
+      "name": "Milad Tower",
+      "names": [
+        "Milad Tower",
+        "ボルジェ・ミーラード"
+      ],
+      "labels": {
+        "en": "Milad Tower",
+        "ja": "ボルジェ・ミーラード"
+      },
+      "qid": "Q622796",
+      "latitude_deg": 35.744611111,
+      "longitude_deg": 51.375333333,
+      "height_m": 435.0,
+      "classes": [
+        "展望塔",
+        "通信塔"
+      ],
+      "class_qids": [
+        "Q1440300",
+        "Q1798641"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q622796",
+      "location_arg": "35.744611;51.375333",
+      "slug": "Milad_Tower"
+    },
+    {
+      "id": "wikidata:Q5527454",
+      "name": "Gatlinburg Space Needle",
+      "names": [
+        "Gatlinburg Space Needle"
+      ],
+      "labels": {
+        "en": "Gatlinburg Space Needle"
+      },
+      "qid": "Q5527454",
+      "latitude_deg": 35.7108,
+      "longitude_deg": -83.5186,
+      "height_m": 407.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q5527454",
+      "location_arg": "35.710800;-83.518600",
+      "slug": "Gatlinburg_Space_Needle"
+    },
+    {
+      "id": "wikidata:Q133141263",
+      "name": "Panchdeep Tower",
+      "names": [
+        "Panchdeep Tower"
+      ],
+      "labels": {
+        "en": "Panchdeep Tower"
+      },
+      "qid": "Q133141263",
+      "latitude_deg": 22.594361,
+      "longitude_deg": 88.328362,
+      "height_m": 400.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q133141263",
+      "location_arg": "22.594361;88.328362",
+      "slug": "Panchdeep_Tower"
+    },
+    {
+      "id": "wikidata:Q65245",
+      "name": "Zhongyuan Tower",
+      "names": [
+        "Zhongyuan Tower",
+        "中原福塔"
+      ],
+      "labels": {
+        "en": "Zhongyuan Tower",
+        "ja": "中原福塔"
+      },
+      "qid": "Q65245",
+      "latitude_deg": 34.724722222,
+      "longitude_deg": 113.722777777,
+      "height_m": 388.0,
+      "classes": [
+        "テレビ塔",
+        "展望塔",
+        "通信塔"
+      ],
+      "class_qids": [
+        "Q11166728",
+        "Q1440300",
+        "Q1798641"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q65245",
+      "location_arg": "34.724722;113.722778",
+      "slug": "Zhongyuan_Tower"
+    },
+    {
+      "id": "wikidata:Q28657490",
+      "name": "Çamlıca Tower",
+      "names": [
+        "Çamlıca Tower"
+      ],
+      "labels": {
+        "en": "Çamlıca Tower"
+      },
+      "qid": "Q28657490",
+      "latitude_deg": 41.016444444,
+      "longitude_deg": 29.065472222,
+      "height_m": 369.0,
+      "classes": [
+        "テレビ塔",
+        "展望塔",
+        "通信塔",
+        "電波塔"
+      ],
+      "class_qids": [
+        "Q1068623",
+        "Q11166728",
+        "Q1440300",
+        "Q1798641"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q28657490",
+      "location_arg": "41.016444;29.065472",
+      "slug": "Çamlıca_Tower"
+    },
+    {
+      "id": "wikidata:Q151356",
+      "name": "Fernsehturm Berlin",
+      "names": [
+        "Fernsehturm Berlin",
+        "ベルリンテレビ塔"
+      ],
+      "labels": {
+        "en": "Fernsehturm Berlin",
+        "ja": "ベルリンテレビ塔"
+      },
+      "qid": "Q151356",
+      "latitude_deg": 52.520833333,
+      "longitude_deg": 13.409444444,
+      "height_m": 368.0,
+      "classes": [
+        "テレビ塔",
+        "展望塔",
+        "通信塔"
+      ],
+      "class_qids": [
+        "Q11166728",
+        "Q1440300",
+        "Q1798641"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q151356",
+      "location_arg": "52.520833;13.409444",
+      "slug": "Fernsehturm_Berlin"
+    },
+    {
+      "id": "wikidata:Q1568304",
+      "name": "Macau Tower",
+      "names": [
+        "Macau Tower",
+        "マカオ・タワー"
+      ],
+      "labels": {
+        "en": "Macau Tower",
+        "ja": "マカオ・タワー"
+      },
+      "qid": "Q1568304",
+      "latitude_deg": 22.179722222,
+      "longitude_deg": 113.536666666,
+      "height_m": 338.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1568304",
+      "location_arg": "22.179722;113.536667",
+      "slug": "Macau_Tower"
+    },
+    {
+      "id": "wikidata:Q183536",
+      "name": "Tokyo Tower",
+      "names": [
+        "Tokyo Tower",
+        "東京タワー"
+      ],
+      "labels": {
+        "en": "Tokyo Tower",
+        "ja": "東京タワー"
+      },
+      "qid": "Q183536",
+      "latitude_deg": 35.658611111,
+      "longitude_deg": 139.745555555,
+      "height_m": 332.6,
+      "classes": [
+        "展望塔",
+        "電波塔"
+      ],
+      "class_qids": [
+        "Q1068623",
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q183536",
+      "location_arg": "35.658611;139.745556",
+      "slug": "Tokyo_Tower"
+    },
+    {
+      "id": "wikidata:Q243",
+      "name": "Eiffel Tower",
+      "names": [
+        "Eiffel Tower",
+        "エッフェル塔"
+      ],
+      "labels": {
+        "en": "Eiffel Tower",
+        "ja": "エッフェル塔"
+      },
+      "qid": "Q243",
+      "latitude_deg": 48.858296,
+      "longitude_deg": 2.294479,
+      "height_m": 330.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q243",
+      "location_arg": "48.858296;2.294479",
+      "slug": "Eiffel_Tower"
+    },
+    {
+      "id": "wikidata:Q1501055",
+      "name": "Sunsphere",
+      "names": [
+        "Sunsphere",
+        "サンスフェア"
+      ],
+      "labels": {
+        "en": "Sunsphere",
+        "ja": "サンスフェア"
+      },
+      "qid": "Q1501055",
+      "latitude_deg": 35.9617,
+      "longitude_deg": -83.9233,
+      "height_m": 266.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1501055",
+      "location_arg": "35.961700;-83.923300",
+      "slug": "Sunsphere"
+    },
+    {
+      "id": "wikidata:Q686544",
+      "name": "Donauturm",
+      "names": [
+        "Donauturm"
+      ],
+      "labels": {
+        "en": "Donauturm"
+      },
+      "qid": "Q686544",
+      "latitude_deg": 48.24023,
+      "longitude_deg": 16.41003,
+      "height_m": 252.0,
+      "classes": [
+        "展望塔",
+        "電波塔"
+      ],
+      "class_qids": [
+        "Q1068623",
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q686544",
+      "location_arg": "48.240230;16.410030",
+      "slug": "Donauturm"
+    },
+    {
+      "id": "wikidata:Q1244227",
+      "name": "Fernmeldeturm Mannheim",
+      "names": [
+        "Fernmeldeturm Mannheim",
+        "マンハイム通信塔"
+      ],
+      "labels": {
+        "en": "Fernmeldeturm Mannheim",
+        "ja": "マンハイム通信塔"
+      },
+      "qid": "Q1244227",
+      "latitude_deg": 49.486944444,
+      "longitude_deg": 8.492222222,
+      "height_m": 217.8,
+      "classes": [
+        "テレビ塔",
+        "展望塔",
+        "通信塔"
+      ],
+      "class_qids": [
+        "Q11166728",
+        "Q1440300",
+        "Q1798641"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1244227",
+      "location_arg": "49.486944;8.492222",
+      "slug": "Fernmeldeturm_Mannheim"
+    },
+    {
+      "id": "wikidata:Q14058",
+      "name": "Fernsehturm Stuttgart",
+      "names": [
+        "Fernsehturm Stuttgart",
+        "シュトゥットガルトテレビ塔"
+      ],
+      "labels": {
+        "en": "Fernsehturm Stuttgart",
+        "ja": "シュトゥットガルトテレビ塔"
+      },
+      "qid": "Q14058",
+      "latitude_deg": 48.75575,
+      "longitude_deg": 9.190166666,
+      "height_m": 216.61,
+      "classes": [
+        "テレビ塔",
+        "展望塔",
+        "通信塔"
+      ],
+      "class_qids": [
+        "Q11166728",
+        "Q1440300",
+        "Q1798641"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q14058",
+      "location_arg": "48.755750;9.190167",
+      "slug": "Fernsehturm_Stuttgart"
+    },
+    {
+      "id": "wikidata:Q1576874",
+      "name": "Hot Springs Mountain Tower",
+      "names": [
+        "Hot Springs Mountain Tower"
+      ],
+      "labels": {
+        "en": "Hot Springs Mountain Tower"
+      },
+      "qid": "Q1576874",
+      "latitude_deg": 34.5172,
+      "longitude_deg": -93.0461,
+      "height_m": 216.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1576874",
+      "location_arg": "34.517200;-93.046100",
+      "slug": "Hot_Springs_Mountain_Tower"
+    },
+    {
+      "id": "wikidata:Q1413217",
+      "name": "Žižkov Television Tower",
+      "names": [
+        "Žižkov Television Tower",
+        "ジシュコフ・テレビ塔"
+      ],
+      "labels": {
+        "en": "Žižkov Television Tower",
+        "ja": "ジシュコフ・テレビ塔"
+      },
+      "qid": "Q1413217",
+      "latitude_deg": 50.080833333,
+      "longitude_deg": 14.451388888,
+      "height_m": 216.0,
+      "classes": [
+        "テレビ塔",
+        "展望塔",
+        "通信塔"
+      ],
+      "class_qids": [
+        "Q11166728",
+        "Q1440300",
+        "Q1798641"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1413217",
+      "location_arg": "50.080833;14.451389",
+      "slug": "Žižkov_Television_Tower"
+    },
+    {
+      "id": "wikidata:Q5754149",
+      "name": "Higashiyama Sky Tower",
+      "names": [
+        "Higashiyama Sky Tower",
+        "東山スカイタワー"
+      ],
+      "labels": {
+        "en": "Higashiyama Sky Tower",
+        "ja": "東山スカイタワー"
+      },
+      "qid": "Q5754149",
+      "latitude_deg": 35.1568,
+      "longitude_deg": 136.979,
+      "height_m": 214.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q5754149",
+      "location_arg": "35.156800;136.979000",
+      "slug": "Higashiyama_Sky_Tower"
+    },
+    {
+      "id": "wikidata:Q450812",
+      "name": "Florianturm",
+      "names": [
+        "Florianturm"
+      ],
+      "labels": {
+        "en": "Florianturm"
+      },
+      "qid": "Q450812",
+      "latitude_deg": 51.496388888,
+      "longitude_deg": 7.476388888,
+      "height_m": 208.5,
+      "classes": [
+        "テレビ塔",
+        "展望塔",
+        "通信塔"
+      ],
+      "class_qids": [
+        "Q11166728",
+        "Q1440300",
+        "Q1798641"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q450812",
+      "location_arg": "51.496389;7.476389",
+      "slug": "Florianturm"
+    },
+    {
+      "id": "wikidata:Q1407277",
+      "name": "Kamzík TV Tower",
+      "names": [
+        "Kamzík TV Tower",
+        "カムジークテレビ塔"
+      ],
+      "labels": {
+        "en": "Kamzík TV Tower",
+        "ja": "カムジークテレビ塔"
+      },
+      "qid": "Q1407277",
+      "latitude_deg": 48.1825,
+      "longitude_deg": 17.094444444,
+      "height_m": 196.0,
+      "classes": [
+        "展望塔",
+        "電波塔"
+      ],
+      "class_qids": [
+        "Q1068623",
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1407277",
+      "location_arg": "48.182500;17.094444",
+      "slug": "Kamzík_TV_Tower"
+    },
+    {
+      "id": "wikidata:Q797085",
+      "name": "BT Tower",
+      "names": [
+        "BT Tower",
+        "BTタワー"
+      ],
+      "labels": {
+        "en": "BT Tower",
+        "ja": "BTタワー"
+      },
+      "qid": "Q797085",
+      "latitude_deg": 51.5215,
+      "longitude_deg": -0.1389,
+      "height_m": 189.0,
+      "classes": [
+        "テレビ塔",
+        "展望塔",
+        "通信塔"
+      ],
+      "class_qids": [
+        "Q11166728",
+        "Q1440300",
+        "Q1798641"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q797085",
+      "location_arg": "51.521500;-0.138900",
+      "slug": "BT_Tower"
+    },
+    {
+      "id": "wikidata:Q1407261",
+      "name": "Bantiger TV Tower",
+      "names": [
+        "Bantiger TV Tower"
+      ],
+      "labels": {
+        "en": "Bantiger TV Tower"
+      },
+      "qid": "Q1407261",
+      "latitude_deg": 46.9778,
+      "longitude_deg": 7.52864,
+      "height_m": 188.16,
+      "classes": [
+        "テレビ塔",
+        "展望塔",
+        "通信塔"
+      ],
+      "class_qids": [
+        "Q11166728",
+        "Q1440300",
+        "Q1798641"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1407261",
+      "location_arg": "46.977800;7.528640",
+      "slug": "Bantiger_TV_Tower"
+    },
+    {
+      "id": "wikidata:Q969215",
+      "name": "Euromast",
+      "names": [
+        "Euromast",
+        "ユーロマスト"
+      ],
+      "labels": {
+        "en": "Euromast",
+        "ja": "ユーロマスト"
+      },
+      "qid": "Q969215",
+      "latitude_deg": 51.906111111,
+      "longitude_deg": 4.465833333,
+      "height_m": 184.5,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q969215",
+      "location_arg": "51.906111;4.465833",
+      "slug": "Euromast"
+    },
+    {
+      "id": "wikidata:Q5317",
+      "name": "Space Needle",
+      "names": [
+        "Space Needle",
+        "スペースニードル"
+      ],
+      "labels": {
+        "en": "Space Needle",
+        "ja": "スペースニードル"
+      },
+      "qid": "Q5317",
+      "latitude_deg": 47.6204,
+      "longitude_deg": -122.3491,
+      "height_m": 184.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q5317",
+      "location_arg": "47.620400;-122.349100",
+      "slug": "Space_Needle"
+    },
+    {
+      "id": "wikidata:Q61602719",
+      "name": "Montreal Tower",
+      "names": [
+        "Montreal Tower"
+      ],
+      "labels": {
+        "en": "Montreal Tower"
+      },
+      "qid": "Q61602719",
+      "latitude_deg": 45.55952,
+      "longitude_deg": -73.55215,
+      "height_m": 175.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q61602719",
+      "location_arg": "45.559520;-73.552150",
+      "slug": "Montreal_Tower"
+    },
+    {
+      "id": "wikidata:Q1248619",
+      "name": "Reunion Tower",
+      "names": [
+        "Reunion Tower",
+        "リユニオンタワー"
+      ],
+      "labels": {
+        "en": "Reunion Tower",
+        "ja": "リユニオンタワー"
+      },
+      "qid": "Q1248619",
+      "latitude_deg": 32.7753,
+      "longitude_deg": -96.80886,
+      "height_m": 171.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1248619",
+      "location_arg": "32.775300;-96.808860",
+      "slug": "Reunion_Tower"
+    },
+    {
+      "id": "wikidata:Q541846",
+      "name": "Spinnaker Tower",
+      "names": [
+        "Spinnaker Tower",
+        "スピンネーカー・タワー"
+      ],
+      "labels": {
+        "en": "Spinnaker Tower",
+        "ja": "スピンネーカー・タワー"
+      },
+      "qid": "Q541846",
+      "latitude_deg": 50.7956,
+      "longitude_deg": -1.10857,
+      "height_m": 170.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q541846",
+      "location_arg": "50.795600;-1.108570",
+      "slug": "Spinnaker_Tower"
+    },
+    {
+      "id": "wikidata:Q1190334",
+      "name": "Näsinneula tower",
+      "names": [
+        "Näsinneula tower",
+        "ネシンネウラ・タワー"
+      ],
+      "labels": {
+        "en": "Näsinneula tower",
+        "ja": "ネシンネウラ・タワー"
+      },
+      "qid": "Q1190334",
+      "latitude_deg": 61.5047896,
+      "longitude_deg": 23.7426586,
+      "height_m": 168.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1190334",
+      "location_arg": "61.504790;23.742659",
+      "slug": "Näsinneula_tower"
+    },
+    {
+      "id": "wikidata:Q5968218",
+      "name": "Brighton i360",
+      "names": [
+        "Brighton i360",
+        "ブリテッィシュ・エアウェイズi360"
+      ],
+      "labels": {
+        "en": "Brighton i360",
+        "ja": "ブリテッィシュ・エアウェイズi360"
+      },
+      "qid": "Q5968218",
+      "latitude_deg": 50.82135,
+      "longitude_deg": -0.1509,
+      "height_m": 162.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q5968218",
+      "location_arg": "50.821350;-0.150900",
+      "slug": "Brighton_i360"
+    },
+    {
+      "id": "wikidata:Q1208032",
+      "name": "Skylon Tower",
+      "names": [
+        "Skylon Tower",
+        "スカイロン・タワー"
+      ],
+      "labels": {
+        "en": "Skylon Tower",
+        "ja": "スカイロン・タワー"
+      },
+      "qid": "Q1208032",
+      "latitude_deg": 43.085277777,
+      "longitude_deg": -79.079722222,
+      "height_m": 160.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1208032",
+      "location_arg": "43.085278;-79.079722",
+      "slug": "Skylon_Tower"
+    },
+    {
+      "id": "wikidata:Q880905",
+      "name": "Blackpool Tower",
+      "names": [
+        "Blackpool Tower",
+        "ブラックプール塔"
+      ],
+      "labels": {
+        "en": "Blackpool Tower",
+        "ja": "ブラックプール塔"
+      },
+      "qid": "Q880905",
+      "latitude_deg": 53.815833333,
+      "longitude_deg": -3.055277777,
+      "height_m": 158.1,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q880905",
+      "location_arg": "53.815833;-3.055278",
+      "slug": "Blackpool_Tower"
+    },
+    {
+      "id": "wikidata:Q11303940",
+      "name": "Gold Tower",
+      "names": [
+        "Gold Tower",
+        "ゴールドタワー"
+      ],
+      "labels": {
+        "en": "Gold Tower",
+        "ja": "ゴールドタワー"
+      },
+      "qid": "Q11303940",
+      "latitude_deg": 34.311403,
+      "longitude_deg": 133.808383,
+      "height_m": 158.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q11303940",
+      "location_arg": "34.311403;133.808383",
+      "slug": "Gold_Tower"
+    },
+    {
+      "id": "wikidata:Q1721899",
+      "name": "Kaknästornet",
+      "names": [
+        "Kaknästornet"
+      ],
+      "labels": {
+        "en": "Kaknästornet"
+      },
+      "qid": "Q1721899",
+      "latitude_deg": 59.335,
+      "longitude_deg": 18.126388888,
+      "height_m": 155.0,
+      "classes": [
+        "展望塔",
+        "電波塔"
+      ],
+      "class_qids": [
+        "Q1068623",
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1721899",
+      "location_arg": "59.335000;18.126389",
+      "slug": "Kaknästornet"
+    },
+    {
+      "id": "wikidata:Q699724",
+      "name": "Funkturm Berlin",
+      "names": [
+        "Funkturm Berlin",
+        "ベルリン電波塔"
+      ],
+      "labels": {
+        "en": "Funkturm Berlin",
+        "ja": "ベルリン電波塔"
+      },
+      "qid": "Q699724",
+      "latitude_deg": 52.505055555,
+      "longitude_deg": 13.278180555,
+      "height_m": 146.78,
+      "classes": [
+        "展望塔",
+        "通信塔"
+      ],
+      "class_qids": [
+        "Q1440300",
+        "Q1798641"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q699724",
+      "location_arg": "52.505056;13.278181",
+      "slug": "Funkturm_Berlin"
+    },
+    {
+      "id": "wikidata:Q12049969",
+      "name": "Praděd Tower",
+      "names": [
+        "Praděd Tower"
+      ],
+      "labels": {
+        "en": "Praděd Tower"
+      },
+      "qid": "Q12049969",
+      "latitude_deg": 50.083055555,
+      "longitude_deg": 17.230972222,
+      "height_m": 146.5,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q12049969",
+      "location_arg": "50.083056;17.230972",
+      "slug": "Praděd_Tower"
+    },
+    {
+      "id": "wikidata:Q11318660",
+      "name": "Twin Arch 138",
+      "names": [
+        "Twin Arch 138",
+        "ツインアーチ138"
+      ],
+      "labels": {
+        "en": "Twin Arch 138",
+        "ja": "ツインアーチ138"
+      },
+      "qid": "Q11318660",
+      "latitude_deg": 35.357692,
+      "longitude_deg": 136.809067,
+      "height_m": 138.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q11318660",
+      "location_arg": "35.357692;136.809067",
+      "slug": "Twin_Arch_138"
+    },
+    {
+      "id": "wikidata:Q1201304",
+      "name": "Kyoto Tower",
+      "names": [
+        "Kyoto Tower",
+        "京都タワー"
+      ],
+      "labels": {
+        "en": "Kyoto Tower",
+        "ja": "京都タワー"
+      },
+      "qid": "Q1201304",
+      "latitude_deg": 34.9875,
+      "longitude_deg": 135.759166666,
+      "height_m": 131.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1201304",
+      "location_arg": "34.987500;135.759167",
+      "slug": "Kyoto_Tower"
+    },
+    {
+      "id": "wikidata:Q996924",
+      "name": "Brühlbergturm",
+      "names": [
+        "Brühlbergturm"
+      ],
+      "labels": {
+        "en": "Brühlbergturm"
+      },
+      "qid": "Q996924",
+      "latitude_deg": 47.5019,
+      "longitude_deg": 8.70247,
+      "height_m": 130.0,
+      "classes": [
+        "展望塔",
+        "通信塔"
+      ],
+      "class_qids": [
+        "Q1440300",
+        "Q1798641"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q996924",
+      "location_arg": "47.501900;8.702470",
+      "slug": "Brühlbergturm"
+    },
+    {
+      "id": "wikidata:Q5095310",
+      "name": "Chiba Port Tower",
+      "names": [
+        "Chiba Port Tower",
+        "千葉ポートタワー"
+      ],
+      "labels": {
+        "en": "Chiba Port Tower",
+        "ja": "千葉ポートタワー"
+      },
+      "qid": "Q5095310",
+      "latitude_deg": 35.600167,
+      "longitude_deg": 140.098056,
+      "height_m": 125.15,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q5095310",
+      "location_arg": "35.600167;140.098056",
+      "slug": "Chiba_Port_Tower"
+    },
+    {
+      "id": "wikidata:Q85719550",
+      "name": "1000 Islands Tower",
+      "names": [
+        "1000 Islands Tower"
+      ],
+      "labels": {
+        "en": "1000 Islands Tower"
+      },
+      "qid": "Q85719550",
+      "latitude_deg": 44.35258,
+      "longitude_deg": -75.97881,
+      "height_m": 120.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q85719550",
+      "location_arg": "44.352580;-75.978810",
+      "slug": "1000_Islands_Tower"
+    },
+    {
+      "id": "wikidata:Q3323339",
+      "name": "Independence Monument, Ashgabat",
+      "names": [
+        "Independence Monument, Ashgabat",
+        "独立記念塔"
+      ],
+      "labels": {
+        "en": "Independence Monument, Ashgabat",
+        "ja": "独立記念塔"
+      },
+      "qid": "Q3323339",
+      "latitude_deg": 37.881185,
+      "longitude_deg": 58.382362,
+      "height_m": 118.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q3323339",
+      "location_arg": "37.881185;58.382362",
+      "slug": "Independence_Monument,_Ashgabat"
+    },
+    {
+      "id": "wikidata:Q12049950",
+      "name": "Q12049950",
+      "names": [
+        "Q12049950"
+      ],
+      "labels": {},
+      "qid": "Q12049950",
+      "latitude_deg": 48.9962,
+      "longitude_deg": 15.9274,
+      "height_m": 115.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q12049950",
+      "location_arg": "48.996200;15.927400",
+      "slug": "Q12049950"
+    },
+    {
+      "id": "wikidata:Q137673602",
+      "name": "Q137673602",
+      "names": [
+        "Q137673602"
+      ],
+      "labels": {},
+      "qid": "Q137673602",
+      "latitude_deg": 46.5365627,
+      "longitude_deg": -72.7577614,
+      "height_m": 115.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q137673602",
+      "location_arg": "46.536563;-72.757761",
+      "slug": "Q137673602"
+    },
+    {
+      "id": "wikidata:Q798766",
+      "name": "Kobe Port Tower",
+      "names": [
+        "Kobe Port Tower",
+        "神戸ポートタワー"
+      ],
+      "labels": {
+        "en": "Kobe Port Tower",
+        "ja": "神戸ポートタワー"
+      },
+      "qid": "Q798766",
+      "latitude_deg": 34.6825,
+      "longitude_deg": 135.186666666,
+      "height_m": 108.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q798766",
+      "location_arg": "34.682500;135.186667",
+      "slug": "Kobe_Port_Tower"
+    },
+    {
+      "id": "wikidata:Q1148463",
+      "name": "Tsūtenkaku",
+      "names": [
+        "Tsūtenkaku",
+        "通天閣"
+      ],
+      "labels": {
+        "en": "Tsūtenkaku",
+        "ja": "通天閣"
+      },
+      "qid": "Q1148463",
+      "latitude_deg": 34.652222222,
+      "longitude_deg": 135.506111111,
+      "height_m": 108.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1148463",
+      "location_arg": "34.652222;135.506111",
+      "slug": "Tsūtenkaku"
+    },
+    {
+      "id": "wikidata:Q17222936",
+      "name": "Goryōkaku Tower",
+      "names": [
+        "Goryōkaku Tower",
+        "五稜郭タワー"
+      ],
+      "labels": {
+        "en": "Goryōkaku Tower",
+        "ja": "五稜郭タワー"
+      },
+      "qid": "Q17222936",
+      "latitude_deg": 41.794689,
+      "longitude_deg": 140.754003,
+      "height_m": 107.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q17222936",
+      "location_arg": "41.794689;140.754003",
+      "slug": "Goryōkaku_Tower"
+    },
+    {
+      "id": "wikidata:Q804210",
+      "name": "Bayterek",
+      "names": [
+        "Bayterek",
+        "バイテレク"
+      ],
+      "labels": {
+        "en": "Bayterek",
+        "ja": "バイテレク"
+      },
+      "qid": "Q804210",
+      "latitude_deg": 51.128333333,
+      "longitude_deg": 71.430555555,
+      "height_m": 105.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q804210",
+      "location_arg": "51.128333;71.430556",
+      "slug": "Bayterek"
+    },
+    {
+      "id": "wikidata:Q1996107",
+      "name": "Belfry of Lille",
+      "names": [
+        "Belfry of Lille"
+      ],
+      "labels": {
+        "en": "Belfry of Lille"
+      },
+      "qid": "Q1996107",
+      "latitude_deg": 50.630494,
+      "longitude_deg": 3.069819,
+      "height_m": 104.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1996107",
+      "location_arg": "50.630494;3.069819",
+      "slug": "Belfry_of_Lille"
+    },
+    {
+      "id": "wikidata:Q1568000",
+      "name": "Hakata Port Tower",
+      "names": [
+        "Hakata Port Tower",
+        "博多ポートタワー"
+      ],
+      "labels": {
+        "en": "Hakata Port Tower",
+        "ja": "博多ポートタワー"
+      },
+      "qid": "Q1568000",
+      "latitude_deg": 33.60444444,
+      "longitude_deg": 130.39777778,
+      "height_m": 103.0,
+      "classes": [
+        "展望塔",
+        "通信塔"
+      ],
+      "class_qids": [
+        "Q1440300",
+        "Q1798641"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1568000",
+      "location_arg": "33.604444;130.397778",
+      "slug": "Hakata_Port_Tower"
+    },
+    {
+      "id": "wikidata:Q6150232",
+      "name": "Piemonte Tower",
+      "names": [
+        "Piemonte Tower"
+      ],
+      "labels": {
+        "en": "Piemonte Tower"
+      },
+      "qid": "Q6150232",
+      "latitude_deg": -19.986527777,
+      "longitude_deg": -43.94725,
+      "height_m": 101.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q6150232",
+      "location_arg": "-19.986528;-43.947250",
+      "slug": "Piemonte_Tower"
+    },
+    {
+      "id": "wikidata:Q1207989",
+      "name": "Yokohama Marine Tower",
+      "names": [
+        "Yokohama Marine Tower",
+        "横浜マリンタワー"
+      ],
+      "labels": {
+        "en": "Yokohama Marine Tower",
+        "ja": "横浜マリンタワー"
+      },
+      "qid": "Q1207989",
+      "latitude_deg": 35.44393,
+      "longitude_deg": 139.6509,
+      "height_m": 101.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1207989",
+      "location_arg": "35.443930;139.650900",
+      "slug": "Yokohama_Marine_Tower"
+    },
+    {
+      "id": "wikidata:Q780424",
+      "name": "Pyramidenkogel Tower",
+      "names": [
+        "Pyramidenkogel Tower"
+      ],
+      "labels": {
+        "en": "Pyramidenkogel Tower"
+      },
+      "qid": "Q780424",
+      "latitude_deg": 46.609,
+      "longitude_deg": 14.1449,
+      "height_m": 100.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q780424",
+      "location_arg": "46.609000;14.144900",
+      "slug": "Pyramidenkogel_Tower"
+    },
+    {
+      "id": "wikidata:Q14688142",
+      "name": "Union Lookout",
+      "names": [
+        "Union Lookout"
+      ],
+      "labels": {
+        "en": "Union Lookout"
+      },
+      "qid": "Q14688142",
+      "latitude_deg": 37.478736,
+      "longitude_deg": -89.357819,
+      "height_m": 100.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q14688142",
+      "location_arg": "37.478736;-89.357819",
+      "slug": "Union_Lookout"
+    }
+  ]
+}

@@ -1,6 +1,8 @@
 import logging
+import math
 import re
 import sys
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -16,6 +18,7 @@ from .paths import (
     LOG_PATH,
     STARS_CSV_FILE,
 )
+from .tower_viewpoints import resolve_tower_viewpoint
 from .utils.resolve_city import (
     CityRec,
     load_admin1_names,
@@ -26,10 +29,23 @@ from .utils.resolve_city import (
 from .utils.timezone_parser import parse_tz_string
 
 logger = logging.getLogger(__name__)
+DEFAULT_OBSERVER_HEIGHT_M = 1.7
 
 
 class StartupAbortError(Exception):
     """Abort the startup sequence (handled by main to show splash for 3s)."""
+
+
+@dataclass(frozen=True)
+class ResolvedLocation:
+    display_name: str
+    lat: float
+    lon: float
+    tz: str
+    persistence_key: str
+    observer_height_m: float
+    kind: str
+    cc: str = ""
 
 
 def setup_root_logger() -> logging.Logger:
@@ -56,14 +72,60 @@ def setup_root_logger() -> logging.Logger:
     return root_logger
 
 
-def _format_splash_location(city: CityRec) -> str:
+def _format_splash_location(city: ResolvedLocation) -> str:
     """Create a concise location label for splash screen context."""
-    if getattr(city, "geonameid", 0) == 0:
-        return f"Location: {city.name}"
-    return f"Location: {city.cc}/{city.name}"
+    if city.cc:
+        return f"Location: {city.cc}/{city.display_name}"
+    return f"Location: {city.display_name}"
 
 
-def _startup_resolve_city(args_city: Optional[str]) -> CityRec:
+def _great_circle_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    lat1_rad = math.radians(lat1)
+    lat2_rad = math.radians(lat2)
+    dlat = lat2_rad - lat1_rad
+    dlon = math.radians(lon2 - lon1)
+    a = (
+        math.sin(dlat / 2.0) ** 2
+        + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon / 2.0) ** 2
+    )
+    return 6371.0088 * 2.0 * math.asin(min(1.0, math.sqrt(a)))
+
+
+def _resolve_nearest_city(lat: float, lon: float, admin1_map: dict[tuple[str, str], str]) -> CityRec | None:
+    best_city: CityRec | None = None
+    best_distance_km = float("inf")
+    with open(CITY_COORD_FILE, encoding="utf-8") as f:
+        for line in f:
+            cols = line.rstrip("\n").split("\t")
+            if len(cols) < 19:
+                continue
+            rec = CityRec.from_cols(cols, admin1_name=admin1_map.get((cols[8], cols[10])))
+            distance_km = _great_circle_distance_km(lat, lon, rec.lat, rec.lon)
+            if distance_km < best_distance_km:
+                best_distance_km = distance_km
+                best_city = rec
+    return best_city
+
+
+def _tower_to_location(args_city: str, admin1_map: dict[tuple[str, str], str]) -> ResolvedLocation | None:
+    tower = resolve_tower_viewpoint(args_city)
+    if tower is None:
+        return None
+    nearest_city = _resolve_nearest_city(tower.latitude_deg, tower.longitude_deg, admin1_map)
+    timezone_name = nearest_city.tz if nearest_city is not None else "UTC"
+    return ResolvedLocation(
+        display_name=tower.name,
+        lat=tower.latitude_deg,
+        lon=tower.longitude_deg,
+        tz=timezone_name,
+        persistence_key=tower.persistent_key,
+        observer_height_m=tower.height_m,
+        kind="tower",
+        cc=nearest_city.cc if nearest_city is not None else "",
+    )
+
+
+def _startup_resolve_city(args_city: Optional[str]) -> ResolvedLocation:
     """
     Resolve target city from CLI or last used city.
 
@@ -103,17 +165,14 @@ def _startup_resolve_city(args_city: Optional[str]) -> CityRec:
             logger.info("Parsed location: Lat=%.6f, Lon=%.6f, Timezone=UTC", lat, lon)
 
             name = f"Lat: {lat:.2f}, Lon: {lon:.2f}"
-            return CityRec(
-                geonameid=0,
-                name=name,
-                asciiname=name,
+            return ResolvedLocation(
+                display_name=name,
                 lat=lat,
                 lon=lon,
-                cc="",
-                admin1_code="",
-                admin1_name=None,
-                pop=0,
                 tz="UTC",
+                persistence_key=f"{lat:.6f};{lon:.6f}",
+                observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
+                kind="coords",
             )
         except (ValueError, IndexError) as exc:
             logger.error("Invalid latitude/longitude format: '%s'. %s", args_city, exc)
@@ -128,6 +187,16 @@ def _startup_resolve_city(args_city: Optional[str]) -> CityRec:
 
     recs: List[CityRec] = []
     try:
+        tower_query = args_city.startswith("wikidata:") or re.match(r"^Q\d+$", args_city) is not None
+        if tower_query:
+            tower_location = _tower_to_location(args_city, admin1_map)
+            if tower_location is None:
+                logger.error("No tower found for '%s'", args_city)
+                raise StartupAbortError()
+            save_last_city(tower_location.persistence_key)
+            logger.info("Tower: %s", tower_location.persistence_key)
+            return tower_location
+
         if re.match(r"^\d+$", args_city):
             rec = resolve_city_by_geonameid(int(args_city), CITY_COORD_FILE)
             if rec:
@@ -155,20 +224,31 @@ def _startup_resolve_city(args_city: Optional[str]) -> CityRec:
                 if len(recs) > 1:
                     logger.warning("Multiple matches found for '%s'", args_city)
             else:
-                logger.error("No match for '%s'", args_city)
-                raise StartupAbortError()
+                tower_location = _tower_to_location(args_city, admin1_map)
+                if tower_location is None:
+                    logger.error("No match for '%s'", args_city)
+                    raise StartupAbortError()
+                save_last_city(tower_location.persistence_key)
+                logger.info("Tower: %s", tower_location.persistence_key)
+                return tower_location
     except FileNotFoundError as exc:
         logger.error("Fail to load cities1000.txt.")
         raise StartupAbortError() from exc
 
     city = recs[0]
-    if getattr(city, "geonameid", 0) == 0:
-        city_str = f"{city.lat:.6f};{city.lon:.6f}"
-    else:
-        city_str = f"{city.cc}/{city.name}"
+    city_str = f"{city.cc}/{city.name}"
     save_last_city(city_str)
     logger.info("City: %s", city_str)
-    return city
+    return ResolvedLocation(
+        display_name=city.name,
+        lat=city.lat,
+        lon=city.lon,
+        tz=city.tz,
+        persistence_key=city_str,
+        observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
+        kind="city",
+        cc=city.cc,
+    )
 
 
 def _parse_flexible_time(time_str: str) -> Tuple[int, int, int]:

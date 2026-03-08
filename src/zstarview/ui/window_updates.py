@@ -111,6 +111,7 @@ class SkyWindowUpdatesMixin:
         started = self._sky_worker.update(
             lat=lat,
             lon=lon,
+            observer_height_m=self.viewer_data.observer_height_m,
             view_center=self.viewer_data.view_center,
             star_catalog=star_catalog,
             dso_catalog=self.dso_catalog_np,
@@ -190,6 +191,7 @@ class SkyWindowUpdatesMixin:
         return self._terrain_horizon_controller.update(
             lat=lat,
             lon=lon,
+            observer_height_m=self.viewer_data.observer_height_m,
             reason=reason,
         )
 

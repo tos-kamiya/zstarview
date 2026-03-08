@@ -42,7 +42,7 @@ pipx upgrade zstarview
 ## Usage
 
 ```bash
-zstarview [options] [city]
+zstarview [options] [location]
 ```
 
 > Note (Ubuntu/Wayland, GNOME): If the taskbar icon does not appear when launching from a terminal, follow the steps in [Generating a `.desktop` launcher (GNOME only)](#generating-a-desktop-launcher-gnome-only).
@@ -51,7 +51,7 @@ zstarview [options] [city]
 
 | Argument | Description                                                                                                                                                                                                                                                           | Default                           |
 | :------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------- |
-| `city`   | Specify the city name to display, **or** directly specify latitude/longitude in the form `"<lat>;<lon>"`. Examples: `35.68;139.76`, `N35.68;E139.76`, `-35.68;139.76`. If omitted, the last run city/coordinates will be used (defaults to `Tokyo` on the first run). | Last run city/coords (or `Tokyo`) |
+| `location`   | Specify a city name, a tower name, or latitude/longitude in the form `"<lat>;<lon>"`. Examples: `Tokyo`, `Tokyo Skytree`, `35.68;139.76`, `N35.68;E139.76`, `-35.68;139.76`. If omitted, the last run location will be used (defaults to `Tokyo` on the first run). | Last run location (or `Tokyo`) |
 
 ### Options
 
@@ -60,6 +60,7 @@ zstarview [options] [city]
 | `-h`, `--help`                              | Show this help message and exit.                                            |         |
 | `-Z`, `--view-center-az VIEW_CENTER_AZ`     | Viewing azimuth (degrees or compass points).                                | `180`   |
 | `-A`, `--view-center-alt VIEW_CENTER_ALT`   | Viewing altitude angle (90=zenith, 0=horizon).                              | `90`    |
+| `--observer-height-m METERS`                | Observer height above local ground in meters. Default: `1.7` for city/latlon, tower height for tower-name input. | location-dependent |
 | `-c`, `--cloud-opacity CLOUD_OPACITY`       | Opacity of cloud rendering (0.0–1.0). Use 0.0 to disable. \*2                | `0.2`   |
 | `--cloud-missing-tint-opacity OPACITY`      | Opacity of missing-cloud-data yellow tint (0.0–1.0).                          | `0.176` |
 | `--sky-opacity SKY_OPACITY`                 | Opacity of the simulated sky-color disc (0.0–1.0). Use 0.0 to disable.      | `0.2`   |
@@ -163,6 +164,25 @@ Example:
 ```bash
 zstarview "35.68;139.76"
 zstarview "N35.68;E139.76" --datetime "2025-09-12 21 JST"
+zstarview "35.68;139.76" --observer-height-m 120
+```
+
+**Tower name input**
+
+You can also start from a built-in tower/viewpoint dataset generated from Wikidata.
+
+* Examples:
+  * `Tokyo Skytree`
+  * `Tokyo Tower`
+  * `wikidata:Q57965`
+* When a tower name is used, the observer height defaults to that tower's stored height.
+* You can still override it with `--observer-height-m`.
+
+Example:
+
+```bash
+zstarview "Tokyo Skytree"
+zstarview "Tokyo Tower" --observer-height-m 150
 ```
 
 Time zone examples for `--datetime`:

@@ -58,6 +58,7 @@ class SkyDataWorker(QObject):
         *,
         lat: float,
         lon: float,
+        observer_height_m: float,
         view_center: Tuple[float, float],
         star_catalog: pl.DataFrame | StarCatalogArrays,
         dso_catalog: DeepSkyCatalogArrays | None = None,
@@ -77,6 +78,7 @@ class SkyDataWorker(QObject):
             kwargs={
                 "lat": lat,
                 "lon": lon,
+                "observer_height_m": observer_height_m,
                 "view_center": view_center,
                 "star_catalog": star_catalog,
                 "dso_catalog": dso_catalog,
@@ -95,6 +97,7 @@ class SkyDataWorker(QObject):
         *,
         lat: float,
         lon: float,
+        observer_height_m: float,
         view_center: Tuple[float, float],
         star_catalog: pl.DataFrame | StarCatalogArrays,
         dso_catalog: DeepSkyCatalogArrays | None,
@@ -111,6 +114,7 @@ class SkyDataWorker(QObject):
                 star_catalog,
                 lat,
                 lon,
+                observer_height_m,
                 time_obj,
                 view_center,
                 max_vmag=star_vmag_limit,
@@ -134,10 +138,11 @@ class SkyDataWorker(QObject):
                     dso_catalog,
                     lat,
                     lon,
+                    observer_height_m,
                     time_obj,
                     view_center,
                 )
-            planets = calculate_planets(lat, lon, time_obj, view_center)
+            planets = calculate_planets(lat, lon, observer_height_m, time_obj, view_center)
             celestial_equator_points = calculate_celestial_equator_points(loc, time_obj, view_center)
             ecliptic_points = calculate_ecliptic_points(loc, time_obj, view_center)
             horizon_points = calculate_horizon_points(view_center)
