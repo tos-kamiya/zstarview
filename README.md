@@ -16,6 +16,7 @@ The name emphasizes the *zenith*—the point directly overhead—conveying the e
 - Real-time satellite cloud imagery (Himawari/GOES), rendered as a stylized hatched (striped) overlay.
 - Cloud fetch and cloud render are decoupled: camera moves can re-render from cached source data immediately.
 - When satellite coverage is partial, missing regions are shown with a faint yellow tint.
+- Terrain horizon overlay from Copernicus DEM is available as a subtle brown skyline.
 - Below the horizon (ground side) is shown with a subtle tint to improve orientation.
 - A red tint marks the *never-rises* celestial region for the current latitude.
 
@@ -61,6 +62,7 @@ zstarview [options] [city]
 | `-c`, `--cloud-opacity CLOUD_OPACITY`       | Opacity of cloud rendering (0.0–1.0). Use 0.0 to disable. \*2                | `0.2`   |
 | `--cloud-missing-tint-opacity OPACITY`      | Opacity of missing-cloud-data yellow tint (0.0–1.0).                          | `0.176` |
 | `--sky-opacity SKY_OPACITY`                 | Opacity of the simulated sky-color disc (0.0–1.0). Use 0.0 to disable.      | `0.2`   |
+| `--terrain-horizon-opacity OPACITY`         | Opacity of the terrain horizon polyline (0.0–1.0). Use 0.0 to disable DEM download, terrain-horizon calculation, and drawing. \*4 | `0.25` |
 | `-m`, `--enlarge-moon`                      | Show the moon in 5x size.                                                   |         |
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | Base size of 2nd-magnitude stars.                                           | `4.0`   |
 | `-w`, `--expected-render-width EXPECTED_RENDER_WIDTH` | Expected window width for full-resolution star rendering. When celestial-disc width exceeds this, star rendering uses square-root scaling. | `600` |
@@ -81,6 +83,8 @@ zstarview [options] [city]
    See Troubleshooting for tips on slow networks or offline use (e.g., disabling clouds with `-c 0`).
 
 *3 The brightest-magnitude multiplier cannot exceed the classical Pogson value of \(100^{1/5}\approx2.512\).
+
+\*4 Terrain horizon rendering downloads Copernicus DEM tiles on first use and reuses the cached DEM later.
 
 **Overlay visibility at startup**
 
@@ -182,6 +186,7 @@ From the hamburger menu (`☰`), you can use:
 * **Search Named Stars...**: Search across all named stars in the catalog (about 443 names), then jump to the selected star.
 * **DSO**: Toggle deep-sky object overlays on/off.
 * **Asterisms**: Toggle asterism overlays on/off (when enabled, dim overlays stay visible; hovering a member star brightens the matching asterism and shows its label).
+* **Terrain Horizon**: Toggle the terrain skyline overlay on/off. If disabled from the CLI with `--terrain-horizon-opacity 0`, the menu item cannot re-enable it for that run.
 
 After a jump/search, the selected star is highlighted for about 3 seconds using the same UI style as mouse hover (circle marker + name label).
 
@@ -237,7 +242,8 @@ Install the missing `libxcb-cursor0` package with:
 ### Slow or Unstable Network / Offline Use
 Cloud rendering downloads satellite imagery from public S3 buckets (Himawari / NOAA GOES) and relies on heavy dependencies.
 If your network is slow or unavailable, disable clouds with `-c 0`.
-You can still explore stars/planets and sky colors without cloud overlays.
+Terrain horizon rendering downloads Copernicus DEM tiles once and then reuses the local cache. Disable it with `--terrain-horizon-opacity 0` if you do not want DEM downloads.
+You can still explore stars/planets and sky colors without cloud or terrain overlays.
 
 Cloud status text uses `idle` / `downloading` / `partial`:
 - `downloading`: fetching source imagery from S3
@@ -282,6 +288,7 @@ All paths below are relative to `src/zstarview/data/`.
 | `stars/hip_main.dat.zip`                                       | Hipparcos and Tycho Catalogues (ESA 1997)        | [CDS Strasbourg](https://cdsarc.cds.unistra.fr/ftp/I/239/)         | [ODbL](https://www.data.gouv.fr/licences) or [CC BY-NC 3.0 IGO](https://creativecommons.org/licenses/by-nc/3.0/igo/) Non-commercial |
 | `I-259/tyc2.dat.*.gz`, `I-259/ReadMe`                          | Tycho-2 main catalog (I/259)                     | [CDS Strasbourg](https://cdsarc.cds.unistra.fr/ftp/I/259/)         | [ODbL](https://www.data.gouv.fr/licences) or [CC BY-NC 3.0 IGO](https://creativecommons.org/licenses/by-nc/3.0/igo/) Non-commercial |
 | `dso.csv`                                                       | Deep-sky object catalog (named galaxies/open clusters/globular clusters; generated from OpenNGC) | [OpenNGC](https://github.com/mattiaverga/OpenNGC) via [PyOngc](https://github.com/mattiaverga/PyOngc) | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) (OpenNGC database) |
+| On-demand terrain DEM cache under the app cache directory | Terrain horizon source data (Copernicus DEM GLO-90) | [Copernicus DEM / Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM) via public AWS S3 distribution used by the app | ESA User Licence for Copernicus DEM (Copernicus Contributing Mission data access terms) |
 | `stars/IAU-Catalog of Star Names (always up to date).csv`      | IAU WGSN catalog of approved star names          | [exopla.net](https://exopla.net/star-names/modern-iau-star-names/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                           |
 | `Noto_Sans/*`                                                   | Font for displaying text                          | [Google Fonts](https://fonts.google.com/)                          | [SIL Open Font License 1.1](https://openfontlicense.org)                                                                            |
 
@@ -291,6 +298,7 @@ All paths below are relative to `src/zstarview/data/`.
 * City data based on GeoNames.
 * Star proper names provided by the IAU Working Group on Star Names (via [exopla.net](https://exopla.net/star-names/modern-iau-star-names/)).
 * Cloud data are based on infrared observations from the **Himawari** satellite (provided by JMA) and the **NOAA GOES** series (provided by NOAA/NESDIS), retrieved from their public S3 buckets.
+* Terrain horizon data are based on **Copernicus DEM GLO-90**, managed by ESA on behalf of the European Commission and obtained by the app through its public AWS distribution/cache flow.
 * Fonts provided by the Google Noto Project.
 * The window title "Zenith Star View" was suggested by ChatGPT.
 * Specification discussions, code generation, and debugging were greatly assisted by Gemini and ChatGPT.

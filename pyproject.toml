@@ -34,7 +34,6 @@ dependencies = [
   "numpy",
   "Pillow>=10",
   "polars",
-
   "boto3",
   "botocore",
   "xarray",
@@ -42,6 +41,7 @@ dependencies = [
   "h5py",
   "pyproj",
   "satpy",
+  "rasterio>=1.4.4",
 ]
 
 [project.optional-dependencies]
