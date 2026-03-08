@@ -95,6 +95,30 @@ def test_compose_cloud_addition_is_weighted_by_cloud_alpha() -> None:
     assert int(out[4, 4, 0]) > 20
 
 
+def test_compose_cloud_without_sky_uses_opaque_black_disc_base() -> None:
+    sky = np.zeros((8, 8, 4), dtype=np.uint8)
+
+    cloud = np.zeros((8, 8, 4), dtype=np.uint8)
+    cloud[..., :3] = 255
+    cloud[..., 3] = 0
+    cloud[4, 4, 3] = 255
+
+    out = qimage_to_np_rgba(
+        compose_cloud_over_sky(
+            sky_img=np_rgba_to_qimage(sky),
+            cloud_img_rgba=np_rgba_to_qimage(cloud),
+            dest_rect=QRect(0, 0, 8, 8),
+            cloud_opacity=1.0,
+            gray_mix=0.0,
+        )
+    )
+
+    assert int(out[1, 1, 3]) == 255
+    assert int(out[4, 4, 3]) == 255
+    assert int(out[1, 1, 0]) == 0
+    assert int(out[4, 4, 0]) > 0
+
+
 def test_density_hatch_keeps_stripes_sparse_on_larger_canvas() -> None:
     base = np.zeros((128, 128, 4), dtype=np.uint8)
     base[..., :3] = 255

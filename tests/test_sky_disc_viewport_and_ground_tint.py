@@ -1,5 +1,7 @@
+import numpy as np
+
 from zstarview.render.draw import get_screen_geometry
-from zstarview.render.draw_sky_disc import draw_sky_color_disc
+from zstarview.render.draw_sky_disc import draw_sky_color_disc, draw_uniform_sky_color_disc
 from zstarview.types import ScreenGeometry
 from zstarview.utils.qt import qimage_to_np_rgba
 
@@ -51,3 +53,18 @@ def test_sky_disc_adds_tint_below_horizon() -> None:
     # Above horizon remains near black; below horizon gets blue-gray tint.
     assert int(top_rgb.max()) <= 1
     assert int(bottom_rgb.max()) >= 10
+
+
+def test_uniform_sky_disc_uses_single_disc_color() -> None:
+    geom = ScreenGeometry(center=(80, 80), radius=80)
+    img = draw_uniform_sky_color_disc(geom)
+    arr = qimage_to_np_rgba(img)
+
+    center_rgb = arr[80, 80, :3].astype(int)
+    top_rgb = arr[20, 80, :3].astype(int)
+    lower_rgb = arr[120, 80, :3].astype(int)
+
+    assert int(arr[80, 80, 3]) == 255
+    assert np.array_equal(center_rgb, top_rgb)
+    assert np.array_equal(center_rgb, lower_rgb)
+    assert np.array_equal(center_rgb, np.array([10, 10, 10]))
