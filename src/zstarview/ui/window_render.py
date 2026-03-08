@@ -110,7 +110,7 @@ class SkyWindowRenderMixin:
 
         self._clear_background_layer(painter)
         self._draw_background_layer(painter, geometry)
-        self._draw_sky_cloud_layers(painter, geometry)
+        self._draw_sky_cloud_layers(painter, geometry, render_viewer)
         label_reservations: list[QRectF] = []
         label_candidates: list[dict[str, Any]] = []
         self._draw_terrain_layers(
@@ -165,7 +165,12 @@ class SkyWindowRenderMixin:
             painter, QRectF(self.rect()), geometry, preset=self.visual_preset
         )
 
-    def _draw_sky_cloud_layers(self, painter: QPainter, geometry: render_draw.ScreenGeometry) -> None:
+    def _draw_sky_cloud_layers(
+        self,
+        painter: QPainter,
+        geometry: render_draw.ScreenGeometry,
+        render_viewer: ViewerData,
+    ) -> None:
         self._compositor.draw(
             painter,
             geometry,
@@ -173,6 +178,7 @@ class SkyWindowRenderMixin:
             self.cloud_state.image,
             cloud_alpha=self.cloud_disc_alpha,
             view_center=self.state.render_view_center,
+            observer_lat_deg=render_viewer.location[0],
             stripe_density=self.cloud_state.stripe_density,
             missing_mask=self.cloud_state.missing_mask,
             terrain_profile_altaz=(

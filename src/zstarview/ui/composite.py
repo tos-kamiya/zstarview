@@ -18,7 +18,7 @@ from PySide6.QtCore import QRect, Qt
 from PySide6.QtGui import QImage, QPainter
 
 from ..paths import CLOUD_HATCH_DEFAULT, CLOUD_MISSING_TINT_RGBA, HatchConfig
-from ..render.draw_sky_disc import GROUND_TINT_RGB
+from ..render.draw_sky_disc import GROUND_TINT_RGB, NEVER_RISES_TINT_RGB, NEVER_RISES_TINT_STRENGTH
 from ..types import ScreenGeometry
 from ..utils.qt import np_rgba_to_qimage, qimage_to_np_rgba
 
@@ -412,12 +412,37 @@ def _interpolate_terrain_horizon_altitude(
     return np.interp(azimuth_deg, azimuths_ext, altitudes_ext).astype(np.float32)
 
 
+def _never_rises_mask(
+    alt_deg: np.ndarray,
+    az_deg: np.ndarray,
+    observer_lat_deg: float | None,
+) -> np.ndarray:
+    """Return a boolean mask for declinations that never rise at the observer latitude."""
+    if observer_lat_deg is None or alt_deg.size == 0:
+        return np.zeros_like(alt_deg, dtype=bool)
+
+    lat = float(np.clip(observer_lat_deg, -90.0, 90.0))
+    if lat == 0.0:
+        return np.zeros_like(alt_deg, dtype=bool)
+
+    lat_rad = math.radians(lat)
+    alt_rad = np.radians(alt_deg)
+    az_rad = np.radians(az_deg)
+    sin_dec = np.sin(alt_rad) * math.sin(lat_rad) + np.cos(alt_rad) * math.cos(lat_rad) * np.cos(az_rad)
+    sin_dec = np.clip(sin_dec, -1.0, 1.0)
+    dec = np.degrees(np.arcsin(sin_dec))
+    if lat > 0.0:
+        return dec <= (lat - 90.0)
+    return dec >= (lat + 90.0)
+
+
 def apply_ground_tint(
     base_img: QImage,
     *,
     view_center: Tuple[float, float],
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     ground_tint_opacity: float = 1.0,
+    observer_lat_deg: float | None = None,
 ) -> QImage:
     """Tint the composited disc below the geometric or terrain horizon."""
     out = qimage_to_np_rgba(
@@ -434,6 +459,14 @@ def apply_ground_tint(
     rgb = out[..., :3][inside].astype(np.float32) / 255.0
     opacity = np.float32(np.clip(ground_tint_opacity, 0.0, 1.0))
     rgb[ground_mask] = GROUND_TINT_RGB[None, :] * opacity
+    never_rises = _never_rises_mask(alt, az, observer_lat_deg)
+    never_rises_ground = ground_mask & never_rises
+    if np.any(never_rises_ground):
+        rgb[never_rises_ground] = np.clip(
+            rgb[never_rises_ground] + NEVER_RISES_TINT_RGB[None, :] * np.float32(NEVER_RISES_TINT_STRENGTH),
+            0.0,
+            1.0,
+        )
     out[..., :3][inside] = np.clip(np.round(rgb * 255.0), 0, 255).astype(np.uint8)
     return np_rgba_to_qimage(out)
 
@@ -480,6 +513,7 @@ class SkyCompositorCache:
         *,
         cloud_alpha: float,
         view_center: Tuple[float, float] = (0.0, 0.0),
+        observer_lat_deg: float | None = None,
         stripe_density: Optional[StripeDensityField] = None,
         missing_mask: Optional[QImage] = None,
         terrain_profile_altaz: list[tuple[float, float]] | None = None,
@@ -516,6 +550,7 @@ class SkyCompositorCache:
             float(cloud_alpha),
             float(view_center[0]),
             float(view_center[1]),
+            None if observer_lat_deg is None else float(observer_lat_deg),
             hatch_key,
             self._missing_tint_rgba,
             self._ground_tint_opacity,
@@ -580,6 +615,7 @@ class SkyCompositorCache:
                 view_center=view_center,
                 terrain_profile_altaz=terrain_profile_altaz,
                 ground_tint_opacity=self._ground_tint_opacity,
+                observer_lat_deg=observer_lat_deg,
             )
             if missing_s is not None:
                 composited = overlay_missing_tint(

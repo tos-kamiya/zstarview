@@ -4,6 +4,8 @@ import logging
 import math
 
 from .cli_args import (
+    _parse_theme,
+    _parse_window_geometry,
     parse_args,
 )
 from .ui.window_inputs import (
