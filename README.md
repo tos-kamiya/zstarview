@@ -16,7 +16,7 @@ The name emphasizes the *zenith*—the point directly overhead—conveying the e
 - Real-time satellite cloud imagery (Himawari/GOES), rendered as a stylized hatched (striped) overlay.
 - Cloud fetch and cloud render are decoupled: camera moves can re-render from cached source data immediately.
 - When satellite coverage is partial, missing regions are shown with a faint yellow tint.
-- Terrain horizon overlay from Copernicus DEM is available as a subtle brown skyline.
+- Optional terrain horizon overlay from Copernicus DEM adds a subtle brown skyline aligned to the local terrain.
 - Below the horizon (ground side) is shown with a subtle tint to improve orientation.
 - A red tint marks the *never-rises* celestial region for the current latitude.
 - The project is routinely tested on CPython 3.10, 3.11, 3.12, and 3.13.
@@ -175,6 +175,13 @@ Time zone examples for `--datetime`:
 * **← / →**: Rotate view azimuth by ±5°
 * **↑ / ↓**: Change view altitude by ±5° (clamped to 0°..90°)
 * **M**: Toggle moon enlarged to 5x size
+* **D**: Toggle DSO overlays
+* **A**: Toggle asterism overlays
+* **S**: Toggle sky-color shading between gradient and flat-disc mode
+* **C**: Toggle cloud overlays
+* **T**: Toggle terrain horizon overlay
+* **Ctrl+J**: Open Jump to Named Star
+* **Ctrl+F**: Open Search Stars and Asterisms
 * **F11**: Toggle fullscreen display
 * **ESC**: Exit fullscreen
 * **Q**: Quit
@@ -184,10 +191,15 @@ Time zone examples for `--datetime`:
 From the hamburger menu (`☰`), you can use:
 
 * **Jump to Named Star...**: Choose from representative named stars (`Vmag <= 2.0`), grouped into North / Equatorial / South, then jump the view center to that star.
-* **Search Named Stars...**: Search across all named stars in the catalog (about 443 names), then jump to the selected star.
+* **Search Stars and Asterisms...**: Search across named stars and supported asterisms, then jump to the selected target.
+* **Enlarge Moon**: Toggle moon enlarged to 5x size.
 * **DSO**: Toggle deep-sky object overlays on/off.
 * **Asterisms**: Toggle asterism overlays on/off (when enabled, dim overlays stay visible; hovering a member star brightens the matching asterism and shows its label).
+* **Sky Color Disc**: Switch between the full sky-color gradient and the flat dark-disc fallback.
+* **Clouds**: Toggle real-time cloud overlays on/off.
 * **Terrain Horizon**: Toggle the terrain skyline overlay on/off. If disabled from the CLI with `--terrain-horizon-opacity 0`, the menu item cannot re-enable it for that run.
+* **Fullscreen**: Toggle fullscreen display.
+* **Exit**: Quit the application.
 
 After a jump/search, the selected star is highlighted for about 3 seconds using the same UI style as mouse hover (circle marker + name label).
 
