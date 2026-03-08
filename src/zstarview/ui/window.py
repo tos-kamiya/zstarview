@@ -393,18 +393,6 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         toggle_enlarge_moon_action.triggered.connect(self.toggle_enlarge_moon)
         self.menu.addAction(toggle_enlarge_moon_action)
         self._action_enlarge_moon = toggle_enlarge_moon_action
-        toggle_clouds_action = QAction("Clouds", self)
-        toggle_clouds_action.setCheckable(True)
-        toggle_clouds_action.setChecked(self.cloud_disc_alpha > 0.0)
-        toggle_clouds_action.triggered.connect(self.toggle_clouds)
-        self.menu.addAction(toggle_clouds_action)
-        self._action_toggle_clouds = toggle_clouds_action
-        toggle_terrain_action = QAction("Terrain Horizon", self)
-        toggle_terrain_action.setCheckable(True)
-        toggle_terrain_action.setChecked(self.terrain_horizon_opacity > 0.0)
-        toggle_terrain_action.triggered.connect(self.toggle_terrain_horizon)
-        self.menu.addAction(toggle_terrain_action)
-        self._action_toggle_terrain_horizon = toggle_terrain_action
         toggle_dso_action = QAction("DSO", self)
         toggle_dso_action.setCheckable(True)
         toggle_dso_action.setChecked(self.show_dso)
@@ -418,12 +406,26 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         toggle_asterisms_action.triggered.connect(self.toggle_asterisms)
         self.menu.addAction(toggle_asterisms_action)
         self._action_toggle_asterisms = toggle_asterisms_action
+
+        self.menu.addSeparator()
         toggle_sky_disc_action = QAction("Sky Color Disc", self)
         toggle_sky_disc_action.setCheckable(True)
         toggle_sky_disc_action.setChecked(self.sky_disc_alpha > 0.0)
         toggle_sky_disc_action.triggered.connect(self.toggle_sky_disc)
         self.menu.addAction(toggle_sky_disc_action)
         self._action_toggle_sky_disc = toggle_sky_disc_action
+        toggle_clouds_action = QAction("Clouds", self)
+        toggle_clouds_action.setCheckable(True)
+        toggle_clouds_action.setChecked(self.cloud_disc_alpha > 0.0)
+        toggle_clouds_action.triggered.connect(self.toggle_clouds)
+        self.menu.addAction(toggle_clouds_action)
+        self._action_toggle_clouds = toggle_clouds_action
+        toggle_terrain_action = QAction("Terrain Horizon", self)
+        toggle_terrain_action.setCheckable(True)
+        toggle_terrain_action.setChecked(self.terrain_horizon_opacity > 0.0)
+        toggle_terrain_action.triggered.connect(self.toggle_terrain_horizon)
+        self.menu.addAction(toggle_terrain_action)
+        self._action_toggle_terrain_horizon = toggle_terrain_action
 
         self.menu.addSeparator()
         fullscreen_action = self.menu.addAction("Fullscreen (F11)")

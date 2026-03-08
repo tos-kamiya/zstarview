@@ -551,6 +551,9 @@ def draw_terrain_horizon_line(
     """Draw a terrain horizon polyline as an extra overlay over the geometric horizon."""
     if not terrain_profile_altaz or opacity <= 0.0:
         return
+    effective_opacity = max(0.0, min(1.0, opacity * 0.7))
+    if effective_opacity <= 0.0:
+        return
 
     points: list[tuple[float, float]] = []
     for alt, az in terrain_profile_altaz:
@@ -563,9 +566,9 @@ def draw_terrain_horizon_line(
         return
 
     color = QColor(*TERRAIN_HORIZON_LINE_COLOR)
-    color.setAlphaF(max(0.0, min(1.0, opacity)))
+    color.setAlphaF(effective_opacity)
     outline = QColor(*TERRAIN_HORIZON_LINE_COLOR)
-    outline.setAlpha(max(0, min(255, int(round(110.0 * opacity)))))
+    outline.setAlpha(max(0, min(255, int(round(110.0 * effective_opacity)))))
 
     painter.save()
     for frag in split_by_gaps(points):
