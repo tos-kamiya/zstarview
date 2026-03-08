@@ -13,6 +13,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Dict, Tuple
 
 import astropy
+import astropy.time
 import numpy as np
 import polars as pl
 from PySide6.QtCore import QObject, Signal

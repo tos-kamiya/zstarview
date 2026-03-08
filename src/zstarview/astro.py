@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, List, Optional, Tuple, TypedDict, cast
 
 import astropy
+import astropy.time
 import astropy.units as u
 from astropy.coordinates import AltAz, EarthLocation, GeocentricTrueEcliptic, SkyCoord
 from skyfield.api import Loader, Topos

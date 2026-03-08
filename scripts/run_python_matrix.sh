@@ -5,10 +5,12 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 PY_VERSIONS=("3.10" "3.11" "3.12" "3.13")
+MYPY_VERSIONS=("3.10" "3.13")
 RUN_PYTEST=1
-RUN_MYPY=1
+RUN_MYPY=0
 RUN_COMPILEALL=1
 SKIP_INSTALL=0
+MYPY_ALL=0
 
 usage() {
   cat <<'EOF'
@@ -17,14 +19,16 @@ Usage:
 
 Options:
   --pytest-only     Run only pytest across 3.10/3.11/3.12/3.13
-  --mypy-only       Run only mypy across 3.10/3.11/3.12/3.13
+  --with-mypy       Also run mypy on representative versions (3.10 and 3.13)
+  --mypy-only       Run only mypy on representative versions (3.10 and 3.13)
+  --mypy-all        Run mypy across 3.10/3.11/3.12/3.13
   --compileall-only Run only compileall across 3.10/3.11/3.12/3.13
   --skip-install    Reuse existing venvs without reinstalling .[dev]
   -h, --help        Show this help
 
 Default:
   Create/update .venv-3.10 .. .venv-3.13, install .[dev], then run
-  pytest, mypy, and compileall for each version.
+  pytest and compileall for each version.
 EOF
 }
 
@@ -39,6 +43,13 @@ while [[ $# -gt 0 ]]; do
       RUN_PYTEST=0
       RUN_MYPY=1
       RUN_COMPILEALL=0
+      ;;
+    --with-mypy)
+      RUN_MYPY=1
+      ;;
+    --mypy-all)
+      RUN_MYPY=1
+      MYPY_ALL=1
       ;;
     --compileall-only)
       RUN_PYTEST=0
@@ -80,17 +91,31 @@ for py in "${PY_VERSIONS[@]}"; do
 
   if [[ "$RUN_PYTEST" -eq 1 ]]; then
     echo "==> [$py] pytest"
-    uv run -p "$pybin" pytest
+    "$pybin" -m pytest
   fi
 
   if [[ "$RUN_MYPY" -eq 1 ]]; then
-    echo "==> [$py] mypy"
-    uv run -p "$pybin" mypy --install-types --non-interactive src/zstarview tests
+    run_mypy_for_this_version=0
+    if [[ "$MYPY_ALL" -eq 1 ]]; then
+      run_mypy_for_this_version=1
+    else
+      for mypy_py in "${MYPY_VERSIONS[@]}"; do
+        if [[ "$py" == "$mypy_py" ]]; then
+          run_mypy_for_this_version=1
+          break
+        fi
+      done
+    fi
+
+    if [[ "$run_mypy_for_this_version" -eq 1 ]]; then
+      echo "==> [$py] mypy"
+      "$pybin" -m mypy --install-types --non-interactive src/zstarview tests
+    fi
   fi
 
   if [[ "$RUN_COMPILEALL" -eq 1 ]]; then
     echo "==> [$py] compileall"
-    uv run -p "$pybin" -m compileall src/zstarview
+    "$pybin" -m compileall src/zstarview
   fi
 done
 
