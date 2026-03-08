@@ -7,6 +7,16 @@ logger = logging.getLogger(__name__)
 
 
 class SkyWindowUpdatesMixin:
+    def _status_line_message(self) -> str:
+        parts: list[str] = []
+        cloud_message = self._cloud_status_line()
+        if cloud_message:
+            parts.append(cloud_message)
+        terrain_message = self._terrain_horizon_status_line()
+        if terrain_message:
+            parts.append(terrain_message)
+        return " | ".join(parts)
+
     def _safe_request_cloud_repaint(self) -> None:
         """Best-effort repaint request; ignores teardown-time signal errors."""
         if self._is_shutting_down:
@@ -17,6 +27,8 @@ class SkyWindowUpdatesMixin:
             logger.debug("Skip cloud repaint emit during shutdown.")
 
     def _cloud_status_line(self) -> str:
+        if self.cloud_disc_alpha <= 0.0 and not self.cloud_state.banner_text:
+            return ""
         sat = self.cloud_state.current_satellite or self._predicted_cloud_satellite()
         if self.cloud_state.banner_text:
             detail = self.cloud_state.banner_text.removeprefix("Clouds:").strip()
@@ -35,6 +47,13 @@ class SkyWindowUpdatesMixin:
             except Exception:
                 pass
         return f"Clouds [{sat}]: idle"
+
+    def _terrain_horizon_status_line(self) -> str:
+        if self.terrain_horizon_opacity <= 0.0 and not self.terrain_horizon_state.banner_text:
+            return ""
+        if self.terrain_horizon_state.banner_text:
+            return self.terrain_horizon_state.banner_text
+        return ""
 
     def _on_sky_data_calculated(self, payload: Dict) -> None:
         self.state.render_view_center = tuple(
@@ -160,3 +179,37 @@ class SkyWindowUpdatesMixin:
             self.state.cloud_repaint_deferred = True
             return
         self._safe_request_cloud_repaint()
+
+    def start_background_terrain_horizon_update(self, reason: str = "manual") -> bool:
+        if self._is_shutting_down:
+            return False
+        if self.terrain_horizon_opacity <= 0.0 or self._terrain_horizon_controller is None:
+            return False
+        lat, lon = self.viewer_data.location
+        return self._terrain_horizon_controller.update(
+            lat=lat,
+            lon=lon,
+            reason=reason,
+        )
+
+    def _on_terrain_horizon_started(self, payload: Dict) -> None:
+        banner = str(payload.get("banner", "")).strip()
+        if banner:
+            self.terrain_horizon_state.banner_text = banner
+        self.update()
+
+    def _on_terrain_horizon_ready(self, payload: Dict) -> None:
+        self.terrain_horizon_state.set_result(
+            payload["profile_altaz"],
+            source=str(payload.get("source", "")).strip(),
+        )
+        self.state.terrain_horizon_profile = payload["profile_altaz"]
+        self.update()
+
+    def _on_terrain_horizon_failed(self, payload: Dict) -> None:
+        banner = str(payload.get("banner", "")).strip()
+        self.terrain_horizon_state.clear_profile()
+        self.state.terrain_horizon_profile = None
+        if banner:
+            self.terrain_horizon_state.set_error_banner(banner)
+        self.update()

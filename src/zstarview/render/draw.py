@@ -28,6 +28,7 @@ from ..paths import (
     DIRECTIONS,
     ECLIPTIC_COLOR,
     HORIZON_LINE_COLOR,
+    TERRAIN_HORIZON_LINE_COLOR,
     TEXT_COLOR,
     STATUS_LINE_COLOR,
 )
@@ -536,6 +537,56 @@ def draw_sky_reference_lines(painter: QPainter, geometry: ScreenGeometry, celest
             fg.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
             painter.setPen(fg)
             painter.drawPolyline(poly)
+    painter.restore()
+
+
+def draw_terrain_horizon_line(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+    view_center: tuple[float, float],
+    *,
+    opacity: float = 1.0,
+) -> None:
+    """Draw a terrain horizon polyline as an extra overlay over the geometric horizon."""
+    if not terrain_profile_altaz or opacity <= 0.0:
+        return
+
+    points: list[tuple[float, float]] = []
+    for alt, az in terrain_profile_altaz:
+        if not is_in_fov(float(alt), float(az), view_center):
+            continue
+        nx, ny = altaz_to_normalized_xy(float(alt), float(az), view_center)
+        points.append((nx, ny))
+
+    if len(points) < 2:
+        return
+
+    color = QColor(*TERRAIN_HORIZON_LINE_COLOR)
+    color.setAlphaF(max(0.0, min(1.0, opacity)))
+    outline = QColor(*TERRAIN_HORIZON_LINE_COLOR)
+    outline.setAlpha(max(0, min(255, int(round(110.0 * opacity)))))
+
+    painter.save()
+    for frag in split_by_gaps(points):
+        if len(frag) < 2:
+            continue
+        pts = [QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in frag]
+        poly = QPolygonF(pts)
+
+        base = QPen(outline, 4.5)
+        base.setCosmetic(True)
+        base.setCapStyle(Qt.PenCapStyle.RoundCap)
+        base.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(base)
+        painter.drawPolyline(poly)
+
+        fg = QPen(color, 2.4)
+        fg.setCosmetic(True)
+        fg.setCapStyle(Qt.PenCapStyle.RoundCap)
+        fg.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(fg)
+        painter.drawPolyline(poly)
     painter.restore()
 
 
