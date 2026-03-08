@@ -1,7 +1,7 @@
 import math
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import hashlib
 import logging
@@ -641,9 +641,13 @@ def draw_asterisms(
         pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
         return pen
 
-    def _draw_one_asterism(asterism: Any, outline_pen: QPen, line_pen: QPen) -> List[QPointF]:
+    def _draw_segments(
+        segments: Iterable[Tuple[str, str]],
+        outline_pen: QPen,
+        line_pen: QPen,
+    ) -> List[QPointF]:
         label_points: List[QPointF] = []
-        for source_a, source_b in asterism.segments():
+        for source_a, source_b in segments:
             pos_a = star_altaz_by_source.get(source_a)
             pos_b = star_altaz_by_source.get(source_b)
             if pos_a is None or pos_b is None:
@@ -668,10 +672,18 @@ def draw_asterisms(
                 label_points.extend(poly)
         return label_points
 
+    def _draw_one_asterism(asterism: Any, outline_pen: QPen, line_pen: QPen) -> List[QPointF]:
+        return _draw_segments(asterism.segments(), outline_pen, line_pen)
+
     base_outline_pen = _make_pen(base_outline_color, 4.0)
     base_line_pen = _make_pen(base_line_color, 2.5)
+    base_segments: set[Tuple[str, str]] = set()
     for asterism in ASTERISMS:
-        _draw_one_asterism(asterism, base_outline_pen, base_line_pen)
+        for source_a, source_b in asterism.segments():
+            if source_a == source_b:
+                continue
+            base_segments.add(tuple(sorted((source_a, source_b))))
+    _draw_segments(sorted(base_segments), base_outline_pen, base_line_pen)
 
     highlighted_asterism = None
     if highlighted_object is not None:
