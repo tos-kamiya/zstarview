@@ -185,6 +185,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._named_stars_search_all = catalogs.named_stars_search_all
         self.delta_t = runtime_options.delta_t
         self.sky_disc_alpha = user_options.sky_disc_alpha
+        self._sky_disc_alpha_when_enabled = user_options.sky_disc_alpha if user_options.sky_disc_alpha > 0.0 else 0.3
         self.terrain_horizon_opacity = user_options.terrain_horizon_opacity
         self._terrain_horizon_opacity_when_enabled = (
             user_options.terrain_horizon_opacity if user_options.terrain_horizon_opacity > 0.0 else 0.25
@@ -251,6 +252,9 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._action_toggle_terrain_horizon: Optional[QAction] = None
         self._action_toggle_dso: Optional[QAction] = None
         self._action_toggle_asterisms: Optional[QAction] = None
+        self._action_toggle_sky_disc: Optional[QAction] = None
+        self._action_raise_view: Optional[QAction] = None
+        self._action_lower_view: Optional[QAction] = None
         self._add_hamburger_menu()
         self.add_drag_exclusions([self.menu_button, self.size_grip])
 
@@ -369,11 +373,20 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         rotate_left.triggered.connect(lambda: self._rotate_view(d_az=-self.state.rotation_step))
         rotate_right = self.menu.addAction(f"Rotate Right (+{self.state.rotation_step:.0f}°)")
         rotate_right.triggered.connect(lambda: self._rotate_view(d_az=+self.state.rotation_step))
+        raise_view = self.menu.addAction(f"Raise View (+{self.state.rotation_step:.0f}° alt)")
+        raise_view.triggered.connect(lambda: self._rotate_view(d_alt=+self.state.rotation_step))
+        self._action_raise_view = raise_view
+        lower_view = self.menu.addAction(f"Lower View (-{self.state.rotation_step:.0f}° alt)")
+        lower_view.triggered.connect(lambda: self._rotate_view(d_alt=-self.state.rotation_step))
+        self._action_lower_view = lower_view
+
+        self.menu.addSeparator()
         jump_named_star = self.menu.addAction("Jump to Named Star...")
         jump_named_star.triggered.connect(self._open_named_star_jump_dialog)
-        search_named_star = self.menu.addAction("Search Named Stars...")
+        search_named_star = self.menu.addAction("Search Stars and Asterisms...")
         search_named_star.triggered.connect(self._open_named_star_search_dialog)
 
+        self.menu.addSeparator()
         toggle_enlarge_moon_action = QAction("Enlarge Moon (M)", self)
         toggle_enlarge_moon_action.setCheckable(True)
         toggle_enlarge_moon_action.setChecked(self.enlarge_moon)
@@ -405,6 +418,12 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         toggle_asterisms_action.triggered.connect(self.toggle_asterisms)
         self.menu.addAction(toggle_asterisms_action)
         self._action_toggle_asterisms = toggle_asterisms_action
+        toggle_sky_disc_action = QAction("Sky Color Disc", self)
+        toggle_sky_disc_action.setCheckable(True)
+        toggle_sky_disc_action.setChecked(self.sky_disc_alpha > 0.0)
+        toggle_sky_disc_action.triggered.connect(self.toggle_sky_disc)
+        self.menu.addAction(toggle_sky_disc_action)
+        self._action_toggle_sky_disc = toggle_sky_disc_action
 
         self.menu.addSeparator()
         fullscreen_action = self.menu.addAction("Fullscreen (F11)")
@@ -417,6 +436,13 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.menu.addSeparator()
         version_action = self.menu.addAction(f"Version {__version__}")
         version_action.setEnabled(False)
+
+    def _sync_view_altitude_actions(self) -> None:
+        alt, _ = self.viewer_data.view_center
+        if self._action_raise_view is not None:
+            self._action_raise_view.setEnabled(float(alt) < 90.0)
+        if self._action_lower_view is not None:
+            self._action_lower_view.setEnabled(float(alt) > 0.0)
 
     def resizeEvent(self, event: QResizeEvent) -> None:
         self._begin_interaction_mode()
@@ -444,6 +470,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.start_background_terrain_horizon_update(reason="view-change-idle")
 
     def show_menu(self) -> None:
+        self._sync_view_altitude_actions()
         menu_pos = self.menu_button.mapToGlobal(QPoint(0, self.menu_button.height()))
         self.menu.exec(menu_pos)
 
@@ -477,12 +504,15 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self.viewer_data.location[1],
             self._current_time_obj(),
         )
-        new_alt = max(0.0, min(90.0, float(alt)))
-        new_az = float(az) % 360.0
+        target_alt = float(alt)
+        target_az = float(az) % 360.0
+        new_alt = max(0.0, min(90.0, target_alt))
+        new_az = target_az
         self.viewer_data.view_center = (new_alt, new_az)
+        self._sync_view_altitude_actions()
 
         self.state.jump_highlight_name = target.label
-        self.state.jump_highlight_altaz = (new_alt, new_az)
+        self.state.jump_highlight_altaz = (target_alt, target_az)
         self.state.jump_highlight_until_ms = (time.monotonic() * 1000.0) + 3000.0
 
         self._begin_interaction_mode()
@@ -593,6 +623,17 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self._action_toggle_asterisms.setChecked(self.show_asterisms)
         self.update()
 
+    def toggle_sky_disc(self) -> None:
+        enable_sky_disc = self.sky_disc_alpha <= 0.0
+        self.sky_disc_alpha = self._sky_disc_alpha_when_enabled if enable_sky_disc else 0.0
+        if self._action_toggle_sky_disc is not None and self._action_toggle_sky_disc.isChecked() != enable_sky_disc:
+            self._action_toggle_sky_disc.setChecked(enable_sky_disc)
+        if not enable_sky_disc:
+            self.state.sky_disc_image = None
+        self._compositor.invalidate()
+        self.request_sky_data_update()
+        self.update()
+
     def toggle_terrain_horizon(self) -> None:
         if not self._terrain_horizon_gui_allowed:
             if self._action_toggle_terrain_horizon is not None:
@@ -637,6 +678,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         new_alt = max(0.0, min(90.0, alt + d_alt))
         new_az = (az + d_az) % 360.0
         self.viewer_data.view_center = (new_alt, new_az)
+        self._sync_view_altitude_actions()
 
         # Recalculate sky data for the current full quality on each key input.
         self.request_sky_data_update()
