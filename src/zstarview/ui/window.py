@@ -23,6 +23,7 @@ from PySide6.QtGui import (
     QGuiApplication,
     QIcon,
     QKeyEvent,
+    QKeySequence,
     QMouseEvent,
     QResizeEvent,
 )
@@ -382,58 +383,88 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
 
         self.menu.addSeparator()
         jump_named_star = self.menu.addAction("Jump to Named Star...")
+        jump_named_star.setShortcut(QKeySequence("Ctrl+J"))
+        jump_named_star.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         jump_named_star.triggered.connect(self._open_named_star_jump_dialog)
+        self.addAction(jump_named_star)
         search_named_star = self.menu.addAction("Search Stars and Asterisms...")
+        search_named_star.setShortcut(QKeySequence("Ctrl+F"))
+        search_named_star.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         search_named_star.triggered.connect(self._open_named_star_search_dialog)
+        self.addAction(search_named_star)
 
         self.menu.addSeparator()
-        toggle_enlarge_moon_action = QAction("Enlarge Moon (M)", self)
+        toggle_enlarge_moon_action = QAction("Enlarge Moon", self)
         toggle_enlarge_moon_action.setCheckable(True)
         toggle_enlarge_moon_action.setChecked(self.enlarge_moon)
+        toggle_enlarge_moon_action.setShortcut(QKeySequence(Qt.Key.Key_M))
+        toggle_enlarge_moon_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         toggle_enlarge_moon_action.triggered.connect(self.toggle_enlarge_moon)
         self.menu.addAction(toggle_enlarge_moon_action)
+        self.addAction(toggle_enlarge_moon_action)
         self._action_enlarge_moon = toggle_enlarge_moon_action
         toggle_dso_action = QAction("DSO", self)
         toggle_dso_action.setCheckable(True)
         toggle_dso_action.setChecked(self.show_dso)
         toggle_dso_action.setEnabled(self.dso_catalog_np is not None)
+        toggle_dso_action.setShortcut(QKeySequence(Qt.Key.Key_D))
+        toggle_dso_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         toggle_dso_action.triggered.connect(self.toggle_dso)
         self.menu.addAction(toggle_dso_action)
+        self.addAction(toggle_dso_action)
         self._action_toggle_dso = toggle_dso_action
         toggle_asterisms_action = QAction("Asterisms", self)
         toggle_asterisms_action.setCheckable(True)
         toggle_asterisms_action.setChecked(self.show_asterisms)
+        toggle_asterisms_action.setShortcut(QKeySequence(Qt.Key.Key_A))
+        toggle_asterisms_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         toggle_asterisms_action.triggered.connect(self.toggle_asterisms)
         self.menu.addAction(toggle_asterisms_action)
+        self.addAction(toggle_asterisms_action)
         self._action_toggle_asterisms = toggle_asterisms_action
 
         self.menu.addSeparator()
         toggle_sky_disc_action = QAction("Sky Color Disc", self)
         toggle_sky_disc_action.setCheckable(True)
         toggle_sky_disc_action.setChecked(self.sky_disc_alpha > 0.0)
+        toggle_sky_disc_action.setShortcut(QKeySequence(Qt.Key.Key_S))
+        toggle_sky_disc_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         toggle_sky_disc_action.triggered.connect(self.toggle_sky_disc)
         self.menu.addAction(toggle_sky_disc_action)
+        self.addAction(toggle_sky_disc_action)
         self._action_toggle_sky_disc = toggle_sky_disc_action
         toggle_clouds_action = QAction("Clouds", self)
         toggle_clouds_action.setCheckable(True)
         toggle_clouds_action.setChecked(self.cloud_disc_alpha > 0.0)
+        toggle_clouds_action.setShortcut(QKeySequence(Qt.Key.Key_C))
+        toggle_clouds_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         toggle_clouds_action.triggered.connect(self.toggle_clouds)
         self.menu.addAction(toggle_clouds_action)
+        self.addAction(toggle_clouds_action)
         self._action_toggle_clouds = toggle_clouds_action
         toggle_terrain_action = QAction("Terrain Horizon", self)
         toggle_terrain_action.setCheckable(True)
         toggle_terrain_action.setChecked(self.terrain_horizon_opacity > 0.0)
+        toggle_terrain_action.setShortcut(QKeySequence(Qt.Key.Key_T))
+        toggle_terrain_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         toggle_terrain_action.triggered.connect(self.toggle_terrain_horizon)
         self.menu.addAction(toggle_terrain_action)
+        self.addAction(toggle_terrain_action)
         self._action_toggle_terrain_horizon = toggle_terrain_action
 
         self.menu.addSeparator()
-        fullscreen_action = self.menu.addAction("Fullscreen (F11)")
+        fullscreen_action = self.menu.addAction("Fullscreen")
+        fullscreen_action.setShortcut(QKeySequence(Qt.Key.Key_F11))
+        fullscreen_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         fullscreen_action.triggered.connect(self.toggle_fullscreen)
+        self.addAction(fullscreen_action)
 
         self.menu.addSeparator()
-        exit_action = self.menu.addAction("Exit (Q)")
+        exit_action = self.menu.addAction("Exit")
+        exit_action.setShortcut(QKeySequence(Qt.Key.Key_Q))
+        exit_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         exit_action.triggered.connect(QApplication.quit)
+        self.addAction(exit_action)
 
         self.menu.addSeparator()
         version_action = self.menu.addAction(f"Version {__version__}")
@@ -706,6 +737,21 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         # --- Toggles ---
         elif key == Qt.Key.Key_M:
             self.toggle_enlarge_moon()
+            event.accept()
+        elif key == Qt.Key.Key_C:
+            self.toggle_clouds()
+            event.accept()
+        elif key == Qt.Key.Key_T:
+            self.toggle_terrain_horizon()
+            event.accept()
+        elif key == Qt.Key.Key_D:
+            self.toggle_dso()
+            event.accept()
+        elif key == Qt.Key.Key_A:
+            self.toggle_asterisms()
+            event.accept()
+        elif key == Qt.Key.Key_S:
+            self.toggle_sky_disc()
             event.accept()
 
         # --- Window Control ---
