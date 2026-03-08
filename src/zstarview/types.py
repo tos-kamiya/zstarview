@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union, TypeAlias, TypedDict
 
 import astropy
+import astropy.time
 import numpy as np
 
 # --- Unit-oriented type aliases (contract clarity) ---

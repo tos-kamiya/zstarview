@@ -27,7 +27,8 @@ class SkyWindowUpdatesMixin:
             logger.debug("Skip cloud repaint emit during shutdown.")
 
     def _cloud_status_line(self) -> str:
-        if self.cloud_disc_alpha <= 0.0 and not self.cloud_state.banner_text:
+        cloud_disc_alpha = float(getattr(self, "cloud_disc_alpha", 1.0))
+        if cloud_disc_alpha <= 0.0 and not self.cloud_state.banner_text:
             return ""
         sat = self.cloud_state.current_satellite or self._predicted_cloud_satellite()
         if self.cloud_state.banner_text:

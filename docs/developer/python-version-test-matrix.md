@@ -10,7 +10,9 @@
 scripts/run_python_matrix.sh
 ```
 
-このスクリプトは `.venv-3.10` 〜 `.venv-3.13` を作成/再利用し、既定で `pytest`, `mypy`, `compileall` を順に実行します。
+このスクリプトは `.venv-3.10` 〜 `.venv-3.13` を作成/再利用し、各 venv の `python` を直接使って既定で `pytest` と `compileall` を順に実行します。
+
+`mypy` は既定では実行しません。必要なときだけ代表バージョン（3.10 と 3.13）または全バージョンで追加実行します。
 
 ## 前提
 
@@ -78,6 +80,15 @@ uv run -p .venv-3.13/bin/python pytest
 
 必要に応じて型チェックも回します。
 
+代表バージョン（推奨）:
+
+```bash
+uv run -p .venv-3.10/bin/python mypy --install-types --non-interactive src/zstarview tests
+uv run -p .venv-3.13/bin/python mypy --install-types --non-interactive src/zstarview tests
+```
+
+全バージョンで回したい場合:
+
 ```bash
 uv run -p .venv-3.10/bin/python mypy --install-types --non-interactive src/zstarview tests
 uv run -p .venv-3.11/bin/python mypy --install-types --non-interactive src/zstarview tests
@@ -100,13 +111,15 @@ uv run -p .venv-3.13/bin/python -m compileall src/zstarview
 
 1. 変更を 1 つの基準環境で確認する
 2. 仕上げ前に 3.10〜3.13 の `pytest` を一通り回す
-3. リリース前に `mypy` と `compileall` も回す
+3. 必要に応じて `compileall` を回す
+4. 型を確認したい変更では、代表バージョン（3.10 と 3.13）で `mypy` を回す
 
 リリース候補前の確認:
 
 1. 4 バージョンすべてで `pytest`
-2. 代表バージョン（通常は 3.10 と最新 3.13）で `mypy`
-3. 代表バージョンでアプリ起動確認
+2. 4 バージョンすべてで `compileall`
+3. 代表バージョン（通常は 3.10 と最新 3.13）で `mypy`
+4. 代表バージョンでアプリ起動確認
 
 ## 6. 一括実行例
 
@@ -121,7 +134,7 @@ done
 `mypy` も同様:
 
 ```bash
-for py in 3.10 3.11 3.12 3.13; do
+for py in 3.10 3.13; do
   uv run -p ".venv-$py/bin/python" mypy --install-types --non-interactive src/zstarview tests
 done
 ```
@@ -130,7 +143,9 @@ done
 
 ```bash
 scripts/run_python_matrix.sh
-scripts/run_python_matrix.sh --pytest-only
+scripts/run_python_matrix.sh --with-mypy
+scripts/run_python_matrix.sh --mypy-only
+scripts/run_python_matrix.sh --mypy-all
 scripts/run_python_matrix.sh --skip-install
 ```
 
