@@ -16,7 +16,7 @@ The name emphasizes the *zenith*—the point directly overhead—conveying the e
 - Real-time satellite cloud imagery (Himawari/GOES), rendered as a stylized hatched (striped) overlay.
 - Cloud fetch and cloud render are decoupled: camera moves can re-render from cached source data immediately.
 - When satellite coverage is partial, missing regions are shown with a faint yellow tint.
-- Optional terrain horizon overlay from Copernicus DEM adds a subtle terrain-colored skyline aligned to the local terrain.
+- Optional terrain horizon overlay from Copernicus DEM adds a subtle ocher terrain line aligned to the local terrain.
 - Below the geometric or terrain horizon, the disc is filled with a ground color for orientation.
 - A red tint marks the *never-rises* celestial region for the current latitude.
 - The project is routinely tested on CPython 3.10, 3.11, 3.12, and 3.13.
@@ -64,8 +64,8 @@ zstarview [options] [location]
 | `-c`, `--cloud-opacity CLOUD_OPACITY`       | Opacity of cloud rendering (0.0–1.0). Use 0.0 to disable. \*2                | `0.2`   |
 | `--cloud-missing-tint-opacity OPACITY`      | Opacity of missing-cloud-data yellow tint (0.0–1.0).                          | `0.176` |
 | `--sky-opacity SKY_OPACITY`                 | Opacity of the simulated sky-color disc (0.0–1.0). Use 0.0 to disable.      | `0.2`   |
-| `--terrain-horizon-opacity OPACITY`         | Opacity of the terrain horizon polyline (0.0–1.0). Use 0.0 to disable DEM download, terrain-horizon calculation, and drawing. \*4 | `0.25` |
-| `--ground-tint-opacity OPACITY`             | Strength of the ground-color fill below the geometric/terrain horizon (0.0–1.0). | `1.0` |
+| `--terrain-horizon-opacity OPACITY`         | Opacity of the terrain horizon polyline (0.0–1.0). Use 0.0 to disable DEM download, terrain-horizon calculation, and drawing. \*4 | `0.05` |
+| `--ground-tint-opacity OPACITY`             | Strength of the ground-color fill below the geometric/terrain horizon (0.0–1.0). | `0.1` |
 | `-m`, `--enlarge-moon`                      | Show the moon in 5x size.                                                   |         |
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | Base size of 2nd-magnitude stars.                                           | `4.0`   |
 | `-w`, `--expected-render-width EXPECTED_RENDER_WIDTH` | Expected window width for full-resolution star rendering. When celestial-disc width exceeds this, star rendering uses square-root scaling. | `600` |
