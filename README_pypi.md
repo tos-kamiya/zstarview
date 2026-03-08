@@ -1,6 +1,6 @@
 # zstarview
 
-Transparent desktop sky viewer with stars, planets, eclipses, and optional real-time satellite cloud overlay.
+Transparent desktop sky viewer with stars, planets, eclipses, optional real-time satellite cloud overlay, and optional terrain horizon overlay.
 
 <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot1.png" width="640" alt="zstarview screenshot">
 
@@ -38,6 +38,7 @@ zstarview -Z E -A 25 Tokyo
 - Optional deep-sky object (DSO) overlays.
 - Optional asterism overlays (line patterns, not IAU constellation boundaries).
 - Real-time cloud overlays from Himawari/GOES (can be disabled with `-c 0`).
+- Optional terrain horizon overlay from Copernicus DEM (can be disabled with `--terrain-horizon-opacity 0`).
 - Hover interactions for object labels and contextual overlays.
 
 ## Useful Options
@@ -47,10 +48,12 @@ zstarview -Z E -A 25 Tokyo
 - `--show-dso-initial true|false`: DSO visibility at startup.
 - `--show-asterisms-initial true|false`: asterism visibility at startup.
 - `-c`, `--cloud-opacity`: cloud overlay opacity (`0` disables clouds).
+- `--terrain-horizon-opacity`: terrain horizon opacity (`0` disables DEM download and terrain rendering).
 
 ## Notes
 
 - On first launch, ephemeris data may be downloaded once and cached.
+- Terrain horizon rendering downloads Copernicus DEM tiles on first use and then reuses the local cache.
 - If cloud fetching is slow or unavailable, use `-c 0` for offline-friendly star/planet viewing.
 
 ## Links
