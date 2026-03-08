@@ -179,7 +179,7 @@ class SkyDataWorker(QObject):
                         eclipse_factor=ef,
                     )
                 else:
-                    sky_disc_img = draw_sky_disc.draw_uniform_sky_color_disc(fixed_geom)
+                    sky_disc_img = draw_sky_disc.draw_uniform_sky_color_disc(fixed_geom, view_center)
 
             payload: Dict[str, object] = {"celestial": celestial_data, "sky_disc": sky_disc_img}
             payload["view_center"] = (float(view_center[0]), float(view_center[1]))

@@ -57,7 +57,7 @@ def test_sky_disc_adds_tint_below_horizon() -> None:
 
 def test_uniform_sky_disc_uses_single_disc_color() -> None:
     geom = ScreenGeometry(center=(80, 80), radius=80)
-    img = draw_uniform_sky_color_disc(geom)
+    img = draw_uniform_sky_color_disc(geom, view_center=(0.0, 0.0))
     arr = qimage_to_np_rgba(img)
 
     center_rgb = arr[80, 80, :3].astype(int)
@@ -66,5 +66,6 @@ def test_uniform_sky_disc_uses_single_disc_color() -> None:
 
     assert int(arr[80, 80, 3]) == 255
     assert np.array_equal(center_rgb, top_rgb)
-    assert np.array_equal(center_rgb, lower_rgb)
     assert np.array_equal(center_rgb, np.array([10, 10, 10]))
+    assert not np.array_equal(center_rgb, lower_rgb)
+    assert np.array_equal(lower_rgb, np.array([9, 15, 21]))

@@ -135,6 +135,9 @@ def _startup_resolve_city(args_city: Optional[str]) -> ResolvedLocation:
     if not args_city:
         args_city = last_city or "Tokyo"
 
+    resolved_location: ResolvedLocation | None = None
+    persist_location = False
+
     if ";" in args_city:
         try:
             lat_str, lon_str = [s.strip() for s in args_city.split(";")]
@@ -165,7 +168,7 @@ def _startup_resolve_city(args_city: Optional[str]) -> ResolvedLocation:
             logger.info("Parsed location: Lat=%.6f, Lon=%.6f, Timezone=UTC", lat, lon)
 
             name = f"Lat: {lat:.2f}, Lon: {lon:.2f}"
-            return ResolvedLocation(
+            resolved_location = ResolvedLocation(
                 display_name=name,
                 lat=lat,
                 lon=lon,
@@ -174,6 +177,7 @@ def _startup_resolve_city(args_city: Optional[str]) -> ResolvedLocation:
                 observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
                 kind="coords",
             )
+            return resolved_location
         except (ValueError, IndexError) as exc:
             logger.error("Invalid latitude/longitude format: '%s'. %s", args_city, exc)
             raise StartupAbortError() from exc
@@ -193,11 +197,10 @@ def _startup_resolve_city(args_city: Optional[str]) -> ResolvedLocation:
             if tower_location is None:
                 logger.error("No tower found for '%s'", args_city)
                 raise StartupAbortError()
-            save_last_city(tower_location.persistence_key)
-            logger.info("Tower: %s", tower_location.persistence_key)
-            return tower_location
+            resolved_location = tower_location
+            persist_location = True
 
-        if re.match(r"^\d+$", args_city):
+        elif re.match(r"^\d+$", args_city):
             rec = resolve_city_by_geonameid(int(args_city), CITY_COORD_FILE)
             if rec:
                 recs.append(rec)
@@ -228,27 +231,34 @@ def _startup_resolve_city(args_city: Optional[str]) -> ResolvedLocation:
                 if tower_location is None:
                     logger.error("No match for '%s'", args_city)
                     raise StartupAbortError()
-                save_last_city(tower_location.persistence_key)
-                logger.info("Tower: %s", tower_location.persistence_key)
-                return tower_location
+                resolved_location = tower_location
+                persist_location = True
     except FileNotFoundError as exc:
         logger.error("Fail to load cities1000.txt.")
         raise StartupAbortError() from exc
 
-    city = recs[0]
-    city_str = f"{city.cc}/{city.name}"
-    save_last_city(city_str)
-    logger.info("City: %s", city_str)
-    return ResolvedLocation(
-        display_name=city.name,
-        lat=city.lat,
-        lon=city.lon,
-        tz=city.tz,
-        persistence_key=city_str,
-        observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
-        kind="city",
-        cc=city.cc,
-    )
+    if resolved_location is None:
+        city = recs[0]
+        city_str = f"{city.cc}/{city.name}"
+        resolved_location = ResolvedLocation(
+            display_name=city.name,
+            lat=city.lat,
+            lon=city.lon,
+            tz=city.tz,
+            persistence_key=city_str,
+            observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
+            kind="city",
+            cc=city.cc,
+        )
+        persist_location = True
+
+    if persist_location:
+        save_last_city(resolved_location.persistence_key)
+        if resolved_location.kind == "tower":
+            logger.info("Tower: %s", resolved_location.persistence_key)
+        else:
+            logger.info("City: %s", resolved_location.persistence_key)
+    return resolved_location
 
 
 def _parse_flexible_time(time_str: str) -> Tuple[int, int, int]:
