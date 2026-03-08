@@ -19,6 +19,7 @@ The name emphasizes the *zenith*—the point directly overhead—conveying the e
 - Terrain horizon overlay from Copernicus DEM is available as a subtle brown skyline.
 - Below the horizon (ground side) is shown with a subtle tint to improve orientation.
 - A red tint marks the *never-rises* celestial region for the current latitude.
+- The project is routinely tested on CPython 3.10, 3.11, 3.12, and 3.13.
 
   ![](docs/images/screenshot1.png)
 
