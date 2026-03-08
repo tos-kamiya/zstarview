@@ -623,13 +623,13 @@ def draw_asterisms(
         return
 
     if preset in ("white", "day"):
-        base_line_color = QColor(26, 114, 214, 20)
-        base_outline_color = QColor(190, 220, 250, 8)
+        base_line_color = QColor(26, 114, 214, 25)
+        base_outline_color = QColor(190, 220, 250, 12)
         highlight_line_color = QColor(26, 114, 214, 124)
         highlight_outline_color = QColor(190, 220, 250, 52)
     else:
-        base_line_color = QColor(82, 142, 214, 14)
-        base_outline_color = QColor(24, 48, 86, 6)
+        base_line_color = QColor(82, 142, 214, 21)
+        base_outline_color = QColor(24, 48, 86, 9)
         highlight_line_color = QColor(120, 190, 255, 92)
         highlight_outline_color = QColor(32, 76, 130, 44)
 
