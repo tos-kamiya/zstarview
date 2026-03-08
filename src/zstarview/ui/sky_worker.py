@@ -160,18 +160,21 @@ class SkyDataWorker(QObject):
                     break
 
             sky_disc_img: QImage | None = None
-            if sky_disc_alpha > 0.0 and sun_altaz is not None:
+            if sun_altaz is not None:
                 base = sky_disc_base_size
                 fixed_geom = render_draw.get_screen_geometry(base, base, base // 2)
                 ef = eclipse_factor_from_info(solar_eclipse_info)
-                sky_disc_img = draw_sky_disc.draw_sky_color_disc(
-                    fixed_geom,
-                    view_center,
-                    sun_altaz,
-                    observer_lat_deg=lat,
-                    alpha=sky_disc_alpha,
-                    eclipse_factor=ef,
-                )
+                if sky_disc_alpha > 0.0:
+                    sky_disc_img = draw_sky_disc.draw_sky_color_disc(
+                        fixed_geom,
+                        view_center,
+                        sun_altaz,
+                        observer_lat_deg=lat,
+                        alpha=sky_disc_alpha,
+                        eclipse_factor=ef,
+                    )
+                else:
+                    sky_disc_img = draw_sky_disc.draw_uniform_sky_color_disc(fixed_geom)
 
             payload: Dict[str, object] = {"celestial": celestial_data, "sky_disc": sky_disc_img}
             payload["view_center"] = (float(view_center[0]), float(view_center[1]))

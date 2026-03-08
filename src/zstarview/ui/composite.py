@@ -235,7 +235,17 @@ def compose_cloud_over_sky(
     sky_np = qimage_to_np_rgba(sky_img)
     cloud_np = qimage_to_np_rgba(cloud_img_rgba)
 
+    cy, cx = (h - 1) * 0.5, (w - 1) * 0.5
+    rr = min(cx, cy)
+    y, x = np.ogrid[:h, :w]
+    r2 = (x - cx) ** 2 + (y - cy) ** 2
+    disc_mask = r2 <= (rr + 0.25) ** 2
+
+    if not np.any(sky_np[..., 3]):
+        sky_np[..., 3][disc_mask] = 255
+
     sky_rgb_u16 = sky_np[..., :3].astype(np.uint16)
+    sky_alpha_u16 = sky_np[..., 3].astype(np.uint16)
     r = sky_rgb_u16[..., 0]
     g = sky_rgb_u16[..., 1]
     b = sky_rgb_u16[..., 2]
@@ -249,6 +259,7 @@ def compose_cloud_over_sky(
     base_u16 = (inv_a8[:, :, None] * sky_rgb_u16 + a8[:, :, None] * gray_u16[:, :, None]) // 255
 
     cop = float(np.clip(cloud_opacity, 0.0, 1.0))
+    out_alpha_u16 = sky_alpha_u16.copy()
     if cop > 0.0:
         cop_u16 = int(round(cop * 255))
         cloud_rgb_u32 = cloud_np[..., :3].astype(np.uint32)
@@ -256,20 +267,17 @@ def compose_cloud_over_sky(
         add_u32 = (cloud_rgb_u32 * cloud_a_u32 * np.uint32(cop_u16)) // np.uint32(255 * 255)
         out_u16 = base_u16 + add_u32.astype(np.uint16)
         np.minimum(out_u16, 255, out=out_u16)
+        cloud_alpha_u16 = ((cloud_np[..., 3].astype(np.uint32) * np.uint32(cop_u16)) // np.uint32(255)).astype(np.uint16)
+        out_alpha_u16 = np.maximum(out_alpha_u16, cloud_alpha_u16)
     else:
         out_u16 = base_u16
 
     out = np.empty((h, w, 4), dtype=np.uint8)
     out[..., :3] = out_u16.astype(np.uint8)
-    out[..., 3] = 255
+    out[..., 3] = out_alpha_u16.astype(np.uint8)
 
-    cy, cx = (h - 1) * 0.5, (w - 1) * 0.5
-    rr = min(cx, cy)
-    y, x = np.ogrid[:h, :w]
-    r2 = (x - cx) ** 2 + (y - cy) ** 2
-    mask = r2 <= (rr + 0.25) ** 2
-    out[..., 3][~mask] = 0
-    out[..., :3][~mask] = 0
+    out[..., 3][~disc_mask] = 0
+    out[..., :3][~disc_mask] = 0
 
     return np_rgba_to_qimage(out)
 
@@ -374,9 +382,6 @@ class SkyCompositorCache:
         missing_mask: Optional[QImage] = None,
     ) -> None:
         """Composite the sky/cloud layers (with cache) and draw into painter."""
-        if (sky_img is None) and (cloud_img is None or cloud_alpha <= 0.0):
-            return
-
         x = int(geometry.center[0] - geometry.radius)
         y = int(geometry.center[1] - geometry.radius)
         w = h = int(geometry.radius * 2)
@@ -416,7 +421,20 @@ class SkyCompositorCache:
                     return qimg
                 return qimg.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
 
+            def _black_disc_image() -> QImage:
+                img = QImage(w, h, QImage.Format_ARGB32_Premultiplied)
+                img.fill(Qt.transparent)
+                arr = qimage_to_np_rgba(img)
+                cy, cx = (h - 1) * 0.5, (w - 1) * 0.5
+                rr = min(cx, cy)
+                yy, xx = np.ogrid[:h, :w]
+                disc_mask = ((xx - cx) ** 2 + (yy - cy) ** 2) <= (rr + 0.25) ** 2
+                arr[..., 3][disc_mask] = 255
+                return np_rgba_to_qimage(arr)
+
             sky_s = _scaled(sky_img)
+            if sky_s is None:
+                sky_s = _black_disc_image()
             cloud_s = _scaled(cloud_img)
             missing_s = _scaled(missing_mask)
 
@@ -436,13 +454,10 @@ class SkyCompositorCache:
                     cloud_s = mask_cloud_alpha_by_missing(cloud_s, missing_s)
 
             if cloud_s is None or cloud_alpha <= 0.0:
-                composited = sky_s if sky_s is not None else QImage(w, h, QImage.Format_ARGB32_Premultiplied)
-                if composited is None or composited.isNull():
-                    composited = QImage(w, h, QImage.Format_ARGB32_Premultiplied)
-                    composited.fill(Qt.transparent)
+                composited = sky_s
             else:
                 composited = compose_cloud_over_sky(
-                    sky_img=sky_s if sky_s is not None else QImage(w, h, QImage.Format_ARGB32_Premultiplied),
+                    sky_img=sky_s,
                     cloud_img_rgba=cloud_s,
                     dest_rect=QRect(0, 0, w, h),
                     cloud_opacity=cloud_alpha * self._cloud_opacity_scale,

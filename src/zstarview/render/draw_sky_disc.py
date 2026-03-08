@@ -14,6 +14,7 @@ GROUND_TINT_STRENGTH = 0.3
 GROUND_BASE_DARKNESS = 0.03
 NEVER_RISES_TINT_RGB = np.array([0.42, 0.07, 0.07], dtype=np.float32)
 NEVER_RISES_TINT_STRENGTH = 0.2
+FLAT_SKY_DISC_RGB_U8 = np.array([10, 10, 10], dtype=np.uint8)
 
 
 def _smoothstep(edge0: float, edge1: float, x: float) -> float:
@@ -260,4 +261,21 @@ def draw_sky_color_disc(
     rgba[..., 3][inside] = 255
     rgba[..., :3][inside] = rgb_u8
 
+    return np_rgba_to_qimage(rgba).convertToFormat(QImage.Format.Format_ARGB32_Premultiplied)
+
+
+def draw_uniform_sky_color_disc(geometry: ScreenGeometry) -> QImage:
+    """Draw a flat disc used when sky-color shading is disabled."""
+    radius = int(geometry.radius)
+    size = max(2, radius * 2)
+    if radius < 1:
+        return QImage(size, size, QImage.Format.Format_ARGB32_Premultiplied)
+
+    rgba = np.zeros((size, size, 4), dtype=np.uint8)
+    ys = np.arange(size, dtype=np.float32) - radius
+    xs = np.arange(size, dtype=np.float32) - radius
+    nx, ny = np.meshgrid(xs, ys)
+    inside = (nx * nx + ny * ny) <= float(radius * radius)
+    rgba[..., 3][inside] = 255
+    rgba[..., :3][inside] = FLAT_SKY_DISC_RGB_U8
     return np_rgba_to_qimage(rgba).convertToFormat(QImage.Format.Format_ARGB32_Premultiplied)

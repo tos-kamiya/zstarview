@@ -78,12 +78,11 @@ def test_toggle_terrain_horizon_enables_opacity_and_requests_background_update()
     assert calls == ["toggle-on", "update"]
 
 
-def test_toggle_sky_disc_enables_opacity_and_requests_refresh() -> None:
+def test_toggle_sky_disc_enables_gradient_and_requests_refresh() -> None:
     dummy = SimpleNamespace()
     dummy.sky_disc_alpha = 0.0
     dummy._sky_disc_alpha_when_enabled = 0.3
     dummy._action_toggle_sky_disc = _DummyAction(False)
-    dummy.state = SimpleNamespace(sky_disc_image="existing")
     calls: list[str] = []
     dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
     dummy.request_sky_data_update = lambda: calls.append("request")
@@ -93,16 +92,14 @@ def test_toggle_sky_disc_enables_opacity_and_requests_refresh() -> None:
 
     assert dummy.sky_disc_alpha == 0.3
     assert dummy._action_toggle_sky_disc.isChecked() is True
-    assert dummy.state.sky_disc_image == "existing"
     assert calls == ["invalidate", "request", "update"]
 
 
-def test_toggle_sky_disc_disables_image_and_requests_refresh() -> None:
+def test_toggle_sky_disc_switches_to_flat_disc_and_requests_refresh() -> None:
     dummy = SimpleNamespace()
     dummy.sky_disc_alpha = 0.3
     dummy._sky_disc_alpha_when_enabled = 0.3
     dummy._action_toggle_sky_disc = _DummyAction(True)
-    dummy.state = SimpleNamespace(sky_disc_image="existing")
     calls: list[str] = []
     dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
     dummy.request_sky_data_update = lambda: calls.append("request")
@@ -112,7 +109,6 @@ def test_toggle_sky_disc_disables_image_and_requests_refresh() -> None:
 
     assert dummy.sky_disc_alpha == 0.0
     assert dummy._action_toggle_sky_disc.isChecked() is False
-    assert dummy.state.sky_disc_image is None
     assert calls == ["invalidate", "request", "update"]
 
 

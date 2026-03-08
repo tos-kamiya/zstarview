@@ -624,12 +624,13 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.update()
 
     def toggle_sky_disc(self) -> None:
-        enable_sky_disc = self.sky_disc_alpha <= 0.0
-        self.sky_disc_alpha = self._sky_disc_alpha_when_enabled if enable_sky_disc else 0.0
-        if self._action_toggle_sky_disc is not None and self._action_toggle_sky_disc.isChecked() != enable_sky_disc:
-            self._action_toggle_sky_disc.setChecked(enable_sky_disc)
-        if not enable_sky_disc:
-            self.state.sky_disc_image = None
+        enable_sky_disc_gradient = self.sky_disc_alpha <= 0.0
+        self.sky_disc_alpha = self._sky_disc_alpha_when_enabled if enable_sky_disc_gradient else 0.0
+        if (
+            self._action_toggle_sky_disc is not None
+            and self._action_toggle_sky_disc.isChecked() != enable_sky_disc_gradient
+        ):
+            self._action_toggle_sky_disc.setChecked(enable_sky_disc_gradient)
         self._compositor.invalidate()
         self.request_sky_data_update()
         self.update()
