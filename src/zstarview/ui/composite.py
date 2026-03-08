@@ -18,6 +18,7 @@ from PySide6.QtCore import QRect, Qt
 from PySide6.QtGui import QImage, QPainter
 
 from ..paths import CLOUD_HATCH_DEFAULT, CLOUD_MISSING_TINT_RGBA, HatchConfig
+from ..render.draw_sky_disc import GROUND_TINT_RGB
 from ..types import ScreenGeometry
 from ..utils.qt import np_rgba_to_qimage, qimage_to_np_rgba
 
@@ -339,6 +340,104 @@ def mask_cloud_alpha_by_missing(
     return np_rgba_to_qimage(cloud)
 
 
+def _inverse_project_disc(
+    width: int,
+    height: int,
+    view_center: Tuple[float, float],
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Inverse-project all pixels inside the composited disc to (alt, az)."""
+    cy = (height - 1) * 0.5
+    cx = (width - 1) * 0.5
+    radius = max(1.0, min(cx, cy))
+    ys = (np.arange(height, dtype=np.float32) - cy) / radius
+    xs = (np.arange(width, dtype=np.float32) - cx) / radius
+    nx, ny = np.meshgrid(xs, ys)
+
+    rr2 = nx * nx + ny * ny
+    inside = rr2 <= 1.0
+    if not np.any(inside):
+        return np.array([], dtype=np.float32), np.array([], dtype=np.float32), inside
+
+    r = np.sqrt(rr2[inside]).astype(np.float32)
+    theta = r * (np.pi / 2.0)
+    psi = np.arctan2(nx[inside], -ny[inside])
+
+    alt_c, az_c = view_center
+    eps = 1e-3
+    phi1 = np.float32(math.radians(np.clip(alt_c, -90.0 + eps, 90.0 - eps)))
+    lam1 = np.float32(math.radians(az_c))
+
+    sin_phi1 = np.sin(phi1)
+    cos_phi1 = np.cos(phi1)
+    sin_theta = np.sin(theta)
+    cos_theta = np.cos(theta)
+
+    sin_phi2 = sin_phi1 * cos_theta + cos_phi1 * sin_theta * np.cos(psi)
+    sin_phi2 = np.clip(sin_phi2, -1.0, 1.0)
+    phi2 = np.arcsin(sin_phi2)
+
+    y = np.sin(psi) * sin_theta * cos_phi1
+    x = cos_theta - sin_phi1 * sin_phi2
+    lam2 = lam1 + np.arctan2(y, x)
+
+    alt = np.degrees(phi2).astype(np.float32)
+    az = (np.degrees(lam2) + 360.0) % 360.0
+    return alt, az.astype(np.float32), inside
+
+
+def _interpolate_terrain_horizon_altitude(
+    azimuth_deg: np.ndarray,
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+) -> np.ndarray:
+    """Interpolate terrain-horizon altitude for azimuth samples."""
+    if not terrain_profile_altaz:
+        return np.zeros_like(azimuth_deg, dtype=np.float32)
+
+    profile = np.asarray(terrain_profile_altaz, dtype=np.float32)
+    if profile.ndim != 2 or profile.shape[1] != 2 or profile.shape[0] == 0:
+        return np.zeros_like(azimuth_deg, dtype=np.float32)
+
+    altitudes = profile[:, 0]
+    azimuths = np.mod(profile[:, 1], 360.0)
+    order = np.argsort(azimuths)
+    azimuths = azimuths[order]
+    altitudes = altitudes[order]
+    azimuths, unique_idx = np.unique(azimuths, return_index=True)
+    altitudes = altitudes[unique_idx]
+    if azimuths.size == 0:
+        return np.zeros_like(azimuth_deg, dtype=np.float32)
+
+    azimuths_ext = np.concatenate((azimuths[-1:] - 360.0, azimuths, azimuths[:1] + 360.0))
+    altitudes_ext = np.concatenate((altitudes[-1:], altitudes, altitudes[:1]))
+    return np.interp(azimuth_deg, azimuths_ext, altitudes_ext).astype(np.float32)
+
+
+def apply_ground_tint(
+    base_img: QImage,
+    *,
+    view_center: Tuple[float, float],
+    terrain_profile_altaz: list[tuple[float, float]] | None = None,
+    ground_tint_opacity: float = 1.0,
+) -> QImage:
+    """Tint the composited disc below the geometric or terrain horizon."""
+    out = qimage_to_np_rgba(
+        base_img if base_img.format() == QImage.Format_RGBA8888 else base_img.convertToFormat(QImage.Format_RGBA8888)
+    )
+    alt, az, inside = _inverse_project_disc(out.shape[1], out.shape[0], view_center)
+    if alt.size == 0:
+        return np_rgba_to_qimage(out)
+
+    horizon_alt = _interpolate_terrain_horizon_altitude(az, terrain_profile_altaz)
+    ground_mask = alt < horizon_alt
+    if not np.any(ground_mask):
+        return np_rgba_to_qimage(out)
+    rgb = out[..., :3][inside].astype(np.float32) / 255.0
+    opacity = np.float32(np.clip(ground_tint_opacity, 0.0, 1.0))
+    rgb[ground_mask] = GROUND_TINT_RGB[None, :] * opacity
+    out[..., :3][inside] = np.clip(np.round(rgb * 255.0), 0, 255).astype(np.uint8)
+    return np_rgba_to_qimage(out)
+
+
 class SkyCompositorCache:
     """Manage compositing and reuse the last composited image via a cache key."""
 
@@ -351,6 +450,7 @@ class SkyCompositorCache:
         cloud_target_stripes: int = 50,
         cloud_stripe_width_factor: float = 0.2,
         missing_tint_rgba: Tuple[int, int, int, int] = CLOUD_MISSING_TINT_RGBA,
+        ground_tint_opacity: float = 1.0,
     ) -> None:
         self._hatch_cfg = hatch_cfg
         self._cloud_opacity_scale = cloud_opacity_scale
@@ -363,6 +463,7 @@ class SkyCompositorCache:
             int(np.clip(missing_tint_rgba[2], 0, 255)),
             int(np.clip(missing_tint_rgba[3], 0, 255)),
         )
+        self._ground_tint_opacity = float(np.clip(ground_tint_opacity, 0.0, 1.0))
         self._composited_img: Optional[QImage] = None
         self._composite_key: Optional[Tuple] = None
 
@@ -378,8 +479,10 @@ class SkyCompositorCache:
         cloud_img: Optional[QImage],
         *,
         cloud_alpha: float,
+        view_center: Tuple[float, float] = (0.0, 0.0),
         stripe_density: Optional[StripeDensityField] = None,
         missing_mask: Optional[QImage] = None,
+        terrain_profile_altaz: list[tuple[float, float]] | None = None,
     ) -> None:
         """Composite the sky/cloud layers (with cache) and draw into painter."""
         x = int(geometry.center[0] - geometry.radius)
@@ -390,6 +493,11 @@ class SkyCompositorCache:
         cloud_ck = int(cloud_img.cacheKey()) if cloud_img else 0
         density_ck = int(stripe_density.source_cache_key) if stripe_density is not None else 0
         missing_ck = int(missing_mask.cacheKey()) if missing_mask is not None else 0
+        terrain_key = (
+            tuple((round(float(alt), 3), round(float(az) % 360.0, 3)) for alt, az in terrain_profile_altaz)
+            if terrain_profile_altaz
+            else ()
+        )
         hatch_key = (
             self._hatch_cfg.tile_w_px,
             self._hatch_cfg.tile_h_px,
@@ -402,11 +510,15 @@ class SkyCompositorCache:
             cloud_ck,
             density_ck,
             missing_ck,
+            terrain_key,
             w,
             h,
             float(cloud_alpha),
+            float(view_center[0]),
+            float(view_center[1]),
             hatch_key,
             self._missing_tint_rgba,
+            self._ground_tint_opacity,
             self._cloud_opacity_scale,
             self._gray_mix,
             self._cloud_target_stripes,
@@ -463,6 +575,12 @@ class SkyCompositorCache:
                     cloud_opacity=cloud_alpha * self._cloud_opacity_scale,
                     gray_mix=self._gray_mix,
                 )
+            composited = apply_ground_tint(
+                composited,
+                view_center=view_center,
+                terrain_profile_altaz=terrain_profile_altaz,
+                ground_tint_opacity=self._ground_tint_opacity,
+            )
             if missing_s is not None:
                 composited = overlay_missing_tint(
                     composited,

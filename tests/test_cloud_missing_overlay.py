@@ -52,6 +52,7 @@ def test_compositor_cache_key_includes_missing_mask() -> None:
         np_rgba_to_qimage(sky),
         np_rgba_to_qimage(cloud),
         cloud_alpha=0.4,
+        view_center=(0.0, 0.0),
         stripe_density=None,
         missing_mask=np_rgba_to_qimage(missing_none),
     )
@@ -66,6 +67,7 @@ def test_compositor_cache_key_includes_missing_mask() -> None:
         np_rgba_to_qimage(sky),
         np_rgba_to_qimage(cloud),
         cloud_alpha=0.4,
+        view_center=(0.0, 0.0),
         stripe_density=None,
         missing_mask=np_rgba_to_qimage(missing_half),
     )
@@ -86,3 +88,73 @@ def test_mask_cloud_alpha_by_missing_cuts_cloud_pixels() -> None:
     out = qimage_to_np_rgba(mask_cloud_alpha_by_missing(np_rgba_to_qimage(cloud), np_rgba_to_qimage(missing)))
     assert int(out[1, 1, 3]) == 180
     assert int(out[5, 6, 3]) == 0
+
+
+def test_compositor_terrain_profile_tints_ground_below_terrain_horizon() -> None:
+    sky = np.zeros((64, 64, 4), dtype=np.uint8)
+    sky[..., :3] = 100
+    sky[..., 3] = 255
+
+    geom = ScreenGeometry(center=(32, 32), radius=32)
+    compositor = SkyCompositorCache()
+    terrain_profile = [(30.0, float(az)) for az in range(360)]
+
+    canvas_flat = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
+    canvas_flat.fill(0)
+    p_flat = QPainter(canvas_flat)
+    compositor.draw(
+        p_flat,
+        geom,
+        np_rgba_to_qimage(sky),
+        None,
+        cloud_alpha=0.0,
+        view_center=(0.0, 0.0),
+    )
+    p_flat.end()
+
+    canvas_terrain = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
+    canvas_terrain.fill(0)
+    p_terrain = QPainter(canvas_terrain)
+    compositor.draw(
+        p_terrain,
+        geom,
+        np_rgba_to_qimage(sky),
+        None,
+        cloud_alpha=0.0,
+        view_center=(0.0, 0.0),
+        terrain_profile_altaz=terrain_profile,
+    )
+    p_terrain.end()
+
+    arr_flat = qimage_to_np_rgba(canvas_flat)
+    arr_terrain = qimage_to_np_rgba(canvas_terrain)
+
+    assert np.array_equal(arr_flat[24, 32, :3], np.array([100, 100, 100], dtype=np.uint8))
+    assert np.array_equal(arr_terrain[24, 32, :3], np.array([61, 55, 47], dtype=np.uint8))
+
+
+def test_compositor_ground_tint_opacity_zero_makes_ground_fill_black() -> None:
+    sky = np.zeros((64, 64, 4), dtype=np.uint8)
+    sky[..., :3] = 100
+    sky[..., 3] = 255
+
+    geom = ScreenGeometry(center=(32, 32), radius=32)
+    compositor = SkyCompositorCache(ground_tint_opacity=0.0)
+    terrain_profile = [(30.0, float(az)) for az in range(360)]
+
+    canvas = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
+    canvas.fill(0)
+    painter = QPainter(canvas)
+    compositor.draw(
+        painter,
+        geom,
+        np_rgba_to_qimage(sky),
+        None,
+        cloud_alpha=0.0,
+        view_center=(0.0, 0.0),
+        terrain_profile_altaz=terrain_profile,
+    )
+    painter.end()
+
+    arr = qimage_to_np_rgba(canvas)
+    assert np.array_equal(arr[24, 32, :3], np.array([0, 0, 0], dtype=np.uint8))

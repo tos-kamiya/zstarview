@@ -75,6 +75,7 @@ def main() -> None:
         sky_disc_alpha=args.sky_opacity,
         cloud_disc_alpha=0.0 if cloud_stripe_count == 0 or cloud_stripe_width == 0.0 else args.cloud_opacity,
         terrain_horizon_opacity=args.terrain_horizon_opacity,
+        ground_tint_opacity=args.ground_tint_opacity,
         enlarge_moon=args.enlarge_moon,
         star_base_radius=args.star_base_radius,
         vmag_limit=args.vmag_limit,

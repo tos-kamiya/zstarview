@@ -207,6 +207,7 @@ class SkyWindowUpdatesMixin:
             source=str(payload.get("source", "")).strip(),
         )
         self.state.terrain_horizon_profile = payload["profile_altaz"]
+        self._compositor.invalidate()
         self.update()
 
     def _on_terrain_horizon_failed(self, payload: Dict) -> None:
@@ -215,4 +216,5 @@ class SkyWindowUpdatesMixin:
         self.state.terrain_horizon_profile = None
         if banner:
             self.terrain_horizon_state.set_error_banner(banner)
+        self._compositor.invalidate()
         self.update()

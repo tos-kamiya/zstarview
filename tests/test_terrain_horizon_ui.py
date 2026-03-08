@@ -29,10 +29,12 @@ class _DummyAction:
 def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None:
     options = prepare_window_user_options(
         terrain_horizon_opacity=1.5,
+        ground_tint_opacity=1.5,
         terrain_horizon_gui_allowed=False,
     )
 
     assert options.terrain_horizon_opacity == 1.0
+    assert options.ground_tint_opacity == 1.0
     assert options.terrain_horizon_gui_allowed is False
 
 
@@ -68,6 +70,7 @@ def test_toggle_terrain_horizon_enables_opacity_and_requests_background_update()
     dummy._terrain_horizon_opacity_when_enabled = 0.25
     dummy._action_toggle_terrain_horizon = _DummyAction(False)
     calls: list[str] = []
+    dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
     dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(str(kwargs.get("reason")))
     dummy.update = lambda: calls.append("update")
 
@@ -75,7 +78,7 @@ def test_toggle_terrain_horizon_enables_opacity_and_requests_background_update()
 
     assert dummy.terrain_horizon_opacity == 0.25
     assert dummy._action_toggle_terrain_horizon.isChecked() is True
-    assert calls == ["toggle-on", "update"]
+    assert calls == ["invalidate", "toggle-on", "update"]
 
 
 def test_toggle_sky_disc_enables_gradient_and_requests_refresh() -> None:

@@ -35,7 +35,7 @@ def test_screen_geometry_tall_mode_stays_centered() -> None:
     assert g.radius == min((width - 20) // 2, (height - 20) // 2)
 
 
-def test_sky_disc_adds_tint_below_horizon() -> None:
+def test_sky_disc_raw_image_keeps_below_horizon_untinted() -> None:
     geom = ScreenGeometry(center=(80, 80), radius=80)
     img = draw_sky_color_disc(
         geom,
@@ -50,9 +50,9 @@ def test_sky_disc_adds_tint_below_horizon() -> None:
     top_rgb = arr[20, 80, :3].astype(int)
     bottom_rgb = arr[140, 80, :3].astype(int)
 
-    # Above horizon remains near black; below horizon gets blue-gray tint.
+    # Ground tint is applied later by the compositor, not in the raw sky disc.
     assert int(top_rgb.max()) <= 1
-    assert int(bottom_rgb.max()) >= 10
+    assert int(bottom_rgb.max()) <= 1
 
 
 def test_uniform_sky_disc_uses_single_disc_color() -> None:
@@ -67,5 +67,4 @@ def test_uniform_sky_disc_uses_single_disc_color() -> None:
     assert int(arr[80, 80, 3]) == 255
     assert np.array_equal(center_rgb, top_rgb)
     assert np.array_equal(center_rgb, np.array([10, 10, 10]))
-    assert not np.array_equal(center_rgb, lower_rgb)
-    assert np.array_equal(lower_rgb, np.array([9, 15, 21]))
+    assert np.array_equal(center_rgb, lower_rgb)

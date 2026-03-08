@@ -188,6 +188,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.sky_disc_alpha = user_options.sky_disc_alpha
         self._sky_disc_alpha_when_enabled = user_options.sky_disc_alpha if user_options.sky_disc_alpha > 0.0 else 0.3
         self.terrain_horizon_opacity = user_options.terrain_horizon_opacity
+        self.ground_tint_opacity = user_options.ground_tint_opacity
         self._terrain_horizon_opacity_when_enabled = (
             user_options.terrain_horizon_opacity if user_options.terrain_horizon_opacity > 0.0 else 0.25
         )
@@ -324,6 +325,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             cloud_target_stripes=int(target_stripes),
             cloud_stripe_width_factor=float(width_factor),
             missing_tint_rgba=missing_tint_rgba,
+            ground_tint_opacity=self.ground_tint_opacity,
         )
 
         # Cloud error banner is kept inside CloudImageState
@@ -680,6 +682,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.terrain_horizon_opacity = self._terrain_horizon_opacity_when_enabled if enable_terrain else 0.0
         if self._action_toggle_terrain_horizon is not None and self._action_toggle_terrain_horizon.isChecked() != enable_terrain:
             self._action_toggle_terrain_horizon.setChecked(enable_terrain)
+        self._compositor.invalidate()
         if enable_terrain:
             self.start_background_terrain_horizon_update(reason="toggle-on")
         self.update()
