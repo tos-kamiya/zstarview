@@ -29,3 +29,4 @@ class SkyWindowState:
     sky_disc_base_size: int = 1024
     sky_disc_image: Optional[QImage] = None
     cloud_base_size: int = 256
+    terrain_horizon_profile: Optional[list[tuple[float, float]]] = None

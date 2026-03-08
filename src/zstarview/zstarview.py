@@ -74,6 +74,7 @@ def main() -> None:
     user_options = prepare_window_user_options(
         sky_disc_alpha=args.sky_opacity,
         cloud_disc_alpha=0.0 if cloud_stripe_count == 0 or cloud_stripe_width == 0.0 else args.cloud_opacity,
+        terrain_horizon_opacity=args.terrain_horizon_opacity,
         enlarge_moon=args.enlarge_moon,
         star_base_radius=args.star_base_radius,
         vmag_limit=args.vmag_limit,
@@ -81,6 +82,7 @@ def main() -> None:
         star_visibility_boost=star_visibility_boost,
         show_dso_initial=args.show_dso_initial,
         show_asterisms_initial=args.show_asterisms_initial,
+        terrain_horizon_gui_allowed=args.terrain_horizon_opacity > 0.0,
     )
     runtime_options = prepare_window_runtime_options(
         delta_t=delta_t,

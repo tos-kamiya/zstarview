@@ -41,6 +41,7 @@ class SkyWindowUserOptions:
 
     sky_disc_alpha: float = 0.3
     cloud_disc_alpha: float = 0.6
+    terrain_horizon_opacity: float = 0.25
     enlarge_moon: bool = False
     star_base_radius: float = 4.0
     vmag_limit: float = 6.0
@@ -48,6 +49,7 @@ class SkyWindowUserOptions:
     star_visibility_boost: float = 1.0
     show_dso_initial: Optional[bool] = None
     show_asterisms_initial: Optional[bool] = None
+    terrain_horizon_gui_allowed: bool = True
 
 
 @dataclass(frozen=True)
@@ -104,6 +106,7 @@ def prepare_window_user_options(
     *,
     sky_disc_alpha: float = 0.3,
     cloud_disc_alpha: float = 0.6,
+    terrain_horizon_opacity: float = 0.25,
     enlarge_moon: bool = False,
     star_base_radius: float = 4.0,
     vmag_limit: float = 6.0,
@@ -111,11 +114,13 @@ def prepare_window_user_options(
     star_visibility_boost: float = 1.0,
     show_dso_initial: Optional[bool] = None,
     show_asterisms_initial: Optional[bool] = None,
+    terrain_horizon_gui_allowed: bool = True,
 ) -> SkyWindowUserOptions:
     """Normalize user-facing options before constructing SkyWindow."""
     return SkyWindowUserOptions(
         sky_disc_alpha=min(1.0, max(0.0, sky_disc_alpha)),
         cloud_disc_alpha=min(1.0, max(0.0, cloud_disc_alpha)),
+        terrain_horizon_opacity=min(1.0, max(0.0, terrain_horizon_opacity)),
         enlarge_moon=bool(enlarge_moon),
         star_base_radius=max(2.0, star_base_radius),
         vmag_limit=vmag_limit,
@@ -123,6 +128,7 @@ def prepare_window_user_options(
         star_visibility_boost=star_visibility_boost,
         show_dso_initial=show_dso_initial,
         show_asterisms_initial=show_asterisms_initial,
+        terrain_horizon_gui_allowed=bool(terrain_horizon_gui_allowed),
     )
 
 

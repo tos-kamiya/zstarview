@@ -10,6 +10,7 @@ import logging
 import math
 import time
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Optional, Tuple, Union
 
 import astropy.time
@@ -57,6 +58,8 @@ from .draggable_window import DraggableWindow
 from .composite import SkyCompositorCache
 from .cloud_state import CloudImageState
 from .cloud_controller import CloudController
+from .terrain_state import TerrainHorizonState
+from .terrain_controller import TerrainHorizonController
 from .famous_star_dialog import NamedStarJumpDialog
 from .famous_star_search_dialog import NamedStarSearchDialog
 from .famous_star_shortcuts import NamedStarShortcut, SearchJumpTarget
@@ -182,6 +185,11 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._named_stars_search_all = catalogs.named_stars_search_all
         self.delta_t = runtime_options.delta_t
         self.sky_disc_alpha = user_options.sky_disc_alpha
+        self.terrain_horizon_opacity = user_options.terrain_horizon_opacity
+        self._terrain_horizon_opacity_when_enabled = (
+            user_options.terrain_horizon_opacity if user_options.terrain_horizon_opacity > 0.0 else 0.25
+        )
+        self._terrain_horizon_gui_allowed = bool(user_options.terrain_horizon_gui_allowed)
         self.enlarge_moon = user_options.enlarge_moon
         self.star_base_radius = user_options.star_base_radius
         self.vmag_limit = user_options.vmag_limit
@@ -240,6 +248,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.size_grip.raise_()
         self._action_enlarge_moon: Optional[QAction] = None
         self._action_toggle_clouds: Optional[QAction] = None
+        self._action_toggle_terrain_horizon: Optional[QAction] = None
         self._action_toggle_dso: Optional[QAction] = None
         self._action_toggle_asterisms: Optional[QAction] = None
         self._add_hamburger_menu()
@@ -257,7 +266,9 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
 
         # --- Cloud Data State and Cache ---
         self.cloud_state = CloudImageState()
+        self.terrain_horizon_state = TerrainHorizonState()
         self._cloud_controller: Optional[CloudController] = None
+        self._terrain_horizon_controller: Optional[TerrainHorizonController] = None
         self._cloud_update_timer = QTimer(self)
         self._cloud_update_timer.setInterval(CLOUD_UPDATE_INTERVAL * 1000)
         self._cloud_update_timer.timeout.connect(lambda: self.start_background_cloud_update(reason="timer"))
@@ -284,6 +295,17 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         if self._action_toggle_clouds is not None:
             self._action_toggle_clouds.setEnabled(self._cloud_toggle_supported and self._clouddisc is not None)
 
+        terrain_cache_dir = Path(CACHE_PATH) / "copernicus-dem"
+        self._terrain_horizon_controller = TerrainHorizonController(
+            cache_dir=terrain_cache_dir,
+            parent=self,
+        )
+        self._terrain_horizon_controller.terrain_started.connect(self._on_terrain_horizon_started)
+        self._terrain_horizon_controller.terrain_ready.connect(self._on_terrain_horizon_ready)
+        self._terrain_horizon_controller.terrain_failed.connect(self._on_terrain_horizon_failed)
+        if self._action_toggle_terrain_horizon is not None:
+            self._action_toggle_terrain_horizon.setEnabled(self._terrain_horizon_gui_allowed)
+
         # --- Composition Cache (moved to dedicated class) ---
         target_stripes, width_factor = runtime_options.cloud_stripe_style
         missing_tint_alpha = int(round(255.0 * runtime_options.cloud_missing_tint_opacity))
@@ -305,6 +327,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.start_background_sky_data_update(is_initial_load=True)
         if self._clouddisc and self.cloud_disc_alpha > 0.0:
             self.start_background_cloud_update(reason="initial")
+        if self.terrain_horizon_opacity > 0.0:
+            self.start_background_terrain_horizon_update(reason="initial")
 
     def _setup_update_infrastructure(self) -> None:
         """Initialize timers, worker, and signal wiring for background updates."""
@@ -362,6 +386,12 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         toggle_clouds_action.triggered.connect(self.toggle_clouds)
         self.menu.addAction(toggle_clouds_action)
         self._action_toggle_clouds = toggle_clouds_action
+        toggle_terrain_action = QAction("Terrain Horizon", self)
+        toggle_terrain_action.setCheckable(True)
+        toggle_terrain_action.setChecked(self.terrain_horizon_opacity > 0.0)
+        toggle_terrain_action.triggered.connect(self.toggle_terrain_horizon)
+        self.menu.addAction(toggle_terrain_action)
+        self._action_toggle_terrain_horizon = toggle_terrain_action
         toggle_dso_action = QAction("DSO", self)
         toggle_dso_action.setCheckable(True)
         toggle_dso_action.setChecked(self.show_dso)
@@ -411,6 +441,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.state.interaction_mode = False
         self.request_sky_data_update()
         self.start_background_cloud_update(reason="view-change-idle")
+        self.start_background_terrain_horizon_update(reason="view-change-idle")
 
     def show_menu(self) -> None:
         menu_pos = self.menu_button.mapToGlobal(QPoint(0, self.menu_button.height()))
@@ -478,6 +509,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._sky_worker.shutdown()
         if self._cloud_controller is not None:
             self._cloud_controller.shutdown()
+        if self._terrain_horizon_controller is not None:
+            self._terrain_horizon_controller.shutdown()
         if self._sky_data_update_timer.isActive():
             self._sky_data_update_timer.stop()
         if self._asterism_check_timer.isActive():
@@ -558,6 +591,20 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.show_asterisms = not self.show_asterisms
         if self._action_toggle_asterisms is not None and self._action_toggle_asterisms.isChecked() != self.show_asterisms:
             self._action_toggle_asterisms.setChecked(self.show_asterisms)
+        self.update()
+
+    def toggle_terrain_horizon(self) -> None:
+        if not self._terrain_horizon_gui_allowed:
+            if self._action_toggle_terrain_horizon is not None:
+                self._action_toggle_terrain_horizon.setChecked(self.terrain_horizon_opacity > 0.0)
+            return
+
+        enable_terrain = self.terrain_horizon_opacity <= 0.0
+        self.terrain_horizon_opacity = self._terrain_horizon_opacity_when_enabled if enable_terrain else 0.0
+        if self._action_toggle_terrain_horizon is not None and self._action_toggle_terrain_horizon.isChecked() != enable_terrain:
+            self._action_toggle_terrain_horizon.setChecked(enable_terrain)
+        if enable_terrain:
+            self.start_background_terrain_horizon_update(reason="toggle-on")
         self.update()
 
     def toggle_fullscreen(self) -> None:

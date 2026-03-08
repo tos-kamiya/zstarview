@@ -240,6 +240,15 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--terrain-horizon-opacity",
+        type=float,
+        default=0.25,
+        help=(
+            "Opacity of the terrain horizon polyline (0.0 - 1.0, default: 0.25). "
+            "Set to 0.0 to disable DEM download, terrain-horizon calculation, and drawing."
+        ),
+    )
+    parser.add_argument(
         "--cloud-stripe",
         type=_parse_cloud_stripe,
         default=(50, 0.2),

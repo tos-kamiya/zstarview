@@ -215,6 +215,13 @@ class SkyWindowRenderMixin:
                 preset=self.visual_preset,
             )
         render_draw.draw_sky_reference_lines(painter, geometry, celestial_data)
+        render_draw.draw_terrain_horizon_line(
+            painter,
+            geometry,
+            self.state.terrain_horizon_profile,
+            render_viewer.view_center,
+            opacity=self.terrain_horizon_opacity,
+        )
         render_draw.draw_direction_labels(
             painter,
             geometry,
@@ -349,10 +356,11 @@ class SkyWindowRenderMixin:
         render_draw.draw_label_candidates(painter, label_candidates, self.text_font)
 
     def _draw_status_line(self, painter: QPainter) -> None:
-        if self.cloud_disc_alpha > 0.0 or self.cloud_state.banner_text:
+        message = self._status_line_message()
+        if message:
             render_draw.draw_status_line_text(
                 painter=painter,
-                message=self._cloud_status_line(),
+                message=message,
                 status_line_font=self.status_line_font,
                 viewport_rect=self.rect(),
                 preset=self.visual_preset,
