@@ -291,6 +291,7 @@ Tycho-2 入力や分割出力を含む詳細オプションは次を参照して
 * 恒星の固有名は IAU 恒星名作業部会 (WGSN) による承認済みリスト（[exopla.net](https://exopla.net/star-names/modern-iau-star-names/) 経由）を使用しています。
 * 雲データは気象衛星 **Himawari**（提供: JMA）および **NOAA GOES** シリーズ（提供: NOAA/NESDIS）による赤外線観測データを、それぞれの S3 公開バケットから取得して利用しています。
 * 地形地平線データは **Copernicus DEM GLO-90** に基づいており、欧州委員会のために ESA が管理するデータを、アプリでは公開 AWS 配布とローカルキャッシュを通じて利用しています。
+* 雲画像や地形 DEM の取得に利用している公開 S3 配布/ミラーを提供している AWS および各データ提供者に感謝します。
 * フォントは Google Noto Project を利用しています。
 * ウィンドウタイトル「Zenith Star View」は ChatGPT の提案に由来します。
 * Gemini および ChatGPT に、仕様の相談、コード生成、デバッグなど、多くの助力をいただきました。
