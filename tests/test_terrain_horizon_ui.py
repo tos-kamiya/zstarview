@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import zstarview.ui.window as window_module
 from zstarview.ui.window import SkyWindow
 from zstarview.ui.window_inputs import prepare_window_user_options
 from zstarview.ui.window_updates import SkyWindowUpdatesMixin
@@ -10,12 +11,19 @@ from zstarview.ui.window_updates import SkyWindowUpdatesMixin
 class _DummyAction:
     def __init__(self, checked: bool) -> None:
         self._checked = checked
+        self._enabled = True
 
     def isChecked(self) -> bool:  # noqa: N802 - Qt naming
         return self._checked
 
     def setChecked(self, checked: bool) -> None:  # noqa: N802 - Qt naming
         self._checked = checked
+
+    def isEnabled(self) -> bool:  # noqa: N802 - Qt naming
+        return self._enabled
+
+    def setEnabled(self, enabled: bool) -> None:  # noqa: N802 - Qt naming
+        self._enabled = enabled
 
 
 def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None:
@@ -68,3 +76,92 @@ def test_toggle_terrain_horizon_enables_opacity_and_requests_background_update()
     assert dummy.terrain_horizon_opacity == 0.25
     assert dummy._action_toggle_terrain_horizon.isChecked() is True
     assert calls == ["toggle-on", "update"]
+
+
+def test_toggle_sky_disc_enables_opacity_and_requests_refresh() -> None:
+    dummy = SimpleNamespace()
+    dummy.sky_disc_alpha = 0.0
+    dummy._sky_disc_alpha_when_enabled = 0.3
+    dummy._action_toggle_sky_disc = _DummyAction(False)
+    dummy.state = SimpleNamespace(sky_disc_image="existing")
+    calls: list[str] = []
+    dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
+    dummy.request_sky_data_update = lambda: calls.append("request")
+    dummy.update = lambda: calls.append("update")
+
+    SkyWindow.toggle_sky_disc(dummy)
+
+    assert dummy.sky_disc_alpha == 0.3
+    assert dummy._action_toggle_sky_disc.isChecked() is True
+    assert dummy.state.sky_disc_image == "existing"
+    assert calls == ["invalidate", "request", "update"]
+
+
+def test_toggle_sky_disc_disables_image_and_requests_refresh() -> None:
+    dummy = SimpleNamespace()
+    dummy.sky_disc_alpha = 0.3
+    dummy._sky_disc_alpha_when_enabled = 0.3
+    dummy._action_toggle_sky_disc = _DummyAction(True)
+    dummy.state = SimpleNamespace(sky_disc_image="existing")
+    calls: list[str] = []
+    dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
+    dummy.request_sky_data_update = lambda: calls.append("request")
+    dummy.update = lambda: calls.append("update")
+
+    SkyWindow.toggle_sky_disc(dummy)
+
+    assert dummy.sky_disc_alpha == 0.0
+    assert dummy._action_toggle_sky_disc.isChecked() is False
+    assert dummy.state.sky_disc_image is None
+    assert calls == ["invalidate", "request", "update"]
+
+
+def test_sync_view_altitude_actions_disables_raise_at_zenith() -> None:
+    dummy = SimpleNamespace()
+    dummy.viewer_data = SimpleNamespace(view_center=(90.0, 180.0))
+    dummy._action_raise_view = _DummyAction(False)
+    dummy._action_lower_view = _DummyAction(False)
+
+    SkyWindow._sync_view_altitude_actions(dummy)
+
+    assert dummy._action_raise_view.isEnabled() is False
+    assert dummy._action_lower_view.isEnabled() is True
+
+
+def test_sync_view_altitude_actions_disables_lower_at_horizon() -> None:
+    dummy = SimpleNamespace()
+    dummy.viewer_data = SimpleNamespace(view_center=(0.0, 180.0))
+    dummy._action_raise_view = _DummyAction(False)
+    dummy._action_lower_view = _DummyAction(False)
+
+    SkyWindow._sync_view_altitude_actions(dummy)
+
+    assert dummy._action_raise_view.isEnabled() is True
+    assert dummy._action_lower_view.isEnabled() is False
+
+
+def test_jump_to_search_target_keeps_negative_target_alt_for_highlight(monkeypatch) -> None:
+    monkeypatch.setattr(window_module, "radec_to_altaz", lambda *_args, **_kwargs: (-12.5, 210.0))
+
+    dummy = SimpleNamespace()
+    dummy.viewer_data = SimpleNamespace(location=(35.0, 139.0), view_center=(20.0, 30.0))
+    dummy.state = SimpleNamespace(
+        jump_highlight_name=None,
+        jump_highlight_altaz=None,
+        jump_highlight_until_ms=0.0,
+    )
+    sync_calls: list[str] = []
+    dummy._sync_view_altitude_actions = lambda: sync_calls.append("sync")
+    dummy._current_time_obj = lambda: object()
+    dummy._begin_interaction_mode = lambda: sync_calls.append("begin")
+    dummy.request_sky_data_update = lambda: sync_calls.append("request")
+    dummy.update = lambda: sync_calls.append("update")
+
+    target = SimpleNamespace(label="Circlet", ra_hours=1.0, dec_deg=2.0)
+    SkyWindow._jump_to_search_target(dummy, target)
+
+    assert dummy.viewer_data.view_center == (0.0, 210.0)
+    assert dummy.state.jump_highlight_name == "Circlet"
+    assert dummy.state.jump_highlight_altaz == (-12.5, 210.0)
+    assert dummy.state.jump_highlight_until_ms > 0.0
+    assert sync_calls == ["sync", "begin", "request", "update"]
