@@ -530,12 +530,13 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._jump_to_search_target(target)
 
     def _jump_to_search_target(self, target: SearchJumpTarget) -> None:
+        observer_height_m = getattr(self.viewer_data, "observer_height_m", 1.7)
         alt, az = radec_to_altaz(
             target.ra_hours,
             target.dec_deg,
             self.viewer_data.location[0],
             self.viewer_data.location[1],
-            self.viewer_data.observer_height_m,
+            observer_height_m,
             self._current_time_obj(),
         )
         target_alt = float(alt)
