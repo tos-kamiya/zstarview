@@ -290,6 +290,7 @@ Tycho-2 入力や分割出力を含む詳細オプションは次を参照して
 | ファイル                                         | 内容                                               | 出典                                                                       | ライセンス                                                                                                                      |
 | ------------------------------------------------ | -------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `cities1000.txt`, `admin1CodesASCII.txt` | 人口1000人以上の都市一覧                           | [GeoNames](https://download.geonames.org/export/dump/)                     | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                       |
+| `viewpoints/tower_viewpoints.json` | タワー名起動用に同梱している展望塔/タワー dataset（Wikidata 由来の整形データ） | [Wikidata](https://www.wikidata.org/) をローカル整形したもの（手順は `dev-samples/` に記録） | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)（Wikidata データ） |
 | `stars/hip_main.dat.zip`                                   | Hipparcos および Tycho カタログ（ESA 1997）        | [CDS Strasbourg](https://cdsarc.cds.unistra.fr/ftp/I/239/)                 | [ODbL](https://www.data.gouv.fr/licences) または [CC BY-NC 3.0 IGO](https://creativecommons.org/licenses/by-nc/3.0/igo/)（非商用） |
 | `I-259/tyc2.dat.*.gz`, `I-259/ReadMe`                      | Tycho-2 主カタログ（I/259）                        | [CDS Strasbourg](https://cdsarc.cds.unistra.fr/ftp/I/259/)                 | [ODbL](https://www.data.gouv.fr/licences) または [CC BY-NC 3.0 IGO](https://creativecommons.org/licenses/by-nc/3.0/igo/)（非商用） |
 | `dso.csv`                                                   | DSO（銀河/散開星団/球状星団）カタログ（OpenNGC 由来の生成データ） | [OpenNGC](https://github.com/mattiaverga/OpenNGC)（[PyOngc](https://github.com/mattiaverga/PyOngc) 経由で生成） | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)（OpenNGC データベース） |
@@ -301,6 +302,7 @@ Tycho-2 入力や分割出力を含む詳細オプションは次を参照して
 
 * 天文データを提供していただいている CDS Strasbourg および ESA Hipparcos Mission に感謝します。
 * 都市データは GeoNames に基づいています。
+* タワー/展望塔の起動データは Wikidata に基づく整形データであり、Wikidata の CC0 条件に従って再配布しています。
 * 恒星の固有名は IAU 恒星名作業部会 (WGSN) による承認済みリスト（[exopla.net](https://exopla.net/star-names/modern-iau-star-names/) 経由）を使用しています。
 * 雲データは気象衛星 **Himawari**（提供: JMA）および **NOAA GOES** シリーズ（提供: NOAA/NESDIS）による赤外線観測データを、それぞれの S3 公開バケットから取得して利用しています。
 * 地形地平線データは **Copernicus DEM GLO-90** に基づいており、欧州委員会のために ESA が管理するデータを、アプリでは公開 AWS 配布とローカルキャッシュを通じて利用しています。
