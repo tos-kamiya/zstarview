@@ -107,6 +107,28 @@ def test_draw_asterisms_hover_adds_bright_overlay_and_label(monkeypatch) -> None
     assert [c["text"] for c in label_candidates] == ["Test Asterism"]
 
 
+def test_draw_asterisms_deduplicates_shared_dim_segments(monkeypatch) -> None:
+    painter = DummyPainter()
+    geometry = ScreenGeometry(center=(120, 90), radius=70)
+    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
+    celestial_data = _celestial_data_with_asterism_star_positions()
+    first = Asterism("first", "First", (("HIP1", "HIP2"),))
+    second = Asterism("second", "Second", (("HIP2", "HIP1"),))
+
+    monkeypatch.setattr(render_draw, "ASTERISMS", (first, second))
+
+    render_draw.draw_asterisms(
+        painter=painter,
+        geometry=geometry,
+        celestial_data=celestial_data,
+        viewer_data=viewer,
+        highlighted_object=None,
+        text_font=QFont(),
+    )
+
+    assert painter.polyline_count == 2
+
+
 def test_find_highlighted_object_accepts_unnamed_asterism_member(monkeypatch) -> None:
     geometry = ScreenGeometry(center=(120, 90), radius=70)
     viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
