@@ -300,6 +300,7 @@ All paths below are relative to `src/zstarview/data/`.
 * Star proper names provided by the IAU Working Group on Star Names (via [exopla.net](https://exopla.net/star-names/modern-iau-star-names/)).
 * Cloud data are based on infrared observations from the **Himawari** satellite (provided by JMA) and the **NOAA GOES** series (provided by NOAA/NESDIS), retrieved from their public S3 buckets.
 * Terrain horizon data are based on **Copernicus DEM GLO-90**, managed by ESA on behalf of the European Commission and obtained by the app through its public AWS distribution/cache flow.
+* Thanks to AWS and dataset providers for making the public S3 distribution/mirror endpoints available for cloud imagery and terrain DEM access.
 * Fonts provided by the Google Noto Project.
 * The window title "Zenith Star View" was suggested by ChatGPT.
 * Specification discussions, code generation, and debugging were greatly assisted by Gemini and ChatGPT.
