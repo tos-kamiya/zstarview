@@ -172,8 +172,12 @@ class SkyWindowRenderMixin:
             self.state.sky_disc_image,
             self.cloud_state.image,
             cloud_alpha=self.cloud_disc_alpha,
+            view_center=self.state.render_view_center,
             stripe_density=self.cloud_state.stripe_density,
             missing_mask=self.cloud_state.missing_mask,
+            terrain_profile_altaz=(
+                self.state.terrain_horizon_profile if self.terrain_horizon_opacity > 0.0 else None
+            ),
         )
 
     def _draw_terrain_layers(

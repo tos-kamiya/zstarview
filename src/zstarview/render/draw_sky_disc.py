@@ -4,14 +4,13 @@ from typing import Tuple
 import numpy as np
 from PySide6.QtGui import QImage
 
+from ..paths import TERRAIN_HORIZON_LINE_COLOR
 from ..types import ScreenGeometry
 from ..utils.qt import np_rgba_to_qimage
 
 
 TURBIDITY = 5  # 2 (clear blue sky) to 10 (hazy white sky)
-GROUND_TINT_RGB = np.array([0.12, 0.19, 0.27], dtype=np.float32)
-GROUND_TINT_STRENGTH = 0.3
-GROUND_BASE_DARKNESS = 0.03
+GROUND_TINT_RGB = np.array(TERRAIN_HORIZON_LINE_COLOR, dtype=np.float32) / 255.0
 NEVER_RISES_TINT_RGB = np.array([0.42, 0.07, 0.07], dtype=np.float32)
 NEVER_RISES_TINT_STRENGTH = 0.2
 FLAT_SKY_DISC_RGB_U8 = np.array([10, 10, 10], dtype=np.uint8)
@@ -174,19 +173,9 @@ def sky_color_samples(
     gamma = (1.0 - alpha) * 0.2 + 1.0 if alpha < 1.0 else 1.0
     colors = grade_color(colors, saturation=saturation, exposure=exposure, gamma=gamma)
 
-    below_horizon = alt.reshape(-1) < 0.0
-    if np.any(below_horizon):
-        s = np.float32(GROUND_TINT_STRENGTH)
-        base = colors[below_horizon] * np.float32(GROUND_BASE_DARKNESS)
-        colors[below_horizon] = base * (1.0 - s) + GROUND_TINT_RGB[None, :] * s
-
     sky_scale = max(0.0, float(alpha))
     eclipse_scale = max(0.0, float(eclipse_factor))
-    if np.any(below_horizon):
-        colors[~below_horizon] *= sky_scale * eclipse_scale
-        colors[below_horizon] *= eclipse_scale
-    else:
-        colors *= sky_scale * eclipse_scale
+    colors *= sky_scale * eclipse_scale
     return np.clip(colors, 0.0, 1.0).astype(np.float32)
 
 
@@ -248,7 +237,7 @@ def draw_sky_color_disc(
             never_rises = dec >= threshold
         else:
             never_rises = np.zeros_like(dec, dtype=bool)
-    # Apply never-rises tint at the end so it survives ground-side darkening.
+    # Apply never-rises tint at the end so it remains visible after grading.
     if np.any(never_rises):
         colors[never_rises] = np.clip(
             colors[never_rises] + NEVER_RISES_TINT_RGB[None, :] * np.float32(NEVER_RISES_TINT_STRENGTH),
@@ -268,23 +257,14 @@ def draw_uniform_sky_color_disc(
     geometry: ScreenGeometry,
     view_center: Tuple[float, float],
 ) -> QImage:
-    """Draw a flat disc with ground tint when sky-color shading is disabled."""
+    """Draw a flat disc used when sky-color shading is disabled."""
     radius = int(geometry.radius)
     size = max(2, radius * 2)
     if radius < 1:
         return QImage(size, size, QImage.Format.Format_ARGB32_Premultiplied)
 
-    alt, _, inside = _inverse_project_disc(radius, view_center)
+    _, _, inside = _inverse_project_disc(radius, view_center)
     rgba = np.zeros((size, size, 4), dtype=np.uint8)
     rgba[..., 3][inside] = 255
-    rgb = np.tile(FLAT_SKY_DISC_RGB_U8, (alt.shape[0], 1))
-    below_horizon = alt < 0.0
-    if np.any(below_horizon):
-        ground_rgb = np.clip(
-            np.round((GROUND_TINT_RGB * np.float32(GROUND_TINT_STRENGTH)) * 255.0),
-            0,
-            255,
-        ).astype(np.uint8)
-        rgb[below_horizon] = ground_rgb
-    rgba[..., :3][inside] = rgb
+    rgba[..., :3][inside] = FLAT_SKY_DISC_RGB_U8
     return np_rgba_to_qimage(rgba).convertToFormat(QImage.Format.Format_ARGB32_Premultiplied)

@@ -566,10 +566,9 @@ def draw_terrain_horizon_line(
         return
 
     color = QColor(*TERRAIN_HORIZON_LINE_COLOR)
-    color.setAlphaF(effective_opacity)
+    color.setAlphaF(max(effective_opacity, min(1.0, 0.42 + (opacity * 0.95))))
     outline = QColor(*TERRAIN_HORIZON_LINE_COLOR)
-    outline.setAlpha(max(0, min(255, int(round(110.0 * effective_opacity)))))
-
+    outline.setAlpha(max(0, min(255, int(round(135.0 * effective_opacity + 35.0)))))
     painter.save()
     for frag in split_by_gaps(points):
         if len(frag) < 2:
@@ -577,14 +576,14 @@ def draw_terrain_horizon_line(
         pts = [QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in frag]
         poly = QPolygonF(pts)
 
-        base = QPen(outline, 4.5)
+        base = QPen(outline, 3.0, Qt.PenStyle.SolidLine)
         base.setCosmetic(True)
         base.setCapStyle(Qt.PenCapStyle.RoundCap)
         base.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
         painter.setPen(base)
         painter.drawPolyline(poly)
 
-        fg = QPen(color, 2.4)
+        fg = QPen(color, 1.0, Qt.PenStyle.SolidLine)
         fg.setCosmetic(True)
         fg.setCapStyle(Qt.PenCapStyle.RoundCap)
         fg.setJoinStyle(Qt.PenJoinStyle.RoundJoin)

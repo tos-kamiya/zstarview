@@ -269,6 +269,15 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--ground-tint-opacity",
+        type=float,
+        default=0.2,
+        help=(
+            "Overlay opacity of the ground tint color below the geometric/terrain horizon "
+            "(0.0 - 1.0, default: 0.2)."
+        ),
+    )
+    parser.add_argument(
         "--cloud-stripe",
         type=_parse_cloud_stripe,
         default=(50, 0.2),
