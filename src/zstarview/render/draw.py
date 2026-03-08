@@ -1530,7 +1530,7 @@ def draw_overlay_info(
     print_line(time_text)
 
     # ---- City, view direction (Alt/Az) ----
-    city_name_text = viewer_data.city_name.title()
+    city_name_text = viewer_data.city_name
     print_line(city_name_text)
 
     alt_deg, az_deg = viewer_data.view_center

@@ -20,6 +20,7 @@ class SkyWindowRenderMixin:
             timezone_name=self.viewer_data.timezone_name,
             city_name=self.viewer_data.city_name,
             view_center=self.state.render_view_center,
+            observer_height_m=self.viewer_data.observer_height_m,
         )
 
     def _active_jump_highlight_object(self, geometry):

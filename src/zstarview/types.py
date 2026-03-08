@@ -79,6 +79,7 @@ class ViewerData:
     timezone_name: str
     city_name: str
     view_center: ViewCenterAltAz = (90.0, 180.0)  # (alt_deg, az_deg)
+    observer_height_m: float = 1.7
 
     @property
     def lat_deg(self) -> LatDeg:

@@ -65,11 +65,11 @@ def main() -> None:
         vmag_brightness_scale=vmag_brightness_scale,
     )
 
-    city_str = f"{city.cc}/{city.name}"
     viewer_data = prepare_window_viewer_data(
-        city_str,
+        city.display_name,
         (city.lat, city.lon, city.tz),
         view_center,
+        observer_height_m=city.observer_height_m if args.observer_height_m is None else args.observer_height_m,
     )
     user_options = prepare_window_user_options(
         sky_disc_alpha=args.sky_opacity,

@@ -57,7 +57,7 @@ class TerrainHorizonController(QObject):
         self._running = False
         self._stopping = False
         self._failed_this_session = False
-        self._completed_for_location: Optional[tuple[float, float]] = None
+        self._completed_for_location: Optional[tuple[float, float, float]] = None
         self._lock = threading.Lock()
 
     def shutdown(self) -> None:
@@ -69,9 +69,11 @@ class TerrainHorizonController(QObject):
         *,
         lat: float,
         lon: float,
+        observer_height_m: float | None = None,
         reason: str = "manual",
     ) -> bool:
-        location = (float(lat), float(lon))
+        eye_height_m = self._observer_eye_m if observer_height_m is None else float(observer_height_m)
+        location = (float(lat), float(lon), eye_height_m)
         with self._lock:
             if self._stopping or self._running or self._failed_this_session:
                 return False
@@ -82,13 +84,13 @@ class TerrainHorizonController(QObject):
         self.terrain_started.emit({"banner": "Terrain horizon: loading DEM..."})
         worker = threading.Thread(
             target=self._run_update,
-            kwargs={"lat": location[0], "lon": location[1], "reason": reason},
+            kwargs={"lat": location[0], "lon": location[1], "observer_height_m": eye_height_m, "reason": reason},
             daemon=True,
         )
         worker.start()
         return True
 
-    def _run_update(self, *, lat: float, lon: float, reason: str) -> None:
+    def _run_update(self, *, lat: float, lon: float, observer_height_m: float, reason: str) -> None:
         try:
             if reason == "initial":
                 logger.info("Fetching initial terrain horizon data...")
@@ -120,7 +122,7 @@ class TerrainHorizonController(QObject):
                     latitude_deg=lat,
                     longitude_deg=lon,
                     observer_ground_m=ground_m,
-                    observer_eye_m=self._observer_eye_m,
+                    observer_eye_m=observer_height_m,
                 )
                 points = compute_horizon_profile(
                     dem_grid=dem_grid,
@@ -141,7 +143,7 @@ class TerrainHorizonController(QObject):
             profile_altaz = reduce_profile_to_altaz(points)
             with self._lock:
                 if not self._stopping:
-                    self._completed_for_location = (float(lat), float(lon))
+                    self._completed_for_location = (float(lat), float(lon), float(observer_height_m))
 
             with self._lock:
                 should_emit = not self._stopping
