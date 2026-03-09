@@ -361,10 +361,10 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._interaction_idle_timer.setInterval(self.state.interaction_idle_ms)
         self._interaction_idle_timer.timeout.connect(self._end_interaction_mode)
 
-        self._orientation_interaction_idle_timer = QTimer(self)
-        self._orientation_interaction_idle_timer.setSingleShot(True)
-        self._orientation_interaction_idle_timer.setInterval(self.state.orientation_interaction_idle_ms)
-        self._orientation_interaction_idle_timer.timeout.connect(self._end_orientation_interaction_mode)
+        self._viewport_interaction_idle_timer = QTimer(self)
+        self._viewport_interaction_idle_timer.setSingleShot(True)
+        self._viewport_interaction_idle_timer.setInterval(self.state.viewport_interaction_idle_ms)
+        self._viewport_interaction_idle_timer.timeout.connect(self._end_viewport_interaction_mode)
 
     def _add_hamburger_menu(self) -> None:
         """Adds a hamburger menu button and its corresponding actions."""
@@ -486,7 +486,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self._action_lower_view.setEnabled(float(alt) > 0.0)
 
     def resizeEvent(self, event: QResizeEvent) -> None:
-        self._begin_interaction_mode()
+        self._begin_viewport_interaction_mode()
         grip_size = self.size_grip.size()
         self.size_grip.move(self.width() - grip_size.width(), self.height() - grip_size.height())
 
@@ -510,13 +510,13 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.start_background_cloud_update(reason="view-change-idle")
         self.start_background_terrain_horizon_update(reason="view-change-idle")
 
-    def _begin_orientation_interaction_mode(self) -> None:
-        self.state.orientation_interaction_mode = True
-        self._orientation_interaction_idle_timer.start()
+    def _begin_viewport_interaction_mode(self) -> None:
+        self.state.viewport_interaction_mode = True
+        self._viewport_interaction_idle_timer.start()
 
-    def _update_orientation_interaction_stars(self) -> None:
+    def _update_viewport_interaction_stars(self) -> None:
         if self.state.celestial_data is None:
-            self.state.orientation_interaction_stars = None
+            self.state.viewport_interaction_stars = None
             return
         stars, _location = calculate_visible_stars(
             self.star_catalog_lod6_np,
@@ -527,13 +527,13 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self.state.render_view_center,
             max_vmag=4.0,
         )
-        self.state.orientation_interaction_stars = stars
+        self.state.viewport_interaction_stars = stars
 
-    def _end_orientation_interaction_mode(self) -> None:
-        if not self.state.orientation_interaction_mode:
+    def _end_viewport_interaction_mode(self) -> None:
+        if not self.state.viewport_interaction_mode:
             return
-        self.state.orientation_interaction_mode = False
-        self.state.orientation_interaction_stars = None
+        self.state.viewport_interaction_mode = False
+        self.state.viewport_interaction_stars = None
         self.request_sky_data_update()
         self.start_background_cloud_update(reason="view-change-idle")
         self.start_background_terrain_horizon_update(reason="view-change-idle")
@@ -621,8 +621,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self._cloud_update_timer.stop()
         if self._interaction_idle_timer.isActive():
             self._interaction_idle_timer.stop()
-        if self._orientation_interaction_idle_timer.isActive():
-            self._orientation_interaction_idle_timer.stop()
+        if self._viewport_interaction_idle_timer.isActive():
+            self._viewport_interaction_idle_timer.stop()
 
     def _on_asterism_check_tick(self) -> None:
         if self._is_shutting_down:
@@ -755,10 +755,10 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         d_alt: float = 0.0,
         d_az: float = 0.0,
         *,
-        interactive_orientation: bool = False,
+        interactive_viewport: bool = False,
     ) -> None:
-        if interactive_orientation:
-            self._begin_orientation_interaction_mode()
+        if interactive_viewport:
+            self._begin_viewport_interaction_mode()
         else:
             self._begin_interaction_mode()
         alt, az = self.viewer_data.view_center
@@ -767,8 +767,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.viewer_data.view_center = (new_alt, new_az)
         self.state.render_view_center = (new_alt, new_az)
         self._sync_view_altitude_actions()
-        if interactive_orientation:
-            self._update_orientation_interaction_stars()
+        if interactive_viewport:
+            self._update_viewport_interaction_stars()
             self.update()
             return
         self.request_sky_data_update()
@@ -778,16 +778,16 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
 
         # --- View Control ---
         if key == Qt.Key.Key_Left:
-            self._rotate_view(d_az=-self.state.rotation_step, interactive_orientation=True)
+            self._rotate_view(d_az=-self.state.rotation_step, interactive_viewport=True)
             event.accept()
         elif key == Qt.Key.Key_Right:
-            self._rotate_view(d_az=self.state.rotation_step, interactive_orientation=True)
+            self._rotate_view(d_az=self.state.rotation_step, interactive_viewport=True)
             event.accept()
         elif key == Qt.Key.Key_Up:
-            self._rotate_view(d_alt=self.state.rotation_step, interactive_orientation=True)
+            self._rotate_view(d_alt=self.state.rotation_step, interactive_viewport=True)
             event.accept()
         elif key == Qt.Key.Key_Down:
-            self._rotate_view(d_alt=-self.state.rotation_step, interactive_orientation=True)
+            self._rotate_view(d_alt=-self.state.rotation_step, interactive_viewport=True)
             event.accept()
 
         # --- Toggles ---

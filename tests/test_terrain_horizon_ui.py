@@ -171,37 +171,37 @@ def test_rotate_view_in_orientation_mode_updates_render_center_without_full_refr
     dummy.viewer_data = SimpleNamespace(view_center=(20.0, 30.0))
     dummy.state = SimpleNamespace(render_view_center=(20.0, 30.0))
     calls: list[str] = []
-    dummy._begin_orientation_interaction_mode = lambda: calls.append("begin-orientation")
+    dummy._begin_viewport_interaction_mode = lambda: calls.append("begin-viewport")
     dummy._begin_interaction_mode = lambda: calls.append("begin")
     dummy._sync_view_altitude_actions = lambda: calls.append("sync")
-    dummy._update_orientation_interaction_stars = lambda: calls.append("bright-stars")
+    dummy._update_viewport_interaction_stars = lambda: calls.append("bright-stars")
     dummy.request_sky_data_update = lambda: calls.append("request")
     dummy.update = lambda: calls.append("update")
 
-    SkyWindow._rotate_view(dummy, d_alt=5.0, d_az=15.0, interactive_orientation=True)
+    SkyWindow._rotate_view(dummy, d_alt=5.0, d_az=15.0, interactive_viewport=True)
 
     assert dummy.viewer_data.view_center == (25.0, 45.0)
     assert dummy.state.render_view_center == (25.0, 45.0)
-    assert calls == ["begin-orientation", "sync", "bright-stars", "update"]
+    assert calls == ["begin-viewport", "sync", "bright-stars", "update"]
 
 
-def test_end_orientation_interaction_mode_requests_full_refresh() -> None:
+def test_end_viewport_interaction_mode_requests_full_refresh() -> None:
     dummy = SimpleNamespace()
-    dummy.state = SimpleNamespace(orientation_interaction_mode=True, orientation_interaction_stars=object())
+    dummy.state = SimpleNamespace(viewport_interaction_mode=True, viewport_interaction_stars=object())
     calls: list[str] = []
     dummy.request_sky_data_update = lambda: calls.append("sky")
     dummy.start_background_cloud_update = lambda **kwargs: calls.append(str(kwargs.get("reason")))
     dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(str(kwargs.get("reason")))
     dummy.update = lambda: calls.append("update")
 
-    SkyWindow._end_orientation_interaction_mode(dummy)
+    SkyWindow._end_viewport_interaction_mode(dummy)
 
-    assert dummy.state.orientation_interaction_mode is False
-    assert dummy.state.orientation_interaction_stars is None
+    assert dummy.state.viewport_interaction_mode is False
+    assert dummy.state.viewport_interaction_stars is None
     assert calls == ["sky", "view-change-idle", "view-change-idle", "update"]
 
 
-def test_update_orientation_interaction_stars_uses_bright_limit(monkeypatch) -> None:
+def test_update_viewport_interaction_stars_uses_bright_limit(monkeypatch) -> None:
     captured: dict[str, object] = {}
 
     monkeypatch.setattr(
@@ -230,13 +230,13 @@ def test_update_orientation_interaction_stars_uses_bright_limit(monkeypatch) -> 
     dummy.state = SimpleNamespace(
         celestial_data=object(),
         render_view_center=(55.0, 210.0),
-        orientation_interaction_stars=None,
+        viewport_interaction_stars=None,
     )
     dummy._current_time_obj = lambda: "time"
 
-    SkyWindow._update_orientation_interaction_stars(dummy)
+    SkyWindow._update_viewport_interaction_stars(dummy)
 
-    assert dummy.state.orientation_interaction_stars == {"name": []}
+    assert dummy.state.viewport_interaction_stars == {"name": []}
     assert captured == {
         "catalog": dummy.star_catalog_lod6_np,
         "lat": 35.0,

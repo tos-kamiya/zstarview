@@ -57,7 +57,7 @@ class SkyWindowUpdatesMixin:
         return ""
 
     def _on_sky_data_calculated(self, payload: Dict) -> None:
-        if not self.state.orientation_interaction_mode:
+        if not self.state.viewport_interaction_mode:
             self.state.render_view_center = tuple(
                 payload.get("view_center", self.viewer_data.view_center)
             )

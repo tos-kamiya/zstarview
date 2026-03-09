@@ -92,8 +92,8 @@ class SkyWindowRenderMixin:
 
         self._clear_background_layer(painter)
         self._draw_background_layer(painter, geometry)
-        if self.state.orientation_interaction_mode:
-            self._draw_orientation_interaction_layers(
+        if self.state.viewport_interaction_mode:
+            self._draw_viewport_interaction_layers(
                 painter,
                 geometry,
                 celestial_data,
@@ -166,7 +166,7 @@ class SkyWindowRenderMixin:
         self._draw_label_layer(painter, label_candidates)
         self._draw_status_line(painter)
 
-    def _draw_orientation_interaction_layers(
+    def _draw_viewport_interaction_layers(
         self,
         painter: QPainter,
         geometry: render_draw.ScreenGeometry,
@@ -174,10 +174,10 @@ class SkyWindowRenderMixin:
         render_viewer: ViewerData,
     ) -> None:
         interaction_celestial_data = celestial_data
-        if self.state.orientation_interaction_stars is not None:
+        if self.state.viewport_interaction_stars is not None:
             interaction_celestial_data = replace(
                 celestial_data,
-                stars=self.state.orientation_interaction_stars,
+                stars=self.state.viewport_interaction_stars,
             )
         render_draw.draw_sky_reference_lines(painter, geometry, celestial_data, render_viewer)
         self._draw_star_layer(

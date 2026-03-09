@@ -95,7 +95,7 @@ def test_on_sky_data_calculated_updates_render_snapshot_once() -> None:
     assert update_calls == ["update"]
 
 
-def test_on_sky_data_calculated_preserves_render_center_during_orientation_interaction() -> None:
+def test_on_sky_data_calculated_preserves_render_center_during_viewport_interaction() -> None:
     dummy = SimpleNamespace()
     dummy.viewer_data = ViewerData(
         location=(35.0, 139.0),
@@ -106,7 +106,7 @@ def test_on_sky_data_calculated_preserves_render_center_during_orientation_inter
     )
     dummy.state = SkyWindowState(
         render_view_center=(40.0, 150.0),
-        orientation_interaction_mode=True,
+        viewport_interaction_mode=True,
     )
     dummy._compositor = _DummyCompositor()
     dummy._sky_data_update_timer = _DummyTimer(active=True)
@@ -132,7 +132,7 @@ def test_on_sky_data_calculated_preserves_render_center_during_orientation_inter
     assert dummy.state.render_view_center == (40.0, 150.0)
 
 
-def test_draw_orientation_interaction_layers_limits_stars_to_bright_subset(monkeypatch) -> None:
+def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(monkeypatch) -> None:
     calls: list[tuple[str, object]] = []
 
     monkeypatch.setattr(
@@ -164,7 +164,7 @@ def test_draw_orientation_interaction_layers_limits_stars_to_bright_subset(monke
     dummy.state.mouse_pos = None
     dummy._draw_star_layer = lambda *_args, **kwargs: calls.append(("stars", kwargs.get("draw_vmag_limit")))
 
-    SkyWindow._draw_orientation_interaction_layers(
+    SkyWindow._draw_viewport_interaction_layers(
         dummy,
         painter=object(),
         geometry=object(),
@@ -187,7 +187,7 @@ def test_draw_orientation_interaction_layers_limits_stars_to_bright_subset(monke
     ]
 
 
-def test_draw_orientation_interaction_layers_prefers_interaction_star_subset(monkeypatch) -> None:
+def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(monkeypatch) -> None:
     monkeypatch.setattr(
         window_render_module.render_draw,
         "draw_sky_reference_lines",
@@ -217,13 +217,13 @@ def test_draw_orientation_interaction_layers_prefers_interaction_star_subset(mon
     dummy.terrain_horizon_opacity = 0.25
     dummy.state = SkyWindowState(
         render_view_center=(45.0, 180.0),
-        orientation_interaction_stars=interaction_stars,
+        viewport_interaction_stars=interaction_stars,
     )
     dummy.state.mouse_pos = None
     seen_stars: list[object] = []
     dummy._draw_star_layer = lambda _p, _g, celestial_data, _rv, **_kwargs: seen_stars.append(celestial_data.stars)
 
-    SkyWindow._draw_orientation_interaction_layers(
+    SkyWindow._draw_viewport_interaction_layers(
         dummy,
         painter=object(),
         geometry=object(),
@@ -248,7 +248,7 @@ def test_draw_orientation_interaction_layers_prefers_interaction_star_subset(mon
     assert seen_stars == [interaction_stars]
 
 
-def test_draw_orientation_interaction_layers_draws_terrain_profile(monkeypatch) -> None:
+def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> None:
     seen_profiles: list[object] = []
     seen_view_centers: list[object] = []
 
@@ -286,7 +286,7 @@ def test_draw_orientation_interaction_layers_draws_terrain_profile(monkeypatch) 
     dummy.state.terrain_horizon_profile = terrain_profile
     dummy._draw_star_layer = lambda *_args, **_kwargs: None
 
-    SkyWindow._draw_orientation_interaction_layers(
+    SkyWindow._draw_viewport_interaction_layers(
         dummy,
         painter=object(),
         geometry=object(),
