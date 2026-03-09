@@ -93,7 +93,7 @@ zstarview [options] [location]
 
 | 引数     | 説明                                                          | デフォルト              |
 | :----- | :---------------------------------------------------------- | :----------------- |
-| `location` | 表示する都市名、タワー名、山名、または `"<lat>;<lon>"` 形式の緯度経度（十進度）を指定できます（例: `Tokyo`, `Tokyo Skytree`, `Mount Fuji`, `35.68;139.76`, `N35.68;E139.76`, `-35.68;139.76`）。省略時は前回起動時の location を使用します。初回起動時に省略すると `Tokyo` になります。 | 前回の location（初回は `Tokyo`） |
+| `location` | 表示する都市名、タワー名、山名、明示指定の `t/NAME`・`m/NAME`、または `"<lat>;<lon>"` 形式の緯度経度（十進度）を指定できます（例: `Tokyo`, `Tokyo Skytree`, `t/Tokyo Skytree`, `Mount Fuji`, `m/Mount Fuji`, `35.68;139.76`, `N35.68;E139.76`, `-35.68;139.76`）。省略時は前回起動時の location を使用します。初回起動時に省略すると `Tokyo` になります。 | 前回の location（初回は `Tokyo`） |
 
 #### オプション
 
@@ -210,6 +210,7 @@ Wikidata 由来の同梱タワー/展望地点 dataset から起動できます�
 
 - 例:
   - `Tokyo Skytree`
+  - `t/Tokyo Skytree`（タワー明示指定）
   - `Tsutenkaku`（`Tsūtenkaku` の ASCII フォールバック）
   - `Tokyo Tower`
   - `wikidata:Q57965`
@@ -230,6 +231,7 @@ zstarview "Tokyo Tower" --observer-height-m 150
 
 - 例:
   - `Mount Fuji`
+  - `m/Mount Fuji`（山明示指定）
   - `Aconcagua`
   - `Snezka`（`Sněžka` の ASCII フォールバック）
   - `wikidata:Q39231`
