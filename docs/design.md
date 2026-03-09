@@ -80,6 +80,7 @@
 - `src/zstarview/render/draw.py`
   - 恒星、惑星、ラベル、補助線、地平線関連の描画
   - アステリズム線は大円弧をサンプルし、アステリズム専用の広い FOV 境界で円形クリップして描画
+  - 天の赤道、黄道、地平線は `(alt, az)` サンプル列から描画時に `render_view_center` 基準で投影する
 - `src/zstarview/render/draw_sky_disc.py`
   - sky color disc の生成
 - `src/zstarview/ui/composite.py`
@@ -201,6 +202,8 @@
 - `SkyWindowState`
   - 現在の視点
   - 直近の描画用視点
+  - `viewport_interaction_mode` による簡易描画状態
+  - `viewport_interaction_stars` による簡易描画用の明るい星テーブル
   - ホバー対象
   - ハイライト対象
   - 各更新パイプラインの UI 反映状態
@@ -222,6 +225,13 @@
 2. `SkyDataWorker` がバックグラウンドで天体計算と sky disc 生成を行う。
 3. 計算結果を `CelestialData` と描画補助データとして UI へ返す。
 4. `SkyWindow` が内部状態を更新し、再描画する。
+
+視線変更とリサイズの連続入力時は例外的に `viewport_interaction_mode` を使う。
+
+1. `render_view_center` を即時更新する。
+2. 明るい星 (`vmag <= 4.0`) のみ同期的に再計算し、簡易描画に使う。
+3. 補助線と地形地平線は、保持済みデータを `render_view_center` で再投影して追随させる。
+4. 最後の入力から 0.7 秒経過後に通常更新を 1 回だけ開始する。
 
 ### 6.3 雲更新フロー
 
