@@ -257,26 +257,22 @@ You can inspect the bundled tower/viewpoint and mountain/viewpoint datasets with
 | Option                                      | Description                                                                 | Default |
 | :------------------------------------------ | :-------------------------------------------------------------------------- | :------ |
 | `-h`, `--help`                              | Show this help message and exit.                                            |         |
-| `--list-towers`                             | Print bundled tower/viewpoint list names and exit. Uses ASCII fallback names when available. |         |
-| `--list-tower-names`                        | Print bundled tower/viewpoint names including localized and ASCII-fallback names, then exit. |         |
-| `--show-tower-json NAME`                    | Resolve a bundled tower/viewpoint name and print its JSON metadata, including `ascii_name` when available, then exit. |         |
-| `--list-mountains`                          | Print bundled mountain/viewpoint list names and exit. Uses ASCII fallback names when available. |         |
-| `--list-mountain-names`                     | Print bundled mountain/viewpoint names including localized and ASCII-fallback names, then exit. |         |
-| `--show-mountain-json NAME`                 | Resolve a bundled mountain/viewpoint name and print its JSON metadata, including `ascii_name` when available, then exit. |         |
+| `--list-viewpoints {t,m}`                   | Print bundled tower (`t`) or mountain (`m`) primary names and exit. Output lines use `t/NAME` or `m/NAME`; ASCII fallback names are preferred when available. |         |
+| `--list-viewpoint-names {t,m}`              | Print bundled tower (`t`) or mountain (`m`) names including localized and ASCII-fallback names, then exit. Output lines use `t/NAME` or `m/NAME`. |         |
+| `--show-viewpoint-json NAME`                | Resolve a bundled viewpoint and print its JSON metadata, including `ascii_name` when available, then exit. Prefix `NAME` with `t/` or `m/` to force tower-only or mountain-only resolution. |         |
 
 ```bash
-zstarview --list-towers
-zstarview --list-tower-names
-zstarview --show-tower-json "Tokyo Skytree"
-zstarview --list-mountains
-zstarview --show-mountain-json "Mount Fuji"
+zstarview --list-viewpoints t
+zstarview --list-viewpoint-names t
+zstarview --show-viewpoint-json "t/Tokyo Skytree"
+zstarview --list-viewpoints m
+zstarview --show-viewpoint-json "m/Mount Fuji"
 ```
 
 These options are mutually exclusive, do not accept the `location` argument, and cannot be combined with time/rendering options.
-`--list-towers` prefers ASCII fallback names when available.
-`--list-tower-names` includes both the original spellings and ASCII fallback spellings.
-`--list-mountains` prefers ASCII fallback names when available.
-`--list-mountain-names` includes both the original spellings and ASCII fallback spellings.
+`--list-viewpoints` prefers ASCII fallback names when available.
+`--list-viewpoint-names` includes both the original spellings and ASCII fallback spellings.
+`--show-viewpoint-json` reports an ambiguity error with prefixed candidates if an unprefixed name matches both a tower and a mountain exactly.
 
 While resizing the window, the same simplified viewport-interaction mode is used so that the view stays responsive.
 

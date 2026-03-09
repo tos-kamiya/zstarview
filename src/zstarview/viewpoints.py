@@ -43,6 +43,22 @@ def ascii_fallback_name(text: str) -> str | None:
     return ascii_text
 
 
+def prefixed_viewpoint_name(kind: str, name: str) -> str:
+    if kind == "tower":
+        return f"t/{name}"
+    if kind == "mountain":
+        return f"m/{name}"
+    return name
+
+
+def split_prefixed_viewpoint(text: str) -> tuple[str, str] | None:
+    source = (text or "").strip()
+    if len(source) >= 3 and source[1] == "/" and source[0] in {"t", "T", "m", "M"}:
+        kind = "tower" if source[0] in {"t", "T"} else "mountain"
+        return kind, source[2:].strip()
+    return None
+
+
 @dataclass(frozen=True)
 class Viewpoint:
     id: str
@@ -234,3 +250,38 @@ def resolve_viewpoint(
     if partial_matches:
         return max(partial_matches, key=rank_key)
     return None
+
+
+def find_exact_viewpoint_matches(
+    query: str,
+    viewpoints: tuple[Viewpoint, ...],
+) -> tuple[Viewpoint, ...]:
+    text = (query or "").strip()
+    if not text:
+        return ()
+    normalized = normalize_viewpoint_name(text)
+    matches: list[Viewpoint] = []
+    for viewpoint in viewpoints:
+        ascii_candidates = {
+            ascii_candidate
+            for ascii_candidate in (
+                viewpoint.ascii_name,
+                *(ascii_fallback_name(candidate) for candidate in viewpoint.names),
+                *(ascii_fallback_name(candidate) for candidate in viewpoint.labels.values()),
+            )
+            if ascii_candidate
+        }
+        candidates = {
+            viewpoint.name,
+            *viewpoint.names,
+            *viewpoint.labels.values(),
+            *ascii_candidates,
+        }
+        normalized_candidates = {
+            normalize_viewpoint_name(candidate)
+            for candidate in candidates
+            if candidate.strip()
+        }
+        if normalized in normalized_candidates:
+            matches.append(viewpoint)
+    return tuple(matches)

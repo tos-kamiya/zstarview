@@ -105,21 +105,20 @@ README より詳細に、何ができるか、どう振る舞うか、どのよ�
 
 CLI には次のビューポイント dataset 参照専用オプションを持つ。
 
-- `--list-towers`
-  - 同梱タワー dataset の主表示名を 1 行 1 件で標準出力へ出し、終了する。
+- `--list-viewpoints KIND`
+  - `KIND` は `t` または `m` とする。
+  - `t` は同梱タワー dataset、`m` は同梱 mountain viewpoint dataset の主表示名を 1 行 1 件で標準出力へ出し、終了する。
+  - 各行は `t/NAME` または `m/NAME` 形式で出力する。
   - ASCII フォールバック名を算出できる項目では、`name` ではなくその ASCII フォールバック名を表示する。
-- `--list-tower-names`
+- `--list-viewpoint-names KIND`
+  - `KIND` は `t` または `m` とする。
   - `name`、`names`、`labels`、ASCII フォールバック名に含まれる名前を重複除去して 1 行 1 件で標準出力へ出し、終了する。
-- `--show-tower-json NAME`
-  - 指定名を既存のタワー解決規則で 1 件に解決し、そのタワー情報を JSON で標準出力へ出し、終了する。
-  - JSON には、利用可能な場合 `ascii_name` を含める。
-- `--list-mountains`
-  - 同梱 mountain viewpoint dataset の主表示名を 1 行 1 件で標準出力へ出し、終了する。
-  - ASCII フォールバック名を算出できる項目では、`name` ではなくその ASCII フォールバック名を表示する。
-- `--list-mountain-names`
-  - `name`、`names`、`labels`、ASCII フォールバック名に含まれる名前を重複除去して 1 行 1 件で標準出力へ出し、終了する。
-- `--show-mountain-json NAME`
-  - 指定名を既存の mountain viewpoint 解決規則で 1 件に解決し、その mountain viewpoint 情報を JSON で標準出力へ出し、終了する。
+  - 各行は `t/NAME` または `m/NAME` 形式で出力する。
+- `--show-viewpoint-json NAME`
+  - `NAME` に `t/` または `m/` の prefix がある場合は、その kind だけを対象に 1 件解決して JSON で標準出力へ出し、終了する。
+  - `NAME` に prefix がない場合は tower と mountain の両方を対象に解決を試みる。
+  - prefix なしで tower と mountain の両方に exact match がある場合は、曖昧一致エラーとして終了する。
+  - この場合、エラーメッセージには `t/...` / `m/...` 形式の候補名を列挙する。
   - JSON には、利用可能な場合 `ascii_name` を含める。
 
 これらのオプションは相互排他とし、指定時は GUI を起動しない。
