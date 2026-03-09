@@ -125,6 +125,7 @@ CLI には次のビューポイント dataset 参照専用オプションを持�
 これらのオプションは相互排他とし、指定時は GUI を起動しない。
 また、位置引数 `location` や描画・時刻調整オプションとは併用不可とする。
 データは同梱 `tower_viewpoints.json` / `mountain_viewpoints.json` のみを参照し、GeoNames 読込や設定保存は行わない。
+`mountain_viewpoints.json` は、Wikipedia を起点に候補収集し、Wikidata メタデータで正規化した同梱データである。
 
 ### 5.2 地点指定
 
@@ -162,6 +163,7 @@ CLI には次のビューポイント dataset 参照専用オプションを持�
 - 山名も内蔵の mountain viewpoint データセットから解決する。
 - タワー名解決では、主表示名や別名に加えて ASCII フォールバック名も受け付ける。
 - 山名解決でも、主表示名や別名に加えて ASCII フォールバック名も受け付ける。
+- mountain viewpoint データセットは、Wikipedia 起点の候補選定と Wikidata メタデータ正規化に基づく。
 - 緯度経度入力時は都市名解決を行わない。
 - 解決された地点は次回起動用設定として保存する。
 
