@@ -160,7 +160,7 @@ zstarview --show-dso-initial false --show-asterisms-initial true Tokyo
 デフォルトは `-V 6.0` です。例えば 10.0 等級を指定すると、約32万4千個の星が描画されます。
 この値を大きくすると処理が重くなる点に注意してください。
 
-[→ 例： 10.0等級まで表示](docs/images/screenshot3.png)
+[→ 例：10.0等級まで表示し、星を少し大きめに描画した表示（`-V10 -s4.5`）](docs/images/screenshot3.png)
 
 #### 日時指定オプションについて
 

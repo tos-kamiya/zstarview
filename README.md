@@ -161,7 +161,7 @@ Use `-V magnitude` to limit the displayed stars to those brighter than the given
 The default is `-V 6.0`. For example, specifying 10.0 will display about 324,000 stars.
 Note that higher values will increase rendering time.
 
-[→ Example: display up to magnitude 10.0](docs/images/screenshot3.png)
+[→ Example: display up to magnitude 10.0 with slightly larger stars (`-V10 -s4.5`)](docs/images/screenshot3.png)
 
 #### About the datetime option
 
