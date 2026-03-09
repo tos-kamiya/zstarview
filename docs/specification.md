@@ -101,9 +101,9 @@ README より詳細に、何ができるか、どう振る舞うか、どのよ�
 
 詳細なオプション一覧は README を正本とし、本書では動作仕様を補足する。
 
-### 5.1.1 タワー一覧・詳細出力オプション
+### 5.1.1 ビューポイント dataset 一覧・詳細出力オプション
 
-CLI には次のタワー参照専用オプションを持つ。
+CLI には次のビューポイント dataset 参照専用オプションを持つ。
 
 - `--list-towers`
   - 同梱タワー dataset の主表示名を 1 行 1 件で標準出力へ出し、終了する。
@@ -113,10 +113,18 @@ CLI には次のタワー参照専用オプションを持つ。
 - `--show-tower-json NAME`
   - 指定名を既存のタワー解決規則で 1 件に解決し、そのタワー情報を JSON で標準出力へ出し、終了する。
   - JSON には、利用可能な場合 `ascii_name` を含める。
+- `--list-mountains`
+  - 同梱 mountain viewpoint dataset の主表示名を 1 行 1 件で標準出力へ出し、終了する。
+  - ASCII フォールバック名を算出できる項目では、`name` ではなくその ASCII フォールバック名を表示する。
+- `--list-mountain-names`
+  - `name`、`names`、`labels`、ASCII フォールバック名に含まれる名前を重複除去して 1 行 1 件で標準出力へ出し、終了する。
+- `--show-mountain-json NAME`
+  - 指定名を既存の mountain viewpoint 解決規則で 1 件に解決し、その mountain viewpoint 情報を JSON で標準出力へ出し、終了する。
+  - JSON には、利用可能な場合 `ascii_name` を含める。
 
-これら 3 オプションは相互排他とし、指定時は GUI を起動しない。
+これらのオプションは相互排他とし、指定時は GUI を起動しない。
 また、位置引数 `location` や描画・時刻調整オプションとは併用不可とする。
-データは同梱 `tower_viewpoints.json` のみを参照し、GeoNames 読込や設定保存は行わない。
+データは同梱 `tower_viewpoints.json` / `mountain_viewpoints.json` のみを参照し、GeoNames 読込や設定保存は行わない。
 
 ### 5.2 地点指定
 

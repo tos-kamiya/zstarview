@@ -75,22 +75,32 @@
   - タワー・展望地点データの解決
   - ASCII フォールバック名を含む名前解決
   - 一覧表示名、全名前一覧、単一タワー JSON 出力用の列挙ヘルパを持つ
+- `src/zstarview/mountain_viewpoints.py`
+  - 山頂ビューポイントデータの解決
+  - ASCII フォールバック名を含む名前解決
+  - 一覧表示名、全名前一覧、単一 mountain viewpoint JSON 出力用の列挙ヘルパを持つ
 - `src/zstarview/types.py`
   - ドメインデータの共有型
 
-### 4.2.1 タワー参照専用 CLI
+### 4.2.1 ビューポイント dataset 参照専用 CLI
 
-同梱 `tower_viewpoints.json` を直接参照する軽量 CLI 経路を持つ。
+同梱 `tower_viewpoints.json` と `mountain_viewpoints.json` を直接参照する軽量 CLI 経路を持つ。
 
 - 対象オプション
   - `--list-towers`
   - `--list-tower-names`
   - `--show-tower-json NAME`
-- この経路では `startup.py` の都市解決や GUI 初期化へ進まず、`zstarview.py` が `tower_viewpoints.py` を直接呼び出して標準出力を書き、即時終了する。
+  - `--list-mountains`
+  - `--list-mountain-names`
+  - `--show-mountain-json NAME`
+- この経路では `startup.py` の都市解決や GUI 初期化へ進まず、`zstarview.py` が `tower_viewpoints.py` / `mountain_viewpoints.py` を直接呼び出して標準出力を書き、即時終了する。
 - 一覧出力はローカル JSON のみを参照し、GeoNames、設定保存、ネットワークアクセスには触れない。
 - `--show-tower-json NAME` の名前解決規則は、通常起動時のタワー解決と同じ `resolve_tower_viewpoint()` を再利用する。
+- `--show-mountain-json NAME` は `resolve_mountain_viewpoint()` を再利用し、mountain viewpoint dataset を 1 件に解決して JSON 出力する。
 - `tower_viewpoints.py` は dataset の `name` を保持したまま、必要に応じて ASCII フォールバック名 `ascii_name` を算出する。
+- `mountain_viewpoints.py` も同様に dataset の `name` を保持したまま、必要に応じて ASCII フォールバック名 `ascii_name` を算出する。
 - `--list-towers` は `ascii_name` がある場合それを表示名として優先し、通常のタワー名解決でも `ascii_name` を一致候補へ含める。
+- `--list-mountains` も同様に `ascii_name` がある場合それを表示名として優先し、mountain viewpoint 名解決でも `ascii_name` を一致候補へ含める。
 
 ### 4.3 描画
 

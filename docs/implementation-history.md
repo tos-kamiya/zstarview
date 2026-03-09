@@ -70,6 +70,13 @@
   - この経路では GUI を起動せず、GeoNames 読込や設定保存も行わない。
   - ダイアクリティカルマーク付き主表示名には ASCII フォールバック名を別フィールド `ascii_name` として算出し、`--list-towers` とタワー名解決で利用するようにした。
 
+- mountain viewpoint 参照専用 CLI
+  - `--list-mountains` で一覧表示名を標準出力へ出して終了するようにした。
+  - `--list-mountain-names` で英語名以外を含む入力候補名一覧を標準出力へ出して終了するようにした。
+  - `--show-mountain-json NAME` で mountain viewpoint 解決規則を使って 1 件解決し、JSON を標準出力へ出して終了するようにした。
+  - この経路では GUI を起動せず、GeoNames 読込や設定保存も行わない。
+  - ダイアクリティカルマーク付き主表示名には ASCII フォールバック名を別フィールド `ascii_name` として算出し、`--list-mountains` と mountain viewpoint 名解決で利用するようにした。
+
 ### 2026-03-04
 
 - 高密度恒星表示の操作応答改善
