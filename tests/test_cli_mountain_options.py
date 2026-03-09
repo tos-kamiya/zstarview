@@ -60,8 +60,11 @@ def test_main_show_mountain_json_prints_json_and_exits(capsys, monkeypatch) -> N
     assert excinfo.value.code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["qid"] == "Q39231"
+    assert payload["kind"] == "mountain"
     assert payload["name"] == "Mount Fuji"
     assert "富士山" in payload["names"]
+    assert payload["height_m"] == 0.0
+    assert payload["meta"]["elevation_m"] == 3777.24
 
 
 def test_main_show_mountain_json_includes_ascii_name(capsys, monkeypatch) -> None:
@@ -72,6 +75,7 @@ def test_main_show_mountain_json_includes_ascii_name(capsys, monkeypatch) -> Non
     payload = json.loads(capsys.readouterr().out)
     assert payload["name"] == "Aýrybaba"
     assert payload["ascii_name"] == "Ayrybaba"
+    assert "meta" in payload
 
 
 def test_main_show_mountain_json_returns_error_for_unknown_name(capsys, monkeypatch) -> None:

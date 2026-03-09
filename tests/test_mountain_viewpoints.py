@@ -15,7 +15,7 @@ def test_resolve_mountain_viewpoint_by_english_name() -> None:
     mountain = resolve_mountain_viewpoint("Mount Fuji")
     assert mountain is not None
     assert mountain.qid == "Q39231"
-    assert mountain.elevation_m == 3777.24
+    assert mountain.meta["elevation_m"] == 3777.24
 
 
 def test_resolve_mountain_viewpoint_by_localized_name() -> None:

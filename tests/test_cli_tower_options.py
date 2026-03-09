@@ -71,8 +71,12 @@ def test_main_show_tower_json_prints_json_and_exits(capsys, monkeypatch) -> None
     assert excinfo.value.code == 0
     payload = json.loads(capsys.readouterr().out)
     assert payload["qid"] == "Q57965"
+    assert payload["kind"] == "tower"
     assert payload["name"] == "Tokyo Skytree"
     assert "東京スカイツリー" in payload["names"]
+    assert payload["height_m"] == 634.0
+    assert payload["meta"]["wikidata_url"] == "https://www.wikidata.org/wiki/Q57965"
+    assert "Q1440300" in payload["meta"]["class_qids"]
 
 
 def test_main_show_tower_json_includes_ascii_name(capsys, monkeypatch) -> None:
@@ -83,6 +87,7 @@ def test_main_show_tower_json_includes_ascii_name(capsys, monkeypatch) -> None:
     payload = json.loads(capsys.readouterr().out)
     assert payload["name"] == "Tsūtenkaku"
     assert payload["ascii_name"] == "Tsutenkaku"
+    assert "meta" in payload
 
 
 def test_main_show_tower_json_returns_error_for_unknown_name(capsys, monkeypatch) -> None:
