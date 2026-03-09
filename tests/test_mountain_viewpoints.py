@@ -56,6 +56,8 @@ def test_removed_duplicate_mountain_is_absent() -> None:
 
 def test_list_mountain_all_names_excludes_cleaned_problem_aliases() -> None:
     names = list_mountain_all_names()
+    assert "=" not in names
+    assert "==" not in names
     assert "🗻" not in names
     assert "3003" not in names
     assert "Aoraki / Mount Cook" not in names

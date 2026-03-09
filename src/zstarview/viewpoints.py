@@ -38,6 +38,8 @@ def ascii_fallback_name(text: str) -> str | None:
         if not unicodedata.combining(ch) and ord(ch) < 128
     )
     ascii_text = " ".join(ascii_text.split()).strip()
+    if not any(ch.isalnum() for ch in ascii_text):
+        return None
     if not ascii_text or ascii_text == source:
         return None
     return ascii_text
