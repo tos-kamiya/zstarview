@@ -76,6 +76,7 @@
   - `--show-mountain-json NAME` で mountain viewpoint 解決規則を使って 1 件解決し、JSON を標準出力へ出して終了するようにした。
   - この経路では GUI を起動せず、GeoNames 読込や設定保存も行わない。
   - ダイアクリティカルマーク付き主表示名には ASCII フォールバック名を別フィールド `ascii_name` として算出し、`--list-mountains` と mountain viewpoint 名解決で利用するようにした。
+  - 通常起動の `location` 引数でも mountain viewpoint 名とその `wikidata:Q...` 指定を受け付けるようにした。
 
 ### 2026-03-04
 
