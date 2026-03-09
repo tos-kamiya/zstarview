@@ -136,6 +136,11 @@ def test_draw_orientation_interaction_layers_limits_stars_to_bright_subset(monke
 
     monkeypatch.setattr(
         window_render_module.render_draw,
+        "draw_sky_reference_lines",
+        lambda *_args, **_kwargs: calls.append(("reference", None)),
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
         "draw_direction_labels",
         lambda *_args, **_kwargs: calls.append(("direction", None)),
     )
@@ -150,7 +155,6 @@ def test_draw_orientation_interaction_layers_limits_stars_to_bright_subset(monke
     dummy.visual_preset = "night"
     dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
     dummy.state.mouse_pos = None
-    dummy._draw_orientation_interaction_reference_lines = lambda *_args, **_kwargs: calls.append(("reference", None))
     dummy._draw_star_layer = lambda *_args, **kwargs: calls.append(("stars", kwargs.get("draw_vmag_limit")))
 
     SkyWindow._draw_orientation_interaction_layers(
@@ -175,56 +179,48 @@ def test_draw_orientation_interaction_layers_limits_stars_to_bright_subset(monke
     ]
 
 
-def test_draw_orientation_interaction_reference_lines_recomputes_for_render_view(monkeypatch) -> None:
-    calls: list[tuple[str, object]] = []
+def test_draw_sky_reference_lines_uses_render_view_center_projection(monkeypatch) -> None:
+    calls: list[tuple[float, float]] = []
 
     monkeypatch.setattr(
-        window_render_module,
-        "calculate_celestial_equator_points",
-        lambda _location, _time, view_center: [("equator", view_center)],
-    )
-    monkeypatch.setattr(
-        window_render_module,
-        "calculate_ecliptic_points",
-        lambda _location, _time, view_center: [("ecliptic", view_center)],
-    )
-    monkeypatch.setattr(
-        window_render_module,
-        "calculate_horizon_points",
-        lambda view_center: [("horizon", view_center)],
+        window_render_module.render_draw,
+        "is_in_fov",
+        lambda *_args, **_kwargs: True,
     )
     monkeypatch.setattr(
         window_render_module.render_draw,
-        "draw_sky_reference_lines",
-        lambda _painter, _geometry, data: calls.extend(
-            [
-                ("equator", data.celestial_equator_points),
-                ("ecliptic", data.ecliptic_points),
-                ("horizon", data.horizon_points),
-            ]
+        "altaz_to_normalized_xy",
+        lambda alt, az, view_center: calls.append(view_center) or (alt, az),
+    )
+
+    class _Painter:
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setPen(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawPolyline(self, *_args, **_kwargs) -> None:
+            pass
+
+    window_render_module.render_draw.draw_sky_reference_lines(
+        _Painter(),
+        geometry=SimpleNamespace(center=(0, 0), radius=1),
+        celestial_data=SimpleNamespace(
+            celestial_equator_points=[(1.0, 2.0)],
+            ecliptic_points=[(3.0, 4.0)],
+            horizon_points=[(5.0, 6.0)],
+        ),
+        viewer_data=ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="Asia/Tokyo",
+            city_name="Tokyo",
+            view_center=(55.0, 200.0),
+            observer_height_m=10.0,
         ),
     )
 
-    dummy = SimpleNamespace()
-    viewer = ViewerData(
-        location=(35.0, 139.0),
-        timezone_name="Asia/Tokyo",
-        city_name="Tokyo",
-        view_center=(55.0, 200.0),
-        observer_height_m=10.0,
-    )
-    celestial_data = SimpleNamespace(time=object())
-
-    SkyWindow._draw_orientation_interaction_reference_lines(
-        dummy,
-        painter=object(),
-        geometry=object(),
-        celestial_data=celestial_data,
-        render_viewer=viewer,
-    )
-
-    assert calls == [
-        ("equator", [("equator", (55.0, 200.0))]),
-        ("ecliptic", [("ecliptic", (55.0, 200.0))]),
-        ("horizon", [("horizon", (55.0, 200.0))]),
-    ]
+    assert calls == [(55.0, 200.0), (55.0, 200.0), (55.0, 200.0)]

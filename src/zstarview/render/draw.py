@@ -582,7 +582,12 @@ def _clip_polyline_to_radius(
     return fragments
 
 
-def draw_sky_reference_lines(painter: QPainter, geometry: ScreenGeometry, celestial_data: CelestialData) -> None:
+def draw_sky_reference_lines(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    celestial_data: CelestialData,
+    viewer_data: ViewerData,
+) -> None:
     """
     Draw celestial reference lines like the equator, ecliptic, and horizon.
 
@@ -598,7 +603,13 @@ def draw_sky_reference_lines(painter: QPainter, geometry: ScreenGeometry, celest
     ]
 
     painter.save()
-    for points, (color, width, style) in point_list_pen_styles:
+    for altaz_points, (color, width, style) in point_list_pen_styles:
+        points: List[Tuple[float, float]] = []
+        for alt, az in altaz_points:
+            if not is_in_fov(float(alt), float(az), viewer_data.view_center):
+                continue
+            nx, ny = altaz_to_normalized_xy(float(alt), float(az), viewer_data.view_center)
+            points.append((nx, ny))
         for frag in split_by_gaps(points):
             if len(frag) < 2:
                 continue

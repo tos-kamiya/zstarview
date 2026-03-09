@@ -588,40 +588,33 @@ def calculate_planets(
     return bodies
 
 
-def calculate_horizon_points(view_center: Tuple[float, float]) -> List[Tuple[float, float]]:
-    """Generate points along the horizon for drawing."""
+def calculate_horizon_points() -> List[Tuple[float, float]]:
+    """Generate altitude/azimuth samples along the horizon."""
     points: List[Tuple[float, float]] = []
     alt = 0.0
     for az in range(0, 360 + 5, 5):
-        if not is_in_fov(alt, az, view_center):
-            continue
-        nx, ny = altaz_to_normalized_xy(alt, az, view_center)
-        points.append((nx, ny))
+        points.append((alt, float(az)))
     return points
 
 
-def calculate_celestial_equator_points(location: EarthLocation, time: astropy.time.Time, view_center: Tuple[float, float]) -> List[Tuple[float, float]]:
-    """Generate points along the celestial equator for drawing."""
+def calculate_celestial_equator_points(location: EarthLocation, time: astropy.time.Time) -> List[Tuple[float, float]]:
+    """Generate altitude/azimuth samples along the celestial equator."""
     points: List[Tuple[float, float]] = []
     for ra_deg in range(0, 360 + 5, 5):
         coord = SkyCoord(ra=ra_deg * u.deg, dec=0 * u.deg, frame="icrs")
         altaz = coord.transform_to(AltAz(obstime=time, location=location))
-        if is_in_fov(altaz.alt.deg, altaz.az.deg, view_center):
-            nx, ny = altaz_to_normalized_xy(altaz.alt.deg, altaz.az.deg, view_center)
-            points.append((nx, ny))
+        points.append((float(altaz.alt.deg), float(altaz.az.deg)))
     return points
 
 
-def calculate_ecliptic_points(location: EarthLocation, time: astropy.time.Time, view_center: Tuple[float, float]) -> List[Tuple[float, float]]:
-    """Generate points along the ecliptic for drawing."""
+def calculate_ecliptic_points(location: EarthLocation, time: astropy.time.Time) -> List[Tuple[float, float]]:
+    """Generate altitude/azimuth samples along the ecliptic."""
     points: List[Tuple[float, float]] = []
     for lon_deg in range(0, 360 + 5, 5):
         ecl = SkyCoord(lon=lon_deg * u.deg, lat=0 * u.deg, frame=GeocentricTrueEcliptic(obstime=time))
         icrs = ecl.transform_to("icrs")
         altaz = icrs.transform_to(AltAz(obstime=time, location=location))
-        if is_in_fov(altaz.alt.deg, altaz.az.deg, view_center):
-            nx, ny = altaz_to_normalized_xy(altaz.alt.deg, altaz.az.deg, view_center)
-            points.append((nx, ny))
+        points.append((float(altaz.alt.deg), float(altaz.az.deg)))
     return points
 
 
