@@ -7,6 +7,7 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication
 
 from zstarview.asterisms import Asterism
+from zstarview.paths import ASTERISM_CLIP_FIELD_OF_VIEW_DEG
 from zstarview.render import draw as render_draw
 from zstarview.types import CelestialData, ScreenGeometry, ViewerData
 
@@ -16,6 +17,7 @@ app = QApplication.instance() or QApplication([])
 class DummyPainter:
     def __init__(self) -> None:
         self.polyline_count = 0
+        self.polylines = []
 
     def save(self) -> None:
         pass
@@ -28,6 +30,7 @@ class DummyPainter:
 
     def drawPolyline(self, _poly) -> None:
         self.polyline_count += 1
+        self.polylines.append([(point.x(), point.y()) for point in _poly])
 
 
 def _celestial_data_with_asterism_star_positions() -> CelestialData:
@@ -127,6 +130,57 @@ def test_draw_asterisms_deduplicates_shared_dim_segments(monkeypatch) -> None:
     )
 
     assert painter.polyline_count == 2
+
+
+def test_draw_asterisms_clips_with_asterism_specific_wide_fov(monkeypatch) -> None:
+    painter = DummyPainter()
+    geometry = ScreenGeometry(center=(120, 90), radius=70)
+    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
+    celestial_data = CelestialData(
+        time=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
+        planets=[],
+        stars={
+            "name": np.array(["Star A", "Star B"], dtype=object),
+            "source_id": np.array(["HIP1", "HIP2"], dtype=object),
+            "alt": np.array([45.0, -58.0], dtype=float),
+            "az": np.array([180.0, 180.0], dtype=float),
+            "vmag": np.array([1.0, 2.0], dtype=float),
+            "bv": np.zeros(2, dtype=float),
+            "size_factor": np.ones(2, dtype=float),
+            "color_factor_base": np.ones(2, dtype=float),
+        },
+        deep_sky_objects={
+            "id": np.array([], dtype=object),
+            "name": np.array([], dtype=object),
+            "type": np.array([], dtype=object),
+            "alt": np.array([], dtype=float),
+            "az": np.array([], dtype=float),
+            "vmag": np.array([], dtype=float),
+            "major_arcmin": np.array([], dtype=float),
+            "minor_arcmin": np.array([], dtype=float),
+            "pa_deg": np.array([], dtype=float),
+        },
+        celestial_equator_points=[],
+        ecliptic_points=[],
+        horizon_points=[],
+    )
+    asterism = Asterism("test", "Test Asterism", (("HIP1", "HIP2"),))
+
+    monkeypatch.setattr(render_draw, "ASTERISMS", (asterism,))
+
+    render_draw.draw_asterisms(
+        painter=painter,
+        geometry=geometry,
+        celestial_data=celestial_data,
+        viewer_data=viewer,
+        highlighted_object=None,
+        text_font=QFont(),
+    )
+
+    assert painter.polyline_count == 2
+    ys = [point[1] for polyline in painter.polylines for point in polyline]
+    assert ys
+    assert max(ys) <= geometry.center[1] + (geometry.radius * (ASTERISM_CLIP_FIELD_OF_VIEW_DEG / 90.0)) + 1.0e-6
 
 
 def test_find_highlighted_object_accepts_unnamed_asterism_member(monkeypatch) -> None:
