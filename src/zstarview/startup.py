@@ -49,6 +49,22 @@ class ResolvedLocation:
     cc: str = ""
 
 
+def _prefixed_viewpoint_name(kind: str, name: str) -> str:
+    if kind == "tower":
+        return f"t/{name}"
+    if kind == "mountain":
+        return f"m/{name}"
+    return name
+
+
+def _split_prefixed_viewpoint(text: str) -> tuple[str, str] | None:
+    source = (text or "").strip()
+    if len(source) >= 3 and source[1] == "/" and source[0] in {"t", "T", "m", "M"}:
+        kind = "tower" if source[0] in {"t", "T"} else "mountain"
+        return kind, source[2:].strip()
+    return None
+
+
 def setup_root_logger() -> logging.Logger:
     """Configure and return the root logger for the application."""
     logging.basicConfig(
@@ -75,8 +91,6 @@ def setup_root_logger() -> logging.Logger:
 
 def _format_splash_location(city: ResolvedLocation) -> str:
     """Create a concise location label for splash screen context."""
-    if city.cc:
-        return f"Location: {city.cc}/{city.display_name}"
     return f"Location: {city.display_name}"
 
 
@@ -115,11 +129,11 @@ def _tower_to_location(args_city: str, admin1_map: dict[tuple[str, str], str]) -
     nearest_city = _resolve_nearest_city(tower.latitude_deg, tower.longitude_deg, admin1_map)
     timezone_name = nearest_city.tz if nearest_city is not None else "UTC"
     return ResolvedLocation(
-        display_name=tower.name,
+        display_name=_prefixed_viewpoint_name("tower", tower.name),
         lat=tower.latitude_deg,
         lon=tower.longitude_deg,
         tz=timezone_name,
-        persistence_key=tower.persistent_key,
+        persistence_key=_prefixed_viewpoint_name("tower", tower.name),
         observer_height_m=tower.height_m,
         kind="tower",
         cc=nearest_city.cc if nearest_city is not None else "",
@@ -133,11 +147,11 @@ def _mountain_to_location(args_city: str, admin1_map: dict[tuple[str, str], str]
     nearest_city = _resolve_nearest_city(mountain.latitude_deg, mountain.longitude_deg, admin1_map)
     timezone_name = nearest_city.tz if nearest_city is not None else "UTC"
     return ResolvedLocation(
-        display_name=mountain.name,
+        display_name=_prefixed_viewpoint_name("mountain", mountain.name),
         lat=mountain.latitude_deg,
         lon=mountain.longitude_deg,
         tz=timezone_name,
-        persistence_key=mountain.persistent_key,
+        persistence_key=_prefixed_viewpoint_name("mountain", mountain.name),
         observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
         kind="mountain",
         cc=nearest_city.cc if nearest_city is not None else "",
@@ -210,8 +224,25 @@ def _startup_resolve_city(args_city: Optional[str]) -> ResolvedLocation:
 
     recs: List[CityRec] = []
     try:
+        explicit_viewpoint = _split_prefixed_viewpoint(args_city)
         tower_query = args_city.startswith("wikidata:") or re.match(r"^Q\d+$", args_city) is not None
-        if tower_query:
+        if explicit_viewpoint is not None:
+            explicit_kind, explicit_name = explicit_viewpoint
+            if explicit_kind == "tower":
+                tower_location = _tower_to_location(explicit_name, admin1_map)
+                if tower_location is None:
+                    logger.error("No tower found for '%s'", explicit_name)
+                    raise StartupAbortError()
+                resolved_location = tower_location
+            else:
+                mountain_location = _mountain_to_location(explicit_name, admin1_map)
+                if mountain_location is None:
+                    logger.error("No mountain found for '%s'", explicit_name)
+                    raise StartupAbortError()
+                resolved_location = mountain_location
+            persist_location = True
+
+        elif tower_query:
             tower_location = _tower_to_location(args_city, admin1_map)
             mountain_location = _mountain_to_location(args_city, admin1_map)
             if tower_location is not None:
@@ -269,7 +300,7 @@ def _startup_resolve_city(args_city: Optional[str]) -> ResolvedLocation:
         city = recs[0]
         city_str = f"{city.cc}/{city.name}"
         resolved_location = ResolvedLocation(
-            display_name=city.name,
+            display_name=city_str,
             lat=city.lat,
             lon=city.lon,
             tz=city.tz,

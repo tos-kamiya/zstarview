@@ -77,6 +77,7 @@
   - この経路では GUI を起動せず、GeoNames 読込や設定保存も行わない。
   - ダイアクリティカルマーク付き主表示名には ASCII フォールバック名を別フィールド `ascii_name` として算出し、`--list-mountains` と mountain viewpoint 名解決で利用するようにした。
   - 通常起動の `location` 引数でも mountain viewpoint 名とその `wikidata:Q...` 指定を受け付けるようにした。
+  - 通常起動の `location` 引数に `t/NAME` と `m/NAME` を追加し、メインウィンドウの地点名表示と保存キーも `t/...` / `m/...` 形式に揃えた。
 
 ### 2026-03-04
 

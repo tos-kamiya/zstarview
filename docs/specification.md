@@ -138,8 +138,12 @@ CLI には次のビューポイント dataset 参照専用オプションを持�
   - 数値のみ
 - タワー名
   - 例: `Tokyo Skytree`
+- 明示タワー名
+  - 例: `t/Tokyo Skytree`
 - 山名
   - 例: `Mount Fuji`
+- 明示山名
+  - 例: `m/Mount Fuji`
 - Wikidata ID
   - 例: `wikidata:Q57965`
 - 緯度経度
@@ -152,6 +156,8 @@ CLI には次のビューポイント dataset 参照専用オプションを持�
 
 - 都市名は GeoNames データに基づいて解決する。
 - 都市候補が複数ある場合は、優先規則に従って 1 件を選ぶ。
+- `t/NAME` は tower viewpoint としてのみ解決する。
+- `m/NAME` は mountain viewpoint としてのみ解決する。
 - タワー名は内蔵の viewpoint データセットから解決する。
 - 山名も内蔵の mountain viewpoint データセットから解決する。
 - タワー名解決では、主表示名や別名に加えて ASCII フォールバック名も受け付ける。

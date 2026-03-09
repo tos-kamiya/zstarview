@@ -92,7 +92,7 @@ The same simplified viewport-interaction mode is also used during window resize 
 
 | Argument | Description                                                                                                                                                                                                                                                           | Default                           |
 | :------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------- |
-| `location`   | Specify a city name, a tower name, a mountain name, or latitude/longitude in the form `"<lat>;<lon>"`. Examples: `Tokyo`, `Tokyo Skytree`, `Mount Fuji`, `35.68;139.76`, `N35.68;E139.76`, `-35.68;139.76`. If omitted, the last run location will be used (defaults to `Tokyo` on the first run). | Last run location (or `Tokyo`) |
+| `location`   | Specify a city name, a tower name, a mountain name, explicit `t/NAME` or `m/NAME`, or latitude/longitude in the form `"<lat>;<lon>"`. Examples: `Tokyo`, `Tokyo Skytree`, `t/Tokyo Skytree`, `Mount Fuji`, `m/Mount Fuji`, `35.68;139.76`, `N35.68;E139.76`, `-35.68;139.76`. If omitted, the last run location will be used (defaults to `Tokyo` on the first run). | Last run location (or `Tokyo`) |
 
 #### Options
 
@@ -212,6 +212,7 @@ You can also start from a built-in tower/viewpoint dataset generated from Wikida
 
 * Examples:
   * `Tokyo Skytree`
+  * `t/Tokyo Skytree` (explicit tower selection)
   * `Tsutenkaku` (ASCII fallback for `Tsūtenkaku`)
   * `Tokyo Tower`
   * `wikidata:Q57965`
@@ -230,6 +231,7 @@ You can also start from the bundled mountain/viewpoint dataset.
 
 * Examples:
   * `Mount Fuji`
+  * `m/Mount Fuji` (explicit mountain selection)
   * `Aconcagua`
   * `Snezka` (ASCII fallback for `Sněžka`)
   * `wikidata:Q39231`
