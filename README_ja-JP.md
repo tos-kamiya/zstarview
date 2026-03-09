@@ -60,6 +60,9 @@ zstarview [options] [location]
 | オプション                                       | 説明                                                            | デフォルト |
 | :------------------------------------------ | :-------------------------------------------------------------- | :------- |
 | `-h`, `--help`                              | ヘルプメッセージを表示して終了します。                                 |          |
+| `--list-towers` | 同梱タワー/展望地点 dataset の英語主表示名を一覧出力して終了します。 | |
+| `--list-tower-names` | 同梱タワー/展望地点 dataset の名前を多言語名込みで一覧出力して終了します。 | |
+| `--show-tower-json NAME` | 指定名で同梱タワー/展望地点を解決し、その JSON メタデータを出力して終了します。 | |
 | `-Z`, `--view-center-az VIEW_CENTER_AZ`     | 表示中心の方位角を指定します。                                     | `180`    |
 | `-A`, `--view-center-alt VIEW_CENTER_ALT`   | 表示中心の高度角を指定します（90=天頂、0=地平線）。                       | `90`     |
 | `--observer-height-m METERS` | 観測者の地面からの高さをメートルで指定します。デフォルトは都市/緯度経度入力で `1.7`、タワー名入力ではタワー高さです。 | location依存 |
@@ -163,6 +166,34 @@ zstarview --datetime "2025-09-12 9:0:0 JST" Tokyo # JSTの9時
 zstarview "35.68;139.76"
 zstarview "N35.68;E139.76" --datetime "2025-09-12 21 JST"
 ```
+
+### タワー名入力と dataset 参照
+
+Wikidata 由来の同梱タワー/展望地点 dataset から起動できます。
+
+- 例:
+  - `Tokyo Skytree`
+  - `Tokyo Tower`
+  - `wikidata:Q57965`
+- タワー名を使った場合、観測者高さのデフォルトはそのタワーの登録高です。
+- `--observer-height-m` を使えば上書きできます。
+
+例:
+
+```bash
+zstarview "Tokyo Skytree"
+zstarview "Tokyo Tower" --observer-height-m 150
+```
+
+GUI を起動せずに dataset 内容だけ参照することもできます。
+
+```bash
+zstarview --list-towers
+zstarview --list-tower-names
+zstarview --show-tower-json "Tokyo Skytree"
+```
+
+これらのオプションは相互排他で、`location` 引数や時刻・描画オプションとは併用できません。
 
 ### キー操作
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import unicodedata
+from dataclasses import asdict
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -72,6 +73,34 @@ def load_tower_viewpoints(path: str | Path = TOWER_VIEWPOINTS_FILE) -> tuple[Tow
         raise ValueError("tower viewpoints file does not contain an items list")
     towers = tuple(_as_tower(item) for item in items if isinstance(item, dict))
     return towers
+
+
+def list_tower_primary_names(towers: tuple[TowerViewpoint, ...] | None = None) -> tuple[str, ...]:
+    towers = load_tower_viewpoints() if towers is None else towers
+    names = {tower.name.strip() for tower in towers if tower.name.strip()}
+    return tuple(sorted(names, key=lambda name: (_normalize_name(name), name)))
+
+
+def list_tower_all_names(towers: tuple[TowerViewpoint, ...] | None = None) -> tuple[str, ...]:
+    towers = load_tower_viewpoints() if towers is None else towers
+    names_by_key: dict[str, str] = {}
+    for tower in towers:
+        for candidate in (tower.name, *tower.names, *tower.labels.values()):
+            text = candidate.strip()
+            if not text:
+                continue
+            normalized = _normalize_name(text)
+            existing = names_by_key.get(normalized)
+            if existing is None or text < existing:
+                names_by_key[normalized] = text
+    return tuple(sorted(names_by_key.values(), key=lambda name: (_normalize_name(name), name)))
+
+
+def tower_viewpoint_to_dict(tower: TowerViewpoint) -> dict[str, Any]:
+    payload = asdict(tower)
+    payload["names"] = list(tower.names)
+    payload["classes"] = list(tower.classes)
+    return payload
 
 
 def resolve_tower_viewpoint(query: str, towers: tuple[TowerViewpoint, ...] | None = None) -> TowerViewpoint | None:

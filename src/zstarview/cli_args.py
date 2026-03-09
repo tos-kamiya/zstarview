@@ -1,4 +1,5 @@
 import argparse
+from typing import Sequence
 from typing import Tuple, Union
 
 from .paths import CLOUD_MISSING_TINT_RGBA, DIRECTIONS, WINDOW_WIDTH
@@ -130,7 +131,7 @@ def _parse_window_geometry(value: str) -> WindowGeometryArg:
     return (x, y, width, height)
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     """Parses command-line arguments."""
     parser = argparse.ArgumentParser(description="Star sky visualizer")
     parser.add_argument(
@@ -139,6 +140,24 @@ def parse_args() -> argparse.Namespace:
         nargs="?",
         default="",
         help="Location name: city, lat;lon, or tower name (default: same as the last run)",
+    )
+    tower_query_group = parser.add_mutually_exclusive_group()
+    tower_query_group.add_argument(
+        "--list-towers",
+        action="store_true",
+        help="List bundled tower/viewpoint primary names and exit.",
+    )
+    tower_query_group.add_argument(
+        "--list-tower-names",
+        action="store_true",
+        help="List bundled tower/viewpoint names including localized names and exit.",
+    )
+    tower_query_group.add_argument(
+        "--show-tower-json",
+        type=str,
+        default=None,
+        metavar="NAME",
+        help="Resolve a bundled tower/viewpoint name and print its JSON metadata, then exit.",
     )
     time_group = parser.add_argument_group("Time settings")
     time_group.add_argument(
@@ -317,12 +336,46 @@ def parse_args() -> argparse.Namespace:
         metavar="true|false",
         help="Whether to show asterism overlays at startup (true/false).",
     )
+    theme_default = "night"
     parser.add_argument(
         "-t",
         "--theme",
         type=_parse_theme,
-        default="night",
+        default=theme_default,
         metavar="{night,day,white,black}",
         help="Theme preset for background and star contrast (default: night).",
     )
-    return parser.parse_args()
+    args = parser.parse_args(argv)
+    tower_cli_requested = bool(args.list_towers or args.list_tower_names or args.show_tower_json)
+    if tower_cli_requested:
+        if args.city:
+            parser.error("tower listing options cannot be used with the location argument")
+
+        incompatible_non_default = (
+            args.hours != 0
+            or args.days != 0
+            or args.datetime is not None
+            or args.vmag_limit != 6.0
+            or args.vmag_brightness_multiplier != 2.5
+            or args.enlarge_moon
+            or args.star_base_radius != 4.0
+            or args.expected_render_width != WINDOW_WIDTH
+            or args.window_geometry is not None
+            or args.view_center_az != 180.0
+            or args.view_center_alt != 90.0
+            or args.observer_height_m is not None
+            or args.sky_opacity != 0.2
+            or args.cloud_opacity != 0.2
+            or args.terrain_horizon_opacity != 0.05
+            or args.ground_tint_opacity != 0.1
+            or args.cloud_stripe != (50, 0.2)
+            or args.cloud_missing_tint_opacity != float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0
+            or args.sky_update_interval != 60
+            or args.show_dso_initial is not None
+            or args.show_asterisms_initial is not None
+            or args.theme != theme_default
+        )
+        if incompatible_non_default:
+            parser.error("tower listing options cannot be used with time or rendering options")
+
+    return args
