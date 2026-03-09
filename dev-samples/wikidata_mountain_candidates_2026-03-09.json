@@ -505,22 +505,6 @@
       "region_hint": "Colombia"
     },
     {
-      "qid": "Q338790",
-      "name": "Pico Cristóbal Colón",
-      "names": [
-        "Pico Cristóbal Colón",
-        "シモン・ボリーバル山"
-      ],
-      "labels": {
-        "en": "Pico Cristóbal Colón",
-        "ja": "シモン・ボリーバル山"
-      },
-      "latitude_deg": 10.834444444,
-      "longitude_deg": -73.691388888,
-      "elevation_m": 5775.0,
-      "region_hint": "Colombia"
-    },
-    {
       "qid": "Q527548",
       "name": "Mount Karthala",
       "names": [
