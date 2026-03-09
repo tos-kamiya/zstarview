@@ -32,7 +32,7 @@
   - 正規化には Wikidata を使い、`qid`、多言語名、別名、座標、標高を補う。
   - 座標は厳密測量値ではなく、星空表示用の山頂ビュー代表点として妥当なものを採用する。
   - 初版は `mountain_viewpoints.json` を別 dataset とし、`tower_viewpoints.json` とは分けて管理する。
-  - 将来的には `--list-mountains` や `--show-mountain-json` のような専用 CLI を想定する。
+  - 将来的には mountain も tower と同じ viewpoint CLI から参照できる形を想定する。
 
 ## 4. TODO
 
@@ -78,6 +78,11 @@
   - ダイアクリティカルマーク付き主表示名には ASCII フォールバック名を別フィールド `ascii_name` として算出し、`--list-mountains` と mountain viewpoint 名解決で利用するようにした。
   - 通常起動の `location` 引数でも mountain viewpoint 名とその `wikidata:Q...` 指定を受け付けるようにした。
   - 通常起動の `location` 引数に `t/NAME` と `m/NAME` を追加し、メインウィンドウの地点名表示と保存キーも `t/...` / `m/...` 形式に揃えた。
+
+- viewpoint 参照 CLI の一本化
+  - 旧 `--list-towers` / `--list-mountains` 系を廃止し、`--list-viewpoints KIND`、`--list-viewpoint-names KIND`、`--show-viewpoint-json NAME` に統一した。
+  - 一覧出力は `t/NAME` / `m/NAME` の prefix を常に付け、通常起動の `t/NAME` / `m/NAME` ルールと揃えた。
+  - `--show-viewpoint-json` は prefix 付き入力ならその kind だけを解決し、prefix なし入力で tower / mountain の両方に exact match がある場合は曖昧一致エラーにして候補名を列挙するようにした。
   - 文書上も mountain viewpoint dataset の出典を、Wikipedia 候補収集 + Wikidata 正規化の流れとして README と docs に明記した。
 
 ### 2026-03-04

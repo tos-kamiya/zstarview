@@ -9,7 +9,13 @@ from .cli_args import (
     _parse_window_geometry,
     parse_args,
 )
+from .viewpoints import (
+    find_exact_viewpoint_matches,
+    prefixed_viewpoint_name,
+    split_prefixed_viewpoint,
+)
 from .mountain_viewpoints import (
+    load_mountain_viewpoints,
     list_mountain_all_names,
     list_mountain_primary_names,
     mountain_viewpoint_to_dict,
@@ -32,6 +38,7 @@ from .startup import (
     setup_root_logger,
 )
 from .tower_viewpoints import (
+    load_tower_viewpoints,
     list_tower_all_names,
     list_tower_primary_names,
     resolve_tower_viewpoint,
@@ -42,38 +49,81 @@ logger = logging.getLogger(__name__)
 
 
 def _handle_dataset_query_cli(args: object) -> int | None:
-    if getattr(args, "list_towers", False):
-        for name in list_tower_primary_names():
-            print(name)
+    list_kind = getattr(args, "list_viewpoints", None)
+    if list_kind:
+        if list_kind == "t":
+            for name in list_tower_primary_names():
+                print(prefixed_viewpoint_name("tower", name))
+        else:
+            for name in list_mountain_primary_names():
+                print(prefixed_viewpoint_name("mountain", name))
         return 0
-    if getattr(args, "list_tower_names", False):
-        for name in list_tower_all_names():
-            print(name)
+    list_names_kind = getattr(args, "list_viewpoint_names", None)
+    if list_names_kind:
+        if list_names_kind == "t":
+            for name in list_tower_all_names():
+                print(prefixed_viewpoint_name("tower", name))
+        else:
+            for name in list_mountain_all_names():
+                print(prefixed_viewpoint_name("mountain", name))
         return 0
-    tower_name = getattr(args, "show_tower_json", None)
-    if tower_name:
-        tower = resolve_tower_viewpoint(tower_name)
-        if tower is None:
-            print(f"No tower found for {tower_name!r}", file=sys.stderr)
+    viewpoint_name = getattr(args, "show_viewpoint_json", None)
+    if viewpoint_name:
+        explicit = split_prefixed_viewpoint(viewpoint_name)
+        if explicit is not None:
+            kind, name = explicit
+            if kind == "tower":
+                tower = resolve_tower_viewpoint(name)
+                if tower is None:
+                    print(f"No tower found for {viewpoint_name!r}", file=sys.stderr)
+                    return 1
+                print(
+                    json.dumps(
+                        tower_viewpoint_to_dict(tower),
+                        ensure_ascii=False,
+                        indent=2,
+                        sort_keys=True,
+                    )
+                )
+                return 0
+            mountain = resolve_mountain_viewpoint(name)
+            if mountain is None:
+                print(f"No mountain found for {viewpoint_name!r}", file=sys.stderr)
+                return 1
+            print(
+                json.dumps(
+                    mountain_viewpoint_to_dict(mountain),
+                    ensure_ascii=False,
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+            return 0
+
+        exact_towers = find_exact_viewpoint_matches(viewpoint_name, load_tower_viewpoints())
+        exact_mountains = find_exact_viewpoint_matches(viewpoint_name, load_mountain_viewpoints())
+        if exact_towers and exact_mountains:
+            candidates = [
+                *(prefixed_viewpoint_name("tower", tower.name) for tower in exact_towers),
+                *(prefixed_viewpoint_name("mountain", mountain.name) for mountain in exact_mountains),
+            ]
+            print(
+                f"Ambiguous viewpoint name {viewpoint_name!r}. Matches:\n"
+                + "\n".join(f"- {candidate}" for candidate in candidates),
+                file=sys.stderr,
+            )
             return 1
-        print(json.dumps(tower_viewpoint_to_dict(tower), ensure_ascii=False, indent=2, sort_keys=True))
-        return 0
-    if getattr(args, "list_mountains", False):
-        for name in list_mountain_primary_names():
-            print(name)
-        return 0
-    if getattr(args, "list_mountain_names", False):
-        for name in list_mountain_all_names():
-            print(name)
-        return 0
-    mountain_name = getattr(args, "show_mountain_json", None)
-    if mountain_name:
-        mountain = resolve_mountain_viewpoint(mountain_name)
-        if mountain is None:
-            print(f"No mountain found for {mountain_name!r}", file=sys.stderr)
-            return 1
-        print(json.dumps(mountain_viewpoint_to_dict(mountain), ensure_ascii=False, indent=2, sort_keys=True))
-        return 0
+
+        tower = resolve_tower_viewpoint(viewpoint_name)
+        if tower is not None:
+            print(json.dumps(tower_viewpoint_to_dict(tower), ensure_ascii=False, indent=2, sort_keys=True))
+            return 0
+        mountain = resolve_mountain_viewpoint(viewpoint_name)
+        if mountain is not None:
+            print(json.dumps(mountain_viewpoint_to_dict(mountain), ensure_ascii=False, indent=2, sort_keys=True))
+            return 0
+        print(f"No viewpoint found for {viewpoint_name!r}", file=sys.stderr)
+        return 1
     return None
 
 

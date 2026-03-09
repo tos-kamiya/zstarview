@@ -146,38 +146,25 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     dataset_query_group = parser.add_mutually_exclusive_group()
     dataset_query_group.add_argument(
-        "--list-towers",
-        action="store_true",
-        help="List bundled tower/viewpoint primary names and exit.",
+        "--list-viewpoints",
+        type=str,
+        default=None,
+        metavar="{t,m}",
+        help="List bundled viewpoint primary names for towers (t) or mountains (m) and exit.",
     )
     dataset_query_group.add_argument(
-        "--list-tower-names",
-        action="store_true",
-        help="List bundled tower/viewpoint names including localized names and exit.",
+        "--list-viewpoint-names",
+        type=str,
+        default=None,
+        metavar="{t,m}",
+        help="List bundled viewpoint names including localized names for towers (t) or mountains (m) and exit.",
     )
     dataset_query_group.add_argument(
-        "--show-tower-json",
+        "--show-viewpoint-json",
         type=str,
         default=None,
         metavar="NAME",
-        help="Resolve a bundled tower/viewpoint name and print its JSON metadata, then exit.",
-    )
-    dataset_query_group.add_argument(
-        "--list-mountains",
-        action="store_true",
-        help="List bundled mountain/viewpoint primary names and exit.",
-    )
-    dataset_query_group.add_argument(
-        "--list-mountain-names",
-        action="store_true",
-        help="List bundled mountain/viewpoint names including localized names and exit.",
-    )
-    dataset_query_group.add_argument(
-        "--show-mountain-json",
-        type=str,
-        default=None,
-        metavar="NAME",
-        help="Resolve a bundled mountain/viewpoint name and print its JSON metadata, then exit.",
+        help="Resolve a bundled viewpoint name and print its JSON metadata, then exit.",
     )
     time_group = parser.add_argument_group("Time settings")
     time_group.add_argument(
@@ -275,7 +262,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         default=None,
         help=(
             "Observer height above local ground in meters. "
-            "Default: 1.7 for city/latlon, tower height for tower-name input."
+            "Default: 1.7 for city/latlon/mountain and tower height + 1.7 for tower-name input."
         ),
     )
 
@@ -366,13 +353,17 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Theme preset for background and star contrast (default: night).",
     )
     args = parser.parse_args(argv)
+    for option_name in ("list_viewpoints", "list_viewpoint_names"):
+        value = getattr(args, option_name)
+        if value is not None:
+            normalized = value.strip().lower()
+            if normalized not in {"t", "m"}:
+                parser.error(f"--{option_name.replace('_', '-')} must be 't' or 'm'")
+            setattr(args, option_name, normalized)
     dataset_cli_requested = bool(
-        args.list_towers
-        or args.list_tower_names
-        or args.show_tower_json
-        or args.list_mountains
-        or args.list_mountain_names
-        or args.show_mountain_json
+        args.list_viewpoints
+        or args.list_viewpoint_names
+        or args.show_viewpoint_json
     )
     if dataset_cli_requested:
         if args.city:

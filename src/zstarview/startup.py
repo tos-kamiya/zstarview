@@ -12,6 +12,7 @@ import polars as pl
 from .catalog import load_dso_catalog, load_star_catalog
 from .config import load_last_city, save_last_city
 from .viewpoints import Viewpoint
+from .viewpoints import prefixed_viewpoint_name, split_prefixed_viewpoint
 from .mountain_viewpoints import resolve_mountain_viewpoint
 from .paths import (
     CITY_ADMIN1_CODES_FILE,
@@ -48,22 +49,6 @@ class ResolvedLocation:
     observer_height_m: float
     kind: str
     cc: str = ""
-
-
-def _prefixed_viewpoint_name(kind: str, name: str) -> str:
-    if kind == "tower":
-        return f"t/{name}"
-    if kind == "mountain":
-        return f"m/{name}"
-    return name
-
-
-def _split_prefixed_viewpoint(text: str) -> tuple[str, str] | None:
-    source = (text or "").strip()
-    if len(source) >= 3 and source[1] == "/" and source[0] in {"t", "T", "m", "M"}:
-        kind = "tower" if source[0] in {"t", "T"} else "mountain"
-        return kind, source[2:].strip()
-    return None
 
 
 def setup_root_logger() -> logging.Logger:
@@ -136,11 +121,11 @@ def _viewpoint_to_location(
     )
     timezone_name = nearest_city.tz if nearest_city is not None else "UTC"
     return ResolvedLocation(
-        display_name=_prefixed_viewpoint_name(viewpoint.kind, viewpoint.name),
+        display_name=prefixed_viewpoint_name(viewpoint.kind, viewpoint.name),
         lat=viewpoint.latitude_deg,
         lon=viewpoint.longitude_deg,
         tz=timezone_name,
-        persistence_key=_prefixed_viewpoint_name(viewpoint.kind, viewpoint.name),
+        persistence_key=prefixed_viewpoint_name(viewpoint.kind, viewpoint.name),
         observer_height_m=viewpoint.height_m + DEFAULT_OBSERVER_HEIGHT_M,
         kind=viewpoint.kind,
         cc=nearest_city.cc if nearest_city is not None else "",
@@ -221,7 +206,7 @@ def _startup_resolve_city(args_city: Optional[str]) -> ResolvedLocation:
 
     recs: List[CityRec] = []
     try:
-        explicit_viewpoint = _split_prefixed_viewpoint(args_city)
+        explicit_viewpoint = split_prefixed_viewpoint(args_city)
         tower_query = args_city.startswith("wikidata:") or re.match(r"^Q\d+$", args_city) is not None
         if explicit_viewpoint is not None:
             explicit_kind, explicit_name = explicit_viewpoint
