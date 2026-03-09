@@ -85,6 +85,14 @@
   - `--show-viewpoint-json` は prefix 付き入力ならその kind だけを解決し、prefix なし入力で tower / mountain の両方に exact match がある場合は曖昧一致エラーにして候補名を列挙するようにした。
   - 文書上も mountain viewpoint dataset の出典を、Wikipedia 候補収集 + Wikidata 正規化の流れとして README と docs に明記した。
 
+- viewpoint 名クリーニングの整理
+  - ASCII フォールバックは、ダイアクリティカルマーク除去後に英字を含むものだけを採用するようにした。
+  - その結果、`=` や `==` のような記号だけの fallback は一覧と解決候補から除外した。
+  - mountain の別名では、長文フレーズ、数字だけ、絵文字だけのノイズ値を除外した。
+  - mountain の別名では、`Mt.` / `Mtn.` を `Mount` / `Mountain` に寄せ、`/` 前後に空白を含む表記は候補一覧から外した。
+  - `Aoraki / Mount Cook` は主表示名としては残しつつ、別名候補としては `Aoraki/Mount Cook` を残す方針にした。
+  - tower の短縮 alias は個別判断とし、`i360` は残し、`138` のような数字だけの短縮は許可しない方針にした。
+
 ### 2026-03-04
 
 - 高密度恒星表示の操作応答改善
