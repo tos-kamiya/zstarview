@@ -18,6 +18,7 @@ The name emphasizes the *zenith*—the point directly overhead—conveying the e
 - When satellite coverage is partial, missing regions are shown with a faint yellow tint.
 - Optional terrain horizon overlay from Copernicus DEM adds a subtle ocher terrain line aligned to the local terrain.
 - Below the geometric or terrain horizon, the disc is filled with a ground color for orientation.
+- During view-center changes or window resize, the app briefly switches to a simplified viewport-interaction mode that keeps only bright stars, guide lines, and the terrain horizon responsive while heavier layers catch up after idle.
 - A red tint marks the *never-rises* celestial region for the current latitude.
 - The project is routinely tested on CPython 3.10, 3.11, 3.12, and 3.13.
 
@@ -195,6 +196,7 @@ Time zone examples for `--datetime`:
 
 * **← / →**: Rotate view azimuth by ±5°
 * **↑ / ↓**: Change view altitude by ±5° (clamped to 0°..90°)
+  While arrow-key input continues, the app keeps a simplified viewport-interaction mode for about 0.7 seconds after the last input. In this mode, it shows stars up to `Vmag <= 4.0`, the celestial equator, ecliptic, horizon, terrain horizon, direction labels, and the zenith marker; planets, full star density, sky-color disc, clouds, DSO, and asterisms are temporarily hidden.
 * **M**: Toggle moon enlarged to 5x size
 * **D**: Toggle DSO overlays
 * **A**: Toggle asterism overlays
@@ -223,6 +225,8 @@ From the hamburger menu (`☰`), you can use:
 * **Exit**: Quit the application.
 
 After a jump/search, the selected star is highlighted for about 3 seconds using the same UI style as mouse hover (circle marker + name label).
+
+While resizing the window, the same simplified viewport-interaction mode is used so that the view stays responsive.
 
 ### Supported Asterisms
 
