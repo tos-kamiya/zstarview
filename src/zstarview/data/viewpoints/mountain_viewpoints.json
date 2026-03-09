@@ -3063,31 +3063,6 @@
       "region_hint": "Venezuela"
     },
     {
-      "id": "wikidata:Q338790",
-      "qid": "Q338790",
-      "name": "Pico Cristóbal Colón",
-      "names": [
-        "Pico Cristóbal Colón",
-        "Pico Simon Bolivar",
-        "シモン・ボリーバル山"
-      ],
-      "labels": {
-        "en": "Pico Cristóbal Colón",
-        "ja": "シモン・ボリーバル山"
-      },
-      "latitude_deg": 10.834444444,
-      "longitude_deg": -73.691388888,
-      "wikidata_url": "https://www.wikidata.org/wiki/Q338790",
-      "wikipedia_urls": {
-        "en": "https://en.wikipedia.org/wiki/Pico_Simón_Bolívar",
-        "ja": "https://ja.wikipedia.org/wiki/シモン・ボリバル山"
-      },
-      "location_arg": "10.834444;-73.691389",
-      "slug": "Pico_Cristóbal_Colón",
-      "elevation_m": 5775.0,
-      "region_hint": "Colombia"
-    },
-    {
       "id": "wikidata:Q578862",
       "qid": "Q578862",
       "name": "Pico Cristóbal Colón",
