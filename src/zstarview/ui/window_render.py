@@ -187,6 +187,13 @@ class SkyWindowRenderMixin:
             render_viewer,
             draw_vmag_limit=_ORIENTATION_INTERACTION_STAR_VMAG_LIMIT,
         )
+        render_draw.draw_terrain_horizon_line(
+            painter,
+            geometry,
+            self.state.terrain_horizon_profile,
+            render_viewer.view_center,
+            opacity=self.terrain_horizon_opacity,
+        )
         render_draw.draw_direction_labels(
             painter,
             geometry,

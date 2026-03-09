@@ -17,7 +17,7 @@ class SkyWindowState:
     rotation_step: float = 5.0
     interaction_idle_ms: int = 300
     interaction_mode: bool = False
-    orientation_interaction_idle_ms: int = 1000
+    orientation_interaction_idle_ms: int = 700
     orientation_interaction_mode: bool = False
     orientation_interaction_stars: Optional[StarsTable] = None
     mouse_pos: Optional[QPoint] = None

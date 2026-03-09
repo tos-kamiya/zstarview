@@ -142,6 +142,11 @@ def test_draw_orientation_interaction_layers_limits_stars_to_bright_subset(monke
     )
     monkeypatch.setattr(
         window_render_module.render_draw,
+        "draw_terrain_horizon_line",
+        lambda *_args, **_kwargs: calls.append(("terrain", None)),
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
         "draw_direction_labels",
         lambda *_args, **_kwargs: calls.append(("direction", None)),
     )
@@ -154,6 +159,7 @@ def test_draw_orientation_interaction_layers_limits_stars_to_bright_subset(monke
     dummy = SimpleNamespace()
     dummy.text_font = object()
     dummy.visual_preset = "night"
+    dummy.terrain_horizon_opacity = 0.25
     dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
     dummy.state.mouse_pos = None
     dummy._draw_star_layer = lambda *_args, **kwargs: calls.append(("stars", kwargs.get("draw_vmag_limit")))
@@ -175,6 +181,7 @@ def test_draw_orientation_interaction_layers_limits_stars_to_bright_subset(monke
     assert calls == [
         ("reference", None),
         ("stars", 4.0),
+        ("terrain", None),
         ("direction", None),
         ("zenith", None),
     ]
@@ -184,6 +191,11 @@ def test_draw_orientation_interaction_layers_prefers_interaction_star_subset(mon
     monkeypatch.setattr(
         window_render_module.render_draw,
         "draw_sky_reference_lines",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_terrain_horizon_line",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
@@ -202,6 +214,7 @@ def test_draw_orientation_interaction_layers_prefers_interaction_star_subset(mon
     dummy = SimpleNamespace()
     dummy.text_font = object()
     dummy.visual_preset = "night"
+    dummy.terrain_horizon_opacity = 0.25
     dummy.state = SkyWindowState(
         render_view_center=(45.0, 180.0),
         orientation_interaction_stars=interaction_stars,
@@ -233,6 +246,62 @@ def test_draw_orientation_interaction_layers_prefers_interaction_star_subset(mon
     )
 
     assert seen_stars == [interaction_stars]
+
+
+def test_draw_orientation_interaction_layers_draws_terrain_profile(monkeypatch) -> None:
+    seen_profiles: list[object] = []
+    seen_view_centers: list[object] = []
+
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_sky_reference_lines",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_terrain_horizon_line",
+        lambda _p, _g, profile, view_center, **_kwargs: (
+            seen_profiles.append(profile),
+            seen_view_centers.append(view_center),
+        ),
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_direction_labels",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_zenith_marker",
+        lambda *_args, **_kwargs: None,
+    )
+
+    terrain_profile = [(1.0, 10.0), (2.0, 20.0)]
+    dummy = SimpleNamespace()
+    dummy.text_font = object()
+    dummy.visual_preset = "night"
+    dummy.terrain_horizon_opacity = 0.25
+    dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
+    dummy.state.mouse_pos = None
+    dummy.state.terrain_horizon_profile = terrain_profile
+    dummy._draw_star_layer = lambda *_args, **_kwargs: None
+
+    SkyWindow._draw_orientation_interaction_layers(
+        dummy,
+        painter=object(),
+        geometry=object(),
+        celestial_data=object(),
+        render_viewer=ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="Asia/Tokyo",
+            city_name="Tokyo",
+            view_center=(50.0, 210.0),
+            observer_height_m=1.7,
+        ),
+    )
+
+    assert seen_profiles == [terrain_profile]
+    assert seen_view_centers == [(50.0, 210.0)]
 
 
 def test_draw_sky_reference_lines_uses_render_view_center_projection(monkeypatch) -> None:
