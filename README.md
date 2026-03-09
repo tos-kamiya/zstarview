@@ -48,20 +48,57 @@ zstarview [options] [location]
 
 > Note (Ubuntu/Wayland, GNOME): If the taskbar icon does not appear when launching from a terminal, follow the steps in [Generating a `.desktop` launcher (GNOME only)](#generating-a-desktop-launcher-gnome-only).
 
-### Argument
+### GUI
+
+#### Key Operations
+
+* **← / →**: Rotate view azimuth by ±5°
+* **↑ / ↓**: Change view altitude by ±5° (clamped to 0°..90°)
+  While arrow-key input continues, the app keeps a simplified viewport-interaction mode for about 0.7 seconds after the last input. In this mode, it shows stars up to `Vmag <= 4.0`, the celestial equator, ecliptic, horizon, terrain horizon, direction labels, and the zenith marker; planets, full star density, sky-color disc, clouds, DSO, and asterisms are temporarily hidden.
+* **M**: Toggle moon enlarged to 5x size
+* **D**: Toggle DSO overlays
+* **A**: Toggle asterism overlays
+* **S**: Toggle sky-color shading between gradient and flat-disc mode
+* **C**: Toggle cloud overlays
+* **T**: Toggle terrain horizon overlay
+* **Ctrl+J**: Open Jump to Named Star
+* **Ctrl+F**: Open Search Stars and Asterisms
+* **F11**: Toggle fullscreen display
+* **ESC**: Exit fullscreen
+* **Q**: Quit
+
+#### Menu Operations
+
+From the hamburger menu (`☰`), you can use:
+
+* **Jump to Named Star...**: Choose from representative named stars (`Vmag <= 2.0`), grouped into North / Equatorial / South, then jump the view center to that star.
+* **Search Stars and Asterisms...**: Search across named stars and supported asterisms, then jump to the selected target.
+* **Enlarge Moon**: Toggle moon enlarged to 5x size.
+* **DSO**: Toggle deep-sky object overlays on/off.
+* **Asterisms**: Toggle asterism overlays on/off (when enabled, dim overlays stay visible; hovering a member star brightens the matching asterism and shows its label).
+* **Sky Color Disc**: Switch between the full sky-color gradient and the flat dark-disc fallback.
+* **Clouds**: Toggle real-time cloud overlays on/off.
+* **Terrain Horizon**: Toggle the terrain skyline overlay on/off. If disabled from the CLI with `--terrain-horizon-opacity 0`, the menu item cannot re-enable it for that run.
+* **Fullscreen**: Toggle fullscreen display.
+* **Exit**: Quit the application.
+
+After a jump/search, the selected star is highlighted for about 3 seconds using the same UI style as mouse hover (circle marker + name label).
+
+The same simplified viewport-interaction mode is also used during window resize to keep interaction responsive while heavier layers catch up after idle.
+
+### CLI
+
+#### Argument
 
 | Argument | Description                                                                                                                                                                                                                                                           | Default                           |
 | :------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------- |
 | `location`   | Specify a city name, a tower name, or latitude/longitude in the form `"<lat>;<lon>"`. Examples: `Tokyo`, `Tokyo Skytree`, `35.68;139.76`, `N35.68;E139.76`, `-35.68;139.76`. If omitted, the last run location will be used (defaults to `Tokyo` on the first run). | Last run location (or `Tokyo`) |
 
-### Options
+#### Options
 
 | Option                                      | Description                                                                 | Default |
 | :------------------------------------------ | :-------------------------------------------------------------------------- | :------ |
 | `-h`, `--help`                              | Show this help message and exit.                                            |         |
-| `--list-towers`                             | Print bundled tower/viewpoint primary names and exit.                       |         |
-| `--list-tower-names`                        | Print bundled tower/viewpoint names including localized names and exit.     |         |
-| `--show-tower-json NAME`                    | Resolve a bundled tower/viewpoint name and print its JSON metadata, then exit. |         |
 | `-Z`, `--view-center-az VIEW_CENTER_AZ`     | Viewing azimuth (degrees or compass points).                                | `180`   |
 | `-A`, `--view-center-alt VIEW_CENTER_ALT`   | Viewing altitude angle (90=zenith, 0=horizon).                              | `90`    |
 | `--observer-height-m METERS`                | Observer height above local ground in meters. Default: `1.7` for city/latlon, tower height for tower-name input. | location-dependent |
@@ -93,7 +130,7 @@ zstarview [options] [location]
 
 \*4 Terrain horizon rendering downloads Copernicus DEM tiles on first use and reuses the cached DEM later. When enabled, the terrain profile also becomes the boundary for the ground-color fill inside the disc.
 
-**Overlay visibility at startup**
+#### Overlay visibility at startup
 
 Use these options to control initial overlay states without post-launch menu operations:
 
@@ -102,7 +139,7 @@ Use these options to control initial overlay states without post-launch menu ope
 zstarview --show-dso-initial false --show-asterisms-initial true Tokyo
 ```
 
-**About the view center options**
+#### About the view center options
 
 The `-Z` (azimuth) and `-A` (altitude) options specify the center of the displayed sky.
 
@@ -118,7 +155,7 @@ Azimuth can be given in degrees or compass points (case-insensitive).
 Examples: `-Z E`, `-Z ne`, `-Z SSW` (202.5°).
 (Compass mapping: 0=N, 90=E, 180=S, 270=W; accepts N, NNE, NE, ENE, E, ESE, SE, SSE, S, SSW, SW, WSW, W, WNW, NW, NNW.)
 
-**About magnitude limit**
+#### About magnitude limit
 
 Use `-V magnitude` to limit the displayed stars to those brighter than the given magnitude.
 The default is `-V 6.0`. For example, specifying 10.0 will display about 324,000 stars.
@@ -126,7 +163,7 @@ Note that higher values will increase rendering time.
 
 [→ Example: display up to magnitude 10.0](docs/images/screenshot3.png)
 
-**About the datetime option**
+#### About the datetime option
 
 Use `--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"` to specify an absolute date and time.
 The time part may be just hours, hours\:minutes, or hours\:minutes\:seconds.
@@ -147,15 +184,12 @@ zstarview --datetime "2025-09-12 09:00" Tokyo     # 9:00
 zstarview --datetime "2025-09-12 9:0:0 JST" Tokyo # 9:00:00 JST
 ```
 
----
-
-**Latitude/Longitude direct input**
+#### Latitude/Longitude direct input
 
 Instead of a city name, you can directly specify coordinates as `"<lat>;<lon>"`.
 
 * Format: `latitude;longitude` (semicolon separated)
 * Examples:
-
   * `35.68;139.76`
   * `N35.68;E139.76`
   * `-35.68;139.76`
@@ -172,7 +206,7 @@ zstarview "N35.68;E139.76" --datetime "2025-09-12 21 JST"
 zstarview "35.68;139.76" --observer-height-m 120
 ```
 
-**Tower name input**
+#### Tower name input
 
 You can also start from a built-in tower/viewpoint dataset generated from Wikidata.
 
@@ -192,9 +226,21 @@ zstarview "Tokyo Skytree"
 zstarview "Tokyo Tower" --observer-height-m 150
 ```
 
-**Tower dataset query**
+Time zone examples for `--datetime`:
+
+- IANA zone name: `--datetime "2025-09-12 21 Asia/Tokyo"`
+- UTC offset: `--datetime "2025-09-12 21 UTC+9"`
+
+### Tower-Related CLI Queries
 
 You can inspect the bundled tower/viewpoint dataset without launching the GUI.
+
+| Option                                      | Description                                                                 | Default |
+| :------------------------------------------ | :-------------------------------------------------------------------------- | :------ |
+| `-h`, `--help`                              | Show this help message and exit.                                            |         |
+| `--list-towers`                             | Print bundled tower/viewpoint list names and exit. Uses ASCII fallback names when available. |         |
+| `--list-tower-names`                        | Print bundled tower/viewpoint names including localized and ASCII-fallback names, then exit. |         |
+| `--show-tower-json NAME`                    | Resolve a bundled tower/viewpoint name and print its JSON metadata, including `ascii_name` when available, then exit. |         |
 
 ```bash
 zstarview --list-towers
@@ -204,45 +250,7 @@ zstarview --show-tower-json "Tokyo Skytree"
 
 These options are mutually exclusive, do not accept the `location` argument, and cannot be combined with time/rendering options.
 `--list-towers` prefers ASCII fallback names when available.
-
-Time zone examples for `--datetime`:
-
-- IANA zone name: `--datetime "2025-09-12 21 Asia/Tokyo"`
-- UTC offset: `--datetime "2025-09-12 21 UTC+9"`
-
-### Key Operations
-
-* **← / →**: Rotate view azimuth by ±5°
-* **↑ / ↓**: Change view altitude by ±5° (clamped to 0°..90°)
-  While arrow-key input continues, the app keeps a simplified viewport-interaction mode for about 0.7 seconds after the last input. In this mode, it shows stars up to `Vmag <= 4.0`, the celestial equator, ecliptic, horizon, terrain horizon, direction labels, and the zenith marker; planets, full star density, sky-color disc, clouds, DSO, and asterisms are temporarily hidden.
-* **M**: Toggle moon enlarged to 5x size
-* **D**: Toggle DSO overlays
-* **A**: Toggle asterism overlays
-* **S**: Toggle sky-color shading between gradient and flat-disc mode
-* **C**: Toggle cloud overlays
-* **T**: Toggle terrain horizon overlay
-* **Ctrl+J**: Open Jump to Named Star
-* **Ctrl+F**: Open Search Stars and Asterisms
-* **F11**: Toggle fullscreen display
-* **ESC**: Exit fullscreen
-* **Q**: Quit
-
-### Menu Operations
-
-From the hamburger menu (`☰`), you can use:
-
-* **Jump to Named Star...**: Choose from representative named stars (`Vmag <= 2.0`), grouped into North / Equatorial / South, then jump the view center to that star.
-* **Search Stars and Asterisms...**: Search across named stars and supported asterisms, then jump to the selected target.
-* **Enlarge Moon**: Toggle moon enlarged to 5x size.
-* **DSO**: Toggle deep-sky object overlays on/off.
-* **Asterisms**: Toggle asterism overlays on/off (when enabled, dim overlays stay visible; hovering a member star brightens the matching asterism and shows its label).
-* **Sky Color Disc**: Switch between the full sky-color gradient and the flat dark-disc fallback.
-* **Clouds**: Toggle real-time cloud overlays on/off.
-* **Terrain Horizon**: Toggle the terrain skyline overlay on/off. If disabled from the CLI with `--terrain-horizon-opacity 0`, the menu item cannot re-enable it for that run.
-* **Fullscreen**: Toggle fullscreen display.
-* **Exit**: Quit the application.
-
-After a jump/search, the selected star is highlighted for about 3 seconds using the same UI style as mouse hover (circle marker + name label).
+`--list-tower-names` includes both the original spellings and ASCII fallback spellings.
 
 While resizing the window, the same simplified viewport-interaction mode is used so that the view stays responsive.
 
