@@ -38,7 +38,7 @@ def ascii_fallback_name(text: str) -> str | None:
         if not unicodedata.combining(ch) and ord(ch) < 128
     )
     ascii_text = " ".join(ascii_text.split()).strip()
-    if not any(ch.isalnum() for ch in ascii_text):
+    if not any(ch.isalpha() for ch in ascii_text):
         return None
     if not ascii_text or ascii_text == source:
         return None
@@ -218,6 +218,7 @@ def resolve_viewpoint(
         return None
 
     normalized = normalize_viewpoint_name(text)
+    allow_partial_match = not normalized.isdigit()
     exact_matches: list[Viewpoint] = []
     partial_matches: list[Viewpoint] = []
     for viewpoint in viewpoints:
@@ -244,7 +245,7 @@ def resolve_viewpoint(
         if normalized in normalized_candidates:
             exact_matches.append(viewpoint)
             continue
-        if any(normalized in candidate for candidate in normalized_candidates):
+        if allow_partial_match and any(normalized in candidate for candidate in normalized_candidates):
             partial_matches.append(viewpoint)
 
     if exact_matches:

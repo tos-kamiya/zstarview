@@ -21,6 +21,12 @@ def test_resolve_tower_viewpoint_by_ascii_fallback_name() -> None:
     assert tower.name == "Tsūtenkaku"
 
 
+def test_resolve_tower_viewpoint_by_short_brand_alias() -> None:
+    tower = resolve_tower_viewpoint("i360")
+    assert tower is not None
+    assert tower.name == "Brighton i360"
+
+
 def test_resolve_tower_viewpoint_by_wikidata_key() -> None:
     tower = resolve_tower_viewpoint("wikidata:Q57965")
     assert tower is not None
@@ -36,3 +42,7 @@ def test_resolve_tower_viewpoint_by_hydro_quebec_name() -> None:
 def test_removed_qid_only_tower_is_absent() -> None:
     towers = load_tower_viewpoints()
     assert all(tower.qid != "Q12049950" for tower in towers)
+
+
+def test_resolve_tower_viewpoint_does_not_match_numeric_only_partial() -> None:
+    assert resolve_tower_viewpoint("138") is None
