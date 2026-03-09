@@ -1,0 +1,3761 @@
+{
+  "source": "wikipedia+wikidata-curated",
+  "source_seed": "dev-samples/wikidata_mountain_candidates_2026-03-09.json",
+  "normalization": {
+    "deduplicate_by": "qid",
+    "preferred_label_languages": [
+      "en",
+      "ja"
+    ],
+    "preferred_wikipedia_languages": [
+      "en",
+      "ja"
+    ],
+    "coordinate_rule": "seed override else Wikidata P625",
+    "elevation_rule": "seed override else Wikidata P2044",
+    "wikidata_fetch": "fetched"
+  },
+  "items": [
+    {
+      "id": "wikidata:Q39739",
+      "qid": "Q39739",
+      "name": "Aconcagua",
+      "names": [
+        "Aconcagua",
+        "アコンカグア"
+      ],
+      "labels": {
+        "en": "Aconcagua",
+        "ja": "アコンカグア"
+      },
+      "latitude_deg": -32.653055555,
+      "longitude_deg": -70.011666666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q39739",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Aconcagua",
+        "ja": "https://ja.wikipedia.org/wiki/アコンカグア"
+      },
+      "location_arg": "-32.653056;-70.011667",
+      "slug": "Aconcagua",
+      "elevation_m": 6962.0,
+      "region_hint": "Argentina"
+    },
+    {
+      "id": "wikidata:Q5059",
+      "qid": "Q5059",
+      "name": "Aoraki / Mount Cook",
+      "names": [
+        "Aoraki",
+        "Aoraki / Mount Cook",
+        "Aoraki/Mount Cook",
+        "Mount Cook",
+        "クック山"
+      ],
+      "labels": {
+        "en": "Aoraki / Mount Cook",
+        "ja": "クック山"
+      },
+      "latitude_deg": -43.595,
+      "longitude_deg": 170.141944444,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q5059",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Aoraki_/_Mount_Cook",
+        "ja": "https://ja.wikipedia.org/wiki/クック山"
+      },
+      "location_arg": "-43.595000;170.141944",
+      "slug": "Aoraki_/_Mount_Cook",
+      "elevation_m": 3724.0,
+      "region_hint": "New Zealand"
+    },
+    {
+      "id": "wikidata:Q794684",
+      "qid": "Q794684",
+      "name": "Aýrybaba",
+      "names": [
+        "Aýrybaba",
+        "アイリババ山",
+        "アリババ山"
+      ],
+      "labels": {
+        "en": "Aýrybaba",
+        "ja": "アイリババ山"
+      },
+      "latitude_deg": 37.833333333,
+      "longitude_deg": 66.566666666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q794684",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Ayribobo"
+      },
+      "location_arg": "37.833333;66.566667",
+      "slug": "Aýrybaba",
+      "elevation_m": 3139.0,
+      "region_hint": "Turkmenistan"
+    },
+    {
+      "id": "wikidata:Q104674",
+      "qid": "Q104674",
+      "name": "Ben Nevis",
+      "names": [
+        "Beinn Nibheis",
+        "Ben Nevis",
+        "ベンネビス",
+        "ベンネビス山",
+        "ベンネヴィス",
+        "ベン・ネビス",
+        "ベン・ネビス山",
+        "ベン・ネヴィス",
+        "ベン・ネヴィス山"
+      ],
+      "labels": {
+        "en": "Ben Nevis",
+        "ja": "ベン・ネヴィス山"
+      },
+      "latitude_deg": 56.796891,
+      "longitude_deg": -5.003675,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q104674",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Ben_Nevis",
+        "ja": "https://ja.wikipedia.org/wiki/ベン・ネビス山"
+      },
+      "location_arg": "56.796891;-5.003675",
+      "slug": "Ben_Nevis",
+      "elevation_m": 1344.527,
+      "region_hint": "United Kingdom"
+    },
+    {
+      "id": "wikidata:Q860146",
+      "qid": "Q860146",
+      "name": "Bikku Bitti",
+      "names": [
+        "Bikku Bitti",
+        "ビクー・ビティ"
+      ],
+      "labels": {
+        "en": "Bikku Bitti",
+        "ja": "ビクー・ビティ"
+      },
+      "latitude_deg": 22.0036734,
+      "longitude_deg": 19.206592,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q860146",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Bikku_Bitti",
+        "ja": "https://ja.wikipedia.org/wiki/ビクー・ビティ"
+      },
+      "location_arg": "22.003673;19.206592",
+      "slug": "Bikku_Bitti",
+      "elevation_m": 2267.0,
+      "region_hint": "Libya"
+    },
+    {
+      "id": "wikidata:Q885798",
+      "qid": "Q885798",
+      "name": "Blue Mountain Peak",
+      "names": [
+        "Blue Mountain Peak",
+        "ブルー・マウンテン・ピーク",
+        "ブルー・マウンテン山",
+        "ブルー・マウンテン峰"
+      ],
+      "labels": {
+        "en": "Blue Mountain Peak",
+        "ja": "ブルー・マウンテン峰"
+      },
+      "latitude_deg": 18.046666666,
+      "longitude_deg": -76.579166666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q885798",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Blue_Mountain_Peak",
+        "ja": "https://ja.wikipedia.org/wiki/ブルー・マウンテン峰"
+      },
+      "location_arg": "18.046667;-76.579167",
+      "slug": "Blue_Mountain_Peak",
+      "elevation_m": 2256.0,
+      "region_hint": "Jamaica"
+    },
+    {
+      "id": "wikidata:Q897834",
+      "qid": "Q897834",
+      "name": "Brandberg",
+      "names": [
+        "Brandberg",
+        "Brandberg Mountain",
+        "ブランドバーグ山"
+      ],
+      "labels": {
+        "en": "Brandberg",
+        "ja": "ブランドバーグ山"
+      },
+      "latitude_deg": -21.1495,
+      "longitude_deg": 14.5775,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q897834",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Brandberg_Mountain",
+        "ja": "https://ja.wikipedia.org/wiki/ブランドバーグ山"
+      },
+      "location_arg": "-21.149500;14.577500",
+      "slug": "Brandberg",
+      "elevation_m": 2573.0,
+      "region_hint": "Namibia"
+    },
+    {
+      "id": "wikidata:Q1003282",
+      "qid": "Q1003282",
+      "name": "Bukit Pagon",
+      "names": [
+        "Bukit Pagon",
+        "パゴン山",
+        "ブキト・パゴン山"
+      ],
+      "labels": {
+        "en": "Bukit Pagon",
+        "ja": "パゴン山"
+      },
+      "latitude_deg": 4.3,
+      "longitude_deg": 115.333333333,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1003282",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Pagon_Hill",
+        "ja": "https://ja.wikipedia.org/wiki/パゴン山"
+      },
+      "location_arg": "4.300000;115.333333",
+      "slug": "Bukit_Pagon",
+      "elevation_m": 1850.0,
+      "region_hint": "Brunei"
+    },
+    {
+      "id": "wikidata:Q503368",
+      "qid": "Q503368",
+      "name": "Carrauntoohil",
+      "names": [
+        "Carrantoohil",
+        "Carrantuohil",
+        "Carrantuohill",
+        "Carrauntoohil",
+        "Carrauntouhil",
+        "Gheraun-Tuel",
+        "キャラントゥール山"
+      ],
+      "labels": {
+        "en": "Carrauntoohil",
+        "ja": "キャラントゥール山"
+      },
+      "latitude_deg": 51.998888888,
+      "longitude_deg": -9.742777777,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q503368",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Carrauntoohil",
+        "ja": "https://ja.wikipedia.org/wiki/キャラントゥール山"
+      },
+      "location_arg": "51.998889;-9.742778",
+      "slug": "Carrauntoohil",
+      "elevation_m": 1038.6,
+      "region_hint": "Ireland"
+    },
+    {
+      "id": "wikidata:Q1055837",
+      "qid": "Q1055837",
+      "name": "Cerro Catedral",
+      "names": [
+        "Cerro Catedral",
+        "Desde la ruta 39, al km 47,5 pueden entrar en los senderos de \"Las Cañas\", y llegar hasta el Cerro Catedral. Sino entran en el km 60 y listo. Una maravilla!",
+        "カテドラル山"
+      ],
+      "labels": {
+        "en": "Cerro Catedral",
+        "ja": "カテドラル山"
+      },
+      "latitude_deg": -34.380833333,
+      "longitude_deg": -54.673611111,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1055837",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Cerro_Catedral_(Uruguay)",
+        "ja": "https://ja.wikipedia.org/wiki/カテドラル山"
+      },
+      "location_arg": "-34.380833;-54.673611",
+      "slug": "Cerro_Catedral",
+      "elevation_m": 513.7,
+      "region_hint": "Uruguay"
+    },
+    {
+      "id": "wikidata:Q252362",
+      "qid": "Q252362",
+      "name": "Cerro Chirripó",
+      "names": [
+        "Cerro Chirripo",
+        "Cerro Chirripó",
+        "チリポ山"
+      ],
+      "labels": {
+        "en": "Cerro Chirripó",
+        "ja": "チリポ山"
+      },
+      "latitude_deg": 9.484083333,
+      "longitude_deg": -83.488666666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q252362",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Cerro_Chirripó",
+        "ja": "https://ja.wikipedia.org/wiki/チリポ山"
+      },
+      "location_arg": "9.484083;-83.488667",
+      "slug": "Cerro_Chirripó",
+      "elevation_m": 3820.0,
+      "region_hint": "Costa Rica"
+    },
+    {
+      "id": "wikidata:Q74214",
+      "qid": "Q74214",
+      "name": "Cerro El Pital",
+      "names": [
+        "Cerro El Pital",
+        "エル・ピタル山"
+      ],
+      "labels": {
+        "en": "Cerro El Pital",
+        "ja": "エル・ピタル山"
+      },
+      "latitude_deg": 14.383333333,
+      "longitude_deg": -89.116666666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q74214",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Cerro_El_Pital",
+        "ja": "https://ja.wikipedia.org/wiki/エル・ピタル山"
+      },
+      "location_arg": "14.383333;-89.116667",
+      "slug": "Cerro_El_Pital",
+      "elevation_m": 2730.0,
+      "region_hint": "El Salvador"
+    },
+    {
+      "id": "wikidata:Q1055875",
+      "qid": "Q1055875",
+      "name": "Cerro Las Minas",
+      "names": [
+        "Cerro Las Minas",
+        "ミナス山"
+      ],
+      "labels": {
+        "en": "Cerro Las Minas",
+        "ja": "ミナス山"
+      },
+      "latitude_deg": 14.534166666,
+      "longitude_deg": -88.68,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1055875",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Cerro_Las_Minas",
+        "ja": "https://ja.wikipedia.org/wiki/ミナス山"
+      },
+      "location_arg": "14.534167;-88.680000",
+      "slug": "Cerro_Las_Minas",
+      "elevation_m": 2849.0,
+      "region_hint": "Honduras"
+    },
+    {
+      "id": "wikidata:Q1055965",
+      "qid": "Q1055965",
+      "name": "Cerro Tres Kandú",
+      "names": [
+        "Cerro Peró",
+        "Cerro Tres Kandú",
+        "Perõ",
+        "トレス・カンドゥー山",
+        "ペロー山"
+      ],
+      "labels": {
+        "en": "Cerro Tres Kandú",
+        "ja": "ペロー山"
+      },
+      "latitude_deg": -25.901666666,
+      "longitude_deg": -56.16,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1055965",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Cerro_Tres_Kandú",
+        "ja": "https://ja.wikipedia.org/wiki/ペロー山"
+      },
+      "location_arg": "-25.901667;-56.160000",
+      "slug": "Cerro_Tres_Kandú",
+      "elevation_m": 842.0,
+      "region_hint": "Paraguay"
+    },
+    {
+      "id": "wikidata:Q976055",
+      "qid": "Q976055",
+      "name": "Chappal Waddi",
+      "names": [
+        "Chappal Waddi",
+        "チャパル・ワッディ山"
+      ],
+      "labels": {
+        "en": "Chappal Waddi",
+        "ja": "チャパル・ワッディ山"
+      },
+      "latitude_deg": 7.036111111,
+      "longitude_deg": 11.715,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q976055",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Chappal_Waddi",
+        "ja": "https://ja.wikipedia.org/wiki/チャパル・ワッディ山"
+      },
+      "location_arg": "7.036111;11.715000",
+      "slug": "Chappal_Waddi",
+      "elevation_m": 2419.0,
+      "region_hint": "Nigeria"
+    },
+    {
+      "id": "wikidata:Q1068860",
+      "qid": "Q1068860",
+      "name": "Cheekha Dar",
+      "names": [
+        "Cheekha Dar",
+        "シェーハ・ダー山"
+      ],
+      "labels": {
+        "en": "Cheekha Dar",
+        "ja": "シェーハ・ダー山"
+      },
+      "latitude_deg": 36.77528,
+      "longitude_deg": 44.91861,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1068860",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Cheekha_Dar",
+        "ja": "https://ja.wikipedia.org/wiki/シェーハ・ダー山"
+      },
+      "location_arg": "36.775280;44.918610",
+      "slug": "Cheekha_Dar",
+      "elevation_m": 3611.0,
+      "region_hint": "Iraq"
+    },
+    {
+      "id": "wikidata:Q14081",
+      "qid": "Q14081",
+      "name": "Chimborazo",
+      "names": [
+        "Chimborazo",
+        "Mount Chimborazo",
+        "チンボラソ"
+      ],
+      "labels": {
+        "en": "Chimborazo",
+        "ja": "チンボラソ"
+      },
+      "latitude_deg": -1.469166666,
+      "longitude_deg": -78.8175,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q14081",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Chimborazo",
+        "ja": "https://ja.wikipedia.org/wiki/チンボラソ"
+      },
+      "location_arg": "-1.469167;-78.817500",
+      "slug": "Chimborazo",
+      "elevation_m": 6263.47,
+      "region_hint": "Ecuador"
+    },
+    {
+      "id": "wikidata:Q238147",
+      "qid": "Q238147",
+      "name": "Citlaltepetl",
+      "names": [
+        "Citlaltepetl",
+        "Citlaltépetl",
+        "オリサバ山"
+      ],
+      "labels": {
+        "en": "Citlaltepetl",
+        "ja": "オリサバ山"
+      },
+      "latitude_deg": 19.03,
+      "longitude_deg": -97.27,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q238147",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Pico_de_Orizaba",
+        "ja": "https://ja.wikipedia.org/wiki/オリサバ山"
+      },
+      "location_arg": "19.030000;-97.270000",
+      "slug": "Citlaltepetl",
+      "elevation_m": 5636.0,
+      "region_hint": "Mexico"
+    },
+    {
+      "id": "wikidata:Q62467",
+      "qid": "Q62467",
+      "name": "Coma Pedrosa",
+      "names": [
+        "Coma Pedrosa",
+        "コマ・ペドローザ"
+      ],
+      "labels": {
+        "en": "Coma Pedrosa",
+        "ja": "コマ・ペドローザ"
+      },
+      "latitude_deg": 42.591805701,
+      "longitude_deg": 1.443654504,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q62467",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Coma_Pedrosa",
+        "ja": "https://ja.wikipedia.org/wiki/コマ・ペドローザ"
+      },
+      "location_arg": "42.591806;1.443655",
+      "slug": "Coma_Pedrosa",
+      "elevation_m": 2942.0,
+      "region_hint": "Andorra"
+    },
+    {
+      "id": "wikidata:Q40758",
+      "qid": "Q40758",
+      "name": "Damavand",
+      "names": [
+        "Damavand",
+        "Demavend",
+        "Mount Damavand",
+        "Mount Damāvand",
+        "Mount Demavend",
+        "ダマバンド山",
+        "ダマヴァンド山",
+        "ダマーヴァンド山"
+      ],
+      "labels": {
+        "en": "Damavand",
+        "ja": "ダマーヴァンド山"
+      },
+      "latitude_deg": 35.955277777,
+      "longitude_deg": 52.109166666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q40758",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Damavand",
+        "ja": "https://ja.wikipedia.org/wiki/ダマーヴァンド山"
+      },
+      "location_arg": "35.955278;52.109167",
+      "slug": "Damavand",
+      "elevation_m": 5610.0,
+      "region_hint": "Iran"
+    },
+    {
+      "id": "wikidata:Q3183447",
+      "qid": "Q3183447",
+      "name": "Dinara",
+      "names": [
+        "Dinara",
+        "Sinjal"
+      ],
+      "labels": {
+        "en": "Dinara"
+      },
+      "latitude_deg": 44.0624764,
+      "longitude_deg": 16.3829092,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q3183447",
+      "wikipedia_urls": {},
+      "location_arg": "44.062476;16.382909",
+      "slug": "Dinara",
+      "elevation_m": 1831.0,
+      "region_hint": "Croatia"
+    },
+    {
+      "id": "wikidata:Q1140075",
+      "qid": "Q1140075",
+      "name": "Doi Inthanon",
+      "names": [
+        "Doi Inthanon",
+        "ドイ・インタノン山"
+      ],
+      "labels": {
+        "en": "Doi Inthanon",
+        "ja": "ドイ・インタノン山"
+      },
+      "latitude_deg": 18.592222222,
+      "longitude_deg": 98.486666666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1140075",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Doi_Inthanon",
+        "ja": "https://ja.wikipedia.org/wiki/ドイ・インタノン山"
+      },
+      "location_arg": "18.592222;98.486667",
+      "slug": "Doi_Inthanon",
+      "elevation_m": 2565.0,
+      "region_hint": "Thailand"
+    },
+    {
+      "id": "wikidata:Q1236265",
+      "qid": "Q1236265",
+      "name": "Dolohmwar",
+      "names": [
+        "Dolohmwar"
+      ],
+      "labels": {
+        "en": "Dolohmwar"
+      },
+      "latitude_deg": 6.855277777,
+      "longitude_deg": 158.236666666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1236265",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Dolohmwar"
+      },
+      "location_arg": "6.855278;158.236667",
+      "slug": "Dolohmwar",
+      "elevation_m": 791.0,
+      "region_hint": "Federated States of Micronesia"
+    },
+    {
+      "id": "wikidata:Q47490",
+      "qid": "Q47490",
+      "name": "Doyle's Delight",
+      "names": [
+        "Doyle's Delight",
+        "ドイルス・ディライト山"
+      ],
+      "labels": {
+        "en": "Doyle's Delight",
+        "ja": "ドイルス・ディライト山"
+      },
+      "latitude_deg": 16.5,
+      "longitude_deg": -89.05,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q47490",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Doyle's_Delight"
+      },
+      "location_arg": "16.500000;-89.050000",
+      "slug": "Doyle's_Delight",
+      "elevation_m": 1124.0,
+      "region_hint": "Belize"
+    },
+    {
+      "id": "wikidata:Q3403",
+      "qid": "Q3403",
+      "name": "Dufourspitze",
+      "names": [
+        "Dufourspitze",
+        "Monte Rosa",
+        "プンタ・デュフール"
+      ],
+      "labels": {
+        "en": "Dufourspitze",
+        "ja": "プンタ・デュフール"
+      },
+      "latitude_deg": 45.9369238,
+      "longitude_deg": 7.866757,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q3403",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Dufourspitze",
+        "ja": "https://ja.wikipedia.org/wiki/プンタ・デュフール"
+      },
+      "location_arg": "45.936924;7.866757",
+      "slug": "Dufourspitze",
+      "elevation_m": 4634.0,
+      "region_hint": "Switzerland"
+    },
+    {
+      "id": "wikidata:Q1056103",
+      "qid": "Q1056103",
+      "name": "El Cerro del Aripo",
+      "names": [
+        "El Cerro del Aripo",
+        "アリポ山"
+      ],
+      "labels": {
+        "en": "El Cerro del Aripo",
+        "ja": "アリポ山"
+      },
+      "latitude_deg": 10.716666666,
+      "longitude_deg": -61.25,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1056103",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/El_Cerro_del_Aripo"
+      },
+      "location_arg": "10.716667;-61.250000",
+      "slug": "El_Cerro_del_Aripo",
+      "elevation_m": 940.0,
+      "region_hint": "Trinidad and Tobago"
+    },
+    {
+      "id": "wikidata:Q257441",
+      "qid": "Q257441",
+      "name": "Emi Koussi",
+      "names": [
+        "Emi Koussi",
+        "エミクーシ山"
+      ],
+      "labels": {
+        "en": "Emi Koussi",
+        "ja": "エミクーシ山"
+      },
+      "latitude_deg": 19.789444444,
+      "longitude_deg": 18.551111111,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q257441",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Emi_Koussi",
+        "ja": "https://ja.wikipedia.org/wiki/エミクーシ山"
+      },
+      "location_arg": "19.789444;18.551111",
+      "slug": "Emi_Koussi",
+      "elevation_m": 3445.0,
+      "region_hint": "Chad"
+    },
+    {
+      "id": "wikidata:Q1337951",
+      "qid": "Q1337951",
+      "name": "Emlembe",
+      "names": [
+        "Emlembe"
+      ],
+      "labels": {
+        "en": "Emlembe"
+      },
+      "latitude_deg": -25.916666666,
+      "longitude_deg": 31.133333333,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1337951",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Emlembe"
+      },
+      "location_arg": "-25.916667;31.133333",
+      "slug": "Emlembe",
+      "elevation_m": 1862.0,
+      "region_hint": "Eswatini"
+    },
+    {
+      "id": "wikidata:Q203942",
+      "qid": "Q203942",
+      "name": "Galdhøpiggen",
+      "names": [
+        "Galdhøpiggen",
+        "ガルフピッゲン",
+        "ガルヘピッゲン"
+      ],
+      "labels": {
+        "en": "Galdhøpiggen",
+        "ja": "ガルフピッゲン"
+      },
+      "latitude_deg": 61.633333333,
+      "longitude_deg": 8.3,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q203942",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Galdhøpiggen",
+        "ja": "https://ja.wikipedia.org/wiki/ガルフピッゲン"
+      },
+      "location_arg": "61.633333;8.300000",
+      "slug": "Galdhøpiggen",
+      "elevation_m": 2468.854,
+      "region_hint": "Norway"
+    },
+    {
+      "id": "wikidata:Q219986",
+      "qid": "Q219986",
+      "name": "Gangkhar Puensum",
+      "names": [
+        "Gangkhar Puensum",
+        "Kanggar Bünsum",
+        "gangs dkar spun gsum",
+        "ガンカー・プンスム",
+        "ガンケルプンズム",
+        "冈嘎本孙"
+      ],
+      "labels": {
+        "en": "Gangkhar Puensum",
+        "ja": "ガンカー・プンスム"
+      },
+      "latitude_deg": 28.046944444,
+      "longitude_deg": 90.455,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q219986",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Gangkhar_Puensum",
+        "ja": "https://ja.wikipedia.org/wiki/ガンカー・プンスム"
+      },
+      "location_arg": "28.046944;90.455000",
+      "slug": "Gangkhar_Puensum",
+      "elevation_m": 7570.0,
+      "region_hint": "Bhutan"
+    },
+    {
+      "id": "wikidata:Q665000",
+      "qid": "Q665000",
+      "name": "Grauspitz",
+      "names": [
+        "Grauspitz",
+        "グラウシュピッツ"
+      ],
+      "labels": {
+        "en": "Grauspitz",
+        "ja": "グラウシュピッツ"
+      },
+      "latitude_deg": 47.052777777,
+      "longitude_deg": 9.581944444,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q665000",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Grauspitz",
+        "ja": "https://ja.wikipedia.org/wiki/グラウシュピッツ"
+      },
+      "location_arg": "47.052778;9.581944",
+      "slug": "Grauspitz",
+      "elevation_m": 2599.0,
+      "region_hint": "Liechtenstein"
+    },
+    {
+      "id": "wikidata:Q3388",
+      "qid": "Q3388",
+      "name": "Grossglockner",
+      "names": [
+        "Glockner",
+        "Grossglockner",
+        "グロースグロックナー山"
+      ],
+      "labels": {
+        "en": "Grossglockner",
+        "ja": "グロースグロックナー山"
+      },
+      "latitude_deg": 47.074528,
+      "longitude_deg": 12.69385,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q3388",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Grossglockner",
+        "ja": "https://ja.wikipedia.org/wiki/グロースグロックナー山"
+      },
+      "location_arg": "47.074528;12.693850",
+      "slug": "Grossglockner",
+      "elevation_m": 3798.0,
+      "region_hint": "Austria"
+    },
+    {
+      "id": "wikidata:Q825709",
+      "qid": "Q825709",
+      "name": "Gunnbjørn Fjeld",
+      "names": [
+        "Gunnbjorn Fjeld",
+        "Gunnbjørn Fjeld",
+        "ギュンビョルン山"
+      ],
+      "labels": {
+        "en": "Gunnbjørn Fjeld",
+        "ja": "ギュンビョルン山"
+      },
+      "latitude_deg": 68.9195,
+      "longitude_deg": -29.898533333,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q825709",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Gunnbjørn_Fjeld",
+        "ja": "https://ja.wikipedia.org/wiki/ギュンビョルン山"
+      },
+      "location_arg": "68.919500;-29.898533",
+      "slug": "Gunnbjørn_Fjeld",
+      "elevation_m": 3694.0,
+      "region_hint": "Kingdom of Denmark"
+    },
+    {
+      "id": "wikidata:Q494645",
+      "qid": "Q494645",
+      "name": "Hallasan",
+      "names": [
+        "Halla Mountain",
+        "Hallasan",
+        "ハルラ山",
+        "漢拏山"
+      ],
+      "labels": {
+        "en": "Hallasan",
+        "ja": "漢拏山"
+      },
+      "latitude_deg": 33.35,
+      "longitude_deg": 126.516666666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q494645",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Hallasan",
+        "ja": "https://ja.wikipedia.org/wiki/漢拏山"
+      },
+      "location_arg": "33.350000;126.516667",
+      "slug": "Hallasan",
+      "elevation_m": 1947.06,
+      "region_hint": "South Korea"
+    },
+    {
+      "id": "wikidata:Q216035",
+      "qid": "Q216035",
+      "name": "Halti",
+      "names": [
+        "Haldefjäll",
+        "Halti",
+        "Háldi",
+        "ハルティ"
+      ],
+      "labels": {
+        "en": "Halti",
+        "ja": "ハルティ"
+      },
+      "latitude_deg": 69.312777777,
+      "longitude_deg": 21.285555555,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q216035",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Halti",
+        "ja": "https://ja.wikipedia.org/wiki/ハルティ"
+      },
+      "location_arg": "69.312778;21.285556",
+      "slug": "Halti",
+      "elevation_m": 1361.4,
+      "region_hint": "Finland"
+    },
+    {
+      "id": "wikidata:Q870063",
+      "qid": "Q870063",
+      "name": "Hkakabo Razi",
+      "names": [
+        "Hkakabo Razi",
+        "カカボラジ山"
+      ],
+      "labels": {
+        "en": "Hkakabo Razi",
+        "ja": "カカボラジ山"
+      },
+      "latitude_deg": 28.333055555,
+      "longitude_deg": 97.466666666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q870063",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Hkakabo_Razi",
+        "ja": "https://ja.wikipedia.org/wiki/カカボラジ山"
+      },
+      "location_arg": "28.333056;97.466667",
+      "slug": "Hkakabo_Razi",
+      "elevation_m": 5881.0,
+      "region_hint": "Myanmar"
+    },
+    {
+      "id": "wikidata:Q627508",
+      "qid": "Q627508",
+      "name": "Hoverla",
+      "names": [
+        "Hoverla",
+        "ホヴェルラ",
+        "ホヴェルラ山",
+        "ホヴェールラ",
+        "ホヴェールラ山"
+      ],
+      "labels": {
+        "en": "Hoverla",
+        "ja": "ホヴェールラ山"
+      },
+      "latitude_deg": 48.160277777,
+      "longitude_deg": 24.5,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q627508",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Hoverla",
+        "ja": "https://ja.wikipedia.org/wiki/ホヴェールラ山"
+      },
+      "location_arg": "48.160278;24.500000",
+      "slug": "Hoverla",
+      "elevation_m": 2061.0,
+      "region_hint": "Ukraine"
+    },
+    {
+      "id": "wikidata:Q200935",
+      "qid": "Q200935",
+      "name": "Huascarán",
+      "names": [
+        "Huascaran",
+        "Huascarán",
+        "ワスカラン"
+      ],
+      "labels": {
+        "en": "Huascarán",
+        "ja": "ワスカラン"
+      },
+      "latitude_deg": -9.116666666,
+      "longitude_deg": -77.6,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q200935",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Huascarán",
+        "ja": "https://ja.wikipedia.org/wiki/ワスカラン"
+      },
+      "location_arg": "-9.116667;-77.600000",
+      "slug": "Huascarán",
+      "elevation_m": 6768.0,
+      "region_hint": "Peru"
+    },
+    {
+      "id": "wikidata:Q1091113",
+      "qid": "Q1091113",
+      "name": "Hüiten Peak",
+      "names": [
+        "Hüiten Peak",
+        "Khüiten Peak",
+        "cold peak",
+        "フィティン山"
+      ],
+      "labels": {
+        "en": "Hüiten Peak",
+        "ja": "フィティン山"
+      },
+      "latitude_deg": 49.145833333,
+      "longitude_deg": 87.819166666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1091113",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Khüiten_Peak",
+        "ja": "https://ja.wikipedia.org/wiki/フィティン山"
+      },
+      "location_arg": "49.145833;87.819167",
+      "slug": "Hüiten_Peak",
+      "elevation_m": 4374.0,
+      "region_hint": "Mongolia"
+    },
+    {
+      "id": "wikidata:Q41413",
+      "qid": "Q41413",
+      "name": "Ismoil Somoni Peak",
+      "names": [
+        "Communism Peak",
+        "Ismoil Somoni Peak",
+        "イスモイルソモニ峰",
+        "イスモイル・ソモニ峰",
+        "コミュニズム峰"
+      ],
+      "labels": {
+        "en": "Ismoil Somoni Peak",
+        "ja": "イスモイル・ソモニ峰"
+      },
+      "latitude_deg": 38.942732,
+      "longitude_deg": 72.015347,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q41413",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Ismoil_Somoni_Peak",
+        "ja": "https://ja.wikipedia.org/wiki/イスモイル・ソモニ峰"
+      },
+      "location_arg": "38.942732;72.015347",
+      "slug": "Ismoil_Somoni_Peak",
+      "elevation_m": 7495.0,
+      "region_hint": "Tajikistan"
+    },
+    {
+      "id": "wikidata:Q1261892",
+      "qid": "Q1261892",
+      "name": "Jabal Sawda",
+      "names": [
+        "Jabal Sawda",
+        "サウダ山"
+      ],
+      "labels": {
+        "en": "Jabal Sawda",
+        "ja": "サウダ山"
+      },
+      "latitude_deg": 18.267222222,
+      "longitude_deg": 42.368055555,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1261892",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Jabal_Soudah",
+        "ja": "https://ja.wikipedia.org/wiki/サウダ山"
+      },
+      "location_arg": "18.267222;42.368056",
+      "slug": "Jabal_Sawda",
+      "elevation_m": 3133.0,
+      "region_hint": "Saudi Arabia"
+    },
+    {
+      "id": "wikidata:Q1261902",
+      "qid": "Q1261902",
+      "name": "Jabal Umm ad Dami",
+      "names": [
+        "Jabal Umm ad Dami",
+        "ウンム・アッ＝ダーミー山"
+      ],
+      "labels": {
+        "en": "Jabal Umm ad Dami",
+        "ja": "ウンム・アッ＝ダーミー山"
+      },
+      "latitude_deg": 29.308333333,
+      "longitude_deg": 35.429166666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1261902",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Jabal_Umm_ad_Dami"
+      },
+      "location_arg": "29.308333;35.429167",
+      "slug": "Jabal_Umm_ad_Dami",
+      "elevation_m": 1854.0,
+      "region_hint": "Jordan"
+    },
+    {
+      "id": "wikidata:Q1261935",
+      "qid": "Q1261935",
+      "name": "Jabal an Nabi Shu'ayb",
+      "names": [
+        "Jabal an Nabi Shu'ayb",
+        "ナビー・シュアイブ山"
+      ],
+      "labels": {
+        "en": "Jabal an Nabi Shu'ayb",
+        "ja": "ナビー・シュアイブ山"
+      },
+      "latitude_deg": 15.279166666,
+      "longitude_deg": 43.975833333,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1261935",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Jabal_An-Nabi_Shu'ayb",
+        "ja": "https://ja.wikipedia.org/wiki/ナビー・シュアイブ山"
+      },
+      "location_arg": "15.279167;43.975833",
+      "slug": "Jabal_an_Nabi_Shu'ayb",
+      "elevation_m": 3666.0,
+      "region_hint": "Yemen"
+    },
+    {
+      "id": "wikidata:Q503433",
+      "qid": "Q503433",
+      "name": "Jbel Toubkal",
+      "names": [
+        "Jbel Toubkal",
+        "Toubkal",
+        "Tubkal",
+        "ツブカル山"
+      ],
+      "labels": {
+        "en": "Jbel Toubkal",
+        "ja": "ツブカル山"
+      },
+      "latitude_deg": 31.061944444,
+      "longitude_deg": -7.916111111,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q503433",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Toubkal",
+        "ja": "https://ja.wikipedia.org/wiki/ツブカル山"
+      },
+      "location_arg": "31.061944;-7.916111",
+      "slug": "Jbel_Toubkal",
+      "elevation_m": 4167.0,
+      "region_hint": "Morocco"
+    },
+    {
+      "id": "wikidata:Q3492099",
+      "qid": "Q3492099",
+      "name": "Jebel Jais",
+      "names": [
+        "Jabal Bil Ays",
+        "Jabal Bu al `Ays",
+        "Jabal Bū al ‘Ays",
+        "Jabal Jays",
+        "Jabal Rawala",
+        "Jabal Rawla",
+        "Jabal Rawlah",
+        "Jebel Jais",
+        "イェベル・ヤイス"
+      ],
+      "labels": {
+        "en": "Jebel Jais",
+        "ja": "イェベル・ヤイス"
+      },
+      "latitude_deg": 25.9531,
+      "longitude_deg": 56.18441,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q3492099",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Jebel_Jais"
+      },
+      "location_arg": "25.953100;56.184410",
+      "slug": "Jebel_Jais",
+      "elevation_m": 1911.0,
+      "region_hint": "United Arab Emirates"
+    },
+    {
+      "id": "wikidata:Q1261915",
+      "qid": "Q1261915",
+      "name": "Jebel Shams",
+      "names": [
+        "Jabal Sham",
+        "Jabal Shams",
+        "Jabal ash Sham",
+        "Jabal ash Shām",
+        "Jebel Shams",
+        "Wisham",
+        "Wishām",
+        "シャムス山"
+      ],
+      "labels": {
+        "en": "Jebel Shams",
+        "ja": "シャムス山"
+      },
+      "latitude_deg": 23.2373882,
+      "longitude_deg": 57.2637937,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1261915",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Jebel_Shams",
+        "ja": "https://ja.wikipedia.org/wiki/シャムス山"
+      },
+      "location_arg": "23.237388;57.263794",
+      "slug": "Jebel_Shams",
+      "elevation_m": 3018.0,
+      "region_hint": "Oman"
+    },
+    {
+      "id": "wikidata:Q1232136",
+      "qid": "Q1232136",
+      "name": "Jebel ech Chambi",
+      "names": [
+        "Jebel ech Chambi",
+        "Mount Ash-Sha'nabi",
+        "シャンビ山"
+      ],
+      "labels": {
+        "en": "Jebel ech Chambi",
+        "ja": "シャンビ山"
+      },
+      "latitude_deg": 35.206666666,
+      "longitude_deg": 8.683055555,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1232136",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Jebel_ech_Chambi",
+        "ja": "https://ja.wikipedia.org/wiki/シャンビ山"
+      },
+      "location_arg": "35.206667;8.683056",
+      "slug": "Jebel_ech_Chambi",
+      "elevation_m": 1544.0,
+      "region_hint": "Tunisia"
+    },
+    {
+      "id": "wikidata:Q332762",
+      "qid": "Q332762",
+      "name": "Jengish Chokusu",
+      "names": [
+        "Dzjengisj Tjokusu",
+        "Jengish Chokusu",
+        "ポベティ山",
+        "ポベーダ山"
+      ],
+      "labels": {
+        "en": "Jengish Chokusu",
+        "ja": "ポベーダ山"
+      },
+      "latitude_deg": 42.034662,
+      "longitude_deg": 80.128713,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q332762",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Jengish_Chokusu",
+        "ja": "https://ja.wikipedia.org/wiki/ポベーダ山"
+      },
+      "location_arg": "42.034662;80.128713",
+      "slug": "Jengish_Chokusu",
+      "elevation_m": 7439.0,
+      "region_hint": "Kyrgyzstan"
+    },
+    {
+      "id": "wikidata:Q1549215",
+      "qid": "Q1549215",
+      "name": "Julianatop",
+      "names": [
+        "Julianatop",
+        "ジュリアナトップ山"
+      ],
+      "labels": {
+        "en": "Julianatop",
+        "ja": "ジュリアナトップ山"
+      },
+      "latitude_deg": 3.682777777,
+      "longitude_deg": -56.535555555,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1549215",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Julianatop"
+      },
+      "location_arg": "3.682778;-56.535556",
+      "slug": "Julianatop",
+      "elevation_m": 1280.0,
+      "region_hint": "Suriname"
+    },
+    {
+      "id": "wikidata:Q43512",
+      "qid": "Q43512",
+      "name": "K2",
+      "names": [
+        "Chhogori",
+        "Dapsang",
+        "K-2",
+        "K2",
+        "Mount Godwin-Austen",
+        "Mount K2",
+        "Mt. Qogir",
+        "ゴッドウィンオースティン",
+        "ゴドウィン・オースティン"
+      ],
+      "labels": {
+        "en": "K2",
+        "ja": "K2"
+      },
+      "latitude_deg": 35.881111111,
+      "longitude_deg": 76.513333333,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q43512",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/K2",
+        "ja": "https://ja.wikipedia.org/wiki/K2"
+      },
+      "location_arg": "35.881111;76.513333",
+      "slug": "K2",
+      "elevation_m": 8611.0,
+      "region_hint": "Pakistan"
+    },
+    {
+      "id": "wikidata:Q82019",
+      "qid": "Q82019",
+      "name": "Kanchenjunga",
+      "names": [
+        "Kanchenjunga",
+        "Kanchinjinga",
+        "Kangchendzonga",
+        "Kangchenjunga",
+        "Kañcanjaṅghā",
+        "カンチェンジュンガ"
+      ],
+      "labels": {
+        "en": "Kanchenjunga",
+        "ja": "カンチェンジュンガ"
+      },
+      "latitude_deg": 27.7,
+      "longitude_deg": 88.133333,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q82019",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Kangchenjunga",
+        "ja": "https://ja.wikipedia.org/wiki/カンチェンジュンガ"
+      },
+      "location_arg": "27.700000;88.133333",
+      "slug": "Kanchenjunga",
+      "elevation_m": 8586.0,
+      "region_hint": "India"
+    },
+    {
+      "id": "wikidata:Q1520405",
+      "qid": "Q1520405",
+      "name": "Kao",
+      "names": [
+        "Kao",
+        "カオ島"
+      ],
+      "labels": {
+        "en": "Kao",
+        "ja": "カオ島"
+      },
+      "latitude_deg": -19.666666666,
+      "longitude_deg": -175.016666666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1520405",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Kao_(island)"
+      },
+      "location_arg": "-19.666667;-175.016667",
+      "slug": "Kao",
+      "elevation_m": 1030.0,
+      "region_hint": "Tonga"
+    },
+    {
+      "id": "wikidata:Q214011",
+      "qid": "Q214011",
+      "name": "Kebnekaise",
+      "names": [
+        "Kebnekaise",
+        "ケブネカイセ"
+      ],
+      "labels": {
+        "en": "Kebnekaise",
+        "ja": "ケブネカイセ"
+      },
+      "latitude_deg": 67.883333333,
+      "longitude_deg": 18.55,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q214011",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Kebnekaise",
+        "ja": "https://ja.wikipedia.org/wiki/ケブネカイセ"
+      },
+      "location_arg": "67.883333;18.550000",
+      "slug": "Kebnekaise",
+      "elevation_m": 2096.8,
+      "region_hint": "Sweden"
+    },
+    {
+      "id": "wikidata:Q2595789",
+      "qid": "Q2595789",
+      "name": "Kediet ej Jill",
+      "names": [
+        "Kediet ej Jill",
+        "ケディエ・エジュ・ジル"
+      ],
+      "labels": {
+        "en": "Kediet ej Jill",
+        "ja": "ケディエ・エジュ・ジル"
+      },
+      "latitude_deg": 22.653888888,
+      "longitude_deg": -12.574722222,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q2595789",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Kediet_ej_Jill",
+        "ja": "https://ja.wikipedia.org/wiki/ケディエ・エジュ・ジル"
+      },
+      "location_arg": "22.653889;-12.574722",
+      "slug": "Kediet_ej_Jill",
+      "elevation_m": 915.0,
+      "region_hint": "Mauritania"
+    },
+    {
+      "id": "wikidata:Q211529",
+      "qid": "Q211529",
+      "name": "Khan Tengri",
+      "names": [
+        "Khan Tenghri",
+        "Khan Tengri",
+        "Khan Tengri Mountain",
+        "Khan Tengri Mt.",
+        "Khan Tengri Mtn.",
+        "Mount Khan Tengri",
+        "Mt. Khan Tengri",
+        "ハン・テングリ"
+      ],
+      "labels": {
+        "en": "Khan Tengri",
+        "ja": "ハン・テングリ"
+      },
+      "latitude_deg": 42.210833333,
+      "longitude_deg": 80.175,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q211529",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Khan_Tengri",
+        "ja": "https://ja.wikipedia.org/wiki/ハン・テングリ"
+      },
+      "location_arg": "42.210833;80.175000",
+      "slug": "Khan_Tengri",
+      "elevation_m": 7010.0,
+      "region_hint": "Kazakhstan"
+    },
+    {
+      "id": "wikidata:Q519822",
+      "qid": "Q519822",
+      "name": "Khazret Sultan",
+      "names": [
+        "Khazret Sultan",
+        "ハズレット・スルタン山"
+      ],
+      "labels": {
+        "en": "Khazret Sultan",
+        "ja": "ハズレット・スルタン山"
+      },
+      "latitude_deg": 38.948333333,
+      "longitude_deg": 68.172222222,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q519822",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Khazret_Sultan",
+        "ja": "https://ja.wikipedia.org/wiki/ハズレット・スルタン山"
+      },
+      "location_arg": "38.948333;68.172222",
+      "slug": "Khazret_Sultan",
+      "elevation_m": 4643.0,
+      "region_hint": "Uzbekistan"
+    },
+    {
+      "id": "wikidata:Q948298",
+      "qid": "Q948298",
+      "name": "Kinyeti",
+      "names": [
+        "Kinyeti",
+        "Mount Kinyeti",
+        "キヌエティ山"
+      ],
+      "labels": {
+        "en": "Kinyeti",
+        "ja": "キヌエティ山"
+      },
+      "latitude_deg": 3.9475,
+      "longitude_deg": 32.908888888,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q948298",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Kinyeti",
+        "ja": "https://ja.wikipedia.org/wiki/キヌエティ山"
+      },
+      "location_arg": "3.947500;32.908889",
+      "slug": "Kinyeti",
+      "elevation_m": 3187.0,
+      "region_hint": "South Sudan"
+    },
+    {
+      "id": "wikidata:Q26544",
+      "qid": "Q26544",
+      "name": "La Soufrière",
+      "names": [
+        "La Soufriere",
+        "La Soufrière",
+        "スフリエール山"
+      ],
+      "labels": {
+        "en": "La Soufrière",
+        "ja": "スフリエール山"
+      },
+      "latitude_deg": 13.333333333,
+      "longitude_deg": -61.183333333,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q26544",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/La_Soufrière_(Saint_Vincent)",
+        "ja": "https://ja.wikipedia.org/wiki/スフリエール山_(セントビンセント・グレナディーン)"
+      },
+      "location_arg": "13.333333;-61.183333",
+      "slug": "La_Soufrière",
+      "elevation_m": 1220.0,
+      "region_hint": "Saint Vincent and the Grenadines"
+    },
+    {
+      "id": "wikidata:Q1883683",
+      "qid": "Q1883683",
+      "name": "Mafadi",
+      "names": [
+        "Mafadi",
+        "マファディ山"
+      ],
+      "labels": {
+        "en": "Mafadi",
+        "ja": "マファディ山"
+      },
+      "latitude_deg": -29.20286,
+      "longitude_deg": 29.35832,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1883683",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mafadi",
+        "ja": "https://ja.wikipedia.org/wiki/マファディ山"
+      },
+      "location_arg": "-29.202860;29.358320",
+      "slug": "Mafadi",
+      "elevation_m": 3450.0,
+      "region_hint": "South Africa"
+    },
+    {
+      "id": "wikidata:Q18351462",
+      "qid": "Q18351462",
+      "name": "Mafinga Central",
+      "names": [
+        "Mafinga Central"
+      ],
+      "labels": {
+        "en": "Mafinga Central"
+      },
+      "latitude_deg": -9.95269,
+      "longitude_deg": 33.3524,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q18351462",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mafinga_Central"
+      },
+      "location_arg": "-9.952690;33.352400",
+      "slug": "Mafinga_Central",
+      "elevation_m": 2339.0,
+      "region_hint": "Zambia"
+    },
+    {
+      "id": "wikidata:Q837723",
+      "qid": "Q837723",
+      "name": "Maglić",
+      "names": [
+        "Maglić",
+        "マグリッチ",
+        "マグリッチ山"
+      ],
+      "labels": {
+        "en": "Maglić",
+        "ja": "マグリッチ"
+      },
+      "latitude_deg": 43.28111,
+      "longitude_deg": 18.73306,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q837723",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Maglić_(mountain)"
+      },
+      "location_arg": "43.281110;18.733060",
+      "slug": "Maglić",
+      "elevation_m": 2386.0,
+      "region_hint": "Bosnia and Herzegovina"
+    },
+    {
+      "id": "wikidata:Q1147144",
+      "qid": "Q1147144",
+      "name": "Maromokotro",
+      "names": [
+        "Maromokotro",
+        "マロモコトロ山"
+      ],
+      "labels": {
+        "en": "Maromokotro",
+        "ja": "マロモコトロ山"
+      },
+      "latitude_deg": -14.022777777,
+      "longitude_deg": 48.965833333,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1147144",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Maromokotro",
+        "ja": "https://ja.wikipedia.org/wiki/マロモコトロ山"
+      },
+      "location_arg": "-14.022778;48.965833",
+      "slug": "Maromokotro",
+      "elevation_m": 2876.0,
+      "region_hint": "Madagascar"
+    },
+    {
+      "id": "wikidata:Q2114101",
+      "qid": "Q2114101",
+      "name": "Mawson Peak",
+      "names": [
+        "Mawson Peak",
+        "モーソン・ピーク"
+      ],
+      "labels": {
+        "en": "Mawson Peak",
+        "ja": "モーソン・ピーク"
+      },
+      "latitude_deg": -53.104166666,
+      "longitude_deg": 73.516944444,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q2114101",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mawson_Peak",
+        "ja": "https://ja.wikipedia.org/wiki/モーソン・ピーク"
+      },
+      "location_arg": "-53.104167;73.516944",
+      "slug": "Mawson_Peak",
+      "elevation_m": 2745.0,
+      "region_hint": "Australia"
+    },
+    {
+      "id": "wikidata:Q746524",
+      "qid": "Q746524",
+      "name": "Moldoveanu Peak",
+      "names": [
+        "Moldoveanu Peak",
+        "モルドベアヌ山"
+      ],
+      "labels": {
+        "en": "Moldoveanu Peak",
+        "ja": "モルドベアヌ山"
+      },
+      "latitude_deg": 45.599438888,
+      "longitude_deg": 24.736211111,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q746524",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Moldoveanu_Peak",
+        "ja": "https://ja.wikipedia.org/wiki/モルドベアヌ山"
+      },
+      "location_arg": "45.599439;24.736211",
+      "slug": "Moldoveanu_Peak",
+      "elevation_m": 2544.0,
+      "region_hint": "Romania"
+    },
+    {
+      "id": "wikidata:Q3210770",
+      "qid": "Q3210770",
+      "name": "Mont Bengoué",
+      "names": [
+        "Mont Bengoue",
+        "Mont Bengoué"
+      ],
+      "labels": {
+        "en": "Mont Bengoué"
+      },
+      "latitude_deg": 0.955434,
+      "longitude_deg": 13.685628,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q3210770",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mont_Bengoué"
+      },
+      "location_arg": "0.955434;13.685628",
+      "slug": "Mont_Bengoué",
+      "elevation_m": 1070.0,
+      "region_hint": "Gabon"
+    },
+    {
+      "id": "wikidata:Q3042286",
+      "qid": "Q3042286",
+      "name": "Mont Idoukal-n-Taghès",
+      "names": [
+        "Mont Bagzane",
+        "Mont Idoukal-n-Taghes",
+        "Mont Idoukal-n-Taghès",
+        "アンドゥカ＝ン＝タグレス山",
+        "アンドゥカ＝ン＝タゲス山"
+      ],
+      "labels": {
+        "en": "Mont Idoukal-n-Taghès",
+        "ja": "アンドゥカ＝ン＝タゲス山"
+      },
+      "latitude_deg": 17.839166666,
+      "longitude_deg": 8.720277777,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q3042286",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mont_Idoukal-n-Taghès"
+      },
+      "location_arg": "17.839167;8.720278",
+      "slug": "Mont_Idoukal-n-Taghès",
+      "elevation_m": 2022.0,
+      "region_hint": "Niger"
+    },
+    {
+      "id": "wikidata:Q2422162",
+      "qid": "Q2422162",
+      "name": "Mont Ngaoui",
+      "names": [
+        "Mont Ngaoui",
+        "ンガウィ山"
+      ],
+      "labels": {
+        "en": "Mont Ngaoui",
+        "ja": "ンガウィ山"
+      },
+      "latitude_deg": 6.74,
+      "longitude_deg": 14.95,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q2422162",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mont_Ngaoui",
+        "ja": "https://ja.wikipedia.org/wiki/ンガウィ山"
+      },
+      "location_arg": "6.740000;14.950000",
+      "slug": "Mont_Ngaoui",
+      "elevation_m": 1410.0,
+      "region_hint": "Central African Republic"
+    },
+    {
+      "id": "wikidata:Q923330",
+      "qid": "Q923330",
+      "name": "Mont Sokbaro",
+      "names": [
+        "Mont Sokbaro",
+        "ソクバロ山"
+      ],
+      "labels": {
+        "en": "Mont Sokbaro",
+        "ja": "ソクバロ山"
+      },
+      "latitude_deg": 9.328055555,
+      "longitude_deg": 1.415555555,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q923330",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mont_Sokbaro"
+      },
+      "location_arg": "9.328056;1.415556",
+      "slug": "Mont_Sokbaro",
+      "elevation_m": 658.0,
+      "region_hint": "Benin"
+    },
+    {
+      "id": "wikidata:Q1353678",
+      "qid": "Q1353678",
+      "name": "Monte Binga",
+      "names": [
+        "Monte Binga",
+        "ビンガ山"
+      ],
+      "labels": {
+        "en": "Monte Binga",
+        "ja": "ビンガ山"
+      },
+      "latitude_deg": -19.774166666,
+      "longitude_deg": 33.060555555,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1353678",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Monte_Binga",
+        "ja": "https://ja.wikipedia.org/wiki/ビンガ山"
+      },
+      "location_arg": "-19.774167;33.060556",
+      "slug": "Monte_Binga",
+      "elevation_m": 2436.0,
+      "region_hint": "Mozambique"
+    },
+    {
+      "id": "wikidata:Q1638549",
+      "qid": "Q1638549",
+      "name": "Morne Diablotins",
+      "names": [
+        "Morne Diablotins",
+        "ディアブロティン山"
+      ],
+      "labels": {
+        "en": "Morne Diablotins",
+        "ja": "ディアブロティン山"
+      },
+      "latitude_deg": 15.503333333,
+      "longitude_deg": -61.397222222,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1638549",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Morne_Diablotins",
+        "ja": "https://ja.wikipedia.org/wiki/ディアブロティン山"
+      },
+      "location_arg": "15.503333;-61.397222",
+      "slug": "Morne_Diablotins",
+      "elevation_m": 1447.0,
+      "region_hint": "Dominica"
+    },
+    {
+      "id": "wikidata:Q1579060",
+      "qid": "Q1579060",
+      "name": "Morne Seychellois",
+      "names": [
+        "Morne Seychellois",
+        "セーシェル山",
+        "モルヌ・セシェロワ"
+      ],
+      "labels": {
+        "en": "Morne Seychellois",
+        "ja": "モルヌ・セシェロワ"
+      },
+      "latitude_deg": -4.643833333,
+      "longitude_deg": 55.4389,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1579060",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Morne_Seychellois"
+      },
+      "location_arg": "-4.643833;55.438900",
+      "slug": "Morne_Seychellois",
+      "elevation_m": 905.0,
+      "region_hint": "Seychelles"
+    },
+    {
+      "id": "wikidata:Q1753509",
+      "qid": "Q1753509",
+      "name": "Mount Agou",
+      "names": [
+        "Mount Agou",
+        "アグー山"
+      ],
+      "labels": {
+        "en": "Mount Agou",
+        "ja": "アグー山"
+      },
+      "latitude_deg": 6.870536413,
+      "longitude_deg": 0.754600679,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1753509",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Agou",
+        "ja": "https://ja.wikipedia.org/wiki/アグー山"
+      },
+      "location_arg": "6.870536;0.754601",
+      "slug": "Mount_Agou",
+      "elevation_m": 986.0,
+      "region_hint": "Togo"
+    },
+    {
+      "id": "wikidata:Q746274",
+      "qid": "Q746274",
+      "name": "Mount Alvernia",
+      "names": [
+        "Mount Alvernia",
+        "アルバーニア山"
+      ],
+      "labels": {
+        "en": "Mount Alvernia",
+        "ja": "アルバーニア山"
+      },
+      "latitude_deg": 24.294166666,
+      "longitude_deg": -75.408333333,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q746274",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Alvernia"
+      },
+      "location_arg": "24.294167;-75.408333",
+      "slug": "Mount_Alvernia",
+      "elevation_m": 63.0,
+      "region_hint": "The Bahamas"
+    },
+    {
+      "id": "wikidata:Q455963",
+      "qid": "Q455963",
+      "name": "Mount Apo",
+      "names": [
+        "Mount Apo",
+        "Mt. Apo",
+        "アポ山"
+      ],
+      "labels": {
+        "en": "Mount Apo",
+        "ja": "アポ山"
+      },
+      "latitude_deg": 6.9875,
+      "longitude_deg": 125.270833333,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q455963",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Apo",
+        "ja": "https://ja.wikipedia.org/wiki/アポ山"
+      },
+      "location_arg": "6.987500;125.270833",
+      "slug": "Mount_Apo",
+      "elevation_m": 2954.0,
+      "region_hint": "Philippines"
+    },
+    {
+      "id": "wikidata:Q203568",
+      "qid": "Q203568",
+      "name": "Mount Aragats",
+      "names": [
+        "Aragats",
+        "Mount Aragats",
+        "アラガツ山"
+      ],
+      "labels": {
+        "en": "Mount Aragats",
+        "ja": "アラガツ山"
+      },
+      "latitude_deg": 40.523055555,
+      "longitude_deg": 44.195277777,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q203568",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Aragats",
+        "ja": "https://ja.wikipedia.org/wiki/アラガツ山"
+      },
+      "location_arg": "40.523056;44.195278",
+      "slug": "Mount_Aragats",
+      "elevation_m": 4090.0,
+      "region_hint": "Armenia"
+    },
+    {
+      "id": "wikidata:Q72303",
+      "qid": "Q72303",
+      "name": "Mount Ararat",
+      "names": [
+        "Agri Dagi",
+        "Ararat",
+        "Greater Ararat",
+        "Mount Aghri",
+        "Mount Agri",
+        "Mount Ararat",
+        "アララット山",
+        "アララト山"
+      ],
+      "labels": {
+        "en": "Mount Ararat",
+        "ja": "アララト山"
+      },
+      "latitude_deg": 39.701944444,
+      "longitude_deg": 44.298333333,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q72303",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Ararat",
+        "ja": "https://ja.wikipedia.org/wiki/アララト山"
+      },
+      "location_arg": "39.701944;44.298333",
+      "slug": "Mount_Ararat",
+      "elevation_m": 5137.0,
+      "region_hint": "Turkey"
+    },
+    {
+      "id": "wikidata:Q725591",
+      "qid": "Q725591",
+      "name": "Mount Bazardüzü",
+      "names": [
+        "Bazardyuzyu",
+        "Bazardüzü",
+        "Mount Bazardyuzyu",
+        "Mount Bazardüzü",
+        "バザルデュジ山"
+      ],
+      "labels": {
+        "en": "Mount Bazardüzü",
+        "ja": "バザルデュジ山"
+      },
+      "latitude_deg": 41.2204928,
+      "longitude_deg": 47.8583417,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q725591",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Bazardüzü",
+        "ja": "https://ja.wikipedia.org/wiki/バザルデュジ山"
+      },
+      "location_arg": "41.220493;47.858342",
+      "slug": "Mount_Bazardüzü",
+      "elevation_m": 4466.0,
+      "region_hint": "Azerbaijan"
+    },
+    {
+      "id": "wikidata:Q769525",
+      "qid": "Q769525",
+      "name": "Mount Bintumani",
+      "names": [
+        "Mount Bintumani",
+        "ビントゥマニ山",
+        "ロマ・マンサ山"
+      ],
+      "labels": {
+        "en": "Mount Bintumani",
+        "ja": "ビントゥマニ山"
+      },
+      "latitude_deg": 9.225,
+      "longitude_deg": -11.116666666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q769525",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Bintumani",
+        "ja": "https://ja.wikipedia.org/wiki/ビントゥマニ山"
+      },
+      "location_arg": "9.225000;-11.116667",
+      "slug": "Mount_Bintumani",
+      "elevation_m": 1945.0,
+      "region_hint": "Sierra Leone"
+    },
+    {
+      "id": "wikidata:Q190562",
+      "qid": "Q190562",
+      "name": "Mount Cameroon",
+      "names": [
+        "Cameroon",
+        "Mount Cameroon",
+        "カメルーン山"
+      ],
+      "labels": {
+        "en": "Mount Cameroon",
+        "ja": "カメルーン山"
+      },
+      "latitude_deg": 4.216666666,
+      "longitude_deg": 9.1725,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q190562",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Cameroon",
+        "ja": "https://ja.wikipedia.org/wiki/カメルーン山"
+      },
+      "location_arg": "4.216667;9.172500",
+      "slug": "Mount_Cameroon",
+      "elevation_m": 4095.0,
+      "region_hint": "Cameroon"
+    },
+    {
+      "id": "wikidata:Q43105",
+      "qid": "Q43105",
+      "name": "Mount Elbrus",
+      "names": [
+        "Elbrus",
+        "Elbruz",
+        "Mingi Tau",
+        "Mount Elbrus",
+        "Mount Elbruz",
+        "エリブルース山",
+        "エルブルス",
+        "エルブルス山",
+        "エルブルズ山",
+        "エルブルース",
+        "エルブルース山"
+      ],
+      "labels": {
+        "en": "Mount Elbrus",
+        "ja": "エルブルス山"
+      },
+      "latitude_deg": 43.35254,
+      "longitude_deg": 42.437875,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q43105",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Elbrus",
+        "ja": "https://ja.wikipedia.org/wiki/エルブルス山"
+      },
+      "location_arg": "43.352540;42.437875",
+      "slug": "Mount_Elbrus",
+      "elevation_m": 5642.0,
+      "region_hint": "Russia"
+    },
+    {
+      "id": "wikidata:Q39231",
+      "qid": "Q39231",
+      "name": "Mount Fuji",
+      "names": [
+        "Fuji Mountain",
+        "Fuji-san",
+        "Fuji-yama",
+        "Fujisan",
+        "Fujiyama",
+        "Mount Fuji",
+        "Mt Fuji",
+        "Mt. Fuji",
+        "富士山",
+        "富岳",
+        "富嶽",
+        "芙蓉峰",
+        "霊峰富士",
+        "🗻"
+      ],
+      "labels": {
+        "en": "Mount Fuji",
+        "ja": "富士山"
+      },
+      "latitude_deg": 35.360555555,
+      "longitude_deg": 138.7275,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q39231",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Fuji",
+        "ja": "https://ja.wikipedia.org/wiki/富士山"
+      },
+      "location_arg": "35.360556;138.727500",
+      "slug": "Mount_Fuji",
+      "elevation_m": 3777.24,
+      "region_hint": "Japan"
+    },
+    {
+      "id": "wikidata:Q1811114",
+      "qid": "Q1811114",
+      "name": "Mount Gimie",
+      "names": [
+        "Mount Gimie",
+        "ジミー山"
+      ],
+      "labels": {
+        "en": "Mount Gimie",
+        "ja": "ジミー山"
+      },
+      "latitude_deg": 13.863611111,
+      "longitude_deg": -61.011666666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1811114",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Gimie"
+      },
+      "location_arg": "13.863611;-61.011667",
+      "slug": "Mount_Gimie",
+      "elevation_m": 950.0,
+      "region_hint": "Saint Lucia"
+    },
+    {
+      "id": "wikidata:Q1649074",
+      "qid": "Q1649074",
+      "name": "Mount Heha",
+      "names": [
+        "Mount Heha",
+        "ヘハ山"
+      ],
+      "labels": {
+        "en": "Mount Heha",
+        "ja": "ヘハ山"
+      },
+      "latitude_deg": -3.603333333,
+      "longitude_deg": 29.499166666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1649074",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Heha",
+        "ja": "https://ja.wikipedia.org/wiki/ヘハ山"
+      },
+      "location_arg": "-3.603333;29.499167",
+      "slug": "Mount_Heha",
+      "elevation_m": 2684.0,
+      "region_hint": "Burundi"
+    },
+    {
+      "id": "wikidata:Q215471",
+      "qid": "Q215471",
+      "name": "Mount Hermon",
+      "names": [
+        "Mount Hermon",
+        "シャイク山",
+        "ヘルモン山",
+        "ヘルモン山脈"
+      ],
+      "labels": {
+        "en": "Mount Hermon",
+        "ja": "ヘルモン山"
+      },
+      "latitude_deg": 33.4,
+      "longitude_deg": 35.85,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q215471",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Hermon",
+        "ja": "https://ja.wikipedia.org/wiki/ヘルモン山"
+      },
+      "location_arg": "33.400000;35.850000",
+      "slug": "Mount_Hermon",
+      "elevation_m": 2813.95,
+      "region_hint": "Syria"
+    },
+    {
+      "id": "wikidata:Q737859",
+      "qid": "Q737859",
+      "name": "Mount Karisimbi",
+      "names": [
+        "Mont Karisimbi",
+        "Mount Karisimbi",
+        "カリシンビ山"
+      ],
+      "labels": {
+        "en": "Mount Karisimbi",
+        "ja": "カリシンビ山"
+      },
+      "latitude_deg": -1.5,
+      "longitude_deg": 29.45,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q737859",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Karisimbi",
+        "ja": "https://ja.wikipedia.org/wiki/カリシンビ山"
+      },
+      "location_arg": "-1.500000;29.450000",
+      "slug": "Mount_Karisimbi",
+      "elevation_m": 4507.0,
+      "region_hint": "Rwanda"
+    },
+    {
+      "id": "wikidata:Q527548",
+      "qid": "Q527548",
+      "name": "Mount Karthala",
+      "names": [
+        "Karthala",
+        "Le Kartala",
+        "Le Karthala",
+        "Mount Karthala",
+        "カルタラ山",
+        "カーサラ山"
+      ],
+      "labels": {
+        "en": "Mount Karthala",
+        "ja": "カーサラ山"
+      },
+      "latitude_deg": -11.76028,
+      "longitude_deg": 43.35306,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q527548",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Karthala",
+        "ja": "https://ja.wikipedia.org/wiki/カルタラ山"
+      },
+      "location_arg": "-11.760280;43.353060",
+      "slug": "Mount_Karthala",
+      "elevation_m": 2361.0,
+      "region_hint": "Comoros"
+    },
+    {
+      "id": "wikidata:Q172070",
+      "qid": "Q172070",
+      "name": "Mount Kenya",
+      "names": [
+        "Mount Kenia",
+        "Mount Kenya",
+        "ケニア山",
+        "ケニャ山"
+      ],
+      "labels": {
+        "en": "Mount Kenya",
+        "ja": "ケニア山"
+      },
+      "latitude_deg": -0.1,
+      "longitude_deg": 37.2,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q172070",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Kenya",
+        "ja": "https://ja.wikipedia.org/wiki/ケニア山"
+      },
+      "location_arg": "-0.100000;37.200000",
+      "slug": "Mount_Kenya",
+      "elevation_m": 5199.0,
+      "region_hint": "Kenya"
+    },
+    {
+      "id": "wikidata:Q1394606",
+      "qid": "Q1394606",
+      "name": "Mount Kibo",
+      "names": [
+        "Kibo",
+        "Mount Kibo",
+        "Mt. Kibo",
+        "キボ峰"
+      ],
+      "labels": {
+        "en": "Mount Kibo",
+        "ja": "キボ峰"
+      },
+      "latitude_deg": -3.06505278,
+      "longitude_deg": 37.35903056,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1394606",
+      "wikipedia_urls": {},
+      "location_arg": "-3.065053;37.359031",
+      "slug": "Mount_Kibo",
+      "elevation_m": 5895.0,
+      "region_hint": "Tanzania"
+    },
+    {
+      "id": "wikidata:Q60967",
+      "qid": "Q60967",
+      "name": "Mount Kota Kinabalu",
+      "names": [
+        "Gunung Kinabalu",
+        "Mount Kota Kinabalu",
+        "Mt. Kinabalu",
+        "キナバル山"
+      ],
+      "labels": {
+        "en": "Mount Kota Kinabalu",
+        "ja": "キナバル山"
+      },
+      "latitude_deg": 6.075,
+      "longitude_deg": 116.558611111,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q60967",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Kinabalu",
+        "ja": "https://ja.wikipedia.org/wiki/キナバル山"
+      },
+      "location_arg": "6.075000;116.558611",
+      "slug": "Mount_Kota_Kinabalu",
+      "elevation_m": 4095.0,
+      "region_hint": "Malaysia"
+    },
+    {
+      "id": "wikidata:Q1269774",
+      "qid": "Q1269774",
+      "name": "Mount Liamuiga",
+      "names": [
+        "Mount Liamuiga",
+        "Mount Misery",
+        "ミゼリー山",
+        "リアムイガ山"
+      ],
+      "labels": {
+        "en": "Mount Liamuiga",
+        "ja": "リアムイガ山"
+      },
+      "latitude_deg": 17.366666666,
+      "longitude_deg": -62.8,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1269774",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Liamuiga"
+      },
+      "location_arg": "17.366667;-62.800000",
+      "slug": "Mount_Liamuiga",
+      "elevation_m": 1156.0,
+      "region_hint": "Saint Kitts and Nevis"
+    },
+    {
+      "id": "wikidata:Q120306",
+      "qid": "Q120306",
+      "name": "Mount Logan",
+      "names": [
+        "Mount Logan",
+        "ローガン山"
+      ],
+      "labels": {
+        "en": "Mount Logan",
+        "ja": "ローガン山"
+      },
+      "latitude_deg": 60.567222222,
+      "longitude_deg": -140.405277777,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q120306",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Logan",
+        "ja": "https://ja.wikipedia.org/wiki/ローガン山"
+      },
+      "location_arg": "60.567222;-140.405278",
+      "slug": "Mount_Logan",
+      "elevation_m": 5959.0,
+      "region_hint": "Canada"
+    },
+    {
+      "id": "wikidata:Q1348116",
+      "qid": "Q1348116",
+      "name": "Mount Moco",
+      "names": [
+        "Morro do Moco",
+        "Mount Moco",
+        "Mount Môco",
+        "モコ山"
+      ],
+      "labels": {
+        "en": "Mount Moco",
+        "ja": "モコ山"
+      },
+      "latitude_deg": -12.466666666,
+      "longitude_deg": 15.183333333,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1348116",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Moco",
+        "ja": "https://ja.wikipedia.org/wiki/モコ山"
+      },
+      "location_arg": "-12.466667;15.183333",
+      "slug": "Mount_Moco",
+      "elevation_m": 2619.0,
+      "region_hint": "Angola"
+    },
+    {
+      "id": "wikidata:Q6922335",
+      "qid": "Q6922335",
+      "name": "Mount Nabi Yunis",
+      "names": [
+        "Mount Nabi Yunis"
+      ],
+      "labels": {
+        "en": "Mount Nabi Yunis"
+      },
+      "latitude_deg": 31.57944444,
+      "longitude_deg": 35.105,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q6922335",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Nabi_Yunis,_Palestine"
+      },
+      "location_arg": "31.579444;35.105000",
+      "slug": "Mount_Nabi_Yunis",
+      "elevation_m": 1026.0,
+      "region_hint": "Palestine"
+    },
+    {
+      "id": "wikidata:Q1191219",
+      "qid": "Q1191219",
+      "name": "Mount Ngerchelchuus",
+      "names": [
+        "Mount Ngerchelchuus",
+        "ゲルチェルチュース山",
+        "ゲルチェレチュース山",
+        "ゲレチェルチュース山"
+      ],
+      "labels": {
+        "en": "Mount Ngerchelchuus",
+        "ja": "ゲルチェレチュース山"
+      },
+      "latitude_deg": 7.565277777,
+      "longitude_deg": 134.569444444,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1191219",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Ngerchelchuus",
+        "ja": "https://ja.wikipedia.org/wiki/ゲルチェレチュース山"
+      },
+      "location_arg": "7.565278;134.569444",
+      "slug": "Mount_Ngerchelchuus",
+      "elevation_m": 242.0,
+      "region_hint": "Palau"
+    },
+    {
+      "id": "wikidata:Q152294",
+      "qid": "Q152294",
+      "name": "Mount Nyangani",
+      "names": [
+        "Mount Nyangani",
+        "イニャンガニ山",
+        "ニャンガニ山",
+        "ンヤンガニ山"
+      ],
+      "labels": {
+        "en": "Mount Nyangani",
+        "ja": "ンヤンガニ山"
+      },
+      "latitude_deg": -18.311111111,
+      "longitude_deg": 32.850555555,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q152294",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Nyangani"
+      },
+      "location_arg": "-18.311111;32.850556",
+      "slug": "Mount_Nyangani",
+      "elevation_m": 2592.0,
+      "region_hint": "Zimbabwe"
+    },
+    {
+      "id": "wikidata:Q1718336",
+      "qid": "Q1718336",
+      "name": "Mount Obama",
+      "names": [
+        "Boggy Peak",
+        "Mount Obama",
+        "オバマ山"
+      ],
+      "labels": {
+        "en": "Mount Obama",
+        "ja": "オバマ山"
+      },
+      "latitude_deg": 17.05,
+      "longitude_deg": -61.85,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1718336",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Boggy_Peak",
+        "ja": "https://ja.wikipedia.org/wiki/オバマ山"
+      },
+      "location_arg": "17.050000;-61.850000",
+      "slug": "Mount_Obama",
+      "elevation_m": 402.0,
+      "region_hint": "Antigua and Barbuda"
+    },
+    {
+      "id": "wikidata:Q80344",
+      "qid": "Q80344",
+      "name": "Mount Olympus",
+      "names": [
+        "Mount Olympus",
+        "Olympos",
+        "Olympus",
+        "Oros Olympos",
+        "オリュンポス",
+        "オリュンポス山",
+        "オリンポス山",
+        "オリンポス山 (ギリシャ)"
+      ],
+      "labels": {
+        "en": "Mount Olympus",
+        "ja": "オリンポス山"
+      },
+      "latitude_deg": 40.083333333,
+      "longitude_deg": 22.35,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q80344",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Olympus",
+        "ja": "https://ja.wikipedia.org/wiki/オリンポス山"
+      },
+      "location_arg": "40.083333;22.350000",
+      "slug": "Mount_Olympus",
+      "elevation_m": 2917.727,
+      "region_hint": "Greece"
+    },
+    {
+      "id": "wikidata:Q819979",
+      "qid": "Q819979",
+      "name": "Mount Olympus",
+      "names": [
+        "Chionístra",
+        "Mount Olympus",
+        "Olympus",
+        "Troodos",
+        "Ólympos",
+        "Όλυμπος",
+        "Χιονίστρα",
+        "オリンポス山"
+      ],
+      "labels": {
+        "en": "Mount Olympus",
+        "ja": "オリンポス山"
+      },
+      "latitude_deg": 34.936666666,
+      "longitude_deg": 32.863888888,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q819979",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Olympus_(Cyprus)"
+      },
+      "location_arg": "34.936667;32.863889",
+      "slug": "Mount_Olympus",
+      "elevation_m": 1952.0,
+      "region_hint": "Cyprus"
+    },
+    {
+      "id": "wikidata:Q928681",
+      "qid": "Q928681",
+      "name": "Mount Pico",
+      "names": [
+        "Montanha do Pico",
+        "Mount Pico",
+        "ピコ山"
+      ],
+      "labels": {
+        "en": "Mount Pico",
+        "ja": "ピコ山"
+      },
+      "latitude_deg": 38.468611111,
+      "longitude_deg": -28.399166666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q928681",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Pico",
+        "ja": "https://ja.wikipedia.org/wiki/ピコ山"
+      },
+      "location_arg": "38.468611;-28.399167",
+      "slug": "Mount_Pico",
+      "elevation_m": 2351.0,
+      "region_hint": "Portugal"
+    },
+    {
+      "id": "wikidata:Q760819",
+      "qid": "Q760819",
+      "name": "Mount Popomanaseu",
+      "names": [
+        "Mount Popomanaseu",
+        "ポポマナセウ山"
+      ],
+      "labels": {
+        "en": "Mount Popomanaseu",
+        "ja": "ポポマナセウ山"
+      },
+      "latitude_deg": -9.703611111,
+      "longitude_deg": 160.061944444,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q760819",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Popomanaseu",
+        "ja": "https://ja.wikipedia.org/wiki/ポポマナセウ山"
+      },
+      "location_arg": "-9.703611;160.061944",
+      "slug": "Mount_Popomanaseu",
+      "elevation_m": 2335.0,
+      "region_hint": "Solomon Islands"
+    },
+    {
+      "id": "wikidata:Q4777",
+      "qid": "Q4777",
+      "name": "Mount Roraima",
+      "names": [
+        "Cerro Roraima",
+        "Monte Roraima",
+        "Mount Roraima",
+        "Mount Rorima",
+        "Mt. Roraima",
+        "Pico do Roraima",
+        "Roraima Tepui",
+        "Roraima mountain",
+        "Roraima-tepui",
+        "ロライマ山"
+      ],
+      "labels": {
+        "en": "Mount Roraima",
+        "ja": "ロライマ山"
+      },
+      "latitude_deg": 5.141944444,
+      "longitude_deg": -60.764166666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q4777",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Roraima",
+        "ja": "https://ja.wikipedia.org/wiki/ロライマ山"
+      },
+      "location_arg": "5.141944;-60.764167",
+      "slug": "Mount_Roraima",
+      "elevation_m": 2810.0,
+      "region_hint": "Guyana"
+    },
+    {
+      "id": "wikidata:Q525281",
+      "qid": "Q525281",
+      "name": "Mount Saint Catherine",
+      "names": [
+        "Mount Saint Catherine",
+        "Saint Catherine, mount",
+        "セント・キャサリン山"
+      ],
+      "labels": {
+        "en": "Mount Saint Catherine",
+        "ja": "セント・キャサリン山"
+      },
+      "latitude_deg": 12.162222222,
+      "longitude_deg": -61.675277777,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q525281",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Saint_Catherine_(Grenada)"
+      },
+      "location_arg": "12.162222;-61.675278",
+      "slug": "Mount_Saint_Catherine",
+      "elevation_m": 840.0,
+      "region_hint": "Grenada"
+    },
+    {
+      "id": "wikidata:Q1301834",
+      "qid": "Q1301834",
+      "name": "Mount Scenery",
+      "names": [
+        "Mount Scenery",
+        "シーナリー山"
+      ],
+      "labels": {
+        "en": "Mount Scenery",
+        "ja": "シーナリー山"
+      },
+      "latitude_deg": 17.635,
+      "longitude_deg": -63.239166666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1301834",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Scenery",
+        "ja": "https://ja.wikipedia.org/wiki/シーナリー山"
+      },
+      "location_arg": "17.635000;-63.239167",
+      "slug": "Mount_Scenery",
+      "elevation_m": 870.0,
+      "region_hint": "Kingdom of the Netherlands"
+    },
+    {
+      "id": "wikidata:Q1542459",
+      "qid": "Q1542459",
+      "name": "Mount Tabwemasana",
+      "names": [
+        "Mount Tabwemasana",
+        "タブウェマサナ山"
+      ],
+      "labels": {
+        "en": "Mount Tabwemasana",
+        "ja": "タブウェマサナ山"
+      },
+      "latitude_deg": -15.35,
+      "longitude_deg": 166.75,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1542459",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Tabwemasana"
+      },
+      "location_arg": "-15.350000;166.750000",
+      "slug": "Mount_Tabwemasana",
+      "elevation_m": 1879.0,
+      "region_hint": "Vanuatu"
+    },
+    {
+      "id": "wikidata:Q822326",
+      "qid": "Q822326",
+      "name": "Mount Tahat",
+      "names": [
+        "3003",
+        "Mount Tahat",
+        "タハト",
+        "タハト山",
+        "タハート山"
+      ],
+      "labels": {
+        "en": "Mount Tahat",
+        "ja": "タハト山"
+      },
+      "latitude_deg": 23.288888888,
+      "longitude_deg": 5.533611111,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q822326",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Tahat",
+        "ja": "https://ja.wikipedia.org/wiki/タハト山"
+      },
+      "location_arg": "23.288889;5.533611",
+      "slug": "Mount_Tahat",
+      "elevation_m": 2908.0,
+      "region_hint": "Algeria"
+    },
+    {
+      "id": "wikidata:Q116675",
+      "qid": "Q116675",
+      "name": "Mount Tenakourou",
+      "names": [
+        "Mount Tenakourou",
+        "Tenakourou"
+      ],
+      "labels": {
+        "en": "Mount Tenakourou"
+      },
+      "latitude_deg": 10.75,
+      "longitude_deg": -5.416666666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q116675",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Tenakourou"
+      },
+      "location_arg": "10.750000;-5.416667",
+      "slug": "Mount_Tenakourou",
+      "elevation_m": 749.0,
+      "region_hint": "Burkina Faso"
+    },
+    {
+      "id": "wikidata:Q1513944",
+      "qid": "Q1513944",
+      "name": "Mount Tomanivi",
+      "names": [
+        "Mount Tomanivi",
+        "Toamiivi",
+        "トマニイビ山",
+        "トマニビ山"
+      ],
+      "labels": {
+        "en": "Mount Tomanivi",
+        "ja": "トマニビ山"
+      },
+      "latitude_deg": -17.633055555,
+      "longitude_deg": 178.016666666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1513944",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Tomanivi"
+      },
+      "location_arg": "-17.633056;178.016667",
+      "slug": "Mount_Tomanivi",
+      "elevation_m": 1324.0,
+      "region_hint": "Fiji"
+    },
+    {
+      "id": "wikidata:Q277441",
+      "qid": "Q277441",
+      "name": "Mount Wilhelm",
+      "names": [
+        "Mount Wilhelm",
+        "pueyosa",
+        "ウィルヘルム山"
+      ],
+      "labels": {
+        "en": "Mount Wilhelm",
+        "ja": "ウィルヘルム山"
+      },
+      "latitude_deg": -5.8,
+      "longitude_deg": 145.033333333,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q277441",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Wilhelm",
+        "ja": "https://ja.wikipedia.org/wiki/ウィルヘルム山"
+      },
+      "location_arg": "-5.800000;145.033333",
+      "slug": "Mount_Wilhelm",
+      "elevation_m": 4509.0,
+      "region_hint": "Papua New Guinea"
+    },
+    {
+      "id": "wikidata:Q1950836",
+      "qid": "Q1950836",
+      "name": "Mount Wuteve",
+      "names": [
+        "Mount Wuteve"
+      ],
+      "labels": {
+        "en": "Mount Wuteve"
+      },
+      "latitude_deg": 8.145833333,
+      "longitude_deg": -9.925,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1950836",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Wuteve"
+      },
+      "location_arg": "8.145833;-9.925000",
+      "slug": "Mount_Wuteve",
+      "elevation_m": 1440.0,
+      "region_hint": "Liberia"
+    },
+    {
+      "id": "wikidata:Q1032812",
+      "qid": "Q1032812",
+      "name": "Mountain of Smoke",
+      "names": [
+        "Mountain of Smoke",
+        "ジャバル・アド・ドゥハーン",
+        "ドゥハーン山"
+      ],
+      "labels": {
+        "en": "Mountain of Smoke",
+        "ja": "ジャバル・アド・ドゥハーン"
+      },
+      "latitude_deg": 26.038888888,
+      "longitude_deg": 50.543055555,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1032812",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mountain_of_Smoke"
+      },
+      "location_arg": "26.038889;50.543056",
+      "slug": "Mountain_of_Smoke",
+      "elevation_m": 134.0,
+      "region_hint": "Bahrain"
+    },
+    {
+      "id": "wikidata:Q1951029",
+      "qid": "Q1951029",
+      "name": "Mousa Ali",
+      "names": [
+        "Mousa Ali",
+        "Mousa Ali Volcano",
+        "ムーサ・アリ山"
+      ],
+      "labels": {
+        "en": "Mousa Ali",
+        "ja": "ムーサ・アリ山"
+      },
+      "latitude_deg": 12.470833333,
+      "longitude_deg": 42.405,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1951029",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mousa_Ali",
+        "ja": "https://ja.wikipedia.org/wiki/ムーサ・アリ山"
+      },
+      "location_arg": "12.470833;42.405000",
+      "slug": "Mousa_Ali",
+      "elevation_m": 2028.0,
+      "region_hint": "Djibouti"
+    },
+    {
+      "id": "wikidata:Q2696459",
+      "qid": "Q2696459",
+      "name": "Mowdok tiang",
+      "names": [
+        "Mowdok tiang",
+        "Saka Haphong"
+      ],
+      "labels": {
+        "en": "Mowdok tiang"
+      },
+      "latitude_deg": 21.78657,
+      "longitude_deg": 92.60968,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q2696459",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Saka_Haphong"
+      },
+      "location_arg": "21.786570;92.609680",
+      "slug": "Mowdok_tiang",
+      "elevation_m": 1054.0,
+      "region_hint": "Bangladesh"
+    },
+    {
+      "id": "wikidata:Q209341",
+      "qid": "Q209341",
+      "name": "Musala",
+      "names": [
+        "Musala",
+        "ムサラ山"
+      ],
+      "labels": {
+        "en": "Musala",
+        "ja": "ムサラ山"
+      },
+      "latitude_deg": 42.179167,
+      "longitude_deg": 23.585278,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q209341",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Musala",
+        "ja": "https://ja.wikipedia.org/wiki/ムサラ山"
+      },
+      "location_arg": "42.179167;23.585278",
+      "slug": "Musala",
+      "elevation_m": 2925.4,
+      "region_hint": "Bulgaria"
+    },
+    {
+      "id": "wikidata:Q272593",
+      "qid": "Q272593",
+      "name": "Nevado Sajama",
+      "names": [
+        "Nevado Sajama",
+        "サハマ",
+        "サハマ山"
+      ],
+      "labels": {
+        "en": "Nevado Sajama",
+        "ja": "サハマ山"
+      },
+      "latitude_deg": -18.108055555,
+      "longitude_deg": -68.883055555,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q272593",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Nevado_Sajama",
+        "ja": "https://ja.wikipedia.org/wiki/サハマ山"
+      },
+      "location_arg": "-18.108056;-68.883056",
+      "slug": "Nevado_Sajama",
+      "elevation_m": 6542.0,
+      "region_hint": "Bolivia"
+    },
+    {
+      "id": "wikidata:Q271700",
+      "qid": "Q271700",
+      "name": "Noshaq",
+      "names": [
+        "Noshaq",
+        "ノシャック"
+      ],
+      "labels": {
+        "en": "Noshaq",
+        "ja": "ノシャック"
+      },
+      "latitude_deg": 36.431666666,
+      "longitude_deg": 71.828333333,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q271700",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Noshaq",
+        "ja": "https://ja.wikipedia.org/wiki/ノシャック"
+      },
+      "location_arg": "36.431667;71.828333",
+      "slug": "Noshaq",
+      "elevation_m": 7492.0,
+      "region_hint": "Afghanistan"
+    },
+    {
+      "id": "wikidata:Q233836",
+      "qid": "Q233836",
+      "name": "Ojos del Salado",
+      "names": [
+        "Nevados Ojos del Salado",
+        "Ojos del Salado",
+        "オホス・デル・サラード"
+      ],
+      "labels": {
+        "en": "Ojos del Salado",
+        "ja": "オホス・デル・サラード"
+      },
+      "latitude_deg": -27.109444444,
+      "longitude_deg": -68.542222222,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q233836",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Ojos_del_Salado",
+        "ja": "https://ja.wikipedia.org/wiki/オホス・デル・サラード"
+      },
+      "location_arg": "-27.109444;-68.542222",
+      "slug": "Ojos_del_Salado",
+      "elevation_m": 6893.0,
+      "region_hint": "Chile"
+    },
+    {
+      "id": "wikidata:Q539772",
+      "qid": "Q539772",
+      "name": "Phnom Aural",
+      "names": [
+        "Phnom Aural",
+        "アオラル山"
+      ],
+      "labels": {
+        "en": "Phnom Aural",
+        "ja": "アオラル山"
+      },
+      "latitude_deg": 12.031944444,
+      "longitude_deg": 104.170555555,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q539772",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Phnom_Aural",
+        "ja": "https://ja.wikipedia.org/wiki/アオラル山"
+      },
+      "location_arg": "12.031944;104.170556",
+      "slug": "Phnom_Aural",
+      "elevation_m": 1813.0,
+      "region_hint": "Cambodia"
+    },
+    {
+      "id": "wikidata:Q239485",
+      "qid": "Q239485",
+      "name": "Phou Bia",
+      "names": [
+        "Phou Bia",
+        "ビア山",
+        "フービア"
+      ],
+      "labels": {
+        "en": "Phou Bia",
+        "ja": "ビア山"
+      },
+      "latitude_deg": 18.983333333,
+      "longitude_deg": 103.133333333,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q239485",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Phou_Bia",
+        "ja": "https://ja.wikipedia.org/wiki/ビア山"
+      },
+      "location_arg": "18.983333;103.133333",
+      "slug": "Phou_Bia",
+      "elevation_m": 2819.0,
+      "region_hint": "Laos"
+    },
+    {
+      "id": "wikidata:Q1971319",
+      "qid": "Q1971319",
+      "name": "Pic la Selle",
+      "names": [
+        "Morne La Selle",
+        "Pic la Selle",
+        "ラ・セル山"
+      ],
+      "labels": {
+        "en": "Pic la Selle",
+        "ja": "ラ・セル山"
+      },
+      "latitude_deg": 18.366666666,
+      "longitude_deg": -71.983333333,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1971319",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Pic_la_Selle",
+        "ja": "https://ja.wikipedia.org/wiki/ラ・セル山"
+      },
+      "location_arg": "18.366667;-71.983333",
+      "slug": "Pic_la_Selle",
+      "elevation_m": 2674.0,
+      "region_hint": "Haiti"
+    },
+    {
+      "id": "wikidata:Q1518286",
+      "qid": "Q1518286",
+      "name": "Pico Basilé",
+      "names": [
+        "Mount Santa Isabel",
+        "Pico Basile",
+        "Pico Basilé",
+        "Pico de Santa Isabel",
+        "バジーレ山"
+      ],
+      "labels": {
+        "en": "Pico Basilé",
+        "ja": "バジーレ山"
+      },
+      "latitude_deg": 3.583333333,
+      "longitude_deg": 8.766666666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1518286",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Pico_Basilé",
+        "ja": "https://ja.wikipedia.org/wiki/バジーレ山"
+      },
+      "location_arg": "3.583333;8.766667",
+      "slug": "Pico_Basilé",
+      "elevation_m": 3011.0,
+      "region_hint": "Equatorial Guinea"
+    },
+    {
+      "id": "wikidata:Q213704",
+      "qid": "Q213704",
+      "name": "Pico Bolívar",
+      "names": [
+        "Pico Bolivar",
+        "Pico Bolívar",
+        "ボリバル山"
+      ],
+      "labels": {
+        "en": "Pico Bolívar",
+        "ja": "ボリバル山"
+      },
+      "latitude_deg": 8.540861111,
+      "longitude_deg": -71.0465,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q213704",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Pico_Bolívar",
+        "ja": "https://ja.wikipedia.org/wiki/ボリバル山"
+      },
+      "location_arg": "8.540861;-71.046500",
+      "slug": "Pico_Bolívar",
+      "elevation_m": 4978.0,
+      "region_hint": "Venezuela"
+    },
+    {
+      "id": "wikidata:Q338790",
+      "qid": "Q338790",
+      "name": "Pico Cristóbal Colón",
+      "names": [
+        "Pico Cristóbal Colón",
+        "Pico Simon Bolivar",
+        "シモン・ボリーバル山"
+      ],
+      "labels": {
+        "en": "Pico Cristóbal Colón",
+        "ja": "シモン・ボリーバル山"
+      },
+      "latitude_deg": 10.834444444,
+      "longitude_deg": -73.691388888,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q338790",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Pico_Simón_Bolívar",
+        "ja": "https://ja.wikipedia.org/wiki/シモン・ボリバル山"
+      },
+      "location_arg": "10.834444;-73.691389",
+      "slug": "Pico_Cristóbal_Colón",
+      "elevation_m": 5775.0,
+      "region_hint": "Colombia"
+    },
+    {
+      "id": "wikidata:Q578862",
+      "qid": "Q578862",
+      "name": "Pico Cristóbal Colón",
+      "names": [
+        "Pico Cristobal Colon",
+        "Pico Cristóbal Colón",
+        "クリストバル・コロン山"
+      ],
+      "labels": {
+        "en": "Pico Cristóbal Colón",
+        "ja": "クリストバル・コロン山"
+      },
+      "latitude_deg": 10.838333333,
+      "longitude_deg": -73.686666666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q578862",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Pico_Cristóbal_Colón",
+        "ja": "https://ja.wikipedia.org/wiki/クリストバル・コロン山"
+      },
+      "location_arg": "10.838333;-73.686667",
+      "slug": "Pico_Cristóbal_Colón",
+      "elevation_m": 5775.0,
+      "region_hint": "Colombia"
+    },
+    {
+      "id": "wikidata:Q783742",
+      "qid": "Q783742",
+      "name": "Pico Duarte",
+      "names": [
+        "Pico Duarte",
+        "ドゥアルテ山",
+        "ピコ・ドゥアルテ"
+      ],
+      "labels": {
+        "en": "Pico Duarte",
+        "ja": "ピコ・ドゥアルテ"
+      },
+      "latitude_deg": 19.033055555,
+      "longitude_deg": -71.005277777,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q783742",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Pico_Duarte"
+      },
+      "location_arg": "19.033056;-71.005278",
+      "slug": "Pico_Duarte",
+      "elevation_m": 3101.0,
+      "region_hint": "Dominican Republic"
+    },
+    {
+      "id": "wikidata:Q1145743",
+      "qid": "Q1145743",
+      "name": "Pico Turquino",
+      "names": [
+        "Montaña Turquino",
+        "Pico Turquino",
+        "トゥルキーノ山"
+      ],
+      "labels": {
+        "en": "Pico Turquino",
+        "ja": "トゥルキーノ山"
+      },
+      "latitude_deg": 19.989444444,
+      "longitude_deg": -76.835833333,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1145743",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Pico_Turquino",
+        "ja": "https://ja.wikipedia.org/wiki/トゥルキーノ山"
+      },
+      "location_arg": "19.989444;-76.835833",
+      "slug": "Pico_Turquino",
+      "elevation_m": 1974.0,
+      "region_hint": "Cuba"
+    },
+    {
+      "id": "wikidata:Q739484",
+      "qid": "Q739484",
+      "name": "Pico da Neblina",
+      "names": [
+        "Pico da Neblina",
+        "ネブリナ山",
+        "ピッコ・ダ・ネブリーナ山"
+      ],
+      "labels": {
+        "en": "Pico da Neblina",
+        "ja": "ネブリナ山"
+      },
+      "latitude_deg": 0.805494444,
+      "longitude_deg": -66.005358333,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q739484",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Pico_da_Neblina",
+        "ja": "https://ja.wikipedia.org/wiki/ネブリナ山"
+      },
+      "location_arg": "0.805494;-66.005358",
+      "slug": "Pico_da_Neblina",
+      "elevation_m": 2994.0,
+      "region_hint": "Brazil"
+    },
+    {
+      "id": "wikidata:Q1471391",
+      "qid": "Q1471391",
+      "name": "Pico de São Tomé",
+      "names": [
+        "Pico de São Tomé",
+        "サントメ山"
+      ],
+      "labels": {
+        "en": "Pico de São Tomé",
+        "ja": "サントメ山"
+      },
+      "latitude_deg": 0.266666666,
+      "longitude_deg": 6.533333333,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1471391",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Pico_de_São_Tomé",
+        "ja": "https://ja.wikipedia.org/wiki/サントメ山"
+      },
+      "location_arg": "0.266667;6.533333",
+      "slug": "Pico_de_São_Tomé",
+      "elevation_m": 2024.0,
+      "region_hint": "São Tomé and Príncipe"
+    },
+    {
+      "id": "wikidata:Q499108",
+      "qid": "Q499108",
+      "name": "Pico do Fogo",
+      "names": [
+        "Pico do Fogo",
+        "フォゴ山"
+      ],
+      "labels": {
+        "en": "Pico do Fogo",
+        "ja": "フォゴ山"
+      },
+      "latitude_deg": 14.949269444,
+      "longitude_deg": -24.340369444,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q499108",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Pico_do_Fogo",
+        "ja": "https://ja.wikipedia.org/wiki/フォゴ山"
+      },
+      "location_arg": "14.949269;-24.340369",
+      "slug": "Pico_do_Fogo",
+      "elevation_m": 2829.0,
+      "region_hint": "Cape Verde"
+    },
+    {
+      "id": "wikidata:Q1146327",
+      "qid": "Q1146327",
+      "name": "Pidurutalagala",
+      "names": [
+        "Mount Pedro",
+        "Pidurutalagala",
+        "Piduruthalagala",
+        "ピドゥルタラーガラ山"
+      ],
+      "labels": {
+        "en": "Pidurutalagala",
+        "ja": "ピドゥルタラーガラ山"
+      },
+      "latitude_deg": 7.000833333,
+      "longitude_deg": 80.773888888,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1146327",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Pidurutalagala",
+        "ja": "https://ja.wikipedia.org/wiki/ピドゥルタラーガラ山"
+      },
+      "location_arg": "7.000833;80.773889",
+      "slug": "Pidurutalagala",
+      "elevation_m": 2524.0,
+      "region_hint": "Sri Lanka"
+    },
+    {
+      "id": "wikidata:Q1760978",
+      "qid": "Q1760978",
+      "name": "Piton de la Petite Rivière Noire",
+      "names": [
+        "Piton de la Petite Riviere Noire",
+        "Piton de la Petite Rivière Noire",
+        "ラ・プティ・リヴィエール・ノワール山"
+      ],
+      "labels": {
+        "en": "Piton de la Petite Rivière Noire",
+        "ja": "ラ・プティ・リヴィエール・ノワール山"
+      },
+      "latitude_deg": -20.4087947,
+      "longitude_deg": 57.4076919,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1760978",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Piton_de_la_Petite_Rivière_Noire"
+      },
+      "location_arg": "-20.408795;57.407692",
+      "slug": "Piton_de_la_Petite_Rivière_Noire",
+      "elevation_m": 828.0,
+      "region_hint": "Mauritius"
+    },
+    {
+      "id": "wikidata:Q1045888",
+      "qid": "Q1045888",
+      "name": "Puncak Jaya",
+      "names": [
+        "Carstensz Pyramid",
+        "Mount Carstensz",
+        "Puncak Jaya",
+        "カルステンツ・ピラミッド",
+        "ジャヤ山",
+        "ジャヤ峰",
+        "プンチャクジャヤ",
+        "プンチャック・ジャヤ"
+      ],
+      "labels": {
+        "en": "Puncak Jaya",
+        "ja": "プンチャック・ジャヤ"
+      },
+      "latitude_deg": -4.083333333,
+      "longitude_deg": 137.183333333,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1045888",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Puncak_Jaya",
+        "ja": "https://ja.wikipedia.org/wiki/プンチャック・ジャヤ"
+      },
+      "location_arg": "-4.083333;137.183333",
+      "slug": "Puncak_Jaya",
+      "elevation_m": 4884.0,
+      "region_hint": "Indonesia"
+    },
+    {
+      "id": "wikidata:Q1633034",
+      "qid": "Q1633034",
+      "name": "Qurayn Abu al Bawl",
+      "names": [
+        "Qurayn Abu al Bawl",
+        "クライン・アブ・アル・ボウル"
+      ],
+      "labels": {
+        "en": "Qurayn Abu al Bawl",
+        "ja": "クライン・アブ・アル・ボウル"
+      },
+      "latitude_deg": 24.946111111,
+      "longitude_deg": 51.184444444,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1633034",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Qurayn_Abu_al_Bawl"
+      },
+      "location_arg": "24.946111;51.184444",
+      "slug": "Qurayn_Abu_al_Bawl",
+      "elevation_m": 103.0,
+      "region_hint": "Qatar"
+    },
+    {
+      "id": "wikidata:Q311330",
+      "qid": "Q311330",
+      "name": "Qurnat as Sawda'",
+      "names": [
+        "Qurnat as Sawda'",
+        "カーネット・アッサウダー山",
+        "クルナ・アッサウダー山"
+      ],
+      "labels": {
+        "en": "Qurnat as Sawda'",
+        "ja": "クルナ・アッサウダー山"
+      },
+      "latitude_deg": 34.3,
+      "longitude_deg": 36.116666666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q311330",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Qurnat_as_Sawda'",
+        "ja": "https://ja.wikipedia.org/wiki/クルナ・アッサウダー山"
+      },
+      "location_arg": "34.300000;36.116667",
+      "slug": "Qurnat_as_Sawda'",
+      "elevation_m": 3088.0,
+      "region_hint": "Lebanon"
+    },
+    {
+      "id": "wikidata:Q275435",
+      "qid": "Q275435",
+      "name": "Ras Dashen",
+      "names": [
+        "Ras Dashen",
+        "Ras Dejen",
+        "ራስ ዳሸን",
+        "ラス・ダシャン山"
+      ],
+      "labels": {
+        "en": "Ras Dashen",
+        "ja": "ラス・ダシャン山"
+      },
+      "latitude_deg": 13.236666666,
+      "longitude_deg": 38.3725,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q275435",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Ras_Dashen",
+        "ja": "https://ja.wikipedia.org/wiki/ラス・ダシャン山"
+      },
+      "location_arg": "13.236667;38.372500",
+      "slug": "Ras_Dashen",
+      "elevation_m": 4533.0,
+      "region_hint": "Ethiopia"
+    },
+    {
+      "id": "wikidata:Q649162",
+      "qid": "Q649162",
+      "name": "Shimbiris",
+      "names": [
+        "Mount Shimbiris",
+        "Shimbiris",
+        "シンビリス",
+        "シンビリス山"
+      ],
+      "labels": {
+        "en": "Shimbiris",
+        "ja": "シンビリス山"
+      },
+      "latitude_deg": 10.735833333,
+      "longitude_deg": 47.245,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q649162",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Shimbiris",
+        "ja": "https://ja.wikipedia.org/wiki/シンビリス山"
+      },
+      "location_arg": "10.735833;47.245000",
+      "slug": "Shimbiris",
+      "elevation_m": 2460.0,
+      "region_hint": "Somalia"
+    },
+    {
+      "id": "wikidata:Q217457",
+      "qid": "Q217457",
+      "name": "Shkhara",
+      "names": [
+        "Shkhara",
+        "シュハラ山"
+      ],
+      "labels": {
+        "en": "Shkhara",
+        "ja": "シュハラ山"
+      },
+      "latitude_deg": 42.999444444,
+      "longitude_deg": 43.111666666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q217457",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Shkhara",
+        "ja": "https://ja.wikipedia.org/wiki/シュハラ山"
+      },
+      "location_arg": "42.999444;43.111667",
+      "slug": "Shkhara",
+      "elevation_m": 5193.2,
+      "region_hint": "Georgia"
+    },
+    {
+      "id": "wikidata:Q322824",
+      "qid": "Q322824",
+      "name": "Signal de Botrange",
+      "names": [
+        "Signal de Botrange"
+      ],
+      "labels": {
+        "en": "Signal de Botrange"
+      },
+      "latitude_deg": 50.501667,
+      "longitude_deg": 6.093056,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q322824",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Signal_de_Botrange"
+      },
+      "location_arg": "50.501667;6.093056",
+      "slug": "Signal_de_Botrange",
+      "elevation_m": 694.24,
+      "region_hint": "Belgium"
+    },
+    {
+      "id": "wikidata:Q1147814",
+      "qid": "Q1147814",
+      "name": "Silisili",
+      "names": [
+        "Mount Silisili",
+        "Silisili",
+        "シリシリ山"
+      ],
+      "labels": {
+        "en": "Silisili",
+        "ja": "シリシリ山"
+      },
+      "latitude_deg": -13.618333333,
+      "longitude_deg": -172.485833333,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1147814",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Silisili"
+      },
+      "location_arg": "-13.618333;-172.485833",
+      "slug": "Silisili",
+      "elevation_m": 1858.0,
+      "region_hint": "Samoa"
+    },
+    {
+      "id": "wikidata:Q617511",
+      "qid": "Q617511",
+      "name": "Sněžka",
+      "names": [
+        "Sněžka",
+        "Śnieżka",
+        "シニェシュカ山",
+        "スニェシュカ山"
+      ],
+      "labels": {
+        "en": "Sněžka",
+        "ja": "スニェシュカ山"
+      },
+      "latitude_deg": 50.736111111,
+      "longitude_deg": 15.740277777,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q617511",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Sněžka"
+      },
+      "location_arg": "50.736111;15.740278",
+      "slug": "Sněžka",
+      "elevation_m": 1603.3,
+      "region_hint": "Czech Republic"
+    },
+    {
+      "id": "wikidata:Q1539961",
+      "qid": "Q1539961",
+      "name": "Tatamailau",
+      "names": [
+        "Ramelau",
+        "Tatamailau",
+        "タタマイラウ山",
+        "タタ・マイラウ山",
+        "ラメラウ山"
+      ],
+      "labels": {
+        "en": "Tatamailau",
+        "ja": "タタマイラウ山"
+      },
+      "latitude_deg": -8.906666666,
+      "longitude_deg": 125.493333333,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1539961",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Tatamailau",
+        "ja": "https://ja.wikipedia.org/wiki/タタマイラウ山"
+      },
+      "location_arg": "-8.906667;125.493333",
+      "slug": "Tatamailau",
+      "elevation_m": 2963.0,
+      "region_hint": "Timor-Leste"
+    },
+    {
+      "id": "wikidata:Q38954",
+      "qid": "Q38954",
+      "name": "Teide",
+      "names": [
+        "El Teide",
+        "Mount Teide",
+        "Teide",
+        "テイデ国立公園",
+        "テイデ山"
+      ],
+      "labels": {
+        "en": "Teide",
+        "ja": "テイデ山"
+      },
+      "latitude_deg": 28.272638888,
+      "longitude_deg": -16.643611111,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q38954",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Teide",
+        "ja": "https://ja.wikipedia.org/wiki/テイデ山"
+      },
+      "location_arg": "28.272639;-16.643611",
+      "slug": "Teide",
+      "elevation_m": 3715.0,
+      "region_hint": "Spain"
+    },
+    {
+      "id": "wikidata:Q733132",
+      "qid": "Q733132",
+      "name": "Thabana Ntlenyana",
+      "names": [
+        "Thabana Ntlenyana",
+        "タバナヌトレニャナ山",
+        "タバナントレニャナ山"
+      ],
+      "labels": {
+        "en": "Thabana Ntlenyana",
+        "ja": "タバナントレニャナ山"
+      },
+      "latitude_deg": -29.466666666,
+      "longitude_deg": 29.266666666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q733132",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Thabana_Ntlenyana",
+        "ja": "https://ja.wikipedia.org/wiki/タバナントレニャナ山"
+      },
+      "location_arg": "-29.466667;29.266667",
+      "slug": "Thabana_Ntlenyana",
+      "elevation_m": 3482.0,
+      "region_hint": "Lesotho"
+    },
+    {
+      "id": "wikidata:Q1024",
+      "qid": "Q1024",
+      "name": "Triglav",
+      "names": [
+        "Mount Triglav",
+        "Triglav",
+        "トリグラウ山",
+        "トリグラフ山"
+      ],
+      "labels": {
+        "en": "Triglav",
+        "ja": "トリグラウ山"
+      },
+      "latitude_deg": 46.378333,
+      "longitude_deg": 13.836667,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1024",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Triglav",
+        "ja": "https://ja.wikipedia.org/wiki/トリグラウ山"
+      },
+      "location_arg": "46.378333;13.836667",
+      "slug": "Triglav",
+      "elevation_m": 2864.0,
+      "region_hint": "Slovenia"
+    },
+    {
+      "id": "wikidata:Q594726",
+      "qid": "Q594726",
+      "name": "Volcan Baru",
+      "names": [
+        "Volcan Baru",
+        "バル火山"
+      ],
+      "labels": {
+        "en": "Volcan Baru",
+        "ja": "バル火山"
+      },
+      "latitude_deg": 8.808,
+      "longitude_deg": -82.543,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q594726",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Volcán_Barú",
+        "ja": "https://ja.wikipedia.org/wiki/バル火山"
+      },
+      "location_arg": "8.808000;-82.543000",
+      "slug": "Volcan_Baru",
+      "elevation_m": 3475.0,
+      "region_hint": "Panama"
+    },
+    {
+      "id": "wikidata:Q818467",
+      "qid": "Q818467",
+      "name": "Volcán Tajumulco",
+      "names": [
+        "Volcan Tajumulco",
+        "Volcán Tajumulco",
+        "タフムルコ山"
+      ],
+      "labels": {
+        "en": "Volcán Tajumulco",
+        "ja": "タフムルコ山"
+      },
+      "latitude_deg": 15.033333333,
+      "longitude_deg": -91.9,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q818467",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Volcán_Tajumulco",
+        "ja": "https://ja.wikipedia.org/wiki/タフムルコ山"
+      },
+      "location_arg": "15.033333;-91.900000",
+      "slug": "Volcán_Tajumulco",
+      "elevation_m": 4203.0,
+      "region_hint": "Guatemala"
+    },
+    {
+      "id": "wikidata:Q500275",
+      "qid": "Q500275",
+      "name": "Yushan Main Peak",
+      "names": [
+        "Gyokuzan",
+        "Jade Mountain",
+        "Jade Mtn.",
+        "Kanasi",
+        "Mount Jade",
+        "Mount Morrison",
+        "Mount Yu",
+        "Mt. Jade",
+        "Mt. Morrison",
+        "Patungkuonʉ",
+        "Saviah",
+        "Savih",
+        "Tanungu'incu",
+        "Tongku Saveq",
+        "Usaviah",
+        "Yushan Main Peak",
+        "ニイタカヤマ",
+        "モリソン山",
+        "ユイシャン",
+        "新高山",
+        "玉山",
+        "玉山国家公園"
+      ],
+      "labels": {
+        "en": "Yushan Main Peak",
+        "ja": "玉山"
+      },
+      "latitude_deg": 23.47,
+      "longitude_deg": 120.957266666,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q500275",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Yu_Shan",
+        "ja": "https://ja.wikipedia.org/wiki/玉山_(台湾)"
+      },
+      "location_arg": "23.470000;120.957267",
+      "slug": "Yushan_Main_Peak",
+      "elevation_m": 3952.0,
+      "region_hint": "Taiwan"
+    },
+    {
+      "id": "wikidata:Q3375",
+      "qid": "Q3375",
+      "name": "Zugspitze",
+      "names": [
+        "Zugspitze",
+        "ツークシュピッツェ"
+      ],
+      "labels": {
+        "en": "Zugspitze",
+        "ja": "ツークシュピッツェ"
+      },
+      "latitude_deg": 47.421217,
+      "longitude_deg": 10.986314,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q3375",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Zugspitze",
+        "ja": "https://ja.wikipedia.org/wiki/ツークシュピッツェ"
+      },
+      "location_arg": "47.421217;10.986314",
+      "slug": "Zugspitze",
+      "elevation_m": 2962.06,
+      "region_hint": "Germany"
+    },
+    {
+      "id": "wikidata:Q130018",
+      "qid": "Q130018",
+      "name": "デナリ",
+      "names": [
+        "Bolshaya Gora",
+        "Mount Denali",
+        "Mt. Denali",
+        "デナリ",
+        "デナリ山",
+        "マッキンリー山"
+      ],
+      "labels": {
+        "ja": "デナリ"
+      },
+      "latitude_deg": 63.069102777,
+      "longitude_deg": -151.006261111,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q130018",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Denali",
+        "ja": "https://ja.wikipedia.org/wiki/デナリ"
+      },
+      "location_arg": "63.069103;-151.006261",
+      "slug": "デナリ",
+      "elevation_m": 6190.0,
+      "region_hint": "United States"
+    }
+  ]
+}
