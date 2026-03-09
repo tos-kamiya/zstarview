@@ -1,0 +1,2363 @@
+{
+  "source": "wikidata-mountain-review",
+  "source_review_result": "dev-samples/wikidata_mountain_query_investigation_result_2026-03-09.json",
+  "curation_rules": {
+    "exclude_needs_coord_review": true,
+    "exclude_needs_elevation_review": true,
+    "exclude_shared_peaks": true,
+    "exclude_name_tokens": [
+      "hill",
+      "ridge",
+      "chemin"
+    ],
+    "name_rule": "prefer labels.en, else item_label",
+    "region_hint_rule": "prefer country_labels.en, else country_label"
+  },
+  "candidates": [
+    {
+      "qid": "Q271700",
+      "name": "Noshaq",
+      "names": [
+        "Noshaq",
+        "ノシャック"
+      ],
+      "labels": {
+        "en": "Noshaq",
+        "ja": "ノシャック"
+      },
+      "latitude_deg": 36.431666666,
+      "longitude_deg": 71.828333333,
+      "elevation_m": 7492.0,
+      "region_hint": "Afghanistan"
+    },
+    {
+      "qid": "Q822326",
+      "name": "Mount Tahat",
+      "names": [
+        "Mount Tahat",
+        "タハト山"
+      ],
+      "labels": {
+        "en": "Mount Tahat",
+        "ja": "タハト山"
+      },
+      "latitude_deg": 23.288888888,
+      "longitude_deg": 5.533611111,
+      "elevation_m": 2908.0,
+      "region_hint": "Algeria"
+    },
+    {
+      "qid": "Q62467",
+      "name": "Coma Pedrosa",
+      "names": [
+        "Coma Pedrosa",
+        "コマ・ペドローザ"
+      ],
+      "labels": {
+        "en": "Coma Pedrosa",
+        "ja": "コマ・ペドローザ"
+      },
+      "latitude_deg": 42.591805701,
+      "longitude_deg": 1.443654504,
+      "elevation_m": 2942.0,
+      "region_hint": "Andorra"
+    },
+    {
+      "qid": "Q1348116",
+      "name": "Mount Moco",
+      "names": [
+        "Mount Moco",
+        "モコ山"
+      ],
+      "labels": {
+        "en": "Mount Moco",
+        "ja": "モコ山"
+      },
+      "latitude_deg": -12.466666666,
+      "longitude_deg": 15.183333333,
+      "elevation_m": 2619.0,
+      "region_hint": "Angola"
+    },
+    {
+      "qid": "Q1718336",
+      "name": "Mount Obama",
+      "names": [
+        "Mount Obama",
+        "オバマ山"
+      ],
+      "labels": {
+        "en": "Mount Obama",
+        "ja": "オバマ山"
+      },
+      "latitude_deg": 17.05,
+      "longitude_deg": -61.85,
+      "elevation_m": 402.0,
+      "region_hint": "Antigua and Barbuda"
+    },
+    {
+      "qid": "Q39739",
+      "name": "Aconcagua",
+      "names": [
+        "Aconcagua",
+        "アコンカグア"
+      ],
+      "labels": {
+        "en": "Aconcagua",
+        "ja": "アコンカグア"
+      },
+      "latitude_deg": -32.653055555,
+      "longitude_deg": -70.011666666,
+      "elevation_m": 6962.0,
+      "region_hint": "Argentina"
+    },
+    {
+      "qid": "Q203568",
+      "name": "Mount Aragats",
+      "names": [
+        "Mount Aragats",
+        "アラガツ山"
+      ],
+      "labels": {
+        "en": "Mount Aragats",
+        "ja": "アラガツ山"
+      },
+      "latitude_deg": 40.523055555,
+      "longitude_deg": 44.195277777,
+      "elevation_m": 4090.0,
+      "region_hint": "Armenia"
+    },
+    {
+      "qid": "Q2114101",
+      "name": "Mawson Peak",
+      "names": [
+        "Mawson Peak",
+        "モーソン・ピーク"
+      ],
+      "labels": {
+        "en": "Mawson Peak",
+        "ja": "モーソン・ピーク"
+      },
+      "latitude_deg": -53.104166666,
+      "longitude_deg": 73.516944444,
+      "elevation_m": 2745.0,
+      "region_hint": "Australia"
+    },
+    {
+      "qid": "Q3388",
+      "name": "Grossglockner",
+      "names": [
+        "Grossglockner",
+        "グロースグロックナー山"
+      ],
+      "labels": {
+        "en": "Grossglockner",
+        "ja": "グロースグロックナー山"
+      },
+      "latitude_deg": 47.074528,
+      "longitude_deg": 12.69385,
+      "elevation_m": 3798.0,
+      "region_hint": "Austria"
+    },
+    {
+      "qid": "Q725591",
+      "name": "Mount Bazardüzü",
+      "names": [
+        "Mount Bazardüzü",
+        "バザルデュジ山"
+      ],
+      "labels": {
+        "en": "Mount Bazardüzü",
+        "ja": "バザルデュジ山"
+      },
+      "latitude_deg": 41.2204928,
+      "longitude_deg": 47.8583417,
+      "elevation_m": 4466.0,
+      "region_hint": "Azerbaijan"
+    },
+    {
+      "qid": "Q1032812",
+      "name": "Mountain of Smoke",
+      "names": [
+        "Mountain of Smoke",
+        "ジャバル・アド・ドゥハーン"
+      ],
+      "labels": {
+        "en": "Mountain of Smoke",
+        "ja": "ジャバル・アド・ドゥハーン"
+      },
+      "latitude_deg": 26.038888888,
+      "longitude_deg": 50.543055555,
+      "elevation_m": 134.0,
+      "region_hint": "Bahrain"
+    },
+    {
+      "qid": "Q2696459",
+      "name": "Mowdok tiang",
+      "names": [
+        "Mowdok tiang"
+      ],
+      "labels": {
+        "en": "Mowdok tiang"
+      },
+      "latitude_deg": 21.78657,
+      "longitude_deg": 92.60968,
+      "elevation_m": 1054.0,
+      "region_hint": "Bangladesh"
+    },
+    {
+      "qid": "Q322824",
+      "name": "Signal de Botrange",
+      "names": [
+        "Signal de Botrange"
+      ],
+      "labels": {
+        "en": "Signal de Botrange"
+      },
+      "latitude_deg": 50.501667,
+      "longitude_deg": 6.093056,
+      "elevation_m": 694.24,
+      "region_hint": "Belgium"
+    },
+    {
+      "qid": "Q47490",
+      "name": "Doyle's Delight",
+      "names": [
+        "Doyle's Delight",
+        "ドイルス・ディライト山"
+      ],
+      "labels": {
+        "en": "Doyle's Delight",
+        "ja": "ドイルス・ディライト山"
+      },
+      "latitude_deg": 16.5,
+      "longitude_deg": -89.05,
+      "elevation_m": 1124.0,
+      "region_hint": "Belize"
+    },
+    {
+      "qid": "Q923330",
+      "name": "Mont Sokbaro",
+      "names": [
+        "Mont Sokbaro",
+        "ソクバロ山"
+      ],
+      "labels": {
+        "en": "Mont Sokbaro",
+        "ja": "ソクバロ山"
+      },
+      "latitude_deg": 9.328055555,
+      "longitude_deg": 1.415555555,
+      "elevation_m": 658.0,
+      "region_hint": "Benin"
+    },
+    {
+      "qid": "Q219986",
+      "name": "Gangkhar Puensum",
+      "names": [
+        "Gangkhar Puensum",
+        "ガンカー・プンスム"
+      ],
+      "labels": {
+        "en": "Gangkhar Puensum",
+        "ja": "ガンカー・プンスム"
+      },
+      "latitude_deg": 28.046944444,
+      "longitude_deg": 90.455,
+      "elevation_m": 7570.0,
+      "region_hint": "Bhutan"
+    },
+    {
+      "qid": "Q272593",
+      "name": "Nevado Sajama",
+      "names": [
+        "Nevado Sajama",
+        "サハマ山"
+      ],
+      "labels": {
+        "en": "Nevado Sajama",
+        "ja": "サハマ山"
+      },
+      "latitude_deg": -18.108055555,
+      "longitude_deg": -68.883055555,
+      "elevation_m": 6542.0,
+      "region_hint": "Bolivia"
+    },
+    {
+      "qid": "Q837723",
+      "name": "Maglić",
+      "names": [
+        "Maglić",
+        "マグリッチ"
+      ],
+      "labels": {
+        "en": "Maglić",
+        "ja": "マグリッチ"
+      },
+      "latitude_deg": 43.28111,
+      "longitude_deg": 18.73306,
+      "elevation_m": 2386.0,
+      "region_hint": "Bosnia and Herzegovina"
+    },
+    {
+      "qid": "Q739484",
+      "name": "Pico da Neblina",
+      "names": [
+        "Pico da Neblina",
+        "ネブリナ山"
+      ],
+      "labels": {
+        "en": "Pico da Neblina",
+        "ja": "ネブリナ山"
+      },
+      "latitude_deg": 0.805494444,
+      "longitude_deg": -66.005358333,
+      "elevation_m": 2994.0,
+      "region_hint": "Brazil"
+    },
+    {
+      "qid": "Q1003282",
+      "name": "Bukit Pagon",
+      "names": [
+        "Bukit Pagon",
+        "パゴン山"
+      ],
+      "labels": {
+        "en": "Bukit Pagon",
+        "ja": "パゴン山"
+      },
+      "latitude_deg": 4.3,
+      "longitude_deg": 115.333333333,
+      "elevation_m": 1850.0,
+      "region_hint": "Brunei"
+    },
+    {
+      "qid": "Q209341",
+      "name": "Musala",
+      "names": [
+        "Musala",
+        "ムサラ山"
+      ],
+      "labels": {
+        "en": "Musala",
+        "ja": "ムサラ山"
+      },
+      "latitude_deg": 42.179167,
+      "longitude_deg": 23.585278,
+      "elevation_m": 2925.4,
+      "region_hint": "Bulgaria"
+    },
+    {
+      "qid": "Q116675",
+      "name": "Mount Tenakourou",
+      "names": [
+        "Mount Tenakourou"
+      ],
+      "labels": {
+        "en": "Mount Tenakourou"
+      },
+      "latitude_deg": 10.75,
+      "longitude_deg": -5.416666666,
+      "elevation_m": 749.0,
+      "region_hint": "Burkina Faso"
+    },
+    {
+      "qid": "Q1649074",
+      "name": "Mount Heha",
+      "names": [
+        "Mount Heha",
+        "ヘハ山"
+      ],
+      "labels": {
+        "en": "Mount Heha",
+        "ja": "ヘハ山"
+      },
+      "latitude_deg": -3.603333333,
+      "longitude_deg": 29.499166666,
+      "elevation_m": 2684.0,
+      "region_hint": "Burundi"
+    },
+    {
+      "qid": "Q539772",
+      "name": "Phnom Aural",
+      "names": [
+        "Phnom Aural",
+        "アオラル山"
+      ],
+      "labels": {
+        "en": "Phnom Aural",
+        "ja": "アオラル山"
+      },
+      "latitude_deg": 12.031944444,
+      "longitude_deg": 104.170555555,
+      "elevation_m": 1813.0,
+      "region_hint": "Cambodia"
+    },
+    {
+      "qid": "Q190562",
+      "name": "Mount Cameroon",
+      "names": [
+        "Mount Cameroon",
+        "カメルーン山"
+      ],
+      "labels": {
+        "en": "Mount Cameroon",
+        "ja": "カメルーン山"
+      },
+      "latitude_deg": 4.216666666,
+      "longitude_deg": 9.1725,
+      "elevation_m": 4095.0,
+      "region_hint": "Cameroon"
+    },
+    {
+      "qid": "Q120306",
+      "name": "Mount Logan",
+      "names": [
+        "Mount Logan",
+        "ローガン山"
+      ],
+      "labels": {
+        "en": "Mount Logan",
+        "ja": "ローガン山"
+      },
+      "latitude_deg": 60.567222222,
+      "longitude_deg": -140.405277777,
+      "elevation_m": 5959.0,
+      "region_hint": "Canada"
+    },
+    {
+      "qid": "Q499108",
+      "name": "Pico do Fogo",
+      "names": [
+        "Pico do Fogo",
+        "フォゴ山"
+      ],
+      "labels": {
+        "en": "Pico do Fogo",
+        "ja": "フォゴ山"
+      },
+      "latitude_deg": 14.949269444,
+      "longitude_deg": -24.340369444,
+      "elevation_m": 2829.0,
+      "region_hint": "Cape Verde"
+    },
+    {
+      "qid": "Q2422162",
+      "name": "Mont Ngaoui",
+      "names": [
+        "Mont Ngaoui",
+        "ンガウィ山"
+      ],
+      "labels": {
+        "en": "Mont Ngaoui",
+        "ja": "ンガウィ山"
+      },
+      "latitude_deg": 6.74,
+      "longitude_deg": 14.95,
+      "elevation_m": 1410.0,
+      "region_hint": "Central African Republic"
+    },
+    {
+      "qid": "Q257441",
+      "name": "Emi Koussi",
+      "names": [
+        "Emi Koussi",
+        "エミクーシ山"
+      ],
+      "labels": {
+        "en": "Emi Koussi",
+        "ja": "エミクーシ山"
+      },
+      "latitude_deg": 19.789444444,
+      "longitude_deg": 18.551111111,
+      "elevation_m": 3445.0,
+      "region_hint": "Chad"
+    },
+    {
+      "qid": "Q233836",
+      "name": "Ojos del Salado",
+      "names": [
+        "Ojos del Salado",
+        "オホス・デル・サラード"
+      ],
+      "labels": {
+        "en": "Ojos del Salado",
+        "ja": "オホス・デル・サラード"
+      },
+      "latitude_deg": -27.109444444,
+      "longitude_deg": -68.542222222,
+      "elevation_m": 6893.0,
+      "region_hint": "Chile"
+    },
+    {
+      "qid": "Q578862",
+      "name": "Pico Cristóbal Colón",
+      "names": [
+        "Pico Cristóbal Colón",
+        "クリストバル・コロン山"
+      ],
+      "labels": {
+        "en": "Pico Cristóbal Colón",
+        "ja": "クリストバル・コロン山"
+      },
+      "latitude_deg": 10.838333333,
+      "longitude_deg": -73.686666666,
+      "elevation_m": 5775.0,
+      "region_hint": "Colombia"
+    },
+    {
+      "qid": "Q338790",
+      "name": "Pico Cristóbal Colón",
+      "names": [
+        "Pico Cristóbal Colón",
+        "シモン・ボリーバル山"
+      ],
+      "labels": {
+        "en": "Pico Cristóbal Colón",
+        "ja": "シモン・ボリーバル山"
+      },
+      "latitude_deg": 10.834444444,
+      "longitude_deg": -73.691388888,
+      "elevation_m": 5775.0,
+      "region_hint": "Colombia"
+    },
+    {
+      "qid": "Q527548",
+      "name": "Mount Karthala",
+      "names": [
+        "Mount Karthala",
+        "カーサラ山"
+      ],
+      "labels": {
+        "en": "Mount Karthala",
+        "ja": "カーサラ山"
+      },
+      "latitude_deg": -11.76028,
+      "longitude_deg": 43.35306,
+      "elevation_m": 2361.0,
+      "region_hint": "Comoros"
+    },
+    {
+      "qid": "Q252362",
+      "name": "Cerro Chirripó",
+      "names": [
+        "Cerro Chirripó",
+        "チリポ山"
+      ],
+      "labels": {
+        "en": "Cerro Chirripó",
+        "ja": "チリポ山"
+      },
+      "latitude_deg": 9.484083333,
+      "longitude_deg": -83.488666666,
+      "elevation_m": 3820.0,
+      "region_hint": "Costa Rica"
+    },
+    {
+      "qid": "Q3183447",
+      "name": "Dinara",
+      "names": [
+        "Dinara"
+      ],
+      "labels": {
+        "en": "Dinara"
+      },
+      "latitude_deg": 44.0624764,
+      "longitude_deg": 16.3829092,
+      "elevation_m": 1831.0,
+      "region_hint": "Croatia"
+    },
+    {
+      "qid": "Q1145743",
+      "name": "Pico Turquino",
+      "names": [
+        "Pico Turquino",
+        "トゥルキーノ山"
+      ],
+      "labels": {
+        "en": "Pico Turquino",
+        "ja": "トゥルキーノ山"
+      },
+      "latitude_deg": 19.989444444,
+      "longitude_deg": -76.835833333,
+      "elevation_m": 1974.0,
+      "region_hint": "Cuba"
+    },
+    {
+      "qid": "Q819979",
+      "name": "Mount Olympus",
+      "names": [
+        "Mount Olympus",
+        "オリンポス山"
+      ],
+      "labels": {
+        "en": "Mount Olympus",
+        "ja": "オリンポス山"
+      },
+      "latitude_deg": 34.936666666,
+      "longitude_deg": 32.863888888,
+      "elevation_m": 1952.0,
+      "region_hint": "Cyprus"
+    },
+    {
+      "qid": "Q617511",
+      "name": "Sněžka",
+      "names": [
+        "Sněžka",
+        "スニェシュカ山"
+      ],
+      "labels": {
+        "en": "Sněžka",
+        "ja": "スニェシュカ山"
+      },
+      "latitude_deg": 50.736111111,
+      "longitude_deg": 15.740277777,
+      "elevation_m": 1603.3,
+      "region_hint": "Czech Republic"
+    },
+    {
+      "qid": "Q1951029",
+      "name": "Mousa Ali",
+      "names": [
+        "Mousa Ali",
+        "ムーサ・アリ山"
+      ],
+      "labels": {
+        "en": "Mousa Ali",
+        "ja": "ムーサ・アリ山"
+      },
+      "latitude_deg": 12.470833333,
+      "longitude_deg": 42.405,
+      "elevation_m": 2028.0,
+      "region_hint": "Djibouti"
+    },
+    {
+      "qid": "Q1638549",
+      "name": "Morne Diablotins",
+      "names": [
+        "Morne Diablotins",
+        "ディアブロティン山"
+      ],
+      "labels": {
+        "en": "Morne Diablotins",
+        "ja": "ディアブロティン山"
+      },
+      "latitude_deg": 15.503333333,
+      "longitude_deg": -61.397222222,
+      "elevation_m": 1447.0,
+      "region_hint": "Dominica"
+    },
+    {
+      "qid": "Q783742",
+      "name": "Pico Duarte",
+      "names": [
+        "Pico Duarte",
+        "ピコ・ドゥアルテ"
+      ],
+      "labels": {
+        "en": "Pico Duarte",
+        "ja": "ピコ・ドゥアルテ"
+      },
+      "latitude_deg": 19.033055555,
+      "longitude_deg": -71.005277777,
+      "elevation_m": 3101.0,
+      "region_hint": "Dominican Republic"
+    },
+    {
+      "qid": "Q14081",
+      "name": "Chimborazo",
+      "names": [
+        "Chimborazo",
+        "チンボラソ"
+      ],
+      "labels": {
+        "en": "Chimborazo",
+        "ja": "チンボラソ"
+      },
+      "latitude_deg": -1.469166666,
+      "longitude_deg": -78.8175,
+      "elevation_m": 6263.47,
+      "region_hint": "Ecuador"
+    },
+    {
+      "qid": "Q74214",
+      "name": "Cerro El Pital",
+      "names": [
+        "Cerro El Pital",
+        "エル・ピタル山"
+      ],
+      "labels": {
+        "en": "Cerro El Pital",
+        "ja": "エル・ピタル山"
+      },
+      "latitude_deg": 14.383333333,
+      "longitude_deg": -89.116666666,
+      "elevation_m": 2730.0,
+      "region_hint": "El Salvador"
+    },
+    {
+      "qid": "Q1518286",
+      "name": "Pico Basilé",
+      "names": [
+        "Pico Basilé",
+        "バジーレ山"
+      ],
+      "labels": {
+        "en": "Pico Basilé",
+        "ja": "バジーレ山"
+      },
+      "latitude_deg": 3.583333333,
+      "longitude_deg": 8.766666666,
+      "elevation_m": 3011.0,
+      "region_hint": "Equatorial Guinea"
+    },
+    {
+      "qid": "Q1337951",
+      "name": "Emlembe",
+      "names": [
+        "Emlembe"
+      ],
+      "labels": {
+        "en": "Emlembe"
+      },
+      "latitude_deg": -25.916666666,
+      "longitude_deg": 31.133333333,
+      "elevation_m": 1862.0,
+      "region_hint": "Eswatini"
+    },
+    {
+      "qid": "Q275435",
+      "name": "Ras Dashen",
+      "names": [
+        "Ras Dashen",
+        "ラス・ダシャン山"
+      ],
+      "labels": {
+        "en": "Ras Dashen",
+        "ja": "ラス・ダシャン山"
+      },
+      "latitude_deg": 13.236666666,
+      "longitude_deg": 38.3725,
+      "elevation_m": 4533.0,
+      "region_hint": "Ethiopia"
+    },
+    {
+      "qid": "Q1236265",
+      "name": "Dolohmwar",
+      "names": [
+        "Dolohmwar"
+      ],
+      "labels": {
+        "en": "Dolohmwar"
+      },
+      "latitude_deg": 6.855277777,
+      "longitude_deg": 158.236666666,
+      "elevation_m": 791.0,
+      "region_hint": "Federated States of Micronesia"
+    },
+    {
+      "qid": "Q1513944",
+      "name": "Mount Tomanivi",
+      "names": [
+        "Mount Tomanivi",
+        "トマニビ山"
+      ],
+      "labels": {
+        "en": "Mount Tomanivi",
+        "ja": "トマニビ山"
+      },
+      "latitude_deg": -17.633055555,
+      "longitude_deg": 178.016666666,
+      "elevation_m": 1324.0,
+      "region_hint": "Fiji"
+    },
+    {
+      "qid": "Q216035",
+      "name": "Halti",
+      "names": [
+        "Halti",
+        "ハルティ"
+      ],
+      "labels": {
+        "en": "Halti",
+        "ja": "ハルティ"
+      },
+      "latitude_deg": 69.312777777,
+      "longitude_deg": 21.285555555,
+      "elevation_m": 1361.4,
+      "region_hint": "Finland"
+    },
+    {
+      "qid": "Q3210770",
+      "name": "Mont Bengoué",
+      "names": [
+        "Mont Bengoué"
+      ],
+      "labels": {
+        "en": "Mont Bengoué"
+      },
+      "latitude_deg": 0.955434,
+      "longitude_deg": 13.685628,
+      "elevation_m": 1070.0,
+      "region_hint": "Gabon"
+    },
+    {
+      "qid": "Q217457",
+      "name": "Shkhara",
+      "names": [
+        "Shkhara",
+        "シュハラ山"
+      ],
+      "labels": {
+        "en": "Shkhara",
+        "ja": "シュハラ山"
+      },
+      "latitude_deg": 42.999444444,
+      "longitude_deg": 43.111666666,
+      "elevation_m": 5193.2,
+      "region_hint": "Georgia"
+    },
+    {
+      "qid": "Q3375",
+      "name": "Zugspitze",
+      "names": [
+        "Zugspitze",
+        "ツークシュピッツェ"
+      ],
+      "labels": {
+        "en": "Zugspitze",
+        "ja": "ツークシュピッツェ"
+      },
+      "latitude_deg": 47.421217,
+      "longitude_deg": 10.986314,
+      "elevation_m": 2962.06,
+      "region_hint": "Germany"
+    },
+    {
+      "qid": "Q80344",
+      "name": "Mount Olympus",
+      "names": [
+        "Mount Olympus",
+        "オリンポス山"
+      ],
+      "labels": {
+        "en": "Mount Olympus",
+        "ja": "オリンポス山"
+      },
+      "latitude_deg": 40.083333333,
+      "longitude_deg": 22.35,
+      "elevation_m": 2917.727,
+      "region_hint": "Greece"
+    },
+    {
+      "qid": "Q525281",
+      "name": "Mount Saint Catherine",
+      "names": [
+        "Mount Saint Catherine",
+        "セント・キャサリン山"
+      ],
+      "labels": {
+        "en": "Mount Saint Catherine",
+        "ja": "セント・キャサリン山"
+      },
+      "latitude_deg": 12.162222222,
+      "longitude_deg": -61.675277777,
+      "elevation_m": 840.0,
+      "region_hint": "Grenada"
+    },
+    {
+      "qid": "Q818467",
+      "name": "Volcán Tajumulco",
+      "names": [
+        "Volcán Tajumulco",
+        "タフムルコ山"
+      ],
+      "labels": {
+        "en": "Volcán Tajumulco",
+        "ja": "タフムルコ山"
+      },
+      "latitude_deg": 15.033333333,
+      "longitude_deg": -91.9,
+      "elevation_m": 4203.0,
+      "region_hint": "Guatemala"
+    },
+    {
+      "qid": "Q4777",
+      "name": "Mount Roraima",
+      "names": [
+        "Mount Roraima",
+        "ロライマ山"
+      ],
+      "labels": {
+        "en": "Mount Roraima",
+        "ja": "ロライマ山"
+      },
+      "latitude_deg": 5.141944444,
+      "longitude_deg": -60.764166666,
+      "elevation_m": 2810.0,
+      "region_hint": "Guyana"
+    },
+    {
+      "qid": "Q1971319",
+      "name": "Pic la Selle",
+      "names": [
+        "Pic la Selle",
+        "ラ・セル山"
+      ],
+      "labels": {
+        "en": "Pic la Selle",
+        "ja": "ラ・セル山"
+      },
+      "latitude_deg": 18.366666666,
+      "longitude_deg": -71.983333333,
+      "elevation_m": 2674.0,
+      "region_hint": "Haiti"
+    },
+    {
+      "qid": "Q1055875",
+      "name": "Cerro Las Minas",
+      "names": [
+        "Cerro Las Minas",
+        "ミナス山"
+      ],
+      "labels": {
+        "en": "Cerro Las Minas",
+        "ja": "ミナス山"
+      },
+      "latitude_deg": 14.534166666,
+      "longitude_deg": -88.68,
+      "elevation_m": 2849.0,
+      "region_hint": "Honduras"
+    },
+    {
+      "qid": "Q82019",
+      "name": "Kanchenjunga",
+      "names": [
+        "Kanchenjunga",
+        "カンチェンジュンガ"
+      ],
+      "labels": {
+        "en": "Kanchenjunga",
+        "ja": "カンチェンジュンガ"
+      },
+      "latitude_deg": 27.7,
+      "longitude_deg": 88.133333,
+      "elevation_m": 8586.0,
+      "region_hint": "India"
+    },
+    {
+      "qid": "Q1045888",
+      "name": "Puncak Jaya",
+      "names": [
+        "Puncak Jaya",
+        "プンチャック・ジャヤ"
+      ],
+      "labels": {
+        "en": "Puncak Jaya",
+        "ja": "プンチャック・ジャヤ"
+      },
+      "latitude_deg": -4.083333333,
+      "longitude_deg": 137.183333333,
+      "elevation_m": 4884.0,
+      "region_hint": "Indonesia"
+    },
+    {
+      "qid": "Q40758",
+      "name": "Damavand",
+      "names": [
+        "Damavand",
+        "ダマーヴァンド山"
+      ],
+      "labels": {
+        "en": "Damavand",
+        "ja": "ダマーヴァンド山"
+      },
+      "latitude_deg": 35.955277777,
+      "longitude_deg": 52.109166666,
+      "elevation_m": 5610.0,
+      "region_hint": "Iran"
+    },
+    {
+      "qid": "Q1068860",
+      "name": "Cheekha Dar",
+      "names": [
+        "Cheekha Dar",
+        "シェーハ・ダー山"
+      ],
+      "labels": {
+        "en": "Cheekha Dar",
+        "ja": "シェーハ・ダー山"
+      },
+      "latitude_deg": 36.77528,
+      "longitude_deg": 44.91861,
+      "elevation_m": 3611.0,
+      "region_hint": "Iraq"
+    },
+    {
+      "qid": "Q503368",
+      "name": "Carrauntoohil",
+      "names": [
+        "Carrauntoohil",
+        "キャラントゥール山"
+      ],
+      "labels": {
+        "en": "Carrauntoohil",
+        "ja": "キャラントゥール山"
+      },
+      "latitude_deg": 51.998888888,
+      "longitude_deg": -9.742777777,
+      "elevation_m": 1038.6,
+      "region_hint": "Ireland"
+    },
+    {
+      "qid": "Q885798",
+      "name": "Blue Mountain Peak",
+      "names": [
+        "Blue Mountain Peak",
+        "ブルー・マウンテン峰"
+      ],
+      "labels": {
+        "en": "Blue Mountain Peak",
+        "ja": "ブルー・マウンテン峰"
+      },
+      "latitude_deg": 18.046666666,
+      "longitude_deg": -76.579166666,
+      "elevation_m": 2256.0,
+      "region_hint": "Jamaica"
+    },
+    {
+      "qid": "Q39231",
+      "name": "Mount Fuji",
+      "names": [
+        "Mount Fuji",
+        "富士山"
+      ],
+      "labels": {
+        "en": "Mount Fuji",
+        "ja": "富士山"
+      },
+      "latitude_deg": 35.360555555,
+      "longitude_deg": 138.7275,
+      "elevation_m": 3777.24,
+      "region_hint": "Japan"
+    },
+    {
+      "qid": "Q1261902",
+      "name": "Jabal Umm ad Dami",
+      "names": [
+        "Jabal Umm ad Dami",
+        "ウンム・アッ＝ダーミー山"
+      ],
+      "labels": {
+        "en": "Jabal Umm ad Dami",
+        "ja": "ウンム・アッ＝ダーミー山"
+      },
+      "latitude_deg": 29.308333333,
+      "longitude_deg": 35.429166666,
+      "elevation_m": 1854.0,
+      "region_hint": "Jordan"
+    },
+    {
+      "qid": "Q211529",
+      "name": "Khan Tengri",
+      "names": [
+        "Khan Tengri",
+        "ハン・テングリ"
+      ],
+      "labels": {
+        "en": "Khan Tengri",
+        "ja": "ハン・テングリ"
+      },
+      "latitude_deg": 42.210833333,
+      "longitude_deg": 80.175,
+      "elevation_m": 7010.0,
+      "region_hint": "Kazakhstan"
+    },
+    {
+      "qid": "Q172070",
+      "name": "Mount Kenya",
+      "names": [
+        "Mount Kenya",
+        "ケニア山"
+      ],
+      "labels": {
+        "en": "Mount Kenya",
+        "ja": "ケニア山"
+      },
+      "latitude_deg": -0.1,
+      "longitude_deg": 37.2,
+      "elevation_m": 5199.0,
+      "region_hint": "Kenya"
+    },
+    {
+      "qid": "Q825709",
+      "name": "Gunnbjørn Fjeld",
+      "names": [
+        "Gunnbjørn Fjeld",
+        "ギュンビョルン山"
+      ],
+      "labels": {
+        "en": "Gunnbjørn Fjeld",
+        "ja": "ギュンビョルン山"
+      },
+      "latitude_deg": 68.9195,
+      "longitude_deg": -29.898533333,
+      "elevation_m": 3694.0,
+      "region_hint": "Kingdom of Denmark"
+    },
+    {
+      "qid": "Q1301834",
+      "name": "Mount Scenery",
+      "names": [
+        "Mount Scenery",
+        "シーナリー山"
+      ],
+      "labels": {
+        "en": "Mount Scenery",
+        "ja": "シーナリー山"
+      },
+      "latitude_deg": 17.635,
+      "longitude_deg": -63.239166666,
+      "elevation_m": 870.0,
+      "region_hint": "Kingdom of the Netherlands"
+    },
+    {
+      "qid": "Q332762",
+      "name": "Jengish Chokusu",
+      "names": [
+        "Jengish Chokusu",
+        "ポベーダ山"
+      ],
+      "labels": {
+        "en": "Jengish Chokusu",
+        "ja": "ポベーダ山"
+      },
+      "latitude_deg": 42.034662,
+      "longitude_deg": 80.128713,
+      "elevation_m": 7439.0,
+      "region_hint": "Kyrgyzstan"
+    },
+    {
+      "qid": "Q239485",
+      "name": "Phou Bia",
+      "names": [
+        "Phou Bia",
+        "ビア山"
+      ],
+      "labels": {
+        "en": "Phou Bia",
+        "ja": "ビア山"
+      },
+      "latitude_deg": 18.983333333,
+      "longitude_deg": 103.133333333,
+      "elevation_m": 2819.0,
+      "region_hint": "Laos"
+    },
+    {
+      "qid": "Q311330",
+      "name": "Qurnat as Sawda'",
+      "names": [
+        "Qurnat as Sawda'",
+        "クルナ・アッサウダー山"
+      ],
+      "labels": {
+        "en": "Qurnat as Sawda'",
+        "ja": "クルナ・アッサウダー山"
+      },
+      "latitude_deg": 34.3,
+      "longitude_deg": 36.116666666,
+      "elevation_m": 3088.0,
+      "region_hint": "Lebanon"
+    },
+    {
+      "qid": "Q733132",
+      "name": "Thabana Ntlenyana",
+      "names": [
+        "Thabana Ntlenyana",
+        "タバナントレニャナ山"
+      ],
+      "labels": {
+        "en": "Thabana Ntlenyana",
+        "ja": "タバナントレニャナ山"
+      },
+      "latitude_deg": -29.466666666,
+      "longitude_deg": 29.266666666,
+      "elevation_m": 3482.0,
+      "region_hint": "Lesotho"
+    },
+    {
+      "qid": "Q1950836",
+      "name": "Mount Wuteve",
+      "names": [
+        "Mount Wuteve"
+      ],
+      "labels": {
+        "en": "Mount Wuteve"
+      },
+      "latitude_deg": 8.145833333,
+      "longitude_deg": -9.925,
+      "elevation_m": 1440.0,
+      "region_hint": "Liberia"
+    },
+    {
+      "qid": "Q860146",
+      "name": "Bikku Bitti",
+      "names": [
+        "Bikku Bitti",
+        "ビクー・ビティ"
+      ],
+      "labels": {
+        "en": "Bikku Bitti",
+        "ja": "ビクー・ビティ"
+      },
+      "latitude_deg": 22.0036734,
+      "longitude_deg": 19.206592,
+      "elevation_m": 2267.0,
+      "region_hint": "Libya"
+    },
+    {
+      "qid": "Q665000",
+      "name": "Grauspitz",
+      "names": [
+        "Grauspitz",
+        "グラウシュピッツ"
+      ],
+      "labels": {
+        "en": "Grauspitz",
+        "ja": "グラウシュピッツ"
+      },
+      "latitude_deg": 47.052777777,
+      "longitude_deg": 9.581944444,
+      "elevation_m": 2599.0,
+      "region_hint": "Liechtenstein"
+    },
+    {
+      "qid": "Q1147144",
+      "name": "Maromokotro",
+      "names": [
+        "Maromokotro",
+        "マロモコトロ山"
+      ],
+      "labels": {
+        "en": "Maromokotro",
+        "ja": "マロモコトロ山"
+      },
+      "latitude_deg": -14.022777777,
+      "longitude_deg": 48.965833333,
+      "elevation_m": 2876.0,
+      "region_hint": "Madagascar"
+    },
+    {
+      "qid": "Q60967",
+      "name": "Mount Kota Kinabalu",
+      "names": [
+        "Mount Kota Kinabalu",
+        "キナバル山"
+      ],
+      "labels": {
+        "en": "Mount Kota Kinabalu",
+        "ja": "キナバル山"
+      },
+      "latitude_deg": 6.075,
+      "longitude_deg": 116.558611111,
+      "elevation_m": 4095.0,
+      "region_hint": "Malaysia"
+    },
+    {
+      "qid": "Q2595789",
+      "name": "Kediet ej Jill",
+      "names": [
+        "Kediet ej Jill",
+        "ケディエ・エジュ・ジル"
+      ],
+      "labels": {
+        "en": "Kediet ej Jill",
+        "ja": "ケディエ・エジュ・ジル"
+      },
+      "latitude_deg": 22.653888888,
+      "longitude_deg": -12.574722222,
+      "elevation_m": 915.0,
+      "region_hint": "Mauritania"
+    },
+    {
+      "qid": "Q1760978",
+      "name": "Piton de la Petite Rivière Noire",
+      "names": [
+        "Piton de la Petite Rivière Noire",
+        "ラ・プティ・リヴィエール・ノワール山"
+      ],
+      "labels": {
+        "en": "Piton de la Petite Rivière Noire",
+        "ja": "ラ・プティ・リヴィエール・ノワール山"
+      },
+      "latitude_deg": -20.4087947,
+      "longitude_deg": 57.4076919,
+      "elevation_m": 828.0,
+      "region_hint": "Mauritius"
+    },
+    {
+      "qid": "Q238147",
+      "name": "Citlaltepetl",
+      "names": [
+        "Citlaltepetl",
+        "オリサバ山"
+      ],
+      "labels": {
+        "en": "Citlaltepetl",
+        "ja": "オリサバ山"
+      },
+      "latitude_deg": 19.03,
+      "longitude_deg": -97.27,
+      "elevation_m": 5636.0,
+      "region_hint": "Mexico"
+    },
+    {
+      "qid": "Q1091113",
+      "name": "Hüiten Peak",
+      "names": [
+        "Hüiten Peak",
+        "フィティン山"
+      ],
+      "labels": {
+        "en": "Hüiten Peak",
+        "ja": "フィティン山"
+      },
+      "latitude_deg": 49.145833333,
+      "longitude_deg": 87.819166666,
+      "elevation_m": 4374.0,
+      "region_hint": "Mongolia"
+    },
+    {
+      "qid": "Q503433",
+      "name": "Jbel Toubkal",
+      "names": [
+        "Jbel Toubkal",
+        "ツブカル山"
+      ],
+      "labels": {
+        "en": "Jbel Toubkal",
+        "ja": "ツブカル山"
+      },
+      "latitude_deg": 31.061944444,
+      "longitude_deg": -7.916111111,
+      "elevation_m": 4167.0,
+      "region_hint": "Morocco"
+    },
+    {
+      "qid": "Q1353678",
+      "name": "Monte Binga",
+      "names": [
+        "Monte Binga",
+        "ビンガ山"
+      ],
+      "labels": {
+        "en": "Monte Binga",
+        "ja": "ビンガ山"
+      },
+      "latitude_deg": -19.774166666,
+      "longitude_deg": 33.060555555,
+      "elevation_m": 2436.0,
+      "region_hint": "Mozambique"
+    },
+    {
+      "qid": "Q870063",
+      "name": "Hkakabo Razi",
+      "names": [
+        "Hkakabo Razi",
+        "カカボラジ山"
+      ],
+      "labels": {
+        "en": "Hkakabo Razi",
+        "ja": "カカボラジ山"
+      },
+      "latitude_deg": 28.333055555,
+      "longitude_deg": 97.466666666,
+      "elevation_m": 5881.0,
+      "region_hint": "Myanmar"
+    },
+    {
+      "qid": "Q897834",
+      "name": "Brandberg",
+      "names": [
+        "Brandberg",
+        "ブランドバーグ山"
+      ],
+      "labels": {
+        "en": "Brandberg",
+        "ja": "ブランドバーグ山"
+      },
+      "latitude_deg": -21.1495,
+      "longitude_deg": 14.5775,
+      "elevation_m": 2573.0,
+      "region_hint": "Namibia"
+    },
+    {
+      "qid": "Q5059",
+      "name": "Aoraki / Mount Cook",
+      "names": [
+        "Aoraki / Mount Cook",
+        "クック山"
+      ],
+      "labels": {
+        "en": "Aoraki / Mount Cook",
+        "ja": "クック山"
+      },
+      "latitude_deg": -43.595,
+      "longitude_deg": 170.141944444,
+      "elevation_m": 3724.0,
+      "region_hint": "New Zealand"
+    },
+    {
+      "qid": "Q3042286",
+      "name": "Mont Idoukal-n-Taghès",
+      "names": [
+        "Mont Idoukal-n-Taghès",
+        "アンドゥカ＝ン＝タゲス山"
+      ],
+      "labels": {
+        "en": "Mont Idoukal-n-Taghès",
+        "ja": "アンドゥカ＝ン＝タゲス山"
+      },
+      "latitude_deg": 17.839166666,
+      "longitude_deg": 8.720277777,
+      "elevation_m": 2022.0,
+      "region_hint": "Niger"
+    },
+    {
+      "qid": "Q976055",
+      "name": "Chappal Waddi",
+      "names": [
+        "Chappal Waddi",
+        "チャパル・ワッディ山"
+      ],
+      "labels": {
+        "en": "Chappal Waddi",
+        "ja": "チャパル・ワッディ山"
+      },
+      "latitude_deg": 7.036111111,
+      "longitude_deg": 11.715,
+      "elevation_m": 2419.0,
+      "region_hint": "Nigeria"
+    },
+    {
+      "qid": "Q203942",
+      "name": "Galdhøpiggen",
+      "names": [
+        "Galdhøpiggen",
+        "ガルフピッゲン"
+      ],
+      "labels": {
+        "en": "Galdhøpiggen",
+        "ja": "ガルフピッゲン"
+      },
+      "latitude_deg": 61.633333333,
+      "longitude_deg": 8.3,
+      "elevation_m": 2468.854,
+      "region_hint": "Norway"
+    },
+    {
+      "qid": "Q1261915",
+      "name": "Jebel Shams",
+      "names": [
+        "Jebel Shams",
+        "シャムス山"
+      ],
+      "labels": {
+        "en": "Jebel Shams",
+        "ja": "シャムス山"
+      },
+      "latitude_deg": 23.2373882,
+      "longitude_deg": 57.2637937,
+      "elevation_m": 3018.0,
+      "region_hint": "Oman"
+    },
+    {
+      "qid": "Q43512",
+      "name": "K2",
+      "names": [
+        "K2"
+      ],
+      "labels": {
+        "en": "K2",
+        "ja": "K2"
+      },
+      "latitude_deg": 35.881111111,
+      "longitude_deg": 76.513333333,
+      "elevation_m": 8611.0,
+      "region_hint": "Pakistan"
+    },
+    {
+      "qid": "Q1191219",
+      "name": "Mount Ngerchelchuus",
+      "names": [
+        "Mount Ngerchelchuus",
+        "ゲルチェレチュース山"
+      ],
+      "labels": {
+        "en": "Mount Ngerchelchuus",
+        "ja": "ゲルチェレチュース山"
+      },
+      "latitude_deg": 7.565277777,
+      "longitude_deg": 134.569444444,
+      "elevation_m": 242.0,
+      "region_hint": "Palau"
+    },
+    {
+      "qid": "Q6922335",
+      "name": "Mount Nabi Yunis",
+      "names": [
+        "Mount Nabi Yunis"
+      ],
+      "labels": {
+        "en": "Mount Nabi Yunis"
+      },
+      "latitude_deg": 31.57944444,
+      "longitude_deg": 35.105,
+      "elevation_m": 1026.0,
+      "region_hint": "Palestine"
+    },
+    {
+      "qid": "Q594726",
+      "name": "Volcan Baru",
+      "names": [
+        "Volcan Baru",
+        "バル火山"
+      ],
+      "labels": {
+        "en": "Volcan Baru",
+        "ja": "バル火山"
+      },
+      "latitude_deg": 8.808,
+      "longitude_deg": -82.543,
+      "elevation_m": 3475.0,
+      "region_hint": "Panama"
+    },
+    {
+      "qid": "Q277441",
+      "name": "Mount Wilhelm",
+      "names": [
+        "Mount Wilhelm",
+        "ウィルヘルム山"
+      ],
+      "labels": {
+        "en": "Mount Wilhelm",
+        "ja": "ウィルヘルム山"
+      },
+      "latitude_deg": -5.8,
+      "longitude_deg": 145.033333333,
+      "elevation_m": 4509.0,
+      "region_hint": "Papua New Guinea"
+    },
+    {
+      "qid": "Q1055965",
+      "name": "Cerro Tres Kandú",
+      "names": [
+        "Cerro Tres Kandú",
+        "ペロー山"
+      ],
+      "labels": {
+        "en": "Cerro Tres Kandú",
+        "ja": "ペロー山"
+      },
+      "latitude_deg": -25.901666666,
+      "longitude_deg": -56.16,
+      "elevation_m": 842.0,
+      "region_hint": "Paraguay"
+    },
+    {
+      "qid": "Q200935",
+      "name": "Huascarán",
+      "names": [
+        "Huascarán",
+        "ワスカラン"
+      ],
+      "labels": {
+        "en": "Huascarán",
+        "ja": "ワスカラン"
+      },
+      "latitude_deg": -9.116666666,
+      "longitude_deg": -77.6,
+      "elevation_m": 6768.0,
+      "region_hint": "Peru"
+    },
+    {
+      "qid": "Q455963",
+      "name": "Mount Apo",
+      "names": [
+        "Mount Apo",
+        "アポ山"
+      ],
+      "labels": {
+        "en": "Mount Apo",
+        "ja": "アポ山"
+      },
+      "latitude_deg": 6.9875,
+      "longitude_deg": 125.270833333,
+      "elevation_m": 2954.0,
+      "region_hint": "Philippines"
+    },
+    {
+      "qid": "Q928681",
+      "name": "Mount Pico",
+      "names": [
+        "Mount Pico",
+        "ピコ山"
+      ],
+      "labels": {
+        "en": "Mount Pico",
+        "ja": "ピコ山"
+      },
+      "latitude_deg": 38.468611111,
+      "longitude_deg": -28.399166666,
+      "elevation_m": 2351.0,
+      "region_hint": "Portugal"
+    },
+    {
+      "qid": "Q1633034",
+      "name": "Qurayn Abu al Bawl",
+      "names": [
+        "Qurayn Abu al Bawl",
+        "クライン・アブ・アル・ボウル"
+      ],
+      "labels": {
+        "en": "Qurayn Abu al Bawl",
+        "ja": "クライン・アブ・アル・ボウル"
+      },
+      "latitude_deg": 24.946111111,
+      "longitude_deg": 51.184444444,
+      "elevation_m": 103.0,
+      "region_hint": "Qatar"
+    },
+    {
+      "qid": "Q746524",
+      "name": "Moldoveanu Peak",
+      "names": [
+        "Moldoveanu Peak",
+        "モルドベアヌ山"
+      ],
+      "labels": {
+        "en": "Moldoveanu Peak",
+        "ja": "モルドベアヌ山"
+      },
+      "latitude_deg": 45.599438888,
+      "longitude_deg": 24.736211111,
+      "elevation_m": 2544.0,
+      "region_hint": "Romania"
+    },
+    {
+      "qid": "Q43105",
+      "name": "Mount Elbrus",
+      "names": [
+        "Mount Elbrus",
+        "エルブルス山"
+      ],
+      "labels": {
+        "en": "Mount Elbrus",
+        "ja": "エルブルス山"
+      },
+      "latitude_deg": 43.35254,
+      "longitude_deg": 42.437875,
+      "elevation_m": 5642.0,
+      "region_hint": "Russia"
+    },
+    {
+      "qid": "Q737859",
+      "name": "Mount Karisimbi",
+      "names": [
+        "Mount Karisimbi",
+        "カリシンビ山"
+      ],
+      "labels": {
+        "en": "Mount Karisimbi",
+        "ja": "カリシンビ山"
+      },
+      "latitude_deg": -1.5,
+      "longitude_deg": 29.45,
+      "elevation_m": 4507.0,
+      "region_hint": "Rwanda"
+    },
+    {
+      "qid": "Q1269774",
+      "name": "Mount Liamuiga",
+      "names": [
+        "Mount Liamuiga",
+        "リアムイガ山"
+      ],
+      "labels": {
+        "en": "Mount Liamuiga",
+        "ja": "リアムイガ山"
+      },
+      "latitude_deg": 17.366666666,
+      "longitude_deg": -62.8,
+      "elevation_m": 1156.0,
+      "region_hint": "Saint Kitts and Nevis"
+    },
+    {
+      "qid": "Q1811114",
+      "name": "Mount Gimie",
+      "names": [
+        "Mount Gimie",
+        "ジミー山"
+      ],
+      "labels": {
+        "en": "Mount Gimie",
+        "ja": "ジミー山"
+      },
+      "latitude_deg": 13.863611111,
+      "longitude_deg": -61.011666666,
+      "elevation_m": 950.0,
+      "region_hint": "Saint Lucia"
+    },
+    {
+      "qid": "Q26544",
+      "name": "La Soufrière",
+      "names": [
+        "La Soufrière",
+        "スフリエール山"
+      ],
+      "labels": {
+        "en": "La Soufrière",
+        "ja": "スフリエール山"
+      },
+      "latitude_deg": 13.333333333,
+      "longitude_deg": -61.183333333,
+      "elevation_m": 1220.0,
+      "region_hint": "Saint Vincent and the Grenadines"
+    },
+    {
+      "qid": "Q1147814",
+      "name": "Silisili",
+      "names": [
+        "Silisili",
+        "シリシリ山"
+      ],
+      "labels": {
+        "en": "Silisili",
+        "ja": "シリシリ山"
+      },
+      "latitude_deg": -13.618333333,
+      "longitude_deg": -172.485833333,
+      "elevation_m": 1858.0,
+      "region_hint": "Samoa"
+    },
+    {
+      "qid": "Q1261892",
+      "name": "Jabal Sawda",
+      "names": [
+        "Jabal Sawda",
+        "サウダ山"
+      ],
+      "labels": {
+        "en": "Jabal Sawda",
+        "ja": "サウダ山"
+      },
+      "latitude_deg": 18.267222222,
+      "longitude_deg": 42.368055555,
+      "elevation_m": 3133.0,
+      "region_hint": "Saudi Arabia"
+    },
+    {
+      "qid": "Q1579060",
+      "name": "Morne Seychellois",
+      "names": [
+        "Morne Seychellois",
+        "モルヌ・セシェロワ"
+      ],
+      "labels": {
+        "en": "Morne Seychellois",
+        "ja": "モルヌ・セシェロワ"
+      },
+      "latitude_deg": -4.643833333,
+      "longitude_deg": 55.4389,
+      "elevation_m": 905.0,
+      "region_hint": "Seychelles"
+    },
+    {
+      "qid": "Q769525",
+      "name": "Mount Bintumani",
+      "names": [
+        "Mount Bintumani",
+        "ビントゥマニ山"
+      ],
+      "labels": {
+        "en": "Mount Bintumani",
+        "ja": "ビントゥマニ山"
+      },
+      "latitude_deg": 9.225,
+      "longitude_deg": -11.116666666,
+      "elevation_m": 1945.0,
+      "region_hint": "Sierra Leone"
+    },
+    {
+      "qid": "Q1024",
+      "name": "Triglav",
+      "names": [
+        "Triglav",
+        "トリグラウ山"
+      ],
+      "labels": {
+        "en": "Triglav",
+        "ja": "トリグラウ山"
+      },
+      "latitude_deg": 46.378333,
+      "longitude_deg": 13.836667,
+      "elevation_m": 2864.0,
+      "region_hint": "Slovenia"
+    },
+    {
+      "qid": "Q760819",
+      "name": "Mount Popomanaseu",
+      "names": [
+        "Mount Popomanaseu",
+        "ポポマナセウ山"
+      ],
+      "labels": {
+        "en": "Mount Popomanaseu",
+        "ja": "ポポマナセウ山"
+      },
+      "latitude_deg": -9.703611111,
+      "longitude_deg": 160.061944444,
+      "elevation_m": 2335.0,
+      "region_hint": "Solomon Islands"
+    },
+    {
+      "qid": "Q649162",
+      "name": "Shimbiris",
+      "names": [
+        "Shimbiris",
+        "シンビリス山"
+      ],
+      "labels": {
+        "en": "Shimbiris",
+        "ja": "シンビリス山"
+      },
+      "latitude_deg": 10.735833333,
+      "longitude_deg": 47.245,
+      "elevation_m": 2460.0,
+      "region_hint": "Somalia"
+    },
+    {
+      "qid": "Q1883683",
+      "name": "Mafadi",
+      "names": [
+        "Mafadi",
+        "マファディ山"
+      ],
+      "labels": {
+        "en": "Mafadi",
+        "ja": "マファディ山"
+      },
+      "latitude_deg": -29.20286,
+      "longitude_deg": 29.35832,
+      "elevation_m": 3450.0,
+      "region_hint": "South Africa"
+    },
+    {
+      "qid": "Q494645",
+      "name": "Hallasan",
+      "names": [
+        "Hallasan",
+        "漢拏山"
+      ],
+      "labels": {
+        "en": "Hallasan",
+        "ja": "漢拏山"
+      },
+      "latitude_deg": 33.35,
+      "longitude_deg": 126.516666666,
+      "elevation_m": 1947.06,
+      "region_hint": "South Korea"
+    },
+    {
+      "qid": "Q948298",
+      "name": "Kinyeti",
+      "names": [
+        "Kinyeti",
+        "キヌエティ山"
+      ],
+      "labels": {
+        "en": "Kinyeti",
+        "ja": "キヌエティ山"
+      },
+      "latitude_deg": 3.9475,
+      "longitude_deg": 32.908888888,
+      "elevation_m": 3187.0,
+      "region_hint": "South Sudan"
+    },
+    {
+      "qid": "Q38954",
+      "name": "Teide",
+      "names": [
+        "Teide",
+        "テイデ山"
+      ],
+      "labels": {
+        "en": "Teide",
+        "ja": "テイデ山"
+      },
+      "latitude_deg": 28.272638888,
+      "longitude_deg": -16.643611111,
+      "elevation_m": 3715.0,
+      "region_hint": "Spain"
+    },
+    {
+      "qid": "Q1146327",
+      "name": "Pidurutalagala",
+      "names": [
+        "Pidurutalagala",
+        "ピドゥルタラーガラ山"
+      ],
+      "labels": {
+        "en": "Pidurutalagala",
+        "ja": "ピドゥルタラーガラ山"
+      },
+      "latitude_deg": 7.000833333,
+      "longitude_deg": 80.773888888,
+      "elevation_m": 2524.0,
+      "region_hint": "Sri Lanka"
+    },
+    {
+      "qid": "Q1549215",
+      "name": "Julianatop",
+      "names": [
+        "Julianatop",
+        "ジュリアナトップ山"
+      ],
+      "labels": {
+        "en": "Julianatop",
+        "ja": "ジュリアナトップ山"
+      },
+      "latitude_deg": 3.682777777,
+      "longitude_deg": -56.535555555,
+      "elevation_m": 1280.0,
+      "region_hint": "Suriname"
+    },
+    {
+      "qid": "Q214011",
+      "name": "Kebnekaise",
+      "names": [
+        "Kebnekaise",
+        "ケブネカイセ"
+      ],
+      "labels": {
+        "en": "Kebnekaise",
+        "ja": "ケブネカイセ"
+      },
+      "latitude_deg": 67.883333333,
+      "longitude_deg": 18.55,
+      "elevation_m": 2096.8,
+      "region_hint": "Sweden"
+    },
+    {
+      "qid": "Q3403",
+      "name": "Dufourspitze",
+      "names": [
+        "Dufourspitze",
+        "プンタ・デュフール"
+      ],
+      "labels": {
+        "en": "Dufourspitze",
+        "ja": "プンタ・デュフール"
+      },
+      "latitude_deg": 45.9369238,
+      "longitude_deg": 7.866757,
+      "elevation_m": 4634.0,
+      "region_hint": "Switzerland"
+    },
+    {
+      "qid": "Q215471",
+      "name": "Mount Hermon",
+      "names": [
+        "Mount Hermon",
+        "ヘルモン山"
+      ],
+      "labels": {
+        "en": "Mount Hermon",
+        "ja": "ヘルモン山"
+      },
+      "latitude_deg": 33.4,
+      "longitude_deg": 35.85,
+      "elevation_m": 2813.95,
+      "region_hint": "Syria"
+    },
+    {
+      "qid": "Q1471391",
+      "name": "Pico de São Tomé",
+      "names": [
+        "Pico de São Tomé",
+        "サントメ山"
+      ],
+      "labels": {
+        "en": "Pico de São Tomé",
+        "ja": "サントメ山"
+      },
+      "latitude_deg": 0.266666666,
+      "longitude_deg": 6.533333333,
+      "elevation_m": 2024.0,
+      "region_hint": "São Tomé and Príncipe"
+    },
+    {
+      "qid": "Q500275",
+      "name": "Yushan Main Peak",
+      "names": [
+        "Yushan Main Peak",
+        "玉山"
+      ],
+      "labels": {
+        "en": "Yushan Main Peak",
+        "ja": "玉山"
+      },
+      "latitude_deg": 23.47,
+      "longitude_deg": 120.957266666,
+      "elevation_m": 3952.0,
+      "region_hint": "Taiwan"
+    },
+    {
+      "qid": "Q41413",
+      "name": "Ismoil Somoni Peak",
+      "names": [
+        "Ismoil Somoni Peak",
+        "イスモイル・ソモニ峰"
+      ],
+      "labels": {
+        "en": "Ismoil Somoni Peak",
+        "ja": "イスモイル・ソモニ峰"
+      },
+      "latitude_deg": 38.942732,
+      "longitude_deg": 72.015347,
+      "elevation_m": 7495.0,
+      "region_hint": "Tajikistan"
+    },
+    {
+      "qid": "Q1394606",
+      "name": "Mount Kibo",
+      "names": [
+        "Mount Kibo",
+        "キボ峰"
+      ],
+      "labels": {
+        "en": "Mount Kibo",
+        "ja": "キボ峰"
+      },
+      "latitude_deg": -3.06505278,
+      "longitude_deg": 37.35903056,
+      "elevation_m": 5895.0,
+      "region_hint": "Tanzania"
+    },
+    {
+      "qid": "Q1140075",
+      "name": "Doi Inthanon",
+      "names": [
+        "Doi Inthanon",
+        "ドイ・インタノン山"
+      ],
+      "labels": {
+        "en": "Doi Inthanon",
+        "ja": "ドイ・インタノン山"
+      },
+      "latitude_deg": 18.592222222,
+      "longitude_deg": 98.486666666,
+      "elevation_m": 2565.0,
+      "region_hint": "Thailand"
+    },
+    {
+      "qid": "Q746274",
+      "name": "Mount Alvernia",
+      "names": [
+        "Mount Alvernia",
+        "アルバーニア山"
+      ],
+      "labels": {
+        "en": "Mount Alvernia",
+        "ja": "アルバーニア山"
+      },
+      "latitude_deg": 24.294166666,
+      "longitude_deg": -75.408333333,
+      "elevation_m": 63.0,
+      "region_hint": "The Bahamas"
+    },
+    {
+      "qid": "Q1539961",
+      "name": "Tatamailau",
+      "names": [
+        "Tatamailau",
+        "タタマイラウ山"
+      ],
+      "labels": {
+        "en": "Tatamailau",
+        "ja": "タタマイラウ山"
+      },
+      "latitude_deg": -8.906666666,
+      "longitude_deg": 125.493333333,
+      "elevation_m": 2963.0,
+      "region_hint": "Timor-Leste"
+    },
+    {
+      "qid": "Q1753509",
+      "name": "Mount Agou",
+      "names": [
+        "Mount Agou",
+        "アグー山"
+      ],
+      "labels": {
+        "en": "Mount Agou",
+        "ja": "アグー山"
+      },
+      "latitude_deg": 6.870536413,
+      "longitude_deg": 0.754600679,
+      "elevation_m": 986.0,
+      "region_hint": "Togo"
+    },
+    {
+      "qid": "Q1520405",
+      "name": "Kao",
+      "names": [
+        "Kao",
+        "カオ島"
+      ],
+      "labels": {
+        "en": "Kao",
+        "ja": "カオ島"
+      },
+      "latitude_deg": -19.666666666,
+      "longitude_deg": -175.016666666,
+      "elevation_m": 1030.0,
+      "region_hint": "Tonga"
+    },
+    {
+      "qid": "Q1056103",
+      "name": "El Cerro del Aripo",
+      "names": [
+        "El Cerro del Aripo",
+        "アリポ山"
+      ],
+      "labels": {
+        "en": "El Cerro del Aripo",
+        "ja": "アリポ山"
+      },
+      "latitude_deg": 10.716666666,
+      "longitude_deg": -61.25,
+      "elevation_m": 940.0,
+      "region_hint": "Trinidad and Tobago"
+    },
+    {
+      "qid": "Q1232136",
+      "name": "Jebel ech Chambi",
+      "names": [
+        "Jebel ech Chambi",
+        "シャンビ山"
+      ],
+      "labels": {
+        "en": "Jebel ech Chambi",
+        "ja": "シャンビ山"
+      },
+      "latitude_deg": 35.206666666,
+      "longitude_deg": 8.683055555,
+      "elevation_m": 1544.0,
+      "region_hint": "Tunisia"
+    },
+    {
+      "qid": "Q72303",
+      "name": "Mount Ararat",
+      "names": [
+        "Mount Ararat",
+        "アララト山"
+      ],
+      "labels": {
+        "en": "Mount Ararat",
+        "ja": "アララト山"
+      },
+      "latitude_deg": 39.701944444,
+      "longitude_deg": 44.298333333,
+      "elevation_m": 5137.0,
+      "region_hint": "Turkey"
+    },
+    {
+      "qid": "Q794684",
+      "name": "Aýrybaba",
+      "names": [
+        "Aýrybaba",
+        "アイリババ山"
+      ],
+      "labels": {
+        "en": "Aýrybaba",
+        "ja": "アイリババ山"
+      },
+      "latitude_deg": 37.833333333,
+      "longitude_deg": 66.566666666,
+      "elevation_m": 3139.0,
+      "region_hint": "Turkmenistan"
+    },
+    {
+      "qid": "Q627508",
+      "name": "Hoverla",
+      "names": [
+        "Hoverla",
+        "ホヴェールラ山"
+      ],
+      "labels": {
+        "en": "Hoverla",
+        "ja": "ホヴェールラ山"
+      },
+      "latitude_deg": 48.160277777,
+      "longitude_deg": 24.5,
+      "elevation_m": 2061.0,
+      "region_hint": "Ukraine"
+    },
+    {
+      "qid": "Q3492099",
+      "name": "Jebel Jais",
+      "names": [
+        "Jebel Jais",
+        "イェベル・ヤイス"
+      ],
+      "labels": {
+        "en": "Jebel Jais",
+        "ja": "イェベル・ヤイス"
+      },
+      "latitude_deg": 25.9531,
+      "longitude_deg": 56.18441,
+      "elevation_m": 1911.0,
+      "region_hint": "United Arab Emirates"
+    },
+    {
+      "qid": "Q104674",
+      "name": "Ben Nevis",
+      "names": [
+        "Ben Nevis",
+        "ベン・ネヴィス山"
+      ],
+      "labels": {
+        "en": "Ben Nevis",
+        "ja": "ベン・ネヴィス山"
+      },
+      "latitude_deg": 56.796891,
+      "longitude_deg": -5.003675,
+      "elevation_m": 1344.527,
+      "region_hint": "United Kingdom"
+    },
+    {
+      "qid": "Q130018",
+      "name": "デナリ",
+      "names": [
+        "デナリ"
+      ],
+      "labels": {
+        "ja": "デナリ"
+      },
+      "latitude_deg": 63.069102777,
+      "longitude_deg": -151.006261111,
+      "elevation_m": 6190.0,
+      "region_hint": "United States"
+    },
+    {
+      "qid": "Q1055837",
+      "name": "Cerro Catedral",
+      "names": [
+        "Cerro Catedral",
+        "カテドラル山"
+      ],
+      "labels": {
+        "en": "Cerro Catedral",
+        "ja": "カテドラル山"
+      },
+      "latitude_deg": -34.380833333,
+      "longitude_deg": -54.673611111,
+      "elevation_m": 513.7,
+      "region_hint": "Uruguay"
+    },
+    {
+      "qid": "Q519822",
+      "name": "Khazret Sultan",
+      "names": [
+        "Khazret Sultan",
+        "ハズレット・スルタン山"
+      ],
+      "labels": {
+        "en": "Khazret Sultan",
+        "ja": "ハズレット・スルタン山"
+      },
+      "latitude_deg": 38.948333333,
+      "longitude_deg": 68.172222222,
+      "elevation_m": 4643.0,
+      "region_hint": "Uzbekistan"
+    },
+    {
+      "qid": "Q1542459",
+      "name": "Mount Tabwemasana",
+      "names": [
+        "Mount Tabwemasana",
+        "タブウェマサナ山"
+      ],
+      "labels": {
+        "en": "Mount Tabwemasana",
+        "ja": "タブウェマサナ山"
+      },
+      "latitude_deg": -15.35,
+      "longitude_deg": 166.75,
+      "elevation_m": 1879.0,
+      "region_hint": "Vanuatu"
+    },
+    {
+      "qid": "Q213704",
+      "name": "Pico Bolívar",
+      "names": [
+        "Pico Bolívar",
+        "ボリバル山"
+      ],
+      "labels": {
+        "en": "Pico Bolívar",
+        "ja": "ボリバル山"
+      },
+      "latitude_deg": 8.540861111,
+      "longitude_deg": -71.0465,
+      "elevation_m": 4978.0,
+      "region_hint": "Venezuela"
+    },
+    {
+      "qid": "Q1261935",
+      "name": "Jabal an Nabi Shu'ayb",
+      "names": [
+        "Jabal an Nabi Shu'ayb",
+        "ナビー・シュアイブ山"
+      ],
+      "labels": {
+        "en": "Jabal an Nabi Shu'ayb",
+        "ja": "ナビー・シュアイブ山"
+      },
+      "latitude_deg": 15.279166666,
+      "longitude_deg": 43.975833333,
+      "elevation_m": 3666.0,
+      "region_hint": "Yemen"
+    },
+    {
+      "qid": "Q18351462",
+      "name": "Mafinga Central",
+      "names": [
+        "Mafinga Central"
+      ],
+      "labels": {
+        "en": "Mafinga Central"
+      },
+      "latitude_deg": -9.95269,
+      "longitude_deg": 33.3524,
+      "elevation_m": 2339.0,
+      "region_hint": "Zambia"
+    },
+    {
+      "qid": "Q152294",
+      "name": "Mount Nyangani",
+      "names": [
+        "Mount Nyangani",
+        "ンヤンガニ山"
+      ],
+      "labels": {
+        "en": "Mount Nyangani",
+        "ja": "ンヤンガニ山"
+      },
+      "latitude_deg": -18.311111111,
+      "longitude_deg": 32.850555555,
+      "elevation_m": 2592.0,
+      "region_hint": "Zimbabwe"
+    }
+  ]
+}
