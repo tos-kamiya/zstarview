@@ -92,7 +92,7 @@ The same simplified viewport-interaction mode is also used during window resize 
 
 | Argument | Description                                                                                                                                                                                                                                                           | Default                           |
 | :------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------- |
-| `location`   | Specify a city name, a tower name, or latitude/longitude in the form `"<lat>;<lon>"`. Examples: `Tokyo`, `Tokyo Skytree`, `35.68;139.76`, `N35.68;E139.76`, `-35.68;139.76`. If omitted, the last run location will be used (defaults to `Tokyo` on the first run). | Last run location (or `Tokyo`) |
+| `location`   | Specify a city name, a tower name, a mountain name, or latitude/longitude in the form `"<lat>;<lon>"`. Examples: `Tokyo`, `Tokyo Skytree`, `Mount Fuji`, `35.68;139.76`, `N35.68;E139.76`, `-35.68;139.76`. If omitted, the last run location will be used (defaults to `Tokyo` on the first run). | Last run location (or `Tokyo`) |
 
 #### Options
 
@@ -101,7 +101,7 @@ The same simplified viewport-interaction mode is also used during window resize 
 | `-h`, `--help`                              | Show this help message and exit.                                            |         |
 | `-Z`, `--view-center-az VIEW_CENTER_AZ`     | Viewing azimuth (degrees or compass points).                                | `180`   |
 | `-A`, `--view-center-alt VIEW_CENTER_ALT`   | Viewing altitude angle (90=zenith, 0=horizon).                              | `90`    |
-| `--observer-height-m METERS`                | Observer height above local ground in meters. Default: `1.7` for city/latlon, tower height for tower-name input. | location-dependent |
+| `--observer-height-m METERS`                | Observer height above local ground in meters. Default: `1.7` for city/latlon/mountain input, tower height for tower-name input. | location-dependent |
 | `-c`, `--cloud-opacity CLOUD_OPACITY`       | Opacity of cloud rendering (0.0–1.0). Use 0.0 to disable. \*2                | `0.2`   |
 | `--cloud-missing-tint-opacity OPACITY`      | Opacity of missing-cloud-data yellow tint (0.0–1.0).                          | `0.176` |
 | `--sky-opacity SKY_OPACITY`                 | Opacity of the simulated sky-color disc (0.0–1.0). Use 0.0 to disable.      | `0.2`   |
@@ -224,6 +224,23 @@ Example:
 ```bash
 zstarview "Tokyo Skytree"
 zstarview "Tokyo Tower" --observer-height-m 150
+```
+
+You can also start from the bundled mountain/viewpoint dataset.
+
+* Examples:
+  * `Mount Fuji`
+  * `Aconcagua`
+  * `Snezka` (ASCII fallback for `Sněžka`)
+  * `wikidata:Q39231`
+* When a mountain name is used, the observer height defaults to `1.7m`.
+* Mountain resolution also accepts ASCII fallback spellings for names with diacritics.
+
+Example:
+
+```bash
+zstarview "Mount Fuji"
+zstarview "Snezka"
 ```
 
 Time zone examples for `--datetime`:

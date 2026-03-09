@@ -139,7 +139,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         type=str,
         nargs="?",
         default="",
-        help="Location name: city, lat;lon, or tower name (default: same as the last run)",
+        help="Location name: city, lat;lon, tower name, or mountain name (default: same as the last run)",
     )
     dataset_query_group = parser.add_mutually_exclusive_group()
     dataset_query_group.add_argument(

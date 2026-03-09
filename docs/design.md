@@ -79,6 +79,9 @@
   - 山頂ビューポイントデータの解決
   - ASCII フォールバック名を含む名前解決
   - 一覧表示名、全名前一覧、単一 mountain viewpoint JSON 出力用の列挙ヘルパを持つ
+- `src/zstarview/startup.py`
+  - 都市、タワー、山、緯度経度の通常起動時地点解決
+  - タワー/山については最近傍都市からタイムゾーンを補完
 - `src/zstarview/types.py`
   - ドメインデータの共有型
 

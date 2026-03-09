@@ -93,7 +93,7 @@ zstarview [options] [location]
 
 | 引数     | 説明                                                          | デフォルト              |
 | :----- | :---------------------------------------------------------- | :----------------- |
-| `location` | 表示する都市名、タワー名、または `"<lat>;<lon>"` 形式の緯度経度（十進度）を指定できます（例: `Tokyo`, `Tokyo Skytree`, `35.68;139.76`, `N35.68;E139.76`, `-35.68;139.76`）。省略時は前回起動時の location を使用します。初回起動時に省略すると `Tokyo` になります。 | 前回の location（初回は `Tokyo`） |
+| `location` | 表示する都市名、タワー名、山名、または `"<lat>;<lon>"` 形式の緯度経度（十進度）を指定できます（例: `Tokyo`, `Tokyo Skytree`, `Mount Fuji`, `35.68;139.76`, `N35.68;E139.76`, `-35.68;139.76`）。省略時は前回起動時の location を使用します。初回起動時に省略すると `Tokyo` になります。 | 前回の location（初回は `Tokyo`） |
 
 #### オプション
 
@@ -102,7 +102,7 @@ zstarview [options] [location]
 | `-h`, `--help`                              | ヘルプメッセージを表示して終了します。                                 |          |
 | `-Z`, `--view-center-az VIEW_CENTER_AZ`     | 表示中心の方位角を指定します。                                     | `180`    |
 | `-A`, `--view-center-alt VIEW_CENTER_ALT`   | 表示中心の高度角を指定します（90=天頂、0=地平線）。                       | `90`     |
-| `--observer-height-m METERS` | 観測者の地面からの高さをメートルで指定します。デフォルトは都市/緯度経度入力で `1.7`、タワー名入力ではタワー高さです。 | location依存 |
+| `--observer-height-m METERS` | 観測者の地面からの高さをメートルで指定します。デフォルトは都市/緯度経度/山名入力で `1.7`、タワー名入力ではタワー高さです。 | location依存 |
 | `-c`, `--cloud-opacity CLOUD_OPACITY`                 | 雲の不透明度を指定します（0.0〜1.0）。0.0で描画を無効化します。※2 | `0.2`   |
 | `--cloud-missing-tint-opacity OPACITY` | 雲欠損領域の黄色ティント不透明度を指定します（0.0〜1.0）。 | `0.176` |
 | `--sky-opacity SKY_OPACITY`                 | 空の色ディスクの不透明度を指定します（0.0〜1.0）。0.0で描画を無効化します。 | `0.2`   |
@@ -222,6 +222,25 @@ Wikidata 由来の同梱タワー/展望地点 dataset から起動できます�
 ```bash
 zstarview "Tokyo Skytree"
 zstarview "Tokyo Tower" --observer-height-m 150
+```
+
+#### 山名入力
+
+同梱山頂ビューポイント dataset から起動できます。
+
+- 例:
+  - `Mount Fuji`
+  - `Aconcagua`
+  - `Snezka`（`Sněžka` の ASCII フォールバック）
+  - `wikidata:Q39231`
+- 山名を使った場合、観測者高さのデフォルトは `1.7m` です。
+- ダイアクリティカルマーク付き名称については、ASCII フォールバック表記でも解決できます。
+
+例:
+
+```bash
+zstarview "Mount Fuji"
+zstarview "Snezka"
 ```
 
 ### ビューポイント dataset CLI 参照オプション

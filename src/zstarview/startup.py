@@ -11,6 +11,7 @@ import polars as pl
 
 from .catalog import load_dso_catalog, load_star_catalog
 from .config import load_last_city, save_last_city
+from .mountain_viewpoints import resolve_mountain_viewpoint
 from .paths import (
     CITY_ADMIN1_CODES_FILE,
     CITY_COORD_FILE,
@@ -125,6 +126,24 @@ def _tower_to_location(args_city: str, admin1_map: dict[tuple[str, str], str]) -
     )
 
 
+def _mountain_to_location(args_city: str, admin1_map: dict[tuple[str, str], str]) -> ResolvedLocation | None:
+    mountain = resolve_mountain_viewpoint(args_city)
+    if mountain is None:
+        return None
+    nearest_city = _resolve_nearest_city(mountain.latitude_deg, mountain.longitude_deg, admin1_map)
+    timezone_name = nearest_city.tz if nearest_city is not None else "UTC"
+    return ResolvedLocation(
+        display_name=mountain.name,
+        lat=mountain.latitude_deg,
+        lon=mountain.longitude_deg,
+        tz=timezone_name,
+        persistence_key=mountain.persistent_key,
+        observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
+        kind="mountain",
+        cc=nearest_city.cc if nearest_city is not None else "",
+    )
+
+
 def _startup_resolve_city(args_city: Optional[str]) -> ResolvedLocation:
     """
     Resolve target city from CLI or last used city.
@@ -194,10 +213,14 @@ def _startup_resolve_city(args_city: Optional[str]) -> ResolvedLocation:
         tower_query = args_city.startswith("wikidata:") or re.match(r"^Q\d+$", args_city) is not None
         if tower_query:
             tower_location = _tower_to_location(args_city, admin1_map)
-            if tower_location is None:
-                logger.error("No tower found for '%s'", args_city)
+            mountain_location = _mountain_to_location(args_city, admin1_map)
+            if tower_location is not None:
+                resolved_location = tower_location
+            elif mountain_location is not None:
+                resolved_location = mountain_location
+            else:
+                logger.error("No tower or mountain found for '%s'", args_city)
                 raise StartupAbortError()
-            resolved_location = tower_location
             persist_location = True
 
         elif re.match(r"^\d+$", args_city):
@@ -228,11 +251,16 @@ def _startup_resolve_city(args_city: Optional[str]) -> ResolvedLocation:
                     logger.warning("Multiple matches found for '%s'", args_city)
             else:
                 tower_location = _tower_to_location(args_city, admin1_map)
-                if tower_location is None:
+                mountain_location = _mountain_to_location(args_city, admin1_map)
+                if tower_location is not None:
+                    resolved_location = tower_location
+                    persist_location = True
+                elif mountain_location is not None:
+                    resolved_location = mountain_location
+                    persist_location = True
+                else:
                     logger.error("No match for '%s'", args_city)
                     raise StartupAbortError()
-                resolved_location = tower_location
-                persist_location = True
     except FileNotFoundError as exc:
         logger.error("Fail to load cities1000.txt.")
         raise StartupAbortError() from exc
@@ -256,6 +284,8 @@ def _startup_resolve_city(args_city: Optional[str]) -> ResolvedLocation:
         save_last_city(resolved_location.persistence_key)
         if resolved_location.kind == "tower":
             logger.info("Tower: %s", resolved_location.persistence_key)
+        elif resolved_location.kind == "mountain":
+            logger.info("Mountain: %s", resolved_location.persistence_key)
         else:
             logger.info("City: %s", resolved_location.persistence_key)
     return resolved_location
