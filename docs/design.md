@@ -79,6 +79,7 @@
   - 山頂ビューポイントデータの解決
   - ASCII フォールバック名を含む名前解決
   - 一覧表示名、全名前一覧、単一 mountain viewpoint JSON 出力用の列挙ヘルパを持つ
+  - 同梱 `mountain_viewpoints.json` は、Wikipedia 起点の候補収集を dev-samples の整形フローで Wikidata メタデータへ正規化した生成物を読む
 - `src/zstarview/startup.py`
   - 都市、タワー、山、緯度経度の通常起動時地点解決
   - タワー/山については最近傍都市からタイムゾーンを補完
@@ -105,6 +106,7 @@
 - `mountain_viewpoints.py` も同様に dataset の `name` を保持したまま、必要に応じて ASCII フォールバック名 `ascii_name` を算出する。
 - `--list-towers` は `ascii_name` がある場合それを表示名として優先し、通常のタワー名解決でも `ascii_name` を一致候補へ含める。
 - `--list-mountains` も同様に `ascii_name` がある場合それを表示名として優先し、mountain viewpoint 名解決でも `ascii_name` を一致候補へ含める。
+- mountain viewpoint dataset の生成は、Wikipedia 候補抽出、Wikidata raw query、review JSON、curated seed、最終 JSON という段階を `dev-samples/` に記録する運用とする。
 
 ### 4.3 描画
 
