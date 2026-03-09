@@ -57,9 +57,10 @@ class SkyWindowUpdatesMixin:
         return ""
 
     def _on_sky_data_calculated(self, payload: Dict) -> None:
-        self.state.render_view_center = tuple(
-            payload.get("view_center", self.viewer_data.view_center)
-        )
+        if not self.state.orientation_interaction_mode:
+            self.state.render_view_center = tuple(
+                payload.get("view_center", self.viewer_data.view_center)
+            )
         self.state.celestial_data = payload["celestial"]
         self.state.sky_disc_image = payload["sky_disc"]
 

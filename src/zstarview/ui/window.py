@@ -360,6 +360,11 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._interaction_idle_timer.setInterval(self.state.interaction_idle_ms)
         self._interaction_idle_timer.timeout.connect(self._end_interaction_mode)
 
+        self._orientation_interaction_idle_timer = QTimer(self)
+        self._orientation_interaction_idle_timer.setSingleShot(True)
+        self._orientation_interaction_idle_timer.setInterval(self.state.orientation_interaction_idle_ms)
+        self._orientation_interaction_idle_timer.timeout.connect(self._end_orientation_interaction_mode)
+
     def _add_hamburger_menu(self) -> None:
         """Adds a hamburger menu button and its corresponding actions."""
         self.menu_button = QPushButton("☰", self)
@@ -504,6 +509,19 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.start_background_cloud_update(reason="view-change-idle")
         self.start_background_terrain_horizon_update(reason="view-change-idle")
 
+    def _begin_orientation_interaction_mode(self) -> None:
+        self.state.orientation_interaction_mode = True
+        self._orientation_interaction_idle_timer.start()
+
+    def _end_orientation_interaction_mode(self) -> None:
+        if not self.state.orientation_interaction_mode:
+            return
+        self.state.orientation_interaction_mode = False
+        self.request_sky_data_update()
+        self.start_background_cloud_update(reason="view-change-idle")
+        self.start_background_terrain_horizon_update(reason="view-change-idle")
+        self.update()
+
     def show_menu(self) -> None:
         self._sync_view_altitude_actions()
         menu_pos = self.menu_button.mapToGlobal(QPoint(0, self.menu_button.height()))
@@ -584,6 +602,10 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self._asterism_check_timer.stop()
         if self._cloud_update_timer.isActive():
             self._cloud_update_timer.stop()
+        if self._interaction_idle_timer.isActive():
+            self._interaction_idle_timer.stop()
+        if self._orientation_interaction_idle_timer.isActive():
+            self._orientation_interaction_idle_timer.stop()
 
     def _on_asterism_check_tick(self) -> None:
         if self._is_shutting_down:
@@ -711,15 +733,26 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         # This is why the manual drag in DraggableWindow does not work.
         event.accept()
 
-    def _rotate_view(self, d_alt: float = 0.0, d_az: float = 0.0) -> None:
-        self._begin_interaction_mode()
+    def _rotate_view(
+        self,
+        d_alt: float = 0.0,
+        d_az: float = 0.0,
+        *,
+        interactive_orientation: bool = False,
+    ) -> None:
+        if interactive_orientation:
+            self._begin_orientation_interaction_mode()
+        else:
+            self._begin_interaction_mode()
         alt, az = self.viewer_data.view_center
         new_alt = max(0.0, min(90.0, alt + d_alt))
         new_az = (az + d_az) % 360.0
         self.viewer_data.view_center = (new_alt, new_az)
+        self.state.render_view_center = (new_alt, new_az)
         self._sync_view_altitude_actions()
-
-        # Recalculate sky data for the current full quality on each key input.
+        if interactive_orientation:
+            self.update()
+            return
         self.request_sky_data_update()
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
@@ -727,16 +760,16 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
 
         # --- View Control ---
         if key == Qt.Key.Key_Left:
-            self._rotate_view(d_az=-self.state.rotation_step)
+            self._rotate_view(d_az=-self.state.rotation_step, interactive_orientation=True)
             event.accept()
         elif key == Qt.Key.Key_Right:
-            self._rotate_view(d_az=self.state.rotation_step)
+            self._rotate_view(d_az=self.state.rotation_step, interactive_orientation=True)
             event.accept()
         elif key == Qt.Key.Key_Up:
-            self._rotate_view(d_alt=self.state.rotation_step)
+            self._rotate_view(d_alt=self.state.rotation_step, interactive_orientation=True)
             event.accept()
         elif key == Qt.Key.Key_Down:
-            self._rotate_view(d_alt=-self.state.rotation_step)
+            self._rotate_view(d_alt=-self.state.rotation_step, interactive_orientation=True)
             event.accept()
 
         # --- Toggles ---

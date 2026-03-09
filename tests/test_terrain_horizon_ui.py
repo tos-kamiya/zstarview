@@ -164,3 +164,36 @@ def test_jump_to_search_target_keeps_negative_target_alt_for_highlight(monkeypat
     assert dummy.state.jump_highlight_altaz == (-12.5, 210.0)
     assert dummy.state.jump_highlight_until_ms > 0.0
     assert sync_calls == ["sync", "begin", "request", "update"]
+
+
+def test_rotate_view_in_orientation_mode_updates_render_center_without_full_refresh() -> None:
+    dummy = SimpleNamespace()
+    dummy.viewer_data = SimpleNamespace(view_center=(20.0, 30.0))
+    dummy.state = SimpleNamespace(render_view_center=(20.0, 30.0))
+    calls: list[str] = []
+    dummy._begin_orientation_interaction_mode = lambda: calls.append("begin-orientation")
+    dummy._begin_interaction_mode = lambda: calls.append("begin")
+    dummy._sync_view_altitude_actions = lambda: calls.append("sync")
+    dummy.request_sky_data_update = lambda: calls.append("request")
+    dummy.update = lambda: calls.append("update")
+
+    SkyWindow._rotate_view(dummy, d_alt=5.0, d_az=15.0, interactive_orientation=True)
+
+    assert dummy.viewer_data.view_center == (25.0, 45.0)
+    assert dummy.state.render_view_center == (25.0, 45.0)
+    assert calls == ["begin-orientation", "sync", "update"]
+
+
+def test_end_orientation_interaction_mode_requests_full_refresh() -> None:
+    dummy = SimpleNamespace()
+    dummy.state = SimpleNamespace(orientation_interaction_mode=True)
+    calls: list[str] = []
+    dummy.request_sky_data_update = lambda: calls.append("sky")
+    dummy.start_background_cloud_update = lambda **kwargs: calls.append(str(kwargs.get("reason")))
+    dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(str(kwargs.get("reason")))
+    dummy.update = lambda: calls.append("update")
+
+    SkyWindow._end_orientation_interaction_mode(dummy)
+
+    assert dummy.state.orientation_interaction_mode is False
+    assert calls == ["sky", "view-change-idle", "view-change-idle", "update"]
