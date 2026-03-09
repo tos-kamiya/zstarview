@@ -73,7 +73,8 @@
   - ローテーション選択
 - `src/zstarview/tower_viewpoints.py`
   - タワー・展望地点データの解決
-  - 英語名一覧、全名前一覧、単一タワー JSON 出力用の列挙ヘルパを持つ
+  - ASCII フォールバック名を含む名前解決
+  - 一覧表示名、全名前一覧、単一タワー JSON 出力用の列挙ヘルパを持つ
 - `src/zstarview/types.py`
   - ドメインデータの共有型
 
@@ -88,6 +89,8 @@
 - この経路では `startup.py` の都市解決や GUI 初期化へ進まず、`zstarview.py` が `tower_viewpoints.py` を直接呼び出して標準出力を書き、即時終了する。
 - 一覧出力はローカル JSON のみを参照し、GeoNames、設定保存、ネットワークアクセスには触れない。
 - `--show-tower-json NAME` の名前解決規則は、通常起動時のタワー解決と同じ `resolve_tower_viewpoint()` を再利用する。
+- `tower_viewpoints.py` は dataset の `name` を保持したまま、必要に応じて ASCII フォールバック名 `ascii_name` を算出する。
+- `--list-towers` は `ascii_name` がある場合それを表示名として優先し、通常のタワー名解決でも `ascii_name` を一致候補へ含める。
 
 ### 4.3 描画
 

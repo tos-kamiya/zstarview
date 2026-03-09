@@ -30,10 +30,29 @@ def test_list_tower_primary_names_includes_tokyo_skytree() -> None:
     assert "Tokyo Skytree" in names
 
 
+def test_list_tower_primary_names_prefers_ascii_fallback() -> None:
+    names = list_tower_primary_names()
+    assert "Tsutenkaku" in names
+    assert "Tsūtenkaku" not in names
+
+
+def test_list_tower_primary_names_excludes_qid_placeholders() -> None:
+    names = list_tower_primary_names()
+    assert "Q12049950" not in names
+    assert "Q137673602" not in names
+
+
 def test_list_tower_all_names_includes_localized_name() -> None:
     names = list_tower_all_names()
     assert "Tokyo Skytree" in names
     assert "東京スカイツリー" in names
+    assert "Tsutenkaku" in names
+
+
+def test_list_tower_all_names_excludes_qid_placeholders() -> None:
+    names = list_tower_all_names()
+    assert "Q12049950" not in names
+    assert "Q137673602" not in names
 
 
 def test_main_list_towers_prints_names_and_exits(capsys, monkeypatch) -> None:
@@ -54,6 +73,16 @@ def test_main_show_tower_json_prints_json_and_exits(capsys, monkeypatch) -> None
     assert payload["qid"] == "Q57965"
     assert payload["name"] == "Tokyo Skytree"
     assert "東京スカイツリー" in payload["names"]
+
+
+def test_main_show_tower_json_includes_ascii_name(capsys, monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "--show-tower-json", "Tsutenkaku"])
+    with pytest.raises(SystemExit) as excinfo:
+        main()
+    assert excinfo.value.code == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["name"] == "Tsūtenkaku"
+    assert payload["ascii_name"] == "Tsutenkaku"
 
 
 def test_main_show_tower_json_returns_error_for_unknown_name(capsys, monkeypatch) -> None:

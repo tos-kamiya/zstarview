@@ -1145,33 +1145,15 @@
       "slug": "Independence_Monument,_Ashgabat"
     },
     {
-      "id": "wikidata:Q12049950",
-      "name": "Q12049950",
-      "names": [
-        "Q12049950"
-      ],
-      "labels": {},
-      "qid": "Q12049950",
-      "latitude_deg": 48.9962,
-      "longitude_deg": 15.9274,
-      "height_m": 115.0,
-      "classes": [
-        "展望塔"
-      ],
-      "class_qids": [
-        "Q1440300"
-      ],
-      "wikidata_url": "https://www.wikidata.org/wiki/Q12049950",
-      "location_arg": "48.996200;15.927400",
-      "slug": "Q12049950"
-    },
-    {
       "id": "wikidata:Q137673602",
-      "name": "Q137673602",
+      "name": "Tour d’observation Hydro-Québec de la Cité de l’énergie",
       "names": [
-        "Q137673602"
+        "Tour d’observation Hydro-Québec de la Cité de l’énergie",
+        "Tour de la Cité de l'énergie de Shawinigan"
       ],
-      "labels": {},
+      "labels": {
+        "fr": "Tour d’observation Hydro-Québec de la Cité de l’énergie"
+      },
       "qid": "Q137673602",
       "latitude_deg": 46.5365627,
       "longitude_deg": -72.7577614,

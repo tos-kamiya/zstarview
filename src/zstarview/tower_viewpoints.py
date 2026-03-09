@@ -18,6 +18,34 @@ def _normalize_name(text: str) -> str:
     return " ".join(folded.split())
 
 
+def _looks_like_qid_placeholder(text: str) -> bool:
+    candidate = (text or "").strip()
+    return candidate.startswith("Q") and candidate[1:].isdigit()
+
+
+def _ascii_fallback_name(text: str) -> str | None:
+    source = (text or "").strip()
+    if not source or _looks_like_qid_placeholder(source):
+        return None
+    replaced = (
+        source.replace("’", "'")
+        .replace("‘", "'")
+        .replace("“", '"')
+        .replace("”", '"')
+        .replace("–", "-")
+        .replace("—", "-")
+    )
+    decomposed = unicodedata.normalize("NFKD", replaced)
+    ascii_text = "".join(
+        ch for ch in decomposed
+        if not unicodedata.combining(ch) and ord(ch) < 128
+    )
+    ascii_text = " ".join(ascii_text.split()).strip()
+    if not ascii_text or ascii_text == source:
+        return None
+    return ascii_text
+
+
 @dataclass(frozen=True)
 class TowerViewpoint:
     qid: str
@@ -32,6 +60,10 @@ class TowerViewpoint:
     @property
     def persistent_key(self) -> str:
         return f"wikidata:{self.qid}"
+
+    @property
+    def ascii_name(self) -> str | None:
+        return _ascii_fallback_name(self.name)
 
 
 def _as_tower(item: dict[str, Any]) -> TowerViewpoint:
@@ -77,7 +109,11 @@ def load_tower_viewpoints(path: str | Path = TOWER_VIEWPOINTS_FILE) -> tuple[Tow
 
 def list_tower_primary_names(towers: tuple[TowerViewpoint, ...] | None = None) -> tuple[str, ...]:
     towers = load_tower_viewpoints() if towers is None else towers
-    names = {tower.name.strip() for tower in towers if tower.name.strip()}
+    names = {
+        (tower.ascii_name or tower.name).strip()
+        for tower in towers
+        if tower.name.strip() and not _looks_like_qid_placeholder(tower.name)
+    }
     return tuple(sorted(names, key=lambda name: (_normalize_name(name), name)))
 
 
@@ -85,9 +121,20 @@ def list_tower_all_names(towers: tuple[TowerViewpoint, ...] | None = None) -> tu
     towers = load_tower_viewpoints() if towers is None else towers
     names_by_key: dict[str, str] = {}
     for tower in towers:
-        for candidate in (tower.name, *tower.names, *tower.labels.values()):
+        ascii_candidates = tuple(
+            ascii_candidate
+            for ascii_candidate in (
+                tower.ascii_name,
+                *(_ascii_fallback_name(candidate) for candidate in tower.names),
+                *(_ascii_fallback_name(candidate) for candidate in tower.labels.values()),
+            )
+            if ascii_candidate
+        )
+        for candidate in (tower.name, *tower.names, *tower.labels.values(), *ascii_candidates):
             text = candidate.strip()
             if not text:
+                continue
+            if _looks_like_qid_placeholder(text):
                 continue
             normalized = _normalize_name(text)
             existing = names_by_key.get(normalized)
@@ -100,6 +147,8 @@ def tower_viewpoint_to_dict(tower: TowerViewpoint) -> dict[str, Any]:
     payload = asdict(tower)
     payload["names"] = list(tower.names)
     payload["classes"] = list(tower.classes)
+    if tower.ascii_name is not None:
+        payload["ascii_name"] = tower.ascii_name
     return payload
 
 
@@ -120,7 +169,16 @@ def resolve_tower_viewpoint(query: str, towers: tuple[TowerViewpoint, ...] | Non
     exact_matches: list[TowerViewpoint] = []
     partial_matches: list[TowerViewpoint] = []
     for tower in towers:
-        candidates = {tower.name, *tower.names, *tower.labels.values()}
+        ascii_candidates = {
+            ascii_candidate
+            for ascii_candidate in (
+                tower.ascii_name,
+                *(_ascii_fallback_name(candidate) for candidate in tower.names),
+                *(_ascii_fallback_name(candidate) for candidate in tower.labels.values()),
+            )
+            if ascii_candidate
+        }
+        candidates = {tower.name, *tower.names, *tower.labels.values(), *ascii_candidates}
         normalized_candidates = {_normalize_name(candidate) for candidate in candidates if candidate.strip()}
         if normalized in normalized_candidates:
             exact_matches.append(tower)
