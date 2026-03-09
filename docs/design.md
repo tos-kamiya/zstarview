@@ -79,6 +79,7 @@
 
 - `src/zstarview/render/draw.py`
   - 恒星、惑星、ラベル、補助線、地平線関連の描画
+  - アステリズム線は大円弧をサンプルし、アステリズム専用の広い FOV 境界で円形クリップして描画
 - `src/zstarview/render/draw_sky_disc.py`
   - sky color disc の生成
 - `src/zstarview/ui/composite.py`
