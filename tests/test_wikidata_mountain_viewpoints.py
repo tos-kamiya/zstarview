@@ -122,3 +122,49 @@ def test_merge_entity_data_uses_fetched_coordinate_and_elevation() -> None:
     assert mountain["longitude_deg"] == 20.25
     assert mountain["elevation_m"] == 1234.5
     assert mountain["location_arg"] == "10.500000;20.250000"
+
+
+def test_merge_entity_data_cleans_problematic_aliases() -> None:
+    mod = _load_module()
+    candidates = [
+        {
+            "qid": "Q5059",
+            "seed_name": "Aoraki / Mount Cook",
+            "seed_names": ["Aoraki/Mount Cook", "Mount Cook", "Aoraki"],
+            "seed_labels": {"en": "Aoraki / Mount Cook"},
+            "latitude_deg": -43.595,
+            "longitude_deg": 170.141944,
+            "elevation_m": 3724.0,
+            "wikipedia_titles": {},
+        }
+    ]
+    entities = {
+        "Q5059": {
+            "labels": {"en": "Aoraki / Mount Cook"},
+            "aliases": {
+                "Jade Mtn.",
+                "Mt. Jade",
+                "3003",
+                "🗻",
+                'Desde la ruta 39, al km 47,5 pueden entrar en los senderos de "Las Cañas", y llegar hasta el Cerro Catedral. Sino entran en el km 60 y listo. Una maravilla!',
+            },
+            "coordinate": (-43.595, 170.141944),
+            "elevation_m": 3724.0,
+            "wikipedia_urls": {},
+        }
+    }
+
+    mountains = mod.merge_entity_data(
+        candidates,
+        entities,
+        allow_missing_elevation=False,
+    )
+
+    mountain = mountains[0]
+    assert mountain["name"] == "Aoraki / Mount Cook"
+    assert "Aoraki/Mount Cook" in mountain["names"]
+    assert "Aoraki / Mount Cook" not in mountain["names"]
+    assert "Jade Mountain" in mountain["names"]
+    assert "Mt. Jade" not in mountain["names"]
+    assert "3003" not in mountain["names"]
+    assert "🗻" not in mountain["names"]

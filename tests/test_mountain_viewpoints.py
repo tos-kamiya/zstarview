@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from zstarview.mountain_viewpoints import (
+    list_mountain_all_names,
     load_mountain_viewpoints,
     resolve_mountain_viewpoint,
 )
@@ -30,6 +31,12 @@ def test_resolve_mountain_viewpoint_by_ascii_fallback_name() -> None:
     assert mountain.name == "Aýrybaba"
 
 
+def test_resolve_mountain_viewpoint_by_lowercase_alias() -> None:
+    mountain = resolve_mountain_viewpoint("pueyosa")
+    assert mountain is not None
+    assert mountain.name == "Mount Wilhelm"
+
+
 def test_resolve_mountain_viewpoint_by_wikidata_key() -> None:
     mountain = resolve_mountain_viewpoint("wikidata:Q39231")
     assert mountain is not None
@@ -45,3 +52,13 @@ def test_resolve_pico_cristobal_colon_prefers_remaining_entry() -> None:
 def test_removed_duplicate_mountain_is_absent() -> None:
     mountains = load_mountain_viewpoints()
     assert all(mountain.qid != "Q338790" for mountain in mountains)
+
+
+def test_list_mountain_all_names_excludes_cleaned_problem_aliases() -> None:
+    names = list_mountain_all_names()
+    assert "🗻" not in names
+    assert "3003" not in names
+    assert "Aoraki / Mount Cook" not in names
+    assert "Aoraki/Mount Cook" in names
+    assert "Mt. Fuji" not in names
+    assert "Mt Fuji" not in names

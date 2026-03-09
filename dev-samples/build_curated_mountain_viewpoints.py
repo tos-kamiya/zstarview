@@ -57,6 +57,14 @@ QID_RE = re.compile(r"^(?:wikidata:)?(Q\d+)$")
 WIKIPEDIA_URL_TEMPLATE = "https://{lang}.wikipedia.org/wiki/{title}"
 COORDINATE_PROPERTY = "P625"
 ELEVATION_PROPERTY = "P2044"
+LONG_SENTENCE_WORDS = 12
+DROP_EXACT_NAMES = {
+    "3003",
+    "cold peak",
+    "🗻",
+    "オリンポス山 (ギリシャ)",
+    'Desde la ruta 39, al km 47,5 pueden entrar en los senderos de "Las Cañas", y llegar hasta el Cerro Catedral. Sino entran en el km 60 y listo. Una maravilla!',
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -100,6 +108,41 @@ def parse_qid(text: str) -> str:
 
 def _dedupe_sorted(values: set[str]) -> list[str]:
     return sorted(value for value in values if value.strip())
+
+
+def _clean_alias_text(text: str) -> str:
+    cleaned = (text or "").strip()
+    cleaned = re.sub(r"^Mt\.?\s+", "Mount ", cleaned)
+    cleaned = re.sub(r"^Mtn\.?\s+", "Mountain ", cleaned)
+    cleaned = re.sub(r"\s+Mt\.?$", " Mountain", cleaned)
+    cleaned = re.sub(r"\s+Mtn\.?$", " Mountain", cleaned)
+    cleaned = re.sub(r"^(.*),\s*mount$", r"Mount \1", cleaned, flags=re.IGNORECASE)
+    return " ".join(cleaned.split()).strip()
+
+
+def _should_keep_alias(text: str) -> bool:
+    cleaned = (text or "").strip()
+    if not cleaned:
+        return False
+    if cleaned in DROP_EXACT_NAMES:
+        return False
+    if not any(ch.isalpha() for ch in cleaned):
+        return False
+    if " / " in cleaned:
+        return False
+    if len(cleaned.split()) >= LONG_SENTENCE_WORDS and re.search(r'[0-9,"!?.]', cleaned):
+        return False
+    return True
+
+
+def _clean_aliases(names: set[str]) -> set[str]:
+    cleaned_names: set[str] = set()
+    for raw_name in names:
+        cleaned = _clean_alias_text(raw_name)
+        if not _should_keep_alias(cleaned):
+            continue
+        cleaned_names.add(cleaned)
+    return cleaned_names
 
 
 def _normalize_candidate_seed(candidate: dict[str, Any]) -> dict[str, Any]:
@@ -347,10 +390,11 @@ def choose_primary_name(
     labels: dict[str, str],
     names: set[str],
 ) -> str:
+    seed_name = _clean_alias_text(seed_name)
     for lang in PREFERRED_LABEL_LANGS:
         label = labels.get(lang)
         if label:
-            return label
+            return _clean_alias_text(label)
     if seed_name:
         return seed_name
     if names:
@@ -372,10 +416,16 @@ def merge_entity_data(
 
         labels = dict(candidate.get("seed_labels", {}))
         labels.update(fetched.get("labels", {}))
+        labels = {
+            lang: cleaned
+            for lang, label in labels.items()
+            if (cleaned := _clean_alias_text(str(label))) and _should_keep_alias(cleaned)
+        }
 
         names = set(candidate.get("seed_names", []))
         names.update(labels.values())
         names.update(fetched.get("aliases", set()))
+        names = _clean_aliases(names)
 
         primary_name = choose_primary_name(
             seed_name=str(candidate.get("seed_name", "")),
