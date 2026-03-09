@@ -4,16 +4,9 @@ import logging
 import time
 from typing import Any
 
-from astropy.coordinates import EarthLocation
-import astropy.units as u
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QImage, QPainter, QPaintEvent
 
-from ..astro import (
-    calculate_celestial_equator_points,
-    calculate_ecliptic_points,
-    calculate_horizon_points,
-)
 from ..render import draw as render_draw
 from ..types import CelestialData, ViewerData
 
@@ -179,12 +172,7 @@ class SkyWindowRenderMixin:
         celestial_data: CelestialData,
         render_viewer: ViewerData,
     ) -> None:
-        self._draw_orientation_interaction_reference_lines(
-            painter,
-            geometry,
-            celestial_data,
-            render_viewer,
-        )
+        render_draw.draw_sky_reference_lines(painter, geometry, celestial_data, render_viewer)
         self._draw_star_layer(
             painter,
             geometry,
@@ -201,37 +189,6 @@ class SkyWindowRenderMixin:
             preset=self.visual_preset,
         )
         render_draw.draw_zenith_marker(painter, geometry, render_viewer.view_center)
-
-    def _draw_orientation_interaction_reference_lines(
-        self,
-        painter: QPainter,
-        geometry: render_draw.ScreenGeometry,
-        celestial_data: CelestialData,
-        render_viewer: ViewerData,
-    ) -> None:
-        location = EarthLocation(
-            lat=render_viewer.location[0] * u.deg,
-            lon=render_viewer.location[1] * u.deg,
-            height=render_viewer.observer_height_m * u.m,
-        )
-        dynamic_reference_data = type(
-            "_ReferenceLineData",
-            (),
-            {
-                "celestial_equator_points": calculate_celestial_equator_points(
-                    location,
-                    celestial_data.time,
-                    render_viewer.view_center,
-                ),
-                "ecliptic_points": calculate_ecliptic_points(
-                    location,
-                    celestial_data.time,
-                    render_viewer.view_center,
-                ),
-                "horizon_points": calculate_horizon_points(render_viewer.view_center),
-            },
-        )()
-        render_draw.draw_sky_reference_lines(painter, geometry, dynamic_reference_data)
 
     def _clear_background_layer(self, painter: QPainter) -> None:
         painter.save()
@@ -305,7 +262,7 @@ class SkyWindowRenderMixin:
                 label_candidates=label_candidates,
                 preset=self.visual_preset,
             )
-        render_draw.draw_sky_reference_lines(painter, geometry, celestial_data)
+        render_draw.draw_sky_reference_lines(painter, geometry, celestial_data, render_viewer)
         render_draw.draw_terrain_horizon_line(
             painter,
             geometry,

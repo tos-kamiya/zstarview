@@ -106,9 +106,9 @@ class CelestialData:
     planets: List[PlanetBody]
     stars: "StarsTable"
     deep_sky_objects: "DeepSkyTable"
-    celestial_equator_points: List[Tuple[float, float]]
-    ecliptic_points: List[Tuple[float, float]]
-    horizon_points: List[Tuple[float, float]]
+    celestial_equator_points: List[Tuple[float, float]]  # (alt_deg, az_deg)
+    ecliptic_points: List[Tuple[float, float]]  # (alt_deg, az_deg)
+    horizon_points: List[Tuple[float, float]]  # (alt_deg, az_deg)
 
 
 @dataclass
