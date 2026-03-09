@@ -1,0 +1,6064 @@
+{
+  "source": "wikidata-highest-point-query",
+  "source_query_result": "dev-samples/wikidata_mountain_query_investigation_result_2026-03-09.json",
+  "normalization": {
+    "group_by": [
+      "country_qid",
+      "item_qid"
+    ],
+    "representative_coord_rule": "first sorted distinct coordinate",
+    "elevation_rule": "keep all distinct elevations and expose max_elevation_m",
+    "wikidata_label_fetch": "fetched",
+    "review_flags": [
+      "needs_coord_review",
+      "needs_elevation_review",
+      "is_shared_peak"
+    ]
+  },
+  "items": [
+    {
+      "country_qid": "Q189",
+      "country_label": "アイスランド",
+      "country_labels": {
+        "en": "Iceland",
+        "ja": "アイスランド"
+      },
+      "item_qid": "Q140084",
+      "item_label": "クヴァンナダルスフニュークル",
+      "item_labels": {
+        "en": "Hvannadalshnúkur",
+        "ja": "クヴァンナダルスフニュークル"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 64.013767128,
+          "longitude_deg": -16.678257886
+        },
+        {
+          "latitude_deg": 64.015833333,
+          "longitude_deg": -16.674722222
+        }
+      ],
+      "elevations_m": [
+        2110.0
+      ],
+      "latitude_deg": 64.013767128,
+      "longitude_deg": -16.678257886,
+      "location_arg": "64.013767;-16.678258",
+      "max_elevation_m": 2110.0,
+      "coord_count": 2,
+      "elevation_count": 1,
+      "needs_coord_review": true,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q140084"
+    },
+    {
+      "country_qid": "Q27",
+      "country_label": "アイルランド",
+      "country_labels": {
+        "en": "Ireland",
+        "ja": "アイルランド"
+      },
+      "item_qid": "Q503368",
+      "item_label": "キャラントゥール山",
+      "item_labels": {
+        "en": "Carrauntoohil",
+        "ja": "キャラントゥール山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 51.998888888,
+          "longitude_deg": -9.742777777
+        }
+      ],
+      "elevations_m": [
+        1038.6
+      ],
+      "latitude_deg": 51.998888888,
+      "longitude_deg": -9.742777777,
+      "location_arg": "51.998889;-9.742778",
+      "max_elevation_m": 1038.6,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q503368"
+    },
+    {
+      "country_qid": "Q227",
+      "country_label": "アゼルバイジャン",
+      "country_labels": {
+        "en": "Azerbaijan",
+        "ja": "アゼルバイジャン"
+      },
+      "item_qid": "Q725591",
+      "item_label": "バザルデュジ山",
+      "item_labels": {
+        "en": "Mount Bazardüzü",
+        "ja": "バザルデュジ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 41.2204928,
+          "longitude_deg": 47.8583417
+        }
+      ],
+      "elevations_m": [
+        4466.0
+      ],
+      "latitude_deg": 41.2204928,
+      "longitude_deg": 47.8583417,
+      "location_arg": "41.220493;47.858342",
+      "max_elevation_m": 4466.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q725591"
+    },
+    {
+      "country_qid": "Q889",
+      "country_label": "アフガニスタン",
+      "country_labels": {
+        "en": "Afghanistan",
+        "ja": "アフガニスタン"
+      },
+      "item_qid": "Q271700",
+      "item_label": "ノシャック",
+      "item_labels": {
+        "en": "Noshaq",
+        "ja": "ノシャック"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 36.431666666,
+          "longitude_deg": 71.828333333
+        }
+      ],
+      "elevations_m": [
+        7492.0
+      ],
+      "latitude_deg": 36.431666666,
+      "longitude_deg": 71.828333333,
+      "location_arg": "36.431667;71.828333",
+      "max_elevation_m": 7492.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q271700"
+    },
+    {
+      "country_qid": "Q30",
+      "country_label": "アメリカ合衆国",
+      "country_labels": {
+        "en": "United States",
+        "ja": "アメリカ合衆国"
+      },
+      "item_qid": "Q130018",
+      "item_label": "デナリ",
+      "item_labels": {
+        "ja": "デナリ"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 63.069102777,
+          "longitude_deg": -151.006261111
+        }
+      ],
+      "elevations_m": [
+        6190.0
+      ],
+      "latitude_deg": 63.069102777,
+      "longitude_deg": -151.006261111,
+      "location_arg": "63.069103;-151.006261",
+      "max_elevation_m": 6190.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q130018"
+    },
+    {
+      "country_qid": "Q878",
+      "country_label": "アラブ首長国連邦",
+      "country_labels": {
+        "en": "United Arab Emirates",
+        "ja": "アラブ首長国連邦"
+      },
+      "item_qid": "Q3492099",
+      "item_label": "イェベル・ヤイス",
+      "item_labels": {
+        "en": "Jebel Jais",
+        "ja": "イェベル・ヤイス"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 25.9531,
+          "longitude_deg": 56.18441
+        }
+      ],
+      "elevations_m": [
+        1911.0
+      ],
+      "latitude_deg": 25.9531,
+      "longitude_deg": 56.18441,
+      "location_arg": "25.953100;56.184410",
+      "max_elevation_m": 1911.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q3492099"
+    },
+    {
+      "country_qid": "Q262",
+      "country_label": "アルジェリア",
+      "country_labels": {
+        "en": "Algeria",
+        "ja": "アルジェリア"
+      },
+      "item_qid": "Q822326",
+      "item_label": "タハト山",
+      "item_labels": {
+        "en": "Mount Tahat",
+        "ja": "タハト山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 23.288888888,
+          "longitude_deg": 5.533611111
+        }
+      ],
+      "elevations_m": [
+        2908.0
+      ],
+      "latitude_deg": 23.288888888,
+      "longitude_deg": 5.533611111,
+      "location_arg": "23.288889;5.533611",
+      "max_elevation_m": 2908.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q822326"
+    },
+    {
+      "country_qid": "Q414",
+      "country_label": "アルゼンチン",
+      "country_labels": {
+        "en": "Argentina",
+        "ja": "アルゼンチン"
+      },
+      "item_qid": "Q39739",
+      "item_label": "アコンカグア",
+      "item_labels": {
+        "en": "Aconcagua",
+        "ja": "アコンカグア"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -32.653055555,
+          "longitude_deg": -70.011666666
+        }
+      ],
+      "elevations_m": [
+        6962.0
+      ],
+      "latitude_deg": -32.653055555,
+      "longitude_deg": -70.011666666,
+      "location_arg": "-32.653056;-70.011667",
+      "max_elevation_m": 6962.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q39739"
+    },
+    {
+      "country_qid": "Q222",
+      "country_label": "アルバニア",
+      "country_labels": {
+        "en": "Albania",
+        "ja": "アルバニア"
+      },
+      "item_qid": "Q912579",
+      "item_label": "コラプ山",
+      "item_labels": {
+        "en": "Korab",
+        "ja": "コラプ山"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 41.7903,
+          "longitude_deg": 20.5467
+        }
+      ],
+      "elevations_m": [
+        2764.0
+      ],
+      "latitude_deg": 41.7903,
+      "longitude_deg": 20.5467,
+      "location_arg": "41.790300;20.546700",
+      "max_elevation_m": 2764.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": true,
+      "shared_with_country_qids": [
+        "Q221"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q912579"
+    },
+    {
+      "country_qid": "Q399",
+      "country_label": "アルメニア",
+      "country_labels": {
+        "en": "Armenia",
+        "ja": "アルメニア"
+      },
+      "item_qid": "Q203568",
+      "item_label": "アラガツ山",
+      "item_labels": {
+        "en": "Mount Aragats",
+        "ja": "アラガツ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 40.523055555,
+          "longitude_deg": 44.195277777
+        }
+      ],
+      "elevations_m": [
+        4090.0
+      ],
+      "latitude_deg": 40.523055555,
+      "longitude_deg": 44.195277777,
+      "location_arg": "40.523056;44.195278",
+      "max_elevation_m": 4090.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q203568"
+    },
+    {
+      "country_qid": "Q916",
+      "country_label": "アンゴラ",
+      "country_labels": {
+        "en": "Angola",
+        "ja": "アンゴラ"
+      },
+      "item_qid": "Q1348116",
+      "item_label": "モコ山",
+      "item_labels": {
+        "en": "Mount Moco",
+        "ja": "モコ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -12.466666666,
+          "longitude_deg": 15.183333333
+        }
+      ],
+      "elevations_m": [
+        2619.0
+      ],
+      "latitude_deg": -12.466666666,
+      "longitude_deg": 15.183333333,
+      "location_arg": "-12.466667;15.183333",
+      "max_elevation_m": 2619.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1348116"
+    },
+    {
+      "country_qid": "Q781",
+      "country_label": "アンティグア・バーブーダ",
+      "country_labels": {
+        "en": "Antigua and Barbuda",
+        "ja": "アンティグア・バーブーダ"
+      },
+      "item_qid": "Q1718336",
+      "item_label": "オバマ山",
+      "item_labels": {
+        "en": "Mount Obama",
+        "ja": "オバマ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 17.05,
+          "longitude_deg": -61.85
+        }
+      ],
+      "elevations_m": [
+        402.0
+      ],
+      "latitude_deg": 17.05,
+      "longitude_deg": -61.85,
+      "location_arg": "17.050000;-61.850000",
+      "max_elevation_m": 402.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1718336"
+    },
+    {
+      "country_qid": "Q228",
+      "country_label": "アンドラ",
+      "country_labels": {
+        "en": "Andorra",
+        "ja": "アンドラ"
+      },
+      "item_qid": "Q62467",
+      "item_label": "コマ・ペドローザ",
+      "item_labels": {
+        "en": "Coma Pedrosa",
+        "ja": "コマ・ペドローザ"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 42.591805701,
+          "longitude_deg": 1.443654504
+        }
+      ],
+      "elevations_m": [
+        2942.0
+      ],
+      "latitude_deg": 42.591805701,
+      "longitude_deg": 1.443654504,
+      "location_arg": "42.591806;1.443655",
+      "max_elevation_m": 2942.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q62467"
+    },
+    {
+      "country_qid": "Q805",
+      "country_label": "イエメン",
+      "country_labels": {
+        "en": "Yemen",
+        "ja": "イエメン"
+      },
+      "item_qid": "Q1261935",
+      "item_label": "ナビー・シュアイブ山",
+      "item_labels": {
+        "en": "Jabal an Nabi Shu'ayb",
+        "ja": "ナビー・シュアイブ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 15.279166666,
+          "longitude_deg": 43.975833333
+        }
+      ],
+      "elevations_m": [
+        3666.0
+      ],
+      "latitude_deg": 15.279166666,
+      "longitude_deg": 43.975833333,
+      "location_arg": "15.279167;43.975833",
+      "max_elevation_m": 3666.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1261935"
+    },
+    {
+      "country_qid": "Q145",
+      "country_label": "イギリス",
+      "country_labels": {
+        "en": "United Kingdom",
+        "ja": "イギリス"
+      },
+      "item_qid": "Q104674",
+      "item_label": "ベン・ネヴィス山",
+      "item_labels": {
+        "en": "Ben Nevis",
+        "ja": "ベン・ネヴィス山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 56.796891,
+          "longitude_deg": -5.003675
+        }
+      ],
+      "elevations_m": [
+        1344.527
+      ],
+      "latitude_deg": 56.796891,
+      "longitude_deg": -5.003675,
+      "location_arg": "56.796891;-5.003675",
+      "max_elevation_m": 1344.527,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q104674"
+    },
+    {
+      "country_qid": "Q38",
+      "country_label": "イタリア",
+      "country_labels": {
+        "en": "Italy",
+        "ja": "イタリア"
+      },
+      "item_qid": "Q583",
+      "item_label": "モンブラン",
+      "item_labels": {
+        "en": "Mont Blanc",
+        "ja": "モンブラン"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 45.832777777,
+          "longitude_deg": 6.865
+        }
+      ],
+      "elevations_m": [
+        4805.59
+      ],
+      "latitude_deg": 45.832777777,
+      "longitude_deg": 6.865,
+      "location_arg": "45.832778;6.865000",
+      "max_elevation_m": 4805.59,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": true,
+      "shared_with_country_qids": [
+        "Q142"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q583"
+    },
+    {
+      "country_qid": "Q796",
+      "country_label": "イラク",
+      "country_labels": {
+        "en": "Iraq",
+        "ja": "イラク"
+      },
+      "item_qid": "Q1068860",
+      "item_label": "シェーハ・ダー山",
+      "item_labels": {
+        "en": "Cheekha Dar",
+        "ja": "シェーハ・ダー山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 36.77528,
+          "longitude_deg": 44.91861
+        }
+      ],
+      "elevations_m": [
+        3611.0
+      ],
+      "latitude_deg": 36.77528,
+      "longitude_deg": 44.91861,
+      "location_arg": "36.775280;44.918610",
+      "max_elevation_m": 3611.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1068860"
+    },
+    {
+      "country_qid": "Q794",
+      "country_label": "イラン",
+      "country_labels": {
+        "en": "Iran",
+        "ja": "イラン"
+      },
+      "item_qid": "Q40758",
+      "item_label": "ダマーヴァンド山",
+      "item_labels": {
+        "en": "Damavand",
+        "ja": "ダマーヴァンド山"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 35.955277777,
+          "longitude_deg": 52.109166666
+        }
+      ],
+      "elevations_m": [
+        5610.0
+      ],
+      "latitude_deg": 35.955277777,
+      "longitude_deg": 52.109166666,
+      "location_arg": "35.955278;52.109167",
+      "max_elevation_m": 5610.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q40758"
+    },
+    {
+      "country_qid": "Q668",
+      "country_label": "インド",
+      "country_labels": {
+        "en": "India",
+        "ja": "インド"
+      },
+      "item_qid": "Q82019",
+      "item_label": "カンチェンジュンガ",
+      "item_labels": {
+        "en": "Kanchenjunga",
+        "ja": "カンチェンジュンガ"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 27.7,
+          "longitude_deg": 88.133333
+        }
+      ],
+      "elevations_m": [
+        8586.0
+      ],
+      "latitude_deg": 27.7,
+      "longitude_deg": 88.133333,
+      "location_arg": "27.700000;88.133333",
+      "max_elevation_m": 8586.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q82019"
+    },
+    {
+      "country_qid": "Q252",
+      "country_label": "インドネシア",
+      "country_labels": {
+        "en": "Indonesia",
+        "ja": "インドネシア"
+      },
+      "item_qid": "Q1045888",
+      "item_label": "プンチャック・ジャヤ",
+      "item_labels": {
+        "en": "Puncak Jaya",
+        "ja": "プンチャック・ジャヤ"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -4.083333333,
+          "longitude_deg": 137.183333333
+        }
+      ],
+      "elevations_m": [
+        4884.0
+      ],
+      "latitude_deg": -4.083333333,
+      "longitude_deg": 137.183333333,
+      "location_arg": "-4.083333;137.183333",
+      "max_elevation_m": 4884.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1045888"
+    },
+    {
+      "country_qid": "Q212",
+      "country_label": "ウクライナ",
+      "country_labels": {
+        "en": "Ukraine",
+        "ja": "ウクライナ"
+      },
+      "item_qid": "Q627508",
+      "item_label": "ホヴェールラ山",
+      "item_labels": {
+        "en": "Hoverla",
+        "ja": "ホヴェールラ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 48.160277777,
+          "longitude_deg": 24.5
+        }
+      ],
+      "elevations_m": [
+        2061.0
+      ],
+      "latitude_deg": 48.160277777,
+      "longitude_deg": 24.5,
+      "location_arg": "48.160278;24.500000",
+      "max_elevation_m": 2061.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q627508"
+    },
+    {
+      "country_qid": "Q265",
+      "country_label": "ウズベキスタン",
+      "country_labels": {
+        "en": "Uzbekistan",
+        "ja": "ウズベキスタン"
+      },
+      "item_qid": "Q519822",
+      "item_label": "ハズレット・スルタン山",
+      "item_labels": {
+        "en": "Khazret Sultan",
+        "ja": "ハズレット・スルタン山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 38.948333333,
+          "longitude_deg": 68.172222222
+        }
+      ],
+      "elevations_m": [
+        4643.0
+      ],
+      "latitude_deg": 38.948333333,
+      "longitude_deg": 68.172222222,
+      "location_arg": "38.948333;68.172222",
+      "max_elevation_m": 4643.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q519822"
+    },
+    {
+      "country_qid": "Q77",
+      "country_label": "ウルグアイ",
+      "country_labels": {
+        "en": "Uruguay",
+        "ja": "ウルグアイ"
+      },
+      "item_qid": "Q1055837",
+      "item_label": "カテドラル山",
+      "item_labels": {
+        "en": "Cerro Catedral",
+        "ja": "カテドラル山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -34.380833333,
+          "longitude_deg": -54.673611111
+        }
+      ],
+      "elevations_m": [
+        513.7
+      ],
+      "latitude_deg": -34.380833333,
+      "longitude_deg": -54.673611111,
+      "location_arg": "-34.380833;-54.673611",
+      "max_elevation_m": 513.7,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1055837"
+    },
+    {
+      "country_qid": "Q736",
+      "country_label": "エクアドル",
+      "country_labels": {
+        "en": "Ecuador",
+        "ja": "エクアドル"
+      },
+      "item_qid": "Q14081",
+      "item_label": "チンボラソ",
+      "item_labels": {
+        "en": "Chimborazo",
+        "ja": "チンボラソ"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": -1.469166666,
+          "longitude_deg": -78.8175
+        }
+      ],
+      "elevations_m": [
+        6263.47
+      ],
+      "latitude_deg": -1.469166666,
+      "longitude_deg": -78.8175,
+      "location_arg": "-1.469167;-78.817500",
+      "max_elevation_m": 6263.47,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q14081"
+    },
+    {
+      "country_qid": "Q79",
+      "country_label": "エジプト",
+      "country_labels": {
+        "en": "Egypt",
+        "ja": "エジプト"
+      },
+      "item_qid": "Q1140642",
+      "item_label": "カテリーナ山",
+      "item_labels": {
+        "en": "Mount Catherine",
+        "ja": "カテリーナ山"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 28.510833333,
+          "longitude_deg": 33.955277777
+        }
+      ],
+      "elevations_m": [
+        2629.0,
+        2637.0
+      ],
+      "latitude_deg": 28.510833333,
+      "longitude_deg": 33.955277777,
+      "location_arg": "28.510833;33.955278",
+      "max_elevation_m": 2637.0,
+      "coord_count": 1,
+      "elevation_count": 2,
+      "needs_coord_review": false,
+      "needs_elevation_review": true,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1140642"
+    },
+    {
+      "country_qid": "Q1050",
+      "country_label": "エスワティニ",
+      "country_labels": {
+        "en": "Eswatini",
+        "ja": "エスワティニ"
+      },
+      "item_qid": "Q1337951",
+      "item_label": "Emlembe",
+      "item_labels": {
+        "en": "Emlembe"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -25.916666666,
+          "longitude_deg": 31.133333333
+        }
+      ],
+      "elevations_m": [
+        1862.0
+      ],
+      "latitude_deg": -25.916666666,
+      "longitude_deg": 31.133333333,
+      "location_arg": "-25.916667;31.133333",
+      "max_elevation_m": 1862.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1337951"
+    },
+    {
+      "country_qid": "Q115",
+      "country_label": "エチオピア",
+      "country_labels": {
+        "en": "Ethiopia",
+        "ja": "エチオピア"
+      },
+      "item_qid": "Q275435",
+      "item_label": "ラス・ダシャン山",
+      "item_labels": {
+        "en": "Ras Dashen",
+        "ja": "ラス・ダシャン山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 13.236666666,
+          "longitude_deg": 38.3725
+        }
+      ],
+      "elevations_m": [
+        4533.0
+      ],
+      "latitude_deg": 13.236666666,
+      "longitude_deg": 38.3725,
+      "location_arg": "13.236667;38.372500",
+      "max_elevation_m": 4533.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q275435"
+    },
+    {
+      "country_qid": "Q986",
+      "country_label": "エリトリア",
+      "country_labels": {
+        "en": "Eritrea",
+        "ja": "エリトリア"
+      },
+      "item_qid": "Q1753730",
+      "item_label": "ソイラ山",
+      "item_labels": {
+        "en": "Emba Soira",
+        "ja": "ソイラ山"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 14.75,
+          "longitude_deg": 39.533333333
+        }
+      ],
+      "elevations_m": [
+        3013.0,
+        3018.0
+      ],
+      "latitude_deg": 14.75,
+      "longitude_deg": 39.533333333,
+      "location_arg": "14.750000;39.533333",
+      "max_elevation_m": 3018.0,
+      "coord_count": 1,
+      "elevation_count": 2,
+      "needs_coord_review": false,
+      "needs_elevation_review": true,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1753730"
+    },
+    {
+      "country_qid": "Q792",
+      "country_label": "エルサルバドル",
+      "country_labels": {
+        "en": "El Salvador",
+        "ja": "エルサルバドル"
+      },
+      "item_qid": "Q74214",
+      "item_label": "エル・ピタル山",
+      "item_labels": {
+        "en": "Cerro El Pital",
+        "ja": "エル・ピタル山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 14.383333333,
+          "longitude_deg": -89.116666666
+        }
+      ],
+      "elevations_m": [
+        2730.0
+      ],
+      "latitude_deg": 14.383333333,
+      "longitude_deg": -89.116666666,
+      "location_arg": "14.383333;-89.116667",
+      "max_elevation_m": 2730.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q74214"
+    },
+    {
+      "country_qid": "Q842",
+      "country_label": "オマーン",
+      "country_labels": {
+        "en": "Oman",
+        "ja": "オマーン"
+      },
+      "item_qid": "Q1261915",
+      "item_label": "シャムス山",
+      "item_labels": {
+        "en": "Jebel Shams",
+        "ja": "シャムス山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 23.2373882,
+          "longitude_deg": 57.2637937
+        }
+      ],
+      "elevations_m": [
+        3018.0
+      ],
+      "latitude_deg": 23.2373882,
+      "longitude_deg": 57.2637937,
+      "location_arg": "23.237388;57.263794",
+      "max_elevation_m": 3018.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1261915"
+    },
+    {
+      "country_qid": "Q29999",
+      "country_label": "オランダ王国",
+      "country_labels": {
+        "en": "Kingdom of the Netherlands",
+        "ja": "オランダ王国"
+      },
+      "item_qid": "Q1301834",
+      "item_label": "シーナリー山",
+      "item_labels": {
+        "en": "Mount Scenery",
+        "ja": "シーナリー山"
+      },
+      "row_count": 4,
+      "coordinates": [
+        {
+          "latitude_deg": 17.635,
+          "longitude_deg": -63.239166666
+        }
+      ],
+      "elevations_m": [
+        870.0
+      ],
+      "latitude_deg": 17.635,
+      "longitude_deg": -63.239166666,
+      "location_arg": "17.635000;-63.239167",
+      "max_elevation_m": 870.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1301834"
+    },
+    {
+      "country_qid": "Q408",
+      "country_label": "オーストラリア",
+      "country_labels": {
+        "en": "Australia",
+        "ja": "オーストラリア"
+      },
+      "item_qid": "Q2114101",
+      "item_label": "モーソン・ピーク",
+      "item_labels": {
+        "en": "Mawson Peak",
+        "ja": "モーソン・ピーク"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": -53.104166666,
+          "longitude_deg": 73.516944444
+        }
+      ],
+      "elevations_m": [
+        2745.0
+      ],
+      "latitude_deg": -53.104166666,
+      "longitude_deg": 73.516944444,
+      "location_arg": "-53.104167;73.516944",
+      "max_elevation_m": 2745.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q2114101"
+    },
+    {
+      "country_qid": "Q40",
+      "country_label": "オーストリア",
+      "country_labels": {
+        "en": "Austria",
+        "ja": "オーストリア"
+      },
+      "item_qid": "Q3388",
+      "item_label": "グロースグロックナー山",
+      "item_labels": {
+        "en": "Grossglockner",
+        "ja": "グロースグロックナー山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 47.074528,
+          "longitude_deg": 12.69385
+        }
+      ],
+      "elevations_m": [
+        3798.0
+      ],
+      "latitude_deg": 47.074528,
+      "longitude_deg": 12.69385,
+      "location_arg": "47.074528;12.693850",
+      "max_elevation_m": 3798.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q3388"
+    },
+    {
+      "country_qid": "Q232",
+      "country_label": "カザフスタン",
+      "country_labels": {
+        "en": "Kazakhstan",
+        "ja": "カザフスタン"
+      },
+      "item_qid": "Q211529",
+      "item_label": "ハン・テングリ",
+      "item_labels": {
+        "en": "Khan Tengri",
+        "ja": "ハン・テングリ"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 42.210833333,
+          "longitude_deg": 80.175
+        }
+      ],
+      "elevations_m": [
+        7010.0
+      ],
+      "latitude_deg": 42.210833333,
+      "longitude_deg": 80.175,
+      "location_arg": "42.210833;80.175000",
+      "max_elevation_m": 7010.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q211529"
+    },
+    {
+      "country_qid": "Q846",
+      "country_label": "カタール",
+      "country_labels": {
+        "en": "Qatar",
+        "ja": "カタール"
+      },
+      "item_qid": "Q1633034",
+      "item_label": "クライン・アブ・アル・ボウル",
+      "item_labels": {
+        "en": "Qurayn Abu al Bawl",
+        "ja": "クライン・アブ・アル・ボウル"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 24.946111111,
+          "longitude_deg": 51.184444444
+        }
+      ],
+      "elevations_m": [
+        103.0
+      ],
+      "latitude_deg": 24.946111111,
+      "longitude_deg": 51.184444444,
+      "location_arg": "24.946111;51.184444",
+      "max_elevation_m": 103.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1633034"
+    },
+    {
+      "country_qid": "Q16",
+      "country_label": "カナダ",
+      "country_labels": {
+        "en": "Canada",
+        "ja": "カナダ"
+      },
+      "item_qid": "Q120306",
+      "item_label": "ローガン山",
+      "item_labels": {
+        "en": "Mount Logan",
+        "ja": "ローガン山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 60.567222222,
+          "longitude_deg": -140.405277777
+        }
+      ],
+      "elevations_m": [
+        5959.0
+      ],
+      "latitude_deg": 60.567222222,
+      "longitude_deg": -140.405277777,
+      "location_arg": "60.567222;-140.405278",
+      "max_elevation_m": 5959.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q120306"
+    },
+    {
+      "country_qid": "Q1009",
+      "country_label": "カメルーン",
+      "country_labels": {
+        "en": "Cameroon",
+        "ja": "カメルーン"
+      },
+      "item_qid": "Q190562",
+      "item_label": "カメルーン山",
+      "item_labels": {
+        "en": "Mount Cameroon",
+        "ja": "カメルーン山"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 4.216666666,
+          "longitude_deg": 9.1725
+        }
+      ],
+      "elevations_m": [
+        4095.0
+      ],
+      "latitude_deg": 4.216666666,
+      "longitude_deg": 9.1725,
+      "location_arg": "4.216667;9.172500",
+      "max_elevation_m": 4095.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q190562"
+    },
+    {
+      "country_qid": "Q424",
+      "country_label": "カンボジア",
+      "country_labels": {
+        "en": "Cambodia",
+        "ja": "カンボジア"
+      },
+      "item_qid": "Q539772",
+      "item_label": "アオラル山",
+      "item_labels": {
+        "en": "Phnom Aural",
+        "ja": "アオラル山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 12.031944444,
+          "longitude_deg": 104.170555555
+        }
+      ],
+      "elevations_m": [
+        1813.0
+      ],
+      "latitude_deg": 12.031944444,
+      "longitude_deg": 104.170555555,
+      "location_arg": "12.031944;104.170556",
+      "max_elevation_m": 1813.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q539772"
+    },
+    {
+      "country_qid": "Q1011",
+      "country_label": "カーボベルデ",
+      "country_labels": {
+        "en": "Cape Verde",
+        "ja": "カーボベルデ"
+      },
+      "item_qid": "Q499108",
+      "item_label": "フォゴ山",
+      "item_labels": {
+        "en": "Pico do Fogo",
+        "ja": "フォゴ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 14.949269444,
+          "longitude_deg": -24.340369444
+        }
+      ],
+      "elevations_m": [
+        2829.0
+      ],
+      "latitude_deg": 14.949269444,
+      "longitude_deg": -24.340369444,
+      "location_arg": "14.949269;-24.340369",
+      "max_elevation_m": 2829.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q499108"
+    },
+    {
+      "country_qid": "Q734",
+      "country_label": "ガイアナ",
+      "country_labels": {
+        "en": "Guyana",
+        "ja": "ガイアナ"
+      },
+      "item_qid": "Q4777",
+      "item_label": "ロライマ山",
+      "item_labels": {
+        "en": "Mount Roraima",
+        "ja": "ロライマ山"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 5.141944444,
+          "longitude_deg": -60.764166666
+        }
+      ],
+      "elevations_m": [
+        2810.0
+      ],
+      "latitude_deg": 5.141944444,
+      "longitude_deg": -60.764166666,
+      "location_arg": "5.141944;-60.764167",
+      "max_elevation_m": 2810.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q4777"
+    },
+    {
+      "country_qid": "Q1000",
+      "country_label": "ガボン",
+      "country_labels": {
+        "en": "Gabon",
+        "ja": "ガボン"
+      },
+      "item_qid": "Q3210770",
+      "item_label": "Mont Bengoué",
+      "item_labels": {
+        "en": "Mont Bengoué"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 0.955434,
+          "longitude_deg": 13.685628
+        }
+      ],
+      "elevations_m": [
+        1070.0
+      ],
+      "latitude_deg": 0.955434,
+      "longitude_deg": 13.685628,
+      "location_arg": "0.955434;13.685628",
+      "max_elevation_m": 1070.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q3210770"
+    },
+    {
+      "country_qid": "Q117",
+      "country_label": "ガーナ",
+      "country_labels": {
+        "en": "Ghana",
+        "ja": "ガーナ"
+      },
+      "item_qid": "Q635179",
+      "item_label": "アファジャ山",
+      "item_labels": {
+        "en": "Mount Afadja",
+        "ja": "アファジャ山"
+      },
+      "row_count": 4,
+      "coordinates": [
+        {
+          "latitude_deg": 7.0214,
+          "longitude_deg": 0.56597
+        },
+        {
+          "latitude_deg": 7.144444444,
+          "longitude_deg": 0.355
+        }
+      ],
+      "elevations_m": [
+        885.0,
+        2904.0
+      ],
+      "latitude_deg": 7.0214,
+      "longitude_deg": 0.56597,
+      "location_arg": "7.021400;0.565970",
+      "max_elevation_m": 2904.0,
+      "coord_count": 2,
+      "elevation_count": 2,
+      "needs_coord_review": true,
+      "needs_elevation_review": true,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q635179"
+    },
+    {
+      "country_qid": "Q229",
+      "country_label": "キプロス",
+      "country_labels": {
+        "en": "Cyprus",
+        "ja": "キプロス"
+      },
+      "item_qid": "Q819979",
+      "item_label": "オリンポス山",
+      "item_labels": {
+        "en": "Mount Olympus",
+        "ja": "オリンポス山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 34.936666666,
+          "longitude_deg": 32.863888888
+        }
+      ],
+      "elevations_m": [
+        1952.0
+      ],
+      "latitude_deg": 34.936666666,
+      "longitude_deg": 32.863888888,
+      "location_arg": "34.936667;32.863889",
+      "max_elevation_m": 1952.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q819979"
+    },
+    {
+      "country_qid": "Q241",
+      "country_label": "キューバ",
+      "country_labels": {
+        "en": "Cuba",
+        "ja": "キューバ"
+      },
+      "item_qid": "Q1145743",
+      "item_label": "トゥルキーノ山",
+      "item_labels": {
+        "en": "Pico Turquino",
+        "ja": "トゥルキーノ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 19.989444444,
+          "longitude_deg": -76.835833333
+        }
+      ],
+      "elevations_m": [
+        1974.0
+      ],
+      "latitude_deg": 19.989444444,
+      "longitude_deg": -76.835833333,
+      "location_arg": "19.989444;-76.835833",
+      "max_elevation_m": 1974.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1145743"
+    },
+    {
+      "country_qid": "Q813",
+      "country_label": "キルギス",
+      "country_labels": {
+        "en": "Kyrgyzstan",
+        "ja": "キルギス"
+      },
+      "item_qid": "Q332762",
+      "item_label": "ポベーダ山",
+      "item_labels": {
+        "en": "Jengish Chokusu",
+        "ja": "ポベーダ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 42.034662,
+          "longitude_deg": 80.128713
+        }
+      ],
+      "elevations_m": [
+        7439.0
+      ],
+      "latitude_deg": 42.034662,
+      "longitude_deg": 80.128713,
+      "location_arg": "42.034662;80.128713",
+      "max_elevation_m": 7439.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q332762"
+    },
+    {
+      "country_qid": "Q1006",
+      "country_label": "ギニア",
+      "country_labels": {
+        "en": "Guinea",
+        "ja": "ギニア"
+      },
+      "item_qid": "Q849129",
+      "item_label": "ニンバ山",
+      "item_labels": {
+        "en": "Mount Richard-Molard",
+        "ja": "ニンバ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 7.622588194,
+          "longitude_deg": -8.408058694
+        }
+      ],
+      "elevations_m": [
+        1752.0
+      ],
+      "latitude_deg": 7.622588194,
+      "longitude_deg": -8.408058694,
+      "location_arg": "7.622588;-8.408059",
+      "max_elevation_m": 1752.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": true,
+      "shared_with_country_qids": [
+        "Q1008"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q849129"
+    },
+    {
+      "country_qid": "Q41",
+      "country_label": "ギリシャ",
+      "country_labels": {
+        "en": "Greece",
+        "ja": "ギリシャ"
+      },
+      "item_qid": "Q80344",
+      "item_label": "オリンポス山",
+      "item_labels": {
+        "en": "Mount Olympus",
+        "ja": "オリンポス山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 40.083333333,
+          "longitude_deg": 22.35
+        }
+      ],
+      "elevations_m": [
+        2917.727
+      ],
+      "latitude_deg": 40.083333333,
+      "longitude_deg": 22.35,
+      "location_arg": "40.083333;22.350000",
+      "max_elevation_m": 2917.727,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q80344"
+    },
+    {
+      "country_qid": "Q224",
+      "country_label": "クロアチア",
+      "country_labels": {
+        "en": "Croatia",
+        "ja": "クロアチア"
+      },
+      "item_qid": "Q3183447",
+      "item_label": "Dinara",
+      "item_labels": {
+        "en": "Dinara"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 44.0624764,
+          "longitude_deg": 16.3829092
+        }
+      ],
+      "elevations_m": [
+        1831.0
+      ],
+      "latitude_deg": 44.0624764,
+      "longitude_deg": 16.3829092,
+      "location_arg": "44.062476;16.382909",
+      "max_elevation_m": 1831.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q3183447"
+    },
+    {
+      "country_qid": "Q774",
+      "country_label": "グアテマラ",
+      "country_labels": {
+        "en": "Guatemala",
+        "ja": "グアテマラ"
+      },
+      "item_qid": "Q818467",
+      "item_label": "タフムルコ山",
+      "item_labels": {
+        "en": "Volcán Tajumulco",
+        "ja": "タフムルコ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 15.033333333,
+          "longitude_deg": -91.9
+        }
+      ],
+      "elevations_m": [
+        4203.0
+      ],
+      "latitude_deg": 15.033333333,
+      "longitude_deg": -91.9,
+      "location_arg": "15.033333;-91.900000",
+      "max_elevation_m": 4203.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q818467"
+    },
+    {
+      "country_qid": "Q769",
+      "country_label": "グレナダ",
+      "country_labels": {
+        "en": "Grenada",
+        "ja": "グレナダ"
+      },
+      "item_qid": "Q525281",
+      "item_label": "セント・キャサリン山",
+      "item_labels": {
+        "en": "Mount Saint Catherine",
+        "ja": "セント・キャサリン山"
+      },
+      "row_count": 3,
+      "coordinates": [
+        {
+          "latitude_deg": 12.162222222,
+          "longitude_deg": -61.675277777
+        }
+      ],
+      "elevations_m": [
+        840.0
+      ],
+      "latitude_deg": 12.162222222,
+      "longitude_deg": -61.675277777,
+      "location_arg": "12.162222;-61.675278",
+      "max_elevation_m": 840.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q525281"
+    },
+    {
+      "country_qid": "Q114",
+      "country_label": "ケニア",
+      "country_labels": {
+        "en": "Kenya",
+        "ja": "ケニア"
+      },
+      "item_qid": "Q172070",
+      "item_label": "ケニア山",
+      "item_labels": {
+        "en": "Mount Kenya",
+        "ja": "ケニア山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -0.1,
+          "longitude_deg": 37.2
+        }
+      ],
+      "elevations_m": [
+        5199.0
+      ],
+      "latitude_deg": -0.1,
+      "longitude_deg": 37.2,
+      "location_arg": "-0.100000;37.200000",
+      "max_elevation_m": 5199.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q172070"
+    },
+    {
+      "country_qid": "Q800",
+      "country_label": "コスタリカ",
+      "country_labels": {
+        "en": "Costa Rica",
+        "ja": "コスタリカ"
+      },
+      "item_qid": "Q252362",
+      "item_label": "チリポ山",
+      "item_labels": {
+        "en": "Cerro Chirripó",
+        "ja": "チリポ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 9.484083333,
+          "longitude_deg": -83.488666666
+        }
+      ],
+      "elevations_m": [
+        3820.0
+      ],
+      "latitude_deg": 9.484083333,
+      "longitude_deg": -83.488666666,
+      "location_arg": "9.484083;-83.488667",
+      "max_elevation_m": 3820.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q252362"
+    },
+    {
+      "country_qid": "Q970",
+      "country_label": "コモロ",
+      "country_labels": {
+        "en": "Comoros",
+        "ja": "コモロ"
+      },
+      "item_qid": "Q527548",
+      "item_label": "カーサラ山",
+      "item_labels": {
+        "en": "Mount Karthala",
+        "ja": "カーサラ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -11.76028,
+          "longitude_deg": 43.35306
+        }
+      ],
+      "elevations_m": [
+        2361.0
+      ],
+      "latitude_deg": -11.76028,
+      "longitude_deg": 43.35306,
+      "location_arg": "-11.760280;43.353060",
+      "max_elevation_m": 2361.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q527548"
+    },
+    {
+      "country_qid": "Q739",
+      "country_label": "コロンビア",
+      "country_labels": {
+        "en": "Colombia",
+        "ja": "コロンビア"
+      },
+      "item_qid": "Q578862",
+      "item_label": "クリストバル・コロン山",
+      "item_labels": {
+        "en": "Pico Cristóbal Colón",
+        "ja": "クリストバル・コロン山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 10.838333333,
+          "longitude_deg": -73.686666666
+        }
+      ],
+      "elevations_m": [
+        5775.0
+      ],
+      "latitude_deg": 10.838333333,
+      "longitude_deg": -73.686666666,
+      "location_arg": "10.838333;-73.686667",
+      "max_elevation_m": 5775.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q578862"
+    },
+    {
+      "country_qid": "Q739",
+      "country_label": "コロンビア",
+      "country_labels": {
+        "en": "Colombia",
+        "ja": "コロンビア"
+      },
+      "item_qid": "Q338790",
+      "item_label": "シモン・ボリーバル山",
+      "item_labels": {
+        "en": "Pico Cristóbal Colón",
+        "ja": "シモン・ボリーバル山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 10.834444444,
+          "longitude_deg": -73.691388888
+        }
+      ],
+      "elevations_m": [
+        5775.0
+      ],
+      "latitude_deg": 10.834444444,
+      "longitude_deg": -73.691388888,
+      "location_arg": "10.834444;-73.691389",
+      "max_elevation_m": 5775.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q338790"
+    },
+    {
+      "country_qid": "Q971",
+      "country_label": "コンゴ共和国",
+      "country_labels": {
+        "en": "Republic of the Congo",
+        "ja": "コンゴ共和国"
+      },
+      "item_qid": "Q3113296",
+      "item_label": "ナベンバ山",
+      "item_labels": {
+        "en": "Mont Nabemba",
+        "ja": "ナベンバ山"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 1.85,
+          "longitude_deg": 13.983333333
+        },
+        {
+          "latitude_deg": 1.94806,
+          "longitude_deg": 13.89694
+        }
+      ],
+      "elevations_m": [
+        1020.0
+      ],
+      "latitude_deg": 1.85,
+      "longitude_deg": 13.983333333,
+      "location_arg": "1.850000;13.983333",
+      "max_elevation_m": 1020.0,
+      "coord_count": 2,
+      "elevation_count": 1,
+      "needs_coord_review": true,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q3113296"
+    },
+    {
+      "country_qid": "Q1008",
+      "country_label": "コートジボワール",
+      "country_labels": {
+        "en": "Ivory Coast",
+        "ja": "コートジボワール"
+      },
+      "item_qid": "Q849129",
+      "item_label": "ニンバ山",
+      "item_labels": {
+        "en": "Mount Richard-Molard",
+        "ja": "ニンバ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 7.622588194,
+          "longitude_deg": -8.408058694
+        }
+      ],
+      "elevations_m": [
+        1752.0
+      ],
+      "latitude_deg": 7.622588194,
+      "longitude_deg": -8.408058694,
+      "location_arg": "7.622588;-8.408059",
+      "max_elevation_m": 1752.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": true,
+      "shared_with_country_qids": [
+        "Q1006"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q849129"
+    },
+    {
+      "country_qid": "Q851",
+      "country_label": "サウジアラビア",
+      "country_labels": {
+        "en": "Saudi Arabia",
+        "ja": "サウジアラビア"
+      },
+      "item_qid": "Q1261892",
+      "item_label": "サウダ山",
+      "item_labels": {
+        "en": "Jabal Sawda",
+        "ja": "サウダ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 18.267222222,
+          "longitude_deg": 42.368055555
+        }
+      ],
+      "elevations_m": [
+        3133.0
+      ],
+      "latitude_deg": 18.267222222,
+      "longitude_deg": 42.368055555,
+      "location_arg": "18.267222;42.368056",
+      "max_elevation_m": 3133.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1261892"
+    },
+    {
+      "country_qid": "Q683",
+      "country_label": "サモア",
+      "country_labels": {
+        "en": "Samoa",
+        "ja": "サモア"
+      },
+      "item_qid": "Q1147814",
+      "item_label": "シリシリ山",
+      "item_labels": {
+        "en": "Silisili",
+        "ja": "シリシリ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -13.618333333,
+          "longitude_deg": -172.485833333
+        }
+      ],
+      "elevations_m": [
+        1858.0
+      ],
+      "latitude_deg": -13.618333333,
+      "longitude_deg": -172.485833333,
+      "location_arg": "-13.618333;-172.485833",
+      "max_elevation_m": 1858.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1147814"
+    },
+    {
+      "country_qid": "Q1039",
+      "country_label": "サントメ・プリンシペ",
+      "country_labels": {
+        "en": "São Tomé and Príncipe",
+        "ja": "サントメ・プリンシペ"
+      },
+      "item_qid": "Q1471391",
+      "item_label": "サントメ山",
+      "item_labels": {
+        "en": "Pico de São Tomé",
+        "ja": "サントメ山"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 0.266666666,
+          "longitude_deg": 6.533333333
+        }
+      ],
+      "elevations_m": [
+        2024.0
+      ],
+      "latitude_deg": 0.266666666,
+      "longitude_deg": 6.533333333,
+      "location_arg": "0.266667;6.533333",
+      "max_elevation_m": 2024.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1471391"
+    },
+    {
+      "country_qid": "Q238",
+      "country_label": "サンマリノ",
+      "country_labels": {
+        "en": "San Marino",
+        "ja": "サンマリノ"
+      },
+      "item_qid": "Q158526",
+      "item_label": "ティターノ山",
+      "item_labels": {
+        "en": "Monte Titano",
+        "ja": "ティターノ山"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 43.928333333,
+          "longitude_deg": 12.452222222
+        }
+      ],
+      "elevations_m": [
+        739.0,
+        756.0
+      ],
+      "latitude_deg": 43.928333333,
+      "longitude_deg": 12.452222222,
+      "location_arg": "43.928333;12.452222",
+      "max_elevation_m": 756.0,
+      "coord_count": 1,
+      "elevation_count": 2,
+      "needs_coord_review": false,
+      "needs_elevation_review": true,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q158526"
+    },
+    {
+      "country_qid": "Q953",
+      "country_label": "ザンビア",
+      "country_labels": {
+        "en": "Zambia",
+        "ja": "ザンビア"
+      },
+      "item_qid": "Q18351462",
+      "item_label": "Mafinga Central",
+      "item_labels": {
+        "en": "Mafinga Central"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -9.95269,
+          "longitude_deg": 33.3524
+        }
+      ],
+      "elevations_m": [
+        2339.0
+      ],
+      "latitude_deg": -9.95269,
+      "longitude_deg": 33.3524,
+      "location_arg": "-9.952690;33.352400",
+      "max_elevation_m": 2339.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q18351462"
+    },
+    {
+      "country_qid": "Q1044",
+      "country_label": "シエラレオネ",
+      "country_labels": {
+        "en": "Sierra Leone",
+        "ja": "シエラレオネ"
+      },
+      "item_qid": "Q769525",
+      "item_label": "ビントゥマニ山",
+      "item_labels": {
+        "en": "Mount Bintumani",
+        "ja": "ビントゥマニ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 9.225,
+          "longitude_deg": -11.116666666
+        }
+      ],
+      "elevations_m": [
+        1945.0
+      ],
+      "latitude_deg": 9.225,
+      "longitude_deg": -11.116666666,
+      "location_arg": "9.225000;-11.116667",
+      "max_elevation_m": 1945.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q769525"
+    },
+    {
+      "country_qid": "Q858",
+      "country_label": "シリア",
+      "country_labels": {
+        "en": "Syria",
+        "ja": "シリア"
+      },
+      "item_qid": "Q215471",
+      "item_label": "ヘルモン山",
+      "item_labels": {
+        "en": "Mount Hermon",
+        "ja": "ヘルモン山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 33.4,
+          "longitude_deg": 35.85
+        }
+      ],
+      "elevations_m": [
+        2813.95
+      ],
+      "latitude_deg": 33.4,
+      "longitude_deg": 35.85,
+      "location_arg": "33.400000;35.850000",
+      "max_elevation_m": 2813.95,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q215471"
+    },
+    {
+      "country_qid": "Q977",
+      "country_label": "ジブチ",
+      "country_labels": {
+        "en": "Djibouti",
+        "ja": "ジブチ"
+      },
+      "item_qid": "Q1951029",
+      "item_label": "ムーサ・アリ山",
+      "item_labels": {
+        "en": "Mousa Ali",
+        "ja": "ムーサ・アリ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 12.470833333,
+          "longitude_deg": 42.405
+        }
+      ],
+      "elevations_m": [
+        2028.0
+      ],
+      "latitude_deg": 12.470833333,
+      "longitude_deg": 42.405,
+      "location_arg": "12.470833;42.405000",
+      "max_elevation_m": 2028.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1951029"
+    },
+    {
+      "country_qid": "Q766",
+      "country_label": "ジャマイカ",
+      "country_labels": {
+        "en": "Jamaica",
+        "ja": "ジャマイカ"
+      },
+      "item_qid": "Q885798",
+      "item_label": "ブルー・マウンテン峰",
+      "item_labels": {
+        "en": "Blue Mountain Peak",
+        "ja": "ブルー・マウンテン峰"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 18.046666666,
+          "longitude_deg": -76.579166666
+        }
+      ],
+      "elevations_m": [
+        2256.0
+      ],
+      "latitude_deg": 18.046666666,
+      "longitude_deg": -76.579166666,
+      "location_arg": "18.046667;-76.579167",
+      "max_elevation_m": 2256.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q885798"
+    },
+    {
+      "country_qid": "Q230",
+      "country_label": "ジョージア",
+      "country_labels": {
+        "en": "Georgia",
+        "ja": "ジョージア"
+      },
+      "item_qid": "Q217457",
+      "item_label": "シュハラ山",
+      "item_labels": {
+        "en": "Shkhara",
+        "ja": "シュハラ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 42.999444444,
+          "longitude_deg": 43.111666666
+        }
+      ],
+      "elevations_m": [
+        5193.2
+      ],
+      "latitude_deg": 42.999444444,
+      "longitude_deg": 43.111666666,
+      "location_arg": "42.999444;43.111667",
+      "max_elevation_m": 5193.2,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q217457"
+    },
+    {
+      "country_qid": "Q954",
+      "country_label": "ジンバブエ",
+      "country_labels": {
+        "en": "Zimbabwe",
+        "ja": "ジンバブエ"
+      },
+      "item_qid": "Q152294",
+      "item_label": "ンヤンガニ山",
+      "item_labels": {
+        "en": "Mount Nyangani",
+        "ja": "ンヤンガニ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -18.311111111,
+          "longitude_deg": 32.850555555
+        }
+      ],
+      "elevations_m": [
+        2592.0
+      ],
+      "latitude_deg": -18.311111111,
+      "longitude_deg": 32.850555555,
+      "location_arg": "-18.311111;32.850556",
+      "max_elevation_m": 2592.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q152294"
+    },
+    {
+      "country_qid": "Q39",
+      "country_label": "スイス",
+      "country_labels": {
+        "en": "Switzerland",
+        "ja": "スイス"
+      },
+      "item_qid": "Q3403",
+      "item_label": "プンタ・デュフール",
+      "item_labels": {
+        "en": "Dufourspitze",
+        "ja": "プンタ・デュフール"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 45.9369238,
+          "longitude_deg": 7.866757
+        }
+      ],
+      "elevations_m": [
+        4634.0
+      ],
+      "latitude_deg": 45.9369238,
+      "longitude_deg": 7.866757,
+      "location_arg": "45.936924;7.866757",
+      "max_elevation_m": 4634.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q3403"
+    },
+    {
+      "country_qid": "Q34",
+      "country_label": "スウェーデン",
+      "country_labels": {
+        "en": "Sweden",
+        "ja": "スウェーデン"
+      },
+      "item_qid": "Q214011",
+      "item_label": "ケブネカイセ",
+      "item_labels": {
+        "en": "Kebnekaise",
+        "ja": "ケブネカイセ"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 67.883333333,
+          "longitude_deg": 18.55
+        }
+      ],
+      "elevations_m": [
+        2096.8
+      ],
+      "latitude_deg": 67.883333333,
+      "longitude_deg": 18.55,
+      "location_arg": "67.883333;18.550000",
+      "max_elevation_m": 2096.8,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q214011"
+    },
+    {
+      "country_qid": "Q29",
+      "country_label": "スペイン",
+      "country_labels": {
+        "en": "Spain",
+        "ja": "スペイン"
+      },
+      "item_qid": "Q38954",
+      "item_label": "テイデ山",
+      "item_labels": {
+        "en": "Teide",
+        "ja": "テイデ山"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 28.272638888,
+          "longitude_deg": -16.643611111
+        }
+      ],
+      "elevations_m": [
+        3715.0
+      ],
+      "latitude_deg": 28.272638888,
+      "longitude_deg": -16.643611111,
+      "location_arg": "28.272639;-16.643611",
+      "max_elevation_m": 3715.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q38954"
+    },
+    {
+      "country_qid": "Q730",
+      "country_label": "スリナム",
+      "country_labels": {
+        "en": "Suriname",
+        "ja": "スリナム"
+      },
+      "item_qid": "Q1549215",
+      "item_label": "ジュリアナトップ山",
+      "item_labels": {
+        "en": "Julianatop",
+        "ja": "ジュリアナトップ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 3.682777777,
+          "longitude_deg": -56.535555555
+        }
+      ],
+      "elevations_m": [
+        1280.0
+      ],
+      "latitude_deg": 3.682777777,
+      "longitude_deg": -56.535555555,
+      "location_arg": "3.682778;-56.535556",
+      "max_elevation_m": 1280.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1549215"
+    },
+    {
+      "country_qid": "Q854",
+      "country_label": "スリランカ",
+      "country_labels": {
+        "en": "Sri Lanka",
+        "ja": "スリランカ"
+      },
+      "item_qid": "Q1146327",
+      "item_label": "ピドゥルタラーガラ山",
+      "item_labels": {
+        "en": "Pidurutalagala",
+        "ja": "ピドゥルタラーガラ山"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 7.000833333,
+          "longitude_deg": 80.773888888
+        }
+      ],
+      "elevations_m": [
+        2524.0
+      ],
+      "latitude_deg": 7.000833333,
+      "longitude_deg": 80.773888888,
+      "location_arg": "7.000833;80.773889",
+      "max_elevation_m": 2524.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1146327"
+    },
+    {
+      "country_qid": "Q214",
+      "country_label": "スロバキア",
+      "country_labels": {
+        "en": "Slovakia",
+        "ja": "スロバキア"
+      },
+      "item_qid": "Q81213",
+      "item_label": "ゲルラホウスキー山",
+      "item_labels": {
+        "en": "Gerlachovský štít",
+        "ja": "ゲルラホウスキー山"
+      },
+      "row_count": 4,
+      "coordinates": [
+        {
+          "latitude_deg": 49.164166666,
+          "longitude_deg": 20.133888888
+        }
+      ],
+      "elevations_m": [
+        2654.4,
+        2655.0
+      ],
+      "latitude_deg": 49.164166666,
+      "longitude_deg": 20.133888888,
+      "location_arg": "49.164167;20.133889",
+      "max_elevation_m": 2655.0,
+      "coord_count": 1,
+      "elevation_count": 2,
+      "needs_coord_review": false,
+      "needs_elevation_review": true,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q81213"
+    },
+    {
+      "country_qid": "Q215",
+      "country_label": "スロベニア",
+      "country_labels": {
+        "en": "Slovenia",
+        "ja": "スロベニア"
+      },
+      "item_qid": "Q1024",
+      "item_label": "トリグラウ山",
+      "item_labels": {
+        "en": "Triglav",
+        "ja": "トリグラウ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 46.378333,
+          "longitude_deg": 13.836667
+        }
+      ],
+      "elevations_m": [
+        2864.0
+      ],
+      "latitude_deg": 46.378333,
+      "longitude_deg": 13.836667,
+      "location_arg": "46.378333;13.836667",
+      "max_elevation_m": 2864.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1024"
+    },
+    {
+      "country_qid": "Q763",
+      "country_label": "セントクリストファー・ネイビス",
+      "country_labels": {
+        "en": "Saint Kitts and Nevis",
+        "ja": "セントクリストファー・ネイビス"
+      },
+      "item_qid": "Q1269774",
+      "item_label": "リアムイガ山",
+      "item_labels": {
+        "en": "Mount Liamuiga",
+        "ja": "リアムイガ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 17.366666666,
+          "longitude_deg": -62.8
+        }
+      ],
+      "elevations_m": [
+        1156.0
+      ],
+      "latitude_deg": 17.366666666,
+      "longitude_deg": -62.8,
+      "location_arg": "17.366667;-62.800000",
+      "max_elevation_m": 1156.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1269774"
+    },
+    {
+      "country_qid": "Q757",
+      "country_label": "セントビンセント・グレナディーン",
+      "country_labels": {
+        "en": "Saint Vincent and the Grenadines",
+        "ja": "セントビンセント・グレナディーン"
+      },
+      "item_qid": "Q26544",
+      "item_label": "スフリエール山",
+      "item_labels": {
+        "en": "La Soufrière",
+        "ja": "スフリエール山"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 13.333333333,
+          "longitude_deg": -61.183333333
+        }
+      ],
+      "elevations_m": [
+        1220.0
+      ],
+      "latitude_deg": 13.333333333,
+      "longitude_deg": -61.183333333,
+      "location_arg": "13.333333;-61.183333",
+      "max_elevation_m": 1220.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q26544"
+    },
+    {
+      "country_qid": "Q760",
+      "country_label": "セントルシア",
+      "country_labels": {
+        "en": "Saint Lucia",
+        "ja": "セントルシア"
+      },
+      "item_qid": "Q1811114",
+      "item_label": "ジミー山",
+      "item_labels": {
+        "en": "Mount Gimie",
+        "ja": "ジミー山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 13.863611111,
+          "longitude_deg": -61.011666666
+        }
+      ],
+      "elevations_m": [
+        950.0
+      ],
+      "latitude_deg": 13.863611111,
+      "longitude_deg": -61.011666666,
+      "location_arg": "13.863611;-61.011667",
+      "max_elevation_m": 950.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1811114"
+    },
+    {
+      "country_qid": "Q1042",
+      "country_label": "セーシェル",
+      "country_labels": {
+        "en": "Seychelles",
+        "ja": "セーシェル"
+      },
+      "item_qid": "Q1579060",
+      "item_label": "モルヌ・セシェロワ",
+      "item_labels": {
+        "en": "Morne Seychellois",
+        "ja": "モルヌ・セシェロワ"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -4.643833333,
+          "longitude_deg": 55.4389
+        }
+      ],
+      "elevations_m": [
+        905.0
+      ],
+      "latitude_deg": -4.643833333,
+      "longitude_deg": 55.4389,
+      "location_arg": "-4.643833;55.438900",
+      "max_elevation_m": 905.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1579060"
+    },
+    {
+      "country_qid": "Q1045",
+      "country_label": "ソマリア",
+      "country_labels": {
+        "en": "Somalia",
+        "ja": "ソマリア"
+      },
+      "item_qid": "Q649162",
+      "item_label": "シンビリス山",
+      "item_labels": {
+        "en": "Shimbiris",
+        "ja": "シンビリス山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 10.735833333,
+          "longitude_deg": 47.245
+        }
+      ],
+      "elevations_m": [
+        2460.0
+      ],
+      "latitude_deg": 10.735833333,
+      "longitude_deg": 47.245,
+      "location_arg": "10.735833;47.245000",
+      "max_elevation_m": 2460.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q649162"
+    },
+    {
+      "country_qid": "Q685",
+      "country_label": "ソロモン諸島",
+      "country_labels": {
+        "en": "Solomon Islands",
+        "ja": "ソロモン諸島"
+      },
+      "item_qid": "Q760819",
+      "item_label": "ポポマナセウ山",
+      "item_labels": {
+        "en": "Mount Popomanaseu",
+        "ja": "ポポマナセウ山"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": -9.703611111,
+          "longitude_deg": 160.061944444
+        }
+      ],
+      "elevations_m": [
+        2335.0
+      ],
+      "latitude_deg": -9.703611111,
+      "longitude_deg": 160.061944444,
+      "location_arg": "-9.703611;160.061944",
+      "max_elevation_m": 2335.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q760819"
+    },
+    {
+      "country_qid": "Q869",
+      "country_label": "タイ王国",
+      "country_labels": {
+        "en": "Thailand",
+        "ja": "タイ王国"
+      },
+      "item_qid": "Q1140075",
+      "item_label": "ドイ・インタノン山",
+      "item_labels": {
+        "en": "Doi Inthanon",
+        "ja": "ドイ・インタノン山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 18.592222222,
+          "longitude_deg": 98.486666666
+        }
+      ],
+      "elevations_m": [
+        2565.0
+      ],
+      "latitude_deg": 18.592222222,
+      "longitude_deg": 98.486666666,
+      "location_arg": "18.592222;98.486667",
+      "max_elevation_m": 2565.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1140075"
+    },
+    {
+      "country_qid": "Q863",
+      "country_label": "タジキスタン",
+      "country_labels": {
+        "en": "Tajikistan",
+        "ja": "タジキスタン"
+      },
+      "item_qid": "Q41413",
+      "item_label": "イスモイル・ソモニ峰",
+      "item_labels": {
+        "en": "Ismoil Somoni Peak",
+        "ja": "イスモイル・ソモニ峰"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 38.942732,
+          "longitude_deg": 72.015347
+        }
+      ],
+      "elevations_m": [
+        7495.0
+      ],
+      "latitude_deg": 38.942732,
+      "longitude_deg": 72.015347,
+      "location_arg": "38.942732;72.015347",
+      "max_elevation_m": 7495.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q41413"
+    },
+    {
+      "country_qid": "Q924",
+      "country_label": "タンザニア",
+      "country_labels": {
+        "en": "Tanzania",
+        "ja": "タンザニア"
+      },
+      "item_qid": "Q1394606",
+      "item_label": "キボ峰",
+      "item_labels": {
+        "en": "Mount Kibo",
+        "ja": "キボ峰"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": -3.06505278,
+          "longitude_deg": 37.35903056
+        }
+      ],
+      "elevations_m": [
+        5895.0
+      ],
+      "latitude_deg": -3.06505278,
+      "longitude_deg": 37.35903056,
+      "location_arg": "-3.065053;37.359031",
+      "max_elevation_m": 5895.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1394606"
+    },
+    {
+      "country_qid": "Q213",
+      "country_label": "チェコ共和国",
+      "country_labels": {
+        "en": "Czech Republic",
+        "ja": "チェコ共和国"
+      },
+      "item_qid": "Q617511",
+      "item_label": "スニェシュカ山",
+      "item_labels": {
+        "en": "Sněžka",
+        "ja": "スニェシュカ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 50.736111111,
+          "longitude_deg": 15.740277777
+        }
+      ],
+      "elevations_m": [
+        1603.3
+      ],
+      "latitude_deg": 50.736111111,
+      "longitude_deg": 15.740277777,
+      "location_arg": "50.736111;15.740278",
+      "max_elevation_m": 1603.3,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q617511"
+    },
+    {
+      "country_qid": "Q657",
+      "country_label": "チャド",
+      "country_labels": {
+        "en": "Chad",
+        "ja": "チャド"
+      },
+      "item_qid": "Q257441",
+      "item_label": "エミクーシ山",
+      "item_labels": {
+        "en": "Emi Koussi",
+        "ja": "エミクーシ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 19.789444444,
+          "longitude_deg": 18.551111111
+        }
+      ],
+      "elevations_m": [
+        3445.0
+      ],
+      "latitude_deg": 19.789444444,
+      "longitude_deg": 18.551111111,
+      "location_arg": "19.789444;18.551111",
+      "max_elevation_m": 3445.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q257441"
+    },
+    {
+      "country_qid": "Q948",
+      "country_label": "チュニジア",
+      "country_labels": {
+        "en": "Tunisia",
+        "ja": "チュニジア"
+      },
+      "item_qid": "Q1232136",
+      "item_label": "シャンビ山",
+      "item_labels": {
+        "en": "Jebel ech Chambi",
+        "ja": "シャンビ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 35.206666666,
+          "longitude_deg": 8.683055555
+        }
+      ],
+      "elevations_m": [
+        1544.0
+      ],
+      "latitude_deg": 35.206666666,
+      "longitude_deg": 8.683055555,
+      "location_arg": "35.206667;8.683056",
+      "max_elevation_m": 1544.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1232136"
+    },
+    {
+      "country_qid": "Q298",
+      "country_label": "チリ",
+      "country_labels": {
+        "en": "Chile",
+        "ja": "チリ"
+      },
+      "item_qid": "Q233836",
+      "item_label": "オホス・デル・サラード",
+      "item_labels": {
+        "en": "Ojos del Salado",
+        "ja": "オホス・デル・サラード"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -27.109444444,
+          "longitude_deg": -68.542222222
+        }
+      ],
+      "elevations_m": [
+        6893.0
+      ],
+      "latitude_deg": -27.109444444,
+      "longitude_deg": -68.542222222,
+      "location_arg": "-27.109444;-68.542222",
+      "max_elevation_m": 6893.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q233836"
+    },
+    {
+      "country_qid": "Q756617",
+      "country_label": "デンマーク王国",
+      "country_labels": {
+        "en": "Kingdom of Denmark",
+        "ja": "デンマーク王国"
+      },
+      "item_qid": "Q825709",
+      "item_label": "ギュンビョルン山",
+      "item_labels": {
+        "en": "Gunnbjørn Fjeld",
+        "ja": "ギュンビョルン山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 68.9195,
+          "longitude_deg": -29.898533333
+        }
+      ],
+      "elevations_m": [
+        3694.0
+      ],
+      "latitude_deg": 68.9195,
+      "longitude_deg": -29.898533333,
+      "location_arg": "68.919500;-29.898533",
+      "max_elevation_m": 3694.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q825709"
+    },
+    {
+      "country_qid": "Q754",
+      "country_label": "トリニダード・トバゴ",
+      "country_labels": {
+        "en": "Trinidad and Tobago",
+        "ja": "トリニダード・トバゴ"
+      },
+      "item_qid": "Q1056103",
+      "item_label": "アリポ山",
+      "item_labels": {
+        "en": "El Cerro del Aripo",
+        "ja": "アリポ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 10.716666666,
+          "longitude_deg": -61.25
+        }
+      ],
+      "elevations_m": [
+        940.0
+      ],
+      "latitude_deg": 10.716666666,
+      "longitude_deg": -61.25,
+      "location_arg": "10.716667;-61.250000",
+      "max_elevation_m": 940.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1056103"
+    },
+    {
+      "country_qid": "Q874",
+      "country_label": "トルクメニスタン",
+      "country_labels": {
+        "en": "Turkmenistan",
+        "ja": "トルクメニスタン"
+      },
+      "item_qid": "Q794684",
+      "item_label": "アイリババ山",
+      "item_labels": {
+        "en": "Aýrybaba",
+        "ja": "アイリババ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 37.833333333,
+          "longitude_deg": 66.566666666
+        }
+      ],
+      "elevations_m": [
+        3139.0
+      ],
+      "latitude_deg": 37.833333333,
+      "longitude_deg": 66.566666666,
+      "location_arg": "37.833333;66.566667",
+      "max_elevation_m": 3139.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q794684"
+    },
+    {
+      "country_qid": "Q43",
+      "country_label": "トルコ",
+      "country_labels": {
+        "en": "Turkey",
+        "ja": "トルコ"
+      },
+      "item_qid": "Q72303",
+      "item_label": "アララト山",
+      "item_labels": {
+        "en": "Mount Ararat",
+        "ja": "アララト山"
+      },
+      "row_count": 3,
+      "coordinates": [
+        {
+          "latitude_deg": 39.701944444,
+          "longitude_deg": 44.298333333
+        }
+      ],
+      "elevations_m": [
+        5137.0
+      ],
+      "latitude_deg": 39.701944444,
+      "longitude_deg": 44.298333333,
+      "location_arg": "39.701944;44.298333",
+      "max_elevation_m": 5137.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q72303"
+    },
+    {
+      "country_qid": "Q678",
+      "country_label": "トンガ",
+      "country_labels": {
+        "en": "Tonga",
+        "ja": "トンガ"
+      },
+      "item_qid": "Q1520405",
+      "item_label": "カオ島",
+      "item_labels": {
+        "en": "Kao",
+        "ja": "カオ島"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": -19.666666666,
+          "longitude_deg": -175.016666666
+        }
+      ],
+      "elevations_m": [
+        1030.0
+      ],
+      "latitude_deg": -19.666666666,
+      "longitude_deg": -175.016666666,
+      "location_arg": "-19.666667;-175.016667",
+      "max_elevation_m": 1030.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1520405"
+    },
+    {
+      "country_qid": "Q945",
+      "country_label": "トーゴ",
+      "country_labels": {
+        "en": "Togo",
+        "ja": "トーゴ"
+      },
+      "item_qid": "Q1753509",
+      "item_label": "アグー山",
+      "item_labels": {
+        "en": "Mount Agou",
+        "ja": "アグー山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 6.870536413,
+          "longitude_deg": 0.754600679
+        }
+      ],
+      "elevations_m": [
+        986.0
+      ],
+      "latitude_deg": 6.870536413,
+      "longitude_deg": 0.754600679,
+      "location_arg": "6.870536;0.754601",
+      "max_elevation_m": 986.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1753509"
+    },
+    {
+      "country_qid": "Q183",
+      "country_label": "ドイツ",
+      "country_labels": {
+        "en": "Germany",
+        "ja": "ドイツ"
+      },
+      "item_qid": "Q3375",
+      "item_label": "ツークシュピッツェ",
+      "item_labels": {
+        "en": "Zugspitze",
+        "ja": "ツークシュピッツェ"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 47.421217,
+          "longitude_deg": 10.986314
+        }
+      ],
+      "elevations_m": [
+        2962.06
+      ],
+      "latitude_deg": 47.421217,
+      "longitude_deg": 10.986314,
+      "location_arg": "47.421217;10.986314",
+      "max_elevation_m": 2962.06,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q3375"
+    },
+    {
+      "country_qid": "Q786",
+      "country_label": "ドミニカ共和国",
+      "country_labels": {
+        "en": "Dominican Republic",
+        "ja": "ドミニカ共和国"
+      },
+      "item_qid": "Q783742",
+      "item_label": "ピコ・ドゥアルテ",
+      "item_labels": {
+        "en": "Pico Duarte",
+        "ja": "ピコ・ドゥアルテ"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 19.033055555,
+          "longitude_deg": -71.005277777
+        }
+      ],
+      "elevations_m": [
+        3101.0
+      ],
+      "latitude_deg": 19.033055555,
+      "longitude_deg": -71.005277777,
+      "location_arg": "19.033056;-71.005278",
+      "max_elevation_m": 3101.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q783742"
+    },
+    {
+      "country_qid": "Q784",
+      "country_label": "ドミニカ国",
+      "country_labels": {
+        "en": "Dominica",
+        "ja": "ドミニカ国"
+      },
+      "item_qid": "Q1638549",
+      "item_label": "ディアブロティン山",
+      "item_labels": {
+        "en": "Morne Diablotins",
+        "ja": "ディアブロティン山"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 15.503333333,
+          "longitude_deg": -61.397222222
+        }
+      ],
+      "elevations_m": [
+        1447.0
+      ],
+      "latitude_deg": 15.503333333,
+      "longitude_deg": -61.397222222,
+      "location_arg": "15.503333;-61.397222",
+      "max_elevation_m": 1447.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1638549"
+    },
+    {
+      "country_qid": "Q1033",
+      "country_label": "ナイジェリア",
+      "country_labels": {
+        "en": "Nigeria",
+        "ja": "ナイジェリア"
+      },
+      "item_qid": "Q976055",
+      "item_label": "チャパル・ワッディ山",
+      "item_labels": {
+        "en": "Chappal Waddi",
+        "ja": "チャパル・ワッディ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 7.036111111,
+          "longitude_deg": 11.715
+        }
+      ],
+      "elevations_m": [
+        2419.0
+      ],
+      "latitude_deg": 7.036111111,
+      "longitude_deg": 11.715,
+      "location_arg": "7.036111;11.715000",
+      "max_elevation_m": 2419.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q976055"
+    },
+    {
+      "country_qid": "Q697",
+      "country_label": "ナウル",
+      "country_labels": {
+        "en": "Nauru",
+        "ja": "ナウル"
+      },
+      "item_qid": "Q2667931",
+      "item_label": "コマンド・リッジ",
+      "item_labels": {
+        "en": "Command Ridge",
+        "ja": "コマンド・リッジ"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -0.530552,
+          "longitude_deg": 166.916924
+        }
+      ],
+      "elevations_m": [
+        70.0
+      ],
+      "latitude_deg": -0.530552,
+      "longitude_deg": 166.916924,
+      "location_arg": "-0.530552;166.916924",
+      "max_elevation_m": 70.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q2667931"
+    },
+    {
+      "country_qid": "Q1030",
+      "country_label": "ナミビア",
+      "country_labels": {
+        "en": "Namibia",
+        "ja": "ナミビア"
+      },
+      "item_qid": "Q897834",
+      "item_label": "ブランドバーグ山",
+      "item_labels": {
+        "en": "Brandberg",
+        "ja": "ブランドバーグ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -21.1495,
+          "longitude_deg": 14.5775
+        }
+      ],
+      "elevations_m": [
+        2573.0
+      ],
+      "latitude_deg": -21.1495,
+      "longitude_deg": 14.5775,
+      "location_arg": "-21.149500;14.577500",
+      "max_elevation_m": 2573.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q897834"
+    },
+    {
+      "country_qid": "Q1032",
+      "country_label": "ニジェール",
+      "country_labels": {
+        "en": "Niger",
+        "ja": "ニジェール"
+      },
+      "item_qid": "Q3042286",
+      "item_label": "アンドゥカ＝ン＝タゲス山",
+      "item_labels": {
+        "en": "Mont Idoukal-n-Taghès",
+        "ja": "アンドゥカ＝ン＝タゲス山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 17.839166666,
+          "longitude_deg": 8.720277777
+        }
+      ],
+      "elevations_m": [
+        2022.0
+      ],
+      "latitude_deg": 17.839166666,
+      "longitude_deg": 8.720277777,
+      "location_arg": "17.839167;8.720278",
+      "max_elevation_m": 2022.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q3042286"
+    },
+    {
+      "country_qid": "Q664",
+      "country_label": "ニュージーランド",
+      "country_labels": {
+        "en": "New Zealand",
+        "ja": "ニュージーランド"
+      },
+      "item_qid": "Q5059",
+      "item_label": "クック山",
+      "item_labels": {
+        "en": "Aoraki / Mount Cook",
+        "ja": "クック山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -43.595,
+          "longitude_deg": 170.141944444
+        }
+      ],
+      "elevations_m": [
+        3724.0
+      ],
+      "latitude_deg": -43.595,
+      "longitude_deg": 170.141944444,
+      "location_arg": "-43.595000;170.141944",
+      "max_elevation_m": 3724.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q5059"
+    },
+    {
+      "country_qid": "Q837",
+      "country_label": "ネパール",
+      "country_labels": {
+        "en": "Nepal",
+        "ja": "ネパール"
+      },
+      "item_qid": "Q513",
+      "item_label": "エベレスト",
+      "item_labels": {
+        "en": "Mount Everest",
+        "ja": "エベレスト"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 27.988055555,
+          "longitude_deg": 86.925
+        }
+      ],
+      "elevations_m": [
+        8848.86
+      ],
+      "latitude_deg": 27.988055555,
+      "longitude_deg": 86.925,
+      "location_arg": "27.988056;86.925000",
+      "max_elevation_m": 8848.86,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": true,
+      "shared_with_country_qids": [
+        "Q148"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q513"
+    },
+    {
+      "country_qid": "Q20",
+      "country_label": "ノルウェー",
+      "country_labels": {
+        "en": "Norway",
+        "ja": "ノルウェー"
+      },
+      "item_qid": "Q203942",
+      "item_label": "ガルフピッゲン",
+      "item_labels": {
+        "en": "Galdhøpiggen",
+        "ja": "ガルフピッゲン"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 61.633333333,
+          "longitude_deg": 8.3
+        }
+      ],
+      "elevations_m": [
+        2468.854
+      ],
+      "latitude_deg": 61.633333333,
+      "longitude_deg": 8.3,
+      "location_arg": "61.633333;8.300000",
+      "max_elevation_m": 2468.854,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q203942"
+    },
+    {
+      "country_qid": "Q790",
+      "country_label": "ハイチ",
+      "country_labels": {
+        "en": "Haiti",
+        "ja": "ハイチ"
+      },
+      "item_qid": "Q1971319",
+      "item_label": "ラ・セル山",
+      "item_labels": {
+        "en": "Pic la Selle",
+        "ja": "ラ・セル山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 18.366666666,
+          "longitude_deg": -71.983333333
+        }
+      ],
+      "elevations_m": [
+        2674.0
+      ],
+      "latitude_deg": 18.366666666,
+      "longitude_deg": -71.983333333,
+      "location_arg": "18.366667;-71.983333",
+      "max_elevation_m": 2674.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1971319"
+    },
+    {
+      "country_qid": "Q686",
+      "country_label": "バヌアツ",
+      "country_labels": {
+        "en": "Vanuatu",
+        "ja": "バヌアツ"
+      },
+      "item_qid": "Q1542459",
+      "item_label": "タブウェマサナ山",
+      "item_labels": {
+        "en": "Mount Tabwemasana",
+        "ja": "タブウェマサナ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -15.35,
+          "longitude_deg": 166.75
+        }
+      ],
+      "elevations_m": [
+        1879.0
+      ],
+      "latitude_deg": -15.35,
+      "longitude_deg": 166.75,
+      "location_arg": "-15.350000;166.750000",
+      "max_elevation_m": 1879.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1542459"
+    },
+    {
+      "country_qid": "Q778",
+      "country_label": "バハマ",
+      "country_labels": {
+        "en": "The Bahamas",
+        "ja": "バハマ"
+      },
+      "item_qid": "Q746274",
+      "item_label": "アルバーニア山",
+      "item_labels": {
+        "en": "Mount Alvernia",
+        "ja": "アルバーニア山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 24.294166666,
+          "longitude_deg": -75.408333333
+        }
+      ],
+      "elevations_m": [
+        63.0
+      ],
+      "latitude_deg": 24.294166666,
+      "longitude_deg": -75.408333333,
+      "location_arg": "24.294167;-75.408333",
+      "max_elevation_m": 63.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q746274"
+    },
+    {
+      "country_qid": "Q244",
+      "country_label": "バルバドス",
+      "country_labels": {
+        "en": "Barbados",
+        "ja": "バルバドス"
+      },
+      "item_qid": "Q1854502",
+      "item_label": "ヒラビー山",
+      "item_labels": {
+        "en": "Mount Hillaby",
+        "ja": "ヒラビー山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 13.211111111,
+          "longitude_deg": -59.583333333
+        }
+      ],
+      "elevations_m": [
+        340.0
+      ],
+      "latitude_deg": 13.211111111,
+      "longitude_deg": -59.583333333,
+      "location_arg": "13.211111;-59.583333",
+      "max_elevation_m": 340.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1854502"
+    },
+    {
+      "country_qid": "Q902",
+      "country_label": "バングラデシュ",
+      "country_labels": {
+        "en": "Bangladesh",
+        "ja": "バングラデシュ"
+      },
+      "item_qid": "Q2696459",
+      "item_label": "Mowdok tiang",
+      "item_labels": {
+        "en": "Mowdok tiang"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 21.78657,
+          "longitude_deg": 92.60968
+        }
+      ],
+      "elevations_m": [
+        1054.0
+      ],
+      "latitude_deg": 21.78657,
+      "longitude_deg": 92.60968,
+      "location_arg": "21.786570;92.609680",
+      "max_elevation_m": 1054.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q2696459"
+    },
+    {
+      "country_qid": "Q398",
+      "country_label": "バーレーン",
+      "country_labels": {
+        "en": "Bahrain",
+        "ja": "バーレーン"
+      },
+      "item_qid": "Q1032812",
+      "item_label": "ジャバル・アド・ドゥハーン",
+      "item_labels": {
+        "en": "Mountain of Smoke",
+        "ja": "ジャバル・アド・ドゥハーン"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 26.038888888,
+          "longitude_deg": 50.543055555
+        }
+      ],
+      "elevations_m": [
+        134.0
+      ],
+      "latitude_deg": 26.038888888,
+      "longitude_deg": 50.543055555,
+      "location_arg": "26.038889;50.543056",
+      "max_elevation_m": 134.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1032812"
+    },
+    {
+      "country_qid": "Q843",
+      "country_label": "パキスタン",
+      "country_labels": {
+        "en": "Pakistan",
+        "ja": "パキスタン"
+      },
+      "item_qid": "Q43512",
+      "item_label": "K2",
+      "item_labels": {
+        "en": "K2",
+        "ja": "K2"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 35.881111111,
+          "longitude_deg": 76.513333333
+        }
+      ],
+      "elevations_m": [
+        8611.0
+      ],
+      "latitude_deg": 35.881111111,
+      "longitude_deg": 76.513333333,
+      "location_arg": "35.881111;76.513333",
+      "max_elevation_m": 8611.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q43512"
+    },
+    {
+      "country_qid": "Q804",
+      "country_label": "パナマ",
+      "country_labels": {
+        "en": "Panama",
+        "ja": "パナマ"
+      },
+      "item_qid": "Q594726",
+      "item_label": "バル火山",
+      "item_labels": {
+        "en": "Volcan Baru",
+        "ja": "バル火山"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 8.808,
+          "longitude_deg": -82.543
+        }
+      ],
+      "elevations_m": [
+        3475.0
+      ],
+      "latitude_deg": 8.808,
+      "longitude_deg": -82.543,
+      "location_arg": "8.808000;-82.543000",
+      "max_elevation_m": 3475.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q594726"
+    },
+    {
+      "country_qid": "Q691",
+      "country_label": "パプアニューギニア",
+      "country_labels": {
+        "en": "Papua New Guinea",
+        "ja": "パプアニューギニア"
+      },
+      "item_qid": "Q277441",
+      "item_label": "ウィルヘルム山",
+      "item_labels": {
+        "en": "Mount Wilhelm",
+        "ja": "ウィルヘルム山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -5.8,
+          "longitude_deg": 145.033333333
+        }
+      ],
+      "elevations_m": [
+        4509.0
+      ],
+      "latitude_deg": -5.8,
+      "longitude_deg": 145.033333333,
+      "location_arg": "-5.800000;145.033333",
+      "max_elevation_m": 4509.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q277441"
+    },
+    {
+      "country_qid": "Q695",
+      "country_label": "パラオ",
+      "country_labels": {
+        "en": "Palau",
+        "ja": "パラオ"
+      },
+      "item_qid": "Q1191219",
+      "item_label": "ゲルチェレチュース山",
+      "item_labels": {
+        "en": "Mount Ngerchelchuus",
+        "ja": "ゲルチェレチュース山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 7.565277777,
+          "longitude_deg": 134.569444444
+        }
+      ],
+      "elevations_m": [
+        242.0
+      ],
+      "latitude_deg": 7.565277777,
+      "longitude_deg": 134.569444444,
+      "location_arg": "7.565278;134.569444",
+      "max_elevation_m": 242.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1191219"
+    },
+    {
+      "country_qid": "Q733",
+      "country_label": "パラグアイ",
+      "country_labels": {
+        "en": "Paraguay",
+        "ja": "パラグアイ"
+      },
+      "item_qid": "Q1055965",
+      "item_label": "ペロー山",
+      "item_labels": {
+        "en": "Cerro Tres Kandú",
+        "ja": "ペロー山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -25.901666666,
+          "longitude_deg": -56.16
+        }
+      ],
+      "elevations_m": [
+        842.0
+      ],
+      "latitude_deg": -25.901666666,
+      "longitude_deg": -56.16,
+      "location_arg": "-25.901667;-56.160000",
+      "max_elevation_m": 842.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1055965"
+    },
+    {
+      "country_qid": "Q219060",
+      "country_label": "パレスチナ国",
+      "country_labels": {
+        "en": "Palestine",
+        "ja": "パレスチナ国"
+      },
+      "item_qid": "Q6922335",
+      "item_label": "Mount Nabi Yunis",
+      "item_labels": {
+        "en": "Mount Nabi Yunis"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 31.57944444,
+          "longitude_deg": 35.105
+        }
+      ],
+      "elevations_m": [
+        1026.0
+      ],
+      "latitude_deg": 31.57944444,
+      "longitude_deg": 35.105,
+      "location_arg": "31.579444;35.105000",
+      "max_elevation_m": 1026.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q6922335"
+    },
+    {
+      "country_qid": "Q712",
+      "country_label": "フィジー",
+      "country_labels": {
+        "en": "Fiji",
+        "ja": "フィジー"
+      },
+      "item_qid": "Q1513944",
+      "item_label": "トマニビ山",
+      "item_labels": {
+        "en": "Mount Tomanivi",
+        "ja": "トマニビ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -17.633055555,
+          "longitude_deg": 178.016666666
+        }
+      ],
+      "elevations_m": [
+        1324.0
+      ],
+      "latitude_deg": -17.633055555,
+      "longitude_deg": 178.016666666,
+      "location_arg": "-17.633056;178.016667",
+      "max_elevation_m": 1324.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1513944"
+    },
+    {
+      "country_qid": "Q928",
+      "country_label": "フィリピン",
+      "country_labels": {
+        "en": "Philippines",
+        "ja": "フィリピン"
+      },
+      "item_qid": "Q455963",
+      "item_label": "アポ山",
+      "item_labels": {
+        "en": "Mount Apo",
+        "ja": "アポ山"
+      },
+      "row_count": 3,
+      "coordinates": [
+        {
+          "latitude_deg": 6.9875,
+          "longitude_deg": 125.270833333
+        }
+      ],
+      "elevations_m": [
+        2954.0
+      ],
+      "latitude_deg": 6.9875,
+      "longitude_deg": 125.270833333,
+      "location_arg": "6.987500;125.270833",
+      "max_elevation_m": 2954.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q455963"
+    },
+    {
+      "country_qid": "Q33",
+      "country_label": "フィンランド",
+      "country_labels": {
+        "en": "Finland",
+        "ja": "フィンランド"
+      },
+      "item_qid": "Q216035",
+      "item_label": "ハルティ",
+      "item_labels": {
+        "en": "Halti",
+        "ja": "ハルティ"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 69.312777777,
+          "longitude_deg": 21.285555555
+        }
+      ],
+      "elevations_m": [
+        1361.4
+      ],
+      "latitude_deg": 69.312777777,
+      "longitude_deg": 21.285555555,
+      "location_arg": "69.312778;21.285556",
+      "max_elevation_m": 1361.4,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q216035"
+    },
+    {
+      "country_qid": "Q142",
+      "country_label": "フランス",
+      "country_labels": {
+        "en": "France",
+        "ja": "フランス"
+      },
+      "item_qid": "Q583",
+      "item_label": "モンブラン",
+      "item_labels": {
+        "en": "Mont Blanc",
+        "ja": "モンブラン"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 45.832777777,
+          "longitude_deg": 6.865
+        }
+      ],
+      "elevations_m": [
+        4805.59
+      ],
+      "latitude_deg": 45.832777777,
+      "longitude_deg": 6.865,
+      "location_arg": "45.832778;6.865000",
+      "max_elevation_m": 4805.59,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": true,
+      "shared_with_country_qids": [
+        "Q38"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q583"
+    },
+    {
+      "country_qid": "Q155",
+      "country_label": "ブラジル",
+      "country_labels": {
+        "en": "Brazil",
+        "ja": "ブラジル"
+      },
+      "item_qid": "Q739484",
+      "item_label": "ネブリナ山",
+      "item_labels": {
+        "en": "Pico da Neblina",
+        "ja": "ネブリナ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 0.805494444,
+          "longitude_deg": -66.005358333
+        }
+      ],
+      "elevations_m": [
+        2994.0
+      ],
+      "latitude_deg": 0.805494444,
+      "longitude_deg": -66.005358333,
+      "location_arg": "0.805494;-66.005358",
+      "max_elevation_m": 2994.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q739484"
+    },
+    {
+      "country_qid": "Q219",
+      "country_label": "ブルガリア",
+      "country_labels": {
+        "en": "Bulgaria",
+        "ja": "ブルガリア"
+      },
+      "item_qid": "Q209341",
+      "item_label": "ムサラ山",
+      "item_labels": {
+        "en": "Musala",
+        "ja": "ムサラ山"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 42.179167,
+          "longitude_deg": 23.585278
+        }
+      ],
+      "elevations_m": [
+        2925.4
+      ],
+      "latitude_deg": 42.179167,
+      "longitude_deg": 23.585278,
+      "location_arg": "42.179167;23.585278",
+      "max_elevation_m": 2925.4,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q209341"
+    },
+    {
+      "country_qid": "Q965",
+      "country_label": "ブルキナファソ",
+      "country_labels": {
+        "en": "Burkina Faso",
+        "ja": "ブルキナファソ"
+      },
+      "item_qid": "Q116675",
+      "item_label": "Mount Tenakourou",
+      "item_labels": {
+        "en": "Mount Tenakourou"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 10.75,
+          "longitude_deg": -5.416666666
+        }
+      ],
+      "elevations_m": [
+        749.0
+      ],
+      "latitude_deg": 10.75,
+      "longitude_deg": -5.416666666,
+      "location_arg": "10.750000;-5.416667",
+      "max_elevation_m": 749.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q116675"
+    },
+    {
+      "country_qid": "Q921",
+      "country_label": "ブルネイ",
+      "country_labels": {
+        "en": "Brunei",
+        "ja": "ブルネイ"
+      },
+      "item_qid": "Q1003282",
+      "item_label": "パゴン山",
+      "item_labels": {
+        "en": "Bukit Pagon",
+        "ja": "パゴン山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 4.3,
+          "longitude_deg": 115.333333333
+        }
+      ],
+      "elevations_m": [
+        1850.0
+      ],
+      "latitude_deg": 4.3,
+      "longitude_deg": 115.333333333,
+      "location_arg": "4.300000;115.333333",
+      "max_elevation_m": 1850.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1003282"
+    },
+    {
+      "country_qid": "Q967",
+      "country_label": "ブルンジ",
+      "country_labels": {
+        "en": "Burundi",
+        "ja": "ブルンジ"
+      },
+      "item_qid": "Q1649074",
+      "item_label": "ヘハ山",
+      "item_labels": {
+        "en": "Mount Heha",
+        "ja": "ヘハ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -3.603333333,
+          "longitude_deg": 29.499166666
+        }
+      ],
+      "elevations_m": [
+        2684.0
+      ],
+      "latitude_deg": -3.603333333,
+      "longitude_deg": 29.499166666,
+      "location_arg": "-3.603333;29.499167",
+      "max_elevation_m": 2684.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1649074"
+    },
+    {
+      "country_qid": "Q917",
+      "country_label": "ブータン",
+      "country_labels": {
+        "en": "Bhutan",
+        "ja": "ブータン"
+      },
+      "item_qid": "Q219986",
+      "item_label": "ガンカー・プンスム",
+      "item_labels": {
+        "en": "Gangkhar Puensum",
+        "ja": "ガンカー・プンスム"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 28.046944444,
+          "longitude_deg": 90.455
+        }
+      ],
+      "elevations_m": [
+        7570.0
+      ],
+      "latitude_deg": 28.046944444,
+      "longitude_deg": 90.455,
+      "location_arg": "28.046944;90.455000",
+      "max_elevation_m": 7570.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q219986"
+    },
+    {
+      "country_qid": "Q881",
+      "country_label": "ベトナム",
+      "country_labels": {
+        "en": "Vietnam",
+        "ja": "ベトナム"
+      },
+      "item_qid": "Q123782",
+      "item_label": "ファンシーパン山",
+      "item_labels": {
+        "en": "Fansipan",
+        "ja": "ファンシーパン山"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 22.3033319,
+          "longitude_deg": 103.7753148
+        }
+      ],
+      "elevations_m": [
+        3143.0,
+        3147.3
+      ],
+      "latitude_deg": 22.3033319,
+      "longitude_deg": 103.7753148,
+      "location_arg": "22.303332;103.775315",
+      "max_elevation_m": 3147.3,
+      "coord_count": 1,
+      "elevation_count": 2,
+      "needs_coord_review": false,
+      "needs_elevation_review": true,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q123782"
+    },
+    {
+      "country_qid": "Q962",
+      "country_label": "ベナン",
+      "country_labels": {
+        "en": "Benin",
+        "ja": "ベナン"
+      },
+      "item_qid": "Q923330",
+      "item_label": "ソクバロ山",
+      "item_labels": {
+        "en": "Mont Sokbaro",
+        "ja": "ソクバロ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 9.328055555,
+          "longitude_deg": 1.415555555
+        }
+      ],
+      "elevations_m": [
+        658.0
+      ],
+      "latitude_deg": 9.328055555,
+      "longitude_deg": 1.415555555,
+      "location_arg": "9.328056;1.415556",
+      "max_elevation_m": 658.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q923330"
+    },
+    {
+      "country_qid": "Q717",
+      "country_label": "ベネズエラ",
+      "country_labels": {
+        "en": "Venezuela",
+        "ja": "ベネズエラ"
+      },
+      "item_qid": "Q213704",
+      "item_label": "ボリバル山",
+      "item_labels": {
+        "en": "Pico Bolívar",
+        "ja": "ボリバル山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 8.540861111,
+          "longitude_deg": -71.0465
+        }
+      ],
+      "elevations_m": [
+        4978.0
+      ],
+      "latitude_deg": 8.540861111,
+      "longitude_deg": -71.0465,
+      "location_arg": "8.540861;-71.046500",
+      "max_elevation_m": 4978.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q213704"
+    },
+    {
+      "country_qid": "Q242",
+      "country_label": "ベリーズ",
+      "country_labels": {
+        "en": "Belize",
+        "ja": "ベリーズ"
+      },
+      "item_qid": "Q47490",
+      "item_label": "ドイルス・ディライト山",
+      "item_labels": {
+        "en": "Doyle's Delight",
+        "ja": "ドイルス・ディライト山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 16.5,
+          "longitude_deg": -89.05
+        }
+      ],
+      "elevations_m": [
+        1124.0
+      ],
+      "latitude_deg": 16.5,
+      "longitude_deg": -89.05,
+      "location_arg": "16.500000;-89.050000",
+      "max_elevation_m": 1124.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q47490"
+    },
+    {
+      "country_qid": "Q31",
+      "country_label": "ベルギー",
+      "country_labels": {
+        "en": "Belgium",
+        "ja": "ベルギー"
+      },
+      "item_qid": "Q322824",
+      "item_label": "Signal de Botrange",
+      "item_labels": {
+        "en": "Signal de Botrange"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 50.501667,
+          "longitude_deg": 6.093056
+        }
+      ],
+      "elevations_m": [
+        694.24
+      ],
+      "latitude_deg": 50.501667,
+      "longitude_deg": 6.093056,
+      "location_arg": "50.501667;6.093056",
+      "max_elevation_m": 694.24,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q322824"
+    },
+    {
+      "country_qid": "Q419",
+      "country_label": "ペルー",
+      "country_labels": {
+        "en": "Peru",
+        "ja": "ペルー"
+      },
+      "item_qid": "Q200935",
+      "item_label": "ワスカラン",
+      "item_labels": {
+        "en": "Huascarán",
+        "ja": "ワスカラン"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -9.116666666,
+          "longitude_deg": -77.6
+        }
+      ],
+      "elevations_m": [
+        6768.0
+      ],
+      "latitude_deg": -9.116666666,
+      "longitude_deg": -77.6,
+      "location_arg": "-9.116667;-77.600000",
+      "max_elevation_m": 6768.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q200935"
+    },
+    {
+      "country_qid": "Q783",
+      "country_label": "ホンジュラス",
+      "country_labels": {
+        "en": "Honduras",
+        "ja": "ホンジュラス"
+      },
+      "item_qid": "Q1055875",
+      "item_label": "ミナス山",
+      "item_labels": {
+        "en": "Cerro Las Minas",
+        "ja": "ミナス山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 14.534166666,
+          "longitude_deg": -88.68
+        }
+      ],
+      "elevations_m": [
+        2849.0
+      ],
+      "latitude_deg": 14.534166666,
+      "longitude_deg": -88.68,
+      "location_arg": "14.534167;-88.680000",
+      "max_elevation_m": 2849.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1055875"
+    },
+    {
+      "country_qid": "Q225",
+      "country_label": "ボスニア・ヘルツェゴビナ",
+      "country_labels": {
+        "en": "Bosnia and Herzegovina",
+        "ja": "ボスニア・ヘルツェゴビナ"
+      },
+      "item_qid": "Q837723",
+      "item_label": "マグリッチ",
+      "item_labels": {
+        "en": "Maglić",
+        "ja": "マグリッチ"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 43.28111,
+          "longitude_deg": 18.73306
+        }
+      ],
+      "elevations_m": [
+        2386.0
+      ],
+      "latitude_deg": 43.28111,
+      "longitude_deg": 18.73306,
+      "location_arg": "43.281110;18.733060",
+      "max_elevation_m": 2386.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q837723"
+    },
+    {
+      "country_qid": "Q963",
+      "country_label": "ボツワナ",
+      "country_labels": {
+        "en": "Botswana",
+        "ja": "ボツワナ"
+      },
+      "item_qid": "Q3491942",
+      "item_label": "Otse Hill",
+      "item_labels": {
+        "en": "Otse Hill"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -25.018333333,
+          "longitude_deg": 25.725833333
+        }
+      ],
+      "elevations_m": [
+        1491.0
+      ],
+      "latitude_deg": -25.018333333,
+      "longitude_deg": 25.725833333,
+      "location_arg": "-25.018333;25.725833",
+      "max_elevation_m": 1491.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q3491942"
+    },
+    {
+      "country_qid": "Q750",
+      "country_label": "ボリビア",
+      "country_labels": {
+        "en": "Bolivia",
+        "ja": "ボリビア"
+      },
+      "item_qid": "Q272593",
+      "item_label": "サハマ山",
+      "item_labels": {
+        "en": "Nevado Sajama",
+        "ja": "サハマ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -18.108055555,
+          "longitude_deg": -68.883055555
+        }
+      ],
+      "elevations_m": [
+        6542.0
+      ],
+      "latitude_deg": -18.108055555,
+      "longitude_deg": -68.883055555,
+      "location_arg": "-18.108056;-68.883056",
+      "max_elevation_m": 6542.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q272593"
+    },
+    {
+      "country_qid": "Q45",
+      "country_label": "ポルトガル",
+      "country_labels": {
+        "en": "Portugal",
+        "ja": "ポルトガル"
+      },
+      "item_qid": "Q928681",
+      "item_label": "ピコ山",
+      "item_labels": {
+        "en": "Mount Pico",
+        "ja": "ピコ山"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 38.468611111,
+          "longitude_deg": -28.399166666
+        }
+      ],
+      "elevations_m": [
+        2351.0
+      ],
+      "latitude_deg": 38.468611111,
+      "longitude_deg": -28.399166666,
+      "location_arg": "38.468611;-28.399167",
+      "max_elevation_m": 2351.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q928681"
+    },
+    {
+      "country_qid": "Q36",
+      "country_label": "ポーランド",
+      "country_labels": {
+        "en": "Poland",
+        "ja": "ポーランド"
+      },
+      "item_qid": "Q672936",
+      "item_label": "リスィ山",
+      "item_labels": {
+        "en": "Rysy",
+        "ja": "リスィ山"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 49.179444444,
+          "longitude_deg": 20.088055555
+        }
+      ],
+      "elevations_m": [
+        2499.0,
+        2501.0
+      ],
+      "latitude_deg": 49.179444444,
+      "longitude_deg": 20.088055555,
+      "location_arg": "49.179444;20.088056",
+      "max_elevation_m": 2501.0,
+      "coord_count": 1,
+      "elevation_count": 2,
+      "needs_coord_review": false,
+      "needs_elevation_review": true,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q672936"
+    },
+    {
+      "country_qid": "Q1019",
+      "country_label": "マダガスカル",
+      "country_labels": {
+        "en": "Madagascar",
+        "ja": "マダガスカル"
+      },
+      "item_qid": "Q1147144",
+      "item_label": "マロモコトロ山",
+      "item_labels": {
+        "en": "Maromokotro",
+        "ja": "マロモコトロ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -14.022777777,
+          "longitude_deg": 48.965833333
+        }
+      ],
+      "elevations_m": [
+        2876.0
+      ],
+      "latitude_deg": -14.022777777,
+      "longitude_deg": 48.965833333,
+      "location_arg": "-14.022778;48.965833",
+      "max_elevation_m": 2876.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1147144"
+    },
+    {
+      "country_qid": "Q833",
+      "country_label": "マレーシア",
+      "country_labels": {
+        "en": "Malaysia",
+        "ja": "マレーシア"
+      },
+      "item_qid": "Q60967",
+      "item_label": "キナバル山",
+      "item_labels": {
+        "en": "Mount Kota Kinabalu",
+        "ja": "キナバル山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 6.075,
+          "longitude_deg": 116.558611111
+        }
+      ],
+      "elevations_m": [
+        4095.0
+      ],
+      "latitude_deg": 6.075,
+      "longitude_deg": 116.558611111,
+      "location_arg": "6.075000;116.558611",
+      "max_elevation_m": 4095.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q60967"
+    },
+    {
+      "country_qid": "Q702",
+      "country_label": "ミクロネシア連邦",
+      "country_labels": {
+        "en": "Federated States of Micronesia",
+        "ja": "ミクロネシア連邦"
+      },
+      "item_qid": "Q1236265",
+      "item_label": "Dolohmwar",
+      "item_labels": {
+        "en": "Dolohmwar"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 6.855277777,
+          "longitude_deg": 158.236666666
+        }
+      ],
+      "elevations_m": [
+        791.0
+      ],
+      "latitude_deg": 6.855277777,
+      "longitude_deg": 158.236666666,
+      "location_arg": "6.855278;158.236667",
+      "max_elevation_m": 791.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1236265"
+    },
+    {
+      "country_qid": "Q836",
+      "country_label": "ミャンマー",
+      "country_labels": {
+        "en": "Myanmar",
+        "ja": "ミャンマー"
+      },
+      "item_qid": "Q870063",
+      "item_label": "カカボラジ山",
+      "item_labels": {
+        "en": "Hkakabo Razi",
+        "ja": "カカボラジ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 28.333055555,
+          "longitude_deg": 97.466666666
+        }
+      ],
+      "elevations_m": [
+        5881.0
+      ],
+      "latitude_deg": 28.333055555,
+      "longitude_deg": 97.466666666,
+      "location_arg": "28.333056;97.466667",
+      "max_elevation_m": 5881.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q870063"
+    },
+    {
+      "country_qid": "Q96",
+      "country_label": "メキシコ",
+      "country_labels": {
+        "en": "Mexico",
+        "ja": "メキシコ"
+      },
+      "item_qid": "Q238147",
+      "item_label": "オリサバ山",
+      "item_labels": {
+        "en": "Citlaltepetl",
+        "ja": "オリサバ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 19.03,
+          "longitude_deg": -97.27
+        }
+      ],
+      "elevations_m": [
+        5636.0
+      ],
+      "latitude_deg": 19.03,
+      "longitude_deg": -97.27,
+      "location_arg": "19.030000;-97.270000",
+      "max_elevation_m": 5636.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q238147"
+    },
+    {
+      "country_qid": "Q1029",
+      "country_label": "モザンビーク",
+      "country_labels": {
+        "en": "Mozambique",
+        "ja": "モザンビーク"
+      },
+      "item_qid": "Q1353678",
+      "item_label": "ビンガ山",
+      "item_labels": {
+        "en": "Monte Binga",
+        "ja": "ビンガ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -19.774166666,
+          "longitude_deg": 33.060555555
+        }
+      ],
+      "elevations_m": [
+        2436.0
+      ],
+      "latitude_deg": -19.774166666,
+      "longitude_deg": 33.060555555,
+      "location_arg": "-19.774167;33.060556",
+      "max_elevation_m": 2436.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1353678"
+    },
+    {
+      "country_qid": "Q235",
+      "country_label": "モナコ",
+      "country_labels": {
+        "en": "Monaco",
+        "ja": "モナコ"
+      },
+      "item_qid": "Q1069352",
+      "item_label": "Chemin des Révoires",
+      "item_labels": {
+        "en": "Chemin des Révoires"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 43.732777777,
+          "longitude_deg": 7.4125
+        }
+      ],
+      "elevations_m": [
+        162.0
+      ],
+      "latitude_deg": 43.732777777,
+      "longitude_deg": 7.4125,
+      "location_arg": "43.732778;7.412500",
+      "max_elevation_m": 162.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1069352"
+    },
+    {
+      "country_qid": "Q217",
+      "country_label": "モルドバ",
+      "country_labels": {
+        "en": "Moldova",
+        "ja": "モルドバ"
+      },
+      "item_qid": "Q47940",
+      "item_label": "Bălănești Hill",
+      "item_labels": {
+        "en": "Bălănești Hill"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 47.217666666,
+          "longitude_deg": 28.091666666
+        }
+      ],
+      "elevations_m": [
+        430.0
+      ],
+      "latitude_deg": 47.217666666,
+      "longitude_deg": 28.091666666,
+      "location_arg": "47.217667;28.091667",
+      "max_elevation_m": 430.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q47940"
+    },
+    {
+      "country_qid": "Q1028",
+      "country_label": "モロッコ",
+      "country_labels": {
+        "en": "Morocco",
+        "ja": "モロッコ"
+      },
+      "item_qid": "Q503433",
+      "item_label": "ツブカル山",
+      "item_labels": {
+        "en": "Jbel Toubkal",
+        "ja": "ツブカル山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 31.061944444,
+          "longitude_deg": -7.916111111
+        }
+      ],
+      "elevations_m": [
+        4167.0
+      ],
+      "latitude_deg": 31.061944444,
+      "longitude_deg": -7.916111111,
+      "location_arg": "31.061944;-7.916111",
+      "max_elevation_m": 4167.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q503433"
+    },
+    {
+      "country_qid": "Q711",
+      "country_label": "モンゴル国",
+      "country_labels": {
+        "en": "Mongolia",
+        "ja": "モンゴル国"
+      },
+      "item_qid": "Q1091113",
+      "item_label": "フィティン山",
+      "item_labels": {
+        "en": "Hüiten Peak",
+        "ja": "フィティン山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 49.145833333,
+          "longitude_deg": 87.819166666
+        }
+      ],
+      "elevations_m": [
+        4374.0
+      ],
+      "latitude_deg": 49.145833333,
+      "longitude_deg": 87.819166666,
+      "location_arg": "49.145833;87.819167",
+      "max_elevation_m": 4374.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1091113"
+    },
+    {
+      "country_qid": "Q1027",
+      "country_label": "モーリシャス",
+      "country_labels": {
+        "en": "Mauritius",
+        "ja": "モーリシャス"
+      },
+      "item_qid": "Q1760978",
+      "item_label": "ラ・プティ・リヴィエール・ノワール山",
+      "item_labels": {
+        "en": "Piton de la Petite Rivière Noire",
+        "ja": "ラ・プティ・リヴィエール・ノワール山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -20.4087947,
+          "longitude_deg": 57.4076919
+        }
+      ],
+      "elevations_m": [
+        828.0
+      ],
+      "latitude_deg": -20.4087947,
+      "longitude_deg": 57.4076919,
+      "location_arg": "-20.408795;57.407692",
+      "max_elevation_m": 828.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1760978"
+    },
+    {
+      "country_qid": "Q1025",
+      "country_label": "モーリタニア",
+      "country_labels": {
+        "en": "Mauritania",
+        "ja": "モーリタニア"
+      },
+      "item_qid": "Q2595789",
+      "item_label": "ケディエ・エジュ・ジル",
+      "item_labels": {
+        "en": "Kediet ej Jill",
+        "ja": "ケディエ・エジュ・ジル"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 22.653888888,
+          "longitude_deg": -12.574722222
+        }
+      ],
+      "elevations_m": [
+        915.0
+      ],
+      "latitude_deg": 22.653888888,
+      "longitude_deg": -12.574722222,
+      "location_arg": "22.653889;-12.574722",
+      "max_elevation_m": 915.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q2595789"
+    },
+    {
+      "country_qid": "Q810",
+      "country_label": "ヨルダン",
+      "country_labels": {
+        "en": "Jordan",
+        "ja": "ヨルダン"
+      },
+      "item_qid": "Q1261902",
+      "item_label": "ウンム・アッ＝ダーミー山",
+      "item_labels": {
+        "en": "Jabal Umm ad Dami",
+        "ja": "ウンム・アッ＝ダーミー山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 29.308333333,
+          "longitude_deg": 35.429166666
+        }
+      ],
+      "elevations_m": [
+        1854.0
+      ],
+      "latitude_deg": 29.308333333,
+      "longitude_deg": 35.429166666,
+      "location_arg": "29.308333;35.429167",
+      "max_elevation_m": 1854.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1261902"
+    },
+    {
+      "country_qid": "Q819",
+      "country_label": "ラオス",
+      "country_labels": {
+        "en": "Laos",
+        "ja": "ラオス"
+      },
+      "item_qid": "Q239485",
+      "item_label": "ビア山",
+      "item_labels": {
+        "en": "Phou Bia",
+        "ja": "ビア山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 18.983333333,
+          "longitude_deg": 103.133333333
+        }
+      ],
+      "elevations_m": [
+        2819.0
+      ],
+      "latitude_deg": 18.983333333,
+      "longitude_deg": 103.133333333,
+      "location_arg": "18.983333;103.133333",
+      "max_elevation_m": 2819.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q239485"
+    },
+    {
+      "country_qid": "Q37",
+      "country_label": "リトアニア",
+      "country_labels": {
+        "en": "Lithuania",
+        "ja": "リトアニア"
+      },
+      "item_qid": "Q771431",
+      "item_label": "Aukštojas Hill",
+      "item_labels": {
+        "en": "Aukštojas Hill"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 54.529444444,
+          "longitude_deg": 25.634444444
+        }
+      ],
+      "elevations_m": [
+        293.84
+      ],
+      "latitude_deg": 54.529444444,
+      "longitude_deg": 25.634444444,
+      "location_arg": "54.529444;25.634444",
+      "max_elevation_m": 293.84,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q771431"
+    },
+    {
+      "country_qid": "Q347",
+      "country_label": "リヒテンシュタイン",
+      "country_labels": {
+        "en": "Liechtenstein",
+        "ja": "リヒテンシュタイン"
+      },
+      "item_qid": "Q665000",
+      "item_label": "グラウシュピッツ",
+      "item_labels": {
+        "en": "Grauspitz",
+        "ja": "グラウシュピッツ"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 47.052777777,
+          "longitude_deg": 9.581944444
+        }
+      ],
+      "elevations_m": [
+        2599.0
+      ],
+      "latitude_deg": 47.052777777,
+      "longitude_deg": 9.581944444,
+      "location_arg": "47.052778;9.581944",
+      "max_elevation_m": 2599.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q665000"
+    },
+    {
+      "country_qid": "Q1016",
+      "country_label": "リビア",
+      "country_labels": {
+        "en": "Libya",
+        "ja": "リビア"
+      },
+      "item_qid": "Q860146",
+      "item_label": "ビクー・ビティ",
+      "item_labels": {
+        "en": "Bikku Bitti",
+        "ja": "ビクー・ビティ"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 22.0036734,
+          "longitude_deg": 19.206592
+        }
+      ],
+      "elevations_m": [
+        2267.0
+      ],
+      "latitude_deg": 22.0036734,
+      "longitude_deg": 19.206592,
+      "location_arg": "22.003673;19.206592",
+      "max_elevation_m": 2267.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q860146"
+    },
+    {
+      "country_qid": "Q1014",
+      "country_label": "リベリア",
+      "country_labels": {
+        "en": "Liberia",
+        "ja": "リベリア"
+      },
+      "item_qid": "Q1950836",
+      "item_label": "Mount Wuteve",
+      "item_labels": {
+        "en": "Mount Wuteve"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 8.145833333,
+          "longitude_deg": -9.925
+        }
+      ],
+      "elevations_m": [
+        1440.0
+      ],
+      "latitude_deg": 8.145833333,
+      "longitude_deg": -9.925,
+      "location_arg": "8.145833;-9.925000",
+      "max_elevation_m": 1440.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1950836"
+    },
+    {
+      "country_qid": "Q1037",
+      "country_label": "ルワンダ",
+      "country_labels": {
+        "en": "Rwanda",
+        "ja": "ルワンダ"
+      },
+      "item_qid": "Q737859",
+      "item_label": "カリシンビ山",
+      "item_labels": {
+        "en": "Mount Karisimbi",
+        "ja": "カリシンビ山"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": -1.5,
+          "longitude_deg": 29.45
+        }
+      ],
+      "elevations_m": [
+        4507.0
+      ],
+      "latitude_deg": -1.5,
+      "longitude_deg": 29.45,
+      "location_arg": "-1.500000;29.450000",
+      "max_elevation_m": 4507.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q737859"
+    },
+    {
+      "country_qid": "Q218",
+      "country_label": "ルーマニア",
+      "country_labels": {
+        "en": "Romania",
+        "ja": "ルーマニア"
+      },
+      "item_qid": "Q746524",
+      "item_label": "モルドベアヌ山",
+      "item_labels": {
+        "en": "Moldoveanu Peak",
+        "ja": "モルドベアヌ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 45.599438888,
+          "longitude_deg": 24.736211111
+        }
+      ],
+      "elevations_m": [
+        2544.0
+      ],
+      "latitude_deg": 45.599438888,
+      "longitude_deg": 24.736211111,
+      "location_arg": "45.599439;24.736211",
+      "max_elevation_m": 2544.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q746524"
+    },
+    {
+      "country_qid": "Q1013",
+      "country_label": "レソト",
+      "country_labels": {
+        "en": "Lesotho",
+        "ja": "レソト"
+      },
+      "item_qid": "Q733132",
+      "item_label": "タバナントレニャナ山",
+      "item_labels": {
+        "en": "Thabana Ntlenyana",
+        "ja": "タバナントレニャナ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -29.466666666,
+          "longitude_deg": 29.266666666
+        }
+      ],
+      "elevations_m": [
+        3482.0
+      ],
+      "latitude_deg": -29.466666666,
+      "longitude_deg": 29.266666666,
+      "location_arg": "-29.466667;29.266667",
+      "max_elevation_m": 3482.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q733132"
+    },
+    {
+      "country_qid": "Q822",
+      "country_label": "レバノン",
+      "country_labels": {
+        "en": "Lebanon",
+        "ja": "レバノン"
+      },
+      "item_qid": "Q311330",
+      "item_label": "クルナ・アッサウダー山",
+      "item_labels": {
+        "en": "Qurnat as Sawda'",
+        "ja": "クルナ・アッサウダー山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 34.3,
+          "longitude_deg": 36.116666666
+        }
+      ],
+      "elevations_m": [
+        3088.0
+      ],
+      "latitude_deg": 34.3,
+      "longitude_deg": 36.116666666,
+      "location_arg": "34.300000;36.116667",
+      "max_elevation_m": 3088.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q311330"
+    },
+    {
+      "country_qid": "Q159",
+      "country_label": "ロシア",
+      "country_labels": {
+        "en": "Russia",
+        "ja": "ロシア"
+      },
+      "item_qid": "Q43105",
+      "item_label": "エルブルス山",
+      "item_labels": {
+        "en": "Mount Elbrus",
+        "ja": "エルブルス山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 43.35254,
+          "longitude_deg": 42.437875
+        }
+      ],
+      "elevations_m": [
+        5642.0
+      ],
+      "latitude_deg": 43.35254,
+      "longitude_deg": 42.437875,
+      "location_arg": "43.352540;42.437875",
+      "max_elevation_m": 5642.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q43105"
+    },
+    {
+      "country_qid": "Q929",
+      "country_label": "中央アフリカ共和国",
+      "country_labels": {
+        "en": "Central African Republic",
+        "ja": "中央アフリカ共和国"
+      },
+      "item_qid": "Q2422162",
+      "item_label": "ンガウィ山",
+      "item_labels": {
+        "en": "Mont Ngaoui",
+        "ja": "ンガウィ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 6.74,
+          "longitude_deg": 14.95
+        }
+      ],
+      "elevations_m": [
+        1410.0
+      ],
+      "latitude_deg": 6.74,
+      "longitude_deg": 14.95,
+      "location_arg": "6.740000;14.950000",
+      "max_elevation_m": 1410.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q2422162"
+    },
+    {
+      "country_qid": "Q148",
+      "country_label": "中華人民共和国",
+      "country_labels": {
+        "en": "People's Republic of China",
+        "ja": "中華人民共和国"
+      },
+      "item_qid": "Q513",
+      "item_label": "エベレスト",
+      "item_labels": {
+        "en": "Mount Everest",
+        "ja": "エベレスト"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 27.988055555,
+          "longitude_deg": 86.925
+        }
+      ],
+      "elevations_m": [
+        8848.86
+      ],
+      "latitude_deg": 27.988055555,
+      "longitude_deg": 86.925,
+      "location_arg": "27.988056;86.925000",
+      "max_elevation_m": 8848.86,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": true,
+      "shared_with_country_qids": [
+        "Q837"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q513"
+    },
+    {
+      "country_qid": "Q865",
+      "country_label": "中華民国",
+      "country_labels": {
+        "en": "Taiwan",
+        "ja": "中華民国"
+      },
+      "item_qid": "Q500275",
+      "item_label": "玉山",
+      "item_labels": {
+        "en": "Yushan Main Peak",
+        "ja": "玉山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 23.47,
+          "longitude_deg": 120.957266666
+        }
+      ],
+      "elevations_m": [
+        3952.0
+      ],
+      "latitude_deg": 23.47,
+      "longitude_deg": 120.957266666,
+      "location_arg": "23.470000;120.957267",
+      "max_elevation_m": 3952.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q500275"
+    },
+    {
+      "country_qid": "Q221",
+      "country_label": "北マケドニア",
+      "country_labels": {
+        "en": "North Macedonia",
+        "ja": "北マケドニア"
+      },
+      "item_qid": "Q912579",
+      "item_label": "コラプ山",
+      "item_labels": {
+        "en": "Korab",
+        "ja": "コラプ山"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 41.7903,
+          "longitude_deg": 20.5467
+        }
+      ],
+      "elevations_m": [
+        2764.0
+      ],
+      "latitude_deg": 41.7903,
+      "longitude_deg": 20.5467,
+      "location_arg": "41.790300;20.546700",
+      "max_elevation_m": 2764.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": true,
+      "shared_with_country_qids": [
+        "Q222"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q912579"
+    },
+    {
+      "country_qid": "Q258",
+      "country_label": "南アフリカ共和国",
+      "country_labels": {
+        "en": "South Africa",
+        "ja": "南アフリカ共和国"
+      },
+      "item_qid": "Q1883683",
+      "item_label": "マファディ山",
+      "item_labels": {
+        "en": "Mafadi",
+        "ja": "マファディ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -29.20286,
+          "longitude_deg": 29.35832
+        }
+      ],
+      "elevations_m": [
+        3450.0
+      ],
+      "latitude_deg": -29.20286,
+      "longitude_deg": 29.35832,
+      "location_arg": "-29.202860;29.358320",
+      "max_elevation_m": 3450.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1883683"
+    },
+    {
+      "country_qid": "Q958",
+      "country_label": "南スーダン",
+      "country_labels": {
+        "en": "South Sudan",
+        "ja": "南スーダン"
+      },
+      "item_qid": "Q948298",
+      "item_label": "キヌエティ山",
+      "item_labels": {
+        "en": "Kinyeti",
+        "ja": "キヌエティ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 3.9475,
+          "longitude_deg": 32.908888888
+        }
+      ],
+      "elevations_m": [
+        3187.0
+      ],
+      "latitude_deg": 3.9475,
+      "longitude_deg": 32.908888888,
+      "location_arg": "3.947500;32.908889",
+      "max_elevation_m": 3187.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q948298"
+    },
+    {
+      "country_qid": "Q884",
+      "country_label": "大韓民国",
+      "country_labels": {
+        "en": "South Korea",
+        "ja": "大韓民国"
+      },
+      "item_qid": "Q494645",
+      "item_label": "漢拏山",
+      "item_labels": {
+        "en": "Hallasan",
+        "ja": "漢拏山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": 33.35,
+          "longitude_deg": 126.516666666
+        }
+      ],
+      "elevations_m": [
+        1947.06
+      ],
+      "latitude_deg": 33.35,
+      "longitude_deg": 126.516666666,
+      "location_arg": "33.350000;126.516667",
+      "max_elevation_m": 1947.06,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q494645"
+    },
+    {
+      "country_qid": "Q17",
+      "country_label": "日本",
+      "country_labels": {
+        "en": "Japan",
+        "ja": "日本"
+      },
+      "item_qid": "Q39231",
+      "item_label": "富士山",
+      "item_labels": {
+        "en": "Mount Fuji",
+        "ja": "富士山"
+      },
+      "row_count": 4,
+      "coordinates": [
+        {
+          "latitude_deg": 35.360555555,
+          "longitude_deg": 138.7275
+        }
+      ],
+      "elevations_m": [
+        3777.24
+      ],
+      "latitude_deg": 35.360555555,
+      "longitude_deg": 138.7275,
+      "location_arg": "35.360556;138.727500",
+      "max_elevation_m": 3777.24,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q39231"
+    },
+    {
+      "country_qid": "Q423",
+      "country_label": "朝鮮民主主義人民共和国",
+      "country_labels": {
+        "en": "North Korea",
+        "ja": "朝鮮民主主義人民共和国"
+      },
+      "item_qid": "Q107635",
+      "item_label": "白頭山",
+      "item_labels": {
+        "en": "Baekdu Mountain",
+        "ja": "白頭山"
+      },
+      "row_count": 6,
+      "coordinates": [
+        {
+          "latitude_deg": 40.94,
+          "longitude_deg": 126.83
+        },
+        {
+          "latitude_deg": 41.992777777,
+          "longitude_deg": 128.077222222
+        }
+      ],
+      "elevations_m": [
+        2744.0
+      ],
+      "latitude_deg": 40.94,
+      "longitude_deg": 126.83,
+      "location_arg": "40.940000;126.830000",
+      "max_elevation_m": 2744.0,
+      "coord_count": 2,
+      "elevation_count": 1,
+      "needs_coord_review": true,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q107635"
+    },
+    {
+      "country_qid": "Q574",
+      "country_label": "東ティモール",
+      "country_labels": {
+        "en": "Timor-Leste",
+        "ja": "東ティモール"
+      },
+      "item_qid": "Q1539961",
+      "item_label": "タタマイラウ山",
+      "item_labels": {
+        "en": "Tatamailau",
+        "ja": "タタマイラウ山"
+      },
+      "row_count": 1,
+      "coordinates": [
+        {
+          "latitude_deg": -8.906666666,
+          "longitude_deg": 125.493333333
+        }
+      ],
+      "elevations_m": [
+        2963.0
+      ],
+      "latitude_deg": -8.906666666,
+      "longitude_deg": 125.493333333,
+      "location_arg": "-8.906667;125.493333",
+      "max_elevation_m": 2963.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1539961"
+    },
+    {
+      "country_qid": "Q983",
+      "country_label": "赤道ギニア",
+      "country_labels": {
+        "en": "Equatorial Guinea",
+        "ja": "赤道ギニア"
+      },
+      "item_qid": "Q1518286",
+      "item_label": "バジーレ山",
+      "item_labels": {
+        "en": "Pico Basilé",
+        "ja": "バジーレ山"
+      },
+      "row_count": 2,
+      "coordinates": [
+        {
+          "latitude_deg": 3.583333333,
+          "longitude_deg": 8.766666666
+        }
+      ],
+      "elevations_m": [
+        3011.0
+      ],
+      "latitude_deg": 3.583333333,
+      "longitude_deg": 8.766666666,
+      "location_arg": "3.583333;8.766667",
+      "max_elevation_m": 3011.0,
+      "coord_count": 1,
+      "elevation_count": 1,
+      "needs_coord_review": false,
+      "needs_elevation_review": false,
+      "is_shared_peak": false,
+      "shared_with_country_qids": [],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1518286"
+    }
+  ]
+}
