@@ -173,10 +173,12 @@ Wikidata 由来の同梱タワー/展望地点 dataset から起動できます�
 
 - 例:
   - `Tokyo Skytree`
+  - `Tsutenkaku`（`Tsūtenkaku` の ASCII フォールバック）
   - `Tokyo Tower`
   - `wikidata:Q57965`
 - タワー名を使った場合、観測者高さのデフォルトはそのタワーの登録高です。
 - `--observer-height-m` を使えば上書きできます。
+- ダイアクリティカルマーク付き名称については、ASCII フォールバック表記でも解決できます。
 
 例:
 
@@ -194,6 +196,7 @@ zstarview --show-tower-json "Tokyo Skytree"
 ```
 
 これらのオプションは相互排他で、`location` 引数や時刻・描画オプションとは併用できません。
+`--list-towers` では、利用可能な場合は ASCII フォールバック名を優先表示します。
 
 ### キー操作
 

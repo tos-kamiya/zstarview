@@ -178,10 +178,12 @@ You can also start from a built-in tower/viewpoint dataset generated from Wikida
 
 * Examples:
   * `Tokyo Skytree`
+  * `Tsutenkaku` (ASCII fallback for `Tsūtenkaku`)
   * `Tokyo Tower`
   * `wikidata:Q57965`
 * When a tower name is used, the observer height defaults to that tower's stored height.
 * You can still override it with `--observer-height-m`.
+* Tower resolution also accepts ASCII fallback spellings for names with diacritics.
 
 Example:
 
@@ -201,6 +203,7 @@ zstarview --show-tower-json "Tokyo Skytree"
 ```
 
 These options are mutually exclusive, do not accept the `location` argument, and cannot be combined with time/rendering options.
+`--list-towers` prefers ASCII fallback names when available.
 
 Time zone examples for `--datetime`:
 
