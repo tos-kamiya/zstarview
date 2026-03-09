@@ -3708,9 +3708,10 @@
     {
       "id": "wikidata:Q130018",
       "qid": "Q130018",
-      "name": "デナリ",
+      "name": "Denali",
       "names": [
         "Bolshaya Gora",
+        "Denali",
         "Mount Denali",
         "Mt. Denali",
         "デナリ",
@@ -3718,6 +3719,7 @@
         "マッキンリー山"
       ],
       "labels": {
+        "en": "Denali",
         "ja": "デナリ"
       },
       "latitude_deg": 63.069102777,
@@ -3728,7 +3730,7 @@
         "ja": "https://ja.wikipedia.org/wiki/デナリ"
       },
       "location_arg": "63.069103;-151.006261",
-      "slug": "デナリ",
+      "slug": "Denali",
       "elevation_m": 6190.0,
       "region_hint": "United States"
     }
