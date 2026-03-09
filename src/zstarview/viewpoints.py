@@ -166,6 +166,8 @@ def list_viewpoint_all_names(
             text = candidate.strip()
             if not text or looks_like_qid_placeholder(text):
                 continue
+            if " / " in text:
+                continue
             normalized = normalize_viewpoint_name(text)
             existing = names_by_key.get(normalized)
             if existing is None or text < existing:

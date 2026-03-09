@@ -46,7 +46,6 @@
       "name": "Aoraki / Mount Cook",
       "names": [
         "Aoraki",
-        "Aoraki / Mount Cook",
         "Aoraki/Mount Cook",
         "Mount Cook",
         "クック山"
@@ -257,7 +256,6 @@
       "name": "Cerro Catedral",
       "names": [
         "Cerro Catedral",
-        "Desde la ruta 39, al km 47,5 pueden entrar en los senderos de \"Las Cañas\", y llegar hasta el Cerro Catedral. Sino entran en el km 60 y listo. Una maravilla!",
         "カテドラル山"
       ],
       "labels": {
@@ -971,7 +969,6 @@
       "names": [
         "Hüiten Peak",
         "Khüiten Peak",
-        "cold peak",
         "フィティン山"
       ],
       "labels": {
@@ -1259,7 +1256,7 @@
         "K2",
         "Mount Godwin-Austen",
         "Mount K2",
-        "Mt. Qogir",
+        "Mount Qogir",
         "ゴッドウィンオースティン",
         "ゴドウィン・オースティン"
       ],
@@ -1386,10 +1383,7 @@
         "Khan Tenghri",
         "Khan Tengri",
         "Khan Tengri Mountain",
-        "Khan Tengri Mt.",
-        "Khan Tengri Mtn.",
         "Mount Khan Tengri",
-        "Mt. Khan Tengri",
         "ハン・テングリ"
       ],
       "labels": {
@@ -1843,7 +1837,6 @@
       "name": "Mount Apo",
       "names": [
         "Mount Apo",
-        "Mt. Apo",
         "アポ山"
       ],
       "labels": {
@@ -2038,14 +2031,11 @@
         "Fujisan",
         "Fujiyama",
         "Mount Fuji",
-        "Mt Fuji",
-        "Mt. Fuji",
         "富士山",
         "富岳",
         "富嶽",
         "芙蓉峰",
-        "霊峰富士",
-        "🗻"
+        "霊峰富士"
       ],
       "labels": {
         "en": "Mount Fuji",
@@ -2222,7 +2212,6 @@
       "names": [
         "Kibo",
         "Mount Kibo",
-        "Mt. Kibo",
         "キボ峰"
       ],
       "labels": {
@@ -2245,7 +2234,6 @@
       "names": [
         "Gunung Kinabalu",
         "Mount Kota Kinabalu",
-        "Mt. Kinabalu",
         "キナバル山"
       ],
       "labels": {
@@ -2447,8 +2435,7 @@
         "Oros Olympos",
         "オリュンポス",
         "オリュンポス山",
-        "オリンポス山",
-        "オリンポス山 (ギリシャ)"
+        "オリンポス山"
       ],
       "labels": {
         "en": "Mount Olympus",
@@ -2553,7 +2540,6 @@
         "Monte Roraima",
         "Mount Roraima",
         "Mount Rorima",
-        "Mt. Roraima",
         "Pico do Roraima",
         "Roraima Tepui",
         "Roraima mountain",
@@ -2582,7 +2568,6 @@
       "name": "Mount Saint Catherine",
       "names": [
         "Mount Saint Catherine",
-        "Saint Catherine, mount",
         "セント・キャサリン山"
       ],
       "labels": {
@@ -2652,7 +2637,6 @@
       "qid": "Q822326",
       "name": "Mount Tahat",
       "names": [
-        "3003",
         "Mount Tahat",
         "タハト",
         "タハト山",
@@ -3644,13 +3628,10 @@
       "names": [
         "Gyokuzan",
         "Jade Mountain",
-        "Jade Mtn.",
         "Kanasi",
         "Mount Jade",
         "Mount Morrison",
         "Mount Yu",
-        "Mt. Jade",
-        "Mt. Morrison",
         "Patungkuonʉ",
         "Saviah",
         "Savih",
@@ -3713,7 +3694,6 @@
         "Bolshaya Gora",
         "Denali",
         "Mount Denali",
-        "Mt. Denali",
         "デナリ",
         "デナリ山",
         "マッキンリー山"
