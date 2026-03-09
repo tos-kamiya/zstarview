@@ -231,9 +231,9 @@ Time zone examples for `--datetime`:
 - IANA zone name: `--datetime "2025-09-12 21 Asia/Tokyo"`
 - UTC offset: `--datetime "2025-09-12 21 UTC+9"`
 
-### Tower-Related CLI Queries
+### Viewpoint Dataset CLI Queries
 
-You can inspect the bundled tower/viewpoint dataset without launching the GUI.
+You can inspect the bundled tower/viewpoint and mountain/viewpoint datasets without launching the GUI.
 
 | Option                                      | Description                                                                 | Default |
 | :------------------------------------------ | :-------------------------------------------------------------------------- | :------ |
@@ -241,16 +241,23 @@ You can inspect the bundled tower/viewpoint dataset without launching the GUI.
 | `--list-towers`                             | Print bundled tower/viewpoint list names and exit. Uses ASCII fallback names when available. |         |
 | `--list-tower-names`                        | Print bundled tower/viewpoint names including localized and ASCII-fallback names, then exit. |         |
 | `--show-tower-json NAME`                    | Resolve a bundled tower/viewpoint name and print its JSON metadata, including `ascii_name` when available, then exit. |         |
+| `--list-mountains`                          | Print bundled mountain/viewpoint list names and exit. Uses ASCII fallback names when available. |         |
+| `--list-mountain-names`                     | Print bundled mountain/viewpoint names including localized and ASCII-fallback names, then exit. |         |
+| `--show-mountain-json NAME`                 | Resolve a bundled mountain/viewpoint name and print its JSON metadata, including `ascii_name` when available, then exit. |         |
 
 ```bash
 zstarview --list-towers
 zstarview --list-tower-names
 zstarview --show-tower-json "Tokyo Skytree"
+zstarview --list-mountains
+zstarview --show-mountain-json "Mount Fuji"
 ```
 
 These options are mutually exclusive, do not accept the `location` argument, and cannot be combined with time/rendering options.
 `--list-towers` prefers ASCII fallback names when available.
 `--list-tower-names` includes both the original spellings and ASCII fallback spellings.
+`--list-mountains` prefers ASCII fallback names when available.
+`--list-mountain-names` includes both the original spellings and ASCII fallback spellings.
 
 While resizing the window, the same simplified viewport-interaction mode is used so that the view stays responsive.
 

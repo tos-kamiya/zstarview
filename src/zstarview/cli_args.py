@@ -141,23 +141,40 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         default="",
         help="Location name: city, lat;lon, or tower name (default: same as the last run)",
     )
-    tower_query_group = parser.add_mutually_exclusive_group()
-    tower_query_group.add_argument(
+    dataset_query_group = parser.add_mutually_exclusive_group()
+    dataset_query_group.add_argument(
         "--list-towers",
         action="store_true",
         help="List bundled tower/viewpoint primary names and exit.",
     )
-    tower_query_group.add_argument(
+    dataset_query_group.add_argument(
         "--list-tower-names",
         action="store_true",
         help="List bundled tower/viewpoint names including localized names and exit.",
     )
-    tower_query_group.add_argument(
+    dataset_query_group.add_argument(
         "--show-tower-json",
         type=str,
         default=None,
         metavar="NAME",
         help="Resolve a bundled tower/viewpoint name and print its JSON metadata, then exit.",
+    )
+    dataset_query_group.add_argument(
+        "--list-mountains",
+        action="store_true",
+        help="List bundled mountain/viewpoint primary names and exit.",
+    )
+    dataset_query_group.add_argument(
+        "--list-mountain-names",
+        action="store_true",
+        help="List bundled mountain/viewpoint names including localized names and exit.",
+    )
+    dataset_query_group.add_argument(
+        "--show-mountain-json",
+        type=str,
+        default=None,
+        metavar="NAME",
+        help="Resolve a bundled mountain/viewpoint name and print its JSON metadata, then exit.",
     )
     time_group = parser.add_argument_group("Time settings")
     time_group.add_argument(
@@ -346,10 +363,17 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Theme preset for background and star contrast (default: night).",
     )
     args = parser.parse_args(argv)
-    tower_cli_requested = bool(args.list_towers or args.list_tower_names or args.show_tower_json)
-    if tower_cli_requested:
+    dataset_cli_requested = bool(
+        args.list_towers
+        or args.list_tower_names
+        or args.show_tower_json
+        or args.list_mountains
+        or args.list_mountain_names
+        or args.show_mountain_json
+    )
+    if dataset_cli_requested:
         if args.city:
-            parser.error("tower listing options cannot be used with the location argument")
+            parser.error("dataset query options cannot be used with the location argument")
 
         incompatible_non_default = (
             args.hours != 0
@@ -376,6 +400,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             or args.theme != theme_default
         )
         if incompatible_non_default:
-            parser.error("tower listing options cannot be used with time or rendering options")
+            parser.error("dataset query options cannot be used with time or rendering options")
 
     return args

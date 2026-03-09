@@ -224,9 +224,9 @@ zstarview "Tokyo Skytree"
 zstarview "Tokyo Tower" --observer-height-m 150
 ```
 
-### タワー関連 CLI 参照オプション
+### ビューポイント dataset CLI 参照オプション
 
-GUI を起動せずに、同梱タワー/展望地点 dataset を参照できます。
+GUI を起動せずに、同梱タワー/展望地点 dataset と山頂ビューポイント dataset を参照できます。
 
 | オプション                                       | 説明                                                            | デフォルト |
 | :------------------------------------------ | :-------------------------------------------------------------- | :------- |
@@ -234,16 +234,23 @@ GUI を起動せずに、同梱タワー/展望地点 dataset を参照できま
 | `--list-towers` | 同梱タワー/展望地点 dataset の一覧表示名を出力して終了します。利用可能な場合は ASCII フォールバック名を優先します。 | |
 | `--list-tower-names` | 同梱タワー/展望地点 dataset の名前を、多言語名と ASCII フォールバック名込みで一覧出力して終了します。 | |
 | `--show-tower-json NAME` | 指定名で同梱タワー/展望地点を解決し、利用可能な場合は `ascii_name` を含む JSON メタデータを出力して終了します。 | |
+| `--list-mountains` | 同梱山頂ビューポイント dataset の一覧表示名を出力して終了します。利用可能な場合は ASCII フォールバック名を優先します。 | |
+| `--list-mountain-names` | 同梱山頂ビューポイント dataset の名前を、多言語名と ASCII フォールバック名込みで一覧出力して終了します。 | |
+| `--show-mountain-json NAME` | 指定名で同梱山頂ビューポイントを解決し、利用可能な場合は `ascii_name` を含む JSON メタデータを出力して終了します。 | |
 
 ```bash
 zstarview --list-towers
 zstarview --list-tower-names
 zstarview --show-tower-json "Tokyo Skytree"
+zstarview --list-mountains
+zstarview --show-mountain-json "Mount Fuji"
 ```
 
 これらのオプションは相互排他で、`location` 引数や時刻・描画オプションとは併用できません。
 `--list-towers` では、利用可能な場合は ASCII フォールバック名を優先表示します。
 `--list-tower-names` では、元の綴りと ASCII フォールバック綴りの両方を含みます。
+`--list-mountains` では、利用可能な場合は ASCII フォールバック名を優先表示します。
+`--list-mountain-names` では、元の綴りと ASCII フォールバック綴りの両方を含みます。
 
 ### 対応している星座（アステリウム）
 

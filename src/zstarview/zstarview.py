@@ -9,6 +9,12 @@ from .cli_args import (
     _parse_window_geometry,
     parse_args,
 )
+from .mountain_viewpoints import (
+    list_mountain_all_names,
+    list_mountain_primary_names,
+    mountain_viewpoint_to_dict,
+    resolve_mountain_viewpoint,
+)
 from .ui.window_inputs import (
     prepare_window_catalogs,
     prepare_window_runtime_options,
@@ -35,7 +41,7 @@ from .tower_viewpoints import (
 logger = logging.getLogger(__name__)
 
 
-def _handle_tower_query_cli(args: object) -> int | None:
+def _handle_dataset_query_cli(args: object) -> int | None:
     if getattr(args, "list_towers", False):
         for name in list_tower_primary_names():
             print(name)
@@ -52,13 +58,29 @@ def _handle_tower_query_cli(args: object) -> int | None:
             return 1
         print(json.dumps(tower_viewpoint_to_dict(tower), ensure_ascii=False, indent=2, sort_keys=True))
         return 0
+    if getattr(args, "list_mountains", False):
+        for name in list_mountain_primary_names():
+            print(name)
+        return 0
+    if getattr(args, "list_mountain_names", False):
+        for name in list_mountain_all_names():
+            print(name)
+        return 0
+    mountain_name = getattr(args, "show_mountain_json", None)
+    if mountain_name:
+        mountain = resolve_mountain_viewpoint(mountain_name)
+        if mountain is None:
+            print(f"No mountain found for {mountain_name!r}", file=sys.stderr)
+            return 1
+        print(json.dumps(mountain_viewpoint_to_dict(mountain), ensure_ascii=False, indent=2, sort_keys=True))
+        return 0
     return None
 
 
 def main() -> None:
     """Main entry point for the star sky visualizer."""
     args = parse_args()
-    cli_exit_code = _handle_tower_query_cli(args)
+    cli_exit_code = _handle_dataset_query_cli(args)
     if cli_exit_code is not None:
         raise SystemExit(cli_exit_code)
 
