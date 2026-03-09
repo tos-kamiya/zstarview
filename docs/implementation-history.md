@@ -26,7 +26,13 @@
 
 ## 3. INPROGRESS
 
-- なし
+- 山頂ビュー用 dataset の作成フローを設計する
+  - 目的は「山そのものの完全地理データ」ではなく、「山名から山頂ビュー用の代表点へ解決する curated dataset」を作ることとする。
+  - 候補抽出は Wikipedia を起点に行い、地域代表性と知名度を重視して少数の山を選ぶ。
+  - 正規化には Wikidata を使い、`qid`、多言語名、別名、座標、標高を補う。
+  - 座標は厳密測量値ではなく、星空表示用の山頂ビュー代表点として妥当なものを採用する。
+  - 初版は `mountain_viewpoints.json` を別 dataset とし、`tower_viewpoints.json` とは分けて管理する。
+  - 将来的には `--list-mountains` や `--show-mountain-json` のような専用 CLI を想定する。
 
 ## 4. TODO
 
