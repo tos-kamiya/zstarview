@@ -11,6 +11,7 @@ import polars as pl
 
 from .catalog import load_dso_catalog, load_star_catalog
 from .config import load_last_city, save_last_city
+from .viewpoints import Viewpoint
 from .mountain_viewpoints import resolve_mountain_viewpoint
 from .paths import (
     CITY_ADMIN1_CODES_FILE,
@@ -122,40 +123,36 @@ def _resolve_nearest_city(lat: float, lon: float, admin1_map: dict[tuple[str, st
     return best_city
 
 
-def _tower_to_location(args_city: str, admin1_map: dict[tuple[str, str], str]) -> ResolvedLocation | None:
-    tower = resolve_tower_viewpoint(args_city)
-    if tower is None:
+def _viewpoint_to_location(
+    viewpoint: Viewpoint | None,
+    admin1_map: dict[tuple[str, str], str],
+) -> ResolvedLocation | None:
+    if viewpoint is None:
         return None
-    nearest_city = _resolve_nearest_city(tower.latitude_deg, tower.longitude_deg, admin1_map)
+    nearest_city = _resolve_nearest_city(
+        viewpoint.latitude_deg,
+        viewpoint.longitude_deg,
+        admin1_map,
+    )
     timezone_name = nearest_city.tz if nearest_city is not None else "UTC"
     return ResolvedLocation(
-        display_name=_prefixed_viewpoint_name("tower", tower.name),
-        lat=tower.latitude_deg,
-        lon=tower.longitude_deg,
+        display_name=_prefixed_viewpoint_name(viewpoint.kind, viewpoint.name),
+        lat=viewpoint.latitude_deg,
+        lon=viewpoint.longitude_deg,
         tz=timezone_name,
-        persistence_key=_prefixed_viewpoint_name("tower", tower.name),
-        observer_height_m=tower.height_m,
-        kind="tower",
+        persistence_key=_prefixed_viewpoint_name(viewpoint.kind, viewpoint.name),
+        observer_height_m=viewpoint.height_m + DEFAULT_OBSERVER_HEIGHT_M,
+        kind=viewpoint.kind,
         cc=nearest_city.cc if nearest_city is not None else "",
     )
+
+
+def _tower_to_location(args_city: str, admin1_map: dict[tuple[str, str], str]) -> ResolvedLocation | None:
+    return _viewpoint_to_location(resolve_tower_viewpoint(args_city), admin1_map)
 
 
 def _mountain_to_location(args_city: str, admin1_map: dict[tuple[str, str], str]) -> ResolvedLocation | None:
-    mountain = resolve_mountain_viewpoint(args_city)
-    if mountain is None:
-        return None
-    nearest_city = _resolve_nearest_city(mountain.latitude_deg, mountain.longitude_deg, admin1_map)
-    timezone_name = nearest_city.tz if nearest_city is not None else "UTC"
-    return ResolvedLocation(
-        display_name=_prefixed_viewpoint_name("mountain", mountain.name),
-        lat=mountain.latitude_deg,
-        lon=mountain.longitude_deg,
-        tz=timezone_name,
-        persistence_key=_prefixed_viewpoint_name("mountain", mountain.name),
-        observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
-        kind="mountain",
-        cc=nearest_city.cc if nearest_city is not None else "",
-    )
+    return _viewpoint_to_location(resolve_mountain_viewpoint(args_city), admin1_map)
 
 
 def _startup_resolve_city(args_city: Optional[str]) -> ResolvedLocation:
