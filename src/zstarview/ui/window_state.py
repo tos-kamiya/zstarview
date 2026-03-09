@@ -6,7 +6,7 @@ from typing import Optional
 from PySide6.QtCore import QPoint
 from PySide6.QtGui import QImage
 
-from ..types import CelestialData, ViewCenterAltAz
+from ..types import CelestialData, StarsTable, ViewCenterAltAz
 
 
 @dataclass
@@ -19,6 +19,7 @@ class SkyWindowState:
     interaction_mode: bool = False
     orientation_interaction_idle_ms: int = 1000
     orientation_interaction_mode: bool = False
+    orientation_interaction_stars: Optional[StarsTable] = None
     mouse_pos: Optional[QPoint] = None
     jump_highlight_name: Optional[str] = None
     jump_highlight_altaz: Optional[ViewCenterAltAz] = None

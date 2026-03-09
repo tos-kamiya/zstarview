@@ -174,6 +174,7 @@ def test_rotate_view_in_orientation_mode_updates_render_center_without_full_refr
     dummy._begin_orientation_interaction_mode = lambda: calls.append("begin-orientation")
     dummy._begin_interaction_mode = lambda: calls.append("begin")
     dummy._sync_view_altitude_actions = lambda: calls.append("sync")
+    dummy._update_orientation_interaction_stars = lambda: calls.append("bright-stars")
     dummy.request_sky_data_update = lambda: calls.append("request")
     dummy.update = lambda: calls.append("update")
 
@@ -181,12 +182,12 @@ def test_rotate_view_in_orientation_mode_updates_render_center_without_full_refr
 
     assert dummy.viewer_data.view_center == (25.0, 45.0)
     assert dummy.state.render_view_center == (25.0, 45.0)
-    assert calls == ["begin-orientation", "sync", "update"]
+    assert calls == ["begin-orientation", "sync", "bright-stars", "update"]
 
 
 def test_end_orientation_interaction_mode_requests_full_refresh() -> None:
     dummy = SimpleNamespace()
-    dummy.state = SimpleNamespace(orientation_interaction_mode=True)
+    dummy.state = SimpleNamespace(orientation_interaction_mode=True, orientation_interaction_stars=object())
     calls: list[str] = []
     dummy.request_sky_data_update = lambda: calls.append("sky")
     dummy.start_background_cloud_update = lambda **kwargs: calls.append(str(kwargs.get("reason")))
@@ -196,4 +197,52 @@ def test_end_orientation_interaction_mode_requests_full_refresh() -> None:
     SkyWindow._end_orientation_interaction_mode(dummy)
 
     assert dummy.state.orientation_interaction_mode is False
+    assert dummy.state.orientation_interaction_stars is None
     assert calls == ["sky", "view-change-idle", "view-change-idle", "update"]
+
+
+def test_update_orientation_interaction_stars_uses_bright_limit(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        window_module,
+        "calculate_visible_stars",
+        lambda catalog, lat, lon, observer_height_m, time_obj, view_center, max_vmag: (
+            captured.update(
+                {
+                    "catalog": catalog,
+                    "lat": lat,
+                    "lon": lon,
+                    "observer_height_m": observer_height_m,
+                    "time_obj": time_obj,
+                    "view_center": view_center,
+                    "max_vmag": max_vmag,
+                }
+            )
+            or {"name": []},
+            object(),
+        ),
+    )
+
+    dummy = SimpleNamespace()
+    dummy.star_catalog_lod6_np = object()
+    dummy.viewer_data = SimpleNamespace(location=(35.0, 139.0), observer_height_m=12.0)
+    dummy.state = SimpleNamespace(
+        celestial_data=object(),
+        render_view_center=(55.0, 210.0),
+        orientation_interaction_stars=None,
+    )
+    dummy._current_time_obj = lambda: "time"
+
+    SkyWindow._update_orientation_interaction_stars(dummy)
+
+    assert dummy.state.orientation_interaction_stars == {"name": []}
+    assert captured == {
+        "catalog": dummy.star_catalog_lod6_np,
+        "lat": 35.0,
+        "lon": 139.0,
+        "observer_height_m": 12.0,
+        "time_obj": "time",
+        "view_center": (55.0, 210.0),
+        "max_vmag": 4.0,
+    }
