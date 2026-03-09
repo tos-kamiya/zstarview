@@ -22,6 +22,7 @@ from PySide6.QtGui import (
 )
 
 from ..paths import (
+    ASTERISM_CLIP_FIELD_OF_VIEW_DEG,
     BACKGROUND_FIELD_OF_VIEW_DEG1,
     BACKGROUND_FIELD_OF_VIEW_DEG2,
     CELESTIAL_EQUATOR_COLOR,
@@ -493,6 +494,94 @@ def _great_circle_altaz_points(
     return out
 
 
+def _clip_polyline_to_radius(
+    points: List[Tuple[float, float]],
+    max_radius: float,
+) -> List[List[Tuple[float, float]]]:
+    """Clip a normalized polyline to a circle centered at the origin."""
+    if not points:
+        return []
+
+    radius_sq = max_radius * max_radius
+
+    def _inside(point: Tuple[float, float]) -> bool:
+        return (point[0] * point[0]) + (point[1] * point[1]) <= radius_sq
+
+    def _intersections(
+        start: Tuple[float, float],
+        end: Tuple[float, float],
+    ) -> List[Tuple[float, float, float]]:
+        x0, y0 = start
+        x1, y1 = end
+        dx = x1 - x0
+        dy = y1 - y0
+        a = (dx * dx) + (dy * dy)
+        if a <= 1.0e-12:
+            return []
+        b = 2.0 * ((x0 * dx) + (y0 * dy))
+        c = (x0 * x0) + (y0 * y0) - radius_sq
+        disc = (b * b) - (4.0 * a * c)
+        if disc < 0.0:
+            return []
+        sqrt_disc = math.sqrt(max(0.0, disc))
+        ts = [(-b - sqrt_disc) / (2.0 * a), (-b + sqrt_disc) / (2.0 * a)]
+        hits: List[Tuple[float, float, float]] = []
+        for t in ts:
+            if 0.0 <= t <= 1.0:
+                hits.append((t, x0 + (t * dx), y0 + (t * dy)))
+        hits.sort(key=lambda hit: hit[0])
+        unique: List[Tuple[float, float, float]] = []
+        for hit in hits:
+            if unique and abs(hit[0] - unique[-1][0]) < 1.0e-9:
+                continue
+            unique.append(hit)
+        return unique
+
+    fragments: List[List[Tuple[float, float]]] = []
+    current: List[Tuple[float, float]] = [points[0]] if _inside(points[0]) else []
+
+    for prev, cur in zip(points, points[1:]):
+        prev_inside = _inside(prev)
+        cur_inside = _inside(cur)
+        hits = _intersections(prev, cur)
+
+        if prev_inside and cur_inside:
+            if not current:
+                current = [prev]
+            current.append(cur)
+            continue
+
+        if prev_inside and not cur_inside:
+            if hits:
+                hit = hits[-1]
+                if not current:
+                    current = [prev]
+                current.append((hit[1], hit[2]))
+            if len(current) >= 2:
+                fragments.append(current)
+            current = []
+            continue
+
+        if not prev_inside and cur_inside:
+            if hits:
+                hit = hits[0]
+                current = [(hit[1], hit[2]), cur]
+            else:
+                current = [cur]
+            continue
+
+        if hits:
+            first_hit = hits[0]
+            second_hit = hits[-1]
+            frag = [(first_hit[1], first_hit[2]), (second_hit[1], second_hit[2])]
+            if len(frag) >= 2:
+                fragments.append(frag)
+
+    if len(current) >= 2:
+        fragments.append(current)
+    return fragments
+
+
 def draw_sky_reference_lines(painter: QPainter, geometry: ScreenGeometry, celestial_data: CelestialData) -> None:
     """
     Draw celestial reference lines like the equator, ecliptic, and horizon.
@@ -634,6 +723,8 @@ def draw_asterisms(
         highlight_outline_color = QColor(32, 76, 130, 44)
 
     painter.save()
+    clip_radius = ASTERISM_CLIP_FIELD_OF_VIEW_DEG / 90.0
+
     def _make_pen(color: QColor, width: float) -> QPen:
         pen = QPen(color, width)
         pen.setCosmetic(True)
@@ -652,24 +743,22 @@ def draw_asterisms(
             pos_b = star_altaz_by_source.get(source_b)
             if pos_a is None or pos_b is None:
                 continue
-            if not is_in_fov(pos_a[0], pos_a[1], viewer_data.view_center):
-                continue
-            if not is_in_fov(pos_b[0], pos_b[1], viewer_data.view_center):
-                continue
             arc_altaz = _great_circle_altaz_points(pos_a[0], pos_a[1], pos_b[0], pos_b[1])
             arc_points: List[Tuple[float, float]] = []
             for alt_i, az_i in arc_altaz:
                 nx_i, ny_i = altaz_to_normalized_xy(alt_i, az_i, viewer_data.view_center)
                 arc_points.append((nx_i, ny_i))
-            for frag in split_by_gaps(arc_points):
-                if len(frag) < 2:
-                    continue
-                poly = QPolygonF([QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in frag])
-                painter.setPen(outline_pen)
-                painter.drawPolyline(poly)
-                painter.setPen(line_pen)
-                painter.drawPolyline(poly)
-                label_points.extend(poly)
+            for raw_frag in split_by_gaps(arc_points):
+                clipped_frags = _clip_polyline_to_radius(raw_frag, clip_radius)
+                for frag in clipped_frags:
+                    if len(frag) < 2:
+                        continue
+                    poly = QPolygonF([QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in frag])
+                    painter.setPen(outline_pen)
+                    painter.drawPolyline(poly)
+                    painter.setPen(line_pen)
+                    painter.drawPolyline(poly)
+                    label_points.extend(poly)
         return label_points
 
     def _draw_one_asterism(asterism: Any, outline_pen: QPen, line_pen: QPen) -> List[QPointF]:
