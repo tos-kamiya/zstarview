@@ -26,7 +26,14 @@
 
 ## 3. INPROGRESS
 
-- なし
+- CLI にタワー参照専用オプションを追加する
+  - `--list-towers`
+    - 英語主表示名 `name` を 1 行 1 件で出力して終了する。
+  - `--list-tower-names`
+    - `name`、`names`、`labels` を重複除去して一覧出力して終了する。
+  - `--show-tower-json NAME`
+    - 指定名を既存のタワー解決規則で 1 件へ解決し、そのタワー情報を JSON で出力して終了する。
+  - 3 オプションは相互排他とし、GUI 起動、GeoNames 読込、設定保存を行わない軽量経路として扱う。
 
 ## 4. TODO
 
