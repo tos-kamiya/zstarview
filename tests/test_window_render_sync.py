@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import astropy.time
 from types import SimpleNamespace
 
 import zstarview.ui.window_render as window_render_module
-from zstarview.types import ViewerData
+from zstarview.types import CelestialData, ViewerData
 from zstarview.ui.window import SkyWindow
 from zstarview.ui.window_state import SkyWindowState
 
@@ -177,6 +178,61 @@ def test_draw_orientation_interaction_layers_limits_stars_to_bright_subset(monke
         ("direction", None),
         ("zenith", None),
     ]
+
+
+def test_draw_orientation_interaction_layers_prefers_interaction_star_subset(monkeypatch) -> None:
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_sky_reference_lines",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_direction_labels",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_zenith_marker",
+        lambda *_args, **_kwargs: None,
+    )
+
+    full_stars = {"name": ["full"]}
+    interaction_stars = {"name": ["bright-only"]}
+    dummy = SimpleNamespace()
+    dummy.text_font = object()
+    dummy.visual_preset = "night"
+    dummy.state = SkyWindowState(
+        render_view_center=(45.0, 180.0),
+        orientation_interaction_stars=interaction_stars,
+    )
+    dummy.state.mouse_pos = None
+    seen_stars: list[object] = []
+    dummy._draw_star_layer = lambda _p, _g, celestial_data, _rv, **_kwargs: seen_stars.append(celestial_data.stars)
+
+    SkyWindow._draw_orientation_interaction_layers(
+        dummy,
+        painter=object(),
+        geometry=object(),
+        celestial_data=CelestialData(
+            time=astropy.time.Time("2026-03-09T00:00:00", scale="utc"),
+            planets=[],
+            stars=full_stars,
+            deep_sky_objects={},
+            celestial_equator_points=[],
+            ecliptic_points=[],
+            horizon_points=[],
+        ),
+        render_viewer=ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="Asia/Tokyo",
+            city_name="Tokyo",
+            view_center=(45.0, 180.0),
+            observer_height_m=1.7,
+        ),
+    )
+
+    assert seen_stars == [interaction_stars]
 
 
 def test_draw_sky_reference_lines_uses_render_view_center_projection(monkeypatch) -> None:

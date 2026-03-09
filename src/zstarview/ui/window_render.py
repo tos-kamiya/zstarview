@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 import logging
 import time
 from typing import Any
@@ -172,11 +173,17 @@ class SkyWindowRenderMixin:
         celestial_data: CelestialData,
         render_viewer: ViewerData,
     ) -> None:
+        interaction_celestial_data = celestial_data
+        if self.state.orientation_interaction_stars is not None:
+            interaction_celestial_data = replace(
+                celestial_data,
+                stars=self.state.orientation_interaction_stars,
+            )
         render_draw.draw_sky_reference_lines(painter, geometry, celestial_data, render_viewer)
         self._draw_star_layer(
             painter,
             geometry,
-            celestial_data,
+            interaction_celestial_data,
             render_viewer,
             draw_vmag_limit=_ORIENTATION_INTERACTION_STAR_VMAG_LIMIT,
         )

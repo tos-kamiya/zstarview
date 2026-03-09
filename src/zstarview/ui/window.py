@@ -31,6 +31,7 @@ from PySide6.QtWidgets import QApplication, QMenu, QPushButton, QSizeGrip
 
 from ..__about__ import __version__
 from ..astro import (
+    calculate_visible_stars,
     radec_to_altaz,
 )
 from ..clouddisc import (
@@ -513,10 +514,26 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.state.orientation_interaction_mode = True
         self._orientation_interaction_idle_timer.start()
 
+    def _update_orientation_interaction_stars(self) -> None:
+        if self.state.celestial_data is None:
+            self.state.orientation_interaction_stars = None
+            return
+        stars, _location = calculate_visible_stars(
+            self.star_catalog_lod6_np,
+            self.viewer_data.location[0],
+            self.viewer_data.location[1],
+            self.viewer_data.observer_height_m,
+            self._current_time_obj(),
+            self.state.render_view_center,
+            max_vmag=4.0,
+        )
+        self.state.orientation_interaction_stars = stars
+
     def _end_orientation_interaction_mode(self) -> None:
         if not self.state.orientation_interaction_mode:
             return
         self.state.orientation_interaction_mode = False
+        self.state.orientation_interaction_stars = None
         self.request_sky_data_update()
         self.start_background_cloud_update(reason="view-change-idle")
         self.start_background_terrain_horizon_update(reason="view-change-idle")
@@ -751,6 +768,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.state.render_view_center = (new_alt, new_az)
         self._sync_view_altitude_actions()
         if interactive_orientation:
+            self._update_orientation_interaction_stars()
             self.update()
             return
         self.request_sky_data_update()
