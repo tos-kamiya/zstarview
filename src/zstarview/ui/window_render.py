@@ -4,13 +4,22 @@ import logging
 import time
 from typing import Any
 
+from astropy.coordinates import EarthLocation
+import astropy.units as u
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QImage, QPainter, QPaintEvent
 
+from ..astro import (
+    calculate_celestial_equator_points,
+    calculate_ecliptic_points,
+    calculate_horizon_points,
+)
 from ..render import draw as render_draw
 from ..types import CelestialData, ViewerData
 
 logger = logging.getLogger(__name__)
+
+_ORIENTATION_INTERACTION_STAR_VMAG_LIMIT = 4.0
 
 
 class SkyWindowRenderMixin:
@@ -87,6 +96,18 @@ class SkyWindowRenderMixin:
         alt = render_viewer.view_center[0]
         geometry = render_draw.get_screen_geometry(self.width(), self.height(), alt)
 
+        self._clear_background_layer(painter)
+        self._draw_background_layer(painter, geometry)
+        if self.state.orientation_interaction_mode:
+            self._draw_orientation_interaction_layers(
+                painter,
+                geometry,
+                celestial_data,
+                render_viewer,
+            )
+            self._draw_status_line(painter)
+            return
+
         highlighted_object = None
         highlighted_dso = None
         mouse_pos = self.state.mouse_pos
@@ -108,8 +129,6 @@ class SkyWindowRenderMixin:
         if jump_highlight is not None:
             highlighted_object = jump_highlight
 
-        self._clear_background_layer(painter)
-        self._draw_background_layer(painter, geometry)
         self._draw_sky_cloud_layers(painter, geometry, render_viewer)
         label_reservations: list[QRectF] = []
         label_candidates: list[dict[str, Any]] = []
@@ -152,6 +171,67 @@ class SkyWindowRenderMixin:
         )
         self._draw_label_layer(painter, label_candidates)
         self._draw_status_line(painter)
+
+    def _draw_orientation_interaction_layers(
+        self,
+        painter: QPainter,
+        geometry: render_draw.ScreenGeometry,
+        celestial_data: CelestialData,
+        render_viewer: ViewerData,
+    ) -> None:
+        self._draw_orientation_interaction_reference_lines(
+            painter,
+            geometry,
+            celestial_data,
+            render_viewer,
+        )
+        self._draw_star_layer(
+            painter,
+            geometry,
+            celestial_data,
+            render_viewer,
+            draw_vmag_limit=_ORIENTATION_INTERACTION_STAR_VMAG_LIMIT,
+        )
+        render_draw.draw_direction_labels(
+            painter,
+            geometry,
+            render_viewer.view_center,
+            self.text_font,
+            self.state.mouse_pos,
+            preset=self.visual_preset,
+        )
+        render_draw.draw_zenith_marker(painter, geometry, render_viewer.view_center)
+
+    def _draw_orientation_interaction_reference_lines(
+        self,
+        painter: QPainter,
+        geometry: render_draw.ScreenGeometry,
+        celestial_data: CelestialData,
+        render_viewer: ViewerData,
+    ) -> None:
+        location = EarthLocation(
+            lat=render_viewer.location[0] * u.deg,
+            lon=render_viewer.location[1] * u.deg,
+            height=render_viewer.observer_height_m * u.m,
+        )
+        dynamic_reference_data = type(
+            "_ReferenceLineData",
+            (),
+            {
+                "celestial_equator_points": calculate_celestial_equator_points(
+                    location,
+                    celestial_data.time,
+                    render_viewer.view_center,
+                ),
+                "ecliptic_points": calculate_ecliptic_points(
+                    location,
+                    celestial_data.time,
+                    render_viewer.view_center,
+                ),
+                "horizon_points": calculate_horizon_points(render_viewer.view_center),
+            },
+        )()
+        render_draw.draw_sky_reference_lines(painter, geometry, dynamic_reference_data)
 
     def _clear_background_layer(self, painter: QPainter) -> None:
         painter.save()
@@ -249,6 +329,8 @@ class SkyWindowRenderMixin:
         geometry: render_draw.ScreenGeometry,
         celestial_data: CelestialData,
         render_viewer: ViewerData,
+        *,
+        draw_vmag_limit: float | None = None,
     ) -> None:
         win_w = self.width()
         win_h = self.height()
@@ -278,7 +360,7 @@ class SkyWindowRenderMixin:
                 render_viewer,
                 self.star_base_radius,
                 visibility_boost=self.star_visibility_boost,
-                draw_vmag_limit=self.vmag_limit,
+                draw_vmag_limit=draw_vmag_limit if draw_vmag_limit is not None else self.vmag_limit,
                 viewport_size=(win_w, win_h),
             )
             return
@@ -304,7 +386,7 @@ class SkyWindowRenderMixin:
             render_viewer,
             self.star_base_radius,
             visibility_boost=self.star_visibility_boost,
-            draw_vmag_limit=self.vmag_limit,
+            draw_vmag_limit=draw_vmag_limit if draw_vmag_limit is not None else self.vmag_limit,
             viewport_size=(low_w, low_h),
         )
         low_painter.end()
