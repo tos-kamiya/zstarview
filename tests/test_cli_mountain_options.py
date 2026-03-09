@@ -28,6 +28,7 @@ def test_parse_args_rejects_render_option_with_mountain_listing() -> None:
 def test_list_mountain_primary_names_includes_mount_fuji() -> None:
     names = list_mountain_primary_names()
     assert "Mount Fuji" in names
+    assert "Denali" in names
 
 
 def test_list_mountain_primary_names_prefers_ascii_fallback() -> None:
