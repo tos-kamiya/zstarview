@@ -106,6 +106,14 @@
 - `--list-viewpoints` は `ascii_name` がある場合それを表示名として優先する。
 - `--list-viewpoint-names` は元の綴りと ASCII フォールバック綴りの両方を含む。
 - mountain viewpoint dataset の生成は、Wikipedia 候補抽出、Wikidata raw query、review JSON、curated seed、最終 JSON という段階を `dev-samples/` に記録する運用とする。
+- viewpoint dataset の別名クリーニング基準
+  - ASCII フォールバックは、ダイアクリティカルマーク除去後に英字を含む場合だけ採用する。
+  - 記号だけ、数字だけ、絵文字だけになる fallback は捨てる。
+  - mountain の `names` では、長文フレーズや明らかなノイズ値を捨てる。
+  - mountain の `names` では、`Mt.` / `Mtn.` を `Mount` / `Mountain` に展開できる場合は展開側へ寄せ、重複側を捨てる。
+  - mountain の `names` では、`/` の前後に空白を含む表記は候補一覧から外し、必要なら空白なし表記だけを残す。
+  - tower の短縮 alias は、固有名詞として成立するものだけを人手で追加する。
+  - tower / mountain とも、数字だけの部分一致では解決しない。
 
 ### 4.3 描画
 
