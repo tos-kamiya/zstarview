@@ -52,7 +52,7 @@
   - 起動シーケンスの組み立て
 - `src/zstarview/cli_args.py`
   - CLI オプション定義と値解釈
-  - INPROGRESS として、タワー一覧・タワー詳細 JSON 出力の即時終了オプションを追加予定
+  - タワー一覧・タワー詳細 JSON 出力の即時終了オプションを扱う
 - `src/zstarview/startup.py`
   - 起動時の地点解決、設定復元、初期値決定
 - `src/zstarview/config.py`
@@ -73,13 +73,13 @@
   - ローテーション選択
 - `src/zstarview/tower_viewpoints.py`
   - タワー・展望地点データの解決
-  - INPROGRESS として、英語名一覧、全名前一覧、単一タワー JSON 出力用の列挙ヘルパ追加を想定
+  - 英語名一覧、全名前一覧、単一タワー JSON 出力用の列挙ヘルパを持つ
 - `src/zstarview/types.py`
   - ドメインデータの共有型
 
-### 4.2.1 INPROGRESS: タワー参照専用 CLI
+### 4.2.1 タワー参照専用 CLI
 
-未実装だが、同梱 `tower_viewpoints.json` を直接参照する軽量 CLI 経路を追加予定とする。
+同梱 `tower_viewpoints.json` を直接参照する軽量 CLI 経路を持つ。
 
 - 対象オプション
   - `--list-towers`

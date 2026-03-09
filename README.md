@@ -59,6 +59,9 @@ zstarview [options] [location]
 | Option                                      | Description                                                                 | Default |
 | :------------------------------------------ | :-------------------------------------------------------------------------- | :------ |
 | `-h`, `--help`                              | Show this help message and exit.                                            |         |
+| `--list-towers`                             | Print bundled tower/viewpoint primary names and exit.                       |         |
+| `--list-tower-names`                        | Print bundled tower/viewpoint names including localized names and exit.     |         |
+| `--show-tower-json NAME`                    | Resolve a bundled tower/viewpoint name and print its JSON metadata, then exit. |         |
 | `-Z`, `--view-center-az VIEW_CENTER_AZ`     | Viewing azimuth (degrees or compass points).                                | `180`   |
 | `-A`, `--view-center-alt VIEW_CENTER_ALT`   | Viewing altitude angle (90=zenith, 0=horizon).                              | `90`    |
 | `--observer-height-m METERS`                | Observer height above local ground in meters. Default: `1.7` for city/latlon, tower height for tower-name input. | location-dependent |
@@ -186,6 +189,18 @@ Example:
 zstarview "Tokyo Skytree"
 zstarview "Tokyo Tower" --observer-height-m 150
 ```
+
+**Tower dataset query**
+
+You can inspect the bundled tower/viewpoint dataset without launching the GUI.
+
+```bash
+zstarview --list-towers
+zstarview --list-tower-names
+zstarview --show-tower-json "Tokyo Skytree"
+```
+
+These options are mutually exclusive, do not accept the `location` argument, and cannot be combined with time/rendering options.
 
 Time zone examples for `--datetime`:
 

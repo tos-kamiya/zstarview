@@ -2,6 +2,7 @@ import sys
 import time
 import logging
 import math
+import json
 
 from .cli_args import (
     _parse_theme,
@@ -24,19 +25,49 @@ from .startup import (
     _startup_resolve_city,
     setup_root_logger,
 )
+from .tower_viewpoints import (
+    list_tower_all_names,
+    list_tower_primary_names,
+    resolve_tower_viewpoint,
+    tower_viewpoint_to_dict,
+)
 
 logger = logging.getLogger(__name__)
 
 
+def _handle_tower_query_cli(args: object) -> int | None:
+    if getattr(args, "list_towers", False):
+        for name in list_tower_primary_names():
+            print(name)
+        return 0
+    if getattr(args, "list_tower_names", False):
+        for name in list_tower_all_names():
+            print(name)
+        return 0
+    tower_name = getattr(args, "show_tower_json", None)
+    if tower_name:
+        tower = resolve_tower_viewpoint(tower_name)
+        if tower is None:
+            print(f"No tower found for {tower_name!r}", file=sys.stderr)
+            return 1
+        print(json.dumps(tower_viewpoint_to_dict(tower), ensure_ascii=False, indent=2, sort_keys=True))
+        return 0
+    return None
+
+
 def main() -> None:
     """Main entry point for the star sky visualizer."""
+    args = parse_args()
+    cli_exit_code = _handle_tower_query_cli(args)
+    if cli_exit_code is not None:
+        raise SystemExit(cli_exit_code)
+
     from .splash import setup_app, setup_splash_and_attach_logger
     from .ui.window import SkyWindow
 
     app_name = APP_DISPLAY_NAME
     app = setup_app(app_name)
     app.setQuitOnLastWindowClosed(False)
-    args = parse_args()
 
     root_logger = setup_root_logger()
     logger.info(f"{APP_DISPLAY_NAME} starting...")
