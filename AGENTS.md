@@ -7,6 +7,12 @@
 - `docs/`: Project documentation and images.
 - Root: `pyproject.toml`, `uv.lock`, `README.md`.
 
+## Documentation Roles
+- `docs/specification.md`: User-facing functional specification. Keep it more detailed than `README.md`, but focused on externally visible behavior, supported inputs, UI behavior, constraints, and failure behavior.
+- `docs/design.md`: Internal design reference. Document architecture, module responsibilities, processing flows, thread model, and key data structures here.
+- `docs/implementation-history.md`: Chronological implementation notes. Keep dated change notes, `TODO`, and `INPROGRESS` items here rather than in the specification or design docs.
+- When updating docs, preserve this separation of concerns instead of mixing user-visible behavior, internal design, and work-in-progress notes in the same file.
+
 ## Build, Test, and Development Commands
 - Create venv + editable install:
   - `python -m venv .venv && source .venv/bin/activate`
