@@ -5,22 +5,19 @@ See the starry sky, even when it's cloudy or the sun is out.
 **Zenith Star View** is an application that displays the starry sky from any city on Earth.
 The name emphasizes the *zenith*—the point directly overhead—conveying the experience of looking straight up into the night sky from your location.
 
+It renders a live all-sky view centered on your chosen location and time, including bright stars, the Sun, Moon, major planets, and key celestial guide lines such as the celestial equator and the ecliptic.
+
 **Features:**
 
-- Real-time rendering of bright stars, planets, the celestial equator, and the ecliptic.
-- Named deep-sky objects (galaxies/open clusters/globular clusters) are shown as soft blue extents; DSO hover is independent from star hover.
-- Asterism overlay (not IAU constellations): shown as dim ambient lines; hovering a member star brightens the matching pattern and shows its label, with 3-second rotation when multiple asterisms share that star.
-- Supports Sun, Moon, and major planets. Minor planets (asteroids) are not displayed yet.
-- Location specified by city name (based on GeoNames), or directly by latitude/longitude.
-- Adjustable view center: `-A` (altitude) and `-Z` (azimuth).
-- Real-time satellite cloud imagery (Himawari/GOES), rendered as a stylized hatched (striped) overlay.
-- Cloud fetch and cloud render are decoupled: camera moves can re-render from cached source data immediately.
-- When satellite coverage is partial, missing regions are shown with a faint yellow tint.
-- Optional terrain horizon overlay from Copernicus DEM adds a subtle ocher terrain line aligned to the local terrain.
-- Below the geometric or terrain horizon, the disc is filled with a ground color for orientation.
-- During view-center changes or window resize, the app briefly switches to a simplified viewport-interaction mode that keeps only bright stars, guide lines, and the terrain horizon responsive while heavier layers catch up after idle.
-- A red tint marks the *never-rises* celestial region for the current latitude.
-- The project is routinely tested on CPython 3.10, 3.11, 3.12, and 3.13.
+- **Deep-sky objects**: named galaxies/open clusters/globular clusters are shown as soft blue extents; DSO hover is independent from star hover.
+- **Asterism overlay**: not IAU constellations; shown as dim ambient lines, and hovering a member star brightens the matching pattern and shows its label, with 3-second rotation when multiple asterisms share that star.
+- **Solar-system bodies**: supports Sun, Moon, and major planets. Minor planets (asteroids) are not displayed yet.
+- **Flexible location input**: specify a city name, tower name, mountain name, or directly enter latitude/longitude.
+- **Adjustable view center**: use `-A` (altitude) and `-Z` (azimuth); during view changes or window resize, the app briefly switches to a simplified interaction mode to keep navigation responsive.
+- **Satellite cloud imagery**: real-time Himawari/GOES data are rendered as a stylized hatched (striped) overlay; camera moves can re-render from cached source data immediately, and missing satellite regions are shown with a faint yellow tint when coverage is partial.
+- **Terrain horizon and ground fill**: optional Copernicus DEM-based skyline adds a subtle ocher terrain line aligned to the local terrain, and the disc is filled with a ground color below the geometric or terrain horizon for orientation.
+- **Never-rises region**: a red tint marks the celestial region that never rises for the current latitude.
+- **Python support**: the project is routinely tested on CPython 3.10, 3.11, 3.12, and 3.13.
 
   ![](docs/images/screenshot1.png)
 
@@ -48,43 +45,18 @@ zstarview [options] [location]
 
 > Note (Ubuntu/Wayland, GNOME): If the taskbar icon does not appear when launching from a terminal, follow the steps in [Generating a `.desktop` launcher (GNOME only)](#generating-a-desktop-launcher-gnome-only).
 
-### GUI
+Quick examples:
 
-#### Key Operations
+```bash
+zstarview Tokyo
+zstarview "Tokyo Skytree"
+zstarview "35.68;139.76" --datetime "2025-09-12 21 JST"
+```
 
-* **← / →**: Rotate view azimuth by ±5°
-* **↑ / ↓**: Change view altitude by ±5° (clamped to 0°..90°)
-  While arrow-key input continues, the app keeps a simplified viewport-interaction mode for about 0.7 seconds after the last input. In this mode, it shows stars up to `Vmag <= 4.0`, the celestial equator, ecliptic, horizon, terrain horizon, direction labels, and the zenith marker; planets, full star density, sky-color disc, clouds, DSO, and asterisms are temporarily hidden.
-* **M**: Toggle moon enlarged to 5x size
-* **D**: Toggle DSO overlays
-* **A**: Toggle asterism overlays
-* **S**: Toggle sky-color shading between gradient and flat-disc mode
-* **C**: Toggle cloud overlays
-* **T**: Toggle terrain horizon overlay
-* **Ctrl+J**: Open Jump to Named Star
-* **Ctrl+F**: Open Search Stars and Asterisms
-* **F11**: Toggle fullscreen display
-* **ESC**: Exit fullscreen
-* **Q**: Quit
+The CLI supports detailed startup configuration for location, time, rendering, and bundled viewpoint queries.
 
-#### Menu Operations
-
-From the hamburger menu (`☰`), you can use:
-
-* **Jump to Named Star...**: Choose from representative named stars (`Vmag <= 2.0`), grouped into North / Equatorial / South, then jump the view center to that star.
-* **Search Stars and Asterisms...**: Search across named stars and supported asterisms, then jump to the selected target.
-* **Enlarge Moon**: Toggle moon enlarged to 5x size.
-* **DSO**: Toggle deep-sky object overlays on/off.
-* **Asterisms**: Toggle asterism overlays on/off (when enabled, dim overlays stay visible; hovering a member star brightens the matching asterism and shows its label).
-* **Sky Color Disc**: Switch between the full sky-color gradient and the flat dark-disc fallback.
-* **Clouds**: Toggle real-time cloud overlays on/off.
-* **Terrain Horizon**: Toggle the terrain skyline overlay on/off. If disabled from the CLI with `--terrain-horizon-opacity 0`, the menu item cannot re-enable it for that run.
-* **Fullscreen**: Toggle fullscreen display.
-* **Exit**: Quit the application.
-
-After a jump/search, the selected star is highlighted for about 3 seconds using the same UI style as mouse hover (circle marker + name label).
-
-The same simplified viewport-interaction mode is also used during window resize to keep interaction responsive while heavier layers catch up after idle.
+<details>
+  <summary>CLI reference</summary>
 
 ### CLI
 
@@ -285,6 +257,56 @@ These overlays are **asterisms** (popular line patterns), not formal IAU constel
 - Summer: `Summer Triangle`, `Northern Cross`, `Teapot`, `Keystone`
 - Autumn: `Great Square of Pegasus`, `Circlet of Pisces`, `Water Jar of Aquarius`, `Cassiopeia W`, `House of Cepheus`, `Job's Coffin`
 
+</details>
+
+The GUI supports direct keyboard and menu-based navigation, search, and overlay toggles.
+
+<details>
+  <summary>GUI operations</summary>
+
+### GUI
+
+#### Key Operations
+
+* **← / →**: Rotate view azimuth by ±5°
+* **↑ / ↓**: Change view altitude by ±5° (clamped to 0°..90°)
+  While arrow-key input continues, the app keeps a simplified viewport-interaction mode for about 0.7 seconds after the last input. In this mode, it shows stars up to `Vmag <= 4.0`, the celestial equator, ecliptic, horizon, terrain horizon, direction labels, and the zenith marker; planets, full star density, sky-color disc, clouds, DSO, and asterisms are temporarily hidden.
+* **M**: Toggle moon enlarged to 5x size
+* **D**: Toggle DSO overlays
+* **A**: Toggle asterism overlays
+* **S**: Toggle sky-color shading between gradient and flat-disc mode
+* **C**: Toggle cloud overlays
+* **T**: Toggle terrain horizon overlay
+* **Ctrl+J**: Open Jump to Named Star
+* **Ctrl+F**: Open Search Stars and Asterisms
+* **F11**: Toggle fullscreen display
+* **ESC**: Exit fullscreen
+* **Q**: Quit
+
+#### Menu Operations
+
+From the hamburger menu (`☰`), you can use:
+
+* **Jump to Named Star...**: Choose from representative named stars (`Vmag <= 2.0`), grouped into North / Equatorial / South, then jump the view center to that star.
+* **Search Stars and Asterisms...**: Search across named stars and supported asterisms, then jump to the selected target.
+* **Enlarge Moon**: Toggle moon enlarged to 5x size.
+* **DSO**: Toggle deep-sky object overlays on/off.
+* **Asterisms**: Toggle asterism overlays on/off (when enabled, dim overlays stay visible; hovering a member star brightens the matching asterism and shows its label).
+* **Sky Color Disc**: Switch between the full sky-color gradient and the flat dark-disc fallback.
+* **Clouds**: Toggle real-time cloud overlays on/off.
+* **Terrain Horizon**: Toggle the terrain skyline overlay on/off. If disabled from the CLI with `--terrain-horizon-opacity 0`, the menu item cannot re-enable it for that run.
+* **Fullscreen**: Toggle fullscreen display.
+* **Exit**: Quit the application.
+
+After a jump/search, the selected star is highlighted for about 3 seconds using the same UI style as mouse hover (circle marker + name label).
+
+The same simplified viewport-interaction mode is also used during window resize to keep interaction responsive while heavier layers catch up after idle.
+
+</details>
+
+<details>
+  <summary>Troubleshooting and platform notes</summary>
+
 ## Generating a `.desktop` launcher (GNOME only)
 
 On GNOME-based environments (including Ubuntu Dock and DockToPanel),
@@ -348,6 +370,11 @@ Logs are also written to a file (platform‑dependent). Examples:
 - macOS: `~/Library/Logs/zstarview/app.log`
 - Windows: `%LOCALAPPDATA%/tos-kamiya/zstarview/Logs/app.log`
 
+</details>
+
+<details>
+  <summary>Developer notes, license, and appendix</summary>
+
 ## Star Catalog Regeneration (Developer)
 
 Use the catalog generator script:
@@ -399,3 +426,5 @@ All paths below are relative to `src/zstarview/data/`.
 → [Specification](docs/specification.md), [Design](docs/design.md)
 
 → [Lunar eclipses in 2026-2028, Solar eclipses 2026-2028](docs/appendix-eclipses.md)
+
+</details>
