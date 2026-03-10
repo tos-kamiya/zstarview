@@ -61,6 +61,7 @@ from .text import (
     draw_label_candidates,
     draw_outlined_text,
     draw_status_line_text,
+    get_text_outline_width,
     get_text_style,
 )
 from ..utils.image import generate_moon_phase_image
@@ -805,10 +806,11 @@ def draw_asterisms(
         cy = sum(pt.y() for pt in label_points) / len(label_points)
         label_pos = QPointF(cx + 8.0, cy - 8.0)
         if preset in ("white", "day"):
-            text_color = QColor(40, 122, 220, 220)
+            text_color = QColor(38, 120, 214, 228)
         else:
             text_color = QColor(110, 195, 255, 230)
         _, outline_text_color = get_text_style(preset)
+        outline_width = get_text_outline_width(preset)
         if label_candidates is not None:
             label_candidates.append(
                 {
@@ -816,6 +818,7 @@ def draw_asterisms(
                     "pos": label_pos,
                     "text_color": text_color,
                     "outline_color": outline_text_color,
+                    "outline_width": outline_width,
                     "priority": 30,
                 }
             )
@@ -827,7 +830,7 @@ def draw_asterisms(
                 text_font,
                 text_color,
                 outline_text_color,
-                outline_width=2.4,
+                outline_width=outline_width,
             )
             if label_reservations is not None:
                 label_reservations.append(_text_bounds_at_baseline(highlighted_asterism.name, text_font, label_pos))
@@ -1406,6 +1409,7 @@ def draw_solar_system_bodies(
     # Keep body markers in a stable high-contrast color over the sky disc.
     text_color = QColor(*TEXT_COLOR)
     label_text_color, label_outline_color = get_text_style(preset)
+    label_outline_width = get_text_outline_width(preset)
     if text_font is not None:
         painter.setFont(text_font)
         label_font = text_font
@@ -1458,6 +1462,7 @@ def draw_solar_system_bodies(
                         "pos": label_pos,
                         "text_color": label_text_color,
                         "outline_color": label_outline_color,
+                        "outline_width": label_outline_width,
                         "priority": 40,
                         "hide_on_overlap": True,
                     }
@@ -1475,6 +1480,7 @@ def draw_solar_system_bodies(
                 label_font,
                 label_text_color,
                 label_outline_color,
+                outline_width=label_outline_width,
             )
 
 
@@ -1617,6 +1623,7 @@ def draw_overlay_info(
         text_font: The QFont to use for the text.
     """
     text_color, outline_color = get_text_style(preset)
+    outline_width = get_text_outline_width(preset)
 
     line_spacing = QFontMetrics(text_font).lineSpacing()
     line_height = int(line_spacing * 1.2)
@@ -1626,7 +1633,15 @@ def draw_overlay_info(
     def print_line(message: str):
         nonlocal line_x, line_y
         line_y += line_height
-        draw_outlined_text(painter, message, QPointF(line_x, line_y), text_font, text_color, outline_color)
+        draw_outlined_text(
+            painter,
+            message,
+            QPointF(line_x, line_y),
+            text_font,
+            text_color,
+            outline_color,
+            outline_width=outline_width,
+        )
 
     # ---- Local time ----
     utc_time = celestial_data.time
@@ -1672,7 +1687,7 @@ def draw_overlay_info(
         alt = float(dso_obj.get("alt", 0.0))
         az = float(dso_obj.get("az", 0.0))
         if preset in ("white", "day"):
-            dso_label_color = QColor(40, 122, 220, 220)
+            dso_label_color = QColor(38, 120, 214, 228)
         else:
             dso_label_color = QColor(110, 195, 255, 230)
         hover_poly = _dso_ellipse_polygon(
@@ -1697,6 +1712,7 @@ def draw_overlay_info(
                         "pos": label_pos,
                         "text_color": dso_label_color,
                         "outline_color": outline_color,
+                        "outline_width": outline_width,
                         "priority": 20,
                     }
                 )
@@ -1708,6 +1724,7 @@ def draw_overlay_info(
                     text_font,
                     dso_label_color,
                     outline_color,
+                    outline_width=outline_width,
                 )
                 if label_reservations is not None:
                     label_reservations.append(_text_bounds_at_baseline(dso_name, text_font, label_pos))
@@ -1730,10 +1747,19 @@ def draw_overlay_info(
                         "pos": label_pos,
                         "text_color": text_color,
                         "outline_color": outline_color,
+                        "outline_width": outline_width,
                         "priority": 10,
                     }
                 )
             else:
-                draw_outlined_text(painter, name, label_pos, text_font, text_color, outline_color)
+                draw_outlined_text(
+                    painter,
+                    name,
+                    label_pos,
+                    text_font,
+                    text_color,
+                    outline_color,
+                    outline_width=outline_width,
+                )
                 if label_reservations is not None:
                     label_reservations.append(_text_bounds_at_baseline(str(name), text_font, label_pos))

@@ -61,12 +61,19 @@ def _clamp_baseline_pos_to_viewport(
 def get_text_style(preset: str = "night") -> Tuple[QColor, QColor]:
     """Return (text_color, outline_color) tuned for the selected visual preset."""
     if preset == "white":
-        return QColor(18, 29, 48), QColor(245, 250, 255, 160)
+        return QColor(44, 112, 196), QColor(20, 54, 98, 118)
     if preset == "day":
-        return QColor(22, 33, 52), QColor(238, 245, 255, 145)
+        return QColor(34, 106, 192), QColor(18, 50, 94, 110)
     if preset == "black":
         return QColor(246, 249, 255), QColor(2, 2, 3, 236)
     return QColor(*TEXT_COLOR), QColor.fromRgbF(0, 0, 0, 0.3)
+
+
+def get_text_outline_width(preset: str = "night") -> float:
+    """Return a preset-specific outline width for outlined text."""
+    if preset in ("white", "day"):
+        return 2.0
+    return 3.0
 
 
 def draw_outlined_text(
@@ -133,6 +140,7 @@ def draw_label_candidates(
         if not isinstance(text_color, QColor) or not isinstance(outline_color, QColor):
             continue
         hide_on_overlap = bool(cand.get("hide_on_overlap", False))
+        outline_width = float(cand.get("outline_width", 3.0))
         placed = False
         best_nonfree: Optional[Tuple[int, float, QPointF, QRectF]] = None
         for dx, dy in offsets:
@@ -147,13 +155,29 @@ def draw_label_candidates(
                     if best_nonfree is None or score[:2] < best_nonfree[:2]:
                         best_nonfree = score
                 continue
-            draw_outlined_text(painter, text, pos, text_font, text_color, outline_color)
+            draw_outlined_text(
+                painter,
+                text,
+                pos,
+                text_font,
+                text_color,
+                outline_color,
+                outline_width=outline_width,
+            )
             reservations.append(rect)
             placed = True
             break
         if not placed and not hide_on_overlap and best_nonfree is not None:
             _, _, pos, rect = best_nonfree
-            draw_outlined_text(painter, text, pos, text_font, text_color, outline_color)
+            draw_outlined_text(
+                painter,
+                text,
+                pos,
+                text_font,
+                text_color,
+                outline_color,
+                outline_width=outline_width,
+            )
             reservations.append(rect)
         elif not placed:
             continue
@@ -173,11 +197,11 @@ def draw_status_line_text(
         return
 
     if preset == "white":
-        color = QColor(64, 22, 22)
-        outline_color = QColor(255, 245, 245, 165)
+        color = QColor(42, 102, 184)
+        outline_color = QColor(18, 46, 90, 124)
     elif preset == "day":
-        color = QColor(78, 26, 26)
-        outline_color = QColor(250, 242, 242, 155)
+        color = QColor(34, 96, 178)
+        outline_color = QColor(16, 42, 84, 116)
     elif preset == "black":
         color = QColor(255, 220, 220)
         outline_color = QColor(2, 2, 3, 236)
@@ -198,5 +222,6 @@ def draw_status_line_text(
         status_line_font,
         color,
         outline_color,
+        outline_width=get_text_outline_width(preset),
     )
     painter.restore()
