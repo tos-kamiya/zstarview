@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional, Tuple
 
-from PySide6.QtCore import QPointF, QRect, QRectF, Qt
+from PySide6.QtCore import QPointF, QRect, QRectF
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPainterPath, QPen
 
 from ..paths import STATUS_LINE_COLOR, TEXT_COLOR
@@ -61,9 +61,9 @@ def _clamp_baseline_pos_to_viewport(
 def get_text_style(preset: str = "night") -> Tuple[QColor, QColor]:
     """Return (text_color, outline_color) tuned for the selected visual preset."""
     if preset == "white":
-        return QColor(18, 29, 48), QColor(245, 250, 255, 210)
+        return QColor(18, 29, 48), QColor(245, 250, 255, 160)
     if preset == "day":
-        return QColor(22, 33, 52), QColor(238, 245, 255, 200)
+        return QColor(22, 33, 52), QColor(238, 245, 255, 145)
     if preset == "black":
         return QColor(246, 249, 255), QColor(2, 2, 3, 236)
     return QColor(*TEXT_COLOR), QColor.fromRgbF(0, 0, 0, 0.3)
@@ -174,10 +174,10 @@ def draw_status_line_text(
 
     if preset == "white":
         color = QColor(64, 22, 22)
-        outline_color = QColor(255, 245, 245, 220)
+        outline_color = QColor(255, 245, 245, 165)
     elif preset == "day":
         color = QColor(78, 26, 26)
-        outline_color = QColor(250, 242, 242, 215)
+        outline_color = QColor(250, 242, 242, 155)
     elif preset == "black":
         color = QColor(255, 220, 220)
         outline_color = QColor(2, 2, 3, 236)

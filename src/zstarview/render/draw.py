@@ -363,7 +363,7 @@ def draw_radial_background(
         def col(r: float, s: float) -> QColor:
             t = max(0.0, min(1.0, (r - r90) / max(1.0, r_max - r90)))
             gray = int(246 - 54 * t)
-            aa = max(0, 248 - (s + int(120 * t)))
+            aa = max(0, 212 - (s + int(100 * t)))
             return QColor(gray, gray, gray, aa)
     elif preset == "day":
         def col(r: float, s: float) -> QColor:
@@ -373,7 +373,7 @@ def draw_radial_background(
             gg = int(242 - 34 * t)
             bb = int(255 - 34 * t)
             # Keep "day" visibly lighter/more transparent than "white".
-            aa = max(0, 170 - (s + int(120 * t)))
+            aa = max(0, 136 - (s + int(90 * t)))
             return QColor(rr, gg, bb, aa)
     elif preset == "night":
         def col(r: float, s: float) -> QColor:
