@@ -61,9 +61,9 @@ def _clamp_baseline_pos_to_viewport(
 def get_text_style(preset: str = "night") -> Tuple[QColor, QColor]:
     """Return (text_color, outline_color) tuned for the selected visual preset."""
     if preset == "white":
-        return QColor(44, 112, 196), QColor(20, 54, 98, 118)
+        return QColor(44, 112, 196), QColor(36, 80, 140, 122)
     if preset == "day":
-        return QColor(34, 106, 192), QColor(18, 50, 94, 110)
+        return QColor(34, 106, 192), QColor(30, 74, 136, 116)
     if preset == "black":
         return QColor(246, 249, 255), QColor(2, 2, 3, 236)
     return QColor(*TEXT_COLOR), QColor.fromRgbF(0, 0, 0, 0.3)
@@ -198,10 +198,10 @@ def draw_status_line_text(
 
     if preset == "white":
         color = QColor(42, 102, 184)
-        outline_color = QColor(18, 46, 90, 124)
+        outline_color = QColor(34, 72, 128, 126)
     elif preset == "day":
         color = QColor(34, 96, 178)
-        outline_color = QColor(16, 42, 84, 116)
+        outline_color = QColor(28, 68, 122, 120)
     elif preset == "black":
         color = QColor(255, 220, 220)
         outline_color = QColor(2, 2, 3, 236)
