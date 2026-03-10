@@ -21,40 +21,29 @@ pip install zstarview
 ## Quick Start
 
 ```bash
-zstarview [options] [city]
+zstarview [options] [location]
 ```
 
 Examples:
 
 ```bash
 zstarview Tokyo
+zstarview "Tokyo Skytree"
 zstarview "35.68;139.76"
 zstarview -Z E -A 25 Tokyo
 ```
 
 ## Highlights
 
-- Real-time rendering of bright stars, planets, celestial equator, and ecliptic.
-- Optional deep-sky object (DSO) overlays.
-- Optional asterism overlays (line patterns, not IAU constellation boundaries).
-- Real-time cloud overlays from Himawari/GOES (can be disabled with `-c 0`).
-- Optional terrain horizon overlay from Copernicus DEM (can be disabled with `--terrain-horizon-opacity 0`).
-- Hover interactions for object labels and contextual overlays.
-
-## Useful Options
-
-- `-V`, `--vmag-limit`: star magnitude limit.
-- `--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"`: absolute sky time.
-- `--show-dso-initial true|false`: DSO visibility at startup.
-- `--show-asterisms-initial true|false`: asterism visibility at startup.
-- `-c`, `--cloud-opacity`: cloud overlay opacity (`0` disables clouds).
-- `--terrain-horizon-opacity`: terrain horizon opacity (`0` disables DEM download and terrain rendering).
-
-## Notes
-
-- On first launch, ephemeris data may be downloaded once and cached.
-- Terrain horizon rendering downloads Copernicus DEM tiles on first use and then reuses the local cache.
-- If cloud fetching is slow or unavailable, use `-c 0` for offline-friendly star/planet viewing.
+- Deep-sky objects: named galaxies/open clusters/globular clusters are shown as soft blue extents.
+- Asterism overlay: popular line patterns rather than formal IAU constellation boundaries are shown as dim ambient lines.
+- Solar-system bodies: supports Sun, Moon, and major planets.
+- Flexible location input: specify the observer location through the CLI argument using a city name, tower name, mountain name, or direct latitude/longitude input.
+- Adjustable view center: adjust the view center with CLI options `-A` and `-Z`, or with the arrow keys.
+- Satellite cloud imagery: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched overlay.
+- Terrain horizon and ground fill: Copernicus DEM data can be downloaded to render the local terrain skyline and ground region below the horizon.
+- Never-rises region: the celestial region that never rises above the horizon for the observer's latitude is shown in a red tint.
+- Python support: routinely tested on CPython 3.10, 3.11, 3.12, and 3.13.
 
 ## Links
 
