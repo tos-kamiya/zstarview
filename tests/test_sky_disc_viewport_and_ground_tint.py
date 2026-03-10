@@ -1,6 +1,8 @@
 import numpy as np
+from PySide6.QtCore import QRectF
+from PySide6.QtGui import QImage, QPainter
 
-from zstarview.render.draw import get_screen_geometry
+from zstarview.render.draw import draw_radial_background, get_screen_geometry
 from zstarview.render.draw_sky_disc import draw_sky_color_disc, draw_uniform_sky_color_disc
 from zstarview.types import ScreenGeometry
 from zstarview.utils.qt import qimage_to_np_rgba
@@ -68,3 +70,20 @@ def test_uniform_sky_disc_uses_single_disc_color() -> None:
     assert np.array_equal(center_rgb, top_rgb)
     assert np.array_equal(center_rgb, np.array([10, 10, 10]))
     assert np.array_equal(center_rgb, lower_rgb)
+
+
+def test_radial_background_uses_black_inner_disc_for_all_main_themes() -> None:
+    geom = ScreenGeometry(center=(80, 80), radius=60)
+    rect = QRectF(0.0, 0.0, 160.0, 160.0)
+
+    for preset in ("white", "day", "night", "black"):
+        img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
+        img.fill(0)
+        painter = QPainter(img)
+        draw_radial_background(painter, rect, geom, preset=preset)
+        painter.end()
+
+        arr = qimage_to_np_rgba(img)
+        center_rgb = arr[80, 80, :3].astype(int)
+
+        assert np.array_equal(center_rgb, np.array([4, 4, 4])), preset

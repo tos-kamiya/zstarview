@@ -404,7 +404,7 @@ def draw_radial_background(
 
     c = geometry.center
     g = QRadialGradient(QPointF(c[0], c[1]), r_max)
-    if preset in ("white", "day"):
+    if preset in ("white", "day", "night", "black"):
         inner_color = black_col(r90, 0)
     else:
         inner_color = col(r90, 0)
