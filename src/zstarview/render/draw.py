@@ -360,14 +360,24 @@ def draw_radial_background(
     def pos(r: float) -> float:
         return max(0.0, min(1.0, r / r_max))
 
+    def black_col(r: float, s: float) -> QColor:
+        t = max(0.0, min(1.0, (r - r90) / max(1.0, r_max - r90)))
+        gray = int(4 - 3 * t)
+        aa = max(0, 255 - (s + int(45 * t)))
+        return QColor(gray, gray, gray, aa)
+
     if preset == "white":
         def col(r: float, s: float) -> QColor:
+            if r < r90:
+                return black_col(r, s)
             t = max(0.0, min(1.0, (r - r90) / max(1.0, r_max - r90)))
             gray = int(246 - 54 * t)
             aa = max(0, 212 - (s + int(100 * t)))
             return QColor(gray, gray, gray, aa)
     elif preset == "day":
         def col(r: float, s: float) -> QColor:
+            if r < r90:
+                return black_col(r, s)
             t = max(0.0, min(1.0, (r - r90) / max(1.0, r_max - r90)))
             # Keep day palette bright, but slightly blue-leaning.
             rr = int(230 - 28 * t)
@@ -386,10 +396,7 @@ def draw_radial_background(
             return QColor(rr, gg, bb, aa)
     elif preset == "black":
         def col(r: float, s: float) -> QColor:
-            t = max(0.0, min(1.0, (r - r90) / max(1.0, r_max - r90)))
-            gray = int(4 - 3 * t)
-            aa = max(0, 255 - (s + int(45 * t)))
-            return QColor(gray, gray, gray, aa)
+            return black_col(r, s)
     else:
         def col(r: float, s: float) -> QColor:
             t = max(0.0, min(1.0, (r - r90) / max(1.0, r_max - r90)))
@@ -397,9 +404,13 @@ def draw_radial_background(
 
     c = geometry.center
     g = QRadialGradient(QPointF(c[0], c[1]), r_max)
-    g.setColorAt(pos(0), col(r90, 0))
-    g.setColorAt(pos(r90), col(r90, 0))
-    g.setColorAt(pos(r90 + step_px), col(r90, 10))
+    if preset in ("white", "day"):
+        inner_color = black_col(r90, 0)
+    else:
+        inner_color = col(r90, 0)
+    g.setColorAt(pos(0), inner_color)
+    g.setColorAt(pos(r90), inner_color)
+    g.setColorAt(pos(r90 + step_px), col(r90 + step_px, 10))
     g.setColorAt(pos(r_fov), col(r_fov, 10))
     g.setColorAt(pos(r_fov + step_px), col(r_fov, 20))
     g.setColorAt(1.0, col(r_max, 20))
