@@ -9,14 +9,14 @@ It renders a live all-sky view centered on your chosen location and time, includ
 
 **Features:**
 
-- **Deep-sky objects**: named galaxies/open clusters/globular clusters are shown as soft blue extents; DSO hover is independent from star hover.
-- **Asterism overlay**: not IAU constellations; shown as dim ambient lines, and hovering a member star brightens the matching pattern and shows its label, with 3-second rotation when multiple asterisms share that star.
+- **Deep-sky objects**: named galaxies/open clusters/globular clusters are shown as soft blue extents.
+- **Asterism overlay**: popular line patterns rather than formal IAU constellation boundaries are shown as dim ambient lines. Mouse-hovering a star in an asterism brightens the matching pattern and shows its label, with 3-second rotation when multiple asterisms share that star.
 - **Solar-system bodies**: supports Sun, Moon, and major planets. Minor planets (asteroids) are not displayed yet.
-- **Flexible location input**: specify a city name, tower name, mountain name, or directly enter latitude/longitude.
-- **Adjustable view center**: use `-A` (altitude) and `-Z` (azimuth); during view changes or window resize, the app briefly switches to a simplified interaction mode to keep navigation responsive.
-- **Satellite cloud imagery**: real-time Himawari/GOES data are rendered as a stylized hatched (striped) overlay; camera moves can re-render from cached source data immediately, and missing satellite regions are shown with a faint yellow tint when coverage is partial.
-- **Terrain horizon and ground fill**: optional Copernicus DEM-based skyline adds a subtle ocher terrain line aligned to the local terrain, and the disc is filled with a ground color below the geometric or terrain horizon for orientation.
-- **Never-rises region**: a red tint marks the celestial region that never rises for the current latitude.
+- **Flexible location input**: specify the observer location through the CLI argument using a city name, tower name, mountain name, or direct latitude/longitude input.
+- **Adjustable view center**: adjust the view center with CLI options `-A` (altitude) and `-Z` (azimuth), or with the arrow keys. During view changes or window resize, the app briefly switches to a simplified interaction mode to keep navigation responsive.
+- **Satellite cloud imagery**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay. Missing regions are shown in faint yellow when satellite coverage is partial.
+- **Terrain horizon and ground fill**: Copernicus DEM data can be downloaded to render the local terrain skyline. A subtle ocher terrain line follows the observer's surroundings, and the disc is filled with a ground color below the terrain horizon, or below the geometric horizon when terrain is disabled.
+- **Never-rises region**: the celestial region that never rises above the horizon for the observer's latitude is shown in a red tint.
 - **Python support**: the project is routinely tested on CPython 3.10, 3.11, 3.12, and 3.13.
 
   ![](docs/images/screenshot1.png)
