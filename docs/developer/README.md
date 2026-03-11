@@ -15,6 +15,10 @@
   - Hipparcos + Tycho-2 を使った星カタログ再生成手順
 - `docs/developer/dso-catalog-generation.md`
   - OpenNGC (`pyongc`) を使った DSO カタログ生成手順
+- `docs/developer/viewpoint-dataset-generation.md`
+  - tower / mountain viewpoint dataset の生成フローと運用方針
+- `docs/developer/urban-skyline-generation-ja_JP.md`
+  - PLATEAU CityGML から都市スカイラインを生成する手順
 
 ## Notes
 

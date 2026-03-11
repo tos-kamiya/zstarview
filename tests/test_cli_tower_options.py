@@ -139,6 +139,7 @@ def test_main_show_viewpoint_json_reports_ambiguous_exact_matches(
         latitude_deg=0.0,
         longitude_deg=0.0,
         height_m=100.0,
+        observer_height_m=100.0,
         meta={},
     )
     ambiguous_mountain = Viewpoint(
@@ -151,6 +152,7 @@ def test_main_show_viewpoint_json_reports_ambiguous_exact_matches(
         latitude_deg=1.0,
         longitude_deg=1.0,
         height_m=0.0,
+        observer_height_m=0.0,
         meta={"elevation_m": 2000.0},
     )
     monkeypatch.setattr("zstarview.zstarview.load_tower_viewpoints", lambda: (ambiguous_tower,))

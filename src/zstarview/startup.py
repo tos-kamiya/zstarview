@@ -126,7 +126,7 @@ def _viewpoint_to_location(
         lon=viewpoint.longitude_deg,
         tz=timezone_name,
         persistence_key=prefixed_viewpoint_name(viewpoint.kind, viewpoint.name),
-        observer_height_m=viewpoint.height_m + DEFAULT_OBSERVER_HEIGHT_M,
+        observer_height_m=viewpoint.observer_height_m + DEFAULT_OBSERVER_HEIGHT_M,
         kind=viewpoint.kind,
         cc=nearest_city.cc if nearest_city is not None else "",
     )

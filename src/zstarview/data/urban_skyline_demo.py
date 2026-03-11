@@ -433,7 +433,7 @@ def compute_urban_skyline(
     azimuths = np.arange(0.0, 360.0, azimuth_step_deg, dtype=np.float64)
     altitudes = np.full(azimuths.shape, -90.0, dtype=np.float64)
     radius_m = radius_km * 1000.0
-    observer_height_m = tower.height_m
+    observer_height_m = tower.observer_height_m
     buildings_considered = 0
     buildings_contributing = 0
 
@@ -523,7 +523,7 @@ def compute_cumulative_urban_skyline(
     altitude_layers = np.full((band_starts_m.size, azimuths.size), -90.0, dtype=np.float64)
     buildings_considered = np.zeros(band_starts_m.size, dtype=np.int64)
     buildings_contributing = np.zeros(band_starts_m.size, dtype=np.int64)
-    observer_height_m = tower.height_m
+    observer_height_m = tower.observer_height_m
     max_radius_m = float(band_ends_m[-1])
 
     for building in buildings:
@@ -638,7 +638,7 @@ def write_preview_png(path: Path, result: SkylineResult) -> None:
     title = f"Urban Skyline Preview: {result.tower.name}"
     subtitle = (
         f"lat={result.tower.latitude_deg:.5f}  lon={result.tower.longitude_deg:.5f}  "
-        f"observer_height={result.tower.height_m:.1f} m"
+        f"observer_height={result.tower.observer_height_m:.1f} m"
     )
     summary = (
         f"buildings considered={result.buildings_considered}  "
