@@ -41,6 +41,7 @@ def test_compute_urban_skyline_detects_eastern_building() -> None:
         latitude_deg=35.0,
         longitude_deg=139.0,
         height_m=100.0,
+        observer_height_m=100.0,
         meta=tower.meta,
     )
     buildings = (
@@ -211,6 +212,7 @@ def test_compute_cumulative_urban_skyline_uses_radius_band_not_cumulative() -> N
         latitude_deg=35.0,
         longitude_deg=139.0,
         height_m=100.0,
+        observer_height_m=100.0,
         meta=tower.meta,
     )
     buildings = (

@@ -6,7 +6,6 @@ from pathlib import Path
 from .paths import TOWER_VIEWPOINTS_FILE
 from .viewpoints import (
     Viewpoint,
-    ascii_fallback_name as _ascii_fallback_name,
     build_viewpoint,
     list_viewpoint_all_names,
     list_viewpoint_primary_names,
@@ -23,6 +22,7 @@ _TOWER_META_KEYS = (
     "wikidata_url",
     "location_arg",
     "slug",
+    "viewpoint_types",
 )
 
 

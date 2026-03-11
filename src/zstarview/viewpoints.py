@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import unicodedata
 from dataclasses import dataclass
-from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
@@ -72,6 +71,7 @@ class Viewpoint:
     latitude_deg: float
     longitude_deg: float
     height_m: float
+    observer_height_m: float
     meta: dict[str, Any]
 
     @property
@@ -88,6 +88,7 @@ def build_viewpoint(
     *,
     kind: str,
     height_key: str,
+    observer_height_key: str = "observer_height_m",
     meta_keys: Iterable[str],
 ) -> Viewpoint:
     labels_raw = item.get("labels", {})
@@ -117,6 +118,7 @@ def build_viewpoint(
         latitude_deg=float(item["latitude_deg"]),
         longitude_deg=float(item["longitude_deg"]),
         height_m=float(item.get(height_key, 0.0)),
+        observer_height_m=float(item.get(observer_height_key, item.get(height_key, 0.0))),
         meta=meta,
     )
 
@@ -193,6 +195,7 @@ def viewpoint_to_dict(viewpoint: Viewpoint) -> dict[str, Any]:
         "latitude_deg": viewpoint.latitude_deg,
         "longitude_deg": viewpoint.longitude_deg,
         "height_m": viewpoint.height_m,
+        "observer_height_m": viewpoint.observer_height_m,
         "meta": dict(viewpoint.meta),
     }
     if viewpoint.ascii_name is not None:
