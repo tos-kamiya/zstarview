@@ -21,7 +21,7 @@ from typing import Sequence
 
 import numpy as np
 
-REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = REPO_ROOT / "src"
 DATA_ROOT = SRC_ROOT / "zstarview" / "data"
 if str(SRC_ROOT) not in sys.path:
@@ -362,7 +362,6 @@ def compute_tile_skylines(
             )
             if tile_result is not None:
                 tile_results.append(tile_result)
-                print_tile_summary(tile_result)
         return tile_results
 
     tile_results = []
@@ -383,7 +382,6 @@ def compute_tile_skylines(
             tile_result = future.result()
             if tile_result is not None:
                 tile_results.append(tile_result)
-                print_tile_summary(tile_result)
     return tile_results
 
 

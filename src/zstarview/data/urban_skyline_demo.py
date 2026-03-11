@@ -44,7 +44,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 from pyproj import CRS, Transformer
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = REPO_ROOT / "src"
 DATA_ROOT = SRC_ROOT / "zstarview" / "data"
 if str(SRC_ROOT) not in sys.path:
@@ -63,7 +63,17 @@ DEFAULT_HEIGHT_FIELDS = (
     "height",
     "height_m",
 )
-DEFAULT_CUMULATIVE_RADII_KM = (2.0, 3.0, 4.5, 6.75, 10.125, 15.1875, 22.78125)
+DEFAULT_CUMULATIVE_RADII_KM = (
+    0.8888888888888888,
+    1.3333333333333333,
+    2.0,
+    3.0,
+    4.5,
+    6.75,
+    10.125,
+    15.1875,
+    22.78125,
+)
 DEFAULT_RADIUS_BAND_WIDTH_M = 90.0
 
 
@@ -414,6 +424,49 @@ def update_altitude_bins_from_polyline(
     return updated
 
 
+def iter_true_runs(mask: np.ndarray) -> Iterable[slice]:
+    if mask.ndim != 1:
+        raise ValueError("mask must be 1-dimensional.")
+    start: int | None = None
+    for index, flag in enumerate(mask.tolist()):
+        if flag:
+            if start is None:
+                start = index
+            continue
+        if start is not None:
+            yield slice(start, index)
+            start = None
+    if start is not None:
+        yield slice(start, mask.size)
+
+
+def compute_band_ends_m(
+    band_starts_m: np.ndarray,
+    *,
+    fallback_band_width_m: float,
+) -> np.ndarray:
+    if band_starts_m.ndim != 1 or band_starts_m.size == 0:
+        raise ValueError("band_starts_m must be a non-empty 1-dimensional array.")
+    if band_starts_m.size == 1:
+        return band_starts_m + float(fallback_band_width_m)
+    deltas_m = np.diff(band_starts_m)
+    widths_m = deltas_m / 3.0
+    prev_start_m = float(band_starts_m[-2])
+    last_start_m = float(band_starts_m[-1])
+    if prev_start_m > 0.0 and last_start_m > prev_start_m:
+        ratio = last_start_m / prev_start_m
+        next_start_m = last_start_m * ratio
+        trailing_width_m = (next_start_m - last_start_m) / 3.0
+    else:
+        trailing_width_m = float(deltas_m[-1] / 3.0)
+    return np.concatenate(
+        (
+            band_starts_m[:-1] + widths_m,
+            np.array([band_starts_m[-1] + trailing_width_m], dtype=np.float64),
+        )
+    )
+
+
 def compute_urban_skyline(
     tower: TowerViewpoint,
     buildings: Sequence[BuildingFootprint],
@@ -517,7 +570,10 @@ def compute_cumulative_urban_skyline(
 
     normalized_radii_km = normalize_cumulative_radii_km(radii_km)
     band_starts_m = np.array(normalized_radii_km, dtype=np.float64) * 1000.0
-    band_ends_m = band_starts_m + float(radius_band_width_m)
+    band_ends_m = compute_band_ends_m(
+        band_starts_m,
+        fallback_band_width_m=float(radius_band_width_m),
+    )
     transformer = make_local_transformer(tower)
     azimuths = np.arange(0.0, 360.0, azimuth_step_deg, dtype=np.float64)
     altitude_layers = np.full((band_starts_m.size, azimuths.size), -90.0, dtype=np.float64)
@@ -554,14 +610,15 @@ def compute_cumulative_urban_skyline(
                     if not np.any(mask):
                         continue
                     considered[radius_index] = True
-                    if update_altitude_bins_from_polyline(
-                        altitude_layers[radius_index],
-                        azimuth_deg=azimuth_deg[mask],
-                        altitude_deg=altitude_deg[mask],
-                        azimuth_step_deg=azimuth_step_deg,
-                        closed=False,
-                    ):
-                        contributed[radius_index] = True
+                    for run in iter_true_runs(mask):
+                        if update_altitude_bins_from_polyline(
+                            altitude_layers[radius_index],
+                            azimuth_deg=azimuth_deg[run],
+                            altitude_deg=altitude_deg[run],
+                            azimuth_step_deg=azimuth_step_deg,
+                            closed=False,
+                        ):
+                            contributed[radius_index] = True
         buildings_considered += considered.astype(np.int64)
 
         buildings_contributing += contributed.astype(np.int64)

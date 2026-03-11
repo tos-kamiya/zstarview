@@ -9,9 +9,15 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+from urllib.error import URLError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 POINT_RE = re.compile(r"^Point\(([-0-9.]+) ([-0-9.]+)\)$")
 QID_RE = re.compile(r"/(Q\d+)$")
+PREFERRED_LABEL_LANGS = ("en", "ja")
+WIKIDATA_API_URL = "https://www.wikidata.org/w/api.php"
+USER_AGENT = "zstarview-viewpoints/1.0 (label fetch)"
 
 
 @dataclass
@@ -66,6 +72,11 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=Path("src/zstarview/data/viewpoints/tower_viewpoints.json"),
         help="Where to write the merged bundled viewpoints JSON.",
+    )
+    parser.add_argument(
+        "--skip-wikidata-label-fetch",
+        action="store_true",
+        help="Do not fetch missing en/ja labels from Wikidata API.",
     )
     return parser.parse_args()
 
@@ -125,6 +136,103 @@ def normalize_extra_rows(rows: list[dict[str, Any]]) -> list[dict[str, object]]:
         (record.as_item() for record in records.values()),
         key=lambda item: (-float(item["height_m"]), str(item["name"])),
     )
+
+
+def fetch_entity_labels(
+    qids: list[str],
+    languages: tuple[str, ...] = PREFERRED_LABEL_LANGS,
+    batch_size: int = 50,
+) -> dict[str, dict[str, str]]:
+    labels_by_qid: dict[str, dict[str, str]] = {}
+    language_param = "|".join(languages)
+
+    for start_index in range(0, len(qids), batch_size):
+        batch = qids[start_index : start_index + batch_size]
+        params = urlencode(
+            {
+                "action": "wbgetentities",
+                "ids": "|".join(batch),
+                "props": "labels",
+                "languages": language_param,
+                "format": "json",
+            }
+        )
+        request = Request(
+            f"{WIKIDATA_API_URL}?{params}",
+            headers={"User-Agent": USER_AGENT},
+        )
+        with urlopen(request, timeout=30) as response:
+            payload = json.load(response)
+
+        entities = payload.get("entities", {})
+        if not isinstance(entities, dict):
+            continue
+
+        for qid, entity in entities.items():
+            if not isinstance(entity, dict):
+                continue
+            raw_labels = entity.get("labels", {})
+            if not isinstance(raw_labels, dict):
+                continue
+            labels: dict[str, str] = {}
+            for lang in languages:
+                lang_value = raw_labels.get(lang)
+                if isinstance(lang_value, dict):
+                    value = lang_value.get("value")
+                    if isinstance(value, str) and value.strip():
+                        labels[lang] = value.strip()
+            if labels:
+                labels_by_qid[qid] = labels
+
+    return labels_by_qid
+
+
+def choose_primary_name(labels: dict[str, str], names: set[str]) -> str:
+    for lang in PREFERRED_LABEL_LANGS:
+        label = labels.get(lang)
+        if label:
+            return label
+    if names:
+        return sorted(names)[0]
+    raise ValueError("Could not determine a primary label for item")
+
+
+def merge_entity_labels(
+    items: list[dict[str, object]],
+    labels_by_qid: dict[str, dict[str, str]],
+) -> list[dict[str, object]]:
+    enriched: list[dict[str, object]] = []
+
+    for item in items:
+        labels = {
+            str(lang): str(label)
+            for lang, label in dict(item.get("labels", {})).items()
+            if isinstance(lang, str) and isinstance(label, str) and label.strip()
+        }
+        qid = str(item["qid"])
+        fetched_labels = labels_by_qid.get(qid, {})
+        for lang in PREFERRED_LABEL_LANGS:
+            label = fetched_labels.get(lang)
+            if label:
+                labels[lang] = label
+
+        names = {
+            str(name).strip()
+            for name in item.get("names", [])
+            if isinstance(name, str) and str(name).strip()
+        }
+        names.update(labels.values())
+        if item.get("name"):
+            names.add(str(item["name"]).strip())
+
+        updated = dict(item)
+        updated["labels"] = dict(sorted(labels.items()))
+        updated["names"] = sorted(names)
+        updated["name"] = choose_primary_name(labels, names)
+        updated["slug"] = str(updated["name"]).replace(" ", "_")
+        enriched.append(updated)
+
+    return enriched
 
 
 def merge_items(
@@ -214,6 +322,15 @@ def main() -> int:
         [item for item in base_items if isinstance(item, dict)],
         extra_items,
     )
+    if not args.skip_wikidata_label_fetch and merged_items:
+        qids = [str(item["qid"]) for item in merged_items]
+        try:
+            labels_by_qid = fetch_entity_labels(qids)
+        except URLError as exc:
+            print(f"warning: failed to fetch Wikidata labels: {exc}")
+        else:
+            merged_items = merge_entity_labels(merged_items, labels_by_qid)
+
     output_payload = dict(base_payload)
     output_payload["items"] = merged_items
     output_payload["source_query_results"] = [

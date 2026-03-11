@@ -1,6 +1,6 @@
 # 都市スカイライン生成手順メモ
 
-最終更新: 2026-03-11
+最終更新: 2026-03-12
 
 ## 1. この文書の位置づけ
 
@@ -14,14 +14,16 @@
 - CityGML から建物 GeoJSON を作る手順
 - `src/zstarview/data/urban_skyline_demo.py` の実行方法
 - `src/zstarview/data/urban_skyline_from_citygml.py` の実行方法
-- Tokyo Skytree で実際に通した最小例と東京23区全体実行例
+- `src/zstarview/data/urban_skyline_batch.py` の一括実行方法
+- Tokyo Skytree で実際に通した最小例と、PLATEAU 対応都市に対する一括実行例
 
 ## 2. 前提
 
 現時点の都市スカイライン生成は、次の前提で動く。
 
 - 観測地点は `src/zstarview/data/viewpoints/tower_viewpoints.json` の bundled tower viewpoint を使う
-- 観測者高さは tower viewpoint の `height_m` をそのまま使う
+- 観測者高さは bundled viewpoint の `observer_height_m` を使う
+- `observer_height_m` が無い旧データでは `height_m` を使う
 - 建物入力は GeoJSON FeatureCollection とする
 - 各 Feature は Polygon または MultiPolygon とし、建物高さを property に持つ
 - 出力は `id -> { name, profile }` 形式の JSON と確認用 PNG とする
@@ -100,6 +102,20 @@ src/zstarview/data/urban_skyline_from_citygml.py
 - タイルごとに複数半径の cumulative skyline を計算する
 - 方位ごとに `max(tile_altitude)` を取って全体 skyline を合成する
 - 確認用 PNG と集約 JSON を出す
+
+さらに、複数の PLATEAU 都市ディレクトリをまたいで「対応している bundled viewpoint 全て」を処理するバッチ CLI も追加した。
+
+```text
+src/zstarview/data/urban_skyline_batch.py
+```
+
+このスクリプトは次を行う。
+
+- `raw-data/*/udx/bldg` を自動検出する
+- 各 bundled viewpoint がどの PLATEAU 都市 coverage に入るかを判定する
+- 対応している viewpoint だけ skyline を生成する
+- 全体進捗を `[batch] ...` 形式で出力する
+- 最後に 1 つの `urban_skyline_profiles.json` に集約する
 
 既定の出力先は次である。
 
@@ -258,6 +274,99 @@ global_alt = max(tile_alt_1, tile_alt_2, ...)
 
 現在の既定 skyline 半径は次である。
 
+```text
+0.8888888888888888, 1.3333333333333333, 2.0, 3.0, 4.5, 6.75, 10.125, 15.1875, 22.78125 km
+```
+
+各半径は cumulative ではなく、原則として「その半径から次の半径差の 1/3 だけ外側」の帯を走査する。  
+例えば `0.888888... km` レイヤは `0.888888... km - 1.037037... km`、`1.333333... km` レイヤは `1.333333... km - 1.555555... km` を見る。  
+最後のレイヤだけは、直前 2 点の比率から次の半径を外挿して、その差の 1/3 を終端帯に使う。  
+現在の既定値では `22.78125 km` の次を `34.171875 km` とみなし、最後の帯は `22.78125 km - 26.578125 km` になる。
+
+## 8. 複数都市をまとめて処理するバッチ CLI
+
+### 8.1 CLI
+
+`raw-data/` 配下の PLATEAU 都市を自動検出し、対応している bundled viewpoint を全て処理するコマンドは次である。
+
+```bash
+.venv/bin/python src/zstarview/data/urban_skyline_batch.py \
+  --citygml-root raw-data \
+  --all-covered-towers \
+  --workers 8 \
+  --write-json
+```
+
+対象確認だけを行う場合は次を使う。
+
+```bash
+.venv/bin/python src/zstarview/data/urban_skyline_batch.py \
+  --citygml-root raw-data \
+  --all-covered-towers \
+  --list-covered-towers
+```
+
+### 8.2 進捗ログ
+
+長時間処理になりやすいため、現在のバッチ CLI は次のような進捗ログを出す。
+
+```text
+[batch] discovered-bldg-dirs=4
+[batch] usable-coverages=4
+[batch] selected-viewpoints=13
+[batch] start 1/13  Tokyo Skytree  coverages=1  observer_height=634.0m
+[batch] done 1/13  Tokyo Skytree: ... peak=...
+...
+[batch] wrote-json: src/zstarview/data/viewpoints/urban_skyline/urban_skyline_profiles.json  viewpoints=12
+```
+
+タイル単位の `[tile] ...` ログは、全体進捗が見えにくくなるため現在は無効化してある。
+
+### 8.3 2026-03-12 時点での実行結果
+
+このリポジトリの `raw-data/` には次の 4 都市の PLATEAU CityGML を配置して確認した。
+
+- 東京23区
+- 横浜市
+- 京都市
+- 大阪市
+
+この条件で `--list-covered-towers` を実行すると、bundled viewpoint は 13 件が coverage 上は候補になった。
+
+- Tokyo Skytree
+- Tokyo Tower
+- あべのハルカス
+- 横浜ランドマークタワー
+- サンシャイン60
+- 梅田スカイビル
+- Kyoto Tower
+- Chiba Port Tower
+- FCGビル
+- Kobe Port Tower
+- Tsūtenkaku
+- Yokohama Marine Tower
+- GINZA SIX
+
+ただし、最終的に `urban_skyline_profiles.json` に書かれたのは 12 件だった。  
+欠けた 1 件は `Kobe Port Tower` である。
+
+理由は、現在の `raw-data/` に神戸市の PLATEAU 建物データが無いためである。  
+粗い coverage 判定では近傍扱いになっても、実際の `udx/bldg/*.gml` 選択では 1 タイルも得られないため、skyline は生成されない。
+
+### 8.4 神戸ポートタワーについて
+
+`Kobe Port Tower` が bundled viewpoint に含まれているのに skyline を作れないのは違和感が強い。  
+しかし 2026-03-12 時点では、PLATEAU Open Data 一覧に神戸市は載っていないため、公式の PLATEAU オープンデータだけでは対応できない。
+
+現状の結論は次の通り。
+
+- bundled viewpoint としては `Kobe Port Tower` を残す
+- ただし PLATEAU 由来 skyline は未生成のままとする
+- 将来、神戸市が PLATEAU 公開対象に追加されたら再実行する
+- それ以前に必要なら、PLATEAU 以外の建物データソースを別途検討する
+
+- `0.8888888888888888 km`
+- `1.3333333333333333 km`
 - `2 km`
 - `3 km`
 - `4.5 km`
@@ -269,8 +378,8 @@ global_alt = max(tile_alt_1, tile_alt_2, ...)
 また、既定の方位刻みは `0.1°` である。  
 初期の `0.5°` より細かくしたのは、遠距離の細い構造物が bin に乗らず見えづらくなるリスクを下げるためである。
 
-各半径は「その距離までの累積最大値」ではなく、その半径から外側へ `90 m` 幅の帯でスキャンした最大遮蔽仰角として扱う。  
-つまり `2 km` レイヤは `2000 m - 2090 m` の帯、`3 km` レイヤは `3000 m - 3090 m` の帯を見ている。
+各半径は「その距離までの累積最大値」ではなく、その半径から次の半径差の 1/3 だけ外側の帯でスキャンした最大遮蔽仰角として扱う。  
+つまり `2 km` レイヤは `2000 m - 2333.33 m` の帯、`3 km` レイヤは `3000 m - 3500 m` の帯を見る。
 
 選ばれたタイル名を出したい場合は次を使う。
 
