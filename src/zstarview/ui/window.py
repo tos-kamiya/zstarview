@@ -9,7 +9,7 @@ clouds, and all user interactions like rotation, zooming, and object highlightin
 import logging
 import math
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Tuple, Union
 
@@ -55,7 +55,7 @@ from ..paths import (
 )
 from ..config import load_last_window_geometry, save_last_window_geometry
 from ..render import draw as render_draw
-from ..types import CelestialData, ViewerData
+from ..types import ViewerData
 from .draggable_window import DraggableWindow
 from .composite import SkyCompositorCache
 from .cloud_state import CloudImageState
@@ -66,6 +66,7 @@ from .famous_star_dialog import NamedStarJumpDialog
 from .famous_star_search_dialog import NamedStarSearchDialog
 from .famous_star_shortcuts import NamedStarShortcut, SearchJumpTarget
 from ..asterisms import ASTERISM_KEYS_BY_SOURCE_ID
+from ..urban_skyline_profiles import resolve_urban_skyline_profile_for_city_name
 from .sky_worker import SkyDataWorker
 from .window_inputs import PreparedWindowCatalogs
 from .window_inputs import SkyWindowRuntimeOptions, SkyWindowUserOptions
@@ -215,6 +216,9 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.viewer_data = viewer_data
         self.state = SkyWindowState(
             render_view_center=tuple(self.viewer_data.view_center),
+            urban_skyline_profiles=resolve_urban_skyline_profile_for_city_name(
+                self.viewer_data.city_name
+            ),
         )
         self.setWindowTitle(f"{APP_DISPLAY_NAME} - {self.viewer_data.city_name}")
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)

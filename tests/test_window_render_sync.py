@@ -147,6 +147,11 @@ def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(monkeypa
     )
     monkeypatch.setattr(
         window_render_module.render_draw,
+        "draw_urban_skyline_lines",
+        lambda *_args, **_kwargs: calls.append(("urban", None)),
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
         "draw_direction_labels",
         lambda *_args, **_kwargs: calls.append(("direction", None)),
     )
@@ -182,6 +187,7 @@ def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(monkeypa
         ("reference", None),
         ("stars", 4.0),
         ("terrain", None),
+        ("urban", None),
         ("direction", None),
         ("zenith", None),
     ]
@@ -200,12 +206,22 @@ def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(monkey
     )
     monkeypatch.setattr(
         window_render_module.render_draw,
+        "draw_urban_skyline_lines",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
         "draw_direction_labels",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
         window_render_module.render_draw,
         "draw_zenith_marker",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_urban_skyline_lines",
         lambda *_args, **_kwargs: None,
     )
 
@@ -301,6 +317,67 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     )
 
     assert seen_profiles == [terrain_profile]
+    assert seen_view_centers == [(50.0, 210.0)]
+
+
+def test_draw_viewport_interaction_layers_draws_urban_profiles(monkeypatch) -> None:
+    seen_profiles: list[object] = []
+    seen_view_centers: list[object] = []
+
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_sky_reference_lines",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_terrain_horizon_line",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_urban_skyline_lines",
+        lambda _p, _g, profile, view_center, **_kwargs: (
+            seen_profiles.append(profile),
+            seen_view_centers.append(view_center),
+        ),
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_direction_labels",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_zenith_marker",
+        lambda *_args, **_kwargs: None,
+    )
+
+    urban_profiles = [(0.1, [(-1.0, 10.0), (-2.0, 20.0)])]
+    dummy = SimpleNamespace()
+    dummy.text_font = object()
+    dummy.visual_preset = "night"
+    dummy.terrain_horizon_opacity = 0.25
+    dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
+    dummy.state.mouse_pos = None
+    dummy.state.urban_skyline_profiles = urban_profiles
+    dummy._draw_star_layer = lambda *_args, **_kwargs: None
+
+    SkyWindow._draw_viewport_interaction_layers(
+        dummy,
+        painter=object(),
+        geometry=object(),
+        celestial_data=object(),
+        render_viewer=ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="Asia/Tokyo",
+            city_name="Tokyo",
+            view_center=(50.0, 210.0),
+            observer_height_m=1.7,
+        ),
+    )
+
+    assert seen_profiles == [urban_profiles]
     assert seen_view_centers == [(50.0, 210.0)]
 
 

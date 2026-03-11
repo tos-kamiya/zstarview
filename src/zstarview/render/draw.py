@@ -30,6 +30,7 @@ from ..paths import (
     ECLIPTIC_COLOR,
     HORIZON_LINE_COLOR,
     TERRAIN_HORIZON_LINE_COLOR,
+    URBAN_SKYLINE_LINE_COLOR,
     TEXT_COLOR,
     STATUS_LINE_COLOR,
 )
@@ -701,6 +702,45 @@ def draw_terrain_horizon_line(
         fg.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
         painter.setPen(fg)
         painter.drawPolyline(poly)
+    painter.restore()
+
+
+def draw_urban_skyline_lines(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    urban_profiles: list[tuple[float, list[tuple[float, float]]]] | None,
+    view_center: tuple[float, float],
+) -> None:
+    """Draw cumulative urban skyline polylines as thin white overlays."""
+    if not urban_profiles:
+        return
+
+    painter.save()
+    layer_count = len(urban_profiles)
+    for layer_index, (_radius_km, urban_profile_altaz) in enumerate(urban_profiles):
+        points: list[tuple[float, float]] = []
+        for alt, az in urban_profile_altaz:
+            if float(alt) < -60.0:
+                continue
+            if not is_in_fov(float(alt), float(az), view_center):
+                continue
+            nx, ny = altaz_to_normalized_xy(float(alt), float(az), view_center)
+            points.append((nx, ny))
+        if len(points) < 2:
+            continue
+        color = QColor(*URBAN_SKYLINE_LINE_COLOR)
+        alpha = 118 - int(round(70.0 * (layer_index / max(1, layer_count - 1))))
+        color.setAlpha(max(30, min(255, alpha)))
+        pen = QPen(color, 2.0, Qt.PenStyle.SolidLine)
+        pen.setCosmetic(True)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(pen)
+        for frag in split_by_gaps(points):
+            if len(frag) < 2:
+                continue
+            pts = [QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in frag]
+            painter.drawPolyline(QPolygonF(pts))
     painter.restore()
 
 

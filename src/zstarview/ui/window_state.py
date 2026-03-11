@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 from PySide6.QtCore import QPoint
@@ -33,3 +33,4 @@ class SkyWindowState:
     sky_disc_image: Optional[QImage] = None
     cloud_base_size: int = 256
     terrain_horizon_profile: Optional[list[tuple[float, float]]] = None
+    urban_skyline_profiles: Optional[list[tuple[float, list[tuple[float, float]]]]] = None
