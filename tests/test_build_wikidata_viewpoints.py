@@ -120,3 +120,33 @@ def test_merge_items_adds_observer_height_to_existing_and_preserves_known_item()
     assert tokyo_skytree["names"] == ["Tokyo Skytree", "東京スカイツリー"]
     abeno = merged[1]
     assert abeno["observer_height_m"] == 300.0
+
+
+def test_merge_entity_labels_prefers_fetched_english_name() -> None:
+    mod = _load_module()
+    items = [
+        {
+            "id": "wikidata:Q16318627",
+            "qid": "Q16318627",
+            "name": "あべのハルカス",
+            "names": ["あべのハルカス"],
+            "labels": {},
+            "latitude_deg": 34.645947222,
+            "longitude_deg": 135.514266666,
+            "height_m": 300.0,
+            "observer_height_m": 300.0,
+            "viewpoint_types": ["tower_or_high_observation"],
+            "slug": "あべのハルカス",
+        }
+    ]
+
+    got = mod.merge_entity_labels(
+        items,
+        {"Q16318627": {"en": "Abeno Harukas", "ja": "あべのハルカス"}},
+    )
+
+    assert len(got) == 1
+    item = got[0]
+    assert item["name"] == "Abeno Harukas"
+    assert item["labels"] == {"en": "Abeno Harukas", "ja": "あべのハルカス"}
+    assert item["names"] == ["Abeno Harukas", "あべのハルカス"]

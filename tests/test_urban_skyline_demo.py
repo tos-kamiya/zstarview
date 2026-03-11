@@ -199,6 +199,28 @@ def test_update_altitude_bins_from_polyline_open_path_does_not_close_loop() -> N
     assert altitudes[200] == -90.0
 
 
+def test_iter_true_runs_splits_disconnected_mask_regions() -> None:
+    mod = _load_module()
+    import numpy as np
+
+    mask = np.array([False, True, True, False, True, False], dtype=bool)
+
+    got = list(mod.iter_true_runs(mask))
+
+    assert got == [slice(1, 3), slice(4, 5)]
+
+
+def test_compute_band_ends_m_uses_next_band_start() -> None:
+    mod = _load_module()
+    import numpy as np
+
+    starts = np.array([888.8888889, 1333.3333333, 2000.0], dtype=np.float64)
+
+    got = mod.compute_band_ends_m(starts, fallback_band_width_m=90.0)
+
+    assert np.allclose(got, np.array([1037.0370370333332, 1555.5555555333334, 2333.3333333833334]))
+
+
 def test_compute_cumulative_urban_skyline_uses_radius_band_not_cumulative() -> None:
     mod = _load_module()
     tower = next(tower for tower in mod.list_japan_towers() if tower.name == "Tokyo Skytree")

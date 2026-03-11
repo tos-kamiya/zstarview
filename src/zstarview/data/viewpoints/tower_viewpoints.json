@@ -396,11 +396,15 @@
     },
     {
       "id": "wikidata:Q16318627",
-      "name": "あべのハルカス",
+      "name": "Abeno Harukas",
       "names": [
+        "Abeno Harukas",
         "あべのハルカス"
       ],
-      "labels": {},
+      "labels": {
+        "en": "Abeno Harukas",
+        "ja": "あべのハルカス"
+      },
       "qid": "Q16318627",
       "latitude_deg": 34.645947222,
       "longitude_deg": 135.514266666,
@@ -411,15 +415,19 @@
       ],
       "wikidata_url": "https://www.wikidata.org/wiki/Q16318627",
       "location_arg": "34.645947;135.514267",
-      "slug": "あべのハルカス"
+      "slug": "Abeno_Harukas"
     },
     {
       "id": "wikidata:Q587108",
-      "name": "横浜ランドマークタワー",
+      "name": "Yokohama Landmark Tower",
       "names": [
+        "Yokohama Landmark Tower",
         "横浜ランドマークタワー"
       ],
-      "labels": {},
+      "labels": {
+        "en": "Yokohama Landmark Tower",
+        "ja": "横浜ランドマークタワー"
+      },
       "qid": "Q587108",
       "latitude_deg": 35.454722222,
       "longitude_deg": 139.631666666,
@@ -430,7 +438,7 @@
       ],
       "wikidata_url": "https://www.wikidata.org/wiki/Q587108",
       "location_arg": "35.454722;139.631667",
-      "slug": "横浜ランドマークタワー"
+      "slug": "Yokohama_Landmark_Tower"
     },
     {
       "id": "wikidata:Q1501055",
@@ -486,11 +494,15 @@
     },
     {
       "id": "wikidata:Q1155401",
-      "name": "ミッドランドスクエア",
+      "name": "Midland Square",
       "names": [
+        "Midland Square",
         "ミッドランドスクエア"
       ],
-      "labels": {},
+      "labels": {
+        "en": "Midland Square",
+        "ja": "ミッドランドスクエア"
+      },
       "qid": "Q1155401",
       "latitude_deg": 35.17055556,
       "longitude_deg": 136.885,
@@ -501,15 +513,19 @@
       ],
       "wikidata_url": "https://www.wikidata.org/wiki/Q1155401",
       "location_arg": "35.170556;136.885000",
-      "slug": "ミッドランドスクエア"
+      "slug": "Midland_Square"
     },
     {
       "id": "wikidata:Q6108856",
-      "name": "JRセントラルタワーズ",
+      "name": "JR Central Towers",
       "names": [
+        "JR Central Towers",
         "JRセントラルタワーズ"
       ],
-      "labels": {},
+      "labels": {
+        "en": "JR Central Towers",
+        "ja": "JRセントラルタワーズ"
+      },
       "qid": "Q6108856",
       "latitude_deg": 35.17138889,
       "longitude_deg": 136.88277778,
@@ -520,15 +536,19 @@
       ],
       "wikidata_url": "https://www.wikidata.org/wiki/Q6108856",
       "location_arg": "35.171389;136.882778",
-      "slug": "JRセントラルタワーズ"
+      "slug": "JR_Central_Towers"
     },
     {
       "id": "wikidata:Q602942",
-      "name": "サンシャイン60",
+      "name": "Sunshine 60",
       "names": [
+        "Sunshine 60",
         "サンシャイン60"
       ],
-      "labels": {},
+      "labels": {
+        "en": "Sunshine 60",
+        "ja": "サンシャイン60"
+      },
       "qid": "Q602942",
       "latitude_deg": 35.729583333,
       "longitude_deg": 139.717777777,
@@ -539,7 +559,7 @@
       ],
       "wikidata_url": "https://www.wikidata.org/wiki/Q602942",
       "location_arg": "35.729583;139.717778",
-      "slug": "サンシャイン60"
+      "slug": "Sunshine_60"
     },
     {
       "id": "wikidata:Q1244227",
@@ -686,11 +706,15 @@
     },
     {
       "id": "wikidata:Q1096141",
-      "name": "アクトシティ浜松",
+      "name": "Act Tower",
       "names": [
+        "Act Tower",
         "アクトシティ浜松"
       ],
-      "labels": {},
+      "labels": {
+        "en": "Act Tower",
+        "ja": "アクトシティ浜松"
+      },
       "qid": "Q1096141",
       "latitude_deg": 34.705056,
       "longitude_deg": 137.735694,
@@ -701,7 +725,7 @@
       ],
       "wikidata_url": "https://www.wikidata.org/wiki/Q1096141",
       "location_arg": "34.705056;137.735694",
-      "slug": "アクトシティ浜松"
+      "slug": "Act_Tower"
     },
     {
       "id": "wikidata:Q450812",
@@ -895,11 +919,15 @@
     },
     {
       "id": "wikidata:Q1151808",
-      "name": "梅田スカイビル",
+      "name": "Umeda Sky Building",
       "names": [
+        "Umeda Sky Building",
         "梅田スカイビル"
       ],
-      "labels": {},
+      "labels": {
+        "en": "Umeda Sky Building",
+        "ja": "梅田スカイビル"
+      },
       "qid": "Q1151808",
       "latitude_deg": 34.705277777,
       "longitude_deg": 135.489722222,
@@ -910,7 +938,7 @@
       ],
       "wikidata_url": "https://www.wikidata.org/wiki/Q1151808",
       "location_arg": "34.705278;135.489722",
-      "slug": "梅田スカイビル"
+      "slug": "Umeda_Sky_Building"
     },
     {
       "id": "wikidata:Q1248619",
@@ -1023,7 +1051,9 @@
       "names": [
         "ザ・ライオンズ ミッドキャピタルタワー"
       ],
-      "labels": {},
+      "labels": {
+        "ja": "ザ・ライオンズ ミッドキャピタルタワー"
+      },
       "qid": "Q11306787",
       "latitude_deg": 35.135033,
       "longitude_deg": 136.909878,
@@ -1301,11 +1331,15 @@
     },
     {
       "id": "wikidata:Q10954019",
-      "name": "FCGビル",
+      "name": "FCG Building",
       "names": [
+        "FCG Building",
         "FCGビル"
       ],
-      "labels": {},
+      "labels": {
+        "en": "FCG Building",
+        "ja": "FCGビル"
+      },
       "qid": "Q10954019",
       "latitude_deg": 35.626944,
       "longitude_deg": 139.774444,
@@ -1316,7 +1350,7 @@
       ],
       "wikidata_url": "https://www.wikidata.org/wiki/Q10954019",
       "location_arg": "35.626944;139.774444",
-      "slug": "FCGビル"
+      "slug": "FCG_Building"
     },
     {
       "id": "wikidata:Q85719550",
@@ -1370,10 +1404,10 @@
     },
     {
       "id": "wikidata:Q137673602",
-      "name": "Tour d’observation Hydro-Québec de la Cité de l’énergie",
+      "name": "Tour de la Cité de l'énergie de Shawinigan",
       "names": [
-        "Tour d’observation Hydro-Québec de la Cité de l’énergie",
-        "Tour de la Cité de l'énergie de Shawinigan"
+        "Tour de la Cité de l'énergie de Shawinigan",
+        "Tour d’observation Hydro-Québec de la Cité de l’énergie"
       ],
       "labels": {
         "fr": "Tour d’observation Hydro-Québec de la Cité de l’énergie"
@@ -1390,7 +1424,7 @@
       ],
       "wikidata_url": "https://www.wikidata.org/wiki/Q137673602",
       "location_arg": "46.536563;-72.757761",
-      "slug": "Q137673602",
+      "slug": "Tour_de_la_Cité_de_l'énergie_de_Shawinigan",
       "observer_height_m": 115.0
     },
     {
@@ -1653,7 +1687,10 @@
       "names": [
         "GINZA SIX"
       ],
-      "labels": {},
+      "labels": {
+        "en": "GINZA SIX",
+        "ja": "GINZA SIX"
+      },
       "qid": "Q28685888",
       "latitude_deg": 35.669569444,
       "longitude_deg": 139.764080555,
@@ -1668,11 +1705,15 @@
     },
     {
       "id": "wikidata:Q11482213",
-      "name": "平和公園アクアタワー",
+      "name": "Heiwa Park Aqua Tower",
       "names": [
+        "Heiwa Park Aqua Tower",
         "平和公園アクアタワー"
       ],
-      "labels": {},
+      "labels": {
+        "en": "Heiwa Park Aqua Tower",
+        "ja": "平和公園アクアタワー"
+      },
       "qid": "Q11482213",
       "latitude_deg": 35.178183,
       "longitude_deg": 136.977933,
@@ -1683,10 +1724,8 @@
       ],
       "wikidata_url": "https://www.wikidata.org/wiki/Q11482213",
       "location_arg": "35.178183;136.977933",
-      "slug": "平和公園アクアタワー"
+      "slug": "Heiwa_Park_Aqua_Tower"
     }
   ],
-  "source_query_results": [
-    "query-2.json"
-  ]
+  "source_query_results": []
 }

@@ -59,6 +59,9 @@
 現在はユーザー向けの dataset を分けず、同じ `tower_viewpoints.json` に追加する。  
 その代わり schema 側で `observer_height_m` を持てるようにし、建物全高 `height_m` と観測者高さを分離できるようにする。
 
+この bundled dataset は viewpoint 候補の一覧であって、各 viewpoint に対応する都市スカイライン前計算データが常に存在するとは限らない。  
+例えば `Kobe Port Tower` は bundled viewpoint としては採用しているが、2026-03-12 時点では神戸市の PLATEAU Open Data が無いため、PLATEAU 由来 skyline JSON は未生成である。
+
 ### 2.3 生成スクリプト
 
 テストから見る限り、旧 tower 側の生成スクリプトは `dev-samples/build_wikidata_tower_viewpoints.py` を前提としていた。  
