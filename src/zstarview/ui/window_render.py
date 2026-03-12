@@ -194,7 +194,6 @@ class SkyWindowRenderMixin:
             render_viewer.view_center,
             opacity=self.terrain_horizon_opacity,
         )
-        self._draw_urban_outline_layer(painter, geometry, render_viewer)
         render_draw.draw_direction_labels(
             painter,
             geometry,

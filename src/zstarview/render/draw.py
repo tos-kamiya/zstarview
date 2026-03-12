@@ -725,12 +725,30 @@ def draw_urban_debug_outlines(
     pen.setCosmetic(True)
     pen.setCapStyle(Qt.PenCapStyle.RoundCap)
     pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+    simplified_pen = QPen(color, 4.0, Qt.PenStyle.SolidLine)
+    simplified_pen.setCosmetic(True)
+    simplified_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    simplified_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
 
     painter.save()
-    painter.setPen(pen)
     for outline in urban_outlines:
         if len(outline) < 2:
             continue
+        azimuth_deg = [float(az) % 360.0 for _alt, az in outline]
+        az_start_deg, az_end_deg, az_span_deg = _minimal_azimuth_cover(azimuth_deg)
+        if az_span_deg < 0.5:
+            representative_alt_deg = float(sum(float(alt) for alt, _az in outline) / len(outline))
+            if representative_alt_deg >= -60.0:
+                start_nx, start_ny = altaz_to_normalized_xy(representative_alt_deg, az_start_deg, view_center)
+                end_nx, end_ny = altaz_to_normalized_xy(representative_alt_deg, az_end_deg, view_center)
+                x1, y1 = normalized_to_screen_xy(start_nx, start_ny, geometry)
+                x2, y2 = normalized_to_screen_xy(end_nx, end_ny, geometry)
+                painter.setPen(simplified_pen)
+                y = (float(y1) + float(y2)) * 0.5
+                painter.drawPolyline(QPolygonF([QPointF(float(x1), y), QPointF(float(x2), y)]))
+            continue
+
+        painter.setPen(pen)
         points: list[tuple[float, float]] = []
         for alt, az in outline:
             if float(alt) < -60.0 or not is_in_fov(float(alt), float(az), view_center):
@@ -751,6 +769,28 @@ def draw_urban_debug_outlines(
                 screen_points = [QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in frag]
                 painter.drawPolyline(QPolygonF(screen_points))
     painter.restore()
+
+
+def _minimal_azimuth_cover(azimuth_deg: List[float]) -> Tuple[float, float, float]:
+    if not azimuth_deg:
+        return 0.0, 0.0, 0.0
+    if len(azimuth_deg) == 1:
+        value = float(azimuth_deg[0]) % 360.0
+        return value, value, 0.0
+
+    values = sorted(float(value) % 360.0 for value in azimuth_deg)
+    augmented = values + [values[0] + 360.0]
+    largest_gap = -1.0
+    gap_index = 0
+    for index in range(len(values)):
+        gap = augmented[index + 1] - augmented[index]
+        if gap > largest_gap:
+            largest_gap = gap
+            gap_index = index
+    start = augmented[gap_index + 1] % 360.0
+    end = augmented[gap_index] % 360.0
+    span = max(0.0, 360.0 - largest_gap)
+    return start, end, span
 
 
 def draw_asterisms(

@@ -297,9 +297,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--urban-outline-opacity",
         type=float,
-        default=0.38,
+        default=0.2,
         help=(
-            "Opacity of the urban outline overlay (0.0 - 1.0, default: 0.38). "
+            "Opacity of the urban outline overlay (0.0 - 1.0, default: 0.2). "
             "Set to 0.0 to disable urban outline rendering at startup."
         ),
     )
