@@ -78,6 +78,116 @@ def test_select_tile_envelopes_filters_by_observer_radius(tmp_path: Path) -> Non
     assert [envelope.path.name for envelope in selected] == ["near.gml"]
 
 
+def test_parse_citygml_buildings_filters_low_heights(tmp_path: Path) -> None:
+    mod = _load_module()
+    path = tmp_path / "tile.gml"
+    path.write_text(
+        """<?xml version="1.0" encoding="UTF-8"?>
+<core:CityModel xmlns:core="http://www.opengis.net/citygml/2.0"
+                xmlns:bldg="http://www.opengis.net/citygml/building/2.0"
+                xmlns:gml="http://www.opengis.net/gml">
+  <core:cityObjectMember>
+    <bldg:Building gml:id="low">
+      <bldg:measuredHeight>20</bldg:measuredHeight>
+      <bldg:lod0RoofEdge>
+        <gml:MultiSurface>
+          <gml:surfaceMember>
+            <gml:Polygon><gml:exterior><gml:LinearRing>
+              <gml:posList>35.0 139.0 0 35.0 139.001 0 35.001 139.001 0 35.001 139.0 0 35.0 139.0 0</gml:posList>
+            </gml:LinearRing></gml:exterior></gml:Polygon>
+          </gml:surfaceMember>
+        </gml:MultiSurface>
+      </bldg:lod0RoofEdge>
+    </bldg:Building>
+  </core:cityObjectMember>
+  <core:cityObjectMember>
+    <bldg:Building gml:id="high">
+      <bldg:measuredHeight>80</bldg:measuredHeight>
+      <bldg:lod0RoofEdge>
+        <gml:MultiSurface>
+          <gml:surfaceMember>
+            <gml:Polygon><gml:exterior><gml:LinearRing>
+              <gml:posList>35.0 139.0 0 35.0 139.001 0 35.001 139.001 0 35.001 139.0 0 35.0 139.0 0</gml:posList>
+            </gml:LinearRing></gml:exterior></gml:Polygon>
+          </gml:surfaceMember>
+        </gml:MultiSurface>
+      </bldg:lod0RoofEdge>
+    </bldg:Building>
+  </core:cityObjectMember>
+</core:CityModel>
+""",
+        encoding="utf-8",
+    )
+
+    buildings = mod.parse_citygml_buildings(path, min_building_height_m=50.0)
+
+    assert [building.building_id for building in buildings] == ["high"]
+
+
+def test_parse_citygml_buildings_estimates_height_from_storeys(tmp_path: Path) -> None:
+    mod = _load_module()
+    path = tmp_path / "tile_storeys.gml"
+    path.write_text(
+        """<?xml version="1.0" encoding="UTF-8"?>
+<core:CityModel xmlns:core="http://www.opengis.net/citygml/2.0"
+                xmlns:bldg="http://www.opengis.net/citygml/building/2.0"
+                xmlns:gml="http://www.opengis.net/gml">
+  <core:cityObjectMember>
+    <bldg:Building gml:id="estimated-high">
+      <bldg:measuredHeight>-9999</bldg:measuredHeight>
+      <bldg:storeysAboveGround>20</bldg:storeysAboveGround>
+      <bldg:lod0RoofEdge>
+        <gml:MultiSurface>
+          <gml:surfaceMember>
+            <gml:Polygon><gml:exterior><gml:LinearRing>
+              <gml:posList>35.0 139.0 0 35.0 139.001 0 35.001 139.001 0 35.001 139.0 0 35.0 139.0 0</gml:posList>
+            </gml:LinearRing></gml:exterior></gml:Polygon>
+          </gml:surfaceMember>
+        </gml:MultiSurface>
+      </bldg:lod0RoofEdge>
+    </bldg:Building>
+  </core:cityObjectMember>
+  <core:cityObjectMember>
+    <bldg:Building gml:id="estimated-low">
+      <bldg:measuredHeight>-9999</bldg:measuredHeight>
+      <bldg:storeysAboveGround>10</bldg:storeysAboveGround>
+      <bldg:lod0RoofEdge>
+        <gml:MultiSurface>
+          <gml:surfaceMember>
+            <gml:Polygon><gml:exterior><gml:LinearRing>
+              <gml:posList>35.0 139.0 0 35.0 139.001 0 35.001 139.001 0 35.001 139.0 0 35.0 139.0 0</gml:posList>
+            </gml:LinearRing></gml:exterior></gml:Polygon>
+          </gml:surfaceMember>
+        </gml:MultiSurface>
+      </bldg:lod0RoofEdge>
+    </bldg:Building>
+  </core:cityObjectMember>
+  <core:cityObjectMember>
+    <bldg:Building gml:id="invalid-storeys">
+      <bldg:measuredHeight>-9999</bldg:measuredHeight>
+      <bldg:storeysAboveGround>9999</bldg:storeysAboveGround>
+      <bldg:lod0RoofEdge>
+        <gml:MultiSurface>
+          <gml:surfaceMember>
+            <gml:Polygon><gml:exterior><gml:LinearRing>
+              <gml:posList>35.0 139.0 0 35.0 139.001 0 35.001 139.001 0 35.001 139.0 0 35.0 139.0 0</gml:posList>
+            </gml:LinearRing></gml:exterior></gml:Polygon>
+          </gml:surfaceMember>
+        </gml:MultiSurface>
+      </bldg:lod0RoofEdge>
+    </bldg:Building>
+  </core:cityObjectMember>
+</core:CityModel>
+""",
+        encoding="utf-8",
+    )
+
+    buildings = mod.parse_citygml_buildings(path, min_building_height_m=40.0)
+
+    assert [building.building_id for building in buildings] == ["estimated-high"]
+    assert buildings[0].height_m == 70.0
+
+
 def test_combine_tile_results_uses_max_altitude_per_azimuth() -> None:
     mod = _load_module()
     tower = mod.select_tower("Tokyo Skytree")
@@ -176,6 +286,7 @@ def test_compute_tile_skylines_runs_sequentially(monkeypatch) -> None:
         azimuth_step_deg=0.1,
         edge_sample_step_m=5.0,
         workers=1,
+        min_building_height_m=50.0,
     )
 
     assert [item.envelope.path.name for item in got] == ["a.gml", "b.gml"]
@@ -247,6 +358,7 @@ def test_compute_tile_skylines_uses_process_pool(monkeypatch) -> None:
         azimuth_step_deg=0.1,
         edge_sample_step_m=5.0,
         workers=4,
+        min_building_height_m=50.0,
     )
 
     assert [item.envelope.path.name for item in got] == ["a.gml", "b.gml"]

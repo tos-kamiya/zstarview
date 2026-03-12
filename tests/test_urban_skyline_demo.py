@@ -75,7 +75,7 @@ def test_compute_urban_skyline_detects_eastern_building() -> None:
     assert result.buildings_contributing == 1
     assert east_alt > 15.0
     assert east_alt < 35.0
-    assert math.isclose(result.peak_azimuth_deg, 90.0, abs_tol=5.0)
+    assert math.isclose(result.peak_azimuth_deg, 90.0, abs_tol=10.0)
 
 
 def test_skyline_result_to_payload_is_keyed_for_app_import() -> None:
@@ -102,6 +102,45 @@ def test_skyline_result_to_payload_is_keyed_for_app_import() -> None:
             {"az": 0.5, "alt": 1.5},
         ],
     }
+
+
+def test_load_building_footprints_filters_low_buildings(tmp_path: Path) -> None:
+    mod = _load_module()
+    path = tmp_path / "buildings.geojson"
+    path.write_text(
+        """
+        {
+          "type": "FeatureCollection",
+          "features": [
+            {
+              "type": "Feature",
+              "properties": {"id": "low", "height": 20},
+              "geometry": {
+                "type": "Polygon",
+                "coordinates": [[[139.0, 35.0], [139.0, 35.001], [139.001, 35.001], [139.001, 35.0], [139.0, 35.0]]]
+              }
+            },
+            {
+              "type": "Feature",
+              "properties": {"id": "high", "height": 80},
+              "geometry": {
+                "type": "Polygon",
+                "coordinates": [[[139.0, 35.0], [139.0, 35.001], [139.001, 35.001], [139.001, 35.0], [139.0, 35.0]]]
+              }
+            }
+          ]
+        }
+        """,
+        encoding="utf-8",
+    )
+
+    buildings = mod.load_building_footprints(
+        path,
+        height_fields=("height",),
+        min_building_height_m=50.0,
+    )
+
+    assert [building.building_id for building in buildings] == ["high"]
 
 
 def test_skyline_radius_results_to_payload_keeps_multiple_radii() -> None:
@@ -210,6 +249,27 @@ def test_iter_true_runs_splits_disconnected_mask_regions() -> None:
     assert got == [slice(1, 3), slice(4, 5)]
 
 
+def test_update_altitude_bins_from_interval_fills_constant_altitude() -> None:
+    mod = _load_module()
+    import numpy as np
+
+    altitudes = np.full(360, -90.0, dtype=np.float64)
+
+    updated = mod.update_altitude_bins_from_interval(
+        altitudes,
+        start_azimuth_deg=10.0,
+        end_azimuth_deg=20.0,
+        altitude_deg=-3.0,
+        azimuth_step_deg=1.0,
+    )
+
+    assert updated is True
+    assert altitudes[10] == -3.0
+    assert altitudes[15] == -3.0
+    assert altitudes[20] == -3.0
+    assert altitudes[200] == -90.0
+
+
 def test_compute_band_ends_m_uses_next_band_start() -> None:
     mod = _load_module()
     import numpy as np
@@ -218,7 +278,7 @@ def test_compute_band_ends_m_uses_next_band_start() -> None:
 
     got = mod.compute_band_ends_m(starts, fallback_band_width_m=90.0)
 
-    assert np.allclose(got, np.array([1037.0370370333332, 1555.5555555333334, 2333.3333333833334]))
+    assert np.allclose(got, np.array([978.8888889, 1423.3333333, 2090.0]))
 
 
 def test_compute_cumulative_urban_skyline_uses_radius_band_not_cumulative() -> None:

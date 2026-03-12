@@ -64,17 +64,19 @@ DEFAULT_HEIGHT_FIELDS = (
     "height_m",
 )
 DEFAULT_CUMULATIVE_RADII_KM = (
-    0.8888888888888888,
-    1.3333333333333333,
-    2.0,
-    3.0,
-    4.5,
-    6.75,
-    10.125,
-    15.1875,
-    22.78125,
+    0.15,
+    0.225,
+    0.3375,
+    0.50625,
+    0.759375,
+    1.1390625,
+    1.70859375,
+    2.562890625,
+    3.8443359375,
+    5.76650390625,
 )
 DEFAULT_RADIUS_BAND_WIDTH_M = 90.0
+DEFAULT_MIN_BUILDING_HEIGHT_M = 50.0
 
 
 @dataclass(frozen=True)
@@ -138,7 +140,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--radius-km",
         type=float,
         default=max(DEFAULT_CUMULATIVE_RADII_KM),
-        help="Maximum building search radius around each tower (default: 20.0).",
+        help="Maximum building search radius around each tower (default: 5.76650390625).",
     )
     parser.add_argument(
         "--cumulative-radius-km",
@@ -177,6 +179,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--min-building-height-m",
+        type=float,
+        default=DEFAULT_MIN_BUILDING_HEIGHT_M,
+        help="Ignore buildings lower than this height in meters (default: 50.0).",
+    )
+    parser.add_argument(
         "--output-dir",
         type=Path,
         default=DATA_ROOT / "viewpoints" / "urban_skyline",
@@ -211,6 +219,7 @@ def load_building_footprints(
     path: Path,
     *,
     height_fields: Sequence[str],
+    min_building_height_m: float = DEFAULT_MIN_BUILDING_HEIGHT_M,
 ) -> tuple[BuildingFootprint, ...]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     features = payload.get("features")
@@ -229,7 +238,11 @@ def load_building_footprints(
         if not rings:
             continue
         height_m = extract_building_height_m(properties, height_fields)
-        if height_m is None or not math.isfinite(height_m) or height_m <= 0.0:
+        if (
+            height_m is None
+            or not math.isfinite(height_m)
+            or height_m < float(min_building_height_m)
+        ):
             continue
         building_id = str(
             properties.get("id")
@@ -440,6 +453,25 @@ def iter_true_runs(mask: np.ndarray) -> Iterable[slice]:
         yield slice(start, mask.size)
 
 
+def update_altitude_bins_from_interval(
+    altitudes: np.ndarray,
+    *,
+    start_azimuth_deg: float,
+    end_azimuth_deg: float,
+    altitude_deg: float,
+    azimuth_step_deg: float,
+) -> bool:
+    bin_count = altitudes.size
+    delta_az = _unwrap_azimuth_delta_deg(start_azimuth_deg, end_azimuth_deg)
+    steps = max(1, int(math.ceil(abs(delta_az) / azimuth_step_deg)))
+    t = np.linspace(0.0, 1.0, num=steps + 1, dtype=np.float64)
+    segment_az = (start_azimuth_deg + t * delta_az) % 360.0
+    indices = np.rint(segment_az / azimuth_step_deg).astype(np.int64) % bin_count
+    old_values = altitudes[indices].copy()
+    np.maximum.at(altitudes, indices, float(altitude_deg))
+    return bool(np.any(altitudes[indices] > old_values))
+
+
 def compute_band_ends_m(
     band_starts_m: np.ndarray,
     *,
@@ -447,24 +479,7 @@ def compute_band_ends_m(
 ) -> np.ndarray:
     if band_starts_m.ndim != 1 or band_starts_m.size == 0:
         raise ValueError("band_starts_m must be a non-empty 1-dimensional array.")
-    if band_starts_m.size == 1:
-        return band_starts_m + float(fallback_band_width_m)
-    deltas_m = np.diff(band_starts_m)
-    widths_m = deltas_m / 3.0
-    prev_start_m = float(band_starts_m[-2])
-    last_start_m = float(band_starts_m[-1])
-    if prev_start_m > 0.0 and last_start_m > prev_start_m:
-        ratio = last_start_m / prev_start_m
-        next_start_m = last_start_m * ratio
-        trailing_width_m = (next_start_m - last_start_m) / 3.0
-    else:
-        trailing_width_m = float(deltas_m[-1] / 3.0)
-    return np.concatenate(
-        (
-            band_starts_m[:-1] + widths_m,
-            np.array([band_starts_m[-1] + trailing_width_m], dtype=np.float64),
-        )
-    )
+    return band_starts_m + float(fallback_band_width_m)
 
 
 def compute_urban_skyline(
@@ -509,12 +524,12 @@ def compute_urban_skyline(
                 distances = distances[valid]
                 azimuth_deg = (np.degrees(np.arctan2(sampled_points[:, 0], sampled_points[:, 1])) + 360.0) % 360.0
                 altitude_deg = np.degrees(np.arctan2(building.height_m - observer_height_m, distances))
-                if update_altitude_bins_from_polyline(
+                if update_altitude_bins_from_interval(
                     altitudes,
-                    azimuth_deg=azimuth_deg,
-                    altitude_deg=altitude_deg,
+                    start_azimuth_deg=float(azimuth_deg[0]),
+                    end_azimuth_deg=float(azimuth_deg[-1]),
+                    altitude_deg=float(np.max(altitude_deg)),
                     azimuth_step_deg=azimuth_step_deg,
-                    closed=False,
                 ):
                     contributed = True
         if contributed:
@@ -611,12 +626,14 @@ def compute_cumulative_urban_skyline(
                         continue
                     considered[radius_index] = True
                     for run in iter_true_runs(mask):
-                        if update_altitude_bins_from_polyline(
+                        run_azimuth_deg = azimuth_deg[run]
+                        run_altitude_deg = altitude_deg[run]
+                        if update_altitude_bins_from_interval(
                             altitude_layers[radius_index],
-                            azimuth_deg=azimuth_deg[run],
-                            altitude_deg=altitude_deg[run],
+                            start_azimuth_deg=float(run_azimuth_deg[0]),
+                            end_azimuth_deg=float(run_azimuth_deg[-1]),
+                            altitude_deg=float(np.max(run_altitude_deg)),
                             azimuth_step_deg=azimuth_step_deg,
-                            closed=False,
                         ):
                             contributed[radius_index] = True
         buildings_considered += considered.astype(np.int64)
@@ -791,7 +808,11 @@ def main(argv: Sequence[str]) -> int:
             raise ValueError("Specify --buildings unless using --list-japan-towers.")
         towers = select_towers(args)
         height_fields = tuple(args.height_field) if args.height_field else DEFAULT_HEIGHT_FIELDS
-        buildings = load_building_footprints(args.buildings, height_fields=height_fields)
+        buildings = load_building_footprints(
+            args.buildings,
+            height_fields=height_fields,
+            min_building_height_m=float(args.min_building_height_m),
+        )
         results: list[tuple[TowerViewpoint, Sequence[SkylineRadiusResult]]] = []
         cumulative_radii_km = normalize_cumulative_radii_km(
             [float(value) for value in args.cumulative_radius_km],

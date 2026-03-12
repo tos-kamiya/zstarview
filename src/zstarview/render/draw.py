@@ -47,6 +47,7 @@ from .geometry import (
     get_screen_geometry,
     normalized_to_screen_xy,
     normalized_to_screen_xy_vectorized,
+    shortest_azimuth_delta_deg,
 )
 from .photometry import (
     body_label_text,
@@ -447,6 +448,59 @@ def split_by_gaps(points: List[Tuple[float, float]]) -> List[List[Tuple[float, f
     return fragments
 
 
+def split_urban_profile_into_flat_runs(
+    urban_profile_altaz: List[Tuple[float, float]] | list[tuple[float, float]],
+    *,
+    min_altitude_deg: float = -60.0,
+    altitude_tol_deg: float = 1.0e-6,
+) -> List[List[Tuple[float, float]]]:
+    runs: List[List[Tuple[float, float]]] = []
+    current: List[Tuple[float, float]] = []
+    current_alt: float | None = None
+
+    for alt, az in urban_profile_altaz:
+        altitude = float(alt)
+        azimuth = float(az)
+        if altitude < min_altitude_deg:
+            if len(current) >= 2:
+                runs.append(current)
+            current = []
+            current_alt = None
+            continue
+
+        if current_alt is None or abs(altitude - current_alt) <= altitude_tol_deg:
+            current.append((altitude, azimuth))
+            if current_alt is None:
+                current_alt = altitude
+            continue
+
+        if len(current) >= 2:
+            runs.append(current)
+        current = [(altitude, azimuth)]
+        current_alt = altitude
+
+    if len(current) >= 2:
+        runs.append(current)
+    return runs
+
+
+def sample_constant_altitude_arc(
+    *,
+    altitude_deg: float,
+    start_azimuth_deg: float,
+    end_azimuth_deg: float,
+    step_deg: float = 0.25,
+) -> List[Tuple[float, float]]:
+    delta_az = shortest_azimuth_delta_deg(end_azimuth_deg, start_azimuth_deg)
+    steps = max(1, int(math.ceil(abs(delta_az) / max(step_deg, 0.05))))
+    out: List[Tuple[float, float]] = []
+    for index in range(steps + 1):
+        t = index / steps
+        azimuth_deg = (start_azimuth_deg + (t * delta_az)) % 360.0
+        out.append((float(altitude_deg), float(azimuth_deg)))
+    return out
+
+
 def _altaz_to_neu_unit(alt_deg: float, az_deg: float) -> np.ndarray:
     """Convert Alt/Az to a unit vector in local North-East-Up coordinates."""
     alt = math.radians(float(alt_deg))
@@ -711,36 +765,42 @@ def draw_urban_skyline_lines(
     urban_profiles: list[tuple[float, list[tuple[float, float]]]] | None,
     view_center: tuple[float, float],
 ) -> None:
-    """Draw cumulative urban skyline polylines as thin white overlays."""
+    """Draw urban skyline plateaus as constant-altitude arcs on the sky dome."""
     if not urban_profiles:
         return
 
     painter.save()
     layer_count = len(urban_profiles)
     for layer_index, (_radius_km, urban_profile_altaz) in enumerate(urban_profiles):
-        points: list[tuple[float, float]] = []
-        for alt, az in urban_profile_altaz:
-            if float(alt) < -60.0:
-                continue
-            if not is_in_fov(float(alt), float(az), view_center):
-                continue
-            nx, ny = altaz_to_normalized_xy(float(alt), float(az), view_center)
-            points.append((nx, ny))
-        if len(points) < 2:
-            continue
         color = QColor(*URBAN_SKYLINE_LINE_COLOR)
         alpha = 118 - int(round(70.0 * (layer_index / max(1, layer_count - 1))))
         color.setAlpha(max(30, min(255, alpha)))
-        pen = QPen(color, 2.0, Qt.PenStyle.SolidLine)
+        pen = QPen(color, 4.0, Qt.PenStyle.SolidLine)
         pen.setCosmetic(True)
         pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
         painter.setPen(pen)
-        for frag in split_by_gaps(points):
-            if len(frag) < 2:
+
+        for run in split_urban_profile_into_flat_runs(urban_profile_altaz, min_altitude_deg=-60.0):
+            arc_alt = float(run[0][0])
+            arc_points_altaz = sample_constant_altitude_arc(
+                altitude_deg=arc_alt,
+                start_azimuth_deg=float(run[0][1]),
+                end_azimuth_deg=float(run[-1][1]),
+            )
+            points: list[tuple[float, float]] = []
+            for alt, az in arc_points_altaz:
+                if not is_in_fov(float(alt), float(az), view_center):
+                    continue
+                nx, ny = altaz_to_normalized_xy(float(alt), float(az), view_center)
+                points.append((nx, ny))
+            if len(points) < 2:
                 continue
-            pts = [QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in frag]
-            painter.drawPolyline(QPolygonF(pts))
+            for frag in split_by_gaps(points):
+                if len(frag) < 2:
+                    continue
+                screen_points = [QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in frag]
+                painter.drawPolyline(QPolygonF(screen_points))
     painter.restore()
 
 

@@ -76,3 +76,69 @@ def test_select_towers_returns_only_covered_japan_towers(monkeypatch) -> None:
     )
 
     assert [item.name for item in got] == ["Tokyo Tower"]
+
+
+def test_compute_tower_skyline_skips_coverages_without_matching_tiles(monkeypatch) -> None:
+    mod = _load_module()
+    tower = next(tower for tower in mod.load_tower_viewpoints() if tower.name == "Tokyo Skytree")
+    coverages = (
+        mod.CityGmlCoverage(
+            bldg_dir=Path("/tmp/near"),
+            min_lat_deg=35.6,
+            min_lon_deg=139.7,
+            max_lat_deg=35.8,
+            max_lon_deg=139.9,
+        ),
+        mod.CityGmlCoverage(
+            bldg_dir=Path("/tmp/far"),
+            min_lat_deg=35.0,
+            min_lon_deg=138.0,
+            max_lat_deg=35.1,
+            max_lon_deg=138.1,
+        ),
+    )
+
+    def fake_select_tile_envelopes(citygml_dir, **kwargs):
+        if Path(citygml_dir).name == "near":
+            return (
+                mod.TileEnvelope(
+                    path=Path("/tmp/near/tile.gml"),
+                    min_lat_deg=35.7,
+                    min_lon_deg=139.8,
+                    max_lat_deg=35.71,
+                    max_lon_deg=139.81,
+                ),
+            )
+        raise ValueError("No CityGML building tiles found within 19.6 km.")
+
+    monkeypatch.setattr(mod, "select_tile_envelopes", fake_select_tile_envelopes)
+    monkeypatch.setattr(
+        mod,
+        "compute_tile_skylines",
+        lambda envelopes, **kwargs: [
+            type(
+                "TileResult",
+                (),
+                {
+                    "radius_results": (),
+                },
+            )()
+        ]
+        if envelopes
+        else [],
+    )
+    monkeypatch.setattr(mod, "combine_tile_results", lambda *args, **kwargs: ("ok",))
+
+    got = mod.compute_tower_skyline(
+        tower,
+        coverages=coverages,
+        cumulative_radii_km=(0.1, 0.15),
+        radius_km=19.6,
+        radius_band_width_m=90.0,
+        azimuth_step_deg=0.1,
+        edge_sample_step_m=5.0,
+        workers=1,
+        min_building_height_m=50.0,
+    )
+
+    assert got == ("ok",)
