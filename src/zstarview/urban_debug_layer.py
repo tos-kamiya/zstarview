@@ -1,68 +1,66 @@
 from __future__ import annotations
 
-import json
 from functools import lru_cache
 from pathlib import Path
+from types import SimpleNamespace
 
-from .paths import URBAN_DEBUG_LAYER_FILE
-from .tower_viewpoints import resolve_tower_viewpoint
-from .viewpoints import split_prefixed_viewpoint
-
-
-@lru_cache(maxsize=1)
-def load_urban_debug_layers(
-    path: str | Path = URBAN_DEBUG_LAYER_FILE,
-) -> dict[str, list[list[tuple[float, float]]]]:
-    source = Path(path)
-    if not source.exists():
-        return {}
-    payload = json.loads(source.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict):
-        return {}
-
-    layers: dict[str, list[list[tuple[float, float]]]] = {}
-    for layer_id, item in payload.items():
-        if not isinstance(layer_id, str) or not isinstance(item, dict):
-            continue
-        raw_outlines = item.get("outlines")
-        if not isinstance(raw_outlines, list):
-            continue
-        outlines = _parse_outlines(raw_outlines)
-        if outlines:
-            layers[layer_id] = outlines
-    return layers
+from .data.plateau_derived_tiles import parse_derived_tile_buildings, select_derived_tile_envelopes
+from .data.urban_debug_layer_from_citygml import compute_debug_outlines
+from .paths import TOKYO23_PLATEAU_DERIVED_DIR
+from .types import ViewerData
 
 
-def resolve_urban_debug_layer_for_city_name(
-    city_name: str,
-    path: str | Path = URBAN_DEBUG_LAYER_FILE,
+def resolve_urban_debug_layer_for_viewer(
+    viewer_data: ViewerData,
+    *,
+    tokyo23_derived_dir: str | Path = TOKYO23_PLATEAU_DERIVED_DIR,
 ) -> list[list[tuple[float, float]]] | None:
-    split = split_prefixed_viewpoint(city_name)
-    if split is None:
-        return None
-    kind, name = split
-    if kind != "tower":
-        return None
-    tower = resolve_tower_viewpoint(name)
-    if tower is None:
-        return None
-    return load_urban_debug_layers(path).get(tower.id)
+    return _build_dynamic_tokyo23_debug_layer(
+        lat_deg=float(viewer_data.lat_deg),
+        lon_deg=float(viewer_data.lon_deg),
+        observer_height_m=float(viewer_data.observer_height_m),
+        derived_dir=Path(tokyo23_derived_dir),
+    )
 
 
-def _parse_outlines(raw_outlines: list[object]) -> list[list[tuple[float, float]]]:
-    outlines: list[list[tuple[float, float]]] = []
-    for raw_outline in raw_outlines:
-        if not isinstance(raw_outline, list):
-            continue
-        points: list[tuple[float, float]] = []
-        for row in raw_outline:
-            if not isinstance(row, dict):
-                continue
-            az = row.get("az")
-            alt = row.get("alt")
-            if not isinstance(az, (int, float)) or not isinstance(alt, (int, float)):
-                continue
-            points.append((float(alt), float(az)))
-        if len(points) >= 2:
-            outlines.append(points)
-    return outlines
+@lru_cache(maxsize=64)
+def _build_dynamic_tokyo23_debug_layer(
+    *,
+    lat_deg: float,
+    lon_deg: float,
+    observer_height_m: float,
+    derived_dir: Path,
+) -> list[list[tuple[float, float]]] | None:
+    if not derived_dir.exists():
+        return None
+    try:
+        envelopes = select_derived_tile_envelopes(
+            derived_dir,
+            observer_lat_deg=lat_deg,
+            observer_lon_deg=lon_deg,
+            radius_km=3.0,
+        )
+    except ValueError:
+        return None
+
+    buildings = []
+    for envelope in envelopes:
+        buildings.extend(parse_derived_tile_buildings(envelope.path, min_building_height_m=40.0))
+
+    result = compute_debug_outlines(
+        SimpleNamespace(
+            id="coords",
+            name="coords",
+            latitude_deg=lat_deg,
+            longitude_deg=lon_deg,
+            observer_height_m=observer_height_m,
+        ),
+        tuple(buildings),
+        radius_km=3.0,
+        edge_sample_step_m=10.0,
+    )
+    outlines = [
+        [(point.altitude_deg, point.azimuth_deg) for point in outline]
+        for outline in result.outlines
+    ]
+    return outlines or None

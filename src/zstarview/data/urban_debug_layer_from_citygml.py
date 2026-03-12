@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Build a Tokyo23-only debug urban layer from PLATEAU CityGML tiles.
+"""Build an urban outline layer from derived PLATEAU building tiles.
 
 This tool samples the tops of building footprints within 3 km of a bundled
-viewpoint and stores those projected roof-edge polylines as a debug overlay.
+viewpoint and stores those projected roof-edge polylines as an urban outline overlay.
 Unlike the urban skyline generator, it does not collapse buildings into a
 single max-altitude profile.
 """
@@ -33,11 +33,10 @@ from zstarview.data.urban_skyline_demo import (  # noqa: E402
     project_ring_xy,
     sample_ring_points_xy,
 )
-from zstarview.data.urban_skyline_from_citygml import (  # noqa: E402
-    parse_citygml_buildings,
-    select_tile_envelopes,
+from zstarview.data.plateau_derived_tiles import (  # noqa: E402
+    parse_derived_tile_buildings,
+    select_derived_tile_envelopes,
 )
-from zstarview.paths import URBAN_DEBUG_LAYER_FILE  # noqa: E402
 from zstarview.tower_viewpoints import (  # noqa: E402
     TowerViewpoint,
     load_tower_viewpoints,
@@ -65,13 +64,13 @@ class DebugOutlineResult:
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Generate Tokyo23 debug urban outline overlays from PLATEAU CityGML building tiles."
+        description="Generate urban outline overlays from derived PLATEAU building tiles."
     )
     parser.add_argument(
-        "--citygml-dir",
+        "--derived-dir",
         type=Path,
         required=True,
-        help="Directory containing Tokyo23 PLATEAU building GML files such as raw-data/.../udx/bldg.",
+        help="Directory containing derived PLATEAU JSON tiles such as src/zstarview/data/plateau_derived/.../bldg.",
     )
     parser.add_argument(
         "--tower",
@@ -105,8 +104,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output-json",
         type=Path,
-        default=Path(URBAN_DEBUG_LAYER_FILE),
-        help="Output JSON path.",
+        required=True,
+        help="Output JSON path for one-off outline export.",
     )
     return parser
 
@@ -115,7 +114,7 @@ def select_towers(
     *,
     tower_queries: Sequence[str],
     all_covered_towers: bool,
-    citygml_dir: Path,
+    derived_dir: Path,
     radius_km: float,
 ) -> tuple[TowerViewpoint, ...]:
     if tower_queries:
@@ -137,8 +136,8 @@ def select_towers(
         if not is_japan_tower(tower):
             continue
         try:
-            select_tile_envelopes(
-                citygml_dir,
+            select_derived_tile_envelopes(
+                derived_dir,
                 observer_lat_deg=tower.latitude_deg,
                 observer_lon_deg=tower.longitude_deg,
                 radius_km=radius_km,
@@ -244,14 +243,14 @@ def ring_contains_origin_xy(ring_xy: np.ndarray) -> bool:
 
 
 def load_buildings_for_tower(
-    citygml_dir: Path,
+    derived_dir: Path,
     *,
     tower: TowerViewpoint,
     radius_km: float,
     min_building_height_m: float,
 ) -> tuple[BuildingFootprint, ...]:
-    envelopes = select_tile_envelopes(
-        citygml_dir,
+    envelopes = select_derived_tile_envelopes(
+        derived_dir,
         observer_lat_deg=tower.latitude_deg,
         observer_lon_deg=tower.longitude_deg,
         radius_km=radius_km,
@@ -259,7 +258,7 @@ def load_buildings_for_tower(
     buildings: list[BuildingFootprint] = []
     for envelope in envelopes:
         buildings.extend(
-            parse_citygml_buildings(
+            parse_derived_tile_buildings(
                 envelope.path,
                 min_building_height_m=min_building_height_m,
             )
@@ -288,7 +287,7 @@ def main(argv: Sequence[str]) -> int:
     towers = select_towers(
         tower_queries=args.tower,
         all_covered_towers=bool(args.all_covered_towers),
-        citygml_dir=args.citygml_dir,
+        derived_dir=args.derived_dir,
         radius_km=float(args.radius_km),
     )
     if not towers:
@@ -297,7 +296,7 @@ def main(argv: Sequence[str]) -> int:
     results: list[DebugOutlineResult] = []
     for tower in towers:
         buildings = load_buildings_for_tower(
-            args.citygml_dir,
+            args.derived_dir,
             tower=tower,
             radius_km=float(args.radius_km),
             min_building_height_m=float(args.min_building_height_m),
@@ -314,7 +313,7 @@ def main(argv: Sequence[str]) -> int:
         results.append(result)
 
     write_debug_layer_json(args.output_json, results)
-    print(f"[ok] debug-json: {args.output_json}")
+    print(f"[ok] urban-outline-json: {args.output_json}")
     return 0
 
 

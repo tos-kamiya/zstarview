@@ -24,8 +24,8 @@ MOUNTAIN_VIEWPOINTS_FILE = os.path.join(_dir, "data", "viewpoints", "mountain_vi
 URBAN_SKYLINE_PROFILES_FILE = os.path.join(
     _dir, "data", "viewpoints", "urban_skyline", "urban_skyline_profiles.json"
 )
-URBAN_DEBUG_LAYER_FILE = os.path.join(
-    _dir, "data", "viewpoints", "urban_debug_layer", "tokyo23_urban_debug_layer.json"
+TOKYO23_PLATEAU_DERIVED_DIR = os.path.join(
+    _dir, "data", "plateau_derived", "13100_tokyo23", "bldg"
 )
 APP_ICON_FILE = os.path.join(_dir, "data", "icon-256.png")
 CACHE_PATH = user_cache_dir(appname=APP_ID, appauthor=APP_AUTHOR)

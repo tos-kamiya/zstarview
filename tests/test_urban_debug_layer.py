@@ -1,68 +1,62 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
-from zstarview.urban_debug_layer import (
-    load_urban_debug_layers,
-    resolve_urban_debug_layer_for_city_name,
-)
+from zstarview.types import ViewerData
+from zstarview.urban_debug_layer import resolve_urban_debug_layer_for_viewer
 
 
-def test_load_urban_debug_layers_reads_outline_polylines(tmp_path: Path) -> None:
-    path = tmp_path / "debug.json"
-    path.write_text(
-        json.dumps(
-            {
-                "wikidata:Q57965": {
-                    "name": "Tokyo Skytree",
-                    "outlines": [
-                        [
-                            {"az": 0.0, "alt": -1.0},
-                            {"az": 0.5, "alt": -2.0},
-                        ],
-                        [
-                            {"az": 30.0, "alt": -0.5},
-                            {"az": 31.0, "alt": -0.25},
-                        ],
-                    ],
-                }
-            }
-        ),
-        encoding="utf-8",
+def test_resolve_urban_debug_layer_for_viewer_builds_dynamic_layer(monkeypatch, tmp_path: Path) -> None:
+    viewer = ViewerData(
+        location=(35.67, 139.76),
+        timezone_name="Asia/Tokyo",
+        city_name="Lat: 35.67, Lon: 139.76",
+        observer_height_m=1.7,
     )
 
-    load_urban_debug_layers.cache_clear()
-    got = load_urban_debug_layers(path)
-
-    assert got == {
-        "wikidata:Q57965": [
-            [(-1.0, 0.0), (-2.0, 0.5)],
-            [(-0.5, 30.0), (-0.25, 31.0)],
-        ]
-    }
-
-
-def test_resolve_urban_debug_layer_for_tower_city_name(tmp_path: Path) -> None:
-    path = tmp_path / "debug.json"
-    path.write_text(
-        json.dumps(
+    monkeypatch.setattr(
+        "zstarview.urban_debug_layer.select_derived_tile_envelopes",
+        lambda *_args, **_kwargs: (type("Envelope", (), {"path": tmp_path / "tile.json"})(),),
+    )
+    monkeypatch.setattr(
+        "zstarview.urban_debug_layer.parse_derived_tile_buildings",
+        lambda *_args, **_kwargs: ("building",),
+    )
+    monkeypatch.setattr(
+        "zstarview.urban_debug_layer.compute_debug_outlines",
+        lambda *_args, **_kwargs: type(
+            "Result",
+            (),
             {
-                "wikidata:Q57965": {
-                    "name": "Tokyo Skytree",
-                    "outlines": [
-                        [
-                            {"az": 0.0, "alt": -1.0},
-                            {"az": 0.5, "alt": -2.0},
-                        ]
-                    ],
-                }
-            }
-        ),
-        encoding="utf-8",
+                "outlines": (
+                    (
+                        type("Point", (), {"altitude_deg": -1.0, "azimuth_deg": 10.0})(),
+                        type("Point", (), {"altitude_deg": -2.0, "azimuth_deg": 12.0})(),
+                    ),
+                )
+            },
+        )(),
     )
 
-    load_urban_debug_layers.cache_clear()
-    got = resolve_urban_debug_layer_for_city_name("t/Tokyo Skytree", path)
+    got = resolve_urban_debug_layer_for_viewer(
+        viewer,
+        tokyo23_derived_dir=tmp_path,
+    )
 
-    assert got == [[(-1.0, 0.0), (-2.0, 0.5)]]
+    assert got == [[(-1.0, 10.0), (-2.0, 12.0)]]
+
+
+def test_resolve_urban_debug_layer_for_viewer_returns_none_when_outside_coverage(tmp_path: Path) -> None:
+    viewer = ViewerData(
+        location=(34.69, 135.50),
+        timezone_name="Asia/Tokyo",
+        city_name="Osaka",
+        observer_height_m=1.7,
+    )
+
+    got = resolve_urban_debug_layer_for_viewer(
+        viewer,
+        tokyo23_derived_dir=tmp_path,
+    )
+
+    assert got is None
