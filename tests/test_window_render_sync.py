@@ -169,7 +169,6 @@ def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(monkeypa
     dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
     dummy.state.mouse_pos = None
     dummy._draw_star_layer = lambda *_args, **kwargs: calls.append(("stars", kwargs.get("draw_vmag_limit")))
-    dummy._draw_urban_outline_layer = lambda *_args, **_kwargs: calls.append(("urban", None))
 
     SkyWindow._draw_viewport_interaction_layers(
         dummy,
@@ -189,7 +188,6 @@ def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(monkeypa
         ("reference", None),
         ("stars", 4.0),
         ("terrain", None),
-        ("urban", None),
         ("direction", None),
         ("zenith", None),
     ]
@@ -357,7 +355,7 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     assert seen_view_centers == [(50.0, 210.0)]
 
 
-def test_draw_viewport_interaction_layers_draws_urban_debug_outlines(monkeypatch) -> None:
+def test_draw_viewport_interaction_layers_skips_urban_debug_outlines(monkeypatch) -> None:
     seen_profiles: list[object] = []
     seen_view_centers: list[object] = []
 
@@ -423,8 +421,8 @@ def test_draw_viewport_interaction_layers_draws_urban_debug_outlines(monkeypatch
         ),
     )
 
-    assert seen_profiles == [urban_outlines]
-    assert seen_view_centers == [(50.0, 210.0)]
+    assert seen_profiles == []
+    assert seen_view_centers == []
 
 
 def test_draw_sky_reference_lines_uses_render_view_center_projection(monkeypatch) -> None:
@@ -472,3 +470,50 @@ def test_draw_sky_reference_lines_uses_render_view_center_projection(monkeypatch
     )
 
     assert calls == [(55.0, 200.0), (55.0, 200.0), (55.0, 200.0)]
+
+
+def test_draw_urban_debug_outlines_simplifies_narrow_outline_to_horizontal_segment(monkeypatch) -> None:
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "is_in_fov",
+        lambda *_args, **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "altaz_to_normalized_xy",
+        lambda alt, az, _view_center: (float(az), float(alt)),
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "normalized_to_screen_xy",
+        lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+
+    class _Painter:
+        def __init__(self) -> None:
+            self.polylines: list[list[tuple[float, float]]] = []
+
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setPen(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawPolyline(self, poly) -> None:
+            self.polylines.append([(poly.at(i).x(), poly.at(i).y()) for i in range(poly.count())])
+
+    painter = _Painter()
+    window_render_module.render_draw.draw_urban_debug_outlines(
+        painter,
+        geometry=SimpleNamespace(center=(0, 0), radius=1),
+        urban_outlines=[[(-10.0, 10.0), (-12.0, 10.3)]],
+        view_center=(45.0, 180.0),
+        opacity=0.38,
+    )
+
+    assert len(painter.polylines) == 1
+    assert len(painter.polylines[0]) == 2
+    assert painter.polylines[0][0][1] == painter.polylines[0][1][1]
