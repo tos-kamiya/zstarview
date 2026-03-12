@@ -16,6 +16,7 @@ It renders a live all-sky view centered on your chosen location and time, includ
 - **Adjustable view center**: adjust the view center with CLI options `-A` (altitude) and `-Z` (azimuth), or with the arrow keys. During view changes or window resize, the app briefly switches to a simplified interaction mode to keep navigation responsive.
 - **Satellite cloud imagery**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay. Missing regions are shown in faint yellow when satellite coverage is partial.
 - **Terrain horizon and ground fill**: Copernicus DEM data can be downloaded to render the local terrain skyline. A subtle ocher terrain line follows the observer's surroundings, and the disc is filled with a ground color below the terrain horizon, or below the geometric horizon when terrain is disabled.
+- **Urban outline overlay**: where bundled PLATEAU-derived building tiles are available, major rooflines are drawn as a white urban outline overlay. Very narrow roof spans are simplified to thick horizontal strokes.
 - **Never-rises region**: the celestial region that never rises above the horizon for the observer's latitude is shown in a red tint.
 - **Python support**: the project is routinely tested on CPython 3.10, 3.11, 3.12, and 3.13.
 
@@ -78,6 +79,7 @@ The CLI supports detailed startup configuration for location, time, rendering, a
 | `--cloud-missing-tint-opacity OPACITY`      | Opacity of missing-cloud-data yellow tint (0.0–1.0).                          | `0.176` |
 | `--sky-opacity SKY_OPACITY`                 | Opacity of the simulated sky-color disc (0.0–1.0). Use 0.0 to disable.      | `0.2`   |
 | `--terrain-horizon-opacity OPACITY`         | Opacity of the terrain horizon polyline (0.0–1.0). Use 0.0 to disable DEM download, terrain-horizon calculation, and drawing. \*4 | `0.05` |
+| `--urban-outline-opacity OPACITY`           | Opacity of the urban outline overlay (0.0–1.0). Use 0.0 to disable it for that run. | `0.2` |
 | `--ground-tint-opacity OPACITY`             | Strength of the ground-color fill below the geometric/terrain horizon (0.0–1.0). | `0.1` |
 | `-m`, `--enlarge-moon`                      | Show the moon in 5x size.                                                   |         |
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | Base size of 2nd-magnitude stars.                                           | `4.0`   |
@@ -270,13 +272,14 @@ The GUI supports direct keyboard and menu-based navigation, search, and overlay 
 
 * **← / →**: Rotate view azimuth by ±5°
 * **↑ / ↓**: Change view altitude by ±5° (clamped to 0°..90°)
-  While arrow-key input continues, the app keeps a simplified viewport-interaction mode for about 0.7 seconds after the last input. In this mode, it shows stars up to `Vmag <= 4.0`, the celestial equator, ecliptic, horizon, terrain horizon, direction labels, and the zenith marker; planets, full star density, sky-color disc, clouds, DSO, and asterisms are temporarily hidden.
+  While arrow-key input continues, the app keeps a simplified viewport-interaction mode for about 0.7 seconds after the last input. In this mode, it shows stars up to `Vmag <= 4.0`, the celestial equator, ecliptic, horizon, terrain horizon, direction labels, and the zenith marker; planets, full star density, sky-color disc, clouds, DSO, asterisms, and urban outlines are temporarily hidden.
 * **M**: Toggle moon enlarged to 5x size
 * **D**: Toggle DSO overlays
 * **A**: Toggle asterism overlays
 * **S**: Toggle sky-color shading between gradient and flat-disc mode
 * **C**: Toggle cloud overlays
 * **T**: Toggle terrain horizon overlay
+* **U**: Toggle urban outline overlay
 * **Ctrl+J**: Open Jump to Named Star
 * **Ctrl+F**: Open Search Stars and Asterisms
 * **F11**: Toggle fullscreen display
@@ -295,6 +298,7 @@ From the hamburger menu (`☰`), you can use:
 * **Sky Color Disc**: Switch between the full sky-color gradient and the flat dark-disc fallback.
 * **Clouds**: Toggle real-time cloud overlays on/off.
 * **Terrain Horizon**: Toggle the terrain skyline overlay on/off. If disabled from the CLI with `--terrain-horizon-opacity 0`, the menu item cannot re-enable it for that run.
+* **Urban Outline**: Toggle the PLATEAU-derived urban roofline overlay on/off. If disabled from the CLI with `--urban-outline-opacity 0`, the menu item cannot re-enable it for that run.
 * **Fullscreen**: Toggle fullscreen display.
 * **Exit**: Quit the application.
 
@@ -400,6 +404,7 @@ All paths below are relative to `src/zstarview/data/`.
 | `cities1000.txt`, `admin1CodesASCII.txt`                       | List of cities with a population of 1000 or more | [GeoNames](https://download.geonames.org/export/dump/)             | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                           |
 | `viewpoints/tower_viewpoints.json`                             | Tower/viewpoint dataset packaged for tower-name startup resolution (derived and normalized from Wikidata) | [Wikidata](https://www.wikidata.org/) via local normalization/query workflow documented in `docs/developer/viewpoint-dataset-generation.md` | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) (Wikidata data) |
 | `viewpoints/mountain_viewpoints.json`                          | Mountain/viewpoint dataset packaged for mountain-name startup resolution (Wikipedia-curated candidates normalized with Wikidata metadata) | [Wikipedia](https://www.wikipedia.org/) candidate collection plus [Wikidata](https://www.wikidata.org/) normalization workflow documented in `docs/developer/viewpoint-dataset-generation.md` | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) (Wikidata data) |
+| `plateau_derived/13100_tokyo23/*`, `plateau_derived/26100_kyoto/*`, `plateau_derived/27100_osaka/*` | Derived PLATEAU building tiles and `tile_index.json` files bundled for the urban outline overlay | [PLATEAU Open Data](https://www.mlit.go.jp/plateau/open-data/) via the local derivation workflow documented in `docs/developer/urban-outline-layer-derived-format-ja_JP.md` | Derived from PLATEAU open data; redistribution and use remain subject to the source PLATEAU/open-data distribution terms and the original dataset terms for each city |
 | `dso.csv`                                                       | Deep-sky object catalog (named galaxies/open clusters/globular clusters; generated from OpenNGC) | [OpenNGC](https://github.com/mattiaverga/OpenNGC) via [PyOngc](https://github.com/mattiaverga/PyOngc) | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) (OpenNGC database) |
 | On-demand terrain DEM cache under the app cache directory | Terrain horizon source data (Copernicus DEM GLO-90) | [Copernicus DEM / Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM) via public AWS S3 distribution used by the app | ESA User Licence for Copernicus DEM (Copernicus Contributing Mission data access terms) |
 | `stars/IAU-Catalog of Star Names (always up to date).csv`      | IAU WGSN catalog of approved star names          | [exopla.net](https://exopla.net/star-names/modern-iau-star-names/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                           |
@@ -411,9 +416,11 @@ All paths below are relative to `src/zstarview/data/`.
 * City data based on GeoNames.
 * Tower/viewpoint startup data are derived from Wikidata and redistributed under Wikidata's CC0 data terms.
 * Mountain/viewpoint startup data are curated from Wikipedia candidates and normalized with Wikidata metadata; redistributed here under Wikidata's CC0 data terms.
+* Urban outline source data are derived from MLIT's **PLATEAU Open Data** 3D city models for Tokyo 23 wards, Kyoto, and Osaka, then reduced into bundled derived building tiles for runtime use.
 * Star proper names provided by the IAU Working Group on Star Names (via [exopla.net](https://exopla.net/star-names/modern-iau-star-names/)).
 * Cloud data are based on infrared observations from the **Himawari** satellite (provided by JMA) and the **NOAA GOES** series (provided by NOAA/NESDIS), retrieved from their public S3 buckets.
 * Terrain horizon data are based on **Copernicus DEM GLO-90**, managed by ESA on behalf of the European Commission and obtained by the app through its public AWS distribution/cache flow.
+* Thanks to MLIT Project PLATEAU and the PLATEAU open data publishers for making the source 3D city model data available.
 * Thanks to AWS and dataset providers for making the public S3 distribution/mirror endpoints available for cloud imagery and terrain DEM access.
 * Fonts provided by the Google Noto Project.
 * The window title "Zenith Star View" was suggested by ChatGPT.

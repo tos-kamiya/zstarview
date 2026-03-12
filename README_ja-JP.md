@@ -16,6 +16,7 @@
 - **表示中心の調整**: CLIのオプション`-A`（高度）/`-Z`（方位）、あるいは、矢印キーで表示中心を調整でき、視線の変更中やウィンドウのサイズ変更中は一時的に簡易描画モードへ切り替えて応答性を保ちます。
 - **衛星雲画像**: リアルタイムに Himawari/GOES 衛星のデータをダウンロードし、縞模様（ハッチ）の重ね描きとして表示します。衛星データが部分的な場合は欠損領域を薄い黄色で示します。
 - **地形地平線と地面塗り**: Copernicus DEM データをダウンロードして、地形地平線オーバーレイを表示します。観測者の地点に沿った、薄い黄土色がかった地形線を表示します。地形地平線（地形地平線を表示しない場合には水平線）より下は、向きの把握を助けるため地面色で塗り分けます。
+- **都市アウトライン表示**: 同梱している PLATEAU 由来の派生建物タイルが利用できる地点では、主要な建物屋根線を白い都市アウトラインとして表示します。非常に細い屋根線分は太い水平線に簡略化して表示します。
 - **昇らない領域**: 観測者の地点の緯度に対して、地平線の上に現れない天球領域を赤みを帯びた色で表示します。
 - **Python 対応**: CPython 3.10, 3.11, 3.12, 3.13 で継続的にテストしています。
 
@@ -78,6 +79,7 @@ CLI では、場所・時刻・描画設定や同梱ビューポイント参照�
 | `--cloud-missing-tint-opacity OPACITY` | 雲欠損領域を示す黄色の濃さを指定します（0.0〜1.0）。 | `0.176` |
 | `--sky-opacity SKY_OPACITY` | 空の色ディスクの不透明度を指定します（0.0〜1.0）。0.0 で描画を無効化します。 | `0.2` |
 | `--terrain-horizon-opacity OPACITY` | 地形地平線ポリラインの不透明度を指定します（0.0〜1.0）。0.0 で DEM ダウンロード・地形地平線計算・描画を無効化します。※4 | `0.05` |
+| `--urban-outline-opacity OPACITY` | 都市アウトライン重ね表示の不透明度を指定します（0.0〜1.0）。0.0 でその起動中は表示を無効化します。 | `0.2` |
 | `--ground-tint-opacity OPACITY` | 幾何学的地平線または地形地平線より下の地面色塗りの強さを指定します（0.0〜1.0）。 | `0.1` |
 | `-m`, `--enlarge-moon` | 月を 5 倍に拡大して表示します。 | |
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | 2 等星の基本サイズを指定します。 | `4.0` |
@@ -267,13 +269,14 @@ GUI では、キーボード操作とメニュー操作で視点移動、検索�
 
 * **← / →**: 視線の方位を ±5° 回転
 * **↑ / ↓**: 視線の高度を ±5° 変更（0°..90° にクランプ）
-  方向キー入力が続く間と最後の入力から約 0.7 秒の間は、ビューポート操作用の簡易描画モードになります。この間は `Vmag <= 4.0` の恒星、天の赤道、黄道、地平線、地形地平線、方位ラベル、天頂マーカーのみを表示し、惑星、全星等の星空、空ディスク、雲、DSO、アステリウムは一時的に非表示になります。
+  方向キー入力が続く間と最後の入力から約 0.7 秒の間は、ビューポート操作用の簡易描画モードになります。この間は `Vmag <= 4.0` の恒星、天の赤道、黄道、地平線、地形地平線、方位ラベル、天頂マーカーのみを表示し、惑星、全星等の星空、空ディスク、雲、DSO、アステリウム、都市アウトラインは一時的に非表示になります。
 * **M**: 月の 5 倍表示をトグル
 * **D**: DSO 重ね表示の表示/非表示を切り替え
 * **A**: アステリウム重ね表示の表示/非表示を切り替え
 * **S**: 空ディスク表示をグラデーションとフラットディスクで切り替え
 * **C**: 雲の重ね表示の表示/非表示を切り替え
 * **T**: 地形地平線の重ね表示の表示/非表示を切り替え
+* **U**: 都市アウトラインの重ね表示の表示/非表示を切り替え
 * **Ctrl+J**: Jump to Named Star を開く
 * **Ctrl+F**: Search Stars and Asterisms を開く
 * **F11**: フルスクリーン表示の切り替え
@@ -292,6 +295,7 @@ GUI では、キーボード操作とメニュー操作で視点移動、検索�
 * **Sky Color Disc**: 空ディスク表示を、空色グラデーション表示とフラットな暗色ディスク表示で切り替えます。
 * **Clouds**: リアルタイム雲の重ね表示の表示/非表示を切り替えます。
 * **Terrain Horizon**: 地形地平線の重ね表示の表示/非表示を切り替えます。CLI で `--terrain-horizon-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
+* **Urban Outline**: 都市アウトラインの重ね表示の表示/非表示を切り替えます。CLI で `--urban-outline-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
 * **Fullscreen**: フルスクリーン表示を切り替えます。
 * **Exit**: アプリケーションを終了します。
 
@@ -401,6 +405,7 @@ Tycho-2 入力や分割出力を含む詳細オプションは次を参照して
 | `cities1000.txt`, `admin1CodesASCII.txt` | 人口 1000 人以上の都市一覧 | [GeoNames](https://download.geonames.org/export/dump/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | `viewpoints/tower_viewpoints.json` | タワー名起動用に同梱している展望塔/タワーデータ（Wikidata 由来の整形データ） | [Wikidata](https://www.wikidata.org/) をローカル整形したもの（手順は `dev-samples/` に記録） | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)（Wikidata データ） |
 | `viewpoints/mountain_viewpoints.json` | 山名起動用に同梱している山頂ビューポイントデータ（Wikipedia で収集した候補を Wikidata メタデータで正規化したデータ） | [Wikipedia](https://www.wikipedia.org/) での候補収集と [Wikidata](https://www.wikidata.org/) による正規化手順（`dev-samples/` に記録） | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)（Wikidata データ） |
+| `plateau_derived/13100_tokyo23/*`, `plateau_derived/26100_kyoto/*`, `plateau_derived/27100_osaka/*` | 都市アウトライン表示用に同梱している PLATEAU 由来の派生建物タイルと `tile_index.json` | [PLATEAU Open Data](https://www.mlit.go.jp/plateau/open-data/) を、`docs/developer/urban-outline-layer-derived-format-ja_JP.md` に記録した手順で軽量化したもの | PLATEAU オープンデータ由来。再配布と利用は元の PLATEAU 配布条件および各都市データセットの条件に従います |
 | `dso.csv` | DSO（銀河/散開星団/球状星団）カタログ（OpenNGC 由来の生成データ） | [OpenNGC](https://github.com/mattiaverga/OpenNGC)（[PyOngc](https://github.com/mattiaverga/PyOngc) 経由で生成） | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)（OpenNGC データベース） |
 | アプリのキャッシュディレクトリ配下にオンデマンドで保存される地形 DEM キャッシュ | 地形地平線用の地形データ（Copernicus DEM GLO-90） | [Copernicus DEM / Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM)（アプリは公開 AWS 配布を利用） | Copernicus DEM 向け ESA User Licence（Copernicus Contributing Mission data access terms） |
 | `stars/IAU-Catalog of Star Names (always up to date).csv` | IAU 恒星名作業部会 (WGSN) による恒星固有名カタログ | [exopla.net](https://exopla.net/star-names/modern-iau-star-names/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
@@ -412,9 +417,11 @@ Tycho-2 入力や分割出力を含む詳細オプションは次を参照して
 * 都市データは GeoNames に基づいています。
 * タワー/展望塔の起動データは Wikidata に基づく整形データであり、Wikidata の CC0 条件に従って再配布しています。
 * 山頂ビューポイントの起動データは Wikipedia で収集した候補を Wikidata メタデータで正規化したものであり、ここでは Wikidata の CC0 条件に従って再配布しています。
+* 都市アウトライン用の元データは、国土交通省 **Project PLATEAU** の 3D 都市モデルオープンデータ（東京23区・京都市・大阪市）に基づき、実行時利用向けに派生タイルへ軽量化したものです。
 * 恒星の固有名は IAU 恒星名作業部会 (WGSN) による承認済みリスト（[exopla.net](https://exopla.net/star-names/modern-iau-star-names/) 経由）を使用しています。
 * 雲データは気象衛星 **Himawari**（提供: JMA）および **NOAA GOES** シリーズ（提供: NOAA/NESDIS）による赤外線観測データを、それぞれの公開 S3 バケットから取得して利用しています。
 * 地形地平線データは **Copernicus DEM GLO-90** に基づいており、欧州委員会のために ESA が管理するデータを、アプリでは公開 AWS 配布とローカルキャッシュを通じて利用しています。
+* 3D 都市モデルの元データを公開している MLIT Project PLATEAU および各 PLATEAU オープンデータ提供者に感謝します。
 * 雲画像や地形 DEM の取得に利用している公開 S3 配布/ミラーを提供している AWS および各データ提供者に感謝します。
 * フォントは Google Noto Project を利用しています。
 * ウィンドウタイトル「Zenith Star View」は ChatGPT の提案に由来します。
