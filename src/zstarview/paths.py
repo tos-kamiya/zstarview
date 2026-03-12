@@ -37,10 +37,48 @@ TEXT_COLOR = (180, 180, 180)
 TEXT_FONT_SIZE = 11
 STATUS_LINE_COLOR = (190, 190, 160)
 STATUS_LINE_FONT_SIZE = 8
+LIGHT_LABEL_COLOR = (246, 249, 255)
+TEXT_OUTLINE_COLOR_NIGHT_RGBA = (0, 0, 0, 76)
+TEXT_STYLES_BY_PRESET = {
+    "night": {
+        "text": TEXT_COLOR,
+        "outline": TEXT_OUTLINE_COLOR_NIGHT_RGBA,
+    },
+    "white": {
+        "text": (44, 112, 196),
+        "outline": (36, 80, 140, 122),
+    },
+    "day": {
+        "text": (34, 106, 192),
+        "outline": (30, 74, 136, 116),
+    },
+    "black": {
+        "text": LIGHT_LABEL_COLOR,
+        "outline": (2, 2, 3, 236),
+    },
+}
+STATUS_LINE_STYLES_BY_PRESET = {
+    "night": {
+        "text": STATUS_LINE_COLOR,
+        "outline": TEXT_OUTLINE_COLOR_NIGHT_RGBA,
+    },
+    "white": {
+        "text": (42, 102, 184),
+        "outline": (34, 72, 128, 126),
+    },
+    "day": {
+        "text": (34, 96, 178),
+        "outline": (28, 68, 122, 120),
+    },
+    "black": {
+        "text": (255, 220, 220),
+        "outline": (2, 2, 3, 236),
+    },
+}
 
 HORIZON_LINE_COLOR = (72, 127, 71)
 TERRAIN_HORIZON_LINE_COLOR = (93, 76, 33)
-URBAN_DEBUG_LAYER_LINE_COLOR = (255, 255, 255)
+URBAN_DEBUG_LAYER_LINE_COLOR = LIGHT_LABEL_COLOR
 CELESTIAL_EQUATOR_COLOR = (139, 139, 136)
 ECLIPTIC_COLOR = (236, 173, 2)
 

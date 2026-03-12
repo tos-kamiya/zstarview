@@ -56,6 +56,7 @@ from .photometry import (
 )
 from . import text as render_text
 from .text import (
+    _rect_overlap_count,
     _text_bounds_at_baseline,
     draw_outlined_text,
     get_text_outline_width,
@@ -1575,7 +1576,7 @@ def draw_solar_system_bodies(
                 continue
             if label_reservations is not None:
                 rect = _text_bounds_at_baseline(label_text, label_font, label_pos)
-                if _rect_overlaps_any(rect, label_reservations):
+                if _rect_overlap_count(rect, label_reservations) > 0:
                     continue
                 label_reservations.append(rect)
             draw_outlined_text(
