@@ -1,6 +1,6 @@
 # zstarview
 
-Transparent desktop sky viewer with stars, planets, eclipses, optional real-time satellite cloud overlay, and optional terrain horizon overlay.
+Transparent desktop sky viewer with stars, planets, eclipses, optional real-time satellite cloud overlay, optional terrain horizon overlay, and optional urban outline overlay.
 
 <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot1.png" width="640" alt="zstarview screenshot">
 
@@ -42,8 +42,17 @@ zstarview -Z E -A 25 Tokyo
 - Adjustable view center: adjust the view center with CLI options `-A` and `-Z`, or with the arrow keys.
 - Satellite cloud imagery: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched overlay.
 - Terrain horizon and ground fill: Copernicus DEM data can be downloaded to render the local terrain skyline and ground region below the horizon.
+- Urban outline overlay: where bundled PLATEAU-derived building tiles are available, major rooflines are drawn as a white overlay; very narrow roof spans are simplified to thick horizontal strokes.
 - Never-rises region: the celestial region that never rises above the horizon for the observer's latitude is shown in a red tint.
 - Python support: routinely tested on CPython 3.10, 3.11, 3.12, and 3.13.
+
+## Common Options
+
+- `--cloud-opacity 0.0..1.0`
+- `--terrain-horizon-opacity 0.0..1.0`
+- `--urban-outline-opacity 0.0..1.0`
+- `--observer-height-m METERS`
+- `--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"`
 
 ## Links
 
