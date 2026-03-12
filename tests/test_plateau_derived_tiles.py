@@ -90,3 +90,83 @@ def test_parse_derived_tile_buildings_filters_low_buildings(tmp_path: Path) -> N
     assert len(buildings) == 1
     assert buildings[0].building_id == "high"
     assert buildings[0].height_m == 80.0
+
+
+def test_select_derived_tile_envelopes_prefers_tile_index(tmp_path: Path) -> None:
+    mod = _load_module()
+    derived_dir = tmp_path / "13100_tokyo23" / "bldg"
+    derived_dir.mkdir(parents=True)
+    (derived_dir / "tile_index.json").write_text(
+        json.dumps(
+            {
+                "bbox": {
+                    "min_lat": 35.0,
+                    "min_lon": 139.0,
+                    "max_lat": 35.2,
+                    "max_lon": 139.2,
+                },
+                "tiles": [
+                    {
+                        "path": "near.json",
+                        "bbox": {
+                            "min_lat": 35.0,
+                            "min_lon": 139.0,
+                            "max_lat": 35.01,
+                            "max_lon": 139.01,
+                        },
+                    },
+                    {
+                        "path": "far.json",
+                        "bbox": {
+                            "min_lat": 35.2,
+                            "min_lon": 139.2,
+                            "max_lat": 35.21,
+                            "max_lon": 139.21,
+                        },
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    envelopes = mod.select_derived_tile_envelopes(
+        derived_dir,
+        observer_lat_deg=35.005,
+        observer_lon_deg=139.005,
+        radius_km=3.0,
+    )
+
+    assert [envelope.path.name for envelope in envelopes] == ["near.json"]
+
+
+def test_select_derived_tile_envelopes_uses_city_bbox_to_reject(tmp_path: Path) -> None:
+    mod = _load_module()
+    derived_dir = tmp_path / "26100_kyoto" / "bldg"
+    derived_dir.mkdir(parents=True)
+    (derived_dir / "tile_index.json").write_text(
+        json.dumps(
+            {
+                "bbox": {
+                    "min_lat": 35.0,
+                    "min_lon": 135.0,
+                    "max_lat": 35.1,
+                    "max_lon": 135.1,
+                },
+                "tiles": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    try:
+        mod.select_derived_tile_envelopes(
+            derived_dir,
+            observer_lat_deg=34.69,
+            observer_lon_deg=135.50,
+            radius_km=3.0,
+        )
+    except ValueError as exc:
+        assert "No derived building tiles found" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError when observer is outside indexed city bbox")
