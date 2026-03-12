@@ -42,7 +42,7 @@ class SkyWindowUserOptions:
     sky_disc_alpha: float = 0.3
     cloud_disc_alpha: float = 0.6
     terrain_horizon_opacity: float = 0.25
-    urban_outline_opacity: float = 0.38
+    urban_outline_opacity: float = 0.2
     ground_tint_opacity: float = 1.0
     enlarge_moon: bool = False
     star_base_radius: float = 4.0
@@ -115,7 +115,7 @@ def prepare_window_user_options(
     sky_disc_alpha: float = 0.3,
     cloud_disc_alpha: float = 0.6,
     terrain_horizon_opacity: float = 0.25,
-    urban_outline_opacity: float = 0.38,
+    urban_outline_opacity: float = 0.2,
     ground_tint_opacity: float = 1.0,
     enlarge_moon: bool = False,
     star_base_radius: float = 4.0,
