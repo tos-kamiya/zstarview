@@ -1,0 +1,121 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Sequence
+
+from zstarview.data.urban_skyline_demo import BuildingFootprint
+from zstarview.data.urban_skyline_from_citygml import (
+    DEFAULT_MIN_BUILDING_HEIGHT_M,
+    TileEnvelope,
+    envelope_min_distance_km,
+)
+
+
+def load_derived_tile_envelope(path: Path) -> TileEnvelope | None:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        return None
+    tile = payload.get("tile")
+    if not isinstance(tile, dict):
+        return None
+    bbox = tile.get("bbox")
+    if not isinstance(bbox, dict):
+        return None
+    try:
+        min_lat_deg = float(bbox["min_lat"])
+        min_lon_deg = float(bbox["min_lon"])
+        max_lat_deg = float(bbox["max_lat"])
+        max_lon_deg = float(bbox["max_lon"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    return TileEnvelope(
+        path=path,
+        min_lat_deg=min_lat_deg,
+        min_lon_deg=min_lon_deg,
+        max_lat_deg=max_lat_deg,
+        max_lon_deg=max_lon_deg,
+    )
+
+
+def select_derived_tile_envelopes(
+    derived_dir: Path,
+    *,
+    observer_lat_deg: float,
+    observer_lon_deg: float,
+    radius_km: float,
+) -> tuple[TileEnvelope, ...]:
+    envelopes: list[TileEnvelope] = []
+    for path in sorted(derived_dir.glob("*.json")):
+        envelope = load_derived_tile_envelope(path)
+        if envelope is None:
+            continue
+        if envelope_min_distance_km(
+            envelope,
+            observer_lat_deg=observer_lat_deg,
+            observer_lon_deg=observer_lon_deg,
+        ) <= radius_km:
+            envelopes.append(envelope)
+    if not envelopes:
+        raise ValueError(f"No derived building tiles found within {radius_km:.1f} km.")
+    return tuple(envelopes)
+
+
+def parse_derived_tile_buildings(
+    path: Path,
+    *,
+    min_building_height_m: float = DEFAULT_MIN_BUILDING_HEIGHT_M,
+) -> tuple[BuildingFootprint, ...]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        return ()
+    raw_buildings = payload.get("buildings")
+    if not isinstance(raw_buildings, list):
+        return ()
+
+    buildings: list[BuildingFootprint] = []
+    for index, row in enumerate(raw_buildings):
+        if not isinstance(row, dict):
+            continue
+        try:
+            height_m = float(row["height_m"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if height_m < float(min_building_height_m):
+            continue
+        rings = _parse_rings_lonlat(row.get("rings"))
+        if not rings:
+            continue
+        building_id = row.get("id")
+        if not isinstance(building_id, str) or not building_id:
+            building_id = f"bldg-{index}"
+        buildings.append(
+            BuildingFootprint(
+                building_id=building_id,
+                height_m=height_m,
+                rings_lonlat=rings,
+            )
+        )
+    return tuple(buildings)
+
+
+def _parse_rings_lonlat(raw_rings: object) -> tuple[tuple[tuple[float, float], ...], ...]:
+    if not isinstance(raw_rings, list):
+        return ()
+    rings: list[tuple[tuple[float, float], ...]] = []
+    for raw_ring in raw_rings:
+        if not isinstance(raw_ring, list):
+            continue
+        points: list[tuple[float, float]] = []
+        for raw_point in raw_ring:
+            if not isinstance(raw_point, Sequence) or len(raw_point) != 2:
+                continue
+            try:
+                lon = float(raw_point[0])
+                lat = float(raw_point[1])
+            except (TypeError, ValueError):
+                continue
+            points.append((lon, lat))
+        if len(points) >= 4:
+            rings.append(tuple(points))
+    return tuple(rings)
