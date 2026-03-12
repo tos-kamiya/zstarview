@@ -31,6 +31,7 @@ from zstarview.tower_viewpoints import TowerViewpoint, resolve_tower_viewpoint  
 from zstarview.data.urban_skyline_demo import (  # noqa: E402
     BuildingFootprint,
     DEFAULT_CUMULATIVE_RADII_KM,
+    DEFAULT_MIN_BUILDING_HEIGHT_M,
     DEFAULT_RADIUS_BAND_WIDTH_M,
     SkylineResult,
     SkylineRadiusResult,
@@ -49,6 +50,8 @@ _GML_NS = {
     "bldg": "http://www.opengis.net/citygml/building/2.0",
     "gml": "http://www.opengis.net/gml",
 }
+DEFAULT_STOREY_HEIGHT_M = 3.5
+_INVALID_CITYGML_NUMERIC_VALUES = {-9999.0}
 
 
 @dataclass(frozen=True)
@@ -88,7 +91,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--radius-km",
         type=float,
         default=max(DEFAULT_CUMULATIVE_RADII_KM),
-        help="Maximum tile/building search radius around the tower (default: 20.0).",
+        help="Maximum tile/building search radius around the tower (default: 5.76650390625).",
     )
     parser.add_argument(
         "--cumulative-radius-km",
@@ -116,6 +119,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
         type=float,
         default=5.0,
         help="Approximate spacing for sampling building edges in meters (default: 5.0).",
+    )
+    parser.add_argument(
+        "--min-building-height-m",
+        type=float,
+        default=DEFAULT_MIN_BUILDING_HEIGHT_M,
+        help="Ignore buildings lower than this height in meters (default: 50.0).",
     )
     parser.add_argument(
         "--output-dir",
@@ -216,14 +225,18 @@ def select_tile_envelopes(
     return tuple(envelopes)
 
 
-def parse_citygml_buildings(path: Path) -> tuple[BuildingFootprint, ...]:
+def parse_citygml_buildings(
+    path: Path,
+    *,
+    min_building_height_m: float = DEFAULT_MIN_BUILDING_HEIGHT_M,
+) -> tuple[BuildingFootprint, ...]:
     root = ET.parse(path).getroot()
     buildings: list[BuildingFootprint] = []
     for index, building in enumerate(root.findall(".//bldg:Building", _GML_NS)):
-        height_text = building.findtext("bldg:measuredHeight", default="", namespaces=_GML_NS)
-        try:
-            height_m = float(height_text)
-        except ValueError:
+        height_m = resolve_building_height_m(building)
+        if height_m is None:
+            continue
+        if not math.isfinite(height_m) or height_m < float(min_building_height_m):
             continue
 
         rings: list[tuple[tuple[float, float], ...]] = []
@@ -242,6 +255,35 @@ def parse_citygml_buildings(path: Path) -> tuple[BuildingFootprint, ...]:
             )
         )
     return tuple(buildings)
+
+
+def resolve_building_height_m(building: ET.Element) -> float | None:
+    measured_height_m = parse_citygml_numeric(
+        building.findtext("bldg:measuredHeight", default="", namespaces=_GML_NS)
+    )
+    if measured_height_m is not None:
+        return measured_height_m
+
+    storeys = parse_citygml_numeric(
+        building.findtext("bldg:storeysAboveGround", default="", namespaces=_GML_NS)
+    )
+    if storeys is None:
+        return None
+    if storeys <= 0 or storeys >= 9999 or not float(storeys).is_integer():
+        return None
+    return storeys * DEFAULT_STOREY_HEIGHT_M
+
+
+def parse_citygml_numeric(text: str | None) -> float | None:
+    if text is None:
+        return None
+    try:
+        value = float(text.strip())
+    except (AttributeError, ValueError):
+        return None
+    if not math.isfinite(value) or value in _INVALID_CITYGML_NUMERIC_VALUES:
+        return None
+    return value
 
 
 def parse_pos_list_ring(text: str | None) -> tuple[tuple[float, float], ...]:
@@ -321,8 +363,12 @@ def compute_tile_skyline(
     radius_band_width_m: float,
     azimuth_step_deg: float,
     edge_sample_step_m: float,
+    min_building_height_m: float,
 ) -> TileSkyline | None:
-    buildings = parse_citygml_buildings(envelope.path)
+    buildings = parse_citygml_buildings(
+        envelope.path,
+        min_building_height_m=min_building_height_m,
+    )
     if not buildings:
         return None
     return TileSkyline(
@@ -347,6 +393,7 @@ def compute_tile_skylines(
     azimuth_step_deg: float,
     edge_sample_step_m: float,
     workers: int,
+    min_building_height_m: float,
 ) -> list[TileSkyline]:
     max_workers = max(1, min(int(workers), len(envelopes)))
     if max_workers == 1:
@@ -359,6 +406,7 @@ def compute_tile_skylines(
                 radius_band_width_m=radius_band_width_m,
                 azimuth_step_deg=azimuth_step_deg,
                 edge_sample_step_m=edge_sample_step_m,
+                min_building_height_m=min_building_height_m,
             )
             if tile_result is not None:
                 tile_results.append(tile_result)
@@ -375,6 +423,7 @@ def compute_tile_skylines(
                 radius_band_width_m=radius_band_width_m,
                 azimuth_step_deg=azimuth_step_deg,
                 edge_sample_step_m=edge_sample_step_m,
+                min_building_height_m=min_building_height_m,
             )
             for envelope in envelopes
         ]
@@ -424,6 +473,7 @@ def main(argv: Sequence[str]) -> int:
             azimuth_step_deg=float(args.azimuth_step),
             edge_sample_step_m=float(args.edge_sample_step_m),
             workers=int(args.workers),
+            min_building_height_m=float(args.min_building_height_m),
         )
         if not tile_results:
             raise ValueError("No usable buildings were found in the selected CityGML tiles.")

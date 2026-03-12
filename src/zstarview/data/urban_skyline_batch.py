@@ -17,6 +17,7 @@ if str(SRC_ROOT) not in sys.path:
 
 from zstarview.data.urban_skyline_demo import (  # noqa: E402
     DEFAULT_CUMULATIVE_RADII_KM,
+    DEFAULT_MIN_BUILDING_HEIGHT_M,
     DEFAULT_RADIUS_BAND_WIDTH_M,
     is_japan_tower,
     sanitize_slug,
@@ -91,7 +92,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--radius-km",
         type=float,
         default=max(DEFAULT_CUMULATIVE_RADII_KM),
-        help="Maximum building search radius around each viewpoint (default: 22.78125).",
+        help="Maximum building search radius around each viewpoint (default: 5.76650390625).",
     )
     parser.add_argument(
         "--cumulative-radius-km",
@@ -125,6 +126,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
         type=int,
         default=max(1, ((__import__("os").cpu_count() or 1) // 2)),
         help="Number of worker processes for per-tile processing (default: half of CPU cores).",
+    )
+    parser.add_argument(
+        "--min-building-height-m",
+        type=float,
+        default=DEFAULT_MIN_BUILDING_HEIGHT_M,
+        help="Ignore buildings lower than this height in meters (default: 50.0).",
     )
     parser.add_argument(
         "--output-dir",
@@ -254,18 +261,21 @@ def compute_tower_skyline(
     azimuth_step_deg: float,
     edge_sample_step_m: float,
     workers: int,
+    min_building_height_m: float,
 ):
     selected_coverages = select_candidate_coverages(tower, coverages, radius_km=radius_km)
     envelopes: list[TileEnvelope] = []
     for coverage in selected_coverages:
-        envelopes.extend(
-            select_tile_envelopes(
+        try:
+            matched = select_tile_envelopes(
                 coverage.bldg_dir,
                 observer_lat_deg=tower.latitude_deg,
                 observer_lon_deg=tower.longitude_deg,
                 radius_km=radius_km,
             )
-        )
+        except ValueError:
+            continue
+        envelopes.extend(matched)
     if not envelopes:
         return None
     tile_results = compute_tile_skylines(
@@ -276,6 +286,7 @@ def compute_tower_skyline(
         azimuth_step_deg=azimuth_step_deg,
         edge_sample_step_m=edge_sample_step_m,
         workers=workers,
+        min_building_height_m=min_building_height_m,
     )
     if not tile_results:
         return None
@@ -341,6 +352,7 @@ def main(argv: Sequence[str]) -> int:
                 azimuth_step_deg=float(args.azimuth_step),
                 edge_sample_step_m=float(args.edge_sample_step_m),
                 workers=int(args.workers),
+                min_building_height_m=float(args.min_building_height_m),
             )
             if radius_results is None:
                 print(f"[batch] skip {index}/{len(towers)}  {tower.name}: no usable building tiles")
