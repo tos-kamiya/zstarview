@@ -3,7 +3,13 @@ from typing import Any, Dict, List, Optional, Tuple
 from PySide6.QtCore import QPointF, QRect, QRectF
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPainterPath, QPen
 
-from ..paths import STATUS_LINE_COLOR, TEXT_COLOR
+from ..paths import STATUS_LINE_STYLES_BY_PRESET, TEXT_STYLES_BY_PRESET
+
+
+def _qcolor_from_rgba(color: tuple[int, ...]) -> QColor:
+    if len(color) == 3:
+        return QColor(*color)
+    return QColor(*color[:3], color[3])
 
 
 def _text_bounds_at_baseline(text: str, font: QFont, baseline_pos: QPointF) -> QRectF:
@@ -60,13 +66,8 @@ def _clamp_baseline_pos_to_viewport(
 
 def get_text_style(preset: str = "night") -> Tuple[QColor, QColor]:
     """Return (text_color, outline_color) tuned for the selected visual preset."""
-    if preset == "white":
-        return QColor(44, 112, 196), QColor(36, 80, 140, 122)
-    if preset == "day":
-        return QColor(34, 106, 192), QColor(30, 74, 136, 116)
-    if preset == "black":
-        return QColor(246, 249, 255), QColor(2, 2, 3, 236)
-    return QColor(*TEXT_COLOR), QColor.fromRgbF(0, 0, 0, 0.3)
+    style = TEXT_STYLES_BY_PRESET.get(preset, TEXT_STYLES_BY_PRESET["night"])
+    return _qcolor_from_rgba(style["text"]), _qcolor_from_rgba(style["outline"])
 
 
 def get_text_outline_width(preset: str = "night") -> float:
@@ -196,18 +197,9 @@ def draw_status_line_text(
     if not message:
         return
 
-    if preset == "white":
-        color = QColor(42, 102, 184)
-        outline_color = QColor(34, 72, 128, 126)
-    elif preset == "day":
-        color = QColor(34, 96, 178)
-        outline_color = QColor(28, 68, 122, 120)
-    elif preset == "black":
-        color = QColor(255, 220, 220)
-        outline_color = QColor(2, 2, 3, 236)
-    else:
-        color = QColor(*STATUS_LINE_COLOR)
-        outline_color = QColor.fromRgbF(0, 0, 0, 0.3)
+    style = STATUS_LINE_STYLES_BY_PRESET.get(preset, STATUS_LINE_STYLES_BY_PRESET["night"])
+    color = _qcolor_from_rgba(style["text"])
+    outline_color = _qcolor_from_rgba(style["outline"])
 
     painter.save()
     painter.setFont(status_line_font)
