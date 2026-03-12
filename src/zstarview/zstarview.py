@@ -5,8 +5,6 @@ import math
 import json
 
 from .cli_args import (
-    _parse_theme,
-    _parse_window_geometry,
     parse_args,
 )
 from .viewpoints import (
@@ -178,6 +176,7 @@ def main() -> None:
         sky_disc_alpha=args.sky_opacity,
         cloud_disc_alpha=0.0 if cloud_stripe_count == 0 or cloud_stripe_width == 0.0 else args.cloud_opacity,
         terrain_horizon_opacity=args.terrain_horizon_opacity,
+        urban_outline_opacity=args.urban_outline_opacity,
         ground_tint_opacity=args.ground_tint_opacity,
         enlarge_moon=args.enlarge_moon,
         star_base_radius=args.star_base_radius,
@@ -186,7 +185,10 @@ def main() -> None:
         star_visibility_boost=star_visibility_boost,
         show_dso_initial=args.show_dso_initial,
         show_asterisms_initial=args.show_asterisms_initial,
+        sky_disc_gui_allowed=args.sky_opacity > 0.0,
+        cloud_gui_allowed=args.cloud_opacity > 0.0,
         terrain_horizon_gui_allowed=args.terrain_horizon_opacity > 0.0,
+        urban_outline_gui_allowed=args.urban_outline_opacity > 0.0,
     )
     runtime_options = prepare_window_runtime_options(
         delta_t=delta_t,

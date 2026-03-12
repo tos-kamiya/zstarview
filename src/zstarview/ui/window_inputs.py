@@ -42,6 +42,7 @@ class SkyWindowUserOptions:
     sky_disc_alpha: float = 0.3
     cloud_disc_alpha: float = 0.6
     terrain_horizon_opacity: float = 0.25
+    urban_outline_opacity: float = 0.38
     ground_tint_opacity: float = 1.0
     enlarge_moon: bool = False
     star_base_radius: float = 4.0
@@ -50,7 +51,10 @@ class SkyWindowUserOptions:
     star_visibility_boost: float = 1.0
     show_dso_initial: Optional[bool] = None
     show_asterisms_initial: Optional[bool] = None
+    sky_disc_gui_allowed: bool = True
+    cloud_gui_allowed: bool = True
     terrain_horizon_gui_allowed: bool = True
+    urban_outline_gui_allowed: bool = True
 
 
 @dataclass(frozen=True)
@@ -111,6 +115,7 @@ def prepare_window_user_options(
     sky_disc_alpha: float = 0.3,
     cloud_disc_alpha: float = 0.6,
     terrain_horizon_opacity: float = 0.25,
+    urban_outline_opacity: float = 0.38,
     ground_tint_opacity: float = 1.0,
     enlarge_moon: bool = False,
     star_base_radius: float = 4.0,
@@ -119,13 +124,17 @@ def prepare_window_user_options(
     star_visibility_boost: float = 1.0,
     show_dso_initial: Optional[bool] = None,
     show_asterisms_initial: Optional[bool] = None,
+    sky_disc_gui_allowed: bool = True,
+    cloud_gui_allowed: bool = True,
     terrain_horizon_gui_allowed: bool = True,
+    urban_outline_gui_allowed: bool = True,
 ) -> SkyWindowUserOptions:
     """Normalize user-facing options before constructing SkyWindow."""
     return SkyWindowUserOptions(
         sky_disc_alpha=min(1.0, max(0.0, sky_disc_alpha)),
         cloud_disc_alpha=min(1.0, max(0.0, cloud_disc_alpha)),
         terrain_horizon_opacity=min(1.0, max(0.0, terrain_horizon_opacity)),
+        urban_outline_opacity=min(1.0, max(0.0, urban_outline_opacity)),
         ground_tint_opacity=min(1.0, max(0.0, ground_tint_opacity)),
         enlarge_moon=bool(enlarge_moon),
         star_base_radius=max(2.0, star_base_radius),
@@ -134,7 +143,10 @@ def prepare_window_user_options(
         star_visibility_boost=star_visibility_boost,
         show_dso_initial=show_dso_initial,
         show_asterisms_initial=show_asterisms_initial,
+        sky_disc_gui_allowed=bool(sky_disc_gui_allowed),
+        cloud_gui_allowed=bool(cloud_gui_allowed),
         terrain_horizon_gui_allowed=bool(terrain_horizon_gui_allowed),
+        urban_outline_gui_allowed=bool(urban_outline_gui_allowed),
     )
 
 

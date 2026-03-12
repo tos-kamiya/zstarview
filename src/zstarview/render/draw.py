@@ -710,13 +710,17 @@ def draw_urban_debug_outlines(
     geometry: ScreenGeometry,
     urban_outlines: list[list[tuple[float, float]]] | None,
     view_center: tuple[float, float],
+    *,
+    opacity: float = 0.38,
 ) -> None:
     """Draw sampled building-top debug outlines directly on the sky dome."""
     if not urban_outlines:
         return
+    if float(opacity) <= 0.0:
+        return
 
     color = QColor(*URBAN_DEBUG_LAYER_LINE_COLOR)
-    color.setAlpha(96)
+    color.setAlpha(max(0, min(255, int(round(255.0 * float(opacity))))))
     pen = QPen(color, 2.0, Qt.PenStyle.SolidLine)
     pen.setCosmetic(True)
     pen.setCapStyle(Qt.PenCapStyle.RoundCap)

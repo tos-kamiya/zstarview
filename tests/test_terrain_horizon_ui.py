@@ -29,13 +29,51 @@ class _DummyAction:
 def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None:
     options = prepare_window_user_options(
         terrain_horizon_opacity=1.5,
+        urban_outline_opacity=1.5,
         ground_tint_opacity=1.5,
+        sky_disc_gui_allowed=False,
+        cloud_gui_allowed=False,
         terrain_horizon_gui_allowed=False,
+        urban_outline_gui_allowed=False,
     )
 
     assert options.terrain_horizon_opacity == 1.0
+    assert options.urban_outline_opacity == 1.0
     assert options.ground_tint_opacity == 1.0
+    assert options.sky_disc_gui_allowed is False
+    assert options.cloud_gui_allowed is False
     assert options.terrain_horizon_gui_allowed is False
+    assert options.urban_outline_gui_allowed is False
+
+
+def test_toggle_clouds_respects_cli_lockout() -> None:
+    dummy = SimpleNamespace()
+    dummy._cloud_toggle_supported = True
+    dummy._cloud_gui_allowed = False
+    dummy._clouddisc = object()
+    dummy.cloud_disc_alpha = 0.0
+    dummy._cloud_alpha_when_enabled = 0.2
+    dummy._action_toggle_clouds = _DummyAction(False)
+    dummy.update = lambda: (_ for _ in ()).throw(AssertionError("should not repaint"))
+
+    SkyWindow.toggle_clouds(dummy)
+
+    assert dummy.cloud_disc_alpha == 0.0
+    assert dummy._action_toggle_clouds.isChecked() is False
+
+
+def test_toggle_sky_disc_respects_cli_lockout() -> None:
+    dummy = SimpleNamespace()
+    dummy._sky_disc_gui_allowed = False
+    dummy.sky_disc_alpha = 0.0
+    dummy._sky_disc_alpha_when_enabled = 0.3
+    dummy._action_toggle_sky_disc = _DummyAction(False)
+    dummy.update = lambda: (_ for _ in ()).throw(AssertionError("should not repaint"))
+
+    SkyWindow.toggle_sky_disc(dummy)
+
+    assert dummy.sky_disc_alpha == 0.0
+    assert dummy._action_toggle_sky_disc.isChecked() is False
 
 
 def test_status_line_message_combines_cloud_and_terrain_segments() -> None:
@@ -81,8 +119,43 @@ def test_toggle_terrain_horizon_enables_opacity_and_requests_background_update()
     assert calls == ["invalidate", "toggle-on", "update"]
 
 
+def test_toggle_urban_outline_enables_opacity_and_repaints() -> None:
+    dummy = SimpleNamespace()
+    dummy._urban_outline_gui_allowed = True
+    dummy.urban_outline_opacity = 0.0
+    dummy._urban_outline_opacity_when_enabled = 0.38
+    dummy.show_urban_outline_layer = False
+    dummy._action_toggle_urban_outline = _DummyAction(False)
+    calls: list[str] = []
+    dummy.update = lambda: calls.append("update")
+
+    SkyWindow.toggle_urban_outline(dummy)
+
+    assert dummy.urban_outline_opacity == 0.38
+    assert dummy.show_urban_outline_layer is True
+    assert dummy._action_toggle_urban_outline.isChecked() is True
+    assert calls == ["update"]
+
+
+def test_toggle_urban_outline_respects_cli_lockout() -> None:
+    dummy = SimpleNamespace()
+    dummy._urban_outline_gui_allowed = False
+    dummy.urban_outline_opacity = 0.0
+    dummy._urban_outline_opacity_when_enabled = 0.38
+    dummy.show_urban_outline_layer = False
+    dummy._action_toggle_urban_outline = _DummyAction(False)
+    dummy.update = lambda: (_ for _ in ()).throw(AssertionError("should not repaint"))
+
+    SkyWindow.toggle_urban_outline(dummy)
+
+    assert dummy.urban_outline_opacity == 0.0
+    assert dummy.show_urban_outline_layer is False
+    assert dummy._action_toggle_urban_outline.isChecked() is False
+
+
 def test_toggle_sky_disc_enables_gradient_and_requests_refresh() -> None:
     dummy = SimpleNamespace()
+    dummy._sky_disc_gui_allowed = True
     dummy.sky_disc_alpha = 0.0
     dummy._sky_disc_alpha_when_enabled = 0.3
     dummy._action_toggle_sky_disc = _DummyAction(False)
@@ -100,6 +173,7 @@ def test_toggle_sky_disc_enables_gradient_and_requests_refresh() -> None:
 
 def test_toggle_sky_disc_switches_to_flat_disc_and_requests_refresh() -> None:
     dummy = SimpleNamespace()
+    dummy._sky_disc_gui_allowed = True
     dummy.sky_disc_alpha = 0.3
     dummy._sky_disc_alpha_when_enabled = 0.3
     dummy._action_toggle_sky_disc = _DummyAction(True)
