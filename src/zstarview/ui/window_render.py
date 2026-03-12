@@ -194,12 +194,7 @@ class SkyWindowRenderMixin:
             render_viewer.view_center,
             opacity=self.terrain_horizon_opacity,
         )
-        render_draw.draw_urban_debug_outlines(
-            painter,
-            geometry,
-            self.state.urban_debug_outlines,
-            render_viewer.view_center,
-        )
+        self._draw_urban_outline_layer(painter, geometry, render_viewer)
         render_draw.draw_direction_labels(
             painter,
             geometry,
@@ -290,12 +285,7 @@ class SkyWindowRenderMixin:
             render_viewer.view_center,
             opacity=self.terrain_horizon_opacity,
         )
-        render_draw.draw_urban_debug_outlines(
-            painter,
-            geometry,
-            self.state.urban_debug_outlines,
-            render_viewer.view_center,
-        )
+        self._draw_urban_outline_layer(painter, geometry, render_viewer)
         render_draw.draw_direction_labels(
             painter,
             geometry,
@@ -305,6 +295,22 @@ class SkyWindowRenderMixin:
             preset=self.visual_preset,
         )
         render_draw.draw_zenith_marker(painter, geometry, render_viewer.view_center)
+
+    def _draw_urban_outline_layer(
+        self,
+        painter: QPainter,
+        geometry: render_draw.ScreenGeometry,
+        render_viewer: ViewerData,
+    ) -> None:
+        if not getattr(self, "show_urban_outline_layer", True):
+            return
+        render_draw.draw_urban_debug_outlines(
+            painter,
+            geometry,
+            self.state.urban_debug_outlines,
+            render_viewer.view_center,
+            opacity=getattr(self, "urban_outline_opacity", 0.38),
+        )
 
     def _draw_star_layer(
         self,

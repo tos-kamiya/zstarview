@@ -334,6 +334,7 @@
 - CLI で与えられた初期オプションは、起動後の GUI 状態の初期値になる。
 - ただし CLI で明示的に無効化した機能の一部は、セッション中の GUI 再有効化を禁止する。
 - 代表例が `--terrain-horizon-opacity 0` による地形地平線ロックアウトである。
+- `--sky-opacity 0`、`--cloud-opacity 0`、`--terrain-horizon-opacity 0`、`--urban-outline-opacity 0` は、そのセッションで各 GUI トグルをロックアウトする。
 
 ## 9. エラーモデル
 

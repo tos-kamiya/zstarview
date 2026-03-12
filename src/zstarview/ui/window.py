@@ -190,11 +190,19 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.sky_disc_alpha = user_options.sky_disc_alpha
         self._sky_disc_alpha_when_enabled = user_options.sky_disc_alpha if user_options.sky_disc_alpha > 0.0 else 0.3
         self.terrain_horizon_opacity = user_options.terrain_horizon_opacity
+        self.urban_outline_opacity = user_options.urban_outline_opacity
         self.ground_tint_opacity = user_options.ground_tint_opacity
         self._terrain_horizon_opacity_when_enabled = (
             user_options.terrain_horizon_opacity if user_options.terrain_horizon_opacity > 0.0 else 0.25
         )
+        self._urban_outline_opacity_when_enabled = (
+            user_options.urban_outline_opacity if user_options.urban_outline_opacity > 0.0 else 0.38
+        )
+        self._sky_disc_gui_allowed = bool(user_options.sky_disc_gui_allowed)
+        self._cloud_gui_allowed = bool(user_options.cloud_gui_allowed)
         self._terrain_horizon_gui_allowed = bool(user_options.terrain_horizon_gui_allowed)
+        self._urban_outline_gui_allowed = bool(user_options.urban_outline_gui_allowed)
+        self.show_urban_outline_layer: bool = self.urban_outline_opacity > 0.0
         self.enlarge_moon = user_options.enlarge_moon
         self.star_base_radius = user_options.star_base_radius
         self.vmag_limit = user_options.vmag_limit
@@ -255,6 +263,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._action_enlarge_moon: Optional[QAction] = None
         self._action_toggle_clouds: Optional[QAction] = None
         self._action_toggle_terrain_horizon: Optional[QAction] = None
+        self._action_toggle_urban_outline: Optional[QAction] = None
         self._action_toggle_dso: Optional[QAction] = None
         self._action_toggle_asterisms: Optional[QAction] = None
         self._action_toggle_sky_disc: Optional[QAction] = None
@@ -302,7 +311,9 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self._cloud_controller.cloud_ready.connect(self._on_cloud_ready)
             self._cloud_controller.cloud_failed.connect(self._on_cloud_failed)
         if self._action_toggle_clouds is not None:
-            self._action_toggle_clouds.setEnabled(self._cloud_toggle_supported and self._clouddisc is not None)
+            self._action_toggle_clouds.setEnabled(
+                self._cloud_toggle_supported and self._clouddisc is not None and self._cloud_gui_allowed
+            )
 
         terrain_cache_dir = Path(CACHE_PATH) / "copernicus-dem"
         self._terrain_horizon_controller = TerrainHorizonController(
@@ -314,6 +325,10 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._terrain_horizon_controller.terrain_failed.connect(self._on_terrain_horizon_failed)
         if self._action_toggle_terrain_horizon is not None:
             self._action_toggle_terrain_horizon.setEnabled(self._terrain_horizon_gui_allowed)
+        if self._action_toggle_sky_disc is not None:
+            self._action_toggle_sky_disc.setEnabled(self._sky_disc_gui_allowed)
+        if self._action_toggle_urban_outline is not None:
+            self._action_toggle_urban_outline.setEnabled(self._urban_outline_gui_allowed)
 
         # --- Composition Cache (moved to dedicated class) ---
         target_stripes, width_factor = runtime_options.cloud_stripe_style
@@ -461,6 +476,15 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.menu.addAction(toggle_terrain_action)
         self.addAction(toggle_terrain_action)
         self._action_toggle_terrain_horizon = toggle_terrain_action
+        toggle_urban_outline_action = QAction("Urban Outline", self)
+        toggle_urban_outline_action.setCheckable(True)
+        toggle_urban_outline_action.setChecked(self.urban_outline_opacity > 0.0)
+        toggle_urban_outline_action.setShortcut(QKeySequence(Qt.Key.Key_U))
+        toggle_urban_outline_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
+        toggle_urban_outline_action.triggered.connect(self.toggle_urban_outline)
+        self.menu.addAction(toggle_urban_outline_action)
+        self.addAction(toggle_urban_outline_action)
+        self._action_toggle_urban_outline = toggle_urban_outline_action
 
         self.menu.addSeparator()
         fullscreen_action = self.menu.addAction("Fullscreen")
@@ -665,7 +689,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.update()  # Redraw with the new setting
 
     def toggle_clouds(self) -> None:
-        if not self._cloud_toggle_supported or self._clouddisc is None:
+        if not self._cloud_toggle_supported or self._clouddisc is None or not self._cloud_gui_allowed:
             if self._action_toggle_clouds is not None:
                 self._action_toggle_clouds.setChecked(False)
             return
@@ -702,6 +726,10 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.update()
 
     def toggle_sky_disc(self) -> None:
+        if not self._sky_disc_gui_allowed:
+            if self._action_toggle_sky_disc is not None:
+                self._action_toggle_sky_disc.setChecked(self.sky_disc_alpha > 0.0)
+            return
         enable_sky_disc_gradient = self.sky_disc_alpha <= 0.0
         self.sky_disc_alpha = self._sky_disc_alpha_when_enabled if enable_sky_disc_gradient else 0.0
         if (
@@ -726,6 +754,20 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._compositor.invalidate()
         if enable_terrain:
             self.start_background_terrain_horizon_update(reason="toggle-on")
+        self.update()
+
+    def toggle_urban_outline(self) -> None:
+        if not self._urban_outline_gui_allowed:
+            if self._action_toggle_urban_outline is not None:
+                self._action_toggle_urban_outline.setChecked(self.urban_outline_opacity > 0.0)
+            return
+        enable_urban_outline = self.urban_outline_opacity <= 0.0
+        self.urban_outline_opacity = (
+            self._urban_outline_opacity_when_enabled if enable_urban_outline else 0.0
+        )
+        self.show_urban_outline_layer = self.urban_outline_opacity > 0.0
+        if self._action_toggle_urban_outline is not None and self._action_toggle_urban_outline.isChecked() != enable_urban_outline:
+            self._action_toggle_urban_outline.setChecked(enable_urban_outline)
         self.update()
 
     def toggle_fullscreen(self) -> None:
@@ -801,6 +843,9 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             event.accept()
         elif key == Qt.Key.Key_T:
             self.toggle_terrain_horizon()
+            event.accept()
+        elif key == Qt.Key.Key_U:
+            self.toggle_urban_outline()
             event.accept()
         elif key == Qt.Key.Key_D:
             self.toggle_dso()

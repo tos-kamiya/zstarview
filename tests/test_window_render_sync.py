@@ -165,9 +165,11 @@ def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(monkeypa
     dummy.text_font = object()
     dummy.visual_preset = "night"
     dummy.terrain_horizon_opacity = 0.25
+    dummy.show_urban_outline_layer = True
     dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
     dummy.state.mouse_pos = None
     dummy._draw_star_layer = lambda *_args, **kwargs: calls.append(("stars", kwargs.get("draw_vmag_limit")))
+    dummy._draw_urban_outline_layer = lambda *_args, **_kwargs: calls.append(("urban", None))
 
     SkyWindow._draw_viewport_interaction_layers(
         dummy,
@@ -231,6 +233,7 @@ def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(monkey
     dummy.text_font = object()
     dummy.visual_preset = "night"
     dummy.terrain_horizon_opacity = 0.25
+    dummy.show_urban_outline_layer = True
     dummy.state = SkyWindowState(
         render_view_center=(45.0, 180.0),
         viewport_interaction_stars=interaction_stars,
@@ -238,6 +241,7 @@ def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(monkey
     dummy.state.mouse_pos = None
     seen_stars: list[object] = []
     dummy._draw_star_layer = lambda _p, _g, celestial_data, _rv, **_kwargs: seen_stars.append(celestial_data.stars)
+    dummy._draw_urban_outline_layer = lambda *_args, **_kwargs: None
 
     SkyWindow._draw_viewport_interaction_layers(
         dummy,
@@ -262,6 +266,37 @@ def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(monkey
     )
 
     assert seen_stars == [interaction_stars]
+
+
+def test_draw_urban_outline_layer_skips_when_hidden(monkeypatch) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_urban_debug_outlines",
+        lambda *_args, **_kwargs: calls.append("urban"),
+    )
+
+    dummy = SimpleNamespace()
+    dummy.show_urban_outline_layer = False
+    dummy.state = SkyWindowState(
+        render_view_center=(45.0, 180.0),
+        urban_debug_outlines=[[(-1.0, 10.0), (-2.0, 12.0)]],
+    )
+
+    SkyWindow._draw_urban_outline_layer(
+        dummy,
+        painter=object(),
+        geometry=object(),
+        render_viewer=ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="Asia/Tokyo",
+            city_name="Tokyo",
+            view_center=(45.0, 180.0),
+            observer_height_m=1.7,
+        ),
+    )
+
+    assert calls == []
 
 
 def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> None:
@@ -297,10 +332,12 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     dummy.text_font = object()
     dummy.visual_preset = "night"
     dummy.terrain_horizon_opacity = 0.25
+    dummy.show_urban_outline_layer = True
     dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
     dummy.state.mouse_pos = None
     dummy.state.terrain_horizon_profile = terrain_profile
     dummy._draw_star_layer = lambda *_args, **_kwargs: None
+    dummy._draw_urban_outline_layer = lambda *_args, **_kwargs: None
 
     SkyWindow._draw_viewport_interaction_layers(
         dummy,
@@ -358,10 +395,19 @@ def test_draw_viewport_interaction_layers_draws_urban_debug_outlines(monkeypatch
     dummy.text_font = object()
     dummy.visual_preset = "night"
     dummy.terrain_horizon_opacity = 0.25
+    dummy.show_urban_outline_layer = True
     dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
     dummy.state.mouse_pos = None
     dummy.state.urban_debug_outlines = urban_outlines
     dummy._draw_star_layer = lambda *_args, **_kwargs: None
+    dummy._draw_urban_outline_layer = (
+        lambda painter, geometry, render_viewer: SkyWindow._draw_urban_outline_layer(
+            dummy,
+            painter=painter,
+            geometry=geometry,
+            render_viewer=render_viewer,
+        )
+    )
 
     SkyWindow._draw_viewport_interaction_layers(
         dummy,
