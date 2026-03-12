@@ -336,6 +336,12 @@
 - 代表例が `--terrain-horizon-opacity 0` による地形地平線ロックアウトである。
 - `--sky-opacity 0`、`--cloud-opacity 0`、`--terrain-horizon-opacity 0`、`--urban-outline-opacity 0` は、そのセッションで各 GUI トグルをロックアウトする。
 
+### 8.4 都市アウトライン描画の簡略化
+
+- 都市アウトラインは derived tile から得た建物上端輪郭を描く。
+- ただし見かけの方位幅が `0.5°` 未満の輪郭は、細い polyline ではなく太い水平線に簡略化する。
+- `viewport_interaction_mode` 中は都市アウトライン描画を抑止し、方向キー操作の負荷を下げる。
+
 ## 9. エラーモデル
 
 ### 9.1 起動エラー
