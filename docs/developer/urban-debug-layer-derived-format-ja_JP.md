@@ -290,7 +290,6 @@ src/zstarview/data/build_plateau_tile_index.py
 次段階で必要なのは次である。
 
 - bundled 3 都市分の derived dataset と tile index の作成
-- 任意地点 urban outline layer 生成時に `tile_index.json` を使った都市・タイル絞り込みを入れる
 - ユーザー追加の derived dataset を同じ規約で検出する実装
 
 ## 15. 変換スクリプト
@@ -388,6 +387,9 @@ src/zstarview/data/build_plateau_derived_tiles.py
 
 アプリ本体は urban outline 集約 JSON を読まない。  
 現在地点が東京23区の derived tile 範囲に入り、かつ `3km` 以内に該当タイルが見つかる場合は、その場で derived tile を読んで urban outline layer を生成する。
+
+タイル選択は `tile_index.json` がある場合はそれを優先し、まず都市全体 bbox で都市を落とし、次に `tiles[].bbox` で必要タイルだけを選ぶ。  
+`tile_index.json` が無い古い derived dataset に対してだけ、`bldg/*.json` を直接走査する fallback を使う。
 
 現時点でアプリ本体が動的 urban outline layer 生成に使うのは東京23区だけである。  
 京都市・大阪市の derived tile 生成は、同梱データ準備と今後の拡張のための前処理である。
