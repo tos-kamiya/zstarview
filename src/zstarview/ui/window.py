@@ -66,7 +66,7 @@ from .famous_star_dialog import NamedStarJumpDialog
 from .famous_star_search_dialog import NamedStarSearchDialog
 from .famous_star_shortcuts import NamedStarShortcut, SearchJumpTarget
 from ..asterisms import ASTERISM_KEYS_BY_SOURCE_ID
-from ..urban_skyline_profiles import resolve_urban_skyline_profile_for_city_name
+from ..urban_debug_layer import resolve_urban_debug_layer_for_city_name
 from .sky_worker import SkyDataWorker
 from .window_inputs import PreparedWindowCatalogs
 from .window_inputs import SkyWindowRuntimeOptions, SkyWindowUserOptions
@@ -216,7 +216,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.viewer_data = viewer_data
         self.state = SkyWindowState(
             render_view_center=tuple(self.viewer_data.view_center),
-            urban_skyline_profiles=resolve_urban_skyline_profile_for_city_name(
+            urban_debug_outlines=resolve_urban_debug_layer_for_city_name(
                 self.viewer_data.city_name
             ),
         )

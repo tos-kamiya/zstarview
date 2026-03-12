@@ -19,6 +19,8 @@
   - tower / mountain viewpoint dataset の生成フローと運用方針
 - `docs/developer/urban-skyline-generation-ja_JP.md`
   - PLATEAU CityGML から都市スカイラインを生成する手順
+- `docs/developer/urban-debug-layer-derived-format-ja_JP.md`
+  - PLATEAU 由来の都市デバッグレイヤ用中間タイルデータ形式と同梱方針
 
 ## Notes
 

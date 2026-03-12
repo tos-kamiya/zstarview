@@ -30,6 +30,7 @@ from ..paths import (
     ECLIPTIC_COLOR,
     HORIZON_LINE_COLOR,
     TERRAIN_HORIZON_LINE_COLOR,
+    URBAN_DEBUG_LAYER_LINE_COLOR,
     URBAN_SKYLINE_LINE_COLOR,
     TEXT_COLOR,
     STATUS_LINE_COLOR,
@@ -796,6 +797,50 @@ def draw_urban_skyline_lines(
                 points.append((nx, ny))
             if len(points) < 2:
                 continue
+            for frag in split_by_gaps(points):
+                if len(frag) < 2:
+                    continue
+                screen_points = [QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in frag]
+                painter.drawPolyline(QPolygonF(screen_points))
+    painter.restore()
+
+
+def draw_urban_debug_outlines(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    urban_outlines: list[list[tuple[float, float]]] | None,
+    view_center: tuple[float, float],
+) -> None:
+    """Draw sampled building-top debug outlines directly on the sky dome."""
+    if not urban_outlines:
+        return
+
+    color = QColor(*URBAN_DEBUG_LAYER_LINE_COLOR)
+    color.setAlpha(96)
+    pen = QPen(color, 2.0, Qt.PenStyle.SolidLine)
+    pen.setCosmetic(True)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+
+    painter.save()
+    painter.setPen(pen)
+    for outline in urban_outlines:
+        if len(outline) < 2:
+            continue
+        points: list[tuple[float, float]] = []
+        for alt, az in outline:
+            if float(alt) < -60.0 or not is_in_fov(float(alt), float(az), view_center):
+                if len(points) >= 2:
+                    for frag in split_by_gaps(points):
+                        if len(frag) < 2:
+                            continue
+                        screen_points = [QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in frag]
+                        painter.drawPolyline(QPolygonF(screen_points))
+                points = []
+                continue
+            nx, ny = altaz_to_normalized_xy(float(alt), float(az), view_center)
+            points.append((nx, ny))
+        if len(points) >= 2:
             for frag in split_by_gaps(points):
                 if len(frag) < 2:
                     continue

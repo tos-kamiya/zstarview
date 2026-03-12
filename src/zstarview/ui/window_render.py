@@ -194,10 +194,10 @@ class SkyWindowRenderMixin:
             render_viewer.view_center,
             opacity=self.terrain_horizon_opacity,
         )
-        render_draw.draw_urban_skyline_lines(
+        render_draw.draw_urban_debug_outlines(
             painter,
             geometry,
-            self.state.urban_skyline_profiles,
+            self.state.urban_debug_outlines,
             render_viewer.view_center,
         )
         render_draw.draw_direction_labels(
@@ -290,10 +290,10 @@ class SkyWindowRenderMixin:
             render_viewer.view_center,
             opacity=self.terrain_horizon_opacity,
         )
-        render_draw.draw_urban_skyline_lines(
+        render_draw.draw_urban_debug_outlines(
             painter,
             geometry,
-            self.state.urban_skyline_profiles,
+            self.state.urban_debug_outlines,
             render_viewer.view_center,
         )
         render_draw.draw_direction_labels(
