@@ -33,4 +33,4 @@ class SkyWindowState:
     sky_disc_image: Optional[QImage] = None
     cloud_base_size: int = 256
     terrain_horizon_profile: Optional[list[tuple[float, float]]] = None
-    urban_skyline_profiles: Optional[list[tuple[float, list[tuple[float, float]]]]] = None
+    urban_debug_outlines: Optional[list[list[tuple[float, float]]]] = None

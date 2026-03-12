@@ -147,7 +147,7 @@ def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(monkeypa
     )
     monkeypatch.setattr(
         window_render_module.render_draw,
-        "draw_urban_skyline_lines",
+        "draw_urban_debug_outlines",
         lambda *_args, **_kwargs: calls.append(("urban", None)),
     )
     monkeypatch.setattr(
@@ -206,7 +206,7 @@ def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(monkey
     )
     monkeypatch.setattr(
         window_render_module.render_draw,
-        "draw_urban_skyline_lines",
+        "draw_urban_debug_outlines",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
@@ -221,7 +221,7 @@ def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(monkey
     )
     monkeypatch.setattr(
         window_render_module.render_draw,
-        "draw_urban_skyline_lines",
+        "draw_urban_debug_outlines",
         lambda *_args, **_kwargs: None,
     )
 
@@ -320,7 +320,7 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     assert seen_view_centers == [(50.0, 210.0)]
 
 
-def test_draw_viewport_interaction_layers_draws_urban_profiles(monkeypatch) -> None:
+def test_draw_viewport_interaction_layers_draws_urban_debug_outlines(monkeypatch) -> None:
     seen_profiles: list[object] = []
     seen_view_centers: list[object] = []
 
@@ -336,7 +336,7 @@ def test_draw_viewport_interaction_layers_draws_urban_profiles(monkeypatch) -> N
     )
     monkeypatch.setattr(
         window_render_module.render_draw,
-        "draw_urban_skyline_lines",
+        "draw_urban_debug_outlines",
         lambda _p, _g, profile, view_center, **_kwargs: (
             seen_profiles.append(profile),
             seen_view_centers.append(view_center),
@@ -353,14 +353,14 @@ def test_draw_viewport_interaction_layers_draws_urban_profiles(monkeypatch) -> N
         lambda *_args, **_kwargs: None,
     )
 
-    urban_profiles = [(0.1, [(-1.0, 10.0), (-2.0, 20.0)])]
+    urban_outlines = [[(-1.0, 10.0), (-2.0, 20.0)]]
     dummy = SimpleNamespace()
     dummy.text_font = object()
     dummy.visual_preset = "night"
     dummy.terrain_horizon_opacity = 0.25
     dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
     dummy.state.mouse_pos = None
-    dummy.state.urban_skyline_profiles = urban_profiles
+    dummy.state.urban_debug_outlines = urban_outlines
     dummy._draw_star_layer = lambda *_args, **_kwargs: None
 
     SkyWindow._draw_viewport_interaction_layers(
@@ -377,7 +377,7 @@ def test_draw_viewport_interaction_layers_draws_urban_profiles(monkeypatch) -> N
         ),
     )
 
-    assert seen_profiles == [urban_profiles]
+    assert seen_profiles == [urban_outlines]
     assert seen_view_centers == [(50.0, 210.0)]
 
 

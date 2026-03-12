@@ -24,6 +24,9 @@ MOUNTAIN_VIEWPOINTS_FILE = os.path.join(_dir, "data", "viewpoints", "mountain_vi
 URBAN_SKYLINE_PROFILES_FILE = os.path.join(
     _dir, "data", "viewpoints", "urban_skyline", "urban_skyline_profiles.json"
 )
+URBAN_DEBUG_LAYER_FILE = os.path.join(
+    _dir, "data", "viewpoints", "urban_debug_layer", "tokyo23_urban_debug_layer.json"
+)
 APP_ICON_FILE = os.path.join(_dir, "data", "icon-256.png")
 CACHE_PATH = user_cache_dir(appname=APP_ID, appauthor=APP_AUTHOR)
 LOG_PATH = user_log_dir(appname=APP_ID, appauthor=APP_AUTHOR)
@@ -43,6 +46,7 @@ STATUS_LINE_FONT_SIZE = 8
 HORIZON_LINE_COLOR = (72, 127, 71)
 TERRAIN_HORIZON_LINE_COLOR = (93, 76, 33)
 URBAN_SKYLINE_LINE_COLOR = (255, 255, 255)
+URBAN_DEBUG_LAYER_LINE_COLOR = (255, 255, 255)
 CELESTIAL_EQUATOR_COLOR = (139, 139, 136)
 ECLIPTIC_COLOR = (236, 173, 2)
 
