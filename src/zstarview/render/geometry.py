@@ -6,11 +6,6 @@ import numpy as np
 from ..types import ScreenGeometry
 
 
-def shortest_azimuth_delta_deg(az_deg: float, center_az_deg: float) -> float:
-    """Return the signed shortest azimuth delta in degrees."""
-    return ((float(az_deg) - float(center_az_deg) + 180.0) % 360.0) - 180.0
-
-
 def altaz_to_normalized_xy_vectorized(
     alt_deg: np.ndarray,
     az_deg: np.ndarray,
@@ -74,59 +69,3 @@ def normalized_to_screen_xy(
     """Convert normalized coordinates to screen coordinates."""
     return geometry.center[0] + nx * geometry.radius, geometry.center[1] + ny * geometry.radius
 
-
-def altaz_to_cylindrical_normalized_xy(
-    alt_deg: float,
-    az_deg: float,
-    view_center_altaz_deg: Tuple[float, float],
-    *,
-    fov_deg: float = 180.0,
-) -> Tuple[float, float]:
-    """Convert altitude/azimuth to a cylindrical-style normalized screen position.
-
-    This maps azimuth linearly across the horizontal field and altitude linearly
-    across the vertical field, which makes near urban skylines read more like a
-    silhouette on a surrounding cylinder than a line stuck to the sky dome.
-    """
-    center_alt, center_az = view_center_altaz_deg
-    half_fov = max(1e-6, float(fov_deg) * 0.5)
-    delta_az = shortest_azimuth_delta_deg(float(az_deg), float(center_az))
-    delta_alt = float(alt_deg) - float(center_alt)
-    nx = delta_az / half_fov
-    ny = -(delta_alt / half_fov)
-    return (nx, ny)
-
-
-def altaz_to_urban_skyline_normalized_xy(
-    alt_deg: float,
-    az_deg: float,
-    view_center_altaz_deg: Tuple[float, float],
-    *,
-    cylindrical_until_alt_deg: float = 0.0,
-    spherical_from_alt_deg: float = 5.0,
-) -> Tuple[float, float]:
-    """Project urban skyline points with a cylindrical-to-spherical blend.
-
-    Near the horizon, cylindrical mapping reads more naturally for city
-    silhouettes. Higher above the horizon, the regular sky-dome projection is
-    less visually surprising. This helper blends between the two.
-    """
-    cylindrical = altaz_to_cylindrical_normalized_xy(alt_deg, az_deg, view_center_altaz_deg)
-    spherical_x, spherical_y = altaz_to_normalized_xy_vectorized(
-        np.array([alt_deg], dtype=np.float64),
-        np.array([az_deg], dtype=np.float64),
-        view_center_altaz_deg,
-    )
-    spherical = (float(spherical_x[0]), float(spherical_y[0]))
-
-    low = float(cylindrical_until_alt_deg)
-    high = max(low, float(spherical_from_alt_deg))
-    if float(alt_deg) <= low:
-        return cylindrical
-    if float(alt_deg) >= high or math.isclose(high, low):
-        return spherical
-
-    t = (float(alt_deg) - low) / (high - low)
-    nx = cylindrical[0] * (1.0 - t) + spherical[0] * t
-    ny = cylindrical[1] * (1.0 - t) + spherical[1] * t
-    return (nx, ny)

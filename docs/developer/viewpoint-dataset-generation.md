@@ -6,7 +6,7 @@
 - `src/zstarview/data/viewpoints/tower_viewpoints.json`
 - `src/zstarview/data/viewpoints/mountain_viewpoints.json`
 
-都市スカイライン前計算については、別文書 [urban-skyline-generation-ja_JP.md](/home/toshihiro/playground/zstarview/docs/developer/urban-skyline-generation-ja_JP.md) を参照する。
+都市アウトラインレイヤ用の PLATEAU 派生タイルについては、別文書 [urban-outline-layer-derived-format-ja_JP.md](/home/toshihiro/playground/zstarview/docs/developer/urban-outline-layer-derived-format-ja_JP.md) を参照する。
 
 ## 1. 位置づけ
 
@@ -301,11 +301,11 @@ CLI の一覧取得や `--show-viewpoint-json` も、ローカル JSON を読む
 ### 4.4 IDs を安定キーとして使う
 
 viewpoint の安定キーは表示名ではなく `id` / `qid` で扱う。  
-特に urban skyline のような付随データは `name` キーではなく `id` キーにぶら下げる。
+特に都市アウトラインレイヤのような付随データは `name` キーではなく `id` キーにぶら下げる。
 
 ## 5. Urban Skyline との関係
 
-urban skyline 前計算は viewpoint dataset の後段処理である。  
+都市アウトラインレイヤ用の派生タイル生成は viewpoint dataset の後段処理である。  
 流れとしては次の順が前提になる。
 
 1. bundled viewpoint dataset を確定する
@@ -313,7 +313,7 @@ urban skyline 前計算は viewpoint dataset の後段処理である。
 3. PLATEAU などの都市建物データから skyline を前計算する
 4. `id -> { name, profiles }` 形式で保存する
 
-この手順は [urban-skyline-generation-ja_JP.md](/home/toshihiro/playground/zstarview/docs/developer/urban-skyline-generation-ja_JP.md) に分離してある。
+この手順は [urban-outline-layer-derived-format-ja_JP.md](/home/toshihiro/playground/zstarview/docs/developer/urban-outline-layer-derived-format-ja_JP.md) に分離してある。
 
 ## 6. 今後の整理候補
 

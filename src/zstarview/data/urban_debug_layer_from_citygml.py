@@ -3,8 +3,6 @@
 
 This tool samples the tops of building footprints within 3 km of a bundled
 viewpoint and stores those projected roof-edge polylines as an urban outline overlay.
-Unlike the urban skyline generator, it does not collapse buildings into a
-single max-altitude profile.
 """
 
 from __future__ import annotations
@@ -24,10 +22,9 @@ DATA_ROOT = SRC_ROOT / "zstarview" / "data"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from zstarview.data.urban_skyline_demo import (  # noqa: E402
+from zstarview.data.urban_outline_common import (  # noqa: E402
     BuildingFootprint,
     bbox_min_distance_m,
-    is_japan_tower,
     iter_true_runs,
     make_local_transformer,
     project_ring_xy,
@@ -42,6 +39,7 @@ from zstarview.tower_viewpoints import (  # noqa: E402
     load_tower_viewpoints,
     resolve_tower_viewpoint,
 )
+from zstarview.viewpoints import normalize_viewpoint_name  # noqa: E402
 
 DEFAULT_RADIUS_KM = 3.0
 DEFAULT_MIN_BUILDING_HEIGHT_M = 40.0
@@ -81,7 +79,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--all-covered-towers",
         action="store_true",
-        help="Process every bundled Japan viewpoint whose 3km search circle intersects the provided Tokyo23 tiles.",
+        help="Process every bundled Japan viewpoint whose 3km search circle intersects the provided derived tiles.",
     )
     parser.add_argument(
         "--radius-km",
@@ -123,7 +121,7 @@ def select_towers(
             tower = resolve_tower_viewpoint(query)
             if tower is None:
                 raise ValueError(f"Viewpoint not found: {query}")
-            if not is_japan_tower(tower):
+            if not _is_japan_tower(tower):
                 continue
             selected.append(tower)
         return tuple(selected)
@@ -133,7 +131,7 @@ def select_towers(
 
     selected: list[TowerViewpoint] = []
     for tower in load_tower_viewpoints():
-        if not is_japan_tower(tower):
+        if not _is_japan_tower(tower):
             continue
         try:
             select_derived_tile_envelopes(
@@ -146,6 +144,16 @@ def select_towers(
             continue
         selected.append(tower)
     return tuple(selected)
+
+
+def _is_japan_tower(tower: TowerViewpoint) -> bool:
+    country = str(tower.meta.get("country", "")).strip().casefold()
+    if country in {"jp", "jpn", "japan", "日本"}:
+        return True
+    labels = " ".join(tower.labels.values())
+    names = " ".join(tower.names)
+    haystack = " ".join((tower.name, labels, names))
+    return "日本" in haystack or normalize_viewpoint_name(haystack).endswith(" japan")
 
 
 def compute_debug_outlines(
@@ -291,7 +299,7 @@ def main(argv: Sequence[str]) -> int:
         radius_km=float(args.radius_km),
     )
     if not towers:
-        raise ValueError("No bundled Tokyo23 viewpoints matched the provided inputs.")
+        raise ValueError("No bundled viewpoints matched the provided inputs.")
 
     results: list[DebugOutlineResult] = []
     for tower in towers:
