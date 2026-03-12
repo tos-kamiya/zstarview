@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from zstarview.clouddisc.providers.select import (
     is_satellite_visible,
-    pick_satellite,
     visible_satellites,
 )
 

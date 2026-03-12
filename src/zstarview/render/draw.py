@@ -9,7 +9,7 @@ import numpy as np
 from PIL import Image
 from zoneinfo import ZoneInfo
 
-from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt
+from PySide6.QtCore import QPoint, QPointF, QRectF, Qt
 from PySide6.QtGui import (
     QFont,
     QFontMetrics,
@@ -32,7 +32,6 @@ from ..paths import (
     TERRAIN_HORIZON_LINE_COLOR,
     URBAN_DEBUG_LAYER_LINE_COLOR,
     TEXT_COLOR,
-    STATUS_LINE_COLOR,
 )
 from ..types import ScreenGeometry, CelestialData, ViewerData, CelestialObject, PlanetBody
 from ..astro import (
@@ -42,26 +41,23 @@ from ..astro import (
     calculate_moon_render_data,
 )
 from ..asterisms import ASTERISMS, ASTERISM_REQUIRED_SOURCE_IDS, pick_rotating_asterism
+from . import geometry as render_geometry
 from .geometry import (
     altaz_to_normalized_xy_vectorized,
-    get_screen_geometry,
     normalized_to_screen_xy,
     normalized_to_screen_xy_vectorized,
 )
 from .photometry import (
     body_label_text,
     bv_to_rgb_vectorized,
-    compute_flare_profile,
-    flare_strength_from_vmag,
     planet_bloom_profile_from_vmag,
     planet_disc_style_from_vmag,
     planet_marker_color,
 )
+from . import text as render_text
 from .text import (
     _text_bounds_at_baseline,
-    draw_label_candidates,
     draw_outlined_text,
-    draw_status_line_text,
     get_text_outline_width,
     get_text_style,
 )
@@ -69,6 +65,11 @@ from ..utils.image import generate_moon_phase_image
 from ..utils.qt import pil2qpixmap
 
 logger = logging.getLogger(__name__)
+
+# Backward-compatible re-export for callers importing geometry helpers via render.draw.
+get_screen_geometry = render_geometry.get_screen_geometry
+draw_label_candidates = render_text.draw_label_candidates
+draw_status_line_text = render_text.draw_status_line_text
 
 _star_render_cache: tuple[tuple, QImage] | None = None
 _MAG2_TO_MAG1_SIZE_SCALE = 10.0 ** 0.12
