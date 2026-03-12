@@ -166,6 +166,8 @@ def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(monkeypa
     dummy.visual_preset = "night"
     dummy.terrain_horizon_opacity = 0.25
     dummy.show_urban_outline_layer = True
+    dummy._star_render_expected_width = 600
+    dummy.compute_star_render_upscale_factor = lambda *_args, **_kwargs: 2.0
     dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
     dummy.state.mouse_pos = None
     dummy._draw_star_layer = lambda *_args, **kwargs: calls.append(("stars", kwargs.get("draw_vmag_limit")))
@@ -173,7 +175,7 @@ def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(monkeypa
     SkyWindow._draw_viewport_interaction_layers(
         dummy,
         painter=object(),
-        geometry=object(),
+        geometry=SimpleNamespace(radius=600),
         celestial_data=object(),
         render_viewer=ViewerData(
             location=(35.0, 139.0),
@@ -232,6 +234,8 @@ def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(monkey
     dummy.visual_preset = "night"
     dummy.terrain_horizon_opacity = 0.25
     dummy.show_urban_outline_layer = True
+    dummy._star_render_expected_width = 600
+    dummy.compute_star_render_upscale_factor = lambda *_args, **_kwargs: 2.0
     dummy.state = SkyWindowState(
         render_view_center=(45.0, 180.0),
         viewport_interaction_stars=interaction_stars,
@@ -244,7 +248,7 @@ def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(monkey
     SkyWindow._draw_viewport_interaction_layers(
         dummy,
         painter=object(),
-        geometry=object(),
+        geometry=SimpleNamespace(radius=600),
         celestial_data=CelestialData(
             time=astropy.time.Time("2026-03-09T00:00:00", scale="utc"),
             planets=[],
@@ -300,6 +304,7 @@ def test_draw_urban_outline_layer_skips_when_hidden(monkeypatch) -> None:
 def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> None:
     seen_profiles: list[object] = []
     seen_view_centers: list[object] = []
+    seen_line_width_scales: list[float] = []
 
     monkeypatch.setattr(
         window_render_module.render_draw,
@@ -309,9 +314,10 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     monkeypatch.setattr(
         window_render_module.render_draw,
         "draw_terrain_horizon_line",
-        lambda _p, _g, profile, view_center, **_kwargs: (
+        lambda _p, _g, profile, view_center, **kwargs: (
             seen_profiles.append(profile),
             seen_view_centers.append(view_center),
+            seen_line_width_scales.append(float(kwargs.get("line_width_scale", 1.0))),
         ),
     )
     monkeypatch.setattr(
@@ -331,6 +337,8 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     dummy.visual_preset = "night"
     dummy.terrain_horizon_opacity = 0.25
     dummy.show_urban_outline_layer = True
+    dummy._star_render_expected_width = 600
+    dummy.compute_star_render_upscale_factor = lambda *_args, **_kwargs: 2.0
     dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
     dummy.state.mouse_pos = None
     dummy.state.terrain_horizon_profile = terrain_profile
@@ -340,7 +348,7 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     SkyWindow._draw_viewport_interaction_layers(
         dummy,
         painter=object(),
-        geometry=object(),
+        geometry=SimpleNamespace(radius=600),
         celestial_data=object(),
         render_viewer=ViewerData(
             location=(35.0, 139.0),
@@ -353,6 +361,7 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
 
     assert seen_profiles == [terrain_profile]
     assert seen_view_centers == [(50.0, 210.0)]
+    assert seen_line_width_scales == [2.0]
 
 
 def test_draw_viewport_interaction_layers_skips_urban_debug_outlines(monkeypatch) -> None:
@@ -394,6 +403,8 @@ def test_draw_viewport_interaction_layers_skips_urban_debug_outlines(monkeypatch
     dummy.visual_preset = "night"
     dummy.terrain_horizon_opacity = 0.25
     dummy.show_urban_outline_layer = True
+    dummy._star_render_expected_width = 600
+    dummy.compute_star_render_upscale_factor = lambda *_args, **_kwargs: 2.0
     dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
     dummy.state.mouse_pos = None
     dummy.state.urban_debug_outlines = urban_outlines
@@ -410,7 +421,7 @@ def test_draw_viewport_interaction_layers_skips_urban_debug_outlines(monkeypatch
     SkyWindow._draw_viewport_interaction_layers(
         dummy,
         painter=object(),
-        geometry=object(),
+        geometry=SimpleNamespace(radius=600),
         celestial_data=object(),
         render_viewer=ViewerData(
             location=(35.0, 139.0),
@@ -423,6 +434,93 @@ def test_draw_viewport_interaction_layers_skips_urban_debug_outlines(monkeypatch
 
     assert seen_profiles == []
     assert seen_view_centers == []
+
+
+def test_draw_terrain_layers_only_scales_asterisms_and_terrain(monkeypatch) -> None:
+    calls: dict[str, list[float]] = {
+        "asterisms": [],
+        "terrain": [],
+        "reference": [],
+        "direction": [],
+        "zenith": [],
+        "urban": [],
+    }
+
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_deep_sky_shapes",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_dso_hover_info",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_asterisms",
+        lambda *_args, **kwargs: calls["asterisms"].append(float(kwargs.get("line_width_scale", 1.0))),
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_terrain_horizon_line",
+        lambda *_args, **kwargs: calls["terrain"].append(float(kwargs.get("line_width_scale", 1.0))),
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_sky_reference_lines",
+        lambda *_args, **kwargs: calls["reference"].append(float(kwargs.get("line_width_scale", 1.0))),
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_direction_labels",
+        lambda *_args, **kwargs: calls["direction"].append(float(kwargs.get("line_width_scale", 1.0))),
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_zenith_marker",
+        lambda *_args, **kwargs: calls["zenith"].append(float(kwargs.get("line_width_scale", 1.0))),
+    )
+
+    dummy = SimpleNamespace()
+    dummy.show_dso = False
+    dummy.show_asterisms = True
+    dummy.text_font = object()
+    dummy.visual_preset = "night"
+    dummy.terrain_horizon_opacity = 0.25
+    dummy._star_render_expected_width = 600
+    dummy.compute_star_render_upscale_factor = lambda *_args, **_kwargs: 2.0
+    dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
+    dummy.state.mouse_pos = None
+    dummy.state.terrain_horizon_profile = [(1.0, 10.0), (2.0, 20.0)]
+    dummy._draw_urban_outline_layer = lambda *_args, **kwargs: calls["urban"].append(
+        float(kwargs.get("line_width_scale", 1.0))
+    )
+
+    SkyWindow._draw_terrain_layers(
+        dummy,
+        painter=object(),
+        geometry=SimpleNamespace(radius=600),
+        celestial_data=object(),
+        render_viewer=ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="Asia/Tokyo",
+            city_name="Tokyo",
+            view_center=(50.0, 210.0),
+            observer_height_m=1.7,
+        ),
+        highlighted_object=None,
+        highlighted_dso=None,
+        label_reservations=[],
+        label_candidates=[],
+    )
+
+    assert calls["asterisms"] == [2.0]
+    assert calls["terrain"] == [2.0]
+    assert calls["reference"] == [1.0]
+    assert calls["direction"] == [1.0]
+    assert calls["zenith"] == [1.0]
+    assert calls["urban"] == [1.0]
 
 
 def test_draw_sky_reference_lines_uses_render_view_center_projection(monkeypatch) -> None:
@@ -517,3 +615,49 @@ def test_draw_urban_debug_outlines_simplifies_narrow_outline_to_horizontal_segme
     assert len(painter.polylines) == 1
     assert len(painter.polylines[0]) == 2
     assert painter.polylines[0][0][1] == painter.polylines[0][1][1]
+
+
+def test_draw_terrain_horizon_line_scales_line_widths(monkeypatch) -> None:
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "is_in_fov",
+        lambda *_args, **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "altaz_to_normalized_xy",
+        lambda alt, az, _view_center: (float(az), float(alt)),
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "normalized_to_screen_xy",
+        lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+
+    class _Painter:
+        def __init__(self) -> None:
+            self.pen_widths: list[float] = []
+
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setPen(self, pen) -> None:
+            self.pen_widths.append(float(pen.widthF()))
+
+        def drawPolyline(self, _poly) -> None:
+            pass
+
+    painter = _Painter()
+    window_render_module.render_draw.draw_terrain_horizon_line(
+        painter,
+        geometry=SimpleNamespace(center=(0, 0), radius=1),
+        terrain_profile_altaz=[(0.0, 0.0), (0.1, 0.1)],
+        view_center=(45.0, 180.0),
+        opacity=0.38,
+        line_width_scale=2.0,
+    )
+
+    assert painter.pen_widths[:2] == [6.0, 2.0]

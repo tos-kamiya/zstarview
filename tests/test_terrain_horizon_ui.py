@@ -320,3 +320,12 @@ def test_update_viewport_interaction_stars_uses_bright_limit(monkeypatch) -> Non
         "view_center": (55.0, 210.0),
         "max_vmag": 4.0,
     }
+
+
+def test_compute_star_render_upscale_factor_matches_downsampled_star_surface() -> None:
+    factor = SkyWindow.compute_star_render_upscale_factor(
+        disc_width_px=2400,
+        expected_width_px=600,
+    )
+
+    assert factor == 2.0

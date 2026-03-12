@@ -106,6 +106,18 @@ def compute_star_render_surface_size(
     )
 
 
+def compute_star_render_upscale_factor(
+    disc_width_px: int,
+    expected_width_px: int,
+) -> float:
+    """Return the on-screen enlargement factor caused by star-layer downsampling."""
+    disc_w = max(1, int(disc_width_px))
+    base = max(1, int(expected_width_px))
+    if disc_w <= base:
+        return 1.0
+    return math.sqrt(float(disc_w) / float(base))
+
+
 def _clamp_window_geometry_to_screen(
     x: int,
     y: int,
@@ -157,6 +169,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
     # Signal to request repaint safely from background threads.
     cloud_repaint_requested = Signal()
     compute_star_render_surface_size = staticmethod(compute_star_render_surface_size)
+    compute_star_render_upscale_factor = staticmethod(compute_star_render_upscale_factor)
 
     def __init__(
         self,

@@ -18,6 +18,7 @@ class DummyPainter:
     def __init__(self) -> None:
         self.polyline_count = 0
         self.polylines = []
+        self.pen_widths: list[float] = []
 
     def save(self) -> None:
         pass
@@ -25,8 +26,10 @@ class DummyPainter:
     def restore(self) -> None:
         pass
 
-    def setPen(self, *_args, **_kwargs) -> None:
-        pass
+    def setPen(self, pen, *_args, **_kwargs) -> None:
+        width_f = getattr(pen, "widthF", None)
+        if callable(width_f):
+            self.pen_widths.append(float(width_f()))
 
     def drawPolyline(self, _poly) -> None:
         self.polyline_count += 1
@@ -181,6 +184,28 @@ def test_draw_asterisms_clips_with_asterism_specific_wide_fov(monkeypatch) -> No
     ys = [point[1] for polyline in painter.polylines for point in polyline]
     assert ys
     assert max(ys) <= geometry.center[1] + (geometry.radius * (ASTERISM_CLIP_FIELD_OF_VIEW_DEG / 90.0)) + 1.0e-6
+
+
+def test_draw_asterisms_scales_line_widths_with_star_upscale(monkeypatch) -> None:
+    painter = DummyPainter()
+    geometry = ScreenGeometry(center=(120, 90), radius=70)
+    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
+    celestial_data = _celestial_data_with_asterism_star_positions()
+    asterism = Asterism("test", "Test Asterism", (("HIP1", "HIP2"),))
+
+    monkeypatch.setattr(render_draw, "ASTERISMS", (asterism,))
+
+    render_draw.draw_asterisms(
+        painter=painter,
+        geometry=geometry,
+        celestial_data=celestial_data,
+        viewer_data=viewer,
+        highlighted_object=None,
+        text_font=QFont(),
+        line_width_scale=2.0,
+    )
+
+    assert painter.pen_widths[:2] == [8.0, 5.0]
 
 
 def test_find_highlighted_object_accepts_unnamed_asterism_member(monkeypatch) -> None:
