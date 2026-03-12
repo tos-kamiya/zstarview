@@ -4,11 +4,13 @@ import json
 from pathlib import Path
 from typing import Sequence
 
-from zstarview.data.urban_skyline_demo import BuildingFootprint
-from zstarview.data.urban_skyline_from_citygml import (
-    DEFAULT_MIN_BUILDING_HEIGHT_M,
+from zstarview.data.plateau_citygml import (
     TileEnvelope,
     envelope_min_distance_km,
+)
+from zstarview.data.urban_outline_common import (
+    BuildingFootprint,
+    DEFAULT_MIN_BUILDING_HEIGHT_M,
 )
 
 
