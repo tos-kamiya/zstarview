@@ -16,6 +16,13 @@ logger = logging.getLogger(__name__)
 _ORIENTATION_INTERACTION_STAR_VMAG_LIMIT = 4.0
 
 
+def _star_line_width_scale(window: Any, geometry: render_draw.ScreenGeometry) -> float:
+    return window.compute_star_render_upscale_factor(
+        geometry.radius * 2,
+        window._star_render_expected_width,
+    )
+
+
 class SkyWindowRenderMixin:
     def _viewer_data_for_render(self) -> ViewerData:
         return ViewerData(
@@ -173,10 +180,7 @@ class SkyWindowRenderMixin:
         celestial_data: CelestialData,
         render_viewer: ViewerData,
     ) -> None:
-        line_width_scale = self.compute_star_render_upscale_factor(
-            geometry.radius * 2,
-            self._star_render_expected_width,
-        )
+        line_width_scale = _star_line_width_scale(self, geometry)
         interaction_celestial_data = celestial_data
         if self.state.viewport_interaction_stars is not None:
             interaction_celestial_data = replace(
@@ -253,10 +257,7 @@ class SkyWindowRenderMixin:
         label_reservations: list[QRectF],
         label_candidates: list[dict[str, Any]],
     ) -> None:
-        line_width_scale = self.compute_star_render_upscale_factor(
-            geometry.radius * 2,
-            self._star_render_expected_width,
-        )
+        line_width_scale = _star_line_width_scale(self, geometry)
         if self.show_dso:
             render_draw.draw_deep_sky_shapes(
                 painter,
@@ -333,10 +334,6 @@ class SkyWindowRenderMixin:
     ) -> None:
         win_w = self.width()
         win_h = self.height()
-        line_width_scale = self.compute_star_render_upscale_factor(
-            geometry.radius * 2,
-            self._star_render_expected_width,
-        )
         low_w, low_h = self.compute_star_render_surface_size(
             win_w,
             win_h,

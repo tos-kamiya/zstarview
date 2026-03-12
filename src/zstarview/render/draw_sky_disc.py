@@ -215,7 +215,6 @@ def draw_sky_color_disc(
         alpha=alpha,
         eclipse_factor=eclipse_factor,
     )
-    below_horizon = alt < 0.0
     # Mark declinations that never rise at the observer latitude.
     never_rises = np.zeros_like(alt, dtype=bool)
     if observer_lat_deg is not None:
