@@ -173,6 +173,10 @@ class SkyWindowRenderMixin:
         celestial_data: CelestialData,
         render_viewer: ViewerData,
     ) -> None:
+        line_width_scale = self.compute_star_render_upscale_factor(
+            geometry.radius * 2,
+            self._star_render_expected_width,
+        )
         interaction_celestial_data = celestial_data
         if self.state.viewport_interaction_stars is not None:
             interaction_celestial_data = replace(
@@ -193,6 +197,7 @@ class SkyWindowRenderMixin:
             self.state.terrain_horizon_profile,
             render_viewer.view_center,
             opacity=self.terrain_horizon_opacity,
+            line_width_scale=line_width_scale,
         )
         render_draw.draw_direction_labels(
             painter,
@@ -248,6 +253,10 @@ class SkyWindowRenderMixin:
         label_reservations: list[QRectF],
         label_candidates: list[dict[str, Any]],
     ) -> None:
+        line_width_scale = self.compute_star_render_upscale_factor(
+            geometry.radius * 2,
+            self._star_render_expected_width,
+        )
         if self.show_dso:
             render_draw.draw_deep_sky_shapes(
                 painter,
@@ -275,6 +284,7 @@ class SkyWindowRenderMixin:
                 label_reservations,
                 label_candidates=label_candidates,
                 preset=self.visual_preset,
+                line_width_scale=line_width_scale,
             )
         render_draw.draw_sky_reference_lines(painter, geometry, celestial_data, render_viewer)
         render_draw.draw_terrain_horizon_line(
@@ -283,6 +293,7 @@ class SkyWindowRenderMixin:
             self.state.terrain_horizon_profile,
             render_viewer.view_center,
             opacity=self.terrain_horizon_opacity,
+            line_width_scale=line_width_scale,
         )
         self._draw_urban_outline_layer(painter, geometry, render_viewer)
         render_draw.draw_direction_labels(
@@ -322,6 +333,10 @@ class SkyWindowRenderMixin:
     ) -> None:
         win_w = self.width()
         win_h = self.height()
+        line_width_scale = self.compute_star_render_upscale_factor(
+            geometry.radius * 2,
+            self._star_render_expected_width,
+        )
         low_w, low_h = self.compute_star_render_surface_size(
             win_w,
             win_h,

@@ -137,6 +137,9 @@
   - ユーザー指定値と実行時オプションの正規化
 - `src/zstarview/ui/window_render.py`
   - 再描画とレンダリング関連の UI ロジック
+  - 恒星レイヤは描画時に現在のウィンドウサイズから内部レンダリング面サイズを再計算する
+  - 天球ディスク幅が `expected-render-width` 以下なら等倍描画し、それを超える場合は `expected-render-width * sqrt(disc_width / expected-render-width)` に従って内部描画面を縮小する
+  - 縮小時は低解像度 `QImage` に恒星を描いてからウィンドウ全体へ拡大転写し、大型ウィンドウでの負荷を抑える
 - `src/zstarview/ui/window_updates.py`
   - バックグラウンド更新結果の反映
 - `src/zstarview/ui/sky_worker.py`

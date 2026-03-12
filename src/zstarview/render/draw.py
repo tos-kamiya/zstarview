@@ -660,6 +660,7 @@ def draw_terrain_horizon_line(
     view_center: tuple[float, float],
     *,
     opacity: float = 1.0,
+    line_width_scale: float = 1.0,
 ) -> None:
     """Draw a terrain horizon polyline as an extra overlay over the geometric horizon."""
     if not terrain_profile_altaz or opacity <= 0.0:
@@ -682,6 +683,7 @@ def draw_terrain_horizon_line(
     color.setAlphaF(max(effective_opacity, min(1.0, 0.42 + (opacity * 0.95))))
     outline = QColor(*TERRAIN_HORIZON_LINE_COLOR)
     outline.setAlpha(max(0, min(255, int(round(135.0 * effective_opacity + 35.0)))))
+    width_scale = max(1.0, float(line_width_scale))
     painter.save()
     for frag in split_by_gaps(points):
         if len(frag) < 2:
@@ -689,14 +691,14 @@ def draw_terrain_horizon_line(
         pts = [QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in frag]
         poly = QPolygonF(pts)
 
-        base = QPen(outline, 3.0, Qt.PenStyle.SolidLine)
+        base = QPen(outline, 3.0 * width_scale, Qt.PenStyle.SolidLine)
         base.setCosmetic(True)
         base.setCapStyle(Qt.PenCapStyle.RoundCap)
         base.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
         painter.setPen(base)
         painter.drawPolyline(poly)
 
-        fg = QPen(color, 1.0, Qt.PenStyle.SolidLine)
+        fg = QPen(color, 1.0 * width_scale, Qt.PenStyle.SolidLine)
         fg.setCosmetic(True)
         fg.setCapStyle(Qt.PenCapStyle.RoundCap)
         fg.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
@@ -804,6 +806,7 @@ def draw_asterisms(
     label_candidates: Optional[List[Dict[str, Any]]] = None,
     *,
     preset: str = "night",
+    line_width_scale: float = 1.0,
 ) -> None:
     """Draw dim asterisms always, and brighten the hovered selection with a label."""
 
@@ -836,6 +839,7 @@ def draw_asterisms(
 
     painter.save()
     clip_radius = ASTERISM_CLIP_FIELD_OF_VIEW_DEG / 90.0
+    width_scale = max(1.0, float(line_width_scale))
 
     def _make_pen(color: QColor, width: float) -> QPen:
         pen = QPen(color, width)
@@ -876,8 +880,8 @@ def draw_asterisms(
     def _draw_one_asterism(asterism: Any, outline_pen: QPen, line_pen: QPen) -> List[QPointF]:
         return _draw_segments(asterism.segments(), outline_pen, line_pen)
 
-    base_outline_pen = _make_pen(base_outline_color, 4.0)
-    base_line_pen = _make_pen(base_line_color, 2.5)
+    base_outline_pen = _make_pen(base_outline_color, 4.0 * width_scale)
+    base_line_pen = _make_pen(base_line_color, 2.5 * width_scale)
     base_segments: set[Tuple[str, str]] = set()
     for asterism in ASTERISMS:
         for source_a, source_b in asterism.segments():
@@ -897,8 +901,8 @@ def draw_asterisms(
 
     label_points: List[QPointF] = []
     if highlighted_asterism is not None:
-        highlight_outline_pen = _make_pen(highlight_outline_color, 3.2)
-        highlight_line_pen = _make_pen(highlight_line_color, 2.0)
+        highlight_outline_pen = _make_pen(highlight_outline_color, 3.2 * width_scale)
+        highlight_line_pen = _make_pen(highlight_line_color, 2.0 * width_scale)
         label_points = _draw_one_asterism(highlighted_asterism, highlight_outline_pen, highlight_line_pen)
 
     if label_points:
