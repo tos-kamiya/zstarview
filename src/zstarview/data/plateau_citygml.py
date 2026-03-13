@@ -89,7 +89,11 @@ def parse_citygml_buildings(
             continue
 
         rings: list[tuple[tuple[float, float], ...]] = []
-        for pos in building.findall(".//bldg:lod0RoofEdge//gml:posList", _GML_NS):
+        ring_paths = (
+            ".//bldg:lod0RoofEdge//gml:posList",
+            ".//bldg:lod0FootPrint//gml:posList",
+        )
+        for pos in _iter_first_ring_source(building, ring_paths):
             ring = parse_pos_list_ring(pos.text)
             if ring:
                 rings.append(ring)
@@ -153,3 +157,14 @@ def parse_pos_list_ring(text: str | None) -> tuple[tuple[float, float], ...]:
     if coords[0] != coords[-1]:
         coords.append(coords[0])
     return tuple(coords)
+
+
+def _iter_first_ring_source(
+    building: ET.Element,
+    paths: tuple[str, ...],
+) -> list[ET.Element]:
+    for path in paths:
+        matches = building.findall(path, _GML_NS)
+        if matches:
+            return matches
+    return []
