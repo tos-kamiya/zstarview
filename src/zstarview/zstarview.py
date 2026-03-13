@@ -5,6 +5,8 @@ import math
 import json
 
 from .cli_args import (
+    _parse_theme,
+    _parse_window_geometry,
     parse_args,
 )
 from .viewpoints import (

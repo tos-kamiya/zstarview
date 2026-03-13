@@ -50,6 +50,8 @@ from .geometry import (
 from .photometry import (
     body_label_text,
     bv_to_rgb_vectorized,
+    compute_flare_profile,
+    flare_strength_from_vmag,
     planet_bloom_profile_from_vmag,
     planet_disc_style_from_vmag,
     planet_marker_color,
