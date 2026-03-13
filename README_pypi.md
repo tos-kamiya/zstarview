@@ -2,7 +2,10 @@
 
 Transparent desktop sky viewer with stars, planets, eclipses, optional real-time satellite cloud overlay, optional terrain horizon overlay, and optional urban outline overlay.
 
-<img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot1.png" width="640" alt="zstarview screenshot">
+<p align="center">
+  <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot1.png" width="49%" alt="zstarview screenshot 1">
+  <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot4.png" width="49%" alt="zstarview screenshot 4">
+</p>
 
 ## Install
 
