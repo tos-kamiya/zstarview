@@ -120,13 +120,14 @@ def _viewpoint_to_location(
         admin1_map,
     )
     timezone_name = nearest_city.tz if nearest_city is not None else "UTC"
+    viewpoint_height_m = 0.0 if viewpoint.viewpoint_height_m is None else float(viewpoint.viewpoint_height_m)
     return ResolvedLocation(
         display_name=prefixed_viewpoint_name(viewpoint.kind, viewpoint.name),
         lat=viewpoint.latitude_deg,
         lon=viewpoint.longitude_deg,
         tz=timezone_name,
         persistence_key=prefixed_viewpoint_name(viewpoint.kind, viewpoint.name),
-        observer_height_m=viewpoint.observer_height_m + DEFAULT_OBSERVER_HEIGHT_M,
+        observer_height_m=viewpoint_height_m + DEFAULT_OBSERVER_HEIGHT_M,
         kind=viewpoint.kind,
         cc=nearest_city.cc if nearest_city is not None else "",
     )

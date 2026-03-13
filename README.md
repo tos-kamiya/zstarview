@@ -74,7 +74,7 @@ The CLI supports detailed startup configuration for location, time, rendering, a
 | `-h`, `--help`                              | Show this help message and exit.                                            |         |
 | `-Z`, `--view-center-az VIEW_CENTER_AZ`     | Viewing azimuth (degrees or compass points).                                | `180`   |
 | `-A`, `--view-center-alt VIEW_CENTER_ALT`   | Viewing altitude angle (90=zenith, 0=horizon).                              | `90`    |
-| `--observer-height-m METERS`                | Observer height above local ground in meters. Default: `1.7` for city/latlon/mountain input, tower height for tower-name input. | location-dependent |
+| `--observer-height-m METERS`                | Observer eye height above the local observation surface in meters. This replaces the default eye height of `1.7` meters. For tower and mountain viewpoints, the viewpoint's own height/elevation remains separate from this value. | `1.7` |
 | `-c`, `--cloud-opacity CLOUD_OPACITY`       | Opacity of cloud rendering (0.0–1.0). Use 0.0 to disable. \*2                | `0.2`   |
 | `--cloud-missing-tint-opacity OPACITY`      | Opacity of missing-cloud-data yellow tint (0.0–1.0).                          | `0.176` |
 | `--sky-opacity SKY_OPACITY`                 | Opacity of the simulated sky-color disc (0.0–1.0). Use 0.0 to disable.      | `0.2`   |
@@ -190,8 +190,8 @@ You can also start from a built-in tower/viewpoint dataset generated from Wikida
   * `Tsutenkaku` (ASCII fallback for `Tsūtenkaku`)
   * `Tokyo Tower`
   * `wikidata:Q57965`
-* When a tower name is used, the observer height defaults to that tower's stored height.
-* You can still override it with `--observer-height-m`.
+* When a tower name is used, the tower's stored structural/viewpoint height is used as the base observation point.
+* `--observer-height-m` replaces only the observer eye height above that base point (default `1.7m`); it does not replace the tower's own height.
 * Tower resolution also accepts ASCII fallback spellings for names with diacritics.
 
 Example:
@@ -209,7 +209,8 @@ You can also start from the bundled mountain/viewpoint dataset.
   * `Aconcagua`
   * `Snezka` (ASCII fallback for `Sněžka`)
   * `wikidata:Q39231`
-* When a mountain name is used, the observer height defaults to `1.7m`.
+* When a mountain name is used, the base observation point is the mountain summit viewpoint.
+* `--observer-height-m` replaces only the observer eye height above that summit point (default `1.7m`).
 * Mountain resolution also accepts ASCII fallback spellings for names with diacritics.
 
 Example:

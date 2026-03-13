@@ -33,10 +33,10 @@ def test_resolve_tower_viewpoint_by_wikidata_key() -> None:
     assert tower.name == "Tokyo Skytree"
 
 
-def test_load_tower_viewpoints_defaults_observer_height_to_height() -> None:
+def test_load_tower_viewpoints_defaults_viewpoint_height_to_height() -> None:
     tower = resolve_tower_viewpoint("Tokyo Skytree")
     assert tower is not None
-    assert tower.observer_height_m == tower.height_m
+    assert tower.viewpoint_height_m == tower.height_m
 
 
 def test_resolve_tower_viewpoint_by_hydro_quebec_name() -> None:

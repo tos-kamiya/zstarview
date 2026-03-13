@@ -53,10 +53,10 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q57965",
       "location_arg": "35.710056;139.810722",
       "slug": "Tokyo_Skytree",
-      "observer_height_m": 634.0,
       "viewpoint_types": [
         "tower_or_high_observation"
-      ]
+      ],
+      "viewpoint_height_m": 634.0
     },
     {
       "id": "wikidata:Q168400",
@@ -86,7 +86,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q168400",
       "location_arg": "23.109200;113.319147",
       "slug": "Canton_Tower",
-      "observer_height_m": 600.0
+      "viewpoint_height_m": 600.0
     },
     {
       "id": "wikidata:Q134883",
@@ -116,7 +116,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q134883",
       "location_arg": "43.642753;-79.387147",
       "slug": "CN_Tower",
-      "observer_height_m": 553.3
+      "viewpoint_height_m": 553.3
     },
     {
       "id": "wikidata:Q223207",
@@ -146,7 +146,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q223207",
       "location_arg": "31.241669;121.494717",
       "slug": "Oriental_Pearl_Tower",
-      "observer_height_m": 468.0
+      "viewpoint_height_m": 468.0
     },
     {
       "id": "wikidata:Q622796",
@@ -174,7 +174,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q622796",
       "location_arg": "35.744611;51.375333",
       "slug": "Milad_Tower",
-      "observer_height_m": 435.0
+      "viewpoint_height_m": 435.0
     },
     {
       "id": "wikidata:Q5527454",
@@ -198,7 +198,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q5527454",
       "location_arg": "35.710800;-83.518600",
       "slug": "Gatlinburg_Space_Needle",
-      "observer_height_m": 407.0
+      "viewpoint_height_m": 407.0
     },
     {
       "id": "wikidata:Q133141263",
@@ -222,7 +222,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q133141263",
       "location_arg": "22.594361;88.328362",
       "slug": "Panchdeep_Tower",
-      "observer_height_m": 400.0
+      "viewpoint_height_m": 400.0
     },
     {
       "id": "wikidata:Q65245",
@@ -252,7 +252,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q65245",
       "location_arg": "34.724722;113.722778",
       "slug": "Zhongyuan_Tower",
-      "observer_height_m": 388.0
+      "viewpoint_height_m": 388.0
     },
     {
       "id": "wikidata:Q28657490",
@@ -282,7 +282,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q28657490",
       "location_arg": "41.016444;29.065472",
       "slug": "Çamlıca_Tower",
-      "observer_height_m": 369.0
+      "viewpoint_height_m": 369.0
     },
     {
       "id": "wikidata:Q151356",
@@ -312,7 +312,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q151356",
       "location_arg": "52.520833;13.409444",
       "slug": "Fernsehturm_Berlin",
-      "observer_height_m": 368.0
+      "viewpoint_height_m": 368.0
     },
     {
       "id": "wikidata:Q1568304",
@@ -338,7 +338,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q1568304",
       "location_arg": "22.179722;113.536667",
       "slug": "Macau_Tower",
-      "observer_height_m": 338.0
+      "viewpoint_height_m": 338.0
     },
     {
       "id": "wikidata:Q183536",
@@ -366,7 +366,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q183536",
       "location_arg": "35.658611;139.745556",
       "slug": "Tokyo_Tower",
-      "observer_height_m": 332.6
+      "viewpoint_height_m": 332.6
     },
     {
       "id": "wikidata:Q243",
@@ -392,7 +392,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q243",
       "location_arg": "48.858296;2.294479",
       "slug": "Eiffel_Tower",
-      "observer_height_m": 330.0
+      "viewpoint_height_m": 330.0
     },
     {
       "id": "wikidata:Q16318627",
@@ -409,13 +409,13 @@
       "latitude_deg": 34.645947222,
       "longitude_deg": 135.514266666,
       "height_m": 300.0,
-      "observer_height_m": 300.0,
       "viewpoint_types": [
         "tower_or_high_observation"
       ],
       "wikidata_url": "https://www.wikidata.org/wiki/Q16318627",
       "location_arg": "34.645947;135.514267",
-      "slug": "Abeno_Harukas"
+      "slug": "Abeno_Harukas",
+      "viewpoint_height_m": 300.0
     },
     {
       "id": "wikidata:Q587108",
@@ -432,13 +432,13 @@
       "latitude_deg": 35.454722222,
       "longitude_deg": 139.631666666,
       "height_m": 295.8,
-      "observer_height_m": 295.8,
       "viewpoint_types": [
         "tower_or_high_observation"
       ],
       "wikidata_url": "https://www.wikidata.org/wiki/Q587108",
       "location_arg": "35.454722;139.631667",
-      "slug": "Yokohama_Landmark_Tower"
+      "slug": "Yokohama_Landmark_Tower",
+      "viewpoint_height_m": 295.8
     },
     {
       "id": "wikidata:Q1501055",
@@ -464,7 +464,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q1501055",
       "location_arg": "35.961700;-83.923300",
       "slug": "Sunsphere",
-      "observer_height_m": 266.0
+      "viewpoint_height_m": 266.0
     },
     {
       "id": "wikidata:Q686544",
@@ -490,7 +490,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q686544",
       "location_arg": "48.240230;16.410030",
       "slug": "Donauturm",
-      "observer_height_m": 252.0
+      "viewpoint_height_m": 252.0
     },
     {
       "id": "wikidata:Q1155401",
@@ -507,13 +507,13 @@
       "latitude_deg": 35.17055556,
       "longitude_deg": 136.885,
       "height_m": 247.0,
-      "observer_height_m": 247.0,
       "viewpoint_types": [
         "tower_or_high_observation"
       ],
       "wikidata_url": "https://www.wikidata.org/wiki/Q1155401",
       "location_arg": "35.170556;136.885000",
-      "slug": "Midland_Square"
+      "slug": "Midland_Square",
+      "viewpoint_height_m": 247.0
     },
     {
       "id": "wikidata:Q6108856",
@@ -530,13 +530,13 @@
       "latitude_deg": 35.17138889,
       "longitude_deg": 136.88277778,
       "height_m": 245.1,
-      "observer_height_m": 245.1,
       "viewpoint_types": [
         "tower_or_high_observation"
       ],
       "wikidata_url": "https://www.wikidata.org/wiki/Q6108856",
       "location_arg": "35.171389;136.882778",
-      "slug": "JR_Central_Towers"
+      "slug": "JR_Central_Towers",
+      "viewpoint_height_m": 245.1
     },
     {
       "id": "wikidata:Q602942",
@@ -553,13 +553,13 @@
       "latitude_deg": 35.729583333,
       "longitude_deg": 139.717777777,
       "height_m": 239.7,
-      "observer_height_m": 239.7,
       "viewpoint_types": [
         "tower_or_high_observation"
       ],
       "wikidata_url": "https://www.wikidata.org/wiki/Q602942",
       "location_arg": "35.729583;139.717778",
-      "slug": "Sunshine_60"
+      "slug": "Sunshine_60",
+      "viewpoint_height_m": 239.7
     },
     {
       "id": "wikidata:Q1244227",
@@ -589,7 +589,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q1244227",
       "location_arg": "49.486944;8.492222",
       "slug": "Fernmeldeturm_Mannheim",
-      "observer_height_m": 217.8
+      "viewpoint_height_m": 217.8
     },
     {
       "id": "wikidata:Q14058",
@@ -619,7 +619,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q14058",
       "location_arg": "48.755750;9.190167",
       "slug": "Fernsehturm_Stuttgart",
-      "observer_height_m": 216.61
+      "viewpoint_height_m": 216.61
     },
     {
       "id": "wikidata:Q1576874",
@@ -643,7 +643,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q1576874",
       "location_arg": "34.517200;-93.046100",
       "slug": "Hot_Springs_Mountain_Tower",
-      "observer_height_m": 216.0
+      "viewpoint_height_m": 216.0
     },
     {
       "id": "wikidata:Q1413217",
@@ -673,7 +673,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q1413217",
       "location_arg": "50.080833;14.451389",
       "slug": "Žižkov_Television_Tower",
-      "observer_height_m": 216.0
+      "viewpoint_height_m": 216.0
     },
     {
       "id": "wikidata:Q5754149",
@@ -699,10 +699,10 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q5754149",
       "location_arg": "35.156800;136.979000",
       "slug": "Higashiyama_Sky_Tower",
-      "observer_height_m": 214.0,
       "viewpoint_types": [
         "tower_or_high_observation"
-      ]
+      ],
+      "viewpoint_height_m": 214.0
     },
     {
       "id": "wikidata:Q1096141",
@@ -719,13 +719,13 @@
       "latitude_deg": 34.705056,
       "longitude_deg": 137.735694,
       "height_m": 212.77,
-      "observer_height_m": 212.77,
       "viewpoint_types": [
         "tower_or_high_observation"
       ],
       "wikidata_url": "https://www.wikidata.org/wiki/Q1096141",
       "location_arg": "34.705056;137.735694",
-      "slug": "Act_Tower"
+      "slug": "Act_Tower",
+      "viewpoint_height_m": 212.77
     },
     {
       "id": "wikidata:Q450812",
@@ -753,7 +753,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q450812",
       "location_arg": "51.496389;7.476389",
       "slug": "Florianturm",
-      "observer_height_m": 208.5
+      "viewpoint_height_m": 208.5
     },
     {
       "id": "wikidata:Q1407277",
@@ -781,7 +781,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q1407277",
       "location_arg": "48.182500;17.094444",
       "slug": "Kamzík_TV_Tower",
-      "observer_height_m": 196.0
+      "viewpoint_height_m": 196.0
     },
     {
       "id": "wikidata:Q797085",
@@ -811,7 +811,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q797085",
       "location_arg": "51.521500;-0.138900",
       "slug": "BT_Tower",
-      "observer_height_m": 189.0
+      "viewpoint_height_m": 189.0
     },
     {
       "id": "wikidata:Q1407261",
@@ -839,7 +839,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q1407261",
       "location_arg": "46.977800;7.528640",
       "slug": "Bantiger_TV_Tower",
-      "observer_height_m": 188.16
+      "viewpoint_height_m": 188.16
     },
     {
       "id": "wikidata:Q969215",
@@ -865,7 +865,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q969215",
       "location_arg": "51.906111;4.465833",
       "slug": "Euromast",
-      "observer_height_m": 184.5
+      "viewpoint_height_m": 184.5
     },
     {
       "id": "wikidata:Q5317",
@@ -891,7 +891,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q5317",
       "location_arg": "47.620400;-122.349100",
       "slug": "Space_Needle",
-      "observer_height_m": 184.0
+      "viewpoint_height_m": 184.0
     },
     {
       "id": "wikidata:Q61602719",
@@ -915,7 +915,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q61602719",
       "location_arg": "45.559520;-73.552150",
       "slug": "Montreal_Tower",
-      "observer_height_m": 175.0
+      "viewpoint_height_m": 175.0
     },
     {
       "id": "wikidata:Q1151808",
@@ -932,13 +932,13 @@
       "latitude_deg": 34.705277777,
       "longitude_deg": 135.489722222,
       "height_m": 173.0,
-      "observer_height_m": 173.0,
       "viewpoint_types": [
         "tower_or_high_observation"
       ],
       "wikidata_url": "https://www.wikidata.org/wiki/Q1151808",
       "location_arg": "34.705278;135.489722",
-      "slug": "Umeda_Sky_Building"
+      "slug": "Umeda_Sky_Building",
+      "viewpoint_height_m": 173.0
     },
     {
       "id": "wikidata:Q1248619",
@@ -964,7 +964,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q1248619",
       "location_arg": "32.775300;-96.808860",
       "slug": "Reunion_Tower",
-      "observer_height_m": 171.0
+      "viewpoint_height_m": 171.0
     },
     {
       "id": "wikidata:Q541846",
@@ -990,7 +990,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q541846",
       "location_arg": "50.795600;-1.108570",
       "slug": "Spinnaker_Tower",
-      "observer_height_m": 170.0
+      "viewpoint_height_m": 170.0
     },
     {
       "id": "wikidata:Q1190334",
@@ -1016,7 +1016,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q1190334",
       "location_arg": "61.504790;23.742659",
       "slug": "Näsinneula_tower",
-      "observer_height_m": 168.0
+      "viewpoint_height_m": 168.0
     },
     {
       "id": "wikidata:Q5968218",
@@ -1043,7 +1043,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q5968218",
       "location_arg": "50.821350;-0.150900",
       "slug": "Brighton_i360",
-      "observer_height_m": 162.0
+      "viewpoint_height_m": 162.0
     },
     {
       "id": "wikidata:Q11306787",
@@ -1058,13 +1058,13 @@
       "latitude_deg": 35.135033,
       "longitude_deg": 136.909878,
       "height_m": 161.85,
-      "observer_height_m": 161.85,
       "viewpoint_types": [
         "tower_or_high_observation"
       ],
       "wikidata_url": "https://www.wikidata.org/wiki/Q11306787",
       "location_arg": "35.135033;136.909878",
-      "slug": "ザ・ライオンズ_ミッドキャピタルタワー"
+      "slug": "ザ・ライオンズ_ミッドキャピタルタワー",
+      "viewpoint_height_m": 161.85
     },
     {
       "id": "wikidata:Q1208032",
@@ -1090,7 +1090,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q1208032",
       "location_arg": "43.085278;-79.079722",
       "slug": "Skylon_Tower",
-      "observer_height_m": 160.0
+      "viewpoint_height_m": 160.0
     },
     {
       "id": "wikidata:Q880905",
@@ -1116,7 +1116,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q880905",
       "location_arg": "53.815833;-3.055278",
       "slug": "Blackpool_Tower",
-      "observer_height_m": 158.1
+      "viewpoint_height_m": 158.1
     },
     {
       "id": "wikidata:Q11303940",
@@ -1142,7 +1142,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q11303940",
       "location_arg": "34.311403;133.808383",
       "slug": "Gold_Tower",
-      "observer_height_m": 158.0
+      "viewpoint_height_m": 158.0
     },
     {
       "id": "wikidata:Q1721899",
@@ -1168,7 +1168,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q1721899",
       "location_arg": "59.335000;18.126389",
       "slug": "Kaknästornet",
-      "observer_height_m": 155.0
+      "viewpoint_height_m": 155.0
     },
     {
       "id": "wikidata:Q699724",
@@ -1196,7 +1196,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q699724",
       "location_arg": "52.505056;13.278181",
       "slug": "Funkturm_Berlin",
-      "observer_height_m": 146.78
+      "viewpoint_height_m": 146.78
     },
     {
       "id": "wikidata:Q12049969",
@@ -1220,7 +1220,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q12049969",
       "location_arg": "50.083056;17.230972",
       "slug": "Praděd_Tower",
-      "observer_height_m": 146.5
+      "viewpoint_height_m": 146.5
     },
     {
       "id": "wikidata:Q11318660",
@@ -1246,7 +1246,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q11318660",
       "location_arg": "35.357692;136.809067",
       "slug": "Twin_Arch_138",
-      "observer_height_m": 138.0
+      "viewpoint_height_m": 138.0
     },
     {
       "id": "wikidata:Q1201304",
@@ -1272,7 +1272,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q1201304",
       "location_arg": "34.987500;135.759167",
       "slug": "Kyoto_Tower",
-      "observer_height_m": 131.0
+      "viewpoint_height_m": 131.0
     },
     {
       "id": "wikidata:Q996924",
@@ -1298,7 +1298,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q996924",
       "location_arg": "47.501900;8.702470",
       "slug": "Brühlbergturm",
-      "observer_height_m": 130.0
+      "viewpoint_height_m": 130.0
     },
     {
       "id": "wikidata:Q5095310",
@@ -1324,10 +1324,10 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q5095310",
       "location_arg": "35.600167;140.098056",
       "slug": "Chiba_Port_Tower",
-      "observer_height_m": 125.15,
       "viewpoint_types": [
         "tower_or_high_observation"
-      ]
+      ],
+      "viewpoint_height_m": 125.15
     },
     {
       "id": "wikidata:Q10954019",
@@ -1344,13 +1344,13 @@
       "latitude_deg": 35.626944,
       "longitude_deg": 139.774444,
       "height_m": 123.0,
-      "observer_height_m": 123.0,
       "viewpoint_types": [
         "tower_or_high_observation"
       ],
       "wikidata_url": "https://www.wikidata.org/wiki/Q10954019",
       "location_arg": "35.626944;139.774444",
-      "slug": "FCG_Building"
+      "slug": "FCG_Building",
+      "viewpoint_height_m": 123.0
     },
     {
       "id": "wikidata:Q85719550",
@@ -1374,7 +1374,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q85719550",
       "location_arg": "44.352580;-75.978810",
       "slug": "1000_Islands_Tower",
-      "observer_height_m": 120.0
+      "viewpoint_height_m": 120.0
     },
     {
       "id": "wikidata:Q3323339",
@@ -1400,7 +1400,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q3323339",
       "location_arg": "37.881185;58.382362",
       "slug": "Independence_Monument,_Ashgabat",
-      "observer_height_m": 118.0
+      "viewpoint_height_m": 118.0
     },
     {
       "id": "wikidata:Q137673602",
@@ -1425,7 +1425,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q137673602",
       "location_arg": "46.536563;-72.757761",
       "slug": "Tour_de_la_Cité_de_l'énergie_de_Shawinigan",
-      "observer_height_m": 115.0
+      "viewpoint_height_m": 115.0
     },
     {
       "id": "wikidata:Q798766",
@@ -1451,7 +1451,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q798766",
       "location_arg": "34.682500;135.186667",
       "slug": "Kobe_Port_Tower",
-      "observer_height_m": 108.0
+      "viewpoint_height_m": 108.0
     },
     {
       "id": "wikidata:Q1148463",
@@ -1477,7 +1477,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q1148463",
       "location_arg": "34.652222;135.506111",
       "slug": "Tsūtenkaku",
-      "observer_height_m": 108.0
+      "viewpoint_height_m": 108.0
     },
     {
       "id": "wikidata:Q17222936",
@@ -1503,7 +1503,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q17222936",
       "location_arg": "41.794689;140.754003",
       "slug": "Goryōkaku_Tower",
-      "observer_height_m": 107.0
+      "viewpoint_height_m": 107.0
     },
     {
       "id": "wikidata:Q804210",
@@ -1529,7 +1529,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q804210",
       "location_arg": "51.128333;71.430556",
       "slug": "Bayterek",
-      "observer_height_m": 105.0
+      "viewpoint_height_m": 105.0
     },
     {
       "id": "wikidata:Q1996107",
@@ -1553,7 +1553,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q1996107",
       "location_arg": "50.630494;3.069819",
       "slug": "Belfry_of_Lille",
-      "observer_height_m": 104.0
+      "viewpoint_height_m": 104.0
     },
     {
       "id": "wikidata:Q1568000",
@@ -1581,7 +1581,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q1568000",
       "location_arg": "33.604444;130.397778",
       "slug": "Hakata_Port_Tower",
-      "observer_height_m": 103.0
+      "viewpoint_height_m": 103.0
     },
     {
       "id": "wikidata:Q6150232",
@@ -1605,7 +1605,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q6150232",
       "location_arg": "-19.986528;-43.947250",
       "slug": "Piemonte_Tower",
-      "observer_height_m": 101.0
+      "viewpoint_height_m": 101.0
     },
     {
       "id": "wikidata:Q1207989",
@@ -1631,7 +1631,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q1207989",
       "location_arg": "35.443930;139.650900",
       "slug": "Yokohama_Marine_Tower",
-      "observer_height_m": 101.0
+      "viewpoint_height_m": 101.0
     },
     {
       "id": "wikidata:Q780424",
@@ -1655,7 +1655,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q780424",
       "location_arg": "46.609000;14.144900",
       "slug": "Pyramidenkogel_Tower",
-      "observer_height_m": 100.0
+      "viewpoint_height_m": 100.0
     },
     {
       "id": "wikidata:Q14688142",
@@ -1679,7 +1679,7 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q14688142",
       "location_arg": "37.478736;-89.357819",
       "slug": "Union_Lookout",
-      "observer_height_m": 100.0
+      "viewpoint_height_m": 100.0
     },
     {
       "id": "wikidata:Q28685888",
@@ -1695,13 +1695,13 @@
       "latitude_deg": 35.669569444,
       "longitude_deg": 139.764080555,
       "height_m": 56.0,
-      "observer_height_m": 56.0,
       "viewpoint_types": [
         "tower_or_high_observation"
       ],
       "wikidata_url": "https://www.wikidata.org/wiki/Q28685888",
       "location_arg": "35.669569;139.764081",
-      "slug": "GINZA_SIX"
+      "slug": "GINZA_SIX",
+      "viewpoint_height_m": 56.0
     },
     {
       "id": "wikidata:Q11482213",
@@ -1718,13 +1718,13 @@
       "latitude_deg": 35.178183,
       "longitude_deg": 136.977933,
       "height_m": 50.0,
-      "observer_height_m": 50.0,
       "viewpoint_types": [
         "tower_or_high_observation"
       ],
       "wikidata_url": "https://www.wikidata.org/wiki/Q11482213",
       "location_arg": "35.178183;136.977933",
-      "slug": "Heiwa_Park_Aqua_Tower"
+      "slug": "Heiwa_Park_Aqua_Tower",
+      "viewpoint_height_m": 50.0
     }
   ],
   "source_query_results": []

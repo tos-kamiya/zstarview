@@ -54,7 +54,7 @@ def test_startup_resolve_city_accepts_explicit_mountain_prefix(monkeypatch) -> N
     assert location.display_name == "m/Mount Hermon"
 
 
-def test_startup_resolve_city_uses_observer_height_when_present(monkeypatch) -> None:
+def test_startup_resolve_city_uses_viewpoint_height_when_present(monkeypatch) -> None:
     monkeypatch.setattr("zstarview.startup.load_last_city", lambda: None)
     monkeypatch.setattr("zstarview.startup.save_last_city", lambda _value: None)
     monkeypatch.setattr(
@@ -69,7 +69,7 @@ def test_startup_resolve_city_uses_observer_height_when_present(monkeypatch) -> 
             latitude_deg=35.0,
             longitude_deg=139.0,
             height_m=300.0,
-            observer_height_m=240.0,
+            viewpoint_height_m=240.0,
             meta={},
         ),
     )

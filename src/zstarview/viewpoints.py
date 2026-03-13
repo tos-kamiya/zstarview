@@ -71,7 +71,7 @@ class Viewpoint:
     latitude_deg: float
     longitude_deg: float
     height_m: float
-    observer_height_m: float
+    viewpoint_height_m: float | None
     meta: dict[str, Any]
 
     @property
@@ -88,7 +88,8 @@ def build_viewpoint(
     *,
     kind: str,
     height_key: str,
-    observer_height_key: str = "observer_height_m",
+    viewpoint_height_key: str | None = None,
+    legacy_viewpoint_height_key: str | None = "observer_height_m",
     meta_keys: Iterable[str],
 ) -> Viewpoint:
     labels_raw = item.get("labels", {})
@@ -108,6 +109,14 @@ def build_viewpoint(
         for key in meta_keys
         if key in item
     }
+    viewpoint_height_m: float | None = None
+    if viewpoint_height_key is not None:
+        if viewpoint_height_key in item:
+            viewpoint_height_m = float(item[viewpoint_height_key])
+        elif legacy_viewpoint_height_key is not None and legacy_viewpoint_height_key in item:
+            viewpoint_height_m = float(item[legacy_viewpoint_height_key])
+        else:
+            viewpoint_height_m = float(item.get(height_key, 0.0))
     return Viewpoint(
         id=str(item["id"]),
         qid=str(item["qid"]),
@@ -118,7 +127,7 @@ def build_viewpoint(
         latitude_deg=float(item["latitude_deg"]),
         longitude_deg=float(item["longitude_deg"]),
         height_m=float(item.get(height_key, 0.0)),
-        observer_height_m=float(item.get(observer_height_key, item.get(height_key, 0.0))),
+        viewpoint_height_m=viewpoint_height_m,
         meta=meta,
     )
 
@@ -195,9 +204,10 @@ def viewpoint_to_dict(viewpoint: Viewpoint) -> dict[str, Any]:
         "latitude_deg": viewpoint.latitude_deg,
         "longitude_deg": viewpoint.longitude_deg,
         "height_m": viewpoint.height_m,
-        "observer_height_m": viewpoint.observer_height_m,
         "meta": dict(viewpoint.meta),
     }
+    if viewpoint.viewpoint_height_m is not None:
+        payload["viewpoint_height_m"] = viewpoint.viewpoint_height_m
     if viewpoint.ascii_name is not None:
         payload["ascii_name"] = viewpoint.ascii_name
     return payload
