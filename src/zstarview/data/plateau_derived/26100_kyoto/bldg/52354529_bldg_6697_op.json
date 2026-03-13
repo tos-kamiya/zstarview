@@ -3,7 +3,7 @@
   "source": {
     "format": "PLATEAU-CityGML",
     "city_code": "26100",
-    "path": "raw-data/26100_kyoto-shi_city_2023_citygml_1_op/udx/bldg/52354529_bldg_6697_op.gml"
+    "path": "raw-data/26100_kyoto-shi_city_2024_citygml_1_op/udx/bldg/52354529_bldg_6697_op.gml"
   },
   "tile": {
     "id": "52354529_bldg_6697_op",
@@ -11,7 +11,7 @@
       "min_lat": 35.01658856479652,
       "min_lon": 135.73731569356227,
       "max_lat": 35.02505523320091,
-      "max_lon": 135.7501295389288
+      "max_lon": 135.75012953893153
     }
   },
   "filters": {
@@ -20,7 +20,7 @@
   },
   "buildings": [
     {
-      "id": "bldg_e59956af-5490-47c8-8dbf-57cfc90a5831",
+      "id": "bldg_1d72661e-2790-4421-b571-143a048e3c91",
       "height_m": 40.2,
       "height_source": "measuredHeight",
       "bbox": {

@@ -419,7 +419,7 @@ All paths below are relative to `src/zstarview/data/`.
 * City data based on GeoNames.
 * Tower/viewpoint startup data are derived from Wikidata and redistributed under Wikidata's CC0 data terms.
 * Mountain/viewpoint startup data are curated from Wikipedia candidates and normalized with Wikidata metadata; redistributed here under Wikidata's CC0 data terms.
-* Urban outline source data are derived from MLIT's **PLATEAU Open Data** 3D city models for Tokyo 23 wards (2020), Nagoya (2022), Kyoto (2023), and Osaka (2024), then reduced into bundled derived building tiles for runtime use.
+* Urban outline source data are derived from MLIT's **PLATEAU Open Data** 3D city models for Tokyo 23 wards (2022), Nagoya (2022), Kyoto (2024), and Osaka (2024), then reduced into bundled derived building tiles for runtime use.
 * Star proper names provided by the IAU Working Group on Star Names (via [exopla.net](https://exopla.net/star-names/modern-iau-star-names/)).
 * Cloud data are based on infrared observations from the **Himawari** satellite (provided by JMA) and the **NOAA GOES** series (provided by NOAA/NESDIS), retrieved from their public S3 buckets.
 * Terrain horizon data are based on **Copernicus DEM GLO-90**, managed by ESA on behalf of the European Commission and obtained by the app through its public AWS distribution/cache flow.
