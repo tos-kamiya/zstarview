@@ -6,7 +6,8 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from datetime import datetime, UTC
+from datetime import datetime, timezone
+from math import inf
 from pathlib import Path
 from typing import Sequence
 
@@ -14,9 +15,6 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 SRC_ROOT = REPO_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
-
-from zstarview.data.plateau_derived_tiles import load_derived_tile_envelope  # noqa: E402
-
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -47,10 +45,10 @@ def detect_city_metadata(derived_dir: Path) -> tuple[str | None, str | None]:
 def build_tile_index_payload(derived_dir: Path) -> dict[str, object]:
     city_code, city_name = detect_city_metadata(derived_dir)
     tiles: list[dict[str, object]] = []
-    min_lat = float("inf")
-    min_lon = float("inf")
-    max_lat = float("-inf")
-    max_lon = float("-inf")
+    min_lat = inf
+    min_lon = inf
+    max_lat = -inf
+    max_lon = -inf
     min_height_m: float | None = None
 
     tile_paths = sorted(
@@ -62,8 +60,8 @@ def build_tile_index_payload(derived_dir: Path) -> dict[str, object]:
 
     for path in tile_paths:
         payload = json.loads(path.read_text(encoding="utf-8"))
-        envelope = load_derived_tile_envelope(path)
-        if envelope is None:
+        bbox = _parse_tile_bbox(payload)
+        if bbox is None:
             raise ValueError(f"Derived tile is missing tile bbox: {path}")
         filters = payload.get("filters")
         if isinstance(filters, dict) and min_height_m is None:
@@ -73,21 +71,16 @@ def build_tile_index_payload(derived_dir: Path) -> dict[str, object]:
         buildings = payload.get("buildings")
         building_count = len(buildings) if isinstance(buildings, list) else 0
 
-        min_lat = min(min_lat, envelope.min_lat_deg)
-        min_lon = min(min_lon, envelope.min_lon_deg)
-        max_lat = max(max_lat, envelope.max_lat_deg)
-        max_lon = max(max_lon, envelope.max_lon_deg)
+        min_lat = min(min_lat, bbox["min_lat"])
+        min_lon = min(min_lon, bbox["min_lon"])
+        max_lat = max(max_lat, bbox["max_lat"])
+        max_lon = max(max_lon, bbox["max_lon"])
 
         tiles.append(
             {
                 "id": path.stem,
                 "path": path.name,
-                "bbox": {
-                    "min_lat": envelope.min_lat_deg,
-                    "min_lon": envelope.min_lon_deg,
-                    "max_lat": envelope.max_lat_deg,
-                    "max_lon": envelope.max_lon_deg,
-                },
+                "bbox": bbox,
                 "building_count": building_count,
             }
         )
@@ -96,7 +89,7 @@ def build_tile_index_payload(derived_dir: Path) -> dict[str, object]:
         "schema_version": 1,
         "city_code": city_code,
         "city_name": city_name,
-        "generated_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "bbox": {
             "min_lat": min_lat,
             "min_lon": min_lon,
@@ -112,6 +105,26 @@ def build_tile_index_payload(derived_dir: Path) -> dict[str, object]:
 def write_tile_index(path: Path, payload: dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _parse_tile_bbox(payload: object) -> dict[str, float] | None:
+    if not isinstance(payload, dict):
+        return None
+    tile = payload.get("tile")
+    if not isinstance(tile, dict):
+        return None
+    bbox = tile.get("bbox")
+    if not isinstance(bbox, dict):
+        return None
+    try:
+        return {
+            "min_lat": float(bbox["min_lat"]),
+            "min_lon": float(bbox["min_lon"]),
+            "max_lat": float(bbox["max_lat"]),
+            "max_lon": float(bbox["max_lon"]),
+        }
+    except (KeyError, TypeError, ValueError):
+        return None
 
 
 def main(argv: Sequence[str]) -> int:
