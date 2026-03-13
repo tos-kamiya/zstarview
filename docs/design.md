@@ -84,6 +84,7 @@
   - 都市、タワー、山、緯度経度の通常起動時地点解決
   - タワー/山については最近傍都市からタイムゾーンを補完
   - `t/NAME` / `m/NAME` の明示プレフィックスを解釈し、都市名解決より優先する
+  - 観測点の基準高さと観測者の目線高さを合成して、実効観測高さを初期化する
 - `src/zstarview/types.py`
   - ドメインデータの共有型
 
@@ -200,8 +201,19 @@
   - 観測地点
   - タイムゾーン
   - 表示中心の方位・高度
-  - 観測者高さ
+  - 観測者の目線高さ
   - 画面描画に必要な視点情報
+
+地点 dataset が持つ高さ情報と `ViewerData.observer_height_m` は別概念として扱う。
+
+- mountain viewpoint
+  - dataset 側の高さは山頂ビューポイントの海抜標高 `Elevation`
+- tower viewpoint
+  - dataset 側の高さは地表からのタワー高またはビューポイント高 `Tower height`
+- `ViewerData.observer_height_m`
+  - どの入力種別でも、基準観測点から観測者の目線までの高さ
+  - CLI `--observer-height-m` はこの値だけを置き換える
+  - 既定値は `1.7m`
 
 ### 5.2 天体計算結果
 

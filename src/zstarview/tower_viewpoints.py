@@ -31,6 +31,7 @@ def _as_tower(item: dict[str, object]) -> TowerViewpoint:
         item,
         kind="tower",
         height_key="height_m",
+        viewpoint_height_key="viewpoint_height_m",
         meta_keys=_TOWER_META_KEYS,
     )
 

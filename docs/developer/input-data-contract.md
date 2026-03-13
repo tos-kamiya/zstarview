@@ -22,7 +22,7 @@
 - 時間差: `timedelta` を使い、生の時間数値は境界でのみ扱う。
 
 例:
-- `view_alt_deg`, `width_px`, `height_px`, `radius_px`, `cloud_shell_km`, `observer_height_m`
+- `view_alt_deg`, `width_px`, `height_px`, `radius_px`, `cloud_shell_km`, `observer_height_m`, `viewpoint_height_m`
 
 ## 3. 型規約
 
@@ -41,7 +41,9 @@
 - 値の意味は「地面からの高さ[m]」であり、海抜の絶対標高ではない。
 - 既定値:
   - 都市名/緯度経度入力: `1.7`
-  - タワー入力: viewpoint データの `height_m`
+  - タワー入力: `1.7`
+- viewpoint dataset では tower 系に `viewpoint_height_m` を持てる。
+- `viewpoint_height_m` は、地表から観測基準点までの高さ[m]を表し、`observer_height_m` とは別概念とする。
 - 地形地平線側では `observer_ground_m + observer_height_m` の形で使う。
 - 天体計算側でも同じ `observer_height_m` を `EarthLocation` / `Topos` へ通す。
 - 将来 `observer_elevation_m` を公開する場合でも、内部では `observer_height_m` と混同しない。

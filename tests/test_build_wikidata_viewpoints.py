@@ -40,7 +40,7 @@ def test_normalize_extra_rows_deduplicates_qid_and_keeps_max_height() -> None:
     item = items[0]
     assert item["qid"] == "Q1"
     assert item["height_m"] == 300.0
-    assert item["observer_height_m"] == 300.0
+    assert item["viewpoint_height_m"] == 300.0
     assert item["viewpoint_types"] == ["tower_or_high_observation"]
 
 
@@ -83,6 +83,7 @@ def test_merge_items_adds_observer_height_to_existing_and_preserves_known_item()
             "latitude_deg": 35.710055555,
             "longitude_deg": 139.810722222,
             "height_m": 634.0,
+            "viewpoint_height_m": 634.0,
         }
     ]
     extra_items = [
@@ -95,7 +96,7 @@ def test_merge_items_adds_observer_height_to_existing_and_preserves_known_item()
             "latitude_deg": 35.710055555,
             "longitude_deg": 139.810722222,
             "height_m": 620.0,
-            "observer_height_m": 620.0,
+            "viewpoint_height_m": 620.0,
             "viewpoint_types": ["tower_or_high_observation"],
         },
         {
@@ -107,7 +108,7 @@ def test_merge_items_adds_observer_height_to_existing_and_preserves_known_item()
             "latitude_deg": 34.645947222,
             "longitude_deg": 135.514266666,
             "height_m": 300.0,
-            "observer_height_m": 300.0,
+            "viewpoint_height_m": 300.0,
             "viewpoint_types": ["tower_or_high_observation"],
         },
     ]
@@ -116,10 +117,10 @@ def test_merge_items_adds_observer_height_to_existing_and_preserves_known_item()
 
     assert [item["qid"] for item in merged] == ["Q57965", "Q16318627"]
     tokyo_skytree = merged[0]
-    assert tokyo_skytree["observer_height_m"] == 634.0
+    assert tokyo_skytree["viewpoint_height_m"] == 634.0
     assert tokyo_skytree["names"] == ["Tokyo Skytree", "東京スカイツリー"]
     abeno = merged[1]
-    assert abeno["observer_height_m"] == 300.0
+    assert abeno["viewpoint_height_m"] == 300.0
 
 
 def test_merge_entity_labels_prefers_fetched_english_name() -> None:
@@ -134,7 +135,7 @@ def test_merge_entity_labels_prefers_fetched_english_name() -> None:
             "latitude_deg": 34.645947222,
             "longitude_deg": 135.514266666,
             "height_m": 300.0,
-            "observer_height_m": 300.0,
+            "viewpoint_height_m": 300.0,
             "viewpoint_types": ["tower_or_high_observation"],
             "slug": "あべのハルカス",
         }

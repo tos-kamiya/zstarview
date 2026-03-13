@@ -57,7 +57,16 @@
 - 超高層複合ビルの展望台
 
 現在はユーザー向けの dataset を分けず、同じ `tower_viewpoints.json` に追加する。  
-その代わり schema 側で `observer_height_m` を持てるようにし、建物全高 `height_m` と観測者高さを分離できるようにする。
+その代わり schema 側で `viewpoint_height_m` を持てるようにし、建物全高 `height_m` と観測基準点の高さを分離できるようにする。
+
+tower dataset の高さ関連キーは次の意味で使い分ける。
+
+- `height_m`
+  - 構造物そのものの高さ
+- `viewpoint_height_m`
+  - 地表からの観測基準点の高さ
+- CLI `--observer-height-m`
+  - 観測基準点から観測者の目線までの高さ
 
 この bundled dataset は viewpoint 候補の一覧であって、各 viewpoint に対応する都市スカイライン前計算データが常に存在するとは限らない。  
 例えば `Kobe Port Tower` は bundled viewpoint としては採用しているが、2026-03-12 時点では神戸市の PLATEAU Open Data が無いため、PLATEAU 由来 skyline JSON は未生成である。
@@ -319,5 +328,5 @@ viewpoint の安定キーは表示名ではなく `id` / `qid` で扱う。
 
 - tower / mountain / 高層ビル展望台を含む `viewpoint` 生成スクリプト群を `src/zstarview/data/` へ整理する
 - `dev-samples/` 依存の生成フローを `docs/developer/` の正式文書に寄せる
-- `observer_height_m` を実測値や展望フロア高で補正する curated seed を追加する
+- `viewpoint_height_m` を実測値や展望フロア高で補正する curated seed を追加する
 - `tower_viewpoints.json` というファイル名が実態に合わなくなったら、将来 `viewpoints_high.json` などへの改名を検討する

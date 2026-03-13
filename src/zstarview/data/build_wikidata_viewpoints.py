@@ -40,7 +40,7 @@ class CandidateRecord:
             "latitude_deg": self.latitude_deg,
             "longitude_deg": self.longitude_deg,
             "height_m": self.height_m,
-            "observer_height_m": self.height_m,
+            "viewpoint_height_m": self.height_m,
             "viewpoint_types": ["tower_or_high_observation"],
             "wikidata_url": f"https://www.wikidata.org/wiki/{self.qid}",
             "location_arg": f"{self.latitude_deg:.6f};{self.longitude_deg:.6f}",
@@ -246,8 +246,12 @@ def merge_items(
     }
 
     for item in merged.values():
-        if "observer_height_m" not in item:
-            item["observer_height_m"] = float(item.get("height_m", 0.0))
+        if "viewpoint_height_m" not in item:
+            if "observer_height_m" in item:
+                item["viewpoint_height_m"] = float(item.get("observer_height_m", 0.0))
+            else:
+                item["viewpoint_height_m"] = float(item.get("height_m", 0.0))
+        item.pop("observer_height_m", None)
 
     for extra in extra_items:
         qid = str(extra["qid"])
@@ -277,8 +281,12 @@ def merge_items(
         extra_height = float(extra.get("height_m", 0.0))
         if extra_height > current_height:
             current["height_m"] = extra_height
-        if "observer_height_m" not in current:
-            current["observer_height_m"] = current.get("height_m", 0.0)
+        if "viewpoint_height_m" not in current:
+            if "observer_height_m" in current:
+                current["viewpoint_height_m"] = current.get("observer_height_m", 0.0)
+            else:
+                current["viewpoint_height_m"] = current.get("height_m", 0.0)
+        current.pop("observer_height_m", None)
 
         current_types = {
             str(value)
@@ -295,7 +303,7 @@ def merge_items(
 
     return sorted(
         merged.values(),
-        key=lambda item: (-float(item.get("observer_height_m", 0.0)), str(item.get("name", ""))),
+        key=lambda item: (-float(item.get("viewpoint_height_m", 0.0)), str(item.get("name", ""))),
     )
 
 
