@@ -245,3 +245,51 @@ def test_overlay_skips_label_for_planet(monkeypatch) -> None:
     )
 
     assert "mars" not in label_calls
+
+
+def test_overlay_info_includes_location_height_and_explicit_observer_height(monkeypatch) -> None:
+    class DummyPainter:
+        def setPen(self, *_args, **_kwargs) -> None:
+            pass
+
+        def setBrush(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawEllipse(self, *_args, **_kwargs) -> None:
+            pass
+
+    painter = DummyPainter()
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="t/Tokyo Skytree",
+        view_center=(45.0, 180.0),
+        observer_height_m=12.0,
+        location_height_label="Tower height",
+        location_height_m=634.0,
+        show_observer_height=True,
+    )
+    geometry = ScreenGeometry(center=(120, 90), radius=70)
+
+    label_calls: list[str] = []
+
+    def fake_draw_outlined_text(_painter, text, *_args, **_kwargs) -> None:
+        label_calls.append(text)
+
+    monkeypatch.setattr(render_draw, "draw_outlined_text", fake_draw_outlined_text)
+
+    render_draw.draw_overlay_info(
+        painter,
+        geometry,
+        _empty_celestial_data([]),
+        viewer,
+        vmag_limit=6.0,
+        enlarge_moon=False,
+        highlighted_dso=None,
+        highlighted_object=None,
+        text_font=QFont(),
+    )
+
+    assert "t/Tokyo Skytree" in label_calls
+    assert "Tower height 634 m" in label_calls
+    assert "Observer height 12 m" in label_calls

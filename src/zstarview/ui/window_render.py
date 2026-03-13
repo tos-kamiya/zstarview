@@ -31,6 +31,9 @@ class SkyWindowRenderMixin:
             city_name=self.viewer_data.city_name,
             view_center=self.state.render_view_center,
             observer_height_m=self.viewer_data.observer_height_m,
+            location_height_label=self.viewer_data.location_height_label,
+            location_height_m=self.viewer_data.location_height_m,
+            show_observer_height=self.viewer_data.show_observer_height,
         )
 
     def _active_jump_highlight_object(self, geometry):

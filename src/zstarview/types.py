@@ -80,6 +80,9 @@ class ViewerData:
     city_name: str
     view_center: ViewCenterAltAz = (90.0, 180.0)  # (alt_deg, az_deg)
     observer_height_m: float = 1.7
+    location_height_label: str | None = None
+    location_height_m: float | None = None
+    show_observer_height: bool = False
 
     @property
     def lat_deg(self) -> LatDeg:

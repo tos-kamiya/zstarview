@@ -193,6 +193,7 @@ You can also start from a built-in tower/viewpoint dataset generated from Wikida
 * When a tower name is used, the tower's stored structural/viewpoint height is used as the base observation point.
 * `--observer-height-m` replaces only the observer eye height above that base point (default `1.7m`); it does not replace the tower's own height.
 * Tower resolution also accepts ASCII fallback spellings for names with diacritics.
+* In the on-screen location info, tower viewpoints may show `Tower height ... m`; if `--observer-height-m` is explicitly set, `Observer height ... m` may be shown on a separate line.
 
 Example:
 
@@ -212,6 +213,7 @@ You can also start from the bundled mountain/viewpoint dataset.
 * When a mountain name is used, the base observation point is the mountain summit viewpoint.
 * `--observer-height-m` replaces only the observer eye height above that summit point (default `1.7m`).
 * Mountain resolution also accepts ASCII fallback spellings for names with diacritics.
+* In the on-screen location info, mountain viewpoints may show `Elevation ... m`; if `--observer-height-m` is explicitly set, `Observer height ... m` may be shown on a separate line.
 
 Example:
 
