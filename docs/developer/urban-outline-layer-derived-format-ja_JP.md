@@ -314,7 +314,7 @@ src/zstarview/data/build_plateau_derived_tiles.py
 
 `--workers` を `2` 以上にすると、タイル変換はマルチプロセスで実行し、JSON の書き込みだけを親プロセスで行う。
 
-同梱対象 3 都市の生成コマンドは次である。
+同梱対象 4 都市の生成コマンドは次である。
 
 ```bash
 .venv/bin/python src/zstarview/data/build_plateau_derived_tiles.py \
@@ -337,6 +337,16 @@ src/zstarview/data/build_plateau_derived_tiles.py
   --output-dir src/zstarview/data/plateau_derived/27100_osaka/bldg
 ```
 
+```bash
+.venv/bin/python src/zstarview/data/build_plateau_derived_tiles.py \
+  --citygml-dir raw-data/23100_nagoya-shi_city_2022_citygml_4_op/udx/bldg \
+  --workers 8 \
+  --output-dir src/zstarview/data/plateau_derived/23100_nagoya/bldg
+```
+
+名古屋市 2022 dataset では、建物外形が `lod0RoofEdge` ではなく `lod0FootPrint` で入っているタイルがある。  
+現行 `build_plateau_derived_tiles.py` はこの形式にも対応している。
+
 各都市について、derived tile 生成後に tile index も作る。
 
 ```bash
@@ -352,6 +362,11 @@ src/zstarview/data/build_plateau_derived_tiles.py
 ```bash
 .venv/bin/python src/zstarview/data/build_plateau_tile_index.py \
   --derived-dir src/zstarview/data/plateau_derived/27100_osaka/bldg
+```
+
+```bash
+.venv/bin/python src/zstarview/data/build_plateau_tile_index.py \
+  --derived-dir src/zstarview/data/plateau_derived/23100_nagoya/bldg
 ```
 
 ## 16. urban outline layer の one-off 出力
@@ -379,6 +394,22 @@ src/zstarview/data/build_plateau_derived_tiles.py
   --derived-dir src/zstarview/data/plateau_derived/27100_osaka/bldg \
   --all-covered-towers \
   --output-json src/zstarview/data/viewpoints/urban_debug_layer/osaka_urban_outline_layer.json
+```
+
+```bash
+.venv/bin/python src/zstarview/data/urban_debug_layer_from_citygml.py \
+  --derived-dir src/zstarview/data/plateau_derived/23100_nagoya/bldg \
+  --all-covered-towers \
+  --output-json src/zstarview/data/viewpoints/urban_debug_layer/nagoya_urban_outline_layer.json
+```
+
+特定 viewpoint だけを one-off 出力したい場合は、`--all-covered-towers` ではなく `--tower` を使う。
+
+```bash
+.venv/bin/python src/zstarview/data/urban_debug_layer_from_citygml.py \
+  --derived-dir src/zstarview/data/plateau_derived/23100_nagoya/bldg \
+  --tower "JR Central Towers" \
+  --output-json src/zstarview/data/viewpoints/urban_debug_layer/jr_central_towers_urban_outline_layer.json
 ```
 
 スクリプト名は過去互換のためそのままだが、入力は `--citygml-dir` ではなく `--derived-dir` である。

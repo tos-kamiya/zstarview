@@ -71,6 +71,53 @@ def test_convert_tile_emits_expected_schema(tmp_path: Path) -> None:
     assert buildings[0]["height_m"] == 80.0
 
 
+def test_convert_tile_falls_back_to_lod0_footprint_when_roof_edge_is_missing(tmp_path: Path) -> None:
+    mod = _load_module()
+    city_dir = tmp_path / "23100_nagoya" / "udx" / "bldg"
+    city_dir.mkdir(parents=True)
+    path = city_dir / "52376021_bldg_6697_op.gml"
+    path.write_text(
+        """<?xml version="1.0" encoding="UTF-8"?>
+<core:CityModel xmlns:core="http://www.opengis.net/citygml/2.0"
+                xmlns:bldg="http://www.opengis.net/citygml/building/2.0"
+                xmlns:gml="http://www.opengis.net/gml">
+  <gml:boundedBy>
+    <gml:Envelope srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
+      <gml:lowerCorner>35.0 136.0 0</gml:lowerCorner>
+      <gml:upperCorner>35.01 136.01 80</gml:upperCorner>
+    </gml:Envelope>
+  </gml:boundedBy>
+  <core:cityObjectMember>
+    <bldg:Building gml:id="bldg-high">
+      <bldg:measuredHeight>66.1</bldg:measuredHeight>
+      <bldg:lod0FootPrint>
+        <gml:MultiSurface>
+          <gml:surfaceMember>
+            <gml:Polygon><gml:exterior><gml:LinearRing>
+              <gml:posList>35.0 136.0 0 35.0 136.001 0 35.001 136.001 0 35.001 136.0 0 35.0 136.0 0</gml:posList>
+            </gml:LinearRing></gml:exterior></gml:Polygon>
+          </gml:surfaceMember>
+        </gml:MultiSurface>
+      </bldg:lod0FootPrint>
+    </bldg:Building>
+  </core:cityObjectMember>
+</core:CityModel>
+""",
+        encoding="utf-8",
+    )
+
+    payload = mod.convert_tile(
+        path,
+        min_building_height_m=40.0,
+        city_code="23100",
+        source_root=city_dir,
+    )
+
+    assert payload is not None
+    assert payload["source"]["city_code"] == "23100"
+    assert payload["buildings"][0]["height_m"] == 66.1
+
+
 def test_main_writes_json_file(tmp_path: Path) -> None:
     mod = _load_module()
     city_dir = tmp_path / "27100_osaka" / "udx" / "bldg"
