@@ -170,7 +170,14 @@ def compute_debug_outlines(
 
     transformer = make_local_transformer(tower)
     radius_m = radius_km * 1000.0
-    observer_height_m = tower.observer_height_m
+    observer_height_m = float(
+        getattr(
+            tower,
+            "viewpoint_height_m",
+            getattr(tower, "observer_height_m", 0.0),
+        )
+        or 0.0
+    )
     buildings_considered = 0
     outlines: list[tuple[DebugPolylinePoint, ...]] = []
 
