@@ -3,15 +3,15 @@
   "source": {
     "format": "PLATEAU-CityGML",
     "city_code": "26100",
-    "path": "raw-data/26100_kyoto-shi_city_2023_citygml_1_op/udx/bldg/52354630_bldg_6697_op.gml"
+    "path": "raw-data/26100_kyoto-shi_city_2024_citygml_1_op/udx/bldg/52354630_bldg_6697_op.gml"
   },
   "tile": {
     "id": "52354630_bldg_6697_op",
     "bbox": {
       "min_lat": 35.02502008125991,
       "min_lon": 135.7498682428866,
-      "max_lat": 35.033582932588175,
-      "max_lon": 135.76269738474113
+      "max_lat": 35.03358293258818,
+      "max_lon": 135.7626973858371
     }
   },
   "filters": {
@@ -20,7 +20,7 @@
   },
   "buildings": [
     {
-      "id": "bldg_005963b5-45bd-426b-a082-7245fc9ce265",
+      "id": "bldg_6c383f83-0d0e-4a80-a705-f05454acc4a4",
       "height_m": 42.9,
       "height_source": "measuredHeight",
       "bbox": {
@@ -103,7 +103,7 @@
       ]
     },
     {
-      "id": "bldg_71b9f715-6fbc-495b-8d7c-b4fa41ff27ec",
+      "id": "bldg_9b859c5c-30a1-443f-8b7c-d74b55db9c0a",
       "height_m": 40.4,
       "height_source": "measuredHeight",
       "bbox": {
@@ -570,7 +570,7 @@
       ]
     },
     {
-      "id": "bldg_dc89ed2a-fe20-4dff-bc0d-fc17c993252b",
+      "id": "bldg_00882501-1082-4298-9afa-d3a99286532c",
       "height_m": 41.5,
       "height_source": "measuredHeight",
       "bbox": {

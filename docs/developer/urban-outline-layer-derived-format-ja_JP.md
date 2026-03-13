@@ -371,9 +371,9 @@ src/zstarview/data/build_plateau_derived_tiles.py
 
 現時点でリポジトリに同梱している derived dataset の生成元は次のとおり。
 
-- 東京23区: `13100_tokyo23-ku_2020_citygml_4_2_op`
+- 東京23区: `13100_tokyo23-ku_2022_citygml_1_2_op`
 - 名古屋市: `23100_nagoya-shi_city_2022_citygml_4_op`
-- 京都市: `26100_kyoto-shi_city_2023_citygml_1_op`
+- 京都市: `26100_kyoto-shi_city_2024_citygml_1_op`
 - 大阪市: `27100_osaka-shi_city_2024_citygml_1_op`
 
 ## 16. urban outline layer の one-off 出力
