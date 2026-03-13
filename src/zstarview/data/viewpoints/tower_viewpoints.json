@@ -1046,27 +1046,6 @@
       "viewpoint_height_m": 162.0
     },
     {
-      "id": "wikidata:Q11306787",
-      "name": "ザ・ライオンズ ミッドキャピタルタワー",
-      "names": [
-        "ザ・ライオンズ ミッドキャピタルタワー"
-      ],
-      "labels": {
-        "ja": "ザ・ライオンズ ミッドキャピタルタワー"
-      },
-      "qid": "Q11306787",
-      "latitude_deg": 35.135033,
-      "longitude_deg": 136.909878,
-      "height_m": 161.85,
-      "viewpoint_types": [
-        "tower_or_high_observation"
-      ],
-      "wikidata_url": "https://www.wikidata.org/wiki/Q11306787",
-      "location_arg": "35.135033;136.909878",
-      "slug": "ザ・ライオンズ_ミッドキャピタルタワー",
-      "viewpoint_height_m": 161.85
-    },
-    {
       "id": "wikidata:Q1208032",
       "name": "Skylon Tower",
       "names": [
