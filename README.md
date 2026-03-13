@@ -383,19 +383,7 @@ Logs are also written to a file (platform‑dependent). Examples:
 </details>
 
 <details>
-  <summary>Developer notes, license, and appendix</summary>
-
-## Star Catalog Regeneration (Developer)
-
-Use the catalog generator script:
-
-```bash
-uv run -p .venv/bin/python src/zstarview/data/stars/generate_star_catalog.py
-```
-
-Detailed options (including optional Tycho-2 input and split outputs):
-
-- `docs/developer/star-catalog-generation.md`
+  <summary>License</summary>
 
 ## License
 
@@ -410,7 +398,7 @@ All paths below are relative to `src/zstarview/data/`.
 | `cities1000.txt`, `admin1CodesASCII.txt`                       | List of cities with a population of 1000 or more | [GeoNames](https://download.geonames.org/export/dump/)             | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                           |
 | `viewpoints/tower_viewpoints.json`                             | Tower/viewpoint dataset packaged for tower-name startup resolution (derived and normalized from Wikidata) | [Wikidata](https://www.wikidata.org/) via local normalization/query workflow documented in `docs/developer/viewpoint-dataset-generation.md` | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) (Wikidata data) |
 | `viewpoints/mountain_viewpoints.json`                          | Mountain/viewpoint dataset packaged for mountain-name startup resolution (Wikipedia-curated candidates normalized with Wikidata metadata) | [Wikipedia](https://www.wikipedia.org/) candidate collection plus [Wikidata](https://www.wikidata.org/) normalization workflow documented in `docs/developer/viewpoint-dataset-generation.md` | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) (Wikidata data) |
-| `plateau_derived/13100_tokyo23/*`, `plateau_derived/23100_nagoya/*`, `plateau_derived/26100_kyoto/*`, `plateau_derived/27100_osaka/*` | Derived PLATEAU building tiles and `tile_index.json` files bundled for the urban outline overlay | [PLATEAU Open Data](https://www.mlit.go.jp/plateau/open-data/) via the local derivation workflow documented in `docs/developer/urban-outline-layer-derived-format-ja_JP.md` | Derived from PLATEAU open data; redistribution and use remain subject to the source PLATEAU/open-data distribution terms and the original dataset terms for each city |
+| `plateau_derived/13100_tokyo23/*`, `plateau_derived/23100_nagoya/*`, `plateau_derived/26100_kyoto/*`, `plateau_derived/27100_osaka/*` | Derived PLATEAU building tiles and `tile_index.json` files bundled for the urban outline overlay | [PLATEAU Open Data](https://www.mlit.go.jp/plateau/open-data/) via the local derivation workflow documented in `docs/developer/urban-outline-layer-derived-format-ja_JP.md` | Subject to the open-data license attached to each source PLATEAU dataset and the [PLATEAU site policy](https://www.mlit.go.jp/plateau/site-policy/), such as the Government of Japan Standard Terms of Use 1.0, CC BY 4.0, ODC BY, or ODbL |
 | `dso.csv`                                                       | Deep-sky object catalog (named galaxies/open clusters/globular clusters; generated from OpenNGC) | [OpenNGC](https://github.com/mattiaverga/OpenNGC) via [PyOngc](https://github.com/mattiaverga/PyOngc) | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) (OpenNGC database) |
 | On-demand terrain DEM cache under the app cache directory | Terrain horizon source data (Copernicus DEM GLO-90) | [Copernicus DEM / Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM) via public AWS S3 distribution used by the app | ESA User Licence for Copernicus DEM (Copernicus Contributing Mission data access terms) |
 | `stars/IAU-Catalog of Star Names (always up to date).csv`      | IAU WGSN catalog of approved star names          | [exopla.net](https://exopla.net/star-names/modern-iau-star-names/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                           |
@@ -422,7 +410,7 @@ All paths below are relative to `src/zstarview/data/`.
 * City data based on GeoNames.
 * Tower/viewpoint startup data are derived from Wikidata and redistributed under Wikidata's CC0 data terms.
 * Mountain/viewpoint startup data are curated from Wikipedia candidates and normalized with Wikidata metadata; redistributed here under Wikidata's CC0 data terms.
-* Urban outline source data are derived from MLIT's **PLATEAU Open Data** 3D city models for Tokyo 23 wards (2022), Nagoya (2022), Kyoto (2024), and Osaka (2024), then reduced into bundled derived building tiles for runtime use.
+* Urban outline source data are derived from MLIT's **PLATEAU Open Data** 3D city models for Tokyo 23 wards (2022), Nagoya (2022), Kyoto (2024), and Osaka (2024), then reduced into bundled derived building tiles for runtime use. Per the [PLATEAU site policy](https://www.mlit.go.jp/plateau/site-policy/), source 3D city models are provided as open data under licenses such as the Government of Japan Standard Terms of Use 1.0, CC BY 4.0, ODC BY, or ODbL.
 * Star proper names provided by the IAU Working Group on Star Names (via [exopla.net](https://exopla.net/star-names/modern-iau-star-names/)).
 * Cloud data are based on infrared observations from the **Himawari** satellite (provided by JMA) and the **NOAA GOES** series (provided by NOAA/NESDIS), retrieved from their public S3 buckets.
 * Terrain horizon data are based on **Copernicus DEM GLO-90**, managed by ESA on behalf of the European Commission and obtained by the app through its public AWS distribution/cache flow.
@@ -432,6 +420,8 @@ All paths below are relative to `src/zstarview/data/`.
 * The window title "Zenith Star View" was suggested by ChatGPT.
 * Specification discussions, code generation, and debugging were greatly assisted by Gemini and ChatGPT.
 
+</details>
+
 ## Appendix
 
 → [Developer Docs](docs/developer/README.md)
@@ -439,5 +429,3 @@ All paths below are relative to `src/zstarview/data/`.
 → [Specification](docs/specification.md), [Design](docs/design.md)
 
 → [Lunar eclipses in 2026-2028, Solar eclipses 2026-2028](docs/appendix-eclipses.md)
-
-</details>
