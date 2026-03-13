@@ -369,6 +369,13 @@ src/zstarview/data/build_plateau_derived_tiles.py
   --derived-dir src/zstarview/data/plateau_derived/23100_nagoya/bldg
 ```
 
+現時点でリポジトリに同梱している derived dataset の生成元は次のとおり。
+
+- 東京23区: `13100_tokyo23-ku_2020_citygml_4_2_op`
+- 名古屋市: `23100_nagoya-shi_city_2022_citygml_4_op`
+- 京都市: `26100_kyoto-shi_city_2023_citygml_1_op`
+- 大阪市: `27100_osaka-shi_city_2024_citygml_1_op`
+
 ## 16. urban outline layer の one-off 出力
 
 この節のコマンドは検証用・共有用の one-off 出力である。  
@@ -422,5 +429,5 @@ src/zstarview/data/build_plateau_derived_tiles.py
 タイル選択は `tile_index.json` がある場合はそれを優先し、まず都市全体 bbox で都市を落とし、次に `tiles[].bbox` で必要タイルだけを選ぶ。  
 `tile_index.json` が無い古い derived dataset に対してだけ、`bldg/*.json` を直接走査する fallback を使う。
 
-既定の同梱データは東京23区・京都市・大阪市を想定している。  
+既定の同梱データは東京23区・名古屋市・京都市・大阪市を想定している。  
 同じ形式の derived dataset と `tile_index.json` が追加されれば、同じ仕組みで扱える。
