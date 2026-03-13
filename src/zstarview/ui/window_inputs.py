@@ -75,6 +75,9 @@ def prepare_window_viewer_data(
     view_center: tuple[float, float],
     *,
     observer_height_m: float = 1.7,
+    location_height_label: str | None = None,
+    location_height_m: float | None = None,
+    show_observer_height: bool = False,
 ) -> ViewerData:
     """Build the viewer input consumed by SkyWindow."""
     lat, lon, tz_name = city_data
@@ -84,6 +87,9 @@ def prepare_window_viewer_data(
         city_name=city_name,
         view_center=view_center,
         observer_height_m=float(observer_height_m),
+        location_height_label=location_height_label,
+        location_height_m=None if location_height_m is None else float(location_height_m),
+        show_observer_height=bool(show_observer_height),
     )
 
 

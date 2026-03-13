@@ -232,6 +232,9 @@ CLI には次のビューポイント dataset 参照専用オプションを持�
 - 山ビューポイントでは地点表示の補足情報として `Elevation` を表示してよい。
 - タワービューポイントでは地点表示の補足情報として `Tower height` を表示してよい。
 - `--observer-height-m` による観測者高さは、通常の地点表示では省略してよい。
+- `--observer-height-m` が CLI で明示指定された場合は、地点種別にかかわらず地点表示の補足情報として `Observer height` を追加表示してよい。
+- 山ビューポイントで `--observer-height-m` が指定された場合は、`Elevation` と `Observer height` を別行で併記してよい。
+- タワービューポイントで `--observer-height-m` が指定された場合は、`Tower height` と `Observer height` を別行で併記してよい。
 
 ### 7.2 ビューの考え方
 

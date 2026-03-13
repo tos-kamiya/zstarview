@@ -171,6 +171,9 @@ def main() -> None:
         (city.lat, city.lon, city.tz),
         view_center,
         observer_height_m=city.observer_height_m if args.observer_height_m is None else args.observer_height_m,
+        location_height_label=city.location_height_label,
+        location_height_m=city.location_height_m,
+        show_observer_height=args.observer_height_m is not None,
     )
     user_options = prepare_window_user_options(
         sky_disc_alpha=args.sky_opacity,

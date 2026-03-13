@@ -48,6 +48,8 @@ class ResolvedLocation:
     persistence_key: str
     observer_height_m: float
     kind: str
+    location_height_label: str | None = None
+    location_height_m: float | None = None
     cc: str = ""
 
 
@@ -121,6 +123,16 @@ def _viewpoint_to_location(
     )
     timezone_name = nearest_city.tz if nearest_city is not None else "UTC"
     viewpoint_height_m = 0.0 if viewpoint.viewpoint_height_m is None else float(viewpoint.viewpoint_height_m)
+    location_height_label: str | None = None
+    location_height_m: float | None = None
+    if viewpoint.kind == "tower" and viewpoint.height_m > 0.0:
+        location_height_label = "Tower height"
+        location_height_m = float(viewpoint.height_m)
+    elif viewpoint.kind == "mountain":
+        raw_elevation_m = viewpoint.meta.get("elevation_m")
+        if isinstance(raw_elevation_m, (int, float)) and float(raw_elevation_m) > 0.0:
+            location_height_label = "Elevation"
+            location_height_m = float(raw_elevation_m)
     return ResolvedLocation(
         display_name=prefixed_viewpoint_name(viewpoint.kind, viewpoint.name),
         lat=viewpoint.latitude_deg,
@@ -129,6 +141,8 @@ def _viewpoint_to_location(
         persistence_key=prefixed_viewpoint_name(viewpoint.kind, viewpoint.name),
         observer_height_m=viewpoint_height_m + DEFAULT_OBSERVER_HEIGHT_M,
         kind=viewpoint.kind,
+        location_height_label=location_height_label,
+        location_height_m=location_height_m,
         cc=nearest_city.cc if nearest_city is not None else "",
     )
 
@@ -189,10 +203,12 @@ def _startup_resolve_city(args_city: Optional[str]) -> ResolvedLocation:
                 lat=lat,
                 lon=lon,
                 tz="UTC",
-                persistence_key=f"{lat:.6f};{lon:.6f}",
-                observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
-                kind="coords",
-            )
+            persistence_key=f"{lat:.6f};{lon:.6f}",
+            observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
+            kind="coords",
+            location_height_label=None,
+            location_height_m=None,
+        )
             return resolved_location
         except (ValueError, IndexError) as exc:
             logger.error("Invalid latitude/longitude format: '%s'. %s", args_city, exc)
@@ -290,6 +306,8 @@ def _startup_resolve_city(args_city: Optional[str]) -> ResolvedLocation:
             persistence_key=city_str,
             observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
             kind="city",
+            location_height_label=None,
+            location_height_m=None,
             cc=city.cc,
         )
         persist_location = True

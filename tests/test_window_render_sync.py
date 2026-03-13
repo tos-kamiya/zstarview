@@ -53,6 +53,9 @@ def test_viewer_data_for_render_uses_render_view_center() -> None:
     assert got.view_center == (60.0, 210.0)
     assert got.location == (35.0, 139.0)
     assert got.observer_height_m == 123.0
+    assert got.location_height_label is None
+    assert got.location_height_m is None
+    assert got.show_observer_height is False
 
 
 def test_on_sky_data_calculated_updates_render_snapshot_once() -> None:
