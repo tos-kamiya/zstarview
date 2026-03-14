@@ -230,6 +230,10 @@
   - 画像変換補助
 - `src/zstarview/utils/qt.py`
   - Qt 補助
+- `src/zstarview/data/import_plateau_citygml_zip.py`
+  - PLATEAU CityGML ZIP 1 個を一時展開し、`udx/bldg` を検出して derived tile 生成へ渡す
+  - 出力先既定値は、実行中パッケージ自身の `zstarview/data/plateau_derived`
+  - `build_plateau_derived_tiles.py` と `build_plateau_tile_index.py` の orchestration 層として振る舞う
 
 ## 5. 主要データ構造
 
@@ -353,6 +357,15 @@
 4. 雲画像と欠損ティントを合成する。
 5. ラベル、オーバーレイ、ステータス行を描画する。
 
+### 6.6 PLATEAU ZIP 取込フロー
+
+1. `import_plateau_citygml_zip.py` が ZIP パスと import オプションを受け取る。
+2. ZIP を一時ディレクトリへ展開する。
+3. 展開結果から `udx/bldg` を 1 つ検出する。
+4. `build_plateau_derived_tiles.py` を呼び、`--min-building-height-m` を適用して derived tile JSON 群を生成する。
+5. `build_plateau_tile_index.py` を呼び、同じ `bldg` ディレクトリに `tile_index.json` を生成する。
+6. runtime 側は、その derived dataset を追加の高さフィルタなしで読む。
+
 ## 7. スレッドモデル
 
 - UI スレッド
@@ -394,6 +407,7 @@
 ### 8.4 都市アウトライン描画の簡略化
 
 - 都市アウトラインは derived tile から得た建物上端輪郭を描く。
+- 建物高さのしきい値は derived tile 生成時の前処理パラメータとし、runtime 読込時の既定値では再適用しない。
 - ただし見かけの方位幅が `0.5°` 未満の輪郭は、細い polyline ではなく太い水平線に簡略化する。
 - `viewport_interaction_mode` 中は都市アウトライン描画を抑止し、方向キー操作の負荷を下げる。
 
