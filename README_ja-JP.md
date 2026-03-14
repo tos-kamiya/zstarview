@@ -110,6 +110,8 @@ CLI では、場所・時刻・描画設定や同梱ビューポイント参照�
 
 ※4 地形地平線表示は初回利用時に Copernicus DEM タイルをダウンロードし、以後はローカルキャッシュを再利用します。有効時はディスク内の地面/空の塗り分け境界にも地形プロファイルを使います。
 
+※5 `--place` は公開の OpenStreetMap Nominatim 検索サービスを使います。User-Agent と Accept-Language を付けて 1 回だけ検索リクエストを送ります。高頻度利用や自動化で使う場合は、Nominatim の利用ポリシーを確認してください。
+
 #### `--place` の挙動
 
 `--place` は、通常の offline-first な `location` 引数とは別の、明示的な online resolver 経路です。
@@ -398,13 +400,15 @@ CPU 性能によっては星空の自動更新が負荷になる場合があり�
 </details>
 
 <details>
-  <summary>ライセンス</summary>
+  <summary>コード・データのライセンスとクレジット</summary>
 
-## ライセンス
+## コード・データのライセンスとクレジット
 
 このソフトウェアは [MIT](LICENSE.txt) の下で提供されています。
 
 ただし、**同梱されているデータ** はそれぞれのライセンスに従って再配布されます。
+
+`--place` オプションは実行時に公開の [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) 検索サービスを利用します。Nominatim 自体は本プロジェクトに同梱されませんが、この機能を使う際にはサービス利用条件と利用ポリシーが適用されます。
 
 以下のパスは `src/zstarview/data/` 配下を基準としています。
 
@@ -428,6 +432,7 @@ CPU 性能によっては星空の自動更新が負荷になる場合があり�
 * 都市アウトライン用の元データは、国土交通省 **Project PLATEAU** の 3D 都市モデルオープンデータ（東京23区 2022、名古屋市 2022、京都市 2024、大阪市 2024）に基づき、実行時利用向けに派生タイルへ軽量化したものです。[PLATEAU Site Policy](https://www.mlit.go.jp/plateau/site-policy/) にあるとおり、元の 3D 都市モデルは公共データ利用規約（第1.0版）、CC BY 4.0、ODC BY、ODbL などのオープンライセンスで提供されます。
 * 恒星の固有名は IAU 恒星名作業部会 (WGSN) による承認済みリスト（[exopla.net](https://exopla.net/star-names/modern-iau-star-names/) 経由）を使用しています。
 * 雲データは気象衛星 **Himawari**（提供: JMA）および **NOAA GOES** シリーズ（提供: NOAA/NESDIS）による赤外線観測データを、それぞれの公開 S3 バケットから取得して利用しています。
+* `--place` による地名・駅名検索は公開の OpenStreetMap Nominatim サービスを使っており、[Nominatim Usage Policy](https://operations.osmfoundation.org/policies/nominatim/) の対象です。
 * 地形地平線データは **Copernicus DEM GLO-90** に基づいており、欧州委員会のために ESA が管理するデータを、アプリでは公開 AWS 配布とローカルキャッシュを通じて利用しています。
 * 3D 都市モデルの元データを公開している MLIT Project PLATEAU および各 PLATEAU オープンデータ提供者に感謝します。
 * 雲画像や地形 DEM の取得に利用している公開 S3 配布/ミラーを提供している AWS および各データ提供者に感謝します。
