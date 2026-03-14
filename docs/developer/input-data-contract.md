@@ -41,7 +41,7 @@
 - 値の意味は「地面からの高さ[m]」であり、海抜の絶対標高ではない。
 - 既定値:
   - 都市名/緯度経度入力: `1.7`
-  - タワー入力: `1.7`
+  - タワー入力: `viewpoint_height_m + 1.7`
 - viewpoint dataset では tower 系に `viewpoint_height_m` を持てる。
 - `viewpoint_height_m` は、地表から観測基準点までの高さ[m]を表し、`observer_height_m` とは別概念とする。
 - 地形地平線側では `observer_ground_m + observer_height_m` の形で使う。

@@ -12,7 +12,7 @@ It renders a live all-sky view centered on your chosen location and time, includ
 - **Deep-sky objects**: named galaxies/open clusters/globular clusters are shown as soft blue extents.
 - **Asterism overlay**: popular line patterns rather than formal IAU constellation boundaries are shown as dim ambient lines. Mouse-hovering a star in an asterism brightens the matching pattern and shows its label, with 3-second rotation when multiple asterisms share that star.
 - **Solar-system bodies**: supports Sun, Moon, and major planets. Minor planets (asteroids) are not displayed yet.
-- **Flexible location input**: specify the observer location through the CLI argument using a city name, tower name, mountain name, or direct latitude/longitude input.
+- **Flexible location input**: specify the observer location through the CLI argument using a city name, tower name, mountain name, direct latitude/longitude input, or online place/station search via Nominatim.
 - **Adjustable view center**: adjust the view center with CLI options `-A` (altitude) and `-Z` (azimuth), or with the arrow keys. During view changes or window resize, the app briefly switches to a simplified interaction mode to keep navigation responsive.
 - **Satellite cloud imagery**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay. Missing regions are shown in faint yellow when satellite coverage is partial.
 - **Terrain horizon and ground fill**: Copernicus DEM data can be downloaded to render the local terrain skyline. A subtle ocher terrain line follows the observer's surroundings, and the disc is filled with a ground color below the terrain horizon, or below the geometric horizon when terrain is disabled.
@@ -55,6 +55,7 @@ Quick examples:
 zstarview Tokyo
 zstarview "Tokyo Skytree"
 zstarview "35.68;139.76" --datetime "2025-09-12 21 JST"
+zstarview --place "Matsue Station" --place-countrycode jp
 ```
 
 The CLI supports detailed startup configuration for location, time, rendering, and bundled viewpoint queries.
@@ -75,6 +76,9 @@ The CLI supports detailed startup configuration for location, time, rendering, a
 | Option                                      | Description                                                                 | Default |
 | :------------------------------------------ | :-------------------------------------------------------------------------- | :------ |
 | `-h`, `--help`                              | Show this help message and exit.                                            |         |
+| `--place QUERY`                            | Search a place, station, or facility name via OpenStreetMap Nominatim and use the top candidate as the observing location. Cannot be used together with the positional `location` argument. | |
+| `--place-countrycode CODE`                 | Restrict `--place` search to an ISO 3166-1 alpha-2 country code such as `jp`. | |
+| `--place-lang LANG`                        | `Accept-Language` sent to Nominatim for `--place` search results.           | `en`    |
 | `-Z`, `--view-center-az VIEW_CENTER_AZ`     | Viewing azimuth (degrees or compass points).                                | `180`   |
 | `-A`, `--view-center-alt VIEW_CENTER_ALT`   | Viewing altitude angle (90=zenith, 0=horizon).                              | `90`    |
 | `--observer-height-m METERS`                | Observer eye height above the local observation surface in meters. This replaces the default eye height of `1.7` meters. For tower and mountain viewpoints, the viewpoint's own height/elevation remains separate from this value. | `1.7` |
@@ -106,6 +110,16 @@ The CLI supports detailed startup configuration for location, time, rendering, a
 *3 The brightest-magnitude multiplier cannot exceed the classical Pogson value of \(100^{1/5}\approx2.512\).
 
 \*4 Terrain horizon rendering downloads Copernicus DEM tiles on first use and reuses the cached DEM later. When enabled, the terrain profile also becomes the boundary for the ground-color fill inside the disc.
+
+#### `--place` behavior
+
+`--place` is an explicit online resolver path separate from the normal offline-first `location` argument.
+
+- The app sends a single Nominatim search request and sorts candidates by importance.
+- Startup remains non-interactive: the top candidate is used automatically.
+- When multiple candidates are found, they are logged to the terminal and the top candidate is still used.
+- The full returned place name is shown in the GUI location label so mismatches are easier to notice.
+- The selected result is saved in config and reused on the next launch without re-querying Nominatim.
 
 #### Overlay visibility at startup
 

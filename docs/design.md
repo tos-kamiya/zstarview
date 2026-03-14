@@ -132,10 +132,10 @@
 - `--place` は位置引数 `location` と排他とする。
 - `--place` が指定されない通常起動では、既存の offline-first 解決規則を維持する。
 - `--place` が指定された場合、`startup.py` は Nominatim Search API を 1 回呼び出し、返却された候補を正規化する。
-- 候補の正規化では少なくとも `display_name`、`lat`、`lon`、`category`、`type`、`importance` を保持する。
+- 候補の正規化では少なくとも `name`、`lat`、`lon`、`category`、`type`、`importance` を保持する。
 - 候補は `importance` 降順で扱い、先頭候補を起動地点として採用する。
 - 複数候補が得られた場合でも起動時の対話選択は行わず、候補一覧を標準エラーまたは logger 出力へ流しつつ先頭候補を採用する。
-- GUI の地点表示には、採用した候補の `display_name` 全体をそのまま使う。
+- `name` には Nominatim の `display_name` を保持し、GUI の地点表示にはその全体をそのまま使う。
 - タイムゾーンは、採用した座標から最近傍の GeoNames 都市を引いて補完する。補完できない場合は UTC を使う。
 - HTTP エラー、レート制限、通信失敗、JSON 解析失敗、0 件結果は `StartupAbortError` 相当で起動中断とし、logger 経由でターミナルとスプラッシュへ表示する。
 - Nominatim 利用は起動時の単発検索に限定し、候補列挙だけの反復照会経路は持たない。
