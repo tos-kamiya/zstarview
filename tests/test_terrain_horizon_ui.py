@@ -277,6 +277,56 @@ def test_end_viewport_interaction_mode_requests_full_refresh() -> None:
     assert calls == ["sky", "view-change-idle", "view-change-idle", "update"]
 
 
+def test_show_menu_uses_viewport_interaction_mode() -> None:
+    calls: list[str] = []
+
+    class _DummyButton:
+        def height(self) -> int:
+            return 30
+
+        def mapToGlobal(self, point) -> tuple[int, int]:
+            calls.append(f"map:{point.x()},{point.y()}")
+            return (100, 200)
+
+    class _DummyMenu:
+        def exec(self, pos) -> None:
+            calls.append(f"exec:{pos}")
+
+    dummy = SimpleNamespace()
+    dummy.menu_button = _DummyButton()
+    dummy.menu = _DummyMenu()
+    dummy._sync_view_altitude_actions = lambda: calls.append("sync")
+    dummy._begin_viewport_interaction_mode = lambda: calls.append("begin-viewport")
+    dummy._end_viewport_interaction_mode = lambda: calls.append("end-viewport")
+
+    SkyWindow.show_menu(dummy)
+
+    assert calls == [
+        "sync",
+        "begin-viewport",
+        "map:0,30",
+        "exec:(100, 200)",
+        "end-viewport",
+    ]
+
+
+def test_menu_button_style_sheet_uses_opaque_background_for_night_preset() -> None:
+    dummy = SimpleNamespace(visual_preset="night")
+
+    style = SkyWindow._menu_button_style_sheet(dummy)
+
+    assert "background-color: #0a0c10;" in style
+    assert "border-radius: 6px;" in style
+
+
+def test_menu_button_style_sheet_uses_light_background_for_day_preset() -> None:
+    dummy = SimpleNamespace(visual_preset="day")
+
+    style = SkyWindow._menu_button_style_sheet(dummy)
+
+    assert "background-color: #f0f8ff;" in style
+
+
 def test_update_viewport_interaction_stars_uses_bright_limit(monkeypatch) -> None:
     captured: dict[str, object] = {}
 
