@@ -25,14 +25,16 @@ def _save_config(data: dict[str, Any]) -> None:
     _config_file.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
 
-def load_last_city() -> Optional[str]:
-    """Loads the last used city from the config file."""
+def load_last_city() -> Optional[str | dict[str, Any]]:
+    """Load the last used location payload from the config file."""
     city = _load_config().get("city")
-    return city if isinstance(city, str) else None
+    if isinstance(city, str):
+        return city
+    return city if isinstance(city, dict) else None
 
 
-def save_last_city(city: str) -> None:
-    """Saves the last used city to the config file."""
+def save_last_city(city: str | dict[str, Any]) -> None:
+    """Save the last used location payload to the config file."""
     data = _load_config()
     data["city"] = city
     _save_config(data)

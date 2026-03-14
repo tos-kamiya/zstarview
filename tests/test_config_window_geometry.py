@@ -41,3 +41,16 @@ def test_load_last_window_geometry_returns_none_for_invalid_data(tmp_path, monke
 
     assert config.load_last_window_geometry() is None
 
+
+def test_save_last_city_accepts_structured_location_payload(tmp_path, monkeypatch) -> None:
+    cfg = tmp_path / "config.json"
+    monkeypatch.setattr(config, "_config_file", cfg)
+
+    payload = {
+        "resolver": "nominatim",
+        "query": "Matsue Station",
+        "result": {"name": "Matsue Station", "lat": 35.4, "lon": 133.0},
+    }
+    config.save_last_city(payload)
+
+    assert config.load_last_city() == payload

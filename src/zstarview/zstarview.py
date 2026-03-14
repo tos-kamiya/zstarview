@@ -4,11 +4,7 @@ import logging
 import math
 import json
 
-from .cli_args import (
-    _parse_theme,
-    _parse_window_geometry,
-    parse_args,
-)
+from .cli_args import _parse_theme, _parse_window_geometry, parse_args
 from .viewpoints import (
     find_exact_viewpoint_matches,
     prefixed_viewpoint_name,
@@ -44,6 +40,13 @@ from .tower_viewpoints import (
     resolve_tower_viewpoint,
     tower_viewpoint_to_dict,
 )
+
+__all__ = [
+    "_parse_theme",
+    "_parse_window_geometry",
+    "main",
+    "parse_args",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -147,7 +150,12 @@ def main() -> None:
     splash, splash_handler, set_splash_context = setup_splash_and_attach_logger(app, app_name, root_logger, args.theme)
 
     try:
-        city = _startup_resolve_city(args.city)
+        city = _startup_resolve_city(
+            args.city,
+            place_query=args.place,
+            place_countrycode=args.place_countrycode,
+            place_lang=args.place_lang,
+        )
         set_splash_context(_format_splash_location(city))
         delta_t = _startup_parse_time_arguments(args.datetime, args.days, args.hours)
         star_catalog = _startup_load_stars(args.vmag_limit)

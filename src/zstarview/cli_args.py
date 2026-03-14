@@ -144,6 +144,33 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             "or explicit t/NAME and m/NAME prefixes (default: same as the last run)"
         ),
     )
+    parser.add_argument(
+        "--place",
+        type=str,
+        default=None,
+        metavar="QUERY",
+        help=(
+            "Search a place, station, or facility name via Nominatim and use the "
+            "top candidate as the observing location."
+        ),
+    )
+    parser.add_argument(
+        "--place-countrycode",
+        type=str,
+        default=None,
+        metavar="CODE",
+        help=(
+            "Restrict --place search to an ISO 3166-1 alpha-2 country code "
+            "(for example: jp)."
+        ),
+    )
+    parser.add_argument(
+        "--place-lang",
+        type=str,
+        default="en",
+        metavar="LANG",
+        help="Accept-Language for --place Nominatim search (default: en).",
+    )
     dataset_query_group = parser.add_mutually_exclusive_group()
     dataset_query_group.add_argument(
         "--list-viewpoints",
@@ -362,6 +389,18 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Theme preset for background and star contrast (default: night).",
     )
     args = parser.parse_args(argv)
+    if args.place is not None:
+        args.place = args.place.strip()
+        if not args.place:
+            parser.error("--place must not be empty")
+    if args.place_countrycode is not None:
+        args.place_countrycode = args.place_countrycode.strip().lower()
+        if not args.place_countrycode:
+            parser.error("--place-countrycode must not be empty")
+    if args.place_lang is not None:
+        args.place_lang = args.place_lang.strip()
+        if not args.place_lang:
+            parser.error("--place-lang must not be empty")
     for option_name in ("list_viewpoints", "list_viewpoint_names"):
         value = getattr(args, option_name)
         if value is not None:
@@ -377,9 +416,13 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     if dataset_cli_requested:
         if args.city:
             parser.error("dataset query options cannot be used with the location argument")
+        if args.place:
+            parser.error("dataset query options cannot be used with --place")
 
         incompatible_non_default = (
-            args.hours != 0
+            args.place_countrycode is not None
+            or args.place_lang != "en"
+            or args.hours != 0
             or args.days != 0
             or args.datetime is not None
             or args.vmag_limit != 6.0
@@ -404,5 +447,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         )
         if incompatible_non_default:
             parser.error("dataset query options cannot be used with time or rendering options")
+    if args.city and args.place:
+        parser.error("--place cannot be used with the location argument")
+    if args.place is None and args.place_countrycode is not None:
+        parser.error("--place-countrycode requires --place")
+    if args.place is None and args.place_lang != "en":
+        parser.error("--place-lang requires --place")
 
     return args

@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-03-09
+最終更新: 2026-03-14
 
 ## 1. この文書の位置づけ
 
@@ -53,10 +53,13 @@
 - `src/zstarview/cli_args.py`
   - CLI オプション定義と値解釈
   - タワー一覧・タワー詳細 JSON 出力の即時終了オプションを扱う
+  - `--place`、`--place-countrycode`、`--place-lang` の online 地点検索オプションを扱う
 - `src/zstarview/startup.py`
   - 起動時の地点解決、設定復元、初期値決定
+  - Nominatim による online 地点検索と結果正規化を扱う
 - `src/zstarview/config.py`
   - ユーザー設定の保存と読込
+  - 前回地点を legacy 文字列または構造化地点オブジェクトとして保存する
 - `src/zstarview/paths.py`
   - 設定・キャッシュ・データのパス解決
 
@@ -82,7 +85,9 @@
   - 同梱 `mountain_viewpoints.json` は、Wikipedia 起点の候補収集を経て Wikidata メタデータへ正規化した生成物を読む
 - `src/zstarview/startup.py`
   - 都市、タワー、山、緯度経度の通常起動時地点解決
+  - `--place` 指定時の Nominatim 検索による地点解決
   - タワー/山については最近傍都市からタイムゾーンを補完
+  - Nominatim 検索結果についても最近傍都市からタイムゾーンを補完
   - `t/NAME` / `m/NAME` の明示プレフィックスを解釈し、都市名解決より優先する
   - 観測点の基準高さと観測者の目線高さを合成して、実効観測高さを初期化する
 - `src/zstarview/types.py`
@@ -114,7 +119,40 @@
   - mountain の `names` では、`Mt.` / `Mtn.` を `Mount` / `Mountain` に展開できる場合は展開側へ寄せ、重複側を捨てる。
   - mountain の `names` では、`/` の前後に空白を含む表記は候補一覧から外し、必要なら空白なし表記だけを残す。
   - tower の短縮 alias は、固有名詞として成立するものだけを人手で追加する。
-  - tower / mountain とも、数字だけの部分一致では解決しない。
+- tower / mountain とも、数字だけの部分一致では解決しない。
+
+### 4.2.2 `--place` による Nominatim 検索起動
+
+`--place QUERY` は、既存の `location` 引数とは別の明示的な online resolver 経路を持つ。
+
+- 対象オプション
+  - `--place QUERY`
+  - `--place-countrycode CODE`
+  - `--place-lang LANG`
+- `--place` は位置引数 `location` と排他とする。
+- `--place` が指定されない通常起動では、既存の offline-first 解決規則を維持する。
+- `--place` が指定された場合、`startup.py` は Nominatim Search API を 1 回呼び出し、返却された候補を正規化する。
+- 候補の正規化では少なくとも `display_name`、`lat`、`lon`、`category`、`type`、`importance` を保持する。
+- 候補は `importance` 降順で扱い、先頭候補を起動地点として採用する。
+- 複数候補が得られた場合でも起動時の対話選択は行わず、候補一覧を標準エラーまたは logger 出力へ流しつつ先頭候補を採用する。
+- GUI の地点表示には、採用した候補の `display_name` 全体をそのまま使う。
+- タイムゾーンは、採用した座標から最近傍の GeoNames 都市を引いて補完する。補完できない場合は UTC を使う。
+- HTTP エラー、レート制限、通信失敗、JSON 解析失敗、0 件結果は `StartupAbortError` 相当で起動中断とし、logger 経由でターミナルとスプラッシュへ表示する。
+- Nominatim 利用は起動時の単発検索に限定し、候補列挙だけの反復照会経路は持たない。
+
+### 4.2.3 前回地点の保存形式
+
+前回地点保存は後方互換のため複数形式を許容する。
+
+- legacy 形式
+  - 既存どおり文字列 1 個を保存する。
+  - 都市名、`CC/City`、`t/NAME`、`m/NAME`、`lat;lon` などを表す。
+- Nominatim 形式
+  - 構造化オブジェクトとして保存する。
+  - 少なくとも resolver 種別、元の query、採用した正規化結果 JSON を含める。
+  - 次回起動時は再検索せず、この保存済み結果をそのまま `ResolvedLocation` へ復元する。
+- `config.py` は `str | object` を読めるようにし、未知形式は安全側で無視または起動失敗へ正規化する。
+- 保存形式が異なっても、起動後に UI へ渡す地点モデルは共通の `ResolvedLocation` に揃える。
 
 ### 4.3 描画
 
@@ -271,7 +309,7 @@
 
 1. `zstarview.py` が CLI とログを初期化する。
 2. 設定ファイルから前回の地点やウィンドウ状態を復元する。
-3. 入力文字列を都市、タワー、座標のいずれかとして解決する。
+3. 入力を、`--place` による online 検索地点または通常の都市・タワー・山・座標として解決する。
 4. 星カタログや補助データを読み込む。
 5. `SkyWindow` を生成し、初回描画を行う。
 6. 必要に応じて雲更新と地形地平線更新をバックグラウンドで開始する。
