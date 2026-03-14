@@ -3,17 +3,19 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
+from ..types import UrbanOutlinePolyline
+
 
 @dataclass
 class UrbanOutlineState:
-    outlines: Optional[list[list[tuple[float, float]]]] = None
+    outlines: Optional[list[UrbanOutlinePolyline]] = None
     banner_text: Optional[str] = None
     failed_this_session: bool = False
     current_source: Optional[str] = None
 
     def set_result(
         self,
-        outlines: list[list[tuple[float, float]]] | None,
+        outlines: list[UrbanOutlinePolyline] | None,
         *,
         source: str,
     ) -> None:

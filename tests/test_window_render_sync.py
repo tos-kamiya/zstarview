@@ -285,7 +285,7 @@ def test_draw_urban_outline_layer_skips_when_hidden(monkeypatch) -> None:
     dummy.show_urban_outline_layer = False
     dummy.state = SkyWindowState(
         render_view_center=(45.0, 180.0),
-        urban_outlines=[[(-1.0, 10.0), (-2.0, 12.0)]],
+        urban_outlines=[UrbanOutlinePolyline(points=[(-1.0, 10.0), (-2.0, 12.0)], height_m=50.0)],
     )
 
     SkyWindow._draw_urban_outline_layer(
@@ -610,7 +610,7 @@ def test_draw_urban_outlines_simplifies_narrow_outline_to_horizontal_segment(mon
     window_render_module.render_draw.draw_urban_outlines(
         painter,
         geometry=SimpleNamespace(center=(0, 0), radius=1),
-        urban_outlines=[[(-10.0, 10.0), (-12.0, 10.3)]],
+        urban_outlines=[UrbanOutlinePolyline(points=[(-10.0, 10.0), (-12.0, 10.3)], height_m=50.0)],
         view_center=(45.0, 180.0),
         opacity=0.38,
     )
