@@ -27,7 +27,18 @@
 
 ## インストール方法（推奨：`pipx`）
 
-[`pipx`](https://pypa.github.io/pipx/) を使ってインストールする想定です。
+**前提条件:**
+
+都市アウトライン表示を使うには、`overturemaps` CLI も別途インストールしてください。
+インストール方法は <https://pypi.org/project/overturemaps/> を参照してください。
+
+次で確認できます。
+
+```bash
+overturemaps --help
+```
+
+Zstarview 自体は、[`pipx`](https://pypa.github.io/pipx/) を使ってインストールする想定です。
 
 ```bash
 pipx install zstarview
