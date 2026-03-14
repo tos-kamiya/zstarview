@@ -124,7 +124,7 @@ def test_toggle_urban_outline_enables_opacity_and_requests_background_update() -
     dummy = SimpleNamespace()
     dummy._urban_outline_gui_allowed = True
     dummy.urban_outline_opacity = 0.0
-    dummy._urban_outline_opacity_when_enabled = 0.38
+    dummy._urban_outline_opacity_when_enabled = 0.2
     dummy.show_urban_outline_layer = False
     dummy._action_toggle_urban_outline = _DummyAction(False)
     calls: list[str] = []
@@ -133,7 +133,7 @@ def test_toggle_urban_outline_enables_opacity_and_requests_background_update() -
 
     SkyWindow.toggle_urban_outline(dummy)
 
-    assert dummy.urban_outline_opacity == 0.38
+    assert dummy.urban_outline_opacity == 0.2
     assert dummy.show_urban_outline_layer is True
     assert dummy._action_toggle_urban_outline.isChecked() is True
     assert calls == ["toggle-on", "update"]
@@ -143,7 +143,7 @@ def test_toggle_urban_outline_respects_cli_lockout() -> None:
     dummy = SimpleNamespace()
     dummy._urban_outline_gui_allowed = False
     dummy.urban_outline_opacity = 0.0
-    dummy._urban_outline_opacity_when_enabled = 0.38
+    dummy._urban_outline_opacity_when_enabled = 0.2
     dummy.show_urban_outline_layer = False
     dummy._action_toggle_urban_outline = _DummyAction(False)
     dummy.update = lambda: (_ for _ in ()).throw(AssertionError("should not repaint"))

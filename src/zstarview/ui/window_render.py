@@ -323,7 +323,7 @@ class SkyWindowRenderMixin:
             geometry,
             self.state.urban_outlines,
             render_viewer.view_center,
-            opacity=getattr(self, "urban_outline_opacity", 0.38),
+            opacity=getattr(self, "urban_outline_opacity", 0.2),
         )
 
     def _draw_star_layer(
