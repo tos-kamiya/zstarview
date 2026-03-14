@@ -151,9 +151,6 @@ By default, `-Z 180` (facing south) and `-A 90` (zenith) are used.
 In this view, the bottom of the screen is south, the left side is east, and the display is a circular view looking straight up toward the zenith.
 
 For example, setting `-Z 90` (facing east) and `-A 25` (altitude 25° above the horizon) produces a sky view toward the eastern sky.  
-The screenshot below shows the Summer Triangle (Vega, Altair, and Deneb) rendered using this configuration.
-
-[→ Example: Eastern sky at 25° altitude showing the Summer Triangle](docs/images/screenshot2.png)
 
 Azimuth can be given in degrees or compass points (case-insensitive).
 Examples: `-Z E`, `-Z ne`, `-Z SSW` (202.5°).
