@@ -16,7 +16,7 @@ It renders a live all-sky view centered on your chosen location and time, includ
 - **Adjustable view center**: adjust the view center with CLI options `-A` (altitude) and `-Z` (azimuth), or with the arrow keys. During view changes or window resize, the app briefly switches to a simplified interaction mode to keep navigation responsive.
 - **Satellite cloud imagery**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay. Missing regions are shown in faint yellow when satellite coverage is partial.
 - **Terrain horizon and ground fill**: Copernicus DEM data can be downloaded to render the local terrain skyline. A subtle ocher terrain line follows the observer's surroundings, and the disc is filled with a ground color below the terrain horizon, or below the geometric horizon when terrain is disabled.
-- **Urban outline overlay**: where bundled PLATEAU-derived building tiles are available, major rooflines are drawn as a white urban outline overlay. Very narrow roof spans are simplified to thick horizontal strokes. Currently supported only for Tokyo 23 wards, Nagoya City, Kyoto City, and Osaka City in Japan.
+- **Urban outline overlay**: where bundled PLATEAU-derived building tiles are available, major rooflines are drawn as a white urban outline overlay. Very narrow roof spans are simplified to thick horizontal strokes. By default this is bundled only for Tokyo 23 wards, Nagoya City, Kyoto City, and Osaka City in Japan, but users can add more cities with the `zstarview-import-plateau-zip` utility.
 - **Never-rises region**: the celestial region that never rises above the horizon for the observer's latitude is shown in a red tint.
 - **Python support**: the project is routinely tested on CPython 3.10, 3.11, 3.12, and 3.13.
 
@@ -59,31 +59,6 @@ zstarview --place "Matsue Station" --place-countrycode jp
 ```
 
 The CLI supports detailed startup configuration for location, time, rendering, and bundled viewpoint queries.
-
-After installation, the helper utility `zstarview-import-plateau-zip` is also available.
-It imports a PLATEAU CityGML ZIP file that you downloaded locally and writes the
-derived building tiles into the installed package's `zstarview/data/plateau_derived`
-directory so the urban outline overlay can use them. Real PLATEAU datasets are
-typically large, so you will usually want to pass `--workers N`. The import step
-defaults to `--min-building-height-m 40`, but you can lower that value or set
-`--min-building-height-m 0` for cities where 40m leaves too few buildings.
-
-Example:
-
-```bash
-zstarview-import-plateau-zip \
-  ~/Downloads/12100_chiba-shi_city_2024_citygml_1_op.zip \
-  --workers 8
-```
-
-Example with no height cutoff:
-
-```bash
-zstarview-import-plateau-zip \
-  ~/Downloads/32201_matsue-shi_city_2024_citygml_1_op.zip \
-  --workers 8 \
-  --min-building-height-m 0
-```
 
 <details>
   <summary>CLI reference</summary>
@@ -352,6 +327,36 @@ From the hamburger menu (`☰`), you can use:
 After a jump/search, the selected star is highlighted for about 3 seconds using the same UI style as mouse hover (circle marker + name label).
 
 The same simplified viewport-interaction mode is also used during window resize to keep interaction responsive while heavier layers catch up after idle.
+
+</details>
+
+<details>
+  <summary>PLATEAU ZIP Import Utility</summary>
+
+After installation, the helper utility `zstarview-import-plateau-zip` is also available.
+It imports a PLATEAU CityGML ZIP file that you downloaded locally and writes the
+derived building tiles into the installed package's `zstarview/data/plateau_derived`
+directory so the urban outline overlay can use them. Real PLATEAU datasets are
+typically large, so you will usually want to pass `--workers N`. The import step
+defaults to `--min-building-height-m 40`, but you can lower that value or set
+`--min-building-height-m 0` for cities where 40m leaves too few buildings.
+
+Example:
+
+```bash
+zstarview-import-plateau-zip \
+  ~/Downloads/12100_chiba-shi_city_2024_citygml_1_op.zip \
+  --workers 8
+```
+
+Example with no height cutoff:
+
+```bash
+zstarview-import-plateau-zip \
+  ~/Downloads/32201_matsue-shi_city_2024_citygml_1_op.zip \
+  --workers 8 \
+  --min-building-height-m 0
+```
 
 </details>
 

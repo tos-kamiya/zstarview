@@ -1,6 +1,6 @@
 # zstarview 実装履歴
 
-最終更新: 2026-03-12
+最終更新: 2026-03-14
 
 ## 1. この文書の位置づけ
 
@@ -49,6 +49,17 @@
 - 必要に応じて `CloudController` と `SkyWindow` の責務境界を再評価する
 
 ## 5. 実装履歴
+
+### 2026-03-14
+
+- PLATEAU CityGML ZIP 取込ユーティリティ
+  - `zstarview-import-plateau-zip` を追加し、ダウンロード済み ZIP 1 個から derived tile と `tile_index.json` を生成できるようにした。
+  - 出力先は、実行中のインストール済みパッケージ配下 `zstarview/data/plateau_derived` を既定にした。
+  - 実データが大きい前提で、`--workers` を利用者向けオプションとして公開した。
+
+- 都市アウトライン用建物高さしきい値の見直し
+  - runtime 側の都市アウトライン読込では 40m 再フィルタをやめ、derived tile に残っている建物をそのまま使うようにした。
+  - 建物高さしきい値は import / 生成時の `--min-building-height-m` に集約し、低層中心都市では `0` を指定できるようにした。
 
 ### 2026-03-09
 
