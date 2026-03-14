@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import astropy.time
 from types import SimpleNamespace
+from PySide6.QtGui import QImage
 
 import zstarview.ui.window_render as window_render_module
 from zstarview.types import CelestialData, UrbanOutlinePolyline, ViewerData
@@ -196,6 +197,33 @@ def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(monkeypa
         ("direction", None),
         ("zenith", None),
     ]
+
+
+def test_draw_cached_frame_reuses_existing_image() -> None:
+    draws: list[tuple[int, int]] = []
+    render_calls: list[str] = []
+
+    class _Painter:
+        def drawImage(self, x: int, y: int, image: QImage) -> None:  # noqa: N802 - Qt naming
+            draws.append((x, y))
+            assert not image.isNull()
+
+    dummy = SimpleNamespace()
+    dummy._frame_cache_key = None
+    dummy._frame_cache_image = None
+    dummy.size = lambda: window_render_module.QImage(32, 24, QImage.Format.Format_ARGB32_Premultiplied).size()
+
+    def render_fn(frame_painter) -> None:
+        render_calls.append("render")
+        frame_painter.fillRect(0, 0, 32, 24, window_render_module.Qt.GlobalColor.black)
+
+    painter = _Painter()
+
+    window_render_module.SkyWindowRenderMixin._draw_cached_frame(dummy, painter, ("same",), render_fn)
+    window_render_module.SkyWindowRenderMixin._draw_cached_frame(dummy, painter, ("same",), render_fn)
+
+    assert render_calls == ["render"]
+    assert draws == [(0, 0), (0, 0)]
 
 
 def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(monkeypatch) -> None:
