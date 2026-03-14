@@ -211,7 +211,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             user_options.terrain_horizon_opacity if user_options.terrain_horizon_opacity > 0.0 else 0.25
         )
         self._urban_outline_opacity_when_enabled = (
-            user_options.urban_outline_opacity if user_options.urban_outline_opacity > 0.0 else 0.38
+            user_options.urban_outline_opacity if user_options.urban_outline_opacity > 0.0 else 0.2
         )
         self._sky_disc_gui_allowed = bool(user_options.sky_disc_gui_allowed)
         self._cloud_gui_allowed = bool(user_options.cloud_gui_allowed)
