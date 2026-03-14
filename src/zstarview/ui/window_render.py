@@ -24,6 +24,158 @@ def _star_line_width_scale(window: Any, geometry: render_draw.ScreenGeometry) ->
 
 
 class SkyWindowRenderMixin:
+    def _render_cache_stamp(self, value: Any) -> Any:
+        if value is None:
+            return None
+        if hasattr(value, "cacheKey"):
+            return int(value.cacheKey())
+        return id(value)
+
+    def _render_frame_cache_key(
+        self,
+        *,
+        geometry: render_draw.ScreenGeometry,
+        celestial_data: CelestialData,
+        render_viewer: ViewerData,
+        highlighted_object: Any | None,
+        highlighted_dso: Any | None,
+    ) -> tuple[Any, ...]:
+        mouse_pos = self.state.mouse_pos
+        mouse_key = None if mouse_pos is None else (int(mouse_pos.x()), int(mouse_pos.y()))
+        jump_altaz = self.state.jump_highlight_altaz
+        jump_altaz_key = None if jump_altaz is None else (float(jump_altaz[0]), float(jump_altaz[1]))
+        highlighted_object_name = None
+        if highlighted_object is not None:
+            obj = highlighted_object[0]
+            highlighted_object_name = getattr(obj, "name", None) if hasattr(obj, "name") else obj.get("name")
+        highlighted_dso_name = None
+        if highlighted_dso is not None:
+            obj = highlighted_dso[0]
+            highlighted_dso_name = obj.get("name") if hasattr(obj, "get") else getattr(obj, "name", None)
+        return (
+            int(self.width()),
+            int(self.height()),
+            tuple(geometry.center),
+            int(geometry.radius),
+            self.visual_preset,
+            bool(self.state.viewport_interaction_mode),
+            tuple(float(v) for v in self.state.render_view_center),
+            tuple(float(v) for v in render_viewer.location),
+            render_viewer.city_name,
+            render_viewer.timezone_name,
+            float(render_viewer.observer_height_m),
+            render_viewer.location_height_label,
+            render_viewer.location_height_m,
+            bool(render_viewer.show_observer_height),
+            bool(self.show_dso),
+            bool(self.show_asterisms),
+            bool(self.enlarge_moon),
+            round(float(self.vmag_limit), 3),
+            round(float(self.sky_disc_alpha), 3),
+            round(float(self.cloud_disc_alpha), 3),
+            round(float(self.terrain_horizon_opacity), 3),
+            round(float(self.urban_outline_opacity), 3),
+            bool(getattr(self, "show_urban_outline_layer", True)),
+            self._render_cache_stamp(celestial_data),
+            self._render_cache_stamp(self.state.sky_disc_image),
+            self._render_cache_stamp(self.cloud_state.image),
+            self._render_cache_stamp(self.cloud_state.missing_mask),
+            None if self.cloud_state.stripe_density is None else int(self.cloud_state.stripe_density.source_cache_key),
+            self._render_cache_stamp(self.state.terrain_horizon_profile),
+            self._render_cache_stamp(self.state.urban_outlines),
+            mouse_key,
+            self.state.jump_highlight_name,
+            jump_altaz_key,
+            round(float(self.state.jump_highlight_until_ms), 1),
+            highlighted_object_name,
+            highlighted_dso_name,
+            self._status_line_message(),
+        )
+
+    def _render_scene_into_painter(
+        self,
+        painter: QPainter,
+        geometry: render_draw.ScreenGeometry,
+        celestial_data: CelestialData,
+        render_viewer: ViewerData,
+        highlighted_object: Any | None,
+        highlighted_dso: Any | None,
+    ) -> None:
+        self._clear_background_layer(painter)
+        self._draw_background_layer(painter, geometry)
+        if self.state.viewport_interaction_mode:
+            self._draw_viewport_interaction_layers(
+                painter,
+                geometry,
+                celestial_data,
+                render_viewer,
+            )
+            self._draw_status_line(painter)
+            return
+
+        self._draw_sky_cloud_layers(painter, geometry, render_viewer)
+        label_reservations: list[QRectF] = []
+        label_candidates: list[dict[str, Any]] = []
+        self._draw_terrain_layers(
+            painter,
+            geometry,
+            celestial_data,
+            render_viewer,
+            highlighted_object,
+            highlighted_dso,
+            label_reservations,
+            label_candidates,
+        )
+        self._draw_star_layer(painter, geometry, celestial_data, render_viewer)
+
+        enlarge_moon = self.enlarge_moon
+        if highlighted_object is not None:
+            obj = highlighted_object[0]
+            name = getattr(obj, "name", "") if hasattr(obj, "name") else obj.get("name", "")
+            enlarge_moon = enlarge_moon or name == "moon"
+
+        self._draw_planet_layer(
+            painter,
+            geometry,
+            celestial_data,
+            render_viewer,
+            enlarge_moon,
+            label_candidates,
+        )
+        self._draw_overlay_layer(
+            painter,
+            geometry,
+            celestial_data,
+            render_viewer,
+            highlighted_object,
+            highlighted_dso,
+            enlarge_moon,
+            label_reservations,
+            label_candidates,
+        )
+        self._draw_label_layer(painter, label_candidates)
+        self._draw_status_line(painter)
+
+    def _draw_cached_frame(
+        self,
+        painter: QPainter,
+        frame_key: tuple[Any, ...],
+        render_fn: Any,
+    ) -> None:
+        if self._frame_cache_key != frame_key or self._frame_cache_image is None:
+            frame = QImage(self.size(), QImage.Format.Format_ARGB32_Premultiplied)
+            frame.fill(Qt.GlobalColor.transparent)
+            frame_painter = QPainter(frame)
+            frame_painter.setRenderHint(QPainter.Antialiasing)
+            frame_painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+            try:
+                render_fn(frame_painter)
+            finally:
+                frame_painter.end()
+            self._frame_cache_image = frame
+            self._frame_cache_key = frame_key
+        painter.drawImage(0, 0, self._frame_cache_image)
+
     def _viewer_data_for_render(self) -> ViewerData:
         return ViewerData(
             location=self.viewer_data.location,
@@ -100,18 +252,6 @@ class SkyWindowRenderMixin:
         alt = render_viewer.view_center[0]
         geometry = render_draw.get_screen_geometry(self.width(), self.height(), alt)
 
-        self._clear_background_layer(painter)
-        self._draw_background_layer(painter, geometry)
-        if self.state.viewport_interaction_mode:
-            self._draw_viewport_interaction_layers(
-                painter,
-                geometry,
-                celestial_data,
-                render_viewer,
-            )
-            self._draw_status_line(painter)
-            return
-
         highlighted_object = None
         highlighted_dso = None
         mouse_pos = self.state.mouse_pos
@@ -132,49 +272,25 @@ class SkyWindowRenderMixin:
         jump_highlight = self._active_jump_highlight_object(geometry)
         if jump_highlight is not None:
             highlighted_object = jump_highlight
-
-        self._draw_sky_cloud_layers(painter, geometry, render_viewer)
-        label_reservations: list[QRectF] = []
-        label_candidates: list[dict[str, Any]] = []
-        self._draw_terrain_layers(
-            painter,
-            geometry,
-            celestial_data,
-            render_viewer,
-            highlighted_object,
-            highlighted_dso,
-            label_reservations,
-            label_candidates,
+        frame_key = self._render_frame_cache_key(
+            geometry=geometry,
+            celestial_data=celestial_data,
+            render_viewer=render_viewer,
+            highlighted_object=highlighted_object,
+            highlighted_dso=highlighted_dso,
         )
-        self._draw_star_layer(painter, geometry, celestial_data, render_viewer)
-
-        enlarge_moon = self.enlarge_moon
-        if highlighted_object is not None:
-            obj = highlighted_object[0]
-            name = getattr(obj, "name", "") if hasattr(obj, "name") else obj.get("name", "")
-            enlarge_moon = enlarge_moon or name == "moon"
-
-        self._draw_planet_layer(
+        self._draw_cached_frame(
             painter,
-            geometry,
-            celestial_data,
-            render_viewer,
-            enlarge_moon,
-            label_candidates,
+            frame_key,
+            lambda frame_painter: self._render_scene_into_painter(
+                frame_painter,
+                geometry,
+                celestial_data,
+                render_viewer,
+                highlighted_object,
+                highlighted_dso,
+            ),
         )
-        self._draw_overlay_layer(
-            painter,
-            geometry,
-            celestial_data,
-            render_viewer,
-            highlighted_object,
-            highlighted_dso,
-            enlarge_moon,
-            label_reservations,
-            label_candidates,
-        )
-        self._draw_label_layer(painter, label_candidates)
-        self._draw_status_line(painter)
 
     def _draw_viewport_interaction_layers(
         self,

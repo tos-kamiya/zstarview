@@ -277,7 +277,7 @@ def test_end_viewport_interaction_mode_requests_full_refresh() -> None:
     assert calls == ["sky", "view-change-idle", "view-change-idle", "update"]
 
 
-def test_show_menu_uses_viewport_interaction_mode() -> None:
+def test_show_menu_syncs_actions_before_opening_menu() -> None:
     calls: list[str] = []
 
     class _DummyButton:
@@ -296,17 +296,13 @@ def test_show_menu_uses_viewport_interaction_mode() -> None:
     dummy.menu_button = _DummyButton()
     dummy.menu = _DummyMenu()
     dummy._sync_view_altitude_actions = lambda: calls.append("sync")
-    dummy._begin_viewport_interaction_mode = lambda: calls.append("begin-viewport")
-    dummy._end_viewport_interaction_mode = lambda: calls.append("end-viewport")
 
     SkyWindow.show_menu(dummy)
 
     assert calls == [
         "sync",
-        "begin-viewport",
         "map:0,30",
         "exec:(100, 200)",
-        "end-viewport",
     ]
 
 

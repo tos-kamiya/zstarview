@@ -243,6 +243,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             render_view_center=tuple(self.viewer_data.view_center),
             urban_outlines=None,
         )
+        self._frame_cache_key: object | None = None
+        self._frame_cache_image = None
         self.setWindowTitle(f"{APP_DISPLAY_NAME} - {self.viewer_data.city_name}")
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setFocus(Qt.FocusReason.ActiveWindowFocusReason)
@@ -640,12 +642,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
 
     def show_menu(self) -> None:
         self._sync_view_altitude_actions()
-        self._begin_viewport_interaction_mode()
         menu_pos = self.menu_button.mapToGlobal(QPoint(0, self.menu_button.height()))
-        try:
-            self.menu.exec(menu_pos)
-        finally:
-            self._end_viewport_interaction_mode()
+        self.menu.exec(menu_pos)
 
     def _current_time_obj(self) -> astropy.time.Time:
         now = datetime.now(timezone.utc) + self.delta_t
