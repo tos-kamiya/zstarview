@@ -13,7 +13,7 @@ import tempfile
 from pathlib import Path
 from typing import Sequence
 
-from zstarview.data import build_plateau_tile_index
+from zstarview.data import build_derived_tile_index
 
 EARTH_RADIUS_KM = 6371.0088
 DEFAULT_FETCH_RADIUS_KM = 2.5
@@ -219,7 +219,7 @@ def import_overture_buildings(
 
     tile_path.parent.mkdir(parents=True, exist_ok=True)
     tile_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    build_plateau_tile_index.main(["--derived-dir", str(derived_dir)])
+    build_derived_tile_index.main(["--derived-dir", str(derived_dir)])
     return derived_dir
 
 

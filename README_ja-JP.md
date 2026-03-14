@@ -16,7 +16,7 @@
 - **表示中心の調整**: CLIのオプション`-A`（高度）/`-Z`（方位）、あるいは、矢印キーで表示中心を調整でき、視線の変更中やウィンドウのサイズ変更中は一時的に簡易描画モードへ切り替えて応答性を保ちます。
 - **衛星雲画像**: リアルタイムに Himawari/GOES 衛星のデータをダウンロードし、縞模様（ハッチ）の重ね描きとして表示します。衛星データが部分的な場合は欠損領域を薄い黄色で示します。
 - **地形地平線と地面塗り**: Copernicus DEM データをダウンロードして、地形地平線オーバーレイを表示します。観測者の地点に沿った、薄い黄土色がかった地形線を表示します。地形地平線（地形地平線を表示しない場合には水平線）より下は、向きの把握を助けるため地面色で塗り分けます。
-- **都市アウトライン表示**: 同梱している PLATEAU 由来の派生建物タイルが利用できる地点では、主要な建物屋根線を白い都市アウトラインとして表示します。非常に細い屋根線分は太い水平線に簡略化して表示します。デフォルトでは日本の東京23区、名古屋市、京都市、大阪市のみ同梱していますが、`zstarview-import-plateau-zip` ユーティリティで対応都市を追加できます。
+- **都市アウトライン表示**: 現在地点向けにキャッシュした Overture 建物データから、主要な建物屋根線を白い都市アウトラインとして表示します。非常に細い屋根線分は太い水平線に簡略化して表示します。
 - **昇らない領域**: 観測者の地点の緯度に対して、地平線の上に現れない天球領域を赤みを帯びた色で表示します。
 - **Python 対応**: CPython 3.10, 3.11, 3.12, 3.13 で継続的にテストしています。
 
@@ -76,7 +76,7 @@ CLI では、場所・時刻・描画設定や同梱ビューポイント参照�
 | オプション | 説明 | デフォルト |
 | :--- | :--- | :--- |
 | `-h`, `--help` | ヘルプメッセージを表示して終了します。 | |
-| `--place QUERY` | OpenStreetMap Nominatim で地名・駅名・施設名を検索し、最上位候補を観測地点として使います。位置引数 `location` とは併用できません。 | |
+| `-p`, `--place QUERY` | OpenStreetMap Nominatim で地名・駅名・施設名を検索し、最上位候補を観測地点として使います。位置引数 `location` とは併用できません。 | |
 | `--place-countrycode CODE` | `--place` の検索対象国を ISO 3166-1 alpha-2 形式の国コード（例: `jp`）で制限します。 | |
 | `--place-lang LANG` | `--place` の検索結果に対して Nominatim へ送る `Accept-Language` です。 | `en` |
 | `-Z`, `--view-center-az VIEW_CENTER_AZ` | 表示中心の方位角を指定します（度数または方位記号）。 | `180` |
@@ -87,6 +87,8 @@ CLI では、場所・時刻・描画設定や同梱ビューポイント参照�
 | `--sky-opacity SKY_OPACITY` | 空の色ディスクの不透明度を指定します（0.0〜1.0）。0.0 で描画を無効化します。 | `0.2` |
 | `--terrain-horizon-opacity OPACITY` | 地形地平線ポリラインの不透明度を指定します（0.0〜1.0）。0.0 で DEM ダウンロード・地形地平線計算・描画を無効化します。※4 | `0.05` |
 | `--urban-outline-opacity OPACITY` | 都市アウトライン重ね表示の不透明度を指定します（0.0〜1.0）。0.0 でその起動中は表示を無効化します。 | `0.2` |
+| `-r`, `--urban-outline-radius-km RADIUS_KM` | 観測地点からこの半径内の建物を都市アウトラインとして取得・描画します。この値はキャッシュキーにも含まれます。 | `2.5` |
+| `-b`, `--urban-outline-min-building-height-m METERS` | この高さ未満の建物を都市アウトライン取得時に除外します。この値はキャッシュキーにも含まれます。 | `0.0` |
 | `--ground-tint-opacity OPACITY` | 幾何学的地平線または地形地平線より下の地面色塗りの強さを指定します（0.0〜1.0）。 | `0.1` |
 | `-m`, `--enlarge-moon` | 月を 5 倍に拡大して表示します。 | |
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | 2 等星の基本サイズを指定します。 | `4.0` |
@@ -328,31 +330,31 @@ GUI では、キーボード操作とメニュー操作で視点移動、検索�
 </details>
 
 <details>
-  <summary>PLATEAU ZIP 取込ユーティリティ</summary>
+  <summary>都市アウトライン用データ</summary>
 
-インストール後は、補助ユーティリティ `zstarview-import-plateau-zip` も利用できます。
-ローカルにダウンロードした PLATEAU CityGML ZIP を取り込み、都市アウトライン表示で使う
-派生建物タイルを、インストール済みパッケージ配下の `zstarview/data/plateau_derived`
-へ書き込みます。実際の PLATEAU データは大きいことが多いため、通常は `--workers N`
-を付けて実行してください。取り込み時の既定の高さしきい値は `--min-building-height-m 40`
-ですが、40m では建物が少なすぎる都市では `0` などへ下げられます。
+`zstarview` は都市アウトライン用の元データを Overture Maps から必要時に取得し、
+アプリのキャッシュディレクトリに派生タイルとして保存します。新しい
+地点・半径・建物高さ条件の組み合わせでは、初回だけ数秒待ってから都市
+アウトラインが表示されます。
 
-例:
+この機能には `overturemaps` CLI の別途インストールが必要です。次で確認できます。
 
 ```bash
-zstarview-import-plateau-zip \
-  ~/Downloads/12100_chiba-shi_city_2024_citygml_1_op.zip \
-  --workers 8
+overturemaps --help
 ```
 
-高さしきい値なしの例:
+起動例:
 
 ```bash
-zstarview-import-plateau-zip \
-  ~/Downloads/32201_matsue-shi_city_2024_citygml_1_op.zip \
-  --workers 8 \
-  --min-building-height-m 0
+zstarview "Tokyo Tower" -r 2.5 -b 0
+zstarview -p "Matsue Station" -r 2.0 -b 20
 ```
+
+- `-r`, `--urban-outline-radius-km`: 取得半径（km）
+- `-b`, `--urban-outline-min-building-height-m`: 建物の最小高さ（m）
+
+キャッシュキーには地点・半径・最小建物高さが含まれるため、これらを変えると
+別のキャッシュデータセットが作られます。
 
 </details>
 
@@ -446,7 +448,7 @@ CPU 性能によっては星空の自動更新が負荷になる場合があり�
 | `cities1000.txt`, `admin1CodesASCII.txt` | 人口 1000 人以上の都市一覧 | [GeoNames](https://download.geonames.org/export/dump/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | `viewpoints/tower_viewpoints.json` | タワー名起動用に同梱している展望塔/タワーデータ（Wikidata 由来の整形データ） | [Wikidata](https://www.wikidata.org/) をローカル整形したもの（手順は `dev-samples/` に記録） | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)（Wikidata データ） |
 | `viewpoints/mountain_viewpoints.json` | 山名起動用に同梱している山頂ビューポイントデータ（Wikipedia で収集した候補を Wikidata メタデータで正規化したデータ） | [Wikipedia](https://www.wikipedia.org/) での候補収集と [Wikidata](https://www.wikidata.org/) による正規化手順（`dev-samples/` に記録） | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)（Wikidata データ） |
-| `plateau_derived/13100_tokyo23/*`, `plateau_derived/23100_nagoya/*`, `plateau_derived/26100_kyoto/*`, `plateau_derived/27100_osaka/*` | 都市アウトライン表示用に同梱している PLATEAU 由来の派生建物タイルと `tile_index.json` | [PLATEAU Open Data](https://www.mlit.go.jp/plateau/open-data/) を、`docs/developer/urban-outline-layer-derived-format-ja_JP.md` に記録した手順で軽量化したもの | 各元データセットに付与されたオープンライセンスと [PLATEAU Site Policy](https://www.mlit.go.jp/plateau/site-policy/) に従います。ライセンスは公共データ利用規約（第1.0版）、CC BY 4.0、ODC BY、ODbL などです |
+| アプリのキャッシュディレクトリ配下にオンデマンドで保存される都市アウトラインキャッシュ | ダウンロードした Overture 建物データから生成した派生建物タイルと `tile_index.json` | `overturemaps` CLI を通じて実行時に取得する [Overture Maps Buildings](https://docs.overturemaps.org/guides/buildings/) | 取得した Overture release に付随する利用条件とライセンスに従います |
 | `dso.csv` | DSO（銀河/散開星団/球状星団）カタログ（OpenNGC 由来の生成データ） | [OpenNGC](https://github.com/mattiaverga/OpenNGC)（[PyOngc](https://github.com/mattiaverga/PyOngc) 経由で生成） | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)（OpenNGC データベース） |
 | アプリのキャッシュディレクトリ配下にオンデマンドで保存される地形 DEM キャッシュ | 地形地平線用の地形データ（Copernicus DEM GLO-90） | [Copernicus DEM / Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM)（アプリは公開 AWS 配布を利用） | Copernicus DEM 向け ESA User Licence（Copernicus Contributing Mission data access terms） |
 | `stars/IAU-Catalog of Star Names (always up to date).csv` | IAU 恒星名作業部会 (WGSN) による恒星固有名カタログ | [exopla.net](https://exopla.net/star-names/modern-iau-star-names/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
@@ -458,12 +460,12 @@ CPU 性能によっては星空の自動更新が負荷になる場合があり�
 * 都市データは GeoNames に基づいています。
 * タワー/展望塔の起動データは Wikidata に基づく整形データであり、Wikidata の CC0 条件に従って再配布しています。
 * 山頂ビューポイントの起動データは Wikipedia で収集した候補を Wikidata メタデータで正規化したものであり、ここでは Wikidata の CC0 条件に従って再配布しています。
-* 都市アウトライン用の元データは、国土交通省 **Project PLATEAU** の 3D 都市モデルオープンデータ（東京23区 2022、名古屋市 2022、京都市 2024、大阪市 2024）に基づき、実行時利用向けに派生タイルへ軽量化したものです。[PLATEAU Site Policy](https://www.mlit.go.jp/plateau/site-policy/) にあるとおり、元の 3D 都市モデルは公共データ利用規約（第1.0版）、CC BY 4.0、ODC BY、ODbL などのオープンライセンスで提供されます。
+* 都市アウトライン用の元データは **Overture Maps Buildings** から必要時に取得し、実行時利用向けに派生タイルへ変換したものです。
 * 恒星の固有名は IAU 恒星名作業部会 (WGSN) による承認済みリスト（[exopla.net](https://exopla.net/star-names/modern-iau-star-names/) 経由）を使用しています。
 * 雲データは気象衛星 **Himawari**（提供: JMA）および **NOAA GOES** シリーズ（提供: NOAA/NESDIS）による赤外線観測データを、それぞれの公開 S3 バケットから取得して利用しています。
 * `--place` による地名・駅名検索は公開の OpenStreetMap Nominatim サービスを使っており、[Nominatim Usage Policy](https://operations.osmfoundation.org/policies/nominatim/) の対象です。
 * 地形地平線データは **Copernicus DEM GLO-90** に基づいており、欧州委員会のために ESA が管理するデータを、アプリでは公開 AWS 配布とローカルキャッシュを通じて利用しています。
-* 3D 都市モデルの元データを公開している MLIT Project PLATEAU および各 PLATEAU オープンデータ提供者に感謝します。
+* 大規模建物データを公開している Overture Maps とそのソースデータ提供者に感謝します。
 * 雲画像や地形 DEM の取得に利用している公開 S3 配布/ミラーを提供している AWS および各データ提供者に感謝します。
 * フォントは Google Noto Project を利用しています。
 * ウィンドウタイトル「Zenith Star View」は ChatGPT の提案に由来します。

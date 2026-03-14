@@ -16,7 +16,7 @@ It renders a live all-sky view centered on your chosen location and time, includ
 - **Adjustable view center**: adjust the view center with CLI options `-A` (altitude) and `-Z` (azimuth), or with the arrow keys. During view changes or window resize, the app briefly switches to a simplified interaction mode to keep navigation responsive.
 - **Satellite cloud imagery**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay. Missing regions are shown in faint yellow when satellite coverage is partial.
 - **Terrain horizon and ground fill**: Copernicus DEM data can be downloaded to render the local terrain skyline. A subtle ocher terrain line follows the observer's surroundings, and the disc is filled with a ground color below the terrain horizon, or below the geometric horizon when terrain is disabled.
-- **Urban outline overlay**: where bundled PLATEAU-derived building tiles are available, major rooflines are drawn as a white urban outline overlay. Very narrow roof spans are simplified to thick horizontal strokes. By default this is bundled only for Tokyo 23 wards, Nagoya City, Kyoto City, and Osaka City in Japan, but users can add more cities with the `zstarview-import-plateau-zip` utility.
+- **Urban outline overlay**: major rooflines are drawn as a white urban outline overlay using Overture building data cached for the current viewpoint. Very narrow roof spans are simplified to thick horizontal strokes.
 - **Never-rises region**: the celestial region that never rises above the horizon for the observer's latitude is shown in a red tint.
 - **Python support**: the project is routinely tested on CPython 3.10, 3.11, 3.12, and 3.13.
 
@@ -76,7 +76,7 @@ The CLI supports detailed startup configuration for location, time, rendering, a
 | Option                                      | Description                                                                 | Default |
 | :------------------------------------------ | :-------------------------------------------------------------------------- | :------ |
 | `-h`, `--help`                              | Show this help message and exit.                                            |         |
-| `--place QUERY`                            | Search a place, station, or facility name via OpenStreetMap Nominatim and use the top candidate as the observing location. Cannot be used together with the positional `location` argument. | |
+| `-p`, `--place QUERY`                     | Search a place, station, or facility name via OpenStreetMap Nominatim and use the top candidate as the observing location. Cannot be used together with the positional `location` argument. | |
 | `--place-countrycode CODE`                 | Restrict `--place` search to an ISO 3166-1 alpha-2 country code such as `jp`. | |
 | `--place-lang LANG`                        | `Accept-Language` sent to Nominatim for `--place` search results.           | `en`    |
 | `-Z`, `--view-center-az VIEW_CENTER_AZ`     | Viewing azimuth (degrees or compass points).                                | `180`   |
@@ -87,6 +87,8 @@ The CLI supports detailed startup configuration for location, time, rendering, a
 | `--sky-opacity SKY_OPACITY`                 | Opacity of the simulated sky-color disc (0.0–1.0). Use 0.0 to disable.      | `0.2`   |
 | `--terrain-horizon-opacity OPACITY`         | Opacity of the terrain horizon polyline (0.0–1.0). Use 0.0 to disable DEM download, terrain-horizon calculation, and drawing. \*4 | `0.05` |
 | `--urban-outline-opacity OPACITY`           | Opacity of the urban outline overlay (0.0–1.0). Use 0.0 to disable it for that run. | `0.2` |
+| `-r`, `--urban-outline-radius-km RADIUS_KM` | Fetch and render urban-outline buildings within this radius from the observer location. The value is also part of the cache key. | `2.5` |
+| `-b`, `--urban-outline-min-building-height-m METERS` | Ignore buildings lower than this height when fetching/caching the urban outline. The value is also part of the cache key. | `0.0` |
 | `--ground-tint-opacity OPACITY`             | Strength of the ground-color fill below the geometric/terrain horizon (0.0–1.0). | `0.1` |
 | `-m`, `--enlarge-moon`                      | Show the moon in 5x size.                                                   |         |
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | Base size of 2nd-magnitude stars.                                           | `4.0`   |
@@ -320,7 +322,7 @@ From the hamburger menu (`☰`), you can use:
 * **Sky Color Disc**: Switch between the full sky-color gradient and the flat dark-disc fallback.
 * **Clouds**: Toggle real-time cloud overlays on/off.
 * **Terrain Horizon**: Toggle the terrain skyline overlay on/off. If disabled from the CLI with `--terrain-horizon-opacity 0`, the menu item cannot re-enable it for that run.
-* **Urban Outline**: Toggle the PLATEAU-derived urban roofline overlay on/off. If disabled from the CLI with `--urban-outline-opacity 0`, the menu item cannot re-enable it for that run.
+* **Urban Outline**: Toggle the Overture-derived urban roofline overlay on/off. If disabled from the CLI with `--urban-outline-opacity 0`, the menu item cannot re-enable it for that run.
 * **Fullscreen**: Toggle fullscreen display.
 * **Exit**: Quit the application.
 
@@ -331,32 +333,32 @@ The same simplified viewport-interaction mode is also used during window resize 
 </details>
 
 <details>
-  <summary>PLATEAU ZIP Import Utility</summary>
+  <summary>Urban Outline Data</summary>
 
-After installation, the helper utility `zstarview-import-plateau-zip` is also available.
-It imports a PLATEAU CityGML ZIP file that you downloaded locally and writes the
-derived building tiles into the installed package's `zstarview/data/plateau_derived`
-directory so the urban outline overlay can use them. Real PLATEAU datasets are
-typically large, so you will usually want to pass `--workers N`. The import step
-defaults to `--min-building-height-m 40`, but you can lower that value or set
-`--min-building-height-m 0` for cities where 40m leaves too few buildings.
+`zstarview` now fetches urban-outline source data on demand from Overture Maps and
+caches the derived building tiles under the app cache directory. The first launch
+for a new viewpoint/radius/height combination may take a few seconds while the
+download finishes; the outline appears automatically after the cache is ready.
 
-Example:
+This path requires the `overturemaps` CLI to be installed separately. Confirm it
+with:
 
 ```bash
-zstarview-import-plateau-zip \
-  ~/Downloads/12100_chiba-shi_city_2024_citygml_1_op.zip \
-  --workers 8
+overturemaps --help
 ```
 
-Example with no height cutoff:
+Useful startup options:
 
 ```bash
-zstarview-import-plateau-zip \
-  ~/Downloads/32201_matsue-shi_city_2024_citygml_1_op.zip \
-  --workers 8 \
-  --min-building-height-m 0
+zstarview "Tokyo Tower" -r 2.5 -b 0
+zstarview -p "Matsue Station" -r 2.0 -b 20
 ```
+
+- `-r`, `--urban-outline-radius-km`: fetch radius in kilometers
+- `-b`, `--urban-outline-min-building-height-m`: minimum building height in meters
+
+The cache key includes location, radius, and minimum building height, so changing
+those values creates a separate cached dataset.
 
 </details>
 
@@ -446,7 +448,7 @@ All paths below are relative to `src/zstarview/data/`.
 | `cities1000.txt`, `admin1CodesASCII.txt`                       | List of cities with a population of 1000 or more | [GeoNames](https://download.geonames.org/export/dump/)             | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                           |
 | `viewpoints/tower_viewpoints.json`                             | Tower/viewpoint dataset packaged for tower-name startup resolution (derived and normalized from Wikidata) | [Wikidata](https://www.wikidata.org/) via local normalization/query workflow documented in `docs/developer/viewpoint-dataset-generation.md` | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) (Wikidata data) |
 | `viewpoints/mountain_viewpoints.json`                          | Mountain/viewpoint dataset packaged for mountain-name startup resolution (Wikipedia-curated candidates normalized with Wikidata metadata) | [Wikipedia](https://www.wikipedia.org/) candidate collection plus [Wikidata](https://www.wikidata.org/) normalization workflow documented in `docs/developer/viewpoint-dataset-generation.md` | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) (Wikidata data) |
-| `plateau_derived/13100_tokyo23/*`, `plateau_derived/23100_nagoya/*`, `plateau_derived/26100_kyoto/*`, `plateau_derived/27100_osaka/*` | Derived PLATEAU building tiles and `tile_index.json` files bundled for the urban outline overlay | [PLATEAU Open Data](https://www.mlit.go.jp/plateau/open-data/) via the local derivation workflow documented in `docs/developer/urban-outline-layer-derived-format-ja_JP.md` | Subject to the open-data license attached to each source PLATEAU dataset and the [PLATEAU site policy](https://www.mlit.go.jp/plateau/site-policy/), such as the Government of Japan Standard Terms of Use 1.0, CC BY 4.0, ODC BY, or ODbL |
+| On-demand urban-outline cache under the app cache directory | Derived building tiles and `tile_index.json` files produced from downloaded Overture building data | [Overture Maps Buildings](https://docs.overturemaps.org/guides/buildings/) downloaded at runtime via the `overturemaps` CLI | Subject to the terms and licenses attached to the downloaded Overture release |
 | `dso.csv`                                                       | Deep-sky object catalog (named galaxies/open clusters/globular clusters; generated from OpenNGC) | [OpenNGC](https://github.com/mattiaverga/OpenNGC) via [PyOngc](https://github.com/mattiaverga/PyOngc) | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) (OpenNGC database) |
 | On-demand terrain DEM cache under the app cache directory | Terrain horizon source data (Copernicus DEM GLO-90) | [Copernicus DEM / Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM) via public AWS S3 distribution used by the app | ESA User Licence for Copernicus DEM (Copernicus Contributing Mission data access terms) |
 | `stars/IAU-Catalog of Star Names (always up to date).csv`      | IAU WGSN catalog of approved star names          | [exopla.net](https://exopla.net/star-names/modern-iau-star-names/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                           |
@@ -458,12 +460,12 @@ All paths below are relative to `src/zstarview/data/`.
 * City data based on GeoNames.
 * Tower/viewpoint startup data are derived from Wikidata and redistributed under Wikidata's CC0 data terms.
 * Mountain/viewpoint startup data are curated from Wikipedia candidates and normalized with Wikidata metadata; redistributed here under Wikidata's CC0 data terms.
-* Urban outline source data are derived from MLIT's **PLATEAU Open Data** 3D city models for Tokyo 23 wards (2022), Nagoya (2022), Kyoto (2024), and Osaka (2024), then reduced into bundled derived building tiles for runtime use. Per the [PLATEAU site policy](https://www.mlit.go.jp/plateau/site-policy/), source 3D city models are provided as open data under licenses such as the Government of Japan Standard Terms of Use 1.0, CC BY 4.0, ODC BY, or ODbL.
+* Urban outline source data are downloaded on demand from **Overture Maps Buildings** and converted into cached derived building tiles for runtime use.
 * Star proper names provided by the IAU Working Group on Star Names (via [exopla.net](https://exopla.net/star-names/modern-iau-star-names/)).
 * Cloud data are based on infrared observations from the **Himawari** satellite (provided by JMA) and the **NOAA GOES** series (provided by NOAA/NESDIS), retrieved from their public S3 buckets.
 * Terrain horizon data are based on **Copernicus DEM GLO-90**, managed by ESA on behalf of the European Commission and obtained by the app through its public AWS distribution/cache flow.
 * Place/station search via `--place` uses the public OpenStreetMap Nominatim service and is subject to the [Nominatim Usage Policy](https://operations.osmfoundation.org/policies/nominatim/).
-* Thanks to MLIT Project PLATEAU and the PLATEAU open data publishers for making the source 3D city model data available.
+* Thanks to Overture Maps and its source data contributors for making large-scale building data available.
 * Thanks to AWS and dataset providers for making the public S3 distribution/mirror endpoints available for cloud imagery and terrain DEM access.
 * Fonts provided by the Google Noto Project.
 * The window title "Zenith Star View" was suggested by ChatGPT.

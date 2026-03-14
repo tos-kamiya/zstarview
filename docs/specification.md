@@ -87,7 +87,7 @@ README より詳細に、何ができるか、どう振る舞うか、どのよ�
 利用者が主要に指定する入力は次の通り。
 
 - `location`
-- `--place`
+- `-p`, `--place`
 - `--place-countrycode`
 - `--place-lang`
 - `--datetime`
@@ -100,6 +100,8 @@ README より詳細に、何ができるか、どう振る舞うか、どのよ�
 - `--sky-opacity`
 - `--terrain-horizon-opacity`
 - `--urban-outline-opacity`
+- `-r`, `--urban-outline-radius-km`
+- `-b`, `--urban-outline-min-building-height-m`
 - `--ground-tint-opacity`
 - `-t`, `--theme`
 
@@ -337,6 +339,8 @@ CLI には次のビューポイント dataset 参照専用オプションを持�
 - 都市アウトラインの取得単位は自治体ではなく、観測地点 `lat/lon` を中心とする半径 `2.5km` の範囲である。
 - 取得結果は、地点、半径、最小建物高さ、feature type をキーとするローカルキャッシュとして保持してよい。
 - `overturemaps` CLI が利用できない場合、または取得に失敗した場合、そのセッションでは都市アウトラインを表示しなくてよい。
+- `-r`, `--urban-outline-radius-km` で取得半径を変更してよい。
+- `-b`, `--urban-outline-min-building-height-m` で取得対象の最小建物高さを変更してよい。
 - 取得中、キャッシュ読込中、失敗時には状態が利用者に分かるよう表示する。
 - `opacity == 0` を CLI で指定して起動した場合、そのセッションでは GUI から再有効化できない。
 - 都市アウトライン描画時には、キャッシュ済み derived tile に保持されている建物を runtime 側で高さ再フィルタせず利用してよい。

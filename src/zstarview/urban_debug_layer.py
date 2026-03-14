@@ -4,9 +4,9 @@ from functools import lru_cache
 from pathlib import Path
 from types import SimpleNamespace
 
-from .data.plateau_derived_tiles import parse_derived_tile_buildings, select_derived_tile_envelopes
-from .data.urban_debug_layer_from_citygml import compute_debug_outlines
+from .data.derived_tile_cache import parse_derived_tile_buildings, select_derived_tile_envelopes
 from .data.import_overture_buildings import DEFAULT_FETCH_RADIUS_KM
+from .data.urban_outline_from_buildings import compute_debug_outlines
 from .paths import OVERTURE_DERIVED_ROOT_DIR
 from .types import ViewerData
 
