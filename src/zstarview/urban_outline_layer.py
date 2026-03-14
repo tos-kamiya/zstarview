@@ -8,14 +8,14 @@ from .data.derived_tile_cache import parse_derived_tile_buildings, select_derive
 from .data.import_overture_buildings import DEFAULT_FETCH_RADIUS_KM
 from .data.urban_outline_from_buildings import compute_urban_outlines
 from .paths import OVERTURE_DERIVED_ROOT_DIR
-from .types import ViewerData
+from .types import UrbanOutlinePolyline, ViewerData
 
 
 def resolve_urban_outline_layer_for_viewer(
     viewer_data: ViewerData,
     *,
     derived_root_dir: str | Path = OVERTURE_DERIVED_ROOT_DIR,
-) -> list[list[tuple[float, float]]] | None:
+) -> list[UrbanOutlinePolyline] | None:
     return _build_dynamic_urban_outline_layer(
         lat_deg=float(viewer_data.lat_deg),
         lon_deg=float(viewer_data.lon_deg),
@@ -31,7 +31,7 @@ def _build_dynamic_urban_outline_layer(
     lon_deg: float,
     observer_height_m: float,
     derived_root_dir: Path,
-) -> list[list[tuple[float, float]]] | None:
+) -> list[UrbanOutlinePolyline] | None:
     if not derived_root_dir.exists():
         return None
     candidate_dirs = _list_derived_dirs(derived_root_dir)
@@ -68,7 +68,10 @@ def _build_dynamic_urban_outline_layer(
         edge_sample_step_m=10.0,
     )
     outlines = [
-        [(point.altitude_deg, point.azimuth_deg) for point in outline]
+        UrbanOutlinePolyline(
+            points=[(point.altitude_deg, point.azimuth_deg) for point in outline.points],
+            height_m=float(outline.height_m),
+        )
         for outline in result.outlines
     ]
     return outlines or None

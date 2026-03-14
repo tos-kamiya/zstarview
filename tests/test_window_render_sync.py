@@ -4,7 +4,7 @@ import astropy.time
 from types import SimpleNamespace
 
 import zstarview.ui.window_render as window_render_module
-from zstarview.types import CelestialData, ViewerData
+from zstarview.types import CelestialData, UrbanOutlinePolyline, ViewerData
 from zstarview.ui.window import SkyWindow
 from zstarview.ui.window_state import SkyWindowState
 
@@ -618,6 +618,54 @@ def test_draw_urban_outlines_simplifies_narrow_outline_to_horizontal_segment(mon
     assert len(painter.polylines) == 1
     assert len(painter.polylines[0]) == 2
     assert painter.polylines[0][0][1] == painter.polylines[0][1][1]
+
+
+def test_draw_urban_outlines_reduces_alpha_for_short_buildings(monkeypatch) -> None:
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "altaz_to_normalized_xy",
+        lambda alt, az, _view_center: (float(az), float(alt)),
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "normalized_to_screen_xy",
+        lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "is_in_fov",
+        lambda *_args, **_kwargs: True,
+    )
+
+    class _Painter:
+        def __init__(self) -> None:
+            self.alpha_values: list[int] = []
+
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setPen(self, pen) -> None:
+            self.alpha_values.append(int(pen.color().alpha()))
+
+        def drawPolyline(self, _poly) -> None:
+            pass
+
+    painter = _Painter()
+    window_render_module.render_draw.draw_urban_outlines(
+        painter,
+        geometry=SimpleNamespace(center=(0, 0), radius=1),
+        urban_outlines=[
+            UrbanOutlinePolyline(points=[(-10.0, 10.0), (-12.0, 12.0)], height_m=0.0),
+            UrbanOutlinePolyline(points=[(-10.0, 20.0), (-12.0, 22.0)], height_m=50.0),
+        ],
+        view_center=(45.0, 180.0),
+        opacity=0.2,
+    )
+
+    assert painter.alpha_values == [13, 51]
 
 
 def test_draw_terrain_horizon_line_scales_line_widths(monkeypatch) -> None:

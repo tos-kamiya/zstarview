@@ -33,7 +33,7 @@ from ..paths import (
     URBAN_DEBUG_LAYER_LINE_COLOR,
     TEXT_COLOR,
 )
-from ..types import ScreenGeometry, CelestialData, ViewerData, CelestialObject, PlanetBody
+from ..types import ScreenGeometry, CelestialData, ViewerData, CelestialObject, PlanetBody, UrbanOutlinePolyline
 from ..astro import (
     altaz_to_normalized_xy,
     is_in_fov,
@@ -719,7 +719,7 @@ def draw_terrain_horizon_line(
 def draw_urban_outlines(
     painter: QPainter,
     geometry: ScreenGeometry,
-    urban_outlines: list[list[tuple[float, float]]] | None,
+    urban_outlines: list[UrbanOutlinePolyline] | list[list[tuple[float, float]]] | None,
     view_center: tuple[float, float],
     *,
     opacity: float = 0.2,
@@ -730,21 +730,22 @@ def draw_urban_outlines(
     if float(opacity) <= 0.0:
         return
 
-    color = QColor(*URBAN_DEBUG_LAYER_LINE_COLOR)
-    color.setAlpha(max(0, min(255, int(round(255.0 * float(opacity))))))
-    pen = QPen(color, 1.5, Qt.PenStyle.SolidLine)
-    pen.setCosmetic(True)
-    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-    simplified_pen = QPen(color, 4.0, Qt.PenStyle.SolidLine)
-    simplified_pen.setCosmetic(True)
-    simplified_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-    simplified_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-
     painter.save()
-    for outline in urban_outlines:
+    for outline_entry in urban_outlines:
+        outline, height_m = _extract_urban_outline_points_and_height(outline_entry)
         if len(outline) < 2:
             continue
+        color = QColor(*URBAN_DEBUG_LAYER_LINE_COLOR)
+        effective_opacity = float(opacity) * _urban_outline_height_alpha_scale(height_m)
+        color.setAlpha(max(0, min(255, int(round(255.0 * effective_opacity)))))
+        pen = QPen(color, 1.5, Qt.PenStyle.SolidLine)
+        pen.setCosmetic(True)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        simplified_pen = QPen(color, 4.0, Qt.PenStyle.SolidLine)
+        simplified_pen.setCosmetic(True)
+        simplified_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        simplified_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
         azimuth_deg = [float(az) % 360.0 for _alt, az in outline]
         az_start_deg, az_end_deg, az_span_deg = _minimal_azimuth_cover(azimuth_deg)
         if az_span_deg < 0.5:
@@ -780,6 +781,19 @@ def draw_urban_outlines(
                 screen_points = [QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in frag]
                 painter.drawPolyline(QPolygonF(screen_points))
     painter.restore()
+
+
+def _extract_urban_outline_points_and_height(
+    outline_entry: UrbanOutlinePolyline | list[tuple[float, float]],
+) -> tuple[list[tuple[float, float]], float]:
+    if isinstance(outline_entry, UrbanOutlinePolyline):
+        return list(outline_entry.points), float(outline_entry.height_m)
+    return list(outline_entry), 50.0
+
+
+def _urban_outline_height_alpha_scale(height_m: float) -> float:
+    clamped_height_m = max(0.0, min(50.0, float(height_m)))
+    return 0.25 + 0.75 * (clamped_height_m / 50.0)
 
 
 def _minimal_azimuth_cover(azimuth_deg: List[float]) -> Tuple[float, float, float]:
