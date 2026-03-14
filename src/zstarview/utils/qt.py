@@ -47,7 +47,7 @@ def pil_to_qimage(img: Image.Image, premultiplied: bool = True) -> QImage:
         return qimg.copy()
 
 
-def qimage_to_pil(qimg: QImage) -> Image.Image:
+def _qimage_to_pil(qimg: QImage) -> Image.Image:
     """
     Converts a QImage to a Pillow (PIL) Image in RGBA format.
 

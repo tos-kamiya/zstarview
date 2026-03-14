@@ -279,6 +279,9 @@ def _startup_resolve_city(
     Resolve target city from CLI or last used city.
 
     Also handles direct latitude/longitude input like "35.68;139.76" or "N35.68;E139.76".
+
+    Kept importable despite the leading underscore because focused startup tests
+    exercise this resolver directly.
     """
     last_city = load_last_city()
     stored_location: dict[str, Any] | None = None
