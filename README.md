@@ -38,6 +38,12 @@ overturemaps --help
 
 Zstarview is intended to be installed using [`pipx`](https://pypa.github.io/pipx/).
 
+> Note: Windows on Arm64 is currently not supported for installation.
+> As of 2026-03-15, `pipx install zstarview` / `pipx install .` can fail on
+> that platform because native dependencies such as `shapely` may need to be
+> built from source and do not install cleanly in this environment.
+> Linux x86_64 is the primary tested platform.
+
 ```bash
 pipx install zstarview
 ```
