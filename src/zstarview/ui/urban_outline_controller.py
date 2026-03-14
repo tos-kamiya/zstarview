@@ -132,9 +132,16 @@ class UrbanOutlineController(QObject):
                     }
                 )
         except Exception as exc:
-            logger.warning("Urban outline update failed: %s", exc, exc_info=True)
+            missing_overturemaps = isinstance(exc, FileNotFoundError) and "overturemaps" in str(exc)
+            if missing_overturemaps:
+                logger.info("Urban outline unavailable: overturemaps CLI not found")
+            else:
+                logger.warning("Urban outline update failed: %s", exc, exc_info=True)
             if not self._stopping:
-                self.urban_failed.emit({"banner": f"Urban outline: {exc}"})
+                if missing_overturemaps:
+                    self.urban_failed.emit({"banner": "Urban outline: ⚠ Could not find overturemaps"})
+                else:
+                    self.urban_failed.emit({"banner": f"Urban outline: {exc}"})
         finally:
             with self._lock:
                 self._running = False

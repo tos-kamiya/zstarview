@@ -27,7 +27,16 @@ It renders a live all-sky view centered on your chosen location and time, includ
 
 ## Installation (Recommended: `pipx`)
 
-It is intended to be installed using [`pipx`](https://pypa.github.io/pipx/).
+Prerequisite for the urban outline overlay: install the `overturemaps` CLI separately.
+Installation: <https://pypi.org/project/overturemaps/>
+
+Confirm it with:
+
+```bash
+overturemaps --help
+```
+
+Zstarview is intended to be installed using [`pipx`](https://pypa.github.io/pipx/).
 
 ```bash
 pipx install zstarview
