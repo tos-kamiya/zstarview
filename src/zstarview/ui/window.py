@@ -417,23 +417,28 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         """Adds a hamburger menu button and its corresponding actions."""
         self.menu_button = QPushButton("☰", self)
         self.menu_button.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
-        self.menu_button.setStyleSheet(
-            "QPushButton { border: none; font-size: 18px; background-color: transparent; color: " + "#%02x%02x%02x" % GUI_MENU_TEXT_COLOR + "; }"
-            "QPushButton:hover { color: white; }"
-            "QPushButton:menu-indicator { image: none; }"
-        )
+        self.menu_button.setStyleSheet(self._menu_button_style_sheet())
         self.menu_button.clicked.connect(self.show_menu)
+        self.menu_button.raise_()
 
         self.menu = QMenu(self)
         rotate_left = self.menu.addAction(f"Rotate Left (-{self.state.rotation_step:.0f}°)")
-        rotate_left.triggered.connect(lambda: self._rotate_view(d_az=-self.state.rotation_step))
+        rotate_left.triggered.connect(
+            lambda: self._rotate_view(d_az=-self.state.rotation_step, interactive_viewport=True)
+        )
         rotate_right = self.menu.addAction(f"Rotate Right (+{self.state.rotation_step:.0f}°)")
-        rotate_right.triggered.connect(lambda: self._rotate_view(d_az=+self.state.rotation_step))
+        rotate_right.triggered.connect(
+            lambda: self._rotate_view(d_az=+self.state.rotation_step, interactive_viewport=True)
+        )
         raise_view = self.menu.addAction(f"Raise View (+{self.state.rotation_step:.0f}° alt)")
-        raise_view.triggered.connect(lambda: self._rotate_view(d_alt=+self.state.rotation_step))
+        raise_view.triggered.connect(
+            lambda: self._rotate_view(d_alt=+self.state.rotation_step, interactive_viewport=True)
+        )
         self._action_raise_view = raise_view
         lower_view = self.menu.addAction(f"Lower View (-{self.state.rotation_step:.0f}° alt)")
-        lower_view.triggered.connect(lambda: self._rotate_view(d_alt=-self.state.rotation_step))
+        lower_view.triggered.connect(
+            lambda: self._rotate_view(d_alt=-self.state.rotation_step, interactive_viewport=True)
+        )
         self._action_lower_view = lower_view
 
         self.menu.addSeparator()
@@ -533,6 +538,43 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.menu.addSeparator()
         version_action = self.menu.addAction(f"Version {__version__}")
         version_action.setEnabled(False)
+        self._raise_overlay_widgets()
+
+    @staticmethod
+    def _menu_button_background_hex_for_preset(preset: str) -> str:
+        if preset == "night":
+            rr, gg, bb = (10, 12, 16)
+        elif preset == "black":
+            rr, gg, bb = (6, 6, 6)
+        elif preset == "white":
+            rr, gg, bb = (252, 252, 252)
+        elif preset == "day":
+            rr, gg, bb = (240, 248, 255)
+        else:
+            rr, gg, bb = (8, 8, 10)
+        return f"#{rr:02x}{gg:02x}{bb:02x}"
+
+    def _menu_button_style_sheet(self) -> str:
+        background = SkyWindow._menu_button_background_hex_for_preset(self.visual_preset)
+        text = "#%02x%02x%02x" % GUI_MENU_TEXT_COLOR
+        return (
+            "QPushButton {"
+            " border: none;"
+            " border-radius: 6px;"
+            " font-size: 18px;"
+            f" background-color: {background};"
+            f" color: {text};"
+            "}"
+            "QPushButton:hover { color: white; }"
+            "QPushButton:pressed { color: white; }"
+            "QPushButton:menu-indicator { image: none; }"
+        )
+
+    def _raise_overlay_widgets(self) -> None:
+        if getattr(self, "menu_button", None) is not None:
+            self.menu_button.raise_()
+        if getattr(self, "size_grip", None) is not None:
+            self.size_grip.raise_()
 
     def _sync_view_altitude_actions(self) -> None:
         alt, _ = self.viewer_data.view_center
@@ -548,6 +590,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
 
         button_size = self.menu_button.size()
         self.menu_button.move(self.width() - button_size.width() - 8, 8)
+        self._raise_overlay_widgets()
 
         # Invalidate the composition cache since the size has changed
         self._compositor.invalidate()
@@ -597,8 +640,12 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
 
     def show_menu(self) -> None:
         self._sync_view_altitude_actions()
+        self._begin_viewport_interaction_mode()
         menu_pos = self.menu_button.mapToGlobal(QPoint(0, self.menu_button.height()))
-        self.menu.exec(menu_pos)
+        try:
+            self.menu.exec(menu_pos)
+        finally:
+            self._end_viewport_interaction_mode()
 
     def _current_time_obj(self) -> astropy.time.Time:
         now = datetime.now(timezone.utc) + self.delta_t
