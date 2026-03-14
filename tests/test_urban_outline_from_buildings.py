@@ -18,7 +18,7 @@ def _load_module():
     return module
 
 
-def test_compute_debug_outlines_emits_polylines_for_nearby_building() -> None:
+def test_compute_urban_outlines_emits_polylines_for_nearby_building() -> None:
     mod = _load_module()
     tower = mod.resolve_tower_viewpoint("Tokyo Skytree")
     assert tower is not None
@@ -36,7 +36,7 @@ def test_compute_debug_outlines_emits_polylines_for_nearby_building() -> None:
         ),
     )
 
-    result = mod.compute_debug_outlines(
+    result = mod.compute_urban_outlines(
         tower,
         (building,),
         radius_km=5.0,
@@ -48,7 +48,7 @@ def test_compute_debug_outlines_emits_polylines_for_nearby_building() -> None:
     assert len(result.outlines[0]) >= 2
 
 
-def test_compute_debug_outlines_excludes_building_containing_observer() -> None:
+def test_compute_urban_outlines_excludes_building_containing_observer() -> None:
     mod = _load_module()
     tower = mod.resolve_tower_viewpoint("Tokyo Tower")
     assert tower is not None
@@ -66,7 +66,7 @@ def test_compute_debug_outlines_excludes_building_containing_observer() -> None:
         ),
     )
 
-    result = mod.compute_debug_outlines(
+    result = mod.compute_urban_outlines(
         tower,
         (building,),
         radius_km=3.0,
@@ -77,7 +77,7 @@ def test_compute_debug_outlines_excludes_building_containing_observer() -> None:
     assert result.outlines_emitted == 0
 
 
-def test_compute_debug_outlines_uses_legacy_observer_height_attr() -> None:
+def test_compute_urban_outlines_uses_legacy_observer_height_attr() -> None:
     mod = _load_module()
     tower = SimpleNamespace(
         latitude_deg=35.710055555,
@@ -99,7 +99,7 @@ def test_compute_debug_outlines_uses_legacy_observer_height_attr() -> None:
         ),
     )
 
-    result = mod.compute_debug_outlines(
+    result = mod.compute_urban_outlines(
         tower,
         (building,),
         radius_km=5.0,

@@ -371,8 +371,8 @@
 2. `UrbanOutlineController` は `lat/lon + radius + min_height + feature_type` からキャッシュキーを作る。既定半径は `2.5km` である。
 3. 対応する derived dataset がキャッシュ内にあれば、それを読込対象にする。
 4. キャッシュが無ければ `import_overture_buildings.py` を通じて `overturemaps download` を実行し、GeoJSON 系の中間結果を derived tile と `tile_index.json` に変換する。
-5. runtime 側は `resolve_urban_debug_layer_for_viewer()` を使って、その derived dataset を追加の高さフィルタなしで読む。
-6. 結果の outline 点列は `UrbanOutlineState` と `SkyWindowState.urban_debug_outlines` に反映し、再描画する。
+5. runtime 側は `resolve_urban_outline_layer_for_viewer()` を使って、その derived dataset を追加の高さフィルタなしで読む。
+6. 結果の outline 点列は `UrbanOutlineState` と `SkyWindowState.urban_outlines` に反映し、再描画する。
 7. 取得中や失敗時はバナー文字列を UI 状態へ反映する。
 
 ## 7. スレッドモデル

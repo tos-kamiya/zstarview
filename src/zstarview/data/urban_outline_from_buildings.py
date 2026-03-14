@@ -35,15 +35,15 @@ DEFAULT_EDGE_SAMPLE_STEP_M = 10.0
 
 
 @dataclass(frozen=True)
-class DebugPolylinePoint:
+class UrbanPolylinePoint:
     azimuth_deg: float
     altitude_deg: float
 
 
 @dataclass(frozen=True)
-class DebugOutlineResult:
+class UrbanOutlineResult:
     tower: TowerViewpoint
-    outlines: tuple[tuple[DebugPolylinePoint, ...], ...]
+    outlines: tuple[tuple[UrbanPolylinePoint, ...], ...]
     buildings_considered: int
     outlines_emitted: int
 
@@ -144,13 +144,13 @@ def _is_japan_tower(tower: TowerViewpoint) -> bool:
     return "日本" in haystack or normalize_viewpoint_name(haystack).endswith(" japan")
 
 
-def compute_debug_outlines(
+def compute_urban_outlines(
     tower: TowerViewpoint,
     buildings: Sequence[BuildingFootprint],
     *,
     radius_km: float,
     edge_sample_step_m: float,
-) -> DebugOutlineResult:
+) -> UrbanOutlineResult:
     if radius_km <= 0.0:
         raise ValueError("--radius-km must be positive.")
     if edge_sample_step_m <= 0.0:
@@ -160,7 +160,7 @@ def compute_debug_outlines(
     radius_m = radius_km * 1000.0
     observer_height_m = float(getattr(tower, "viewpoint_height_m", getattr(tower, "observer_height_m", 0.0)) or 0.0)
     buildings_considered = 0
-    outlines: list[tuple[DebugPolylinePoint, ...]] = []
+    outlines: list[tuple[UrbanPolylinePoint, ...]] = []
 
     for building in buildings:
         projected_rings = tuple(project_ring_xy(ring, transformer) for ring in building.rings_lonlat)
@@ -183,13 +183,13 @@ def compute_debug_outlines(
             azimuth_deg = (np_degrees_arctan2(sampled_points[:, 0], sampled_points[:, 1]) + 360.0) % 360.0
             altitude_deg = np_degrees_arctan2_scalar(building.height_m - observer_height_m, distances)
             for run in iter_true_runs(valid):
-                run_points: list[DebugPolylinePoint] = []
+                run_points: list[UrbanPolylinePoint] = []
                 for az, alt in zip(azimuth_deg[run], altitude_deg[run]):
-                    run_points.append(DebugPolylinePoint(azimuth_deg=float(az), altitude_deg=float(alt)))
+                    run_points.append(UrbanPolylinePoint(azimuth_deg=float(az), altitude_deg=float(alt)))
                 if len(run_points) >= 2:
                     outlines.append(tuple(run_points))
 
-    return DebugOutlineResult(
+    return UrbanOutlineResult(
         tower=tower,
         outlines=tuple(outlines),
         buildings_considered=buildings_considered,
@@ -247,7 +247,7 @@ def collect_buildings_for_tower(
     return tuple(buildings)
 
 
-def build_output_payload(results: Sequence[DebugOutlineResult]) -> dict[str, object]:
+def build_output_payload(results: Sequence[UrbanOutlineResult]) -> dict[str, object]:
     towers_payload: list[dict[str, object]] = []
     for result in results:
         towers_payload.append(
@@ -294,7 +294,7 @@ def main(argv: Sequence[str]) -> int:
         derived_dir=args.derived_dir,
         radius_km=float(args.radius_km),
     )
-    results: list[DebugOutlineResult] = []
+    results: list[UrbanOutlineResult] = []
     for tower in towers:
         buildings = collect_buildings_for_tower(
             args.derived_dir,
@@ -303,7 +303,7 @@ def main(argv: Sequence[str]) -> int:
             min_building_height_m=float(args.min_building_height_m),
         )
         results.append(
-            compute_debug_outlines(
+            compute_urban_outlines(
                 tower,
                 buildings,
                 radius_km=float(args.radius_km),

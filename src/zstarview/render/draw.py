@@ -716,7 +716,7 @@ def draw_terrain_horizon_line(
     painter.restore()
 
 
-def draw_urban_debug_outlines(
+def draw_urban_outlines(
     painter: QPainter,
     geometry: ScreenGeometry,
     urban_outlines: list[list[tuple[float, float]]] | None,
@@ -724,7 +724,7 @@ def draw_urban_debug_outlines(
     *,
     opacity: float = 0.38,
 ) -> None:
-    """Draw sampled building-top debug outlines directly on the sky dome."""
+    """Draw sampled building-top outlines directly on the sky dome."""
     if not urban_outlines:
         return
     if float(opacity) <= 0.0:

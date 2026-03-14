@@ -13,7 +13,7 @@ from ..data.import_overture_buildings import (
     derive_dataset_name,
     import_overture_buildings,
 )
-from ..urban_debug_layer import resolve_urban_debug_layer_for_viewer
+from ..urban_outline_layer import resolve_urban_outline_layer_for_viewer
 from ..types import ViewerData
 
 logger = logging.getLogger(__name__)
@@ -117,7 +117,7 @@ class UrbanOutlineController(QObject):
                 )
                 source = "overture"
 
-            outlines = resolve_urban_debug_layer_for_viewer(
+            outlines = resolve_urban_outline_layer_for_viewer(
                 viewer_data,
                 derived_root_dir=self._derived_root_dir,
             )
