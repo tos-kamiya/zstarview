@@ -6,7 +6,7 @@ from typing import Optional
 from PySide6.QtCore import QPoint
 from PySide6.QtGui import QImage
 
-from ..types import CelestialData, StarsTable, ViewCenterAltAz
+from ..types import CelestialData, StarsTable, UrbanOutlinePolyline, ViewCenterAltAz
 
 
 @dataclass
@@ -33,4 +33,4 @@ class SkyWindowState:
     sky_disc_image: Optional[QImage] = None
     cloud_base_size: int = 256
     terrain_horizon_profile: Optional[list[tuple[float, float]]] = None
-    urban_outlines: Optional[list[list[tuple[float, float]]]] = None
+    urban_outlines: Optional[list[UrbanOutlinePolyline]] = None

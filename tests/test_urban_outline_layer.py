@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from zstarview.types import ViewerData
+from zstarview.types import UrbanOutlinePolyline, ViewerData
 from zstarview.urban_outline_layer import resolve_urban_outline_layer_for_viewer
 
 
@@ -33,10 +33,17 @@ def test_resolve_urban_outline_layer_for_viewer_builds_dynamic_layer(monkeypatch
             (),
             {
                 "outlines": (
-                    (
-                        type("Point", (), {"altitude_deg": -1.0, "azimuth_deg": 10.0})(),
-                        type("Point", (), {"altitude_deg": -2.0, "azimuth_deg": 12.0})(),
-                    ),
+                    type(
+                        "Outline",
+                        (),
+                        {
+                            "height_m": 45.0,
+                            "points": (
+                                type("Point", (), {"altitude_deg": -1.0, "azimuth_deg": 10.0})(),
+                                type("Point", (), {"altitude_deg": -2.0, "azimuth_deg": 12.0})(),
+                            ),
+                        },
+                    )(),
                 )
             },
         )(),
@@ -47,7 +54,7 @@ def test_resolve_urban_outline_layer_for_viewer_builds_dynamic_layer(monkeypatch
         derived_root_dir=tmp_path,
     )
 
-    assert got == [[(-1.0, 10.0), (-2.0, 12.0)]]
+    assert got == [UrbanOutlinePolyline(points=[(-1.0, 10.0), (-2.0, 12.0)], height_m=45.0)]
     assert parse_calls[0][1] == {}
     assert compute_calls[0][0].viewpoint_height_m == 1.7
     assert compute_calls[0][0].observer_height_m == 1.7
@@ -103,9 +110,16 @@ def test_resolve_urban_outline_layer_for_viewer_checks_multiple_derived_dirs(
             (),
             {
                 "outlines": (
-                    (
-                        type("Point", (), {"altitude_deg": -1.0, "azimuth_deg": 10.0})(),
-                    ),
+                    type(
+                        "Outline",
+                        (),
+                        {
+                            "height_m": 45.0,
+                            "points": (
+                                type("Point", (), {"altitude_deg": -1.0, "azimuth_deg": 10.0})(),
+                            ),
+                        },
+                    )(),
                 )
             },
         )(),
@@ -116,4 +130,4 @@ def test_resolve_urban_outline_layer_for_viewer_checks_multiple_derived_dirs(
         derived_root_dir=tmp_path,
     )
 
-    assert got == [[(-1.0, 10.0)]]
+    assert got == [UrbanOutlinePolyline(points=[(-1.0, 10.0)], height_m=45.0)]

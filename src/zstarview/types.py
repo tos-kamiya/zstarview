@@ -122,6 +122,14 @@ class ScreenGeometry:
     radius: int
 
 
+@dataclass(frozen=True)
+class UrbanOutlinePolyline:
+    """Renderable urban outline polyline with source building height."""
+
+    points: List[Tuple[float, float]]
+    height_m: float
+
+
 CelestialObject = Union[PlanetBody, Dict[str, Any]]
 
 

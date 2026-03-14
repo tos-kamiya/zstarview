@@ -41,9 +41,15 @@ class UrbanPolylinePoint:
 
 
 @dataclass(frozen=True)
+class UrbanOutlinePolyline:
+    height_m: float
+    points: tuple[UrbanPolylinePoint, ...]
+
+
+@dataclass(frozen=True)
 class UrbanOutlineResult:
     tower: TowerViewpoint
-    outlines: tuple[tuple[UrbanPolylinePoint, ...], ...]
+    outlines: tuple[UrbanOutlinePolyline, ...]
     buildings_considered: int
     outlines_emitted: int
 
@@ -160,7 +166,7 @@ def compute_urban_outlines(
     radius_m = radius_km * 1000.0
     observer_height_m = float(getattr(tower, "viewpoint_height_m", getattr(tower, "observer_height_m", 0.0)) or 0.0)
     buildings_considered = 0
-    outlines: list[tuple[UrbanPolylinePoint, ...]] = []
+    outlines: list[UrbanOutlinePolyline] = []
 
     for building in buildings:
         projected_rings = tuple(project_ring_xy(ring, transformer) for ring in building.rings_lonlat)
@@ -187,7 +193,12 @@ def compute_urban_outlines(
                 for az, alt in zip(azimuth_deg[run], altitude_deg[run]):
                     run_points.append(UrbanPolylinePoint(azimuth_deg=float(az), altitude_deg=float(alt)))
                 if len(run_points) >= 2:
-                    outlines.append(tuple(run_points))
+                    outlines.append(
+                        UrbanOutlinePolyline(
+                            height_m=float(building.height_m),
+                            points=tuple(run_points),
+                        )
+                    )
 
     return UrbanOutlineResult(
         tower=tower,
