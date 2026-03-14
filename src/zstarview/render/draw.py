@@ -1443,6 +1443,19 @@ def _draw_moon_planet(
     draw_gauge_cross(painter, cross_color, pos)
 
 
+def _marker_intersects_viewport(painter: QPainter, pos: QPointF, radius_px: float) -> bool:
+    """Return whether a body marker would be visible inside the current viewport."""
+    viewport_getter = getattr(painter, "viewport", None)
+    if not callable(viewport_getter):
+        return True
+    viewport = viewport_getter()
+    if viewport.isNull():
+        return True
+    r = max(1.0, float(radius_px))
+    marker_bounds = QRectF(pos.x() - r, pos.y() - r, r * 2.0, r * 2.0)
+    return marker_bounds.intersects(QRectF(viewport))
+
+
 def draw_planet_disc(
     painter: QPainter,
     pos: QPointF,
@@ -1547,6 +1560,18 @@ def draw_solar_system_bodies(
                 geometry,
             )
         )
+        marker_visible = True
+        if body.name == "moon":
+            moon_zoom = 5 if enlarge_moon else 1
+            marker_visible = _marker_intersects_viewport(
+                painter,
+                pos,
+                (0.25 / 90.0) * geometry.radius * moon_zoom,
+            )
+        else:
+            radius_px, _alpha = planet_disc_style_from_vmag(body.vmag)
+            bloom_radius, _center_alpha, _mid_alpha = planet_bloom_profile_from_vmag(body.vmag, radius_px)
+            marker_visible = _marker_intersects_viewport(painter, pos, max(radius_px, bloom_radius))
 
         if draw_markers:
             if body.name == "sun":
@@ -1572,7 +1597,7 @@ def draw_solar_system_bodies(
                 # Keep planet cross markers shorter than the Moon/Sun gauge marker.
                 draw_gauge_cross(painter, text_color, pos, scale=0.55, pen_width=1.0)
 
-        if draw_labels and body.name != "sun":
+        if draw_labels and body.name != "sun" and marker_visible:
             label_text = body_label_text(body.name)
             label_pos = QPointF(pos.x() + 12.0, pos.y() - 10.0)
             if label_candidates is not None:
