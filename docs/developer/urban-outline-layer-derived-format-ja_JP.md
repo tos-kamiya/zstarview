@@ -376,6 +376,29 @@ src/zstarview/data/build_plateau_derived_tiles.py
 - 京都市: `26100_kyoto-shi_city_2024_citygml_1_op`
 - 大阪市: `27100_osaka-shi_city_2024_citygml_1_op`
 
+ZIP ファイルからこの 2 段階をまとめて実行したい場合は、次のオーケストレーション用スクリプトを使える。
+
+```text
+src/zstarview/data/import_plateau_citygml_zip.py
+```
+
+例:
+
+```bash
+.venv/bin/python src/zstarview/data/import_plateau_citygml_zip.py \
+  raw-data/12100_chiba-shi_city_2024_citygml_1_op.zip \
+  raw-data/14100_yokohama-shi_city_2024_citygml_2_op.zip
+```
+
+これにより、ZIP を一時展開して `udx/bldg/*.gml` を検出し、次へ書き出す。
+
+- `src/zstarview/data/plateau_derived/12100_chiba/bldg/*.json`
+- `src/zstarview/data/plateau_derived/12100_chiba/bldg/tile_index.json`
+- `src/zstarview/data/plateau_derived/14100_yokohama/bldg/*.json`
+- `src/zstarview/data/plateau_derived/14100_yokohama/bldg/tile_index.json`
+
+確認用の one-off urban outline JSON も同時に欲しい場合は、`--write-urban-outline-json` を付ける。
+
 ## 16. urban outline layer の one-off 出力
 
 この節のコマンドは検証用・共有用の one-off 出力である。  
