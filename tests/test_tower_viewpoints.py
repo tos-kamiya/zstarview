@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from zstarview.tower_viewpoints import load_tower_viewpoints, resolve_tower_viewpoint
 
 
@@ -52,3 +54,28 @@ def test_removed_qid_only_tower_is_absent() -> None:
 
 def test_resolve_tower_viewpoint_does_not_match_numeric_only_partial() -> None:
     assert resolve_tower_viewpoint("138") is None
+
+
+def test_load_tower_viewpoints_ignores_legacy_observer_height_key(tmp_path) -> None:
+    payload = {
+        "items": [
+            {
+                "id": "wikidata:Q1",
+                "qid": "Q1",
+                "name": "Legacy Tower",
+                "labels": {"en": "Legacy Tower"},
+                "names": ["Legacy Tower"],
+                "latitude_deg": 35.0,
+                "longitude_deg": 139.0,
+                "height_m": 120.0,
+                "observer_height_m": 45.0,
+            }
+        ]
+    }
+    path = tmp_path / "tower_viewpoints.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    towers = load_tower_viewpoints(path)
+
+    assert len(towers) == 1
+    assert towers[0].viewpoint_height_m == 120.0

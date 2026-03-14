@@ -174,7 +174,7 @@ def compute_debug_outlines(
         getattr(
             tower,
             "viewpoint_height_m",
-            getattr(tower, "observer_height_m", 0.0),
+            0.0,
         )
         or 0.0
     )
