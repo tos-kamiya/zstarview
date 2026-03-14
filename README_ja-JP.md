@@ -40,6 +40,12 @@ overturemaps --help
 
 Zstarview 自体は、[`pipx`](https://pypa.github.io/pipx/) を使ってインストールする想定です。
 
+> 注記: Windows Arm64 環境は現在インストール非対応です。
+> 2026-03-15 時点では、その環境で `pipx install zstarview` や
+> `pipx install .` を実行すると、`shapely` などのネイティブ依存が
+> ソースビルドになって正常に入らず、失敗することがあります。
+> 主に検証している環境は Linux x86_64 です。
+
 ```bash
 pipx install zstarview
 ```

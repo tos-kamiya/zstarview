@@ -30,6 +30,10 @@ Or with pip:
 pip install zstarview
 ```
 
+> Note: Windows on Arm64 is currently not supported for installation.
+> As of 2026-03-15, native dependencies such as `shapely` can fail there
+> because they may require a source build.
+
 ## Quick Start
 
 ```bash
