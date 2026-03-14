@@ -2,15 +2,17 @@ import logging
 import math
 import re
 import sys
+import urllib.error
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import polars as pl
 
 from .catalog import load_dso_catalog, load_star_catalog
 from .config import load_last_city, save_last_city
+from .nominatim_search import search as search_nominatim
 from .viewpoints import Viewpoint
 from .viewpoints import prefixed_viewpoint_name, split_prefixed_viewpoint
 from .mountain_viewpoints import resolve_mountain_viewpoint
@@ -48,6 +50,7 @@ class ResolvedLocation:
     persistence_key: str
     observer_height_m: float
     kind: str
+    persistence_value: str | dict[str, Any] | None = None
     location_height_label: str | None = None
     location_height_m: float | None = None
     cc: str = ""
@@ -147,6 +150,117 @@ def _viewpoint_to_location(
     )
 
 
+def _nominatim_result_to_location(
+    query: str,
+    result: dict[str, Any],
+    admin1_map: dict[tuple[str, str], str],
+) -> ResolvedLocation:
+    try:
+        lat = float(result["lat"])
+        lon = float(result["lon"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("invalid Nominatim result coordinates") from exc
+
+    name = result.get("name")
+    if not isinstance(name, str) or not name:
+        raise ValueError("invalid Nominatim result name")
+
+    nearest_city = _resolve_nearest_city(lat, lon, admin1_map)
+    timezone_name = nearest_city.tz if nearest_city is not None else "UTC"
+    persistence_value = {
+        "resolver": "nominatim",
+        "query": query,
+        "result": dict(result),
+    }
+    return ResolvedLocation(
+        display_name=name,
+        lat=lat,
+        lon=lon,
+        tz=timezone_name,
+        persistence_key=name,
+        observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
+        kind="place",
+        persistence_value=persistence_value,
+        location_height_label=None,
+        location_height_m=None,
+        cc=nearest_city.cc if nearest_city is not None else "",
+    )
+
+
+def _restore_persisted_location(
+    stored_location: dict[str, Any],
+    admin1_map: dict[tuple[str, str], str],
+) -> ResolvedLocation | None:
+    if stored_location.get("resolver") != "nominatim":
+        return None
+    query = stored_location.get("query")
+    result = stored_location.get("result")
+    if not isinstance(query, str) or not isinstance(result, dict):
+        logger.warning("Ignoring malformed persisted Nominatim location payload")
+        return None
+    try:
+        location = _nominatim_result_to_location(query, result, admin1_map)
+    except ValueError:
+        logger.warning("Ignoring invalid persisted Nominatim location payload")
+        return None
+    logger.info("Restored saved place: %s", location.display_name)
+    return location
+
+
+def _resolve_place_query(
+    query: str,
+    countrycode: str | None,
+    language: str,
+    admin1_map: dict[tuple[str, str], str],
+) -> ResolvedLocation:
+    logger.info("Searching Nominatim for '%s'...", query)
+    try:
+        results = search_nominatim(
+            query,
+            limit=5,
+            countrycode=countrycode,
+            language=language,
+        )
+    except urllib.error.HTTPError as exc:
+        logger.error("Nominatim HTTP error for '%s': %s %s", query, exc.code, exc.reason)
+        raise StartupAbortError() from exc
+    except urllib.error.URLError as exc:
+        logger.error("Nominatim network error for '%s': %s", query, exc.reason)
+        raise StartupAbortError() from exc
+    except ValueError as exc:
+        logger.error("Nominatim response error for '%s': %s", query, exc)
+        raise StartupAbortError() from exc
+    except Exception as exc:
+        logger.error("Nominatim search failed for '%s': %s", query, exc)
+        raise StartupAbortError() from exc
+
+    if not results:
+        logger.error("No Nominatim result for '%s'", query)
+        raise StartupAbortError()
+
+    logger.info("Nominatim found %d match(es) for '%s':", len(results), query)
+    for index, result in enumerate(results, start=1):
+        logger.info(
+            "[%d] %s (lat=%.6f lon=%.6f category=%s type=%s importance=%.6f)",
+            index,
+            result["name"],
+            result["lat"],
+            result["lon"],
+            result.get("category") or "-",
+            result.get("type") or "-",
+            float(result.get("importance") or 0.0),
+        )
+
+    try:
+        location = _nominatim_result_to_location(query, results[0], admin1_map)
+    except ValueError as exc:
+        logger.error("Invalid top Nominatim result for '%s': %s", query, exc)
+        raise StartupAbortError() from exc
+
+    logger.info("Using top Nominatim result: %s", location.display_name)
+    return location
+
+
 def _tower_to_location(args_city: str, admin1_map: dict[tuple[str, str], str]) -> ResolvedLocation | None:
     return _viewpoint_to_location(resolve_tower_viewpoint(args_city), admin1_map)
 
@@ -155,20 +269,31 @@ def _mountain_to_location(args_city: str, admin1_map: dict[tuple[str, str], str]
     return _viewpoint_to_location(resolve_mountain_viewpoint(args_city), admin1_map)
 
 
-def _startup_resolve_city(args_city: Optional[str]) -> ResolvedLocation:
+def _startup_resolve_city(
+    args_city: Optional[str],
+    place_query: str | None = None,
+    place_countrycode: str | None = None,
+    place_lang: str = "en",
+) -> ResolvedLocation:
     """
     Resolve target city from CLI or last used city.
 
     Also handles direct latitude/longitude input like "35.68;139.76" or "N35.68;E139.76".
     """
     last_city = load_last_city()
-    if not args_city:
-        args_city = last_city or "Tokyo"
+    stored_location: dict[str, Any] | None = None
+    if not args_city and place_query is None:
+        if isinstance(last_city, str):
+            args_city = last_city or "Tokyo"
+        elif isinstance(last_city, dict):
+            stored_location = last_city
+        else:
+            args_city = "Tokyo"
 
     resolved_location: ResolvedLocation | None = None
     persist_location = False
 
-    if ";" in args_city:
+    if args_city and ";" in args_city:
         try:
             lat_str, lon_str = [s.strip() for s in args_city.split(";")]
 
@@ -189,27 +314,23 @@ def _startup_resolve_city(args_city: Optional[str]) -> ResolvedLocation:
 
             lat = _parse_coord(lat_str, "NS")
             lon = _parse_coord(lon_str, "EW")
-
             if not (-90 <= lat <= 90):
                 raise ValueError(f"Latitude out of range (-90 to 90): {lat}")
             if not (-180 <= lon <= 180):
                 raise ValueError(f"Longitude out of range (-180 to 180): {lon}")
 
             logger.info("Parsed location: Lat=%.6f, Lon=%.6f, Timezone=UTC", lat, lon)
-
-            name = f"Lat: {lat:.2f}, Lon: {lon:.2f}"
-            resolved_location = ResolvedLocation(
-                display_name=name,
+            return ResolvedLocation(
+                display_name=f"Lat: {lat:.2f}, Lon: {lon:.2f}",
                 lat=lat,
                 lon=lon,
                 tz="UTC",
-            persistence_key=f"{lat:.6f};{lon:.6f}",
-            observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
-            kind="coords",
-            location_height_label=None,
-            location_height_m=None,
-        )
-            return resolved_location
+                persistence_key=f"{lat:.6f};{lon:.6f}",
+                observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
+                kind="coords",
+                location_height_label=None,
+                location_height_m=None,
+            )
         except (ValueError, IndexError) as exc:
             logger.error("Invalid latitude/longitude format: '%s'. %s", args_city, exc)
             raise StartupAbortError() from exc
@@ -223,74 +344,88 @@ def _startup_resolve_city(args_city: Optional[str]) -> ResolvedLocation:
 
     recs: List[CityRec] = []
     try:
-        explicit_viewpoint = split_prefixed_viewpoint(args_city)
-        tower_query = args_city.startswith("wikidata:") or re.match(r"^Q\d+$", args_city) is not None
-        if explicit_viewpoint is not None:
-            explicit_kind, explicit_name = explicit_viewpoint
-            if explicit_kind == "tower":
-                tower_location = _tower_to_location(explicit_name, admin1_map)
-                if tower_location is None:
-                    logger.error("No tower found for '%s'", explicit_name)
-                    raise StartupAbortError()
-                resolved_location = tower_location
-            else:
-                mountain_location = _mountain_to_location(explicit_name, admin1_map)
-                if mountain_location is None:
-                    logger.error("No mountain found for '%s'", explicit_name)
-                    raise StartupAbortError()
-                resolved_location = mountain_location
-            persist_location = True
+        if stored_location is not None:
+            resolved_location = _restore_persisted_location(stored_location, admin1_map)
+            if resolved_location is None:
+                args_city = "Tokyo"
 
-        elif tower_query:
-            tower_location = _tower_to_location(args_city, admin1_map)
-            mountain_location = _mountain_to_location(args_city, admin1_map)
-            if tower_location is not None:
-                resolved_location = tower_location
-            elif mountain_location is not None:
-                resolved_location = mountain_location
-            else:
-                logger.error("No tower or mountain found for '%s'", args_city)
-                raise StartupAbortError()
+        if place_query is not None:
+            resolved_location = _resolve_place_query(
+                place_query,
+                place_countrycode,
+                place_lang,
+                admin1_map,
+            )
             persist_location = True
+        elif resolved_location is None:
+            assert args_city is not None
+            explicit_viewpoint = split_prefixed_viewpoint(args_city)
+            tower_query = args_city.startswith("wikidata:") or re.match(r"^Q\d+$", args_city) is not None
 
-        elif re.match(r"^\d+$", args_city):
-            rec = resolve_city_by_geonameid(int(args_city), CITY_COORD_FILE)
-            if rec:
-                recs.append(rec)
-            else:
-                logger.error("No city found for geonameid %s", args_city)
-                raise StartupAbortError()
-        else:
-            if "/" not in args_city:
-                recs = resolve_city_by_name(args_city, CITY_COORD_FILE, admin1_map)
-            else:
-                recs = resolve_city(args_city, CITY_COORD_FILE, admin1_map)
-            if recs:
-                logger.info("Found %d match(es) for '%s':", len(recs), args_city)
-                for rec in recs:
-                    logger.info(
-                        "- %s/%s, lat: %.6f, lon: %.6f, tz: %s  (geonameid=%s)",
-                        rec.cc,
-                        rec.name,
-                        rec.lat,
-                        rec.lon,
-                        rec.tz,
-                        rec.geonameid,
-                    )
-                if len(recs) > 1:
-                    logger.warning("Multiple matches found for '%s'", args_city)
-            else:
+            if explicit_viewpoint is not None:
+                explicit_kind, explicit_name = explicit_viewpoint
+                if explicit_kind == "tower":
+                    tower_location = _tower_to_location(explicit_name, admin1_map)
+                    if tower_location is None:
+                        logger.error("No tower found for '%s'", explicit_name)
+                        raise StartupAbortError()
+                    resolved_location = tower_location
+                else:
+                    mountain_location = _mountain_to_location(explicit_name, admin1_map)
+                    if mountain_location is None:
+                        logger.error("No mountain found for '%s'", explicit_name)
+                        raise StartupAbortError()
+                    resolved_location = mountain_location
+                persist_location = True
+            elif tower_query:
                 tower_location = _tower_to_location(args_city, admin1_map)
                 mountain_location = _mountain_to_location(args_city, admin1_map)
                 if tower_location is not None:
                     resolved_location = tower_location
-                    persist_location = True
                 elif mountain_location is not None:
                     resolved_location = mountain_location
-                    persist_location = True
                 else:
-                    logger.error("No match for '%s'", args_city)
+                    logger.error("No tower or mountain found for '%s'", args_city)
                     raise StartupAbortError()
+                persist_location = True
+            elif re.match(r"^\d+$", args_city):
+                rec = resolve_city_by_geonameid(int(args_city), CITY_COORD_FILE)
+                if rec:
+                    recs.append(rec)
+                else:
+                    logger.error("No city found for geonameid %s", args_city)
+                    raise StartupAbortError()
+            else:
+                if "/" not in args_city:
+                    recs = resolve_city_by_name(args_city, CITY_COORD_FILE, admin1_map)
+                else:
+                    recs = resolve_city(args_city, CITY_COORD_FILE, admin1_map)
+                if recs:
+                    logger.info("Found %d match(es) for '%s':", len(recs), args_city)
+                    for rec in recs:
+                        logger.info(
+                            "- %s/%s, lat: %.6f, lon: %.6f, tz: %s  (geonameid=%s)",
+                            rec.cc,
+                            rec.name,
+                            rec.lat,
+                            rec.lon,
+                            rec.tz,
+                            rec.geonameid,
+                        )
+                    if len(recs) > 1:
+                        logger.warning("Multiple matches found for '%s'", args_city)
+                else:
+                    tower_location = _tower_to_location(args_city, admin1_map)
+                    mountain_location = _mountain_to_location(args_city, admin1_map)
+                    if tower_location is not None:
+                        resolved_location = tower_location
+                        persist_location = True
+                    elif mountain_location is not None:
+                        resolved_location = mountain_location
+                        persist_location = True
+                    else:
+                        logger.error("No match for '%s'", args_city)
+                        raise StartupAbortError()
     except FileNotFoundError as exc:
         logger.error("Fail to load cities1000.txt.")
         raise StartupAbortError() from exc
@@ -313,11 +448,17 @@ def _startup_resolve_city(args_city: Optional[str]) -> ResolvedLocation:
         persist_location = True
 
     if persist_location:
-        save_last_city(resolved_location.persistence_key)
+        save_last_city(
+            resolved_location.persistence_value
+            if resolved_location.persistence_value is not None
+            else resolved_location.persistence_key
+        )
         if resolved_location.kind == "tower":
             logger.info("Tower: %s", resolved_location.persistence_key)
         elif resolved_location.kind == "mountain":
             logger.info("Mountain: %s", resolved_location.persistence_key)
+        elif resolved_location.kind == "place":
+            logger.info("Place: %s", resolved_location.persistence_key)
         else:
             logger.info("City: %s", resolved_location.persistence_key)
     return resolved_location
