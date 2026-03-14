@@ -11,6 +11,15 @@ Transparent desktop sky viewer with stars, planets, eclipses, optional real-time
 
 Recommended:
 
+Prerequisite for the urban outline overlay: install the `overturemaps` CLI separately.
+Installation: <https://pypi.org/project/overturemaps/>
+
+Confirm it with:
+
+```bash
+overturemaps --help
+```
+
 ```bash
 pipx install zstarview
 ```
@@ -46,7 +55,7 @@ zstarview -Z E -A 25 Tokyo
 - Adjustable view center: adjust the view center with CLI options `-A` and `-Z`, or with the arrow keys.
 - Satellite cloud imagery: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched overlay.
 - Terrain horizon and ground fill: Copernicus DEM data can be downloaded to render the local terrain skyline and ground region below the horizon.
-- Urban outline overlay: where bundled PLATEAU-derived building tiles are available, major rooflines are drawn as a white overlay; very narrow roof spans are simplified to thick horizontal strokes.
+- Urban outline overlay: major rooflines are drawn as a white overlay using cached Overture building data; very narrow roof spans are simplified to thick horizontal strokes.
 - Never-rises region: the celestial region that never rises above the horizon for the observer's latitude is shown in a red tint.
 - Python support: routinely tested on CPython 3.10, 3.11, 3.12, and 3.13.
 
@@ -71,7 +80,6 @@ Notes:
 
 - Code: MIT License. See `LICENSE`.
 - Bundled and runtime-fetched data may be subject to their own licenses, attribution rules, or service terms.
-- `--place` uses the public OpenStreetMap Nominatim service at runtime; its usage policy applies.
 - See the main project README for the full credits and third-party data notes.
 
 ## Links
