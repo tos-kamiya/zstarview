@@ -33,6 +33,7 @@ Examples:
 zstarview Tokyo
 zstarview "Tokyo Skytree"
 zstarview "35.68;139.76"
+zstarview --place "Matsue Station" --place-countrycode jp
 zstarview -Z E -A 25 Tokyo
 ```
 
@@ -41,7 +42,7 @@ zstarview -Z E -A 25 Tokyo
 - Deep-sky objects: named galaxies/open clusters/globular clusters are shown as soft blue extents.
 - Asterism overlay: popular line patterns rather than formal IAU constellation boundaries are shown as dim ambient lines.
 - Solar-system bodies: supports Sun, Moon, and major planets.
-- Flexible location input: specify the observer location through the CLI argument using a city name, tower name, mountain name, or direct latitude/longitude input.
+- Flexible location input: specify the observer location through the CLI argument using a city name, tower name, mountain name, direct latitude/longitude input, or online place/station search via Nominatim.
 - Adjustable view center: adjust the view center with CLI options `-A` and `-Z`, or with the arrow keys.
 - Satellite cloud imagery: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched overlay.
 - Terrain horizon and ground fill: Copernicus DEM data can be downloaded to render the local terrain skyline and ground region below the horizon.
@@ -51,11 +52,27 @@ zstarview -Z E -A 25 Tokyo
 
 ## Common Options
 
+- `--place QUERY`
+- `--place-countrycode CODE`
+- `--place-lang LANG`
 - `--cloud-opacity 0.0..1.0`
 - `--terrain-horizon-opacity 0.0..1.0`
 - `--urban-outline-opacity 0.0..1.0`
 - `--observer-height-m METERS`
 - `--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"`
+
+Notes:
+
+- `--place` uses the public OpenStreetMap Nominatim search service and sends a single request with a User-Agent and `Accept-Language`.
+- Satellite cloud rendering downloads Himawari/GOES data from public S3 buckets.
+- Terrain horizon rendering downloads Copernicus DEM tiles on first use and reuses cached data later.
+
+## Code, Data Licenses, and Credits
+
+- Code: MIT License. See `LICENSE`.
+- Bundled and runtime-fetched data may be subject to their own licenses, attribution rules, or service terms.
+- `--place` uses the public OpenStreetMap Nominatim service at runtime; its usage policy applies.
+- See the main project README for the full credits and third-party data notes.
 
 ## Links
 
