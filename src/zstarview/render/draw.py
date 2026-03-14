@@ -719,7 +719,7 @@ def draw_terrain_horizon_line(
 def draw_urban_outlines(
     painter: QPainter,
     geometry: ScreenGeometry,
-    urban_outlines: list[UrbanOutlinePolyline] | list[list[tuple[float, float]]] | None,
+    urban_outlines: list[UrbanOutlinePolyline] | None,
     view_center: tuple[float, float],
     *,
     opacity: float = 0.2,
@@ -732,7 +732,8 @@ def draw_urban_outlines(
 
     painter.save()
     for outline_entry in urban_outlines:
-        outline, height_m = _extract_urban_outline_points_and_height(outline_entry)
+        outline = list(outline_entry.points)
+        height_m = float(outline_entry.height_m)
         if len(outline) < 2:
             continue
         color = QColor(*URBAN_DEBUG_LAYER_LINE_COLOR)
@@ -781,14 +782,6 @@ def draw_urban_outlines(
                 screen_points = [QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in frag]
                 painter.drawPolyline(QPolygonF(screen_points))
     painter.restore()
-
-
-def _extract_urban_outline_points_and_height(
-    outline_entry: UrbanOutlinePolyline | list[tuple[float, float]],
-) -> tuple[list[tuple[float, float]], float]:
-    if isinstance(outline_entry, UrbanOutlinePolyline):
-        return list(outline_entry.points), float(outline_entry.height_m)
-    return list(outline_entry), 50.0
 
 
 def _urban_outline_height_alpha_scale(height_m: float) -> float:
