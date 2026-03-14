@@ -293,3 +293,8 @@ def test_overlay_info_includes_location_height_and_explicit_observer_height(monk
     assert "t/Tokyo Skytree" in label_calls
     assert "Tower height 634 m" in label_calls
     assert "Observer height 12 m" in label_calls
+    assert label_calls.index("t/Tokyo Skytree") < label_calls.index("2026-02-27 00:00:00 UTC")
+    assert label_calls.index("Tower height 634 m") < label_calls.index("2026-02-27 00:00:00 UTC")
+    assert label_calls.index("Observer height 12 m") < label_calls.index("2026-02-27 00:00:00 UTC")
+    assert label_calls.index("2026-02-27 00:00:00 UTC") < label_calls.index("Alt 45°  Az 180° (S)")
+    assert label_calls.index("Alt 45°  Az 180° (S)") < label_calls.index("Vmag limit 6.0")

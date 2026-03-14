@@ -1757,6 +1757,14 @@ def draw_overlay_info(
             return f"{int(rounded)} m"
         return f"{float(value_m):.1f} m"
 
+    # ---- Location ----
+    city_name_text = viewer_data.city_name
+    print_line(city_name_text)
+    if viewer_data.location_height_label and viewer_data.location_height_m is not None:
+        print_line(f"{viewer_data.location_height_label} {format_height_m(viewer_data.location_height_m)}")
+    if viewer_data.show_observer_height:
+        print_line(f"Observer height {format_height_m(viewer_data.observer_height_m)}")
+
     # ---- Local time ----
     utc_time = celestial_data.time
     tz_name = viewer_data.timezone_name
@@ -1768,14 +1776,6 @@ def draw_overlay_info(
         time_text = utc_time.to_datetime().strftime("%Y-%m-%d %H:%M:%S UTC")
 
     print_line(time_text)
-
-    # ---- City, view direction (Alt/Az) ----
-    city_name_text = viewer_data.city_name
-    print_line(city_name_text)
-    if viewer_data.location_height_label and viewer_data.location_height_m is not None:
-        print_line(f"{viewer_data.location_height_label} {format_height_m(viewer_data.location_height_m)}")
-    if viewer_data.show_observer_height:
-        print_line(f"Observer height {format_height_m(viewer_data.observer_height_m)}")
 
     alt_deg, az_deg = viewer_data.view_center
 
