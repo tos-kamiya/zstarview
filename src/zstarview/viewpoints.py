@@ -89,7 +89,6 @@ def build_viewpoint(
     kind: str,
     height_key: str,
     viewpoint_height_key: str | None = None,
-    legacy_viewpoint_height_key: str | None = "observer_height_m",
     meta_keys: Iterable[str],
 ) -> Viewpoint:
     labels_raw = item.get("labels", {})
@@ -113,8 +112,6 @@ def build_viewpoint(
     if viewpoint_height_key is not None:
         if viewpoint_height_key in item:
             viewpoint_height_m = float(item[viewpoint_height_key])
-        elif legacy_viewpoint_height_key is not None and legacy_viewpoint_height_key in item:
-            viewpoint_height_m = float(item[legacy_viewpoint_height_key])
         else:
             viewpoint_height_m = float(item.get(height_key, 0.0))
     return Viewpoint(
