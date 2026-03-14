@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-03-14
+最終更新: 2026-03-15
 
 ## 1. この文書の位置づけ
 
@@ -180,6 +180,7 @@
   - 恒星レイヤは描画時に現在のウィンドウサイズから内部レンダリング面サイズを再計算する
   - 天球ディスク幅が `expected-render-width` 以下なら等倍描画し、それを超える場合は `expected-render-width * sqrt(disc_width / expected-render-width)` に従って内部描画面を縮小する
   - 縮小時は低解像度 `QImage` に恒星を描いてからウィンドウ全体へ拡大転写し、大型ウィンドウでの負荷を抑える
+  - 最終フレームの `QImage` キャッシュを持ち、geometry、描画入力、hover/ハイライト状態、ステータスメッセージ、interaction mode が不変なら前回フレームをそのまま再利用する
 - `src/zstarview/ui/window_updates.py`
   - バックグラウンド更新結果の反映
 - `src/zstarview/ui/sky_worker.py`
@@ -308,6 +309,12 @@
   - ホバー対象
   - ハイライト対象
   - 各更新パイプラインの UI 反映状態
+- `SkyWindow._frame_cache_image`
+  - `paintEvent` の最終出力を保持する `QImage`
+  - 同一フレームの再利用に使う
+- `SkyWindow._frame_cache_key`
+  - 最終フレームキャッシュの無効化条件をまとめたキー
+  - ウィンドウサイズ、`render_view_center`、描画トグル、`CelestialData`、空ディスク画像、雲画像、地形/都市アウトライン、hover、jump highlight、ステータス行文言などを含む
 - `UrbanOutlineState`
   - 都市アウトライン点列
   - 読込中 / 取得中バナー
@@ -338,6 +345,16 @@
 2. 明るい星 (`vmag <= 4.0`) のみ同期的に再計算し、簡易描画に使う。
 3. 補助線と地形地平線は、保持済みデータを `render_view_center` で再投影して追随させる。
 4. 最後の入力から 0.7 秒経過後に通常更新を 1 回だけ開始する。
+
+### 6.2.1 最終フレームキャッシュ
+
+Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行するため、空の内容が変わらない repaint では重い描画をやり直さないようにする。
+
+1. `window_render.py` は、geometry、描画入力、hover、jump highlight、interaction mode、ステータス行文言などからフレームキーを作る。
+2. キーが前回と同じなら、保持済みの最終フレーム `QImage` を `drawImage()` するだけで終了する。
+3. キーが変わったときだけ、背景、空ディスク、雲、地形、都市アウトライン、星、惑星、オーバーレイ、ラベル、ステータス行を一時 `QImage` に順に描いて新しいフレームとして保存する。
+
+この最終フレームキャッシュは `SkyCompositorCache` の上位にある。`SkyCompositorCache` は sky/cloud 合成だけを再利用し、その出力を含むウィンドウ全体の描画結果をさらに `window_render.py` 側でキャッシュする二段構えにしている。
 
 ### 6.3 雲更新フロー
 
@@ -425,6 +442,7 @@
 - 建物高さのしきい値は derived tile 生成時の前処理パラメータとし、runtime 読込時の既定値では再適用しない。
 - ただし見かけの方位幅が `0.5°` 未満の輪郭は、細い polyline ではなく太い水平線に簡略化する。
 - `viewport_interaction_mode` 中は都市アウトライン描画を抑止し、方向キー操作の負荷を下げる。
+- ハンバーガーメニュー表示そのものでは `viewport_interaction_mode` へ入らない。メニュー起動で `paintEvent` が走っても、最終フレームキャッシュの再利用で余分な重い描画を避ける。
 
 ## 9. エラーモデル
 
