@@ -80,10 +80,11 @@ def test_status_line_message_combines_cloud_and_terrain_segments() -> None:
     dummy = SimpleNamespace()
     dummy._cloud_status_line = lambda: "Clouds [AUTO]: downloading"
     dummy._terrain_horizon_status_line = lambda: "Terrain horizon: loading DEM..."
+    dummy._urban_outline_status_line = lambda: "Urban outline: downloading..."
 
     got = SkyWindowUpdatesMixin._status_line_message(dummy)
 
-    assert got == "Clouds [AUTO]: downloading | Terrain horizon: loading DEM..."
+    assert got == "Clouds [AUTO]: downloading | Terrain horizon: loading DEM... | Urban outline: downloading..."
 
 
 def test_toggle_terrain_horizon_respects_cli_lockout() -> None:
@@ -119,7 +120,7 @@ def test_toggle_terrain_horizon_enables_opacity_and_requests_background_update()
     assert calls == ["invalidate", "toggle-on", "update"]
 
 
-def test_toggle_urban_outline_enables_opacity_and_repaints() -> None:
+def test_toggle_urban_outline_enables_opacity_and_requests_background_update() -> None:
     dummy = SimpleNamespace()
     dummy._urban_outline_gui_allowed = True
     dummy.urban_outline_opacity = 0.0
@@ -127,6 +128,7 @@ def test_toggle_urban_outline_enables_opacity_and_repaints() -> None:
     dummy.show_urban_outline_layer = False
     dummy._action_toggle_urban_outline = _DummyAction(False)
     calls: list[str] = []
+    dummy.start_background_urban_outline_update = lambda **kwargs: calls.append(str(kwargs.get("reason")))
     dummy.update = lambda: calls.append("update")
 
     SkyWindow.toggle_urban_outline(dummy)
@@ -134,7 +136,7 @@ def test_toggle_urban_outline_enables_opacity_and_repaints() -> None:
     assert dummy.urban_outline_opacity == 0.38
     assert dummy.show_urban_outline_layer is True
     assert dummy._action_toggle_urban_outline.isChecked() is True
-    assert calls == ["update"]
+    assert calls == ["toggle-on", "update"]
 
 
 def test_toggle_urban_outline_respects_cli_lockout() -> None:

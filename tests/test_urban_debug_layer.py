@@ -25,9 +25,10 @@ def test_resolve_urban_debug_layer_for_viewer_builds_dynamic_layer(monkeypatch, 
         "zstarview.urban_debug_layer.parse_derived_tile_buildings",
         lambda *args, **kwargs: parse_calls.append((args, kwargs)) or ("building",),
     )
+    compute_calls = []
     monkeypatch.setattr(
         "zstarview.urban_debug_layer.compute_debug_outlines",
-        lambda *_args, **_kwargs: type(
+        lambda *args, **_kwargs: compute_calls.append(args) or type(
             "Result",
             (),
             {
@@ -48,6 +49,8 @@ def test_resolve_urban_debug_layer_for_viewer_builds_dynamic_layer(monkeypatch, 
 
     assert got == [[(-1.0, 10.0), (-2.0, 12.0)]]
     assert parse_calls[0][1] == {}
+    assert compute_calls[0][0].viewpoint_height_m == 1.7
+    assert compute_calls[0][0].observer_height_m == 1.7
 
 
 def test_resolve_urban_debug_layer_for_viewer_returns_none_when_outside_coverage(tmp_path: Path) -> None:
