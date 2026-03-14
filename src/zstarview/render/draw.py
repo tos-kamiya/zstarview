@@ -43,26 +43,26 @@ from ..astro import (
 from ..asterisms import ASTERISMS, ASTERISM_REQUIRED_SOURCE_IDS, pick_rotating_asterism
 from . import geometry as render_geometry
 from .geometry import (
-    altaz_to_normalized_xy_vectorized,
+    _altaz_to_normalized_xy_vectorized,
+    _normalized_to_screen_xy_vectorized,
     normalized_to_screen_xy,
-    normalized_to_screen_xy_vectorized,
 )
 from .photometry import (
+    compute_flare_profile as _compute_flare_profile,
+    flare_strength_from_vmag as _flare_strength_from_vmag,
     body_label_text,
     bv_to_rgb_vectorized,
-    compute_flare_profile,
-    flare_strength_from_vmag,
     planet_bloom_profile_from_vmag,
     planet_disc_style_from_vmag,
     planet_marker_color,
 )
 from . import text as render_text
 from .text import (
+    _get_text_outline_width,
+    _get_text_style,
     _rect_overlap_count,
     _text_bounds_at_baseline,
     draw_outlined_text,
-    get_text_outline_width,
-    get_text_style,
 )
 from ..utils.image import generate_moon_phase_image
 from ..utils.qt import pil2qpixmap
@@ -71,8 +71,13 @@ logger = logging.getLogger(__name__)
 
 # Backward-compatible re-export for callers importing geometry helpers via render.draw.
 get_screen_geometry = render_geometry.get_screen_geometry
-draw_label_candidates = render_text.draw_label_candidates
-draw_status_line_text = render_text.draw_status_line_text
+get_text_style = render_text._get_text_style
+get_text_outline_width = render_text._get_text_outline_width
+draw_label_candidates = render_text._draw_label_candidates
+draw_status_line_text = render_text._draw_status_line_text
+# Keep these re-exports because focused render tests import photometry helpers via render.draw.
+compute_flare_profile = _compute_flare_profile
+flare_strength_from_vmag = _flare_strength_from_vmag
 
 _star_render_cache: tuple[tuple, QImage] | None = None
 _MAG2_TO_MAG1_SIZE_SCALE = 10.0 ** 0.12
@@ -243,8 +248,8 @@ def find_highlighted_object(
             valid_indices = np.nonzero(hover_mask)[0]
             alt_named = stars["alt"][hover_mask]
             az_named = stars["az"][hover_mask]
-            nx, ny = altaz_to_normalized_xy_vectorized(alt_named, az_named, viewer_data.view_center)
-            x, y = normalized_to_screen_xy_vectorized(nx, ny, geometry)
+            nx, ny = _altaz_to_normalized_xy_vectorized(alt_named, az_named, viewer_data.view_center)
+            x, y = _normalized_to_screen_xy_vectorized(nx, ny, geometry)
             dist_sq = (mouse_pos.x() - x) ** 2 + (mouse_pos.y() - y) ** 2
             closest_idx = np.argmin(dist_sq)
             if dist_sq[closest_idx] < min_dist_sq:
@@ -917,8 +922,8 @@ def draw_asterisms(
             text_color = QColor(38, 120, 214, 228)
         else:
             text_color = QColor(110, 195, 255, 230)
-        _, outline_text_color = get_text_style(preset)
-        outline_width = get_text_outline_width(preset)
+        _, outline_text_color = _get_text_style(preset)
+        outline_width = _get_text_outline_width(preset)
         if label_candidates is not None:
             label_candidates.append(
                 {
@@ -1135,8 +1140,8 @@ def draw_stars(
         return
 
     # Convert directions to pixel centers.
-    nx, ny = altaz_to_normalized_xy_vectorized(alt, az, viewer_data.view_center)
-    x, y = normalized_to_screen_xy_vectorized(nx, ny, geometry)
+    nx, ny = _altaz_to_normalized_xy_vectorized(alt, az, viewer_data.view_center)
+    x, y = _normalized_to_screen_xy_vectorized(nx, ny, geometry)
 
     bv_clamped = np.nan_to_num(bv, nan=0.45)
     rgb_colors = bv_to_rgb_vectorized(bv_clamped).astype(np.float32)
@@ -1516,8 +1521,8 @@ def draw_solar_system_bodies(
 
     # Keep body markers in a stable high-contrast color over the sky disc.
     text_color = QColor(*TEXT_COLOR)
-    label_text_color, label_outline_color = get_text_style(preset)
-    label_outline_width = get_text_outline_width(preset)
+    label_text_color, label_outline_color = _get_text_style(preset)
+    label_outline_width = _get_text_outline_width(preset)
     if text_font is not None:
         painter.setFont(text_font)
         label_font = text_font
@@ -1730,8 +1735,8 @@ def draw_overlay_info(
         highlighted_object: The currently highlighted object, if any.
         text_font: The QFont to use for the text.
     """
-    text_color, outline_color = get_text_style(preset)
-    outline_width = get_text_outline_width(preset)
+    text_color, outline_color = _get_text_style(preset)
+    outline_width = _get_text_outline_width(preset)
 
     line_spacing = QFontMetrics(text_font).lineSpacing()
     line_height = int(line_spacing * 1.2)

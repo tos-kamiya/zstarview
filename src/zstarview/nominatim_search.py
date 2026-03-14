@@ -6,12 +6,12 @@ import urllib.parse
 import urllib.request
 
 
-VERSION = "0.2.0"
-BASE_URL = "https://nominatim.openstreetmap.org/search"
-DEFAULT_USER_AGENT = f"zstarview/{VERSION}"
+_VERSION = "0.2.0"
+_BASE_URL = "https://nominatim.openstreetmap.org/search"
+_DEFAULT_USER_AGENT = f"zstarview/{_VERSION}"
 
 
-def build_url(query: str, limit: int, countrycode: str | None) -> str:
+def _build_url(query: str, limit: int, countrycode: str | None) -> str:
     params = {
         "q": query,
         "format": "jsonv2",
@@ -21,10 +21,10 @@ def build_url(query: str, limit: int, countrycode: str | None) -> str:
     }
     if countrycode:
         params["countrycodes"] = countrycode
-    return BASE_URL + "?" + urllib.parse.urlencode(params)
+    return _BASE_URL + "?" + urllib.parse.urlencode(params)
 
 
-def fetch(url: str, language: str, user_agent: str = DEFAULT_USER_AGENT) -> list[dict]:
+def _fetch(url: str, language: str, user_agent: str = _DEFAULT_USER_AGENT) -> list[dict]:
     req = urllib.request.Request(
         url,
         headers={
@@ -42,7 +42,7 @@ def fetch(url: str, language: str, user_agent: str = DEFAULT_USER_AGENT) -> list
     return data
 
 
-def normalize(items: list[dict]) -> list[dict]:
+def _normalize(items: list[dict]) -> list[dict]:
     results = []
     for item in items:
         try:
@@ -73,17 +73,12 @@ def search(
     limit: int = 5,
     countrycode: str | None = None,
     language: str = "en",
-    user_agent: str = DEFAULT_USER_AGENT,
+    user_agent: str = _DEFAULT_USER_AGENT,
 ) -> list[dict]:
-    url = build_url(query, limit=limit, countrycode=countrycode)
-    return normalize(fetch(url, language=language, user_agent=user_agent))
+    url = _build_url(query, limit=limit, countrycode=countrycode)
+    return _normalize(_fetch(url, language=language, user_agent=user_agent))
 
 
 __all__ = [
-    "BASE_URL",
-    "DEFAULT_USER_AGENT",
-    "build_url",
-    "fetch",
-    "normalize",
     "search",
 ]

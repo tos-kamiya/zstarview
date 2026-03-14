@@ -41,6 +41,7 @@ from .tower_viewpoints import (
     tower_viewpoint_to_dict,
 )
 
+# Keep these re-exports for focused CLI parser tests that import them from this module.
 __all__ = [
     "_parse_theme",
     "_parse_window_geometry",
