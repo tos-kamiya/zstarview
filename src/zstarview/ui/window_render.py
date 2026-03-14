@@ -318,10 +318,10 @@ class SkyWindowRenderMixin:
     ) -> None:
         if not getattr(self, "show_urban_outline_layer", True):
             return
-        render_draw.draw_urban_debug_outlines(
+        render_draw.draw_urban_outlines(
             painter,
             geometry,
-            self.state.urban_debug_outlines,
+            self.state.urban_outlines,
             render_viewer.view_center,
             opacity=getattr(self, "urban_outline_opacity", 0.38),
         )

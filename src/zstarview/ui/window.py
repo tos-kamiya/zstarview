@@ -241,7 +241,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.viewer_data = viewer_data
         self.state = SkyWindowState(
             render_view_center=tuple(self.viewer_data.view_center),
-            urban_debug_outlines=None,
+            urban_outlines=None,
         )
         self.setWindowTitle(f"{APP_DISPLAY_NAME} - {self.viewer_data.city_name}")
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)

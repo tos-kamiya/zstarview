@@ -254,14 +254,14 @@ class SkyWindowUpdatesMixin:
             outlines,
             source=str(payload.get("source", "")).strip() or "ready",
         )
-        self.state.urban_debug_outlines = outlines
+        self.state.urban_outlines = outlines
         self._compositor.invalidate()
         self.update()
 
     def _on_urban_outline_failed(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         self.urban_outline_state.clear_outlines()
-        self.state.urban_debug_outlines = None
+        self.state.urban_outlines = None
         if banner:
             self.urban_outline_state.set_error_banner(banner)
         self._compositor.invalidate()

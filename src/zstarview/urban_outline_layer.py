@@ -6,12 +6,12 @@ from types import SimpleNamespace
 
 from .data.derived_tile_cache import parse_derived_tile_buildings, select_derived_tile_envelopes
 from .data.import_overture_buildings import DEFAULT_FETCH_RADIUS_KM
-from .data.urban_outline_from_buildings import compute_debug_outlines
+from .data.urban_outline_from_buildings import compute_urban_outlines
 from .paths import OVERTURE_DERIVED_ROOT_DIR
 from .types import ViewerData
 
 
-def resolve_urban_debug_layer_for_viewer(
+def resolve_urban_outline_layer_for_viewer(
     viewer_data: ViewerData,
     *,
     derived_root_dir: str | Path = OVERTURE_DERIVED_ROOT_DIR,
@@ -54,7 +54,7 @@ def _build_dynamic_urban_outline_layer(
     if not buildings:
         return None
 
-    result = compute_debug_outlines(
+    result = compute_urban_outlines(
         SimpleNamespace(
             id="coords",
             name="coords",

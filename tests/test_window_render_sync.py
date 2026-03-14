@@ -150,7 +150,7 @@ def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(monkeypa
     )
     monkeypatch.setattr(
         window_render_module.render_draw,
-        "draw_urban_debug_outlines",
+        "draw_urban_outlines",
         lambda *_args, **_kwargs: calls.append(("urban", None)),
     )
     monkeypatch.setattr(
@@ -211,7 +211,7 @@ def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(monkey
     )
     monkeypatch.setattr(
         window_render_module.render_draw,
-        "draw_urban_debug_outlines",
+        "draw_urban_outlines",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
@@ -226,7 +226,7 @@ def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(monkey
     )
     monkeypatch.setattr(
         window_render_module.render_draw,
-        "draw_urban_debug_outlines",
+        "draw_urban_outlines",
         lambda *_args, **_kwargs: None,
     )
 
@@ -277,7 +277,7 @@ def test_draw_urban_outline_layer_skips_when_hidden(monkeypatch) -> None:
     calls: list[str] = []
     monkeypatch.setattr(
         window_render_module.render_draw,
-        "draw_urban_debug_outlines",
+        "draw_urban_outlines",
         lambda *_args, **_kwargs: calls.append("urban"),
     )
 
@@ -285,7 +285,7 @@ def test_draw_urban_outline_layer_skips_when_hidden(monkeypatch) -> None:
     dummy.show_urban_outline_layer = False
     dummy.state = SkyWindowState(
         render_view_center=(45.0, 180.0),
-        urban_debug_outlines=[[(-1.0, 10.0), (-2.0, 12.0)]],
+        urban_outlines=[[(-1.0, 10.0), (-2.0, 12.0)]],
     )
 
     SkyWindow._draw_urban_outline_layer(
@@ -367,7 +367,7 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     assert seen_line_width_scales == [2.0]
 
 
-def test_draw_viewport_interaction_layers_skips_urban_debug_outlines(monkeypatch) -> None:
+def test_draw_viewport_interaction_layers_skips_urban_outlines(monkeypatch) -> None:
     seen_profiles: list[object] = []
     seen_view_centers: list[object] = []
 
@@ -383,7 +383,7 @@ def test_draw_viewport_interaction_layers_skips_urban_debug_outlines(monkeypatch
     )
     monkeypatch.setattr(
         window_render_module.render_draw,
-        "draw_urban_debug_outlines",
+        "draw_urban_outlines",
         lambda _p, _g, profile, view_center, **_kwargs: (
             seen_profiles.append(profile),
             seen_view_centers.append(view_center),
@@ -410,7 +410,7 @@ def test_draw_viewport_interaction_layers_skips_urban_debug_outlines(monkeypatch
     dummy.compute_star_render_upscale_factor = lambda *_args, **_kwargs: 2.0
     dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
     dummy.state.mouse_pos = None
-    dummy.state.urban_debug_outlines = urban_outlines
+    dummy.state.urban_outlines = urban_outlines
     dummy._draw_star_layer = lambda *_args, **_kwargs: None
     dummy._draw_urban_outline_layer = (
         lambda painter, geometry, render_viewer: SkyWindow._draw_urban_outline_layer(
@@ -573,7 +573,7 @@ def test_draw_sky_reference_lines_uses_render_view_center_projection(monkeypatch
     assert calls == [(55.0, 200.0), (55.0, 200.0), (55.0, 200.0)]
 
 
-def test_draw_urban_debug_outlines_simplifies_narrow_outline_to_horizontal_segment(monkeypatch) -> None:
+def test_draw_urban_outlines_simplifies_narrow_outline_to_horizontal_segment(monkeypatch) -> None:
     monkeypatch.setattr(
         window_render_module.render_draw,
         "is_in_fov",
@@ -607,7 +607,7 @@ def test_draw_urban_debug_outlines_simplifies_narrow_outline_to_horizontal_segme
             self.polylines.append([(poly.at(i).x(), poly.at(i).y()) for i in range(poly.count())])
 
     painter = _Painter()
-    window_render_module.render_draw.draw_urban_debug_outlines(
+    window_render_module.render_draw.draw_urban_outlines(
         painter,
         geometry=SimpleNamespace(center=(0, 0), radius=1),
         urban_outlines=[[(-10.0, 10.0), (-12.0, 10.3)]],
