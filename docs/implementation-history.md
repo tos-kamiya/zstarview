@@ -66,6 +66,11 @@
   - 旧 `plateau_derived` 同梱データ、CityGML 取込スクリプト、PLATEAU 名の runtime helper を削除し、都市アウトライン経路を Overture に一本化した。
   - derived tile 読込や tile index 生成のユーティリティは、データソース非依存の汎用名へ整理した。
 
+- 都市アウトライン描画の高さ連動 alpha
+  - 都市アウトラインは建物ごとに `height_m` を保持する runtime 形式へ変更した。
+  - `50m` 以上は CLI 指定 opacity をそのまま使い、`0m` ではその `25%` まで線形に下げる描画則を追加した。
+  - 旧 `list[list[(alt, az)]]` 形式を受ける後方互換コードと古いテスト前提を削除した。
+
 ### 2026-03-09
 
 - ドキュメント整理

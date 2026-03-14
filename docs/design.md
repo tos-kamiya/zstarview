@@ -372,8 +372,13 @@
 3. 対応する derived dataset がキャッシュ内にあれば、それを読込対象にする。
 4. キャッシュが無ければ `import_overture_buildings.py` を通じて `overturemaps download` を実行し、GeoJSON 系の中間結果を derived tile と `tile_index.json` に変換する。
 5. runtime 側は `resolve_urban_outline_layer_for_viewer()` を使って、その derived dataset を追加の高さフィルタなしで読む。
-6. 結果の outline 点列は `UrbanOutlineState` と `SkyWindowState.urban_outlines` に反映し、再描画する。
-7. 取得中や失敗時はバナー文字列を UI 状態へ反映する。
+6. `compute_urban_outlines()` は建物ごとの `height_m` を保持した輪郭列を返し、`resolve_urban_outline_layer_for_viewer()` はそれを `UrbanOutlinePolyline` の列に変換する。
+7. 描画時は `50m` 以上を CLI 指定 opacity の基準とし、`0m` ではその `25%` になるよう高さ比例で alpha を下げる。
+8. 結果の outline 列は `UrbanOutlineState` と `SkyWindowState.urban_outlines` に反映し、再描画する。
+9. 取得中や失敗時はバナー文字列を UI 状態へ反映する。
+
+補足:
+- 旧 `list[list[(alt, az)]]` 形式の runtime 互換コードは削除し、都市アウトライン描画は `UrbanOutlinePolyline` のみを受け付ける。
 
 ## 7. スレッドモデル
 
