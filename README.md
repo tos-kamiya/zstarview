@@ -111,6 +111,8 @@ The CLI supports detailed startup configuration for location, time, rendering, a
 
 \*4 Terrain horizon rendering downloads Copernicus DEM tiles on first use and reuses the cached DEM later. When enabled, the terrain profile also becomes the boundary for the ground-color fill inside the disc.
 
+\*5 `--place` uses the public OpenStreetMap Nominatim search service. It sends a single search request with a User-Agent and Accept-Language. See the Nominatim usage policy if you plan to rely on this option heavily or from automation.
+
 #### `--place` behavior
 
 `--place` is an explicit online resolver path separate from the normal offline-first `location` argument.
@@ -397,13 +399,15 @@ Logs are also written to a file (platform‑dependent). Examples:
 </details>
 
 <details>
-  <summary>License</summary>
+  <summary>Code, Data Licenses, and Credits</summary>
 
-## License
+## Code, Data Licenses, and Credits
 
 This software is provided under the [MIT](LICENSE.txt) License.
 
 However, the **included data** is redistributed according to their respective licenses.
+
+The `--place` option uses the public [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) search service at runtime. Nominatim is not bundled with this project, but its service terms and usage policy still apply when using that option.
 
 All paths below are relative to `src/zstarview/data/`.
 
@@ -428,6 +432,7 @@ All paths below are relative to `src/zstarview/data/`.
 * Star proper names provided by the IAU Working Group on Star Names (via [exopla.net](https://exopla.net/star-names/modern-iau-star-names/)).
 * Cloud data are based on infrared observations from the **Himawari** satellite (provided by JMA) and the **NOAA GOES** series (provided by NOAA/NESDIS), retrieved from their public S3 buckets.
 * Terrain horizon data are based on **Copernicus DEM GLO-90**, managed by ESA on behalf of the European Commission and obtained by the app through its public AWS distribution/cache flow.
+* Place/station search via `--place` uses the public OpenStreetMap Nominatim service and is subject to the [Nominatim Usage Policy](https://operations.osmfoundation.org/policies/nominatim/).
 * Thanks to MLIT Project PLATEAU and the PLATEAU open data publishers for making the source 3D city model data available.
 * Thanks to AWS and dataset providers for making the public S3 distribution/mirror endpoints available for cloud imagery and terrain DEM access.
 * Fonts provided by the Google Noto Project.
