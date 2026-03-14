@@ -145,6 +145,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "-p",
         "--place",
         type=str,
         default=None,
@@ -328,6 +329,27 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help=(
             "Opacity of the urban outline overlay (0.0 - 1.0, default: 0.2). "
             "Set to 0.0 to disable urban outline rendering at startup."
+        ),
+    )
+    parser.add_argument(
+        "-r",
+        "--urban-outline-radius-km",
+        type=_parse_non_negative_float,
+        default=2.5,
+        help=(
+            "Download and cache radius for the urban outline overlay in kilometers "
+            "(default: 2.5). This value becomes part of the cache key."
+        ),
+    )
+    parser.add_argument(
+        "-b",
+        "--urban-outline-min-building-height-m",
+        dest="urban_outline_min_height_m",
+        type=_parse_non_negative_float,
+        default=0.0,
+        help=(
+            "Minimum building height in meters for buildings included in the urban outline overlay "
+            "(default: 0.0). This value becomes part of the cache key."
         ),
     )
     parser.add_argument(

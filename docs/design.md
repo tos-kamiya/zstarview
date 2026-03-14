@@ -230,10 +230,11 @@
   - 画像変換補助
 - `src/zstarview/utils/qt.py`
   - Qt 補助
-- `src/zstarview/data/import_plateau_citygml_zip.py`
-  - PLATEAU CityGML ZIP 1 個を一時展開し、`udx/bldg` を検出して derived tile 生成へ渡す
-  - 出力先既定値は、実行中パッケージ自身の `zstarview/data/plateau_derived`
-  - `build_plateau_derived_tiles.py` と `build_plateau_tile_index.py` の orchestration 層として振る舞う
+- `src/zstarview/data/import_overture_buildings.py`
+  - `lat/lon + radius` に対応する bbox を計算する
+  - `overturemaps download` を呼び、`building` または `building_part` を取得する
+  - ダウンロード結果を既存の derived tile JSON と `tile_index.json` 形式へ変換する
+  - 出力先既定値は `CACHE_PATH/overture_buildings`
 
 ## 5. 主要データ構造
 
@@ -306,6 +307,11 @@
   - ホバー対象
   - ハイライト対象
   - 各更新パイプラインの UI 反映状態
+- `UrbanOutlineState`
+  - 都市アウトライン点列
+  - 読込中 / 取得中バナー
+  - 失敗表示状態
+  - `cache` または `overture` などの現在ソース表示
 
 ## 6. 処理フロー
 
@@ -316,7 +322,7 @@
 3. 入力を、`--place` による online 検索地点または通常の都市・タワー・山・座標として解決する。
 4. 星カタログや補助データを読み込む。
 5. `SkyWindow` を生成し、初回描画を行う。
-6. 必要に応じて雲更新と地形地平線更新をバックグラウンドで開始する。
+6. 必要に応じて雲更新、地形地平線更新、都市アウトライン更新をバックグラウンドで開始する。
 
 ### 6.2 星空更新フロー
 
@@ -354,17 +360,19 @@
 1. sky disc を生成する。
 2. 恒星、惑星、月、補助線を重ねる。
 3. 地形地平線があれば地平線関連描画へ反映する。
-4. 雲画像と欠損ティントを合成する。
-5. ラベル、オーバーレイ、ステータス行を描画する。
+4. 都市アウトラインがあれば白線オーバーレイとして描画する。
+5. 雲画像と欠損ティントを合成する。
+6. ラベル、オーバーレイ、ステータス行を描画する。
 
-### 6.6 PLATEAU ZIP 取込フロー
+### 6.6 都市アウトライン更新フロー
 
-1. `import_plateau_citygml_zip.py` が ZIP パスと import オプションを受け取る。
-2. ZIP を一時ディレクトリへ展開する。
-3. 展開結果から `udx/bldg` を 1 つ検出する。
-4. `build_plateau_derived_tiles.py` を呼び、`--min-building-height-m` を適用して derived tile JSON 群を生成する。
-5. `build_plateau_tile_index.py` を呼び、同じ `bldg` ディレクトリに `tile_index.json` を生成する。
-6. runtime 側は、その derived dataset を追加の高さフィルタなしで読む。
+1. `SkyWindow` が起動時またはトグル再有効化時に `UrbanOutlineController` へ更新要求を出す。
+2. `UrbanOutlineController` は `lat/lon + radius + min_height + feature_type` からキャッシュキーを作る。既定半径は `2.5km` である。
+3. 対応する derived dataset がキャッシュ内にあれば、それを読込対象にする。
+4. キャッシュが無ければ `import_overture_buildings.py` を通じて `overturemaps download` を実行し、GeoJSON 系の中間結果を derived tile と `tile_index.json` に変換する。
+5. runtime 側は `resolve_urban_debug_layer_for_viewer()` を使って、その derived dataset を追加の高さフィルタなしで読む。
+6. 結果の outline 点列は `UrbanOutlineState` と `SkyWindowState.urban_debug_outlines` に反映し、再描画する。
+7. 取得中や失敗時はバナー文字列を UI 状態へ反映する。
 
 ## 7. スレッドモデル
 
@@ -376,6 +384,7 @@
   - 星空計算
   - 雲データ取得と描画
   - 地形地平線計算
+  - 都市アウトライン取得と outline 生成
   - キャッシュ清掃の補助処理
 
 設計上の原則は次の通り。

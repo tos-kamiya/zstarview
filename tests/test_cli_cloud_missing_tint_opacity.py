@@ -46,3 +46,33 @@ def test_parse_args_urban_outline_opacity_override(monkeypatch) -> None:
     monkeypatch.setattr("sys.argv", ["zstarview", "--urban-outline-opacity", "0.6"])
     args = parse_args()
     assert math.isclose(float(args.urban_outline_opacity), 0.6, rel_tol=0.0, abs_tol=1e-9)
+
+
+def test_parse_args_urban_outline_radius_override(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "--urban-outline-radius-km", "1.8"])
+    args = parse_args()
+    assert math.isclose(float(args.urban_outline_radius_km), 1.8, rel_tol=0.0, abs_tol=1e-9)
+
+
+def test_parse_args_place_short_option(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "-p", "Tokyo Tower"])
+    args = parse_args()
+    assert args.place == "Tokyo Tower"
+
+
+def test_parse_args_urban_outline_radius_short_option(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "-r", "2.2"])
+    args = parse_args()
+    assert math.isclose(float(args.urban_outline_radius_km), 2.2, rel_tol=0.0, abs_tol=1e-9)
+
+
+def test_parse_args_urban_outline_min_height_override(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "--urban-outline-min-building-height-m", "40"])
+    args = parse_args()
+    assert math.isclose(float(args.urban_outline_min_height_m), 40.0, rel_tol=0.0, abs_tol=1e-9)
+
+
+def test_parse_args_urban_outline_min_height_short_option(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "-b", "25"])
+    args = parse_args()
+    assert math.isclose(float(args.urban_outline_min_height_m), 25.0, rel_tol=0.0, abs_tol=1e-9)

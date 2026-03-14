@@ -6,14 +6,15 @@ from types import SimpleNamespace
 
 from .data.plateau_derived_tiles import parse_derived_tile_buildings, select_derived_tile_envelopes
 from .data.urban_debug_layer_from_citygml import compute_debug_outlines
-from .paths import PLATEAU_DERIVED_ROOT_DIR
+from .data.import_overture_buildings import DEFAULT_FETCH_RADIUS_KM
+from .paths import OVERTURE_DERIVED_ROOT_DIR
 from .types import ViewerData
 
 
 def resolve_urban_debug_layer_for_viewer(
     viewer_data: ViewerData,
     *,
-    derived_root_dir: str | Path = PLATEAU_DERIVED_ROOT_DIR,
+    derived_root_dir: str | Path = OVERTURE_DERIVED_ROOT_DIR,
 ) -> list[list[tuple[float, float]]] | None:
     return _build_dynamic_urban_outline_layer(
         lat_deg=float(viewer_data.lat_deg),
@@ -44,7 +45,7 @@ def _build_dynamic_urban_outline_layer(
                 derived_dir,
                 observer_lat_deg=lat_deg,
                 observer_lon_deg=lon_deg,
-                radius_km=3.0,
+                radius_km=DEFAULT_FETCH_RADIUS_KM,
             )
         except ValueError:
             continue
@@ -59,10 +60,11 @@ def _build_dynamic_urban_outline_layer(
             name="coords",
             latitude_deg=lat_deg,
             longitude_deg=lon_deg,
+            viewpoint_height_m=observer_height_m,
             observer_height_m=observer_height_m,
         ),
         tuple(buildings),
-        radius_km=3.0,
+        radius_km=DEFAULT_FETCH_RADIUS_KM,
         edge_sample_step_m=10.0,
     )
     outlines = [

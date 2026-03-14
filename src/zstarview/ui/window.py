@@ -49,6 +49,7 @@ from ..paths import (
     TEXT_FONT_PATH,
     TEXT_FONT_SIZE,
     STATUS_LINE_FONT_SIZE,
+    OVERTURE_DERIVED_ROOT_DIR,
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
     CLOUD_MISSING_TINT_RGBA,
@@ -66,13 +67,14 @@ from .famous_star_dialog import NamedStarJumpDialog
 from .famous_star_search_dialog import NamedStarSearchDialog
 from .famous_star_shortcuts import NamedStarShortcut, SearchJumpTarget
 from ..asterisms import ASTERISM_KEYS_BY_SOURCE_ID
-from ..urban_debug_layer import resolve_urban_debug_layer_for_viewer
 from .sky_worker import SkyDataWorker
 from .window_inputs import PreparedWindowCatalogs
 from .window_inputs import SkyWindowRuntimeOptions, SkyWindowUserOptions
 from .window_render import SkyWindowRenderMixin
 from .window_state import SkyWindowState
 from .window_updates import SkyWindowUpdatesMixin
+from .urban_outline_controller import UrbanOutlineController
+from .urban_outline_state import UrbanOutlineState
 
 logger = logging.getLogger(__name__)
 
@@ -220,6 +222,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.star_base_radius = user_options.star_base_radius
         self.vmag_limit = user_options.vmag_limit
         self.sky_update_interval = runtime_options.sky_update_interval
+        self.urban_outline_radius_km = float(runtime_options.urban_outline_radius_km)
+        self.urban_outline_min_height_m = float(runtime_options.urban_outline_min_height_m)
         self.visual_preset = user_options.visual_preset
         self.star_visibility_boost = user_options.star_visibility_boost
         self._star_render_expected_width = runtime_options.star_render_expected_width
@@ -237,7 +241,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.viewer_data = viewer_data
         self.state = SkyWindowState(
             render_view_center=tuple(self.viewer_data.view_center),
-            urban_debug_outlines=resolve_urban_debug_layer_for_viewer(self.viewer_data),
+            urban_debug_outlines=None,
         )
         self.setWindowTitle(f"{APP_DISPLAY_NAME} - {self.viewer_data.city_name}")
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
@@ -298,8 +302,10 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         # --- Cloud Data State and Cache ---
         self.cloud_state = CloudImageState()
         self.terrain_horizon_state = TerrainHorizonState()
+        self.urban_outline_state = UrbanOutlineState()
         self._cloud_controller: Optional[CloudController] = None
         self._terrain_horizon_controller: Optional[TerrainHorizonController] = None
+        self._urban_outline_controller: Optional[UrbanOutlineController] = None
         self._cloud_update_timer = QTimer(self)
         self._cloud_update_timer.setInterval(CLOUD_UPDATE_INTERVAL * 1000)
         self._cloud_update_timer.timeout.connect(lambda: self.start_background_cloud_update(reason="timer"))
@@ -336,6 +342,15 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._terrain_horizon_controller.terrain_started.connect(self._on_terrain_horizon_started)
         self._terrain_horizon_controller.terrain_ready.connect(self._on_terrain_horizon_ready)
         self._terrain_horizon_controller.terrain_failed.connect(self._on_terrain_horizon_failed)
+        self._urban_outline_controller = UrbanOutlineController(
+            derived_root_dir=Path(OVERTURE_DERIVED_ROOT_DIR),
+            min_building_height_m=self.urban_outline_min_height_m,
+            radius_km=self.urban_outline_radius_km,
+            parent=self,
+        )
+        self._urban_outline_controller.urban_started.connect(self._on_urban_outline_started)
+        self._urban_outline_controller.urban_ready.connect(self._on_urban_outline_ready)
+        self._urban_outline_controller.urban_failed.connect(self._on_urban_outline_failed)
         if self._action_toggle_terrain_horizon is not None:
             self._action_toggle_terrain_horizon.setEnabled(self._terrain_horizon_gui_allowed)
         if self._action_toggle_sky_disc is not None:
@@ -367,6 +382,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self.start_background_cloud_update(reason="initial")
         if self.terrain_horizon_opacity > 0.0:
             self.start_background_terrain_horizon_update(reason="initial")
+        if self.urban_outline_opacity > 0.0:
+            self.start_background_urban_outline_update(reason="initial")
 
     def _setup_update_infrastructure(self) -> None:
         """Initialize timers, worker, and signal wiring for background updates."""
@@ -652,6 +669,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self._cloud_controller.shutdown()
         if self._terrain_horizon_controller is not None:
             self._terrain_horizon_controller.shutdown()
+        if self._urban_outline_controller is not None:
+            self._urban_outline_controller.shutdown()
         if self._sky_data_update_timer.isActive():
             self._sky_data_update_timer.stop()
         if self._asterism_check_timer.isActive():
@@ -781,6 +800,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.show_urban_outline_layer = self.urban_outline_opacity > 0.0
         if self._action_toggle_urban_outline is not None and self._action_toggle_urban_outline.isChecked() != enable_urban_outline:
             self._action_toggle_urban_outline.setChecked(enable_urban_outline)
+        if enable_urban_outline:
+            self.start_background_urban_outline_update(reason="toggle-on")
         self.update()
 
     def toggle_fullscreen(self) -> None:

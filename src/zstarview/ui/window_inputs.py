@@ -63,6 +63,8 @@ class SkyWindowRuntimeOptions:
 
     delta_t: timedelta = timedelta(0)
     sky_update_interval: int = 60
+    urban_outline_radius_km: float = 2.5
+    urban_outline_min_height_m: float = 0.0
     cloud_stripe_style: tuple[int, float] = (50, 0.2)
     cloud_missing_tint_opacity: float = float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0
     star_render_expected_width: int = 600
@@ -160,6 +162,8 @@ def prepare_window_runtime_options(
     *,
     delta_t: timedelta = timedelta(0),
     sky_update_interval: int = 60,
+    urban_outline_radius_km: float = 2.5,
+    urban_outline_min_height_m: float = 0.0,
     cloud_stripe_style: tuple[int, float] = (50, 0.2),
     cloud_missing_tint_opacity: float = float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0,
     star_render_expected_width: int = 600,
@@ -169,6 +173,8 @@ def prepare_window_runtime_options(
     return SkyWindowRuntimeOptions(
         delta_t=delta_t,
         sky_update_interval=max(1, int(sky_update_interval)),
+        urban_outline_radius_km=max(0.0, float(urban_outline_radius_km)),
+        urban_outline_min_height_m=max(0.0, float(urban_outline_min_height_m)),
         cloud_stripe_style=cloud_stripe_style,
         cloud_missing_tint_opacity=min(1.0, max(0.0, cloud_missing_tint_opacity)),
         star_render_expected_width=max(1, int(star_render_expected_width)),

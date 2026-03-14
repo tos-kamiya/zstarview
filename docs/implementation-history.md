@@ -52,6 +52,12 @@
 
 ### 2026-03-14
 
+- 都市アウトラインの Overture パイプライン化
+  - 都市アウトラインの既定 runtime ソースを bundled PLATEAU derived data から `CACHE_PATH/overture_buildings` へ切り替えた。
+  - `UrbanOutlineController` と `UrbanOutlineState` を追加し、起動時またはトグル再有効化時に Overture の取得またはキャッシュ読込をバックグラウンドで開始するようにした。
+  - `lat/lon + radius + min_height + feature_type` を正規化したキャッシュキーを導入した。
+  - `overturemaps` CLI を呼ぶ `import_overture_buildings.py` と `zstarview-import-overture-buildings` を追加し、ダウンロード結果を既存 derived tile 形式へ変換できるようにした。
+
 - PLATEAU CityGML ZIP 取込ユーティリティ
   - `zstarview-import-plateau-zip` を追加し、ダウンロード済み ZIP 1 個から derived tile と `tile_index.json` を生成できるようにした。
   - 出力先は、実行中のインストール済みパッケージ配下 `zstarview/data/plateau_derived` を既定にした。
