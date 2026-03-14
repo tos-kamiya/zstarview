@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Import PLATEAU CityGML ZIP files into bundled derived datasets."""
+"""Import a PLATEAU CityGML ZIP file into bundled derived datasets."""
 
 from __future__ import annotations
 
@@ -12,15 +12,10 @@ from tempfile import TemporaryDirectory
 from typing import Sequence
 from zipfile import ZipFile
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-SRC_ROOT = REPO_ROOT / "src"
-DATA_ROOT = SRC_ROOT / "zstarview" / "data"
-if str(SRC_ROOT) not in sys.path:
-    sys.path.insert(0, str(SRC_ROOT))
+DATA_ROOT = Path(__file__).resolve().parent
 
 from zstarview.data import build_plateau_derived_tiles  # noqa: E402
 from zstarview.data import build_plateau_tile_index  # noqa: E402
-from zstarview.data import urban_debug_layer_from_citygml  # noqa: E402
 
 _CITY_DATASET_RE = re.compile(
     r"^(?P<city_code>\d{5})_(?P<city_token>.+?)(?:_city(?:_\d{4})?_citygml_|_20\d{2}_citygml_).*"
@@ -30,13 +25,12 @@ _CITY_SUFFIX_RE = re.compile(r"-(?:shi|ku|cho|machi|son|mura)$")
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Extract PLATEAU CityGML ZIP files and write derived skyline datasets into the app data directory."
+        description="Extract a PLATEAU CityGML ZIP file and write derived skyline datasets into the app data directory."
     )
     parser.add_argument(
         "zip_path",
-        nargs="+",
         type=Path,
-        help="One or more PLATEAU CityGML ZIP files.",
+        help="PLATEAU CityGML ZIP file.",
     )
     parser.add_argument(
         "--derived-root-dir",
@@ -45,33 +39,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Root directory where derived datasets will be written.",
     )
     parser.add_argument(
-        "--urban-outline-root-dir",
-        type=Path,
-        default=DATA_ROOT / "viewpoints" / "urban_debug_layer",
-        help="Directory for optional one-off urban outline JSON exports.",
-    )
-    parser.add_argument(
-        "--write-urban-outline-json",
-        action="store_true",
-        help="Also export a one-off urban outline JSON for each imported city.",
-    )
-    parser.add_argument(
         "--min-building-height-m",
         type=float,
         default=build_plateau_derived_tiles.DEFAULT_MIN_BUILDING_HEIGHT_M,
         help="Ignore buildings lower than this height in meters.",
-    )
-    parser.add_argument(
-        "--radius-km",
-        type=float,
-        default=urban_debug_layer_from_citygml.DEFAULT_RADIUS_KM,
-        help="Radius for optional urban outline export.",
-    )
-    parser.add_argument(
-        "--edge-sample-step-m",
-        type=float,
-        default=urban_debug_layer_from_citygml.DEFAULT_EDGE_SAMPLE_STEP_M,
-        help="Edge sampling step for optional urban outline export.",
     )
     parser.add_argument(
         "--workers",
@@ -109,23 +80,14 @@ def find_citygml_building_dir(extracted_root: Path) -> Path:
     return matches[0]
 
 
-def build_urban_outline_output_path(urban_outline_root_dir: Path, city_dir_name: str) -> Path:
-    city_slug = city_dir_name.split("_", 1)[1] if "_" in city_dir_name else city_dir_name
-    return urban_outline_root_dir / f"{city_slug}_urban_outline_layer.json"
-
-
 def import_zip(
     zip_path: Path,
     *,
     derived_root_dir: Path,
-    urban_outline_root_dir: Path,
-    write_urban_outline_json: bool,
     min_building_height_m: float,
-    radius_km: float,
-    edge_sample_step_m: float,
     workers: int,
     keep_extracted_dir: Path | None,
-) -> tuple[Path, Path | None]:
+) -> Path:
     if not zip_path.is_file():
         raise FileNotFoundError(f"ZIP file not found: {zip_path}")
 
@@ -163,48 +125,21 @@ def import_zip(
             str(derived_dir),
         ]
     )
-
-    outline_path: Path | None = None
-    if write_urban_outline_json:
-        outline_path = build_urban_outline_output_path(urban_outline_root_dir, city_dir_name)
-        urban_debug_layer_from_citygml.main(
-            [
-                "--derived-dir",
-                str(derived_dir),
-                "--all-covered-towers",
-                "--radius-km",
-                str(float(radius_km)),
-                "--min-building-height-m",
-                str(float(min_building_height_m)),
-                "--edge-sample-step-m",
-                str(float(edge_sample_step_m)),
-                "--output-json",
-                str(outline_path),
-            ]
-        )
-
-    return derived_dir, outline_path
+    return derived_dir
 
 
-def main(argv: Sequence[str]) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
 
-    for zip_path in args.zip_path:
-        derived_dir, outline_path = import_zip(
-            zip_path,
-            derived_root_dir=args.derived_root_dir,
-            urban_outline_root_dir=args.urban_outline_root_dir,
-            write_urban_outline_json=bool(args.write_urban_outline_json),
-            min_building_height_m=float(args.min_building_height_m),
-            radius_km=float(args.radius_km),
-            edge_sample_step_m=float(args.edge_sample_step_m),
-            workers=max(1, int(args.workers)),
-            keep_extracted_dir=args.keep_extracted_dir,
-        )
-        print(f"[ok] imported: {zip_path} -> {derived_dir}")
-        if outline_path is not None:
-            print(f"[ok] urban-outline-json: {outline_path}")
+    derived_dir = import_zip(
+        args.zip_path,
+        derived_root_dir=args.derived_root_dir,
+        min_building_height_m=float(args.min_building_height_m),
+        workers=max(1, int(args.workers)),
+        keep_extracted_dir=args.keep_extracted_dir,
+    )
+    print(f"[ok] imported: {args.zip_path} -> {derived_dir}")
     return 0
 
 

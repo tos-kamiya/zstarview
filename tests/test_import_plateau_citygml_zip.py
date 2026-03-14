@@ -58,6 +58,14 @@ def test_detect_output_city_name_normalizes_zip_filename() -> None:
     assert mod.detect_output_city_name(Path("13100_tokyo23-ku_2022_citygml_1_2_op.zip")) == "13100_tokyo23"
 
 
+def test_default_derived_root_dir_points_to_package_data_dir() -> None:
+    mod = _load_module()
+    parser = mod.build_arg_parser()
+    args = parser.parse_args(["dummy.zip"])
+
+    assert args.derived_root_dir == mod.DATA_ROOT / "plateau_derived"
+
+
 def test_main_imports_zip_with_top_level_directory(tmp_path: Path) -> None:
     mod = _load_module()
     zip_path = tmp_path / "12100_chiba-shi_city_2024_citygml_1_op.zip"
@@ -83,34 +91,17 @@ def test_main_imports_zip_with_top_level_directory(tmp_path: Path) -> None:
     assert index_payload["tile_count"] == 1
 
 
-def test_main_imports_zip_without_top_level_directory_and_can_write_outline_json(
-    tmp_path: Path,
-    monkeypatch,
-) -> None:
+def test_main_imports_zip_without_top_level_directory(tmp_path: Path) -> None:
     mod = _load_module()
     zip_path = tmp_path / "14100_yokohama-shi_city_2024_citygml_2_op.zip"
     _write_test_zip(zip_path, with_top_level_dir=False)
     derived_root = tmp_path / "derived-root"
-    outline_root = tmp_path / "outline-root"
-    called_with: list[list[str]] = []
-
-    def fake_outline_main(argv: list[str]) -> int:
-        called_with.append(list(argv))
-        output_path = Path(argv[argv.index("--output-json") + 1])
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_text("[]", encoding="utf-8")
-        return 0
-
-    monkeypatch.setattr(mod.urban_debug_layer_from_citygml, "main", fake_outline_main)
 
     rc = mod.main(
         [
             str(zip_path),
             "--derived-root-dir",
             str(derived_root),
-            "--urban-outline-root-dir",
-            str(outline_root),
-            "--write-urban-outline-json",
             "--workers",
             "1",
         ]
@@ -119,6 +110,20 @@ def test_main_imports_zip_without_top_level_directory_and_can_write_outline_json
     assert rc == 0
     derived_dir = derived_root / "14100_yokohama" / "bldg"
     assert (derived_dir / "tile-a.json").exists()
-    assert called_with
-    assert "--all-covered-towers" in called_with[0]
-    assert (outline_root / "yokohama_urban_outline_layer.json").exists()
+
+
+def test_main_accepts_console_script_style_invocation(tmp_path: Path, monkeypatch) -> None:
+    mod = _load_module()
+    zip_path = tmp_path / "32201_matsue-shi_city_2024_citygml_1_op.zip"
+    _write_test_zip(zip_path, with_top_level_dir=False)
+    derived_root = tmp_path / "derived-root"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["zstarview-import-plateau-zip", str(zip_path), "--derived-root-dir", str(derived_root)],
+    )
+
+    rc = mod.main()
+
+    assert rc == 0
+    assert (derived_root / "32201_matsue" / "bldg" / "tile-a.json").exists()

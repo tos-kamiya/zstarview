@@ -301,7 +301,7 @@ src/zstarview/data/build_plateau_derived_tiles.py
 ```
 
 このスクリプトは、`udx/bldg/*.gml` を 1 タイルずつ軽量 JSON に変換する。  
-高さは `measuredHeight` を優先し、欠損時のみ `storeysAboveGround * 3.5m` を使い、`40m` 未満は落とす。
+高さは `measuredHeight` を優先し、欠損時のみ `storeysAboveGround * 3.5m` を使う。既定では `40m` 未満を落とすが、`--min-building-height-m` で変更できる。
 
 例:
 
@@ -386,18 +386,22 @@ src/zstarview/data/import_plateau_citygml_zip.py
 
 ```bash
 .venv/bin/python src/zstarview/data/import_plateau_citygml_zip.py \
-  raw-data/12100_chiba-shi_city_2024_citygml_1_op.zip \
-  raw-data/14100_yokohama-shi_city_2024_citygml_2_op.zip
+  raw-data/12100_chiba-shi_city_2024_citygml_1_op.zip
+```
+
+`pipx install zstarview` のようなインストール後は、同じ処理を console script
+`zstarview-import-plateau-zip` から実行できる。既定の出力先は、インストール済み
+パッケージ配下の `zstarview/data/plateau_derived` である。
+
+```bash
+zstarview-import-plateau-zip \
+  ~/Downloads/12100_chiba-shi_city_2024_citygml_1_op.zip
 ```
 
 これにより、ZIP を一時展開して `udx/bldg/*.gml` を検出し、次へ書き出す。
 
 - `src/zstarview/data/plateau_derived/12100_chiba/bldg/*.json`
 - `src/zstarview/data/plateau_derived/12100_chiba/bldg/tile_index.json`
-- `src/zstarview/data/plateau_derived/14100_yokohama/bldg/*.json`
-- `src/zstarview/data/plateau_derived/14100_yokohama/bldg/tile_index.json`
-
-確認用の one-off urban outline JSON も同時に欲しい場合は、`--write-urban-outline-json` を付ける。
 
 ## 16. urban outline layer の one-off 出力
 
