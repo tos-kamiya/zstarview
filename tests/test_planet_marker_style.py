@@ -3,7 +3,7 @@ from __future__ import annotations
 import astropy.time
 import numpy as np
 from PySide6.QtCore import QPoint, QPointF
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QImage, QPainter
 from PySide6.QtWidgets import QApplication
 
 from zstarview.render import draw as render_draw
@@ -120,6 +120,38 @@ def test_planets_are_drawn_with_disc_and_cross_markers(monkeypatch) -> None:
     assert len(cross_calls) == 1
     assert cross_calls[0][0] < 1.0
     assert label_calls == ["Mars"]
+
+
+def test_planet_label_is_skipped_when_body_marker_is_outside_viewport(monkeypatch) -> None:
+    monkeypatch.setattr(render_draw, "draw_planet_disc", lambda *_a, **_k: None)
+    monkeypatch.setattr(render_draw, "draw_planet_bloom", lambda *_a, **_k: None)
+    monkeypatch.setattr(render_draw, "draw_gauge_cross", lambda *_a, **_k: None)
+
+    image = QImage(40, 40, QImage.Format.Format_ARGB32_Premultiplied)
+    painter = QPainter(image)
+    try:
+        mars = PlanetBody(name="mars", alt=0.0, az=180.0, symbol="♂", is_visible=True)
+        viewer = ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="UTC",
+            city_name="Tokyo",
+            view_center=(45.0, 180.0),
+        )
+        geometry = ScreenGeometry(center=(20, 20), radius=80)
+        label_candidates: list[dict[str, object]] = []
+
+        render_draw.draw_solar_system_bodies(
+            painter=painter,
+            geometry=geometry,
+            celestial_data=_empty_celestial_data([mars]),
+            viewer_data=viewer,
+            enlarge_moon=False,
+            label_candidates=label_candidates,
+        )
+    finally:
+        painter.end()
+
+    assert label_candidates == []
 
 
 def test_hover_can_identify_planet_name() -> None:
