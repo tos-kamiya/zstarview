@@ -46,7 +46,52 @@ def test_load_derived_tile_envelope_reads_bbox(tmp_path: Path) -> None:
     assert envelope.max_lon_deg == 139.1
 
 
-def test_parse_derived_tile_buildings_filters_low_buildings(tmp_path: Path) -> None:
+def test_parse_derived_tile_buildings_defaults_to_no_height_filter(tmp_path: Path) -> None:
+    mod = _load_module()
+    path = tmp_path / "tile.json"
+    path.write_text(
+        json.dumps(
+            {
+                "buildings": [
+                    {
+                        "id": "high",
+                        "height_m": 80.0,
+                        "rings": [
+                            [
+                                [139.0, 35.0],
+                                [139.001, 35.0],
+                                [139.001, 35.001],
+                                [139.0, 35.001],
+                                [139.0, 35.0],
+                            ]
+                        ],
+                    },
+                    {
+                        "id": "low",
+                        "height_m": 20.0,
+                        "rings": [
+                            [
+                                [139.0, 35.0],
+                                [139.001, 35.0],
+                                [139.001, 35.001],
+                                [139.0, 35.001],
+                                [139.0, 35.0],
+                            ]
+                        ],
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    buildings = mod.parse_derived_tile_buildings(path)
+
+    assert len(buildings) == 2
+    assert [building.building_id for building in buildings] == ["high", "low"]
+
+
+def test_parse_derived_tile_buildings_can_filter_low_buildings(tmp_path: Path) -> None:
     mod = _load_module()
     path = tmp_path / "tile.json"
     path.write_text(

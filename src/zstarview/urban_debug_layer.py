@@ -49,7 +49,7 @@ def _build_dynamic_urban_outline_layer(
         except ValueError:
             continue
         for envelope in envelopes:
-            buildings.extend(parse_derived_tile_buildings(envelope.path, min_building_height_m=40.0))
+            buildings.extend(parse_derived_tile_buildings(envelope.path))
     if not buildings:
         return None
 

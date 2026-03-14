@@ -20,9 +20,10 @@ def test_resolve_urban_debug_layer_for_viewer_builds_dynamic_layer(monkeypatch, 
         "zstarview.urban_debug_layer.select_derived_tile_envelopes",
         lambda *_args, **_kwargs: (type("Envelope", (), {"path": tmp_path / "tile.json"})(),),
     )
+    parse_calls = []
     monkeypatch.setattr(
         "zstarview.urban_debug_layer.parse_derived_tile_buildings",
-        lambda *_args, **_kwargs: ("building",),
+        lambda *args, **kwargs: parse_calls.append((args, kwargs)) or ("building",),
     )
     monkeypatch.setattr(
         "zstarview.urban_debug_layer.compute_debug_outlines",
@@ -46,6 +47,7 @@ def test_resolve_urban_debug_layer_for_viewer_builds_dynamic_layer(monkeypatch, 
     )
 
     assert got == [[(-1.0, 10.0), (-2.0, 12.0)]]
+    assert parse_calls[0][1] == {}
 
 
 def test_resolve_urban_debug_layer_for_viewer_returns_none_when_outside_coverage(tmp_path: Path) -> None:

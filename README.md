@@ -60,6 +60,31 @@ zstarview --place "Matsue Station" --place-countrycode jp
 
 The CLI supports detailed startup configuration for location, time, rendering, and bundled viewpoint queries.
 
+After installation, the helper utility `zstarview-import-plateau-zip` is also available.
+It imports a PLATEAU CityGML ZIP file that you downloaded locally and writes the
+derived building tiles into the installed package's `zstarview/data/plateau_derived`
+directory so the urban outline overlay can use them. Real PLATEAU datasets are
+typically large, so you will usually want to pass `--workers N`. The import step
+defaults to `--min-building-height-m 40`, but you can lower that value or set
+`--min-building-height-m 0` for cities where 40m leaves too few buildings.
+
+Example:
+
+```bash
+zstarview-import-plateau-zip \
+  ~/Downloads/12100_chiba-shi_city_2024_citygml_1_op.zip \
+  --workers 8
+```
+
+Example with no height cutoff:
+
+```bash
+zstarview-import-plateau-zip \
+  ~/Downloads/32201_matsue-shi_city_2024_citygml_1_op.zip \
+  --workers 8 \
+  --min-building-height-m 0
+```
+
 <details>
   <summary>CLI reference</summary>
 

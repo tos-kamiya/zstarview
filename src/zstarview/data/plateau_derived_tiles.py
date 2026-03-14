@@ -10,7 +10,6 @@ from zstarview.data.plateau_citygml import (
 )
 from zstarview.data.urban_outline_common import (
     BuildingFootprint,
-    DEFAULT_MIN_BUILDING_HEIGHT_M,
 )
 
 
@@ -117,7 +116,7 @@ def select_derived_tile_envelopes(
 def parse_derived_tile_buildings(
     path: Path,
     *,
-    min_building_height_m: float = DEFAULT_MIN_BUILDING_HEIGHT_M,
+    min_building_height_m: float | None = None,
 ) -> tuple[BuildingFootprint, ...]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
@@ -134,7 +133,7 @@ def parse_derived_tile_buildings(
             height_m = float(row["height_m"])
         except (KeyError, TypeError, ValueError):
             continue
-        if height_m < float(min_building_height_m):
+        if min_building_height_m is not None and height_m < float(min_building_height_m):
             continue
         rings = _parse_rings_lonlat(row.get("rings"))
         if not rings:
