@@ -17,9 +17,6 @@
   - OpenNGC (`pyongc`) を使った DSO カタログ生成手順
 - `docs/developer/viewpoint-dataset-generation.md`
   - tower / mountain viewpoint dataset の生成フローと運用方針
-- `docs/developer/urban-outline-layer-derived-format-ja_JP.md`
-  - PLATEAU 由来の都市アウトラインレイヤ用中間タイルデータ形式と同梱方針
-  - `src/zstarview/data/build_plateau_derived_tiles.py` の使い方も含む
 
 ## Notes
 

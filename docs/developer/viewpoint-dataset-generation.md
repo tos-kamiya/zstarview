@@ -6,8 +6,6 @@
 - `src/zstarview/data/viewpoints/tower_viewpoints.json`
 - `src/zstarview/data/viewpoints/mountain_viewpoints.json`
 
-都市アウトラインレイヤ用の PLATEAU 派生タイルについては、別文書 [urban-outline-layer-derived-format-ja_JP.md](/home/toshihiro/playground/zstarview/docs/developer/urban-outline-layer-derived-format-ja_JP.md) を参照する。
-
 ## 1. 位置づけ
 
 アプリ本体は bundled JSON を読むだけで、viewpoint データを実行時に外部取得しない。  
@@ -68,8 +66,8 @@ tower dataset の高さ関連キーは次の意味で使い分ける。
 - CLI `--observer-height-m`
   - 観測基準点から観測者の目線までの高さ
 
-この bundled dataset は viewpoint 候補の一覧であって、各 viewpoint に対応する都市スカイライン前計算データが常に存在するとは限らない。  
-例えば `Kobe Port Tower` は bundled viewpoint としては採用しているが、2026-03-12 時点では神戸市の PLATEAU Open Data が無いため、PLATEAU 由来 skyline JSON は未生成である。
+この bundled dataset は viewpoint 候補の一覧であって、各 viewpoint に対応する都市アウトライン用キャッシュが常に存在するとは限らない。  
+都市アウトラインは現在、起動時に Overture 建物データを取得してオンデマンド生成する方式である。
 
 ### 2.3 生成スクリプト
 
@@ -310,19 +308,12 @@ CLI の一覧取得や `--show-viewpoint-json` も、ローカル JSON を読む
 ### 4.4 IDs を安定キーとして使う
 
 viewpoint の安定キーは表示名ではなく `id` / `qid` で扱う。  
-特に都市アウトラインレイヤのような付随データは `name` キーではなく `id` キーにぶら下げる。
+特に将来 viewpoint 付随データを追加する場合は、`name` キーではなく `id` キーにぶら下げる。
 
-## 5. Urban Skyline との関係
+## 5. Urban Outline との関係
 
-都市アウトラインレイヤ用の派生タイル生成は viewpoint dataset の後段処理である。  
-流れとしては次の順が前提になる。
-
-1. bundled viewpoint dataset を確定する
-2. 対象 viewpoint を選ぶ
-3. PLATEAU などの都市建物データから skyline を前計算する
-4. `id -> { name, profiles }` 形式で保存する
-
-この手順は [urban-outline-layer-derived-format-ja_JP.md](/home/toshihiro/playground/zstarview/docs/developer/urban-outline-layer-derived-format-ja_JP.md) に分離してある。
+都市アウトラインレイヤは viewpoint dataset の後段にある機能だが、現在は前計算済み同梱データではなく、実行時に Overture 建物データを取得してキャッシュする方式である。  
+そのため viewpoint dataset 側で重要なのは、安定した `id` と正確な座標・観測点高さを持つことである。
 
 ## 6. 今後の整理候補
 

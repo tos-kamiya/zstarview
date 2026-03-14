@@ -58,14 +58,13 @@
   - `lat/lon + radius + min_height + feature_type` を正規化したキャッシュキーを導入した。
   - `overturemaps` CLI を呼ぶ `import_overture_buildings.py` と `zstarview-import-overture-buildings` を追加し、ダウンロード結果を既存 derived tile 形式へ変換できるようにした。
 
-- PLATEAU CityGML ZIP 取込ユーティリティ
-  - `zstarview-import-plateau-zip` を追加し、ダウンロード済み ZIP 1 個から derived tile と `tile_index.json` を生成できるようにした。
-  - 出力先は、実行中のインストール済みパッケージ配下 `zstarview/data/plateau_derived` を既定にした。
-  - 実データが大きい前提で、`--workers` を利用者向けオプションとして公開した。
-
 - 都市アウトライン用建物高さしきい値の見直し
   - runtime 側の都市アウトライン読込では 40m 再フィルタをやめ、derived tile に残っている建物をそのまま使うようにした。
   - 建物高さしきい値は import / 生成時の `--min-building-height-m` に集約し、低層中心都市では `0` を指定できるようにした。
+
+- PLATEAU 実装の撤去
+  - 旧 `plateau_derived` 同梱データ、CityGML 取込スクリプト、PLATEAU 名の runtime helper を削除し、都市アウトライン経路を Overture に一本化した。
+  - derived tile 読込や tile index 生成のユーティリティは、データソース非依存の汎用名へ整理した。
 
 ### 2026-03-09
 
