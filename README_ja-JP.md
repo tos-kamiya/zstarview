@@ -29,10 +29,10 @@
 
 <table>
   <tr>
-    <td align="center"><img src="docs/images/screenshot-tokyotower.png" alt="東京タワー付近（東京）" width="100%" /></td>
-    <td align="center"><img src="docs/images/screenshot-downtowndubai.png" alt="ダウンタウン・ドバイ" width="100%" /></td>
-    <td align="center"><img src="docs/images/screenshot-marinabay.png" alt="マリーナベイ（シンガポール）" width="100%" /></td>
-    <td align="center"><img src="docs/images/screenshot-sydney.png" alt="サーキュラー・キー（シドニー）" width="100%" /></td>
+    <td align="center" width="25%"><img src="docs/images/screenshot-tokyotower.png" alt="東京タワー付近（東京）" width="100%" /></td>
+    <td align="center" width="25%"><img src="docs/images/screenshot-downtowndubai.png" alt="ダウンタウン・ドバイ" width="100%" /></td>
+    <td align="center" width="25%"><img src="docs/images/screenshot-marinabay.png" alt="マリーナベイ（シンガポール）" width="100%" /></td>
+    <td align="center" width="25%"><img src="docs/images/screenshot-sydney.png" alt="サーキュラー・キー（シドニー）" width="100%" /></td>
   </tr>
   <tr>
     <td align="center"><sub>東京タワー付近（東京）</sub></td>
