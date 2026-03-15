@@ -27,24 +27,20 @@ It renders a live all-sky view centered on your chosen location and time, includ
 
 Urban outline examples from several cities worldwide:
 
-<p align="center">
-  <span style="display: inline-block; width: 24%; vertical-align: top; text-align: center;">
-    <img src="docs/images/screenshot-tokyotower.png" alt="Near Tokyo Tower, Tokyo" width="100%" /><br />
-    <sub>Near Tokyo Tower, Tokyo</sub>
-  </span>
-  <span style="display: inline-block; width: 24%; vertical-align: top; text-align: center;">
-    <img src="docs/images/screenshot-downtowndubai.png" alt="Downtown Dubai" width="100%" /><br />
-    <sub>Downtown Dubai</sub>
-  </span>
-  <span style="display: inline-block; width: 24%; vertical-align: top; text-align: center;">
-    <img src="docs/images/screenshot-marinabay.png" alt="Marina Bay, Singapore" width="100%" /><br />
-    <sub>Marina Bay, Singapore</sub>
-  </span>
-  <span style="display: inline-block; width: 24%; vertical-align: top; text-align: center;">
-    <img src="docs/images/screenshot-sydney.png" alt="Circular Quay, Sydney" width="100%" /><br />
-    <sub>Circular Quay, Sydney</sub>
-  </span>
-</p>
+<table>
+  <tr>
+    <td align="center"><img src="docs/images/screenshot-tokyotower.png" alt="Near Tokyo Tower, Tokyo" width="100%" /></td>
+    <td align="center"><img src="docs/images/screenshot-downtowndubai.png" alt="Downtown Dubai" width="100%" /></td>
+    <td align="center"><img src="docs/images/screenshot-marinabay.png" alt="Marina Bay, Singapore" width="100%" /></td>
+    <td align="center"><img src="docs/images/screenshot-sydney.png" alt="Circular Quay, Sydney" width="100%" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Near Tokyo Tower, Tokyo</sub></td>
+    <td align="center"><sub>Downtown Dubai</sub></td>
+    <td align="center"><sub>Marina Bay, Singapore</sub></td>
+    <td align="center"><sub>Circular Quay, Sydney</sub></td>
+  </tr>
+</table>
 
 ## Installation (Recommended: `pipx`)
 
