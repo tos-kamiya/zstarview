@@ -27,24 +27,20 @@
 
 都市アウトライン表示の都市別スクリーンショット例:
 
-<p align="center">
-  <span style="display: inline-block; width: 24%; vertical-align: top; text-align: center;">
-    <img src="docs/images/screenshot-tokyotower.png" alt="東京タワー付近（東京）" width="100%" /><br />
-    <sub>東京タワー付近（東京）</sub>
-  </span>
-  <span style="display: inline-block; width: 24%; vertical-align: top; text-align: center;">
-    <img src="docs/images/screenshot-downtowndubai.png" alt="ダウンタウン・ドバイ" width="100%" /><br />
-    <sub>ダウンタウン・ドバイ</sub>
-  </span>
-  <span style="display: inline-block; width: 24%; vertical-align: top; text-align: center;">
-    <img src="docs/images/screenshot-marinabay.png" alt="マリーナベイ（シンガポール）" width="100%" /><br />
-    <sub>マリーナベイ（シンガポール）</sub>
-  </span>
-  <span style="display: inline-block; width: 24%; vertical-align: top; text-align: center;">
-    <img src="docs/images/screenshot-sydney.png" alt="サーキュラー・キー（シドニー）" width="100%" /><br />
-    <sub>サーキュラー・キー（シドニー）</sub>
-  </span>
-</p>
+<table>
+  <tr>
+    <td align="center"><img src="docs/images/screenshot-tokyotower.png" alt="東京タワー付近（東京）" width="100%" /></td>
+    <td align="center"><img src="docs/images/screenshot-downtowndubai.png" alt="ダウンタウン・ドバイ" width="100%" /></td>
+    <td align="center"><img src="docs/images/screenshot-marinabay.png" alt="マリーナベイ（シンガポール）" width="100%" /></td>
+    <td align="center"><img src="docs/images/screenshot-sydney.png" alt="サーキュラー・キー（シドニー）" width="100%" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>東京タワー付近（東京）</sub></td>
+    <td align="center"><sub>ダウンタウン・ドバイ</sub></td>
+    <td align="center"><sub>マリーナベイ（シンガポール）</sub></td>
+    <td align="center"><sub>サーキュラー・キー（シドニー）</sub></td>
+  </tr>
+</table>
 
 ## インストール方法（推奨：`pipx`）
 
