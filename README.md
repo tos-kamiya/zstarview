@@ -25,6 +25,27 @@ It renders a live all-sky view centered on your chosen location and time, includ
     <img src="docs/images/screenshot4.png" alt="Screenshot 4" width="49%" />
   </p>
 
+Urban outline examples from several cities worldwide:
+
+<p align="center">
+  <span style="display: inline-block; width: 24%; vertical-align: top; text-align: center;">
+    <img src="docs/images/screenshot-tokyotower.png" alt="Near Tokyo Tower, Tokyo" width="100%" /><br />
+    <sub>Near Tokyo Tower, Tokyo</sub>
+  </span>
+  <span style="display: inline-block; width: 24%; vertical-align: top; text-align: center;">
+    <img src="docs/images/screenshot-downtowndubai.png" alt="Downtown Dubai" width="100%" /><br />
+    <sub>Downtown Dubai</sub>
+  </span>
+  <span style="display: inline-block; width: 24%; vertical-align: top; text-align: center;">
+    <img src="docs/images/screenshot-marinabay.png" alt="Marina Bay, Singapore" width="100%" /><br />
+    <sub>Marina Bay, Singapore</sub>
+  </span>
+  <span style="display: inline-block; width: 24%; vertical-align: top; text-align: center;">
+    <img src="docs/images/screenshot-sydney.png" alt="Circular Quay, Sydney" width="100%" /><br />
+    <sub>Circular Quay, Sydney</sub>
+  </span>
+</p>
+
 ## Installation (Recommended: `pipx`)
 
 Prerequisite for the urban outline overlay: install the `overturemaps` CLI separately.

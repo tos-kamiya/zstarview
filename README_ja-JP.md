@@ -25,6 +25,27 @@
     <img src="docs/images/screenshot4.png" alt="Screenshot 4" width="49%" />
   </p>
 
+都市アウトライン表示の都市別スクリーンショット例:
+
+<p align="center">
+  <span style="display: inline-block; width: 24%; vertical-align: top; text-align: center;">
+    <img src="docs/images/screenshot-tokyotower.png" alt="東京タワー付近（東京）" width="100%" /><br />
+    <sub>東京タワー付近（東京）</sub>
+  </span>
+  <span style="display: inline-block; width: 24%; vertical-align: top; text-align: center;">
+    <img src="docs/images/screenshot-downtowndubai.png" alt="ダウンタウン・ドバイ" width="100%" /><br />
+    <sub>ダウンタウン・ドバイ</sub>
+  </span>
+  <span style="display: inline-block; width: 24%; vertical-align: top; text-align: center;">
+    <img src="docs/images/screenshot-marinabay.png" alt="マリーナベイ（シンガポール）" width="100%" /><br />
+    <sub>マリーナベイ（シンガポール）</sub>
+  </span>
+  <span style="display: inline-block; width: 24%; vertical-align: top; text-align: center;">
+    <img src="docs/images/screenshot-sydney.png" alt="サーキュラー・キー（シドニー）" width="100%" /><br />
+    <sub>サーキュラー・キー（シドニー）</sub>
+  </span>
+</p>
+
 ## インストール方法（推奨：`pipx`）
 
 **前提条件:**
