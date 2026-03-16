@@ -167,11 +167,15 @@ def parse_derived_tile_buildings(
         building_id = row.get("id")
         if not isinstance(building_id, str) or not building_id:
             building_id = f"bldg-{index}"
+        parent_building_id = row.get("parent_building_id")
+        if not isinstance(parent_building_id, str) or not parent_building_id:
+            parent_building_id = None
         buildings.append(
             BuildingFootprint(
                 building_id=building_id,
                 height_m=height_m,
                 rings_lonlat=rings,
+                parent_building_id=parent_building_id,
             )
         )
     return tuple(buildings)

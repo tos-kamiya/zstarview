@@ -16,7 +16,7 @@ It renders a live all-sky view centered on your chosen location and time, includ
 - **Adjustable view center**: adjust the view center with CLI options `-A` (altitude) and `-Z` (azimuth), or with the arrow keys. During view changes or window resize, the app briefly switches to a simplified interaction mode to keep navigation responsive.
 - **Satellite cloud imagery**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay. Missing regions are shown in faint yellow when satellite coverage is partial.
 - **Terrain horizon and ground fill**: Copernicus DEM data can be downloaded to render the local terrain skyline. A subtle ocher terrain line follows the observer's surroundings, and the disc is filled with a ground color below the terrain horizon, or below the geometric horizon when terrain is disabled.
-- **Urban outline overlay**: major rooflines are drawn as a white urban outline overlay using Overture building data cached for the current viewpoint. Very narrow roof spans are simplified to thick horizontal strokes.
+- **Urban outline overlay**: major rooflines are drawn as a white urban outline overlay using cached Overture `building` + `building_part` data for the current viewpoint. Very narrow roof spans are simplified to thick horizontal strokes.
 - **Never-rises region**: the celestial region that never rises above the horizon for the observer's latitude is shown in a red tint.
 - **Python support**: the project is routinely tested on CPython 3.10, 3.11, 3.12, and 3.13.
 
@@ -119,6 +119,7 @@ The CLI supports detailed startup configuration for location, time, rendering, a
 | `--sky-opacity SKY_OPACITY`                 | Opacity of the simulated sky-color disc (0.0–1.0). Use 0.0 to disable.      | `0.2`   |
 | `--terrain-horizon-opacity OPACITY`         | Opacity of the terrain horizon polyline (0.0–1.0). Use 0.0 to disable DEM download, terrain-horizon calculation, and drawing. \*4 | `0.05` |
 | `--urban-outline-opacity OPACITY`           | Opacity of the urban outline overlay (0.0–1.0). Use 0.0 to disable it for that run. | `0.2` |
+| `--urban-outline-feature-type {both,building}` | Overture cache mode for the urban outline. `both` combines `building` and `building_part`, preferring parts when available. | `both` |
 | `-r`, `--urban-outline-radius-km RADIUS_KM` | Fetch and render urban-outline buildings within this radius from the observer location. The value is also part of the cache key. | `2.5` |
 | `-b`, `--urban-outline-min-building-height-m METERS` | Ignore buildings lower than this height when fetching/caching the urban outline. The value is also part of the cache key. | `0.0` |
 | `--ground-tint-opacity OPACITY`             | Strength of the ground-color fill below the geometric/terrain horizon (0.0–1.0). | `0.1` |
@@ -385,6 +386,7 @@ zstarview -p "Matsue Station" -r 2.0 -b 20
 
 - `-r`, `--urban-outline-radius-km`: fetch radius in kilometers
 - `-b`, `--urban-outline-min-building-height-m`: minimum building height in meters
+- `--urban-outline-feature-type`: Overture cache mode; default `both`
 
 The cache key includes location, radius, and minimum building height, so changing
 those values creates a separate cached dataset.

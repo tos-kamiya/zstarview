@@ -353,6 +353,15 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--urban-outline-feature-type",
+        choices=("both", "building"),
+        default="both",
+        help=(
+            "Urban outline Overture mode "
+            "(default: both). Use building to skip building_part overlays."
+        ),
+    )
+    parser.add_argument(
         "--ground-tint-opacity",
         type=float,
         default=0.1,
@@ -459,6 +468,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             or args.sky_opacity != 0.2
             or args.cloud_opacity != 0.2
             or args.terrain_horizon_opacity != 0.05
+            or args.urban_outline_feature_type != "both"
             or args.ground_tint_opacity != 0.1
             or args.cloud_stripe != (50, 0.2)
             or args.cloud_missing_tint_opacity != float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0

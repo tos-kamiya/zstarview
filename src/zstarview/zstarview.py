@@ -209,6 +209,7 @@ def main() -> None:
         sky_update_interval=args.sky_update_interval,
         urban_outline_radius_km=args.urban_outline_radius_km,
         urban_outline_min_height_m=args.urban_outline_min_height_m,
+        urban_outline_feature_type=args.urban_outline_feature_type,
         cloud_stripe_style=(cloud_stripe_count, cloud_stripe_width),
         cloud_missing_tint_opacity=args.cloud_missing_tint_opacity,
         star_render_expected_width=args.expected_render_width,
