@@ -106,6 +106,7 @@ README より詳細に、何ができるか、どう振る舞うか、どのよ�
   - 都市アウトライン取得・キャッシュに使う Overture mode。
   - `both` または `building` を受け付ける。
   - 既定値は `both`。
+  - `both` では `building` と `building_part` の両方を取得・利用する。
 - `--ground-tint-opacity`
 - `-t`, `--theme`
 
@@ -338,16 +339,21 @@ CLI には次のビューポイント dataset 参照専用オプションを持�
 ### 7.9 都市アウトライン
 
 - 都市アウトラインは、観測地点周辺の Overture `building` / `building_part` data から生成した建物上端の輪郭を白線で表示する。
+- 既定 mode `both` では、`building` と `building_part` を併用する。
+- `building_part` が親 `building` を参照している場合、その親 `building` の外形より `building_part` の輪郭を優先して表示する。
+- `building_part` が存在しない建物については、`building` の輪郭をそのまま表示してよい。
 - 表示は透明度で制御する。既定値は `0.2` である。
 - CLI で指定した都市アウトライン不透明度は、高さ `50m` 以上の建物に対する基準値として扱う。
 - 建物高さ `0m` の場合は基準不透明度の `1/4`、`0m` から `50m` の間は線形補間で不透明度を下げてよい。
 - `opacity > 0` の場合、起動時にバックグラウンドで都市アウトライン取得またはキャッシュ読込を開始し、完了後に表示してよい。
 - 都市アウトラインの取得単位は自治体ではなく、観測地点 `lat/lon` を中心とする半径 `2.5km` の範囲である。
-- 取得結果は、地点、半径、最小建物高さ、feature type をキーとするローカルキャッシュとして保持してよい。
+- 取得結果は、地点、半径、最小建物高さ、mode をキーとするローカルキャッシュとして保持してよい。
+- `both` では `building` 用と `building_part` 用のキャッシュを別々に保持してよい。
 - `overturemaps` CLI が利用できない場合、または取得に失敗した場合、そのセッションでは都市アウトラインを表示しなくてよい。
 - `-r`, `--urban-outline-radius-km` で取得半径を変更してよい。
 - `-b`, `--urban-outline-min-building-height-m` で取得対象の最小建物高さを変更してよい。
 - `--urban-outline-feature-type` で取得対象 mode を切り替えてよい。既定値は `both` とする。
+- `--urban-outline-feature-type building` を指定した場合は `building_part` を取得せず、`building` のみで都市アウトラインを構成してよい。
 - 取得中、キャッシュ読込中、失敗時には状態が利用者に分かるよう表示する。
 - `opacity == 0` を CLI で指定して起動した場合、そのセッションでは GUI から再有効化できない。
 - 都市アウトライン描画時には、キャッシュ済み derived tile に保持されている建物を runtime 側で高さ再フィルタせず利用してよい。
