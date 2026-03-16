@@ -386,13 +386,14 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 
 1. `SkyWindow` が起動時またはトグル再有効化時に `UrbanOutlineController` へ更新要求を出す。
 2. `UrbanOutlineController` は `lat/lon + radius + min_height + mode` から実行キーを作る。既定 mode は `both`、既定半径は `2.5km` である。
-3. 対応する derived dataset がキャッシュ内にあれば、それを読込対象にする。
-4. キャッシュが無ければ `import_overture_buildings.py` を通じて `overturemaps download` を実行し、GeoJSON 系の中間結果を derived tile と `tile_index.json` に変換する。
-5. runtime 側は `resolve_urban_outline_layer_for_viewer()` を使って、その derived dataset を追加の高さフィルタなしで読む。
-6. `compute_urban_outlines()` は建物ごとの `height_m` を保持した輪郭列を返し、`resolve_urban_outline_layer_for_viewer()` はそれを `UrbanOutlinePolyline` の列に変換する。
-7. 描画時は `50m` 以上を CLI 指定 opacity の基準とし、`0m` ではその `25%` になるよう高さ比例で alpha を下げる。
-8. 結果の outline 列は `UrbanOutlineState` と `SkyWindowState.urban_outlines` に反映し、再描画する。
-9. 取得中や失敗時はバナー文字列を UI 状態へ反映する。
+3. `mode=both` の場合、`UrbanOutlineController` は `building` 用と `building_part` 用の derived dataset をそれぞれ確認し、欠けている方だけを取得する。
+4. `mode=building` の場合は `building` 用 derived dataset のみを確認・取得する。
+5. runtime 側は `resolve_urban_outline_layer_for_viewer()` を使って対象 derived dataset 群を追加の高さフィルタなしで読む。
+6. runtime マージ時には、`building_part` が持つ `parent_building_id` を参照し、対応する親 `building` 外形を除外する。
+7. `compute_urban_outlines()` は建物ごとの `height_m` を保持した輪郭列を返し、`resolve_urban_outline_layer_for_viewer()` はそれを `UrbanOutlinePolyline` の列に変換する。
+8. 描画時は `50m` 以上を CLI 指定 opacity の基準とし、`0m` ではその `25%` になるよう高さ比例で alpha を下げる。
+9. 結果の outline 列は `UrbanOutlineState` と `SkyWindowState.urban_outlines` に反映し、再描画する。
+10. 取得中や失敗時はバナー文字列を UI 状態へ反映する。
 
 補足:
 - 旧 `list[list[(alt, az)]]` 形式の runtime 互換コードは削除し、都市アウトライン描画は `UrbanOutlinePolyline` のみを受け付ける。
@@ -439,6 +440,8 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 ### 8.4 都市アウトライン描画の簡略化
 
 - 都市アウトラインは derived tile から得た建物上端輪郭を描く。
+- derived tile の各建物レコードは `building_id` を持ち、`building_part` 由来レコードは必要に応じて `parent_building_id` を持つ。
+- `building` と `building_part` を併用する場合、`parent_building_id` を持つ part が存在する親 `building` は描画対象から外す。
 - 建物高さのしきい値は derived tile 生成時の前処理パラメータとし、runtime 読込時の既定値では再適用しない。
 - ただし見かけの方位幅が `0.5°` 未満の輪郭は、細い polyline ではなく太い水平線に簡略化する。
 - `viewport_interaction_mode` 中は都市アウトライン描画を抑止し、方向キー操作の負荷を下げる。
