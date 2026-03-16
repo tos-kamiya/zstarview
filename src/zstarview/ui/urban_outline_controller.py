@@ -120,6 +120,7 @@ class UrbanOutlineController(QObject):
             outlines = resolve_urban_outline_layer_for_viewer(
                 viewer_data,
                 derived_root_dir=self._derived_root_dir,
+                derived_dir=derived_dir,
             )
             with self._lock:
                 if not self._stopping:
