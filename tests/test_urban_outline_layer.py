@@ -78,7 +78,7 @@ def test_resolve_urban_outline_layer_for_viewer_returns_none_when_outside_covera
     assert got is None
 
 
-def test_resolve_urban_outline_layer_for_viewer_checks_multiple_derived_dirs(
+def test_resolve_urban_outline_layer_for_viewer_prefers_explicit_derived_dir(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
@@ -92,8 +92,10 @@ def test_resolve_urban_outline_layer_for_viewer_checks_multiple_derived_dirs(
     kyoto_dir = tmp_path / "26100_kyoto" / "bldg"
     tokyo_dir.mkdir(parents=True)
     kyoto_dir.mkdir(parents=True)
+    seen_dirs = []
 
     def fake_select(derived_dir: Path, **_kwargs):
+        seen_dirs.append(derived_dir)
         if derived_dir == tokyo_dir:
             return (type("Envelope", (), {"path": tmp_path / "tokyo.json"})(),)
         raise ValueError("outside coverage")
@@ -128,6 +130,8 @@ def test_resolve_urban_outline_layer_for_viewer_checks_multiple_derived_dirs(
     got = resolve_urban_outline_layer_for_viewer(
         viewer,
         derived_root_dir=tmp_path,
+        derived_dir=tokyo_dir,
     )
 
     assert got == [UrbanOutlinePolyline(points=[(-1.0, 10.0)], height_m=45.0)]
+    assert seen_dirs == [tokyo_dir]

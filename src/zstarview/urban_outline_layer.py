@@ -15,12 +15,14 @@ def resolve_urban_outline_layer_for_viewer(
     viewer_data: ViewerData,
     *,
     derived_root_dir: str | Path = OVERTURE_DERIVED_ROOT_DIR,
+    derived_dir: str | Path | None = None,
 ) -> list[UrbanOutlinePolyline] | None:
     return _build_dynamic_urban_outline_layer(
         lat_deg=float(viewer_data.lat_deg),
         lon_deg=float(viewer_data.lon_deg),
         observer_height_m=float(viewer_data.observer_height_m),
         derived_root_dir=Path(derived_root_dir),
+        derived_dir=None if derived_dir is None else Path(derived_dir),
     )
 
 
@@ -31,10 +33,14 @@ def _build_dynamic_urban_outline_layer(
     lon_deg: float,
     observer_height_m: float,
     derived_root_dir: Path,
+    derived_dir: Path | None = None,
 ) -> list[UrbanOutlinePolyline] | None:
-    if not derived_root_dir.exists():
-        return None
-    candidate_dirs = _list_derived_dirs(derived_root_dir)
+    if derived_dir is not None:
+        candidate_dirs = (derived_dir,) if derived_dir.exists() else ()
+    elif derived_root_dir.exists():
+        candidate_dirs = _list_derived_dirs(derived_root_dir)
+    else:
+        candidate_dirs = ()
     if not candidate_dirs:
         return None
 
