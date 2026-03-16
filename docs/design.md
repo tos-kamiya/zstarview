@@ -234,7 +234,7 @@
   - Qt 補助
 - `src/zstarview/data/import_overture_buildings.py`
   - `lat/lon + radius` に対応する bbox を計算する
-  - `overturemaps download` を呼び、`building` または `building_part` を取得する
+  - `overturemaps download` を呼び、`building` および必要に応じて `building_part` を取得する
   - ダウンロード結果を既存の derived tile JSON と `tile_index.json` 形式へ変換する
   - 出力先既定値は `CACHE_PATH/overture_buildings`
 
@@ -385,7 +385,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 ### 6.6 都市アウトライン更新フロー
 
 1. `SkyWindow` が起動時またはトグル再有効化時に `UrbanOutlineController` へ更新要求を出す。
-2. `UrbanOutlineController` は `lat/lon + radius + min_height + feature_type` からキャッシュキーを作る。既定半径は `2.5km` である。
+2. `UrbanOutlineController` は `lat/lon + radius + min_height + mode` から実行キーを作る。既定 mode は `both`、既定半径は `2.5km` である。
 3. 対応する derived dataset がキャッシュ内にあれば、それを読込対象にする。
 4. キャッシュが無ければ `import_overture_buildings.py` を通じて `overturemaps download` を実行し、GeoJSON 系の中間結果を derived tile と `tile_index.json` に変換する。
 5. runtime 側は `resolve_urban_outline_layer_for_viewer()` を使って、その derived dataset を追加の高さフィルタなしで読む。

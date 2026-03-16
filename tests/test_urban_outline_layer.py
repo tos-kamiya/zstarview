@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from zstarview.data.urban_outline_common import BuildingFootprint
 from zstarview.types import UrbanOutlinePolyline, ViewerData
-from zstarview.urban_outline_layer import resolve_urban_outline_layer_for_viewer
+from zstarview.urban_outline_layer import _merge_building_footprints, resolve_urban_outline_layer_for_viewer
 
 
 def test_resolve_urban_outline_layer_for_viewer_builds_dynamic_layer(monkeypatch, tmp_path: Path) -> None:
@@ -23,7 +24,14 @@ def test_resolve_urban_outline_layer_for_viewer_builds_dynamic_layer(monkeypatch
     parse_calls = []
     monkeypatch.setattr(
         "zstarview.urban_outline_layer.parse_derived_tile_buildings",
-        lambda *args, **kwargs: parse_calls.append((args, kwargs)) or ("building",),
+        lambda *args, **kwargs: parse_calls.append((args, kwargs))
+        or (
+            BuildingFootprint(
+                building_id="building-1",
+                height_m=45.0,
+                rings_lonlat=(((139.0, 35.0), (139.001, 35.0), (139.0, 35.0)),),
+            ),
+        ),
     )
     compute_calls = []
     monkeypatch.setattr(
@@ -103,7 +111,13 @@ def test_resolve_urban_outline_layer_for_viewer_prefers_explicit_derived_dir(
     monkeypatch.setattr("zstarview.urban_outline_layer.select_derived_tile_envelopes", fake_select)
     monkeypatch.setattr(
         "zstarview.urban_outline_layer.parse_derived_tile_buildings",
-        lambda *_args, **_kwargs: ("building",),
+        lambda *_args, **_kwargs: (
+            BuildingFootprint(
+                building_id="building-1",
+                height_m=45.0,
+                rings_lonlat=(((139.0, 35.0), (139.001, 35.0), (139.0, 35.0)),),
+            ),
+        ),
     )
     monkeypatch.setattr(
         "zstarview.urban_outline_layer.compute_urban_outlines",
@@ -135,3 +149,26 @@ def test_resolve_urban_outline_layer_for_viewer_prefers_explicit_derived_dir(
 
     assert got == [UrbanOutlinePolyline(points=[(-1.0, 10.0)], height_m=45.0)]
     assert seen_dirs == [tokyo_dir]
+
+
+def test_merge_building_footprints_prefers_parts_over_parent_buildings() -> None:
+    base_building = BuildingFootprint(
+        building_id="building-1",
+        height_m=120.0,
+        rings_lonlat=(((139.0, 35.0), (139.001, 35.0), (139.0, 35.0)),),
+    )
+    building_part = BuildingFootprint(
+        building_id="part-1",
+        height_m=130.0,
+        rings_lonlat=(((139.0, 35.0), (139.0005, 35.0), (139.0, 35.0)),),
+        parent_building_id="building-1",
+    )
+    untouched_building = BuildingFootprint(
+        building_id="building-2",
+        height_m=80.0,
+        rings_lonlat=(((139.0, 35.0), (139.002, 35.0), (139.0, 35.0)),),
+    )
+
+    got = _merge_building_footprints((base_building, building_part, untouched_building))
+
+    assert got == (building_part, untouched_building)

@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 from .data.derived_tile_cache import parse_derived_tile_buildings, select_derived_tile_envelopes
 from .data.import_overture_buildings import DEFAULT_FETCH_RADIUS_KM
+from .data.urban_outline_common import BuildingFootprint
 from .data.urban_outline_from_buildings import compute_urban_outlines
 from .paths import OVERTURE_DERIVED_ROOT_DIR
 from .types import UrbanOutlinePolyline, ViewerData
@@ -16,6 +17,7 @@ def resolve_urban_outline_layer_for_viewer(
     *,
     derived_root_dir: str | Path = OVERTURE_DERIVED_ROOT_DIR,
     derived_dir: str | Path | None = None,
+    derived_dirs: tuple[str | Path, ...] | None = None,
 ) -> list[UrbanOutlinePolyline] | None:
     return _build_dynamic_urban_outline_layer(
         lat_deg=float(viewer_data.lat_deg),
@@ -23,6 +25,7 @@ def resolve_urban_outline_layer_for_viewer(
         observer_height_m=float(viewer_data.observer_height_m),
         derived_root_dir=Path(derived_root_dir),
         derived_dir=None if derived_dir is None else Path(derived_dir),
+        derived_dirs=None if derived_dirs is None else tuple(Path(path) for path in derived_dirs),
     )
 
 
@@ -34,8 +37,11 @@ def _build_dynamic_urban_outline_layer(
     observer_height_m: float,
     derived_root_dir: Path,
     derived_dir: Path | None = None,
+    derived_dirs: tuple[Path, ...] | None = None,
 ) -> list[UrbanOutlinePolyline] | None:
-    if derived_dir is not None:
+    if derived_dirs is not None:
+        candidate_dirs = tuple(path for path in derived_dirs if path.exists())
+    elif derived_dir is not None:
         candidate_dirs = (derived_dir,) if derived_dir.exists() else ()
     elif derived_root_dir.exists():
         candidate_dirs = _list_derived_dirs(derived_root_dir)
@@ -57,6 +63,7 @@ def _build_dynamic_urban_outline_layer(
             continue
         for envelope in envelopes:
             buildings.extend(parse_derived_tile_buildings(envelope.path))
+    buildings = _merge_building_footprints(tuple(buildings))
     if not buildings:
         return None
 
@@ -81,6 +88,21 @@ def _build_dynamic_urban_outline_layer(
         for outline in result.outlines
     ]
     return outlines or None
+
+
+def _merge_building_footprints(buildings: tuple[BuildingFootprint, ...]) -> tuple[BuildingFootprint, ...]:
+    parent_ids_with_parts = {
+        building.parent_building_id
+        for building in buildings
+        if building.parent_building_id
+    }
+    if not parent_ids_with_parts:
+        return buildings
+    return tuple(
+        building
+        for building in buildings
+        if building.parent_building_id is not None or building.building_id not in parent_ids_with_parts
+    )
 
 
 @lru_cache(maxsize=8)

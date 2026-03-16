@@ -30,7 +30,7 @@ class UrbanOutlineController(QObject):
         derived_root_dir: Path,
         min_building_height_m: float = 0.0,
         radius_km: float = DEFAULT_FETCH_RADIUS_KM,
-        feature_type: str = "building",
+        feature_type: str = "both",
         overturemaps_bin: str = "overturemaps",
         parent: QObject | None = None,
     ) -> None:
@@ -62,6 +62,7 @@ class UrbanOutlineController(QObject):
             self._feature_type,
             self._min_building_height_m,
         )
+        required_dirs = self._required_derived_dirs(viewer_data)
         with self._lock:
             if self._stopping or self._running:
                 return False
@@ -69,8 +70,7 @@ class UrbanOutlineController(QObject):
                 return False
             self._running = True
 
-        derived_dir = self._derived_root_dir / dataset_name / "bldg"
-        if derived_dir.exists():
+        if required_dirs and all(path.exists() for _, path in required_dirs):
             self.urban_started.emit({"banner": "Urban outline: loading cache..."})
         else:
             self.urban_started.emit({"banner": "Urban outline: downloading..."})
@@ -95,9 +95,11 @@ class UrbanOutlineController(QObject):
         reason: str,
     ) -> None:
         try:
-            derived_dir = self._derived_root_dir / dataset_name / "bldg"
             source = "cache"
-            if not derived_dir.exists():
+            required_dirs = self._required_derived_dirs(viewer_data)
+            for overture_feature_type, derived_dir in required_dirs:
+                if derived_dir.exists():
+                    continue
                 if reason == "initial":
                     logger.info("Downloading initial urban-outline data from Overture...")
                 else:
@@ -108,10 +110,10 @@ class UrbanOutlineController(QObject):
                     radius_km=self._radius_km,
                     derived_root_dir=self._derived_root_dir,
                     min_building_height_m=self._min_building_height_m,
-                    feature_type=self._feature_type,
+                    feature_type=overture_feature_type,
                     fmt="geojsonseq",
                     overturemaps_bin=self._overturemaps_bin,
-                    dataset_name=dataset_name,
+                    dataset_name=derived_dir.parent.name,
                     keep_download=None,
                     no_stac=False,
                 )
@@ -120,7 +122,7 @@ class UrbanOutlineController(QObject):
             outlines = resolve_urban_outline_layer_for_viewer(
                 viewer_data,
                 derived_root_dir=self._derived_root_dir,
-                derived_dir=derived_dir,
+                derived_dirs=tuple(path for _, path in required_dirs),
             )
             with self._lock:
                 if not self._stopping:
@@ -146,3 +148,25 @@ class UrbanOutlineController(QObject):
         finally:
             with self._lock:
                 self._running = False
+
+    def _required_feature_types(self) -> tuple[str, ...]:
+        if self._feature_type == "both":
+            return ("building", "building_part")
+        return (self._feature_type,)
+
+    def _required_derived_dirs(self, viewer_data: ViewerData) -> tuple[tuple[str, Path], ...]:
+        return tuple(
+            (
+                overture_feature_type,
+                self._derived_root_dir
+                / derive_dataset_name(
+                    float(viewer_data.lat_deg),
+                    float(viewer_data.lon_deg),
+                    self._radius_km,
+                    overture_feature_type,
+                    self._min_building_height_m,
+                )
+                / "bldg",
+            )
+            for overture_feature_type in self._required_feature_types()
+        )

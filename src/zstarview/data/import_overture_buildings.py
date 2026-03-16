@@ -319,6 +319,7 @@ def convert_feature_to_building(
         "id": building_id,
         "height_m": height_m,
         "height_source": detect_height_source(properties),
+        "parent_building_id": resolve_parent_building_id(properties),
         "bbox": {
             "min_lat": bbox[0],
             "min_lon": bbox[1],
@@ -399,6 +400,13 @@ def detect_height_source(properties: dict[str, object]) -> str:
         if parse_numeric(properties.get(key)) is not None:
             return f"{key}*{DEFAULT_STOREY_HEIGHT_M}"
     return "unknown"
+
+
+def resolve_parent_building_id(properties: dict[str, object]) -> str | None:
+    parent_building_id = properties.get("building_id")
+    if isinstance(parent_building_id, str) and parent_building_id:
+        return parent_building_id
+    return None
 
 
 def parse_numeric(value: object) -> float | None:

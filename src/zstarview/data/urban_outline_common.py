@@ -19,6 +19,7 @@ class BuildingFootprint:
     building_id: str
     height_m: float
     rings_lonlat: tuple[tuple[tuple[float, float], ...], ...]
+    parent_building_id: str | None = None
 
 
 def sanitize_slug(text: str) -> str:

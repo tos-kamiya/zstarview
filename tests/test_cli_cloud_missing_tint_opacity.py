@@ -82,3 +82,15 @@ def test_parse_args_urban_outline_min_height_short_option(monkeypatch) -> None:
     monkeypatch.setattr("sys.argv", ["zstarview", "-b", "25"])
     args = parse_args()
     assert math.isclose(float(args.urban_outline_min_height_m), 25.0, rel_tol=0.0, abs_tol=1e-9)
+
+
+def test_parse_args_urban_outline_feature_type_default(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview"])
+    args = parse_args()
+    assert args.urban_outline_feature_type == "both"
+
+
+def test_parse_args_urban_outline_feature_type_override(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "--urban-outline-feature-type", "building"])
+    args = parse_args()
+    assert args.urban_outline_feature_type == "building"
