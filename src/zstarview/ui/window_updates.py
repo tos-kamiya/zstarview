@@ -21,9 +21,11 @@ class SkyWindowUpdatesMixin:
         urban_message = self._urban_outline_status_line()
         if urban_message:
             parts.append(urban_message)
-        aircraft_message = self._aircraft_status_line()
-        if aircraft_message:
-            parts.append(aircraft_message)
+        aircraft_status_line = getattr(self, "_aircraft_status_line", None)
+        if callable(aircraft_status_line):
+            aircraft_message = aircraft_status_line()
+            if aircraft_message:
+                parts.append(aircraft_message)
         return " | ".join(parts)
 
     def _safe_request_cloud_repaint(self) -> None:
