@@ -6,6 +6,7 @@ from typing import Optional
 from PySide6.QtCore import QPoint
 from PySide6.QtGui import QImage
 
+from ..aircraft.types import AircraftOverlayPoint
 from ..types import CelestialData, StarsTable, UrbanOutlinePolyline, ViewCenterAltAz
 
 
@@ -34,3 +35,4 @@ class SkyWindowState:
     cloud_base_size: int = 256
     terrain_horizon_profile: Optional[list[tuple[float, float]]] = None
     urban_outlines: Optional[list[UrbanOutlinePolyline]] = None
+    aircraft_overlay_points: Optional[list[AircraftOverlayPoint]] = None

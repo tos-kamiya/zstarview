@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-03-15
+最終更新: 2026-03-18
 
 ## 1. この文書の位置づけ
 
@@ -16,6 +16,7 @@
 - 描画入力はできるだけ前処理済みデータとして渡し、描画側を単純化する。
 - CLI 起動時の選択肢と GUI 実行中の状態を同じモデルで扱う。
 - 雲、地形地平線、星図更新は相互に独立した補助パイプラインとして扱う。
+- 更新頻度の低い補助レイヤーは、連続アニメーションよりも責務分離と UI 安全性を優先する。
 
 ## 3. 全体アーキテクチャ
 
@@ -222,7 +223,32 @@
 - `src/zstarview/terrain/horizon.py`
   - 方位ごとの見かけ地平線計算
 
-### 4.7 ユーティリティ
+### 4.7 航空機オーバーレイ処理
+
+- `src/zstarview/ui/aircraft_controller.py`
+  - 航空機更新の実行制御
+  - `5分` タイマー、明示更新要求、latest-request-wins の適用
+  - OpenSky 取得結果の正規化と UI 反映
+- `src/zstarview/aircraft_constants.py`
+  - 航空機更新間隔と `bbox` 既定値の共有定数
+  - `5分` 更新、観測地点中心 `±1.0°` を定義
+- `src/zstarview/ui/aircraft_state.py`
+  - 最新スナップショットの航空機一覧
+  - 読込中 / 取得中バナー
+  - 失敗表示状態
+  - 最終成功時刻
+- `src/zstarview/aircraft/opensky.py`
+  - OpenSky `states/all` へのアクセス
+  - 観測地点由来 `bbox` の組み立て
+  - 生レスポンス配列を名前付き内部モデルへ正規化
+- `src/zstarview/aircraft/project.py`
+  - 航空機の `lat/lon/alt` を観測地点基準の `alt/az` へ変換
+  - 地平線上判定、視野内判定、描画用点への変換
+- `src/zstarview/aircraft/types.py`
+  - OpenSky state vector の正規化モデル
+  - UI が保持する描画用航空機モデル
+
+### 4.8 ユーティリティ
 
 - `src/zstarview/utils/resolve_city.py`
   - 都市解決補助
@@ -270,7 +296,37 @@
   - 地平線、黄道、赤道などの線データ
   - DSO、ホバー対象、補助表示に必要な情報
 
-### 5.3 雲関連
+### 5.3 航空機関連
+
+- `AircraftSnapshot`
+  - `icao24`
+  - `callsign`
+  - `latitude`
+  - `longitude`
+  - `baro_altitude_m`
+  - `velocity_mps`
+  - `heading_deg`
+  - `vertical_rate_mps`
+  - `on_ground`
+  - `last_contact_unix`
+  - OpenSky の 1 回の取得結果から正規化した機体状態
+- `AircraftOverlayPoint`
+  - `icao24`
+  - `callsign`
+  - `alt_deg`
+  - `az_deg`
+  - `screen_pos`
+  - `is_in_view`
+  - 描画直前まで絞り込んだ軽量モデル
+- `AircraftState`
+  - 最新スナップショットの機体一覧
+  - 表示用点列
+  - 読込中状態
+  - エラーバナー
+  - 最終成功時刻
+  - `snapshot` 単位で更新し、フレームごとの補間・外挿は行わない
+
+### 5.4 雲関連
 
 - `CloudMeta`
   - 雲画像のデータ元メタ情報
@@ -289,7 +345,7 @@
 
 この分離により、ソース取得をやり直さずに視点変更のみ再描画できる。
 
-### 5.4 地形地平線関連
+### 5.5 地形地平線関連
 
 - `TerrainHorizonState`
   - 地形地平線の点列
@@ -299,7 +355,7 @@
   - `(altitude_deg, azimuth_deg)` の系列として保持する
   - 地点依存、時刻非依存のデータとして扱う
 
-### 5.5 ウィンドウ状態
+### 5.6 ウィンドウ状態
 
 - `SkyWindowState`
   - 現在の視点
@@ -320,6 +376,11 @@
   - 読込中 / 取得中バナー
   - 失敗表示状態
   - `cache` または `overture` などの現在ソース表示
+- `AircraftState`
+  - 航空機描画点列
+  - 読込中 / 取得中バナー
+  - 失敗表示状態
+  - 最終成功時刻
 
 ## 6. 処理フロー
 
@@ -330,7 +391,7 @@
 3. 入力を、`--place` による online 検索地点または通常の都市・タワー・山・座標として解決する。
 4. 星カタログや補助データを読み込む。
 5. `SkyWindow` を生成し、初回描画を行う。
-6. 必要に応じて雲更新、地形地平線更新、都市アウトライン更新をバックグラウンドで開始する。
+6. 必要に応じて雲更新、地形地平線更新、都市アウトライン更新、航空機更新をバックグラウンドで開始する。
 
 ### 6.2 星空更新フロー
 
@@ -379,8 +440,9 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 2. 恒星、惑星、月、補助線を重ねる。
 3. 地形地平線があれば地平線関連描画へ反映する。
 4. 都市アウトラインがあれば白線オーバーレイとして描画する。
-5. 雲画像と欠損ティントを合成する。
-6. ラベル、オーバーレイ、ステータス行を描画する。
+5. 航空機オーバーレイがあれば点オーバーレイとして描画する。
+6. 雲画像と欠損ティントを合成する。
+7. ラベル、オーバーレイ、ステータス行を描画する。
 
 ### 6.6 都市アウトライン更新フロー
 
@@ -403,6 +465,22 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 補足:
 - 旧 `list[list[(alt, az)]]` 形式の runtime 互換コードは削除し、都市アウトライン描画は `UrbanOutlinePolyline` のみを受け付ける。
 
+### 6.7 航空機オーバーレイ更新フロー
+
+1. `SkyWindow` が起動時に `AircraftController` を生成し、初回更新要求を出す。
+2. `AircraftController` は観測地点の `lat/lon` と `AIRCRAFT_BBOX_DELTA_DEG` から OpenSky 用 `bbox` を作る。既定値は緯度・経度ともに `±1.0°` で、視線方向には依存させない。
+3. `AircraftController` は `AIRCRAFT_REFRESH_INTERVAL_SECONDS` に従い、既定では `5分` タイマーまたは明示更新要求ごとに OpenSky 取得を 1 回だけ開始する。
+4. `aircraft/opensky.py` は `states/all?lamin=...&lamax=...&lomin=...&lomax=...` を呼び、state vector 配列を `AircraftSnapshot` 列へ正規化する。
+5. 正規化時には `lat/lon` 欠損、`on_ground=true`、極端に低速な機体を落としてよい。
+6. `aircraft/project.py` は各 `AircraftSnapshot` の `lat/lon/alt` を観測地点基準の `alt/az` へ変換し、地平線上かつ視野内の機体だけを `AircraftOverlayPoint` として残す。
+7. 初期実装では API 更新間の補間・外挿を行わず、最新成功時のスナップショットを次回成功までそのまま保持する。
+8. 新しい取得が成功したときだけ `AircraftState.snapshots` と `AircraftState.overlay_points` をまとめて置き換える。
+9. 取得失敗時は直前成功スナップショットを保持したまま、`AircraftState` の失敗表示だけを更新する。
+10. 古い非同期結果で UI を巻き戻さないため、`AircraftController` も request id ベースの latest-request-wins を使ってよい。
+11. `SkyWindow` は `aircraft_ready` を受けたら `SkyWindowState` を更新し、再描画する。
+12. `viewport_interaction_mode` 中は航空機オーバーレイ描画を抑止してよい。モード終了後に保持済み `overlay_points` で通常描画へ戻る。
+13. 既定 `bbox` は `2.0° x 2.0° = 4 square degrees` であり、OpenSky `/states/all` の `1 credit` 帯に収まる前提で運用する。
+
 ## 7. スレッドモデル
 
 - UI スレッド
@@ -414,6 +492,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
   - 雲データ取得と描画
   - 地形地平線計算
   - 都市アウトライン取得と outline 生成
+  - 航空機データ取得と可視点列生成
   - キャッシュ清掃の補助処理
 
 設計上の原則は次の通り。
@@ -429,11 +508,12 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - 長寿命の UI 状態は `SkyWindow` と `SkyWindowState` が持つ。
 - 雲専用状態は `CloudState` に分離する。
 - 地形地平線専用状態は `TerrainHorizonState` に分離する。
+- 航空機専用状態は `AircraftState` に分離する。
 
 ### 8.2 latest-request-wins
 
 視点変更やタイマー更新が短時間に連続した場合、古い非同期結果で UI を巻き戻さないことを優先する。  
-そのため、雲更新では最新要求のみが採用される。
+そのため、雲更新や航空機更新では最新要求のみが採用される。
 
 ### 8.3 CLI と GUI の整合
 
@@ -442,7 +522,13 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - 代表例が `--terrain-horizon-opacity 0` による地形地平線ロックアウトである。
 - `--sky-opacity 0`、`--cloud-opacity 0`、`--terrain-horizon-opacity 0`、`--urban-outline-opacity 0` は、そのセッションで各 GUI トグルをロックアウトする。
 
-### 8.4 都市アウトライン描画の簡略化
+### 8.4 航空機オーバーレイの更新粒度
+
+- 航空機オーバーレイは連続移動レイヤーとして扱わず、`5分` 間隔のスナップショットレイヤーとして扱う。
+- `velocity` や `heading` は初期実装では描画位置更新に使わず、将来のラベルや詳細表示のために保持してよい。
+- これにより、更新間隔中の見た目は静止するが、位置更新ロジックを簡素に保ち、OpenSky 取得時刻との対応を明確にできる。
+
+### 8.5 都市アウトライン描画の簡略化
 
 - 都市アウトラインは derived tile から得た建物上端輪郭を描く。
 - derived tile の各建物レコードは `building_id` を持ち、`building_part` 由来レコードは必要に応じて `parent_building_id` を持つ。
@@ -465,12 +551,14 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 
 - 雲取得失敗は雲機能内で閉じる。
 - 地形地平線取得失敗は terrain 機能内で閉じる。
+- 航空機取得失敗は aircraft 機能内で閉じる。
 - 本体表示を継続し、UI には状態表示のみ反映する。
 
 ### 9.3 再試行方針
 
 - 雲は更新タイミングごとに再取得の機会がある。
 - 地形地平線は同一セッション中の自動再試行を抑制する。
+- 航空機は `5分` タイマーごとに再取得の機会がある。
 
 ## 10. データとキャッシュ
 
@@ -488,6 +576,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - 衛星クラウドデータ
 - DEM タイル
 - Overture 建物データ
+- OpenSky 航空機 state vector
 
 ### 10.3 キャッシュ方針
 
@@ -497,6 +586,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - 遠距離スカイスクレーパー補助レイヤー用 derived tile は `overture_skyscrapers/<tile-cache-key>/bldg` 配下に tile 単位で永続キャッシュする。
 - 地形地平線の計算済みポリラインは永続化しない。
 - 雲は取得ソースと中間成果物をキャッシュし、視点変更時の再利用を優先する。
+- 初期実装の航空機スナップショットはセッション内メモリだけに保持し、永続キャッシュしない。
 
 ## 11. テスト観点と設計上の分離
 
@@ -514,6 +604,9 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - 惑星・恒星描画ルール
 - 雲更新キューイング
 - 地形地平線計算
+- 航空機 state vector 正規化
+- 観測地点由来 `bbox` の生成
+- 航空機の地平線上 / 視野内判定
 - GUI トグルの状態遷移
 
 ## 12. 外部依存

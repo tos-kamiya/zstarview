@@ -83,6 +83,7 @@ class SkyWindowRenderMixin:
             None if self.cloud_state.stripe_density is None else int(self.cloud_state.stripe_density.source_cache_key),
             self._render_cache_stamp(self.state.terrain_horizon_profile),
             self._render_cache_stamp(self.state.urban_outlines),
+            self._render_cache_stamp(self.state.aircraft_overlay_points),
             mouse_key,
             self.state.jump_highlight_name,
             jump_altaz_key,
@@ -127,6 +128,7 @@ class SkyWindowRenderMixin:
             label_candidates,
         )
         self._draw_star_layer(painter, geometry, celestial_data, render_viewer)
+        self._draw_aircraft_layer(painter, geometry, render_viewer, label_candidates)
 
         enlarge_moon = self.enlarge_moon
         if highlighted_object is not None:
@@ -440,6 +442,22 @@ class SkyWindowRenderMixin:
             self.state.urban_outlines,
             render_viewer.view_center,
             opacity=getattr(self, "urban_outline_opacity", 0.2),
+        )
+
+    def _draw_aircraft_layer(
+        self,
+        painter: QPainter,
+        geometry: render_draw.ScreenGeometry,
+        render_viewer: ViewerData,
+        label_candidates: list[dict[str, Any]],
+    ) -> None:
+        render_draw.draw_aircraft_overlay(
+            painter,
+            geometry,
+            self.state.aircraft_overlay_points,
+            render_viewer.view_center,
+            label_candidates=label_candidates,
+            preset=self.visual_preset,
         )
 
     def _draw_star_layer(
