@@ -208,6 +208,10 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.delta_t = runtime_options.delta_t
         self.sky_disc_alpha = user_options.sky_disc_alpha
         self._sky_disc_alpha_when_enabled = user_options.sky_disc_alpha if user_options.sky_disc_alpha > 0.0 else 0.3
+        requested_aircraft_opacity = user_options.aircraft_opacity
+        self._aircraft_toggle_supported = runtime_options.delta_t.total_seconds() == 0.0
+        self._aircraft_opacity_when_enabled = requested_aircraft_opacity if requested_aircraft_opacity > 0.0 else 1.0
+        self.aircraft_opacity = requested_aircraft_opacity if self._aircraft_toggle_supported else 0.0
         self.terrain_horizon_opacity = user_options.terrain_horizon_opacity
         self.urban_outline_opacity = user_options.urban_outline_opacity
         self.ground_tint_opacity = user_options.ground_tint_opacity
@@ -219,6 +223,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         )
         self._sky_disc_gui_allowed = bool(user_options.sky_disc_gui_allowed)
         self._cloud_gui_allowed = bool(user_options.cloud_gui_allowed)
+        self._aircraft_gui_allowed = bool(user_options.aircraft_gui_allowed)
         self._terrain_horizon_gui_allowed = bool(user_options.terrain_horizon_gui_allowed)
         self._urban_outline_gui_allowed = bool(user_options.urban_outline_gui_allowed)
         self.show_urban_outline_layer: bool = self.urban_outline_opacity > 0.0
@@ -288,6 +293,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.size_grip.raise_()
         self._action_enlarge_moon: Optional[QAction] = None
         self._action_toggle_clouds: Optional[QAction] = None
+        self._action_toggle_aircraft: Optional[QAction] = None
         self._action_toggle_terrain_horizon: Optional[QAction] = None
         self._action_toggle_urban_outline: Optional[QAction] = None
         self._action_toggle_dso: Optional[QAction] = None
@@ -321,8 +327,9 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._cloud_update_timer.setInterval(CLOUD_UPDATE_INTERVAL * 1000)
         self._cloud_update_timer.timeout.connect(lambda: self.start_background_cloud_update(reason="timer"))
         self._aircraft_update_timer = QTimer(self)
+        self._aircraft_update_timer.setSingleShot(True)
         self._aircraft_update_timer.setInterval(AIRCRAFT_REFRESH_INTERVAL_SECONDS * 1000)
-        self._aircraft_update_timer.timeout.connect(lambda: self.start_background_aircraft_update(reason="timer"))
+        self._aircraft_update_timer.timeout.connect(self._on_aircraft_refresh_timer)
         self._aircraft_projection_timer = QTimer(self)
         self._aircraft_projection_timer.setInterval(AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS * 1000)
         self._aircraft_projection_timer.timeout.connect(self.refresh_projected_aircraft_overlay)
@@ -354,6 +361,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self._action_toggle_clouds.setEnabled(
                 self._cloud_toggle_supported and self._clouddisc is not None and self._cloud_gui_allowed
             )
+        if self._action_toggle_aircraft is not None:
+            self._action_toggle_aircraft.setEnabled(self._aircraft_toggle_supported and self._aircraft_gui_allowed)
 
         terrain_cache_dir = Path(CACHE_PATH) / "copernicus-dem"
         self._terrain_horizon_controller = TerrainHorizonController(
@@ -407,10 +416,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self.start_background_terrain_horizon_update(reason="initial")
         if self.urban_outline_opacity > 0.0:
             self.start_background_urban_outline_update(reason="initial")
-        if self.delta_t.total_seconds() == 0.0:
-            self.start_background_aircraft_update(reason="initial")
-            self._aircraft_update_timer.start()
-            self._aircraft_projection_timer.start()
+        if self._aircraft_layer_enabled():
+            self._enable_aircraft_layer(reason="initial")
 
     def _setup_update_infrastructure(self) -> None:
         """Initialize timers, worker, and signal wiring for background updates."""
@@ -529,6 +536,15 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.menu.addAction(toggle_clouds_action)
         self.addAction(toggle_clouds_action)
         self._action_toggle_clouds = toggle_clouds_action
+        toggle_aircraft_action = QAction("Aircraft", self)
+        toggle_aircraft_action.setCheckable(True)
+        toggle_aircraft_action.setChecked(self.aircraft_opacity > 0.0)
+        toggle_aircraft_action.setShortcut(QKeySequence(Qt.Key.Key_I))
+        toggle_aircraft_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
+        toggle_aircraft_action.triggered.connect(self.toggle_aircraft)
+        self.menu.addAction(toggle_aircraft_action)
+        self.addAction(toggle_aircraft_action)
+        self._action_toggle_aircraft = toggle_aircraft_action
         toggle_terrain_action = QAction("Terrain Horizon", self)
         toggle_terrain_action.setCheckable(True)
         toggle_terrain_action.setChecked(self.terrain_horizon_opacity > 0.0)
@@ -790,6 +806,56 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         lat, lon = self.viewer_data.location
         return pick_satellite(lat, lon, ("AUTO",))
 
+    def _aircraft_layer_enabled(self) -> bool:
+        return self._aircraft_toggle_supported and self.aircraft_opacity > 0.0
+
+    def _stop_aircraft_timers(self) -> None:
+        if self._aircraft_update_timer.isActive():
+            self._aircraft_update_timer.stop()
+        if self._aircraft_projection_timer.isActive():
+            self._aircraft_projection_timer.stop()
+
+    def _aircraft_cache_age_seconds(self) -> float | None:
+        last_success_utc = self.aircraft_state.last_success_utc
+        if last_success_utc is None:
+            return None
+        return max(0.0, (datetime.now(timezone.utc) - last_success_utc).total_seconds())
+
+    def _schedule_next_aircraft_refresh(self, delay_ms: int | None = None) -> None:
+        if not self._aircraft_layer_enabled() or self._is_shutting_down:
+            return
+        interval_ms = AIRCRAFT_REFRESH_INTERVAL_SECONDS * 1000 if delay_ms is None else int(delay_ms)
+        self._aircraft_update_timer.start(max(0, interval_ms))
+
+    def _on_aircraft_refresh_timer(self) -> None:
+        if not self._aircraft_layer_enabled():
+            return
+        started = self.start_background_aircraft_update(reason="timer")
+        if not started:
+            self._schedule_next_aircraft_refresh()
+
+    def _enable_aircraft_layer(self, *, reason: str) -> None:
+        if not self._aircraft_layer_enabled():
+            return
+        if not self._aircraft_projection_timer.isActive():
+            self._aircraft_projection_timer.start()
+        if self.aircraft_state.snapshots and self.aircraft_state.last_success_utc is not None:
+            self.refresh_projected_aircraft_overlay()
+            age_seconds = self._aircraft_cache_age_seconds()
+            if age_seconds is None:
+                self.start_background_aircraft_update(reason=reason)
+                return
+            remaining_ms = max(
+                0,
+                int(round((AIRCRAFT_REFRESH_INTERVAL_SECONDS - age_seconds) * 1000.0)),
+            )
+            if remaining_ms <= 0:
+                self.start_background_aircraft_update(reason=reason)
+            else:
+                self._schedule_next_aircraft_refresh(remaining_ms)
+            return
+        self.start_background_aircraft_update(reason=reason)
+
     def toggle_enlarge_moon(self) -> None:
         self.enlarge_moon = not self.enlarge_moon
         if self._action_enlarge_moon is not None and self._action_enlarge_moon.isChecked() != self.enlarge_moon:
@@ -813,6 +879,24 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
                 self._cloud_update_timer.start()
         elif self._cloud_update_timer.isActive():
             self._cloud_update_timer.stop()
+
+        self.update()
+
+    def toggle_aircraft(self) -> None:
+        if not self._aircraft_toggle_supported or not self._aircraft_gui_allowed:
+            if self._action_toggle_aircraft is not None:
+                self._action_toggle_aircraft.setChecked(self.aircraft_opacity > 0.0)
+            return
+
+        enable_aircraft = self.aircraft_opacity <= 0.0
+        self.aircraft_opacity = self._aircraft_opacity_when_enabled if enable_aircraft else 0.0
+        if self._action_toggle_aircraft is not None and self._action_toggle_aircraft.isChecked() != enable_aircraft:
+            self._action_toggle_aircraft.setChecked(enable_aircraft)
+
+        if enable_aircraft:
+            self._enable_aircraft_layer(reason="toggle-on")
+        else:
+            self._stop_aircraft_timers()
 
         self.update()
 
@@ -950,6 +1034,9 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             event.accept()
         elif key == Qt.Key.Key_C:
             self.toggle_clouds()
+            event.accept()
+        elif key == Qt.Key.Key_I:
+            self.toggle_aircraft()
             event.accept()
         elif key == Qt.Key.Key_T:
             self.toggle_terrain_horizon()

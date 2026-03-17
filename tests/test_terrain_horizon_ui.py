@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 import zstarview.ui.window as window_module
@@ -30,18 +31,22 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
     options = prepare_window_user_options(
         terrain_horizon_opacity=1.5,
         urban_outline_opacity=1.5,
+        aircraft_opacity=1.5,
         ground_tint_opacity=1.5,
         sky_disc_gui_allowed=False,
         cloud_gui_allowed=False,
+        aircraft_gui_allowed=False,
         terrain_horizon_gui_allowed=False,
         urban_outline_gui_allowed=False,
     )
 
     assert options.terrain_horizon_opacity == 1.0
     assert options.urban_outline_opacity == 1.0
+    assert options.aircraft_opacity == 1.0
     assert options.ground_tint_opacity == 1.0
     assert options.sky_disc_gui_allowed is False
     assert options.cloud_gui_allowed is False
+    assert options.aircraft_gui_allowed is False
     assert options.terrain_horizon_gui_allowed is False
     assert options.urban_outline_gui_allowed is False
 
@@ -100,6 +105,62 @@ def test_toggle_terrain_horizon_respects_cli_lockout() -> None:
 
     assert dummy.terrain_horizon_opacity == 0.0
     assert dummy._action_toggle_terrain_horizon.isChecked() is False
+
+
+def test_toggle_aircraft_respects_cli_lockout() -> None:
+    dummy = SimpleNamespace()
+    dummy._aircraft_toggle_supported = True
+    dummy._aircraft_gui_allowed = False
+    dummy.aircraft_opacity = 0.0
+    dummy._aircraft_opacity_when_enabled = 1.0
+    dummy._action_toggle_aircraft = _DummyAction(False)
+    dummy.update = lambda: (_ for _ in ()).throw(AssertionError("should not repaint"))
+
+    SkyWindow.toggle_aircraft(dummy)
+
+    assert dummy.aircraft_opacity == 0.0
+    assert dummy._action_toggle_aircraft.isChecked() is False
+
+
+def test_toggle_aircraft_uses_cached_state_without_fetch() -> None:
+    now = datetime.now(timezone.utc)
+    dummy = SimpleNamespace()
+    dummy._aircraft_toggle_supported = True
+    dummy._aircraft_gui_allowed = True
+    dummy.aircraft_opacity = 0.0
+    dummy._aircraft_opacity_when_enabled = 1.0
+    dummy._action_toggle_aircraft = _DummyAction(False)
+    dummy.aircraft_state = SimpleNamespace(
+        snapshots=[object()],
+        last_success_utc=now - timedelta(seconds=30),
+    )
+    calls: list[str] = []
+    dummy._enable_aircraft_layer = lambda **kwargs: calls.append(str(kwargs.get("reason")))
+    dummy._stop_aircraft_timers = lambda: calls.append("stop")
+    dummy.update = lambda: calls.append("update")
+
+    SkyWindow.toggle_aircraft(dummy)
+
+    assert dummy.aircraft_opacity == 1.0
+    assert dummy._action_toggle_aircraft.isChecked() is True
+    assert calls == ["toggle-on", "update"]
+
+
+def test_start_background_aircraft_update_skips_when_layer_hidden() -> None:
+    controller_calls: list[str] = []
+    dummy = SimpleNamespace()
+    dummy._is_shutting_down = False
+    dummy.aircraft_opacity = 0.0
+    dummy._aircraft_controller = SimpleNamespace(
+        update=lambda **_kwargs: controller_calls.append("update") or True,
+    )
+    dummy.viewer_data = SimpleNamespace(location=(35.0, 135.0), observer_height_m=1.7)
+    dummy._current_time_obj = lambda: "time-obj"
+
+    started = SkyWindowUpdatesMixin.start_background_aircraft_update(dummy, reason="manual")
+
+    assert started is False
+    assert controller_calls == []
 
 
 def test_toggle_terrain_horizon_enables_opacity_and_requests_background_update() -> None:

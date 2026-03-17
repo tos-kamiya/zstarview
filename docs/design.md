@@ -235,6 +235,7 @@
 - `src/zstarview/ui/aircraft_state.py`
   - 最新スナップショットの航空機一覧
   - 最新の描画用折れ線データ
+  - 最終成功時刻による cache age 判定
   - 読込中 / 取得中バナー
   - 失敗表示状態
   - 最終成功時刻
@@ -329,6 +330,7 @@
 - `AircraftState`
   - 最新スナップショットの機体一覧
   - 表示用折れ線列
+  - 最終成功タイムスタンプ
   - 読込中状態
   - エラーバナー
   - 最終成功時刻
@@ -476,19 +478,23 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 ### 6.7 航空機オーバーレイ更新フロー
 
 1. `SkyWindow` が起動時に `AircraftController` を生成し、初回更新要求を出す。
-2. `AircraftController` は観測地点の `lat/lon` から OpenSky 用 `bbox` を作る。南北は既定 `±1.0°`、東西は緯度に応じて最低 `90km` を確保しつつ、面積は `25 square degrees` 以下へ抑える。
-3. `AircraftController` は `AIRCRAFT_REFRESH_INTERVAL_SECONDS` に従い、既定では `5分` タイマーまたは明示更新要求ごとに OpenSky 取得を 1 回だけ開始する。
-4. `aircraft/opensky.py` は `states/all?lamin=...&lamax=...&lomin=...&lomax=...` を呼び、state vector 配列を `AircraftSnapshot` 列へ正規化する。
-5. 正規化時には `lat/lon` 欠損、`on_ground=true`、極端に低速な機体を落としてよい。
-6. `aircraft/project.py` は各 `AircraftSnapshot` の `velocity`、`heading`、`vertical_rate`、`last_contact` を使って短時間前進予測し、`2秒前 -> 現在 -> 2秒後` の折れ線端点を含む `AircraftOverlayPoint` を作る。
-7. `aircraft/project.py` は age に応じた alpha scale も計算し、`90秒` を超えた機体が次回取得まで徐々に薄くなるようにする。
-8. `window.py` は API 取得とは別に `AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS` の UI タイマーを持ち、既定では `2秒` ごとに保持済み snapshot から折れ線データだけを再投影してよい。
-9. 描画時は観測地点から `50km` を超える機体を落とし、`10km` 以内かつ `90秒` 以内の機体だけに `callsign` を付けてよい。
-10. 新しい取得が成功したときだけ `AircraftState.snapshots` と `AircraftState.overlay_points` をまとめて置き換える。
-11. 取得失敗時は直前成功スナップショットを保持したまま、`AircraftState` の失敗表示だけを更新する。
-10. 古い非同期結果で UI を巻き戻さないため、`AircraftController` も request id ベースの latest-request-wins を使ってよい。
-12. `SkyWindow` は `aircraft_ready` または予想再投影完了を受けたら `SkyWindowState` を更新し、再描画する。
-13. `viewport_interaction_mode` 中は航空機オーバーレイ描画を抑止してよい。モード終了後に保持済み `overlay_points` で通常描画へ戻る。
+2. `SkyWindowUserOptions` は `aircraft_opacity` と `aircraft_gui_allowed` を持ち、`--aircraft-opacity 0.0` のときは起動直後から航空機問い合わせを行わない。
+3. `AircraftController` は観測地点の `lat/lon` から OpenSky 用 `bbox` を作る。南北は既定 `±1.0°`、東西は緯度に応じて最低 `90km` を確保しつつ、面積は `25 square degrees` 以下へ抑える。
+4. `AircraftController` は明示更新要求または次回 fetch timer に従い、OpenSky 取得を 1 回だけ開始する。
+5. `aircraft/opensky.py` は `states/all?lamin=...&lamax=...&lomin=...&lomax=...` を呼び、state vector 配列を `AircraftSnapshot` 列へ正規化する。
+6. 正規化時には `lat/lon` 欠損、`on_ground=true`、極端に低速な機体を落としてよい。
+7. `aircraft/project.py` は各 `AircraftSnapshot` の `velocity`、`heading`、`vertical_rate`、`last_contact` を使って短時間前進予測し、`2秒前 -> 現在 -> 2秒後` の折れ線端点を含む `AircraftOverlayPoint` を作る。
+8. `aircraft/project.py` は age に応じた alpha scale も計算し、`90秒` を超えた機体が次回取得まで徐々に薄くなるようにする。
+9. `window.py` は API 取得とは別に `AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS` の UI タイマーを持ち、既定では `2秒` ごとに保持済み snapshot から折れ線データだけを再投影してよい。
+10. `window.py` は fetch timer を single-shot で扱い、レイヤー再表示時には `AircraftState.last_success_utc` から cache age を計算して次回 API 呼び出し時刻を再調整してよい。
+11. 保持済み snapshot が新しければ、GUI で航空機レイヤーを再表示しても API を再問い合わせせず、再投影だけで即時復帰してよい。
+12. 保持済み snapshot が更新間隔を超えて古いときだけ、レイヤー再表示時に即時再取得してよい。
+13. 描画時は観測地点から `50km` を超える機体を落とし、`10km` 以内かつ `90秒` 以内の機体だけに `callsign` を付けてよい。
+14. 新しい取得が成功したときだけ `AircraftState.snapshots` と `AircraftState.overlay_points` をまとめて置き換える。
+15. 取得失敗時は直前成功スナップショットを保持したまま、`AircraftState` の失敗表示だけを更新する。
+16. 古い非同期結果で UI を巻き戻さないため、`AircraftController` も request id ベースの latest-request-wins を使ってよい。
+17. `SkyWindow` は `aircraft_ready` または予想再投影完了を受けたら `SkyWindowState` を更新し、再描画する。
+18. `viewport_interaction_mode` 中は航空機オーバーレイ描画を抑止してよい。モード終了後に保持済み `overlay_points` で通常描画へ戻る。
 
 ## 7. スレッドモデル
 
@@ -534,10 +540,12 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 ### 8.4 航空機オーバーレイの更新粒度
 
 - 航空機観測値の取得は `5分` 間隔とし、表示上の予想再投影は `2秒` 間隔で行ってよい。
+- `aircraft_opacity <= 0.0` の間は、fetch timer と予想再投影 timer を止めてよい。
 - 折れ線は `2秒前 -> 現在 -> 2秒後` の 3 点から構成し、機体の短時間進行方向を示す。
 - 線幅は観測地点に近い機体ほど太く、遠い機体ほど細くしてよい。
 - 描画は観測地点から `50km` 以内に限定し、近距離機体だけにコールサインを出してよい。
 - 取得時刻から `90秒` を超えたら alpha を段階的に下げ、次回 API 更新まで視覚的に古さを示してよい。
+- GUI から再表示したときは `last_success_utc` を見て fresh cache を優先し、不要な OpenSky 再問い合わせを避けてよい。
 
 ### 8.5 都市アウトライン描画の簡略化
 

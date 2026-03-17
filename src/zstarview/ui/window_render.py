@@ -73,6 +73,7 @@ class SkyWindowRenderMixin:
             round(float(self.vmag_limit), 3),
             round(float(self.sky_disc_alpha), 3),
             round(float(self.cloud_disc_alpha), 3),
+            round(float(getattr(self, "aircraft_opacity", 0.0)), 3),
             round(float(self.terrain_horizon_opacity), 3),
             round(float(self.urban_outline_opacity), 3),
             bool(getattr(self, "show_urban_outline_layer", True)),
@@ -456,6 +457,7 @@ class SkyWindowRenderMixin:
             geometry,
             self.state.aircraft_overlay_points,
             render_viewer.view_center,
+            opacity=getattr(self, "aircraft_opacity", 1.0),
             label_candidates=label_candidates,
             preset=self.visual_preset,
         )

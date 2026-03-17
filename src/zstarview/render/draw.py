@@ -797,17 +797,23 @@ def draw_aircraft_overlay(
     aircraft_points: list[AircraftOverlayPoint] | None,
     view_center: tuple[float, float],
     *,
+    opacity: float = 1.0,
     label_candidates: Optional[List[Dict[str, Any]]] = None,
     preset: str = "night",
 ) -> None:
     """Draw aircraft as orange predicted-motion polylines."""
-    if not aircraft_points:
+    layer_opacity = max(0.0, min(1.0, float(opacity)))
+    if not aircraft_points or layer_opacity <= 0.0:
         return
 
     painter.save()
     line_color = QColor(255, 165, 64, 255)
     label_text_color, label_outline_color = _get_text_style(preset)
     label_outline_width = _get_text_outline_width(preset)
+    label_text_color = QColor(label_text_color)
+    label_outline_color = QColor(label_outline_color)
+    label_text_color.setAlpha(max(0, min(255, int(round(label_text_color.alpha() * layer_opacity)))))
+    label_outline_color.setAlpha(max(0, min(255, int(round(label_outline_color.alpha() * layer_opacity)))))
     line_pen = QPen(line_color, 1.0, Qt.PenStyle.SolidLine)
     line_pen.setCosmetic(True)
     line_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
@@ -822,7 +828,8 @@ def draw_aircraft_overlay(
             continue
         if alt <= 0.0 or not is_in_fov(alt, az, view_center):
             continue
-        line_alpha = max(30, min(255, int(round(255.0 * float(point.alpha_scale)))))
+        min_line_alpha = int(round(30.0 * layer_opacity))
+        line_alpha = max(min_line_alpha, min(255, int(round(255.0 * float(point.alpha_scale) * layer_opacity))))
         line_color.setAlpha(line_alpha)
         line_pen.setColor(line_color)
         line_pen.setWidthF(_aircraft_line_width_px(distance_km))
