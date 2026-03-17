@@ -191,6 +191,7 @@ class UrbanOutlineController(QObject):
                     derived_dirs=tuple(skyscraper_dirs),
                     radius_km=SKYSCRAPER_OUTER_RADIUS_KM,
                     min_distance_km=self._radius_km,
+                    min_height_m=max(SKYSCRAPER_MIN_HEIGHT_M, self._min_building_height_m),
                 )
                 merged_outlines = self._merge_outline_layers(outlines, skyscraper_outlines)
             except Exception as exc:
