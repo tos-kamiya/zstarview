@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-03-18
+最終更新: 2026-03-19
 
 ## 1. この文書の位置づけ
 
@@ -231,22 +231,25 @@
   - OpenSky 取得結果の正規化と UI 反映
 - `src/zstarview/aircraft_constants.py`
   - 航空機更新間隔と `bbox` 既定値の共有定数
-  - `5分` 更新、観測地点中心 `±1.0°` を定義
+  - `5分` 取得、`2秒` 予想再投影、bbox / fade / trail span 定数を定義
 - `src/zstarview/ui/aircraft_state.py`
   - 最新スナップショットの航空機一覧
+  - 最新の描画用折れ線データ
   - 読込中 / 取得中バナー
   - 失敗表示状態
   - 最終成功時刻
 - `src/zstarview/aircraft/opensky.py`
   - OpenSky `states/all` へのアクセス
   - 観測地点由来 `bbox` の組み立て
+  - 緯度依存の east-west coverage 調整と 1-credit 帯面積クリップ
   - 生レスポンス配列を名前付き内部モデルへ正規化
 - `src/zstarview/aircraft/project.py`
   - 航空機の `lat/lon/alt` を観測地点基準の `alt/az` へ変換
-  - 地平線上判定、視野内判定、描画用点への変換
+  - `velocity` / `heading` / `vertical_rate` による短時間前進予測
+  - `2秒前 -> 現在 -> 2秒後` の折れ線端点と age-based alpha の算出
 - `src/zstarview/aircraft/types.py`
   - OpenSky state vector の正規化モデル
-  - UI が保持する描画用航空機モデル
+  - UI が保持する描画用航空機折れ線モデル
 
 ### 4.8 ユーティリティ
 
@@ -315,16 +318,21 @@
   - `callsign`
   - `alt_deg`
   - `az_deg`
-  - `screen_pos`
-  - `is_in_view`
-  - 描画直前まで絞り込んだ軽量モデル
+  - `trail_start_alt_deg`
+  - `trail_start_az_deg`
+  - `trail_end_alt_deg`
+  - `trail_end_az_deg`
+  - `distance_km`
+  - `age_seconds`
+  - `alpha_scale`
+  - 描画直前まで絞り込んだ軽量折れ線モデル
 - `AircraftState`
   - 最新スナップショットの機体一覧
-  - 表示用点列
+  - 表示用折れ線列
   - 読込中状態
   - エラーバナー
   - 最終成功時刻
-  - `snapshot` 単位で更新し、フレームごとの補間・外挿は行わない
+  - snapshot は `5分` 単位で更新し、折れ線データは `2秒` ごとに再投影してよい
 
 ### 5.4 雲関連
 
@@ -377,7 +385,7 @@
   - 失敗表示状態
   - `cache` または `overture` などの現在ソース表示
 - `AircraftState`
-  - 航空機描画点列
+  - 航空機描画折れ線列
   - 読込中 / 取得中バナー
   - 失敗表示状態
   - 最終成功時刻
@@ -440,7 +448,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 2. 恒星、惑星、月、補助線を重ねる。
 3. 地形地平線があれば地平線関連描画へ反映する。
 4. 都市アウトラインがあれば白線オーバーレイとして描画する。
-5. 航空機オーバーレイがあれば点オーバーレイとして描画する。
+5. 航空機オーバーレイがあればオレンジの折れ線オーバーレイとして描画する。
 6. 雲画像と欠損ティントを合成する。
 7. ラベル、オーバーレイ、ステータス行を描画する。
 
@@ -468,18 +476,19 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 ### 6.7 航空機オーバーレイ更新フロー
 
 1. `SkyWindow` が起動時に `AircraftController` を生成し、初回更新要求を出す。
-2. `AircraftController` は観測地点の `lat/lon` と `AIRCRAFT_BBOX_DELTA_DEG` から OpenSky 用 `bbox` を作る。既定値は緯度・経度ともに `±1.0°` で、視線方向には依存させない。
+2. `AircraftController` は観測地点の `lat/lon` から OpenSky 用 `bbox` を作る。南北は既定 `±1.0°`、東西は緯度に応じて最低 `90km` を確保しつつ、面積は `25 square degrees` 以下へ抑える。
 3. `AircraftController` は `AIRCRAFT_REFRESH_INTERVAL_SECONDS` に従い、既定では `5分` タイマーまたは明示更新要求ごとに OpenSky 取得を 1 回だけ開始する。
 4. `aircraft/opensky.py` は `states/all?lamin=...&lamax=...&lomin=...&lomax=...` を呼び、state vector 配列を `AircraftSnapshot` 列へ正規化する。
 5. 正規化時には `lat/lon` 欠損、`on_ground=true`、極端に低速な機体を落としてよい。
-6. `aircraft/project.py` は各 `AircraftSnapshot` の `lat/lon/alt` を観測地点基準の `alt/az` へ変換し、地平線上かつ視野内の機体だけを `AircraftOverlayPoint` として残す。
-7. 初期実装では API 更新間の補間・外挿を行わず、最新成功時のスナップショットを次回成功までそのまま保持する。
-8. 新しい取得が成功したときだけ `AircraftState.snapshots` と `AircraftState.overlay_points` をまとめて置き換える。
-9. 取得失敗時は直前成功スナップショットを保持したまま、`AircraftState` の失敗表示だけを更新する。
+6. `aircraft/project.py` は各 `AircraftSnapshot` の `velocity`、`heading`、`vertical_rate`、`last_contact` を使って短時間前進予測し、`2秒前 -> 現在 -> 2秒後` の折れ線端点を含む `AircraftOverlayPoint` を作る。
+7. `aircraft/project.py` は age に応じた alpha scale も計算し、`90秒` を超えた機体が次回取得まで徐々に薄くなるようにする。
+8. `window.py` は API 取得とは別に `AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS` の UI タイマーを持ち、既定では `2秒` ごとに保持済み snapshot から折れ線データだけを再投影してよい。
+9. 描画時は観測地点から `50km` を超える機体を落とし、`10km` 以内かつ `90秒` 以内の機体だけに `callsign` を付けてよい。
+10. 新しい取得が成功したときだけ `AircraftState.snapshots` と `AircraftState.overlay_points` をまとめて置き換える。
+11. 取得失敗時は直前成功スナップショットを保持したまま、`AircraftState` の失敗表示だけを更新する。
 10. 古い非同期結果で UI を巻き戻さないため、`AircraftController` も request id ベースの latest-request-wins を使ってよい。
-11. `SkyWindow` は `aircraft_ready` を受けたら `SkyWindowState` を更新し、再描画する。
-12. `viewport_interaction_mode` 中は航空機オーバーレイ描画を抑止してよい。モード終了後に保持済み `overlay_points` で通常描画へ戻る。
-13. 既定 `bbox` は `2.0° x 2.0° = 4 square degrees` であり、OpenSky `/states/all` の `1 credit` 帯に収まる前提で運用する。
+12. `SkyWindow` は `aircraft_ready` または予想再投影完了を受けたら `SkyWindowState` を更新し、再描画する。
+13. `viewport_interaction_mode` 中は航空機オーバーレイ描画を抑止してよい。モード終了後に保持済み `overlay_points` で通常描画へ戻る。
 
 ## 7. スレッドモデル
 
@@ -492,7 +501,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
   - 雲データ取得と描画
   - 地形地平線計算
   - 都市アウトライン取得と outline 生成
-  - 航空機データ取得と可視点列生成
+  - 航空機データ取得と可視折れ線生成
   - キャッシュ清掃の補助処理
 
 設計上の原則は次の通り。
@@ -524,9 +533,11 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 
 ### 8.4 航空機オーバーレイの更新粒度
 
-- 航空機オーバーレイは連続移動レイヤーとして扱わず、`5分` 間隔のスナップショットレイヤーとして扱う。
-- `velocity` や `heading` は初期実装では描画位置更新に使わず、将来のラベルや詳細表示のために保持してよい。
-- これにより、更新間隔中の見た目は静止するが、位置更新ロジックを簡素に保ち、OpenSky 取得時刻との対応を明確にできる。
+- 航空機観測値の取得は `5分` 間隔とし、表示上の予想再投影は `2秒` 間隔で行ってよい。
+- 折れ線は `2秒前 -> 現在 -> 2秒後` の 3 点から構成し、機体の短時間進行方向を示す。
+- 線幅は観測地点に近い機体ほど太く、遠い機体ほど細くしてよい。
+- 描画は観測地点から `50km` 以内に限定し、近距離機体だけにコールサインを出してよい。
+- 取得時刻から `90秒` を超えたら alpha を段階的に下げ、次回 API 更新まで視覚的に古さを示してよい。
 
 ### 8.5 都市アウトライン描画の簡略化
 
@@ -559,6 +570,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - 雲は更新タイミングごとに再取得の機会がある。
 - 地形地平線は同一セッション中の自動再試行を抑制する。
 - 航空機は `5分` タイマーごとに再取得の機会がある。
+- 航空機の予想再投影はセッション内 `2秒` タイマーで繰り返してよい。
 
 ## 10. データとキャッシュ
 
@@ -606,7 +618,9 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - 地形地平線計算
 - 航空機 state vector 正規化
 - 観測地点由来 `bbox` の生成
+- 航空機の短時間前進予測
 - 航空機の地平線上 / 視野内判定
+- age-based alpha と折れ線端点の計算
 - GUI トグルの状態遷移
 
 ## 12. 外部依存
