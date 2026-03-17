@@ -362,6 +362,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--urban-outline-skyscraper-only",
+        action="store_true",
+        help=(
+            "Validation mode: draw only the far-range skyscraper urban outline layer "
+            "and skip the normal 0-2.5km outline layer."
+        ),
+    )
+    parser.add_argument(
         "--ground-tint-opacity",
         type=float,
         default=0.1,

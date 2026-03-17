@@ -18,6 +18,8 @@ def resolve_urban_outline_layer_for_viewer(
     derived_root_dir: str | Path = OVERTURE_DERIVED_ROOT_DIR,
     derived_dir: str | Path | None = None,
     derived_dirs: tuple[str | Path, ...] | None = None,
+    radius_km: float = DEFAULT_FETCH_RADIUS_KM,
+    min_distance_km: float = 0.0,
 ) -> list[UrbanOutlinePolyline] | None:
     return _build_dynamic_urban_outline_layer(
         lat_deg=float(viewer_data.lat_deg),
@@ -26,6 +28,8 @@ def resolve_urban_outline_layer_for_viewer(
         derived_root_dir=Path(derived_root_dir),
         derived_dir=None if derived_dir is None else Path(derived_dir),
         derived_dirs=None if derived_dirs is None else tuple(Path(path) for path in derived_dirs),
+        radius_km=float(radius_km),
+        min_distance_km=float(min_distance_km),
     )
 
 
@@ -38,6 +42,8 @@ def _build_dynamic_urban_outline_layer(
     derived_root_dir: Path,
     derived_dir: Path | None = None,
     derived_dirs: tuple[Path, ...] | None = None,
+    radius_km: float = DEFAULT_FETCH_RADIUS_KM,
+    min_distance_km: float = 0.0,
 ) -> list[UrbanOutlinePolyline] | None:
     if derived_dirs is not None:
         candidate_dirs = tuple(path for path in derived_dirs if path.exists())
@@ -57,7 +63,7 @@ def _build_dynamic_urban_outline_layer(
                 derived_dir,
                 observer_lat_deg=lat_deg,
                 observer_lon_deg=lon_deg,
-                radius_km=DEFAULT_FETCH_RADIUS_KM,
+                radius_km=radius_km,
             )
         except ValueError:
             continue
@@ -77,13 +83,15 @@ def _build_dynamic_urban_outline_layer(
             observer_height_m=observer_height_m,
         ),
         tuple(buildings),
-        radius_km=DEFAULT_FETCH_RADIUS_KM,
+        radius_km=radius_km,
+        min_distance_km=min_distance_km,
         edge_sample_step_m=10.0,
     )
     outlines = [
         UrbanOutlinePolyline(
             points=[(point.altitude_deg, point.azimuth_deg) for point in outline.points],
             height_m=float(outline.height_m),
+            source="base",
         )
         for outline in result.outlines
     ]

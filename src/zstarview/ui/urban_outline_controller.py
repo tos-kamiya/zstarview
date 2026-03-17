@@ -8,15 +8,25 @@ from typing import Optional
 
 from PySide6.QtCore import QObject, Signal
 
+from ..data.skyscraper_tiles import (
+    SkyscraperSeedTile,
+    select_skyscraper_seed_tiles_for_viewer,
+    skyscraper_tile_derived_dir,
+)
 from ..data.import_overture_buildings import (
     DEFAULT_FETCH_RADIUS_KM,
     derive_dataset_name,
+    import_overture_buildings_for_bbox,
     import_overture_buildings,
 )
 from ..urban_outline_layer import resolve_urban_outline_layer_for_viewer
-from ..types import ViewerData
+from ..paths import OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR, SKYSCRAPER_TILES_FILE
+from ..types import UrbanOutlinePolyline, ViewerData
 
 logger = logging.getLogger(__name__)
+
+SKYSCRAPER_MIN_HEIGHT_M = 150.0
+SKYSCRAPER_OUTER_RADIUS_KM = 10.0
 
 
 class UrbanOutlineController(QObject):
@@ -32,6 +42,9 @@ class UrbanOutlineController(QObject):
         radius_km: float = DEFAULT_FETCH_RADIUS_KM,
         feature_type: str = "both",
         overturemaps_bin: str = "overturemaps",
+        skyscraper_only: bool = False,
+        skyscraper_seed_file: Path | None = None,
+        skyscraper_derived_root_dir: Path | None = None,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
@@ -40,6 +53,9 @@ class UrbanOutlineController(QObject):
         self._radius_km = float(radius_km)
         self._feature_type = str(feature_type)
         self._overturemaps_bin = str(overturemaps_bin)
+        self._skyscraper_only = bool(skyscraper_only)
+        self._skyscraper_seed_file = Path(skyscraper_seed_file or SKYSCRAPER_TILES_FILE)
+        self._skyscraper_derived_root_dir = Path(skyscraper_derived_root_dir or OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR)
         self._running = False
         self._stopping = False
         self._completed_key: Optional[str] = None
@@ -62,7 +78,15 @@ class UrbanOutlineController(QObject):
             self._feature_type,
             self._min_building_height_m,
         )
-        required_dirs = self._required_derived_dirs(viewer_data)
+        required_dirs = () if self._skyscraper_only else self._required_derived_dirs(viewer_data)
+        skyscraper_tiles = self._selected_skyscraper_tiles(viewer_data)
+        skyscraper_dirs = tuple(
+            skyscraper_tile_derived_dir(
+                tile,
+                derived_root_dir=self._skyscraper_derived_root_dir,
+            )
+            for tile in skyscraper_tiles
+        )
         with self._lock:
             if self._stopping or self._running:
                 return False
@@ -70,7 +94,7 @@ class UrbanOutlineController(QObject):
                 return False
             self._running = True
 
-        if required_dirs and all(path.exists() for _, path in required_dirs):
+        if all(path.exists() for _, path in required_dirs) and all(path.exists() for path in skyscraper_dirs):
             self.urban_started.emit({"banner": "Urban outline: loading cache..."})
         else:
             self.urban_started.emit({"banner": "Urban outline: downloading..."})
@@ -96,7 +120,7 @@ class UrbanOutlineController(QObject):
     ) -> None:
         try:
             source = "cache"
-            required_dirs = self._required_derived_dirs(viewer_data)
+            required_dirs = () if self._skyscraper_only else self._required_derived_dirs(viewer_data)
             for overture_feature_type, derived_dir in required_dirs:
                 if derived_dir.exists():
                     continue
@@ -119,18 +143,65 @@ class UrbanOutlineController(QObject):
                 )
                 source = "overture"
 
-            outlines = resolve_urban_outline_layer_for_viewer(
-                viewer_data,
-                derived_root_dir=self._derived_root_dir,
-                derived_dirs=tuple(path for _, path in required_dirs),
-            )
+            outlines = None
+            if required_dirs:
+                outlines = resolve_urban_outline_layer_for_viewer(
+                    viewer_data,
+                    derived_root_dir=self._derived_root_dir,
+                    derived_dirs=tuple(path for _, path in required_dirs),
+                )
+            merged_outlines = outlines
+            try:
+                skyscraper_tiles = self._selected_skyscraper_tiles(viewer_data)
+                skyscraper_dirs: list[Path] = []
+                for tile in skyscraper_tiles:
+                    derived_dir = skyscraper_tile_derived_dir(
+                        tile,
+                        derived_root_dir=self._skyscraper_derived_root_dir,
+                    )
+                    skyscraper_dirs.append(derived_dir)
+                    if derived_dir.exists():
+                        continue
+                    logger.info(
+                        "Downloading skyscraper urban-outline tile z=%s x=%s y=%s...",
+                        tile.zoom,
+                        tile.x,
+                        tile.y,
+                    )
+                    import_overture_buildings_for_bbox(
+                        bbox=(
+                            tile.envelope.min_lon_deg,
+                            tile.envelope.min_lat_deg,
+                            tile.envelope.max_lon_deg,
+                            tile.envelope.max_lat_deg,
+                        ),
+                        derived_root_dir=self._skyscraper_derived_root_dir,
+                        min_building_height_m=SKYSCRAPER_MIN_HEIGHT_M,
+                        feature_type="building",
+                        fmt="geojsonseq",
+                        overturemaps_bin=self._overturemaps_bin,
+                        dataset_name=tile.cache_key,
+                        keep_download=None,
+                        no_stac=False,
+                    )
+                    source = "overture"
+                skyscraper_outlines = resolve_urban_outline_layer_for_viewer(
+                    viewer_data,
+                    derived_root_dir=self._skyscraper_derived_root_dir,
+                    derived_dirs=tuple(skyscraper_dirs),
+                    radius_km=SKYSCRAPER_OUTER_RADIUS_KM,
+                    min_distance_km=self._radius_km,
+                )
+                merged_outlines = self._merge_outline_layers(outlines, skyscraper_outlines)
+            except Exception as exc:
+                logger.warning("Skyscraper urban-outline update failed: %s", exc, exc_info=True)
             with self._lock:
                 if not self._stopping:
                     self._completed_key = dataset_name
             if not self._stopping:
                 self.urban_ready.emit(
                     {
-                        "outlines": outlines,
+                        "outlines": merged_outlines,
                         "source": source,
                     }
                 )
@@ -170,3 +241,35 @@ class UrbanOutlineController(QObject):
             )
             for overture_feature_type in self._required_feature_types()
         )
+
+    def _selected_skyscraper_tiles(self, viewer_data: ViewerData) -> tuple[SkyscraperSeedTile, ...]:
+        try:
+            return select_skyscraper_seed_tiles_for_viewer(
+                observer_lat_deg=float(viewer_data.lat_deg),
+                observer_lon_deg=float(viewer_data.lon_deg),
+                inner_radius_km=self._radius_km,
+                outer_radius_km=SKYSCRAPER_OUTER_RADIUS_KM,
+                seed_file=self._skyscraper_seed_file,
+            )
+        except Exception as exc:
+            logger.warning("Could not load skyscraper seed tiles: %s", exc, exc_info=True)
+            return ()
+
+    @staticmethod
+    def _merge_outline_layers(
+        base_outlines,
+        extra_outlines,
+    ):
+        merged = []
+        if base_outlines:
+            merged.extend(base_outlines)
+        if extra_outlines:
+            merged.extend(
+                UrbanOutlinePolyline(
+                    points=list(outline.points),
+                    height_m=float(outline.height_m),
+                    source="skyscraper",
+                )
+                for outline in extra_outlines
+            )
+        return merged or None

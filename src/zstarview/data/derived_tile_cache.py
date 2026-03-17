@@ -40,6 +40,23 @@ def envelope_min_distance_km(
     return approx_distance_km(observer_lat_deg, observer_lon_deg, nearest_lat, nearest_lon)
 
 
+def envelope_max_distance_km(
+    envelope: TileEnvelope,
+    *,
+    observer_lat_deg: float,
+    observer_lon_deg: float,
+) -> float:
+    return max(
+        approx_distance_km(observer_lat_deg, observer_lon_deg, lat_deg, lon_deg)
+        for lat_deg, lon_deg in (
+            (envelope.min_lat_deg, envelope.min_lon_deg),
+            (envelope.min_lat_deg, envelope.max_lon_deg),
+            (envelope.max_lat_deg, envelope.min_lon_deg),
+            (envelope.max_lat_deg, envelope.max_lon_deg),
+        )
+    )
+
+
 def load_derived_tile_envelope(path: Path) -> TileEnvelope | None:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):

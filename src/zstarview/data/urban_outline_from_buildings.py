@@ -155,15 +155,21 @@ def compute_urban_outlines(
     buildings: Sequence[BuildingFootprint],
     *,
     radius_km: float,
+    min_distance_km: float = 0.0,
     edge_sample_step_m: float,
 ) -> UrbanOutlineResult:
     if radius_km <= 0.0:
         raise ValueError("--radius-km must be positive.")
+    if min_distance_km < 0.0:
+        raise ValueError("--min-distance-km must be non-negative.")
+    if min_distance_km >= radius_km:
+        raise ValueError("--min-distance-km must be smaller than --radius-km.")
     if edge_sample_step_m <= 0.0:
         raise ValueError("--edge-sample-step-m must be positive.")
 
     transformer = make_local_transformer(tower)
     radius_m = radius_km * 1000.0
+    min_distance_m = min_distance_km * 1000.0
     observer_height_m = float(getattr(tower, "viewpoint_height_m", getattr(tower, "observer_height_m", 0.0)) or 0.0)
     buildings_considered = 0
     outlines: list[UrbanOutlinePolyline] = []
@@ -177,13 +183,16 @@ def compute_urban_outlines(
         min_distance = min(bbox_min_distance_m(ring_xy) for ring_xy in projected_rings if ring_xy.size > 0)
         if min_distance > radius_m:
             continue
+        max_distance = max(float(np_hypot_xy(ring_xy).max()) for ring_xy in projected_rings if ring_xy.size > 0)
+        if max_distance <= min_distance_m:
+            continue
         buildings_considered += 1
         for ring_xy in projected_rings:
             sampled_points = sample_ring_points_xy(ring_xy, sample_step_m=edge_sample_step_m)
             if sampled_points.size == 0:
                 continue
             distances = np_hypot_xy(sampled_points)
-            valid = (distances > 0.1) & (distances <= radius_m)
+            valid = (distances > max(0.1, min_distance_m)) & (distances <= radius_m)
             if not valid.any():
                 continue
             azimuth_deg = (np_degrees_arctan2(sampled_points[:, 0], sampled_points[:, 1]) + 360.0) % 360.0
