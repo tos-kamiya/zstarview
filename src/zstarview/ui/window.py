@@ -39,6 +39,7 @@ from ..clouddisc import (
     CloudDiscConfig,
 )
 from ..clouddisc.providers.select import pick_satellite
+from ..aircraft_constants import AIRCRAFT_REFRESH_INTERVAL_SECONDS
 from ..paths import (
     APP_ICON_FILE,
     APP_DISPLAY_NAME,
@@ -61,6 +62,8 @@ from .draggable_window import DraggableWindow
 from .composite import SkyCompositorCache
 from .cloud_state import CloudImageState
 from .cloud_controller import CloudController
+from .aircraft_state import AircraftState
+from .aircraft_controller import AircraftController
 from .terrain_state import TerrainHorizonState
 from .terrain_controller import TerrainHorizonController
 from .famous_star_dialog import NamedStarJumpDialog
@@ -244,6 +247,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.state = SkyWindowState(
             render_view_center=tuple(self.viewer_data.view_center),
             urban_outlines=None,
+            aircraft_overlay_points=None,
         )
         self._frame_cache_key: object | None = None
         self._frame_cache_image = None
@@ -305,14 +309,19 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
 
         # --- Cloud Data State and Cache ---
         self.cloud_state = CloudImageState()
+        self.aircraft_state = AircraftState()
         self.terrain_horizon_state = TerrainHorizonState()
         self.urban_outline_state = UrbanOutlineState()
         self._cloud_controller: Optional[CloudController] = None
+        self._aircraft_controller: Optional[AircraftController] = None
         self._terrain_horizon_controller: Optional[TerrainHorizonController] = None
         self._urban_outline_controller: Optional[UrbanOutlineController] = None
         self._cloud_update_timer = QTimer(self)
         self._cloud_update_timer.setInterval(CLOUD_UPDATE_INTERVAL * 1000)
         self._cloud_update_timer.timeout.connect(lambda: self.start_background_cloud_update(reason="timer"))
+        self._aircraft_update_timer = QTimer(self)
+        self._aircraft_update_timer.setInterval(AIRCRAFT_REFRESH_INTERVAL_SECONDS * 1000)
+        self._aircraft_update_timer.timeout.connect(lambda: self.start_background_aircraft_update(reason="timer"))
 
         # --- CloudDisc Service Initialization ---
         self._clouddisc: Optional[CloudDisc] = None
@@ -333,6 +342,10 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self._cloud_controller.cloud_started.connect(self._on_cloud_started)
             self._cloud_controller.cloud_ready.connect(self._on_cloud_ready)
             self._cloud_controller.cloud_failed.connect(self._on_cloud_failed)
+        self._aircraft_controller = AircraftController(parent=self)
+        self._aircraft_controller.aircraft_started.connect(self._on_aircraft_started)
+        self._aircraft_controller.aircraft_ready.connect(self._on_aircraft_ready)
+        self._aircraft_controller.aircraft_failed.connect(self._on_aircraft_failed)
         if self._action_toggle_clouds is not None:
             self._action_toggle_clouds.setEnabled(
                 self._cloud_toggle_supported and self._clouddisc is not None and self._cloud_gui_allowed
@@ -390,6 +403,9 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self.start_background_terrain_horizon_update(reason="initial")
         if self.urban_outline_opacity > 0.0:
             self.start_background_urban_outline_update(reason="initial")
+        if self.delta_t.total_seconds() == 0.0:
+            self.start_background_aircraft_update(reason="initial")
+            self._aircraft_update_timer.start()
 
     def _setup_update_infrastructure(self) -> None:
         """Initialize timers, worker, and signal wiring for background updates."""
@@ -716,6 +732,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._sky_worker.shutdown()
         if self._cloud_controller is not None:
             self._cloud_controller.shutdown()
+        if self._aircraft_controller is not None:
+            self._aircraft_controller.shutdown()
         if self._terrain_horizon_controller is not None:
             self._terrain_horizon_controller.shutdown()
         if self._urban_outline_controller is not None:
@@ -726,6 +744,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self._asterism_check_timer.stop()
         if self._cloud_update_timer.isActive():
             self._cloud_update_timer.stop()
+        if self._aircraft_update_timer.isActive():
+            self._aircraft_update_timer.stop()
         if self._interaction_idle_timer.isActive():
             self._interaction_idle_timer.stop()
         if self._viewport_interaction_idle_timer.isActive():

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
@@ -18,6 +19,9 @@ class SkyWindowUpdatesMixin:
         urban_message = self._urban_outline_status_line()
         if urban_message:
             parts.append(urban_message)
+        aircraft_message = self._aircraft_status_line()
+        if aircraft_message:
+            parts.append(aircraft_message)
         return " | ".join(parts)
 
     def _safe_request_cloud_repaint(self) -> None:
@@ -67,6 +71,16 @@ class SkyWindowUpdatesMixin:
         if self.urban_outline_state.current_source:
             return f"Urban outline: {self.urban_outline_state.current_source}"
         return ""
+
+    def _aircraft_status_line(self) -> str:
+        aircraft_state = getattr(self, "aircraft_state", None)
+        if aircraft_state is None:
+            return ""
+        if aircraft_state.banner_text:
+            return aircraft_state.banner_text
+        if aircraft_state.last_success_utc is None:
+            return ""
+        return f"Aircraft: {aircraft_state.last_success_utc.strftime('%H:%MZ')}"
 
     def _on_sky_data_calculated(self, payload: Dict) -> None:
         if not self.state.viewport_interaction_mode:
@@ -217,6 +231,45 @@ class SkyWindowUpdatesMixin:
             viewer_data=self.viewer_data,
             reason=reason,
         )
+
+    def start_background_aircraft_update(self, reason: str = "manual") -> bool:
+        if self._is_shutting_down:
+            return False
+        if self._aircraft_controller is None:
+            return False
+        lat, lon = self.viewer_data.location
+        return self._aircraft_controller.update(
+            observer_lat=lat,
+            observer_lon=lon,
+            observer_height_m=self.viewer_data.observer_height_m,
+            time_obj=self._current_time_obj(),
+            reason=reason,
+        )
+
+    def _on_aircraft_started(self, payload: Dict) -> None:
+        banner = str(payload.get("banner", "")).strip()
+        if banner:
+            self.aircraft_state.set_banner(banner)
+            self.update()
+
+    def _on_aircraft_ready(self, payload: Dict) -> None:
+        refreshed_at = payload.get("refreshed_at_utc")
+        if not isinstance(refreshed_at, datetime):
+            refreshed_at = datetime.now(timezone.utc)
+        self.aircraft_state.set_result(
+            payload.get("snapshots", []),
+            overlay_points=payload.get("overlay_points"),
+            bbox=payload.get("bbox"),
+            refreshed_at_utc=refreshed_at,
+        )
+        self.state.aircraft_overlay_points = payload.get("overlay_points")
+        self.update()
+
+    def _on_aircraft_failed(self, payload: Dict) -> None:
+        banner = str(payload.get("banner", "")).strip()
+        if banner:
+            self.aircraft_state.set_error_banner(banner)
+            self.update()
 
     def _on_terrain_horizon_started(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()

@@ -33,6 +33,7 @@ from ..paths import (
     URBAN_DEBUG_LAYER_LINE_COLOR,
     TEXT_COLOR,
 )
+from ..aircraft.types import AircraftOverlayPoint
 from ..types import ScreenGeometry, CelestialData, ViewerData, CelestialObject, PlanetBody, UrbanOutlinePolyline
 from ..astro import (
     altaz_to_normalized_xy,
@@ -787,6 +788,74 @@ def draw_urban_outlines(
 def _urban_outline_height_alpha_scale(height_m: float) -> float:
     clamped_height_m = max(0.0, min(50.0, float(height_m)))
     return 0.25 + 0.75 * (clamped_height_m / 50.0)
+
+
+def draw_aircraft_overlay(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    aircraft_points: list[AircraftOverlayPoint] | None,
+    view_center: tuple[float, float],
+    *,
+    label_candidates: Optional[List[Dict[str, Any]]] = None,
+    preset: str = "night",
+) -> None:
+    """Draw aircraft markers as compact yellow points."""
+    if not aircraft_points:
+        return
+
+    painter.save()
+    fill = QColor(255, 220, 64, 230)
+    rim = QColor(255, 245, 180, 255)
+    label_text_color, label_outline_color = _get_text_style(preset)
+    label_outline_width = _get_text_outline_width(preset)
+    pen = QPen(rim, 1.0, Qt.PenStyle.SolidLine)
+    pen.setCosmetic(True)
+    painter.setPen(pen)
+    painter.setBrush(fill)
+    for point in aircraft_points:
+        alt = float(point.alt_deg)
+        az = float(point.az_deg)
+        marker_radius_px = _aircraft_marker_radius_px(float(point.distance_km))
+        if alt <= 0.0 or not is_in_fov(alt, az, view_center):
+            continue
+        nx, ny = altaz_to_normalized_xy(alt, az, view_center)
+        px, py = normalized_to_screen_xy(nx, ny, geometry)
+        pos = QPointF(float(px), float(py))
+        if not _marker_intersects_viewport(painter, pos, marker_radius_px):
+            continue
+        painter.drawEllipse(pos, marker_radius_px, marker_radius_px)
+        callsign = (point.callsign or "").strip()
+        if callsign and float(point.distance_km) <= _AIRCRAFT_CALLSIGN_MAX_DISTANCE_KM:
+            if label_candidates is not None:
+                label_candidates.append(
+                    {
+                        "text": callsign,
+                        "pos": QPointF(pos.x() + 8.0, pos.y() - 6.0),
+                        "text_color": label_text_color,
+                        "outline_color": label_outline_color,
+                        "outline_width": label_outline_width,
+                        "priority": 45,
+                        "hide_on_overlap": True,
+                    }
+                )
+    painter.restore()
+
+
+def _aircraft_marker_radius_px(distance_km: float) -> float:
+    """Return a compact screen radius that shrinks with observer distance."""
+    d = max(0.0, float(distance_km))
+    if d <= 10.0:
+        return 1.5
+    if d <= 40.0:
+        return 1.33
+    if d <= 100.0:
+        return 1.17
+    if d <= 180.0:
+        return 1.0
+    return 0.83
+
+
+_AIRCRAFT_CALLSIGN_MAX_DISTANCE_KM = 10.0
 
 
 def _minimal_azimuth_cover(azimuth_deg: List[float]) -> Tuple[float, float, float]:
