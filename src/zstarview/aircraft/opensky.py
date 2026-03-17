@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 from typing import Any, Iterable, Optional
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from ..aircraft_constants import AIRCRAFT_BBOX_DELTA_DEG
+from ..aircraft_constants import (
+    AIRCRAFT_BBOX_DELTA_DEG,
+    AIRCRAFT_BBOX_MAX_AREA_SQ_DEG,
+    AIRCRAFT_MIN_EAST_WEST_COVERAGE_KM,
+)
 from .types import AircraftSnapshot
 
 OPENSKY_STATES_ALL_URL = "https://opensky-network.org/api/states/all"
@@ -42,13 +47,22 @@ def build_observer_bbox(
     *,
     delta_deg: float = AIRCRAFT_BBOX_DELTA_DEG,
 ) -> AircraftBoundingBox:
-    delta = max(0.0, float(delta_deg))
+    lat_delta = max(0.0, float(delta_deg))
     lat = float(observer_lat)
     lon = float(observer_lon)
-    min_lat = max(-90.0, lat - delta)
-    max_lat = min(90.0, lat + delta)
-    min_lon = max(-180.0, lon - delta)
-    max_lon = min(180.0, lon + delta)
+    min_lat = max(-90.0, lat - lat_delta)
+    max_lat = min(90.0, lat + lat_delta)
+
+    cos_lat = max(0.01, math.cos(math.radians(lat)))
+    lon_delta_for_coverage = AIRCRAFT_MIN_EAST_WEST_COVERAGE_KM / (111.32 * cos_lat)
+    lon_delta = max(lat_delta, lon_delta_for_coverage)
+
+    lat_span = max(0.001, max_lat - min_lat)
+    max_lon_span = AIRCRAFT_BBOX_MAX_AREA_SQ_DEG / lat_span
+    lon_delta = min(lon_delta, max_lon_span / 2.0)
+
+    min_lon = max(-180.0, lon - lon_delta)
+    max_lon = min(180.0, lon + lon_delta)
     return AircraftBoundingBox(
         min_lat=min_lat,
         max_lat=max_lat,

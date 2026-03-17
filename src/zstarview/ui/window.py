@@ -40,6 +40,7 @@ from ..clouddisc import (
 )
 from ..clouddisc.providers.select import pick_satellite
 from ..aircraft_constants import AIRCRAFT_REFRESH_INTERVAL_SECONDS
+from ..aircraft_constants import AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS
 from ..paths import (
     APP_ICON_FILE,
     APP_DISPLAY_NAME,
@@ -322,6 +323,9 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._aircraft_update_timer = QTimer(self)
         self._aircraft_update_timer.setInterval(AIRCRAFT_REFRESH_INTERVAL_SECONDS * 1000)
         self._aircraft_update_timer.timeout.connect(lambda: self.start_background_aircraft_update(reason="timer"))
+        self._aircraft_projection_timer = QTimer(self)
+        self._aircraft_projection_timer.setInterval(AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS * 1000)
+        self._aircraft_projection_timer.timeout.connect(self.refresh_projected_aircraft_overlay)
 
         # --- CloudDisc Service Initialization ---
         self._clouddisc: Optional[CloudDisc] = None
@@ -406,6 +410,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         if self.delta_t.total_seconds() == 0.0:
             self.start_background_aircraft_update(reason="initial")
             self._aircraft_update_timer.start()
+            self._aircraft_projection_timer.start()
 
     def _setup_update_infrastructure(self) -> None:
         """Initialize timers, worker, and signal wiring for background updates."""
@@ -746,6 +751,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self._cloud_update_timer.stop()
         if self._aircraft_update_timer.isActive():
             self._aircraft_update_timer.stop()
+        if self._aircraft_projection_timer.isActive():
+            self._aircraft_projection_timer.stop()
         if self._interaction_idle_timer.isActive():
             self._interaction_idle_timer.stop()
         if self._viewport_interaction_idle_timer.isActive():

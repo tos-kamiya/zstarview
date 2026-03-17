@@ -4,6 +4,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Dict, Optional
 
+from ..aircraft import project_aircraft_snapshots
+
 logger = logging.getLogger(__name__)
 
 
@@ -245,6 +247,24 @@ class SkyWindowUpdatesMixin:
             time_obj=self._current_time_obj(),
             reason=reason,
         )
+
+    def refresh_projected_aircraft_overlay(self) -> None:
+        snapshots = self.aircraft_state.snapshots
+        if not snapshots:
+            self.state.aircraft_overlay_points = None
+            self.update()
+            return
+        lat, lon = self.viewer_data.location
+        overlay_points = project_aircraft_snapshots(
+            snapshots,
+            observer_lat=lat,
+            observer_lon=lon,
+            observer_height_m=self.viewer_data.observer_height_m,
+            time_obj=self._current_time_obj(),
+        )
+        self.aircraft_state.overlay_points = overlay_points
+        self.state.aircraft_overlay_points = overlay_points
+        self.update()
 
     def _on_aircraft_started(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()

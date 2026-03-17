@@ -24,4 +24,10 @@ class AircraftOverlayPoint:
     callsign: Optional[str]
     alt_deg: float
     az_deg: float
+    trail_start_alt_deg: float
+    trail_start_az_deg: float
+    trail_end_alt_deg: float
+    trail_end_az_deg: float
     distance_km: float
+    age_seconds: float
+    alpha_scale: float
