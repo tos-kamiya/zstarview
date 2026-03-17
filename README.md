@@ -16,7 +16,7 @@ It renders a live all-sky view centered on your chosen location and time, includ
 - **Adjustable view center**: adjust the view center with CLI options `-A` (altitude) and `-Z` (azimuth), or with the arrow keys. During view changes or window resize, the app briefly switches to a simplified interaction mode to keep navigation responsive.
 - **Satellite cloud imagery**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay. Missing regions are shown in faint yellow when satellite coverage is partial.
 - **Terrain horizon and ground fill**: Copernicus DEM data can be downloaded to render the local terrain skyline. A subtle ocher terrain line follows the observer's surroundings, and the disc is filled with a ground color below the terrain horizon, or below the geometric horizon when terrain is disabled.
-- **Urban outline overlay**: major rooflines are drawn as a white urban outline overlay using cached Overture `building` + `building_part` data for the current viewpoint. Very narrow roof spans are simplified to thick horizontal strokes.
+- **Urban outline overlay**: major rooflines are drawn as a white urban outline overlay for the current viewpoint. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 10km radius.
 - **Never-rises region**: the celestial region that never rises above the horizon for the observer's latitude is shown in a red tint.
 - **Python support**: the project is routinely tested on CPython 3.10, 3.11, 3.12, and 3.13.
 
