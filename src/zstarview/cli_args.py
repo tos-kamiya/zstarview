@@ -314,6 +314,16 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "-a",
+        "--aircraft-opacity",
+        type=float,
+        default=1.0,
+        help=(
+            "Opacity of the aircraft overlay (0.0 - 1.0, default: 1.0). "
+            "Set to 0.0 to disable aircraft queries and rendering."
+        ),
+    )
+    parser.add_argument(
         "--terrain-horizon-opacity",
         type=float,
         default=0.05,

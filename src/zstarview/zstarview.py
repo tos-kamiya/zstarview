@@ -189,6 +189,7 @@ def main() -> None:
     user_options = prepare_window_user_options(
         sky_disc_alpha=args.sky_opacity,
         cloud_disc_alpha=0.0 if cloud_stripe_count == 0 or cloud_stripe_width == 0.0 else args.cloud_opacity,
+        aircraft_opacity=args.aircraft_opacity,
         terrain_horizon_opacity=args.terrain_horizon_opacity,
         urban_outline_opacity=args.urban_outline_opacity,
         ground_tint_opacity=args.ground_tint_opacity,
@@ -201,6 +202,7 @@ def main() -> None:
         show_asterisms_initial=args.show_asterisms_initial,
         sky_disc_gui_allowed=args.sky_opacity > 0.0,
         cloud_gui_allowed=args.cloud_opacity > 0.0,
+        aircraft_gui_allowed=args.aircraft_opacity > 0.0,
         terrain_horizon_gui_allowed=args.terrain_horizon_opacity > 0.0,
         urban_outline_gui_allowed=args.urban_outline_opacity > 0.0,
     )

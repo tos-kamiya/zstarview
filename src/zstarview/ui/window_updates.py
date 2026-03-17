@@ -77,6 +77,8 @@ class SkyWindowUpdatesMixin:
         return ""
 
     def _aircraft_status_line(self) -> str:
+        if float(getattr(self, "aircraft_opacity", 0.0)) <= 0.0:
+            return ""
         aircraft_state = getattr(self, "aircraft_state", None)
         if aircraft_state is None:
             return ""
@@ -239,6 +241,8 @@ class SkyWindowUpdatesMixin:
     def start_background_aircraft_update(self, reason: str = "manual") -> bool:
         if self._is_shutting_down:
             return False
+        if float(getattr(self, "aircraft_opacity", 0.0)) <= 0.0:
+            return False
         if self._aircraft_controller is None:
             return False
         lat, lon = self.viewer_data.location
@@ -251,6 +255,8 @@ class SkyWindowUpdatesMixin:
         )
 
     def refresh_projected_aircraft_overlay(self) -> None:
+        if float(getattr(self, "aircraft_opacity", 0.0)) <= 0.0:
+            return
         snapshots = self.aircraft_state.snapshots
         if not snapshots:
             self.state.aircraft_overlay_points = None
@@ -284,14 +290,21 @@ class SkyWindowUpdatesMixin:
             bbox=payload.get("bbox"),
             refreshed_at_utc=refreshed_at,
         )
-        self.state.aircraft_overlay_points = payload.get("overlay_points")
+        if float(getattr(self, "aircraft_opacity", 0.0)) > 0.0:
+            self.state.aircraft_overlay_points = payload.get("overlay_points")
+            schedule_next = getattr(self, "_schedule_next_aircraft_refresh", None)
+            if callable(schedule_next):
+                schedule_next()
         self.update()
 
     def _on_aircraft_failed(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.aircraft_state.set_error_banner(banner)
-            self.update()
+        schedule_next = getattr(self, "_schedule_next_aircraft_refresh", None)
+        if callable(schedule_next) and float(getattr(self, "aircraft_opacity", 0.0)) > 0.0:
+            schedule_next()
+        self.update()
 
     def _on_terrain_horizon_started(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
