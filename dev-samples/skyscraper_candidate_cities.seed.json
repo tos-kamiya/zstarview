@@ -1,0 +1,51 @@
+{
+  "description": "Curated skyscraper-city seeds chosen from Wikipedia skyline/skyscraper ranking pages for follow-up matching against Scraperbase.",
+  "sources": [
+    {
+      "name": "Wikipedia - List of cities with the most skyscrapers",
+      "url": "https://en.wikipedia.org/wiki/List_of_cities_with_the_most_skyscrapers"
+    },
+    {
+      "name": "Wikipedia - List of tallest buildings by city",
+      "url": "https://en.wikipedia.org/wiki/List_of_tallest_buildings_by_city"
+    }
+  ],
+  "cities": [
+    "Hong Kong",
+    "Shenzhen",
+    "New York City",
+    "Dubai",
+    "Guangzhou",
+    "Wuhan",
+    "Shanghai",
+    "Kuala Lumpur",
+    "Tokyo",
+    "Chongqing",
+    "Chicago",
+    "Chengdu",
+    "Bangkok",
+    "Jakarta",
+    "Singapore",
+    {
+      "city": "Mumbai",
+      "aliases": ["Bombay"]
+    },
+    {
+      "city": "Beijing",
+      "aliases": ["Peking"]
+    },
+    "Tianjin",
+    "Seoul",
+    "Toronto",
+    "Miami",
+    "Moscow",
+    "Melbourne",
+    "Sydney",
+    "Istanbul",
+    "Busan",
+    "Manila",
+    "Osaka",
+    "Balneario Camboriu",
+    "Panama City"
+  ]
+}
