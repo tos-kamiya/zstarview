@@ -20,6 +20,7 @@ def resolve_urban_outline_layer_for_viewer(
     derived_dirs: tuple[str | Path, ...] | None = None,
     radius_km: float = DEFAULT_FETCH_RADIUS_KM,
     min_distance_km: float = 0.0,
+    min_height_m: float = 0.0,
 ) -> list[UrbanOutlinePolyline] | None:
     return _build_dynamic_urban_outline_layer(
         lat_deg=float(viewer_data.lat_deg),
@@ -30,6 +31,7 @@ def resolve_urban_outline_layer_for_viewer(
         derived_dirs=None if derived_dirs is None else tuple(Path(path) for path in derived_dirs),
         radius_km=float(radius_km),
         min_distance_km=float(min_distance_km),
+        min_height_m=float(min_height_m),
     )
 
 
@@ -44,6 +46,7 @@ def _build_dynamic_urban_outline_layer(
     derived_dirs: tuple[Path, ...] | None = None,
     radius_km: float = DEFAULT_FETCH_RADIUS_KM,
     min_distance_km: float = 0.0,
+    min_height_m: float = 0.0,
 ) -> list[UrbanOutlinePolyline] | None:
     if derived_dirs is not None:
         candidate_dirs = tuple(path for path in derived_dirs if path.exists())
@@ -70,6 +73,10 @@ def _build_dynamic_urban_outline_layer(
         for envelope in envelopes:
             buildings.extend(parse_derived_tile_buildings(envelope.path))
     buildings = _merge_building_footprints(tuple(buildings))
+    if min_height_m > 0.0:
+        buildings = tuple(
+            building for building in buildings if float(building.height_m) >= float(min_height_m)
+        )
     if not buildings:
         return None
 

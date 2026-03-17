@@ -388,12 +388,17 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 2. `UrbanOutlineController` は `lat/lon + radius + min_height + mode` から実行キーを作る。既定 mode は `both`、既定半径は `2.5km` である。
 3. `mode=both` の場合、`UrbanOutlineController` は `building` 用と `building_part` 用の derived dataset をそれぞれ確認し、欠けている方だけを取得する。
 4. `mode=building` の場合は `building` 用 derived dataset のみを確認・取得する。
-5. runtime 側は `resolve_urban_outline_layer_for_viewer()` を使って対象 derived dataset 群を追加の高さフィルタなしで読む。
-6. runtime マージ時には、`building_part` が持つ `parent_building_id` を参照し、対応する親 `building` 外形を除外する。
-7. `compute_urban_outlines()` は建物ごとの `height_m` を保持した輪郭列を返し、`resolve_urban_outline_layer_for_viewer()` はそれを `UrbanOutlinePolyline` の列に変換する。
-8. 描画時は `50m` 以上を CLI 指定 opacity の基準とし、`0m` ではその `25%` になるよう高さ比例で alpha を下げる。
-9. 結果の outline 列は `UrbanOutlineState` と `SkyWindowState.urban_outlines` に反映し、再描画する。
-10. 取得中や失敗時はバナー文字列を UI 状態へ反映する。
+5. 同じ `update()` サイクルの中で、`UrbanOutlineController` は `src/zstarview/data/skyscraper_tiles_z14.json` を読み、視点中心 `10km` 円に交差しつつ内側半径 `radius_km` だけには収まらない seed tile を選ぶ。既定 `radius_km` は `2.5km` である。
+6. 選ばれた skyscraper seed tile については、専用 cache root 配下の derived dataset を確認し、未取得 tile だけを `overturemaps download --bbox=... --type building` で取得する。
+7. skyscraper tile は import 時に `height_m >= 150` で前処理され、runtime では `resolve_urban_outline_layer_for_viewer(..., radius_km=10.0, min_distance_km=radius_km)` として読む。
+8. runtime 側は通常 derived dataset 群を追加の高さフィルタなしで読む。skyscraper derived dataset 群は cache 自体は常に `150m` 下限で共有しつつ、`min_building_height_m > 150` の場合のみ runtime 側で追加高さフィルタをかけてよい。
+9. runtime マージ時には、通常レイヤー側で `building_part` が持つ `parent_building_id` を参照し、対応する親 `building` 外形を除外する。
+10. `compute_urban_outlines()` は建物ごとの `height_m` を保持した輪郭列を返し、`resolve_urban_outline_layer_for_viewer()` はそれを `UrbanOutlinePolyline` の列に変換する。
+11. `UrbanOutlineController` は通常レイヤーと skyscraper レイヤーをマージして 1 回の `urban_ready` として反映する。skyscraper 取得が失敗した場合は、通常レイヤーだけで `urban_ready` してよい。
+12. `--urban-outline-skyscraper-only` 指定時は、通常近距離 derived dataset の確認・取得・解決をスキップし、skyscraper レイヤーだけを解決する。
+13. 描画時は `50m` 以上を CLI 指定 opacity の基準とし、`0m` ではその `25%` になるよう高さ比例で alpha を下げる。
+14. 結果の outline 列は `UrbanOutlineState` と `SkyWindowState.urban_outlines` に反映し、再描画する。
+15. 取得中や失敗時はバナー文字列を UI 状態へ反映する。
 
 補足:
 - 旧 `list[list[(alt, az)]]` 形式の runtime 互換コードは削除し、都市アウトライン描画は `UrbanOutlinePolyline` のみを受け付ける。
@@ -443,6 +448,8 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - derived tile の各建物レコードは `building_id` を持ち、`building_part` 由来レコードは必要に応じて `parent_building_id` を持つ。
 - `building` と `building_part` を併用する場合、`parent_building_id` を持つ part が存在する親 `building` は描画対象から外す。
 - 建物高さのしきい値は derived tile 生成時の前処理パラメータとし、runtime 読込時の既定値では再適用しない。
+- 遠距離スカイスクレーパー補助レイヤーは `building_part` を使わず `building` のみを扱い、runtime では `min_distance_km` を使って通常レイヤー半径より内側の建物を落とす。
+- `UrbanOutlinePolyline` は `source` を持ち、通常レイヤーと skyscraper レイヤーの由来を区別できる。ただし現行描画色は共通である。
 - ただし見かけの方位幅が `0.5°` 未満の輪郭は、細い polyline ではなく太い水平線に簡略化する。
 - `viewport_interaction_mode` 中は都市アウトライン描画を抑止し、方向キー操作の負荷を下げる。
 - ハンバーガーメニュー表示そのものでは `viewport_interaction_mode` へ入らない。メニュー起動で `paintEvent` が走っても、最終フレームキャッシュの再利用で余分な重い描画を避ける。
@@ -473,6 +480,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - DSO データ
 - フォント
 - タワー・展望地点データ
+- スカイスクレーパー seed tile リスト
 - 画像アセット
 
 ### 10.2 外部取得データ
@@ -486,6 +494,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - キャッシュ対象は再利用価値の高い外部取得データとする。
 - DEM データは永続キャッシュする。
 - Overture 建物由来の derived tile は地点条件ごとに永続キャッシュする。
+- 遠距離スカイスクレーパー補助レイヤー用 derived tile は `overture_skyscrapers/<tile-cache-key>/bldg` 配下に tile 単位で永続キャッシュする。
 - 地形地平線の計算済みポリラインは永続化しない。
 - 雲は取得ソースと中間成果物をキャッシュし、視点変更時の再利用を優先する。
 

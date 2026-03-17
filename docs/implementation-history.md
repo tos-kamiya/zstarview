@@ -42,33 +42,6 @@
   - 現在は `Urban Outline` メニュー項目と `U` ショートカット、`--urban-outline-opacity` を持つ。
   - 細い輪郭は太い水平線に簡略化し、方向キー操作中の簡易描画モードでは描かない。
 
-- INPROGRESS: スカイスクレーパー専用広域タイルの追加レイヤー案
-  - 背景として、視点中心半径 `2.5km` を `7.5km` へ単純に広げると、Skytree 周辺の Overture `building` ダウンロード量は約 `6.5x` に増えた。
-  - 既定の通常レイヤーは引き続き視点中心 `2.5km` の derived tile を使い、全地点での取得コストは増やさない方針を優先する。
-  - 代替案として、`150m` 超級の building だけを収録した広域 Overture derived tile 群を別ディレクトリへ事前生成し、runtime で補助レイヤーとして合成する構成を検討する。
-  - ここでいう `zoom 14` は Overture 固有タイルではなく、Web Mercator の `z/x/y` 分割を便宜的な scan 単位として使う定義とする。各 tile は必要に応じて `west,south,east,north` の bbox へ戻して `overturemaps download --bbox=...` に渡す。
-  - runtime では、通常 `2.5km` レイヤーを先に読み、その後スカイスクレーパー専用ディレクトリから視点周辺に関係するタイルだけを追加選択する。
-  - 重複回避はまずタイル責務と距離リングで扱う。近距離 `0-2.5km` は通常レイヤー、遠距離 `2.5-10km` はスカイスクレーパーレイヤーを採用し、必要なら最終段で建物距離により内側成分を落とす。
-  - 初期検討では `building_part` は広域高層専用レイヤーに含めず、`building` のみを対象としてよい。
-  - Scraperbase `completed` かつ `150m` 以上の building を 30 都市 seed に突き合わせた試算では、scan 粒度を `zoom 12` から `zoom 14` へ上げるとユニーク tile 数は `199 -> 662` に増えた。一方で `zoom 12` は東京付近で 1 tile が現行 `2.5km` bbox よりかなり大きく、不要領域が広い。
-  - そのため現時点の第一候補は `zoom 14` とし、scan tile 数の増加と引き換えに、広すぎる bbox を避ける方を優先する。
-  - 外側半径は初期案の `7.5km` ではなく `10km` を第一候補とする。理由は、日本の代表例として東京タワーと東京スカイツリーの直線距離が約 `8.2km` あり、`7.5km` では主要ランドマーク間の遠景関係を取りこぼすためである。
-  - 実装の第一段階では、skyscraper scan tile の seed リストをアプリ同梱データとして持つ。seed は少なくとも `z/x/y`、bbox、都市名、最大高さ帯、代表 building 名を保持し、Scraperbase から生成した JSON を人手レビュー後に取り込む前提とする。
-  - ダウンロード方針は「初回起動で全件取得」ではなく「オンデマンド取得 + 永続キャッシュ」とする。seed リストだけは同梱し、実データは視点更新時に必要 tile が見つかったときだけ取得する。
-  - キャッシュ配置は通常 urban outline 用 derived root とは別に、例えば `CACHE_PATH/overture_skyscrapers/z14/{z}_{x}_{y}/bldg/*.json` のような専用 root を持たせる。tile ごとに既存 derived tile 互換 JSON と `tile_index.json` を置ける形を優先する。
-  - 1 tile の取得ジョブは `overturemaps download --bbox=... --type building` を使い、結果を import 時点で `height_m >= 150` に再フィルタして保存する。これにより runtime 側は高さ条件を持たず、通常 derived tile と同様に扱える。
-  - runtime の tile 選択条件は、「tile bbox が視点中心 `10km` 円と交差し、かつ `2.5km` 内側だけには完全に収まらないこと」を一次条件とする。建物単位ではさらに `2.5km < distance <= 10km` を満たすものだけを採用する。
-  - 都市 seed に含まれない場所では skyscraper tile の探索自体を行わないのではなく、視点中心 `10km` 円に交差する seed tile が存在しない限り何もしない構成とする。これにより世界全体の追加負荷を抑えつつ、都市名ベースの特別扱いを runtime へ持ち込まない。
-  - 取得と描画のトリガは `UrbanOutlineController` に一本化し、通常 `2.5km` レイヤー更新と skyscraper `2.5-10km` レイヤー更新を同じ `update()` 要求の中で扱う。ユーザー操作上は別周期にせず、視点変更・起動時・トグル再有効化で同時に再評価する。
-  - worker 内の実処理順は、(1) 通常 `2.5km` 用 `building/building_part` derived dataset の存在確認と必要時 download、(2) skyscraper seed tile の選定、(3) 未キャッシュ skyscraper tile の download と derived 変換、(4) 通常レイヤーと skyscraper レイヤーをまとめて runtime 解決、の順を第一候補とする。
-  - UI への ready 反映は原則 1 回とし、同一更新要求の中で通常レイヤーと skyscraper レイヤーの両方を解決してから `urban_ready` を emit する。これにより 2.5km レイヤー表示後に遠景だけ追加で揺れ直す挙動を避ける。
-  - ただし導入初期は安全側で、skyscraper tile download が失敗した場合に通常レイヤーまで巻き添えにしないことを優先する。実装上は `UrbanOutlineController` 内で通常レイヤー解決結果を保持し、skyscraper フェーズ失敗時には通常レイヤーだけで `urban_ready` してよい。
-  - UI 状態としては、通常 urban outline と別トグルを増やさず、既存 `Urban Outline` の一部として扱う。必要なら status/banner で `Urban outline: downloading cache...` に加え、skyscraper tile を含む場合も同じ更新サイクル内の補助取得として表現する。
-  - 失敗時の扱いは safe-by-default とする。skyscraper tile 取得が失敗しても通常 `2.5km` urban outline は維持し、追加レイヤーだけを silently skip または banner 通知に留める。
-  - データ更新は Overture upstream の変動を考慮し、通常 derived cache と同様に「手動削除すれば再取得される」運用を初期案とする。自動 refresh や世代管理は第一段階の対象外とする。
-  - 最低限の検証観点として、(1) `10km` リングでの tile 選択が期待通りか、(2) `2.5km` 内側建物が混入しないか、(3) cache 未作成時でも通常レイヤー描画を阻害しないか、(4) skyscraper cache がない都市で余分なジョブを起こさないか、(5) 同一 `update()` 要求の中で通常レイヤーと skyscraper レイヤーが一緒に反映されるか、をテスト対象にする。
-  - この案は未確定であり、実際に見え方差分が十分ある都市だけに適用する curated 運用を前提とする。
-
 ## 4. TODO
 
 - GUI 上で時刻を前後できるダイナミックなタイムシフト操作を追加する
@@ -76,6 +49,18 @@
 - 必要に応じて `CloudController` と `SkyWindow` の責務境界を再評価する
 
 ## 5. 実装履歴
+
+### 2026-03-17
+
+- スカイスクレーパー遠距離都市アウトライン補助レイヤー
+  - 通常の `0-2.5km` urban outline とは別に、`2.5-10km` の遠距離スカイスクレーパー補助レイヤーを追加した。
+  - 遠距離レイヤーは `150m` 以上の `building` のみを対象とし、`building_part` は使わない。
+  - seed source は Scraperbase を基にした 30 都市 curated list で、Web Mercator `zoom 14` の `z/x/y` tile と bbox を同梱 JSON として持つ構成にした。
+  - `zoom 14` は Overture 固有タイルではなく、`overturemaps download --bbox=...` に戻すための便宜的な scan 単位として採用した。
+  - `UrbanOutlineController` は通常レイヤー更新と同じ `update()` サイクルで skyscraper tile を選定・取得・解決し、結果を 1 回の `urban_ready` で UI に反映する。
+  - skyscraper tile の取得はオンデマンドとし、`overture_skyscrapers/<tile-cache-key>/bldg` 配下へ永続キャッシュする。
+  - skyscraper tile 取得が失敗した場合は通常レイヤーだけで描画を継続する safe fallback を入れた。
+  - 確認用に `--urban-outline-skyscraper-only` を追加し、通常 `0-2.5km` レイヤーを描かずに遠距離 skyscraper レイヤーだけを描画できるようにした。
 
 ### 2026-03-14
 

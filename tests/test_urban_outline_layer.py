@@ -121,6 +121,58 @@ def test_resolve_urban_outline_layer_for_viewer_passes_far_range_distance_filter
     assert compute_calls[0][1]["min_distance_km"] == 2.5
 
 
+def test_resolve_urban_outline_layer_for_viewer_applies_runtime_min_height_filter(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    viewer = ViewerData(
+        location=(35.67, 139.76),
+        timezone_name="Asia/Tokyo",
+        city_name="Lat: 35.67, Lon: 139.76",
+        observer_height_m=1.7,
+    )
+    derived_dir = tmp_path / "skyscrapers" / "bldg"
+    derived_dir.mkdir(parents=True)
+
+    monkeypatch.setattr(
+        "zstarview.urban_outline_layer.select_derived_tile_envelopes",
+        lambda *_args, **_kwargs: (type("Envelope", (), {"path": tmp_path / "tile.json"})(),),
+    )
+    monkeypatch.setattr(
+        "zstarview.urban_outline_layer.parse_derived_tile_buildings",
+        lambda *_args, **_kwargs: (
+            BuildingFootprint(
+                building_id="lower",
+                height_m=170.0,
+                rings_lonlat=(((139.0, 35.0), (139.001, 35.0), (139.0, 35.0)),),
+            ),
+            BuildingFootprint(
+                building_id="higher",
+                height_m=210.0,
+                rings_lonlat=(((139.0, 35.0), (139.001, 35.0), (139.0, 35.0)),),
+            ),
+        ),
+    )
+    compute_calls = []
+    monkeypatch.setattr(
+        "zstarview.urban_outline_layer.compute_urban_outlines",
+        lambda *args, **kwargs: compute_calls.append((args, kwargs))
+        or type("Result", (), {"outlines": ()})(),
+    )
+
+    got = resolve_urban_outline_layer_for_viewer(
+        viewer,
+        derived_root_dir=tmp_path,
+        derived_dir=derived_dir,
+        radius_km=10.0,
+        min_distance_km=2.5,
+        min_height_m=200.0,
+    )
+
+    assert got is None
+    assert tuple(building.building_id for building in compute_calls[0][0][1]) == ("higher",)
+
+
 def test_resolve_urban_outline_layer_for_viewer_returns_none_when_outside_coverage(tmp_path: Path) -> None:
     viewer = ViewerData(
         location=(34.69, 135.50),
