@@ -76,7 +76,7 @@ zstarview -Z E -A 25 Tokyo
 - Adjustable view center: adjust the view center with CLI options `-A` and `-Z`, or with the arrow keys.
 - Satellite cloud imagery: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched overlay.
 - Terrain horizon and ground fill: Copernicus DEM data can be downloaded to render the local terrain skyline and ground region below the horizon.
-- Urban outline overlay: major rooflines are drawn as a white overlay using cached Overture building data; very narrow roof spans are simplified to thick horizontal strokes.
+- Urban outline overlay: major rooflines are drawn as a white overlay for the current viewpoint. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 10km radius.
 - Never-rises region: the celestial region that never rises above the horizon for the observer's latitude is shown in a red tint.
 - Python support: routinely tested on CPython 3.10, 3.11, 3.12, and 3.13.
 
