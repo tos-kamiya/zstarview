@@ -59,11 +59,14 @@
   - 1 tile の取得ジョブは `overturemaps download --bbox=... --type building` を使い、結果を import 時点で `height_m >= 150` に再フィルタして保存する。これにより runtime 側は高さ条件を持たず、通常 derived tile と同様に扱える。
   - runtime の tile 選択条件は、「tile bbox が視点中心 `10km` 円と交差し、かつ `2.5km` 内側だけには完全に収まらないこと」を一次条件とする。建物単位ではさらに `2.5km < distance <= 10km` を満たすものだけを採用する。
   - 都市 seed に含まれない場所では skyscraper tile の探索自体を行わないのではなく、視点中心 `10km` 円に交差する seed tile が存在しない限り何もしない構成とする。これにより世界全体の追加負荷を抑えつつ、都市名ベースの特別扱いを runtime へ持ち込まない。
-  - 取得のトリガは `UrbanOutlineController` に寄せ、通常 `2.5km` レイヤー更新と同じ worker 経路で扱う。ただし skyscraper tile ダウンロードは低優先度の補助フェーズとして分離し、通常レイヤーの ready を待たずに UI を描画可能にする。
-  - UI 状態としては、通常 urban outline と別トグルを増やさず、既存 `Urban Outline` の一部として扱う。必要なら status/banner で `Urban outline: downloading skyscraper cache...` のように補助取得を明示する。
+  - 取得と描画のトリガは `UrbanOutlineController` に一本化し、通常 `2.5km` レイヤー更新と skyscraper `2.5-10km` レイヤー更新を同じ `update()` 要求の中で扱う。ユーザー操作上は別周期にせず、視点変更・起動時・トグル再有効化で同時に再評価する。
+  - worker 内の実処理順は、(1) 通常 `2.5km` 用 `building/building_part` derived dataset の存在確認と必要時 download、(2) skyscraper seed tile の選定、(3) 未キャッシュ skyscraper tile の download と derived 変換、(4) 通常レイヤーと skyscraper レイヤーをまとめて runtime 解決、の順を第一候補とする。
+  - UI への ready 反映は原則 1 回とし、同一更新要求の中で通常レイヤーと skyscraper レイヤーの両方を解決してから `urban_ready` を emit する。これにより 2.5km レイヤー表示後に遠景だけ追加で揺れ直す挙動を避ける。
+  - ただし導入初期は安全側で、skyscraper tile download が失敗した場合に通常レイヤーまで巻き添えにしないことを優先する。実装上は `UrbanOutlineController` 内で通常レイヤー解決結果を保持し、skyscraper フェーズ失敗時には通常レイヤーだけで `urban_ready` してよい。
+  - UI 状態としては、通常 urban outline と別トグルを増やさず、既存 `Urban Outline` の一部として扱う。必要なら status/banner で `Urban outline: downloading cache...` に加え、skyscraper tile を含む場合も同じ更新サイクル内の補助取得として表現する。
   - 失敗時の扱いは safe-by-default とする。skyscraper tile 取得が失敗しても通常 `2.5km` urban outline は維持し、追加レイヤーだけを silently skip または banner 通知に留める。
   - データ更新は Overture upstream の変動を考慮し、通常 derived cache と同様に「手動削除すれば再取得される」運用を初期案とする。自動 refresh や世代管理は第一段階の対象外とする。
-  - 最低限の検証観点として、(1) `10km` リングでの tile 選択が期待通りか、(2) `2.5km` 内側建物が混入しないか、(3) cache 未作成時でも通常レイヤー描画を阻害しないか、(4) skyscraper cache がない都市で余分なジョブを起こさないか、をテスト対象にする。
+  - 最低限の検証観点として、(1) `10km` リングでの tile 選択が期待通りか、(2) `2.5km` 内側建物が混入しないか、(3) cache 未作成時でも通常レイヤー描画を阻害しないか、(4) skyscraper cache がない都市で余分なジョブを起こさないか、(5) 同一 `update()` 要求の中で通常レイヤーと skyscraper レイヤーが一緒に反映されるか、をテスト対象にする。
   - この案は未確定であり、実際に見え方差分が十分ある都市だけに適用する curated 運用を前提とする。
 
 ## 4. TODO
