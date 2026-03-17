@@ -1,6 +1,6 @@
 # zstarview
 
-Transparent desktop sky viewer with stars, planets, eclipses, optional real-time satellite cloud overlay, optional terrain horizon overlay, and optional urban outline overlay.
+Transparent desktop sky viewer with stars, planets, eclipses, optional real-time satellite cloud overlay, optional terrain horizon overlay, optional urban outline overlay, and an optional nearby-aircraft overlay.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot1.png" width="49%" alt="zstarview screenshot 1">
@@ -74,10 +74,11 @@ zstarview -Z E -A 25 Tokyo
 - Solar-system bodies: supports Sun, Moon, and major planets.
 - Flexible location input: specify the observer location through the CLI argument using a city name, tower name, mountain name, direct latitude/longitude input, or online place/station search via Nominatim.
 - Adjustable view center: adjust the view center with CLI options `-A` and `-Z`, or with the arrow keys.
+- Never-rises region: the celestial region that never rises above the horizon for the observer's latitude is shown in a red tint.
 - Satellite cloud imagery: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched overlay.
 - Terrain horizon and ground fill: Copernicus DEM data can be downloaded to render the local terrain skyline and ground region below the horizon.
 - Urban outline overlay: major rooflines are drawn as a white overlay for the current viewpoint. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 10km radius.
-- Never-rises region: the celestial region that never rises above the horizon for the observer's latitude is shown in a red tint.
+- Aircraft overlay: nearby aircraft from OpenSky can be drawn as orange predicted-motion polylines, with startup opacity control and cached reuse when the layer is hidden and shown again.
 - Python support: routinely tested on CPython 3.10, 3.11, 3.12, and 3.13.
 
 ## Common Options
@@ -85,9 +86,13 @@ zstarview -Z E -A 25 Tokyo
 - `--place QUERY`
 - `--place-countrycode CODE`
 - `--place-lang LANG`
+- `--sky-opacity 0.0..1.0`
 - `--cloud-opacity 0.0..1.0`
+- `--cloud-missing-tint-opacity 0.0..1.0`
 - `--terrain-horizon-opacity 0.0..1.0`
+- `--ground-tint-opacity 0.0..1.0`
 - `--urban-outline-opacity 0.0..1.0`
+- `-a, --aircraft-opacity 0.0..1.0`
 - `--observer-height-m METERS`
 - `--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"`
 
@@ -96,6 +101,7 @@ Notes:
 - `--place` uses the public OpenStreetMap Nominatim search service and sends a single request with a User-Agent and `Accept-Language`.
 - Satellite cloud rendering downloads Himawari/GOES data from public S3 buckets.
 - Terrain horizon rendering downloads Copernicus DEM tiles on first use and reuses cached data later.
+- Aircraft rendering uses OpenSky state data when enabled; `-a 0` disables both aircraft queries and drawing for that run.
 
 ## Code, Data Licenses, and Credits
 
