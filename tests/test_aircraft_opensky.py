@@ -14,8 +14,15 @@ def test_build_observer_bbox_clamps_world_edges() -> None:
     bbox = build_observer_bbox(89.5, 179.7)
     assert bbox.min_lat == 88.5
     assert bbox.max_lat == 90.0
-    assert bbox.min_lon == 178.7
+    assert bbox.min_lon < 178.7
     assert bbox.max_lon == 180.0
+    assert bbox.area_sq_deg <= 25.0
+
+
+def test_build_observer_bbox_expands_longitude_at_high_latitudes() -> None:
+    bbox = build_observer_bbox(70.0, 10.0)
+    assert bbox.max_lon - bbox.min_lon > 2.0
+    assert bbox.area_sq_deg <= 25.0
 
 
 def test_normalize_opensky_state_vectors_filters_ground_and_missing_positions() -> None:

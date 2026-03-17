@@ -34,6 +34,7 @@ from ..paths import (
     TEXT_COLOR,
 )
 from ..aircraft.types import AircraftOverlayPoint
+from ..aircraft_constants import AIRCRAFT_FADE_START_SECONDS
 from ..types import ScreenGeometry, CelestialData, ViewerData, CelestialObject, PlanetBody, UrbanOutlinePolyline
 from ..astro import (
     altaz_to_normalized_xy,
@@ -799,33 +800,68 @@ def draw_aircraft_overlay(
     label_candidates: Optional[List[Dict[str, Any]]] = None,
     preset: str = "night",
 ) -> None:
-    """Draw aircraft markers as compact yellow points."""
+    """Draw aircraft as orange predicted-motion polylines."""
     if not aircraft_points:
         return
 
     painter.save()
-    fill = QColor(255, 220, 64, 230)
-    rim = QColor(255, 245, 180, 255)
+    line_color = QColor(255, 165, 64, 255)
     label_text_color, label_outline_color = _get_text_style(preset)
     label_outline_width = _get_text_outline_width(preset)
-    pen = QPen(rim, 1.0, Qt.PenStyle.SolidLine)
-    pen.setCosmetic(True)
-    painter.setPen(pen)
-    painter.setBrush(fill)
+    line_pen = QPen(line_color, 1.0, Qt.PenStyle.SolidLine)
+    line_pen.setCosmetic(True)
+    line_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    line_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+    painter.setPen(line_pen)
+    painter.setBrush(Qt.BrushStyle.NoBrush)
     for point in aircraft_points:
         alt = float(point.alt_deg)
         az = float(point.az_deg)
-        marker_radius_px = _aircraft_marker_radius_px(float(point.distance_km))
+        distance_km = float(point.distance_km)
+        if distance_km > _AIRCRAFT_MAX_DRAW_DISTANCE_KM:
+            continue
         if alt <= 0.0 or not is_in_fov(alt, az, view_center):
             continue
+        line_alpha = max(30, min(255, int(round(255.0 * float(point.alpha_scale)))))
+        line_color.setAlpha(line_alpha)
+        line_pen.setColor(line_color)
+        line_pen.setWidthF(_aircraft_line_width_px(distance_km))
+        painter.setPen(line_pen)
+        if is_in_fov(float(point.trail_start_alt_deg), float(point.trail_start_az_deg), view_center) or is_in_fov(
+            float(point.trail_end_alt_deg), float(point.trail_end_az_deg), view_center
+        ):
+            start_nx, start_ny = altaz_to_normalized_xy(
+                float(point.trail_start_alt_deg),
+                float(point.trail_start_az_deg),
+                view_center,
+            )
+            current_nx, current_ny = altaz_to_normalized_xy(alt, az, view_center)
+            end_nx, end_ny = altaz_to_normalized_xy(
+                float(point.trail_end_alt_deg),
+                float(point.trail_end_az_deg),
+                view_center,
+            )
+            start_px, start_py = normalized_to_screen_xy(start_nx, start_ny, geometry)
+            current_px, current_py = normalized_to_screen_xy(current_nx, current_ny, geometry)
+            end_px, end_py = normalized_to_screen_xy(end_nx, end_ny, geometry)
+            painter.drawPolyline(
+                QPolygonF(
+                    [
+                        QPointF(float(start_px), float(start_py)),
+                        QPointF(float(current_px), float(current_py)),
+                        QPointF(float(end_px), float(end_py)),
+                    ]
+                )
+            )
         nx, ny = altaz_to_normalized_xy(alt, az, view_center)
         px, py = normalized_to_screen_xy(nx, ny, geometry)
         pos = QPointF(float(px), float(py))
-        if not _marker_intersects_viewport(painter, pos, marker_radius_px):
-            continue
-        painter.drawEllipse(pos, marker_radius_px, marker_radius_px)
         callsign = (point.callsign or "").strip()
-        if callsign and float(point.distance_km) <= _AIRCRAFT_CALLSIGN_MAX_DISTANCE_KM:
+        if (
+            callsign
+            and float(point.distance_km) <= _AIRCRAFT_CALLSIGN_MAX_DISTANCE_KM
+            and float(point.age_seconds) <= AIRCRAFT_FADE_START_SECONDS
+        ):
             if label_candidates is not None:
                 label_candidates.append(
                     {
@@ -841,21 +877,24 @@ def draw_aircraft_overlay(
     painter.restore()
 
 
-def _aircraft_marker_radius_px(distance_km: float) -> float:
-    """Return a compact screen radius that shrinks with observer distance."""
-    d = max(0.0, float(distance_km))
-    if d <= 10.0:
-        return 1.5
-    if d <= 40.0:
-        return 1.33
-    if d <= 100.0:
-        return 1.17
-    if d <= 180.0:
-        return 1.0
-    return 0.83
-
-
 _AIRCRAFT_CALLSIGN_MAX_DISTANCE_KM = 10.0
+_AIRCRAFT_MAX_DRAW_DISTANCE_KM = 50.0
+
+
+def _aircraft_line_width_px(distance_km: float) -> float:
+    """Return a cosmetic line width where nearer aircraft appear thicker."""
+    d = max(0.0, float(distance_km))
+    if d <= 1.0:
+        return 3.0
+    if d <= 3.0:
+        return 2.2
+    if d <= 5.0:
+        return 1.6
+    if d <= 10.0:
+        return 1.0
+    if d <= 20.0:
+        return 0.8
+    return 0.6
 
 
 def _minimal_azimuth_cover(azimuth_deg: List[float]) -> Tuple[float, float, float]:
