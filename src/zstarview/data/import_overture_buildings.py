@@ -177,10 +177,49 @@ def import_overture_buildings(
         )
 
     bbox = bbox_from_point(lat_deg, lon_deg, radius_km)
+    return import_overture_buildings_for_bbox(
+        bbox=bbox,
+        derived_root_dir=derived_root_dir,
+        min_building_height_m=min_building_height_m,
+        feature_type=feature_type,
+        fmt=fmt,
+        overturemaps_bin=overturemaps_path,
+        dataset_name=dataset_name
+        or derive_dataset_name(
+            lat_deg,
+            lon_deg,
+            radius_km,
+            feature_type,
+            min_building_height_m,
+        ),
+        keep_download=keep_download,
+        no_stac=no_stac,
+        query_lat_deg=lat_deg,
+        query_lon_deg=lon_deg,
+        query_radius_km=radius_km,
+    )
+
+
+def import_overture_buildings_for_bbox(
+    *,
+    bbox: tuple[float, float, float, float],
+    derived_root_dir: Path,
+    min_building_height_m: float,
+    feature_type: str,
+    fmt: str,
+    overturemaps_bin: str,
+    dataset_name: str,
+    keep_download: Path | None,
+    no_stac: bool,
+    query_lat_deg: float | None = None,
+    query_lon_deg: float | None = None,
+    query_radius_km: float | None = None,
+) -> Path:
+    overturemaps_path = shutil.which(overturemaps_bin) or overturemaps_bin
     dataset_dir_name = dataset_name or derive_dataset_name(
-        lat_deg,
-        lon_deg,
-        radius_km,
+        query_lat_deg or 0.0,
+        query_lon_deg or 0.0,
+        query_radius_km or 0.0,
         feature_type,
         min_building_height_m,
     )
@@ -211,9 +250,9 @@ def import_overture_buildings(
             bbox=bbox,
             min_building_height_m=min_building_height_m,
             feature_type=feature_type,
-            query_lat_deg=lat_deg,
-            query_lon_deg=lon_deg,
-            query_radius_km=radius_km,
+            query_lat_deg=query_lat_deg,
+            query_lon_deg=query_lon_deg,
+            query_radius_km=query_radius_km,
             download_format=fmt,
         )
 
@@ -230,9 +269,9 @@ def build_derived_tile_payload(
     bbox: tuple[float, float, float, float],
     min_building_height_m: float,
     feature_type: str,
-    query_lat_deg: float,
-    query_lon_deg: float,
-    query_radius_km: float,
+    query_lat_deg: float | None,
+    query_lon_deg: float | None,
+    query_radius_km: float | None,
     download_format: str,
 ) -> dict[str, object]:
     buildings: list[dict[str, object]] = []
@@ -243,17 +282,30 @@ def build_derived_tile_payload(
             buildings.append(building)
 
     west, south, east, north = bbox
+    query_payload: dict[str, object] = {
+        "bbox": {
+            "west": west,
+            "south": south,
+            "east": east,
+            "north": north,
+        },
+        "format": download_format,
+    }
+    if query_lat_deg is not None and query_lon_deg is not None and query_radius_km is not None:
+        query_payload.update(
+            {
+                "lat_deg": query_lat_deg,
+                "lon_deg": query_lon_deg,
+                "radius_km": query_radius_km,
+            }
+        )
+
     return {
         "schema_version": 1,
         "source": {
             "format": "Overture-Buildings",
             "feature_type": feature_type,
-            "query": {
-                "lat_deg": query_lat_deg,
-                "lon_deg": query_lon_deg,
-                "radius_km": query_radius_km,
-                "format": download_format,
-            },
+            "query": query_payload,
         },
         "tile": {
             "id": dataset_dir_name,

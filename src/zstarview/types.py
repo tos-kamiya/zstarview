@@ -128,6 +128,7 @@ class UrbanOutlinePolyline:
 
     points: List[Tuple[float, float]]
     height_m: float
+    source: str = "base"
 
 
 CelestialObject = Union[PlanetBody, Dict[str, Any]]

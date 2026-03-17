@@ -225,6 +225,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.urban_outline_radius_km = float(runtime_options.urban_outline_radius_km)
         self.urban_outline_min_height_m = float(runtime_options.urban_outline_min_height_m)
         self.urban_outline_feature_type = str(runtime_options.urban_outline_feature_type)
+        self.urban_outline_skyscraper_only = bool(runtime_options.urban_outline_skyscraper_only)
         self.visual_preset = user_options.visual_preset
         self.star_visibility_boost = user_options.star_visibility_boost
         self._star_render_expected_width = runtime_options.star_render_expected_width
@@ -350,6 +351,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             min_building_height_m=self.urban_outline_min_height_m,
             radius_km=self.urban_outline_radius_km,
             feature_type=self.urban_outline_feature_type,
+            skyscraper_only=self.urban_outline_skyscraper_only,
             parent=self,
         )
         self._urban_outline_controller.urban_started.connect(self._on_urban_outline_started)

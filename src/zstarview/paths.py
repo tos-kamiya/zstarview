@@ -22,9 +22,11 @@ DSO_CSV_FILE = os.path.join(_dir, "data", "dso.csv")
 TOWER_VIEWPOINTS_FILE = os.path.join(_dir, "data", "viewpoints", "tower_viewpoints.json")
 MOUNTAIN_VIEWPOINTS_FILE = os.path.join(_dir, "data", "viewpoints", "mountain_viewpoints.json")
 APP_ICON_FILE = os.path.join(_dir, "data", "icon-256.png")
+SKYSCRAPER_TILES_FILE = os.path.join(_dir, "data", "skyscraper_tiles_z14.json")
 CACHE_PATH = user_cache_dir(appname=APP_ID, appauthor=APP_AUTHOR)
 LOG_PATH = user_log_dir(appname=APP_ID, appauthor=APP_AUTHOR)
 OVERTURE_DERIVED_ROOT_DIR = os.path.join(CACHE_PATH, "overture_buildings")
+OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR = os.path.join(CACHE_PATH, "overture_skyscrapers")
 
 # Window UI
 GUI_MENU_TEXT_COLOR = (128, 128, 128)

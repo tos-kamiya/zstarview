@@ -17,9 +17,11 @@ def test_resolve_urban_outline_layer_for_viewer_builds_dynamic_layer(monkeypatch
     derived_dir = tmp_path / "13100_tokyo23" / "bldg"
     derived_dir.mkdir(parents=True)
 
+    select_calls = []
     monkeypatch.setattr(
         "zstarview.urban_outline_layer.select_derived_tile_envelopes",
-        lambda *_args, **_kwargs: (type("Envelope", (), {"path": tmp_path / "tile.json"})(),),
+        lambda *args, **kwargs: select_calls.append((args, kwargs))
+        or (type("Envelope", (), {"path": tmp_path / "tile.json"})(),),
     )
     parse_calls = []
     monkeypatch.setattr(
@@ -63,9 +65,60 @@ def test_resolve_urban_outline_layer_for_viewer_builds_dynamic_layer(monkeypatch
     )
 
     assert got == [UrbanOutlinePolyline(points=[(-1.0, 10.0), (-2.0, 12.0)], height_m=45.0)]
+    assert select_calls[0][1]["radius_km"] == 2.5
     assert parse_calls[0][1] == {}
     assert compute_calls[0][0].viewpoint_height_m == 1.7
     assert compute_calls[0][0].observer_height_m == 1.7
+
+
+def test_resolve_urban_outline_layer_for_viewer_passes_far_range_distance_filters(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    viewer = ViewerData(
+        location=(35.67, 139.76),
+        timezone_name="Asia/Tokyo",
+        city_name="Lat: 35.67, Lon: 139.76",
+        observer_height_m=1.7,
+    )
+    derived_dir = tmp_path / "skyscrapers" / "bldg"
+    derived_dir.mkdir(parents=True)
+
+    select_calls = []
+    monkeypatch.setattr(
+        "zstarview.urban_outline_layer.select_derived_tile_envelopes",
+        lambda *args, **kwargs: select_calls.append((args, kwargs))
+        or (type("Envelope", (), {"path": tmp_path / "tile.json"})(),),
+    )
+    monkeypatch.setattr(
+        "zstarview.urban_outline_layer.parse_derived_tile_buildings",
+        lambda *_args, **_kwargs: (
+            BuildingFootprint(
+                building_id="skyscraper-1",
+                height_m=180.0,
+                rings_lonlat=(((139.0, 35.0), (139.001, 35.0), (139.0, 35.0)),),
+            ),
+        ),
+    )
+    compute_calls = []
+    monkeypatch.setattr(
+        "zstarview.urban_outline_layer.compute_urban_outlines",
+        lambda *args, **kwargs: compute_calls.append((args, kwargs))
+        or type("Result", (), {"outlines": ()})(),
+    )
+
+    got = resolve_urban_outline_layer_for_viewer(
+        viewer,
+        derived_root_dir=tmp_path,
+        derived_dir=derived_dir,
+        radius_km=10.0,
+        min_distance_km=2.5,
+    )
+
+    assert got is None
+    assert select_calls[0][1]["radius_km"] == 10.0
+    assert compute_calls[0][1]["radius_km"] == 10.0
+    assert compute_calls[0][1]["min_distance_km"] == 2.5
 
 
 def test_resolve_urban_outline_layer_for_viewer_returns_none_when_outside_coverage(tmp_path: Path) -> None:
