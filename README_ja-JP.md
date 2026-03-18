@@ -126,7 +126,7 @@ CLI では、場所・時刻・描画設定や同梱ビューポイント参照�
 | `-r`, `--urban-outline-radius-km RADIUS_KM` | 観測地点からこの半径内の建物を都市アウトラインとして取得・描画します。この値はキャッシュキーにも含まれます。 | `2.5` |
 | `-b`, `--urban-outline-min-building-height-m METERS` | この高さ未満の建物を都市アウトライン取得時に除外します。この値はキャッシュキーにも含まれます。 | `0.0` |
 | `--urban-outline-feature-type {both,building}` | 都市アウトライン用の Overture キャッシュモードを指定します。`both` は `building` と `building_part` を組み合わせ、part がある場合はそちらを優先します。 | `both` |
-| `-a`, `--aircraft-opacity OPACITY` | 航空機オーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、その起動中の航空機問い合わせと描画を無効化します。 | `1.0` |
+| `-a`, `--aircraft-opacity OPACITY` | 航空機オーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、その起動中の航空機問い合わせと描画を無効化します。 | `0.6` |
 | `-m`, `--enlarge-moon` | 月を 5 倍に拡大して表示します。 | |
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | 2 等星の基本サイズを指定します。 | `4.0` |
 | `-w`, `--expected-render-width EXPECTED_RENDER_WIDTH` | 恒星をフル解像度で描画する想定ウィンドウ幅を指定します。天球幅がこの値を超える場合、恒星レイヤーは平方根スケーリングで描画します。 | `600` |

@@ -297,9 +297,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--sky-opacity",
         type=float,
-        default=0.2,
+        default=0.15,
         help=(
-            "Opacity of the simulated sky-color disc (0.0 - 1.0, default: 0.2). "
+            "Opacity of the simulated sky-color disc (0.0 - 1.0, default: 0.15). "
             "Set to 0.0 to disable sky-color rendering."
         ),
     )
@@ -307,9 +307,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "-c",
         "--cloud-opacity",
         type=float,
-        default=0.2,
+        default=0.15,
         help=(
-            "Opacity of the clouds (0.0 - 1.0, default: 0.2). "
+            "Opacity of the clouds (0.0 - 1.0, default: 0.15). "
             "Set to 0.0 to disable cloud rendering."
         ),
     )
@@ -317,9 +317,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "-a",
         "--aircraft-opacity",
         type=float,
-        default=1.0,
+        default=0.5,
         help=(
-            "Opacity of the aircraft overlay (0.0 - 1.0, default: 1.0). "
+            "Opacity of the aircraft overlay (0.0 - 1.0, default: 0.5). "
             "Set to 0.0 to disable aircraft queries and rendering."
         ),
     )
