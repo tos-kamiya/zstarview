@@ -341,7 +341,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             sat_priority=("AUTO",),
             bt_warm_k=310.0,
             bt_cold_k=190.0,
-            alt_min_deg=0.0,
+            alt_min_deg=2.5,
             search_back_minutes=120,
         )
         try:
