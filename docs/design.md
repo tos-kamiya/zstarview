@@ -203,10 +203,12 @@
   - 雲画像、バナー、欠損状態の保持
 - `src/zstarview/clouddisc/core.py`
   - クラウドディスク生成のオーケストレーション
+  - `CloudDiscConfig.alt_min_deg` による可視高度下限の適用
 - `src/zstarview/clouddisc/providers/*.py`
   - 衛星データ取得
 - `src/zstarview/clouddisc/projectors/az.py`
   - 空ディスク向け投影
+  - 既定 `alt_min_deg = 2.5°` により、地平線近傍の遠距離雲を可視マスクから外す
 - `src/zstarview/clouddisc/render/grayscale.py`
   - 雲画像生成
 - `src/zstarview/clouddisc/cache/*.py`
