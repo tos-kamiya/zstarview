@@ -725,6 +725,7 @@ def draw_urban_outlines(
     view_center: tuple[float, float],
     *,
     opacity: float = 0.2,
+    line_width_scale: float = 1.0,
 ) -> None:
     """Draw sampled building-top outlines directly on the sky dome."""
     if not urban_outlines:
@@ -733,6 +734,7 @@ def draw_urban_outlines(
         return
 
     painter.save()
+    width_scale = max(1.0, float(line_width_scale))
     for outline_entry in urban_outlines:
         outline = list(outline_entry.points)
         height_m = float(outline_entry.height_m)
@@ -741,7 +743,7 @@ def draw_urban_outlines(
         color = QColor(*URBAN_DEBUG_LAYER_LINE_COLOR)
         effective_opacity = float(opacity) * _urban_outline_height_alpha_scale(height_m)
         color.setAlpha(max(0, min(255, int(round(255.0 * effective_opacity)))))
-        pen = QPen(color, 1.5, Qt.PenStyle.SolidLine)
+        pen = QPen(color, 1.5 * width_scale, Qt.PenStyle.SolidLine)
         pen.setCosmetic(True)
         pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
@@ -798,6 +800,7 @@ def draw_aircraft_overlay(
     view_center: tuple[float, float],
     *,
     opacity: float = 1.0,
+    line_width_scale: float = 1.0,
     label_candidates: Optional[List[Dict[str, Any]]] = None,
     preset: str = "night",
 ) -> None:
@@ -807,6 +810,7 @@ def draw_aircraft_overlay(
         return
 
     painter.save()
+    width_scale = max(1.0, float(line_width_scale))
     line_color = QColor(255, 165, 64, 255)
     label_text_color, label_outline_color = _get_text_style(preset)
     label_outline_width = _get_text_outline_width(preset)
@@ -829,10 +833,13 @@ def draw_aircraft_overlay(
         if alt <= 0.0 or not is_in_fov(alt, az, view_center):
             continue
         min_line_alpha = int(round(30.0 * layer_opacity))
-        line_alpha = max(min_line_alpha, min(255, int(round(255.0 * float(point.alpha_scale) * layer_opacity))))
+        line_alpha = max(
+            min_line_alpha,
+            min(255, int(round(255.0 * float(point.alpha_scale) * layer_opacity * 0.8))),
+        )
         line_color.setAlpha(line_alpha)
         line_pen.setColor(line_color)
-        line_pen.setWidthF(_aircraft_line_width_px(distance_km))
+        line_pen.setWidthF(_aircraft_line_width_px(distance_km, width_scale=width_scale))
         painter.setPen(line_pen)
         if is_in_fov(float(point.trail_start_alt_deg), float(point.trail_start_az_deg), view_center) or is_in_fov(
             float(point.trail_end_alt_deg), float(point.trail_end_az_deg), view_center
@@ -888,20 +895,22 @@ _AIRCRAFT_CALLSIGN_MAX_DISTANCE_KM = 10.0
 _AIRCRAFT_MAX_DRAW_DISTANCE_KM = 50.0
 
 
-def _aircraft_line_width_px(distance_km: float) -> float:
+def _aircraft_line_width_px(distance_km: float, *, width_scale: float = 1.0) -> float:
     """Return a cosmetic line width where nearer aircraft appear thicker."""
     d = max(0.0, float(distance_km))
+    scale = max(1.0, float(width_scale))
+    aircraft_scale = 3.0 * scale
     if d <= 1.0:
-        return 3.0
+        return 3.0 * aircraft_scale
     if d <= 3.0:
-        return 2.2
+        return 2.2 * aircraft_scale
     if d <= 5.0:
-        return 1.6
+        return 1.6 * aircraft_scale
     if d <= 10.0:
-        return 1.0
+        return 1.0 * aircraft_scale
     if d <= 20.0:
-        return 0.8
-    return 0.6
+        return 0.8 * aircraft_scale
+    return 0.6 * aircraft_scale
 
 
 def _minimal_azimuth_cover(azimuth_deg: List[float]) -> Tuple[float, float, float]:
