@@ -78,7 +78,7 @@ zstarview -Z E -A 25 Tokyo
 - Satellite cloud imagery: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched overlay.
 - Terrain horizon and ground fill: Copernicus DEM data can be downloaded to render the local terrain skyline and ground region below the horizon.
 - Urban outline overlay: major rooflines are drawn as a white overlay for the current viewpoint. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 10km radius.
-- Aircraft overlay: nearby aircraft from OpenSky can be drawn as orange predicted-motion polylines, with startup opacity control and cached reuse when the layer is hidden and shown again.
+- Aircraft overlay: nearby aircraft from OpenSky can be drawn as purple predicted-motion polylines, with startup opacity control and cached reuse when the layer is hidden and shown again.
 - Python support: routinely tested on CPython 3.10, 3.11, 3.12, and 3.13.
 
 ## Common Options
