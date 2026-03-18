@@ -437,12 +437,14 @@ class SkyWindowRenderMixin:
     ) -> None:
         if not getattr(self, "show_urban_outline_layer", True):
             return
+        line_width_scale = _star_line_width_scale(self, geometry)
         render_draw.draw_urban_outlines(
             painter,
             geometry,
             self.state.urban_outlines,
             render_viewer.view_center,
             opacity=getattr(self, "urban_outline_opacity", 0.2),
+            line_width_scale=line_width_scale,
         )
 
     def _draw_aircraft_layer(
@@ -452,12 +454,14 @@ class SkyWindowRenderMixin:
         render_viewer: ViewerData,
         label_candidates: list[dict[str, Any]],
     ) -> None:
+        line_width_scale = _star_line_width_scale(self, geometry)
         render_draw.draw_aircraft_overlay(
             painter,
             geometry,
             self.state.aircraft_overlay_points,
             render_viewer.view_center,
             opacity=getattr(self, "aircraft_opacity", 1.0),
+            line_width_scale=line_width_scale,
             label_candidates=label_candidates,
             preset=self.visual_preset,
         )
