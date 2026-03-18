@@ -811,7 +811,7 @@ def draw_aircraft_overlay(
 
     painter.save()
     width_scale = max(1.0, float(line_width_scale))
-    line_color = QColor(255, 165, 64, 255)
+    line_color = QColor(186, 128, 255, 255)
     label_text_color, label_outline_color = _get_text_style(preset)
     label_outline_width = _get_text_outline_width(preset)
     label_text_color = QColor(label_text_color)
@@ -835,7 +835,7 @@ def draw_aircraft_overlay(
         min_line_alpha = int(round(30.0 * layer_opacity))
         line_alpha = max(
             min_line_alpha,
-            min(255, int(round(255.0 * float(point.alpha_scale) * layer_opacity * 0.8))),
+            min(255, int(round(255.0 * float(point.alpha_scale) * layer_opacity))),
         )
         line_color.setAlpha(line_alpha)
         line_pen.setColor(line_color)
@@ -899,7 +899,7 @@ def _aircraft_line_width_px(distance_km: float, *, width_scale: float = 1.0) -> 
     """Return a cosmetic line width where nearer aircraft appear thicker."""
     d = max(0.0, float(distance_km))
     scale = max(1.0, float(width_scale))
-    aircraft_scale = 3.0 * scale
+    aircraft_scale = 2.4 * scale
     if d <= 1.0:
         return 3.0 * aircraft_scale
     if d <= 3.0:
