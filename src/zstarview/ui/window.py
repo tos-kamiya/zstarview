@@ -84,6 +84,7 @@ logger = logging.getLogger(__name__)
 
 
 WindowGeometryArg = Union[str, Tuple[int, int, int, int]]
+DEFAULT_CLOUD_ALT_MIN_DEG = 3.0
 
 
 def compute_star_render_surface_size(
@@ -341,7 +342,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             sat_priority=("AUTO",),
             bt_warm_k=310.0,
             bt_cold_k=190.0,
-            alt_min_deg=2.5,
+            alt_min_deg=DEFAULT_CLOUD_ALT_MIN_DEG,
             search_back_minutes=120,
         )
         try:

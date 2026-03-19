@@ -468,32 +468,38 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         if args.place:
             parser.error("dataset query options cannot be used with --place")
 
+        default = parser.get_default
         incompatible_non_default = (
             args.place_countrycode is not None
-            or args.place_lang != "en"
-            or args.hours != 0
-            or args.days != 0
+            or args.place_lang != default("place_lang")
+            or args.hours != default("hours")
+            or args.days != default("days")
             or args.datetime is not None
-            or args.vmag_limit != 6.0
-            or args.vmag_brightness_multiplier != 2.5
+            or args.vmag_limit != default("vmag_limit")
+            or args.vmag_brightness_multiplier != default("vmag_brightness_multiplier")
             or args.enlarge_moon
-            or args.star_base_radius != 4.0
-            or args.expected_render_width != WINDOW_WIDTH
+            or args.star_base_radius != default("star_base_radius")
+            or args.expected_render_width != default("expected_render_width")
             or args.window_geometry is not None
-            or args.view_center_az != 180.0
-            or args.view_center_alt != 90.0
+            or args.view_center_az != default("view_center_az")
+            or args.view_center_alt != default("view_center_alt")
             or args.observer_height_m is not None
-            or args.sky_opacity != 0.2
-            or args.cloud_opacity != 0.2
-            or args.terrain_horizon_opacity != 0.05
-            or args.urban_outline_feature_type != "both"
-            or args.ground_tint_opacity != 0.1
-            or args.cloud_stripe != (50, 0.2)
-            or args.cloud_missing_tint_opacity != float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0
-            or args.sky_update_interval != 60
+            or args.sky_opacity != default("sky_opacity")
+            or args.cloud_opacity != default("cloud_opacity")
+            or args.aircraft_opacity != default("aircraft_opacity")
+            or args.terrain_horizon_opacity != default("terrain_horizon_opacity")
+            or args.urban_outline_opacity != default("urban_outline_opacity")
+            or args.urban_outline_radius_km != default("urban_outline_radius_km")
+            or args.urban_outline_min_height_m != default("urban_outline_min_height_m")
+            or args.urban_outline_feature_type != default("urban_outline_feature_type")
+            or args.urban_outline_skyscraper_only
+            or args.ground_tint_opacity != default("ground_tint_opacity")
+            or args.cloud_stripe != default("cloud_stripe")
+            or args.cloud_missing_tint_opacity != default("cloud_missing_tint_opacity")
+            or args.sky_update_interval != default("sky_update_interval")
             or args.show_dso_initial is not None
             or args.show_asterisms_initial is not None
-            or args.theme != theme_default
+            or args.theme != default("theme")
         )
         if incompatible_non_default:
             parser.error("dataset query options cannot be used with time or rendering options")
