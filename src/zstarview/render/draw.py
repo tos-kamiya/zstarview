@@ -841,32 +841,22 @@ def draw_aircraft_overlay(
         line_pen.setColor(line_color)
         line_pen.setWidthF(_aircraft_line_width_px(distance_km, width_scale=width_scale))
         painter.setPen(line_pen)
-        if is_in_fov(float(point.trail_start_alt_deg), float(point.trail_start_az_deg), view_center) or is_in_fov(
-            float(point.trail_end_alt_deg), float(point.trail_end_az_deg), view_center
-        ):
-            start_nx, start_ny = altaz_to_normalized_xy(
-                float(point.trail_start_alt_deg),
-                float(point.trail_start_az_deg),
-                view_center,
-            )
-            current_nx, current_ny = altaz_to_normalized_xy(alt, az, view_center)
-            end_nx, end_ny = altaz_to_normalized_xy(
-                float(point.trail_end_alt_deg),
-                float(point.trail_end_az_deg),
-                view_center,
-            )
-            start_px, start_py = normalized_to_screen_xy(start_nx, start_ny, geometry)
-            current_px, current_py = normalized_to_screen_xy(current_nx, current_ny, geometry)
-            end_px, end_py = normalized_to_screen_xy(end_nx, end_ny, geometry)
-            painter.drawPolyline(
-                QPolygonF(
-                    [
-                        QPointF(float(start_px), float(start_py)),
-                        QPointF(float(current_px), float(current_py)),
-                        QPointF(float(end_px), float(end_py)),
-                    ]
+        trail_points = tuple(
+            (float(sample_alt_deg), float(sample_az_deg))
+            for sample_alt_deg, sample_az_deg in point.trail_alt_az_points
+        )
+        if any(is_in_fov(sample_alt_deg, sample_az_deg, view_center) for sample_alt_deg, sample_az_deg in trail_points):
+            polyline_points: list[QPointF] = []
+            for sample_alt_deg, sample_az_deg in trail_points:
+                sample_nx, sample_ny = altaz_to_normalized_xy(
+                    sample_alt_deg,
+                    sample_az_deg,
+                    view_center,
                 )
-            )
+                sample_px, sample_py = normalized_to_screen_xy(sample_nx, sample_ny, geometry)
+                polyline_points.append(QPointF(float(sample_px), float(sample_py)))
+            if len(polyline_points) >= 2:
+                painter.drawPolyline(QPolygonF(polyline_points))
         nx, ny = altaz_to_normalized_xy(alt, az, view_center)
         px, py = normalized_to_screen_xy(nx, ny, geometry)
         pos = QPointF(float(px), float(py))

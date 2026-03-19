@@ -33,7 +33,8 @@ def test_project_aircraft_snapshots_places_same_location_overhead() -> None:
     assert points[0].distance_km > 0.9
     assert points[0].age_seconds == 0.0
     assert points[0].alpha_scale == 1.0
-    assert points[0].trail_end_az_deg != points[0].trail_start_az_deg
+    assert len(points[0].trail_alt_az_points) == 5
+    assert points[0].trail_alt_az_points[0][1] != points[0].trail_alt_az_points[-1][1]
 
 
 def test_project_aircraft_snapshots_reports_farther_distance_for_farther_target() -> None:
@@ -105,7 +106,7 @@ def test_project_aircraft_snapshots_fades_after_ninety_seconds() -> None:
     assert 0.3 < points[0].alpha_scale < 1.0
 
 
-def test_project_aircraft_snapshots_builds_four_second_motion_segment() -> None:
+def test_project_aircraft_snapshots_builds_eight_second_motion_segment() -> None:
     base_time = astropy.time.Time("2026-03-18T12:00:00Z")
     current_time = astropy.time.Time("2026-03-18T12:00:20Z")
     snapshot = AircraftSnapshot(
@@ -131,4 +132,6 @@ def test_project_aircraft_snapshots_builds_four_second_motion_segment() -> None:
 
     assert len(points) == 1
     point = points[0]
-    assert point.trail_end_az_deg != point.trail_start_az_deg
+    assert len(point.trail_alt_az_points) == 5
+    assert point.trail_alt_az_points[2] == (point.alt_deg, point.az_deg)
+    assert len(set(point.trail_alt_az_points)) == 5

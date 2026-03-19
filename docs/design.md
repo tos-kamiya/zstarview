@@ -249,7 +249,7 @@
 - `src/zstarview/aircraft/project.py`
   - 航空機の `lat/lon/alt` を観測地点基準の `alt/az` へ変換
   - `velocity` / `heading` / `vertical_rate` による短時間前進予測
-  - `2秒前 -> 現在 -> 2秒後` の折れ線端点と age-based alpha の算出
+  - `4秒前 -> 現在 -> 4秒後` を `2秒` 刻みでサンプリングした折れ線点列と age-based alpha の算出
 - `src/zstarview/aircraft/types.py`
   - OpenSky state vector の正規化モデル
   - UI が保持する描画用航空機折れ線モデル
@@ -321,14 +321,12 @@
   - `callsign`
   - `alt_deg`
   - `az_deg`
-  - `trail_start_alt_deg`
-  - `trail_start_az_deg`
-  - `trail_end_alt_deg`
-  - `trail_end_az_deg`
+  - `trail_alt_az_points`
   - `distance_km`
   - `age_seconds`
   - `alpha_scale`
   - 描画直前まで絞り込んだ軽量折れ線モデル
+  - 折れ線は既定で `-4, -2, 0, +2, +4秒` の `alt/az` サンプルを保持する
 - `AircraftState`
   - 最新スナップショットの機体一覧
   - 表示用折れ線列
