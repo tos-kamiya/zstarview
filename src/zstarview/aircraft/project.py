@@ -58,30 +58,9 @@ def project_aircraft_snapshots(
         )
         if alt_deg <= 0.0:
             continue
-        trail_start_lat, trail_start_lon, trail_start_alt_m = _predict_snapshot_at_age(
+        trail_alt_az_points = _project_trail_alt_az_points(
             snapshot,
-            age_seconds=max(0.0, age_seconds - AIRCRAFT_TRAIL_HALF_SPAN_SECONDS),
-        )
-        trail_end_lat, trail_end_lon, trail_end_alt_m = _predict_snapshot_at_age(
-            snapshot,
-            age_seconds=age_seconds + AIRCRAFT_TRAIL_HALF_SPAN_SECONDS,
-        )
-        trail_start_alt_deg, trail_start_az_deg, _ = _project_geodetic_to_altaz(
-            trail_start_lat,
-            trail_start_lon,
-            trail_start_alt_m,
-            obs_x=obs_x,
-            obs_y=obs_y,
-            obs_z=obs_z,
-            sin_lat=sin_lat,
-            cos_lat=cos_lat,
-            sin_lon=sin_lon,
-            cos_lon=cos_lon,
-        )
-        trail_end_alt_deg, trail_end_az_deg, _ = _project_geodetic_to_altaz(
-            trail_end_lat,
-            trail_end_lon,
-            trail_end_alt_m,
+            age_seconds=age_seconds,
             obs_x=obs_x,
             obs_y=obs_y,
             obs_z=obs_z,
@@ -96,16 +75,49 @@ def project_aircraft_snapshots(
                 callsign=snapshot.callsign,
                 alt_deg=alt_deg,
                 az_deg=az_deg,
-                trail_start_alt_deg=trail_start_alt_deg,
-                trail_start_az_deg=trail_start_az_deg,
-                trail_end_alt_deg=trail_end_alt_deg,
-                trail_end_az_deg=trail_end_az_deg,
+                trail_alt_az_points=trail_alt_az_points,
                 distance_km=distance_km,
                 age_seconds=age_seconds,
                 alpha_scale=_aircraft_alpha_scale(age_seconds),
             )
         )
     return overlay_points
+
+
+def _project_trail_alt_az_points(
+    snapshot: AircraftSnapshot,
+    *,
+    age_seconds: float,
+    obs_x: float,
+    obs_y: float,
+    obs_z: float,
+    sin_lat: float,
+    cos_lat: float,
+    sin_lon: float,
+    cos_lon: float,
+) -> tuple[tuple[float, float], ...]:
+    half_span = AIRCRAFT_TRAIL_HALF_SPAN_SECONDS
+    sample_offsets = (-half_span, -(half_span / 2.0), 0.0, half_span / 2.0, half_span)
+    points: list[tuple[float, float]] = []
+    for offset_seconds in sample_offsets:
+        sample_lat, sample_lon, sample_alt_m = _predict_snapshot_at_age(
+            snapshot,
+            age_seconds=max(0.0, age_seconds + offset_seconds),
+        )
+        sample_alt_deg, sample_az_deg, _ = _project_geodetic_to_altaz(
+            sample_lat,
+            sample_lon,
+            sample_alt_m,
+            obs_x=obs_x,
+            obs_y=obs_y,
+            obs_z=obs_z,
+            sin_lat=sin_lat,
+            cos_lat=cos_lat,
+            sin_lon=sin_lon,
+            cos_lon=cos_lon,
+        )
+        points.append((sample_alt_deg, sample_az_deg))
+    return tuple(points)
 
 
 def _predict_snapshot_geodetic(
