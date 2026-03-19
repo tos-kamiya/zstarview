@@ -208,7 +208,7 @@
   - 衛星データ取得
 - `src/zstarview/clouddisc/projectors/az.py`
   - 空ディスク向け投影
-  - 既定 `alt_min_deg = 2.5°` により、地平線近傍の遠距離雲を可視マスクから外す
+  - 既定 `alt_min_deg = 3.0°` により、地平線近傍の遠距離雲を可視マスクから外す
 - `src/zstarview/clouddisc/render/grayscale.py`
   - 雲画像生成
 - `src/zstarview/clouddisc/cache/*.py`

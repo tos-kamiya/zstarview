@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
-from zstarview.ui.window import SkyWindow
+from zstarview.ui.window import DEFAULT_CLOUD_ALT_MIN_DEG, SkyWindow
 
 
 def _dummy_window(cloud_state):
@@ -49,3 +49,7 @@ def test_cloud_status_line_shows_idle_without_meta_or_banner() -> None:
     )
     got = SkyWindow._cloud_status_line(_dummy_window(state))
     assert got == "Clouds [G16]: idle"
+
+
+def test_default_cloud_horizon_cutoff_is_three_degrees() -> None:
+    assert DEFAULT_CLOUD_ALT_MIN_DEG == 3.0
