@@ -15,7 +15,7 @@ It renders a live all-sky view centered on your chosen location and time, includ
 - **Flexible location input**: specify the observer location through the CLI argument using a city name, tower name, mountain name, direct latitude/longitude input, or online place/station search via Nominatim.
 - **Adjustable view center**: adjust the view center with CLI options `-A` (altitude) and `-Z` (azimuth), or with the arrow keys. During view changes or window resize, the app briefly switches to a simplified interaction mode to keep navigation responsive.
 - **Never-rises region**: the celestial region that never rises above the horizon for the observer's latitude is shown in a red tint.
-- **Satellite cloud imagery**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay. Missing regions are shown in faint yellow when satellite coverage is partial.
+- **Satellite cloud imagery**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay. Missing regions are shown in faint yellow when satellite coverage is partial. See [an example with partial coverage and yellow missing-data tint](docs/images/screenshot5.png).
 - **Terrain horizon and ground fill**: Copernicus DEM data can be downloaded to render the local terrain skyline. A subtle ocher terrain line follows the observer's surroundings, and the disc is filled with a ground color below the terrain horizon, or below the geometric horizon when terrain is disabled.
 - **Urban outline overlay**: major rooflines are drawn as a white urban outline overlay for the current viewpoint. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 10km radius.
 - **Aircraft overlay**: nearby aircraft from OpenSky can be drawn as purple predicted-motion polylines. The layer supports startup opacity control, GUI toggling, and cached reuse so temporary hide/show actions do not force unnecessary re-queries.
@@ -442,17 +442,29 @@ Install the missing `libxcb-cursor0` package with:
 `sudo apt install libxcb-cursor0`
 
 ### Slow or Unstable Network / Offline Use
-Cloud rendering downloads satellite imagery from public S3 buckets (Himawari / NOAA GOES) and relies on heavy dependencies.
-If your network is slow or unavailable, disable clouds with `-c 0`.
-Terrain horizon rendering downloads Copernicus DEM tiles once and then reuses the local cache. Disable it with `--terrain-horizon-opacity 0` if you do not want DEM downloads.
-You can still explore stars/planets and sky colors without cloud or terrain overlays.
+1. Planetary ephemeris data
 
-Cloud status text uses `idle` / `downloading` / `partial`:
+   On the very first launch, the app downloads a planetary ephemeris file (`de440s.bsp`).
+   This requires network connectivity once. After it is cached, the app can run offline.
+
+2. Cloud satellite imagery
+
+   Cloud rendering downloads satellite imagery from public S3 buckets (Himawari / NOAA GOES) and relies on heavy dependencies.
+   If your network is slow or unavailable, disable clouds with `-c 0`.
+   Terrain horizon rendering downloads Copernicus DEM tiles once and then reuses the local cache. Disable it with `--terrain-horizon-opacity 0` if you do not want DEM downloads.
+   You can still explore stars/planets and sky colors without cloud or terrain overlays.
+
+3. Aircraft data
+
+   The aircraft overlay fetches OpenSky Network state data at runtime.
+   By default it refreshes once every 5 minutes. This interval is intentionally conservative so the app keeps practical headroom for free-tier use, temporary failures, and retries rather than polling more aggressively.
+   If you want to avoid OpenSky queries entirely, disable the layer with `-a 0`.
+
+Cloud-related status text uses `idle` / `downloading` / `partial`:
 - `downloading`: fetching source imagery from S3
 - `partial`: rendered with available data only; missing regions are tinted faint yellow
 
-> Note: On the very first launch, the app downloads a planetary ephemeris file (`de440s.bsp`).
-> This requires network connectivity once. After it is cached, the app can run offline (especially with clouds disabled).
+After the GOES-East refresh to GOES-19, some places that previously showed only a generic "satellite not covering this region" result can now render as partial coverage instead. This now includes some locations in Europe. In those cases, covered parts of the sky show cloud imagery and uncovered parts show the faint yellow missing-data tint. See [screenshot5](docs/images/screenshot5.png) for an example around 77-87% coverage.
 
 ### Sky Update Interval and CPU Load
 Frequent sky updates can be CPU‑intensive on lower‑end machines. Increase the interval to reduce load (e.g., `-i 300` for every 5 minutes). Lower it only if your machine can keep up.
