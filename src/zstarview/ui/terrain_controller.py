@@ -97,14 +97,33 @@ class TerrainHorizonController(QObject):
             else:
                 logger.info("Fetching terrain horizon data...")
 
-            download = fetch_copernicus_dem(
-                observer_lat_deg=lat,
-                observer_lon_deg=lon,
-                max_distance_km=self._max_distance_km,
-                margin_km=self._download_margin_km,
-                cache_dir=self._cache_dir,
-            )
-            dem = GeoTiffDem(download.paths)
+            try:
+                download = fetch_copernicus_dem(
+                    observer_lat_deg=lat,
+                    observer_lon_deg=lon,
+                    max_distance_km=self._max_distance_km,
+                    margin_km=self._download_margin_km,
+                    cache_dir=self._cache_dir,
+                )
+            except RuntimeError as exc:
+                if str(exc) != "No Copernicus DEM tiles were downloaded for the requested area.":
+                    raise
+                logger.info(
+                    "No Copernicus DEM tiles available for observer area; using sea-level horizon only."
+                )
+                with self._lock:
+                    if not self._stopping:
+                        self._completed_for_location = (float(lat), float(lon), float(observer_height_m))
+                    should_emit = not self._stopping
+                if should_emit:
+                    self.terrain_ready.emit(
+                        {
+                            "profile_altaz": [],
+                            "source": f"{COPERNICUS_DEM_BUCKET}:ocean",
+                        }
+                    )
+                return
+            dem = GeoTiffDem(download.paths, default_elevation_m=0.0)
             try:
                 bbox = build_download_bbox(
                     lat_deg=lat,

@@ -3,8 +3,11 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
+import zstarview.ui.terrain_controller as terrain_controller_module
 import zstarview.ui.window as window_module
+from zstarview.terrain.dem import COPERNICUS_DEM_BUCKET
 from zstarview.ui.window import SkyWindow
+from zstarview.ui.terrain_controller import TerrainHorizonController
 from zstarview.ui.window_inputs import prepare_window_user_options
 from zstarview.ui.window_updates import SkyWindowUpdatesMixin
 
@@ -214,6 +217,29 @@ def test_toggle_urban_outline_respects_cli_lockout() -> None:
     assert dummy.urban_outline_opacity == 0.0
     assert dummy.show_urban_outline_layer is False
     assert dummy._action_toggle_urban_outline.isChecked() is False
+
+
+def test_terrain_controller_treats_missing_ocean_tiles_as_empty_profile(tmp_path, monkeypatch) -> None:
+    controller = TerrainHorizonController(cache_dir=tmp_path)
+    ready_payloads: list[object] = []
+    failed_payloads: list[object] = []
+    controller.terrain_ready.connect(ready_payloads.append)
+    controller.terrain_failed.connect(failed_payloads.append)
+
+    def _raise_no_tiles(**_kwargs):
+        raise RuntimeError("No Copernicus DEM tiles were downloaded for the requested area.")
+
+    monkeypatch.setattr(terrain_controller_module, "fetch_copernicus_dem", _raise_no_tiles)
+
+    controller._run_update(lat=20.0, lon=-30.0, observer_height_m=1.7, reason="initial")
+
+    assert failed_payloads == []
+    assert ready_payloads == [
+        {
+            "profile_altaz": [],
+            "source": f"{COPERNICUS_DEM_BUCKET}:ocean",
+        }
+    ]
 
 
 def test_toggle_sky_disc_enables_gradient_and_requests_refresh() -> None:
