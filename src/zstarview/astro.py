@@ -255,6 +255,7 @@ def calculate_visible_stars(
     observer_height_m: float,
     time_obj: astropy.time.Time,
     view_center: Tuple[float, float],
+    content_fov_deg: float = STAR_FIELD_OF_VIEW_DEG,
     max_vmag: float | None = None,
 ) -> Tuple[StarsTable, EarthLocation]:
     """Compute visible stars and return them with the observer location."""
@@ -300,7 +301,7 @@ def calculate_visible_stars(
 
     matrix = build_icrs_to_altaz_matrix(time_obj, location)
     alt, az = apply_icrs_to_altaz_matrix(unit_vectors, matrix)
-    in_view_mask = is_in_fov_vectorized(alt, az, view_center, fov_deg=STAR_FIELD_OF_VIEW_DEG)
+    in_view_mask = is_in_fov_vectorized(alt, az, view_center, fov_deg=content_fov_deg)
 
     # Filter the results using the boolean mask
     visible_stars: StarsTable = {
@@ -324,12 +325,13 @@ def calculate_visible_deep_sky_objects(
     observer_height_m: float,
     time_obj: astropy.time.Time,
     view_center: Tuple[float, float],
+    content_fov_deg: float = STAR_FIELD_OF_VIEW_DEG,
 ) -> DeepSkyTable:
     """Compute visible deep-sky objects and return vectorized rows."""
     location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg, height=observer_height_m * u.m)
     matrix = build_icrs_to_altaz_matrix(time_obj, location)
     alt, az = apply_icrs_to_altaz_matrix(dso_catalog["unit_vectors"], matrix)
-    in_view_mask = is_in_fov_vectorized(alt, az, view_center, fov_deg=STAR_FIELD_OF_VIEW_DEG)
+    in_view_mask = is_in_fov_vectorized(alt, az, view_center, fov_deg=content_fov_deg)
     return {
         "id": dso_catalog["id"][in_view_mask],
         "name": dso_catalog["name"][in_view_mask],
@@ -537,6 +539,7 @@ def calculate_planets(
     observer_height_m: float,
     astropy_time: astropy.time.Time,
     view_center: Tuple[float, float],
+    content_fov_deg: float = FIELD_OF_VIEW_DEG,
 ) -> List[PlanetBody]:
     """Calculate all planetary bodies (Sun, Moon, planets)."""
     ts = skyfield.api.load.timescale()
@@ -554,7 +557,7 @@ def calculate_planets(
         planet = planets[planet_id]
         astrometric = observer.at(t).observe(planet).apparent()
         alt, az, _ = astrometric.altaz()
-        is_visible = is_in_fov(alt.degrees, az.degrees, view_center)
+        is_visible = is_in_fov(alt.degrees, az.degrees, view_center, fov_deg=content_fov_deg)
         vmag = None
         if name not in ("sun", "moon"):
             try:

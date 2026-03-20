@@ -70,6 +70,7 @@ class CloudController(QObject):
         alt: float,
         az: float,
         radius_px: int,
+        content_fov_deg: float = 100.0,
         reason: str = "manual",
     ) -> None:
         render_req = {
@@ -78,6 +79,7 @@ class CloudController(QObject):
             "alt": float(alt),
             "az": float(az),
             "radius_px": int(radius_px),
+            "content_fov_deg": float(content_fov_deg),
             "reason": reason,
         }
         source_req = {
@@ -230,6 +232,7 @@ class CloudController(QObject):
         alt: float,
         az: float,
         radius_px: int,
+        content_fov_deg: float = 100.0,
         reason: str,
         request_id: int,
     ) -> None:
@@ -248,7 +251,7 @@ class CloudController(QObject):
                 az=az,
                 radius_px=radius_px,
                 edge_fov_deg=90,
-                mask_fov_deg=93,
+                mask_fov_deg=content_fov_deg,
                 cloud_shell_km=CLOUD_SHELL_KM,
             )
             logger.info(

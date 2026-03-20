@@ -344,8 +344,10 @@ def _inverse_project_disc(
     width: int,
     height: int,
     view_center: Tuple[float, float],
+    *,
+    content_fov_deg: float = 90.0,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Inverse-project all pixels inside the composited disc to (alt, az)."""
+    """Inverse-project square composited pixels up to the requested content FOV."""
     cy = (height - 1) * 0.5
     cx = (width - 1) * 0.5
     radius = max(1.0, min(cx, cy))
@@ -354,7 +356,8 @@ def _inverse_project_disc(
     nx, ny = np.meshgrid(xs, ys)
 
     rr2 = nx * nx + ny * ny
-    inside = rr2 <= 1.0
+    max_r = max(0.0, float(content_fov_deg) / 90.0)
+    inside = rr2 <= (max_r * max_r)
     if not np.any(inside):
         return np.array([], dtype=np.float32), np.array([], dtype=np.float32), inside
 
@@ -443,12 +446,18 @@ def apply_ground_tint(
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     ground_tint_opacity: float = 1.0,
     observer_lat_deg: float | None = None,
+    content_fov_deg: float = 90.0,
 ) -> QImage:
     """Tint the composited disc below the geometric or terrain horizon."""
     out = qimage_to_np_rgba(
         base_img if base_img.format() == QImage.Format_RGBA8888 else base_img.convertToFormat(QImage.Format_RGBA8888)
     )
-    alt, az, inside = _inverse_project_disc(out.shape[1], out.shape[0], view_center)
+    alt, az, inside = _inverse_project_disc(
+        out.shape[1],
+        out.shape[0],
+        view_center,
+        content_fov_deg=content_fov_deg,
+    )
     if alt.size == 0:
         return np_rgba_to_qimage(out)
 
@@ -517,6 +526,7 @@ class SkyCompositorCache:
         stripe_density: Optional[StripeDensityField] = None,
         missing_mask: Optional[QImage] = None,
         terrain_profile_altaz: list[tuple[float, float]] | None = None,
+        content_fov_deg: float = 90.0,
     ) -> None:
         """Composite the sky/cloud layers (with cache) and draw into painter."""
         x = int(geometry.center[0] - geometry.radius)
@@ -550,6 +560,7 @@ class SkyCompositorCache:
             float(cloud_alpha),
             float(view_center[0]),
             float(view_center[1]),
+            float(content_fov_deg),
             None if observer_lat_deg is None else float(observer_lat_deg),
             hatch_key,
             self._missing_tint_rgba,
@@ -616,6 +627,7 @@ class SkyCompositorCache:
                 terrain_profile_altaz=terrain_profile_altaz,
                 ground_tint_opacity=self._ground_tint_opacity,
                 observer_lat_deg=observer_lat_deg,
+                content_fov_deg=content_fov_deg,
             )
             if missing_s is not None:
                 composited = overlay_missing_tint(

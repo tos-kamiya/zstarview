@@ -152,6 +152,7 @@ class SkyWindowUpdatesMixin:
             delta_t=self.delta_t,
             sky_disc_alpha=self.sky_disc_alpha,
             sky_disc_base_size=self.state.sky_disc_base_size,
+            content_fov_deg=float(getattr(self, "content_fov_deg", getattr(self.viewer_data, "content_fov_deg", 100.0))),
         )
         if started:
             if is_initial_load:
@@ -173,6 +174,7 @@ class SkyWindowUpdatesMixin:
             alt=alt,
             az=az,
             radius_px=self.state.cloud_base_size,
+            content_fov_deg=float(getattr(self, "content_fov_deg", getattr(self.viewer_data, "content_fov_deg", 100.0))),
             reason=reason,
         )
 

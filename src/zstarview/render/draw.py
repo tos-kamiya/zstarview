@@ -22,7 +22,7 @@ from PySide6.QtGui import (
 )
 
 from ..paths import (
-    ASTERISM_CLIP_FIELD_OF_VIEW_DEG,
+    FIELD_OF_VIEW_DEG,
     BACKGROUND_FIELD_OF_VIEW_DEG1,
     BACKGROUND_FIELD_OF_VIEW_DEG2,
     CELESTIAL_EQUATOR_COLOR,
@@ -89,6 +89,10 @@ _DSO_SHAPE_SIZE_GAIN = 1.0
 _DSO_HOVER_SIZE_GAIN = 3.0
 _DSO_SHAPE_MIN_MAJOR_ARCMIN = 15.0
 _DSO_CATALOG_LIKE_NAME_RE = re.compile(r"^(M\d+|NGC\d+|IC\d+|MEL\d+|MWSC\d+)$", re.IGNORECASE)
+
+
+def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
+    return float(getattr(viewer_data, "content_fov_deg", FIELD_OF_VIEW_DEG))
 
 
 def _is_named_dso(name: object, obj_id: object) -> bool:
@@ -260,10 +264,12 @@ def find_highlighted_object(
                 highlighted_star: CelestialObject = {key: val[original_idx] for key, val in stars.items()}
                 highlighted_object = (highlighted_star, QPointF(x[closest_idx], y[closest_idx]))
 
+    content_fov_deg = _content_fov_deg_from_viewer(viewer_data)
+
     # Handle planets (scalar)
     for body in celestial_data.planets:
         # For planets, allow below-horizon display as long as they are in the current FOV.
-        if not is_in_fov(body.alt, body.az, viewer_data.view_center):
+        if not is_in_fov(body.alt, body.az, viewer_data.view_center, fov_deg=content_fov_deg):
             continue
         nx, ny = altaz_to_normalized_xy(body.alt, body.az, viewer_data.view_center)
         px, py = normalized_to_screen_xy(nx, ny, geometry)
@@ -349,6 +355,7 @@ def draw_radial_background(
     geometry: ScreenGeometry,
     *,
     preset: str = "night",
+    content_fov_deg: float = BACKGROUND_FIELD_OF_VIEW_DEG2,
 ) -> None:
     """
     Draws a radial gradient background to represent the sky.
@@ -363,7 +370,8 @@ def draw_radial_background(
         geometry: A ScreenGeometry object for calculating gradient parameters.
     """
     assert geometry.radius >= 10
-    fov_middle = BACKGROUND_FIELD_OF_VIEW_DEG1 + (BACKGROUND_FIELD_OF_VIEW_DEG2 - BACKGROUND_FIELD_OF_VIEW_DEG1) / 2
+    fov_outer = max(float(BACKGROUND_FIELD_OF_VIEW_DEG1), float(content_fov_deg))
+    fov_middle = BACKGROUND_FIELD_OF_VIEW_DEG1 + (fov_outer - BACKGROUND_FIELD_OF_VIEW_DEG1) / 2.0
     r90 = float(geometry.radius)
     r_fov = float(geometry.radius * (fov_middle / 90))
     r_max = float(r_fov * 1.4)
@@ -611,6 +619,8 @@ def draw_sky_reference_lines(
     geometry: ScreenGeometry,
     celestial_data: CelestialData,
     viewer_data: ViewerData,
+    *,
+    content_fov_deg: float | None = None,
 ) -> None:
     """
     Draw celestial reference lines like the equator, ecliptic, and horizon.
@@ -620,6 +630,7 @@ def draw_sky_reference_lines(
         geometry: The screen geometry for coordinate conversion.
         celestial_data: The data containing the points for the reference lines.
     """
+    effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
     point_list_pen_styles: List[Tuple[List[Tuple[float, float]], Tuple[QColor, int, List[int]]]] = [
         (celestial_data.celestial_equator_points, (CELESTIAL_EQUATOR_COLOR, 1, [8, 4])),
         (celestial_data.ecliptic_points, (ECLIPTIC_COLOR, 1, [3, 3])),
@@ -630,7 +641,7 @@ def draw_sky_reference_lines(
     for altaz_points, (color, width, style) in point_list_pen_styles:
         points: List[Tuple[float, float]] = []
         for alt, az in altaz_points:
-            if not is_in_fov(float(alt), float(az), viewer_data.view_center):
+            if not is_in_fov(float(alt), float(az), viewer_data.view_center, fov_deg=effective_fov_deg):
                 continue
             nx, ny = altaz_to_normalized_xy(float(alt), float(az), viewer_data.view_center)
             points.append((nx, ny))
@@ -672,6 +683,7 @@ def draw_terrain_horizon_line(
     *,
     opacity: float = 1.0,
     line_width_scale: float = 1.0,
+    content_fov_deg: float = FIELD_OF_VIEW_DEG,
 ) -> None:
     """Draw a terrain horizon polyline as an extra overlay over the geometric horizon."""
     if not terrain_profile_altaz or opacity <= 0.0:
@@ -682,7 +694,7 @@ def draw_terrain_horizon_line(
 
     points: list[tuple[float, float]] = []
     for alt, az in terrain_profile_altaz:
-        if not is_in_fov(float(alt), float(az), view_center):
+        if not is_in_fov(float(alt), float(az), view_center, fov_deg=content_fov_deg):
             continue
         nx, ny = altaz_to_normalized_xy(float(alt), float(az), view_center)
         points.append((nx, ny))
@@ -726,6 +738,7 @@ def draw_urban_outlines(
     *,
     opacity: float = 0.2,
     line_width_scale: float = 1.0,
+    content_fov_deg: float = FIELD_OF_VIEW_DEG,
 ) -> None:
     """Draw sampled building-top outlines directly on the sky dome."""
     if not urban_outlines:
@@ -768,7 +781,7 @@ def draw_urban_outlines(
         painter.setPen(pen)
         points: list[tuple[float, float]] = []
         for alt, az in outline:
-            if float(alt) < -60.0 or not is_in_fov(float(alt), float(az), view_center):
+            if float(alt) < -60.0 or not is_in_fov(float(alt), float(az), view_center, fov_deg=content_fov_deg):
                 if len(points) >= 2:
                     for frag in split_by_gaps(points):
                         if len(frag) < 2:
@@ -803,6 +816,7 @@ def draw_aircraft_overlay(
     line_width_scale: float = 1.0,
     label_candidates: Optional[List[Dict[str, Any]]] = None,
     preset: str = "night",
+    content_fov_deg: float = FIELD_OF_VIEW_DEG,
 ) -> None:
     """Draw aircraft as orange predicted-motion polylines."""
     layer_opacity = max(0.0, min(1.0, float(opacity)))
@@ -830,7 +844,7 @@ def draw_aircraft_overlay(
         distance_km = float(point.distance_km)
         if distance_km > _AIRCRAFT_MAX_DRAW_DISTANCE_KM:
             continue
-        if alt <= 0.0 or not is_in_fov(alt, az, view_center):
+        if alt <= 0.0 or not is_in_fov(alt, az, view_center, fov_deg=content_fov_deg):
             continue
         min_line_alpha = int(round(30.0 * layer_opacity))
         line_alpha = max(
@@ -845,7 +859,10 @@ def draw_aircraft_overlay(
             (float(sample_alt_deg), float(sample_az_deg))
             for sample_alt_deg, sample_az_deg in point.trail_alt_az_points
         )
-        if any(is_in_fov(sample_alt_deg, sample_az_deg, view_center) for sample_alt_deg, sample_az_deg in trail_points):
+        if any(
+            is_in_fov(sample_alt_deg, sample_az_deg, view_center, fov_deg=content_fov_deg)
+            for sample_alt_deg, sample_az_deg in trail_points
+        ):
             polyline_points: list[QPointF] = []
             for sample_alt_deg, sample_az_deg in trail_points:
                 sample_nx, sample_ny = altaz_to_normalized_xy(
@@ -937,6 +954,7 @@ def draw_asterisms(
     *,
     preset: str = "night",
     line_width_scale: float = 1.0,
+    content_fov_deg: float | None = None,
 ) -> None:
     """Draw dim asterisms always, and brighten the hovered selection with a label."""
 
@@ -968,7 +986,8 @@ def draw_asterisms(
         highlight_outline_color = QColor(32, 76, 130, 44)
 
     painter.save()
-    clip_radius = ASTERISM_CLIP_FIELD_OF_VIEW_DEG / 90.0
+    effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
+    clip_radius = effective_fov_deg / 90.0
     width_scale = max(1.0, float(line_width_scale))
 
     def _make_pen(color: QColor, width: float) -> QPen:
@@ -1207,6 +1226,7 @@ def draw_stars(
     visibility_boost: float = 1.0,
     draw_vmag_limit: Optional[float] = None,
     viewport_size: Tuple[int, int] | None = None,
+    content_fov_deg: float | None = None,
 ) -> None:
     """
     Draw stars using a numpy canvas that paints uniformly sized rectangles.
@@ -1228,6 +1248,7 @@ def draw_stars(
         viewport_size: Optional `(width, height)` of the drawing area, used to create the numpy canvas; if omitted, defaults to the painter's clip rect.
     """
     stars = celestial_data.stars
+    effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
     visibility_boost = float(np.clip(visibility_boost, 0.7, 2.0))
 
     if draw_vmag_limit is not None:
@@ -1317,7 +1338,14 @@ def draw_stars(
 
     outside_background = ~is_in_fov_vectorized(alt, az, viewer_data.view_center, fov_deg=BACKGROUND_FIELD_OF_VIEW_DEG1)
     skip_background_stars = outside_background & (size_px <= 2)
-    valid_base = (x1_clamped > x0_clamped) & (y1_clamped > y0_clamped) & (size_px > 0) & (~skip_background_stars)
+    outside_content = ~is_in_fov_vectorized(alt, az, viewer_data.view_center, fov_deg=effective_fov_deg)
+    valid_base = (
+        (x1_clamped > x0_clamped)
+        & (y1_clamped > y0_clamped)
+        & (size_px > 0)
+        & (~skip_background_stars)
+        & (~outside_content)
+    )
     size_one = size_px == 1
     size_two = size_px == 2
     single_mask = valid_base & size_one
@@ -1426,7 +1454,13 @@ def draw_gauge_cross(
     painter.drawLine(QPointF(x, y + cross_inner_len), QPointF(x, y + cross_outer_len))
 
 
-def draw_zenith_marker(painter: QPainter, geometry: ScreenGeometry, view_center: Tuple[float, float]) -> None:
+def draw_zenith_marker(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    view_center: Tuple[float, float],
+    *,
+    content_fov_deg: float = FIELD_OF_VIEW_DEG,
+) -> None:
     """
     Draws markers at zenith and nadir.
 
@@ -1439,7 +1473,7 @@ def draw_zenith_marker(painter: QPainter, geometry: ScreenGeometry, view_center:
     s = 7
     painter.setPen(QPen(QColor(*TEXT_COLOR), 1))
     for alt in (90.0, -90.0):
-        if not is_in_fov(alt, az_ref, view_center):
+        if not is_in_fov(alt, az_ref, view_center, fov_deg=content_fov_deg):
             continue
         nx, ny = altaz_to_normalized_xy(alt, az_ref, view_center)
         x, y = normalized_to_screen_xy(nx, ny, geometry)
@@ -1636,6 +1670,7 @@ def draw_solar_system_bodies(
     draw_markers: bool = True,
     draw_labels: bool = True,
     preset: str = "night",
+    content_fov_deg: float | None = None,
 ) -> None:
     """
     Draw major solar system bodies (Sun, Moon, and planets).
@@ -1652,6 +1687,7 @@ def draw_solar_system_bodies(
         enlarge_moon: A boolean indicating whether to draw the moon larger.
     """
     moon_body, sun_altaz, moon_altaz = _collect_sun_moon_context(celestial_data.planets)
+    effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
 
     # Keep body markers in a stable high-contrast color over the sky disc.
     text_color = QColor(*TEXT_COLOR)
@@ -1665,7 +1701,7 @@ def draw_solar_system_bodies(
 
     for body in celestial_data.planets:
         # Draw planets if they are in-view, even below horizon.
-        if not is_in_fov(body.alt, body.az, viewer_data.view_center):
+        if not is_in_fov(body.alt, body.az, viewer_data.view_center, fov_deg=effective_fov_deg):
             continue
 
         pos = QPointF(
@@ -1751,6 +1787,7 @@ def draw_direction_labels(
     mouse_pos: Optional[QPoint] = None,
     *,
     preset: str = "night",
+    content_fov_deg: float = FIELD_OF_VIEW_DEG,
 ) -> None:
     """
     Draw compass direction labels and horizon markers on the horizon.
@@ -1778,7 +1815,7 @@ def draw_direction_labels(
     fm = QFontMetrics(text_font)
     alt = 0.0
     for label, az in DIRECTIONS.items():
-        if not is_in_fov(alt, az, view_center):
+        if not is_in_fov(alt, az, view_center, fov_deg=content_fov_deg):
             continue
         nx, ny = altaz_to_normalized_xy(alt, az, view_center)
         pos = QPointF(*normalized_to_screen_xy(nx, ny, geometry))

@@ -72,6 +72,7 @@ class SkyWindowRuntimeOptions:
     cloud_stripe_style: tuple[int, float] = (50, 0.2)
     cloud_missing_tint_opacity: float = float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0
     star_render_expected_width: int = 600
+    content_fov_deg: float = 100.0
     window_geometry_arg: Optional[str | tuple[int, int, int, int]] = None
 
 
@@ -80,6 +81,7 @@ def prepare_window_viewer_data(
     city_data: tuple[float, float, str],
     view_center: tuple[float, float],
     *,
+    content_fov_deg: float = 100.0,
     observer_height_m: float = 1.7,
     location_height_label: str | None = None,
     location_height_m: float | None = None,
@@ -92,6 +94,7 @@ def prepare_window_viewer_data(
         timezone_name=tz_name,
         city_name=city_name,
         view_center=view_center,
+        content_fov_deg=float(content_fov_deg),
         observer_height_m=float(observer_height_m),
         location_height_label=location_height_label,
         location_height_m=None if location_height_m is None else float(location_height_m),
@@ -177,6 +180,7 @@ def prepare_window_runtime_options(
     cloud_stripe_style: tuple[int, float] = (50, 0.2),
     cloud_missing_tint_opacity: float = float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0,
     star_render_expected_width: int = 600,
+    content_fov_deg: float = 100.0,
     window_geometry_arg: Optional[str | tuple[int, int, int, int]] = None,
 ) -> SkyWindowRuntimeOptions:
     """Normalize runtime options before constructing SkyWindow."""
@@ -190,5 +194,6 @@ def prepare_window_runtime_options(
         cloud_stripe_style=cloud_stripe_style,
         cloud_missing_tint_opacity=min(1.0, max(0.0, cloud_missing_tint_opacity)),
         star_render_expected_width=max(1, int(star_render_expected_width)),
+        content_fov_deg=max(90.0, min(127.0, float(content_fov_deg))),
         window_geometry_arg=window_geometry_arg,
     )

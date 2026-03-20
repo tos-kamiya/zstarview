@@ -25,15 +25,18 @@ def _smoothstep(edge0: float, edge1: float, x: float) -> float:
 def _inverse_project_disc(
     radius_px: int,
     view_center: Tuple[float, float],
+    *,
+    content_fov_deg: float = 90.0,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Inverse-project all pixels inside the unit disc to (alt, az)."""
+    """Inverse-project square sky pixels up to the requested content FOV."""
     size = radius_px * 2
     ys = (np.arange(size, dtype=np.float32) - radius_px) / float(radius_px)
     xs = (np.arange(size, dtype=np.float32) - radius_px) / float(radius_px)
     nx, ny = np.meshgrid(xs, ys)
 
     rr2 = nx * nx + ny * ny
-    inside = rr2 <= 1.0
+    max_r = max(0.0, float(content_fov_deg) / 90.0)
+    inside = rr2 <= (max_r * max_r)
     if not np.any(inside):
         return np.array([], dtype=np.float32), np.array([], dtype=np.float32), inside
 
@@ -189,6 +192,7 @@ def draw_sky_color_disc(
     saturation: float = 1.35,
     alpha: float = 1.0,
     eclipse_factor: float = 1.0,
+    content_fov_deg: float = 90.0,
 ) -> QImage:
     """
     Draw sky color disc using one-pass NumPy inverse projection.
@@ -200,7 +204,7 @@ def draw_sky_color_disc(
     if radius < 1:
         return QImage(size, size, QImage.Format.Format_ARGB32_Premultiplied)
 
-    alt, az, inside = _inverse_project_disc(radius, view_center)
+    alt, az, inside = _inverse_project_disc(radius, view_center, content_fov_deg=content_fov_deg)
 
     rgba = np.zeros((size, size, 4), dtype=np.uint8)
     if alt.size == 0:
@@ -255,6 +259,8 @@ def draw_sky_color_disc(
 def draw_uniform_sky_color_disc(
     geometry: ScreenGeometry,
     view_center: Tuple[float, float],
+    *,
+    content_fov_deg: float = 90.0,
 ) -> QImage:
     """Draw a flat disc used when sky-color shading is disabled."""
     radius = int(geometry.radius)
@@ -262,7 +268,7 @@ def draw_uniform_sky_color_disc(
     if radius < 1:
         return QImage(size, size, QImage.Format.Format_ARGB32_Premultiplied)
 
-    _, _, inside = _inverse_project_disc(radius, view_center)
+    _, _, inside = _inverse_project_disc(radius, view_center, content_fov_deg=content_fov_deg)
     rgba = np.zeros((size, size, 4), dtype=np.uint8)
     rgba[..., 3][inside] = 255
     rgba[..., :3][inside] = FLAT_SKY_DISC_RGB_U8

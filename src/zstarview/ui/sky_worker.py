@@ -66,6 +66,7 @@ class SkyDataWorker(QObject):
         delta_t: timedelta,
         sky_disc_alpha: float,
         sky_disc_base_size: int,
+        content_fov_deg: float,
     ) -> bool:
         """Start background computation if idle; return False when already running."""
         with self._lock:
@@ -86,6 +87,7 @@ class SkyDataWorker(QObject):
                 "delta_t": delta_t,
                 "sky_disc_alpha": sky_disc_alpha,
                 "sky_disc_base_size": sky_disc_base_size,
+                "content_fov_deg": content_fov_deg,
             },
             daemon=True,
         )
@@ -105,6 +107,7 @@ class SkyDataWorker(QObject):
         delta_t: timedelta,
         sky_disc_alpha: float,
         sky_disc_base_size: int,
+        content_fov_deg: float,
     ) -> None:
         try:
             now = datetime.now(timezone.utc) + delta_t
@@ -117,6 +120,7 @@ class SkyDataWorker(QObject):
                 observer_height_m,
                 time_obj,
                 view_center,
+                content_fov_deg=content_fov_deg,
                 max_vmag=star_vmag_limit,
             )
             if dso_catalog is None:
@@ -141,8 +145,16 @@ class SkyDataWorker(QObject):
                     observer_height_m,
                     time_obj,
                     view_center,
+                    content_fov_deg=content_fov_deg,
                 )
-            planets = calculate_planets(lat, lon, observer_height_m, time_obj, view_center)
+            planets = calculate_planets(
+                lat,
+                lon,
+                observer_height_m,
+                time_obj,
+                view_center,
+                content_fov_deg=content_fov_deg,
+            )
             celestial_equator_points = calculate_celestial_equator_points(loc, time_obj)
             ecliptic_points = calculate_ecliptic_points(loc, time_obj)
             horizon_points = calculate_horizon_points()
@@ -177,9 +189,14 @@ class SkyDataWorker(QObject):
                         observer_lat_deg=lat,
                         alpha=sky_disc_alpha,
                         eclipse_factor=ef,
+                        content_fov_deg=content_fov_deg,
                     )
                 else:
-                    sky_disc_img = draw_sky_disc.draw_uniform_sky_color_disc(fixed_geom, view_center)
+                    sky_disc_img = draw_sky_disc.draw_uniform_sky_color_disc(
+                        fixed_geom,
+                        view_center,
+                        content_fov_deg=content_fov_deg,
+                    )
 
             payload: Dict[str, object] = {"celestial": celestial_data, "sky_disc": sky_disc_img}
             payload["view_center"] = (float(view_center[0]), float(view_center[1]))

@@ -23,6 +23,14 @@ def _star_line_width_scale(window: Any, geometry: render_draw.ScreenGeometry) ->
     )
 
 
+def _content_fov_deg(window: Any, render_viewer: ViewerData | None = None) -> float:
+    if hasattr(window, "content_fov_deg"):
+        return float(window.content_fov_deg)
+    if render_viewer is not None:
+        return float(getattr(render_viewer, "content_fov_deg", 100.0))
+    return float(getattr(getattr(window, "viewer_data", None), "content_fov_deg", 100.0))
+
+
 class SkyWindowRenderMixin:
     def _render_cache_stamp(self, value: Any) -> Any:
         if value is None:
@@ -64,6 +72,7 @@ class SkyWindowRenderMixin:
             render_viewer.city_name,
             render_viewer.timezone_name,
             float(render_viewer.observer_height_m),
+            float(render_viewer.content_fov_deg),
             render_viewer.location_height_label,
             render_viewer.location_height_m,
             bool(render_viewer.show_observer_height),
@@ -185,6 +194,7 @@ class SkyWindowRenderMixin:
             timezone_name=self.viewer_data.timezone_name,
             city_name=self.viewer_data.city_name,
             view_center=self.state.render_view_center,
+            content_fov_deg=self.viewer_data.content_fov_deg,
             observer_height_m=self.viewer_data.observer_height_m,
             location_height_label=self.viewer_data.location_height_label,
             location_height_m=self.viewer_data.location_height_m,
@@ -302,6 +312,7 @@ class SkyWindowRenderMixin:
         celestial_data: CelestialData,
         render_viewer: ViewerData,
     ) -> None:
+        content_fov_deg = _content_fov_deg(self, render_viewer)
         line_width_scale = _star_line_width_scale(self, geometry)
         interaction_celestial_data = celestial_data
         if self.state.viewport_interaction_stars is not None:
@@ -324,6 +335,7 @@ class SkyWindowRenderMixin:
             render_viewer.view_center,
             opacity=self.terrain_horizon_opacity,
             line_width_scale=line_width_scale,
+            content_fov_deg=content_fov_deg,
         )
         render_draw.draw_direction_labels(
             painter,
@@ -332,8 +344,14 @@ class SkyWindowRenderMixin:
             self.text_font,
             self.state.mouse_pos,
             preset=self.visual_preset,
+            content_fov_deg=content_fov_deg,
         )
-        render_draw.draw_zenith_marker(painter, geometry, render_viewer.view_center)
+        render_draw.draw_zenith_marker(
+            painter,
+            geometry,
+            render_viewer.view_center,
+            content_fov_deg=content_fov_deg,
+        )
 
     def _clear_background_layer(self, painter: QPainter) -> None:
         painter.save()
@@ -343,8 +361,13 @@ class SkyWindowRenderMixin:
         painter.restore()
 
     def _draw_background_layer(self, painter: QPainter, geometry: render_draw.ScreenGeometry) -> None:
+        content_fov_deg = _content_fov_deg(self)
         render_draw.draw_radial_background(
-            painter, QRectF(self.rect()), geometry, preset=self.visual_preset
+            painter,
+            QRectF(self.rect()),
+            geometry,
+            preset=self.visual_preset,
+            content_fov_deg=content_fov_deg,
         )
 
     def _draw_sky_cloud_layers(
@@ -353,6 +376,7 @@ class SkyWindowRenderMixin:
         geometry: render_draw.ScreenGeometry,
         render_viewer: ViewerData,
     ) -> None:
+        content_fov_deg = _content_fov_deg(self, render_viewer)
         self._compositor.draw(
             painter,
             geometry,
@@ -366,6 +390,7 @@ class SkyWindowRenderMixin:
             terrain_profile_altaz=(
                 self.state.terrain_horizon_profile if self.terrain_horizon_opacity > 0.0 else None
             ),
+            content_fov_deg=content_fov_deg,
         )
 
     def _draw_terrain_layers(
@@ -379,6 +404,7 @@ class SkyWindowRenderMixin:
         label_reservations: list[QRectF],
         label_candidates: list[dict[str, Any]],
     ) -> None:
+        content_fov_deg = _content_fov_deg(self, render_viewer)
         line_width_scale = _star_line_width_scale(self, geometry)
         if self.show_dso:
             render_draw.draw_deep_sky_shapes(
@@ -408,6 +434,7 @@ class SkyWindowRenderMixin:
                 label_candidates=label_candidates,
                 preset=self.visual_preset,
                 line_width_scale=line_width_scale,
+                content_fov_deg=content_fov_deg,
             )
         render_draw.draw_sky_reference_lines(painter, geometry, celestial_data, render_viewer)
         render_draw.draw_terrain_horizon_line(
@@ -417,6 +444,7 @@ class SkyWindowRenderMixin:
             render_viewer.view_center,
             opacity=self.terrain_horizon_opacity,
             line_width_scale=line_width_scale,
+            content_fov_deg=content_fov_deg,
         )
         self._draw_urban_outline_layer(painter, geometry, render_viewer)
         render_draw.draw_direction_labels(
@@ -426,8 +454,14 @@ class SkyWindowRenderMixin:
             self.text_font,
             self.state.mouse_pos,
             preset=self.visual_preset,
+            content_fov_deg=content_fov_deg,
         )
-        render_draw.draw_zenith_marker(painter, geometry, render_viewer.view_center)
+        render_draw.draw_zenith_marker(
+            painter,
+            geometry,
+            render_viewer.view_center,
+            content_fov_deg=content_fov_deg,
+        )
 
     def _draw_urban_outline_layer(
         self,
@@ -437,6 +471,7 @@ class SkyWindowRenderMixin:
     ) -> None:
         if not getattr(self, "show_urban_outline_layer", True):
             return
+        content_fov_deg = _content_fov_deg(self, render_viewer)
         line_width_scale = _star_line_width_scale(self, geometry)
         render_draw.draw_urban_outlines(
             painter,
@@ -445,6 +480,7 @@ class SkyWindowRenderMixin:
             render_viewer.view_center,
             opacity=getattr(self, "urban_outline_opacity", 0.2),
             line_width_scale=line_width_scale,
+            content_fov_deg=content_fov_deg,
         )
 
     def _draw_aircraft_layer(
@@ -454,6 +490,7 @@ class SkyWindowRenderMixin:
         render_viewer: ViewerData,
         label_candidates: list[dict[str, Any]],
     ) -> None:
+        content_fov_deg = _content_fov_deg(self, render_viewer)
         line_width_scale = _star_line_width_scale(self, geometry)
         render_draw.draw_aircraft_overlay(
             painter,
@@ -464,6 +501,7 @@ class SkyWindowRenderMixin:
             line_width_scale=line_width_scale,
             label_candidates=label_candidates,
             preset=self.visual_preset,
+            content_fov_deg=content_fov_deg,
         )
 
     def _draw_star_layer(
@@ -475,6 +513,7 @@ class SkyWindowRenderMixin:
         *,
         draw_vmag_limit: float | None = None,
     ) -> None:
+        content_fov_deg = _content_fov_deg(self, render_viewer)
         win_w = self.width()
         win_h = self.height()
         low_w, low_h = self.compute_star_render_surface_size(
@@ -505,6 +544,7 @@ class SkyWindowRenderMixin:
                 visibility_boost=self.star_visibility_boost,
                 draw_vmag_limit=draw_vmag_limit if draw_vmag_limit is not None else self.vmag_limit,
                 viewport_size=(win_w, win_h),
+                content_fov_deg=content_fov_deg,
             )
             return
 
@@ -531,6 +571,7 @@ class SkyWindowRenderMixin:
             visibility_boost=self.star_visibility_boost,
             draw_vmag_limit=draw_vmag_limit if draw_vmag_limit is not None else self.vmag_limit,
             viewport_size=(low_w, low_h),
+            content_fov_deg=content_fov_deg,
         )
         low_painter.end()
 
@@ -549,6 +590,7 @@ class SkyWindowRenderMixin:
         enlarge_moon: bool,
         label_candidates: list[dict[str, Any]],
     ) -> None:
+        content_fov_deg = _content_fov_deg(self, render_viewer)
         render_draw.draw_solar_system_bodies(
             painter,
             geometry,
@@ -559,6 +601,7 @@ class SkyWindowRenderMixin:
             label_candidates=label_candidates,
             draw_labels=True,
             preset=self.visual_preset,
+            content_fov_deg=content_fov_deg,
         )
 
     def _draw_overlay_layer(
