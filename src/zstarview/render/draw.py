@@ -92,7 +92,7 @@ _DSO_CATALOG_LIKE_NAME_RE = re.compile(r"^(M\d+|NGC\d+|IC\d+|MEL\d+|MWSC\d+)$", 
 
 
 def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
-    return float(getattr(viewer_data, "content_fov_deg", FIELD_OF_VIEW_DEG))
+    return float(viewer_data.content_fov_deg)
 
 
 def _is_named_dso(name: object, obj_id: object) -> bool:
