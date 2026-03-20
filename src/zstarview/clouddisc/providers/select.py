@@ -8,8 +8,13 @@ from typing import Dict, Tuple, List
 
 # Defines the sub-satellite longitude (the longitude directly below the satellite)
 # for each available geostationary satellite.
+LEGACY_SATELLITE_ALIASES: Dict[str, str] = {
+    "G16": "G19",
+}
+GOES_SATELLITES: Tuple[str, ...] = ("G19", "G18")
+SUPPORTED_SATELLITES: Tuple[str, ...] = GOES_SATELLITES + ("HIMAWARI",)
 SAT_LON: Dict[str, float] = {
-    "G16": -75.2,
+    "G19": -75.2,
     "G18": -137.0,
     "HIMAWARI": 140.7,
 }
@@ -18,6 +23,10 @@ MAX_VISIBLE_CENTRAL_ANGLE_DEG = 81.3
 
 def _sat_lon_map() -> Dict[str, float]:
     return SAT_LON
+
+
+def normalize_satellite_name(sat_name: str) -> str:
+    return LEGACY_SATELLITE_ALIASES.get(sat_name, sat_name)
 
 
 def central_angle_deg(lat_deg: float, lon_deg: float, sub_lon_deg: float) -> float:
@@ -58,6 +67,7 @@ def is_satellite_visible(
 ) -> bool:
     """Return True if a geostationary satellite is above the visibility angle."""
     sat_lon_map = _sat_lon_map()
+    sat_name = normalize_satellite_name(sat_name)
     if sat_name not in sat_lon_map:
         return False
     return central_angle_deg(lat, lon, sat_lon_map[sat_name]) <= max_angle_deg
@@ -71,8 +81,13 @@ def visible_satellites(
 ) -> List[str]:
     """Return visible satellites from sat_names ordered by smaller central angle first."""
     sat_lon_map = _sat_lon_map()
-    visible: List[Tuple[float, str]] = []
+    normalized_names: List[str] = []
     for sat in sat_names:
+        normalized = normalize_satellite_name(sat)
+        if normalized not in normalized_names:
+            normalized_names.append(normalized)
+    visible: List[Tuple[float, str]] = []
+    for sat in normalized_names:
         if sat not in sat_lon_map:
             continue
         angle = central_angle_deg(lat, lon, sat_lon_map[sat])
@@ -94,7 +109,7 @@ def pick_satellite(
     central angle (i.e., highest in the sky) that is within the visibility range.
     The visibility limit for a geostationary satellite is approximately 81.3 degrees.
 
-    If priority is an explicit list (e.g., ("HIMAWARI", "G18")), it returns the
+    If priority is an explicit list (e.g., ("HIMAWARI", "G19")), it returns the
     first satellite from that list that is a valid satellite name.
 
     Args:
@@ -126,6 +141,7 @@ def pick_satellite(
     sat_lon_map = _sat_lon_map()
     # Iterate through the user-provided list and return the first valid satellite.
     for sat_name in priority:
+        sat_name = normalize_satellite_name(sat_name)
         if sat_name in sat_lon_map:
             return sat_name
 

@@ -19,7 +19,7 @@ from .config import CloudDiscConfig
 from .projectors.az import az_project_lonlat_grid
 from .providers.goes import GoesProvider
 from .providers.hima import HimaProvider
-from .providers.select import pick_satellite, visible_satellites
+from .providers.select import GOES_SATELLITES, SUPPORTED_SATELLITES, pick_satellite, visible_satellites
 from .render.grayscale import convert_bt_to_la_image
 from .sampling.bt_sampler import build_bt_sampler
 from .sampling.estimate_bt_warm_cold import estimate_bt_warm_from_equator_band, estimate_bt_cold_hybrid
@@ -67,7 +67,7 @@ class CloudDisc:
         return t.replace(minute=(t.minute // 10) * 10)
 
     def _select_satellite(self, lat: float, lon: float) -> str:
-        supported_visible = tuple(visible_satellites(lat, lon, ("G16", "G18", "HIMAWARI")))
+        supported_visible = tuple(visible_satellites(lat, lon, SUPPORTED_SATELLITES))
         if not supported_visible:
             raise VisibilityError("No supported satellite for this region")
         sat = pick_satellite(
@@ -88,7 +88,7 @@ class CloudDisc:
         """Build a source key for cloud data fetch/cache lookup."""
         when = self._now_rounded() if when_utc is None else round_down_utc_to_slot(when_utc)
         sat = self._select_satellite(lat, lon)
-        provider = "GOES" if sat in ("G16", "G18") else "HIMAWARI"
+        provider = "GOES" if sat in GOES_SATELLITES else "HIMAWARI"
         return SourceKey(
             satellite=sat,
             provider=provider,
@@ -108,8 +108,8 @@ class CloudDisc:
         sat = source_key.satellite
         when = source_key.timeslot_utc
         sat_used = sat
-        if sat in ("G16", "G18"):
-            goes_visible = tuple(visible_satellites(lat, lon, ("G16", "G18")))
+        if sat in GOES_SATELLITES:
+            goes_visible = tuple(visible_satellites(lat, lon, GOES_SATELLITES))
             res, sat_used = self.goes.fetch_bt_c13_with_failover(
                 sat=sat,
                 when_utc=when,
@@ -126,7 +126,7 @@ class CloudDisc:
         return CloudSourceData(
             source_key=SourceKey(
                 satellite=sat_used,
-                provider=("GOES" if sat_used in ("G16", "G18") else "HIMAWARI"),
+                provider=("GOES" if sat_used in GOES_SATELLITES else "HIMAWARI"),
                 timeslot_utc=source_key.timeslot_utc,
                 sat_priority=source_key.sat_priority,
             ),

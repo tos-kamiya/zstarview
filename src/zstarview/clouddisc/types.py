@@ -92,7 +92,7 @@ class CloudMeta:
     a particular cloud image.
 
     Attributes:
-        satellite: The name of the satellite used, e.g., "G16", "G18", "HIMAWARI".
+        satellite: The name of the satellite used, e.g., "G19", "G18", "HIMAWARI".
         product: The data product identifier, e.g., "CMIPF-C13", "HSD-B13".
         time_utc: The UTC timestamp of the source satellite data.
         src_paths: A list of local file paths to the source data files.

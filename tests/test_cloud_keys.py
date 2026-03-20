@@ -18,8 +18,8 @@ def test_round_down_utc_to_slot_accepts_naive_as_utc() -> None:
 
 
 def test_source_key_normalizes_timeslot_and_is_hashable() -> None:
-    k1 = SourceKey(satellite="G16", timeslot_utc=dt.datetime(2026, 3, 4, 12, 39, tzinfo=dt.timezone.utc))
-    k2 = SourceKey(satellite="G16", timeslot_utc=dt.datetime(2026, 3, 4, 12, 30, tzinfo=dt.timezone.utc))
+    k1 = SourceKey(satellite="G19", timeslot_utc=dt.datetime(2026, 3, 4, 12, 39, tzinfo=dt.timezone.utc))
+    k2 = SourceKey(satellite="G19", timeslot_utc=dt.datetime(2026, 3, 4, 12, 30, tzinfo=dt.timezone.utc))
     assert k1 == k2
     assert len({k1, k2}) == 1
 
