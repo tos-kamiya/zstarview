@@ -160,8 +160,8 @@ def render_hatched_cloud_from_density(
     density: StripeDensityField,
     width: int,
     height: int,
-    geometry: ScreenGeometry,
     hatch_cfg: HatchConfig,
+    geometry: ScreenGeometry | None = None,
     *,
     target_stripes: int = 50,
     width_factor: float = 0.2,
@@ -184,9 +184,14 @@ def render_hatched_cloud_from_density(
     dist = np.minimum(u_mod, period - u_mod)
     line_mask = dist <= (band / 2.0)
 
-    cx = float(geometry.center[0])
-    cy = float(geometry.center[1])
-    rr = max(1.0, float(geometry.radius))
+    if geometry is None:
+        cx = (w - 1) * 0.5
+        cy = (h - 1) * 0.5
+        rr = max(1.0, min(cx, cy))
+    else:
+        cx = float(geometry.center[0])
+        cy = float(geometry.center[1])
+        rr = max(1.0, float(geometry.radius))
     max_r = max(0.0, float(content_fov_deg) / 90.0)
     y, x = np.ogrid[:h, :w]
     inside_disc = ((x - cx) ** 2 + (y - cy) ** 2) <= ((rr * max_r) + 0.25) ** 2
@@ -219,7 +224,7 @@ def compose_cloud_over_sky(
     sky_img: QImage,
     cloud_img_rgba: QImage,
     dest_rect: QRect,
-    geometry: ScreenGeometry,
+    geometry: ScreenGeometry | None = None,
     *,
     cloud_opacity: float = 1.0,
     gray_mix: float = 1.0,
@@ -241,9 +246,14 @@ def compose_cloud_over_sky(
     sky_np = qimage_to_np_rgba(sky_img)
     cloud_np = qimage_to_np_rgba(cloud_img_rgba)
 
-    cx = float(geometry.center[0]) - float(dest_rect.x())
-    cy = float(geometry.center[1]) - float(dest_rect.y())
-    rr = max(1.0, float(geometry.radius))
+    if geometry is None:
+        cx = (w - 1) * 0.5
+        cy = (h - 1) * 0.5
+        rr = max(1.0, min(cx, cy))
+    else:
+        cx = float(geometry.center[0]) - float(dest_rect.x())
+        cy = float(geometry.center[1]) - float(dest_rect.y())
+        rr = max(1.0, float(geometry.radius))
     max_r = max(0.0, float(content_fov_deg) / 90.0)
     y, x = np.ogrid[:h, :w]
     r2 = (x - cx) ** 2 + (y - cy) ** 2
@@ -619,8 +629,8 @@ class SkyCompositorCache:
                         stripe_density,
                         w,
                         h,
-                        geometry,
                         self._hatch_cfg,
+                        geometry=geometry,
                         target_stripes=self._cloud_target_stripes,
                         width_factor=self._cloud_stripe_width_factor,
                         content_fov_deg=content_fov_deg,
