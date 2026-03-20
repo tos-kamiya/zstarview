@@ -114,6 +114,7 @@ class SkyWindowRenderMixin:
     ) -> None:
         self._clear_background_layer(painter)
         self._draw_background_layer(painter, geometry)
+        self._draw_sky_cloud_layers(painter, geometry, render_viewer)
         if self.state.viewport_interaction_mode:
             self._draw_viewport_interaction_layers(
                 painter,
@@ -124,7 +125,6 @@ class SkyWindowRenderMixin:
             self._draw_status_line(painter)
             return
 
-        self._draw_sky_cloud_layers(painter, geometry, render_viewer)
         label_reservations: list[QRectF] = []
         label_candidates: list[dict[str, Any]] = []
         self._draw_terrain_layers(
