@@ -371,34 +371,30 @@ def draw_radial_background(
     """
     assert geometry.radius >= 10
     fov_outer = max(float(BACKGROUND_FIELD_OF_VIEW_DEG1), float(content_fov_deg))
-    fov_middle = BACKGROUND_FIELD_OF_VIEW_DEG1 + (fov_outer - BACKGROUND_FIELD_OF_VIEW_DEG1) / 2.0
-    r90 = float(geometry.radius)
-    r_fov = float(geometry.radius * (fov_middle / 90))
-    r_max = float(r_fov * 1.4)
+    r_content = float(geometry.radius * (fov_outer / 90.0))
+    r_core = float(max(1.0, min(r_content * 0.7, r_content - 6.0)))
+    r_mid = float(r_core + (r_content - r_core) * 0.55)
+    r_max = float(max(r_content, r_mid) * 1.4)
     step_px = 0.5
 
     def pos(r: float) -> float:
         return max(0.0, min(1.0, r / r_max))
 
     def black_col(r: float, s: float) -> QColor:
-        t = max(0.0, min(1.0, (r - r90) / max(1.0, r_max - r90)))
+        t = max(0.0, min(1.0, r / max(1.0, r_core)))
         gray = int(4 - 3 * t)
         aa = max(0, 255 - (s + int(45 * t)))
         return QColor(gray, gray, gray, aa)
 
     if preset == "white":
         def col(r: float, s: float) -> QColor:
-            if r < r90:
-                return black_col(r, s)
-            t = max(0.0, min(1.0, (r - r90) / max(1.0, r_max - r90)))
+            t = max(0.0, min(1.0, (r - r_core) / max(1.0, r_max - r_core)))
             gray = int(246 - 54 * t)
             aa = max(0, 212 - (s + int(100 * t)))
             return QColor(gray, gray, gray, aa)
     elif preset == "day":
         def col(r: float, s: float) -> QColor:
-            if r < r90:
-                return black_col(r, s)
-            t = max(0.0, min(1.0, (r - r90) / max(1.0, r_max - r90)))
+            t = max(0.0, min(1.0, (r - r_core) / max(1.0, r_max - r_core)))
             # Keep day palette bright, but slightly blue-leaning.
             rr = int(230 - 28 * t)
             gg = int(242 - 34 * t)
@@ -408,7 +404,7 @@ def draw_radial_background(
             return QColor(rr, gg, bb, aa)
     elif preset == "night":
         def col(r: float, s: float) -> QColor:
-            t = max(0.0, min(1.0, (r - r90) / max(1.0, r_max - r90)))
+            t = max(0.0, min(1.0, r / max(1.0, r_max)))
             rr = int(10 - 7 * t)
             gg = int(12 - 9 * t)
             bb = int(16 - 11 * t)
@@ -419,20 +415,18 @@ def draw_radial_background(
             return black_col(r, s)
     else:
         def col(r: float, s: float) -> QColor:
-            t = max(0.0, min(1.0, (r - r90) / max(1.0, r_max - r90)))
+            t = max(0.0, min(1.0, r / max(1.0, r_max)))
             return QColor(0, 0, 0, max(0, 205 - (s + int(130 * t))))
 
     c = geometry.center
     g = QRadialGradient(QPointF(c[0], c[1]), r_max)
-    if preset in ("white", "day", "night", "black"):
-        inner_color = black_col(r90, 0)
-    else:
-        inner_color = col(r90, 0)
-    g.setColorAt(pos(0), inner_color)
-    g.setColorAt(pos(r90), inner_color)
-    g.setColorAt(pos(r90 + step_px), col(r90 + step_px, 10))
-    g.setColorAt(pos(r_fov), col(r_fov, 10))
-    g.setColorAt(pos(r_fov + step_px), col(r_fov, 20))
+    inner_color = black_col(0.0, 0.0) if preset in ("white", "day", "night", "black") else col(0.0, 0.0)
+    g.setColorAt(pos(0.0), inner_color)
+    g.setColorAt(pos(r_core), black_col(r_core, 0.0))
+    g.setColorAt(pos(r_core + step_px), col(r_core + step_px, 8.0))
+    g.setColorAt(pos(r_mid), col(r_mid, 10.0))
+    g.setColorAt(pos(r_content), col(r_content, 14.0))
+    g.setColorAt(pos(r_content + step_px), col(r_content + step_px, 20.0))
     g.setColorAt(1.0, col(r_max, 20))
 
     painter.save()
@@ -1336,14 +1330,11 @@ def draw_stars(
     x1_clamped = np.clip(x1, 0, width_px)
     y1_clamped = np.clip(y1, 0, height_px)
 
-    outside_background = ~is_in_fov_vectorized(alt, az, viewer_data.view_center, fov_deg=BACKGROUND_FIELD_OF_VIEW_DEG1)
-    skip_background_stars = outside_background & (size_px <= 2)
     outside_content = ~is_in_fov_vectorized(alt, az, viewer_data.view_center, fov_deg=effective_fov_deg)
     valid_base = (
         (x1_clamped > x0_clamped)
         & (y1_clamped > y0_clamped)
         & (size_px > 0)
-        & (~skip_background_stars)
         & (~outside_content)
     )
     size_one = size_px == 1

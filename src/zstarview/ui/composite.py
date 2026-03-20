@@ -164,6 +164,7 @@ def render_hatched_cloud_from_density(
     *,
     target_stripes: int = 50,
     width_factor: float = 0.2,
+    content_fov_deg: float = 90.0,
 ) -> QImage:
     """Render a sharp hatch cloud image from density field at the target window size."""
     w = max(1, int(width))
@@ -184,8 +185,9 @@ def render_hatched_cloud_from_density(
 
     cy, cx = (h - 1) * 0.5, (w - 1) * 0.5
     rr = min(cx, cy)
+    max_r = max(0.0, float(content_fov_deg) / 90.0)
     y, x = np.ogrid[:h, :w]
-    inside_disc = ((x - cx) ** 2 + (y - cy) ** 2) <= (rr + 0.25) ** 2
+    inside_disc = ((x - cx) ** 2 + (y - cy) ** 2) <= ((rr * max_r) + 0.25) ** 2
     draw_mask = line_mask & inside_disc
 
     out = np.zeros((h, w, 4), dtype=np.uint8)
@@ -219,6 +221,7 @@ def compose_cloud_over_sky(
     *,
     cloud_opacity: float = 1.0,
     gray_mix: float = 1.0,
+    content_fov_deg: float = 90.0,
 ) -> QImage:
     """Composite cloud over sky with optional gray desaturation behind clouds.
 
@@ -238,9 +241,10 @@ def compose_cloud_over_sky(
 
     cy, cx = (h - 1) * 0.5, (w - 1) * 0.5
     rr = min(cx, cy)
+    max_r = max(0.0, float(content_fov_deg) / 90.0)
     y, x = np.ogrid[:h, :w]
     r2 = (x - cx) ** 2 + (y - cy) ** 2
-    disc_mask = r2 <= (rr + 0.25) ** 2
+    disc_mask = r2 <= ((rr * max_r) + 0.25) ** 2
 
     if not np.any(sky_np[..., 3]):
         sky_np[..., 3][disc_mask] = 255
@@ -585,8 +589,9 @@ class SkyCompositorCache:
                 arr = qimage_to_np_rgba(img)
                 cy, cx = (h - 1) * 0.5, (w - 1) * 0.5
                 rr = min(cx, cy)
+                max_r = max(0.0, float(content_fov_deg) / 90.0)
                 yy, xx = np.ogrid[:h, :w]
-                disc_mask = ((xx - cx) ** 2 + (yy - cy) ** 2) <= (rr + 0.25) ** 2
+                disc_mask = ((xx - cx) ** 2 + (yy - cy) ** 2) <= ((rr * max_r) + 0.25) ** 2
                 arr[..., 3][disc_mask] = 255
                 return np_rgba_to_qimage(arr)
 
@@ -605,6 +610,7 @@ class SkyCompositorCache:
                         self._hatch_cfg,
                         target_stripes=self._cloud_target_stripes,
                         width_factor=self._cloud_stripe_width_factor,
+                        content_fov_deg=content_fov_deg,
                     )
                 else:
                     cloud_s = cloud_with_hatched_alpha(cloud_s, self._hatch_cfg)
@@ -620,6 +626,7 @@ class SkyCompositorCache:
                     dest_rect=QRect(0, 0, w, h),
                     cloud_opacity=cloud_alpha * self._cloud_opacity_scale,
                     gray_mix=self._gray_mix,
+                    content_fov_deg=content_fov_deg,
                 )
             composited = apply_ground_tint(
                 composited,
