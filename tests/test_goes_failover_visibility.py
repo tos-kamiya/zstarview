@@ -32,9 +32,9 @@ def test_goes_failover_respects_allowed_satellites(tmp_path, monkeypatch) -> Non
 
     with pytest.raises(DataNotFoundError):
         provider.fetch_bt_c13_with_failover(
-            sat="G16",
+            sat="G19",
             when_utc=dt.datetime(2026, 2, 27, 13, 0, tzinfo=dt.timezone.utc),
-            allowed_sats=("G16",),
+            allowed_sats=("G19",),
         )
 
-    assert set(calls) == {"G16"}
+    assert set(calls) == {"G19"}

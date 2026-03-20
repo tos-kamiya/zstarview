@@ -70,14 +70,14 @@ def test_list_s3_keys_timeout_maps_to_custom_error() -> None:
             s3_client=s3,
             bucket="bucket",
             prefix="prefix/",
-            satellite="G16",
+            satellite="G19",
             product="CMIPF-C13",
             time_utc=t0,
             uri_label="S3 bucket s3://bucket/prefix/",
         )
     assert "Timeout while listing" in str(err.value)
     assert err.value.meta is not None
-    assert err.value.meta.satellite == "G16"
+    assert err.value.meta.satellite == "G19"
     assert err.value.meta.product == "CMIPF-C13"
     assert err.value.meta.time_utc == t0
 
@@ -130,4 +130,3 @@ def test_download_s3_object_timeout_maps_to_custom_error(tmp_path: Path) -> None
     assert err.value.meta is not None
     assert err.value.meta.satellite == "HIMAWARI"
     assert not dst.exists()
-

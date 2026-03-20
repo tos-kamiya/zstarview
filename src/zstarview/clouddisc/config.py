@@ -24,7 +24,7 @@ class CloudDiscConfig:
         cache_dir: The directory to cache satellite data. If None, a default path is used.
         sat_priority: The priority order for satellite selection. "AUTO" enables automatic
                       selection based on the observer's longitude.
-                      Example: ("HIMAWARI", "G18", "G16")
+                      Example: ("HIMAWARI", "G18", "G19")
         bt_warm_k: The brightness temperature (in Kelvin) considered "warm" for rendering.
                    This corresponds to lower, warmer clouds or the ground.
         bt_cold_k: The brightness temperature (in Kelvin) considered "cold" for rendering.

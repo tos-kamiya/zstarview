@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Data provider for GOES-R series satellites (GOES-16 and GOES-18).
+Data provider for GOES-R series satellites (GOES-19 and GOES-18).
 
 This module fetches Cloud and Moisture Imagery Product (CMIPF) data from the
 NOAA Open Data Dissemination (NODD) program on AWS S3. It specifically targets
@@ -21,10 +21,12 @@ from satpy import Scene
 from ..config import CloudDiscConfig
 from ..types import DataNotFoundError, CloudMeta
 from ._s3_io import download_s3_object, list_s3_keys
+from .select import GOES_SATELLITES, normalize_satellite_name
 
 # --- Constants ---
-_GOES_BUCKET = {"G16": "noaa-goes16", "G18": "noaa-goes18"}
-_GOES_REGION = {"noaa-goes16": "us-east-1", "noaa-goes18": "us-west-2"}
+_GOES_BUCKET = {"G19": "noaa-goes19", "G18": "noaa-goes18"}
+_GOES_REGION = {"noaa-goes19": "us-east-1", "noaa-goes18": "us-west-2"}
+_GOES_BUCKET_TO_SATELLITE = {bucket: sat for sat, bucket in _GOES_BUCKET.items()}
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +77,7 @@ class GoesProvider:
             s3_client=s3,
             bucket=bucket,
             prefix=prefix,
-            satellite="G16" if "16" in bucket else "G18",
+            satellite=_GOES_BUCKET_TO_SATELLITE[bucket],
             product="CMIPF-C13",
             time_utc=t,
             uri_label=f"S3 bucket s3://{bucket}/{prefix}",
@@ -100,7 +102,7 @@ class GoesProvider:
             bucket=bucket,
             key=key,
             dst=dst,
-            satellite="G16" if "16" in bucket else "G18",
+            satellite=_GOES_BUCKET_TO_SATELLITE[bucket],
             product="CMIPF-C13",
             time_utc=dt.datetime.now(dt.timezone.utc),
         )
@@ -159,7 +161,7 @@ class GoesProvider:
         Pass 2: If Pass 1 fails, it widens the search window and retries both satellites.
 
         Args:
-            sat: The primary satellite to try first ("G16" or "G18").
+            sat: The primary satellite to try first ("G19" or "G18").
             when_utc: The target UTC time.
             extra_back_minutes: Extra minutes to add to the search window for the second pass.
 
@@ -169,10 +171,15 @@ class GoesProvider:
         Raises:
             DataNotFoundError: If no data is found after all attempts.
         """
+        sat = normalize_satellite_name(sat)
         if allowed_sats is None:
-            allowed: Tuple[str, ...] = ("G16", "G18")
+            allowed: Tuple[str, ...] = GOES_SATELLITES
         else:
-            allowed = tuple(s for s in allowed_sats if s in ("G16", "G18"))
+            allowed = tuple(
+                normalized
+                for normalized in (normalize_satellite_name(s) for s in allowed_sats)
+                if normalized in GOES_SATELLITES
+            )
 
         if sat in allowed:
             order = [sat] + [s for s in allowed if s != sat]
