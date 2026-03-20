@@ -72,6 +72,7 @@ class CloudController(QObject):
         radius_px: int,
         content_fov_deg: float = 100.0,
         reason: str = "manual",
+        render_generation: int = 0,
     ) -> None:
         render_req = {
             "lat": float(lat),
@@ -81,6 +82,7 @@ class CloudController(QObject):
             "radius_px": int(radius_px),
             "content_fov_deg": float(content_fov_deg),
             "reason": reason,
+            "render_generation": int(render_generation),
         }
         source_req = {
             "lat": float(lat),
@@ -235,6 +237,7 @@ class CloudController(QObject):
         content_fov_deg: float = 100.0,
         reason: str,
         request_id: int,
+        render_generation: int = 0,
     ) -> None:
         next_req: Optional[dict] = None
         try:
@@ -285,6 +288,7 @@ class CloudController(QObject):
                     "coverage_ratio": coverage_ratio,
                     "request_id": request_id,
                     "source_key": getattr(source, "source_key", None),
+                    "render_generation": int(render_generation),
                 }
             )
         except Exception as e:

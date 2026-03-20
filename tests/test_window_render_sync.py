@@ -77,6 +77,9 @@ def test_on_sky_data_calculated_updates_render_snapshot_once() -> None:
     dummy.sky_update_interval = 60
     dummy.initial_data_loaded = _DummySignal()
     dummy._is_shutting_down = False
+    dummy._disc_generation = 0
+    dummy.width = lambda: 640
+    dummy.height = lambda: 480
     dummy.request_sky_data_update = lambda *_args, **_kwargs: None
     dummy._safe_request_cloud_repaint = lambda: None
 
@@ -89,6 +92,9 @@ def test_on_sky_data_calculated_updates_render_snapshot_once() -> None:
         "celestial": celestial,
         "sky_disc": sky_disc,
         "view_center": (15.0, 120.0),
+        "render_width_px": 640,
+        "render_height_px": 480,
+        "render_generation": 0,
     }
     SkyWindow._on_sky_data_calculated(dummy, payload)
 
@@ -120,6 +126,9 @@ def test_on_sky_data_calculated_preserves_render_center_during_viewport_interact
     dummy.sky_update_interval = 60
     dummy.initial_data_loaded = _DummySignal()
     dummy._is_shutting_down = False
+    dummy._disc_generation = 0
+    dummy.width = lambda: 640
+    dummy.height = lambda: 480
     dummy.request_sky_data_update = lambda *_args, **_kwargs: None
     dummy._safe_request_cloud_repaint = lambda: None
     dummy.update = lambda: None
@@ -130,10 +139,56 @@ def test_on_sky_data_calculated_preserves_render_center_during_viewport_interact
             "celestial": object(),
             "sky_disc": object(),
             "view_center": (15.0, 120.0),
+            "render_width_px": 640,
+            "render_height_px": 480,
+            "render_generation": 0,
         },
     )
 
     assert dummy.state.render_view_center == (40.0, 150.0)
+
+
+def test_on_sky_data_calculated_discards_stale_generation_and_requests_refresh() -> None:
+    dummy = SimpleNamespace()
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(20.0, 30.0),
+        observer_height_m=1.7,
+    )
+    dummy.state = SkyWindowState(render_view_center=(20.0, 30.0))
+    dummy._compositor = _DummyCompositor()
+    dummy._sky_data_update_timer = _DummyTimer(active=True)
+    dummy._cloud_update_timer = _DummyTimer(active=False)
+    dummy._clouddisc = None
+    dummy.cloud_disc_alpha = 0.2
+    dummy.sky_update_interval = 60
+    dummy.initial_data_loaded = _DummySignal()
+    dummy._is_shutting_down = False
+    dummy._disc_generation = 3
+    dummy.width = lambda: 800
+    dummy.height = lambda: 500
+    requests: list[str] = []
+    dummy.request_sky_data_update = lambda *_args, **_kwargs: requests.append("refresh")
+    dummy._safe_request_cloud_repaint = lambda: None
+    dummy.update = lambda: (_ for _ in ()).throw(AssertionError("should not repaint stale sky payload"))
+
+    SkyWindow._on_sky_data_calculated(
+        dummy,
+        {
+            "celestial": object(),
+            "sky_disc": object(),
+            "view_center": (15.0, 120.0),
+            "render_width_px": 640,
+            "render_height_px": 480,
+            "render_generation": 2,
+        },
+    )
+
+    assert dummy.state.sky_disc_image is None
+    assert dummy._compositor.invalidated is False
+    assert requests == ["refresh"]
 
 
 def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(monkeypatch) -> None:

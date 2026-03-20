@@ -69,6 +69,7 @@ class SkyDataWorker(QObject):
         content_fov_deg: float,
         render_width_px: int | None = None,
         render_height_px: int | None = None,
+        render_generation: int = 0,
     ) -> bool:
         """Start background computation if idle; return False when already running."""
         with self._lock:
@@ -92,6 +93,7 @@ class SkyDataWorker(QObject):
                 "content_fov_deg": content_fov_deg,
                 "render_width_px": render_width_px,
                 "render_height_px": render_height_px,
+                "render_generation": render_generation,
             },
             daemon=True,
         )
@@ -114,6 +116,7 @@ class SkyDataWorker(QObject):
         content_fov_deg: float,
         render_width_px: int | None,
         render_height_px: int | None,
+        render_generation: int,
     ) -> None:
         try:
             now = datetime.now(timezone.utc) + delta_t
@@ -209,6 +212,9 @@ class SkyDataWorker(QObject):
 
             payload: Dict[str, object] = {"celestial": celestial_data, "sky_disc": sky_disc_img}
             payload["view_center"] = (float(view_center[0]), float(view_center[1]))
+            payload["render_width_px"] = max(2, int(render_width_px or sky_disc_base_size))
+            payload["render_height_px"] = max(2, int(render_height_px or sky_disc_base_size))
+            payload["render_generation"] = int(render_generation)
             with self._lock:
                 if self._stopping:
                     return

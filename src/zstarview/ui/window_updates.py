@@ -89,6 +89,29 @@ class SkyWindowUpdatesMixin:
         return f"Aircraft: {aircraft_state.last_success_utc.strftime('%H:%MZ')}"
 
     def _on_sky_data_calculated(self, payload: Dict) -> None:
+        current_generation = int(getattr(self, "_disc_generation", 0))
+        payload_generation = int(payload.get("render_generation", current_generation))
+        payload_width = int(payload.get("render_width_px", max(2, int(self.width()))))
+        payload_height = int(payload.get("render_height_px", max(2, int(self.height()))))
+        current_width = max(2, int(self.width()))
+        current_height = max(2, int(self.height()))
+        if (
+            payload_generation != current_generation
+            or payload_width != current_width
+            or payload_height != current_height
+        ):
+            logger.debug(
+                "Discard stale sky payload generation=%s current=%s size=%sx%s current_size=%sx%s",
+                payload_generation,
+                current_generation,
+                payload_width,
+                payload_height,
+                current_width,
+                current_height,
+            )
+            if not self._is_shutting_down:
+                self.request_sky_data_update()
+            return
         if not self.state.viewport_interaction_mode:
             self.state.render_view_center = tuple(
                 payload.get("view_center", self.viewer_data.view_center)
@@ -155,6 +178,7 @@ class SkyWindowUpdatesMixin:
             content_fov_deg=float(self.content_fov_deg),
             render_width_px=max(2, int(self.width())),
             render_height_px=max(2, int(self.height())),
+            render_generation=int(getattr(self, "_disc_generation", 0)),
         )
         if started:
             if is_initial_load:
@@ -178,6 +202,7 @@ class SkyWindowUpdatesMixin:
             radius_px=self.state.cloud_base_size,
             content_fov_deg=float(self.content_fov_deg),
             reason=reason,
+            render_generation=int(getattr(self, "_disc_generation", 0)),
         )
 
     def _on_cloud_started(self, payload: Dict) -> None:
@@ -189,6 +214,17 @@ class SkyWindowUpdatesMixin:
             self.cloud_state.set_error_banner(banner)
 
     def _on_cloud_ready(self, payload: Dict) -> None:
+        current_generation = int(getattr(self, "_disc_generation", 0))
+        payload_generation = int(payload.get("render_generation", current_generation))
+        if payload_generation != current_generation:
+            logger.debug(
+                "Discard stale cloud payload generation=%s current=%s",
+                payload_generation,
+                current_generation,
+            )
+            if not self._is_shutting_down:
+                self.start_background_cloud_update(reason="stale-render")
+            return
         self.cloud_state.set_result(
             payload["image"],
             payload.get("meta"),
