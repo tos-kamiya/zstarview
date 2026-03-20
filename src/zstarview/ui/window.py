@@ -605,7 +605,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             "QPushButton {"
             " border: none;"
             " border-radius: 6px;"
-            " font-size: 18px;"
+            " font-size: 16px;"
             f" background-color: {background};"
             f" color: {text};"
             "}"
