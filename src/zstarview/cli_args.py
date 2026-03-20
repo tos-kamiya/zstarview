@@ -8,6 +8,8 @@ WindowGeometryArg = Union[str, Tuple[int, int, int, int]]
 
 _VMAG_MULTIPLIER_MIN = 10.0 ** 0.2
 _VMAG_MULTIPLIER_MAX = 10.0 ** 0.4
+_CONTENT_FOV_MIN = 90.0
+_CONTENT_FOV_MAX = 127.0
 
 
 def _parse_azimuth(value: str) -> float:
@@ -97,6 +99,19 @@ def _parse_non_negative_float(value: str) -> float:
         raise argparse.ArgumentTypeError(f"Invalid non-negative float: {value!r}") from exc
     if out < 0.0:
         raise argparse.ArgumentTypeError("Value must be >= 0.")
+    return out
+
+
+def _parse_content_fov_deg(value: str) -> float:
+    """Parse the shared overscan content FOV angle."""
+    try:
+        out = float(value)
+    except (TypeError, ValueError) as exc:
+        raise argparse.ArgumentTypeError(f"Invalid content FOV: {value!r}") from exc
+    if not (_CONTENT_FOV_MIN <= out <= _CONTENT_FOV_MAX):
+        raise argparse.ArgumentTypeError(
+            f"Value must be between {_CONTENT_FOV_MIN:.0f} and {_CONTENT_FOV_MAX:.0f} degrees."
+        )
     return out
 
 
@@ -283,6 +298,15 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         type=float,
         default=90.0,
         help="Viewing altitude angle [deg] (90=zenith, 0=horizon; default=90)",
+    )
+    parser.add_argument(
+        "--content-fov-deg",
+        type=_parse_content_fov_deg,
+        default=100.0,
+        help=(
+            "Shared overscan content FOV in degrees (allowed: 90-127, default: 100). "
+            "The window edge remains fixed at 90 degrees from the view center."
+        ),
     )
     parser.add_argument(
         "--observer-height-m",
@@ -483,6 +507,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             or args.window_geometry is not None
             or args.view_center_az != default("view_center_az")
             or args.view_center_alt != default("view_center_alt")
+            or args.content_fov_deg != default("content_fov_deg")
             or args.observer_height_m is not None
             or args.sky_opacity != default("sky_opacity")
             or args.cloud_opacity != default("cloud_opacity")

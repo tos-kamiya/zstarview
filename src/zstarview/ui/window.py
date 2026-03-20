@@ -239,6 +239,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.visual_preset = user_options.visual_preset
         self.star_visibility_boost = user_options.star_visibility_boost
         self._star_render_expected_width = runtime_options.star_render_expected_width
+        self.content_fov_deg = float(runtime_options.content_fov_deg)
         self._cloud_toggle_supported = runtime_options.delta_t.total_seconds() == 0.0
 
         # Cloud opacity is disabled if we are looking at a time-shifted view,

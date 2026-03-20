@@ -72,6 +72,20 @@ def test_uniform_sky_disc_uses_single_disc_color() -> None:
     assert np.array_equal(center_rgb, lower_rgb)
 
 
+def test_uniform_sky_disc_content_fov_fills_corner_overscan_area() -> None:
+    geom = ScreenGeometry(center=(80, 80), radius=80)
+
+    default_img = draw_uniform_sky_color_disc(geom, view_center=(90.0, 0.0))
+    overscan_img = draw_uniform_sky_color_disc(geom, view_center=(90.0, 0.0), content_fov_deg=110.0)
+
+    default_arr = qimage_to_np_rgba(default_img)
+    overscan_arr = qimage_to_np_rgba(overscan_img)
+
+    # This sample lies outside the 90-degree inscribed circle but inside a 110-degree square overscan region.
+    assert int(default_arr[20, 20, 3]) == 0
+    assert int(overscan_arr[20, 20, 3]) == 255
+
+
 def test_radial_background_uses_black_inner_disc_for_all_main_themes() -> None:
     geom = ScreenGeometry(center=(80, 80), radius=60)
     rect = QRectF(0.0, 0.0, 160.0, 160.0)
