@@ -24,11 +24,9 @@ def _star_line_width_scale(window: Any, geometry: render_draw.ScreenGeometry) ->
 
 
 def _content_fov_deg(window: Any, render_viewer: ViewerData | None = None) -> float:
-    if hasattr(window, "content_fov_deg"):
-        return float(window.content_fov_deg)
     if render_viewer is not None:
-        return float(getattr(render_viewer, "content_fov_deg", 100.0))
-    return float(getattr(getattr(window, "viewer_data", None), "content_fov_deg", 100.0))
+        return float(render_viewer.content_fov_deg)
+    return float(window.content_fov_deg)
 
 
 class SkyWindowRenderMixin:

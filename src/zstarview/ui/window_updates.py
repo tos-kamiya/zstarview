@@ -152,7 +152,7 @@ class SkyWindowUpdatesMixin:
             delta_t=self.delta_t,
             sky_disc_alpha=self.sky_disc_alpha,
             sky_disc_base_size=self.state.sky_disc_base_size,
-            content_fov_deg=float(getattr(self, "content_fov_deg", getattr(self.viewer_data, "content_fov_deg", 100.0))),
+            content_fov_deg=float(self.content_fov_deg),
             render_width_px=max(2, int(self.width())),
             render_height_px=max(2, int(self.height())),
         )
@@ -176,7 +176,7 @@ class SkyWindowUpdatesMixin:
             alt=alt,
             az=az,
             radius_px=self.state.cloud_base_size,
-            content_fov_deg=float(getattr(self, "content_fov_deg", getattr(self.viewer_data, "content_fov_deg", 100.0))),
+            content_fov_deg=float(self.content_fov_deg),
             reason=reason,
         )
 
