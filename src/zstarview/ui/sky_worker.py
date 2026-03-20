@@ -67,6 +67,8 @@ class SkyDataWorker(QObject):
         sky_disc_alpha: float,
         sky_disc_base_size: int,
         content_fov_deg: float,
+        render_width_px: int | None = None,
+        render_height_px: int | None = None,
     ) -> bool:
         """Start background computation if idle; return False when already running."""
         with self._lock:
@@ -88,6 +90,8 @@ class SkyDataWorker(QObject):
                 "sky_disc_alpha": sky_disc_alpha,
                 "sky_disc_base_size": sky_disc_base_size,
                 "content_fov_deg": content_fov_deg,
+                "render_width_px": render_width_px,
+                "render_height_px": render_height_px,
             },
             daemon=True,
         )
@@ -108,6 +112,8 @@ class SkyDataWorker(QObject):
         sky_disc_alpha: float,
         sky_disc_base_size: int,
         content_fov_deg: float,
+        render_width_px: int | None,
+        render_height_px: int | None,
     ) -> None:
         try:
             now = datetime.now(timezone.utc) + delta_t
@@ -178,8 +184,9 @@ class SkyDataWorker(QObject):
 
             sky_disc_img: QImage | None = None
             if sun_altaz is not None:
-                base = sky_disc_base_size
-                fixed_geom = render_draw.get_screen_geometry(base, base, base // 2)
+                render_width = max(2, int(render_width_px or sky_disc_base_size))
+                render_height = max(2, int(render_height_px or sky_disc_base_size))
+                fixed_geom = render_draw.get_screen_geometry(render_width, render_height, view_center[0])
                 ef = eclipse_factor_from_info(solar_eclipse_info)
                 if sky_disc_alpha > 0.0:
                     sky_disc_img = draw_sky_disc.draw_sky_color_disc(
@@ -190,12 +197,14 @@ class SkyDataWorker(QObject):
                         alpha=sky_disc_alpha,
                         eclipse_factor=ef,
                         content_fov_deg=content_fov_deg,
+                        image_size=(render_width, render_height),
                     )
                 else:
                     sky_disc_img = draw_sky_disc.draw_uniform_sky_color_disc(
                         fixed_geom,
                         view_center,
                         content_fov_deg=content_fov_deg,
+                        image_size=(render_width, render_height),
                     )
 
             payload: Dict[str, object] = {"celestial": celestial_data, "sky_disc": sky_disc_img}

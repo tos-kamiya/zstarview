@@ -23,15 +23,17 @@ def _smoothstep(edge0: float, edge1: float, x: float) -> float:
 
 
 def _inverse_project_disc(
-    radius_px: int,
+    width_px: int,
+    height_px: int,
+    geometry: ScreenGeometry,
     view_center: Tuple[float, float],
     *,
     content_fov_deg: float = 90.0,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Inverse-project square sky pixels up to the requested content FOV."""
-    size = radius_px * 2
-    ys = (np.arange(size, dtype=np.float32) - radius_px) / float(radius_px)
-    xs = (np.arange(size, dtype=np.float32) - radius_px) / float(radius_px)
+    """Inverse-project pixels up to the requested content FOV."""
+    radius_px = max(1.0, float(geometry.radius))
+    ys = (np.arange(height_px, dtype=np.float32) - float(geometry.center[1])) / radius_px
+    xs = (np.arange(width_px, dtype=np.float32) - float(geometry.center[0])) / radius_px
     nx, ny = np.meshgrid(xs, ys)
 
     rr2 = nx * nx + ny * ny
@@ -193,6 +195,7 @@ def draw_sky_color_disc(
     alpha: float = 1.0,
     eclipse_factor: float = 1.0,
     content_fov_deg: float = 90.0,
+    image_size: Tuple[int, int] | None = None,
 ) -> QImage:
     """
     Draw sky color disc using one-pass NumPy inverse projection.
@@ -200,13 +203,25 @@ def draw_sky_color_disc(
     The disc is always rendered as a full circle (no horizon clipping inside the disc).
     """
     radius = int(geometry.radius)
-    size = max(2, radius * 2)
+    if image_size is None:
+        width = height = max(2, radius * 2)
+        local_geometry = ScreenGeometry(center=(radius, radius), radius=radius)
+    else:
+        width = max(2, int(image_size[0]))
+        height = max(2, int(image_size[1]))
+        local_geometry = geometry
     if radius < 1:
-        return QImage(size, size, QImage.Format.Format_ARGB32_Premultiplied)
+        return QImage(width, height, QImage.Format.Format_ARGB32_Premultiplied)
 
-    alt, az, inside = _inverse_project_disc(radius, view_center, content_fov_deg=content_fov_deg)
+    alt, az, inside = _inverse_project_disc(
+        width,
+        height,
+        local_geometry,
+        view_center,
+        content_fov_deg=content_fov_deg,
+    )
 
-    rgba = np.zeros((size, size, 4), dtype=np.uint8)
+    rgba = np.zeros((height, width, 4), dtype=np.uint8)
     if alt.size == 0:
         return np_rgba_to_qimage(rgba).convertToFormat(QImage.Format.Format_ARGB32_Premultiplied)
 
@@ -261,15 +276,28 @@ def draw_uniform_sky_color_disc(
     view_center: Tuple[float, float],
     *,
     content_fov_deg: float = 90.0,
+    image_size: Tuple[int, int] | None = None,
 ) -> QImage:
     """Draw a flat disc used when sky-color shading is disabled."""
     radius = int(geometry.radius)
-    size = max(2, radius * 2)
+    if image_size is None:
+        width = height = max(2, radius * 2)
+        local_geometry = ScreenGeometry(center=(radius, radius), radius=radius)
+    else:
+        width = max(2, int(image_size[0]))
+        height = max(2, int(image_size[1]))
+        local_geometry = geometry
     if radius < 1:
-        return QImage(size, size, QImage.Format.Format_ARGB32_Premultiplied)
+        return QImage(width, height, QImage.Format.Format_ARGB32_Premultiplied)
 
-    _, _, inside = _inverse_project_disc(radius, view_center, content_fov_deg=content_fov_deg)
-    rgba = np.zeros((size, size, 4), dtype=np.uint8)
+    _, _, inside = _inverse_project_disc(
+        width,
+        height,
+        local_geometry,
+        view_center,
+        content_fov_deg=content_fov_deg,
+    )
+    rgba = np.zeros((height, width, 4), dtype=np.uint8)
     rgba[..., 3][inside] = 255
     rgba[..., :3][inside] = FLAT_SKY_DISC_RGB_U8
     return np_rgba_to_qimage(rgba).convertToFormat(QImage.Format.Format_ARGB32_Premultiplied)

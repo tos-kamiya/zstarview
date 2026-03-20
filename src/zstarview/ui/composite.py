@@ -160,6 +160,7 @@ def render_hatched_cloud_from_density(
     density: StripeDensityField,
     width: int,
     height: int,
+    geometry: ScreenGeometry,
     hatch_cfg: HatchConfig,
     *,
     target_stripes: int = 50,
@@ -183,8 +184,9 @@ def render_hatched_cloud_from_density(
     dist = np.minimum(u_mod, period - u_mod)
     line_mask = dist <= (band / 2.0)
 
-    cy, cx = (h - 1) * 0.5, (w - 1) * 0.5
-    rr = min(cx, cy)
+    cx = float(geometry.center[0])
+    cy = float(geometry.center[1])
+    rr = max(1.0, float(geometry.radius))
     max_r = max(0.0, float(content_fov_deg) / 90.0)
     y, x = np.ogrid[:h, :w]
     inside_disc = ((x - cx) ** 2 + (y - cy) ** 2) <= ((rr * max_r) + 0.25) ** 2
@@ -194,9 +196,8 @@ def render_hatched_cloud_from_density(
     if not np.any(draw_mask):
         return np_rgba_to_qimage(out)
 
-    r = max(1.0, rr)
-    xn = (x - cx) / r
-    yn = (y - cy) / r
+    xn = (x - cx) / rr
+    yn = (y - cy) / rr
     u = xn - yn
     v = xn + yn
 
@@ -218,6 +219,7 @@ def compose_cloud_over_sky(
     sky_img: QImage,
     cloud_img_rgba: QImage,
     dest_rect: QRect,
+    geometry: ScreenGeometry,
     *,
     cloud_opacity: float = 1.0,
     gray_mix: float = 1.0,
@@ -239,8 +241,9 @@ def compose_cloud_over_sky(
     sky_np = qimage_to_np_rgba(sky_img)
     cloud_np = qimage_to_np_rgba(cloud_img_rgba)
 
-    cy, cx = (h - 1) * 0.5, (w - 1) * 0.5
-    rr = min(cx, cy)
+    cx = float(geometry.center[0]) - float(dest_rect.x())
+    cy = float(geometry.center[1]) - float(dest_rect.y())
+    rr = max(1.0, float(geometry.radius))
     max_r = max(0.0, float(content_fov_deg) / 90.0)
     y, x = np.ogrid[:h, :w]
     r2 = (x - cx) ** 2 + (y - cy) ** 2
@@ -347,14 +350,15 @@ def mask_cloud_alpha_by_missing(
 def _inverse_project_disc(
     width: int,
     height: int,
+    geometry: ScreenGeometry,
     view_center: Tuple[float, float],
     *,
     content_fov_deg: float = 90.0,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Inverse-project square composited pixels up to the requested content FOV."""
-    cy = (height - 1) * 0.5
-    cx = (width - 1) * 0.5
-    radius = max(1.0, min(cx, cy))
+    cx = float(geometry.center[0])
+    cy = float(geometry.center[1])
+    radius = max(1.0, float(geometry.radius))
     ys = (np.arange(height, dtype=np.float32) - cy) / radius
     xs = (np.arange(width, dtype=np.float32) - cx) / radius
     nx, ny = np.meshgrid(xs, ys)
@@ -446,6 +450,7 @@ def _never_rises_mask(
 def apply_ground_tint(
     base_img: QImage,
     *,
+    geometry: ScreenGeometry,
     view_center: Tuple[float, float],
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     ground_tint_opacity: float = 1.0,
@@ -459,6 +464,7 @@ def apply_ground_tint(
     alt, az, inside = _inverse_project_disc(
         out.shape[1],
         out.shape[0],
+        geometry,
         view_center,
         content_fov_deg=content_fov_deg,
     )
@@ -533,9 +539,11 @@ class SkyCompositorCache:
         content_fov_deg: float = 90.0,
     ) -> None:
         """Composite the sky/cloud layers (with cache) and draw into painter."""
-        x = int(geometry.center[0] - geometry.radius)
-        y = int(geometry.center[1] - geometry.radius)
-        w = h = int(geometry.radius * 2)
+        viewport = painter.viewport()
+        x = int(viewport.x())
+        y = int(viewport.y())
+        w = int(viewport.width())
+        h = int(viewport.height())
 
         sky_ck = int(sky_img.cacheKey()) if sky_img else 0
         cloud_ck = int(cloud_img.cacheKey()) if cloud_img else 0
@@ -561,6 +569,8 @@ class SkyCompositorCache:
             terrain_key,
             w,
             h,
+            tuple(geometry.center),
+            int(geometry.radius),
             float(cloud_alpha),
             float(view_center[0]),
             float(view_center[1]),
@@ -588,7 +598,9 @@ class SkyCompositorCache:
                 img.fill(Qt.transparent)
                 arr = qimage_to_np_rgba(img)
                 cy, cx = (h - 1) * 0.5, (w - 1) * 0.5
-                rr = min(cx, cy)
+                cx = float(geometry.center[0]) - float(x)
+                cy = float(geometry.center[1]) - float(y)
+                rr = max(1.0, float(geometry.radius))
                 max_r = max(0.0, float(content_fov_deg) / 90.0)
                 yy, xx = np.ogrid[:h, :w]
                 disc_mask = ((xx - cx) ** 2 + (yy - cy) ** 2) <= ((rr * max_r) + 0.25) ** 2
@@ -607,6 +619,7 @@ class SkyCompositorCache:
                         stripe_density,
                         w,
                         h,
+                        geometry,
                         self._hatch_cfg,
                         target_stripes=self._cloud_target_stripes,
                         width_factor=self._cloud_stripe_width_factor,
@@ -624,12 +637,14 @@ class SkyCompositorCache:
                     sky_img=sky_s,
                     cloud_img_rgba=cloud_s,
                     dest_rect=QRect(0, 0, w, h),
+                    geometry=geometry,
                     cloud_opacity=cloud_alpha * self._cloud_opacity_scale,
                     gray_mix=self._gray_mix,
                     content_fov_deg=content_fov_deg,
                 )
             composited = apply_ground_tint(
                 composited,
+                geometry=geometry,
                 view_center=view_center,
                 terrain_profile_altaz=terrain_profile_altaz,
                 ground_tint_opacity=self._ground_tint_opacity,
