@@ -451,10 +451,15 @@ Install the missing `libxcb-cursor0` package with:
 
    Cloud rendering downloads satellite imagery from public S3 buckets (Himawari / NOAA GOES) and relies on heavy dependencies.
    If your network is slow or unavailable, disable clouds with `-c 0`.
-   Terrain horizon rendering downloads Copernicus DEM tiles once and then reuses the local cache. Disable it with `--terrain-horizon-opacity 0` if you do not want DEM downloads.
-   You can still explore stars/planets and sky colors without cloud or terrain overlays.
+   You can still explore stars/planets and sky colors without cloud overlays.
 
-3. Aircraft data
+3. Terrain horizon
+
+   Terrain horizon rendering downloads Copernicus DEM tiles once and then reuses the local cache.
+   If your network is slow or unavailable, disable terrain horizon rendering with `--terrain-horizon-opacity 0`.
+   You can still explore stars/planets and sky colors without terrain overlays.
+
+4. Aircraft data
 
    The aircraft overlay fetches OpenSky Network state data at runtime.
    By default it refreshes once every 5 minutes. This interval is intentionally conservative so the app keeps practical headroom for free-tier use, temporary failures, and retries rather than polling more aggressively.
