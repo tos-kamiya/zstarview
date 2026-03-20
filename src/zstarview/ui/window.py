@@ -630,6 +630,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
 
     def resizeEvent(self, event: QResizeEvent) -> None:
         self._begin_viewport_interaction_mode()
+        self._disc_generation = int(getattr(self, "_disc_generation", 0)) + 1
         grip_size = self.size_grip.size()
         self.size_grip.move(self.width() - grip_size.width(), self.height() - grip_size.height())
 
@@ -637,10 +638,34 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.menu_button.move(self.width() - button_size.width() - 8, 8)
         self._raise_overlay_widgets()
 
+        self._discard_stale_disc_images()
+
         # Invalidate the composition cache since the size has changed
         self._compositor.invalidate()
+        self.request_sky_data_update()
+        self.start_background_cloud_update(reason="resize")
 
         super().resizeEvent(event)
+
+    def _discard_stale_disc_images(self) -> None:
+        discarded = False
+        if self.state.sky_disc_image is not None:
+            self.state.sky_disc_image = None
+            discarded = True
+        if self.cloud_state.image is not None:
+            self.cloud_state.image = None
+            discarded = True
+        if self.cloud_state.missing_mask is not None:
+            self.cloud_state.missing_mask = None
+            discarded = True
+        if self.cloud_state.stripe_density is not None:
+            self.cloud_state.stripe_density = None
+            discarded = True
+        if discarded:
+            self.cloud_state.render_key = None
+            self.cloud_state.request_id = None
+            self.cloud_state.missing_mask_key = None
+            self._compositor.invalidate()
 
     def _begin_interaction_mode(self) -> None:
         self.state.interaction_mode = True
