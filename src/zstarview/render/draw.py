@@ -374,60 +374,44 @@ def draw_radial_background(
     r_content = float(geometry.radius * (fov_outer / 90.0))
     r_core = float(max(1.0, min(r_content * 0.7, r_content - 6.0)))
     r_mid = float(r_core + (r_content - r_core) * 0.55)
-    r_max = float(max(r_content, r_mid) * 1.4)
-    step_px = 0.5
+    cx = float(geometry.center[0])
+    cy = float(geometry.center[1])
+    corners = (
+        (float(rect.left()), float(rect.top())),
+        (float(rect.right()), float(rect.top())),
+        (float(rect.left()), float(rect.bottom())),
+        (float(rect.right()), float(rect.bottom())),
+    )
+    r_window = max(math.hypot(x - cx, y - cy) for x, y in corners)
+    r_max = float(max(r_content + 1.0, r_window))
 
     def pos(r: float) -> float:
         return max(0.0, min(1.0, r / r_max))
 
-    def black_col(r: float, s: float) -> QColor:
-        t = max(0.0, min(1.0, r / max(1.0, r_core)))
-        gray = int(4 - 3 * t)
-        aa = max(0, 255 - (s + int(45 * t)))
-        return QColor(gray, gray, gray, aa)
-
-    if preset == "white":
-        def col(r: float, s: float) -> QColor:
-            t = max(0.0, min(1.0, (r - r_core) / max(1.0, r_max - r_core)))
-            gray = int(246 - 54 * t)
-            aa = max(0, 212 - (s + int(100 * t)))
-            return QColor(gray, gray, gray, aa)
-    elif preset == "day":
-        def col(r: float, s: float) -> QColor:
-            t = max(0.0, min(1.0, (r - r_core) / max(1.0, r_max - r_core)))
-            # Keep day palette bright, but slightly blue-leaning.
-            rr = int(230 - 28 * t)
-            gg = int(242 - 34 * t)
-            bb = int(255 - 34 * t)
-            # Keep "day" visibly lighter/more transparent than "white".
-            aa = max(0, 136 - (s + int(90 * t)))
-            return QColor(rr, gg, bb, aa)
-    elif preset == "night":
-        def col(r: float, s: float) -> QColor:
-            t = max(0.0, min(1.0, r / max(1.0, r_max)))
-            rr = int(10 - 7 * t)
-            gg = int(12 - 9 * t)
-            bb = int(16 - 11 * t)
-            aa = max(0, 236 - (s + int(95 * t)))
-            return QColor(rr, gg, bb, aa)
-    elif preset == "black":
-        def col(r: float, s: float) -> QColor:
-            return black_col(r, s)
-    else:
-        def col(r: float, s: float) -> QColor:
-            t = max(0.0, min(1.0, r / max(1.0, r_max)))
-            return QColor(0, 0, 0, max(0, 205 - (s + int(130 * t))))
+    col_params = {
+        "white": (246, 54, 246, 54, 246, 54, 255, 180),
+        "black": (12, 9, 12, 9, 12, 9, 255, 180),
+        "day": (230, 28, 242, 34, 255, 34, 200, 60),
+        "night": (10, 7, 12, 9, 16, 11, 200, 60),
+    }
+    param = col_params.get(preset, None) or col_params["black"]
+    def col(r: float, s: float) -> QColor:
+        t = max(0.0, min(1.0, r / max(1.0, r_max)))
+        rr = int(param[0] - param[1] * t)
+        gg = int(param[2] - param[3] * t)
+        bb = int(param[4] - param[5] * t)
+        aa = int(param[6] * (1.0 - s) + param[7] * s)
+        return QColor(rr, gg, bb, aa)
 
     c = geometry.center
     g = QRadialGradient(QPointF(c[0], c[1]), r_max)
-    inner_color = black_col(0.0, 0.0) if preset in ("white", "day", "night", "black") else col(0.0, 0.0)
-    g.setColorAt(pos(0.0), inner_color)
-    g.setColorAt(pos(r_core), black_col(r_core, 0.0))
-    g.setColorAt(pos(r_core + step_px), col(r_core + step_px, 8.0))
-    g.setColorAt(pos(r_mid), col(r_mid, 10.0))
-    g.setColorAt(pos(r_content), col(r_content, 14.0))
-    g.setColorAt(pos(r_content + step_px), col(r_content + step_px, 20.0))
-    g.setColorAt(1.0, col(r_max, 20))
+    inner_color = QColor(4, 4, 4, 255) if preset in ("white", "day", "night", "black") else col(0.0, 0.0)
+    boundary_color = col(r_content, 0.3)
+    edge_color = col(r_max, 1.0)
+    g.setColorAt(0.0, inner_color)
+    g.setColorAt(pos(r_content), inner_color)
+    g.setColorAt(pos(r_content + 1.0), boundary_color)
+    g.setColorAt(1.0, edge_color)
 
     painter.save()
     painter.setPen(Qt.PenStyle.NoPen)

@@ -101,3 +101,21 @@ def test_radial_background_uses_black_inner_disc_for_all_main_themes() -> None:
         center_rgb = arr[80, 80, :3].astype(int)
 
         assert np.array_equal(center_rgb, np.array([4, 4, 4])), preset
+
+
+def test_radial_background_fades_between_content_fov_and_window_edge() -> None:
+    geom = ScreenGeometry(center=(80, 80), radius=60)
+    rect = QRectF(0.0, 0.0, 160.0, 160.0)
+
+    img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
+    img.fill(0)
+    painter = QPainter(img)
+    draw_radial_background(painter, rect, geom, preset="night", content_fov_deg=100.0)
+    painter.end()
+
+    arr = qimage_to_np_rgba(img)
+
+    # Around the content-FOV boundary there should still be visible alpha.
+    assert int(arr[13, 80, 3]) > 0
+    # Toward the window corner, the fade should become more transparent.
+    assert int(arr[10, 10, 3]) < int(arr[13, 80, 3])
