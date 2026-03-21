@@ -58,13 +58,9 @@ overturemaps --help
 
 Zstarview 自体は、[`pipx`](https://pypa.github.io/pipx/) を使ってインストールする想定です。
 
-> 注記: Windows Arm64 環境は現在インストール非対応です。
-> 2026-03-15 時点では、その環境で `pipx install zstarview` や
-> `pipx install .` を実行すると、`shapely` などのネイティブ依存が
-> ソースビルドになって正常に入らず、失敗することがあります。
-> cloud-disc 系は `pyresample` 依存を削除したため、少なくともその依存は
-> Windows Arm64 インストール失敗要因ではなくなりました。
-> 主に検証している環境は Linux x86_64 です。
+> 注記: 主に検証している環境は Linux x86_64 です。cloud-disc 系は
+> `pyresample` 依存を削除したため、以前の Windows Arm64
+> インストール阻害要因は解消されています。
 
 ```bash
 pipx install zstarview
@@ -514,6 +510,10 @@ CPU 性能によっては星空の自動更新が負荷になる場合があり�
 
 通常起動だとすぐ閉じて確認しづらい場合は、ターミナルから `zstarview-debug` を試してください。
 これは主に Windows でのトラブルシュート用です。Linux では `zstarview-debug` は `zstarview` と実質同じ動作です。
+
+Windows では、Windows セキュリティにより Python 拡張モジュールの読み込みがブロックされ、起動時に止まることがあります。
+その場合は、Windows セキュリティの `App & browser control` にある `Smart App Control` の設定を変更すると回避できることがあるようです。
+ただし、セキュリティを弱くすることになるので、安全な環境以外での実行は推奨しません。
 
 </details>
 
