@@ -36,7 +36,7 @@ def build_bt_sampler(da: xr.DataArray) -> Callable[[np.ndarray, np.ndarray], np.
 
     Args:
         da: The input xarray DataArray containing brightness temperatures. It is
-            expected to have an `area` attribute (from Satpy) that defines the
+            expected to have an `area` attribute that defines the
             geostationary projection.
 
     Returns:
@@ -45,7 +45,7 @@ def build_bt_sampler(da: xr.DataArray) -> Callable[[np.ndarray, np.ndarray], np.
     """
     area = da.attrs.get("area")
     if area is None:
-        raise ValueError("Input DataArray must have an 'area' attribute from Satpy.")
+        raise ValueError("Input DataArray must have an 'area' attribute.")
 
     # --- 1. Extract projection and grid information from the area definition ---
     min_x, min_y, max_x, max_y = area.area_extent

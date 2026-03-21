@@ -309,7 +309,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `CloudDiscConfig.alt_min_deg` による可視高度下限の適用
 - `src/zstarview/clouddisc/providers/*.py`
   - 衛星データ取得
-  - GOES は `CMIPF C13` NetCDF を `xarray` で直接読み、`goes_imager_projection` から `pyresample.AreaDefinition` を再構築する
+  - GOES は `CMIPF C13` NetCDF を `xarray` で直接読み、`goes_imager_projection` から内部の geostationary `area` 定義を再構築する
   - Himawari は `ISatSS M1C13` タイル群を直接 stitch し、`fixedgrid_projection` から `area` を再構築する
   - Himawari の observer 指定時は、描画用の局所タイルに加え、warm-threshold 推定用の赤道帯タイルを少数だけ追加取得する
 - `src/zstarview/clouddisc/projectors/az.py`
@@ -745,7 +745,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - GUI: `PySide6`
 - 天文計算: `astropy`, `skyfield`
 - 数値計算: `numpy`, `polars`
-- 雲データ処理: `xarray`, `pyresample`, `boto3`, `botocore`
+- 雲データ処理: `xarray`, `boto3`, `botocore`
 - 地形データ処理: `rasterio`, `pyproj`
 - 画像処理: `Pillow`
 

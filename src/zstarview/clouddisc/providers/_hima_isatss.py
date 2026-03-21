@@ -14,7 +14,8 @@ from typing import Iterable, Sequence
 import numpy as np
 import xarray as xr
 from pyproj import CRS, Transformer
-from pyresample.geometry import AreaDefinition
+
+from ..geo_area import GeoArea
 
 from ..projectors.az import altaz_to_dir_ecef, geodetic_to_ecef
 from ._s3_io import list_s3_keys
@@ -383,7 +384,7 @@ def stitch_tiles_from_paths(paths: Sequence[Path], *, source_label: str | None =
             ds.close()
 
 
-def build_area_from_dataset(ds: xr.Dataset) -> AreaDefinition:
+def build_area_from_dataset(ds: xr.Dataset) -> GeoArea:
     proj_var = ds[GRID_VAR]
     crs = CRS.from_cf(dict(proj_var.attrs))
     x = np.asarray(ds.x.values, dtype=np.float64)
@@ -392,14 +393,14 @@ def build_area_from_dataset(ds: xr.Dataset) -> AreaDefinition:
     x_step = float(x[1] - x[0])
     y_step = float(y[1] - y[0])
     # ISatSS x/y coordinates are scan-angle-like values in microradian units.
-    # Convert them to the projected units expected by pyproj/pyresample.
+    # Convert them to the projected units expected by the projection helpers.
     area_extent = (
         float(x[0] * geos_scale),
         float((y[0] + y.size * y_step) * geos_scale),
         float((x[0] + x.size * x_step) * geos_scale),
         float(y[0] * geos_scale),
     )
-    return AreaDefinition(
+    return GeoArea(
         area_id="himawari_isatss_m1c13",
         description="Himawari ISatSS stitched M1C13",
         proj_id="geos",

@@ -226,6 +226,12 @@
   - Himawari は Satpy reader をやめ、`ISatSS M1C13` タイル群を直接 stitch して `fixedgrid_projection` から `area` を再構築する経路へ置き換えた。
   - これに合わせて `satpy` の直接依存を削除し、雲データ処理の依存は `xarray` と `pyresample` ベースへ整理した。
 
+- 雲データ取得の `pyresample` 依存撤去
+  - GOES/Himawari で使っていた `pyresample.AreaDefinition` は、実際には geostationary 投影定義と `lon/lat -> pixel` 変換の最小機能しか使っていなかった。
+  - そのため、同等の最小 API を持つ内部 `GeoArea` へ置き換え、雲ディスクの sampler と warm-threshold 推定はそのまま動くようにした。
+  - これにより、`pyresample` の配布事情に引きずられずに cloud-disc 機能を維持できる構成になった。
+  - `dev-samples/compare_pyresample_cloud_disc.py` を使って Himawari / GOES の複数ケースを比較し、確認した範囲では `bt_warm`、`bt_cold`、BT 配列、可視 mask、最終画像の差分はすべて `0` だった。
+
 - Himawari warm-threshold の安定化
   - Himawari の部分タイル最適化後、observer 周辺タイルだけでは赤道帯サンプルが消え、`eq_samples=0` により warm-threshold が固定 fallback へ落ちる問題が出た。
   - このため、observer 周辺の描画用タイルに加えて、観測経度付近の赤道帯を横切る少数タイルを追加取得するようにした。
