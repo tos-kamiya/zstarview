@@ -39,6 +39,8 @@ def _window_mean(da: xr.DataArray, cx: float, cy: float, half: int = 5) -> float
         return np.nan
 
     block = da.isel(x=slice(x0, x1), y=slice(y0, y1)).values
+    if not np.isfinite(block).any():
+        return np.nan
     return float(np.nanmean(block))
 
 

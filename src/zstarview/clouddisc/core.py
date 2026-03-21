@@ -118,8 +118,13 @@ class CloudDisc:
             da, used_time, src_paths = res
             product = "CMIPF-C13"
         elif sat == "HIMAWARI":
-            da, used_time, src_paths = self.hima.fetch_bt_c13(when_utc=when)
-            product = "HSD-B13" if len(src_paths) > 1 else "ISatSS-B13"
+            da, used_time, src_paths = self.hima.fetch_bt_c13(
+                when_utc=when,
+                observer_lat=lat,
+                observer_lon=lon,
+                cloud_shell_km=6371.0 + 5.0,
+            )
+            product = "ISatSS-B13"
         else:
             raise VisibilityError(f"No suitable satellite provider found for '{sat}'")
         logger.info("Using %s (%s) data from time=%s", sat_used, product, used_time.isoformat())
