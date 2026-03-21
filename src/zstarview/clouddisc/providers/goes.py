@@ -16,10 +16,10 @@ import boto3
 import xarray as xr
 from botocore import UNSIGNED
 from botocore.config import Config
-from satpy import Scene
 
 from ..config import CloudDiscConfig
 from ..types import DataNotFoundError, CloudMeta
+from ._goes_abi import load_cmi_with_area
 from ._s3_io import download_s3_object, list_s3_keys
 from .select import GOES_SATELLITES, normalize_satellite_name
 
@@ -129,22 +129,11 @@ class GoesProvider:
             path = self._download(bucket, key)
 
             try:
-                # Use Satpy to load the NetCDF file, as it correctly handles projection info.
-                scn = Scene(reader="abi_l2_nc", filenames=[str(path)])
-                scn.load(["C13"])
-                da = scn["C13"].astype("float32").compute()
+                da = load_cmi_with_area(path)
                 used_time = search_time.replace(minute=(search_time.minute // 10) * 10, second=0, microsecond=0, tzinfo=dt.timezone.utc)
                 return da, used_time, [path]
             except Exception as e:
-                logger.warning("Satpy load failed for %s (%s), trying xarray fallback", Path(key).name, e)
-                # If Satpy fails, try a direct xarray read as a fallback.
-                try:
-                    with xr.open_dataset(path, engine="netcdf4") as ds:
-                        if "CMI" in ds.variables:
-                            da = ds["CMI"].astype("float32").compute()
-                            return da, used_time, [path]
-                except Exception as ex:
-                    logger.error("xarray fallback failed for %s: %s", Path(key).name, ex)
+                logger.error("Direct GOES CMI load failed for %s: %s", Path(key).name, e)
         return None
 
     def fetch_bt_c13_with_failover(

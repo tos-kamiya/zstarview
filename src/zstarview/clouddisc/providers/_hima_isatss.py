@@ -6,6 +6,7 @@ from __future__ import annotations
 import datetime as dt
 import math
 import re
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
@@ -24,6 +25,13 @@ GRID_VAR = "fixedgrid_projection"
 _RE_TILE = re.compile(r"-T(\d{3})_")
 _HIMA_BUCKETS = ("noaa-himawari9", "noaa-himawari8")
 _PREFIX_ROOT = "AHI-L2-FLDK-ISatSS"
+
+warnings.filterwarnings(
+    "ignore",
+    message="You will likely lose important projection information when converting to a PROJ string",
+    category=UserWarning,
+    module="pyproj.crs.crs",
+)
 
 
 @dataclass(frozen=True)
