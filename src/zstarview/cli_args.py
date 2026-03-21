@@ -146,9 +146,8 @@ def _parse_window_geometry(value: str) -> WindowGeometryArg:
     return (x, y, width, height)
 
 
-def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
-    """Parses command-line arguments."""
-    parser = argparse.ArgumentParser(description="Star sky visualizer")
+def add_location_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add observing-location arguments."""
     parser.add_argument(
         "city",
         type=str,
@@ -187,6 +186,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         metavar="LANG",
         help="Accept-Language for --place Nominatim search (default: en).",
     )
+
+
+def add_dataset_query_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add bundled-viewpoint dataset query arguments."""
     dataset_query_group = parser.add_mutually_exclusive_group()
     dataset_query_group.add_argument(
         "--list-viewpoints",
@@ -209,6 +212,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         metavar="NAME",
         help="Resolve a bundled viewpoint name and print its JSON metadata, then exit.",
     )
+
+
+def add_time_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add time-selection arguments."""
     time_group = parser.add_argument_group("Time settings")
     time_group.add_argument(
         "-H",
@@ -235,6 +242,15 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         ),
     )
 
+
+def add_render_arguments(
+    parser: argparse.ArgumentParser,
+    *,
+    include_window_geometry: bool = True,
+    include_sky_update_interval: bool = True,
+    include_startup_overlay_arguments: bool = True,
+) -> None:
+    """Add shared view and rendering arguments."""
     parser.add_argument(
         "-V",
         "--vmag-limit",
@@ -271,17 +287,18 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             "When the celestial disc width exceeds this, the star layer uses square-root scaling."
         ),
     )
-    parser.add_argument(
-        "--window-geometry",
-        type=_parse_window_geometry,
-        default=None,
-        metavar="restore|X,Y,W,H",
-        help=(
-            "Window position and size. "
-            "Use 'restore' to load the last saved geometry, "
-            "or 'x,y,width,height' to set explicit values."
-        ),
-    )
+    if include_window_geometry:
+        parser.add_argument(
+            "--window-geometry",
+            type=_parse_window_geometry,
+            default=None,
+            metavar="restore|X,Y,W,H",
+            help=(
+                "Window position and size. "
+                "Use 'restore' to load the last saved geometry, "
+                "or 'x,y,width,height' to set explicit values."
+            ),
+        )
     parser.add_argument(
         "-Z",
         "--view-center-az",
@@ -431,27 +448,29 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             f"{float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0:.3f})."
         ),
     )
-    parser.add_argument(
-        "-i",
-        "--sky-update-interval",
-        type=int,
-        default=60,
-        help="Interval for updating stars/sky-color disc in sec. (default: 60).",
-    )
-    parser.add_argument(
-        "--show-dso-initial",
-        type=_parse_bool,
-        default=None,
-        metavar="true|false",
-        help="Whether to show DSO overlays at startup (true/false).",
-    )
-    parser.add_argument(
-        "--show-asterisms-initial",
-        type=_parse_bool,
-        default=None,
-        metavar="true|false",
-        help="Whether to show asterism overlays at startup (true/false).",
-    )
+    if include_sky_update_interval:
+        parser.add_argument(
+            "-i",
+            "--sky-update-interval",
+            type=int,
+            default=60,
+            help="Interval for updating stars/sky-color disc in sec. (default: 60).",
+        )
+    if include_startup_overlay_arguments:
+        parser.add_argument(
+            "--show-dso-initial",
+            type=_parse_bool,
+            default=None,
+            metavar="true|false",
+            help="Whether to show DSO overlays at startup (true/false).",
+        )
+        parser.add_argument(
+            "--show-asterisms-initial",
+            type=_parse_bool,
+            default=None,
+            metavar="true|false",
+            help="Whether to show asterism overlays at startup (true/false).",
+        )
     theme_default = "night"
     parser.add_argument(
         "-t",
@@ -461,7 +480,21 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         metavar="{night,day,white,black}",
         help="Theme preset for background and star contrast (default: night).",
     )
-    args = parser.parse_args(argv)
+
+
+def build_main_argument_parser() -> argparse.ArgumentParser:
+    """Build the main zstarview argument parser."""
+    parser = argparse.ArgumentParser(description="Star sky visualizer")
+    add_location_arguments(parser)
+    add_dataset_query_arguments(parser)
+    add_time_arguments(parser)
+    add_render_arguments(parser)
+    return parser
+
+
+def _normalize_location_arguments(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> None:
     if args.place is not None:
         args.place = args.place.strip()
         if not args.place:
@@ -474,6 +507,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         args.place_lang = args.place_lang.strip()
         if not args.place_lang:
             parser.error("--place-lang must not be empty")
+
+
+def _normalize_dataset_query_arguments(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> None:
     for option_name in ("list_viewpoints", "list_viewpoint_names"):
         value = getattr(args, option_name)
         if value is not None:
@@ -481,6 +519,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
             if normalized not in {"t", "m"}:
                 parser.error(f"--{option_name.replace('_', '-')} must be 't' or 'm'")
             setattr(args, option_name, normalized)
+
+
+def _validate_dataset_query_compatibility(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> None:
+    def has_non_default(name: str) -> bool:
+        return hasattr(args, name) and getattr(args, name) != parser.get_default(name)
+
     dataset_cli_requested = bool(
         args.list_viewpoints
         or args.list_viewpoint_names
@@ -492,47 +538,61 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         if args.place:
             parser.error("dataset query options cannot be used with --place")
 
-        default = parser.get_default
         incompatible_non_default = (
-            args.place_countrycode is not None
-            or args.place_lang != default("place_lang")
-            or args.hours != default("hours")
-            or args.days != default("days")
-            or args.datetime is not None
-            or args.vmag_limit != default("vmag_limit")
-            or args.vmag_brightness_multiplier != default("vmag_brightness_multiplier")
-            or args.enlarge_moon
-            or args.star_base_radius != default("star_base_radius")
-            or args.expected_render_width != default("expected_render_width")
-            or args.window_geometry is not None
-            or args.view_center_az != default("view_center_az")
-            or args.view_center_alt != default("view_center_alt")
-            or args.content_fov_deg != default("content_fov_deg")
-            or args.observer_height_m is not None
-            or args.sky_opacity != default("sky_opacity")
-            or args.cloud_opacity != default("cloud_opacity")
-            or args.aircraft_opacity != default("aircraft_opacity")
-            or args.terrain_horizon_opacity != default("terrain_horizon_opacity")
-            or args.urban_outline_opacity != default("urban_outline_opacity")
-            or args.urban_outline_radius_km != default("urban_outline_radius_km")
-            or args.urban_outline_min_height_m != default("urban_outline_min_height_m")
-            or args.urban_outline_feature_type != default("urban_outline_feature_type")
-            or args.urban_outline_skyscraper_only
-            or args.ground_tint_opacity != default("ground_tint_opacity")
-            or args.cloud_stripe != default("cloud_stripe")
-            or args.cloud_missing_tint_opacity != default("cloud_missing_tint_opacity")
-            or args.sky_update_interval != default("sky_update_interval")
-            or args.show_dso_initial is not None
-            or args.show_asterisms_initial is not None
-            or args.theme != default("theme")
+            has_non_default("place_countrycode")
+            or has_non_default("place_lang")
+            or has_non_default("hours")
+            or has_non_default("days")
+            or has_non_default("datetime")
+            or has_non_default("vmag_limit")
+            or has_non_default("vmag_brightness_multiplier")
+            or has_non_default("enlarge_moon")
+            or has_non_default("star_base_radius")
+            or has_non_default("expected_render_width")
+            or has_non_default("window_geometry")
+            or has_non_default("view_center_az")
+            or has_non_default("view_center_alt")
+            or has_non_default("content_fov_deg")
+            or has_non_default("observer_height_m")
+            or has_non_default("sky_opacity")
+            or has_non_default("cloud_opacity")
+            or has_non_default("aircraft_opacity")
+            or has_non_default("terrain_horizon_opacity")
+            or has_non_default("urban_outline_opacity")
+            or has_non_default("urban_outline_radius_km")
+            or has_non_default("urban_outline_min_height_m")
+            or has_non_default("urban_outline_feature_type")
+            or has_non_default("urban_outline_skyscraper_only")
+            or has_non_default("ground_tint_opacity")
+            or has_non_default("cloud_stripe")
+            or has_non_default("cloud_missing_tint_opacity")
+            or has_non_default("sky_update_interval")
+            or has_non_default("show_dso_initial")
+            or has_non_default("show_asterisms_initial")
+            or has_non_default("theme")
         )
         if incompatible_non_default:
             parser.error("dataset query options cannot be used with time or rendering options")
+
+
+def _validate_location_argument_combinations(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> None:
     if args.city and args.place:
         parser.error("--place cannot be used with the location argument")
     if args.place is None and args.place_countrycode is not None:
         parser.error("--place-countrycode requires --place")
     if args.place is None and args.place_lang != "en":
         parser.error("--place-lang requires --place")
+
+
+def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    """Parse command-line arguments for the main zstarview app."""
+    parser = build_main_argument_parser()
+    args = parser.parse_args(argv)
+    _normalize_location_arguments(parser, args)
+    _normalize_dataset_query_arguments(parser, args)
+    _validate_dataset_query_compatibility(parser, args)
+    _validate_location_argument_combinations(parser, args)
 
     return args

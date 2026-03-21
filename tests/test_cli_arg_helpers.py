@@ -1,0 +1,48 @@
+from __future__ import annotations
+
+import argparse
+
+import pytest
+
+from zstarview import cli_args
+
+
+def _build_export_like_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser()
+    cli_args.add_location_arguments(parser)
+    cli_args.add_dataset_query_arguments(parser)
+    cli_args.add_time_arguments(parser)
+    cli_args.add_render_arguments(
+        parser,
+        include_window_geometry=False,
+        include_sky_update_interval=False,
+        include_startup_overlay_arguments=False,
+    )
+    return parser
+
+
+def test_render_argument_helpers_can_build_parser_without_gui_only_options() -> None:
+    parser = _build_export_like_parser()
+
+    args = parser.parse_args(
+        ["--place", " Matsue Station ", "--content-fov-deg", "110", "--theme", "day"]
+    )
+    cli_args._normalize_location_arguments(parser, args)
+
+    assert args.place == "Matsue Station"
+    assert args.content_fov_deg == 110.0
+    assert args.theme == "day"
+    assert not hasattr(args, "window_geometry")
+    assert not hasattr(args, "sky_update_interval")
+    assert not hasattr(args, "show_dso_initial")
+    assert not hasattr(args, "show_asterisms_initial")
+
+
+def test_dataset_query_validation_works_with_parser_missing_gui_only_options() -> None:
+    parser = _build_export_like_parser()
+    args = parser.parse_args(["--list-viewpoints", "t", "--theme", "day"])
+
+    cli_args._normalize_dataset_query_arguments(parser, args)
+
+    with pytest.raises(SystemExit):
+        cli_args._validate_dataset_query_compatibility(parser, args)
