@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import logging
 import math
+import shutil
+import subprocess
+import sys
 import time
 from pathlib import Path
 
 import numpy as np
-from PySide6.QtCore import QPoint, QRect
+from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QPoint, QRect
 from PySide6.QtGui import QFont, QFontDatabase, QImage, QPainter
 
 from .aircraft import build_observer_bbox, fetch_opensky_states, project_aircraft_snapshots
@@ -520,10 +523,60 @@ def _build_render_style(
     )
 
 
+def _require_img2sixel_binary() -> str:
+    executable = shutil.which("img2sixel")
+    if executable:
+        return executable
+    logger.error("--sixel was requested, but 'img2sixel' was not found in PATH.")
+    raise SystemExit(1)
+
+
+def _encode_image_as_png_bytes(image: QImage) -> bytes:
+    ba = QByteArray()
+    buf = QBuffer(ba)
+    if not buf.open(QIODevice.OpenModeFlag.WriteOnly):
+        logger.error("Failed to open in-memory buffer for PNG encoding.")
+        raise SystemExit(1)
+    try:
+        if not image.save(buf, "PNG"):
+            logger.error("Failed to encode image as PNG for SIXEL output.")
+            raise SystemExit(1)
+    finally:
+        buf.close()
+    return bytes(ba.data())
+
+
+def _write_sixel_to_stdout(image: QImage, *, img2sixel_bin: str) -> bool:
+    png_bytes = _encode_image_as_png_bytes(image)
+    try:
+        proc = subprocess.run(
+            [img2sixel_bin, "-"],
+            input=png_bytes,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+    except OSError as exc:
+        logger.warning("SIXEL output failed: %s", exc)
+        return False
+    if proc.returncode != 0:
+        stderr_text = proc.stderr.decode("utf-8", errors="replace").strip()
+        if stderr_text:
+            logger.warning("SIXEL output failed: %s", stderr_text)
+        else:
+            logger.warning("SIXEL output failed with exit status %s.", proc.returncode)
+        return False
+    sys.stdout.buffer.write(proc.stdout)
+    sys.stdout.buffer.flush()
+    return True
+
+
 def main() -> None:
     args = parse_export_image_args()
     setup_root_logger()
     logger.info("%s export-image starting...", APP_DISPLAY_NAME)
+    wants_sixel = bool(getattr(args, "sixel", False))
+    img2sixel_bin = _require_img2sixel_binary() if wants_sixel else None
 
     try:
         catalogs, viewer_data, user_options, runtime_options = _build_window_inputs_from_args(args)
@@ -535,7 +588,8 @@ def main() -> None:
 
     text_font, status_line_font = _load_fonts()
     compositor = _build_compositor(runtime_options, user_options)
-    output_path = Path(getattr(args, "output")).expanduser()
+    output_arg = getattr(args, "output", None)
+    output_path = Path(output_arg).expanduser() if output_arg else None
     image_size = tuple(int(v) for v in getattr(args, "image_size"))
     deadline = _deadline_after(float(getattr(args, "layer_timeout_seconds", 30.0)))
     allow_partial_data = bool(getattr(args, "allow_partial_data", False))
@@ -648,8 +702,17 @@ def main() -> None:
         style=style,
         compositor=compositor,
     )
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    if not image.save(str(output_path), "PNG"):
-        logger.error("Failed to save image: %s", output_path)
-        raise SystemExit(1)
-    logger.info("Saved image: %s", output_path)
+    saved_output = False
+    if output_path is not None:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        if not image.save(str(output_path), "PNG"):
+            logger.error("Failed to save image: %s", output_path)
+            raise SystemExit(1)
+        saved_output = True
+        logger.info("Saved image: %s", output_path)
+
+    if wants_sixel:
+        assert img2sixel_bin is not None
+        sixel_ok = _write_sixel_to_stdout(image, img2sixel_bin=img2sixel_bin)
+        if not sixel_ok and not saved_output:
+            raise SystemExit(1)

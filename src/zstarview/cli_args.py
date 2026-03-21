@@ -528,7 +528,7 @@ def build_export_image_argument_parser() -> argparse.ArgumentParser:
         "-o",
         "--output",
         type=str,
-        required=True,
+        default=None,
         metavar="PATH",
         help="Output image file path.",
     )
@@ -553,6 +553,11 @@ def build_export_image_argument_parser() -> argparse.ArgumentParser:
         "--allow-partial-data",
         action="store_true",
         help="Allow saving an image even when enabled external layers fail or time out.",
+    )
+    parser.add_argument(
+        "--sixel",
+        action="store_true",
+        help="Display the generated image in the terminal via img2sixel.",
     )
     return parser
 
@@ -669,4 +674,6 @@ def parse_export_image_args(argv: Sequence[str] | None = None) -> argparse.Names
     args = parser.parse_args(argv)
     _normalize_location_arguments(parser, args)
     _validate_location_argument_combinations(parser, args)
+    if not args.output and not args.sixel:
+        parser.error("either --output or --sixel is required")
     return args
