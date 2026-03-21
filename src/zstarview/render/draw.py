@@ -1391,9 +1391,16 @@ def draw_stars(
     if canvas_uint8.size == 0:
         return
 
-    alpha = (np.any(canvas_uint8 > 0, axis=2)).astype(np.uint8) * 255
     rgba = np.zeros((height_px, width_px, 4), dtype=np.uint8)
-    rgba[:, :, :3] = canvas_uint8
+    alpha = np.max(canvas_uint8, axis=2)
+    nonzero_alpha = alpha > 0
+    if np.any(nonzero_alpha):
+        rgb_float = canvas_uint8.astype(np.float32) / 255.0
+        alpha_float = alpha.astype(np.float32) / 255.0
+        rgba_rgb = np.zeros_like(rgb_float, dtype=np.float32)
+        rgba_rgb[nonzero_alpha] = rgb_float[nonzero_alpha] / alpha_float[nonzero_alpha, None]
+        np.clip(rgba_rgb, 0.0, 1.0, out=rgba_rgb)
+        rgba[:, :, :3] = np.round(rgba_rgb * 255.0).astype(np.uint8)
     rgba[:, :, 3] = alpha
     image = QImage(rgba.data, width_px, height_px, width_px * 4, QImage.Format_RGBA8888).copy()
     painter.save()
