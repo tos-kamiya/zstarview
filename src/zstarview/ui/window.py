@@ -7,7 +7,6 @@ for the application. It handles rendering the celestial objects, sky background,
 clouds, and all user interactions like rotation, zooming, and object highlighting.
 """
 import logging
-import math
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -58,6 +57,7 @@ from ..paths import (
 )
 from ..config import load_last_window_geometry, save_last_window_geometry
 from ..render import draw as render_draw
+from ..render.pipeline import compute_star_render_surface_size, compute_star_render_upscale_factor
 from ..types import ViewerData
 from .draggable_window import DraggableWindow
 from .composite import SkyCompositorCache
@@ -85,45 +85,6 @@ logger = logging.getLogger(__name__)
 
 WindowGeometryArg = Union[str, Tuple[int, int, int, int]]
 DEFAULT_CLOUD_ALT_MIN_DEG = 3.0
-
-
-def compute_star_render_surface_size(
-    width_px: int,
-    height_px: int,
-    disc_width_px: int,
-    expected_width_px: int,
-) -> tuple[int, int]:
-    """Return internal star-render surface size.
-
-    - No downsample when `disc_width_px <= expected_width_px`.
-    - Above threshold, effective rendered disc width follows:
-      `expected_width_px * sqrt(disc_width_px / expected_width_px)`.
-    """
-    w = max(1, int(width_px))
-    h = max(1, int(height_px))
-    disc_w = max(1, int(disc_width_px))
-    base = max(1, int(expected_width_px))
-    if disc_w <= base:
-        return (w, h)
-    rendered_disc_w = float(base) * math.sqrt(float(disc_w) / float(base))
-    scale = rendered_disc_w / float(disc_w)
-    return (
-        max(1, int(round(w * scale))),
-        max(1, int(round(h * scale))),
-    )
-
-
-def compute_star_render_upscale_factor(
-    disc_width_px: int,
-    expected_width_px: int,
-) -> float:
-    """Return the on-screen enlargement factor caused by star-layer downsampling."""
-    disc_w = max(1, int(disc_width_px))
-    base = max(1, int(expected_width_px))
-    if disc_w <= base:
-        return 1.0
-    return math.sqrt(float(disc_w) / float(base))
-
 
 def _clamp_window_geometry_to_screen(
     x: int,
