@@ -49,6 +49,10 @@
 
 ### 2026-03-21
 
+- Windows 起因の文字コード安全性ルールを明文化
+  - `AGENTS.md` と `docs/design.md` に、terminal / console / log / CLI help / exception / subprocess 出力へ出る可能性がある文字列は ASCII-only を原則とする方針を追加した。
+  - 非 ASCII を判定ロジックで扱う場合は、ソース中に直書きせず Unicode escape を優先する方針を追加した。
+
 - 雲データ取得の satpy 依存撤去
   - GOES は `CMIPF C13` NetCDF を `xarray` で直接読み、`goes_imager_projection` から `area` を再構築する経路へ置き換えた。
   - Himawari は Satpy reader をやめ、`ISatSS M1C13` タイル群を直接 stitch して `fixedgrid_projection` から `area` を再構築する経路へ置き換えた。
