@@ -26,20 +26,6 @@
 
 ## 3. INPROGRESS
 
-- 描画パイプラインを GUI 依存から切り離すリファクタリング
-  - 将来の単発画像書き出し CLI を見据え、まずは新機能追加ではなく純粋な内部リファクタリングとして進める。
-  - 既存の `ui/window_render.py` の Mixin に集まっている描画知識を、状態を持たない関数呼び出し中心の描画パイプラインへ段階的に移す。
-  - Mixin 側は、`SkyWindow` の state や hover 状態、frame cache を扱う薄い UI ラッパとして残す。
-  - 共通化の対象は描画パイプラインとレイヤーごとの描画入力契約であり、GUI と CLI のデータ取得順序そのものは統一しない。
-  - GUI では従来どおり段階的・非同期にレイヤーを揃えてよく、将来の CLI では同期的・逐次的にレイヤーを揃えることを許容する。
-  - この段階では `--save-image` のような新 CLI オプション実装には進まず、まず描画コードの分離と再利用可能化を優先する。
-  - `src/zstarview/render/pipeline.py` を shared render pipeline として導入し、`RenderSceneData`、`RenderStyle`、`RenderHudState` を明示分離した。
-  - `RenderPipelineState` は廃止し、shared pipeline の関数群は `geometry`、`viewport_rect`、`scene`、`style`、`hud` を直接受ける。
-  - `SkyWindowRenderMixin` からテスト専用・未使用の `_draw_*` ラッパは削除し、`paintEvent()` 本線と GUI 固有の state/cache/hover 処理に絞った。
-  - 次段では、guide をベース描画側に残したまま、hover/HUD を別オーバーレイとして分離し、ベースフレーム cache key から `mouse_pos` などの高頻度変化要素を外す予定とする。
-  - ここまでで `render_base_scene_into_painter()` と `render_hud_overlay_into_painter()` を分け、ベースキャッシュから hover/jump/status 依存を外した。
-  - アステリズム強調と月 hover 拡大は、通常描画をベースに残したまま、hover 時に HUD 側で上書きする方針に切り替えた。
-
 - 山頂ビュー用 dataset の作成フローを設計する
   - 目的は「山そのものの完全地理データ」ではなく、「山名から山頂ビュー用の代表点へ解決する curated dataset」を作ることとする。
   - 候補抽出は Wikipedia を起点に行い、地域代表性と知名度を重視して少数の山を選ぶ。
@@ -47,14 +33,6 @@
   - 座標は厳密測量値ではなく、星空表示用の山頂ビュー代表点として妥当なものを採用する。
   - 初版は `mountain_viewpoints.json` を別 dataset とし、`tower_viewpoints.json` とは分けて管理する。
   - 将来的には mountain も tower と同じ viewpoint CLI から参照できる形を想定する。
-
-- 都市アウトラインを独立レイヤーとして扱う
-  - 現在は都市アウトラインを描画経路の一部として常時表示しているが、他のオーバーレイと同じく独立したレイヤーとして扱えるように整理する。
-  - 最小実装では、内部状態上で都市アウトラインの on/off を独立させ、既定値は on のままにする。
-  - まずは state と描画経路の分離を優先し、UI トグルや設定保存の扱いは後段で追加する。
-  - これにより、地形地平線や他レイヤーとの責務境界を明確にし、将来の表示切替追加を安全に進められるようにする。
-  - 現在は `Urban Outline` メニュー項目と `U` ショートカット、`--urban-outline-opacity` を持つ。
-  - 細い輪郭は太い水平線に簡略化し、方向キー操作中の簡易描画モードでは描かない。
 
 ## 4. TODO
 
@@ -68,6 +46,28 @@
   - 当面は「bbox は保守的に固定し、更新間隔だけ可変にする」案を優先候補として扱う。
 
 ## 5. 実装履歴
+
+### 2026-03-21
+
+- 描画パイプラインの shared pipeline 化
+  - 将来の単発画像書き出し CLI を見据え、`ui/window_render.py` の Mixin に集まっていた描画知識を `src/zstarview/render/pipeline.py` へ切り出した。
+  - 描画入力は `RenderSceneData`、`RenderStyle`、`RenderHudState` に分離し、旧 `RenderPipelineState` は廃止した。
+  - shared pipeline の関数群は `geometry`、`viewport_rect`、`scene`、`style`、`hud` を直接受ける形に揃えた。
+  - `SkyWindowRenderMixin` は、`paintEvent()` 本線、scene/style/hud 組み立て、frame cache、jump highlight、hover 解決など GUI 固有処理に絞った。
+
+- 描画順とガイドレイヤーの整理
+  - 方位ラベルと天頂マーカーは `guide` として独立レイヤー化し、`sky-cloud` 合成の直後に置くようにした。
+  - DSO hover は terrain 段から外し、通常描画では後段オーバーレイ側へ寄せた。
+
+- hover/HUD とベース描画の分離
+  - shared pipeline を `render_base_scene_into_painter()` と `render_hud_overlay_into_painter()` に分け、`paintEvent()` はベースをキャッシュ描画した後に HUD を都度重ねる構成にした。
+  - `guide` はベース描画側に残し、方位ラベルのマウス回避はやめて安定ガイド扱いにした。
+  - ベースフレームの cache key から `mouse_pos`、hover 対象名、jump highlight 名、status message を外した。
+
+- アステリズム強調と月拡大の後段上書き化
+  - 通常のアステリズム線と通常サイズの月はベース描画に残し、hover 時の強調だけを HUD 側で上書きする構成へ切り替えた。
+  - 月の `5x` 拡大は、角半径の生値ではなく通常時の見た目半径を基準に適用するよう修正した。
+  - 月 hover についても `name == "moon"` を持つ hover object なら拡大上書きに入るようにした。
 
 ### 2026-03-19
 

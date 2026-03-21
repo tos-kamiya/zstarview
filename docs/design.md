@@ -198,9 +198,9 @@
   - `stars`
   - `aircraft`
   - `planets`
-  - `dso-hover`
   - `overlay`
   - `labels`
+  - `hover-overlay`
   - `status`
 - `guide` は方位ラベルと天頂マーカーを含む独立レイヤーであり、空色・雲合成の上、通常の hover/HUD オーバーレイより手前に置く。
 
@@ -228,6 +228,7 @@
   - 恒星・惑星 hover 情報
   - jump highlight
   - status line
+- 月の `5x` 拡大は、角半径の生値ではなく「通常時の見た目半径」を基準に適用する。
 - `guide` レイヤーはベース側に残し、マウス位置によるラベル回避には依存しない安定描画として扱う。
 - `ui/window_render.py` の frame cache はベース描画だけを保持し、hover/jump/status はキャッシュ後に都度上書きする。
 - これにより、frame cache key から `mouse_pos`、hover 対象名、jump highlight 名、status message を外している。
