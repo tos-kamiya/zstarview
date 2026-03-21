@@ -180,6 +180,58 @@
   - 描画関数群: `QPainter` または `QImage` に対して各レイヤーを順に描く純粋寄りの関数
 - `ui/window_render.py` は最終的に、hover 判定、jump highlight、frame cache、interaction mode など GUI 固有の責務に寄せ、描画本体は薄いラッパに縮小するのが望ましい。
 
+#### 4.3.2 現在の描画パイプライン到達点
+
+- 共有描画本体は `src/zstarview/render/pipeline.py` に置く。
+- 共有描画入力は次の 3 つに分ける。
+  - `RenderSceneData`
+  - `RenderStyle`
+  - `RenderHudState`
+- `render_scene_into_painter()` と下位の `draw_*` 関数群は、`geometry`、`viewport_rect`、`scene`、`style`、`hud` を明示的に受ける。
+- `RenderPipelineState` のような中間ラッパ型は廃止し、shared pipeline 側では直接引数で依存関係を表す。
+- `ui/window_render.py` は、`paintEvent()` 本線、scene/style/hud の組み立て、frame cache、jump highlight、hover 解決など GUI 固有処理に絞る。
+- 現在の通常描画順は概ね次のとおり。
+  - `background`
+  - `sky-cloud`
+  - `guide`
+  - `terrain`
+  - `stars`
+  - `aircraft`
+  - `planets`
+  - `dso-hover`
+  - `overlay`
+  - `labels`
+  - `status`
+- `guide` は方位ラベルと天頂マーカーを含む独立レイヤーであり、空色・雲合成の上、通常の hover/HUD オーバーレイより手前に置く。
+
+#### 4.3.3 次段のリファクタリング方針
+
+- 次段の主目的は、hover/HUD とベース描画の分離である。
+- `guide` レイヤーは HUD ではなくベース描画側に残す。
+- ベース描画には、少なくとも `background`、`sky-cloud`、`guide`、`terrain`、`stars`、`aircraft`、`planets`、`labels` を含める想定とする。
+- HUD 側には、少なくとも次を寄せる方向で整理する。
+  - 恒星ホバー
+  - DSO ホバー
+  - jump highlight
+  - status line
+- `paintEvent()` は最終的に「ベースフレームをキャッシュし、その上に hover/HUD を都度重ねる」形を目指す。
+- この変更により、ベースフレーム cache key から `mouse_pos` や hover 対象名などの高頻度変化要素を外し、キャッシュ効率を改善する。
+
+#### 4.3.4 hover/HUD 分離の現在位置
+
+- shared pipeline は、`render_base_scene_into_painter()` と `render_hud_overlay_into_painter()` に分かれている。
+- ベース描画は、`background`、`sky-cloud`、`guide`、`terrain`、`stars`、`aircraft`、`planets`、静的 overlay 情報、`labels` を担当する。
+- HUD 描画は、少なくとも次を担当する。
+  - アステリズムの hover 強調
+  - 月 hover 時の拡大上書き
+  - DSO hover
+  - 恒星・惑星 hover 情報
+  - jump highlight
+  - status line
+- `guide` レイヤーはベース側に残し、マウス位置によるラベル回避には依存しない安定描画として扱う。
+- `ui/window_render.py` の frame cache はベース描画だけを保持し、hover/jump/status はキャッシュ後に都度上書きする。
+- これにより、frame cache key から `mouse_pos`、hover 対象名、jump highlight 名、status message を外している。
+
 ### 4.4 UI
 
 - `src/zstarview/ui/window.py`

@@ -108,6 +108,37 @@ def render_scene_into_painter(
     highlighted_object: Any | None,
     highlighted_dso: Any | None,
 ) -> None:
+    render_base_scene_into_painter(
+        painter,
+        geometry=geometry,
+        viewport_rect=viewport_rect,
+        scene=scene,
+        style=style,
+        hud=hud,
+        compositor=compositor,
+    )
+    render_hud_overlay_into_painter(
+        painter,
+        geometry=geometry,
+        viewport_rect=viewport_rect,
+        scene=scene,
+        style=style,
+        hud=hud,
+        highlighted_object=highlighted_object,
+        highlighted_dso=highlighted_dso,
+    )
+
+
+def render_base_scene_into_painter(
+    painter: QPainter,
+    *,
+    geometry: render_draw.ScreenGeometry,
+    viewport_rect: QRect,
+    scene: RenderSceneData,
+    style: RenderStyle,
+    hud: RenderHudState,
+    compositor: Any,
+) -> None:
     clear_background_layer(painter, viewport_rect)
     draw_background_layer(
         painter,
@@ -128,7 +159,6 @@ def render_scene_into_painter(
         geometry=geometry,
         scene=scene,
         style=style,
-        hud=hud,
     )
     if hud.viewport_interaction_mode:
         draw_viewport_interaction_layers(
@@ -136,12 +166,6 @@ def render_scene_into_painter(
             geometry=geometry,
             viewport_rect=viewport_rect,
             scene=scene,
-            style=style,
-            hud=hud,
-        )
-        draw_status_line(
-            painter,
-            viewport_rect=viewport_rect,
             style=style,
             hud=hud,
         )
@@ -154,7 +178,7 @@ def render_scene_into_painter(
         geometry=geometry,
         scene=scene,
         style=style,
-        highlighted_object=highlighted_object,
+        highlighted_object=None,
         label_reservations=label_reservations,
         label_candidates=label_candidates,
     )
@@ -173,35 +197,22 @@ def render_scene_into_painter(
         label_candidates=label_candidates,
     )
 
-    enlarge_moon = bool(style.enlarge_moon)
-    if highlighted_object is not None:
-        obj = highlighted_object[0]
-        name = getattr(obj, "name", "") if hasattr(obj, "name") else obj.get("name", "")
-        enlarge_moon = enlarge_moon or name == "moon"
-
     draw_planet_layer(
         painter,
         geometry=geometry,
         scene=scene,
         style=style,
-        enlarge_moon=enlarge_moon,
+        enlarge_moon=bool(style.enlarge_moon),
         label_candidates=label_candidates,
-    )
-    draw_dso_hover_layer(
-        painter,
-        geometry=geometry,
-        scene=scene,
-        style=style,
-        highlighted_dso=highlighted_dso,
     )
     draw_overlay_layer(
         painter,
         geometry=geometry,
         scene=scene,
         style=style,
-        highlighted_object=highlighted_object,
-        highlighted_dso=highlighted_dso,
-        enlarge_moon=enlarge_moon,
+        highlighted_object=None,
+        highlighted_dso=None,
+        enlarge_moon=bool(style.enlarge_moon),
         label_reservations=label_reservations,
         label_candidates=label_candidates,
     )
@@ -209,6 +220,36 @@ def render_scene_into_painter(
         painter,
         style=style,
         label_candidates=label_candidates,
+    )
+
+
+def render_hud_overlay_into_painter(
+    painter: QPainter,
+    *,
+    geometry: render_draw.ScreenGeometry,
+    viewport_rect: QRect,
+    scene: RenderSceneData,
+    style: RenderStyle,
+    hud: RenderHudState,
+    highlighted_object: Any | None,
+    highlighted_dso: Any | None,
+) -> None:
+    if hud.viewport_interaction_mode:
+        draw_status_line(
+            painter,
+            viewport_rect=viewport_rect,
+            style=style,
+            hud=hud,
+        )
+        return
+
+    draw_hover_overlay_layer(
+        painter,
+        geometry=geometry,
+        scene=scene,
+        style=style,
+        highlighted_object=highlighted_object,
+        highlighted_dso=highlighted_dso,
     )
     draw_status_line(
         painter,
@@ -293,7 +334,6 @@ def draw_guide_layer(
     geometry: render_draw.ScreenGeometry,
     scene: RenderSceneData,
     style: RenderStyle,
-    hud: RenderHudState,
 ) -> None:
     """Draw guide annotations that should float above sky/cloud but below scene overlays."""
     content_fov_deg = _content_fov_deg(scene)
@@ -302,7 +342,7 @@ def draw_guide_layer(
         geometry,
         scene.viewer.view_center,
         style.text_font,
-        hud.mouse_pos,
+        None,
         preset=style.visual_preset,
         content_fov_deg=content_fov_deg,
     )
@@ -375,6 +415,8 @@ def draw_terrain_layers(
             preset=style.visual_preset,
             line_width_scale=line_width_scale,
             content_fov_deg=content_fov_deg,
+            draw_base=True,
+            draw_highlight=False,
         )
     render_draw.draw_sky_reference_lines(
         painter,
@@ -582,6 +624,65 @@ def draw_overlay_layer(
         label_candidates=label_candidates,
         label_reservations=label_reservations,
         preset=style.visual_preset,
+        draw_static_info=True,
+        draw_hover_info=False,
+    )
+
+
+def draw_hover_overlay_layer(
+    painter: QPainter,
+    *,
+    geometry: render_draw.ScreenGeometry,
+    scene: RenderSceneData,
+    style: RenderStyle,
+    highlighted_object: Any | None,
+    highlighted_dso: Any | None,
+) -> None:
+    line_width_scale = compute_star_render_upscale_factor(
+        geometry.radius * 2,
+        style.star_render_expected_width,
+    )
+    if style.show_asterisms and highlighted_object is not None:
+        render_draw.draw_asterisms(
+            painter,
+            geometry,
+            scene.celestial_data,
+            scene.viewer,
+            highlighted_object,
+            style.text_font,
+            preset=style.visual_preset,
+            line_width_scale=line_width_scale,
+            content_fov_deg=_content_fov_deg(scene),
+            draw_base=False,
+            draw_highlight=True,
+        )
+    render_draw.draw_hovered_moon_overlay(
+        painter,
+        geometry,
+        scene.celestial_data,
+        scene.viewer,
+        highlighted_object,
+    )
+    draw_dso_hover_layer(
+        painter,
+        geometry=geometry,
+        scene=scene,
+        style=style,
+        highlighted_dso=highlighted_dso,
+    )
+    render_draw.draw_overlay_info(
+        painter,
+        geometry,
+        scene.celestial_data,
+        scene.viewer,
+        style.vmag_limit,
+        False,
+        highlighted_dso,
+        highlighted_object,
+        style.text_font,
+        preset=style.visual_preset,
+        draw_static_info=False,
+        draw_hover_info=True,
     )
 
 
