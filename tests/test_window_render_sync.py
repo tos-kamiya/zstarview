@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import astropy.time
 from types import SimpleNamespace
+from unittest.mock import Mock
 from PySide6.QtGui import QImage
 
 import zstarview.render.pipeline as pipeline_module
@@ -83,6 +84,8 @@ def _make_style(**overrides) -> pipeline_module.RenderStyle:
         "visual_preset": "night",
         "text_font": object(),
         "status_line_font": object(),
+        "show_background_gradient": True,
+        "show_overlay_info": True,
         "show_dso": False,
         "show_asterisms": False,
         "enlarge_moon": False,
@@ -787,6 +790,8 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         visual_preset="night",
         text_font=object(),
         status_line_font=object(),
+        show_background_gradient=True,
+        show_overlay_info=True,
         show_dso=True,
         show_asterisms=False,
         enlarge_moon=False,
@@ -833,6 +838,40 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         "hover",
         "status",
     ]
+
+
+def test_draw_overlay_layer_skips_static_info_when_disabled(monkeypatch) -> None:
+    draw_overlay_info = Mock()
+    monkeypatch.setattr(pipeline_module.render_draw, "draw_overlay_info", draw_overlay_info)
+
+    pipeline_module.draw_overlay_layer(
+        painter=object(),
+        geometry=SimpleNamespace(radius=100),
+        scene=_make_scene(),
+        style=_make_style(show_overlay_info=False),
+        highlighted_object=None,
+        highlighted_dso=None,
+        enlarge_moon=False,
+        label_reservations=[],
+        label_candidates=[],
+    )
+
+    draw_overlay_info.assert_not_called()
+
+
+def test_draw_background_layer_skips_gradient_when_disabled(monkeypatch) -> None:
+    draw_radial_background = Mock()
+    monkeypatch.setattr(pipeline_module.render_draw, "draw_radial_background", draw_radial_background)
+
+    pipeline_module.draw_background_layer(
+        painter=object(),
+        geometry=SimpleNamespace(radius=100),
+        viewport_rect=SimpleNamespace(),
+        scene=_make_scene(),
+        style=_make_style(show_background_gradient=False),
+    )
+
+    draw_radial_background.assert_not_called()
 
 
 def test_draw_hover_overlay_layer_enlarges_hovered_moon_by_name(monkeypatch) -> None:

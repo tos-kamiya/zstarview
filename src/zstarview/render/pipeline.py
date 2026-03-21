@@ -66,6 +66,8 @@ class RenderStyle:
     visual_preset: str
     text_font: QFont
     status_line_font: QFont
+    show_background_gradient: bool
+    show_overlay_info: bool
     show_dso: bool
     show_asterisms: bool
     enlarge_moon: bool
@@ -319,6 +321,8 @@ def draw_background_layer(
     scene: RenderSceneData,
     style: RenderStyle,
 ) -> None:
+    if not style.show_background_gradient:
+        return
     render_draw.draw_radial_background(
         painter,
         QRectF(viewport_rect),
@@ -611,6 +615,8 @@ def draw_overlay_layer(
     label_reservations: list[QRectF],
     label_candidates: list[dict[str, Any]],
 ) -> None:
+    if not style.show_overlay_info:
+        return
     render_draw.draw_overlay_info(
         painter,
         geometry,
