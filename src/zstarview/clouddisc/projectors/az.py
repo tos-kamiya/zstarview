@@ -131,7 +131,7 @@ def az_project_lonlat_grid(
     # --- Parameter Validation ---
     fov_limit = edge_fov_deg * math.sqrt(2.0)
     if mask_fov_deg > fov_limit + 1e-6:
-        raise ValueError(f"mask_fov_deg ({mask_fov_deg}°) exceeds geometric limit ({fov_limit:.2f}°)")
+        raise ValueError(f"mask_fov_deg ({mask_fov_deg} deg) exceeds geometric limit ({fov_limit:.2f} deg)")
     if not (0 < edge_fov_deg <= 180):
         raise ValueError("edge_fov_deg must be in (0, 180]")
 

@@ -55,9 +55,9 @@ def calculate_lunar_eclipse_data(t: Time, observer: Topos) -> EclipseInfo:
     """Compute eclipse state and basic geometry at time `t` for `observer`.
 
     The method:
-    1) Checks Sun–Moon separation (≈180° near eclipse).
+    1) Checks Sun-Moon separation (about 180 deg near eclipse).
     2) Computes umbra/penumbra radii from simple similar-triangles geometry.
-    3) Classifies eclipse by Moon–shadow center separation.
+    3) Classifies eclipse by Moon-shadow center separation.
     4) Derives the shadow-center alt/az as the anti-solar direction.
 
     Returns:
@@ -90,7 +90,7 @@ def calculate_lunar_eclipse_data(t: Time, observer: Topos) -> EclipseInfo:
     umbra_radius_rad = max(0.0, earth_angular_radius_from_moon - sun_angular_radius_from_earth)
     penumbra_radius_rad = earth_angular_radius_from_moon + sun_angular_radius_from_earth
 
-    # Angular distance from shadow center (≈ 180° − Sun–Moon separation)
+    # Angular distance from shadow center (about 180 deg - Sun-Moon separation)
     d_rad = math.radians(180.0 - separation_deg)
 
     # Classify state
@@ -135,11 +135,14 @@ while dt <= end_jst:
 
     time_str = dt.strftime("%Y-%m-%d %H:%M")
     if eclipse.is_eclipse:
-        print(f"{time_str} JST: 🌒 {eclipse.eclipse_type.title()} Eclipse in progress")
-        print(f"  - Umbra radius:    {eclipse.umbra_radius_deg:.2f}°")
-        print(f"  - Penumbra radius: {eclipse.penumbra_radius_deg:.2f}°")
-        print(f"  - Moon radius:     {eclipse.moon_radius_deg:.2f}°")
-        print(f"  - Shadow center:   alt={eclipse.shadow_center_alt:.1f}°, az={eclipse.shadow_center_az:.1f}°")
+        print(f"{time_str} JST: [eclipse] {eclipse.eclipse_type.title()} Eclipse in progress")
+        print(f"  - Umbra radius:    {eclipse.umbra_radius_deg:.2f} deg")
+        print(f"  - Penumbra radius: {eclipse.penumbra_radius_deg:.2f} deg")
+        print(f"  - Moon radius:     {eclipse.moon_radius_deg:.2f} deg")
+        print(
+            "  - Shadow center:   alt="
+            f"{eclipse.shadow_center_alt:.1f} deg, az={eclipse.shadow_center_az:.1f} deg"
+        )
     else:
         print(f"{time_str} JST: (No eclipse)")
 

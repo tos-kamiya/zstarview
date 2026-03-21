@@ -10,7 +10,7 @@ _dir = os.path.dirname(os.path.abspath(__file__))
 # Application identifiers
 APP_ID = "zstarview"
 APP_AUTHOR = "tos-kamiya"
-# Human‑readable display name
+# Human-readable display name
 APP_DISPLAY_NAME = "Zenith Star View"
 
 # Data file paths
@@ -110,16 +110,16 @@ DIRECTIONS = {
 
 # Planet labels/ids
 PLANET_SYMBOLS = {
-    "sun": "☀",
-    "moon": "🌛",
-    "mercury": "☿",
-    "venus": "♀",
-    "mars": "♂",
-    "jupiter": "♃",
-    "saturn": "♄",
-    "uranus": "♅",
-    "neptune": "♆",
-    "pluto": "♇",
+    "sun": "Sun",
+    "moon": "Moon",
+    "mercury": "Mercury",
+    "venus": "Venus",
+    "mars": "Mars",
+    "jupiter": "Jupiter",
+    "saturn": "Saturn",
+    "uranus": "Uranus",
+    "neptune": "Neptune",
+    "pluto": "Pluto",
 }
 
 PLANET_IDS = {

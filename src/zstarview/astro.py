@@ -231,7 +231,7 @@ def is_in_fov_vectorized(
 
 
 def build_icrs_to_altaz_matrix(time_obj: astropy.time.Time, location: EarthLocation) -> np.ndarray:
-    """Return a 3×3 rotation matrix from ICRS to the AltAz frame."""
+    """Return a 3x3 rotation matrix from ICRS to the AltAz frame."""
     altaz_frame = AltAz(obstime=time_obj, location=location)
     transformed = _ICRS_UNIT_BASIS.transform_to(altaz_frame)
     return transformed.cartesian.xyz.to_value(u.one)
@@ -392,7 +392,7 @@ def calculate_lunar_eclipse_data(t: astropy.time.Time, observer) -> LunarEclipse
     sun_pos = earth.at(t).observe(sun)
     moon_pos = earth.at(t).observe(moon)
 
-    # Exclude if Sun-Moon separation is not close to 180°
+    # Exclude if Sun-Moon separation is not close to 180 deg
     separation_deg = sun_pos.separation_from(moon_pos).degrees
     if abs(separation_deg - 180.0) > 3.0:
         return LunarEclipseInfo(is_eclipse=False)
@@ -458,7 +458,7 @@ def _angular_radius_rad(radius_km: float, distance_km: float) -> float:
 def _circle_overlap_area_fraction(R: float, r: float, d: float) -> float:
     """
     Calculates the overlapping area of two circles (radii R, r; center distance d)
-    divided by the area of the solar disk (πR^2).
+    divided by the area of the solar disk (pi R^2).
     R, r, and d are in the same units (here, angular radius in radians).
     """
     # Separated
@@ -529,7 +529,7 @@ def eclipse_factor_from_info(info: Optional[SolarEclipseInfo]) -> float:
     is_total = info.eclipse_type == "total"
     k = 10.0 if is_total else 7.5
 
-    s = 1.0 / (1.0 + math.exp(k * (obsc - f0)))  # 1→0
+    s = 1.0 / (1.0 + math.exp(k * (obsc - f0)))  # 1->0
     # Totality is darker
     min_l = 0.02 if is_total else 0.15
     return min_l + (1.0 - min_l) * s

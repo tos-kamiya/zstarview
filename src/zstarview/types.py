@@ -38,7 +38,7 @@ class SolarEclipseInfo:
 
     is_eclipse: bool = False
     eclipse_type: Optional[str] = None  # "partial" / "annular" / "total" / None
-    sep_deg: float = 0.0  # Sun–Moon center separation [deg]
+    sep_deg: float = 0.0  # Sun-Moon center separation [deg]
     obscuration: float = 0.0  # Fraction of the Sun's disk obscured by the Moon [0.0, 1.0]
 
 

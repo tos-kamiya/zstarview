@@ -122,7 +122,7 @@ class CloudController(QObject):
 
         if start_source_req is not None:
             sat = self._predicted_satellite(start_source_req["lat"], start_source_req["lon"])
-            self.cloud_started.emit({"satellite": sat, "banner": "Clouds: downloading…"})
+            self.cloud_started.emit({"satellite": sat, "banner": "Clouds: downloading..."})
             source_worker = threading.Thread(target=self._run_source_update, kwargs=start_source_req, daemon=True)
             source_worker.start()
 
@@ -219,7 +219,7 @@ class CloudController(QObject):
                     self._pending_source_request = None
             if next_req is not None:
                 sat = self._predicted_satellite(next_req["lat"], next_req["lon"])
-                self.cloud_started.emit({"satellite": sat, "banner": "Clouds: downloading…"})
+                self.cloud_started.emit({"satellite": sat, "banner": "Clouds: downloading..."})
                 worker = threading.Thread(target=self._run_source_update, kwargs=next_req, daemon=True)
                 with self._lock:
                     if not self._stopping:
