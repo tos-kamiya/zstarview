@@ -503,6 +503,8 @@ def _build_render_style(
         visual_preset=user_options.visual_preset,
         text_font=text_font,
         status_line_font=status_line_font,
+        show_background_gradient=False,
+        show_overlay_info=False,
         show_dso=show_dso,
         show_asterisms=show_asterisms,
         enlarge_moon=bool(user_options.enlarge_moon),

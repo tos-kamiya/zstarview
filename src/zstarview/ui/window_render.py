@@ -145,6 +145,8 @@ class SkyWindowRenderMixin:
             visual_preset=self.visual_preset,
             text_font=self.text_font,
             status_line_font=getattr(self, "status_line_font", self.text_font),
+            show_background_gradient=True,
+            show_overlay_info=True,
             show_dso=bool(getattr(self, "show_dso", False)),
             show_asterisms=bool(getattr(self, "show_asterisms", False)),
             enlarge_moon=bool(getattr(self, "enlarge_moon", False)),
