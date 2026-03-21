@@ -237,7 +237,7 @@ class SkyDataWorker(QObject):
     ) -> None:
         try:
             payload = compute_sky_snapshot(
-                lat,
+                lat=lat,
                 lon=lon,
                 observer_height_m=observer_height_m,
                 view_center=view_center,

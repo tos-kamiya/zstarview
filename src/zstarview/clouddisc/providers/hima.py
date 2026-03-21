@@ -1,19 +1,11 @@
 # -*- coding: utf-8 -*-
-"""
-Data provider for Himawari series satellites (Himawari-8 and Himawari-9).
-
-This module fetches data from the NOAA Open Data Dissemination (NODD) program
-on AWS S3. It prioritizes the high-resolution Himawari Standard Data (HSD) and
-falls back to the pre-processed ISatSS L2 data if HSD is not available. It
-specifically loads band 13 (longwave infrared) for brightness temperatures.
-"""
+"""Himawari provider using direct ISatSS tile stitching instead of Satpy."""
 
 from __future__ import annotations
 
 import datetime as dt
 import logging
 from pathlib import Path
-import re
 from typing import List, Optional, Tuple
 
 import boto3
@@ -21,44 +13,34 @@ import numpy as np
 import xarray as xr
 from botocore import UNSIGNED
 from botocore.config import Config
-from satpy import Scene
 
 from ..config import CloudDiscConfig
-from ..types import DataNotFoundError, DownloadError, RenderError, CloudMeta
-from ._s3_io import download_s3_object, list_s3_keys
+from ..types import CloudMeta, DataNotFoundError, DownloadError
+from ._hima_isatss import (
+    DATA_VAR,
+    attach_area_to_dataset,
+    extract_tile_token,
+    find_matching_keys,
+    format_prefix,
+    load_template_from_tile,
+    select_needed_tiles,
+    stitch_tiles_from_paths,
+)
+from ._s3_io import download_s3_object
 
-# --- Constants ---
-_HIMA_BUCKETS = ["noaa-himawari9", "noaa-himawari8"]  # Priority: H9 over H8
-_RE_HSD = re.compile(r"HS_H0[89]_\d{8}_\d{4}_B13_FLDK_R\d{2}_S\d{4}\.DAT(\.bz2)?$", re.IGNORECASE)
-_RE_IS = re.compile(r".*B13.*\.nc$", re.IGNORECASE)
 
 logger = logging.getLogger(__name__)
 
 
-def _format_dt_for_s3_prefix(t: dt.datetime) -> Tuple[int, int, int, str]:
-    """Formats a datetime for S3 prefixes, rounding down to the nearest 10 minutes."""
-    t_utc = t.astimezone(dt.timezone.utc)
-    hm_str = f"{t_utc.hour:02d}{(t_utc.minute // 10) * 10:02d}"
-    return t_utc.year, t_utc.month, t_utc.day, hm_str
-
-
 class HimaProvider:
-    """
-    A provider for fetching Himawari data from AWS S3.
-
-    Handles the logic for finding and loading both HSD and ISatSS data formats,
-    with a preference for the higher-quality HSD data.
-    """
+    """Fetch Himawari ISatSS `M1C13` tiles and stitch them into one BT field."""
 
     def __init__(self, cfg: CloudDiscConfig):
         self.cfg = cfg
-        self.root_hsd = cfg.cache_root() / "hima_hsd"
         self.root_is = cfg.cache_root() / "hima_isatss"
-        self.root_hsd.mkdir(parents=True, exist_ok=True)
         self.root_is.mkdir(parents=True, exist_ok=True)
 
-    def _s3(self) -> boto3.client:
-        """Creates an anonymous boto3 S3 client."""
+    def _s3(self):
         s3_cfg = Config(
             signature_version=UNSIGNED,
             retries={"max_attempts": 1},
@@ -67,13 +49,11 @@ class HimaProvider:
         )
         return boto3.client("s3", config=s3_cfg)
 
-    def _download(self, bucket: str, key: str, root: Path) -> Path:
-        """Downloads a file from S3, caching it locally using an atomic write."""
-        dst = root / bucket / key
+    def _download(self, bucket: str, key: str) -> Path:
+        dst = self.root_is / bucket / key
         if dst.exists():
             logger.debug("Using cached file: %s", dst)
             return dst
-
         logger.info("Downloading s3://%s/%s", bucket, key)
         return download_s3_object(
             s3_client=self._s3(),
@@ -81,98 +61,187 @@ class HimaProvider:
             key=key,
             dst=dst,
             satellite="HIMAWARI",
-            product="HSD/ISatSS-B13",
+            product="ISatSS-B13",
             time_utc=dt.datetime.now(dt.timezone.utc),
         )
 
-    def _list(self, bucket: str, prefix: str) -> List[str]:
-        """Lists all object keys under a given S3 prefix."""
-        return list_s3_keys(
-            s3_client=self._s3(),
-            bucket=bucket,
-            prefix=prefix,
-            satellite="HIMAWARI",
-            product="HSD/ISatSS-B13",
-            time_utc=dt.datetime.now(dt.timezone.utc),
+    def _find_isatss(self, when_utc: dt.datetime) -> Tuple[Optional[str], Optional[List[str]], Optional[dt.datetime]]:
+        """Find available ISatSS C13 tile keys, searching backwards by slot."""
+        s3_client = self._s3()
+        for slot in range(0, self.cfg.search_back_minutes + 1, 10):
+            search_time = when_utc - dt.timedelta(minutes=slot)
+            try:
+                bucket, keys = find_matching_keys(
+                    s3_client,
+                    search_time,
+                    satellite="HIMAWARI",
+                    product="ISatSS-B13",
+                )
+            except FileNotFoundError:
+                continue
+            logger.info(
+                "Checked %s and found %d ISatSS M1C13 tiles under %s",
+                bucket,
+                len(keys),
+                format_prefix(search_time),
+            )
+            return bucket, keys, search_time
+        return None, None, None
+
+    def _select_keys_for_observer(
+        self,
+        *,
+        bucket: str,
+        keys: List[str],
+        when_utc: dt.datetime,
+        observer_lat: float,
+        observer_lon: float,
+        cloud_shell_km: float,
+        azimuth_samples: int,
+        margin_tiles: int,
+    ) -> List[str]:
+        template_path = self._download(bucket, keys[0])
+        meta = load_template_from_tile(template_path, bucket=bucket)
+        selected, _poly_x, _poly_y = select_needed_tiles(
+            lat_deg=observer_lat,
+            lon_deg=observer_lon,
+            meta=meta,
+            cloud_shell_km=cloud_shell_km,
+            azimuth_samples=azimuth_samples,
+            margin_tiles=margin_tiles,
         )
+        selected_tokens = {record.token for record in selected}
+        key_map = {extract_tile_token(Path(key).name): key for key in keys}
+        selected_keys = [key_map[token] for token in sorted(selected_tokens) if token in key_map]
+        if not selected_keys:
+            raise DataNotFoundError(
+                "No Himawari ISatSS tiles selected for observer footprint",
+                meta=CloudMeta(satellite="HIMAWARI", product="ISatSS-B13", time_utc=when_utc, src_paths=[]),
+            )
+        logger.info(
+            "Selected %d/%d Himawari tiles for observer lat=%.3f lon=%.3f",
+            len(selected_keys),
+            len(keys),
+            observer_lat,
+            observer_lon,
+        )
+        return selected_keys
 
-    def _find_hsd(self, when_utc: dt.datetime) -> Tuple[Optional[str], Optional[List[str]], Optional[dt.datetime]]:
-        """Finds Himawari Standard Data (HSD) files for a given time."""
-        for slot in range(0, self.cfg.search_back_minutes + 1, 10):
-            search_time = when_utc - dt.timedelta(minutes=slot)
-            y, m, d, hm = _format_dt_for_s3_prefix(search_time)
-            for bucket in _HIMA_BUCKETS:
-                prefix = f"AHI-L1b-FLDK/{y:04d}/{m:02d}/{d:02d}/{hm}/"
-                keys = sorted([k for k in self._list(bucket, prefix) if _RE_HSD.search(Path(k).name)])
-                # HSD data is split into 10 segments, so we need all of them.
-                if len(keys) == 10:
-                    logger.debug("Found 10 HSD segments in s3://%s/%s", bucket, prefix)
-                    return bucket, keys, search_time
-        return None, None, None
+    def _stitch_local_paths(
+        self,
+        paths: List[Path],
+        *,
+        source_label: str,
+        observer_lat: float | None,
+        observer_lon: float | None,
+    ) -> xr.DataArray:
+        stitched = stitch_tiles_from_paths(paths, source_label=source_label)
+        prepared = attach_area_to_dataset(stitched)
+        da = prepared[DATA_VAR].astype(np.float32)
+        da.attrs = dict(da.attrs)
+        da.attrs["source_key_count"] = len(paths)
+        if observer_lat is not None and observer_lon is not None:
+            da.attrs["observer_lat"] = float(observer_lat)
+            da.attrs["observer_lon"] = float(observer_lon)
+        return da
 
-    def _find_isatss(self, when_utc: dt.datetime) -> Tuple[Optional[str], Optional[str], Optional[dt.datetime]]:
-        """Finds ISatSS L2 NetCDF files for a given time."""
-        for slot in range(0, self.cfg.search_back_minutes + 1, 10):
-            search_time = when_utc - dt.timedelta(minutes=slot)
-            y, m, d, hm = _format_dt_for_s3_prefix(search_time)
-            for bucket in _HIMA_BUCKETS:
-                prefix = f"AHI-L2-FLDK-ISatSS/{y:04d}/{m:02d}/{d:02d}/{hm}/"
-                keys = sorted([k for k in self._list(bucket, prefix) if _RE_IS.search(Path(k).name)])
-                if keys:
-                    logger.debug("Found ISatSS file in s3://%s/%s", bucket, prefix)
-                    return bucket, keys[-1], search_time  # Return the latest one
-        return None, None, None
+    def fetch_bt_c13_from_local_dir(
+        self,
+        tile_dir: Path,
+        *,
+        used_time: dt.datetime,
+        observer_lat: float | None = None,
+        observer_lon: float | None = None,
+        cloud_shell_km: float = 6376.0,
+        azimuth_samples: int = 1440,
+        margin_tiles: int = 1,
+    ) -> Tuple[xr.DataArray, dt.datetime, List[Path]]:
+        """Load cached Himawari tiles from a local directory and stitch them."""
+        if (observer_lat is None) ^ (observer_lon is None):
+            raise ValueError("observer_lat and observer_lon must be provided together")
 
-    def fetch_bt_c13(self, when_utc: dt.datetime) -> Tuple[xr.DataArray, dt.datetime, List[Path]]:
+        all_paths = sorted(tile_dir.glob("*M1C13*.nc"))
+        if observer_lat is not None and observer_lon is not None:
+            meta = load_template_from_tile(all_paths[0], bucket="local")
+            selected, _poly_x, _poly_y = select_needed_tiles(
+                lat_deg=float(observer_lat),
+                lon_deg=float(observer_lon),
+                meta=meta,
+                cloud_shell_km=float(cloud_shell_km),
+                azimuth_samples=int(azimuth_samples),
+                margin_tiles=int(margin_tiles),
+            )
+            selected_tokens = {record.token for record in selected}
+            paths = [path for path in all_paths if extract_tile_token(path.name) in selected_tokens]
+        else:
+            paths = all_paths
+
+        if not paths:
+            raise DataNotFoundError(
+                "No cached Himawari ISatSS tiles found in local directory",
+                meta=CloudMeta(satellite="HIMAWARI", product="ISatSS-B13", time_utc=used_time, src_paths=[]),
+            )
+
+        da = self._stitch_local_paths(
+            paths,
+            source_label=str(tile_dir),
+            observer_lat=observer_lat,
+            observer_lon=observer_lon,
+        )
+        return da, used_time.replace(minute=(used_time.minute // 10) * 10, tzinfo=dt.timezone.utc), paths
+
+    def fetch_bt_c13(
+        self,
+        when_utc: dt.datetime,
+        *,
+        observer_lat: float | None = None,
+        observer_lon: float | None = None,
+        cloud_shell_km: float = 6376.0,
+        azimuth_samples: int = 1440,
+        margin_tiles: int = 1,
+    ) -> Tuple[xr.DataArray, dt.datetime, List[Path]]:
         """
-        Fetches Himawari band 13 brightness temperature data with a fallback strategy.
+        Fetch Himawari ISatSS C13 brightness temperature data.
 
-        It first attempts to find and load the higher-resolution HSD data. If not found,
-        it falls back to the lower-resolution, pre-processed ISatSS data.
-
-        Args:
-            when_utc: The target UTC time.
-
-        Returns:
-            A tuple containing (DataArray[K], used_time, [paths]).
-
-        Raises:
-            DataNotFoundError: If no data is found within the search window.
-            RenderError: If the data cannot be decoded by Satpy.
+        If `observer_lat/lon` are provided, only tiles overlapping the observer-visible
+        horizon footprint are downloaded and stitched. Otherwise all tiles for the
+        chosen timeslot are used.
         """
-        # --- 1. Try to find HSD data (higher quality) ---
-        logger.info("Searching for Himawari HSD B13 data...")
-        hsd_bucket, hsd_keys, hsd_time = self._find_hsd(when_utc)
-        if hsd_bucket and hsd_keys and hsd_time:
-            try:
-                paths = [self._download(hsd_bucket, k, self.root_hsd) for k in hsd_keys]
-                scn = Scene(reader="ahi_hsd", filenames=[str(p) for p in paths])
-                scn.load(["B13"], calibration="brightness_temperature")
-                da = scn["B13"].astype(np.float32).compute()
-                used_time = hsd_time.replace(minute=(hsd_time.minute // 10) * 10, tzinfo=dt.timezone.utc)
-                return da, used_time, paths
-            except DownloadError:
-                raise  # Propagate download errors immediately
-            except Exception as e:
-                meta = CloudMeta(satellite="HIMAWARI", product="HSD-B13", time_utc=hsd_time, src_paths=[])
-                raise RenderError("Failed to decode Himawari HSD B13 data", meta=meta) from e
+        logger.info("Searching for Himawari ISatSS M1C13 data...")
+        bucket, keys, used_time = self._find_isatss(when_utc)
+        if not bucket or not keys or used_time is None:
+            meta = CloudMeta(satellite="HIMAWARI", product="ISatSS-B13", time_utc=when_utc, src_paths=[])
+            raise DataNotFoundError("Himawari ISatSS B13 data not found in search window", meta=meta)
 
-        # --- 2. Fallback to ISatSS data (lower quality) ---
-        logger.info("HSD data not found, falling back to ISatSS...")
-        is_bucket, is_key, is_time = self._find_isatss(when_utc)
-        if is_bucket and is_key and is_time:
-            try:
-                path = self._download(is_bucket, is_key, self.root_is)
-                scn = Scene(reader="ahi_l2_nc", filenames=[str(path)])
-                scn.load(["B13"])
-                da = scn["B13"].astype(np.float32).compute()
-                used_time = is_time.replace(minute=(is_time.minute // 10) * 10, tzinfo=dt.timezone.utc)
-                return da, used_time, [path]
-            except DownloadError:
-                raise
-            except Exception as e:
-                meta = CloudMeta(satellite="HIMAWARI", product="ISatSS-B13", time_utc=is_time, src_paths=[])
-                raise RenderError("Failed to decode Himawari ISatSS B13 data", meta=meta) from e
+        if (observer_lat is None) ^ (observer_lon is None):
+            raise ValueError("observer_lat and observer_lon must be provided together")
 
-        meta = CloudMeta(satellite="HIMAWARI", product="HSD/ISatSS-B13", time_utc=when_utc, src_paths=[])
-        raise DataNotFoundError("Himawari B13 data not found in search window", meta=meta)
+        selected_keys = keys
+        if observer_lat is not None and observer_lon is not None:
+            selected_keys = self._select_keys_for_observer(
+                bucket=bucket,
+                keys=keys,
+                when_utc=used_time,
+                observer_lat=float(observer_lat),
+                observer_lon=float(observer_lon),
+                cloud_shell_km=float(cloud_shell_km),
+                azimuth_samples=int(azimuth_samples),
+                margin_tiles=int(margin_tiles),
+            )
+
+        try:
+            paths = [self._download(bucket, key) for key in selected_keys]
+            da = self._stitch_local_paths(
+                paths,
+                source_label=f"s3://{bucket}/{format_prefix(used_time)}",
+                observer_lat=observer_lat,
+                observer_lon=observer_lon,
+            )
+            da.attrs["source_bucket"] = bucket
+            rounded = used_time.replace(minute=(used_time.minute // 10) * 10, tzinfo=dt.timezone.utc)
+            return da, rounded, paths
+        except DownloadError:
+            raise
+        except Exception as e:
+            meta = CloudMeta(satellite="HIMAWARI", product="ISatSS-B13", time_utc=used_time, src_paths=[])
+            raise DownloadError("Failed to fetch or stitch Himawari ISatSS B13 data", meta=meta) from e
