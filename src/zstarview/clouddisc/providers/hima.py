@@ -80,6 +80,17 @@ class HimaProvider:
                 )
             except FileNotFoundError:
                 continue
+            template_path = self._download(bucket, keys[0])
+            expected_tile_count = load_template_from_tile(template_path, bucket=bucket).tile_count
+            if len(keys) < expected_tile_count:
+                logger.info(
+                    "Skipping incomplete %s slot under %s: found %d/%d ISatSS M1C13 tiles",
+                    bucket,
+                    format_prefix(search_time),
+                    len(keys),
+                    expected_tile_count,
+                )
+                continue
             logger.info(
                 "Checked %s and found %d ISatSS M1C13 tiles under %s",
                 bucket,
