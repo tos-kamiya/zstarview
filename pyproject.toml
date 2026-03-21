@@ -145,5 +145,6 @@ exclude_lines = [
 zstarview = "zstarview:main"
 
 [project.scripts]
+zstarview-debug = "zstarview:debug_main"
 zstarview-make-desktop-file = "zstarview:make_desktop_file_main"
 zstarview-export-image = "zstarview:export_image_main"

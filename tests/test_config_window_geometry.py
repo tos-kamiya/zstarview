@@ -54,3 +54,27 @@ def test_save_last_city_accepts_structured_location_payload(tmp_path, monkeypatc
     config.save_last_city(payload)
 
     assert config.load_last_city() == payload
+
+
+def test_save_last_city_ignores_write_permission_errors(tmp_path, monkeypatch) -> None:
+    cfg = tmp_path / "config.json"
+    monkeypatch.setattr(config, "_config_file", cfg)
+
+    def raise_permission_error(*_args, **_kwargs):
+        raise PermissionError("blocked")
+
+    monkeypatch.setattr(config.Path, "write_text", raise_permission_error)
+
+    config.save_last_city("JP/Tokyo")
+
+
+def test_save_last_window_geometry_ignores_write_permission_errors(tmp_path, monkeypatch) -> None:
+    cfg = tmp_path / "config.json"
+    monkeypatch.setattr(config, "_config_file", cfg)
+
+    def raise_permission_error(*_args, **_kwargs):
+        raise PermissionError("blocked")
+
+    monkeypatch.setattr(config.Path, "write_text", raise_permission_error)
+
+    config.save_last_window_geometry(1, 2, 3, 4)

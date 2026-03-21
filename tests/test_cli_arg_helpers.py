@@ -46,3 +46,9 @@ def test_dataset_query_validation_works_with_parser_missing_gui_only_options() -
 
     with pytest.raises(SystemExit):
         cli_args._validate_dataset_query_compatibility(parser, args)
+
+
+def test_main_help_text_is_ascii_only_for_windows_consoles() -> None:
+    help_text = cli_args.build_main_argument_parser().format_help()
+
+    assert all(ord(ch) < 128 for ch in help_text)

@@ -50,6 +50,7 @@ from .startup import (
     _startup_load_stars,
     _startup_parse_time_arguments,
     _startup_resolve_city,
+    _startup_verify_ephemeris,
     setup_root_logger,
 )
 from .terrain import (
@@ -118,6 +119,7 @@ def _build_window_inputs_from_args(
     )
     star_catalog = _startup_load_stars(getattr(args, "vmag_limit", 6.0))
     dso_catalog = _startup_load_dso()
+    _startup_verify_ephemeris()
 
     view_center = (getattr(args, "view_center_alt", 90.0), getattr(args, "view_center_az", 180.0))
     view_center = (min(90.0, max(0.0, view_center[0])), view_center[1] % 360.0)

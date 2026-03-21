@@ -1,3 +1,4 @@
+import logging
 import json
 from pathlib import Path
 from typing import Any, Optional, Tuple
@@ -5,6 +6,8 @@ from typing import Any, Optional, Tuple
 from appdirs import user_config_dir
 
 from .paths import APP_ID, APP_AUTHOR
+
+logger = logging.getLogger(__name__)
 
 
 _config_dir = Path(user_config_dir(APP_ID, APP_AUTHOR))
@@ -22,7 +25,10 @@ def _load_config() -> dict[str, Any]:
 
 def _save_config(data: dict[str, Any]) -> None:
     _config_file.parent.mkdir(parents=True, exist_ok=True)
-    _config_file.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    try:
+        _config_file.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    except OSError as exc:
+        logger.warning("Failed to save config file %s: %s", _config_file, exc)
 
 
 def load_last_city() -> Optional[str | dict[str, Any]]:
