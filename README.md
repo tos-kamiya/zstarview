@@ -141,7 +141,7 @@ zstarview-export-image Matsue -o matsue.png
 | `-i`, `--sky-update-interval SECONDS`       | Interval for updating stars/sky-color disc in seconds.                      | `60`   |
 | `--show-dso-initial true\|false`            | Whether DSO overlays are shown at startup.                                  | auto (`show` when catalog is available) |
 | `--show-asterisms-initial true\|false`      | Whether asterism overlays are shown at startup.                             | `show` |
-| `-t`, `--theme {night,day,white,black}`     | Theme preset for background and star contrast.                              | `night` |
+| `-t`, `--theme {night,day,white,black,transparent}`     | Theme preset for background and star contrast. `transparent` keeps the dome dark but translucent so the desktop/window background shows through more strongly.                              | `night` |
 | `-H`, `--hours HOURS`                       | Number of hours to add to the current time. \*1                              | `0`     |
 | `-D`, `--days DAYS`                         | Number of days to add to the current time. \*1                               | `0`     |
 | `--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"` | Specify an absolute date/time. Time may be given as `HH`, `HH:MM`, or `HH:MM:SS`. If no TZ is specified, UTC is assumed. \*1 |         |
@@ -196,6 +196,16 @@ The default is `-V 6.0`. For example, specifying 10.0 will display about 324,000
 Note that higher values will increase rendering time.
 
 [→ Example: display up to magnitude 10.0 with slightly larger stars (`-V10 -s4.5`)](docs/images/screenshot3.png)
+
+#### About theme presets
+
+Use `--theme` to change the background treatment and contrast style.
+
+* `night`: default dark theme
+* `black`: darker opaque background
+* `day`: bright sky/background treatment
+* `white`: brightest light theme
+* `transparent`: translucent dark dome and lighter outer background, intended for a frameless window that lets more of the desktop show through
 
 #### About the datetime option
 
