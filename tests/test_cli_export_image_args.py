@@ -28,6 +28,20 @@ def test_parse_export_image_args_accepts_shared_and_export_specific_options() ->
     assert args.layer_timeout_seconds == 12.5
     assert args.allow_partial_data is True
     assert args.output == "out.png"
+    assert args.sixel is False
+
+
+def test_parse_export_image_args_accepts_sixel_without_output() -> None:
+    args = parse_export_image_args(["--sixel", "Matsue"])
+
+    assert args.city == "Matsue"
+    assert args.sixel is True
+    assert args.output is None
+
+
+def test_parse_export_image_args_requires_output_or_sixel() -> None:
+    with pytest.raises(SystemExit):
+        parse_export_image_args(["Matsue"])
 
 
 def test_parse_export_image_args_rejects_window_geometry() -> None:

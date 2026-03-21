@@ -181,6 +181,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 既定は安全側として「部分データは保存しない」とし、明示的に `--allow-partial-data` を指定したときだけ部分出力を許可する。
 - `--sixel` は `--output` と併用可能とし、実装順序は「まずファイル保存、その後に端末出力」とする。
 - `--sixel` 出力が失敗しても、ファイル保存済みなら警告扱いで成功終了としてよい。
+- SIXEL 変換は、一時 PNG ファイルを経由せず、`QImage` を `QBuffer` 等で PNG bytes 化して `img2sixel -` の stdin へ流すパイプ方式を前提とする。
+- `--sixel` 指定時は、重い初期化やレイヤー取得へ進む前に `shutil.which("img2sixel")` で存在確認を行い、見つからない場合は明示エラーで終了する。
 - `opacity == 0` で無効化されたレイヤーは、取得キュー自体に積まず、layer timeout の待機対象からも外す。
 - 実装では `SkyWindow` と GUI controller 群には依存せず、sky/cloud/terrain/urban/aircraft を同期的に順番に取得してから、shared pipeline で `QImage` へ 1 回だけ描画して保存する。
 - Qt はフォント読込と `QImage` / `QPainter` 利用のためだけに初期化し、CLI 側ではバックグラウンド worker や signal ベースの寿命管理を持たない。
