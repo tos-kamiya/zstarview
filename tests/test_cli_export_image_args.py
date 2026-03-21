@@ -44,6 +44,11 @@ def test_parse_export_image_args_requires_output_or_sixel() -> None:
         parse_export_image_args(["Matsue"])
 
 
+def test_parse_export_image_args_rejects_stdout_output_with_sixel() -> None:
+    with pytest.raises(SystemExit):
+        parse_export_image_args(["-o", "-", "--sixel", "Matsue"])
+
+
 def test_parse_export_image_args_rejects_window_geometry() -> None:
     with pytest.raises(SystemExit):
         parse_export_image_args(["--window-geometry", "restore", "-o", "out.png"])

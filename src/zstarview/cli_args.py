@@ -676,4 +676,6 @@ def parse_export_image_args(argv: Sequence[str] | None = None) -> argparse.Names
     _validate_location_argument_combinations(parser, args)
     if not args.output and not args.sixel:
         parser.error("either --output or --sixel is required")
+    if args.output == "-" and args.sixel:
+        parser.error("--output - cannot be used together with --sixel")
     return args

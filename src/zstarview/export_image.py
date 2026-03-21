@@ -571,6 +571,17 @@ def _write_sixel_to_stdout(image: QImage, *, img2sixel_bin: str) -> bool:
     return True
 
 
+def _write_png_to_stdout(image: QImage) -> bool:
+    png_bytes = _encode_image_as_png_bytes(image)
+    try:
+        sys.stdout.buffer.write(png_bytes)
+        sys.stdout.buffer.flush()
+    except OSError as exc:
+        logger.error("Failed to write PNG image to stdout: %s", exc)
+        return False
+    return True
+
+
 def main() -> None:
     args = parse_export_image_args()
     setup_root_logger()
@@ -589,7 +600,7 @@ def main() -> None:
     text_font, status_line_font = _load_fonts()
     compositor = _build_compositor(runtime_options, user_options)
     output_arg = getattr(args, "output", None)
-    output_path = Path(output_arg).expanduser() if output_arg else None
+    output_path = None if output_arg in {None, "-"} else Path(output_arg).expanduser()
     image_size = tuple(int(v) for v in getattr(args, "image_size"))
     deadline = _deadline_after(float(getattr(args, "layer_timeout_seconds", 30.0)))
     allow_partial_data = bool(getattr(args, "allow_partial_data", False))
@@ -703,7 +714,11 @@ def main() -> None:
         compositor=compositor,
     )
     saved_output = False
-    if output_path is not None:
+    if output_arg == "-":
+        if not _write_png_to_stdout(image):
+            raise SystemExit(1)
+        saved_output = True
+    elif output_path is not None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         if not image.save(str(output_path), "PNG"):
             logger.error("Failed to save image: %s", output_path)

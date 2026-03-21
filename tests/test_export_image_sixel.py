@@ -60,3 +60,18 @@ def test_write_sixel_to_stdout_reports_failed_command(
     monkeypatch.setattr(mod.subprocess, "run", fake_run)
 
     assert mod._write_sixel_to_stdout(image, img2sixel_bin="img2sixel") is False
+
+
+def test_write_png_to_stdout_writes_png_bytes(monkeypatch: pytest.MonkeyPatch) -> None:
+    image = QImage(3, 3, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(0xFFABCDEF)
+    stdout_bytes = BytesIO()
+
+    class FakeStdout:
+        def __init__(self) -> None:
+            self.buffer = stdout_bytes
+
+    monkeypatch.setattr(mod.sys, "stdout", FakeStdout())
+
+    assert mod._write_png_to_stdout(image) is True
+    assert stdout_bytes.getvalue().startswith(b"\x89PNG\r\n\x1a\n")
