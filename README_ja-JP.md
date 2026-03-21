@@ -95,6 +95,12 @@ zstarview --place "Matsue Station" --place-countrycode jp
 
 CLI では、場所・時刻・描画設定や同梱ビューポイント参照を細かく指定できます。
 
+GUI を起動せずに画像ファイルを 1 枚生成して終了する場合は、別の CLI ツールを使います:
+
+```bash
+zstarview-export-images Matsue -o matsue.png
+```
+
 <details>
   <summary>CLI リファレンス</summary>
 
