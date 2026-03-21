@@ -177,9 +177,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 外部依存レイヤーの取得は逐次でも並列でもよいが、CLI 側では「いつまで待つか」と「部分データを許容するか」を引数で決められるようにする。
 - 既定は安全側として「部分データは保存しない」とし、明示的に `--allow-partial-data` を指定したときだけ部分出力を許可する。
 - `opacity == 0` で無効化されたレイヤーは、取得キュー自体に積まず、layer timeout の待機対象からも外す。
-- 初版実装では hidden `SkyWindow` を生成し、既存の background update 経路で sky/cloud/terrain/urban/aircraft を待ってから、`render_current_image()` により `QImage` へ描画して保存する。
-- つまり、GUI を表示はしないが、内部的には Qt イベントループと `SkyWindow` を再利用する。
-- 将来的には、`SkyWindow` 非依存の orchestrator にさらに寄せてもよいが、初版では共有描画と既存 controller の再利用を優先した。
+- 実装では `SkyWindow` と GUI controller 群には依存せず、sky/cloud/terrain/urban/aircraft を同期的に順番に取得してから、shared pipeline で `QImage` へ 1 回だけ描画して保存する。
+- Qt はフォント読込と `QImage` / `QPainter` 利用のためだけに初期化し、CLI 側ではバックグラウンド worker や signal ベースの寿命管理を持たない。
+- `ui/sky_worker.py` の celestial / sky-disc 計算は pure helper `compute_sky_snapshot()` として切り出し、GUI worker と export CLI の両方から共有する。
 
 ### 4.3 描画
 

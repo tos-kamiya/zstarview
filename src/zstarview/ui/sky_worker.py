@@ -37,6 +37,123 @@ from ..types import CelestialData
 logger = logging.getLogger(__name__)
 
 
+def compute_sky_snapshot(
+    *,
+    lat: float,
+    lon: float,
+    observer_height_m: float,
+    view_center: Tuple[float, float],
+    star_catalog: pl.DataFrame | StarCatalogArrays,
+    dso_catalog: DeepSkyCatalogArrays | None,
+    star_vmag_limit: float | None,
+    delta_t: timedelta,
+    sky_disc_alpha: float,
+    sky_disc_base_size: int,
+    content_fov_deg: float,
+    render_width_px: int | None = None,
+    render_height_px: int | None = None,
+    render_generation: int = 0,
+) -> Dict[str, object]:
+    """Compute celestial data and sky-disc image synchronously."""
+    now = datetime.now(timezone.utc) + delta_t
+    time_obj = astropy.time.Time(now)
+
+    stars, loc = calculate_visible_stars(
+        star_catalog,
+        lat,
+        lon,
+        observer_height_m,
+        time_obj,
+        view_center,
+        content_fov_deg=content_fov_deg,
+        max_vmag=star_vmag_limit,
+    )
+    if dso_catalog is None:
+        empty_obj = np.array([], dtype=object)
+        empty_float = np.array([], dtype=float)
+        deep_sky_objects = {
+            "id": empty_obj,
+            "name": empty_obj,
+            "type": empty_obj,
+            "alt": empty_float,
+            "az": empty_float,
+            "vmag": empty_float,
+            "major_arcmin": empty_float,
+            "minor_arcmin": empty_float,
+            "pa_deg": empty_float,
+        }
+    else:
+        deep_sky_objects = calculate_visible_deep_sky_objects(
+            dso_catalog,
+            lat,
+            lon,
+            observer_height_m,
+            time_obj,
+            view_center,
+            content_fov_deg=content_fov_deg,
+        )
+    planets = calculate_planets(
+        lat,
+        lon,
+        observer_height_m,
+        time_obj,
+        view_center,
+        content_fov_deg=content_fov_deg,
+    )
+    celestial_equator_points = calculate_celestial_equator_points(loc, time_obj)
+    ecliptic_points = calculate_ecliptic_points(loc, time_obj)
+    horizon_points = calculate_horizon_points()
+    celestial_data = CelestialData(
+        time=time_obj,
+        planets=planets,
+        stars=stars,
+        deep_sky_objects=deep_sky_objects,
+        celestial_equator_points=celestial_equator_points,
+        ecliptic_points=ecliptic_points,
+        horizon_points=horizon_points,
+    )
+
+    sun_altaz = None
+    solar_eclipse_info = None
+    for body in planets:
+        if body.name == "sun":
+            sun_altaz = (body.alt, body.az)
+            solar_eclipse_info = body.solar_eclipse_info
+            break
+
+    sky_disc_img: QImage | None = None
+    if sun_altaz is not None:
+        render_width = max(2, int(render_width_px or sky_disc_base_size))
+        render_height = max(2, int(render_height_px or sky_disc_base_size))
+        fixed_geom = render_draw.get_screen_geometry(render_width, render_height, view_center[0])
+        ef = eclipse_factor_from_info(solar_eclipse_info)
+        if sky_disc_alpha > 0.0:
+            sky_disc_img = draw_sky_disc.draw_sky_color_disc(
+                fixed_geom,
+                view_center,
+                sun_altaz,
+                observer_lat_deg=lat,
+                alpha=sky_disc_alpha,
+                eclipse_factor=ef,
+                content_fov_deg=content_fov_deg,
+                image_size=(render_width, render_height),
+            )
+        else:
+            sky_disc_img = draw_sky_disc.draw_uniform_sky_color_disc(
+                fixed_geom,
+                view_center,
+                content_fov_deg=content_fov_deg,
+                image_size=(render_width, render_height),
+            )
+
+    payload: Dict[str, object] = {"celestial": celestial_data, "sky_disc": sky_disc_img}
+    payload["view_center"] = (float(view_center[0]), float(view_center[1]))
+    payload["render_width_px"] = max(2, int(render_width_px or sky_disc_base_size))
+    payload["render_height_px"] = max(2, int(render_height_px or sky_disc_base_size))
+    payload["render_generation"] = int(render_generation)
+    return payload
+
+
 class SkyDataWorker(QObject):
     """Compute sky data in a Python background thread and emit results."""
 
@@ -119,102 +236,22 @@ class SkyDataWorker(QObject):
         render_generation: int,
     ) -> None:
         try:
-            now = datetime.now(timezone.utc) + delta_t
-            time_obj = astropy.time.Time(now)
-
-            stars, loc = calculate_visible_stars(
-                star_catalog,
+            payload = compute_sky_snapshot(
                 lat,
-                lon,
-                observer_height_m,
-                time_obj,
-                view_center,
+                lon=lon,
+                observer_height_m=observer_height_m,
+                view_center=view_center,
+                star_catalog=star_catalog,
+                dso_catalog=dso_catalog,
+                star_vmag_limit=star_vmag_limit,
+                delta_t=delta_t,
+                sky_disc_alpha=sky_disc_alpha,
+                sky_disc_base_size=sky_disc_base_size,
                 content_fov_deg=content_fov_deg,
-                max_vmag=star_vmag_limit,
+                render_width_px=render_width_px,
+                render_height_px=render_height_px,
+                render_generation=render_generation,
             )
-            if dso_catalog is None:
-                empty_obj = np.array([], dtype=object)
-                empty_float = np.array([], dtype=float)
-                deep_sky_objects = {
-                    "id": empty_obj,
-                    "name": empty_obj,
-                    "type": empty_obj,
-                    "alt": empty_float,
-                    "az": empty_float,
-                    "vmag": empty_float,
-                    "major_arcmin": empty_float,
-                    "minor_arcmin": empty_float,
-                    "pa_deg": empty_float,
-                }
-            else:
-                deep_sky_objects = calculate_visible_deep_sky_objects(
-                    dso_catalog,
-                    lat,
-                    lon,
-                    observer_height_m,
-                    time_obj,
-                    view_center,
-                    content_fov_deg=content_fov_deg,
-                )
-            planets = calculate_planets(
-                lat,
-                lon,
-                observer_height_m,
-                time_obj,
-                view_center,
-                content_fov_deg=content_fov_deg,
-            )
-            celestial_equator_points = calculate_celestial_equator_points(loc, time_obj)
-            ecliptic_points = calculate_ecliptic_points(loc, time_obj)
-            horizon_points = calculate_horizon_points()
-            celestial_data = CelestialData(
-                time=time_obj,
-                planets=planets,
-                stars=stars,
-                deep_sky_objects=deep_sky_objects,
-                celestial_equator_points=celestial_equator_points,
-                ecliptic_points=ecliptic_points,
-                horizon_points=horizon_points,
-            )
-
-            sun_altaz = None
-            solar_eclipse_info = None
-            for body in planets:
-                if body.name == "sun":
-                    sun_altaz = (body.alt, body.az)
-                    solar_eclipse_info = body.solar_eclipse_info
-                    break
-
-            sky_disc_img: QImage | None = None
-            if sun_altaz is not None:
-                render_width = max(2, int(render_width_px or sky_disc_base_size))
-                render_height = max(2, int(render_height_px or sky_disc_base_size))
-                fixed_geom = render_draw.get_screen_geometry(render_width, render_height, view_center[0])
-                ef = eclipse_factor_from_info(solar_eclipse_info)
-                if sky_disc_alpha > 0.0:
-                    sky_disc_img = draw_sky_disc.draw_sky_color_disc(
-                        fixed_geom,
-                        view_center,
-                        sun_altaz,
-                        observer_lat_deg=lat,
-                        alpha=sky_disc_alpha,
-                        eclipse_factor=ef,
-                        content_fov_deg=content_fov_deg,
-                        image_size=(render_width, render_height),
-                    )
-                else:
-                    sky_disc_img = draw_sky_disc.draw_uniform_sky_color_disc(
-                        fixed_geom,
-                        view_center,
-                        content_fov_deg=content_fov_deg,
-                        image_size=(render_width, render_height),
-                    )
-
-            payload: Dict[str, object] = {"celestial": celestial_data, "sky_disc": sky_disc_img}
-            payload["view_center"] = (float(view_center[0]), float(view_center[1]))
-            payload["render_width_px"] = max(2, int(render_width_px or sky_disc_base_size))
-            payload["render_height_px"] = max(2, int(render_height_px or sky_disc_base_size))
-            payload["render_generation"] = int(render_generation)
             with self._lock:
                 if self._stopping:
                     return

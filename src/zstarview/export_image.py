@@ -2,13 +2,44 @@ from __future__ import annotations
 
 import logging
 import math
-from dataclasses import dataclass
+import time
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QTimer, Signal
+import numpy as np
+from PySide6.QtCore import QPoint, QRect
+from PySide6.QtGui import QFont, QFontDatabase, QImage, QPainter
 
+from .aircraft import build_observer_bbox, fetch_opensky_states, project_aircraft_snapshots
 from .cli_args import parse_export_image_args
-from .paths import APP_DISPLAY_NAME
+from .clouddisc import CloudDisc, CloudDiscConfig
+from .data.import_overture_buildings import (
+    derive_dataset_name,
+    import_overture_buildings,
+    import_overture_buildings_for_bbox,
+)
+from .data.skyscraper_tiles import (
+    SKYSCRAPER_TILES_FILE,
+    select_skyscraper_seed_tiles_for_viewer,
+    skyscraper_tile_derived_dir,
+)
+from .paths import (
+    APP_DISPLAY_NAME,
+    CACHE_PATH,
+    CLOUD_MISSING_TINT_RGBA,
+    CLOUD_SHELL_KM,
+    OVERTURE_DERIVED_ROOT_DIR,
+    OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR,
+    STATUS_LINE_FONT_SIZE,
+    TEXT_FONT_PATH,
+    TEXT_FONT_SIZE,
+)
+from .render import draw as render_draw
+from .render.pipeline import (
+    RenderHudState,
+    RenderSceneData,
+    RenderStyle,
+    render_base_scene_into_painter,
+)
 from .splash import setup_app
 from .startup import (
     StartupAbortError,
@@ -18,7 +49,21 @@ from .startup import (
     _startup_resolve_city,
     setup_root_logger,
 )
-from .ui.window import SkyWindow
+from .terrain import (
+    EARTH_MEAN_RADIUS_M,
+    GeoTiffDem,
+    ObserverLocation,
+    WGS84_GEOD,
+    build_distance_samples,
+    build_download_bbox,
+    compute_horizon_profile,
+    fetch_copernicus_dem,
+    reduce_profile_to_altaz,
+    sample_ground_elevation,
+)
+from .types import UrbanOutlinePolyline, ViewerData
+from .ui.composite import SkyCompositorCache, build_stripe_density_field
+from .ui.sky_worker import compute_sky_snapshot
 from .ui.window_inputs import (
     PreparedWindowCatalogs,
     SkyWindowRuntimeOptions,
@@ -28,25 +73,35 @@ from .ui.window_inputs import (
     prepare_window_user_options,
     prepare_window_viewer_data,
 )
+from .urban_outline_layer import resolve_urban_outline_layer_for_viewer
+from .utils.qt import np_rgba_to_qimage, pil_to_qimage
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_CLOUD_ALT_MIN_DEG = 3.0
+DEFAULT_CLOUD_BASE_SIZE = 256
 
-@dataclass
-class _LayerWaitState:
-    required: bool
-    ready: bool = False
-    failed: bool = False
-    detail: str | None = None
 
-    @property
-    def terminal(self) -> bool:
-        return (not self.required) or self.ready or self.failed
+def _deadline_after(timeout_seconds: float) -> float | None:
+    if float(timeout_seconds) <= 0.0:
+        return None
+    return time.monotonic() + float(timeout_seconds)
+
+
+def _remaining_timeout_seconds(deadline: float | None) -> float | None:
+    if deadline is None:
+        return None
+    return max(0.0, deadline - time.monotonic())
+
+
+def _timed_out(deadline: float | None) -> bool:
+    remaining = _remaining_timeout_seconds(deadline)
+    return remaining is not None and remaining <= 0.0
 
 
 def _build_window_inputs_from_args(
     args: object,
-) -> tuple[PreparedWindowCatalogs, object, SkyWindowUserOptions, SkyWindowRuntimeOptions]:
+) -> tuple[PreparedWindowCatalogs, ViewerData, SkyWindowUserOptions, SkyWindowRuntimeOptions]:
     city = _startup_resolve_city(
         getattr(args, "city", ""),
         place_query=getattr(args, "place", None),
@@ -127,119 +182,340 @@ def _build_window_inputs_from_args(
     return catalogs, viewer_data, user_options, runtime_options
 
 
-class _ExportImageRunner(QObject):
-    finished = Signal(int)
+def _load_fonts() -> tuple[QFont, QFont]:
+    text_font_id = QFontDatabase.addApplicationFont(TEXT_FONT_PATH)
+    text_font_family = QFontDatabase.applicationFontFamilies(text_font_id)[0]
+    return (
+        QFont(text_font_family, TEXT_FONT_SIZE),
+        QFont(text_font_family, STATUS_LINE_FONT_SIZE),
+    )
 
-    def __init__(self, *, window: SkyWindow, output_path: Path, timeout_seconds: float, allow_partial_data: bool) -> None:
-        super().__init__(window)
-        self._window = window
-        self._output_path = output_path
-        self._allow_partial_data = bool(allow_partial_data)
-        self._done = False
-        self._states = {
-            "sky": _LayerWaitState(required=True),
-            "cloud": _LayerWaitState(required=float(window.cloud_disc_alpha) > 0.0),
-            "terrain": _LayerWaitState(required=float(window.terrain_horizon_opacity) > 0.0),
-            "urban": _LayerWaitState(required=float(window.urban_outline_opacity) > 0.0),
-            "aircraft": _LayerWaitState(required=float(window.aircraft_opacity) > 0.0),
-        }
-        if self._states["cloud"].required and getattr(window, "_clouddisc", None) is None:
-            self._mark_failed("cloud", "cloud service unavailable")
-        self._timer = QTimer(self)
-        self._timer.setSingleShot(True)
-        self._timer.setInterval(max(0, int(round(float(timeout_seconds) * 1000.0))))
-        self._timer.timeout.connect(self._on_timeout)
 
-        window.initial_data_loaded.connect(self._on_initial_data_loaded)
-        if getattr(window, "_cloud_controller", None) is not None:
-            window._cloud_controller.cloud_ready.connect(lambda _payload: self._mark_ready("cloud"))
-            window._cloud_controller.cloud_failed.connect(
-                lambda payload: self._mark_failed("cloud", str(payload.get("banner", "cloud failed")))
+def _build_compositor(runtime_options: SkyWindowRuntimeOptions, user_options: SkyWindowUserOptions) -> SkyCompositorCache:
+    target_stripes, width_factor = runtime_options.cloud_stripe_style
+    missing_tint_alpha = int(round(255.0 * runtime_options.cloud_missing_tint_opacity))
+    missing_tint_rgba = (
+        int(CLOUD_MISSING_TINT_RGBA[0]),
+        int(CLOUD_MISSING_TINT_RGBA[1]),
+        int(CLOUD_MISSING_TINT_RGBA[2]),
+        missing_tint_alpha,
+    )
+    return SkyCompositorCache(
+        cloud_target_stripes=int(target_stripes),
+        cloud_stripe_width_factor=float(width_factor),
+        missing_tint_rgba=missing_tint_rgba,
+        ground_tint_opacity=user_options.ground_tint_opacity,
+    )
+
+
+def _fetch_cloud_layer(
+    *,
+    viewer_data: ViewerData,
+    user_options: SkyWindowUserOptions,
+    deadline: float | None,
+) -> tuple[QImage | None, QImage | None, object | None]:
+    if user_options.cloud_disc_alpha <= 0.0:
+        return (None, None, None)
+    if _timed_out(deadline):
+        raise TimeoutError("cloud timed out")
+
+    clouddisc = CloudDisc(
+        CloudDiscConfig(
+            cache_dir=CACHE_PATH,
+            sat_priority=("AUTO",),
+            bt_warm_k=310.0,
+            bt_cold_k=190.0,
+            alt_min_deg=DEFAULT_CLOUD_ALT_MIN_DEG,
+            search_back_minutes=120,
+        )
+    )
+    source = clouddisc.fetch_source(
+        lat=float(viewer_data.lat_deg),
+        lon=float(viewer_data.lon_deg),
+    )
+    pil_img, _meta, missing_mask, _coverage_ratio = clouddisc.render_from_source_with_coverage(
+        source=source,
+        lat=float(viewer_data.lat_deg),
+        lon=float(viewer_data.lon_deg),
+        alt=float(viewer_data.view_alt_deg),
+        az=float(viewer_data.view_az_deg),
+        radius_px=DEFAULT_CLOUD_BASE_SIZE,
+        edge_fov_deg=90.0,
+        mask_fov_deg=float(viewer_data.content_fov_deg),
+        cloud_shell_km=CLOUD_SHELL_KM,
+    )
+    if _timed_out(deadline):
+        raise TimeoutError("cloud timed out")
+    cloud_img = pil_to_qimage(pil_img)
+    missing_rgba = np.zeros((missing_mask.shape[0], missing_mask.shape[1], 4), dtype=np.uint8)
+    missing_rgba[..., 3] = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
+    missing_mask_img = np_rgba_to_qimage(missing_rgba)
+    stripe_density = build_stripe_density_field(cloud_img)
+    return (cloud_img, missing_mask_img, stripe_density)
+
+
+def _fetch_terrain_horizon_layer(
+    *,
+    viewer_data: ViewerData,
+    deadline: float | None,
+) -> list[tuple[float, float]] | None:
+    if _timed_out(deadline):
+        raise TimeoutError("terrain timed out")
+    try:
+        download = fetch_copernicus_dem(
+            observer_lat_deg=float(viewer_data.lat_deg),
+            observer_lon_deg=float(viewer_data.lon_deg),
+            max_distance_km=120.0,
+            margin_km=10.0,
+            cache_dir=Path(CACHE_PATH) / "copernicus-dem",
+        )
+    except RuntimeError as exc:
+        if str(exc) != "No Copernicus DEM tiles were downloaded for the requested area.":
+            raise
+        return []
+    dem = GeoTiffDem(download.paths, default_elevation_m=0.0)
+    try:
+        bbox = build_download_bbox(
+            lat_deg=float(viewer_data.lat_deg),
+            lon_deg=float(viewer_data.lon_deg),
+            radius_km=130.0,
+        )
+        dem_grid = dem.build_grid(bbox)
+        ground_m = sample_ground_elevation(
+            dem_grid,
+            latitude_deg=float(viewer_data.lat_deg),
+            longitude_deg=float(viewer_data.lon_deg),
+            dem_resampling="bilinear",
+        )
+        observer = ObserverLocation(
+            latitude_deg=float(viewer_data.lat_deg),
+            longitude_deg=float(viewer_data.lon_deg),
+            observer_ground_m=ground_m,
+            observer_eye_m=float(viewer_data.observer_height_m),
+        )
+        points = compute_horizon_profile(
+            dem_grid=dem_grid,
+            geod=WGS84_GEOD,
+            observer=observer,
+            azimuth_step_deg=1.0,
+            distance_samples_m=build_distance_samples(120.0, 90.0),
+            dem_resampling="bilinear",
+            earth_radius_m=EARTH_MEAN_RADIUS_M,
+            refraction_coefficient=0.13,
+        )
+    finally:
+        dem.close()
+    if _timed_out(deadline):
+        raise TimeoutError("terrain timed out")
+    return reduce_profile_to_altaz(points)
+
+
+def _required_feature_types(feature_type: str) -> tuple[str, ...]:
+    return ("building", "building_part") if feature_type == "both" else (feature_type,)
+
+
+def _fetch_urban_outline_layer(
+    *,
+    viewer_data: ViewerData,
+    runtime_options: SkyWindowRuntimeOptions,
+    deadline: float | None,
+) -> list[UrbanOutlinePolyline] | None:
+    if _timed_out(deadline):
+        raise TimeoutError("urban timed out")
+    derived_root_dir = Path(OVERTURE_DERIVED_ROOT_DIR)
+    required_feature_types = () if runtime_options.urban_outline_skyscraper_only else _required_feature_types(
+        runtime_options.urban_outline_feature_type
+    )
+    required_dirs: list[Path] = []
+    for overture_feature_type in required_feature_types:
+        dataset_name = (
+            Path(derived_root_dir)
+            / derive_dataset_name(
+                float(viewer_data.lat_deg),
+                float(viewer_data.lon_deg),
+                float(runtime_options.urban_outline_radius_km),
+                overture_feature_type,
+                float(runtime_options.urban_outline_min_height_m),
             )
-        if getattr(window, "_terrain_horizon_controller", None) is not None:
-            window._terrain_horizon_controller.terrain_ready.connect(lambda _payload: self._mark_ready("terrain"))
-            window._terrain_horizon_controller.terrain_failed.connect(
-                lambda payload: self._mark_failed("terrain", str(payload.get("banner", "terrain failed")))
+            / "bldg"
+        )
+        required_dirs.append(dataset_name)
+        if dataset_name.exists():
+            continue
+        import_overture_buildings(
+            lat_deg=float(viewer_data.lat_deg),
+            lon_deg=float(viewer_data.lon_deg),
+            radius_km=float(runtime_options.urban_outline_radius_km),
+            derived_root_dir=derived_root_dir,
+            min_building_height_m=float(runtime_options.urban_outline_min_height_m),
+            feature_type=overture_feature_type,
+            fmt="geojsonseq",
+            overturemaps_bin="overturemaps",
+            dataset_name=dataset_name.parent.name,
+            keep_download=None,
+            no_stac=False,
+        )
+        if _timed_out(deadline):
+            raise TimeoutError("urban timed out")
+
+    outlines = None
+    if required_dirs:
+        outlines = resolve_urban_outline_layer_for_viewer(
+            viewer_data,
+            derived_root_dir=derived_root_dir,
+            derived_dirs=tuple(required_dirs),
+        )
+
+    skyscraper_tiles = select_skyscraper_seed_tiles_for_viewer(
+        observer_lat_deg=float(viewer_data.lat_deg),
+        observer_lon_deg=float(viewer_data.lon_deg),
+        inner_radius_km=float(runtime_options.urban_outline_radius_km),
+        outer_radius_km=10.0,
+        seed_file=Path(SKYSCRAPER_TILES_FILE),
+    )
+    skyscraper_derived_root = Path(OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR)
+    skyscraper_dirs: list[Path] = []
+    for tile in skyscraper_tiles:
+        derived_dir = skyscraper_tile_derived_dir(tile, derived_root_dir=skyscraper_derived_root)
+        skyscraper_dirs.append(derived_dir)
+        if derived_dir.exists():
+            continue
+        import_overture_buildings_for_bbox(
+            bbox=(
+                tile.envelope.min_lon_deg,
+                tile.envelope.min_lat_deg,
+                tile.envelope.max_lon_deg,
+                tile.envelope.max_lat_deg,
+            ),
+            derived_root_dir=skyscraper_derived_root,
+            min_building_height_m=max(150.0, float(runtime_options.urban_outline_min_height_m)),
+            feature_type="building",
+            fmt="geojsonseq",
+            overturemaps_bin="overturemaps",
+            dataset_name=tile.cache_key,
+            keep_download=None,
+            no_stac=False,
+        )
+        if _timed_out(deadline):
+            raise TimeoutError("urban timed out")
+    if skyscraper_dirs:
+        skyscraper_outlines = resolve_urban_outline_layer_for_viewer(
+            viewer_data,
+            derived_root_dir=skyscraper_derived_root,
+            derived_dirs=tuple(skyscraper_dirs),
+            radius_km=10.0,
+            min_distance_km=float(runtime_options.urban_outline_radius_km),
+            min_height_m=max(150.0, float(runtime_options.urban_outline_min_height_m)),
+        )
+        outlines = _merge_outline_layers(outlines, skyscraper_outlines)
+    return outlines
+
+
+def _merge_outline_layers(
+    base_outlines: list[UrbanOutlinePolyline] | None,
+    extra_outlines: list[UrbanOutlinePolyline] | None,
+) -> list[UrbanOutlinePolyline] | None:
+    merged: list[UrbanOutlinePolyline] = []
+    if base_outlines:
+        merged.extend(base_outlines)
+    if extra_outlines:
+        merged.extend(
+            UrbanOutlinePolyline(
+                points=list(outline.points),
+                height_m=float(outline.height_m),
+                source="skyscraper",
             )
-        if getattr(window, "_urban_outline_controller", None) is not None:
-            window._urban_outline_controller.urban_ready.connect(lambda _payload: self._mark_ready("urban"))
-            window._urban_outline_controller.urban_failed.connect(
-                lambda payload: self._mark_failed("urban", str(payload.get("banner", "urban failed")))
-            )
-        if getattr(window, "_aircraft_controller", None) is not None:
-            window._aircraft_controller.aircraft_ready.connect(lambda _payload: self._mark_ready("aircraft"))
-            window._aircraft_controller.aircraft_failed.connect(
-                lambda payload: self._mark_failed("aircraft", str(payload.get("banner", "aircraft failed")))
-            )
+            for outline in extra_outlines
+        )
+    return merged or None
 
-    def start(self) -> None:
-        if self._done:
-            return
-        if any(state.required for name, state in self._states.items() if name != "sky"):
-            self._timer.start()
-        self._check_finished()
 
-    def _on_initial_data_loaded(self) -> None:
-        self._mark_ready("sky")
+def _fetch_aircraft_overlay_points(
+    *,
+    viewer_data: ViewerData,
+    celestial_time_obj: object,
+    deadline: float | None,
+) -> object | None:
+    if _timed_out(deadline):
+        raise TimeoutError("aircraft timed out")
+    remaining = _remaining_timeout_seconds(deadline)
+    timeout_s = 20.0 if remaining is None else max(0.1, min(20.0, remaining))
+    bbox = build_observer_bbox(float(viewer_data.lat_deg), float(viewer_data.lon_deg))
+    snapshots = fetch_opensky_states(bbox, timeout_s=timeout_s)
+    if _timed_out(deadline):
+        raise TimeoutError("aircraft timed out")
+    return project_aircraft_snapshots(
+        snapshots,
+        observer_lat=float(viewer_data.lat_deg),
+        observer_lon=float(viewer_data.lon_deg),
+        observer_height_m=float(viewer_data.observer_height_m),
+        time_obj=celestial_time_obj,
+    )
 
-    def _on_timeout(self) -> None:
-        for name, state in self._states.items():
-            if state.required and not state.terminal:
-                self._mark_failed(name, f"{name} timed out")
-        self._check_finished()
 
-    def _mark_ready(self, name: str) -> None:
-        state = self._states[name]
-        if state.terminal:
-            return
-        state.ready = True
-        state.detail = None
-        self._check_finished()
+def _render_image(
+    *,
+    image_size: tuple[int, int],
+    scene: RenderSceneData,
+    style: RenderStyle,
+    compositor: SkyCompositorCache,
+) -> QImage:
+    width, height = image_size
+    image = QImage(width, height, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(0)
+    painter = QPainter(image)
+    painter.setRenderHint(QPainter.Antialiasing)
+    painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+    try:
+        geometry = render_draw.get_screen_geometry(width, height, scene.viewer.view_alt_deg)
+        render_base_scene_into_painter(
+            painter,
+            geometry=geometry,
+            viewport_rect=QRect(0, 0, width, height),
+            scene=scene,
+            style=style,
+            hud=RenderHudState(
+                mouse_pos=QPoint(),
+                viewport_interaction_mode=False,
+                viewport_interaction_stars=None,
+                status_message=None,
+            ),
+            compositor=compositor,
+        )
+    finally:
+        painter.end()
+    return image
 
-    def _mark_failed(self, name: str, detail: str) -> None:
-        state = self._states[name]
-        if state.terminal:
-            return
-        state.failed = True
-        state.detail = detail
-        self._check_finished()
 
-    def _check_finished(self) -> None:
-        if self._done:
-            return
-        if not all(state.terminal for state in self._states.values()):
-            return
-        self._done = True
-        if self._timer.isActive():
-            self._timer.stop()
-
-        failed_layers = [name for name, state in self._states.items() if state.failed]
-        for name in failed_layers:
-            logger.warning("Export layer unavailable: %s (%s)", name, self._states[name].detail)
-
-        if self._states["sky"].failed:
-            logger.error("Export aborted because celestial data never became ready.")
-            self._shutdown(1)
-            return
-
-        failed_optional_layers = [name for name in failed_layers if name != "sky"]
-        if failed_optional_layers and not self._allow_partial_data:
-            logger.error("Export aborted because partial data is not allowed.")
-            self._shutdown(1)
-            return
-
-        image = self._window.render_current_image(include_hud=False)
-        self._output_path.parent.mkdir(parents=True, exist_ok=True)
-        if not image.save(str(self._output_path), "PNG"):
-            logger.error("Failed to save image: %s", self._output_path)
-            self._shutdown(1)
-            return
-        logger.info("Saved image: %s", self._output_path)
-        self._shutdown(0)
-
-    def _shutdown(self, code: int) -> None:
-        self._window._begin_shutdown()
-        self.finished.emit(int(code))
+def _build_render_style(
+    *,
+    text_font: QFont,
+    status_line_font: QFont,
+    catalogs: PreparedWindowCatalogs,
+    user_options: SkyWindowUserOptions,
+    runtime_options: SkyWindowRuntimeOptions,
+) -> RenderStyle:
+    show_dso = catalogs.dso_catalog_np is not None
+    if user_options.show_dso_initial is not None:
+        show_dso = bool(user_options.show_dso_initial) and catalogs.dso_catalog_np is not None
+    show_asterisms = True if user_options.show_asterisms_initial is None else bool(user_options.show_asterisms_initial)
+    return RenderStyle(
+        visual_preset=user_options.visual_preset,
+        text_font=text_font,
+        status_line_font=status_line_font,
+        show_dso=show_dso,
+        show_asterisms=show_asterisms,
+        enlarge_moon=bool(user_options.enlarge_moon),
+        star_base_radius=float(user_options.star_base_radius),
+        star_visibility_boost=float(user_options.star_visibility_boost),
+        vmag_limit=float(user_options.vmag_limit),
+        cloud_disc_alpha=float(user_options.cloud_disc_alpha),
+        terrain_horizon_opacity=float(user_options.terrain_horizon_opacity),
+        urban_outline_opacity=float(user_options.urban_outline_opacity),
+        show_urban_outline_layer=float(user_options.urban_outline_opacity) > 0.0,
+        aircraft_opacity=float(user_options.aircraft_opacity),
+        star_render_expected_width=int(runtime_options.star_render_expected_width),
+    )
 
 
 def main() -> None:
@@ -255,21 +531,123 @@ def main() -> None:
     app = setup_app(f"{APP_DISPLAY_NAME} Export Image")
     app.setQuitOnLastWindowClosed(False)
 
-    window = SkyWindow(
-        viewer_data,
-        catalogs,
+    text_font, status_line_font = _load_fonts()
+    compositor = _build_compositor(runtime_options, user_options)
+    output_path = Path(getattr(args, "output")).expanduser()
+    image_size = tuple(int(v) for v in getattr(args, "image_size"))
+    deadline = _deadline_after(float(getattr(args, "layer_timeout_seconds", 30.0)))
+    allow_partial_data = bool(getattr(args, "allow_partial_data", False))
+
+    use_lod6_catalog = float(user_options.vmag_limit) <= 6.0
+    star_catalog = catalogs.star_catalog_lod6_np if use_lod6_catalog else catalogs.star_catalog_full_np
+    star_vmag_limit = None if use_lod6_catalog else float(user_options.vmag_limit)
+    sky_payload = compute_sky_snapshot(
+        lat=float(viewer_data.lat_deg),
+        lon=float(viewer_data.lon_deg),
+        observer_height_m=float(viewer_data.observer_height_m),
+        view_center=tuple(viewer_data.view_center),
+        star_catalog=star_catalog,
+        dso_catalog=catalogs.dso_catalog_np,
+        star_vmag_limit=star_vmag_limit,
+        delta_t=runtime_options.delta_t,
+        sky_disc_alpha=float(user_options.sky_disc_alpha),
+        sky_disc_base_size=max(image_size),
+        content_fov_deg=float(viewer_data.content_fov_deg),
+        render_width_px=int(image_size[0]),
+        render_height_px=int(image_size[1]),
+        render_generation=0,
+    )
+    celestial_data = sky_payload["celestial"]
+    sky_disc_image = sky_payload["sky_disc"]
+
+    layer_failures: list[str] = []
+    cloud_image = None
+    cloud_missing_mask = None
+    cloud_stripe_density = None
+    if user_options.cloud_disc_alpha > 0.0:
+        try:
+            cloud_image, cloud_missing_mask, cloud_stripe_density = _fetch_cloud_layer(
+                viewer_data=viewer_data,
+                user_options=user_options,
+                deadline=deadline,
+            )
+        except Exception as exc:
+            logger.warning("Export layer unavailable: cloud (%s)", exc)
+            layer_failures.append("cloud")
+            if not allow_partial_data:
+                raise SystemExit(1)
+
+    terrain_horizon_profile = None
+    if user_options.terrain_horizon_opacity > 0.0:
+        try:
+            terrain_horizon_profile = _fetch_terrain_horizon_layer(
+                viewer_data=viewer_data,
+                deadline=deadline,
+            )
+        except Exception as exc:
+            logger.warning("Export layer unavailable: terrain (%s)", exc)
+            layer_failures.append("terrain")
+            if not allow_partial_data:
+                raise SystemExit(1)
+
+    urban_outlines = None
+    if user_options.urban_outline_opacity > 0.0:
+        try:
+            urban_outlines = _fetch_urban_outline_layer(
+                viewer_data=viewer_data,
+                runtime_options=runtime_options,
+                deadline=deadline,
+            )
+        except Exception as exc:
+            logger.warning("Export layer unavailable: urban (%s)", exc)
+            layer_failures.append("urban")
+            if not allow_partial_data:
+                raise SystemExit(1)
+
+    aircraft_overlay_points = None
+    if user_options.aircraft_opacity > 0.0:
+        try:
+            aircraft_overlay_points = _fetch_aircraft_overlay_points(
+                viewer_data=viewer_data,
+                celestial_time_obj=celestial_data.time,
+                deadline=deadline,
+            )
+        except Exception as exc:
+            logger.warning("Export layer unavailable: aircraft (%s)", exc)
+            layer_failures.append("aircraft")
+            if not allow_partial_data:
+                raise SystemExit(1)
+
+    if layer_failures and not allow_partial_data:
+        logger.error("Export aborted because partial data is not allowed.")
+        raise SystemExit(1)
+
+    style = _build_render_style(
+        text_font=text_font,
+        status_line_font=status_line_font,
+        catalogs=catalogs,
         user_options=user_options,
         runtime_options=runtime_options,
     )
-    image_width, image_height = getattr(args, "image_size")
-    window.resize(int(image_width), int(image_height))
-
-    runner = _ExportImageRunner(
-        window=window,
-        output_path=Path(getattr(args, "output")).expanduser(),
-        timeout_seconds=float(getattr(args, "layer_timeout_seconds", 30.0)),
-        allow_partial_data=bool(getattr(args, "allow_partial_data", False)),
+    scene = RenderSceneData(
+        viewer=viewer_data,
+        celestial_data=celestial_data,
+        sky_disc_image=sky_disc_image,
+        cloud_image=cloud_image,
+        cloud_missing_mask=cloud_missing_mask,
+        cloud_stripe_density=cloud_stripe_density,
+        terrain_horizon_profile=terrain_horizon_profile,
+        urban_outlines=urban_outlines,
+        aircraft_overlay_points=aircraft_overlay_points,
     )
-    runner.finished.connect(app.exit)
-    QTimer.singleShot(0, runner.start)
-    raise SystemExit(app.exec())
+    image = _render_image(
+        image_size=image_size,
+        scene=scene,
+        style=style,
+        compositor=compositor,
+    )
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    if not image.save(str(output_path), "PNG"):
+        logger.error("Failed to save image: %s", output_path)
+        raise SystemExit(1)
+    logger.info("Saved image: %s", output_path)

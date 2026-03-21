@@ -78,7 +78,7 @@
   - `zstarview-export-image` を追加し、地点・時刻・視線・描画オプションの大半を既存 `zstarview` CLI と共有する形で 1 枚の PNG を書き出して終了できるようにした。
   - 画像書き出し固有オプションとして `--output`、`--image-size`、`--layer-timeout-seconds`、`--allow-partial-data` を追加した。
   - GUI 専用の `--sky-update-interval` と `--window-geometry`、dataset 参照専用 CLI オプションは export parser に載せない。
-  - 初版実装では hidden `SkyWindow` を使って既存 controller 群の非同期更新を待ち、`render_current_image()` で hover/HUD なしのベース描画を `QImage` へ保存する。
+  - 実装では `SkyWindow` と Qt signal ベースの controller 群を使わず、sky/cloud/terrain/urban/aircraft を同期的に順番に取得してから、hover/HUD なしのベース描画を `QImage` へ保存する。
   - `opacity == 0` のレイヤーは取得キューと timeout 待機対象から外す。
 
 ### 2026-03-19
