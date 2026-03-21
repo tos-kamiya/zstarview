@@ -13,3 +13,9 @@ def make_desktop_file_main() -> None:
     from .make_desktop_file import main as _main
 
     _main()
+
+
+def export_image_main() -> None:
+    from .export_image import main as _main
+
+    _main()

@@ -34,14 +34,6 @@
   - 初版は `mountain_viewpoints.json` を別 dataset とし、`tower_viewpoints.json` とは分けて管理する。
   - 将来的には mountain も tower と同じ viewpoint CLI から参照できる形を想定する。
 
-- 単発画像書き出し CLI の仕様と入口を設計する
-  - GUI 常駐 `main` とは別の headless CLI とする。
-  - 地点、時刻、視線、描画オプションは既存 `zstarview` CLI とできるだけ共有する。
-  - GUI 専用の `--sky-update-interval` と `--window-geometry` は共有しない。
-  - 画像書き出し固有オプションとして、少なくとも `--output`、`--image-size`、`--layer-timeout-seconds`、`--allow-partial-data` を持たせる方針とする。
-  - 部分データ出力は既定では許可せず、明示 opt-in にする。
-  - 描画本体は shared pipeline を使い、hover/HUD を含まないベース描画を既定とする。
-
 ## 4. TODO
 
 - GUI 上で時刻を前後できるダイナミックなタイムシフト操作を追加する
@@ -81,6 +73,13 @@
   - `cli_args.py` の parser 構築を、地点、dataset query、時刻、描画の helper 関数群へ分割した。
   - main app 側は `build_main_argument_parser()` を使う形に整理した。
   - dataset query の整合性検証は、その parser に存在するオプションだけを見るようにして、将来の画像書き出し CLI parser でも再利用できるようにした。
+
+- 単発画像書き出し CLI の追加
+  - `zstarview-export-image` を追加し、地点・時刻・視線・描画オプションの大半を既存 `zstarview` CLI と共有する形で 1 枚の PNG を書き出して終了できるようにした。
+  - 画像書き出し固有オプションとして `--output`、`--image-size`、`--layer-timeout-seconds`、`--allow-partial-data` を追加した。
+  - GUI 専用の `--sky-update-interval` と `--window-geometry`、dataset 参照専用 CLI オプションは export parser に載せない。
+  - 初版実装では hidden `SkyWindow` を使って既存 controller 群の非同期更新を待ち、`render_current_image()` で hover/HUD なしのベース描画を `QImage` へ保存する。
+  - `opacity == 0` のレイヤーは取得キューと timeout 待機対象から外す。
 
 ### 2026-03-19
 
