@@ -20,6 +20,7 @@ from zstarview.clouddisc.providers._hima_isatss import (
     select_needed_tiles,
     stitch_tiles_from_paths,
 )
+from zstarview.clouddisc.providers import hima as hima_module
 from zstarview.clouddisc.providers.hima import HimaProvider
 from zstarview.clouddisc.sampling.bt_sampler import build_bt_sampler
 
@@ -178,3 +179,35 @@ def test_equator_tile_selection_extends_partial_himawari_subset(tmp_path: Path) 
     assert len(src_paths) == len(render_tokens | equator_tokens)
     assert len(src_paths) > len(render_tokens)
     assert da.attrs["source_key_count"] == len(src_paths)
+
+
+def test_find_isatss_skips_incomplete_latest_slot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    tile_dir = tmp_path / "tiles"
+    tile_dir.mkdir()
+    template_paths = _write_sparse_tile_set(tile_dir)
+    provider = HimaProvider(CloudDiscConfig(cache_dir=tmp_path / "cache"))
+    latest_time = dt.datetime(2026, 3, 21, 18, 10, tzinfo=dt.timezone.utc)
+    stable_time = dt.datetime(2026, 3, 21, 18, 0, tzinfo=dt.timezone.utc)
+
+    incomplete_keys = [f"AHI-L2-FLDK-ISatSS/2026/03/21/1810/OR_HFD-020-B12-M1C13-T{i:03d}_TEST.nc" for i in range(1, 15)]
+    stable_keys = [f"AHI-L2-FLDK-ISatSS/2026/03/21/1800/OR_HFD-020-B12-M1C13-T{i:03d}_TEST.nc" for i in range(1, 89)]
+
+    def fake_find_matching_keys(_s3_client, when_utc: dt.datetime, *, satellite: str, product: str) -> tuple[str, list[str]]:
+        assert satellite == "HIMAWARI"
+        assert product == "ISatSS-B13"
+        rounded = when_utc.astimezone(dt.timezone.utc).replace(second=0, microsecond=0)
+        if rounded == latest_time:
+            return "noaa-himawari9", incomplete_keys
+        if rounded == stable_time:
+            return "noaa-himawari9", stable_keys
+        raise FileNotFoundError
+
+    monkeypatch.setattr(hima_module, "find_matching_keys", fake_find_matching_keys)
+    monkeypatch.setattr(provider, "_s3", lambda: object())
+    monkeypatch.setattr(provider, "_download", lambda bucket, key: template_paths[0])
+
+    bucket, keys, used_time = provider._find_isatss(latest_time)
+
+    assert bucket == "noaa-himawari9"
+    assert keys == stable_keys
+    assert used_time == stable_time
