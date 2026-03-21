@@ -56,13 +56,9 @@ overturemaps --help
 
 Zstarview is intended to be installed using [`pipx`](https://pypa.github.io/pipx/).
 
-> Note: Windows on Arm64 is currently not supported for installation.
-> As of 2026-03-15, `pipx install zstarview` / `pipx install .` can fail on
-> that platform because native dependencies such as `shapely` may need to be
-> built from source and do not install cleanly in this environment.
-> The cloud-disc path no longer depends on `pyresample`, so that package is no
-> longer part of the Windows Arm64 installation blocker.
-> Linux x86_64 is the primary tested platform.
+> Note: Linux x86_64 is the primary tested platform. The cloud-disc path no
+> longer depends on `pyresample`, so its previous Windows on Arm64 installation
+> blocker has been removed.
 
 ```bash
 pipx install zstarview
@@ -513,6 +509,10 @@ Logs are also written to a file (platform‑dependent). Examples:
 
 If normal startup closes too quickly to inspect, try `zstarview-debug` from a terminal.
 It is mainly for Windows troubleshooting. On Linux, `zstarview-debug` behaves the same as `zstarview`.
+
+On Windows, Windows Security may block loading Python extension modules and the app may stop during startup.
+If that happens, changing the Smart App Control setting under Windows Security `App & browser control` may help.
+However, this weakens security, so it is not recommended outside a trusted environment.
 
 </details>
 
