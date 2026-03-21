@@ -64,12 +64,12 @@ def test_sky_disc_can_reduce_disc_opacity_without_changing_rgb_samples() -> None
         view_center=(0.0, 0.0),
         sun_altaz=(-90.0, 0.0),
         alpha=1.0,
-        disc_opacity=0.35,
+        disc_opacity=0.45,
         eclipse_factor=1.0,
     )
     arr = qimage_to_np_rgba(img)
 
-    assert int(arr[20, 80, 3]) == 89
+    assert int(arr[20, 80, 3]) == 115
     assert int(arr[20, 80, :3].max()) <= 1
 
 
@@ -90,10 +90,10 @@ def test_uniform_sky_disc_uses_single_disc_color() -> None:
 
 def test_uniform_sky_disc_can_reduce_disc_opacity() -> None:
     geom = ScreenGeometry(center=(80, 80), radius=80)
-    img = draw_uniform_sky_color_disc(geom, view_center=(0.0, 0.0), disc_opacity=0.35)
+    img = draw_uniform_sky_color_disc(geom, view_center=(0.0, 0.0), disc_opacity=0.45)
     arr = qimage_to_np_rgba(img)
 
-    assert int(arr[80, 80, 3]) == 89
+    assert int(arr[80, 80, 3]) == 115
     assert np.all(np.abs(arr[80, 80, :3].astype(int) - np.array([10, 10, 10])) <= 1)
 
 

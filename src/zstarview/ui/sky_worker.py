@@ -35,7 +35,7 @@ from ..render import draw_sky_disc
 from ..types import CelestialData
 
 logger = logging.getLogger(__name__)
-TRANSPARENT_THEME_DISC_OPACITY = 0.35
+TRANSPARENT_THEME_DISC_OPACITY = 0.45
 
 
 def compute_sky_snapshot(
