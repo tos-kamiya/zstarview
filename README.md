@@ -93,6 +93,12 @@ zstarview --place "Matsue Station" --place-countrycode jp
 
 The CLI supports detailed startup configuration for location, time, rendering, and bundled viewpoint queries.
 
+For one-shot image export without starting the GUI, use the separate CLI tool:
+
+```bash
+zstarview-export-images Matsue -o matsue.png
+```
+
 <details>
   <summary>CLI reference</summary>
 
