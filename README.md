@@ -513,6 +513,7 @@ It is mainly for Windows troubleshooting. On Linux, `zstarview-debug` behaves th
 On Windows, Windows Security may block loading Python extension modules and the app may stop during startup.
 If that happens, changing the Smart App Control setting under Windows Security `App & browser control` may help.
 However, this weakens security, so it is not recommended outside a trusted environment.
+See [this Smart App Control screenshot](docs/images/windows-smart-app-control.png).
 
 </details>
 
