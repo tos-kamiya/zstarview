@@ -45,7 +45,7 @@ class EclipseInfo:
 
 
 # Load planetary ephemerides (SPICE kernel)
-eph = load("de440s.bsp")
+eph = load("de442s.bsp")
 earth = eph["earth"]
 sun = eph["sun"]
 moon = eph["moon"]

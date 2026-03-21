@@ -450,7 +450,7 @@ Install the missing `libxcb-cursor0` package with:
 ### Slow or Unstable Network / Offline Use
 1. Planetary ephemeris data
 
-   On the very first launch, the app downloads a planetary ephemeris file (`de440s.bsp`).
+   On the very first launch, the app downloads a planetary ephemeris file (`de442s.bsp`).
    This requires network connectivity once. After it is cached, the app can run offline.
 
 2. Cloud satellite imagery
