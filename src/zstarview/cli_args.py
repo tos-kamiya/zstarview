@@ -545,9 +545,9 @@ def build_export_image_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--layer-timeout-seconds",
         type=_parse_non_negative_float,
-        default=30.0,
+        default=90.0,
         metavar="SECONDS",
-        help="Maximum time to wait for enabled external layers (default: 30).",
+        help="Maximum time to wait for enabled external layers (default: 90).",
     )
     parser.add_argument(
         "--allow-partial-data",
