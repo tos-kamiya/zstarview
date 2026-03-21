@@ -1,33 +1,23 @@
 from __future__ import annotations
 
-from dataclasses import replace
 import logging
 import time
 from typing import Any
 
-from PySide6.QtCore import QPointF, QRectF, Qt
+from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QImage, QPainter, QPaintEvent
 
 from ..render import draw as render_draw
+from ..render.pipeline import (
+    RenderSceneData,
+    RenderHudState,
+    RenderStyle,
+    compute_star_render_surface_size,
+    render_scene_into_painter,
+)
 from ..types import CelestialData, ViewerData
 
 logger = logging.getLogger(__name__)
-
-_ORIENTATION_INTERACTION_STAR_VMAG_LIMIT = 4.0
-
-
-def _star_line_width_scale(window: Any, geometry: render_draw.ScreenGeometry) -> float:
-    return window.compute_star_render_upscale_factor(
-        geometry.radius * 2,
-        window._star_render_expected_width,
-    )
-
-
-def _content_fov_deg(window: Any, render_viewer: ViewerData | None = None) -> float:
-    if render_viewer is not None:
-        return float(render_viewer.content_fov_deg)
-    return float(window.content_fov_deg)
-
 
 class SkyWindowRenderMixin:
     def _render_cache_stamp(self, value: Any) -> Any:
@@ -101,71 +91,6 @@ class SkyWindowRenderMixin:
             self._status_line_message(),
         )
 
-    def _render_scene_into_painter(
-        self,
-        painter: QPainter,
-        geometry: render_draw.ScreenGeometry,
-        celestial_data: CelestialData,
-        render_viewer: ViewerData,
-        highlighted_object: Any | None,
-        highlighted_dso: Any | None,
-    ) -> None:
-        self._clear_background_layer(painter)
-        self._draw_background_layer(painter, geometry)
-        self._draw_sky_cloud_layers(painter, geometry, render_viewer)
-        if self.state.viewport_interaction_mode:
-            self._draw_viewport_interaction_layers(
-                painter,
-                geometry,
-                celestial_data,
-                render_viewer,
-            )
-            self._draw_status_line(painter)
-            return
-
-        label_reservations: list[QRectF] = []
-        label_candidates: list[dict[str, Any]] = []
-        self._draw_terrain_layers(
-            painter,
-            geometry,
-            celestial_data,
-            render_viewer,
-            highlighted_object,
-            highlighted_dso,
-            label_reservations,
-            label_candidates,
-        )
-        self._draw_star_layer(painter, geometry, celestial_data, render_viewer)
-        self._draw_aircraft_layer(painter, geometry, render_viewer, label_candidates)
-
-        enlarge_moon = self.enlarge_moon
-        if highlighted_object is not None:
-            obj = highlighted_object[0]
-            name = getattr(obj, "name", "") if hasattr(obj, "name") else obj.get("name", "")
-            enlarge_moon = enlarge_moon or name == "moon"
-
-        self._draw_planet_layer(
-            painter,
-            geometry,
-            celestial_data,
-            render_viewer,
-            enlarge_moon,
-            label_candidates,
-        )
-        self._draw_overlay_layer(
-            painter,
-            geometry,
-            celestial_data,
-            render_viewer,
-            highlighted_object,
-            highlighted_dso,
-            enlarge_moon,
-            label_reservations,
-            label_candidates,
-        )
-        self._draw_label_layer(painter, label_candidates)
-        self._draw_status_line(painter)
-
     def _draw_cached_frame(
         self,
         painter: QPainter,
@@ -198,6 +123,92 @@ class SkyWindowRenderMixin:
             location_height_m=self.viewer_data.location_height_m,
             show_observer_height=self.viewer_data.show_observer_height,
         )
+
+    def _render_inputs(
+        self,
+        *,
+        celestial_data: CelestialData,
+        render_viewer: ViewerData,
+    ) -> tuple[RenderSceneData, RenderStyle, RenderHudState]:
+        return (
+            SkyWindowRenderMixin._render_scene_data(
+                self,
+                celestial_data=celestial_data,
+                render_viewer=render_viewer,
+            ),
+            SkyWindowRenderMixin._render_style(self),
+            SkyWindowRenderMixin._render_hud_state(self),
+        )
+
+    def _render_scene_data(
+        self,
+        *,
+        celestial_data: CelestialData,
+        render_viewer: ViewerData,
+    ) -> RenderSceneData:
+        state = self.state
+        cloud_state = getattr(self, "cloud_state", None)
+        return RenderSceneData(
+            viewer=render_viewer,
+            celestial_data=celestial_data,
+            sky_disc_image=getattr(state, "sky_disc_image", None),
+            cloud_image=getattr(cloud_state, "image", None),
+            cloud_missing_mask=getattr(cloud_state, "missing_mask", None),
+            cloud_stripe_density=getattr(cloud_state, "stripe_density", None),
+            terrain_horizon_profile=getattr(state, "terrain_horizon_profile", None),
+            urban_outlines=getattr(state, "urban_outlines", None),
+            aircraft_overlay_points=getattr(state, "aircraft_overlay_points", None),
+        )
+
+    def _render_style(self) -> RenderStyle:
+        return RenderStyle(
+            visual_preset=self.visual_preset,
+            text_font=self.text_font,
+            status_line_font=getattr(self, "status_line_font", self.text_font),
+            show_dso=bool(getattr(self, "show_dso", False)),
+            show_asterisms=bool(getattr(self, "show_asterisms", False)),
+            enlarge_moon=bool(getattr(self, "enlarge_moon", False)),
+            star_base_radius=float(getattr(self, "star_base_radius", 1.0)),
+            star_visibility_boost=float(getattr(self, "star_visibility_boost", 1.0)),
+            vmag_limit=float(getattr(self, "vmag_limit", 6.0)),
+            cloud_disc_alpha=float(getattr(self, "cloud_disc_alpha", 0.0)),
+            terrain_horizon_opacity=float(getattr(self, "terrain_horizon_opacity", 0.0)),
+            urban_outline_opacity=float(getattr(self, "urban_outline_opacity", 0.2)),
+            show_urban_outline_layer=bool(getattr(self, "show_urban_outline_layer", True)),
+            aircraft_opacity=float(getattr(self, "aircraft_opacity", 1.0)),
+            star_render_expected_width=int(self._star_render_expected_width),
+        )
+
+    def _render_hud_state(self) -> RenderHudState:
+        status_message = None
+        if hasattr(self, "_status_line_message"):
+            status_message = self._status_line_message()
+        return RenderHudState(
+            mouse_pos=self.state.mouse_pos,
+            viewport_interaction_mode=bool(self.state.viewport_interaction_mode),
+            viewport_interaction_stars=self.state.viewport_interaction_stars,
+            status_message=status_message,
+        )
+
+    def _update_star_render_stats(self, geometry: render_draw.ScreenGeometry) -> None:
+        win_w = int(self.width())
+        win_h = int(self.height())
+        low_w, low_h = compute_star_render_surface_size(
+            win_w,
+            win_h,
+            geometry.radius * 2,
+            int(self._star_render_expected_width),
+        )
+        stats = (win_w, win_h, low_w, low_h)
+        if stats != self.state.last_star_render_stats:
+            logger.info(
+                "Star render resolution: window=%dx%d draw=%dx%d",
+                win_w,
+                win_h,
+                low_w,
+                low_h,
+            )
+            self.state.last_star_render_stats = stats
 
     def _active_jump_highlight_object(self, geometry):
         jump_highlight_name = self.state.jump_highlight_name
@@ -290,355 +301,23 @@ class SkyWindowRenderMixin:
             highlighted_object=highlighted_object,
             highlighted_dso=highlighted_dso,
         )
+        self._update_star_render_stats(geometry)
+        scene, style, hud = self._render_inputs(
+            celestial_data=celestial_data,
+            render_viewer=render_viewer,
+        )
         self._draw_cached_frame(
             painter,
             frame_key,
-            lambda frame_painter: self._render_scene_into_painter(
+            lambda frame_painter: render_scene_into_painter(
                 frame_painter,
-                geometry,
-                celestial_data,
-                render_viewer,
-                highlighted_object,
-                highlighted_dso,
-            ),
-        )
-
-    def _draw_viewport_interaction_layers(
-        self,
-        painter: QPainter,
-        geometry: render_draw.ScreenGeometry,
-        celestial_data: CelestialData,
-        render_viewer: ViewerData,
-    ) -> None:
-        content_fov_deg = _content_fov_deg(self, render_viewer)
-        line_width_scale = _star_line_width_scale(self, geometry)
-        interaction_celestial_data = celestial_data
-        if self.state.viewport_interaction_stars is not None:
-            interaction_celestial_data = replace(
-                celestial_data,
-                stars=self.state.viewport_interaction_stars,
-            )
-        render_draw.draw_sky_reference_lines(painter, geometry, celestial_data, render_viewer)
-        self._draw_star_layer(
-            painter,
-            geometry,
-            interaction_celestial_data,
-            render_viewer,
-            draw_vmag_limit=_ORIENTATION_INTERACTION_STAR_VMAG_LIMIT,
-        )
-        render_draw.draw_terrain_horizon_line(
-            painter,
-            geometry,
-            self.state.terrain_horizon_profile,
-            render_viewer.view_center,
-            opacity=self.terrain_horizon_opacity,
-            line_width_scale=line_width_scale,
-            content_fov_deg=content_fov_deg,
-        )
-        render_draw.draw_direction_labels(
-            painter,
-            geometry,
-            render_viewer.view_center,
-            self.text_font,
-            self.state.mouse_pos,
-            preset=self.visual_preset,
-            content_fov_deg=content_fov_deg,
-        )
-        render_draw.draw_zenith_marker(
-            painter,
-            geometry,
-            render_viewer.view_center,
-            content_fov_deg=content_fov_deg,
-        )
-
-    def _clear_background_layer(self, painter: QPainter) -> None:
-        painter.save()
-        painter.setCompositionMode(QPainter.CompositionMode_Clear)
-        painter.fillRect(self.rect(), Qt.transparent)
-        painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
-        painter.restore()
-
-    def _draw_background_layer(self, painter: QPainter, geometry: render_draw.ScreenGeometry) -> None:
-        content_fov_deg = _content_fov_deg(self)
-        render_draw.draw_radial_background(
-            painter,
-            QRectF(self.rect()),
-            geometry,
-            preset=self.visual_preset,
-            content_fov_deg=content_fov_deg,
-        )
-
-    def _draw_sky_cloud_layers(
-        self,
-        painter: QPainter,
-        geometry: render_draw.ScreenGeometry,
-        render_viewer: ViewerData,
-    ) -> None:
-        content_fov_deg = _content_fov_deg(self, render_viewer)
-        self._compositor.draw(
-            painter,
-            geometry,
-            self.state.sky_disc_image,
-            self.cloud_state.image,
-            cloud_alpha=self.cloud_disc_alpha,
-            view_center=self.state.render_view_center,
-            observer_lat_deg=render_viewer.location[0],
-            stripe_density=self.cloud_state.stripe_density,
-            missing_mask=self.cloud_state.missing_mask,
-            terrain_profile_altaz=(
-                self.state.terrain_horizon_profile if self.terrain_horizon_opacity > 0.0 else None
-            ),
-            content_fov_deg=content_fov_deg,
-        )
-
-    def _draw_terrain_layers(
-        self,
-        painter: QPainter,
-        geometry: render_draw.ScreenGeometry,
-        celestial_data: CelestialData,
-        render_viewer: ViewerData,
-        highlighted_object: Any | None,
-        highlighted_dso: Any | None,
-        label_reservations: list[QRectF],
-        label_candidates: list[dict[str, Any]],
-    ) -> None:
-        content_fov_deg = _content_fov_deg(self, render_viewer)
-        line_width_scale = _star_line_width_scale(self, geometry)
-        if self.show_dso:
-            render_draw.draw_deep_sky_shapes(
-                painter,
-                geometry,
-                celestial_data,
-                render_viewer,
-                preset=self.visual_preset,
-            )
-            render_draw.draw_dso_hover_info(
-                painter,
-                geometry,
-                render_viewer,
-                highlighted_dso,
-                self.text_font,
-                preset=self.visual_preset,
-            )
-        if self.show_asterisms:
-            render_draw.draw_asterisms(
-                painter,
-                geometry,
-                celestial_data,
-                render_viewer,
-                highlighted_object,
-                self.text_font,
-                label_reservations,
-                label_candidates=label_candidates,
-                preset=self.visual_preset,
-                line_width_scale=line_width_scale,
-                content_fov_deg=content_fov_deg,
-            )
-        render_draw.draw_sky_reference_lines(painter, geometry, celestial_data, render_viewer)
-        render_draw.draw_terrain_horizon_line(
-            painter,
-            geometry,
-            self.state.terrain_horizon_profile,
-            render_viewer.view_center,
-            opacity=self.terrain_horizon_opacity,
-            line_width_scale=line_width_scale,
-            content_fov_deg=content_fov_deg,
-        )
-        self._draw_urban_outline_layer(painter, geometry, render_viewer)
-        render_draw.draw_direction_labels(
-            painter,
-            geometry,
-            render_viewer.view_center,
-            self.text_font,
-            self.state.mouse_pos,
-            preset=self.visual_preset,
-            content_fov_deg=content_fov_deg,
-        )
-        render_draw.draw_zenith_marker(
-            painter,
-            geometry,
-            render_viewer.view_center,
-            content_fov_deg=content_fov_deg,
-        )
-
-    def _draw_urban_outline_layer(
-        self,
-        painter: QPainter,
-        geometry: render_draw.ScreenGeometry,
-        render_viewer: ViewerData,
-    ) -> None:
-        if not getattr(self, "show_urban_outline_layer", True):
-            return
-        content_fov_deg = _content_fov_deg(self, render_viewer)
-        line_width_scale = _star_line_width_scale(self, geometry)
-        render_draw.draw_urban_outlines(
-            painter,
-            geometry,
-            self.state.urban_outlines,
-            render_viewer.view_center,
-            opacity=getattr(self, "urban_outline_opacity", 0.2),
-            line_width_scale=line_width_scale,
-            content_fov_deg=content_fov_deg,
-        )
-
-    def _draw_aircraft_layer(
-        self,
-        painter: QPainter,
-        geometry: render_draw.ScreenGeometry,
-        render_viewer: ViewerData,
-        label_candidates: list[dict[str, Any]],
-    ) -> None:
-        content_fov_deg = _content_fov_deg(self, render_viewer)
-        line_width_scale = _star_line_width_scale(self, geometry)
-        render_draw.draw_aircraft_overlay(
-            painter,
-            geometry,
-            self.state.aircraft_overlay_points,
-            render_viewer.view_center,
-            opacity=getattr(self, "aircraft_opacity", 1.0),
-            line_width_scale=line_width_scale,
-            label_candidates=label_candidates,
-            preset=self.visual_preset,
-            content_fov_deg=content_fov_deg,
-        )
-
-    def _draw_star_layer(
-        self,
-        painter: QPainter,
-        geometry: render_draw.ScreenGeometry,
-        celestial_data: CelestialData,
-        render_viewer: ViewerData,
-        *,
-        draw_vmag_limit: float | None = None,
-    ) -> None:
-        content_fov_deg = _content_fov_deg(self, render_viewer)
-        win_w = self.width()
-        win_h = self.height()
-        low_w, low_h = self.compute_star_render_surface_size(
-            win_w,
-            win_h,
-            geometry.radius * 2,
-            self._star_render_expected_width,
-        )
-        stats = (win_w, win_h, low_w, low_h)
-        last_star_render_stats = self.state.last_star_render_stats
-        if stats != last_star_render_stats:
-            logger.info(
-                "Star render resolution: window=%dx%d draw=%dx%d",
-                win_w,
-                win_h,
-                low_w,
-                low_h,
-            )
-            self.state.last_star_render_stats = stats
-
-        if low_w == win_w and low_h == win_h:
-            render_draw.draw_stars(
-                painter,
-                geometry,
-                celestial_data,
-                render_viewer,
-                self.star_base_radius,
-                visibility_boost=self.star_visibility_boost,
-                draw_vmag_limit=draw_vmag_limit if draw_vmag_limit is not None else self.vmag_limit,
-                viewport_size=(win_w, win_h),
-                content_fov_deg=content_fov_deg,
-            )
-            return
-
-        low_img = QImage(low_w, low_h, QImage.Format.Format_ARGB32_Premultiplied)
-        low_img.fill(Qt.GlobalColor.transparent)
-        low_painter = QPainter(low_img)
-        low_painter.setRenderHint(QPainter.Antialiasing, False)
-        low_painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
-        sx = low_w / max(1.0, float(win_w))
-        sy = low_h / max(1.0, float(win_h))
-        low_geometry = render_draw.ScreenGeometry(
-            center=(
-                int(round(geometry.center[0] * sx)),
-                int(round(geometry.center[1] * sy)),
-            ),
-            radius=max(1, int(round(geometry.radius * min(sx, sy)))),
-        )
-        render_draw.draw_stars(
-            low_painter,
-            low_geometry,
-            celestial_data,
-            render_viewer,
-            self.star_base_radius,
-            visibility_boost=self.star_visibility_boost,
-            draw_vmag_limit=draw_vmag_limit if draw_vmag_limit is not None else self.vmag_limit,
-            viewport_size=(low_w, low_h),
-            content_fov_deg=content_fov_deg,
-        )
-        low_painter.end()
-
-        painter.save()
-        painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
-        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_Plus)
-        painter.drawImage(self.rect(), low_img)
-        painter.restore()
-
-    def _draw_planet_layer(
-        self,
-        painter: QPainter,
-        geometry: render_draw.ScreenGeometry,
-        celestial_data: CelestialData,
-        render_viewer: ViewerData,
-        enlarge_moon: bool,
-        label_candidates: list[dict[str, Any]],
-    ) -> None:
-        content_fov_deg = _content_fov_deg(self, render_viewer)
-        render_draw.draw_solar_system_bodies(
-            painter,
-            geometry,
-            celestial_data,
-            render_viewer,
-            enlarge_moon,
-            text_font=self.text_font,
-            label_candidates=label_candidates,
-            draw_labels=True,
-            preset=self.visual_preset,
-            content_fov_deg=content_fov_deg,
-        )
-
-    def _draw_overlay_layer(
-        self,
-        painter: QPainter,
-        geometry: render_draw.ScreenGeometry,
-        celestial_data: CelestialData,
-        render_viewer: ViewerData,
-        highlighted_object: Any | None,
-        highlighted_dso: Any | None,
-        enlarge_moon: bool,
-        label_reservations: list[QRectF],
-        label_candidates: list[dict[str, Any]],
-    ) -> None:
-        render_draw.draw_overlay_info(
-            painter,
-            geometry,
-            celestial_data,
-            render_viewer,
-            self.vmag_limit,
-            enlarge_moon,
-            highlighted_dso,
-            highlighted_object,
-            self.text_font,
-            label_candidates=label_candidates,
-            label_reservations=label_reservations,
-            preset=self.visual_preset,
-        )
-
-    def _draw_label_layer(self, painter: QPainter, label_candidates: list[dict[str, Any]]) -> None:
-        render_draw.draw_label_candidates(painter, label_candidates, self.text_font)
-
-    def _draw_status_line(self, painter: QPainter) -> None:
-        message = self._status_line_message()
-        if message:
-            render_draw.draw_status_line_text(
-                painter=painter,
-                message=message,
-                status_line_font=self.status_line_font,
+                geometry=geometry,
                 viewport_rect=self.rect(),
-                preset=self.visual_preset,
-            )
+                scene=scene,
+                style=style,
+                hud=hud,
+                compositor=self._compositor,
+                highlighted_object=highlighted_object,
+                highlighted_dso=highlighted_dso,
+            ),
+        )
