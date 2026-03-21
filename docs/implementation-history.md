@@ -34,6 +34,14 @@
   - 初版は `mountain_viewpoints.json` を別 dataset とし、`tower_viewpoints.json` とは分けて管理する。
   - 将来的には mountain も tower と同じ viewpoint CLI から参照できる形を想定する。
 
+- 単発画像書き出し CLI の仕様と入口を設計する
+  - GUI 常駐 `main` とは別の headless CLI とする。
+  - 地点、時刻、視線、描画オプションは既存 `zstarview` CLI とできるだけ共有する。
+  - GUI 専用の `--sky-update-interval` と `--window-geometry` は共有しない。
+  - 画像書き出し固有オプションとして、少なくとも `--output`、`--image-size`、`--layer-timeout-seconds`、`--allow-partial-data` を持たせる方針とする。
+  - 部分データ出力は既定では許可せず、明示 opt-in にする。
+  - 描画本体は shared pipeline を使い、hover/HUD を含まないベース描画を既定とする。
+
 ## 4. TODO
 
 - GUI 上で時刻を前後できるダイナミックなタイムシフト操作を追加する
@@ -68,6 +76,11 @@
   - 通常のアステリズム線と通常サイズの月はベース描画に残し、hover 時の強調だけを HUD 側で上書きする構成へ切り替えた。
   - 月の `5x` 拡大は、角半径の生値ではなく通常時の見た目半径を基準に適用するよう修正した。
   - 月 hover についても `name == "moon"` を持つ hover object なら拡大上書きに入るようにした。
+
+- CLI 引数 builder の分割
+  - `cli_args.py` の parser 構築を、地点、dataset query、時刻、描画の helper 関数群へ分割した。
+  - main app 側は `build_main_argument_parser()` を使う形に整理した。
+  - dataset query の整合性検証は、その parser に存在するオプションだけを見るようにして、将来の画像書き出し CLI parser でも再利用できるようにした。
 
 ### 2026-03-19
 

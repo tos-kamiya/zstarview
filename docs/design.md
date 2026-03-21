@@ -56,6 +56,7 @@
   - CLI オプション定義と値解釈
   - タワー一覧・タワー詳細 JSON 出力の即時終了オプションを扱う
   - `--place`、`--place-countrycode`、`--place-lang` の online 地点検索オプションを扱う
+  - parser 構築は `add_location_arguments()`、`add_dataset_query_arguments()`、`add_time_arguments()`、`add_render_arguments()` の helper に分割し、将来の別 CLI からも再利用できるようにする
 - `src/zstarview/startup.py`
   - 起動時の地点解決、設定復元、初期値決定
   - Nominatim による online 地点検索と結果正規化を扱う
@@ -155,6 +156,28 @@
   - 次回起動時は再検索せず、この保存済み結果をそのまま `ResolvedLocation` へ復元する。
 - `config.py` は `str | object` を読めるようにし、未知形式は安全側で無視または起動失敗へ正規化する。
 - 保存形式が異なっても、起動後に UI へ渡す地点モデルは共通の `ResolvedLocation` に揃える。
+
+### 4.2.4 単発画像書き出し CLI
+
+GUI 常駐とは別に、1 枚の画像を書き出して終了する headless CLI 経路を持つ想定とする。
+
+- 想定エントリポイントは `zstarview-export-image` とする。
+- この経路は `zstarview.py` の GUI `main()` と別の `main` を持ち、Qt のイベントループ駆動や `SkyWindow` 常駐初期化には依存しない。
+- parser は `cli_args.py` の helper 群を組み合わせて構築し、地点、時刻、視線、描画オプションは通常 CLI と共有する。
+- 画像書き出し CLI 固有オプションは少なくとも次を想定する。
+  - `--output`
+  - `--image-size`
+  - `--layer-timeout-seconds`
+  - `--allow-partial-data`
+- `--window-geometry` と `--sky-update-interval` は GUI 専用とし、この CLI では parser に載せない。
+- dataset 参照専用オプション群も、この CLI では parser に載せない。
+- 地点解決と天体計算は GUI と同じ下位ロジックを共有するが、レイヤー取得順序は GUI と共有しない。
+- 出力画像には既定で hover/HUD を含めず、`RenderSceneData` と `RenderStyle` を中心にベース描画だけを行う想定とする。
+- `guide` はベース描画に含めてよい。
+- 外部依存レイヤーの取得は逐次でも並列でもよいが、CLI 側では「いつまで待つか」と「部分データを許容するか」を引数で決められるようにする。
+- 既定は安全側として「部分データは保存しない」とし、明示的に `--allow-partial-data` を指定したときだけ部分出力を許可する。
+- `opacity == 0` で無効化されたレイヤーは、取得キュー自体に積まず、layer timeout の待機対象からも外す。
+- 初版は `QImage` に対して shared pipeline を直接描く経路を優先し、デスクトップの実スクリーンショット取得には依存しない。
 
 ### 4.3 描画
 
