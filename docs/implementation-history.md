@@ -232,6 +232,10 @@
   - これにより、`pyresample` の配布事情に引きずられずに cloud-disc 機能を維持できる構成になった。
   - `dev-samples/compare_pyresample_cloud_disc.py` を使って Himawari / GOES の複数ケースを比較し、確認した範囲では `bt_warm`、`bt_cold`、BT 配列、可視 mask、最終画像の差分はすべて `0` だった。
 
+- Windows Arm64 でのインストール再確認
+  - `pyresample` とその連鎖依存を削除した後、Windows Arm64 環境で `pipx install` が通ることを確認した。
+  - 一方で、実行時には Windows Security の Smart App Control により Python 拡張モジュールの読込がブロックされる場合があり、そのケースでは設定変更で回避できることを README のトラブルシュートに追記した。
+
 - Himawari warm-threshold の安定化
   - Himawari の部分タイル最適化後、observer 周辺タイルだけでは赤道帯サンプルが消え、`eq_samples=0` により warm-threshold が固定 fallback へ落ちる問題が出た。
   - このため、observer 周辺の描画用タイルに加えて、観測経度付近の赤道帯を横切る少数タイルを追加取得するようにした。
