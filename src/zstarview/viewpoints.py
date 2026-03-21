@@ -9,8 +9,8 @@ from typing import Any, Callable, Iterable
 
 def normalize_viewpoint_name(text: str) -> str:
     folded = unicodedata.normalize("NFKC", text).casefold().strip()
-    folded = folded.replace("’", "").replace("'", "")
-    folded = folded.replace("–", "-").replace("—", "-")
+    folded = folded.replace("\u2019", "").replace("'", "")
+    folded = folded.replace("\u2013", "-").replace("\u2014", "-")
     return " ".join(folded.split())
 
 
@@ -24,12 +24,12 @@ def ascii_fallback_name(text: str) -> str | None:
     if not source or looks_like_qid_placeholder(source):
         return None
     replaced = (
-        source.replace("’", "'")
-        .replace("‘", "'")
-        .replace("“", '"')
-        .replace("”", '"')
-        .replace("–", "-")
-        .replace("—", "-")
+        source.replace("\u2019", "'")
+        .replace("\u2018", "'")
+        .replace("\u201c", '"')
+        .replace("\u201d", '"')
+        .replace("\u2013", "-")
+        .replace("\u2014", "-")
     )
     decomposed = unicodedata.normalize("NFKD", replaced)
     ascii_text = "".join(

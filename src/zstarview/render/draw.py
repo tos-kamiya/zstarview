@@ -1213,8 +1213,8 @@ def draw_stars(
     Draw stars using a numpy canvas that paints uniformly sized rectangles.
 
     The visual area of each star is derived from its magnitude (a 1st-magnitude
-    star maps to a 6×6 rectangle), and the color intensity is reduced for stars
-    whose calculated area falls below 1 pixel². The resulting RGB canvas is
+    star maps to a 6x6 rectangle), and the color intensity is reduced for stars
+    whose calculated area falls below 1 pixel^2. The resulting RGB canvas is
     converted into a `QImage` and blended additively to the painter before
     drawing other objects.
 
@@ -1499,7 +1499,7 @@ def draw_moon(
             fillcolor=(0, 0, 0, 0),  # keep transparency outside the rotated bounds
         )
 
-    pixmap = pil2qpixmap(moon_img_pil)  # should handle RGBA → QPixmap with alpha
+    pixmap = pil2qpixmap(moon_img_pil)  # should handle RGBA -> QPixmap with alpha
     target_rect = QRectF(center.x() - img_size / 2, center.y() - img_size / 2, img_size, img_size)
 
     painter.save()

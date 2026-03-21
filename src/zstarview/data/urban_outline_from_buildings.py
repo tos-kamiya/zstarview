@@ -142,12 +142,12 @@ def select_towers(
 
 def _is_japan_tower(tower: TowerViewpoint) -> bool:
     country = str(tower.meta.get("country", "")).strip().casefold()
-    if country in {"jp", "jpn", "japan", "日本"}:
+    if country in {"jp", "jpn", "japan", "\u65e5\u672c"}:
         return True
     labels = " ".join(tower.labels.values())
     names = " ".join(tower.names)
     haystack = " ".join((tower.name, labels, names))
-    return "日本" in haystack or normalize_viewpoint_name(haystack).endswith(" japan")
+    return "\u65e5\u672c" in haystack or normalize_viewpoint_name(haystack).endswith(" japan")
 
 
 def compute_urban_outlines(

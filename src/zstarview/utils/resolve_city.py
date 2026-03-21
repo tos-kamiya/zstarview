@@ -82,8 +82,8 @@ def _norm(s: str) -> str:
     """
     s = _nfkc_casefold(s)
     s = _strip_diacritics(s)
-    s = s.replace("’", "").replace("'", "")
-    s = s.replace("–", "-").replace("—", "-")
+    s = s.replace("\u2019", "").replace("'", "")
+    s = s.replace("\u2013", "-").replace("\u2014", "-")
     s = " ".join(s.split())
     return s
 

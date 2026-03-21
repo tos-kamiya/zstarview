@@ -553,7 +553,7 @@ def _startup_load_stars(args_vmag_limit: Optional[float]) -> pl.DataFrame:
         raise StartupAbortError() from exc
 
     limit_str = args_vmag_limit if args_vmag_limit is not None else "no limit"
-    logger.info("Loaded %d stars (Vmag ≤ %s)", len(star_catalog), limit_str)
+    logger.info("Loaded %d stars (Vmag <= %s)", len(star_catalog), limit_str)
     return star_catalog
 
 
