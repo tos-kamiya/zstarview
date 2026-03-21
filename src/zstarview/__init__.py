@@ -9,6 +9,12 @@ def main() -> None:
     _main()
 
 
+def debug_main() -> None:
+    from .zstarview import main as _main
+
+    _main()
+
+
 def make_desktop_file_main() -> None:
     from .make_desktop_file import main as _main
 

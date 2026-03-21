@@ -282,7 +282,7 @@ def add_render_arguments(
         "--vmag-brightness-multiplier",
         type=_parse_vmag_brightness_multiplier,
         default=2.5,
-        help="Brightness multiplier per magnitude step (allowed range: 1.58–2.512, default: 2.5; 2.512 is the classical Pogson value).",
+        help="Brightness multiplier per magnitude step (allowed range: 1.58-2.512, default: 2.5; 2.512 is the classical Pogson value).",
     )
     parser.add_argument(
         "-m",

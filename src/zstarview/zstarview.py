@@ -31,6 +31,7 @@ from .startup import (
     _startup_load_stars,
     _startup_parse_time_arguments,
     _startup_resolve_city,
+    _startup_verify_ephemeris,
     setup_root_logger,
 )
 from .tower_viewpoints import (
@@ -161,6 +162,7 @@ def main() -> None:
         delta_t = _startup_parse_time_arguments(args.datetime, args.days, args.hours)
         star_catalog = _startup_load_stars(args.vmag_limit)
         dso_catalog = _startup_load_dso()
+        _startup_verify_ephemeris()
     except StartupAbortError:
         time.sleep(3)
         return
@@ -242,3 +244,7 @@ def main() -> None:
     main_win.initial_data_loaded.connect(_on_initial_loaded)
 
     sys.exit(app.exec())
+
+
+if __name__ == "__main__":
+    main()

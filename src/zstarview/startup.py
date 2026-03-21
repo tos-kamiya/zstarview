@@ -10,6 +10,7 @@ from typing import Any, List, Optional, Tuple
 
 import polars as pl
 
+from .astro import _starfield_load
 from .catalog import load_dso_catalog, load_star_catalog
 from .config import load_last_city, save_last_city
 from .nominatim_search import search as search_nominatim
@@ -20,6 +21,7 @@ from .paths import (
     CITY_ADMIN1_CODES_FILE,
     CITY_COORD_FILE,
     DSO_CSV_FILE,
+    EPHEMERIS_FILENAME,
     LOG_PATH,
     STARS_CSV_FILE,
 )
@@ -69,7 +71,12 @@ def setup_root_logger() -> logging.Logger:
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / "app.log"
 
-    file_handler = logging.FileHandler(log_path, encoding="utf-8")
+    try:
+        file_handler = logging.FileHandler(log_path, encoding="utf-8")
+    except OSError as exc:
+        logger.warning("Failed to open log file %s: %s", log_path, exc)
+        return root_logger
+
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(
         logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -548,6 +555,25 @@ def _startup_load_stars(args_vmag_limit: Optional[float]) -> pl.DataFrame:
     limit_str = args_vmag_limit if args_vmag_limit is not None else "no limit"
     logger.info("Loaded %d stars (Vmag ≤ %s)", len(star_catalog), limit_str)
     return star_catalog
+
+
+def _startup_verify_ephemeris() -> None:
+    """Ensure the Skyfield ephemeris is available before background sky updates begin."""
+    logger.info("Checking ephemeris cache...")
+    try:
+        _starfield_load(EPHEMERIS_FILENAME)
+    except OSError as exc:
+        logger.error(
+            "Failed to load ephemeris %s. The app cannot continue until this file "
+            "is available in the cache. %s",
+            EPHEMERIS_FILENAME,
+            exc,
+        )
+        raise StartupAbortError() from exc
+    except Exception as exc:
+        logger.error("Unexpected ephemeris load failure for %s: %s", EPHEMERIS_FILENAME, exc)
+        raise StartupAbortError() from exc
+    logger.info("Ephemeris ready: %s", EPHEMERIS_FILENAME)
 
 
 def _startup_load_dso() -> Optional[pl.DataFrame]:
