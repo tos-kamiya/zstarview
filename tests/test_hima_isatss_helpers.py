@@ -4,6 +4,7 @@ import datetime as dt
 from pathlib import Path
 
 import numpy as np
+import pytest
 import xarray as xr
 from pyproj import Transformer
 
@@ -17,6 +18,15 @@ from zstarview.clouddisc.providers._hima_isatss import (
 )
 from zstarview.clouddisc.providers.hima import HimaProvider
 from zstarview.clouddisc.sampling.bt_sampler import build_bt_sampler
+
+pytestmark = [
+    pytest.mark.filterwarnings(
+        "ignore:You will likely lose important projection information when converting to a PROJ string:UserWarning"
+    ),
+    pytest.mark.filterwarnings(
+        "ignore:Conversion of an array with ndim > 0 to a scalar is deprecated:DeprecationWarning"
+    ),
+]
 
 
 def _projection_attrs() -> dict[str, float | str]:
@@ -115,12 +125,10 @@ def test_hima_provider_local_tiles_attach_area_and_sample(tmp_path: Path) -> Non
     assert np.isclose(area.area_extent[0], float(da.x.values[0]) * geos_scale)
     to_lonlat = Transformer.from_crs(area.crs, "EPSG:4326", always_xy=True)
     ix, iy = 10, 10
-    lon_arr, lat_arr = to_lonlat.transform(
-        np.array([float(da.x.values[ix])], dtype=np.float64),
-        np.array([float(da.y.values[iy])], dtype=np.float64),
+    lon, lat = to_lonlat.transform(
+        float(da.x.values[ix]),
+        float(da.y.values[iy]),
     )
-    lon = float(lon_arr[0])
-    lat = float(lat_arr[0])
     sampled = build_bt_sampler(da)(
         np.array([[lon]], dtype=np.float64),
         np.array([[lat]], dtype=np.float64),

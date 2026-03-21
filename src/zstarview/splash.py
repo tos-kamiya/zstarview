@@ -13,8 +13,6 @@ from .paths import APP_AUTHOR, APP_DISPLAY_NAME, APP_ICON_FILE, APP_ID, CACHE_PA
 
 logger = logging.getLogger(__name__)
 
-logging.getLogger("satpy.readers.core.utils").setLevel(logging.WARNING)
-
 _cache_path = Path(CACHE_PATH)
 _cache_path.mkdir(parents=True, exist_ok=True)
 
