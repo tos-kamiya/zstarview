@@ -731,3 +731,7 @@ def main() -> None:
         sixel_ok = _write_sixel_to_stdout(image, img2sixel_bin=img2sixel_bin)
         if not sixel_ok and not saved_output:
             raise SystemExit(1)
+
+
+if __name__ == "__main__":
+    main()

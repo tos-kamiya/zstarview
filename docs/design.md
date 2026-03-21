@@ -163,6 +163,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 - エントリポイントは `zstarview-export-image` とする。
 - この経路は `zstarview.py` の GUI `main()` と別の `main` を持つ。
+- console script 経由だけでなく、`python -m zstarview.export_image` / `uv run -m zstarview.export_image` でも起動できるよう、モジュール末尾に `if __name__ == "__main__": main()` を置く。
 - parser は `cli_args.py` の helper 群を組み合わせて構築し、地点、時刻、視線、描画オプションは通常 CLI と共有する。
 - 画像書き出し CLI 固有オプションは少なくとも次を想定する。
   - `--output`
