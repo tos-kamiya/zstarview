@@ -62,6 +62,8 @@ Zstarview 自体は、[`pipx`](https://pypa.github.io/pipx/) を使ってイン�
 > 2026-03-15 時点では、その環境で `pipx install zstarview` や
 > `pipx install .` を実行すると、`shapely` などのネイティブ依存が
 > ソースビルドになって正常に入らず、失敗することがあります。
+> cloud-disc 系は `pyresample` 依存を削除したため、少なくともその依存は
+> Windows Arm64 インストール失敗要因ではなくなりました。
 > 主に検証している環境は Linux x86_64 です。
 
 ```bash
@@ -227,6 +229,18 @@ zstarview --datetime "2025-09-12 9" Tokyo         # 9時ちょうど
 zstarview --datetime "2025-09-12 09:00" Tokyo     # 9:00
 zstarview --datetime "2025-09-12 9:0:0 JST" Tokyo # 9:00:00 JST
 ```
+
+## 開発メモ: cloud-disc の `pyresample` 同等性確認
+
+比較用スクリプト [`dev-samples/compare_pyresample_cloud_disc.py`](dev-samples/compare_pyresample_cloud_disc.py) を用意しています。比較環境側に `pyresample` が入っていれば、現在の内部 `area` 実装と `pyresample.AreaDefinition` 経路を同じ入力で並べて比較できます。
+
+このスクリプトを使って Himawari / GOES の両方で複数の `alt` / `az` 条件を確認し、少なくとも確認したケースでは次の差分はすべて `0` でした。
+
+- `bt_warm`
+- `bt_cold`
+- サンプリング後の BT 配列
+- 可視 mask
+- 最終 LA 画像
 
 #### 緯度経度の直接指定
 

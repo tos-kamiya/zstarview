@@ -60,6 +60,8 @@ Zstarview is intended to be installed using [`pipx`](https://pypa.github.io/pipx
 > As of 2026-03-15, `pipx install zstarview` / `pipx install .` can fail on
 > that platform because native dependencies such as `shapely` may need to be
 > built from source and do not install cleanly in this environment.
+> The cloud-disc path no longer depends on `pyresample`, so that package is no
+> longer part of the Windows Arm64 installation blocker.
 > Linux x86_64 is the primary tested platform.
 
 ```bash
@@ -227,6 +229,18 @@ zstarview --datetime "2025-09-12 9" Tokyo         # 9 o'clock
 zstarview --datetime "2025-09-12 09:00" Tokyo     # 9:00
 zstarview --datetime "2025-09-12 9:0:0 JST" Tokyo # 9:00:00 JST
 ```
+
+## Developer Note: Cloud-Disc Parity Check
+
+The repository includes [`dev-samples/compare_pyresample_cloud_disc.py`](dev-samples/compare_pyresample_cloud_disc.py) to compare the current internal geostationary `area` implementation against a `pyresample.AreaDefinition` path when `pyresample` is installed in the comparison environment.
+
+This was used to validate the `pyresample` removal on both Himawari and GOES inputs across multiple `alt` / `az` combinations. The observed diffs were all zero for:
+
+- `bt_warm`
+- `bt_cold`
+- sampled BT arrays
+- visible-mask pixels
+- final rendered LA image
 
 #### Latitude/Longitude direct input
 

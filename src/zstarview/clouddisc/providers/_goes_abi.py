@@ -9,7 +9,8 @@ import warnings
 import numpy as np
 import xarray as xr
 from pyproj import CRS
-from pyresample.geometry import AreaDefinition
+
+from ..geo_area import GeoArea
 
 
 DATA_VAR = "CMI"
@@ -23,8 +24,8 @@ warnings.filterwarnings(
 )
 
 
-def build_area_from_cmi_dataset(ds: xr.Dataset) -> AreaDefinition:
-    """Build a pyresample AreaDefinition from a GOES CMI dataset."""
+def build_area_from_cmi_dataset(ds: xr.Dataset) -> GeoArea:
+    """Build a geostationary area definition from a GOES CMI dataset."""
     proj_var = ds[GRID_VAR]
     crs = CRS.from_cf(dict(proj_var.attrs))
     scale = float(proj_var.attrs["perspective_point_height"])
@@ -40,7 +41,7 @@ def build_area_from_cmi_dataset(ds: xr.Dataset) -> AreaDefinition:
         float((x[0] + x.size * x_step) * scale),
         float(y[0] * scale),
     )
-    return AreaDefinition(
+    return GeoArea(
         area_id="goes_abi_cmi_c13",
         description="GOES ABI CMIPF C13",
         proj_id="geos",
