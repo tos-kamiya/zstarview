@@ -281,6 +281,30 @@ def select_needed_tiles(
     return selected, poly_x, poly_y
 
 
+def select_equator_tiles(
+    *,
+    lon_center_deg: float,
+    meta: TemplateMeta,
+    delta_lon: float = 60.0,
+    equator_lat: float = 0.0,
+    step_deg: float = 1.0,
+    margin_tiles: int = 0,
+) -> tuple[list[TileRecord], np.ndarray, np.ndarray]:
+    lons = np.arange(lon_center_deg - delta_lon, lon_center_deg + delta_lon + step_deg, step_deg, dtype=np.float64)
+    lats = np.full_like(lons, float(equator_lat), dtype=np.float64)
+    to_proj = Transformer.from_crs("EPSG:4326", meta.crs, always_xy=True)
+    poly_x, poly_y = to_proj.transform(lons, lats)
+    finite = np.isfinite(poly_x) & np.isfinite(poly_y)
+    poly_x = np.asarray(poly_x[finite], dtype=np.float64)
+    poly_y = np.asarray(poly_y[finite], dtype=np.float64)
+    records = generate_sparse_layout(meta)
+    selected_tokens = {record.token for record in records if _tile_intersects_polygon(record, poly_x, poly_y)}
+    selected_tokens = _expand_selection(selected_tokens, records, margin_tiles)
+    selected = [record for record in records if record.token in selected_tokens]
+    selected.sort(key=lambda item: item.token)
+    return selected, poly_x, poly_y
+
+
 def _validate_same(values: Iterable[object], *, name: str) -> object:
     seq = list(values)
     first = seq[0]
