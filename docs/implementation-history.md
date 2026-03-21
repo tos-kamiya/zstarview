@@ -49,6 +49,16 @@
 
 ### 2026-03-21
 
+- 雲データ取得の satpy 依存撤去
+  - GOES は `CMIPF C13` NetCDF を `xarray` で直接読み、`goes_imager_projection` から `area` を再構築する経路へ置き換えた。
+  - Himawari は Satpy reader をやめ、`ISatSS M1C13` タイル群を直接 stitch して `fixedgrid_projection` から `area` を再構築する経路へ置き換えた。
+  - これに合わせて `satpy` の直接依存を削除し、雲データ処理の依存は `xarray` と `pyresample` ベースへ整理した。
+
+- Himawari warm-threshold の安定化
+  - Himawari の部分タイル最適化後、observer 周辺タイルだけでは赤道帯サンプルが消え、`eq_samples=0` により warm-threshold が固定 fallback へ落ちる問題が出た。
+  - このため、observer 周辺の描画用タイルに加えて、観測経度付近の赤道帯を横切る少数タイルを追加取得するようにした。
+  - これにより、全 `88` タイル取得へ戻さずに warm-threshold 推定を復旧し、雲が白っぽく出すぎる症状を抑えた。
+
 - 描画パイプラインの shared pipeline 化
   - 将来の単発画像書き出し CLI を見据え、`ui/window_render.py` の Mixin に集まっていた描画知識を `src/zstarview/render/pipeline.py` へ切り出した。
   - 描画入力は `RenderSceneData`、`RenderStyle`、`RenderHudState` に分離し、旧 `RenderPipelineState` は廃止した。

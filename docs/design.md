@@ -306,6 +306,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `CloudDiscConfig.alt_min_deg` による可視高度下限の適用
 - `src/zstarview/clouddisc/providers/*.py`
   - 衛星データ取得
+  - GOES は `CMIPF C13` NetCDF を `xarray` で直接読み、`goes_imager_projection` から `pyresample.AreaDefinition` を再構築する
+  - Himawari は `ISatSS M1C13` タイル群を直接 stitch し、`fixedgrid_projection` から `area` を再構築する
+  - Himawari の observer 指定時は、描画用の局所タイルに加え、warm-threshold 推定用の赤道帯タイルを少数だけ追加取得する
 - `src/zstarview/clouddisc/projectors/az.py`
   - 空ディスク向け投影
   - 既定 `alt_min_deg = 3.0°` により、地平線近傍の遠距離雲を可視マスクから外す
@@ -532,6 +535,9 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 1. `CloudController` が新しい要求を受け取る。
 2. ソース取得が必要か、既存ソースで再描画可能かを判定する。
 3. 必要なら衛星データを取得し、CloudDisc 用ソースを生成する。
+   - GOES は単一 `CMIPF C13` ファイルから直接 BT field を作る。
+   - Himawari は `ISatSS M1C13` タイルを stitch して BT field を作る。
+   - Himawari の部分タイル取得では、observer 周辺の描画用タイルに加え、赤道帯の warm-threshold 推定用タイルを和集合で取得する。
 4. 視点条件に応じて雲画像を描画する。
 5. `request_id` により古い結果を破棄し、最新結果のみ UI に反映する。
 6. 欠損領域がある場合は欠損マスクも渡す。
@@ -736,7 +742,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - GUI: `PySide6`
 - 天文計算: `astropy`, `skyfield`
 - 数値計算: `numpy`, `polars`
-- 雲データ処理: `xarray`, `satpy`, `boto3`, `botocore`
+- 雲データ処理: `xarray`, `pyresample`, `boto3`, `botocore`
 - 地形データ処理: `rasterio`, `pyproj`
 - 画像処理: `Pillow`
 
