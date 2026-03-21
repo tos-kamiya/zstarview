@@ -96,7 +96,7 @@ The CLI supports detailed startup configuration for location, time, rendering, a
 For one-shot image export without starting the GUI, use the separate CLI tool:
 
 ```bash
-zstarview-export-images Matsue -o matsue.png
+zstarview-export-image Matsue -o matsue.png
 ```
 
 <details>
