@@ -149,4 +149,5 @@ CLOUD_MISSING_HATCH_DEFAULT = HatchConfig(20, 19, 8, 160)
 CLOUD_MISSING_TINT_RGBA = (255, 220, 80, 45)
 
 # Skyfield ephemeris kernel filename
-EPHEMERIS_FILENAME = "de440s.bsp"
+EPHEMERIS_FILENAME = "de442s.bsp"
+EPHEMERIS_URL = "https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/de442s.bsp"

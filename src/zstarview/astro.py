@@ -19,6 +19,7 @@ from .paths import (
     PLANET_SYMBOLS,
     PLANET_IDS,
     EPHEMERIS_FILENAME,
+    EPHEMERIS_URL,
 )
 from .types import DeepSkyTable, LunarEclipseInfo, PlanetBody, SolarEclipseInfo, StarsTable
 
@@ -27,6 +28,7 @@ from .types import DeepSkyTable, LunarEclipseInfo, PlanetBody, SolarEclipseInfo,
 _cache_path = Path(CACHE_PATH)
 _cache_path.mkdir(parents=True, exist_ok=True)
 _starfield_load = Loader(str(_cache_path))
+_starfield_load.urls[EPHEMERIS_FILENAME] = EPHEMERIS_URL.rpartition("/")[0] + "/"
 
 _ICRS_UNIT_BASIS = SkyCoord(
     ra=np.array([0.0, 90.0, 0.0]) * u.deg,
