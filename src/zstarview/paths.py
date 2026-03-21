@@ -46,6 +46,10 @@ TEXT_STYLES_BY_PRESET = {
         "text": TEXT_COLOR,
         "outline": TEXT_OUTLINE_COLOR_NIGHT_RGBA,
     },
+    "transparent": {
+        "text": LIGHT_LABEL_COLOR,
+        "outline": (2, 2, 3, 212),
+    },
     "white": {
         "text": (44, 112, 196),
         "outline": (36, 80, 140, 122),
@@ -63,6 +67,10 @@ STATUS_LINE_STYLES_BY_PRESET = {
     "night": {
         "text": STATUS_LINE_COLOR,
         "outline": TEXT_OUTLINE_COLOR_NIGHT_RGBA,
+    },
+    "transparent": {
+        "text": (226, 228, 234),
+        "outline": (2, 2, 3, 208),
     },
     "white": {
         "text": (42, 102, 184),

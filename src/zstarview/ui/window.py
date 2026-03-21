@@ -550,6 +550,9 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
     def _menu_button_background_hex_for_preset(preset: str) -> str:
         if preset == "night":
             rr, gg, bb = (10, 12, 16)
+            return f"#{rr:02x}{gg:02x}{bb:02x}"
+        elif preset == "transparent":
+            return "rgba(12, 14, 18, 0.45)"
         elif preset == "black":
             rr, gg, bb = (6, 6, 6)
         elif preset == "white":

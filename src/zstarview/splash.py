@@ -29,6 +29,12 @@ def _get_splash_palette(visual_preset: str) -> tuple[list[QColor], QColor, QColo
             QColor(70, 76, 92),
             QColor(228, 236, 250),
         )
+    if visual_preset == "transparent":
+        return (
+            [QColor(12, 14, 20, 210), QColor(8, 10, 14, 168), QColor(4, 6, 9, 132)],
+            QColor(84, 90, 108, 210),
+            QColor(236, 240, 248),
+        )
     if visual_preset == "black":
         return (
             [QColor(6, 6, 6), QColor(3, 3, 3), QColor(0, 0, 0)],
