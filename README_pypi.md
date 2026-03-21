@@ -7,6 +7,7 @@ Transparent desktop sky viewer with stars, planets, eclipses, optional real-time
 The first screenshot shows the asterism overlay together with the never-rises region.
 The second screenshot shows the aircraft overlay.
 The third screenshot shows a denser star field rendered with `-V10 -s4.5`.
+The fourth screenshot shows terminal output via sixel using `zstarview-export-image`.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot1.png" width="49%" alt="Screenshot showing the asterism overlay and the never-rises region">
@@ -15,6 +16,7 @@ The third screenshot shows a denser star field rendered with `-V10 -s4.5`.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot3.png" width="49%" alt="Screenshot showing a denser star field rendered with -V10 -s4.5">
+  <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot6.png" width="49%" alt="Screenshot showing sixel terminal output from zstarview-export-image">
 </p>
 
 Note: higher magnitude limits increase rendering time. See [about magnitude limit](https://github.com/tos-kamiya/zstarview#about-magnitude-limit).

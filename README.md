@@ -27,6 +27,7 @@ It renders a live all-sky view centered on your chosen location and time, includ
 The first screenshot shows the asterism overlay together with the never-rises region.
 The second screenshot shows the aircraft overlay.
 The third screenshot shows a denser star field rendered with `-V10 -s4.5`.
+The fourth screenshot shows terminal output via sixel using `zstarview-export-image`.
 
   <p align="center">
     <img src="docs/images/screenshot1.png" alt="Screenshot showing the asterism overlay and the never-rises region" width="49%" />
@@ -35,6 +36,7 @@ The third screenshot shows a denser star field rendered with `-V10 -s4.5`.
 
   <p align="center">
     <img src="docs/images/screenshot3.png" alt="Screenshot showing a denser star field rendered with -V10 -s4.5" width="49%" />
+    <img src="docs/images/screenshot6.png" alt="Screenshot showing sixel terminal output from zstarview-export-image" width="49%" />
   </p>
 
 Note: higher magnitude limits increase rendering time. See [about magnitude limit](#about-magnitude-limit).
