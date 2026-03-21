@@ -35,6 +35,7 @@ from ..render import draw_sky_disc
 from ..types import CelestialData
 
 logger = logging.getLogger(__name__)
+TRANSPARENT_THEME_DISC_OPACITY = 0.35
 
 
 def compute_sky_snapshot(
@@ -50,6 +51,7 @@ def compute_sky_snapshot(
     sky_disc_alpha: float,
     sky_disc_base_size: int,
     content_fov_deg: float,
+    visual_preset: str = "night",
     render_width_px: int | None = None,
     render_height_px: int | None = None,
     render_generation: int = 0,
@@ -134,6 +136,7 @@ def compute_sky_snapshot(
                 sun_altaz,
                 observer_lat_deg=lat,
                 alpha=sky_disc_alpha,
+                disc_opacity=TRANSPARENT_THEME_DISC_OPACITY if visual_preset == "transparent" else 1.0,
                 eclipse_factor=ef,
                 content_fov_deg=content_fov_deg,
                 image_size=(render_width, render_height),
@@ -144,6 +147,7 @@ def compute_sky_snapshot(
                 view_center,
                 content_fov_deg=content_fov_deg,
                 image_size=(render_width, render_height),
+                disc_opacity=TRANSPARENT_THEME_DISC_OPACITY if visual_preset == "transparent" else 1.0,
             )
 
     payload: Dict[str, object] = {"celestial": celestial_data, "sky_disc": sky_disc_img}
@@ -184,6 +188,7 @@ class SkyDataWorker(QObject):
         sky_disc_alpha: float,
         sky_disc_base_size: int,
         content_fov_deg: float,
+        visual_preset: str = "night",
         render_width_px: int | None = None,
         render_height_px: int | None = None,
         render_generation: int = 0,
@@ -208,6 +213,7 @@ class SkyDataWorker(QObject):
                 "sky_disc_alpha": sky_disc_alpha,
                 "sky_disc_base_size": sky_disc_base_size,
                 "content_fov_deg": content_fov_deg,
+                "visual_preset": visual_preset,
                 "render_width_px": render_width_px,
                 "render_height_px": render_height_px,
                 "render_generation": render_generation,
@@ -231,6 +237,7 @@ class SkyDataWorker(QObject):
         sky_disc_alpha: float,
         sky_disc_base_size: int,
         content_fov_deg: float,
+        visual_preset: str,
         render_width_px: int | None,
         render_height_px: int | None,
         render_generation: int,
@@ -248,6 +255,7 @@ class SkyDataWorker(QObject):
                 sky_disc_alpha=sky_disc_alpha,
                 sky_disc_base_size=sky_disc_base_size,
                 content_fov_deg=content_fov_deg,
+                visual_preset=visual_preset,
                 render_width_px=render_width_px,
                 render_height_px=render_height_px,
                 render_generation=render_generation,

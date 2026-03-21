@@ -57,6 +57,22 @@ def test_sky_disc_raw_image_keeps_below_horizon_untinted() -> None:
     assert int(bottom_rgb.max()) <= 1
 
 
+def test_sky_disc_can_reduce_disc_opacity_without_changing_rgb_samples() -> None:
+    geom = ScreenGeometry(center=(80, 80), radius=80)
+    img = draw_sky_color_disc(
+        geom,
+        view_center=(0.0, 0.0),
+        sun_altaz=(-90.0, 0.0),
+        alpha=1.0,
+        disc_opacity=0.35,
+        eclipse_factor=1.0,
+    )
+    arr = qimage_to_np_rgba(img)
+
+    assert int(arr[20, 80, 3]) == 89
+    assert int(arr[20, 80, :3].max()) <= 1
+
+
 def test_uniform_sky_disc_uses_single_disc_color() -> None:
     geom = ScreenGeometry(center=(80, 80), radius=80)
     img = draw_uniform_sky_color_disc(geom, view_center=(0.0, 0.0))
@@ -70,6 +86,15 @@ def test_uniform_sky_disc_uses_single_disc_color() -> None:
     assert np.array_equal(center_rgb, top_rgb)
     assert np.array_equal(center_rgb, np.array([10, 10, 10]))
     assert np.array_equal(center_rgb, lower_rgb)
+
+
+def test_uniform_sky_disc_can_reduce_disc_opacity() -> None:
+    geom = ScreenGeometry(center=(80, 80), radius=80)
+    img = draw_uniform_sky_color_disc(geom, view_center=(0.0, 0.0), disc_opacity=0.35)
+    arr = qimage_to_np_rgba(img)
+
+    assert int(arr[80, 80, 3]) == 89
+    assert np.all(np.abs(arr[80, 80, :3].astype(int) - np.array([10, 10, 10])) <= 1)
 
 
 def test_uniform_sky_disc_content_fov_fills_corner_overscan_area() -> None:
@@ -101,6 +126,23 @@ def test_radial_background_uses_black_inner_disc_for_all_main_themes() -> None:
         center_rgb = arr[80, 80, :3].astype(int)
 
         assert np.array_equal(center_rgb, np.array([4, 4, 4])), preset
+
+
+def test_radial_background_uses_translucent_inner_disc_for_transparent_theme() -> None:
+    geom = ScreenGeometry(center=(80, 80), radius=60)
+    rect = QRectF(0.0, 0.0, 160.0, 160.0)
+
+    img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
+    img.fill(0)
+    painter = QPainter(img)
+    draw_radial_background(painter, rect, geom, preset="transparent")
+    painter.end()
+
+    arr = qimage_to_np_rgba(img)
+    center_rgba = arr[80, 80, :].astype(int)
+
+    assert np.all(np.abs(center_rgba[:3] - np.array([4, 4, 4])) <= 1)
+    assert int(center_rgba[3]) == 112
 
 
 def test_radial_background_fades_between_content_fov_and_window_edge() -> None:

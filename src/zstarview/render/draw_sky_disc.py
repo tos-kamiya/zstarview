@@ -193,6 +193,7 @@ def draw_sky_color_disc(
     exposure: float = 1.14,
     saturation: float = 1.35,
     alpha: float = 1.0,
+    disc_opacity: float = 1.0,
     eclipse_factor: float = 1.0,
     content_fov_deg: float = 90.0,
     image_size: Tuple[int, int] | None = None,
@@ -265,7 +266,8 @@ def draw_sky_color_disc(
     colors = np.clip(colors, 0.0, 1.0)
 
     rgb_u8 = np.clip(np.round(colors * 255.0), 0, 255).astype(np.uint8)
-    rgba[..., 3][inside] = 255
+    alpha_u8 = int(round(max(0.0, min(1.0, float(disc_opacity))) * 255.0))
+    rgba[..., 3][inside] = alpha_u8
     rgba[..., :3][inside] = rgb_u8
 
     return np_rgba_to_qimage(rgba).convertToFormat(QImage.Format.Format_ARGB32_Premultiplied)
@@ -277,6 +279,7 @@ def draw_uniform_sky_color_disc(
     *,
     content_fov_deg: float = 90.0,
     image_size: Tuple[int, int] | None = None,
+    disc_opacity: float = 1.0,
 ) -> QImage:
     """Draw a flat disc used when sky-color shading is disabled."""
     radius = int(geometry.radius)
@@ -298,6 +301,7 @@ def draw_uniform_sky_color_disc(
         content_fov_deg=content_fov_deg,
     )
     rgba = np.zeros((height, width, 4), dtype=np.uint8)
-    rgba[..., 3][inside] = 255
+    alpha_u8 = int(round(max(0.0, min(1.0, float(disc_opacity))) * 255.0))
+    rgba[..., 3][inside] = alpha_u8
     rgba[..., :3][inside] = FLAT_SKY_DISC_RGB_U8
     return np_rgba_to_qimage(rgba).convertToFormat(QImage.Format.Format_ARGB32_Premultiplied)

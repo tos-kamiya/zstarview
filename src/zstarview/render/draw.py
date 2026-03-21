@@ -389,6 +389,7 @@ def draw_radial_background(
         return max(0.0, min(1.0, r / r_max))
 
     col_params = {
+        "transparent": (10, 7, 12, 8, 16, 11, 54, 8),
         "white": (246, 54, 246, 54, 246, 54, 255, 180),
         "black": (12, 9, 12, 9, 12, 9, 255, 180),
         "day": (230, 28, 242, 34, 255, 34, 200, 60),
@@ -405,7 +406,11 @@ def draw_radial_background(
 
     c = geometry.center
     g = QRadialGradient(QPointF(c[0], c[1]), r_max)
-    inner_color = QColor(4, 4, 4, 255) if preset in ("white", "day", "night", "black") else col(0.0, 0.0)
+    inner_color = (
+        QColor(4, 4, 4, 112)
+        if preset == "transparent"
+        else QColor(4, 4, 4, 255) if preset in ("white", "day", "night", "black") else col(0.0, 0.0)
+    )
     boundary_color = col(r_content, 0.3)
     edge_color = col(r_max, 1.0)
     g.setColorAt(0.0, inner_color)
