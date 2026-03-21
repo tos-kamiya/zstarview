@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 import xarray as xr
+from pyproj import CRS
 from pyproj import Transformer
 
 from zstarview.clouddisc import CloudDiscConfig
@@ -14,6 +15,9 @@ from zstarview.clouddisc.providers._hima_isatss import (
     GRID_VAR,
     TemplateMeta,
     generate_sparse_layout,
+    load_template_from_tile,
+    select_equator_tiles,
+    select_needed_tiles,
     stitch_tiles_from_paths,
 )
 from zstarview.clouddisc.providers.hima import HimaProvider
@@ -55,7 +59,7 @@ def _write_sparse_tile_set(tile_dir: Path) -> list[Path]:
         x_step=0.0001,
         y_step=-0.0001,
         geos_scale=35786023.0 * 1e-6,
-        crs=None,  # not needed for layout generation
+        crs=CRS.from_cf(_projection_attrs()),
     )
     paths: list[Path] = []
     for record in generate_sparse_layout(meta):
@@ -134,3 +138,43 @@ def test_hima_provider_local_tiles_attach_area_and_sample(tmp_path: Path) -> Non
         np.array([[lat]], dtype=np.float64),
     )[0, 0]
     assert np.isclose(sampled, da.values[iy, ix], equal_nan=False)
+
+
+def test_equator_tile_selection_extends_partial_himawari_subset(tmp_path: Path) -> None:
+    tile_dir = tmp_path / "tiles"
+    tile_dir.mkdir()
+    _write_sparse_tile_set(tile_dir)
+    provider = HimaProvider(CloudDiscConfig(cache_dir=tmp_path / "cache"))
+    meta = load_template_from_tile(sorted(tile_dir.glob("*M1C13*.nc"))[0], bucket="local")
+
+    render_tiles, _poly_x, _poly_y = select_needed_tiles(
+        lat_deg=35.483,
+        lon_deg=140.7,
+        meta=meta,
+        cloud_shell_km=6376.0,
+        azimuth_samples=1440,
+        margin_tiles=1,
+    )
+    equator_tiles, _eq_x, _eq_y = select_equator_tiles(
+        lon_center_deg=140.7,
+        meta=meta,
+        delta_lon=5.0,
+        equator_lat=0.0,
+        step_deg=1.0,
+        margin_tiles=0,
+    )
+    render_tokens = {record.token for record in render_tiles}
+    equator_tokens = {record.token for record in equator_tiles}
+    assert equator_tokens
+    assert equator_tokens - render_tokens
+
+    da, _used_time, src_paths = provider.fetch_bt_c13_from_local_dir(
+        tile_dir,
+        used_time=dt.datetime(2026, 3, 21, 6, 10, tzinfo=dt.timezone.utc),
+        observer_lat=35.483,
+        observer_lon=140.7,
+        margin_tiles=1,
+    )
+    assert len(src_paths) == len(render_tokens | equator_tokens)
+    assert len(src_paths) > len(render_tokens)
+    assert da.attrs["source_key_count"] == len(src_paths)

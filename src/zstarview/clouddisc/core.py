@@ -297,6 +297,38 @@ class CloudDisc:
             half=5,
         )
         bt_cold = estimate_bt_cold_hybrid(bt, mask_inside, sample_arr, bt_warm, cold_local_p=5.0, cold_eq_p=3.0)
+        inside_vals = bt[mask_inside & finite_bt].astype(np.float64)
+        if inside_vals.size > 0:
+            p05, p25, p50, p75, p95 = np.percentile(inside_vals, [5, 25, 50, 75, 95])
+            logger.info(
+                (
+                    "Cloud BT stats: sat=%s product=%s coverage=%.1f%% "
+                    "warm=%.2f cold=%.2f p05=%.2f p25=%.2f p50=%.2f p75=%.2f p95=%.2f "
+                    "inside_valid=%d eq_samples=%d"
+                ),
+                source.satellite,
+                source.product,
+                coverage_ratio * 100.0,
+                bt_warm,
+                bt_cold,
+                p05,
+                p25,
+                p50,
+                p75,
+                p95,
+                inside_vals.size,
+                sample_arr.size,
+            )
+        else:
+            logger.info(
+                "Cloud BT stats: sat=%s product=%s coverage=%.1f%% warm=%.2f cold=%.2f inside_valid=0 eq_samples=%d",
+                source.satellite,
+                source.product,
+                coverage_ratio * 100.0,
+                bt_warm,
+                bt_cold,
+                sample_arr.size,
+            )
 
         # Step 7: Render the final grayscale (Luminance-Alpha) image from the BT data.
         img = convert_bt_to_la_image(bt, mask_inside, bt_warm, bt_cold)

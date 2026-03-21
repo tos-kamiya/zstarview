@@ -23,6 +23,7 @@ from ._hima_isatss import (
     find_matching_keys,
     format_prefix,
     load_template_from_tile,
+    select_equator_tiles,
     select_needed_tiles,
     stitch_tiles_from_paths,
 )
@@ -99,10 +100,11 @@ class HimaProvider:
         cloud_shell_km: float,
         azimuth_samples: int,
         margin_tiles: int,
+        equator_margin_tiles: int = 0,
     ) -> List[str]:
         template_path = self._download(bucket, keys[0])
         meta = load_template_from_tile(template_path, bucket=bucket)
-        selected, _poly_x, _poly_y = select_needed_tiles(
+        render_tiles, _poly_x, _poly_y = select_needed_tiles(
             lat_deg=observer_lat,
             lon_deg=observer_lon,
             meta=meta,
@@ -110,7 +112,15 @@ class HimaProvider:
             azimuth_samples=azimuth_samples,
             margin_tiles=margin_tiles,
         )
-        selected_tokens = {record.token for record in selected}
+        equator_tiles, _eq_x, _eq_y = select_equator_tiles(
+            lon_center_deg=observer_lon,
+            meta=meta,
+            delta_lon=60.0,
+            equator_lat=0.0,
+            step_deg=1.0,
+            margin_tiles=equator_margin_tiles,
+        )
+        selected_tokens = {record.token for record in render_tiles} | {record.token for record in equator_tiles}
         key_map = {extract_tile_token(Path(key).name): key for key in keys}
         selected_keys = [key_map[token] for token in sorted(selected_tokens) if token in key_map]
         if not selected_keys:
@@ -119,11 +129,13 @@ class HimaProvider:
                 meta=CloudMeta(satellite="HIMAWARI", product="ISatSS-B13", time_utc=when_utc, src_paths=[]),
             )
         logger.info(
-            "Selected %d/%d Himawari tiles for observer lat=%.3f lon=%.3f",
+            "Selected %d/%d Himawari tiles for observer lat=%.3f lon=%.3f (render=%d equator=%d)",
             len(selected_keys),
             len(keys),
             observer_lat,
             observer_lon,
+            len(render_tiles),
+            len(equator_tiles),
         )
         return selected_keys
 
@@ -155,6 +167,7 @@ class HimaProvider:
         cloud_shell_km: float = 6376.0,
         azimuth_samples: int = 1440,
         margin_tiles: int = 1,
+        equator_margin_tiles: int = 0,
     ) -> Tuple[xr.DataArray, dt.datetime, List[Path]]:
         """Load cached Himawari tiles from a local directory and stitch them."""
         if (observer_lat is None) ^ (observer_lon is None):
@@ -163,7 +176,7 @@ class HimaProvider:
         all_paths = sorted(tile_dir.glob("*M1C13*.nc"))
         if observer_lat is not None and observer_lon is not None:
             meta = load_template_from_tile(all_paths[0], bucket="local")
-            selected, _poly_x, _poly_y = select_needed_tiles(
+            render_tiles, _poly_x, _poly_y = select_needed_tiles(
                 lat_deg=float(observer_lat),
                 lon_deg=float(observer_lon),
                 meta=meta,
@@ -171,7 +184,15 @@ class HimaProvider:
                 azimuth_samples=int(azimuth_samples),
                 margin_tiles=int(margin_tiles),
             )
-            selected_tokens = {record.token for record in selected}
+            equator_tiles, _eq_x, _eq_y = select_equator_tiles(
+                lon_center_deg=float(observer_lon),
+                meta=meta,
+                delta_lon=60.0,
+                equator_lat=0.0,
+                step_deg=1.0,
+                margin_tiles=int(equator_margin_tiles),
+            )
+            selected_tokens = {record.token for record in render_tiles} | {record.token for record in equator_tiles}
             paths = [path for path in all_paths if extract_tile_token(path.name) in selected_tokens]
         else:
             paths = all_paths
@@ -199,6 +220,7 @@ class HimaProvider:
         cloud_shell_km: float = 6376.0,
         azimuth_samples: int = 1440,
         margin_tiles: int = 1,
+        equator_margin_tiles: int = 0,
     ) -> Tuple[xr.DataArray, dt.datetime, List[Path]]:
         """
         Fetch Himawari ISatSS C13 brightness temperature data.
@@ -227,6 +249,7 @@ class HimaProvider:
                 cloud_shell_km=float(cloud_shell_km),
                 azimuth_samples=int(azimuth_samples),
                 margin_tiles=int(margin_tiles),
+                equator_margin_tiles=int(equator_margin_tiles),
             )
 
         try:
