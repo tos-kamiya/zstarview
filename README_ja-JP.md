@@ -488,6 +488,9 @@ CPU 性能によっては星空の自動更新が負荷になる場合があり�
 - macOS: `~/Library/Logs/zstarview/app.log`
 - Windows: `%LOCALAPPDATA%/tos-kamiya/zstarview/Logs/app.log`
 
+通常起動だとすぐ閉じて確認しづらい場合は、ターミナルから `zstarview-debug` を試してください。
+これは主に Windows でのトラブルシュート用です。Linux では `zstarview-debug` は `zstarview` と実質同じ動作です。
+
 </details>
 
 <details>
