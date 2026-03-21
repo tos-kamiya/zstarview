@@ -172,6 +172,41 @@ CLI には次のビューポイント dataset 参照専用オプションを持�
 データは同梱 `tower_viewpoints.json` / `mountain_viewpoints.json` のみを参照し、GeoNames 読込や設定保存は行わない。
 `mountain_viewpoints.json` は、Wikipedia を起点に候補収集し、Wikidata メタデータで正規化した同梱データである。
 
+### 5.1.3 単発画像書き出し CLI
+
+単発画像書き出し用に、GUI 常駐とは別の headless CLI を持つ方針とする。
+
+- 想定コマンド名は `zstarview-export-image` とする。
+- この CLI は画像ファイルを 1 枚生成して終了し、GUI ウィンドウは常駐表示しない。
+- 地点、時刻、視線方向、テーマ、各レイヤー opacity、`--enlarge-moon` など、通常の `zstarview` 起動引数の大半をそのまま受け付けてよい。
+- 次の GUI 専用・即時終了専用オプションは受け付けない。
+  - `--sky-update-interval`
+  - `--window-geometry`
+  - `--list-viewpoints`
+  - `--list-viewpoint-names`
+  - `--show-viewpoint-json`
+- `--window-geometry` の代わりに、画像出力専用オプションとして次を持つ。
+  - `-o`, `--output PATH`
+    - 出力先ファイルパス。必須とする。
+  - `--image-size WIDTH,HEIGHT`
+    - 出力画像サイズ。
+    - 既定値は通常 GUI の既定ウィンドウサイズと同等でよい。
+  - `--layer-timeout-seconds FLOAT`
+    - 雲、地形地平線、都市アウトライン、航空機などの外部依存レイヤー取得待ち時間の上限。
+    - 既定値は実装側で決めてよいが、無限待ちは避ける。
+  - `--allow-partial-data`
+    - 有効なレイヤーの一部が取得失敗または timeout しても、取得できたレイヤーだけで画像を保存してよい。
+    - このオプションがない既定動作では、部分データの画像は保存せず非 `0` で終了する。
+- 出力形式の初版は PNG を前提としてよい。
+  - 拡張子による自動判定または `--output` の拡張子制約のどちらを採るかは実装側に委ねるが、少なくとも PNG は保証する。
+- 既定では hover 情報、status line、jump highlight などの動的 HUD は含めない。
+- 既定では `guide` は含めてよい。
+- `--aircraft-opacity 0`、`--cloud-opacity 0`、`--terrain-horizon-opacity 0`、`--urban-outline-opacity 0` のときは、それぞれのレイヤー取得自体を省略してよい。
+- `opacity 0` により取得自体を省略したレイヤーは、`--layer-timeout-seconds` の待機対象にも含めない。
+- 既定では、要求された有効レイヤーがすべて揃った場合だけ画像保存成功とする。
+- `--allow-partial-data` 指定時は、欠落レイヤーがあっても保存成功としてよい。
+- 正常終了時は `0`、引数不正、地点解決失敗、画像保存失敗、部分データ拒否条件違反時は非 `0` で終了する。
+
 ### 5.2 地点指定
 
 `location` には次の形式を許容する。
