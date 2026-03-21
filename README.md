@@ -9,22 +9,35 @@ It renders a live all-sky view centered on your chosen location and time, includ
 
 **Features:**
 
+- **Solar-system bodies**: supports Sun, Moon, and major planets. Minor planets (asteroids) are not displayed yet.
 - **Deep-sky objects**: named galaxies/open clusters/globular clusters are shown as soft blue extents.
 - **Asterism overlay**: popular line patterns rather than formal IAU constellation boundaries are shown as dim ambient lines. Mouse-hovering a star in an asterism brightens the matching pattern and shows its label, with 3-second rotation when multiple asterisms share that star.
-- **Solar-system bodies**: supports Sun, Moon, and major planets. Minor planets (asteroids) are not displayed yet.
+- **Satellite cloud imagery**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay. Missing regions are shown in faint yellow when satellite coverage is partial. See [an example with partial coverage and yellow missing-data tint](docs/images/screenshot5.png).
+- **Aircraft overlay**: nearby aircraft from OpenSky can be drawn as purple predicted-motion polylines.
+- **Urban outline overlay**: major rooflines are drawn as a white urban outline overlay for the current viewpoint. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 10km radius.
+- **Terrain horizon and ground fill**: Copernicus DEM data can be downloaded to render the local terrain skyline. A subtle ocher terrain line follows the observer's surroundings, and the disc is filled with a ground color below the terrain horizon, or below the geometric horizon when terrain is disabled.
+- **Guides**: guide overlays include the never-rises region in red, direction labels around the horizon, and a zenith marker.
 - **Flexible location input**: specify the observer location through the CLI argument using a city name, tower name, mountain name, direct latitude/longitude input, or online place/station search via Nominatim.
 - **Adjustable view center**: adjust the view center with CLI options `-A` (altitude) and `-Z` (azimuth), or with the arrow keys. During view changes or window resize, the app briefly switches to a simplified interaction mode to keep navigation responsive.
-- **Never-rises region**: the celestial region that never rises above the horizon for the observer's latitude is shown in a red tint.
-- **Satellite cloud imagery**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay. Missing regions are shown in faint yellow when satellite coverage is partial. See [an example with partial coverage and yellow missing-data tint](docs/images/screenshot5.png).
-- **Terrain horizon and ground fill**: Copernicus DEM data can be downloaded to render the local terrain skyline. A subtle ocher terrain line follows the observer's surroundings, and the disc is filled with a ground color below the terrain horizon, or below the geometric horizon when terrain is disabled.
-- **Urban outline overlay**: major rooflines are drawn as a white urban outline overlay for the current viewpoint. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 10km radius.
-- **Aircraft overlay**: nearby aircraft from OpenSky can be drawn as purple predicted-motion polylines. The layer supports startup opacity control, GUI toggling, and cached reuse so temporary hide/show actions do not force unnecessary re-queries.
+- **Terminal image export**: `zstarview-export-image` can render the sky headlessly and write it to a file or display it directly in sixel-capable terminals.
 - **Python support**: the project is routinely tested on CPython 3.10, 3.11, 3.12, and 3.13.
 
+## Screenshots
+
+The first screenshot shows the asterism overlay together with the never-rises region.
+The second screenshot shows the aircraft overlay.
+The third screenshot shows a denser star field rendered with `-V10 -s4.5`.
+
   <p align="center">
-    <img src="docs/images/screenshot1.png" alt="Screenshot 1" width="49%" />
-    <img src="docs/images/screenshot4.png" alt="Screenshot 4" width="49%" />
+    <img src="docs/images/screenshot1.png" alt="Screenshot showing the asterism overlay and the never-rises region" width="49%" />
+    <img src="docs/images/screenshot4.png" alt="Screenshot showing the aircraft overlay" width="49%" />
   </p>
+
+  <p align="center">
+    <img src="docs/images/screenshot3.png" alt="Screenshot showing a denser star field rendered with -V10 -s4.5" width="49%" />
+  </p>
+
+Note: higher magnitude limits increase rendering time. See [about magnitude limit](#about-magnitude-limit).
 
 Urban outline examples from several cities worldwide:
 
@@ -187,13 +200,13 @@ Azimuth can be given in degrees or compass points (case-insensitive).
 Examples: `-Z E`, `-Z ne`, `-Z SSW` (202.5°).
 (Compass mapping: 0=N, 90=E, 180=S, 270=W; accepts N, NNE, NE, ENE, E, ESE, SE, SSE, S, SSW, SW, WSW, W, WNW, NW, NNW.)
 
+<a id="about-magnitude-limit"></a>
+
 #### About magnitude limit
 
 Use `-V magnitude` to limit the displayed stars to those brighter than the given magnitude.
 The default is `-V 6.0`. For example, specifying 10.0 will display about 324,000 stars.
 Note that higher values will increase rendering time.
-
-[→ Example: display up to magnitude 10.0 with slightly larger stars (`-V10 -s4.5`)](docs/images/screenshot3.png)
 
 #### About theme presets
 
