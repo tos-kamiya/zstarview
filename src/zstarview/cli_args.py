@@ -2,9 +2,10 @@ import argparse
 from typing import Sequence
 from typing import Tuple, Union
 
-from .paths import CLOUD_MISSING_TINT_RGBA, DIRECTIONS, WINDOW_WIDTH
+from .paths import CLOUD_MISSING_TINT_RGBA, DIRECTIONS, WINDOW_HEIGHT, WINDOW_WIDTH
 
 WindowGeometryArg = Union[str, Tuple[int, int, int, int]]
+ImageSizeArg = Tuple[int, int]
 
 _VMAG_MULTIPLIER_MIN = 10.0 ** 0.2
 _VMAG_MULTIPLIER_MAX = 10.0 ** 0.4
@@ -144,6 +145,25 @@ def _parse_window_geometry(value: str) -> WindowGeometryArg:
             f"Invalid window geometry: {value!r}. Use integers for x,y,width,height."
         ) from exc
     return (x, y, width, height)
+
+
+def _parse_image_size(value: str) -> ImageSizeArg:
+    """Parse image size as 'width,height'."""
+    text = (value or "").strip()
+    parts = [p.strip() for p in text.split(",")]
+    if len(parts) != 2:
+        raise argparse.ArgumentTypeError(
+            f"Invalid image size: {value!r}. Use 'width,height'."
+        )
+    try:
+        width, height = (int(p) for p in parts)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            f"Invalid image size: {value!r}. Use integers for width,height."
+        ) from exc
+    if width <= 0 or height <= 0:
+        raise argparse.ArgumentTypeError("Image width and height must be > 0.")
+    return (width, height)
 
 
 def add_location_arguments(parser: argparse.ArgumentParser) -> None:
@@ -492,6 +512,51 @@ def build_main_argument_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def build_export_image_argument_parser() -> argparse.ArgumentParser:
+    """Build the headless export-image CLI parser."""
+    parser = argparse.ArgumentParser(
+        description="Export a zstarview image and exit",
+    )
+    add_location_arguments(parser)
+    add_time_arguments(parser)
+    add_render_arguments(
+        parser,
+        include_window_geometry=False,
+        include_sky_update_interval=False,
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=str,
+        required=True,
+        metavar="PATH",
+        help="Output image file path.",
+    )
+    parser.add_argument(
+        "--image-size",
+        type=_parse_image_size,
+        default=(WINDOW_WIDTH, WINDOW_HEIGHT),
+        metavar="WIDTH,HEIGHT",
+        help=(
+            "Output image size in pixels (default: "
+            f"{WINDOW_WIDTH},{WINDOW_HEIGHT})."
+        ),
+    )
+    parser.add_argument(
+        "--layer-timeout-seconds",
+        type=_parse_non_negative_float,
+        default=30.0,
+        metavar="SECONDS",
+        help="Maximum time to wait for enabled external layers (default: 30).",
+    )
+    parser.add_argument(
+        "--allow-partial-data",
+        action="store_true",
+        help="Allow saving an image even when enabled external layers fail or time out.",
+    )
+    return parser
+
+
 def _normalize_location_arguments(
     parser: argparse.ArgumentParser, args: argparse.Namespace
 ) -> None:
@@ -595,4 +660,13 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     _validate_dataset_query_compatibility(parser, args)
     _validate_location_argument_combinations(parser, args)
 
+    return args
+
+
+def parse_export_image_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
+    """Parse command-line arguments for the export-image CLI."""
+    parser = build_export_image_argument_parser()
+    args = parser.parse_args(argv)
+    _normalize_location_arguments(parser, args)
+    _validate_location_argument_combinations(parser, args)
     return args

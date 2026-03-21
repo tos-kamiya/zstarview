@@ -235,6 +235,65 @@ class SkyWindowRenderMixin:
         px, py = render_draw.normalized_to_screen_xy(nx, ny, geometry)
         return ({"name": target_name}, QPointF(px, py))
 
+    def render_current_image(self, *, include_hud: bool = False) -> QImage:
+        """Render the current window state into an off-screen image."""
+        image = QImage(self.size(), QImage.Format.Format_ARGB32_Premultiplied)
+        image.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(image)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+        try:
+            celestial_data = self.state.celestial_data
+            if celestial_data is None:
+                loading_color, _ = render_draw.get_text_style(self.visual_preset)
+                painter.setPen(loading_color)
+                painter.setFont(self.text_font)
+                painter.drawText(
+                    self.rect(),
+                    Qt.AlignmentFlag.AlignCenter,
+                    "Loading celestial data...",
+                )
+                return image
+
+            render_viewer = self._viewer_data_for_render()
+            geometry = render_draw.get_screen_geometry(
+                self.width(),
+                self.height(),
+                render_viewer.view_center[0],
+            )
+            scene, style, hud = self._render_inputs(
+                celestial_data=celestial_data,
+                render_viewer=render_viewer,
+            )
+            render_base_scene_into_painter(
+                painter,
+                geometry=geometry,
+                viewport_rect=self.rect(),
+                scene=scene,
+                style=style,
+                hud=hud,
+                compositor=self._compositor,
+            )
+            if include_hud:
+                highlighted_object = None
+                highlighted_dso = None
+                jump_highlight = self._active_jump_highlight_object(geometry)
+                if jump_highlight is not None:
+                    highlighted_object = jump_highlight
+                render_hud_overlay_into_painter(
+                    painter,
+                    geometry=geometry,
+                    viewport_rect=self.rect(),
+                    scene=scene,
+                    style=style,
+                    hud=hud,
+                    highlighted_object=highlighted_object,
+                    highlighted_dso=highlighted_dso,
+                )
+            return image
+        finally:
+            painter.end()
+
     def paintEvent(self, event: QPaintEvent) -> None:
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)

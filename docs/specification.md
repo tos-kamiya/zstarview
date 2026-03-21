@@ -174,9 +174,9 @@ CLI には次のビューポイント dataset 参照専用オプションを持�
 
 ### 5.1.3 単発画像書き出し CLI
 
-単発画像書き出し用に、GUI 常駐とは別の headless CLI を持つ方針とする。
+単発画像書き出し用に、GUI 常駐とは別の headless CLI を持つ。
 
-- 想定コマンド名は `zstarview-export-image` とする。
+- コマンド名は `zstarview-export-image` とする。
 - この CLI は画像ファイルを 1 枚生成して終了し、GUI ウィンドウは常駐表示しない。
 - 地点、時刻、視線方向、テーマ、各レイヤー opacity、`--enlarge-moon` など、通常の `zstarview` 起動引数の大半をそのまま受け付けてよい。
 - 次の GUI 専用・即時終了専用オプションは受け付けない。

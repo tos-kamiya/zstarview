@@ -159,10 +159,10 @@
 
 ### 4.2.4 単発画像書き出し CLI
 
-GUI 常駐とは別に、1 枚の画像を書き出して終了する headless CLI 経路を持つ想定とする。
+GUI 常駐とは別に、1 枚の画像を書き出して終了する headless CLI 経路を持つ。
 
-- 想定エントリポイントは `zstarview-export-image` とする。
-- この経路は `zstarview.py` の GUI `main()` と別の `main` を持ち、Qt のイベントループ駆動や `SkyWindow` 常駐初期化には依存しない。
+- エントリポイントは `zstarview-export-image` とする。
+- この経路は `zstarview.py` の GUI `main()` と別の `main` を持つ。
 - parser は `cli_args.py` の helper 群を組み合わせて構築し、地点、時刻、視線、描画オプションは通常 CLI と共有する。
 - 画像書き出し CLI 固有オプションは少なくとも次を想定する。
   - `--output`
@@ -177,7 +177,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 外部依存レイヤーの取得は逐次でも並列でもよいが、CLI 側では「いつまで待つか」と「部分データを許容するか」を引数で決められるようにする。
 - 既定は安全側として「部分データは保存しない」とし、明示的に `--allow-partial-data` を指定したときだけ部分出力を許可する。
 - `opacity == 0` で無効化されたレイヤーは、取得キュー自体に積まず、layer timeout の待機対象からも外す。
-- 初版は `QImage` に対して shared pipeline を直接描く経路を優先し、デスクトップの実スクリーンショット取得には依存しない。
+- 初版実装では hidden `SkyWindow` を生成し、既存の background update 経路で sky/cloud/terrain/urban/aircraft を待ってから、`render_current_image()` により `QImage` へ描画して保存する。
+- つまり、GUI を表示はしないが、内部的には Qt イベントループと `SkyWindow` を再利用する。
+- 将来的には、`SkyWindow` 非依存の orchestrator にさらに寄せてもよいが、初版では共有描画と既存 controller の再利用を優先した。
 
 ### 4.3 描画
 

@@ -148,3 +148,4 @@ zstarview = "zstarview:main"
 [project.scripts]
 zstarview-make-desktop-file = "zstarview:make_desktop_file_main"
 zstarview-import-overture-buildings = "zstarview.data.import_overture_buildings:main"
+zstarview-export-image = "zstarview:export_image_main"
