@@ -143,7 +143,7 @@ zstarview-export-image Matsue -o matsue.png
 | `-i`, `--sky-update-interval SECONDS` | 星空を更新する時間間隔（秒）を指定します。 | `60` |
 | `--show-dso-initial true\|false` | 起動時に DSO を表示するかを指定します。 | 自動（カタログがあれば表示） |
 | `--show-asterisms-initial true\|false` | 起動時にアステリウムを表示するかを指定します。 | `show` |
-| `-t`, `--theme {night,day,white,black}` | 背景と星の見え方のテーマを指定します。 | `night` |
+| `-t`, `--theme {night,day,white,black,transparent}` | 背景と星の見え方のテーマを指定します。`transparent` は天球を暗めに保ちつつ半透明にし、ウィンドウ外周やデスクトップ背景がより透けて見えるテーマです。 | `night` |
 | `-H`, `--hours HOURS` | 現在時刻に加算する時間数を指定します。※1 | `0` |
 | `-D`, `--days DAYS` | 現在時刻に加算する日数を指定します。※1 | `0` |
 | `--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"` | 絶対的な日時を指定します。時刻は `HH`、`HH:MM`、`HH:MM:SS` のいずれでも指定でき、タイムゾーン省略時は UTC 扱いです。※1 | |
@@ -196,6 +196,16 @@ zstarview --show-dso-initial false --show-asterisms-initial true Tokyo
 この値を大きくすると描画時間も増えます。
 
 [→ 例：10.0 等級まで表示し、星を少し大きめに描画した表示（`-V10 -s4.5`）](docs/images/screenshot3.png)
+
+#### テーマプリセットについて
+
+`--theme` を使うと、背景とコントラストの見え方を切り替えられます。
+
+* `night`: 標準の暗色テーマ
+* `black`: より黒く不透明な背景
+* `day`: 明るい昼空寄りの背景表現
+* `white`: 最も明るい淡色テーマ
+* `transparent`: 暗めの天球を半透明で描き、フレームレスウィンドウ越しにデスクトップ背景がより見えるテーマ
 
 #### 日時指定オプションについて
 
