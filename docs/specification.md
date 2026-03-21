@@ -202,6 +202,8 @@ CLI には次のビューポイント dataset 参照専用オプションを持�
   - 拡張子による自動判定または `--output` の拡張子制約のどちらを採るかは実装側に委ねるが、少なくとも PNG は保証する。
 - 既定では hover 情報、status line、jump highlight などの動的 HUD は含めない。
 - 既定では `guide` は含めてよい。
+- 既定では地点名、時刻、観測者高さなどの静的 overlay 情報も含めない。
+- `--content-fov-deg` の外側に置かれる GUI 向け背景グラデーションは export 画像には含めず、透明のままにしてよい。
 - `--aircraft-opacity 0`、`--cloud-opacity 0`、`--terrain-horizon-opacity 0`、`--urban-outline-opacity 0` のときは、それぞれのレイヤー取得自体を省略してよい。
 - `opacity 0` により取得自体を省略したレイヤーは、`--layer-timeout-seconds` の待機対象にも含めない。
 - 既定では、要求された有効レイヤーがすべて揃った場合だけ画像保存成功とする。
