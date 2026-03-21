@@ -80,6 +80,7 @@
   - `--layer-timeout-seconds` の既定値は、Himawari 分割ダウンロードを考慮して `30` 秒から `90` 秒へ引き上げた。
   - 将来拡張として、`--sixel` を `--output` と併用可能な端末出力オプションとして扱い、保存を先に行ってから `img2sixel -` へ PNG bytes を流すパイプ方式で端末表示を試みる方針を整理した。
   - `--sixel` を実装し、`--output` と併用可能にした。`--sixel` 指定時は事前に `img2sixel` の存在を確認し、生成済み `QImage` を PNG bytes 化して `img2sixel -` の stdin へ流す。
+  - `-o -` を実装し、PNG bytes を stdout へ直接流せるようにした。stdout 競合を避けるため、`--output -` と `--sixel` の併用は弾く。
   - GUI 専用の `--sky-update-interval` と `--window-geometry`、dataset 参照専用 CLI オプションは export parser に載せない。
   - 実装では `SkyWindow` と Qt signal ベースの controller 群を使わず、sky/cloud/terrain/urban/aircraft を同期的に順番に取得してから、hover/HUD なしのベース描画を `QImage` へ保存する。
   - `opacity == 0` のレイヤーは取得キューと timeout 待機対象から外す。
