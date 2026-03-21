@@ -53,6 +53,11 @@
   - `AGENTS.md` と `docs/design.md` に、terminal / console / log / CLI help / exception / subprocess 出力へ出る可能性がある文字列は ASCII-only を原則とする方針を追加した。
   - 非 ASCII を判定ロジックで扱う場合は、ソース中に直書きせず Unicode escape を優先する方針を追加した。
 
+- 惑星暦カーネルを `de442s.bsp` へ更新
+  - 既定の ephemeris filename を `de440s.bsp` から `de442s.bsp` へ切り替えた。
+  - `de442s.bsp` は Skyfield の既定 JPL download base では 404 になるため、runtime ではこのファイルだけ NAIF の明示 URL を使うようにした。
+  - README の「初回起動時にダウンロードされる惑星暦データ」の説明も `de442s.bsp` に更新した。
+
 - 雲データ取得の satpy 依存撤去
   - GOES は `CMIPF C13` NetCDF を `xarray` で直接読み、`goes_imager_projection` から `area` を再構築する経路へ置き換えた。
   - Himawari は Satpy reader をやめ、`ISatSS M1C13` タイル群を直接 stitch して `fixedgrid_projection` から `area` を再構築する経路へ置き換えた。
