@@ -487,6 +487,9 @@ Logs are also written to a file (platform‑dependent). Examples:
 - macOS: `~/Library/Logs/zstarview/app.log`
 - Windows: `%LOCALAPPDATA%/tos-kamiya/zstarview/Logs/app.log`
 
+If normal startup closes too quickly to inspect, try `zstarview-debug` from a terminal.
+It is mainly for Windows troubleshooting. On Linux, `zstarview-debug` behaves the same as `zstarview`.
+
 </details>
 
 <details>
