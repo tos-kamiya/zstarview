@@ -2,10 +2,22 @@
 
 Transparent desktop sky viewer with stars, planets, eclipses, optional real-time satellite cloud overlay, optional terrain horizon overlay, optional urban outline overlay, and an optional nearby-aircraft overlay.
 
+## Screenshots
+
+The first screenshot shows the asterism overlay together with the never-rises region.
+The second screenshot shows the aircraft overlay.
+The third screenshot shows a denser star field rendered with `-V10 -s4.5`.
+
 <p align="center">
-  <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot1.png" width="49%" alt="zstarview screenshot 1">
-  <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot4.png" width="49%" alt="zstarview screenshot 4">
+  <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot1.png" width="49%" alt="Screenshot showing the asterism overlay and the never-rises region">
+  <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot4.png" width="49%" alt="Screenshot showing the aircraft overlay">
 </p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot3.png" width="49%" alt="Screenshot showing a denser star field rendered with -V10 -s4.5">
+</p>
+
+Note: higher magnitude limits increase rendering time. See [about magnitude limit](https://github.com/tos-kamiya/zstarview#about-magnitude-limit).
 
 Urban outline examples from several cities worldwide:
 
