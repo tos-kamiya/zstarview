@@ -161,7 +161,7 @@
 
 GUI 常駐とは別に、1 枚の画像を書き出して終了する headless CLI 経路を持つ。
 
-- エントリポイントは `zstarview-export-image` とする。
+- エントリポイントは `zstarview-export-images` とする。
 - この経路は `zstarview.py` の GUI `main()` と別の `main` を持つ。
 - parser は `cli_args.py` の helper 群を組み合わせて構築し、地点、時刻、視線、描画オプションは通常 CLI と共有する。
 - 画像書き出し CLI 固有オプションは少なくとも次を想定する。
