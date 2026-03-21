@@ -514,6 +514,7 @@ CPU 性能によっては星空の自動更新が負荷になる場合があり�
 Windows では、Windows セキュリティにより Python 拡張モジュールの読み込みがブロックされ、起動時に止まることがあります。
 その場合は、Windows セキュリティの `App & browser control` にある `Smart App Control` の設定を変更すると回避できることがあるようです。
 ただし、セキュリティを弱くすることになるので、安全な環境以外での実行は推奨しません。
+[Smart App Control の画面例](docs/images/windows-smart-app-control_ja.png) も参照してください。
 
 </details>
 
