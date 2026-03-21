@@ -933,6 +933,8 @@ def draw_asterisms(
     preset: str = "night",
     line_width_scale: float = 1.0,
     content_fov_deg: float | None = None,
+    draw_base: bool = True,
+    draw_highlight: bool = True,
 ) -> None:
     """Draw dim asterisms always, and brighten the hovered selection with a label."""
 
@@ -1007,18 +1009,19 @@ def draw_asterisms(
     def _draw_one_asterism(asterism: Any, outline_pen: QPen, line_pen: QPen) -> List[QPointF]:
         return _draw_segments(asterism.segments(), outline_pen, line_pen)
 
-    base_outline_pen = _make_pen(base_outline_color, 4.0 * width_scale)
-    base_line_pen = _make_pen(base_line_color, 2.5 * width_scale)
-    base_segments: set[Tuple[str, str]] = set()
-    for asterism in ASTERISMS:
-        for source_a, source_b in asterism.segments():
-            if source_a == source_b:
-                continue
-            base_segments.add(tuple(sorted((source_a, source_b))))
-    _draw_segments(sorted(base_segments), base_outline_pen, base_line_pen)
+    if draw_base:
+        base_outline_pen = _make_pen(base_outline_color, 4.0 * width_scale)
+        base_line_pen = _make_pen(base_line_color, 2.5 * width_scale)
+        base_segments: set[Tuple[str, str]] = set()
+        for asterism in ASTERISMS:
+            for source_a, source_b in asterism.segments():
+                if source_a == source_b:
+                    continue
+                base_segments.add(tuple(sorted((source_a, source_b))))
+        _draw_segments(sorted(base_segments), base_outline_pen, base_line_pen)
 
     highlighted_asterism = None
-    if highlighted_object is not None:
+    if draw_highlight and highlighted_object is not None:
         hovered_obj, _ = highlighted_object
         if isinstance(hovered_obj, dict):
             hovered_source_id = str(hovered_obj.get("source_id", "")).strip()
@@ -1553,7 +1556,8 @@ def _draw_moon_planet(
     """Draw moon phase disc (with eclipse tint) and its gauge marker."""
     moon_zoom = 5 if enlarge_moon else 1
     sun_dir_in_moon_frame, screen_rotation_deg = calculate_moon_render_data(sun_altaz, moon_altaz, viewer_data.view_center)
-    moon_radius_px = (0.25 / 90.0) * geometry.radius * moon_zoom
+    base_moon_radius_px = max((0.25 / 90.0) * geometry.radius, 2.5)
+    moon_radius_px = base_moon_radius_px * moon_zoom
     draw_moon(
         painter,
         pos,
@@ -1687,11 +1691,12 @@ def draw_solar_system_bodies(
         )
         marker_visible = True
         if body.name == "moon":
+            base_moon_radius_px = max((0.25 / 90.0) * geometry.radius, 2.5)
             moon_zoom = 5 if enlarge_moon else 1
             marker_visible = _marker_intersects_viewport(
                 painter,
                 pos,
-                (0.25 / 90.0) * geometry.radius * moon_zoom,
+                base_moon_radius_px * moon_zoom,
             )
         else:
             radius_px, _alpha = planet_disc_style_from_vmag(body.vmag)
@@ -1750,8 +1755,39 @@ def draw_solar_system_bodies(
                 label_font,
                 label_text_color,
                 label_outline_color,
-                outline_width=label_outline_width,
-            )
+                    outline_width=label_outline_width,
+                )
+
+
+def draw_hovered_moon_overlay(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    celestial_data: CelestialData,
+    viewer_data: ViewerData,
+    highlighted_object: Optional[Tuple[CelestialObject, QPointF]],
+) -> None:
+    """Redraw the hovered moon enlarged on top of the normal scene."""
+    if highlighted_object is None:
+        return
+    obj, pos = highlighted_object
+    obj_name = getattr(obj, "name", None) if hasattr(obj, "name") else obj.get("name")
+    if str(obj_name).strip().lower() != "moon":
+        return
+    moon_body, sun_altaz, moon_altaz = _collect_sun_moon_context(celestial_data.planets)
+    if moon_body is None or sun_altaz is None or moon_altaz is None:
+        return
+    text_color = QColor(*TEXT_COLOR)
+    _draw_moon_planet(
+        painter,
+        pos,
+        geometry,
+        moon_body,
+        viewer_data,
+        sun_altaz,
+        moon_altaz,
+        True,
+        text_color,
+    )
 
 
 def draw_direction_labels(
@@ -1877,6 +1913,8 @@ def draw_overlay_info(
     label_reservations: Optional[List[QRectF]] = None,
     *,
     preset: str = "night",
+    draw_static_info: bool = True,
+    draw_hover_info: bool = True,
 ) -> None:
     """
     Draws overlay text information on the screen.
@@ -1920,47 +1958,43 @@ def draw_overlay_info(
             return f"{int(rounded)} m"
         return f"{float(value_m):.1f} m"
 
-    # ---- Location ----
-    city_name_text = viewer_data.city_name
-    print_line(city_name_text)
-    if viewer_data.location_height_label and viewer_data.location_height_m is not None:
-        print_line(f"{viewer_data.location_height_label} {format_height_m(viewer_data.location_height_m)}")
-    if viewer_data.show_observer_height:
-        print_line(f"Observer height {format_height_m(viewer_data.observer_height_m)}")
+    if draw_static_info:
+        city_name_text = viewer_data.city_name
+        print_line(city_name_text)
+        if viewer_data.location_height_label and viewer_data.location_height_m is not None:
+            print_line(f"{viewer_data.location_height_label} {format_height_m(viewer_data.location_height_m)}")
+        if viewer_data.show_observer_height:
+            print_line(f"Observer height {format_height_m(viewer_data.observer_height_m)}")
 
-    # ---- Local time ----
-    utc_time = celestial_data.time
-    tz_name = viewer_data.timezone_name
-    try:
-        local_tz = ZoneInfo(tz_name)
-        local_dt = utc_time.to_datetime(timezone=local_tz)
-        time_text = local_dt.strftime("%Y-%m-%d %H:%M:%S %Z")
-    except Exception:
-        time_text = utc_time.to_datetime().strftime("%Y-%m-%d %H:%M:%S UTC")
+        utc_time = celestial_data.time
+        tz_name = viewer_data.timezone_name
+        try:
+            local_tz = ZoneInfo(tz_name)
+            local_dt = utc_time.to_datetime(timezone=local_tz)
+            time_text = local_dt.strftime("%Y-%m-%d %H:%M:%S %Z")
+        except Exception:
+            time_text = utc_time.to_datetime().strftime("%Y-%m-%d %H:%M:%S UTC")
 
-    print_line(time_text)
+        print_line(time_text)
 
-    alt_deg, az_deg = viewer_data.view_center
+        alt_deg, az_deg = viewer_data.view_center
 
-    def az_to_compass(az: float) -> str:
-        """Converts azimuth in degrees to a compass direction string."""
-        names = tuple(DIRECTIONS.keys())
-        sector = 360.0 / len(names)
-        idx = int(((az % 360.0) + sector / 2.0) // sector) % len(names)
-        return names[idx]
+        def az_to_compass(az: float) -> str:
+            """Converts azimuth in degrees to a compass direction string."""
+            names = tuple(DIRECTIONS.keys())
+            sector = 360.0 / len(names)
+            idx = int(((az % 360.0) + sector / 2.0) // sector) % len(names)
+            return names[idx]
 
-    compass = az_to_compass(az_deg)
-    deg = "\N{DEGREE SIGN}"
-    view_text = f"Alt {alt_deg:.0f}{deg}  Az {az_deg:.0f}{deg} ({compass})"
-    print_line(view_text)
+        compass = az_to_compass(az_deg)
+        deg = "\N{DEGREE SIGN}"
+        view_text = f"Alt {alt_deg:.0f}{deg}  Az {az_deg:.0f}{deg} ({compass})"
+        print_line(view_text)
 
-    print_line(f"Vmag limit {vmag_limit:.1f}")
-
-    if enlarge_moon:
-        print_line("Moon size: 5x")
+        print_line(f"Vmag limit {vmag_limit:.1f}")
 
     # ---- DSO label (draw first so star/planet labels stay in front among labels) ----
-    if highlighted_dso:
+    if draw_hover_info and highlighted_dso:
         dso_obj, _ = highlighted_dso
         major_arcmin = float(dso_obj.get("major_arcmin", 0.0))
         minor_arcmin = float(dso_obj.get("minor_arcmin", 0.0))
@@ -2011,7 +2045,7 @@ def draw_overlay_info(
                     label_reservations.append(_text_bounds_at_baseline(dso_name, text_font, label_pos))
 
     # ---- Star/planet highlight ----
-    if highlighted_object:
+    if draw_hover_info and highlighted_object:
         obj, pos = highlighted_object
         painter.setPen(QPen(text_color, 2))
         painter.setBrush(Qt.BrushStyle.NoBrush)

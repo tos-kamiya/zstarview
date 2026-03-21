@@ -340,6 +340,66 @@ def test_draw_cached_frame_reuses_existing_image() -> None:
     assert draws == [(0, 0), (0, 0)]
 
 
+def test_render_frame_cache_key_ignores_hover_and_status_state() -> None:
+    geometry = SimpleNamespace(center=(100, 100), radius=80)
+    celestial_data = object()
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+        observer_height_m=1.7,
+    )
+    dummy = SimpleNamespace()
+    dummy.width = lambda: 640
+    dummy.height = lambda: 480
+    dummy.visual_preset = "night"
+    dummy.show_dso = True
+    dummy.show_asterisms = True
+    dummy.enlarge_moon = False
+    dummy.vmag_limit = 6.0
+    dummy.sky_disc_alpha = 1.0
+    dummy.cloud_disc_alpha = 0.2
+    dummy.aircraft_opacity = 0.4
+    dummy.terrain_horizon_opacity = 0.5
+    dummy.urban_outline_opacity = 0.2
+    dummy.show_urban_outline_layer = True
+    dummy._status_line_message = lambda: "initial"
+    dummy._render_cache_stamp = lambda value: window_render_module.SkyWindowRenderMixin._render_cache_stamp(dummy, value)
+    dummy.cloud_state = SimpleNamespace(image=object(), missing_mask=object(), stripe_density=None)
+    dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
+    dummy.state.sky_disc_image = object()
+    dummy.state.terrain_horizon_profile = [(1.0, 2.0)]
+    dummy.state.urban_outlines = [object()]
+    dummy.state.aircraft_overlay_points = [object()]
+    dummy.state.mouse_pos = None
+    dummy.state.jump_highlight_name = None
+    dummy.state.jump_highlight_altaz = None
+    dummy.state.jump_highlight_until_ms = 0.0
+
+    key_a = SkyWindow._render_frame_cache_key(
+        dummy,
+        geometry=geometry,
+        celestial_data=celestial_data,
+        render_viewer=viewer,
+    )
+
+    dummy.state.mouse_pos = SimpleNamespace(x=lambda: 10, y=lambda: 20)
+    dummy.state.jump_highlight_name = "Vega"
+    dummy.state.jump_highlight_altaz = (20.0, 30.0)
+    dummy.state.jump_highlight_until_ms = 12345.0
+    dummy._status_line_message = lambda: "changed"
+
+    key_b = SkyWindow._render_frame_cache_key(
+        dummy,
+        geometry=geometry,
+        celestial_data=celestial_data,
+        render_viewer=viewer,
+    )
+
+    assert key_a == key_b
+
+
 def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(monkeypatch) -> None:
     monkeypatch.setattr(
         window_render_module.render_draw,
@@ -691,8 +751,8 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
     monkeypatch.setattr(pipeline_module, "draw_star_layer", lambda *_args, **_kwargs: calls.append("stars"))
     monkeypatch.setattr(pipeline_module, "draw_aircraft_layer", lambda *_args, **_kwargs: calls.append("aircraft"))
     monkeypatch.setattr(pipeline_module, "draw_planet_layer", lambda *_args, **_kwargs: calls.append("planets"))
-    monkeypatch.setattr(pipeline_module, "draw_dso_hover_layer", lambda *_args, **_kwargs: calls.append("dso-hover"))
     monkeypatch.setattr(pipeline_module, "draw_overlay_layer", lambda *_args, **_kwargs: calls.append("overlay"))
+    monkeypatch.setattr(pipeline_module, "draw_hover_overlay_layer", lambda *_args, **_kwargs: calls.append("hover"))
     monkeypatch.setattr(pipeline_module, "draw_label_layer", lambda *_args, **_kwargs: calls.append("labels"))
     monkeypatch.setattr(pipeline_module, "draw_status_line", lambda *_args, **_kwargs: calls.append("status"))
 
@@ -768,11 +828,46 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         "stars",
         "aircraft",
         "planets",
-        "dso-hover",
         "overlay",
         "labels",
+        "hover",
         "status",
     ]
+
+
+def test_draw_hover_overlay_layer_enlarges_hovered_moon_by_name(monkeypatch) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_asterisms",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_hovered_moon_overlay",
+        lambda *_args, **_kwargs: calls.append("moon-hover"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "draw_dso_hover_layer",
+        lambda *_args, **_kwargs: calls.append("dso-hover"),
+    )
+    monkeypatch.setattr(
+        window_render_module.render_draw,
+        "draw_overlay_info",
+        lambda *_args, **_kwargs: calls.append("overlay-info"),
+    )
+
+    pipeline_module.draw_hover_overlay_layer(
+        painter=object(),
+        geometry=SimpleNamespace(radius=600),
+        scene=_make_scene(celestial_data=object()),
+        style=_make_style(),
+        highlighted_object=({"name": "moon"}, object()),
+        highlighted_dso=None,
+    )
+
+    assert calls == ["moon-hover", "dso-hover", "overlay-info"]
 
 
 def test_draw_sky_reference_lines_uses_render_view_center_projection(monkeypatch) -> None:

@@ -13,7 +13,8 @@ from ..render.pipeline import (
     RenderHudState,
     RenderStyle,
     compute_star_render_surface_size,
-    render_scene_into_painter,
+    render_base_scene_into_painter,
+    render_hud_overlay_into_painter,
 )
 from ..types import CelestialData, ViewerData
 
@@ -33,21 +34,7 @@ class SkyWindowRenderMixin:
         geometry: render_draw.ScreenGeometry,
         celestial_data: CelestialData,
         render_viewer: ViewerData,
-        highlighted_object: Any | None,
-        highlighted_dso: Any | None,
     ) -> tuple[Any, ...]:
-        mouse_pos = self.state.mouse_pos
-        mouse_key = None if mouse_pos is None else (int(mouse_pos.x()), int(mouse_pos.y()))
-        jump_altaz = self.state.jump_highlight_altaz
-        jump_altaz_key = None if jump_altaz is None else (float(jump_altaz[0]), float(jump_altaz[1]))
-        highlighted_object_name = None
-        if highlighted_object is not None:
-            obj = highlighted_object[0]
-            highlighted_object_name = getattr(obj, "name", None) if hasattr(obj, "name") else obj.get("name")
-        highlighted_dso_name = None
-        if highlighted_dso is not None:
-            obj = highlighted_dso[0]
-            highlighted_dso_name = obj.get("name") if hasattr(obj, "get") else getattr(obj, "name", None)
         return (
             int(self.width()),
             int(self.height()),
@@ -82,13 +69,6 @@ class SkyWindowRenderMixin:
             self._render_cache_stamp(self.state.terrain_horizon_profile),
             self._render_cache_stamp(self.state.urban_outlines),
             self._render_cache_stamp(self.state.aircraft_overlay_points),
-            mouse_key,
-            self.state.jump_highlight_name,
-            jump_altaz_key,
-            round(float(self.state.jump_highlight_until_ms), 1),
-            highlighted_object_name,
-            highlighted_dso_name,
-            self._status_line_message(),
         )
 
     def _draw_cached_frame(
@@ -298,8 +278,6 @@ class SkyWindowRenderMixin:
             geometry=geometry,
             celestial_data=celestial_data,
             render_viewer=render_viewer,
-            highlighted_object=highlighted_object,
-            highlighted_dso=highlighted_dso,
         )
         self._update_star_render_stats(geometry)
         scene, style, hud = self._render_inputs(
@@ -309,7 +287,7 @@ class SkyWindowRenderMixin:
         self._draw_cached_frame(
             painter,
             frame_key,
-            lambda frame_painter: render_scene_into_painter(
+            lambda frame_painter: render_base_scene_into_painter(
                 frame_painter,
                 geometry=geometry,
                 viewport_rect=self.rect(),
@@ -317,7 +295,15 @@ class SkyWindowRenderMixin:
                 style=style,
                 hud=hud,
                 compositor=self._compositor,
-                highlighted_object=highlighted_object,
-                highlighted_dso=highlighted_dso,
             ),
+        )
+        render_hud_overlay_into_painter(
+            painter,
+            geometry=geometry,
+            viewport_rect=self.rect(),
+            scene=scene,
+            style=style,
+            hud=hud,
+            highlighted_object=highlighted_object,
+            highlighted_dso=highlighted_dso,
         )

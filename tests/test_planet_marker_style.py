@@ -172,6 +172,43 @@ def test_hover_can_identify_planet_name() -> None:
     assert getattr(obj, "name", "") == "mars"
 
 
+def test_enlarge_moon_scales_display_radius_by_five(monkeypatch) -> None:
+    moon_draw_radii: list[float] = []
+
+    def fake_draw_moon(_painter, _center, radius_px, *_args, **_kwargs) -> None:
+        moon_draw_radii.append(float(radius_px))
+
+    monkeypatch.setattr(render_draw, "draw_moon", fake_draw_moon)
+    monkeypatch.setattr(render_draw, "draw_gauge_cross", lambda *_args, **_kwargs: None)
+
+    sun = PlanetBody(name="sun", alt=45.0, az=180.0, symbol="☉", is_visible=True)
+    moon = PlanetBody(name="moon", alt=45.0, az=180.0, symbol="☾", is_visible=True)
+    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
+    geometry = ScreenGeometry(center=(100, 100), radius=80)
+    celestial = _empty_celestial_data([sun, moon])
+
+    render_draw.draw_solar_system_bodies(
+        painter=object(),
+        geometry=geometry,
+        celestial_data=celestial,
+        viewer_data=viewer,
+        enlarge_moon=False,
+        label_candidates=[],
+    )
+    render_draw.draw_solar_system_bodies(
+        painter=object(),
+        geometry=geometry,
+        celestial_data=celestial,
+        viewer_data=viewer,
+        enlarge_moon=True,
+        label_candidates=[],
+    )
+
+    assert len(moon_draw_radii) == 2
+    assert moon_draw_radii[0] == 2.5
+    assert moon_draw_radii[1] == 12.5
+
+
 def test_planet_draw_and_hover_ignore_horizon_visibility_flag(monkeypatch) -> None:
     disc_calls: list[tuple[float, int, tuple[int, int, int, int]]] = []
 

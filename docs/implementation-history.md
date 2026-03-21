@@ -33,6 +33,12 @@
   - 共通化の対象は描画パイプラインとレイヤーごとの描画入力契約であり、GUI と CLI のデータ取得順序そのものは統一しない。
   - GUI では従来どおり段階的・非同期にレイヤーを揃えてよく、将来の CLI では同期的・逐次的にレイヤーを揃えることを許容する。
   - この段階では `--save-image` のような新 CLI オプション実装には進まず、まず描画コードの分離と再利用可能化を優先する。
+  - `src/zstarview/render/pipeline.py` を shared render pipeline として導入し、`RenderSceneData`、`RenderStyle`、`RenderHudState` を明示分離した。
+  - `RenderPipelineState` は廃止し、shared pipeline の関数群は `geometry`、`viewport_rect`、`scene`、`style`、`hud` を直接受ける。
+  - `SkyWindowRenderMixin` からテスト専用・未使用の `_draw_*` ラッパは削除し、`paintEvent()` 本線と GUI 固有の state/cache/hover 処理に絞った。
+  - 次段では、guide をベース描画側に残したまま、hover/HUD を別オーバーレイとして分離し、ベースフレーム cache key から `mouse_pos` などの高頻度変化要素を外す予定とする。
+  - ここまでで `render_base_scene_into_painter()` と `render_hud_overlay_into_painter()` を分け、ベースキャッシュから hover/jump/status 依存を外した。
+  - アステリズム強調と月 hover 拡大は、通常描画をベースに残したまま、hover 時に HUD 側で上書きする方針に切り替えた。
 
 - 山頂ビュー用 dataset の作成フローを設計する
   - 目的は「山そのものの完全地理データ」ではなく、「山名から山頂ビュー用の代表点へ解決する curated dataset」を作ることとする。
