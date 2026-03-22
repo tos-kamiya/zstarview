@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import json
 
 import pytest
 
@@ -129,3 +130,27 @@ def test_fetch_cached_satellite_elements_raises_when_cache_is_stale_and_refetch_
             now_utc=fetched_at + timedelta(days=2),
             fresh_ttl_seconds=24 * 60 * 60,
         )
+
+
+def test_load_satellite_cache_filters_non_iss_records_from_existing_iss_cache(tmp_path) -> None:
+    fetched_at = datetime(2026, 3, 22, 6, 0, tzinfo=timezone.utc)
+    crew_dragon = dict(_sample_record())
+    crew_dragon["OBJECT_NAME"] = "CREW DRAGON 12"
+    crew_dragon["NORAD_CAT_ID"] = "99999"
+    satellite_group_cache_path("iss", cache_root=tmp_path).write_text(
+        json.dumps(
+            {
+                "group_key": "iss",
+                "fetched_at_utc": fetched_at.isoformat(),
+                "source": "cache",
+                "records": [_sample_record(), crew_dragon],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    cached = load_satellite_cache("iss", cache_root=tmp_path)
+
+    assert cached is not None
+    assert len(cached.records) == 1
+    assert cached.records[0]["NORAD_CAT_ID"] == "25544"
