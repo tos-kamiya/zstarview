@@ -11,7 +11,6 @@
 
 - 実装済み変更の要約
 - TODO
-- INPROGRESS
 - 実装上の判断メモ
 
 利用者向け仕様は `docs/specification.md`、内部設計の正本は `docs/design.md` を参照する。

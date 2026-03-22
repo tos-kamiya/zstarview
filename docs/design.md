@@ -613,12 +613,13 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 7. `satellites/project.py` は group ごとの records を Skyfield `EarthSatellite.from_omm()` で satellite object へ変換し、観測地点と現在時刻から `alt/az` を計算する。
 8. `satellites/project.py` は地平線上かつ視野内にある人工衛星だけを `SatelliteOverlayPoint` へ落とし込む。
 9. `satellites/project.py` は `ISS` に少し大きい `marker_scale` を与え、`Starlink` と `GPS` には既定で label を付けない。
-10. `window.py` は API 取得とは別に人工衛星位置再計算 timer を持ち、既定では `5秒` ごとに保持済み records から marker 列だけを再計算してよい。
-11. 人工衛星レイヤーを GUI で再表示したとき、records が fresh なら外部再取得を行わず marker 再計算だけで即時復帰してよい。
-12. records が stale なら、レイヤー再表示時も再取得を優先してよい。
-13. `SkyWindow` は `satellite_ready` または位置再計算完了を受けたら `SkyWindowState` を更新し、再描画する。
-14. 通常描画では人工衛星を `planets` の後、`aircraft` の前に描く。
-15. 初期実装では人工衛星と月・惑星の接近時に特別な隠蔽処理は行わなくてよい。
+10. `window.py` は API 取得とは別に人工衛星位置再計算を行い、既定では `ISS` と `Starlink` を有効 group として扱ってよい。
+11. 人工衛星と航空機の位置再計算は、`2秒` 間隔の共通 overlay projection timer で駆動してよい。
+12. 人工衛星レイヤーを GUI で再表示したとき、records が fresh なら外部再取得を行わず marker 再計算だけで即時復帰してよい。
+13. records が stale なら、レイヤー再表示時も再取得を優先してよい。
+14. `SkyWindow` は `satellite_ready` または位置再計算完了を受けたら `SkyWindowState` を更新し、再描画する。
+15. 通常描画では人工衛星を `planets` の後、`aircraft` の前に描く。
+16. 初期実装では人工衛星と月・惑星の接近時に特別な隠蔽処理は行わなくてよい。
 
 ### 6.4 雲更新フロー
 
@@ -742,10 +743,12 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 
 ### 8.4 人工衛星レイヤーの更新粒度
 
-- 人工衛星の軌道要素取得は `24時間` 間隔とし、表示上の位置再計算は `5秒` 間隔で行ってよい。
+- 人工衛星の軌道要素取得は `24時間` 間隔とし、表示上の位置再計算は `2秒` 間隔で行ってよい。
 - 人工衛星描画は現在時刻の位置のみを描き、初期実装では軌跡線を持たない。
 - `satellite_opacity <= 0.0` または各 group が無効の間は、人工衛星 fetch timer と位置再計算 timer を止めてよい。
 - 描画は地平線上かつ視野内に限定し、`ISS` だけ少し大きい marker を使ってよい。
+- GUI 既定の有効 group は `ISS` と `Starlink` とし、`GPS` は取得基盤のみ先行してもよい。
+- 航空機と人工衛星の位置再計算は、共通 overlay projection timer で同期させてよい。
 - GUI から再表示したときは `last_success_utc` を見て fresh cache を優先し、不要な CelesTrak 再取得を避けてよい。
 - stale cache は表示継続には使わず、fresh を外れた場合は再取得を優先してよい。
 
