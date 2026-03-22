@@ -175,8 +175,9 @@ def add_location_arguments(parser: argparse.ArgumentParser) -> None:
         nargs="?",
         default="",
         help=(
-            "Location name: city, lat;lon, tower name, mountain name, "
-            "or explicit t/NAME and m/NAME prefixes (default: same as the last run)"
+            "Location name: city, lat;lon, @lat,lon, supported Google Maps URL, "
+            "tower name, mountain name, or explicit t/NAME and m/NAME prefixes "
+            "(default: same as the last run)"
         ),
     )
     parser.add_argument(
@@ -259,7 +260,18 @@ def add_time_arguments(parser: argparse.ArgumentParser) -> None:
         help=(
             "Set an absolute date and time in 'YYYY-MM-DD HH[:MM[:SS]] [TZ]' format "
             "(e.g., '2025-09-12 9', '2025-09-12 09:00', '2025-09-12 9:0:0 JST'). "
-            "If TZ is omitted, UTC is assumed. Overrides --hours and --days."
+            "If TZ is omitted, the resolved location timezone is used. "
+            "Overrides --hours and --days."
+        ),
+    )
+    time_group.add_argument(
+        "--timezone",
+        type=str,
+        default=None,
+        metavar="TZ",
+        help=(
+            "Override the resolved location timezone for --datetime and on-screen time "
+            "(for example: Asia/Tokyo, JST, UTC+9)."
         ),
     )
 
@@ -578,6 +590,10 @@ def _normalize_location_arguments(
         args.place_lang = args.place_lang.strip()
         if not args.place_lang:
             parser.error("--place-lang must not be empty")
+    if getattr(args, "timezone", None) is not None:
+        args.timezone = args.timezone.strip()
+        if not args.timezone:
+            parser.error("--timezone must not be empty")
 
 
 def _normalize_dataset_query_arguments(
@@ -615,6 +631,7 @@ def _validate_dataset_query_compatibility(
             or has_non_default("hours")
             or has_non_default("days")
             or has_non_default("datetime")
+            or has_non_default("timezone")
             or has_non_default("vmag_limit")
             or has_non_default("vmag_brightness_multiplier")
             or has_non_default("enlarge_moon")

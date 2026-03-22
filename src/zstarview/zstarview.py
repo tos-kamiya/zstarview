@@ -3,6 +3,7 @@ import time
 import logging
 import math
 import json
+from dataclasses import replace
 
 from .cli_args import _parse_theme, _parse_window_geometry, parse_args
 from .viewpoints import (
@@ -158,8 +159,16 @@ def main() -> None:
             place_countrycode=args.place_countrycode,
             place_lang=args.place_lang,
         )
+        if args.timezone is not None:
+            city = replace(city, tz=args.timezone)
         set_splash_context(_format_splash_location(city))
-        delta_t = _startup_parse_time_arguments(args.datetime, args.days, args.hours)
+        delta_t = _startup_parse_time_arguments(
+            args.datetime,
+            args.days,
+            args.hours,
+            timezone_name=city.tz,
+            timezone_override=args.timezone,
+        )
         star_catalog = _startup_load_stars(args.vmag_limit)
         dso_catalog = _startup_load_dso()
         _startup_verify_ephemeris()

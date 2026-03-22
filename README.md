@@ -121,7 +121,7 @@ zstarview-export-image Matsue -o matsue.png
 
 | Argument | Description                                                                                                                                                                                                                                                           | Default                           |
 | :------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------- |
-| `location`   | Specify a city name, a tower name, a mountain name, explicit `t/NAME` or `m/NAME`, or latitude/longitude in the form `"<lat>;<lon>"`. Examples: `Tokyo`, `Tokyo Skytree`, `t/Tokyo Skytree`, `Mount Fuji`, `m/Mount Fuji`, `35.68;139.76`, `N35.68;E139.76`, `-35.68;139.76`. On the `dev` branch, the intended direct-coordinate forms also include `@lat,lon` and selected Google Maps URLs. If omitted, the last run location will be used (defaults to `Tokyo` on the first run). | Last run location (or `Tokyo`) |
+| `location`   | Specify a city name, a tower name, a mountain name, explicit `t/NAME` or `m/NAME`, or a direct coordinate form such as `"<lat>;<lon>"`, `"@<lat>,<lon>"`, or a supported Google Maps URL. Examples: `Tokyo`, `Tokyo Skytree`, `t/Tokyo Skytree`, `Mount Fuji`, `m/Mount Fuji`, `35.68;139.76`, `N35.68;E139.76`, `@35.68,139.76`, `www.google.com/maps/@35.68,139.76,17z`. If omitted, the last run location will be used (defaults to `Tokyo` on the first run). | Last run location (or `Tokyo`) |
 
 #### Options
 
@@ -131,6 +131,7 @@ zstarview-export-image Matsue -o matsue.png
 | `-p`, `--place QUERY`                     | Search a place, station, or facility name via OpenStreetMap Nominatim and use the top candidate as the observing location. Cannot be used together with the positional `location` argument. | |
 | `--place-countrycode CODE`                 | Restrict `--place` search to an ISO 3166-1 alpha-2 country code such as `jp`. | |
 | `--place-lang LANG`                        | `Accept-Language` sent to Nominatim for `--place` search results.           | `en`    |
+| `--timezone TZ`                            | Override the resolved location timezone for `--datetime` and on-screen time. Accepts abbreviations, IANA names, and UTC offsets such as `JST`, `Asia/Tokyo`, or `UTC+9`. | |
 | `-Z`, `--view-center-az VIEW_CENTER_AZ`     | Viewing azimuth (degrees or compass points).                                | `180`   |
 | `-A`, `--view-center-alt VIEW_CENTER_ALT`   | Viewing altitude angle (90=zenith, 0=horizon).                              | `90`    |
 | `--content-fov-deg DEGREES`                 | Shared overscan content FOV for all layers. The window edge still corresponds to `90°` from the view center; values above `90` let sky/cloud/background content extend beyond the window edge and reduce empty corner regions. Allowed range: `90`–`127`. | `100` |
@@ -224,7 +225,7 @@ Use `--theme` to change the background treatment and contrast style.
 
 Use `--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"` to specify an absolute date and time.
 The time part may be just hours, hours\:minutes, or hours\:minutes\:seconds.
-If no timezone (TZ) is specified, UTC is assumed.
+If no timezone (TZ) is specified, the resolved location timezone is used. `--timezone TZ` overrides the resolved location timezone.
 
 Supported timezone formats:
 
@@ -253,32 +254,34 @@ This was used to validate the `pyresample` removal on both Himawari and GOES inp
 - visible-mask pixels
 - final rendered LA image
 
-#### Latitude/Longitude direct input
+#### Direct coordinate input
 
-Instead of a city name, you can directly specify coordinates as `"<lat>;<lon>"`.
+Instead of a city name, you can directly specify coordinates.
 
-* Format: `latitude;longitude` (semicolon separated)
+* Formats:
+  * `latitude;longitude` (semicolon separated)
+  * `@latitude,longitude`
+  * Supported Google Maps URLs containing `/maps/@latitude,longitude`
 * Examples:
   * `35.68;139.76`
   * `N35.68;E139.76`
   * `-35.68;139.76`
   * `S35.68;W139.76`
+  * `@35.68,139.76`
+  * `https://www.google.com/maps/@35.68,139.76,17z`
+  * `maps.google.com/maps/@35.68,139.76`
 * Latitude must be between -90 and 90, longitude between -180 and 180.
 * Direction letters `N/S/E/W` can be used (negative sign takes precedence if both given).
-* When starting with coordinates, **the timezone defaults to UTC** (you can override with `--datetime` and a timezone).
-
-Planned on the `dev` branch:
-
-* In addition to `lat;lon`, direct coordinate input is intended to accept `@lat,lon`.
-* Google Maps URLs are intended to be accepted when they start with `maps.google.com/`, `www.google.com/maps/`, or `google.com/maps/` (optionally prefixed with `https://`) and contain `/maps/@lat,lon`.
-* For these Google Maps URLs, only the coordinates are intended to be used. Zoom, altitude, heading, pitch, and similar trailing URL components are intended to be ignored.
-* The planned timezone behavior is to resolve the location timezone from the parsed coordinates, matching `--place`, with a future `--timezone TZ` override option taking precedence when specified.
-* `--observer-height-m` remains the only planned way to specify observer eye height. Google Maps URL altitude-like fields are not intended to affect observer height.
+* For supported Google Maps URLs, only the coordinates are used. Zoom, altitude, heading, pitch, and similar trailing URL components are ignored.
+* When starting with direct coordinates, the timezone is resolved from the parsed location in the same way as `--place`. `--timezone TZ` overrides that result.
+* `--observer-height-m` remains the only way to specify observer eye height. Google Maps URL altitude-like fields do not affect observer height.
 
 Example:
 
 ```bash
 zstarview "35.68;139.76"
+zstarview "@35.68,139.76"
+zstarview "www.google.com/maps/@35.68,139.76,17z"
 zstarview "N35.68;E139.76" --datetime "2025-09-12 21 JST"
 zstarview "35.68;139.76" --observer-height-m 120
 ```
