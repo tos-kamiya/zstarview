@@ -121,7 +121,7 @@ zstarview-export-image Matsue -o matsue.png
 
 | Argument | Description                                                                                                                                                                                                                                                           | Default                           |
 | :------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------- |
-| `location`   | Specify a city name, a tower name, a mountain name, explicit `t/NAME` or `m/NAME`, or a direct coordinate form such as `"<lat>;<lon>"`, `"@<lat>,<lon>"`, or a supported Google Maps URL. Examples: `Tokyo`, `Tokyo Skytree`, `t/Tokyo Skytree`, `Mount Fuji`, `m/Mount Fuji`, `35.68;139.76`, `N35.68;E139.76`, `@35.68,139.76`, `www.google.com/maps/@35.68,139.76,17z`. If omitted, the last run location will be used (defaults to `Tokyo` on the first run). | Last run location (or `Tokyo`) |
+| `location`   | Specify a city name, a tower name, a mountain name, explicit `t/NAME` or `m/NAME`, or a direct coordinate form such as `"<lat>;<lon>"`, `"@<lat>,<lon>"`, or a supported Google Maps URL. Examples: `Tokyo`, `Tokyo Skytree`, `t/Tokyo Skytree`, `Mount Fuji`, `m/Mount Fuji`, `35.68;139.76`, `N35.68;E139.76`, `@35.68,139.76`, `www.google.com/maps/@35.68,139.76,17z`, `www.google.com/maps/place/...!3d35.68!4d139.76...`. If omitted, the last run location will be used (defaults to `Tokyo` on the first run). | Last run location (or `Tokyo`) |
 
 #### Options
 
@@ -261,7 +261,7 @@ Instead of a city name, you can directly specify coordinates.
 * Formats:
   * `latitude;longitude` (semicolon separated)
   * `@latitude,longitude`
-  * Supported Google Maps URLs containing `/maps/@latitude,longitude`
+  * Supported Google Maps shared URLs starting with `maps.google.com/` or `www.google.com/maps/`
 * Examples:
   * `35.68;139.76`
   * `N35.68;E139.76`
@@ -270,9 +270,12 @@ Instead of a city name, you can directly specify coordinates.
   * `@35.68,139.76`
   * `https://www.google.com/maps/@35.68,139.76,17z`
   * `maps.google.com/maps/@35.68,139.76`
+  * `https://www.google.com/maps/place/...!3d35.68!4d139.76...`
 * Latitude must be between -90 and 90, longitude between -180 and 180.
 * Direction letters `N/S/E/W` can be used (negative sign takes precedence if both given).
-* For supported Google Maps URLs, only the coordinates are used. Zoom, altitude, heading, pitch, and similar trailing URL components are ignored.
+* Supported Google Maps URLs currently include the widely observed shared-link forms starting with `maps.google.com/` or `www.google.com/maps/`. `https://` may be omitted.
+* For supported Google Maps URLs, `!3dLAT!4dLON` is used when present. Otherwise `@LAT,LON` is used.
+* Zoom, altitude, heading, pitch, and similar trailing URL components are ignored.
 * When starting with direct coordinates, the timezone is resolved from the parsed location in the same way as `--place`. `--timezone TZ` overrides that result.
 * `--observer-height-m` remains the only way to specify observer eye height. Google Maps URL altitude-like fields do not affect observer height.
 

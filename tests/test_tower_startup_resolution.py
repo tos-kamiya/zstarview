@@ -124,12 +124,15 @@ def test_startup_resolve_city_accepts_google_maps_url(monkeypatch) -> None:
     )
 
     location = _startup_resolve_city(
-        "www.google.com/maps/@35.4824704,133.0683567,18z?entry=ttu"
+        "https://www.google.com/maps/place/%E7%A5%9E%E6%88%B8%E4%B8%89%E5%AE%AE%E9%A7%85/"
+        "@34.6938393,135.1914038,15.58z/data=!4m6!3m5!"
+        "1s0x60008efaac8a2383:0xf35028084a4989de!8m2!3d34.6938491!4d135.1960454"
+        "!16s%2Fg%2F1tdx_rsh?entry=ttu"
     )
 
     assert location.kind == "coords"
-    assert location.display_name == "Lat: 35.48, Lon: 133.07"
-    assert location.persistence_key == "35.482470;133.068357"
+    assert location.display_name == "Lat: 34.69, Lon: 135.20"
+    assert location.persistence_key == "34.693849;135.196045"
     assert location.tz == "Asia/Tokyo"
 
 
@@ -139,3 +142,11 @@ def test_startup_resolve_city_rejects_google_maps_url_without_coordinates(monkey
 
     with pytest.raises(StartupAbortError):
         _startup_resolve_city("https://www.google.com/maps/place/Tokyo+Tower")
+
+
+def test_startup_resolve_city_rejects_google_com_maps_host(monkeypatch) -> None:
+    monkeypatch.setattr("zstarview.startup.load_last_city", lambda: None)
+    monkeypatch.setattr("zstarview.startup.save_last_city", lambda _value: None)
+
+    with pytest.raises(StartupAbortError):
+        _startup_resolve_city("https://google.com/maps/@35.0,139.0,17z")

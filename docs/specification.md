@@ -254,6 +254,7 @@ CLI には次のビューポイント dataset 参照専用オプションを持�
   - 例: `@35.68,139.76`
   - 例: `https://www.google.com/maps/@35.68,139.76,17z`
   - 例: `maps.google.com/maps/@35.68,139.76`
+  - 例: `https://www.google.com/maps/place/...!3d35.68!4d139.76...`
 
 地点が省略された場合は、前回起動時の地点を使用する。初回起動時の既定地点は `Tokyo` である。
 ただし、`--place` 指定時は位置引数 `location` を受け付けない。
@@ -274,9 +275,10 @@ CLI には次のビューポイント dataset 参照専用オプションを持�
 - タワー名解決では、主表示名や別名に加えて ASCII フォールバック名も受け付ける。
 - 山名解決でも、主表示名や別名に加えて ASCII フォールバック名も受け付ける。
 - mountain viewpoint データセットは、Wikipedia 起点の候補選定と Wikidata メタデータ正規化に基づく。
-- 直接座標入力として `lat;lon`、`@lat,lon`、および Google Maps 由来の `/maps/@lat,lon...` URL を受け付けてよい。
-- Google Maps URL は、`maps.google.com/`、`www.google.com/maps/`、`google.com/maps/` のいずれかで始まるものだけを受け付けてよい。各形式では先頭の `https://` を省略可とする。
-- Google Maps URL では `/maps/@lat,lon` 部分の座標だけを使い、その後ろに続く zoom、高度、heading、pitch、query parameter、fragment などは地点解決に使わない。
+- 直接座標入力として `lat;lon`、`@lat,lon`、および現在広く観測される Google Maps 共有 URL を受け付けてよい。
+- Google Maps URL は、`maps.google.com/` または `www.google.com/maps/` で始まるものだけを受け付けてよい。各形式では先頭の `https://` を省略可とする。
+- Google Maps URL に `!3dLAT!4dLON` が含まれる場合はその座標を優先して使う。これがない場合に限り、`@LAT,LON` を使ってよい。
+- Google Maps URL では、採用した座標以外の zoom、高度、heading、pitch、query parameter、fragment などは地点解決に使わない。
 - `@lat,lon` および Google Maps URL 内の `lat,lon` は、`lat;lon` と同様に緯度 `[-90, 90]`、経度 `[-180, 180]` の範囲チェックを行う。
 - 緯度経度入力時は都市名文字列としての解釈を行わない。
 - 解決された地点は次回起動用設定として保存する。
