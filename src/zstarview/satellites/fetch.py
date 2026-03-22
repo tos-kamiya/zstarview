@@ -12,7 +12,7 @@ from .types import SatelliteOmmRecord
 
 CELESTRAK_GP_JSON_URL = "https://celestrak.org/NORAD/elements/gp.php"
 CELESTRAK_GROUP_BY_KEY = {
-    "iss": "stations",
+    "station": "stations",
     "starlink": "starlink",
 }
 _ISS_NORAD_CAT_ID = "25544"
@@ -69,7 +69,7 @@ def filter_records_for_group(
     records: Iterable[SatelliteOmmRecord],
 ) -> list[SatelliteOmmRecord]:
     normalized = [dict(record) for record in records]
-    if group_key != "iss":
+    if group_key != "station":
         return normalized
     allowed_cat_ids = {_ISS_NORAD_CAT_ID, _CSS_TIANHE_NORAD_CAT_ID}
     return [

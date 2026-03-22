@@ -38,7 +38,7 @@ class _FakeSatellite:
         return _FakeDifference(self._alt_deg, self._az_deg)
 
 
-def test_project_satellite_records_marks_iss_with_label(monkeypatch) -> None:
+def test_project_satellite_records_marks_station_with_label(monkeypatch) -> None:
     monkeypatch.setattr(
         project_module,
         "build_earth_satellites",
@@ -46,7 +46,7 @@ def test_project_satellite_records_marks_iss_with_label(monkeypatch) -> None:
     )
 
     points = project_module.project_satellite_records(
-        {"iss": [{"OBJECT_NAME": "ISS (ZARYA)"}]},
+        {"station": [{"OBJECT_NAME": "ISS (ZARYA)"}]},
         observer_lat=35.47,
         observer_lon=133.05,
         observer_height_m=0.0,
@@ -54,12 +54,12 @@ def test_project_satellite_records_marks_iss_with_label(monkeypatch) -> None:
     )
 
     assert len(points) == 1
-    assert points[0].group_key == "iss"
+    assert points[0].group_key == "station"
     assert points[0].show_label is True
     assert points[0].marker_scale == 0.3
 
 
-def test_project_satellite_records_marks_css_tianhe_like_iss(monkeypatch) -> None:
+def test_project_satellite_records_marks_css_tianhe_like_station(monkeypatch) -> None:
     monkeypatch.setattr(
         project_module,
         "build_earth_satellites",
@@ -67,7 +67,7 @@ def test_project_satellite_records_marks_css_tianhe_like_iss(monkeypatch) -> Non
     )
 
     points = project_module.project_satellite_records(
-        {"iss": [{"OBJECT_NAME": "CSS (TIANHE)"}]},
+        {"station": [{"OBJECT_NAME": "CSS (TIANHE)"}]},
         observer_lat=35.47,
         observer_lon=133.05,
         observer_height_m=0.0,
@@ -75,7 +75,7 @@ def test_project_satellite_records_marks_css_tianhe_like_iss(monkeypatch) -> Non
     )
 
     assert len(points) == 1
-    assert points[0].group_key == "iss"
+    assert points[0].group_key == "station"
     assert points[0].satellite_name == "CSS (TIANHE)"
     assert points[0].show_label is True
     assert points[0].marker_scale == 0.3
@@ -96,7 +96,7 @@ def test_project_satellite_records_sorts_by_group_then_altitude(monkeypatch) -> 
     points = project_module.project_satellite_records(
         {
             "starlink": [{"OBJECT_NAME": "STARLINK GROUP"}],
-            "iss": [{"OBJECT_NAME": "ISS (ZARYA)"}],
+            "station": [{"OBJECT_NAME": "ISS (ZARYA)"}],
         },
         observer_lat=35.47,
         observer_lon=133.05,
@@ -104,7 +104,7 @@ def test_project_satellite_records_sorts_by_group_then_altitude(monkeypatch) -> 
         time_obj=astropy.time.Time("2026-03-22T12:00:00Z"),
     )
 
-    assert [point.group_key for point in points] == ["iss", "starlink", "starlink"]
+    assert [point.group_key for point in points] == ["station", "starlink", "starlink"]
     assert [point.satellite_name for point in points[1:]] == ["STARLINK B", "STARLINK A"]
     assert all(point.show_label is False for point in points[1:])
 
@@ -120,7 +120,7 @@ def test_project_satellite_records_keeps_starlink_smaller_and_unlabeled(monkeypa
 
     points = project_module.project_satellite_records(
         {
-            "iss": [{"OBJECT_NAME": "ISS (ZARYA)"}],
+            "station": [{"OBJECT_NAME": "ISS (ZARYA)"}],
             "starlink": [{"OBJECT_NAME": "STARLINK-1"}],
         },
         observer_lat=35.47,
@@ -129,7 +129,7 @@ def test_project_satellite_records_keeps_starlink_smaller_and_unlabeled(monkeypa
         time_obj=astropy.time.Time("2026-03-22T12:00:00Z"),
     )
 
-    assert [point.group_key for point in points] == ["iss", "starlink"]
+    assert [point.group_key for point in points] == ["station", "starlink"]
     assert points[0].show_label is True
     assert points[1].show_label is False
     assert points[1].marker_scale == 0.156
