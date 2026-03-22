@@ -240,6 +240,32 @@ def test_planet_draw_and_hover_ignore_horizon_visibility_flag(monkeypatch) -> No
         geometry,
     )
     assert highlighted is not None
+
+
+def test_draw_gauge_cross_respects_small_scale() -> None:
+    image = QImage(64, 64, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(0)
+    painter = QPainter(image)
+    try:
+        render_draw.draw_gauge_cross(
+            painter,
+            render_draw.QColor(255, 255, 255, 255),
+            QPointF(32.0, 32.0),
+            scale=0.13,
+            pen_width=1.0,
+        )
+    finally:
+        painter.end()
+
+    alpha = np.frombuffer(image.bits(), dtype=np.uint8).reshape((64, 64, 4))[..., 3]
+    ys, xs = np.nonzero(alpha)
+    assert len(xs) > 0
+    half_span_x = max(abs(int(x) - 32) for x in xs)
+    half_span_y = max(abs(int(y) - 32) for y in ys)
+    assert half_span_x <= 2
+    assert half_span_y <= 2
+
+
 app = QApplication.instance() or QApplication([])
 
 

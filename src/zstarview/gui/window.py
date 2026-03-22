@@ -230,7 +230,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             satellite_overlay_points=None,
             aircraft_overlay_points=None,
         )
-        self._enabled_satellite_groups: tuple[str, ...] = ("iss",)
+        self._enabled_satellite_groups: tuple[str, ...] = ("iss", "starlink")
         self._frame_cache_key: object | None = None
         self._frame_cache_image = None
         self.setWindowTitle(f"{APP_DISPLAY_NAME} - {self.viewer_data.city_name}")

@@ -16,9 +16,9 @@ _MAX_MARKERS_BY_GROUP = {
     "gps": 12,
 }
 _MARKER_SCALE_BY_GROUP = {
-    "iss": 0.50,
-    "starlink": 0.38,
-    "gps": 0.38,
+    "iss": 0.17,
+    "starlink": 0.13,
+    "gps": 0.13,
 }
 
 
@@ -55,7 +55,7 @@ def project_satellite_records(
                     satellite_name=str(getattr(satellite, "name", "") or group_key.upper()),
                     alt_deg=alt_deg,
                     az_deg=float(az.degrees),
-                    marker_scale=float(_MARKER_SCALE_BY_GROUP.get(group_key, 0.38)),
+                    marker_scale=float(_MARKER_SCALE_BY_GROUP.get(group_key, 0.13)),
                     show_label=group_key == "iss",
                 )
             )

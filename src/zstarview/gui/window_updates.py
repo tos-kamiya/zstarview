@@ -237,7 +237,7 @@ class SkyWindowUpdatesMixin:
             observer_lon=lon,
             observer_height_m=self.viewer_data.observer_height_m,
             time_obj=self._current_time_obj(),
-            enabled_groups=tuple(getattr(self, "_enabled_satellite_groups", ("iss",))),
+            enabled_groups=tuple(getattr(self, "_enabled_satellite_groups", ("iss", "starlink"))),
             reason=reason,
         )
 

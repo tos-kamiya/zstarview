@@ -398,6 +398,15 @@ def add_render_arguments(
         ),
     )
     parser.add_argument(
+        "--satellite-opacity",
+        type=float,
+        default=0.5,
+        help=(
+            "Opacity of the artificial satellite overlay (0.0 - 1.0, default: 0.5). "
+            "Set to 0.0 to disable satellite element fetch and rendering."
+        ),
+    )
+    parser.add_argument(
         "--terrain-horizon-opacity",
         type=float,
         default=0.05,
@@ -645,6 +654,7 @@ def _validate_dataset_query_compatibility(
             or has_non_default("sky_opacity")
             or has_non_default("cloud_opacity")
             or has_non_default("aircraft_opacity")
+            or has_non_default("satellite_opacity")
             or has_non_default("terrain_horizon_opacity")
             or has_non_default("urban_outline_opacity")
             or has_non_default("urban_outline_radius_km")
