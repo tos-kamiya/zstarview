@@ -325,12 +325,15 @@ class SkyWindowUpdatesMixin:
         refreshed_at = payload.get("refreshed_at_utc")
         if not isinstance(refreshed_at, datetime):
             refreshed_at = datetime.now(timezone.utc)
+        banner = str(payload.get("banner", "")).strip()
         self.aircraft_state.set_result(
             payload.get("snapshots", []),
             overlay_points=payload.get("overlay_points"),
             bbox=payload.get("bbox"),
             refreshed_at_utc=refreshed_at,
         )
+        if banner:
+            self.aircraft_state.set_banner(banner)
         if float(getattr(self, "aircraft_opacity", 0.0)) > 0.0:
             self.state.aircraft_overlay_points = payload.get("overlay_points")
             schedule_next = getattr(self, "_schedule_next_aircraft_refresh", None)

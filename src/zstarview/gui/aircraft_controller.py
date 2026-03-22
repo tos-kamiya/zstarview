@@ -10,16 +10,17 @@ from PySide6.QtCore import QObject, Signal
 
 from ..aircraft import (
     AircraftBoundingBox,
+    CachedAircraftSnapshotSet,
     AircraftOverlayPoint,
     AircraftSnapshot,
     build_observer_bbox,
-    fetch_opensky_states,
+    fetch_cached_opensky_states,
     project_aircraft_snapshots,
 )
 
 logger = logging.getLogger(__name__)
 
-AircraftFetcher = Callable[[AircraftBoundingBox], list[AircraftSnapshot]]
+AircraftFetcher = Callable[[AircraftBoundingBox], list[AircraftSnapshot] | CachedAircraftSnapshotSet]
 AircraftProjector = Callable[..., list[AircraftOverlayPoint]]
 
 
@@ -38,7 +39,7 @@ class AircraftController(QObject):
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
-        self._fetcher = fetcher or fetch_opensky_states
+        self._fetcher = fetcher or fetch_cached_opensky_states
         self._projector = projector or project_aircraft_snapshots
         self._running = False
         self._stopping = False
@@ -99,7 +100,17 @@ class AircraftController(QObject):
             else:
                 logger.info("Fetching aircraft state...")
             bbox = build_observer_bbox(observer_lat, observer_lon)
-            snapshots = self._fetcher(bbox)
+            fetched = self._fetcher(bbox)
+            if isinstance(fetched, list):
+                snapshots = fetched
+                refreshed_at_utc = datetime.now(timezone.utc)
+                source = "opensky"
+                is_stale = False
+            else:
+                snapshots = fetched.snapshots
+                refreshed_at_utc = fetched.fetched_at_utc
+                source = fetched.source
+                is_stale = bool(fetched.is_stale)
             overlay_points = self._projector(
                 snapshots,
                 observer_lat=observer_lat,
@@ -115,7 +126,13 @@ class AircraftController(QObject):
                         "snapshots": snapshots,
                         "overlay_points": overlay_points,
                         "bbox": bbox,
-                        "refreshed_at_utc": datetime.now(timezone.utc),
+                        "refreshed_at_utc": refreshed_at_utc,
+                        "banner": (
+                            "Aircraft: using stale cached OpenSky states"
+                            if is_stale
+                            else ""
+                        ),
+                        "source": source,
                     }
                 )
         except Exception as exc:

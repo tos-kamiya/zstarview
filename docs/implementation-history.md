@@ -296,3 +296,16 @@
   - 実装では `SkyWindow` と Qt signal ベースの controller 群を使わず、sky/cloud/terrain/urban/aircraft を同期的に順番に取得してから、hover/HUD なしのベース描画を `QImage` へ保存する。
   - `opacity == 0` のレイヤーは取得キューと timeout 待機対象から外す。
   - export 画像では、地点名・時刻などの静的 overlay 情報と、FOV 外の GUI 向け背景グラデーションを描かないようにした。
+
+- INPROGRESS: 航空機データの短寿命ディスクキャッシュ導入と人工衛星レイヤー準備
+  - 目的は、`zstarview-export-image` を短時間に連続実行した場合でも OpenSky API 問い合わせ回数を抑え、将来の人工衛星レイヤーでも同種のキャッシュ基盤を再利用できるようにすること。
+  - 第 1 段階では、航空機レイヤーに短寿命の永続キャッシュを導入する。
+  - キャッシュ対象は OpenSky から正規化した `AircraftSnapshot` 列、取得時刻、観測地点由来 `bbox`、取得失敗時の stale 再利用判定に必要な最小メタデータとする。
+  - 既定方針は「fresh TTL を数分未満、stale fallback を数分から十数分」で設計し、GUI と export-image の両方から同じロジックを使う。
+  - fresh cache が存在する場合は API 問い合わせを省略し、stale cache しかない場合は再取得を試み、失敗時のみ stale cache を警告付きで再利用してよい。
+  - `--aircraft-opacity 0` のセッションでは、現行仕様どおり問い合わせもキャッシュ読込も必須ではない。
+  - 実装は `aircraft/opensky.py` に直接肥大化させず、キャッシュ責務を別モジュールへ分離する案を優先する。
+  - テストでは、fresh hit、stale hit 後の再取得成功、再取得失敗時の stale fallback、bbox が変わる場合の扱い、export-image 連続実行相当の再利用を確認する。
+  - 第 2 段階では、このキャッシュ設計を踏まえて人工衛星レイヤーへ進む。
+  - 人工衛星側は Skyfield の `EarthSatellite` を前提に、`ISS`、`Starlink`、`GPS` を独立サブレイヤーとして扱う方向で検討する。
+  - 人工衛星データは航空機より長寿命キャッシュにし、初期案では `ISS` を `6-12時間`、`Starlink` と `GPS` を `24時間` 程度で更新する。

@@ -13,7 +13,7 @@ import numpy as np
 from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QPoint, QRect
 from PySide6.QtGui import QFont, QFontDatabase, QImage, QPainter
 
-from ..aircraft import build_observer_bbox, fetch_opensky_states, project_aircraft_snapshots
+from ..aircraft import build_observer_bbox, fetch_cached_opensky_states, project_aircraft_snapshots
 from ..astro import _starfield_load
 from ..catalog import load_dso_catalog, load_star_catalog
 from ..clouddisc import CloudDisc, CloudDiscConfig
@@ -497,7 +497,9 @@ def _fetch_aircraft_overlay_points(
     remaining = _remaining_timeout_seconds(deadline)
     timeout_s = 20.0 if remaining is None else max(0.1, min(20.0, remaining))
     bbox = build_observer_bbox(float(viewer_data.lat_deg), float(viewer_data.lon_deg))
-    snapshots = fetch_opensky_states(bbox, timeout_s=timeout_s)
+    fetched = fetch_cached_opensky_states(bbox, timeout_s=timeout_s)
+    snapshots = fetched.snapshots
+    logger.info("Aircraft source: %s", fetched.source)
     if _timed_out(deadline):
         raise TimeoutError("aircraft timed out")
     return project_aircraft_snapshots(

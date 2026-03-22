@@ -27,6 +27,7 @@ CACHE_PATH = user_cache_dir(appname=APP_ID, appauthor=APP_AUTHOR)
 LOG_PATH = user_log_dir(appname=APP_ID, appauthor=APP_AUTHOR)
 OVERTURE_DERIVED_ROOT_DIR = os.path.join(CACHE_PATH, "overture_buildings")
 OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR = os.path.join(CACHE_PATH, "overture_skyscrapers")
+AIRCRAFT_CACHE_ROOT_DIR = os.path.join(CACHE_PATH, "aircraft", "opensky")
 
 # Window UI
 GUI_MENU_TEXT_COLOR = (128, 128, 128)
