@@ -297,15 +297,25 @@
   - `opacity == 0` のレイヤーは取得キューと timeout 待機対象から外す。
   - export 画像では、地点名・時刻などの静的 overlay 情報と、FOV 外の GUI 向け背景グラデーションを描かないようにした。
 
-- INPROGRESS: 航空機データの短寿命ディスクキャッシュ導入と人工衛星レイヤー準備
-  - 目的は、`zstarview-export-image` を短時間に連続実行した場合でも OpenSky API 問い合わせ回数を抑え、将来の人工衛星レイヤーでも同種のキャッシュ基盤を再利用できるようにすること。
-  - 第 1 段階では、航空機レイヤーに短寿命の永続キャッシュを導入する。
-  - キャッシュ対象は OpenSky から正規化した `AircraftSnapshot` 列、取得時刻、観測地点由来 `bbox`、取得失敗時の stale 再利用判定に必要な最小メタデータとする。
-  - 既定方針は「fresh TTL を数分未満、stale fallback を数分から十数分」で設計し、GUI と export-image の両方から同じロジックを使う。
-  - fresh cache が存在する場合は API 問い合わせを省略し、stale cache しかない場合は再取得を試み、失敗時のみ stale cache を警告付きで再利用してよい。
+- 航空機データの短寿命ディスクキャッシュ導入
+  - `zstarview-export-image` を短時間に連続実行した場合でも OpenSky API 問い合わせ回数を抑えるため、航空機レイヤーに `bbox` 単位の短寿命永続キャッシュを導入した。
+  - キャッシュ対象は OpenSky から正規化した `AircraftSnapshot` 列、取得時刻、観測地点由来 `bbox`、source 名とした。
+  - fresh 判定は既存の `AIRCRAFT_REFRESH_INTERVAL_SECONDS` と同じ `5分` を使い、stale fallback は `10分` とした。
+  - GUI と `zstarview-export-image` の両方が同じ cached fetch 経路を使うようにした。
+  - fresh cache が存在する場合は API 問い合わせを省略し、再取得失敗時のみ stale cache を警告付きで再利用する。
   - `--aircraft-opacity 0` のセッションでは、現行仕様どおり問い合わせもキャッシュ読込も必須ではない。
-  - 実装は `aircraft/opensky.py` に直接肥大化させず、キャッシュ責務を別モジュールへ分離する案を優先する。
-  - テストでは、fresh hit、stale hit 後の再取得成功、再取得失敗時の stale fallback、bbox が変わる場合の扱い、export-image 連続実行相当の再利用を確認する。
-  - 第 2 段階では、このキャッシュ設計を踏まえて人工衛星レイヤーへ進む。
-  - 人工衛星側は Skyfield の `EarthSatellite` を前提に、`ISS`、`Starlink`、`GPS` を独立サブレイヤーとして扱う方向で検討する。
-  - 人工衛星データは航空機より長寿命キャッシュにし、初期案では `ISS` を `6-12時間`、`Starlink` と `GPS` を `24時間` 程度で更新する。
+  - 実装は `aircraft/opensky.py` に直接混ぜず、キャッシュ責務を `aircraft/cache.py` へ分離した。
+  - テストでは、fresh hit、stale hit 後の再取得成功、再取得失敗時の stale fallback、古い cache file の cleanup、export-image 経路への影響有無を確認した。
+
+- 人工衛星データ取得とキャッシュ基盤の追加
+  - Skyfield `EarthSatellite.from_omm()` を前提に、CelesTrak GP JSON を取得して group 単位でキャッシュする `satellites/` パッケージを追加した。
+  - 初期対象 group は `ISS`、`Starlink`、`GPS` とし、CelesTrak group 名 `stations`、`starlink`、`gps-ops` へ解決するようにした。
+  - 軌道要素 cache は `group_key` 単位の少数 JSON file とし、fresh 判定は `24時間` とした。
+  - fresh を外れた cache は再取得優先とし、初版では stale fallback を行わない方針にした。
+  - 取得結果は raw OMM JSON のまま永続保存し、runtime で Skyfield `EarthSatellite` へ変換する構成にした。
+  - テストでは、CelesTrak URL 組み立て、OMM payload 正規化、Skyfield `EarthSatellite` 生成、fresh cache hit、stale 時の再取得失敗伝播、cache overwrite、cleanup を確認した。
+
+- TODO: 人工衛星レイヤー描画と GUI 統合
+  - 航空機キャッシュ設計を踏まえた人工衛星の取得・キャッシュ基盤は入ったので、次は GUI 状態、描画用内部モデル、描画順、メニュー/トグル統合へ進む。
+  - 人工衛星側は `ISS`、`Starlink`、`GPS` を独立サブレイヤーとして扱う。
+  - 初版の軌道要素取得間隔は全 group 共通で `24時間`、表示位置の再計算は全 group 共通で `5秒` とする。

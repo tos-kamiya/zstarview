@@ -365,7 +365,24 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - OpenSky state vector の正規化モデル
   - UI が保持する描画用航空機折れ線モデル
 
-### 4.8 ユーティリティ
+### 4.8 人工衛星データ取得とキャッシュ
+
+- `src/zstarview/satellite_constants.py`
+  - 人工衛星の軌道要素取得間隔と表示位置更新間隔の共有定数
+  - `24時間` 取得と `5秒` 位置再計算の共有定数を定義
+- `src/zstarview/satellites/fetch.py`
+  - CelesTrak GP JSON URL の組み立て
+  - `iss` / `starlink` / `gps` から CelesTrak group 名への解決
+  - OMM JSON 配列の正規化
+  - Skyfield `EarthSatellite.from_omm()` への変換
+- `src/zstarview/satellites/cache.py`
+  - group 単位の人工衛星キャッシュ file path 管理
+  - 軌道要素 JSON の永続保存と読込
+  - fresh TTL 判定と古い cache file の簡易清掃
+- `src/zstarview/satellites/types.py`
+  - cache 読込結果をまとめる内部モデル
+
+### 4.9 ユーティリティ
 
 - `src/zstarview/utils/resolve_city.py`
   - 都市解決補助
@@ -716,6 +733,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - DEM タイル
 - Overture 建物データ
 - OpenSky 航空機 state vector
+- CelesTrak GP OMM JSON
 
 ### 10.3 キャッシュ方針
 
@@ -729,6 +747,11 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - 航空機 cache file には少なくとも `bbox`、`fetched_at_utc`、`source`、`snapshots` を保持する。
 - cache key は観測地点そのものではなく、実問い合わせに使う OpenSky `bbox` から導出する。
 - clean up は GOES/Himawari のような時刻ディレクトリ走査ではなく、航空機 cache root 配下の古い file を `fetched_at_utc` 基準で削除する簡易方式でよい。
+- 人工衛星の軌道要素は group 単位の少数 JSON file として長寿命永続キャッシュしてよい。
+- 人工衛星 cache file には少なくとも `group_key`、`fetched_at_utc`、`source`、`records` を保持する。
+- 人工衛星の cache key は観測地点ではなく `ISS`、`Starlink`、`GPS` などの論理 group から導出する。
+- 人工衛星 cache の fresh 判定は `24時間` とし、fresh を外れた cache は再取得優先とする。
+- 人工衛星 cache の clean up も時刻ディレクトリ走査ではなく、人工衛星 cache root 配下の古い file を `fetched_at_utc` 基準で削除する簡易方式でよい。
 
 ## 11. テスト観点と設計上の分離
 
