@@ -64,11 +64,13 @@ def test_build_earth_satellites_from_omm_records() -> None:
 
 
 def test_filter_records_for_iss_keeps_only_iss_catnr() -> None:
+    css_tianhe = dict(_sample_record())
+    css_tianhe["OBJECT_NAME"] = "CSS (TIANHE)"
+    css_tianhe["NORAD_CAT_ID"] = "48274"
     crew_dragon = dict(_sample_record())
     crew_dragon["OBJECT_NAME"] = "CREW DRAGON 12"
     crew_dragon["NORAD_CAT_ID"] = "99999"
 
-    filtered = filter_records_for_group("iss", [_sample_record(), crew_dragon])
+    filtered = filter_records_for_group("iss", [_sample_record(), css_tianhe, crew_dragon])
 
-    assert len(filtered) == 1
-    assert filtered[0]["OBJECT_NAME"] == "ISS (ZARYA)"
+    assert [record["OBJECT_NAME"] for record in filtered] == ["ISS (ZARYA)", "CSS (TIANHE)"]

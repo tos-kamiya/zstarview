@@ -134,6 +134,9 @@ def test_fetch_cached_satellite_elements_raises_when_cache_is_stale_and_refetch_
 
 def test_load_satellite_cache_filters_non_iss_records_from_existing_iss_cache(tmp_path) -> None:
     fetched_at = datetime(2026, 3, 22, 6, 0, tzinfo=timezone.utc)
+    css_tianhe = dict(_sample_record())
+    css_tianhe["OBJECT_NAME"] = "CSS (TIANHE)"
+    css_tianhe["NORAD_CAT_ID"] = "48274"
     crew_dragon = dict(_sample_record())
     crew_dragon["OBJECT_NAME"] = "CREW DRAGON 12"
     crew_dragon["NORAD_CAT_ID"] = "99999"
@@ -143,7 +146,7 @@ def test_load_satellite_cache_filters_non_iss_records_from_existing_iss_cache(tm
                 "group_key": "iss",
                 "fetched_at_utc": fetched_at.isoformat(),
                 "source": "cache",
-                "records": [_sample_record(), crew_dragon],
+                "records": [_sample_record(), css_tianhe, crew_dragon],
             }
         ),
         encoding="utf-8",
@@ -152,5 +155,4 @@ def test_load_satellite_cache_filters_non_iss_records_from_existing_iss_cache(tm
     cached = load_satellite_cache("iss", cache_root=tmp_path)
 
     assert cached is not None
-    assert len(cached.records) == 1
-    assert cached.records[0]["NORAD_CAT_ID"] == "25544"
+    assert [record["NORAD_CAT_ID"] for record in cached.records] == ["25544", "48274"]

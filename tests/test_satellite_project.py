@@ -56,7 +56,29 @@ def test_project_satellite_records_marks_iss_with_label(monkeypatch) -> None:
     assert len(points) == 1
     assert points[0].group_key == "iss"
     assert points[0].show_label is True
-    assert points[0].marker_scale == 0.17
+    assert points[0].marker_scale == 0.3
+
+
+def test_project_satellite_records_marks_css_tianhe_like_iss(monkeypatch) -> None:
+    monkeypatch.setattr(
+        project_module,
+        "build_earth_satellites",
+        lambda records, *, ts=None: [_FakeSatellite("CSS (TIANHE)", 42.0, 130.0)],
+    )
+
+    points = project_module.project_satellite_records(
+        {"iss": [{"OBJECT_NAME": "CSS (TIANHE)"}]},
+        observer_lat=35.47,
+        observer_lon=133.05,
+        observer_height_m=0.0,
+        time_obj=astropy.time.Time("2026-03-22T12:00:00Z"),
+    )
+
+    assert len(points) == 1
+    assert points[0].group_key == "iss"
+    assert points[0].satellite_name == "CSS (TIANHE)"
+    assert points[0].show_label is True
+    assert points[0].marker_scale == 0.3
 
 
 def test_project_satellite_records_sorts_by_group_then_altitude(monkeypatch) -> None:
@@ -110,5 +132,5 @@ def test_project_satellite_records_keeps_starlink_smaller_and_unlabeled(monkeypa
     assert [point.group_key for point in points] == ["iss", "starlink"]
     assert points[0].show_label is True
     assert points[1].show_label is False
-    assert points[1].marker_scale == 0.13
+    assert points[1].marker_scale == 0.156
     assert points[1].marker_scale < points[0].marker_scale
