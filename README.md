@@ -2,10 +2,12 @@
 
 See the starry sky, even when it's cloudy or the sun is out.
 
-**Zenith Star View** is an application that displays the starry sky from any city on Earth.
-The name emphasizes the *zenith*—the point directly overhead—conveying the experience of looking straight up into the night sky from your location.
+**Zenith Star View** is a desktop sky viewer for your chosen location and time.
+The name emphasizes the *zenith*, the point directly overhead.
 
-It renders a live all-sky view centered on your chosen location and time, including bright stars, the Sun, Moon, major planets, and key celestial guide lines such as the celestial equator and the ecliptic.
+It renders an all-sky view with stars, the Sun, Moon, planets, deep-sky objects, and guide overlays.
+When enabled, it can also add real-time cloud imagery, terrain horizon, urban outlines, and nearby aircraft.
+Locations can be set by city or viewpoint name, direct coordinates, online place search, or supported Google Maps URLs.
 
 **Features:**
 

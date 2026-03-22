@@ -1,6 +1,10 @@
 # zstarview
 
-Transparent desktop sky viewer with stars, planets, eclipses, optional real-time satellite cloud overlay, optional terrain horizon overlay, optional urban outline overlay, and an optional nearby-aircraft overlay.
+**Zenith Star View** is a desktop sky viewer for your chosen location and time.
+
+It renders an all-sky view with stars, the Sun, Moon, planets, deep-sky objects, and guide overlays.
+When enabled, it can also add real-time cloud imagery, terrain horizon, urban outlines, and nearby aircraft.
+Locations can be set by city or viewpoint name, direct coordinates, online place search, or supported Google Maps URLs.
 
 ## Screenshots
 
