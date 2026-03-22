@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 
 from zstarview.paths import CLOUD_MISSING_TINT_RGBA
-from zstarview.zstarview import parse_args
+from zstarview.gui.viewer import parse_args
 
 
 def test_parse_args_cloud_missing_tint_opacity_default(monkeypatch) -> None:

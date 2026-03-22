@@ -2,13 +2,13 @@ import numpy as np
 from PySide6.QtCore import QRect
 
 from zstarview.paths import HatchConfig
-from zstarview.ui.composite import (
+from zstarview.gui.composite import (
     build_stripe_density_field,
     cloud_with_hatched_alpha,
     compose_cloud_over_sky,
     render_hatched_cloud_from_density,
 )
-from zstarview.ui.composite import make_hatch_tile_qimage
+from zstarview.gui.composite import make_hatch_tile_qimage
 from zstarview.utils.qt import np_rgba_to_qimage, qimage_to_np_rgba
 
 

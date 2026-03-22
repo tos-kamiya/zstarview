@@ -4,7 +4,7 @@ import argparse
 
 import pytest
 
-from zstarview import cli_args
+from zstarview.cli import args as cli_args
 
 
 def _build_export_like_parser() -> argparse.ArgumentParser:

@@ -7,7 +7,7 @@ from pathlib import Path
 def test_save_last_city_called_only_in_startup_resolve_city() -> None:
     """Guard against reintroducing duplicate startup city persistence."""
     project_root = Path(__file__).resolve().parents[1]
-    src = (project_root / "src" / "zstarview" / "startup.py").read_text(encoding="utf-8")
+    src = (project_root / "src" / "zstarview" / "launch_location_time.py").read_text(encoding="utf-8")
     tree = ast.parse(src)
 
     save_calls: list[tuple[str | None, int]] = []
@@ -35,4 +35,4 @@ def test_save_last_city_called_only_in_startup_resolve_city() -> None:
     Visitor().visit(tree)
 
     assert len(save_calls) == 1, f"Expected 1 save_last_city call, got {save_calls}"
-    assert save_calls[0][0] == "_startup_resolve_city", save_calls
+    assert save_calls[0][0] == "resolve_launch_location", save_calls

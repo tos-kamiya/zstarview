@@ -2,7 +2,7 @@ import argparse
 
 import pytest
 
-from zstarview.zstarview import _parse_window_geometry
+from zstarview.gui.viewer import _parse_window_geometry
 
 
 def test_parse_window_geometry_accepts_restore_case_insensitive() -> None:
@@ -17,4 +17,3 @@ def test_parse_window_geometry_accepts_csv_integers() -> None:
 def test_parse_window_geometry_rejects_invalid_format() -> None:
     with pytest.raises(argparse.ArgumentTypeError):
         _parse_window_geometry("100,200,800")
-

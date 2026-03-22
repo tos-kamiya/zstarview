@@ -28,7 +28,7 @@ uv run -p .venv/bin/python zstarview
 モジュール実行:
 
 ```bash
-uv run -p .venv/bin/python -m zstarview.zstarview
+uv run -p .venv/bin/python -m zstarview.gui.viewer
 ```
 
 例:

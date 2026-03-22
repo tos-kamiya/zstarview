@@ -8,7 +8,7 @@ from astropy.time import Time
 import pytest
 from PySide6.QtGui import QImage
 
-import zstarview.export_image as mod
+import zstarview.cli.export_image as mod
 
 
 def test_require_img2sixel_binary_rejects_missing_command(monkeypatch: pytest.MonkeyPatch) -> None:

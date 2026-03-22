@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from zstarview.cli_args import parse_export_image_args
+from zstarview.cli.args import parse_export_image_args
 
 
 def test_parse_export_image_args_accepts_shared_and_export_specific_options() -> None:

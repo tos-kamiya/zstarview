@@ -1,6 +1,6 @@
 import pytest
 
-from zstarview.cli_args import parse_args
+from zstarview.cli.args import parse_args
 
 
 def test_content_fov_default_is_current_overscan() -> None:

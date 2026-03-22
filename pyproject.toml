@@ -108,7 +108,7 @@ exclude = [
 
 [[tool.mypy.overrides]]
 module = [
-  "zstarview.ui.*",
+  "zstarview.gui.*",
   "zstarview.render.*",
 ]
 disable_error_code = ["attr-defined"]
@@ -116,8 +116,8 @@ disable_error_code = ["attr-defined"]
 [[tool.mypy.overrides]]
 module = [
   "zstarview.render.draw",
-  "zstarview.ui.window",
-  "zstarview.ui.sky_worker",
+  "zstarview.gui.window",
+  "zstarview.gui.sky_worker",
 ]
 ignore_errors = true
 
@@ -141,9 +141,9 @@ exclude_lines = [
 ]
 
 [project.gui-scripts]
-zstarview = "zstarview:main"
+zstarview = "zstarview.gui.viewer:main"
 
 [project.scripts]
-zstarview-debug = "zstarview:debug_main"
-zstarview-make-desktop-file = "zstarview:make_desktop_file_main"
-zstarview-export-image = "zstarview:export_image_main"
+zstarview-debug = "zstarview.gui.viewer:main"
+zstarview-make-desktop-file = "zstarview.cli.make_desktop_file:main"
+zstarview-export-image = "zstarview.cli.export_image:main"

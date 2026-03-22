@@ -7,7 +7,7 @@ import numpy as np
 from PIL import Image
 
 from zstarview.clouddisc.types import CloudMeta, CloudSourceData, SourceKey
-from zstarview.ui.cloud_controller import CloudController
+from zstarview.gui.cloud_controller import CloudController
 
 
 class _FakeCloudDisc:

@@ -3,13 +3,13 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
-import zstarview.ui.terrain_controller as terrain_controller_module
-import zstarview.ui.window as window_module
+import zstarview.gui.terrain_controller as terrain_controller_module
+import zstarview.gui.window as window_module
 from zstarview.terrain.dem import COPERNICUS_DEM_BUCKET
-from zstarview.ui.window import SkyWindow
-from zstarview.ui.terrain_controller import TerrainHorizonController
-from zstarview.ui.window_inputs import prepare_window_user_options
-from zstarview.ui.window_updates import SkyWindowUpdatesMixin
+from zstarview.gui.window import SkyWindow
+from zstarview.gui.terrain_controller import TerrainHorizonController
+from zstarview.gui.window_inputs import prepare_window_user_options
+from zstarview.gui.window_updates import SkyWindowUpdatesMixin
 
 
 class _DummyAction:

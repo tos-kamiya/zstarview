@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 from PySide6.QtGui import QImage, QPainter
 
-from zstarview.ui.composite import SkyCompositorCache, mask_cloud_alpha_by_missing, overlay_missing_tint
+from zstarview.gui.composite import SkyCompositorCache, mask_cloud_alpha_by_missing, overlay_missing_tint
 from zstarview.types import ScreenGeometry
 from zstarview.utils.qt import np_rgba_to_qimage, qimage_to_np_rgba
 
