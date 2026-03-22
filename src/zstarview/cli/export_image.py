@@ -206,6 +206,7 @@ def _build_window_inputs_from_args(
             if cloud_stripe_count == 0 or cloud_stripe_width == 0.0
             else getattr(args, "cloud_opacity", 0.15)
         ),
+        satellite_opacity=getattr(args, "satellite_opacity", 0.5),
         aircraft_opacity=getattr(args, "aircraft_opacity", 0.5),
         terrain_horizon_opacity=getattr(args, "terrain_horizon_opacity", 0.05),
         urban_outline_opacity=getattr(args, "urban_outline_opacity", 0.2),
@@ -219,6 +220,7 @@ def _build_window_inputs_from_args(
         show_asterisms_initial=getattr(args, "show_asterisms_initial", None),
         sky_disc_gui_allowed=getattr(args, "sky_opacity", 0.15) > 0.0,
         cloud_gui_allowed=getattr(args, "cloud_opacity", 0.15) > 0.0,
+        satellite_gui_allowed=getattr(args, "satellite_opacity", 0.5) > 0.0,
         aircraft_gui_allowed=getattr(args, "aircraft_opacity", 0.5) > 0.0,
         terrain_horizon_gui_allowed=getattr(args, "terrain_horizon_opacity", 0.05) > 0.0,
         urban_outline_gui_allowed=getattr(args, "urban_outline_opacity", 0.2) > 0.0,
@@ -517,7 +519,7 @@ def _fetch_satellite_overlay_points(
     viewer_data: ViewerData,
     celestial_time_obj: object,
     deadline: float | None,
-    enabled_groups: tuple[str, ...] = ("iss",),
+    enabled_groups: tuple[str, ...] = ("iss", "starlink"),
 ) -> object | None:
     if _timed_out(deadline):
         raise TimeoutError("satellites timed out")

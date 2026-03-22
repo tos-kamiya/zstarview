@@ -41,7 +41,7 @@ class SkyWindowUserOptions:
 
     sky_disc_alpha: float = 0.3
     cloud_disc_alpha: float = 0.6
-    satellite_opacity: float = 1.0
+    satellite_opacity: float = 0.5
     aircraft_opacity: float = 0.6
     terrain_horizon_opacity: float = 0.25
     urban_outline_opacity: float = 0.2
@@ -131,7 +131,7 @@ def prepare_window_user_options(
     *,
     sky_disc_alpha: float = 0.3,
     cloud_disc_alpha: float = 0.6,
-    satellite_opacity: float = 1.0,
+    satellite_opacity: float = 0.5,
     aircraft_opacity: float = 0.6,
     terrain_horizon_opacity: float = 0.25,
     urban_outline_opacity: float = 0.2,

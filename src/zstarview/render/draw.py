@@ -850,7 +850,7 @@ def draw_satellite_overlay(
         return
 
     painter.save()
-    marker_color = QColor(186, 128, 255, max(0, min(255, int(round(255.0 * layer_opacity)))))
+    marker_color = QColor(186, 128, 255, max(0, min(255, int(round(230.0 * layer_opacity)))))
     label_text_color, label_outline_color = _get_text_style(preset)
     label_outline_width = _get_text_outline_width(preset)
     label_text_color = QColor(label_text_color)
@@ -1534,9 +1534,9 @@ def draw_gauge_cross(
         color: The color of the cross.
         center: The center point (QPointF) of the cross.
     """
-    scale = max(0.5, float(scale))
-    cross_outer_len = int(round(15 * scale))
-    cross_inner_len = max(1, int(round(4 * scale)))
+    scale = max(0.05, float(scale))
+    cross_outer_len = max(1, int(round(15 * scale)))
+    cross_inner_len = max(0, min(cross_outer_len - 1, int(round(4 * scale))))
     x, y = center.x(), center.y()
     painter.setPen(QPen(color, float(pen_width)))
     painter.drawLine(QPointF(x - cross_outer_len, y), QPointF(x - cross_inner_len, y))
