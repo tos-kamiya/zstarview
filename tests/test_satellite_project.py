@@ -65,15 +65,15 @@ def test_project_satellite_records_sorts_by_group_then_altitude(monkeypatch) -> 
         if names == ["ISS (ZARYA)"]:
             return [_FakeSatellite("ISS (ZARYA)", 20.0, 100.0)]
         return [
-            _FakeSatellite("GPS A", 10.0, 150.0),
-            _FakeSatellite("GPS B", 30.0, 160.0),
+            _FakeSatellite("STARLINK A", 10.0, 150.0),
+            _FakeSatellite("STARLINK B", 30.0, 160.0),
         ]
 
     monkeypatch.setattr(project_module, "build_earth_satellites", fake_builder)
 
     points = project_module.project_satellite_records(
         {
-            "gps": [{"OBJECT_NAME": "GPS GROUP"}],
+            "starlink": [{"OBJECT_NAME": "STARLINK GROUP"}],
             "iss": [{"OBJECT_NAME": "ISS (ZARYA)"}],
         },
         observer_lat=35.47,
@@ -82,8 +82,8 @@ def test_project_satellite_records_sorts_by_group_then_altitude(monkeypatch) -> 
         time_obj=astropy.time.Time("2026-03-22T12:00:00Z"),
     )
 
-    assert [point.group_key for point in points] == ["iss", "gps", "gps"]
-    assert [point.satellite_name for point in points[1:]] == ["GPS B", "GPS A"]
+    assert [point.group_key for point in points] == ["iss", "starlink", "starlink"]
+    assert [point.satellite_name for point in points[1:]] == ["STARLINK B", "STARLINK A"]
     assert all(point.show_label is False for point in points[1:])
 
 

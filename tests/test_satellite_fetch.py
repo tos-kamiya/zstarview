@@ -37,7 +37,6 @@ def test_celestrak_group_mapping_covers_initial_layers() -> None:
     assert CELESTRAK_GROUP_BY_KEY == {
         "iss": "stations",
         "starlink": "starlink",
-        "gps": "gps-ops",
     }
 
 

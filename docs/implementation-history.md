@@ -308,7 +308,7 @@
 
 - 人工衛星データ取得とキャッシュ基盤の追加
   - Skyfield `EarthSatellite.from_omm()` を前提に、CelesTrak GP JSON を取得して group 単位でキャッシュする `satellites/` パッケージを追加した。
-  - 初期対象 group は `ISS`、`Starlink`、`GPS` とし、CelesTrak group 名 `stations`、`starlink`、`gps-ops` へ解決するようにした。
+  - 初期対象 group は `ISS` と `Starlink` とし、CelesTrak group 名 `stations`、`starlink` へ解決するようにした。
   - 軌道要素 cache は `group_key` 単位の少数 JSON file とし、fresh 判定は `24時間` とした。
   - fresh を外れた cache は再取得優先とし、初版では stale fallback を行わない方針にした。
   - 取得結果は raw OMM JSON のまま永続保存し、runtime で Skyfield `EarthSatellite` へ変換する構成にした。
