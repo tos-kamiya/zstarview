@@ -238,24 +238,31 @@ def _parse_direct_coordinate_location(raw_value: str) -> tuple[float, float] | N
         lat_token, lon_token = match.group(1), match.group(2)
     else:
         candidate = text
-        if candidate.startswith(("maps.google.com/", "www.google.com/maps/", "google.com/maps/")):
+        if candidate.startswith(("maps.google.com/", "www.google.com/maps/")):
             candidate = "https://" + candidate
         parsed = urllib.parse.urlparse(candidate)
         host = parsed.netloc.lower()
-        if host in {"maps.google.com", "www.google.com", "google.com"}:
+        if host in {"maps.google.com", "www.google.com"}:
             full_path = parsed.path or ""
             if host == "maps.google.com":
                 if not full_path.startswith("/maps/"):
                     return None
             elif not full_path.startswith("/maps/"):
                 return None
-            match = re.search(
-                r"/maps/@([+-]?\d+(?:\.\d+)?),([+-]?\d+(?:\.\d+)?)(?:[,/?#&].*)?$",
-                full_path,
+            pin_match = re.search(
+                r"!3d([+-]?\d+(?:\.\d+)?)!4d([+-]?\d+(?:\.\d+)?)",
+                candidate,
             )
-            if match is None:
-                raise ValueError("Google Maps URL does not contain '/maps/@lat,lon'")
-            lat_token, lon_token = match.group(1), match.group(2)
+            if pin_match is not None:
+                lat_token, lon_token = pin_match.group(1), pin_match.group(2)
+            else:
+                center_match = re.search(
+                    r"@([+-]?\d+(?:\.\d+)?),([+-]?\d+(?:\.\d+)?)(?:[,/?#&].*)?",
+                    candidate,
+                )
+                if center_match is None:
+                    raise ValueError("Google Maps URL does not contain '!3d...!4d...' or '@lat,lon'")
+                lat_token, lon_token = center_match.group(1), center_match.group(2)
         else:
             return None
 
