@@ -168,60 +168,6 @@ class HimaProvider:
             da.attrs["observer_lon"] = float(observer_lon)
         return da
 
-    def fetch_bt_c13_from_local_dir(
-        self,
-        tile_dir: Path,
-        *,
-        used_time: dt.datetime,
-        observer_lat: float | None = None,
-        observer_lon: float | None = None,
-        cloud_shell_km: float = 6376.0,
-        azimuth_samples: int = 1440,
-        margin_tiles: int = 1,
-        equator_margin_tiles: int = 0,
-    ) -> Tuple[xr.DataArray, dt.datetime, List[Path]]:
-        """Load cached Himawari tiles from a local directory and stitch them."""
-        if (observer_lat is None) ^ (observer_lon is None):
-            raise ValueError("observer_lat and observer_lon must be provided together")
-
-        all_paths = sorted(tile_dir.glob("*M1C13*.nc"))
-        if observer_lat is not None and observer_lon is not None:
-            meta = load_template_from_tile(all_paths[0], bucket="local")
-            render_tiles, _poly_x, _poly_y = select_needed_tiles(
-                lat_deg=float(observer_lat),
-                lon_deg=float(observer_lon),
-                meta=meta,
-                cloud_shell_km=float(cloud_shell_km),
-                azimuth_samples=int(azimuth_samples),
-                margin_tiles=int(margin_tiles),
-            )
-            equator_tiles, _eq_x, _eq_y = select_equator_tiles(
-                lon_center_deg=float(observer_lon),
-                meta=meta,
-                delta_lon=60.0,
-                equator_lat=0.0,
-                step_deg=1.0,
-                margin_tiles=int(equator_margin_tiles),
-            )
-            selected_tokens = {record.token for record in render_tiles} | {record.token for record in equator_tiles}
-            paths = [path for path in all_paths if extract_tile_token(path.name) in selected_tokens]
-        else:
-            paths = all_paths
-
-        if not paths:
-            raise DataNotFoundError(
-                "No cached Himawari ISatSS tiles found in local directory",
-                meta=CloudMeta(satellite="HIMAWARI", product="ISatSS-B13", time_utc=used_time, src_paths=[]),
-            )
-
-        da = self._stitch_local_paths(
-            paths,
-            source_label=str(tile_dir),
-            observer_lat=observer_lat,
-            observer_lon=observer_lon,
-        )
-        return da, used_time.replace(minute=(used_time.minute // 10) * 10, tzinfo=dt.timezone.utc), paths
-
     def fetch_bt_c13(
         self,
         when_utc: dt.datetime,

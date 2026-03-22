@@ -351,3 +351,10 @@
   - `satellites/cache.py` を `current + archive` 方式へ更新し、current refresh 時に古い snapshot を archive へ移し、archive cleanup を `3日` 保持へ変更した。
   - 人工衛星 cache は `element_epoch_utc` と `fetched_at_utc` を分け、利用判定は前者、retention/cleanup は後者を使うようにした。
   - `zstarview-export-image` も同じ時刻モード判定を使うようにし、過去表示では人工衛星のみ、未来表示では 3 補助レイヤーすべてを skip するようにした。
+
+### 2026-03-23
+
+- タイムシフト時の人工衛星レイヤー無効化
+  - 人工衛星レイヤーは realtime view 専用とし、`--hours`、`--days`、`--datetime` による time-shifted view では取得も表示も行わない方針へ変更した。
+  - 人工衛星 cache は current 1 層へ戻し、archive snapshot の保存・探索・cleanup を撤去した。
+  - これに合わせて README、仕様書、設計書、衛星 cache/controller テストを更新した。

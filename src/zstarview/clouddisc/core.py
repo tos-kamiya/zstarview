@@ -199,56 +199,6 @@ class CloudDisc:
             cloud_shell_km=cloud_shell_km,
         )
 
-    def render_now(
-        self,
-        lat: float,
-        lon: float,
-        alt: float,
-        az: float,
-        radius_px: int,
-        edge_fov_deg: float = 90.0,
-        mask_fov_deg: float = 90.0,
-        cloud_shell_km: float = 6371.0 + 5.0,  # 5km above Earth's surface
-    ) -> Tuple[Image.Image, CloudMeta]:
-        """
-        Renders a cloud image for the current time from the observer's perspective.
-
-        The method performs the following steps:
-        1. Selects the most suitable satellite based on the observer's location.
-        2. Fetches the brightness temperature (BT) data from the selected satellite provider.
-        3. Creates a sampler to interpolate BT values for any given longitude and latitude.
-        4. Projects a lon/lat grid representing the observer's view.
-        5. Samples the BT values onto this grid.
-        6. Estimates warm/cold temperature thresholds to map temperatures to pixel values.
-        7. Renders the final grayscale (Luminance-Alpha) image.
-
-        Args:
-            lat: Observer's latitude in degrees.
-            lon: Observer's longitude in degrees.
-            alt: Observer's viewing altitude in degrees (90 is zenith).
-            az: Observer's viewing azimuth in degrees (0 is North).
-            radius_px: The radius of the output circular image in pixels.
-            edge_fov_deg: The field of view angle to the edge of the rendered disc.
-            mask_fov_deg: The field of view angle for the visibility mask.
-
-        Returns:
-            A tuple containing the rendered LA (Luminance-Alpha) PIL Image and a CloudMeta object.
-        """
-        source = self.fetch_source(lat=lat, lon=lon)
-        return self.render_from_source(
-            source=source,
-            lat=lat,
-            lon=lon,
-            alt=alt,
-            az=az,
-            radius_px=radius_px,
-            edge_fov_deg=edge_fov_deg,
-            mask_fov_deg=mask_fov_deg,
-            cloud_shell_km=cloud_shell_km,
-        )
-
-        # NOTE: retained below steps live in render_from_source for compatibility docs.
-
     def _render_from_source_impl(
         self,
         *,

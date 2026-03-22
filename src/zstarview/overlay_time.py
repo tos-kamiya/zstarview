@@ -61,8 +61,6 @@ def classify_delta_t(
 def overlay_availability_for_time_mode(time_mode: TimeMode) -> OverlayAvailability:
     if time_mode == "present":
         return OverlayAvailability(cloud=True, aircraft=True, satellite=True)
-    if time_mode == "past":
-        return OverlayAvailability(cloud=False, aircraft=False, satellite=True)
     return OverlayAvailability(cloud=False, aircraft=False, satellite=False)
 
 
