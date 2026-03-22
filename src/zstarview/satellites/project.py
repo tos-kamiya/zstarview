@@ -9,13 +9,13 @@ import skyfield.api
 from .fetch import build_earth_satellites
 from .types import SatelliteOmmRecord, SatelliteOverlayPoint
 
-_DEFAULT_GROUP_ORDER = ("iss", "starlink")
+_DEFAULT_GROUP_ORDER = ("station", "starlink")
 _MAX_MARKERS_BY_GROUP = {
-    "iss": 8,
+    "station": 8,
     "starlink": 20,
 }
 _MARKER_SCALE_BY_GROUP = {
-    "iss": 0.3,
+    "station": 0.3,
     "starlink": 0.156,
 }
 
@@ -54,7 +54,7 @@ def project_satellite_records(
                     alt_deg=alt_deg,
                     az_deg=float(az.degrees),
                     marker_scale=float(_MARKER_SCALE_BY_GROUP.get(group_key, 0.13)),
-                    show_label=group_key == "iss",
+                    show_label=group_key == "station",
                 )
             )
         visible_points.sort(key=lambda point: float(point.alt_deg), reverse=True)

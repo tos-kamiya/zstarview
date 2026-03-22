@@ -519,7 +519,7 @@ def _fetch_satellite_overlay_points(
     viewer_data: ViewerData,
     celestial_time_obj: object,
     deadline: float | None,
-    enabled_groups: tuple[str, ...] = ("iss", "starlink"),
+    enabled_groups: tuple[str, ...] = ("station", "starlink"),
 ) -> object | None:
     if _timed_out(deadline):
         raise TimeoutError("satellites timed out")
