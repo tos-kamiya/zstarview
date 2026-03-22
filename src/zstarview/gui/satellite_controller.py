@@ -8,16 +8,17 @@ from typing import Callable, Optional
 import astropy.time
 from PySide6.QtCore import QObject, Signal
 
+from ..overlay_time import TimeMode, classify_target_time
 from ..satellites import (
     CachedSatelliteElementSet,
-    fetch_cached_satellite_elements,
+    resolve_satellite_elements_for_time,
     project_satellite_records,
 )
 from ..satellites.types import SatelliteOmmRecord, SatelliteOverlayPoint
 
 logger = logging.getLogger(__name__)
 
-SatelliteFetcher = Callable[[str], CachedSatelliteElementSet]
+SatelliteFetcher = Callable[..., CachedSatelliteElementSet]
 SatelliteProjector = Callable[..., list[SatelliteOverlayPoint]]
 
 
@@ -34,7 +35,7 @@ class SatelliteController(QObject):
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
-        self._fetcher = fetcher or fetch_cached_satellite_elements
+        self._fetcher = fetcher or resolve_satellite_elements_for_time
         self._projector = projector or project_satellite_records
         self._running = False
         self._stopping = False
@@ -95,18 +96,24 @@ class SatelliteController(QObject):
         try:
             logger.info("Fetching satellite element sets (%s)...", reason)
             records_by_group: dict[str, list[SatelliteOmmRecord]] = {}
-            refreshed_at_utc = datetime.now(timezone.utc)
+            element_epoch_utc: datetime | None = None
             failed_groups: list[str] = []
+            target_time_utc = time_obj.to_datetime(timezone=timezone.utc)
+            time_mode: TimeMode = classify_target_time(target_time_utc)
             for group_key in enabled_groups:
                 try:
-                    fetched = self._fetcher(group_key)
+                    fetched = self._fetcher(
+                        group_key,
+                        target_time_utc=target_time_utc,
+                        time_mode=time_mode,
+                    )
                 except Exception:
                     logger.warning("Satellite element fetch failed for %s", group_key, exc_info=True)
                     failed_groups.append(group_key)
                     continue
                 records_by_group[str(group_key)] = list(fetched.records)
-                if fetched.fetched_at_utc > refreshed_at_utc:
-                    refreshed_at_utc = fetched.fetched_at_utc
+                if element_epoch_utc is None or fetched.element_epoch_utc > element_epoch_utc:
+                    element_epoch_utc = fetched.element_epoch_utc
             if not records_by_group:
                 raise RuntimeError(
                     "Satellites: failed to fetch orbital elements"
@@ -130,7 +137,7 @@ class SatelliteController(QObject):
                     {
                         "records_by_group": records_by_group,
                         "overlay_points": overlay_points,
-                        "refreshed_at_utc": refreshed_at_utc,
+                        "element_epoch_utc": element_epoch_utc or target_time_utc,
                         "banner": banner,
                     }
                 )

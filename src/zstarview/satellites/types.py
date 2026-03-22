@@ -10,6 +10,7 @@ SatelliteOmmRecord = dict[str, Any]
 @dataclass(frozen=True)
 class CachedSatelliteElementSet:
     group_key: str
+    element_epoch_utc: datetime
     fetched_at_utc: datetime
     source: str
     records: list[SatelliteOmmRecord]

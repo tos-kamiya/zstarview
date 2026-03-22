@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-03-21
+最終更新: 2026-03-22
 
 ## 1. この文書の位置づけ
 
@@ -621,7 +621,17 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 15. 通常描画では人工衛星を `planets` の後、`aircraft` の前に描く。
 16. 初期実装では人工衛星と月・惑星の接近時に特別な隠蔽処理は行わなくてよい。
 
-### 6.4 雲更新フロー
+### 6.4 時刻モードによる補助レイヤー可否判定
+
+1. 補助レイヤーの可否判定は、対象時刻を `now` と比較して `past`、`present`、`future` に分類してよい。
+2. `present` では、雲、航空機、人工衛星をすべて有効候補としてよい。
+3. `past` では、雲と航空機を無効化し、人工衛星だけを有効候補としてよい。
+4. `future` では、雲、航空機、人工衛星をすべて無効化してよい。
+5. 地形地平線と都市アウトラインは地点依存レイヤーであり、この時刻分類では無効化しない。
+6. 恒星、太陽、月、惑星、DSO、アステリズム、sky disc、ガイド線は `delta_t` または絶対日時から計算した対象時刻で通常どおり描画してよい。
+7. GUI と export-image は同じ可否判定を使うのが望ましい。
+
+### 6.5 雲更新フロー
 
 1. `CloudController` が新しい要求を受け取る。
 2. ソース取得が必要か、既存ソースで再描画可能かを判定する。
@@ -633,7 +643,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 5. `request_id` により古い結果を破棄し、最新結果のみ UI に反映する。
 6. 欠損領域がある場合は欠損マスクも渡す。
 
-### 6.5 地形地平線更新フロー
+### 6.6 地形地平線更新フロー
 
 1. `TerrainHorizonController` が地点に応じた DEM 更新要求を受ける。
 2. 必要な DEM タイルを取得またはキャッシュから読込する。
@@ -641,7 +651,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 4. 結果を地形地平線プロファイルとして UI に返す。
 5. 画面再投影時は既存プロファイルを使い回し、再取得はしない。
 
-### 6.6 描画フロー
+### 6.7 描画フロー
 
 1. sky disc を生成する。
 2. 恒星、惑星、月、補助線を重ねる。
@@ -652,7 +662,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 7. 雲画像と欠損ティントを合成する。
 8. ラベル、オーバーレイ、ステータス行を描画する。
 
-### 6.7 都市アウトライン更新フロー
+### 6.8 都市アウトライン更新フロー
 
 1. `SkyWindow` が起動時またはトグル再有効化時に `UrbanOutlineController` へ更新要求を出す。
 2. `UrbanOutlineController` は `lat/lon + radius + min_height + mode` から実行キーを作る。既定 mode は `both`、既定半径は `2.5km` である。
@@ -743,18 +753,21 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 
 ### 8.4 人工衛星レイヤーの更新粒度
 
-- 人工衛星の軌道要素取得は `24時間` 間隔とし、表示上の位置再計算は `2秒` 間隔で行ってよい。
-- 人工衛星描画は現在時刻の位置のみを描き、初期実装では軌跡線を持たない。
+- 人工衛星の current 用軌道要素 cache の fresh 判定は `6時間` とし、表示上の位置再計算は `2秒` 間隔で行ってよい。
+- 人工衛星描画は現在時刻または過去時刻の位置を描いてよく、未来時刻は描かない。
+- 初期実装では軌跡線を持たない。
 - `satellite_opacity <= 0.0` または各 group が無効の間は、人工衛星 fetch timer と位置再計算 timer を止めてよい。
 - 描画は地平線上かつ視野内に限定し、`ISS` だけ少し大きい marker を使ってよい。
 - GUI 既定の有効 group は `ISS` と `Starlink` としてよい。
 - 航空機と人工衛星の位置再計算は、共通 overlay projection timer で同期させてよい。
 - GUI から再表示したときは `last_success_utc` を見て fresh cache を優先し、不要な CelesTrak 再取得を避けてよい。
 - stale cache は表示継続には使わず、fresh を外れた場合は再取得を優先してよい。
+- 過去表示では current cache に加えて archive snapshot 群を探索してよく、対象時刻との差が `6時間` 以内の snapshot だけを採用してよい。
 
 ### 8.5 航空機オーバーレイの更新粒度
 
 - 航空機観測値の取得は `5分` 間隔とし、表示上の予想再投影は `2秒` 間隔で行ってよい。
+- 航空機オーバーレイは現在時刻近傍だけを対象とし、過去時刻と未来時刻では取得も描画も行わない。
 - `aircraft_opacity <= 0.0` の間は、fetch timer と予想再投影 timer を止めてよい。
 - 折れ線は `2秒前 -> 現在 -> 2秒後` の 3 点から構成し、機体の短時間進行方向を示す。
 - 線幅は観測地点に近い機体ほど太く、遠い機体ほど細くしてよい。
@@ -827,11 +840,16 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - 航空機 cache file には少なくとも `bbox`、`fetched_at_utc`、`source`、`snapshots` を保持する。
 - cache key は観測地点そのものではなく、実問い合わせに使う OpenSky `bbox` から導出する。
 - clean up は GOES/Himawari のような時刻ディレクトリ走査ではなく、航空機 cache root 配下の古い file を `fetched_at_utc` 基準で削除する簡易方式でよい。
-- 人工衛星の軌道要素は group 単位の少数 JSON file として長寿命永続キャッシュしてよい。
-- 人工衛星 cache file には少なくとも `group_key`、`fetched_at_utc`、`source`、`records` を保持する。
-- 人工衛星の cache key は観測地点ではなく `ISS`、`Starlink` などの論理 group から導出する。
-- 人工衛星 cache の fresh 判定は `24時間` とし、fresh を外れた cache は再取得優先とする。
-- 人工衛星 cache の clean up も時刻ディレクトリ走査ではなく、人工衛星 cache root 配下の古い file を `fetched_at_utc` 基準で削除する簡易方式でよい。
+- 人工衛星の軌道要素 cache は `current` と `archive` の二層に分けてよい。
+- `current` は group 単位の少数 JSON file とし、`ISS` や `Starlink` などの論理 group から cache key を導出してよい。
+- `archive` は `group_key + element_epoch_utc` 単位の JSON file 群として保持してよい。
+- 人工衛星の current cache file には少なくとも `group_key`、`element_epoch_utc`、`fetched_at_utc`、`source`、`records` を保持する。
+- 人工衛星の archive cache file には少なくとも `group_key`、`element_epoch_utc`、`fetched_at_utc`、`source`、`records` を保持する。
+- current cache を更新するときは、更新前の current snapshot を `element_epoch_utc` を使った archive file 名へ移してから、新しい current snapshot を保存してよい。
+- archive file 名や過去検索のキーは `element_epoch_utc` を基準としてよい。
+- 人工衛星の current cache の fresh 判定は `6時間` とし、fresh を外れた cache は再取得優先とする。
+- 過去表示で archive を使う場合は、対象時刻との差が `6時間` 以内の snapshot だけを候補としてよい。
+- 人工衛星 archive の保持期間は `3日` とし、clean up は `fetched_at_utc` 基準で古い file を削除してよい。
 
 ## 11. テスト観点と設計上の分離
 

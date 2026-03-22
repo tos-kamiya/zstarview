@@ -38,6 +38,7 @@ from ..clouddisc import (
     CloudDiscConfig,
 )
 from ..clouddisc.providers.select import pick_satellite
+from ..overlay_time import overlay_availability_for_delta, target_time_utc_from_delta
 from ..satellite_constants import (
     SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS,
     SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS,
@@ -174,14 +175,15 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._named_stars_by_band = catalogs.named_stars_by_band
         self._named_stars_search_all = catalogs.named_stars_search_all
         self.delta_t = runtime_options.delta_t
+        overlay_availability = overlay_availability_for_delta(self.delta_t)
         self.sky_disc_alpha = user_options.sky_disc_alpha
         self._sky_disc_alpha_when_enabled = user_options.sky_disc_alpha if user_options.sky_disc_alpha > 0.0 else 0.3
         requested_satellite_opacity = user_options.satellite_opacity
-        self._satellite_toggle_supported = runtime_options.delta_t.total_seconds() == 0.0
+        self._satellite_toggle_supported = overlay_availability.satellite
         self._satellite_opacity_when_enabled = requested_satellite_opacity if requested_satellite_opacity > 0.0 else 1.0
         self.satellite_opacity = requested_satellite_opacity if self._satellite_toggle_supported else 0.0
         requested_aircraft_opacity = user_options.aircraft_opacity
-        self._aircraft_toggle_supported = runtime_options.delta_t.total_seconds() == 0.0
+        self._aircraft_toggle_supported = overlay_availability.aircraft
         self._aircraft_opacity_when_enabled = requested_aircraft_opacity if requested_aircraft_opacity > 0.0 else 1.0
         self.aircraft_opacity = requested_aircraft_opacity if self._aircraft_toggle_supported else 0.0
         self.terrain_horizon_opacity = user_options.terrain_horizon_opacity
@@ -212,7 +214,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.star_visibility_boost = user_options.star_visibility_boost
         self._star_render_expected_width = runtime_options.star_render_expected_width
         self.content_fov_deg = float(runtime_options.content_fov_deg)
-        self._cloud_toggle_supported = runtime_options.delta_t.total_seconds() == 0.0
+        self._cloud_toggle_supported = overlay_availability.cloud
 
         # Cloud opacity is disabled if we are looking at a time-shifted view,
         # as we can only fetch current cloud data.
@@ -717,8 +719,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.menu.exec(menu_pos)
 
     def _current_time_obj(self) -> astropy.time.Time:
-        now = datetime.now(timezone.utc) + self.delta_t
-        return astropy.time.Time(now)
+        return astropy.time.Time(self._target_time_utc())
 
     def _open_named_star_jump_dialog(self) -> None:
         dialog = NamedStarJumpDialog(self._named_stars_by_band, self)
@@ -848,18 +849,25 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self._satellite_update_timer.stop()
         self._sync_overlay_projection_timer()
 
-    def _satellite_cache_age_seconds(self) -> float | None:
-        last_success_utc = self.satellite_state.last_success_utc
-        if last_success_utc is None:
+    def _target_time_utc(self) -> datetime:
+        return target_time_utc_from_delta(self.delta_t)
+
+    def _satellite_validity_remaining_ms(self) -> int | None:
+        element_epoch_utc = self.satellite_state.element_epoch_utc
+        if element_epoch_utc is None:
             return None
-        return max(0.0, (datetime.now(timezone.utc) - last_success_utc).total_seconds())
+        age_seconds = abs((self._target_time_utc() - element_epoch_utc).total_seconds())
+        remaining_seconds = SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS - age_seconds
+        return max(0, int(round(remaining_seconds * 1000.0)))
 
     def _schedule_next_satellite_refresh(self, delay_ms: int | None = None) -> None:
         if not self._satellite_layer_enabled() or self._is_shutting_down:
             return
-        interval_ms = (
-            SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS * 1000 if delay_ms is None else int(delay_ms)
-        )
+        interval_ms = delay_ms
+        if interval_ms is None:
+            interval_ms = self._satellite_validity_remaining_ms()
+        if interval_ms is None:
+            interval_ms = SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS * 1000
         self._satellite_update_timer.start(max(0, interval_ms))
 
     def _on_satellite_refresh_timer(self) -> None:
@@ -891,16 +899,12 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         if not self._satellite_layer_enabled():
             return
         self._sync_overlay_projection_timer()
-        if self.satellite_state.records_by_group and self.satellite_state.last_success_utc is not None:
+        if self.satellite_state.records_by_group and self.satellite_state.element_epoch_utc is not None:
             self.refresh_projected_satellite_overlay()
-            age_seconds = self._satellite_cache_age_seconds()
-            if age_seconds is None:
+            remaining_ms = self._satellite_validity_remaining_ms()
+            if remaining_ms is None:
                 self.start_background_satellite_update(reason=reason)
                 return
-            remaining_ms = max(
-                0,
-                int(round((SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS - age_seconds) * 1000.0)),
-            )
             if remaining_ms <= 0:
                 self.start_background_satellite_update(reason=reason)
             else:

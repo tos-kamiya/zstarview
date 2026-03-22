@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import timezone
 import logging
 import math
 import shutil
@@ -14,7 +15,8 @@ from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QPoint, QRect
 from PySide6.QtGui import QFont, QFontDatabase, QImage, QPainter
 
 from ..aircraft import build_observer_bbox, fetch_cached_opensky_states, project_aircraft_snapshots
-from ..satellites import fetch_cached_satellite_elements, project_satellite_records
+from ..overlay_time import classify_target_time, overlay_availability_for_delta
+from ..satellites import project_satellite_records, resolve_satellite_elements_for_time
 from ..astro import _starfield_load
 from ..catalog import load_dso_catalog, load_star_catalog
 from ..clouddisc import CloudDisc, CloudDiscConfig
@@ -169,6 +171,7 @@ def _build_window_inputs_from_args(
         timezone_name=city.tz,
         timezone_override=getattr(args, "timezone", None),
     )
+    overlay_availability = overlay_availability_for_delta(delta_t)
     star_catalog = _load_star_catalog_for_export(getattr(args, "vmag_limit", 6.0))
     dso_catalog = _load_dso_catalog_for_export()
     _verify_ephemeris_for_export()
@@ -203,11 +206,11 @@ def _build_window_inputs_from_args(
         sky_disc_alpha=getattr(args, "sky_opacity", 0.15),
         cloud_disc_alpha=(
             0.0
-            if cloud_stripe_count == 0 or cloud_stripe_width == 0.0
+            if (not overlay_availability.cloud) or cloud_stripe_count == 0 or cloud_stripe_width == 0.0
             else getattr(args, "cloud_opacity", 0.15)
         ),
-        satellite_opacity=getattr(args, "satellite_opacity", 0.5),
-        aircraft_opacity=getattr(args, "aircraft_opacity", 0.5),
+        satellite_opacity=(getattr(args, "satellite_opacity", 0.5) if overlay_availability.satellite else 0.0),
+        aircraft_opacity=(getattr(args, "aircraft_opacity", 0.5) if overlay_availability.aircraft else 0.0),
         terrain_horizon_opacity=getattr(args, "terrain_horizon_opacity", 0.05),
         urban_outline_opacity=getattr(args, "urban_outline_opacity", 0.2),
         ground_tint_opacity=getattr(args, "ground_tint_opacity", 0.1),
@@ -219,9 +222,9 @@ def _build_window_inputs_from_args(
         show_dso_initial=getattr(args, "show_dso_initial", None),
         show_asterisms_initial=getattr(args, "show_asterisms_initial", None),
         sky_disc_gui_allowed=getattr(args, "sky_opacity", 0.15) > 0.0,
-        cloud_gui_allowed=getattr(args, "cloud_opacity", 0.15) > 0.0,
-        satellite_gui_allowed=getattr(args, "satellite_opacity", 0.5) > 0.0,
-        aircraft_gui_allowed=getattr(args, "aircraft_opacity", 0.5) > 0.0,
+        cloud_gui_allowed=overlay_availability.cloud and getattr(args, "cloud_opacity", 0.15) > 0.0,
+        satellite_gui_allowed=overlay_availability.satellite and getattr(args, "satellite_opacity", 0.5) > 0.0,
+        aircraft_gui_allowed=overlay_availability.aircraft and getattr(args, "aircraft_opacity", 0.5) > 0.0,
         terrain_horizon_gui_allowed=getattr(args, "terrain_horizon_opacity", 0.05) > 0.0,
         urban_outline_gui_allowed=getattr(args, "urban_outline_opacity", 0.2) > 0.0,
     )
@@ -518,6 +521,7 @@ def _fetch_satellite_overlay_points(
     *,
     viewer_data: ViewerData,
     celestial_time_obj: object,
+    target_time_utc,
     deadline: float | None,
     enabled_groups: tuple[str, ...] = ("station", "starlink"),
 ) -> object | None:
@@ -526,8 +530,14 @@ def _fetch_satellite_overlay_points(
     remaining = _remaining_timeout_seconds(deadline)
     timeout_s = 20.0 if remaining is None else max(0.1, min(20.0, remaining))
     records_by_group: dict[str, list[dict[str, object]]] = {}
+    time_mode = classify_target_time(target_time_utc)
     for group_key in enabled_groups:
-        fetched = fetch_cached_satellite_elements(group_key, timeout_s=timeout_s)
+        fetched = resolve_satellite_elements_for_time(
+            group_key,
+            target_time_utc=target_time_utc,
+            time_mode=time_mode,
+            timeout_s=timeout_s,
+        )
         logger.info("Satellite source [%s]: %s", group_key, fetched.source)
         records_by_group[group_key] = list(fetched.records)
     if _timed_out(deadline):
@@ -789,6 +799,7 @@ def main() -> None:
             satellite_overlay_points = _fetch_satellite_overlay_points(
                 viewer_data=viewer_data,
                 celestial_time_obj=celestial_data.time,
+                target_time_utc=celestial_data.time.to_datetime(timezone=timezone.utc),
                 deadline=deadline,
             )
         except Exception as exc:

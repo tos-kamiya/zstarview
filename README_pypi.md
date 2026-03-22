@@ -1,6 +1,6 @@
 # zstarview
 
-**Zenith Star View** is a desktop sky viewer for your chosen location and time.
+**Zenith Star View** is a desktop sky viewer for your chosen location.
 
 It renders an all-sky view with stars, the Sun, Moon, planets, deep-sky objects, and guide overlays.
 When enabled, it can also add real-time cloud imagery, terrain horizon, urban outlines, nearby aircraft, and artificial satellites such as ISS, CSS (Tianhe), and Starlink.
@@ -104,24 +104,20 @@ zstarview -Z E -A 25 Tokyo
 - `--place QUERY`
 - `--place-countrycode CODE`
 - `--place-lang LANG`
+- `--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"`
 - `-Z, --view-center-az VIEW_CENTER_AZ`
 - `-A, --view-center-alt VIEW_CENTER_ALT`
 - `--observer-height-m METERS`
-- `--cloud-opacity 0.0..1.0`
-- `--cloud-missing-tint-opacity 0.0..1.0`
-- `-a, --aircraft-opacity 0.0..1.0`
-- `--terrain-horizon-opacity 0.0..1.0`
-- `--ground-tint-opacity 0.0..1.0`
-- `--urban-outline-opacity 0.0..1.0`
-- `--sky-opacity 0.0..1.0`
-- `--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"`
+- `-V, --vmag-limit V_MAG_LIMIT`
+- `--theme {night,day,white,black,transparent}`
+- `-o, --output PATH` for `zstarview-export-image`
 
 Notes:
 
 - `--place` uses the public OpenStreetMap Nominatim search service and sends a single request with a User-Agent and `Accept-Language`.
 - Satellite cloud rendering downloads Himawari/GOES data from public S3 buckets.
 - Terrain horizon rendering downloads Copernicus DEM tiles on first use and reuses cached data later.
-- Aircraft rendering uses OpenSky state data when enabled; `-a 0` disables both aircraft queries and drawing for that run.
+- Detailed layer-tuning options such as per-layer opacity remain available in the main README.
 
 ## Code, Data Licenses, and Credits
 
