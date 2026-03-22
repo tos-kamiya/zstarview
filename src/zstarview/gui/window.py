@@ -38,6 +38,10 @@ from ..clouddisc import (
     CloudDiscConfig,
 )
 from ..clouddisc.providers.select import pick_satellite
+from ..satellite_constants import (
+    SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS,
+    SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS,
+)
 from ..aircraft_constants import AIRCRAFT_REFRESH_INTERVAL_SECONDS
 from ..aircraft_constants import AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS
 from ..paths import (
@@ -63,6 +67,8 @@ from .draggable_window import DraggableWindow
 from .composite import SkyCompositorCache
 from .cloud_state import CloudImageState
 from .cloud_controller import CloudController
+from .satellite_state import SatelliteState
+from .satellite_controller import SatelliteController
 from .aircraft_state import AircraftState
 from .aircraft_controller import AircraftController
 from .terrain_state import TerrainHorizonState
@@ -170,6 +176,10 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.delta_t = runtime_options.delta_t
         self.sky_disc_alpha = user_options.sky_disc_alpha
         self._sky_disc_alpha_when_enabled = user_options.sky_disc_alpha if user_options.sky_disc_alpha > 0.0 else 0.3
+        requested_satellite_opacity = user_options.satellite_opacity
+        self._satellite_toggle_supported = runtime_options.delta_t.total_seconds() == 0.0
+        self._satellite_opacity_when_enabled = requested_satellite_opacity if requested_satellite_opacity > 0.0 else 1.0
+        self.satellite_opacity = requested_satellite_opacity if self._satellite_toggle_supported else 0.0
         requested_aircraft_opacity = user_options.aircraft_opacity
         self._aircraft_toggle_supported = runtime_options.delta_t.total_seconds() == 0.0
         self._aircraft_opacity_when_enabled = requested_aircraft_opacity if requested_aircraft_opacity > 0.0 else 1.0
@@ -185,6 +195,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         )
         self._sky_disc_gui_allowed = bool(user_options.sky_disc_gui_allowed)
         self._cloud_gui_allowed = bool(user_options.cloud_gui_allowed)
+        self._satellite_gui_allowed = bool(user_options.satellite_gui_allowed)
         self._aircraft_gui_allowed = bool(user_options.aircraft_gui_allowed)
         self._terrain_horizon_gui_allowed = bool(user_options.terrain_horizon_gui_allowed)
         self._urban_outline_gui_allowed = bool(user_options.urban_outline_gui_allowed)
@@ -216,8 +227,10 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.state = SkyWindowState(
             render_view_center=tuple(self.viewer_data.view_center),
             urban_outlines=None,
+            satellite_overlay_points=None,
             aircraft_overlay_points=None,
         )
+        self._enabled_satellite_groups: tuple[str, ...] = ("iss",)
         self._frame_cache_key: object | None = None
         self._frame_cache_image = None
         self.setWindowTitle(f"{APP_DISPLAY_NAME} - {self.viewer_data.city_name}")
@@ -256,6 +269,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.size_grip.raise_()
         self._action_enlarge_moon: Optional[QAction] = None
         self._action_toggle_clouds: Optional[QAction] = None
+        self._action_toggle_satellites: Optional[QAction] = None
         self._action_toggle_aircraft: Optional[QAction] = None
         self._action_toggle_terrain_horizon: Optional[QAction] = None
         self._action_toggle_urban_outline: Optional[QAction] = None
@@ -279,16 +293,25 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
 
         # --- Cloud Data State and Cache ---
         self.cloud_state = CloudImageState()
+        self.satellite_state = SatelliteState()
         self.aircraft_state = AircraftState()
         self.terrain_horizon_state = TerrainHorizonState()
         self.urban_outline_state = UrbanOutlineState()
         self._cloud_controller: Optional[CloudController] = None
+        self._satellite_controller: Optional[SatelliteController] = None
         self._aircraft_controller: Optional[AircraftController] = None
         self._terrain_horizon_controller: Optional[TerrainHorizonController] = None
         self._urban_outline_controller: Optional[UrbanOutlineController] = None
         self._cloud_update_timer = QTimer(self)
         self._cloud_update_timer.setInterval(CLOUD_UPDATE_INTERVAL * 1000)
         self._cloud_update_timer.timeout.connect(lambda: self.start_background_cloud_update(reason="timer"))
+        self._satellite_update_timer = QTimer(self)
+        self._satellite_update_timer.setSingleShot(True)
+        self._satellite_update_timer.setInterval(SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS * 1000)
+        self._satellite_update_timer.timeout.connect(self._on_satellite_refresh_timer)
+        self._satellite_projection_timer = QTimer(self)
+        self._satellite_projection_timer.setInterval(SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS * 1000)
+        self._satellite_projection_timer.timeout.connect(self.refresh_projected_satellite_overlay)
         self._aircraft_update_timer = QTimer(self)
         self._aircraft_update_timer.setSingleShot(True)
         self._aircraft_update_timer.setInterval(AIRCRAFT_REFRESH_INTERVAL_SECONDS * 1000)
@@ -316,6 +339,10 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self._cloud_controller.cloud_started.connect(self._on_cloud_started)
             self._cloud_controller.cloud_ready.connect(self._on_cloud_ready)
             self._cloud_controller.cloud_failed.connect(self._on_cloud_failed)
+        self._satellite_controller = SatelliteController(parent=self)
+        self._satellite_controller.satellite_started.connect(self._on_satellite_started)
+        self._satellite_controller.satellite_ready.connect(self._on_satellite_ready)
+        self._satellite_controller.satellite_failed.connect(self._on_satellite_failed)
         self._aircraft_controller = AircraftController(parent=self)
         self._aircraft_controller.aircraft_started.connect(self._on_aircraft_started)
         self._aircraft_controller.aircraft_ready.connect(self._on_aircraft_ready)
@@ -324,6 +351,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self._action_toggle_clouds.setEnabled(
                 self._cloud_toggle_supported and self._clouddisc is not None and self._cloud_gui_allowed
             )
+        if self._action_toggle_satellites is not None:
+            self._action_toggle_satellites.setEnabled(self._satellite_toggle_supported and self._satellite_gui_allowed)
         if self._action_toggle_aircraft is not None:
             self._action_toggle_aircraft.setEnabled(self._aircraft_toggle_supported and self._aircraft_gui_allowed)
 
@@ -379,6 +408,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self.start_background_terrain_horizon_update(reason="initial")
         if self.urban_outline_opacity > 0.0:
             self.start_background_urban_outline_update(reason="initial")
+        if self._satellite_layer_enabled():
+            self._enable_satellite_layer(reason="initial")
         if self._aircraft_layer_enabled():
             self._enable_aircraft_layer(reason="initial")
 
@@ -499,6 +530,13 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.menu.addAction(toggle_clouds_action)
         self.addAction(toggle_clouds_action)
         self._action_toggle_clouds = toggle_clouds_action
+        toggle_satellites_action = QAction("Satellites", self)
+        toggle_satellites_action.setCheckable(True)
+        toggle_satellites_action.setChecked(self.satellite_opacity > 0.0)
+        toggle_satellites_action.triggered.connect(self.toggle_satellites)
+        self.menu.addAction(toggle_satellites_action)
+        self.addAction(toggle_satellites_action)
+        self._action_toggle_satellites = toggle_satellites_action
         toggle_aircraft_action = QAction("Aircraft", self)
         toggle_aircraft_action.setCheckable(True)
         toggle_aircraft_action.setChecked(self.aircraft_opacity > 0.0)
@@ -744,6 +782,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._sky_worker.shutdown()
         if self._cloud_controller is not None:
             self._cloud_controller.shutdown()
+        if self._satellite_controller is not None:
+            self._satellite_controller.shutdown()
         if self._aircraft_controller is not None:
             self._aircraft_controller.shutdown()
         if self._terrain_horizon_controller is not None:
@@ -756,6 +796,10 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self._asterism_check_timer.stop()
         if self._cloud_update_timer.isActive():
             self._cloud_update_timer.stop()
+        if self._satellite_update_timer.isActive():
+            self._satellite_update_timer.stop()
+        if self._satellite_projection_timer.isActive():
+            self._satellite_projection_timer.stop()
         if self._aircraft_update_timer.isActive():
             self._aircraft_update_timer.stop()
         if self._aircraft_projection_timer.isActive():
@@ -796,6 +840,58 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
     def _predicted_cloud_satellite(self) -> str:
         lat, lon = self.viewer_data.location
         return pick_satellite(lat, lon, ("AUTO",))
+
+    def _satellite_layer_enabled(self) -> bool:
+        return self._satellite_toggle_supported and self.satellite_opacity > 0.0
+
+    def _stop_satellite_timers(self) -> None:
+        if self._satellite_update_timer.isActive():
+            self._satellite_update_timer.stop()
+        if self._satellite_projection_timer.isActive():
+            self._satellite_projection_timer.stop()
+
+    def _satellite_cache_age_seconds(self) -> float | None:
+        last_success_utc = self.satellite_state.last_success_utc
+        if last_success_utc is None:
+            return None
+        return max(0.0, (datetime.now(timezone.utc) - last_success_utc).total_seconds())
+
+    def _schedule_next_satellite_refresh(self, delay_ms: int | None = None) -> None:
+        if not self._satellite_layer_enabled() or self._is_shutting_down:
+            return
+        interval_ms = (
+            SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS * 1000 if delay_ms is None else int(delay_ms)
+        )
+        self._satellite_update_timer.start(max(0, interval_ms))
+
+    def _on_satellite_refresh_timer(self) -> None:
+        if not self._satellite_layer_enabled():
+            return
+        started = self.start_background_satellite_update(reason="timer")
+        if not started:
+            self._schedule_next_satellite_refresh()
+
+    def _enable_satellite_layer(self, *, reason: str) -> None:
+        if not self._satellite_layer_enabled():
+            return
+        if not self._satellite_projection_timer.isActive():
+            self._satellite_projection_timer.start()
+        if self.satellite_state.records_by_group and self.satellite_state.last_success_utc is not None:
+            self.refresh_projected_satellite_overlay()
+            age_seconds = self._satellite_cache_age_seconds()
+            if age_seconds is None:
+                self.start_background_satellite_update(reason=reason)
+                return
+            remaining_ms = max(
+                0,
+                int(round((SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS - age_seconds) * 1000.0)),
+            )
+            if remaining_ms <= 0:
+                self.start_background_satellite_update(reason=reason)
+            else:
+                self._schedule_next_satellite_refresh(remaining_ms)
+            return
+        self.start_background_satellite_update(reason=reason)
 
     def _aircraft_layer_enabled(self) -> bool:
         return self._aircraft_toggle_supported and self.aircraft_opacity > 0.0
@@ -870,6 +966,24 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
                 self._cloud_update_timer.start()
         elif self._cloud_update_timer.isActive():
             self._cloud_update_timer.stop()
+
+        self.update()
+
+    def toggle_satellites(self) -> None:
+        if not self._satellite_toggle_supported or not self._satellite_gui_allowed:
+            if self._action_toggle_satellites is not None:
+                self._action_toggle_satellites.setChecked(self.satellite_opacity > 0.0)
+            return
+
+        enable_satellites = self.satellite_opacity <= 0.0
+        self.satellite_opacity = self._satellite_opacity_when_enabled if enable_satellites else 0.0
+        if self._action_toggle_satellites is not None and self._action_toggle_satellites.isChecked() != enable_satellites:
+            self._action_toggle_satellites.setChecked(enable_satellites)
+
+        if enable_satellites:
+            self._enable_satellite_layer(reason="toggle-on")
+        else:
+            self._stop_satellite_timers()
 
         self.update()
 

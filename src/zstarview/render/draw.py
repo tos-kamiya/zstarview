@@ -35,6 +35,7 @@ from ..paths import (
 )
 from ..aircraft.types import AircraftOverlayPoint
 from ..aircraft_constants import AIRCRAFT_FADE_START_SECONDS
+from ..satellites.types import SatelliteOverlayPoint
 from ..types import ScreenGeometry, CelestialData, ViewerData, CelestialObject, PlanetBody, UrbanOutlinePolyline
 from ..astro import (
     altaz_to_normalized_xy,
@@ -831,6 +832,62 @@ def draw_urban_outlines(
 def _urban_outline_height_alpha_scale(height_m: float) -> float:
     clamped_height_m = max(0.0, min(50.0, float(height_m)))
     return 0.25 + 0.75 * (clamped_height_m / 50.0)
+
+
+def draw_satellite_overlay(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    satellite_points: list[SatelliteOverlayPoint] | None,
+    view_center: tuple[float, float],
+    *,
+    opacity: float = 1.0,
+    label_candidates: Optional[List[Dict[str, Any]]] = None,
+    preset: str = "night",
+    content_fov_deg: float = FIELD_OF_VIEW_DEG,
+) -> None:
+    layer_opacity = max(0.0, min(1.0, float(opacity)))
+    if not satellite_points or layer_opacity <= 0.0:
+        return
+
+    painter.save()
+    marker_color = QColor(186, 128, 255, max(0, min(255, int(round(255.0 * layer_opacity)))))
+    label_text_color, label_outline_color = _get_text_style(preset)
+    label_outline_width = _get_text_outline_width(preset)
+    label_text_color = QColor(label_text_color)
+    label_outline_color = QColor(label_outline_color)
+    label_text_color.setAlpha(max(0, min(255, int(round(label_text_color.alpha() * layer_opacity)))))
+    label_outline_color.setAlpha(max(0, min(255, int(round(label_outline_color.alpha() * layer_opacity)))))
+    for point in satellite_points:
+        alt = float(point.alt_deg)
+        az = float(point.az_deg)
+        if alt <= 0.0 or not is_in_fov(alt, az, view_center, fov_deg=content_fov_deg):
+            continue
+        nx, ny = altaz_to_normalized_xy(alt, az, view_center)
+        px, py = normalized_to_screen_xy(nx, ny, geometry)
+        pos = QPointF(float(px), float(py))
+        draw_gauge_cross(
+            painter,
+            marker_color,
+            pos,
+            scale=float(point.marker_scale),
+            pen_width=1.0,
+        )
+        if bool(point.show_label):
+            label_text = str(point.satellite_name).strip()
+            if label_text:
+                if label_candidates is not None:
+                    label_candidates.append(
+                        {
+                            "text": label_text,
+                            "pos": QPointF(pos.x() + 10.0, pos.y() - 8.0),
+                            "text_color": label_text_color,
+                            "outline_color": label_outline_color,
+                            "outline_width": label_outline_width,
+                            "priority": 42,
+                            "hide_on_overlap": True,
+                        }
+                    )
+    painter.restore()
 
 
 def draw_aircraft_overlay(

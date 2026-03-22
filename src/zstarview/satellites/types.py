@@ -13,3 +13,13 @@ class CachedSatelliteElementSet:
     fetched_at_utc: datetime
     source: str
     records: list[SatelliteOmmRecord]
+
+
+@dataclass(frozen=True)
+class SatelliteOverlayPoint:
+    group_key: str
+    satellite_name: str
+    alt_deg: float
+    az_deg: float
+    marker_scale: float
+    show_label: bool
