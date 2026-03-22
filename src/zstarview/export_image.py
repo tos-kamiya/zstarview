@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 import time
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -112,10 +113,14 @@ def _build_window_inputs_from_args(
         place_countrycode=getattr(args, "place_countrycode", None),
         place_lang=getattr(args, "place_lang", "en"),
     )
+    if getattr(args, "timezone", None) is not None:
+        city = replace(city, tz=getattr(args, "timezone"))
     delta_t = _startup_parse_time_arguments(
         getattr(args, "datetime", None),
         getattr(args, "days", 0),
         getattr(args, "hours", 0),
+        timezone_name=city.tz,
+        timezone_override=getattr(args, "timezone", None),
     )
     star_catalog = _startup_load_stars(getattr(args, "vmag_limit", 6.0))
     dso_catalog = _startup_load_dso()

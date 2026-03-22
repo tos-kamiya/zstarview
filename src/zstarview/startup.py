@@ -3,6 +3,7 @@ import math
 import re
 import sys
 import urllib.error
+import urllib.parse
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -214,6 +215,76 @@ def _restore_persisted_location(
     return location
 
 
+def _parse_direct_coordinate_location(raw_value: str) -> tuple[float, float] | None:
+    text = raw_value.strip()
+    if not text:
+        return None
+
+    lat_token: str | None = None
+    lon_token: str | None = None
+
+    if ";" in text:
+        parts = [part.strip() for part in text.split(";")]
+        if len(parts) != 2:
+            raise ValueError("Expected 'lat;lon'")
+        lat_token, lon_token = parts
+    elif text.startswith("@"):
+        match = re.fullmatch(
+            r"@([+-]?\d+(?:\.\d+)?),([+-]?\d+(?:\.\d+)?)(?:[,/?#&].*)?",
+            text,
+        )
+        if match is None:
+            raise ValueError("Expected '@lat,lon'")
+        lat_token, lon_token = match.group(1), match.group(2)
+    else:
+        candidate = text
+        if candidate.startswith(("maps.google.com/", "www.google.com/maps/", "google.com/maps/")):
+            candidate = "https://" + candidate
+        parsed = urllib.parse.urlparse(candidate)
+        host = parsed.netloc.lower()
+        if host in {"maps.google.com", "www.google.com", "google.com"}:
+            full_path = parsed.path or ""
+            if host == "maps.google.com":
+                if not full_path.startswith("/maps/"):
+                    return None
+            elif not full_path.startswith("/maps/"):
+                return None
+            match = re.search(
+                r"/maps/@([+-]?\d+(?:\.\d+)?),([+-]?\d+(?:\.\d+)?)(?:[,/?#&].*)?$",
+                full_path,
+            )
+            if match is None:
+                raise ValueError("Google Maps URL does not contain '/maps/@lat,lon'")
+            lat_token, lon_token = match.group(1), match.group(2)
+        else:
+            return None
+
+    def _parse_coord(token: str, dirs: str) -> float:
+        token_upper = token.strip().upper()
+        found = {ch for ch in token_upper if ch in "NSEW"}
+        allowed = set(dirs)
+        if found and not found.issubset(allowed):
+            raise ValueError(
+                f"Invalid direction in '{token}' (expected one of {sorted(allowed)})."
+            )
+        sign = -1.0 if (("S" in found) or ("W" in found)) else 1.0
+        value_text = re.sub(r"[^0-9.-]", "", token)
+        if not value_text:
+            raise ValueError(f"No numeric value found in '{token}'")
+        value = float(value_text)
+        return value if value < 0 else value * sign
+
+    assert lat_token is not None
+    assert lon_token is not None
+    lat = _parse_coord(lat_token, "NS")
+    lon = _parse_coord(lon_token, "EW")
+    if not (-90 <= lat <= 90):
+        raise ValueError(f"Latitude out of range (-90 to 90): {lat}")
+    if not (-180 <= lon <= 180):
+        raise ValueError(f"Longitude out of range (-180 to 180): {lon}")
+    return lat, lon
+
+
 def _resolve_place_query(
     query: str,
     countrycode: str | None,
@@ -303,45 +374,11 @@ def _startup_resolve_city(
     resolved_location: ResolvedLocation | None = None
     persist_location = False
 
-    if args_city and ";" in args_city:
+    parsed_coords: tuple[float, float] | None = None
+    if args_city:
         try:
-            lat_str, lon_str = [s.strip() for s in args_city.split(";")]
-
-            def _parse_coord(s: str, dirs: str) -> float:
-                s_upper = s.strip().upper()
-                found = {ch for ch in s_upper if ch in "NSEW"}
-                allowed = set(dirs)
-                if found and not found.issubset(allowed):
-                    raise ValueError(
-                        f"Invalid direction in '{s}' (expected one of {sorted(allowed)})."
-                    )
-                sign = -1.0 if (("S" in found) or ("W" in found)) else 1.0
-                val_str = re.sub(r"[^0-9.-]", "", s)
-                if not val_str:
-                    raise ValueError(f"No numeric value found in '{s}'")
-                val = float(val_str)
-                return val if val < 0 else val * sign
-
-            lat = _parse_coord(lat_str, "NS")
-            lon = _parse_coord(lon_str, "EW")
-            if not (-90 <= lat <= 90):
-                raise ValueError(f"Latitude out of range (-90 to 90): {lat}")
-            if not (-180 <= lon <= 180):
-                raise ValueError(f"Longitude out of range (-180 to 180): {lon}")
-
-            logger.info("Parsed location: Lat=%.6f, Lon=%.6f, Timezone=UTC", lat, lon)
-            return ResolvedLocation(
-                display_name=f"Lat: {lat:.2f}, Lon: {lon:.2f}",
-                lat=lat,
-                lon=lon,
-                tz="UTC",
-                persistence_key=f"{lat:.6f};{lon:.6f}",
-                observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
-                kind="coords",
-                location_height_label=None,
-                location_height_m=None,
-            )
-        except (ValueError, IndexError) as exc:
+            parsed_coords = _parse_direct_coordinate_location(args_city)
+        except ValueError as exc:
             logger.error("Invalid latitude/longitude format: '%s'. %s", args_city, exc)
             raise StartupAbortError() from exc
 
@@ -354,6 +391,28 @@ def _startup_resolve_city(
 
     recs: List[CityRec] = []
     try:
+        if parsed_coords is not None:
+            lat, lon = parsed_coords
+            nearest_city = _resolve_nearest_city(lat, lon, admin1_map)
+            timezone_name = nearest_city.tz if nearest_city is not None else "UTC"
+            logger.info(
+                "Parsed location: Lat=%.6f, Lon=%.6f, Timezone=%s",
+                lat,
+                lon,
+                timezone_name,
+            )
+            return ResolvedLocation(
+                display_name=f"Lat: {lat:.2f}, Lon: {lon:.2f}",
+                lat=lat,
+                lon=lon,
+                tz=timezone_name,
+                persistence_key=f"{lat:.6f};{lon:.6f}",
+                observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
+                kind="coords",
+                location_height_label=None,
+                location_height_m=None,
+                cc=nearest_city.cc if nearest_city is not None else "",
+            )
         if stored_location is not None:
             resolved_location = _restore_persisted_location(stored_location, admin1_map)
             if resolved_location is None:
@@ -493,7 +552,12 @@ def _parse_flexible_time(time_str: str) -> Tuple[int, int, int]:
 
 
 def _startup_parse_time_arguments(
-    args_datetime: Optional[str], args_days: int, args_hours: int
+    args_datetime: Optional[str],
+    args_days: int,
+    args_hours: int,
+    *,
+    timezone_name: str = "UTC",
+    timezone_override: str | None = None,
 ) -> timedelta:
     """
     Parse time-related arguments and return a timedelta from now.
@@ -524,16 +588,23 @@ def _startup_parse_time_arguments(
         hour, minute, second = _parse_flexible_time(time_str)
         dt_naive = date_only.replace(hour=hour, minute=minute, second=second)
 
-        if tz_str:
+        effective_tz_str = timezone_override if timezone_override is not None else tz_str
+
+        if effective_tz_str:
             try:
-                tz = parse_tz_string(tz_str)
+                tz = parse_tz_string(effective_tz_str)
                 dt_local = dt_naive.replace(tzinfo=tz)
                 target_time_utc = dt_local.astimezone(timezone.utc)
             except Exception as exc:
-                logger.error("Invalid timezone '%s'. %s", tz_str, exc)
+                logger.error("Invalid timezone '%s'. %s", effective_tz_str, exc)
                 raise StartupAbortError() from exc
         else:
-            target_time_utc = dt_naive.replace(tzinfo=timezone.utc)
+            try:
+                tz = parse_tz_string(timezone_name)
+            except Exception as exc:
+                logger.error("Invalid timezone '%s'. %s", timezone_name, exc)
+                raise StartupAbortError() from exc
+            target_time_utc = dt_naive.replace(tzinfo=tz).astimezone(timezone.utc)
 
         now_utc = datetime.now(timezone.utc)
         return target_time_utc - now_utc
