@@ -83,16 +83,15 @@ zstarview -Z E -A 25 Tokyo
 
 ## Highlights
 
-- Deep-sky objects: named galaxies/open clusters/globular clusters are shown as soft blue extents.
-- Asterism overlay: popular line patterns rather than formal IAU constellation boundaries are shown as dim ambient lines.
 - Solar-system bodies: supports Sun, Moon, and major planets.
-- Flexible location input: specify the observer location through the CLI argument using a city name, tower name, mountain name, direct latitude/longitude input, or online place/station search via Nominatim.
-- Adjustable view center: adjust the view center with CLI options `-A` and `-Z`, or with the arrow keys.
-- Never-rises region: the celestial region that never rises above the horizon for the observer's latitude is shown in a red tint.
+- Deep-sky objects: named galaxies/open clusters/globular clusters are shown as soft blue extents.
+- Asterism overlay: popular line patterns are shown as dim guide lines, alongside other sky guides such as the never-rises region.
 - Satellite cloud imagery: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched overlay.
-- Terrain horizon and ground fill: Copernicus DEM data can be downloaded to render the local terrain skyline and ground region below the horizon.
-- Urban outline overlay: major rooflines are drawn as a white overlay for the current viewpoint. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 10km radius.
-- Aircraft overlay: nearby aircraft from OpenSky can be drawn as purple predicted-motion polylines, with startup opacity control and cached reuse when the layer is hidden and shown again.
+- Aircraft overlay: nearby aircraft from OpenSky can be drawn on the sky view.
+- Terrain horizon and ground fill: Copernicus DEM data can be used to render the local terrain skyline and ground region.
+- Urban outline overlay: major rooflines are drawn for the current viewpoint, with optional distant skyscrapers in dense urban areas.
+- Flexible location input: start from a city, tower, mountain, lat/lon, or online place/station search.
+- Adjustable view center: change the view center from the CLI or with the arrow keys.
 - Python support: routinely tested on CPython 3.10, 3.11, 3.12, and 3.13.
 
 ## Common Options
@@ -100,14 +99,16 @@ zstarview -Z E -A 25 Tokyo
 - `--place QUERY`
 - `--place-countrycode CODE`
 - `--place-lang LANG`
-- `--sky-opacity 0.0..1.0`
+- `-Z, --view-center-az VIEW_CENTER_AZ`
+- `-A, --view-center-alt VIEW_CENTER_ALT`
+- `--observer-height-m METERS`
 - `--cloud-opacity 0.0..1.0`
 - `--cloud-missing-tint-opacity 0.0..1.0`
+- `-a, --aircraft-opacity 0.0..1.0`
 - `--terrain-horizon-opacity 0.0..1.0`
 - `--ground-tint-opacity 0.0..1.0`
 - `--urban-outline-opacity 0.0..1.0`
-- `-a, --aircraft-opacity 0.0..1.0`
-- `--observer-height-m METERS`
+- `--sky-opacity 0.0..1.0`
 - `--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"`
 
 Notes:
