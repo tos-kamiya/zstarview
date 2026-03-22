@@ -14,6 +14,7 @@ from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QPoint, QRect
 from PySide6.QtGui import QFont, QFontDatabase, QImage, QPainter
 
 from ..aircraft import build_observer_bbox, fetch_cached_opensky_states, project_aircraft_snapshots
+from ..satellites import fetch_cached_satellite_elements, project_satellite_records
 from ..astro import _starfield_load
 from ..catalog import load_dso_catalog, load_star_catalog
 from ..clouddisc import CloudDisc, CloudDiscConfig
@@ -511,6 +512,33 @@ def _fetch_aircraft_overlay_points(
     )
 
 
+def _fetch_satellite_overlay_points(
+    *,
+    viewer_data: ViewerData,
+    celestial_time_obj: object,
+    deadline: float | None,
+    enabled_groups: tuple[str, ...] = ("iss",),
+) -> object | None:
+    if _timed_out(deadline):
+        raise TimeoutError("satellites timed out")
+    remaining = _remaining_timeout_seconds(deadline)
+    timeout_s = 20.0 if remaining is None else max(0.1, min(20.0, remaining))
+    records_by_group: dict[str, list[dict[str, object]]] = {}
+    for group_key in enabled_groups:
+        fetched = fetch_cached_satellite_elements(group_key, timeout_s=timeout_s)
+        logger.info("Satellite source [%s]: %s", group_key, fetched.source)
+        records_by_group[group_key] = list(fetched.records)
+    if _timed_out(deadline):
+        raise TimeoutError("satellites timed out")
+    return project_satellite_records(
+        records_by_group,
+        observer_lat=float(viewer_data.lat_deg),
+        observer_lon=float(viewer_data.lon_deg),
+        observer_height_m=float(viewer_data.observer_height_m),
+        time_obj=celestial_time_obj,
+    )
+
+
 def _render_image(
     *,
     image_size: tuple[int, int],
@@ -570,6 +598,7 @@ def _build_render_style(
         star_visibility_boost=float(user_options.star_visibility_boost),
         vmag_limit=float(user_options.vmag_limit),
         cloud_disc_alpha=float(user_options.cloud_disc_alpha),
+        satellite_opacity=float(user_options.satellite_opacity),
         terrain_horizon_opacity=float(user_options.terrain_horizon_opacity),
         urban_outline_opacity=float(user_options.urban_outline_opacity),
         show_urban_outline_layer=float(user_options.urban_outline_opacity) > 0.0,
@@ -752,6 +781,20 @@ def main() -> None:
             if not allow_partial_data:
                 raise SystemExit(1)
 
+    satellite_overlay_points = None
+    if user_options.satellite_opacity > 0.0:
+        try:
+            satellite_overlay_points = _fetch_satellite_overlay_points(
+                viewer_data=viewer_data,
+                celestial_time_obj=celestial_data.time,
+                deadline=deadline,
+            )
+        except Exception as exc:
+            logger.warning("Export layer unavailable: satellites (%s)", exc)
+            layer_failures.append("satellites")
+            if not allow_partial_data:
+                raise SystemExit(1)
+
     if layer_failures and not allow_partial_data:
         logger.error("Export aborted because partial data is not allowed.")
         raise SystemExit(1)
@@ -772,6 +815,7 @@ def main() -> None:
         cloud_stripe_density=cloud_stripe_density,
         terrain_horizon_profile=terrain_horizon_profile,
         urban_outlines=urban_outlines,
+        satellite_overlay_points=satellite_overlay_points,
         aircraft_overlay_points=aircraft_overlay_points,
     )
     image = _render_image(

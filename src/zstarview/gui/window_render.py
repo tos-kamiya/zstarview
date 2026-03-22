@@ -57,6 +57,7 @@ class SkyWindowRenderMixin:
             round(float(self.vmag_limit), 3),
             round(float(self.sky_disc_alpha), 3),
             round(float(self.cloud_disc_alpha), 3),
+            round(float(getattr(self, "satellite_opacity", 0.0)), 3),
             round(float(getattr(self, "aircraft_opacity", 0.0)), 3),
             round(float(self.terrain_horizon_opacity), 3),
             round(float(self.urban_outline_opacity), 3),
@@ -68,6 +69,7 @@ class SkyWindowRenderMixin:
             None if self.cloud_state.stripe_density is None else int(self.cloud_state.stripe_density.source_cache_key),
             self._render_cache_stamp(self.state.terrain_horizon_profile),
             self._render_cache_stamp(self.state.urban_outlines),
+            self._render_cache_stamp(getattr(self.state, "satellite_overlay_points", None)),
             self._render_cache_stamp(self.state.aircraft_overlay_points),
         )
 
@@ -137,6 +139,7 @@ class SkyWindowRenderMixin:
             cloud_stripe_density=getattr(cloud_state, "stripe_density", None),
             terrain_horizon_profile=getattr(state, "terrain_horizon_profile", None),
             urban_outlines=getattr(state, "urban_outlines", None),
+            satellite_overlay_points=getattr(state, "satellite_overlay_points", None),
             aircraft_overlay_points=getattr(state, "aircraft_overlay_points", None),
         )
 
@@ -154,6 +157,7 @@ class SkyWindowRenderMixin:
             star_visibility_boost=float(getattr(self, "star_visibility_boost", 1.0)),
             vmag_limit=float(getattr(self, "vmag_limit", 6.0)),
             cloud_disc_alpha=float(getattr(self, "cloud_disc_alpha", 0.0)),
+            satellite_opacity=float(getattr(self, "satellite_opacity", 0.0)),
             terrain_horizon_opacity=float(getattr(self, "terrain_horizon_opacity", 0.0)),
             urban_outline_opacity=float(getattr(self, "urban_outline_opacity", 0.2)),
             show_urban_outline_layer=bool(getattr(self, "show_urban_outline_layer", True)),

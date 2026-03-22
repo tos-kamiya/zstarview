@@ -315,14 +315,17 @@
   - 取得結果は raw OMM JSON のまま永続保存し、runtime で Skyfield `EarthSatellite` へ変換する構成にした。
   - テストでは、CelesTrak URL 組み立て、OMM payload 正規化、Skyfield `EarthSatellite` 生成、fresh cache hit、stale 時の再取得失敗伝播、cache overwrite、cleanup を確認した。
 
-- TODO: 人工衛星レイヤー描画と GUI 統合
-  - 航空機キャッシュ設計を踏まえた人工衛星の取得・キャッシュ基盤は入ったので、次は GUI 状態、描画用内部モデル、描画順、メニュー/トグル統合へ進む。
-  - 人工衛星側は `ISS`、`Starlink`、`GPS` を独立サブレイヤーとして扱う。
-  - 初版の軌道要素取得間隔は全 group 共通で `24時間`、表示位置の再計算は全 group 共通で `5秒` とする。
-
 - 人工衛星レイヤーの位置計算と描画統合設計
   - 人工衛星の位置計算は `satellites/project.py` に分離し、group ごとの raw OMM records を Skyfield `EarthSatellite.from_omm()` で satellite object へ変換して、観測地点基準の `alt/az` を計算する方針にした。
   - 描画用内部モデルとして `SatelliteOverlayPoint` を導入し、初期実装では軌跡線なしの「現在位置 marker のみ」を保持する構成にした。
   - 描画順は `planets` の後、`aircraft` の前とし、人工衛星は惑星・月より近く、航空機よりは遠い層として扱う。
   - marker は航空機と同系統の紫色、小型クロス、`ISS` だけ少し大きい scale を持つ方針にした。
   - GUI 側は `SatelliteController` と `SatelliteState` を追加し、軌道要素は `24時間`、位置再計算は `5秒` で更新する前提にした。
+
+- 人工衛星レイヤーの位置計算と描画統合
+  - `satellites/project.py` を追加し、cached OMM records から Skyfield `EarthSatellite` を生成して観測地点基準の `alt/az` を計算し、描画用 `SatelliteOverlayPoint` 列へ射影するようにした。
+  - 初版の表示対象は `ISS` を既定有効 group とし、marker は航空機と同系統の紫色小型クロス、`ISS` だけ少し大きい scale とラベル表示を持つ構成にした。
+  - 描画順は `planets` の後、`aircraft` の前へ組み込み、render pipeline と export-image の両方で同じ人工衛星レイヤーを描けるようにした。
+  - GUI 側に `SatelliteController` と `SatelliteState` を追加し、軌道要素 fetch は `24時間`、位置再計算は `5秒` の timer で分離した。
+  - GUI メニューに `Satellites` トグルを追加し、静止時のみ有効化する既存航空機トグルに近い挙動へそろえた。
+  - テストでは、group 順序と marker 属性を含む射影結果、render order、export-image 経路、および周辺 GUI 同期への影響を確認した。

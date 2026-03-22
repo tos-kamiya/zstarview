@@ -75,6 +75,7 @@ def _make_scene(
         cloud_stripe_density=None,
         terrain_horizon_profile=terrain_horizon_profile,
         urban_outlines=urban_outlines,
+        satellite_overlay_points=None,
         aircraft_overlay_points=None,
     )
 
@@ -93,6 +94,7 @@ def _make_style(**overrides) -> pipeline_module.RenderStyle:
         "star_visibility_boost": 1.0,
         "vmag_limit": 6.0,
         "cloud_disc_alpha": 0.0,
+        "satellite_opacity": 0.0,
         "terrain_horizon_opacity": 0.25,
         "urban_outline_opacity": 0.2,
         "show_urban_outline_layer": True,
@@ -752,8 +754,9 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
     monkeypatch.setattr(pipeline_module, "draw_sky_cloud_layers", lambda *_args, **_kwargs: calls.append("sky-cloud"))
     monkeypatch.setattr(pipeline_module, "draw_terrain_layers", lambda *_args, **_kwargs: calls.append("terrain"))
     monkeypatch.setattr(pipeline_module, "draw_star_layer", lambda *_args, **_kwargs: calls.append("stars"))
-    monkeypatch.setattr(pipeline_module, "draw_aircraft_layer", lambda *_args, **_kwargs: calls.append("aircraft"))
     monkeypatch.setattr(pipeline_module, "draw_planet_layer", lambda *_args, **_kwargs: calls.append("planets"))
+    monkeypatch.setattr(pipeline_module, "draw_satellite_layer", lambda *_args, **_kwargs: calls.append("satellites"))
+    monkeypatch.setattr(pipeline_module, "draw_aircraft_layer", lambda *_args, **_kwargs: calls.append("aircraft"))
     monkeypatch.setattr(pipeline_module, "draw_overlay_layer", lambda *_args, **_kwargs: calls.append("overlay"))
     monkeypatch.setattr(pipeline_module, "draw_hover_overlay_layer", lambda *_args, **_kwargs: calls.append("hover"))
     monkeypatch.setattr(pipeline_module, "draw_label_layer", lambda *_args, **_kwargs: calls.append("labels"))
@@ -784,6 +787,7 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         cloud_stripe_density=None,
         terrain_horizon_profile=None,
         urban_outlines=None,
+        satellite_overlay_points=None,
         aircraft_overlay_points=None,
     )
     style = pipeline_module.RenderStyle(
@@ -799,6 +803,7 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         star_visibility_boost=1.0,
         vmag_limit=6.0,
         cloud_disc_alpha=0.0,
+        satellite_opacity=0.0,
         terrain_horizon_opacity=0.0,
         urban_outline_opacity=0.0,
         show_urban_outline_layer=False,
@@ -831,8 +836,9 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         "guide",
         "terrain",
         "stars",
-        "aircraft",
         "planets",
+        "satellites",
+        "aircraft",
         "overlay",
         "labels",
         "hover",

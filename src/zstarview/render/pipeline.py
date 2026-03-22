@@ -58,6 +58,7 @@ class RenderSceneData:
     cloud_stripe_density: Any | None
     terrain_horizon_profile: list[tuple[float, float]] | None
     urban_outlines: Any | None
+    satellite_overlay_points: Any | None
     aircraft_overlay_points: Any | None
 
 
@@ -75,6 +76,7 @@ class RenderStyle:
     star_visibility_boost: float
     vmag_limit: float
     cloud_disc_alpha: float
+    satellite_opacity: float
     terrain_horizon_opacity: float
     urban_outline_opacity: float
     show_urban_outline_layer: bool
@@ -191,20 +193,26 @@ def render_base_scene_into_painter(
         scene=scene,
         style=style,
     )
-    draw_aircraft_layer(
-        painter,
-        geometry=geometry,
-        scene=scene,
-        style=style,
-        label_candidates=label_candidates,
-    )
-
     draw_planet_layer(
         painter,
         geometry=geometry,
         scene=scene,
         style=style,
         enlarge_moon=bool(style.enlarge_moon),
+        label_candidates=label_candidates,
+    )
+    draw_satellite_layer(
+        painter,
+        geometry=geometry,
+        scene=scene,
+        style=style,
+        label_candidates=label_candidates,
+    )
+    draw_aircraft_layer(
+        painter,
+        geometry=geometry,
+        scene=scene,
+        style=style,
         label_candidates=label_candidates,
     )
     draw_overlay_layer(
@@ -632,6 +640,26 @@ def draw_overlay_layer(
         preset=style.visual_preset,
         draw_static_info=True,
         draw_hover_info=False,
+    )
+
+
+def draw_satellite_layer(
+    painter: QPainter,
+    *,
+    geometry: render_draw.ScreenGeometry,
+    scene: RenderSceneData,
+    style: RenderStyle,
+    label_candidates: list[dict[str, Any]],
+) -> None:
+    render_draw.draw_satellite_overlay(
+        painter,
+        geometry,
+        scene.satellite_overlay_points,
+        scene.viewer.view_center,
+        opacity=style.satellite_opacity,
+        label_candidates=label_candidates,
+        preset=style.visual_preset,
+        content_fov_deg=_content_fov_deg(scene),
     )
 
 

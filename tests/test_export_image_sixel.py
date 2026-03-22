@@ -125,6 +125,7 @@ def test_main_writes_overlay_summary_before_sixel(monkeypatch: pytest.MonkeyPatc
         vmag_limit=6.0,
         sky_disc_alpha=0.0,
         cloud_disc_alpha=0.0,
+        satellite_opacity=0.0,
         terrain_horizon_opacity=0.0,
         urban_outline_opacity=0.0,
         aircraft_opacity=0.0,
