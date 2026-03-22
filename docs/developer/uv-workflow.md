@@ -29,6 +29,8 @@ uv run -p .venv/bin/python zstarview
 
 ```bash
 uv run -p .venv/bin/python -m zstarview.gui.viewer
+uv run -p .venv/bin/python -m zstarview.cli.export_image Matsue -o matsue.png
+uv run -p .venv/bin/python -m zstarview.cli.make_desktop_file
 ```
 
 例:
