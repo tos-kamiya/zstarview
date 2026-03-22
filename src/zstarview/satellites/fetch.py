@@ -16,6 +16,7 @@ CELESTRAK_GROUP_BY_KEY = {
     "starlink": "starlink",
     "gps": "gps-ops",
 }
+_ISS_NORAD_CAT_ID = "25544"
 
 
 def build_celestrak_group_url(
@@ -49,7 +50,8 @@ def fetch_celestrak_group_by_key(
     base_url: str = CELESTRAK_GP_JSON_URL,
 ) -> list[SatelliteOmmRecord]:
     group_name = CELESTRAK_GROUP_BY_KEY[group_key]
-    return fetch_celestrak_group_omm(group_name, timeout_s=timeout_s, base_url=base_url)
+    records = fetch_celestrak_group_omm(group_name, timeout_s=timeout_s, base_url=base_url)
+    return filter_records_for_group(group_key, records)
 
 
 def normalize_celestrak_omm_payload(payload: object) -> list[SatelliteOmmRecord]:
@@ -60,6 +62,20 @@ def normalize_celestrak_omm_payload(payload: object) -> list[SatelliteOmmRecord]
         if isinstance(row, dict):
             records.append(dict(row))
     return records
+
+
+def filter_records_for_group(
+    group_key: str,
+    records: Iterable[SatelliteOmmRecord],
+) -> list[SatelliteOmmRecord]:
+    normalized = [dict(record) for record in records]
+    if group_key != "iss":
+        return normalized
+    return [
+        record
+        for record in normalized
+        if str(record.get("NORAD_CAT_ID", "")).strip() == _ISS_NORAD_CAT_ID
+    ]
 
 
 def build_earth_satellites(

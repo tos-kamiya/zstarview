@@ -6,6 +6,7 @@ from zstarview.satellites.fetch import (
     CELESTRAK_GROUP_BY_KEY,
     build_celestrak_group_url,
     build_earth_satellites,
+    filter_records_for_group,
     normalize_celestrak_omm_payload,
 )
 
@@ -61,3 +62,14 @@ def test_build_earth_satellites_from_omm_records() -> None:
     assert len(satellites) == 1
     assert isinstance(satellites[0], EarthSatellite)
     assert satellites[0].name == "ISS (ZARYA)"
+
+
+def test_filter_records_for_iss_keeps_only_iss_catnr() -> None:
+    crew_dragon = dict(_sample_record())
+    crew_dragon["OBJECT_NAME"] = "CREW DRAGON 12"
+    crew_dragon["NORAD_CAT_ID"] = "99999"
+
+    filtered = filter_records_for_group("iss", [_sample_record(), crew_dragon])
+
+    assert len(filtered) == 1
+    assert filtered[0]["OBJECT_NAME"] == "ISS (ZARYA)"

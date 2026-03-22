@@ -10,7 +10,7 @@ from ..paths import SATELLITE_CACHE_ROOT_DIR
 from ..satellite_constants import (
     SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS,
 )
-from .fetch import fetch_celestrak_group_by_key
+from .fetch import fetch_celestrak_group_by_key, filter_records_for_group
 from .types import CachedSatelliteElementSet, SatelliteOmmRecord
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ def save_satellite_cache(
         "group_key": str(group_key),
         "fetched_at_utc": _normalize_utc(fetched_at_utc).isoformat(),
         "source": str(source),
-        "records": list(records),
+        "records": filter_records_for_group(group_key, records),
     }
     path.write_text(json.dumps(payload, separators=(",", ":"), sort_keys=True), encoding="utf-8")
     return path
@@ -103,7 +103,7 @@ def fetch_cached_satellite_elements(
                 group_key=group_key,
                 fetched_at_utc=cached.fetched_at_utc,
                 source="cache-fresh",
-                records=cached.records,
+                records=filter_records_for_group(group_key, cached.records),
             )
     try:
         records = fetcher(group_key, timeout_s=timeout_s)
@@ -122,7 +122,7 @@ def fetch_cached_satellite_elements(
         group_key=group_key,
         fetched_at_utc=fetched_at_utc,
         source="celestrak",
-        records=records,
+        records=filter_records_for_group(group_key, records),
     )
 
 
@@ -141,7 +141,7 @@ def _cached_set_from_payload(payload: object) -> CachedSatelliteElementSet:
         group_key=group_key,
         fetched_at_utc=_normalize_utc(datetime.fromisoformat(fetched_at_raw)),
         source=str(payload.get("source", "cache")),
-        records=records,
+        records=filter_records_for_group(group_key, records),
     )
 
 
