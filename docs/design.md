@@ -166,7 +166,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 - エントリポイントは `zstarview-export-image` とする。
 - この経路は `zstarview.gui.viewer` の GUI `main()` と別の `main` を持つ。
-- console script の実体は `zstarview.cli.export_image` とし、旧 `zstarview.export_image` は互換ラッパーとして残してもよい。
+- console script の実体は `zstarview.cli.export_image` とする。
 - parser は `zstarview.cli.args` の helper 群を組み合わせて構築し、地点、時刻、視線、描画オプションは通常 CLI と共有する。
 - 画像書き出し CLI 固有オプションは少なくとも次を想定する。
   - `--output`
