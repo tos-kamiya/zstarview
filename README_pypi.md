@@ -61,9 +61,10 @@ Or with pip:
 pip install zstarview
 ```
 
-> Note: Windows on Arm64 is currently not supported for installation.
-> As of 2026-03-15, native dependencies such as `shapely` can fail there
-> because they may require a source build.
+> Note: The previous Windows on Arm64 installation blocker has been removed.
+> Installation is now possible there, but Windows Security may still block
+> Python extension modules during startup on some systems. If that happens,
+> see the troubleshooting notes in the main project README.
 
 ## Quick Start
 
