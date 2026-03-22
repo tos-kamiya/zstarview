@@ -2,7 +2,7 @@
 
 See the starry sky, even when it's cloudy or the sun is out.
 
-**Zenith Star View** is a desktop sky viewer for your chosen location and time.
+**Zenith Star View** is a desktop sky viewer for your chosen location.
 The name emphasizes the *zenith*, the point directly overhead.
 
 It renders an all-sky view with stars, the Sun, Moon, planets, deep-sky objects, and guide overlays.
