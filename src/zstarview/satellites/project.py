@@ -15,8 +15,8 @@ _MAX_MARKERS_BY_GROUP = {
     "starlink": 20,
 }
 _MARKER_SCALE_BY_GROUP = {
-    "iss": 0.17,
-    "starlink": 0.13,
+    "iss": 0.3,
+    "starlink": 0.156,
 }
 
 

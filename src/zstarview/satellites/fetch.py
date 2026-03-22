@@ -16,6 +16,7 @@ CELESTRAK_GROUP_BY_KEY = {
     "starlink": "starlink",
 }
 _ISS_NORAD_CAT_ID = "25544"
+_CSS_TIANHE_NORAD_CAT_ID = "48274"
 
 
 def build_celestrak_group_url(
@@ -70,10 +71,11 @@ def filter_records_for_group(
     normalized = [dict(record) for record in records]
     if group_key != "iss":
         return normalized
+    allowed_cat_ids = {_ISS_NORAD_CAT_ID, _CSS_TIANHE_NORAD_CAT_ID}
     return [
         record
         for record in normalized
-        if str(record.get("NORAD_CAT_ID", "")).strip() == _ISS_NORAD_CAT_ID
+        if str(record.get("NORAD_CAT_ID", "")).strip() in allowed_cat_ids
     ]
 
 
