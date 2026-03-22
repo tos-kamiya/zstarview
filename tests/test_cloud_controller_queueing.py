@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from zstarview.ui.cloud_controller import CloudController
+from zstarview.gui.cloud_controller import CloudController
 
 
 class _DummyCloudDisc:

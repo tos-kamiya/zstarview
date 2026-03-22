@@ -1,32 +1,24 @@
+"""Resolve launch-time location and time inputs."""
+
 import logging
 import math
 import re
-import sys
 import urllib.error
 import urllib.parse
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from typing import Any, List, Optional, Tuple
 
-import polars as pl
-
-from .astro import _starfield_load
-from .catalog import load_dso_catalog, load_star_catalog
 from .config import load_last_city, save_last_city
-from .nominatim_search import search as search_nominatim
-from .viewpoints import Viewpoint
-from .viewpoints import prefixed_viewpoint_name, split_prefixed_viewpoint
 from .mountain_viewpoints import resolve_mountain_viewpoint
+from .nominatim_search import search as search_nominatim
 from .paths import (
     CITY_ADMIN1_CODES_FILE,
     CITY_COORD_FILE,
-    DSO_CSV_FILE,
-    EPHEMERIS_FILENAME,
-    LOG_PATH,
-    STARS_CSV_FILE,
 )
 from .tower_viewpoints import resolve_tower_viewpoint
+from .viewpoints import Viewpoint
+from .viewpoints import prefixed_viewpoint_name, split_prefixed_viewpoint
 from .utils.resolve_city import (
     CityRec,
     load_admin1_names,
@@ -40,8 +32,11 @@ logger = logging.getLogger(__name__)
 DEFAULT_OBSERVER_HEIGHT_M = 1.7
 
 
-class StartupAbortError(Exception):
+class LaunchSetupError(Exception):
     """Abort the startup sequence (handled by main to show splash for 3s)."""
+
+
+StartupAbortError = LaunchSetupError
 
 
 @dataclass(frozen=True)
@@ -59,36 +54,7 @@ class ResolvedLocation:
     cc: str = ""
 
 
-def setup_root_logger() -> logging.Logger:
-    """Configure and return the root logger for the application."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        stream=sys.stderr,
-    )
-    root_logger = logging.getLogger()
-
-    log_dir = Path(LOG_PATH)
-    log_dir.mkdir(parents=True, exist_ok=True)
-    log_path = log_dir / "app.log"
-
-    try:
-        file_handler = logging.FileHandler(log_path, encoding="utf-8")
-    except OSError as exc:
-        logger.warning("Failed to open log file %s: %s", log_path, exc)
-        return root_logger
-
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(
-        logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-    )
-    root_logger.addHandler(file_handler)
-
-    logger.info("Logging to file: %s", log_path)
-    return root_logger
-
-
-def _format_splash_location(city: ResolvedLocation) -> str:
+def format_splash_location(city: ResolvedLocation) -> str:
     """Create a concise location label for splash screen context."""
     return f"Location: {city.display_name}"
 
@@ -354,7 +320,7 @@ def _mountain_to_location(args_city: str, admin1_map: dict[tuple[str, str], str]
     return _viewpoint_to_location(resolve_mountain_viewpoint(args_city), admin1_map)
 
 
-def _startup_resolve_city(
+def resolve_launch_location(
     args_city: Optional[str],
     place_query: str | None = None,
     place_countrycode: str | None = None,
@@ -365,8 +331,7 @@ def _startup_resolve_city(
 
     Also handles direct latitude/longitude input like "35.68;139.76" or "N35.68;E139.76".
 
-    Kept importable despite the leading underscore because focused startup tests
-    exercise this resolver directly.
+    Kept as a standalone helper because focused tests exercise this resolver directly.
     """
     last_city = load_last_city()
     stored_location: dict[str, Any] | None = None
@@ -558,7 +523,7 @@ def _parse_flexible_time(time_str: str) -> Tuple[int, int, int]:
     return hour, minute, second
 
 
-def _startup_parse_time_arguments(
+def parse_launch_time_arguments(
     args_datetime: Optional[str],
     args_days: int,
     args_hours: int,
@@ -618,51 +583,3 @@ def _startup_parse_time_arguments(
     except ValueError as exc:
         logger.error("%s Input was: %r", exc, args_datetime)
         raise StartupAbortError() from exc
-
-
-def _startup_load_stars(args_vmag_limit: Optional[float]) -> pl.DataFrame:
-    """Load the star catalog from the source file."""
-    logger.info("Loading city and star data...")
-
-    try:
-        star_catalog = load_star_catalog(STARS_CSV_FILE, vmag_threshold=args_vmag_limit)
-    except FileNotFoundError as exc:
-        logger.error("Fail to load file: %s", STARS_CSV_FILE)
-        raise StartupAbortError() from exc
-
-    limit_str = args_vmag_limit if args_vmag_limit is not None else "no limit"
-    logger.info("Loaded %d stars (Vmag <= %s)", len(star_catalog), limit_str)
-    return star_catalog
-
-
-def _startup_verify_ephemeris() -> None:
-    """Ensure the Skyfield ephemeris is available before background sky updates begin."""
-    logger.info("Checking ephemeris cache...")
-    try:
-        _starfield_load(EPHEMERIS_FILENAME)
-    except OSError as exc:
-        logger.error(
-            "Failed to load ephemeris %s. The app cannot continue until this file "
-            "is available in the cache. %s",
-            EPHEMERIS_FILENAME,
-            exc,
-        )
-        raise StartupAbortError() from exc
-    except Exception as exc:
-        logger.error("Unexpected ephemeris load failure for %s: %s", EPHEMERIS_FILENAME, exc)
-        raise StartupAbortError() from exc
-    logger.info("Ephemeris ready: %s", EPHEMERIS_FILENAME)
-
-
-def _startup_load_dso() -> Optional[pl.DataFrame]:
-    """Load optional DSO catalog used for shape overlays."""
-    try:
-        dso_catalog = load_dso_catalog(DSO_CSV_FILE)
-    except FileNotFoundError:
-        logger.info("DSO catalog not found: %s (shape overlay disabled)", DSO_CSV_FILE)
-        return None
-    except Exception:
-        logger.warning("Failed to load DSO catalog: %s", DSO_CSV_FILE, exc_info=True)
-        return None
-    logger.info("Loaded %d DSO rows", len(dso_catalog))
-    return dso_catalog

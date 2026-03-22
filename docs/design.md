@@ -165,9 +165,9 @@
 GUI 常駐とは別に、1 枚の画像を書き出して終了する headless CLI 経路を持つ。
 
 - エントリポイントは `zstarview-export-image` とする。
-- この経路は `zstarview.py` の GUI `main()` と別の `main` を持つ。
-- console script 経由だけでなく、`python -m zstarview.export_image` / `uv run -m zstarview.export_image` でも起動できるよう、モジュール末尾に `if __name__ == "__main__": main()` を置く。
-- parser は `cli_args.py` の helper 群を組み合わせて構築し、地点、時刻、視線、描画オプションは通常 CLI と共有する。
+- この経路は `zstarview.gui.viewer` の GUI `main()` と別の `main` を持つ。
+- console script の実体は `zstarview.cli.export_image` とし、旧 `zstarview.export_image` は互換ラッパーとして残してもよい。
+- parser は `zstarview.cli.args` の helper 群を組み合わせて構築し、地点、時刻、視線、描画オプションは通常 CLI と共有する。
 - 画像書き出し CLI 固有オプションは少なくとも次を想定する。
   - `--output`
   - `--image-size`
@@ -191,7 +191,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `opacity == 0` で無効化されたレイヤーは、取得キュー自体に積まず、layer timeout の待機対象からも外す。
 - 実装では `SkyWindow` と GUI controller 群には依存せず、sky/cloud/terrain/urban/aircraft を同期的に順番に取得してから、shared pipeline で `QImage` へ 1 回だけ描画して保存する。
 - Qt はフォント読込と `QImage` / `QPainter` 利用のためだけに初期化し、CLI 側ではバックグラウンド worker や signal ベースの寿命管理を持たない。
-- `ui/sky_worker.py` の celestial / sky-disc 計算は pure helper `compute_sky_snapshot()` として切り出し、GUI worker と export CLI の両方から共有する。
+- `gui/sky_worker.py` の celestial / sky-disc 計算は pure helper `compute_sky_snapshot()` として切り出し、GUI worker と export CLI の両方から共有する。
 
 ### 4.3 描画
 
@@ -201,7 +201,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 天の赤道、黄道、地平線は `(alt, az)` サンプル列から描画時に `render_view_center` 基準で投影する
 - `src/zstarview/render/draw_sky_disc.py`
   - sky color disc の生成
-- `src/zstarview/ui/composite.py`
+- `src/zstarview/gui/composite.py`
   - 星空、雲、欠損ティント、地面色の合成
 
 #### 4.3.1 描画リファクタリング方針
@@ -215,7 +215,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 描画入力: 観測地点、時刻、視線方向、画面サイズ、表示オプション
   - レイヤー入力: celestial、sky disc、cloud、terrain horizon、urban outline、aircraft overlay などの描画用データ
   - 描画関数群: `QPainter` または `QImage` に対して各レイヤーを順に描く純粋寄りの関数
-- `ui/window_render.py` は最終的に、hover 判定、jump highlight、frame cache、interaction mode など GUI 固有の責務に寄せ、描画本体は薄いラッパに縮小するのが望ましい。
+- `gui/window_render.py` は最終的に、hover 判定、jump highlight、frame cache、interaction mode など GUI 固有の責務に寄せ、描画本体は薄いラッパに縮小するのが望ましい。
 
 #### 4.3.2 現在の描画パイプライン到達点
 
@@ -226,7 +226,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `RenderHudState`
 - `render_scene_into_painter()` と下位の `draw_*` 関数群は、`geometry`、`viewport_rect`、`scene`、`style`、`hud` を明示的に受ける。
 - `RenderPipelineState` のような中間ラッパ型は廃止し、shared pipeline 側では直接引数で依存関係を表す。
-- `ui/window_render.py` は、`paintEvent()` 本線、scene/style/hud の組み立て、frame cache、jump highlight、hover 解決など GUI 固有処理に絞る。
+- `gui/window_render.py` は、`paintEvent()` 本線、scene/style/hud の組み立て、frame cache、jump highlight、hover 解決など GUI 固有処理に絞る。
 - 現在の通常描画順は概ね次のとおり。
   - `background`
   - `sky-cloud`
@@ -267,42 +267,42 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - status line
 - 月の `5x` 拡大は、角半径の生値ではなく「通常時の見た目半径」を基準に適用する。
 - `guide` レイヤーはベース側に残し、マウス位置によるラベル回避には依存しない安定描画として扱う。
-- `ui/window_render.py` の frame cache はベース描画だけを保持し、hover/jump/status はキャッシュ後に都度上書きする。
+- `gui/window_render.py` の frame cache はベース描画だけを保持し、hover/jump/status はキャッシュ後に都度上書きする。
 - これにより、frame cache key から `mouse_pos`、hover 対象名、jump highlight 名、status message を外している。
 
 ### 4.4 UI
 
-- `src/zstarview/ui/window.py`
+- `src/zstarview/gui/window.py`
   - メインウィンドウ
   - UI 状態と更新制御の集約点
-- `src/zstarview/ui/window_state.py`
+- `src/zstarview/gui/window_state.py`
   - 画面状態の保持
-- `src/zstarview/ui/window_inputs.py`
+- `src/zstarview/gui/window_inputs.py`
   - ユーザー指定値と実行時オプションの正規化
-- `src/zstarview/ui/window_render.py`
+- `src/zstarview/gui/window_render.py`
   - 再描画とレンダリング関連の UI ロジック
   - 恒星レイヤは描画時に現在のウィンドウサイズから内部レンダリング面サイズを再計算する
   - 天球ディスク幅が `expected-render-width` 以下なら等倍描画し、それを超える場合は `expected-render-width * sqrt(disc_width / expected-render-width)` に従って内部描画面を縮小する
   - 縮小時は低解像度 `QImage` に恒星を描いてからウィンドウ全体へ拡大転写し、大型ウィンドウでの負荷を抑える
   - 最終フレームの `QImage` キャッシュを持ち、geometry、描画入力、hover/ハイライト状態、ステータスメッセージ、interaction mode が不変なら前回フレームをそのまま再利用する
-- `src/zstarview/ui/window_updates.py`
+- `src/zstarview/gui/window_updates.py`
   - バックグラウンド更新結果の反映
-- `src/zstarview/ui/sky_worker.py`
+- `src/zstarview/gui/sky_worker.py`
   - 星空計算のバックグラウンド実行
-- `src/zstarview/ui/famous_star_dialog.py`
+- `src/zstarview/gui/famous_star_dialog.py`
   - 代表恒星ジャンプ UI
-- `src/zstarview/ui/famous_star_search_dialog.py`
+- `src/zstarview/gui/famous_star_search_dialog.py`
   - 星・アステリズム検索 UI
-- `src/zstarview/ui/famous_star_shortcuts.py`
+- `src/zstarview/gui/famous_star_shortcuts.py`
   - ジャンプ・検索用データの整形
 
 ### 4.5 雲データ処理
 
-- `src/zstarview/ui/cloud_controller.py`
+- `src/zstarview/gui/cloud_controller.py`
   - 雲更新の実行制御
   - キューイング
   - latest-request-wins の適用
-- `src/zstarview/ui/cloud_state.py`
+- `src/zstarview/gui/cloud_state.py`
   - 雲画像、バナー、欠損状態の保持
 - `src/zstarview/clouddisc/core.py`
   - クラウドディスク生成のオーケストレーション
@@ -322,9 +322,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 ### 4.6 地形地平線処理
 
-- `src/zstarview/ui/terrain_controller.py`
+- `src/zstarview/gui/terrain_controller.py`
   - 地形地平線更新の実行制御
-- `src/zstarview/ui/terrain_state.py`
+- `src/zstarview/gui/terrain_state.py`
   - 地形地平線の状態保持
 - `src/zstarview/terrain/dem.py`
   - DEM 取得、読込、サンプリング
@@ -333,14 +333,14 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 ### 4.7 航空機オーバーレイ処理
 
-- `src/zstarview/ui/aircraft_controller.py`
+- `src/zstarview/gui/aircraft_controller.py`
   - 航空機更新の実行制御
   - `5分` タイマー、明示更新要求、latest-request-wins の適用
   - OpenSky 取得結果の正規化と UI 反映
 - `src/zstarview/aircraft_constants.py`
   - 航空機更新間隔と `bbox` 既定値の共有定数
   - `5分` 取得、`2秒` 予想再投影、bbox / fade / trail span 定数を定義
-- `src/zstarview/ui/aircraft_state.py`
+- `src/zstarview/gui/aircraft_state.py`
   - 最新スナップショットの航空機一覧
   - 最新の描画用折れ線データ
   - 最終成功時刻による cache age 判定

@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from zstarview.types import UrbanOutlinePolyline, ViewerData
-from zstarview.ui.urban_outline_controller import UrbanOutlineController
+from zstarview.gui.urban_outline_controller import UrbanOutlineController
 
 
 def test_run_update_keeps_base_outlines_when_skyscraper_phase_fails(monkeypatch, tmp_path: Path) -> None:
@@ -27,7 +27,7 @@ def test_run_update_keeps_base_outlines_when_skyscraper_phase_fails(monkeypatch,
         lambda _viewer: (("building", tmp_path / "normal" / "bldg"),),
     )
     monkeypatch.setattr(
-        "zstarview.ui.urban_outline_controller.resolve_urban_outline_layer_for_viewer",
+        "zstarview.gui.urban_outline_controller.resolve_urban_outline_layer_for_viewer",
         lambda *_args, **kwargs: ["base-outline"] if kwargs.get("derived_root_dir") == controller._derived_root_dir else None,
     )
     monkeypatch.setattr(
@@ -57,11 +57,11 @@ def test_run_update_keeps_base_outlines_when_skyscraper_phase_fails(monkeypatch,
         ),
     )
     monkeypatch.setattr(
-        "zstarview.ui.urban_outline_controller.skyscraper_tile_derived_dir",
+        "zstarview.gui.urban_outline_controller.skyscraper_tile_derived_dir",
         lambda *_args, **_kwargs: tmp_path / "skyscraper" / "z14_1_2" / "bldg",
     )
     monkeypatch.setattr(
-        "zstarview.ui.urban_outline_controller.import_overture_buildings_for_bbox",
+        "zstarview.gui.urban_outline_controller.import_overture_buildings_for_bbox",
         lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("boom")),
     )
 
@@ -115,11 +115,11 @@ def test_run_update_skips_base_outlines_in_skyscraper_only_mode(
         ),
     )
     monkeypatch.setattr(
-        "zstarview.ui.urban_outline_controller.skyscraper_tile_derived_dir",
+        "zstarview.gui.urban_outline_controller.skyscraper_tile_derived_dir",
         lambda *_args, **_kwargs: tmp_path / "skyscraper" / "z14_1_2" / "bldg",
     )
     monkeypatch.setattr(
-        "zstarview.ui.urban_outline_controller.import_overture_buildings_for_bbox",
+        "zstarview.gui.urban_outline_controller.import_overture_buildings_for_bbox",
         lambda **_kwargs: None,
     )
 
@@ -134,7 +134,7 @@ def test_run_update_skips_base_outlines_in_skyscraper_only_mode(
         ]
 
     monkeypatch.setattr(
-        "zstarview.ui.urban_outline_controller.resolve_urban_outline_layer_for_viewer",
+        "zstarview.gui.urban_outline_controller.resolve_urban_outline_layer_for_viewer",
         _resolve,
     )
 

@@ -6,10 +6,10 @@ from unittest.mock import Mock
 from PySide6.QtGui import QImage
 
 import zstarview.render.pipeline as pipeline_module
-import zstarview.ui.window_render as window_render_module
+import zstarview.gui.window_render as window_render_module
 from zstarview.types import CelestialData, UrbanOutlinePolyline, ViewerData
-from zstarview.ui.window import SkyWindow
-from zstarview.ui.window_state import SkyWindowState
+from zstarview.gui.window import SkyWindow
+from zstarview.gui.window_state import SkyWindowState
 
 
 class _DummyTimer:

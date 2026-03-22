@@ -1,4 +1,4 @@
-from zstarview.ui.window import compute_star_render_surface_size
+from zstarview.gui.window import compute_star_render_surface_size
 
 
 def test_render_surface_size_is_native_below_or_at_expected_width() -> None:

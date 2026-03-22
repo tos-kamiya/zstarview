@@ -5,9 +5,9 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from zstarview.ui.cloud_state import CloudImageState
-from zstarview.ui.window import SkyWindow
-from zstarview.ui.window_state import SkyWindowState
+from zstarview.gui.cloud_state import CloudImageState
+from zstarview.gui.window import SkyWindow
+from zstarview.gui.window_state import SkyWindowState
 from zstarview.utils.qt import np_rgba_to_qimage
 
 

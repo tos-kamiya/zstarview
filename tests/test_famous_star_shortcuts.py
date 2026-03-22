@@ -1,6 +1,6 @@
 import polars as pl
 
-from zstarview.ui.famous_star_shortcuts import (
+from zstarview.gui.famous_star_shortcuts import (
     DEC_BAND_EQUATOR,
     DEC_BAND_NORTH,
     DEC_BAND_SOUTH,

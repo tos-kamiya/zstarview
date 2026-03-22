@@ -6,7 +6,7 @@ import pytest
 
 from zstarview.tower_viewpoints import list_tower_all_names, list_tower_primary_names
 from zstarview.viewpoints import Viewpoint
-from zstarview.zstarview import main, parse_args
+from zstarview.gui.viewer import main, parse_args
 
 
 def test_parse_args_accepts_list_viewpoints_for_towers() -> None:
@@ -156,14 +156,14 @@ def test_main_show_viewpoint_json_reports_ambiguous_exact_matches(
         viewpoint_height_m=None,
         meta={"elevation_m": 2000.0},
     )
-    monkeypatch.setattr("zstarview.zstarview.load_tower_viewpoints", lambda: (ambiguous_tower,))
+    monkeypatch.setattr("zstarview.gui.viewer.load_tower_viewpoints", lambda: (ambiguous_tower,))
     monkeypatch.setattr(
-        "zstarview.zstarview.load_mountain_viewpoints",
+        "zstarview.gui.viewer.load_mountain_viewpoints",
         lambda: (ambiguous_mountain,),
     )
-    monkeypatch.setattr("zstarview.zstarview.resolve_tower_viewpoint", lambda _name: ambiguous_tower)
+    monkeypatch.setattr("zstarview.gui.viewer.resolve_tower_viewpoint", lambda _name: ambiguous_tower)
     monkeypatch.setattr(
-        "zstarview.zstarview.resolve_mountain_viewpoint",
+        "zstarview.gui.viewer.resolve_mountain_viewpoint",
         lambda _name: ambiguous_mountain,
     )
     monkeypatch.setattr("sys.argv", ["zstarview", "--show-viewpoint-json", "Shared Peak"])

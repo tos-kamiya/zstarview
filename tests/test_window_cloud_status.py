@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
-from zstarview.ui.window import DEFAULT_CLOUD_ALT_MIN_DEG, SkyWindow
+from zstarview.gui.window import DEFAULT_CLOUD_ALT_MIN_DEG, SkyWindow
 
 
 def _dummy_window(cloud_state):

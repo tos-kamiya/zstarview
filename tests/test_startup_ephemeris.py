@@ -3,7 +3,8 @@ from __future__ import annotations
 import pytest
 
 from zstarview.astro import _starfield_load
-from zstarview.startup import StartupAbortError, _startup_verify_ephemeris
+from zstarview.launch_location_time import LaunchSetupError
+from zstarview.gui.viewer import _verify_ephemeris_for_launch
 
 
 def test_de442s_uses_naif_planets_url() -> None:
@@ -19,10 +20,10 @@ def test_startup_verify_ephemeris_passes_when_loader_succeeds(monkeypatch) -> No
         calls.append(filename)
         return object()
 
-    monkeypatch.setattr("zstarview.startup._starfield_load", fake_loader)
-    monkeypatch.setattr("zstarview.startup.EPHEMERIS_FILENAME", "de442s.bsp")
+    monkeypatch.setattr("zstarview.gui.viewer._starfield_load", fake_loader)
+    monkeypatch.setattr("zstarview.gui.viewer.EPHEMERIS_FILENAME", "de442s.bsp")
 
-    _startup_verify_ephemeris()
+    _verify_ephemeris_for_launch()
 
     assert calls == ["de442s.bsp"]
 
@@ -31,7 +32,7 @@ def test_startup_verify_ephemeris_aborts_on_oserror(monkeypatch) -> None:
     def fake_loader(_filename: str) -> object:
         raise OSError("network blocked")
 
-    monkeypatch.setattr("zstarview.startup._starfield_load", fake_loader)
+    monkeypatch.setattr("zstarview.gui.viewer._starfield_load", fake_loader)
 
-    with pytest.raises(StartupAbortError):
-        _startup_verify_ephemeris()
+    with pytest.raises(LaunchSetupError):
+        _verify_ephemeris_for_launch()

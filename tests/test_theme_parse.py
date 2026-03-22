@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 
-from zstarview.zstarview import _parse_theme
+from zstarview.gui.viewer import _parse_theme
 
 
 def test_parse_theme_accepts_black_case_insensitive() -> None:
