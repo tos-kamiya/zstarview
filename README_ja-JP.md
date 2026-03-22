@@ -17,7 +17,7 @@
 - **都市アウトライン表示**: 現在の観測地点に対して、主要な建物屋根線を白い都市アウトラインとして表示します。高層建築が多い一部の都市では、半径 10km 以内の遠距離スカイスクレーパーも追加で表示されます。
 - **地形地平線と地面塗り**: Copernicus DEM データをダウンロードして、地形地平線オーバーレイを表示します。観測者の地点に沿った、薄い黄土色がかった地形線を表示します。地形地平線（地形地平線を表示しない場合には水平線）より下は、向きの把握を助けるため地面色で塗り分けます。
 - **ガイド表示**: 昇らない領域の赤い表示、地平線まわりの方位ラベル、天頂マーカーなどのガイドを重ねて表示します。
-- **柔軟な場所指定**: CLIの引数により観測者の地点を、都市名、タワー名、山名、緯度経度、または Nominatim を使った地名・駅名検索により指定できます。
+- **柔軟な場所指定**: CLIの引数により観測者の地点を、都市名、タワー名、山名、緯度経度、対応する Google Maps 座標 URL、または Nominatim を使った地名・駅名検索により指定できます。
 - **表示中心の調整**: CLIのオプション `-A`（高度）/`-Z`（方位）、あるいは矢印キーで表示中心を調整でき、視線の変更中やウィンドウのサイズ変更中は一時的に簡易描画モードへ切り替えて応答性を保ちます。
 - **端末向け画像出力**: `zstarview-export-image` により、ヘッドレスで空を描画してファイルへ保存したり、sixel 対応端末へ直接表示したりできます。
 - **Python 対応**: CPython 3.10, 3.11, 3.12, 3.13 で継続的にテストしています。
@@ -123,7 +123,7 @@ zstarview-export-image Matsue -o matsue.png
 
 | 引数 | 説明 | デフォルト |
 | :--- | :--- | :--- |
-| `location` | 表示する都市名、タワー名、山名、明示指定の `t/NAME`・`m/NAME`、または `"<lat>;<lon>"` 形式の緯度経度を指定できます。例: `Tokyo`, `Tokyo Skytree`, `t/Tokyo Skytree`, `Mount Fuji`, `m/Mount Fuji`, `35.68;139.76`, `N35.68;E139.76`, `-35.68;139.76`。省略時は前回起動時の location を使い、初回は `Tokyo` になります。 | 前回の location（初回は `Tokyo`） |
+| `location` | 表示する都市名、タワー名、山名、明示指定の `t/NAME`・`m/NAME`、または `"<lat>;<lon>"`、`"@<lat>,<lon>"`、対応する Google Maps URL などの直接座標形式を指定できます。例: `Tokyo`, `Tokyo Skytree`, `t/Tokyo Skytree`, `Mount Fuji`, `m/Mount Fuji`, `35.68;139.76`, `N35.68;E139.76`, `@35.68,139.76`, `www.google.com/maps/@35.68,139.76,17z`, `www.google.com/maps/place/...!3d35.68!4d139.76...`。省略時は前回起動時の location を使い、初回は `Tokyo` になります。 | 前回の location（初回は `Tokyo`） |
 
 #### オプション
 
@@ -133,6 +133,7 @@ zstarview-export-image Matsue -o matsue.png
 | `-p`, `--place QUERY` | OpenStreetMap Nominatim で地名・駅名・施設名を検索し、最上位候補を観測地点として使います。位置引数 `location` とは併用できません。 | |
 | `--place-countrycode CODE` | `--place` の検索対象国を ISO 3166-1 alpha-2 形式の国コード（例: `jp`）で制限します。 | |
 | `--place-lang LANG` | `--place` の検索結果に対して Nominatim へ送る `Accept-Language` です。 | `en` |
+| `--timezone TZ` | 解決された観測地点のタイムゾーンを上書きして、`--datetime` の既定タイムゾーンと画面表示に使います。`JST`、`Asia/Tokyo`、`UTC+9` などを受け付けます。 | |
 | `-Z`, `--view-center-az VIEW_CENTER_AZ` | 表示中心の方位角を指定します（度数または方位記号）。 | `180` |
 | `-A`, `--view-center-alt VIEW_CENTER_ALT` | 表示中心の高度角を指定します（90=天頂、0=地平線）。 | `90` |
 | `--content-fov-deg DEGREES` | 全レイヤー共通の overscan 視野角を指定します。ウィンドウ端は引き続き視線中心から `90°` の位置に対応し、`90` を超える値では空・雲・背景などがウィンドウ外へはみ出して描画され、四隅の空白を減らせます。許容範囲は `90`〜`127` です。 | `100` |
@@ -224,7 +225,7 @@ zstarview --show-dso-initial false --show-asterisms-initial true Tokyo
 
 `--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"` で絶対的な日時を指定できます。
 時刻部分は「時」だけ、「時:分」、「時:分:秒」のいずれも使用可能です。
-タイムゾーン（TZ）を省略した場合は UTC として扱われます。
+タイムゾーン（TZ）を省略した場合は、解決された観測地点のタイムゾーンを使います。`--timezone TZ` を指定した場合はそちらを優先します。
 
 タイムゾーンは以下のいずれかの形式で指定できます:
 
@@ -253,24 +254,37 @@ zstarview --datetime "2025-09-12 9:0:0 JST" Tokyo # 9:00:00 JST
 - 可視 mask
 - 最終 LA 画像
 
-#### 緯度経度の直接指定
+#### 直接座標指定
 
-都市名の代わりに、`"<lat>;<lon>"` 形式で緯度経度を直接指定できます。
+都市名の代わりに、直接座標を指定できます。
 
-* 形式: `緯度;経度`（セミコロン区切り）
+* 形式:
+  * `緯度;経度`（セミコロン区切り）
+  * `@緯度,経度`
+  * `maps.google.com/` または `www.google.com/maps/` で始まる対応 Google Maps 共有 URL
 * 例:
   * `35.68;139.76`
   * `N35.68;E139.76`
   * `-35.68;139.76`
   * `S35.68;W139.76`
+  * `@35.68,139.76`
+  * `https://www.google.com/maps/@35.68,139.76,17z`
+  * `maps.google.com/maps/@35.68,139.76`
+  * `https://www.google.com/maps/place/...!3d35.68!4d139.76...`
 * 緯度は -90〜90、経度は -180〜180 の範囲でなければなりません。
 * `N/S/E/W` の方向記号を使えます（数値の負号がある場合はそちらを優先）。
-* 座標で起動した場合、**タイムゾーンはデフォルトで UTC** です（`--datetime` でタイムゾーン明示時は上書き）。
+* 対応する Google Maps URL は、現在広く観測される共有リンク形式として `maps.google.com/` または `www.google.com/maps/` で始まるものを受け付けます。`https://` は省略できます。
+* Google Maps URL では、`!3dLAT!4dLON` があればその座標を優先し、なければ `@LAT,LON` を使います。
+* zoom、擬似的な高度、heading、pitch などの後続 URL 情報は無視します。
+* 直接座標で起動した場合、タイムゾーンは `--place` と同様に解決された地点座標から補完します。`--timezone TZ` を指定した場合はそちらを優先します。
+* 観測者の目線高さは `--observer-height-m` だけで指定します。Google Maps URL 内の高度らしき値は使いません。
 
 例:
 
 ```bash
 zstarview "35.68;139.76"
+zstarview "@35.68,139.76"
+zstarview "www.google.com/maps/@35.68,139.76,17z"
 zstarview "N35.68;E139.76" --datetime "2025-09-12 21 JST"
 zstarview "35.68;139.76" --observer-height-m 120
 ```
