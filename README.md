@@ -121,7 +121,7 @@ zstarview-export-image Matsue -o matsue.png
 
 | Argument | Description                                                                                                                                                                                                                                                           | Default                           |
 | :------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------- |
-| `location`   | Specify a city name, a tower name, a mountain name, explicit `t/NAME` or `m/NAME`, or latitude/longitude in the form `"<lat>;<lon>"`. Examples: `Tokyo`, `Tokyo Skytree`, `t/Tokyo Skytree`, `Mount Fuji`, `m/Mount Fuji`, `35.68;139.76`, `N35.68;E139.76`, `-35.68;139.76`. If omitted, the last run location will be used (defaults to `Tokyo` on the first run). | Last run location (or `Tokyo`) |
+| `location`   | Specify a city name, a tower name, a mountain name, explicit `t/NAME` or `m/NAME`, or latitude/longitude in the form `"<lat>;<lon>"`. Examples: `Tokyo`, `Tokyo Skytree`, `t/Tokyo Skytree`, `Mount Fuji`, `m/Mount Fuji`, `35.68;139.76`, `N35.68;E139.76`, `-35.68;139.76`. On the `dev` branch, the intended direct-coordinate forms also include `@lat,lon` and selected Google Maps URLs. If omitted, the last run location will be used (defaults to `Tokyo` on the first run). | Last run location (or `Tokyo`) |
 
 #### Options
 
@@ -266,6 +266,14 @@ Instead of a city name, you can directly specify coordinates as `"<lat>;<lon>"`.
 * Latitude must be between -90 and 90, longitude between -180 and 180.
 * Direction letters `N/S/E/W` can be used (negative sign takes precedence if both given).
 * When starting with coordinates, **the timezone defaults to UTC** (you can override with `--datetime` and a timezone).
+
+Planned on the `dev` branch:
+
+* In addition to `lat;lon`, direct coordinate input is intended to accept `@lat,lon`.
+* Google Maps URLs are intended to be accepted when they start with `maps.google.com/`, `www.google.com/maps/`, or `google.com/maps/` (optionally prefixed with `https://`) and contain `/maps/@lat,lon`.
+* For these Google Maps URLs, only the coordinates are intended to be used. Zoom, altitude, heading, pitch, and similar trailing URL components are intended to be ignored.
+* The planned timezone behavior is to resolve the location timezone from the parsed coordinates, matching `--place`, with a future `--timezone TZ` override option taking precedence when specified.
+* `--observer-height-m` remains the only planned way to specify observer eye height. Google Maps URL altitude-like fields are not intended to affect observer height.
 
 Example:
 
