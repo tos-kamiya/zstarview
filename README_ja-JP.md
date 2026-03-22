@@ -114,6 +114,8 @@ GUI を起動せずに画像ファイルを 1 枚生成して終了する場合�
 zstarview-export-image Matsue -o matsue.png
 ```
 
+`zstarview-export-image` は、通常 GUI 左上に出る場所・時刻・視線方向・vmag limit の要約を、描画後に `stderr` へ出力します。`--sixel` の場合は端末画像を出す直前に出力します。
+
 <details>
   <summary>CLI リファレンス</summary>
 

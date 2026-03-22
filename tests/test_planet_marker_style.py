@@ -367,3 +367,25 @@ def test_overlay_info_includes_location_height_and_explicit_observer_height(monk
     assert label_calls.index("Observer height 12 m") < label_calls.index("2026-02-27 00:00:00 UTC")
     assert label_calls.index("2026-02-27 00:00:00 UTC") < label_calls.index("Alt 45°  Az 180° (S)")
     assert label_calls.index("Alt 45°  Az 180° (S)") < label_calls.index("Vmag limit 6.0")
+
+
+def test_format_overlay_info_lines_matches_static_overlay_order() -> None:
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="t/Tokyo Skytree",
+        view_center=(45.0, 180.0),
+        observer_height_m=12.0,
+        location_height_label="Tower height",
+        location_height_m=634.0,
+        show_observer_height=True,
+    )
+
+    assert render_draw.format_overlay_info_lines(_empty_celestial_data([]), viewer, 6.0) == [
+        "t/Tokyo Skytree",
+        "Tower height 634 m",
+        "Observer height 12 m",
+        "2026-02-27 00:00:00 UTC",
+        "Alt 45°  Az 180° (S)",
+        "Vmag limit 6.0",
+    ]

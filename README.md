@@ -112,6 +112,8 @@ For one-shot image export without starting the GUI, use the separate CLI tool:
 zstarview-export-image Matsue -o matsue.png
 ```
 
+`zstarview-export-image` writes the usual location/time/view/vmag summary to `stderr` after rendering, or immediately before terminal image output when `--sixel` is used.
+
 <details>
   <summary>CLI reference</summary>
 

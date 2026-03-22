@@ -66,7 +66,7 @@ from .terrain import (
     reduce_profile_to_altaz,
     sample_ground_elevation,
 )
-from .types import UrbanOutlinePolyline, ViewerData
+from .types import CelestialData, UrbanOutlinePolyline, ViewerData
 from .ui.composite import SkyCompositorCache, build_stripe_density_field
 from .ui.sky_worker import compute_sky_snapshot
 from .ui.window_inputs import (
@@ -589,6 +589,17 @@ def _write_png_to_stdout(image: QImage) -> bool:
     return True
 
 
+def _write_export_overlay_summary_to_stderr(
+    *,
+    viewer_data: ViewerData,
+    celestial_data: CelestialData,
+    vmag_limit: float,
+) -> None:
+    lines = render_draw.format_overlay_info_lines(celestial_data, viewer_data, vmag_limit)
+    sys.stderr.write("\n".join(lines) + "\n")
+    sys.stderr.flush()
+
+
 def main() -> None:
     args = parse_export_image_args()
     setup_root_logger()
@@ -735,10 +746,22 @@ def main() -> None:
         logger.info("Saved image: %s", output_path)
 
     if wants_sixel:
+        _write_export_overlay_summary_to_stderr(
+            viewer_data=viewer_data,
+            celestial_data=celestial_data,
+            vmag_limit=float(style.vmag_limit),
+        )
         assert img2sixel_bin is not None
         sixel_ok = _write_sixel_to_stdout(image, img2sixel_bin=img2sixel_bin)
         if not sixel_ok and not saved_output:
             raise SystemExit(1)
+        return
+
+    _write_export_overlay_summary_to_stderr(
+        viewer_data=viewer_data,
+        celestial_data=celestial_data,
+        vmag_limit=float(style.vmag_limit),
+    )
 
 
 if __name__ == "__main__":

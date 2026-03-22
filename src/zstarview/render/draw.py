@@ -91,6 +91,50 @@ _DSO_SHAPE_MIN_MAJOR_ARCMIN = 15.0
 _DSO_CATALOG_LIKE_NAME_RE = re.compile(r"^(M\d+|NGC\d+|IC\d+|MEL\d+|MWSC\d+)$", re.IGNORECASE)
 
 
+def format_overlay_info_lines(
+    celestial_data: CelestialData,
+    viewer_data: ViewerData,
+    vmag_limit: float,
+) -> list[str]:
+    """Return the static top-left overlay text lines."""
+
+    def format_height_m(value_m: float) -> str:
+        rounded = round(float(value_m))
+        if abs(float(value_m) - rounded) < 0.05:
+            return f"{int(rounded)} m"
+        return f"{float(value_m):.1f} m"
+
+    lines = [viewer_data.city_name]
+    if viewer_data.location_height_label and viewer_data.location_height_m is not None:
+        lines.append(f"{viewer_data.location_height_label} {format_height_m(viewer_data.location_height_m)}")
+    if viewer_data.show_observer_height:
+        lines.append(f"Observer height {format_height_m(viewer_data.observer_height_m)}")
+
+    utc_time = celestial_data.time
+    tz_name = viewer_data.timezone_name
+    try:
+        local_tz = ZoneInfo(tz_name)
+        local_dt = utc_time.to_datetime(timezone=local_tz)
+        lines.append(local_dt.strftime("%Y-%m-%d %H:%M:%S %Z"))
+    except Exception:
+        lines.append(utc_time.to_datetime().strftime("%Y-%m-%d %H:%M:%S UTC"))
+
+    alt_deg, az_deg = viewer_data.view_center
+
+    def az_to_compass(az: float) -> str:
+        """Converts azimuth in degrees to a compass direction string."""
+        names = tuple(DIRECTIONS.keys())
+        sector = 360.0 / len(names)
+        idx = int(((az % 360.0) + sector / 2.0) // sector) % len(names)
+        return names[idx]
+
+    compass = az_to_compass(az_deg)
+    deg = "\N{DEGREE SIGN}"
+    lines.append(f"Alt {alt_deg:.0f}{deg}  Az {az_deg:.0f}{deg} ({compass})")
+    lines.append(f"Vmag limit {vmag_limit:.1f}")
+    return lines
+
+
 def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
     return float(viewer_data.content_fov_deg)
 
@@ -1964,46 +2008,9 @@ def draw_overlay_info(
             outline_width=outline_width,
         )
 
-    def format_height_m(value_m: float) -> str:
-        rounded = round(float(value_m))
-        if abs(float(value_m) - rounded) < 0.05:
-            return f"{int(rounded)} m"
-        return f"{float(value_m):.1f} m"
-
     if draw_static_info:
-        city_name_text = viewer_data.city_name
-        print_line(city_name_text)
-        if viewer_data.location_height_label and viewer_data.location_height_m is not None:
-            print_line(f"{viewer_data.location_height_label} {format_height_m(viewer_data.location_height_m)}")
-        if viewer_data.show_observer_height:
-            print_line(f"Observer height {format_height_m(viewer_data.observer_height_m)}")
-
-        utc_time = celestial_data.time
-        tz_name = viewer_data.timezone_name
-        try:
-            local_tz = ZoneInfo(tz_name)
-            local_dt = utc_time.to_datetime(timezone=local_tz)
-            time_text = local_dt.strftime("%Y-%m-%d %H:%M:%S %Z")
-        except Exception:
-            time_text = utc_time.to_datetime().strftime("%Y-%m-%d %H:%M:%S UTC")
-
-        print_line(time_text)
-
-        alt_deg, az_deg = viewer_data.view_center
-
-        def az_to_compass(az: float) -> str:
-            """Converts azimuth in degrees to a compass direction string."""
-            names = tuple(DIRECTIONS.keys())
-            sector = 360.0 / len(names)
-            idx = int(((az % 360.0) + sector / 2.0) // sector) % len(names)
-            return names[idx]
-
-        compass = az_to_compass(az_deg)
-        deg = "\N{DEGREE SIGN}"
-        view_text = f"Alt {alt_deg:.0f}{deg}  Az {az_deg:.0f}{deg} ({compass})"
-        print_line(view_text)
-
-        print_line(f"Vmag limit {vmag_limit:.1f}")
+        for line in format_overlay_info_lines(celestial_data, viewer_data, vmag_limit):
+            print_line(line)
 
     # ---- DSO label (draw first so star/planet labels stay in front among labels) ----
     if draw_hover_info and highlighted_dso:
