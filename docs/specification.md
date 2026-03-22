@@ -219,6 +219,9 @@ CLI には次のビューポイント dataset 参照専用オプションを持�
 - 既定では hover 情報、status line、jump highlight などの動的 HUD は含めない。
 - 既定では `guide` は含めてよい。
 - 既定では地点名、時刻、観測者高さなどの静的 overlay 情報も含めない。
+- ただし、GUI 左上に表示される静的 overlay 情報のうち、地点名、地点高さ表示、観測者高さ、時刻、Alt/Az、`Vmag limit` は、画像には焼き込まず `stderr` へテキストで出力してよい。
+  - 通常のファイル保存または PNG 標準出力では、レンダリング完了後に `stderr` へ出力する。
+  - `--sixel` 指定時は、端末画像の直前に `stderr` へ出力する。
 - `--content-fov-deg` の外側に置かれる GUI 向け背景グラデーションは export 画像には含めず、透明のままにしてよい。
 - `--aircraft-opacity 0`、`--cloud-opacity 0`、`--terrain-horizon-opacity 0`、`--urban-outline-opacity 0` のときは、それぞれのレイヤー取得自体を省略してよい。
 - `opacity 0` により取得自体を省略したレイヤーは、`--layer-timeout-seconds` の待機対象にも含めない。

@@ -1,6 +1,6 @@
 # zstarview 実装履歴
 
-最終更新: 2026-03-21
+最終更新: 2026-03-22
 
 ## 1. この文書の位置づけ
 
@@ -218,6 +218,25 @@
 
 - 惑星暦カーネルを `de442s.bsp` へ更新
   - 既定の ephemeris filename を `de440s.bsp` から `de442s.bsp` へ切り替えた。
+
+### 2026-03-22
+
+- 直接座標入力の Google Maps URL 対応
+  - `lat;lon` に加えて、`@lat,lon` と、現在広く観測される Google Maps shared URL 形式の一部を直接地点入力として受け付けるようにした。
+  - 対象 URL は `maps.google.com/` または `www.google.com/maps/` で始まるものに絞り、`!3dLAT!4dLON` があればそれを優先し、なければ `@LAT,LON` を使うようにした。
+  - Google Maps URL に含まれる zoom、高度風パラメータ、heading などは観測地点や観測者高さには使わない方針にした。
+
+- 直接座標入力のタイムゾーン解決見直し
+  - `lat;lon`、`@lat,lon`、Google Maps URL のいずれも、地点座標からタイムゾーンを自動解決するようにした。
+  - これにより、従来の `lat;lon` 入力で暗黙に `UTC` 相当になっていた挙動は変わる。
+  - 互換用途や明示上書きのために `--timezone` を追加した。
+
+- `zstarview-export-image` のメタデータ出力追加
+  - GUI 左上に表示される場所、地点高さ、観測者高さ、時刻、Alt/Az、`Vmag limit` を、export 画像には焼き込まず `stderr` へ出力するようにした。
+  - `--sixel` 指定時は、端末画像の直前に同情報を出すようにした。
+
+- マイナーバージョン更新
+  - 直接座標入力のタイムゾーン挙動が後方互換ではないため、バージョンを `1.4.1` から `1.5.0` へ更新した。
   - `de442s.bsp` は Skyfield の既定 JPL download base では 404 になるため、runtime ではこのファイルだけ NAIF の明示 URL を使うようにした。
   - README の「初回起動時にダウンロードされる惑星暦データ」の説明も `de442s.bsp` に更新した。
 
