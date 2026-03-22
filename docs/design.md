@@ -233,8 +233,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `guide`
   - `terrain`
   - `stars`
-  - `aircraft`
   - `planets`
+  - `satellites`
+  - `aircraft`
   - `overlay`
   - `labels`
   - `hover-overlay`
@@ -245,7 +246,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 - 次段の主目的は、hover/HUD とベース描画の分離である。
 - `guide` レイヤーは HUD ではなくベース描画側に残す。
-- ベース描画には、少なくとも `background`、`sky-cloud`、`guide`、`terrain`、`stars`、`aircraft`、`planets`、`labels` を含める想定とする。
+- ベース描画には、少なくとも `background`、`sky-cloud`、`guide`、`terrain`、`stars`、`planets`、`satellites`、`aircraft`、`labels` を含める想定とする。
 - HUD 側には、少なくとも次を寄せる方向で整理する。
   - 恒星ホバー
   - DSO ホバー
@@ -257,7 +258,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 #### 4.3.4 hover/HUD 分離の現在位置
 
 - shared pipeline は、`render_base_scene_into_painter()` と `render_hud_overlay_into_painter()` に分かれている。
-- ベース描画は、`background`、`sky-cloud`、`guide`、`terrain`、`stars`、`aircraft`、`planets`、静的 overlay 情報、`labels` を担当する。
+- ベース描画は、`background`、`sky-cloud`、`guide`、`terrain`、`stars`、`planets`、`satellites`、`aircraft`、静的 overlay 情報、`labels` を担当する。
 - HUD 描画は、少なくとも次を担当する。
   - アステリズムの hover 強調
   - 月 hover 時の拡大上書き
@@ -382,7 +383,29 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `src/zstarview/satellites/types.py`
   - cache 読込結果をまとめる内部モデル
 
-### 4.9 ユーティリティ
+### 4.9 人工衛星位置計算と描画
+
+- `src/zstarview/satellites/project.py`
+  - Skyfield `EarthSatellite` を観測地点基準の `alt/az` へ変換
+  - 視野内判定前の人工衛星描画用軽量モデルを生成
+  - `ISS` を他 group より少し大きく扱う marker scale を決定
+- `src/zstarview/gui/satellite_state.py`
+  - group ごとの最新軌道要素
+  - 最新の描画用人工衛星マーカー列
+  - 最終成功時刻
+  - 読込中 / 取得中バナー
+  - 失敗表示状態
+- `src/zstarview/gui/satellite_controller.py`
+  - 人工衛星軌道要素更新の実行制御
+  - `24時間` タイマー、明示更新要求、latest-request-wins の適用
+  - 軌道要素取得結果の UI 反映
+- `src/zstarview/render/draw.py`
+  - 人工衛星マーカーの描画
+  - 航空機と同系統の紫色、小型クロス、`ISS` だけ少し大きい marker を担当
+- `src/zstarview/render/pipeline.py`
+  - `satellites` レイヤーを `planets` の後、`aircraft` の前へ挿入
+
+### 4.10 ユーティリティ
 
 - `src/zstarview/utils/resolve_city.py`
   - 都市解決補助
@@ -483,7 +506,26 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 この分離により、ソース取得をやり直さずに視点変更のみ再描画できる。
 
-### 5.5 地形地平線関連
+### 5.5 人工衛星関連
+
+- `SatelliteOverlayPoint`
+  - `group_key`
+  - `satellite_name`
+  - `alt_deg`
+  - `az_deg`
+  - `marker_scale`
+  - `show_label`
+  - 描画直前まで絞り込んだ人工衛星マーカーモデル
+  - 初期実装では軌跡線を持たず、現在時刻の位置だけを保持する
+- `SatelliteState`
+  - group ごとの最新軌道要素 records
+  - 表示用マーカー列
+  - 最終成功タイムスタンプ
+  - 読込中状態
+  - エラーバナー
+  - 軌道要素は `24時間` 単位で更新し、マーカー列は `5秒` ごとに再計算してよい
+
+### 5.6 地形地平線関連
 
 - `TerrainHorizonState`
   - 地形地平線の点列
@@ -493,7 +535,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `(altitude_deg, azimuth_deg)` の系列として保持する
   - 地点依存、時刻非依存のデータとして扱う
 
-### 5.6 ウィンドウ状態
+### 5.7 ウィンドウ状態
 
 - `SkyWindowState`
   - 現在の視点
@@ -519,6 +561,11 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 読込中 / 取得中バナー
   - 失敗表示状態
   - 最終成功時刻
+- `SatelliteState`
+  - 人工衛星描画マーカー列
+  - 読込中 / 取得中バナー
+  - 失敗表示状態
+  - 最終成功時刻
 
 ## 6. 処理フロー
 
@@ -529,7 +576,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 3. 入力を、`--place` による online 検索地点または通常の都市・タワー・山・座標として解決する。
 4. 星カタログや補助データを読み込む。
 5. `SkyWindow` を生成し、初回描画を行う。
-6. 必要に応じて雲更新、地形地平線更新、都市アウトライン更新、航空機更新をバックグラウンドで開始する。
+6. 必要に応じて雲更新、地形地平線更新、都市アウトライン更新、人工衛星更新、航空機更新をバックグラウンドで開始する。
 
 ### 6.2 星空更新フロー
 
@@ -555,7 +602,25 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 
 この最終フレームキャッシュは `SkyCompositorCache` の上位にある。`SkyCompositorCache` は sky/cloud 合成だけを再利用し、その出力を含むウィンドウ全体の描画結果をさらに `window_render.py` 側でキャッシュする二段構えにしている。
 
-### 6.3 雲更新フロー
+### 6.3 人工衛星更新フロー
+
+1. `SkyWindow` が起動時に `SatelliteController` を生成し、初回更新要求を出す。
+2. `SatelliteController` は `iss`、`starlink`、`gps` の各 group について、まず `satellites/cache.py` に fresh cache があるかを確認してよい。
+3. fresh cache がある group は、その records をそのまま採用してよい。
+4. fresh cache が無い group だけ、`satellites/fetch.py` で CelesTrak GP JSON を取得してよい。
+5. 取得に成功した group は、raw OMM JSON records と取得時刻を `satellites/cache.py` で永続保存してよい。
+6. 取得に失敗した group は、その更新サイクルでは unavailable として扱い、古い stale cache を表示継続には使わない。
+7. `satellites/project.py` は group ごとの records を Skyfield `EarthSatellite.from_omm()` で satellite object へ変換し、観測地点と現在時刻から `alt/az` を計算する。
+8. `satellites/project.py` は地平線上かつ視野内にある人工衛星だけを `SatelliteOverlayPoint` へ落とし込む。
+9. `satellites/project.py` は `ISS` に少し大きい `marker_scale` を与え、`Starlink` と `GPS` には既定で label を付けない。
+10. `window.py` は API 取得とは別に人工衛星位置再計算 timer を持ち、既定では `5秒` ごとに保持済み records から marker 列だけを再計算してよい。
+11. 人工衛星レイヤーを GUI で再表示したとき、records が fresh なら外部再取得を行わず marker 再計算だけで即時復帰してよい。
+12. records が stale なら、レイヤー再表示時も再取得を優先してよい。
+13. `SkyWindow` は `satellite_ready` または位置再計算完了を受けたら `SkyWindowState` を更新し、再描画する。
+14. 通常描画では人工衛星を `planets` の後、`aircraft` の前に描く。
+15. 初期実装では人工衛星と月・惑星の接近時に特別な隠蔽処理は行わなくてよい。
+
+### 6.4 雲更新フロー
 
 1. `CloudController` が新しい要求を受け取る。
 2. ソース取得が必要か、既存ソースで再描画可能かを判定する。
@@ -567,7 +632,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 5. `request_id` により古い結果を破棄し、最新結果のみ UI に反映する。
 6. 欠損領域がある場合は欠損マスクも渡す。
 
-### 6.4 地形地平線更新フロー
+### 6.5 地形地平線更新フロー
 
 1. `TerrainHorizonController` が地点に応じた DEM 更新要求を受ける。
 2. 必要な DEM タイルを取得またはキャッシュから読込する。
@@ -575,17 +640,18 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 4. 結果を地形地平線プロファイルとして UI に返す。
 5. 画面再投影時は既存プロファイルを使い回し、再取得はしない。
 
-### 6.5 描画フロー
+### 6.6 描画フロー
 
 1. sky disc を生成する。
 2. 恒星、惑星、月、補助線を重ねる。
 3. 地形地平線があれば地平線関連描画へ反映する。
 4. 都市アウトラインがあれば白線オーバーレイとして描画する。
-5. 航空機オーバーレイがあればオレンジの折れ線オーバーレイとして描画する。
-6. 雲画像と欠損ティントを合成する。
-7. ラベル、オーバーレイ、ステータス行を描画する。
+5. 人工衛星があれば紫色の小型クロスマーカーとして描画する。
+6. 航空機オーバーレイがあれば紫色の折れ線オーバーレイとして描画する。
+7. 雲画像と欠損ティントを合成する。
+8. ラベル、オーバーレイ、ステータス行を描画する。
 
-### 6.6 都市アウトライン更新フロー
+### 6.7 都市アウトライン更新フロー
 
 1. `SkyWindow` が起動時またはトグル再有効化時に `UrbanOutlineController` へ更新要求を出す。
 2. `UrbanOutlineController` は `lat/lon + radius + min_height + mode` から実行キーを作る。既定 mode は `both`、既定半径は `2.5km` である。
@@ -606,7 +672,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 補足:
 - 旧 `list[list[(alt, az)]]` 形式の runtime 互換コードは削除し、都市アウトライン描画は `UrbanOutlinePolyline` のみを受け付ける。
 
-### 6.7 航空機オーバーレイ更新フロー
+### 6.8 航空機オーバーレイ更新フロー
 
 1. `SkyWindow` が起動時に `AircraftController` を生成し、初回更新要求を出す。
 2. `SkyWindowUserOptions` は `aircraft_opacity` と `aircraft_gui_allowed` を持ち、`--aircraft-opacity 0.0` のときは起動直後から航空機問い合わせを行わない。
@@ -642,6 +708,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
   - 雲データ取得と描画
   - 地形地平線計算
   - 都市アウトライン取得と outline 生成
+  - 人工衛星データ取得と可視マーカー生成
   - 航空機データ取得と可視折れ線生成
   - キャッシュ清掃の補助処理
 
@@ -658,12 +725,13 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - 長寿命の UI 状態は `SkyWindow` と `SkyWindowState` が持つ。
 - 雲専用状態は `CloudState` に分離する。
 - 地形地平線専用状態は `TerrainHorizonState` に分離する。
+- 人工衛星専用状態は `SatelliteState` に分離する。
 - 航空機専用状態は `AircraftState` に分離する。
 
 ### 8.2 latest-request-wins
 
 視点変更やタイマー更新が短時間に連続した場合、古い非同期結果で UI を巻き戻さないことを優先する。  
-そのため、雲更新や航空機更新では最新要求のみが採用される。
+そのため、雲更新、人工衛星更新、航空機更新では最新要求のみが採用される。
 
 ### 8.3 CLI と GUI の整合
 
@@ -672,7 +740,16 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - 代表例が `--terrain-horizon-opacity 0` による地形地平線ロックアウトである。
 - `--sky-opacity 0`、`--cloud-opacity 0`、`--terrain-horizon-opacity 0`、`--urban-outline-opacity 0` は、そのセッションで各 GUI トグルをロックアウトする。
 
-### 8.4 航空機オーバーレイの更新粒度
+### 8.4 人工衛星レイヤーの更新粒度
+
+- 人工衛星の軌道要素取得は `24時間` 間隔とし、表示上の位置再計算は `5秒` 間隔で行ってよい。
+- 人工衛星描画は現在時刻の位置のみを描き、初期実装では軌跡線を持たない。
+- `satellite_opacity <= 0.0` または各 group が無効の間は、人工衛星 fetch timer と位置再計算 timer を止めてよい。
+- 描画は地平線上かつ視野内に限定し、`ISS` だけ少し大きい marker を使ってよい。
+- GUI から再表示したときは `last_success_utc` を見て fresh cache を優先し、不要な CelesTrak 再取得を避けてよい。
+- stale cache は表示継続には使わず、fresh を外れた場合は再取得を優先してよい。
+
+### 8.5 航空機オーバーレイの更新粒度
 
 - 航空機観測値の取得は `5分` 間隔とし、表示上の予想再投影は `2秒` 間隔で行ってよい。
 - `aircraft_opacity <= 0.0` の間は、fetch timer と予想再投影 timer を止めてよい。
@@ -682,7 +759,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - 取得時刻から `90秒` を超えたら alpha を段階的に下げ、次回 API 更新まで視覚的に古さを示してよい。
 - GUI から再表示したときは `last_success_utc` を見て fresh cache を優先し、不要な OpenSky 再問い合わせを避けてよい。
 
-### 8.5 都市アウトライン描画の簡略化
+### 8.6 都市アウトライン描画の簡略化
 
 - 都市アウトラインは derived tile から得た建物上端輪郭を描く。
 - derived tile の各建物レコードは `building_id` を持ち、`building_part` 由来レコードは必要に応じて `parent_building_id` を持つ。
