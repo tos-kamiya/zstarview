@@ -309,16 +309,15 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._satellite_update_timer.setSingleShot(True)
         self._satellite_update_timer.setInterval(SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS * 1000)
         self._satellite_update_timer.timeout.connect(self._on_satellite_refresh_timer)
-        self._satellite_projection_timer = QTimer(self)
-        self._satellite_projection_timer.setInterval(SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS * 1000)
-        self._satellite_projection_timer.timeout.connect(self.refresh_projected_satellite_overlay)
         self._aircraft_update_timer = QTimer(self)
         self._aircraft_update_timer.setSingleShot(True)
         self._aircraft_update_timer.setInterval(AIRCRAFT_REFRESH_INTERVAL_SECONDS * 1000)
         self._aircraft_update_timer.timeout.connect(self._on_aircraft_refresh_timer)
-        self._aircraft_projection_timer = QTimer(self)
-        self._aircraft_projection_timer.setInterval(AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS * 1000)
-        self._aircraft_projection_timer.timeout.connect(self.refresh_projected_aircraft_overlay)
+        self._overlay_projection_timer = QTimer(self)
+        self._overlay_projection_timer.setInterval(
+            min(SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS, AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS) * 1000
+        )
+        self._overlay_projection_timer.timeout.connect(self._on_overlay_projection_timer)
 
         # --- CloudDisc Service Initialization ---
         self._clouddisc: Optional[CloudDisc] = None
@@ -533,6 +532,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         toggle_satellites_action = QAction("Satellites", self)
         toggle_satellites_action.setCheckable(True)
         toggle_satellites_action.setChecked(self.satellite_opacity > 0.0)
+        toggle_satellites_action.setShortcut(QKeySequence(Qt.Key.Key_L))
+        toggle_satellites_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         toggle_satellites_action.triggered.connect(self.toggle_satellites)
         self.menu.addAction(toggle_satellites_action)
         self.addAction(toggle_satellites_action)
@@ -798,12 +799,10 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self._cloud_update_timer.stop()
         if self._satellite_update_timer.isActive():
             self._satellite_update_timer.stop()
-        if self._satellite_projection_timer.isActive():
-            self._satellite_projection_timer.stop()
+        if self._overlay_projection_timer.isActive():
+            self._overlay_projection_timer.stop()
         if self._aircraft_update_timer.isActive():
             self._aircraft_update_timer.stop()
-        if self._aircraft_projection_timer.isActive():
-            self._aircraft_projection_timer.stop()
         if self._interaction_idle_timer.isActive():
             self._interaction_idle_timer.stop()
         if self._viewport_interaction_idle_timer.isActive():
@@ -847,8 +846,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
     def _stop_satellite_timers(self) -> None:
         if self._satellite_update_timer.isActive():
             self._satellite_update_timer.stop()
-        if self._satellite_projection_timer.isActive():
-            self._satellite_projection_timer.stop()
+        self._sync_overlay_projection_timer()
 
     def _satellite_cache_age_seconds(self) -> float | None:
         last_success_utc = self.satellite_state.last_success_utc
@@ -871,11 +869,28 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         if not started:
             self._schedule_next_satellite_refresh()
 
+    def _on_overlay_projection_timer(self) -> None:
+        if self._satellite_layer_enabled():
+            self.refresh_projected_satellite_overlay()
+        if self._aircraft_layer_enabled():
+            self.refresh_projected_aircraft_overlay()
+
+    def _sync_overlay_projection_timer(self) -> None:
+        if self._is_shutting_down:
+            if self._overlay_projection_timer.isActive():
+                self._overlay_projection_timer.stop()
+            return
+        any_enabled = self._satellite_layer_enabled() or self._aircraft_layer_enabled()
+        if any_enabled:
+            if not self._overlay_projection_timer.isActive():
+                self._overlay_projection_timer.start()
+        elif self._overlay_projection_timer.isActive():
+            self._overlay_projection_timer.stop()
+
     def _enable_satellite_layer(self, *, reason: str) -> None:
         if not self._satellite_layer_enabled():
             return
-        if not self._satellite_projection_timer.isActive():
-            self._satellite_projection_timer.start()
+        self._sync_overlay_projection_timer()
         if self.satellite_state.records_by_group and self.satellite_state.last_success_utc is not None:
             self.refresh_projected_satellite_overlay()
             age_seconds = self._satellite_cache_age_seconds()
@@ -899,8 +914,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
     def _stop_aircraft_timers(self) -> None:
         if self._aircraft_update_timer.isActive():
             self._aircraft_update_timer.stop()
-        if self._aircraft_projection_timer.isActive():
-            self._aircraft_projection_timer.stop()
+        self._sync_overlay_projection_timer()
 
     def _aircraft_cache_age_seconds(self) -> float | None:
         last_success_utc = self.aircraft_state.last_success_utc
@@ -924,8 +938,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
     def _enable_aircraft_layer(self, *, reason: str) -> None:
         if not self._aircraft_layer_enabled():
             return
-        if not self._aircraft_projection_timer.isActive():
-            self._aircraft_projection_timer.start()
+        self._sync_overlay_projection_timer()
         if self.aircraft_state.snapshots and self.aircraft_state.last_success_utc is not None:
             self.refresh_projected_aircraft_overlay()
             age_seconds = self._aircraft_cache_age_seconds()
