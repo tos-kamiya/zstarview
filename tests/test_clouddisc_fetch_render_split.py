@@ -17,7 +17,7 @@ def test_make_source_key_rounds_time_slot(tmp_path: Path) -> None:
     assert key.timeslot_utc == dt.datetime(2026, 3, 4, 12, 30, 0, tzinfo=dt.timezone.utc)
 
 
-def test_render_now_delegates_to_fetch_and_render(monkeypatch, tmp_path: Path) -> None:
+def test_fetch_source_and_render_from_source_compose_current_render_flow(monkeypatch, tmp_path: Path) -> None:
     clouddisc = CloudDisc(CloudDiscConfig(cache_dir=tmp_path))
     source = CloudSourceData(
         source_key=SourceKey(
@@ -54,7 +54,9 @@ def test_render_now_delegates_to_fetch_and_render(monkeypatch, tmp_path: Path) -
     monkeypatch.setattr(clouddisc, "fetch_source", fake_fetch_source)
     monkeypatch.setattr(clouddisc, "render_from_source", fake_render_from_source)
 
-    img, meta = clouddisc.render_now(
+    fetched = clouddisc.fetch_source(lat=35.0, lon=139.0)
+    img, meta = clouddisc.render_from_source(
+        source=fetched,
         lat=35.0,
         lon=139.0,
         alt=45.0,

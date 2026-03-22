@@ -1,19 +1,21 @@
 from __future__ import annotations
 
 from zstarview.clouddisc.providers.select import (
-    is_satellite_visible,
+    MAX_VISIBLE_CENTRAL_ANGLE_DEG,
+    SAT_LON,
+    central_angle_deg,
     visible_satellites,
 )
 
 
 def test_goes_visibility_for_europe_examples() -> None:
     # Madrid
-    assert is_satellite_visible(40.4165, -3.70256, "G19")
-    assert not is_satellite_visible(40.4165, -3.70256, "G18")
+    assert central_angle_deg(40.4165, -3.70256, SAT_LON["G19"]) <= MAX_VISIBLE_CENTRAL_ANGLE_DEG
+    assert central_angle_deg(40.4165, -3.70256, SAT_LON["G18"]) > MAX_VISIBLE_CENTRAL_ANGLE_DEG
 
     # London
-    assert is_satellite_visible(51.5072, -0.1276, "G19")
-    assert not is_satellite_visible(51.5072, -0.1276, "G18")
+    assert central_angle_deg(51.5072, -0.1276, SAT_LON["G19"]) <= MAX_VISIBLE_CENTRAL_ANGLE_DEG
+    assert central_angle_deg(51.5072, -0.1276, SAT_LON["G18"]) > MAX_VISIBLE_CENTRAL_ANGLE_DEG
 
 
 def test_visible_satellites_returns_angle_sorted_subset() -> None:

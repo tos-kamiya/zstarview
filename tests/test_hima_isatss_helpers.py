@@ -109,42 +109,46 @@ def test_stitch_isatss_sparse_tiles_into_full_field(tmp_path: Path) -> None:
         merged.close()
 
 
-def test_hima_provider_local_tiles_attach_area_and_sample(tmp_path: Path) -> None:
+def test_hima_provider_stitch_local_paths_attach_area_and_sample(tmp_path: Path) -> None:
     tile_dir = tmp_path / "tiles"
     tile_dir.mkdir()
     paths = _write_sparse_tile_set(tile_dir)
     provider = HimaProvider(CloudDiscConfig(cache_dir=tmp_path / "cache"))
-    da, used_time, src_paths = provider.fetch_bt_c13_from_local_dir(
-        tile_dir,
-        used_time=dt.datetime(2026, 3, 21, 6, 10, tzinfo=dt.timezone.utc),
+    da = provider._stitch_local_paths(
+        paths,
+        source_label=str(tile_dir),
+        observer_lat=None,
+        observer_lon=None,
     )
 
-    assert da.shape == (20, 20)
-    assert da.dtype == np.float32
-    assert len(src_paths) == len(paths) == 88
-    assert used_time == dt.datetime(2026, 3, 21, 6, 10, tzinfo=dt.timezone.utc)
-    assert "area" in da.attrs
+    try:
+        assert da.shape == (20, 20)
+        assert da.dtype == np.float32
+        assert len(paths) == 88
+        assert "area" in da.attrs
 
-    area = da.attrs["area"]
-    geos_scale = _projection_attrs()["perspective_point_height"] * 1e-6
-    assert np.isclose(area.area_extent[0], float(da.x.values[0]) * geos_scale)
-    to_lonlat = Transformer.from_crs(area.crs, "EPSG:4326", always_xy=True)
-    ix, iy = 10, 10
-    lon, lat = to_lonlat.transform(
-        float(da.x.values[ix]),
-        float(da.y.values[iy]),
-    )
-    sampled = build_bt_sampler(da)(
-        np.array([[lon]], dtype=np.float64),
-        np.array([[lat]], dtype=np.float64),
-    )[0, 0]
-    assert np.isclose(sampled, da.values[iy, ix], equal_nan=False)
+        area = da.attrs["area"]
+        geos_scale = _projection_attrs()["perspective_point_height"] * 1e-6
+        assert np.isclose(area.area_extent[0], float(da.x.values[0]) * geos_scale)
+        to_lonlat = Transformer.from_crs(area.crs, "EPSG:4326", always_xy=True)
+        ix, iy = 10, 10
+        lon, lat = to_lonlat.transform(
+            float(da.x.values[ix]),
+            float(da.y.values[iy]),
+        )
+        sampled = build_bt_sampler(da)(
+            np.array([[lon]], dtype=np.float64),
+            np.array([[lat]], dtype=np.float64),
+        )[0, 0]
+        assert np.isclose(sampled, da.values[iy, ix], equal_nan=False)
+    finally:
+        da.close()
 
 
 def test_equator_tile_selection_extends_partial_himawari_subset(tmp_path: Path) -> None:
     tile_dir = tmp_path / "tiles"
     tile_dir.mkdir()
-    _write_sparse_tile_set(tile_dir)
+    paths = _write_sparse_tile_set(tile_dir)
     provider = HimaProvider(CloudDiscConfig(cache_dir=tmp_path / "cache"))
     meta = load_template_from_tile(sorted(tile_dir.glob("*M1C13*.nc"))[0], bucket="local")
 
@@ -169,16 +173,21 @@ def test_equator_tile_selection_extends_partial_himawari_subset(tmp_path: Path) 
     assert equator_tokens
     assert equator_tokens - render_tokens
 
-    da, _used_time, src_paths = provider.fetch_bt_c13_from_local_dir(
-        tile_dir,
-        used_time=dt.datetime(2026, 3, 21, 6, 10, tzinfo=dt.timezone.utc),
+    selected_paths = [
+        path for path in paths if hima_module.extract_tile_token(path.name) in (render_tokens | equator_tokens)
+    ]
+    da = provider._stitch_local_paths(
+        selected_paths,
+        source_label=str(tile_dir),
         observer_lat=35.483,
         observer_lon=140.7,
-        margin_tiles=1,
     )
-    assert len(src_paths) == len(render_tokens | equator_tokens)
-    assert len(src_paths) > len(render_tokens)
-    assert da.attrs["source_key_count"] == len(src_paths)
+    try:
+        assert len(selected_paths) == len(render_tokens | equator_tokens)
+        assert len(selected_paths) > len(render_tokens)
+        assert da.attrs["source_key_count"] == len(selected_paths)
+    finally:
+        da.close()
 
 
 def test_find_isatss_skips_incomplete_latest_slot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -35,29 +35,6 @@ class StripeDensityField:
     source_cache_key: int
 
 
-def make_hatch_tile_qimage(W: int, H: int, line_px: int, strength: int) -> QImage:
-    """Generate a diagonal hatch tile as a QImage (ARGB32_Premultiplied)."""
-    norm = math.sqrt(W * W + H * H)
-    period = max(1, int(round(norm * 0.5)))
-    band_u = max(1, int(round(line_px)))
-
-    xs = np.arange(W, dtype=np.int32)[None, :]
-    ys = np.arange(H, dtype=np.int32)[:, None]
-    # Enforce exact 45-degree hatch lines: x - y = const.
-    u = xs - ys
-    u_mod = np.mod(u, period)
-    dist = np.minimum(u_mod, period - u_mod)
-    mask = dist <= (band_u / 2)
-
-    arr = np.zeros((H, W, 4), dtype=np.uint8)
-    arr[..., 0:3] = 0
-    arr[..., 3] = 0
-    arr[..., 3][mask] = np.uint8(np.clip(strength, 0, 255))
-
-    qimg = QImage(arr.tobytes(), W, H, QImage.Format_ARGB32_Premultiplied)
-    return qimg.copy()
-
-
 def cloud_with_hatched_alpha(cloud_img: QImage, hatch_cfg: HatchConfig) -> QImage:
     """Apply continuous 45-degree hatch directly to alpha (no tile seams)."""
     out = cloud_img if cloud_img.format() == QImage.Format_RGBA8888 else cloud_img.convertToFormat(QImage.Format_RGBA8888)

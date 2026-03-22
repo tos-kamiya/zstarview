@@ -40,7 +40,7 @@ def test_overlay_availability_for_time_mode_matches_policy() -> None:
     assert overlay_availability_for_time_mode("present").cloud is True
     assert overlay_availability_for_time_mode("present").aircraft is True
     assert overlay_availability_for_time_mode("present").satellite is True
-    assert overlay_availability_for_time_mode("past").satellite is True
+    assert overlay_availability_for_time_mode("past").satellite is False
     assert overlay_availability_for_time_mode("past").cloud is False
     assert overlay_availability_for_time_mode("future").satellite is False
 
@@ -50,4 +50,4 @@ def test_overlay_availability_for_delta_matches_past_policy() -> None:
     availability = overlay_availability_for_delta(timedelta(days=-1), now_utc=now_utc)
     assert availability.cloud is False
     assert availability.aircraft is False
-    assert availability.satellite is True
+    assert availability.satellite is False

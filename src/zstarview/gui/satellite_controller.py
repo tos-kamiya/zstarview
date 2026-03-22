@@ -20,6 +20,13 @@ logger = logging.getLogger(__name__)
 
 SatelliteFetcher = Callable[..., CachedSatelliteElementSet]
 SatelliteProjector = Callable[..., list[SatelliteOverlayPoint]]
+EXPECTED_FETCH_FAILURE_MESSAGES = {
+    "Satellites: time-shifted view is not supported",
+}
+
+
+def _is_expected_fetch_failure(exc: Exception) -> bool:
+    return str(exc) in EXPECTED_FETCH_FAILURE_MESSAGES
 
 
 class SatelliteController(QObject):
@@ -98,6 +105,7 @@ class SatelliteController(QObject):
             records_by_group: dict[str, list[SatelliteOmmRecord]] = {}
             element_epoch_utc: datetime | None = None
             failed_groups: list[str] = []
+            failure_messages: list[str] = []
             target_time_utc = time_obj.to_datetime(timezone=timezone.utc)
             time_mode: TimeMode = classify_target_time(target_time_utc)
             for group_key in enabled_groups:
@@ -107,19 +115,27 @@ class SatelliteController(QObject):
                         target_time_utc=target_time_utc,
                         time_mode=time_mode,
                     )
-                except Exception:
-                    logger.warning("Satellite element fetch failed for %s", group_key, exc_info=True)
+                except Exception as exc:
+                    if _is_expected_fetch_failure(exc):
+                        logger.info("Satellite element fetch unavailable for %s: %s", group_key, exc)
+                    else:
+                        logger.warning("Satellite element fetch failed for %s", group_key, exc_info=True)
                     failed_groups.append(group_key)
+                    failure_messages.append(str(exc))
                     continue
                 records_by_group[str(group_key)] = list(fetched.records)
                 if element_epoch_utc is None or fetched.element_epoch_utc > element_epoch_utc:
                     element_epoch_utc = fetched.element_epoch_utc
             if not records_by_group:
-                raise RuntimeError(
-                    "Satellites: failed to fetch orbital elements"
-                    if failed_groups
-                    else "Satellites: no enabled groups"
-                )
+                if failed_groups:
+                    unique_messages = []
+                    for message in failure_messages:
+                        if message not in unique_messages:
+                            unique_messages.append(message)
+                    if len(unique_messages) == 1:
+                        raise RuntimeError(unique_messages[0])
+                    raise RuntimeError("Satellites: failed to fetch orbital elements")
+                raise RuntimeError("Satellites: no enabled groups")
             overlay_points = self._projector(
                 records_by_group,
                 observer_lat=observer_lat,
@@ -146,7 +162,9 @@ class SatelliteController(QObject):
             with self._lock:
                 should_emit = not self._stopping and request_id == self._latest_request_id
             if should_emit:
-                self.satellite_failed.emit({"banner": f"Satellites: {exc}"})
+                message = str(exc).strip()
+                banner = message if message.startswith("Satellites:") else f"Satellites: {message}"
+                self.satellite_failed.emit({"banner": banner})
         finally:
             with self._lock:
                 self._running = False

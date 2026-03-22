@@ -817,7 +817,7 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         status_message=None,
     )
 
-    pipeline_module.render_scene_into_painter(
+    pipeline_module.render_base_scene_into_painter(
         painter=object(),
         geometry=geometry,
         viewport_rect=viewport_rect,
@@ -825,6 +825,14 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         style=style,
         hud=hud,
         compositor=object(),
+    )
+    pipeline_module.render_hud_overlay_into_painter(
+        painter=object(),
+        geometry=geometry,
+        viewport_rect=viewport_rect,
+        scene=scene,
+        style=style,
+        hud=hud,
         highlighted_object=({"name": "Vega"}, object()),
         highlighted_dso=({"name": "M31"}, object()),
     )

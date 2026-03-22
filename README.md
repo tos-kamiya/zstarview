@@ -166,7 +166,7 @@ zstarview-export-image Matsue -o matsue.png
 | `-D`, `--days DAYS`                         | Number of days to add to the current time. \*1                               | `0`     |
 | `--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"` | Specify an absolute date/time. Time may be given as `HH`, `HH:MM`, or `HH:MM:SS`. If no TZ is specified, UTC is assumed. \*1 |         |
 
-\*1 When using non-realtime sky options (`--hours`, `--days`, `--datetime`), cloud and aircraft overlays are not shown. The artificial satellite overlay is shown for past views when a matching cached orbital snapshot is available, but not for future views.
+\*1 When using non-realtime sky options (`--hours`, `--days`, `--datetime`), cloud, aircraft, and artificial satellite overlays are not shown.
 
 \*2 Cloud rendering uses infrared data from meteorological satellites (**Himawari** and **NOAA GOES** series), retrieved from their public S3 buckets.
    See Troubleshooting for tips on slow networks or offline use (e.g., disabling clouds with `-c 0`).
@@ -525,7 +525,7 @@ Install the missing `libxcb-cursor0` package with:
 4. Artificial satellite data
 
    The artificial satellite overlay fetches orbital data from CelesTrak at runtime and reuses a fresh current cache for up to 6 hours.
-   Older snapshots are rolled into a local archive and may be reused for past-view satellite rendering for up to 3 days when a matching snapshot is available.
+   The layer is available only for realtime views; time-shifted views do not fetch or display artificial satellites.
    If your network is slow or unavailable, disable the layer with `--satellite-opacity 0`.
    If a fresh cache is already present, the app can keep showing the satellite overlay without network access.
 

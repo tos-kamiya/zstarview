@@ -59,20 +59,6 @@ def central_angle_deg(lat_deg: float, lon_deg: float, sub_lon_deg: float) -> flo
     return math.degrees(math.acos(cos_angle))
 
 
-def is_satellite_visible(
-    lat: float,
-    lon: float,
-    sat_name: str,
-    max_angle_deg: float = MAX_VISIBLE_CENTRAL_ANGLE_DEG,
-) -> bool:
-    """Return True if a geostationary satellite is above the visibility angle."""
-    sat_lon_map = _sat_lon_map()
-    sat_name = normalize_satellite_name(sat_name)
-    if sat_name not in sat_lon_map:
-        return False
-    return central_angle_deg(lat, lon, sat_lon_map[sat_name]) <= max_angle_deg
-
-
 def visible_satellites(
     lat: float,
     lon: float,

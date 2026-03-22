@@ -100,39 +100,6 @@ def _window_size(viewport_rect: QRect) -> tuple[int, int]:
     return (int(viewport_rect.width()), int(viewport_rect.height()))
 
 
-def render_scene_into_painter(
-    painter: QPainter,
-    *,
-    geometry: render_draw.ScreenGeometry,
-    viewport_rect: QRect,
-    scene: RenderSceneData,
-    style: RenderStyle,
-    hud: RenderHudState,
-    compositor: Any,
-    highlighted_object: Any | None,
-    highlighted_dso: Any | None,
-) -> None:
-    render_base_scene_into_painter(
-        painter,
-        geometry=geometry,
-        viewport_rect=viewport_rect,
-        scene=scene,
-        style=style,
-        hud=hud,
-        compositor=compositor,
-    )
-    render_hud_overlay_into_painter(
-        painter,
-        geometry=geometry,
-        viewport_rect=viewport_rect,
-        scene=scene,
-        style=style,
-        hud=hud,
-        highlighted_object=highlighted_object,
-        highlighted_dso=highlighted_dso,
-    )
-
-
 def render_base_scene_into_painter(
     painter: QPainter,
     *,

@@ -762,7 +762,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - 航空機と人工衛星の位置再計算は、共通 overlay projection timer で同期させてよい。
 - GUI から再表示したときは `last_success_utc` を見て fresh cache を優先し、不要な CelesTrak 再取得を避けてよい。
 - stale cache は表示継続には使わず、fresh を外れた場合は再取得を優先してよい。
-- 過去表示では current cache に加えて archive snapshot 群を探索してよく、対象時刻との差が `6時間` 以内の snapshot だけを採用してよい。
+- タイムシフト表示では人工衛星レイヤー自体を無効化してよく、current cache の過去探索や archive snapshot は持たなくてよい。
 
 ### 8.5 航空機オーバーレイの更新粒度
 
@@ -840,16 +840,10 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - 航空機 cache file には少なくとも `bbox`、`fetched_at_utc`、`source`、`snapshots` を保持する。
 - cache key は観測地点そのものではなく、実問い合わせに使う OpenSky `bbox` から導出する。
 - clean up は GOES/Himawari のような時刻ディレクトリ走査ではなく、航空機 cache root 配下の古い file を `fetched_at_utc` 基準で削除する簡易方式でよい。
-- 人工衛星の軌道要素 cache は `current` と `archive` の二層に分けてよい。
+- 人工衛星の軌道要素 cache は current 1 層だけでよい。
 - `current` は group 単位の少数 JSON file とし、`ISS` や `Starlink` などの論理 group から cache key を導出してよい。
-- `archive` は `group_key + element_epoch_utc` 単位の JSON file 群として保持してよい。
 - 人工衛星の current cache file には少なくとも `group_key`、`element_epoch_utc`、`fetched_at_utc`、`source`、`records` を保持する。
-- 人工衛星の archive cache file には少なくとも `group_key`、`element_epoch_utc`、`fetched_at_utc`、`source`、`records` を保持する。
-- current cache を更新するときは、更新前の current snapshot を `element_epoch_utc` を使った archive file 名へ移してから、新しい current snapshot を保存してよい。
-- archive file 名や過去検索のキーは `element_epoch_utc` を基準としてよい。
 - 人工衛星の current cache の fresh 判定は `6時間` とし、fresh を外れた cache は再取得優先とする。
-- 過去表示で archive を使う場合は、対象時刻との差が `6時間` 以内の snapshot だけを候補としてよい。
-- 人工衛星 archive の保持期間は `3日` とし、clean up は `fetched_at_utc` 基準で古い file を削除してよい。
 
 ## 11. テスト観点と設計上の分離
 

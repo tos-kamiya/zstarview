@@ -8,22 +8,7 @@ from zstarview.gui.composite import (
     compose_cloud_over_sky,
     render_hatched_cloud_from_density,
 )
-from zstarview.gui.composite import make_hatch_tile_qimage
 from zstarview.utils.qt import np_rgba_to_qimage, qimage_to_np_rgba
-
-
-def test_make_hatch_tile_contains_stripes() -> None:
-    tile = qimage_to_np_rgba(make_hatch_tile_qimage(20, 19, 8, 255))
-    alpha = tile[..., 3]
-    assert int(alpha.min()) == 0
-    assert int(alpha.max()) == 255
-    assert 0.10 < float((alpha == 255).mean()) < 0.90
-
-
-def test_make_hatch_tile_respects_strength() -> None:
-    tile = qimage_to_np_rgba(make_hatch_tile_qimage(20, 19, 8, 90))
-    alpha = tile[..., 3]
-    assert int(alpha.max()) == 90
 
 
 def test_cloud_hatch_reduces_rgb_and_alpha_together() -> None:
