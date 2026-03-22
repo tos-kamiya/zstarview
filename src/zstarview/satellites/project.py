@@ -9,16 +9,14 @@ import skyfield.api
 from .fetch import build_earth_satellites
 from .types import SatelliteOmmRecord, SatelliteOverlayPoint
 
-_DEFAULT_GROUP_ORDER = ("iss", "starlink", "gps")
+_DEFAULT_GROUP_ORDER = ("iss", "starlink")
 _MAX_MARKERS_BY_GROUP = {
     "iss": 8,
     "starlink": 20,
-    "gps": 12,
 }
 _MARKER_SCALE_BY_GROUP = {
     "iss": 0.17,
     "starlink": 0.13,
-    "gps": 0.13,
 }
 
 

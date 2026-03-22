@@ -14,7 +14,6 @@ CELESTRAK_GP_JSON_URL = "https://celestrak.org/NORAD/elements/gp.php"
 CELESTRAK_GROUP_BY_KEY = {
     "iss": "stations",
     "starlink": "starlink",
-    "gps": "gps-ops",
 }
 _ISS_NORAD_CAT_ID = "25544"
 

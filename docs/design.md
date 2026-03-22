@@ -370,10 +370,10 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 - `src/zstarview/satellite_constants.py`
   - 人工衛星の軌道要素取得間隔と表示位置更新間隔の共有定数
-  - `24時間` 取得と `5秒` 位置再計算の共有定数を定義
+  - `24時間` 取得と `2秒` 位置再計算の共有定数を定義
 - `src/zstarview/satellites/fetch.py`
   - CelesTrak GP JSON URL の組み立て
-  - `iss` / `starlink` / `gps` から CelesTrak group 名への解決
+  - `iss` / `starlink` から CelesTrak group 名への解決
   - OMM JSON 配列の正規化
   - Skyfield `EarthSatellite.from_omm()` への変換
 - `src/zstarview/satellites/cache.py`
@@ -605,14 +605,14 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 ### 6.3 人工衛星更新フロー
 
 1. `SkyWindow` が起動時に `SatelliteController` を生成し、初回更新要求を出す。
-2. `SatelliteController` は `iss`、`starlink`、`gps` の各 group について、まず `satellites/cache.py` に fresh cache があるかを確認してよい。
+2. `SatelliteController` は `iss` と `starlink` の各 group について、まず `satellites/cache.py` に fresh cache があるかを確認してよい。
 3. fresh cache がある group は、その records をそのまま採用してよい。
 4. fresh cache が無い group だけ、`satellites/fetch.py` で CelesTrak GP JSON を取得してよい。
 5. 取得に成功した group は、raw OMM JSON records と取得時刻を `satellites/cache.py` で永続保存してよい。
 6. 取得に失敗した group は、その更新サイクルでは unavailable として扱い、古い stale cache を表示継続には使わない。
 7. `satellites/project.py` は group ごとの records を Skyfield `EarthSatellite.from_omm()` で satellite object へ変換し、観測地点と現在時刻から `alt/az` を計算する。
 8. `satellites/project.py` は地平線上かつ視野内にある人工衛星だけを `SatelliteOverlayPoint` へ落とし込む。
-9. `satellites/project.py` は `ISS` に少し大きい `marker_scale` を与え、`Starlink` と `GPS` には既定で label を付けない。
+9. `satellites/project.py` は `ISS` に少し大きい `marker_scale` を与え、`Starlink` には既定で label を付けない。
 10. `window.py` は API 取得とは別に人工衛星位置再計算を行い、既定では `ISS` と `Starlink` を有効 group として扱ってよい。
 11. 人工衛星と航空機の位置再計算は、`2秒` 間隔の共通 overlay projection timer で駆動してよい。
 12. 人工衛星レイヤーを GUI で再表示したとき、records が fresh なら外部再取得を行わず marker 再計算だけで即時復帰してよい。
@@ -747,7 +747,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - 人工衛星描画は現在時刻の位置のみを描き、初期実装では軌跡線を持たない。
 - `satellite_opacity <= 0.0` または各 group が無効の間は、人工衛星 fetch timer と位置再計算 timer を止めてよい。
 - 描画は地平線上かつ視野内に限定し、`ISS` だけ少し大きい marker を使ってよい。
-- GUI 既定の有効 group は `ISS` と `Starlink` とし、`GPS` は取得基盤のみ先行してもよい。
+- GUI 既定の有効 group は `ISS` と `Starlink` としてよい。
 - 航空機と人工衛星の位置再計算は、共通 overlay projection timer で同期させてよい。
 - GUI から再表示したときは `last_success_utc` を見て fresh cache を優先し、不要な CelesTrak 再取得を避けてよい。
 - stale cache は表示継続には使わず、fresh を外れた場合は再取得を優先してよい。
@@ -829,7 +829,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - clean up は GOES/Himawari のような時刻ディレクトリ走査ではなく、航空機 cache root 配下の古い file を `fetched_at_utc` 基準で削除する簡易方式でよい。
 - 人工衛星の軌道要素は group 単位の少数 JSON file として長寿命永続キャッシュしてよい。
 - 人工衛星 cache file には少なくとも `group_key`、`fetched_at_utc`、`source`、`records` を保持する。
-- 人工衛星の cache key は観測地点ではなく `ISS`、`Starlink`、`GPS` などの論理 group から導出する。
+- 人工衛星の cache key は観測地点ではなく `ISS`、`Starlink` などの論理 group から導出する。
 - 人工衛星 cache の fresh 判定は `24時間` とし、fresh を外れた cache は再取得優先とする。
 - 人工衛星 cache の clean up も時刻ディレクトリ走査ではなく、人工衛星 cache root 配下の古い file を `fetched_at_utc` 基準で削除する簡易方式でよい。
 
