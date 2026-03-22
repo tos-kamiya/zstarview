@@ -352,6 +352,11 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 観測地点由来 `bbox` の組み立て
   - 緯度依存の east-west coverage 調整と 1-credit 帯面積クリップ
   - 生レスポンス配列を名前付き内部モデルへ正規化
+- `src/zstarview/aircraft/cache.py`
+  - `bbox` 単位の航空機キャッシュ key 生成
+  - OpenSky 正規化結果の永続保存と読込
+  - fresh TTL / stale fallback 判定
+  - 古い cache file の簡易清掃
 - `src/zstarview/aircraft/project.py`
   - 航空機の `lat/lon/alt` を観測地点基準の `alt/az` へ変換
   - `velocity` / `heading` / `vertical_rate` による短時間前進予測
@@ -590,20 +595,24 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 2. `SkyWindowUserOptions` は `aircraft_opacity` と `aircraft_gui_allowed` を持ち、`--aircraft-opacity 0.0` のときは起動直後から航空機問い合わせを行わない。
 3. `AircraftController` は観測地点の `lat/lon` から OpenSky 用 `bbox` を作る。南北は既定 `±1.0°`、東西は緯度に応じて最低 `90km` を確保しつつ、面積は `25 square degrees` 以下へ抑える。
 4. `AircraftController` は明示更新要求または次回 fetch timer に従い、OpenSky 取得を 1 回だけ開始する。
-5. `aircraft/opensky.py` は `states/all?lamin=...&lamax=...&lomin=...&lomax=...` を呼び、state vector 配列を `AircraftSnapshot` 列へ正規化する。
-6. 正規化時には `lat/lon` 欠損、`on_ground=true`、極端に低速な機体を落としてよい。
-7. `aircraft/project.py` は各 `AircraftSnapshot` の `velocity`、`heading`、`vertical_rate`、`last_contact` を使って短時間前進予測し、`2秒前 -> 現在 -> 2秒後` の折れ線端点を含む `AircraftOverlayPoint` を作る。
-8. `aircraft/project.py` は age に応じた alpha scale も計算し、`90秒` を超えた機体が次回取得まで徐々に薄くなるようにする。
-9. `window.py` は API 取得とは別に `AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS` の UI タイマーを持ち、既定では `2秒` ごとに保持済み snapshot から折れ線データだけを再投影してよい。
-10. `window.py` は fetch timer を single-shot で扱い、レイヤー再表示時には `AircraftState.last_success_utc` から cache age を計算して次回 API 呼び出し時刻を再調整してよい。
-11. 保持済み snapshot が新しければ、GUI で航空機レイヤーを再表示しても API を再問い合わせせず、再投影だけで即時復帰してよい。
-12. 保持済み snapshot が更新間隔を超えて古いときだけ、レイヤー再表示時に即時再取得してよい。
-13. 描画時は観測地点から `50km` を超える機体を落とし、`10km` 以内かつ `90秒` 以内の機体だけに `callsign` を付けてよい。
-14. 新しい取得が成功したときだけ `AircraftState.snapshots` と `AircraftState.overlay_points` をまとめて置き換える。
-15. 取得失敗時は直前成功スナップショットを保持したまま、`AircraftState` の失敗表示だけを更新する。
-16. 古い非同期結果で UI を巻き戻さないため、`AircraftController` も request id ベースの latest-request-wins を使ってよい。
-17. `SkyWindow` は `aircraft_ready` または予想再投影完了を受けたら `SkyWindowState` を更新し、再描画する。
-18. `viewport_interaction_mode` 中は航空機オーバーレイ描画を抑止してよい。モード終了後に保持済み `overlay_points` で通常描画へ戻る。
+5. `AircraftController` は `bbox` を確定したら、まず `aircraft/cache.py` に同じ `bbox` の fresh cache があるかを確認してよい。
+6. fresh cache が存在する場合、`AircraftController` は OpenSky API を呼ばずにその `AircraftSnapshot` 列を使って `aircraft_ready` してよい。
+7. fresh cache が無い場合だけ、`aircraft/opensky.py` は `states/all?lamin=...&lamax=...&lomin=...&lomax=...` を呼び、state vector 配列を `AircraftSnapshot` 列へ正規化する。
+8. 正規化時には `lat/lon` 欠損、`on_ground=true`、極端に低速な機体を落としてよい。
+9. OpenSky 取得が成功したときは、正規化済み `AircraftSnapshot` 列、取得時刻、`bbox`、source 名を `aircraft/cache.py` で永続保存してよい。
+10. OpenSky 取得が失敗した場合でも、同じ `bbox` の stale cache が fallback 上限以内なら、それを `aircraft_ready` 相当として返しつつ UI には stale 利用中であることを示してよい。
+11. `aircraft/project.py` は各 `AircraftSnapshot` の `velocity`、`heading`、`vertical_rate`、`last_contact` を使って短時間前進予測し、`2秒前 -> 現在 -> 2秒後` の折れ線端点を含む `AircraftOverlayPoint` を作る。
+12. `aircraft/project.py` は age に応じた alpha scale も計算し、`90秒` を超えた機体が次回取得まで徐々に薄くなるようにする。
+13. `window.py` は API 取得とは別に `AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS` の UI タイマーを持ち、既定では `2秒` ごとに保持済み snapshot から折れ線データだけを再投影してよい。
+14. `window.py` は fetch timer を single-shot で扱い、レイヤー再表示時には `AircraftState.last_success_utc` から cache age を計算して次回 API 呼び出し時刻を再調整してよい。
+15. 保持済み snapshot が新しければ、GUI で航空機レイヤーを再表示しても API を再問い合わせせず、再投影だけで即時復帰してよい。
+16. 保持済み snapshot が更新間隔を超えて古いときだけ、レイヤー再表示時に即時再取得してよい。
+17. 描画時は観測地点から `50km` を超える機体を落とし、`10km` 以内かつ `90秒` 以内の機体だけに `callsign` を付けてよい。
+18. 新しい取得または fresh/stale cache 復元が成功したときだけ `AircraftState.snapshots` と `AircraftState.overlay_points` をまとめて置き換える。
+19. 取得失敗かつ有効な stale cache も無い場合は、直前成功スナップショットを保持したまま、`AircraftState` の失敗表示だけを更新する。
+20. 古い非同期結果で UI を巻き戻さないため、`AircraftController` も request id ベースの latest-request-wins を使ってよい。
+21. `SkyWindow` は `aircraft_ready` または予想再投影完了を受けたら `SkyWindowState` を更新し、再描画する。
+22. `viewport_interaction_mode` 中は航空機オーバーレイ描画を抑止してよい。モード終了後に保持済み `overlay_points` で通常描画へ戻る。
 
 ## 7. スレッドモデル
 
@@ -688,6 +697,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - 地形地平線は同一セッション中の自動再試行を抑制する。
 - 航空機は `5分` タイマーごとに再取得の機会がある。
 - 航空機の予想再投影はセッション内 `2秒` タイマーで繰り返してよい。
+- 航空機は OpenSky 再取得に失敗しても、同じ `bbox` の stale cache が fallback 上限以内ならそれを使って継続してよい。
 
 ## 10. データとキャッシュ
 
@@ -715,7 +725,10 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - 遠距離スカイスクレーパー補助レイヤー用 derived tile は `overture_skyscrapers/<tile-cache-key>/bldg` 配下に tile 単位で永続キャッシュする。
 - 地形地平線の計算済みポリラインは永続化しない。
 - 雲は取得ソースと中間成果物をキャッシュし、視点変更時の再利用を優先する。
-- 初期実装の航空機スナップショットはセッション内メモリだけに保持し、永続キャッシュしない。
+- 航空機スナップショットは `bbox` 単位の少数 JSON file として短寿命永続キャッシュしてよい。
+- 航空機 cache file には少なくとも `bbox`、`fetched_at_utc`、`source`、`snapshots` を保持する。
+- cache key は観測地点そのものではなく、実問い合わせに使う OpenSky `bbox` から導出する。
+- clean up は GOES/Himawari のような時刻ディレクトリ走査ではなく、航空機 cache root 配下の古い file を `fetched_at_utc` 基準で削除する簡易方式でよい。
 
 ## 11. テスト観点と設計上の分離
 
