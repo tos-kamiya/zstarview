@@ -119,11 +119,6 @@
 
 ### 2026-03-14
 
-### 2026-03-22
-
-- バージョン更新
-  - 衛星オーバーレイ調整と README 更新に合わせて、バージョンを `1.6.0` から `1.6.1` へ更新した。
-
 - 都市アウトラインの Overture パイプライン化
   - 都市アウトラインの既定 runtime ソースを bundled PLATEAU derived data から `CACHE_PATH/overture_buildings` へ切り替えた。
   - `UrbanOutlineController` と `UrbanOutlineState` を追加し、起動時またはトグル再有効化時に Overture の取得またはキャッシュ読込をバックグラウンドで開始するようにした。
@@ -333,3 +328,23 @@
   - GUI 側に `SatelliteController` と `SatelliteState` を追加し、軌道要素 fetch は `24時間`、位置再計算は `5秒` の timer で分離した。
   - GUI メニューに `Satellites` トグルを追加し、静止時のみ有効化する既存航空機トグルに近い挙動へそろえた。
   - テストでは、group 順序と marker 属性を含む射影結果、render order、export-image 経路、および周辺 GUI 同期への影響を確認した。
+
+### 2026-03-22
+
+- 時刻シフト時の補助レイヤー方針を整理
+  - 仕様として、雲と航空機は現在時刻近傍のみ、人工衛星は現在と過去のみ、未来時刻では 3 つとも非表示とする方針を文書化した。
+  - 地形地平線と都市アウトラインは地点依存レイヤーとして扱い、時刻シフトだけでは無効化しない整理にした。
+  - `specification.md` と `design.md` に、過去・現在・未来でのレイヤー可否を明記した。
+
+- 人工衛星キャッシュ方針の見直し
+  - 人工衛星の current cache の fresh 判定を `24時間` から `6時間` へ見直す方針を文書化した。
+  - 過去表示向けに `archive` 層を持ち、`3日` 保持、対象時刻との差 `6時間` 以内だけ採用する設計へ更新した。
+  - current と past の有効判定を同じ `6時間` にそろえ、説明と実装を単純化する方針にした。
+  - current cache 更新時は古い snapshot を archive へ移し、archive 名と探索キーには `element_epoch_utc`、保持期間の cleanup には `fetched_at_utc` を使う整理にした。
+
+- 時刻モード別レイヤー可否と人工衛星 archive 実装
+  - `overlay_time.py` を追加し、`past / present / future` 判定と雲・航空機・人工衛星の可否判定を GUI / export-image で共有するようにした。
+  - GUI では過去表示で人工衛星を許可しつつ、雲と航空機を無効化するようにした。未来表示では 3 つとも無効化する。
+  - `satellites/cache.py` を `current + archive` 方式へ更新し、current refresh 時に古い snapshot を archive へ移し、archive cleanup を `3日` 保持へ変更した。
+  - 人工衛星 cache は `element_epoch_utc` と `fetched_at_utc` を分け、利用判定は前者、retention/cleanup は後者を使うようにした。
+  - `zstarview-export-image` も同じ時刻モード判定を使うようにし、過去表示では人工衛星のみ、未来表示では 3 補助レイヤーすべてを skip するようにした。

@@ -13,18 +13,18 @@ class SatelliteState:
     overlay_points: Optional[list[SatelliteOverlayPoint]] = None
     banner_text: Optional[str] = None
     failed_this_session: bool = False
-    last_success_utc: Optional[datetime] = None
+    element_epoch_utc: Optional[datetime] = None
 
     def set_result(
         self,
         records_by_group: dict[str, list[SatelliteOmmRecord]],
         *,
         overlay_points: list[SatelliteOverlayPoint] | None = None,
-        refreshed_at_utc: datetime | None = None,
+        element_epoch_utc: datetime | None = None,
     ) -> None:
         self.records_by_group = dict(records_by_group)
         self.overlay_points = overlay_points
-        self.last_success_utc = refreshed_at_utc
+        self.element_epoch_utc = element_epoch_utc
         self.failed_this_session = False
         self.banner_text = None
 

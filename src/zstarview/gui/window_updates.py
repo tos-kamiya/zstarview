@@ -102,9 +102,9 @@ class SkyWindowUpdatesMixin:
             return ""
         if satellite_state.banner_text:
             return satellite_state.banner_text
-        if satellite_state.last_success_utc is None:
+        if satellite_state.element_epoch_utc is None:
             return ""
-        return f"Satellites: {satellite_state.last_success_utc.strftime('%H:%MZ')}"
+        return f"Satellites: {satellite_state.element_epoch_utc.strftime('%H:%MZ')}"
 
     def _on_sky_data_calculated(self, payload: Dict) -> None:
         current_generation = int(getattr(self, "_disc_generation", 0))
@@ -244,6 +244,13 @@ class SkyWindowUpdatesMixin:
     def refresh_projected_satellite_overlay(self) -> None:
         if float(getattr(self, "satellite_opacity", 0.0)) <= 0.0:
             return
+        validity_remaining_ms = getattr(self, "_satellite_validity_remaining_ms", lambda: None)()
+        if validity_remaining_ms is not None and validity_remaining_ms <= 0:
+            self.state.satellite_overlay_points = None
+            self.satellite_state.overlay_points = None
+            self.update()
+            self.start_background_satellite_update(reason="time-window-shift")
+            return
         records_by_group = getattr(self.satellite_state, "records_by_group", None) or {}
         if not records_by_group:
             self.state.satellite_overlay_points = None
@@ -276,14 +283,14 @@ class SkyWindowUpdatesMixin:
             self.update()
 
     def _on_satellite_ready(self, payload: Dict) -> None:
-        refreshed_at = payload.get("refreshed_at_utc")
-        if not isinstance(refreshed_at, datetime):
-            refreshed_at = datetime.now(timezone.utc)
+        element_epoch = payload.get("element_epoch_utc")
+        if not isinstance(element_epoch, datetime):
+            element_epoch = datetime.now(timezone.utc)
         banner = str(payload.get("banner", "")).strip()
         self.satellite_state.set_result(
             payload.get("records_by_group", {}),
             overlay_points=payload.get("overlay_points"),
-            refreshed_at_utc=refreshed_at,
+            element_epoch_utc=element_epoch,
         )
         if banner:
             self.satellite_state.set_banner(banner)

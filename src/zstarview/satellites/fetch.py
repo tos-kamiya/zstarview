@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import json
 from collections.abc import Iterable
 from urllib.parse import urlencode
@@ -62,6 +63,26 @@ def normalize_celestrak_omm_payload(payload: object) -> list[SatelliteOmmRecord]
         if isinstance(row, dict):
             records.append(dict(row))
     return records
+
+
+def extract_element_epoch_utc(records: Iterable[SatelliteOmmRecord]) -> datetime | None:
+    epochs: list[datetime] = []
+    for record in records:
+        raw = str(record.get("EPOCH", "")).strip()
+        if not raw:
+            continue
+        try:
+            parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        else:
+            parsed = parsed.astimezone(timezone.utc)
+        epochs.append(parsed)
+    if not epochs:
+        return None
+    return max(epochs)
 
 
 def filter_records_for_group(
