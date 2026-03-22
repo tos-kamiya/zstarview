@@ -5,7 +5,7 @@
 **Zenith Star View** は、選んだ場所と時刻の空を表示するデスクトップ向けのスカイビューアです。
 
 指定した場所と時刻の天球に、恒星、太陽、月、惑星、DSO、アステリズムを表示します。
-必要に応じて、地形地平線、都市アウトライン、近傍の航空機も重ねて表示できます。
+必要に応じて、地形地平線、都市アウトライン、近傍の航空機、人工衛星も重ねて表示できます。
 観測地点は都市名やビューポイント名、緯度経度、オンライン地名検索、Google Maps の URL などで指定できます。
 
 **特徴:**
@@ -15,6 +15,7 @@
 - **アステリズム表示**: （IAU の正式な星座境界ではなく通称のパターンとしての）星座（アステリズム）を暗い線で常時表示します。アステリズムに含まれる恒星にマウスホバーすると、そのアステリズムを明るく強調してラベルを表示します。同一の恒星にが複数のアステリズムに含まれる場合は 3 秒ごとに切り替えます。
 - **衛星雲画像**: リアルタイムに Himawari/GOES 衛星のデータをダウンロードし、縞模様（ハッチ）の重ね描きとして表示します。衛星データが部分的な場合は欠損領域を薄い黄色で示します。[部分カバー時の黄色い欠損表示の例](docs/images/screenshot5.png) も参照してください。
 - **航空機オーバーレイ**: OpenSky の近傍航空機を、予想移動方向付きの紫系ポリラインとして表示できます。
+- **人工衛星オーバーレイ**: ISS と Starlink を、惑星レイヤーと航空機レイヤーの間に小さな紫色のクロスマーカーとして表示できます。
 - **都市アウトライン表示**: 現在の観測地点に対して、主要な建物屋根線を白い都市アウトラインとして表示します。高層建築が多い一部の都市では、半径 10km 以内の遠距離スカイスクレーパーも追加で表示されます。
 - **地形地平線と地面塗り**: Copernicus DEM データをダウンロードして、地形地平線オーバーレイを表示します。観測者の地点に沿った、薄い黄土色がかった地形線を表示します。地形地平線（地形地平線を表示しない場合には水平線）より下は、向きの把握を助けるため地面色で塗り分けます。
 - **ガイド表示**: 昇らない領域の赤い表示、地平線まわりの方位ラベル、天頂マーカーなどのガイドを重ねて表示します。
@@ -151,6 +152,7 @@ zstarview-export-image Matsue -o matsue.png
 | `-b`, `--urban-outline-min-building-height-m METERS` | この高さ未満の建物を都市アウトライン取得時に除外します。この値はキャッシュキーにも含まれます。 | `0.0` |
 | `--urban-outline-feature-type {both,building}` | 都市アウトライン用の Overture キャッシュモードを指定します。`both` は `building` と `building_part` を組み合わせ、part がある場合はそちらを優先します。 | `both` |
 | `-a`, `--aircraft-opacity OPACITY` | 航空機オーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、その起動中の航空機問い合わせと描画を無効化します。 | `0.5` |
+| `--satellite-opacity OPACITY` | 人工衛星オーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、その起動中の軌道要素取得と描画を無効化します。 | `0.5` |
 | `-m`, `--enlarge-moon` | 月を 5 倍に拡大して表示します。 | |
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | 2 等星の基本サイズを指定します。 | `4.0` |
 | `-w`, `--expected-render-width EXPECTED_RENDER_WIDTH` | 恒星をフル解像度で描画する想定ウィンドウ幅を指定します。天球幅がこの値を超える場合、恒星レイヤーは平方根スケーリングで描画します。 | `600` |
@@ -393,6 +395,7 @@ GUI では、キーボード操作とメニュー操作で視点移動、検索�
 * **S**: 空ディスク表示をグラデーションとフラットディスクで切り替え
 * **C**: 雲の重ね表示の表示/非表示を切り替え
 * **I**: 航空機オーバーレイの表示/非表示を切り替え
+* **L**: 人工衛星オーバーレイの表示/非表示を切り替え
 * **T**: 地形地平線の重ね表示の表示/非表示を切り替え
 * **U**: 都市アウトラインの重ね表示の表示/非表示を切り替え
 * **Ctrl+J**: Jump to Named Star を開く
@@ -413,6 +416,7 @@ GUI では、キーボード操作とメニュー操作で視点移動、検索�
 * **Sky Color Disc**: 空ディスク表示を、空色グラデーション表示とフラットな暗色ディスク表示で切り替えます。
 * **Clouds**: リアルタイム雲の重ね表示の表示/非表示を切り替えます。
 * **Aircraft**: OpenSky ベースの航空機オーバーレイの表示/非表示を切り替えます。CLI で `-a 0` / `--aircraft-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
+* **Satellites**: CelesTrak ベースの人工衛星オーバーレイの表示/非表示を切り替えます。CLI で `--satellite-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
 * **Terrain Horizon**: 地形地平線の重ね表示の表示/非表示を切り替えます。CLI で `--terrain-horizon-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
 * **Urban Outline**: 都市アウトラインの重ね表示の表示/非表示を切り替えます。CLI で `--urban-outline-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
 * **Fullscreen**: フルスクリーン表示を切り替えます。
@@ -516,7 +520,13 @@ Available platform plugins are: eglfs, offscreen, wayland-egl, linuxfb, wayland,
    回線が細い、またはオフラインの場合は `--terrain-horizon-opacity 0` で地形地平線表示を無効化してください。
    地形地平線を無効化しても、恒星・惑星・空の色の表示は利用できます。
 
-4. 航空機データ
+4. 人工衛星データ
+
+   人工衛星オーバーレイは実行時に CelesTrak から軌道要素データを取得し、最大 24 時間はローカルキャッシュを再利用します。
+   回線が細い、またはオフラインの場合は `--satellite-opacity 0` で人工衛星レイヤーを無効化してください。
+   新しいキャッシュがすでにあれば、ネットワークがなくても人工衛星オーバーレイを表示し続けられます。
+
+5. 航空機データ
 
    航空機オーバーレイは実行時に OpenSky Network の state data を取得します。
    既定では 5 分ごとに再取得します。この間隔は、無料枠での利用や一時的な取得失敗・再試行に対して余裕を持たせるため、過度に短くせず保守的に設定しています。
@@ -559,8 +569,6 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 
 ただし、**同梱されているデータ** はそれぞれのライセンスに従って再配布されます。
 
-`--place` オプションは実行時に公開の [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) 検索サービスを利用します。Nominatim 自体は本プロジェクトに同梱されませんが、この機能を使う際にはサービス利用条件と利用ポリシーが適用されます。
-
 以下のパスは `src/zstarview/data/` 配下を基準としています。
 
 | ファイル | 内容 | 出典 | ライセンス |
@@ -568,7 +576,9 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 | `cities1000.txt`, `admin1CodesASCII.txt` | 人口 1000 人以上の都市一覧 | [GeoNames](https://download.geonames.org/export/dump/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | `viewpoints/tower_viewpoints.json` | タワー名起動用に同梱している展望塔/タワーデータ（Wikidata 由来の整形データ） | [Wikidata](https://www.wikidata.org/) をローカル整形したもの（手順は `dev-samples/` に記録） | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)（Wikidata データ） |
 | `viewpoints/mountain_viewpoints.json` | 山名起動用に同梱している山頂ビューポイントデータ（Wikipedia で収集した候補を Wikidata メタデータで正規化したデータ） | [Wikipedia](https://www.wikipedia.org/) での候補収集と [Wikidata](https://www.wikidata.org/) による正規化手順（`dev-samples/` に記録） | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)（Wikidata データ） |
+| 実行時に OpenStreetMap Nominatim へ送る `--place` ジオコーディング要求 | `--place` 指定時だけ使うオンライン地名検索 | [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) | [Nominatim Usage Policy](https://operations.osmfoundation.org/policies/nominatim/) |
 | アプリのキャッシュディレクトリ配下にオンデマンドで保存される都市アウトラインキャッシュ | ダウンロードした Overture 建物データから生成した派生建物タイルと `tile_index.json` | `overturemaps` CLI を通じて実行時に取得する [Overture Maps Buildings](https://docs.overturemaps.org/guides/buildings/) | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) |
+| 実行時に CelesTrak から取得する人工衛星オーバーレイ用データ | ISS / Starlink 表示に使う軌道要素データ | [CelesTrak](https://celestrak.org/) | 出典サイト上で明示ライセンス表記を確認できなかったため、[celestrak.org](https://celestrak.org/) を参照 |
 | `dso.csv` | DSO（銀河/散開星団/球状星団）カタログ（OpenNGC 由来の生成データ） | [OpenNGC](https://github.com/mattiaverga/OpenNGC)（[PyOngc](https://github.com/mattiaverga/PyOngc) 経由で生成） | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)（OpenNGC データベース） |
 | アプリのキャッシュディレクトリ配下にオンデマンドで保存される地形 DEM キャッシュ | 地形地平線用の地形データ（Copernicus DEM GLO-90） | [Copernicus DEM / Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM)（アプリは公開 AWS 配布を利用） | Copernicus Data Space Ecosystem の案内する Copernicus DEM GLO-90 の利用条件（"Licence for COP-DEM-GLO-90-F Global 90m Full, Free & Open" / "Licence for the use of the Copernicus WorldDEM™-90"） |
 | `stars/IAU-Catalog of Star Names (always up to date).csv` | IAU 恒星名作業部会 (WGSN) による恒星固有名カタログ | [exopla.net](https://exopla.net/star-names/modern-iau-star-names/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
@@ -583,6 +593,7 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 * 都市アウトライン用の元データは **Overture Maps Buildings** から必要時に取得し、実行時利用向けに派生タイルへ変換したものです。
 * 恒星の固有名は IAU 恒星名作業部会 (WGSN) による承認済みリスト（[exopla.net](https://exopla.net/star-names/modern-iau-star-names/) 経由）を使用しています。
 * 雲データは気象衛星 **Himawari**（提供: JMA）および **NOAA GOES** シリーズ（提供: NOAA/NESDIS）による赤外線観測データを、それぞれの公開 S3 バケットから取得して利用しています。
+* 人工衛星オーバーレイで使う軌道要素データ（TLE/OMM）は **CelesTrak**（[celestrak.org](https://celestrak.org/)）によって提供されています。サービスに価値を感じたら、DONATE ページからの支援も検討してください。
 * `--place` による地名・駅名検索は公開の OpenStreetMap Nominatim サービスを使っており、[Nominatim Usage Policy](https://operations.osmfoundation.org/policies/nominatim/) の対象です。
 * 地形地平線データは **Copernicus DEM GLO-90** に基づいており、欧州委員会のために ESA が管理するデータを、アプリでは公開 AWS 配布とローカルキャッシュを通じて利用しています。
 * 大規模建物データを公開している Overture Maps とそのソースデータ提供者に感謝します。
