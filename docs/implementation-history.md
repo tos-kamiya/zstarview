@@ -119,6 +119,11 @@
 
 ### 2026-03-14
 
+### 2026-03-22
+
+- バージョン更新
+  - 衛星オーバーレイ調整と README 更新に合わせて、バージョンを `1.6.0` から `1.6.1` へ更新した。
+
 - 都市アウトラインの Overture パイプライン化
   - 都市アウトラインの既定 runtime ソースを bundled PLATEAU derived data から `CACHE_PATH/overture_buildings` へ切り替えた。
   - `UrbanOutlineController` と `UrbanOutlineState` を追加し、起動時またはトグル再有効化時に Overture の取得またはキャッシュ読込をバックグラウンドで開始するようにした。
