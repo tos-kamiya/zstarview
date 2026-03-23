@@ -9,6 +9,7 @@ from urllib.request import Request, urlopen
 from skyfield.api import EarthSatellite
 import skyfield.api
 
+from ..satellite_constants import SATELLITE_FETCH_TIMEOUT_SECONDS
 from .types import SatelliteOmmRecord
 
 CELESTRAK_GP_JSON_URL = "https://celestrak.org/NORAD/elements/gp.php"
@@ -32,7 +33,7 @@ def build_celestrak_group_url(
 def fetch_celestrak_group_omm(
     group_name: str,
     *,
-    timeout_s: float = 20.0,
+    timeout_s: float = SATELLITE_FETCH_TIMEOUT_SECONDS,
     base_url: str = CELESTRAK_GP_JSON_URL,
 ) -> list[SatelliteOmmRecord]:
     request = Request(
@@ -47,7 +48,7 @@ def fetch_celestrak_group_omm(
 def fetch_celestrak_group_by_key(
     group_key: str,
     *,
-    timeout_s: float = 20.0,
+    timeout_s: float = SATELLITE_FETCH_TIMEOUT_SECONDS,
     base_url: str = CELESTRAK_GP_JSON_URL,
 ) -> list[SatelliteOmmRecord]:
     group_name = CELESTRAK_GROUP_BY_KEY[group_key]

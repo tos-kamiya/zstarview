@@ -12,6 +12,7 @@ from zstarview.satellites.cache import (
     satellite_group_cache_path,
     save_satellite_cache,
 )
+from zstarview.satellite_constants import SATELLITE_GROUP_VALIDITY_SECONDS
 
 
 def _sample_record(epoch: str = "2026-03-22T12:00:00.000000") -> dict[str, object]:
@@ -125,6 +126,59 @@ def test_fetch_cached_satellite_elements_refreshes_current_cache(tmp_path) -> No
     assert cached.records[0]["OBJECT_NAME"] == "ISS NEW"
     assert cached.element_epoch_utc == datetime(2026, 3, 22, 18, 0, tzinfo=timezone.utc)
     assert cached.fetched_at_utc == now_utc
+
+
+def test_fetch_cached_satellite_elements_uses_group_specific_ttl(tmp_path) -> None:
+    element_epoch = datetime(2026, 3, 22, 12, 0, tzinfo=timezone.utc)
+    fetched_at = datetime(2026, 3, 22, 12, 5, tzinfo=timezone.utc)
+    save_satellite_cache(
+        "station",
+        [_sample_record()],
+        element_epoch_utc=element_epoch,
+        fetched_at_utc=fetched_at,
+        cache_root=tmp_path,
+    )
+    save_satellite_cache(
+        "starlink",
+        [_sample_record()],
+        element_epoch_utc=element_epoch,
+        fetched_at_utc=fetched_at,
+        cache_root=tmp_path,
+    )
+
+    station_called = False
+    starlink_called = False
+
+    def fail_station(*args, **kwargs):
+        nonlocal station_called
+        station_called = True
+        raise AssertionError("station fetch should not run")
+
+    def refresh_starlink(*args, **kwargs):
+        nonlocal starlink_called
+        starlink_called = True
+        return [_sample_record(epoch="2026-03-22T16:00:00.000000")]
+
+    now_utc = element_epoch + timedelta(hours=4)
+    station_result = fetch_cached_satellite_elements(
+        "station",
+        fetcher=fail_station,
+        cache_root=tmp_path,
+        now_utc=now_utc,
+    )
+    starlink_result = fetch_cached_satellite_elements(
+        "starlink",
+        fetcher=refresh_starlink,
+        cache_root=tmp_path,
+        now_utc=now_utc,
+    )
+
+    assert SATELLITE_GROUP_VALIDITY_SECONDS["station"] == 24 * 60 * 60
+    assert SATELLITE_GROUP_VALIDITY_SECONDS["starlink"] == 3 * 60 * 60
+    assert station_called is False
+    assert starlink_called is True
+    assert station_result.source == "cache-fresh"
+    assert starlink_result.source == "celestrak"
 
 
 def test_resolve_satellite_elements_for_non_present_rejects_time_shifted_views(tmp_path) -> None:

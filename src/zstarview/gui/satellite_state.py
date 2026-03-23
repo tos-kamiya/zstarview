@@ -14,6 +14,7 @@ class SatelliteState:
     banner_text: Optional[str] = None
     failed_this_session: bool = False
     element_epoch_utc: Optional[datetime] = None
+    refreshed_at_utc: Optional[datetime] = None
 
     def set_result(
         self,
@@ -21,10 +22,12 @@ class SatelliteState:
         *,
         overlay_points: list[SatelliteOverlayPoint] | None = None,
         element_epoch_utc: datetime | None = None,
+        refreshed_at_utc: datetime | None = None,
     ) -> None:
         self.records_by_group = dict(records_by_group)
         self.overlay_points = overlay_points
         self.element_epoch_utc = element_epoch_utc
+        self.refreshed_at_utc = refreshed_at_utc
         self.failed_this_session = False
         self.banner_text = None
 

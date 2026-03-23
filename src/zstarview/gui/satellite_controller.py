@@ -4,6 +4,7 @@ import logging
 import threading
 from datetime import datetime, timezone
 from typing import Callable, Optional
+from urllib.error import URLError
 
 import astropy.time
 from PySide6.QtCore import QObject, Signal
@@ -27,6 +28,14 @@ EXPECTED_FETCH_FAILURE_MESSAGES = {
 
 def _is_expected_fetch_failure(exc: Exception) -> bool:
     return str(exc) in EXPECTED_FETCH_FAILURE_MESSAGES
+
+
+def _is_timeout_url_error(exc: Exception) -> bool:
+    if isinstance(exc, URLError):
+        reason = getattr(exc, "reason", None)
+        if isinstance(reason, TimeoutError):
+            return True
+    return "timed out" in str(exc).lower()
 
 
 class SatelliteController(QObject):
@@ -118,6 +127,11 @@ class SatelliteController(QObject):
                 except Exception as exc:
                     if _is_expected_fetch_failure(exc):
                         logger.info("Satellite element fetch unavailable for %s: %s", group_key, exc)
+                    elif _is_timeout_url_error(exc):
+                        logger.warning("Satellite element fetch timed out for %s: %s", group_key, exc)
+                        failed_groups.append(group_key)
+                        failure_messages.append(str(exc))
+                        break
                     else:
                         logger.warning("Satellite element fetch failed for %s", group_key, exc_info=True)
                     failed_groups.append(group_key)
@@ -154,11 +168,15 @@ class SatelliteController(QObject):
                         "records_by_group": records_by_group,
                         "overlay_points": overlay_points,
                         "element_epoch_utc": element_epoch_utc or target_time_utc,
+                        "refreshed_at_utc": datetime.now(timezone.utc),
                         "banner": banner,
                     }
                 )
         except Exception as exc:
-            logger.warning("Satellite update failed: %s", exc, exc_info=True)
+            if _is_timeout_url_error(exc):
+                logger.warning("Satellite update failed: %s", exc)
+            else:
+                logger.warning("Satellite update failed: %s", exc, exc_info=True)
             with self._lock:
                 should_emit = not self._stopping and request_id == self._latest_request_id
             if should_emit:

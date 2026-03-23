@@ -860,7 +860,7 @@ def draw_satellite_overlay(
     for point in satellite_points:
         alt = float(point.alt_deg)
         az = float(point.az_deg)
-        if alt <= 0.0 or not is_in_fov(alt, az, view_center, fov_deg=content_fov_deg):
+        if not is_in_fov(alt, az, view_center, fov_deg=content_fov_deg):
             continue
         nx, ny = altaz_to_normalized_xy(alt, az, view_center)
         px, py = normalized_to_screen_xy(nx, ny, geometry)

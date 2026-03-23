@@ -237,7 +237,7 @@ class SkyWindowUpdatesMixin:
             observer_lon=lon,
             observer_height_m=self.viewer_data.observer_height_m,
             time_obj=self._current_time_obj(),
-            enabled_groups=tuple(getattr(self, "_enabled_satellite_groups", ("station", "starlink"))),
+            enabled_groups=tuple(getattr(self, "_enabled_satellite_groups", ("station",))),
             reason=reason,
         )
 
@@ -252,6 +252,12 @@ class SkyWindowUpdatesMixin:
             self.start_background_satellite_update(reason="time-window-shift")
             return
         records_by_group = getattr(self.satellite_state, "records_by_group", None) or {}
+        if not records_by_group:
+            load_cached_records = getattr(self, "_load_cached_satellite_records", None)
+            if callable(load_cached_records):
+                records_by_group = load_cached_records(
+                    tuple(getattr(self, "_enabled_satellite_groups", ("station",)))
+                )
         if not records_by_group:
             self.state.satellite_overlay_points = None
             self.update()
@@ -291,6 +297,7 @@ class SkyWindowUpdatesMixin:
             payload.get("records_by_group", {}),
             overlay_points=payload.get("overlay_points"),
             element_epoch_utc=element_epoch,
+            refreshed_at_utc=payload.get("refreshed_at_utc"),
         )
         if banner:
             self.satellite_state.set_banner(banner)
@@ -305,9 +312,9 @@ class SkyWindowUpdatesMixin:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.satellite_state.set_error_banner(banner)
-        schedule_next = getattr(self, "_schedule_next_satellite_refresh", None)
-        if callable(schedule_next) and float(getattr(self, "satellite_opacity", 0.0)) > 0.0:
-            schedule_next()
+        schedule_retry = getattr(self, "_schedule_satellite_retry_after_failure", None)
+        if callable(schedule_retry) and float(getattr(self, "satellite_opacity", 0.0)) > 0.0:
+            schedule_retry()
         self.update()
 
     def _on_cloud_ready(self, payload: Dict) -> None:

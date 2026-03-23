@@ -358,3 +358,8 @@
   - 人工衛星レイヤーは realtime view 専用とし、`--hours`、`--days`、`--datetime` による time-shifted view では取得も表示も行わない方針へ変更した。
   - 人工衛星 cache は current 1 層へ戻し、archive snapshot の保存・探索・cleanup を撤去した。
   - これに合わせて README、仕様書、設計書、衛星 cache/controller テストを更新した。
+
+- 人工衛星取得失敗時の backoff 見直し
+  - CelesTrak 取得 timeout の既定値を `20秒` から `60秒` へ延長した。
+  - GUI では人工衛星取得が失敗した場合、即時再試行ではなく `2時間` 後に再試行するように変更した。
+  - これにより、短時間に連続 timeout が起きた場合でも CelesTrak への再試行頻度を抑える方針にした。

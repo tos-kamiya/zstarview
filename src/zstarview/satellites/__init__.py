@@ -15,7 +15,7 @@ from .fetch import (
     fetch_celestrak_group_omm,
     normalize_celestrak_omm_payload,
 )
-from .project import project_satellite_records
+from .project import find_satellite_altaz, project_satellite_records
 from .types import CachedSatelliteElementSet, SatelliteOmmRecord, SatelliteOverlayPoint
 
 __all__ = [
@@ -30,6 +30,7 @@ __all__ = [
     "fetch_cached_satellite_elements",
     "fetch_celestrak_group_by_key",
     "fetch_celestrak_group_omm",
+    "find_satellite_altaz",
     "load_satellite_cache",
     "normalize_celestrak_omm_payload",
     "project_satellite_records",

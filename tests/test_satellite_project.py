@@ -134,3 +134,44 @@ def test_project_satellite_records_keeps_starlink_smaller_and_unlabeled(monkeypa
     assert points[1].show_label is False
     assert points[1].marker_scale == 0.156
     assert points[1].marker_scale < points[0].marker_scale
+
+
+def test_find_satellite_altaz_returns_below_horizon_match(monkeypatch) -> None:
+    monkeypatch.setattr(
+        project_module,
+        "build_earth_satellites",
+        lambda records, *, ts=None: [_FakeSatellite("ISS (ZARYA)", -12.0, 210.0)],
+    )
+
+    altaz = project_module.find_satellite_altaz(
+        {"station": [{"OBJECT_NAME": "ISS (ZARYA)"}]},
+        object_key="ISS",
+        observer_lat=35.47,
+        observer_lon=133.05,
+        observer_height_m=0.0,
+        time_obj=astropy.time.Time("2026-03-22T12:00:00Z"),
+    )
+
+    assert altaz == (-12.0, 210.0)
+
+
+def test_find_satellite_altaz_prefers_exact_alias_over_substring(monkeypatch) -> None:
+    monkeypatch.setattr(
+        project_module,
+        "build_earth_satellites",
+        lambda records, *, ts=None: [
+            _FakeSatellite("CSS (TIANHE)", -36.0, 139.0),
+            _FakeSatellite("ISS (ZARYA)", -40.0, 151.0),
+        ],
+    )
+
+    altaz = project_module.find_satellite_altaz(
+        {"station": [{"OBJECT_NAME": "CSS (TIANHE)"}, {"OBJECT_NAME": "ISS (ZARYA)"}]},
+        object_key="ISS",
+        observer_lat=40.7128,
+        observer_lon=-74.0060,
+        observer_height_m=10.0,
+        time_obj=astropy.time.Time("2026-03-23T12:13:24Z"),
+    )
+
+    assert altaz == (-40.0, 151.0)
