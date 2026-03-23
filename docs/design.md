@@ -369,16 +369,16 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 ### 4.8 人工衛星データ取得とキャッシュ
 
 - `src/zstarview/satellite_constants.py`
-  - 人工衛星の軌道要素取得間隔、group 別 fresh TTL、表示位置更新間隔、fetch timeout、失敗 backoff の共有定数
+  - 人工衛星の軌道要素取得間隔、fresh TTL、表示位置更新間隔、fetch timeout、失敗 backoff の共有定数
 - `src/zstarview/satellites/fetch.py`
-  - CelesTrak GP JSON URL の組み立て
-  - `station` / `starlink` から CelesTrak group 名への解決
-  - OMM JSON 配列の正規化
-  - Skyfield `EarthSatellite.from_omm()` への変換
+  - `wheretheiss.at` ISS TLE endpoint の組み立て
+  - fallback 用 CelesTrak `stations` endpoint の組み立て
+  - ISS TLE payload と fallback OMM/JSON payload の正規化
+  - Skyfield へ渡す軌道要素表現への変換
 - `src/zstarview/satellites/cache.py`
-  - group 単位の人工衛星キャッシュ file path 管理
+  - ISS 用人工衛星キャッシュ file path 管理
   - 軌道要素 JSON の永続保存と読込
-  - group 別 fresh TTL 判定
+  - `ISS` 用 fresh TTL 判定
   - 失敗メタデータと `failure_backoff_until_utc` の永続化
   - stale cache の backoff 再利用
 - `src/zstarview/satellites/types.py`
@@ -389,9 +389,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `src/zstarview/satellites/project.py`
   - Skyfield `EarthSatellite` を観測地点基準の `alt/az` へ変換
   - 視野内判定前の人工衛星描画用軽量モデルを生成
-  - `station` group を他 group より少し大きく扱う marker scale を決定
+  - `ISS` marker の scale とラベル情報を決定
 - `src/zstarview/gui/satellite_state.py`
-  - group ごとの最新軌道要素
+  - `ISS` の最新軌道要素
   - 最新の描画用人工衛星マーカー列
   - 最終成功時刻
   - 読込中 / 取得中バナー
@@ -399,11 +399,11 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `src/zstarview/gui/satellite_controller.py`
   - 人工衛星軌道要素更新の実行制御
   - 明示更新要求、latest-request-wins の適用
-  - group 別 fresh TTL と失敗 backoff を前提にした fetch orchestration
+  - `wheretheiss.at` primary / CelesTrak fallback と失敗 backoff を前提にした fetch orchestration
   - 軌道要素取得結果の UI 反映
 - `src/zstarview/render/draw.py`
   - 人工衛星マーカーの描画
-  - 航空機と同系統の紫色、小型クロス、`station` group だけ少し大きい marker を担当
+  - 航空機と同系統の紫色、小型クロス、`ISS` の marker を担当
 - `src/zstarview/render/pipeline.py`
   - `satellites` レイヤーを `planets` の後、`aircraft` の前へ挿入
 
@@ -607,28 +607,30 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 ### 6.3 人工衛星更新フロー
 
 1. `SkyWindow` が起動時に `SatelliteController` を生成し、初回更新要求を出す。
-2. `SatelliteController` は有効な各 group について、まず `satellites/cache.py` に fresh cache があるかを確認してよい。
-3. fresh cache がある group は、その records をそのまま採用してよい。
-4. fresh cache が無い group だけ、`satellites/fetch.py` で CelesTrak GP JSON を取得してよい。
-5. 取得に成功した group は、raw OMM JSON records、`element_epoch_utc`、取得試行時刻、成功状態を `satellites/cache.py` で永続保存してよい。
-6. 取得に失敗した group は、失敗試行時刻、失敗理由、`failure_backoff_until_utc` を cache file に保存してよい。
-7. stale cache が残っていて `failure_backoff_until_utc` が未来の場合は、再起動後であっても network fetch を行わず `cache-backoff` として再利用してよい。
-8. `satellites/project.py` は group ごとの records を Skyfield `EarthSatellite.from_omm()` で satellite object へ変換し、観測地点と現在時刻から `alt/az` を計算する。
-9. `satellites/project.py` は視野内にある人工衛星を `SatelliteOverlayPoint` へ落とし込み、地平線下も保持してよい。
-10. `satellites/project.py` は `station` group に少し大きい `marker_scale` を与え、`ISS` / `CSS (Tianhe)` にラベルを付けてよい。
-11. `window.py` は API 取得とは別に人工衛星位置再計算を行い、既定では `station` を有効 group として扱ってよい。
-12. 人工衛星と航空機の位置再計算は、`2秒` 間隔の共通 overlay projection timer で駆動してよい。
-13. 人工衛星レイヤーを GUI で再表示したとき、records が fresh なら外部再取得を行わず marker 再計算だけで即時復帰してよい。
-14. records が stale でも失敗 backoff 中なら、cache fallback により marker 再計算だけで復帰してよい。
-15. `SkyWindow` は `satellite_ready` または位置再計算完了を受けたら `SkyWindowState` を更新し、再描画する。
-15. 通常描画では人工衛星を `planets` の後、`aircraft` の前に描く。
-16. 初期実装では人工衛星と月・惑星の接近時に特別な隠蔽処理は行わなくてよい。
+2. `SatelliteController` は、まず `satellites/cache.py` に `ISS` の fresh cache があるかを確認してよい。
+3. fresh cache がある場合、その records をそのまま採用してよい。
+4. fresh cache が無い場合、`satellites/fetch.py` は最初に `wheretheiss.at` の ISS TLE endpoint を取得してよい。
+5. `wheretheiss.at` 取得に成功した場合は、その TLE、`element_epoch_utc`、取得試行時刻、成功状態、source=`wheretheiss` を `satellites/cache.py` で永続保存してよい。
+6. `wheretheiss.at` 取得に失敗した場合だけ、fallback として CelesTrak `stations` endpoint を試し、その中から `ISS (ZARYA)` だけを抽出してよい。
+7. fallback 取得に成功した場合は、その records、`element_epoch_utc`、取得試行時刻、成功状態、source=`celestrak` を `satellites/cache.py` で永続保存してよい。
+8. primary / fallback のどちらも失敗した場合は、失敗試行時刻、失敗理由、`failure_backoff_until_utc` を cache file に保存してよい。
+9. stale cache が残っていて `failure_backoff_until_utc` が未来の場合は、再起動後であっても network fetch を行わず `cache-backoff` として再利用してよい。
+10. `satellites/project.py` は `ISS` の正規化済み軌道要素を Skyfield `EarthSatellite` へ変換し、観測地点と現在時刻から `alt/az` を計算する。
+11. `satellites/project.py` は視野内にある人工衛星を `SatelliteOverlayPoint` へ落とし込み、地平線下も保持してよい。
+12. `satellites/project.py` は `ISS` に `marker_scale` とラベルを与えてよい。
+13. `window.py` は API 取得とは別に人工衛星位置再計算を行い、既定では `ISS` を有効対象として扱ってよい。
+14. 人工衛星と航空機の位置再計算は、`2秒` 間隔の共通 overlay projection timer で駆動してよい。
+15. 人工衛星レイヤーを GUI で再表示したとき、records が fresh なら外部再取得を行わず marker 再計算だけで即時復帰してよい。
+16. records が stale でも失敗 backoff 中なら、cache fallback により marker 再計算だけで復帰してよい。
+17. `SkyWindow` は `satellite_ready` または位置再計算完了を受けたら `SkyWindowState` を更新し、再描画する。
+18. 通常描画では人工衛星を `planets` の後、`aircraft` の前に描く。
+19. 初期実装では人工衛星と月・惑星の接近時に特別な隠蔽処理は行わなくてよい。
 
 ### 6.4 時刻モードによる補助レイヤー可否判定
 
 1. 補助レイヤーの可否判定は、対象時刻を `now` と比較して `past`、`present`、`future` に分類してよい。
 2. `present` では、雲、航空機、人工衛星をすべて有効候補としてよい。
-3. `past` では、雲と航空機を無効化し、人工衛星だけを有効候補としてよい。
+3. `past` では、雲、航空機、人工衛星をすべて無効化してよい。
 4. `future` では、雲、航空機、人工衛星をすべて無効化してよい。
 5. 地形地平線と都市アウトラインは地点依存レイヤーであり、この時刻分類では無効化しない。
 6. 恒星、太陽、月、惑星、DSO、アステリズム、sky disc、ガイド線は `delta_t` または絶対日時から計算した対象時刻で通常どおり描画してよい。
@@ -756,14 +758,14 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 
 ### 8.4 人工衛星レイヤーの更新粒度
 
-- 人工衛星の current 用軌道要素 cache の fresh 判定は `element_epoch_utc` 基準とし、現在の実装では `station=24時間`、`starlink=3時間` を用いてよい。表示上の位置再計算は `2秒` 間隔で行ってよい。
-- 人工衛星描画は現在時刻または過去時刻の位置を描いてよく、未来時刻は描かない。
+- 人工衛星の current 用軌道要素 cache の fresh 判定は `element_epoch_utc` 基準とし、現在の実装では `ISS=24時間` を用いてよい。表示上の位置再計算は `2秒` 間隔で行ってよい。
+- 人工衛星描画は realtime view の現在時刻だけを描き、タイムシフト表示では描かない。
 - 初期実装では軌跡線を持たない。
-- `satellite_opacity <= 0.0` または各 group が無効の間は、人工衛星 fetch timer と位置再計算 timer を止めてよい。
-- 描画は視野内に限定し、地平線下も表示してよい。`station` group だけ少し大きい marker を使ってよい。
-- GUI 既定の有効 group は `station` としてよい。
+- `satellite_opacity <= 0.0` または `ISS` 表示が無効の間は、人工衛星 fetch timer と位置再計算 timer を止めてよい。
+- 描画は視野内に限定し、地平線下も表示してよい。`ISS` は少し大きい marker を使ってよい。
+- GUI 既定の有効対象は `ISS` としてよい。
 - 航空機と人工衛星の位置再計算は、共通 overlay projection timer で同期させてよい。
-- GUI から再表示したときは `last_success_utc` を見て fresh cache を優先し、不要な CelesTrak 再取得を避けてよい。
+- GUI から再表示したときは `last_success_utc` を見て fresh cache を優先し、不要な `wheretheiss.at` / CelesTrak 再取得を避けてよい。
 - stale cache は通常は再取得優先でよいが、失敗 backoff 中は表示継続に使ってよい。
 - タイムシフト表示では人工衛星レイヤー自体を無効化してよく、current cache の過去探索や archive snapshot は持たなくてよい。
 
@@ -829,7 +831,8 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - DEM タイル
 - Overture 建物データ
 - OpenSky 航空機 state vector
-- CelesTrak GP OMM JSON
+- `wheretheiss.at` ISS TLE
+- CelesTrak `stations` fallback OMM JSON
 
 ### 10.3 キャッシュ方針
 
@@ -844,9 +847,9 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - cache key は観測地点そのものではなく、実問い合わせに使う OpenSky `bbox` から導出する。
 - clean up は GOES/Himawari のような時刻ディレクトリ走査ではなく、航空機 cache root 配下の古い file を `fetched_at_utc` 基準で削除する簡易方式でよい。
 - 人工衛星の軌道要素 cache は current 1 層だけでよい。
-- `current` は group 単位の少数 JSON file とし、`station` や `starlink` などの論理 group から cache key を導出してよい。
-- 人工衛星の current cache file には少なくとも `group_key`、`element_epoch_utc`、`fetched_at_utc`、`source`、`records`、`last_fetch_attempt_utc`、`last_fetch_failed`、`last_fetch_error`、`last_fetch_failure_utc`、`failure_backoff_until_utc` を保持する。
-- 人工衛星の current cache の fresh 判定は `element_epoch_utc` 基準とし、現在の実装では `station=24時間`、`starlink=3時間` を使う。
+- `current` は `ISS` 用の少数 JSON file としてよく、cache key は `iss` 固定でよい。
+- 人工衛星の current cache file には少なくとも `element_epoch_utc`、`fetched_at_utc`、`source`、`records`、`last_fetch_attempt_utc`、`last_fetch_failed`、`last_fetch_error`、`last_fetch_failure_utc`、`failure_backoff_until_utc` を保持する。
+- 人工衛星の current cache の fresh 判定は `element_epoch_utc` 基準とし、現在の実装では `ISS=24時間` を使う。
 - fetch 失敗後の `2時間` backoff は cache file 側にも保存し、アプリ再起動後も継続してよい。
 
 ## 11. テスト観点と設計上の分離
