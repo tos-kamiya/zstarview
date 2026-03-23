@@ -15,7 +15,7 @@
 - **アステリズム表示**: （IAU の正式な星座境界ではなく通称のパターンとしての）星座（アステリズム）を暗い線で常時表示します。アステリズムに含まれる恒星にマウスホバーすると、そのアステリズムを明るく強調してラベルを表示します。同一の恒星にが複数のアステリズムに含まれる場合は 3 秒ごとに切り替えます。
 - **衛星雲画像**: リアルタイムに Himawari/GOES 衛星のデータをダウンロードし、縞模様（ハッチ）の重ね描きとして表示します。衛星データが部分的な場合は欠損領域を薄い黄色で示します。[部分カバー時の黄色い欠損表示の例](docs/images/screenshot5.png) も参照してください。
 - **航空機オーバーレイ**: OpenSky の近傍航空機を、予想移動方向付きの紫系ポリラインとして表示できます。
-- **人工衛星オーバーレイ**: ISS、CSS (Tianhe)、Starlink を、惑星レイヤーと航空機レイヤーの間に小さな紫色のクロスマーカーとして表示できます。
+- **人工衛星オーバーレイ**: ISS と CSS (Tianhe) を、惑星レイヤーと航空機レイヤーの間に小さな紫色のクロスマーカーとして表示できます。
 - **都市アウトライン表示**: 現在の観測地点に対して、主要な建物屋根線を白い都市アウトラインとして表示します。高層建築が多い一部の都市では、半径 10km 以内の遠距離スカイスクレーパーも追加で表示されます。
 - **地形地平線と地面塗り**: Copernicus DEM データをダウンロードして、地形地平線オーバーレイを表示します。観測者の地点に沿った、薄い黄土色がかった地形線を表示します。地形地平線（地形地平線を表示しない場合には水平線）より下は、向きの把握を助けるため地面色で塗り分けます。
 - **ガイド表示**: 昇らない領域の赤い表示、地平線まわりの方位ラベル、天頂マーカーなどのガイドを重ねて表示します。
@@ -579,7 +579,7 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 | `viewpoints/mountain_viewpoints.json` | 山名起動用に同梱している山頂ビューポイントデータ（Wikipedia で収集した候補を Wikidata メタデータで正規化したデータ） | [Wikipedia](https://www.wikipedia.org/) での候補収集と [Wikidata](https://www.wikidata.org/) による正規化手順（`dev-samples/` に記録） | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)（Wikidata データ） |
 | 実行時に OpenStreetMap Nominatim へ送る `--place` ジオコーディング要求 | `--place` 指定時だけ使うオンライン地名検索 | [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) | [Nominatim Usage Policy](https://operations.osmfoundation.org/policies/nominatim/) |
 | アプリのキャッシュディレクトリ配下にオンデマンドで保存される都市アウトラインキャッシュ | ダウンロードした Overture 建物データから生成した派生建物タイルと `tile_index.json` | `overturemaps` CLI を通じて実行時に取得する [Overture Maps Buildings](https://docs.overturemaps.org/guides/buildings/) | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) |
-| 実行時に CelesTrak から取得する人工衛星オーバーレイ用データ | ISS / CSS (Tianhe) / Starlink 表示に使う軌道要素データ | [CelesTrak](https://celestrak.org/) | 出典サイト上で明示ライセンス表記を確認できなかったため、[celestrak.org](https://celestrak.org/) を参照 |
+| 実行時に CelesTrak から取得する人工衛星オーバーレイ用データ | ISS / CSS (Tianhe) 表示に使う軌道要素データ | [CelesTrak](https://celestrak.org/) | 出典サイト上で明示ライセンス表記を確認できなかったため、[celestrak.org](https://celestrak.org/) を参照 |
 | `dso.csv` | DSO（銀河/散開星団/球状星団）カタログ（OpenNGC 由来の生成データ） | [OpenNGC](https://github.com/mattiaverga/OpenNGC)（[PyOngc](https://github.com/mattiaverga/PyOngc) 経由で生成） | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)（OpenNGC データベース） |
 | アプリのキャッシュディレクトリ配下にオンデマンドで保存される地形 DEM キャッシュ | 地形地平線用の地形データ（Copernicus DEM GLO-90） | [Copernicus DEM / Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM)（アプリは公開 AWS 配布を利用） | Copernicus Data Space Ecosystem の案内する Copernicus DEM GLO-90 の利用条件（"Licence for COP-DEM-GLO-90-F Global 90m Full, Free & Open" / "Licence for the use of the Copernicus WorldDEM™-90"） |
 | `stars/IAU-Catalog of Star Names (always up to date).csv` | IAU 恒星名作業部会 (WGSN) による恒星固有名カタログ | [exopla.net](https://exopla.net/star-names/modern-iau-star-names/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
