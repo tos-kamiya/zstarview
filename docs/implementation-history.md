@@ -354,6 +354,11 @@
 
 ### 2026-03-23
 
+- ISS API source policy update
+  - Artificial satellite support is being narrowed to `ISS` only, with `wheretheiss.at` planned as the primary TLE source and CelesTrak `stations` planned as a fallback source.
+  - This keeps the runtime dependency focused on a single visible target while preserving a secondary source when the primary API is unavailable.
+  - The specification and design docs were updated first so the implementation can follow a single-source-of-truth policy.
+
 - タイムシフト時の人工衛星レイヤー無効化
   - 人工衛星レイヤーは realtime view 専用とし、`--hours`、`--days`、`--datetime` による time-shifted view では取得も表示も行わない方針へ変更した。
   - 人工衛星 cache は current 1 層へ戻し、archive snapshot の保存・探索・cleanup を撤去した。
