@@ -27,9 +27,6 @@ from .types import CachedSatelliteElementSet, SatelliteOmmRecord
 logger = logging.getLogger(__name__)
 
 SatelliteFetcher = Callable[..., list[SatelliteOmmRecord]]
-_LEGACY_CACHE_KEYS = {
-    SATELLITE_ISS_CACHE_KEY: "station",
-}
 
 
 @dataclass(frozen=True)
@@ -49,29 +46,12 @@ def satellite_group_cache_path(
     return Path(cache_root) / f"{group_key}.json"
 
 
-def _existing_satellite_cache_path(
-    group_key: str,
-    *,
-    cache_root: str | Path = SATELLITE_CACHE_ROOT_DIR,
-) -> Path:
-    primary = satellite_group_cache_path(group_key, cache_root=cache_root)
-    if primary.is_file():
-        return primary
-    legacy_group_key = _LEGACY_CACHE_KEYS.get(group_key)
-    if legacy_group_key is None:
-        return primary
-    legacy = satellite_group_cache_path(legacy_group_key, cache_root=cache_root)
-    if legacy.is_file():
-        return legacy
-    return primary
-
-
 def load_satellite_cache(
     group_key: str,
     *,
     cache_root: str | Path = SATELLITE_CACHE_ROOT_DIR,
 ) -> CachedSatelliteElementSet | None:
-    path = _existing_satellite_cache_path(group_key, cache_root=cache_root)
+    path = satellite_group_cache_path(group_key, cache_root=cache_root)
     return _load_cached_set_from_path(path, group_key=group_key)
 
 
@@ -89,7 +69,7 @@ def save_satellite_cache(
     last_fetch_failure_utc: datetime | None = None,
     failure_backoff_until_utc: datetime | None = None,
 ) -> Path:
-    path = _existing_satellite_cache_path(group_key, cache_root=cache_root)
+    path = satellite_group_cache_path(group_key, cache_root=cache_root)
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "group_key": str(group_key),
@@ -115,7 +95,7 @@ def save_satellite_fetch_failure(
     cache_root: str | Path = SATELLITE_CACHE_ROOT_DIR,
     backoff_seconds: int = SATELLITE_FAILURE_RETRY_SECONDS,
 ) -> Path:
-    path = _existing_satellite_cache_path(group_key, cache_root=cache_root)
+    path = satellite_group_cache_path(group_key, cache_root=cache_root)
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = _load_cache_payload(path) or {}
     attempted_at = _normalize_utc(attempted_at_utc)
@@ -143,7 +123,7 @@ def fetch_cached_satellite_elements(
 ) -> CachedSatelliteElementSet:
     now = _normalize_utc(now_utc or current_utc_time())
     ttl_seconds = _group_validity_seconds(group_key, fresh_ttl_seconds)
-    path = _existing_satellite_cache_path(group_key, cache_root=cache_root)
+    path = satellite_group_cache_path(group_key, cache_root=cache_root)
     payload = _load_cache_payload(path)
     metadata = _fetch_metadata_from_payload(payload)
     cached = _load_cached_set_from_payload(payload, group_key=group_key)

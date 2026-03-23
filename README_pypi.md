@@ -3,7 +3,7 @@
 **Zenith Star View** is a desktop sky viewer for your chosen location.
 
 It renders an all-sky view with stars, the Sun, Moon, planets, deep-sky objects, and guide overlays.
-When enabled, it can also add real-time cloud imagery, terrain horizon, urban outlines, nearby aircraft, and artificial satellites such as ISS and CSS (Tianhe).
+When enabled, it can also add real-time cloud imagery, terrain horizon, urban outlines, nearby aircraft, and the ISS artificial satellite overlay.
 Locations can be set by city or viewpoint name, direct coordinates, online place search, or supported Google Maps URLs.
 
 ## Screenshots
