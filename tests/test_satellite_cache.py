@@ -107,6 +107,7 @@ def test_fetch_cached_satellite_elements_refreshes_current_cache(tmp_path) -> No
     )
     new_record = dict(_sample_record(epoch="2026-03-22T18:00:00.000000"))
     new_record["OBJECT_NAME"] = "ISS NEW"
+    new_record["_SOURCE"] = "wheretheiss"
 
     def fetcher(group_key, *, timeout_s):
         assert group_key == "iss"
@@ -123,7 +124,7 @@ def test_fetch_cached_satellite_elements_refreshes_current_cache(tmp_path) -> No
         fresh_ttl_seconds=6 * 60 * 60,
     )
 
-    assert result.source == "celestrak"
+    assert result.source == "wheretheiss"
     assert result.records[0]["OBJECT_NAME"] == "ISS NEW"
     cached = load_satellite_cache("iss", cache_root=tmp_path)
     assert cached is not None
