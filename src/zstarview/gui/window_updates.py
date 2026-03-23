@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Dict, Optional
 
 from ..aircraft import project_aircraft_snapshots
+from ..satellite_constants import SATELLITE_ISS_CACHE_KEY
 from ..satellites import project_satellite_records
 
 logger = logging.getLogger(__name__)
@@ -237,7 +238,7 @@ class SkyWindowUpdatesMixin:
             observer_lon=lon,
             observer_height_m=self.viewer_data.observer_height_m,
             time_obj=self._current_time_obj(),
-            enabled_groups=tuple(getattr(self, "_enabled_satellite_groups", ("station",))),
+            enabled_groups=tuple(getattr(self, "_enabled_satellite_groups", (SATELLITE_ISS_CACHE_KEY,))),
             reason=reason,
         )
 
@@ -256,7 +257,7 @@ class SkyWindowUpdatesMixin:
             load_cached_records = getattr(self, "_load_cached_satellite_records", None)
             if callable(load_cached_records):
                 records_by_group = load_cached_records(
-                    tuple(getattr(self, "_enabled_satellite_groups", ("station",)))
+                    tuple(getattr(self, "_enabled_satellite_groups", (SATELLITE_ISS_CACHE_KEY,)))
                 )
         if not records_by_group:
             self.state.satellite_overlay_points = None

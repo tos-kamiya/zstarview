@@ -9,16 +9,14 @@ from urllib.request import Request, urlopen
 from skyfield.api import EarthSatellite
 import skyfield.api
 
-from ..satellite_constants import SATELLITE_FETCH_TIMEOUT_SECONDS
+from ..satellite_constants import SATELLITE_FETCH_TIMEOUT_SECONDS, SATELLITE_ISS_CACHE_KEY
 from .types import SatelliteOmmRecord
 
 CELESTRAK_GP_JSON_URL = "https://celestrak.org/NORAD/elements/gp.php"
 CELESTRAK_GROUP_BY_KEY = {
-    "station": "stations",
-    "starlink": "starlink",
+    SATELLITE_ISS_CACHE_KEY: "stations",
 }
 _ISS_NORAD_CAT_ID = "25544"
-_CSS_TIANHE_NORAD_CAT_ID = "48274"
 
 
 def build_celestrak_group_url(
@@ -91,13 +89,12 @@ def filter_records_for_group(
     records: Iterable[SatelliteOmmRecord],
 ) -> list[SatelliteOmmRecord]:
     normalized = [dict(record) for record in records]
-    if group_key != "station":
+    if group_key != SATELLITE_ISS_CACHE_KEY:
         return normalized
-    allowed_cat_ids = {_ISS_NORAD_CAT_ID, _CSS_TIANHE_NORAD_CAT_ID}
     return [
         record
         for record in normalized
-        if str(record.get("NORAD_CAT_ID", "")).strip() in allowed_cat_ids
+        if str(record.get("NORAD_CAT_ID", "")).strip() == _ISS_NORAD_CAT_ID
     ]
 
 

@@ -284,7 +284,7 @@ def test_satellite_overlay_draws_below_horizon_marker_when_in_fov(monkeypatch) -
             geometry=ScreenGeometry(center=(20, 20), radius=20),
             satellite_points=[
                 SatelliteOverlayPoint(
-                    group_key="station",
+                    group_key="iss",
                     satellite_name="ISS (ZARYA)",
                     alt_deg=-40.0,
                     az_deg=151.0,

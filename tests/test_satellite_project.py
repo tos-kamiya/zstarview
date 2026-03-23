@@ -38,7 +38,7 @@ class _FakeSatellite:
         return _FakeDifference(self._alt_deg, self._az_deg)
 
 
-def test_project_satellite_records_marks_station_with_label(monkeypatch) -> None:
+def test_project_satellite_records_marks_iss_with_label(monkeypatch) -> None:
     monkeypatch.setattr(
         project_module,
         "build_earth_satellites",
@@ -46,7 +46,7 @@ def test_project_satellite_records_marks_station_with_label(monkeypatch) -> None
     )
 
     points = project_module.project_satellite_records(
-        {"station": [{"OBJECT_NAME": "ISS (ZARYA)"}]},
+        {"iss": [{"OBJECT_NAME": "ISS (ZARYA)"}]},
         observer_lat=35.47,
         observer_lon=133.05,
         observer_height_m=0.0,
@@ -54,86 +54,31 @@ def test_project_satellite_records_marks_station_with_label(monkeypatch) -> None
     )
 
     assert len(points) == 1
-    assert points[0].group_key == "station"
+    assert points[0].group_key == "iss"
     assert points[0].show_label is True
     assert points[0].marker_scale == 0.3
 
 
-def test_project_satellite_records_marks_css_tianhe_like_station(monkeypatch) -> None:
-    monkeypatch.setattr(
-        project_module,
-        "build_earth_satellites",
-        lambda records, *, ts=None: [_FakeSatellite("CSS (TIANHE)", 42.0, 130.0)],
-    )
-
-    points = project_module.project_satellite_records(
-        {"station": [{"OBJECT_NAME": "CSS (TIANHE)"}]},
-        observer_lat=35.47,
-        observer_lon=133.05,
-        observer_height_m=0.0,
-        time_obj=astropy.time.Time("2026-03-22T12:00:00Z"),
-    )
-
-    assert len(points) == 1
-    assert points[0].group_key == "station"
-    assert points[0].satellite_name == "CSS (TIANHE)"
-    assert points[0].show_label is True
-    assert points[0].marker_scale == 0.3
-
-
-def test_project_satellite_records_sorts_by_group_then_altitude(monkeypatch) -> None:
+def test_project_satellite_records_limits_to_single_iss_marker(monkeypatch) -> None:
     def fake_builder(records, *, ts=None):
-        names = [record["OBJECT_NAME"] for record in records]
-        if names == ["ISS (ZARYA)"]:
-            return [_FakeSatellite("ISS (ZARYA)", 20.0, 100.0)]
         return [
-            _FakeSatellite("STARLINK A", 10.0, 150.0),
-            _FakeSatellite("STARLINK B", 30.0, 160.0),
+            _FakeSatellite("ISS LOW", 10.0, 150.0),
+            _FakeSatellite("ISS HIGH", 30.0, 160.0),
         ]
 
     monkeypatch.setattr(project_module, "build_earth_satellites", fake_builder)
 
     points = project_module.project_satellite_records(
-        {
-            "starlink": [{"OBJECT_NAME": "STARLINK GROUP"}],
-            "station": [{"OBJECT_NAME": "ISS (ZARYA)"}],
-        },
+        {"iss": [{"OBJECT_NAME": "ISS (ZARYA)"}]},
         observer_lat=35.47,
         observer_lon=133.05,
         observer_height_m=0.0,
         time_obj=astropy.time.Time("2026-03-22T12:00:00Z"),
     )
 
-    assert [point.group_key for point in points] == ["station", "starlink", "starlink"]
-    assert [point.satellite_name for point in points[1:]] == ["STARLINK B", "STARLINK A"]
-    assert all(point.show_label is False for point in points[1:])
-
-
-def test_project_satellite_records_keeps_starlink_smaller_and_unlabeled(monkeypatch) -> None:
-    def fake_builder(records, *, ts=None):
-        names = [record["OBJECT_NAME"] for record in records]
-        if names == ["ISS (ZARYA)"]:
-            return [_FakeSatellite("ISS (ZARYA)", 50.0, 120.0)]
-        return [_FakeSatellite("STARLINK-1", 55.0, 140.0)]
-
-    monkeypatch.setattr(project_module, "build_earth_satellites", fake_builder)
-
-    points = project_module.project_satellite_records(
-        {
-            "station": [{"OBJECT_NAME": "ISS (ZARYA)"}],
-            "starlink": [{"OBJECT_NAME": "STARLINK-1"}],
-        },
-        observer_lat=35.47,
-        observer_lon=133.05,
-        observer_height_m=0.0,
-        time_obj=astropy.time.Time("2026-03-22T12:00:00Z"),
-    )
-
-    assert [point.group_key for point in points] == ["station", "starlink"]
+    assert [point.group_key for point in points] == ["iss"]
+    assert [point.satellite_name for point in points] == ["ISS HIGH"]
     assert points[0].show_label is True
-    assert points[1].show_label is False
-    assert points[1].marker_scale == 0.156
-    assert points[1].marker_scale < points[0].marker_scale
 
 
 def test_find_satellite_altaz_returns_below_horizon_match(monkeypatch) -> None:
@@ -144,7 +89,7 @@ def test_find_satellite_altaz_returns_below_horizon_match(monkeypatch) -> None:
     )
 
     altaz = project_module.find_satellite_altaz(
-        {"station": [{"OBJECT_NAME": "ISS (ZARYA)"}]},
+        {"iss": [{"OBJECT_NAME": "ISS (ZARYA)"}]},
         object_key="ISS",
         observer_lat=35.47,
         observer_lon=133.05,
@@ -153,25 +98,3 @@ def test_find_satellite_altaz_returns_below_horizon_match(monkeypatch) -> None:
     )
 
     assert altaz == (-12.0, 210.0)
-
-
-def test_find_satellite_altaz_prefers_exact_alias_over_substring(monkeypatch) -> None:
-    monkeypatch.setattr(
-        project_module,
-        "build_earth_satellites",
-        lambda records, *, ts=None: [
-            _FakeSatellite("CSS (TIANHE)", -36.0, 139.0),
-            _FakeSatellite("ISS (ZARYA)", -40.0, 151.0),
-        ],
-    )
-
-    altaz = project_module.find_satellite_altaz(
-        {"station": [{"OBJECT_NAME": "CSS (TIANHE)"}, {"OBJECT_NAME": "ISS (ZARYA)"}]},
-        object_key="ISS",
-        observer_lat=40.7128,
-        observer_lon=-74.0060,
-        observer_height_m=10.0,
-        time_obj=astropy.time.Time("2026-03-23T12:13:24Z"),
-    )
-
-    assert altaz == (-40.0, 151.0)

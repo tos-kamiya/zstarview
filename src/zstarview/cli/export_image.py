@@ -57,6 +57,7 @@ from ..render.pipeline import (
     RenderStyle,
     render_base_scene_into_painter,
 )
+from ..satellite_constants import SATELLITE_ISS_CACHE_KEY
 from ..splash import setup_app
 from ..terrain import (
     EARTH_MEAN_RADIUS_M,
@@ -523,7 +524,7 @@ def _fetch_satellite_overlay_points(
     celestial_time_obj: object,
     target_time_utc,
     deadline: float | None,
-    enabled_groups: tuple[str, ...] = ("station",),
+    enabled_groups: tuple[str, ...] = (SATELLITE_ISS_CACHE_KEY,),
 ) -> object | None:
     if _timed_out(deadline):
         raise TimeoutError("satellites timed out")

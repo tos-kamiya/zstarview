@@ -7,17 +7,16 @@ import astropy.time
 from skyfield.api import Topos
 import skyfield.api
 
+from ..satellite_constants import SATELLITE_ISS_CACHE_KEY
 from .fetch import build_earth_satellites
 from .types import SatelliteOmmRecord, SatelliteOverlayPoint
 
-_DEFAULT_GROUP_ORDER = ("station", "starlink")
+_DEFAULT_GROUP_ORDER = (SATELLITE_ISS_CACHE_KEY,)
 _MAX_MARKERS_BY_GROUP = {
-    "station": 8,
-    "starlink": 20,
+    SATELLITE_ISS_CACHE_KEY: 1,
 }
 _MARKER_SCALE_BY_GROUP = {
-    "station": 0.3,
-    "starlink": 0.156,
+    SATELLITE_ISS_CACHE_KEY: 0.3,
 }
 
 
@@ -103,7 +102,7 @@ def compute_satellite_altaz_points(
                     alt_deg=float(alt.degrees),
                     az_deg=float(az.degrees),
                     marker_scale=float(_MARKER_SCALE_BY_GROUP.get(group_key, 0.13)),
-                    show_label=group_key == "station",
+                    show_label=group_key == SATELLITE_ISS_CACHE_KEY,
                 )
             )
     return points
