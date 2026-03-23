@@ -9,6 +9,7 @@ from zstarview.satellites.cache import (
     fetch_cached_satellite_elements,
     load_satellite_cache,
     resolve_satellite_elements_for_time,
+    save_satellite_fetch_failure,
     satellite_group_cache_path,
     save_satellite_cache,
 )
@@ -54,6 +55,8 @@ def test_save_and_load_satellite_cache_round_trip(tmp_path) -> None:
     assert cached.group_key == "station"
     assert cached.element_epoch_utc == element_epoch
     assert cached.fetched_at_utc == fetched_at
+    assert cached.last_fetch_attempt_utc == fetched_at
+    assert cached.last_fetch_failed is False
     assert len(cached.records) == 1
     assert cached.records[0]["OBJECT_NAME"] == "ISS (ZARYA)"
 
@@ -88,6 +91,7 @@ def test_fetch_cached_satellite_elements_uses_fresh_cache_without_network(tmp_pa
     assert result.source == "cache-fresh"
     assert result.element_epoch_utc == element_epoch
     assert result.fetched_at_utc == fetched_at
+    assert result.last_fetch_attempt_utc == fetched_at
     assert len(result.records) == 1
 
 
@@ -126,6 +130,8 @@ def test_fetch_cached_satellite_elements_refreshes_current_cache(tmp_path) -> No
     assert cached.records[0]["OBJECT_NAME"] == "ISS NEW"
     assert cached.element_epoch_utc == datetime(2026, 3, 22, 18, 0, tzinfo=timezone.utc)
     assert cached.fetched_at_utc == now_utc
+    assert cached.last_fetch_failed is False
+    assert cached.last_fetch_attempt_utc == now_utc
 
 
 def test_fetch_cached_satellite_elements_uses_group_specific_ttl(tmp_path) -> None:
@@ -234,3 +240,67 @@ def test_load_satellite_cache_derives_element_time_from_existing_payload(tmp_pat
     assert cached.element_epoch_utc == datetime(2026, 3, 22, 12, 30, tzinfo=timezone.utc)
     assert cached.fetched_at_utc == datetime(2026, 3, 22, 12, 5, tzinfo=timezone.utc)
     assert [record["NORAD_CAT_ID"] for record in cached.records] == ["25544", "48274"]
+
+
+def test_failed_fetch_persists_backoff_and_reuses_stale_cache(tmp_path) -> None:
+    element_epoch = datetime(2026, 3, 22, 12, 0, tzinfo=timezone.utc)
+    fetched_at = datetime(2026, 3, 22, 12, 5, tzinfo=timezone.utc)
+    save_satellite_cache(
+        "station",
+        [_sample_record()],
+        element_epoch_utc=element_epoch,
+        fetched_at_utc=fetched_at,
+        cache_root=tmp_path,
+    )
+    failed_at = element_epoch + timedelta(hours=25)
+
+    with pytest.raises(RuntimeError, match="timed out"):
+        fetch_cached_satellite_elements(
+            "station",
+            fetcher=lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("timed out")),
+            cache_root=tmp_path,
+            now_utc=failed_at,
+        )
+
+    cached = load_satellite_cache("station", cache_root=tmp_path)
+    assert cached is not None
+    assert cached.last_fetch_failed is True
+    assert cached.last_fetch_error == "timed out"
+    assert cached.last_fetch_failure_utc == failed_at
+    assert cached.failure_backoff_until_utc == failed_at + timedelta(hours=2)
+
+    called = False
+
+    def fail_if_called(*_args, **_kwargs):
+        nonlocal called
+        called = True
+        raise AssertionError("network fetch should not run during backoff")
+
+    reused = fetch_cached_satellite_elements(
+        "station",
+        fetcher=fail_if_called,
+        cache_root=tmp_path,
+        now_utc=failed_at + timedelta(minutes=30),
+    )
+
+    assert called is False
+    assert reused.source == "cache-backoff"
+    assert reused.last_fetch_failed is True
+    assert reused.last_fetch_error == "timed out"
+
+
+def test_save_satellite_fetch_failure_creates_metadata_only_payload(tmp_path) -> None:
+    failed_at = datetime(2026, 3, 23, 1, 0, tzinfo=timezone.utc)
+    save_satellite_fetch_failure(
+        "station",
+        attempted_at_utc=failed_at,
+        error_text="timed out",
+        cache_root=tmp_path,
+    )
+
+    payload = json.loads(satellite_group_cache_path("station", cache_root=tmp_path).read_text(encoding="utf-8"))
+
+    assert payload["group_key"] == "station"
+    assert payload["last_fetch_failed"] is True
+    assert payload["last_fetch_error"] == "timed out"
+    assert payload["last_fetch_attempt_utc"] == failed_at.isoformat()

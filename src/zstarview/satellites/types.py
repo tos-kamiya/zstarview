@@ -14,6 +14,11 @@ class CachedSatelliteElementSet:
     fetched_at_utc: datetime
     source: str
     records: list[SatelliteOmmRecord]
+    last_fetch_attempt_utc: datetime | None = None
+    last_fetch_failed: bool = False
+    last_fetch_error: str | None = None
+    last_fetch_failure_utc: datetime | None = None
+    failure_backoff_until_utc: datetime | None = None
 
 
 @dataclass(frozen=True)
