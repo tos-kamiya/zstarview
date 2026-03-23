@@ -355,9 +355,9 @@
 ### 2026-03-23
 
 - ISS API source policy update
-  - Artificial satellite support is being narrowed to `ISS` only, with `wheretheiss.at` planned as the primary TLE source and CelesTrak `stations` planned as a fallback source.
+  - Artificial satellite support was narrowed to `ISS` only, with `wheretheiss.at` as the primary TLE source and CelesTrak `stations` as the fallback source.
   - This keeps the runtime dependency focused on a single visible target while preserving a secondary source when the primary API is unavailable.
-  - The specification and design docs were updated first so the implementation can follow a single-source-of-truth policy.
+  - The specification, design docs, and README files were updated to match the implemented behavior.
 
 - タイムシフト時の人工衛星レイヤー無効化
   - 人工衛星レイヤーは realtime view 専用とし、`--hours`、`--days`、`--datetime` による time-shifted view では取得も表示も行わない方針へ変更した。
@@ -370,8 +370,8 @@
   - これにより、短時間に連続 timeout が起きた場合でも CelesTrak への再試行頻度を抑える方針にした。
 
 - 人工衛星レイヤーの対象と地平線下表示の整理
-  - 既定の対象 group は `station` のみとし、通常表示では `ISS` と `CSS (Tianhe)` を扱う方針へ寄せた。
-  - `ISS` / `CSS` は検索ジャンプ対象としても扱い、地平線下であっても cache された軌道要素から位置解決できるようにした。
+  - 既定の対象は `ISS` のみとした。
+  - `ISS` は検索ジャンプ対象としても扱い、地平線下であっても cache された軌道要素から位置解決できるようにした。
   - `satellites/project.py` と renderer の両方で地平線下の marker を保持・描画できるようにして、検索ジャンプ結果と通常 overlay の不一致を解消した。
 
 - 人工衛星 stale cache の表示継続と失敗 backoff の永続化

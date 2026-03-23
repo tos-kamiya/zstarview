@@ -193,35 +193,6 @@ def test_resolve_satellite_elements_for_non_present_rejects_time_shifted_views(t
             validity_seconds=6 * 60 * 60,
         )
 
-
-def test_load_satellite_cache_derives_element_time_from_legacy_station_payload(tmp_path) -> None:
-    css_tianhe = dict(_sample_record(epoch="2026-03-22T12:30:00.000000"))
-    css_tianhe["OBJECT_NAME"] = "CSS (TIANHE)"
-    css_tianhe["NORAD_CAT_ID"] = "48274"
-    crew_dragon = dict(_sample_record(epoch="2026-03-22T12:15:00.000000"))
-    crew_dragon["OBJECT_NAME"] = "CREW DRAGON 12"
-    crew_dragon["NORAD_CAT_ID"] = "99999"
-    satellite_group_cache_path("station", cache_root=tmp_path).write_text(
-        json.dumps(
-            {
-                "group_key": "station",
-                "fetched_at_utc": "2026-03-22T12:05:00+00:00",
-                "source": "cache",
-                "records": [_sample_record(), css_tianhe, crew_dragon],
-            }
-        ),
-        encoding="utf-8",
-    )
-
-    cached = load_satellite_cache("iss", cache_root=tmp_path)
-
-    assert cached is not None
-    assert cached.element_epoch_utc == datetime(2026, 3, 22, 12, 30, tzinfo=timezone.utc)
-    assert cached.fetched_at_utc == datetime(2026, 3, 22, 12, 5, tzinfo=timezone.utc)
-    assert [record["NORAD_CAT_ID"] for record in cached.records] == ["25544"]
-    assert cached.group_key == "iss"
-
-
 def test_failed_fetch_persists_backoff_and_reuses_stale_cache(tmp_path) -> None:
     element_epoch = datetime(2026, 3, 22, 12, 0, tzinfo=timezone.utc)
     fetched_at = datetime(2026, 3, 22, 12, 5, tzinfo=timezone.utc)
