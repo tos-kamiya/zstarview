@@ -55,7 +55,6 @@ def test_build_named_star_shortcuts_includes_satellite_entries() -> None:
 
     names = [s.name for s in grouped[DEC_BAND_EQUATOR]]
     assert "ISS" in names
-    assert "CSS" in names
 
 
 def test_flatten_named_star_shortcuts_sorts_globally() -> None:
@@ -101,7 +100,6 @@ def test_build_search_jump_targets_includes_asterisms() -> None:
 
     assert any(t.label == "Sirius" and t.kind == "star" for t in targets)
     assert any(t.label == "ISS" and t.kind == "satellite" for t in targets)
-    assert any(t.label == "CSS" and t.kind == "satellite" for t in targets)
     circlet = next(t for t in targets if t.label == "Circlet of Pisces")
     assert circlet.kind == "asterism"
     assert circlet.subtitle == "Asterism"

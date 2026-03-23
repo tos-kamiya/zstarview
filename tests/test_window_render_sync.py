@@ -284,7 +284,7 @@ def test_jump_to_satellite_target_uses_cached_satellite_records_below_horizon(mo
     )
     dummy.state = SkyWindowState(render_view_center=(20.0, 30.0), satellite_overlay_points=None)
     dummy.satellite_state = SimpleNamespace(
-        records_by_group={"station": [{"OBJECT_NAME": "ISS (ZARYA)"}]},
+        records_by_group={"iss": [{"OBJECT_NAME": "ISS (ZARYA)"}]},
         overlay_points=None,
         set_banner=Mock(),
     )
@@ -318,12 +318,12 @@ def test_find_satellite_jump_altaz_falls_back_to_disk_cache(monkeypatch) -> None
     monkeypatch.setattr(
         window_module,
         "find_satellite_altaz",
-        lambda records_by_group, **kwargs: (-40.0, 151.0) if records_by_group.get("station") else None,
+        lambda records_by_group, **kwargs: (-40.0, 151.0) if records_by_group.get("iss") else None,
     )
     monkeypatch.setattr(
         window_module,
         "load_satellite_cache",
-        lambda group_key: SimpleNamespace(records=[{"OBJECT_NAME": "ISS (ZARYA)"}]) if group_key == "station" else None,
+        lambda group_key: SimpleNamespace(records=[{"OBJECT_NAME": "ISS (ZARYA)"}]) if group_key == "iss" else None,
     )
 
     dummy = SimpleNamespace()
@@ -335,7 +335,7 @@ def test_find_satellite_jump_altaz_falls_back_to_disk_cache(monkeypatch) -> None
         observer_height_m=10.0,
     )
     dummy.satellite_state = SimpleNamespace(records_by_group={})
-    dummy._enabled_satellite_groups = ("station",)
+    dummy._enabled_satellite_groups = ("iss",)
     dummy._current_time_obj = lambda: astropy.time.Time("2026-03-23T12:13:24Z")
     dummy._load_cached_satellite_records = lambda groups: SkyWindow._load_cached_satellite_records(dummy, groups)
 
@@ -362,17 +362,17 @@ def test_jump_to_satellite_target_sets_banner_when_not_available() -> None:
     SkyWindow._jump_to_search_target(
         dummy,
         SearchJumpTarget(
-            label="CSS",
+            label="ISS",
             ra_hours=0.0,
             dec_deg=0.0,
             kind="satellite",
-            sort_key=(99.0, "css"),
+            sort_key=(99.0, "iss"),
             subtitle="Satellite",
-            object_key="CSS",
+            object_key="ISS",
         ),
     )
 
-    dummy.satellite_state.set_banner.assert_called_once_with("Satellites: CSS not available")
+    dummy.satellite_state.set_banner.assert_called_once_with("Satellites: ISS not available")
     dummy.update.assert_called_once()
 
 
@@ -391,9 +391,9 @@ def test_refresh_projected_satellite_overlay_falls_back_to_disk_cache(monkeypatc
     )
     dummy.satellite_state = SimpleNamespace(records_by_group={}, overlay_points=None)
     dummy.state = SkyWindowState(render_view_center=(0.0, 151.0), satellite_overlay_points=None)
-    dummy._enabled_satellite_groups = ("station",)
+    dummy._enabled_satellite_groups = ("iss",)
     dummy._satellite_validity_remaining_ms = lambda: 1000
-    dummy._load_cached_satellite_records = lambda groups: {"station": [{"OBJECT_NAME": "ISS (ZARYA)"}]}
+    dummy._load_cached_satellite_records = lambda groups: {"iss": [{"OBJECT_NAME": "ISS (ZARYA)"}]}
     dummy._current_time_obj = lambda: astropy.time.Time("2026-03-23T12:13:24Z")
     dummy.update = Mock()
 

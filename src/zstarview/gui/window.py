@@ -43,6 +43,7 @@ from ..satellites import find_satellite_altaz, load_satellite_cache
 from ..satellite_constants import (
     SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS,
     SATELLITE_FAILURE_RETRY_SECONDS,
+    SATELLITE_ISS_CACHE_KEY,
     SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS,
 )
 from ..aircraft_constants import AIRCRAFT_REFRESH_INTERVAL_SECONDS
@@ -234,7 +235,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             satellite_overlay_points=None,
             aircraft_overlay_points=None,
         )
-        self._enabled_satellite_groups: tuple[str, ...] = ("station",)
+        self._enabled_satellite_groups: tuple[str, ...] = (SATELLITE_ISS_CACHE_KEY,)
         self._frame_cache_key: object | None = None
         self._frame_cache_image = None
         self.setWindowTitle(f"{APP_DISPLAY_NAME} - {self.viewer_data.city_name}")
@@ -790,7 +791,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
 
     def _find_satellite_jump_altaz(self, object_key: str) -> tuple[float, float] | None:
         records_by_group = dict(getattr(self.satellite_state, "records_by_group", None) or {})
-        enabled_groups = tuple(getattr(self, "_enabled_satellite_groups", ("station",)))
+        enabled_groups = tuple(getattr(self, "_enabled_satellite_groups", (SATELLITE_ISS_CACHE_KEY,)))
         if not records_by_group:
             records_by_group = self._load_cached_satellite_records(enabled_groups)
         if not records_by_group:

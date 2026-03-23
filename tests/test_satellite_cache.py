@@ -42,17 +42,17 @@ def test_save_and_load_satellite_cache_round_trip(tmp_path) -> None:
     element_epoch = datetime(2026, 3, 22, 12, 0, tzinfo=timezone.utc)
     fetched_at = datetime(2026, 3, 22, 12, 5, tzinfo=timezone.utc)
     save_satellite_cache(
-        "station",
+        "iss",
         [_sample_record()],
         element_epoch_utc=element_epoch,
         fetched_at_utc=fetched_at,
         cache_root=tmp_path,
     )
 
-    cached = load_satellite_cache("station", cache_root=tmp_path)
+    cached = load_satellite_cache("iss", cache_root=tmp_path)
 
     assert cached is not None
-    assert cached.group_key == "station"
+    assert cached.group_key == "iss"
     assert cached.element_epoch_utc == element_epoch
     assert cached.fetched_at_utc == fetched_at
     assert cached.last_fetch_attempt_utc == fetched_at
@@ -65,7 +65,7 @@ def test_fetch_cached_satellite_elements_uses_fresh_cache_without_network(tmp_pa
     element_epoch = datetime(2026, 3, 22, 12, 0, tzinfo=timezone.utc)
     fetched_at = datetime(2026, 3, 22, 12, 5, tzinfo=timezone.utc)
     save_satellite_cache(
-        "station",
+        "iss",
         [_sample_record()],
         element_epoch_utc=element_epoch,
         fetched_at_utc=fetched_at,
@@ -80,7 +80,7 @@ def test_fetch_cached_satellite_elements_uses_fresh_cache_without_network(tmp_pa
         raise AssertionError("network fetch should not run")
 
     result = fetch_cached_satellite_elements(
-        "station",
+        "iss",
         fetcher=fail_fetcher,
         cache_root=tmp_path,
         now_utc=element_epoch + timedelta(hours=1),
@@ -99,7 +99,7 @@ def test_fetch_cached_satellite_elements_refreshes_current_cache(tmp_path) -> No
     original_element_epoch = datetime(2026, 3, 22, 12, 0, tzinfo=timezone.utc)
     original_fetched_at = datetime(2026, 3, 22, 12, 5, tzinfo=timezone.utc)
     save_satellite_cache(
-        "station",
+        "iss",
         [_sample_record()],
         element_epoch_utc=original_element_epoch,
         fetched_at_utc=original_fetched_at,
@@ -109,13 +109,13 @@ def test_fetch_cached_satellite_elements_refreshes_current_cache(tmp_path) -> No
     new_record["OBJECT_NAME"] = "ISS NEW"
 
     def fetcher(group_key, *, timeout_s):
-        assert group_key == "station"
+        assert group_key == "iss"
         assert timeout_s == 12.0
         return [new_record]
 
     now_utc = original_element_epoch + timedelta(hours=7)
     result = fetch_cached_satellite_elements(
-        "station",
+        "iss",
         fetcher=fetcher,
         timeout_s=12.0,
         cache_root=tmp_path,
@@ -125,7 +125,7 @@ def test_fetch_cached_satellite_elements_refreshes_current_cache(tmp_path) -> No
 
     assert result.source == "celestrak"
     assert result.records[0]["OBJECT_NAME"] == "ISS NEW"
-    cached = load_satellite_cache("station", cache_root=tmp_path)
+    cached = load_satellite_cache("iss", cache_root=tmp_path)
     assert cached is not None
     assert cached.records[0]["OBJECT_NAME"] == "ISS NEW"
     assert cached.element_epoch_utc == datetime(2026, 3, 22, 18, 0, tzinfo=timezone.utc)
@@ -134,62 +134,40 @@ def test_fetch_cached_satellite_elements_refreshes_current_cache(tmp_path) -> No
     assert cached.last_fetch_attempt_utc == now_utc
 
 
-def test_fetch_cached_satellite_elements_uses_group_specific_ttl(tmp_path) -> None:
+def test_fetch_cached_satellite_elements_uses_iss_ttl(tmp_path) -> None:
     element_epoch = datetime(2026, 3, 22, 12, 0, tzinfo=timezone.utc)
     fetched_at = datetime(2026, 3, 22, 12, 5, tzinfo=timezone.utc)
     save_satellite_cache(
-        "station",
-        [_sample_record()],
-        element_epoch_utc=element_epoch,
-        fetched_at_utc=fetched_at,
-        cache_root=tmp_path,
-    )
-    save_satellite_cache(
-        "starlink",
+        "iss",
         [_sample_record()],
         element_epoch_utc=element_epoch,
         fetched_at_utc=fetched_at,
         cache_root=tmp_path,
     )
 
-    station_called = False
-    starlink_called = False
+    called = False
 
-    def fail_station(*args, **kwargs):
-        nonlocal station_called
-        station_called = True
-        raise AssertionError("station fetch should not run")
-
-    def refresh_starlink(*args, **kwargs):
-        nonlocal starlink_called
-        starlink_called = True
-        return [_sample_record(epoch="2026-03-22T16:00:00.000000")]
+    def fail_fetcher(*args, **kwargs):
+        nonlocal called
+        called = True
+        raise AssertionError("iss fetch should not run")
 
     now_utc = element_epoch + timedelta(hours=4)
-    station_result = fetch_cached_satellite_elements(
-        "station",
-        fetcher=fail_station,
-        cache_root=tmp_path,
-        now_utc=now_utc,
-    )
-    starlink_result = fetch_cached_satellite_elements(
-        "starlink",
-        fetcher=refresh_starlink,
+    result = fetch_cached_satellite_elements(
+        "iss",
+        fetcher=fail_fetcher,
         cache_root=tmp_path,
         now_utc=now_utc,
     )
 
-    assert SATELLITE_GROUP_VALIDITY_SECONDS["station"] == 24 * 60 * 60
-    assert SATELLITE_GROUP_VALIDITY_SECONDS["starlink"] == 3 * 60 * 60
-    assert station_called is False
-    assert starlink_called is True
-    assert station_result.source == "cache-fresh"
-    assert starlink_result.source == "celestrak"
+    assert SATELLITE_GROUP_VALIDITY_SECONDS["iss"] == 24 * 60 * 60
+    assert called is False
+    assert result.source == "cache-fresh"
 
 
 def test_resolve_satellite_elements_for_non_present_rejects_time_shifted_views(tmp_path) -> None:
     save_satellite_cache(
-        "station",
+        "iss",
         [_sample_record()],
         element_epoch_utc=datetime(2026, 3, 22, 12, 0, tzinfo=timezone.utc),
         fetched_at_utc=datetime(2026, 3, 22, 12, 5, tzinfo=timezone.utc),
@@ -198,7 +176,7 @@ def test_resolve_satellite_elements_for_non_present_rejects_time_shifted_views(t
 
     with pytest.raises(RuntimeError, match="time-shifted view is not supported"):
         resolve_satellite_elements_for_time(
-            "station",
+            "iss",
             target_time_utc=datetime(2026, 3, 21, 0, 0, tzinfo=timezone.utc),
             time_mode="past",
             cache_root=tmp_path,
@@ -207,7 +185,7 @@ def test_resolve_satellite_elements_for_non_present_rejects_time_shifted_views(t
 
     with pytest.raises(RuntimeError, match="time-shifted view is not supported"):
         resolve_satellite_elements_for_time(
-            "station",
+            "iss",
             target_time_utc=datetime(2026, 3, 23, 0, 0, tzinfo=timezone.utc),
             time_mode="future",
             cache_root=tmp_path,
@@ -215,7 +193,7 @@ def test_resolve_satellite_elements_for_non_present_rejects_time_shifted_views(t
         )
 
 
-def test_load_satellite_cache_derives_element_time_from_existing_payload(tmp_path) -> None:
+def test_load_satellite_cache_derives_element_time_from_legacy_station_payload(tmp_path) -> None:
     css_tianhe = dict(_sample_record(epoch="2026-03-22T12:30:00.000000"))
     css_tianhe["OBJECT_NAME"] = "CSS (TIANHE)"
     css_tianhe["NORAD_CAT_ID"] = "48274"
@@ -234,19 +212,20 @@ def test_load_satellite_cache_derives_element_time_from_existing_payload(tmp_pat
         encoding="utf-8",
     )
 
-    cached = load_satellite_cache("station", cache_root=tmp_path)
+    cached = load_satellite_cache("iss", cache_root=tmp_path)
 
     assert cached is not None
     assert cached.element_epoch_utc == datetime(2026, 3, 22, 12, 30, tzinfo=timezone.utc)
     assert cached.fetched_at_utc == datetime(2026, 3, 22, 12, 5, tzinfo=timezone.utc)
-    assert [record["NORAD_CAT_ID"] for record in cached.records] == ["25544", "48274"]
+    assert [record["NORAD_CAT_ID"] for record in cached.records] == ["25544"]
+    assert cached.group_key == "iss"
 
 
 def test_failed_fetch_persists_backoff_and_reuses_stale_cache(tmp_path) -> None:
     element_epoch = datetime(2026, 3, 22, 12, 0, tzinfo=timezone.utc)
     fetched_at = datetime(2026, 3, 22, 12, 5, tzinfo=timezone.utc)
     save_satellite_cache(
-        "station",
+        "iss",
         [_sample_record()],
         element_epoch_utc=element_epoch,
         fetched_at_utc=fetched_at,
@@ -256,13 +235,13 @@ def test_failed_fetch_persists_backoff_and_reuses_stale_cache(tmp_path) -> None:
 
     with pytest.raises(RuntimeError, match="timed out"):
         fetch_cached_satellite_elements(
-            "station",
+            "iss",
             fetcher=lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("timed out")),
             cache_root=tmp_path,
             now_utc=failed_at,
         )
 
-    cached = load_satellite_cache("station", cache_root=tmp_path)
+    cached = load_satellite_cache("iss", cache_root=tmp_path)
     assert cached is not None
     assert cached.last_fetch_failed is True
     assert cached.last_fetch_error == "timed out"
@@ -277,7 +256,7 @@ def test_failed_fetch_persists_backoff_and_reuses_stale_cache(tmp_path) -> None:
         raise AssertionError("network fetch should not run during backoff")
 
     reused = fetch_cached_satellite_elements(
-        "station",
+        "iss",
         fetcher=fail_if_called,
         cache_root=tmp_path,
         now_utc=failed_at + timedelta(minutes=30),
@@ -292,15 +271,15 @@ def test_failed_fetch_persists_backoff_and_reuses_stale_cache(tmp_path) -> None:
 def test_save_satellite_fetch_failure_creates_metadata_only_payload(tmp_path) -> None:
     failed_at = datetime(2026, 3, 23, 1, 0, tzinfo=timezone.utc)
     save_satellite_fetch_failure(
-        "station",
+        "iss",
         attempted_at_utc=failed_at,
         error_text="timed out",
         cache_root=tmp_path,
     )
 
-    payload = json.loads(satellite_group_cache_path("station", cache_root=tmp_path).read_text(encoding="utf-8"))
+    payload = json.loads(satellite_group_cache_path("iss", cache_root=tmp_path).read_text(encoding="utf-8"))
 
-    assert payload["group_key"] == "station"
+    assert payload["group_key"] == "iss"
     assert payload["last_fetch_failed"] is True
     assert payload["last_fetch_error"] == "timed out"
     assert payload["last_fetch_attempt_utc"] == failed_at.isoformat()
