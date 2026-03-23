@@ -45,7 +45,8 @@ class NamedStarJumpDialog(QDialog):
             self._lists[key] = lw
             self._tabs.addTab(lw, f"{label} ({len(stars_by_band.get(key, []))})")
             for star in stars_by_band.get(key, []):
-                item = QListWidgetItem(f"{star.name}  (Vmag {star.vmag:.2f})", lw)
+                suffix = star.subtitle or (f"Vmag {star.vmag:.2f}" if star.kind == "star" else "")
+                item = QListWidgetItem(f"{star.name}  ({suffix})" if suffix else star.name, lw)
                 item.setData(Qt.ItemDataRole.UserRole, star)
 
         layout.addWidget(self._tabs)

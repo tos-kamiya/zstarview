@@ -39,8 +39,10 @@ from ..clouddisc import (
 )
 from ..clouddisc.providers.select import pick_satellite
 from ..overlay_time import overlay_availability_for_delta, target_time_utc_from_delta
+from ..satellites import find_satellite_altaz, load_satellite_cache
 from ..satellite_constants import (
     SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS,
+    SATELLITE_FAILURE_RETRY_SECONDS,
     SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS,
 )
 from ..aircraft_constants import AIRCRAFT_REFRESH_INTERVAL_SECONDS
@@ -232,7 +234,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             satellite_overlay_points=None,
             aircraft_overlay_points=None,
         )
-        self._enabled_satellite_groups: tuple[str, ...] = ("station", "starlink")
+        self._enabled_satellite_groups: tuple[str, ...] = ("station",)
         self._frame_cache_key: object | None = None
         self._frame_cache_image = None
         self.setWindowTitle(f"{APP_DISPLAY_NAME} - {self.viewer_data.city_name}")
@@ -740,17 +742,26 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._jump_to_search_target(target)
 
     def _jump_to_search_target(self, target: SearchJumpTarget) -> None:
-        observer_height_m = getattr(self.viewer_data, "observer_height_m", 1.7)
-        alt, az = radec_to_altaz(
-            target.ra_hours,
-            target.dec_deg,
-            self.viewer_data.location[0],
-            self.viewer_data.location[1],
-            observer_height_m,
-            self._current_time_obj(),
-        )
-        target_alt = float(alt)
-        target_az = float(az) % 360.0
+        if target.kind == "satellite":
+            target_altaz = self._find_satellite_jump_altaz(target.object_key or target.label)
+            if target_altaz is None:
+                self.satellite_state.set_banner(f"Satellites: {target.label} not available")
+                self.update()
+                return
+            target_alt = float(target_altaz[0])
+            target_az = float(target_altaz[1]) % 360.0
+        else:
+            observer_height_m = getattr(self.viewer_data, "observer_height_m", 1.7)
+            alt, az = radec_to_altaz(
+                target.ra_hours,
+                target.dec_deg,
+                self.viewer_data.location[0],
+                self.viewer_data.location[1],
+                observer_height_m,
+                self._current_time_obj(),
+            )
+            target_alt = float(alt)
+            target_az = float(az) % 360.0
         new_alt = max(0.0, min(90.0, target_alt))
         new_az = target_az
         self.viewer_data.view_center = (new_alt, new_az)
@@ -770,11 +781,52 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
                 label=star.name,
                 ra_hours=star.ra_hours,
                 dec_deg=star.dec_deg,
-                kind="star",
-                subtitle=f"Vmag {star.vmag:.2f}",
+                kind=star.kind,
+                subtitle=star.subtitle or f"Vmag {star.vmag:.2f}",
                 sort_key=(star.vmag, star.name.casefold()),
+                object_key=star.name if star.kind == "satellite" else "",
             )
         )
+
+    def _find_satellite_jump_altaz(self, object_key: str) -> tuple[float, float] | None:
+        records_by_group = dict(getattr(self.satellite_state, "records_by_group", None) or {})
+        enabled_groups = tuple(getattr(self, "_enabled_satellite_groups", ("station",)))
+        if not records_by_group:
+            records_by_group = self._load_cached_satellite_records(enabled_groups)
+        if not records_by_group:
+            return None
+        observer_height_m = getattr(self.viewer_data, "observer_height_m", 1.7)
+        altaz = find_satellite_altaz(
+            records_by_group,
+            object_key=object_key,
+            observer_lat=self.viewer_data.location[0],
+            observer_lon=self.viewer_data.location[1],
+            observer_height_m=observer_height_m,
+            time_obj=self._current_time_obj(),
+        )
+        if altaz is not None:
+            return altaz
+        merged_records = dict(records_by_group)
+        merged_records.update(self._load_cached_satellite_records(enabled_groups))
+        if merged_records == records_by_group:
+            return None
+        return find_satellite_altaz(
+            merged_records,
+            object_key=object_key,
+            observer_lat=self.viewer_data.location[0],
+            observer_lon=self.viewer_data.location[1],
+            observer_height_m=observer_height_m,
+            time_obj=self._current_time_obj(),
+        )
+
+    def _load_cached_satellite_records(self, enabled_groups: tuple[str, ...]) -> dict[str, list[dict[str, object]]]:
+        records_by_group: dict[str, list[dict[str, object]]] = {}
+        for group_key in enabled_groups:
+            cached = load_satellite_cache(group_key)
+            if cached is None:
+                continue
+            records_by_group[str(group_key)] = list(cached.records)
+        return records_by_group
 
     def _begin_shutdown(self) -> None:
         """Stop scheduling new background work while the app is closing."""
@@ -853,10 +905,10 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         return target_time_utc_from_delta(self.delta_t)
 
     def _satellite_validity_remaining_ms(self) -> int | None:
-        element_epoch_utc = self.satellite_state.element_epoch_utc
-        if element_epoch_utc is None:
+        refreshed_at_utc = self.satellite_state.refreshed_at_utc
+        if refreshed_at_utc is None:
             return None
-        age_seconds = abs((self._target_time_utc() - element_epoch_utc).total_seconds())
+        age_seconds = abs((datetime.now(timezone.utc) - refreshed_at_utc).total_seconds())
         remaining_seconds = SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS - age_seconds
         return max(0, int(round(remaining_seconds * 1000.0)))
 
@@ -869,6 +921,11 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         if interval_ms is None:
             interval_ms = SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS * 1000
         self._satellite_update_timer.start(max(0, interval_ms))
+
+    def _schedule_satellite_retry_after_failure(self) -> None:
+        if not self._satellite_layer_enabled() or self._is_shutting_down:
+            return
+        self._satellite_update_timer.start(SATELLITE_FAILURE_RETRY_SECONDS * 1000)
 
     def _on_satellite_refresh_timer(self) -> None:
         if not self._satellite_layer_enabled():

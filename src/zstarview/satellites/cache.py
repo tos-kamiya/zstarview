@@ -8,7 +8,11 @@ from typing import Callable
 
 from ..overlay_time import TimeMode, current_utc_time
 from ..paths import SATELLITE_CACHE_ROOT_DIR
-from ..satellite_constants import SATELLITE_ELEMENT_VALID_SECONDS
+from ..satellite_constants import (
+    SATELLITE_ELEMENT_VALID_SECONDS,
+    SATELLITE_FETCH_TIMEOUT_SECONDS,
+    SATELLITE_GROUP_VALIDITY_SECONDS,
+)
 from .fetch import (
     extract_element_epoch_utc,
     fetch_celestrak_group_by_key,
@@ -64,14 +68,15 @@ def fetch_cached_satellite_elements(
     group_key: str,
     *,
     fetcher: SatelliteFetcher = fetch_celestrak_group_by_key,
-    timeout_s: float = 20.0,
+    timeout_s: float = SATELLITE_FETCH_TIMEOUT_SECONDS,
     cache_root: str | Path = SATELLITE_CACHE_ROOT_DIR,
-    fresh_ttl_seconds: int = SATELLITE_ELEMENT_VALID_SECONDS,
+    fresh_ttl_seconds: int | None = None,
     now_utc: datetime | None = None,
 ) -> CachedSatelliteElementSet:
     now = _normalize_utc(now_utc or current_utc_time())
+    ttl_seconds = _group_validity_seconds(group_key, fresh_ttl_seconds)
     cached = load_satellite_cache(group_key, cache_root=cache_root)
-    if cached is not None and _within_validity(now, cached.element_epoch_utc, fresh_ttl_seconds):
+    if cached is not None and _within_validity(now, cached.element_epoch_utc, ttl_seconds):
         return CachedSatelliteElementSet(
             group_key=group_key,
             element_epoch_utc=cached.element_epoch_utc,
@@ -105,9 +110,9 @@ def resolve_satellite_elements_for_time(
     target_time_utc: datetime,
     time_mode: TimeMode,
     fetcher: SatelliteFetcher = fetch_celestrak_group_by_key,
-    timeout_s: float = 20.0,
+    timeout_s: float = SATELLITE_FETCH_TIMEOUT_SECONDS,
     cache_root: str | Path = SATELLITE_CACHE_ROOT_DIR,
-    validity_seconds: int = SATELLITE_ELEMENT_VALID_SECONDS,
+    validity_seconds: int | None = None,
     now_utc: datetime | None = None,
 ) -> CachedSatelliteElementSet:
     del target_time_utc
@@ -118,7 +123,7 @@ def resolve_satellite_elements_for_time(
         fetcher=fetcher,
         timeout_s=timeout_s,
         cache_root=cache_root,
-        fresh_ttl_seconds=validity_seconds,
+        fresh_ttl_seconds=_group_validity_seconds(group_key, validity_seconds),
         now_utc=now_utc,
     )
 
@@ -181,6 +186,12 @@ def _within_validity(
 ) -> bool:
     delta = abs((_normalize_utc(reference_utc) - _normalize_utc(element_epoch_utc)).total_seconds())
     return delta <= max(0, int(validity_seconds))
+
+
+def _group_validity_seconds(group_key: str, override: int | None) -> int:
+    if override is not None:
+        return int(override)
+    return int(SATELLITE_GROUP_VALIDITY_SECONDS.get(group_key, SATELLITE_ELEMENT_VALID_SECONDS))
 
 
 def _normalize_utc(value: datetime) -> datetime:

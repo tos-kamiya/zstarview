@@ -41,6 +41,23 @@ def test_build_named_star_shortcuts_filters_groups_and_dedupes() -> None:
     assert grouped[DEC_BAND_SOUTH][0].name == "Canopus"
 
 
+def test_build_named_star_shortcuts_includes_satellite_entries() -> None:
+    df = pl.DataFrame(
+        {
+            "Name": ["Sirius"],
+            "RAh": [6.75],
+            "Dec": [-16.7],
+            "Vmag": [-1.44],
+        }
+    )
+
+    grouped = build_named_star_shortcuts(df, max_vmag=2.0, include_satellites=True)
+
+    names = [s.name for s in grouped[DEC_BAND_EQUATOR]]
+    assert "ISS" in names
+    assert "CSS" in names
+
+
 def test_flatten_named_star_shortcuts_sorts_globally() -> None:
     df = pl.DataFrame(
         {
@@ -80,9 +97,11 @@ def test_build_search_jump_targets_includes_asterisms() -> None:
         }
     )
 
-    targets = build_search_jump_targets(df)
+    targets = build_search_jump_targets(df, include_satellites=True)
 
     assert any(t.label == "Sirius" and t.kind == "star" for t in targets)
+    assert any(t.label == "ISS" and t.kind == "satellite" for t in targets)
+    assert any(t.label == "CSS" and t.kind == "satellite" for t in targets)
     circlet = next(t for t in targets if t.label == "Circlet of Pisces")
     assert circlet.kind == "asterism"
     assert circlet.subtitle == "Asterism"

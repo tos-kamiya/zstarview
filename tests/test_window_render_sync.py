@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import astropy.time
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import Mock
 from PySide6.QtGui import QImage
 
 import zstarview.render.pipeline as pipeline_module
+import zstarview.gui.window as window_module
 import zstarview.gui.window_render as window_render_module
+import zstarview.gui.window_updates as window_updates_module
+from zstarview.satellite_constants import SATELLITE_FAILURE_RETRY_SECONDS
 from zstarview.types import CelestialData, UrbanOutlinePolyline, ViewerData
+from zstarview.gui.famous_star_shortcuts import SearchJumpTarget
 from zstarview.gui.window import SkyWindow
 from zstarview.gui.window_state import SkyWindowState
 
@@ -223,6 +228,180 @@ def test_on_sky_data_calculated_preserves_render_center_during_viewport_interact
     )
 
     assert dummy.state.render_view_center == (40.0, 150.0)
+
+
+def test_schedule_satellite_retry_after_failure_uses_two_hour_backoff() -> None:
+    dummy = SimpleNamespace()
+    dummy.satellite_opacity = 0.5
+    dummy._is_shutting_down = False
+    timer = _DummyTimer(active=False)
+    dummy._satellite_update_timer = timer
+    dummy._satellite_layer_enabled = lambda: True
+
+    SkyWindow._schedule_satellite_retry_after_failure(dummy)
+
+    assert timer.started_with == [SATELLITE_FAILURE_RETRY_SECONDS * 1000]
+
+
+def test_satellite_validity_remaining_ms_uses_refresh_time() -> None:
+    dummy = SimpleNamespace()
+    dummy.satellite_state = SimpleNamespace(
+        refreshed_at_utc=datetime.now(timezone.utc),
+        element_epoch_utc=datetime(2020, 1, 1, tzinfo=timezone.utc),
+    )
+
+    remaining_ms = SkyWindow._satellite_validity_remaining_ms(dummy)
+
+    assert remaining_ms is not None
+    assert remaining_ms > 0
+
+
+def test_on_satellite_failed_schedules_failure_backoff() -> None:
+    dummy = SimpleNamespace()
+    dummy.satellite_opacity = 0.5
+    dummy.satellite_state = SimpleNamespace(set_error_banner=Mock())
+    retry_calls: list[str] = []
+    dummy._schedule_satellite_retry_after_failure = lambda: retry_calls.append("retry")
+    dummy.update = Mock()
+
+    SkyWindow._on_satellite_failed(dummy, {"banner": "Satellites: timed out"})
+
+    dummy.satellite_state.set_error_banner.assert_called_once_with("Satellites: timed out")
+    assert retry_calls == ["retry"]
+    dummy.update.assert_called_once()
+
+
+def test_jump_to_satellite_target_uses_cached_satellite_records_below_horizon(monkeypatch) -> None:
+    monkeypatch.setattr(window_module, "find_satellite_altaz", lambda *args, **kwargs: (-12.0, 123.0))
+
+    dummy = SimpleNamespace()
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(20.0, 30.0),
+        observer_height_m=1.7,
+    )
+    dummy.state = SkyWindowState(render_view_center=(20.0, 30.0), satellite_overlay_points=None)
+    dummy.satellite_state = SimpleNamespace(
+        records_by_group={"station": [{"OBJECT_NAME": "ISS (ZARYA)"}]},
+        overlay_points=None,
+        set_banner=Mock(),
+    )
+    dummy._sync_view_altitude_actions = Mock()
+    dummy._begin_interaction_mode = Mock()
+    dummy.request_sky_data_update = Mock()
+    dummy.update = Mock()
+    dummy._current_time_obj = lambda: astropy.time.Time("2026-03-22T12:00:00Z")
+    dummy._find_satellite_jump_altaz = lambda key: SkyWindow._find_satellite_jump_altaz(dummy, key)
+
+    SkyWindow._jump_to_search_target(
+        dummy,
+        SearchJumpTarget(
+            label="ISS",
+            ra_hours=0.0,
+            dec_deg=0.0,
+            kind="satellite",
+            sort_key=(99.0, "iss"),
+            subtitle="Satellite",
+            object_key="ISS",
+        ),
+    )
+
+    assert dummy.viewer_data.view_center == (0.0, 123.0)
+    assert dummy.state.jump_highlight_name == "ISS"
+    assert dummy.state.jump_highlight_altaz == (-12.0, 123.0)
+    dummy.request_sky_data_update.assert_called_once()
+
+
+def test_find_satellite_jump_altaz_falls_back_to_disk_cache(monkeypatch) -> None:
+    monkeypatch.setattr(
+        window_module,
+        "find_satellite_altaz",
+        lambda records_by_group, **kwargs: (-40.0, 151.0) if records_by_group.get("station") else None,
+    )
+    monkeypatch.setattr(
+        window_module,
+        "load_satellite_cache",
+        lambda group_key: SimpleNamespace(records=[{"OBJECT_NAME": "ISS (ZARYA)"}]) if group_key == "station" else None,
+    )
+
+    dummy = SimpleNamespace()
+    dummy.viewer_data = ViewerData(
+        location=(40.7128, -74.0060),
+        timezone_name="America/New_York",
+        city_name="New York City",
+        view_center=(20.0, 30.0),
+        observer_height_m=10.0,
+    )
+    dummy.satellite_state = SimpleNamespace(records_by_group={})
+    dummy._enabled_satellite_groups = ("station",)
+    dummy._current_time_obj = lambda: astropy.time.Time("2026-03-23T12:13:24Z")
+    dummy._load_cached_satellite_records = lambda groups: SkyWindow._load_cached_satellite_records(dummy, groups)
+
+    altaz = SkyWindow._find_satellite_jump_altaz(dummy, "ISS")
+
+    assert altaz == (-40.0, 151.0)
+
+
+def test_jump_to_satellite_target_sets_banner_when_not_available() -> None:
+    dummy = SimpleNamespace()
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(20.0, 30.0),
+        observer_height_m=1.7,
+    )
+    dummy.state = SkyWindowState(render_view_center=(20.0, 30.0), satellite_overlay_points=None)
+    dummy.satellite_state = SimpleNamespace(records_by_group={}, overlay_points=None, set_banner=Mock())
+    dummy.update = Mock()
+    dummy._load_cached_satellite_records = lambda groups: {}
+    dummy._find_satellite_jump_altaz = lambda key: SkyWindow._find_satellite_jump_altaz(dummy, key)
+
+    SkyWindow._jump_to_search_target(
+        dummy,
+        SearchJumpTarget(
+            label="CSS",
+            ra_hours=0.0,
+            dec_deg=0.0,
+            kind="satellite",
+            sort_key=(99.0, "css"),
+            subtitle="Satellite",
+            object_key="CSS",
+        ),
+    )
+
+    dummy.satellite_state.set_banner.assert_called_once_with("Satellites: CSS not available")
+    dummy.update.assert_called_once()
+
+
+def test_refresh_projected_satellite_overlay_falls_back_to_disk_cache(monkeypatch) -> None:
+    projected_points = [SimpleNamespace(satellite_name="ISS (ZARYA)", alt_deg=-40.0, az_deg=151.0)]
+    monkeypatch.setattr(window_updates_module, "project_satellite_records", lambda *args, **kwargs: projected_points)
+
+    dummy = SimpleNamespace()
+    dummy.satellite_opacity = 1.0
+    dummy.viewer_data = ViewerData(
+        location=(40.7128, -74.0060),
+        timezone_name="America/New_York",
+        city_name="New York City",
+        view_center=(0.0, 151.0),
+        observer_height_m=10.0,
+    )
+    dummy.satellite_state = SimpleNamespace(records_by_group={}, overlay_points=None)
+    dummy.state = SkyWindowState(render_view_center=(0.0, 151.0), satellite_overlay_points=None)
+    dummy._enabled_satellite_groups = ("station",)
+    dummy._satellite_validity_remaining_ms = lambda: 1000
+    dummy._load_cached_satellite_records = lambda groups: {"station": [{"OBJECT_NAME": "ISS (ZARYA)"}]}
+    dummy._current_time_obj = lambda: astropy.time.Time("2026-03-23T12:13:24Z")
+    dummy.update = Mock()
+
+    SkyWindow.refresh_projected_satellite_overlay(dummy)
+
+    assert dummy.satellite_state.overlay_points == projected_points
+    assert dummy.state.satellite_overlay_points == projected_points
+    dummy.update.assert_called_once()
 
 
 def test_on_sky_data_calculated_discards_stale_generation_and_requests_refresh() -> None:
@@ -542,6 +721,8 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     assert seen_profiles == [terrain_profile]
     assert seen_view_centers == [(50.0, 210.0)]
     assert seen_line_width_scales == [expected_line_width_scale]
+
+
 
 
 def test_draw_viewport_interaction_layers_skips_urban_outlines(monkeypatch) -> None:

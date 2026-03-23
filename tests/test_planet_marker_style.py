@@ -7,6 +7,7 @@ from PySide6.QtGui import QFont, QImage, QPainter
 from PySide6.QtWidgets import QApplication
 
 from zstarview.render import draw as render_draw
+from zstarview.satellites.types import SatelliteOverlayPoint
 from zstarview.types import CelestialData, PlanetBody, ScreenGeometry, ViewerData
 
 
@@ -264,6 +265,41 @@ def test_draw_gauge_cross_respects_small_scale() -> None:
     half_span_y = max(abs(int(y) - 32) for y in ys)
     assert half_span_x <= 2
     assert half_span_y <= 2
+
+
+def test_satellite_overlay_draws_below_horizon_marker_when_in_fov(monkeypatch) -> None:
+    cross_calls: list[tuple[float, float]] = []
+
+    monkeypatch.setattr(
+        render_draw,
+        "draw_gauge_cross",
+        lambda _painter, _color, _center, *, scale=1.0, pen_width=1.0: cross_calls.append((scale, pen_width)),
+    )
+
+    image = QImage(40, 40, QImage.Format.Format_ARGB32_Premultiplied)
+    painter = QPainter(image)
+    try:
+        render_draw.draw_satellite_overlay(
+            painter=painter,
+            geometry=ScreenGeometry(center=(20, 20), radius=20),
+            satellite_points=[
+                SatelliteOverlayPoint(
+                    group_key="station",
+                    satellite_name="ISS (ZARYA)",
+                    alt_deg=-40.0,
+                    az_deg=151.0,
+                    marker_scale=0.3,
+                    show_label=True,
+                )
+            ],
+            view_center=(0.0, 151.0),
+            opacity=1.0,
+            label_candidates=[],
+        )
+    finally:
+        painter.end()
+
+    assert cross_calls == [(0.3, 1.0)]
 
 
 app = QApplication.instance() or QApplication([])

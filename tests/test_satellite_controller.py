@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import logging
+from urllib.error import URLError
 
 import astropy.time
 
@@ -43,6 +44,7 @@ def test_expected_group_cache_miss_is_logged_without_warning(caplog) -> None:
 
     assert payloads
     assert payloads[0]["banner"] == "Satellites: partial (station unavailable)"
+    assert isinstance(payloads[0]["refreshed_at_utc"], datetime)
     assert "Satellite element fetch unavailable for station" in caplog.text
     assert "Satellite element fetch failed for station" not in caplog.text
 
@@ -70,3 +72,35 @@ def test_all_expected_cache_misses_surface_specific_failure_banner() -> None:
     )
 
     assert failures == [{"banner": "Satellites: time-shifted view is not supported"}]
+
+
+def test_timeout_urlerror_is_logged_without_traceback(caplog) -> None:
+    failures: list[dict[str, object]] = []
+    calls: list[str] = []
+
+    def fetcher(group_key: str, *, target_time_utc: datetime, time_mode: str) -> CachedSatelliteElementSet:
+        calls.append(group_key)
+        raise URLError(TimeoutError("timed out"))
+
+    controller = SatelliteController(
+        fetcher=fetcher,
+        projector=lambda *args, **kwargs: [],
+    )
+    controller.satellite_failed.connect(failures.append)
+
+    with caplog.at_level(logging.WARNING):
+        controller._run_update(
+            observer_lat=35.0,
+            observer_lon=139.0,
+            observer_height_m=0.0,
+            time_obj=astropy.time.Time(datetime.now(timezone.utc)),
+            enabled_groups=("station", "starlink"),
+            reason="test",
+            request_id=0,
+        )
+
+    assert calls == ["station"]
+    assert "Satellite element fetch timed out for station" in caplog.text
+    assert "Satellite element fetch timed out for starlink" not in caplog.text
+    assert "Traceback" not in caplog.text
+    assert failures == [{"banner": "Satellites: <urlopen error timed out>"}]

@@ -24,6 +24,8 @@ class NamedStarShortcut:
     dec_deg: float
     vmag: float
     band: str
+    kind: str = "star"
+    subtitle: str = ""
 
 
 @dataclass(frozen=True)
@@ -34,6 +36,29 @@ class SearchJumpTarget:
     kind: str
     sort_key: tuple[float, str]
     subtitle: str = ""
+    object_key: str = ""
+
+
+SATELLITE_JUMP_SHORTCUTS = (
+    NamedStarShortcut(
+        name="ISS",
+        ra_hours=0.0,
+        dec_deg=0.0,
+        vmag=99.0,
+        band=DEC_BAND_EQUATOR,
+        kind="satellite",
+        subtitle="Satellite",
+    ),
+    NamedStarShortcut(
+        name="CSS",
+        ra_hours=0.0,
+        dec_deg=0.0,
+        vmag=99.0,
+        band=DEC_BAND_EQUATOR,
+        kind="satellite",
+        subtitle="Satellite",
+    ),
+)
 
 
 def classify_declination_band(dec_deg: float) -> str:
@@ -44,7 +69,12 @@ def classify_declination_band(dec_deg: float) -> str:
     return DEC_BAND_EQUATOR
 
 
-def build_named_star_shortcuts(star_catalog: pl.DataFrame, max_vmag: Optional[float] = 2.0) -> Dict[str, List[NamedStarShortcut]]:
+def build_named_star_shortcuts(
+    star_catalog: pl.DataFrame,
+    max_vmag: Optional[float] = 2.0,
+    *,
+    include_satellites: bool = False,
+) -> Dict[str, List[NamedStarShortcut]]:
     """Build named-star candidates grouped by declination band.
 
     Rules:
@@ -89,6 +119,9 @@ def build_named_star_shortcuts(star_catalog: pl.DataFrame, max_vmag: Optional[fl
 
     for star in best_by_name.values():
         bands[star.band].append(star)
+    if include_satellites:
+        for shortcut in SATELLITE_JUMP_SHORTCUTS:
+            bands[shortcut.band].append(shortcut)
 
     for key in DEC_BANDS:
         bands[key].sort(key=lambda s: (s.vmag, s.name.casefold()))
@@ -118,19 +151,26 @@ def _circular_mean_hours(values: List[float]) -> float:
     return (angle / math.tau) * 24.0
 
 
-def build_search_jump_targets(star_catalog: pl.DataFrame) -> List[SearchJumpTarget]:
+def build_search_jump_targets(
+    star_catalog: pl.DataFrame,
+    *,
+    include_satellites: bool = False,
+) -> List[SearchJumpTarget]:
     """Build search targets for both named stars and asterisms."""
     targets: List[SearchJumpTarget] = []
 
-    for star in flatten_named_star_shortcuts(build_named_star_shortcuts(star_catalog, max_vmag=None)):
+    for star in flatten_named_star_shortcuts(
+        build_named_star_shortcuts(star_catalog, max_vmag=None, include_satellites=include_satellites)
+    ):
         targets.append(
             SearchJumpTarget(
                 label=star.name,
                 ra_hours=star.ra_hours,
                 dec_deg=star.dec_deg,
-                kind="star",
-                subtitle=f"Vmag {star.vmag:.2f}",
+                kind=star.kind,
+                subtitle=star.subtitle or f"Vmag {star.vmag:.2f}",
                 sort_key=(star.vmag, star.name.casefold()),
+                object_key=star.name if star.kind == "satellite" else "",
             )
         )
 
