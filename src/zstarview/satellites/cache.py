@@ -17,8 +17,9 @@ from ..satellite_constants import (
     SATELLITE_ISS_CACHE_KEY,
 )
 from .fetch import (
+    extract_record_source,
     extract_element_epoch_utc,
-    fetch_celestrak_group_by_key,
+    fetch_iss_records,
     filter_records_for_group,
 )
 from .types import CachedSatelliteElementSet, SatelliteOmmRecord
@@ -134,7 +135,7 @@ def save_satellite_fetch_failure(
 def fetch_cached_satellite_elements(
     group_key: str,
     *,
-    fetcher: SatelliteFetcher = fetch_celestrak_group_by_key,
+    fetcher: SatelliteFetcher = fetch_iss_records,
     timeout_s: float = SATELLITE_FETCH_TIMEOUT_SECONDS,
     cache_root: str | Path = SATELLITE_CACHE_ROOT_DIR,
     fresh_ttl_seconds: int | None = None,
@@ -188,20 +189,21 @@ def fetch_cached_satellite_elements(
         raise
     element_epoch_utc = extract_element_epoch_utc(records) or now
     fetched_at_utc = now
+    source = extract_record_source(records)
     save_satellite_cache(
         group_key,
         records,
         element_epoch_utc=element_epoch_utc,
         fetched_at_utc=fetched_at_utc,
         cache_root=cache_root,
-        source="celestrak",
+        source=source,
         last_fetch_attempt_utc=fetched_at_utc,
     )
     return CachedSatelliteElementSet(
         group_key=group_key,
         element_epoch_utc=element_epoch_utc,
         fetched_at_utc=fetched_at_utc,
-        source="celestrak",
+        source=source,
         records=filter_records_for_group(group_key, records),
         last_fetch_attempt_utc=fetched_at_utc,
     )
@@ -212,7 +214,7 @@ def resolve_satellite_elements_for_time(
     *,
     target_time_utc: datetime,
     time_mode: TimeMode,
-    fetcher: SatelliteFetcher = fetch_celestrak_group_by_key,
+    fetcher: SatelliteFetcher = fetch_iss_records,
     timeout_s: float = SATELLITE_FETCH_TIMEOUT_SECONDS,
     cache_root: str | Path = SATELLITE_CACHE_ROOT_DIR,
     validity_seconds: int | None = None,
