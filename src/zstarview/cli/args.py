@@ -391,7 +391,7 @@ def add_render_arguments(
         "-a",
         "--aircraft-opacity",
         type=float,
-        default=0.5,
+        default=0.4,
         help=(
             "Opacity of the aircraft overlay (0.0 - 1.0, default: 0.5). "
             "Set to 0.0 to disable aircraft queries and rendering."

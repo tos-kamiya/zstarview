@@ -850,7 +850,7 @@ def draw_satellite_overlay(
         return
 
     painter.save()
-    marker_color = QColor(186, 128, 255, max(0, min(255, int(round(230.0 * layer_opacity)))))
+    marker_color = QColor(255, 133, 237, max(0, min(255, int(round(230.0 * layer_opacity)))))
     label_text_color, label_outline_color = _get_text_style(preset)
     label_outline_width = _get_text_outline_width(preset)
     label_text_color = QColor(label_text_color)
@@ -909,7 +909,7 @@ def draw_aircraft_overlay(
 
     painter.save()
     width_scale = max(1.0, float(line_width_scale))
-    line_color = QColor(186, 128, 255, 255)
+    line_color = QColor(255, 133, 237, 255)
     label_text_color, label_outline_color = _get_text_style(preset)
     label_outline_width = _get_text_outline_width(preset)
     label_text_color = QColor(label_text_color)
