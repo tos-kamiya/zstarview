@@ -354,6 +354,9 @@
 
 ### 2026-03-23
 
+- バージョン更新
+  - ISS 専用化と `wheretheiss.at` 優先取得への切り替えに合わせて、バージョンを `1.6.2` から `1.6.3` へ更新した。
+
 - ISS API source policy update
   - Artificial satellite support was narrowed to `ISS` only, with `wheretheiss.at` as the primary TLE source and CelesTrak `stations` as the fallback source.
   - This keeps the runtime dependency focused on a single visible target while preserving a secondary source when the primary API is unavailable.
@@ -375,6 +378,6 @@
   - `satellites/project.py` と renderer の両方で地平線下の marker を保持・描画できるようにして、検索ジャンプ結果と通常 overlay の不一致を解消した。
 
 - 人工衛星 stale cache の表示継続と失敗 backoff の永続化
-  - stale な `station` cache が残っている場合、取得失敗時でも描画側は cache fallback で表示継続できるようにした。
+  - stale な `ISS` cache が残っている場合、取得失敗時でも描画側は cache fallback で表示継続できるようにした。
   - 軌道要素 cache JSON に `last_fetch_attempt_utc`、`last_fetch_failed`、`last_fetch_error`、`last_fetch_failure_utc`、`failure_backoff_until_utc` を保存するようにした。
   - これにより、取得失敗後の `2時間` backoff はアプリ再起動後も継続し、短時間の再起動で CelesTrak へ再度アクセスしないようにした。
