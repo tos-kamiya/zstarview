@@ -23,6 +23,7 @@ uv run -p .venv/bin/python src/zstarview/data/stars/generate_star_catalog.py
 
 - 生成結果は分割CSVのみです（`stars_base.csv`, `stars_extra7/8/9/10.csv`, `stars_extra_faint.csv`）。
 - 旧形式の統合 `src/zstarview/data/stars.csv` は現行ランタイムでは使用しません。
+- リポジトリへ同梱する現行データは `--max-vmag 10.5` を前提とし、`stars_extra_faint.csv` は `10 < vmag <= 10.5` の範囲を保持します。
 
 既定では以下を出力します。
 
@@ -31,7 +32,7 @@ uv run -p .venv/bin/python src/zstarview/data/stars/generate_star_catalog.py
 - `src/zstarview/data/stars/stars_extra8.csv`（`7 < ... <= 8`）
 - `src/zstarview/data/stars/stars_extra9.csv`（`8 < ... <= 9`）
 - `src/zstarview/data/stars/stars_extra10.csv`（`9 < ... <= 10`）
-- `src/zstarview/data/stars/stars_extra_faint.csv`（`> 10`）
+- `src/zstarview/data/stars/stars_extra_faint.csv`（`10 < ... <= 10.5` for the committed dataset; generator output remains `> 10` when `--max-vmag` is larger）
 
 ## 3. Tycho-2 を追加して生成
 
@@ -54,7 +55,7 @@ uv run -p .venv/bin/python src/zstarview/data/stars/generate_star_catalog.py \
 
 ## 4. 主なパラメータ
 
-- `--max-vmag`: 生成上限等級（既定: `9.0`。例: `10.0`）
+- `--max-vmag`: 生成上限等級（既定: `9.0`。同梱データ更新時の推奨値: `10.5`）
 - `--tycho-csv`: Tycho-2 正規化CSV入力
 - `--tycho-i259-dir`: Tycho-2 I/259 ディレクトリ入力（`tyc2.dat.*.gz`）
 - `--hip-priority-vmag`: この等級以下は Hipparcos を優先（既定: `6.0`）
@@ -67,7 +68,7 @@ uv run -p .venv/bin/python src/zstarview/data/stars/generate_star_catalog.py \
 - 生成ログで件数・欠損率を確認する
 - `vmag <= 6` の件数/見え方が大きく崩れていないことを確認する
 - `vmag <= 9` および `<= 10` で目的に応じた密度になっていることを確認する
-- `vmag > 10` の星が `stars_extra_faint.csv` にのみ出力されることを確認する
+- 同梱データ更新時は `10 < vmag <= 10.5` の星が `stars_extra_faint.csv` に出力されることを確認する
 
 ## 6. 互換運用メモ
 

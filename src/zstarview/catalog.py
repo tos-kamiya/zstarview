@@ -37,18 +37,24 @@ def _split_files_for_threshold(filename: str, vmag_threshold: Optional[float]) -
 
     t = float(vmag_threshold)
     selected_files: List[Path] = [base]
+    required_buckets: List[Path] = []
     if t > 6.0:
-        selected_files.append(extra7)
+        required_buckets.append(extra7)
     if t > 7.0:
-        selected_files.append(extra8)
+        required_buckets.append(extra8)
     if t > 8.0:
-        selected_files.append(extra9)
+        required_buckets.append(extra9)
     if t > 9.0:
-        selected_files.append(extra10)
-    if t > 10.0:
+        required_buckets.append(extra10)
+
+    if not base.exists() or any(not p.exists() for p in required_buckets):
+        return None
+
+    selected_files.extend(required_buckets)
+    if t > 10.0 and extra_faint.exists():
         selected_files.append(extra_faint)
 
-    return selected_files if all(p.exists() for p in selected_files) else None
+    return selected_files
 
 
 def _all_split_files(filename: str) -> List[Path]:

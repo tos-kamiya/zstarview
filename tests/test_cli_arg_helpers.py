@@ -52,3 +52,9 @@ def test_main_help_text_is_ascii_only_for_windows_consoles() -> None:
     help_text = cli_args.build_main_argument_parser().format_help()
 
     assert all(ord(ch) < 128 for ch in help_text)
+
+
+def test_parse_args_clamps_vmag_limit_to_committed_catalog_max() -> None:
+    args = cli_args.parse_args(["-V", "11", "Matsue"])
+
+    assert args.vmag_limit == 10.5
