@@ -396,8 +396,8 @@ The GUI supports direct keyboard and menu-based navigation, search, and overlay 
 * **A**: Toggle asterism overlays
 * **S**: Toggle sky-color shading between gradient and flat-disc mode
 * **C**: Toggle cloud overlays
-* **I**: Toggle aircraft overlay
-* **L**: Toggle artificial satellite overlay
+* **P**: Toggle aircraft overlay
+* **I**: Toggle artificial satellite overlay
 * **T**: Toggle terrain horizon overlay
 * **U**: Toggle urban outline overlay
 * **Ctrl+J**: Open Jump to Named Star
@@ -411,7 +411,7 @@ The GUI supports direct keyboard and menu-based navigation, search, and overlay 
 From the hamburger menu (`☰`), you can use:
 
 * **Jump to Named Star...**: Choose from representative named stars (`Vmag <= 2.0`), grouped into North / Equatorial / South, then jump the view center to that star.
-* **Search Stars and Asterisms...**: Search across named stars and supported asterisms, then jump to the selected target.
+* **Search Stars and Asterisms...**: Search across named stars, supported asterisms, and ISS, then jump to the selected target.
 * **Enlarge Moon**: Toggle moon enlarged to 5x size.
 * **DSO**: Toggle deep-sky object overlays on/off.
 * **Asterisms**: Toggle asterism overlays on/off (when enabled, dim overlays stay visible; hovering a member star brightens the matching asterism and shows its label).
