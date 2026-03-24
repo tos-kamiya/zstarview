@@ -68,14 +68,14 @@ def _patch_common(monkeypatch, *, delta_t: timedelta) -> None:
     monkeypatch.setattr(mod, "prepare_window_viewer_data", lambda *args, **kwargs: SimpleNamespace())
 
 
-def test_build_window_inputs_disables_cloud_and_aircraft_for_past(monkeypatch) -> None:
+def test_build_window_inputs_disables_all_realtime_overlays_for_past(monkeypatch) -> None:
     _patch_common(monkeypatch, delta_t=timedelta(days=-1))
 
     _catalogs, _viewer_data, user_options, _runtime_options = mod._build_window_inputs_from_args(_Args())
 
     assert user_options.cloud_disc_alpha == 0.0
     assert user_options.aircraft_opacity == 0.0
-    assert user_options.satellite_opacity == 0.5
+    assert user_options.satellite_opacity == 0.0
 
 
 def test_build_window_inputs_disables_all_realtime_overlays_for_future(monkeypatch) -> None:

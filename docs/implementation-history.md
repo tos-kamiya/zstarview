@@ -348,10 +348,10 @@
 
 - 時刻モード別レイヤー可否と人工衛星 archive 実装
   - `overlay_time.py` を追加し、`past / present / future` 判定と雲・航空機・人工衛星の可否判定を GUI / export-image で共有するようにした。
-  - GUI では過去表示で人工衛星を許可しつつ、雲と航空機を無効化するようにした。未来表示では 3 つとも無効化する。
+  - GUI では過去表示と未来表示の両方で、雲・航空機・人工衛星を無効化するようにした。
   - `satellites/cache.py` を `current + archive` 方式へ更新し、current refresh 時に古い snapshot を archive へ移し、archive cleanup を `3日` 保持へ変更した。
   - 人工衛星 cache は `element_epoch_utc` と `fetched_at_utc` を分け、利用判定は前者、retention/cleanup は後者を使うようにした。
-  - `zstarview-export-image` も同じ時刻モード判定を使うようにし、過去表示では人工衛星のみ、未来表示では 3 補助レイヤーすべてを skip するようにした。
+  - `zstarview-export-image` も同じ時刻モード判定を使うようにし、過去表示と未来表示の両方で 3 補助レイヤーを skip するようにした。
 
 ### 2026-03-23
 

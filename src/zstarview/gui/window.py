@@ -743,7 +743,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._jump_to_search_target(target)
 
     def _jump_to_search_target(self, target: SearchJumpTarget) -> None:
-        if target.kind == "satellite":
+        target_kind = getattr(target, "kind", "star")
+        if target_kind == "satellite":
             target_altaz = self._find_satellite_jump_altaz(target.object_key or target.label)
             if target_altaz is None:
                 self.satellite_state.set_banner(f"Satellites: {target.label} not available")
