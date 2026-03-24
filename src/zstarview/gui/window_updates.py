@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Dict, Optional
 
 from ..aircraft import project_aircraft_snapshots
+from ..paths import CACHE_PATH
 from ..satellite_constants import SATELLITE_ISS_CACHE_KEY
 from ..satellites import project_satellite_records
 
@@ -12,6 +15,46 @@ logger = logging.getLogger(__name__)
 
 
 class SkyWindowUpdatesMixin:
+    def _resolve_aircraft_debug_snapshot_dir(self) -> Path | None:
+        raw = os.getenv("ZSTARVIEW_DEBUG_SAVE_AIRCRAFT_READY_FRAME", "").strip()
+        if not raw:
+            return None
+        lowered = raw.lower()
+        if lowered in {"0", "false", "no", "off"}:
+            return None
+        if lowered in {"1", "true", "yes", "on"}:
+            return Path(CACHE_PATH) / "debug" / "aircraft-ready"
+        return Path(raw).expanduser()
+
+    def _maybe_save_aircraft_debug_snapshot(self, payload: Dict) -> None:
+        output_dir = self._resolve_aircraft_debug_snapshot_dir()
+        if output_dir is None:
+            return
+        render_current_image = getattr(self, "render_current_image", None)
+        if not callable(render_current_image):
+            return
+        refreshed_at = payload.get("refreshed_at_utc")
+        if not isinstance(refreshed_at, datetime):
+            refreshed_at = datetime.now(timezone.utc)
+        source = str(payload.get("source", "")).strip().lower() or "ready"
+        safe_source = "".join(
+            ch if (ch.isascii() and (ch.isalnum() or ch in {"-", "_", "."})) else "-"
+            for ch in source
+        ).strip("-")
+        if not safe_source:
+            safe_source = "ready"
+        filename = f"aircraft-ready-{refreshed_at.strftime('%Y%m%dT%H%M%SZ')}-{safe_source}.png"
+        try:
+            output_dir.mkdir(parents=True, exist_ok=True)
+            image = render_current_image(include_hud=True)
+            output_path = output_dir / filename
+            if not image.save(str(output_path), "PNG"):
+                logger.warning("Failed to save aircraft debug snapshot: %s", output_path)
+                return
+            logger.info("Saved aircraft debug snapshot: %s", output_path)
+        except Exception as exc:
+            logger.warning("Aircraft debug snapshot failed: %s", exc, exc_info=True)
+
     def _status_line_message(self) -> str:
         parts: list[str] = []
         cloud_message = self._cloud_status_line()
@@ -444,6 +487,7 @@ class SkyWindowUpdatesMixin:
             if callable(schedule_next):
                 schedule_next()
         self.update()
+        self._maybe_save_aircraft_debug_snapshot(payload)
 
     def _on_aircraft_failed(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()

@@ -62,3 +62,9 @@ def test_parse_export_image_args_rejects_sky_update_interval() -> None:
 def test_parse_export_image_args_rejects_dataset_query_options() -> None:
     with pytest.raises(SystemExit):
         parse_export_image_args(["--list-viewpoints", "t", "-o", "out.png"])
+
+
+def test_parse_export_image_args_clamps_vmag_limit_to_committed_catalog_max() -> None:
+    args = parse_export_image_args(["-V", "11", "-o", "out.png"])
+
+    assert args.vmag_limit == 10.5

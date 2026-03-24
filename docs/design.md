@@ -59,6 +59,7 @@
   - CLI オプション定義と値解釈
   - タワー一覧・タワー詳細 JSON 出力の即時終了オプションを扱う
   - `--place`、`--place-countrycode`、`--place-lang` の online 地点検索オプションを扱う
+  - 同梱星表の実上限に合わせ、`-V` / `--vmag-limit` は `10.5` を超える指定を parse 時点で `10.5` へ丸める
   - parser 構築は `add_location_arguments()`、`add_dataset_query_arguments()`、`add_time_arguments()`、`add_render_arguments()` の helper に分割し、将来の別 CLI からも再利用できるようにする
 - `src/zstarview/startup.py`
   - 起動時の地点解決、設定復元、初期値決定
@@ -76,6 +77,8 @@
   - 可視判定と投影前データ生成
 - `src/zstarview/catalog.py`
   - 星カタログの読込と描画用配列の前処理
+  - 同梱の分割星カタログは `stars_base` (`vmag <= 6`)、`stars_extra7` (`6 < vmag <= 7`)、`stars_extra8` (`7 < vmag <= 8`)、`stars_extra9` (`8 < vmag <= 9`)、`stars_extra10` (`9 < vmag <= 10`)、`stars_extra_faint` (`10 < vmag <= 10.5`) を前提とする
+  - loader 上の `extra_faint` バケット名は `vmag > 10` 用のままだが、同梱データでは実質的な上限は `10.5` として扱う
 - `src/zstarview/asterisms.py`
   - アステリズム定義
   - 恒星との対応付け

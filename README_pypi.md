@@ -10,7 +10,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 
 The first screenshot shows the asterism overlay together with the never-rises region.
 The second screenshot shows the aircraft overlay.
-The third screenshot shows a denser star field rendered with `-V10 -s4.5`.
+The third screenshot shows a denser star field rendered with `-V10.5 -s4.5`.
 The fourth screenshot shows terminal output via sixel using `zstarview-export-image`.
 
 <p align="center">
@@ -19,7 +19,7 @@ The fourth screenshot shows terminal output via sixel using `zstarview-export-im
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot3.png" width="49%" alt="Screenshot showing a denser star field rendered with -V10 -s4.5">
+  <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot3.png" width="49%" alt="Screenshot showing a denser star field rendered with -V10.5 -s4.5">
   <img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot6.png" width="49%" alt="Screenshot showing sixel terminal output from zstarview-export-image">
 </p>
 

@@ -11,6 +11,7 @@ _VMAG_MULTIPLIER_MIN = 10.0 ** 0.2
 _VMAG_MULTIPLIER_MAX = 10.0 ** 0.4
 _CONTENT_FOV_MIN = 90.0
 _CONTENT_FOV_MAX = 127.0
+_COMMITTED_VMAG_LIMIT_MAX = 10.5
 
 
 def _parse_azimuth(value: str) -> float:
@@ -289,7 +290,10 @@ def add_render_arguments(
         "--vmag-limit",
         type=float,
         default=6.0,
-        help="Limit stars to Vmag <= this value (default: 6.0). Use a larger number to show more stars.",
+        help=(
+            "Limit stars to Vmag <= this value (default: 6.0). "
+            f"Bundled catalogs clamp values above {_COMMITTED_VMAG_LIMIT_MAX:.1f}."
+        ),
     )
     parser.add_argument(
         "--vmag-brightness-multiplier",
@@ -684,12 +688,18 @@ def _validate_location_argument_combinations(
         parser.error("--place-lang requires --place")
 
 
+def _normalize_vmag_limit(args: argparse.Namespace) -> None:
+    if hasattr(args, "vmag_limit"):
+        args.vmag_limit = min(float(args.vmag_limit), _COMMITTED_VMAG_LIMIT_MAX)
+
+
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     """Parse command-line arguments for the main zstarview app."""
     parser = build_main_argument_parser()
     args = parser.parse_args(argv)
     _normalize_location_arguments(parser, args)
     _normalize_dataset_query_arguments(parser, args)
+    _normalize_vmag_limit(args)
     _validate_dataset_query_compatibility(parser, args)
     _validate_location_argument_combinations(parser, args)
 
@@ -701,6 +711,7 @@ def parse_export_image_args(argv: Sequence[str] | None = None) -> argparse.Names
     parser = build_export_image_argument_parser()
     args = parser.parse_args(argv)
     _normalize_location_arguments(parser, args)
+    _normalize_vmag_limit(args)
     _validate_location_argument_combinations(parser, args)
     if not args.output and not args.sixel:
         parser.error("either --output or --sixel is required")

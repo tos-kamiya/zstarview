@@ -28,7 +28,7 @@
 
 1枚目の画像は、アステリズム表示と昇らない領域を示しています。
 2枚目の画像は、航空機オーバレイを示しています。
-3枚目の画像は、`-V10 -s4.5` でより高密度に星を描画した例です。
+3枚目の画像は、`-V10.5 -s4.5` でより高密度に星を描画した例です。
 4枚目の画像は、`zstarview-export-image` による sixel 端末出力の例です。
 
   <p align="center">
@@ -37,7 +37,7 @@
   </p>
 
   <p align="center">
-    <img src="docs/images/screenshot3.png" alt="-V10 -s4.5 で高密度な星空を描画したスクリーンショット" width="49%" />
+    <img src="docs/images/screenshot3.png" alt="-V10.5 -s4.5 で高密度な星空を描画したスクリーンショット" width="49%" />
     <img src="docs/images/screenshot6.png" alt="zstarview-export-image による sixel 端末出力のスクリーンショット" width="49%" />
   </p>
 
