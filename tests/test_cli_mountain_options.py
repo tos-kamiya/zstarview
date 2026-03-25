@@ -34,6 +34,7 @@ def test_list_mountain_primary_names_includes_mount_fuji() -> None:
     names = list_mountain_primary_names()
     assert "Mount Fuji" in names
     assert "Denali" in names
+    assert "Mount Everest" in names
 
 
 def test_list_mountain_primary_names_prefers_ascii_fallback() -> None:
@@ -46,6 +47,7 @@ def test_list_mountain_all_names_includes_localized_name() -> None:
     names = list_mountain_all_names()
     assert "Mount Fuji" in names
     assert "富士山" in names
+    assert "エベレスト" in names
     assert "Ayrybaba" in names
 
 
