@@ -708,6 +708,34 @@
       "region_hint": "Eswatini"
     },
     {
+      "id": "wikidata:Q513",
+      "qid": "Q513",
+      "name": "Mount Everest",
+      "names": [
+        "Chomolungma",
+        "Everest",
+        "Mount Everest",
+        "Qomolangma",
+        "Sagarmatha",
+        "エベレスト"
+      ],
+      "labels": {
+        "en": "Mount Everest",
+        "ja": "エベレスト"
+      },
+      "latitude_deg": 27.988055555,
+      "longitude_deg": 86.925,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q513",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Everest",
+        "ja": "https://ja.wikipedia.org/wiki/エベレスト"
+      },
+      "location_arg": "27.988056;86.925000",
+      "slug": "Mount_Everest",
+      "elevation_m": 8848.86,
+      "region_hint": "Nepal"
+    },
+    {
       "id": "wikidata:Q203942",
       "qid": "Q203942",
       "name": "Galdhøpiggen",

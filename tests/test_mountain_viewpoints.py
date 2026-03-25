@@ -19,6 +19,21 @@ def test_resolve_mountain_viewpoint_by_english_name() -> None:
     assert mountain.meta["elevation_m"] == 3777.24
 
 
+def test_resolve_mountain_viewpoint_mount_everest() -> None:
+    mountain = resolve_mountain_viewpoint("Mount Everest")
+    assert mountain is not None
+    assert mountain.qid == "Q513"
+    assert mountain.latitude_deg == 27.988055555
+    assert mountain.longitude_deg == 86.925
+    assert mountain.meta["elevation_m"] == 8848.86
+
+
+def test_resolve_mountain_viewpoint_by_everest_alias() -> None:
+    mountain = resolve_mountain_viewpoint("Sagarmatha")
+    assert mountain is not None
+    assert mountain.name == "Mount Everest"
+
+
 def test_resolve_mountain_viewpoint_by_localized_name() -> None:
     mountain = resolve_mountain_viewpoint("富士山")
     assert mountain is not None
