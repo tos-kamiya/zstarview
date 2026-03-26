@@ -32,6 +32,17 @@ def test_startup_resolve_city_accepts_mountain_name(monkeypatch) -> None:
     assert location.tz == "Asia/Tokyo"
 
 
+def test_startup_resolve_city_accepts_added_famous_mountain_name(monkeypatch) -> None:
+    monkeypatch.setattr("zstarview.launch_location_time.load_last_city", lambda: None)
+    monkeypatch.setattr("zstarview.launch_location_time.save_last_city", lambda _value: None)
+    location = resolve_launch_location("Kilimanjaro")
+
+    assert location.kind == "mountain"
+    assert location.display_name == "m/Mount Kilimanjaro"
+    assert abs(location.lat - (-3.0666666666667)) < 1e-6
+    assert abs(location.lon - 37.359166666667) < 1e-6
+
+
 def test_startup_resolve_city_accepts_mountain_wikidata_key(monkeypatch) -> None:
     monkeypatch.setattr("zstarview.launch_location_time.load_last_city", lambda: None)
     monkeypatch.setattr("zstarview.launch_location_time.save_last_city", lambda _value: None)
