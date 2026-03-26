@@ -55,7 +55,7 @@ class HimaProvider:
         if dst.exists():
             logger.debug("Using cached file: %s", dst)
             return dst
-        logger.info("Downloading s3://%s/%s", bucket, key)
+        logger.debug("Downloading s3://%s/%s", bucket, key)
         return download_s3_object(
             s3_client=self._s3(),
             bucket=bucket,

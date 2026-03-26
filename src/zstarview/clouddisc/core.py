@@ -75,7 +75,7 @@ class CloudDisc:
             lon,
             priority=self.cfg.sat_priority,
         )
-        logger.info("Selected satellite=%s for observer at (lat=%.2f, lon=%.2f)", sat, lat, lon)
+        logger.debug("Selected satellite=%s for observer at (lat=%.2f, lon=%.2f)", sat, lat, lon)
         return sat
 
     def make_source_key(
@@ -250,7 +250,7 @@ class CloudDisc:
         inside_vals = bt[mask_inside & finite_bt].astype(np.float64)
         if inside_vals.size > 0:
             p05, p25, p50, p75, p95 = np.percentile(inside_vals, [5, 25, 50, 75, 95])
-            logger.info(
+            logger.debug(
                 (
                     "Cloud BT stats: sat=%s product=%s coverage=%.1f%% "
                     "warm=%.2f cold=%.2f p05=%.2f p25=%.2f p50=%.2f p75=%.2f p95=%.2f "
@@ -270,7 +270,7 @@ class CloudDisc:
                 sample_arr.size,
             )
         else:
-            logger.info(
+            logger.debug(
                 "Cloud BT stats: sat=%s product=%s coverage=%.1f%% warm=%.2f cold=%.2f inside_valid=0 eq_samples=%d",
                 source.satellite,
                 source.product,

@@ -96,7 +96,7 @@ class GoesProvider:
 
         s3 = self._s3(bucket)
 
-        logger.info("Downloading s3://%s/%s", bucket, key)
+        logger.debug("Downloading s3://%s/%s", bucket, key)
         return download_s3_object(
             s3_client=s3,
             bucket=bucket,
