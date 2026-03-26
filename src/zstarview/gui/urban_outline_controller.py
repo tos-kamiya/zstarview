@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import threading
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -15,7 +16,9 @@ from ..data.skyscraper_tiles import (
 )
 from ..data.import_overture_buildings import (
     DEFAULT_FETCH_RADIUS_KM,
+    OVERTURE_CACHE_TTL_DAYS,
     derive_dataset_name,
+    is_derived_dataset_stale,
     import_overture_buildings_for_bbox,
     import_overture_buildings,
 )
@@ -94,7 +97,14 @@ class UrbanOutlineController(QObject):
                 return False
             self._running = True
 
-        if all(path.exists() for _, path in required_dirs) and all(path.exists() for path in skyscraper_dirs):
+        now = datetime.now(timezone.utc)
+        if all(
+            path.exists() and not is_derived_dataset_stale(path, ttl_days=OVERTURE_CACHE_TTL_DAYS, now_utc=now)
+            for _, path in required_dirs
+        ) and all(
+            path.exists() and not is_derived_dataset_stale(path, ttl_days=OVERTURE_CACHE_TTL_DAYS, now_utc=now)
+            for path in skyscraper_dirs
+        ):
             self.urban_started.emit({"banner": "Urban outline: loading cache..."})
         else:
             self.urban_started.emit({"banner": "Urban outline: downloading..."})
@@ -119,29 +129,54 @@ class UrbanOutlineController(QObject):
         reason: str,
     ) -> None:
         try:
+            now = datetime.now(timezone.utc)
             source = "cache"
             required_dirs = () if self._skyscraper_only else self._required_derived_dirs(viewer_data)
             for overture_feature_type, derived_dir in required_dirs:
-                if derived_dir.exists():
+                derived_exists = derived_dir.exists()
+                derived_is_stale = derived_exists and is_derived_dataset_stale(
+                    derived_dir,
+                    ttl_days=OVERTURE_CACHE_TTL_DAYS,
+                    now_utc=now,
+                )
+                if derived_exists and not derived_is_stale:
                     continue
-                if reason == "initial":
+                if derived_is_stale:
+                    logger.info(
+                        "Refreshing expired urban-outline cache from Overture: %s (ttl=%s days)",
+                        derived_dir,
+                        int(OVERTURE_CACHE_TTL_DAYS),
+                    )
+                elif reason == "initial":
                     logger.info("Downloading initial urban-outline data from Overture...")
                 else:
                     logger.info("Downloading urban-outline data from Overture...")
-                import_overture_buildings(
-                    lat_deg=float(viewer_data.lat_deg),
-                    lon_deg=float(viewer_data.lon_deg),
-                    radius_km=self._radius_km,
-                    derived_root_dir=self._derived_root_dir,
-                    min_building_height_m=self._min_building_height_m,
-                    feature_type=overture_feature_type,
-                    fmt="geojsonseq",
-                    overturemaps_bin=self._overturemaps_bin,
-                    dataset_name=derived_dir.parent.name,
-                    keep_download=None,
-                    no_stac=False,
-                )
-                source = "overture"
+                try:
+                    import_overture_buildings(
+                        lat_deg=float(viewer_data.lat_deg),
+                        lon_deg=float(viewer_data.lon_deg),
+                        radius_km=self._radius_km,
+                        derived_root_dir=self._derived_root_dir,
+                        min_building_height_m=self._min_building_height_m,
+                        feature_type=overture_feature_type,
+                        fmt="geojsonseq",
+                        overturemaps_bin=self._overturemaps_bin,
+                        dataset_name=derived_dir.parent.name,
+                        keep_download=None,
+                        no_stac=False,
+                        now_utc=now,
+                    )
+                    source = "overture"
+                except Exception:
+                    if derived_dir.exists():
+                        logger.warning(
+                            "Urban outline refresh failed; using stale cache: %s",
+                            derived_dir,
+                            exc_info=True,
+                        )
+                        source = "cache-stale"
+                        continue
+                    raise
 
             outlines = None
             if required_dirs:
@@ -160,31 +195,58 @@ class UrbanOutlineController(QObject):
                         derived_root_dir=self._skyscraper_derived_root_dir,
                     )
                     skyscraper_dirs.append(derived_dir)
-                    if derived_dir.exists():
+                    derived_exists = derived_dir.exists()
+                    derived_is_stale = derived_exists and is_derived_dataset_stale(
+                        derived_dir,
+                        ttl_days=OVERTURE_CACHE_TTL_DAYS,
+                        now_utc=now,
+                    )
+                    if derived_exists and not derived_is_stale:
                         continue
-                    logger.info(
-                        "Downloading skyscraper urban-outline tile z=%s x=%s y=%s...",
-                        tile.zoom,
-                        tile.x,
-                        tile.y,
-                    )
-                    import_overture_buildings_for_bbox(
-                        bbox=(
-                            tile.envelope.min_lon_deg,
-                            tile.envelope.min_lat_deg,
-                            tile.envelope.max_lon_deg,
-                            tile.envelope.max_lat_deg,
-                        ),
-                        derived_root_dir=self._skyscraper_derived_root_dir,
-                        min_building_height_m=SKYSCRAPER_MIN_HEIGHT_M,
-                        feature_type="building",
-                        fmt="geojsonseq",
-                        overturemaps_bin=self._overturemaps_bin,
-                        dataset_name=tile.cache_key,
-                        keep_download=None,
-                        no_stac=False,
-                    )
-                    source = "overture"
+                    if derived_is_stale:
+                        logger.info(
+                            "Refreshing expired skyscraper urban-outline cache z=%s x=%s y=%s (ttl=%s days)",
+                            tile.zoom,
+                            tile.x,
+                            tile.y,
+                            int(OVERTURE_CACHE_TTL_DAYS),
+                        )
+                    else:
+                        logger.info(
+                            "Downloading skyscraper urban-outline tile z=%s x=%s y=%s...",
+                            tile.zoom,
+                            tile.x,
+                            tile.y,
+                        )
+                    try:
+                        import_overture_buildings_for_bbox(
+                            bbox=(
+                                tile.envelope.min_lon_deg,
+                                tile.envelope.min_lat_deg,
+                                tile.envelope.max_lon_deg,
+                                tile.envelope.max_lat_deg,
+                            ),
+                            derived_root_dir=self._skyscraper_derived_root_dir,
+                            min_building_height_m=SKYSCRAPER_MIN_HEIGHT_M,
+                            feature_type="building",
+                            fmt="geojsonseq",
+                            overturemaps_bin=self._overturemaps_bin,
+                            dataset_name=tile.cache_key,
+                            keep_download=None,
+                            no_stac=False,
+                            now_utc=now,
+                        )
+                        source = "overture"
+                    except Exception:
+                        if derived_dir.exists():
+                            logger.warning(
+                                "Skyscraper urban-outline refresh failed; using stale cache: %s",
+                                derived_dir,
+                                exc_info=True,
+                            )
+                            source = "cache-stale"
+                            continue
+                        raise
                 skyscraper_outlines = resolve_urban_outline_layer_for_viewer(
                     viewer_data,
                     derived_root_dir=self._skyscraper_derived_root_dir,

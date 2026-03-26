@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
+import logging
 import math
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Sequence
 
@@ -15,6 +18,9 @@ from pyproj import CRS, Geod, Transformer
 WGS84_GEOD = Geod(ellps="WGS84")
 COPERNICUS_DEM_BUCKET = "copernicus-dem-90m"
 COPERNICUS_DEM_REGION = "eu-central-1"
+DEM_CACHE_TTL_DAYS = 90
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -213,6 +219,71 @@ def copernicus_tile_key(lat_tile: int, lon_tile: int) -> str:
     return f"{stem}/{stem}.tif"
 
 
+def dem_tile_metadata_path(tile_path: Path) -> Path:
+    return tile_path.with_suffix(tile_path.suffix + ".meta.json")
+
+
+def read_dem_tile_fetched_at_utc(
+    tile_path: Path,
+    *,
+    now_utc: datetime | None = None,
+    migrate_missing: bool = True,
+) -> datetime | None:
+    if not tile_path.exists():
+        return None
+    metadata_path = dem_tile_metadata_path(tile_path)
+    payload: dict[str, object] = {}
+    if metadata_path.exists():
+        try:
+            loaded = json.loads(metadata_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                payload = loaded
+            raw_fetched_at = payload.get("fetched_at_utc")
+            if isinstance(raw_fetched_at, str):
+                return _parse_utc(raw_fetched_at)
+        except Exception:
+            payload = {}
+    if not migrate_missing:
+        return None
+    fetched_at_utc = _normalize_utc(now_utc or datetime.now(timezone.utc))
+    logger.info(
+        "DEM cache metadata missing; recording provisional fetched_at_utc for offline reuse: %s",
+        tile_path,
+    )
+    payload["fetched_at_utc"] = fetched_at_utc.isoformat()
+    _write_dem_tile_metadata(tile_path, payload)
+    return fetched_at_utc
+
+
+def is_dem_tile_stale(
+    tile_path: Path,
+    *,
+    ttl_days: int = DEM_CACHE_TTL_DAYS,
+    now_utc: datetime | None = None,
+) -> bool:
+    fetched_at_utc = read_dem_tile_fetched_at_utc(tile_path, now_utc=now_utc)
+    if fetched_at_utc is None:
+        return True
+    now = _normalize_utc(now_utc or datetime.now(timezone.utc))
+    return (now - fetched_at_utc) > timedelta(days=max(0, int(ttl_days)))
+
+
+def _write_dem_tile_metadata(tile_path: Path, payload: dict[str, object]) -> None:
+    metadata_path = dem_tile_metadata_path(tile_path)
+    metadata_path.parent.mkdir(parents=True, exist_ok=True)
+    metadata_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
+
+
+def _parse_utc(text: str) -> datetime:
+    return _normalize_utc(datetime.fromisoformat(str(text).replace("Z", "+00:00")))
+
+
+def _normalize_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
 def fetch_copernicus_dem(
     *,
     observer_lat_deg: float,
@@ -220,10 +291,13 @@ def fetch_copernicus_dem(
     max_distance_km: float,
     margin_km: float,
     cache_dir: Path,
+    ttl_days: int = DEM_CACHE_TTL_DAYS,
+    now_utc: datetime | None = None,
 ) -> DownloadedDem:
     if margin_km < 0.0:
         raise ValueError("margin_km must be non-negative.")
 
+    now = _normalize_utc(now_utc or datetime.now(timezone.utc))
     radius_km = max_distance_km + margin_km
     bbox = build_download_bbox(
         lat_deg=observer_lat_deg,
@@ -235,27 +309,53 @@ def fetch_copernicus_dem(
     s3 = anonymous_s3_client()
     downloaded_paths: list[Path] = []
     downloaded_any = False
+    stale_fallback_used = False
 
     for key in tile_keys:
         dst = cache_dir / key
         if dst.exists():
-            downloaded_paths.append(dst)
-            continue
+            if not is_dem_tile_stale(dst, ttl_days=ttl_days, now_utc=now):
+                downloaded_paths.append(dst)
+                continue
+            logger.info(
+                "Refreshing expired DEM cache tile: %s (ttl=%s days)",
+                dst,
+                int(ttl_days),
+            )
         dst.parent.mkdir(parents=True, exist_ok=True)
         tmp_path = dst.with_suffix(dst.suffix + ".tmp")
         try:
             with tmp_path.open("wb") as handle:
                 s3.download_fileobj(COPERNICUS_DEM_BUCKET, key, handle)
             tmp_path.replace(dst)
+            _write_dem_tile_metadata(
+                dst,
+                {
+                    "bucket": COPERNICUS_DEM_BUCKET,
+                    "fetched_at_utc": now.isoformat(),
+                    "key": key,
+                },
+            )
             downloaded_paths.append(dst)
             downloaded_any = True
         except s3.exceptions.NoSuchKey:
-            pass
+            if dst.exists():
+                logger.warning("DEM refresh failed; using stale cached tile: %s", dst)
+                downloaded_paths.append(dst)
+                stale_fallback_used = True
         except Exception as exc:
             message = str(exc)
             if "404" in message or "Not Found" in message or "NoSuchKey" in message:
-                pass
+                if dst.exists():
+                    logger.warning("DEM refresh failed; using stale cached tile: %s", dst)
+                    downloaded_paths.append(dst)
+                    stale_fallback_used = True
             else:
+                if dst.exists():
+                    logger.warning("DEM refresh failed; using stale cached tile: %s", dst)
+                    downloaded_paths.append(dst)
+                    stale_fallback_used = True
+                    continue
                 raise RuntimeError(
                     f"Failed to download s3://{COPERNICUS_DEM_BUCKET}/{key}: {exc}"
                 ) from exc
@@ -271,7 +371,7 @@ def fetch_copernicus_dem(
         paths=tuple(downloaded_paths),
         bbox_crs84=bbox,
         tile_keys=tuple(tile_keys),
-        source="download" if downloaded_any else "cache",
+        source="download" if downloaded_any else ("cache-stale" if stale_fallback_used else "cache"),
     )
 
 
