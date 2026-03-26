@@ -148,6 +148,7 @@ zstarview-export-image Matsue -o matsue.png
 | `--terrain-horizon-opacity OPACITY`         | Opacity of the terrain horizon polyline (0.0–1.0). Use 0.0 to disable DEM download, terrain-horizon calculation, and drawing. \*4 | `0.05` |
 | `--ground-tint-opacity OPACITY`             | Strength of the ground-color fill below the geometric/terrain horizon (0.0–1.0). | `0.1` |
 | `--urban-outline-opacity OPACITY`           | Opacity of the urban outline overlay (0.0–1.0). Use 0.0 to disable it for that run. | `0.2` |
+| `--clear-long-lived-cache`                  | Troubleshooting option. Delete long-lived DEM and urban-outline caches before startup. If used again within 3 days, startup is refused and the app tells you when retry is allowed. | |
 | `--urban-outline-feature-type {both,building}` | Overture cache mode for the urban outline. `both` combines `building` and `building_part`, preferring parts when available. | `both` |
 | `-r`, `--urban-outline-radius-km RADIUS_KM` | Fetch and render urban-outline buildings within this radius from the observer location. The value is also part of the cache key. | `2.5` |
 | `-b`, `--urban-outline-min-building-height-m METERS` | Ignore buildings lower than this height when fetching/caching the urban outline. The value is also part of the cache key. | `0.0` |
@@ -176,6 +177,12 @@ zstarview-export-image Matsue -o matsue.png
 \*4 Terrain horizon rendering downloads Copernicus DEM tiles on first use and reuses the cached DEM later. When enabled, the terrain profile also becomes the boundary for the ground-color fill inside the disc.
 
 \*5 `--place` uses the public OpenStreetMap Nominatim search service. It sends a single search request with a User-Agent and Accept-Language. See the Nominatim usage policy if you plan to rely on this option heavily or from automation.
+
+If you really need to bypass the `--clear-long-lived-cache` cooldown, remove these directories manually before startup:
+
+- `~/.cache/zstarview/copernicus-dem`
+- `~/.cache/zstarview/overture_buildings`
+- `~/.cache/zstarview/overture_skyscrapers`
 
 #### `--place` behavior
 
