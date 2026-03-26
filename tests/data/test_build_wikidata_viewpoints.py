@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 def _load_module():
-    root = Path(__file__).resolve().parents[1]
+    root = Path(__file__).resolve().parents[2]
     mod_path = root / "src" / "zstarview" / "data" / "build_wikidata_viewpoints.py"
     spec = importlib.util.spec_from_file_location("build_wikidata_viewpoints", mod_path)
     assert spec is not None

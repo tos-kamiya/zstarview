@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 def _load_module():
-    root = Path(__file__).resolve().parents[1]
+    root = Path(__file__).resolve().parents[2]
     mod_path = root / "src" / "zstarview" / "data" / "import_overture_buildings.py"
     spec = importlib.util.spec_from_file_location("import_overture_buildings", mod_path)
     assert spec is not None
