@@ -1,4 +1,4 @@
-"""Resolve launch-time location and time inputs."""
+from __future__ import annotations
 
 import logging
 import math
@@ -6,40 +6,28 @@ import re
 import urllib.error
 import urllib.parse
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Any, List, Optional, Tuple
+from typing import Any, List
 
-from .config import load_last_city, save_last_city
-from .location_resolver import (
-    Viewpoint,
-    prefixed_viewpoint_name,
-    resolve_mountain_viewpoint,
-    resolve_tower_viewpoint,
-    search_nominatim,
-    split_prefixed_viewpoint,
-)
-from .paths import (
-    CITY_ADMIN1_CODES_FILE,
-    CITY_COORD_FILE,
-)
-from .utils.resolve_city import (
+from ..config import load_last_city, save_last_city
+from ..paths import CITY_ADMIN1_CODES_FILE, CITY_COORD_FILE
+from ..utils.resolve_city import (
     CityRec,
     load_admin1_names,
     resolve_city,
     resolve_city_by_geonameid,
     resolve_city_by_name,
 )
-from .utils.timezone_parser import parse_tz_string
+from .mountains import resolve_mountain_viewpoint
+from .nominatim import search_nominatim
+from .towers import resolve_tower_viewpoint
+from .viewpoints import Viewpoint, prefixed_viewpoint_name, split_prefixed_viewpoint
 
 logger = logging.getLogger(__name__)
 DEFAULT_OBSERVER_HEIGHT_M = 1.7
 
 
-class LaunchSetupError(Exception):
-    """Abort the startup sequence (handled by main to show splash for 3s)."""
-
-
-StartupAbortError = LaunchSetupError
+class LocationResolveError(Exception):
+    """Abort launch because location resolution failed."""
 
 
 @dataclass(frozen=True)
@@ -58,7 +46,6 @@ class ResolvedLocation:
 
 
 def format_splash_location(city: ResolvedLocation) -> str:
-    """Create a concise location label for splash screen context."""
     return f"Location: {city.display_name}"
 
 
@@ -96,11 +83,7 @@ def _viewpoint_to_location(
 ) -> ResolvedLocation | None:
     if viewpoint is None:
         return None
-    nearest_city = _resolve_nearest_city(
-        viewpoint.latitude_deg,
-        viewpoint.longitude_deg,
-        admin1_map,
-    )
+    nearest_city = _resolve_nearest_city(viewpoint.latitude_deg, viewpoint.longitude_deg, admin1_map)
     timezone_name = nearest_city.tz if nearest_city is not None else "UTC"
     viewpoint_height_m = 0.0 if viewpoint.viewpoint_height_m is None else float(viewpoint.viewpoint_height_m)
     location_height_label: str | None = None
@@ -198,10 +181,7 @@ def _parse_direct_coordinate_location(raw_value: str) -> tuple[float, float] | N
             raise ValueError("Expected 'lat;lon'")
         lat_token, lon_token = parts
     elif text.startswith("@"):
-        match = re.fullmatch(
-            r"@([+-]?\d+(?:\.\d+)?),([+-]?\d+(?:\.\d+)?)(?:[,/?#&].*)?",
-            text,
-        )
+        match = re.fullmatch(r"@([+-]?\d+(?:\.\d+)?),([+-]?\d+(?:\.\d+)?)(?:[,/?#&].*)?", text)
         if match is None:
             raise ValueError("Expected '@lat,lon'")
         lat_token, lon_token = match.group(1), match.group(2)
@@ -218,10 +198,7 @@ def _parse_direct_coordinate_location(raw_value: str) -> tuple[float, float] | N
                     return None
             elif not full_path.startswith("/maps/"):
                 return None
-            pin_match = re.search(
-                r"!3d([+-]?\d+(?:\.\d+)?)!4d([+-]?\d+(?:\.\d+)?)",
-                candidate,
-            )
+            pin_match = re.search(r"!3d([+-]?\d+(?:\.\d+)?)!4d([+-]?\d+(?:\.\d+)?)", candidate)
             if pin_match is not None:
                 lat_token, lon_token = pin_match.group(1), pin_match.group(2)
             else:
@@ -240,9 +217,7 @@ def _parse_direct_coordinate_location(raw_value: str) -> tuple[float, float] | N
         found = {ch for ch in token_upper if ch in "NSEW"}
         allowed = set(dirs)
         if found and not found.issubset(allowed):
-            raise ValueError(
-                f"Invalid direction in '{token}' (expected one of {sorted(allowed)})."
-            )
+            raise ValueError(f"Invalid direction in '{token}' (expected one of {sorted(allowed)}).")
         sign = -1.0 if (("S" in found) or ("W" in found)) else 1.0
         value_text = re.sub(r"[^0-9.-]", "", token)
         if not value_text:
@@ -269,28 +244,23 @@ def _resolve_place_query(
 ) -> ResolvedLocation:
     logger.info("Searching Nominatim for '%s'...", query)
     try:
-        results = search_nominatim(
-            query,
-            limit=5,
-            countrycode=countrycode,
-            language=language,
-        )
+        results = search_nominatim(query, limit=5, countrycode=countrycode, language=language)
     except urllib.error.HTTPError as exc:
         logger.error("Nominatim HTTP error for '%s': %s %s", query, exc.code, exc.reason)
-        raise StartupAbortError() from exc
+        raise LocationResolveError() from exc
     except urllib.error.URLError as exc:
         logger.error("Nominatim network error for '%s': %s", query, exc.reason)
-        raise StartupAbortError() from exc
+        raise LocationResolveError() from exc
     except ValueError as exc:
         logger.error("Nominatim response error for '%s': %s", query, exc)
-        raise StartupAbortError() from exc
+        raise LocationResolveError() from exc
     except Exception as exc:
         logger.error("Nominatim search failed for '%s': %s", query, exc)
-        raise StartupAbortError() from exc
+        raise LocationResolveError() from exc
 
     if not results:
         logger.error("No Nominatim result for '%s'", query)
-        raise StartupAbortError()
+        raise LocationResolveError()
 
     logger.info("Nominatim found %d match(es) for '%s':", len(results), query)
     for index, result in enumerate(results, start=1):
@@ -309,7 +279,7 @@ def _resolve_place_query(
         location = _nominatim_result_to_location(query, results[0], admin1_map)
     except ValueError as exc:
         logger.error("Invalid top Nominatim result for '%s': %s", query, exc)
-        raise StartupAbortError() from exc
+        raise LocationResolveError() from exc
 
     logger.info("Using top Nominatim result: %s", location.display_name)
     return location
@@ -324,18 +294,11 @@ def _mountain_to_location(args_city: str, admin1_map: dict[tuple[str, str], str]
 
 
 def resolve_launch_location(
-    args_city: Optional[str],
+    args_city: str | None,
     place_query: str | None = None,
     place_countrycode: str | None = None,
     place_lang: str = "en",
 ) -> ResolvedLocation:
-    """
-    Resolve target city from CLI or last used city.
-
-    Also handles direct latitude/longitude input like "35.68;139.76" or "N35.68;E139.76".
-
-    Kept as a standalone helper because focused tests exercise this resolver directly.
-    """
     last_city = load_last_city()
     stored_location: dict[str, Any] | None = None
     if not args_city and place_query is None:
@@ -355,14 +318,14 @@ def resolve_launch_location(
             parsed_coords = _parse_direct_coordinate_location(args_city)
         except ValueError as exc:
             logger.error("Invalid latitude/longitude format: '%s'. %s", args_city, exc)
-            raise StartupAbortError() from exc
+            raise LocationResolveError() from exc
 
     logger.info("Loading city data...")
     try:
         admin1_map = load_admin1_names(CITY_ADMIN1_CODES_FILE)
     except FileNotFoundError as exc:
         logger.error("Fail to load admin1CodesASCII.txt.")
-        raise StartupAbortError() from exc
+        raise LocationResolveError() from exc
 
     recs: List[CityRec] = []
     try:
@@ -370,12 +333,7 @@ def resolve_launch_location(
             lat, lon = parsed_coords
             nearest_city = _resolve_nearest_city(lat, lon, admin1_map)
             timezone_name = nearest_city.tz if nearest_city is not None else "UTC"
-            logger.info(
-                "Parsed location: Lat=%.6f, Lon=%.6f, Timezone=%s",
-                lat,
-                lon,
-                timezone_name,
-            )
+            logger.info("Parsed location: Lat=%.6f, Lon=%.6f, Timezone=%s", lat, lon, timezone_name)
             return ResolvedLocation(
                 display_name=f"Lat: {lat:.2f}, Lon: {lon:.2f}",
                 lat=lat,
@@ -394,12 +352,7 @@ def resolve_launch_location(
                 args_city = "Tokyo"
 
         if place_query is not None:
-            resolved_location = _resolve_place_query(
-                place_query,
-                place_countrycode,
-                place_lang,
-                admin1_map,
-            )
+            resolved_location = _resolve_place_query(place_query, place_countrycode, place_lang, admin1_map)
             persist_location = True
         elif resolved_location is None:
             assert args_city is not None
@@ -412,13 +365,13 @@ def resolve_launch_location(
                     tower_location = _tower_to_location(explicit_name, admin1_map)
                     if tower_location is None:
                         logger.error("No tower found for '%s'", explicit_name)
-                        raise StartupAbortError()
+                        raise LocationResolveError()
                     resolved_location = tower_location
                 else:
                     mountain_location = _mountain_to_location(explicit_name, admin1_map)
                     if mountain_location is None:
                         logger.error("No mountain found for '%s'", explicit_name)
-                        raise StartupAbortError()
+                        raise LocationResolveError()
                     resolved_location = mountain_location
                 persist_location = True
             elif tower_query:
@@ -430,7 +383,7 @@ def resolve_launch_location(
                     resolved_location = mountain_location
                 else:
                     logger.error("No tower or mountain found for '%s'", args_city)
-                    raise StartupAbortError()
+                    raise LocationResolveError()
                 persist_location = True
             elif re.match(r"^\d+$", args_city):
                 rec = resolve_city_by_geonameid(int(args_city), CITY_COORD_FILE)
@@ -438,7 +391,7 @@ def resolve_launch_location(
                     recs.append(rec)
                 else:
                     logger.error("No city found for geonameid %s", args_city)
-                    raise StartupAbortError()
+                    raise LocationResolveError()
             else:
                 if "/" not in args_city:
                     recs = resolve_city_by_name(args_city, CITY_COORD_FILE, admin1_map)
@@ -469,10 +422,10 @@ def resolve_launch_location(
                         persist_location = True
                     else:
                         logger.error("No match for '%s'", args_city)
-                        raise StartupAbortError()
+                        raise LocationResolveError()
     except FileNotFoundError as exc:
         logger.error("Fail to load cities1000.txt.")
-        raise StartupAbortError() from exc
+        raise LocationResolveError() from exc
 
     if resolved_location is None:
         city = recs[0]
@@ -506,83 +459,3 @@ def resolve_launch_location(
         else:
             logger.info("City: %s", resolved_location.persistence_key)
     return resolved_location
-
-
-def _parse_flexible_time(time_str: str) -> Tuple[int, int, int]:
-    """Parse time string that may omit minutes/seconds."""
-    match = re.fullmatch(r"\s*(\d{1,2})(?::(\d{1,2}))?(?::(\d{1,2}))?\s*", time_str)
-    if not match:
-        raise ValueError(f"Invalid time: {time_str!r}. Use HH, HH:MM, or HH:MM:SS.")
-    hour = int(match.group(1))
-    minute = int(match.group(2)) if match.group(2) is not None else 0
-    second = int(match.group(3)) if match.group(3) is not None else 0
-
-    if not (0 <= hour <= 23):
-        raise ValueError(f"Hour out of range (0-23): {hour}")
-    if not (0 <= minute <= 59):
-        raise ValueError(f"Minute out of range (0-59): {minute}")
-    if not (0 <= second <= 59):
-        raise ValueError(f"Second out of range (0-59): {second}")
-    return hour, minute, second
-
-
-def parse_launch_time_arguments(
-    args_datetime: Optional[str],
-    args_days: int,
-    args_hours: int,
-    *,
-    timezone_name: str = "UTC",
-    timezone_override: str | None = None,
-) -> timedelta:
-    """
-    Parse time-related arguments and return a timedelta from now.
-
-    Supports --datetime in 'YYYY-MM-DD HH[:MM[:SS]] [TZ]' (TZ optional).
-    """
-    if not args_datetime:
-        return timedelta(days=args_days, hours=args_hours)
-
-    if args_hours != 0 or args_days != 0:
-        logger.error("Invalid option: --datetime cannot be used with --hours or --days.")
-        raise StartupAbortError()
-
-    try:
-        parts = args_datetime.split()
-        if len(parts) < 2:
-            raise ValueError("Missing time part. Use 'YYYY-MM-DD HH[:MM[:SS]] [TZ]'.")
-
-        date_str = parts[0]
-        time_str = parts[1]
-        tz_str = parts[2] if len(parts) >= 3 else None
-
-        try:
-            date_only = datetime.strptime(date_str, "%Y-%m-%d")
-        except ValueError as exc:
-            raise ValueError(f"Invalid date: {date_str!r}. Use YYYY-MM-DD.") from exc
-
-        hour, minute, second = _parse_flexible_time(time_str)
-        dt_naive = date_only.replace(hour=hour, minute=minute, second=second)
-
-        effective_tz_str = timezone_override if timezone_override is not None else tz_str
-
-        if effective_tz_str:
-            try:
-                tz = parse_tz_string(effective_tz_str)
-                dt_local = dt_naive.replace(tzinfo=tz)
-                target_time_utc = dt_local.astimezone(timezone.utc)
-            except Exception as exc:
-                logger.error("Invalid timezone '%s'. %s", effective_tz_str, exc)
-                raise StartupAbortError() from exc
-        else:
-            try:
-                tz = parse_tz_string(timezone_name)
-            except Exception as exc:
-                logger.error("Invalid timezone '%s'. %s", timezone_name, exc)
-                raise StartupAbortError() from exc
-            target_time_utc = dt_naive.replace(tzinfo=tz).astimezone(timezone.utc)
-
-        now_utc = datetime.now(timezone.utc)
-        return target_time_utc - now_utc
-    except ValueError as exc:
-        logger.error("%s Input was: %r", exc, args_datetime)
-        raise StartupAbortError() from exc

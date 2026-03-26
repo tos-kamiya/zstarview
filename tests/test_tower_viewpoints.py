@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from zstarview.tower_viewpoints import load_tower_viewpoints, resolve_tower_viewpoint
+from zstarview.location_resolver import load_tower_viewpoints, resolve_tower_viewpoint
 
 
 def test_load_tower_viewpoints_includes_tokyo_skytree() -> None:

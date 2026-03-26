@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import pytest
 
-from zstarview.launch_location_time import LaunchSetupError, resolve_launch_location
-from zstarview.viewpoints import Viewpoint
+from zstarview.location_resolver import LocationResolveError, resolve_launch_location
+from zstarview.location_resolver.viewpoints import Viewpoint
 
 
 def test_startup_resolve_city_accepts_tower_name(monkeypatch) -> None:
-    monkeypatch.setattr("zstarview.launch_location_time.load_last_city", lambda: None)
-    monkeypatch.setattr("zstarview.launch_location_time.save_last_city", lambda _value: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.load_last_city", lambda: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.save_last_city", lambda _value: None)
     location = resolve_launch_location("Tokyo Skytree")
     assert location.kind == "tower"
     assert location.display_name == "t/Tokyo Skytree"
@@ -20,8 +20,8 @@ def test_startup_resolve_city_accepts_tower_name(monkeypatch) -> None:
 
 
 def test_startup_resolve_city_accepts_added_famous_tower_name(monkeypatch) -> None:
-    monkeypatch.setattr("zstarview.launch_location_time.load_last_city", lambda: None)
-    monkeypatch.setattr("zstarview.launch_location_time.save_last_city", lambda _value: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.load_last_city", lambda: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.save_last_city", lambda _value: None)
     location = resolve_launch_location("N Seoul Tower")
     assert location.kind == "tower"
     assert location.display_name == "t/N Seoul Tower"
@@ -30,8 +30,8 @@ def test_startup_resolve_city_accepts_added_famous_tower_name(monkeypatch) -> No
 
 
 def test_startup_resolve_city_accepts_mountain_name(monkeypatch) -> None:
-    monkeypatch.setattr("zstarview.launch_location_time.load_last_city", lambda: None)
-    monkeypatch.setattr("zstarview.launch_location_time.save_last_city", lambda _value: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.load_last_city", lambda: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.save_last_city", lambda _value: None)
     location = resolve_launch_location("Mount Fuji")
     assert location.kind == "mountain"
     assert location.display_name == "m/Mount Fuji"
@@ -43,8 +43,8 @@ def test_startup_resolve_city_accepts_mountain_name(monkeypatch) -> None:
 
 
 def test_startup_resolve_city_accepts_added_famous_mountain_name(monkeypatch) -> None:
-    monkeypatch.setattr("zstarview.launch_location_time.load_last_city", lambda: None)
-    monkeypatch.setattr("zstarview.launch_location_time.save_last_city", lambda _value: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.load_last_city", lambda: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.save_last_city", lambda _value: None)
     location = resolve_launch_location("Kilimanjaro")
 
     assert location.kind == "mountain"
@@ -54,34 +54,34 @@ def test_startup_resolve_city_accepts_added_famous_mountain_name(monkeypatch) ->
 
 
 def test_startup_resolve_city_accepts_mountain_wikidata_key(monkeypatch) -> None:
-    monkeypatch.setattr("zstarview.launch_location_time.load_last_city", lambda: None)
-    monkeypatch.setattr("zstarview.launch_location_time.save_last_city", lambda _value: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.load_last_city", lambda: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.save_last_city", lambda _value: None)
     location = resolve_launch_location("wikidata:Q39231")
     assert location.kind == "mountain"
     assert location.display_name == "m/Mount Fuji"
 
 
 def test_startup_resolve_city_accepts_explicit_tower_prefix(monkeypatch) -> None:
-    monkeypatch.setattr("zstarview.launch_location_time.load_last_city", lambda: None)
-    monkeypatch.setattr("zstarview.launch_location_time.save_last_city", lambda _value: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.load_last_city", lambda: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.save_last_city", lambda _value: None)
     location = resolve_launch_location("t/Tokyo Skytree")
     assert location.kind == "tower"
     assert location.display_name == "t/Tokyo Skytree"
 
 
 def test_startup_resolve_city_accepts_explicit_mountain_prefix(monkeypatch) -> None:
-    monkeypatch.setattr("zstarview.launch_location_time.load_last_city", lambda: None)
-    monkeypatch.setattr("zstarview.launch_location_time.save_last_city", lambda _value: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.load_last_city", lambda: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.save_last_city", lambda _value: None)
     location = resolve_launch_location("m/Mount Hermon")
     assert location.kind == "mountain"
     assert location.display_name == "m/Mount Hermon"
 
 
 def test_startup_resolve_city_uses_viewpoint_height_when_present(monkeypatch) -> None:
-    monkeypatch.setattr("zstarview.launch_location_time.load_last_city", lambda: None)
-    monkeypatch.setattr("zstarview.launch_location_time.save_last_city", lambda _value: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.load_last_city", lambda: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.save_last_city", lambda _value: None)
     monkeypatch.setattr(
-        "zstarview.launch_location_time.resolve_tower_viewpoint",
+        "zstarview.location_resolver.resolve.resolve_tower_viewpoint",
         lambda _name: Viewpoint(
             id="wikidata:Q1",
             qid="Q1",
@@ -97,10 +97,10 @@ def test_startup_resolve_city_uses_viewpoint_height_when_present(monkeypatch) ->
         ),
     )
     monkeypatch.setattr(
-        "zstarview.launch_location_time._resolve_nearest_city",
+        "zstarview.location_resolver.resolve._resolve_nearest_city",
         lambda _lat, _lon, _admin1_map: type("City", (), {"tz": "Asia/Tokyo", "cc": "JP"})(),
     )
-    monkeypatch.setattr("zstarview.launch_location_time.load_admin1_names", lambda _path: {})
+    monkeypatch.setattr("zstarview.location_resolver.resolve.load_admin1_names", lambda _path: {})
 
     location = resolve_launch_location("Example Deck")
 
@@ -109,19 +109,19 @@ def test_startup_resolve_city_uses_viewpoint_height_when_present(monkeypatch) ->
 
 
 def test_startup_resolve_city_formats_city_display_name_with_country(monkeypatch) -> None:
-    monkeypatch.setattr("zstarview.launch_location_time.load_last_city", lambda: None)
-    monkeypatch.setattr("zstarview.launch_location_time.save_last_city", lambda _value: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.load_last_city", lambda: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.save_last_city", lambda _value: None)
     location = resolve_launch_location("Tokyo")
     assert location.kind == "city"
     assert location.display_name == "JP/Tokyo"
 
 
 def test_startup_resolve_city_accepts_at_lat_lon(monkeypatch) -> None:
-    monkeypatch.setattr("zstarview.launch_location_time.load_last_city", lambda: None)
-    monkeypatch.setattr("zstarview.launch_location_time.save_last_city", lambda _value: None)
-    monkeypatch.setattr("zstarview.launch_location_time.load_admin1_names", lambda _path: {})
+    monkeypatch.setattr("zstarview.location_resolver.resolve.load_last_city", lambda: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.save_last_city", lambda _value: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.load_admin1_names", lambda _path: {})
     monkeypatch.setattr(
-        "zstarview.launch_location_time._resolve_nearest_city",
+        "zstarview.location_resolver.resolve._resolve_nearest_city",
         lambda _lat, _lon, _admin1_map: type("City", (), {"tz": "Asia/Tokyo", "cc": "JP"})(),
     )
 
@@ -135,11 +135,11 @@ def test_startup_resolve_city_accepts_at_lat_lon(monkeypatch) -> None:
 
 
 def test_startup_resolve_city_accepts_google_maps_url(monkeypatch) -> None:
-    monkeypatch.setattr("zstarview.launch_location_time.load_last_city", lambda: None)
-    monkeypatch.setattr("zstarview.launch_location_time.save_last_city", lambda _value: None)
-    monkeypatch.setattr("zstarview.launch_location_time.load_admin1_names", lambda _path: {})
+    monkeypatch.setattr("zstarview.location_resolver.resolve.load_last_city", lambda: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.save_last_city", lambda _value: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.load_admin1_names", lambda _path: {})
     monkeypatch.setattr(
-        "zstarview.launch_location_time._resolve_nearest_city",
+        "zstarview.location_resolver.resolve._resolve_nearest_city",
         lambda _lat, _lon, _admin1_map: type("City", (), {"tz": "Asia/Tokyo", "cc": "JP"})(),
     )
 
@@ -157,16 +157,16 @@ def test_startup_resolve_city_accepts_google_maps_url(monkeypatch) -> None:
 
 
 def test_startup_resolve_city_rejects_google_maps_url_without_coordinates(monkeypatch) -> None:
-    monkeypatch.setattr("zstarview.launch_location_time.load_last_city", lambda: None)
-    monkeypatch.setattr("zstarview.launch_location_time.save_last_city", lambda _value: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.load_last_city", lambda: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.save_last_city", lambda _value: None)
 
-    with pytest.raises(LaunchSetupError):
+    with pytest.raises(LocationResolveError):
         resolve_launch_location("https://www.google.com/maps/place/Tokyo+Tower")
 
 
 def test_startup_resolve_city_rejects_google_com_maps_host(monkeypatch) -> None:
-    monkeypatch.setattr("zstarview.launch_location_time.load_last_city", lambda: None)
-    monkeypatch.setattr("zstarview.launch_location_time.save_last_city", lambda _value: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.load_last_city", lambda: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.save_last_city", lambda _value: None)
 
-    with pytest.raises(LaunchSetupError):
+    with pytest.raises(LocationResolveError):
         resolve_launch_location("https://google.com/maps/@35.0,139.0,17z")

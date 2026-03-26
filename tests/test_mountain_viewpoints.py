@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from zstarview.mountain_viewpoints import (
+from zstarview.location_resolver import (
     list_mountain_all_names,
     load_mountain_viewpoints,
     resolve_mountain_viewpoint,

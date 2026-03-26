@@ -8,43 +8,40 @@ from dataclasses import replace
 from ..astro import _starfield_load
 from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_lived_cache
 from ..catalog import load_dso_catalog, load_star_catalog
-from ..launch_location_time import (
-    LaunchSetupError,
+from ..location_resolver import (
     format_splash_location,
-    parse_launch_time_arguments,
-    resolve_launch_location,
-)
-from ..logging_utils import setup_root_logger
-from ..mountain_viewpoints import (
-    load_mountain_viewpoints,
+    find_exact_viewpoint_matches,
     list_mountain_all_names,
     list_mountain_primary_names,
+    list_tower_all_names,
+    list_tower_primary_names,
+    load_mountain_viewpoints,
+    load_tower_viewpoints,
+    LocationResolveError,
     mountain_viewpoint_to_dict,
+    prefixed_viewpoint_name,
     resolve_mountain_viewpoint,
+    resolve_launch_location,
+    resolve_tower_viewpoint,
+    split_prefixed_viewpoint,
+    tower_viewpoint_to_dict,
 )
+from ..launch_time import (
+    LaunchSetupError,
+    parse_launch_time_arguments,
+)
+from ..logging_utils import setup_root_logger
 from ..paths import (
     APP_DISPLAY_NAME,
     DSO_CSV_FILE,
     EPHEMERIS_FILENAME,
     STARS_CSV_FILE,
 )
-from ..tower_viewpoints import (
-    load_tower_viewpoints,
-    list_tower_all_names,
-    list_tower_primary_names,
-    resolve_tower_viewpoint,
-    tower_viewpoint_to_dict,
-)
 from ..gui.window_inputs import (
     prepare_window_catalogs,
     prepare_window_runtime_options,
     prepare_window_user_options,
     prepare_window_viewer_data,
-)
-from ..viewpoints import (
-    find_exact_viewpoint_matches,
-    prefixed_viewpoint_name,
-    split_prefixed_viewpoint,
 )
 from ..cli.args import _parse_theme, _parse_window_geometry, parse_args
 
@@ -218,6 +215,9 @@ def main() -> None:
             place_countrycode=args.place_countrycode,
             place_lang=args.place_lang,
         )
+    except LocationResolveError as exc:
+        raise LaunchSetupError() from exc
+    try:
         if args.timezone is not None:
             city = replace(city, tz=args.timezone)
         set_splash_context(format_splash_location(city))

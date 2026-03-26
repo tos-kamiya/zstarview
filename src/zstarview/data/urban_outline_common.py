@@ -8,7 +8,7 @@ from typing import Iterable, Sequence
 import numpy as np
 from pyproj import CRS, Transformer
 
-from zstarview.tower_viewpoints import TowerViewpoint
+from zstarview.location_resolver import TowerViewpoint
 
 
 DEFAULT_MIN_BUILDING_HEIGHT_M = 40.0

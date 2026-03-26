@@ -26,8 +26,8 @@ from zstarview.data.urban_outline_common import (  # noqa: E402
     project_ring_xy,
     sample_ring_points_xy,
 )
-from zstarview.tower_viewpoints import TowerViewpoint, load_tower_viewpoints, resolve_tower_viewpoint  # noqa: E402
-from zstarview.viewpoints import normalize_viewpoint_name  # noqa: E402
+from zstarview.location_resolver import TowerViewpoint, load_tower_viewpoints, resolve_tower_viewpoint  # noqa: E402
+from zstarview.location_resolver.viewpoints import normalize_viewpoint_name  # noqa: E402
 
 DEFAULT_RADIUS_KM = 3.0
 DEFAULT_MIN_BUILDING_HEIGHT_M = 40.0
