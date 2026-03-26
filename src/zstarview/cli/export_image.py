@@ -693,6 +693,9 @@ def _write_export_overlay_summary_to_stderr(
 
 def main() -> None:
     args = parse_export_image_args()
+    if getattr(args, "print_cache_dir", False):
+        print(CACHE_PATH)
+        return
     setup_root_logger()
     logger.info("%s export-image starting...", APP_DISPLAY_NAME)
     if getattr(args, "clear_long_lived_cache", False):

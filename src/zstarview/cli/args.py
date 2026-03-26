@@ -595,6 +595,11 @@ def build_export_image_argument_parser() -> argparse.ArgumentParser:
         help="Allow saving an image even when enabled external layers fail or time out.",
     )
     parser.add_argument(
+        "--print-cache-dir",
+        action="store_true",
+        help="Print the cache root directory and exit.",
+    )
+    parser.add_argument(
         "--sixel",
         action="store_true",
         help="Display the generated image in the terminal via img2sixel.",
@@ -728,6 +733,10 @@ def parse_export_image_args(argv: Sequence[str] | None = None) -> argparse.Names
     _normalize_location_arguments(parser, args)
     _normalize_vmag_limit(args)
     _validate_location_argument_combinations(parser, args)
+    if args.print_cache_dir:
+        if args.output or args.sixel:
+            parser.error("--print-cache-dir cannot be used with --output or --sixel")
+        return args
     if not args.output and not args.sixel:
         parser.error("either --output or --sixel is required")
     if args.output == "-" and args.sixel:

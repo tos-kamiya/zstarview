@@ -121,7 +121,7 @@ README より詳細に、何ができるか、どう振る舞うか、どのよ�
   - このオプションはトラブルシュート用途であり、通常起動で常用しないことを前提とする。
   - 最後にこのオプションを実行してから `3日` 未満の場合は、再実行を拒否してよい。
   - 再実行拒否時は、通常ログだけでなく splash 上にも理由を表示し、そのまま終了してよい。
-  - 利用者には、どうしても再度全削除が必要な場合は `~/.cache/zstarview/copernicus-dem`、`~/.cache/zstarview/overture_buildings`、`~/.cache/zstarview/overture_skyscrapers` を手動削除する方法を案内してよい。
+  - 利用者には、`zstarview-export-image --print-cache-dir` で cache root を確認し、その配下の `copernicus-dem`、`overture_buildings`、`overture_skyscrapers` を手動削除する方法を案内してよい。
 - `--ground-tint-opacity`
 - `-t`, `--theme`
 

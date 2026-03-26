@@ -74,3 +74,14 @@ def test_parse_export_image_args_accepts_clear_long_lived_cache() -> None:
     args = parse_export_image_args(["--clear-long-lived-cache", "-o", "out.png"])
 
     assert args.clear_long_lived_cache is True
+
+
+def test_parse_export_image_args_accepts_print_cache_dir_without_output() -> None:
+    args = parse_export_image_args(["--print-cache-dir"])
+
+    assert args.print_cache_dir is True
+
+
+def test_parse_export_image_args_rejects_print_cache_dir_with_output() -> None:
+    with pytest.raises(SystemExit):
+        parse_export_image_args(["--print-cache-dir", "-o", "out.png"])
