@@ -5,11 +5,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import math
 import shutil
 import subprocess
 import sys
 import tempfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Sequence
 
@@ -19,6 +21,10 @@ EARTH_RADIUS_KM = 6371.0088
 DEFAULT_FETCH_RADIUS_KM = 2.5
 DEFAULT_MIN_BUILDING_HEIGHT_M = 0.0
 DEFAULT_STOREY_HEIGHT_M = 3.5
+OVERTURE_CACHE_TTL_DAYS = 30
+CACHE_METADATA_FILENAME = "cache_meta.json"
+
+logger = logging.getLogger(__name__)
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -155,6 +161,67 @@ def build_download_command(
     return command
 
 
+def derived_dataset_metadata_path(derived_dir: Path) -> Path:
+    return derived_dir.parent / CACHE_METADATA_FILENAME
+
+
+def read_derived_dataset_fetched_at_utc(
+    derived_dir: Path,
+    *,
+    now_utc: datetime | None = None,
+    migrate_missing: bool = True,
+) -> datetime | None:
+    if not derived_dir.exists():
+        return None
+    metadata_path = derived_dataset_metadata_path(derived_dir)
+    payload: dict[str, object] = {}
+    if metadata_path.exists():
+        try:
+            loaded = json.loads(metadata_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                payload = loaded
+            raw_fetched_at = payload.get("fetched_at_utc")
+            if isinstance(raw_fetched_at, str):
+                return _parse_utc(raw_fetched_at)
+        except Exception:
+            payload = {}
+    if not migrate_missing:
+        return None
+    fetched_at_utc = _normalize_utc(now_utc or datetime.now(timezone.utc))
+    logger.info(
+        "Urban-outline cache metadata missing; recording provisional fetched_at_utc for offline reuse: %s",
+        derived_dir,
+    )
+    payload["fetched_at_utc"] = fetched_at_utc.isoformat()
+    payload.setdefault("dataset_name", derived_dir.parent.name)
+    write_derived_dataset_metadata(derived_dir, payload=payload)
+    return fetched_at_utc
+
+
+def is_derived_dataset_stale(
+    derived_dir: Path,
+    *,
+    ttl_days: int = OVERTURE_CACHE_TTL_DAYS,
+    now_utc: datetime | None = None,
+) -> bool:
+    fetched_at_utc = read_derived_dataset_fetched_at_utc(derived_dir, now_utc=now_utc)
+    if fetched_at_utc is None:
+        return True
+    now = _normalize_utc(now_utc or datetime.now(timezone.utc))
+    return (now - fetched_at_utc) > timedelta(days=max(0, int(ttl_days)))
+
+
+def write_derived_dataset_metadata(
+    derived_dir: Path,
+    *,
+    payload: dict[str, object],
+) -> Path:
+    metadata_path = derived_dataset_metadata_path(derived_dir)
+    metadata_path.parent.mkdir(parents=True, exist_ok=True)
+    metadata_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return metadata_path
+
+
 def import_overture_buildings(
     *,
     lat_deg: float,
@@ -168,6 +235,7 @@ def import_overture_buildings(
     dataset_name: str | None,
     keep_download: Path | None,
     no_stac: bool,
+    now_utc: datetime | None = None,
 ) -> Path:
     overturemaps_path = shutil.which(overturemaps_bin)
     if overturemaps_path is None:
@@ -197,6 +265,7 @@ def import_overture_buildings(
         query_lat_deg=lat_deg,
         query_lon_deg=lon_deg,
         query_radius_km=radius_km,
+        now_utc=now_utc,
     )
 
 
@@ -214,8 +283,10 @@ def import_overture_buildings_for_bbox(
     query_lat_deg: float | None = None,
     query_lon_deg: float | None = None,
     query_radius_km: float | None = None,
+    now_utc: datetime | None = None,
 ) -> Path:
     overturemaps_path = shutil.which(overturemaps_bin) or overturemaps_bin
+    fetched_at_utc = _normalize_utc(now_utc or datetime.now(timezone.utc))
     dataset_dir_name = dataset_name or derive_dataset_name(
         query_lat_deg or 0.0,
         query_lon_deg or 0.0,
@@ -259,7 +330,35 @@ def import_overture_buildings_for_bbox(
     tile_path.parent.mkdir(parents=True, exist_ok=True)
     tile_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     build_derived_tile_index.main(["--derived-dir", str(derived_dir)])
+    write_derived_dataset_metadata(
+        derived_dir,
+        payload={
+            "bbox": {
+                "west": float(bbox[0]),
+                "south": float(bbox[1]),
+                "east": float(bbox[2]),
+                "north": float(bbox[3]),
+            },
+            "dataset_name": dataset_dir_name,
+            "feature_type": str(feature_type),
+            "fetched_at_utc": fetched_at_utc.isoformat(),
+            "min_building_height_m": float(min_building_height_m),
+            "query_lat_deg": None if query_lat_deg is None else float(query_lat_deg),
+            "query_lon_deg": None if query_lon_deg is None else float(query_lon_deg),
+            "query_radius_km": None if query_radius_km is None else float(query_radius_km),
+        },
+    )
     return derived_dir
+
+
+def _parse_utc(text: str) -> datetime:
+    return _normalize_utc(datetime.fromisoformat(str(text).replace("Z", "+00:00")))
+
+
+def _normalize_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
 
 
 def build_derived_tile_payload(
