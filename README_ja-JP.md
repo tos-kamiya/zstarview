@@ -163,6 +163,7 @@ zstarview-export-image Matsue -o matsue.png
 | `--show-dso-initial true\|false` | 起動時に DSO を表示するかを指定します。 | 自動（カタログがあれば表示） |
 | `--show-asterisms-initial true\|false` | 起動時にアステリウムを表示するかを指定します。 | `show` |
 | `-t`, `--theme {night,day,white,black,transparent}` | 背景と星の見え方のテーマを指定します。`transparent` は天球を暗めに保ちつつ半透明にし、ウィンドウ外周やデスクトップ背景がより透けて見えるテーマです。 | `night` |
+| `--clear-long-lived-cache` | トラブルシュート用オプションです。起動前に長寿命の DEM / 都市アウトラインキャッシュを削除します。3 日以内に再度使うと起動を拒否し、再実行可能日時を表示します。 | |
 | `-H`, `--hours HOURS` | 現在時刻に加算する時間数を指定します。※1 | `0` |
 | `-D`, `--days DAYS` | 現在時刻に加算する日数を指定します。※1 | `0` |
 | `--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"` | 絶対的な日時を指定します。時刻は `HH`、`HH:MM`、`HH:MM:SS` のいずれでも指定でき、タイムゾーン省略時は UTC 扱いです。※1 | |
@@ -176,6 +177,18 @@ zstarview-export-image Matsue -o matsue.png
 ※4 地形地平線表示は初回利用時に Copernicus DEM タイルをダウンロードし、以後はローカルキャッシュを再利用します。有効時はディスク内の地面/空の塗り分け境界にも地形プロファイルを使います。
 
 ※5 `--place` は公開の OpenStreetMap Nominatim 検索サービスを使います。User-Agent と Accept-Language を付けて 1 回だけ検索リクエストを送ります。高頻度利用や自動化で使う場合は、Nominatim の利用ポリシーを確認してください。
+
+トラブルシュートや手動キャッシュ削除のために、描画せず cache root だけを表示することもできます。
+
+```bash
+zstarview-export-image --print-cache-dir
+```
+
+`--clear-long-lived-cache` のクールダウンを回避したい場合は、まず `zstarview-export-image --print-cache-dir` で cache root を確認し、その配下の次のサブディレクトリを起動前に手動削除してください。
+
+- `copernicus-dem`
+- `overture_buildings`
+- `overture_skyscrapers`
 
 #### `--place` の挙動
 

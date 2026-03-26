@@ -148,7 +148,6 @@ zstarview-export-image Matsue -o matsue.png
 | `--terrain-horizon-opacity OPACITY`         | Opacity of the terrain horizon polyline (0.0–1.0). Use 0.0 to disable DEM download, terrain-horizon calculation, and drawing. \*4 | `0.05` |
 | `--ground-tint-opacity OPACITY`             | Strength of the ground-color fill below the geometric/terrain horizon (0.0–1.0). | `0.1` |
 | `--urban-outline-opacity OPACITY`           | Opacity of the urban outline overlay (0.0–1.0). Use 0.0 to disable it for that run. | `0.2` |
-| `--clear-long-lived-cache`                  | Troubleshooting option. Delete long-lived DEM and urban-outline caches before startup. If used again within 3 days, startup is refused and the app tells you when retry is allowed. | |
 | `--urban-outline-feature-type {both,building}` | Overture cache mode for the urban outline. `both` combines `building` and `building_part`, preferring parts when available. | `both` |
 | `-r`, `--urban-outline-radius-km RADIUS_KM` | Fetch and render urban-outline buildings within this radius from the observer location. The value is also part of the cache key. | `2.5` |
 | `-b`, `--urban-outline-min-building-height-m METERS` | Ignore buildings lower than this height when fetching/caching the urban outline. The value is also part of the cache key. | `0.0` |
@@ -163,6 +162,7 @@ zstarview-export-image Matsue -o matsue.png
 | `--show-dso-initial true\|false`            | Whether DSO overlays are shown at startup.                                  | auto (`show` when catalog is available) |
 | `--show-asterisms-initial true\|false`      | Whether asterism overlays are shown at startup.                             | `show` |
 | `-t`, `--theme {night,day,white,black,transparent}`     | Theme preset for background and star contrast. `transparent` keeps the dome dark but translucent so the desktop/window background shows through more strongly.                              | `night` |
+| `--clear-long-lived-cache`                  | Troubleshooting option. Delete long-lived DEM and urban-outline caches before startup. If used again within 3 days, startup is refused and the app tells you when retry is allowed. | |
 | `-H`, `--hours HOURS`                       | Number of hours to add to the current time. \*1                              | `0`     |
 | `-D`, `--days DAYS`                         | Number of days to add to the current time. \*1                               | `0`     |
 | `--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"` | Specify an absolute date/time. Time may be given as `HH`, `HH:MM`, or `HH:MM:SS`. If no TZ is specified, UTC is assumed. \*1 |         |
@@ -178,11 +178,17 @@ zstarview-export-image Matsue -o matsue.png
 
 \*5 `--place` uses the public OpenStreetMap Nominatim search service. It sends a single search request with a User-Agent and Accept-Language. See the Nominatim usage policy if you plan to rely on this option heavily or from automation.
 
-If you really need to bypass the `--clear-long-lived-cache` cooldown, remove these directories manually before startup:
+For troubleshooting or manual cache maintenance, you can print the cache root directory without rendering:
 
-- `~/.cache/zstarview/copernicus-dem`
-- `~/.cache/zstarview/overture_buildings`
-- `~/.cache/zstarview/overture_skyscrapers`
+```bash
+zstarview-export-image --print-cache-dir
+```
+
+If you really need to bypass the `--clear-long-lived-cache` cooldown, first run `zstarview-export-image --print-cache-dir`, then remove these subdirectories under that cache root before startup:
+
+- `copernicus-dem`
+- `overture_buildings`
+- `overture_skyscrapers`
 
 #### `--place` behavior
 
