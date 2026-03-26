@@ -11,7 +11,7 @@ from typing import Any, List, Optional, Tuple
 
 from .config import load_last_city, save_last_city
 from .mountain_viewpoints import resolve_mountain_viewpoint
-from .nominatim_search import search as search_nominatim
+from .location_resolver import search_nominatim
 from .paths import (
     CITY_ADMIN1_CODES_FILE,
     CITY_COORD_FILE,
