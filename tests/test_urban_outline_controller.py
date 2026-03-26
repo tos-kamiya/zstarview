@@ -152,3 +152,49 @@ def test_run_update_skips_base_outlines_in_skyscraper_only_mode(
             "source": "overture",
         }
     ]
+
+
+def test_run_update_refreshes_stale_base_cache(monkeypatch, tmp_path: Path) -> None:
+    viewer = ViewerData(
+        location=(35.67, 139.76),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        observer_height_m=1.7,
+    )
+    controller = UrbanOutlineController(
+        derived_root_dir=tmp_path / "normal",
+        skyscraper_derived_root_dir=tmp_path / "skyscraper",
+    )
+    derived_dir = tmp_path / "normal" / "bldg"
+    derived_dir.mkdir(parents=True)
+    ready_payloads = []
+    refresh_calls: list[str] = []
+    controller.urban_ready.connect(lambda payload: ready_payloads.append(payload))
+
+    monkeypatch.setattr(
+        controller,
+        "_required_derived_dirs",
+        lambda _viewer: (("building", derived_dir),),
+    )
+    monkeypatch.setattr(
+        controller,
+        "_selected_skyscraper_tiles",
+        lambda _viewer: (),
+    )
+    monkeypatch.setattr(
+        "zstarview.gui.urban_outline_controller.is_derived_dataset_stale",
+        lambda path, **_kwargs: path == derived_dir,
+    )
+    monkeypatch.setattr(
+        "zstarview.gui.urban_outline_controller.import_overture_buildings",
+        lambda **_kwargs: refresh_calls.append("refresh") or derived_dir,
+    )
+    monkeypatch.setattr(
+        "zstarview.gui.urban_outline_controller.resolve_urban_outline_layer_for_viewer",
+        lambda *_args, **_kwargs: ["outline"],
+    )
+
+    controller._run_update(viewer_data=viewer, dataset_name="tokyo-test", reason="manual")
+
+    assert refresh_calls == ["refresh"]
+    assert ready_payloads == [{"outlines": ["outline"], "source": "overture"}]
