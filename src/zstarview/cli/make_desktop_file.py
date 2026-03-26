@@ -2,9 +2,9 @@ import os
 import argparse
 import os.path
 
-_dir = os.path.dirname(os.path.abspath(__file__))
-
 from ..paths import APP_DISPLAY_NAME, APP_ICON_FILE, APP_ID
+
+_dir = os.path.dirname(os.path.abspath(__file__))
 
 APP_COMMAND = "zstarview"
 DESKTOP_FILE = f"{APP_ID}.desktop"

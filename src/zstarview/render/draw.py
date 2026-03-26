@@ -424,8 +424,6 @@ def draw_radial_background(
     assert geometry.radius >= 10
     fov_outer = max(float(BACKGROUND_FIELD_OF_VIEW_DEG1), float(content_fov_deg))
     r_content = float(geometry.radius * (fov_outer / 90.0))
-    r_core = float(max(1.0, min(r_content * 0.7, r_content - 6.0)))
-    r_mid = float(r_core + (r_content - r_core) * 0.55)
     cx = float(geometry.center[0])
     cy = float(geometry.center[1])
     corners = (
