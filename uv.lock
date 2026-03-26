@@ -1501,7 +1501,6 @@ dependencies = [
     { name = "pyside6" },
     { name = "rasterio", version = "1.4.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "rasterio", version = "1.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-    { name = "ruff" },
     { name = "skyfield" },
     { name = "xarray", version = "2025.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "xarray", version = "2026.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -1512,6 +1511,7 @@ dev = [
     { name = "mypy" },
     { name = "pyongc" },
     { name = "pytest" },
+    { name = "ruff" },
 ]
 
 [package.metadata]
@@ -1532,7 +1532,7 @@ requires-dist = [
     { name = "pyside6", specifier = ">=6.10,<7" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "rasterio", specifier = ">=1.4.4" },
-    { name = "ruff", specifier = ">=0.15.7" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.15.7" },
     { name = "skyfield", specifier = ">=1.54,<2" },
     { name = "xarray", marker = "python_full_version < '3.11'", specifier = ">=2025.6,<2026.0" },
     { name = "xarray", marker = "python_full_version >= '3.11'", specifier = ">=2026.0,<2027.0" },
