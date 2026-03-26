@@ -857,6 +857,10 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - DEM / Overture 建物キャッシュは、各取得単位ごとに `fetched_at_utc` をメタデータとして持たせ、利用時に TTL 超過かどうかを判定できるようにする。
 - TTL 超過時は「即削除」ではなく「stale として再取得対象」に落とし、再取得成功までは既存キャッシュをフォールバック利用できるようにする。
 - 別系統の clean up は任意とし、長期間使われない stale キャッシュだけを後段で物理削除してよい。初期方針としては `TTL x 3` 超過を clean up 候補としてよい。
+- `--clear-long-lived-cache` は別系統の明示的削除手段として扱い、TTL 判定とは独立に `copernicus-dem`、`overture_buildings`、`overture_skyscrapers` を削除してよい。
+- ただし常用防止のため、cache root 直下に `clear_long_lived_cache_meta.json` を置き、`last_cleared_at_utc` を記録して `3日` のクールダウンを設ける。
+- クールダウン中に `--clear-long-lived-cache` が再度指定された場合は、削除を実行せず splash と通常ログの両方に拒否理由を表示して終了してよい。
+- CLI からの強制再実行オプションは持たず、どうしても必要な場合は cache directory の手動削除を README で案内する。
 
 ### 10.4 DEM / 建物キャッシュ再取得設計
 
