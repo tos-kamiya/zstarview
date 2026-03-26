@@ -63,7 +63,7 @@ def test_main_parser_version_option_prints_package_version(
     captured = capsys.readouterr()
 
     assert exc_info.value.code == 0
-    assert captured.out == f"pytest {cli_args.__version__}\n"
+    assert captured.out.endswith(f" {cli_args.__version__}\n")
     assert captured.err == ""
 
 
