@@ -41,6 +41,35 @@
       "region_hint": "Argentina"
     },
     {
+      "id": "wikidata:Q16466024",
+      "qid": "Q16466024",
+      "name": "Annapurna I",
+      "names": [
+        "Annapurna",
+        "Annapurna I",
+        "Annapurna I Main",
+        "アンナプルナI峰",
+        "アンナプルナ第1峰"
+      ],
+      "labels": {
+        "en": "Annapurna I",
+        "ja": "アンナプルナI峰"
+      },
+      "latitude_deg": 28.5958,
+      "longitude_deg": 83.82,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q16466024",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Annapurna"
+      },
+      "location_arg": "28.595800;83.820000",
+      "slug": "Annapurna_I",
+      "elevation_m": 8091.0,
+      "region_hint": "Nepal",
+      "country_codes": [
+        "NP"
+      ]
+    },
+    {
       "id": "wikidata:Q5059",
       "qid": "Q5059",
       "name": "Aoraki / Mount Cook",
@@ -448,6 +477,37 @@
       "region_hint": "Ecuador"
     },
     {
+      "id": "wikidata:Q170089",
+      "qid": "Q170089",
+      "name": "Cho Oyu",
+      "names": [
+        "Cho Oyu",
+        "チョオユー",
+        "チョ・オユー",
+        "チョーオユー",
+        "チョー・オユー"
+      ],
+      "labels": {
+        "en": "Cho Oyu",
+        "ja": "チョ・オユー"
+      },
+      "latitude_deg": 28.094166666667,
+      "longitude_deg": 86.660833333333,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q170089",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Cho_Oyu",
+        "ja": "https://ja.wikipedia.org/wiki/チョ・オユー"
+      },
+      "location_arg": "28.094167;86.660833",
+      "slug": "Cho_Oyu",
+      "elevation_m": 8188.0,
+      "region_hint": "Nepal",
+      "country_codes": [
+        "CN",
+        "NP"
+      ]
+    },
+    {
       "id": "wikidata:Q238147",
       "qid": "Q238147",
       "name": "Citlaltepetl",
@@ -525,6 +585,64 @@
       "slug": "Damavand",
       "elevation_m": 5610.0,
       "region_hint": "Iran"
+    },
+    {
+      "id": "wikidata:Q130018",
+      "qid": "Q130018",
+      "name": "Denali",
+      "names": [
+        "Bolshaya Gora",
+        "Denali",
+        "Mount Denali",
+        "デナリ",
+        "デナリ山",
+        "マッキンリー山"
+      ],
+      "labels": {
+        "en": "Denali",
+        "ja": "デナリ"
+      },
+      "latitude_deg": 63.069102777,
+      "longitude_deg": -151.006261111,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q130018",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Denali",
+        "ja": "https://ja.wikipedia.org/wiki/デナリ"
+      },
+      "location_arg": "63.069103;-151.006261",
+      "slug": "Denali",
+      "elevation_m": 6190.0,
+      "region_hint": "United States"
+    },
+    {
+      "id": "wikidata:Q165440",
+      "qid": "Q165440",
+      "name": "Dhaulagiri",
+      "names": [
+        "Dhaulagiri",
+        "Dhaulagiri I",
+        "Dhwalagiri",
+        "ダウラギリ",
+        "ダウラギリ・ヒマール"
+      ],
+      "labels": {
+        "en": "Dhaulagiri",
+        "ja": "ダウラギリ"
+      },
+      "latitude_deg": 28.696666666666665,
+      "longitude_deg": 83.49,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q165440",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Dhaulagiri",
+        "ja": "https://ja.wikipedia.org/wiki/ダウラギリ"
+      },
+      "location_arg": "28.696667;83.490000",
+      "slug": "Dhaulagiri",
+      "elevation_m": 8167.0,
+      "region_hint": "Nepal",
+      "country_codes": [
+        "NP"
+      ]
     },
     {
       "id": "wikidata:Q3183447",
@@ -706,34 +824,6 @@
       "slug": "Emlembe",
       "elevation_m": 1862.0,
       "region_hint": "Eswatini"
-    },
-    {
-      "id": "wikidata:Q513",
-      "qid": "Q513",
-      "name": "Mount Everest",
-      "names": [
-        "Chomolungma",
-        "Everest",
-        "Mount Everest",
-        "Qomolangma",
-        "Sagarmatha",
-        "エベレスト"
-      ],
-      "labels": {
-        "en": "Mount Everest",
-        "ja": "エベレスト"
-      },
-      "latitude_deg": 27.988055555,
-      "longitude_deg": 86.925,
-      "wikidata_url": "https://www.wikidata.org/wiki/Q513",
-      "wikipedia_urls": {
-        "en": "https://en.wikipedia.org/wiki/Mount_Everest",
-        "ja": "https://ja.wikipedia.org/wiki/エベレスト"
-      },
-      "location_arg": "27.988056;86.925000",
-      "slug": "Mount_Everest",
-      "elevation_m": 8848.86,
-      "region_hint": "Nepal"
     },
     {
       "id": "wikidata:Q203942",
@@ -1505,6 +1595,35 @@
       "region_hint": "Saint Vincent and the Grenadines"
     },
     {
+      "id": "wikidata:Q168702",
+      "qid": "Q168702",
+      "name": "Lhotse",
+      "names": [
+        "Lho Tse",
+        "Lhotse",
+        "ローツェ"
+      ],
+      "labels": {
+        "en": "Lhotse",
+        "ja": "ローツェ"
+      },
+      "latitude_deg": 27.961666666667,
+      "longitude_deg": 86.933333333333,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q168702",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Lhotse",
+        "ja": "https://ja.wikipedia.org/wiki/ローツェ"
+      },
+      "location_arg": "27.961667;86.933333",
+      "slug": "Lhotse",
+      "elevation_m": 8516.0,
+      "region_hint": "Nepal",
+      "country_codes": [
+        "CN",
+        "NP"
+      ]
+    },
+    {
       "id": "wikidata:Q1883683",
       "qid": "Q1883683",
       "name": "Mafadi",
@@ -1574,6 +1693,62 @@
       "region_hint": "Bosnia and Herzegovina"
     },
     {
+      "id": "wikidata:Q169986",
+      "qid": "Q169986",
+      "name": "Makalu",
+      "names": [
+        "Makalu",
+        "マカルー",
+        "マカルー山"
+      ],
+      "labels": {
+        "en": "Makalu",
+        "ja": "マカルー"
+      },
+      "latitude_deg": 27.889166666667,
+      "longitude_deg": 87.088611111111,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q169986",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Makalu",
+        "ja": "https://ja.wikipedia.org/wiki/マカルー"
+      },
+      "location_arg": "27.889167;87.088611",
+      "slug": "Makalu",
+      "elevation_m": 8485.0,
+      "region_hint": "Nepal",
+      "country_codes": [
+        "CN",
+        "NP"
+      ]
+    },
+    {
+      "id": "wikidata:Q170070",
+      "qid": "Q170070",
+      "name": "Manaslu",
+      "names": [
+        "Manaslu",
+        "マナスル"
+      ],
+      "labels": {
+        "en": "Manaslu",
+        "ja": "マナスル"
+      },
+      "latitude_deg": 28.55,
+      "longitude_deg": 84.559722222222,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q170070",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Manaslu",
+        "ja": "https://ja.wikipedia.org/wiki/マナスル"
+      },
+      "location_arg": "28.550000;84.559722",
+      "slug": "Manaslu",
+      "elevation_m": 8163.0,
+      "region_hint": "Nepal",
+      "country_codes": [
+        "NP"
+      ]
+    },
+    {
       "id": "wikidata:Q1147144",
       "qid": "Q1147144",
       "name": "Maromokotro",
@@ -1596,6 +1771,36 @@
       "slug": "Maromokotro",
       "elevation_m": 2876.0,
       "region_hint": "Madagascar"
+    },
+    {
+      "id": "wikidata:Q1374",
+      "qid": "Q1374",
+      "name": "Matterhorn",
+      "names": [
+        "Matterhorn",
+        "Mont Cervin",
+        "Monte Cervino",
+        "マッターホルン"
+      ],
+      "labels": {
+        "en": "Matterhorn",
+        "ja": "マッターホルン"
+      },
+      "latitude_deg": 45.97638888888889,
+      "longitude_deg": 7.658611111111111,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1374",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Matterhorn",
+        "ja": "https://ja.wikipedia.org/wiki/マッターホルン"
+      },
+      "location_arg": "45.976389;7.658611",
+      "slug": "Matterhorn",
+      "elevation_m": 4477.54,
+      "region_hint": "Switzerland",
+      "country_codes": [
+        "CH",
+        "IT"
+      ]
     },
     {
       "id": "wikidata:Q2114101",
@@ -1666,6 +1871,38 @@
       "slug": "Mont_Bengoué",
       "elevation_m": 1070.0,
       "region_hint": "Gabon"
+    },
+    {
+      "id": "wikidata:Q583",
+      "qid": "Q583",
+      "name": "Mont Blanc",
+      "names": [
+        "Il Bianco",
+        "La Dame blanche",
+        "Mont Blanc",
+        "Monte Bianco",
+        "Mount Blanc",
+        "モンブラン"
+      ],
+      "labels": {
+        "en": "Mont Blanc",
+        "ja": "モンブラン"
+      },
+      "latitude_deg": 45.83277777777778,
+      "longitude_deg": 6.865,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q583",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mont_Blanc",
+        "ja": "https://ja.wikipedia.org/wiki/モンブラン"
+      },
+      "location_arg": "45.832778;6.865000",
+      "slug": "Mont_Blanc",
+      "elevation_m": 4807.02,
+      "region_hint": "France",
+      "country_codes": [
+        "FR",
+        "IT"
+      ]
     },
     {
       "id": "wikidata:Q3042286",
@@ -2049,6 +2286,34 @@
       "region_hint": "Russia"
     },
     {
+      "id": "wikidata:Q513",
+      "qid": "Q513",
+      "name": "Mount Everest",
+      "names": [
+        "Chomolungma",
+        "Everest",
+        "Mount Everest",
+        "Qomolangma",
+        "Sagarmatha",
+        "エベレスト"
+      ],
+      "labels": {
+        "en": "Mount Everest",
+        "ja": "エベレスト"
+      },
+      "latitude_deg": 27.988055555,
+      "longitude_deg": 86.925,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q513",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Everest",
+        "ja": "https://ja.wikipedia.org/wiki/エベレスト"
+      },
+      "location_arg": "27.988056;86.925000",
+      "slug": "Mount_Everest",
+      "elevation_m": 8848.86,
+      "region_hint": "Nepal"
+    },
+    {
       "id": "wikidata:Q39231",
       "qid": "Q39231",
       "name": "Mount Fuji",
@@ -2254,6 +2519,71 @@
       "slug": "Mount_Kibo",
       "elevation_m": 5895.0,
       "region_hint": "Tanzania"
+    },
+    {
+      "id": "wikidata:Q7296",
+      "qid": "Q7296",
+      "name": "Mount Kilimanjaro",
+      "names": [
+        "Kilima-Njaro",
+        "Kilimanjaro",
+        "Mount Kilimanjaro",
+        "Mount Kilimawn",
+        "キリマンジャロ"
+      ],
+      "labels": {
+        "en": "Mount Kilimanjaro",
+        "ja": "キリマンジャロ"
+      },
+      "latitude_deg": -3.0666666666667,
+      "longitude_deg": 37.359166666667,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q7296",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Kilimanjaro",
+        "ja": "https://ja.wikipedia.org/wiki/キリマンジャロ"
+      },
+      "location_arg": "-3.066667;37.359167",
+      "slug": "Mount_Kilimanjaro",
+      "elevation_m": 5895.0,
+      "region_hint": "Tanzania",
+      "country_codes": [
+        "TZ"
+      ]
+    },
+    {
+      "id": "wikidata:Q178167",
+      "qid": "Q178167",
+      "name": "Mount Kosciuszko",
+      "names": [
+        "Kosciuszko",
+        "Kunama Namadgi",
+        "Mount Kosciuszko",
+        "コシアスコ",
+        "コシウスコ山",
+        "コジアスコ",
+        "コジアスコ山",
+        "コジウスコ",
+        "コジウスコ山",
+        "コジオスコ"
+      ],
+      "labels": {
+        "en": "Mount Kosciuszko",
+        "ja": "コジオスコ"
+      },
+      "latitude_deg": -36.4558303,
+      "longitude_deg": 148.2635105,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q178167",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Kosciuszko",
+        "ja": "https://ja.wikipedia.org/wiki/コジオスコ"
+      },
+      "location_arg": "-36.455830;148.263510",
+      "slug": "Mount_Kosciuszko",
+      "elevation_m": 2228.0,
+      "region_hint": "Australia",
+      "country_codes": [
+        "AU"
+      ]
     },
     {
       "id": "wikidata:Q60967",
@@ -2734,6 +3064,31 @@
       "region_hint": "Fiji"
     },
     {
+      "id": "wikidata:Q17189941",
+      "qid": "Q17189941",
+      "name": "Mount Vinson",
+      "names": [
+        "Mount Vinson",
+        "Vinson",
+        "ビンソンy山",
+        "ヴィンソン山"
+      ],
+      "labels": {
+        "en": "Mount Vinson",
+        "ja": "ヴィンソン山"
+      },
+      "latitude_deg": -78.5252778,
+      "longitude_deg": -85.6172222,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q17189941",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Mount_Vinson"
+      },
+      "location_arg": "-78.525278;-85.617222",
+      "slug": "Mount_Vinson",
+      "elevation_m": 4892.0,
+      "region_hint": "Antarctica"
+    },
+    {
       "id": "wikidata:Q277441",
       "qid": "Q277441",
       "name": "Mount Wilhelm",
@@ -2873,6 +3228,36 @@
       "slug": "Musala",
       "elevation_m": 2925.4,
       "region_hint": "Bulgaria"
+    },
+    {
+      "id": "wikidata:Q130736",
+      "qid": "Q130736",
+      "name": "Nanga Parbat",
+      "names": [
+        "Diamer",
+        "Diamir",
+        "Nanga Parbat",
+        "ナンガパルバット",
+        "ナンガ・パルバット"
+      ],
+      "labels": {
+        "en": "Nanga Parbat",
+        "ja": "ナンガ・パルバット"
+      },
+      "latitude_deg": 35.239166666667,
+      "longitude_deg": 74.59,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q130736",
+      "wikipedia_urls": {
+        "en": "https://en.wikipedia.org/wiki/Nanga_Parbat",
+        "ja": "https://ja.wikipedia.org/wiki/ナンガ・パルバット"
+      },
+      "location_arg": "35.239167;74.590000",
+      "slug": "Nanga_Parbat",
+      "elevation_m": 8126.0,
+      "region_hint": "Pakistan",
+      "country_codes": [
+        "PK"
+      ]
     },
     {
       "id": "wikidata:Q272593",
@@ -3713,34 +4098,6 @@
       "slug": "Zugspitze",
       "elevation_m": 2962.06,
       "region_hint": "Germany"
-    },
-    {
-      "id": "wikidata:Q130018",
-      "qid": "Q130018",
-      "name": "Denali",
-      "names": [
-        "Bolshaya Gora",
-        "Denali",
-        "Mount Denali",
-        "デナリ",
-        "デナリ山",
-        "マッキンリー山"
-      ],
-      "labels": {
-        "en": "Denali",
-        "ja": "デナリ"
-      },
-      "latitude_deg": 63.069102777,
-      "longitude_deg": -151.006261111,
-      "wikidata_url": "https://www.wikidata.org/wiki/Q130018",
-      "wikipedia_urls": {
-        "en": "https://en.wikipedia.org/wiki/Denali",
-        "ja": "https://ja.wikipedia.org/wiki/デナリ"
-      },
-      "location_arg": "63.069103;-151.006261",
-      "slug": "Denali",
-      "elevation_m": 6190.0,
-      "region_hint": "United States"
     }
   ]
 }

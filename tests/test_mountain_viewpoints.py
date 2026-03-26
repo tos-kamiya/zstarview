@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from zstarview.mountain_viewpoints import (
     list_mountain_all_names,
     load_mountain_viewpoints,
@@ -32,6 +34,33 @@ def test_resolve_mountain_viewpoint_by_everest_alias() -> None:
     mountain = resolve_mountain_viewpoint("Sagarmatha")
     assert mountain is not None
     assert mountain.name == "Mount Everest"
+
+
+@pytest.mark.parametrize(
+    ("query", "expected_name"),
+    [
+        ("Kilimanjaro", "Mount Kilimanjaro"),
+        ("Mount Vinson", "Mount Vinson"),
+        ("Kosciuszko", "Mount Kosciuszko"),
+        ("Mont Blanc", "Mont Blanc"),
+        ("Matterhorn", "Matterhorn"),
+        ("Lhotse", "Lhotse"),
+        ("Makalu", "Makalu"),
+        ("Cho Oyu", "Cho Oyu"),
+        ("Dhaulagiri I", "Dhaulagiri"),
+        ("Manaslu", "Manaslu"),
+        ("Nanga Parbat", "Nanga Parbat"),
+        ("Annapurna I", "Annapurna I"),
+    ],
+)
+def test_resolve_mountain_viewpoint_for_added_famous_peaks(
+    query: str,
+    expected_name: str,
+) -> None:
+    mountain = resolve_mountain_viewpoint(query)
+
+    assert mountain is not None
+    assert mountain.name == expected_name
 
 
 def test_resolve_mountain_viewpoint_by_localized_name() -> None:
