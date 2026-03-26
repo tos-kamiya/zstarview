@@ -14,7 +14,6 @@ from ..satellite_constants import (
     SATELLITE_FAILURE_RETRY_SECONDS,
     SATELLITE_FETCH_TIMEOUT_SECONDS,
     SATELLITE_GROUP_VALIDITY_SECONDS,
-    SATELLITE_ISS_CACHE_KEY,
 )
 from .fetch import (
     extract_record_source,
