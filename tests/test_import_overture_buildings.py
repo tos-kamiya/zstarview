@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -175,6 +176,42 @@ def test_main_imports_geojsonseq_download_into_derived_dir(tmp_path: Path, monke
     index_path = derived_root / "shinjuku_test" / "bldg" / "tile_index.json"
     payload = json.loads(tile_path.read_text(encoding="utf-8"))
     index_payload = json.loads(index_path.read_text(encoding="utf-8"))
+    metadata_payload = json.loads((derived_root / "shinjuku_test" / "cache_meta.json").read_text(encoding="utf-8"))
     assert payload["source"]["format"] == "Overture-Buildings"
     assert payload["buildings"][0]["height_m"] == 55.0
     assert index_payload["tile_count"] == 1
+    assert metadata_payload["dataset_name"] == "shinjuku_test"
+    assert "fetched_at_utc" in metadata_payload
+
+
+def test_read_derived_dataset_fetched_at_utc_migrates_legacy_cache(tmp_path: Path) -> None:
+    mod = _load_module()
+    derived_dir = tmp_path / "dataset" / "bldg"
+    derived_dir.mkdir(parents=True)
+    now = datetime(2026, 3, 27, 1, 30, tzinfo=timezone.utc)
+
+    fetched_at_utc = mod.read_derived_dataset_fetched_at_utc(derived_dir, now_utc=now)
+
+    assert fetched_at_utc == now
+    metadata_payload = json.loads((tmp_path / "dataset" / "cache_meta.json").read_text(encoding="utf-8"))
+    assert metadata_payload["dataset_name"] == "dataset"
+    assert metadata_payload["fetched_at_utc"] == now.isoformat()
+
+
+def test_is_derived_dataset_stale_uses_fetched_at_utc(tmp_path: Path) -> None:
+    mod = _load_module()
+    derived_dir = tmp_path / "dataset" / "bldg"
+    derived_dir.mkdir(parents=True)
+    now = datetime(2026, 3, 27, 1, 30, tzinfo=timezone.utc)
+    (tmp_path / "dataset" / "cache_meta.json").write_text(
+        json.dumps(
+            {
+                "dataset_name": "dataset",
+                "fetched_at_utc": (now - timedelta(days=31)).isoformat(),
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert mod.is_derived_dataset_stale(derived_dir, now_utc=now) is True
+    assert mod.is_derived_dataset_stale(derived_dir, ttl_days=40, now_utc=now) is False
