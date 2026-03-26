@@ -93,6 +93,7 @@
       "name": "CN Tower",
       "names": [
         "CN Tower",
+        "Toronto CN Tower",
         "CNタワー"
       ],
       "labels": {
@@ -117,6 +118,36 @@
       "location_arg": "43.642753;-79.387147",
       "slug": "CN_Tower",
       "viewpoint_height_m": 553.3
+    },
+    {
+      "id": "wikidata:Q181324",
+      "name": "Ostankino Tower",
+      "names": [
+        "Ostankino Tower",
+        "モスクワテレビタワー",
+        "オスタンキノタワー",
+        "オスタンキノ・タワー"
+      ],
+      "labels": {
+        "en": "Ostankino Tower",
+        "ja": "オスタンキノ・タワー"
+      },
+      "qid": "Q181324",
+      "latitude_deg": 55.819722222,
+      "longitude_deg": 37.611666666,
+      "height_m": 540.1,
+      "classes": [
+        "テレビ塔",
+        "通信塔"
+      ],
+      "class_qids": [
+        "Q11166728",
+        "Q1798641"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q181324",
+      "location_arg": "55.819722;37.611667",
+      "slug": "Ostankino_Tower",
+      "viewpoint_height_m": 540.1
     },
     {
       "id": "wikidata:Q223207",
@@ -175,6 +206,34 @@
       "location_arg": "35.744611;51.375333",
       "slug": "Milad_Tower",
       "viewpoint_height_m": 435.0
+    },
+    {
+      "id": "wikidata:Q745016",
+      "name": "Kuala Lumpur Tower",
+      "names": [
+        "KL Tower",
+        "Kuala Lumpur Tower",
+        "Menara Kuala Lumpur",
+        "クアラ・ルンプール・タワー"
+      ],
+      "labels": {
+        "en": "Kuala Lumpur Tower",
+        "ja": "クアラ・ルンプール・タワー"
+      },
+      "qid": "Q745016",
+      "latitude_deg": 3.1528277102253313,
+      "longitude_deg": 101.70374880941304,
+      "height_m": 421.0,
+      "classes": [
+        "展望塔"
+      ],
+      "class_qids": [
+        "Q1440300"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q745016",
+      "location_arg": "3.152828;101.703749",
+      "slug": "Kuala_Lumpur_Tower",
+      "viewpoint_height_m": 421.0
     },
     {
       "id": "wikidata:Q5527454",
@@ -288,6 +347,7 @@
       "id": "wikidata:Q151356",
       "name": "Fernsehturm Berlin",
       "names": [
+        "Berlin TV Tower",
         "Fernsehturm Berlin",
         "ベルリンテレビ塔"
       ],
@@ -560,6 +620,37 @@
       "location_arg": "35.729583;139.717778",
       "slug": "Sunshine_60",
       "viewpoint_height_m": 239.7
+    },
+    {
+      "id": "wikidata:Q69134",
+      "name": "N Seoul Tower",
+      "names": [
+        "N Seoul Tower",
+        "Namsan Seoul Tower",
+        "Namsan Tower",
+        "Seoul Tower",
+        "YTN Seoul Tower",
+        "Nソウルタワー",
+        "南山タワー"
+      ],
+      "labels": {
+        "en": "N Seoul Tower",
+        "ja": "Nソウルタワー"
+      },
+      "qid": "Q69134",
+      "latitude_deg": 37.551216,
+      "longitude_deg": 126.988276,
+      "height_m": 236.83,
+      "classes": [
+        "テレビ塔"
+      ],
+      "class_qids": [
+        "Q11166728"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q69134",
+      "location_arg": "37.551216;126.988276",
+      "slug": "N_Seoul_Tower",
+      "viewpoint_height_m": 236.83
     },
     {
       "id": "wikidata:Q1244227",

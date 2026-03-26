@@ -19,6 +19,16 @@ def test_startup_resolve_city_accepts_tower_name(monkeypatch) -> None:
     assert location.tz == "Asia/Tokyo"
 
 
+def test_startup_resolve_city_accepts_added_famous_tower_name(monkeypatch) -> None:
+    monkeypatch.setattr("zstarview.launch_location_time.load_last_city", lambda: None)
+    monkeypatch.setattr("zstarview.launch_location_time.save_last_city", lambda _value: None)
+    location = resolve_launch_location("N Seoul Tower")
+    assert location.kind == "tower"
+    assert location.display_name == "t/N Seoul Tower"
+    assert abs(location.lat - 37.551216) < 1e-6
+    assert abs(location.lon - 126.988276) < 1e-6
+
+
 def test_startup_resolve_city_accepts_mountain_name(monkeypatch) -> None:
     monkeypatch.setattr("zstarview.launch_location_time.load_last_city", lambda: None)
     monkeypatch.setattr("zstarview.launch_location_time.save_last_city", lambda _value: None)

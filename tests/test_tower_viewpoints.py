@@ -47,6 +47,30 @@ def test_resolve_tower_viewpoint_by_hydro_quebec_name() -> None:
     assert tower.qid == "Q137673602"
 
 
+def test_resolve_tower_viewpoint_by_added_famous_tower_name() -> None:
+    tower = resolve_tower_viewpoint("Ostankino Tower")
+    assert tower is not None
+    assert tower.qid == "Q181324"
+
+
+def test_resolve_tower_viewpoint_by_added_famous_tower_alias() -> None:
+    tower = resolve_tower_viewpoint("KL Tower")
+    assert tower is not None
+    assert tower.name == "Kuala Lumpur Tower"
+
+
+def test_resolve_tower_viewpoint_by_added_city_qualified_alias() -> None:
+    tower = resolve_tower_viewpoint("Toronto CN Tower")
+    assert tower is not None
+    assert tower.name == "CN Tower"
+
+
+def test_resolve_tower_viewpoint_by_added_berlin_alias() -> None:
+    tower = resolve_tower_viewpoint("Berlin TV Tower")
+    assert tower is not None
+    assert tower.name == "Fernsehturm Berlin"
+
+
 def test_removed_qid_only_tower_is_absent() -> None:
     towers = load_tower_viewpoints()
     assert all(tower.qid != "Q12049950" for tower in towers)
