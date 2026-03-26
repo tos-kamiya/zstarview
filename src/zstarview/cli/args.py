@@ -2,6 +2,7 @@ import argparse
 from typing import Sequence
 from typing import Tuple, Union
 
+from ..__about__ import __version__
 from ..paths import CLOUD_MISSING_TINT_RGBA, DIRECTIONS, WINDOW_HEIGHT, WINDOW_WIDTH
 
 WindowGeometryArg = Union[str, Tuple[int, int, int, int]]
@@ -531,6 +532,11 @@ def add_render_arguments(
 def build_main_argument_parser() -> argparse.ArgumentParser:
     """Build the main zstarview argument parser."""
     parser = argparse.ArgumentParser(description="Star sky visualizer")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
     add_location_arguments(parser)
     add_dataset_query_arguments(parser)
     add_time_arguments(parser)

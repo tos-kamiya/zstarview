@@ -54,6 +54,19 @@ def test_main_help_text_is_ascii_only_for_windows_consoles() -> None:
     assert all(ord(ch) < 128 for ch in help_text)
 
 
+def test_main_parser_version_option_prints_package_version(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        cli_args.parse_args(["--version"])
+
+    captured = capsys.readouterr()
+
+    assert exc_info.value.code == 0
+    assert captured.out == f"pytest {cli_args.__version__}\n"
+    assert captured.err == ""
+
+
 def test_parse_args_clamps_vmag_limit_to_committed_catalog_max() -> None:
     args = cli_args.parse_args(["-V", "11", "Matsue"])
 
