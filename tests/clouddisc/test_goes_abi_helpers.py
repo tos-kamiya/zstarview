@@ -50,7 +50,7 @@ def test_load_cmi_with_area_attaches_sampler_compatible_area(tmp_path: Path) -> 
         coords={"y": y, "x": x},
     )
     path = tmp_path / "goes_cmi.nc"
-    ds.to_netcdf(path)
+    ds.to_netcdf(path, engine="h5netcdf")
     ds.close()
 
     da = load_cmi_with_area(path)

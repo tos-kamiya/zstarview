@@ -88,7 +88,7 @@ def _write_sparse_tile_set(tile_dir: Path) -> list[Path]:
             },
         )
         path = tile_dir / f"OR_HFD-020-B12-M1C13-T{record.token}_TEST.nc"
-        ds.to_netcdf(path)
+        ds.to_netcdf(path, engine="h5netcdf")
         ds.close()
         paths.append(path)
     return paths
