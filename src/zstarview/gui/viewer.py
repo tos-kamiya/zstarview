@@ -6,6 +6,7 @@ import json
 from dataclasses import replace
 
 from ..astro import _starfield_load
+from ..cache_maintenance import clear_long_lived_cache
 from ..catalog import load_dso_catalog, load_star_catalog
 from ..launch_location_time import (
     LaunchSetupError,
@@ -197,6 +198,9 @@ def main() -> None:
 
     root_logger = setup_root_logger()
     logger.info(f"{APP_DISPLAY_NAME} starting...")
+    if getattr(args, "clear_long_lived_cache", False):
+        logger.info("Clearing long-lived cache on user request...")
+        clear_long_lived_cache()
 
     splash, splash_handler, set_splash_context = setup_splash_and_attach_logger(app, app_name, root_logger, args.theme)
 
