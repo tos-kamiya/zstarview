@@ -10,15 +10,18 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, List, Optional, Tuple
 
 from .config import load_last_city, save_last_city
-from .mountain_viewpoints import resolve_mountain_viewpoint
-from .location_resolver import search_nominatim
+from .location_resolver import (
+    Viewpoint,
+    prefixed_viewpoint_name,
+    resolve_mountain_viewpoint,
+    resolve_tower_viewpoint,
+    search_nominatim,
+    split_prefixed_viewpoint,
+)
 from .paths import (
     CITY_ADMIN1_CODES_FILE,
     CITY_COORD_FILE,
 )
-from .tower_viewpoints import resolve_tower_viewpoint
-from .viewpoints import Viewpoint
-from .viewpoints import prefixed_viewpoint_name, split_prefixed_viewpoint
 from .utils.resolve_city import (
     CityRec,
     load_admin1_names,
