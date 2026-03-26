@@ -468,6 +468,14 @@ def add_render_arguments(
         ),
     )
     parser.add_argument(
+        "--clear-long-lived-cache",
+        action="store_true",
+        help=(
+            "Delete cached DEM and urban-outline data before startup. "
+            "This clears copernicus-dem, overture_buildings, and overture_skyscrapers."
+        ),
+    )
+    parser.add_argument(
         "--ground-tint-opacity",
         type=float,
         default=0.1,
@@ -671,6 +679,7 @@ def _validate_dataset_query_compatibility(
             or has_non_default("urban_outline_min_height_m")
             or has_non_default("urban_outline_feature_type")
             or has_non_default("urban_outline_skyscraper_only")
+            or has_non_default("clear_long_lived_cache")
             or has_non_default("ground_tint_opacity")
             or has_non_default("cloud_stripe")
             or has_non_default("cloud_missing_tint_opacity")

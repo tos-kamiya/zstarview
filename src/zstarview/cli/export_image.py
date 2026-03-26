@@ -18,6 +18,7 @@ from ..aircraft import build_observer_bbox, fetch_cached_opensky_states, project
 from ..overlay_time import classify_target_time, overlay_availability_for_delta
 from ..satellites import project_satellite_records, resolve_satellite_elements_for_time
 from ..astro import _starfield_load
+from ..cache_maintenance import clear_long_lived_cache
 from ..catalog import load_dso_catalog, load_star_catalog
 from ..clouddisc import CloudDisc, CloudDiscConfig
 from ..data.import_overture_buildings import (
@@ -694,6 +695,9 @@ def main() -> None:
     args = parse_export_image_args()
     setup_root_logger()
     logger.info("%s export-image starting...", APP_DISPLAY_NAME)
+    if getattr(args, "clear_long_lived_cache", False):
+        logger.info("Clearing long-lived cache on user request...")
+        clear_long_lived_cache()
     wants_sixel = bool(getattr(args, "sixel", False))
     img2sixel_bin = _require_img2sixel_binary() if wants_sixel else None
 

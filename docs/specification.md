@@ -115,6 +115,9 @@ README より詳細に、何ができるか、どう振る舞うか、どのよ�
   - `both` では `building` と `building_part` の両方を取得・利用する。
 - `--urban-outline-skyscraper-only`
   - 確認用オプションとして、通常の近距離都市アウトラインを描かず、遠距離スカイスクレーパー補助レイヤーだけを表示する。
+- `--clear-long-lived-cache`
+  - 起動前に、長寿命キャッシュである `DEM` と都市アウトライン由来キャッシュを明示的に削除する。
+  - 対象は `copernicus-dem`、`overture_buildings`、`overture_skyscrapers` とする。
 - `--ground-tint-opacity`
 - `-t`, `--theme`
 

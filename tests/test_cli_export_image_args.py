@@ -68,3 +68,9 @@ def test_parse_export_image_args_clamps_vmag_limit_to_committed_catalog_max() ->
     args = parse_export_image_args(["-V", "11", "-o", "out.png"])
 
     assert args.vmag_limit == 10.5
+
+
+def test_parse_export_image_args_accepts_clear_long_lived_cache() -> None:
+    args = parse_export_image_args(["--clear-long-lived-cache", "-o", "out.png"])
+
+    assert args.clear_long_lived_cache is True
