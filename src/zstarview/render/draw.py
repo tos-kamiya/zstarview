@@ -34,7 +34,14 @@ from ..paths import (
     TEXT_COLOR,
 )
 from ..aircraft.types import AircraftOverlayPoint
-from ..aircraft_constants import AIRCRAFT_FADE_START_SECONDS
+from ..aircraft_constants import (
+    AIRCRAFT_FADE_START_SECONDS,
+    AIRCRAFT_OVERLAY_LINE_COLOR_RGB,
+)
+from ..satellite_constants import (
+    SATELLITE_OVERLAY_MARKER_COLOR_RGB,
+    SATELLITE_OVERLAY_MARKER_MAX_ALPHA,
+)
 from ..satellites.types import SatelliteOverlayPoint
 from ..types import ScreenGeometry, CelestialData, ViewerData, CelestialObject, PlanetBody, UrbanOutlinePolyline
 from ..astro import (
@@ -850,7 +857,10 @@ def draw_satellite_overlay(
         return
 
     painter.save()
-    marker_color = QColor(255, 133, 237, max(0, min(255, int(round(230.0 * layer_opacity)))))
+    marker_color = QColor(
+        *SATELLITE_OVERLAY_MARKER_COLOR_RGB,
+        max(0, min(255, int(round(SATELLITE_OVERLAY_MARKER_MAX_ALPHA * layer_opacity)))),
+    )
     label_text_color, label_outline_color = _get_text_style(preset)
     label_outline_width = _get_text_outline_width(preset)
     label_text_color = QColor(label_text_color)
@@ -909,7 +919,7 @@ def draw_aircraft_overlay(
 
     painter.save()
     width_scale = max(1.0, float(line_width_scale))
-    line_color = QColor(255, 133, 237, 255)
+    line_color = QColor(*AIRCRAFT_OVERLAY_LINE_COLOR_RGB, 255)
     label_text_color, label_outline_color = _get_text_style(preset)
     label_outline_width = _get_text_outline_width(preset)
     label_text_color = QColor(label_text_color)
