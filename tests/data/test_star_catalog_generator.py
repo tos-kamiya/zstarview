@@ -7,7 +7,7 @@ import sys
 
 
 def _load_module():
-    root = Path(__file__).resolve().parents[1]
+    root = Path(__file__).resolve().parents[2]
     mod_path = root / "src" / "zstarview" / "data" / "stars" / "generate_star_catalog.py"
     spec = importlib.util.spec_from_file_location("star_catalog_gen", mod_path)
     assert spec is not None and spec.loader is not None

@@ -5,7 +5,7 @@ from zstarview.asterisms import ASTERISMS, ASTERISM_KEYS_BY_SOURCE_ID, pick_rota
 
 
 def _catalog_source_ids() -> set[str]:
-    csv_path = Path(__file__).resolve().parents[1] / "src" / "zstarview" / "data" / "stars" / "stars_base.csv"
+    csv_path = Path(__file__).resolve().parents[2] / "src" / "zstarview" / "data" / "stars" / "stars_base.csv"
     df = load_star_catalog(str(csv_path), vmag_threshold=None)
     return {str(source_id).strip() for source_id in df.get_column("SourceId").to_list() if str(source_id).strip()}
 
