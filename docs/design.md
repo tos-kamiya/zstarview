@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-03-22
+最終更新: 2026-03-27
 
 ## 1. この文書の位置づけ
 
@@ -840,9 +840,9 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 ### 10.3 キャッシュ方針
 
 - キャッシュ対象は再利用価値の高い外部取得データとする。
-- DEM データは永続キャッシュする。
-- Overture 建物由来の derived tile は地点条件ごとに永続キャッシュする。
-- 遠距離スカイスクレーパー補助レイヤー用 derived tile は `overture_skyscrapers/<tile-cache-key>/bldg` 配下に tile 単位で永続キャッシュする。
+- DEM データは永続キャッシュするが、保存期限の既定値は `90日` とする。
+- Overture 建物由来の derived tile は地点条件ごとに永続キャッシュするが、保存期限の既定値は `30日` とする。
+- 遠距離スカイスクレーパー補助レイヤー用 derived tile は `overture_skyscrapers/<tile-cache-key>/bldg` 配下に tile 単位で永続キャッシュし、保存期限の既定値は通常建物キャッシュと同じ `30日` とする。
 - 地形地平線の計算済みポリラインは永続化しない。
 - 雲は取得ソースと中間成果物をキャッシュし、視点変更時の再利用を優先する。
 - 航空機スナップショットは `bbox` 単位の少数 JSON file として短寿命永続キャッシュしてよい。
@@ -854,6 +854,49 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - 人工衛星の current cache file には少なくとも `element_epoch_utc`、`fetched_at_utc`、`source`、`records`、`last_fetch_attempt_utc`、`last_fetch_failed`、`last_fetch_error`、`last_fetch_failure_utc`、`failure_backoff_until_utc` を保持する。
 - 人工衛星の current cache の fresh 判定は `element_epoch_utc` 基準とし、現在の実装では `ISS=24時間` を使う。
 - fetch 失敗後の `2時間` backoff は cache file 側にも保存し、アプリ再起動後も継続してよい。
+- DEM / Overture 建物キャッシュは、各取得単位ごとに `fetched_at_utc` をメタデータとして持たせ、利用時に TTL 超過かどうかを判定できるようにする。
+- TTL 超過時は「即削除」ではなく「stale として再取得対象」に落とし、再取得成功までは既存キャッシュをフォールバック利用できるようにする。
+- 別系統の clean up は任意とし、長期間使われない stale キャッシュだけを後段で物理削除してよい。初期方針としては `TTL x 3` 超過を clean up 候補としてよい。
+
+### 10.4 DEM / 建物キャッシュ再取得設計
+
+- 目的は、毎回の再ダウンロードを避けつつ、長期間放置された DEM / 建物キャッシュが無期限に固定化されることを防ぐことである。
+- DEM は更新頻度が低いため、`fresh=90日`、`stale>90日` とする。
+- Overture 建物由来 cache は DEM より更新頻度が高いため、通常 derived dataset / skyscraper tile ともに `fresh=30日`、`stale>30日` とする。
+- stale 判定に使う基準時刻は、すべての取得単位で `fetched_at_utc` に統一する。
+- TTL 判定はファイルの `mtime` に依存しない。`mtime` は補助的な clean up 用ヒントに留め、fresh/stale の一次判定は明示メタデータで行う。
+- stale entry は利用時に非同期で再取得を試みる。UI スレッドは既存 cache を読める限りそれを使い、取得完了後に差し替える。
+- 再取得に成功した場合だけ cache payload / tile directory を原子的に入れ替え、成功時刻メタデータを更新する。
+- 再取得に失敗した場合、既存 stale cache が読めるなら表示継続を優先し、状態表示だけを warning 系へ更新する。
+- stale cache も読めない場合に限り、当該レイヤーを unavailable 扱いにしてよい。
+- `fetched_at_utc` を付ける粒度は、TTL 判定と再取得の実行単位に一致させる。
+- DEM では tile ごとに `fetched_at_utc` を持たせる。
+- 通常の Overture derived dataset では dataset directory ごとに `fetched_at_utc` を持たせる。
+- 遠距離スカイスクレーパー補助レイヤーでは tile directory ごとに `fetched_at_utc` を持たせる。
+- この方針により、fresh/stale 判定と再取得単位を一致させ、ディレクトリ構造の大規模変更を避ける。
+- 後方互換のため、既存 cache に `fetched_at_utc` が無い場合は初回読込時の現在時刻を暫定 `fetched_at_utc` として補完し、その metadata を書き戻してよい。
+- この補完時刻は元の実取得時刻ではなく移行時刻として扱う。
+- そのため既存 cache は移行後の最初の TTL 周期だけ実際より新しく見えるが、大量再取得を避けるため許容してよい。
+
+#### 10.4.1 DEM フロー
+
+1. `TerrainHorizonController` が必要 tile 一覧を確定する。
+2. 各 tile について sidecar metadata から `fetched_at_utc` を読む。無い場合は現在時刻で補完して書き戻す。
+3. fresh なら既存 tile をそのまま使う。
+4. stale なら既存 tile を入力に含めつつ、バックグラウンドで同じ key を再取得する。
+5. 再取得成功時は `*.tmp` + `replace()` で tile 本体と metadata を更新する。
+6. 再取得失敗時は stale tile を使い続け、UI には stale 利用中であることを示してよい。
+
+#### 10.4.2 Overture 建物フロー
+
+1. `UrbanOutlineController` は通常 derived dataset と skyscraper tile cache をそれぞれ独立に fresh/stale 判定する。
+2. `mode=both` の場合、`building` と `building_part` は別々に TTL 判定し、片方だけ stale ならその片方だけ再取得する。
+3. 通常 derived dataset は dataset directory 単位で metadata を持ち、`cache_meta.json` などの sidecar file に `fetched_at_utc`、半径、mode、最小高さなどの cache key 情報を保持する。`fetched_at_utc` が無い旧 cache は現在時刻で補完して書き戻してよい。
+4. skyscraper 補助レイヤーは tile directory 単位で metadata を持ち、seed tile ごとに stale 判定する。
+5. fresh cache があればそれを即時読込する。
+6. stale cache があればそれを即時読込しつつ、欠けている dataset / stale dataset だけをバックグラウンドで `overturemaps download` し直す。
+7. 再取得成功時は新 directory を一時パスに組み立て、整合性確認後に `replace()` 相当で切り替える。
+8. 再取得失敗時は stale dataset を使い続け、次回要求時に再試行してよい。
 
 ## 11. テスト観点と設計上の分離
 
