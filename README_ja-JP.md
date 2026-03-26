@@ -26,14 +26,14 @@
 
 ## スクリーンショット
 
-1枚目の画像は、アステリズム表示と昇らない領域を示しています。
-2枚目の画像は、航空機オーバレイを示しています。
+1枚目の画像は、アステリズム表示と地形地平線の例を示しています。
+2枚目の画像は、航空機オーバレイと昇らない領域を示しています。
 3枚目の画像は、`-V10.5 -s4.5` でより高密度に星を描画した例です。
 4枚目の画像は、`zstarview-export-image` による sixel 端末出力の例です。
 
   <p align="center">
-    <img src="docs/images/screenshot1.png" alt="アステリズム表示と昇らない領域を示すスクリーンショット" width="49%" />
-    <img src="docs/images/screenshot4.png" alt="航空機オーバレイを示すスクリーンショット" width="49%" />
+    <img src="docs/images/screenshot1.png" alt="アステリズム表示と地形地平線の例を示すスクリーンショット" width="49%" />
+    <img src="docs/images/screenshot4.png" alt="航空機オーバレイと昇らない領域を示すスクリーンショット" width="49%" />
   </p>
 
   <p align="center">
