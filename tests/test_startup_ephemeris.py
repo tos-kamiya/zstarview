@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from zstarview.astro import _starfield_load
-from zstarview.launch_location_time import LaunchSetupError
+from zstarview.launch_time import LaunchSetupError
 from zstarview.gui.viewer import _verify_ephemeris_for_launch
 
 

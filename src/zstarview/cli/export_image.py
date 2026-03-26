@@ -31,11 +31,11 @@ from ..data.skyscraper_tiles import (
     select_skyscraper_seed_tiles_for_viewer,
     skyscraper_tile_derived_dir,
 )
-from ..launch_location_time import (
+from ..launch_time import (
     LaunchSetupError,
     parse_launch_time_arguments,
-    resolve_launch_location,
 )
+from ..location_resolver import LocationResolveError, resolve_launch_location
 from ..logging_utils import setup_root_logger
 from ..paths import (
     APP_DISPLAY_NAME,
@@ -158,12 +158,15 @@ def _timed_out(deadline: float | None) -> bool:
 def _build_window_inputs_from_args(
     args: object,
 ) -> tuple[PreparedWindowCatalogs, ViewerData, SkyWindowUserOptions, SkyWindowRuntimeOptions]:
-    city = resolve_launch_location(
-        getattr(args, "city", ""),
-        place_query=getattr(args, "place", None),
-        place_countrycode=getattr(args, "place_countrycode", None),
-        place_lang=getattr(args, "place_lang", "en"),
-    )
+    try:
+        city = resolve_launch_location(
+            getattr(args, "city", ""),
+            place_query=getattr(args, "place", None),
+            place_countrycode=getattr(args, "place_countrycode", None),
+            place_lang=getattr(args, "place_lang", "en"),
+        )
+    except LocationResolveError as exc:
+        raise LaunchSetupError() from exc
     if getattr(args, "timezone", None) is not None:
         city = replace(city, tz=getattr(args, "timezone"))
     delta_t = parse_launch_time_arguments(

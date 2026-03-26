@@ -7,7 +7,7 @@ from pathlib import Path
 def test_save_last_city_called_only_in_startup_resolve_city() -> None:
     """Guard against reintroducing duplicate startup city persistence."""
     project_root = Path(__file__).resolve().parents[1]
-    src = (project_root / "src" / "zstarview" / "launch_location_time.py").read_text(encoding="utf-8")
+    src = (project_root / "src" / "zstarview" / "location_resolver" / "resolve.py").read_text(encoding="utf-8")
     tree = ast.parse(src)
 
     save_calls: list[tuple[str | None, int]] = []

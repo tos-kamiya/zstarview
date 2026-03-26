@@ -4,8 +4,8 @@ import json
 
 import pytest
 
-from zstarview.mountain_viewpoints import list_mountain_all_names, list_mountain_primary_names
 from zstarview.gui.viewer import main, parse_args
+from zstarview.location_resolver import list_mountain_all_names, list_mountain_primary_names
 
 
 def test_parse_args_accepts_list_viewpoints_for_mountains() -> None:
