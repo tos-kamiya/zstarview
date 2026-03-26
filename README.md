@@ -27,14 +27,14 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 
 ## Screenshots
 
-The first screenshot shows the asterism overlay together with the never-rises region.
-The second screenshot shows the aircraft overlay.
+The first screenshot shows the asterism overlay and also serves as a terrain-horizon example.
+The second screenshot shows the aircraft overlay together with the never-rises region.
 The third screenshot shows a denser star field rendered with `-V10.5 -s4.5`.
 The fourth screenshot shows terminal output via sixel using `zstarview-export-image`.
 
   <p align="center">
-    <img src="docs/images/screenshot1.png" alt="Screenshot showing the asterism overlay and the never-rises region" width="49%" />
-    <img src="docs/images/screenshot4.png" alt="Screenshot showing the aircraft overlay" width="49%" />
+    <img src="docs/images/screenshot1.png" alt="Screenshot showing the asterism overlay and a terrain horizon example" width="49%" />
+    <img src="docs/images/screenshot4.png" alt="Screenshot showing the aircraft overlay and the never-rises region" width="49%" />
   </p>
 
   <p align="center">
