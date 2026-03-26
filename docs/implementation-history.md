@@ -394,3 +394,32 @@
   - `ZSTARVIEW_DEBUG_SAVE_AIRCRAFT_READY_FRAME` を追加した。
   - 航空機更新直後の描画フレームを PNG として保存する、スクリーンショット取得用のデバッグオプションである。
   - 通常運用では未設定のままにし、README などの利用者向け文書には載せない。
+
+### 2026-03-26
+
+- DEM と都市アウトラインの長寿命キャッシュ管理
+  - `DEM` は `90日`、都市アウトラインは `30日` の保存期限を持つ方針にした。
+  - 保存期限は削除期限ではなく再取得を試みる目安とし、期限切れでも既存 cache はオフライン利用を継続できるようにした。
+  - `DEM` は tile ごとの sidecar metadata、都市アウトラインは dataset directory ごとの metadata で `fetched_at_utc` を管理する構成にした。
+  - 既存 cache に `fetched_at_utc` が無い場合は、初回読込時の現在時刻を暫定値として書き戻す移行方針にした。
+  - stale 判定で再取得に入ったことがターミナルから分かるよう、`DEM` と都市アウトラインの refresh / stale fallback / legacy metadata 移行ログを追加した。
+
+- 長寿命キャッシュの手動クリア支援
+  - `zstarview` と `zstarview-export-image` に `--clear-long-lived-cache` を追加し、`copernicus-dem`、`overture_buildings`、`overture_skyscrapers` を起動前に削除できるようにした。
+  - 誤用防止のため、最後の実行日時を cache root に記録し、`3日` 以内の再実行は拒否するクールダウンを入れた。
+  - GUI では拒否理由を splash に表示するようにした。
+  - 手動削除先を OS 非依存で確認できるよう、`zstarview-export-image --print-cache-dir` を追加した。
+
+### 2026-03-27
+
+- 地点名解決まわりのディレクトリ分離
+  - 名前やクエリ文字列から緯度経度または viewpoint を解決する機能を、`location_resolver/` サブディレクトリへ段階的に移した。
+  - 第1段階として `nominatim_search.py` の本体を `location_resolver/nominatim.py` へ移した。
+  - 第2段階として `viewpoints.py`、`tower_viewpoints.py`、`mountain_viewpoints.py` の本体を `location_resolver/` 配下へ寄せた。
+  - 第3段階として `launch_location_time.py` から地点解決ロジックを分離し、最終的に時刻解釈は `launch_time.py`、地点解決は `location_resolver/resolve.py` へ整理した。
+  - 段階移行の完了に合わせて旧ラッパーは解消し、参照先を新しいモジュール構成へ切り替えた。
+
+- テスト構成の整理
+  - `aircraft`、`clouddisc`、`satellites`、`terrain` のテストをサブディレクトリへまとめた。
+  - 地点解決に直接属するテストを `tests/location_resolver/` に移した。
+  - Wikidata、catalog、derived tile、建物 import などのデータ寄りテストを `tests/data/` に移した。
