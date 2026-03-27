@@ -10,6 +10,7 @@ import zstarview.render.pipeline as pipeline_module
 import zstarview.gui.window as window_module
 import zstarview.gui.window_render as window_render_module
 import zstarview.gui.window_updates as window_updates_module
+from zstarview.location_resolver import PlaceTargetProjection
 from zstarview.satellite_constants import SATELLITE_FAILURE_RETRY_SECONDS
 from zstarview.types import CelestialData, UrbanOutlinePolyline, ViewerData
 from zstarview.gui.famous_star_shortcuts import SearchJumpTarget
@@ -374,6 +375,53 @@ def test_jump_to_satellite_target_sets_banner_when_not_available() -> None:
 
     dummy.satellite_state.set_banner.assert_called_once_with("Satellites: ISS not available")
     dummy.update.assert_called_once()
+
+
+def test_jump_to_place_target_uses_projected_altaz(monkeypatch) -> None:
+    monkeypatch.setattr(
+        window_module,
+        "project_place_target_to_altaz",
+        lambda **kwargs: PlaceTargetProjection(
+            alt_deg=-3.5,
+            az_deg=145.0,
+            distance_km=12.0,
+            target_latitude_deg=float(kwargs["target_latitude_deg"]),
+            target_longitude_deg=float(kwargs["target_longitude_deg"]),
+            target_height_m=0.0,
+        ),
+    )
+
+    dummy = SimpleNamespace()
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(20.0, 30.0),
+        observer_height_m=1.7,
+    )
+    dummy.state = SkyWindowState(render_view_center=(20.0, 30.0), satellite_overlay_points=None)
+    dummy.satellite_state = SimpleNamespace(records_by_group={}, overlay_points=None, set_banner=Mock())
+    dummy._sync_view_altitude_actions = Mock()
+    dummy._begin_interaction_mode = Mock()
+    dummy.request_sky_data_update = Mock()
+    dummy.update = Mock()
+
+    SkyWindow._jump_to_search_target(
+        dummy,
+        SearchJumpTarget(
+            label="Tokyo Station",
+            kind="place",
+            sort_key=(0.0, "tokyo station"),
+            subtitle="Place / railway / station",
+            latitude_deg=35.681236,
+            longitude_deg=139.767125,
+        ),
+    )
+
+    assert dummy.viewer_data.view_center == (0.0, 145.0)
+    assert dummy.state.jump_highlight_name == "Tokyo Station"
+    assert dummy.state.jump_highlight_altaz == (-3.5, 145.0)
+    dummy.request_sky_data_update.assert_called_once()
 
 
 def test_refresh_projected_satellite_overlay_falls_back_to_disk_cache(monkeypatch) -> None:

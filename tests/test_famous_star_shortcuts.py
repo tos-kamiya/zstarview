@@ -1,9 +1,11 @@
 import polars as pl
 
+from zstarview.location_resolver import PlaceSearchCandidate
 from zstarview.gui.famous_star_shortcuts import (
     DEC_BAND_EQUATOR,
     DEC_BAND_NORTH,
     DEC_BAND_SOUTH,
+    build_place_search_jump_targets,
     build_search_jump_targets,
     build_named_star_shortcuts,
     classify_declination_band,
@@ -103,3 +105,35 @@ def test_build_search_jump_targets_includes_asterisms() -> None:
     circlet = next(t for t in targets if t.label == "Circlet of Pisces")
     assert circlet.kind == "asterism"
     assert circlet.subtitle == "Asterism"
+
+
+def test_build_place_search_jump_targets_uses_importance_and_coordinates() -> None:
+    targets = build_place_search_jump_targets(
+        [
+            PlaceSearchCandidate(
+                name="Tokyo Station",
+                display_name="Tokyo Station, Chiyoda, Tokyo, Japan",
+                latitude_deg=35.681236,
+                longitude_deg=139.767125,
+                category="railway",
+                type_name="station",
+                importance=0.9,
+            ),
+            PlaceSearchCandidate(
+                name="Tokyo",
+                display_name="Tokyo, Japan",
+                latitude_deg=35.67686,
+                longitude_deg=139.76389,
+                category="boundary",
+                type_name="administrative",
+                importance=0.7,
+            ),
+        ]
+    )
+
+    assert [target.label for target in targets] == ["Tokyo Station", "Tokyo"]
+    assert targets[0].kind == "place"
+    assert targets[0].subtitle == "Place / railway / station"
+    assert targets[0].latitude_deg == 35.681236
+    assert targets[0].longitude_deg == 139.767125
+    assert targets[0].object_key == "Tokyo Station, Chiyoda, Tokyo, Japan"

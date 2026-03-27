@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import math
-from typing import Dict, List, Optional
+from typing import Dict, Iterable, List, Optional
 
 import polars as pl
 
 from ..asterisms import ASTERISMS
+from ..location_resolver import PlaceSearchCandidate
 
 
 DEC_BAND_NORTH = "north"
@@ -31,12 +32,14 @@ class NamedStarShortcut:
 @dataclass(frozen=True)
 class SearchJumpTarget:
     label: str
-    ra_hours: float
-    dec_deg: float
     kind: str
     sort_key: tuple[float, str]
+    ra_hours: float = 0.0
+    dec_deg: float = 0.0
     subtitle: str = ""
     object_key: str = ""
+    latitude_deg: float | None = None
+    longitude_deg: float | None = None
 
 
 SATELLITE_JUMP_SHORTCUTS = (
@@ -195,4 +198,29 @@ def build_search_jump_targets(
         )
 
     targets.sort(key=lambda t: t.sort_key)
+    return targets
+
+
+def build_place_search_jump_targets(candidates: Iterable[PlaceSearchCandidate]) -> List[SearchJumpTarget]:
+    targets: List[SearchJumpTarget] = []
+    for candidate in candidates:
+        subtitle_parts = ["Place"]
+        category = candidate.category.strip()
+        type_name = candidate.type_name.strip()
+        if category and category != "unknown":
+            subtitle_parts.append(category)
+        if type_name and type_name != "unknown":
+            subtitle_parts.append(type_name)
+        targets.append(
+            SearchJumpTarget(
+                label=candidate.name,
+                kind="place",
+                sort_key=(-candidate.importance, candidate.name.casefold()),
+                subtitle=" / ".join(subtitle_parts),
+                object_key=candidate.display_name,
+                latitude_deg=candidate.latitude_deg,
+                longitude_deg=candidate.longitude_deg,
+            )
+        )
+    targets.sort(key=lambda target: target.sort_key)
     return targets
