@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from zstarview.data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
 from zstarview.data.urban_outline_common import BuildingFootprint
 from zstarview.types import UrbanOutlinePolyline, ViewerData
 from zstarview.urban_outline_layer import _merge_building_footprints, resolve_urban_outline_layer_for_viewer
@@ -111,13 +112,13 @@ def test_resolve_urban_outline_layer_for_viewer_passes_far_range_distance_filter
         viewer,
         derived_root_dir=tmp_path,
         derived_dir=derived_dir,
-        radius_km=10.0,
+        radius_km=SKYSCRAPER_OUTER_RADIUS_KM,
         min_distance_km=2.5,
     )
 
     assert got is None
-    assert select_calls[0][1]["radius_km"] == 10.0
-    assert compute_calls[0][1]["radius_km"] == 10.0
+    assert select_calls[0][1]["radius_km"] == SKYSCRAPER_OUTER_RADIUS_KM
+    assert compute_calls[0][1]["radius_km"] == SKYSCRAPER_OUTER_RADIUS_KM
     assert compute_calls[0][1]["min_distance_km"] == 2.5
 
 
@@ -164,7 +165,7 @@ def test_resolve_urban_outline_layer_for_viewer_applies_runtime_min_height_filte
         viewer,
         derived_root_dir=tmp_path,
         derived_dir=derived_dir,
-        radius_km=10.0,
+        radius_km=SKYSCRAPER_OUTER_RADIUS_KM,
         min_distance_km=2.5,
         min_height_m=200.0,
     )

@@ -676,9 +676,9 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 2. `UrbanOutlineController` は `lat/lon + radius + min_height + mode` から実行キーを作る。既定 mode は `both`、既定半径は `2.5km` である。
 3. `mode=both` の場合、`UrbanOutlineController` は `building` 用と `building_part` 用の derived dataset をそれぞれ確認し、欠けている方だけを取得する。
 4. `mode=building` の場合は `building` 用 derived dataset のみを確認・取得する。
-5. 同じ `update()` サイクルの中で、`UrbanOutlineController` は `src/zstarview/data/skyscraper_tiles_z14.json` を読み、視点中心 `10km` 円に交差しつつ内側半径 `radius_km` だけには収まらない seed tile を選ぶ。既定 `radius_km` は `2.5km` である。
+5. 同じ `update()` サイクルの中で、`UrbanOutlineController` は `src/zstarview/data/skyscraper_tiles_z14.json` を読み、視点中心 `60km` 円に交差しつつ内側半径 `radius_km` だけには収まらない seed tile を選ぶ。既定 `radius_km` は `2.5km` である。
 6. 選ばれた skyscraper seed tile については、専用 cache root 配下の derived dataset を確認し、未取得 tile だけを `overturemaps download --bbox=... --type building` で取得する。
-7. skyscraper tile は import 時に `height_m >= 150` で前処理され、runtime では `resolve_urban_outline_layer_for_viewer(..., radius_km=10.0, min_distance_km=radius_km)` として読む。
+7. skyscraper tile は import 時に `height_m >= 150` で前処理され、runtime では `resolve_urban_outline_layer_for_viewer(..., radius_km=60.0, min_distance_km=radius_km)` として読む。
 8. runtime 側は通常 derived dataset 群を追加の高さフィルタなしで読む。skyscraper derived dataset 群は cache 自体は常に `150m` 下限で共有しつつ、`min_building_height_m > 150` の場合のみ runtime 側で追加高さフィルタをかけてよい。
 9. runtime マージ時には、通常レイヤー側で `building_part` が持つ `parent_building_id` を参照し、対応する親 `building` 外形を除外する。
 10. `compute_urban_outlines()` は建物ごとの `height_m` を保持した輪郭列を返し、`resolve_urban_outline_layer_for_viewer()` はそれを `UrbanOutlinePolyline` の列に変換する。

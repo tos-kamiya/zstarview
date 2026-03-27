@@ -27,6 +27,7 @@ from ..data.import_overture_buildings import (
     import_overture_buildings_for_bbox,
 )
 from ..data.skyscraper_tiles import (
+    SKYSCRAPER_OUTER_RADIUS_KM,
     SKYSCRAPER_TILES_FILE,
     select_skyscraper_seed_tiles_for_viewer,
     skyscraper_tile_derived_dir,
@@ -237,6 +238,7 @@ def _build_window_inputs_from_args(
         delta_t=delta_t,
         sky_update_interval=60,
         urban_outline_radius_km=getattr(args, "urban_outline_radius_km", 2.5),
+        urban_outline_skyscraper_radius_km=getattr(args, "urban_outline_skyscraper_radius_km", SKYSCRAPER_OUTER_RADIUS_KM),
         urban_outline_min_height_m=getattr(args, "urban_outline_min_height_m", 0.0),
         urban_outline_feature_type=getattr(args, "urban_outline_feature_type", "both"),
         urban_outline_skyscraper_only=bool(getattr(args, "urban_outline_skyscraper_only", False)),
@@ -433,13 +435,15 @@ def _fetch_urban_outline_layer(
             derived_dirs=tuple(required_dirs),
         )
 
-    skyscraper_tiles = select_skyscraper_seed_tiles_for_viewer(
-        observer_lat_deg=float(viewer_data.lat_deg),
-        observer_lon_deg=float(viewer_data.lon_deg),
-        inner_radius_km=float(runtime_options.urban_outline_radius_km),
-        outer_radius_km=10.0,
-        seed_file=Path(SKYSCRAPER_TILES_FILE),
-    )
+    skyscraper_tiles = ()
+    if float(runtime_options.urban_outline_skyscraper_radius_km) > 0.0:
+        skyscraper_tiles = select_skyscraper_seed_tiles_for_viewer(
+            observer_lat_deg=float(viewer_data.lat_deg),
+            observer_lon_deg=float(viewer_data.lon_deg),
+            inner_radius_km=float(runtime_options.urban_outline_radius_km),
+            outer_radius_km=float(runtime_options.urban_outline_skyscraper_radius_km),
+            seed_file=Path(SKYSCRAPER_TILES_FILE),
+        )
     skyscraper_derived_root = Path(OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR)
     skyscraper_dirs: list[Path] = []
     for tile in skyscraper_tiles:
@@ -470,7 +474,7 @@ def _fetch_urban_outline_layer(
             viewer_data,
             derived_root_dir=skyscraper_derived_root,
             derived_dirs=tuple(skyscraper_dirs),
-            radius_km=10.0,
+            radius_km=float(runtime_options.urban_outline_skyscraper_radius_km),
             min_distance_km=float(runtime_options.urban_outline_radius_km),
             min_height_m=max(150.0, float(runtime_options.urban_outline_min_height_m)),
         )

@@ -5,6 +5,7 @@ from datetime import timedelta
 from types import SimpleNamespace
 
 import zstarview.cli.export_image as mod
+from zstarview.gui.window_inputs import SkyWindowRuntimeOptions
 
 
 @dataclass
@@ -47,6 +48,7 @@ class _Args:
     show_dso_initial = None
     show_asterisms_initial = None
     urban_outline_radius_km = 2.5
+    urban_outline_skyscraper_radius_km = 60.0
     urban_outline_min_height_m = 0.0
     urban_outline_feature_type = "both"
     urban_outline_skyscraper_only = False
@@ -86,3 +88,29 @@ def test_build_window_inputs_disables_all_realtime_overlays_for_future(monkeypat
     assert user_options.cloud_disc_alpha == 0.0
     assert user_options.aircraft_opacity == 0.0
     assert user_options.satellite_opacity == 0.0
+
+
+def test_fetch_urban_outline_layer_skips_skyscraper_lookup_when_radius_zero(monkeypatch) -> None:
+    viewer_data = SimpleNamespace(lat_deg=35.0, lon_deg=139.0, observer_height_m=1.7)
+    runtime_options = SkyWindowRuntimeOptions(
+        urban_outline_radius_km=2.5,
+        urban_outline_skyscraper_radius_km=0.0,
+        urban_outline_feature_type="both",
+        urban_outline_min_height_m=0.0,
+        urban_outline_skyscraper_only=False,
+    )
+
+    monkeypatch.setattr(mod, "_required_feature_types", lambda _mode: ())
+    monkeypatch.setattr(
+        mod,
+        "select_skyscraper_seed_tiles_for_viewer",
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("skyscraper lookup should be skipped")),
+    )
+
+    got = mod._fetch_urban_outline_layer(
+        viewer_data=viewer_data,
+        runtime_options=runtime_options,
+        deadline=None,
+    )
+
+    assert got is None

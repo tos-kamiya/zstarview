@@ -8,6 +8,7 @@ from typing import Optional
 
 import polars as pl
 
+from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
 from ..paths import CLOUD_MISSING_TINT_RGBA
 from ..astro import (
     DeepSkyCatalogArrays,
@@ -68,6 +69,7 @@ class SkyWindowRuntimeOptions:
     delta_t: timedelta = timedelta(0)
     sky_update_interval: int = 60
     urban_outline_radius_km: float = 2.5
+    urban_outline_skyscraper_radius_km: float = SKYSCRAPER_OUTER_RADIUS_KM
     urban_outline_min_height_m: float = 0.0
     urban_outline_feature_type: str = "both"
     urban_outline_skyscraper_only: bool = False
@@ -180,6 +182,7 @@ def prepare_window_runtime_options(
     delta_t: timedelta = timedelta(0),
     sky_update_interval: int = 60,
     urban_outline_radius_km: float = 2.5,
+    urban_outline_skyscraper_radius_km: float = SKYSCRAPER_OUTER_RADIUS_KM,
     urban_outline_min_height_m: float = 0.0,
     urban_outline_feature_type: str = "both",
     urban_outline_skyscraper_only: bool = False,
@@ -194,6 +197,7 @@ def prepare_window_runtime_options(
         delta_t=delta_t,
         sky_update_interval=max(1, int(sky_update_interval)),
         urban_outline_radius_km=max(0.0, float(urban_outline_radius_km)),
+        urban_outline_skyscraper_radius_km=max(0.0, float(urban_outline_skyscraper_radius_km)),
         urban_outline_min_height_m=max(0.0, float(urban_outline_min_height_m)),
         urban_outline_feature_type=str(urban_outline_feature_type),
         urban_outline_skyscraper_only=bool(urban_outline_skyscraper_only),

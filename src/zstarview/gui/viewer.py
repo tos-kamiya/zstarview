@@ -283,6 +283,7 @@ def main() -> None:
         delta_t=delta_t,
         sky_update_interval=args.sky_update_interval,
         urban_outline_radius_km=args.urban_outline_radius_km,
+        urban_outline_skyscraper_radius_km=args.urban_outline_skyscraper_radius_km,
         urban_outline_min_height_m=args.urban_outline_min_height_m,
         urban_outline_feature_type=args.urban_outline_feature_type,
         urban_outline_skyscraper_only=args.urban_outline_skyscraper_only,
