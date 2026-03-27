@@ -13,6 +13,7 @@ from .place_search import (
     place_search_candidate_from_nominatim,
     search_place_candidates,
 )
+from .place_projection import PlaceTargetProjection, project_place_target_to_altaz
 from .resolve import (
     LocationResolveError,
     ResolvedLocation,
@@ -37,6 +38,7 @@ from .viewpoints import (
 __all__ = [
     "MountainViewpoint",
     "PlaceSearchCandidate",
+    "PlaceTargetProjection",
     "TowerViewpoint",
     "Viewpoint",
     "LocationResolveError",
@@ -52,6 +54,7 @@ __all__ = [
     "mountain_viewpoint_to_dict",
     "normalize_place_search_candidates",
     "place_search_candidate_from_nominatim",
+    "project_place_target_to_altaz",
     "prefixed_viewpoint_name",
     "resolve_mountain_viewpoint",
     "resolve_launch_location",

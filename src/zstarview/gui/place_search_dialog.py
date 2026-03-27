@@ -1,0 +1,119 @@
+# -*- coding: utf-8 -*-
+"""Dialog for online place search targets."""
+from __future__ import annotations
+
+import threading
+from typing import Callable, Optional, Sequence
+
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtWidgets import (
+    QDialog,
+    QDialogButtonBox,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
+
+from .famous_star_shortcuts import SearchJumpTarget
+
+
+class PlaceSearchDialog(QDialog):
+    place_search_finished = Signal(int, object, str)
+
+    def __init__(
+        self,
+        place_search_callback: Callable[[str], Sequence[SearchJumpTarget]],
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Search Places")
+        self.setModal(True)
+        self.resize(460, 460)
+
+        self._place_search_callback = place_search_callback
+        self._place_targets: list[SearchJumpTarget] = []
+        self._place_search_request_id = 0
+        self.place_search_finished.connect(self._on_place_search_finished)
+
+        layout = QVBoxLayout(self)
+        self._search = QLineEdit(self)
+        self._search.setPlaceholderText("Type place, station, or facility name...")
+        self._search.returnPressed.connect(self._start_place_search)
+        layout.addWidget(self._search)
+
+        self._place_search_button = QPushButton("Search", self)
+        self._place_search_button.clicked.connect(self._start_place_search)
+        layout.addWidget(self._place_search_button)
+
+        self._status = QLabel("", self)
+        self._status.setVisible(False)
+        layout.addWidget(self._status)
+
+        self._list = QListWidget(self)
+        self._list.itemDoubleClicked.connect(self._on_item_double_clicked)
+        layout.addWidget(self._list)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel, parent=self)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def selected_target(self) -> Optional[SearchJumpTarget]:
+        item = self._list.currentItem()
+        if item is None:
+            return None
+        target = item.data(Qt.ItemDataRole.UserRole)
+        return target if isinstance(target, SearchJumpTarget) else None
+
+    def _rebuild_list(self) -> None:
+        self._list.clear()
+        for target in self._place_targets:
+            suffix = f"  ({target.subtitle})" if target.subtitle else ""
+            item = QListWidgetItem(f"{target.label}{suffix}", self._list)
+            item.setData(Qt.ItemDataRole.UserRole, target)
+        self._select_first_visible()
+
+    def _select_first_visible(self) -> None:
+        for i in range(self._list.count()):
+            item = self._list.item(i)
+            if not item.isHidden():
+                self._list.setCurrentItem(item)
+                return
+        self._list.setCurrentItem(None)
+
+    def _on_item_double_clicked(self, _item: QListWidgetItem) -> None:
+        self.accept()
+
+    def _start_place_search(self) -> None:
+        query = self._search.text().strip()
+        if not query:
+            return
+        self._place_search_request_id += 1
+        request_id = self._place_search_request_id
+        self._place_search_button.setEnabled(False)
+        self._status.setText(f"Searching places for '{query}'...")
+        self._status.setVisible(True)
+        worker = threading.Thread(target=self._run_place_search, args=(request_id, query), daemon=True)
+        worker.start()
+
+    def _run_place_search(self, request_id: int, query: str) -> None:
+        try:
+            targets = list(self._place_search_callback(query))
+        except Exception as exc:  # pragma: no cover - exercised through signal delivery
+            self.place_search_finished.emit(request_id, [], f"Place search failed: {exc}")
+            return
+        status_text = f"Found {len(targets)} place result(s)" if targets else "No places found"
+        self.place_search_finished.emit(request_id, targets, status_text)
+
+    def _on_place_search_finished(self, request_id: int, payload: object, status_text: str) -> None:
+        if request_id != self._place_search_request_id:
+            return
+        self._place_search_button.setEnabled(True)
+        self._place_targets = [target for target in payload if isinstance(target, SearchJumpTarget)]
+        self._status.setText(status_text)
+        self._status.setVisible(bool(status_text))
+        self._rebuild_list()

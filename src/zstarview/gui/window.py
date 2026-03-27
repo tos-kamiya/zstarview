@@ -64,6 +64,7 @@ from ..paths import (
     CLOUD_MISSING_TINT_RGBA,
 )
 from ..config import load_last_window_geometry, save_last_window_geometry
+from ..location_resolver import project_place_target_to_altaz, search_place_candidates
 from ..render import draw as render_draw
 from ..render.pipeline import compute_star_render_surface_size, compute_star_render_upscale_factor
 from ..types import ViewerData
@@ -79,7 +80,12 @@ from .terrain_state import TerrainHorizonState
 from .terrain_controller import TerrainHorizonController
 from .famous_star_dialog import NamedStarJumpDialog
 from .famous_star_search_dialog import NamedStarSearchDialog
-from .famous_star_shortcuts import NamedStarShortcut, SearchJumpTarget
+from .place_search_dialog import PlaceSearchDialog
+from .famous_star_shortcuts import (
+    NamedStarShortcut,
+    SearchJumpTarget,
+    build_place_search_jump_targets,
+)
 from ..asterisms import ASTERISM_KEYS_BY_SOURCE_ID
 from .sky_worker import SkyDataWorker
 from .window_inputs import PreparedWindowCatalogs
@@ -486,6 +492,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         search_named_star.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         search_named_star.triggered.connect(self._open_named_star_search_dialog)
         self.addAction(search_named_star)
+        search_place = self.menu.addAction("Search Places...")
+        search_place.triggered.connect(self._open_place_search_dialog)
 
         self.menu.addSeparator()
         toggle_enlarge_moon_action = QAction("Enlarge Moon", self)
@@ -744,6 +752,15 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             return
         self._jump_to_search_target(target)
 
+    def _open_place_search_dialog(self) -> None:
+        dialog = PlaceSearchDialog(self._search_place_jump_targets, self)
+        if dialog.exec() == 0:
+            return
+        target = dialog.selected_target()
+        if target is None:
+            return
+        self._jump_to_search_target(target)
+
     def _jump_to_search_target(self, target: SearchJumpTarget) -> None:
         target_kind = getattr(target, "kind", "star")
         if target_kind == "satellite":
@@ -754,6 +771,18 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
                 return
             target_alt = float(target_altaz[0])
             target_az = float(target_altaz[1]) % 360.0
+        elif target_kind == "place":
+            if target.latitude_deg is None or target.longitude_deg is None:
+                return
+            projection = project_place_target_to_altaz(
+                observer_latitude_deg=self.viewer_data.location[0],
+                observer_longitude_deg=self.viewer_data.location[1],
+                observer_height_m=getattr(self.viewer_data, "observer_height_m", 1.7),
+                target_latitude_deg=target.latitude_deg,
+                target_longitude_deg=target.longitude_deg,
+            )
+            target_alt = float(projection.alt_deg)
+            target_az = float(projection.az_deg) % 360.0
         else:
             observer_height_m = getattr(self.viewer_data, "observer_height_m", 1.7)
             alt, az = radec_to_altaz(
@@ -778,6 +807,10 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._begin_interaction_mode()
         self.request_sky_data_update()
         self.update()
+
+    def _search_place_jump_targets(self, query: str) -> list[SearchJumpTarget]:
+        candidates = search_place_candidates(query)
+        return build_place_search_jump_targets(candidates)
 
     def _jump_to_named_star(self, star: NamedStarShortcut) -> None:
         self._jump_to_search_target(
