@@ -7,6 +7,12 @@ from .mountains import (
     resolve_mountain_viewpoint,
 )
 from .nominatim import search_nominatim
+from .place_search import (
+    PlaceSearchCandidate,
+    normalize_place_search_candidates,
+    place_search_candidate_from_nominatim,
+    search_place_candidates,
+)
 from .resolve import (
     LocationResolveError,
     ResolvedLocation,
@@ -30,6 +36,7 @@ from .viewpoints import (
 
 __all__ = [
     "MountainViewpoint",
+    "PlaceSearchCandidate",
     "TowerViewpoint",
     "Viewpoint",
     "LocationResolveError",
@@ -43,9 +50,12 @@ __all__ = [
     "load_mountain_viewpoints",
     "load_tower_viewpoints",
     "mountain_viewpoint_to_dict",
+    "normalize_place_search_candidates",
+    "place_search_candidate_from_nominatim",
     "prefixed_viewpoint_name",
     "resolve_mountain_viewpoint",
     "resolve_launch_location",
+    "search_place_candidates",
     "search_nominatim",
     "resolve_tower_viewpoint",
     "split_prefixed_viewpoint",
