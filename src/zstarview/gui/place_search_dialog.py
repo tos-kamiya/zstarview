@@ -5,7 +5,8 @@ from __future__ import annotations
 import threading
 from typing import Callable, Optional, Sequence
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QEvent, Qt, Signal
+from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
@@ -43,6 +44,7 @@ class PlaceSearchDialog(QDialog):
         self._search = QLineEdit(self)
         self._search.setPlaceholderText("Type place, station, or facility name...")
         self._search.returnPressed.connect(self._start_place_search)
+        self._search.installEventFilter(self)
         layout.addWidget(self._search)
 
         self._place_search_button = QPushButton("Search", self)
@@ -60,6 +62,9 @@ class PlaceSearchDialog(QDialog):
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel, parent=self)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
+        self._ok_button = buttons.button(QDialogButtonBox.StandardButton.Ok)
+        if self._ok_button is not None:
+            self._ok_button.setEnabled(False)
         layout.addWidget(buttons)
 
     def selected_target(self) -> Optional[SearchJumpTarget]:
@@ -76,6 +81,7 @@ class PlaceSearchDialog(QDialog):
             item = QListWidgetItem(f"{target.label}{suffix}", self._list)
             item.setData(Qt.ItemDataRole.UserRole, target)
         self._select_first_visible()
+        self._sync_ok_button()
 
     def _select_first_visible(self) -> None:
         for i in range(self._list.count()):
@@ -84,6 +90,10 @@ class PlaceSearchDialog(QDialog):
                 self._list.setCurrentItem(item)
                 return
         self._list.setCurrentItem(None)
+
+    def _sync_ok_button(self) -> None:
+        if self._ok_button is not None:
+            self._ok_button.setEnabled(self.selected_target() is not None)
 
     def _on_item_double_clicked(self, _item: QListWidgetItem) -> None:
         self.accept()
@@ -117,3 +127,10 @@ class PlaceSearchDialog(QDialog):
         self._status.setText(status_text)
         self._status.setVisible(bool(status_text))
         self._rebuild_list()
+
+    def eventFilter(self, watched: object, event: object) -> bool:
+        if watched is self._search and isinstance(event, QKeyEvent) and event.type() == QEvent.Type.KeyPress:
+            if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                self._start_place_search()
+                return True
+        return super().eventFilter(watched, event)
