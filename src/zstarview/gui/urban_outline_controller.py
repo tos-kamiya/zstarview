@@ -10,6 +10,7 @@ from typing import Optional
 from PySide6.QtCore import QObject, Signal
 
 from ..data.skyscraper_tiles import (
+    SKYSCRAPER_OUTER_RADIUS_KM,
     SkyscraperSeedTile,
     select_skyscraper_seed_tiles_for_viewer,
     skyscraper_tile_derived_dir,
@@ -29,7 +30,6 @@ from ..types import UrbanOutlinePolyline, ViewerData
 logger = logging.getLogger(__name__)
 
 SKYSCRAPER_MIN_HEIGHT_M = 150.0
-SKYSCRAPER_OUTER_RADIUS_KM = 10.0
 
 
 class UrbanOutlineController(QObject):
@@ -43,6 +43,7 @@ class UrbanOutlineController(QObject):
         derived_root_dir: Path,
         min_building_height_m: float = 0.0,
         radius_km: float = DEFAULT_FETCH_RADIUS_KM,
+        skyscraper_outer_radius_km: float = SKYSCRAPER_OUTER_RADIUS_KM,
         feature_type: str = "both",
         overturemaps_bin: str = "overturemaps",
         skyscraper_only: bool = False,
@@ -54,6 +55,7 @@ class UrbanOutlineController(QObject):
         self._derived_root_dir = Path(derived_root_dir)
         self._min_building_height_m = float(min_building_height_m)
         self._radius_km = float(radius_km)
+        self._skyscraper_outer_radius_km = float(skyscraper_outer_radius_km)
         self._feature_type = str(feature_type)
         self._overturemaps_bin = str(overturemaps_bin)
         self._skyscraper_only = bool(skyscraper_only)
@@ -251,7 +253,7 @@ class UrbanOutlineController(QObject):
                     viewer_data,
                     derived_root_dir=self._skyscraper_derived_root_dir,
                     derived_dirs=tuple(skyscraper_dirs),
-                    radius_km=SKYSCRAPER_OUTER_RADIUS_KM,
+                    radius_km=self._skyscraper_outer_radius_km,
                     min_distance_km=self._radius_km,
                     min_height_m=max(SKYSCRAPER_MIN_HEIGHT_M, self._min_building_height_m),
                 )
@@ -306,12 +308,14 @@ class UrbanOutlineController(QObject):
         )
 
     def _selected_skyscraper_tiles(self, viewer_data: ViewerData) -> tuple[SkyscraperSeedTile, ...]:
+        if self._skyscraper_outer_radius_km <= 0.0:
+            return ()
         try:
             return select_skyscraper_seed_tiles_for_viewer(
                 observer_lat_deg=float(viewer_data.lat_deg),
                 observer_lon_deg=float(viewer_data.lon_deg),
                 inner_radius_km=self._radius_km,
-                outer_radius_km=SKYSCRAPER_OUTER_RADIUS_KM,
+                outer_radius_km=self._skyscraper_outer_radius_km,
                 seed_file=self._skyscraper_seed_file,
             )
         except Exception as exc:

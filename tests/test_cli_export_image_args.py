@@ -12,6 +12,8 @@ def test_parse_export_image_args_accepts_shared_and_export_specific_options() ->
             "Matsue Station",
             "--content-fov-deg",
             "110",
+            "--urban-outline-skyscraper-radius-km",
+            "48",
             "--image-size",
             "1280,720",
             "--layer-timeout-seconds",
@@ -24,6 +26,7 @@ def test_parse_export_image_args_accepts_shared_and_export_specific_options() ->
 
     assert args.place == "Matsue Station"
     assert args.content_fov_deg == 110.0
+    assert args.urban_outline_skyscraper_radius_km == 48.0
     assert args.image_size == (1280, 720)
     assert args.layer_timeout_seconds == 12.5
     assert args.allow_partial_data is True
@@ -80,6 +83,28 @@ def test_parse_export_image_args_accepts_print_cache_dir_without_output() -> Non
     args = parse_export_image_args(["--print-cache-dir"])
 
     assert args.print_cache_dir is True
+
+
+def test_parse_export_image_args_rejects_skyscraper_radius_smaller_than_base_radius() -> None:
+    with pytest.raises(SystemExit):
+        parse_export_image_args(
+            [
+                "--urban-outline-radius-km",
+                "12",
+                "--urban-outline-skyscraper-radius-km",
+                "8",
+                "-o",
+                "out.png",
+            ]
+        )
+
+
+def test_parse_export_image_args_accepts_zero_skyscraper_radius() -> None:
+    args = parse_export_image_args(
+        ["--urban-outline-skyscraper-radius-km", "0", "-o", "out.png"]
+    )
+
+    assert args.urban_outline_skyscraper_radius_km == 0.0
 
 
 def test_parse_export_image_args_rejects_print_cache_dir_with_output() -> None:

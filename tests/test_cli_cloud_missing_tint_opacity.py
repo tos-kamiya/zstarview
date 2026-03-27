@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import math
 
+import pytest
+
 from zstarview.paths import CLOUD_MISSING_TINT_RGBA
 from zstarview.gui.viewer import parse_args
 
@@ -82,6 +84,27 @@ def test_parse_args_urban_outline_radius_short_option(monkeypatch) -> None:
     monkeypatch.setattr("sys.argv", ["zstarview", "-r", "2.2"])
     args = parse_args()
     assert math.isclose(float(args.urban_outline_radius_km), 2.2, rel_tol=0.0, abs_tol=1e-9)
+
+
+def test_parse_args_urban_outline_skyscraper_radius_override(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "--urban-outline-skyscraper-radius-km", "48"])
+    args = parse_args()
+    assert math.isclose(float(args.urban_outline_skyscraper_radius_km), 48.0, rel_tol=0.0, abs_tol=1e-9)
+
+
+def test_parse_args_urban_outline_skyscraper_radius_zero_disables_lookup(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "--urban-outline-skyscraper-radius-km", "0"])
+    args = parse_args()
+    assert math.isclose(float(args.urban_outline_skyscraper_radius_km), 0.0, rel_tol=0.0, abs_tol=1e-9)
+
+
+def test_parse_args_rejects_skyscraper_radius_smaller_than_base_radius(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "sys.argv",
+        ["zstarview", "--urban-outline-radius-km", "12", "--urban-outline-skyscraper-radius-km", "8"],
+    )
+    with pytest.raises(SystemExit):
+        parse_args()
 
 
 def test_parse_args_urban_outline_min_height_override(monkeypatch) -> None:

@@ -107,6 +107,11 @@ README より詳細に、何ができるか、どう振る舞うか、どのよ�
 - `--terrain-horizon-opacity`
 - `--urban-outline-opacity`
 - `-r`, `--urban-outline-radius-km`
+- `--urban-outline-skyscraper-radius-km`
+  - 遠距離スカイスクレーパー補助レイヤーの外側半径を指定する。
+  - `0` を指定した場合は、そのセッションでは skyscraper tile 探索を行わない。
+  - `0` 以外の値は `--urban-outline-radius-km` 以上でなければならない。
+  - 既定値は `60km`。
 - `-b`, `--urban-outline-min-building-height-m`
 - `--urban-outline-feature-type`
   - 都市アウトライン取得・キャッシュに使う Overture mode。
@@ -468,7 +473,7 @@ CLI には次のビューポイント dataset 参照専用オプションを持�
 - `building_part` が存在しない建物については、`building` の輪郭をそのまま表示してよい。
 - 都市アウトラインは、通常レイヤーと遠距離スカイスクレーパー補助レイヤーの合成結果として表示してよい。
 - 通常レイヤーは、観測地点 `lat/lon` を中心とする半径 `2.5km` の範囲を既定対象とする。
-- 遠距離スカイスクレーパー補助レイヤーは、既定では観測地点から `2.5km` を超え `10km` 以下の範囲を対象とし、`150m` 以上の高層 `building` のみを扱う。
+- 遠距離スカイスクレーパー補助レイヤーは、既定では観測地点から `2.5km` を超え `60km` 以下の範囲を対象とし、`150m` 以上の高層 `building` のみを扱う。
 - 遠距離スカイスクレーパー補助レイヤーは、アプリ同梱の seed tile list を参照して必要 tile だけを選び、必要時に `overturemaps download --bbox=...` で取得してよい。
 - 遠距離スカイスクレーパー補助レイヤーは通常レイヤーと同じ更新タイミングで取得・反映してよい。
 - 遠距離スカイスクレーパー補助レイヤーの取得に失敗しても、通常レイヤーの表示は継続してよい。
@@ -485,6 +490,9 @@ CLI には次のビューポイント dataset 参照専用オプションを持�
 - Overture 建物キャッシュの保存期限は削除期限ではなく再取得を試みる目安であり、一度取得済みの dataset / tile はオフライン時でも継続利用できてよい。
 - `overturemaps` CLI が利用できない場合、または取得に失敗した場合、そのセッションでは都市アウトラインを表示しなくてよい。
 - `-r`, `--urban-outline-radius-km` で取得半径を変更してよい。
+- `--urban-outline-skyscraper-radius-km` で遠距離スカイスクレーパー補助レイヤーの外側半径を変更してよい。
+- `--urban-outline-skyscraper-radius-km 0` を指定した場合、そのセッションでは skyscraper tile 探索と遠距離スカイスクレーパー補助レイヤー解決をスキップしてよい。
+- `--urban-outline-skyscraper-radius-km` の `0` 以外の値は `--urban-outline-radius-km` 以上でなければならない。
 - `-b`, `--urban-outline-min-building-height-m` で取得対象の最小建物高さを変更してよい。
 - `--urban-outline-feature-type` で取得対象 mode を切り替えてよい。既定値は `both` とする。
 - `--urban-outline-feature-type building` を指定した場合は `building_part` を取得せず、`building` のみで都市アウトラインを構成してよい。
@@ -492,7 +500,7 @@ CLI には次のビューポイント dataset 参照専用オプションを持�
 - 取得中、キャッシュ読込中、失敗時には状態が利用者に分かるよう表示する。
 - `opacity == 0` を CLI で指定して起動した場合、そのセッションでは GUI から再有効化できない。
 - 都市アウトライン描画時には、キャッシュ済み derived tile に保持されている建物を runtime 側で追加の高さ再フィルタなしに利用してよい。
-- 遠距離スカイスクレーパー補助レイヤーでは、runtime 側で「通常レイヤー半径より外側かつ `10km` 以下」を満たす建物だけを採用してよい。
+- 遠距離スカイスクレーパー補助レイヤーでは、runtime 側で「通常レイヤー半径より外側かつ `60km` 以下」を満たす建物だけを採用してよい。
 - 遠距離スカイスクレーパー補助レイヤーでは、cache 取得時の `150m` 下限は固定のままとし、`-b`, `--urban-outline-min-building-height-m` が `150m` を超える場合に限り runtime 描画時の追加高さフィルタとして使ってよい。
 - runtime の都市アウトライン内部表現は、各輪郭ごとに `height_m` を保持する前提でよい。
 - 見かけの方位幅が `0.5°` 未満の細い屋根線分は、細かい輪郭ではなく、太い水平線として簡略表示する。

@@ -3,6 +3,7 @@ from typing import Sequence
 from typing import Tuple, Union
 
 from ..__about__ import __version__
+from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
 from ..paths import CLOUD_MISSING_TINT_RGBA, DIRECTIONS, WINDOW_HEIGHT, WINDOW_WIDTH
 
 WindowGeometryArg = Union[str, Tuple[int, int, int, int]]
@@ -440,6 +441,17 @@ def add_render_arguments(
         ),
     )
     parser.add_argument(
+        "--urban-outline-skyscraper-radius-km",
+        type=_parse_non_negative_float,
+        default=SKYSCRAPER_OUTER_RADIUS_KM,
+        help=(
+            "Outer radius for the far-range skyscraper urban outline layer in kilometers "
+            f"(default: {SKYSCRAPER_OUTER_RADIUS_KM:.1f}). "
+            "Use 0 to disable skyscraper-tile lookup for that run. "
+            "Otherwise it must be greater than or equal to --urban-outline-radius-km."
+        ),
+    )
+    parser.add_argument(
         "-b",
         "--urban-outline-min-building-height-m",
         dest="urban_outline_min_height_m",
@@ -464,7 +476,7 @@ def add_render_arguments(
         action="store_true",
         help=(
             "Validation mode: draw only the far-range skyscraper urban outline layer "
-            "and skip the normal 0-2.5km outline layer."
+            "and skip the normal near-range outline layer."
         ),
     )
     parser.add_argument(
@@ -708,6 +720,22 @@ def _validate_location_argument_combinations(
         parser.error("--place-lang requires --place")
 
 
+def _validate_urban_outline_argument_combinations(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> None:
+    skyscraper_radius_km = getattr(args, "urban_outline_skyscraper_radius_km", None)
+    base_radius_km = getattr(args, "urban_outline_radius_km", None)
+    if skyscraper_radius_km is None or base_radius_km is None:
+        return
+    if float(skyscraper_radius_km) == 0.0:
+        return
+    if float(skyscraper_radius_km) < float(base_radius_km):
+        parser.error(
+            "--urban-outline-skyscraper-radius-km must be 0 or greater than or equal to "
+            "--urban-outline-radius-km"
+        )
+
+
 def _normalize_vmag_limit(args: argparse.Namespace) -> None:
     if hasattr(args, "vmag_limit"):
         args.vmag_limit = min(float(args.vmag_limit), _COMMITTED_VMAG_LIMIT_MAX)
@@ -722,6 +750,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     _normalize_vmag_limit(args)
     _validate_dataset_query_compatibility(parser, args)
     _validate_location_argument_combinations(parser, args)
+    _validate_urban_outline_argument_combinations(parser, args)
 
     return args
 
@@ -733,6 +762,7 @@ def parse_export_image_args(argv: Sequence[str] | None = None) -> argparse.Names
     _normalize_location_arguments(parser, args)
     _normalize_vmag_limit(args)
     _validate_location_argument_combinations(parser, args)
+    _validate_urban_outline_argument_combinations(parser, args)
     if args.print_cache_dir:
         if args.output or args.sixel:
             parser.error("--print-cache-dir cannot be used with --output or --sixel")

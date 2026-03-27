@@ -151,6 +151,15 @@
   - skyscraper tile 取得が失敗した場合は通常レイヤーだけで描画を継続する safe fallback を入れた。
   - 確認用に `--urban-outline-skyscraper-only` を追加し、通常 `0-2.5km` レイヤーを描かずに遠距離 skyscraper レイヤーだけを描画できるようにした。
 
+### 2026-03-27
+
+- スカイスクレーパー遠距離レイヤーの打ち切り距離見直し
+  - 同梱の tower / mountain viewpoint `227` 地点に対して、現行 `select_skyscraper_seed_tiles_for_viewer(...)` で外側半径 `10km` と `60km` を比較した。
+  - 増分は平均 `+0.83` tile、中央値 `0`、90 パーセンタイル `0` で、`+20` tile 以上増える地点は `4` 件、最大増分は Macau Tower の `+32` tile だった。
+  - 実測上は増分が一部の沿岸都市・高層集積地に偏っており、全体としては急増しなかったため、遠距離スカイスクレーパー補助レイヤーの既定上限を `10km` から `60km` へ引き上げた。
+  - 続いて `--urban-outline-skyscraper-radius-km` を追加し、遠距離スカイスクレーパー補助レイヤーの外側半径を CLI から上書きできるようにした。
+  - 新オプションは `--urban-outline-radius-km` 以上を必須とし、GUI 本体と `zstarview-export-image` の両方で同じ検証と runtime 伝搬を行うようにした。
+
 ### 2026-03-19
 
 - OpenSky 航空機オーバーレイ

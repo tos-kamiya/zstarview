@@ -210,6 +210,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.vmag_limit = user_options.vmag_limit
         self.sky_update_interval = runtime_options.sky_update_interval
         self.urban_outline_radius_km = float(runtime_options.urban_outline_radius_km)
+        self.urban_outline_skyscraper_radius_km = float(runtime_options.urban_outline_skyscraper_radius_km)
         self.urban_outline_min_height_m = float(runtime_options.urban_outline_min_height_m)
         self.urban_outline_feature_type = str(runtime_options.urban_outline_feature_type)
         self.urban_outline_skyscraper_only = bool(runtime_options.urban_outline_skyscraper_only)
@@ -372,6 +373,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             derived_root_dir=Path(OVERTURE_DERIVED_ROOT_DIR),
             min_building_height_m=self.urban_outline_min_height_m,
             radius_km=self.urban_outline_radius_km,
+            skyscraper_outer_radius_km=self.urban_outline_skyscraper_radius_km,
             feature_type=self.urban_outline_feature_type,
             skyscraper_only=self.urban_outline_skyscraper_only,
             parent=self,
