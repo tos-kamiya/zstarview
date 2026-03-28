@@ -35,11 +35,8 @@ class StripeDensityField:
     source_cache_key: int
 
 
-def cloud_with_hatched_alpha(cloud_img: QImage, hatch_cfg: HatchConfig) -> QImage:
+def cloud_with_hatched_alpha_rgba(cloud: np.ndarray, hatch_cfg: HatchConfig) -> np.ndarray:
     """Apply continuous 45-degree hatch directly to alpha (no tile seams)."""
-    out = cloud_img if cloud_img.format() == QImage.Format_RGBA8888 else cloud_img.convertToFormat(QImage.Format_RGBA8888)
-    cloud = qimage_to_np_rgba(out)
-
     h, w = cloud.shape[:2]
     xs = np.arange(w, dtype=np.int32)[None, :]
     ys = np.arange(h, dtype=np.int32)[:, None]
@@ -85,19 +82,31 @@ def cloud_with_hatched_alpha(cloud_img: QImage, hatch_cfg: HatchConfig) -> QImag
 
     cloud[..., :3] = np.clip(np.round(rgb), 0, 255).astype(np.uint8)
     cloud[..., 3] = np.clip(np.round(alpha), 0, 255).astype(np.uint8)
+    return cloud
+
+
+def cloud_with_hatched_alpha(cloud_img: QImage, hatch_cfg: HatchConfig) -> QImage:
+    cloud = qimage_to_np_rgba(
+        cloud_img if cloud_img.format() == QImage.Format_RGBA8888 else cloud_img.convertToFormat(QImage.Format_RGBA8888)
+    )
+    cloud = cloud_with_hatched_alpha_rgba(cloud, hatch_cfg)
     return np_rgba_to_qimage(cloud)
 
 
-def build_stripe_density_field(cloud_img: QImage, *, bins: int = 192) -> StripeDensityField:
-    """Build a compact density field from a cloud image in normalized (u, v) space."""
-    cloud = qimage_to_np_rgba(cloud_img if cloud_img.format() == QImage.Format_RGBA8888 else cloud_img.convertToFormat(QImage.Format_RGBA8888))
+def build_stripe_density_field_from_rgba(
+    cloud: np.ndarray,
+    *,
+    bins: int = 192,
+    source_cache_key: int = 0,
+) -> StripeDensityField:
+    """Build a compact density field from an RGBA cloud image in normalized (u, v) space."""
     h, w = cloud.shape[:2]
 
     alpha01 = cloud[..., 3].astype(np.float32) / 255.0
     inside = alpha01 > 0.0
     if not np.any(inside):
         density = np.zeros((bins, bins), dtype=np.float32)
-        return StripeDensityField(density=density, u_min=-2.0, u_max=2.0, v_min=-2.0, v_max=2.0, source_cache_key=int(cloud_img.cacheKey()))
+        return StripeDensityField(density=density, u_min=-2.0, u_max=2.0, v_min=-2.0, v_max=2.0, source_cache_key=int(source_cache_key))
 
     cy, cx = (h - 1) * 0.5, (w - 1) * 0.5
     r = max(1.0, min(cx, cy))
@@ -129,11 +138,19 @@ def build_stripe_density_field(cloud_img: QImage, *, bins: int = 192) -> StripeD
         u_max=u_max,
         v_min=v_min,
         v_max=v_max,
-        source_cache_key=int(cloud_img.cacheKey()),
+        source_cache_key=int(source_cache_key),
     )
 
 
-def render_hatched_cloud_from_density(
+def build_stripe_density_field(cloud_img: QImage, *, bins: int = 192) -> StripeDensityField:
+    """Build a compact density field from a cloud image in normalized (u, v) space."""
+    cloud = qimage_to_np_rgba(
+        cloud_img if cloud_img.format() == QImage.Format_RGBA8888 else cloud_img.convertToFormat(QImage.Format_RGBA8888)
+    )
+    return build_stripe_density_field_from_rgba(cloud, bins=bins, source_cache_key=int(cloud_img.cacheKey()))
+
+
+def render_hatched_cloud_from_density_rgba(
     density: StripeDensityField,
     width: int,
     height: int,
@@ -143,7 +160,7 @@ def render_hatched_cloud_from_density(
     target_stripes: int = 50,
     width_factor: float = 0.2,
     content_fov_deg: float = 90.0,
-) -> QImage:
+) -> np.ndarray:
     """Render a sharp hatch cloud image from density field at the target window size."""
     w = max(1, int(width))
     h = max(1, int(height))
@@ -176,7 +193,7 @@ def render_hatched_cloud_from_density(
 
     out = np.zeros((h, w, 4), dtype=np.uint8)
     if not np.any(draw_mask):
-        return np_rgba_to_qimage(out)
+        return out
 
     xn = (x - cx) / rr
     yn = (y - cy) / rr
@@ -194,12 +211,36 @@ def render_hatched_cloud_from_density(
 
     out[..., :3][draw_mask] = 255
     out[..., 3] = np.clip(np.round(alpha), 0, 255).astype(np.uint8)
+    return out
+
+
+def render_hatched_cloud_from_density(
+    density: StripeDensityField,
+    width: int,
+    height: int,
+    hatch_cfg: HatchConfig,
+    geometry: ScreenGeometry | None = None,
+    *,
+    target_stripes: int = 50,
+    width_factor: float = 0.2,
+    content_fov_deg: float = 90.0,
+) -> QImage:
+    out = render_hatched_cloud_from_density_rgba(
+        density,
+        width,
+        height,
+        hatch_cfg,
+        geometry=geometry,
+        target_stripes=target_stripes,
+        width_factor=width_factor,
+        content_fov_deg=content_fov_deg,
+    )
     return np_rgba_to_qimage(out)
 
 
 def compose_cloud_over_sky(
     sky_img: QImage,
-    cloud_img_rgba: QImage,
+    cloud_img_rgba: QImage | np.ndarray,
     dest_rect: QRect,
     geometry: ScreenGeometry | None = None,
     *,
@@ -217,11 +258,14 @@ def compose_cloud_over_sky(
 
     if sky_img.width() != w or sky_img.height() != h:
         sky_img = sky_img.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
-    if cloud_img_rgba.width() != w or cloud_img_rgba.height() != h:
-        cloud_img_rgba = cloud_img_rgba.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
 
     sky_np = qimage_to_np_rgba(sky_img)
-    cloud_np = qimage_to_np_rgba(cloud_img_rgba)
+    if isinstance(cloud_img_rgba, QImage):
+        if cloud_img_rgba.width() != w or cloud_img_rgba.height() != h:
+            cloud_img_rgba = cloud_img_rgba.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+        cloud_np = qimage_to_np_rgba(cloud_img_rgba)
+    else:
+        cloud_np = cloud_img_rgba
 
     if geometry is None:
         cx = (w - 1) * 0.5
@@ -279,24 +323,21 @@ def compose_cloud_over_sky(
 
 def overlay_missing_tint(
     base_img: QImage,
-    missing_mask_img: QImage,
+    missing_mask_alpha: np.ndarray,
     *,
     tint_rgba: Tuple[int, int, int, int] = CLOUD_MISSING_TINT_RGBA,
 ) -> QImage:
     """Overlay missing-data regions with a faint yellow solid tint."""
     w, h = base_img.width(), base_img.height()
-    if missing_mask_img.width() != w or missing_mask_img.height() != h:
-        missing_mask_img = missing_mask_img.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
 
     out = qimage_to_np_rgba(base_img if base_img.format() == QImage.Format_RGBA8888 else base_img.convertToFormat(QImage.Format_RGBA8888))
-    mask_rgba = qimage_to_np_rgba(
-        missing_mask_img
-        if missing_mask_img.format() == QImage.Format_RGBA8888
-        else missing_mask_img.convertToFormat(QImage.Format_RGBA8888)
-    )
+    if missing_mask_alpha.shape != (h, w):
+        y_idx = np.rint(np.linspace(0, missing_mask_alpha.shape[0] - 1, h)).astype(np.int32)
+        x_idx = np.rint(np.linspace(0, missing_mask_alpha.shape[1] - 1, w)).astype(np.int32)
+        missing_mask_alpha = missing_mask_alpha[y_idx][:, x_idx]
 
     # Treat missing-mask alpha as coverage indicator in [0,1].
-    m = mask_rgba[..., 3].astype(np.float32) / 255.0
+    m = missing_mask_alpha.astype(np.float32) / 255.0
     valid = m > 0.0
     if not np.any(valid):
         return np_rgba_to_qimage(out)
@@ -313,24 +354,31 @@ def overlay_missing_tint(
     return np_rgba_to_qimage(out)
 
 
-def mask_cloud_alpha_by_missing(
-    cloud_img: QImage,
-    missing_mask_img: QImage,
-) -> QImage:
+def mask_cloud_alpha_by_missing_rgba(
+    cloud: np.ndarray,
+    missing_mask_alpha: np.ndarray,
+) -> np.ndarray:
     """Set cloud alpha to zero where missing-mask alpha is present."""
-    w, h = cloud_img.width(), cloud_img.height()
-    if missing_mask_img.width() != w or missing_mask_img.height() != h:
-        missing_mask_img = missing_mask_img.scaled(w, h, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
-    cloud = qimage_to_np_rgba(cloud_img if cloud_img.format() == QImage.Format_RGBA8888 else cloud_img.convertToFormat(QImage.Format_RGBA8888))
-    missing = qimage_to_np_rgba(
-        missing_mask_img
-        if missing_mask_img.format() == QImage.Format_RGBA8888
-        else missing_mask_img.convertToFormat(QImage.Format_RGBA8888)
-    )
-    cut = missing[..., 3] > 0
+    h, w = cloud.shape[:2]
+    if missing_mask_alpha.shape != (h, w):
+        y_idx = np.rint(np.linspace(0, missing_mask_alpha.shape[0] - 1, h)).astype(np.int32)
+        x_idx = np.rint(np.linspace(0, missing_mask_alpha.shape[1] - 1, w)).astype(np.int32)
+        missing_mask_alpha = missing_mask_alpha[y_idx][:, x_idx]
+    cut = missing_mask_alpha > 0
     if np.any(cut):
         cloud[..., 3][cut] = 0
         cloud[..., :3][cut] = 0
+    return cloud
+
+
+def mask_cloud_alpha_by_missing(
+    cloud_img: QImage,
+    missing_mask_alpha: np.ndarray,
+) -> QImage:
+    cloud = qimage_to_np_rgba(
+        cloud_img if cloud_img.format() == QImage.Format_RGBA8888 else cloud_img.convertToFormat(QImage.Format_RGBA8888)
+    )
+    cloud = mask_cloud_alpha_by_missing_rgba(cloud, missing_mask_alpha)
     return np_rgba_to_qimage(cloud)
 
 
@@ -515,13 +563,13 @@ class SkyCompositorCache:
         painter: QPainter,
         geometry: ScreenGeometry,
         sky_img: Optional[QImage],
-        cloud_img: Optional[QImage],
+        cloud_img: Optional[np.ndarray | QImage],
         *,
         cloud_alpha: float,
         view_center: Tuple[float, float] = (0.0, 0.0),
         observer_lat_deg: float | None = None,
         stripe_density: Optional[StripeDensityField] = None,
-        missing_mask: Optional[QImage] = None,
+        missing_mask: Optional[np.ndarray] = None,
         terrain_profile_altaz: list[tuple[float, float]] | None = None,
         content_fov_deg: float = 90.0,
     ) -> None:
@@ -533,9 +581,15 @@ class SkyCompositorCache:
         h = int(viewport.height())
 
         sky_ck = int(sky_img.cacheKey()) if sky_img else 0
-        cloud_ck = int(cloud_img.cacheKey()) if cloud_img else 0
+        cloud_ck = (
+            int(cloud_img.cacheKey())
+            if isinstance(cloud_img, QImage)
+            else id(cloud_img)
+            if cloud_img is not None
+            else 0
+        )
         density_ck = int(stripe_density.source_cache_key) if stripe_density is not None else 0
-        missing_ck = int(missing_mask.cacheKey()) if missing_mask is not None else 0
+        missing_ck = id(missing_mask) if missing_mask is not None else 0
         terrain_key = (
             tuple((round(float(alt), 3), round(float(az) % 360.0, 3)) for alt, az in terrain_profile_altaz)
             if terrain_profile_altaz
@@ -597,12 +651,14 @@ class SkyCompositorCache:
             sky_s = _scaled(sky_img)
             if sky_s is None:
                 sky_s = _black_disc_image()
-            cloud_s = _scaled(cloud_img)
-            missing_s = _scaled(missing_mask)
+            cloud_s = cloud_img
+            if isinstance(cloud_s, QImage):
+                cloud_s = qimage_to_np_rgba(_scaled(cloud_s))
+            missing_s = missing_mask
 
             if cloud_s is not None and cloud_alpha > 0.0:
                 if stripe_density is not None:
-                    cloud_s = render_hatched_cloud_from_density(
+                    cloud_s = render_hatched_cloud_from_density_rgba(
                         stripe_density,
                         w,
                         h,
@@ -613,9 +669,9 @@ class SkyCompositorCache:
                         content_fov_deg=content_fov_deg,
                     )
                 else:
-                    cloud_s = cloud_with_hatched_alpha(cloud_s, self._hatch_cfg)
+                    cloud_s = cloud_with_hatched_alpha_rgba(np.array(cloud_s, copy=True), self._hatch_cfg)
                 if missing_s is not None:
-                    cloud_s = mask_cloud_alpha_by_missing(cloud_s, missing_s)
+                    cloud_s = mask_cloud_alpha_by_missing_rgba(cloud_s, missing_s)
 
             if cloud_s is None or cloud_alpha <= 0.0:
                 composited = sky_s

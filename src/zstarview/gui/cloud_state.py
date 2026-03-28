@@ -12,15 +12,15 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
 
-from PySide6.QtGui import QImage
+import numpy as np
 
 from ..clouddisc.types import RenderKey, SourceKey
 
 
 @dataclass
 class CloudImageState:
-    image: Optional[QImage] = None
-    missing_mask: Optional[QImage] = None
+    image: Optional[np.ndarray] = None
+    missing_mask: Optional[np.ndarray] = None
     stripe_density: Optional[Any] = None
     meta: Optional[Any] = None
     banner_text: Optional[str] = None
@@ -35,13 +35,13 @@ class CloudImageState:
 
     def set_result(
         self,
-        image: QImage,
+        image: np.ndarray,
         meta: Optional[Any],
         *,
         az: float,
         time_utc: datetime,
         stripe_density: Optional[Any] = None,
-        missing_mask: Optional[QImage] = None,
+        missing_mask: Optional[np.ndarray] = None,
         source_key: Optional[SourceKey] = None,
         render_key: Optional[RenderKey] = None,
         request_id: Optional[int] = None,

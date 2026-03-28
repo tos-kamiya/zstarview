@@ -8,7 +8,6 @@ import numpy as np
 from zstarview.gui.cloud_state import CloudImageState
 from zstarview.gui.window import SkyWindow
 from zstarview.gui.window_state import SkyWindowState
-from zstarview.render.qt_image import np_rgba_to_qimage
 
 
 class _DummyCompositor:
@@ -33,20 +32,20 @@ def test_on_cloud_ready_sets_partial_fields() -> None:
     image = np.zeros((8, 8, 4), dtype=np.uint8)
     image[..., :3] = 255
     image[..., 3] = 100
-    missing = np.zeros((8, 8, 4), dtype=np.uint8)
-    missing[2:4, 2:4, 3] = 255
+    missing = np.zeros((8, 8), dtype=np.uint8)
+    missing[2:4, 2:4] = 255
     meta = SimpleNamespace(
         satellite="HIMAWARI",
         product="ISatSS-B13",
         time_utc=datetime(2026, 3, 5, 1, 30, tzinfo=timezone.utc),
     )
     payload = {
-        "image": np_rgba_to_qimage(image),
+        "image": image,
         "meta": meta,
         "az": 180.0,
         "time_utc": datetime(2026, 3, 5, 1, 31, tzinfo=timezone.utc),
         "stripe_density": None,
-        "missing_mask": np_rgba_to_qimage(missing),
+        "missing_mask": missing,
         "coverage_ratio": 0.75,
         "source_key": None,
         "request_id": 123,
@@ -73,7 +72,7 @@ def test_on_cloud_ready_discards_stale_generation_and_restarts_render() -> None:
     dummy.start_background_cloud_update = lambda **kwargs: calls.append(str(kwargs.get("reason")))
 
     payload = {
-        "image": np_rgba_to_qimage(np.zeros((8, 8, 4), dtype=np.uint8)),
+        "image": np.zeros((8, 8, 4), dtype=np.uint8),
         "meta": None,
         "az": 180.0,
         "time_utc": datetime(2026, 3, 5, 1, 31, tzinfo=timezone.utc),

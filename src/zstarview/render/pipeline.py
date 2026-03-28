@@ -4,6 +4,7 @@ from dataclasses import dataclass, replace
 import math
 from typing import Any
 
+import numpy as np
 from PySide6.QtCore import QPoint, QRect, QRectF, Qt
 from PySide6.QtGui import QFont, QImage, QPainter
 
@@ -53,8 +54,8 @@ class RenderSceneData:
     viewer: ViewerData
     celestial_data: CelestialData
     sky_disc_image: QImage | None
-    cloud_image: QImage | None
-    cloud_missing_mask: QImage | None
+    cloud_image: np.ndarray | None
+    cloud_missing_mask: np.ndarray | None
     cloud_stripe_density: Any | None
     terrain_horizon_profile: list[tuple[float, float]] | None
     urban_outlines: Any | None
