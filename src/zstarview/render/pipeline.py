@@ -118,11 +118,12 @@ def render_base_scene_into_painter(
         scene=scene,
         style=style,
     )
+    sky_cloud_style = replace(style, cloud_disc_alpha=0.0) if hud.viewport_interaction_mode else style
     draw_sky_cloud_layers(
         painter,
         geometry=geometry,
         scene=scene,
-        style=style,
+        style=sky_cloud_style,
         compositor=compositor,
     )
     draw_guide_layer(

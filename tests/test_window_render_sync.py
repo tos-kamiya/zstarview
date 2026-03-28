@@ -1083,6 +1083,32 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
     ]
 
 
+def test_render_scene_hides_cloud_bitmap_during_viewport_interaction(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(pipeline_module, "clear_background_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(pipeline_module, "draw_background_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(pipeline_module, "draw_guide_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        pipeline_module,
+        "draw_sky_cloud_layers",
+        lambda *_args, **kwargs: captured.update({"cloud_disc_alpha": kwargs["style"].cloud_disc_alpha}),
+    )
+    monkeypatch.setattr(pipeline_module, "draw_viewport_interaction_layers", lambda *_args, **_kwargs: None)
+
+    pipeline_module.render_base_scene_into_painter(
+        painter=object(),
+        geometry=SimpleNamespace(center=(100, 100), radius=80),
+        viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
+        scene=_make_scene(),
+        style=_make_style(cloud_disc_alpha=0.2),
+        hud=_make_hud(viewport_interaction_mode=True),
+        compositor=object(),
+    )
+
+    assert captured == {"cloud_disc_alpha": 0.0}
+
+
 def test_draw_overlay_layer_skips_static_info_when_disabled(monkeypatch) -> None:
     draw_overlay_info = Mock()
     monkeypatch.setattr(pipeline_module.render_draw, "draw_overlay_info", draw_overlay_info)
