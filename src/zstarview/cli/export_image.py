@@ -732,7 +732,8 @@ def main() -> None:
     allow_partial_data = bool(getattr(args, "allow_partial_data", False))
 
     use_lod6_catalog = float(user_options.vmag_limit) <= 6.0
-    star_catalog = catalogs.star_catalog_lod6_np if use_lod6_catalog else catalogs.star_catalog_full_np
+    star_catalog = catalogs.star_catalog_np
+    star_subset_indices = catalogs.star_catalog_lod6_indices if use_lod6_catalog else None
     star_vmag_limit = None if use_lod6_catalog else float(user_options.vmag_limit)
     sky_payload = compute_sky_snapshot(
         lat=float(viewer_data.lat_deg),
@@ -742,6 +743,7 @@ def main() -> None:
         star_catalog=star_catalog,
         dso_catalog=catalogs.dso_catalog_np,
         star_vmag_limit=star_vmag_limit,
+        star_subset_indices=star_subset_indices,
         delta_t=runtime_options.delta_t,
         sky_disc_alpha=float(user_options.sky_disc_alpha),
         sky_disc_base_size=max(image_size),

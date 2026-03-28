@@ -117,8 +117,9 @@ def test_main_writes_overlay_summary_before_sixel(monkeypatch: pytest.MonkeyPatc
         view_center=(45.0, 180.0),
     )
     catalogs = SimpleNamespace(
-        star_catalog_lod6_np=object(),
-        star_catalog_full_np=object(),
+        star_catalog_np=object(),
+        star_catalog_lod6_indices=object(),
+        star_catalog_meta=None,
         dso_catalog_np=None,
     )
     user_options = SimpleNamespace(

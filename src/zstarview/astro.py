@@ -340,6 +340,7 @@ def calculate_visible_stars(
     view_center: Tuple[float, float],
     content_fov_deg: float = STAR_FIELD_OF_VIEW_DEG,
     max_vmag: float | None = None,
+    subset_indices: np.ndarray | None = None,
 ) -> Tuple[StarsTable, EarthLocation]:
     """Compute visible stars and return them with the observer location."""
     location = EarthLocation(lat=lat * u.deg, lon=lon * u.deg, height=observer_height_m * u.m)
@@ -357,6 +358,27 @@ def calculate_visible_stars(
     bv = cat["bv"]
     size_scale = cat["size_scale"]
     color_base = cat["color_base"]
+
+    if subset_indices is not None:
+        idx = np.asarray(subset_indices, dtype=np.int32)
+        if idx.size == 0:
+            empty: StarsTable = {
+                "star_index": catalog_index[:0],
+                "alt": np.array([], dtype=float),
+                "az": np.array([], dtype=float),
+                "vmag": np.array([], dtype=float),
+                "bv": np.array([], dtype=float),
+                "size_factor": np.array([], dtype=float),
+                "color_factor_base": np.array([], dtype=float),
+            }
+            return (empty, location)
+        catalog_index = catalog_index[idx]
+        unit_vectors = unit_vectors[idx]
+        vmag = vmag[idx]
+        bv = bv[idx]
+        size_scale = size_scale[idx]
+        color_base = color_base[idx]
+
     if max_vmag is not None and not source_is_df:
         vlim = float(max_vmag)
         mag_mask = vmag <= vlim

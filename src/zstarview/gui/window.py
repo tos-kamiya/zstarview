@@ -172,8 +172,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             runtime_options: Runtime scheduling and window-hosting options.
         """
         super().__init__()
-        self.star_catalog_full_np = catalogs.star_catalog_full_np
-        self.star_catalog_lod6_np = catalogs.star_catalog_lod6_np
+        self.star_catalog_np = catalogs.star_catalog_np
+        self.star_catalog_lod6_indices = catalogs.star_catalog_lod6_indices
         self.star_catalog_meta = catalogs.star_catalog_meta
         self.dso_catalog_np = catalogs.dso_catalog_np
         self.show_dso: bool = self.dso_catalog_np is not None
@@ -707,13 +707,14 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self.state.viewport_interaction_stars = None
             return
         stars, _location = calculate_visible_stars(
-            self.star_catalog_lod6_np,
+            self.star_catalog_np,
             self.viewer_data.location[0],
             self.viewer_data.location[1],
             self.viewer_data.observer_height_m,
             self._current_time_obj(),
             self.state.render_view_center,
             max_vmag=4.0,
+            subset_indices=self.star_catalog_lod6_indices,
         )
         self.state.viewport_interaction_stars = stars
 

@@ -224,7 +224,8 @@ class SkyWindowUpdatesMixin:
     ) -> bool:
         lat, lon = self.viewer_data.location
         use_lod6_catalog = star_vmag_limit is not None and float(star_vmag_limit) <= 6.0
-        star_catalog = self.star_catalog_lod6_np if use_lod6_catalog else self.star_catalog_full_np
+        star_catalog = self.star_catalog_np
+        star_subset_indices = self.star_catalog_lod6_indices if use_lod6_catalog else None
         worker_star_vmag_limit = None if use_lod6_catalog else star_vmag_limit
         started = self._sky_worker.update(
             lat=lat,
@@ -234,6 +235,7 @@ class SkyWindowUpdatesMixin:
             star_catalog=star_catalog,
             dso_catalog=self.dso_catalog_np,
             star_vmag_limit=worker_star_vmag_limit,
+            star_subset_indices=star_subset_indices,
             delta_t=self.delta_t,
             sky_disc_alpha=self.sky_disc_alpha,
             sky_disc_base_size=self.state.sky_disc_base_size,
