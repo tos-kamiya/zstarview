@@ -5,7 +5,7 @@ import numpy as np
 from PySide6.QtGui import QImage, QPainter
 
 from zstarview.render import draw as render_draw
-from zstarview.types import CelestialData, ScreenGeometry, ViewerData
+from zstarview.types import CelestialData, ScreenGeometry, StarCatalogMeta, ViewerData
 from zstarview.utils.qt import qimage_to_np_rgba
 
 
@@ -22,8 +22,7 @@ def _single_star_celestial_data(
         time=astropy.time.Time("2026-03-20T00:00:00", scale="utc"),
         planets=[],
         stars={
-            "name": np.array(["Faint"], dtype=object),
-            "source_id": np.array(["HIP_FAINT"], dtype=object),
+            "star_index": np.array([0], dtype=np.int32),
             "alt": np.array([alt], dtype=float),
             "az": np.array([az], dtype=float),
             "vmag": np.array([vmag], dtype=float),
@@ -45,6 +44,12 @@ def _single_star_celestial_data(
         celestial_equator_points=[],
         ecliptic_points=[],
         horizon_points=[],
+        star_catalog_meta=StarCatalogMeta(
+            name_indices=np.array([0], dtype=np.int32),
+            names=np.array(["Faint"], dtype=object),
+            source_id_indices=np.array([0], dtype=np.int32),
+            source_ids=np.array(["HIP_FAINT"], dtype=object),
+        ),
     )
 
 

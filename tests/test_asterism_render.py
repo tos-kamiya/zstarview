@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QApplication
 from zstarview.asterisms import Asterism
 from zstarview.paths import ASTERISM_CLIP_FIELD_OF_VIEW_DEG
 from zstarview.render import draw as render_draw
-from zstarview.types import CelestialData, ScreenGeometry, ViewerData
+from zstarview.types import CelestialData, ScreenGeometry, StarCatalogMeta, ViewerData
 
 app = QApplication.instance() or QApplication([])
 
@@ -37,12 +37,17 @@ class DummyPainter:
 
 
 def _celestial_data_with_asterism_star_positions() -> CelestialData:
+    star_catalog_meta = StarCatalogMeta(
+        name_indices=np.array([0, 1], dtype=np.int32),
+        names=np.array(["Star A", "Star B"], dtype=object),
+        source_id_indices=np.array([0, 1], dtype=np.int32),
+        source_ids=np.array(["HIP1", "HIP2"], dtype=object),
+    )
     return CelestialData(
         time=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
         planets=[],
         stars={
-            "name": np.array(["Star A", "Star B"], dtype=object),
-            "source_id": np.array(["HIP1", "HIP2"], dtype=object),
+            "star_index": np.array([0, 1], dtype=np.int32),
             "alt": np.array([45.0, 45.0], dtype=float),
             "az": np.array([170.0, 190.0], dtype=float),
             "vmag": np.array([1.0, 2.0], dtype=float),
@@ -64,6 +69,7 @@ def _celestial_data_with_asterism_star_positions() -> CelestialData:
         celestial_equator_points=[],
         ecliptic_points=[],
         horizon_points=[],
+        star_catalog_meta=star_catalog_meta,
     )
 
 
@@ -143,8 +149,7 @@ def test_draw_asterisms_clips_with_asterism_specific_wide_fov(monkeypatch) -> No
         time=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
         planets=[],
         stars={
-            "name": np.array(["Star A", "Star B"], dtype=object),
-            "source_id": np.array(["HIP1", "HIP2"], dtype=object),
+            "star_index": np.array([0, 1], dtype=np.int32),
             "alt": np.array([45.0, -58.0], dtype=float),
             "az": np.array([180.0, 180.0], dtype=float),
             "vmag": np.array([1.0, 2.0], dtype=float),
@@ -166,6 +171,12 @@ def test_draw_asterisms_clips_with_asterism_specific_wide_fov(monkeypatch) -> No
         celestial_equator_points=[],
         ecliptic_points=[],
         horizon_points=[],
+        star_catalog_meta=StarCatalogMeta(
+            name_indices=np.array([0, 1], dtype=np.int32),
+            names=np.array(["Star A", "Star B"], dtype=object),
+            source_id_indices=np.array([0, 1], dtype=np.int32),
+            source_ids=np.array(["HIP1", "HIP2"], dtype=object),
+        ),
     )
     asterism = Asterism("test", "Test Asterism", (("HIP1", "HIP2"),))
 
@@ -215,8 +226,7 @@ def test_find_highlighted_object_accepts_unnamed_asterism_member(monkeypatch) ->
         time=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
         planets=[],
         stars={
-            "name": np.array([""], dtype=object),
-            "source_id": np.array(["HIP1"], dtype=object),
+            "star_index": np.array([0], dtype=np.int32),
             "alt": np.array([45.0], dtype=float),
             "az": np.array([180.0], dtype=float),
             "vmag": np.array([3.0], dtype=float),
@@ -238,6 +248,12 @@ def test_find_highlighted_object_accepts_unnamed_asterism_member(monkeypatch) ->
         celestial_equator_points=[],
         ecliptic_points=[],
         horizon_points=[],
+        star_catalog_meta=StarCatalogMeta(
+            name_indices=np.array([], dtype=np.int32),
+            names=np.array([], dtype=object),
+            source_id_indices=np.array([0], dtype=np.int32),
+            source_ids=np.array(["HIP1"], dtype=object),
+        ),
     )
 
     monkeypatch.setattr(render_draw, "ASTERISM_REQUIRED_SOURCE_IDS", frozenset({"HIP1"}))

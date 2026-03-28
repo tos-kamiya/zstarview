@@ -178,17 +178,11 @@ def lookup_star_source_id(meta: StarCatalogMeta | None, catalog_index: int) -> s
 
 
 def resolve_star_names(stars: StarsTable, meta: StarCatalogMeta | None) -> np.ndarray:
-    existing = cast(dict[str, np.ndarray], stars).get("name")
-    if existing is not None:
-        return np.asarray(existing, dtype=object)
     catalog_indices = np.asarray(stars["star_index"], dtype=np.int32)
     return _lookup_sparse_star_meta(catalog_indices, meta.name_indices, meta.names) if meta is not None else np.full(catalog_indices.shape, "", dtype=object)
 
 
 def resolve_star_source_ids(stars: StarsTable, meta: StarCatalogMeta | None) -> np.ndarray:
-    existing = cast(dict[str, np.ndarray], stars).get("source_id")
-    if existing is not None:
-        return np.asarray(existing, dtype=object)
     catalog_indices = np.asarray(stars["star_index"], dtype=np.int32)
     return (
         _lookup_sparse_star_meta(catalog_indices, meta.source_id_indices, meta.source_ids)

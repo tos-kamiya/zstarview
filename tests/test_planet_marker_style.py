@@ -8,7 +8,16 @@ from PySide6.QtWidgets import QApplication
 
 from zstarview.render import draw as render_draw
 from zstarview.satellites.types import SatelliteOverlayPoint
-from zstarview.types import CelestialData, PlanetBody, ScreenGeometry, ViewerData
+from zstarview.types import CelestialData, PlanetBody, ScreenGeometry, StarCatalogMeta, ViewerData
+
+
+def _empty_star_catalog_meta() -> StarCatalogMeta:
+    return StarCatalogMeta(
+        name_indices=np.array([], dtype=np.int32),
+        names=np.array([], dtype=object),
+        source_id_indices=np.array([], dtype=np.int32),
+        source_ids=np.array([], dtype=object),
+    )
 
 
 def _empty_celestial_data(planets: list[PlanetBody]) -> CelestialData:
@@ -16,7 +25,7 @@ def _empty_celestial_data(planets: list[PlanetBody]) -> CelestialData:
         time=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
         planets=planets,
         stars={
-            "name": np.array([], dtype=object),
+            "star_index": np.array([], dtype=np.int32),
             "alt": np.array([], dtype=float),
             "az": np.array([], dtype=float),
             "vmag": np.array([], dtype=float),
@@ -38,10 +47,11 @@ def _empty_celestial_data(planets: list[PlanetBody]) -> CelestialData:
         celestial_equator_points=[],
         ecliptic_points=[],
         horizon_points=[],
+        star_catalog_meta=_empty_star_catalog_meta(),
     )
 
 
-def _celestial_data_with_stars(stars: dict[str, np.ndarray]) -> CelestialData:
+def _celestial_data_with_stars(stars: dict[str, np.ndarray], star_catalog_meta: StarCatalogMeta | None = None) -> CelestialData:
     return CelestialData(
         time=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
         planets=[],
@@ -60,13 +70,20 @@ def _celestial_data_with_stars(stars: dict[str, np.ndarray]) -> CelestialData:
         celestial_equator_points=[],
         ecliptic_points=[],
         horizon_points=[],
+        star_catalog_meta=star_catalog_meta,
     )
 
 
-def _star_table(names: list[str], alt: float = 45.0, az: float = 180.0) -> dict[str, np.ndarray]:
+def _star_table(
+    names: list[str],
+    *,
+    source_ids: list[str] | None = None,
+    alt: float = 45.0,
+    az: float = 180.0,
+) -> tuple[dict[str, np.ndarray], StarCatalogMeta]:
     count = len(names)
-    return {
-        "name": np.array(names, dtype=object),
+    stars = {
+        "star_index": np.arange(count, dtype=np.int32),
         "alt": np.full(count, alt, dtype=float),
         "az": np.full(count, az, dtype=float),
         "vmag": np.linspace(1.0, 5.0, count, dtype=float),
@@ -74,6 +91,16 @@ def _star_table(names: list[str], alt: float = 45.0, az: float = 180.0) -> dict[
         "size_factor": np.ones(count, dtype=float),
         "color_factor_base": np.ones(count, dtype=float),
     }
+    source_values = [""] * count if source_ids is None else source_ids
+    name_indices = np.array([idx for idx, name in enumerate(names) if str(name).strip()], dtype=np.int32)
+    source_id_indices = np.array([idx for idx, value in enumerate(source_values) if str(value).strip()], dtype=np.int32)
+    meta = StarCatalogMeta(
+        name_indices=name_indices,
+        names=np.array([names[idx] for idx in name_indices], dtype=object),
+        source_id_indices=source_id_indices,
+        source_ids=np.array([source_values[idx] for idx in source_id_indices], dtype=object),
+    )
+    return stars, meta
 
 
 def test_planets_are_drawn_with_disc_and_cross_markers(monkeypatch) -> None:
@@ -310,9 +337,9 @@ def test_hover_ignores_unnamed_stars() -> None:
     geometry = ScreenGeometry(center=(120, 90), radius=70)
     mouse_pos = QPoint(120, 90)
 
-    stars = _star_table(names=["", "Sirius"])
+    stars, meta = _star_table(names=["", "Sirius"])
     highlighted = render_draw.find_highlighted_object(
-        _celestial_data_with_stars(stars),
+        _celestial_data_with_stars(stars, meta),
         viewer,
         mouse_pos,
         geometry,
@@ -328,9 +355,9 @@ def test_hover_returns_none_without_named_star() -> None:
     geometry = ScreenGeometry(center=(120, 90), radius=70)
     mouse_pos = QPoint(120, 90)
 
-    stars = _star_table(names=["", ""])
+    stars, meta = _star_table(names=["", ""])
     highlighted = render_draw.find_highlighted_object(
-        _celestial_data_with_stars(stars),
+        _celestial_data_with_stars(stars, meta),
         viewer,
         mouse_pos,
         geometry,
