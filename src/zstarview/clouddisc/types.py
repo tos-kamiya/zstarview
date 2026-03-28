@@ -81,6 +81,7 @@ class CloudSourceData:
     product: str
     time_utc: dt.datetime
     src_paths: List[Path]
+    sampler: Any = None
 
 
 @dataclass

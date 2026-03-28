@@ -209,7 +209,10 @@ class CloudDisc:
         cloud_shell_km: float,
     ) -> Tuple[Image.Image, CloudMeta, np.ndarray, float]:
         # Step 3: Create a sampler function: (lon, lat) -> Brightness Temperature [K]
-        sampler = build_bt_sampler(source.data_array)
+        sampler = source.sampler
+        if sampler is None:
+            sampler = build_bt_sampler(source.data_array)
+            source.sampler = sampler
 
         # Step 4: Project a grid of longitude/latitude points that corresponds to the pixels
         # in the final image, as seen from the observer's perspective.
