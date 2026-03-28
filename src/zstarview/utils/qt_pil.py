@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Utilities for converting between Qt and other common image formats.
+Pillow-backed conversion helpers for Qt images and pixmaps.
 
 Pillow-backed helpers are kept here for tooling compatibility. NumPy/QImage
 helpers live in ``zstarview.render.qt_image`` so the main runtime path no
