@@ -3,13 +3,12 @@
 Functions for rendering brightness temperature data into grayscale images.
 
 This module handles the final conversion from a numerical array of brightness
-temperatures (in Kelvin) into a visual, 8-bit grayscale image suitable for display.
+temperatures (in Kelvin) into an 8-bit RGBA image buffer suitable for display.
 """
 
 import warnings
 
 import numpy as np
-from PIL import Image
 
 # Suppress a specific, harmless warning that can occur deep inside the Satpy/Dask
 # execution path when dealing with NaN values in logarithms.
@@ -71,18 +70,18 @@ def _suppress_low_cloud_weight(
     return np.clip(base * gain, 0.0, 1.0)
 
 
-def convert_bt_to_la_image(
+def convert_bt_to_rgba_image(
     bt: np.ndarray,
     mask_inside: np.ndarray,
     bt_warm: float,
     bt_cold: float,
-) -> Image.Image:
+) -> np.ndarray:
     """
-    Converts a brightness temperature (BT) array to a grayscale-alpha (LA) image.
+    Converts a brightness temperature (BT) array to an RGBA cloud image buffer.
 
-    The output is an "LA" mode Pillow Image, which has two 8-bit channels:
-    - L: Luminance (grayscale value), fixed to white for visible pixels.
-    - A: Alpha (transparency), representing cloud amount (0=clear, 255=thick cloud).
+    The output is a uint8 array with shape ``(H, W, 4)``:
+    - R/G/B: fixed to white for visible pixels.
+    - A: transparency, representing cloud amount (0=clear, 255=thick cloud).
 
     Args:
         bt: A NumPy array of brightness temperatures in Kelvin.
@@ -92,7 +91,7 @@ def convert_bt_to_la_image(
         bt_cold: The temperature (K) mapped to alpha 255.
 
     Returns:
-        A Pillow Image object in "LA" mode.
+        A NumPy RGBA image buffer with dtype ``uint8``.
     """
     # Ensure there is a valid temperature range to prevent division by zero.
     if bt_warm <= bt_cold + 0.5:
@@ -104,12 +103,7 @@ def convert_bt_to_la_image(
     weight = _suppress_low_cloud_weight(weight)
 
     # 2. Keep cloud color white and encode cloud amount in alpha.
-    l_channel = np.zeros_like(weight, dtype=np.uint8)
-    l_channel[mask_inside] = 255
-    a_channel = np.zeros_like(weight, dtype=np.uint8)
-    a_channel[mask_inside] = (weight[mask_inside] * 255.0).astype(np.uint8)
-
-    # 3. Stack the L and A channels together to create the final LA image data.
-    la_data = np.dstack([l_channel, a_channel])
-
-    return Image.fromarray(la_data, mode="LA")
+    rgba = np.zeros(mask_inside.shape + (4,), dtype=np.uint8)
+    rgba[..., :3][mask_inside] = 255
+    rgba[..., 3][mask_inside] = (weight[mask_inside] * 255.0).astype(np.uint8)
+    return rgba

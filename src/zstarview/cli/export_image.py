@@ -86,7 +86,7 @@ from ..gui.window_inputs import (
     prepare_window_viewer_data,
 )
 from ..urban_outline_layer import resolve_urban_outline_layer_for_viewer
-from ..utils.qt import np_rgba_to_qimage, pil_to_qimage
+from ..utils.qt import np_rgba_to_qimage
 from .args import parse_export_image_args
 
 logger = logging.getLogger(__name__)
@@ -302,7 +302,7 @@ def _fetch_cloud_layer(
         lat=float(viewer_data.lat_deg),
         lon=float(viewer_data.lon_deg),
     )
-    pil_img, _meta, missing_mask, _coverage_ratio = clouddisc.render_from_source_with_coverage(
+    cloud_rgba, _meta, missing_mask, _coverage_ratio = clouddisc.render_from_source_with_coverage(
         source=source,
         lat=float(viewer_data.lat_deg),
         lon=float(viewer_data.lon_deg),
@@ -315,7 +315,7 @@ def _fetch_cloud_layer(
     )
     if _timed_out(deadline):
         raise TimeoutError("cloud timed out")
-    cloud_img = pil_to_qimage(pil_img)
+    cloud_img = np_rgba_to_qimage(cloud_rgba)
     missing_rgba = np.zeros((missing_mask.shape[0], missing_mask.shape[1], 4), dtype=np.uint8)
     missing_rgba[..., 3] = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
     missing_mask_img = np_rgba_to_qimage(missing_rgba)
