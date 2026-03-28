@@ -447,9 +447,11 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `src/zstarview/utils/timezone_parser.py`
   - `--datetime` 文字列のタイムゾーン解釈
 - `src/zstarview/utils/image.py`
-  - 画像変換補助
-- `src/zstarview/utils/qt.py`
-  - Qt 補助
+  - 月相 RGBA 画像などの NumPy ベース画像生成補助
+- `src/zstarview/render/qt_image.py`
+  - ランタイム本線で使う `NumPy <-> QImage` 変換補助
+- `src/zstarview/utils/qt_pil.py`
+  - 補助用途の `Pillow <-> Qt` 変換
 - `src/zstarview/data/import_overture_buildings.py`
   - `lat/lon + radius` に対応する bbox を計算する
   - `overturemaps download` を呼び、`building` および必要に応じて `building_part` を取得する
@@ -965,7 +967,9 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - 数値計算: `numpy`, `polars`
 - 雲データ処理: `xarray`, `boto3`, `botocore`
 - 地形データ処理: `rasterio`, `pyproj`
-- 画像処理: `Pillow`
+- 画像補助: `Pillow`
+  - 現在の主要ランタイム経路 (`zstarview`, `zstarview-export-image`) は、月相と雲を含めて `NumPy -> QImage` を基本とする。
+  - `Pillow` は主に補助変換と `src/zstarview/data/` 配下の画像生成スクリプトのために残している。
 
 ## 13. 文書間の責務分担
 
