@@ -12,6 +12,7 @@ from skyfield.magnitudelib import planetary_magnitude
 import numpy as np
 import polars as pl
 
+from .asterisms import ASTERISM_REQUIRED_SOURCE_IDS
 from .paths import (
     CACHE_PATH,
     FIELD_OF_VIEW_DEG,
@@ -21,7 +22,7 @@ from .paths import (
     EPHEMERIS_FILENAME,
     EPHEMERIS_URL,
 )
-from .types import DeepSkyTable, LunarEclipseInfo, PlanetBody, SolarEclipseInfo, StarsTable
+from .types import DeepSkyTable, LunarEclipseInfo, PlanetBody, SolarEclipseInfo, StarCatalogMeta, StarsTable
 
 
 # Skyfield ephemeris cache loader (separate from UI)
@@ -40,6 +41,7 @@ _ICRS_UNIT_BASIS = SkyCoord(
 class StarCatalogArrays(TypedDict):
     """Pre-normalized star catalog arrays for fast repeated sky updates."""
 
+    catalog_index: np.ndarray
     ra_h: np.ndarray
     dec: np.ndarray
     ra_rad: np.ndarray
@@ -51,10 +53,6 @@ class StarCatalogArrays(TypedDict):
     bv: np.ndarray
     size_scale: np.ndarray
     color_base: np.ndarray
-    name: np.ndarray
-    source_id: np.ndarray
-
-
 class DeepSkyCatalogArrays(TypedDict):
     """Pre-normalized deep-sky catalog arrays for fast repeated sky updates."""
 
@@ -77,6 +75,7 @@ def prepare_star_catalog_arrays(
     vmag_brightness_scale: float = -0.39,
 ) -> StarCatalogArrays:
     """Normalize a Polars star catalog to NumPy arrays once at startup."""
+    catalog_index = np.arange(star_df.height, dtype=np.int32)
     ra_h = star_df["RAh"].cast(pl.Float64, strict=False).to_numpy()
     dec = star_df["Dec"].cast(pl.Float64, strict=False).to_numpy()
     ra_rad = np.radians(ra_h * 15.0)
@@ -92,11 +91,6 @@ def prepare_star_catalog_arrays(
     )
     vmag = star_df["Vmag"].cast(pl.Float64, strict=False).to_numpy()
     bv = star_df["B-V"].cast(pl.Float64, strict=False).fill_null(np.nan).to_numpy()
-    name = star_df["Name"].to_numpy()
-    if "SourceId" in star_df.columns:
-        source_id = star_df["SourceId"].fill_null("").to_numpy()
-    else:
-        source_id = np.full(vmag.shape, "", dtype=object)
     v_ref = 1.0
     scale = float(vmag_brightness_scale)
     L_raw = 10.0 ** (scale * (vmag - v_ref))
@@ -105,6 +99,7 @@ def prepare_star_catalog_arrays(
 
     if max_vmag is not None:
         mask = vmag <= float(max_vmag)
+        catalog_index = catalog_index[mask]
         ra_h = ra_h[mask]
         dec = dec[mask]
         ra_rad = ra_rad[mask]
@@ -114,12 +109,11 @@ def prepare_star_catalog_arrays(
         unit_vectors = unit_vectors[mask]
         vmag = vmag[mask]
         bv = bv[mask]
-        name = name[mask]
-        source_id = source_id[mask]
         size_scale = size_scale[mask]
         color_base = color_base[mask]
 
     return {
+        "catalog_index": catalog_index,
         "ra_h": ra_h,
         "dec": dec,
         "ra_rad": ra_rad,
@@ -131,9 +125,96 @@ def prepare_star_catalog_arrays(
         "bv": bv,
         "size_scale": size_scale,
         "color_base": color_base,
-        "name": name,
-        "source_id": source_id,
     }
+
+
+def prepare_star_catalog_meta(star_df: pl.DataFrame) -> StarCatalogMeta:
+    """Build sparse name/source-id lookup tables keyed by full catalog index."""
+    names_raw = star_df["Name"].fill_null("").to_numpy() if "Name" in star_df.columns else np.array([], dtype=object)
+    if names_raw.size > 0:
+        names_str = np.array([str(value).strip() for value in names_raw], dtype=object)
+        name_mask = np.array([bool(value) for value in names_str], dtype=bool)
+        name_indices = np.nonzero(name_mask)[0].astype(np.int32, copy=False)
+        names = names_str[name_mask]
+    else:
+        name_indices = np.array([], dtype=np.int32)
+        names = np.array([], dtype=object)
+
+    source_raw = (
+        star_df["SourceId"].fill_null("").to_numpy()
+        if "SourceId" in star_df.columns
+        else np.array([], dtype=object)
+    )
+    if source_raw.size > 0:
+        source_str = np.array([str(value).strip() for value in source_raw], dtype=object)
+        source_mask = np.array([value in ASTERISM_REQUIRED_SOURCE_IDS for value in source_str], dtype=bool)
+        source_id_indices = np.nonzero(source_mask)[0].astype(np.int32, copy=False)
+        source_ids = source_str[source_mask]
+    else:
+        source_id_indices = np.array([], dtype=np.int32)
+        source_ids = np.array([], dtype=object)
+
+    return StarCatalogMeta(
+        name_indices=name_indices,
+        names=names,
+        source_id_indices=source_id_indices,
+        source_ids=source_ids,
+    )
+
+
+def _lookup_sparse_star_meta(
+    catalog_indices: np.ndarray,
+    meta_indices: np.ndarray,
+    values: np.ndarray,
+) -> np.ndarray:
+    if catalog_indices.size == 0 or meta_indices.size == 0:
+        return np.full(catalog_indices.shape, "", dtype=object)
+    pos = np.searchsorted(meta_indices, catalog_indices)
+    valid = pos < meta_indices.size
+    out = np.full(catalog_indices.shape, "", dtype=object)
+    if np.any(valid):
+        matched = valid.copy()
+        matched[valid] = meta_indices[pos[valid]] == catalog_indices[valid]
+        out[matched] = values[pos[matched]]
+    return out
+
+
+def lookup_star_name(meta: StarCatalogMeta | None, catalog_index: int) -> str:
+    if meta is None or meta.name_indices.size == 0:
+        return ""
+    pos = int(np.searchsorted(meta.name_indices, int(catalog_index)))
+    if pos >= meta.name_indices.size or int(meta.name_indices[pos]) != int(catalog_index):
+        return ""
+    return str(meta.names[pos]).strip()
+
+
+def lookup_star_source_id(meta: StarCatalogMeta | None, catalog_index: int) -> str:
+    if meta is None or meta.source_id_indices.size == 0:
+        return ""
+    pos = int(np.searchsorted(meta.source_id_indices, int(catalog_index)))
+    if pos >= meta.source_id_indices.size or int(meta.source_id_indices[pos]) != int(catalog_index):
+        return ""
+    return str(meta.source_ids[pos]).strip()
+
+
+def resolve_star_names(stars: StarsTable, meta: StarCatalogMeta | None) -> np.ndarray:
+    existing = cast(dict[str, np.ndarray], stars).get("name")
+    if existing is not None:
+        return np.asarray(existing, dtype=object)
+    catalog_indices = np.asarray(stars["star_index"], dtype=np.int32)
+    return _lookup_sparse_star_meta(catalog_indices, meta.name_indices, meta.names) if meta is not None else np.full(catalog_indices.shape, "", dtype=object)
+
+
+def resolve_star_source_ids(stars: StarsTable, meta: StarCatalogMeta | None) -> np.ndarray:
+    existing = cast(dict[str, np.ndarray], stars).get("source_id")
+    if existing is not None:
+        return np.asarray(existing, dtype=object)
+    catalog_indices = np.asarray(stars["star_index"], dtype=np.int32)
+    return (
+        _lookup_sparse_star_meta(catalog_indices, meta.source_id_indices, meta.source_ids)
+        if meta is not None
+        else np.full(catalog_indices.shape, "", dtype=object)
+    )
 
 
 def prepare_deep_sky_catalog_arrays(dso_df: pl.DataFrame) -> DeepSkyCatalogArrays:
@@ -270,21 +351,18 @@ def calculate_visible_stars(
         cat = cast(StarCatalogArrays, star_source)
 
     # Get pre-normalized arrays
+    catalog_index = cat["catalog_index"]
     unit_vectors = cat["unit_vectors"]
     vmag = cat["vmag"]
     bv = cat["bv"]
     size_scale = cat["size_scale"]
     color_base = cat["color_base"]
-    name = cat["name"]
-    source_id = cat["source_id"]
-
     if max_vmag is not None and not source_is_df:
         vlim = float(max_vmag)
         mag_mask = vmag <= vlim
         if not np.any(mag_mask):
             empty: StarsTable = {
-                "name": name[:0],
-                "source_id": source_id[:0],
+                "star_index": catalog_index[:0],
                 "alt": np.array([], dtype=float),
                 "az": np.array([], dtype=float),
                 "vmag": np.array([], dtype=float),
@@ -293,11 +371,10 @@ def calculate_visible_stars(
                 "color_factor_base": np.array([], dtype=float),
             }
             return (empty, location)
+        catalog_index = catalog_index[mag_mask]
         unit_vectors = unit_vectors[mag_mask]
         vmag = vmag[mag_mask]
         bv = bv[mag_mask]
-        name = name[mag_mask]
-        source_id = source_id[mag_mask]
         size_scale = size_scale[mag_mask]
         color_base = color_base[mag_mask]
 
@@ -307,8 +384,7 @@ def calculate_visible_stars(
 
     # Filter the results using the boolean mask
     visible_stars: StarsTable = {
-        "name": name[in_view_mask],
-        "source_id": source_id[in_view_mask],
+        "star_index": catalog_index[in_view_mask],
         "alt": alt[in_view_mask],
         "az": az[in_view_mask],
         "vmag": vmag[in_view_mask],

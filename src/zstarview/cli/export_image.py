@@ -747,6 +747,7 @@ def main() -> None:
         sky_disc_base_size=max(image_size),
         content_fov_deg=float(viewer_data.content_fov_deg),
         visual_preset=str(user_options.visual_preset),
+        star_catalog_meta=getattr(catalogs, "star_catalog_meta", None),
         render_width_px=int(image_size[0]),
         render_height_px=int(image_size[1]),
         render_generation=0,

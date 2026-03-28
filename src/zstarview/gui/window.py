@@ -174,6 +174,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         super().__init__()
         self.star_catalog_full_np = catalogs.star_catalog_full_np
         self.star_catalog_lod6_np = catalogs.star_catalog_lod6_np
+        self.star_catalog_meta = catalogs.star_catalog_meta
         self.dso_catalog_np = catalogs.dso_catalog_np
         self.show_dso: bool = self.dso_catalog_np is not None
         if user_options.show_dso_initial is not None:

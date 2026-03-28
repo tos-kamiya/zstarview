@@ -13,10 +13,11 @@ from ..paths import CLOUD_MISSING_TINT_RGBA
 from ..astro import (
     DeepSkyCatalogArrays,
     StarCatalogArrays,
+    prepare_star_catalog_meta,
     prepare_deep_sky_catalog_arrays,
     prepare_star_catalog_arrays,
 )
-from ..types import ViewerData
+from ..types import StarCatalogMeta, ViewerData
 from .famous_star_shortcuts import (
     NamedStarShortcut,
     SearchJumpTarget,
@@ -31,6 +32,7 @@ class PreparedWindowCatalogs:
 
     star_catalog_full_np: StarCatalogArrays
     star_catalog_lod6_np: StarCatalogArrays
+    star_catalog_meta: StarCatalogMeta
     dso_catalog_np: Optional[DeepSkyCatalogArrays]
     named_stars_by_band: dict[str, list[NamedStarShortcut]]
     named_stars_search_all: list[SearchJumpTarget]
@@ -123,6 +125,7 @@ def prepare_window_catalogs(
             max_vmag=6.0,
             vmag_brightness_scale=vmag_brightness_scale,
         ),
+        star_catalog_meta=prepare_star_catalog_meta(star_catalog),
         dso_catalog_np=None if dso_catalog is None else prepare_deep_sky_catalog_arrays(dso_catalog),
         named_stars_by_band=build_named_star_shortcuts(star_catalog, max_vmag=2.0, include_satellites=True),
         named_stars_search_all=build_search_jump_targets(star_catalog, include_satellites=True),
