@@ -6,10 +6,9 @@ Image generation utilities, such as creating celestial body sprites.
 from typing import Optional, Tuple
 
 import numpy as np
-from PIL import Image
 
 
-def generate_moon_phase_image(
+def generate_moon_phase_rgba(
     size: int,
     sun_dir_3d: np.ndarray,
     view_dir_3d: np.ndarray,
@@ -18,7 +17,7 @@ def generate_moon_phase_image(
     earthshine_factor: float = 0.15,
     tint_color: Optional[Tuple[int, int, int, int]] = None,  # RGBA
     edge_soft_px: float = 1.0,
-) -> Image.Image:
+) -> np.ndarray:
     """
     Generates a spherical moon-phase image as an RGBA bitmap.
 
@@ -46,13 +45,13 @@ def generate_moon_phase_image(
         edge_soft_px: The width of the feathering (in pixels) for the rim's alpha.
 
     Returns:
-        A Pillow `Image` object in "RGBA" mode.
+        A NumPy array in RGBA format with shape ``(size, size, 4)``.
     """
     cx = cy = size // 2
     r = size // 2
     img = np.zeros((size, size, 4), dtype=np.uint8)  # RGBA buffer
     if r <= 0:
-        return Image.fromarray(img, mode="RGBA")
+        return img
 
     # Pre-cast colors and vectors for vectorized shading.
     moon_rgb = np.asarray(moon_color, dtype=np.float32)
@@ -74,7 +73,7 @@ def generate_moon_phase_image(
     view_dot = normals @ view_dir
     visible_mask = disc_mask & (view_dot > 0.0)
     if not np.any(visible_mask):
-        return Image.fromarray(img, mode="RGBA")
+        return img
 
     light = normals @ sun_dir
     sunlit_mask = visible_mask & (light > 0.0)
@@ -101,4 +100,4 @@ def generate_moon_phase_image(
 
     img[..., :3] = np.clip(rgb, 0.0, 255.0).astype(np.uint8)
     img[..., 3] = np.clip(alpha, 0.0, 255.0).astype(np.uint8)
-    return Image.fromarray(img, mode="RGBA")
+    return img

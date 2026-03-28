@@ -6,7 +6,6 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 import hashlib
 import logging
 import numpy as np
-from PIL import Image
 from zoneinfo import ZoneInfo
 
 from PySide6.QtCore import QPoint, QPointF, QRectF, Qt
@@ -79,8 +78,8 @@ from .text import (
     _text_bounds_at_baseline,
     draw_outlined_text,
 )
-from ..utils.image import generate_moon_phase_image
-from ..utils.qt import pil2qpixmap
+from ..utils.image import generate_moon_phase_rgba
+from ..utils.qt import np_rgba_to_qimage
 
 logger = logging.getLogger(__name__)
 
@@ -1614,29 +1613,24 @@ def draw_moon(
         tint_rgba = (base_color.red(), base_color.green(), base_color.blue(), base_color.alpha())
     else:
         tint_rgba = None
-    moon_img_pil = generate_moon_phase_image(img_size, sun_dir_in_moon_frame, view_dir, tint_color=tint_rgba)
-
-    if abs(screen_rotation_deg) > 0.1:
-        moon_img_pil = moon_img_pil.rotate(
-            screen_rotation_deg,
-            resample=Image.Resampling.BICUBIC,
-            expand=False,
-            fillcolor=(0, 0, 0, 0),  # keep transparency outside the rotated bounds
-        )
-
-    pixmap = pil2qpixmap(moon_img_pil)  # should handle RGBA -> QPixmap with alpha
-    target_rect = QRectF(center.x() - img_size / 2, center.y() - img_size / 2, img_size, img_size)
+    moon_rgba = generate_moon_phase_rgba(img_size, sun_dir_in_moon_frame, view_dir, tint_color=tint_rgba)
+    moon_image = np_rgba_to_qimage(moon_rgba)
+    source_rect = QRectF(0, 0, img_size, img_size)
 
     painter.save()
     painter.setOpacity(opacity)
-    # If you ever see halos, try: painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
-    painter.drawPixmap(target_rect, pixmap, QRectF(0, 0, img_size, img_size))
+    painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+    painter.translate(center)
+    if abs(screen_rotation_deg) > 0.1:
+        painter.rotate(screen_rotation_deg)
+    target_rect = QRectF(-img_size / 2, -img_size / 2, img_size, img_size)
+    painter.drawImage(target_rect, moon_image, source_rect)
 
     if base_color is not None:
         painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceAtop)
         painter.setBrush(base_color)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawEllipse(center, radius_px, radius_px)
+        painter.drawEllipse(QPointF(0.0, 0.0), radius_px, radius_px)
 
     painter.restore()
 
