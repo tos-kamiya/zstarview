@@ -8,7 +8,7 @@ from zstarview.gui.composite import (
     compose_cloud_over_sky,
     render_hatched_cloud_from_density,
 )
-from zstarview.utils.qt import np_rgba_to_qimage, qimage_to_np_rgba
+from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 
 
 def test_cloud_hatch_reduces_rgb_and_alpha_together() -> None:

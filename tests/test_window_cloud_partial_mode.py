@@ -8,7 +8,7 @@ import numpy as np
 from zstarview.gui.cloud_state import CloudImageState
 from zstarview.gui.window import SkyWindow
 from zstarview.gui.window_state import SkyWindowState
-from zstarview.utils.qt import np_rgba_to_qimage
+from zstarview.render.qt_image import np_rgba_to_qimage
 
 
 class _DummyCompositor:

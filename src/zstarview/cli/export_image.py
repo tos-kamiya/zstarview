@@ -86,7 +86,7 @@ from ..gui.window_inputs import (
     prepare_window_viewer_data,
 )
 from ..urban_outline_layer import resolve_urban_outline_layer_for_viewer
-from ..utils.qt import np_rgba_to_qimage
+from ..render.qt_image import np_rgba_to_qimage
 from .args import parse_export_image_args
 
 logger = logging.getLogger(__name__)

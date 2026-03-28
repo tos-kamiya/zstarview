@@ -5,7 +5,7 @@ from PySide6.QtGui import QImage, QPainter
 
 from zstarview.gui.composite import SkyCompositorCache, mask_cloud_alpha_by_missing, overlay_missing_tint
 from zstarview.types import ScreenGeometry
-from zstarview.utils.qt import np_rgba_to_qimage, qimage_to_np_rgba
+from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 
 
 def test_overlay_missing_with_hatch_tints_only_missing_region() -> None:

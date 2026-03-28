@@ -2,17 +2,22 @@
 """
 Utilities for converting between Qt and other common image formats.
 
-This module provides helper functions to seamlessly convert between QImage/QPixmap,
-NumPy arrays, and Pillow (PIL) Images. This is crucial for integrating data from
-image processing libraries with the Qt-based user interface.
+Pillow-backed helpers are kept here for tooling compatibility. NumPy/QImage
+helpers live in ``zstarview.render.qt_image`` so the main runtime path no
+longer depends on this module.
 """
 
-import numpy as np
-from PIL import Image
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from PySide6.QtGui import QImage, QPixmap
 
+if TYPE_CHECKING:
+    from PIL import Image
 
-def pil_to_qimage(img: Image.Image, premultiplied: bool = True) -> QImage:
+
+def pil_to_qimage(img: "Image.Image", premultiplied: bool = True) -> QImage:
     """
     Converts a Pillow (PIL) Image to a QImage.
 
@@ -47,7 +52,7 @@ def pil_to_qimage(img: Image.Image, premultiplied: bool = True) -> QImage:
         return qimg.copy()
 
 
-def _qimage_to_pil(qimg: QImage) -> Image.Image:
+def _qimage_to_pil(qimg: QImage) -> "Image.Image":
     """
     Converts a QImage to a Pillow (PIL) Image in RGBA format.
 
@@ -57,11 +62,14 @@ def _qimage_to_pil(qimg: QImage) -> Image.Image:
     Returns:
         A Pillow Image in "RGBA" mode.
     """
+    from PIL import Image
+
     # Ensure the QImage is in a standard, non-premultiplied format.
     qimg = qimg.convertToFormat(QImage.Format.Format_RGBA8888)
     w, h = qimg.width(), qimg.height()
 
-    # Get a pointer to the image data and create a NumPy array view.
+    import numpy as np
+
     ptr = qimg.bits()
     arr = np.frombuffer(ptr, np.uint8).reshape((h, w, 4))
 
@@ -69,7 +77,7 @@ def _qimage_to_pil(qimg: QImage) -> Image.Image:
     return Image.fromarray(arr, "RGBA")
 
 
-def pil2qpixmap(img: Image.Image, premultiplied: bool = True) -> QPixmap:
+def pil2qpixmap(img: "Image.Image", premultiplied: bool = True) -> QPixmap:
     """
     Convenience function to convert a Pillow (PIL) Image directly to a QPixmap.
 
@@ -82,53 +90,3 @@ def pil2qpixmap(img: Image.Image, premultiplied: bool = True) -> QPixmap:
         The converted QPixmap object.
     """
     return QPixmap.fromImage(pil_to_qimage(img, premultiplied=premultiplied))
-
-
-def qimage_to_np_rgba(qimg: QImage) -> np.ndarray:
-    """
-    Converts a QImage to a NumPy array (H, W, 4) in RGBA8888 format.
-
-    The returned array is a deep copy, ensuring it is independent of the
-    lifetime of the source QImage.
-
-    Args:
-        qimg: The input QImage.
-
-    Returns:
-        A NumPy array of shape (height, width, 4) with dtype=uint8,
-        representing the RGBA pixel data.
-    """
-    # Ensure a consistent, non-premultiplied input format.
-    qimg = qimg.convertToFormat(QImage.Format.Format_RGBA8888)
-    w, h = qimg.width(), qimg.height()
-    bpl = qimg.bytesPerLine()
-
-    # In PySide6, bits() returns a memoryview. Convert to bytes for frombuffer.
-    buf = bytes(qimg.constBits())
-    arr = np.frombuffer(buf, dtype=np.uint8).reshape(h, bpl)
-
-    # Remove any extra padding at the end of each scanline and ensure the
-    # final array has the correct shape. A copy is made here.
-    return arr[:, : w * 4].reshape(h, w, 4).copy()
-
-
-def np_rgba_to_qimage(arr: np.ndarray) -> QImage:
-    """
-    Converts a NumPy RGBA array (H, W, 4) to a QImage.
-
-    Args:
-        arr: An input NumPy array of shape (height, width, 4) and dtype=uint8.
-
-    Returns:
-        A QImage in RGBA8888 format. The buffer is copied, so the QImage
-        owns its own memory.
-    """
-    h, w, c = arr.shape
-    assert c == 4 and arr.dtype == np.uint8, "Input must be a (H, W, 4) uint8 array"
-
-    # Create a QImage that views the NumPy array's data.
-    qimg = QImage(arr.data, w, h, w * 4, QImage.Format_RGBA8888)
-
-    # Return a deep copy to ensure the QImage has its own memory, independent
-    # of the NumPy array's lifetime.
-    return qimg.copy()
