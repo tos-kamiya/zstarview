@@ -26,6 +26,7 @@ from ..paths import (
     BACKGROUND_FIELD_OF_VIEW_DEG1,
     BACKGROUND_FIELD_OF_VIEW_DEG2,
     CELESTIAL_EQUATOR_COLOR,
+    LIGHT_THEME_LABEL_TEXT_RGBA,
     DIRECTIONS,
     ECLIPTIC_COLOR,
     HORIZON_LINE_COLOR,
@@ -1157,7 +1158,7 @@ def draw_asterisms(
         cy = sum(pt.y() for pt in label_points) / len(label_points)
         label_pos = QPointF(cx + 8.0, cy - 8.0)
         if preset in ("white", "day"):
-            text_color = QColor(38, 120, 214, 228)
+            text_color = QColor(*LIGHT_THEME_LABEL_TEXT_RGBA)
         else:
             text_color = QColor(110, 195, 255, 230)
         _, outline_text_color = _get_text_style(preset)
@@ -2089,7 +2090,7 @@ def draw_overlay_info(
         alt = float(dso_obj.get("alt", 0.0))
         az = float(dso_obj.get("az", 0.0))
         if preset in ("white", "day"):
-            dso_label_color = QColor(38, 120, 214, 228)
+            dso_label_color = QColor(*LIGHT_THEME_LABEL_TEXT_RGBA)
         else:
             dso_label_color = QColor(110, 195, 255, 230)
         hover_poly = _dso_ellipse_polygon(
