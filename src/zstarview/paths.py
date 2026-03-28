@@ -42,6 +42,9 @@ TEXT_FONT_SIZE = 11
 STATUS_LINE_COLOR = (190, 190, 160)
 STATUS_LINE_FONT_SIZE = 8
 LIGHT_LABEL_COLOR = (246, 249, 255)
+LIGHT_THEME_TEXT_COLOR = (218, 118, 58)
+LIGHT_THEME_STATUS_TEXT_COLOR = (204, 110, 54)
+LIGHT_THEME_LABEL_TEXT_RGBA = (232, 140, 80, 228)
 TEXT_OUTLINE_COLOR_NIGHT_RGBA = (0, 0, 0, 76)
 TEXT_STYLES_BY_PRESET = {
     "night": {
@@ -53,12 +56,12 @@ TEXT_STYLES_BY_PRESET = {
         "outline": (2, 2, 3, 212),
     },
     "white": {
-        "text": (44, 112, 196),
-        "outline": (36, 80, 140, 122),
+        "text": LIGHT_THEME_TEXT_COLOR,
+        "outline": (42, 88, 148, 122),
     },
     "day": {
-        "text": (34, 106, 192),
-        "outline": (30, 74, 136, 116),
+        "text": LIGHT_THEME_TEXT_COLOR,
+        "outline": (36, 82, 144, 116),
     },
     "black": {
         "text": LIGHT_LABEL_COLOR,
@@ -75,12 +78,12 @@ STATUS_LINE_STYLES_BY_PRESET = {
         "outline": (2, 2, 3, 208),
     },
     "white": {
-        "text": (42, 102, 184),
-        "outline": (34, 72, 128, 126),
+        "text": LIGHT_THEME_STATUS_TEXT_COLOR,
+        "outline": (40, 82, 136, 126),
     },
     "day": {
-        "text": (34, 96, 178),
-        "outline": (28, 68, 122, 120),
+        "text": LIGHT_THEME_STATUS_TEXT_COLOR,
+        "outline": (34, 76, 130, 120),
     },
     "black": {
         "text": (255, 220, 220),
