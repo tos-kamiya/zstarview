@@ -42,12 +42,6 @@ class StarCatalogArrays(TypedDict):
     """Pre-normalized star catalog arrays for fast repeated sky updates."""
 
     catalog_index: np.ndarray
-    ra_h: np.ndarray
-    dec: np.ndarray
-    ra_rad: np.ndarray
-    dec_rad: np.ndarray
-    sin_dec: np.ndarray
-    cos_dec: np.ndarray
     unit_vectors: np.ndarray
     vmag: np.ndarray
     bv: np.ndarray
@@ -76,10 +70,8 @@ def prepare_star_catalog_arrays(
 ) -> StarCatalogArrays:
     """Normalize a Polars star catalog to NumPy arrays once at startup."""
     catalog_index = np.arange(star_df.height, dtype=np.int32)
-    ra_h = star_df["RAh"].cast(pl.Float64, strict=False).to_numpy()
-    dec = star_df["Dec"].cast(pl.Float64, strict=False).to_numpy()
-    ra_rad = np.radians(ra_h * 15.0)
-    dec_rad = np.radians(dec)
+    ra_rad = np.radians(star_df["RAh"].cast(pl.Float64, strict=False).to_numpy() * 15.0)
+    dec_rad = np.radians(star_df["Dec"].cast(pl.Float64, strict=False).to_numpy())
     sin_dec = np.sin(dec_rad)
     cos_dec = np.cos(dec_rad)
     unit_vectors = np.column_stack(
@@ -100,12 +92,6 @@ def prepare_star_catalog_arrays(
     if max_vmag is not None:
         mask = vmag <= float(max_vmag)
         catalog_index = catalog_index[mask]
-        ra_h = ra_h[mask]
-        dec = dec[mask]
-        ra_rad = ra_rad[mask]
-        dec_rad = dec_rad[mask]
-        sin_dec = sin_dec[mask]
-        cos_dec = cos_dec[mask]
         unit_vectors = unit_vectors[mask]
         vmag = vmag[mask]
         bv = bv[mask]
@@ -114,12 +100,6 @@ def prepare_star_catalog_arrays(
 
     return {
         "catalog_index": catalog_index,
-        "ra_h": ra_h,
-        "dec": dec,
-        "ra_rad": ra_rad,
-        "dec_rad": dec_rad,
-        "sin_dec": sin_dec,
-        "cos_dec": cos_dec,
         "unit_vectors": unit_vectors,
         "vmag": vmag,
         "bv": bv,

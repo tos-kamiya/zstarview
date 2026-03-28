@@ -27,8 +27,7 @@ def test_prepare_star_catalog_arrays_returns_numpy_arrays() -> None:
 
     out = prepare_star_catalog_arrays(df)
 
-    assert isinstance(out["ra_h"], np.ndarray)
-    assert isinstance(out["dec"], np.ndarray)
+    assert isinstance(out["unit_vectors"], np.ndarray)
     assert isinstance(out["vmag"], np.ndarray)
     assert isinstance(out["bv"], np.ndarray)
     assert isinstance(out["catalog_index"], np.ndarray)
@@ -51,27 +50,6 @@ def test_prepare_star_catalog_arrays_respects_max_vmag() -> None:
 
     assert out["catalog_index"].tolist() == [0, 1]
     assert out["vmag"].tolist() == [5.5, 6.0]
-
-
-def test_prepare_star_catalog_arrays_computes_trig_fields() -> None:
-    df = pl.DataFrame(
-        {
-            "RAh": [0.0, 1.0],
-            "Dec": [10.0, 20.0],
-            "Vmag": [1.0, 2.0],
-            "B-V": [0.1, 0.2],
-            "Name": ["a", "b"],
-        }
-    )
-
-    out = prepare_star_catalog_arrays(df)
-
-    expected_ra_rad = np.radians(np.array([0.0, 1.0]) * 15.0)
-    expected_dec_rad = np.radians(np.array([10.0, 20.0]))
-    assert np.allclose(out["ra_rad"], expected_ra_rad)
-    assert np.allclose(out["dec_rad"], expected_dec_rad)
-    assert np.allclose(out["sin_dec"], np.sin(expected_dec_rad))
-    assert np.allclose(out["cos_dec"], np.cos(expected_dec_rad))
 
 
 def test_prepare_star_catalog_arrays_computes_unit_vectors() -> None:
@@ -144,7 +122,11 @@ def test_icrs_to_altaz_matrix_matches_skycoord() -> None:
     matrix = build_icrs_to_altaz_matrix(time_obj, location)
     alt, az = apply_icrs_to_altaz_matrix(arrays["unit_vectors"], matrix)
 
-    coords = SkyCoord(ra=np.degrees(arrays["ra_rad"]) * u.deg, dec=np.degrees(arrays["dec_rad"]) * u.deg, frame="icrs")
+    coords = SkyCoord(
+        ra=np.array([2.0, 5.0, 10.5]) * 15.0 * u.deg,
+        dec=np.array([-10.0, 15.0, 30.5]) * u.deg,
+        frame="icrs",
+    )
     altaz = coords.transform_to(AltAz(obstime=time_obj, location=location))
     alt_ref = altaz.alt.deg
     az_ref = altaz.az.deg
