@@ -13,13 +13,13 @@ def test_overlay_missing_with_hatch_tints_only_missing_region() -> None:
     base[..., :3] = 30
     base[..., 3] = 255
 
-    missing = np.zeros((16, 16, 4), dtype=np.uint8)
-    missing[4:12, 4:12, 3] = 255
+    missing = np.zeros((16, 16), dtype=np.uint8)
+    missing[4:12, 4:12] = 255
 
     out = qimage_to_np_rgba(
         overlay_missing_tint(
             np_rgba_to_qimage(base),
-            np_rgba_to_qimage(missing),
+            missing,
             tint_rgba=(255, 220, 80, 90),
         )
     )
@@ -36,9 +36,9 @@ def test_compositor_cache_key_includes_missing_mask() -> None:
     cloud[..., :3] = 255
     cloud[..., 3] = 80
 
-    missing_none = np.zeros((64, 64, 4), dtype=np.uint8)
-    missing_half = np.zeros((64, 64, 4), dtype=np.uint8)
-    missing_half[:, :32, 3] = 255
+    missing_none = np.zeros((64, 64), dtype=np.uint8)
+    missing_half = np.zeros((64, 64), dtype=np.uint8)
+    missing_half[:, :32] = 255
 
     geom = ScreenGeometry(center=(32, 32), radius=32)
     compositor = SkyCompositorCache()
@@ -54,7 +54,7 @@ def test_compositor_cache_key_includes_missing_mask() -> None:
         cloud_alpha=0.4,
         view_center=(0.0, 0.0),
         stripe_density=None,
-        missing_mask=np_rgba_to_qimage(missing_none),
+        missing_mask=missing_none,
     )
     p1.end()
 
@@ -69,7 +69,7 @@ def test_compositor_cache_key_includes_missing_mask() -> None:
         cloud_alpha=0.4,
         view_center=(0.0, 0.0),
         stripe_density=None,
-        missing_mask=np_rgba_to_qimage(missing_half),
+        missing_mask=missing_half,
     )
     p2.end()
 
@@ -82,10 +82,10 @@ def test_mask_cloud_alpha_by_missing_cuts_cloud_pixels() -> None:
     cloud = np.zeros((12, 12, 4), dtype=np.uint8)
     cloud[..., :3] = 255
     cloud[..., 3] = 180
-    missing = np.zeros((12, 12, 4), dtype=np.uint8)
-    missing[3:9, 4:10, 3] = 255
+    missing = np.zeros((12, 12), dtype=np.uint8)
+    missing[3:9, 4:10] = 255
 
-    out = qimage_to_np_rgba(mask_cloud_alpha_by_missing(np_rgba_to_qimage(cloud), np_rgba_to_qimage(missing)))
+    out = qimage_to_np_rgba(mask_cloud_alpha_by_missing(np_rgba_to_qimage(cloud), missing))
     assert int(out[1, 1, 3]) == 180
     assert int(out[5, 6, 3]) == 0
 

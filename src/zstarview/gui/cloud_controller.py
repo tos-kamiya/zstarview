@@ -28,8 +28,7 @@ from ..clouddisc import (
 from ..clouddisc.types import CloudSourceData
 from ..clouddisc.providers.select import pick_satellite
 from ..paths import CLOUD_SHELL_KM
-from ..render.qt_image import np_rgba_to_qimage
-from .composite import build_stripe_density_field
+from .composite import build_stripe_density_field_from_rgba
 
 logger = logging.getLogger(__name__)
 
@@ -265,11 +264,8 @@ class CloudController(QObject):
                 getattr(meta, "time_utc", "?"),
                 float(coverage_ratio) * 100.0,
             )
-            qimg = np_rgba_to_qimage(cloud_rgba)
-            missing_rgba = np.zeros((missing_mask.shape[0], missing_mask.shape[1], 4), dtype=np.uint8)
-            missing_rgba[..., 3] = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
-            missing_qimg = np_rgba_to_qimage(missing_rgba)
-            stripe_density = build_stripe_density_field(qimg)
+            missing_alpha = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
+            stripe_density = build_stripe_density_field_from_rgba(cloud_rgba)
 
             with self._lock:
                 is_latest = (request_id == self._latest_request_id)
@@ -279,12 +275,12 @@ class CloudController(QObject):
 
             self.cloud_ready.emit(
                 {
-                    "image": qimg,
+                    "image": cloud_rgba,
                     "meta": meta,
                     "az": az,
                     "time_utc": datetime.now(timezone.utc),
                     "stripe_density": stripe_density,
-                    "missing_mask": missing_qimg,
+                    "missing_mask": missing_alpha,
                     "coverage_ratio": coverage_ratio,
                     "request_id": request_id,
                     "source_key": getattr(source, "source_key", None),

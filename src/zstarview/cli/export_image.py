@@ -74,7 +74,7 @@ from ..terrain import (
     sample_ground_elevation,
 )
 from ..types import CelestialData, UrbanOutlinePolyline, ViewerData
-from ..gui.composite import SkyCompositorCache, build_stripe_density_field
+from ..gui.composite import SkyCompositorCache, build_stripe_density_field_from_rgba
 from ..gui.sky_worker import compute_sky_snapshot
 from ..gui.window_inputs import (
     PreparedWindowCatalogs,
@@ -86,7 +86,6 @@ from ..gui.window_inputs import (
     prepare_window_viewer_data,
 )
 from ..urban_outline_layer import resolve_urban_outline_layer_for_viewer
-from ..render.qt_image import np_rgba_to_qimage
 from .args import parse_export_image_args
 
 logger = logging.getLogger(__name__)
@@ -282,7 +281,7 @@ def _fetch_cloud_layer(
     viewer_data: ViewerData,
     user_options: SkyWindowUserOptions,
     deadline: float | None,
-) -> tuple[QImage | None, QImage | None, object | None]:
+) -> tuple[np.ndarray | None, np.ndarray | None, object | None]:
     if user_options.cloud_disc_alpha <= 0.0:
         return (None, None, None)
     if _timed_out(deadline):
@@ -315,12 +314,9 @@ def _fetch_cloud_layer(
     )
     if _timed_out(deadline):
         raise TimeoutError("cloud timed out")
-    cloud_img = np_rgba_to_qimage(cloud_rgba)
-    missing_rgba = np.zeros((missing_mask.shape[0], missing_mask.shape[1], 4), dtype=np.uint8)
-    missing_rgba[..., 3] = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
-    missing_mask_img = np_rgba_to_qimage(missing_rgba)
-    stripe_density = build_stripe_density_field(cloud_img)
-    return (cloud_img, missing_mask_img, stripe_density)
+    missing_mask_alpha = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
+    stripe_density = build_stripe_density_field_from_rgba(cloud_rgba)
+    return (cloud_rgba, missing_mask_alpha, stripe_density)
 
 
 def _fetch_terrain_horizon_layer(
