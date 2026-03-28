@@ -195,6 +195,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `--output -` は PNG bytes を stdout へ直接流す用途とし、stdout を SIXEL 出力でも使う `--sixel` とは併用不可とする。
 - `opacity == 0` で無効化されたレイヤーは、取得キュー自体に積まず、layer timeout の待機対象からも外す。
 - 実装では `SkyWindow` と GUI controller 群には依存せず、sky/cloud/terrain/urban/aircraft を同期的に順番に取得してから、shared pipeline で `QImage` へ 1 回だけ描画して保存する。
+- export-image の雲経路は、GUI と同じく `numpy RGBA` と 2D missing-mask alpha を保持し、最終合成段まで `QImage` へ早期変換しない。
 - Qt はフォント読込と `QImage` / `QPainter` 利用のためだけに初期化し、CLI 側ではバックグラウンド worker や signal ベースの寿命管理を持たない。
 - `gui/sky_worker.py` の celestial / sky-disc 計算は pure helper `compute_sky_snapshot()` として切り出し、GUI worker と export CLI の両方から共有する。
 
@@ -208,6 +209,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - sky color disc の生成
 - `src/zstarview/gui/composite.py`
   - 星空、雲、欠損ティント、地面色の合成
+  - 雲ハッチ、縞密度生成、欠損マスク適用は NumPy ベースで進め、合成結果の出力段で `QImage` に戻す
 
 #### 4.3.1 描画リファクタリング方針
 
@@ -231,6 +233,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `RenderHudState`
 - `render_scene_into_painter()` と下位の `draw_*` 関数群は、`geometry`、`viewport_rect`、`scene`、`style`、`hud` を明示的に受ける。
 - `RenderPipelineState` のような中間ラッパ型は廃止し、shared pipeline 側では直接引数で依存関係を表す。
+- `RenderSceneData` の cloud image / cloud missing mask は `QImage` ではなく NumPy 配列を持ち、cloud path の変換回数を抑える。
 - `gui/window_render.py` は、`paintEvent()` 本線、scene/style/hud の組み立て、frame cache、jump highlight、hover 解決など GUI 固有処理に絞る。
 - 現在の通常描画順は概ね次のとおり。
   - `background`
@@ -337,6 +340,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - latest-request-wins の適用
 - `src/zstarview/gui/cloud_state.py`
   - 雲画像、バナー、欠損状態の保持
+  - 雲画像は `numpy RGBA`、欠損マスクは 2D `uint8` alpha 配列として保持する
 - `src/zstarview/clouddisc/core.py`
   - クラウドディスク生成のオーケストレーション
   - `CloudDiscConfig.alt_min_deg` による可視高度下限の適用
@@ -351,6 +355,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 既定 `alt_min_deg = 3.0°` により、地平線近傍の遠距離雲を可視マスクから外す
 - `src/zstarview/clouddisc/render/grayscale.py`
   - 雲画像生成
+  - ランタイム本線では `numpy RGBA` を返す
 - `src/zstarview/clouddisc/cache/*.py`
   - キャッシュ保存と清掃
 
@@ -533,6 +538,11 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 欠損マスク
   - 進行中状態
   - エラーバナー
+- `CloudImageState`
+  - `image`: 雲レイヤーの `numpy RGBA`
+  - `missing_mask`: 欠損領域を表す 2D `uint8` alpha 配列
+  - `stripe_density`: ハッチ生成用の密度場
+  - `meta`、`coverage_ratio`、`source_key`、`render_key`、`request_id` などの更新メタデータ
 
 雲パイプラインでは 2 種類のキーを分離して扱う。
 
@@ -630,6 +640,14 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 3. 補助線と地形地平線は、保持済みデータを `render_view_center` で再投影して追随させる。
 4. 雲はこのモード中に旧視線の bitmap を描かず、一時的に非表示としてよい。
 5. 最後の入力から 0.7 秒経過後に通常更新を 1 回だけ開始する。
+
+### 6.2.0 雲レイヤー内部表現
+
+- `clouddisc` のランタイム出力は `numpy RGBA` と 2D missing-mask 配列を基本形とする。
+- `CloudController` は `QImage` を先に作らず、そのまま `CloudImageState` へ渡してよい。
+- `SkyCompositorCache` は cloud image / missing mask / stripe density を NumPy ベースで扱い、hatching、masking、missing tint 適用をそのまま進めてよい。
+- `QImage` 化は、合成済み画像または最終描画に必要になった段階でのみ行う。
+- これにより、cloud path の `QImage <-> NumPy` 往復と、missing mask の不要な 4ch 展開を避ける。
 
 ### 6.2.1 最終フレームキャッシュ
 
