@@ -215,9 +215,6 @@ def main() -> None:
             place_countrycode=args.place_countrycode,
             place_lang=args.place_lang,
         )
-    except LocationResolveError as exc:
-        raise LaunchSetupError() from exc
-    try:
         if args.timezone is not None:
             city = replace(city, tz=args.timezone)
         set_splash_context(format_splash_location(city))
@@ -231,8 +228,10 @@ def main() -> None:
         star_catalog = _load_star_catalog_for_launch(args.vmag_limit)
         dso_catalog = _load_dso_catalog_for_launch()
         _verify_ephemeris_for_launch()
-    except LaunchSetupError:
+    except (LocationResolveError, LaunchSetupError):
         time.sleep(3)
+        splash.close()
+        root_logger.removeHandler(splash_handler)
         return
 
     view_center = (args.view_center_alt, args.view_center_az)
