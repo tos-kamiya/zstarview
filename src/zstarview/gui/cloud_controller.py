@@ -28,7 +28,7 @@ from ..clouddisc import (
 from ..clouddisc.types import CloudSourceData
 from ..clouddisc.providers.select import pick_satellite
 from ..paths import CLOUD_SHELL_KM
-from ..utils.qt import np_rgba_to_qimage, pil_to_qimage
+from ..utils.qt import np_rgba_to_qimage
 from .composite import build_stripe_density_field
 
 logger = logging.getLogger(__name__)
@@ -246,7 +246,7 @@ class CloudController(QObject):
             if source is None:
                 return
 
-            pil_img, meta, missing_mask, coverage_ratio = self._clouddisc.render_from_source_with_coverage(
+            cloud_rgba, meta, missing_mask, coverage_ratio = self._clouddisc.render_from_source_with_coverage(
                 source=source,
                 lat=lat,
                 lon=lon,
@@ -265,7 +265,7 @@ class CloudController(QObject):
                 getattr(meta, "time_utc", "?"),
                 float(coverage_ratio) * 100.0,
             )
-            qimg = pil_to_qimage(pil_img)
+            qimg = np_rgba_to_qimage(cloud_rgba)
             missing_rgba = np.zeros((missing_mask.shape[0], missing_mask.shape[1], 4), dtype=np.uint8)
             missing_rgba[..., 3] = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
             missing_qimg = np_rgba_to_qimage(missing_rgba)

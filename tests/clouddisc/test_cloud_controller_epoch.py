@@ -4,7 +4,6 @@ import datetime as dt
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
 
 from zstarview.clouddisc.types import CloudMeta, CloudSourceData, SourceKey
 from zstarview.gui.cloud_controller import CloudController
@@ -37,7 +36,7 @@ class _FakeCloudDisc:
         radius_px = kwargs.get("radius_px")
         size = int(radius_px) * 2 if isinstance(radius_px, int) else 8
         return (
-            Image.new("RGBA", (size, size), (255, 255, 255, 255)),
+            np.full((size, size, 4), 255, dtype=np.uint8),
             self._meta,
             np.zeros((size, size), dtype=np.uint8),
             1.0,

@@ -13,14 +13,13 @@ from typing import Optional, Tuple
 from dataclasses import replace
 
 import numpy as np
-from PIL import Image
 
 from .config import CloudDiscConfig
 from .projectors.az import az_project_lonlat_grid
 from .providers.goes import GoesProvider
 from .providers.hima import HimaProvider
 from .providers.select import GOES_SATELLITES, SUPPORTED_SATELLITES, pick_satellite, visible_satellites
-from .render.grayscale import convert_bt_to_la_image
+from .render.grayscale import convert_bt_to_rgba_image
 from .sampling.bt_sampler import build_bt_sampler
 from .sampling.estimate_bt_warm_cold import estimate_bt_warm_from_equator_band, estimate_bt_cold_hybrid
 from .types import CloudMeta, CloudSourceData, RenderKey, SourceKey, VisibilityError, round_down_utc_to_slot
@@ -154,7 +153,7 @@ class CloudDisc:
         edge_fov_deg: float = 90.0,
         mask_fov_deg: float = 90.0,
         cloud_shell_km: float = 6371.0 + 5.0,
-    ) -> Tuple[Image.Image, CloudMeta]:
+    ) -> Tuple[np.ndarray, CloudMeta]:
         """Render a cloud image from pre-fetched source data."""
         img, meta, _missing_mask, _coverage_ratio = self.render_from_source_with_coverage(
             source=source,
@@ -181,7 +180,7 @@ class CloudDisc:
         edge_fov_deg: float = 90.0,
         mask_fov_deg: float = 90.0,
         cloud_shell_km: float = 6371.0 + 5.0,
-    ) -> Tuple[Image.Image, CloudMeta, np.ndarray, float]:
+    ) -> Tuple[np.ndarray, CloudMeta, np.ndarray, float]:
         """Render from pre-fetched source and return missing-data mask/coverage."""
         render_key = RenderKey(
             source=source.source_key,
@@ -207,7 +206,7 @@ class CloudDisc:
         lon: float,
         render_key: RenderKey,
         cloud_shell_km: float,
-    ) -> Tuple[Image.Image, CloudMeta, np.ndarray, float]:
+    ) -> Tuple[np.ndarray, CloudMeta, np.ndarray, float]:
         # Step 3: Create a sampler function: (lon, lat) -> Brightness Temperature [K]
         sampler = source.sampler
         if sampler is None:
@@ -283,8 +282,8 @@ class CloudDisc:
                 sample_arr.size,
             )
 
-        # Step 7: Render the final grayscale (Luminance-Alpha) image from the BT data.
-        img = convert_bt_to_la_image(bt, mask_inside, bt_warm, bt_cold)
+        # Step 7: Render the final RGBA cloud image from the BT data.
+        img = convert_bt_to_rgba_image(bt, mask_inside, bt_warm, bt_cold)
 
         meta = CloudMeta(
             satellite=source.satellite,
