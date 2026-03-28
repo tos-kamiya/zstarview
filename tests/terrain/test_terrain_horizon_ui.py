@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
+import numpy as np
 import zstarview.gui.terrain_controller as terrain_controller_module
 import zstarview.gui.window as window_module
 from zstarview.terrain.dem import COPERNICUS_DEM_BUCKET
@@ -542,7 +543,7 @@ def test_update_viewport_interaction_stars_uses_bright_limit(monkeypatch) -> Non
     monkeypatch.setattr(
         window_module,
         "calculate_visible_stars",
-        lambda catalog, lat, lon, observer_height_m, time_obj, view_center, max_vmag: (
+        lambda catalog, lat, lon, observer_height_m, time_obj, view_center, max_vmag, subset_indices=None: (
             captured.update(
                 {
                     "catalog": catalog,
@@ -552,6 +553,7 @@ def test_update_viewport_interaction_stars_uses_bright_limit(monkeypatch) -> Non
                     "time_obj": time_obj,
                     "view_center": view_center,
                     "max_vmag": max_vmag,
+                    "subset_indices": subset_indices,
                 }
             )
             or {"name": []},
@@ -560,7 +562,8 @@ def test_update_viewport_interaction_stars_uses_bright_limit(monkeypatch) -> Non
     )
 
     dummy = SimpleNamespace()
-    dummy.star_catalog_lod6_np = object()
+    dummy.star_catalog_np = object()
+    dummy.star_catalog_lod6_indices = np.array([0, 2, 4], dtype=np.int32)
     dummy.viewer_data = SimpleNamespace(location=(35.0, 139.0), observer_height_m=12.0)
     dummy.state = SimpleNamespace(
         celestial_data=object(),
@@ -573,13 +576,14 @@ def test_update_viewport_interaction_stars_uses_bright_limit(monkeypatch) -> Non
 
     assert dummy.state.viewport_interaction_stars == {"name": []}
     assert captured == {
-        "catalog": dummy.star_catalog_lod6_np,
+        "catalog": dummy.star_catalog_np,
         "lat": 35.0,
         "lon": 139.0,
         "observer_height_m": 12.0,
         "time_obj": "time",
         "view_center": (55.0, 210.0),
         "max_vmag": 4.0,
+        "subset_indices": dummy.star_catalog_lod6_indices,
     }
 
 

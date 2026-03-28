@@ -65,7 +65,12 @@ def _patch_common(monkeypatch, *, delta_t: timedelta) -> None:
     monkeypatch.setattr(
         mod,
         "prepare_window_catalogs",
-        lambda *args, **kwargs: SimpleNamespace(star_catalog_full_np=None, star_catalog_lod6_np=None, dso_catalog_np=None),
+        lambda *args, **kwargs: SimpleNamespace(
+            star_catalog_np=None,
+            star_catalog_lod6_indices=None,
+            star_catalog_meta=None,
+            dso_catalog_np=None,
+        ),
     )
     monkeypatch.setattr(mod, "prepare_window_viewer_data", lambda *args, **kwargs: SimpleNamespace())
 

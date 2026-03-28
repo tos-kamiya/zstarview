@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from typing import Optional
 
+import numpy as np
 import polars as pl
 
 from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
@@ -30,8 +31,8 @@ from .famous_star_shortcuts import (
 class PreparedWindowCatalogs:
     """Precomputed catalog inputs consumed by SkyWindow."""
 
-    star_catalog_full_np: StarCatalogArrays
-    star_catalog_lod6_np: StarCatalogArrays
+    star_catalog_np: StarCatalogArrays
+    star_catalog_lod6_indices: np.ndarray
     star_catalog_meta: StarCatalogMeta
     dso_catalog_np: Optional[DeepSkyCatalogArrays]
     named_stars_by_band: dict[str, list[NamedStarShortcut]]
@@ -115,16 +116,13 @@ def prepare_window_catalogs(
     vmag_brightness_scale: float = -0.39,
 ) -> PreparedWindowCatalogs:
     """Build prepared SkyWindow catalog inputs from raw data frames."""
+    star_catalog_np = prepare_star_catalog_arrays(
+        star_catalog,
+        vmag_brightness_scale=vmag_brightness_scale,
+    )
     return PreparedWindowCatalogs(
-        star_catalog_full_np=prepare_star_catalog_arrays(
-            star_catalog,
-            vmag_brightness_scale=vmag_brightness_scale,
-        ),
-        star_catalog_lod6_np=prepare_star_catalog_arrays(
-            star_catalog,
-            max_vmag=6.0,
-            vmag_brightness_scale=vmag_brightness_scale,
-        ),
+        star_catalog_np=star_catalog_np,
+        star_catalog_lod6_indices=(star_catalog_np["vmag"] <= 6.0).nonzero()[0].astype("int32", copy=False),
         star_catalog_meta=prepare_star_catalog_meta(star_catalog),
         dso_catalog_np=None if dso_catalog is None else prepare_deep_sky_catalog_arrays(dso_catalog),
         named_stars_by_band=build_named_star_shortcuts(star_catalog, max_vmag=2.0, include_satellites=True),

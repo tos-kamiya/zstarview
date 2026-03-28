@@ -47,6 +47,7 @@ def compute_sky_snapshot(
     star_catalog: pl.DataFrame | StarCatalogArrays,
     dso_catalog: DeepSkyCatalogArrays | None,
     star_vmag_limit: float | None,
+    star_subset_indices: np.ndarray | None,
     delta_t: timedelta,
     sky_disc_alpha: float,
     sky_disc_base_size: int,
@@ -70,6 +71,7 @@ def compute_sky_snapshot(
         view_center,
         content_fov_deg=content_fov_deg,
         max_vmag=star_vmag_limit,
+        subset_indices=star_subset_indices,
     )
     if dso_catalog is None:
         empty_obj = np.array([], dtype=object)
@@ -186,6 +188,7 @@ class SkyDataWorker(QObject):
         star_catalog: pl.DataFrame | StarCatalogArrays,
         dso_catalog: DeepSkyCatalogArrays | None = None,
         star_vmag_limit: float | None = None,
+        star_subset_indices: np.ndarray | None = None,
         delta_t: timedelta,
         sky_disc_alpha: float,
         sky_disc_base_size: int,
@@ -212,6 +215,7 @@ class SkyDataWorker(QObject):
                 "star_catalog": star_catalog,
                 "dso_catalog": dso_catalog,
                 "star_vmag_limit": star_vmag_limit,
+                "star_subset_indices": star_subset_indices,
                 "delta_t": delta_t,
                 "sky_disc_alpha": sky_disc_alpha,
                 "sky_disc_base_size": sky_disc_base_size,
@@ -237,6 +241,7 @@ class SkyDataWorker(QObject):
         star_catalog: pl.DataFrame | StarCatalogArrays,
         dso_catalog: DeepSkyCatalogArrays | None,
         star_vmag_limit: float | None,
+        star_subset_indices: np.ndarray | None,
         delta_t: timedelta,
         sky_disc_alpha: float,
         sky_disc_base_size: int,
@@ -256,6 +261,7 @@ class SkyDataWorker(QObject):
                 star_catalog=star_catalog,
                 dso_catalog=dso_catalog,
                 star_vmag_limit=star_vmag_limit,
+                star_subset_indices=star_subset_indices,
                 delta_t=delta_t,
                 sky_disc_alpha=sky_disc_alpha,
                 sky_disc_base_size=sky_disc_base_size,
