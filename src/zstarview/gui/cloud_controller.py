@@ -28,7 +28,7 @@ from ..clouddisc import (
 from ..clouddisc.types import CloudSourceData
 from ..clouddisc.providers.select import pick_satellite
 from ..paths import CLOUD_SHELL_KM
-from ..utils.qt import np_rgba_to_qimage
+from ..render.qt_image import np_rgba_to_qimage
 from .composite import build_stripe_density_field
 
 logger = logging.getLogger(__name__)

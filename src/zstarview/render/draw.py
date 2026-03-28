@@ -79,7 +79,7 @@ from .text import (
     draw_outlined_text,
 )
 from ..utils.image import generate_moon_phase_rgba
-from ..utils.qt import np_rgba_to_qimage
+from .qt_image import np_rgba_to_qimage
 
 logger = logging.getLogger(__name__)
 

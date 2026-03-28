@@ -20,7 +20,7 @@ from PySide6.QtGui import QImage, QPainter
 from ..paths import CLOUD_HATCH_DEFAULT, CLOUD_MISSING_TINT_RGBA, HatchConfig
 from ..render.draw_sky_disc import GROUND_TINT_RGB, NEVER_RISES_TINT_RGB, NEVER_RISES_TINT_STRENGTH
 from ..types import ScreenGeometry
-from ..utils.qt import np_rgba_to_qimage, qimage_to_np_rgba
+from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 
 
 @dataclass(frozen=True)

@@ -6,7 +6,7 @@ from PySide6.QtGui import QImage
 
 from ..paths import TERRAIN_HORIZON_LINE_COLOR
 from ..types import ScreenGeometry
-from ..utils.qt import np_rgba_to_qimage
+from .qt_image import np_rgba_to_qimage
 
 
 TURBIDITY = 5  # 2 (clear blue sky) to 10 (hazy white sky)
