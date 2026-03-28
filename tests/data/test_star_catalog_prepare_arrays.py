@@ -31,8 +31,8 @@ def test_prepare_star_catalog_arrays_returns_numpy_arrays() -> None:
     assert isinstance(out["dec"], np.ndarray)
     assert isinstance(out["vmag"], np.ndarray)
     assert isinstance(out["bv"], np.ndarray)
-    assert isinstance(out["name"], np.ndarray)
-    assert out["name"].tolist() == ["a", "b"]
+    assert isinstance(out["catalog_index"], np.ndarray)
+    assert out["catalog_index"].tolist() == [0, 1]
     assert np.isnan(out["bv"][1])
 
 
@@ -49,7 +49,7 @@ def test_prepare_star_catalog_arrays_respects_max_vmag() -> None:
 
     out = prepare_star_catalog_arrays(df, max_vmag=6.0)
 
-    assert out["name"].tolist() == ["a", "b"]
+    assert out["catalog_index"].tolist() == [0, 1]
     assert out["vmag"].tolist() == [5.5, 6.0]
 
 

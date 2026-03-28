@@ -46,6 +46,10 @@ from ..satellites.types import SatelliteOverlayPoint
 from ..types import ScreenGeometry, CelestialData, ViewerData, CelestialObject, PlanetBody, UrbanOutlinePolyline
 from ..astro import (
     altaz_to_normalized_xy,
+    lookup_star_name,
+    lookup_star_source_id,
+    resolve_star_names,
+    resolve_star_source_ids,
     is_in_fov,
     is_in_fov_vectorized,
     calculate_moon_render_data,
@@ -293,11 +297,8 @@ def find_highlighted_object(
     # Handle stars first (vectorized)
     stars = celestial_data.stars
     if stars["alt"].size > 0:
-        names = np.asarray(stars["name"], dtype=object)
-        source_ids = np.asarray(
-            stars.get("source_id", np.full(names.shape, "", dtype=object)),
-            dtype=object,
-        )
+        names = resolve_star_names(stars, celestial_data.star_catalog_meta)
+        source_ids = resolve_star_source_ids(stars, celestial_data.star_catalog_meta)
         hover_mask = np.array(
             [_has_named_star(name) or _is_asterism_member(source_id) for name, source_id in zip(names, source_ids)],
             dtype=bool,
@@ -314,6 +315,8 @@ def find_highlighted_object(
                 min_dist_sq = dist_sq[closest_idx]
                 original_idx = valid_indices[closest_idx]
                 highlighted_star: CelestialObject = {key: val[original_idx] for key, val in stars.items()}
+                highlighted_star["name"] = names[original_idx]
+                highlighted_star["source_id"] = source_ids[original_idx]
                 highlighted_object = (highlighted_star, QPointF(x[closest_idx], y[closest_idx]))
 
     content_fov_deg = _content_fov_deg_from_viewer(viewer_data)
@@ -1053,7 +1056,7 @@ def draw_asterisms(
     """Draw dim asterisms always, and brighten the hovered selection with a label."""
 
     stars = celestial_data.stars
-    source_ids = np.asarray(stars["source_id"], dtype=object)
+    source_ids = resolve_star_source_ids(stars, celestial_data.star_catalog_meta)
     if source_ids.size == 0:
         return
 

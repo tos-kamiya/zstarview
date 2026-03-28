@@ -32,7 +32,7 @@ from ..astro import (
 )
 from ..render import draw as render_draw
 from ..render import draw_sky_disc
-from ..types import CelestialData
+from ..types import CelestialData, StarCatalogMeta
 
 logger = logging.getLogger(__name__)
 TRANSPARENT_THEME_DISC_OPACITY = 0.45
@@ -52,6 +52,7 @@ def compute_sky_snapshot(
     sky_disc_base_size: int,
     content_fov_deg: float,
     visual_preset: str = "night",
+    star_catalog_meta: StarCatalogMeta | None = None,
     render_width_px: int | None = None,
     render_height_px: int | None = None,
     render_generation: int = 0,
@@ -113,6 +114,7 @@ def compute_sky_snapshot(
         celestial_equator_points=celestial_equator_points,
         ecliptic_points=ecliptic_points,
         horizon_points=horizon_points,
+        star_catalog_meta=star_catalog_meta,
     )
 
     sun_altaz = None
@@ -189,6 +191,7 @@ class SkyDataWorker(QObject):
         sky_disc_base_size: int,
         content_fov_deg: float,
         visual_preset: str = "night",
+        star_catalog_meta: StarCatalogMeta | None = None,
         render_width_px: int | None = None,
         render_height_px: int | None = None,
         render_generation: int = 0,
@@ -214,6 +217,7 @@ class SkyDataWorker(QObject):
                 "sky_disc_base_size": sky_disc_base_size,
                 "content_fov_deg": content_fov_deg,
                 "visual_preset": visual_preset,
+                "star_catalog_meta": star_catalog_meta,
                 "render_width_px": render_width_px,
                 "render_height_px": render_height_px,
                 "render_generation": render_generation,
@@ -238,6 +242,7 @@ class SkyDataWorker(QObject):
         sky_disc_base_size: int,
         content_fov_deg: float,
         visual_preset: str,
+        star_catalog_meta: StarCatalogMeta | None,
         render_width_px: int | None,
         render_height_px: int | None,
         render_generation: int,
@@ -256,6 +261,7 @@ class SkyDataWorker(QObject):
                 sky_disc_base_size=sky_disc_base_size,
                 content_fov_deg=content_fov_deg,
                 visual_preset=visual_preset,
+                star_catalog_meta=star_catalog_meta,
                 render_width_px=render_width_px,
                 render_height_px=render_height_px,
                 render_generation=render_generation,

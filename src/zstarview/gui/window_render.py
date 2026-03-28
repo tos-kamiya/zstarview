@@ -7,6 +7,7 @@ from typing import Any
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QImage, QPainter, QPaintEvent
 
+from ..astro import resolve_star_names
 from ..render import draw as render_draw
 from ..render.pipeline import (
     RenderSceneData,
@@ -212,9 +213,10 @@ class SkyWindowRenderMixin:
 
         target_name = jump_highlight_name
         stars = celestial_data.stars
+        star_names = resolve_star_names(stars, celestial_data.star_catalog_meta)
         best_idx = None
         best_vmag = float("inf")
-        for idx, raw_name in enumerate(stars["name"]):
+        for idx, raw_name in enumerate(star_names):
             name = str(raw_name).strip()
             if name != target_name:
                 continue

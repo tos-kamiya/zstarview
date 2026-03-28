@@ -239,6 +239,7 @@ class SkyWindowUpdatesMixin:
             sky_disc_base_size=self.state.sky_disc_base_size,
             content_fov_deg=float(self.content_fov_deg),
             visual_preset=self.visual_preset,
+            star_catalog_meta=self.star_catalog_meta,
             render_width_px=max(2, int(self.width())),
             render_height_px=max(2, int(self.height())),
             render_generation=int(getattr(self, "_disc_generation", 0)),

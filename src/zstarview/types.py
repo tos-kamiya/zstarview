@@ -115,6 +115,7 @@ class CelestialData:
     celestial_equator_points: List[Tuple[float, float]]  # (alt_deg, az_deg)
     ecliptic_points: List[Tuple[float, float]]  # (alt_deg, az_deg)
     horizon_points: List[Tuple[float, float]]  # (alt_deg, az_deg)
+    star_catalog_meta: "StarCatalogMeta | None" = None
 
 
 @dataclass
@@ -137,19 +138,28 @@ class UrbanOutlinePolyline:
 CelestialObject = Union[PlanetBody, Dict[str, Any]]
 
 
+@dataclass(frozen=True)
+class StarCatalogMeta:
+    """Sparse metadata lookup tables keyed by the full star catalog index."""
+
+    name_indices: np.ndarray
+    names: np.ndarray
+    source_id_indices: np.ndarray
+    source_ids: np.ndarray
+
+
 class StarsTable(TypedDict):
     """Vectorized star table contract used across astro -> render.
 
     All arrays must be aligned by index and share the same length.
-    - name: star display names
+    - star_index: row index in the full prepared star catalog
     - alt: altitude [deg]
     - az: azimuth [deg] (0=N, 90=E)
     - vmag: visual magnitude
     - bv: B-V color index
     """
 
-    name: np.ndarray
-    source_id: np.ndarray
+    star_index: np.ndarray
     alt: np.ndarray
     az: np.ndarray
     vmag: np.ndarray
