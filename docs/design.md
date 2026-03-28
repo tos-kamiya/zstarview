@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-03-27
+最終更新: 2026-03-29
 
 ## 1. この文書の位置づけ
 
@@ -79,6 +79,8 @@
   - 星カタログの読込と描画用配列の前処理
   - 同梱の分割星カタログは `stars_base` (`vmag <= 6`)、`stars_extra7` (`6 < vmag <= 7`)、`stars_extra8` (`7 < vmag <= 8`)、`stars_extra9` (`8 < vmag <= 9`)、`stars_extra10` (`9 < vmag <= 10`)、`stars_extra_faint` (`10 < vmag <= 10.5`) を前提とする
   - loader 上の `extra_faint` バケット名は `vmag > 10` 用のままだが、同梱データでは実質的な上限は `10.5` として扱う
+  - GUI / export 向けの前処理済み星カタログは、単一の数値配列セットと、`vmag <= 6.0` 用の index 配列を保持する
+  - 恒星名とアステリズム用 `source_id` は、全件 object 配列ではなく、full catalog index に紐づく疎なメタデータとして別保持する
 - `src/zstarview/asterisms.py`
   - アステリズム定義
   - 恒星との対応付け
@@ -338,6 +340,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `src/zstarview/clouddisc/core.py`
   - クラウドディスク生成のオーケストレーション
   - `CloudDiscConfig.alt_min_deg` による可視高度下限の適用
+  - 同一 `CloudSourceData` に対する repeated render では brightness-temperature sampler を再利用してよい
 - `src/zstarview/clouddisc/providers/*.py`
   - 衛星データ取得
   - GOES は `CMIPF C13` NetCDF を `xarray` で直接読み、`goes_imager_projection` から内部の geostationary `area` 定義を再構築する
@@ -623,7 +626,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 1. `render_view_center` を即時更新する。
 2. 明るい星 (`vmag <= 4.0`) のみ同期的に再計算し、簡易描画に使う。
 3. 補助線と地形地平線は、保持済みデータを `render_view_center` で再投影して追随させる。
-4. 最後の入力から 0.7 秒経過後に通常更新を 1 回だけ開始する。
+4. 雲はこのモード中に旧視線の bitmap を描かず、一時的に非表示としてよい。
+5. 最後の入力から 0.7 秒経過後に通常更新を 1 回だけ開始する。
 
 ### 6.2.1 最終フレームキャッシュ
 
@@ -873,6 +877,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - 遠距離スカイスクレーパー補助レイヤー用 derived tile は `overture_skyscrapers/<tile-cache-key>/bldg` 配下に tile 単位で永続キャッシュし、保存期限の既定値は通常建物キャッシュと同じ `30日` とする。
 - 地形地平線の計算済みポリラインは永続化しない。
 - 雲は取得ソースと中間成果物をキャッシュし、視点変更時の再利用を優先する。
+- 雲の source から作る sampler は source 単位で再利用してよい。Alt/Az 変更で source が同じ場合、sampler の再構築は避ける。
 - 航空機スナップショットは `bbox` 単位の少数 JSON file として短寿命永続キャッシュしてよい。
 - 航空機 cache file には少なくとも `bbox`、`fetched_at_utc`、`source`、`snapshots` を保持する。
 - cache key は観測地点そのものではなく、実問い合わせに使う OpenSky `bbox` から導出する。
