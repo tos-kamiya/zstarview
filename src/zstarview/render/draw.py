@@ -25,6 +25,7 @@ from ..paths import (
     BACKGROUND_FIELD_OF_VIEW_DEG1,
     BACKGROUND_FIELD_OF_VIEW_DEG2,
     TEXT_STYLES_BY_PRESET,
+    GUI_BUTTON_SIZE,
     GUI_MENU_TEXT_COLOR,
     CELESTIAL_EQUATOR_COLOR,
     DIRECTIONS,
@@ -504,13 +505,30 @@ def draw_window_frame(
     top = float(rect.top())
     right = float(rect.right())
     bottom = float(rect.bottom())
+    menu_size = float(GUI_BUTTON_SIZE)
+    menu_left_edge = right - menu_size + 1.0
+    menu_top_edge = top
 
     painter.save()
     painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(frame_color)
     painter.drawRect(QRectF(left, top, frame_width, rect.height()))
-    painter.drawRect(QRectF(right - frame_width, top, frame_width, rect.height()))
-    painter.drawRect(QRectF(left + frame_width, top, max(0.0, rect.width() - 2.0 * frame_width), frame_width))
+    painter.drawRect(
+        QRectF(
+            right - frame_width,
+            top + menu_size,
+            frame_width,
+            max(0.0, rect.height() - menu_size),
+        )
+    )
+    painter.drawRect(
+        QRectF(
+            left + frame_width,
+            top,
+            max(0.0, menu_left_edge - (left + frame_width)),
+            frame_width,
+        )
+    )
     painter.drawRect(
         QRectF(
             left + frame_width,
@@ -519,13 +537,10 @@ def draw_window_frame(
             frame_width,
         )
     )
-    menu_size = 20.0
-    inner_right = right - frame_width
-    inner_top = top + frame_width
     painter.drawRect(
         QRectF(
-            inner_right - menu_size,
-            inner_top,
+            menu_left_edge,
+            menu_top_edge,
             menu_size,
             menu_size,
         )
@@ -534,11 +549,12 @@ def draw_window_frame(
     menu_icon_pen = QPen(menu_icon_color, 2.0)
     menu_icon_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
     painter.setPen(menu_icon_pen)
-    menu_left = inner_right - menu_size + 5.0
-    menu_right = inner_right - 5.0
-    for y in (inner_top + 6.0, inner_top + 10.0, inner_top + 14.0):
+    menu_left = menu_left_edge + 9.0
+    menu_right = menu_left_edge + menu_size - 9.0
+    for y in (menu_top_edge + 9.0, menu_top_edge + 14.0, menu_top_edge + 19.0):
         painter.drawLine(QPointF(menu_left, y), QPointF(menu_right, y))
     painter.setPen(Qt.PenStyle.NoPen)
+    inner_right = right - frame_width
     grip_size = 20.0
     inner_bottom = bottom - frame_width
     painter.drawPolygon(
