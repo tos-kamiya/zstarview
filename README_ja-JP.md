@@ -97,7 +97,7 @@ pipx upgrade zstarview
 zstarview [options] [location]
 ```
 
-> 注記（Ubuntu/Wayland, GNOME）: ターミナル起動時にタスクバーのアイコンが表示されない場合は、後述の [`.desktop` ランチャーの生成（GNOME専用）](#desktop-ランチャーの生成gnome専用) を実行してください。
+> 注記（Ubuntu/Wayland, GNOME）: ターミナル起動時にタスクバーのアイコンが表示されない場合は、後述の [ツール](#ツール) 内の [`.desktop` ランチャーの生成（GNOME専用）](#desktop-ランチャーの生成gnome専用) を実行してください。
 
 よく使う起動例:
 
@@ -108,15 +108,7 @@ zstarview "35.68;139.76" --datetime "2025-09-12 21 JST"
 zstarview --place "Matsue Station" --place-countrycode jp
 ```
 
-CLI では、場所・時刻・描画設定や同梱ビューポイント参照を細かく指定できます。
-
-GUI を起動せずに画像ファイルを 1 枚生成して終了する場合は、別の CLI ツールを使います:
-
-```bash
-zstarview-export-image Matsue -o matsue.png
-```
-
-`zstarview-export-image` は、通常 GUI 左上に出る場所・時刻・視線方向・vmag limit の要約を、描画後に `stderr` へ出力します。`--sixel` の場合は端末画像を出す直前に出力します。
+CLI では、場所・時刻・描画設定を細かく指定できます。
 
 <details>
   <summary>CLI リファレンス</summary>
@@ -194,18 +186,6 @@ zstarview-export-image Matsue -o matsue.png
 ※4 地形地平線表示は初回利用時に Copernicus DEM タイルをダウンロードし、以後はローカルキャッシュを再利用します。有効時はディスク内の地面/空の塗り分け境界にも地形プロファイルを使います。
 
 ※5 `--place` は公開の OpenStreetMap Nominatim 検索サービスを使います。User-Agent と Accept-Language を付けて 1 回だけ検索リクエストを送ります。高頻度利用や自動化で使う場合は、Nominatim の利用ポリシーを確認してください。
-
-トラブルシュートや手動キャッシュ削除のために、描画せず cache root だけを表示することもできます。
-
-```bash
-zstarview-export-image --print-cache-dir
-```
-
-`--clear-long-lived-cache` のクールダウンを回避したい場合は、まず `zstarview-export-image --print-cache-dir` で cache root を確認し、その配下の次のサブディレクトリを起動前に手動削除してください。
-
-- `copernicus-dem`
-- `overture_buildings`
-- `overture_skyscrapers`
 
 #### `--place` の挙動
 
@@ -359,7 +339,46 @@ zstarview "Snezka"
 - IANA ゾーン名: `--datetime "2025-09-12 21 Asia/Tokyo"`
 - UTC オフセット: `--datetime "2025-09-12 21 UTC+9"`
 
-### ビューポイントデータの CLI 参照オプション
+### 対応しているアステリウム
+
+ここでの「アステリウム」は、見かけ上の星の並びを結んだ通称パターンです。  
+**IAU（国際天文学連合）が定義する正式な 88 星座の境界とは別概念**です。
+
+- 冬: `Winter Triangle`（冬の大三角）, `Orion's Belt`（オリオンの三ツ星）, `Winter Hexagon`（冬のダイヤモンド）, `Southern Cross`（南十字）, `Southern Pointers`, `Diamond Cross`, `False Cross`
+- 春: `Big Dipper`（北斗七星）, `Little Dipper`, `Spring Triangle`, `Arc to Arcturus`, `Leo Sickle`, `Southern Triangle`
+- 夏: `Summer Triangle`（夏の大三角）, `Northern Cross`（北十字）, `Teapot`, `Keystone`
+- 秋: `Great Square of Pegasus`（ペガススの四辺形）, `Circlet of Pisces`, `Water Jar of Aquarius`, `Cassiopeia W`, `House of Cepheus`, `Job's Coffin`
+
+</details>
+
+<details>
+  <summary>ツール</summary>
+
+## ツール
+
+### `zstarview-export-image`
+
+GUI を起動せずに画像ファイルを 1 枚生成して終了する場合は、`zstarview-export-image` を使います。
+
+```bash
+zstarview-export-image Matsue -o matsue.png
+```
+
+`zstarview-export-image` は、通常 GUI 左上に出る場所・時刻・視線方向・vmag limit の要約を、描画後に `stderr` へ出力します。`--sixel` の場合は端末画像を出す直前に出力します。
+
+トラブルシュートや手動キャッシュ削除のために、描画せず cache root だけを表示することもできます。
+
+```bash
+zstarview-export-image --print-cache-dir
+```
+
+`--clear-long-lived-cache` のクールダウンを回避したい場合は、まず `zstarview-export-image --print-cache-dir` で cache root を確認し、その配下の次のサブディレクトリを起動前に手動削除してください。
+
+- `copernicus-dem`
+- `overture_buildings`
+- `overture_skyscrapers`
+
+### ビューポイントデータ参照ツール
 
 GUI を起動せずに、同梱タワー/展望地点データと山頂ビューポイントデータを参照できます。
 
@@ -383,15 +402,26 @@ zstarview --show-viewpoint-json "m/Mount Fuji"
 `--list-viewpoint-names` では、元の綴りと ASCII 代替綴りの両方を含みます。
 prefix なしの `--show-viewpoint-json` で tower と mountain の両方に完全一致した場合は、`t/...` / `m/...` 候補を列挙して曖昧一致エラーにします。
 
-### 対応しているアステリウム
+### `.desktop` ランチャーの生成（GNOME専用）
 
-ここでの「アステリウム」は、見かけ上の星の並びを結んだ通称パターンです。  
-**IAU（国際天文学連合）が定義する正式な 88 星座の境界とは別概念**です。
+GNOME 系デスクトップ環境（Ubuntu Dock や DockToPanel を含む）では、
+タスクバーに正しいアイコンを表示するために `.desktop` ファイルが必要です。
 
-- 冬: `Winter Triangle`（冬の大三角）, `Orion's Belt`（オリオンの三ツ星）, `Winter Hexagon`（冬のダイヤモンド）, `Southern Cross`（南十字）, `Southern Pointers`, `Diamond Cross`, `False Cross`
-- 春: `Big Dipper`（北斗七星）, `Little Dipper`, `Spring Triangle`, `Arc to Arcturus`, `Leo Sickle`, `Southern Triangle`
-- 夏: `Summer Triangle`（夏の大三角）, `Northern Cross`（北十字）, `Teapot`, `Keystone`
-- 秋: `Great Square of Pegasus`（ペガススの四辺形）, `Circlet of Pisces`, `Water Jar of Aquarius`, `Cassiopeia W`, `House of Cepheus`, `Job's Coffin`
+本アプリにはこれを生成する補助コマンドが付属しています。
+
+```bash
+# カレントディレクトリに zstarview.desktop を作成
+zstarview-make-desktop-file
+
+# ~/.local/share/applications にインストール
+zstarview-make-desktop-file --write
+```
+
+* `--write` を付けない場合は、カレントディレクトリに `zstarview.desktop` が作成されます。
+* `--write` を付けると `~/.local/share/applications` に書き込み、デスクトップデータベースに登録します。
+
+> **注:** このランチャー機能は GNOME 系環境専用です。  
+> 他のデスクトップ環境では不要、または正しく動作しない場合があります。
 
 </details>
 
@@ -482,26 +512,6 @@ zstarview -p "Matsue Station" -r 2.0 -b 20
 <details>
   <summary>トラブルシューティングとプラットフォーム補足</summary>
 
-## `.desktop` ランチャーの生成（GNOME専用）
-
-GNOME 系デスクトップ環境（Ubuntu Dock や DockToPanel を含む）では、
-タスクバーに正しいアイコンを表示するために `.desktop` ファイルが必要です。
-
-本アプリにはこれを生成する補助コマンドが付属しています。
-
-```bash
-# カレントディレクトリに zstarview.desktop を作成
-zstarview-make-desktop-file
-
-# ~/.local/share/applications にインストール
-zstarview-make-desktop-file --write
-```
-
-* `--write` を付けない場合は、カレントディレクトリに `zstarview.desktop` が作成されます。
-* `--write` を付けると `~/.local/share/applications` に書き込み、デスクトップデータベースに登録します。
-
-> **注:** このランチャー機能は GNOME 系環境専用です。  
-> 他のデスクトップ環境では不要、または正しく動作しない場合があります。
 
 ## トラブルシューティング
 

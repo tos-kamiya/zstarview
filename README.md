@@ -96,7 +96,7 @@ pipx upgrade zstarview
 zstarview [options] [location]
 ```
 
-> Note (Ubuntu/Wayland, GNOME): If the taskbar icon does not appear when launching from a terminal, follow the steps in [Generating a `.desktop` launcher (GNOME only)](#generating-a-desktop-launcher-gnome-only).
+> Note (Ubuntu/Wayland, GNOME): If the taskbar icon does not appear when launching from a terminal, follow the steps in [Tools](#tools) under [Generating a `.desktop` launcher (GNOME only)](#generating-a-desktop-launcher-gnome-only).
 
 Quick examples:
 
@@ -107,15 +107,7 @@ zstarview "35.68;139.76" --datetime "2025-09-12 21 JST"
 zstarview --place "Matsue Station" --place-countrycode jp
 ```
 
-The CLI supports detailed startup configuration for location, time, rendering, and bundled viewpoint queries.
-
-For one-shot image export without starting the GUI, use the separate CLI tool:
-
-```bash
-zstarview-export-image Matsue -o matsue.png
-```
-
-`zstarview-export-image` writes the usual location/time/view/vmag summary to `stderr` after rendering, or immediately before terminal image output when `--sixel` is used.
+The CLI supports detailed startup configuration for location, time, and rendering.
 
 <details>
   <summary>CLI reference</summary>
@@ -194,18 +186,6 @@ zstarview-export-image Matsue -o matsue.png
 \*4 Terrain horizon rendering downloads Copernicus DEM tiles on first use and reuses the cached DEM later. When enabled, the terrain profile also becomes the boundary for the ground-color fill inside the disc.
 
 \*5 `--place` uses the public OpenStreetMap Nominatim search service. It sends a single search request with a User-Agent and Accept-Language. See the Nominatim usage policy if you plan to rely on this option heavily or from automation.
-
-For troubleshooting or manual cache maintenance, you can print the cache root directory without rendering:
-
-```bash
-zstarview-export-image --print-cache-dir
-```
-
-If you really need to bypass the `--clear-long-lived-cache` cooldown, first run `zstarview-export-image --print-cache-dir`, then remove these subdirectories under that cache root before startup:
-
-- `copernicus-dem`
-- `overture_buildings`
-- `overture_skyscrapers`
 
 #### `--place` behavior
 
@@ -360,7 +340,47 @@ Time zone examples for `--datetime`:
 - IANA zone name: `--datetime "2025-09-12 21 Asia/Tokyo"`
 - UTC offset: `--datetime "2025-09-12 21 UTC+9"`
 
-### Viewpoint Dataset CLI Queries
+While resizing the window, the same simplified viewport-interaction mode is used so that the view stays responsive.
+
+### Supported Asterisms
+
+These overlays are **asterisms** (popular line patterns), not formal IAU constellation boundaries.
+
+- Winter: `Winter Triangle`, `Orion's Belt`, `Winter Hexagon`, `Southern Cross`, `Southern Pointers`, `Diamond Cross`, `False Cross`
+- Spring: `Big Dipper`, `Little Dipper`, `Spring Triangle`, `Arc to Arcturus`, `Leo Sickle`, `Southern Triangle`
+- Summer: `Summer Triangle`, `Northern Cross`, `Teapot`, `Keystone`
+- Autumn: `Great Square of Pegasus`, `Circlet of Pisces`, `Water Jar of Aquarius`, `Cassiopeia W`, `House of Cepheus`, `Job's Coffin`
+
+</details>
+
+<details>
+  <summary>Tools</summary>
+
+## Tools
+
+### `zstarview-export-image`
+
+Use `zstarview-export-image` for one-shot image export without starting the GUI.
+
+```bash
+zstarview-export-image Matsue -o matsue.png
+```
+
+`zstarview-export-image` writes the usual location/time/view/vmag summary to `stderr` after rendering, or immediately before terminal image output when `--sixel` is used.
+
+For troubleshooting or manual cache maintenance, you can print the cache root directory without rendering:
+
+```bash
+zstarview-export-image --print-cache-dir
+```
+
+If you really need to bypass the `--clear-long-lived-cache` cooldown, first run `zstarview-export-image --print-cache-dir`, then remove these subdirectories under that cache root before startup:
+
+- `copernicus-dem`
+- `overture_buildings`
+- `overture_skyscrapers`
+
+### Viewpoint dataset CLI queries
 
 You can inspect the bundled tower/viewpoint and mountain/viewpoint datasets without launching the GUI.
 
@@ -384,16 +404,26 @@ These options are mutually exclusive, do not accept the `location` argument, and
 `--list-viewpoint-names` includes both the original spellings and ASCII fallback spellings.
 `--show-viewpoint-json` reports an ambiguity error with prefixed candidates if an unprefixed name matches both a tower and a mountain exactly.
 
-While resizing the window, the same simplified viewport-interaction mode is used so that the view stays responsive.
+### Generating a `.desktop` launcher (GNOME only)
 
-### Supported Asterisms
+On GNOME-based environments (including Ubuntu Dock and DockToPanel),
+a `.desktop` file is required for the correct icon to appear in the taskbar.
 
-These overlays are **asterisms** (popular line patterns), not formal IAU constellation boundaries.
+This application includes a helper command to generate it:
 
-- Winter: `Winter Triangle`, `Orion's Belt`, `Winter Hexagon`, `Southern Cross`, `Southern Pointers`, `Diamond Cross`, `False Cross`
-- Spring: `Big Dipper`, `Little Dipper`, `Spring Triangle`, `Arc to Arcturus`, `Leo Sickle`, `Southern Triangle`
-- Summer: `Summer Triangle`, `Northern Cross`, `Teapot`, `Keystone`
-- Autumn: `Great Square of Pegasus`, `Circlet of Pisces`, `Water Jar of Aquarius`, `Cassiopeia W`, `House of Cepheus`, `Job's Coffin`
+```bash
+# Create zstarview.desktop in the current directory
+zstarview-make-desktop-file
+
+# Install to ~/.local/share/applications
+zstarview-make-desktop-file --write
+```
+
+* Without `--write`, the file `zstarview.desktop` is created in the current directory.
+* With `--write`, it is installed to `~/.local/share/applications` and registered with the desktop database.
+
+> **Note:** This launcher integration is only intended for GNOME-based environments.
+> It is not required on other desktop environments, and may not work as intended elsewhere.
 
 </details>
 
@@ -484,27 +514,6 @@ those values creates a separate cached dataset.
 
 <details>
   <summary>Troubleshooting and platform notes</summary>
-
-## Generating a `.desktop` launcher (GNOME only)
-
-On GNOME-based environments (including Ubuntu Dock and DockToPanel),
-a `.desktop` file is required for the correct icon to appear in the taskbar.
-
-This application includes a helper command to generate it:
-
-```bash
-# Create zstarview.desktop in the current directory
-zstarview-make-desktop-file
-
-# Install to ~/.local/share/applications
-zstarview-make-desktop-file --write
-```
-
-* Without `--write`, the file `zstarview.desktop` is created in the current directory.
-* With `--write`, it is installed to `~/.local/share/applications` and registered with the desktop database.
-
-> **Note:** This launcher integration is only intended for GNOME-based environments.
-> It is not required on other desktop environments, and may not work as intended elsewhere.
 
 ## Troubleshooting
 
