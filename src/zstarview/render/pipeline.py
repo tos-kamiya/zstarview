@@ -190,19 +190,6 @@ def render_base_scene_into_painter(
         style=style,
         label_candidates=label_candidates,
     )
-    draw_overlay_layer(
-        painter,
-        geometry=geometry,
-        scene=scene,
-        style=style,
-        highlighted_object=None,
-        highlighted_dso=None,
-        enlarge_moon=bool(style.enlarge_moon),
-        label_reservations=label_reservations,
-        label_candidates=label_candidates,
-    )
-
-
 def render_hud_overlay_into_painter(
     painter: QPainter,
     *,
@@ -230,6 +217,18 @@ def render_hud_overlay_into_painter(
         style=style,
         highlighted_object=highlighted_object,
         highlighted_dso=highlighted_dso,
+    )
+    draw_overlay_layer(
+        painter,
+        geometry=geometry,
+        scene=scene,
+        style=style,
+        mouse_pos=hud.mouse_pos,
+        highlighted_object=None,
+        highlighted_dso=None,
+        enlarge_moon=bool(style.enlarge_moon),
+        label_reservations=[],
+        label_candidates=[],
     )
     draw_status_line(
         painter,
@@ -596,6 +595,7 @@ def draw_overlay_layer(
     geometry: render_draw.ScreenGeometry,
     scene: RenderSceneData,
     style: RenderStyle,
+    mouse_pos: QPoint | None,
     highlighted_object: Any | None,
     highlighted_dso: Any | None,
     enlarge_moon: bool,
@@ -616,6 +616,7 @@ def draw_overlay_layer(
         style.text_font,
         label_candidates=label_candidates,
         label_reservations=label_reservations,
+        mouse_pos=mouse_pos,
         preset=style.visual_preset,
         draw_static_info=True,
         draw_hover_info=False,
