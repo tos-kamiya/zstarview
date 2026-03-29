@@ -653,7 +653,6 @@ def draw_sky_reference_lines(
     celestial_data: CelestialData,
     viewer_data: ViewerData,
     *,
-    opacity: float = 1.0,
     content_fov_deg: float | None = None,
 ) -> None:
     """
@@ -664,10 +663,7 @@ def draw_sky_reference_lines(
         geometry: The screen geometry for coordinate conversion.
         celestial_data: The data containing the points for the reference lines.
     """
-    if opacity <= 0.0:
-        return
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
-    effective_opacity = max(0.0, min(1.0, float(opacity)))
     point_list_pen_styles: List[Tuple[List[Tuple[float, float]], Tuple[QColor, int, List[int]]]] = [
         (celestial_data.celestial_equator_points, (CELESTIAL_EQUATOR_COLOR, 1, [8, 4])),
         (celestial_data.ecliptic_points, (ECLIPTIC_COLOR, 1, [3, 3])),
@@ -691,7 +687,7 @@ def draw_sky_reference_lines(
             # Use a tinted outline (same hue) instead of black to avoid dark gaps
             # on bright or highly transparent backgrounds.
             base_color = QColor(*color)
-            base_color.setAlpha(max(0, min(255, int(round(70.0 * effective_opacity)))))
+            base_color.setAlpha(70)
             base = QPen(base_color, width + 2, Qt.PenStyle.SolidLine)
             base.setCosmetic(True)
             # Keep the outline only under visible dash segments.
@@ -703,7 +699,6 @@ def draw_sky_reference_lines(
             painter.drawPolyline(poly)
 
             fg_color = QColor(*color)
-            fg_color.setAlpha(max(0, min(255, int(round(255.0 * effective_opacity)))))
             fg = QPen(fg_color, width)
             fg.setCosmetic(True)
             fg.setDashPattern(style)
@@ -1564,7 +1559,6 @@ def draw_zenith_marker(
     geometry: ScreenGeometry,
     view_center: Tuple[float, float],
     *,
-    opacity: float = 1.0,
     content_fov_deg: float = FIELD_OF_VIEW_DEG,
 ) -> None:
     """
@@ -1575,13 +1569,9 @@ def draw_zenith_marker(
         geometry: The screen geometry for coordinate conversion.
         view_center: The current view center (altitude, azimuth).
     """
-    if opacity <= 0.0:
-        return
     az_ref = view_center[1]
     s = 7
-    color = QColor(*TEXT_STYLES_BY_PRESET["night"].text)
-    color.setAlpha(max(0, min(255, int(round(255.0 * max(0.0, min(1.0, float(opacity))))))))
-    painter.setPen(QPen(color, 1))
+    painter.setPen(QPen(QColor(*TEXT_STYLES_BY_PRESET["night"].text), 1))
     for alt in (90.0, -90.0):
         if not is_in_fov(alt, az_ref, view_center, fov_deg=content_fov_deg):
             continue
@@ -1925,7 +1915,6 @@ def draw_direction_labels(
     mouse_pos: Optional[QPoint] = None,
     *,
     preset: str = "night",
-    opacity: float = 1.0,
     content_fov_deg: float = FIELD_OF_VIEW_DEG,
 ) -> None:
     """
@@ -1937,16 +1926,10 @@ def draw_direction_labels(
         view_center: The current view center to determine which labels are visible.
         text_font: The QFont to use for the labels.
     """
-    if opacity <= 0.0:
-        return
-    effective_opacity = max(0.0, min(1.0, float(opacity)))
     # Match direction labels to the horizon line color.
     text_color = QColor(*HORIZON_LINE_COLOR)
-    text_color.setAlpha(max(0, min(255, int(round(255.0 * effective_opacity)))))
     outline_color = QColor.fromRgbF(0, 0, 0, 0.3)
-    outline_color.setAlpha(max(0, min(255, int(round(outline_color.alpha() * effective_opacity)))))
     marker_color = QColor(*HORIZON_LINE_COLOR)
-    marker_color.setAlpha(max(0, min(255, int(round(255.0 * effective_opacity)))))
     marker_pen = QPen(marker_color, 1.6)
     marker_pen.setCosmetic(True)
     marker_half_len_px = 6.0  # constant visual length regardless of view altitude

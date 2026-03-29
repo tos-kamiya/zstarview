@@ -72,7 +72,7 @@ class RenderStyle:
     show_overlay_info: bool
     show_dso: bool
     show_asterisms: bool
-    guideline_opacity: float
+    show_guidelines: bool
     enlarge_moon: bool
     star_base_radius: float
     star_visibility_boost: float
@@ -258,13 +258,13 @@ def draw_viewport_interaction_layers(
             scene.celestial_data,
             stars=hud.viewport_interaction_stars,
         )
-    render_draw.draw_sky_reference_lines(
-        painter,
-        geometry,
-        scene.celestial_data,
-        scene.viewer,
-        opacity=style.guideline_opacity,
-    )
+    if style.show_guidelines:
+        render_draw.draw_sky_reference_lines(
+            painter,
+            geometry,
+            scene.celestial_data,
+            scene.viewer,
+        )
     draw_star_layer(
         painter,
         geometry=geometry,
@@ -319,7 +319,7 @@ def draw_guide_layer(
     style: RenderStyle,
 ) -> None:
     """Draw guide annotations that should float above sky/cloud but below scene overlays."""
-    if style.guideline_opacity <= 0.0:
+    if not style.show_guidelines:
         return
     content_fov_deg = _content_fov_deg(scene)
     render_draw.draw_direction_labels(
@@ -329,14 +329,12 @@ def draw_guide_layer(
         style.text_font,
         None,
         preset=style.visual_preset,
-        opacity=style.guideline_opacity,
         content_fov_deg=content_fov_deg,
     )
     render_draw.draw_zenith_marker(
         painter,
         geometry,
         scene.viewer.view_center,
-        opacity=style.guideline_opacity,
         content_fov_deg=content_fov_deg,
     )
 
@@ -405,13 +403,13 @@ def draw_terrain_layers(
             draw_base=True,
             draw_highlight=False,
         )
-    render_draw.draw_sky_reference_lines(
-        painter,
-        geometry,
-        scene.celestial_data,
-        scene.viewer,
-        opacity=style.guideline_opacity,
-    )
+    if style.show_guidelines:
+        render_draw.draw_sky_reference_lines(
+            painter,
+            geometry,
+            scene.celestial_data,
+            scene.viewer,
+        )
     render_draw.draw_terrain_horizon_line(
         painter,
         geometry,

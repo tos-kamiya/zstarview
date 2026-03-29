@@ -61,7 +61,7 @@
   - `--place`、`--place-countrycode`、`--place-lang` の online 地点検索オプションを扱う
   - 同梱星表の実上限に合わせ、`-V` / `--vmag-limit` は `10.5` を超える指定を parse 時点で `10.5` へ丸める
   - parser 構築は `add_location_arguments()`、`add_dataset_query_arguments()`、`add_time_arguments()`、`add_render_arguments()` の helper に分割し、将来の別 CLI からも再利用できるようにする
-  - ガイドライン表示は boolean ではなく `--guideline-opacity` として扱い、他の描画レイヤーと同じ opacity ベースの制御に寄せる
+  - ガイドライン表示は `--show-guidelines-initial` として扱い、DSO / アステリウムと同じ起動時 boolean 指定に揃える
 - `src/zstarview/startup.py`
   - 起動時の地点解決、設定復元、初期値決定
   - Nominatim による online 地点検索と結果正規化を扱う
@@ -233,7 +233,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `RenderStyle`
 - `RenderHudState`
 - `render_scene_into_painter()` と下位の `draw_*` 関数群は、`geometry`、`viewport_rect`、`scene`、`style`、`hud` を明示的に受ける。
-- `RenderStyle` は `guideline_opacity` を持ち、guide レイヤーと viewport interaction 中の reference line 描画を同じ値で制御する。
+- `RenderStyle` は `show_guidelines` を持ち、guide レイヤーと viewport interaction 中の reference line 描画を同じ boolean で制御する。
 - `RenderPipelineState` のような中間ラッパ型は廃止し、shared pipeline 側では直接引数で依存関係を表す。
 - `RenderSceneData` の cloud image / cloud missing mask は `QImage` ではなく NumPy 配列を持ち、cloud path の変換回数を抑える。
 - `gui/window_render.py` は、`paintEvent()` 本線、scene/style/hud の組み立て、frame cache、jump highlight、hover 解決など GUI 固有処理に絞る。
@@ -251,8 +251,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `hover-overlay`
   - `status`
 - `guide` は方位ラベルと天頂マーカーを含む独立レイヤーであり、空色・雲合成の上、通常の hover/HUD オーバーレイより手前に置く。
-- 幾何学的な地平線、天の赤道、黄道も `guideline_opacity` に従う guide 系表示として扱う。
-- `guideline_opacity == 0` のときは、guide レイヤー本体だけでなく、viewport interaction 中の sky reference line 描画もまとめて省略してよい。
+- 幾何学的な地平線、天の赤道、黄道も `show_guidelines` に従う guide 系表示として扱う。
+- `show_guidelines == False` のときは、guide レイヤー本体だけでなく、viewport interaction 中の sky reference line 描画もまとめて省略してよい。
 
 #### 4.3.3 次段のリファクタリング方針
 

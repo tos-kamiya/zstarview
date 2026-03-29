@@ -216,7 +216,6 @@ def _build_window_inputs_from_args(
         ),
         satellite_opacity=(getattr(args, "satellite_opacity", 0.5) if overlay_availability.satellite else 0.0),
         aircraft_opacity=(getattr(args, "aircraft_opacity", 0.5) if overlay_availability.aircraft else 0.0),
-        guideline_opacity=getattr(args, "guideline_opacity", 1.0),
         terrain_horizon_opacity=getattr(args, "terrain_horizon_opacity", 0.05),
         urban_outline_opacity=getattr(args, "urban_outline_opacity", 0.2),
         ground_tint_opacity=getattr(args, "ground_tint_opacity", 0.1),
@@ -227,6 +226,7 @@ def _build_window_inputs_from_args(
         star_visibility_boost=star_visibility_boost,
         show_dso_initial=getattr(args, "show_dso_initial", None),
         show_asterisms_initial=getattr(args, "show_asterisms_initial", None),
+        show_guidelines_initial=getattr(args, "show_guidelines_initial", None),
         sky_disc_gui_allowed=getattr(args, "sky_opacity", 0.15) > 0.0,
         cloud_gui_allowed=overlay_availability.cloud and getattr(args, "cloud_opacity", 0.15) > 0.0,
         satellite_gui_allowed=overlay_availability.satellite and getattr(args, "satellite_opacity", 0.5) > 0.0,
@@ -603,6 +603,7 @@ def _build_render_style(
     if user_options.show_dso_initial is not None:
         show_dso = bool(user_options.show_dso_initial) and catalogs.dso_catalog_np is not None
     show_asterisms = True if user_options.show_asterisms_initial is None else bool(user_options.show_asterisms_initial)
+    show_guidelines = True if user_options.show_guidelines_initial is None else bool(user_options.show_guidelines_initial)
     return RenderStyle(
         visual_preset=user_options.visual_preset,
         text_font=text_font,
@@ -611,7 +612,7 @@ def _build_render_style(
         show_overlay_info=False,
         show_dso=show_dso,
         show_asterisms=show_asterisms,
-        guideline_opacity=float(user_options.guideline_opacity),
+        show_guidelines=show_guidelines,
         enlarge_moon=bool(user_options.enlarge_moon),
         star_base_radius=float(user_options.star_base_radius),
         star_visibility_boost=float(user_options.star_visibility_boost),
