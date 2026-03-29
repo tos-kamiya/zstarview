@@ -226,12 +226,6 @@ Use these options to control initial overlay states without post-launch menu ope
 zstarview --show-dso-initial false --show-asterisms-initial true Tokyo
 ```
 
-To start with the guideline layer hidden:
-
-```bash
-zstarview --show-guidelines-initial false Tokyo
-```
-
 #### About the view center options
 
 The `-Z` (azimuth) and `-A` (altitude) options specify the center of the displayed sky.
@@ -283,18 +277,6 @@ zstarview --datetime "2025-09-12 9" Tokyo         # 9 o'clock
 zstarview --datetime "2025-09-12 09:00" Tokyo     # 9:00
 zstarview --datetime "2025-09-12 9:0:0 JST" Tokyo # 9:00:00 JST
 ```
-
-## Developer Note: Cloud-Disc Parity Check
-
-The repository includes [`dev-samples/compare_pyresample_cloud_disc.py`](dev-samples/compare_pyresample_cloud_disc.py) to compare the current internal geostationary `area` implementation against a `pyresample.AreaDefinition` path when `pyresample` is installed in the comparison environment.
-
-This was used to validate the `pyresample` removal on both Himawari and GOES inputs across multiple `alt` / `az` combinations. The observed diffs were all zero for:
-
-- `bt_warm`
-- `bt_cold`
-- sampled BT arrays
-- visible-mask pixels
-- final rendered LA image
 
 #### Direct coordinate input
 

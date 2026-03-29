@@ -226,12 +226,6 @@ zstarview-export-image --print-cache-dir
 zstarview --show-dso-initial false --show-asterisms-initial true Tokyo
 ```
 
-ガイドラインを非表示で起動する例:
-
-```bash
-zstarview --show-guidelines-initial false Tokyo
-```
-
 #### 表示中心オプションについて
 
 `-Z`（方位角）と `-A`（高度角）のオプションで、画面の表示中心を指定できます。
@@ -282,18 +276,6 @@ zstarview --datetime "2025-09-12 9" Tokyo         # 9時ちょうど
 zstarview --datetime "2025-09-12 09:00" Tokyo     # 9:00
 zstarview --datetime "2025-09-12 9:0:0 JST" Tokyo # 9:00:00 JST
 ```
-
-## 開発メモ: cloud-disc の `pyresample` 同等性確認
-
-比較用スクリプト [`dev-samples/compare_pyresample_cloud_disc.py`](dev-samples/compare_pyresample_cloud_disc.py) を用意しています。比較環境側に `pyresample` が入っていれば、現在の内部 `area` 実装と `pyresample.AreaDefinition` 経路を同じ入力で並べて比較できます。
-
-このスクリプトを使って Himawari / GOES の両方で複数の `alt` / `az` 条件を確認し、少なくとも確認したケースでは次の差分はすべて `0` でした。
-
-- `bt_warm`
-- `bt_cold`
-- サンプリング後の BT 配列
-- 可視 mask
-- 最終 LA 画像
 
 #### 直接座標指定
 
