@@ -2107,6 +2107,7 @@ def draw_overlay_info(
     label_candidates: Optional[List[Dict[str, Any]]] = None,
     label_reservations: Optional[List[QRectF]] = None,
     *,
+    mouse_pos: Optional[QPoint] = None,
     preset: str = "night",
     draw_static_info: bool = True,
     draw_hover_info: bool = True,
@@ -2150,8 +2151,16 @@ def draw_overlay_info(
             outline_width=outline_width,
         )
 
+    static_lines = format_overlay_info_lines(celestial_data, viewer_data, vmag_limit)
+    if draw_static_info and mouse_pos is not None:
+        overlay_top_y = float(line_spacing)
+        overlay_bottom_y = float(line_spacing + len(static_lines) * line_height)
+        mouse_y = float(mouse_pos.y())
+        if overlay_top_y <= mouse_y <= overlay_bottom_y:
+            draw_static_info = False
+
     if draw_static_info:
-        for line in format_overlay_info_lines(celestial_data, viewer_data, vmag_limit):
+        for line in static_lines:
             print_line(line)
 
     # ---- DSO label (draw first so star/planet labels stay in front among labels) ----

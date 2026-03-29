@@ -1080,8 +1080,8 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         "satellites",
         "aircraft",
         "labels",
-        "overlay",
         "hover",
+        "overlay",
         "status",
     ]
 
@@ -1121,6 +1121,7 @@ def test_draw_overlay_layer_skips_static_info_when_disabled(monkeypatch) -> None
         geometry=SimpleNamespace(radius=100),
         scene=_make_scene(),
         style=_make_style(show_overlay_info=False),
+        mouse_pos=None,
         highlighted_object=None,
         highlighted_dso=None,
         enlarge_moon=False,
