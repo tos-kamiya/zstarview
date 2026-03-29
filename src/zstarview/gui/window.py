@@ -461,7 +461,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
 
     def _add_hamburger_menu(self) -> None:
         """Adds a hamburger menu button and its corresponding actions."""
-        self.menu_button = QPushButton("☰", self)
+        self.menu_button = QPushButton("", self)
         self.menu_button.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
         self.menu_button.setStyleSheet(self._menu_button_style_sheet())
         self.menu_button.clicked.connect(self.show_menu)
