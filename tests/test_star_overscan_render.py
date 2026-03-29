@@ -4,7 +4,7 @@ import astropy.time
 import numpy as np
 from PySide6.QtGui import QImage, QPainter
 
-from zstarview.render import draw as render_draw
+from zstarview.render import stars as render_stars
 from zstarview.types import CelestialData, ScreenGeometry, StarCatalogMeta, ViewerData
 from zstarview.render.qt_image import qimage_to_np_rgba
 
@@ -73,7 +73,7 @@ def test_draw_stars_keeps_faint_overscan_star_outside_90_deg_background() -> Non
             az=180.0,
         )
 
-        render_draw.draw_stars(
+        render_stars.draw_stars(
             painter,
             geometry,
             celestial_data,
@@ -111,7 +111,7 @@ def test_draw_stars_uses_peak_channel_as_alpha_for_faint_pixels() -> None:
             color_factor_base=0.18,
         )
 
-        render_draw.draw_stars(
+        render_stars.draw_stars(
             painter,
             geometry,
             celestial_data,

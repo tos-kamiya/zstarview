@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from zstarview.render.draw import compute_flare_profile, flare_strength_from_vmag
+from zstarview.render.stars import compute_flare_profile, flare_strength_from_vmag
 
 
 def test_flare_strength_monotonic_for_all_magnitudes() -> None:

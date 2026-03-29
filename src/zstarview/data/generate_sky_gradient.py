@@ -5,7 +5,7 @@
 import numpy as np
 from PIL import Image
 
-from zstarview.render.draw_sky_disc import sky_color_samples
+from zstarview.render.sky_disc import sky_color_samples
 
 IMG_WIDTH = 300
 IMG_HEIGHT = 181

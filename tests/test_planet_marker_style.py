@@ -7,11 +7,11 @@ from PySide6.QtGui import QColor, QFont, QFontMetrics, QImage, QPainter
 from PySide6.QtWidgets import QApplication
 
 from zstarview.render import background as render_background
-from zstarview.render import draw as render_draw
 from zstarview.render import guides as render_guides
 from zstarview.render import overlay_info as render_overlay_info
 from zstarview.render import satellites as render_satellites
 from zstarview.render import solar_system as render_solar_system
+from zstarview.render import stars as render_stars
 from zstarview.render import text as render_text
 from zstarview.satellites.types import SatelliteOverlayPoint
 from zstarview.types import CelestialData, PlanetBody, ScreenGeometry, StarCatalogMeta, ViewerData
@@ -194,7 +194,7 @@ def test_hover_can_identify_planet_name() -> None:
     geometry = ScreenGeometry(center=(120, 90), radius=70)
     mouse_pos = QPoint(120, 90)
 
-    highlighted = render_draw.find_highlighted_object(
+    highlighted = render_stars.find_highlighted_object(
         _empty_celestial_data([mars]),
         viewer,
         mouse_pos,
@@ -267,7 +267,7 @@ def test_planet_draw_and_hover_ignore_horizon_visibility_flag(monkeypatch) -> No
     )
     assert len(disc_calls) == 1
 
-    highlighted = render_draw.find_highlighted_object(
+    highlighted = render_stars.find_highlighted_object(
         _empty_celestial_data([mars]),
         viewer,
         QPoint(120, 90),
@@ -344,7 +344,7 @@ def test_hover_ignores_unnamed_stars() -> None:
     mouse_pos = QPoint(120, 90)
 
     stars, meta = _star_table(names=["", "Sirius"])
-    highlighted = render_draw.find_highlighted_object(
+    highlighted = render_stars.find_highlighted_object(
         _celestial_data_with_stars(stars, meta),
         viewer,
         mouse_pos,
@@ -362,7 +362,7 @@ def test_hover_returns_none_without_named_star() -> None:
     mouse_pos = QPoint(120, 90)
 
     stars, meta = _star_table(names=["", ""])
-    highlighted = render_draw.find_highlighted_object(
+    highlighted = render_stars.find_highlighted_object(
         _celestial_data_with_stars(stars, meta),
         viewer,
         mouse_pos,

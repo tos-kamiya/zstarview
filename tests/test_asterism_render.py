@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QApplication
 from zstarview.asterisms import Asterism
 from zstarview.paths import ASTERISM_CLIP_FIELD_OF_VIEW_DEG
 from zstarview.render import asterisms as render_asterisms
-from zstarview.render import draw as render_draw
+from zstarview.render import stars as render_stars
 from zstarview.types import CelestialData, ScreenGeometry, StarCatalogMeta, ViewerData
 
 app = QApplication.instance() or QApplication([])
@@ -257,9 +257,9 @@ def test_find_highlighted_object_accepts_unnamed_asterism_member(monkeypatch) ->
         ),
     )
 
-    monkeypatch.setattr(render_draw, "ASTERISM_REQUIRED_SOURCE_IDS", frozenset({"HIP1"}))
+    monkeypatch.setattr(render_stars, "ASTERISM_REQUIRED_SOURCE_IDS", frozenset({"HIP1"}))
 
-    highlighted = render_draw.find_highlighted_object(
+    highlighted = render_stars.find_highlighted_object(
         celestial_data=celestial_data,
         viewer_data=viewer,
         mouse_pos=QPoint(120, 90),

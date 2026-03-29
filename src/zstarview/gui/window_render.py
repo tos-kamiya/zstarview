@@ -7,10 +7,10 @@ from typing import Any
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QImage, QPainter, QPaintEvent
 
-from ..astro import resolve_star_names
+from ..astro import altaz_to_normalized_xy, resolve_star_names
 from ..render import deep_sky_objects as render_deep_sky_objects
-from ..render import draw as render_draw
 from ..render import geometry as render_geometry
+from ..render import stars as render_stars
 from ..render import text as render_text
 from ..render.pipeline import (
     RenderSceneData,
@@ -20,7 +20,7 @@ from ..render.pipeline import (
     render_base_scene_into_painter,
     render_hud_overlay_into_painter,
 )
-from ..types import CelestialData, ViewerData
+from ..types import CelestialData, ScreenGeometry, ViewerData
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ class SkyWindowRenderMixin:
     def _render_frame_cache_key(
         self,
         *,
-        geometry: render_draw.ScreenGeometry,
+        geometry: ScreenGeometry,
         celestial_data: CelestialData,
         render_viewer: ViewerData,
     ) -> tuple[Any, ...]:
@@ -182,7 +182,7 @@ class SkyWindowRenderMixin:
             status_message=status_message,
         )
 
-    def _update_star_render_stats(self, geometry: render_draw.ScreenGeometry) -> None:
+    def _update_star_render_stats(self, geometry: ScreenGeometry) -> None:
         win_w = int(self.width())
         win_h = int(self.height())
         low_w, low_h = compute_star_render_surface_size(
@@ -240,12 +240,12 @@ class SkyWindowRenderMixin:
             else:
                 return None
 
-        nx, ny = render_draw.altaz_to_normalized_xy(
+        nx, ny = altaz_to_normalized_xy(
             alt,
             az,
             self.state.render_view_center,
         )
-        px, py = render_draw.normalized_to_screen_xy(nx, ny, geometry)
+        px, py = render_geometry.normalized_to_screen_xy(nx, ny, geometry)
         return ({"name": target_name}, QPointF(px, py))
 
     def render_current_image(self, *, include_hud: bool = False) -> QImage:
@@ -330,7 +330,7 @@ class SkyWindowRenderMixin:
         highlighted_dso = None
         mouse_pos = self.state.mouse_pos
         if mouse_pos is not None:
-            highlighted_object = render_draw.find_highlighted_object(
+            highlighted_object = render_stars.find_highlighted_object(
                 celestial_data,
                 render_viewer,
                 mouse_pos,

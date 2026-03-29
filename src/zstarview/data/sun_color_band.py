@@ -9,7 +9,7 @@ from typing import Tuple
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-from zstarview.render.draw_sky_disc import sky_color_samples
+from zstarview.render.sky_disc import sky_color_samples
 
 
 def _text_size(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.ImageFont) -> Tuple[int, int]:

@@ -8,16 +8,16 @@ import numpy as np
 from PySide6.QtCore import QPoint, QRect, QRectF, Qt
 from PySide6.QtGui import QFont, QImage, QPainter
 
-from ..types import CelestialData, ViewerData
+from ..types import CelestialData, ScreenGeometry, ViewerData
 from . import asterisms as render_asterisms
 from . import background as render_background
-from . import draw as render_draw
 from . import deep_sky_objects as render_deep_sky_objects
 from . import guides as render_guides
 from . import overlay_info as render_overlay_info
 from . import aircraft as render_aircraft
 from . import satellites as render_satellites
 from . import solar_system as render_solar_system
+from . import stars as render_stars
 from . import terrain as render_terrain
 from . import text as render_text
 
@@ -115,7 +115,7 @@ def _window_size(viewport_rect: QRect) -> tuple[int, int]:
 def render_base_scene_into_painter(
     painter: QPainter,
     *,
-    geometry: render_draw.ScreenGeometry,
+    geometry: ScreenGeometry,
     viewport_rect: QRect,
     scene: RenderSceneData,
     style: RenderStyle,
@@ -203,7 +203,7 @@ def render_base_scene_into_painter(
 def render_hud_overlay_into_painter(
     painter: QPainter,
     *,
-    geometry: render_draw.ScreenGeometry,
+    geometry: ScreenGeometry,
     viewport_rect: QRect,
     scene: RenderSceneData,
     style: RenderStyle,
@@ -251,7 +251,7 @@ def render_hud_overlay_into_painter(
 def draw_viewport_interaction_layers(
     painter: QPainter,
     *,
-    geometry: render_draw.ScreenGeometry,
+    geometry: ScreenGeometry,
     viewport_rect: QRect,
     scene: RenderSceneData,
     style: RenderStyle,
@@ -304,7 +304,7 @@ def clear_background_layer(painter: QPainter, viewport_rect: QRect) -> None:
 def draw_background_layer(
     painter: QPainter,
     *,
-    geometry: render_draw.ScreenGeometry,
+    geometry: ScreenGeometry,
     viewport_rect: QRect,
     scene: RenderSceneData,
     style: RenderStyle,
@@ -328,7 +328,7 @@ def draw_background_layer(
 def draw_guide_layer(
     painter: QPainter,
     *,
-    geometry: render_draw.ScreenGeometry,
+    geometry: ScreenGeometry,
     scene: RenderSceneData,
     style: RenderStyle,
 ) -> None:
@@ -356,7 +356,7 @@ def draw_guide_layer(
 def draw_sky_cloud_layers(
     painter: QPainter,
     *,
-    geometry: render_draw.ScreenGeometry,
+    geometry: ScreenGeometry,
     scene: RenderSceneData,
     style: RenderStyle,
     compositor: Any,
@@ -381,7 +381,7 @@ def draw_sky_cloud_layers(
 def draw_terrain_layers(
     painter: QPainter,
     *,
-    geometry: render_draw.ScreenGeometry,
+    geometry: ScreenGeometry,
     scene: RenderSceneData,
     style: RenderStyle,
     highlighted_object: Any | None,
@@ -444,7 +444,7 @@ def draw_terrain_layers(
 def draw_dso_hover_layer(
     painter: QPainter,
     *,
-    geometry: render_draw.ScreenGeometry,
+    geometry: ScreenGeometry,
     scene: RenderSceneData,
     style: RenderStyle,
     highlighted_dso: Any | None,
@@ -464,7 +464,7 @@ def draw_dso_hover_layer(
 def draw_urban_outline_layer(
     painter: QPainter,
     *,
-    geometry: render_draw.ScreenGeometry,
+    geometry: ScreenGeometry,
     scene: RenderSceneData,
     style: RenderStyle,
 ) -> None:
@@ -488,7 +488,7 @@ def draw_urban_outline_layer(
 def draw_aircraft_layer(
     painter: QPainter,
     *,
-    geometry: render_draw.ScreenGeometry,
+    geometry: ScreenGeometry,
     scene: RenderSceneData,
     style: RenderStyle,
     label_candidates: list[dict[str, Any]],
@@ -513,7 +513,7 @@ def draw_aircraft_layer(
 def draw_star_layer(
     painter: QPainter,
     *,
-    geometry: render_draw.ScreenGeometry,
+    geometry: ScreenGeometry,
     viewport_rect: QRect,
     scene: RenderSceneData,
     style: RenderStyle,
@@ -529,7 +529,7 @@ def draw_star_layer(
     )
     content_fov_deg = _content_fov_deg(scene)
     if low_w == win_w and low_h == win_h:
-        render_draw.draw_stars(
+        render_stars.draw_stars(
             painter,
             geometry,
             draw_data,
@@ -549,14 +549,14 @@ def draw_star_layer(
     low_painter.setRenderHint(QPainter.SmoothPixmapTransform, False)
     sx = low_w / max(1.0, float(win_w))
     sy = low_h / max(1.0, float(win_h))
-    low_geometry = render_draw.ScreenGeometry(
+    low_geometry = ScreenGeometry(
         center=(
             int(round(geometry.center[0] * sx)),
             int(round(geometry.center[1] * sy)),
         ),
         radius=max(1, int(round(geometry.radius * min(sx, sy)))),
     )
-    render_draw.draw_stars(
+    render_stars.draw_stars(
         low_painter,
         low_geometry,
         draw_data,
@@ -579,7 +579,7 @@ def draw_star_layer(
 def draw_planet_layer(
     painter: QPainter,
     *,
-    geometry: render_draw.ScreenGeometry,
+    geometry: ScreenGeometry,
     scene: RenderSceneData,
     style: RenderStyle,
     enlarge_moon: bool,
@@ -602,7 +602,7 @@ def draw_planet_layer(
 def draw_overlay_layer(
     painter: QPainter,
     *,
-    geometry: render_draw.ScreenGeometry,
+    geometry: ScreenGeometry,
     scene: RenderSceneData,
     style: RenderStyle,
     mouse_pos: QPoint | None,
@@ -639,7 +639,7 @@ def draw_overlay_layer(
 def draw_satellite_layer(
     painter: QPainter,
     *,
-    geometry: render_draw.ScreenGeometry,
+    geometry: ScreenGeometry,
     scene: RenderSceneData,
     style: RenderStyle,
     label_candidates: list[dict[str, Any]],
@@ -659,7 +659,7 @@ def draw_satellite_layer(
 def draw_hover_overlay_layer(
     painter: QPainter,
     *,
-    geometry: render_draw.ScreenGeometry,
+    geometry: ScreenGeometry,
     scene: RenderSceneData,
     style: RenderStyle,
     highlighted_object: Any | None,

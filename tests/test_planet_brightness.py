@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from zstarview.render.draw import planet_bloom_profile_from_vmag, planet_disc_style_from_vmag
+from zstarview.render.photometry import planet_bloom_profile_from_vmag, planet_disc_style_from_vmag
 
 
 def test_planet_disc_style_gets_stronger_for_brighter_vmag() -> None:
