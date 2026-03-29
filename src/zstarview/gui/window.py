@@ -464,6 +464,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.menu_button = QPushButton("", self)
         self.menu_button.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
         self.menu_button.setStyleSheet(self._menu_button_style_sheet())
+        self.menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.menu_button.clicked.connect(self.show_menu)
         self.menu_button.raise_()
 
@@ -646,8 +647,14 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             " background: transparent;"
             f" color: {text};"
             "}"
-            "QPushButton:hover { color: white; }"
-            "QPushButton:pressed { color: white; }"
+            "QPushButton:hover {"
+            " color: white;"
+            " background-color: rgba(255, 255, 255, 0.10);"
+            "}"
+            "QPushButton:pressed {"
+            " color: white;"
+            " background-color: rgba(255, 255, 255, 0.16);"
+            "}"
             "QPushButton:menu-indicator { image: none; }"
         )
 

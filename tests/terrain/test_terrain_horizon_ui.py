@@ -545,6 +545,7 @@ def test_menu_button_style_sheet_uses_translucent_background_for_night_preset() 
     style = SkyWindow._menu_button_style_sheet(dummy)
 
     assert "background: transparent;" in style
+    assert "background-color: rgba(255, 255, 255, 0.10);" in style
     assert "border-radius:" not in style
 
 
@@ -554,6 +555,7 @@ def test_menu_button_style_sheet_uses_light_background_for_day_preset() -> None:
     style = SkyWindow._menu_button_style_sheet(dummy)
 
     assert "background: transparent;" in style
+    assert "background-color: rgba(255, 255, 255, 0.16);" in style
 
 
 def test_size_grip_style_sheet_is_transparent() -> None:
