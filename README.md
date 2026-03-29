@@ -173,7 +173,7 @@ The CLI supports detailed startup configuration for location, time, and renderin
 | :------------------------------------------ | :-------------------------------------------------------------------------- | :------ |
 | `-h`, `--help`                              | Show this help message and exit.                                            |         |
 | `--window-geometry restore\|X,Y,W,H` | Set initial window geometry. Use `restore` to load the last saved position/size, or `X,Y,W,H` to specify explicit integers. Note: on Wayland, window position restore is not available (size restore works). |         |
-| `-t`, `--theme {night,day,white,black,transparent}`     | Theme preset for background and star contrast. `transparent` keeps the dome dark but translucent so the desktop/window background shows through more strongly.                              | `night` |
+| `-t`, `--theme {night,day,white,black}`     | Theme preset for background and star contrast.                              | `night` |
 | `--clear-long-lived-cache`                  | Troubleshooting option. Delete long-lived DEM and urban-outline caches before startup. If used again within 3 days, startup is refused and the app tells you when retry is allowed. | |
 
 \*1 When using non-realtime sky options (`--hours`, `--days`, `--datetime`), cloud, aircraft, and artificial satellite overlays are not shown.
@@ -235,7 +235,6 @@ Use `--theme` to change the background treatment and contrast style.
 * `black`: darker opaque background
 * `day`: bright sky/background treatment
 * `white`: brightest light theme
-* `transparent`: translucent dark dome and lighter outer background, intended for a frameless window that lets more of the desktop show through
 
 #### About the datetime option
 
