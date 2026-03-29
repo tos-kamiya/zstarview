@@ -9,7 +9,12 @@ from PySide6.QtCore import QPoint, QRect, QRectF, Qt
 from PySide6.QtGui import QFont, QImage, QPainter
 
 from ..types import CelestialData, ViewerData
+from . import background as render_background
 from . import draw as render_draw
+from . import guides as render_guides
+from . import overlay_info as render_overlay_info
+from . import terrain as render_terrain
+from . import text as render_text
 
 ORIENTATION_INTERACTION_STAR_VMAG_LIMIT = 4.0
 
@@ -258,7 +263,7 @@ def draw_viewport_interaction_layers(
             stars=hud.viewport_interaction_stars,
         )
     if style.show_guidelines:
-        render_draw.draw_sky_reference_lines(
+        render_guides.draw_sky_reference_lines(
             painter,
             geometry,
             scene.celestial_data,
@@ -272,7 +277,7 @@ def draw_viewport_interaction_layers(
         style=style,
         draw_vmag_limit=ORIENTATION_INTERACTION_STAR_VMAG_LIMIT,
     )
-    render_draw.draw_terrain_horizon_line(
+    render_terrain.draw_terrain_horizon_line(
         painter,
         geometry,
         scene.terrain_horizon_profile,
@@ -301,14 +306,14 @@ def draw_background_layer(
 ) -> None:
     if not style.show_background_gradient:
         return
-    render_draw.draw_radial_background(
+    render_background.draw_radial_background(
         painter,
         QRectF(viewport_rect),
         geometry,
         preset=style.visual_preset,
         content_fov_deg=_content_fov_deg(scene),
     )
-    render_draw.draw_window_frame(
+    render_background.draw_window_frame(
         painter,
         QRectF(viewport_rect),
         preset=style.visual_preset,
@@ -326,7 +331,7 @@ def draw_guide_layer(
     if not style.show_guidelines:
         return
     content_fov_deg = _content_fov_deg(scene)
-    render_draw.draw_direction_labels(
+    render_guides.draw_direction_labels(
         painter,
         geometry,
         scene.viewer.view_center,
@@ -335,7 +340,7 @@ def draw_guide_layer(
         preset=style.visual_preset,
         content_fov_deg=content_fov_deg,
     )
-    render_draw.draw_zenith_marker(
+    render_guides.draw_zenith_marker(
         painter,
         geometry,
         scene.viewer.view_center,
@@ -408,13 +413,13 @@ def draw_terrain_layers(
             draw_highlight=False,
         )
     if style.show_guidelines:
-        render_draw.draw_sky_reference_lines(
+        render_guides.draw_sky_reference_lines(
             painter,
             geometry,
             scene.celestial_data,
             scene.viewer,
         )
-    render_draw.draw_terrain_horizon_line(
+    render_terrain.draw_terrain_horizon_line(
         painter,
         geometry,
         scene.terrain_horizon_profile,
@@ -464,7 +469,7 @@ def draw_urban_outline_layer(
         geometry.radius * 2,
         style.star_render_expected_width,
     )
-    render_draw.draw_urban_outlines(
+    render_terrain.draw_urban_outlines(
         painter,
         geometry,
         scene.urban_outlines,
@@ -604,7 +609,7 @@ def draw_overlay_layer(
 ) -> None:
     if not style.show_overlay_info:
         return
-    render_draw.draw_overlay_info(
+    render_overlay_info.draw_overlay_info(
         painter,
         geometry,
         scene.celestial_data,
@@ -620,6 +625,11 @@ def draw_overlay_layer(
         preset=style.visual_preset,
         draw_static_info=True,
         draw_hover_info=False,
+        get_text_style_func=render_text.get_text_style,
+        draw_outlined_text_func=render_text.draw_outlined_text,
+        text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
+        dso_ellipse_polygon_func=render_draw._dso_ellipse_polygon,
+        dso_hover_size_gain=render_draw._DSO_HOVER_SIZE_GAIN,
     )
 
 
@@ -684,7 +694,7 @@ def draw_hover_overlay_layer(
         style=style,
         highlighted_dso=highlighted_dso,
     )
-    render_draw.draw_overlay_info(
+    render_overlay_info.draw_overlay_info(
         painter,
         geometry,
         scene.celestial_data,
@@ -697,6 +707,11 @@ def draw_hover_overlay_layer(
         preset=style.visual_preset,
         draw_static_info=False,
         draw_hover_info=True,
+        get_text_style_func=render_text.get_text_style,
+        draw_outlined_text_func=render_text.draw_outlined_text,
+        text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
+        dso_ellipse_polygon_func=render_draw._dso_ellipse_polygon,
+        dso_hover_size_gain=render_draw._DSO_HOVER_SIZE_GAIN,
     )
 
 
@@ -706,7 +721,7 @@ def draw_label_layer(
     style: RenderStyle,
     label_candidates: list[dict[str, Any]],
 ) -> None:
-    render_draw.draw_label_candidates(painter, label_candidates, style.text_font)
+    render_text._draw_label_candidates(painter, label_candidates, style.text_font)
 
 
 def draw_status_line(
@@ -718,7 +733,7 @@ def draw_status_line(
 ) -> None:
     if not hud.status_message:
         return
-    render_draw.draw_status_line_text(
+    render_text._draw_status_line_text(
         painter=painter,
         message=hud.status_message,
         status_line_font=style.status_line_font,

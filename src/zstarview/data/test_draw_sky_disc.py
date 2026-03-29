@@ -7,7 +7,7 @@ import argparse
 from PySide6.QtCore import QRect, Qt
 from PySide6.QtGui import QColor, QImage, QPainter
 
-from zstarview.render.draw import get_screen_geometry
+from zstarview.render.geometry import get_screen_geometry
 from zstarview.render.draw_sky_disc import draw_sky_color_disc
 
 
