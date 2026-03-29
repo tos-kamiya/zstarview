@@ -224,7 +224,7 @@ Examples: `-Z E`, `-Z ne`, `-Z SSW` (202.5°).
 #### About magnitude limit
 
 Use `-V magnitude` to limit the displayed stars to those brighter than the given magnitude.
-The default is `-V 6.0`. For example, specifying 10.0 will display about 324,000 stars.
+The default is `-V 6.0`. The bundled catalog currently supports up to `-V 10.5`, for which the candidate star set contains about 536,000 stars.
 Note that higher values will increase rendering time.
 
 #### About theme presets
