@@ -848,17 +848,17 @@ def test_draw_terrain_layers_only_scales_asterisms_and_terrain(monkeypatch) -> N
     expected_line_width_scale = pipeline_module.compute_star_render_upscale_factor(1200, 600)
 
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_deep_sky_objects,
         "draw_deep_sky_shapes",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_deep_sky_objects,
         "draw_dso_hover_info",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_asterisms,
         "draw_asterisms",
         lambda *_args, **kwargs: calls["asterisms"].append(float(kwargs.get("line_width_scale", 1.0))),
     )
@@ -920,17 +920,17 @@ def test_draw_terrain_layers_does_not_draw_dso_hover_info(monkeypatch) -> None:
     dso_hover_calls: list[str] = []
 
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_deep_sky_objects,
         "draw_deep_sky_shapes",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_deep_sky_objects,
         "draw_dso_hover_info",
         lambda *_args, **_kwargs: dso_hover_calls.append("dso-hover"),
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_asterisms,
         "draw_asterisms",
         lambda *_args, **_kwargs: None,
     )
@@ -1156,7 +1156,7 @@ def test_draw_background_layer_skips_gradient_when_disabled(monkeypatch) -> None
 def test_draw_hover_overlay_layer_enlarges_hovered_moon_by_name(monkeypatch) -> None:
     calls: list[str] = []
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_asterisms,
         "draw_asterisms",
         lambda *_args, **_kwargs: None,
     )
