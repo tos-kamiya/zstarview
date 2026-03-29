@@ -475,6 +475,74 @@ def draw_radial_background(
     painter.restore()
 
 
+def draw_window_frame(
+    painter: QPainter,
+    rect: QRectF,
+    *,
+    preset: str = "night",
+) -> None:
+    """Draw a broad but subtle frame around the window edges."""
+
+    frame_width = 16.0 if preset in ("day", "night") else 8.0
+    max_frame_width = 0.25 * min(float(rect.width()), float(rect.height()))
+    frame_width = min(frame_width, max_frame_width)
+    if frame_width <= 0.0:
+        return
+
+    frame_colors = {
+        "transparent": (28, 32, 38, 20),
+        "white": (254, 254, 255, 124),
+        "black": (34, 34, 36, 128),
+        "day": (250, 252, 255, 38),
+        "night": (30, 34, 40, 40),
+    }
+    rr, gg, bb, aa = frame_colors.get(preset, frame_colors["night"])
+    frame_color = QColor(rr, gg, bb, aa)
+
+    left = float(rect.left())
+    top = float(rect.top())
+    right = float(rect.right())
+    bottom = float(rect.bottom())
+
+    painter.save()
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(frame_color)
+    painter.drawRect(QRectF(left, top, frame_width, rect.height()))
+    painter.drawRect(QRectF(right - frame_width, top, frame_width, rect.height()))
+    painter.drawRect(QRectF(left + frame_width, top, max(0.0, rect.width() - 2.0 * frame_width), frame_width))
+    painter.drawRect(
+        QRectF(
+            left + frame_width,
+            bottom - frame_width,
+            max(0.0, rect.width() - 2.0 * frame_width),
+            frame_width,
+        )
+    )
+    menu_size = 20.0
+    inner_right = right - frame_width
+    inner_top = top + frame_width
+    painter.drawRect(
+        QRectF(
+            inner_right - menu_size,
+            inner_top,
+            menu_size,
+            menu_size,
+        )
+    )
+    grip_size = 20.0
+    inner_bottom = bottom - frame_width
+    painter.drawPolygon(
+        QPolygonF(
+            [
+                QPointF(inner_right, inner_bottom),
+                QPointF(inner_right - grip_size, inner_bottom),
+                QPointF(inner_right, inner_bottom - grip_size),
+            ]
+        )
+    )
+    painter.restore()
+
+
 def split_by_gaps(points: List[Tuple[float, float]]) -> List[List[Tuple[float, float]]]:
     """
     Split a polyline by large gaps to avoid drawing long, straight lines
@@ -2051,10 +2119,13 @@ def draw_overlay_info(
     text_color, outline_color = get_text_style(preset)
     outline_width = 3.0
 
-    line_spacing = QFontMetrics(text_font).lineSpacing()
+    font_metrics = QFontMetrics(text_font)
+    line_spacing = font_metrics.lineSpacing()
     line_height = int(line_spacing * 1.2)
     line_x = line_spacing
-    line_y = 0
+    sample_bounds = font_metrics.tightBoundingRect("Ag")
+    first_line_baseline_y = line_spacing - float(sample_bounds.top())
+    line_y = first_line_baseline_y - line_height
 
     def print_line(message: str):
         nonlocal line_x, line_y
