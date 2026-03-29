@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-03-29
+最終更新: 2026-03-30
 
 ## 1. この文書の位置づけ
 
@@ -246,10 +246,12 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `planets`
   - `satellites`
   - `aircraft`
-  - `overlay`
   - `labels`
   - `hover-overlay`
+  - `overlay`
   - `status`
+- ここでいう `overlay` は、地点名、地点高さ、観測者高さ、時刻、Alt/Az、`Vmag limit` などの static top-left overlay を指す。
+- static overlay は hover 系 HUD と同じ更新タイミングに揃えるため、ベース描画ではなく HUD 描画側で重ねる。
 - `guide` は方位ラベルと天頂マーカーを含む独立レイヤーであり、空色・雲合成の上、通常の hover/HUD オーバーレイより手前に置く。
 - 幾何学的な地平線、天の赤道、黄道も `show_guidelines` に従う guide 系表示として扱う。
 - `show_guidelines == False` のときは、guide レイヤー本体だけでなく、viewport interaction 中の sky reference line 描画もまとめて省略してよい。
@@ -262,6 +264,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - HUD 側には、少なくとも次を寄せる方向で整理する。
   - 恒星ホバー
   - DSO ホバー
+  - static top-left overlay
   - jump highlight
   - status line
 - `paintEvent()` は最終的に「ベースフレームをキャッシュし、その上に hover/HUD を都度重ねる」形を目指す。
@@ -270,14 +273,17 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 #### 4.3.4 hover/HUD 分離の現在位置
 
 - shared pipeline は、`render_base_scene_into_painter()` と `render_hud_overlay_into_painter()` に分かれている。
-- ベース描画は、`background`、`sky-cloud`、`guide`、`terrain`、`stars`、`planets`、`satellites`、`aircraft`、静的 overlay 情報、`labels` を担当する。
+- ベース描画は、`background`、`sky-cloud`、`guide`、`terrain`、`stars`、`planets`、`satellites`、`aircraft`、`labels` を担当する。
 - HUD 描画は、少なくとも次を担当する。
   - アステリズムの hover 強調
   - 月 hover 時の拡大上書き
   - DSO hover
   - 恒星・惑星 hover 情報
+  - static top-left overlay
   - jump highlight
   - status line
+- static top-left overlay は `mouse_pos` に応じて表示/非表示が切り替わるため、HUD 側で毎フレーム再評価する。
+- static overlay の hover 抑止は厳密 hit test ではなく、描画帯の `y` 範囲に入ったら消す粗い判定でよい。
 - 月の `5x` 拡大は、角半径の生値ではなく「通常時の見た目半径」を基準に適用する。
 - `guide` レイヤーはベース側に残し、マウス位置によるラベル回避には依存しない安定描画として扱う。
 - `gui/window_render.py` の frame cache はベース描画だけを保持し、hover/jump/status はキャッシュ後に都度上書きする。
@@ -297,7 +303,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 恒星レイヤは描画時に現在のウィンドウサイズから内部レンダリング面サイズを再計算する
   - 天球ディスク幅が `expected-render-width` 以下なら等倍描画し、それを超える場合は `expected-render-width * sqrt(disc_width / expected-render-width)` に従って内部描画面を縮小する
   - 縮小時は低解像度 `QImage` に恒星を描いてからウィンドウ全体へ拡大転写し、大型ウィンドウでの負荷を抑える
-  - 最終フレームの `QImage` キャッシュを持ち、geometry、描画入力、hover/ハイライト状態、ステータスメッセージ、interaction mode が不変なら前回フレームをそのまま再利用する
+  - ベースフレームの `QImage` キャッシュを持ち、geometry、描画入力、interaction mode などが不変なら前回ベースフレームをそのまま再利用する
+  - hover 対象、jump highlight、status line、static overlay の hover 抑止はキャッシュ後に HUD として重ねる
 - `src/zstarview/gui/window_updates.py`
   - バックグラウンド更新結果の反映
 - `src/zstarview/gui/sky_worker.py`
@@ -597,11 +604,12 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - ハイライト対象
   - 各更新パイプラインの UI 反映状態
 - `SkyWindow._frame_cache_image`
-  - `paintEvent` の最終出力を保持する `QImage`
-  - 同一フレームの再利用に使う
+  - `paintEvent` のベース描画部分を保持する `QImage`
+  - 同一ベースフレームの再利用に使う
 - `SkyWindow._frame_cache_key`
   - 最終フレームキャッシュの無効化条件をまとめたキー
-  - ウィンドウサイズ、`render_view_center`、描画トグル、`CelestialData`、空ディスク画像、雲画像、地形/都市アウトライン、hover、jump highlight、ステータス行文言などを含む
+  - ウィンドウサイズ、`render_view_center`、描画トグル、`CelestialData`、空ディスク画像、雲画像、地形/都市アウトラインなどを含む
+  - `mouse_pos`、hover 対象、jump highlight、ステータス行文言、static overlay の hover 抑止状態は含めない
 - jump highlight は恒星・ISS に加えて GUI place 検索で選ばれた固定地表点も含めてよい
 - `UrbanOutlineState`
   - 都市アウトライン点列
