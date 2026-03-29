@@ -122,8 +122,8 @@ def render_base_scene_into_painter(
     hud: RenderHudState,
     compositor: Any,
 ) -> None:
-    clear_background_layer(painter, viewport_rect)
-    draw_background_layer(
+    _clear_background_layer(painter, viewport_rect)
+    _draw_background_layer(
         painter,
         geometry=geometry,
         viewport_rect=viewport_rect,
@@ -131,21 +131,21 @@ def render_base_scene_into_painter(
         style=style,
     )
     sky_cloud_style = replace(style, cloud_disc_alpha=0.0) if hud.viewport_interaction_mode else style
-    draw_sky_cloud_layers(
+    _draw_sky_cloud_layers(
         painter,
         geometry=geometry,
         scene=scene,
         style=sky_cloud_style,
         compositor=compositor,
     )
-    draw_guide_layer(
+    _draw_guide_layer(
         painter,
         geometry=geometry,
         scene=scene,
         style=style,
     )
     if hud.viewport_interaction_mode:
-        draw_viewport_interaction_layers(
+        _draw_viewport_interaction_layers(
             painter,
             geometry=geometry,
             viewport_rect=viewport_rect,
@@ -157,7 +157,7 @@ def render_base_scene_into_painter(
 
     label_reservations: list[QRectF] = []
     label_candidates: list[dict[str, Any]] = []
-    draw_terrain_layers(
+    _draw_terrain_layers(
         painter,
         geometry=geometry,
         scene=scene,
@@ -166,14 +166,14 @@ def render_base_scene_into_painter(
         label_reservations=label_reservations,
         label_candidates=label_candidates,
     )
-    draw_star_layer(
+    _draw_star_layer(
         painter,
         geometry=geometry,
         viewport_rect=viewport_rect,
         scene=scene,
         style=style,
     )
-    draw_planet_layer(
+    _draw_planet_layer(
         painter,
         geometry=geometry,
         scene=scene,
@@ -181,21 +181,21 @@ def render_base_scene_into_painter(
         enlarge_moon=bool(style.enlarge_moon),
         label_candidates=label_candidates,
     )
-    draw_satellite_layer(
+    _draw_satellite_layer(
         painter,
         geometry=geometry,
         scene=scene,
         style=style,
         label_candidates=label_candidates,
     )
-    draw_aircraft_layer(
+    _draw_aircraft_layer(
         painter,
         geometry=geometry,
         scene=scene,
         style=style,
         label_candidates=label_candidates,
     )
-    draw_label_layer(
+    _draw_label_layer(
         painter,
         style=style,
         label_candidates=label_candidates,
@@ -212,7 +212,7 @@ def render_hud_overlay_into_painter(
     highlighted_dso: Any | None,
 ) -> None:
     if hud.viewport_interaction_mode:
-        draw_status_line(
+        _draw_status_line(
             painter,
             viewport_rect=viewport_rect,
             style=style,
@@ -220,7 +220,7 @@ def render_hud_overlay_into_painter(
         )
         return
 
-    draw_hover_overlay_layer(
+    _draw_hover_overlay_layer(
         painter,
         geometry=geometry,
         scene=scene,
@@ -228,7 +228,7 @@ def render_hud_overlay_into_painter(
         highlighted_object=highlighted_object,
         highlighted_dso=highlighted_dso,
     )
-    draw_overlay_layer(
+    _draw_overlay_layer(
         painter,
         geometry=geometry,
         scene=scene,
@@ -240,7 +240,7 @@ def render_hud_overlay_into_painter(
         label_reservations=[],
         label_candidates=[],
     )
-    draw_status_line(
+    _draw_status_line(
         painter,
         viewport_rect=viewport_rect,
         style=style,
@@ -248,7 +248,7 @@ def render_hud_overlay_into_painter(
     )
 
 
-def draw_viewport_interaction_layers(
+def _draw_viewport_interaction_layers(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
@@ -274,7 +274,7 @@ def draw_viewport_interaction_layers(
             scene.celestial_data,
             scene.viewer,
         )
-    draw_star_layer(
+    _draw_star_layer(
         painter,
         geometry=geometry,
         viewport_rect=viewport_rect,
@@ -293,7 +293,7 @@ def draw_viewport_interaction_layers(
     )
 
 
-def clear_background_layer(painter: QPainter, viewport_rect: QRect) -> None:
+def _clear_background_layer(painter: QPainter, viewport_rect: QRect) -> None:
     painter.save()
     painter.setCompositionMode(QPainter.CompositionMode_Clear)
     painter.fillRect(viewport_rect, Qt.transparent)
@@ -301,7 +301,7 @@ def clear_background_layer(painter: QPainter, viewport_rect: QRect) -> None:
     painter.restore()
 
 
-def draw_background_layer(
+def _draw_background_layer(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
@@ -325,7 +325,7 @@ def draw_background_layer(
     )
 
 
-def draw_guide_layer(
+def _draw_guide_layer(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
@@ -353,7 +353,7 @@ def draw_guide_layer(
     )
 
 
-def draw_sky_cloud_layers(
+def _draw_sky_cloud_layers(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
@@ -378,7 +378,7 @@ def draw_sky_cloud_layers(
     )
 
 
-def draw_terrain_layers(
+def _draw_terrain_layers(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
@@ -433,7 +433,7 @@ def draw_terrain_layers(
         line_width_scale=line_width_scale,
         content_fov_deg=content_fov_deg,
     )
-    draw_urban_outline_layer(
+    _draw_urban_outline_layer(
         painter,
         geometry=geometry,
         scene=scene,
@@ -441,7 +441,7 @@ def draw_terrain_layers(
     )
 
 
-def draw_dso_hover_layer(
+def _draw_dso_hover_layer(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
@@ -461,7 +461,7 @@ def draw_dso_hover_layer(
     )
 
 
-def draw_urban_outline_layer(
+def _draw_urban_outline_layer(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
@@ -485,7 +485,7 @@ def draw_urban_outline_layer(
     )
 
 
-def draw_aircraft_layer(
+def _draw_aircraft_layer(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
@@ -510,7 +510,7 @@ def draw_aircraft_layer(
     )
 
 
-def draw_star_layer(
+def _draw_star_layer(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
@@ -576,7 +576,7 @@ def draw_star_layer(
     painter.restore()
 
 
-def draw_planet_layer(
+def _draw_planet_layer(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
@@ -599,7 +599,7 @@ def draw_planet_layer(
     )
 
 
-def draw_overlay_layer(
+def _draw_overlay_layer(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
@@ -636,7 +636,7 @@ def draw_overlay_layer(
     )
 
 
-def draw_satellite_layer(
+def _draw_satellite_layer(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
@@ -656,7 +656,7 @@ def draw_satellite_layer(
     )
 
 
-def draw_hover_overlay_layer(
+def _draw_hover_overlay_layer(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
@@ -690,7 +690,7 @@ def draw_hover_overlay_layer(
         scene.viewer,
         highlighted_object,
     )
-    draw_dso_hover_layer(
+    _draw_dso_hover_layer(
         painter,
         geometry=geometry,
         scene=scene,
@@ -716,7 +716,7 @@ def draw_hover_overlay_layer(
     )
 
 
-def draw_label_layer(
+def _draw_label_layer(
     painter: QPainter,
     *,
     style: RenderStyle,
@@ -725,7 +725,7 @@ def draw_label_layer(
     render_text._draw_label_candidates(painter, label_candidates, style.text_font)
 
 
-def draw_status_line(
+def _draw_status_line(
     painter: QPainter,
     *,
     viewport_rect: QRect,
