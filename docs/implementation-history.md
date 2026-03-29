@@ -1,6 +1,6 @@
 # zstarview 実装履歴
 
-最終更新: 2026-03-22
+最終更新: 2026-03-30
 
 ## 1. この文書の位置づけ
 
@@ -25,13 +25,6 @@
 
 ## 3. TODO
 
-- 山頂ビュー用 dataset の作成フローを設計する
-  - 目的は「山そのものの完全地理データ」ではなく、「山名から山頂ビュー用の代表点へ解決する curated dataset」を作ることとする。
-  - 候補抽出は Wikipedia を起点に行い、地域代表性と知名度を重視して少数の山を選ぶ。
-  - 正規化には Wikidata を使い、`qid`、多言語名、別名、座標、標高を補う。
-  - 座標は厳密測量値ではなく、星空表示用の山頂ビュー代表点として妥当なものを採用する。
-  - 初版は `mountain_viewpoints.json` を別 dataset とし、`tower_viewpoints.json` とは分けて管理する。
-  - 将来的には mountain も tower と同じ viewpoint CLI から参照できる形を想定する。
 - GUI 上で時刻を前後できるダイナミックなタイムシフト操作を追加する
 - CLI 仕様と内部データ構造の対応表を設計書へ追加する
 - 必要に応じて `CloudController` と `SkyWindow` の責務境界を再評価する
@@ -104,6 +97,14 @@
   - `specification.md` を利用者視点の機能仕様へ整理した。
   - `design.md` をアーキテクチャ、責務、データ構造、処理フロー中心へ整理した。
   - `implementation-history.md` を時系列ノート専用に整理し、TODO と INPROGRESS を明示した。
+
+- 山頂ビューポイント dataset と解決経路の実装
+  - `mountain_viewpoints.json` を同梱 dataset として扱い、山名から山頂ビュー用の代表点へ解決できるようにした。
+  - mountain 側の dataset 生成は、Wikidata raw query をそのまま使わず、まず review 用候補 JSON に畳んでから curated seed と最終 viewpoint JSON へ進める方針にした。
+  - mountain viewpoint dataset は CLI 参照対象とし、一覧表示、名前一覧、JSON 出力を tower 系と同じ流儀で扱えるようにした。
+  - 通常起動の `location` 引数でも mountain viewpoint 名と Wikidata ID を受け付けるようにし、最近傍都市からタイムゾーンを補完する構成にした。
+  - 都市名との衝突を避けるため、`m/NAME` による明示プレフィックス解決を追加した。
+  - `tests/test_wikidata_mountain_candidates.py`、`tests/test_wikidata_mountain_viewpoints.py`、`tests/test_cli_mountain_options.py`、`tests/test_mountain_viewpoints.py`、startup resolution 系テストで回帰を確認した。
 
 - アステリズム線の FOV クリップ調整
   - アステリズム用のクリップ境界を独立定数化した。
@@ -418,6 +419,11 @@
   - 誤用防止のため、最後の実行日時を cache root に記録し、`3日` 以内の再実行は拒否するクールダウンを入れた。
   - GUI では拒否理由を splash に表示するようにした。
   - 手動削除先を OS 非依存で確認できるよう、`zstarview-export-image --print-cache-dir` を追加した。
+
+- mountain viewpoint dataset の補強
+  - Wikidata 由来の座標と標高を使って、著名な山を 12 件追加した。
+  - 既存の source policy を崩さず、同じ dataset 形式へ正規化できる山だけを追加する方針にした。
+  - mountain resolver と startup location resolution の両方で追加項目が解決できることをテストで確認した。
 
 ### 2026-03-27
 
