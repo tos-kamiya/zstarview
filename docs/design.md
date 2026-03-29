@@ -203,12 +203,15 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 ### 4.3 描画
 
-- `src/zstarview/render/draw.py`
-  - 恒星、惑星、ラベル、補助線、地平線関連の描画
-  - アステリズム線は大円弧をサンプルし、アステリズム専用の広い FOV 境界で円形クリップして描画
-  - 天の赤道、黄道、地平線は `(alt, az)` サンプル列から描画時に `render_view_center` 基準で投影する
-- `src/zstarview/render/draw_sky_disc.py`
+- `src/zstarview/render/stars.py`
+  - 恒星描画と hover object 選択
+- `src/zstarview/render/sky_disc.py`
   - sky color disc の生成
+- `src/zstarview/render/asterisms.py`
+  - アステリズム線の描画
+  - 大円弧をサンプルし、アステリズム専用の広い FOV 境界で円形クリップして描画
+- `src/zstarview/render/guides.py`
+  - 天の赤道、黄道、地平線などの補助線を `(alt, az)` サンプル列から描画時に `render_view_center` 基準で投影する
 - `src/zstarview/gui/composite.py`
   - 星空、雲、欠損ティント、地面色の合成
   - 雲ハッチ、縞密度生成、欠損マスク適用は NumPy ベースで進め、合成結果の出力段で `QImage` に戻す
@@ -451,7 +454,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 明示更新要求、latest-request-wins の適用
   - `wheretheiss.at` primary / CelesTrak fallback と失敗 backoff を前提にした fetch orchestration
   - 軌道要素取得結果の UI 反映
-- `src/zstarview/render/draw.py`
+- `src/zstarview/render/satellites.py`
   - 人工衛星マーカーの描画
   - 航空機と同系統の紫色、小型クロス、`ISS` の marker を担当
 - `src/zstarview/render/pipeline.py`
