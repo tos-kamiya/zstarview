@@ -479,7 +479,7 @@ def draw_window_frame(
 ) -> None:
     """Draw a broad but subtle frame around the window edges."""
 
-    frame_width = 16.0 if preset in ("day", "night") else 8.0 if preset in ("white", "black") else 1.0
+    frame_width = 16.0
     max_frame_width = 0.25 * min(float(rect.width()), float(rect.height()))
     frame_width = min(frame_width, max_frame_width)
     if frame_width <= 0.0:
@@ -548,7 +548,7 @@ def draw_window_frame(
         painter.drawLine(QPointF(menu_left, y), QPointF(menu_right, y))
     painter.setPen(Qt.PenStyle.NoPen)
     inner_right = right - frame_width
-    grip_size = 20.0
+    grip_size = 14.0
     inner_bottom = bottom - frame_width
     painter.drawPolygon(
         QPolygonF(
