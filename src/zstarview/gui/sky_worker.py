@@ -30,7 +30,7 @@ from ..astro import (
     calculate_visible_stars,
     eclipse_factor_from_info,
 )
-from ..render import draw_sky_disc
+from ..render import sky_disc
 from ..render import geometry as render_geometry
 from ..types import CelestialData, StarCatalogMeta
 
@@ -133,7 +133,7 @@ def compute_sky_snapshot(
         fixed_geom = render_geometry.get_screen_geometry(render_width, render_height, view_center[0])
         ef = eclipse_factor_from_info(solar_eclipse_info)
         if sky_disc_alpha > 0.0:
-            sky_disc_img = draw_sky_disc.draw_sky_color_disc(
+            sky_disc_img = sky_disc.draw_sky_color_disc(
                 fixed_geom,
                 view_center,
                 sun_altaz,
@@ -145,7 +145,7 @@ def compute_sky_snapshot(
                 image_size=(render_width, render_height),
             )
         else:
-            sky_disc_img = draw_sky_disc.draw_uniform_sky_color_disc(
+            sky_disc_img = sky_disc.draw_uniform_sky_color_disc(
                 fixed_geom,
                 view_center,
                 content_fov_deg=content_fov_deg,

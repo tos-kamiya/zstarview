@@ -23,7 +23,7 @@ from .photometry import compute_flare_profile as _compute_flare_profile, flare_s
 
 logger = logging.getLogger(__name__)
 
-# Keep these re-exports because focused render tests import photometry helpers via render.draw.
+# Keep these re-exports because focused render tests import photometry helpers via render.stars.
 compute_flare_profile = _compute_flare_profile
 flare_strength_from_vmag = _flare_strength_from_vmag
 

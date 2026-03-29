@@ -10,7 +10,7 @@ from ..astro import altaz_to_normalized_xy, resolve_star_source_ids
 from ..asterisms import ASTERISMS, pick_rotating_asterism
 from ..paths import TEXT_STYLES_BY_PRESET
 from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
-from .draw import _content_fov_deg_from_viewer
+from .stars import _content_fov_deg_from_viewer
 from .geometry import normalized_to_screen_xy
 from .guides import _clip_polyline_to_radius, _great_circle_altaz_points, split_by_gaps
 from .text import _text_bounds_at_baseline, draw_outlined_text, get_text_style
