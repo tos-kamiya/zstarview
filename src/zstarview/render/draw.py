@@ -47,8 +47,6 @@ from ..satellites.types import SatelliteOverlayPoint
 from ..types import ScreenGeometry, CelestialData, ViewerData, CelestialObject, PlanetBody, UrbanOutlinePolyline
 from ..astro import (
     altaz_to_normalized_xy,
-    lookup_star_name,
-    lookup_star_source_id,
     resolve_star_names,
     resolve_star_source_ids,
     is_in_fov,
