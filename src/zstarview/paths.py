@@ -51,10 +51,6 @@ NIGHT_TEXT_STYLE = TextStyle(
     text=(180, 180, 180),
     outline=(0, 0, 0, 76),
 )
-TRANSPARENT_TEXT_STYLE = TextStyle(
-    text=(246, 249, 255),
-    outline=(2, 2, 3, 200),
-)
 WHITE_TEXT_STYLE = TextStyle(
     text=(228, 158, 92),
     outline=(130, 74, 30, 120),
@@ -72,10 +68,6 @@ NIGHT_STATUS_LINE_STYLE = TextStyle(
     text=(190, 190, 160),
     outline=(0, 0, 0, 76),
 )
-TRANSPARENT_STATUS_LINE_STYLE = TextStyle(
-    text=(226, 228, 234),
-    outline=(2, 2, 3, 196),
-)
 WHITE_STATUS_LINE_STYLE = TextStyle(
     text=(218, 150, 86),
     outline=(126, 72, 30, 124),
@@ -92,14 +84,12 @@ BLACK_STATUS_LINE_STYLE = TextStyle(
 
 TEXT_STYLES_BY_PRESET = {
     "night": NIGHT_TEXT_STYLE,
-    "transparent": TRANSPARENT_TEXT_STYLE,
     "white": WHITE_TEXT_STYLE,
     "day": DAY_TEXT_STYLE,
     "black": BLACK_TEXT_STYLE,
 }
 STATUS_LINE_STYLES_BY_PRESET = {
     "night": NIGHT_STATUS_LINE_STYLE,
-    "transparent": TRANSPARENT_STATUS_LINE_STYLE,
     "white": WHITE_STATUS_LINE_STYLE,
     "day": DAY_STATUS_LINE_STYLE,
     "black": BLACK_STATUS_LINE_STYLE,

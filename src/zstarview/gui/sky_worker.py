@@ -35,7 +35,6 @@ from ..render import draw_sky_disc
 from ..types import CelestialData, StarCatalogMeta
 
 logger = logging.getLogger(__name__)
-TRANSPARENT_THEME_DISC_OPACITY = 0.45
 
 
 def compute_sky_snapshot(
@@ -140,7 +139,7 @@ def compute_sky_snapshot(
                 sun_altaz,
                 observer_lat_deg=lat,
                 alpha=sky_disc_alpha,
-                disc_opacity=TRANSPARENT_THEME_DISC_OPACITY if visual_preset == "transparent" else 1.0,
+                disc_opacity=1.0,
                 eclipse_factor=ef,
                 content_fov_deg=content_fov_deg,
                 image_size=(render_width, render_height),
@@ -151,7 +150,7 @@ def compute_sky_snapshot(
                 view_center,
                 content_fov_deg=content_fov_deg,
                 image_size=(render_width, render_height),
-                disc_opacity=TRANSPARENT_THEME_DISC_OPACITY if visual_preset == "transparent" else 1.0,
+                disc_opacity=1.0,
             )
 
     payload: Dict[str, object] = {"celestial": celestial_data, "sky_disc": sky_disc_img}

@@ -621,9 +621,6 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         if preset == "night":
             rr, gg, bb = (10, 12, 16)
             alpha = 0.70
-        elif preset == "transparent":
-            rr, gg, bb = (12, 14, 18)
-            alpha = 0.315
         elif preset == "black":
             rr, gg, bb = (6, 6, 6)
             alpha = 0.70

@@ -128,23 +128,6 @@ def test_radial_background_uses_black_inner_disc_for_all_main_themes() -> None:
         assert np.array_equal(center_rgb, np.array([4, 4, 4])), preset
 
 
-def test_radial_background_uses_translucent_inner_disc_for_transparent_theme() -> None:
-    geom = ScreenGeometry(center=(80, 80), radius=60)
-    rect = QRectF(0.0, 0.0, 160.0, 160.0)
-
-    img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
-    img.fill(0)
-    painter = QPainter(img)
-    draw_radial_background(painter, rect, geom, preset="transparent")
-    painter.end()
-
-    arr = qimage_to_np_rgba(img)
-    center_rgba = arr[80, 80, :].astype(int)
-
-    assert np.all(np.abs(center_rgba[:3] - np.array([4, 4, 4])) <= 1)
-    assert int(center_rgba[3]) == 112
-
-
 def test_radial_background_fades_between_content_fov_and_window_edge() -> None:
     geom = ScreenGeometry(center=(80, 80), radius=60)
     rect = QRectF(0.0, 0.0, 160.0, 160.0)
@@ -170,7 +153,7 @@ def test_window_frame_makes_edges_more_opaque_than_center() -> None:
     draw_window_frame(
         painter,
         QRectF(0.0, 0.0, 160.0, 160.0),
-        preset="transparent",
+        preset="black",
     )
     painter.end()
 
