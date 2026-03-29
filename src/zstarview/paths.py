@@ -37,63 +37,77 @@ WINDOW_WIDTH = 600
 WINDOW_HEIGHT = 600
 
 # UI constants
-TEXT_COLOR = (180, 180, 180)
 TEXT_FONT_SIZE = 11
-STATUS_LINE_COLOR = (190, 190, 160)
 STATUS_LINE_FONT_SIZE = 8
-LIGHT_LABEL_COLOR = (246, 249, 255)
-LIGHT_THEME_TEXT_COLOR = (218, 118, 58)
-LIGHT_THEME_STATUS_TEXT_COLOR = (204, 110, 54)
-LIGHT_THEME_LABEL_TEXT_RGBA = (232, 140, 80, 228)
-TEXT_OUTLINE_COLOR_NIGHT_RGBA = (0, 0, 0, 76)
+
+
+@dataclass(frozen=True, slots=True)
+class TextStyle:
+    text: tuple[int, ...]
+    outline: tuple[int, ...]
+
+
+NIGHT_TEXT_STYLE = TextStyle(
+    text=(180, 180, 180),
+    outline=(0, 0, 0, 76),
+)
+TRANSPARENT_TEXT_STYLE = TextStyle(
+    text=(246, 249, 255),
+    outline=(2, 2, 3, 212),
+)
+WHITE_TEXT_STYLE = TextStyle(
+    text=(220, 132, 66),
+    outline=(156, 92, 42, 132),
+)
+DAY_TEXT_STYLE = TextStyle(
+    text=(220, 132, 66),
+    outline=(148, 86, 38, 126),
+)
+BLACK_TEXT_STYLE = TextStyle(
+    text=(246, 249, 255),
+    outline=(2, 2, 3, 236),
+)
+
+NIGHT_STATUS_LINE_STYLE = TextStyle(
+    text=(190, 190, 160),
+    outline=(0, 0, 0, 76),
+)
+TRANSPARENT_STATUS_LINE_STYLE = TextStyle(
+    text=(226, 228, 234),
+    outline=(2, 2, 3, 208),
+)
+WHITE_STATUS_LINE_STYLE = TextStyle(
+    text=(208, 124, 62),
+    outline=(150, 88, 40, 136),
+)
+DAY_STATUS_LINE_STYLE = TextStyle(
+    text=(208, 124, 62),
+    outline=(142, 82, 36, 130),
+)
+BLACK_STATUS_LINE_STYLE = TextStyle(
+    text=(255, 220, 220),
+    outline=(2, 2, 3, 236),
+)
+
+
 TEXT_STYLES_BY_PRESET = {
-    "night": {
-        "text": TEXT_COLOR,
-        "outline": TEXT_OUTLINE_COLOR_NIGHT_RGBA,
-    },
-    "transparent": {
-        "text": LIGHT_LABEL_COLOR,
-        "outline": (2, 2, 3, 212),
-    },
-    "white": {
-        "text": LIGHT_THEME_TEXT_COLOR,
-        "outline": (42, 88, 148, 122),
-    },
-    "day": {
-        "text": LIGHT_THEME_TEXT_COLOR,
-        "outline": (36, 82, 144, 116),
-    },
-    "black": {
-        "text": LIGHT_LABEL_COLOR,
-        "outline": (2, 2, 3, 236),
-    },
+    "night": NIGHT_TEXT_STYLE,
+    "transparent": TRANSPARENT_TEXT_STYLE,
+    "white": WHITE_TEXT_STYLE,
+    "day": DAY_TEXT_STYLE,
+    "black": BLACK_TEXT_STYLE,
 }
 STATUS_LINE_STYLES_BY_PRESET = {
-    "night": {
-        "text": STATUS_LINE_COLOR,
-        "outline": TEXT_OUTLINE_COLOR_NIGHT_RGBA,
-    },
-    "transparent": {
-        "text": (226, 228, 234),
-        "outline": (2, 2, 3, 208),
-    },
-    "white": {
-        "text": LIGHT_THEME_STATUS_TEXT_COLOR,
-        "outline": (40, 82, 136, 126),
-    },
-    "day": {
-        "text": LIGHT_THEME_STATUS_TEXT_COLOR,
-        "outline": (34, 76, 130, 120),
-    },
-    "black": {
-        "text": (255, 220, 220),
-        "outline": (2, 2, 3, 236),
-    },
+    "night": NIGHT_STATUS_LINE_STYLE,
+    "transparent": TRANSPARENT_STATUS_LINE_STYLE,
+    "white": WHITE_STATUS_LINE_STYLE,
+    "day": DAY_STATUS_LINE_STYLE,
+    "black": BLACK_STATUS_LINE_STYLE,
 }
 
 HORIZON_LINE_COLOR = (72, 127, 71)
 TERRAIN_HORIZON_LINE_COLOR = (93, 76, 33)
-URBAN_DEBUG_LAYER_LINE_COLOR = LIGHT_LABEL_COLOR
+URBAN_OUTLINE_LAYER_LINE_COLOR = (246, 249, 255)
 CELESTIAL_EQUATOR_COLOR = (139, 139, 136)
 ECLIPTIC_COLOR = (236, 173, 2)
 

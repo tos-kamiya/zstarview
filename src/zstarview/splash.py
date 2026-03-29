@@ -10,19 +10,20 @@ from PySide6.QtWidgets import QApplication, QSplashScreen
 
 from .__about__ import __version__
 from .paths import APP_AUTHOR, APP_DISPLAY_NAME, APP_ICON_FILE, APP_ID, CACHE_PATH
+from .render.text import get_text_style
 
 logger = logging.getLogger(__name__)
 
 _cache_path = Path(CACHE_PATH)
 _cache_path.mkdir(parents=True, exist_ok=True)
 
-SPLASH_INFO_COLOR = QColor(18, 29, 48)
 SPLASH_WARN_COLOR = QColor(130, 82, 20)
 SPLASH_ERROR_COLOR = QColor(146, 34, 34)
 
 
 def _get_splash_palette(visual_preset: str) -> tuple[list[QColor], QColor, QColor]:
     """Return gradient colors, frame color, and default message color for splash."""
+    main_text_color, _ = get_text_style(visual_preset)
     if visual_preset == "night":
         return (
             [QColor(12, 14, 20), QColor(8, 10, 14), QColor(4, 6, 9)],
@@ -45,12 +46,12 @@ def _get_splash_palette(visual_preset: str) -> tuple[list[QColor], QColor, QColo
         return (
             [QColor(252, 252, 252), QColor(234, 234, 234), QColor(206, 206, 206)],
             QColor(158, 178, 206),
-            QColor(19, 31, 50),
+            main_text_color,
         )
     return (
         [QColor(240, 248, 255), QColor(226, 240, 252), QColor(206, 228, 246)],
         QColor(158, 182, 206),
-        QColor(18, 29, 48),
+        main_text_color,
     )
 
 
