@@ -10,6 +10,7 @@ from zstarview.render import background as render_background
 from zstarview.render import draw as render_draw
 from zstarview.render import guides as render_guides
 from zstarview.render import overlay_info as render_overlay_info
+from zstarview.render import solar_system as render_solar_system
 from zstarview.render import text as render_text
 from zstarview.satellites.types import SatelliteOverlayPoint
 from zstarview.types import CelestialData, PlanetBody, ScreenGeometry, StarCatalogMeta, ViewerData
@@ -125,16 +126,16 @@ def test_planets_are_drawn_with_disc_and_cross_markers(monkeypatch) -> None:
     def fake_draw_outlined_text(_painter, text, _pos, _font, *_args, **_kwargs) -> None:
         label_calls.append(text)
 
-    monkeypatch.setattr(render_draw, "draw_planet_disc", fake_draw_planet_disc)
-    monkeypatch.setattr(render_draw, "draw_planet_bloom", fake_draw_planet_bloom)
-    monkeypatch.setattr(render_draw, "draw_gauge_cross", fake_draw_gauge_cross)
-    monkeypatch.setattr(render_draw, "draw_outlined_text", fake_draw_outlined_text)
+    monkeypatch.setattr(render_solar_system, "draw_planet_disc", fake_draw_planet_disc)
+    monkeypatch.setattr(render_solar_system, "draw_planet_bloom", fake_draw_planet_bloom)
+    monkeypatch.setattr(render_solar_system, "draw_gauge_cross", fake_draw_gauge_cross)
+    monkeypatch.setattr(render_solar_system, "draw_outlined_text", fake_draw_outlined_text)
 
     mars = PlanetBody(name="mars", alt=45.0, az=180.0, symbol="♂", is_visible=True)
     viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
     geometry = ScreenGeometry(center=(100, 100), radius=80)
 
-    render_draw.draw_solar_system_bodies(
+    render_solar_system.draw_solar_system_bodies(
         painter=object(),
         geometry=geometry,
         celestial_data=_empty_celestial_data([mars]),
@@ -155,9 +156,9 @@ def test_planets_are_drawn_with_disc_and_cross_markers(monkeypatch) -> None:
 
 
 def test_planet_label_is_skipped_when_body_marker_is_outside_viewport(monkeypatch) -> None:
-    monkeypatch.setattr(render_draw, "draw_planet_disc", lambda *_a, **_k: None)
-    monkeypatch.setattr(render_draw, "draw_planet_bloom", lambda *_a, **_k: None)
-    monkeypatch.setattr(render_draw, "draw_gauge_cross", lambda *_a, **_k: None)
+    monkeypatch.setattr(render_solar_system, "draw_planet_disc", lambda *_a, **_k: None)
+    monkeypatch.setattr(render_solar_system, "draw_planet_bloom", lambda *_a, **_k: None)
+    monkeypatch.setattr(render_solar_system, "draw_gauge_cross", lambda *_a, **_k: None)
 
     image = QImage(40, 40, QImage.Format.Format_ARGB32_Premultiplied)
     painter = QPainter(image)
@@ -172,7 +173,7 @@ def test_planet_label_is_skipped_when_body_marker_is_outside_viewport(monkeypatc
         geometry = ScreenGeometry(center=(20, 20), radius=80)
         label_candidates: list[dict[str, object]] = []
 
-        render_draw.draw_solar_system_bodies(
+        render_solar_system.draw_solar_system_bodies(
             painter=painter,
             geometry=geometry,
             celestial_data=_empty_celestial_data([mars]),
@@ -210,8 +211,8 @@ def test_enlarge_moon_scales_display_radius_by_five(monkeypatch) -> None:
     def fake_draw_moon(_painter, _center, radius_px, *_args, **_kwargs) -> None:
         moon_draw_radii.append(float(radius_px))
 
-    monkeypatch.setattr(render_draw, "draw_moon", fake_draw_moon)
-    monkeypatch.setattr(render_draw, "draw_gauge_cross", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(render_solar_system, "draw_moon", fake_draw_moon)
+    monkeypatch.setattr(render_solar_system, "draw_gauge_cross", lambda *_args, **_kwargs: None)
 
     sun = PlanetBody(name="sun", alt=45.0, az=180.0, symbol="☉", is_visible=True)
     moon = PlanetBody(name="moon", alt=45.0, az=180.0, symbol="☾", is_visible=True)
@@ -219,7 +220,7 @@ def test_enlarge_moon_scales_display_radius_by_five(monkeypatch) -> None:
     geometry = ScreenGeometry(center=(100, 100), radius=80)
     celestial = _empty_celestial_data([sun, moon])
 
-    render_draw.draw_solar_system_bodies(
+    render_solar_system.draw_solar_system_bodies(
         painter=object(),
         geometry=geometry,
         celestial_data=celestial,
@@ -227,7 +228,7 @@ def test_enlarge_moon_scales_display_radius_by_five(monkeypatch) -> None:
         enlarge_moon=False,
         label_candidates=[],
     )
-    render_draw.draw_solar_system_bodies(
+    render_solar_system.draw_solar_system_bodies(
         painter=object(),
         geometry=geometry,
         celestial_data=celestial,
@@ -247,16 +248,16 @@ def test_planet_draw_and_hover_ignore_horizon_visibility_flag(monkeypatch) -> No
     def fake_draw_planet_disc(_painter, _pos, color, *, radius_px=1.0, alpha=255) -> None:
         disc_calls.append((radius_px, alpha, color.getRgb()))
 
-    monkeypatch.setattr(render_draw, "draw_planet_disc", fake_draw_planet_disc)
-    monkeypatch.setattr(render_draw, "draw_planet_bloom", lambda *_a, **_k: None)
-    monkeypatch.setattr(render_draw, "draw_gauge_cross", lambda *_a, **_k: None)
-    monkeypatch.setattr(render_draw, "draw_outlined_text", lambda *_a, **_k: None)
+    monkeypatch.setattr(render_solar_system, "draw_planet_disc", fake_draw_planet_disc)
+    monkeypatch.setattr(render_solar_system, "draw_planet_bloom", lambda *_a, **_k: None)
+    monkeypatch.setattr(render_solar_system, "draw_gauge_cross", lambda *_a, **_k: None)
+    monkeypatch.setattr(render_solar_system, "draw_outlined_text", lambda *_a, **_k: None)
 
     mars = PlanetBody(name="mars", alt=45.0, az=180.0, symbol="♂", is_visible=False)
     viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
     geometry = ScreenGeometry(center=(120, 90), radius=70)
 
-    render_draw.draw_solar_system_bodies(
+    render_solar_system.draw_solar_system_bodies(
         painter=object(),
         geometry=geometry,
         celestial_data=_empty_celestial_data([mars]),
