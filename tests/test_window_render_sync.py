@@ -1161,7 +1161,7 @@ def test_draw_hover_overlay_layer_enlarges_hovered_moon_by_name(monkeypatch) -> 
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_solar_system,
         "draw_hovered_moon_overlay",
         lambda *_args, **_kwargs: calls.append("moon-hover"),
     )

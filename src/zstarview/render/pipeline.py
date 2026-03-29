@@ -13,6 +13,7 @@ from . import background as render_background
 from . import draw as render_draw
 from . import guides as render_guides
 from . import overlay_info as render_overlay_info
+from . import solar_system as render_solar_system
 from . import terrain as render_terrain
 from . import text as render_text
 
@@ -580,7 +581,7 @@ def draw_planet_layer(
     enlarge_moon: bool,
     label_candidates: list[dict[str, Any]],
 ) -> None:
-    render_draw.draw_solar_system_bodies(
+    render_solar_system.draw_solar_system_bodies(
         painter,
         geometry,
         scene.celestial_data,
@@ -680,7 +681,7 @@ def draw_hover_overlay_layer(
             draw_base=False,
             draw_highlight=True,
         )
-    render_draw.draw_hovered_moon_overlay(
+    render_solar_system.draw_hovered_moon_overlay(
         painter,
         geometry,
         scene.celestial_data,
