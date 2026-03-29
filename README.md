@@ -145,6 +145,7 @@ zstarview-export-image Matsue -o matsue.png
 | `-c`, `--cloud-opacity CLOUD_OPACITY`       | Opacity of cloud rendering (0.0–1.0). Use 0.0 to disable. \*2                | `0.15`   |
 | `--cloud-missing-tint-opacity OPACITY`      | Opacity of missing-cloud-data yellow tint (0.0–1.0).                          | `0.176` |
 | `--satellite-opacity OPACITY`               | Opacity of the artificial satellite overlay (0.0–1.0). Use 0.0 to disable satellite element fetch and drawing for that run. | `0.5` |
+| `--show-guidelines-initial true\|false`     | Whether guideline overlays are shown at startup. This controls the geometric horizon, celestial equator, ecliptic, direction labels, and zenith marker. | `show` |
 | `--terrain-horizon-opacity OPACITY`         | Opacity of the terrain horizon polyline (0.0–1.0). Use 0.0 to disable DEM download, terrain-horizon calculation, and drawing. \*4 | `0.05` |
 | `--ground-tint-opacity OPACITY`             | Strength of the ground-color fill below the geometric/terrain horizon (0.0–1.0). | `0.1` |
 | `--urban-outline-opacity OPACITY`           | Opacity of the urban outline overlay (0.0–1.0). Use 0.0 to disable it for that run. | `0.2` |
@@ -208,6 +209,12 @@ Use these options to control initial overlay states without post-launch menu ope
 ```bash
 # Start with DSO hidden and asterisms visible
 zstarview --show-dso-initial false --show-asterisms-initial true Tokyo
+```
+
+To start with the guideline layer hidden:
+
+```bash
+zstarview --show-guidelines-initial false Tokyo
 ```
 
 #### About the view center options
@@ -408,6 +415,7 @@ The GUI supports direct keyboard and menu-based navigation, search, and overlay 
 * **M**: Toggle moon enlarged to 5x size
 * **D**: Toggle DSO overlays
 * **A**: Toggle asterism overlays
+* **G**: Toggle guideline overlays
 * **S**: Toggle sky-color shading between gradient and flat-disc mode
 * **C**: Toggle cloud overlays
 * **P**: Toggle aircraft overlay
@@ -430,6 +438,7 @@ From the hamburger menu (`☰`), you can use:
 * **Enlarge Moon**: Toggle moon enlarged to 5x size.
 * **DSO**: Toggle deep-sky object overlays on/off.
 * **Asterisms**: Toggle asterism overlays on/off (when enabled, dim overlays stay visible; hovering a member star brightens the matching asterism and shows its label).
+* **Guidelines**: Toggle the geometric horizon, celestial equator, ecliptic, direction labels, and zenith marker on/off.
 * **Sky Color Disc**: Switch between the full sky-color gradient and the flat dark-disc fallback.
 * **Clouds**: Toggle real-time cloud overlays on/off.
 * **Aircraft**: Toggle the OpenSky-based aircraft overlay on/off. If disabled from the CLI with `-a 0` / `--aircraft-opacity 0`, the menu item cannot re-enable it for that run.

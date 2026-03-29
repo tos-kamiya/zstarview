@@ -95,7 +95,7 @@ def _make_style(**overrides) -> pipeline_module.RenderStyle:
         "show_overlay_info": True,
         "show_dso": False,
         "show_asterisms": False,
-        "guideline_opacity": 1.0,
+        "show_guidelines": True,
         "enlarge_moon": False,
         "star_base_radius": 4.0,
         "star_visibility_boost": 1.0,
@@ -589,7 +589,7 @@ def test_render_frame_cache_key_ignores_hover_and_status_state() -> None:
     dummy.visual_preset = "night"
     dummy.show_dso = True
     dummy.show_asterisms = True
-    dummy.guideline_opacity = 1.0
+    dummy.show_guidelines = True
     dummy.enlarge_moon = False
     dummy.vmag_limit = 6.0
     dummy.sky_disc_alpha = 1.0
@@ -1029,7 +1029,7 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         show_overlay_info=True,
         show_dso=True,
         show_asterisms=False,
-        guideline_opacity=1.0,
+        show_guidelines=True,
         enlarge_moon=False,
         star_base_radius=4.0,
         star_visibility_boost=1.0,
