@@ -215,3 +215,21 @@ def test_window_frame_draws_top_right_menu_square_inside_frame() -> None:
     assert int(arr[20, 135, 3]) > 0
     assert int(arr[20, 118, 3]) == 0
     assert int(arr[45, 135, 3]) == 0
+
+
+def test_window_frame_draws_hamburger_icon_lines() -> None:
+    img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
+    img.fill(0)
+    painter = QPainter(img)
+    draw_window_frame(
+        painter,
+        QRectF(0.0, 0.0, 160.0, 160.0),
+        preset="white",
+    )
+    painter.end()
+
+    arr = qimage_to_np_rgba(img)
+
+    assert int(arr[14, 134, 3]) > 0
+    assert int(arr[18, 134, 3]) > 0
+    assert int(arr[22, 134, 3]) > 0

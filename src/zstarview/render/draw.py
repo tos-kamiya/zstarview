@@ -25,6 +25,7 @@ from ..paths import (
     BACKGROUND_FIELD_OF_VIEW_DEG1,
     BACKGROUND_FIELD_OF_VIEW_DEG2,
     TEXT_STYLES_BY_PRESET,
+    GUI_MENU_TEXT_COLOR,
     CELESTIAL_EQUATOR_COLOR,
     DIRECTIONS,
     ECLIPTIC_COLOR,
@@ -529,6 +530,15 @@ def draw_window_frame(
             menu_size,
         )
     )
+    menu_icon_color = QColor(*GUI_MENU_TEXT_COLOR)
+    menu_icon_pen = QPen(menu_icon_color, 2.0)
+    menu_icon_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    painter.setPen(menu_icon_pen)
+    menu_left = inner_right - menu_size + 5.0
+    menu_right = inner_right - 5.0
+    for y in (inner_top + 6.0, inner_top + 10.0, inner_top + 14.0):
+        painter.drawLine(QPointF(menu_left, y), QPointF(menu_right, y))
+    painter.setPen(Qt.PenStyle.NoPen)
     grip_size = 20.0
     inner_bottom = bottom - frame_width
     painter.drawPolygon(
