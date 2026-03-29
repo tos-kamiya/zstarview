@@ -432,3 +432,12 @@
   - `aircraft`、`clouddisc`、`satellites`、`terrain` のテストをサブディレクトリへまとめた。
   - 地点解決に直接属するテストを `tests/location_resolver/` に移した。
   - Wikidata、catalog、derived tile、建物 import などのデータ寄りテストを `tests/data/` に移した。
+
+### 2026-03-30
+
+- GUI 全体 opacity の試行と撤回
+  - Wayland 環境で GUI ウィンドウ全体へ opacity を掛ける手段として、Qt の top-level window opacity を使う案を試した。
+  - まず `WA_TranslucentBackground` を維持したまま whole-window opacity を検討し、その後、`WA_TranslucentBackground` を外して `setWindowOpacity()` を使う変種も試した。
+  - いずれも対象の Wayland 環境では見た目上の効果が確認できず、compositor / platform 実装依存の制約が強いと判断した。
+  - render 結果に後段 alpha を掛ける代替案も検討したが、popup や child widget との一貫性、既存の透過前提 UI との整合を考えると、その場での導入は見送った。
+  - 最終的に、この実験に関する未コミット実装は `git reset --hard` で破棄し、仕様書・設計書に一時的に追加した `--window-opacity` 記述も取り下げた。
