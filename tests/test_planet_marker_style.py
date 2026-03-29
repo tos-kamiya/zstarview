@@ -10,6 +10,7 @@ from zstarview.render import background as render_background
 from zstarview.render import draw as render_draw
 from zstarview.render import guides as render_guides
 from zstarview.render import overlay_info as render_overlay_info
+from zstarview.render import satellites as render_satellites
 from zstarview.render import solar_system as render_solar_system
 from zstarview.render import text as render_text
 from zstarview.satellites.types import SatelliteOverlayPoint
@@ -303,7 +304,7 @@ def test_satellite_overlay_draws_below_horizon_marker_when_in_fov(monkeypatch) -
     cross_calls: list[tuple[float, float]] = []
 
     monkeypatch.setattr(
-        render_draw,
+        render_satellites,
         "draw_gauge_cross",
         lambda _painter, _color, _center, *, scale=1.0, pen_width=1.0: cross_calls.append((scale, pen_width)),
     )
@@ -311,7 +312,7 @@ def test_satellite_overlay_draws_below_horizon_marker_when_in_fov(monkeypatch) -
     image = QImage(40, 40, QImage.Format.Format_ARGB32_Premultiplied)
     painter = QPainter(image)
     try:
-        render_draw.draw_satellite_overlay(
+        render_satellites.draw_satellite_overlay(
             painter=painter,
             geometry=ScreenGeometry(center=(20, 20), radius=20),
             satellite_points=[

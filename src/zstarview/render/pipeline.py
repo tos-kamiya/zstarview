@@ -13,6 +13,8 @@ from . import background as render_background
 from . import draw as render_draw
 from . import guides as render_guides
 from . import overlay_info as render_overlay_info
+from . import aircraft as render_aircraft
+from . import satellites as render_satellites
 from . import solar_system as render_solar_system
 from . import terrain as render_terrain
 from . import text as render_text
@@ -493,7 +495,7 @@ def draw_aircraft_layer(
         geometry.radius * 2,
         style.star_render_expected_width,
     )
-    render_draw.draw_aircraft_overlay(
+    render_aircraft.draw_aircraft_overlay(
         painter,
         geometry,
         scene.aircraft_overlay_points,
@@ -642,7 +644,7 @@ def draw_satellite_layer(
     style: RenderStyle,
     label_candidates: list[dict[str, Any]],
 ) -> None:
-    render_draw.draw_satellite_overlay(
+    render_satellites.draw_satellite_overlay(
         painter,
         geometry,
         scene.satellite_overlay_points,
