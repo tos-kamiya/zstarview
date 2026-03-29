@@ -47,6 +47,7 @@ class SkyWindowUserOptions:
     cloud_disc_alpha: float = 0.6
     satellite_opacity: float = 0.5
     aircraft_opacity: float = 0.6
+    guideline_opacity: float = 1.0
     terrain_horizon_opacity: float = 0.25
     urban_outline_opacity: float = 0.2
     ground_tint_opacity: float = 1.0
@@ -136,6 +137,7 @@ def prepare_window_user_options(
     cloud_disc_alpha: float = 0.6,
     satellite_opacity: float = 0.5,
     aircraft_opacity: float = 0.6,
+    guideline_opacity: float = 1.0,
     terrain_horizon_opacity: float = 0.25,
     urban_outline_opacity: float = 0.2,
     ground_tint_opacity: float = 1.0,
@@ -159,6 +161,7 @@ def prepare_window_user_options(
         cloud_disc_alpha=min(1.0, max(0.0, cloud_disc_alpha)),
         satellite_opacity=min(1.0, max(0.0, satellite_opacity)),
         aircraft_opacity=min(1.0, max(0.0, aircraft_opacity)),
+        guideline_opacity=min(1.0, max(0.0, guideline_opacity)),
         terrain_horizon_opacity=min(1.0, max(0.0, terrain_horizon_opacity)),
         urban_outline_opacity=min(1.0, max(0.0, urban_outline_opacity)),
         ground_tint_opacity=min(1.0, max(0.0, ground_tint_opacity)),

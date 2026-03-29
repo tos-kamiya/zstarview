@@ -26,6 +26,7 @@ def test_parse_args_overlay_visibility_defaults(monkeypatch) -> None:
     args = parse_args()
     assert args.show_dso_initial is None
     assert args.show_asterisms_initial is None
+    assert math.isclose(float(args.guideline_opacity), 1.0, rel_tol=0.0, abs_tol=1e-9)
 
 
 def test_parse_args_overlay_visibility_override(monkeypatch) -> None:
@@ -36,6 +37,12 @@ def test_parse_args_overlay_visibility_override(monkeypatch) -> None:
     args = parse_args()
     assert args.show_dso_initial is False
     assert args.show_asterisms_initial is True
+
+
+def test_parse_args_guideline_opacity_override(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "--guideline-opacity", "0"])
+    args = parse_args()
+    assert math.isclose(float(args.guideline_opacity), 0.0, rel_tol=0.0, abs_tol=1e-9)
 
 
 def test_parse_args_observer_height_override(monkeypatch) -> None:
