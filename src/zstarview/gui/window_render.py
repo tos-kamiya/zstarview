@@ -8,6 +8,7 @@ from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QImage, QPainter, QPaintEvent
 
 from ..astro import resolve_star_names
+from ..render import deep_sky_objects as render_deep_sky_objects
 from ..render import draw as render_draw
 from ..render import geometry as render_geometry
 from ..render import text as render_text
@@ -336,7 +337,7 @@ class SkyWindowRenderMixin:
                 geometry,
             )
             if self.show_dso:
-                highlighted_dso = render_draw.find_highlighted_dso(
+                highlighted_dso = render_deep_sky_objects.find_highlighted_dso(
                     celestial_data,
                     render_viewer,
                     mouse_pos,

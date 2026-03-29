@@ -7,6 +7,7 @@ from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen
 from ..paths import TEXT_STYLES_BY_PRESET
 from ..types import CelestialData, CelestialObject, PlanetBody, ScreenGeometry, ViewerData
 from .background import format_overlay_info_lines
+from .deep_sky_objects import _DSO_HOVER_SIZE_GAIN, _dso_ellipse_polygon
 
 
 def draw_overlay_info(
@@ -29,8 +30,6 @@ def draw_overlay_info(
     get_text_style_func: Callable[[str], Tuple[QColor, QColor]],
     draw_outlined_text_func: Callable[..., None],
     text_bounds_at_baseline_func: Callable[[str, QFont, QPointF], QRectF],
-    dso_ellipse_polygon_func: Callable[..., Any],
-    dso_hover_size_gain: float,
 ) -> None:
     """
     Draw overlay text information on the screen.
@@ -87,7 +86,7 @@ def draw_overlay_info(
             dso_label_color = QColor(*TEXT_STYLES_BY_PRESET["white"].text, 228)
         else:
             dso_label_color = QColor(110, 195, 255, 230)
-        hover_poly = dso_ellipse_polygon_func(
+        hover_poly = _dso_ellipse_polygon(
             alt_deg=alt,
             az_deg=az,
             major_arcmin=major_arcmin,
@@ -95,7 +94,7 @@ def draw_overlay_info(
             pa_deg=pa_deg if math.isfinite(pa_deg) else 0.0,
             viewer_data=viewer_data,
             geometry=geometry,
-            gain=dso_hover_size_gain,
+            gain=_DSO_HOVER_SIZE_GAIN,
             samples=60,
         )
         dso_name = str(dso_obj.get("name", "")).strip()

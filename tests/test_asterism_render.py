@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QApplication
 
 from zstarview.asterisms import Asterism
 from zstarview.paths import ASTERISM_CLIP_FIELD_OF_VIEW_DEG
+from zstarview.render import asterisms as render_asterisms
 from zstarview.render import draw as render_draw
 from zstarview.types import CelestialData, ScreenGeometry, StarCatalogMeta, ViewerData
 
@@ -80,9 +81,9 @@ def test_draw_asterisms_draws_dim_overlay_without_hover(monkeypatch) -> None:
     celestial_data = _celestial_data_with_asterism_star_positions()
     asterism = Asterism("test", "Test Asterism", (("HIP1", "HIP2"),))
 
-    monkeypatch.setattr(render_draw, "ASTERISMS", (asterism,))
+    monkeypatch.setattr(render_asterisms, "ASTERISMS", (asterism,))
 
-    render_draw.draw_asterisms(
+    render_asterisms.draw_asterisms(
         painter=painter,
         geometry=geometry,
         celestial_data=celestial_data,
@@ -102,10 +103,10 @@ def test_draw_asterisms_hover_adds_bright_overlay_and_label(monkeypatch) -> None
     asterism = Asterism("test", "Test Asterism", (("HIP1", "HIP2"),))
     label_candidates: list[dict[str, object]] = []
 
-    monkeypatch.setattr(render_draw, "ASTERISMS", (asterism,))
-    monkeypatch.setattr(render_draw, "pick_rotating_asterism", lambda *_args, **_kwargs: asterism)
+    monkeypatch.setattr(render_asterisms, "ASTERISMS", (asterism,))
+    monkeypatch.setattr(render_asterisms, "pick_rotating_asterism", lambda *_args, **_kwargs: asterism)
 
-    render_draw.draw_asterisms(
+    render_asterisms.draw_asterisms(
         painter=painter,
         geometry=geometry,
         celestial_data=celestial_data,
@@ -127,9 +128,9 @@ def test_draw_asterisms_deduplicates_shared_dim_segments(monkeypatch) -> None:
     first = Asterism("first", "First", (("HIP1", "HIP2"),))
     second = Asterism("second", "Second", (("HIP2", "HIP1"),))
 
-    monkeypatch.setattr(render_draw, "ASTERISMS", (first, second))
+    monkeypatch.setattr(render_asterisms, "ASTERISMS", (first, second))
 
-    render_draw.draw_asterisms(
+    render_asterisms.draw_asterisms(
         painter=painter,
         geometry=geometry,
         celestial_data=celestial_data,
@@ -180,9 +181,9 @@ def test_draw_asterisms_clips_with_asterism_specific_wide_fov(monkeypatch) -> No
     )
     asterism = Asterism("test", "Test Asterism", (("HIP1", "HIP2"),))
 
-    monkeypatch.setattr(render_draw, "ASTERISMS", (asterism,))
+    monkeypatch.setattr(render_asterisms, "ASTERISMS", (asterism,))
 
-    render_draw.draw_asterisms(
+    render_asterisms.draw_asterisms(
         painter=painter,
         geometry=geometry,
         celestial_data=celestial_data,
@@ -204,9 +205,9 @@ def test_draw_asterisms_scales_line_widths_with_star_upscale(monkeypatch) -> Non
     celestial_data = _celestial_data_with_asterism_star_positions()
     asterism = Asterism("test", "Test Asterism", (("HIP1", "HIP2"),))
 
-    monkeypatch.setattr(render_draw, "ASTERISMS", (asterism,))
+    monkeypatch.setattr(render_asterisms, "ASTERISMS", (asterism,))
 
-    render_draw.draw_asterisms(
+    render_asterisms.draw_asterisms(
         painter=painter,
         geometry=geometry,
         celestial_data=celestial_data,

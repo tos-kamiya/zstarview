@@ -3,7 +3,7 @@ from __future__ import annotations
 import astropy.time
 import numpy as np
 from PySide6.QtCore import QPoint, QPointF
-from PySide6.QtGui import QFont, QFontMetrics, QImage, QPainter
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QImage, QPainter
 from PySide6.QtWidgets import QApplication
 
 from zstarview.render import background as render_background
@@ -281,12 +281,12 @@ def test_draw_gauge_cross_respects_small_scale() -> None:
     image.fill(0)
     painter = QPainter(image)
     try:
-        render_guides.draw_gauge_cross(
-            painter,
-            render_draw.QColor(255, 255, 255, 255),
-            QPointF(32.0, 32.0),
-            scale=0.13,
-            pen_width=1.0,
+            render_guides.draw_gauge_cross(
+                painter,
+                QColor(255, 255, 255, 255),
+                QPointF(32.0, 32.0),
+                scale=0.13,
+                pen_width=1.0,
         )
     finally:
         painter.end()
@@ -407,8 +407,6 @@ def test_overlay_skips_label_for_planet(monkeypatch) -> None:
         get_text_style_func=render_text.get_text_style,
         draw_outlined_text_func=fake_draw_outlined_text,
         text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
-        dso_ellipse_polygon_func=render_draw._dso_ellipse_polygon,
-        dso_hover_size_gain=render_draw._DSO_HOVER_SIZE_GAIN,
     )
 
     assert "mars" not in label_calls
@@ -456,8 +454,6 @@ def test_overlay_info_includes_location_height_and_explicit_observer_height(monk
         get_text_style_func=render_text.get_text_style,
         draw_outlined_text_func=fake_draw_outlined_text,
         text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
-        dso_ellipse_polygon_func=render_draw._dso_ellipse_polygon,
-        dso_hover_size_gain=render_draw._DSO_HOVER_SIZE_GAIN,
     )
 
     assert "t/Tokyo Skytree" in label_calls
@@ -511,8 +507,6 @@ def test_overlay_info_first_line_top_margin_matches_left_margin(monkeypatch) -> 
         get_text_style_func=render_text.get_text_style,
         draw_outlined_text_func=fake_draw_outlined_text,
         text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
-        dso_ellipse_polygon_func=render_draw._dso_ellipse_polygon,
-        dso_hover_size_gain=render_draw._DSO_HOVER_SIZE_GAIN,
     )
 
     assert first_label_pos is not None
@@ -561,8 +555,6 @@ def test_overlay_info_hides_static_lines_when_mouse_is_in_overlay_y_range(monkey
         get_text_style_func=render_text.get_text_style,
         draw_outlined_text_func=fake_draw_outlined_text,
         text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
-        dso_ellipse_polygon_func=render_draw._dso_ellipse_polygon,
-        dso_hover_size_gain=render_draw._DSO_HOVER_SIZE_GAIN,
     )
 
     assert label_calls == []

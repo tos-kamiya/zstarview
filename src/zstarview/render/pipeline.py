@@ -9,8 +9,10 @@ from PySide6.QtCore import QPoint, QRect, QRectF, Qt
 from PySide6.QtGui import QFont, QImage, QPainter
 
 from ..types import CelestialData, ViewerData
+from . import asterisms as render_asterisms
 from . import background as render_background
 from . import draw as render_draw
+from . import deep_sky_objects as render_deep_sky_objects
 from . import guides as render_guides
 from . import overlay_info as render_overlay_info
 from . import aircraft as render_aircraft
@@ -392,7 +394,7 @@ def draw_terrain_layers(
         style.star_render_expected_width,
     )
     if style.show_dso:
-        render_draw.draw_deep_sky_shapes(
+        render_deep_sky_objects.draw_deep_sky_shapes(
             painter,
             geometry,
             scene.celestial_data,
@@ -400,7 +402,7 @@ def draw_terrain_layers(
             preset=style.visual_preset,
         )
     if style.show_asterisms:
-        render_draw.draw_asterisms(
+        render_asterisms.draw_asterisms(
             painter,
             geometry,
             scene.celestial_data,
@@ -449,7 +451,7 @@ def draw_dso_hover_layer(
 ) -> None:
     if not style.show_dso:
         return
-    render_draw.draw_dso_hover_info(
+    render_deep_sky_objects.draw_dso_hover_info(
         painter,
         geometry,
         scene.viewer,
@@ -631,8 +633,6 @@ def draw_overlay_layer(
         get_text_style_func=render_text.get_text_style,
         draw_outlined_text_func=render_text.draw_outlined_text,
         text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
-        dso_ellipse_polygon_func=render_draw._dso_ellipse_polygon,
-        dso_hover_size_gain=render_draw._DSO_HOVER_SIZE_GAIN,
     )
 
 
@@ -670,7 +670,7 @@ def draw_hover_overlay_layer(
         style.star_render_expected_width,
     )
     if style.show_asterisms and highlighted_object is not None:
-        render_draw.draw_asterisms(
+        render_asterisms.draw_asterisms(
             painter,
             geometry,
             scene.celestial_data,
@@ -713,8 +713,6 @@ def draw_hover_overlay_layer(
         get_text_style_func=render_text.get_text_style,
         draw_outlined_text_func=render_text.draw_outlined_text,
         text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
-        dso_ellipse_polygon_func=render_draw._dso_ellipse_polygon,
-        dso_hover_size_gain=render_draw._DSO_HOVER_SIZE_GAIN,
     )
 
 
