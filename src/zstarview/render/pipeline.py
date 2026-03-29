@@ -185,6 +185,11 @@ def render_base_scene_into_painter(
         style=style,
         label_candidates=label_candidates,
     )
+    draw_label_layer(
+        painter,
+        style=style,
+        label_candidates=label_candidates,
+    )
     draw_overlay_layer(
         painter,
         geometry=geometry,
@@ -194,11 +199,6 @@ def render_base_scene_into_painter(
         highlighted_dso=None,
         enlarge_moon=bool(style.enlarge_moon),
         label_reservations=label_reservations,
-        label_candidates=label_candidates,
-    )
-    draw_label_layer(
-        painter,
-        style=style,
         label_candidates=label_candidates,
     )
 
