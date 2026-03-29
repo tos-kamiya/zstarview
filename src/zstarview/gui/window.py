@@ -66,6 +66,7 @@ from ..paths import (
 from ..config import load_last_window_geometry, save_last_window_geometry
 from ..location_resolver import project_place_target_to_altaz, search_place_candidates
 from ..render import draw as render_draw
+from ..render import geometry as render_geometry
 from ..render.pipeline import compute_star_render_surface_size, compute_star_render_upscale_factor
 from ..types import ViewerData
 from .draggable_window import DraggableWindow
@@ -938,7 +939,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             return
 
         render_viewer = self._viewer_data_for_render()
-        geometry = render_draw.get_screen_geometry(self.width(), self.height(), render_viewer.view_center[0])
+        geometry = render_geometry.get_screen_geometry(self.width(), self.height(), render_viewer.view_center[0])
         highlighted = render_draw.find_highlighted_object(
             self.state.celestial_data,
             render_viewer,

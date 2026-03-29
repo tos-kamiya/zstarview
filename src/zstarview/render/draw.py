@@ -32,7 +32,7 @@ from ..satellite_constants import (
     SATELLITE_OVERLAY_MARKER_MAX_ALPHA,
 )
 from ..satellites.types import SatelliteOverlayPoint
-from ..types import ScreenGeometry, CelestialData, ViewerData, CelestialObject, PlanetBody, UrbanOutlinePolyline
+from ..types import ScreenGeometry, CelestialData, ViewerData, CelestialObject, PlanetBody
 from ..astro import (
     altaz_to_normalized_xy,
     resolve_star_names,
@@ -42,11 +42,16 @@ from ..astro import (
     calculate_moon_render_data,
 )
 from ..asterisms import ASTERISMS, ASTERISM_REQUIRED_SOURCE_IDS, pick_rotating_asterism
-from . import geometry as render_geometry
 from .geometry import (
     _altaz_to_normalized_xy_vectorized,
     _normalized_to_screen_xy_vectorized,
     normalized_to_screen_xy,
+)
+from .guides import (
+    _clip_polyline_to_radius,
+    _great_circle_altaz_points,
+    draw_gauge_cross,
+    split_by_gaps,
 )
 from .photometry import (
     compute_flare_profile as _compute_flare_profile,
@@ -57,7 +62,6 @@ from .photometry import (
     planet_disc_style_from_vmag,
     planet_marker_color,
 )
-from . import text as render_text
 from .text import (
     get_text_style,
     _rect_overlap_count,
@@ -66,49 +70,12 @@ from .text import (
 )
 from ..utils.image import generate_moon_phase_rgba
 from .qt_image import np_rgba_to_qimage
-from . import background as render_background
-from . import guides as render_guides
-from . import overlay_info as render_overlay_info
-from . import terrain as render_terrain
 
 logger = logging.getLogger(__name__)
 
-# Backward-compatible re-export for callers importing geometry helpers via render.draw.
-get_screen_geometry = render_geometry.get_screen_geometry
-get_text_style = render_text.get_text_style
-draw_label_candidates = render_text._draw_label_candidates
-draw_status_line_text = render_text._draw_status_line_text
-format_overlay_info_lines = render_background.format_overlay_info_lines
-draw_radial_background = render_background.draw_radial_background
-draw_window_frame = render_background.draw_window_frame
-split_by_gaps = render_guides.split_by_gaps
-_great_circle_altaz_points = render_guides._great_circle_altaz_points
-_clip_polyline_to_radius = render_guides._clip_polyline_to_radius
-draw_gauge_cross = render_guides.draw_gauge_cross
-draw_zenith_marker = render_guides.draw_zenith_marker
-draw_direction_labels = render_guides.draw_direction_labels
 # Keep these re-exports because focused render tests import photometry helpers via render.draw.
 compute_flare_profile = _compute_flare_profile
 flare_strength_from_vmag = _flare_strength_from_vmag
-
-
-def draw_sky_reference_lines(
-    painter: QPainter,
-    geometry: ScreenGeometry,
-    celestial_data: CelestialData,
-    viewer_data: ViewerData,
-    *,
-    content_fov_deg: float | None = None,
-) -> None:
-    render_guides.draw_sky_reference_lines(
-        painter,
-        geometry,
-        celestial_data,
-        viewer_data,
-        content_fov_deg=content_fov_deg,
-        is_in_fov_func=is_in_fov,
-        altaz_to_normalized_xy_func=altaz_to_normalized_xy,
-    )
 
 _star_render_cache: tuple[tuple, QImage] | None = None
 _MAG2_TO_MAG1_SIZE_SCALE = 10.0 ** 0.12
@@ -377,62 +344,6 @@ def find_highlighted_dso(
     return best if best is not None else near_best
 
 
-def draw_terrain_horizon_line(
-    painter: QPainter,
-    geometry: ScreenGeometry,
-    terrain_profile_altaz: list[tuple[float, float]] | None,
-    view_center: tuple[float, float],
-    *,
-    opacity: float = 1.0,
-    line_width_scale: float = 1.0,
-    content_fov_deg: float = FIELD_OF_VIEW_DEG,
-) -> None:
-    render_terrain.draw_terrain_horizon_line(
-        painter,
-        geometry,
-        terrain_profile_altaz,
-        view_center,
-        opacity=opacity,
-        line_width_scale=line_width_scale,
-        content_fov_deg=content_fov_deg,
-        is_in_fov_func=is_in_fov,
-        altaz_to_normalized_xy_func=altaz_to_normalized_xy,
-        normalized_to_screen_xy_func=normalized_to_screen_xy,
-        split_by_gaps_func=split_by_gaps,
-    )
-
-
-def draw_urban_outlines(
-    painter: QPainter,
-    geometry: ScreenGeometry,
-    urban_outlines: list[UrbanOutlinePolyline] | None,
-    view_center: tuple[float, float],
-    *,
-    opacity: float = 0.2,
-    line_width_scale: float = 1.0,
-    content_fov_deg: float = FIELD_OF_VIEW_DEG,
-) -> None:
-    render_terrain.draw_urban_outlines(
-        painter,
-        geometry,
-        urban_outlines,
-        view_center,
-        opacity=opacity,
-        line_width_scale=line_width_scale,
-        content_fov_deg=content_fov_deg,
-        is_in_fov_func=is_in_fov,
-        altaz_to_normalized_xy_func=altaz_to_normalized_xy,
-        normalized_to_screen_xy_func=normalized_to_screen_xy,
-        split_by_gaps_func=split_by_gaps,
-        minimal_azimuth_cover_func=_minimal_azimuth_cover,
-        urban_outline_height_alpha_scale_func=_urban_outline_height_alpha_scale,
-    )
-
-
-def _urban_outline_height_alpha_scale(height_m: float) -> float:
-    return render_terrain._urban_outline_height_alpha_scale(height_m)
-
-
 def draw_satellite_overlay(
     painter: QPainter,
     geometry: ScreenGeometry,
@@ -604,10 +515,6 @@ def _aircraft_line_width_px(distance_km: float, *, width_scale: float = 1.0) -> 
     if d <= 20.0:
         return 0.8 * aircraft_scale
     return 0.6 * aircraft_scale
-
-
-def _minimal_azimuth_cover(azimuth_deg: List[float]) -> Tuple[float, float, float]:
-    return render_terrain._minimal_azimuth_cover(azimuth_deg)
 
 
 def draw_asterisms(
@@ -1422,46 +1329,4 @@ def draw_hovered_moon_overlay(
         moon_altaz,
         True,
         text_color,
-    )
-
-
-def draw_overlay_info(
-    painter: QPainter,
-    geometry: ScreenGeometry,
-    celestial_data: CelestialData,
-    viewer_data: ViewerData,
-    vmag_limit: float,
-    enlarge_moon: bool,
-    highlighted_dso: Optional[Tuple[CelestialObject, QPointF]],
-    highlighted_object: Optional[Tuple[CelestialObject, QPointF]],
-    text_font: QFont,
-    label_candidates: Optional[List[Dict[str, Any]]] = None,
-    label_reservations: Optional[List[QRectF]] = None,
-    *,
-    mouse_pos: Optional[QPoint] = None,
-    preset: str = "night",
-    draw_static_info: bool = True,
-    draw_hover_info: bool = True,
-) -> None:
-    render_overlay_info.draw_overlay_info(
-        painter,
-        geometry,
-        celestial_data,
-        viewer_data,
-        vmag_limit,
-        enlarge_moon,
-        highlighted_dso,
-        highlighted_object,
-        text_font,
-        label_candidates=label_candidates,
-        label_reservations=label_reservations,
-        mouse_pos=mouse_pos,
-        preset=preset,
-        draw_static_info=draw_static_info,
-        draw_hover_info=draw_hover_info,
-        get_text_style_func=get_text_style,
-        draw_outlined_text_func=draw_outlined_text,
-        text_bounds_at_baseline_func=_text_bounds_at_baseline,
-        dso_ellipse_polygon_func=_dso_ellipse_polygon,
-        dso_hover_size_gain=_DSO_HOVER_SIZE_GAIN,
     )

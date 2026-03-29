@@ -52,7 +52,8 @@ from ..paths import (
     TEXT_FONT_PATH,
     TEXT_FONT_SIZE,
 )
-from ..render import draw as render_draw
+from ..render import background as render_background
+from ..render import geometry as render_geometry
 from ..render.pipeline import (
     RenderHudState,
     RenderSceneData,
@@ -571,7 +572,7 @@ def _render_image(
     painter.setRenderHint(QPainter.Antialiasing)
     painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
     try:
-        geometry = render_draw.get_screen_geometry(width, height, scene.viewer.view_alt_deg)
+        geometry = render_geometry.get_screen_geometry(width, height, scene.viewer.view_alt_deg)
         render_base_scene_into_painter(
             painter,
             geometry=geometry,
@@ -692,7 +693,7 @@ def _write_export_overlay_summary_to_stderr(
     celestial_data: CelestialData,
     vmag_limit: float,
 ) -> None:
-    lines = render_draw.format_overlay_info_lines(celestial_data, viewer_data, vmag_limit)
+    lines = render_background.format_overlay_info_lines(celestial_data, viewer_data, vmag_limit)
     sys.stderr.write("\n".join(lines) + "\n")
     sys.stderr.flush()
 

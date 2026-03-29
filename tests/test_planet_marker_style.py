@@ -6,7 +6,11 @@ from PySide6.QtCore import QPoint, QPointF
 from PySide6.QtGui import QFont, QFontMetrics, QImage, QPainter
 from PySide6.QtWidgets import QApplication
 
+from zstarview.render import background as render_background
 from zstarview.render import draw as render_draw
+from zstarview.render import guides as render_guides
+from zstarview.render import overlay_info as render_overlay_info
+from zstarview.render import text as render_text
 from zstarview.satellites.types import SatelliteOverlayPoint
 from zstarview.types import CelestialData, PlanetBody, ScreenGeometry, StarCatalogMeta, ViewerData
 
@@ -275,7 +279,7 @@ def test_draw_gauge_cross_respects_small_scale() -> None:
     image.fill(0)
     painter = QPainter(image)
     try:
-        render_draw.draw_gauge_cross(
+        render_guides.draw_gauge_cross(
             painter,
             render_draw.QColor(255, 255, 255, 255),
             QPointF(32.0, 32.0),
@@ -388,9 +392,7 @@ def test_overlay_skips_label_for_planet(monkeypatch) -> None:
     def fake_draw_outlined_text(_painter, text, *_args, **_kwargs) -> None:
         label_calls.append(text)
 
-    monkeypatch.setattr(render_draw, "draw_outlined_text", fake_draw_outlined_text)
-
-    render_draw.draw_overlay_info(
+    render_overlay_info.draw_overlay_info(
         painter,
         geometry,
         _empty_celestial_data([]),
@@ -400,6 +402,11 @@ def test_overlay_skips_label_for_planet(monkeypatch) -> None:
         highlighted_dso=None,
         highlighted_object=highlighted_object,
         text_font=QFont(),
+        get_text_style_func=render_text.get_text_style,
+        draw_outlined_text_func=fake_draw_outlined_text,
+        text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
+        dso_ellipse_polygon_func=render_draw._dso_ellipse_polygon,
+        dso_hover_size_gain=render_draw._DSO_HOVER_SIZE_GAIN,
     )
 
     assert "mars" not in label_calls
@@ -434,9 +441,7 @@ def test_overlay_info_includes_location_height_and_explicit_observer_height(monk
     def fake_draw_outlined_text(_painter, text, *_args, **_kwargs) -> None:
         label_calls.append(text)
 
-    monkeypatch.setattr(render_draw, "draw_outlined_text", fake_draw_outlined_text)
-
-    render_draw.draw_overlay_info(
+    render_overlay_info.draw_overlay_info(
         painter,
         geometry,
         _empty_celestial_data([]),
@@ -446,6 +451,11 @@ def test_overlay_info_includes_location_height_and_explicit_observer_height(monk
         highlighted_dso=None,
         highlighted_object=None,
         text_font=QFont(),
+        get_text_style_func=render_text.get_text_style,
+        draw_outlined_text_func=fake_draw_outlined_text,
+        text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
+        dso_ellipse_polygon_func=render_draw._dso_ellipse_polygon,
+        dso_hover_size_gain=render_draw._DSO_HOVER_SIZE_GAIN,
     )
 
     assert "t/Tokyo Skytree" in label_calls
@@ -486,9 +496,7 @@ def test_overlay_info_first_line_top_margin_matches_left_margin(monkeypatch) -> 
         if text == "Tokyo" and first_label_pos is None:
             first_label_pos = pos
 
-    monkeypatch.setattr(render_draw, "draw_outlined_text", fake_draw_outlined_text)
-
-    render_draw.draw_overlay_info(
+    render_overlay_info.draw_overlay_info(
         painter,
         geometry,
         _empty_celestial_data([]),
@@ -498,6 +506,11 @@ def test_overlay_info_first_line_top_margin_matches_left_margin(monkeypatch) -> 
         highlighted_dso=None,
         highlighted_object=None,
         text_font=text_font,
+        get_text_style_func=render_text.get_text_style,
+        draw_outlined_text_func=fake_draw_outlined_text,
+        text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
+        dso_ellipse_polygon_func=render_draw._dso_ellipse_polygon,
+        dso_hover_size_gain=render_draw._DSO_HOVER_SIZE_GAIN,
     )
 
     assert first_label_pos is not None
@@ -532,9 +545,7 @@ def test_overlay_info_hides_static_lines_when_mouse_is_in_overlay_y_range(monkey
     def fake_draw_outlined_text(_painter, text, *_args, **_kwargs) -> None:
         label_calls.append(text)
 
-    monkeypatch.setattr(render_draw, "draw_outlined_text", fake_draw_outlined_text)
-
-    render_draw.draw_overlay_info(
+    render_overlay_info.draw_overlay_info(
         painter,
         ScreenGeometry(center=(120, 90), radius=70),
         _empty_celestial_data([]),
@@ -545,6 +556,11 @@ def test_overlay_info_hides_static_lines_when_mouse_is_in_overlay_y_range(monkey
         highlighted_object=None,
         text_font=QFont(),
         mouse_pos=QPoint(300, 40),
+        get_text_style_func=render_text.get_text_style,
+        draw_outlined_text_func=fake_draw_outlined_text,
+        text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
+        dso_ellipse_polygon_func=render_draw._dso_ellipse_polygon,
+        dso_hover_size_gain=render_draw._DSO_HOVER_SIZE_GAIN,
     )
 
     assert label_calls == []
@@ -562,7 +578,7 @@ def test_format_overlay_info_lines_matches_static_overlay_order() -> None:
         show_observer_height=True,
     )
 
-    assert render_draw.format_overlay_info_lines(_empty_celestial_data([]), viewer, 6.0) == [
+    assert render_background.format_overlay_info_lines(_empty_celestial_data([]), viewer, 6.0) == [
         "t/Tokyo Skytree",
         "Tower height 634 m",
         "Observer height 12 m",

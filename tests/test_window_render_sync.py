@@ -7,6 +7,9 @@ from unittest.mock import Mock
 from PySide6.QtGui import QImage
 
 import zstarview.render.pipeline as pipeline_module
+import zstarview.render.guides as render_guides_module
+import zstarview.render.overlay_info as render_overlay_info_module
+import zstarview.render.terrain as render_terrain_module
 import zstarview.gui.window as window_module
 import zstarview.gui.window_render as window_render_module
 import zstarview.gui.window_updates as window_updates_module
@@ -500,27 +503,27 @@ def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(monkeypa
     calls: list[tuple[str, object]] = []
 
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_guides,
         "draw_sky_reference_lines",
         lambda *_args, **_kwargs: calls.append(("reference", None)),
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_terrain,
         "draw_terrain_horizon_line",
         lambda *_args, **_kwargs: calls.append(("terrain", None)),
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_terrain,
         "draw_urban_outlines",
         lambda *_args, **_kwargs: calls.append(("urban", None)),
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_guides,
         "draw_direction_labels",
         lambda *_args, **_kwargs: calls.append(("direction", None)),
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_guides,
         "draw_zenith_marker",
         lambda *_args, **_kwargs: calls.append(("zenith", None)),
     )
@@ -636,32 +639,32 @@ def test_render_frame_cache_key_ignores_hover_and_status_state() -> None:
 
 def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(monkeypatch) -> None:
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_guides,
         "draw_sky_reference_lines",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_terrain,
         "draw_terrain_horizon_line",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_terrain,
         "draw_urban_outlines",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_guides,
         "draw_direction_labels",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_guides,
         "draw_zenith_marker",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_terrain,
         "draw_urban_outlines",
         lambda *_args, **_kwargs: None,
     )
@@ -699,7 +702,7 @@ def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(monkey
 def test_draw_urban_outline_layer_skips_when_hidden(monkeypatch) -> None:
     calls: list[str] = []
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_terrain,
         "draw_urban_outlines",
         lambda *_args, **_kwargs: calls.append("urban"),
     )
@@ -723,12 +726,12 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     expected_line_width_scale = pipeline_module.compute_star_render_upscale_factor(1200, 600)
 
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_guides,
         "draw_sky_reference_lines",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_terrain,
         "draw_terrain_horizon_line",
         lambda _p, _g, profile, view_center, **kwargs: (
             seen_profiles.append(profile),
@@ -737,12 +740,12 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
         ),
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_guides,
         "draw_direction_labels",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_guides,
         "draw_zenith_marker",
         lambda *_args, **_kwargs: None,
     )
@@ -780,17 +783,17 @@ def test_draw_viewport_interaction_layers_skips_urban_outlines(monkeypatch) -> N
     seen_view_centers: list[object] = []
 
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_guides,
         "draw_sky_reference_lines",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_terrain,
         "draw_terrain_horizon_line",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_terrain,
         "draw_urban_outlines",
         lambda _p, _g, profile, view_center, **_kwargs: (
             seen_profiles.append(profile),
@@ -798,12 +801,12 @@ def test_draw_viewport_interaction_layers_skips_urban_outlines(monkeypatch) -> N
         ),
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_guides,
         "draw_direction_labels",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_guides,
         "draw_zenith_marker",
         lambda *_args, **_kwargs: None,
     )
@@ -860,22 +863,22 @@ def test_draw_terrain_layers_only_scales_asterisms_and_terrain(monkeypatch) -> N
         lambda *_args, **kwargs: calls["asterisms"].append(float(kwargs.get("line_width_scale", 1.0))),
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_terrain,
         "draw_terrain_horizon_line",
         lambda *_args, **kwargs: calls["terrain"].append(float(kwargs.get("line_width_scale", 1.0))),
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_guides,
         "draw_sky_reference_lines",
         lambda *_args, **kwargs: calls["reference"].append(float(kwargs.get("line_width_scale", 1.0))),
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_guides,
         "draw_direction_labels",
         lambda *_args, **kwargs: calls["direction"].append(float(kwargs.get("line_width_scale", 1.0))),
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_guides,
         "draw_zenith_marker",
         lambda *_args, **kwargs: calls["zenith"].append(float(kwargs.get("line_width_scale", 1.0))),
     )
@@ -932,22 +935,22 @@ def test_draw_terrain_layers_does_not_draw_dso_hover_info(monkeypatch) -> None:
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_guides,
         "draw_sky_reference_lines",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_terrain,
         "draw_terrain_horizon_line",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_guides,
         "draw_direction_labels",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        pipeline_module.render_guides,
         "draw_zenith_marker",
         lambda *_args, **_kwargs: None,
     )
@@ -1114,7 +1117,7 @@ def test_render_scene_hides_cloud_bitmap_during_viewport_interaction(monkeypatch
 
 def test_draw_overlay_layer_skips_static_info_when_disabled(monkeypatch) -> None:
     draw_overlay_info = Mock()
-    monkeypatch.setattr(pipeline_module.render_draw, "draw_overlay_info", draw_overlay_info)
+    monkeypatch.setattr(pipeline_module.render_overlay_info, "draw_overlay_info", draw_overlay_info)
 
     pipeline_module.draw_overlay_layer(
         painter=object(),
@@ -1135,8 +1138,8 @@ def test_draw_overlay_layer_skips_static_info_when_disabled(monkeypatch) -> None
 def test_draw_background_layer_skips_gradient_when_disabled(monkeypatch) -> None:
     draw_radial_background = Mock()
     draw_window_frame = Mock()
-    monkeypatch.setattr(pipeline_module.render_draw, "draw_radial_background", draw_radial_background)
-    monkeypatch.setattr(pipeline_module.render_draw, "draw_window_frame", draw_window_frame)
+    monkeypatch.setattr(pipeline_module.render_background, "draw_radial_background", draw_radial_background)
+    monkeypatch.setattr(pipeline_module.render_background, "draw_window_frame", draw_window_frame)
 
     pipeline_module.draw_background_layer(
         painter=object(),
@@ -1168,7 +1171,7 @@ def test_draw_hover_overlay_layer_enlarges_hovered_moon_by_name(monkeypatch) -> 
         lambda *_args, **_kwargs: calls.append("dso-hover"),
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        render_overlay_info_module,
         "draw_overlay_info",
         lambda *_args, **_kwargs: calls.append("overlay-info"),
     )
@@ -1188,17 +1191,6 @@ def test_draw_hover_overlay_layer_enlarges_hovered_moon_by_name(monkeypatch) -> 
 def test_draw_sky_reference_lines_uses_render_view_center_projection(monkeypatch) -> None:
     calls: list[tuple[float, float]] = []
 
-    monkeypatch.setattr(
-        window_render_module.render_draw,
-        "is_in_fov",
-        lambda *_args, **_kwargs: True,
-    )
-    monkeypatch.setattr(
-        window_render_module.render_draw,
-        "altaz_to_normalized_xy",
-        lambda alt, az, view_center: calls.append(view_center) or (alt, az),
-    )
-
     class _Painter:
         def save(self) -> None:
             pass
@@ -1212,7 +1204,7 @@ def test_draw_sky_reference_lines_uses_render_view_center_projection(monkeypatch
         def drawPolyline(self, *_args, **_kwargs) -> None:
             pass
 
-    window_render_module.render_draw.draw_sky_reference_lines(
+    render_guides_module.draw_sky_reference_lines(
         _Painter(),
         geometry=SimpleNamespace(center=(0, 0), radius=1),
         celestial_data=SimpleNamespace(
@@ -1227,28 +1219,14 @@ def test_draw_sky_reference_lines_uses_render_view_center_projection(monkeypatch
             view_center=(55.0, 200.0),
             observer_height_m=10.0,
         ),
+        is_in_fov_func=lambda *_args, **_kwargs: True,
+        altaz_to_normalized_xy_func=lambda alt, az, view_center: calls.append(view_center) or (alt, az),
     )
 
     assert calls == [(55.0, 200.0), (55.0, 200.0), (55.0, 200.0)]
 
 
 def test_draw_urban_outlines_simplifies_narrow_outline_to_horizontal_segment(monkeypatch) -> None:
-    monkeypatch.setattr(
-        window_render_module.render_draw,
-        "is_in_fov",
-        lambda *_args, **_kwargs: True,
-    )
-    monkeypatch.setattr(
-        window_render_module.render_draw,
-        "altaz_to_normalized_xy",
-        lambda alt, az, _view_center: (float(az), float(alt)),
-    )
-    monkeypatch.setattr(
-        window_render_module.render_draw,
-        "normalized_to_screen_xy",
-        lambda nx, ny, _geometry: (float(nx), float(ny)),
-    )
-
     class _Painter:
         def __init__(self) -> None:
             self.polylines: list[list[tuple[float, float]]] = []
@@ -1266,7 +1244,7 @@ def test_draw_urban_outlines_simplifies_narrow_outline_to_horizontal_segment(mon
             self.polylines.append([(poly.at(i).x(), poly.at(i).y()) for i in range(poly.count())])
 
     painter = _Painter()
-    window_render_module.render_draw.draw_urban_outlines(
+    render_terrain_module.draw_urban_outlines(
         painter,
         geometry=SimpleNamespace(center=(0, 0), radius=1),
         urban_outlines=[UrbanOutlinePolyline(points=[(-10.0, 10.0), (-12.0, 10.3)], height_m=50.0)],
@@ -1281,17 +1259,17 @@ def test_draw_urban_outlines_simplifies_narrow_outline_to_horizontal_segment(mon
 
 def test_draw_urban_outlines_reduces_alpha_for_short_buildings(monkeypatch) -> None:
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        render_terrain_module,
         "altaz_to_normalized_xy",
         lambda alt, az, _view_center: (float(az), float(alt)),
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        render_terrain_module,
         "normalized_to_screen_xy",
         lambda nx, ny, _geometry: (float(nx), float(ny)),
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        render_terrain_module,
         "is_in_fov",
         lambda *_args, **_kwargs: True,
     )
@@ -1313,7 +1291,7 @@ def test_draw_urban_outlines_reduces_alpha_for_short_buildings(monkeypatch) -> N
             pass
 
     painter = _Painter()
-    window_render_module.render_draw.draw_urban_outlines(
+    render_terrain_module.draw_urban_outlines(
         painter,
         geometry=SimpleNamespace(center=(0, 0), radius=1),
         urban_outlines=[
@@ -1329,17 +1307,17 @@ def test_draw_urban_outlines_reduces_alpha_for_short_buildings(monkeypatch) -> N
 
 def test_draw_terrain_horizon_line_scales_line_widths(monkeypatch) -> None:
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        render_terrain_module,
         "is_in_fov",
         lambda *_args, **_kwargs: True,
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        render_terrain_module,
         "altaz_to_normalized_xy",
         lambda alt, az, _view_center: (float(az), float(alt)),
     )
     monkeypatch.setattr(
-        window_render_module.render_draw,
+        render_terrain_module,
         "normalized_to_screen_xy",
         lambda nx, ny, _geometry: (float(nx), float(ny)),
     )
@@ -1361,13 +1339,16 @@ def test_draw_terrain_horizon_line_scales_line_widths(monkeypatch) -> None:
             pass
 
     painter = _Painter()
-    window_render_module.render_draw.draw_terrain_horizon_line(
+    render_terrain_module.draw_terrain_horizon_line(
         painter,
         geometry=SimpleNamespace(center=(0, 0), radius=1),
         terrain_profile_altaz=[(0.0, 0.0), (0.1, 0.1)],
         view_center=(45.0, 180.0),
         opacity=0.38,
         line_width_scale=2.0,
+        is_in_fov_func=lambda *_args, **_kwargs: True,
+        altaz_to_normalized_xy_func=lambda alt, az, _view_center: (float(az), float(alt)),
+        normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
     )
 
     assert painter.pen_widths[:2] == [6.0, 2.0]

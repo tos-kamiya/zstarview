@@ -30,8 +30,8 @@ from ..astro import (
     calculate_visible_stars,
     eclipse_factor_from_info,
 )
-from ..render import draw as render_draw
 from ..render import draw_sky_disc
+from ..render import geometry as render_geometry
 from ..types import CelestialData, StarCatalogMeta
 
 logger = logging.getLogger(__name__)
@@ -130,7 +130,7 @@ def compute_sky_snapshot(
     if sun_altaz is not None:
         render_width = max(2, int(render_width_px or sky_disc_base_size))
         render_height = max(2, int(render_height_px or sky_disc_base_size))
-        fixed_geom = render_draw.get_screen_geometry(render_width, render_height, view_center[0])
+        fixed_geom = render_geometry.get_screen_geometry(render_width, render_height, view_center[0])
         ef = eclipse_factor_from_info(solar_eclipse_info)
         if sky_disc_alpha > 0.0:
             sky_disc_img = draw_sky_disc.draw_sky_color_disc(

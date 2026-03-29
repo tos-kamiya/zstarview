@@ -9,6 +9,8 @@ from PySide6.QtGui import QImage, QPainter, QPaintEvent
 
 from ..astro import resolve_star_names
 from ..render import draw as render_draw
+from ..render import geometry as render_geometry
+from ..render import text as render_text
 from ..render.pipeline import (
     RenderSceneData,
     RenderHudState,
@@ -255,7 +257,7 @@ class SkyWindowRenderMixin:
         try:
             celestial_data = self.state.celestial_data
             if celestial_data is None:
-                loading_color, _ = render_draw.get_text_style(self.visual_preset)
+                loading_color, _ = render_text.get_text_style(self.visual_preset)
                 painter.setPen(loading_color)
                 painter.setFont(self.text_font)
                 painter.drawText(
@@ -266,7 +268,7 @@ class SkyWindowRenderMixin:
                 return image
 
             render_viewer = self._viewer_data_for_render()
-            geometry = render_draw.get_screen_geometry(
+            geometry = render_geometry.get_screen_geometry(
                 self.width(),
                 self.height(),
                 render_viewer.view_center[0],
@@ -311,7 +313,7 @@ class SkyWindowRenderMixin:
 
         celestial_data = self.state.celestial_data
         if celestial_data is None:
-            loading_color, _ = render_draw.get_text_style(self.visual_preset)
+            loading_color, _ = render_text.get_text_style(self.visual_preset)
             painter.setPen(loading_color)
             painter.setFont(self.text_font)
             painter.drawText(
@@ -321,7 +323,7 @@ class SkyWindowRenderMixin:
 
         render_viewer = self._viewer_data_for_render()
         alt = render_viewer.view_center[0]
-        geometry = render_draw.get_screen_geometry(self.width(), self.height(), alt)
+        geometry = render_geometry.get_screen_geometry(self.width(), self.height(), alt)
 
         highlighted_object = None
         highlighted_dso = None

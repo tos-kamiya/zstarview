@@ -2,7 +2,8 @@ import numpy as np
 from PySide6.QtCore import QRectF
 from PySide6.QtGui import QImage, QPainter
 
-from zstarview.render.draw import draw_radial_background, draw_window_frame, get_screen_geometry
+from zstarview.render.background import draw_radial_background, draw_window_frame
+from zstarview.render.geometry import get_screen_geometry
 from zstarview.render.draw_sky_disc import draw_sky_color_disc, draw_uniform_sky_color_disc
 from zstarview.types import ScreenGeometry
 from zstarview.render.qt_image import qimage_to_np_rgba
