@@ -2,7 +2,7 @@ import numpy as np
 from PySide6.QtCore import QRectF
 from PySide6.QtGui import QImage, QPainter
 
-from zstarview.render.draw import draw_radial_background, get_screen_geometry
+from zstarview.render.draw import draw_radial_background, draw_window_frame, get_screen_geometry
 from zstarview.render.draw_sky_disc import draw_sky_color_disc, draw_uniform_sky_color_disc
 from zstarview.types import ScreenGeometry
 from zstarview.render.qt_image import qimage_to_np_rgba
@@ -161,3 +161,57 @@ def test_radial_background_fades_between_content_fov_and_window_edge() -> None:
     assert int(arr[13, 80, 3]) > 0
     # Toward the window corner, the fade should become more transparent.
     assert int(arr[10, 10, 3]) < int(arr[13, 80, 3])
+
+
+def test_window_frame_makes_edges_more_opaque_than_center() -> None:
+    img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
+    img.fill(0)
+    painter = QPainter(img)
+    draw_window_frame(
+        painter,
+        QRectF(0.0, 0.0, 160.0, 160.0),
+        preset="transparent",
+    )
+    painter.end()
+
+    arr = qimage_to_np_rgba(img)
+
+    assert int(arr[1, 80, 3]) > 0
+    assert int(arr[1, 80, 3]) > int(arr[80, 80, 3])
+    assert int(arr[80, 1, 3]) > int(arr[80, 80, 3])
+
+
+def test_window_frame_draws_bottom_right_grip_triangle_inside_frame() -> None:
+    img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
+    img.fill(0)
+    painter = QPainter(img)
+    draw_window_frame(
+        painter,
+        QRectF(0.0, 0.0, 160.0, 160.0),
+        preset="white",
+    )
+    painter.end()
+
+    arr = qimage_to_np_rgba(img)
+
+    assert int(arr[147, 147, 3]) > 0
+    assert int(arr[134, 147, 3]) == 0
+    assert int(arr[147, 134, 3]) == 0
+
+
+def test_window_frame_draws_top_right_menu_square_inside_frame() -> None:
+    img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
+    img.fill(0)
+    painter = QPainter(img)
+    draw_window_frame(
+        painter,
+        QRectF(0.0, 0.0, 160.0, 160.0),
+        preset="white",
+    )
+    painter.end()
+
+    arr = qimage_to_np_rgba(img)
+
+    assert int(arr[20, 135, 3]) > 0
+    assert int(arr[20, 118, 3]) == 0
+    assert int(arr[45, 135, 3]) == 0

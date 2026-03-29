@@ -3,7 +3,7 @@ from __future__ import annotations
 import astropy.time
 import numpy as np
 from PySide6.QtCore import QPoint, QPointF
-from PySide6.QtGui import QFont, QImage, QPainter
+from PySide6.QtGui import QFont, QFontMetrics, QImage, QPainter
 from PySide6.QtWidgets import QApplication
 
 from zstarview.render import draw as render_draw
@@ -456,6 +456,56 @@ def test_overlay_info_includes_location_height_and_explicit_observer_height(monk
     assert label_calls.index("Observer height 12 m") < label_calls.index("2026-02-27 00:00:00 UTC")
     assert label_calls.index("2026-02-27 00:00:00 UTC") < label_calls.index("Alt 45°  Az 180° (S)")
     assert label_calls.index("Alt 45°  Az 180° (S)") < label_calls.index("Vmag limit 6.0")
+
+
+def test_overlay_info_first_line_top_margin_matches_left_margin(monkeypatch) -> None:
+    class DummyPainter:
+        def setPen(self, *_args, **_kwargs) -> None:
+            pass
+
+        def setBrush(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawEllipse(self, *_args, **_kwargs) -> None:
+            pass
+
+    painter = DummyPainter()
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+    )
+    geometry = ScreenGeometry(center=(120, 90), radius=70)
+    text_font = QFont()
+
+    first_label_pos = None
+
+    def fake_draw_outlined_text(_painter, text, pos, *_args, **_kwargs) -> None:
+        nonlocal first_label_pos
+        if text == "Tokyo" and first_label_pos is None:
+            first_label_pos = pos
+
+    monkeypatch.setattr(render_draw, "draw_outlined_text", fake_draw_outlined_text)
+
+    render_draw.draw_overlay_info(
+        painter,
+        geometry,
+        _empty_celestial_data([]),
+        viewer,
+        vmag_limit=6.0,
+        enlarge_moon=False,
+        highlighted_dso=None,
+        highlighted_object=None,
+        text_font=text_font,
+    )
+
+    assert first_label_pos is not None
+    fm = QFontMetrics(text_font)
+    bounds = fm.tightBoundingRect("Ag")
+    top_margin = float(first_label_pos.y()) + float(bounds.top())
+    left_margin = float(fm.lineSpacing())
+    assert abs(top_margin - left_margin) <= 1.0
 
 
 def test_format_overlay_info_lines_matches_static_overlay_order() -> None:

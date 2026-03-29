@@ -539,13 +539,13 @@ def test_show_menu_syncs_actions_before_opening_menu() -> None:
     ]
 
 
-def test_menu_button_style_sheet_uses_opaque_background_for_night_preset() -> None:
+def test_menu_button_style_sheet_uses_translucent_background_for_night_preset() -> None:
     dummy = SimpleNamespace(visual_preset="night")
 
     style = SkyWindow._menu_button_style_sheet(dummy)
 
-    assert "background-color: #0a0c10;" in style
-    assert "border-radius: 6px;" in style
+    assert "background: transparent;" in style
+    assert "border-radius:" not in style
 
 
 def test_menu_button_style_sheet_uses_light_background_for_day_preset() -> None:
@@ -553,7 +553,15 @@ def test_menu_button_style_sheet_uses_light_background_for_day_preset() -> None:
 
     style = SkyWindow._menu_button_style_sheet(dummy)
 
-    assert "background-color: #f0f8ff;" in style
+    assert "background: transparent;" in style
+
+
+def test_size_grip_style_sheet_is_transparent() -> None:
+    dummy = SimpleNamespace(visual_preset="transparent")
+
+    style = SkyWindow._size_grip_style_sheet(dummy)
+
+    assert "background: transparent;" in style
 
 
 def test_update_viewport_interaction_stars_uses_bright_limit(monkeypatch) -> None:

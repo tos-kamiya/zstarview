@@ -282,6 +282,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         # --- UI Widgets ---
         self.size_grip = QSizeGrip(self)
         self.size_grip.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
+        self.size_grip.setStyleSheet(self._size_grip_style_sheet())
         self.size_grip.raise_()
         self._action_enlarge_moon: Optional[QAction] = None
         self._action_toggle_clouds: Optional[QAction] = None
@@ -618,33 +619,44 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
     def _menu_button_background_hex_for_preset(preset: str) -> str:
         if preset == "night":
             rr, gg, bb = (10, 12, 16)
-            return f"#{rr:02x}{gg:02x}{bb:02x}"
+            alpha = 0.70
         elif preset == "transparent":
-            return "rgba(12, 14, 18, 0.45)"
+            rr, gg, bb = (12, 14, 18)
+            alpha = 0.315
         elif preset == "black":
             rr, gg, bb = (6, 6, 6)
+            alpha = 0.70
         elif preset == "white":
             rr, gg, bb = (252, 252, 252)
+            alpha = 0.70
         elif preset == "day":
             rr, gg, bb = (240, 248, 255)
+            alpha = 0.70
         else:
             rr, gg, bb = (8, 8, 10)
-        return f"#{rr:02x}{gg:02x}{bb:02x}"
+            alpha = 0.70
+        return f"rgba({rr}, {gg}, {bb}, {alpha:.3f})"
 
     def _menu_button_style_sheet(self) -> str:
-        background = SkyWindow._menu_button_background_hex_for_preset(self.visual_preset)
         text = "#%02x%02x%02x" % GUI_MENU_TEXT_COLOR
         return (
             "QPushButton {"
             " border: none;"
-            " border-radius: 6px;"
             " font-size: 16px;"
-            f" background-color: {background};"
+            " background: transparent;"
             f" color: {text};"
             "}"
             "QPushButton:hover { color: white; }"
             "QPushButton:pressed { color: white; }"
             "QPushButton:menu-indicator { image: none; }"
+        )
+
+    def _size_grip_style_sheet(self) -> str:
+        return (
+            "QSizeGrip {"
+            " border: none;"
+            " background: transparent;"
+            "}"
         )
 
     def _raise_overlay_widgets(self) -> None:
@@ -667,7 +679,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.size_grip.move(self.width() - grip_size.width(), self.height() - grip_size.height())
 
         button_size = self.menu_button.size()
-        self.menu_button.move(self.width() - button_size.width() - 8, 8)
+        self.menu_button.move(self.width() - button_size.width(), 0)
         self._raise_overlay_widgets()
 
         self._discard_stale_disc_images()

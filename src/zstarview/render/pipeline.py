@@ -309,6 +309,11 @@ def draw_background_layer(
         preset=style.visual_preset,
         content_fov_deg=_content_fov_deg(scene),
     )
+    render_draw.draw_window_frame(
+        painter,
+        QRectF(viewport_rect),
+        preset=style.visual_preset,
+    )
 
 
 def draw_guide_layer(
