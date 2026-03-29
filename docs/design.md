@@ -59,6 +59,7 @@
   - CLI オプション定義と値解釈
   - タワー一覧・タワー詳細 JSON 出力の即時終了オプションを扱う
   - `--place`、`--place-countrycode`、`--place-lang` の online 地点検索オプションを扱う
+  - `--theme` は `night`、`day`、`white`、`black` の 4 preset のみを受け付ける
   - 同梱星表の実上限に合わせ、`-V` / `--vmag-limit` は `10.5` を超える指定を parse 時点で `10.5` へ丸める
   - parser 構築は `add_location_arguments()`、`add_dataset_query_arguments()`、`add_time_arguments()`、`add_render_arguments()` の helper に分割し、将来の別 CLI からも再利用できるようにする
   - ガイドライン表示は `--show-guidelines-initial` として扱い、DSO / アステリウムと同じ起動時 boolean 指定に揃える
