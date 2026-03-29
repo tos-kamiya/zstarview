@@ -559,7 +559,7 @@ def test_menu_button_style_sheet_uses_light_background_for_day_preset() -> None:
 
 
 def test_size_grip_style_sheet_is_transparent() -> None:
-    dummy = SimpleNamespace(visual_preset="transparent")
+    dummy = SimpleNamespace(visual_preset="night")
 
     style = SkyWindow._size_grip_style_sheet(dummy)
 

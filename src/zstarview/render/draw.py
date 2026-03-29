@@ -441,13 +441,13 @@ def draw_radial_background(
         return max(0.0, min(1.0, r / r_max))
 
     col_params = {
-        "transparent": (10, 7, 12, 8, 16, 11, 54, 8),
         "white": (242, 46, 245, 48, 250, 50, 255, 180),
         "black": (12, 9, 12, 9, 12, 9, 255, 180),
         "day": (230, 28, 242, 34, 255, 34, 200, 60),
         "night": (10, 7, 12, 9, 16, 11, 200, 60),
     }
     param = col_params.get(preset, None) or col_params["black"]
+
     def col(r: float, s: float) -> QColor:
         t = max(0.0, min(1.0, r / max(1.0, r_max)))
         rr = int(param[0] - param[1] * t)
@@ -458,11 +458,7 @@ def draw_radial_background(
 
     c = geometry.center
     g = QRadialGradient(QPointF(c[0], c[1]), r_max)
-    inner_color = (
-        QColor(4, 4, 4, 112)
-        if preset == "transparent"
-        else QColor(4, 4, 4, 255) if preset in ("white", "day", "night", "black") else col(0.0, 0.0)
-    )
+    inner_color = QColor(4, 4, 4, 255) if preset in ("white", "day", "night", "black") else col(0.0, 0.0)
     boundary_color = col(r_content, 0.3)
     edge_color = col(r_max, 1.0)
     g.setColorAt(0.0, inner_color)
@@ -485,18 +481,17 @@ def draw_window_frame(
 ) -> None:
     """Draw a broad but subtle frame around the window edges."""
 
-    frame_width = 16.0 if preset in ("day", "night") else 8.0
+    frame_width = 16.0 if preset in ("day", "night") else 8.0 if preset in ("white", "black") else 1.0
     max_frame_width = 0.25 * min(float(rect.width()), float(rect.height()))
     frame_width = min(frame_width, max_frame_width)
     if frame_width <= 0.0:
         return
 
     frame_colors = {
-        "transparent": (28, 32, 38, 20),
-        "white": (254, 254, 255, 124),
+        "white": (254, 254, 255, 112),
         "black": (34, 34, 36, 128),
-        "day": (250, 252, 255, 38),
-        "night": (30, 34, 40, 40),
+        "day": (250, 252, 255, 35),
+        "night": (30, 34, 40, 45),
     }
     rr, gg, bb, aa = frame_colors.get(preset, frame_colors["night"])
     frame_color = QColor(rr, gg, bb, aa)
