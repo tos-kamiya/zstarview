@@ -19,13 +19,9 @@ from .geometry import (
     _normalized_to_screen_xy_vectorized,
     normalized_to_screen_xy,
 )
-from .photometry import compute_flare_profile as _compute_flare_profile, flare_strength_from_vmag as _flare_strength_from_vmag, bv_to_rgb_vectorized
+from .photometry import bv_to_rgb_vectorized
 
 logger = logging.getLogger(__name__)
-
-# Keep these re-exports because focused render tests import photometry helpers via render.stars.
-compute_flare_profile = _compute_flare_profile
-flare_strength_from_vmag = _flare_strength_from_vmag
 
 _star_render_cache: tuple[tuple, QImage] | None = None
 _MAG2_TO_MAG1_SIZE_SCALE = 10.0 ** 0.12

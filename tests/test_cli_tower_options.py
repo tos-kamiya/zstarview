@@ -4,7 +4,8 @@ import json
 
 import pytest
 
-from zstarview.gui.viewer import main, parse_args
+from zstarview.cli.args import parse_args
+from zstarview.gui.viewer import main
 from zstarview.location_resolver import list_tower_all_names, list_tower_primary_names
 from zstarview.location_resolver.viewpoints import Viewpoint
 

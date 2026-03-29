@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from zstarview.gui.viewer import parse_args
+from zstarview.cli.args import parse_args
 
 
 def test_parse_args_accepts_place_options() -> None:
