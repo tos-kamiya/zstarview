@@ -2,7 +2,7 @@ import argparse
 
 import pytest
 
-from zstarview.gui.viewer import _parse_window_geometry
+from zstarview.cli.args import _parse_window_geometry
 
 
 def test_parse_window_geometry_accepts_restore_case_insensitive() -> None:

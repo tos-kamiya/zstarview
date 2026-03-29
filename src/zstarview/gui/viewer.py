@@ -43,15 +43,7 @@ from ..gui.window_inputs import (
     prepare_window_user_options,
     prepare_window_viewer_data,
 )
-from ..cli.args import _parse_theme, _parse_window_geometry, parse_args
-
-# Keep these re-exports for focused CLI parser tests that import them from this module.
-__all__ = [
-    "_parse_theme",
-    "_parse_window_geometry",
-    "main",
-    "parse_args",
-]
+from ..cli.args import parse_args
 
 logger = logging.getLogger(__name__)
 
