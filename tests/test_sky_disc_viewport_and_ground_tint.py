@@ -178,8 +178,9 @@ def test_window_frame_draws_bottom_right_grip_triangle_inside_frame() -> None:
     arr = qimage_to_np_rgba(img)
 
     assert int(arr[147, 147, 3]) > 0
-    assert int(arr[134, 147, 3]) == 0
-    assert int(arr[147, 134, 3]) == 0
+    assert int(arr[134, 147, 3]) > 0
+    assert int(arr[147, 134, 3]) > 0
+    assert int(arr[128, 128, 3]) == 0
 
 
 def test_window_frame_draws_top_right_menu_square_inside_frame() -> None:
@@ -197,7 +198,8 @@ def test_window_frame_draws_top_right_menu_square_inside_frame() -> None:
 
     assert int(arr[20, 145, 3]) > 0
     assert int(arr[20, 125, 3]) == 0
-    assert int(arr[35, 145, 3]) == 0
+    assert int(arr[35, 145, 3]) > 0
+    assert int(arr[35, 125, 3]) == 0
 
 
 def test_window_frame_does_not_double_draw_under_menu_panel() -> None:
