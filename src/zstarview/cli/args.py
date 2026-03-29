@@ -413,6 +413,16 @@ def add_render_arguments(
         ),
     )
     parser.add_argument(
+        "--guideline-opacity",
+        type=float,
+        default=1.0,
+        help=(
+            "Opacity of the sky guideline overlay (0.0 - 1.0, default: 1.0). "
+            "This controls the geometric horizon, celestial equator, ecliptic, "
+            "direction labels, and zenith marker."
+        ),
+    )
+    parser.add_argument(
         "--terrain-horizon-opacity",
         type=float,
         default=0.05,
@@ -690,6 +700,7 @@ def _validate_dataset_query_compatibility(
             or has_non_default("cloud_opacity")
             or has_non_default("aircraft_opacity")
             or has_non_default("satellite_opacity")
+            or has_non_default("guideline_opacity")
             or has_non_default("terrain_horizon_opacity")
             or has_non_default("urban_outline_opacity")
             or has_non_default("urban_outline_radius_km")

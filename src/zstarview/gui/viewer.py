@@ -261,6 +261,7 @@ def main() -> None:
         cloud_disc_alpha=0.0 if cloud_stripe_count == 0 or cloud_stripe_width == 0.0 else args.cloud_opacity,
         satellite_opacity=args.satellite_opacity,
         aircraft_opacity=args.aircraft_opacity,
+        guideline_opacity=args.guideline_opacity,
         terrain_horizon_opacity=args.terrain_horizon_opacity,
         urban_outline_opacity=args.urban_outline_opacity,
         ground_tint_opacity=args.ground_tint_opacity,

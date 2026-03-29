@@ -196,9 +196,11 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._aircraft_toggle_supported = overlay_availability.aircraft
         self._aircraft_opacity_when_enabled = requested_aircraft_opacity if requested_aircraft_opacity > 0.0 else 1.0
         self.aircraft_opacity = requested_aircraft_opacity if self._aircraft_toggle_supported else 0.0
+        self.guideline_opacity = user_options.guideline_opacity
         self.terrain_horizon_opacity = user_options.terrain_horizon_opacity
         self.urban_outline_opacity = user_options.urban_outline_opacity
         self.ground_tint_opacity = user_options.ground_tint_opacity
+        self._guideline_opacity_when_enabled = user_options.guideline_opacity if user_options.guideline_opacity > 0.0 else 1.0
         self._terrain_horizon_opacity_when_enabled = (
             user_options.terrain_horizon_opacity if user_options.terrain_horizon_opacity > 0.0 else 0.25
         )
@@ -288,6 +290,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._action_toggle_urban_outline: Optional[QAction] = None
         self._action_toggle_dso: Optional[QAction] = None
         self._action_toggle_asterisms: Optional[QAction] = None
+        self._action_toggle_guidelines: Optional[QAction] = None
         self._action_toggle_sky_disc: Optional[QAction] = None
         self._action_raise_view: Optional[QAction] = None
         self._action_lower_view: Optional[QAction] = None
@@ -525,6 +528,15 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.menu.addAction(toggle_asterisms_action)
         self.addAction(toggle_asterisms_action)
         self._action_toggle_asterisms = toggle_asterisms_action
+        toggle_guidelines_action = QAction("Guidelines", self)
+        toggle_guidelines_action.setCheckable(True)
+        toggle_guidelines_action.setChecked(self.guideline_opacity > 0.0)
+        toggle_guidelines_action.setShortcut(QKeySequence(Qt.Key.Key_G))
+        toggle_guidelines_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
+        toggle_guidelines_action.triggered.connect(self.toggle_guidelines)
+        self.menu.addAction(toggle_guidelines_action)
+        self.addAction(toggle_guidelines_action)
+        self._action_toggle_guidelines = toggle_guidelines_action
 
         self.menu.addSeparator()
         toggle_sky_disc_action = QAction("Sky Color Disc", self)
@@ -1135,6 +1147,13 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self._action_toggle_asterisms.setChecked(self.show_asterisms)
         self.update()
 
+    def toggle_guidelines(self) -> None:
+        enable_guidelines = self.guideline_opacity <= 0.0
+        self.guideline_opacity = self._guideline_opacity_when_enabled if enable_guidelines else 0.0
+        if self._action_toggle_guidelines is not None and self._action_toggle_guidelines.isChecked() != enable_guidelines:
+            self._action_toggle_guidelines.setChecked(enable_guidelines)
+        self.update()
+
     def toggle_sky_disc(self) -> None:
         if not self._sky_disc_gui_allowed:
             if self._action_toggle_sky_disc is not None:
@@ -1267,6 +1286,9 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             event.accept()
         elif key == Qt.Key.Key_A:
             self.toggle_asterisms()
+            event.accept()
+        elif key == Qt.Key.Key_G:
+            self.toggle_guidelines()
             event.accept()
         elif key == Qt.Key.Key_S:
             self.toggle_sky_disc()

@@ -64,6 +64,7 @@ class _DummyImage:
 
 def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None:
     options = prepare_window_user_options(
+        guideline_opacity=1.5,
         terrain_horizon_opacity=1.5,
         urban_outline_opacity=1.5,
         aircraft_opacity=1.5,
@@ -75,6 +76,7 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
         urban_outline_gui_allowed=False,
     )
 
+    assert options.guideline_opacity == 1.0
     assert options.terrain_horizon_opacity == 1.0
     assert options.urban_outline_opacity == 1.0
     assert options.aircraft_opacity == 1.0
@@ -114,6 +116,26 @@ def test_toggle_sky_disc_respects_cli_lockout() -> None:
 
     assert dummy.sky_disc_alpha == 0.0
     assert dummy._action_toggle_sky_disc.isChecked() is False
+
+
+def test_toggle_guidelines_disables_and_restores_opacity() -> None:
+    dummy = SimpleNamespace()
+    dummy.guideline_opacity = 0.0
+    dummy._guideline_opacity_when_enabled = 1.0
+    dummy._action_toggle_guidelines = _DummyAction(False)
+    updates: list[str] = []
+    dummy.update = lambda: updates.append("update")
+
+    SkyWindow.toggle_guidelines(dummy)
+
+    assert dummy.guideline_opacity == 1.0
+    assert dummy._action_toggle_guidelines.isChecked() is True
+
+    SkyWindow.toggle_guidelines(dummy)
+
+    assert dummy.guideline_opacity == 0.0
+    assert dummy._action_toggle_guidelines.isChecked() is False
+    assert updates == ["update", "update"]
 
 
 def test_status_line_message_combines_cloud_and_terrain_segments() -> None:
