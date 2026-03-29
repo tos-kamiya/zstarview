@@ -24,14 +24,13 @@ from ..paths import (
     FIELD_OF_VIEW_DEG,
     BACKGROUND_FIELD_OF_VIEW_DEG1,
     BACKGROUND_FIELD_OF_VIEW_DEG2,
+    TEXT_STYLES_BY_PRESET,
     CELESTIAL_EQUATOR_COLOR,
-    LIGHT_THEME_LABEL_TEXT_RGBA,
     DIRECTIONS,
     ECLIPTIC_COLOR,
     HORIZON_LINE_COLOR,
     TERRAIN_HORIZON_LINE_COLOR,
-    URBAN_DEBUG_LAYER_LINE_COLOR,
-    TEXT_COLOR,
+    URBAN_OUTLINE_LAYER_LINE_COLOR,
 )
 from ..aircraft.types import AircraftOverlayPoint
 from ..aircraft_constants import (
@@ -72,8 +71,7 @@ from .photometry import (
 )
 from . import text as render_text
 from .text import (
-    _get_text_outline_width,
-    _get_text_style,
+    get_text_style,
     _rect_overlap_count,
     _text_bounds_at_baseline,
     draw_outlined_text,
@@ -85,8 +83,7 @@ logger = logging.getLogger(__name__)
 
 # Backward-compatible re-export for callers importing geometry helpers via render.draw.
 get_screen_geometry = render_geometry.get_screen_geometry
-get_text_style = render_text._get_text_style
-get_text_outline_width = render_text._get_text_outline_width
+get_text_style = render_text.get_text_style
 draw_label_candidates = render_text._draw_label_candidates
 draw_status_line_text = render_text._draw_status_line_text
 # Keep these re-exports because focused render tests import photometry helpers via render.draw.
@@ -789,7 +786,7 @@ def draw_urban_outlines(
         height_m = float(outline_entry.height_m)
         if len(outline) < 2:
             continue
-        color = QColor(*URBAN_DEBUG_LAYER_LINE_COLOR)
+        color = QColor(*URBAN_OUTLINE_LAYER_LINE_COLOR)
         effective_opacity = float(opacity) * _urban_outline_height_alpha_scale(height_m)
         color.setAlpha(max(0, min(255, int(round(255.0 * effective_opacity)))))
         pen = QPen(color, 1.5 * width_scale, Qt.PenStyle.SolidLine)
@@ -862,8 +859,8 @@ def draw_satellite_overlay(
         *SATELLITE_OVERLAY_MARKER_COLOR_RGB,
         max(0, min(255, int(round(SATELLITE_OVERLAY_MARKER_MAX_ALPHA * layer_opacity)))),
     )
-    label_text_color, label_outline_color = _get_text_style(preset)
-    label_outline_width = _get_text_outline_width(preset)
+    label_text_color, label_outline_color = get_text_style(preset)
+    label_outline_width = 3.0
     label_text_color = QColor(label_text_color)
     label_outline_color = QColor(label_outline_color)
     label_text_color.setAlpha(max(0, min(255, int(round(label_text_color.alpha() * layer_opacity)))))
@@ -921,8 +918,8 @@ def draw_aircraft_overlay(
     painter.save()
     width_scale = max(1.0, float(line_width_scale))
     line_color = QColor(*AIRCRAFT_OVERLAY_LINE_COLOR_RGB, 255)
-    label_text_color, label_outline_color = _get_text_style(preset)
-    label_outline_width = _get_text_outline_width(preset)
+    label_text_color, label_outline_color = get_text_style(preset)
+    label_outline_width = 3.0
     label_text_color = QColor(label_text_color)
     label_outline_color = QColor(label_outline_color)
     label_text_color.setAlpha(max(0, min(255, int(round(label_text_color.alpha() * layer_opacity)))))
@@ -1157,11 +1154,11 @@ def draw_asterisms(
         cy = sum(pt.y() for pt in label_points) / len(label_points)
         label_pos = QPointF(cx + 8.0, cy - 8.0)
         if preset in ("white", "day"):
-            text_color = QColor(*LIGHT_THEME_LABEL_TEXT_RGBA)
+            text_color = QColor(*TEXT_STYLES_BY_PRESET["white"].text, 228)
         else:
             text_color = QColor(110, 195, 255, 230)
-        _, outline_text_color = _get_text_style(preset)
-        outline_width = _get_text_outline_width(preset)
+        _, outline_text_color = get_text_style(preset)
+        outline_width = 3.0
         if label_candidates is not None:
             label_candidates.append(
                 {
@@ -1573,7 +1570,7 @@ def draw_zenith_marker(
     """
     az_ref = view_center[1]
     s = 7
-    painter.setPen(QPen(QColor(*TEXT_COLOR), 1))
+    painter.setPen(QPen(QColor(*TEXT_STYLES_BY_PRESET["night"].text), 1))
     for alt in (90.0, -90.0):
         if not is_in_fov(alt, az_ref, view_center, fov_deg=content_fov_deg):
             continue
@@ -1788,9 +1785,9 @@ def draw_solar_system_bodies(
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
 
     # Keep body markers in a stable high-contrast color over the sky disc.
-    text_color = QColor(*TEXT_COLOR)
-    label_text_color, label_outline_color = _get_text_style(preset)
-    label_outline_width = _get_text_outline_width(preset)
+    text_color = QColor(*TEXT_STYLES_BY_PRESET["night"].text)
+    label_text_color, label_outline_color = get_text_style(preset)
+    label_outline_width = 3.0
     if text_font is not None:
         painter.setFont(text_font)
         label_font = text_font
@@ -1895,7 +1892,7 @@ def draw_hovered_moon_overlay(
     moon_body, sun_altaz, moon_altaz = _collect_sun_moon_context(celestial_data.planets)
     if moon_body is None or sun_altaz is None or moon_altaz is None:
         return
-    text_color = QColor(*TEXT_COLOR)
+    text_color = QColor(*TEXT_STYLES_BY_PRESET["night"].text)
     _draw_moon_planet(
         painter,
         pos,
@@ -2050,8 +2047,8 @@ def draw_overlay_info(
         highlighted_object: The currently highlighted object, if any.
         text_font: The QFont to use for the text.
     """
-    text_color, outline_color = _get_text_style(preset)
-    outline_width = _get_text_outline_width(preset)
+    text_color, outline_color = get_text_style(preset)
+    outline_width = 3.0
 
     line_spacing = QFontMetrics(text_font).lineSpacing()
     line_height = int(line_spacing * 1.2)
@@ -2084,7 +2081,7 @@ def draw_overlay_info(
         alt = float(dso_obj.get("alt", 0.0))
         az = float(dso_obj.get("az", 0.0))
         if preset in ("white", "day"):
-            dso_label_color = QColor(*LIGHT_THEME_LABEL_TEXT_RGBA)
+            dso_label_color = QColor(*TEXT_STYLES_BY_PRESET["white"].text, 228)
         else:
             dso_label_color = QColor(110, 195, 255, 230)
         hover_poly = _dso_ellipse_polygon(

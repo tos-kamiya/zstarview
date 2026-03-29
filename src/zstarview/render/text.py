@@ -64,17 +64,11 @@ def _clamp_baseline_pos_to_viewport(
     return QPointF(baseline_pos.x() + dx, baseline_pos.y() + dy)
 
 
-def _get_text_style(preset: str = "night") -> Tuple[QColor, QColor]:
-    """Return (text_color, outline_color) tuned for the selected visual preset."""
-    style = TEXT_STYLES_BY_PRESET.get(preset, TEXT_STYLES_BY_PRESET["night"])
-    return _qcolor_from_rgba(style["text"]), _qcolor_from_rgba(style["outline"])
-
-
-def _get_text_outline_width(preset: str = "night") -> float:
-    """Return a preset-specific outline width for outlined text."""
-    if preset in ("white", "day"):
-        return 2.0
-    return 3.0
+def get_text_style(preset: str = "night", *, status_line: bool = False) -> Tuple[QColor, QColor]:
+    """Return (text_color, outline_color) for the selected preset and text role."""
+    style_table = STATUS_LINE_STYLES_BY_PRESET if status_line else TEXT_STYLES_BY_PRESET
+    style = style_table.get(preset, style_table["night"])
+    return _qcolor_from_rgba(style.text), _qcolor_from_rgba(style.outline)
 
 
 def draw_outlined_text(
@@ -197,9 +191,7 @@ def _draw_status_line_text(
     if not message:
         return
 
-    style = STATUS_LINE_STYLES_BY_PRESET.get(preset, STATUS_LINE_STYLES_BY_PRESET["night"])
-    color = _qcolor_from_rgba(style["text"])
-    outline_color = _qcolor_from_rgba(style["outline"])
+    color, outline_color = get_text_style(preset, status_line=True)
 
     painter.save()
     painter.setFont(status_line_font)
@@ -214,6 +206,6 @@ def _draw_status_line_text(
         status_line_font,
         color,
         outline_color,
-        outline_width=_get_text_outline_width(preset),
+        outline_width=3.0,
     )
     painter.restore()
