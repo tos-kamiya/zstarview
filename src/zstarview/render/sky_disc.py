@@ -128,7 +128,7 @@ def _get_sky_color_vectorized(
     return np.clip(color, 0.0, 1.0).astype(np.float32)
 
 
-def grade_color(
+def _grade_color(
     color: np.ndarray,
     *,
     saturation: float = 1.0,
@@ -176,7 +176,7 @@ def sky_color_samples(
 
     colors = _get_sky_color_vectorized(alt.reshape(-1), az.reshape(-1), sun_altaz)
     gamma = (1.0 - alpha) * 0.2 + 1.0 if alpha < 1.0 else 1.0
-    colors = grade_color(colors, saturation=saturation, exposure=exposure, gamma=gamma)
+    colors = _grade_color(colors, saturation=saturation, exposure=exposure, gamma=gamma)
 
     sky_scale = max(0.0, float(alpha))
     eclipse_scale = max(0.0, float(eclipse_factor))

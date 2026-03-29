@@ -530,10 +530,10 @@ def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(monkeypa
 
     monkeypatch.setattr(
         pipeline_module,
-        "draw_star_layer",
+        "_draw_star_layer",
         lambda *_args, **kwargs: calls.append(("stars", kwargs.get("draw_vmag_limit"))),
     )
-    pipeline_module.draw_viewport_interaction_layers(
+    pipeline_module._draw_viewport_interaction_layers(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
         viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
@@ -674,10 +674,10 @@ def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(monkey
     seen_stars: list[object] = []
     monkeypatch.setattr(
         pipeline_module,
-        "draw_star_layer",
+        "_draw_star_layer",
         lambda _p, **kwargs: seen_stars.append(kwargs["scene"].celestial_data.stars),
     )
-    pipeline_module.draw_viewport_interaction_layers(
+    pipeline_module._draw_viewport_interaction_layers(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
         viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
@@ -707,7 +707,7 @@ def test_draw_urban_outline_layer_skips_when_hidden(monkeypatch) -> None:
         lambda *_args, **_kwargs: calls.append("urban"),
     )
 
-    pipeline_module.draw_urban_outline_layer(
+    pipeline_module._draw_urban_outline_layer(
         painter=object(),
         geometry=object(),
         scene=_make_scene(
@@ -751,8 +751,8 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     )
 
     terrain_profile = [(1.0, 10.0), (2.0, 20.0)]
-    monkeypatch.setattr(pipeline_module, "draw_star_layer", lambda *_args, **_kwargs: None)
-    pipeline_module.draw_viewport_interaction_layers(
+    monkeypatch.setattr(pipeline_module, "_draw_star_layer", lambda *_args, **_kwargs: None)
+    pipeline_module._draw_viewport_interaction_layers(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
         viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
@@ -812,8 +812,8 @@ def test_draw_viewport_interaction_layers_skips_urban_outlines(monkeypatch) -> N
     )
 
     urban_outlines = [[(-1.0, 10.0), (-2.0, 20.0)]]
-    monkeypatch.setattr(pipeline_module, "draw_star_layer", lambda *_args, **_kwargs: None)
-    pipeline_module.draw_viewport_interaction_layers(
+    monkeypatch.setattr(pipeline_module, "_draw_star_layer", lambda *_args, **_kwargs: None)
+    pipeline_module._draw_viewport_interaction_layers(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
         viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
@@ -885,10 +885,10 @@ def test_draw_terrain_layers_only_scales_asterisms_and_terrain(monkeypatch) -> N
 
     monkeypatch.setattr(
         pipeline_module,
-        "draw_urban_outline_layer",
+        "_draw_urban_outline_layer",
         lambda *_args, **kwargs: calls["urban"].append(float(kwargs.get("line_width_scale", 1.0))),
     )
-    pipeline_module.draw_terrain_layers(
+    pipeline_module._draw_terrain_layers(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
         scene=_make_scene(
@@ -955,8 +955,8 @@ def test_draw_terrain_layers_does_not_draw_dso_hover_info(monkeypatch) -> None:
         lambda *_args, **_kwargs: None,
     )
 
-    monkeypatch.setattr(pipeline_module, "draw_urban_outline_layer", lambda *_args, **_kwargs: None)
-    pipeline_module.draw_terrain_layers(
+    monkeypatch.setattr(pipeline_module, "_draw_urban_outline_layer", lambda *_args, **_kwargs: None)
+    pipeline_module._draw_terrain_layers(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
         scene=_make_scene(
@@ -982,19 +982,19 @@ def test_draw_terrain_layers_does_not_draw_dso_hover_info(monkeypatch) -> None:
 def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) -> None:
     calls: list[str] = []
 
-    monkeypatch.setattr(pipeline_module, "clear_background_layer", lambda *_args, **_kwargs: calls.append("clear"))
-    monkeypatch.setattr(pipeline_module, "draw_background_layer", lambda *_args, **_kwargs: calls.append("background"))
-    monkeypatch.setattr(pipeline_module, "draw_guide_layer", lambda *_args, **_kwargs: calls.append("guide"))
-    monkeypatch.setattr(pipeline_module, "draw_sky_cloud_layers", lambda *_args, **_kwargs: calls.append("sky-cloud"))
-    monkeypatch.setattr(pipeline_module, "draw_terrain_layers", lambda *_args, **_kwargs: calls.append("terrain"))
-    monkeypatch.setattr(pipeline_module, "draw_star_layer", lambda *_args, **_kwargs: calls.append("stars"))
-    monkeypatch.setattr(pipeline_module, "draw_planet_layer", lambda *_args, **_kwargs: calls.append("planets"))
-    monkeypatch.setattr(pipeline_module, "draw_satellite_layer", lambda *_args, **_kwargs: calls.append("satellites"))
-    monkeypatch.setattr(pipeline_module, "draw_aircraft_layer", lambda *_args, **_kwargs: calls.append("aircraft"))
-    monkeypatch.setattr(pipeline_module, "draw_overlay_layer", lambda *_args, **_kwargs: calls.append("overlay"))
-    monkeypatch.setattr(pipeline_module, "draw_hover_overlay_layer", lambda *_args, **_kwargs: calls.append("hover"))
-    monkeypatch.setattr(pipeline_module, "draw_label_layer", lambda *_args, **_kwargs: calls.append("labels"))
-    monkeypatch.setattr(pipeline_module, "draw_status_line", lambda *_args, **_kwargs: calls.append("status"))
+    monkeypatch.setattr(pipeline_module, "_clear_background_layer", lambda *_args, **_kwargs: calls.append("clear"))
+    monkeypatch.setattr(pipeline_module, "_draw_background_layer", lambda *_args, **_kwargs: calls.append("background"))
+    monkeypatch.setattr(pipeline_module, "_draw_guide_layer", lambda *_args, **_kwargs: calls.append("guide"))
+    monkeypatch.setattr(pipeline_module, "_draw_sky_cloud_layers", lambda *_args, **_kwargs: calls.append("sky-cloud"))
+    monkeypatch.setattr(pipeline_module, "_draw_terrain_layers", lambda *_args, **_kwargs: calls.append("terrain"))
+    monkeypatch.setattr(pipeline_module, "_draw_star_layer", lambda *_args, **_kwargs: calls.append("stars"))
+    monkeypatch.setattr(pipeline_module, "_draw_planet_layer", lambda *_args, **_kwargs: calls.append("planets"))
+    monkeypatch.setattr(pipeline_module, "_draw_satellite_layer", lambda *_args, **_kwargs: calls.append("satellites"))
+    monkeypatch.setattr(pipeline_module, "_draw_aircraft_layer", lambda *_args, **_kwargs: calls.append("aircraft"))
+    monkeypatch.setattr(pipeline_module, "_draw_overlay_layer", lambda *_args, **_kwargs: calls.append("overlay"))
+    monkeypatch.setattr(pipeline_module, "_draw_hover_overlay_layer", lambda *_args, **_kwargs: calls.append("hover"))
+    monkeypatch.setattr(pipeline_module, "_draw_label_layer", lambda *_args, **_kwargs: calls.append("labels"))
+    monkeypatch.setattr(pipeline_module, "_draw_status_line", lambda *_args, **_kwargs: calls.append("status"))
 
     geometry = SimpleNamespace(center=(100, 100), radius=80)
     viewport_rect = SimpleNamespace(width=lambda: 200, height=lambda: 200)
@@ -1092,15 +1092,15 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
 def test_render_scene_hides_cloud_bitmap_during_viewport_interaction(monkeypatch) -> None:
     captured: dict[str, object] = {}
 
-    monkeypatch.setattr(pipeline_module, "clear_background_layer", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(pipeline_module, "draw_background_layer", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(pipeline_module, "draw_guide_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(pipeline_module, "_clear_background_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(pipeline_module, "_draw_background_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(pipeline_module, "_draw_guide_layer", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(
         pipeline_module,
-        "draw_sky_cloud_layers",
+        "_draw_sky_cloud_layers",
         lambda *_args, **kwargs: captured.update({"cloud_disc_alpha": kwargs["style"].cloud_disc_alpha}),
     )
-    monkeypatch.setattr(pipeline_module, "draw_viewport_interaction_layers", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(pipeline_module, "_draw_viewport_interaction_layers", lambda *_args, **_kwargs: None)
 
     pipeline_module.render_base_scene_into_painter(
         painter=object(),
@@ -1119,7 +1119,7 @@ def test_draw_overlay_layer_skips_static_info_when_disabled(monkeypatch) -> None
     draw_overlay_info = Mock()
     monkeypatch.setattr(pipeline_module.render_overlay_info, "draw_overlay_info", draw_overlay_info)
 
-    pipeline_module.draw_overlay_layer(
+    pipeline_module._draw_overlay_layer(
         painter=object(),
         geometry=SimpleNamespace(radius=100),
         scene=_make_scene(),
@@ -1141,7 +1141,7 @@ def test_draw_background_layer_skips_gradient_when_disabled(monkeypatch) -> None
     monkeypatch.setattr(pipeline_module.render_background, "draw_radial_background", draw_radial_background)
     monkeypatch.setattr(pipeline_module.render_background, "draw_window_frame", draw_window_frame)
 
-    pipeline_module.draw_background_layer(
+    pipeline_module._draw_background_layer(
         painter=object(),
         geometry=SimpleNamespace(radius=100),
         viewport_rect=SimpleNamespace(),
@@ -1167,7 +1167,7 @@ def test_draw_hover_overlay_layer_enlarges_hovered_moon_by_name(monkeypatch) -> 
     )
     monkeypatch.setattr(
         pipeline_module,
-        "draw_dso_hover_layer",
+        "_draw_dso_hover_layer",
         lambda *_args, **_kwargs: calls.append("dso-hover"),
     )
     monkeypatch.setattr(
@@ -1176,7 +1176,7 @@ def test_draw_hover_overlay_layer_enlarges_hovered_moon_by_name(monkeypatch) -> 
         lambda *_args, **_kwargs: calls.append("overlay-info"),
     )
 
-    pipeline_module.draw_hover_overlay_layer(
+    pipeline_module._draw_hover_overlay_layer(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
         scene=_make_scene(celestial_data=object()),

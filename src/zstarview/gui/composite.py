@@ -35,7 +35,7 @@ class StripeDensityField:
     source_cache_key: int
 
 
-def cloud_with_hatched_alpha_rgba(cloud: np.ndarray, hatch_cfg: HatchConfig) -> np.ndarray:
+def _cloud_with_hatched_alpha_rgba(cloud: np.ndarray, hatch_cfg: HatchConfig) -> np.ndarray:
     """Apply continuous 45-degree hatch directly to alpha (no tile seams)."""
     h, w = cloud.shape[:2]
     xs = np.arange(w, dtype=np.int32)[None, :]
@@ -89,7 +89,7 @@ def cloud_with_hatched_alpha(cloud_img: QImage, hatch_cfg: HatchConfig) -> QImag
     cloud = qimage_to_np_rgba(
         cloud_img if cloud_img.format() == QImage.Format_RGBA8888 else cloud_img.convertToFormat(QImage.Format_RGBA8888)
     )
-    cloud = cloud_with_hatched_alpha_rgba(cloud, hatch_cfg)
+    cloud = _cloud_with_hatched_alpha_rgba(cloud, hatch_cfg)
     return np_rgba_to_qimage(cloud)
 
 
@@ -150,7 +150,7 @@ def build_stripe_density_field(cloud_img: QImage, *, bins: int = 192) -> StripeD
     return build_stripe_density_field_from_rgba(cloud, bins=bins, source_cache_key=int(cloud_img.cacheKey()))
 
 
-def render_hatched_cloud_from_density_rgba(
+def _render_hatched_cloud_from_density_rgba(
     density: StripeDensityField,
     width: int,
     height: int,
@@ -225,7 +225,7 @@ def render_hatched_cloud_from_density(
     width_factor: float = 0.2,
     content_fov_deg: float = 90.0,
 ) -> QImage:
-    out = render_hatched_cloud_from_density_rgba(
+    out = _render_hatched_cloud_from_density_rgba(
         density,
         width,
         height,
@@ -354,7 +354,7 @@ def overlay_missing_tint(
     return np_rgba_to_qimage(out)
 
 
-def mask_cloud_alpha_by_missing_rgba(
+def _mask_cloud_alpha_by_missing_rgba(
     cloud: np.ndarray,
     missing_mask_alpha: np.ndarray,
 ) -> np.ndarray:
@@ -378,7 +378,7 @@ def mask_cloud_alpha_by_missing(
     cloud = qimage_to_np_rgba(
         cloud_img if cloud_img.format() == QImage.Format_RGBA8888 else cloud_img.convertToFormat(QImage.Format_RGBA8888)
     )
-    cloud = mask_cloud_alpha_by_missing_rgba(cloud, missing_mask_alpha)
+    cloud = _mask_cloud_alpha_by_missing_rgba(cloud, missing_mask_alpha)
     return np_rgba_to_qimage(cloud)
 
 
@@ -482,7 +482,7 @@ def _never_rises_mask(
     return dec >= (lat + 90.0)
 
 
-def apply_ground_tint(
+def _apply_ground_tint(
     base_img: QImage,
     *,
     geometry: ScreenGeometry,
@@ -658,7 +658,7 @@ class SkyCompositorCache:
 
             if cloud_s is not None and cloud_alpha > 0.0:
                 if stripe_density is not None:
-                    cloud_s = render_hatched_cloud_from_density_rgba(
+                    cloud_s = _render_hatched_cloud_from_density_rgba(
                         stripe_density,
                         w,
                         h,
@@ -669,9 +669,9 @@ class SkyCompositorCache:
                         content_fov_deg=content_fov_deg,
                     )
                 else:
-                    cloud_s = cloud_with_hatched_alpha_rgba(np.array(cloud_s, copy=True), self._hatch_cfg)
+                    cloud_s = _cloud_with_hatched_alpha_rgba(np.array(cloud_s, copy=True), self._hatch_cfg)
                 if missing_s is not None:
-                    cloud_s = mask_cloud_alpha_by_missing_rgba(cloud_s, missing_s)
+                    cloud_s = _mask_cloud_alpha_by_missing_rgba(cloud_s, missing_s)
 
             if cloud_s is None or cloud_alpha <= 0.0:
                 composited = sky_s
@@ -685,7 +685,7 @@ class SkyCompositorCache:
                     gray_mix=self._gray_mix,
                     content_fov_deg=content_fov_deg,
                 )
-            composited = apply_ground_tint(
+            composited = _apply_ground_tint(
                 composited,
                 geometry=geometry,
                 view_center=view_center,
