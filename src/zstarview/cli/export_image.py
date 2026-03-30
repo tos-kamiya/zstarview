@@ -91,7 +91,8 @@ from .args import parse_export_image_args
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CLOUD_ALT_MIN_DEG = 3.0
+DEFAULT_CLOUD_ALT_MIN_DEG = 1.0
+DEFAULT_CLOUD_FOV_OVERSCAN_DEG = 2.0
 DEFAULT_CLOUD_BASE_SIZE = 256
 
 
@@ -317,8 +318,8 @@ def _fetch_cloud_layer(
         alt=float(viewer_data.view_alt_deg),
         az=float(viewer_data.view_az_deg),
         radius_px=DEFAULT_CLOUD_BASE_SIZE,
-        edge_fov_deg=90.0,
-        mask_fov_deg=float(viewer_data.content_fov_deg),
+        edge_fov_deg=float(viewer_data.content_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+        mask_fov_deg=float(viewer_data.content_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
         cloud_shell_km=CLOUD_SHELL_KM,
     )
     if _timed_out(deadline):

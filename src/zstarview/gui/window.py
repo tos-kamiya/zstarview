@@ -101,7 +101,7 @@ logger = logging.getLogger(__name__)
 
 
 WindowGeometryArg = Union[str, Tuple[int, int, int, int]]
-DEFAULT_CLOUD_ALT_MIN_DEG = 3.0
+DEFAULT_CLOUD_ALT_MIN_DEG = 1.0
 
 def _clamp_window_geometry_to_screen(
     x: int,
