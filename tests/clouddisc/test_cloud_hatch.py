@@ -51,7 +51,7 @@ def test_variable_width_cloud_stripes_keep_fixed_alpha() -> None:
     out = qimage_to_np_rgba(render_variable_width_cloud_stripes(field, 128, 128, cfg))
     positive = out[..., 3] > 0
     assert np.any(positive)
-    assert np.array_equal(np.unique(out[..., 3][positive]), np.array([173], dtype=np.uint8))
+    assert int(out[..., 3][positive].max()) == 173
 
 
 def test_compose_cloud_addition_is_weighted_by_cloud_alpha() -> None:
@@ -231,3 +231,23 @@ def test_variable_width_cloud_stripes_use_content_fov_for_sampling_extent() -> N
     wide = qimage_to_np_rgba(render_variable_width_cloud_stripes(field, 192, 192, cfg, content_fov_deg=120.0))
 
     assert int(np.count_nonzero(wide[8, :, 3])) > int(np.count_nonzero(narrow[8, :, 3])) + 20
+
+
+def test_variable_width_cloud_stripes_use_fractional_alpha_for_partial_line() -> None:
+    cfg = HatchConfig(20, 19, 8, 200)
+    field = CloudAmountField(
+        amount=np.full((96, 96), 0.42, dtype=np.float32),
+        u_min=-2.0,
+        u_max=2.0,
+        v_min=-2.0,
+        v_max=2.0,
+        nonzero_lo=0.0,
+        nonzero_hi=1.0,
+        source_cache_key=6,
+    )
+
+    out = qimage_to_np_rgba(render_variable_width_cloud_stripes(field, 192, 192, cfg, target_stripes=12, width_factor=0.5))
+    positive = out[..., 3][out[..., 3] > 0]
+    assert np.any(positive)
+    assert int(positive.max()) == 200
+    assert np.any(positive < 200)
