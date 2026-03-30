@@ -101,8 +101,9 @@ def _stripe_render_grids(
     max_r = max(0.0, float(content_fov_deg) / 90.0)
     y, x = np.ogrid[:h, :w]
     inside_disc = ((x - cx) ** 2 + (y - cy) ** 2) <= ((rr * max_r) + 0.25) ** 2
-    xn = (x - cx) / rr
-    yn = (y - cy) / rr
+    sample_radius = max(1.0, rr * max_r)
+    xn = (x - cx) / sample_radius
+    yn = (y - cy) / sample_radius
     u_idx = np.clip((xn - yn + 2.0) * (bins_u / 4.0), 0.0, bins_u - 1).astype(np.int32)
     v_idx = np.clip((xn + yn + 2.0) * (bins_v / 4.0), 0.0, bins_v - 1).astype(np.int32)
     return (phase, line_mask, inside_disc, u_idx * bins_v + v_idx)
@@ -224,14 +225,14 @@ def _render_variable_width_cloud_stripes_rgba(
         content_fov_deg,
     )
     sampled = np.clip(cloud_amount.amount.reshape(-1)[sample_idx], 0.0, 1.0)
-    present = sampled > 0.03
     if cloud_amount.nonzero_hi > cloud_amount.nonzero_lo + 1e-6:
         normalized = (sampled - cloud_amount.nonzero_lo) / (cloud_amount.nonzero_hi - cloud_amount.nonzero_lo)
     else:
         normalized = sampled
     normalized = np.clip(normalized, 0.0, 1.0)
-    local_band = np.where(present, normalized * max_band, 0.0)
-    draw_mask = inside_disc & line_mask & (phase <= local_band)
+    line_index = np.floor(phase - 0.5).astype(np.int32, copy=False)
+    local_levels = np.floor(normalized * max_band).astype(np.int32, copy=False)
+    draw_mask = inside_disc & line_mask & (line_index >= 0) & (line_index < local_levels)
     if not np.any(draw_mask):
         return out
 
