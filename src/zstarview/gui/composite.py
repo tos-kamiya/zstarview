@@ -55,7 +55,7 @@ def _smooth_cloud_amount_grid(values: np.ndarray) -> np.ndarray:
     return np.clip(smoothed, 0.0, 1.0).astype(np.float32, copy=False)
 
 
-@lru_cache(maxsize=8)
+@lru_cache(maxsize=4)
 def _cloud_amount_bin_index_grids(
     height: int,
     width: int,
@@ -75,7 +75,7 @@ def _cloud_amount_bin_index_grids(
     return (u_idx, v_idx)
 
 
-@lru_cache(maxsize=16)
+@lru_cache(maxsize=4)
 def _stripe_render_grids(
     width: int,
     height: int,
