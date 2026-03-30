@@ -210,3 +210,24 @@ def test_alpha_scaled_cloud_stripes_encode_cloud_amount_in_alpha() -> None:
     left_mean = float(out[:, :96, 3][out[:, :96, 3] > 0].mean())
     right_mean = float(out[:, 96:, 3][out[:, 96:, 3] > 0].mean())
     assert right_mean > left_mean + 80.0
+
+
+def test_variable_width_cloud_stripes_use_content_fov_for_sampling_extent() -> None:
+    cfg = HatchConfig(20, 19, 8, 255)
+    y, x = np.ogrid[:96, :96]
+    center = 47.5
+    field = CloudAmountField(
+        amount=np.clip(1.0 - (np.hypot(x - center, y - center) / (96 / 2)), 0.0, 1.0).astype(np.float32),
+        u_min=-2.0,
+        u_max=2.0,
+        v_min=-2.0,
+        v_max=2.0,
+        nonzero_lo=0.0,
+        nonzero_hi=1.0,
+        source_cache_key=5,
+    )
+
+    narrow = qimage_to_np_rgba(render_variable_width_cloud_stripes(field, 192, 192, cfg, content_fov_deg=90.0))
+    wide = qimage_to_np_rgba(render_variable_width_cloud_stripes(field, 192, 192, cfg, content_fov_deg=120.0))
+
+    assert int(np.count_nonzero(wide[8, :, 3])) > int(np.count_nonzero(narrow[8, :, 3])) + 20
