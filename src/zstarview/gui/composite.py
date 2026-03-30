@@ -95,8 +95,8 @@ def _stripe_render_grids(
     ys = np.arange(h, dtype=np.int32)[:, None]
     u_pix = xs - ys
     u_mod = np.mod(u_pix, int(period))
-    dist = np.minimum(u_mod, int(period) - u_mod).astype(np.float32, copy=False)
-    line_mask = dist <= (float(max_band) * 0.5)
+    phase = u_mod.astype(np.float32, copy=False) + 0.5
+    line_mask = phase <= float(max_band)
 
     max_r = max(0.0, float(content_fov_deg) / 90.0)
     y, x = np.ogrid[:h, :w]
@@ -105,7 +105,7 @@ def _stripe_render_grids(
     yn = (y - cy) / rr
     u_idx = np.clip((xn - yn + 2.0) * (bins_u / 4.0), 0.0, bins_u - 1).astype(np.int32)
     v_idx = np.clip((xn + yn + 2.0) * (bins_v / 4.0), 0.0, bins_v - 1).astype(np.int32)
-    return (dist, line_mask, inside_disc, u_idx * bins_v + v_idx)
+    return (phase, line_mask, inside_disc, u_idx * bins_v + v_idx)
 
 
 def build_cloud_amount_field_from_rgba(
@@ -198,7 +198,6 @@ def _render_variable_width_cloud_stripes_rgba(
     wf = float(np.clip(width_factor, 0.1, 0.95))
     period = int(np.clip(round(diameter_px / stripes), 14, 64))
     max_band = max(2.0, float(period) * wf)
-    min_band = max(1.0, min(max_band - 1.0, float(period) * 0.08))
 
     if geometry is None:
         cx = (w - 1) * 0.5
@@ -212,7 +211,7 @@ def _render_variable_width_cloud_stripes_rgba(
     out = np.zeros((h, w, 4), dtype=np.uint8)
 
     bins_u, bins_v = cloud_amount.amount.shape
-    dist, line_mask, inside_disc, sample_idx = _stripe_render_grids(
+    phase, line_mask, inside_disc, sample_idx = _stripe_render_grids(
         w,
         h,
         period,
@@ -231,9 +230,8 @@ def _render_variable_width_cloud_stripes_rgba(
     else:
         normalized = sampled
     normalized = np.clip(normalized, 0.0, 1.0)
-    shaped = normalized
-    local_band = np.where(present, min_band + shaped * (max_band - min_band), 0.0)
-    draw_mask = inside_disc & line_mask & (dist <= (local_band * 0.5))
+    local_band = np.where(present, normalized * max_band, 0.0)
+    draw_mask = inside_disc & line_mask & (phase <= local_band)
     if not np.any(draw_mask):
         return out
 
