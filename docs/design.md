@@ -372,7 +372,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - Himawari の observer 指定時は、描画用の局所タイルに加え、warm-threshold 推定用の赤道帯タイルを少数だけ追加取得する
 - `src/zstarview/clouddisc/projectors/az.py`
   - 空ディスク向け投影
-  - 既定 `alt_min_deg = 3.0°` により、地平線近傍の遠距離雲を可視マスクから外す
+  - 既定 `alt_min_deg = 1.0°` により、地平線より少し上まで雲投影を残しつつ、極端な低仰角ノイズは可視マスクから外す
+  - cloud fetch/render では `content_fov_deg + 2.0°` の overscan を許してよい
 - `src/zstarview/clouddisc/render/grayscale.py`
   - 雲画像生成
   - ランタイム本線では `numpy RGBA` を返す
@@ -561,7 +562,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `CloudImageState`
   - `image`: 雲レイヤーの `numpy RGBA`
   - `missing_mask`: 欠損領域を表す 2D `uint8` alpha 配列
-  - `stripe_density`: ハッチ生成用の密度場
+  - `cloud_amount_field`: ストライプ線幅生成用の雲量場
   - `meta`、`coverage_ratio`、`source_key`、`render_key`、`request_id` などの更新メタデータ
 
 雲パイプラインでは 2 種類のキーを分離して扱う。
@@ -667,8 +668,20 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `clouddisc` のランタイム出力は `numpy RGBA` と 2D missing-mask 配列を基本形とする。
 - `CloudController` は `QImage` を先に作らず、そのまま `CloudImageState` へ渡してよい。
 - `SkyCompositorCache` は cloud image / missing mask / cloud amount field を NumPy ベースで扱い、ストライプ描画、masking、missing tint 適用をそのまま進めてよい。
+- `cloud_amount_field` は、雲 RGBA の alpha から `(u, v)` 正規化座標上へ集約した 2D 雲量場として扱ってよい。
+- ストライプ描画では、`width` モードと `alpha` モードの 2 方式を持ってよい。
+- `width` モードでは、基準線から片側へ 1px 単位で白線を積み上げ、整数本数に加えて次の 1 本だけ小数部相当の alpha を与えてよい。
+- `alpha` モードでは、白線幅は固定とし、雲量に応じて白線 alpha を変えてよい。
+- 外周境界の見た目を和らげるため、cloud fetch/render 側に小さな overscan を持たせてよい。
+- 雲量場の再正規化では、非ゼロ値の下側 `8 percentile` と上側 `92 percentile` を使ってよい。
+- `--cloud-opacity` は追加の内部係数を掛けず、そのまま最終 cloud 合成 opacity として使ってよい。
 - `QImage` 化は、合成済み画像または最終描画に必要になった段階でのみ行う。
 - これにより、cloud path の `QImage <-> NumPy` 往復と、missing mask の不要な 4ch 展開を避ける。
+
+### 6.2.0a ビューポート幾何
+
+- `get_screen_geometry()` は sky/cloud disc 用に固定 `10px` の内側余白を持たず、ウィンドウ全体を基準に geometry を計算してよい。
+- border は別レイヤーとして後段で重ねるため、sky/cloud disc は border の下まで描かれてよい。
 
 ### 6.2.1 最終フレームキャッシュ
 
