@@ -254,11 +254,12 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `hover-overlay`
   - `overlay`
   - `status`
-- ここでいう `overlay` は、地点名、地点高さ、観測者高さ、時刻、Alt/Az、`Vmag limit` などの static top-left overlay を指す。
+- ここでいう `overlay` は、地点名、時刻、Alt/Az、地点高さ、観測者高さなどの static observation overlay を指す。`Vmag limit` は GUI メニューの disabled 項目で示す。
 - static overlay は hover 系 HUD と同じ更新タイミングに揃えるため、ベース描画ではなく HUD 描画側で重ねる。
 - `guide` は方位ラベルと天頂マーカーを含む独立レイヤーであり、空色・雲合成の上、通常の hover/HUD オーバーレイより手前に置く。
 - 幾何学的な地平線、天の赤道、黄道も `show_guidelines` に従う guide 系表示として扱う。
 - `show_guidelines == False` のときは、guide レイヤー本体だけでなく、viewport interaction 中の sky reference line 描画もまとめて省略してよい。
+- `show_overlay_info` は GUI 側の表示トグルとして保持し、既定では `True` でよい。
 
 #### 4.3.3 次段のリファクタリング方針
 
@@ -268,7 +269,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - HUD 側には、少なくとも次を寄せる方向で整理する。
   - 恒星ホバー
   - DSO ホバー
-  - static top-left overlay
+  - static observation overlay
   - jump highlight
   - status line
 - `paintEvent()` は最終的に「ベースフレームをキャッシュし、その上に hover/HUD を都度重ねる」形を目指す。
@@ -283,10 +284,12 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 月 hover 時の拡大上書き
   - DSO hover
   - 恒星・惑星 hover 情報
-  - static top-left overlay
+  - static observation overlay
   - jump highlight
   - status line
-- static top-left overlay は `mouse_pos` に応じて表示/非表示が切り替わるため、HUD 側で毎フレーム再評価する。
+- static observation overlay は `mouse_pos` に応じて左上と左下を切り替えるため、HUD 側で毎フレーム再評価する。
+- static observation overlay は、GUI の `show_overlay_info` が有効なときだけ HUD 側で描画する。
+- overlay 行順は、地点名、時刻、Alt/Az を先頭に固定してよい。
 - static overlay の hover 抑止は厳密 hit test ではなく、描画帯の `y` 範囲に入ったら消す粗い判定でよい。
 - 月の `5x` 拡大は、角半径の生値ではなく「通常時の見た目半径」を基準に適用する。
 - `guide` レイヤーはベース側に残し、マウス位置によるラベル回避には依存しない安定描画として扱う。

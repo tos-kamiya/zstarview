@@ -58,6 +58,7 @@ class SkyWindowUserOptions:
     show_dso_initial: Optional[bool] = None
     show_asterisms_initial: Optional[bool] = None
     show_guidelines_initial: Optional[bool] = None
+    show_overlay_info_initial: Optional[bool] = None
     sky_disc_gui_allowed: bool = True
     cloud_gui_allowed: bool = True
     satellite_gui_allowed: bool = True
@@ -148,6 +149,7 @@ def prepare_window_user_options(
     show_dso_initial: Optional[bool] = None,
     show_asterisms_initial: Optional[bool] = None,
     show_guidelines_initial: Optional[bool] = None,
+    show_overlay_info_initial: Optional[bool] = None,
     sky_disc_gui_allowed: bool = True,
     cloud_gui_allowed: bool = True,
     satellite_gui_allowed: bool = True,
@@ -172,6 +174,7 @@ def prepare_window_user_options(
         show_dso_initial=show_dso_initial,
         show_asterisms_initial=show_asterisms_initial,
         show_guidelines_initial=show_guidelines_initial,
+        show_overlay_info_initial=show_overlay_info_initial,
         sky_disc_gui_allowed=bool(sky_disc_gui_allowed),
         cloud_gui_allowed=bool(cloud_gui_allowed),
         satellite_gui_allowed=bool(satellite_gui_allowed),

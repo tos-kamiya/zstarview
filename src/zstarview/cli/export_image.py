@@ -228,6 +228,7 @@ def _build_window_inputs_from_args(
         show_dso_initial=getattr(args, "show_dso_initial", None),
         show_asterisms_initial=getattr(args, "show_asterisms_initial", None),
         show_guidelines_initial=getattr(args, "show_guidelines_initial", None),
+        show_overlay_info_initial=getattr(args, "show_observation_info_initial", None),
         sky_disc_gui_allowed=getattr(args, "sky_opacity", 0.15) > 0.0,
         cloud_gui_allowed=overlay_availability.cloud and getattr(args, "cloud_opacity", 0.15) > 0.0,
         satellite_gui_allowed=overlay_availability.satellite and getattr(args, "satellite_opacity", 0.5) > 0.0,
@@ -693,7 +694,12 @@ def _write_export_overlay_summary_to_stderr(
     celestial_data: CelestialData,
     vmag_limit: float,
 ) -> None:
-    lines = render_background.format_overlay_info_lines(celestial_data, viewer_data, vmag_limit)
+    lines = render_background.format_overlay_info_lines(
+        celestial_data,
+        viewer_data,
+        vmag_limit,
+        include_vmag_limit=True,
+    )
     sys.stderr.write("\n".join(lines) + "\n")
     sys.stderr.flush()
 

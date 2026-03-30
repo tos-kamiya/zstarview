@@ -544,6 +544,13 @@ def add_render_arguments(
             metavar="true|false",
             help="Whether to show guideline overlays at startup (true/false).",
         )
+        parser.add_argument(
+            "--show-observation-info-initial",
+            type=_parse_bool,
+            default=None,
+            metavar="true|false",
+            help="Whether to show observation info at startup (true/false).",
+        )
     theme_default = "night"
     parser.add_argument(
         "-t",

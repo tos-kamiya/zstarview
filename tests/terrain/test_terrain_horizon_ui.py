@@ -84,6 +84,7 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
     assert options.aircraft_gui_allowed is False
     assert options.terrain_horizon_gui_allowed is False
     assert options.urban_outline_gui_allowed is False
+    assert options.show_overlay_info_initial is None
 
 
 def test_toggle_clouds_respects_cli_lockout() -> None:
@@ -133,6 +134,31 @@ def test_toggle_guidelines_disables_and_restores_opacity() -> None:
     assert dummy.show_guidelines is False
     assert dummy._action_toggle_guidelines.isChecked() is False
     assert updates == ["update", "update"]
+
+
+def test_toggle_overlay_info_updates_check_state() -> None:
+    dummy = SimpleNamespace()
+    dummy.show_overlay_info = False
+    dummy._action_toggle_overlay_info = _DummyAction(False)
+    updates: list[str] = []
+    dummy.update = lambda: updates.append("update")
+
+    SkyWindow.toggle_overlay_info(dummy)
+
+    assert dummy.show_overlay_info is True
+    assert dummy._action_toggle_overlay_info.isChecked() is True
+
+    SkyWindow.toggle_overlay_info(dummy)
+
+    assert dummy.show_overlay_info is False
+    assert dummy._action_toggle_overlay_info.isChecked() is False
+    assert updates == ["update", "update"]
+
+
+def test_vmag_limit_menu_text_formats_current_limit() -> None:
+    dummy = SimpleNamespace(vmag_limit=6.5)
+
+    assert SkyWindow._vmag_limit_menu_text(dummy) == "Vmag limit 6.5"
 
 
 def test_status_line_message_combines_cloud_and_terrain_segments() -> None:

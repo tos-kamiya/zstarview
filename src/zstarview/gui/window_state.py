@@ -23,6 +23,7 @@ class SkyWindowState:
     viewport_interaction_mode: bool = False
     viewport_interaction_stars: Optional[StarsTable] = None
     mouse_pos: Optional[QPoint] = None
+    overlay_info_bottom_left: bool = False
     jump_highlight_name: Optional[str] = None
     jump_highlight_altaz: Optional[ViewCenterAltAz] = None
     jump_highlight_until_ms: float = 0.0

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import astropy.time
 import numpy as np
-from PySide6.QtCore import QPoint, QPointF
+from PySide6.QtCore import QPoint, QPointF, QRectF
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QImage, QPainter
 from PySide6.QtWidgets import QApplication
 
@@ -456,17 +456,16 @@ def test_overlay_info_includes_location_height_and_explicit_observer_height(monk
         text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
     )
 
-    assert "t/Tokyo Skytree" in label_calls
-    assert "Tower height 634 m" in label_calls
-    assert "Observer height 12 m" in label_calls
-    assert label_calls.index("t/Tokyo Skytree") < label_calls.index("2026-02-27 00:00:00 UTC")
-    assert label_calls.index("Tower height 634 m") < label_calls.index("2026-02-27 00:00:00 UTC")
-    assert label_calls.index("Observer height 12 m") < label_calls.index("2026-02-27 00:00:00 UTC")
-    assert label_calls.index("2026-02-27 00:00:00 UTC") < label_calls.index("Alt 45°  Az 180° (S)")
-    assert label_calls.index("Alt 45°  Az 180° (S)") < label_calls.index("Vmag limit 6.0")
+    assert label_calls == [
+        "t/Tokyo Skytree",
+        "Tower height 634 m",
+        "Observer height 12 m",
+        "2026-02-27 00:00:00 UTC",
+        "Alt 45°  Az 180° (S)",
+    ]
 
 
-def test_overlay_info_first_line_top_margin_matches_left_margin(monkeypatch) -> None:
+def test_overlay_info_first_line_top_margin_matches_left_margin_when_cursor_is_lower_half(monkeypatch) -> None:
     class DummyPainter:
         def setPen(self, *_args, **_kwargs) -> None:
             pass
@@ -481,8 +480,12 @@ def test_overlay_info_first_line_top_margin_matches_left_margin(monkeypatch) -> 
     viewer = ViewerData(
         location=(35.0, 139.0),
         timezone_name="UTC",
-        city_name="Tokyo",
+        city_name="t/Tokyo Skytree",
         view_center=(45.0, 180.0),
+        observer_height_m=12.0,
+        location_height_label="Tower height",
+        location_height_m=634.0,
+        show_observer_height=True,
     )
     geometry = ScreenGeometry(center=(120, 90), radius=70)
     text_font = QFont()
@@ -491,7 +494,7 @@ def test_overlay_info_first_line_top_margin_matches_left_margin(monkeypatch) -> 
 
     def fake_draw_outlined_text(_painter, text, pos, *_args, **_kwargs) -> None:
         nonlocal first_label_pos
-        if text == "Tokyo" and first_label_pos is None:
+        if text == "t/Tokyo Skytree" and first_label_pos is None:
             first_label_pos = pos
 
     render_overlay_info.draw_overlay_info(
@@ -504,6 +507,9 @@ def test_overlay_info_first_line_top_margin_matches_left_margin(monkeypatch) -> 
         highlighted_dso=None,
         highlighted_object=None,
         text_font=text_font,
+        viewport_rect=QRectF(0.0, 0.0, 240.0, 180.0),
+        mouse_pos=QPoint(10, 170),
+        bottom_left=False,
         get_text_style_func=render_text.get_text_style,
         draw_outlined_text_func=fake_draw_outlined_text,
         text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
@@ -517,7 +523,7 @@ def test_overlay_info_first_line_top_margin_matches_left_margin(monkeypatch) -> 
     assert abs(top_margin - left_margin) <= 1.0
 
 
-def test_overlay_info_hides_static_lines_when_mouse_is_in_overlay_y_range(monkeypatch) -> None:
+def test_overlay_info_moves_to_bottom_when_cursor_is_in_upper_half(monkeypatch) -> None:
     class DummyPainter:
         def setPen(self, *_args, **_kwargs) -> None:
             pass
@@ -532,14 +538,20 @@ def test_overlay_info_hides_static_lines_when_mouse_is_in_overlay_y_range(monkey
     viewer = ViewerData(
         location=(35.0, 139.0),
         timezone_name="UTC",
-        city_name="Tokyo",
+        city_name="t/Tokyo Skytree",
         view_center=(45.0, 180.0),
+        observer_height_m=12.0,
+        location_height_label="Tower height",
+        location_height_m=634.0,
+        show_observer_height=True,
     )
 
-    label_calls: list[str] = []
+    first_label_pos = None
 
-    def fake_draw_outlined_text(_painter, text, *_args, **_kwargs) -> None:
-        label_calls.append(text)
+    def fake_draw_outlined_text(_painter, text, pos, *_args, **_kwargs) -> None:
+        nonlocal first_label_pos
+        if text == "t/Tokyo Skytree" and first_label_pos is None:
+            first_label_pos = pos
 
     render_overlay_info.draw_overlay_info(
         painter,
@@ -551,13 +563,21 @@ def test_overlay_info_hides_static_lines_when_mouse_is_in_overlay_y_range(monkey
         highlighted_dso=None,
         highlighted_object=None,
         text_font=QFont(),
-        mouse_pos=QPoint(300, 40),
+        viewport_rect=QRectF(0.0, 0.0, 240.0, 180.0),
+        mouse_pos=QPoint(10, 20),
+        bottom_left=True,
         get_text_style_func=render_text.get_text_style,
         draw_outlined_text_func=fake_draw_outlined_text,
         text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
     )
 
-    assert label_calls == []
+    assert first_label_pos is not None
+    fm = QFontMetrics(QFont())
+    bounds = fm.tightBoundingRect("Ag")
+    line_height = int(fm.lineSpacing() * 1.2)
+    bottom_margin = 180.0 - (float(first_label_pos.y()) + float(bounds.bottom()) + 4.0 * line_height)
+    left_margin = float(fm.lineSpacing())
+    assert abs(bottom_margin - left_margin) <= 2.0
 
 
 def test_format_overlay_info_lines_matches_static_overlay_order() -> None:
@@ -578,5 +598,4 @@ def test_format_overlay_info_lines_matches_static_overlay_order() -> None:
         "Observer height 12 m",
         "2026-02-27 00:00:00 UTC",
         "Alt 45°  Az 180° (S)",
-        "Vmag limit 6.0",
     ]
