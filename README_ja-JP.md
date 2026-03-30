@@ -150,6 +150,7 @@ CLI では、場所・時刻・描画設定を細かく指定できます。
 | `-i`, `--sky-update-interval SECONDS` | 星空を更新する時間間隔（秒）を指定します。 | `60` |
 | `--show-dso-initial true\|false` | 起動時に DSO を表示するかを指定します。 | 自動（カタログがあれば表示） |
 | `--show-asterisms-initial true\|false` | 起動時にアステリウムを表示するかを指定します。 | `show` |
+| `--show-observation-info-initial true\|false` | 起動時に観測情報ブロックを表示するかを指定します。 | `show` |
 
 #### オーバーレイ
 
