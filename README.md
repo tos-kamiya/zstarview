@@ -149,6 +149,7 @@ The CLI supports detailed startup configuration for location, time, and renderin
 | `-i`, `--sky-update-interval SECONDS`       | Interval for updating stars/sky-color disc in seconds.                      | `60`   |
 | `--show-dso-initial true\|false`            | Whether DSO overlays are shown at startup.                                  | auto (`show` when catalog is available) |
 | `--show-asterisms-initial true\|false`      | Whether asterism overlays are shown at startup.                             | `show` |
+| `--show-observation-info-initial true\|false` | Whether the observation-info block is shown at startup.                    | `show` |
 
 #### Overlays
 
@@ -465,6 +466,7 @@ From the hamburger menu (`☰`), you can use:
 * **DSO**: Toggle deep-sky object overlays on/off.
 * **Asterisms**: Toggle asterism overlays on/off (when enabled, dim overlays stay visible; hovering a member star brightens the matching asterism and shows its label).
 * **Guidelines**: Toggle the geometric horizon, celestial equator, ecliptic, direction labels, and zenith marker on/off.
+* **Observation Info**: Toggle the observation-info block on/off. When shown, it stays at the top-left by default and moves to the bottom-left when the cursor enters the upper third of the window, keeping its previous corner while the cursor stays in the middle third.
 * **Sky Color Disc**: Switch between the full sky-color gradient and the flat dark-disc fallback.
 * **Clouds**: Toggle real-time cloud overlays on/off.
 * **Aircraft**: Toggle the OpenSky-based aircraft overlay on/off. If disabled from the CLI with `-a 0` / `--aircraft-opacity 0`, the menu item cannot re-enable it for that run.

@@ -260,6 +260,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 幾何学的な地平線、天の赤道、黄道も `show_guidelines` に従う guide 系表示として扱う。
 - `show_guidelines == False` のときは、guide レイヤー本体だけでなく、viewport interaction 中の sky reference line 描画もまとめて省略してよい。
 - `show_overlay_info` は GUI 側の表示トグルとして保持し、既定では `True` でよい。
+- CLI の `--show-observation-info-initial` は `show_overlay_info` の初期値上書きとして扱ってよい。
 
 #### 4.3.3 次段のリファクタリング方針
 
@@ -288,9 +289,10 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - jump highlight
   - status line
 - static observation overlay は `mouse_pos` に応じて左上と左下を切り替えるため、HUD 側で毎フレーム再評価する。
+- 位置切替にはヒステリシスを入れ、上 1/3 で左下、下 1/3 で左上へ切り替え、中央 1/3 では直前位置を保持してよい。
 - static observation overlay は、GUI の `show_overlay_info` が有効なときだけ HUD 側で描画する。
 - overlay 行順は、地点名、時刻、Alt/Az を先頭に固定してよい。
-- static overlay の hover 抑止は厳密 hit test ではなく、描画帯の `y` 範囲に入ったら消す粗い判定でよい。
+- overlay anchor の保持状態は window state に持たせてよい。
 - 月の `5x` 拡大は、角半径の生値ではなく「通常時の見た目半径」を基準に適用する。
 - `guide` レイヤーはベース側に残し、マウス位置によるラベル回避には依存しない安定描画として扱う。
 - `gui/window_render.py` の frame cache はベース描画だけを保持し、hover/jump/status はキャッシュ後に都度上書きする。
@@ -311,7 +313,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 天球ディスク幅が `expected-render-width` 以下なら等倍描画し、それを超える場合は `expected-render-width * sqrt(disc_width / expected-render-width)` に従って内部描画面を縮小する
   - 縮小時は低解像度 `QImage` に恒星を描いてからウィンドウ全体へ拡大転写し、大型ウィンドウでの負荷を抑える
   - ベースフレームの `QImage` キャッシュを持ち、geometry、描画入力、interaction mode などが不変なら前回ベースフレームをそのまま再利用する
-  - hover 対象、jump highlight、status line、static overlay の hover 抑止はキャッシュ後に HUD として重ねる
+  - hover 対象、jump highlight、status line、static observation overlay はキャッシュ後に HUD として重ねる
 - `src/zstarview/gui/window_updates.py`
   - バックグラウンド更新結果の反映
 - `src/zstarview/gui/sky_worker.py`
@@ -616,7 +618,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `SkyWindow._frame_cache_key`
   - 最終フレームキャッシュの無効化条件をまとめたキー
   - ウィンドウサイズ、`render_view_center`、描画トグル、`CelestialData`、空ディスク画像、雲画像、地形/都市アウトラインなどを含む
-  - `mouse_pos`、hover 対象、jump highlight、ステータス行文言、static overlay の hover 抑止状態は含めない
+  - `mouse_pos`、hover 対象、jump highlight、ステータス行文言、static observation overlay の anchor 状態は含めない
 - jump highlight は恒星・ISS に加えて GUI place 検索で選ばれた固定地表点も含めてよい
 - `UrbanOutlineState`
   - 都市アウトライン点列
