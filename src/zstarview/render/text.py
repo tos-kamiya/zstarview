@@ -191,7 +191,8 @@ def _draw_status_line_text(
     if not message:
         return
 
-    color, outline_color = get_text_style(preset, status_line=True)
+    del preset
+    color, outline_color = get_text_style("night", status_line=True)
 
     painter.save()
     painter.setFont(status_line_font)

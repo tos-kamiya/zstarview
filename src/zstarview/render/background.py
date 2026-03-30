@@ -91,8 +91,8 @@ def draw_radial_background(
     col_params = {
         "white": (242, 46, 245, 48, 250, 50, 255, 200),
         "black": (12, 9, 12, 9, 12, 9, 255, 200),
-        "day": (230, 28, 242, 34, 255, 34, 200, 60),
-        "night": (10, 7, 12, 9, 16, 11, 200, 60),
+        "day": (230, 28, 242, 34, 255, 34, 200, 80),
+        "night": (10, 7, 12, 9, 16, 11, 200, 80),
     }
     param = col_params.get(preset, None) or col_params["black"]
 
