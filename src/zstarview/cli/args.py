@@ -48,12 +48,12 @@ def _parse_theme(value: str) -> str:
 
 
 def _parse_cloud_stripe(value: str) -> Tuple[int, float]:
-    """Parse cloud stripe style as 'count,width_factor' (e.g. '50,0.2')."""
+    """Parse cloud stripe style as 'count,width_factor' (e.g. '50,0.85')."""
     text = (value or "").strip()
     parts = [p.strip() for p in text.split(",")]
     if len(parts) != 2:
         raise argparse.ArgumentTypeError(
-            f"Invalid cloud stripe style: {value!r}. Use 'count,width' (e.g. 50,0.2)."
+            f"Invalid cloud stripe style: {value!r}. Use 'count,width' (e.g. 50,0.85)."
         )
     try:
         count = int(parts[0])
@@ -386,9 +386,9 @@ def add_render_arguments(
         "-c",
         "--cloud-opacity",
         type=float,
-        default=0.15,
+        default=0.1,
         help=(
-            "Opacity of the clouds (0.0 - 1.0, default: 0.15). "
+            "Opacity of the clouds (0.0 - 1.0, default: 0.1). "
             "Set to 0.0 to disable cloud rendering."
         ),
     )
@@ -498,10 +498,10 @@ def add_render_arguments(
     parser.add_argument(
         "--cloud-stripe",
         type=_parse_cloud_stripe,
-        default=(50, 0.2),
+        default=(50, 0.85),
         metavar="COUNT,WIDTH",
         help=(
-            "Cloud stripe style as 'count,width' (default: 50,0.2). "
+            "Cloud stripe style as 'count,width' (default: 50,0.85). "
             "If either value is 0, cloud rendering is disabled."
         ),
     )

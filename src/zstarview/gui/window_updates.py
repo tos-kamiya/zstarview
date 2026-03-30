@@ -381,7 +381,7 @@ class SkyWindowUpdatesMixin:
             payload.get("meta"),
             az=float(payload["az"]),
             time_utc=payload["time_utc"],
-            stripe_density=payload.get("stripe_density"),
+            cloud_amount_field=payload.get("cloud_amount_field"),
             missing_mask=payload.get("missing_mask"),
             coverage_ratio=payload.get("coverage_ratio"),
             source_key=payload.get("source_key"),
@@ -397,7 +397,7 @@ class SkyWindowUpdatesMixin:
         banner = str(payload.get("banner", "")).strip()
         self.cloud_state.image = None
         self.cloud_state.missing_mask = None
-        self.cloud_state.stripe_density = None
+        self.cloud_state.cloud_amount_field = None
         self._compositor.invalidate()
         if banner:
             self.cloud_state.set_error_banner(banner)

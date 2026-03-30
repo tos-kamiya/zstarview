@@ -53,7 +53,7 @@ def test_compositor_cache_key_includes_missing_mask() -> None:
         np_rgba_to_qimage(cloud),
         cloud_alpha=0.4,
         view_center=(0.0, 0.0),
-        stripe_density=None,
+        cloud_amount_field=None,
         missing_mask=missing_none,
     )
     p1.end()
@@ -68,7 +68,7 @@ def test_compositor_cache_key_includes_missing_mask() -> None:
         np_rgba_to_qimage(cloud),
         cloud_alpha=0.4,
         view_center=(0.0, 0.0),
-        stripe_density=None,
+        cloud_amount_field=None,
         missing_mask=missing_half,
     )
     p2.end()

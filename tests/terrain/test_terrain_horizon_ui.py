@@ -517,7 +517,7 @@ def test_discard_stale_disc_images_clears_cached_sky_and_cloud_buffers() -> None
     dummy.cloud_state = SimpleNamespace(
         image=object(),
         missing_mask=object(),
-        stripe_density=object(),
+        cloud_amount_field=object(),
         render_key="render-key",
         request_id=42,
         missing_mask_key=99,
@@ -529,7 +529,7 @@ def test_discard_stale_disc_images_clears_cached_sky_and_cloud_buffers() -> None
     assert dummy.state.sky_disc_image is None
     assert dummy.cloud_state.image is None
     assert dummy.cloud_state.missing_mask is None
-    assert dummy.cloud_state.stripe_density is None
+    assert dummy.cloud_state.cloud_amount_field is None
     assert dummy.cloud_state.render_key is None
     assert dummy.cloud_state.request_id is None
     assert dummy.cloud_state.missing_mask_key is None

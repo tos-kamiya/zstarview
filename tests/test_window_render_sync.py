@@ -83,7 +83,7 @@ def _make_scene(
         sky_disc_image=None,
         cloud_image=None,
         cloud_missing_mask=None,
-        cloud_stripe_density=None,
+        cloud_amount_field=None,
         terrain_horizon_profile=terrain_horizon_profile,
         urban_outlines=urban_outlines,
         satellite_overlay_points=None,
@@ -712,7 +712,7 @@ def test_render_frame_cache_key_ignores_hover_and_status_state() -> None:
     dummy.show_urban_outline_layer = True
     dummy._status_line_message = lambda: "initial"
     dummy._render_cache_stamp = lambda value: window_render_module.SkyWindowRenderMixin._render_cache_stamp(dummy, value)
-    dummy.cloud_state = SimpleNamespace(image=object(), missing_mask=object(), stripe_density=None)
+    dummy.cloud_state = SimpleNamespace(image=object(), missing_mask=object(), cloud_amount_field=None)
     dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
     dummy.state.sky_disc_image = object()
     dummy.state.terrain_horizon_profile = [(1.0, 2.0)]
@@ -1127,7 +1127,7 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         sky_disc_image=None,
         cloud_image=None,
         cloud_missing_mask=None,
-        cloud_stripe_density=None,
+        cloud_amount_field=None,
         terrain_horizon_profile=None,
         urban_outlines=None,
         satellite_overlay_points=None,

@@ -75,7 +75,7 @@ from ..terrain import (
     sample_ground_elevation,
 )
 from ..types import CelestialData, UrbanOutlinePolyline, ViewerData
-from ..gui.composite import SkyCompositorCache, build_stripe_density_field_from_rgba
+from ..gui.composite import SkyCompositorCache, build_cloud_amount_field_from_rgba
 from ..gui.sky_worker import compute_sky_snapshot
 from ..gui.window_inputs import (
     PreparedWindowCatalogs,
@@ -184,7 +184,7 @@ def _build_window_inputs_from_args(
 
     view_center = (getattr(args, "view_center_alt", 90.0), getattr(args, "view_center_az", 180.0))
     view_center = (min(90.0, max(0.0, view_center[0])), view_center[1] % 360.0)
-    cloud_stripe_count, cloud_stripe_width = getattr(args, "cloud_stripe", (50, 0.2))
+    cloud_stripe_count, cloud_stripe_width = getattr(args, "cloud_stripe", (50, 0.85))
     visual_preset = getattr(args, "theme", "night")
     star_visibility_boost = 1.12 if visual_preset == "white" else 1.05 if visual_preset == "day" else 1.0
     vmag_brightness_scale = -math.log10(getattr(args, "vmag_brightness_multiplier", 2.5))
@@ -318,8 +318,8 @@ def _fetch_cloud_layer(
     if _timed_out(deadline):
         raise TimeoutError("cloud timed out")
     missing_mask_alpha = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
-    stripe_density = build_stripe_density_field_from_rgba(cloud_rgba)
-    return (cloud_rgba, missing_mask_alpha, stripe_density)
+    cloud_amount_field = build_cloud_amount_field_from_rgba(cloud_rgba)
+    return (cloud_rgba, missing_mask_alpha, cloud_amount_field)
 
 
 def _fetch_terrain_horizon_layer(
@@ -766,10 +766,10 @@ def main() -> None:
     layer_failures: list[str] = []
     cloud_image = None
     cloud_missing_mask = None
-    cloud_stripe_density = None
+    cloud_amount_field = None
     if user_options.cloud_disc_alpha > 0.0:
         try:
-            cloud_image, cloud_missing_mask, cloud_stripe_density = _fetch_cloud_layer(
+            cloud_image, cloud_missing_mask, cloud_amount_field = _fetch_cloud_layer(
                 viewer_data=viewer_data,
                 user_options=user_options,
                 deadline=deadline,
@@ -853,7 +853,7 @@ def main() -> None:
         sky_disc_image=sky_disc_image,
         cloud_image=cloud_image,
         cloud_missing_mask=cloud_missing_mask,
-        cloud_stripe_density=cloud_stripe_density,
+        cloud_amount_field=cloud_amount_field,
         terrain_horizon_profile=terrain_horizon_profile,
         urban_outlines=urban_outlines,
         satellite_overlay_points=satellite_overlay_points,

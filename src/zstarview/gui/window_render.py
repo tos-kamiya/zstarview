@@ -72,7 +72,9 @@ class SkyWindowRenderMixin:
             self._render_cache_stamp(self.state.sky_disc_image),
             self._render_cache_stamp(self.cloud_state.image),
             self._render_cache_stamp(self.cloud_state.missing_mask),
-            None if self.cloud_state.stripe_density is None else int(self.cloud_state.stripe_density.source_cache_key),
+            None
+            if self.cloud_state.cloud_amount_field is None
+            else int(self.cloud_state.cloud_amount_field.source_cache_key),
             self._render_cache_stamp(self.state.terrain_horizon_profile),
             self._render_cache_stamp(self.state.urban_outlines),
             self._render_cache_stamp(getattr(self.state, "satellite_overlay_points", None)),
@@ -142,7 +144,7 @@ class SkyWindowRenderMixin:
             sky_disc_image=getattr(state, "sky_disc_image", None),
             cloud_image=getattr(cloud_state, "image", None),
             cloud_missing_mask=getattr(cloud_state, "missing_mask", None),
-            cloud_stripe_density=getattr(cloud_state, "stripe_density", None),
+            cloud_amount_field=getattr(cloud_state, "cloud_amount_field", None),
             terrain_horizon_profile=getattr(state, "terrain_horizon_profile", None),
             urban_outlines=getattr(state, "urban_outlines", None),
             satellite_overlay_points=getattr(state, "satellite_overlay_points", None),

@@ -28,7 +28,7 @@ from ..clouddisc import (
 from ..clouddisc.types import CloudSourceData
 from ..clouddisc.providers.select import pick_satellite
 from ..paths import CLOUD_SHELL_KM
-from .composite import build_stripe_density_field_from_rgba
+from .composite import build_cloud_amount_field_from_rgba
 
 logger = logging.getLogger(__name__)
 
@@ -265,7 +265,7 @@ class CloudController(QObject):
                 float(coverage_ratio) * 100.0,
             )
             missing_alpha = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
-            stripe_density = build_stripe_density_field_from_rgba(cloud_rgba)
+            cloud_amount_field = build_cloud_amount_field_from_rgba(cloud_rgba)
 
             with self._lock:
                 is_latest = (request_id == self._latest_request_id)
@@ -279,7 +279,7 @@ class CloudController(QObject):
                     "meta": meta,
                     "az": az,
                     "time_utc": datetime.now(timezone.utc),
-                    "stripe_density": stripe_density,
+                    "cloud_amount_field": cloud_amount_field,
                     "missing_mask": missing_alpha,
                     "coverage_ratio": coverage_ratio,
                     "request_id": request_id,
