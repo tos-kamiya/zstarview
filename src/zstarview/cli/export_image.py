@@ -184,7 +184,11 @@ def _build_window_inputs_from_args(
 
     view_center = (getattr(args, "view_center_alt", 90.0), getattr(args, "view_center_az", 180.0))
     view_center = (min(90.0, max(0.0, view_center[0])), view_center[1] % 360.0)
-    cloud_stripe_count, cloud_stripe_width = getattr(args, "cloud_stripe", (50, 0.85))
+    cloud_stripe_mode, cloud_stripe_count, cloud_stripe_width = getattr(
+        args,
+        "cloud_stripe",
+        ("width", 50, 0.85),
+    )
     visual_preset = getattr(args, "theme", "night")
     star_visibility_boost = 1.12 if visual_preset == "white" else 1.05 if visual_preset == "day" else 1.0
     vmag_brightness_scale = -math.log10(getattr(args, "vmag_brightness_multiplier", 2.5))
@@ -245,6 +249,7 @@ def _build_window_inputs_from_args(
         urban_outline_feature_type=getattr(args, "urban_outline_feature_type", "both"),
         urban_outline_skyscraper_only=bool(getattr(args, "urban_outline_skyscraper_only", False)),
         cloud_stripe_style=(cloud_stripe_count, cloud_stripe_width),
+        cloud_stripe_mode=cloud_stripe_mode,
         cloud_missing_tint_opacity=getattr(args, "cloud_missing_tint_opacity", 0.0),
         star_render_expected_width=getattr(args, "expected_render_width", 600),
         content_fov_deg=getattr(args, "content_fov_deg", 100.0),
@@ -274,6 +279,7 @@ def _build_compositor(runtime_options: SkyWindowRuntimeOptions, user_options: Sk
     return SkyCompositorCache(
         cloud_target_stripes=int(target_stripes),
         cloud_stripe_width_factor=float(width_factor),
+        cloud_stripe_mode=runtime_options.cloud_stripe_mode,
         missing_tint_rgba=missing_tint_rgba,
         ground_tint_opacity=user_options.ground_tint_opacity,
     )

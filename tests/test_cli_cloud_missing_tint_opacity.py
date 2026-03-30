@@ -21,6 +21,30 @@ def test_parse_args_cloud_missing_tint_opacity_override(monkeypatch) -> None:
     assert math.isclose(float(args.cloud_missing_tint_opacity), 0.4, rel_tol=0.0, abs_tol=1e-9)
 
 
+def test_parse_args_cloud_stripe_default(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview"])
+    args = parse_args()
+    assert args.cloud_stripe == ("width", 50, 0.85)
+
+
+def test_parse_args_cloud_stripe_accepts_mode_only(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "--cloud-stripe", "alpha"])
+    args = parse_args()
+    assert args.cloud_stripe == ("alpha", 50, 0.2)
+
+
+def test_parse_args_cloud_stripe_accepts_mode_and_count(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "--cloud-stripe", "width,24"])
+    args = parse_args()
+    assert args.cloud_stripe == ("width", 24, 0.85)
+
+
+def test_parse_args_cloud_stripe_accepts_mode_count_and_width(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "--cloud-stripe", "alpha,12,0.35"])
+    args = parse_args()
+    assert args.cloud_stripe == ("alpha", 12, 0.35)
+
+
 def test_parse_args_overlay_visibility_defaults(monkeypatch) -> None:
     monkeypatch.setattr("sys.argv", ["zstarview"])
     args = parse_args()

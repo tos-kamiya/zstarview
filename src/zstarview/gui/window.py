@@ -417,6 +417,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._compositor = SkyCompositorCache(
             cloud_target_stripes=int(target_stripes),
             cloud_stripe_width_factor=float(width_factor),
+            cloud_stripe_mode=runtime_options.cloud_stripe_mode,
             missing_tint_rgba=missing_tint_rgba,
             ground_tint_opacity=self.ground_tint_opacity,
         )

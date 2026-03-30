@@ -228,7 +228,7 @@ def main() -> None:
 
     view_center = (args.view_center_alt, args.view_center_az)
     view_center = (min(90.0, max(0.0, view_center[0])), view_center[1] % 360)
-    cloud_stripe_count, cloud_stripe_width = args.cloud_stripe
+    cloud_stripe_mode, cloud_stripe_count, cloud_stripe_width = args.cloud_stripe
     visual_preset = args.theme
     star_visibility_boost = 1.12 if visual_preset == "white" else 1.05 if visual_preset == "day" else 1.0
     vmag_brightness_scale = -math.log10(args.vmag_brightness_multiplier)
@@ -281,6 +281,7 @@ def main() -> None:
         urban_outline_feature_type=args.urban_outline_feature_type,
         urban_outline_skyscraper_only=args.urban_outline_skyscraper_only,
         cloud_stripe_style=(cloud_stripe_count, cloud_stripe_width),
+        cloud_stripe_mode=cloud_stripe_mode,
         cloud_missing_tint_opacity=args.cloud_missing_tint_opacity,
         star_render_expected_width=args.expected_render_width,
         content_fov_deg=args.content_fov_deg,

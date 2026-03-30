@@ -31,7 +31,7 @@ class _Args:
     vmag_limit = 6.0
     view_center_alt = 90.0
     view_center_az = 180.0
-    cloud_stripe = (50, 0.2)
+    cloud_stripe = ("width", 50, 0.2)
     theme = "night"
     vmag_brightness_multiplier = 2.5
     content_fov_deg = 100.0
@@ -93,6 +93,16 @@ def test_build_window_inputs_disables_all_realtime_overlays_for_future(monkeypat
     assert user_options.cloud_disc_alpha == 0.0
     assert user_options.aircraft_opacity == 0.0
     assert user_options.satellite_opacity == 0.0
+
+
+def test_build_window_inputs_propagates_cloud_stripe_mode(monkeypatch) -> None:
+    _patch_common(monkeypatch, delta_t=timedelta(0))
+
+    args = _Args()
+    args.cloud_stripe = ("alpha", 50, 0.2)
+    _catalogs, _viewer_data, _user_options, runtime_options = mod._build_window_inputs_from_args(args)
+
+    assert runtime_options.cloud_stripe_mode == "alpha"
 
 
 def test_fetch_urban_outline_layer_skips_skyscraper_lookup_when_radius_zero(monkeypatch) -> None:

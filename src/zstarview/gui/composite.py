@@ -241,6 +241,67 @@ def _render_variable_width_cloud_stripes_rgba(
     return out
 
 
+def _render_alpha_scaled_cloud_stripes_rgba(
+    cloud_amount: CloudAmountField,
+    width: int,
+    height: int,
+    hatch_cfg: HatchConfig,
+    geometry: ScreenGeometry | None = None,
+    *,
+    target_stripes: int = 50,
+    width_factor: float = 0.2,
+    content_fov_deg: float = 90.0,
+) -> np.ndarray:
+    """Render fixed-width cloud stripes whose alpha follows cloud amount."""
+    w = max(1, int(width))
+    h = max(1, int(height))
+
+    diameter_px = float(min(w, h))
+    stripes = max(1, int(target_stripes))
+    wf = max(0.01, float(width_factor))
+    period = int(np.clip(round(diameter_px / stripes), 14, 64))
+    max_band = max(1.0, float(period) * wf)
+
+    if geometry is None:
+        cx = (w - 1) * 0.5
+        cy = (h - 1) * 0.5
+        rr = max(1.0, min(cx, cy))
+    else:
+        cx = float(geometry.center[0])
+        cy = float(geometry.center[1])
+        rr = max(1.0, float(geometry.radius))
+
+    out = np.zeros((h, w, 4), dtype=np.uint8)
+    bins_u, bins_v = cloud_amount.amount.shape
+    phase, line_mask, inside_disc, sample_idx = _stripe_render_grids(
+        w,
+        h,
+        period,
+        max_band,
+        cx,
+        cy,
+        rr,
+        bins_u,
+        bins_v,
+        content_fov_deg,
+    )
+    draw_mask = inside_disc & line_mask & (phase <= max_band)
+    if not np.any(draw_mask):
+        return out
+
+    sampled = np.clip(cloud_amount.amount.reshape(-1)[sample_idx], 0.0, 1.0)
+    alpha_scale = float(np.clip(hatch_cfg.strength, 0, 255)) / 255.0
+    alpha = np.zeros((h, w), dtype=np.float32)
+    alpha[draw_mask] = sampled[draw_mask] * 255.0 * alpha_scale
+    positive = alpha > 0.5
+    if not np.any(positive):
+        return out
+
+    out[..., :3][positive] = 255
+    out[..., 3] = np.clip(np.round(alpha), 0, 255).astype(np.uint8)
+    return out
+
+
 def render_variable_width_cloud_stripes(
     cloud_amount: CloudAmountField,
     width: int,
@@ -562,6 +623,7 @@ class SkyCompositorCache:
         gray_mix: float = 1.0,
         cloud_target_stripes: int = 50,
         cloud_stripe_width_factor: float = 0.85,
+        cloud_stripe_mode: str = "width",
         missing_tint_rgba: Tuple[int, int, int, int] = CLOUD_MISSING_TINT_RGBA,
         ground_tint_opacity: float = 1.0,
     ) -> None:
@@ -569,6 +631,7 @@ class SkyCompositorCache:
         self._gray_mix = gray_mix
         self._cloud_target_stripes = max(1, int(cloud_target_stripes))
         self._cloud_stripe_width_factor = max(0.01, float(cloud_stripe_width_factor))
+        self._cloud_stripe_mode = "alpha" if str(cloud_stripe_mode) == "alpha" else "width"
         self._missing_tint_rgba: Tuple[int, int, int, int] = (
             int(np.clip(missing_tint_rgba[0], 0, 255)),
             int(np.clip(missing_tint_rgba[1], 0, 255)),
@@ -652,6 +715,7 @@ class SkyCompositorCache:
             self._gray_mix,
             self._cloud_target_stripes,
             self._cloud_stripe_width_factor,
+            self._cloud_stripe_mode,
         )
 
         if self._composite_key != comp_key or self._composited_img is None:
@@ -690,16 +754,28 @@ class SkyCompositorCache:
                         np.array(cloud_s, copy=False),
                         source_cache_key=cloud_ck,
                     )
-                cloud_s = _render_variable_width_cloud_stripes_rgba(
-                    cloud_amount_field,
-                    w,
-                    h,
-                    self._hatch_cfg,
-                    geometry=geometry,
-                    target_stripes=self._cloud_target_stripes,
-                    width_factor=self._cloud_stripe_width_factor,
-                    content_fov_deg=content_fov_deg,
-                )
+                if self._cloud_stripe_mode == "alpha":
+                    cloud_s = _render_alpha_scaled_cloud_stripes_rgba(
+                        cloud_amount_field,
+                        w,
+                        h,
+                        self._hatch_cfg,
+                        geometry=geometry,
+                        target_stripes=self._cloud_target_stripes,
+                        width_factor=self._cloud_stripe_width_factor,
+                        content_fov_deg=content_fov_deg,
+                    )
+                else:
+                    cloud_s = _render_variable_width_cloud_stripes_rgba(
+                        cloud_amount_field,
+                        w,
+                        h,
+                        self._hatch_cfg,
+                        geometry=geometry,
+                        target_stripes=self._cloud_target_stripes,
+                        width_factor=self._cloud_stripe_width_factor,
+                        content_fov_deg=content_fov_deg,
+                    )
                 if missing_s is not None:
                     cloud_s = _mask_cloud_alpha_by_missing_rgba(cloud_s, missing_s)
 

@@ -47,26 +47,33 @@ def _parse_theme(value: str) -> str:
     )
 
 
-def _parse_cloud_stripe(value: str) -> Tuple[int, float]:
-    """Parse cloud stripe style as 'count,width_factor' (e.g. '50,0.85')."""
+def _parse_cloud_stripe(value: str) -> tuple[str, int, float]:
+    """Parse cloud stripe style as 'mode[,count[,width_factor]]'."""
     text = (value or "").strip()
     parts = [p.strip() for p in text.split(",")]
-    if len(parts) != 2:
+    if len(parts) < 1 or len(parts) > 3:
         raise argparse.ArgumentTypeError(
-            f"Invalid cloud stripe style: {value!r}. Use 'count,width' (e.g. 50,0.85)."
+            f"Invalid cloud stripe style: {value!r}. Use 'width[,count[,width]]' or 'alpha[,count[,width]]'."
         )
+    mode = parts[0].lower()
+    if mode not in {"width", "alpha"}:
+        raise argparse.ArgumentTypeError(
+            f"Invalid cloud stripe mode: {value!r}. Use 'width' or 'alpha'."
+        )
+    default_count = 50
+    default_width = 0.85 if mode == "width" else 0.2
     try:
-        count = int(parts[0])
-        width = float(parts[1])
+        count = default_count if len(parts) < 2 or parts[1] == "" else int(parts[1])
+        width = default_width if len(parts) < 3 or parts[2] == "" else float(parts[2])
     except ValueError as exc:
         raise argparse.ArgumentTypeError(
-            f"Invalid cloud stripe style: {value!r}. Use numeric 'count,width'."
+            f"Invalid cloud stripe style: {value!r}. Use numeric count/width after the mode."
         ) from exc
     if count < 0 or width < 0:
         raise argparse.ArgumentTypeError(
             f"Invalid cloud stripe style: {value!r}. count and width must be >= 0."
         )
-    return count, width
+    return mode, count, width
 
 
 def _parse_vmag_brightness_multiplier(value: str) -> float:
@@ -498,10 +505,11 @@ def add_render_arguments(
     parser.add_argument(
         "--cloud-stripe",
         type=_parse_cloud_stripe,
-        default=(50, 0.85),
-        metavar="COUNT,WIDTH",
+        default=("width", 50, 0.85),
+        metavar="MODE[,COUNT[,WIDTH]]",
         help=(
-            "Cloud stripe style as 'count,width' (default: 50,0.85). "
+            "Cloud stripe style as 'mode[,count[,width]]' "
+            "(defaults: width -> width,50,0.85; alpha -> alpha,50,0.2). "
             "If either value is 0, cloud rendering is disabled."
         ),
     )
