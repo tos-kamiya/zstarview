@@ -21,7 +21,7 @@ from ..clouddisc.types import RenderKey, SourceKey
 class CloudImageState:
     image: Optional[np.ndarray] = None
     missing_mask: Optional[np.ndarray] = None
-    stripe_density: Optional[Any] = None
+    cloud_amount_field: Optional[Any] = None
     meta: Optional[Any] = None
     banner_text: Optional[str] = None
     current_satellite: Optional[str] = None
@@ -40,7 +40,7 @@ class CloudImageState:
         *,
         az: float,
         time_utc: datetime,
-        stripe_density: Optional[Any] = None,
+        cloud_amount_field: Optional[Any] = None,
         missing_mask: Optional[np.ndarray] = None,
         source_key: Optional[SourceKey] = None,
         render_key: Optional[RenderKey] = None,
@@ -50,7 +50,7 @@ class CloudImageState:
     ) -> None:
         self.image = image
         self.missing_mask = missing_mask
-        self.stripe_density = stripe_density
+        self.cloud_amount_field = cloud_amount_field
         self.meta = meta
         sat = getattr(meta, "satellite", None) if meta is not None else None
         if sat:

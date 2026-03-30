@@ -66,7 +66,7 @@ class RenderSceneData:
     sky_disc_image: QImage | None
     cloud_image: np.ndarray | None
     cloud_missing_mask: np.ndarray | None
-    cloud_stripe_density: Any | None
+    cloud_amount_field: Any | None
     terrain_horizon_profile: list[tuple[float, float]] | None
     urban_outlines: Any | None
     satellite_overlay_points: Any | None
@@ -372,7 +372,7 @@ def _draw_sky_cloud_layers(
         cloud_alpha=style.cloud_disc_alpha,
         view_center=scene.viewer.view_center,
         observer_lat_deg=scene.viewer.location[0],
-        stripe_density=scene.cloud_stripe_density,
+        cloud_amount_field=scene.cloud_amount_field,
         missing_mask=scene.cloud_missing_mask,
         terrain_profile_altaz=(
             scene.terrain_horizon_profile if style.terrain_horizon_opacity > 0.0 else None

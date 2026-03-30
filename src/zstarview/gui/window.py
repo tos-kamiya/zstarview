@@ -723,8 +723,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         if self.cloud_state.missing_mask is not None:
             self.cloud_state.missing_mask = None
             discarded = True
-        if self.cloud_state.stripe_density is not None:
-            self.cloud_state.stripe_density = None
+        if self.cloud_state.cloud_amount_field is not None:
+            self.cloud_state.cloud_amount_field = None
             discarded = True
         if discarded:
             self.cloud_state.render_key = None

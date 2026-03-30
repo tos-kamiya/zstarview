@@ -3,9 +3,9 @@
 Sky and cloud compositing utilities and cache.
 
 This module provides:
-- Pure helpers to generate hatch tiles and apply them to cloud alpha.
+- Pure helpers to convert rendered cloud RGBA into a compact cloud-amount field.
 - A function to composite sky and cloud layers without relying on any global state.
-- A small cache class that handles scaling, hatching, compositing, and reuse.
+- A small cache class that handles scaling, stripe rendering, compositing, and reuse.
 """
 from __future__ import annotations
 
@@ -24,89 +24,59 @@ from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 
 
 @dataclass(frozen=True)
-class StripeDensityField:
-    """Compact cloud-density field in normalized 45-degree (u, v) space."""
+class CloudAmountField:
+    """Compact cloud-amount field in normalized 45-degree (u, v) space."""
 
-    density: np.ndarray  # float32 in [0,1], shape=(bins_u, bins_v)
+    amount: np.ndarray  # float32 in [0,1], shape=(bins_u, bins_v)
     u_min: float
     u_max: float
     v_min: float
     v_max: float
+    nonzero_lo: float
+    nonzero_hi: float
     source_cache_key: int
 
 
-def _cloud_with_hatched_alpha_rgba(cloud: np.ndarray, hatch_cfg: HatchConfig) -> np.ndarray:
-    """Apply continuous 45-degree hatch directly to alpha (no tile seams)."""
-    h, w = cloud.shape[:2]
-    xs = np.arange(w, dtype=np.int32)[None, :]
-    ys = np.arange(h, dtype=np.int32)[:, None]
-
-    period = max(2, int(round(math.hypot(hatch_cfg.tile_w_px, hatch_cfg.tile_h_px) * 0.5)))
-    band = max(1, int(round(hatch_cfg.line_px)))
-
-    # Exact 45-degree lines: x - y = const, repeated by period.
-    u = xs - ys
-    u_mod = np.mod(u, period)
-    dist = np.minimum(u_mod, period - u_mod)
-    line_mask = dist <= (band / 2.0)
-    keep_mask = ~line_mask
-
-    # Convert the "cloud band" into a cloud-amount indicator:
-    # for each diagonal band (same stripe index), flatten alpha to the
-    # band-average value so cloud contours are not visible inside the band.
-    # Only include on-disc pixels (RGB>0 for this cloud layer) in the average.
-    stripe_id = np.floor_divide(u, period)
-    inside_disc = cloud[..., 0] > 0
-    avg_mask = keep_mask & inside_disc
-    if np.any(avg_mask):
-        # Work in normalized alpha [0.0, 1.0].
-        src_alpha01 = cloud[..., 3].astype(np.float32) / 255.0
-        stripe_idx = stripe_id[avg_mask].astype(np.int64, copy=False)
-        alpha_vals = src_alpha01[avg_mask].astype(np.float64, copy=False)
-        sid_min = int(stripe_idx.min())
-        sid_norm = stripe_idx - sid_min
-        sums = np.bincount(sid_norm, weights=alpha_vals)
-        counts = np.bincount(sid_norm)
-        means = np.divide(sums, counts, out=np.zeros_like(sums), where=counts > 0)
-        src_alpha01[avg_mask] = means[sid_norm].astype(np.float32, copy=False)
-        cloud[..., 3] = np.clip(np.round(src_alpha01 * 255.0), 0, 255).astype(np.uint8)
-
-    erase = float(np.clip(hatch_cfg.strength, 0, 255)) / 255.0
-    keep = 1.0 - erase
-
-    # Match DestinationOut semantics: attenuate both alpha and premultiplied color.
-    rgb = cloud[..., :3].astype(np.float32)
-    alpha = cloud[..., 3].astype(np.float32)
-    rgb[line_mask] = rgb[line_mask] * keep
-    alpha[line_mask] = alpha[line_mask] * keep
-
-    cloud[..., :3] = np.clip(np.round(rgb), 0, 255).astype(np.uint8)
-    cloud[..., 3] = np.clip(np.round(alpha), 0, 255).astype(np.uint8)
-    return cloud
+def _smooth_cloud_amount_grid(values: np.ndarray) -> np.ndarray:
+    """Apply a small edge-preserving blur to keep stripe widths from flickering."""
+    padded = np.pad(values.astype(np.float32, copy=False), ((1, 1), (1, 1)), mode="edge")
+    smoothed = (
+        padded[:-2, :-2]
+        + 2.0 * padded[:-2, 1:-1]
+        + padded[:-2, 2:]
+        + 2.0 * padded[1:-1, :-2]
+        + 4.0 * padded[1:-1, 1:-1]
+        + 2.0 * padded[1:-1, 2:]
+        + padded[2:, :-2]
+        + 2.0 * padded[2:, 1:-1]
+        + padded[2:, 2:]
+    ) / 16.0
+    return np.clip(smoothed, 0.0, 1.0).astype(np.float32, copy=False)
 
 
-def cloud_with_hatched_alpha(cloud_img: QImage, hatch_cfg: HatchConfig) -> QImage:
-    cloud = qimage_to_np_rgba(
-        cloud_img if cloud_img.format() == QImage.Format_RGBA8888 else cloud_img.convertToFormat(QImage.Format_RGBA8888)
-    )
-    cloud = _cloud_with_hatched_alpha_rgba(cloud, hatch_cfg)
-    return np_rgba_to_qimage(cloud)
-
-
-def build_stripe_density_field_from_rgba(
+def build_cloud_amount_field_from_rgba(
     cloud: np.ndarray,
     *,
     bins: int = 192,
     source_cache_key: int = 0,
-) -> StripeDensityField:
-    """Build a compact density field from an RGBA cloud image in normalized (u, v) space."""
+) -> CloudAmountField:
+    """Build a compact cloud-amount field from an RGBA image in normalized (u, v) space."""
     h, w = cloud.shape[:2]
 
     alpha01 = cloud[..., 3].astype(np.float32) / 255.0
     inside = alpha01 > 0.0
     if not np.any(inside):
-        density = np.zeros((bins, bins), dtype=np.float32)
-        return StripeDensityField(density=density, u_min=-2.0, u_max=2.0, v_min=-2.0, v_max=2.0, source_cache_key=int(source_cache_key))
+        amount = np.zeros((bins, bins), dtype=np.float32)
+        return CloudAmountField(
+            amount=amount,
+            u_min=-2.0,
+            u_max=2.0,
+            v_min=-2.0,
+            v_max=2.0,
+            nonzero_lo=0.0,
+            nonzero_hi=1.0,
+            source_cache_key=int(source_cache_key),
+        )
 
     cy, cx = (h - 1) * 0.5, (w - 1) * 0.5
     r = max(1.0, min(cx, cy))
@@ -130,53 +100,67 @@ def build_stripe_density_field_from_rgba(
     sums = np.bincount(ids, weights=vals, minlength=size)
     counts = np.bincount(ids, minlength=size)
     means = np.divide(sums, counts, out=np.zeros_like(sums), where=counts > 0).astype(np.float32, copy=False)
-    density = cast(np.ndarray, np.asarray(means, dtype=np.float32).reshape((bins_u, bins_v)))
+    amount = cast(np.ndarray, np.asarray(means, dtype=np.float32).reshape((bins_u, bins_v)))
+    amount = _smooth_cloud_amount_grid(amount)
+    positive = amount[amount > 0.0]
+    if positive.size > 0:
+        nonzero_lo = float(np.percentile(positive, 20.0))
+        nonzero_hi = float(np.percentile(positive, 92.0))
+        if nonzero_hi <= nonzero_lo + 1e-6:
+            nonzero_lo = float(positive.min())
+            nonzero_hi = float(positive.max())
+    else:
+        nonzero_lo = 0.0
+        nonzero_hi = 1.0
 
-    return StripeDensityField(
-        density=density,
+    return CloudAmountField(
+        amount=amount,
         u_min=u_min,
         u_max=u_max,
         v_min=v_min,
         v_max=v_max,
+        nonzero_lo=nonzero_lo,
+        nonzero_hi=nonzero_hi,
         source_cache_key=int(source_cache_key),
     )
 
 
-def build_stripe_density_field(cloud_img: QImage, *, bins: int = 192) -> StripeDensityField:
-    """Build a compact density field from a cloud image in normalized (u, v) space."""
+def build_cloud_amount_field(cloud_img: QImage, *, bins: int = 192) -> CloudAmountField:
+    """Build a compact cloud-amount field from a cloud image in normalized (u, v) space."""
     cloud = qimage_to_np_rgba(
         cloud_img if cloud_img.format() == QImage.Format_RGBA8888 else cloud_img.convertToFormat(QImage.Format_RGBA8888)
     )
-    return build_stripe_density_field_from_rgba(cloud, bins=bins, source_cache_key=int(cloud_img.cacheKey()))
+    return build_cloud_amount_field_from_rgba(cloud, bins=bins, source_cache_key=int(cloud_img.cacheKey()))
 
 
-def _render_hatched_cloud_from_density_rgba(
-    density: StripeDensityField,
+def _render_variable_width_cloud_stripes_rgba(
+    cloud_amount: CloudAmountField,
     width: int,
     height: int,
     hatch_cfg: HatchConfig,
     geometry: ScreenGeometry | None = None,
     *,
     target_stripes: int = 50,
-    width_factor: float = 0.2,
+    width_factor: float = 0.85,
     content_fov_deg: float = 90.0,
 ) -> np.ndarray:
-    """Render a sharp hatch cloud image from density field at the target window size."""
+    """Render fixed-opacity cloud stripes whose width increases with cloud amount."""
     w = max(1, int(width))
     h = max(1, int(height))
 
     diameter_px = float(min(w, h))
     stripes = max(1, int(target_stripes))
-    wf = max(0.01, float(width_factor))
+    wf = float(np.clip(width_factor, 0.1, 0.95))
     period = int(np.clip(round(diameter_px / stripes), 14, 64))
-    band = max(1, int(round(period * wf)))
+    max_band = max(2.0, float(period) * wf)
+    min_band = max(1.0, min(max_band - 1.0, float(period) * 0.08))
 
     xs = np.arange(w, dtype=np.int32)[None, :]
     ys = np.arange(h, dtype=np.int32)[:, None]
     u_pix = xs - ys
     u_mod = np.mod(u_pix, period)
     dist = np.minimum(u_mod, period - u_mod)
-    line_mask = dist <= (band / 2.0)
+    line_mask = dist <= (max_band / 2.0)
 
     if geometry is None:
         cx = (w - 1) * 0.5
@@ -189,44 +173,57 @@ def _render_hatched_cloud_from_density_rgba(
     max_r = max(0.0, float(content_fov_deg) / 90.0)
     y, x = np.ogrid[:h, :w]
     inside_disc = ((x - cx) ** 2 + (y - cy) ** 2) <= ((rr * max_r) + 0.25) ** 2
-    draw_mask = line_mask & inside_disc
 
     out = np.zeros((h, w, 4), dtype=np.uint8)
-    if not np.any(draw_mask):
-        return out
-
     xn = (x - cx) / rr
     yn = (y - cy) / rr
     u = xn - yn
     v = xn + yn
 
-    bins_u, bins_v = density.density.shape
-    u_idx = np.clip(((u - density.u_min) * (bins_u / (density.u_max - density.u_min))).astype(np.int32), 0, bins_u - 1)
-    v_idx = np.clip(((v - density.v_min) * (bins_v / (density.v_max - density.v_min))).astype(np.int32), 0, bins_v - 1)
+    bins_u, bins_v = cloud_amount.amount.shape
+    u_idx = np.clip(
+        ((u - cloud_amount.u_min) * (bins_u / (cloud_amount.u_max - cloud_amount.u_min))).astype(np.int32),
+        0,
+        bins_u - 1,
+    )
+    v_idx = np.clip(
+        ((v - cloud_amount.v_min) * (bins_v / (cloud_amount.v_max - cloud_amount.v_min))).astype(np.int32),
+        0,
+        bins_v - 1,
+    )
 
-    sampled = density.density[u_idx, v_idx]
-    strength = float(np.clip(hatch_cfg.strength, 0, 255)) / 255.0
-    alpha = np.zeros((h, w), dtype=np.float32)
-    alpha[draw_mask] = sampled[draw_mask] * 255.0 * strength
+    sampled = np.clip(cloud_amount.amount[u_idx, v_idx], 0.0, 1.0)
+    present = sampled > 0.03
+    if cloud_amount.nonzero_hi > cloud_amount.nonzero_lo + 1e-6:
+        normalized = (sampled - cloud_amount.nonzero_lo) / (cloud_amount.nonzero_hi - cloud_amount.nonzero_lo)
+    else:
+        normalized = sampled
+    normalized = np.clip(normalized, 0.0, 1.0)
+    shaped = normalized
+    local_band = np.where(present, min_band + shaped * (max_band - min_band), 0.0)
+    draw_mask = inside_disc & line_mask & (dist <= (local_band * 0.5))
+    if not np.any(draw_mask):
+        return out
 
+    alpha_u8 = int(np.clip(round(float(hatch_cfg.strength)), 1, 255))
     out[..., :3][draw_mask] = 255
-    out[..., 3] = np.clip(np.round(alpha), 0, 255).astype(np.uint8)
+    out[..., 3][draw_mask] = alpha_u8
     return out
 
 
-def render_hatched_cloud_from_density(
-    density: StripeDensityField,
+def render_variable_width_cloud_stripes(
+    cloud_amount: CloudAmountField,
     width: int,
     height: int,
     hatch_cfg: HatchConfig,
     geometry: ScreenGeometry | None = None,
     *,
     target_stripes: int = 50,
-    width_factor: float = 0.2,
+    width_factor: float = 0.85,
     content_fov_deg: float = 90.0,
 ) -> QImage:
-    out = _render_hatched_cloud_from_density_rgba(
-        density,
+    out = _render_variable_width_cloud_stripes_rgba(
+        cloud_amount,
         width,
         height,
         hatch_cfg,
@@ -532,15 +529,13 @@ class SkyCompositorCache:
         self,
         *,
         hatch_cfg: HatchConfig = CLOUD_HATCH_DEFAULT,
-        cloud_opacity_scale: float = 0.7,
         gray_mix: float = 1.0,
         cloud_target_stripes: int = 50,
-        cloud_stripe_width_factor: float = 0.2,
+        cloud_stripe_width_factor: float = 0.85,
         missing_tint_rgba: Tuple[int, int, int, int] = CLOUD_MISSING_TINT_RGBA,
         ground_tint_opacity: float = 1.0,
     ) -> None:
         self._hatch_cfg = hatch_cfg
-        self._cloud_opacity_scale = cloud_opacity_scale
         self._gray_mix = gray_mix
         self._cloud_target_stripes = max(1, int(cloud_target_stripes))
         self._cloud_stripe_width_factor = max(0.01, float(cloud_stripe_width_factor))
@@ -568,7 +563,7 @@ class SkyCompositorCache:
         cloud_alpha: float,
         view_center: Tuple[float, float] = (0.0, 0.0),
         observer_lat_deg: float | None = None,
-        stripe_density: Optional[StripeDensityField] = None,
+        cloud_amount_field: Optional[CloudAmountField] = None,
         missing_mask: Optional[np.ndarray] = None,
         terrain_profile_altaz: list[tuple[float, float]] | None = None,
         content_fov_deg: float = 90.0,
@@ -588,7 +583,11 @@ class SkyCompositorCache:
             if cloud_img is not None
             else 0
         )
-        density_ck = int(stripe_density.source_cache_key) if stripe_density is not None else 0
+        amount_ck = (
+            int(cloud_amount_field.source_cache_key)
+            if cloud_amount_field is not None
+            else cloud_ck
+        )
         missing_ck = id(missing_mask) if missing_mask is not None else 0
         terrain_key = (
             tuple((round(float(alt), 3), round(float(az) % 360.0, 3)) for alt, az in terrain_profile_altaz)
@@ -605,7 +604,7 @@ class SkyCompositorCache:
             "comp",
             sky_ck,
             cloud_ck,
-            density_ck,
+            amount_ck,
             missing_ck,
             terrain_key,
             w,
@@ -620,7 +619,6 @@ class SkyCompositorCache:
             hatch_key,
             self._missing_tint_rgba,
             self._ground_tint_opacity,
-            self._cloud_opacity_scale,
             self._gray_mix,
             self._cloud_target_stripes,
             self._cloud_stripe_width_factor,
@@ -657,19 +655,21 @@ class SkyCompositorCache:
             missing_s = missing_mask
 
             if cloud_s is not None and cloud_alpha > 0.0:
-                if stripe_density is not None:
-                    cloud_s = _render_hatched_cloud_from_density_rgba(
-                        stripe_density,
-                        w,
-                        h,
-                        self._hatch_cfg,
-                        geometry=geometry,
-                        target_stripes=self._cloud_target_stripes,
-                        width_factor=self._cloud_stripe_width_factor,
-                        content_fov_deg=content_fov_deg,
+                if cloud_amount_field is None:
+                    cloud_amount_field = build_cloud_amount_field_from_rgba(
+                        np.array(cloud_s, copy=False),
+                        source_cache_key=cloud_ck,
                     )
-                else:
-                    cloud_s = _cloud_with_hatched_alpha_rgba(np.array(cloud_s, copy=True), self._hatch_cfg)
+                cloud_s = _render_variable_width_cloud_stripes_rgba(
+                    cloud_amount_field,
+                    w,
+                    h,
+                    self._hatch_cfg,
+                    geometry=geometry,
+                    target_stripes=self._cloud_target_stripes,
+                    width_factor=self._cloud_stripe_width_factor,
+                    content_fov_deg=content_fov_deg,
+                )
                 if missing_s is not None:
                     cloud_s = _mask_cloud_alpha_by_missing_rgba(cloud_s, missing_s)
 
@@ -681,7 +681,7 @@ class SkyCompositorCache:
                     cloud_img_rgba=cloud_s,
                     dest_rect=QRect(0, 0, w, h),
                     geometry=geometry,
-                    cloud_opacity=cloud_alpha * self._cloud_opacity_scale,
+                    cloud_opacity=cloud_alpha,
                     gray_mix=self._gray_mix,
                     content_fov_deg=content_fov_deg,
                 )

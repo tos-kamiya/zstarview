@@ -666,7 +666,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 - `clouddisc` のランタイム出力は `numpy RGBA` と 2D missing-mask 配列を基本形とする。
 - `CloudController` は `QImage` を先に作らず、そのまま `CloudImageState` へ渡してよい。
-- `SkyCompositorCache` は cloud image / missing mask / stripe density を NumPy ベースで扱い、hatching、masking、missing tint 適用をそのまま進めてよい。
+- `SkyCompositorCache` は cloud image / missing mask / cloud amount field を NumPy ベースで扱い、ストライプ描画、masking、missing tint 適用をそのまま進めてよい。
 - `QImage` 化は、合成済み画像または最終描画に必要になった段階でのみ行う。
 - これにより、cloud path の `QImage <-> NumPy` 往復と、missing mask の不要な 4ch 展開を避ける。
 
