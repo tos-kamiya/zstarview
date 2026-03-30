@@ -5,12 +5,13 @@ from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import Mock
 from PySide6.QtCore import QPoint
-from PySide6.QtGui import QImage
+from PySide6.QtGui import QFont, QImage
 
 import zstarview.render.pipeline as pipeline_module
 import zstarview.render.guides as render_guides_module
 import zstarview.render.overlay_info as render_overlay_info_module
 import zstarview.render.terrain as render_terrain_module
+import zstarview.render.text as render_text_module
 import zstarview.gui.window as window_module
 import zstarview.gui.window_render as window_render_module
 import zstarview.gui.window_updates as window_updates_module
@@ -214,6 +215,44 @@ def test_render_hud_state_uses_lower_third_to_switch_overlay_to_top_left() -> No
 
     assert hud.overlay_info_bottom_left is False
     assert dummy.state.overlay_info_bottom_left is False
+
+
+def test_status_line_text_always_uses_night_style(monkeypatch) -> None:
+    class DummyFontMetrics:
+        def lineSpacing(self) -> int:  # noqa: N802 - Qt naming
+            return 12
+
+    class DummyPainter:
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setFont(self, _font) -> None:
+            pass
+
+        def fontMetrics(self):
+            return DummyFontMetrics()
+
+    calls: list[tuple[str, bool]] = []
+
+    def fake_get_text_style(preset: str = "night", *, status_line: bool = False):
+        calls.append((preset, status_line))
+        return (object(), object())
+
+    monkeypatch.setattr(render_text_module, "get_text_style", fake_get_text_style)
+    monkeypatch.setattr(render_text_module, "draw_outlined_text", lambda *_args, **_kwargs: None)
+
+    render_text_module._draw_status_line_text(
+        painter=DummyPainter(),
+        message="loading",
+        status_line_font=QFont(),
+        viewport_rect=SimpleNamespace(bottom=lambda: 100),
+        preset="day",
+    )
+
+    assert calls == [("night", True)]
 
 
 def test_on_sky_data_calculated_updates_render_snapshot_once() -> None:
