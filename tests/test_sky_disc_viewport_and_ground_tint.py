@@ -15,9 +15,9 @@ def test_screen_geometry_wide_mode_top_is_always_tangent() -> None:
     g_mid = get_screen_geometry(width, height, 45.0)
     g_low = get_screen_geometry(width, height, 5.0)
 
-    assert g_zenith.center[1] - g_zenith.radius == 10
-    assert g_mid.center[1] - g_mid.radius == 10
-    assert g_low.center[1] - g_low.radius == 10
+    assert g_zenith.center[1] - g_zenith.radius == 0
+    assert g_mid.center[1] - g_mid.radius == 0
+    assert g_low.center[1] - g_low.radius == 0
     # Lower view altitude should increase radius in wide mode.
     assert g_low.radius > g_mid.radius > g_zenith.radius
 
@@ -25,8 +25,8 @@ def test_screen_geometry_wide_mode_top_is_always_tangent() -> None:
 def test_screen_geometry_uses_height_radius_for_extra_wide_mode() -> None:
     width, height = 1400, 600  # wider than 2:1
     g = get_screen_geometry(width, height, 45.0)
-    expected_radius = int((height - 20) / (1.0 + 45.0 / 90.0))
-    assert g.center == (width // 2, 10 + expected_radius)
+    expected_radius = int(height / (1.0 + 45.0 / 90.0))
+    assert g.center == (width // 2, expected_radius)
     assert g.radius == expected_radius
 
 
@@ -35,7 +35,7 @@ def test_screen_geometry_tall_mode_stays_centered() -> None:
     g = get_screen_geometry(width, height, 30.0)
 
     assert g.center == (width // 2, height // 2)
-    assert g.radius == min((width - 20) // 2, (height - 20) // 2)
+    assert g.radius == min(width // 2, height // 2)
 
 
 def test_sky_disc_raw_image_keeps_below_horizon_untinted() -> None:

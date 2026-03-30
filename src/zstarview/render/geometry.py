@@ -46,8 +46,8 @@ def get_screen_geometry(
     width_px: int, height_px: int, view_alt_deg: float
 ) -> ScreenGeometry:
     """Calculate circular viewport geometry."""
-    margin_x = 10
-    margin_y = 10
+    margin_x = 0
+    margin_y = 0
     avail_w = max(2, int(width_px) - margin_x * 2)
     avail_h = max(2, int(height_px) - margin_y * 2)
     alt = max(0.0, min(90.0, float(view_alt_deg)))
