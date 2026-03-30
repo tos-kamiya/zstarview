@@ -3,11 +3,29 @@ from PySide6.QtCore import QRect
 
 from zstarview.paths import HatchConfig
 from zstarview.gui.composite import (
+    CloudAmountField,
     build_cloud_amount_field,
     compose_cloud_over_sky,
     render_variable_width_cloud_stripes,
 )
 from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
+
+
+def _alpha_runs(row: np.ndarray) -> list[tuple[int, int]]:
+    positive = np.flatnonzero(row > 0)
+    if positive.size == 0:
+        return []
+    runs: list[tuple[int, int]] = []
+    start = int(positive[0])
+    prev = int(positive[0])
+    for idx in positive[1:]:
+        current = int(idx)
+        if current != prev + 1:
+            runs.append((start, prev))
+            start = current
+        prev = current
+    runs.append((start, prev))
+    return runs
 
 
 def test_cloud_amount_field_tracks_alpha_strength() -> None:
@@ -113,3 +131,59 @@ def test_variable_width_cloud_stripes_stay_sparse_on_larger_canvas() -> None:
     small_ratio = float(np.mean(small[..., 3] > 0))
     large_ratio = float(np.mean(large[..., 3] > 0))
     assert large_ratio <= small_ratio + 0.05
+
+
+def test_variable_width_cloud_stripes_anchor_lower_left_edge() -> None:
+    cfg = HatchConfig(20, 19, 8, 255)
+    low_field = CloudAmountField(
+        amount=np.full((96, 96), 0.2, dtype=np.float32),
+        u_min=-2.0,
+        u_max=2.0,
+        v_min=-2.0,
+        v_max=2.0,
+        nonzero_lo=0.0,
+        nonzero_hi=1.0,
+        source_cache_key=1,
+    )
+    high_field = CloudAmountField(
+        amount=np.full((96, 96), 1.0, dtype=np.float32),
+        u_min=-2.0,
+        u_max=2.0,
+        v_min=-2.0,
+        v_max=2.0,
+        nonzero_lo=0.0,
+        nonzero_hi=1.0,
+        source_cache_key=2,
+    )
+    low_out = qimage_to_np_rgba(render_variable_width_cloud_stripes(low_field, 192, 192, cfg))
+    high_out = qimage_to_np_rgba(render_variable_width_cloud_stripes(high_field, 192, 192, cfg))
+
+    row_index = 96
+    low_runs = _alpha_runs(low_out[row_index, :, 3])
+    high_runs = _alpha_runs(high_out[row_index, :, 3])
+    assert low_runs
+    assert high_runs
+
+    low_start, low_end = low_runs[1]
+    matching_high = next((run for run in high_runs if run[0] == low_start), None)
+    assert matching_high is not None
+    high_start, high_end = matching_high
+    assert high_start == low_start
+    assert high_end > low_end
+
+
+def test_variable_width_cloud_stripes_drop_to_zero_for_tiny_cloud_amount() -> None:
+    cfg = HatchConfig(20, 19, 8, 255)
+    tiny_field = CloudAmountField(
+        amount=np.full((96, 96), 0.01, dtype=np.float32),
+        u_min=-2.0,
+        u_max=2.0,
+        v_min=-2.0,
+        v_max=2.0,
+        nonzero_lo=0.0,
+        nonzero_hi=1.0,
+        source_cache_key=3,
+    )
+
+    out = qimage_to_np_rgba(render_variable_width_cloud_stripes(tiny_field, 192, 192, cfg))
+    assert not np.any(out[..., 3] > 0)
