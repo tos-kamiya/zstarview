@@ -10,6 +10,7 @@ This module provides:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 import math
 from typing import Optional, Tuple, cast
 
@@ -54,6 +55,59 @@ def _smooth_cloud_amount_grid(values: np.ndarray) -> np.ndarray:
     return np.clip(smoothed, 0.0, 1.0).astype(np.float32, copy=False)
 
 
+@lru_cache(maxsize=8)
+def _cloud_amount_bin_index_grids(
+    height: int,
+    width: int,
+    bins_u: int,
+    bins_v: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Cache normalized cloud bin indices for a given source image shape."""
+    h = max(1, int(height))
+    w = max(1, int(width))
+    cy, cx = (h - 1) * 0.5, (w - 1) * 0.5
+    r = max(1.0, min(cx, cy))
+    y, x = np.ogrid[:h, :w]
+    xn = (x - cx) / r
+    yn = (y - cy) / r
+    u_idx = np.clip((xn - yn + 2.0) * (bins_u / 4.0), 0.0, bins_u - 1).astype(np.int32)
+    v_idx = np.clip((xn + yn + 2.0) * (bins_v / 4.0), 0.0, bins_v - 1).astype(np.int32)
+    return (u_idx, v_idx)
+
+
+@lru_cache(maxsize=16)
+def _stripe_render_grids(
+    width: int,
+    height: int,
+    period: int,
+    max_band: float,
+    cx: float,
+    cy: float,
+    rr: float,
+    bins_u: int,
+    bins_v: int,
+    content_fov_deg: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Cache stripe geometry and field sampling grids for a given viewport."""
+    w = max(1, int(width))
+    h = max(1, int(height))
+    xs = np.arange(w, dtype=np.int32)[None, :]
+    ys = np.arange(h, dtype=np.int32)[:, None]
+    u_pix = xs - ys
+    u_mod = np.mod(u_pix, int(period))
+    dist = np.minimum(u_mod, int(period) - u_mod).astype(np.float32, copy=False)
+    line_mask = dist <= (float(max_band) * 0.5)
+
+    max_r = max(0.0, float(content_fov_deg) / 90.0)
+    y, x = np.ogrid[:h, :w]
+    inside_disc = ((x - cx) ** 2 + (y - cy) ** 2) <= ((rr * max_r) + 0.25) ** 2
+    xn = (x - cx) / rr
+    yn = (y - cy) / rr
+    u_idx = np.clip((xn - yn + 2.0) * (bins_u / 4.0), 0.0, bins_u - 1).astype(np.int32)
+    v_idx = np.clip((xn + yn + 2.0) * (bins_v / 4.0), 0.0, bins_v - 1).astype(np.int32)
+    return (dist, line_mask, inside_disc, u_idx * bins_v + v_idx)
+
+
 def build_cloud_amount_field_from_rgba(
     cloud: np.ndarray,
     *,
@@ -78,21 +132,12 @@ def build_cloud_amount_field_from_rgba(
             source_cache_key=int(source_cache_key),
         )
 
-    cy, cx = (h - 1) * 0.5, (w - 1) * 0.5
-    r = max(1.0, min(cx, cy))
-    y, x = np.ogrid[:h, :w]
-    xn = (x - cx) / r
-    yn = (y - cy) / r
-    u = xn - yn
-    v = xn + yn
-
     u_min, u_max = -2.0, 2.0
     v_min, v_max = -2.0, 2.0
     bins_u = max(32, int(bins))
     bins_v = bins_u
 
-    u_idx = np.clip(((u - u_min) * (bins_u / (u_max - u_min))).astype(np.int32), 0, bins_u - 1)
-    v_idx = np.clip(((v - v_min) * (bins_v / (v_max - v_min))).astype(np.int32), 0, bins_v - 1)
+    u_idx, v_idx = _cloud_amount_bin_index_grids(h, w, bins_u, bins_v)
 
     ids = (u_idx[inside] * bins_v + v_idx[inside]).astype(np.int64, copy=False)
     vals = alpha01[inside].astype(np.float64, copy=False)
@@ -155,13 +200,6 @@ def _render_variable_width_cloud_stripes_rgba(
     max_band = max(2.0, float(period) * wf)
     min_band = max(1.0, min(max_band - 1.0, float(period) * 0.08))
 
-    xs = np.arange(w, dtype=np.int32)[None, :]
-    ys = np.arange(h, dtype=np.int32)[:, None]
-    u_pix = xs - ys
-    u_mod = np.mod(u_pix, period)
-    dist = np.minimum(u_mod, period - u_mod)
-    line_mask = dist <= (max_band / 2.0)
-
     if geometry is None:
         cx = (w - 1) * 0.5
         cy = (h - 1) * 0.5
@@ -170,29 +208,23 @@ def _render_variable_width_cloud_stripes_rgba(
         cx = float(geometry.center[0])
         cy = float(geometry.center[1])
         rr = max(1.0, float(geometry.radius))
-    max_r = max(0.0, float(content_fov_deg) / 90.0)
-    y, x = np.ogrid[:h, :w]
-    inside_disc = ((x - cx) ** 2 + (y - cy) ** 2) <= ((rr * max_r) + 0.25) ** 2
 
     out = np.zeros((h, w, 4), dtype=np.uint8)
-    xn = (x - cx) / rr
-    yn = (y - cy) / rr
-    u = xn - yn
-    v = xn + yn
 
     bins_u, bins_v = cloud_amount.amount.shape
-    u_idx = np.clip(
-        ((u - cloud_amount.u_min) * (bins_u / (cloud_amount.u_max - cloud_amount.u_min))).astype(np.int32),
-        0,
-        bins_u - 1,
+    dist, line_mask, inside_disc, sample_idx = _stripe_render_grids(
+        w,
+        h,
+        period,
+        max_band,
+        cx,
+        cy,
+        rr,
+        bins_u,
+        bins_v,
+        content_fov_deg,
     )
-    v_idx = np.clip(
-        ((v - cloud_amount.v_min) * (bins_v / (cloud_amount.v_max - cloud_amount.v_min))).astype(np.int32),
-        0,
-        bins_v - 1,
-    )
-
-    sampled = np.clip(cloud_amount.amount[u_idx, v_idx], 0.0, 1.0)
+    sampled = np.clip(cloud_amount.amount.reshape(-1)[sample_idx], 0.0, 1.0)
     present = sampled > 0.03
     if cloud_amount.nonzero_hi > cloud_amount.nonzero_lo + 1e-6:
         normalized = (sampled - cloud_amount.nonzero_lo) / (cloud_amount.nonzero_hi - cloud_amount.nonzero_lo)
