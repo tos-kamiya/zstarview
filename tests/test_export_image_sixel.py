@@ -101,9 +101,10 @@ def test_write_export_overlay_summary_to_stderr_emits_gui_metadata(monkeypatch: 
     )
 
     text = stderr_buffer.getvalue()
-    assert "Tokyo\n" in text
+    assert text.startswith("Tokyo\n")
     assert "Tower height 634 m\n" in text
     assert "Observer height 12 m\n" in text
+    assert "2026-02-27 00:00:00 UTC\n" in text
     assert "Alt 45°  Az 180° (S)\n" in text
     assert text.endswith("Vmag limit 6.0\n")
 

@@ -23,7 +23,9 @@ def draw_overlay_info(
     label_candidates: Optional[List[Dict[str, Any]]] = None,
     label_reservations: Optional[List[QRectF]] = None,
     *,
+    viewport_rect: Any | None = None,
     mouse_pos: Optional[QPoint] = None,
+    bottom_left: bool = False,
     preset: str = "night",
     draw_static_info: bool = True,
     draw_hover_info: bool = True,
@@ -47,7 +49,24 @@ def draw_overlay_info(
     line_height = int(line_spacing * 1.2)
     line_x = line_spacing
     sample_bounds = font_metrics.tightBoundingRect("Ag")
-    first_line_baseline_y = line_spacing - float(sample_bounds.top())
+    static_lines = format_overlay_info_lines(celestial_data, viewer_data, vmag_limit)
+    viewport_height = max(int(geometry.radius * 2), int(geometry.center[1] * 2))
+    if viewport_rect is not None:
+        try:
+            viewport_height = max(1, int(viewport_rect.height()))
+        except Exception:
+            viewport_height = max(1, viewport_height)
+    top_margin = float(line_spacing)
+    bottom_margin = float(line_spacing)
+    if bottom_left:
+        first_line_baseline_y = (
+            float(viewport_height)
+            - bottom_margin
+            - float(max(0, len(static_lines) - 1) * line_height)
+            - float(sample_bounds.bottom())
+        )
+    else:
+        first_line_baseline_y = top_margin - float(sample_bounds.top())
     line_y = first_line_baseline_y - line_height
 
     def print_line(message: str) -> None:
@@ -62,14 +81,6 @@ def draw_overlay_info(
             outline_color,
             outline_width=outline_width,
         )
-
-    static_lines = format_overlay_info_lines(celestial_data, viewer_data, vmag_limit)
-    if draw_static_info and mouse_pos is not None:
-        overlay_top_y = float(line_spacing)
-        overlay_bottom_y = float(line_spacing + len(static_lines) * line_height)
-        mouse_y = float(mouse_pos.y())
-        if overlay_top_y <= mouse_y <= overlay_bottom_y:
-            draw_static_info = False
 
     if draw_static_info:
         for line in static_lines:

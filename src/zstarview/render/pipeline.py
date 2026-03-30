@@ -99,6 +99,7 @@ class RenderStyle:
 @dataclass(frozen=True)
 class RenderHudState:
     mouse_pos: QPoint | None
+    overlay_info_bottom_left: bool
     viewport_interaction_mode: bool
     viewport_interaction_stars: Any | None
     status_message: str | None
@@ -231,9 +232,11 @@ def render_hud_overlay_into_painter(
     _draw_overlay_layer(
         painter,
         geometry=geometry,
+        viewport_rect=viewport_rect,
         scene=scene,
         style=style,
         mouse_pos=hud.mouse_pos,
+        overlay_info_bottom_left=hud.overlay_info_bottom_left,
         highlighted_object=None,
         highlighted_dso=None,
         enlarge_moon=bool(style.enlarge_moon),
@@ -603,9 +606,11 @@ def _draw_overlay_layer(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
+    viewport_rect: QRect,
     scene: RenderSceneData,
     style: RenderStyle,
     mouse_pos: QPoint | None,
+    overlay_info_bottom_left: bool,
     highlighted_object: Any | None,
     highlighted_dso: Any | None,
     enlarge_moon: bool,
@@ -626,7 +631,9 @@ def _draw_overlay_layer(
         style.text_font,
         label_candidates=label_candidates,
         label_reservations=label_reservations,
+        viewport_rect=viewport_rect,
         mouse_pos=mouse_pos,
+        bottom_left=overlay_info_bottom_left,
         preset=style.visual_preset,
         draw_static_info=True,
         draw_hover_info=False,

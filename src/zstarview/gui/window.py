@@ -186,6 +186,9 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.show_guidelines: bool = (
             True if user_options.show_guidelines_initial is None else bool(user_options.show_guidelines_initial)
         )
+        self.show_overlay_info: bool = (
+            True if user_options.show_overlay_info_initial is None else bool(user_options.show_overlay_info_initial)
+        )
         self._named_stars_by_band = catalogs.named_stars_by_band
         self._named_stars_search_all = catalogs.named_stars_search_all
         self.delta_t = runtime_options.delta_t
@@ -294,6 +297,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._action_toggle_dso: Optional[QAction] = None
         self._action_toggle_asterisms: Optional[QAction] = None
         self._action_toggle_guidelines: Optional[QAction] = None
+        self._action_toggle_overlay_info: Optional[QAction] = None
         self._action_toggle_sky_disc: Optional[QAction] = None
         self._action_raise_view: Optional[QAction] = None
         self._action_lower_view: Optional[QAction] = None
@@ -541,6 +545,13 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.menu.addAction(toggle_guidelines_action)
         self.addAction(toggle_guidelines_action)
         self._action_toggle_guidelines = toggle_guidelines_action
+        toggle_overlay_info_action = QAction("Observation Info", self)
+        toggle_overlay_info_action.setCheckable(True)
+        toggle_overlay_info_action.setChecked(self.show_overlay_info)
+        toggle_overlay_info_action.triggered.connect(self.toggle_overlay_info)
+        self.menu.addAction(toggle_overlay_info_action)
+        self.addAction(toggle_overlay_info_action)
+        self._action_toggle_overlay_info = toggle_overlay_info_action
 
         self.menu.addSeparator()
         toggle_sky_disc_action = QAction("Sky Color Disc", self)
@@ -613,9 +624,14 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.addAction(exit_action)
 
         self.menu.addSeparator()
+        vmag_limit_action = self.menu.addAction(self._vmag_limit_menu_text())
+        vmag_limit_action.setEnabled(False)
         version_action = self.menu.addAction(f"Version {__version__}")
         version_action.setEnabled(False)
         self._raise_overlay_widgets()
+
+    def _vmag_limit_menu_text(self) -> str:
+        return f"Vmag limit {self.vmag_limit:.1f}"
 
     @staticmethod
     def _menu_button_background_hex_for_preset(preset: str) -> str:
@@ -1169,6 +1185,15 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.show_guidelines = not self.show_guidelines
         if self._action_toggle_guidelines is not None and self._action_toggle_guidelines.isChecked() != self.show_guidelines:
             self._action_toggle_guidelines.setChecked(self.show_guidelines)
+        self.update()
+
+    def toggle_overlay_info(self) -> None:
+        self.show_overlay_info = not self.show_overlay_info
+        if (
+            self._action_toggle_overlay_info is not None
+            and self._action_toggle_overlay_info.isChecked() != self.show_overlay_info
+        ):
+            self._action_toggle_overlay_info.setChecked(self.show_overlay_info)
         self.update()
 
     def toggle_sky_disc(self) -> None:

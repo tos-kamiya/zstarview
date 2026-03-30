@@ -4,6 +4,7 @@ import astropy.time
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import Mock
+from PySide6.QtCore import QPoint
 from PySide6.QtGui import QImage
 
 import zstarview.render.pipeline as pipeline_module
@@ -118,6 +119,7 @@ def _make_style(**overrides) -> pipeline_module.RenderStyle:
 def _make_hud(**overrides) -> pipeline_module.RenderHudState:
     values = {
         "mouse_pos": None,
+        "overlay_info_bottom_left": False,
         "viewport_interaction_mode": False,
         "viewport_interaction_stars": None,
         "status_message": None,
@@ -144,6 +146,74 @@ def test_viewer_data_for_render_uses_render_view_center() -> None:
     assert got.location_height_label is None
     assert got.location_height_m is None
     assert got.show_observer_height is False
+
+
+def test_render_style_uses_window_overlay_info_toggle() -> None:
+    dummy = SimpleNamespace()
+    dummy.visual_preset = "night"
+    dummy.text_font = object()
+    dummy.status_line_font = object()
+    dummy.show_overlay_info = False
+    dummy.show_dso = True
+    dummy.show_asterisms = False
+    dummy.show_guidelines = True
+    dummy.enlarge_moon = False
+    dummy.star_base_radius = 4.0
+    dummy.star_visibility_boost = 1.0
+    dummy.vmag_limit = 6.0
+    dummy.cloud_disc_alpha = 0.0
+    dummy.satellite_opacity = 0.0
+    dummy.terrain_horizon_opacity = 0.25
+    dummy.urban_outline_opacity = 0.2
+    dummy.show_urban_outline_layer = True
+    dummy.aircraft_opacity = 0.0
+    dummy._star_render_expected_width = 600
+
+    style = SkyWindow._render_style(dummy)
+
+    assert style.show_overlay_info is False
+
+
+def test_render_hud_state_uses_upper_third_to_switch_overlay_to_bottom_left() -> None:
+    dummy = SimpleNamespace()
+    dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
+    dummy.state.mouse_pos = QPoint(10, 20)
+    dummy.state.overlay_info_bottom_left = False
+    dummy.height = lambda: 300
+    dummy._status_line_message = lambda: None
+
+    hud = SkyWindow._render_hud_state(dummy)
+
+    assert hud.overlay_info_bottom_left is True
+    assert dummy.state.overlay_info_bottom_left is True
+
+
+def test_render_hud_state_keeps_overlay_anchor_in_middle_third() -> None:
+    dummy = SimpleNamespace()
+    dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
+    dummy.state.mouse_pos = QPoint(10, 150)
+    dummy.state.overlay_info_bottom_left = True
+    dummy.height = lambda: 300
+    dummy._status_line_message = lambda: None
+
+    hud = SkyWindow._render_hud_state(dummy)
+
+    assert hud.overlay_info_bottom_left is True
+    assert dummy.state.overlay_info_bottom_left is True
+
+
+def test_render_hud_state_uses_lower_third_to_switch_overlay_to_top_left() -> None:
+    dummy = SimpleNamespace()
+    dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
+    dummy.state.mouse_pos = QPoint(10, 280)
+    dummy.state.overlay_info_bottom_left = True
+    dummy.height = lambda: 300
+    dummy._status_line_message = lambda: None
+
+    hud = SkyWindow._render_hud_state(dummy)
+
+    assert hud.overlay_info_bottom_left is False
+    assert dummy.state.overlay_info_bottom_left is False
 
 
 def test_on_sky_data_calculated_updates_render_snapshot_once() -> None:
@@ -1047,6 +1117,7 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
     )
     hud = pipeline_module.RenderHudState(
         mouse_pos=None,
+        overlay_info_bottom_left=False,
         viewport_interaction_mode=False,
         viewport_interaction_stars=None,
         status_message=None,
@@ -1122,9 +1193,11 @@ def test_draw_overlay_layer_skips_static_info_when_disabled(monkeypatch) -> None
     pipeline_module._draw_overlay_layer(
         painter=object(),
         geometry=SimpleNamespace(radius=100),
+        viewport_rect=SimpleNamespace(height=lambda: 200),
         scene=_make_scene(),
         style=_make_style(show_overlay_info=False),
         mouse_pos=None,
+        overlay_info_bottom_left=False,
         highlighted_object=None,
         highlighted_dso=None,
         enlarge_moon=False,

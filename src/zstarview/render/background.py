@@ -18,29 +18,16 @@ def format_overlay_info_lines(
     celestial_data: CelestialData,
     viewer_data: ViewerData,
     vmag_limit: float,
+    *,
+    include_vmag_limit: bool = False,
 ) -> list[str]:
-    """Return the static top-left overlay text lines."""
+    """Return the static observation overlay text lines."""
 
     def format_height_m(value_m: float) -> str:
         rounded = round(float(value_m))
         if abs(float(value_m) - rounded) < 0.05:
             return f"{int(rounded)} m"
         return f"{float(value_m):.1f} m"
-
-    lines = [viewer_data.city_name]
-    if viewer_data.location_height_label and viewer_data.location_height_m is not None:
-        lines.append(f"{viewer_data.location_height_label} {format_height_m(viewer_data.location_height_m)}")
-    if viewer_data.show_observer_height:
-        lines.append(f"Observer height {format_height_m(viewer_data.observer_height_m)}")
-
-    utc_time = celestial_data.time
-    tz_name = viewer_data.timezone_name
-    try:
-        local_tz = ZoneInfo(tz_name)
-        local_dt = utc_time.to_datetime(timezone=local_tz)
-        lines.append(local_dt.strftime("%Y-%m-%d %H:%M:%S %Z"))
-    except Exception:
-        lines.append(utc_time.to_datetime().strftime("%Y-%m-%d %H:%M:%S UTC"))
 
     alt_deg, az_deg = viewer_data.view_center
 
@@ -52,8 +39,26 @@ def format_overlay_info_lines(
 
     compass = az_to_compass(az_deg)
     deg = "\N{DEGREE SIGN}"
+
+    utc_time = celestial_data.time
+    tz_name = viewer_data.timezone_name
+    lines: list[str] = []
+    try:
+        local_tz = ZoneInfo(tz_name)
+        local_dt = utc_time.to_datetime(timezone=local_tz)
+        lines.append(local_dt.strftime("%Y-%m-%d %H:%M:%S %Z"))
+    except Exception:
+        lines.append(utc_time.to_datetime().strftime("%Y-%m-%d %H:%M:%S UTC"))
+
+    location_parts = [viewer_data.city_name]
+    if viewer_data.location_height_label and viewer_data.location_height_m is not None:
+        location_parts.append(f"{viewer_data.location_height_label} {format_height_m(viewer_data.location_height_m)}")
+    if viewer_data.show_observer_height:
+        location_parts.append(f"Observer height {format_height_m(viewer_data.observer_height_m)}")
+    lines = location_parts + lines
     lines.append(f"Alt {alt_deg:.0f}{deg}  Az {az_deg:.0f}{deg} ({compass})")
-    lines.append(f"Vmag limit {vmag_limit:.1f}")
+    if include_vmag_limit:
+        lines.append(f"Vmag limit {vmag_limit:.1f}")
     return lines
 
 

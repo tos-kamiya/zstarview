@@ -58,6 +58,7 @@ class SkyWindowRenderMixin:
             bool(self.show_dso),
             bool(self.show_asterisms),
             bool(getattr(self, "show_guidelines", True)),
+            bool(getattr(self, "show_overlay_info", True)),
             bool(self.enlarge_moon),
             round(float(self.vmag_limit), 3),
             round(float(self.sky_disc_alpha), 3),
@@ -154,7 +155,7 @@ class SkyWindowRenderMixin:
             text_font=self.text_font,
             status_line_font=getattr(self, "status_line_font", self.text_font),
             show_background_gradient=True,
-            show_overlay_info=True,
+            show_overlay_info=bool(getattr(self, "show_overlay_info", True)),
             show_dso=bool(getattr(self, "show_dso", False)),
             show_asterisms=bool(getattr(self, "show_asterisms", False)),
             show_guidelines=bool(getattr(self, "show_guidelines", True)),
@@ -175,8 +176,21 @@ class SkyWindowRenderMixin:
         status_message = None
         if hasattr(self, "_status_line_message"):
             status_message = self._status_line_message()
+        mouse_pos = self.state.mouse_pos
+        overlay_info_bottom_left = bool(getattr(self.state, "overlay_info_bottom_left", False))
+        if mouse_pos is not None:
+            window_height = max(1, int(self.height()))
+            upper_threshold = float(window_height) / 3.0
+            lower_threshold = 2.0 * float(window_height) / 3.0
+            mouse_y = float(mouse_pos.y())
+            if mouse_y <= upper_threshold:
+                overlay_info_bottom_left = True
+            elif mouse_y >= lower_threshold:
+                overlay_info_bottom_left = False
+            self.state.overlay_info_bottom_left = overlay_info_bottom_left
         return RenderHudState(
-            mouse_pos=self.state.mouse_pos,
+            mouse_pos=mouse_pos,
+            overlay_info_bottom_left=overlay_info_bottom_left,
             viewport_interaction_mode=bool(self.state.viewport_interaction_mode),
             viewport_interaction_stars=self.state.viewport_interaction_stars,
             status_message=status_message,
