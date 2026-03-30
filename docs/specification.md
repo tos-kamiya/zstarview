@@ -104,7 +104,10 @@ README より詳細に、何ができるか、どう振る舞うか、どのよ�
 - `--content-fov-deg`
 - `--observer-height-m`
 - `--cloud-opacity`
+- `--cloud-opacity` の既定値は `0.07` としてよい。
+- `--cloud-opacity` は、雲レイヤー最終合成時の見え方を直接制御する値として扱ってよい。
 - `--sky-opacity`
+- `--sky-opacity` は、sky color disc の色強度を直接制御する値として扱ってよい。
 - `--terrain-horizon-opacity`
 - `--urban-outline-opacity`
 - `-r`, `--urban-outline-radius-km`
@@ -686,6 +689,8 @@ CLI には次のビューポイント dataset 参照専用オプションを持�
 - border の太さはテーマごとに異なってよい。
 - `day` / `night` テーマでは、`white` / `black` よりやや広い border を使ってよい。
 - border は端へ行くほど透明になる背景グラデーションとは別の視覚要素として扱ってよい。
+- sky color disc と雲レイヤーは、固定の `10px` 内側余白を設けず、border の下まで届く投影で描いてよい。
+- border は sky color disc や雲レイヤーの上に重ねて描いてよい。
 - 左上表示時の観測情報 overlay は、左辺からの距離と上辺からの距離が概ね一致するように配置してよい。
 - 左下表示時の観測情報 overlay は、左辺からの距離と下辺からの距離が概ね一致するように配置してよい。
 
