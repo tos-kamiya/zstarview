@@ -230,15 +230,24 @@ def _render_variable_width_cloud_stripes_rgba(
     else:
         normalized = sampled
     normalized = np.clip(normalized, 0.0, 1.0)
+    present = sampled > 0.03
     line_index = np.floor(phase - 0.5).astype(np.int32, copy=False)
-    local_levels = np.floor(normalized * max_band).astype(np.int32, copy=False)
-    draw_mask = inside_disc & line_mask & (line_index >= 0) & (line_index < local_levels)
-    if not np.any(draw_mask):
+    local_levels = np.where(present, normalized * max_band, 0.0)
+    whole_levels = np.floor(local_levels).astype(np.int32, copy=False)
+    frac_levels = np.clip(local_levels - whole_levels, 0.0, 1.0)
+    full_mask = inside_disc & line_mask & (line_index >= 0) & (line_index < whole_levels)
+    partial_mask = inside_disc & line_mask & (line_index >= 0) & (line_index == whole_levels) & (frac_levels > 1e-6)
+    if not np.any(full_mask) and not np.any(partial_mask):
         return out
 
     alpha_u8 = int(np.clip(round(float(hatch_cfg.strength)), 1, 255))
-    out[..., :3][draw_mask] = 255
-    out[..., 3][draw_mask] = alpha_u8
+    if np.any(full_mask):
+        out[..., :3][full_mask] = 255
+        out[..., 3][full_mask] = alpha_u8
+    if np.any(partial_mask):
+        out[..., :3][partial_mask] = 255
+        partial_alpha = np.clip(np.round(frac_levels * alpha_u8), 0, alpha_u8).astype(np.uint8)
+        out[..., 3][partial_mask] = partial_alpha[partial_mask]
     return out
 
 
