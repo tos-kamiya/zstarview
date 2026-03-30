@@ -321,7 +321,7 @@ def _draw_background_layer(
         preset=style.visual_preset,
         content_fov_deg=_content_fov_deg(scene),
     )
-    render_background.draw_window_frame(
+    render_background.draw_window_border(
         painter,
         QRectF(viewport_rect),
         preset=style.visual_preset,
