@@ -106,6 +106,12 @@ README より詳細に、何ができるか、どう振る舞うか、どのよ�
 - `--cloud-opacity`
 - `--cloud-opacity` の既定値は `0.07` としてよい。
 - `--cloud-opacity` は、雲レイヤー最終合成時の見え方を直接制御する値として扱ってよい。
+- `--cloud-stripe`
+  - `MODE[,COUNT[,WIDTH]]` 形式で受け付けてよい。
+  - `MODE` は `width` または `alpha` としてよい。
+  - `--cloud-stripe width` は `width,50,0.85`、`--cloud-stripe alpha` は `alpha,50,0.2` と解釈してよい。
+  - `width` モードでは、雲量に応じて白線の本数と見かけの線幅を変えてよい。
+  - `alpha` モードでは、白線の線幅を固定し、雲量に応じて白線 alpha を変えてよい。
 - `--sky-opacity`
 - `--sky-opacity` は、sky color disc の色強度を直接制御する値として扱ってよい。
 - `--terrain-horizon-opacity`
