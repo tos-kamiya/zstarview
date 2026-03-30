@@ -79,6 +79,7 @@ class SkyWindowRuntimeOptions:
     urban_outline_feature_type: str = "both"
     urban_outline_skyscraper_only: bool = False
     cloud_stripe_style: tuple[int, float] = (50, 0.85)
+    cloud_stripe_mode: str = "width"
     cloud_missing_tint_opacity: float = float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0
     star_render_expected_width: int = 600
     content_fov_deg: float = 100.0
@@ -194,6 +195,7 @@ def prepare_window_runtime_options(
     urban_outline_feature_type: str = "both",
     urban_outline_skyscraper_only: bool = False,
     cloud_stripe_style: tuple[int, float] = (50, 0.85),
+    cloud_stripe_mode: str = "width",
     cloud_missing_tint_opacity: float = float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0,
     star_render_expected_width: int = 600,
     content_fov_deg: float = 100.0,
@@ -209,6 +211,7 @@ def prepare_window_runtime_options(
         urban_outline_feature_type=str(urban_outline_feature_type),
         urban_outline_skyscraper_only=bool(urban_outline_skyscraper_only),
         cloud_stripe_style=cloud_stripe_style,
+        cloud_stripe_mode=("alpha" if str(cloud_stripe_mode) == "alpha" else "width"),
         cloud_missing_tint_opacity=min(1.0, max(0.0, cloud_missing_tint_opacity)),
         star_render_expected_width=max(1, int(star_render_expected_width)),
         content_fov_deg=max(90.0, min(127.0, float(content_fov_deg))),
