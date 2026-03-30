@@ -31,6 +31,7 @@ from ..paths import CLOUD_SHELL_KM
 from .composite import build_cloud_amount_field_from_rgba
 
 logger = logging.getLogger(__name__)
+DEFAULT_CLOUD_FOV_OVERSCAN_DEG = 2.0
 
 
 class CloudController(QObject):
@@ -252,8 +253,8 @@ class CloudController(QObject):
                 alt=alt,
                 az=az,
                 radius_px=radius_px,
-                edge_fov_deg=90,
-                mask_fov_deg=content_fov_deg,
+                edge_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+                mask_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
                 cloud_shell_km=CLOUD_SHELL_KM,
             )
             logger.info(
