@@ -89,8 +89,8 @@ def draw_radial_background(
         return max(0.0, min(1.0, r / r_max))
 
     col_params = {
-        "white": (242, 46, 245, 48, 250, 50, 255, 190),
-        "black": (12, 9, 12, 9, 12, 9, 255, 190),
+        "white": (242, 46, 245, 48, 250, 50, 255, 200),
+        "black": (12, 9, 12, 9, 12, 9, 255, 200),
         "day": (230, 28, 242, 34, 255, 34, 200, 60),
         "night": (10, 7, 12, 9, 16, 11, 200, 60),
     }
@@ -121,27 +121,27 @@ def draw_radial_background(
     painter.restore()
 
 
-def draw_window_frame(
+def draw_window_border(
     painter: QPainter,
     rect: QRectF,
     *,
     preset: str = "night",
 ) -> None:
-    """Draw a broad but subtle frame around the window edges."""
-    frame_width = 16.0
-    max_frame_width = 0.25 * min(float(rect.width()), float(rect.height()))
-    frame_width = min(frame_width, max_frame_width)
-    if frame_width <= 0.0:
+    """Draw a broad but subtle border around the window edges."""
+    border_width = 16.0
+    max_border_width = 0.25 * min(float(rect.width()), float(rect.height()))
+    border_width = min(border_width, max_border_width)
+    if border_width <= 0.0:
         return
 
-    frame_colors = {
+    border_colors = {
         "white": (254, 254, 255, 112),
         "black": (34, 34, 36, 128),
         "day": (250, 252, 255, 35),
         "night": (30, 34, 40, 45),
     }
-    rr, gg, bb, aa = frame_colors.get(preset, frame_colors["night"])
-    frame_color = QColor(rr, gg, bb, aa)
+    rr, gg, bb, aa = border_colors.get(preset, border_colors["night"])
+    border_color = QColor(rr, gg, bb, aa)
 
     left = float(rect.left())
     top = float(rect.top())
@@ -153,30 +153,30 @@ def draw_window_frame(
 
     painter.save()
     painter.setPen(Qt.PenStyle.NoPen)
-    painter.setBrush(frame_color)
-    painter.drawRect(QRectF(left, top, frame_width, rect.height()))
+    painter.setBrush(border_color)
+    painter.drawRect(QRectF(left, top, border_width, rect.height()))
     painter.drawRect(
         QRectF(
-            right - frame_width,
+            right - border_width,
             top + menu_size,
-            frame_width,
+            border_width,
             max(0.0, rect.height() - menu_size),
         )
     )
     painter.drawRect(
         QRectF(
-            left + frame_width,
+            left + border_width,
             top,
-            max(0.0, menu_left_edge - (left + frame_width)),
-            frame_width,
+            max(0.0, menu_left_edge - (left + border_width)),
+            border_width,
         )
     )
     painter.drawRect(
         QRectF(
-            left + frame_width,
-            bottom - frame_width,
-            max(0.0, rect.width() - 2.0 * frame_width),
-            frame_width,
+            left + border_width,
+            bottom - border_width,
+            max(0.0, rect.width() - 2.0 * border_width),
+            border_width,
         )
     )
     painter.drawRect(QRectF(menu_left_edge, menu_top_edge, menu_size, menu_size))
@@ -189,9 +189,9 @@ def draw_window_frame(
     for y in (menu_top_edge + 9.0, menu_top_edge + 14.0, menu_top_edge + 19.0):
         painter.drawLine(QPointF(menu_left, y), QPointF(menu_right, y))
     painter.setPen(Qt.PenStyle.NoPen)
-    inner_right = right - frame_width
+    inner_right = right - border_width
     grip_size = 14.0
-    inner_bottom = bottom - frame_width
+    inner_bottom = bottom - border_width
     painter.drawPolygon(
         QPolygonF(
             [

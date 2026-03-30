@@ -1210,9 +1210,9 @@ def test_draw_overlay_layer_skips_static_info_when_disabled(monkeypatch) -> None
 
 def test_draw_background_layer_skips_gradient_when_disabled(monkeypatch) -> None:
     draw_radial_background = Mock()
-    draw_window_frame = Mock()
+    draw_window_border = Mock()
     monkeypatch.setattr(pipeline_module.render_background, "draw_radial_background", draw_radial_background)
-    monkeypatch.setattr(pipeline_module.render_background, "draw_window_frame", draw_window_frame)
+    monkeypatch.setattr(pipeline_module.render_background, "draw_window_border", draw_window_border)
 
     pipeline_module._draw_background_layer(
         painter=object(),
@@ -1223,7 +1223,7 @@ def test_draw_background_layer_skips_gradient_when_disabled(monkeypatch) -> None
     )
 
     draw_radial_background.assert_not_called()
-    draw_window_frame.assert_not_called()
+    draw_window_border.assert_not_called()
 
 
 def test_draw_hover_overlay_layer_enlarges_hovered_moon_by_name(monkeypatch) -> None:

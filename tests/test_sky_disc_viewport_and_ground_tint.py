@@ -2,7 +2,7 @@ import numpy as np
 from PySide6.QtCore import QRectF
 from PySide6.QtGui import QImage, QPainter
 
-from zstarview.render.background import draw_radial_background, draw_window_frame
+from zstarview.render.background import draw_radial_background, draw_window_border
 from zstarview.render.geometry import get_screen_geometry
 from zstarview.render.sky_disc import draw_sky_color_disc, draw_uniform_sky_color_disc
 from zstarview.types import ScreenGeometry
@@ -151,7 +151,7 @@ def test_window_frame_makes_edges_more_opaque_than_center() -> None:
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
     painter = QPainter(img)
-    draw_window_frame(
+    draw_window_border(
         painter,
         QRectF(0.0, 0.0, 160.0, 160.0),
         preset="black",
@@ -169,7 +169,7 @@ def test_window_frame_draws_bottom_right_grip_triangle_inside_frame() -> None:
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
     painter = QPainter(img)
-    draw_window_frame(
+    draw_window_border(
         painter,
         QRectF(0.0, 0.0, 160.0, 160.0),
         preset="white",
@@ -188,7 +188,7 @@ def test_window_frame_draws_top_right_menu_square_inside_frame() -> None:
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
     painter = QPainter(img)
-    draw_window_frame(
+    draw_window_border(
         painter,
         QRectF(0.0, 0.0, 160.0, 160.0),
         preset="white",
@@ -207,7 +207,7 @@ def test_window_frame_does_not_double_draw_under_menu_panel() -> None:
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
     painter = QPainter(img)
-    draw_window_frame(
+    draw_window_border(
         painter,
         QRectF(0.0, 0.0, 160.0, 160.0),
         preset="white",
@@ -223,7 +223,7 @@ def test_window_frame_draws_hamburger_icon_lines() -> None:
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
     painter = QPainter(img)
-    draw_window_frame(
+    draw_window_border(
         painter,
         QRectF(0.0, 0.0, 160.0, 160.0),
         preset="white",
@@ -241,7 +241,7 @@ def test_window_frame_menu_panel_position_is_consistent_across_presets() -> None
     night_img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     night_img.fill(0)
     night_painter = QPainter(night_img)
-    draw_window_frame(
+    draw_window_border(
         night_painter,
         QRectF(0.0, 0.0, 160.0, 160.0),
         preset="night",
@@ -251,7 +251,7 @@ def test_window_frame_menu_panel_position_is_consistent_across_presets() -> None
     black_img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     black_img.fill(0)
     black_painter = QPainter(black_img)
-    draw_window_frame(
+    draw_window_border(
         black_painter,
         QRectF(0.0, 0.0, 160.0, 160.0),
         preset="black",
