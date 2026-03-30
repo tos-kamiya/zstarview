@@ -104,7 +104,7 @@ def build_cloud_amount_field_from_rgba(
     amount = _smooth_cloud_amount_grid(amount)
     positive = amount[amount > 0.0]
     if positive.size > 0:
-        nonzero_lo = float(np.percentile(positive, 20.0))
+        nonzero_lo = float(np.percentile(positive, 12.0))
         nonzero_hi = float(np.percentile(positive, 92.0))
         if nonzero_hi <= nonzero_lo + 1e-6:
             nonzero_lo = float(positive.min())
