@@ -668,6 +668,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `clouddisc` のランタイム出力は `numpy RGBA` と 2D missing-mask 配列を基本形とする。
 - `CloudController` は `QImage` を先に作らず、そのまま `CloudImageState` へ渡してよい。
 - `SkyCompositorCache` は cloud image / missing mask / cloud amount field を NumPy ベースで扱い、ストライプ描画、masking、missing tint 適用をそのまま進めてよい。
+- 雲投影モデルは、単一球殻だけに固定せず、同じ source から複数の代表高度球殻へ再投影してから混合してよい。
+- 初期候補として、`5km` 単層の代わりに `3km` と `8km` の 2 層球殻を `0.5 / 0.5` で混合してよい。
+- この複数高度モデルは物理的な雲頂高度推定ではなく、単一高度投影で生じる視差由来の不自然な穴を緩和するための視覚補正として位置付ける。
 - `cloud_amount_field` は、雲 RGBA の alpha から `(u, v)` 正規化座標上へ集約した 2D 雲量場として扱ってよい。
 - ストライプ描画では、`width` モードと `alpha` モードの 2 方式を持ってよい。
 - `width` モードでは、基準線から片側へ 1px 単位で白線を積み上げ、整数本数に加えて次の 1 本だけ小数部相当の alpha を与えてよい。

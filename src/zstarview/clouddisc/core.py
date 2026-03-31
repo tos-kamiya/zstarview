@@ -9,7 +9,7 @@ from a specific observer's perspective.
 
 import datetime as dt
 import logging
-from typing import Optional, Tuple
+from typing import Optional, Sequence, Tuple
 from dataclasses import replace
 
 import numpy as np
@@ -26,6 +26,8 @@ from .types import CloudMeta, CloudSourceData, RenderKey, SourceKey, VisibilityE
 
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_CLOUD_SHELLS_KM: tuple[float, ...] = (6371.0 + 3.0, 6371.0 + 8.0)
 
 
 class CloudDisc:
@@ -101,12 +103,14 @@ class CloudDisc:
         lat: float,
         lon: float,
         when_utc: Optional[dt.datetime] = None,
+        cloud_shells_km: Sequence[float] = DEFAULT_CLOUD_SHELLS_KM,
     ) -> CloudSourceData:
         """Fetch cloud source data independently from camera-dependent rendering."""
         source_key = self.make_source_key(lat=lat, lon=lon, when_utc=when_utc)
         sat = source_key.satellite
         when = source_key.timeslot_utc
         sat_used = sat
+        shell_max_km = max(float(v) for v in cloud_shells_km) if cloud_shells_km else (6371.0 + 5.0)
         if sat in GOES_SATELLITES:
             goes_visible = tuple(visible_satellites(lat, lon, GOES_SATELLITES))
             res, sat_used = self.goes.fetch_bt_c13_with_failover(
@@ -121,7 +125,7 @@ class CloudDisc:
                 when_utc=when,
                 observer_lat=lat,
                 observer_lon=lon,
-                cloud_shell_km=6371.0 + 5.0,
+                cloud_shell_km=shell_max_km,
             )
             product = "ISatSS-B13"
         else:
@@ -152,7 +156,7 @@ class CloudDisc:
         radius_px: int,
         edge_fov_deg: float = 90.0,
         mask_fov_deg: float = 90.0,
-        cloud_shell_km: float = 6371.0 + 5.0,
+        cloud_shells_km: Sequence[float] = DEFAULT_CLOUD_SHELLS_KM,
     ) -> Tuple[np.ndarray, CloudMeta]:
         """Render a cloud image from pre-fetched source data."""
         img, meta, _missing_mask, _coverage_ratio = self.render_from_source_with_coverage(
@@ -164,7 +168,7 @@ class CloudDisc:
             radius_px=radius_px,
             edge_fov_deg=edge_fov_deg,
             mask_fov_deg=mask_fov_deg,
-            cloud_shell_km=cloud_shell_km,
+            cloud_shells_km=cloud_shells_km,
         )
         return img, meta
 
@@ -179,7 +183,7 @@ class CloudDisc:
         radius_px: int,
         edge_fov_deg: float = 90.0,
         mask_fov_deg: float = 90.0,
-        cloud_shell_km: float = 6371.0 + 5.0,
+        cloud_shells_km: Sequence[float] = DEFAULT_CLOUD_SHELLS_KM,
     ) -> Tuple[np.ndarray, CloudMeta, np.ndarray, float]:
         """Render from pre-fetched source and return missing-data mask/coverage."""
         render_key = RenderKey(
@@ -195,7 +199,7 @@ class CloudDisc:
             lat=lat,
             lon=lon,
             render_key=render_key,
-            cloud_shell_km=cloud_shell_km,
+            cloud_shells_km=cloud_shells_km,
         )
 
     def _render_from_source_impl(
@@ -205,38 +209,56 @@ class CloudDisc:
         lat: float,
         lon: float,
         render_key: RenderKey,
-        cloud_shell_km: float,
+        cloud_shells_km: Sequence[float],
     ) -> Tuple[np.ndarray, CloudMeta, np.ndarray, float]:
+        shell_radii_km = tuple(float(v) for v in cloud_shells_km) if cloud_shells_km else DEFAULT_CLOUD_SHELLS_KM
+        blend_weight = 1.0 / float(len(shell_radii_km))
         # Step 3: Create a sampler function: (lon, lat) -> Brightness Temperature [K]
         sampler = source.sampler
         if sampler is None:
             sampler = build_bt_sampler(source.data_array)
             source.sampler = sampler
 
-        # Step 4: Project a grid of longitude/latitude points that corresponds to the pixels
-        # in the final image, as seen from the observer's perspective.
-        lon_grid, lat_grid, mask_inside = az_project_lonlat_grid(
-            lat0_deg=lat,
-            lon0_deg=lon,
-            alt0_deg=render_key.alt_deg,
-            az0_deg=render_key.az_deg,
-            radius_px=render_key.radius_px + 1,  # Project slightly larger grid for better interpolation at edges
-            cloud_shell_km=cloud_shell_km,
-            alt_min_deg=self.cfg.alt_min_deg,
-            edge_fov_deg=render_key.edge_fov_deg,
-            mask_fov_deg=render_key.mask_fov_deg,
-        )
+        projected_layers: list[tuple[np.ndarray, np.ndarray]] = []
+        combined_inside_mask: np.ndarray | None = None
+        combined_valid_mask: np.ndarray | None = None
+        bt_for_threshold: np.ndarray | None = None
+        threshold_mask_inside: np.ndarray | None = None
 
-        # Step 5: Sample the brightness temperatures for each point in the projected grid.
-        bt = sampler(lon_grid, lat_grid)
-        finite_bt = np.isfinite(bt)
-        inside_count = int(np.count_nonzero(mask_inside))
+        for cloud_shell_km in shell_radii_km:
+            lon_grid, lat_grid, mask_inside = az_project_lonlat_grid(
+                lat0_deg=lat,
+                lon0_deg=lon,
+                alt0_deg=render_key.alt_deg,
+                az0_deg=render_key.az_deg,
+                radius_px=render_key.radius_px + 1,
+                cloud_shell_km=cloud_shell_km,
+                alt_min_deg=self.cfg.alt_min_deg,
+                edge_fov_deg=render_key.edge_fov_deg,
+                mask_fov_deg=render_key.mask_fov_deg,
+            )
+            bt = sampler(lon_grid, lat_grid)
+            finite_bt = np.isfinite(bt)
+            projected_layers.append((bt, mask_inside))
+            combined_inside_mask = mask_inside if combined_inside_mask is None else (combined_inside_mask | mask_inside)
+            valid_inside = mask_inside & finite_bt
+            combined_valid_mask = valid_inside if combined_valid_mask is None else (combined_valid_mask | valid_inside)
+            if bt_for_threshold is None:
+                bt_for_threshold = bt
+                threshold_mask_inside = mask_inside
+
+        assert bt_for_threshold is not None
+        assert threshold_mask_inside is not None
+        assert combined_inside_mask is not None
+        assert combined_valid_mask is not None
+
+        inside_count = int(np.count_nonzero(combined_inside_mask))
         if inside_count > 0:
-            valid_inside = int(np.count_nonzero(mask_inside & finite_bt))
+            valid_inside = int(np.count_nonzero(combined_valid_mask))
             coverage_ratio = float(valid_inside) / float(inside_count)
         else:
             coverage_ratio = 1.0
-        missing_mask = mask_inside & ~finite_bt
+        missing_mask = combined_inside_mask & ~combined_valid_mask
 
         # Step 6: Estimate the warm and cold brightness temperature thresholds. These values
         # are used to map the temperature range to the grayscale color range, enhancing contrast.
@@ -248,8 +270,15 @@ class CloudDisc:
             warm_p=97.0,
             half=5,
         )
-        bt_cold = estimate_bt_cold_hybrid(bt, mask_inside, sample_arr, bt_warm, cold_local_p=5.0, cold_eq_p=3.0)
-        inside_vals = bt[mask_inside & finite_bt].astype(np.float64)
+        bt_cold = estimate_bt_cold_hybrid(
+            bt_for_threshold,
+            threshold_mask_inside,
+            sample_arr,
+            bt_warm,
+            cold_local_p=5.0,
+            cold_eq_p=3.0,
+        )
+        inside_vals = bt_for_threshold[threshold_mask_inside & np.isfinite(bt_for_threshold)].astype(np.float64)
         if inside_vals.size > 0:
             p05, p25, p50, p75, p95 = np.percentile(inside_vals, [5, 25, 50, 75, 95])
             logger.debug(
@@ -282,8 +311,16 @@ class CloudDisc:
                 sample_arr.size,
             )
 
-        # Step 7: Render the final RGBA cloud image from the BT data.
-        img = convert_bt_to_rgba_image(bt, mask_inside, bt_warm, bt_cold)
+        # Step 7: Render each shell separately, then blend them with fixed weights.
+        img_acc: np.ndarray | None = None
+        for bt, mask_inside in projected_layers:
+            layer_img = convert_bt_to_rgba_image(bt, mask_inside, bt_warm, bt_cold).astype(np.float32)
+            if img_acc is None:
+                img_acc = layer_img * blend_weight
+            else:
+                img_acc += layer_img * blend_weight
+        assert img_acc is not None
+        img = np.clip(np.round(img_acc), 0, 255).astype(np.uint8)
 
         meta = CloudMeta(
             satellite=source.satellite,
