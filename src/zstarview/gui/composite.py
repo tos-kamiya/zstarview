@@ -112,7 +112,7 @@ def _stripe_render_grids(
 def build_cloud_amount_field_from_rgba(
     cloud: np.ndarray,
     *,
-    bins: int = 192,
+    bins: int = 320,
     source_cache_key: int = 0,
 ) -> CloudAmountField:
     """Build a compact cloud-amount field from an RGBA image in normalized (u, v) space."""
@@ -171,7 +171,7 @@ def build_cloud_amount_field_from_rgba(
     )
 
 
-def build_cloud_amount_field(cloud_img: QImage, *, bins: int = 192) -> CloudAmountField:
+def build_cloud_amount_field(cloud_img: QImage, *, bins: int = 320) -> CloudAmountField:
     """Build a compact cloud-amount field from a cloud image in normalized (u, v) space."""
     cloud = qimage_to_np_rgba(
         cloud_img if cloud_img.format() == QImage.Format_RGBA8888 else cloud_img.convertToFormat(QImage.Format_RGBA8888)
