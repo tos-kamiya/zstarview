@@ -51,5 +51,5 @@ def test_cloud_status_line_shows_idle_without_meta_or_banner() -> None:
     assert got == "Clouds [G19]: idle"
 
 
-def test_default_cloud_horizon_cutoff_is_three_degrees() -> None:
-    assert DEFAULT_CLOUD_ALT_MIN_DEG == 3.0
+def test_default_cloud_horizon_cutoff_is_one_degree() -> None:
+    assert DEFAULT_CLOUD_ALT_MIN_DEG == 1.0
