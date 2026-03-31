@@ -27,7 +27,7 @@ from ..clouddisc import (
 )
 from ..clouddisc.types import CloudSourceData
 from ..clouddisc.providers.select import pick_satellite
-from ..paths import CLOUD_SHELL_KM
+from ..paths import CLOUD_SHELLS_KM
 from .composite import build_cloud_amount_field_from_rgba
 
 logger = logging.getLogger(__name__)
@@ -255,7 +255,7 @@ class CloudController(QObject):
                 radius_px=radius_px,
                 edge_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
                 mask_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-                cloud_shell_km=CLOUD_SHELL_KM,
+                cloud_shells_km=CLOUD_SHELLS_KM,
             )
             logger.info(
                 "Cloud render ready (request_id=%s, sat=%s, product=%s, data_time=%s, coverage=%.1f%%)",

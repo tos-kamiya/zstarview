@@ -42,7 +42,7 @@ from ..paths import (
     APP_DISPLAY_NAME,
     CACHE_PATH,
     CLOUD_MISSING_TINT_RGBA,
-    CLOUD_SHELL_KM,
+    CLOUD_SHELLS_KM,
     DSO_CSV_FILE,
     EPHEMERIS_FILENAME,
     OVERTURE_DERIVED_ROOT_DIR,
@@ -320,7 +320,7 @@ def _fetch_cloud_layer(
         radius_px=DEFAULT_CLOUD_BASE_SIZE,
         edge_fov_deg=float(viewer_data.content_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
         mask_fov_deg=float(viewer_data.content_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-        cloud_shell_km=CLOUD_SHELL_KM,
+        cloud_shells_km=CLOUD_SHELLS_KM,
     )
     if _timed_out(deadline):
         raise TimeoutError("cloud timed out")
