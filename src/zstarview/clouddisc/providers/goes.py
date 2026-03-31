@@ -10,7 +10,7 @@ channel 13 (longwave infrared) to get brightness temperatures for cloud renderin
 import datetime as dt
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import boto3
 import xarray as xr
@@ -48,7 +48,7 @@ class GoesProvider:
         self.cfg = cfg
         self.root = cfg.cache_root() / "goes_cmipf"
         self.root.mkdir(parents=True, exist_ok=True)
-        self._list_cache: Dict[Tuple, Any] = {}
+        self._list_cache: Dict[Tuple[int, int, int, str], List[str]] = {}
 
     def _s3(self, bucket: str) -> boto3.client:
         """Creates an anonymous boto3 S3 client for the specified bucket."""
@@ -65,11 +65,13 @@ class GoesProvider:
         Lists all object keys for a given hour in the S3 bucket, with in-memory caching.
         The S3 path is structured as `ABI-L2-CMIPF/YYYY/DOY/HH/`.
         """
-        cache_key = (bucket, t.year, _doy(t), t.hour)
-        if cache_key in self._list_cache:
+        t_utc = t if t.tzinfo is not None else t.replace(tzinfo=dt.timezone.utc)
+        t_utc = t_utc.astimezone(dt.timezone.utc)
+        cache_key = (t_utc.year, _doy(t_utc), t_utc.hour, bucket)
+        if self._should_cache_hour_listing(t_utc) and cache_key in self._list_cache:
             return self._list_cache[cache_key]
 
-        prefix = f"ABI-L2-CMIPF/{t.year:04d}/{_doy(t):03d}/{t.hour:02d}/"
+        prefix = f"ABI-L2-CMIPF/{t_utc.year:04d}/{_doy(t_utc):03d}/{t_utc.hour:02d}/"
         s3 = self._s3(bucket)
         logger.debug("Listing s3://%s/%s", bucket, prefix)
 
@@ -79,13 +81,34 @@ class GoesProvider:
             prefix=prefix,
             satellite=_GOES_BUCKET_TO_SATELLITE[bucket],
             product="CMIPF-C13",
-            time_utc=t,
+            time_utc=t_utc,
             uri_label=f"S3 bucket s3://{bucket}/{prefix}",
         )
 
         logger.debug("Found %d objects under %s", len(keys), prefix)
-        self._list_cache[cache_key] = keys
+        if self._should_cache_hour_listing(t_utc):
+            self._list_cache[cache_key] = keys
         return keys
+
+    @staticmethod
+    def _should_cache_hour_listing(t_utc: dt.datetime) -> bool:
+        """
+        Cache only closed UTC hours.
+
+        The current hour can receive newly published GOES files while the app is
+        running, so reusing an in-memory listing for that hour can pin the
+        provider to an older scene across multiple timer refreshes.
+        """
+        now_utc = dt.datetime.now(dt.timezone.utc)
+        return (
+            t_utc.year,
+            _doy(t_utc),
+            t_utc.hour,
+        ) != (
+            now_utc.year,
+            _doy(now_utc),
+            now_utc.hour,
+        )
 
     def _download(self, bucket: str, key: str) -> Path:
         """Downloads a file from S3, caching it locally using an atomic write."""
