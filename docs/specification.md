@@ -305,7 +305,7 @@ CLI には次のビューポイント dataset 参照専用オプションを持�
 - タワー名解決では、主表示名や別名に加えて ASCII フォールバック名も受け付ける。
 - 山名解決でも、主表示名や別名に加えて ASCII フォールバック名も受け付ける。
 - mountain viewpoint データセットは、Wikipedia 起点の候補選定と Wikidata メタデータ正規化に基づく。
-- 直接座標入力として `lat;lon`、`@lat,lon`、および現在広く観測される Google Maps 共有 URL を受け付けてよい。
+- 直接座標入力として `lat;lon`、`lat, lon`、`@lat,lon`、および現在広く観測される Google Maps 共有 URL を受け付けてよい。
 - Google Maps URL は、`maps.google.com/` または `www.google.com/maps/` で始まるものだけを受け付けてよい。各形式では先頭の `https://` を省略可とする。
 - Google Maps URL に `!3dLAT!4dLON` が含まれる場合はその座標を優先して使う。これがない場合に限り、`@LAT,LON` を使ってよい。
 - Google Maps URL では、採用した座標以外の zoom、高度、heading、pitch、query parameter、fragment などは地点解決に使わない。

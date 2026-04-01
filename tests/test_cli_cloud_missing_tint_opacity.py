@@ -27,6 +27,18 @@ def test_parse_args_cloud_stripe_default(monkeypatch) -> None:
     assert args.cloud_stripe == ("width", 50, 0.85)
 
 
+def test_parse_args_cloud_opacity_default(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview"])
+    args = parse_args()
+    assert math.isclose(float(args.cloud_opacity), 0.075, rel_tol=0.0, abs_tol=1e-9)
+
+
+def test_parse_args_cloud_opacity_override(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "--cloud-opacity", "0.1"])
+    args = parse_args()
+    assert math.isclose(float(args.cloud_opacity), 0.1, rel_tol=0.0, abs_tol=1e-9)
+
+
 def test_parse_args_cloud_stripe_accepts_mode_only(monkeypatch) -> None:
     monkeypatch.setattr("sys.argv", ["zstarview", "--cloud-stripe", "alpha"])
     args = parse_args()

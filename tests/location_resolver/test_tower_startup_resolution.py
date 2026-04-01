@@ -134,6 +134,42 @@ def test_startup_resolve_city_accepts_at_lat_lon(monkeypatch) -> None:
     assert location.cc == "JP"
 
 
+def test_startup_resolve_city_accepts_plain_lat_lon_with_space(monkeypatch) -> None:
+    monkeypatch.setattr("zstarview.location_resolver.resolve.load_last_city", lambda: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.save_last_city", lambda _value: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.load_admin1_names", lambda _path: {})
+    monkeypatch.setattr(
+        "zstarview.location_resolver.resolve._resolve_nearest_city",
+        lambda _lat, _lon, _admin1_map: type("City", (), {"tz": "Asia/Tokyo", "cc": "JP"})(),
+    )
+
+    location = resolve_launch_location("35.4824704, 133.0683567")
+
+    assert location.kind == "coords"
+    assert location.display_name == "Lat: 35.48, Lon: 133.07"
+    assert location.persistence_key == "35.482470;133.068357"
+    assert location.tz == "Asia/Tokyo"
+    assert location.cc == "JP"
+
+
+def test_startup_resolve_city_accepts_at_lat_lon_with_space(monkeypatch) -> None:
+    monkeypatch.setattr("zstarview.location_resolver.resolve.load_last_city", lambda: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.save_last_city", lambda _value: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.load_admin1_names", lambda _path: {})
+    monkeypatch.setattr(
+        "zstarview.location_resolver.resolve._resolve_nearest_city",
+        lambda _lat, _lon, _admin1_map: type("City", (), {"tz": "Asia/Tokyo", "cc": "JP"})(),
+    )
+
+    location = resolve_launch_location("@35.4824704, 133.0683567")
+
+    assert location.kind == "coords"
+    assert location.display_name == "Lat: 35.48, Lon: 133.07"
+    assert location.persistence_key == "35.482470;133.068357"
+    assert location.tz == "Asia/Tokyo"
+    assert location.cc == "JP"
+
+
 def test_startup_resolve_city_accepts_google_maps_url(monkeypatch) -> None:
     monkeypatch.setattr("zstarview.location_resolver.resolve.load_last_city", lambda: None)
     monkeypatch.setattr("zstarview.location_resolver.resolve.save_last_city", lambda _value: None)

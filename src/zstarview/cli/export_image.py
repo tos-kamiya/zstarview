@@ -218,7 +218,7 @@ def _build_window_inputs_from_args(
         cloud_disc_alpha=(
             0.0
             if (not overlay_availability.cloud) or cloud_stripe_count == 0 or cloud_stripe_width == 0.0
-            else getattr(args, "cloud_opacity", 0.15)
+            else getattr(args, "cloud_opacity", 0.075)
         ),
         satellite_opacity=(getattr(args, "satellite_opacity", 0.5) if overlay_availability.satellite else 0.0),
         aircraft_opacity=(getattr(args, "aircraft_opacity", 0.5) if overlay_availability.aircraft else 0.0),
@@ -235,7 +235,7 @@ def _build_window_inputs_from_args(
         show_guidelines_initial=getattr(args, "show_guidelines_initial", None),
         show_overlay_info_initial=getattr(args, "show_observation_info_initial", None),
         sky_disc_gui_allowed=getattr(args, "sky_opacity", 0.15) > 0.0,
-        cloud_gui_allowed=overlay_availability.cloud and getattr(args, "cloud_opacity", 0.15) > 0.0,
+        cloud_gui_allowed=overlay_availability.cloud and getattr(args, "cloud_opacity", 0.075) > 0.0,
         satellite_gui_allowed=overlay_availability.satellite and getattr(args, "satellite_opacity", 0.5) > 0.0,
         aircraft_gui_allowed=overlay_availability.aircraft and getattr(args, "aircraft_opacity", 0.5) > 0.0,
         terrain_horizon_gui_allowed=getattr(args, "terrain_horizon_opacity", 0.05) > 0.0,
