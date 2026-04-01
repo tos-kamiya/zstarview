@@ -184,7 +184,7 @@ def add_location_arguments(parser: argparse.ArgumentParser) -> None:
         nargs="?",
         default="",
         help=(
-            "Location name: city, lat;lon, @lat,lon, supported Google Maps URL, "
+            "Location name: city, lat;lon, lat,lon, @lat,lon, supported Google Maps URL, "
             "tower name, mountain name, or explicit t/NAME and m/NAME prefixes "
             "(default: same as the last run)"
         ),
@@ -393,9 +393,9 @@ def add_render_arguments(
         "-c",
         "--cloud-opacity",
         type=float,
-        default=0.1,
+        default=0.075,
         help=(
-            "Opacity of the clouds (0.0 - 1.0, default: 0.1). "
+            "Opacity of the clouds (0.0 - 1.0, default: 0.075). "
             "Set to 0.0 to disable cloud rendering."
         ),
     )
