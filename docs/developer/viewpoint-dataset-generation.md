@@ -80,7 +80,27 @@ tower dataset の高さ関連キーは次の意味で使い分ける。
 
 現在のリポジトリでは、この生成スクリプト自体は `dev-samples/` 配下の運用前提で、正式な `docs/developer/` 文書は未整備だった。
 
-### 2.4 実際に使った WDQS クエリ
+### 2.4 今後の運用方針
+
+tower 側は、mountain 側と同様に「完全自動生成してそのまま採用する」のではなく、広めに候補を集めて review し、最終 dataset は curated に保つ運用へ寄せる。
+
+推奨フローは次の通り。
+
+1. WDQS で候補を広めに収集する
+2. raw result を `qid` 単位で正規化し、review 用 JSON を作る
+3. review 用 JSON を人手で見て、採用・除外・要確認を判断する
+4. curated seed を更新する
+5. 最終 `tower_viewpoints.json` を生成して同梱する
+
+理由は、Wikidata の tower / observation 系は分類の揺れが大きく、次のような取りこぼしや false positive を query だけで安定して制御しづらいためである。
+
+- `P31` / `P279*` だけでは、テレビ塔や展望フロア付き高層ビルを落としやすい
+- `P527 = Q177305` は有効だが、Wikidata 側の記述密度に依存する
+- `P463 = Q11394142` は日本の観光タワー補完には強いが、ローカルルールである
+
+このため、tower dataset の品質管理は「query を細くして自動採用」ではなく、「query は少し広め、採用判定は人手 review」という前提で設計する。
+
+### 2.5 実際に使った WDQS クエリ
 
 tower 側は、`https://query.wikidata.org/` で広めに候補を取り、後段のローカル正規化で重複除去とノイズ除外を行う方針だった。  
 調査メモは次に残っている。
@@ -122,7 +142,7 @@ ORDER BY DESC(?height)
 - `Q1440300` を持たないものは既定では除外
 - fire tower / lookout tower 系は名前で除外
 
-### 2.5 高所観測地点候補を足すためのクエリ
+### 2.6 高所観測地点候補を足すためのクエリ
 
 展望塔だけでは不足するため、追加候補の発見には別クエリも使う。  
 実運用では 1 本の重いクエリではなく、用途別に分けた軽めのクエリを使う。
@@ -180,6 +200,37 @@ ORDER BY DESC(?height)
 
 `query-2.json` は、あべのハルカスや横浜ランドマークタワーのような「タワーではない高所観測地点」を拾う用途に向いている。  
 そのままでは重複や false positive があるため、`src/zstarview/data/build_wikidata_viewpoints.py` で bundled dataset にマージする前に整理する。
+
+### 2.7 review 用候補収集ルール
+
+今後の tower 候補収集では、単一の厳密条件だけに依存せず、次の複数ルールを review 用候補源として併用する。
+
+- `P31 / P279* -> Q1440300`
+  - observation tower の本流候補。precision が高い。
+- `P527 -> Q177305`
+  - 展望台を part として持つ施設を拾う。テレビ塔や高層ビル系の補完に向く。
+- `P463 -> Q11394142`
+  - 全日本タワー協議会加盟施設を拾う。日本の観光タワー補完に強い。
+
+これらは「そのまま自動採用する条件」ではなく、「review 対象へ入れる条件」として使う。
+
+review 用 JSON には、少なくとも次の情報を残すのが望ましい。
+
+- `qid`
+- `name`
+- `latitude_deg` / `longitude_deg`
+- `height_m`
+- `viewpoint_height_m`
+- `matched_rules`
+- `wikidata_url`
+
+`matched_rules` には、候補がどのルールで拾われたかを文字列で残す。
+
+- `instance_of_observation_tower`
+- `has_part_observation_deck`
+- `member_of_all_japan_tower_association`
+
+これにより、review 時に「なぜ拾われた候補か」を即座に判断でき、curated seed 更新時の根拠も追いやすくなる。
 
 ## 3. Mountain Viewpoints
 
