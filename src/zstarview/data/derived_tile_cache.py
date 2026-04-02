@@ -176,6 +176,10 @@ def parse_derived_tile_buildings(
             height_m = float(row["height_m"])
         except (KeyError, TypeError, ValueError):
             continue
+        try:
+            min_height_m = float(row.get("min_height_m", 0.0))
+        except (TypeError, ValueError):
+            min_height_m = 0.0
         if min_building_height_m is not None and height_m < float(min_building_height_m):
             continue
         rings = _parse_rings_lonlat(row.get("rings"))
@@ -193,6 +197,7 @@ def parse_derived_tile_buildings(
                 height_m=height_m,
                 rings_lonlat=rings,
                 parent_building_id=parent_building_id,
+                min_height_m=max(0.0, min_height_m),
             )
         )
     return tuple(buildings)

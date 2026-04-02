@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 from pathlib import Path
+import numpy as np
 
 from zstarview.data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
 from zstarview.data.urban_outline_common import BuildingFootprint
 from zstarview.types import UrbanOutlinePolyline, ViewerData
-from zstarview.urban_outline_layer import _merge_building_footprints, resolve_urban_outline_layer_for_viewer
+from zstarview.urban_outline_layer import (
+    _merge_building_footprints,
+    _resolve_building_ground_elevations,
+    resolve_urban_outline_layer_for_viewer,
+)
 
 
 def test_resolve_urban_outline_layer_for_viewer_builds_dynamic_layer(monkeypatch, tmp_path: Path) -> None:
@@ -36,10 +41,14 @@ def test_resolve_urban_outline_layer_for_viewer_builds_dynamic_layer(monkeypatch
             ),
         ),
     )
+    monkeypatch.setattr(
+        "zstarview.urban_outline_layer._resolve_building_ground_elevations",
+        lambda **kwargs: (12.0, kwargs["buildings"]),
+    )
     compute_calls = []
     monkeypatch.setattr(
         "zstarview.urban_outline_layer.compute_urban_outlines",
-        lambda *args, **_kwargs: compute_calls.append(args) or type(
+        lambda *args, **kwargs: compute_calls.append((args, kwargs)) or type(
             "Result",
             (),
             {
@@ -68,8 +77,9 @@ def test_resolve_urban_outline_layer_for_viewer_builds_dynamic_layer(monkeypatch
     assert got == [UrbanOutlinePolyline(points=[(-1.0, 10.0), (-2.0, 12.0)], height_m=45.0)]
     assert select_calls[0][1]["radius_km"] == 2.5
     assert parse_calls[0][1] == {}
-    assert compute_calls[0][0].viewpoint_height_m == 1.7
-    assert compute_calls[0][0].observer_height_m == 1.7
+    assert compute_calls[0][0][0].viewpoint_height_m == 1.7
+    assert compute_calls[0][0][0].observer_height_m == 1.7
+    assert compute_calls[0][1]["observer_ground_elevation_m"] == 12.0
 
 
 def test_resolve_urban_outline_layer_for_viewer_passes_far_range_distance_filters(
@@ -100,6 +110,10 @@ def test_resolve_urban_outline_layer_for_viewer_passes_far_range_distance_filter
                 rings_lonlat=(((139.0, 35.0), (139.001, 35.0), (139.0, 35.0)),),
             ),
         ),
+    )
+    monkeypatch.setattr(
+        "zstarview.urban_outline_layer._resolve_building_ground_elevations",
+        lambda **kwargs: (0.0, kwargs["buildings"]),
     )
     compute_calls = []
     monkeypatch.setattr(
@@ -153,6 +167,10 @@ def test_resolve_urban_outline_layer_for_viewer_applies_runtime_min_height_filte
                 rings_lonlat=(((139.0, 35.0), (139.001, 35.0), (139.0, 35.0)),),
             ),
         ),
+    )
+    monkeypatch.setattr(
+        "zstarview.urban_outline_layer._resolve_building_ground_elevations",
+        lambda **kwargs: (0.0, kwargs["buildings"]),
     )
     compute_calls = []
     monkeypatch.setattr(
@@ -226,6 +244,10 @@ def test_resolve_urban_outline_layer_for_viewer_prefers_explicit_derived_dir(
         ),
     )
     monkeypatch.setattr(
+        "zstarview.urban_outline_layer._resolve_building_ground_elevations",
+        lambda **kwargs: (0.0, kwargs["buildings"]),
+    )
+    monkeypatch.setattr(
         "zstarview.urban_outline_layer.compute_urban_outlines",
         lambda *_args, **_kwargs: type(
             "Result",
@@ -257,6 +279,33 @@ def test_resolve_urban_outline_layer_for_viewer_prefers_explicit_derived_dir(
     assert seen_dirs == [tokyo_dir]
 
 
+def test_resolve_building_ground_elevations_falls_back_to_zero_when_dem_missing(
+    monkeypatch,
+) -> None:
+    building = BuildingFootprint(
+        building_id="building-1",
+        height_m=45.0,
+        rings_lonlat=(((139.0, 35.0), (139.001, 35.0), (139.001, 35.001), (139.0, 35.0)),),
+    )
+    monkeypatch.setattr(
+        "zstarview.urban_outline_layer.fetch_copernicus_dem",
+        lambda **_kwargs: (_ for _ in ()).throw(
+            RuntimeError("No Copernicus DEM tiles were downloaded for the requested area.")
+        ),
+    )
+
+    observer_ground_m, buildings = _resolve_building_ground_elevations(
+        lat_deg=35.67,
+        lon_deg=139.76,
+        buildings=(building,),
+        radius_km=2.5,
+        dem_cache_dir=Path("/tmp/unused"),
+    )
+
+    assert observer_ground_m == 0.0
+    assert buildings == (building,)
+
+
 def test_merge_building_footprints_prefers_parts_over_parent_buildings() -> None:
     base_building = BuildingFootprint(
         building_id="building-1",
@@ -278,3 +327,44 @@ def test_merge_building_footprints_prefers_parts_over_parent_buildings() -> None
     got = _merge_building_footprints((base_building, building_part, untouched_building))
 
     assert got == (building_part, untouched_building)
+
+
+def test_resolve_building_ground_elevations_preserves_min_height(monkeypatch) -> None:
+    building = BuildingFootprint(
+        building_id="floating-part",
+        height_m=45.0,
+        min_height_m=12.0,
+        rings_lonlat=(((139.0, 35.0), (139.001, 35.0), (139.001, 35.001), (139.0, 35.0)),),
+    )
+
+    class _FakeGrid:
+        def sample_lonlat(self, lon, lat, method="bilinear"):
+            return np.full(lon.shape, 100.0, dtype=np.float64)
+
+    class _FakeDem:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def build_grid(self, _bbox):
+            return _FakeGrid()
+
+        def close(self):
+            return None
+
+    monkeypatch.setattr(
+        "zstarview.urban_outline_layer.fetch_copernicus_dem",
+        lambda **_kwargs: type("Download", (), {"paths": (Path("/tmp/fake.tif"),)})(),
+    )
+    monkeypatch.setattr("zstarview.urban_outline_layer.GeoTiffDem", _FakeDem)
+
+    observer_ground_m, buildings = _resolve_building_ground_elevations(
+        lat_deg=35.67,
+        lon_deg=139.76,
+        buildings=(building,),
+        radius_km=2.5,
+        dem_cache_dir=Path("/tmp/unused"),
+    )
+
+    assert observer_ground_m == 100.0
+    assert buildings[0].ground_elevation_m == 100.0
+    assert buildings[0].min_height_m == 12.0

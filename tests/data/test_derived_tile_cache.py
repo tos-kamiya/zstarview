@@ -89,6 +89,7 @@ def test_parse_derived_tile_buildings_defaults_to_no_height_filter(tmp_path: Pat
 
     assert len(buildings) == 2
     assert [building.building_id for building in buildings] == ["high", "low"]
+    assert [building.min_height_m for building in buildings] == [0.0, 0.0]
 
 
 def test_parse_derived_tile_buildings_can_filter_low_buildings(tmp_path: Path) -> None:
@@ -135,6 +136,39 @@ def test_parse_derived_tile_buildings_can_filter_low_buildings(tmp_path: Path) -
     assert len(buildings) == 1
     assert buildings[0].building_id == "high"
     assert buildings[0].height_m == 80.0
+
+
+def test_parse_derived_tile_buildings_reads_min_height_m(tmp_path: Path) -> None:
+    mod = _load_module()
+    path = tmp_path / "tile.json"
+    path.write_text(
+        json.dumps(
+            {
+                "buildings": [
+                    {
+                        "id": "floating-part",
+                        "height_m": 80.0,
+                        "min_height_m": 12.0,
+                        "rings": [
+                            [
+                                [139.0, 35.0],
+                                [139.001, 35.0],
+                                [139.001, 35.001],
+                                [139.0, 35.001],
+                                [139.0, 35.0],
+                            ]
+                        ],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    buildings = mod.parse_derived_tile_buildings(path)
+
+    assert len(buildings) == 1
+    assert buildings[0].min_height_m == 12.0
 
 
 def test_select_derived_tile_envelopes_prefers_tile_index(tmp_path: Path) -> None:
