@@ -622,6 +622,50 @@
       "viewpoint_height_m": 239.7
     },
     {
+      "id": "wikidata:Q847033",
+      "name": "Fukuoka Tower",
+      "names": [
+        "Fukuoka Tower",
+        "福岡タワー"
+      ],
+      "labels": {
+        "en": "Fukuoka Tower",
+        "ja": "福岡タワー"
+      },
+      "qid": "Q847033",
+      "latitude_deg": 33.593305555,
+      "longitude_deg": 130.3515,
+      "height_m": 234.0,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q847033",
+      "location_arg": "33.593306;130.351500",
+      "slug": "Fukuoka_Tower",
+      "viewpoint_types": [
+        "tower_or_high_observation"
+      ],
+      "viewpoint_height_m": 234.0
+    },
+    {
+      "id": "wikidata:Q116281743",
+      "name": "SHIBUYA SKY",
+      "names": [
+        "SHIBUYA SKY"
+      ],
+      "labels": {
+        "en": "SHIBUYA SKY"
+      },
+      "qid": "Q116281743",
+      "latitude_deg": 35.658462,
+      "longitude_deg": 139.702264,
+      "height_m": 229.0,
+      "wikidata_url": "https://www.wikidata.org/wiki/Q116281743",
+      "location_arg": "35.658462;139.702264",
+      "slug": "SHIBUYA_SKY",
+      "viewpoint_types": [
+        "tower_or_high_observation"
+      ],
+      "viewpoint_height_m": 229.0
+    },
+    {
       "id": "wikidata:Q69134",
       "name": "N Seoul Tower",
       "names": [
