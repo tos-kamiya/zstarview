@@ -56,6 +56,7 @@ def test_convert_feature_to_building_uses_height_and_geometry() -> None:
     assert got is not None
     assert got["id"] == "building-1"
     assert got["height_m"] == 55.0
+    assert got["min_height_m"] == 0.0
     assert got["height_source"] == "height"
     assert got["parent_building_id"] is None
 
@@ -116,6 +117,36 @@ def test_convert_feature_to_building_keeps_parent_building_id_for_parts() -> Non
 
     assert got is not None
     assert got["parent_building_id"] == "building-1"
+
+
+def test_convert_feature_to_building_keeps_min_height_for_floating_parts() -> None:
+    mod = _load_module()
+
+    feature = {
+        "id": "part-2",
+        "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [139.0, 35.0],
+                    [139.0005, 35.0],
+                    [139.0005, 35.0005],
+                    [139.0, 35.0005],
+                    [139.0, 35.0],
+                ]
+            ],
+        },
+        "properties": {
+            "height": 30.0,
+            "min_height": 10.0,
+            "building_id": "building-1",
+        },
+    }
+
+    got = mod.convert_feature_to_building(feature, min_building_height_m=0.0)
+
+    assert got is not None
+    assert got["min_height_m"] == 10.0
 
 
 def test_main_imports_geojsonseq_download_into_derived_dir(tmp_path: Path, monkeypatch) -> None:

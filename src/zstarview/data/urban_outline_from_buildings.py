@@ -156,6 +156,7 @@ def compute_urban_outlines(
     *,
     radius_km: float,
     min_distance_km: float = 0.0,
+    observer_ground_elevation_m: float = 0.0,
     edge_sample_step_m: float,
 ) -> UrbanOutlineResult:
     if radius_km <= 0.0:
@@ -171,6 +172,7 @@ def compute_urban_outlines(
     radius_m = radius_km * 1000.0
     min_distance_m = min_distance_km * 1000.0
     observer_height_m = float(getattr(tower, "viewpoint_height_m", getattr(tower, "observer_height_m", 0.0)) or 0.0)
+    observer_elevation_m = float(observer_ground_elevation_m) + observer_height_m
     buildings_considered = 0
     outlines: list[UrbanOutlinePolyline] = []
 
@@ -196,7 +198,11 @@ def compute_urban_outlines(
             if not valid.any():
                 continue
             azimuth_deg = (np_degrees_arctan2(sampled_points[:, 0], sampled_points[:, 1]) + 360.0) % 360.0
-            altitude_deg = np_degrees_arctan2_scalar(building.height_m - observer_height_m, distances)
+            building_top_elevation_m = float(building.ground_elevation_m) + float(building.height_m)
+            altitude_deg = np_degrees_arctan2_scalar(
+                building_top_elevation_m - observer_elevation_m,
+                distances,
+            )
             for run in iter_true_runs(valid):
                 run_points: list[UrbanPolylinePoint] = []
                 for az, alt in zip(azimuth_deg[run], altitude_deg[run]):

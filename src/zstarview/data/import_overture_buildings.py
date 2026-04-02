@@ -469,6 +469,7 @@ def convert_feature_to_building(
     return {
         "id": building_id,
         "height_m": height_m,
+        "min_height_m": resolve_feature_min_height_m(properties),
         "height_source": detect_height_source(properties),
         "parent_building_id": resolve_parent_building_id(properties),
         "bbox": {
@@ -540,6 +541,13 @@ def resolve_feature_height_m(properties: dict[str, object]) -> float | None:
         if value is not None and value > 0:
             return value * DEFAULT_STOREY_HEIGHT_M
     return None
+
+
+def resolve_feature_min_height_m(properties: dict[str, object]) -> float:
+    value = parse_numeric(properties.get("min_height"))
+    if value is None or value <= 0.0:
+        return 0.0
+    return value
 
 
 def detect_height_source(properties: dict[str, object]) -> str:

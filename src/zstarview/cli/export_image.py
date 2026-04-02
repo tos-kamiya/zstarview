@@ -589,6 +589,7 @@ def _render_image(
             style=style,
             hud=RenderHudState(
                 mouse_pos=QPoint(),
+                overlay_info_bottom_left=False,
                 viewport_interaction_mode=False,
                 viewport_interaction_stars=None,
                 status_message=None,
