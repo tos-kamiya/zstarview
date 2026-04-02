@@ -4,6 +4,7 @@ import pytest
 
 from zstarview.location_resolver import LocationResolveError, resolve_launch_location
 from zstarview.location_resolver.viewpoints import Viewpoint
+from zstarview.data.urban_outline_common import BuildingFootprint
 
 
 def test_startup_resolve_city_accepts_tower_name(monkeypatch) -> None:
@@ -190,6 +191,89 @@ def test_startup_resolve_city_accepts_google_maps_url(monkeypatch) -> None:
     assert location.display_name == "Lat: 34.69, Lon: 135.20"
     assert location.persistence_key == "34.693849;135.196045"
     assert location.tz == "Asia/Tokyo"
+
+
+def test_startup_resolve_city_uses_building_top_when_enabled(monkeypatch) -> None:
+    monkeypatch.setattr("zstarview.location_resolver.resolve.load_last_city", lambda: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.save_last_city", lambda _value: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.load_admin1_names", lambda _path: {})
+    monkeypatch.setattr(
+        "zstarview.location_resolver.resolve._resolve_nearest_city",
+        lambda _lat, _lon, _admin1_map: type("City", (), {"tz": "Asia/Tokyo", "cc": "JP"})(),
+    )
+    monkeypatch.setattr(
+        "zstarview.location_resolver.resolve._resolve_building_top_height_m",
+        lambda **_kwargs: 42.0,
+    )
+
+    location = resolve_launch_location("@35.4824704,133.0683567", use_building_top=True)
+
+    assert location.kind == "coords"
+    assert location.observer_height_m == 43.7
+    assert location.location_height_label == "Building height"
+    assert location.location_height_m == 42.0
+
+
+def test_startup_resolve_city_keeps_default_height_when_no_building_found(monkeypatch) -> None:
+    monkeypatch.setattr("zstarview.location_resolver.resolve.load_last_city", lambda: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.save_last_city", lambda _value: None)
+    monkeypatch.setattr("zstarview.location_resolver.resolve.load_admin1_names", lambda _path: {})
+    monkeypatch.setattr(
+        "zstarview.location_resolver.resolve._resolve_nearest_city",
+        lambda _lat, _lon, _admin1_map: type("City", (), {"tz": "Asia/Tokyo", "cc": "JP"})(),
+    )
+    monkeypatch.setattr(
+        "zstarview.location_resolver.resolve._resolve_building_top_height_m",
+        lambda **_kwargs: None,
+    )
+
+    location = resolve_launch_location("@35.4824704,133.0683567", use_building_top=True)
+
+    assert location.kind == "coords"
+    assert location.observer_height_m == 1.7
+    assert location.location_height_label is None
+    assert location.location_height_m is None
+
+
+def test_find_building_top_height_m_accepts_nearby_building_within_5m() -> None:
+    from zstarview.location_resolver.resolve import _find_building_top_height_m
+
+    buildings = (
+        BuildingFootprint(
+            building_id="near-lower",
+            height_m=20.0,
+            rings_lonlat=(
+                (
+                    (139.000010, 35.000000),
+                    (139.000060, 35.000000),
+                    (139.000060, 35.000050),
+                    (139.000010, 35.000050),
+                    (139.000010, 35.000000),
+                ),
+            ),
+        ),
+        BuildingFootprint(
+            building_id="near-higher",
+            height_m=45.0,
+            rings_lonlat=(
+                (
+                    (139.000020, 35.000000),
+                    (139.000070, 35.000000),
+                    (139.000070, 35.000050),
+                    (139.000020, 35.000050),
+                    (139.000020, 35.000000),
+                ),
+            ),
+        ),
+    )
+
+    got = _find_building_top_height_m(
+        buildings,
+        lon_deg=139.0,
+        lat_deg=35.000025,
+    )
+
+    assert got == 45.0
 
 
 def test_startup_resolve_city_rejects_google_maps_url_without_coordinates(monkeypatch) -> None:

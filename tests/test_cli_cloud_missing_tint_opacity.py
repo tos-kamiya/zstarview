@@ -94,6 +94,12 @@ def test_parse_args_observer_height_override(monkeypatch) -> None:
     assert math.isclose(float(args.observer_height_m), 123.4, rel_tol=0.0, abs_tol=1e-9)
 
 
+def test_parse_args_use_building_top(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "--use-building-top"])
+    args = parse_args()
+    assert args.use_building_top is True
+
+
 def test_parse_args_urban_outline_opacity_override(monkeypatch) -> None:
     monkeypatch.setattr("sys.argv", ["zstarview", "--urban-outline-opacity", "0.6"])
     args = parse_args()

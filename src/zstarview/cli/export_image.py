@@ -166,6 +166,7 @@ def _build_window_inputs_from_args(
             place_query=getattr(args, "place", None),
             place_countrycode=getattr(args, "place_countrycode", None),
             place_lang=getattr(args, "place_lang", "en"),
+            use_building_top=bool(getattr(args, "use_building_top", False)),
         )
     except LocationResolveError as exc:
         raise LaunchSetupError() from exc

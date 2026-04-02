@@ -6,10 +6,12 @@ import re
 import urllib.error
 import urllib.parse
 from dataclasses import dataclass
-from typing import Any, List
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, List
 
 from ..config import load_last_city, save_last_city
 from ..paths import CITY_ADMIN1_CODES_FILE, CITY_COORD_FILE
+from ..paths import OVERTURE_DERIVED_ROOT_DIR
 from ..utils.resolve_city import (
     CityRec,
     load_admin1_names,
@@ -22,8 +24,13 @@ from .nominatim import search_nominatim
 from .towers import resolve_tower_viewpoint
 from .viewpoints import Viewpoint, prefixed_viewpoint_name, split_prefixed_viewpoint
 
+if TYPE_CHECKING:
+    from ..data.urban_outline_common import BuildingFootprint
+
 logger = logging.getLogger(__name__)
 DEFAULT_OBSERVER_HEIGHT_M = 1.7
+BUILDING_TOP_FETCH_RADIUS_KM = 0.15
+BUILDING_TOP_MATCH_RADIUS_M = 5.0
 
 
 class LocationResolveError(Exception):
@@ -43,6 +50,224 @@ class ResolvedLocation:
     location_height_label: str | None = None
     location_height_m: float | None = None
     cc: str = ""
+
+
+def _point_in_ring(point_lonlat: tuple[float, float], ring_lonlat: tuple[tuple[float, float], ...]) -> bool:
+    px, py = point_lonlat
+    if len(ring_lonlat) < 3:
+        return False
+    inside = False
+    points = ring_lonlat if ring_lonlat[0] == ring_lonlat[-1] else ring_lonlat + (ring_lonlat[0],)
+    for (x0, y0), (x1, y1) in zip(points[:-1], points[1:]):
+        intersects = ((y0 > py) != (y1 > py)) and (
+            px < (x1 - x0) * (py - y0) / ((y1 - y0) or 1e-12) + x0
+        )
+        if intersects:
+            inside = not inside
+    return inside
+
+
+def _building_contains_lonlat(
+    building: "BuildingFootprint",
+    *,
+    lon_deg: float,
+    lat_deg: float,
+) -> bool:
+    if not building.rings_lonlat:
+        return False
+    point = (lon_deg, lat_deg)
+    outer_ring = building.rings_lonlat[0]
+    if not _point_in_ring(point, outer_ring):
+        return False
+    return not any(_point_in_ring(point, hole_ring) for hole_ring in building.rings_lonlat[1:])
+
+
+def _lonlat_to_local_xy_m(
+    lon_deg: float,
+    lat_deg: float,
+    *,
+    origin_lon_deg: float,
+    origin_lat_deg: float,
+) -> tuple[float, float]:
+    mean_lat_rad = math.radians((lat_deg + origin_lat_deg) * 0.5)
+    x_m = (lon_deg - origin_lon_deg) * 111_320.0 * math.cos(mean_lat_rad)
+    y_m = (lat_deg - origin_lat_deg) * 110_540.0
+    return (x_m, y_m)
+
+
+def _point_to_segment_distance_m(
+    px: float,
+    py: float,
+    x0: float,
+    y0: float,
+    x1: float,
+    y1: float,
+) -> float:
+    dx = x1 - x0
+    dy = y1 - y0
+    denom = dx * dx + dy * dy
+    if denom <= 1e-12:
+        return math.hypot(px - x0, py - y0)
+    t = max(0.0, min(1.0, ((px - x0) * dx + (py - y0) * dy) / denom))
+    nearest_x = x0 + t * dx
+    nearest_y = y0 + t * dy
+    return math.hypot(px - nearest_x, py - nearest_y)
+
+
+def _ring_min_distance_to_lonlat_m(
+    ring_lonlat: tuple[tuple[float, float], ...],
+    *,
+    lon_deg: float,
+    lat_deg: float,
+) -> float:
+    if len(ring_lonlat) < 2:
+        return float("inf")
+    px, py = 0.0, 0.0
+    points = ring_lonlat if ring_lonlat[0] == ring_lonlat[-1] else ring_lonlat + (ring_lonlat[0],)
+    best = float("inf")
+    for (lon0, lat0), (lon1, lat1) in zip(points[:-1], points[1:]):
+        x0, y0 = _lonlat_to_local_xy_m(lon0, lat0, origin_lon_deg=lon_deg, origin_lat_deg=lat_deg)
+        x1, y1 = _lonlat_to_local_xy_m(lon1, lat1, origin_lon_deg=lon_deg, origin_lat_deg=lat_deg)
+        best = min(best, _point_to_segment_distance_m(px, py, x0, y0, x1, y1))
+    return best
+
+
+def _building_is_near_lonlat(
+    building: "BuildingFootprint",
+    *,
+    lon_deg: float,
+    lat_deg: float,
+    max_distance_m: float,
+) -> bool:
+    if _building_contains_lonlat(building, lon_deg=lon_deg, lat_deg=lat_deg):
+        return True
+    if not building.rings_lonlat:
+        return False
+    outer_distance_m = _ring_min_distance_to_lonlat_m(
+        building.rings_lonlat[0],
+        lon_deg=lon_deg,
+        lat_deg=lat_deg,
+    )
+    return outer_distance_m <= max_distance_m
+
+
+def _find_building_top_height_m(
+    buildings: tuple["BuildingFootprint", ...],
+    *,
+    lon_deg: float,
+    lat_deg: float,
+    max_distance_m: float = BUILDING_TOP_MATCH_RADIUS_M,
+) -> float | None:
+    nearby = tuple(
+        building
+        for building in buildings
+        if _building_is_near_lonlat(
+            building,
+            lon_deg=lon_deg,
+            lat_deg=lat_deg,
+            max_distance_m=max_distance_m,
+        )
+    )
+    if not nearby:
+        return None
+    root_ids = {building.parent_building_id or building.building_id for building in nearby}
+    related = tuple(
+        building
+        for building in buildings
+        if building.building_id in root_ids or building.parent_building_id in root_ids
+    )
+    candidates = related or nearby
+    return max(float(building.height_m) for building in candidates)
+
+
+def _resolve_building_top_height_m(
+    *,
+    lat_deg: float,
+    lon_deg: float,
+    derived_root_dir: Path | str = OVERTURE_DERIVED_ROOT_DIR,
+    fetch_radius_km: float = BUILDING_TOP_FETCH_RADIUS_KM,
+    overturemaps_bin: str = "overturemaps",
+) -> float | None:
+    derived_root = Path(derived_root_dir)
+    all_buildings: list["BuildingFootprint"] = []
+    from ..data.derived_tile_cache import parse_derived_tile_buildings, select_derived_tile_envelopes
+    from ..data.import_overture_buildings import import_overture_buildings
+
+    for feature_type in ("building", "building_part"):
+        try:
+            derived_dir = import_overture_buildings(
+                lat_deg=lat_deg,
+                lon_deg=lon_deg,
+                radius_km=fetch_radius_km,
+                derived_root_dir=derived_root,
+                min_building_height_m=0.0,
+                feature_type=feature_type,
+                fmt="geojsonseq",
+                overturemaps_bin=overturemaps_bin,
+                dataset_name=None,
+                keep_download=None,
+                no_stac=False,
+            )
+        except Exception:
+            logger.warning(
+                "Building-top viewpoint fetch failed for feature_type=%s at lat=%.6f lon=%.6f",
+                feature_type,
+                lat_deg,
+                lon_deg,
+                exc_info=True,
+            )
+            continue
+        try:
+            envelopes = select_derived_tile_envelopes(
+                derived_dir,
+                observer_lat_deg=lat_deg,
+                observer_lon_deg=lon_deg,
+                radius_km=fetch_radius_km,
+            )
+        except ValueError:
+            continue
+        for envelope in envelopes:
+            all_buildings.extend(parse_derived_tile_buildings(envelope.path))
+    if not all_buildings:
+        return None
+    return _find_building_top_height_m(
+        tuple(all_buildings),
+        lon_deg=lon_deg,
+        lat_deg=lat_deg,
+    )
+
+
+def _maybe_apply_building_top_viewpoint(
+    location: ResolvedLocation,
+    *,
+    enabled: bool,
+) -> ResolvedLocation:
+    if not enabled or location.kind in {"tower", "mountain"}:
+        return location
+    building_top_height_m = _resolve_building_top_height_m(
+        lat_deg=float(location.lat),
+        lon_deg=float(location.lon),
+    )
+    if building_top_height_m is None or building_top_height_m <= 0.0:
+        return location
+    logger.info(
+        "Using building-top viewpoint height %.1f m for %s",
+        building_top_height_m,
+        location.display_name,
+    )
+    return ResolvedLocation(
+        display_name=location.display_name,
+        lat=location.lat,
+        lon=location.lon,
+        tz=location.tz,
+        persistence_key=location.persistence_key,
+        observer_height_m=float(building_top_height_m) + DEFAULT_OBSERVER_HEIGHT_M,
+        kind=location.kind,
+        persistence_value=location.persistence_value,
+        location_height_label="Building height",
+        location_height_m=float(building_top_height_m),
+        cc=location.cc,
+    )
 
 
 def format_splash_location(city: ResolvedLocation) -> str:
@@ -310,6 +535,7 @@ def resolve_launch_location(
     place_query: str | None = None,
     place_countrycode: str | None = None,
     place_lang: str = "en",
+    use_building_top: bool = False,
 ) -> ResolvedLocation:
     last_city = load_last_city()
     stored_location: dict[str, Any] | None = None
@@ -346,7 +572,8 @@ def resolve_launch_location(
             nearest_city = _resolve_nearest_city(lat, lon, admin1_map)
             timezone_name = nearest_city.tz if nearest_city is not None else "UTC"
             logger.info("Parsed location: Lat=%.6f, Lon=%.6f, Timezone=%s", lat, lon, timezone_name)
-            return ResolvedLocation(
+            return _maybe_apply_building_top_viewpoint(
+                ResolvedLocation(
                 display_name=f"Lat: {lat:.2f}, Lon: {lon:.2f}",
                 lat=lat,
                 lon=lon,
@@ -357,6 +584,8 @@ def resolve_launch_location(
                 location_height_label=None,
                 location_height_m=None,
                 cc=nearest_city.cc if nearest_city is not None else "",
+                ),
+                enabled=use_building_top,
             )
         if stored_location is not None:
             resolved_location = _restore_persisted_location(stored_location, admin1_map)
@@ -455,6 +684,11 @@ def resolve_launch_location(
             cc=city.cc,
         )
         persist_location = True
+
+    resolved_location = _maybe_apply_building_top_viewpoint(
+        resolved_location,
+        enabled=use_building_top,
+    )
 
     if persist_location:
         save_last_city(
