@@ -103,6 +103,7 @@
   - Nominatim 検索結果についても最近傍都市からタイムゾーンを補完
   - `t/NAME` / `m/NAME` の明示プレフィックスを解釈し、都市名解決より優先する
   - 観測点の基準高さと観測者の目線高さを合成して、実効観測高さを初期化する
+  - `--use-building-top` 指定時は、地点近傍の building / building_part を使って建物頂部基準の観測高さへ置き換える
 - `src/zstarview/types.py`
   - ドメインデータの共有型
 
@@ -152,6 +153,19 @@
 - タイムゾーンは、採用した座標から最近傍の GeoNames 都市を引いて補完する。補完できない場合は UTC を使う。
 - HTTP エラー、レート制限、通信失敗、JSON 解析失敗、0 件結果は `StartupAbortError` 相当で起動中断とし、logger 経由でターミナルとスプラッシュへ表示する。
 - Nominatim 利用は起動時の単発検索に限定し、候補列挙だけの反復照会経路は持たない。
+
+### 4.2.2a `--use-building-top` による起動地点高さ補正
+
+`--use-building-top` は、都市名、`--place`、緯度経度、Google Maps URL で解決した地点について、建物頂部を観測基準に使う補助経路である。
+
+- この補助経路は tower / mountain viewpoint には適用しない。
+- location resolver は、解決済みの緯度経度を中心に小半径の Overture building / building_part dataset を同期取得してよい。
+- 初期実装では、起動前にこの建物取得を同期的に行う。そのため `--use-building-top` 指定時は、建物取得完了までウィンドウ表示を待ってよい。
+- 取得した building footprint 群に対して、指定地点を厳密に含む建物だけでなく、指定地点から `5m` 以内の建物も候補とする。
+- `building_part` がある場合は、親建物とその part 群を同一グループとして扱い、そのグループの最大 `height_m` を建物頂部高として採用してよい。
+- `min_height_m` は浮いた底面の属性として保持するが、この経路で観測基準に使う値は上端であるため、観測基準高の決定には最大 `height_m` を使う。
+- 候補建物が見つからない場合は、従来どおり地表基準の `observer_height_m` を使う。
+- 利用者向けの地点情報には `Building height` を表示してよい。
 
 ### 4.2.3 前回地点の保存形式
 

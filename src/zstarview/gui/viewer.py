@@ -206,7 +206,7 @@ def main() -> None:
             place_query=args.place,
             place_countrycode=args.place_countrycode,
             place_lang=args.place_lang,
-            use_building_top=args.use_building_top,
+            use_building_top=bool(getattr(args, "use_building_top", False)),
         )
         if args.timezone is not None:
             city = replace(city, tz=args.timezone)
