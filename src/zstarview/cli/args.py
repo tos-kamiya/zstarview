@@ -379,6 +379,14 @@ def add_render_arguments(
             "Default: 1.7 for city/latlon/mountain and tower height + 1.7 for tower-name input."
         ),
     )
+    parser.add_argument(
+        "--use-building-top",
+        action="store_true",
+        help=(
+            "If the resolved location lies inside a building footprint, use that building's "
+            "highest top height as the observation base before adding observer eye height."
+        ),
+    )
 
     parser.add_argument(
         "--sky-opacity",
