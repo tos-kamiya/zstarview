@@ -135,6 +135,7 @@ The CLI supports detailed startup configuration for location, time, and renderin
 | `-A`, `--view-center-alt VIEW_CENTER_ALT`   | Viewing altitude angle (90=zenith, 0=horizon).                              | `90`    |
 | `--content-fov-deg DEGREES`                 | Shared overscan content FOV for all layers. The window edge still corresponds to `90°` from the view center; values above `90` let sky/cloud/background content extend beyond the window edge and reduce empty corner regions. Allowed range: `90`–`127`. | `100` |
 | `--observer-height-m METERS`                | Observer eye height above the local observation surface in meters. This replaces the default eye height of `1.7` meters. For tower and mountain viewpoints, the viewpoint's own height/elevation remains separate from this value. | `1.7` |
+| `--use-building-top`                        | Experimental. For city / `--place` / direct-coordinate / supported Google Maps URL input, if a building is found within about 5 meters of the resolved location, use that building's highest top height as the observation base. Tower and mountain viewpoints are not affected. | off |
 
 #### Sky and Stars
 
@@ -198,6 +199,7 @@ The CLI supports detailed startup configuration for location, time, and renderin
 - When multiple candidates are found, they are logged to the terminal and the top candidate is still used.
 - The full returned place name is shown in the GUI location label so mismatches are easier to notice.
 - The selected result is saved in config and reused on the next launch without re-querying Nominatim.
+- `--use-building-top` can be combined with `--place`. This mode is experimental and may delay startup because the app resolves nearby building data before opening the window.
 
 #### Overlay visibility at startup
 
@@ -283,6 +285,7 @@ Instead of a city name, you can directly specify coordinates.
 * Zoom, altitude, heading, pitch, and similar trailing URL components are ignored.
 * When starting with direct coordinates, the timezone is resolved from the parsed location in the same way as `--place`. `--timezone TZ` overrides that result.
 * `--observer-height-m` remains the only way to specify observer eye height. Google Maps URL altitude-like fields do not affect observer height.
+* `--use-building-top` may be combined with direct-coordinate input. In this experimental mode, the app looks for a nearby building around the resolved point and uses its top as the observation base when found.
 
 Example:
 
