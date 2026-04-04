@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-04-02
+最終更新: 2026-04-05
 
 ## 1. この文書の位置づけ
 
@@ -71,6 +71,7 @@
   - 前回地点を legacy 文字列または構造化地点オブジェクトとして保存する
 - `src/zstarview/paths.py`
   - 設定・キャッシュ・データのパス解決
+  - テーマ preset ごとの共有表示定義を持つ
 
 ### 4.2 ドメイン計算
 
@@ -221,14 +222,33 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 恒星描画と hover object 選択
 - `src/zstarview/render/sky_disc.py`
   - sky color disc の生成
+- `src/zstarview/render/text.py`
+  - preset ごとの文字色、アウトライン色、アウトライン幅の解決
 - `src/zstarview/render/asterisms.py`
   - アステリズム線の描画
   - 大円弧をサンプルし、アステリズム専用の広い FOV 境界で円形クリップして描画
 - `src/zstarview/render/guides.py`
   - 天の赤道、黄道、地平線などの補助線を `(alt, az)` サンプル列から描画時に `render_view_center` 基準で投影する
+- `src/zstarview/render/background.py`
+  - テーマ定義に基づいてウィンドウ背景 radial gradient とウィンドウ枠を描画する
+- `src/zstarview/splash.py`
+  - テーマ定義に基づいてスプラッシュ背景、枠線、情報文字色を構成する
 - `src/zstarview/gui/composite.py`
   - 星空、雲、欠損ティント、地面色の合成
   - 雲ハッチ、縞密度生成、欠損マスク適用は NumPy ベースで進め、合成結果の出力段で `QImage` に戻す
+
+#### 4.3.0 テーマ表示定義
+
+- `paths.py` には `ThemeStyle` を持つ。
+- `ThemeStyle` は少なくとも次を含む。
+  - 通常テキスト用 `TextStyle`
+  - ステータス行用 `TextStyle`
+  - ウィンドウ背景用 `WindowBackgroundStyle`
+  - スプラッシュ用 `SplashStyle`
+- `render/text.py` は `ThemeStyle` から文字色、アウトライン色、アウトライン幅を解決する。
+- `render/background.py` は `ThemeStyle.window_background` を唯一の参照元として、背景 gradient と border 色を決める。
+- `splash.py` は `ThemeStyle.splash` を色定義の参照元とし、背景 alpha は `ThemeStyle.window_background` から導出した平均 alpha を使う。
+- 明るい preset (`day`, `white`) では、暗い preset (`night`, `black`) より広い文字アウトライン幅を持てる。
 
 #### 4.3.1 描画リファクタリング方針
 

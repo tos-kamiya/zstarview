@@ -1,6 +1,6 @@
 # zstarview 仕様書
 
-最終更新: 2026-04-02
+最終更新: 2026-04-05
 
 ## 1. この文書の位置づけ
 
@@ -72,6 +72,7 @@ README より詳細に、何ができるか、どう振る舞うか、どのよ�
   - キーボード操作
   - ハンバーガーメニュー
   - ホバー情報
+  - テーマごとの文字色、文字アウトライン、背景表現
 - CLI 起動
 - GNOME 向け `.desktop` ファイル生成
 
@@ -116,6 +117,10 @@ README より詳細に、何ができるか、どう振る舞うか、どのよ�
 - `--sky-opacity`
 - `--sky-opacity` は、sky color disc の色強度を直接制御する値として扱ってよい。
 - `--terrain-horizon-opacity`
+- `--theme`
+  - `night`、`day`、`white`、`black` を受け付ける。
+  - テーマは、少なくとも通常ラベル、ステータス行、ウィンドウ背景、スプラッシュスクリーンの配色と透明度に反映される。
+  - `day` と `white` では、暗いテーマよりも文字アウトライン幅を広くしてよい。
 - `--urban-outline-opacity`
 - `-r`, `--urban-outline-radius-km`
 - `--urban-outline-skyscraper-radius-km`
