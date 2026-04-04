@@ -10,7 +10,7 @@ from ..satellites.types import SatelliteOverlayPoint
 from ..types import ScreenGeometry
 from .geometry import normalized_to_screen_xy
 from .guides import draw_gauge_cross
-from .text import get_text_outline_width, get_text_style
+from .text import resolve_text_style
 
 
 def draw_satellite_overlay(
@@ -33,12 +33,7 @@ def draw_satellite_overlay(
         *SATELLITE_OVERLAY_MARKER_COLOR_RGB,
         max(0, min(255, int(round(SATELLITE_OVERLAY_MARKER_MAX_ALPHA * layer_opacity)))),
     )
-    label_text_color, label_outline_color = get_text_style(preset)
-    label_outline_width = get_text_outline_width(preset)
-    label_text_color = QColor(label_text_color)
-    label_outline_color = QColor(label_outline_color)
-    label_text_color.setAlpha(max(0, min(255, int(round(label_text_color.alpha() * layer_opacity)))))
-    label_outline_color.setAlpha(max(0, min(255, int(round(label_outline_color.alpha() * layer_opacity)))))
+    label_style = resolve_text_style(preset, painter.font(), opacity=layer_opacity)
     for point in satellite_points:
         alt = float(point.alt_deg)
         az = float(point.az_deg)
@@ -61,9 +56,7 @@ def draw_satellite_overlay(
                     {
                         "text": label_text,
                         "pos": QPointF(pos.x() + 10.0, pos.y() - 8.0),
-                        "text_color": label_text_color,
-                        "outline_color": label_outline_color,
-                        "outline_width": label_outline_width,
+                        "style": label_style,
                         "priority": 42,
                         "hide_on_overlap": True,
                     }

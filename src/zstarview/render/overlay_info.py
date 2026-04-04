@@ -7,7 +7,7 @@ from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen
 from ..types import CelestialData, CelestialObject, PlanetBody, ScreenGeometry, ViewerData
 from .background import format_overlay_info_lines
 from .deep_sky_objects import _DSO_HOVER_SIZE_GAIN, _dso_ellipse_polygon
-from .text import get_text_outline_width
+from .text import ResolvedTextStyle, get_text_outline_width
 
 
 def draw_overlay_info(
@@ -42,7 +42,12 @@ def draw_overlay_info(
     del enlarge_moon
 
     text_color, outline_color = get_text_style_func(preset)
-    outline_width = get_text_outline_width(preset)
+    text_style = ResolvedTextStyle(
+        font=text_font,
+        text_color=text_color,
+        outline_color=outline_color,
+        outline_width=get_text_outline_width(preset),
+    )
 
     font_metrics = QFontMetrics(text_font)
     line_spacing = font_metrics.lineSpacing()
@@ -77,9 +82,7 @@ def draw_overlay_info(
             message,
             QPointF(line_x, line_y),
             text_font,
-            text_color,
-            outline_color,
-            outline_width=outline_width,
+            style=text_style,
         )
 
     if draw_static_info:
@@ -114,9 +117,12 @@ def draw_overlay_info(
                     {
                         "text": dso_name,
                         "pos": label_pos,
-                        "text_color": dso_label_color,
-                        "outline_color": outline_color,
-                        "outline_width": outline_width,
+                        "style": ResolvedTextStyle(
+                            font=text_font,
+                            text_color=dso_label_color,
+                            outline_color=text_style.outline_color,
+                            outline_width=text_style.outline_width,
+                        ),
                         "priority": 20,
                     }
                 )
@@ -126,9 +132,12 @@ def draw_overlay_info(
                     dso_name,
                     label_pos,
                     text_font,
-                    dso_label_color,
-                    outline_color,
-                    outline_width=outline_width,
+                    style=ResolvedTextStyle(
+                        font=text_font,
+                        text_color=dso_label_color,
+                        outline_color=text_style.outline_color,
+                        outline_width=text_style.outline_width,
+                    ),
                 )
                 if label_reservations is not None:
                     label_reservations.append(text_bounds_at_baseline_func(dso_name, text_font, label_pos))
@@ -147,9 +156,7 @@ def draw_overlay_info(
                     {
                         "text": str(name),
                         "pos": label_pos,
-                        "text_color": text_color,
-                        "outline_color": outline_color,
-                        "outline_width": outline_width,
+                        "style": text_style,
                         "priority": 10,
                     }
                 )
@@ -159,9 +166,7 @@ def draw_overlay_info(
                     name,
                     label_pos,
                     text_font,
-                    text_color,
-                    outline_color,
-                    outline_width=outline_width,
+                    style=text_style,
                 )
                 if label_reservations is not None:
                     label_reservations.append(text_bounds_at_baseline_func(str(name), text_font, label_pos))
