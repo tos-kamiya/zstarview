@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from PySide6.QtCore import QPointF, QRect, QRectF
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPainterPath, QPen
 
-from ..paths import STATUS_LINE_STYLES_BY_PRESET, TEXT_STYLES_BY_PRESET
+from ..paths import THEME_STYLES_BY_PRESET
 
 
 def _qcolor_from_rgba(color: tuple[int, ...]) -> QColor:
@@ -66,9 +66,16 @@ def _clamp_baseline_pos_to_viewport(
 
 def get_text_style(preset: str = "night", *, status_line: bool = False) -> Tuple[QColor, QColor]:
     """Return (text_color, outline_color) for the selected preset and text role."""
-    style_table = STATUS_LINE_STYLES_BY_PRESET if status_line else TEXT_STYLES_BY_PRESET
-    style = style_table.get(preset, style_table["night"])
+    theme = THEME_STYLES_BY_PRESET.get(preset, THEME_STYLES_BY_PRESET["night"])
+    style = theme.status_text if status_line else theme.text
     return _qcolor_from_rgba(style.text), _qcolor_from_rgba(style.outline)
+
+
+def get_text_outline_width(preset: str = "night", *, status_line: bool = False) -> float:
+    """Return the outline stroke width for the selected preset and text role."""
+    theme = THEME_STYLES_BY_PRESET.get(preset, THEME_STYLES_BY_PRESET["night"])
+    style = theme.status_text if status_line else theme.text
+    return float(style.outline_width)
 
 
 def draw_outlined_text(
@@ -191,8 +198,8 @@ def _draw_status_line_text(
     if not message:
         return
 
-    del preset
-    color, outline_color = get_text_style("night", status_line=True)
+    color, outline_color = get_text_style(preset, status_line=True)
+    outline_width = get_text_outline_width(preset, status_line=True)
 
     painter.save()
     painter.setFont(status_line_font)
@@ -207,6 +214,6 @@ def _draw_status_line_text(
         status_line_font,
         color,
         outline_color,
-        outline_width=3.0,
+        outline_width=outline_width,
     )
     painter.restore()

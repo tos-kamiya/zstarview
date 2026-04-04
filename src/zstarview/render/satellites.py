@@ -10,7 +10,7 @@ from ..satellites.types import SatelliteOverlayPoint
 from ..types import ScreenGeometry
 from .geometry import normalized_to_screen_xy
 from .guides import draw_gauge_cross
-from .text import get_text_style
+from .text import get_text_outline_width, get_text_style
 
 
 def draw_satellite_overlay(
@@ -34,7 +34,7 @@ def draw_satellite_overlay(
         max(0, min(255, int(round(SATELLITE_OVERLAY_MARKER_MAX_ALPHA * layer_opacity)))),
     )
     label_text_color, label_outline_color = get_text_style(preset)
-    label_outline_width = 3.0
+    label_outline_width = get_text_outline_width(preset)
     label_text_color = QColor(label_text_color)
     label_outline_color = QColor(label_outline_color)
     label_text_color.setAlpha(max(0, min(255, int(round(label_text_color.alpha() * layer_opacity)))))
