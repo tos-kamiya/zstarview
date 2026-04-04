@@ -1,9 +1,18 @@
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 from PySide6.QtCore import QPointF, QRect, QRectF
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPainterPath, QPen
 
 from ..paths import THEME_STYLES_BY_PRESET
+
+
+@dataclass(frozen=True, slots=True)
+class ResolvedTextStyle:
+    font: QFont
+    text_color: QColor
+    outline_color: QColor
+    outline_width: float
 
 
 def _qcolor_from_rgba(color: tuple[int, ...]) -> QColor:
@@ -78,17 +87,49 @@ def get_text_outline_width(preset: str = "night", *, status_line: bool = False) 
     return float(style.outline_width)
 
 
+def resolve_text_style(
+    preset: str,
+    font: QFont,
+    *,
+    status_line: bool = False,
+    opacity: float = 1.0,
+) -> ResolvedTextStyle:
+    """Resolve a theme preset into a concrete text render style."""
+    text_color, outline_color = get_text_style(preset, status_line=status_line)
+    alpha_scale = max(0.0, min(1.0, float(opacity)))
+    if alpha_scale < 1.0:
+        text_color = QColor(text_color)
+        outline_color = QColor(outline_color)
+        text_color.setAlpha(max(0, min(255, int(round(text_color.alpha() * alpha_scale)))))
+        outline_color.setAlpha(max(0, min(255, int(round(outline_color.alpha() * alpha_scale)))))
+    return ResolvedTextStyle(
+        font=font,
+        text_color=text_color,
+        outline_color=outline_color,
+        outline_width=get_text_outline_width(preset, status_line=status_line),
+    )
+
+
 def draw_outlined_text(
     painter: QPainter,
     text: str,
     pos: QPointF,
-    font: QFont,
+    font: QFont | None = None,
     text_color: QColor = QColor(255, 255, 255),
     outline_color: QColor = QColor.fromRgbF(0, 0, 0, 0.3),
     outline_width: float = 3.0,
+    *,
+    style: ResolvedTextStyle | None = None,
 ) -> None:
     painter.save()
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    if style is not None:
+        font = style.font
+        text_color = style.text_color
+        outline_color = style.outline_color
+        outline_width = style.outline_width
+    if font is None:
+        raise ValueError("draw_outlined_text requires either a font or a style")
 
     path = QPainterPath()
     path.addText(pos, font, text)
@@ -137,12 +178,19 @@ def _draw_label_candidates(
         anchor = cand.get("pos")
         if not isinstance(anchor, QPointF):
             continue
-        text_color = cand.get("text_color")
-        outline_color = cand.get("outline_color")
-        if not isinstance(text_color, QColor) or not isinstance(outline_color, QColor):
-            continue
+        style = cand.get("style")
+        if not isinstance(style, ResolvedTextStyle):
+            text_color = cand.get("text_color")
+            outline_color = cand.get("outline_color")
+            if not isinstance(text_color, QColor) or not isinstance(outline_color, QColor):
+                continue
+            style = ResolvedTextStyle(
+                font=text_font,
+                text_color=text_color,
+                outline_color=outline_color,
+                outline_width=float(cand.get("outline_width", 3.0)),
+            )
         hide_on_overlap = bool(cand.get("hide_on_overlap", False))
-        outline_width = float(cand.get("outline_width", 3.0))
         placed = False
         best_nonfree: Optional[Tuple[int, float, QPointF, QRectF]] = None
         for dx, dy in offsets:
@@ -161,10 +209,7 @@ def _draw_label_candidates(
                 painter,
                 text,
                 pos,
-                text_font,
-                text_color,
-                outline_color,
-                outline_width=outline_width,
+                style=style,
             )
             reservations.append(rect)
             placed = True
@@ -175,10 +220,7 @@ def _draw_label_candidates(
                 painter,
                 text,
                 pos,
-                text_font,
-                text_color,
-                outline_color,
-                outline_width=outline_width,
+                style=style,
             )
             reservations.append(rect)
         elif not placed:
@@ -198,8 +240,7 @@ def _draw_status_line_text(
     if not message:
         return
 
-    color, outline_color = get_text_style(preset, status_line=True)
-    outline_width = get_text_outline_width(preset, status_line=True)
+    style = resolve_text_style(preset, status_line_font, status_line=True)
 
     painter.save()
     painter.setFont(status_line_font)
@@ -212,8 +253,6 @@ def _draw_status_line_text(
         "> " + message,
         QPointF(x, baseline_y),
         status_line_font,
-        color,
-        outline_color,
-        outline_width=outline_width,
+        style=style,
     )
     painter.restore()

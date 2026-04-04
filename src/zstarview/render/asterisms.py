@@ -12,7 +12,7 @@ from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
 from .stars import _content_fov_deg_from_viewer
 from .geometry import normalized_to_screen_xy
 from .guides import _clip_polyline_to_radius, _great_circle_altaz_points, split_by_gaps
-from .text import _text_bounds_at_baseline, draw_outlined_text, get_text_outline_width, get_text_style
+from .text import _text_bounds_at_baseline, draw_outlined_text, resolve_text_style
 
 
 def draw_asterisms(
@@ -134,16 +134,13 @@ def draw_asterisms(
         cx = sum(pt.x() for pt in label_points) / len(label_points)
         cy = sum(pt.y() for pt in label_points) / len(label_points)
         label_pos = QPointF(cx + 8.0, cy - 8.0)
-        text_color, outline_text_color = get_text_style(preset)
-        outline_width = get_text_outline_width(preset)
+        text_style = resolve_text_style(preset, text_font)
         if label_candidates is not None:
             label_candidates.append(
                 {
                     "text": highlighted_asterism.name,
                     "pos": label_pos,
-                    "text_color": text_color,
-                    "outline_color": outline_text_color,
-                    "outline_width": outline_width,
+                    "style": text_style,
                     "priority": 30,
                 }
             )
@@ -153,9 +150,7 @@ def draw_asterisms(
                 highlighted_asterism.name,
                 label_pos,
                 text_font,
-                text_color,
-                outline_text_color,
-                outline_width=outline_width,
+                style=text_style,
             )
             if label_reservations is not None:
                 label_reservations.append(_text_bounds_at_baseline(highlighted_asterism.name, text_font, label_pos))

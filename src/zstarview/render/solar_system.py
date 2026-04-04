@@ -19,7 +19,7 @@ from .photometry import (
     planet_marker_color,
 )
 from .qt_image import np_rgba_to_qimage
-from .text import _rect_overlap_count, _text_bounds_at_baseline, draw_outlined_text, get_text_outline_width, get_text_style
+from .text import _rect_overlap_count, _text_bounds_at_baseline, draw_outlined_text, resolve_text_style
 
 
 def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
@@ -195,13 +195,12 @@ def draw_solar_system_bodies(
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
 
     text_color = QColor(*TEXT_STYLES_BY_PRESET["night"].text)
-    label_text_color, label_outline_color = get_text_style(preset)
-    label_outline_width = get_text_outline_width(preset)
     if text_font is not None:
         painter.setFont(text_font)
         label_font = text_font
     else:
         label_font = painter.font() if hasattr(painter, "font") else QFont()
+    label_style = resolve_text_style(preset, label_font)
 
     for body in celestial_data.planets:
         if not is_in_fov(body.alt, body.az, viewer_data.view_center, fov_deg=effective_fov_deg):
@@ -254,9 +253,7 @@ def draw_solar_system_bodies(
                     {
                         "text": label_text,
                         "pos": label_pos,
-                        "text_color": label_text_color,
-                        "outline_color": label_outline_color,
-                        "outline_width": label_outline_width,
+                        "style": label_style,
                         "priority": 40,
                         "hide_on_overlap": True,
                     }
@@ -272,9 +269,7 @@ def draw_solar_system_bodies(
                 label_text,
                 label_pos,
                 label_font,
-                label_text_color,
-                label_outline_color,
-                outline_width=label_outline_width,
+                style=label_style,
             )
 
 
