@@ -46,54 +46,153 @@ STATUS_LINE_FONT_SIZE = 8
 class TextStyle:
     text: tuple[int, ...]
     outline: tuple[int, ...]
+    outline_width: float = 3.0
 
 
-NIGHT_TEXT_STYLE = TextStyle(
-    text=(180, 180, 180),
-    outline=(0, 0, 0, 76),
-)
-WHITE_TEXT_STYLE = TextStyle(
-    text=(228, 158, 92),
-    outline=(130, 74, 30, 120),
-)
-DAY_TEXT_STYLE = TextStyle(
-    text=(232, 142, 104),
-    outline=(128, 72, 40, 114),
-)
-BLACK_TEXT_STYLE = TextStyle(
-    text=(246, 249, 255),
-    outline=(2, 2, 3, 236),
-)
+@dataclass(frozen=True, slots=True)
+class WindowBackgroundStyle:
+    base_rgb: tuple[int, int, int]
+    delta_rgb: tuple[int, int, int]
+    outer_alpha: int
+    edge_alpha: int
+    inner_rgba: tuple[int, int, int, int]
+    border_rgba: tuple[int, int, int, int]
 
-NIGHT_STATUS_LINE_STYLE = TextStyle(
-    text=(190, 190, 160),
-    outline=(0, 0, 0, 76),
-)
-WHITE_STATUS_LINE_STYLE = TextStyle(
-    text=(218, 150, 86),
-    outline=(126, 72, 30, 124),
-)
-DAY_STATUS_LINE_STYLE = TextStyle(
-    text=(222, 136, 98),
-    outline=(120, 68, 38, 118),
-)
-BLACK_STATUS_LINE_STYLE = TextStyle(
-    text=(255, 220, 220),
-    outline=(2, 2, 3, 236),
-)
+    def average_alpha(self) -> int:
+        boundary_alpha = int(round(self.outer_alpha * 0.7 + self.edge_alpha * 0.3))
+        return int(round((self.inner_rgba[3] + self.inner_rgba[3] + boundary_alpha + self.edge_alpha) / 4.0))
+
+
+@dataclass(frozen=True, slots=True)
+class SplashStyle:
+    gradient_rgb: tuple[tuple[int, int, int], tuple[int, int, int], tuple[int, int, int]]
+    frame_rgb: tuple[int, int, int]
+    info_text_rgb: tuple[int, int, int]
+
+
+@dataclass(frozen=True, slots=True)
+class ThemeStyle:
+    text: TextStyle
+    status_text: TextStyle
+    window_background: WindowBackgroundStyle
+    splash: SplashStyle
+
+
+THEME_STYLES_BY_PRESET = {
+    "night": ThemeStyle(
+        text=TextStyle(
+            text=(180, 180, 180),
+            outline=(0, 0, 0, 76),
+        ),
+        status_text=TextStyle(
+            text=(190, 190, 160),
+            outline=(0, 0, 0, 76),
+        ),
+        window_background=WindowBackgroundStyle(
+            base_rgb=(10, 12, 16),
+            delta_rgb=(7, 9, 11),
+            outer_alpha=200,
+            edge_alpha=80,
+            inner_rgba=(4, 4, 4, 255),
+            border_rgba=(30, 34, 40, 45),
+        ),
+        splash=SplashStyle(
+            gradient_rgb=((12, 14, 20), (8, 10, 14), (4, 6, 9)),
+            frame_rgb=(70, 76, 92),
+            info_text_rgb=(228, 236, 250),
+        ),
+    ),
+    "white": ThemeStyle(
+        text=TextStyle(
+            text=(228, 158, 92),
+            outline=(130, 74, 30, 120),
+            outline_width=3.6,
+        ),
+        status_text=TextStyle(
+            text=(218, 150, 86),
+            outline=(126, 72, 30, 124),
+            outline_width=3.6,
+        ),
+        window_background=WindowBackgroundStyle(
+            base_rgb=(242, 245, 250),
+            delta_rgb=(46, 48, 50),
+            outer_alpha=255,
+            edge_alpha=200,
+            inner_rgba=(4, 4, 4, 255),
+            border_rgba=(254, 254, 255, 112),
+        ),
+        splash=SplashStyle(
+            gradient_rgb=((252, 252, 252), (234, 234, 234), (206, 206, 206)),
+            frame_rgb=(158, 178, 206),
+            info_text_rgb=(228, 158, 92),
+        ),
+    ),
+    "day": ThemeStyle(
+        text=TextStyle(
+            text=(232, 142, 104),
+            outline=(128, 72, 40, 114),
+            outline_width=3.6,
+        ),
+        status_text=TextStyle(
+            text=(222, 136, 98),
+            outline=(120, 68, 38, 118),
+            outline_width=3.6,
+        ),
+        window_background=WindowBackgroundStyle(
+            base_rgb=(230, 242, 255),
+            delta_rgb=(28, 34, 34),
+            outer_alpha=200,
+            edge_alpha=80,
+            inner_rgba=(4, 4, 4, 255),
+            border_rgba=(250, 252, 255, 35),
+        ),
+        splash=SplashStyle(
+            gradient_rgb=((240, 248, 255), (226, 240, 252), (206, 228, 246)),
+            frame_rgb=(158, 182, 206),
+            info_text_rgb=(232, 142, 104),
+        ),
+    ),
+    "black": ThemeStyle(
+        text=TextStyle(
+            text=(246, 249, 255),
+            outline=(2, 2, 3, 236),
+        ),
+        status_text=TextStyle(
+            text=(255, 220, 220),
+            outline=(2, 2, 3, 236),
+        ),
+        window_background=WindowBackgroundStyle(
+            base_rgb=(12, 12, 12),
+            delta_rgb=(9, 9, 9),
+            outer_alpha=255,
+            edge_alpha=200,
+            inner_rgba=(4, 4, 4, 255),
+            border_rgba=(34, 34, 36, 128),
+        ),
+        splash=SplashStyle(
+            gradient_rgb=((6, 6, 6), (3, 3, 3), (0, 0, 0)),
+            frame_rgb=(56, 56, 64),
+            info_text_rgb=(244, 248, 255),
+        ),
+    ),
+}
+
+NIGHT_TEXT_STYLE = THEME_STYLES_BY_PRESET["night"].text
+WHITE_TEXT_STYLE = THEME_STYLES_BY_PRESET["white"].text
+DAY_TEXT_STYLE = THEME_STYLES_BY_PRESET["day"].text
+BLACK_TEXT_STYLE = THEME_STYLES_BY_PRESET["black"].text
+
+NIGHT_STATUS_LINE_STYLE = THEME_STYLES_BY_PRESET["night"].status_text
+WHITE_STATUS_LINE_STYLE = THEME_STYLES_BY_PRESET["white"].status_text
+DAY_STATUS_LINE_STYLE = THEME_STYLES_BY_PRESET["day"].status_text
+BLACK_STATUS_LINE_STYLE = THEME_STYLES_BY_PRESET["black"].status_text
 
 
 TEXT_STYLES_BY_PRESET = {
-    "night": NIGHT_TEXT_STYLE,
-    "white": WHITE_TEXT_STYLE,
-    "day": DAY_TEXT_STYLE,
-    "black": BLACK_TEXT_STYLE,
+    preset: theme.text for preset, theme in THEME_STYLES_BY_PRESET.items()
 }
 STATUS_LINE_STYLES_BY_PRESET = {
-    "night": NIGHT_STATUS_LINE_STYLE,
-    "white": WHITE_STATUS_LINE_STYLE,
-    "day": DAY_STATUS_LINE_STYLE,
-    "black": BLACK_STATUS_LINE_STYLE,
+    preset: theme.status_text for preset, theme in THEME_STYLES_BY_PRESET.items()
 }
 
 HORIZON_LINE_COLOR = (72, 127, 71)

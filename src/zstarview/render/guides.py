@@ -17,7 +17,7 @@ from ..paths import (
 )
 from ..types import CelestialData, ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
-from .text import _clamp_baseline_pos_to_viewport, draw_outlined_text
+from .text import _clamp_baseline_pos_to_viewport, draw_outlined_text, get_text_outline_width
 
 
 def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
@@ -333,6 +333,7 @@ def draw_direction_labels(
     """
     text_color = QColor(*HORIZON_LINE_COLOR)
     outline_color = QColor.fromRgbF(0, 0, 0, 0.3)
+    outline_width = get_text_outline_width(preset)
     marker_color = QColor(*HORIZON_LINE_COLOR)
     marker_pen = QPen(marker_color, 1.6)
     marker_pen.setCosmetic(True)
@@ -415,5 +416,5 @@ def draw_direction_labels(
             text_font,
             text_color,
             outline_color,
-            outline_width=2.5,
+            outline_width=outline_width,
         )

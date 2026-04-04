@@ -7,6 +7,7 @@ from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen
 from ..types import CelestialData, CelestialObject, PlanetBody, ScreenGeometry, ViewerData
 from .background import format_overlay_info_lines
 from .deep_sky_objects import _DSO_HOVER_SIZE_GAIN, _dso_ellipse_polygon
+from .text import get_text_outline_width
 
 
 def draw_overlay_info(
@@ -41,7 +42,7 @@ def draw_overlay_info(
     del enlarge_moon
 
     text_color, outline_color = get_text_style_func(preset)
-    outline_width = 3.0
+    outline_width = get_text_outline_width(preset)
 
     font_metrics = QFontMetrics(text_font)
     line_spacing = font_metrics.lineSpacing()

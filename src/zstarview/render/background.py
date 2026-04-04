@@ -10,6 +10,7 @@ from ..paths import (
     DIRECTIONS,
     GUI_BUTTON_SIZE,
     GUI_MENU_TEXT_COLOR,
+    THEME_STYLES_BY_PRESET,
 )
 from ..types import CelestialData, ScreenGeometry, ViewerData
 
@@ -88,25 +89,20 @@ def draw_radial_background(
     def pos(r: float) -> float:
         return max(0.0, min(1.0, r / r_max))
 
-    col_params = {
-        "white": (242, 46, 245, 48, 250, 50, 255, 200),
-        "black": (12, 9, 12, 9, 12, 9, 255, 200),
-        "day": (230, 28, 242, 34, 255, 34, 200, 80),
-        "night": (10, 7, 12, 9, 16, 11, 200, 80),
-    }
-    param = col_params.get(preset, None) or col_params["black"]
+    theme = THEME_STYLES_BY_PRESET.get(preset, THEME_STYLES_BY_PRESET["black"])
+    bg = theme.window_background
 
     def col(r: float, s: float) -> QColor:
         t = max(0.0, min(1.0, r / max(1.0, r_max)))
-        rr = int(param[0] - param[1] * t)
-        gg = int(param[2] - param[3] * t)
-        bb = int(param[4] - param[5] * t)
-        aa = int(param[6] * (1.0 - s) + param[7] * s)
+        rr = int(bg.base_rgb[0] - bg.delta_rgb[0] * t)
+        gg = int(bg.base_rgb[1] - bg.delta_rgb[1] * t)
+        bb = int(bg.base_rgb[2] - bg.delta_rgb[2] * t)
+        aa = int(bg.outer_alpha * (1.0 - s) + bg.edge_alpha * s)
         return QColor(rr, gg, bb, aa)
 
     c = geometry.center
     g = QRadialGradient(QPointF(c[0], c[1]), r_max)
-    inner_color = QColor(4, 4, 4, 255) if preset in ("white", "day", "night", "black") else col(0.0, 0.0)
+    inner_color = QColor(*bg.inner_rgba)
     boundary_color = col(r_content, 0.3)
     edge_color = col(r_max, 1.0)
     g.setColorAt(0.0, inner_color)
@@ -134,13 +130,8 @@ def draw_window_border(
     if border_width <= 0.0:
         return
 
-    border_colors = {
-        "white": (254, 254, 255, 112),
-        "black": (34, 34, 36, 128),
-        "day": (250, 252, 255, 35),
-        "night": (30, 34, 40, 45),
-    }
-    rr, gg, bb, aa = border_colors.get(preset, border_colors["night"])
+    theme = THEME_STYLES_BY_PRESET.get(preset, THEME_STYLES_BY_PRESET["night"])
+    rr, gg, bb, aa = theme.window_background.border_rgba
     border_color = QColor(rr, gg, bb, aa)
 
     left = float(rect.left())

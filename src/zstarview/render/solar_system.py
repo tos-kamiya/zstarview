@@ -19,7 +19,7 @@ from .photometry import (
     planet_marker_color,
 )
 from .qt_image import np_rgba_to_qimage
-from .text import _rect_overlap_count, _text_bounds_at_baseline, draw_outlined_text, get_text_style
+from .text import _rect_overlap_count, _text_bounds_at_baseline, draw_outlined_text, get_text_outline_width, get_text_style
 
 
 def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
@@ -196,7 +196,7 @@ def draw_solar_system_bodies(
 
     text_color = QColor(*TEXT_STYLES_BY_PRESET["night"].text)
     label_text_color, label_outline_color = get_text_style(preset)
-    label_outline_width = 3.0
+    label_outline_width = get_text_outline_width(preset)
     if text_font is not None:
         painter.setFont(text_font)
         label_font = text_font

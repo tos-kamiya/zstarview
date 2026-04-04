@@ -9,8 +9,7 @@ from PySide6.QtGui import QColor, QGuiApplication, QIcon, QLinearGradient, QPain
 from PySide6.QtWidgets import QApplication, QSplashScreen
 
 from .__about__ import __version__
-from .paths import APP_AUTHOR, APP_DISPLAY_NAME, APP_ICON_FILE, APP_ID, CACHE_PATH
-from .render.text import get_text_style
+from .paths import APP_AUTHOR, APP_DISPLAY_NAME, APP_ICON_FILE, APP_ID, CACHE_PATH, THEME_STYLES_BY_PRESET
 
 logger = logging.getLogger(__name__)
 
@@ -21,31 +20,24 @@ SPLASH_WARN_COLOR = QColor(130, 82, 20)
 SPLASH_ERROR_COLOR = QColor(146, 34, 34)
 
 
+def _with_alpha(color: QColor, alpha: int) -> QColor:
+    result = QColor(color)
+    result.setAlpha(max(0, min(255, int(alpha))))
+    return result
+
 def _get_splash_palette(visual_preset: str) -> tuple[list[QColor], QColor, QColor]:
     """Return gradient colors, frame color, and default message color for splash."""
-    main_text_color, _ = get_text_style(visual_preset)
-    if visual_preset == "night":
-        return (
-            [QColor(12, 14, 20), QColor(8, 10, 14), QColor(4, 6, 9)],
-            QColor(70, 76, 92),
-            QColor(228, 236, 250),
-        )
-    if visual_preset == "black":
-        return (
-            [QColor(6, 6, 6), QColor(3, 3, 3), QColor(0, 0, 0)],
-            QColor(56, 56, 64),
-            QColor(244, 248, 255),
-        )
-    if visual_preset == "white":
-        return (
-            [QColor(252, 252, 252), QColor(234, 234, 234), QColor(206, 206, 206)],
-            QColor(158, 178, 206),
-            main_text_color,
-        )
+    theme = THEME_STYLES_BY_PRESET.get(visual_preset, THEME_STYLES_BY_PRESET["night"])
+    background_alpha = theme.window_background.average_alpha()
+    splash = theme.splash
     return (
-        [QColor(240, 248, 255), QColor(226, 240, 252), QColor(206, 228, 246)],
-        QColor(158, 182, 206),
-        main_text_color,
+        [
+            _with_alpha(QColor(*splash.gradient_rgb[0]), background_alpha),
+            _with_alpha(QColor(*splash.gradient_rgb[1]), background_alpha),
+            _with_alpha(QColor(*splash.gradient_rgb[2]), background_alpha),
+        ],
+        _with_alpha(QColor(*splash.frame_rgb), background_alpha),
+        QColor(*splash.info_text_rgb),
     )
 
 
