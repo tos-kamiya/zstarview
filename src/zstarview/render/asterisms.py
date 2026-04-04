@@ -8,7 +8,6 @@ from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy, resolve_star_source_ids
 from ..asterisms import ASTERISMS, pick_rotating_asterism
-from ..paths import TEXT_STYLES_BY_PRESET
 from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
 from .stars import _content_fov_deg_from_viewer
 from .geometry import normalized_to_screen_xy
@@ -135,11 +134,7 @@ def draw_asterisms(
         cx = sum(pt.x() for pt in label_points) / len(label_points)
         cy = sum(pt.y() for pt in label_points) / len(label_points)
         label_pos = QPointF(cx + 8.0, cy - 8.0)
-        if preset in ("white", "day"):
-            text_color = QColor(*TEXT_STYLES_BY_PRESET["white"].text, 228)
-        else:
-            text_color = QColor(110, 195, 255, 230)
-        _, outline_text_color = get_text_style(preset)
+        text_color, outline_text_color = get_text_style(preset)
         outline_width = 3.0
         if label_candidates is not None:
             label_candidates.append(
