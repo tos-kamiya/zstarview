@@ -4,7 +4,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from PySide6.QtCore import QPoint, QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen
 
-from ..paths import TEXT_STYLES_BY_PRESET
 from ..types import CelestialData, CelestialObject, PlanetBody, ScreenGeometry, ViewerData
 from .background import format_overlay_info_lines
 from .deep_sky_objects import _DSO_HOVER_SIZE_GAIN, _dso_ellipse_polygon
@@ -93,10 +92,7 @@ def draw_overlay_info(
         pa_deg = float(dso_obj.get("pa_deg", 0.0))
         alt = float(dso_obj.get("alt", 0.0))
         az = float(dso_obj.get("az", 0.0))
-        if preset in ("white", "day"):
-            dso_label_color = QColor(*TEXT_STYLES_BY_PRESET["white"].text, 228)
-        else:
-            dso_label_color = QColor(110, 195, 255, 230)
+        dso_label_color = QColor(text_color)
         hover_poly = _dso_ellipse_polygon(
             alt_deg=alt,
             az_deg=az,

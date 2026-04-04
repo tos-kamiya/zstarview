@@ -57,8 +57,8 @@ WHITE_TEXT_STYLE = TextStyle(
     outline=(130, 74, 30, 120),
 )
 DAY_TEXT_STYLE = TextStyle(
-    text=(228, 158, 92),
-    outline=(122, 68, 26, 114),
+    text=(232, 142, 104),
+    outline=(128, 72, 40, 114),
 )
 BLACK_TEXT_STYLE = TextStyle(
     text=(246, 249, 255),
@@ -74,8 +74,8 @@ WHITE_STATUS_LINE_STYLE = TextStyle(
     outline=(126, 72, 30, 124),
 )
 DAY_STATUS_LINE_STYLE = TextStyle(
-    text=(218, 150, 86),
-    outline=(118, 66, 24, 118),
+    text=(222, 136, 98),
+    outline=(120, 68, 38, 118),
 )
 BLACK_STATUS_LINE_STYLE = TextStyle(
     text=(255, 220, 220),
