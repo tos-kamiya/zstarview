@@ -17,7 +17,7 @@ from ..paths import (
 )
 from ..types import CelestialData, ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
-from .text import draw_outlined_text
+from .text import _clamp_baseline_pos_to_viewport, draw_outlined_text
 
 
 def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
@@ -345,17 +345,20 @@ def draw_direction_labels(
     mouse_y = float(mouse_pos.y()) if mouse_pos is not None else None
     painter.setFont(text_font)
     fm = QFontMetrics(text_font)
-    alt = 0.0
+    marker_alt = 0.0
+    label_alt = -2.0
     for label, az in DIRECTIONS.items():
-        if not is_in_fov(alt, az, view_center, fov_deg=content_fov_deg):
+        if not is_in_fov(marker_alt, az, view_center, fov_deg=content_fov_deg):
             continue
-        nx, ny = altaz_to_normalized_xy(alt, az, view_center)
-        pos = QPointF(*normalized_to_screen_xy(nx, ny, geometry))
+        marker_nx, marker_ny = altaz_to_normalized_xy(marker_alt, az, view_center)
+        pos = QPointF(*normalized_to_screen_xy(marker_nx, marker_ny, geometry))
+        label_nx, label_ny = altaz_to_normalized_xy(label_alt, az, view_center)
+        label_pos = QPointF(*normalized_to_screen_xy(label_nx, label_ny, geometry))
 
         az_prev = (az - tangent_probe_deg + 360.0) % 360.0
         az_next = (az + tangent_probe_deg) % 360.0
-        p_prev = QPointF(*normalized_to_screen_xy(*altaz_to_normalized_xy(alt, az_prev, view_center), geometry))
-        p_next = QPointF(*normalized_to_screen_xy(*altaz_to_normalized_xy(alt, az_next, view_center), geometry))
+        p_prev = QPointF(*normalized_to_screen_xy(*altaz_to_normalized_xy(marker_alt, az_prev, view_center), geometry))
+        p_next = QPointF(*normalized_to_screen_xy(*altaz_to_normalized_xy(marker_alt, az_next, view_center), geometry))
         tx = p_next.x() - p_prev.x()
         ty = p_next.y() - p_prev.y()
         t_norm = math.hypot(tx, ty)
@@ -375,8 +378,6 @@ def draw_direction_labels(
             QPointF(pos.x() + nxp * marker_half_len_px, pos.y() + nyp * marker_half_len_px),
         )
         painter.restore()
-
-        label_pos = QPointF(pos)
         bounds = fm.tightBoundingRect(label)
         label_rect = QRectF(
             label_pos.x() + bounds.x(),
@@ -404,6 +405,8 @@ def draw_direction_labels(
             dy = label_pos.y() - mouse_y
             if (dx * dx + dy * dy) <= (hide_near_mouse_px * hide_near_mouse_px):
                 continue
+
+        label_pos = _clamp_baseline_pos_to_viewport(label, text_font, label_pos, QRectF(painter.viewport()))
 
         draw_outlined_text(
             painter,
