@@ -203,7 +203,7 @@ def test_hover_can_identify_planet_name() -> None:
 
     assert highlighted is not None
     obj, _ = highlighted
-    assert getattr(obj, "name", "") == "mars"
+    assert obj.name == "mars"
 
 
 def test_enlarge_moon_scales_display_radius_by_five(monkeypatch) -> None:

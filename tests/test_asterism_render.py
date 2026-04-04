@@ -28,9 +28,7 @@ class DummyPainter:
         pass
 
     def setPen(self, pen, *_args, **_kwargs) -> None:
-        width_f = getattr(pen, "widthF", None)
-        if callable(width_f):
-            self.pen_widths.append(float(width_f()))
+        self.pen_widths.append(float(pen.widthF()))
 
     def drawPolyline(self, _poly) -> None:
         self.polyline_count += 1
