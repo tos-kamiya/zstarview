@@ -287,6 +287,7 @@ def main() -> None:
         star_render_expected_width=args.expected_render_width,
         content_fov_deg=args.content_fov_deg,
         window_geometry_arg=args.window_geometry,
+        window_frame_mode=args.window_frame,
     )
     main_win = SkyWindow(
         viewer_data,

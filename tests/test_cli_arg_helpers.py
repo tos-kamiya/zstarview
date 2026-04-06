@@ -15,6 +15,7 @@ def _build_export_like_parser() -> argparse.ArgumentParser:
     cli_args.add_render_arguments(
         parser,
         include_window_geometry=False,
+        include_window_frame=False,
         include_sky_update_interval=False,
         include_startup_overlay_arguments=False,
     )
@@ -33,6 +34,7 @@ def test_render_argument_helpers_can_build_parser_without_gui_only_options() -> 
     assert args.content_fov_deg == 110.0
     assert args.theme == "day"
     assert not hasattr(args, "window_geometry")
+    assert not hasattr(args, "window_frame")
     assert not hasattr(args, "sky_update_interval")
     assert not hasattr(args, "show_dso_initial")
     assert not hasattr(args, "show_asterisms_initial")
@@ -77,3 +79,9 @@ def test_parse_args_accepts_clear_long_lived_cache() -> None:
     args = cli_args.parse_args(["--clear-long-lived-cache", "Matsue"])
 
     assert args.clear_long_lived_cache is True
+
+
+def test_parse_args_accepts_window_frame_mode() -> None:
+    args = cli_args.parse_args(["--window-frame", "window", "Matsue"])
+
+    assert args.window_frame == "window"

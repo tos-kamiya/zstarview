@@ -196,7 +196,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `--layer-timeout-seconds`
   - `--allow-partial-data`
   - `--sixel`
-- `--window-geometry` と `--sky-update-interval` は GUI 専用とし、この CLI では parser に載せない。
+- `--window-geometry`、`--window-frame`、`--sky-update-interval` は GUI 専用とし、この CLI では parser に載せない。
 - dataset 参照専用オプション群も、この CLI では parser に載せない。
 - 地点解決と天体計算は GUI と同じ下位ロジックを共有するが、レイヤー取得順序は GUI と共有しない。
 - 出力画像には既定で hover/HUD を含めず、`RenderSceneData` と `RenderStyle` を中心にベース描画だけを行う想定とする。

@@ -117,6 +117,10 @@ README より詳細に、何ができるか、どう振る舞うか、どのよ�
 - `--sky-opacity`
 - `--sky-opacity` は、sky color disc の色強度を直接制御する値として扱ってよい。
 - `--terrain-horizon-opacity`
+- `--window-frame`
+  - `frameless` または `window` を受け付ける。
+  - `frameless` は従来どおりタイトルバーと枠のない表示とする。
+  - `window` は OS 標準のタイトルバーとウィンドウ枠を持つ通常ウィンドウとする。
 - `--theme`
   - `night`、`day`、`white`、`black` を受け付ける。
   - テーマは、少なくとも通常ラベル、ステータス行、ウィンドウ背景、スプラッシュスクリーンの配色と透明度に反映される。
@@ -228,6 +232,7 @@ CLI には次のビューポイント dataset 参照専用オプションを持�
 - 次の GUI 専用・即時終了専用オプションは受け付けない。
   - `--sky-update-interval`
   - `--window-geometry`
+  - `--window-frame`
   - `--list-viewpoints`
   - `--list-viewpoint-names`
   - `--show-viewpoint-json`

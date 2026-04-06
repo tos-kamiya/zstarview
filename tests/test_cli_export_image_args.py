@@ -57,6 +57,11 @@ def test_parse_export_image_args_rejects_window_geometry() -> None:
         parse_export_image_args(["--window-geometry", "restore", "-o", "out.png"])
 
 
+def test_parse_export_image_args_rejects_window_frame() -> None:
+    with pytest.raises(SystemExit):
+        parse_export_image_args(["--window-frame", "window", "-o", "out.png"])
+
+
 def test_parse_export_image_args_rejects_sky_update_interval() -> None:
     with pytest.raises(SystemExit):
         parse_export_image_args(["--sky-update-interval", "30", "-o", "out.png"])

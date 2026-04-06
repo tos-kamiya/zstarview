@@ -27,6 +27,7 @@ from PySide6.QtGui import (
     QResizeEvent,
 )
 from PySide6.QtWidgets import QApplication, QMenu, QPushButton, QSizeGrip
+from PySide6.QtWidgets import QWidget
 
 from ..__about__ import __version__
 from ..astro import (
@@ -138,6 +139,32 @@ def _clamp_window_geometry_to_screen(
     x = min(max(int(x), available_rect.left()), max_x)
     y = min(max(int(y), available_rect.top()), max_y)
     return x, y, width, height
+
+
+class SkyWindowClientWidget(SkyWindowRenderMixin, QWidget):
+    """Client-area widget shared by frameless and decorated host windows."""
+
+    def __init__(self, owner: "SkyWindow") -> None:
+        super().__init__(owner)
+        self._owner = owner
+        self.setMouseTracking(True)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(self._owner, name)
+
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        self._owner._handle_client_resize(event)
+        super().resizeEvent(event)
+
+    def leaveEvent(self, event: QEvent) -> None:
+        self._owner._handle_client_leave(event)
+
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        self._owner._handle_client_mouse_move(event)
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        self._owner._handle_client_key_press(event)
 
 
 class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
@@ -264,8 +291,11 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         min_width = 400
         min_height = 400
         self.setMinimumSize(min_width, min_height)
-        self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
+        self._window_frame_mode = runtime_options.window_frame_mode
+        self._frameless_window = self._window_frame_mode == "frameless"
+        if self._frameless_window:
+            self.setAttribute(Qt.WA_TranslucentBackground)
+            self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
         requested_geometry: Optional[Tuple[int, int, int, int]] = None
         if runtime_options.window_geometry_arg == "restore":
             requested_geometry = load_last_window_geometry()
@@ -282,11 +312,16 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             min_height=min_height,
         )
         self.setGeometry(initial_x, initial_y, initial_width, initial_height)
-        self.setMouseTracking(True)
+        self._client_widget = SkyWindowClientWidget(self)
+        self.setCentralWidget(self._client_widget)
+        self._client_widget.setFocus(Qt.FocusReason.ActiveWindowFocusReason)
+        if self._frameless_window:
+            self.add_drag_target(self._client_widget)
         # --- UI Widgets ---
-        self.size_grip = QSizeGrip(self)
+        self.size_grip = QSizeGrip(self._client_widget)
         self.size_grip.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
         self.size_grip.setStyleSheet(self._size_grip_style_sheet())
+        self.size_grip.setVisible(self._frameless_window)
         self.size_grip.raise_()
         self._action_enlarge_moon: Optional[QAction] = None
         self._action_toggle_clouds: Optional[QAction] = None
@@ -441,7 +476,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         """Initialize timers, worker, and signal wiring for background updates."""
         self._sky_worker = SkyDataWorker(self)
         self._sky_worker.data_ready.connect(self._on_sky_data_calculated)
-        self.cloud_repaint_requested.connect(self.update)
+        self.cloud_repaint_requested.connect(self._client_widget.update)
 
         app = QApplication.instance()
         if app is not None:
@@ -467,7 +502,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
 
     def _add_hamburger_menu(self) -> None:
         """Adds a hamburger menu button and its corresponding actions."""
-        self.menu_button = QPushButton("", self)
+        self.menu_button = QPushButton("", self._client_widget)
         self.menu_button.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
         self.menu_button.setStyleSheet(self._menu_button_style_sheet())
         self.menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -694,7 +729,33 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         if self._action_lower_view is not None:
             self._action_lower_view.setEnabled(float(alt) > 0.0)
 
-    def resizeEvent(self, event: QResizeEvent) -> None:
+    def width(self) -> int:
+        if getattr(self, "_client_widget", None) is not None:
+            return self._client_widget.width()
+        return super().width()
+
+    def height(self) -> int:
+        if getattr(self, "_client_widget", None) is not None:
+            return self._client_widget.height()
+        return super().height()
+
+    def size(self):  # type: ignore[override]
+        if getattr(self, "_client_widget", None) is not None:
+            return self._client_widget.size()
+        return super().size()
+
+    def rect(self):  # type: ignore[override]
+        if getattr(self, "_client_widget", None) is not None:
+            return self._client_widget.rect()
+        return super().rect()
+
+    def update(self) -> None:  # type: ignore[override]
+        if getattr(self, "_client_widget", None) is not None:
+            self._client_widget.update()
+            return
+        super().update()
+
+    def _handle_client_resize(self, event: QResizeEvent) -> None:
         self._begin_viewport_interaction_mode()
         self._disc_generation = int(getattr(self, "_disc_generation", 0)) + 1
         grip_size = self.size_grip.size()
@@ -710,8 +771,6 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._compositor.invalidate()
         self.request_sky_data_update()
         self.start_background_cloud_update(reason="resize")
-
-        super().resizeEvent(event)
 
     def _discard_stale_disc_images(self) -> None:
         discarded = False
@@ -1250,7 +1309,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         else:
             self.showFullScreen()
 
-    def leaveEvent(self, event: QEvent) -> None:
+    def _handle_client_leave(self, event: QEvent) -> None:
         self.state.mouse_pos = None
         self.update()
         event.accept()
@@ -1261,11 +1320,9 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._begin_shutdown()
         super().closeEvent(event)
 
-    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+    def _handle_client_mouse_move(self, event: QMouseEvent) -> None:
         self.state.mouse_pos = event.pos()
         self.update()  # Trigger a repaint to show hover effects
-        # We accept the event to prevent it from propagating further.
-        # This is why the manual drag in DraggableWindow does not work.
         event.accept()
 
     def _rotate_view(
@@ -1291,7 +1348,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             return
         self.request_sky_data_update()
 
-    def keyPressEvent(self, event: QKeyEvent) -> None:
+    def _handle_client_key_press(self, event: QKeyEvent) -> None:
         key = event.key()
 
         # --- View Control ---
