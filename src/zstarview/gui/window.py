@@ -545,7 +545,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.search_menu = QMenu("Search", self)
         self.observer_view_menu = QMenu("View Direction", self)
         self.display_menu = QMenu("Layers", self)
-        self.menu.addMenu(self.file_menu)
+        if not self._frameless_window:
+            self.menu.addMenu(self.file_menu)
         self.menu.addMenu(self.search_menu)
         self.menu.addMenu(self.display_menu)
         self.menu.addMenu(self.observer_view_menu)
@@ -707,6 +708,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         vmag_limit_action.setEnabled(False)
         version_action = self.file_menu.addAction(f"Version {__version__}")
         version_action.setEnabled(False)
+
+        if self._frameless_window:
+            self.menu.addSeparator()
+            self.menu.addAction(fullscreen_action)
+            self.menu.addAction(exit_action)
 
     def _attach_client_menu_button(self, parent: QWidget) -> None:
         """Attach the legacy popup-menu button directly on the client area."""
