@@ -157,6 +157,16 @@ def _parse_window_geometry(value: str) -> WindowGeometryArg:
     return (x, y, width, height)
 
 
+def _parse_window_frame(value: str) -> str:
+    """Parse the window chrome mode."""
+    text = (value or "").strip().lower()
+    if text in {"frameless", "window"}:
+        return text
+    raise argparse.ArgumentTypeError(
+        f"Invalid window frame: {value!r}. Use 'frameless' or 'window'."
+    )
+
+
 def _parse_image_size(value: str) -> ImageSizeArg:
     """Parse image size as 'width,height'."""
     text = (value or "").strip()
@@ -289,6 +299,7 @@ def add_render_arguments(
     parser: argparse.ArgumentParser,
     *,
     include_window_geometry: bool = True,
+    include_window_frame: bool = True,
     include_sky_update_interval: bool = True,
     include_startup_overlay_arguments: bool = True,
 ) -> None:
@@ -342,6 +353,18 @@ def add_render_arguments(
                 "Window position and size. "
                 "Use 'restore' to load the last saved geometry, "
                 "or 'x,y,width,height' to set explicit values."
+            ),
+        )
+    if include_window_frame:
+        parser.add_argument(
+            "--window-frame",
+            type=_parse_window_frame,
+            default="frameless",
+            metavar="{frameless,window}",
+            help=(
+                "Window decoration mode. "
+                "Use 'frameless' for the current borderless window or "
+                "'window' for a standard titled OS window."
             ),
         )
     parser.add_argument(
@@ -603,6 +626,7 @@ def build_export_image_argument_parser() -> argparse.ArgumentParser:
     add_render_arguments(
         parser,
         include_window_geometry=False,
+        include_window_frame=False,
         include_sky_update_interval=False,
     )
     parser.add_argument(
@@ -711,6 +735,7 @@ def _validate_dataset_query_compatibility(
             or has_non_default("star_base_radius")
             or has_non_default("expected_render_width")
             or has_non_default("window_geometry")
+            or has_non_default("window_frame")
             or has_non_default("view_center_az")
             or has_non_default("view_center_alt")
             or has_non_default("content_fov_deg")

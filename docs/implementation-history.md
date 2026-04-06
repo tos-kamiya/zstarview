@@ -306,6 +306,11 @@
   - main app 側は `build_main_argument_parser()` を使う形に整理した。
   - dataset query の整合性検証は、その parser に存在するオプションだけを見るようにして、将来の画像書き出し CLI parser でも再利用できるようにした。
 
+- 2026-04-07
+  - GUI の描画対象をホストウィンドウ本体からクライアント領域ウィジェットへ分離し、同じ描画ロジックを frameless host と通常 decorated host の両方で再利用できるようにした。
+  - 起動オプション `--window-frame {frameless,window}` を追加し、既定は従来互換の `frameless` とした。
+  - export-image parser では `--window-frame` を GUI 専用オプションとして引き続き非対応にした。
+
 - 単発画像書き出し CLI の追加
   - `zstarview-export-image` を追加し、地点・時刻・視線・描画オプションの大半を既存 `zstarview` CLI と共有する形で 1 枚の PNG を書き出して終了できるようにした。
   - 画像書き出し固有オプションとして `--output`、`--image-size`、`--layer-timeout-seconds`、`--allow-partial-data` を追加した。

@@ -84,6 +84,7 @@ class SkyWindowRuntimeOptions:
     star_render_expected_width: int = 600
     content_fov_deg: float = 100.0
     window_geometry_arg: Optional[str | tuple[int, int, int, int]] = None
+    window_frame_mode: str = "frameless"
 
 
 def prepare_window_viewer_data(
@@ -200,6 +201,7 @@ def prepare_window_runtime_options(
     star_render_expected_width: int = 600,
     content_fov_deg: float = 100.0,
     window_geometry_arg: Optional[str | tuple[int, int, int, int]] = None,
+    window_frame_mode: str = "frameless",
 ) -> SkyWindowRuntimeOptions:
     """Normalize runtime options before constructing SkyWindow."""
     return SkyWindowRuntimeOptions(
@@ -216,4 +218,5 @@ def prepare_window_runtime_options(
         star_render_expected_width=max(1, int(star_render_expected_width)),
         content_fov_deg=max(90.0, min(127.0, float(content_fov_deg))),
         window_geometry_arg=window_geometry_arg,
+        window_frame_mode=("window" if str(window_frame_mode).strip().lower() == "window" else "frameless"),
     )

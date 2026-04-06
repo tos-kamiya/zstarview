@@ -2,7 +2,7 @@ import argparse
 
 import pytest
 
-from zstarview.cli.args import _parse_window_geometry
+from zstarview.cli.args import _parse_window_frame, _parse_window_geometry
 
 
 def test_parse_window_geometry_accepts_restore_case_insensitive() -> None:
@@ -17,3 +17,13 @@ def test_parse_window_geometry_accepts_csv_integers() -> None:
 def test_parse_window_geometry_rejects_invalid_format() -> None:
     with pytest.raises(argparse.ArgumentTypeError):
         _parse_window_geometry("100,200,800")
+
+
+def test_parse_window_frame_accepts_known_modes_case_insensitive() -> None:
+    assert _parse_window_frame("frameless") == "frameless"
+    assert _parse_window_frame(" Window ") == "window"
+
+
+def test_parse_window_frame_rejects_unknown_mode() -> None:
+    with pytest.raises(argparse.ArgumentTypeError):
+        _parse_window_frame("borderless")
