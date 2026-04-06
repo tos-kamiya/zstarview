@@ -52,7 +52,6 @@ from ..aircraft_constants import AIRCRAFT_REFRESH_INTERVAL_SECONDS
 from ..aircraft_constants import AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS
 from ..paths import (
     APP_ICON_FILE,
-    APP_DISPLAY_NAME,
     CACHE_PATH,
     CLOUD_UPDATE_INTERVAL,
     GUI_BUTTON_SIZE,
