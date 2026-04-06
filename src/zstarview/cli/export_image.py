@@ -620,6 +620,7 @@ def _build_render_style(
         text_font=text_font,
         status_line_font=status_line_font,
         show_background_gradient=False,
+        show_custom_window_frame=False,
         show_overlay_info=False,
         show_dso=show_dso,
         show_asterisms=show_asterisms,

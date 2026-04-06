@@ -164,6 +164,7 @@ class SkyWindowRenderMixin:
             text_font=self.text_font,
             status_line_font=cast(QFont, status_line_font),
             show_background_gradient=True,
+            show_custom_window_frame=bool(getattr(self, "_frameless_window", False)),
             show_overlay_info=bool(getattr(self, "show_overlay_info", True)),
             show_dso=bool(getattr(self, "show_dso", False)),
             show_asterisms=bool(getattr(self, "show_asterisms", False)),

@@ -179,7 +179,7 @@ def main() -> None:
         raise SystemExit(cli_exit_code)
 
     from ..splash import setup_app, setup_splash_and_attach_logger
-    from ..gui.window import SkyWindow
+    from ..gui.window import FramelessSkyWindow, StandardSkyWindow
 
     app_name = APP_DISPLAY_NAME
     app = setup_app(app_name)
@@ -289,7 +289,8 @@ def main() -> None:
         window_geometry_arg=args.window_geometry,
         window_frame_mode=args.window_frame,
     )
-    main_win = SkyWindow(
+    window_cls = FramelessSkyWindow if args.window_frame == "frameless" else StandardSkyWindow
+    main_win = window_cls(
         viewer_data,
         catalogs,
         user_options=user_options,
