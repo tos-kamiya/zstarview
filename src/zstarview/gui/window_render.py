@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any
+from typing import Any, cast
 
 from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QImage, QPainter, QPaintEvent
+from PySide6.QtGui import QFont, QImage, QPainter, QPaintEvent
 
 from ..astro import altaz_to_normalized_xy, resolve_star_names
 from ..render import deep_sky_objects as render_deep_sky_objects
@@ -40,8 +40,8 @@ class SkyWindowRenderMixin:
         render_viewer: ViewerData,
     ) -> tuple[Any, ...]:
         return (
-            int(self.width()),
-            int(self.height()),
+            int(self.client_width()),
+            int(self.client_height()),
             tuple(geometry.center),
             int(geometry.radius),
             self.visual_preset,
@@ -87,8 +87,13 @@ class SkyWindowRenderMixin:
         frame_key: tuple[Any, ...],
         render_fn: Any,
     ) -> None:
-        if self._frame_cache_key != frame_key or self._frame_cache_image is None:
-            frame = QImage(self.size(), QImage.Format.Format_ARGB32_Premultiplied)
+        frame_cache_key = getattr(self, "_frame_cache_key", None)
+        frame_cache_image = cast(QImage | None, getattr(self, "_frame_cache_image", None))
+        if frame_cache_key != frame_key or frame_cache_image is None:
+            frame = QImage(
+                self.client_size(),
+                QImage.Format.Format_ARGB32_Premultiplied,
+            )
             frame.fill(Qt.GlobalColor.transparent)
             frame_painter = QPainter(frame)
             frame_painter.setRenderHint(QPainter.Antialiasing)
@@ -99,7 +104,8 @@ class SkyWindowRenderMixin:
                 frame_painter.end()
             self._frame_cache_image = frame
             self._frame_cache_key = frame_key
-        painter.drawImage(0, 0, self._frame_cache_image)
+            frame_cache_image = frame
+        painter.drawImage(0, 0, cast(QImage, frame_cache_image))
 
     def _viewer_data_for_render(self) -> ViewerData:
         return ViewerData(
@@ -152,10 +158,11 @@ class SkyWindowRenderMixin:
         )
 
     def _render_style(self) -> RenderStyle:
+        status_line_font = getattr(self, "status_line_font", self.text_font)
         return RenderStyle(
             visual_preset=self.visual_preset,
             text_font=self.text_font,
-            status_line_font=getattr(self, "status_line_font", self.text_font),
+            status_line_font=cast(QFont, status_line_font),
             show_background_gradient=True,
             show_overlay_info=bool(getattr(self, "show_overlay_info", True)),
             show_dso=bool(getattr(self, "show_dso", False)),
@@ -181,7 +188,7 @@ class SkyWindowRenderMixin:
         mouse_pos = self.state.mouse_pos
         overlay_info_bottom_left = bool(getattr(self.state, "overlay_info_bottom_left", False))
         if mouse_pos is not None:
-            window_height = max(1, int(self.height()))
+            window_height = max(1, int(self.client_height()))
             upper_threshold = float(window_height) / 3.0
             lower_threshold = 2.0 * float(window_height) / 3.0
             mouse_y = float(mouse_pos.y())
@@ -199,8 +206,8 @@ class SkyWindowRenderMixin:
         )
 
     def _update_star_render_stats(self, geometry: ScreenGeometry) -> None:
-        win_w = int(self.width())
-        win_h = int(self.height())
+        win_w = int(self.client_width())
+        win_h = int(self.client_height())
         low_w, low_h = compute_star_render_surface_size(
             win_w,
             win_h,
@@ -266,7 +273,10 @@ class SkyWindowRenderMixin:
 
     def render_current_image(self, *, include_hud: bool = False) -> QImage:
         """Render the current window state into an off-screen image."""
-        image = QImage(self.size(), QImage.Format.Format_ARGB32_Premultiplied)
+        image = QImage(
+            self.client_size(),
+            QImage.Format.Format_ARGB32_Premultiplied,
+        )
         image.fill(Qt.GlobalColor.transparent)
         painter = QPainter(image)
         painter.setRenderHint(QPainter.Antialiasing)
@@ -278,7 +288,7 @@ class SkyWindowRenderMixin:
                 painter.setPen(loading_color)
                 painter.setFont(self.text_font)
                 painter.drawText(
-                    self.rect(),
+                    self.client_rect(),
                     Qt.AlignmentFlag.AlignCenter,
                     "Loading celestial data...",
                 )
@@ -286,8 +296,8 @@ class SkyWindowRenderMixin:
 
             render_viewer = self._viewer_data_for_render()
             geometry = render_geometry.get_screen_geometry(
-                self.width(),
-                self.height(),
+                int(self.client_width()),
+                int(self.client_height()),
                 render_viewer.view_center[0],
             )
             scene, style, hud = self._render_inputs(
@@ -297,7 +307,7 @@ class SkyWindowRenderMixin:
             render_base_scene_into_painter(
                 painter,
                 geometry=geometry,
-                viewport_rect=self.rect(),
+                viewport_rect=self.client_rect(),
                 scene=scene,
                 style=style,
                 hud=hud,
@@ -312,7 +322,7 @@ class SkyWindowRenderMixin:
                 render_hud_overlay_into_painter(
                     painter,
                     geometry=geometry,
-                    viewport_rect=self.rect(),
+                    viewport_rect=self.client_rect(),
                     scene=scene,
                     style=style,
                     hud=hud,
@@ -334,13 +344,19 @@ class SkyWindowRenderMixin:
             painter.setPen(loading_color)
             painter.setFont(self.text_font)
             painter.drawText(
-                self.rect(), Qt.AlignmentFlag.AlignCenter, "Loading celestial data..."
+                self.client_rect(),
+                Qt.AlignmentFlag.AlignCenter,
+                "Loading celestial data...",
             )
             return
 
         render_viewer = self._viewer_data_for_render()
         alt = render_viewer.view_center[0]
-        geometry = render_geometry.get_screen_geometry(self.width(), self.height(), alt)
+        geometry = render_geometry.get_screen_geometry(
+            int(self.client_width()),
+            int(self.client_height()),
+            alt,
+        )
 
         highlighted_object = None
         highlighted_dso = None
@@ -378,7 +394,7 @@ class SkyWindowRenderMixin:
             lambda frame_painter: render_base_scene_into_painter(
                 frame_painter,
                 geometry=geometry,
-                viewport_rect=self.rect(),
+                viewport_rect=self.client_rect(),
                 scene=scene,
                 style=style,
                 hud=hud,
@@ -388,7 +404,7 @@ class SkyWindowRenderMixin:
         render_hud_overlay_into_painter(
             painter,
             geometry=geometry,
-            viewport_rect=self.rect(),
+            viewport_rect=self.client_rect(),
             scene=scene,
             style=style,
             hud=hud,

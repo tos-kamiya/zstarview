@@ -153,10 +153,10 @@ class SkyWindowUpdatesMixin:
     def _on_sky_data_calculated(self, payload: Dict) -> None:
         current_generation = int(getattr(self, "_disc_generation", 0))
         payload_generation = int(payload.get("render_generation", current_generation))
-        payload_width = int(payload.get("render_width_px", max(2, int(self.width()))))
-        payload_height = int(payload.get("render_height_px", max(2, int(self.height()))))
-        current_width = max(2, int(self.width()))
-        current_height = max(2, int(self.height()))
+        payload_width = int(payload.get("render_width_px", max(2, int(self.client_width()))))
+        payload_height = int(payload.get("render_height_px", max(2, int(self.client_height()))))
+        current_width = max(2, int(self.client_width()))
+        current_height = max(2, int(self.client_height()))
         if (
             payload_generation != current_generation
             or payload_width != current_width
@@ -175,14 +175,16 @@ class SkyWindowUpdatesMixin:
                 self.request_sky_data_update()
             return
         if not self.state.viewport_interaction_mode:
-            self.state.render_view_center = tuple(
-                payload.get("view_center", self.viewer_data.view_center)
-            )
+            view_center = payload.get("view_center", self.viewer_data.view_center)
+            if isinstance(view_center, (tuple, list)) and len(view_center) >= 2:
+                self.state.render_view_center = (float(view_center[0]), float(view_center[1]))
+            else:
+                self.state.render_view_center = tuple(self.viewer_data.view_center)
         self.state.celestial_data = payload["celestial"]
         self.state.sky_disc_image = payload["sky_disc"]
 
         self._compositor.invalidate()
-        self.update()
+        self.request_client_update()
 
         if not self._sky_data_update_timer.isActive():
             self._sky_data_update_timer.start(self.sky_update_interval * 1000)
@@ -242,8 +244,8 @@ class SkyWindowUpdatesMixin:
             content_fov_deg=float(self.content_fov_deg),
             visual_preset=self.visual_preset,
             star_catalog_meta=self.star_catalog_meta,
-            render_width_px=max(2, int(self.width())),
-            render_height_px=max(2, int(self.height())),
+            render_width_px=max(2, int(self.client_width())),
+            render_height_px=max(2, int(self.client_height())),
             render_generation=int(getattr(self, "_disc_generation", 0)),
         )
         if started:
@@ -295,7 +297,7 @@ class SkyWindowUpdatesMixin:
         if validity_remaining_ms is not None and validity_remaining_ms <= 0:
             self.state.satellite_overlay_points = None
             self.satellite_state.overlay_points = None
-            self.update()
+            self.request_client_update()
             self.start_background_satellite_update(reason="time-window-shift")
             return
         records_by_group = getattr(self.satellite_state, "records_by_group", None) or {}
@@ -307,7 +309,7 @@ class SkyWindowUpdatesMixin:
                 )
         if not records_by_group:
             self.state.satellite_overlay_points = None
-            self.update()
+            self.request_client_update()
             return
         lat, lon = self.viewer_data.location
         overlay_points = project_satellite_records(
@@ -319,7 +321,7 @@ class SkyWindowUpdatesMixin:
         )
         self.satellite_state.overlay_points = overlay_points
         self.state.satellite_overlay_points = overlay_points
-        self.update()
+        self.request_client_update()
 
     def _on_cloud_started(self, payload: Dict) -> None:
         sat = str(payload.get("satellite", "")).strip()
@@ -333,7 +335,7 @@ class SkyWindowUpdatesMixin:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.satellite_state.set_banner(banner)
-            self.update()
+            self.request_client_update()
 
     def _on_satellite_ready(self, payload: Dict) -> None:
         element_epoch = payload.get("element_epoch_utc")
@@ -353,7 +355,7 @@ class SkyWindowUpdatesMixin:
             schedule_next = getattr(self, "_schedule_next_satellite_refresh", None)
             if callable(schedule_next):
                 schedule_next()
-        self.update()
+        self.request_client_update()
 
     def _on_satellite_failed(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
@@ -362,7 +364,7 @@ class SkyWindowUpdatesMixin:
         schedule_retry = getattr(self, "_schedule_satellite_retry_after_failure", None)
         if callable(schedule_retry) and float(getattr(self, "satellite_opacity", 0.0)) > 0.0:
             schedule_retry()
-        self.update()
+        self.request_client_update()
 
     def _on_cloud_ready(self, payload: Dict) -> None:
         current_generation = int(getattr(self, "_disc_generation", 0))
@@ -451,7 +453,7 @@ class SkyWindowUpdatesMixin:
         snapshots = self.aircraft_state.snapshots
         if not snapshots:
             self.state.aircraft_overlay_points = None
-            self.update()
+            self.request_client_update()
             return
         lat, lon = self.viewer_data.location
         overlay_points = project_aircraft_snapshots(
@@ -463,13 +465,13 @@ class SkyWindowUpdatesMixin:
         )
         self.aircraft_state.overlay_points = overlay_points
         self.state.aircraft_overlay_points = overlay_points
-        self.update()
+        self.request_client_update()
 
     def _on_aircraft_started(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.aircraft_state.set_banner(banner)
-            self.update()
+            self.request_client_update()
 
     def _on_aircraft_ready(self, payload: Dict) -> None:
         refreshed_at = payload.get("refreshed_at_utc")
@@ -489,7 +491,7 @@ class SkyWindowUpdatesMixin:
             schedule_next = getattr(self, "_schedule_next_aircraft_refresh", None)
             if callable(schedule_next):
                 schedule_next()
-        self.update()
+        self.request_client_update()
         self._maybe_save_aircraft_debug_snapshot(payload)
 
     def _on_aircraft_failed(self, payload: Dict) -> None:
@@ -499,13 +501,13 @@ class SkyWindowUpdatesMixin:
         schedule_next = getattr(self, "_schedule_next_aircraft_refresh", None)
         if callable(schedule_next) and float(getattr(self, "aircraft_opacity", 0.0)) > 0.0:
             schedule_next()
-        self.update()
+        self.request_client_update()
 
     def _on_terrain_horizon_started(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.terrain_horizon_state.banner_text = banner
-        self.update()
+        self.request_client_update()
 
     def _on_terrain_horizon_ready(self, payload: Dict) -> None:
         self.terrain_horizon_state.set_result(
@@ -514,7 +516,7 @@ class SkyWindowUpdatesMixin:
         )
         self.state.terrain_horizon_profile = payload["profile_altaz"]
         self._compositor.invalidate()
-        self.update()
+        self.request_client_update()
 
     def _on_terrain_horizon_failed(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
@@ -523,13 +525,13 @@ class SkyWindowUpdatesMixin:
         if banner:
             self.terrain_horizon_state.set_error_banner(banner)
         self._compositor.invalidate()
-        self.update()
+        self.request_client_update()
 
     def _on_urban_outline_started(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.urban_outline_state.banner_text = banner
-        self.update()
+        self.request_client_update()
 
     def _on_urban_outline_ready(self, payload: Dict) -> None:
         outlines = payload.get("outlines")
@@ -539,7 +541,7 @@ class SkyWindowUpdatesMixin:
         )
         self.state.urban_outlines = outlines
         self._compositor.invalidate()
-        self.update()
+        self.request_client_update()
 
     def _on_urban_outline_failed(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
@@ -548,4 +550,4 @@ class SkyWindowUpdatesMixin:
         if banner:
             self.urban_outline_state.set_error_banner(banner)
         self._compositor.invalidate()
-        self.update()
+        self.request_client_update()
