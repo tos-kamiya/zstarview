@@ -52,6 +52,32 @@ class _DummyCompositor:
         self.invalidated = True
 
 
+class _WindowStub:
+    def __init__(self, **kwargs) -> None:
+        self.__dict__.update(kwargs)
+
+    def client_width(self) -> int:
+        width = getattr(self, "width")
+        return int(width() if callable(width) else width)
+
+    def client_height(self) -> int:
+        height = getattr(self, "height")
+        return int(height() if callable(height) else height)
+
+    def client_size(self):
+        size = getattr(self, "size")
+        return size() if callable(size) else size
+
+    def client_rect(self):
+        rect = getattr(self, "rect")
+        return rect() if callable(rect) else rect
+
+    def request_client_update(self) -> None:
+        update = getattr(self, "update")
+        if callable(update):
+            update()
+
+
 def _make_scene(
     *,
     viewer: ViewerData | None = None,
@@ -130,7 +156,7 @@ def _make_hud(**overrides) -> pipeline_module.RenderHudState:
 
 
 def test_viewer_data_for_render_uses_render_view_center() -> None:
-    dummy = SimpleNamespace()
+    dummy = _WindowStub()
     dummy.viewer_data = ViewerData(
         location=(35.0, 139.0),
         timezone_name="Asia/Tokyo",
@@ -150,7 +176,7 @@ def test_viewer_data_for_render_uses_render_view_center() -> None:
 
 
 def test_render_style_uses_window_overlay_info_toggle() -> None:
-    dummy = SimpleNamespace()
+    dummy = _WindowStub()
     dummy.visual_preset = "night"
     dummy.text_font = object()
     dummy.status_line_font = object()
@@ -176,7 +202,7 @@ def test_render_style_uses_window_overlay_info_toggle() -> None:
 
 
 def test_render_hud_state_uses_upper_third_to_switch_overlay_to_bottom_left() -> None:
-    dummy = SimpleNamespace()
+    dummy = _WindowStub()
     dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
     dummy.state.mouse_pos = QPoint(10, 20)
     dummy.state.overlay_info_bottom_left = False
@@ -190,7 +216,7 @@ def test_render_hud_state_uses_upper_third_to_switch_overlay_to_bottom_left() ->
 
 
 def test_render_hud_state_keeps_overlay_anchor_in_middle_third() -> None:
-    dummy = SimpleNamespace()
+    dummy = _WindowStub()
     dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
     dummy.state.mouse_pos = QPoint(10, 150)
     dummy.state.overlay_info_bottom_left = True
@@ -204,7 +230,7 @@ def test_render_hud_state_keeps_overlay_anchor_in_middle_third() -> None:
 
 
 def test_render_hud_state_uses_lower_third_to_switch_overlay_to_top_left() -> None:
-    dummy = SimpleNamespace()
+    dummy = _WindowStub()
     dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
     dummy.state.mouse_pos = QPoint(10, 280)
     dummy.state.overlay_info_bottom_left = True
@@ -256,7 +282,7 @@ def test_status_line_text_always_uses_night_style(monkeypatch) -> None:
 
 
 def test_on_sky_data_calculated_updates_render_snapshot_once() -> None:
-    dummy = SimpleNamespace()
+    dummy = _WindowStub()
     dummy.viewer_data = ViewerData(
         location=(35.0, 139.0),
         timezone_name="Asia/Tokyo",
@@ -302,7 +328,7 @@ def test_on_sky_data_calculated_updates_render_snapshot_once() -> None:
 
 
 def test_on_sky_data_calculated_preserves_render_center_during_viewport_interaction() -> None:
-    dummy = SimpleNamespace()
+    dummy = _WindowStub()
     dummy.viewer_data = ViewerData(
         location=(35.0, 139.0),
         timezone_name="Asia/Tokyo",
@@ -345,7 +371,7 @@ def test_on_sky_data_calculated_preserves_render_center_during_viewport_interact
 
 
 def test_schedule_satellite_retry_after_failure_uses_two_hour_backoff() -> None:
-    dummy = SimpleNamespace()
+    dummy = _WindowStub()
     dummy.satellite_opacity = 0.5
     dummy._is_shutting_down = False
     timer = _DummyTimer(active=False)
@@ -358,7 +384,7 @@ def test_schedule_satellite_retry_after_failure_uses_two_hour_backoff() -> None:
 
 
 def test_satellite_validity_remaining_ms_uses_refresh_time() -> None:
-    dummy = SimpleNamespace()
+    dummy = _WindowStub()
     dummy.satellite_state = SimpleNamespace(
         refreshed_at_utc=datetime.now(timezone.utc),
         element_epoch_utc=datetime(2020, 1, 1, tzinfo=timezone.utc),
@@ -371,7 +397,7 @@ def test_satellite_validity_remaining_ms_uses_refresh_time() -> None:
 
 
 def test_on_satellite_failed_schedules_failure_backoff() -> None:
-    dummy = SimpleNamespace()
+    dummy = _WindowStub()
     dummy.satellite_opacity = 0.5
     dummy.satellite_state = SimpleNamespace(set_error_banner=Mock())
     retry_calls: list[str] = []
@@ -388,7 +414,7 @@ def test_on_satellite_failed_schedules_failure_backoff() -> None:
 def test_jump_to_satellite_target_uses_cached_satellite_records_below_horizon(monkeypatch) -> None:
     monkeypatch.setattr(window_module, "find_satellite_altaz", lambda *args, **kwargs: (-12.0, 123.0))
 
-    dummy = SimpleNamespace()
+    dummy = _WindowStub()
     dummy.viewer_data = ViewerData(
         location=(35.0, 139.0),
         timezone_name="Asia/Tokyo",
@@ -440,7 +466,7 @@ def test_find_satellite_jump_altaz_falls_back_to_disk_cache(monkeypatch) -> None
         lambda group_key: SimpleNamespace(records=[{"OBJECT_NAME": "ISS (ZARYA)"}]) if group_key == "iss" else None,
     )
 
-    dummy = SimpleNamespace()
+    dummy = _WindowStub()
     dummy.viewer_data = ViewerData(
         location=(40.7128, -74.0060),
         timezone_name="America/New_York",
@@ -459,7 +485,7 @@ def test_find_satellite_jump_altaz_falls_back_to_disk_cache(monkeypatch) -> None
 
 
 def test_jump_to_satellite_target_sets_banner_when_not_available() -> None:
-    dummy = SimpleNamespace()
+    dummy = _WindowStub()
     dummy.viewer_data = ViewerData(
         location=(35.0, 139.0),
         timezone_name="Asia/Tokyo",
@@ -504,7 +530,7 @@ def test_jump_to_place_target_uses_projected_altaz(monkeypatch) -> None:
         ),
     )
 
-    dummy = SimpleNamespace()
+    dummy = _WindowStub()
     dummy.viewer_data = ViewerData(
         location=(35.0, 139.0),
         timezone_name="Asia/Tokyo",
@@ -541,7 +567,7 @@ def test_refresh_projected_satellite_overlay_falls_back_to_disk_cache(monkeypatc
     projected_points = [SimpleNamespace(satellite_name="ISS (ZARYA)", alt_deg=-40.0, az_deg=151.0)]
     monkeypatch.setattr(window_updates_module, "project_satellite_records", lambda *args, **kwargs: projected_points)
 
-    dummy = SimpleNamespace()
+    dummy = _WindowStub()
     dummy.satellite_opacity = 1.0
     dummy.viewer_data = ViewerData(
         location=(40.7128, -74.0060),
@@ -566,7 +592,7 @@ def test_refresh_projected_satellite_overlay_falls_back_to_disk_cache(monkeypatc
 
 
 def test_on_sky_data_calculated_discards_stale_generation_and_requests_refresh() -> None:
-    dummy = SimpleNamespace()
+    dummy = _WindowStub()
     dummy.viewer_data = ViewerData(
         location=(35.0, 139.0),
         timezone_name="Asia/Tokyo",
@@ -667,7 +693,7 @@ def test_draw_cached_frame_reuses_existing_image() -> None:
             draws.append((x, y))
             assert not image.isNull()
 
-    dummy = SimpleNamespace()
+    dummy = _WindowStub()
     dummy._frame_cache_key = None
     dummy._frame_cache_image = None
     dummy.size = lambda: window_render_module.QImage(32, 24, QImage.Format.Format_ARGB32_Premultiplied).size()
@@ -695,7 +721,7 @@ def test_render_frame_cache_key_ignores_hover_and_status_state() -> None:
         view_center=(45.0, 180.0),
         observer_height_m=1.7,
     )
-    dummy = SimpleNamespace()
+    dummy = _WindowStub()
     dummy.width = lambda: 640
     dummy.height = lambda: 480
     dummy.visual_preset = "night"

@@ -140,7 +140,6 @@ def _clamp_window_geometry_to_screen(
     y = min(max(int(y), available_rect.top()), max_y)
     return x, y, width, height
 
-
 class SkyWindowClientWidget(SkyWindowRenderMixin, QWidget):
     """Client-area widget shared by frameless and decorated host windows."""
 
@@ -476,7 +475,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         """Initialize timers, worker, and signal wiring for background updates."""
         self._sky_worker = SkyDataWorker(self)
         self._sky_worker.data_ready.connect(self._on_sky_data_calculated)
-        self.cloud_repaint_requested.connect(self._client_widget.update)
+        self.cloud_repaint_requested.connect(self.request_client_update)
 
         app = QApplication.instance()
         if app is not None:
@@ -729,29 +728,33 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         if self._action_lower_view is not None:
             self._action_lower_view.setEnabled(float(alt) > 0.0)
 
-    def width(self) -> int:
+    def client_width(self) -> int:
         if getattr(self, "_client_widget", None) is not None:
             return self._client_widget.width()
-        return super().width()
+        return self.centralWidget().width() if self.centralWidget() is not None else super().width()
 
-    def height(self) -> int:
+    def client_height(self) -> int:
         if getattr(self, "_client_widget", None) is not None:
             return self._client_widget.height()
-        return super().height()
+        return self.centralWidget().height() if self.centralWidget() is not None else super().height()
 
-    def size(self):  # type: ignore[override]
+    def client_size(self):
         if getattr(self, "_client_widget", None) is not None:
             return self._client_widget.size()
-        return super().size()
+        return self.centralWidget().size() if self.centralWidget() is not None else super().size()
 
-    def rect(self):  # type: ignore[override]
+    def client_rect(self):
         if getattr(self, "_client_widget", None) is not None:
             return self._client_widget.rect()
-        return super().rect()
+        return self.centralWidget().rect() if self.centralWidget() is not None else super().rect()
 
-    def update(self) -> None:  # type: ignore[override]
+    def request_client_update(self) -> None:
         if getattr(self, "_client_widget", None) is not None:
             self._client_widget.update()
+            return
+        central = self.centralWidget()
+        if central is not None:
+            central.update()
             return
         super().update()
 
@@ -759,10 +762,10 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._begin_viewport_interaction_mode()
         self._disc_generation = int(getattr(self, "_disc_generation", 0)) + 1
         grip_size = self.size_grip.size()
-        self.size_grip.move(self.width() - grip_size.width(), self.height() - grip_size.height())
+        self.size_grip.move(self.client_width() - grip_size.width(), self.client_height() - grip_size.height())
 
         button_size = self.menu_button.size()
-        self.menu_button.move(self.width() - button_size.width(), 0)
+        self.menu_button.move(self.client_width() - button_size.width(), 0)
         self._raise_overlay_widgets()
 
         self._discard_stale_disc_images()
@@ -832,7 +835,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.request_sky_data_update()
         self.start_background_cloud_update(reason="view-change-idle")
         self.start_background_terrain_horizon_update(reason="view-change-idle")
-        self.update()
+        self.request_client_update()
 
     def show_menu(self) -> None:
         self._sync_view_altitude_actions()
@@ -875,7 +878,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             target_altaz = self._find_satellite_jump_altaz(target.object_key or target.label)
             if target_altaz is None:
                 self.satellite_state.set_banner(f"Satellites: {target.label} not available")
-                self.update()
+                self.request_client_update()
                 return
             target_alt = float(target_altaz[0])
             target_az = float(target_altaz[1]) % 360.0
@@ -914,7 +917,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
 
         self._begin_interaction_mode()
         self.request_sky_data_update()
-        self.update()
+        self.request_client_update()
 
     def _search_place_jump_targets(self, query: str) -> list[SearchJumpTarget]:
         candidates = search_place_candidates(query)
@@ -1015,7 +1018,11 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             return
 
         render_viewer = self._viewer_data_for_render()
-        geometry = render_geometry.get_screen_geometry(self.width(), self.height(), render_viewer.view_center[0])
+        geometry = render_geometry.get_screen_geometry(
+            self.client_width(),
+            self.client_height(),
+            render_viewer.view_center[0],
+        )
         highlighted = render_stars.find_highlighted_object(
             self.state.celestial_data,
             render_viewer,
@@ -1032,7 +1039,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             return
         if source_id not in ASTERISM_KEYS_BY_SOURCE_ID:
             return
-        self.update()
+        self.request_client_update()
 
     def _predicted_cloud_satellite(self) -> str:
         lat, lon = self.viewer_data.location
@@ -1166,7 +1173,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.enlarge_moon = not self.enlarge_moon
         if self._action_enlarge_moon is not None and self._action_enlarge_moon.isChecked() != self.enlarge_moon:
             self._action_enlarge_moon.setChecked(self.enlarge_moon)
-        self.update()  # Redraw with the new setting
+        self.request_client_update()
 
     def toggle_clouds(self) -> None:
         if not self._cloud_toggle_supported or self._clouddisc is None or not self._cloud_gui_allowed:
@@ -1186,7 +1193,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         elif self._cloud_update_timer.isActive():
             self._cloud_update_timer.stop()
 
-        self.update()
+        self.request_client_update()
 
     def toggle_satellites(self) -> None:
         if not self._satellite_toggle_supported or not self._satellite_gui_allowed:
@@ -1204,7 +1211,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         else:
             self._stop_satellite_timers()
 
-        self.update()
+        self.request_client_update()
 
     def toggle_aircraft(self) -> None:
         if not self._aircraft_toggle_supported or not self._aircraft_gui_allowed:
@@ -1222,7 +1229,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         else:
             self._stop_aircraft_timers()
 
-        self.update()
+        self.request_client_update()
 
     def toggle_dso(self) -> None:
         if self.dso_catalog_np is None:
@@ -1233,19 +1240,19 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.show_dso = not self.show_dso
         if self._action_toggle_dso is not None and self._action_toggle_dso.isChecked() != self.show_dso:
             self._action_toggle_dso.setChecked(self.show_dso)
-        self.update()
+        self.request_client_update()
 
     def toggle_asterisms(self) -> None:
         self.show_asterisms = not self.show_asterisms
         if self._action_toggle_asterisms is not None and self._action_toggle_asterisms.isChecked() != self.show_asterisms:
             self._action_toggle_asterisms.setChecked(self.show_asterisms)
-        self.update()
+        self.request_client_update()
 
     def toggle_guidelines(self) -> None:
         self.show_guidelines = not self.show_guidelines
         if self._action_toggle_guidelines is not None and self._action_toggle_guidelines.isChecked() != self.show_guidelines:
             self._action_toggle_guidelines.setChecked(self.show_guidelines)
-        self.update()
+        self.request_client_update()
 
     def toggle_overlay_info(self) -> None:
         self.show_overlay_info = not self.show_overlay_info
@@ -1254,7 +1261,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             and self._action_toggle_overlay_info.isChecked() != self.show_overlay_info
         ):
             self._action_toggle_overlay_info.setChecked(self.show_overlay_info)
-        self.update()
+        self.request_client_update()
 
     def toggle_sky_disc(self) -> None:
         if not self._sky_disc_gui_allowed:
@@ -1270,7 +1277,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self._action_toggle_sky_disc.setChecked(enable_sky_disc_gradient)
         self._compositor.invalidate()
         self.request_sky_data_update()
-        self.update()
+        self.request_client_update()
 
     def toggle_terrain_horizon(self) -> None:
         if not self._terrain_horizon_gui_allowed:
@@ -1285,7 +1292,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._compositor.invalidate()
         if enable_terrain:
             self.start_background_terrain_horizon_update(reason="toggle-on")
-        self.update()
+        self.request_client_update()
 
     def toggle_urban_outline(self) -> None:
         if not self._urban_outline_gui_allowed:
@@ -1301,7 +1308,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             self._action_toggle_urban_outline.setChecked(enable_urban_outline)
         if enable_urban_outline:
             self.start_background_urban_outline_update(reason="toggle-on")
-        self.update()
+        self.request_client_update()
 
     def toggle_fullscreen(self) -> None:
         if self.isFullScreen():
@@ -1311,7 +1318,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
 
     def _handle_client_leave(self, event: QEvent) -> None:
         self.state.mouse_pos = None
-        self.update()
+        self.request_client_update()
         event.accept()
 
     def closeEvent(self, event: QCloseEvent) -> None:
@@ -1322,7 +1329,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
 
     def _handle_client_mouse_move(self, event: QMouseEvent) -> None:
         self.state.mouse_pos = event.pos()
-        self.update()  # Trigger a repaint to show hover effects
+        self.request_client_update()
         event.accept()
 
     def _rotate_view(
@@ -1344,7 +1351,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._sync_view_altitude_actions()
         if interactive_viewport:
             self._update_viewport_interaction_stars()
-            self.update()
+            self.request_client_update()
             return
         self.request_sky_data_update()
 
