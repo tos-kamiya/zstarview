@@ -62,6 +62,15 @@ class CloudController(QObject):
             self._pending_source_request = None
             self._pending_render_request = None
 
+    def invalidate_pending_render_results(self) -> None:
+        """Mark in-flight render results as stale and drop queued render work."""
+        with self._lock:
+            if self._stopping:
+                return
+            self._latest_request_id += 1
+            self._pending_render_request = None
+            self._last_render_request = None
+
     def update(
         self,
         *,

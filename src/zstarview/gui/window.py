@@ -840,6 +840,28 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
     def _begin_viewport_interaction_mode(self) -> None:
         self.state.viewport_interaction_mode = True
+        cloud_state = getattr(self, "cloud_state", None)
+        cleared_cloud = False
+        if cloud_state is not None:
+            if getattr(cloud_state, "image", None) is not None:
+                cloud_state.image = None
+                cleared_cloud = True
+            if getattr(cloud_state, "missing_mask", None) is not None:
+                cloud_state.missing_mask = None
+                cleared_cloud = True
+            if getattr(cloud_state, "cloud_amount_field", None) is not None:
+                cloud_state.cloud_amount_field = None
+                cleared_cloud = True
+            cloud_state.render_key = None
+            cloud_state.request_id = None
+            cloud_state.missing_mask_key = None
+        if cleared_cloud:
+            self._compositor.invalidate()
+        cloud_controller = getattr(self, "_cloud_controller", None)
+        if cloud_controller is not None:
+            invalidate = getattr(cloud_controller, "invalidate_pending_render_results", None)
+            if callable(invalidate):
+                invalidate()
         self._viewport_interaction_idle_timer.start()
 
     def _update_viewport_interaction_stars(self) -> None:
