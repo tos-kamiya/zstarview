@@ -79,6 +79,7 @@ class RenderStyle:
     text_font: QFont
     status_line_font: QFont
     show_background_gradient: bool
+    show_custom_window_frame: bool
     show_overlay_info: bool
     show_dso: bool
     show_asterisms: bool
@@ -321,11 +322,12 @@ def _draw_background_layer(
         preset=style.visual_preset,
         content_fov_deg=_content_fov_deg(scene),
     )
-    render_background.draw_window_border(
-        painter,
-        QRectF(viewport_rect),
-        preset=style.visual_preset,
-    )
+    if style.show_custom_window_frame:
+        render_background.draw_window_border(
+            painter,
+            QRectF(viewport_rect),
+            preset=style.visual_preset,
+        )
 
 
 def _draw_guide_layer(

@@ -24,9 +24,10 @@ from PySide6.QtGui import (
     QKeyEvent,
     QKeySequence,
     QMouseEvent,
+    QPaintEvent,
     QResizeEvent,
 )
-from PySide6.QtWidgets import QApplication, QMenu, QPushButton, QSizeGrip
+from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QPushButton, QSizeGrip
 from PySide6.QtWidgets import QWidget
 
 from ..__about__ import __version__
@@ -143,7 +144,7 @@ def _clamp_window_geometry_to_screen(
 class SkyWindowClientWidget(SkyWindowRenderMixin, QWidget):
     """Client-area widget shared by frameless and decorated host windows."""
 
-    def __init__(self, owner: "SkyWindow") -> None:
+    def __init__(self, owner: "SkyWindowCoreMixin") -> None:
         super().__init__(owner)
         self._owner = owner
         self.setMouseTracking(True)
@@ -166,7 +167,45 @@ class SkyWindowClientWidget(SkyWindowRenderMixin, QWidget):
         self._owner._handle_client_key_press(event)
 
 
-class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
+class FramelessWindowFrame(QWidget):
+    """Frameless-only window chrome that hosts the client widget and overlay controls."""
+
+    def __init__(self, owner: "SkyWindowCoreMixin", client_widget: SkyWindowClientWidget) -> None:
+        super().__init__(owner)
+        self._owner = owner
+        self._client_widget = client_widget
+        self._client_widget.setParent(self)
+
+        self.menu_button = QPushButton("", self)
+        self.menu_button.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
+        self.menu_button.setStyleSheet(self._owner._menu_button_style_sheet())
+        self.menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.menu_button.clicked.connect(self._owner.show_menu)
+
+        self.size_grip = QSizeGrip(self)
+        self.size_grip.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
+        self.size_grip.setStyleSheet(self._owner._size_grip_style_sheet())
+
+        self._layout_chrome()
+
+    def overlay_widgets(self) -> list[QWidget]:
+        return [self.menu_button, self.size_grip]
+
+    def _layout_chrome(self) -> None:
+        self._client_widget.setGeometry(self.rect())
+        button_size = self.menu_button.size()
+        self.menu_button.move(self.width() - button_size.width(), 0)
+        grip_size = self.size_grip.size()
+        self.size_grip.move(self.width() - grip_size.width(), self.height() - grip_size.height())
+        self.menu_button.raise_()
+        self.size_grip.raise_()
+
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        self._layout_chrome()
+        super().resizeEvent(event)
+
+
+class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     """
     The main application window, displaying the sky view.
 
@@ -181,6 +220,12 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
     cloud_repaint_requested = Signal()
     compute_star_render_surface_size = staticmethod(compute_star_render_surface_size)
     compute_star_render_upscale_factor = staticmethod(compute_star_render_upscale_factor)
+
+    FRAMELESS_WINDOW = False
+
+    def paintEvent(self, event: QPaintEvent) -> None:
+        """Let the host window paint only its native chrome; the client widget renders the sky view."""
+        QMainWindow.paintEvent(self, event)
 
     def __init__(
         self,
@@ -291,10 +336,7 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         min_height = 400
         self.setMinimumSize(min_width, min_height)
         self._window_frame_mode = runtime_options.window_frame_mode
-        self._frameless_window = self._window_frame_mode == "frameless"
-        if self._frameless_window:
-            self.setAttribute(Qt.WA_TranslucentBackground)
-            self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
+        self._frameless_window = bool(self.FRAMELESS_WINDOW)
         requested_geometry: Optional[Tuple[int, int, int, int]] = None
         if runtime_options.window_geometry_arg == "restore":
             requested_geometry = load_last_window_geometry()
@@ -312,16 +354,9 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         )
         self.setGeometry(initial_x, initial_y, initial_width, initial_height)
         self._client_widget = SkyWindowClientWidget(self)
-        self.setCentralWidget(self._client_widget)
-        self._client_widget.setFocus(Qt.FocusReason.ActiveWindowFocusReason)
-        if self._frameless_window:
-            self.add_drag_target(self._client_widget)
-        # --- UI Widgets ---
-        self.size_grip = QSizeGrip(self._client_widget)
-        self.size_grip.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
-        self.size_grip.setStyleSheet(self._size_grip_style_sheet())
-        self.size_grip.setVisible(self._frameless_window)
-        self.size_grip.raise_()
+        self._frameless_frame: Optional[FramelessWindowFrame] = None
+        self.menu_button: Optional[QPushButton] = None
+        self.size_grip: Optional[QSizeGrip] = None
         self._action_enlarge_moon: Optional[QAction] = None
         self._action_toggle_clouds: Optional[QAction] = None
         self._action_toggle_satellites: Optional[QAction] = None
@@ -335,8 +370,9 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._action_toggle_sky_disc: Optional[QAction] = None
         self._action_raise_view: Optional[QAction] = None
         self._action_lower_view: Optional[QAction] = None
-        self._add_hamburger_menu()
-        self.add_drag_exclusions([self.menu_button, self.size_grip])
+        self._build_window_menu()
+        self._install_window_host()
+        self._client_widget.setFocus(Qt.FocusReason.ActiveWindowFocusReason)
 
         # --- Fonts ---
         text_font_id = QFontDatabase.addApplicationFont(TEXT_FONT_PATH)
@@ -499,16 +535,13 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self._viewport_interaction_idle_timer.setInterval(self.state.viewport_interaction_idle_ms)
         self._viewport_interaction_idle_timer.timeout.connect(self._end_viewport_interaction_mode)
 
-    def _add_hamburger_menu(self) -> None:
-        """Adds a hamburger menu button and its corresponding actions."""
-        self.menu_button = QPushButton("", self._client_widget)
-        self.menu_button.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
-        self.menu_button.setStyleSheet(self._menu_button_style_sheet())
-        self.menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.menu_button.clicked.connect(self.show_menu)
-        self.menu_button.raise_()
+    def _install_window_host(self) -> None:
+        """Install the host-specific window chrome around the shared client widget."""
+        raise NotImplementedError
 
-        self.menu = QMenu(self)
+    def _build_window_menu(self) -> None:
+        """Build window actions and the popup menu shared by chrome implementations."""
+        self.menu = QMenu("View", self)
         rotate_left = self.menu.addAction(f"Rotate Left (-{self.state.rotation_step:.0f}°)")
         rotate_left.triggered.connect(
             lambda: self._rotate_view(d_az=-self.state.rotation_step, interactive_viewport=True)
@@ -663,29 +696,18 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         vmag_limit_action.setEnabled(False)
         version_action = self.menu.addAction(f"Version {__version__}")
         version_action.setEnabled(False)
-        self._raise_overlay_widgets()
+
+    def _attach_client_menu_button(self, parent: QWidget) -> None:
+        """Attach the legacy popup-menu button directly on the client area."""
+        self.menu_button = QPushButton("", parent)
+        self.menu_button.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
+        self.menu_button.setStyleSheet(self._menu_button_style_sheet())
+        self.menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.menu_button.clicked.connect(self.show_menu)
+        self.menu_button.raise_()
 
     def _vmag_limit_menu_text(self) -> str:
         return f"Vmag limit {self.vmag_limit:.1f}"
-
-    @staticmethod
-    def _menu_button_background_hex_for_preset(preset: str) -> str:
-        if preset == "night":
-            rr, gg, bb = (10, 12, 16)
-            alpha = 0.70
-        elif preset == "black":
-            rr, gg, bb = (6, 6, 6)
-            alpha = 0.70
-        elif preset == "white":
-            rr, gg, bb = (252, 252, 252)
-            alpha = 0.70
-        elif preset == "day":
-            rr, gg, bb = (240, 248, 255)
-            alpha = 0.70
-        else:
-            rr, gg, bb = (8, 8, 10)
-            alpha = 0.70
-        return f"rgba({rr}, {gg}, {bb}, {alpha:.3f})"
 
     def _menu_button_style_sheet(self) -> str:
         text = "#%02x%02x%02x" % GUI_MENU_TEXT_COLOR
@@ -716,9 +738,9 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         )
 
     def _raise_overlay_widgets(self) -> None:
-        if getattr(self, "menu_button", None) is not None:
+        if self.menu_button is not None:
             self.menu_button.raise_()
-        if getattr(self, "size_grip", None) is not None:
+        if self.size_grip is not None:
             self.size_grip.raise_()
 
     def _sync_view_altitude_actions(self) -> None:
@@ -761,12 +783,10 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
     def _handle_client_resize(self, event: QResizeEvent) -> None:
         self._begin_viewport_interaction_mode()
         self._disc_generation = int(getattr(self, "_disc_generation", 0)) + 1
-        grip_size = self.size_grip.size()
-        self.size_grip.move(self.client_width() - grip_size.width(), self.client_height() - grip_size.height())
-
-        button_size = self.menu_button.size()
-        self.menu_button.move(self.client_width() - button_size.width(), 0)
-        self._raise_overlay_widgets()
+        if self._frameless_frame is None and self.menu_button is not None:
+            button_size = self.menu_button.size()
+            self.menu_button.move(self.client_width() - button_size.width(), 0)
+            self._raise_overlay_widgets()
 
         self._discard_stale_disc_images()
 
@@ -838,6 +858,8 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
         self.request_client_update()
 
     def show_menu(self) -> None:
+        if self.menu_button is None:
+            return
         self._sync_view_altitude_actions()
         menu_pos = self.menu_button.mapToGlobal(QPoint(0, self.menu_button.height()))
         self.menu.exec(menu_pos)
@@ -1414,3 +1436,32 @@ class SkyWindow(SkyWindowRenderMixin, SkyWindowUpdatesMixin, DraggableWindow):
             event.accept()
         else:
             super().keyPressEvent(event)
+
+
+class FramelessSkyWindow(SkyWindowCoreMixin, DraggableWindow):
+    """Frameless host window using the custom chrome wrapper."""
+
+    FRAMELESS_WINDOW = True
+
+    def _install_window_host(self) -> None:
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
+        self._frameless_frame = FramelessWindowFrame(self, self._client_widget)
+        self.setCentralWidget(self._frameless_frame)
+        self.menu_button = self._frameless_frame.menu_button
+        self.size_grip = self._frameless_frame.size_grip
+        self.add_drag_target(self._client_widget)
+        self.add_drag_exclusions(self._frameless_frame.overlay_widgets())
+
+
+class StandardSkyWindow(SkyWindowCoreMixin, QMainWindow):
+    """Standard decorated host window using the platform title bar and menu bar."""
+
+    FRAMELESS_WINDOW = False
+
+    def _install_window_host(self) -> None:
+        self.setCentralWidget(self._client_widget)
+        self.menuBar().addMenu(self.menu)
+
+
+SkyWindow = FramelessSkyWindow

@@ -4,7 +4,7 @@ import astropy.time
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import Mock
-from PySide6.QtCore import QPoint
+from PySide6.QtCore import QPoint, QRect
 from PySide6.QtGui import QFont, QImage
 
 import zstarview.render.pipeline as pipeline_module
@@ -123,6 +123,7 @@ def _make_style(**overrides) -> pipeline_module.RenderStyle:
         "text_font": object(),
         "status_line_font": object(),
         "show_background_gradient": True,
+        "show_custom_window_frame": False,
         "show_overlay_info": True,
         "show_dso": False,
         "show_asterisms": False,
@@ -180,6 +181,7 @@ def test_render_style_uses_window_overlay_info_toggle() -> None:
     dummy.visual_preset = "night"
     dummy.text_font = object()
     dummy.status_line_font = object()
+    dummy._frameless_window = False
     dummy.show_overlay_info = False
     dummy.show_dso = True
     dummy.show_asterisms = False
@@ -198,6 +200,7 @@ def test_render_style_uses_window_overlay_info_toggle() -> None:
 
     style = SkyWindow._render_style(dummy)
 
+    assert style.show_custom_window_frame is False
     assert style.show_overlay_info is False
 
 
@@ -1164,6 +1167,7 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         text_font=object(),
         status_line_font=object(),
         show_background_gradient=True,
+        show_custom_window_frame=False,
         show_overlay_info=True,
         show_dso=True,
         show_asterisms=False,
@@ -1288,6 +1292,24 @@ def test_draw_background_layer_skips_gradient_when_disabled(monkeypatch) -> None
     )
 
     draw_radial_background.assert_not_called()
+    draw_window_border.assert_not_called()
+
+
+def test_draw_background_layer_skips_custom_frame_when_disabled(monkeypatch) -> None:
+    draw_radial_background = Mock()
+    draw_window_border = Mock()
+    monkeypatch.setattr(pipeline_module.render_background, "draw_radial_background", draw_radial_background)
+    monkeypatch.setattr(pipeline_module.render_background, "draw_window_border", draw_window_border)
+
+    pipeline_module._draw_background_layer(
+        painter=object(),
+        geometry=SimpleNamespace(radius=100),
+        viewport_rect=QRect(0, 0, 200, 200),
+        scene=_make_scene(),
+        style=_make_style(show_custom_window_frame=False),
+    )
+
+    draw_radial_background.assert_called_once()
     draw_window_border.assert_not_called()
 
 
