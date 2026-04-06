@@ -324,7 +324,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._enabled_satellite_groups: tuple[str, ...] = (SATELLITE_ISS_CACHE_KEY,)
         self._frame_cache_key: object | None = None
         self._frame_cache_image = None
-        self.setWindowTitle(f"{APP_DISPLAY_NAME} - {self.viewer_data.city_name}")
+        self.setWindowTitle(self.viewer_data.city_name)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setFocus(Qt.FocusReason.ActiveWindowFocusReason)
         self.setWindowIcon(QIcon(APP_ICON_FILE))
@@ -547,8 +547,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.observer_view_menu = QMenu("View Direction", self)
         self.display_menu = QMenu("Layers", self)
         self.menu.addMenu(self.file_menu)
-        self.menu.addMenu(self.observer_view_menu)
+        self.menu.addMenu(self.search_menu)
         self.menu.addMenu(self.display_menu)
+        self.menu.addMenu(self.observer_view_menu)
 
         rotate_left = self.observer_view_menu.addAction(f"Rotate Left (-{self.state.rotation_step:.0f}°)")
         rotate_left.triggered.connect(
@@ -1474,8 +1475,8 @@ class StandardSkyWindow(SkyWindowCoreMixin, QMainWindow):
         self.setCentralWidget(self._client_widget)
         menu_bar = self.menuBar()
         menu_bar.addMenu(self.file_menu)
-        menu_bar.addMenu(self.display_menu)
         menu_bar.addMenu(self.search_menu)
+        menu_bar.addMenu(self.display_menu)
         menu_bar.addMenu(self.observer_view_menu)
 
 
