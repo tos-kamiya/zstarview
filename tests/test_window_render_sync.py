@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import astropy.time
+from dataclasses import replace
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -1238,7 +1239,12 @@ def test_render_scene_hides_cloud_bitmap_during_viewport_interaction(monkeypatch
     monkeypatch.setattr(
         pipeline_module,
         "_draw_sky_cloud_layers",
-        lambda *_args, **kwargs: captured.update({"cloud_disc_alpha": kwargs["style"].cloud_disc_alpha}),
+        lambda *_args, **kwargs: captured.update(
+            {
+                "cloud_disc_alpha": kwargs["style"].cloud_disc_alpha,
+                "sky_disc_image": kwargs["scene"].sky_disc_image,
+            }
+        ),
     )
     monkeypatch.setattr(pipeline_module, "_draw_viewport_interaction_layers", lambda *_args, **_kwargs: None)
 
@@ -1246,13 +1252,13 @@ def test_render_scene_hides_cloud_bitmap_during_viewport_interaction(monkeypatch
         painter=object(),
         geometry=SimpleNamespace(center=(100, 100), radius=80),
         viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
-        scene=_make_scene(),
+        scene=replace(_make_scene(), sky_disc_image=object()),
         style=_make_style(cloud_disc_alpha=0.2),
         hud=_make_hud(viewport_interaction_mode=True),
         compositor=object(),
     )
 
-    assert captured == {"cloud_disc_alpha": 0.0}
+    assert captured == {"cloud_disc_alpha": 0.0, "sky_disc_image": None}
 
 
 def test_draw_overlay_layer_skips_static_info_when_disabled(monkeypatch) -> None:

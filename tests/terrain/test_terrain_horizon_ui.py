@@ -510,6 +510,34 @@ def test_end_viewport_interaction_mode_requests_full_refresh() -> None:
     assert calls == ["sky", "view-change-idle", "view-change-idle", "update"]
 
 
+def test_begin_viewport_interaction_mode_clears_cloud_buffers_and_invalidates_old_render() -> None:
+    calls: list[str] = []
+    dummy = SimpleNamespace()
+    dummy.state = SimpleNamespace(viewport_interaction_mode=False)
+    dummy.cloud_state = SimpleNamespace(
+        image=object(),
+        missing_mask=object(),
+        cloud_amount_field=object(),
+        render_key="render-key",
+        request_id=42,
+        missing_mask_key=99,
+    )
+    dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate-compositor"))
+    dummy._cloud_controller = SimpleNamespace(invalidate_pending_render_results=lambda: calls.append("invalidate-cloud"))
+    dummy._viewport_interaction_idle_timer = SimpleNamespace(start=lambda: calls.append("start-timer"))
+
+    SkyWindow._begin_viewport_interaction_mode(dummy)
+
+    assert dummy.state.viewport_interaction_mode is True
+    assert dummy.cloud_state.image is None
+    assert dummy.cloud_state.missing_mask is None
+    assert dummy.cloud_state.cloud_amount_field is None
+    assert dummy.cloud_state.render_key is None
+    assert dummy.cloud_state.request_id is None
+    assert dummy.cloud_state.missing_mask_key is None
+    assert calls == ["invalidate-compositor", "invalidate-cloud", "start-timer"]
+
+
 def test_discard_stale_disc_images_clears_cached_sky_and_cloud_buffers() -> None:
     compositor_calls: list[str] = []
     dummy = SimpleNamespace()
