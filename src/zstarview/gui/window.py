@@ -541,48 +541,59 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
     def _build_window_menu(self) -> None:
         """Build window actions and the popup menu shared by chrome implementations."""
-        self.menu = QMenu("View", self)
-        rotate_left = self.menu.addAction(f"Rotate Left (-{self.state.rotation_step:.0f}°)")
+        self.menu = QMenu("Menu", self)
+        self.file_menu = QMenu("File", self)
+        self.search_menu = QMenu("Search", self)
+        self.observer_view_menu = QMenu("View Direction", self)
+        self.display_menu = QMenu("Layers", self)
+        self.menu.addMenu(self.file_menu)
+        self.menu.addMenu(self.observer_view_menu)
+        self.menu.addMenu(self.display_menu)
+
+        rotate_left = self.observer_view_menu.addAction(f"Rotate Left (-{self.state.rotation_step:.0f}°)")
         rotate_left.triggered.connect(
             lambda: self._rotate_view(d_az=-self.state.rotation_step, interactive_viewport=True)
         )
-        rotate_right = self.menu.addAction(f"Rotate Right (+{self.state.rotation_step:.0f}°)")
+        rotate_right = self.observer_view_menu.addAction(f"Rotate Right (+{self.state.rotation_step:.0f}°)")
         rotate_right.triggered.connect(
             lambda: self._rotate_view(d_az=+self.state.rotation_step, interactive_viewport=True)
         )
-        raise_view = self.menu.addAction(f"Raise View (+{self.state.rotation_step:.0f}° alt)")
+        raise_view = self.observer_view_menu.addAction(f"Raise View (+{self.state.rotation_step:.0f}° alt)")
         raise_view.triggered.connect(
             lambda: self._rotate_view(d_alt=+self.state.rotation_step, interactive_viewport=True)
         )
         self._action_raise_view = raise_view
-        lower_view = self.menu.addAction(f"Lower View (-{self.state.rotation_step:.0f}° alt)")
+        lower_view = self.observer_view_menu.addAction(f"Lower View (-{self.state.rotation_step:.0f}° alt)")
         lower_view.triggered.connect(
             lambda: self._rotate_view(d_alt=-self.state.rotation_step, interactive_viewport=True)
         )
         self._action_lower_view = lower_view
 
-        self.menu.addSeparator()
-        jump_named_star = self.menu.addAction("Jump to Named Star...")
+        self.observer_view_menu.addSeparator()
+        jump_named_star = QAction("Jump to Named Star...", self)
         jump_named_star.setShortcut(QKeySequence("Ctrl+J"))
         jump_named_star.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         jump_named_star.triggered.connect(self._open_named_star_jump_dialog)
+        self.search_menu.addAction(jump_named_star)
         self.addAction(jump_named_star)
-        search_named_star = self.menu.addAction("Search Stars and Asterisms...")
+        search_named_star = QAction("Search Stars and Asterisms...", self)
         search_named_star.setShortcut(QKeySequence("Ctrl+F"))
         search_named_star.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         search_named_star.triggered.connect(self._open_named_star_search_dialog)
+        self.search_menu.addAction(search_named_star)
         self.addAction(search_named_star)
-        search_place = self.menu.addAction("Search Places...")
+        search_place = QAction("Search Places...", self)
         search_place.triggered.connect(self._open_place_search_dialog)
+        self.search_menu.addAction(search_place)
 
-        self.menu.addSeparator()
+        self.display_menu.addSeparator()
         toggle_enlarge_moon_action = QAction("Enlarge Moon", self)
         toggle_enlarge_moon_action.setCheckable(True)
         toggle_enlarge_moon_action.setChecked(self.enlarge_moon)
         toggle_enlarge_moon_action.setShortcut(QKeySequence(Qt.Key.Key_M))
         toggle_enlarge_moon_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         toggle_enlarge_moon_action.triggered.connect(self.toggle_enlarge_moon)
-        self.menu.addAction(toggle_enlarge_moon_action)
+        self.display_menu.addAction(toggle_enlarge_moon_action)
         self.addAction(toggle_enlarge_moon_action)
         self._action_enlarge_moon = toggle_enlarge_moon_action
         toggle_dso_action = QAction("DSO", self)
@@ -592,7 +603,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         toggle_dso_action.setShortcut(QKeySequence(Qt.Key.Key_D))
         toggle_dso_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         toggle_dso_action.triggered.connect(self.toggle_dso)
-        self.menu.addAction(toggle_dso_action)
+        self.display_menu.addAction(toggle_dso_action)
         self.addAction(toggle_dso_action)
         self._action_toggle_dso = toggle_dso_action
         toggle_asterisms_action = QAction("Asterisms", self)
@@ -601,7 +612,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         toggle_asterisms_action.setShortcut(QKeySequence(Qt.Key.Key_A))
         toggle_asterisms_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         toggle_asterisms_action.triggered.connect(self.toggle_asterisms)
-        self.menu.addAction(toggle_asterisms_action)
+        self.display_menu.addAction(toggle_asterisms_action)
         self.addAction(toggle_asterisms_action)
         self._action_toggle_asterisms = toggle_asterisms_action
         toggle_guidelines_action = QAction("Guidelines", self)
@@ -610,25 +621,25 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         toggle_guidelines_action.setShortcut(QKeySequence(Qt.Key.Key_G))
         toggle_guidelines_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         toggle_guidelines_action.triggered.connect(self.toggle_guidelines)
-        self.menu.addAction(toggle_guidelines_action)
+        self.display_menu.addAction(toggle_guidelines_action)
         self.addAction(toggle_guidelines_action)
         self._action_toggle_guidelines = toggle_guidelines_action
         toggle_overlay_info_action = QAction("Observation Info", self)
         toggle_overlay_info_action.setCheckable(True)
         toggle_overlay_info_action.setChecked(self.show_overlay_info)
         toggle_overlay_info_action.triggered.connect(self.toggle_overlay_info)
-        self.menu.addAction(toggle_overlay_info_action)
+        self.display_menu.addAction(toggle_overlay_info_action)
         self.addAction(toggle_overlay_info_action)
         self._action_toggle_overlay_info = toggle_overlay_info_action
 
-        self.menu.addSeparator()
+        self.display_menu.addSeparator()
         toggle_sky_disc_action = QAction("Sky Color Disc", self)
         toggle_sky_disc_action.setCheckable(True)
         toggle_sky_disc_action.setChecked(self.sky_disc_alpha > 0.0)
         toggle_sky_disc_action.setShortcut(QKeySequence(Qt.Key.Key_S))
         toggle_sky_disc_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         toggle_sky_disc_action.triggered.connect(self.toggle_sky_disc)
-        self.menu.addAction(toggle_sky_disc_action)
+        self.display_menu.addAction(toggle_sky_disc_action)
         self.addAction(toggle_sky_disc_action)
         self._action_toggle_sky_disc = toggle_sky_disc_action
         toggle_clouds_action = QAction("Clouds", self)
@@ -637,7 +648,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         toggle_clouds_action.setShortcut(QKeySequence(Qt.Key.Key_C))
         toggle_clouds_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         toggle_clouds_action.triggered.connect(self.toggle_clouds)
-        self.menu.addAction(toggle_clouds_action)
+        self.display_menu.addAction(toggle_clouds_action)
         self.addAction(toggle_clouds_action)
         self._action_toggle_clouds = toggle_clouds_action
         toggle_satellites_action = QAction("Satellites", self)
@@ -646,7 +657,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         toggle_satellites_action.setShortcut(QKeySequence(Qt.Key.Key_I))
         toggle_satellites_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         toggle_satellites_action.triggered.connect(self.toggle_satellites)
-        self.menu.addAction(toggle_satellites_action)
+        self.display_menu.addAction(toggle_satellites_action)
         self.addAction(toggle_satellites_action)
         self._action_toggle_satellites = toggle_satellites_action
         toggle_aircraft_action = QAction("Aircraft", self)
@@ -655,7 +666,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         toggle_aircraft_action.setShortcut(QKeySequence(Qt.Key.Key_P))
         toggle_aircraft_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         toggle_aircraft_action.triggered.connect(self.toggle_aircraft)
-        self.menu.addAction(toggle_aircraft_action)
+        self.display_menu.addAction(toggle_aircraft_action)
         self.addAction(toggle_aircraft_action)
         self._action_toggle_aircraft = toggle_aircraft_action
         toggle_terrain_action = QAction("Terrain Horizon", self)
@@ -664,7 +675,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         toggle_terrain_action.setShortcut(QKeySequence(Qt.Key.Key_T))
         toggle_terrain_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         toggle_terrain_action.triggered.connect(self.toggle_terrain_horizon)
-        self.menu.addAction(toggle_terrain_action)
+        self.display_menu.addAction(toggle_terrain_action)
         self.addAction(toggle_terrain_action)
         self._action_toggle_terrain_horizon = toggle_terrain_action
         toggle_urban_outline_action = QAction("Urban Outline", self)
@@ -673,28 +684,28 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         toggle_urban_outline_action.setShortcut(QKeySequence(Qt.Key.Key_U))
         toggle_urban_outline_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         toggle_urban_outline_action.triggered.connect(self.toggle_urban_outline)
-        self.menu.addAction(toggle_urban_outline_action)
+        self.display_menu.addAction(toggle_urban_outline_action)
         self.addAction(toggle_urban_outline_action)
         self._action_toggle_urban_outline = toggle_urban_outline_action
 
-        self.menu.addSeparator()
-        fullscreen_action = self.menu.addAction("Fullscreen")
+        fullscreen_action = QAction("Fullscreen", self)
         fullscreen_action.setShortcut(QKeySequence(Qt.Key.Key_F11))
         fullscreen_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         fullscreen_action.triggered.connect(self.toggle_fullscreen)
+        self.file_menu.addAction(fullscreen_action)
         self.addAction(fullscreen_action)
 
-        self.menu.addSeparator()
-        exit_action = self.menu.addAction("Exit")
+        self.file_menu.addSeparator()
+        exit_action = self.file_menu.addAction("Exit")
         exit_action.setShortcut(QKeySequence(Qt.Key.Key_Q))
         exit_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
         exit_action.triggered.connect(QApplication.quit)
         self.addAction(exit_action)
 
-        self.menu.addSeparator()
-        vmag_limit_action = self.menu.addAction(self._vmag_limit_menu_text())
+        self.display_menu.addSeparator()
+        vmag_limit_action = self.display_menu.addAction(self._vmag_limit_menu_text())
         vmag_limit_action.setEnabled(False)
-        version_action = self.menu.addAction(f"Version {__version__}")
+        version_action = self.file_menu.addAction(f"Version {__version__}")
         version_action.setEnabled(False)
 
     def _attach_client_menu_button(self, parent: QWidget) -> None:
@@ -1461,7 +1472,11 @@ class StandardSkyWindow(SkyWindowCoreMixin, QMainWindow):
 
     def _install_window_host(self) -> None:
         self.setCentralWidget(self._client_widget)
-        self.menuBar().addMenu(self.menu)
+        menu_bar = self.menuBar()
+        menu_bar.addMenu(self.file_menu)
+        menu_bar.addMenu(self.display_menu)
+        menu_bar.addMenu(self.search_menu)
+        menu_bar.addMenu(self.observer_view_menu)
 
 
 SkyWindow = FramelessSkyWindow
