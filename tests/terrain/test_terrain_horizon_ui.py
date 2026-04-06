@@ -32,6 +32,52 @@ class _DummyAction:
         self._enabled = enabled
 
 
+class _DummySignal:
+    def connect(self, _callback) -> None:
+        return None
+
+
+class _DummyMenuAction(_DummyAction):
+    def __init__(self, text: str, _parent=None, *, separator: bool = False) -> None:
+        super().__init__(False)
+        self.text = text
+        self.separator = separator
+        self.triggered = _DummySignal()
+        self.shortcut = None
+        self.shortcut_context = None
+        self.checkable = False
+
+    def setShortcut(self, shortcut) -> None:  # noqa: N802 - Qt naming
+        self.shortcut = shortcut
+
+    def setShortcutContext(self, context) -> None:  # noqa: N802 - Qt naming
+        self.shortcut_context = context
+
+    def setCheckable(self, checkable: bool) -> None:  # noqa: N802 - Qt naming
+        self.checkable = checkable
+
+
+class _DummyMenu:
+    def __init__(self, title: str, _parent=None) -> None:
+        self.title = title
+        self.entries: list[object] = []
+
+    def addMenu(self, menu):  # noqa: N802 - Qt naming
+        self.entries.append(menu)
+        return menu
+
+    def addAction(self, action):  # noqa: N802 - Qt naming
+        if isinstance(action, str):
+            action = _DummyMenuAction(action)
+        self.entries.append(action)
+        return action
+
+    def addSeparator(self):  # noqa: N802 - Qt naming
+        action = _DummyMenuAction("", separator=True)
+        self.entries.append(action)
+        return action
+
+
 class _DummyAircraftState:
     def __init__(self) -> None:
         self.banner_text = None
@@ -115,6 +161,105 @@ def test_toggle_sky_disc_respects_cli_lockout() -> None:
 
     assert dummy.sky_disc_alpha == 0.0
     assert dummy._action_toggle_sky_disc.isChecked() is False
+
+
+def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> None:
+    monkeypatch.setattr(window_module, "QMenu", _DummyMenu)
+    monkeypatch.setattr(window_module, "QAction", _DummyMenuAction)
+
+    added_actions: list[object] = []
+    dummy = SimpleNamespace(
+        _frameless_window=True,
+        state=SimpleNamespace(rotation_step=5.0),
+        enlarge_moon=False,
+        show_dso=False,
+        dso_catalog_np=None,
+        show_asterisms=False,
+        show_guidelines=True,
+        show_overlay_info=True,
+        sky_disc_alpha=0.2,
+        cloud_disc_alpha=0.2,
+        satellite_opacity=0.5,
+        aircraft_opacity=0.5,
+        terrain_horizon_opacity=0.1,
+        urban_outline_opacity=0.2,
+        vmag_limit=6.0,
+        _rotate_view=lambda **_kwargs: None,
+        _open_named_star_jump_dialog=lambda: None,
+        _open_named_star_search_dialog=lambda: None,
+        _open_place_search_dialog=lambda: None,
+        toggle_enlarge_moon=lambda: None,
+        toggle_dso=lambda: None,
+        toggle_asterisms=lambda: None,
+        toggle_guidelines=lambda: None,
+        toggle_overlay_info=lambda: None,
+        toggle_sky_disc=lambda: None,
+        toggle_clouds=lambda: None,
+        toggle_satellites=lambda: None,
+        toggle_aircraft=lambda: None,
+        toggle_terrain_horizon=lambda: None,
+        toggle_urban_outline=lambda: None,
+        toggle_fullscreen=lambda: None,
+        addAction=lambda action: added_actions.append(action),
+        _vmag_limit_menu_text=lambda: "Vmag limit 6.0",
+    )
+
+    SkyWindow._build_window_menu(dummy)
+
+    root_titles = [entry.title for entry in dummy.menu.entries if isinstance(entry, _DummyMenu)]
+    root_actions = [entry.text for entry in dummy.menu.entries if isinstance(entry, _DummyMenuAction) and not entry.separator]
+
+    assert root_titles == ["Search", "Layers", "View Direction"]
+    assert root_actions[-2:] == ["Fullscreen", "Exit"]
+
+
+def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -> None:
+    monkeypatch.setattr(window_module, "QMenu", _DummyMenu)
+    monkeypatch.setattr(window_module, "QAction", _DummyMenuAction)
+
+    dummy = SimpleNamespace(
+        _frameless_window=False,
+        state=SimpleNamespace(rotation_step=5.0),
+        enlarge_moon=False,
+        show_dso=False,
+        dso_catalog_np=None,
+        show_asterisms=False,
+        show_guidelines=True,
+        show_overlay_info=True,
+        sky_disc_alpha=0.2,
+        cloud_disc_alpha=0.2,
+        satellite_opacity=0.5,
+        aircraft_opacity=0.5,
+        terrain_horizon_opacity=0.1,
+        urban_outline_opacity=0.2,
+        vmag_limit=6.0,
+        _rotate_view=lambda **_kwargs: None,
+        _open_named_star_jump_dialog=lambda: None,
+        _open_named_star_search_dialog=lambda: None,
+        _open_place_search_dialog=lambda: None,
+        toggle_enlarge_moon=lambda: None,
+        toggle_dso=lambda: None,
+        toggle_asterisms=lambda: None,
+        toggle_guidelines=lambda: None,
+        toggle_overlay_info=lambda: None,
+        toggle_sky_disc=lambda: None,
+        toggle_clouds=lambda: None,
+        toggle_satellites=lambda: None,
+        toggle_aircraft=lambda: None,
+        toggle_terrain_horizon=lambda: None,
+        toggle_urban_outline=lambda: None,
+        toggle_fullscreen=lambda: None,
+        addAction=lambda _action: None,
+        _vmag_limit_menu_text=lambda: "Vmag limit 6.0",
+    )
+
+    SkyWindow._build_window_menu(dummy)
+
+    root_titles = [entry.title for entry in dummy.menu.entries if isinstance(entry, _DummyMenu)]
+    root_actions = [entry.text for entry in dummy.menu.entries if isinstance(entry, _DummyMenuAction) and not entry.separator]
+
+    assert root_titles == ["File", "Search", "Layers", "View Direction"]
+    assert root_actions == []
 
 
 def test_toggle_guidelines_disables_and_restores_opacity() -> None:
