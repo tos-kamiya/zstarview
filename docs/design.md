@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-04-05
+最終更新: 2026-04-07
 
 ## 1. この文書の位置づけ
 
@@ -230,7 +230,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `src/zstarview/render/guides.py`
   - 天の赤道、黄道、地平線などの補助線を `(alt, az)` サンプル列から描画時に `render_view_center` 基準で投影する
 - `src/zstarview/render/background.py`
-  - テーマ定義に基づいてウィンドウ背景 radial gradient とウィンドウ枠を描画する
+  - テーマ定義に基づいてウィンドウ背景 radial gradient を描画する
+  - 独自ウィンドウ枠は frameless host のときだけ描画する
 - `src/zstarview/splash.py`
   - テーマ定義に基づいてスプラッシュ背景、枠線、情報文字色を構成する
 - `src/zstarview/gui/composite.py`
@@ -246,7 +247,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - ウィンドウ背景用 `WindowBackgroundStyle`
   - スプラッシュ用 `SplashStyle`
 - `render/text.py` は `ThemeStyle` から文字色、アウトライン色、アウトライン幅を解決する。
-- `render/background.py` は `ThemeStyle.window_background` を唯一の参照元として、背景 gradient と border 色を決める。
+- `render/background.py` は `ThemeStyle.window_background` を唯一の参照元として、背景 gradient と frameless 用 border 色を決める。
 - `splash.py` は `ThemeStyle.splash` を色定義の参照元とし、背景 alpha は `ThemeStyle.window_background` から導出した平均 alpha を使う。
 - 明るい preset (`day`, `white`) では、暗い preset (`night`, `black`) より広い文字アウトライン幅を持てる。
 
@@ -335,8 +336,14 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 ### 4.4 UI
 
 - `src/zstarview/gui/window.py`
-  - メインウィンドウ
   - UI 状態と更新制御の集約点
+  - 共通ロジックは `SkyWindowCoreMixin` に置く
+  - 描画対象のクライアント領域は `SkyWindowClientWidget` として分離する
+  - ホストウィンドウは `FramelessSkyWindow` と `StandardSkyWindow` に分ける
+  - `FramelessWindowFrame` は frameless 専用の外装であり、独自外枠、ハンバーガーボタン、サイズ変更グリップを持つ
+  - `StandardSkyWindow` は OS 標準の `QMainWindow` とメニューバーを使い、独自外枠は描かない
+  - 共通 action は `File`、`Search`、`Layers`、`View Direction` の 4 系統に編成する
+  - frameless ではハンバーガーメニューの 1 階層目に同じ 4 系統の submenu を並べる
 - `src/zstarview/gui/window_state.py`
   - 画面状態の保持
 - `src/zstarview/gui/window_inputs.py`
