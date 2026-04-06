@@ -540,6 +540,18 @@ Install the missing `libxcb-cursor0` package with:
 
 `sudo apt install libxcb-cursor0`
 
+### Wayland Window Shadows
+On some Wayland desktops, a normal framed `zstarview --window-frame window` window may appear without the usual outer shadow.
+This is usually caused by the Wayland decoration/compositor path rather than by zstarview's own window settings.
+
+If you prefer the X11-style shadowed window appearance, a practical workaround is to launch the app through XWayland:
+
+```sh
+QT_QPA_PLATFORM=xcb zstarview --window-frame window
+```
+
+If the shadow appears with `QT_QPA_PLATFORM=xcb`, that confirms the difference is in the Wayland vs X11 window-decoration path on your desktop environment.
+
 ### Slow or Unstable Network / Offline Use
 1. Planetary ephemeris data
 
