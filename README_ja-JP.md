@@ -538,6 +538,23 @@ Available platform plugins are: eglfs, offscreen, wayland-egl, linuxfb, wayland,
 
 `sudo apt install libxcb-cursor0`
 
+### Wayland 環境でウィンドウの影が表示されない
+
+Wayland のデスクトップ環境では、通常のフレーム付きウィンドウとして
+`zstarview --window-frame window` を起動しても、外側の影が表示されないことがあります。
+これは zstarview 自身のウィンドウ設定というより、Wayland の window decoration /
+compositor 側の挙動によることが多いです。
+
+X11 系の見た目でウィンドウ影を出したい場合は、実用的な回避策として
+XWayland 経由で起動できます:
+
+```sh
+QT_QPA_PLATFORM=xcb zstarview --window-frame window
+```
+
+`QT_QPA_PLATFORM=xcb` を付けると影が表示される場合は、その差分は
+Wayland と X11 のウィンドウ装飾経路の違いによるものと考えてよいです。
+
 ### ネットワークが遅い / オフラインで使いたい
 1. 惑星暦データ
 
