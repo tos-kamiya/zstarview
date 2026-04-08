@@ -1,3 +1,4 @@
+import math
 from typing import Any, Dict, List, Optional
 
 from PySide6.QtCore import QPointF
@@ -11,6 +12,17 @@ from ..types import ScreenGeometry
 from .geometry import normalized_to_screen_xy
 from .guides import draw_gauge_cross
 from .text import resolve_text_style
+
+
+def _scale_normalized_point_for_content_fov(
+    nx: float,
+    ny: float,
+    *,
+    content_fov_deg: float,
+) -> tuple[float, float]:
+    effective_fov_deg = max(90.0, float(content_fov_deg))
+    scale = 90.0 / effective_fov_deg
+    return (float(nx) * scale, float(ny) * scale)
 
 
 def draw_satellite_overlay(
@@ -40,6 +52,11 @@ def draw_satellite_overlay(
         if not is_in_fov(alt, az, view_center, fov_deg=content_fov_deg):
             continue
         nx, ny = altaz_to_normalized_xy(alt, az, view_center)
+        nx, ny = _scale_normalized_point_for_content_fov(
+            nx,
+            ny,
+            content_fov_deg=content_fov_deg,
+        )
         px, py = normalized_to_screen_xy(nx, ny, geometry)
         pos = QPointF(float(px), float(py))
         draw_gauge_cross(
