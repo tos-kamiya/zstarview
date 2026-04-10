@@ -20,7 +20,6 @@ from .geometry import normalized_to_screen_xy
 EARTH_MEAN_RADIUS_M = 6_371_008.8
 EARTH_GUIDE_LINE_RGBA = (245, 248, 252, 150)
 EARTH_GUIDE_OUTLINE_RGBA = (70, 54, 26, 120)
-EARTH_GUIDE_MAX_VISIBLE_ALT_DEG = -5.0
 
 
 @dataclass(frozen=True)
@@ -122,9 +121,9 @@ def _effective_visible_altitude_limit_deg(
     terrain_profile_altaz: list[tuple[float, float]] | None,
 ) -> float:
     if not terrain_profile_altaz:
-        return float(EARTH_GUIDE_MAX_VISIBLE_ALT_DEG)
+        return 0.0
     terrain_limit = _interpolate_horizon_altitude_deg(az_deg, terrain_profile_altaz)
-    return max(float(EARTH_GUIDE_MAX_VISIBLE_ALT_DEG), terrain_limit)
+    return terrain_limit
 
 
 def _signed_visible_distance_deg(
@@ -143,50 +142,145 @@ def _interpolate_xyz_on_sphere(a: np.ndarray, b: np.ndarray, t: float) -> np.nda
     return point / norm
 
 
-def _edge_crossing_altaz(
-    xyz0: np.ndarray,
-    xyz1: np.ndarray,
+def _project_xyz_to_screen_point(
+    xyz: np.ndarray,
     *,
     origin: np.ndarray,
     east: np.ndarray,
     north: np.ndarray,
     up: np.ndarray,
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    content_fov_deg: float,
     terrain_profile_altaz: list[tuple[float, float]] | None,
-    distance0: float,
-    distance1: float,
-) -> tuple[float, float] | None:
-    if distance0 == distance1:
+) -> tuple[tuple[float, float], bool] | None:
+    altaz = _project_point_altaz(xyz, origin=origin, east=east, north=north, up=up)
+    if altaz is None:
         return None
-    lo = 0.0
-    hi = 1.0
-    dlo = float(distance0)
-    dhi = float(distance1)
-    for _ in range(20):
-        mid = (lo + hi) * 0.5
-        altaz = _project_point_altaz(
-            _interpolate_xyz_on_sphere(xyz0, xyz1, mid),
-            origin=origin,
-            east=east,
-            north=north,
-            up=up,
-        )
-        if altaz is None:
-            return None
-        mid_dist = _signed_visible_distance_deg(altaz[0], altaz[1], terrain_profile_altaz)
-        if (dlo < 0.0) == (mid_dist < 0.0):
-            lo = mid
-            dlo = mid_dist
-        else:
-            hi = mid
-            dhi = mid_dist
-    _ = dhi
-    return _project_point_altaz(
-        _interpolate_xyz_on_sphere(xyz0, xyz1, (lo + hi) * 0.5),
+    alt_deg, az_deg = altaz
+    if not is_in_fov(alt_deg, az_deg, view_center, fov_deg=content_fov_deg):
+        return None
+    nx, ny = altaz_to_normalized_xy(alt_deg, az_deg, view_center)
+    screen_xy = normalized_to_screen_xy(nx, ny, geometry)
+    visible = _signed_visible_distance_deg(alt_deg, az_deg, terrain_profile_altaz) <= 0.0
+    return (screen_xy, visible)
+
+
+def _segment_screen_fragments(
+    xyz0: np.ndarray,
+    xyz1: np.ndarray,
+    *,
+    depth: int,
+    max_depth: int,
+    threshold_px: float,
+    origin: np.ndarray,
+    east: np.ndarray,
+    north: np.ndarray,
+    up: np.ndarray,
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    content_fov_deg: float,
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+) -> list[list[tuple[float, float]]]:
+    start = _project_xyz_to_screen_point(
+        xyz0,
         origin=origin,
         east=east,
         north=north,
         up=up,
+        geometry=geometry,
+        view_center=view_center,
+        content_fov_deg=content_fov_deg,
+        terrain_profile_altaz=terrain_profile_altaz,
     )
+    end = _project_xyz_to_screen_point(
+        xyz1,
+        origin=origin,
+        east=east,
+        north=north,
+        up=up,
+        geometry=geometry,
+        view_center=view_center,
+        content_fov_deg=content_fov_deg,
+        terrain_profile_altaz=terrain_profile_altaz,
+    )
+    if start is None or end is None:
+        return []
+
+    start_xy, start_visible = start
+    end_xy, end_visible = end
+    midpoint_xyz = _interpolate_xyz_on_sphere(xyz0, xyz1, 0.5)
+    midpoint = _project_xyz_to_screen_point(
+        midpoint_xyz,
+        origin=origin,
+        east=east,
+        north=north,
+        up=up,
+        geometry=geometry,
+        view_center=view_center,
+        content_fov_deg=content_fov_deg,
+        terrain_profile_altaz=terrain_profile_altaz,
+    )
+    if midpoint is None:
+        return []
+
+    midpoint_xy, midpoint_visible = midpoint
+    screen_span = math.hypot(end_xy[0] - start_xy[0], end_xy[1] - start_xy[1])
+    midpoint_distance = float(np.linalg.norm(midpoint_xyz - origin))
+    effective_threshold_px = threshold_px * min(3.0, 1.0 + max(0.0, midpoint_distance - 0.35) * 1.5)
+    should_split = (
+        screen_span > effective_threshold_px
+        or start_visible != end_visible
+        or midpoint_visible != start_visible
+        or midpoint_visible != end_visible
+    )
+    if should_split and depth < max_depth:
+        left = _segment_screen_fragments(
+            xyz0,
+            midpoint_xyz,
+            depth=depth + 1,
+            max_depth=max_depth,
+            threshold_px=threshold_px,
+            origin=origin,
+            east=east,
+            north=north,
+            up=up,
+            geometry=geometry,
+            view_center=view_center,
+            content_fov_deg=content_fov_deg,
+            terrain_profile_altaz=terrain_profile_altaz,
+        )
+        right = _segment_screen_fragments(
+            midpoint_xyz,
+            xyz1,
+            depth=depth + 1,
+            max_depth=max_depth,
+            threshold_px=threshold_px,
+            origin=origin,
+            east=east,
+            north=north,
+            up=up,
+            geometry=geometry,
+            view_center=view_center,
+            content_fov_deg=content_fov_deg,
+            terrain_profile_altaz=terrain_profile_altaz,
+        )
+        if len(left) == 1 and len(right) == 1:
+            left_fragment = left[0]
+            right_fragment = right[0]
+            if left_fragment and right_fragment and left_fragment[-1] == right_fragment[0]:
+                return [left_fragment[:-1] + right_fragment]
+        if left and right and left[-1][-1] == right[0][0]:
+            return left[:-1] + right
+        return left + right
+
+    if start_visible and end_visible:
+        return [[start_xy, end_xy]]
+    if start_visible and midpoint_visible:
+        return [[start_xy, midpoint_xy]]
+    if midpoint_visible and end_visible:
+        return [[midpoint_xy, end_xy]]
+    return []
 
 
 def _ring_fragments_altaz(
@@ -196,68 +290,53 @@ def _ring_fragments_altaz(
     east: np.ndarray,
     north: np.ndarray,
     up: np.ndarray,
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    content_fov_deg: float,
     terrain_profile_altaz: list[tuple[float, float]] | None,
 ) -> list[list[tuple[float, float]]]:
     xyz_points = ring.points_xyz
-    projected: list[tuple[float, float] | None] = []
-    distances: list[float | None] = []
-    for point_xyz in xyz_points:
-        altaz = _project_point_altaz(point_xyz, origin=origin, east=east, north=north, up=up)
-        projected.append(altaz)
-        if altaz is None:
-            distances.append(None)
-        else:
-            distances.append(_signed_visible_distance_deg(altaz[0], altaz[1], terrain_profile_altaz))
-
     fragments: list[list[tuple[float, float]]] = []
-    current: list[tuple[float, float]] = []
     count = len(xyz_points)
     for index in range(count):
         next_index = (index + 1) % count
-        altaz0 = projected[index]
-        altaz1 = projected[next_index]
-        if altaz0 is None or altaz1 is None:
-            if len(current) >= 2:
-                fragments.append(current)
-            current = []
+        sampled = _segment_screen_fragments(
+            xyz_points[index],
+            xyz_points[next_index],
+            depth=0,
+            max_depth=12,
+            threshold_px=24.0,
+            origin=origin,
+            east=east,
+            north=north,
+            up=up,
+            geometry=geometry,
+            view_center=view_center,
+            content_fov_deg=content_fov_deg,
+            terrain_profile_altaz=terrain_profile_altaz,
+        )
+        fragments.extend(sampled)
+
+    stitched: list[list[tuple[float, float]]] = []
+    current: list[tuple[float, float]] = []
+    close_threshold_px = 0.75
+    for fragment in fragments:
+        if len(fragment) < 2:
             continue
-        dist0 = float(distances[index])
-        dist1 = float(distances[next_index])
-        inside0 = dist0 < 0.0
-        inside1 = dist1 < 0.0
-        if inside0 and not current:
-            current = [altaz0]
-        if inside0 and inside1:
-            current.append(altaz1)
+        if not current:
+            current = fragment[:]
             continue
-        crossing = None
-        if inside0 != inside1:
-            crossing = _edge_crossing_altaz(
-                xyz_points[index],
-                xyz_points[next_index],
-                origin=origin,
-                east=east,
-                north=north,
-                up=up,
-                terrain_profile_altaz=terrain_profile_altaz,
-                distance0=dist0,
-                distance1=dist1,
-            )
-        if inside0 and not inside1:
-            if crossing is not None:
-                current.append(crossing)
-            if len(current) >= 2:
-                fragments.append(current)
-            current = []
-        elif not inside0 and inside1:
-            current = [crossing] if crossing is not None else []
-            current.append(altaz1)
-        elif len(current) >= 2:
-            fragments.append(current)
-            current = []
+        last_x, last_y = current[-1]
+        first_x, first_y = fragment[0]
+        if math.hypot(first_x - last_x, first_y - last_y) <= close_threshold_px:
+            current.extend(fragment[1:])
+            continue
+        if len(current) >= 2:
+            stitched.append(current)
+        current = fragment[:]
     if len(current) >= 2:
-        fragments.append(current)
-    return fragments
+        stitched.append(current)
+    return stitched
 
 
 @lru_cache(maxsize=1)
@@ -327,14 +406,12 @@ def draw_earth_guide(
                 east=east,
                 north=north,
                 up=up,
+                geometry=geometry,
+                view_center=view_center,
+                content_fov_deg=content_fov_deg,
                 terrain_profile_altaz=terrain_profile_altaz,
             ):
-                screen_points: list[QPointF] = []
-                for alt_deg, az_deg in fragment:
-                    if not is_in_fov(alt_deg, az_deg, view_center, fov_deg=content_fov_deg):
-                        continue
-                    nx, ny = altaz_to_normalized_xy(alt_deg, az_deg, view_center)
-                    screen_points.append(QPointF(*normalized_to_screen_xy(nx, ny, geometry)))
+                screen_points = [QPointF(x, y) for x, y in fragment]
                 if len(screen_points) < 2:
                     continue
                 poly = QPolygonF(screen_points)
