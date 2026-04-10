@@ -43,6 +43,6 @@ def test_draw_earth_guide_renders_visible_lines_below_horizon() -> None:
     assert bottom_half > top_half
 
 
-def test_earth_guide_uses_minus_five_degree_upper_clip() -> None:
-    assert _effective_visible_altitude_limit_deg(180.0, None) == -5.0
+def test_earth_guide_uses_geometric_horizon_by_default() -> None:
+    assert _effective_visible_altitude_limit_deg(180.0, None) == 0.0
     assert _effective_visible_altitude_limit_deg(180.0, [(12.0, 180.0)]) == 12.0
