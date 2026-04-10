@@ -119,7 +119,7 @@ README より詳細に、何ができるか、どう振る舞うか、どのよ�
 - `--sky-opacity`
 - `--sky-opacity` は、sky color disc の色強度を直接制御する値として扱ってよい。
 - `--terrain-horizon-opacity`
-  - 既定値は `0.035` としてよい。
+  - 既定値は `0.028` としてよい。
 - `--window-frame`
   - `frameless` または `window` を受け付ける。
   - `frameless` は従来どおりタイトルバーと枠のない表示とする。

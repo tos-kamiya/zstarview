@@ -452,9 +452,9 @@ def add_render_arguments(
     parser.add_argument(
         "--terrain-horizon-opacity",
         type=float,
-        default=0.035,
+        default=0.028,
         help=(
-            "Opacity of the terrain horizon polyline (0.0 - 1.0, default: 0.035). "
+            "Opacity of the terrain horizon polyline (0.0 - 1.0, default: 0.028). "
             "Set to 0.0 to disable DEM download, terrain-horizon calculation, and drawing."
         ),
     )

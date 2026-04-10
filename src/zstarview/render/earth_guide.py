@@ -379,7 +379,7 @@ def draw_earth_guide(
     observer_lon_deg: float,
     observer_height_m: float,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
-    terrain_horizon_opacity: float = 0.035,
+    terrain_horizon_opacity: float = 0.028,
     content_fov_deg: float = 90.0,
 ) -> None:
     rings = load_earth_guide_rings()
