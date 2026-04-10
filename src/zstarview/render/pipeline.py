@@ -379,6 +379,8 @@ def _draw_sky_cloud_layers(
         cloud_alpha=style.cloud_disc_alpha,
         view_center=scene.viewer.view_center,
         observer_lat_deg=scene.viewer.location[0],
+        observer_lon_deg=scene.viewer.location[1],
+        observer_height_m=scene.viewer.observer_height_m,
         cloud_amount_field=scene.cloud_amount_field,
         missing_mask=scene.cloud_missing_mask,
         terrain_profile_altaz=(

@@ -19,6 +19,7 @@ from PySide6.QtCore import QRect, Qt
 from PySide6.QtGui import QImage, QPainter
 
 from ..paths import CLOUD_HATCH_DEFAULT, CLOUD_MISSING_TINT_RGBA, HatchConfig
+from ..render.earth_guide import draw_earth_guide
 from ..render.sky_disc import GROUND_TINT_RGB, NEVER_RISES_TINT_RGB, NEVER_RISES_TINT_STRENGTH
 from ..types import ScreenGeometry
 from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
@@ -623,6 +624,42 @@ def _apply_ground_tint(
     return np_rgba_to_qimage(out)
 
 
+def _overlay_earth_guide(
+    base_img: QImage,
+    *,
+    geometry: ScreenGeometry,
+    view_center: Tuple[float, float],
+    observer_lat_deg: float | None,
+    observer_lon_deg: float | None,
+    observer_height_m: float = 0.0,
+    terrain_profile_altaz: list[tuple[float, float]] | None = None,
+    content_fov_deg: float = 90.0,
+) -> QImage:
+    if observer_lat_deg is None or observer_lon_deg is None:
+        return base_img
+    out = (
+        base_img
+        if base_img.format() == QImage.Format.Format_ARGB32_Premultiplied
+        else base_img.convertToFormat(QImage.Format.Format_ARGB32_Premultiplied)
+    )
+    painter = QPainter(out)
+    painter.setRenderHint(QPainter.Antialiasing, True)
+    try:
+        draw_earth_guide(
+            painter,
+            geometry=geometry,
+            view_center=view_center,
+            observer_lat_deg=float(observer_lat_deg),
+            observer_lon_deg=float(observer_lon_deg),
+            observer_height_m=float(observer_height_m),
+            terrain_profile_altaz=terrain_profile_altaz,
+            content_fov_deg=content_fov_deg,
+        )
+    finally:
+        painter.end()
+    return out
+
+
 class SkyCompositorCache:
     """Manage compositing and reuse the last composited image via a cache key."""
 
@@ -666,6 +703,8 @@ class SkyCompositorCache:
         cloud_alpha: float,
         view_center: Tuple[float, float] = (0.0, 0.0),
         observer_lat_deg: float | None = None,
+        observer_lon_deg: float | None = None,
+        observer_height_m: float = 0.0,
         cloud_amount_field: Optional[CloudAmountField] = None,
         missing_mask: Optional[np.ndarray] = None,
         terrain_profile_altaz: list[tuple[float, float]] | None = None,
@@ -719,6 +758,8 @@ class SkyCompositorCache:
             float(view_center[1]),
             float(content_fov_deg),
             None if observer_lat_deg is None else float(observer_lat_deg),
+            None if observer_lon_deg is None else float(observer_lon_deg),
+            float(observer_height_m),
             hatch_key,
             self._missing_tint_rgba,
             self._ground_tint_opacity,
@@ -808,6 +849,16 @@ class SkyCompositorCache:
                 terrain_profile_altaz=terrain_profile_altaz,
                 ground_tint_opacity=self._ground_tint_opacity,
                 observer_lat_deg=observer_lat_deg,
+                content_fov_deg=content_fov_deg,
+            )
+            composited = _overlay_earth_guide(
+                composited,
+                geometry=geometry,
+                view_center=view_center,
+                observer_lat_deg=observer_lat_deg,
+                observer_lon_deg=observer_lon_deg,
+                observer_height_m=observer_height_m,
+                terrain_profile_altaz=terrain_profile_altaz,
                 content_fov_deg=content_fov_deg,
             )
             if missing_s is not None:
