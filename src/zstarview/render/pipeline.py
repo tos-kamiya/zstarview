@@ -386,6 +386,7 @@ def _draw_sky_cloud_layers(
         terrain_profile_altaz=(
             scene.terrain_horizon_profile if style.terrain_horizon_opacity > 0.0 else None
         ),
+        terrain_horizon_opacity=style.terrain_horizon_opacity,
         content_fov_deg=_content_fov_deg(scene),
     )
 

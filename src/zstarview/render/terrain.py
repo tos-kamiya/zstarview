@@ -37,6 +37,12 @@ def _minimal_azimuth_cover(azimuth_deg: List[float]) -> Tuple[float, float, floa
     return start, end, span
 
 
+def terrain_horizon_line_alpha(opacity: float) -> float:
+    """Return the alpha curve used by the terrain horizon foreground line."""
+    opacity = max(0.0, min(1.0, float(opacity)))
+    return max(opacity, min(1.0, 0.42 + (opacity * 0.95)))
+
+
 def draw_terrain_horizon_line(
     painter: QPainter,
     geometry: ScreenGeometry,
@@ -54,7 +60,7 @@ def draw_terrain_horizon_line(
     """Draw a terrain horizon polyline as an extra overlay over the geometric horizon."""
     if not terrain_profile_altaz or opacity <= 0.0:
         return
-    effective_opacity = max(0.0, min(1.0, opacity * 0.7))
+    effective_opacity = max(0.0, min(1.0, float(opacity)))
     if effective_opacity <= 0.0:
         return
 
@@ -69,7 +75,7 @@ def draw_terrain_horizon_line(
         return
 
     color = QColor(*TERRAIN_HORIZON_LINE_COLOR)
-    color.setAlphaF(max(effective_opacity, min(1.0, 0.42 + (opacity * 0.95))))
+    color.setAlphaF(terrain_horizon_line_alpha(effective_opacity))
     outline = QColor(*TERRAIN_HORIZON_LINE_COLOR)
     outline.setAlpha(max(0, min(255, int(round(135.0 * effective_opacity + 35.0)))))
     width_scale = max(1.0, float(line_width_scale))
@@ -80,14 +86,14 @@ def draw_terrain_horizon_line(
         pts = [QPointF(*normalized_to_screen_xy_func(nx, ny, geometry)) for nx, ny in frag]
         poly = QPolygonF(pts)
 
-        base = QPen(outline, 3.0 * width_scale, Qt.PenStyle.SolidLine)
+        base = QPen(outline, 3.6 * width_scale, Qt.PenStyle.SolidLine)
         base.setCosmetic(True)
         base.setCapStyle(Qt.PenCapStyle.RoundCap)
         base.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
         painter.setPen(base)
         painter.drawPolyline(poly)
 
-        fg = QPen(color, 1.0 * width_scale, Qt.PenStyle.SolidLine)
+        fg = QPen(color, 1.2 * width_scale, Qt.PenStyle.SolidLine)
         fg.setCosmetic(True)
         fg.setCapStyle(Qt.PenCapStyle.RoundCap)
         fg.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
