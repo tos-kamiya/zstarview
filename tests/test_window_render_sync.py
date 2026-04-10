@@ -1517,4 +1517,4 @@ def test_draw_terrain_horizon_line_scales_line_widths(monkeypatch) -> None:
         normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
     )
 
-    assert painter.pen_widths[:2] == [6.0, 2.0]
+    assert painter.pen_widths[:2] == [7.2, 2.4]

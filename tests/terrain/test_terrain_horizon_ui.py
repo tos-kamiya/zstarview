@@ -108,6 +108,10 @@ class _DummyImage:
         return True
 
 
+def _noop_request_client_update() -> None:
+    return None
+
+
 def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None:
     options = prepare_window_user_options(
         terrain_horizon_opacity=1.5,
@@ -266,6 +270,8 @@ def test_toggle_guidelines_disables_and_restores_opacity() -> None:
     dummy = SimpleNamespace()
     dummy.show_guidelines = False
     dummy._action_toggle_guidelines = _DummyAction(False)
+    calls: list[str] = []
+    dummy.request_client_update = lambda: calls.append("request")
     updates: list[str] = []
     dummy.update = lambda: updates.append("update")
 
@@ -278,13 +284,15 @@ def test_toggle_guidelines_disables_and_restores_opacity() -> None:
 
     assert dummy.show_guidelines is False
     assert dummy._action_toggle_guidelines.isChecked() is False
-    assert updates == ["update", "update"]
+    assert calls == ["request", "request"]
 
 
 def test_toggle_overlay_info_updates_check_state() -> None:
     dummy = SimpleNamespace()
     dummy.show_overlay_info = False
     dummy._action_toggle_overlay_info = _DummyAction(False)
+    calls: list[str] = []
+    dummy.request_client_update = lambda: calls.append("request")
     updates: list[str] = []
     dummy.update = lambda: updates.append("update")
 
@@ -297,7 +305,7 @@ def test_toggle_overlay_info_updates_check_state() -> None:
 
     assert dummy.show_overlay_info is False
     assert dummy._action_toggle_overlay_info.isChecked() is False
-    assert updates == ["update", "update"]
+    assert calls == ["request", "request"]
 
 
 def test_vmag_limit_menu_text_formats_current_limit() -> None:
@@ -360,6 +368,7 @@ def test_toggle_aircraft_uses_cached_state_without_fetch() -> None:
         last_success_utc=now - timedelta(seconds=30),
     )
     calls: list[str] = []
+    dummy.request_client_update = lambda: calls.append("request")
     dummy._enable_aircraft_layer = lambda **kwargs: calls.append(str(kwargs.get("reason")))
     dummy._stop_aircraft_timers = lambda: calls.append("stop")
     dummy.update = lambda: calls.append("update")
@@ -368,7 +377,7 @@ def test_toggle_aircraft_uses_cached_state_without_fetch() -> None:
 
     assert dummy.aircraft_opacity == 1.0
     assert dummy._action_toggle_aircraft.isChecked() is True
-    assert calls == ["toggle-on", "update"]
+    assert calls == ["toggle-on", "request"]
 
 
 def test_start_background_aircraft_update_skips_when_layer_hidden() -> None:
@@ -396,6 +405,7 @@ def test_on_aircraft_ready_saves_debug_snapshot_when_enabled(monkeypatch, tmp_pa
     dummy.aircraft_opacity = 1.0
     dummy.state = SimpleNamespace(aircraft_overlay_points=None)
     calls: list[str] = []
+    dummy.request_client_update = lambda: calls.append("request")
     dummy._schedule_next_aircraft_refresh = lambda: calls.append("schedule")
     dummy.update = lambda: calls.append("update")
     dummy.render_current_image = lambda **kwargs: calls.append(f"render:{kwargs.get('include_hud')}") or dummy_image
@@ -418,7 +428,7 @@ def test_on_aircraft_ready_saves_debug_snapshot_when_enabled(monkeypatch, tmp_pa
     )
 
     assert dummy.state.aircraft_overlay_points == ["p1"]
-    assert calls == ["schedule", "update", "render:True"]
+    assert calls == ["schedule", "request", "render:True"]
     assert len(dummy_image.saved_paths) == 1
     assert dummy_image.saved_paths[0].name == "aircraft-ready-20260324T123456Z-opensky-cache.png"
     assert dummy_image.saved_paths[0].parent == tmp_path
@@ -432,6 +442,7 @@ def test_on_aircraft_ready_skips_debug_snapshot_when_disabled(monkeypatch) -> No
     dummy.aircraft_opacity = 1.0
     dummy.state = SimpleNamespace(aircraft_overlay_points=None)
     calls: list[str] = []
+    dummy.request_client_update = lambda: calls.append("request")
     dummy._schedule_next_aircraft_refresh = lambda: calls.append("schedule")
     dummy.update = lambda: calls.append("update")
     dummy.render_current_image = lambda **kwargs: (_ for _ in ()).throw(AssertionError("should not render"))
@@ -454,7 +465,7 @@ def test_on_aircraft_ready_skips_debug_snapshot_when_disabled(monkeypatch) -> No
     )
 
     assert dummy.state.aircraft_overlay_points == ["p1"]
-    assert calls == ["schedule", "update"]
+    assert calls == ["schedule", "request"]
 
 
 def test_toggle_terrain_horizon_enables_opacity_and_requests_background_update() -> None:
@@ -464,6 +475,7 @@ def test_toggle_terrain_horizon_enables_opacity_and_requests_background_update()
     dummy._terrain_horizon_opacity_when_enabled = 0.25
     dummy._action_toggle_terrain_horizon = _DummyAction(False)
     calls: list[str] = []
+    dummy.request_client_update = lambda: calls.append("request")
     dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
     dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(str(kwargs.get("reason")))
     dummy.update = lambda: calls.append("update")
@@ -472,7 +484,7 @@ def test_toggle_terrain_horizon_enables_opacity_and_requests_background_update()
 
     assert dummy.terrain_horizon_opacity == 0.25
     assert dummy._action_toggle_terrain_horizon.isChecked() is True
-    assert calls == ["invalidate", "toggle-on", "update"]
+    assert calls == ["invalidate", "toggle-on", "request"]
 
 
 def test_toggle_urban_outline_enables_opacity_and_requests_background_update() -> None:
@@ -483,6 +495,7 @@ def test_toggle_urban_outline_enables_opacity_and_requests_background_update() -
     dummy.show_urban_outline_layer = False
     dummy._action_toggle_urban_outline = _DummyAction(False)
     calls: list[str] = []
+    dummy.request_client_update = lambda: calls.append("request")
     dummy.start_background_urban_outline_update = lambda **kwargs: calls.append(str(kwargs.get("reason")))
     dummy.update = lambda: calls.append("update")
 
@@ -491,7 +504,7 @@ def test_toggle_urban_outline_enables_opacity_and_requests_background_update() -
     assert dummy.urban_outline_opacity == 0.2
     assert dummy.show_urban_outline_layer is True
     assert dummy._action_toggle_urban_outline.isChecked() is True
-    assert calls == ["toggle-on", "update"]
+    assert calls == ["toggle-on", "request"]
 
 
 def test_toggle_urban_outline_respects_cli_lockout() -> None:
@@ -540,6 +553,7 @@ def test_toggle_sky_disc_enables_gradient_and_requests_refresh() -> None:
     dummy._sky_disc_alpha_when_enabled = 0.3
     dummy._action_toggle_sky_disc = _DummyAction(False)
     calls: list[str] = []
+    dummy.request_client_update = lambda: calls.append("request-client")
     dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
     dummy.request_sky_data_update = lambda: calls.append("request")
     dummy.update = lambda: calls.append("update")
@@ -548,7 +562,7 @@ def test_toggle_sky_disc_enables_gradient_and_requests_refresh() -> None:
 
     assert dummy.sky_disc_alpha == 0.3
     assert dummy._action_toggle_sky_disc.isChecked() is True
-    assert calls == ["invalidate", "request", "update"]
+    assert calls == ["invalidate", "request", "request-client"]
 
 
 def test_toggle_sky_disc_switches_to_flat_disc_and_requests_refresh() -> None:
@@ -558,6 +572,7 @@ def test_toggle_sky_disc_switches_to_flat_disc_and_requests_refresh() -> None:
     dummy._sky_disc_alpha_when_enabled = 0.3
     dummy._action_toggle_sky_disc = _DummyAction(True)
     calls: list[str] = []
+    dummy.request_client_update = lambda: calls.append("request-client")
     dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
     dummy.request_sky_data_update = lambda: calls.append("request")
     dummy.update = lambda: calls.append("update")
@@ -566,7 +581,7 @@ def test_toggle_sky_disc_switches_to_flat_disc_and_requests_refresh() -> None:
 
     assert dummy.sky_disc_alpha == 0.0
     assert dummy._action_toggle_sky_disc.isChecked() is False
-    assert calls == ["invalidate", "request", "update"]
+    assert calls == ["invalidate", "request", "request-client"]
 
 
 def test_sync_view_altitude_actions_disables_raise_at_zenith() -> None:
@@ -604,6 +619,7 @@ def test_jump_to_search_target_keeps_negative_target_alt_for_highlight(monkeypat
         jump_highlight_until_ms=0.0,
     )
     sync_calls: list[str] = []
+    dummy.request_client_update = lambda: sync_calls.append("request-client")
     dummy._sync_view_altitude_actions = lambda: sync_calls.append("sync")
     dummy._current_time_obj = lambda: object()
     dummy._begin_interaction_mode = lambda: sync_calls.append("begin")
@@ -617,7 +633,7 @@ def test_jump_to_search_target_keeps_negative_target_alt_for_highlight(monkeypat
     assert dummy.state.jump_highlight_name == "Circlet"
     assert dummy.state.jump_highlight_altaz == (-12.5, 210.0)
     assert dummy.state.jump_highlight_until_ms > 0.0
-    assert sync_calls == ["sync", "begin", "request", "update"]
+    assert sync_calls == ["sync", "begin", "request", "request-client"]
 
 
 def test_rotate_view_in_orientation_mode_updates_render_center_without_full_refresh() -> None:
@@ -625,6 +641,7 @@ def test_rotate_view_in_orientation_mode_updates_render_center_without_full_refr
     dummy.viewer_data = SimpleNamespace(view_center=(20.0, 30.0))
     dummy.state = SimpleNamespace(render_view_center=(20.0, 30.0))
     calls: list[str] = []
+    dummy.request_client_update = lambda: calls.append("request-client")
     dummy._begin_viewport_interaction_mode = lambda: calls.append("begin-viewport")
     dummy._begin_interaction_mode = lambda: calls.append("begin")
     dummy._sync_view_altitude_actions = lambda: calls.append("sync")
@@ -636,13 +653,14 @@ def test_rotate_view_in_orientation_mode_updates_render_center_without_full_refr
 
     assert dummy.viewer_data.view_center == (25.0, 45.0)
     assert dummy.state.render_view_center == (25.0, 45.0)
-    assert calls == ["begin-viewport", "sync", "bright-stars", "update"]
+    assert calls == ["begin-viewport", "sync", "bright-stars", "request-client"]
 
 
 def test_end_viewport_interaction_mode_requests_full_refresh() -> None:
     dummy = SimpleNamespace()
     dummy.state = SimpleNamespace(viewport_interaction_mode=True, viewport_interaction_stars=object())
     calls: list[str] = []
+    dummy.request_client_update = lambda: calls.append("request-client")
     dummy.request_sky_data_update = lambda: calls.append("sky")
     dummy.start_background_cloud_update = lambda **kwargs: calls.append(str(kwargs.get("reason")))
     dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(str(kwargs.get("reason")))
@@ -652,7 +670,7 @@ def test_end_viewport_interaction_mode_requests_full_refresh() -> None:
 
     assert dummy.state.viewport_interaction_mode is False
     assert dummy.state.viewport_interaction_stars is None
-    assert calls == ["sky", "view-change-idle", "view-change-idle", "update"]
+    assert calls == ["sky", "view-change-idle", "view-change-idle", "request-client"]
 
 
 def test_begin_viewport_interaction_mode_clears_cloud_buffers_and_invalidates_old_render() -> None:
