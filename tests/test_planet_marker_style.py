@@ -336,7 +336,7 @@ def test_satellite_overlay_draws_below_horizon_marker_when_in_fov(monkeypatch) -
     assert cross_calls == [(0.3, 1.0)]
 
 
-def test_satellite_overlay_scales_positions_to_requested_content_fov(monkeypatch) -> None:
+def test_satellite_overlay_keeps_overscan_position_beyond_90_deg(monkeypatch) -> None:
     positions: list[tuple[float, float]] = []
 
     def _record_cross(_painter, _color, center, *, scale=1.0, pen_width=1.0) -> None:
@@ -344,34 +344,34 @@ def test_satellite_overlay_scales_positions_to_requested_content_fov(monkeypatch
 
     monkeypatch.setattr(render_satellites, "draw_gauge_cross", _record_cross)
 
-    image = QImage(40, 40, QImage.Format.Format_ARGB32_Premultiplied)
+    image = QImage(240, 240, QImage.Format.Format_ARGB32_Premultiplied)
     painter = QPainter(image)
     try:
         render_satellites.draw_satellite_overlay(
             painter=painter,
-            geometry=ScreenGeometry(center=(20, 20), radius=20),
+            geometry=ScreenGeometry(center=(120, 120), radius=80),
             satellite_points=[
                 SatelliteOverlayPoint(
                     group_key="iss",
                     satellite_name="ISS (ZARYA)",
-                    alt_deg=0.0,
-                    az_deg=100.0,
+                    alt_deg=-50.0,
+                    az_deg=180.0,
                     marker_scale=0.3,
                     show_label=False,
                 )
             ],
-            view_center=(0.0, 0.0),
+            view_center=(45.0, 180.0),
             opacity=1.0,
             label_candidates=[],
-            content_fov_deg=100.0,
+            content_fov_deg=110.0,
         )
     finally:
         painter.end()
 
     assert len(positions) == 1
     x, y = positions[0]
-    assert math.isclose(x, 40.0, abs_tol=0.2)
-    assert math.isclose(y, 20.0, abs_tol=0.2)
+    assert math.isclose(x, 120.0, abs_tol=0.2)
+    assert math.isclose(y, 204.4, abs_tol=0.3)
 
 
 app = QApplication.instance() or QApplication([])
