@@ -223,7 +223,7 @@ def _build_window_inputs_from_args(
         ),
         satellite_opacity=(getattr(args, "satellite_opacity", 0.5) if overlay_availability.satellite else 0.0),
         aircraft_opacity=(getattr(args, "aircraft_opacity", 0.5) if overlay_availability.aircraft else 0.0),
-        terrain_horizon_opacity=getattr(args, "terrain_horizon_opacity", 0.035),
+        terrain_horizon_opacity=getattr(args, "terrain_horizon_opacity", 0.028),
         urban_outline_opacity=getattr(args, "urban_outline_opacity", 0.2),
         ground_tint_opacity=getattr(args, "ground_tint_opacity", 0.1),
         enlarge_moon=bool(getattr(args, "enlarge_moon", False)),
@@ -239,7 +239,7 @@ def _build_window_inputs_from_args(
         cloud_gui_allowed=overlay_availability.cloud and getattr(args, "cloud_opacity", 0.075) > 0.0,
         satellite_gui_allowed=overlay_availability.satellite and getattr(args, "satellite_opacity", 0.5) > 0.0,
         aircraft_gui_allowed=overlay_availability.aircraft and getattr(args, "aircraft_opacity", 0.5) > 0.0,
-        terrain_horizon_gui_allowed=getattr(args, "terrain_horizon_opacity", 0.035) > 0.0,
+        terrain_horizon_gui_allowed=getattr(args, "terrain_horizon_opacity", 0.028) > 0.0,
         urban_outline_gui_allowed=getattr(args, "urban_outline_opacity", 0.2) > 0.0,
     )
     runtime_options = prepare_window_runtime_options(

@@ -47,7 +47,7 @@ class SkyWindowUserOptions:
     cloud_disc_alpha: float = 0.6
     satellite_opacity: float = 0.5
     aircraft_opacity: float = 0.6
-    terrain_horizon_opacity: float = 0.25
+    terrain_horizon_opacity: float = 0.028
     urban_outline_opacity: float = 0.2
     ground_tint_opacity: float = 1.0
     enlarge_moon: bool = False
@@ -140,7 +140,7 @@ def prepare_window_user_options(
     cloud_disc_alpha: float = 0.6,
     satellite_opacity: float = 0.5,
     aircraft_opacity: float = 0.6,
-    terrain_horizon_opacity: float = 0.25,
+    terrain_horizon_opacity: float = 0.028,
     urban_outline_opacity: float = 0.2,
     ground_tint_opacity: float = 1.0,
     enlarge_moon: bool = False,

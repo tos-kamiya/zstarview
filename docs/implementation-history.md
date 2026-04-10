@@ -474,7 +474,7 @@
 
 - 地形地平線と earth-guide のスタイル整理
   - 地形地平線の前景線 alpha 計算を共通関数へ切り出し、earth-guide も同じ alpha カーブを使うようにした。
-  - `--terrain-horizon-opacity` の既定値を `0.035` に合わせ、renderer 側の `0.7` 係数は削除した。
+  - `--terrain-horizon-opacity` の既定値を `0.028` に合わせ、renderer 側の `0.7` 係数は削除した。
   - earth-guide は terrain horizon と同じ RGB を使いつつ、前景線のみの単一ストロークへ整理した。
   - terrain horizon の見た目を earth-guide より少し強くするため、terrain 側の線幅を 2 割ほど増やした。
   - earth-guide は引き続きスクリーン空間で再帰分割し、遠景は粗く・近景は細かく見えるようにしている。

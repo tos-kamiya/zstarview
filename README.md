@@ -162,7 +162,7 @@ The CLI supports detailed startup configuration for location, time, and renderin
 | `-a`, `--aircraft-opacity OPACITY`          | Opacity of the aircraft overlay (0.0–1.0). Use 0.0 to disable aircraft queries and drawing for that run. | `0.5` |
 | `--satellite-opacity OPACITY`               | Opacity of the artificial satellite overlay (0.0–1.0). Use 0.0 to disable satellite element fetch and drawing for that run. | `0.5` |
 | `--show-guidelines-initial true\|false`     | Whether guideline overlays are shown at startup. This controls the geometric horizon, celestial equator, ecliptic, direction labels, and zenith marker. | `show` |
-| `--terrain-horizon-opacity OPACITY`         | Opacity of the terrain horizon polyline (0.0–1.0). Use 0.0 to disable DEM download, terrain-horizon calculation, terrain-horizon drawing, and the earth guide. \*4 | `0.035` |
+| `--terrain-horizon-opacity OPACITY`         | Opacity of the terrain horizon polyline (0.0–1.0). Use 0.0 to disable DEM download, terrain-horizon calculation, terrain-horizon drawing, and the earth guide. \*4 | `0.028` |
 | `--ground-tint-opacity OPACITY`             | Strength of the ground-color fill below the geometric/terrain horizon (0.0–1.0). | `0.1` |
 | `--urban-outline-opacity OPACITY`           | Opacity of the urban outline overlay (0.0–1.0). Use 0.0 to disable it for that run. | `0.2` |
 | `--urban-outline-feature-type {both,building}` | Overture cache mode for the urban outline. `both` combines `building` and `building_part`, preferring parts when available. | `both` |
