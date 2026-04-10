@@ -20,6 +20,7 @@ from .geometry import normalized_to_screen_xy
 EARTH_MEAN_RADIUS_M = 6_371_008.8
 EARTH_GUIDE_LINE_RGBA = (245, 248, 252, 150)
 EARTH_GUIDE_OUTLINE_RGBA = (70, 54, 26, 120)
+EARTH_GUIDE_MAX_VISIBLE_ALT_DEG = -5.0
 
 
 @dataclass(frozen=True)
@@ -116,12 +117,22 @@ def _interpolate_horizon_altitude_deg(
     return wrapped[-1][1]
 
 
-def _signed_horizon_distance_deg(
+def _effective_visible_altitude_limit_deg(
+    az_deg: float,
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+) -> float:
+    if not terrain_profile_altaz:
+        return float(EARTH_GUIDE_MAX_VISIBLE_ALT_DEG)
+    terrain_limit = _interpolate_horizon_altitude_deg(az_deg, terrain_profile_altaz)
+    return max(float(EARTH_GUIDE_MAX_VISIBLE_ALT_DEG), terrain_limit)
+
+
+def _signed_visible_distance_deg(
     alt_deg: float,
     az_deg: float,
     terrain_profile_altaz: list[tuple[float, float]] | None,
 ) -> float:
-    return float(alt_deg) - _interpolate_horizon_altitude_deg(az_deg, terrain_profile_altaz)
+    return float(alt_deg) - _effective_visible_altitude_limit_deg(az_deg, terrain_profile_altaz)
 
 
 def _interpolate_xyz_on_sphere(a: np.ndarray, b: np.ndarray, t: float) -> np.ndarray:
@@ -161,7 +172,7 @@ def _edge_crossing_altaz(
         )
         if altaz is None:
             return None
-        mid_dist = _signed_horizon_distance_deg(altaz[0], altaz[1], terrain_profile_altaz)
+        mid_dist = _signed_visible_distance_deg(altaz[0], altaz[1], terrain_profile_altaz)
         if (dlo < 0.0) == (mid_dist < 0.0):
             lo = mid
             dlo = mid_dist
@@ -196,7 +207,7 @@ def _ring_fragments_altaz(
         if altaz is None:
             distances.append(None)
         else:
-            distances.append(_signed_horizon_distance_deg(altaz[0], altaz[1], terrain_profile_altaz))
+            distances.append(_signed_visible_distance_deg(altaz[0], altaz[1], terrain_profile_altaz))
 
     fragments: list[list[tuple[float, float]]] = []
     current: list[tuple[float, float]] = []
