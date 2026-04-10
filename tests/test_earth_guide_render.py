@@ -1,7 +1,11 @@
 import numpy as np
 from PySide6.QtGui import QImage, QPainter
 
-from zstarview.render.earth_guide import draw_earth_guide, load_earth_guide_rings
+from zstarview.render.earth_guide import (
+    _effective_visible_altitude_limit_deg,
+    draw_earth_guide,
+    load_earth_guide_rings,
+)
 from zstarview.render.qt_image import qimage_to_np_rgba
 from zstarview.types import ScreenGeometry
 
@@ -37,3 +41,8 @@ def test_draw_earth_guide_renders_visible_lines_below_horizon() -> None:
     top_half = int(np.count_nonzero(alpha[:120, :]))
     bottom_half = int(np.count_nonzero(alpha[120:, :]))
     assert bottom_half > top_half
+
+
+def test_earth_guide_uses_minus_five_degree_upper_clip() -> None:
+    assert _effective_visible_altitude_limit_deg(180.0, None) == -5.0
+    assert _effective_visible_altitude_limit_deg(180.0, [(12.0, 180.0)]) == 12.0
