@@ -12,16 +12,13 @@ from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy, is_in_fov
-from ..paths import EARTH_GUIDE_LAND_FILE
+from ..paths import EARTH_GUIDE_LAND_FILE, TERRAIN_HORIZON_LINE_COLOR
 from ..types import ScreenGeometry
 from .geometry import normalized_to_screen_xy
+from .terrain import terrain_horizon_line_alpha
 
 
 EARTH_MEAN_RADIUS_M = 6_371_008.8
-EARTH_GUIDE_LINE_RGBA = (245, 248, 252, 150)
-EARTH_GUIDE_OUTLINE_RGBA = (70, 54, 26, 120)
-
-
 @dataclass(frozen=True)
 class EarthGuideRing:
     source_name: str
@@ -382,19 +379,20 @@ def draw_earth_guide(
     observer_lon_deg: float,
     observer_height_m: float,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
+    terrain_horizon_opacity: float = 0.035,
     content_fov_deg: float = 90.0,
 ) -> None:
     rings = load_earth_guide_rings()
     if not rings:
         return
+    if float(terrain_horizon_opacity) <= 0.0:
+        return
     origin, east, north, up = _observer_basis(observer_lat_deg, observer_lon_deg, observer_height_m)
     painter.save()
     try:
-        outline_pen = QPen(QColor(*EARTH_GUIDE_OUTLINE_RGBA), 3.0, Qt.PenStyle.SolidLine)
-        outline_pen.setCosmetic(True)
-        outline_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        outline_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-        line_pen = QPen(QColor(*EARTH_GUIDE_LINE_RGBA), 1.3, Qt.PenStyle.SolidLine)
+        line_color = QColor(*TERRAIN_HORIZON_LINE_COLOR)
+        line_color.setAlphaF(terrain_horizon_line_alpha(terrain_horizon_opacity))
+        line_pen = QPen(line_color, 1.5, Qt.PenStyle.SolidLine)
         line_pen.setCosmetic(True)
         line_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         line_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
@@ -415,8 +413,6 @@ def draw_earth_guide(
                 if len(screen_points) < 2:
                     continue
                 poly = QPolygonF(screen_points)
-                painter.setPen(outline_pen)
-                painter.drawPolyline(poly)
                 painter.setPen(line_pen)
                 painter.drawPolyline(poly)
     finally:
