@@ -475,7 +475,7 @@ def test_jump_to_satellite_target_uses_cached_satellite_records_below_horizon(
         ),
     )
 
-    assert dummy.viewer_data.view_center == (0.0, 123.0)
+    assert dummy.viewer_data.view_center == (-5.0, 123.0)
     assert dummy.state.jump_highlight_name == "ISS"
     assert dummy.state.jump_highlight_altaz == (-12.0, 123.0)
     dummy.request_sky_data_update.assert_called_once()
