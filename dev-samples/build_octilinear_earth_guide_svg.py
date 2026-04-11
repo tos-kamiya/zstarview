@@ -28,6 +28,13 @@ from typing import Any, Callable, Iterable
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_OUTPUT = REPO_ROOT / "dev-samples" / "octilinear_earth_guide.svg"
+DEFAULT_SIMPLIFY_DEG = 2.0
+LARGE_RING_AREA_DEG2 = 200.0
+LARGE_RING_MAX_SIMPLIFY_DEG = 1.8
+SMALL_RING_AREA_DEG2 = 80.0
+SMALL_RING_MAX_SIMPLIFY_DEG = 1.4
+TINY_RING_AREA_DEG2 = 20.0
+TINY_RING_MAX_SIMPLIFY_DEG = 1.0
 
 
 @dataclass(frozen=True)
@@ -69,7 +76,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--simplify-deg",
         type=float,
-        default=1.8,
+        default=DEFAULT_SIMPLIFY_DEG,
         help="Douglas-Peucker tolerance in lon/lat degrees.",
     )
     parser.add_argument(
@@ -275,6 +282,16 @@ def simplify_ring(
     if len(simplified) < min_points:
         return ()
     return simplified
+
+
+def adaptive_simplify_tolerance(area_deg2: float, base_tolerance: float) -> float:
+    if area_deg2 < TINY_RING_AREA_DEG2:
+        return min(base_tolerance, TINY_RING_MAX_SIMPLIFY_DEG)
+    if area_deg2 < SMALL_RING_AREA_DEG2:
+        return min(base_tolerance, SMALL_RING_MAX_SIMPLIFY_DEG)
+    if area_deg2 < LARGE_RING_AREA_DEG2:
+        return min(base_tolerance, LARGE_RING_MAX_SIMPLIFY_DEG)
+    return base_tolerance
 
 
 def _iter_lonlat_pairs(raw_points: list[Any]) -> Iterable[tuple[float, float]]:
@@ -732,9 +749,14 @@ def main() -> None:
     dropped_small = 0
     dropped_short = 0
     for ring in raw_rings:
+        raw_area = polygon_area_deg2(ring.points)
+        tolerance = adaptive_simplify_tolerance(
+            raw_area,
+            float(args.simplify_deg),
+        )
         simplified = simplify_ring(
             ring.points,
-            tolerance=float(args.simplify_deg),
+            tolerance=tolerance,
             min_points=int(args.min_points),
         )
         if not simplified:
