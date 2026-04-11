@@ -88,12 +88,13 @@ zstarview -Z E -A 25 Tokyo
 
 ## Highlights
 
+- Stars: the sky view shows stars from the selected catalog, with asterisms and other overlays layered on top.
 - Solar-system bodies: supports Sun, Moon, and major planets.
 - Deep-sky objects: named galaxies/open clusters/globular clusters are shown as soft blue extents.
 - Asterism overlay: popular line patterns are shown as dim guide lines, alongside other sky guides such as the never-rises region.
-- Satellite cloud imagery: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched overlay.
-- Aircraft overlay: nearby aircraft from OpenSky can be drawn on the sky view.
-- Terrain horizon and ground fill: Copernicus DEM data can be used to render the local terrain skyline and ground region.
+- Satellite cloud imagery and sky-color disc: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched overlay, with the sky-color disc still visible beneath the clouds.
+- Aircraft and artificial satellite overlays: nearby aircraft from OpenSky can be drawn on the sky view, and ISS can be drawn as a small purple cross marker between the planet and aircraft layers.
+- Terrain horizon and earth guide: Copernicus DEM data can be used to render the local terrain skyline and ground region, with a separate below-horizon continental guide layer for orientation.
 - Urban outline overlay: major rooflines are drawn for the current viewpoint, with optional distant skyscrapers in dense urban areas.
 - Flexible location input: start from a city, tower, mountain, lat/lon, or online place/station search.
 - Adjustable view center: change the view center from the CLI or with the arrow keys.

@@ -11,14 +11,14 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 
 **Features:**
 
+- **Stars**: the sky view shows stars from the selected catalog, with asterisms and other overlays layered on top.
 - **Solar-system bodies**: supports Sun, Moon, and major planets. Minor planets (asteroids) are not displayed yet.
 - **Deep-sky objects**: named galaxies/open clusters/globular clusters are shown as soft blue extents.
 - **Asterism overlay**: popular line patterns rather than formal IAU constellation boundaries are shown as dim ambient lines. Mouse-hovering a star in an asterism brightens the matching pattern and shows its label, with 3-second rotation when multiple asterisms share that star.
-- **Satellite cloud imagery**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay. Missing regions are shown in faint yellow when satellite coverage is partial. See [an example with partial coverage and yellow missing-data tint](docs/images/screenshot5.png).
-- **Aircraft overlay**: nearby aircraft from OpenSky can be drawn as purple predicted-motion polylines.
-- **Artificial satellite overlay**: ISS can be drawn as a small purple cross marker between the planet and aircraft layers.
+- **Satellite cloud imagery and sky-color disc**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay, and the sky-color disc remains visible beneath the clouds. Missing regions are shown in faint yellow when satellite coverage is partial. See [an example with partial coverage and yellow missing-data tint](docs/images/screenshot5.png).
+- **Aircraft and artificial satellite overlays**: nearby aircraft from OpenSky can be drawn as purple predicted-motion polylines, and ISS can be drawn as a small purple cross marker between the planet and aircraft layers.
 - **Urban outline overlay**: major rooflines are drawn as a white urban outline overlay for the current viewpoint. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 60km radius.
-- **Terrain horizon, earth guide, and ground fill**: Copernicus DEM data can be downloaded to render the local terrain skyline. A subtle ocher terrain line follows the observer's surroundings, and the disc is filled with a ground color below the terrain horizon, or below the geometric horizon when terrain is disabled. Beneath that horizon, an independent earth guide layer draws simplified continental outlines to help with orientation.
+- **Terrain horizon and earth guide**: Copernicus DEM data can be downloaded to render the local terrain skyline. A subtle ocher terrain line follows the observer's surroundings, and the disc is filled with a ground color below the terrain horizon, or below the geometric horizon when terrain is disabled. Beneath that horizon, an independent earth guide layer draws simplified continental outlines to help with orientation.
 - **Guides**: guide overlays include the never-rises region in red, direction labels around the horizon, and a zenith marker.
 - **Flexible location input**: specify the observer location through the CLI argument using a city name, tower name, mountain name, direct latitude/longitude input, supported Google Maps coordinate URLs, or online place/station search via Nominatim.
 - **Adjustable view center**: adjust the view center with CLI options `-A` (altitude) and `-Z` (azimuth), or with the arrow keys. During view changes or window resize, the app briefly switches to a simplified interaction mode to keep navigation responsive.
