@@ -40,35 +40,6 @@
 
 ## 4. 実装履歴
 
-### 2026-04-02
-
-- 都市アウトライン高さ基準の設計更新
-  - Overture 建物高は DEM 由来の絶対標高ではなく、地表基準の建物高として扱う方針を明文化した。
-  - 都市アウトラインの見かけ仰角は、建物 footprint 側 DEM 地盤標高と観測地点 DEM 地盤標高を加えた絶対標高差から計算する設計へ更新した。
-  - 現行実装は未追随であり、設計先行の変更として `docs/design.md` に反映した。
-
-### 2026-04-06
-
-- 地平線下 earth guide の初期導入
-  - まずは線のみで地平線下の大陸輪郭を描く earth guide を追加し、地形地平線とは別の補助レイヤーとして使い始めた。
-  - 当初は terrain horizon と色・opacity を共有する単純な構成にして、見た目の確認を優先した。
-  - 後続の調整で、観測者近傍の除外や GUI / CLI の独立制御へ発展していく前段階の実装である。
-
-### 2026-04-11
-
-- 地平線下地球ガイドの近傍除外設計
-  - 観測者足元の陸地は、自己帰属の難しさと閉ポリゴン化の破綻を避けるため、地球裏面ガイドから省略してよい方針を明文化した。
-  - 近傍除外は固定角ではなく、`observer_height_m` から求める地平線距離に比例して広がる地表距離ベースの dead zone として扱う方針にした。
-  - 追加の地平線近傍クリップは、地平線 dip と小さな余裕角に基づく二段目の絞り込みとして設計し、`docs/specification.md` と `docs/design.md` に反映した。
-
-### 2026-04-12
-
-- Earth guide の terrain horizon からの分離と README 反映
-  - `Earth Guide` を terrain horizon とは独立したレイヤーとして扱い、`--earth-guide-opacity` と GUI トグル `E` / `Earth Guide` メニューを追加した。
-  - `terrain_horizon_opacity` は DEM と地形地平線にのみ関与させ、Earth guide は別の opacity と cache key で制御するようにした。
-  - Earth guide の色は terrain horizon と同じ系統を保つため、別名定数 `EARTH_GUIDE_LINE_COLOR` を導入した。
-  - 利用者向けには README 英語版・日本語版へ反映し、`--earth-guide-opacity 0` で Earth guide のみを無効化できることを明記した。
-
 ### 2025-09-16
 
 - 実装履歴文書の前身を作成
@@ -492,6 +463,20 @@
   - CLI の直接座標入力で `lat, lon` と `@lat, lon` を受け付けるようにした。
   - Google Maps の右クリックメニューからコピーした `lat, lon` 文字列を、そのまま起動引数に貼り付けても解決できるようにした。
 
+### 2026-04-02
+
+- 都市アウトライン高さ基準の設計更新
+  - Overture 建物高は DEM 由来の絶対標高ではなく、地表基準の建物高として扱う方針を明文化した。
+  - 都市アウトラインの見かけ仰角は、建物 footprint 側 DEM 地盤標高と観測地点 DEM 地盤標高を加えた絶対標高差から計算する設計へ更新した。
+  - 現行実装は未追随であり、設計先行の変更として `docs/design.md` に反映した。
+
+### 2026-04-06
+
+- 地平線下 earth guide の初期導入
+  - まずは線のみで地平線下の大陸輪郭を描く earth guide を追加し、地形地平線とは別の補助レイヤーとして使い始めた。
+  - 当初は terrain horizon と色・opacity を共有する単純な構成にして、見た目の確認を優先した。
+  - 後続の調整で、観測者近傍の除外や GUI / CLI の独立制御へ発展していく前段階の実装である。
+
 ### 2026-04-11
 
 - 地形地平線と earth-guide のスタイル整理
@@ -500,3 +485,16 @@
   - earth-guide は terrain horizon と同じ RGB を使いつつ、前景線のみの単一ストロークへ整理した。
   - terrain horizon の見た目を earth-guide より少し強くするため、terrain 側の線幅を 2 割ほど増やした。
   - earth-guide は引き続きスクリーン空間で再帰分割し、遠景は粗く・近景は細かく見えるようにしている。
+
+- 地平線下地球ガイドの近傍除外設計
+  - 観測者足元の陸地は、自己帰属の難しさと閉ポリゴン化の破綻を避けるため、地球裏面ガイドから省略してよい方針を明文化した。
+  - 近傍除外は固定角ではなく、`observer_height_m` から求める地平線距離に比例して広がる地表距離ベースの dead zone として扱う方針にした。
+  - 追加の地平線近傍クリップは、地平線 dip と小さな余裕角に基づく二段目の絞り込みとして設計し、`docs/specification.md` と `docs/design.md` に反映した。
+
+### 2026-04-12
+
+- Earth guide の terrain horizon からの分離と README 反映
+  - `Earth Guide` を terrain horizon とは独立したレイヤーとして扱い、`--earth-guide-opacity` と GUI トグル `E` / `Earth Guide` メニューを追加した。
+  - `terrain_horizon_opacity` は DEM と地形地平線にのみ関与させ、Earth guide は別の opacity と cache key で制御するようにした。
+  - Earth guide の色は terrain horizon と同じ系統を保つため、別名定数 `EARTH_GUIDE_LINE_COLOR` を導入した。
+  - 利用者向けには README 英語版・日本語版へ反映し、`--earth-guide-opacity 0` で Earth guide のみを無効化できることを明記した。
