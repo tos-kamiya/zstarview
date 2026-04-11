@@ -210,8 +210,14 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
 
     SkyWindow._build_window_menu(dummy)
 
-    root_titles = [entry.title for entry in dummy.menu.entries if isinstance(entry, _DummyMenu)]
-    root_actions = [entry.text for entry in dummy.menu.entries if isinstance(entry, _DummyMenuAction) and not entry.separator]
+    root_titles = [
+        entry.title for entry in dummy.menu.entries if isinstance(entry, _DummyMenu)
+    ]
+    root_actions = [
+        entry.text
+        for entry in dummy.menu.entries
+        if isinstance(entry, _DummyMenuAction) and not entry.separator
+    ]
 
     assert root_titles == ["Search", "Layers", "View Direction"]
     assert root_actions[-2:] == ["Fullscreen", "Exit"]
@@ -259,8 +265,14 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
 
     SkyWindow._build_window_menu(dummy)
 
-    root_titles = [entry.title for entry in dummy.menu.entries if isinstance(entry, _DummyMenu)]
-    root_actions = [entry.text for entry in dummy.menu.entries if isinstance(entry, _DummyMenuAction) and not entry.separator]
+    root_titles = [
+        entry.title for entry in dummy.menu.entries if isinstance(entry, _DummyMenu)
+    ]
+    root_actions = [
+        entry.text
+        for entry in dummy.menu.entries
+        if isinstance(entry, _DummyMenuAction) and not entry.separator
+    ]
 
     assert root_titles == ["File", "Search", "Layers", "View Direction"]
     assert root_actions == []
@@ -322,7 +334,10 @@ def test_status_line_message_combines_cloud_and_terrain_segments() -> None:
 
     got = SkyWindowUpdatesMixin._status_line_message(dummy)
 
-    assert got == "Clouds [AUTO]: downloading | Terrain horizon: loading DEM... | Urban outline: downloading..."
+    assert (
+        got
+        == "Clouds [AUTO]: downloading | Terrain horizon: loading DEM... | Urban outline: downloading..."
+    )
 
 
 def test_toggle_terrain_horizon_respects_cli_lockout() -> None:
@@ -331,7 +346,9 @@ def test_toggle_terrain_horizon_respects_cli_lockout() -> None:
     dummy.terrain_horizon_opacity = 0.0
     dummy._terrain_horizon_opacity_when_enabled = 0.25
     dummy._action_toggle_terrain_horizon = _DummyAction(False)
-    dummy.start_background_terrain_horizon_update = lambda **_kwargs: (_ for _ in ()).throw(AssertionError("should not start"))
+    dummy.start_background_terrain_horizon_update = lambda **_kwargs: (
+        _ for _ in ()
+    ).throw(AssertionError("should not start"))
     dummy.update = lambda: (_ for _ in ()).throw(AssertionError("should not repaint"))
 
     SkyWindow.toggle_terrain_horizon(dummy)
@@ -369,7 +386,9 @@ def test_toggle_aircraft_uses_cached_state_without_fetch() -> None:
     )
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request")
-    dummy._enable_aircraft_layer = lambda **kwargs: calls.append(str(kwargs.get("reason")))
+    dummy._enable_aircraft_layer = lambda **kwargs: calls.append(
+        str(kwargs.get("reason"))
+    )
     dummy._stop_aircraft_timers = lambda: calls.append("stop")
     dummy.update = lambda: calls.append("update")
 
@@ -391,13 +410,17 @@ def test_start_background_aircraft_update_skips_when_layer_hidden() -> None:
     dummy.viewer_data = SimpleNamespace(location=(35.0, 135.0), observer_height_m=1.7)
     dummy._current_time_obj = lambda: "time-obj"
 
-    started = SkyWindowUpdatesMixin.start_background_aircraft_update(dummy, reason="manual")
+    started = SkyWindowUpdatesMixin.start_background_aircraft_update(
+        dummy, reason="manual"
+    )
 
     assert started is False
     assert controller_calls == []
 
 
-def test_on_aircraft_ready_saves_debug_snapshot_when_enabled(monkeypatch, tmp_path: Path) -> None:
+def test_on_aircraft_ready_saves_debug_snapshot_when_enabled(
+    monkeypatch, tmp_path: Path
+) -> None:
     refreshed_at = datetime(2026, 3, 24, 12, 34, 56, tzinfo=timezone.utc)
     dummy_image = _DummyImage()
     dummy = SimpleNamespace()
@@ -408,12 +431,18 @@ def test_on_aircraft_ready_saves_debug_snapshot_when_enabled(monkeypatch, tmp_pa
     dummy.request_client_update = lambda: calls.append("request")
     dummy._schedule_next_aircraft_refresh = lambda: calls.append("schedule")
     dummy.update = lambda: calls.append("update")
-    dummy.render_current_image = lambda **kwargs: calls.append(f"render:{kwargs.get('include_hud')}") or dummy_image
-    dummy._maybe_save_aircraft_debug_snapshot = lambda payload: SkyWindowUpdatesMixin._maybe_save_aircraft_debug_snapshot(
-        dummy,
-        payload,
+    dummy.render_current_image = lambda **kwargs: (
+        calls.append(f"render:{kwargs.get('include_hud')}") or dummy_image
     )
-    dummy._resolve_aircraft_debug_snapshot_dir = lambda: SkyWindowUpdatesMixin._resolve_aircraft_debug_snapshot_dir(dummy)
+    dummy._maybe_save_aircraft_debug_snapshot = lambda payload: (
+        SkyWindowUpdatesMixin._maybe_save_aircraft_debug_snapshot(
+            dummy,
+            payload,
+        )
+    )
+    dummy._resolve_aircraft_debug_snapshot_dir = lambda: (
+        SkyWindowUpdatesMixin._resolve_aircraft_debug_snapshot_dir(dummy)
+    )
     monkeypatch.setenv("ZSTARVIEW_DEBUG_SAVE_AIRCRAFT_READY_FRAME", str(tmp_path))
 
     SkyWindowUpdatesMixin._on_aircraft_ready(
@@ -430,7 +459,10 @@ def test_on_aircraft_ready_saves_debug_snapshot_when_enabled(monkeypatch, tmp_pa
     assert dummy.state.aircraft_overlay_points == ["p1"]
     assert calls == ["schedule", "request", "render:True"]
     assert len(dummy_image.saved_paths) == 1
-    assert dummy_image.saved_paths[0].name == "aircraft-ready-20260324T123456Z-opensky-cache.png"
+    assert (
+        dummy_image.saved_paths[0].name
+        == "aircraft-ready-20260324T123456Z-opensky-cache.png"
+    )
     assert dummy_image.saved_paths[0].parent == tmp_path
     assert dummy_image.saved_formats == ["PNG"]
 
@@ -445,12 +477,18 @@ def test_on_aircraft_ready_skips_debug_snapshot_when_disabled(monkeypatch) -> No
     dummy.request_client_update = lambda: calls.append("request")
     dummy._schedule_next_aircraft_refresh = lambda: calls.append("schedule")
     dummy.update = lambda: calls.append("update")
-    dummy.render_current_image = lambda **kwargs: (_ for _ in ()).throw(AssertionError("should not render"))
-    dummy._maybe_save_aircraft_debug_snapshot = lambda payload: SkyWindowUpdatesMixin._maybe_save_aircraft_debug_snapshot(
-        dummy,
-        payload,
+    dummy.render_current_image = lambda **kwargs: (_ for _ in ()).throw(
+        AssertionError("should not render")
     )
-    dummy._resolve_aircraft_debug_snapshot_dir = lambda: SkyWindowUpdatesMixin._resolve_aircraft_debug_snapshot_dir(dummy)
+    dummy._maybe_save_aircraft_debug_snapshot = lambda payload: (
+        SkyWindowUpdatesMixin._maybe_save_aircraft_debug_snapshot(
+            dummy,
+            payload,
+        )
+    )
+    dummy._resolve_aircraft_debug_snapshot_dir = lambda: (
+        SkyWindowUpdatesMixin._resolve_aircraft_debug_snapshot_dir(dummy)
+    )
     monkeypatch.delenv("ZSTARVIEW_DEBUG_SAVE_AIRCRAFT_READY_FRAME", raising=False)
 
     SkyWindowUpdatesMixin._on_aircraft_ready(
@@ -468,7 +506,9 @@ def test_on_aircraft_ready_skips_debug_snapshot_when_disabled(monkeypatch) -> No
     assert calls == ["schedule", "request"]
 
 
-def test_toggle_terrain_horizon_enables_opacity_and_requests_background_update() -> None:
+def test_toggle_terrain_horizon_enables_opacity_and_requests_background_update() -> (
+    None
+):
     dummy = SimpleNamespace()
     dummy._terrain_horizon_gui_allowed = True
     dummy.terrain_horizon_opacity = 0.0
@@ -477,7 +517,9 @@ def test_toggle_terrain_horizon_enables_opacity_and_requests_background_update()
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request")
     dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
-    dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(str(kwargs.get("reason")))
+    dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(
+        str(kwargs.get("reason"))
+    )
     dummy.update = lambda: calls.append("update")
 
     SkyWindow.toggle_terrain_horizon(dummy)
@@ -496,7 +538,9 @@ def test_toggle_urban_outline_enables_opacity_and_requests_background_update() -
     dummy._action_toggle_urban_outline = _DummyAction(False)
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request")
-    dummy.start_background_urban_outline_update = lambda **kwargs: calls.append(str(kwargs.get("reason")))
+    dummy.start_background_urban_outline_update = lambda **kwargs: calls.append(
+        str(kwargs.get("reason"))
+    )
     dummy.update = lambda: calls.append("update")
 
     SkyWindow.toggle_urban_outline(dummy)
@@ -523,7 +567,9 @@ def test_toggle_urban_outline_respects_cli_lockout() -> None:
     assert dummy._action_toggle_urban_outline.isChecked() is False
 
 
-def test_terrain_controller_treats_missing_ocean_tiles_as_empty_profile(tmp_path, monkeypatch) -> None:
+def test_terrain_controller_treats_missing_ocean_tiles_as_empty_profile(
+    tmp_path, monkeypatch
+) -> None:
     controller = TerrainHorizonController(cache_dir=tmp_path)
     ready_payloads: list[object] = []
     failed_payloads: list[object] = []
@@ -531,9 +577,13 @@ def test_terrain_controller_treats_missing_ocean_tiles_as_empty_profile(tmp_path
     controller.terrain_failed.connect(failed_payloads.append)
 
     def _raise_no_tiles(**_kwargs):
-        raise RuntimeError("No Copernicus DEM tiles were downloaded for the requested area.")
+        raise RuntimeError(
+            "No Copernicus DEM tiles were downloaded for the requested area."
+        )
 
-    monkeypatch.setattr(terrain_controller_module, "fetch_copernicus_dem", _raise_no_tiles)
+    monkeypatch.setattr(
+        terrain_controller_module, "fetch_copernicus_dem", _raise_no_tiles
+    )
 
     controller._run_update(lat=20.0, lon=-30.0, observer_height_m=1.7, reason="initial")
 
@@ -608,11 +658,17 @@ def test_sync_view_altitude_actions_disables_lower_at_horizon() -> None:
     assert dummy._action_lower_view.isEnabled() is False
 
 
-def test_jump_to_search_target_keeps_negative_target_alt_for_highlight(monkeypatch) -> None:
-    monkeypatch.setattr(window_module, "radec_to_altaz", lambda *_args, **_kwargs: (-12.5, 210.0))
+def test_jump_to_search_target_keeps_negative_target_alt_for_highlight(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        window_module, "radec_to_altaz", lambda *_args, **_kwargs: (-12.5, 210.0)
+    )
 
     dummy = SimpleNamespace()
-    dummy.viewer_data = SimpleNamespace(location=(35.0, 139.0), view_center=(20.0, 30.0))
+    dummy.viewer_data = SimpleNamespace(
+        location=(35.0, 139.0), view_center=(20.0, 30.0)
+    )
     dummy.state = SimpleNamespace(
         jump_highlight_name=None,
         jump_highlight_altaz=None,
@@ -636,7 +692,9 @@ def test_jump_to_search_target_keeps_negative_target_alt_for_highlight(monkeypat
     assert sync_calls == ["sync", "begin", "request", "request-client"]
 
 
-def test_rotate_view_in_orientation_mode_updates_render_center_without_full_refresh() -> None:
+def test_rotate_view_in_orientation_mode_updates_render_center_without_full_refresh() -> (
+    None
+):
     dummy = SimpleNamespace()
     dummy.viewer_data = SimpleNamespace(view_center=(20.0, 30.0))
     dummy.state = SimpleNamespace(render_view_center=(20.0, 30.0))
@@ -658,12 +716,18 @@ def test_rotate_view_in_orientation_mode_updates_render_center_without_full_refr
 
 def test_end_viewport_interaction_mode_requests_full_refresh() -> None:
     dummy = SimpleNamespace()
-    dummy.state = SimpleNamespace(viewport_interaction_mode=True, viewport_interaction_stars=object())
+    dummy.state = SimpleNamespace(
+        viewport_interaction_mode=True, viewport_interaction_stars=object()
+    )
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request-client")
     dummy.request_sky_data_update = lambda: calls.append("sky")
-    dummy.start_background_cloud_update = lambda **kwargs: calls.append(str(kwargs.get("reason")))
-    dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(str(kwargs.get("reason")))
+    dummy.start_background_cloud_update = lambda **kwargs: calls.append(
+        str(kwargs.get("reason"))
+    )
+    dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(
+        str(kwargs.get("reason"))
+    )
     dummy.update = lambda: calls.append("update")
 
     SkyWindow._end_viewport_interaction_mode(dummy)
@@ -673,7 +737,9 @@ def test_end_viewport_interaction_mode_requests_full_refresh() -> None:
     assert calls == ["sky", "view-change-idle", "view-change-idle", "request-client"]
 
 
-def test_begin_viewport_interaction_mode_clears_cloud_buffers_and_invalidates_old_render() -> None:
+def test_begin_viewport_interaction_mode_clears_cloud_buffers_and_invalidates_old_render() -> (
+    None
+):
     calls: list[str] = []
     dummy = SimpleNamespace()
     dummy.state = SimpleNamespace(viewport_interaction_mode=False)
@@ -685,9 +751,15 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_and_invalidates_ol
         request_id=42,
         missing_mask_key=99,
     )
-    dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate-compositor"))
-    dummy._cloud_controller = SimpleNamespace(invalidate_pending_render_results=lambda: calls.append("invalidate-cloud"))
-    dummy._viewport_interaction_idle_timer = SimpleNamespace(start=lambda: calls.append("start-timer"))
+    dummy._compositor = SimpleNamespace(
+        invalidate=lambda: calls.append("invalidate-compositor")
+    )
+    dummy._cloud_controller = SimpleNamespace(
+        invalidate_pending_render_results=lambda: calls.append("invalidate-cloud")
+    )
+    dummy._viewport_interaction_idle_timer = SimpleNamespace(
+        start=lambda: calls.append("start-timer")
+    )
 
     SkyWindow._begin_viewport_interaction_mode(dummy)
 
@@ -718,9 +790,11 @@ def test_handle_client_resize_preserves_visible_cloud_buffers() -> None:
     dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
     dummy.request_sky_data_update = lambda: calls.append("sky")
     dummy.request_client_update = lambda: calls.append("client")
-    dummy.start_background_cloud_update = lambda **kwargs: calls.append(str(kwargs.get("reason")))
-    dummy._begin_viewport_interaction_mode = lambda preserve_cloud_buffers=False: calls.append(
-        f"begin:{preserve_cloud_buffers}"
+    dummy.start_background_cloud_update = lambda **kwargs: calls.append(
+        str(kwargs.get("reason"))
+    )
+    dummy._begin_viewport_interaction_mode = lambda preserve_cloud_buffers=False: (
+        calls.append(f"begin:{preserve_cloud_buffers}")
     )
 
     SkyWindow._handle_client_resize(dummy, SimpleNamespace())
@@ -735,6 +809,29 @@ def test_handle_client_resize_preserves_visible_cloud_buffers() -> None:
     assert calls == ["begin:True", "invalidate", "sky", "client", "resize"]
 
 
+def test_cloud_failed_preserves_last_visible_cloud_frame() -> None:
+    calls: list[str] = []
+    dummy = SimpleNamespace()
+    dummy.state = SimpleNamespace(interaction_mode=False)
+    dummy.cloud_state = SimpleNamespace(
+        image=object(),
+        missing_mask=object(),
+        cloud_amount_field=object(),
+        banner_text=None,
+        set_error_banner=lambda text: calls.append(f"banner:{text}"),
+    )
+    dummy._safe_request_cloud_repaint = lambda: calls.append("repaint")
+
+    SkyWindowUpdatesMixin._on_cloud_failed(
+        dummy, {"banner": "Clouds: temporary failure"}
+    )
+
+    assert dummy.cloud_state.image is not None
+    assert dummy.cloud_state.missing_mask is not None
+    assert dummy.cloud_state.cloud_amount_field is not None
+    assert calls == ["banner:Clouds: temporary failure", "repaint"]
+
+
 def test_discard_stale_disc_images_clears_cached_sky_and_cloud_buffers() -> None:
     compositor_calls: list[str] = []
     dummy = SimpleNamespace()
@@ -747,7 +844,9 @@ def test_discard_stale_disc_images_clears_cached_sky_and_cloud_buffers() -> None
         request_id=42,
         missing_mask_key=99,
     )
-    dummy._compositor = SimpleNamespace(invalidate=lambda: compositor_calls.append("invalidate"))
+    dummy._compositor = SimpleNamespace(
+        invalidate=lambda: compositor_calls.append("invalidate")
+    )
 
     SkyWindow._discard_stale_disc_images(dummy)
 

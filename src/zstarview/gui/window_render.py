@@ -18,11 +18,13 @@ from ..render.pipeline import (
     RenderStyle,
     compute_star_render_surface_size,
     render_base_scene_into_painter,
+    render_fast_overlay_layers_into_painter,
     render_hud_overlay_into_painter,
 )
 from ..types import CelestialData, ScreenGeometry, ViewerData
 
 logger = logging.getLogger(__name__)
+
 
 class SkyWindowRenderMixin:
     def _render_cache_stamp(self, value: Any) -> Any:
@@ -38,8 +40,9 @@ class SkyWindowRenderMixin:
         geometry: ScreenGeometry,
         celestial_data: CelestialData,
         render_viewer: ViewerData,
+        include_fast_overlays: bool = True,
     ) -> tuple[Any, ...]:
-        return (
+        key_parts: list[Any] = [
             int(self.client_width()),
             int(self.client_height()),
             tuple(geometry.center),
@@ -63,8 +66,6 @@ class SkyWindowRenderMixin:
             round(float(self.vmag_limit), 3),
             round(float(self.sky_disc_alpha), 3),
             round(float(self.cloud_disc_alpha), 3),
-            round(float(getattr(self, "satellite_opacity", 0.0)), 3),
-            round(float(getattr(self, "aircraft_opacity", 0.0)), 3),
             round(float(self.terrain_horizon_opacity), 3),
             round(float(self.urban_outline_opacity), 3),
             bool(getattr(self, "show_urban_outline_layer", True)),
@@ -77,9 +78,19 @@ class SkyWindowRenderMixin:
             else int(self.cloud_state.cloud_amount_field.source_cache_key),
             self._render_cache_stamp(self.state.terrain_horizon_profile),
             self._render_cache_stamp(self.state.urban_outlines),
-            self._render_cache_stamp(getattr(self.state, "satellite_overlay_points", None)),
-            self._render_cache_stamp(self.state.aircraft_overlay_points),
-        )
+        ]
+        if include_fast_overlays:
+            key_parts.extend(
+                [
+                    round(float(getattr(self, "satellite_opacity", 0.0)), 3),
+                    round(float(getattr(self, "aircraft_opacity", 0.0)), 3),
+                    self._render_cache_stamp(
+                        getattr(self.state, "satellite_overlay_points", None)
+                    ),
+                    self._render_cache_stamp(self.state.aircraft_overlay_points),
+                ]
+            )
+        return tuple(key_parts)
 
     def _draw_cached_frame(
         self,
@@ -87,8 +98,25 @@ class SkyWindowRenderMixin:
         frame_key: tuple[Any, ...],
         render_fn: Any,
     ) -> None:
-        frame_cache_key = getattr(self, "_frame_cache_key", None)
-        frame_cache_image = cast(QImage | None, getattr(self, "_frame_cache_image", None))
+        frame_cache_image = SkyWindowRenderMixin._render_cached_frame_image(
+            self,
+            frame_key=frame_key,
+            render_fn=render_fn,
+            cache_key_attr="_frame_cache_key",
+            cache_image_attr="_frame_cache_image",
+        )
+        painter.drawImage(0, 0, frame_cache_image)
+
+    def _render_cached_frame_image(
+        self,
+        *,
+        frame_key: tuple[Any, ...],
+        render_fn: Any,
+        cache_key_attr: str,
+        cache_image_attr: str,
+    ) -> QImage:
+        frame_cache_key = getattr(self, cache_key_attr, None)
+        frame_cache_image = cast(QImage | None, getattr(self, cache_image_attr, None))
         if frame_cache_key != frame_key or frame_cache_image is None:
             frame = QImage(
                 self.client_size(),
@@ -102,10 +130,120 @@ class SkyWindowRenderMixin:
                 render_fn(frame_painter)
             finally:
                 frame_painter.end()
-            self._frame_cache_image = frame
-            self._frame_cache_key = frame_key
-            frame_cache_image = frame
-        painter.drawImage(0, 0, cast(QImage, frame_cache_image))
+            setattr(self, cache_image_attr, frame)
+            setattr(self, cache_key_attr, frame_key)
+            return frame
+        return cast(QImage, frame_cache_image)
+
+    def _present_frame_cache_key(
+        self,
+        *,
+        base_frame_key: tuple[Any, ...],
+        hud: RenderHudState,
+    ) -> tuple[Any, ...]:
+        mouse_pos = hud.mouse_pos
+        mouse_key = None
+        if mouse_pos is not None:
+            mouse_key = (int(mouse_pos.x()), int(mouse_pos.y()))
+        jump_key = (
+            self.state.jump_highlight_name,
+            self.state.jump_highlight_altaz,
+            round(float(self.state.jump_highlight_until_ms), 3),
+        )
+        return (
+            "present-frame",
+            base_frame_key,
+            round(float(getattr(self, "satellite_opacity", 0.0)), 3),
+            round(float(getattr(self, "aircraft_opacity", 0.0)), 3),
+            self._render_cache_stamp(getattr(self.state, "satellite_overlay_points", None)),
+            self._render_cache_stamp(self.state.aircraft_overlay_points),
+            mouse_key,
+            bool(hud.overlay_info_bottom_left),
+            bool(hud.viewport_interaction_mode),
+            hud.status_message,
+            jump_key,
+        )
+
+    def _render_present_frame_image(
+        self,
+        *,
+        base_frame_key: tuple[Any, ...],
+        geometry: ScreenGeometry,
+        scene: RenderSceneData,
+        style: RenderStyle,
+        hud: RenderHudState,
+        highlighted_object: Any | None,
+        highlighted_dso: Any | None,
+    ) -> QImage:
+        base_frame_image = SkyWindowRenderMixin._render_cached_frame_image(
+            self,
+            frame_key=base_frame_key,
+            render_fn=lambda frame_painter: render_base_scene_into_painter(
+                frame_painter,
+                geometry=geometry,
+                viewport_rect=self.client_rect(),
+                scene=scene,
+                style=style,
+                hud=hud,
+                compositor=self._compositor,
+                draw_fast_overlays=False,
+            ),
+            cache_key_attr="_frame_cache_key",
+            cache_image_attr="_frame_cache_image",
+        )
+        present_frame_key = SkyWindowRenderMixin._present_frame_cache_key(
+            self,
+            base_frame_key=base_frame_key,
+            hud=hud,
+        )
+        return SkyWindowRenderMixin._render_cached_frame_image(
+            self,
+            frame_key=present_frame_key,
+            render_fn=lambda frame_painter: SkyWindowRenderMixin._draw_present_frame_layers(
+                self,
+                frame_painter=frame_painter,
+                base_frame_image=base_frame_image,
+                geometry=geometry,
+                scene=scene,
+                style=style,
+                hud=hud,
+                highlighted_object=highlighted_object,
+                highlighted_dso=highlighted_dso,
+            ),
+            cache_key_attr="_present_frame_cache_key",
+            cache_image_attr="_present_frame_cache_image",
+        )
+
+    def _draw_present_frame_layers(
+        self,
+        *,
+        frame_painter: QPainter,
+        base_frame_image: QImage,
+        geometry: ScreenGeometry,
+        scene: RenderSceneData,
+        style: RenderStyle,
+        hud: RenderHudState,
+        highlighted_object: Any | None,
+        highlighted_dso: Any | None,
+    ) -> None:
+        frame_painter.drawImage(0, 0, base_frame_image)
+        if not hud.viewport_interaction_mode:
+            render_fast_overlay_layers_into_painter(
+                frame_painter,
+                geometry=geometry,
+                scene=scene,
+                style=style,
+            )
+        render_hud_overlay_into_painter(
+            frame_painter,
+            geometry=geometry,
+            viewport_rect=self.client_rect(),
+            scene=scene,
+            style=style,
+            hud=hud,
+            highlighted_object=highlighted_object,
+            highlighted_dso=highlighted_dso,
+        )
 
     def _viewer_data_for_render(self) -> ViewerData:
         return ViewerData(
@@ -175,9 +313,13 @@ class SkyWindowRenderMixin:
             vmag_limit=float(getattr(self, "vmag_limit", 6.0)),
             cloud_disc_alpha=float(getattr(self, "cloud_disc_alpha", 0.0)),
             satellite_opacity=float(getattr(self, "satellite_opacity", 0.0)),
-            terrain_horizon_opacity=float(getattr(self, "terrain_horizon_opacity", 0.0)),
+            terrain_horizon_opacity=float(
+                getattr(self, "terrain_horizon_opacity", 0.0)
+            ),
             urban_outline_opacity=float(getattr(self, "urban_outline_opacity", 0.2)),
-            show_urban_outline_layer=bool(getattr(self, "show_urban_outline_layer", True)),
+            show_urban_outline_layer=bool(
+                getattr(self, "show_urban_outline_layer", True)
+            ),
             aircraft_opacity=float(getattr(self, "aircraft_opacity", 1.0)),
             star_render_expected_width=int(self._star_render_expected_width),
         )
@@ -187,7 +329,9 @@ class SkyWindowRenderMixin:
         if hasattr(self, "_status_line_message"):
             status_message = self._status_line_message()
         mouse_pos = self.state.mouse_pos
-        overlay_info_bottom_left = bool(getattr(self.state, "overlay_info_bottom_left", False))
+        overlay_info_bottom_left = bool(
+            getattr(self.state, "overlay_info_bottom_left", False)
+        )
         if mouse_pos is not None:
             window_height = max(1, int(self.client_height()))
             upper_threshold = float(window_height) / 3.0
@@ -383,32 +527,20 @@ class SkyWindowRenderMixin:
             geometry=geometry,
             celestial_data=celestial_data,
             render_viewer=render_viewer,
+            include_fast_overlays=False,
         )
         self._update_star_render_stats(geometry)
         scene, style, hud = self._render_inputs(
             celestial_data=celestial_data,
             render_viewer=render_viewer,
         )
-        self._draw_cached_frame(
-            painter,
-            frame_key,
-            lambda frame_painter: render_base_scene_into_painter(
-                frame_painter,
-                geometry=geometry,
-                viewport_rect=self.client_rect(),
-                scene=scene,
-                style=style,
-                hud=hud,
-                compositor=self._compositor,
-            ),
-        )
-        render_hud_overlay_into_painter(
-            painter,
+        present_frame = self._render_present_frame_image(
+            base_frame_key=frame_key,
             geometry=geometry,
-            viewport_rect=self.client_rect(),
             scene=scene,
             style=style,
             hud=hud,
             highlighted_object=highlighted_object,
             highlighted_dso=highlighted_dso,
         )
+        painter.drawImage(0, 0, present_frame)

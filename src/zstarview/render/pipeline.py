@@ -123,6 +123,7 @@ def render_base_scene_into_painter(
     style: RenderStyle,
     hud: RenderHudState,
     compositor: Any,
+    draw_fast_overlays: bool = True,
 ) -> None:
     _clear_background_layer(painter, viewport_rect)
     _draw_background_layer(
@@ -132,11 +133,11 @@ def render_base_scene_into_painter(
         scene=scene,
         style=style,
     )
-    sky_cloud_style = replace(style, cloud_disc_alpha=0.0) if hud.viewport_interaction_mode else style
+    sky_cloud_style = (
+        replace(style, cloud_disc_alpha=0.0) if hud.viewport_interaction_mode else style
+    )
     sky_cloud_scene = (
-        replace(scene, sky_disc_image=None)
-        if hud.viewport_interaction_mode
-        else scene
+        replace(scene, sky_disc_image=None) if hud.viewport_interaction_mode else scene
     )
     _draw_sky_cloud_layers(
         painter,
@@ -188,6 +189,40 @@ def render_base_scene_into_painter(
         enlarge_moon=bool(style.enlarge_moon),
         label_candidates=label_candidates,
     )
+    if draw_fast_overlays:
+        _draw_satellite_layer(
+            painter,
+            geometry=geometry,
+            scene=scene,
+            style=style,
+            label_candidates=label_candidates,
+        )
+        _draw_aircraft_layer(
+            painter,
+            geometry=geometry,
+            scene=scene,
+            style=style,
+            label_candidates=label_candidates,
+        )
+    _draw_label_layer(
+        painter,
+        style=style,
+        label_candidates=label_candidates,
+    )
+
+
+def render_fast_overlay_layers_into_painter(
+    painter: QPainter,
+    *,
+    geometry: ScreenGeometry,
+    scene: RenderSceneData,
+    style: RenderStyle,
+) -> None:
+    """Draw dynamic satellite/aircraft overlays and their labels."""
+    if style.satellite_opacity <= 0.0 and style.aircraft_opacity <= 0.0:
+        return
+
+    label_candidates: list[dict[str, Any]] = []
     _draw_satellite_layer(
         painter,
         geometry=geometry,
@@ -202,11 +237,14 @@ def render_base_scene_into_painter(
         style=style,
         label_candidates=label_candidates,
     )
-    _draw_label_layer(
-        painter,
-        style=style,
-        label_candidates=label_candidates,
-    )
+    if label_candidates:
+        _draw_label_layer(
+            painter,
+            style=style,
+            label_candidates=label_candidates,
+        )
+
+
 def render_hud_overlay_into_painter(
     painter: QPainter,
     *,
@@ -384,7 +422,9 @@ def _draw_sky_cloud_layers(
         cloud_amount_field=scene.cloud_amount_field,
         missing_mask=scene.cloud_missing_mask,
         terrain_profile_altaz=(
-            scene.terrain_horizon_profile if style.terrain_horizon_opacity > 0.0 else None
+            scene.terrain_horizon_profile
+            if style.terrain_horizon_opacity > 0.0
+            else None
         ),
         terrain_horizon_opacity=style.terrain_horizon_opacity,
         content_fov_deg=_content_fov_deg(scene),
@@ -549,7 +589,9 @@ def _draw_star_layer(
             scene.viewer,
             style.star_base_radius,
             visibility_boost=style.star_visibility_boost,
-            draw_vmag_limit=draw_vmag_limit if draw_vmag_limit is not None else style.vmag_limit,
+            draw_vmag_limit=draw_vmag_limit
+            if draw_vmag_limit is not None
+            else style.vmag_limit,
             viewport_size=(win_w, win_h),
             content_fov_deg=content_fov_deg,
         )
@@ -576,7 +618,9 @@ def _draw_star_layer(
         scene.viewer,
         style.star_base_radius,
         visibility_boost=style.star_visibility_boost,
-        draw_vmag_limit=draw_vmag_limit if draw_vmag_limit is not None else style.vmag_limit,
+        draw_vmag_limit=draw_vmag_limit
+        if draw_vmag_limit is not None
+        else style.vmag_limit,
         viewport_size=(low_w, low_h),
         content_fov_deg=content_fov_deg,
     )
