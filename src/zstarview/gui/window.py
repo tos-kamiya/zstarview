@@ -64,6 +64,7 @@ from ..paths import (
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
     CLOUD_MISSING_TINT_RGBA,
+    OBSERVER_MIN_ALT_DEG,
 )
 from ..config import load_last_window_geometry, save_last_window_geometry
 from ..location_resolver import project_place_target_to_altaz, search_place_candidates
@@ -107,7 +108,6 @@ logger = logging.getLogger(__name__)
 
 WindowGeometryArg = Union[str, Tuple[int, int, int, int]]
 DEFAULT_CLOUD_ALT_MIN_DEG = 1.0
-from ..paths import OBSERVER_MIN_ALT_DEG
 
 
 def _clamp_window_geometry_to_screen(
