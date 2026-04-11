@@ -210,6 +210,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `--sixel` 出力が失敗しても、ファイル保存済みなら警告扱いで成功終了としてよい。
 - SIXEL 変換は、一時 PNG ファイルを経由せず、`QImage` を `QBuffer` 等で PNG bytes 化して `img2sixel -` の stdin へ流すパイプ方式を前提とする。
 - `--sixel` 指定時は、重い初期化やレイヤー取得へ進む前に `shutil.which("img2sixel")` で存在確認を行い、見つからない場合は明示エラーで終了する。
+- `--sixel` 指定時は、`lsix` と同様に `/dev/tty` へ `ESC[c` を送り、応答の device attributes に `4` が含まれる場合だけ SIXEL 対応とみなす。応答がない、または `4` を含まない場合は明示エラーで終了する。
 - `--output -` は PNG bytes を stdout へ直接流す用途とし、stdout を SIXEL 出力でも使う `--sixel` とは併用不可とする。
 - `opacity == 0` で無効化されたレイヤーは、取得キュー自体に積まず、layer timeout の待機対象からも外す。
 - 実装では `SkyWindow` と GUI controller 群には依存せず、sky/cloud/terrain/urban/aircraft を同期的に順番に取得してから、shared pipeline で `QImage` へ 1 回だけ描画して保存する。

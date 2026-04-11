@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from zstarview.__about__ import __version__
 from zstarview.cli.args import parse_export_image_args
 
 
@@ -32,6 +33,16 @@ def test_parse_export_image_args_accepts_shared_and_export_specific_options() ->
     assert args.allow_partial_data is True
     assert args.output == "out.png"
     assert args.sixel is False
+
+
+def test_parse_export_image_args_supports_version_option(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with pytest.raises(SystemExit):
+        parse_export_image_args(["--version"])
+
+    captured = capsys.readouterr()
+    assert __version__ in captured.out
 
 
 def test_parse_export_image_args_accepts_sixel_without_output() -> None:
@@ -90,7 +101,9 @@ def test_parse_export_image_args_accepts_print_cache_dir_without_output() -> Non
     assert args.print_cache_dir is True
 
 
-def test_parse_export_image_args_rejects_skyscraper_radius_smaller_than_base_radius() -> None:
+def test_parse_export_image_args_rejects_skyscraper_radius_smaller_than_base_radius() -> (
+    None
+):
     with pytest.raises(SystemExit):
         parse_export_image_args(
             [

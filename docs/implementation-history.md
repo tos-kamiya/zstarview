@@ -498,3 +498,8 @@
   - `terrain_horizon_opacity` は DEM と地形地平線にのみ関与させ、Earth guide は別の opacity と cache key で制御するようにした。
   - Earth guide の色は terrain horizon と同じ系統を保つため、別名定数 `EARTH_GUIDE_LINE_COLOR` を導入した。
   - 利用者向けには README 英語版・日本語版へ反映し、`--earth-guide-opacity 0` で Earth guide のみを無効化できることを明記した。
+
+- `zstarview-export-image` の SIXEL 端末可否チェック強化
+  - `--sixel` 指定時に `img2sixel` の存在確認に加えて、`lsix` と同様の device attributes 問い合わせ (`ESC[c`) を行うようにした。
+  - 応答に SIXEL 示唆の `4` が含まれない端末では、重い初期化やレイヤー取得へ進む前に明示エラーで終了するようにした。
+  - 仕様文書と内部設計に端末可否チェックの前提を追記し、export-image の単体テストも追加した。

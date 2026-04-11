@@ -3,7 +3,9 @@ from __future__ import annotations
 from datetime import timezone
 import logging
 import math
+import os
 import shutil
+import select
 import subprocess
 import sys
 import time
@@ -14,7 +16,16 @@ import numpy as np
 from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QPoint, QRect
 from PySide6.QtGui import QFont, QFontDatabase, QImage, QPainter
 
-from ..aircraft import build_observer_bbox, fetch_cached_opensky_states, project_aircraft_snapshots
+try:
+    import termios
+except ImportError:  # pragma: no cover - non-Unix fallback
+    termios = None  # type: ignore[assignment]
+
+from ..aircraft import (
+    build_observer_bbox,
+    fetch_cached_opensky_states,
+    project_aircraft_snapshots,
+)
 from ..overlay_time import classify_target_time, overlay_availability_for_delta
 from ..satellites import project_satellite_records, resolve_satellite_elements_for_time
 from ..astro import _starfield_load
@@ -135,7 +146,9 @@ def _verify_ephemeris_for_export() -> None:
         )
         raise LaunchSetupError() from exc
     except Exception as exc:
-        logger.error("Unexpected ephemeris load failure for %s: %s", EPHEMERIS_FILENAME, exc)
+        logger.error(
+            "Unexpected ephemeris load failure for %s: %s", EPHEMERIS_FILENAME, exc
+        )
         raise LaunchSetupError() from exc
     logger.info("Ephemeris ready: %s", EPHEMERIS_FILENAME)
 
@@ -159,7 +172,9 @@ def _timed_out(deadline: float | None) -> bool:
 
 def _build_window_inputs_from_args(
     args: object,
-) -> tuple[PreparedWindowCatalogs, ViewerData, SkyWindowUserOptions, SkyWindowRuntimeOptions]:
+) -> tuple[
+    PreparedWindowCatalogs, ViewerData, SkyWindowUserOptions, SkyWindowRuntimeOptions
+]:
     try:
         city = resolve_launch_location(
             getattr(args, "city", ""),
@@ -184,7 +199,10 @@ def _build_window_inputs_from_args(
     dso_catalog = _load_dso_catalog_for_export()
     _verify_ephemeris_for_export()
 
-    view_center = (getattr(args, "view_center_alt", 90.0), getattr(args, "view_center_az", 180.0))
+    view_center = (
+        getattr(args, "view_center_alt", 90.0),
+        getattr(args, "view_center_az", 180.0),
+    )
     view_center = (min(90.0, max(-5.0, view_center[0])), view_center[1] % 360.0)
     cloud_stripe_mode, cloud_stripe_count, cloud_stripe_width = getattr(
         args,
@@ -192,8 +210,12 @@ def _build_window_inputs_from_args(
         ("width", 50, 0.85),
     )
     visual_preset = getattr(args, "theme", "night")
-    star_visibility_boost = 1.12 if visual_preset == "white" else 1.05 if visual_preset == "day" else 1.0
-    vmag_brightness_scale = -math.log10(getattr(args, "vmag_brightness_multiplier", 2.5))
+    star_visibility_boost = (
+        1.12 if visual_preset == "white" else 1.05 if visual_preset == "day" else 1.0
+    )
+    vmag_brightness_scale = -math.log10(
+        getattr(args, "vmag_brightness_multiplier", 2.5)
+    )
 
     catalogs = prepare_window_catalogs(
         star_catalog,
@@ -218,11 +240,21 @@ def _build_window_inputs_from_args(
         sky_disc_alpha=getattr(args, "sky_opacity", 0.15),
         cloud_disc_alpha=(
             0.0
-            if (not overlay_availability.cloud) or cloud_stripe_count == 0 or cloud_stripe_width == 0.0
+            if (not overlay_availability.cloud)
+            or cloud_stripe_count == 0
+            or cloud_stripe_width == 0.0
             else getattr(args, "cloud_opacity", 0.075)
         ),
-        satellite_opacity=(getattr(args, "satellite_opacity", 0.5) if overlay_availability.satellite else 0.0),
-        aircraft_opacity=(getattr(args, "aircraft_opacity", 0.5) if overlay_availability.aircraft else 0.0),
+        satellite_opacity=(
+            getattr(args, "satellite_opacity", 0.5)
+            if overlay_availability.satellite
+            else 0.0
+        ),
+        aircraft_opacity=(
+            getattr(args, "aircraft_opacity", 0.5)
+            if overlay_availability.aircraft
+            else 0.0
+        ),
         terrain_horizon_opacity=getattr(args, "terrain_horizon_opacity", 0.028),
         earth_guide_opacity=getattr(args, "earth_guide_opacity", 0.028),
         urban_outline_opacity=getattr(args, "urban_outline_opacity", 0.2),
@@ -237,10 +269,14 @@ def _build_window_inputs_from_args(
         show_guidelines_initial=getattr(args, "show_guidelines_initial", None),
         show_overlay_info_initial=getattr(args, "show_observation_info_initial", None),
         sky_disc_gui_allowed=getattr(args, "sky_opacity", 0.15) > 0.0,
-        cloud_gui_allowed=overlay_availability.cloud and getattr(args, "cloud_opacity", 0.075) > 0.0,
-        satellite_gui_allowed=overlay_availability.satellite and getattr(args, "satellite_opacity", 0.5) > 0.0,
-        aircraft_gui_allowed=overlay_availability.aircraft and getattr(args, "aircraft_opacity", 0.5) > 0.0,
-        terrain_horizon_gui_allowed=getattr(args, "terrain_horizon_opacity", 0.028) > 0.0,
+        cloud_gui_allowed=overlay_availability.cloud
+        and getattr(args, "cloud_opacity", 0.075) > 0.0,
+        satellite_gui_allowed=overlay_availability.satellite
+        and getattr(args, "satellite_opacity", 0.5) > 0.0,
+        aircraft_gui_allowed=overlay_availability.aircraft
+        and getattr(args, "aircraft_opacity", 0.5) > 0.0,
+        terrain_horizon_gui_allowed=getattr(args, "terrain_horizon_opacity", 0.028)
+        > 0.0,
         earth_guide_gui_allowed=getattr(args, "earth_guide_opacity", 0.028) > 0.0,
         urban_outline_gui_allowed=getattr(args, "urban_outline_opacity", 0.2) > 0.0,
     )
@@ -248,10 +284,14 @@ def _build_window_inputs_from_args(
         delta_t=delta_t,
         sky_update_interval=60,
         urban_outline_radius_km=getattr(args, "urban_outline_radius_km", 2.5),
-        urban_outline_skyscraper_radius_km=getattr(args, "urban_outline_skyscraper_radius_km", SKYSCRAPER_OUTER_RADIUS_KM),
+        urban_outline_skyscraper_radius_km=getattr(
+            args, "urban_outline_skyscraper_radius_km", SKYSCRAPER_OUTER_RADIUS_KM
+        ),
         urban_outline_min_height_m=getattr(args, "urban_outline_min_height_m", 0.0),
         urban_outline_feature_type=getattr(args, "urban_outline_feature_type", "both"),
-        urban_outline_skyscraper_only=bool(getattr(args, "urban_outline_skyscraper_only", False)),
+        urban_outline_skyscraper_only=bool(
+            getattr(args, "urban_outline_skyscraper_only", False)
+        ),
         cloud_stripe_style=(cloud_stripe_count, cloud_stripe_width),
         cloud_stripe_mode=cloud_stripe_mode,
         cloud_missing_tint_opacity=getattr(args, "cloud_missing_tint_opacity", 0.0),
@@ -271,7 +311,9 @@ def _load_fonts() -> tuple[QFont, QFont]:
     )
 
 
-def _build_compositor(runtime_options: SkyWindowRuntimeOptions, user_options: SkyWindowUserOptions) -> SkyCompositorCache:
+def _build_compositor(
+    runtime_options: SkyWindowRuntimeOptions, user_options: SkyWindowUserOptions
+) -> SkyCompositorCache:
     target_stripes, width_factor = runtime_options.cloud_stripe_style
     missing_tint_alpha = int(round(255.0 * runtime_options.cloud_missing_tint_opacity))
     missing_tint_rgba = (
@@ -314,16 +356,20 @@ def _fetch_cloud_layer(
         lat=float(viewer_data.lat_deg),
         lon=float(viewer_data.lon_deg),
     )
-    cloud_rgba, _meta, missing_mask, _coverage_ratio = clouddisc.render_from_source_with_coverage(
-        source=source,
-        lat=float(viewer_data.lat_deg),
-        lon=float(viewer_data.lon_deg),
-        alt=float(viewer_data.view_alt_deg),
-        az=float(viewer_data.view_az_deg),
-        radius_px=DEFAULT_CLOUD_BASE_SIZE,
-        edge_fov_deg=float(viewer_data.content_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-        mask_fov_deg=float(viewer_data.content_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-        cloud_shells_km=CLOUD_SHELLS_KM,
+    cloud_rgba, _meta, missing_mask, _coverage_ratio = (
+        clouddisc.render_from_source_with_coverage(
+            source=source,
+            lat=float(viewer_data.lat_deg),
+            lon=float(viewer_data.lon_deg),
+            alt=float(viewer_data.view_alt_deg),
+            az=float(viewer_data.view_az_deg),
+            radius_px=DEFAULT_CLOUD_BASE_SIZE,
+            edge_fov_deg=float(viewer_data.content_fov_deg)
+            + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+            mask_fov_deg=float(viewer_data.content_fov_deg)
+            + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+            cloud_shells_km=CLOUD_SHELLS_KM,
+        )
     )
     if _timed_out(deadline):
         raise TimeoutError("cloud timed out")
@@ -348,7 +394,10 @@ def _fetch_terrain_horizon_layer(
             cache_dir=Path(CACHE_PATH) / "copernicus-dem",
         )
     except RuntimeError as exc:
-        if str(exc) != "No Copernicus DEM tiles were downloaded for the requested area.":
+        if (
+            str(exc)
+            != "No Copernicus DEM tiles were downloaded for the requested area."
+        ):
             raise
         return []
     dem = GeoTiffDem(download.paths, default_elevation_m=0.0)
@@ -401,8 +450,10 @@ def _fetch_urban_outline_layer(
     if _timed_out(deadline):
         raise TimeoutError("urban timed out")
     derived_root_dir = Path(OVERTURE_DERIVED_ROOT_DIR)
-    required_feature_types = () if runtime_options.urban_outline_skyscraper_only else _required_feature_types(
-        runtime_options.urban_outline_feature_type
+    required_feature_types = (
+        ()
+        if runtime_options.urban_outline_skyscraper_only
+        else _required_feature_types(runtime_options.urban_outline_feature_type)
     )
     required_dirs: list[Path] = []
     for overture_feature_type in required_feature_types:
@@ -456,7 +507,9 @@ def _fetch_urban_outline_layer(
     skyscraper_derived_root = Path(OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR)
     skyscraper_dirs: list[Path] = []
     for tile in skyscraper_tiles:
-        derived_dir = skyscraper_tile_derived_dir(tile, derived_root_dir=skyscraper_derived_root)
+        derived_dir = skyscraper_tile_derived_dir(
+            tile, derived_root_dir=skyscraper_derived_root
+        )
         skyscraper_dirs.append(derived_dir)
         if derived_dir.exists():
             continue
@@ -468,7 +521,9 @@ def _fetch_urban_outline_layer(
                 tile.envelope.max_lat_deg,
             ),
             derived_root_dir=skyscraper_derived_root,
-            min_building_height_m=max(150.0, float(runtime_options.urban_outline_min_height_m)),
+            min_building_height_m=max(
+                150.0, float(runtime_options.urban_outline_min_height_m)
+            ),
             feature_type="building",
             fmt="geojsonseq",
             overturemaps_bin="overturemaps",
@@ -583,7 +638,9 @@ def _render_image(
     painter.setRenderHint(QPainter.Antialiasing)
     painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
     try:
-        geometry = render_geometry.get_screen_geometry(width, height, scene.viewer.view_alt_deg)
+        geometry = render_geometry.get_screen_geometry(
+            width, height, scene.viewer.view_alt_deg
+        )
         render_base_scene_into_painter(
             painter,
             geometry=geometry,
@@ -614,9 +671,19 @@ def _build_render_style(
 ) -> RenderStyle:
     show_dso = catalogs.dso_catalog_np is not None
     if user_options.show_dso_initial is not None:
-        show_dso = bool(user_options.show_dso_initial) and catalogs.dso_catalog_np is not None
-    show_asterisms = True if user_options.show_asterisms_initial is None else bool(user_options.show_asterisms_initial)
-    show_guidelines = True if user_options.show_guidelines_initial is None else bool(user_options.show_guidelines_initial)
+        show_dso = (
+            bool(user_options.show_dso_initial) and catalogs.dso_catalog_np is not None
+        )
+    show_asterisms = (
+        True
+        if user_options.show_asterisms_initial is None
+        else bool(user_options.show_asterisms_initial)
+    )
+    show_guidelines = (
+        True
+        if user_options.show_guidelines_initial is None
+        else bool(user_options.show_guidelines_initial)
+    )
     return RenderStyle(
         visual_preset=user_options.visual_preset,
         text_font=text_font,
@@ -648,6 +715,74 @@ def _require_img2sixel_binary() -> str:
         return executable
     logger.error("--sixel was requested, but 'img2sixel' was not found in PATH.")
     raise SystemExit(1)
+
+
+def _response_indicates_sixel_support(response: bytes) -> bool:
+    if not response.startswith(b"\x1b[") or not response.endswith(b"c"):
+        return False
+    for token in response[2:-1].split(b";"):
+        token = token.lstrip(b"?")
+        if token == b"4":
+            return True
+    return False
+
+
+def _require_sixel_terminal_support(timeout_seconds: float = 0.25) -> None:
+    if os.environ.get("TERM", "").startswith("yaft"):
+        return
+    if termios is None:
+        logger.error(
+            "--sixel was requested, but terminal control is unavailable on this platform."
+        )
+        raise SystemExit(1)
+    tty_fd: int | None = None
+    old_attrs = None
+    response = bytearray()
+    try:
+        tty_fd = os.open("/dev/tty", os.O_RDWR | os.O_NOCTTY)
+        old_attrs = termios.tcgetattr(tty_fd)
+        new_attrs = termios.tcgetattr(tty_fd)
+        new_attrs[3] &= ~(termios.ECHO | termios.ICANON)
+        new_attrs[6][termios.VMIN] = 0
+        new_attrs[6][termios.VTIME] = 0
+        termios.tcsetattr(tty_fd, termios.TCSANOW, new_attrs)
+        os.write(tty_fd, b"\x1b[c")
+        deadline = time.monotonic() + timeout_seconds
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            ready, _, _ = select.select([tty_fd], [], [], remaining)
+            if not ready:
+                break
+            chunk = os.read(tty_fd, 1024)
+            if not chunk:
+                break
+            response.extend(chunk)
+            if b"c" in chunk:
+                break
+    except OSError:
+        logger.error(
+            "--sixel was requested, but the terminal does not report SIXEL graphics support."
+        )
+        raise SystemExit(1)
+    finally:
+        if tty_fd is not None and old_attrs is not None:
+            try:
+                termios.tcsetattr(tty_fd, termios.TCSANOW, old_attrs)
+            except OSError:
+                pass
+        if tty_fd is not None:
+            try:
+                os.close(tty_fd)
+            except OSError:
+                pass
+
+    if not _response_indicates_sixel_support(bytes(response)):
+        logger.error(
+            "--sixel was requested, but the terminal does not report SIXEL graphics support."
+        )
+        raise SystemExit(1)
 
 
 def _encode_image_as_png_bytes(image: QImage) -> bytes:
@@ -733,9 +868,13 @@ def main() -> None:
             raise SystemExit(1)
     wants_sixel = bool(getattr(args, "sixel", False))
     img2sixel_bin = _require_img2sixel_binary() if wants_sixel else None
+    if wants_sixel:
+        _require_sixel_terminal_support()
 
     try:
-        catalogs, viewer_data, user_options, runtime_options = _build_window_inputs_from_args(args)
+        catalogs, viewer_data, user_options, runtime_options = (
+            _build_window_inputs_from_args(args)
+        )
     except LaunchSetupError:
         raise SystemExit(1)
 
@@ -752,7 +891,9 @@ def main() -> None:
 
     use_lod6_catalog = float(user_options.vmag_limit) <= 6.0
     star_catalog = catalogs.star_catalog_np
-    star_subset_indices = catalogs.star_catalog_lod6_indices if use_lod6_catalog else None
+    star_subset_indices = (
+        catalogs.star_catalog_lod6_indices if use_lod6_catalog else None
+    )
     star_vmag_limit = None if use_lod6_catalog else float(user_options.vmag_limit)
     sky_payload = compute_sky_snapshot(
         lat=float(viewer_data.lat_deg),
