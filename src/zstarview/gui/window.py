@@ -877,7 +877,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if self._action_raise_view is not None:
             self._action_raise_view.setEnabled(float(alt) < 90.0)
         if self._action_lower_view is not None:
-            self._action_lower_view.setEnabled(float(alt) > 0.0)
+            self._action_lower_view.setEnabled(float(alt) > -5.0)
 
     def client_width(self) -> int:
         if getattr(self, "_client_widget", None) is not None:
