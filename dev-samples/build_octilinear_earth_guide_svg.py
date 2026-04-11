@@ -82,7 +82,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--min-ring-area-deg2",
         type=float,
-        default=12.0,
+        default=8.0,
         help="Drop rings whose approximate lon/lat area is below this threshold.",
     )
     parser.add_argument(
@@ -301,7 +301,7 @@ def adaptive_min_ring_area(area_deg2: float, base_min_area_deg2: float) -> float
         return min(base_min_area_deg2, 4.0)
     if area_deg2 < LARGE_RING_AREA_DEG2:
         return min(base_min_area_deg2, 8.0)
-    return base_min_area_deg2
+    return min(base_min_area_deg2, 8.0)
 
 
 def _iter_lonlat_pairs(raw_points: list[Any]) -> Iterable[tuple[float, float]]:
