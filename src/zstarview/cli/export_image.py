@@ -224,6 +224,7 @@ def _build_window_inputs_from_args(
         satellite_opacity=(getattr(args, "satellite_opacity", 0.5) if overlay_availability.satellite else 0.0),
         aircraft_opacity=(getattr(args, "aircraft_opacity", 0.5) if overlay_availability.aircraft else 0.0),
         terrain_horizon_opacity=getattr(args, "terrain_horizon_opacity", 0.028),
+        earth_guide_opacity=getattr(args, "earth_guide_opacity", 0.028),
         urban_outline_opacity=getattr(args, "urban_outline_opacity", 0.2),
         ground_tint_opacity=getattr(args, "ground_tint_opacity", 0.1),
         enlarge_moon=bool(getattr(args, "enlarge_moon", False)),
@@ -240,6 +241,7 @@ def _build_window_inputs_from_args(
         satellite_gui_allowed=overlay_availability.satellite and getattr(args, "satellite_opacity", 0.5) > 0.0,
         aircraft_gui_allowed=overlay_availability.aircraft and getattr(args, "aircraft_opacity", 0.5) > 0.0,
         terrain_horizon_gui_allowed=getattr(args, "terrain_horizon_opacity", 0.028) > 0.0,
+        earth_guide_gui_allowed=getattr(args, "earth_guide_opacity", 0.028) > 0.0,
         urban_outline_gui_allowed=getattr(args, "urban_outline_opacity", 0.2) > 0.0,
     )
     runtime_options = prepare_window_runtime_options(
@@ -632,6 +634,7 @@ def _build_render_style(
         cloud_disc_alpha=float(user_options.cloud_disc_alpha),
         satellite_opacity=float(user_options.satellite_opacity),
         terrain_horizon_opacity=float(user_options.terrain_horizon_opacity),
+        earth_guide_opacity=float(user_options.earth_guide_opacity),
         urban_outline_opacity=float(user_options.urban_outline_opacity),
         show_urban_outline_layer=float(user_options.urban_outline_opacity) > 0.0,
         aircraft_opacity=float(user_options.aircraft_opacity),

@@ -313,12 +313,18 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             requested_aircraft_opacity if self._aircraft_toggle_supported else 0.0
         )
         self.terrain_horizon_opacity = user_options.terrain_horizon_opacity
+        self.earth_guide_opacity = user_options.earth_guide_opacity
         self.urban_outline_opacity = user_options.urban_outline_opacity
         self.ground_tint_opacity = user_options.ground_tint_opacity
         self._terrain_horizon_opacity_when_enabled = (
             user_options.terrain_horizon_opacity
             if user_options.terrain_horizon_opacity > 0.0
             else 0.25
+        )
+        self._earth_guide_opacity_when_enabled = (
+            user_options.earth_guide_opacity
+            if user_options.earth_guide_opacity > 0.0
+            else 0.028
         )
         self._urban_outline_opacity_when_enabled = (
             user_options.urban_outline_opacity
@@ -332,6 +338,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._terrain_horizon_gui_allowed = bool(
             user_options.terrain_horizon_gui_allowed
         )
+        self._earth_guide_gui_allowed = bool(user_options.earth_guide_gui_allowed)
         self._urban_outline_gui_allowed = bool(user_options.urban_outline_gui_allowed)
         self.show_urban_outline_layer: bool = self.urban_outline_opacity > 0.0
         self.enlarge_moon = user_options.enlarge_moon
@@ -420,6 +427,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._action_toggle_satellites: Optional[QAction] = None
         self._action_toggle_aircraft: Optional[QAction] = None
         self._action_toggle_terrain_horizon: Optional[QAction] = None
+        self._action_toggle_earth_guide: Optional[QAction] = None
         self._action_toggle_urban_outline: Optional[QAction] = None
         self._action_toggle_dso: Optional[QAction] = None
         self._action_toggle_asterisms: Optional[QAction] = None
@@ -558,6 +566,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self._action_toggle_terrain_horizon.setEnabled(
                 self._terrain_horizon_gui_allowed
             )
+        if self._action_toggle_earth_guide is not None:
+            self._action_toggle_earth_guide.setEnabled(self._earth_guide_gui_allowed)
         if self._action_toggle_sky_disc is not None:
             self._action_toggle_sky_disc.setEnabled(self._sky_disc_gui_allowed)
         if self._action_toggle_urban_outline is not None:
@@ -794,6 +804,17 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.display_menu.addAction(toggle_terrain_action)
         self.addAction(toggle_terrain_action)
         self._action_toggle_terrain_horizon = toggle_terrain_action
+        toggle_earth_guide_action = QAction("Earth Guide", self)
+        toggle_earth_guide_action.setCheckable(True)
+        toggle_earth_guide_action.setChecked(self.earth_guide_opacity > 0.0)
+        toggle_earth_guide_action.setShortcut(QKeySequence(Qt.Key.Key_E))
+        toggle_earth_guide_action.setShortcutContext(
+            Qt.ShortcutContext.WindowShortcut
+        )
+        toggle_earth_guide_action.triggered.connect(self.toggle_earth_guide)
+        self.display_menu.addAction(toggle_earth_guide_action)
+        self.addAction(toggle_earth_guide_action)
+        self._action_toggle_earth_guide = toggle_earth_guide_action
         toggle_urban_outline_action = QAction("Urban Outline", self)
         toggle_urban_outline_action.setCheckable(True)
         toggle_urban_outline_action.setChecked(self.urban_outline_opacity > 0.0)
@@ -1553,6 +1574,24 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.start_background_terrain_horizon_update(reason="toggle-on")
         self.request_client_update()
 
+    def toggle_earth_guide(self) -> None:
+        if not self._earth_guide_gui_allowed:
+            if self._action_toggle_earth_guide is not None:
+                self._action_toggle_earth_guide.setChecked(self.earth_guide_opacity > 0.0)
+            return
+
+        enable_earth_guide = self.earth_guide_opacity <= 0.0
+        self.earth_guide_opacity = (
+            self._earth_guide_opacity_when_enabled if enable_earth_guide else 0.0
+        )
+        if (
+            self._action_toggle_earth_guide is not None
+            and self._action_toggle_earth_guide.isChecked() != enable_earth_guide
+        ):
+            self._action_toggle_earth_guide.setChecked(enable_earth_guide)
+        self._compositor.invalidate()
+        self.request_client_update()
+
     def toggle_urban_outline(self) -> None:
         if not self._urban_outline_gui_allowed:
             if self._action_toggle_urban_outline is not None:
@@ -1650,6 +1689,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             event.accept()
         elif key == Qt.Key.Key_T:
             self.toggle_terrain_horizon()
+            event.accept()
+        elif key == Qt.Key.Key_E:
+            self.toggle_earth_guide()
             event.accept()
         elif key == Qt.Key.Key_U:
             self.toggle_urban_outline()

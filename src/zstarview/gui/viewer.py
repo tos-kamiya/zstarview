@@ -255,6 +255,7 @@ def main() -> None:
         satellite_opacity=args.satellite_opacity,
         aircraft_opacity=args.aircraft_opacity,
         terrain_horizon_opacity=args.terrain_horizon_opacity,
+        earth_guide_opacity=args.earth_guide_opacity,
         urban_outline_opacity=args.urban_outline_opacity,
         ground_tint_opacity=args.ground_tint_opacity,
         enlarge_moon=args.enlarge_moon,
@@ -271,6 +272,7 @@ def main() -> None:
         satellite_gui_allowed=args.satellite_opacity > 0.0,
         aircraft_gui_allowed=args.aircraft_opacity > 0.0,
         terrain_horizon_gui_allowed=args.terrain_horizon_opacity > 0.0,
+        earth_guide_gui_allowed=args.earth_guide_opacity > 0.0,
         urban_outline_gui_allowed=args.urban_outline_opacity > 0.0,
     )
     runtime_options = prepare_window_runtime_options(

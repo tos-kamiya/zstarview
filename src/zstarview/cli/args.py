@@ -459,6 +459,15 @@ def add_render_arguments(
         ),
     )
     parser.add_argument(
+        "--earth-guide-opacity",
+        type=float,
+        default=0.028,
+        help=(
+            "Opacity of the Earth guide line layer (0.0 - 1.0, default: 0.028). "
+            "Set to 0.0 to disable Earth guide drawing and lock the GUI toggle off for that session."
+        ),
+    )
+    parser.add_argument(
         "--urban-outline-opacity",
         type=float,
         default=0.2,
@@ -745,6 +754,7 @@ def _validate_dataset_query_compatibility(
             or has_non_default("aircraft_opacity")
             or has_non_default("satellite_opacity")
             or has_non_default("terrain_horizon_opacity")
+            or has_non_default("earth_guide_opacity")
             or has_non_default("urban_outline_opacity")
             or has_non_default("urban_outline_radius_km")
             or has_non_default("urban_outline_min_height_m")

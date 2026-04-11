@@ -656,6 +656,10 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 現在の観測地点と視線条件に対して投影済みの screen polyline / polygon 群
   - 最終合成用の bitmap cache または `QPainterPath`
   - 読込中状態やネットワーク取得状態は持たず、同梱 static data のみを前提としてよい
+- `EarthGuideState`
+  - Earth guide の表示強度
+  - GUI トグルの on/off 状態
+  - CLI で `--earth-guide-opacity` が `0` のときのロックアウト状態
 - 地球裏面ガイドの表示は、精密地図ではなく「利用者向け方位ガイド」であることを前提にしてよい。
 - 初期実装データは、大陸単位まで簡略化した閉ポリゴン集合でよいが、現在の同梱データは `build_octilinear_earth_guide_svg.py` で生成した runtime JSON を使う。
 - その生成は、GeoJSON の ring をまず Douglas-Peucker で簡略化し、その後 SVG 空間で octilinear 化する 2 段処理として扱ってよい。
@@ -675,6 +679,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - earth-guide の見かけ形状は、球面上の粗リングを観測者ローカルへ投影し、スクリーン空間で再帰分割して近傍だけ細かく、遠景は粗く描いてよい。
 - 再帰で得た短い断片は、連続するものだけ再結合して 1 本の polyline として描画してよい。
 - 小さい ring は、大きい ring より少し高い解像度を残してよい。特に台湾や UK などの島嶼が消えないよう、面積に応じて `2 / 4 / 8` のような適応的な簡略化と最小面積判定を使ってよい。
+- Earth guide は terrain horizon と独立した表示レイヤーとして扱い、`opacity == 0` のときは取得・計算・描画をスキップしてよい。
+- Earth guide を CLI で `0` にした場合は、そのセッションの GUI トグルをロックアウトしてよい。
 
 ### 5.6.2 近傍除外と地平線クリップ
 
@@ -959,7 +965,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - CLI で与えられた初期オプションは、起動後の GUI 状態の初期値になる。
 - ただし CLI で明示的に無効化した機能の一部は、セッション中の GUI 再有効化を禁止する。
 - 代表例が `--terrain-horizon-opacity 0` による地形地平線ロックアウトである。
-- `--sky-opacity 0`、`--cloud-opacity 0`、`--terrain-horizon-opacity 0`、`--urban-outline-opacity 0` は、そのセッションで各 GUI トグルをロックアウトする。
+- `--sky-opacity 0`、`--cloud-opacity 0`、`--terrain-horizon-opacity 0`、`--earth-guide-opacity 0`、`--urban-outline-opacity 0` は、そのセッションで各 GUI トグルをロックアウトする。
 
 ### 8.4 人工衛星レイヤーの更新粒度
 
