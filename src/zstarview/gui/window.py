@@ -798,18 +798,17 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         super().update()
 
     def _handle_client_resize(self, event: QResizeEvent) -> None:
-        self._begin_viewport_interaction_mode()
+        self._begin_viewport_interaction_mode(preserve_cloud_buffers=True)
         self._disc_generation = int(getattr(self, "_disc_generation", 0)) + 1
         if self._frameless_frame is None and self.menu_button is not None:
             button_size = self.menu_button.size()
             self.menu_button.move(self.client_width() - button_size.width(), 0)
             self._raise_overlay_widgets()
 
-        self._discard_stale_disc_images()
-
         # Invalidate the composition cache since the size has changed
         self._compositor.invalidate()
         self.request_sky_data_update()
+        self.request_client_update()
         self.start_background_cloud_update(reason="resize")
 
     def _discard_stale_disc_images(self) -> None:
@@ -844,23 +843,24 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.start_background_cloud_update(reason="view-change-idle")
         self.start_background_terrain_horizon_update(reason="view-change-idle")
 
-    def _begin_viewport_interaction_mode(self) -> None:
+    def _begin_viewport_interaction_mode(self, preserve_cloud_buffers: bool = False) -> None:
         self.state.viewport_interaction_mode = True
         cloud_state = getattr(self, "cloud_state", None)
         cleared_cloud = False
         if cloud_state is not None:
-            if getattr(cloud_state, "image", None) is not None:
-                cloud_state.image = None
-                cleared_cloud = True
-            if getattr(cloud_state, "missing_mask", None) is not None:
-                cloud_state.missing_mask = None
-                cleared_cloud = True
-            if getattr(cloud_state, "cloud_amount_field", None) is not None:
-                cloud_state.cloud_amount_field = None
-                cleared_cloud = True
-            cloud_state.render_key = None
-            cloud_state.request_id = None
-            cloud_state.missing_mask_key = None
+            if not preserve_cloud_buffers:
+                if getattr(cloud_state, "image", None) is not None:
+                    cloud_state.image = None
+                    cleared_cloud = True
+                if getattr(cloud_state, "missing_mask", None) is not None:
+                    cloud_state.missing_mask = None
+                    cleared_cloud = True
+                if getattr(cloud_state, "cloud_amount_field", None) is not None:
+                    cloud_state.cloud_amount_field = None
+                    cleared_cloud = True
+                cloud_state.render_key = None
+                cloud_state.request_id = None
+                cloud_state.missing_mask_key = None
         if cleared_cloud:
             self._compositor.invalidate()
         cloud_controller = getattr(self, "_cloud_controller", None)
