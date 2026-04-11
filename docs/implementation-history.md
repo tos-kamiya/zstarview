@@ -1,6 +1,6 @@
 # zstarview 実装履歴
 
-最終更新: 2026-04-11
+最終更新: 2026-04-12
 
 ## 1. この文書の位置づけ
 
@@ -53,6 +53,14 @@
   - 観測者足元の陸地は、自己帰属の難しさと閉ポリゴン化の破綻を避けるため、地球裏面ガイドから省略してよい方針を明文化した。
   - 近傍除外は固定角ではなく、`observer_height_m` から求める地平線距離に比例して広がる地表距離ベースの dead zone として扱う方針にした。
   - 追加の地平線近傍クリップは、地平線 dip と小さな余裕角に基づく二段目の絞り込みとして設計し、`docs/specification.md` と `docs/design.md` に反映した。
+
+### 2026-04-12
+
+- Earth guide の terrain horizon からの分離と README 反映
+  - `Earth Guide` を terrain horizon とは独立したレイヤーとして扱い、`--earth-guide-opacity` と GUI トグル `E` / `Earth Guide` メニューを追加した。
+  - `terrain_horizon_opacity` は DEM と地形地平線にのみ関与させ、Earth guide は別の opacity と cache key で制御するようにした。
+  - Earth guide の色は terrain horizon と同じ系統を保つため、別名定数 `EARTH_GUIDE_LINE_COLOR` を導入した。
+  - 利用者向けには README 英語版・日本語版へ反映し、`--earth-guide-opacity 0` で Earth guide のみを無効化できることを明記した。
 
 ### 2025-09-16
 
