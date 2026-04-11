@@ -34,7 +34,7 @@ LARGE_RING_MAX_SIMPLIFY_DEG = 1.8
 SMALL_RING_AREA_DEG2 = 80.0
 SMALL_RING_MAX_SIMPLIFY_DEG = 1.4
 TINY_RING_AREA_DEG2 = 20.0
-TINY_RING_MAX_SIMPLIFY_DEG = 1.0
+TINY_RING_MAX_SIMPLIFY_DEG = 0.8
 
 
 @dataclass(frozen=True)
@@ -292,6 +292,16 @@ def adaptive_simplify_tolerance(area_deg2: float, base_tolerance: float) -> floa
     if area_deg2 < LARGE_RING_AREA_DEG2:
         return min(base_tolerance, LARGE_RING_MAX_SIMPLIFY_DEG)
     return base_tolerance
+
+
+def adaptive_min_ring_area(area_deg2: float, base_min_area_deg2: float) -> float:
+    if area_deg2 < TINY_RING_AREA_DEG2:
+        return min(base_min_area_deg2, 2.0)
+    if area_deg2 < SMALL_RING_AREA_DEG2:
+        return min(base_min_area_deg2, 4.0)
+    if area_deg2 < LARGE_RING_AREA_DEG2:
+        return min(base_min_area_deg2, 8.0)
+    return base_min_area_deg2
 
 
 def _iter_lonlat_pairs(raw_points: list[Any]) -> Iterable[tuple[float, float]]:
@@ -762,7 +772,8 @@ def main() -> None:
         if not simplified:
             dropped_short += 1
             continue
-        if polygon_area_deg2(simplified) < float(args.min_ring_area_deg2):
+        min_ring_area = adaptive_min_ring_area(raw_area, float(args.min_ring_area_deg2))
+        if raw_area < min_ring_area:
             dropped_small += 1
             continue
         simplified_rings.append(Ring(points=simplified, source_name=ring.source_name))
