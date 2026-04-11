@@ -38,6 +38,9 @@ GUI_BUTTON_SIZE = 30
 WINDOW_WIDTH = 600
 WINDOW_HEIGHT = 600
 
+# Minimum observer altitude (degrees)
+OBSERVER_MIN_ALT_DEG = -5.0
+
 # UI constants
 TEXT_FONT_SIZE = 11
 STATUS_LINE_FONT_SIZE = 8
