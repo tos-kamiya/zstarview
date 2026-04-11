@@ -204,7 +204,7 @@ ECLIPTIC_COLOR = (236, 173, 2)
 
 CLOUD_UPDATE_INTERVAL = 10 * 60  # seconds
 
-CLOUD_SHELLS_KM = (6371.0 + 3.0, 6371.0 + 8.0)  # representative cloud shells above Earth's surface
+CLOUD_SHELLS_KM = (6371.0 + 3.0, 6371.0 + 5.0, 6371.0 + 7.0)  # representative cloud shells above Earth's surface
 
 # Rendering / FOV
 FIELD_OF_VIEW_DEG = 100
