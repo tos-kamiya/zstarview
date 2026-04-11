@@ -8,7 +8,7 @@ from pathlib import Path
 
 import numpy as np
 from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen, QPolygonF
+from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy, is_in_fov
 from ..paths import EARTH_GUIDE_LAND_FILE, TERRAIN_HORIZON_LINE_COLOR
@@ -23,7 +23,6 @@ EARTH_GUIDE_DEAD_ZONE_MIN_KM = 20.0
 EARTH_GUIDE_DEAD_ZONE_MAX_KM = 80.0
 EARTH_GUIDE_DEAD_ZONE_SCALE = 0.25
 EARTH_GUIDE_HORIZON_MARGIN_DEG = 1.0
-EARTH_GUIDE_FILL_ALPHA_SCALE = 0.22
 EARTH_GUIDE_FOREGROUND_WIDTH = 1.5
 
 
@@ -106,18 +105,6 @@ def _surface_distance_km(point_xyz: np.ndarray, observer_up: np.ndarray) -> floa
     dot = float(np.dot(point_xyz, observer_up))
     dot = max(-1.0, min(1.0, dot))
     return (EARTH_MEAN_RADIUS_M / 1000.0) * math.acos(dot)
-
-
-def _fragment_fill_path(fragment: list[tuple[float, float]]) -> QPainterPath:
-    path = QPainterPath()
-    if len(fragment) < 3:
-        return path
-    first_x, first_y = fragment[0]
-    path.moveTo(QPointF(first_x, first_y))
-    for x, y in fragment[1:]:
-        path.lineTo(QPointF(x, y))
-    path.closeSubpath()
-    return path
 
 
 def _project_point_altaz(
@@ -460,10 +447,6 @@ def draw_earth_guide(
     painter.save()
     try:
         alpha = terrain_horizon_line_alpha(terrain_horizon_opacity)
-        fill_color = QColor(*TERRAIN_HORIZON_LINE_COLOR)
-        fill_color.setAlphaF(alpha * EARTH_GUIDE_FILL_ALPHA_SCALE)
-        fill_brush = fill_color
-
         line_color = QColor(*TERRAIN_HORIZON_LINE_COLOR)
         line_color.setAlphaF(alpha)
         line_pen = QPen(line_color, EARTH_GUIDE_FOREGROUND_WIDTH, Qt.PenStyle.SolidLine)
@@ -489,7 +472,6 @@ def draw_earth_guide(
                 if len(screen_points) < 2:
                     continue
                 poly = QPolygonF(screen_points)
-                painter.fillPath(_fragment_fill_path(fragment), fill_brush)
                 painter.setPen(line_pen)
                 painter.drawPolyline(poly)
     finally:
