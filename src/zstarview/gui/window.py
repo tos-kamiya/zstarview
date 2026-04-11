@@ -1106,7 +1106,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         # When jumping to a target, keep the jump highlight altitude as-reported
         # (may be negative), but clamp the actual view center to the horizon (0°)
         # so the view doesn't go below the horizon automatically.
-        new_alt = max(0.0, min(90.0, target_alt))
+        new_alt = max(-5.0, min(90.0, target_alt))
         new_az = target_az
         self.viewer_data.view_center = (new_alt, new_az)
         self._sync_view_altitude_actions()
