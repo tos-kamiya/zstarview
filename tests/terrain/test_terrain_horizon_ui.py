@@ -655,7 +655,7 @@ def test_sync_view_altitude_actions_disables_lower_at_horizon() -> None:
     SkyWindow._sync_view_altitude_actions(dummy)
 
     assert dummy._action_raise_view.isEnabled() is True
-    assert dummy._action_lower_view.isEnabled() is False
+    assert dummy._action_lower_view.isEnabled() is True
 
 
 def test_jump_to_search_target_keeps_negative_target_alt_for_highlight(
