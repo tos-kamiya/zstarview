@@ -27,7 +27,8 @@ from .types import CloudMeta, CloudSourceData, RenderKey, SourceKey, VisibilityE
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CLOUD_SHELLS_KM: tuple[float, ...] = (6371.0 + 3.0, 6371.0 + 8.0)
+DEFAULT_CLOUD_SHELLS_KM: tuple[float, ...] = (6371.0 + 3.0, 6371.0 + 5.0, 6371.0 + 7.0)
+DEFAULT_CLOUD_SHELL_WEIGHTS: tuple[float, ...] = (0.20, 0.60, 0.20)
 
 
 class CloudDisc:
@@ -212,7 +213,10 @@ class CloudDisc:
         cloud_shells_km: Sequence[float],
     ) -> Tuple[np.ndarray, CloudMeta, np.ndarray, float]:
         shell_radii_km = tuple(float(v) for v in cloud_shells_km) if cloud_shells_km else DEFAULT_CLOUD_SHELLS_KM
-        blend_weight = 1.0 / float(len(shell_radii_km))
+        if shell_radii_km == DEFAULT_CLOUD_SHELLS_KM:
+            blend_weights = DEFAULT_CLOUD_SHELL_WEIGHTS
+        else:
+            blend_weights = tuple(1.0 / float(len(shell_radii_km)) for _ in shell_radii_km)
         # Step 3: Create a sampler function: (lon, lat) -> Brightness Temperature [K]
         sampler = source.sampler
         if sampler is None:
@@ -313,7 +317,7 @@ class CloudDisc:
 
         # Step 7: Render each shell separately, then blend them with fixed weights.
         img_acc: np.ndarray | None = None
-        for bt, mask_inside in projected_layers:
+        for (bt, mask_inside), blend_weight in zip(projected_layers, blend_weights, strict=True):
             layer_img = convert_bt_to_rgba_image(bt, mask_inside, bt_warm, bt_cold).astype(np.float32)
             if img_acc is None:
                 img_acc = layer_img * blend_weight

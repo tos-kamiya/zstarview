@@ -5,7 +5,9 @@ from pathlib import Path
 import numpy as np
 
 from zstarview.clouddisc import CloudDisc, CloudDiscConfig
+from zstarview.clouddisc.core import DEFAULT_CLOUD_SHELLS_KM
 from zstarview.clouddisc.types import CloudMeta, CloudSourceData, SourceKey
+from zstarview.paths import CLOUD_SHELLS_KM
 
 
 def test_make_source_key_rounds_time_slot(tmp_path: Path) -> None:
@@ -67,6 +69,11 @@ def test_fetch_source_and_render_from_source_compose_current_render_flow(monkeyp
     assert img == "fake_img"
     assert meta == expected_meta
     assert calls == {"fetch": 1, "render": 1}
+
+
+def test_default_cloud_shells_use_weighted_blend() -> None:
+    assert CLOUD_SHELLS_KM == (6374.0, 6376.0, 6378.0)
+    assert DEFAULT_CLOUD_SHELLS_KM == CLOUD_SHELLS_KM
 
 
 def test_render_from_source_reuses_sampler_for_same_source(monkeypatch, tmp_path: Path) -> None:
@@ -178,13 +185,15 @@ def test_render_from_source_with_coverage_blends_multiple_shells(monkeypatch, tm
         return _sampler
 
     shell_masks = {
-        6374.0: np.array([[True, False], [True, False]], dtype=bool),
-        6379.0: np.array([[False, True], [False, True]], dtype=bool),
+        6374.0: np.array([[True, True], [True, True]], dtype=bool),
+        6376.0: np.array([[True, True], [True, True]], dtype=bool),
+        6378.0: np.array([[True, True], [True, True]], dtype=bool),
     }
+    shell_values = {6374.0: 6310.0, 6376.0: 6320.0, 6378.0: 6400.0}
 
     def fake_project(*, cloud_shell_km, **_kwargs):
         mask = shell_masks[float(cloud_shell_km)]
-        lon_grid = np.full(mask.shape, float(cloud_shell_km), dtype=np.float32)
+        lon_grid = np.full(mask.shape, shell_values[float(cloud_shell_km)], dtype=np.float32)
         lat_grid = np.zeros(mask.shape, dtype=np.float32)
         return lon_grid, lat_grid, mask
 
@@ -213,12 +222,12 @@ def test_render_from_source_with_coverage_blends_multiple_shells(monkeypatch, tm
         alt=45.0,
         az=180.0,
         radius_px=1,
-        cloud_shells_km=(6374.0, 6379.0),
+        cloud_shells_km=(6374.0, 6376.0, 6378.0),
     )
 
     assert float(coverage_ratio) == 1.0
     assert int(np.count_nonzero(missing_mask)) == 0
-    assert int(img[0, 0, 0]) == 37
-    assert int(img[0, 1, 0]) == 40
-    assert int(img[0, 0, 3]) == 100
-    assert int(img[0, 1, 3]) == 100
+    assert int(img[0, 0, 0]) == 34
+    assert int(img[0, 1, 0]) == 34
+    assert int(img[0, 0, 3]) == 200
+    assert int(img[0, 1, 3]) == 200
