@@ -5,11 +5,10 @@ import math
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Iterable
 
 import numpy as np
 from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
+from PySide6.QtGui import QColor, QPainter, QPainterPath, QPainterPathStroker, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy, is_in_fov
 from ..paths import EARTH_GUIDE_LAND_FILE, TERRAIN_HORIZON_LINE_COLOR
@@ -19,6 +18,16 @@ from .terrain import terrain_horizon_line_alpha
 
 
 EARTH_MEAN_RADIUS_M = 6_371_008.8
+
+EARTH_GUIDE_DEAD_ZONE_MIN_KM = 20.0
+EARTH_GUIDE_DEAD_ZONE_MAX_KM = 80.0
+EARTH_GUIDE_DEAD_ZONE_SCALE = 0.25
+EARTH_GUIDE_HORIZON_MARGIN_DEG = 1.0
+EARTH_GUIDE_FILL_WIDTH = 3.6
+EARTH_GUIDE_FILL_ALPHA_SCALE = 0.22
+EARTH_GUIDE_FOREGROUND_WIDTH = 1.5
+
+
 @dataclass(frozen=True)
 class EarthGuideRing:
     source_name: str
@@ -65,6 +74,54 @@ def _observer_basis(
     radius_scale = 1.0 + (max(0.0, float(observer_height_m)) / EARTH_MEAN_RADIUS_M)
     origin = up * radius_scale
     return origin, east, north, up
+
+
+def _observer_dead_zone_km(observer_height_m: float) -> float:
+    height_km = max(0.0, float(observer_height_m)) / 1000.0
+    horizon_km = math.sqrt(max(0.0, 2.0 * (EARTH_MEAN_RADIUS_M / 1000.0) * height_km))
+    return max(
+        EARTH_GUIDE_DEAD_ZONE_MIN_KM,
+        min(EARTH_GUIDE_DEAD_ZONE_SCALE * horizon_km, EARTH_GUIDE_DEAD_ZONE_MAX_KM),
+    )
+
+
+def _observer_horizon_dip_deg(observer_height_m: float) -> float:
+    height_m = max(0.0, float(observer_height_m))
+    if height_m <= 0.0:
+        return 0.0
+    ratio = EARTH_MEAN_RADIUS_M / (EARTH_MEAN_RADIUS_M + height_m)
+    return math.degrees(math.acos(max(-1.0, min(1.0, ratio))))
+
+
+def _observer_visible_altitude_limit_deg(
+    az_deg: float,
+    observer_height_m: float,
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+) -> float:
+    terrain_limit = _effective_visible_altitude_limit_deg(az_deg, terrain_profile_altaz)
+    horizon_limit = -(_observer_horizon_dip_deg(observer_height_m) + EARTH_GUIDE_HORIZON_MARGIN_DEG)
+    return min(terrain_limit, horizon_limit)
+
+
+def _surface_distance_km(point_xyz: np.ndarray, observer_up: np.ndarray) -> float:
+    dot = float(np.dot(point_xyz, observer_up))
+    dot = max(-1.0, min(1.0, dot))
+    return (EARTH_MEAN_RADIUS_M / 1000.0) * math.acos(dot)
+
+
+def _fragment_fill_path(fragment: list[tuple[float, float]]) -> QPainterPath:
+    path = QPainterPath()
+    if not fragment:
+        return path
+    first_x, first_y = fragment[0]
+    path.moveTo(QPointF(first_x, first_y))
+    for x, y in fragment[1:]:
+        path.lineTo(QPointF(x, y))
+    stroker = QPainterPathStroker()
+    stroker.setCapStyle(Qt.PenCapStyle.RoundCap)
+    stroker.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+    stroker.setWidth(EARTH_GUIDE_FILL_WIDTH)
+    return stroker.createStroke(path)
 
 
 def _project_point_altaz(
@@ -123,14 +180,6 @@ def _effective_visible_altitude_limit_deg(
     return terrain_limit
 
 
-def _signed_visible_distance_deg(
-    alt_deg: float,
-    az_deg: float,
-    terrain_profile_altaz: list[tuple[float, float]] | None,
-) -> float:
-    return float(alt_deg) - _effective_visible_altitude_limit_deg(az_deg, terrain_profile_altaz)
-
-
 def _interpolate_xyz_on_sphere(a: np.ndarray, b: np.ndarray, t: float) -> np.ndarray:
     point = ((1.0 - t) * a) + (t * b)
     norm = float(np.linalg.norm(point))
@@ -146,6 +195,8 @@ def _project_xyz_to_screen_point(
     east: np.ndarray,
     north: np.ndarray,
     up: np.ndarray,
+    observer_height_m: float,
+    dead_zone_km: float,
     geometry: ScreenGeometry,
     view_center: tuple[float, float],
     content_fov_deg: float,
@@ -159,7 +210,12 @@ def _project_xyz_to_screen_point(
         return None
     nx, ny = altaz_to_normalized_xy(alt_deg, az_deg, view_center)
     screen_xy = normalized_to_screen_xy(nx, ny, geometry)
-    visible = _signed_visible_distance_deg(alt_deg, az_deg, terrain_profile_altaz) <= 0.0
+    limit_deg = _observer_visible_altitude_limit_deg(
+        az_deg,
+        observer_height_m,
+        terrain_profile_altaz,
+    )
+    visible = _surface_distance_km(xyz, up) >= dead_zone_km and alt_deg <= limit_deg
     return (screen_xy, visible)
 
 
@@ -174,6 +230,8 @@ def _segment_screen_fragments(
     east: np.ndarray,
     north: np.ndarray,
     up: np.ndarray,
+    observer_height_m: float,
+    dead_zone_km: float,
     geometry: ScreenGeometry,
     view_center: tuple[float, float],
     content_fov_deg: float,
@@ -185,6 +243,8 @@ def _segment_screen_fragments(
         east=east,
         north=north,
         up=up,
+        observer_height_m=observer_height_m,
+        dead_zone_km=dead_zone_km,
         geometry=geometry,
         view_center=view_center,
         content_fov_deg=content_fov_deg,
@@ -196,6 +256,8 @@ def _segment_screen_fragments(
         east=east,
         north=north,
         up=up,
+        observer_height_m=observer_height_m,
+        dead_zone_km=dead_zone_km,
         geometry=geometry,
         view_center=view_center,
         content_fov_deg=content_fov_deg,
@@ -213,6 +275,8 @@ def _segment_screen_fragments(
         east=east,
         north=north,
         up=up,
+        observer_height_m=observer_height_m,
+        dead_zone_km=dead_zone_km,
         geometry=geometry,
         view_center=view_center,
         content_fov_deg=content_fov_deg,
@@ -242,6 +306,8 @@ def _segment_screen_fragments(
             east=east,
             north=north,
             up=up,
+            observer_height_m=observer_height_m,
+            dead_zone_km=dead_zone_km,
             geometry=geometry,
             view_center=view_center,
             content_fov_deg=content_fov_deg,
@@ -257,6 +323,8 @@ def _segment_screen_fragments(
             east=east,
             north=north,
             up=up,
+            observer_height_m=observer_height_m,
+            dead_zone_km=dead_zone_km,
             geometry=geometry,
             view_center=view_center,
             content_fov_deg=content_fov_deg,
@@ -287,6 +355,8 @@ def _ring_fragments_altaz(
     east: np.ndarray,
     north: np.ndarray,
     up: np.ndarray,
+    observer_height_m: float,
+    dead_zone_km: float,
     geometry: ScreenGeometry,
     view_center: tuple[float, float],
     content_fov_deg: float,
@@ -307,6 +377,8 @@ def _ring_fragments_altaz(
             east=east,
             north=north,
             up=up,
+            observer_height_m=observer_height_m,
+            dead_zone_km=dead_zone_km,
             geometry=geometry,
             view_center=view_center,
             content_fov_deg=content_fov_deg,
@@ -388,11 +460,17 @@ def draw_earth_guide(
     if float(terrain_horizon_opacity) <= 0.0:
         return
     origin, east, north, up = _observer_basis(observer_lat_deg, observer_lon_deg, observer_height_m)
+    dead_zone_km = _observer_dead_zone_km(observer_height_m)
     painter.save()
     try:
+        alpha = terrain_horizon_line_alpha(terrain_horizon_opacity)
+        fill_color = QColor(*TERRAIN_HORIZON_LINE_COLOR)
+        fill_color.setAlphaF(alpha * EARTH_GUIDE_FILL_ALPHA_SCALE)
+        fill_brush = fill_color
+
         line_color = QColor(*TERRAIN_HORIZON_LINE_COLOR)
-        line_color.setAlphaF(terrain_horizon_line_alpha(terrain_horizon_opacity))
-        line_pen = QPen(line_color, 1.5, Qt.PenStyle.SolidLine)
+        line_color.setAlphaF(alpha)
+        line_pen = QPen(line_color, EARTH_GUIDE_FOREGROUND_WIDTH, Qt.PenStyle.SolidLine)
         line_pen.setCosmetic(True)
         line_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         line_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
@@ -404,6 +482,8 @@ def draw_earth_guide(
                 east=east,
                 north=north,
                 up=up,
+                observer_height_m=observer_height_m,
+                dead_zone_km=dead_zone_km,
                 geometry=geometry,
                 view_center=view_center,
                 content_fov_deg=content_fov_deg,
@@ -413,6 +493,7 @@ def draw_earth_guide(
                 if len(screen_points) < 2:
                     continue
                 poly = QPolygonF(screen_points)
+                painter.fillPath(_fragment_fill_path(fragment), fill_brush)
                 painter.setPen(line_pen)
                 painter.drawPolyline(poly)
     finally:
