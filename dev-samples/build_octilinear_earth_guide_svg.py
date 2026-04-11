@@ -23,7 +23,7 @@ import json
 import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -366,55 +366,166 @@ def octilinearize_segment(
     return [corner, (x1, y1)]
 
 
-def _append_path_point(
-    commands: list[str],
-    last_point: tuple[float, float] | None,
-    point: tuple[float, float],
-) -> tuple[float, float]:
-    if last_point is None or abs(point[0] - last_point[0]) > 1.0e-9 or abs(point[1] - last_point[1]) > 1.0e-9:
-        commands.append(f"L {point[0]:.2f} {point[1]:.2f}")
-        return point
-    return last_point
+def _clip_polygon_against_edge(
+    points: list[tuple[float, float]],
+    *,
+    inside: Callable[[tuple[float, float]], bool],
+    intersect: Callable[[tuple[float, float], tuple[float, float]], tuple[float, float]],
+) -> list[tuple[float, float]]:
+    if not points:
+        return []
+    clipped: list[tuple[float, float]] = []
+    previous = points[-1]
+    previous_inside = inside(previous)
+    for current in points:
+        current_inside = inside(current)
+        if current_inside:
+            if not previous_inside:
+                clipped.append(intersect(previous, current))
+            clipped.append(current)
+        elif previous_inside:
+            clipped.append(intersect(previous, current))
+        previous = current
+        previous_inside = current_inside
+    return clipped
 
 
-def polygon_path_d(
+def clip_polygon_to_viewport(
+    points: list[tuple[float, float]],
+    width: int,
+    height: int,
+) -> list[tuple[float, float]]:
+    clipped = points
+    if not clipped:
+        return []
+
+    def clip_left(a: tuple[float, float], b: tuple[float, float]) -> tuple[float, float]:
+        ax, ay = a
+        bx, by = b
+        t = (0.0 - ax) / ((bx - ax) or 1.0e-12)
+        return 0.0, ay + ((by - ay) * t)
+
+    def clip_right(a: tuple[float, float], b: tuple[float, float]) -> tuple[float, float]:
+        ax, ay = a
+        bx, by = b
+        t = (float(width) - ax) / ((bx - ax) or 1.0e-12)
+        return float(width), ay + ((by - ay) * t)
+
+    def clip_top(a: tuple[float, float], b: tuple[float, float]) -> tuple[float, float]:
+        ax, ay = a
+        bx, by = b
+        t = (0.0 - ay) / ((by - ay) or 1.0e-12)
+        return ax + ((bx - ax) * t), 0.0
+
+    def clip_bottom(a: tuple[float, float], b: tuple[float, float]) -> tuple[float, float]:
+        ax, ay = a
+        bx, by = b
+        t = (float(height) - ay) / ((by - ay) or 1.0e-12)
+        return ax + ((bx - ax) * t), float(height)
+
+    clipped = _clip_polygon_against_edge(
+        clipped,
+        inside=lambda point: point[0] >= 0.0,
+        intersect=clip_left,
+    )
+    clipped = _clip_polygon_against_edge(
+        clipped,
+        inside=lambda point: point[0] <= float(width),
+        intersect=clip_right,
+    )
+    clipped = _clip_polygon_against_edge(
+        clipped,
+        inside=lambda point: point[1] >= 0.0,
+        intersect=clip_top,
+    )
+    clipped = _clip_polygon_against_edge(
+        clipped,
+        inside=lambda point: point[1] <= float(height),
+        intersect=clip_bottom,
+    )
+    return clipped
+
+
+def clip_ring_to_lon_half(
+    points: list[tuple[float, float]],
+    *,
+    split_lon_deg: float,
+    keep_greater: bool,
+) -> list[tuple[float, float]]:
+    if not points:
+        return []
+
+    def inside(point: tuple[float, float]) -> bool:
+        lon_deg, _lat_deg = point
+        return lon_deg >= split_lon_deg if keep_greater else lon_deg <= split_lon_deg
+
+    def intersect(a: tuple[float, float], b: tuple[float, float]) -> tuple[float, float]:
+        ax, ay = a
+        bx, by = b
+        t = (split_lon_deg - ax) / ((bx - ax) or 1.0e-12)
+        return split_lon_deg, ay + ((by - ay) * t)
+
+    return _clip_polygon_against_edge(points, inside=inside, intersect=intersect)
+
+
+def polygon_paths_d(
     ring: tuple[tuple[float, float], ...],
     width: int,
     height: int,
     *,
     seam_longitude_deg: float,
-) -> str:
-    commands: list[str] = []
+) -> list[str]:
     unwrapped = unwrap_ring_to_seam(ring, seam_longitude_deg)
     if not unwrapped:
-        return ""
+        return []
     normalized = normalize_unwrapped_ring(unwrapped, seam_longitude_deg=seam_longitude_deg)
-    start_x, start_y = lonlat_to_xy_unwrapped(
-        normalized[0][0],
-        normalized[0][1],
-        width,
-        height,
-        seam_longitude_deg=seam_longitude_deg,
-    )
-    commands.append(f"M {start_x:.2f} {start_y:.2f}")
-    last_point = (start_x, start_y)
-    projected = [
-        lonlat_to_xy_unwrapped(
-            lon_deg,
-            lat_deg,
+    lon_span = max(lon for lon, _lat in normalized) - min(lon for lon, _lat in normalized)
+    subrings: list[list[tuple[float, float]]] = [list(normalized)]
+    if lon_span > 300.0:
+        split_lon_deg = seam_longitude_deg + 180.0
+        left_ring = clip_ring_to_lon_half(list(normalized), split_lon_deg=split_lon_deg, keep_greater=False)
+        right_ring = clip_ring_to_lon_half(list(normalized), split_lon_deg=split_lon_deg, keep_greater=True)
+        subrings = [left_ring, right_ring]
+
+    path_strings: list[str] = []
+    for subring in subrings:
+        if len(subring) < 3:
+            continue
+        start_x, start_y = lonlat_to_xy_unwrapped(
+            subring[0][0],
+            subring[0][1],
             width,
             height,
             seam_longitude_deg=seam_longitude_deg,
         )
-        for lon_deg, lat_deg in normalized[1:]
-    ]
-    for point in projected:
-        for next_point in octilinearize_segment(last_point, point):
-            last_point = _append_path_point(commands, last_point, next_point)
-    for next_point in octilinearize_segment(last_point, (start_x, start_y)):
-        last_point = _append_path_point(commands, last_point, next_point)
-    commands.append("Z")
-    return " ".join(commands)
+        raw_points: list[tuple[float, float]] = [(start_x, start_y)]
+        last_point = (start_x, start_y)
+        projected = [
+            lonlat_to_xy_unwrapped(
+                lon_deg,
+                lat_deg,
+                width,
+                height,
+                seam_longitude_deg=seam_longitude_deg,
+            )
+            for lon_deg, lat_deg in subring[1:]
+        ]
+        for point in projected:
+            for next_point in octilinearize_segment(last_point, point):
+                raw_points.append(next_point)
+                last_point = next_point
+        for next_point in octilinearize_segment(last_point, (start_x, start_y)):
+            raw_points.append(next_point)
+            last_point = next_point
+        clipped = clip_polygon_to_viewport(raw_points, width, height)
+        if len(clipped) < 3:
+            continue
+        clipped_commands = [f"M {clipped[0][0]:.2f} {clipped[0][1]:.2f}"]
+        for x, y in clipped[1:]:
+            clipped_commands.append(f"L {x:.2f} {y:.2f}")
+        clipped_commands.append("Z")
+        path_strings.append(" ".join(clipped_commands))
+    return path_strings
 
 
 def build_svg(
@@ -472,15 +583,17 @@ def build_svg(
         'stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round">'
     )
     for ring in rings:
-        path_d = polygon_path_d(
+        for path_d in polygon_paths_d(
             ring.points,
             width,
             height,
             seam_longitude_deg=seam_longitude_deg,
-        )
-        lines.append(
-            f'<path d="{path_d}" data-name="{html.escape(ring.source_name)}" />'
-        )
+        ):
+            if not path_d:
+                continue
+            lines.append(
+                f'<path d="{path_d}" data-name="{html.escape(ring.source_name)}" />'
+            )
     lines.append("</g>")
 
     if label:
