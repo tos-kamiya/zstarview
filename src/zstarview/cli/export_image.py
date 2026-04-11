@@ -185,7 +185,7 @@ def _build_window_inputs_from_args(
     _verify_ephemeris_for_export()
 
     view_center = (getattr(args, "view_center_alt", 90.0), getattr(args, "view_center_az", 180.0))
-    view_center = (min(90.0, max(0.0, view_center[0])), view_center[1] % 360.0)
+    view_center = (min(90.0, max(-5.0, view_center[0])), view_center[1] % 360.0)
     cloud_stripe_mode, cloud_stripe_count, cloud_stripe_width = getattr(
         args,
         "cloud_stripe",

@@ -228,7 +228,7 @@ def main() -> None:
         return
 
     view_center = (args.view_center_alt, args.view_center_az)
-    view_center = (min(90.0, max(0.0, view_center[0])), view_center[1] % 360)
+    view_center = (min(90.0, max(-5.0, view_center[0])), view_center[1] % 360)
     cloud_stripe_mode, cloud_stripe_count, cloud_stripe_width = args.cloud_stripe
     visual_preset = args.theme
     star_visibility_boost = 1.12 if visual_preset == "white" else 1.05 if visual_preset == "day" else 1.0

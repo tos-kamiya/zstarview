@@ -176,7 +176,7 @@ def main() -> int:
     )
     clouddisc = CloudDisc(cfg)
 
-    alt = max(0.0, min(90.0, float(args.alt)))
+    alt = max(-5.0, min(90.0, float(args.alt)))
     az = float(args.az) % 360.0
     radius_px = max(64, int(args.radius_px))
 
