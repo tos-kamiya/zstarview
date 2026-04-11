@@ -102,6 +102,7 @@ Quick examples:
 
 ```bash
 zstarview Tokyo
+zstarview auto
 zstarview "Tokyo Skytree"
 zstarview "35.68;139.76" --datetime "2025-09-12 21 JST"
 zstarview --place "Matsue Station" --place-countrycode jp
@@ -116,9 +117,12 @@ The CLI supports detailed startup configuration for location, time, and renderin
 
 #### Argument
 
-| Argument | Description                                                                                                                                                                                                                                                           | Default                           |
-| :------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------- |
-| `location`   | Specify a city name, a tower name, a mountain name, explicit `t/NAME` or `m/NAME`, or a direct coordinate form such as `"<lat>;<lon>"`, `"<lat>, <lon>"`, `"@<lat>,<lon>"`, or a supported Google Maps URL. Examples: `Tokyo`, `Tokyo Skytree`, `t/Tokyo Skytree`, `Mount Fuji`, `m/Mount Fuji`, `35.68;139.76`, `35.68, 139.76`, `N35.68;E139.76`, `@35.68,139.76`, `@35.68, 139.76`, `www.google.com/maps/@35.68,139.76,17z`, `www.google.com/maps/place/...!3d35.68!4d139.76...`. If omitted, the last run location will be used (defaults to `Tokyo` on the first run). | Last run location (or `Tokyo`) |
+| Format | Description | Default |
+| :----- | :---------- | :------ |
+| City Name | City name (e.g., `Tokyo`) | Last run location (or `Tokyo`) |
+| Tower/Mountain | Tower (e.g., `t/Tokyo Skytree`) or Mountain (e.g., `m/Mount Fuji`) | |
+| Coordinates | Direct coordinates (e.g., `35.68;139.76`, `@35.68,139.76`) or Google Maps URL | |
+| `auto` | Automatically detect current location via IP | |
 
 #### Observing Location and Time
 
