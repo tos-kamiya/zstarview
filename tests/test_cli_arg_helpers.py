@@ -26,12 +26,22 @@ def test_render_argument_helpers_can_build_parser_without_gui_only_options() -> 
     parser = _build_export_like_parser()
 
     args = parser.parse_args(
-        ["--place", " Matsue Station ", "--content-fov-deg", "110", "--theme", "day"]
+        [
+            "--place",
+            " Matsue Station ",
+            "--content-fov-deg",
+            "110",
+            "--earth-guide-opacity",
+            "0.12",
+            "--theme",
+            "day",
+        ]
     )
     cli_args._normalize_location_arguments(parser, args)
 
     assert args.place == "Matsue Station"
     assert args.content_fov_deg == 110.0
+    assert args.earth_guide_opacity == 0.12
     assert args.theme == "day"
     assert not hasattr(args, "window_geometry")
     assert not hasattr(args, "window_frame")
@@ -85,3 +95,9 @@ def test_parse_args_accepts_window_frame_mode() -> None:
     args = cli_args.parse_args(["--window-frame", "window", "Matsue"])
 
     assert args.window_frame == "window"
+
+
+def test_parse_args_accepts_earth_guide_opacity() -> None:
+    args = cli_args.parse_args(["--earth-guide-opacity", "0", "Matsue"])
+
+    assert args.earth_guide_opacity == 0.0

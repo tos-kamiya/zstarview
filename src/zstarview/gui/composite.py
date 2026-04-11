@@ -633,7 +633,7 @@ def _overlay_earth_guide(
     observer_lon_deg: float | None,
     observer_height_m: float = 0.0,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
-    terrain_horizon_opacity: float = 0.0,
+    earth_guide_opacity: float = 0.0,
     content_fov_deg: float = 90.0,
 ) -> QImage:
     if observer_lat_deg is None or observer_lon_deg is None:
@@ -654,7 +654,7 @@ def _overlay_earth_guide(
             observer_lon_deg=float(observer_lon_deg),
             observer_height_m=float(observer_height_m),
             terrain_profile_altaz=terrain_profile_altaz,
-            terrain_horizon_opacity=float(terrain_horizon_opacity),
+            earth_guide_opacity=float(earth_guide_opacity),
             content_fov_deg=content_fov_deg,
         )
     finally:
@@ -711,6 +711,7 @@ class SkyCompositorCache:
         missing_mask: Optional[np.ndarray] = None,
         terrain_profile_altaz: list[tuple[float, float]] | None = None,
         terrain_horizon_opacity: float = 0.0,
+        earth_guide_opacity: float = 0.0,
         content_fov_deg: float = 90.0,
     ) -> None:
         """Composite the sky/cloud layers (with cache) and draw into painter."""
@@ -764,6 +765,7 @@ class SkyCompositorCache:
             None if observer_lon_deg is None else float(observer_lon_deg),
             float(observer_height_m),
             float(terrain_horizon_opacity),
+            float(earth_guide_opacity),
             hatch_key,
             self._missing_tint_rgba,
             self._ground_tint_opacity,
@@ -863,7 +865,7 @@ class SkyCompositorCache:
                 observer_lon_deg=observer_lon_deg,
                 observer_height_m=observer_height_m,
                 terrain_profile_altaz=terrain_profile_altaz,
-                terrain_horizon_opacity=terrain_horizon_opacity,
+                earth_guide_opacity=earth_guide_opacity,
                 content_fov_deg=content_fov_deg,
             )
             if missing_s is not None:

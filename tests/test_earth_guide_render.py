@@ -33,6 +33,7 @@ def test_draw_earth_guide_renders_visible_lines_below_horizon() -> None:
             observer_lon_deg=139.76,
             observer_height_m=635.0,
             terrain_profile_altaz=None,
+            earth_guide_opacity=0.028,
             content_fov_deg=100.0,
         )
     finally:

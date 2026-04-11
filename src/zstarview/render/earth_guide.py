@@ -11,11 +11,9 @@ from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy, is_in_fov
-from ..paths import EARTH_GUIDE_LAND_FILE, TERRAIN_HORIZON_LINE_COLOR
+from ..paths import EARTH_GUIDE_LAND_FILE, EARTH_GUIDE_LINE_COLOR
 from ..types import ScreenGeometry
 from .geometry import normalized_to_screen_xy
-from .terrain import terrain_horizon_line_alpha
-
 
 EARTH_MEAN_RADIUS_M = 6_371_008.8
 
@@ -97,8 +95,16 @@ def _observer_visible_altitude_limit_deg(
     terrain_profile_altaz: list[tuple[float, float]] | None,
 ) -> float:
     terrain_limit = _effective_visible_altitude_limit_deg(az_deg, terrain_profile_altaz)
-    horizon_limit = -(_observer_horizon_dip_deg(observer_height_m) + EARTH_GUIDE_HORIZON_MARGIN_DEG)
+    horizon_limit = -(
+        _observer_horizon_dip_deg(observer_height_m) + EARTH_GUIDE_HORIZON_MARGIN_DEG
+    )
     return min(terrain_limit, horizon_limit)
+
+
+def earth_guide_line_alpha(opacity: float) -> float:
+    """Return the alpha curve used by the Earth guide foreground line."""
+    opacity = max(0.0, min(1.0, float(opacity)))
+    return max(opacity, min(1.0, 0.42 + (opacity * 0.95)))
 
 
 def _surface_distance_km(point_xyz: np.ndarray, observer_up: np.ndarray) -> float:
@@ -434,20 +440,24 @@ def draw_earth_guide(
     observer_lon_deg: float,
     observer_height_m: float,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
-    terrain_horizon_opacity: float = 0.028,
+    earth_guide_opacity: float = 0.028,
     content_fov_deg: float = 90.0,
 ) -> None:
     rings = load_earth_guide_rings()
     if not rings:
         return
-    if float(terrain_horizon_opacity) <= 0.0:
+    if float(earth_guide_opacity) <= 0.0:
         return
-    origin, east, north, up = _observer_basis(observer_lat_deg, observer_lon_deg, observer_height_m)
+    origin, east, north, up = _observer_basis(
+        observer_lat_deg,
+        observer_lon_deg,
+        observer_height_m,
+    )
     dead_zone_km = _observer_dead_zone_km(observer_height_m)
     painter.save()
     try:
-        alpha = terrain_horizon_line_alpha(terrain_horizon_opacity)
-        line_color = QColor(*TERRAIN_HORIZON_LINE_COLOR)
+        alpha = earth_guide_line_alpha(earth_guide_opacity)
+        line_color = QColor(*EARTH_GUIDE_LINE_COLOR)
         line_color.setAlphaF(alpha)
         line_pen = QPen(line_color, EARTH_GUIDE_FOREGROUND_WIDTH, Qt.PenStyle.SolidLine)
         line_pen.setCosmetic(True)

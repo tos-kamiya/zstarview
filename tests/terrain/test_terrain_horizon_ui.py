@@ -115,6 +115,7 @@ def _noop_request_client_update() -> None:
 def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None:
     options = prepare_window_user_options(
         terrain_horizon_opacity=1.5,
+        earth_guide_opacity=1.5,
         urban_outline_opacity=1.5,
         aircraft_opacity=1.5,
         ground_tint_opacity=1.5,
@@ -122,10 +123,12 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
         cloud_gui_allowed=False,
         aircraft_gui_allowed=False,
         terrain_horizon_gui_allowed=False,
+        earth_guide_gui_allowed=False,
         urban_outline_gui_allowed=False,
     )
 
     assert options.terrain_horizon_opacity == 1.0
+    assert options.earth_guide_opacity == 1.0
     assert options.urban_outline_opacity == 1.0
     assert options.aircraft_opacity == 1.0
     assert options.ground_tint_opacity == 1.0
@@ -133,6 +136,7 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
     assert options.cloud_gui_allowed is False
     assert options.aircraft_gui_allowed is False
     assert options.terrain_horizon_gui_allowed is False
+    assert options.earth_guide_gui_allowed is False
     assert options.urban_outline_gui_allowed is False
     assert options.show_overlay_info_initial is None
 
@@ -186,6 +190,7 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         satellite_opacity=0.5,
         aircraft_opacity=0.5,
         terrain_horizon_opacity=0.1,
+        earth_guide_opacity=0.1,
         urban_outline_opacity=0.2,
         vmag_limit=6.0,
         _rotate_view=lambda **_kwargs: None,
@@ -202,6 +207,7 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         toggle_satellites=lambda: None,
         toggle_aircraft=lambda: None,
         toggle_terrain_horizon=lambda: None,
+        toggle_earth_guide=lambda: None,
         toggle_urban_outline=lambda: None,
         toggle_fullscreen=lambda: None,
         addAction=lambda action: added_actions.append(action),
@@ -241,6 +247,7 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         satellite_opacity=0.5,
         aircraft_opacity=0.5,
         terrain_horizon_opacity=0.1,
+        earth_guide_opacity=0.1,
         urban_outline_opacity=0.2,
         vmag_limit=6.0,
         _rotate_view=lambda **_kwargs: None,
@@ -257,6 +264,7 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         toggle_satellites=lambda: None,
         toggle_aircraft=lambda: None,
         toggle_terrain_horizon=lambda: None,
+        toggle_earth_guide=lambda: None,
         toggle_urban_outline=lambda: None,
         toggle_fullscreen=lambda: None,
         addAction=lambda _action: None,
@@ -527,6 +535,41 @@ def test_toggle_terrain_horizon_enables_opacity_and_requests_background_update()
     assert dummy.terrain_horizon_opacity == 0.25
     assert dummy._action_toggle_terrain_horizon.isChecked() is True
     assert calls == ["invalidate", "toggle-on", "request"]
+
+
+def test_toggle_earth_guide_respects_cli_lockout() -> None:
+    dummy = SimpleNamespace()
+    dummy._earth_guide_gui_allowed = False
+    dummy.earth_guide_opacity = 0.0
+    dummy._earth_guide_opacity_when_enabled = 0.25
+    dummy._action_toggle_earth_guide = _DummyAction(False)
+    dummy._compositor = SimpleNamespace(
+        invalidate=lambda: (_ for _ in ()).throw(AssertionError("should not invalidate"))
+    )
+    dummy.update = lambda: (_ for _ in ()).throw(AssertionError("should not repaint"))
+
+    SkyWindow.toggle_earth_guide(dummy)
+
+    assert dummy.earth_guide_opacity == 0.0
+    assert dummy._action_toggle_earth_guide.isChecked() is False
+
+
+def test_toggle_earth_guide_enables_opacity_and_invalidates_compositor() -> None:
+    dummy = SimpleNamespace()
+    dummy._earth_guide_gui_allowed = True
+    dummy.earth_guide_opacity = 0.0
+    dummy._earth_guide_opacity_when_enabled = 0.25
+    dummy._action_toggle_earth_guide = _DummyAction(False)
+    calls: list[str] = []
+    dummy.request_client_update = lambda: calls.append("request")
+    dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
+    dummy.update = lambda: calls.append("update")
+
+    SkyWindow.toggle_earth_guide(dummy)
+
+    assert dummy.earth_guide_opacity == 0.25
+    assert dummy._action_toggle_earth_guide.isChecked() is True
+    assert calls == ["invalidate", "request"]
 
 
 def test_toggle_urban_outline_enables_opacity_and_requests_background_update() -> None:

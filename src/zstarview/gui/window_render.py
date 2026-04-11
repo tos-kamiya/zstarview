@@ -67,6 +67,7 @@ class SkyWindowRenderMixin:
             round(float(self.sky_disc_alpha), 3),
             round(float(self.cloud_disc_alpha), 3),
             round(float(self.terrain_horizon_opacity), 3),
+            round(float(getattr(self, "earth_guide_opacity", 0.0)), 3),
             round(float(self.urban_outline_opacity), 3),
             bool(getattr(self, "show_urban_outline_layer", True)),
             self._render_cache_stamp(celestial_data),
@@ -316,6 +317,7 @@ class SkyWindowRenderMixin:
             terrain_horizon_opacity=float(
                 getattr(self, "terrain_horizon_opacity", 0.0)
             ),
+            earth_guide_opacity=float(getattr(self, "earth_guide_opacity", 0.0)),
             urban_outline_opacity=float(getattr(self, "urban_outline_opacity", 0.2)),
             show_urban_outline_layer=bool(
                 getattr(self, "show_urban_outline_layer", True)

@@ -91,6 +91,7 @@ class RenderStyle:
     cloud_disc_alpha: float
     satellite_opacity: float
     terrain_horizon_opacity: float
+    earth_guide_opacity: float
     urban_outline_opacity: float
     show_urban_outline_layer: bool
     aircraft_opacity: float
@@ -426,7 +427,7 @@ def _draw_sky_cloud_layers(
             if style.terrain_horizon_opacity > 0.0
             else None
         ),
-        terrain_horizon_opacity=style.terrain_horizon_opacity,
+        earth_guide_opacity=style.earth_guide_opacity,
         content_fov_deg=_content_fov_deg(scene),
     )
 
