@@ -4,6 +4,7 @@ from typing import Tuple
 import numpy as np
 
 from ..types import ScreenGeometry
+from ..paths import OBSERVER_MIN_ALT_DEG
 
 
 def _altaz_to_normalized_xy_vectorized(
@@ -50,7 +51,7 @@ def get_screen_geometry(
     margin_y = 0
     avail_w = max(2, int(width_px) - margin_x * 2)
     avail_h = max(2, int(height_px) - margin_y * 2)
-    alt = max(-5.0, min(90.0, float(view_alt_deg)))
+    alt = max(OBSERVER_MIN_ALT_DEG, min(90.0, float(view_alt_deg)))
 
     if width_px >= height_px:
         r_height = int(avail_h / (1.0 + alt / 90.0))

@@ -107,6 +107,7 @@ logger = logging.getLogger(__name__)
 
 WindowGeometryArg = Union[str, Tuple[int, int, int, int]]
 DEFAULT_CLOUD_ALT_MIN_DEG = 1.0
+from ..paths import OBSERVER_MIN_ALT_DEG
 
 
 def _clamp_window_geometry_to_screen(
@@ -898,7 +899,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if self._action_raise_view is not None:
             self._action_raise_view.setEnabled(float(alt) < 90.0)
         if self._action_lower_view is not None:
-            self._action_lower_view.setEnabled(float(alt) > -5.0)
+            self._action_lower_view.setEnabled(float(alt) > OBSERVER_MIN_ALT_DEG)
 
     def client_width(self) -> int:
         if getattr(self, "_client_widget", None) is not None:
@@ -1127,7 +1128,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         # When jumping to a target, keep the jump highlight altitude as-reported
         # (may be negative), but clamp the actual view center to the horizon (0°)
         # so the view doesn't go below the horizon automatically.
-        new_alt = max(-5.0, min(90.0, target_alt))
+        new_alt = max(OBSERVER_MIN_ALT_DEG, min(90.0, target_alt))
         new_az = target_az
         self.viewer_data.view_center = (new_alt, new_az)
         self._sync_view_altitude_actions()
@@ -1647,7 +1648,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         else:
             self._begin_interaction_mode()
         alt, az = self.viewer_data.view_center
-        new_alt = max(-5.0, min(90.0, alt + d_alt))
+        new_alt = max(OBSERVER_MIN_ALT_DEG, min(90.0, alt + d_alt))
         new_az = (az + d_az) % 360.0
         self.viewer_data.view_center = (new_alt, new_az)
         self.state.render_view_center = (new_alt, new_az)
