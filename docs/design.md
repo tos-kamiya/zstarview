@@ -67,6 +67,9 @@
 - `src/zstarview/startup.py`
   - 起動時の地点解決、設定復元、初期値決定
   - Nominatim による online 地点検索と結果正規化を扱う
+  - `auto` 指定時の IP-API による現在地自動取得を扱う
+- `src/zstarview/location_resolver/ip_api.py`
+  - `ip-api.com` へのリクエストと結果のパースを担当する
 - `src/zstarview/config.py`
   - ユーザー設定の保存と読込
   - 前回地点を legacy 文字列または構造化地点オブジェクトとして保存する
@@ -166,8 +169,25 @@
 - 取得した building footprint 群に対して、指定地点を厳密に含む建物だけでなく、指定地点から `5m` 以内の建物も候補とする。
 - `building_part` がある場合は、親建物とその part 群を同一グループとして扱い、そのグループの最大 `height_m` を建物頂部高として採用してよい。
 - `min_height_m` は浮いた底面の属性として保持するが、この経路で観測基準に使う値は上端であるため、観測基準高の決定には最大 `height_m` を使う。
-- 候補建物が見つからない場合は、従来どおり地表基準の `observer_height_m` を使う。
+- 候補建物が見つからない場合は、従来どおり地表基準の `observer_height_m`を使う。
 - 利用者向けの地点情報には `Building height` を表示してよい。
+
+### 4.2.2b `auto` による現在地自動取得起動
+
+地点引数として `auto`（大文字小文字不問）が指定された場合、外部サービスを利用して現在地を推定する。
+
+- 対象引数: `location` に `auto` を指定
+- 解決フロー:
+  - `location_resolver/ip_api.py` が `http://ip-api.com/json` を呼び出す。
+  - レスポンスから緯度、経度、タイムゾーン、都市名、国名を取得する。
+  - 取得した座標を基に `ResolvedLocation` を構築する。
+  - タイムゾーンは API から取得した値を優先するが、失敗時は最近傍都市からの補完を試みる。
+- 失敗時の挙動:
+  - ネットワークエラーや API エラー（レート制限等）が発生した場合は `LocationResolveError` として起動を中断する。
+  - エラー内容はターミナルとスプラッシュスクリーンに表示する。
+- データの保存:
+  - 解決された地点は、他の指定方法と同様に次回起動用設定として保存する。
+  - 保存形式は緯度経度ベース（`lat;lon`）または構造化オブジェクトであってよい。
 
 ### 4.2.3 前回地点の保存形式
 
@@ -1051,6 +1071,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - OpenSky 航空機 state vector
 - `wheretheiss.at` ISS TLE
 - CelesTrak `stations` fallback OMM JSON
+- `ip-api.com` 現在地データ ( `auto` 指定時のみ)
 
 ### 10.3 キャッシュ方針
 
