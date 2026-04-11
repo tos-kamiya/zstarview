@@ -9,8 +9,8 @@ from ..paths import CLOUD_MISSING_TINT_RGBA, DIRECTIONS, WINDOW_HEIGHT, WINDOW_W
 WindowGeometryArg = Union[str, Tuple[int, int, int, int]]
 ImageSizeArg = Tuple[int, int]
 
-_VMAG_MULTIPLIER_MIN = 10.0 ** 0.2
-_VMAG_MULTIPLIER_MAX = 10.0 ** 0.4
+_VMAG_MULTIPLIER_MIN = 10.0**0.2
+_VMAG_MULTIPLIER_MAX = 10.0**0.4
 _CONTENT_FOV_MIN = 90.0
 _CONTENT_FOV_MAX = 127.0
 _COMMITTED_VMAG_LIMIT_MAX = 10.5
@@ -96,7 +96,9 @@ def _parse_positive_int(value: str) -> int:
     try:
         out = int(value)
     except (TypeError, ValueError) as exc:
-        raise argparse.ArgumentTypeError(f"Invalid positive integer: {value!r}") from exc
+        raise argparse.ArgumentTypeError(
+            f"Invalid positive integer: {value!r}"
+        ) from exc
     if out <= 0:
         raise argparse.ArgumentTypeError("Value must be > 0.")
     return out
@@ -107,7 +109,9 @@ def _parse_non_negative_float(value: str) -> float:
     try:
         out = float(value)
     except (TypeError, ValueError) as exc:
-        raise argparse.ArgumentTypeError(f"Invalid non-negative float: {value!r}") from exc
+        raise argparse.ArgumentTypeError(
+            f"Invalid non-negative float: {value!r}"
+        ) from exc
     if out < 0.0:
         raise argparse.ArgumentTypeError("Value must be >= 0.")
     return out
@@ -630,6 +634,11 @@ def build_export_image_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Export a zstarview image and exit",
     )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
     add_location_arguments(parser)
     add_time_arguments(parser)
     add_render_arguments(
@@ -652,8 +661,7 @@ def build_export_image_argument_parser() -> argparse.ArgumentParser:
         default=(WINDOW_WIDTH, WINDOW_HEIGHT),
         metavar="WIDTH,HEIGHT",
         help=(
-            "Output image size in pixels (default: "
-            f"{WINDOW_WIDTH},{WINDOW_HEIGHT})."
+            f"Output image size in pixels (default: {WINDOW_WIDTH},{WINDOW_HEIGHT})."
         ),
     )
     parser.add_argument(
@@ -721,13 +729,13 @@ def _validate_dataset_query_compatibility(
         return hasattr(args, name) and getattr(args, name) != parser.get_default(name)
 
     dataset_cli_requested = bool(
-        args.list_viewpoints
-        or args.list_viewpoint_names
-        or args.show_viewpoint_json
+        args.list_viewpoints or args.list_viewpoint_names or args.show_viewpoint_json
     )
     if dataset_cli_requested:
         if args.city:
-            parser.error("dataset query options cannot be used with the location argument")
+            parser.error(
+                "dataset query options cannot be used with the location argument"
+            )
         if args.place:
             parser.error("dataset query options cannot be used with --place")
 
@@ -771,7 +779,9 @@ def _validate_dataset_query_compatibility(
             or has_non_default("theme")
         )
         if incompatible_non_default:
-            parser.error("dataset query options cannot be used with time or rendering options")
+            parser.error(
+                "dataset query options cannot be used with time or rendering options"
+            )
 
 
 def _validate_location_argument_combinations(
