@@ -50,7 +50,7 @@ def get_screen_geometry(
     margin_y = 0
     avail_w = max(2, int(width_px) - margin_x * 2)
     avail_h = max(2, int(height_px) - margin_y * 2)
-    alt = max(0.0, min(90.0, float(view_alt_deg)))
+    alt = max(-5.0, min(90.0, float(view_alt_deg)))
 
     if width_px >= height_px:
         r_height = int(avail_h / (1.0 + alt / 90.0))
