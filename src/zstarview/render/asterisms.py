@@ -105,8 +105,8 @@ def draw_asterisms(
         return _draw_segments(asterism.segments(), outline_pen, line_pen)
 
     if draw_base:
-        base_outline_pen = _make_pen(base_outline_color, 4.0 * width_scale)
-        base_line_pen = _make_pen(base_line_color, 2.5 * width_scale)
+        base_outline_pen = _make_pen(base_outline_color, 4.0 * width_scale * 0.8)
+        base_line_pen = _make_pen(base_line_color, 2.5 * width_scale * 0.8)
         base_segments: set[Tuple[str, str]] = set()
         for asterism in ASTERISMS:
             for source_a, source_b in asterism.segments():
@@ -126,8 +126,8 @@ def draw_asterisms(
 
     label_points: List[QPointF] = []
     if highlighted_asterism is not None:
-        highlight_outline_pen = _make_pen(highlight_outline_color, 3.2 * width_scale)
-        highlight_line_pen = _make_pen(highlight_line_color, 2.0 * width_scale)
+        highlight_outline_pen = _make_pen(highlight_outline_color, 3.2 * width_scale * 0.8)
+        highlight_line_pen = _make_pen(highlight_line_color, 2.0 * width_scale * 0.8)
         label_points = _draw_one_asterism(highlighted_asterism, highlight_outline_pen, highlight_line_pen)
 
     if label_points:
