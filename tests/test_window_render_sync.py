@@ -604,7 +604,8 @@ def test_jump_to_place_target_uses_projected_altaz(monkeypatch) -> None:
         ),
     )
 
-    assert dummy.viewer_data.view_center == (0.0, 145.0)
+    # Allow the view center to go below the horizon (>= -5.0°) per policy.
+    assert dummy.viewer_data.view_center == (-3.5, 145.0)
     assert dummy.state.jump_highlight_name == "Tokyo Station"
     assert dummy.state.jump_highlight_altaz == (-3.5, 145.0)
     dummy.request_sky_data_update.assert_called_once()
