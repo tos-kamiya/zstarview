@@ -126,6 +126,26 @@ def unwrap_ring_to_seam(
     return tuple((lon_deg, lat_deg) for lon_deg, (_orig_lon, lat_deg) in zip(unwrapped, points))
 
 
+def unwrap_ring_to_reference_lon(
+    points: tuple[tuple[float, float], ...],
+    reference_lon_deg: float,
+) -> tuple[tuple[float, float], ...]:
+    if not points:
+        return ()
+    wrapped = [wrap_longitude_relative_to_seam(lon_deg, reference_lon_deg) for lon_deg, _lat_deg in points]
+    unwrapped = [wrapped[0]]
+    previous = wrapped[0]
+    for wrapped_lon in wrapped[1:]:
+        candidate = wrapped_lon
+        while candidate - previous > 180.0:
+            candidate -= 360.0
+        while candidate - previous < -180.0:
+            candidate += 360.0
+        unwrapped.append(candidate)
+        previous = candidate
+    return tuple((lon_deg, lat_deg) for lon_deg, (_orig_lon, lat_deg) in zip(unwrapped, points))
+
+
 def lonlat_to_xy(
     lon_deg: float,
     lat_deg: float,
@@ -449,33 +469,36 @@ def clip_polygon_to_viewport(
     return clipped
 
 
-def rotate_ring_to_southernmost(points: list[tuple[float, float]]) -> list[tuple[float, float]]:
-    if not points:
-        return []
-    south_index = min(range(len(points)), key=lambda index: (points[index][1], points[index][0]))
-    return points[south_index:] + points[:south_index]
-
-
-def pin_ring_to_southern_edge(points: list[tuple[float, float]]) -> list[tuple[float, float]]:
+def reorder_ring_to_southern_endpoints(
+    points: list[tuple[float, float]],
+) -> tuple[list[tuple[float, float]], float]:
     if len(points) < 2:
-        return points[:]
-    edge_index = 0
-    edge_score = (float("inf"), float("inf"))
-    for index in range(len(points)):
-        next_index = (index + 1) % len(points)
-        midpoint_lat = (points[index][1] + points[next_index][1]) * 0.5
-        midpoint_lon = (points[index][0] + points[next_index][0]) * 0.5
-        score = (midpoint_lat, midpoint_lon)
-        if score < edge_score:
-            edge_score = score
-            edge_index = index
-    next_index = (edge_index + 1) % len(points)
-    midpoint = (
-        (points[edge_index][0] + points[next_index][0]) * 0.5,
-        (points[edge_index][1] + points[next_index][1]) * 0.5,
-    )
-    rotated = points[next_index:] + points[: next_index]
-    return [midpoint, *rotated, midpoint]
+        return points[:], 0.0
+
+    southern = sorted(
+        range(len(points)),
+        key=lambda index: (points[index][1], points[index][0]),
+    )[:2]
+    first_index, second_index = southern[0], southern[1]
+
+    def build_arc(step: int) -> list[tuple[float, float]]:
+        arc = [points[first_index]]
+        index = first_index
+        while index != second_index:
+            index = (index + step) % len(points)
+            arc.append(points[index])
+        return arc
+
+    forward = build_arc(1)
+    backward = build_arc(-1)
+
+    def arc_score(arc: list[tuple[float, float]]) -> tuple[float, float]:
+        lats = [lat for _lon, lat in arc]
+        return max(lats), sum(lats) / len(lats)
+
+    chosen = forward if arc_score(forward) >= arc_score(backward) else backward
+    reference_lon = (points[first_index][0] + points[second_index][0]) * 0.5
+    return chosen, reference_lon
 
 
 def polygon_paths_d(
@@ -488,17 +511,20 @@ def polygon_paths_d(
     unwrapped = unwrap_ring_to_seam(ring, seam_longitude_deg)
     if not unwrapped:
         return []
-    rotated = rotate_ring_to_southernmost(list(unwrapped))
-    lat_min = min(lat for _lon, lat in rotated)
-    south_reference_lon = rotated[0][0] if rotated else None
+    lat_min = min(lat for _lon, lat in unwrapped)
+    ordered = list(unwrapped)
+    south_reference_lon: float | None = None
+    if lat_min < -60.0:
+        ordered, south_reference_lon = reorder_ring_to_southern_endpoints(list(unwrapped))
+        ordered = list(
+            unwrap_ring_to_reference_lon(tuple(ordered), south_reference_lon)
+        )
     normalized = normalize_unwrapped_ring(
-        tuple(rotated),
+        tuple(ordered),
         seam_longitude_deg=seam_longitude_deg,
-        reference_lon_deg=south_reference_lon if lat_min < -60.0 else None,
+        reference_lon_deg=south_reference_lon if south_reference_lon is not None else None,
     )
     subrings: list[list[tuple[float, float]]] = [list(normalized)]
-    if lat_min < -60.0:
-        subrings = [pin_ring_to_southern_edge(list(normalized))]
 
     path_strings: list[str] = []
     for subring in subrings:
