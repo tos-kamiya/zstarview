@@ -8,7 +8,7 @@ from pathlib import Path
 
 import numpy as np
 from PySide6.QtCore import QPointF, Qt
-from PySide6.QtGui import QColor, QPainter, QPainterPath, QPainterPathStroker, QPen, QPolygonF
+from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy, is_in_fov
 from ..paths import EARTH_GUIDE_LAND_FILE, TERRAIN_HORIZON_LINE_COLOR
@@ -23,7 +23,7 @@ EARTH_GUIDE_DEAD_ZONE_MIN_KM = 20.0
 EARTH_GUIDE_DEAD_ZONE_MAX_KM = 80.0
 EARTH_GUIDE_DEAD_ZONE_SCALE = 0.25
 EARTH_GUIDE_HORIZON_MARGIN_DEG = 1.0
-EARTH_GUIDE_FILL_WIDTH = 3.6
+EARTH_GUIDE_FRAGMENT_CLOSE_THRESHOLD_PX = 6.0
 EARTH_GUIDE_FILL_ALPHA_SCALE = 0.22
 EARTH_GUIDE_FOREGROUND_WIDTH = 1.5
 
@@ -117,11 +117,11 @@ def _fragment_fill_path(fragment: list[tuple[float, float]]) -> QPainterPath:
     path.moveTo(QPointF(first_x, first_y))
     for x, y in fragment[1:]:
         path.lineTo(QPointF(x, y))
-    stroker = QPainterPathStroker()
-    stroker.setCapStyle(Qt.PenCapStyle.RoundCap)
-    stroker.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-    stroker.setWidth(EARTH_GUIDE_FILL_WIDTH)
-    return stroker.createStroke(path)
+    last_x, last_y = fragment[-1]
+    if math.hypot(last_x - first_x, last_y - first_y) <= EARTH_GUIDE_FRAGMENT_CLOSE_THRESHOLD_PX:
+        path.closeSubpath()
+        return path
+    return QPainterPath()
 
 
 def _project_point_altaz(
