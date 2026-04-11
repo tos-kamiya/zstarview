@@ -552,6 +552,18 @@ QT_QPA_PLATFORM=xcb zstarview --window-frame window
 
 If the shadow appears with `QT_QPA_PLATFORM=xcb`, that confirms the difference is in the Wayland vs X11 window-decoration path on your desktop environment.
 
+### Wayland Flicker With `QT_QPA_PLATFORM=xcb`
+On some Wayland systems, forcing `QT_QPA_PLATFORM=xcb` can make the frameless window flicker, especially when maximized.
+The visible symptom is that the desktop or windows behind zstarview briefly show through during repaint.
+
+If this happens, do not force `QT_QPA_PLATFORM=xcb` for the normal frameless UI.
+Launch zstarview without that variable, or use the standard framed window mode if you specifically need XWayland:
+
+```bash
+zstarview
+zstarview --window-frame window
+```
+
 ### Slow or Unstable Network / Offline Use
 1. Planetary ephemeris data
 

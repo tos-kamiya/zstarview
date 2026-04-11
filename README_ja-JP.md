@@ -555,6 +555,21 @@ QT_QPA_PLATFORM=xcb zstarview --window-frame window
 `QT_QPA_PLATFORM=xcb` を付けると影が表示される場合は、その差分は
 Wayland と X11 のウィンドウ装飾経路の違いによるものと考えてよいです。
 
+### Wayland 環境で `QT_QPA_PLATFORM=xcb` を付けるとウィンドウがちらつく
+
+Wayland 環境では、`QT_QPA_PLATFORM=xcb` を強制すると、frameless ウィンドウが
+ちらつくことがあります。特に最大化時に、再描画の途中で背後のデスクトップや
+他ウィンドウが一瞬見えることがあります。
+
+この症状が出る場合は、通常の frameless UI では `QT_QPA_PLATFORM=xcb` を
+付けずに起動してください。XWayland を使いたい場合は、標準のフレーム付き
+ウィンドウで起動するのが安全です:
+
+```sh
+zstarview
+zstarview --window-frame window
+```
+
 ### ネットワークが遅い / オフラインで使いたい
 1. 惑星暦データ
 
