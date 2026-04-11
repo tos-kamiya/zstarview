@@ -1103,7 +1103,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             )
             target_alt = float(alt)
             target_az = float(az) % 360.0
-        new_alt = max(0.0, min(90.0, target_alt))
+        new_alt = max(-5.0, min(90.0, target_alt))
         new_az = target_az
         self.viewer_data.view_center = (new_alt, new_az)
         self._sync_view_altitude_actions()
@@ -1605,7 +1605,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         else:
             self._begin_interaction_mode()
         alt, az = self.viewer_data.view_center
-        new_alt = max(0.0, min(90.0, alt + d_alt))
+        new_alt = max(-5.0, min(90.0, alt + d_alt))
         new_az = (az + d_az) % 360.0
         self.viewer_data.view_center = (new_alt, new_az)
         self.state.render_view_center = (new_alt, new_az)
