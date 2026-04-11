@@ -468,6 +468,17 @@ def clip_ring_to_lon_half(
     return _clip_polygon_against_edge(points, inside=inside, intersect=intersect)
 
 
+def close_polar_ring_via_south_pole(
+    points: list[tuple[float, float]],
+    *,
+    split_lon_deg: float,
+) -> list[tuple[float, float]]:
+    if not points:
+        return []
+    south_pole = (split_lon_deg, -90.0)
+    return [south_pole, *points, south_pole]
+
+
 def polygon_paths_d(
     ring: tuple[tuple[float, float], ...],
     width: int,
@@ -480,11 +491,15 @@ def polygon_paths_d(
         return []
     normalized = normalize_unwrapped_ring(unwrapped, seam_longitude_deg=seam_longitude_deg)
     lon_span = max(lon for lon, _lat in normalized) - min(lon for lon, _lat in normalized)
+    lat_min = min(lat for _lon, lat in normalized)
     subrings: list[list[tuple[float, float]]] = [list(normalized)]
     if lon_span > 300.0:
         split_lon_deg = seam_longitude_deg + 180.0
         left_ring = clip_ring_to_lon_half(list(normalized), split_lon_deg=split_lon_deg, keep_greater=False)
         right_ring = clip_ring_to_lon_half(list(normalized), split_lon_deg=split_lon_deg, keep_greater=True)
+        if lat_min < -60.0:
+            left_ring = close_polar_ring_via_south_pole(left_ring, split_lon_deg=split_lon_deg)
+            right_ring = close_polar_ring_via_south_pole(right_ring, split_lon_deg=split_lon_deg)
         subrings = [left_ring, right_ring]
 
     path_strings: list[str] = []
