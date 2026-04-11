@@ -19,6 +19,7 @@ from ..utils.resolve_city import (
     resolve_city_by_geonameid,
     resolve_city_by_name,
 )
+from .ip_api import fetch_location_by_ip
 from .mountains import resolve_mountain_viewpoint
 from .nominatim import search_nominatim
 from .towers import resolve_tower_viewpoint
@@ -376,20 +377,38 @@ def _restore_persisted_location(
     stored_location: dict[str, Any],
     admin1_map: dict[tuple[str, str], str],
 ) -> ResolvedLocation | None:
-    if stored_location.get("resolver") != "nominatim":
+    if stored_location.get("resolver") == "nominatim":
+        query = stored_location.get("query")
+        result = stored_location.get("result")
+        if not isinstance(query, str) or not isinstance(result, dict):
+            logger.warning("Ignoring malformed persisted Nominatim location payload")
+            return None
+        try:
+            return _nominatim_result_to_location(query, result, admin1_map)
+        except ValueError:
+            logger.warning("Ignoring invalid persisted Nominatim location payload")
+            return None
+    elif stored_location.get("resolver") == "auto":
+        lat = stored_location.get("lat")
+        lon = stored_location.get("lon")
+        display_name = stored_location.get("display_name")
+        tz = stored_location.get("tz")
+        cc = stored_location.get("cc")
+        if all(isinstance(v, (str, float, int)) for v in [lat, lon, display_name, tz]):
+            return ResolvedLocation(
+                display_name=display_name,
+                lat=lat,
+                lon=lon,
+                tz=tz,
+                persistence_key=f"auto:{lat:.6f},{lon:.6f}",
+                observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
+                kind="auto",
+                persistence_value=stored_location,
+                cc=cc or "",
+            )
+        logger.warning("Ignoring malformed persisted auto location payload")
         return None
-    query = stored_location.get("query")
-    result = stored_location.get("result")
-    if not isinstance(query, str) or not isinstance(result, dict):
-        logger.warning("Ignoring malformed persisted Nominatim location payload")
-        return None
-    try:
-        location = _nominatim_result_to_location(query, result, admin1_map)
-    except ValueError:
-        logger.warning("Ignoring invalid persisted Nominatim location payload")
-        return None
-    logger.info("Restored saved place: %s", location.display_name)
-    return location
+    return None
 
 
 def _parse_direct_coordinate_location(raw_value: str) -> tuple[float, float] | None:
@@ -522,6 +541,40 @@ def _resolve_place_query(
     return location
 
 
+def _resolve_auto_location(admin1_map: dict[tuple[str, str], str]) -> ResolvedLocation:
+    logger.info("Resolving location via auto...")
+    try:
+        data = fetch_location_by_ip()
+    except Exception as exc:
+        logger.error("Auto-location failed: %s", exc)
+        raise LocationResolveError() from exc
+
+    lat = data["lat"]
+    lon = data["lon"]
+    display_name = f"{data['countryCode']}/{data['city']}"
+    tz = data["timezone"]
+    cc = data["countryCode"]
+
+    return ResolvedLocation(
+        display_name=display_name,
+        lat=lat,
+        lon=lon,
+        tz=tz,
+        persistence_key=f"auto:{lat:.6f},{lon:.6f}",
+        observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
+        kind="auto",
+        persistence_value={
+            "resolver": "auto",
+            "lat": lat,
+            "lon": lon,
+            "display_name": display_name,
+            "tz": tz,
+            "cc": cc,
+        },
+        cc=cc,
+    )
+
+
 def _tower_to_location(args_city: str, admin1_map: dict[tuple[str, str], str]) -> ResolvedLocation | None:
     return _viewpoint_to_location(resolve_tower_viewpoint(args_city), admin1_map)
 
@@ -594,6 +647,9 @@ def resolve_launch_location(
 
         if place_query is not None:
             resolved_location = _resolve_place_query(place_query, place_countrycode, place_lang, admin1_map)
+            persist_location = True
+        elif args_city is not None and args_city.lower() == "auto":
+            resolved_location = _resolve_auto_location(admin1_map)
             persist_location = True
         elif resolved_location is None:
             assert args_city is not None
@@ -702,6 +758,8 @@ def resolve_launch_location(
             logger.info("Mountain: %s", resolved_location.persistence_key)
         elif resolved_location.kind == "place":
             logger.info("Place: %s", resolved_location.persistence_key)
+        elif resolved_location.kind == "auto":
+            logger.info("Auto: %s", resolved_location.persistence_key)
         else:
             logger.info("City: %s", resolved_location.persistence_key)
     return resolved_location
