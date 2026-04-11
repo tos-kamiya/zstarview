@@ -103,6 +103,7 @@ zstarview [options] [location]
 
 ```bash
 zstarview Tokyo
+zstarview auto
 zstarview "Tokyo Skytree"
 zstarview "35.68;139.76" --datetime "2025-09-12 21 JST"
 zstarview --place "Matsue Station" --place-countrycode jp
@@ -117,9 +118,12 @@ CLI では、場所・時刻・描画設定を細かく指定できます。
 
 #### 引数
 
-| 引数 | 説明 | デフォルト |
+| 引数のフォーマット | 説明 | デフォルト |
 | :--- | :--- | :--- |
-| `location` | 表示する都市名、タワー名、山名、明示指定の `t/NAME`・`m/NAME`、または `"<lat>;<lon>"`、`"@<lat>,<lon>"`、対応する Google Maps URL などの直接座標形式を指定できます。例: `Tokyo`, `Tokyo Skytree`, `t/Tokyo Skytree`, `Mount Fuji`, `m/Mount Fuji`, `35.68;139.76`, `N35.68;E139.76`, `@35.68,139.76`, `www.google.com/maps/@35.68,139.76,17z`, `www.google.com/maps/place/...!3d35.68!4d139.76...`。省略時は前回起動時の location を使い、初回は `Tokyo` になります。 | 前回の location（初回は `Tokyo`） |
+| 都市名 | 都市名（例: `Tokyo`） | 前回の場所（初回は `Tokyo`） |
+| タワー名/山名 | タワー（例: `t/Tokyo Skytree`）または山（例: `m/Mount Fuji`） | |
+| 緯度経度 | 直接座標（例: `35.68;139.76`）または Google Maps URL | |
+| `auto` | IPアドレスによる現在地自動取得 | |
 
 #### 観測地点と時刻
 
