@@ -18,7 +18,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 - **Aircraft overlay**: nearby aircraft from OpenSky can be drawn as purple predicted-motion polylines.
 - **Artificial satellite overlay**: ISS can be drawn as a small purple cross marker between the planet and aircraft layers.
 - **Urban outline overlay**: major rooflines are drawn as a white urban outline overlay for the current viewpoint. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 60km radius.
-- **Terrain horizon, earth guide, and ground fill**: Copernicus DEM data can be downloaded to render the local terrain skyline. A subtle ocher terrain line follows the observer's surroundings, and the disc is filled with a ground color below the terrain horizon, or below the geometric horizon when terrain is disabled. Beneath that horizon, an earth guide draws simplified continental outlines to help with orientation.
+- **Terrain horizon, earth guide, and ground fill**: Copernicus DEM data can be downloaded to render the local terrain skyline. A subtle ocher terrain line follows the observer's surroundings, and the disc is filled with a ground color below the terrain horizon, or below the geometric horizon when terrain is disabled. Beneath that horizon, an independent earth guide layer draws simplified continental outlines to help with orientation.
 - **Guides**: guide overlays include the never-rises region in red, direction labels around the horizon, and a zenith marker.
 - **Flexible location input**: specify the observer location through the CLI argument using a city name, tower name, mountain name, direct latitude/longitude input, supported Google Maps coordinate URLs, or online place/station search via Nominatim.
 - **Adjustable view center**: adjust the view center with CLI options `-A` (altitude) and `-Z` (azimuth), or with the arrow keys. During view changes or window resize, the app briefly switches to a simplified interaction mode to keep navigation responsive.
@@ -163,6 +163,7 @@ The CLI supports detailed startup configuration for location, time, and renderin
 | `--satellite-opacity OPACITY`               | Opacity of the artificial satellite overlay (0.0–1.0). Use 0.0 to disable satellite element fetch and drawing for that run. | `0.5` |
 | `--show-guidelines-initial true\|false`     | Whether guideline overlays are shown at startup. This controls the geometric horizon, celestial equator, ecliptic, direction labels, and zenith marker. | `show` |
 | `--terrain-horizon-opacity OPACITY`         | Opacity of the terrain horizon polyline (0.0–1.0). Use 0.0 to disable DEM download, terrain-horizon calculation, terrain-horizon drawing, and the earth guide. \*4 | `0.028` |
+| `--earth-guide-opacity OPACITY`             | Opacity of the below-horizon earth guide line layer (0.0–1.0). Use 0.0 to disable earth-guide drawing for that run. \*4 | `0.028` |
 | `--ground-tint-opacity OPACITY`             | Strength of the ground-color fill below the geometric/terrain horizon (0.0–1.0). | `0.1` |
 | `--urban-outline-opacity OPACITY`           | Opacity of the urban outline overlay (0.0–1.0). Use 0.0 to disable it for that run. | `0.2` |
 | `--urban-outline-feature-type {both,building}` | Overture cache mode for the urban outline. `both` combines `building` and `building_part`, preferring parts when available. | `both` |
@@ -187,7 +188,7 @@ The CLI supports detailed startup configuration for location, time, and renderin
 
 \*3 The brightest-magnitude multiplier cannot exceed the classical Pogson value of \(100^{1/5}\approx2.512\).
 
-\*4 Terrain horizon rendering downloads Copernicus DEM tiles on first use and reuses the cached DEM later. When enabled, the terrain profile also becomes the boundary for the ground-color fill inside the disc, and the same opacity applies to the earth guide.
+\*4 Terrain horizon rendering downloads Copernicus DEM tiles on first use and reuses the cached DEM later. When enabled, the terrain profile also becomes the boundary for the ground-color fill inside the disc. The earth guide is a separate layer with its own opacity toggle.
 
 \*5 `--place` uses the public OpenStreetMap Nominatim search service. It sends a single search request with a User-Agent and Accept-Language. See the Nominatim usage policy if you plan to rely on this option heavily or from automation.
 
@@ -453,6 +454,7 @@ The GUI supports direct keyboard and menu-based navigation, search, and overlay 
 * **P**: Toggle aircraft overlay
 * **I**: Toggle artificial satellite overlay
 * **T**: Toggle terrain horizon overlay
+* **E**: Toggle earth guide overlay
 * **U**: Toggle urban outline overlay
 * **Ctrl+J**: Open Jump to Named Star
 * **Ctrl+F**: Open Search Stars and Asterisms
@@ -477,6 +479,7 @@ From the hamburger menu (`☰`), you can use:
 * **Aircraft**: Toggle the OpenSky-based aircraft overlay on/off. If disabled from the CLI with `-a 0` / `--aircraft-opacity 0`, the menu item cannot re-enable it for that run.
 * **Satellites**: Toggle the ISS artificial satellite overlay on/off. If disabled from the CLI with `--satellite-opacity 0`, the menu item cannot re-enable it for that run.
 * **Terrain Horizon**: Toggle the terrain skyline overlay on/off. If disabled from the CLI with `--terrain-horizon-opacity 0`, the menu item cannot re-enable it for that run.
+* **Earth Guide**: Toggle the below-horizon earth-guide overlay on/off. If disabled from the CLI with `--earth-guide-opacity 0`, the menu item cannot re-enable it for that run.
 * **Urban Outline**: Toggle the Overture-derived urban roofline overlay on/off. If disabled from the CLI with `--urban-outline-opacity 0`, the menu item cannot re-enable it for that run.
 * **Fullscreen**: Toggle fullscreen display.
 * **Exit**: Quit the application.
