@@ -6,6 +6,7 @@ This module defines the `SkyWindow` class, which is the primary user interface
 for the application. It handles rendering the celestial objects, sky background,
 clouds, and all user interactions like rotation, zooming, and object highlighting.
 """
+
 import logging
 import time
 from datetime import datetime, timezone
@@ -68,7 +69,10 @@ from ..config import load_last_window_geometry, save_last_window_geometry
 from ..location_resolver import project_place_target_to_altaz, search_place_candidates
 from ..render import geometry as render_geometry
 from ..render import stars as render_stars
-from ..render.pipeline import compute_star_render_surface_size, compute_star_render_upscale_factor
+from ..render.pipeline import (
+    compute_star_render_surface_size,
+    compute_star_render_upscale_factor,
+)
 from ..types import ViewerData
 from .draggable_window import DraggableWindow
 from .composite import SkyCompositorCache
@@ -104,6 +108,7 @@ logger = logging.getLogger(__name__)
 WindowGeometryArg = Union[str, Tuple[int, int, int, int]]
 DEFAULT_CLOUD_ALT_MIN_DEG = 1.0
 
+
 def _clamp_window_geometry_to_screen(
     x: int,
     y: int,
@@ -129,7 +134,11 @@ def _clamp_window_geometry_to_screen(
             break
     if available_rect is None:
         primary = QGuiApplication.primaryScreen()
-        available_rect = primary.availableGeometry() if primary is not None else screens[0].availableGeometry()
+        available_rect = (
+            primary.availableGeometry()
+            if primary is not None
+            else screens[0].availableGeometry()
+        )
 
     width = min(width, max(1, available_rect.width()))
     height = min(height, max(1, available_rect.height()))
@@ -140,12 +149,16 @@ def _clamp_window_geometry_to_screen(
     y = min(max(int(y), available_rect.top()), max_y)
     return x, y, width, height
 
+
 class SkyWindowClientWidget(SkyWindowRenderMixin, QWidget):
     """Client-area widget shared by frameless and decorated host windows."""
 
     def __init__(self, owner: "SkyWindowCoreMixin") -> None:
         super().__init__(owner)
         self._owner = owner
+        self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
+        self.setAutoFillBackground(False)
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
@@ -169,10 +182,14 @@ class SkyWindowClientWidget(SkyWindowRenderMixin, QWidget):
 class FramelessWindowFrame(QWidget):
     """Frameless-only window chrome that hosts the client widget and overlay controls."""
 
-    def __init__(self, owner: "SkyWindowCoreMixin", client_widget: SkyWindowClientWidget) -> None:
+    def __init__(
+        self, owner: "SkyWindowCoreMixin", client_widget: SkyWindowClientWidget
+    ) -> None:
         super().__init__(owner)
         self._owner = owner
         self._client_widget = client_widget
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
+        self.setAutoFillBackground(False)
         self._client_widget.setParent(self)
 
         self.menu_button = QPushButton("", self)
@@ -195,7 +212,9 @@ class FramelessWindowFrame(QWidget):
         button_size = self.menu_button.size()
         self.menu_button.move(self.width() - button_size.width(), 0)
         grip_size = self.size_grip.size()
-        self.size_grip.move(self.width() - grip_size.width(), self.height() - grip_size.height())
+        self.size_grip.move(
+            self.width() - grip_size.width(), self.height() - grip_size.height()
+        )
         self.menu_button.raise_()
         self.size_grip.raise_()
 
@@ -218,7 +237,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     # Signal to request repaint safely from background threads.
     cloud_repaint_requested = Signal()
     compute_star_render_surface_size = staticmethod(compute_star_render_surface_size)
-    compute_star_render_upscale_factor = staticmethod(compute_star_render_upscale_factor)
+    compute_star_render_upscale_factor = staticmethod(
+        compute_star_render_upscale_factor
+    )
 
     FRAMELESS_WINDOW = False
 
@@ -249,44 +270,68 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.dso_catalog_np = catalogs.dso_catalog_np
         self.show_dso: bool = self.dso_catalog_np is not None
         if user_options.show_dso_initial is not None:
-            self.show_dso = bool(user_options.show_dso_initial) and self.dso_catalog_np is not None
+            self.show_dso = (
+                bool(user_options.show_dso_initial) and self.dso_catalog_np is not None
+            )
         self.show_asterisms: bool = (
-            True if user_options.show_asterisms_initial is None else bool(user_options.show_asterisms_initial)
+            True
+            if user_options.show_asterisms_initial is None
+            else bool(user_options.show_asterisms_initial)
         )
         self.show_guidelines: bool = (
-            True if user_options.show_guidelines_initial is None else bool(user_options.show_guidelines_initial)
+            True
+            if user_options.show_guidelines_initial is None
+            else bool(user_options.show_guidelines_initial)
         )
         self.show_overlay_info: bool = (
-            True if user_options.show_overlay_info_initial is None else bool(user_options.show_overlay_info_initial)
+            True
+            if user_options.show_overlay_info_initial is None
+            else bool(user_options.show_overlay_info_initial)
         )
         self._named_stars_by_band = catalogs.named_stars_by_band
         self._named_stars_search_all = catalogs.named_stars_search_all
         self.delta_t = runtime_options.delta_t
         overlay_availability = overlay_availability_for_delta(self.delta_t)
         self.sky_disc_alpha = user_options.sky_disc_alpha
-        self._sky_disc_alpha_when_enabled = user_options.sky_disc_alpha if user_options.sky_disc_alpha > 0.0 else 0.3
+        self._sky_disc_alpha_when_enabled = (
+            user_options.sky_disc_alpha if user_options.sky_disc_alpha > 0.0 else 0.3
+        )
         requested_satellite_opacity = user_options.satellite_opacity
         self._satellite_toggle_supported = overlay_availability.satellite
-        self._satellite_opacity_when_enabled = requested_satellite_opacity if requested_satellite_opacity > 0.0 else 1.0
-        self.satellite_opacity = requested_satellite_opacity if self._satellite_toggle_supported else 0.0
+        self._satellite_opacity_when_enabled = (
+            requested_satellite_opacity if requested_satellite_opacity > 0.0 else 1.0
+        )
+        self.satellite_opacity = (
+            requested_satellite_opacity if self._satellite_toggle_supported else 0.0
+        )
         requested_aircraft_opacity = user_options.aircraft_opacity
         self._aircraft_toggle_supported = overlay_availability.aircraft
-        self._aircraft_opacity_when_enabled = requested_aircraft_opacity if requested_aircraft_opacity > 0.0 else 1.0
-        self.aircraft_opacity = requested_aircraft_opacity if self._aircraft_toggle_supported else 0.0
+        self._aircraft_opacity_when_enabled = (
+            requested_aircraft_opacity if requested_aircraft_opacity > 0.0 else 1.0
+        )
+        self.aircraft_opacity = (
+            requested_aircraft_opacity if self._aircraft_toggle_supported else 0.0
+        )
         self.terrain_horizon_opacity = user_options.terrain_horizon_opacity
         self.urban_outline_opacity = user_options.urban_outline_opacity
         self.ground_tint_opacity = user_options.ground_tint_opacity
         self._terrain_horizon_opacity_when_enabled = (
-            user_options.terrain_horizon_opacity if user_options.terrain_horizon_opacity > 0.0 else 0.25
+            user_options.terrain_horizon_opacity
+            if user_options.terrain_horizon_opacity > 0.0
+            else 0.25
         )
         self._urban_outline_opacity_when_enabled = (
-            user_options.urban_outline_opacity if user_options.urban_outline_opacity > 0.0 else 0.2
+            user_options.urban_outline_opacity
+            if user_options.urban_outline_opacity > 0.0
+            else 0.2
         )
         self._sky_disc_gui_allowed = bool(user_options.sky_disc_gui_allowed)
         self._cloud_gui_allowed = bool(user_options.cloud_gui_allowed)
         self._satellite_gui_allowed = bool(user_options.satellite_gui_allowed)
         self._aircraft_gui_allowed = bool(user_options.aircraft_gui_allowed)
-        self._terrain_horizon_gui_allowed = bool(user_options.terrain_horizon_gui_allowed)
+        self._terrain_horizon_gui_allowed = bool(
+            user_options.terrain_horizon_gui_allowed
+        )
         self._urban_outline_gui_allowed = bool(user_options.urban_outline_gui_allowed)
         self.show_urban_outline_layer: bool = self.urban_outline_opacity > 0.0
         self.enlarge_moon = user_options.enlarge_moon
@@ -294,10 +339,18 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.vmag_limit = user_options.vmag_limit
         self.sky_update_interval = runtime_options.sky_update_interval
         self.urban_outline_radius_km = float(runtime_options.urban_outline_radius_km)
-        self.urban_outline_skyscraper_radius_km = float(runtime_options.urban_outline_skyscraper_radius_km)
-        self.urban_outline_min_height_m = float(runtime_options.urban_outline_min_height_m)
-        self.urban_outline_feature_type = str(runtime_options.urban_outline_feature_type)
-        self.urban_outline_skyscraper_only = bool(runtime_options.urban_outline_skyscraper_only)
+        self.urban_outline_skyscraper_radius_km = float(
+            runtime_options.urban_outline_skyscraper_radius_km
+        )
+        self.urban_outline_min_height_m = float(
+            runtime_options.urban_outline_min_height_m
+        )
+        self.urban_outline_feature_type = str(
+            runtime_options.urban_outline_feature_type
+        )
+        self.urban_outline_skyscraper_only = bool(
+            runtime_options.urban_outline_skyscraper_only
+        )
         self.visual_preset = user_options.visual_preset
         self.star_visibility_boost = user_options.star_visibility_boost
         self._star_render_expected_width = runtime_options.star_render_expected_width
@@ -307,7 +360,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         # Cloud opacity is disabled if we are looking at a time-shifted view,
         # as we can only fetch current cloud data.
         requested_cloud_alpha = user_options.cloud_disc_alpha
-        self._cloud_alpha_when_enabled = requested_cloud_alpha if requested_cloud_alpha > 0.0 else 0.2
+        self._cloud_alpha_when_enabled = (
+            requested_cloud_alpha if requested_cloud_alpha > 0.0 else 0.2
+        )
         self.cloud_disc_alpha: float = requested_cloud_alpha
         if not self._cloud_toggle_supported:
             self.cloud_disc_alpha = 0.0
@@ -323,6 +378,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._enabled_satellite_groups: tuple[str, ...] = (SATELLITE_ISS_CACHE_KEY,)
         self._frame_cache_key: object | None = None
         self._frame_cache_image = None
+        self._present_frame_cache_key: object | None = None
+        self._present_frame_cache_image = None
         self.setWindowTitle(self.viewer_data.city_name)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setFocus(Qt.FocusReason.ActiveWindowFocusReason)
@@ -343,13 +400,15 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             requested_geometry = runtime_options.window_geometry_arg
         if requested_geometry is not None:
             initial_x, initial_y, initial_width, initial_height = requested_geometry
-        initial_x, initial_y, initial_width, initial_height = _clamp_window_geometry_to_screen(
-            initial_x,
-            initial_y,
-            initial_width,
-            initial_height,
-            min_width=min_width,
-            min_height=min_height,
+        initial_x, initial_y, initial_width, initial_height = (
+            _clamp_window_geometry_to_screen(
+                initial_x,
+                initial_y,
+                initial_width,
+                initial_height,
+                min_width=min_width,
+                min_height=min_height,
+            )
         )
         self.setGeometry(initial_x, initial_y, initial_width, initial_height)
         self._client_widget = SkyWindowClientWidget(self)
@@ -396,20 +455,32 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._urban_outline_controller: Optional[UrbanOutlineController] = None
         self._cloud_update_timer = QTimer(self)
         self._cloud_update_timer.setInterval(CLOUD_UPDATE_INTERVAL * 1000)
-        self._cloud_update_timer.timeout.connect(lambda: self.start_background_cloud_update(reason="timer"))
+        self._cloud_update_timer.timeout.connect(
+            lambda: self.start_background_cloud_update(reason="timer")
+        )
         self._satellite_update_timer = QTimer(self)
         self._satellite_update_timer.setSingleShot(True)
-        self._satellite_update_timer.setInterval(SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS * 1000)
+        self._satellite_update_timer.setInterval(
+            SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS * 1000
+        )
         self._satellite_update_timer.timeout.connect(self._on_satellite_refresh_timer)
         self._aircraft_update_timer = QTimer(self)
         self._aircraft_update_timer.setSingleShot(True)
-        self._aircraft_update_timer.setInterval(AIRCRAFT_REFRESH_INTERVAL_SECONDS * 1000)
+        self._aircraft_update_timer.setInterval(
+            AIRCRAFT_REFRESH_INTERVAL_SECONDS * 1000
+        )
         self._aircraft_update_timer.timeout.connect(self._on_aircraft_refresh_timer)
         self._overlay_projection_timer = QTimer(self)
         self._overlay_projection_timer.setInterval(
-            min(SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS, AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS) * 1000
+            min(
+                SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS,
+                AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS,
+            )
+            * 1000
         )
-        self._overlay_projection_timer.timeout.connect(self._on_overlay_projection_timer)
+        self._overlay_projection_timer.timeout.connect(
+            self._on_overlay_projection_timer
+        )
 
         # --- CloudDisc Service Initialization ---
         self._clouddisc: Optional[CloudDisc] = None
@@ -440,21 +511,33 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._aircraft_controller.aircraft_failed.connect(self._on_aircraft_failed)
         if self._action_toggle_clouds is not None:
             self._action_toggle_clouds.setEnabled(
-                self._cloud_toggle_supported and self._clouddisc is not None and self._cloud_gui_allowed
+                self._cloud_toggle_supported
+                and self._clouddisc is not None
+                and self._cloud_gui_allowed
             )
         if self._action_toggle_satellites is not None:
-            self._action_toggle_satellites.setEnabled(self._satellite_toggle_supported and self._satellite_gui_allowed)
+            self._action_toggle_satellites.setEnabled(
+                self._satellite_toggle_supported and self._satellite_gui_allowed
+            )
         if self._action_toggle_aircraft is not None:
-            self._action_toggle_aircraft.setEnabled(self._aircraft_toggle_supported and self._aircraft_gui_allowed)
+            self._action_toggle_aircraft.setEnabled(
+                self._aircraft_toggle_supported and self._aircraft_gui_allowed
+            )
 
         terrain_cache_dir = Path(CACHE_PATH) / "copernicus-dem"
         self._terrain_horizon_controller = TerrainHorizonController(
             cache_dir=terrain_cache_dir,
             parent=self,
         )
-        self._terrain_horizon_controller.terrain_started.connect(self._on_terrain_horizon_started)
-        self._terrain_horizon_controller.terrain_ready.connect(self._on_terrain_horizon_ready)
-        self._terrain_horizon_controller.terrain_failed.connect(self._on_terrain_horizon_failed)
+        self._terrain_horizon_controller.terrain_started.connect(
+            self._on_terrain_horizon_started
+        )
+        self._terrain_horizon_controller.terrain_ready.connect(
+            self._on_terrain_horizon_ready
+        )
+        self._terrain_horizon_controller.terrain_failed.connect(
+            self._on_terrain_horizon_failed
+        )
         self._urban_outline_controller = UrbanOutlineController(
             derived_root_dir=Path(OVERTURE_DERIVED_ROOT_DIR),
             min_building_height_m=self.urban_outline_min_height_m,
@@ -464,19 +547,29 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             skyscraper_only=self.urban_outline_skyscraper_only,
             parent=self,
         )
-        self._urban_outline_controller.urban_started.connect(self._on_urban_outline_started)
+        self._urban_outline_controller.urban_started.connect(
+            self._on_urban_outline_started
+        )
         self._urban_outline_controller.urban_ready.connect(self._on_urban_outline_ready)
-        self._urban_outline_controller.urban_failed.connect(self._on_urban_outline_failed)
+        self._urban_outline_controller.urban_failed.connect(
+            self._on_urban_outline_failed
+        )
         if self._action_toggle_terrain_horizon is not None:
-            self._action_toggle_terrain_horizon.setEnabled(self._terrain_horizon_gui_allowed)
+            self._action_toggle_terrain_horizon.setEnabled(
+                self._terrain_horizon_gui_allowed
+            )
         if self._action_toggle_sky_disc is not None:
             self._action_toggle_sky_disc.setEnabled(self._sky_disc_gui_allowed)
         if self._action_toggle_urban_outline is not None:
-            self._action_toggle_urban_outline.setEnabled(self._urban_outline_gui_allowed)
+            self._action_toggle_urban_outline.setEnabled(
+                self._urban_outline_gui_allowed
+            )
 
         # --- Composition Cache (moved to dedicated class) ---
         target_stripes, width_factor = runtime_options.cloud_stripe_style
-        missing_tint_alpha = int(round(255.0 * runtime_options.cloud_missing_tint_opacity))
+        missing_tint_alpha = int(
+            round(255.0 * runtime_options.cloud_missing_tint_opacity)
+        )
         missing_tint_rgba = (
             int(CLOUD_MISSING_TINT_RGBA[0]),
             int(CLOUD_MISSING_TINT_RGBA[1]),
@@ -517,7 +610,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             app.aboutToQuit.connect(self._begin_shutdown)
 
         self._sky_data_update_timer = QTimer(self)
-        self._sky_data_update_timer.timeout.connect(self.start_background_sky_data_update)
+        self._sky_data_update_timer.timeout.connect(
+            self.start_background_sky_data_update
+        )
 
         self._asterism_check_timer = QTimer(self)
         self._asterism_check_timer.setInterval(1000)
@@ -531,8 +626,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
         self._viewport_interaction_idle_timer = QTimer(self)
         self._viewport_interaction_idle_timer.setSingleShot(True)
-        self._viewport_interaction_idle_timer.setInterval(self.state.viewport_interaction_idle_ms)
-        self._viewport_interaction_idle_timer.timeout.connect(self._end_viewport_interaction_mode)
+        self._viewport_interaction_idle_timer.setInterval(
+            self.state.viewport_interaction_idle_ms
+        )
+        self._viewport_interaction_idle_timer.timeout.connect(
+            self._end_viewport_interaction_mode
+        )
 
     def _install_window_host(self) -> None:
         """Install the host-specific window chrome around the shared client widget."""
@@ -551,22 +650,38 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.menu.addMenu(self.display_menu)
         self.menu.addMenu(self.observer_view_menu)
 
-        rotate_left = self.observer_view_menu.addAction(f"Rotate Left (-{self.state.rotation_step:.0f}°)")
+        rotate_left = self.observer_view_menu.addAction(
+            f"Rotate Left (-{self.state.rotation_step:.0f}°)"
+        )
         rotate_left.triggered.connect(
-            lambda: self._rotate_view(d_az=-self.state.rotation_step, interactive_viewport=True)
+            lambda: self._rotate_view(
+                d_az=-self.state.rotation_step, interactive_viewport=True
+            )
         )
-        rotate_right = self.observer_view_menu.addAction(f"Rotate Right (+{self.state.rotation_step:.0f}°)")
+        rotate_right = self.observer_view_menu.addAction(
+            f"Rotate Right (+{self.state.rotation_step:.0f}°)"
+        )
         rotate_right.triggered.connect(
-            lambda: self._rotate_view(d_az=+self.state.rotation_step, interactive_viewport=True)
+            lambda: self._rotate_view(
+                d_az=+self.state.rotation_step, interactive_viewport=True
+            )
         )
-        raise_view = self.observer_view_menu.addAction(f"Raise View (+{self.state.rotation_step:.0f}° alt)")
+        raise_view = self.observer_view_menu.addAction(
+            f"Raise View (+{self.state.rotation_step:.0f}° alt)"
+        )
         raise_view.triggered.connect(
-            lambda: self._rotate_view(d_alt=+self.state.rotation_step, interactive_viewport=True)
+            lambda: self._rotate_view(
+                d_alt=+self.state.rotation_step, interactive_viewport=True
+            )
         )
         self._action_raise_view = raise_view
-        lower_view = self.observer_view_menu.addAction(f"Lower View (-{self.state.rotation_step:.0f}° alt)")
+        lower_view = self.observer_view_menu.addAction(
+            f"Lower View (-{self.state.rotation_step:.0f}° alt)"
+        )
         lower_view.triggered.connect(
-            lambda: self._rotate_view(d_alt=-self.state.rotation_step, interactive_viewport=True)
+            lambda: self._rotate_view(
+                d_alt=-self.state.rotation_step, interactive_viewport=True
+            )
         )
         self._action_lower_view = lower_view
 
@@ -683,7 +798,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         toggle_urban_outline_action.setCheckable(True)
         toggle_urban_outline_action.setChecked(self.urban_outline_opacity > 0.0)
         toggle_urban_outline_action.setShortcut(QKeySequence(Qt.Key.Key_U))
-        toggle_urban_outline_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
+        toggle_urban_outline_action.setShortcutContext(
+            Qt.ShortcutContext.WindowShortcut
+        )
         toggle_urban_outline_action.triggered.connect(self.toggle_urban_outline)
         self.display_menu.addAction(toggle_urban_outline_action)
         self.addAction(toggle_urban_outline_action)
@@ -747,12 +864,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
 
     def _size_grip_style_sheet(self) -> str:
-        return (
-            "QSizeGrip {"
-            " border: none;"
-            " background: transparent;"
-            "}"
-        )
+        return "QSizeGrip { border: none; background: transparent;}"
 
     def _raise_overlay_widgets(self) -> None:
         if self.menu_button is not None:
@@ -770,22 +882,38 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def client_width(self) -> int:
         if getattr(self, "_client_widget", None) is not None:
             return self._client_widget.width()
-        return self.centralWidget().width() if self.centralWidget() is not None else super().width()
+        return (
+            self.centralWidget().width()
+            if self.centralWidget() is not None
+            else super().width()
+        )
 
     def client_height(self) -> int:
         if getattr(self, "_client_widget", None) is not None:
             return self._client_widget.height()
-        return self.centralWidget().height() if self.centralWidget() is not None else super().height()
+        return (
+            self.centralWidget().height()
+            if self.centralWidget() is not None
+            else super().height()
+        )
 
     def client_size(self):
         if getattr(self, "_client_widget", None) is not None:
             return self._client_widget.size()
-        return self.centralWidget().size() if self.centralWidget() is not None else super().size()
+        return (
+            self.centralWidget().size()
+            if self.centralWidget() is not None
+            else super().size()
+        )
 
     def client_rect(self):
         if getattr(self, "_client_widget", None) is not None:
             return self._client_widget.rect()
-        return self.centralWidget().rect() if self.centralWidget() is not None else super().rect()
+        return (
+            self.centralWidget().rect()
+            if self.centralWidget() is not None
+            else super().rect()
+        )
 
     def request_client_update(self) -> None:
         if getattr(self, "_client_widget", None) is not None:
@@ -843,7 +971,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.start_background_cloud_update(reason="view-change-idle")
         self.start_background_terrain_horizon_update(reason="view-change-idle")
 
-    def _begin_viewport_interaction_mode(self, preserve_cloud_buffers: bool = False) -> None:
+    def _begin_viewport_interaction_mode(
+        self, preserve_cloud_buffers: bool = False
+    ) -> None:
         self.state.viewport_interaction_mode = True
         cloud_state = getattr(self, "cloud_state", None)
         cleared_cloud = False
@@ -865,7 +995,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self._compositor.invalidate()
         cloud_controller = getattr(self, "_cloud_controller", None)
         if cloud_controller is not None:
-            invalidate = getattr(cloud_controller, "invalidate_pending_render_results", None)
+            invalidate = getattr(
+                cloud_controller, "invalidate_pending_render_results", None
+            )
             if callable(invalidate):
                 invalidate()
         self._viewport_interaction_idle_timer.start()
@@ -936,9 +1068,13 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def _jump_to_search_target(self, target: SearchJumpTarget) -> None:
         target_kind = getattr(target, "kind", "star")
         if target_kind == "satellite":
-            target_altaz = self._find_satellite_jump_altaz(target.object_key or target.label)
+            target_altaz = self._find_satellite_jump_altaz(
+                target.object_key or target.label
+            )
             if target_altaz is None:
-                self.satellite_state.set_banner(f"Satellites: {target.label} not available")
+                self.satellite_state.set_banner(
+                    f"Satellites: {target.label} not available"
+                )
                 self.request_client_update()
                 return
             target_alt = float(target_altaz[0])
@@ -998,8 +1134,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
 
     def _find_satellite_jump_altaz(self, object_key: str) -> tuple[float, float] | None:
-        records_by_group = dict(getattr(self.satellite_state, "records_by_group", None) or {})
-        enabled_groups = tuple(getattr(self, "_enabled_satellite_groups", (SATELLITE_ISS_CACHE_KEY,)))
+        records_by_group = dict(
+            getattr(self.satellite_state, "records_by_group", None) or {}
+        )
+        enabled_groups = tuple(
+            getattr(self, "_enabled_satellite_groups", (SATELLITE_ISS_CACHE_KEY,))
+        )
         if not records_by_group:
             records_by_group = self._load_cached_satellite_records(enabled_groups)
         if not records_by_group:
@@ -1028,7 +1168,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             time_obj=self._current_time_obj(),
         )
 
-    def _load_cached_satellite_records(self, enabled_groups: tuple[str, ...]) -> dict[str, list[dict[str, object]]]:
+    def _load_cached_satellite_records(
+        self, enabled_groups: tuple[str, ...]
+    ) -> dict[str, list[dict[str, object]]]:
         records_by_group: dict[str, list[dict[str, object]]] = {}
         for group_key in enabled_groups:
             cached = load_satellite_cache(group_key)
@@ -1121,7 +1263,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         refreshed_at_utc = self.satellite_state.refreshed_at_utc
         if refreshed_at_utc is None:
             return None
-        age_seconds = abs((datetime.now(timezone.utc) - refreshed_at_utc).total_seconds())
+        age_seconds = abs(
+            (datetime.now(timezone.utc) - refreshed_at_utc).total_seconds()
+        )
         remaining_seconds = SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS - age_seconds
         return max(0, int(round(remaining_seconds * 1000.0)))
 
@@ -1169,7 +1313,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if not self._satellite_layer_enabled():
             return
         self._sync_overlay_projection_timer()
-        if self.satellite_state.records_by_group and self.satellite_state.element_epoch_utc is not None:
+        if (
+            self.satellite_state.records_by_group
+            and self.satellite_state.element_epoch_utc is not None
+        ):
             self.refresh_projected_satellite_overlay()
             remaining_ms = self._satellite_validity_remaining_ms()
             if remaining_ms is None:
@@ -1199,7 +1346,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def _schedule_next_aircraft_refresh(self, delay_ms: int | None = None) -> None:
         if not self._aircraft_layer_enabled() or self._is_shutting_down:
             return
-        interval_ms = AIRCRAFT_REFRESH_INTERVAL_SECONDS * 1000 if delay_ms is None else int(delay_ms)
+        interval_ms = (
+            AIRCRAFT_REFRESH_INTERVAL_SECONDS * 1000
+            if delay_ms is None
+            else int(delay_ms)
+        )
         self._aircraft_update_timer.start(max(0, interval_ms))
 
     def _on_aircraft_refresh_timer(self) -> None:
@@ -1213,7 +1364,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if not self._aircraft_layer_enabled():
             return
         self._sync_overlay_projection_timer()
-        if self.aircraft_state.snapshots and self.aircraft_state.last_success_utc is not None:
+        if (
+            self.aircraft_state.snapshots
+            and self.aircraft_state.last_success_utc is not None
+        ):
             self.refresh_projected_aircraft_overlay()
             age_seconds = self._aircraft_cache_age_seconds()
             if age_seconds is None:
@@ -1232,24 +1386,37 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
     def toggle_enlarge_moon(self) -> None:
         self.enlarge_moon = not self.enlarge_moon
-        if self._action_enlarge_moon is not None and self._action_enlarge_moon.isChecked() != self.enlarge_moon:
+        if (
+            self._action_enlarge_moon is not None
+            and self._action_enlarge_moon.isChecked() != self.enlarge_moon
+        ):
             self._action_enlarge_moon.setChecked(self.enlarge_moon)
         self.request_client_update()
 
     def toggle_clouds(self) -> None:
-        if not self._cloud_toggle_supported or self._clouddisc is None or not self._cloud_gui_allowed:
+        if (
+            not self._cloud_toggle_supported
+            or self._clouddisc is None
+            or not self._cloud_gui_allowed
+        ):
             if self._action_toggle_clouds is not None:
                 self._action_toggle_clouds.setChecked(False)
             return
 
         enable_clouds = self.cloud_disc_alpha <= 0.0
         self.cloud_disc_alpha = self._cloud_alpha_when_enabled if enable_clouds else 0.0
-        if self._action_toggle_clouds is not None and self._action_toggle_clouds.isChecked() != enable_clouds:
+        if (
+            self._action_toggle_clouds is not None
+            and self._action_toggle_clouds.isChecked() != enable_clouds
+        ):
             self._action_toggle_clouds.setChecked(enable_clouds)
 
         if enable_clouds:
             self.start_background_cloud_update(reason="toggle-on")
-            if self._sky_data_update_timer.isActive() and not self._cloud_update_timer.isActive():
+            if (
+                self._sky_data_update_timer.isActive()
+                and not self._cloud_update_timer.isActive()
+            ):
                 self._cloud_update_timer.start()
         elif self._cloud_update_timer.isActive():
             self._cloud_update_timer.stop()
@@ -1263,8 +1430,13 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             return
 
         enable_satellites = self.satellite_opacity <= 0.0
-        self.satellite_opacity = self._satellite_opacity_when_enabled if enable_satellites else 0.0
-        if self._action_toggle_satellites is not None and self._action_toggle_satellites.isChecked() != enable_satellites:
+        self.satellite_opacity = (
+            self._satellite_opacity_when_enabled if enable_satellites else 0.0
+        )
+        if (
+            self._action_toggle_satellites is not None
+            and self._action_toggle_satellites.isChecked() != enable_satellites
+        ):
             self._action_toggle_satellites.setChecked(enable_satellites)
 
         if enable_satellites:
@@ -1281,8 +1453,13 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             return
 
         enable_aircraft = self.aircraft_opacity <= 0.0
-        self.aircraft_opacity = self._aircraft_opacity_when_enabled if enable_aircraft else 0.0
-        if self._action_toggle_aircraft is not None and self._action_toggle_aircraft.isChecked() != enable_aircraft:
+        self.aircraft_opacity = (
+            self._aircraft_opacity_when_enabled if enable_aircraft else 0.0
+        )
+        if (
+            self._action_toggle_aircraft is not None
+            and self._action_toggle_aircraft.isChecked() != enable_aircraft
+        ):
             self._action_toggle_aircraft.setChecked(enable_aircraft)
 
         if enable_aircraft:
@@ -1299,19 +1476,28 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 self._action_toggle_dso.setChecked(False)
             return
         self.show_dso = not self.show_dso
-        if self._action_toggle_dso is not None and self._action_toggle_dso.isChecked() != self.show_dso:
+        if (
+            self._action_toggle_dso is not None
+            and self._action_toggle_dso.isChecked() != self.show_dso
+        ):
             self._action_toggle_dso.setChecked(self.show_dso)
         self.request_client_update()
 
     def toggle_asterisms(self) -> None:
         self.show_asterisms = not self.show_asterisms
-        if self._action_toggle_asterisms is not None and self._action_toggle_asterisms.isChecked() != self.show_asterisms:
+        if (
+            self._action_toggle_asterisms is not None
+            and self._action_toggle_asterisms.isChecked() != self.show_asterisms
+        ):
             self._action_toggle_asterisms.setChecked(self.show_asterisms)
         self.request_client_update()
 
     def toggle_guidelines(self) -> None:
         self.show_guidelines = not self.show_guidelines
-        if self._action_toggle_guidelines is not None and self._action_toggle_guidelines.isChecked() != self.show_guidelines:
+        if (
+            self._action_toggle_guidelines is not None
+            and self._action_toggle_guidelines.isChecked() != self.show_guidelines
+        ):
             self._action_toggle_guidelines.setChecked(self.show_guidelines)
         self.request_client_update()
 
@@ -1330,7 +1516,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 self._action_toggle_sky_disc.setChecked(self.sky_disc_alpha > 0.0)
             return
         enable_sky_disc_gradient = self.sky_disc_alpha <= 0.0
-        self.sky_disc_alpha = self._sky_disc_alpha_when_enabled if enable_sky_disc_gradient else 0.0
+        self.sky_disc_alpha = (
+            self._sky_disc_alpha_when_enabled if enable_sky_disc_gradient else 0.0
+        )
         if (
             self._action_toggle_sky_disc is not None
             and self._action_toggle_sky_disc.isChecked() != enable_sky_disc_gradient
@@ -1343,12 +1531,19 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def toggle_terrain_horizon(self) -> None:
         if not self._terrain_horizon_gui_allowed:
             if self._action_toggle_terrain_horizon is not None:
-                self._action_toggle_terrain_horizon.setChecked(self.terrain_horizon_opacity > 0.0)
+                self._action_toggle_terrain_horizon.setChecked(
+                    self.terrain_horizon_opacity > 0.0
+                )
             return
 
         enable_terrain = self.terrain_horizon_opacity <= 0.0
-        self.terrain_horizon_opacity = self._terrain_horizon_opacity_when_enabled if enable_terrain else 0.0
-        if self._action_toggle_terrain_horizon is not None and self._action_toggle_terrain_horizon.isChecked() != enable_terrain:
+        self.terrain_horizon_opacity = (
+            self._terrain_horizon_opacity_when_enabled if enable_terrain else 0.0
+        )
+        if (
+            self._action_toggle_terrain_horizon is not None
+            and self._action_toggle_terrain_horizon.isChecked() != enable_terrain
+        ):
             self._action_toggle_terrain_horizon.setChecked(enable_terrain)
         self._compositor.invalidate()
         if enable_terrain:
@@ -1358,14 +1553,19 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def toggle_urban_outline(self) -> None:
         if not self._urban_outline_gui_allowed:
             if self._action_toggle_urban_outline is not None:
-                self._action_toggle_urban_outline.setChecked(self.urban_outline_opacity > 0.0)
+                self._action_toggle_urban_outline.setChecked(
+                    self.urban_outline_opacity > 0.0
+                )
             return
         enable_urban_outline = self.urban_outline_opacity <= 0.0
         self.urban_outline_opacity = (
             self._urban_outline_opacity_when_enabled if enable_urban_outline else 0.0
         )
         self.show_urban_outline_layer = self.urban_outline_opacity > 0.0
-        if self._action_toggle_urban_outline is not None and self._action_toggle_urban_outline.isChecked() != enable_urban_outline:
+        if (
+            self._action_toggle_urban_outline is not None
+            and self._action_toggle_urban_outline.isChecked() != enable_urban_outline
+        ):
             self._action_toggle_urban_outline.setChecked(enable_urban_outline)
         if enable_urban_outline:
             self.start_background_urban_outline_update(reason="toggle-on")
@@ -1430,7 +1630,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self._rotate_view(d_alt=self.state.rotation_step, interactive_viewport=True)
             event.accept()
         elif key == Qt.Key.Key_Down:
-            self._rotate_view(d_alt=-self.state.rotation_step, interactive_viewport=True)
+            self._rotate_view(
+                d_alt=-self.state.rotation_step, interactive_viewport=True
+            )
             event.accept()
 
         # --- Toggles ---
@@ -1484,6 +1686,8 @@ class FramelessSkyWindow(SkyWindowCoreMixin, DraggableWindow):
 
     def _install_window_host(self) -> None:
         self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
+        self.setAutoFillBackground(False)
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
         self._frameless_frame = FramelessWindowFrame(self, self._client_widget)
         self.setCentralWidget(self._frameless_frame)

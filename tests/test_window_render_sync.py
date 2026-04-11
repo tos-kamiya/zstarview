@@ -98,7 +98,16 @@ def _make_scene(
         celestial_data = CelestialData(
             time=astropy.time.Time("2026-03-09T00:00:00", scale="utc"),
             planets=[],
-            stars={"name": [], "source_id": [], "alt": [], "az": [], "vmag": [], "bv": [], "size_factor": [], "color_factor_base": []},
+            stars={
+                "name": [],
+                "source_id": [],
+                "alt": [],
+                "az": [],
+                "vmag": [],
+                "bv": [],
+                "size_factor": [],
+                "color_factor_base": [],
+            },
             deep_sky_objects={},
             celestial_equator_points=[],
             ecliptic_points=[],
@@ -272,7 +281,9 @@ def test_status_line_text_always_uses_night_style(monkeypatch) -> None:
         return (object(), object())
 
     monkeypatch.setattr(render_text_module, "get_text_style", fake_get_text_style)
-    monkeypatch.setattr(render_text_module, "draw_outlined_text", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        render_text_module, "draw_outlined_text", lambda *_args, **_kwargs: None
+    )
 
     render_text_module._draw_status_line_text(
         painter=DummyPainter(),
@@ -331,7 +342,9 @@ def test_on_sky_data_calculated_updates_render_snapshot_once() -> None:
     assert update_calls == ["update"]
 
 
-def test_on_sky_data_calculated_preserves_render_center_during_viewport_interaction() -> None:
+def test_on_sky_data_calculated_preserves_render_center_during_viewport_interaction() -> (
+    None
+):
     dummy = _WindowStub()
     dummy.viewer_data = ViewerData(
         location=(35.0, 139.0),
@@ -410,13 +423,19 @@ def test_on_satellite_failed_schedules_failure_backoff() -> None:
 
     SkyWindow._on_satellite_failed(dummy, {"banner": "Satellites: timed out"})
 
-    dummy.satellite_state.set_error_banner.assert_called_once_with("Satellites: timed out")
+    dummy.satellite_state.set_error_banner.assert_called_once_with(
+        "Satellites: timed out"
+    )
     assert retry_calls == ["retry"]
     dummy.update.assert_called_once()
 
 
-def test_jump_to_satellite_target_uses_cached_satellite_records_below_horizon(monkeypatch) -> None:
-    monkeypatch.setattr(window_module, "find_satellite_altaz", lambda *args, **kwargs: (-12.0, 123.0))
+def test_jump_to_satellite_target_uses_cached_satellite_records_below_horizon(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        window_module, "find_satellite_altaz", lambda *args, **kwargs: (-12.0, 123.0)
+    )
 
     dummy = _WindowStub()
     dummy.viewer_data = ViewerData(
@@ -426,7 +445,9 @@ def test_jump_to_satellite_target_uses_cached_satellite_records_below_horizon(mo
         view_center=(20.0, 30.0),
         observer_height_m=1.7,
     )
-    dummy.state = SkyWindowState(render_view_center=(20.0, 30.0), satellite_overlay_points=None)
+    dummy.state = SkyWindowState(
+        render_view_center=(20.0, 30.0), satellite_overlay_points=None
+    )
     dummy.satellite_state = SimpleNamespace(
         records_by_group={"iss": [{"OBJECT_NAME": "ISS (ZARYA)"}]},
         overlay_points=None,
@@ -437,7 +458,9 @@ def test_jump_to_satellite_target_uses_cached_satellite_records_below_horizon(mo
     dummy.request_sky_data_update = Mock()
     dummy.update = Mock()
     dummy._current_time_obj = lambda: astropy.time.Time("2026-03-22T12:00:00Z")
-    dummy._find_satellite_jump_altaz = lambda key: SkyWindow._find_satellite_jump_altaz(dummy, key)
+    dummy._find_satellite_jump_altaz = lambda key: SkyWindow._find_satellite_jump_altaz(
+        dummy, key
+    )
 
     SkyWindow._jump_to_search_target(
         dummy,
@@ -462,12 +485,18 @@ def test_find_satellite_jump_altaz_falls_back_to_disk_cache(monkeypatch) -> None
     monkeypatch.setattr(
         window_module,
         "find_satellite_altaz",
-        lambda records_by_group, **kwargs: (-40.0, 151.0) if records_by_group.get("iss") else None,
+        lambda records_by_group, **kwargs: (
+            (-40.0, 151.0) if records_by_group.get("iss") else None
+        ),
     )
     monkeypatch.setattr(
         window_module,
         "load_satellite_cache",
-        lambda group_key: SimpleNamespace(records=[{"OBJECT_NAME": "ISS (ZARYA)"}]) if group_key == "iss" else None,
+        lambda group_key: (
+            SimpleNamespace(records=[{"OBJECT_NAME": "ISS (ZARYA)"}])
+            if group_key == "iss"
+            else None
+        ),
     )
 
     dummy = _WindowStub()
@@ -481,7 +510,9 @@ def test_find_satellite_jump_altaz_falls_back_to_disk_cache(monkeypatch) -> None
     dummy.satellite_state = SimpleNamespace(records_by_group={})
     dummy._enabled_satellite_groups = ("iss",)
     dummy._current_time_obj = lambda: astropy.time.Time("2026-03-23T12:13:24Z")
-    dummy._load_cached_satellite_records = lambda groups: SkyWindow._load_cached_satellite_records(dummy, groups)
+    dummy._load_cached_satellite_records = lambda groups: (
+        SkyWindow._load_cached_satellite_records(dummy, groups)
+    )
 
     altaz = SkyWindow._find_satellite_jump_altaz(dummy, "ISS")
 
@@ -497,11 +528,17 @@ def test_jump_to_satellite_target_sets_banner_when_not_available() -> None:
         view_center=(20.0, 30.0),
         observer_height_m=1.7,
     )
-    dummy.state = SkyWindowState(render_view_center=(20.0, 30.0), satellite_overlay_points=None)
-    dummy.satellite_state = SimpleNamespace(records_by_group={}, overlay_points=None, set_banner=Mock())
+    dummy.state = SkyWindowState(
+        render_view_center=(20.0, 30.0), satellite_overlay_points=None
+    )
+    dummy.satellite_state = SimpleNamespace(
+        records_by_group={}, overlay_points=None, set_banner=Mock()
+    )
     dummy.update = Mock()
     dummy._load_cached_satellite_records = lambda groups: {}
-    dummy._find_satellite_jump_altaz = lambda key: SkyWindow._find_satellite_jump_altaz(dummy, key)
+    dummy._find_satellite_jump_altaz = lambda key: SkyWindow._find_satellite_jump_altaz(
+        dummy, key
+    )
 
     SkyWindow._jump_to_search_target(
         dummy,
@@ -516,7 +553,9 @@ def test_jump_to_satellite_target_sets_banner_when_not_available() -> None:
         ),
     )
 
-    dummy.satellite_state.set_banner.assert_called_once_with("Satellites: ISS not available")
+    dummy.satellite_state.set_banner.assert_called_once_with(
+        "Satellites: ISS not available"
+    )
     dummy.update.assert_called_once()
 
 
@@ -542,8 +581,12 @@ def test_jump_to_place_target_uses_projected_altaz(monkeypatch) -> None:
         view_center=(20.0, 30.0),
         observer_height_m=1.7,
     )
-    dummy.state = SkyWindowState(render_view_center=(20.0, 30.0), satellite_overlay_points=None)
-    dummy.satellite_state = SimpleNamespace(records_by_group={}, overlay_points=None, set_banner=Mock())
+    dummy.state = SkyWindowState(
+        render_view_center=(20.0, 30.0), satellite_overlay_points=None
+    )
+    dummy.satellite_state = SimpleNamespace(
+        records_by_group={}, overlay_points=None, set_banner=Mock()
+    )
     dummy._sync_view_altitude_actions = Mock()
     dummy._begin_interaction_mode = Mock()
     dummy.request_sky_data_update = Mock()
@@ -567,9 +610,17 @@ def test_jump_to_place_target_uses_projected_altaz(monkeypatch) -> None:
     dummy.request_sky_data_update.assert_called_once()
 
 
-def test_refresh_projected_satellite_overlay_falls_back_to_disk_cache(monkeypatch) -> None:
-    projected_points = [SimpleNamespace(satellite_name="ISS (ZARYA)", alt_deg=-40.0, az_deg=151.0)]
-    monkeypatch.setattr(window_updates_module, "project_satellite_records", lambda *args, **kwargs: projected_points)
+def test_refresh_projected_satellite_overlay_falls_back_to_disk_cache(
+    monkeypatch,
+) -> None:
+    projected_points = [
+        SimpleNamespace(satellite_name="ISS (ZARYA)", alt_deg=-40.0, az_deg=151.0)
+    ]
+    monkeypatch.setattr(
+        window_updates_module,
+        "project_satellite_records",
+        lambda *args, **kwargs: projected_points,
+    )
 
     dummy = _WindowStub()
     dummy.satellite_opacity = 1.0
@@ -581,10 +632,14 @@ def test_refresh_projected_satellite_overlay_falls_back_to_disk_cache(monkeypatc
         observer_height_m=10.0,
     )
     dummy.satellite_state = SimpleNamespace(records_by_group={}, overlay_points=None)
-    dummy.state = SkyWindowState(render_view_center=(0.0, 151.0), satellite_overlay_points=None)
+    dummy.state = SkyWindowState(
+        render_view_center=(0.0, 151.0), satellite_overlay_points=None
+    )
     dummy._enabled_satellite_groups = ("iss",)
     dummy._satellite_validity_remaining_ms = lambda: 1000
-    dummy._load_cached_satellite_records = lambda groups: {"iss": [{"OBJECT_NAME": "ISS (ZARYA)"}]}
+    dummy._load_cached_satellite_records = lambda groups: {
+        "iss": [{"OBJECT_NAME": "ISS (ZARYA)"}]
+    }
     dummy._current_time_obj = lambda: astropy.time.Time("2026-03-23T12:13:24Z")
     dummy.update = Mock()
 
@@ -595,7 +650,9 @@ def test_refresh_projected_satellite_overlay_falls_back_to_disk_cache(monkeypatc
     dummy.update.assert_called_once()
 
 
-def test_on_sky_data_calculated_discards_stale_generation_and_requests_refresh() -> None:
+def test_on_sky_data_calculated_discards_stale_generation_and_requests_refresh() -> (
+    None
+):
     dummy = _WindowStub()
     dummy.viewer_data = ViewerData(
         location=(35.0, 139.0),
@@ -619,7 +676,9 @@ def test_on_sky_data_calculated_discards_stale_generation_and_requests_refresh()
     requests: list[str] = []
     dummy.request_sky_data_update = lambda *_args, **_kwargs: requests.append("refresh")
     dummy._safe_request_cloud_repaint = lambda: None
-    dummy.update = lambda: (_ for _ in ()).throw(AssertionError("should not repaint stale sky payload"))
+    dummy.update = lambda: (_ for _ in ()).throw(
+        AssertionError("should not repaint stale sky payload")
+    )
 
     SkyWindow._on_sky_data_calculated(
         dummy,
@@ -638,7 +697,9 @@ def test_on_sky_data_calculated_discards_stale_generation_and_requests_refresh()
     assert requests == ["refresh"]
 
 
-def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(monkeypatch) -> None:
+def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(
+    monkeypatch,
+) -> None:
     calls: list[tuple[str, object]] = []
 
     monkeypatch.setattr(
@@ -700,7 +761,9 @@ def test_draw_cached_frame_reuses_existing_image() -> None:
     dummy = _WindowStub()
     dummy._frame_cache_key = None
     dummy._frame_cache_image = None
-    dummy.size = lambda: window_render_module.QImage(32, 24, QImage.Format.Format_ARGB32_Premultiplied).size()
+    dummy.size = lambda: window_render_module.QImage(
+        32, 24, QImage.Format.Format_ARGB32_Premultiplied
+    ).size()
 
     def render_fn(frame_painter) -> None:
         render_calls.append("render")
@@ -708,11 +771,48 @@ def test_draw_cached_frame_reuses_existing_image() -> None:
 
     painter = _Painter()
 
-    window_render_module.SkyWindowRenderMixin._draw_cached_frame(dummy, painter, ("same",), render_fn)
-    window_render_module.SkyWindowRenderMixin._draw_cached_frame(dummy, painter, ("same",), render_fn)
+    window_render_module.SkyWindowRenderMixin._draw_cached_frame(
+        dummy, painter, ("same",), render_fn
+    )
+    window_render_module.SkyWindowRenderMixin._draw_cached_frame(
+        dummy, painter, ("same",), render_fn
+    )
 
     assert render_calls == ["render"]
     assert draws == [(0, 0), (0, 0)]
+
+
+def test_render_cached_frame_image_reuses_existing_image() -> None:
+    render_calls: list[str] = []
+
+    dummy = _WindowStub()
+    dummy._present_frame_cache_key = None
+    dummy._present_frame_cache_image = None
+    dummy.size = lambda: window_render_module.QImage(
+        24, 16, QImage.Format.Format_ARGB32_Premultiplied
+    ).size()
+
+    def render_fn(frame_painter) -> None:
+        render_calls.append("render")
+        frame_painter.fillRect(0, 0, 24, 16, window_render_module.Qt.GlobalColor.black)
+
+    image_a = window_render_module.SkyWindowRenderMixin._render_cached_frame_image(
+        dummy,
+        frame_key=("same",),
+        render_fn=render_fn,
+        cache_key_attr="_present_frame_cache_key",
+        cache_image_attr="_present_frame_cache_image",
+    )
+    image_b = window_render_module.SkyWindowRenderMixin._render_cached_frame_image(
+        dummy,
+        frame_key=("same",),
+        render_fn=render_fn,
+        cache_key_attr="_present_frame_cache_key",
+        cache_image_attr="_present_frame_cache_image",
+    )
+
+    assert render_calls == ["render"]
+    assert image_a.cacheKey() == image_b.cacheKey()
 
 
 def test_render_frame_cache_key_ignores_hover_and_status_state() -> None:
@@ -741,8 +841,12 @@ def test_render_frame_cache_key_ignores_hover_and_status_state() -> None:
     dummy.urban_outline_opacity = 0.2
     dummy.show_urban_outline_layer = True
     dummy._status_line_message = lambda: "initial"
-    dummy._render_cache_stamp = lambda value: window_render_module.SkyWindowRenderMixin._render_cache_stamp(dummy, value)
-    dummy.cloud_state = SimpleNamespace(image=object(), missing_mask=object(), cloud_amount_field=None)
+    dummy._render_cache_stamp = lambda value: (
+        window_render_module.SkyWindowRenderMixin._render_cache_stamp(dummy, value)
+    )
+    dummy.cloud_state = SimpleNamespace(
+        image=object(), missing_mask=object(), cloud_amount_field=None
+    )
     dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
     dummy.state.sky_disc_image = object()
     dummy.state.terrain_horizon_profile = [(1.0, 2.0)]
@@ -776,7 +880,142 @@ def test_render_frame_cache_key_ignores_hover_and_status_state() -> None:
     assert key_a == key_b
 
 
-def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(monkeypatch) -> None:
+def test_present_frame_cache_key_tracks_hover_and_status_state() -> None:
+    geometry = SimpleNamespace(center=(100, 100), radius=80)
+    celestial_data = object()
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+        observer_height_m=1.7,
+    )
+    dummy = _WindowStub()
+    dummy.width = lambda: 640
+    dummy.height = lambda: 480
+    dummy.visual_preset = "night"
+    dummy.show_dso = True
+    dummy.show_asterisms = True
+    dummy.show_guidelines = True
+    dummy.enlarge_moon = False
+    dummy.vmag_limit = 6.0
+    dummy.sky_disc_alpha = 1.0
+    dummy.cloud_disc_alpha = 0.2
+    dummy.satellite_opacity = 0.4
+    dummy.aircraft_opacity = 0.3
+    dummy.terrain_horizon_opacity = 0.5
+    dummy.urban_outline_opacity = 0.2
+    dummy.show_urban_outline_layer = True
+    dummy._render_cache_stamp = lambda value: (
+        window_render_module.SkyWindowRenderMixin._render_cache_stamp(dummy, value)
+    )
+    dummy.cloud_state = SimpleNamespace(
+        image=object(),
+        missing_mask=object(),
+        cloud_amount_field=SimpleNamespace(source_cache_key=123),
+    )
+    dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
+    dummy.state.sky_disc_image = object()
+    dummy.state.terrain_horizon_profile = [(1.0, 2.0)]
+    dummy.state.urban_outlines = [object()]
+    dummy.state.satellite_overlay_points = [object()]
+    dummy.state.aircraft_overlay_points = [object()]
+
+    base_key = SkyWindow._render_frame_cache_key(
+        dummy,
+        geometry=geometry,
+        celestial_data=celestial_data,
+        render_viewer=viewer,
+        include_fast_overlays=False,
+    )
+    key_a = SkyWindow._present_frame_cache_key(
+        dummy,
+        base_frame_key=base_key,
+        hud=_make_hud(status_message="initial"),
+    )
+
+    dummy.state.mouse_pos = QPoint(10, 20)
+    dummy.state.jump_highlight_name = "Vega"
+    dummy.state.jump_highlight_altaz = (20.0, 30.0)
+    dummy.state.jump_highlight_until_ms = 12345.0
+
+    key_b = SkyWindow._present_frame_cache_key(
+        dummy,
+        base_frame_key=base_key,
+        hud=_make_hud(mouse_pos=QPoint(10, 20), status_message="changed"),
+    )
+
+    assert key_a != key_b
+
+
+def test_render_frame_cache_key_ignores_fast_overlay_state_for_base_cache() -> None:
+    geometry = SimpleNamespace(center=(100, 100), radius=80)
+    celestial_data = object()
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+        observer_height_m=1.7,
+    )
+    dummy = _WindowStub()
+    dummy.width = lambda: 640
+    dummy.height = lambda: 480
+    dummy.visual_preset = "night"
+    dummy.show_dso = True
+    dummy.show_asterisms = True
+    dummy.show_guidelines = True
+    dummy.enlarge_moon = False
+    dummy.vmag_limit = 6.0
+    dummy.sky_disc_alpha = 1.0
+    dummy.cloud_disc_alpha = 0.2
+    dummy.satellite_opacity = 0.4
+    dummy.aircraft_opacity = 0.3
+    dummy.terrain_horizon_opacity = 0.5
+    dummy.urban_outline_opacity = 0.2
+    dummy.show_urban_outline_layer = True
+    dummy._render_cache_stamp = lambda value: (
+        window_render_module.SkyWindowRenderMixin._render_cache_stamp(dummy, value)
+    )
+    dummy.cloud_state = SimpleNamespace(
+        image=object(),
+        missing_mask=object(),
+        cloud_amount_field=SimpleNamespace(source_cache_key=123),
+    )
+    dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
+    dummy.state.sky_disc_image = object()
+    dummy.state.terrain_horizon_profile = [(1.0, 2.0)]
+    dummy.state.urban_outlines = [object()]
+    dummy.state.satellite_overlay_points = [object()]
+    dummy.state.aircraft_overlay_points = [object()]
+
+    key_a = SkyWindow._render_frame_cache_key(
+        dummy,
+        geometry=geometry,
+        celestial_data=celestial_data,
+        render_viewer=viewer,
+        include_fast_overlays=False,
+    )
+
+    dummy.state.satellite_overlay_points = [object(), object()]
+    dummy.state.aircraft_overlay_points = [object(), object()]
+    dummy.satellite_opacity = 0.9
+    dummy.aircraft_opacity = 0.8
+
+    key_b = SkyWindow._render_frame_cache_key(
+        dummy,
+        geometry=geometry,
+        celestial_data=celestial_data,
+        render_viewer=viewer,
+        include_fast_overlays=False,
+    )
+
+    assert key_a == key_b
+
+
+def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(
+    monkeypatch,
+) -> None:
     monkeypatch.setattr(
         pipeline_module.render_guides,
         "draw_sky_reference_lines",
@@ -850,7 +1089,9 @@ def test_draw_urban_outline_layer_skips_when_hidden(monkeypatch) -> None:
         painter=object(),
         geometry=object(),
         scene=_make_scene(
-            urban_outlines=[UrbanOutlinePolyline(points=[(-1.0, 10.0), (-2.0, 12.0)], height_m=50.0)]
+            urban_outlines=[
+                UrbanOutlinePolyline(points=[(-1.0, 10.0), (-2.0, 12.0)], height_m=50.0)
+            ]
         ),
         style=_make_style(show_urban_outline_layer=False),
     )
@@ -862,7 +1103,9 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     seen_profiles: list[object] = []
     seen_view_centers: list[object] = []
     seen_line_width_scales: list[float] = []
-    expected_line_width_scale = pipeline_module.compute_star_render_upscale_factor(1200, 600)
+    expected_line_width_scale = pipeline_module.compute_star_render_upscale_factor(
+        1200, 600
+    )
 
     monkeypatch.setattr(
         pipeline_module.render_guides,
@@ -890,7 +1133,9 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     )
 
     terrain_profile = [(1.0, 10.0), (2.0, 20.0)]
-    monkeypatch.setattr(pipeline_module, "_draw_star_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        pipeline_module, "_draw_star_layer", lambda *_args, **_kwargs: None
+    )
     pipeline_module._draw_viewport_interaction_layers(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
@@ -913,8 +1158,6 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     assert seen_profiles == [terrain_profile]
     assert seen_view_centers == [(50.0, 210.0)]
     assert seen_line_width_scales == [expected_line_width_scale]
-
-
 
 
 def test_draw_viewport_interaction_layers_skips_urban_outlines(monkeypatch) -> None:
@@ -951,7 +1194,9 @@ def test_draw_viewport_interaction_layers_skips_urban_outlines(monkeypatch) -> N
     )
 
     urban_outlines = [[(-1.0, 10.0), (-2.0, 20.0)]]
-    monkeypatch.setattr(pipeline_module, "_draw_star_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        pipeline_module, "_draw_star_layer", lambda *_args, **_kwargs: None
+    )
     pipeline_module._draw_viewport_interaction_layers(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
@@ -984,7 +1229,9 @@ def test_draw_terrain_layers_only_scales_asterisms_and_terrain(monkeypatch) -> N
         "zenith": [],
         "urban": [],
     }
-    expected_line_width_scale = pipeline_module.compute_star_render_upscale_factor(1200, 600)
+    expected_line_width_scale = pipeline_module.compute_star_render_upscale_factor(
+        1200, 600
+    )
 
     monkeypatch.setattr(
         pipeline_module.render_deep_sky_objects,
@@ -999,33 +1246,45 @@ def test_draw_terrain_layers_only_scales_asterisms_and_terrain(monkeypatch) -> N
     monkeypatch.setattr(
         pipeline_module.render_asterisms,
         "draw_asterisms",
-        lambda *_args, **kwargs: calls["asterisms"].append(float(kwargs.get("line_width_scale", 1.0))),
+        lambda *_args, **kwargs: calls["asterisms"].append(
+            float(kwargs.get("line_width_scale", 1.0))
+        ),
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
         "draw_terrain_horizon_line",
-        lambda *_args, **kwargs: calls["terrain"].append(float(kwargs.get("line_width_scale", 1.0))),
+        lambda *_args, **kwargs: calls["terrain"].append(
+            float(kwargs.get("line_width_scale", 1.0))
+        ),
     )
     monkeypatch.setattr(
         pipeline_module.render_guides,
         "draw_sky_reference_lines",
-        lambda *_args, **kwargs: calls["reference"].append(float(kwargs.get("line_width_scale", 1.0))),
+        lambda *_args, **kwargs: calls["reference"].append(
+            float(kwargs.get("line_width_scale", 1.0))
+        ),
     )
     monkeypatch.setattr(
         pipeline_module.render_guides,
         "draw_direction_labels",
-        lambda *_args, **kwargs: calls["direction"].append(float(kwargs.get("line_width_scale", 1.0))),
+        lambda *_args, **kwargs: calls["direction"].append(
+            float(kwargs.get("line_width_scale", 1.0))
+        ),
     )
     monkeypatch.setattr(
         pipeline_module.render_guides,
         "draw_zenith_marker",
-        lambda *_args, **kwargs: calls["zenith"].append(float(kwargs.get("line_width_scale", 1.0))),
+        lambda *_args, **kwargs: calls["zenith"].append(
+            float(kwargs.get("line_width_scale", 1.0))
+        ),
     )
 
     monkeypatch.setattr(
         pipeline_module,
         "_draw_urban_outline_layer",
-        lambda *_args, **kwargs: calls["urban"].append(float(kwargs.get("line_width_scale", 1.0))),
+        lambda *_args, **kwargs: calls["urban"].append(
+            float(kwargs.get("line_width_scale", 1.0))
+        ),
     )
     pipeline_module._draw_terrain_layers(
         painter=object(),
@@ -1094,7 +1353,9 @@ def test_draw_terrain_layers_does_not_draw_dso_hover_info(monkeypatch) -> None:
         lambda *_args, **_kwargs: None,
     )
 
-    monkeypatch.setattr(pipeline_module, "_draw_urban_outline_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        pipeline_module, "_draw_urban_outline_layer", lambda *_args, **_kwargs: None
+    )
     pipeline_module._draw_terrain_layers(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
@@ -1121,19 +1382,71 @@ def test_draw_terrain_layers_does_not_draw_dso_hover_info(monkeypatch) -> None:
 def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) -> None:
     calls: list[str] = []
 
-    monkeypatch.setattr(pipeline_module, "_clear_background_layer", lambda *_args, **_kwargs: calls.append("clear"))
-    monkeypatch.setattr(pipeline_module, "_draw_background_layer", lambda *_args, **_kwargs: calls.append("background"))
-    monkeypatch.setattr(pipeline_module, "_draw_guide_layer", lambda *_args, **_kwargs: calls.append("guide"))
-    monkeypatch.setattr(pipeline_module, "_draw_sky_cloud_layers", lambda *_args, **_kwargs: calls.append("sky-cloud"))
-    monkeypatch.setattr(pipeline_module, "_draw_terrain_layers", lambda *_args, **_kwargs: calls.append("terrain"))
-    monkeypatch.setattr(pipeline_module, "_draw_star_layer", lambda *_args, **_kwargs: calls.append("stars"))
-    monkeypatch.setattr(pipeline_module, "_draw_planet_layer", lambda *_args, **_kwargs: calls.append("planets"))
-    monkeypatch.setattr(pipeline_module, "_draw_satellite_layer", lambda *_args, **_kwargs: calls.append("satellites"))
-    monkeypatch.setattr(pipeline_module, "_draw_aircraft_layer", lambda *_args, **_kwargs: calls.append("aircraft"))
-    monkeypatch.setattr(pipeline_module, "_draw_overlay_layer", lambda *_args, **_kwargs: calls.append("overlay"))
-    monkeypatch.setattr(pipeline_module, "_draw_hover_overlay_layer", lambda *_args, **_kwargs: calls.append("hover"))
-    monkeypatch.setattr(pipeline_module, "_draw_label_layer", lambda *_args, **_kwargs: calls.append("labels"))
-    monkeypatch.setattr(pipeline_module, "_draw_status_line", lambda *_args, **_kwargs: calls.append("status"))
+    monkeypatch.setattr(
+        pipeline_module,
+        "_clear_background_layer",
+        lambda *_args, **_kwargs: calls.append("clear"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_background_layer",
+        lambda *_args, **_kwargs: calls.append("background"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_guide_layer",
+        lambda *_args, **_kwargs: calls.append("guide"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_sky_cloud_layers",
+        lambda *_args, **_kwargs: calls.append("sky-cloud"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_terrain_layers",
+        lambda *_args, **_kwargs: calls.append("terrain"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_star_layer",
+        lambda *_args, **_kwargs: calls.append("stars"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_planet_layer",
+        lambda *_args, **_kwargs: calls.append("planets"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_satellite_layer",
+        lambda *_args, **_kwargs: calls.append("satellites"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_aircraft_layer",
+        lambda *_args, **_kwargs: calls.append("aircraft"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_overlay_layer",
+        lambda *_args, **_kwargs: calls.append("overlay"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_hover_overlay_layer",
+        lambda *_args, **_kwargs: calls.append("hover"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_label_layer",
+        lambda *_args, **_kwargs: calls.append("labels"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_status_line",
+        lambda *_args, **_kwargs: calls.append("status"),
+    )
 
     geometry = SimpleNamespace(center=(100, 100), radius=80)
     viewport_rect = SimpleNamespace(width=lambda: 200, height=lambda: 200)
@@ -1148,7 +1461,16 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         celestial_data=CelestialData(
             time=astropy.time.Time("2026-03-09T00:00:00", scale="utc"),
             planets=[],
-            stars={"name": [], "source_id": [], "alt": [], "az": [], "vmag": [], "bv": [], "size_factor": [], "color_factor_base": []},
+            stars={
+                "name": [],
+                "source_id": [],
+                "alt": [],
+                "az": [],
+                "vmag": [],
+                "bv": [],
+                "size_factor": [],
+                "color_factor_base": [],
+            },
             deep_sky_objects={},
             celestial_equator_points=[],
             ecliptic_points=[],
@@ -1230,12 +1552,20 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
     ]
 
 
-def test_render_scene_hides_cloud_bitmap_during_viewport_interaction(monkeypatch) -> None:
+def test_render_scene_hides_cloud_bitmap_during_viewport_interaction(
+    monkeypatch,
+) -> None:
     captured: dict[str, object] = {}
 
-    monkeypatch.setattr(pipeline_module, "_clear_background_layer", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(pipeline_module, "_draw_background_layer", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(pipeline_module, "_draw_guide_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        pipeline_module, "_clear_background_layer", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_background_layer", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_guide_layer", lambda *_args, **_kwargs: None
+    )
     monkeypatch.setattr(
         pipeline_module,
         "_draw_sky_cloud_layers",
@@ -1246,7 +1576,11 @@ def test_render_scene_hides_cloud_bitmap_during_viewport_interaction(monkeypatch
             }
         ),
     )
-    monkeypatch.setattr(pipeline_module, "_draw_viewport_interaction_layers", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_viewport_interaction_layers",
+        lambda *_args, **_kwargs: None,
+    )
 
     pipeline_module.render_base_scene_into_painter(
         painter=object(),
@@ -1261,9 +1595,88 @@ def test_render_scene_hides_cloud_bitmap_during_viewport_interaction(monkeypatch
     assert captured == {"cloud_disc_alpha": 0.0, "sky_disc_image": None}
 
 
+def test_render_base_scene_can_skip_fast_overlays(monkeypatch) -> None:
+    calls: list[str] = []
+
+    monkeypatch.setattr(
+        pipeline_module,
+        "_clear_background_layer",
+        lambda *_args, **_kwargs: calls.append("clear"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_background_layer",
+        lambda *_args, **_kwargs: calls.append("background"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_guide_layer",
+        lambda *_args, **_kwargs: calls.append("guide"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_sky_cloud_layers",
+        lambda *_args, **_kwargs: calls.append("sky-cloud"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_terrain_layers",
+        lambda *_args, **_kwargs: calls.append("terrain"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_star_layer",
+        lambda *_args, **_kwargs: calls.append("stars"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_planet_layer",
+        lambda *_args, **_kwargs: calls.append("planets"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_satellite_layer",
+        lambda *_args, **_kwargs: calls.append("satellites"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_aircraft_layer",
+        lambda *_args, **_kwargs: calls.append("aircraft"),
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_label_layer",
+        lambda *_args, **_kwargs: calls.append("labels"),
+    )
+
+    pipeline_module.render_base_scene_into_painter(
+        painter=object(),
+        geometry=SimpleNamespace(center=(100, 100), radius=80),
+        viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
+        scene=_make_scene(),
+        style=_make_style(),
+        hud=_make_hud(),
+        compositor=object(),
+        draw_fast_overlays=False,
+    )
+
+    assert calls == [
+        "clear",
+        "background",
+        "sky-cloud",
+        "guide",
+        "terrain",
+        "stars",
+        "planets",
+        "labels",
+    ]
+
+
 def test_draw_overlay_layer_skips_static_info_when_disabled(monkeypatch) -> None:
     draw_overlay_info = Mock()
-    monkeypatch.setattr(pipeline_module.render_overlay_info, "draw_overlay_info", draw_overlay_info)
+    monkeypatch.setattr(
+        pipeline_module.render_overlay_info, "draw_overlay_info", draw_overlay_info
+    )
 
     pipeline_module._draw_overlay_layer(
         painter=object(),
@@ -1286,8 +1699,14 @@ def test_draw_overlay_layer_skips_static_info_when_disabled(monkeypatch) -> None
 def test_draw_background_layer_skips_gradient_when_disabled(monkeypatch) -> None:
     draw_radial_background = Mock()
     draw_window_border = Mock()
-    monkeypatch.setattr(pipeline_module.render_background, "draw_radial_background", draw_radial_background)
-    monkeypatch.setattr(pipeline_module.render_background, "draw_window_border", draw_window_border)
+    monkeypatch.setattr(
+        pipeline_module.render_background,
+        "draw_radial_background",
+        draw_radial_background,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_background, "draw_window_border", draw_window_border
+    )
 
     pipeline_module._draw_background_layer(
         painter=object(),
@@ -1304,8 +1723,14 @@ def test_draw_background_layer_skips_gradient_when_disabled(monkeypatch) -> None
 def test_draw_background_layer_skips_custom_frame_when_disabled(monkeypatch) -> None:
     draw_radial_background = Mock()
     draw_window_border = Mock()
-    monkeypatch.setattr(pipeline_module.render_background, "draw_radial_background", draw_radial_background)
-    monkeypatch.setattr(pipeline_module.render_background, "draw_window_border", draw_window_border)
+    monkeypatch.setattr(
+        pipeline_module.render_background,
+        "draw_radial_background",
+        draw_radial_background,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_background, "draw_window_border", draw_window_border
+    )
 
     pipeline_module._draw_background_layer(
         painter=object(),
@@ -1354,7 +1779,9 @@ def test_draw_hover_overlay_layer_enlarges_hovered_moon_by_name(monkeypatch) -> 
     assert calls == ["moon-hover", "dso-hover", "overlay-info"]
 
 
-def test_draw_sky_reference_lines_uses_render_view_center_projection(monkeypatch) -> None:
+def test_draw_sky_reference_lines_uses_render_view_center_projection(
+    monkeypatch,
+) -> None:
     calls: list[tuple[float, float]] = []
 
     class _Painter:
@@ -1386,13 +1813,17 @@ def test_draw_sky_reference_lines_uses_render_view_center_projection(monkeypatch
             observer_height_m=10.0,
         ),
         is_in_fov_func=lambda *_args, **_kwargs: True,
-        altaz_to_normalized_xy_func=lambda alt, az, view_center: calls.append(view_center) or (alt, az),
+        altaz_to_normalized_xy_func=lambda alt, az, view_center: (
+            calls.append(view_center) or (alt, az)
+        ),
     )
 
     assert calls == [(55.0, 200.0), (55.0, 200.0), (55.0, 200.0)]
 
 
-def test_draw_urban_outlines_simplifies_narrow_outline_to_horizontal_segment(monkeypatch) -> None:
+def test_draw_urban_outlines_simplifies_narrow_outline_to_horizontal_segment(
+    monkeypatch,
+) -> None:
     class _Painter:
         def __init__(self) -> None:
             self.polylines: list[list[tuple[float, float]]] = []
@@ -1407,13 +1838,17 @@ def test_draw_urban_outlines_simplifies_narrow_outline_to_horizontal_segment(mon
             pass
 
         def drawPolyline(self, poly) -> None:
-            self.polylines.append([(poly.at(i).x(), poly.at(i).y()) for i in range(poly.count())])
+            self.polylines.append(
+                [(poly.at(i).x(), poly.at(i).y()) for i in range(poly.count())]
+            )
 
     painter = _Painter()
     render_terrain_module.draw_urban_outlines(
         painter,
         geometry=SimpleNamespace(center=(0, 0), radius=1),
-        urban_outlines=[UrbanOutlinePolyline(points=[(-10.0, 10.0), (-12.0, 10.3)], height_m=50.0)],
+        urban_outlines=[
+            UrbanOutlinePolyline(points=[(-10.0, 10.0), (-12.0, 10.3)], height_m=50.0)
+        ],
         view_center=(45.0, 180.0),
         opacity=0.38,
     )
@@ -1513,7 +1948,10 @@ def test_draw_terrain_horizon_line_scales_line_widths(monkeypatch) -> None:
         opacity=0.38,
         line_width_scale=2.0,
         is_in_fov_func=lambda *_args, **_kwargs: True,
-        altaz_to_normalized_xy_func=lambda alt, az, _view_center: (float(az), float(alt)),
+        altaz_to_normalized_xy_func=lambda alt, az, _view_center: (
+            float(az),
+            float(alt),
+        ),
         normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
     )
 
