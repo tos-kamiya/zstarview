@@ -23,7 +23,6 @@ EARTH_GUIDE_DEAD_ZONE_MIN_KM = 20.0
 EARTH_GUIDE_DEAD_ZONE_MAX_KM = 80.0
 EARTH_GUIDE_DEAD_ZONE_SCALE = 0.25
 EARTH_GUIDE_HORIZON_MARGIN_DEG = 1.0
-EARTH_GUIDE_FRAGMENT_CLOSE_THRESHOLD_PX = 6.0
 EARTH_GUIDE_FILL_ALPHA_SCALE = 0.22
 EARTH_GUIDE_FOREGROUND_WIDTH = 1.5
 
@@ -111,17 +110,14 @@ def _surface_distance_km(point_xyz: np.ndarray, observer_up: np.ndarray) -> floa
 
 def _fragment_fill_path(fragment: list[tuple[float, float]]) -> QPainterPath:
     path = QPainterPath()
-    if not fragment:
+    if len(fragment) < 3:
         return path
     first_x, first_y = fragment[0]
     path.moveTo(QPointF(first_x, first_y))
     for x, y in fragment[1:]:
         path.lineTo(QPointF(x, y))
-    last_x, last_y = fragment[-1]
-    if math.hypot(last_x - first_x, last_y - first_y) <= EARTH_GUIDE_FRAGMENT_CLOSE_THRESHOLD_PX:
-        path.closeSubpath()
-        return path
-    return QPainterPath()
+    path.closeSubpath()
+    return path
 
 
 def _project_point_altaz(
