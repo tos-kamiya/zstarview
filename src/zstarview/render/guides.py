@@ -215,8 +215,9 @@ def draw_sky_reference_lines(
     """
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
     point_list_pen_styles: List[Tuple[List[Tuple[float, float]], Tuple[QColor, int, List[int]]]] = [
-        (celestial_data.celestial_equator_points, (CELESTIAL_EQUATOR_COLOR, 1, [8, 4])),
-        (celestial_data.ecliptic_points, (ECLIPTIC_COLOR, 1, [3, 3])),
+        # Keep the equator/ecliptic dash cadence visibly separated at normal zoom.
+        (celestial_data.celestial_equator_points, (CELESTIAL_EQUATOR_COLOR, 1, [12, 6])),
+        (celestial_data.ecliptic_points, (ECLIPTIC_COLOR, 1, [6, 6])),
         (celestial_data.horizon_points, (HORIZON_LINE_COLOR, 1, [10, 1])),
     ]
 

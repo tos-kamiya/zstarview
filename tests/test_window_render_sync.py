@@ -1824,6 +1824,64 @@ def test_draw_sky_reference_lines_uses_render_view_center_projection(
     assert calls == [(55.0, 200.0), (55.0, 200.0), (55.0, 200.0)]
 
 
+def test_draw_sky_reference_lines_uses_wider_dash_patterns(monkeypatch) -> None:
+    dash_patterns: list[list[int]] = []
+
+    class _FakePen:
+        def __init__(self, _color, _width, _style=None) -> None:
+            self._dash_pattern: list[int] = []
+
+        def setCosmetic(self, *_args, **_kwargs) -> None:
+            pass
+
+        def setDashPattern(self, pattern) -> None:
+            self._dash_pattern = list(pattern)
+
+        def setCapStyle(self, *_args, **_kwargs) -> None:
+            pass
+
+        def setJoinStyle(self, *_args, **_kwargs) -> None:
+            pass
+
+    class _Painter:
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setPen(self, pen) -> None:
+            dash_patterns.append(list(getattr(pen, "_dash_pattern", [])))
+
+        def drawPolyline(self, *_args, **_kwargs) -> None:
+            pass
+
+    monkeypatch.setattr(render_guides_module, "QPen", _FakePen)
+
+    render_guides_module.draw_sky_reference_lines(
+        _Painter(),
+        geometry=SimpleNamespace(center=(0, 0), radius=1),
+        celestial_data=SimpleNamespace(
+            celestial_equator_points=[(1.0, 2.0), (1.05, 2.05)],
+            ecliptic_points=[(3.0, 4.0), (3.05, 4.05)],
+            horizon_points=[(5.0, 6.0), (5.05, 6.05)],
+        ),
+        viewer_data=ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="Asia/Tokyo",
+            city_name="Tokyo",
+            view_center=(55.0, 200.0),
+            observer_height_m=10.0,
+        ),
+        is_in_fov_func=lambda *_args, **_kwargs: True,
+        altaz_to_normalized_xy_func=lambda alt, az, view_center: (alt, az),
+    )
+
+    assert dash_patterns[:2] == [[12, 6], [12, 6]]
+    assert dash_patterns[2:4] == [[6, 6], [6, 6]]
+    assert dash_patterns[4:6] == [[10, 1], [10, 1]]
+
+
 def test_draw_urban_outlines_simplifies_narrow_outline_to_horizontal_segment(
     monkeypatch,
 ) -> None:
