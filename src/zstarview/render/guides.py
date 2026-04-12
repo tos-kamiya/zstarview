@@ -217,7 +217,7 @@ def draw_sky_reference_lines(
     point_list_pen_styles: List[Tuple[List[Tuple[float, float]], Tuple[QColor, int, List[int]]]] = [
         # Keep the equator/ecliptic dash cadence visibly separated at normal zoom.
         (celestial_data.celestial_equator_points, (CELESTIAL_EQUATOR_COLOR, 1, [12, 6])),
-        (celestial_data.ecliptic_points, (ECLIPTIC_COLOR, 1, [6, 6])),
+        (celestial_data.ecliptic_points, (ECLIPTIC_COLOR, 1, [4, 8])),
         (celestial_data.horizon_points, (HORIZON_LINE_COLOR, 1, [10, 1])),
     ]
 
@@ -236,10 +236,9 @@ def draw_sky_reference_lines(
             poly = QPolygonF(pts)
 
             base_color = QColor(*color)
-            base_color.setAlpha(70)
+            base_color.setAlpha(40)
             base = QPen(base_color, width + 2, Qt.PenStyle.SolidLine)
             base.setCosmetic(True)
-            base.setDashPattern(style)
             base.setCapStyle(Qt.PenCapStyle.RoundCap)
             base.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
             painter.setPen(base)
