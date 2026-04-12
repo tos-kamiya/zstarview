@@ -596,12 +596,26 @@ def add_render_arguments(
             metavar="true|false",
             help="Whether to show guideline overlays at startup (true/false).",
         )
+        # New option: control observation-info overlay placement/mode at startup.
+        parser.add_argument(
+            "--observation-info",
+            type=str,
+            default="auto",
+            choices=("auto", "top", "bottom", "off"),
+            metavar="auto|top|bottom|off",
+            help=(
+                "Observation info overlay mode at startup: auto (hover-avoid, default), "
+                "top (fixed top), bottom (fixed bottom), or off (hidden)."
+            ),
+        )
+        # Backwards-compatible legacy flag. If provided, it maps to observation-info:
+        # true -> auto, false -> off. This preserves existing scripts.
         parser.add_argument(
             "--show-observation-info-initial",
             type=_parse_bool,
             default=None,
             metavar="true|false",
-            help="Whether to show observation info at startup (true/false).",
+            help="(legacy) Whether to show observation info at startup (true/false).",
         )
     theme_default = "night"
     parser.add_argument(
@@ -646,6 +660,7 @@ def build_export_image_argument_parser() -> argparse.ArgumentParser:
         include_window_geometry=False,
         include_window_frame=False,
         include_sky_update_interval=False,
+        include_startup_overlay_arguments=False,
     )
     parser.add_argument(
         "-o",
@@ -826,6 +841,20 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     _validate_dataset_query_compatibility(parser, args)
     _validate_location_argument_combinations(parser, args)
     _validate_urban_outline_argument_combinations(parser, args)
+
+    # Normalize observation-info option for backward compatibility.
+    # Priority: explicit --observation-info wins. If legacy --show-observation-info-initial
+    # is provided (true/false), map it to observation_info when observation_info was not
+    # explicitly changed from its default.
+    if hasattr(args, "observation_info"):
+        # If legacy flag is present (not None), and observation_info is default 'auto',
+        # interpret the legacy flag: true -> 'auto', false -> 'off'.
+        legacy_flag = getattr(args, "show_observation_info_initial", None)
+        if legacy_flag is not None and getattr(args, "observation_info", "auto") == "auto":
+            args.observation_info = "off" if legacy_flag is False else "auto"
+    else:
+        # Ensure attribute exists for downstream code.
+        setattr(args, "observation_info", "auto")
 
     return args
 
