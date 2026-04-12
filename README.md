@@ -154,7 +154,7 @@ The CLI supports detailed startup configuration for location, time, and renderin
 | `-i`, `--sky-update-interval SECONDS`       | Interval for updating stars/sky-color disc in seconds.                      | `60`   |
 | `--show-dso-initial true\|false`            | Whether DSO overlays are shown at startup.                                  | auto (`show` when catalog is available) |
 | `--show-asterisms-initial true\|false`      | Whether asterism overlays are shown at startup.                             | `show` |
-| `--show-observation-info-initial true\|false` | Whether the observation-info block is shown at startup.                    | `show` |
+| `--observation-info auto\|top\|bottom\|off` | Startup mode for the observation-info block.                                 | `auto` |
 
 #### Overlays
 

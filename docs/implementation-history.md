@@ -511,7 +511,6 @@
 
 - `--observation-info` の起動モード拡張
   - 観測情報オーバーレイの起動モードを `auto / top / bottom / off` で明示的に指定できる `--observation-info` を追加した。
-  - 既存の `--show-observation-info-initial` は互換用に残し、GUI 側では `bool` なら `auto / off` に正規化して扱うようにした。
   - GUI では `top / bottom` を pinned mode として扱い、マウス位置による HUD の自動移動を抑止するようにした。
   - `zstarview-export-image` ではこの新しい起動モードを露出せず、従来どおり `--show-guidelines-initial` だけを headless 向けに残した。
 

@@ -318,7 +318,6 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 幾何学的な地平線、天の赤道、黄道も `show_guidelines` に従う guide 系表示として扱う。
 - `show_guidelines == False` のときは、guide レイヤー本体だけでなく、viewport interaction 中の sky reference line 描画もまとめて省略してよい。
 - `show_overlay_info` は GUI 側の表示トグルとして保持し、既定では `True` でよい。
-- CLI の `--show-observation-info-initial` は `show_overlay_info` の初期値上書きとして扱ってよい。
 
 #### 4.3.3 次段のリファクタリング方針
 

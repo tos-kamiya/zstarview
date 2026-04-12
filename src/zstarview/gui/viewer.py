@@ -266,11 +266,7 @@ def main() -> None:
         show_dso_initial=args.show_dso_initial,
         show_asterisms_initial=args.show_asterisms_initial,
         show_guidelines_initial=args.show_guidelines_initial,
-        show_observation_info_initial=(
-            getattr(args, "observation_info", None)
-            if getattr(args, "observation_info", None) is not None
-            else getattr(args, "show_observation_info_initial", None)
-        ),
+        observation_info_mode=args.observation_info,
 
         sky_disc_gui_allowed=args.sky_opacity > 0.0,
         cloud_gui_allowed=args.cloud_opacity > 0.0,

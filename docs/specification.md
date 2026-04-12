@@ -773,7 +773,6 @@ CLI には次のビューポイント dataset 参照専用オプションを持�
 - place 検索で選択した対象も、恒星検索と同じ白丸マーカーで一時的にハイライトしてよい。
 - 観測情報 overlay は、星名や月 hover 表示より前面に描いてよい。
 - オーバーレイの表示モードは起動時に CLI 引数 `--observation-info=(auto|top|bottom|off)` で指定できる。意味は次の通り: `auto`（既存のマウス回避動作、既定）、`top`（ウィンドウ上部に固定表示）、`bottom`（ウィンドウ下部に固定表示）、`off`（非表示）。
-- 既存の `--show-observation-info-initial` は互換性のため alias として受け付け、無指定フラグは `auto` と解釈する。
 - headless な `zstarview-export-image` ではこのオプションは無視する（`--help` に注記すること）。
 - メニュー動作: CLI が `off` の場合はメニュー項目を無効化（グレーアウト）する。CLI が `auto`/`top`/`bottom` の場合はメニューで On/Off を切替可能とし、On にすると CLI 指定モード（auto/top/bottom）に復帰、Off にすると非表示にする。メニューでの切替はセッションのみであり、設定ファイルへは保存しない。
 - オーバーレイが `top` または `bottom` に固定されている場合、マウスホバーによる位置移動は行わない。
