@@ -662,6 +662,15 @@ def build_export_image_argument_parser() -> argparse.ArgumentParser:
         include_sky_update_interval=False,
         include_startup_overlay_arguments=False,
     )
+    # The export-image tool is headless. Keep guideline startup control available
+    # since it affects exported visuals, but do not expose other GUI-only startup flags.
+    parser.add_argument(
+        "--show-guidelines-initial",
+        type=_parse_bool,
+        default=None,
+        metavar="true|false",
+        help="Whether to show guideline overlays at startup (true/false).",
+    )
     parser.add_argument(
         "-o",
         "--output",
