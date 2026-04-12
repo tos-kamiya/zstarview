@@ -4,8 +4,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-PY_VERSIONS=("3.10" "3.11" "3.12" "3.13")
-MYPY_VERSIONS=("3.10" "3.13")
+PY_VERSIONS=("3.10" "3.11" "3.12" "3.13" "3.14")
+MYPY_VERSIONS=("3.10" "3.14")
 RUN_PYTEST=1
 RUN_MYPY=0
 RUN_COMPILEALL=1
