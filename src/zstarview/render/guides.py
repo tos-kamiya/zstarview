@@ -19,6 +19,12 @@ from ..types import CelestialData, ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
 from .text import ResolvedTextStyle, _clamp_baseline_pos_to_viewport, draw_outlined_text, get_text_outline_width
 
+REFERENCE_LINE_OUTER_WIDTH = 1.1
+REFERENCE_LINE_MID_WIDTH = 0.75
+REFERENCE_LINE_FG_WIDTH = 0.5
+REFERENCE_LINE_OUTER_ALPHA = 18
+REFERENCE_LINE_MID_ALPHA = 30
+
 
 def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
     return float(viewer_data.content_fov_deg)
@@ -214,15 +220,22 @@ def draw_sky_reference_lines(
         celestial_data: The data containing the points for the reference lines.
     """
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
-    point_list_pen_styles: List[Tuple[List[Tuple[float, float]], Tuple[QColor, int, List[int]]]] = [
-        # Keep the equator/ecliptic dash cadence visibly separated at normal zoom.
-        (celestial_data.celestial_equator_points, (CELESTIAL_EQUATOR_COLOR, 1, [12, 6])),
-        (celestial_data.ecliptic_points, (ECLIPTIC_COLOR, 1, [4, 6])),
-        (celestial_data.horizon_points, (HORIZON_LINE_COLOR, 1, [10, 1])),
-    ]
-
     painter.save()
-    for altaz_points, (color, width, style) in point_list_pen_styles:
+
+    def _make_reference_pen(color: tuple[int, int, int], width: float, alpha: int, style: Qt.PenStyle | None = None) -> QPen:
+        pen_color = QColor(*color)
+        pen_color.setAlpha(alpha)
+        pen = QPen(pen_color, width, style) if style is not None else QPen(pen_color, width)
+        pen.setCosmetic(True)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        return pen
+
+    def _draw_reference_line(
+        altaz_points: List[Tuple[float, float]],
+        color: tuple[int, int, int],
+        dash_pattern: List[int],
+    ) -> None:
         points: List[Tuple[float, float]] = []
         for alt, az in altaz_points:
             if not is_in_fov_func(float(alt), float(az), viewer_data.view_center, fov_deg=effective_fov_deg):
@@ -235,23 +248,23 @@ def draw_sky_reference_lines(
             pts = [QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in frag]
             poly = QPolygonF(pts)
 
-            base_color = QColor(*color)
-            base_color.setAlpha(40)
-            base = QPen(base_color, width + 2, Qt.PenStyle.SolidLine)
-            base.setCosmetic(True)
-            base.setCapStyle(Qt.PenCapStyle.RoundCap)
-            base.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-            painter.setPen(base)
+            outer = _make_reference_pen(color, REFERENCE_LINE_OUTER_WIDTH, REFERENCE_LINE_OUTER_ALPHA, Qt.PenStyle.SolidLine)
+            painter.setPen(outer)
             painter.drawPolyline(poly)
 
-            fg_color = QColor(*color)
-            fg = QPen(fg_color, width)
-            fg.setCosmetic(True)
-            fg.setDashPattern(style)
-            fg.setCapStyle(Qt.PenCapStyle.RoundCap)
-            fg.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            mid = _make_reference_pen(color, REFERENCE_LINE_MID_WIDTH, REFERENCE_LINE_MID_ALPHA, Qt.PenStyle.SolidLine)
+            painter.setPen(mid)
+            painter.drawPolyline(poly)
+
+            fg = _make_reference_pen(color, REFERENCE_LINE_FG_WIDTH, 255)
+            fg.setDashPattern(dash_pattern)
             painter.setPen(fg)
             painter.drawPolyline(poly)
+
+    # Keep the equator/ecliptic dash cadence visibly separated at normal zoom.
+    _draw_reference_line(celestial_data.celestial_equator_points, CELESTIAL_EQUATOR_COLOR, [12, 6])
+    _draw_reference_line(celestial_data.ecliptic_points, ECLIPTIC_COLOR, [4, 6])
+    _draw_reference_line(celestial_data.horizon_points, HORIZON_LINE_COLOR, [10, 1])
     painter.restore()
 
 
