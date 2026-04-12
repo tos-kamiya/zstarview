@@ -110,6 +110,12 @@ def _stripe_render_grids(
     return (phase, line_mask, inside_disc, u_idx * bins_v + v_idx)
 
 
+def _cloud_stripe_fade_factor(phase: np.ndarray, fade_span: float) -> np.ndarray:
+    """Return a gentle fade curve for variable-width cloud stripes."""
+    progress = np.clip((phase - 0.5) / max(1.0, float(fade_span)), 0.0, 1.0)
+    return 1.0 - 0.5 * np.square(progress)
+
+
 def build_cloud_amount_field_from_rgba(
     cloud: np.ndarray,
     *,
@@ -243,7 +249,7 @@ def _render_variable_width_cloud_stripes_rgba(
 
     alpha_u8 = int(np.clip(round(float(hatch_cfg.strength)), 1, 255))
     fade_span = max(1.0, float(max_band) - 0.5)
-    fade = 1.0 - 0.5 * np.clip((phase - 0.5) / fade_span, 0.0, 1.0)
+    fade = _cloud_stripe_fade_factor(phase, fade_span)
     if np.any(full_mask):
         out[..., :3][full_mask] = 255
         out[..., 3][full_mask] = np.clip(np.round(alpha_u8 * fade[full_mask]), 0, alpha_u8).astype(np.uint8)
