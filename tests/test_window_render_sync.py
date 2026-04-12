@@ -1828,12 +1828,14 @@ def test_draw_sky_reference_lines_uses_wider_dash_patterns(monkeypatch) -> None:
     dash_patterns: list[list[int]] = []
     pen_styles: list[object] = []
     pen_alpha_values: list[int] = []
+    pen_widths: list[float] = []
 
     class _FakePen:
         def __init__(self, color, _width, style=None) -> None:
             self._dash_pattern: list[int] = []
             self._style = style
             self._alpha = color.alpha() if hasattr(color, "alpha") else None
+            self._width = float(_width)
 
         def setCosmetic(self, *_args, **_kwargs) -> None:
             pass
@@ -1858,6 +1860,7 @@ def test_draw_sky_reference_lines_uses_wider_dash_patterns(monkeypatch) -> None:
             dash_patterns.append(list(getattr(pen, "_dash_pattern", [])))
             pen_styles.append(getattr(pen, "_style", None))
             pen_alpha_values.append(getattr(pen, "_alpha", None))
+            pen_widths.append(getattr(pen, "_width", None))
 
         def drawPolyline(self, *_args, **_kwargs) -> None:
             pass
@@ -1883,12 +1886,18 @@ def test_draw_sky_reference_lines_uses_wider_dash_patterns(monkeypatch) -> None:
         altaz_to_normalized_xy_func=lambda alt, az, view_center: (alt, az),
     )
 
-    assert dash_patterns[0::2] == [[], [], []]
-    assert dash_patterns[1::2] == [[12, 6], [4, 6], [10, 1]]
-    assert pen_styles[0::2] == [Qt.PenStyle.SolidLine, Qt.PenStyle.SolidLine, Qt.PenStyle.SolidLine]
-    assert pen_styles[1::2] == [None, None, None]
-    assert pen_alpha_values[0::2] == [40, 40, 40]
-    assert pen_alpha_values[1::2] == [255, 255, 255]
+    assert dash_patterns[0::3] == [[], [], []]
+    assert dash_patterns[1::3] == [[], [], []]
+    assert dash_patterns[2::3] == [[12, 6], [4, 6], [10, 1]]
+    assert pen_styles[0::3] == [Qt.PenStyle.SolidLine, Qt.PenStyle.SolidLine, Qt.PenStyle.SolidLine]
+    assert pen_styles[1::3] == [Qt.PenStyle.SolidLine, Qt.PenStyle.SolidLine, Qt.PenStyle.SolidLine]
+    assert pen_styles[2::3] == [None, None, None]
+    assert pen_alpha_values[0::3] == [18, 18, 18]
+    assert pen_alpha_values[1::3] == [30, 30, 30]
+    assert pen_alpha_values[2::3] == [255, 255, 255]
+    assert pen_widths[0::3] == [1.1, 1.1, 1.1]
+    assert pen_widths[1::3] == [0.75, 0.75, 0.75]
+    assert pen_widths[2::3] == [0.5, 0.5, 0.5]
 
 
 def test_draw_urban_outlines_simplifies_narrow_outline_to_horizontal_segment(
