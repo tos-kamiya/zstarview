@@ -42,7 +42,7 @@ def test_cloud_amount_field_tracks_alpha_strength() -> None:
     assert right_mean > left_mean * 1.8
 
 
-def test_variable_width_cloud_stripes_keep_fixed_alpha() -> None:
+def test_variable_width_cloud_stripes_keep_peak_alpha_at_base_line() -> None:
     arr = np.zeros((64, 64, 4), dtype=np.uint8)
     arr[..., 3] = 180
     field = build_cloud_amount_field(np_rgba_to_qimage(arr), bins=64)
@@ -52,6 +52,7 @@ def test_variable_width_cloud_stripes_keep_fixed_alpha() -> None:
     positive = out[..., 3] > 0
     assert np.any(positive)
     assert int(out[..., 3][positive].max()) == 173
+    assert int(out[..., 3][positive].min()) < 173
 
 
 def test_compose_cloud_addition_is_weighted_by_cloud_alpha() -> None:
@@ -132,6 +133,31 @@ def test_variable_width_cloud_stripes_stay_sparse_on_larger_canvas() -> None:
     small_ratio = float(np.mean(small[..., 3] > 0))
     large_ratio = float(np.mean(large[..., 3] > 0))
     assert large_ratio <= small_ratio + 0.05
+
+
+def test_variable_width_cloud_stripes_fade_away_from_base_line() -> None:
+    cfg = HatchConfig(20, 19, 8, 255)
+    field = CloudAmountField(
+        amount=np.full((96, 96), 1.0, dtype=np.float32),
+        u_min=-2.0,
+        u_max=2.0,
+        v_min=-2.0,
+        v_max=2.0,
+        nonzero_lo=0.0,
+        nonzero_hi=1.0,
+        source_cache_key=7,
+    )
+
+    out = qimage_to_np_rgba(render_variable_width_cloud_stripes(field, 192, 192, cfg, width_factor=0.5))
+    row_index = 96
+    runs = _alpha_runs(out[row_index, :, 3])
+    assert runs
+
+    start, end = runs[len(runs) // 2]
+    start_alpha = int(out[row_index, start, 3])
+    end_alpha = int(out[row_index, end, 3])
+    assert start_alpha > end_alpha + 40
+    assert end_alpha <= 170
 
 
 def test_variable_width_cloud_stripes_anchor_lower_left_edge() -> None:
