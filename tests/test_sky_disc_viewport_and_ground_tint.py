@@ -2,9 +2,10 @@ import numpy as np
 from PySide6.QtCore import QRectF
 from PySide6.QtGui import QImage, QPainter
 
+from zstarview.paths import PALETTE_NEVER_RISES_RGB
 from zstarview.render.background import draw_radial_background, draw_window_border
 from zstarview.render.geometry import get_screen_geometry
-from zstarview.render.sky_disc import draw_sky_color_disc, draw_uniform_sky_color_disc
+from zstarview.render.sky_disc import NEVER_RISES_TINT_RGB, draw_sky_color_disc, draw_uniform_sky_color_disc
 from zstarview.types import ScreenGeometry
 from zstarview.render.qt_image import qimage_to_np_rgba
 
@@ -110,6 +111,11 @@ def test_uniform_sky_disc_content_fov_fills_corner_overscan_area() -> None:
     # This sample lies outside the 90-degree inscribed circle but inside a 110-degree square overscan region.
     assert int(default_arr[20, 20, 3]) == 0
     assert int(overscan_arr[20, 20, 3]) == 255
+
+
+def test_never_rises_tint_uses_first_palette_swatch() -> None:
+    expected = np.array(PALETTE_NEVER_RISES_RGB, dtype=np.float32) / 255.0
+    assert np.allclose(NEVER_RISES_TINT_RGB, expected)
 
 
 def test_radial_background_uses_black_inner_disc_for_all_main_themes() -> None:

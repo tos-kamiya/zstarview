@@ -130,7 +130,7 @@ def test_compositor_terrain_profile_tints_ground_below_terrain_horizon() -> None
     arr_terrain = qimage_to_np_rgba(canvas_terrain)
 
     assert np.array_equal(arr_flat[24, 32, :3], np.array([100, 100, 100], dtype=np.uint8))
-    assert np.array_equal(arr_terrain[24, 32, :3], np.array([112, 84, 30], dtype=np.uint8))
+    assert np.array_equal(arr_terrain[24, 32, :3], np.array([112, 99, 89], dtype=np.uint8))
 
 
 def test_compositor_ground_tint_opacity_zero_makes_ground_fill_black() -> None:
@@ -183,4 +183,4 @@ def test_compositor_reapplies_never_rises_tint_after_ground_fill() -> None:
     painter.end()
 
     arr = qimage_to_np_rgba(canvas)
-    assert np.array_equal(arr[40, 32, :3], np.array([131, 87, 33], dtype=np.uint8))
+    assert np.array_equal(arr[40, 32, :3], np.array([155, 130, 111], dtype=np.uint8))
