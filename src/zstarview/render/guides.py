@@ -217,7 +217,7 @@ def draw_sky_reference_lines(
     point_list_pen_styles: List[Tuple[List[Tuple[float, float]], Tuple[QColor, int, List[int]]]] = [
         # Keep the equator/ecliptic dash cadence visibly separated at normal zoom.
         (celestial_data.celestial_equator_points, (CELESTIAL_EQUATOR_COLOR, 1, [12, 6])),
-        (celestial_data.ecliptic_points, (ECLIPTIC_COLOR, 1, [4, 8])),
+        (celestial_data.ecliptic_points, (ECLIPTIC_COLOR, 1, [4, 6])),
         (celestial_data.horizon_points, (HORIZON_LINE_COLOR, 1, [10, 1])),
     ]
 
