@@ -335,15 +335,20 @@ class SkyWindowRenderMixin:
             getattr(self.state, "overlay_info_bottom_left", False)
         )
         if mouse_pos is not None:
-            window_height = max(1, int(self.client_height()))
-            upper_threshold = float(window_height) / 3.0
-            lower_threshold = 2.0 * float(window_height) / 3.0
-            mouse_y = float(mouse_pos.y())
-            if mouse_y <= upper_threshold:
-                overlay_info_bottom_left = True
-            elif mouse_y >= lower_threshold:
-                overlay_info_bottom_left = False
-            self.state.overlay_info_bottom_left = overlay_info_bottom_left
+            # Respect pinned CLI modes: when pinned, do not move the overlay based on mouse.
+            if not getattr(self, "_overlay_info_pinned", False):
+                window_height = max(1, int(self.client_height()))
+                upper_threshold = float(window_height) / 3.0
+                lower_threshold = 2.0 * float(window_height) / 3.0
+                mouse_y = float(mouse_pos.y())
+                if mouse_y <= upper_threshold:
+                    overlay_info_bottom_left = True
+                elif mouse_y >= lower_threshold:
+                    overlay_info_bottom_left = False
+                self.state.overlay_info_bottom_left = overlay_info_bottom_left
+            else:
+                # Ensure the HUD uses the pinned position from state; do not override.
+                overlay_info_bottom_left = bool(getattr(self.state, "overlay_info_bottom_left", False))
         return RenderHudState(
             mouse_pos=mouse_pos,
             overlay_info_bottom_left=overlay_info_bottom_left,
