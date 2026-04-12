@@ -18,16 +18,16 @@ Usage:
   scripts/run_python_matrix.sh [options]
 
 Options:
-  --pytest-only     Run only pytest across 3.10/3.11/3.12/3.13
-  --with-mypy       Also run mypy on representative versions (3.10 and 3.13)
-  --mypy-only       Run only mypy on representative versions (3.10 and 3.13)
-  --mypy-all        Run mypy across 3.10/3.11/3.12/3.13
-  --compileall-only Run only compileall across 3.10/3.11/3.12/3.13
+  --pytest-only     Run only pytest across 3.10/3.11/3.12/3.13/3.14
+  --with-mypy       Also run mypy on representative versions (3.10 and 3.14)
+  --mypy-only       Run only mypy on representative versions (3.10 and 3.14)
+  --mypy-all        Run mypy across 3.10/3.11/3.12/3.13/3.14
+  --compileall-only Run only compileall across 3.10/3.11/3.12/3.13/3.14
   --skip-install    Reuse existing venvs without reinstalling .[dev]
   -h, --help        Show this help
 
 Default:
-  Create/update .venv-3.10 .. .venv-3.13, install .[dev], then run
+  Create/update .venv-3.10 .. .venv-3.14, install .[dev], then run
   pytest and compileall for each version.
 EOF
 }
