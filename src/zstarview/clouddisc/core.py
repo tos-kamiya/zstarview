@@ -19,7 +19,7 @@ from .projectors.az import az_project_lonlat_grid
 from .providers.goes import GoesProvider
 from .providers.hima import HimaProvider
 from .providers.select import GOES_SATELLITES, SUPPORTED_SATELLITES, pick_satellite, visible_satellites
-from .render.grayscale import convert_bt_to_rgba_image
+from .render.grayscale import _bt_to_weight, _suppress_low_cloud_weight, convert_bt_to_rgba_image
 from .sampling.bt_sampler import build_bt_sampler
 from .sampling.estimate_bt_warm_cold import estimate_bt_warm_from_equator_band, estimate_bt_cold_hybrid
 from .types import CloudMeta, CloudSourceData, RenderKey, SourceKey, VisibilityError, round_down_utc_to_slot
@@ -29,6 +29,49 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_CLOUD_SHELLS_KM: tuple[float, ...] = (6371.0 + 3.0, 6371.0 + 5.0, 6371.0 + 7.0)
 DEFAULT_CLOUD_SHELL_WEIGHTS: tuple[float, ...] = (0.20, 0.60, 0.20)
+DEFAULT_CLOUD_SHELL_LOW_WEIGHTS: tuple[float, ...] = (0.0, 1.0, 0.0)
+DEFAULT_CLOUD_SHELL_BLEND_LOW_CLOUD_AMOUNT: float = 0.25
+DEFAULT_CLOUD_SHELL_BLEND_HIGH_CLOUD_AMOUNT: float = 0.65
+
+
+def _smoothstep(edge0: float, edge1: float, x: float) -> float:
+    """Return a smooth 0..1 ramp between the given thresholds."""
+    denom = max(1e-6, float(edge1) - float(edge0))
+    t = float(np.clip((float(x) - float(edge0)) / denom, 0.0, 1.0))
+    return t * t * (3.0 - 2.0 * t)
+
+
+def _estimate_scene_cloud_amount(
+    bt: np.ndarray,
+    mask_inside: np.ndarray,
+    bt_warm: float,
+    bt_cold: float,
+) -> float:
+    """Estimate scene-wide cloudiness from a representative shell."""
+    inside = mask_inside & np.isfinite(bt)
+    if not np.any(inside):
+        return 0.0
+    weight = _bt_to_weight(bt, bt_warm, bt_cold)
+    weight = _suppress_low_cloud_weight(weight)
+    return float(np.mean(weight[inside]))
+
+
+def _blend_cloud_shell_weights(
+    cloud_amount: float,
+    shell_radii_km: Sequence[float],
+) -> tuple[float, ...]:
+    """Blend shell weights from middle-only to the default 3-layer mix."""
+    if len(shell_radii_km) != 3:
+        return tuple(1.0 / float(len(shell_radii_km)) for _ in shell_radii_km)
+    t = _smoothstep(
+        DEFAULT_CLOUD_SHELL_BLEND_LOW_CLOUD_AMOUNT,
+        DEFAULT_CLOUD_SHELL_BLEND_HIGH_CLOUD_AMOUNT,
+        cloud_amount,
+    )
+    low = np.asarray(DEFAULT_CLOUD_SHELL_LOW_WEIGHTS, dtype=np.float64)
+    high = np.asarray(DEFAULT_CLOUD_SHELL_WEIGHTS, dtype=np.float64)
+    blended = low * (1.0 - t) + high * t
+    return tuple(float(v) for v in blended)
 
 
 class CloudDisc:
@@ -213,10 +256,6 @@ class CloudDisc:
         cloud_shells_km: Sequence[float],
     ) -> Tuple[np.ndarray, CloudMeta, np.ndarray, float]:
         shell_radii_km = tuple(float(v) for v in cloud_shells_km) if cloud_shells_km else DEFAULT_CLOUD_SHELLS_KM
-        if shell_radii_km == DEFAULT_CLOUD_SHELLS_KM:
-            blend_weights = DEFAULT_CLOUD_SHELL_WEIGHTS
-        else:
-            blend_weights = tuple(1.0 / float(len(shell_radii_km)) for _ in shell_radii_km)
         # Step 3: Create a sampler function: (lon, lat) -> Brightness Temperature [K]
         sampler = source.sampler
         if sampler is None:
@@ -282,18 +321,21 @@ class CloudDisc:
             cold_local_p=5.0,
             cold_eq_p=3.0,
         )
+        cloud_amount = _estimate_scene_cloud_amount(bt_for_threshold, threshold_mask_inside, bt_warm, bt_cold)
+        blend_weights = _blend_cloud_shell_weights(cloud_amount, shell_radii_km)
         inside_vals = bt_for_threshold[threshold_mask_inside & np.isfinite(bt_for_threshold)].astype(np.float64)
         if inside_vals.size > 0:
             p05, p25, p50, p75, p95 = np.percentile(inside_vals, [5, 25, 50, 75, 95])
             logger.debug(
                 (
-                    "Cloud BT stats: sat=%s product=%s coverage=%.1f%% "
+                    "Cloud BT stats: sat=%s product=%s coverage=%.1f%% cloud_amount=%.3f "
                     "warm=%.2f cold=%.2f p05=%.2f p25=%.2f p50=%.2f p75=%.2f p95=%.2f "
                     "inside_valid=%d eq_samples=%d"
                 ),
                 source.satellite,
                 source.product,
                 coverage_ratio * 100.0,
+                cloud_amount,
                 bt_warm,
                 bt_cold,
                 p05,
@@ -306,10 +348,11 @@ class CloudDisc:
             )
         else:
             logger.debug(
-                "Cloud BT stats: sat=%s product=%s coverage=%.1f%% warm=%.2f cold=%.2f inside_valid=0 eq_samples=%d",
+                "Cloud BT stats: sat=%s product=%s coverage=%.1f%% cloud_amount=%.3f warm=%.2f cold=%.2f inside_valid=0 eq_samples=%d",
                 source.satellite,
                 source.product,
                 coverage_ratio * 100.0,
+                cloud_amount,
                 bt_warm,
                 bt_cold,
                 sample_arr.size,

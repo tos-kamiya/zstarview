@@ -5,7 +5,13 @@ from pathlib import Path
 import numpy as np
 
 from zstarview.clouddisc import CloudDisc, CloudDiscConfig
-from zstarview.clouddisc.core import DEFAULT_CLOUD_SHELLS_KM
+from zstarview.clouddisc.core import (
+    DEFAULT_CLOUD_SHELLS_KM,
+    DEFAULT_CLOUD_SHELL_BLEND_HIGH_CLOUD_AMOUNT,
+    DEFAULT_CLOUD_SHELL_BLEND_LOW_CLOUD_AMOUNT,
+    DEFAULT_CLOUD_SHELL_WEIGHTS,
+    _blend_cloud_shell_weights,
+)
 from zstarview.clouddisc.types import CloudMeta, CloudSourceData, SourceKey
 from zstarview.paths import CLOUD_SHELLS_KM
 
@@ -74,6 +80,24 @@ def test_fetch_source_and_render_from_source_compose_current_render_flow(monkeyp
 def test_default_cloud_shells_use_weighted_blend() -> None:
     assert CLOUD_SHELLS_KM == (6374.0, 6376.0, 6378.0)
     assert DEFAULT_CLOUD_SHELLS_KM == CLOUD_SHELLS_KM
+    assert DEFAULT_CLOUD_SHELL_WEIGHTS == (0.20, 0.60, 0.20)
+
+
+def test_cloud_shell_weights_transition_from_middle_only_to_default_mix() -> None:
+    low = _blend_cloud_shell_weights(0.0, DEFAULT_CLOUD_SHELLS_KM)
+    mid = _blend_cloud_shell_weights(
+        0.5,
+        DEFAULT_CLOUD_SHELLS_KM,
+    )
+    high = _blend_cloud_shell_weights(1.0, DEFAULT_CLOUD_SHELLS_KM)
+
+    assert low == (0.0, 1.0, 0.0)
+    assert high == DEFAULT_CLOUD_SHELL_WEIGHTS
+    assert low[1] > mid[1] > high[1]
+    assert low[0] < mid[0] < high[0]
+    assert low[2] < mid[2] < high[2]
+    assert DEFAULT_CLOUD_SHELL_BLEND_LOW_CLOUD_AMOUNT == 0.25
+    assert DEFAULT_CLOUD_SHELL_BLEND_HIGH_CLOUD_AMOUNT == 0.65
 
 
 def test_render_from_source_reuses_sampler_for_same_source(monkeypatch, tmp_path: Path) -> None:
@@ -213,6 +237,7 @@ def test_render_from_source_with_coverage_blends_multiple_shells(monkeypatch, tm
         "zstarview.clouddisc.core.estimate_bt_cold_hybrid",
         lambda *_args, **_kwargs: 240.0,
     )
+    monkeypatch.setattr("zstarview.clouddisc.core._estimate_scene_cloud_amount", lambda *_args, **_kwargs: 1.0)
     monkeypatch.setattr("zstarview.clouddisc.core.convert_bt_to_rgba_image", fake_convert)
 
     img, _meta, missing_mask, coverage_ratio = clouddisc.render_from_source_with_coverage(
