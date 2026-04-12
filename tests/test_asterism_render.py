@@ -115,6 +115,7 @@ def test_draw_asterisms_hover_adds_bright_overlay_and_label(monkeypatch) -> None
     )
 
     assert painter.polyline_count == 4
+    assert painter.pen_widths[-1] == 1.5
     assert [c["text"] for c in label_candidates] == ["Test Asterism"]
 
 
@@ -218,7 +219,7 @@ def test_draw_asterisms_scales_line_widths_with_star_upscale(monkeypatch) -> Non
         line_width_scale=2.0,
     )
 
-    assert painter.pen_widths[:2] == [8.0, 5.0]
+    assert painter.pen_widths[:2] == [7.2, 4.4]
     assert [c["text"] for c in label_candidates] == ["Test Asterism"]
 
 

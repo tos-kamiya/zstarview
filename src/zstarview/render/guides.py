@@ -235,7 +235,10 @@ def draw_sky_reference_lines(
         altaz_points: List[Tuple[float, float]],
         color: tuple[int, int, int],
         dash_pattern: List[int],
+        *,
+        width_scale: float = 1.0,
     ) -> None:
+        width_scale = max(1.0, float(width_scale))
         points: List[Tuple[float, float]] = []
         for alt, az in altaz_points:
             if not is_in_fov_func(float(alt), float(az), viewer_data.view_center, fov_deg=effective_fov_deg):
@@ -248,22 +251,32 @@ def draw_sky_reference_lines(
             pts = [QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in frag]
             poly = QPolygonF(pts)
 
-            outer = _make_reference_pen(color, REFERENCE_LINE_OUTER_WIDTH, REFERENCE_LINE_OUTER_ALPHA, Qt.PenStyle.SolidLine)
+            outer = _make_reference_pen(
+                color,
+                REFERENCE_LINE_OUTER_WIDTH * width_scale,
+                REFERENCE_LINE_OUTER_ALPHA,
+                Qt.PenStyle.SolidLine,
+            )
             painter.setPen(outer)
             painter.drawPolyline(poly)
 
-            mid = _make_reference_pen(color, REFERENCE_LINE_MID_WIDTH, REFERENCE_LINE_MID_ALPHA, Qt.PenStyle.SolidLine)
+            mid = _make_reference_pen(
+                color,
+                REFERENCE_LINE_MID_WIDTH * width_scale,
+                REFERENCE_LINE_MID_ALPHA,
+                Qt.PenStyle.SolidLine,
+            )
             painter.setPen(mid)
             painter.drawPolyline(poly)
 
-            fg = _make_reference_pen(color, REFERENCE_LINE_FG_WIDTH, 255)
+            fg = _make_reference_pen(color, REFERENCE_LINE_FG_WIDTH * width_scale, 255)
             fg.setDashPattern(dash_pattern)
             painter.setPen(fg)
             painter.drawPolyline(poly)
 
     # Keep the equator/ecliptic dash cadence visibly separated at normal zoom.
-    _draw_reference_line(celestial_data.celestial_equator_points, CELESTIAL_EQUATOR_COLOR, [12, 6])
-    _draw_reference_line(celestial_data.ecliptic_points, ECLIPTIC_COLOR, [4, 6])
+    _draw_reference_line(celestial_data.celestial_equator_points, CELESTIAL_EQUATOR_COLOR, [12, 6], width_scale=1.14)
+    _draw_reference_line(celestial_data.ecliptic_points, ECLIPTIC_COLOR, [4, 6], width_scale=1.14)
     _draw_reference_line(celestial_data.horizon_points, HORIZON_LINE_COLOR, [10, 1])
     painter.restore()
 

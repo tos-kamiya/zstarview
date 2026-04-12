@@ -1929,9 +1929,9 @@ def test_draw_sky_reference_lines_uses_wider_dash_patterns(monkeypatch) -> None:
     assert pen_alpha_values[0::3] == [18, 18, 18]
     assert pen_alpha_values[1::3] == [30, 30, 30]
     assert pen_alpha_values[2::3] == [255, 255, 255]
-    assert pen_widths[0::3] == [1.1, 1.1, 1.1]
-    assert pen_widths[1::3] == [0.75, 0.75, 0.75]
-    assert pen_widths[2::3] == [0.5, 0.5, 0.5]
+    assert [round(width, 3) for width in pen_widths[0::3]] == [1.254, 1.254, 1.100]
+    assert [round(width, 3) for width in pen_widths[1::3]] == [0.855, 0.855, 0.750]
+    assert [round(width, 3) for width in pen_widths[2::3]] == [0.570, 0.570, 0.500]
 
 
 def test_draw_urban_outlines_simplifies_narrow_outline_to_horizontal_segment(

@@ -8,16 +8,17 @@ from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy, resolve_star_source_ids
 from ..asterisms import ASTERISMS, pick_rotating_asterism
+from ..paths import PALETTE_ASTERISM_RGB
 from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
 from .stars import _content_fov_deg_from_viewer
 from .geometry import normalized_to_screen_xy
 from .guides import _clip_polyline_to_radius, _great_circle_altaz_points, split_by_gaps
 from .text import _text_bounds_at_baseline, draw_outlined_text, resolve_text_style
 
-ASTERISM_BASE_OUTLINE_WIDTH = 4.0
-ASTERISM_BASE_LINE_WIDTH = 2.5
-ASTERISM_HIGHLIGHT_OUTLINE_WIDTH = 3.2
-ASTERISM_HIGHLIGHT_LINE_WIDTH = 2.0
+ASTERISM_BASE_OUTLINE_WIDTH = 3.0
+ASTERISM_BASE_LINE_WIDTH = 2.0
+ASTERISM_HIGHLIGHT_OUTLINE_WIDTH = 2.5
+ASTERISM_HIGHLIGHT_LINE_WIDTH = 1.5
 
 
 def draw_asterisms(
@@ -54,16 +55,10 @@ def draw_asterisms(
     if not star_altaz_by_source:
         return
 
-    if preset in ("white", "day"):
-        base_line_color = QColor(26, 114, 214, 25)
-        base_outline_color = QColor(190, 220, 250, 12)
-        highlight_outline_color = QColor(190, 220, 250, 52)
-        highlight_line_color = QColor(26, 114, 214, 124)
-    else:
-        base_line_color = QColor(82, 142, 214, 21)
-        base_outline_color = QColor(24, 48, 86, 9)
-        highlight_outline_color = QColor(32, 76, 130, 44)
-        highlight_line_color = QColor(120, 190, 255, 92)
+    base_line_color = QColor(*PALETTE_ASTERISM_RGB, 24 if preset in ("white", "day") else 21)
+    base_outline_color = QColor(*PALETTE_ASTERISM_RGB, 12 if preset in ("white", "day") else 9)
+    highlight_outline_color = QColor(*PALETTE_ASTERISM_RGB, 52 if preset in ("white", "day") else 44)
+    highlight_line_color = QColor(*PALETTE_ASTERISM_RGB, 124 if preset in ("white", "day") else 92)
 
     painter.save()
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
