@@ -161,7 +161,7 @@ The CLI supports detailed startup configuration for location, time, and renderin
 | Option                                      | Description                                                                 | Default |
 | :------------------------------------------ | :-------------------------------------------------------------------------- | :------ |
 | `-c`, `--cloud-opacity CLOUD_OPACITY`       | Opacity of cloud rendering (0.0–1.0). Use 0.0 to disable. \*2                | `0.07`   |
-| `--cloud-stripe MODE[,COUNT[,WIDTH]]`       | Cloud stripe style. `width` varies visible stripe width by cloud amount; `alpha` keeps width fixed and varies stripe alpha. `width` expands to `width,50,0.85`; `alpha` expands to `alpha,50,0.2`. If count or width is `0`, cloud rendering is disabled. | `width,50,0.85` |
+| `--cloud-stripe MODE[,COUNT[,WIDTH]]`       | Cloud stripe style. `width` varies visible stripe width by cloud amount; `alpha` keeps width fixed and varies stripe alpha. `width` expands to `width,50,0.85`; `alpha` expands to `alpha,50,0.25`. If count or width is `0`, cloud rendering is disabled. | `width,50,0.85` |
 | `--cloud-missing-tint-opacity OPACITY`      | Opacity of missing-cloud-data yellow tint (0.0–1.0).                          | `0.176` |
 | `-a`, `--aircraft-opacity OPACITY`          | Opacity of the aircraft overlay (0.0–1.0). Use 0.0 to disable aircraft queries and drawing for that run. | `0.5` |
 | `--satellite-opacity OPACITY`               | Opacity of the artificial satellite overlay (0.0–1.0). Use 0.0 to disable satellite element fetch and drawing for that run. | `0.5` |

@@ -61,7 +61,7 @@ def _parse_cloud_stripe(value: str) -> tuple[str, int, float]:
             f"Invalid cloud stripe mode: {value!r}. Use 'width' or 'alpha'."
         )
     default_count = 50
-    default_width = 0.85 if mode == "width" else 0.2
+    default_width = 0.85 if mode == "width" else 0.25
     try:
         count = default_count if len(parts) < 2 or parts[1] == "" else int(parts[1])
         width = default_width if len(parts) < 3 or parts[2] == "" else float(parts[2])
@@ -553,7 +553,7 @@ def add_render_arguments(
         metavar="MODE[,COUNT[,WIDTH]]",
         help=(
             "Cloud stripe style as 'mode[,count[,width]]' "
-            "(defaults: width -> width,50,0.85; alpha -> alpha,50,0.2). "
+            "(defaults: width -> width,50,0.85; alpha -> alpha,50,0.25). "
             "If either value is 0, cloud rendering is disabled."
         ),
     )
