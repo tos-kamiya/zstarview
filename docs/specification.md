@@ -595,6 +595,15 @@ CLI には次のビューポイント dataset 参照専用オプションを持�
 - Overture 建物キャッシュが保存期限を超えている場合、次回その dataset / tile が必要になった時点で再取得を試みてよい。
 - Overture 建物キャッシュの再取得に失敗した場合は、期限切れ後であっても既存キャッシュを警告付きでフォールバック利用してよい。
 - Overture 建物キャッシュの保存期限は削除期限ではなく再取得を試みる目安であり、一度取得済みの dataset / tile はオフライン時でも継続利用できてよい。
+- ネットワーク接続がある場合、起動時または都市アウトライン初回有効化時に Overture の最新 release を確認してよい。
+- release 確認は前回確認から `24時間` 以内なら省略してよい。
+- 取得済み cache が参照している release と最新 release が異なる場合、その cache は stale 扱いとして直ちに再取得してよい。
+- release 確認がネットワーク障害や一時的な外部サービス障害で失敗した場合は、既存 cache を継続利用してよい。
+- cache の sidecar metadata には少なくとも `overture_release` を保存してよい。
+- `overture_release` は `2026-03-18.0` のような Overture release version をそのまま文字列で保持してよい。
+- release 照合の最終時刻は cache root 直下の別 metadata に保存してよく、各 dataset / tile の sidecar に重複保持しなくてよい。
+- release metadata が無い、または読めない場合でも cache を直ちに破棄せず、TTL 判定へフォールバックしてよい。
+- `fetched_at_utc` が無い legacy cache では、`cache_meta.json` の最終変更日時を `fetched_at_utc` の推定値として使ってよい。
 - `overturemaps` CLI が利用できない場合、または取得に失敗した場合、そのセッションでは都市アウトラインを表示しなくてよい。
 - `-r`, `--urban-outline-radius-km` で取得半径を変更してよい。
 - `--urban-outline-skyscraper-radius-km` で遠距離スカイスクレーパー補助レイヤーの外側半径を変更してよい。

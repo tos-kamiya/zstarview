@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -186,6 +187,8 @@ def test_main_imports_geojsonseq_download_into_derived_dir(tmp_path: Path, monke
 
     monkeypatch.setattr(mod.shutil, "which", lambda _name: "/usr/bin/overturemaps")
     monkeypatch.setattr(mod.subprocess, "run", fake_run)
+    monkeypatch.setattr(mod, "fetch_latest_overture_release", lambda **_kwargs: "2026-03-18.0")
+    monkeypatch.setattr(mod, "CACHE_PATH", str(tmp_path / "cache"))
 
     rc = mod.main(
         [
@@ -213,6 +216,7 @@ def test_main_imports_geojsonseq_download_into_derived_dir(tmp_path: Path, monke
     assert index_payload["tile_count"] == 1
     assert metadata_payload["dataset_name"] == "shinjuku_test"
     assert "fetched_at_utc" in metadata_payload
+    assert metadata_payload["overture_release"] == "2026-03-18.0"
 
 
 def test_read_derived_dataset_fetched_at_utc_migrates_legacy_cache(tmp_path: Path) -> None:
@@ -220,11 +224,21 @@ def test_read_derived_dataset_fetched_at_utc_migrates_legacy_cache(tmp_path: Pat
     derived_dir = tmp_path / "dataset" / "bldg"
     derived_dir.mkdir(parents=True)
     now = datetime(2026, 3, 27, 1, 30, tzinfo=timezone.utc)
+    cache_meta_path = tmp_path / "dataset" / "cache_meta.json"
+    cache_meta_path.write_text(
+        json.dumps(
+            {
+                "dataset_name": "dataset",
+            }
+        ),
+        encoding="utf-8",
+    )
+    os.utime(cache_meta_path, (now.timestamp(), now.timestamp()))
 
     fetched_at_utc = mod.read_derived_dataset_fetched_at_utc(derived_dir, now_utc=now)
 
     assert fetched_at_utc == now
-    metadata_payload = json.loads((tmp_path / "dataset" / "cache_meta.json").read_text(encoding="utf-8"))
+    metadata_payload = json.loads(cache_meta_path.read_text(encoding="utf-8"))
     assert metadata_payload["dataset_name"] == "dataset"
     assert metadata_payload["fetched_at_utc"] == now.isoformat()
 
@@ -246,3 +260,65 @@ def test_is_derived_dataset_stale_uses_fetched_at_utc(tmp_path: Path) -> None:
 
     assert mod.is_derived_dataset_stale(derived_dir, now_utc=now) is True
     assert mod.is_derived_dataset_stale(derived_dir, ttl_days=40, now_utc=now) is False
+
+
+def test_is_derived_dataset_stale_marks_release_mismatch_stale(tmp_path: Path) -> None:
+    mod = _load_module()
+    derived_dir = tmp_path / "dataset" / "bldg"
+    derived_dir.mkdir(parents=True)
+    now = datetime(2026, 3, 27, 1, 30, tzinfo=timezone.utc)
+    (tmp_path / "dataset" / "cache_meta.json").write_text(
+        json.dumps(
+            {
+                "dataset_name": "dataset",
+                "fetched_at_utc": now.isoformat(),
+                "overture_release": "2026-03-18.0",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert (
+        mod.is_derived_dataset_stale(
+            derived_dir,
+            now_utc=now,
+            expected_overture_release="2026-04-01.0",
+        )
+        is True
+    )
+    assert (
+        mod.is_derived_dataset_stale(
+            derived_dir,
+            now_utc=now,
+            expected_overture_release="2026-03-18.0",
+        )
+        is False
+    )
+
+
+def test_resolve_overture_release_for_cache_root_reuses_recent_check(tmp_path: Path, monkeypatch) -> None:
+    mod = _load_module()
+    cache_root = tmp_path / "cache"
+    now = datetime(2026, 4, 13, 10, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr(mod, "fetch_latest_overture_release", lambda **_kwargs: "2026-04-01.0")
+
+    got = mod.resolve_overture_release_for_cache_root(cache_root_dir=cache_root, now_utc=now)
+
+    assert got == "2026-04-01.0"
+    payload = json.loads(
+        (cache_root / mod.OVERTURE_RELEASE_CHECK_METADATA_FILENAME).read_text(encoding="utf-8")
+    )
+    assert payload["last_release_check_utc"] == now.isoformat()
+    assert payload["last_seen_overture_release"] == "2026-04-01.0"
+    monkeypatch.setattr(
+        mod,
+        "fetch_latest_overture_release",
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("network lookup should be skipped")),
+    )
+
+    got_again = mod.resolve_overture_release_for_cache_root(
+        cache_root_dir=cache_root,
+        now_utc=now + timedelta(hours=1),
+    )
+
+    assert got_again == "2026-04-01.0"

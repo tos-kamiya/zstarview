@@ -14,8 +14,10 @@ import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Sequence
+from urllib.request import Request, urlopen
 
 from zstarview.data import build_derived_tile_index
+from zstarview.paths import CACHE_PATH
 
 EARTH_RADIUS_KM = 6371.0088
 DEFAULT_FETCH_RADIUS_KM = 2.5
@@ -23,8 +25,119 @@ DEFAULT_MIN_BUILDING_HEIGHT_M = 0.0
 DEFAULT_STOREY_HEIGHT_M = 3.5
 OVERTURE_CACHE_TTL_DAYS = 30
 CACHE_METADATA_FILENAME = "cache_meta.json"
+OVERTURE_RELEASE_CHECK_METADATA_FILENAME = "overture_buildings_release_check_meta.json"
+OVERTURE_RELEASE_CHECK_MAX_AGE = timedelta(hours=24)
+OVERTURE_RELEASE_CATALOG_URL = "https://stac.overturemaps.org/catalog.json"
+OVERTURE_RELEASE_CATALOG_TIMEOUT_SECONDS = 10.0
 
 logger = logging.getLogger(__name__)
+
+
+def _read_json_dict(path: Path) -> dict[str, object] | None:
+    if not path.exists():
+        return None
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    if isinstance(loaded, dict):
+        return loaded
+    return None
+
+
+def _metadata_path_for_derived_dir(derived_dir: Path) -> Path:
+    return derived_dir.parent / CACHE_METADATA_FILENAME
+
+
+def release_check_metadata_path(*, cache_root_dir: Path | None = None) -> Path:
+    return Path(cache_root_dir or CACHE_PATH) / OVERTURE_RELEASE_CHECK_METADATA_FILENAME
+
+
+def _parse_optional_utc(text: object) -> datetime | None:
+    if not isinstance(text, str) or not text.strip():
+        return None
+    return _normalize_utc(datetime.fromisoformat(text.replace("Z", "+00:00")))
+
+
+def read_overture_release_check_metadata(
+    *,
+    cache_root_dir: Path | None = None,
+) -> dict[str, object] | None:
+    return _read_json_dict(release_check_metadata_path(cache_root_dir=cache_root_dir))
+
+
+def write_overture_release_check_metadata(
+    *,
+    payload: dict[str, object],
+    cache_root_dir: Path | None = None,
+) -> Path:
+    metadata_path = release_check_metadata_path(cache_root_dir=cache_root_dir)
+    metadata_path.parent.mkdir(parents=True, exist_ok=True)
+    metadata_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return metadata_path
+
+
+def fetch_latest_overture_release(
+    *,
+    catalog_url: str = OVERTURE_RELEASE_CATALOG_URL,
+    timeout_seconds: float = OVERTURE_RELEASE_CATALOG_TIMEOUT_SECONDS,
+) -> str:
+    request = Request(catalog_url, headers={"User-Agent": "zstarview/1.0"})
+    with urlopen(request, timeout=float(timeout_seconds)) as response:  # nosec: B310
+        payload = json.loads(response.read().decode("utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("Unexpected Overture catalog payload")
+    latest = payload.get("latest")
+    if not isinstance(latest, str) or not latest.strip():
+        raise ValueError("Overture catalog payload is missing latest release")
+    return latest.strip()
+
+
+def resolve_overture_release_for_cache_root(
+    *,
+    cache_root_dir: Path | None = None,
+    now_utc: datetime | None = None,
+    catalog_url: str = OVERTURE_RELEASE_CATALOG_URL,
+    timeout_seconds: float = OVERTURE_RELEASE_CATALOG_TIMEOUT_SECONDS,
+) -> str | None:
+    now = _normalize_utc(now_utc or datetime.now(timezone.utc))
+    metadata = read_overture_release_check_metadata(cache_root_dir=cache_root_dir) or {}
+    last_release_check_utc = _parse_optional_utc(metadata.get("last_release_check_utc"))
+    last_seen_overture_release = metadata.get("last_seen_overture_release")
+    if (
+        last_release_check_utc is not None
+        and now - last_release_check_utc < OVERTURE_RELEASE_CHECK_MAX_AGE
+    ):
+        if isinstance(last_seen_overture_release, str) and last_seen_overture_release.strip():
+            return last_seen_overture_release.strip()
+        return None
+
+    checked_payload: dict[str, object] = dict(metadata)
+    checked_payload["last_release_check_utc"] = now.isoformat()
+    checked_payload.setdefault("checked_source", "stac")
+    try:
+        latest_release = fetch_latest_overture_release(
+            catalog_url=catalog_url,
+            timeout_seconds=timeout_seconds,
+        )
+    except Exception as exc:
+        checked_payload["checked_success"] = False
+        checked_payload["checked_error"] = str(exc)
+        write_overture_release_check_metadata(
+            payload=checked_payload,
+            cache_root_dir=cache_root_dir,
+        )
+        logger.warning("Failed to resolve latest Overture release: %s", exc)
+        return None
+
+    checked_payload["checked_success"] = True
+    checked_payload["checked_error"] = None
+    checked_payload["last_seen_overture_release"] = latest_release
+    write_overture_release_check_metadata(
+        payload=checked_payload,
+        cache_root_dir=cache_root_dir,
+    )
+    return latest_release
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -162,7 +275,25 @@ def build_download_command(
 
 
 def derived_dataset_metadata_path(derived_dir: Path) -> Path:
-    return derived_dir.parent / CACHE_METADATA_FILENAME
+    return _metadata_path_for_derived_dir(derived_dir)
+
+
+def read_derived_dataset_metadata(derived_dir: Path) -> dict[str, object] | None:
+    if not derived_dir.exists():
+        return None
+    return _read_json_dict(derived_dataset_metadata_path(derived_dir))
+
+
+def read_derived_dataset_overture_release(
+    derived_dir: Path,
+) -> str | None:
+    payload = read_derived_dataset_metadata(derived_dir)
+    if payload is None:
+        return None
+    raw_release = payload.get("overture_release")
+    if isinstance(raw_release, str) and raw_release.strip():
+        return raw_release.strip()
+    return None
 
 
 def read_derived_dataset_fetched_at_utc(
@@ -171,23 +302,20 @@ def read_derived_dataset_fetched_at_utc(
     now_utc: datetime | None = None,
     migrate_missing: bool = True,
 ) -> datetime | None:
-    if not derived_dir.exists():
-        return None
     metadata_path = derived_dataset_metadata_path(derived_dir)
-    payload: dict[str, object] = {}
-    if metadata_path.exists():
+    payload = read_derived_dataset_metadata(derived_dir) or {}
+    raw_fetched_at = payload.get("fetched_at_utc")
+    if isinstance(raw_fetched_at, str):
         try:
-            loaded = json.loads(metadata_path.read_text(encoding="utf-8"))
-            if isinstance(loaded, dict):
-                payload = loaded
-            raw_fetched_at = payload.get("fetched_at_utc")
-            if isinstance(raw_fetched_at, str):
-                return _parse_utc(raw_fetched_at)
+            return _parse_utc(raw_fetched_at)
         except Exception:
-            payload = {}
+            pass
     if not migrate_missing:
         return None
-    fetched_at_utc = _normalize_utc(now_utc or datetime.now(timezone.utc))
+    fallback_mtime = _path_mtime_utc(metadata_path)
+    if fallback_mtime is None and derived_dir.exists():
+        fallback_mtime = _path_mtime_utc(derived_dir)
+    fetched_at_utc = fallback_mtime or _normalize_utc(now_utc or datetime.now(timezone.utc))
     logger.info(
         "Urban-outline cache metadata missing; recording provisional fetched_at_utc for offline reuse: %s",
         derived_dir,
@@ -203,10 +331,15 @@ def is_derived_dataset_stale(
     *,
     ttl_days: int = OVERTURE_CACHE_TTL_DAYS,
     now_utc: datetime | None = None,
+    expected_overture_release: str | None = None,
 ) -> bool:
     fetched_at_utc = read_derived_dataset_fetched_at_utc(derived_dir, now_utc=now_utc)
     if fetched_at_utc is None:
         return True
+    if expected_overture_release is not None:
+        cached_release = read_derived_dataset_overture_release(derived_dir)
+        if cached_release is not None and cached_release != expected_overture_release:
+            return True
     now = _normalize_utc(now_utc or datetime.now(timezone.utc))
     return (now - fetched_at_utc) > timedelta(days=max(0, int(ttl_days)))
 
@@ -235,6 +368,8 @@ def import_overture_buildings(
     dataset_name: str | None,
     keep_download: Path | None,
     no_stac: bool,
+    overture_release: str | None = None,
+    skip_release_lookup: bool = False,
     now_utc: datetime | None = None,
 ) -> Path:
     overturemaps_path = shutil.which(overturemaps_bin)
@@ -262,6 +397,8 @@ def import_overture_buildings(
         ),
         keep_download=keep_download,
         no_stac=no_stac,
+        overture_release=overture_release,
+        skip_release_lookup=skip_release_lookup,
         query_lat_deg=lat_deg,
         query_lon_deg=lon_deg,
         query_radius_km=radius_km,
@@ -280,6 +417,8 @@ def import_overture_buildings_for_bbox(
     dataset_name: str,
     keep_download: Path | None,
     no_stac: bool,
+    overture_release: str | None = None,
+    skip_release_lookup: bool = False,
     query_lat_deg: float | None = None,
     query_lon_deg: float | None = None,
     query_radius_km: float | None = None,
@@ -287,6 +426,16 @@ def import_overture_buildings_for_bbox(
 ) -> Path:
     overturemaps_path = shutil.which(overturemaps_bin) or overturemaps_bin
     fetched_at_utc = _normalize_utc(now_utc or datetime.now(timezone.utc))
+    if skip_release_lookup:
+        current_overture_release = overture_release
+    else:
+        current_overture_release = (
+            overture_release
+            or resolve_overture_release_for_cache_root(
+                cache_root_dir=Path(CACHE_PATH),
+                now_utc=fetched_at_utc,
+            )
+        )
     dataset_dir_name = dataset_name or derive_dataset_name(
         query_lat_deg or 0.0,
         query_lon_deg or 0.0,
@@ -342,6 +491,7 @@ def import_overture_buildings_for_bbox(
             "dataset_name": dataset_dir_name,
             "feature_type": str(feature_type),
             "fetched_at_utc": fetched_at_utc.isoformat(),
+            "overture_release": current_overture_release,
             "min_building_height_m": float(min_building_height_m),
             "query_lat_deg": None if query_lat_deg is None else float(query_lat_deg),
             "query_lon_deg": None if query_lon_deg is None else float(query_lon_deg),
@@ -359,6 +509,16 @@ def _normalize_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value.astimezone(timezone.utc)
+
+
+def _path_mtime_utc(path: Path) -> datetime | None:
+    try:
+        mtime = path.stat().st_mtime
+    except FileNotFoundError:
+        return None
+    except OSError:
+        return None
+    return _normalize_utc(datetime.fromtimestamp(mtime, tz=timezone.utc))
 
 
 def build_derived_tile_payload(

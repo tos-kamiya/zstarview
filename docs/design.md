@@ -546,6 +546,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `overturemaps download` を呼び、`building` および必要に応じて `building_part` を取得する
   - ダウンロード結果を既存の derived tile JSON と `tile_index.json` 形式へ変換する
   - 出力先既定値は `CACHE_PATH/overture_buildings`
+  - 生成した cache metadata に `fetched_at_utc` と `overture_release` を保持する
+  - `overture_release` は `2026-03-18.0` のような release version をそのまま保存する
+  - release 照合のための直近確認時刻は cache root 直下の別 metadata に保持する
 
 ## 5. 主要データ構造
 
@@ -1106,6 +1109,8 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - 目的は、毎回の再ダウンロードを避けつつ、長期間放置された DEM / 建物キャッシュが無期限に固定化されることを防ぐことである。
 - DEM は更新頻度が低いため、`fresh=90日`、`stale>90日` とする。
 - Overture 建物由来 cache は DEM より更新頻度が高いため、通常 derived dataset / skyscraper tile ともに `fresh=30日`、`stale>30日` とする。
+- 上記の TTL とは別に、可能な場合は Overture release の差分確認を追加の freshness シグナルとして使ってよい。
+- release 照合は起動時または都市アウトライン初回有効化時に行ってよいが、前回照合から `24時間` 以内なら省略してよい。
 - stale 判定に使う基準時刻は、すべての取得単位で `fetched_at_utc` に統一する。
 - TTL 判定はファイルの `mtime` に依存しない。`mtime` は補助的な clean up 用ヒントに留め、fresh/stale の一次判定は明示メタデータで行う。
 - stale entry は利用時に非同期で再取得を試みる。UI スレッドは既存 cache を読める限りそれを使い、取得完了後に差し替える。
@@ -1116,10 +1121,70 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - DEM では tile ごとに `fetched_at_utc` を持たせる。
 - 通常の Overture derived dataset では dataset directory ごとに `fetched_at_utc` を持たせる。
 - 遠距離スカイスクレーパー補助レイヤーでは tile directory ごとに `fetched_at_utc` を持たせる。
+- Overture 建物 cache には各取得単位ごとに `overture_release` も持たせ、起動時の release 照合に使う。
+- release 照合のネットワーク負荷を抑えるため、`last_release_check_utc` は `overture_buildings_release_check_meta.json` のような cache root 直下のローカル metadata に保存する。
 - この方針により、fresh/stale 判定と再取得単位を一致させ、ディレクトリ構造の大規模変更を避ける。
 - 後方互換のため、既存 cache に `fetched_at_utc` が無い場合は初回読込時の現在時刻を暫定 `fetched_at_utc` として補完し、その metadata を書き戻してよい。
 - この補完時刻は元の実取得時刻ではなく移行時刻として扱う。
 - そのため既存 cache は移行後の最初の TTL 周期だけ実際より新しく見えるが、大量再取得を避けるため許容してよい。
+
+#### 10.4.3 Overture release metadata 形式
+
+- dataset / tile sidecar
+  - `cache_meta.json` などの sidecar file に次を持たせてよい。
+  - `dataset_name`: cache directory 名
+  - `fetched_at_utc`: cache を最後に取得した UTC ISO 8601 string
+  - `overture_release`: その cache を生成した Overture release version
+  - `feature_type`: `building` または `building_part`
+  - `min_building_height_m`: 最小高さフィルタ
+  - `bbox`: `west` / `south` / `east` / `north`
+  - `query_lat_deg`, `query_lon_deg`, `query_radius_km`: 生成元 query を復元するための補助情報
+- root-level release check metadata
+  - cache root 直下に `overture_buildings_release_check_meta.json` を置いてよい。
+  - `last_release_check_utc`: 最新 release を最後に照会した UTC ISO 8601 string
+  - `last_seen_overture_release`: 最後に確認した release version
+  - `checked_source`: `stac` など照会元の識別子
+  - `checked_success`: 最後の照会が成功したかどうか
+  - `checked_error`: 任意の失敗理由
+- 起動時の release 照合では、root-level metadata の `last_release_check_utc` を読み、`24時間` 未満なら照会を省略してよい。
+- 照会成功時は root-level metadata の `last_release_check_utc` と `last_seen_overture_release` を更新し、必要なら対象 cache の `overture_release` も更新してよい。
+- 照会失敗時は `checked_success=false` を記録してよいが、既存 cache の利用可否は TTL 側の判定に委ねてよい。
+- root-level metadata や sidecar file が読めない場合でも cache 本体を直ちに削除せず、release 照合不能として TTL 判定へフォールバックしてよい。
+- sidecar の `overture_release` が欠けている場合も cache を保持し、次回更新時に補完してよい。
+- `fetched_at_utc` が欠けている legacy cache では、`cache_meta.json` の `mtime` を最優先の推定値として使ってよい。
+- `cache_meta.json` が無い、または読めない場合に限り、`bldg` directory の `mtime` を次点の推定値として使ってよい。
+- 推定した `fetched_at_utc` は書き戻してよいが、初回移行時の推定値であることを意識して扱ってよい。
+
+#### 10.4.4 Overture release 照合フロー
+
+1. `UrbanOutlineController` または `zstarview-export-image` 側が release 照合を開始する前に root-level metadata を読む。
+2. `last_release_check_utc` が存在し、現在時刻との差が `24時間` 未満なら release catalog への問い合わせを省略する。
+3. root-level metadata が無い、壊れている、または古い形式でも、照合対象 cache の削除は行わず TTL 判定に進む。
+4. 照会が必要な場合は Overture STAC catalog か Python client の最新 release 情報を 1 回だけ問い合わせる。
+5. 最新 release version が取得できたら、該当 cache の sidecar `overture_release` と比較する。
+6. sidecar の `overture_release` が一致しない cache は TTL 期限前でも stale 扱いとし、その dataset / tile を再取得候補に入れる。
+7. sidecar の `overture_release` が欠けている場合は release unknown とみなし、TTL 判定だけで fresh/stale を決める。
+8. 照会成功時は root-level metadata を更新し、`last_release_check_utc` と `last_seen_overture_release` を書き戻す。
+9. root-level metadata 更新は `.tmp` ファイルへ書いてから `replace()` してよい。
+10. dataset / tile sidecar 更新は、再取得成功時に新しい payload と同時に `overture_release` を書き戻してよい。
+11. 照会失敗時は root-level metadata の `checked_success=false` と `checked_error` を記録してよいが、既存 cache の利用は継続してよい。
+12. 同一起動内で複数の urban-outline 更新要求が来た場合は、1 回の release 照合結果を共有してよい。
+
+#### 10.4.5 実装モジュールの責務
+
+- `src/zstarview/data/import_overture_buildings.py`
+  - dataset / tile sidecar の読み書きを担当する。
+  - `fetched_at_utc`、`overture_release`、cache key を同じ sidecar に保存する。
+  - 再取得成功時に release version を sidecar へ反映する。
+- `src/zstarview/cache_maintenance.py`
+  - 長寿命 cache 削除とは独立した root-level release check metadata の読み書き補助を持ってよい。
+  - ただし cache 削除ロジック自体は release 照合に依存させない。
+- `src/zstarview/gui/urban_outline_controller.py`
+  - 起動時 / 初回有効化時の release 照合をトリガーする。
+  - release 照合の失敗は警告ログに留め、表示中の cache は TTL で扱う。
+- `src/zstarview/cli/export_image.py`
+  - headless 経路でも同じ release 照合補助を共有する。
+  - GUI と同じ root-level metadata を読むことで、release チェックの 24 時間抑制を共通化する。
 
 #### 10.4.1 DEM フロー
 
@@ -1134,12 +1199,18 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 
 1. `UrbanOutlineController` は通常 derived dataset と skyscraper tile cache をそれぞれ独立に fresh/stale 判定する。
 2. `mode=both` の場合、`building` と `building_part` は別々に TTL 判定し、片方だけ stale ならその片方だけ再取得する。
-3. 通常 derived dataset は dataset directory 単位で metadata を持ち、`cache_meta.json` などの sidecar file に `fetched_at_utc`、半径、mode、最小高さなどの cache key 情報を保持する。`fetched_at_utc` が無い旧 cache は現在時刻で補完して書き戻してよい。
+3. 通常 derived dataset は dataset directory 単位で metadata を持ち、`cache_meta.json` などの sidecar file に `fetched_at_utc`、半径、mode、最小高さなどの cache key 情報を保持する。`fetched_at_utc` が無い旧 cache は、`cache_meta.json` の `mtime` を優先し、次に `bldg` directory の `mtime` を使って推定してよい。推定した時刻は書き戻してよい。
+   `overture_release` も sidecar に保持し、release 照合時に同一 release かどうかを比較する。
+   `overture_release` が無い、または sidecar の読込に失敗した場合は release 不明として TTL 判定に落とす。
 4. skyscraper 補助レイヤーは tile directory 単位で metadata を持ち、seed tile ごとに stale 判定する。
 5. fresh cache があればそれを即時読込する。
-6. stale cache があればそれを即時読込しつつ、欠けている dataset / stale dataset だけをバックグラウンドで `overturemaps download` し直す。
-7. 再取得成功時は新 directory を一時パスに組み立て、整合性確認後に `replace()` 相当で切り替える。
-8. 再取得失敗時は stale dataset を使い続け、次回要求時に再試行してよい。
+6. 起動時または都市アウトライン初回有効化時にネットワーク接続がある場合は、Overture の最新 release を確認してよい。
+7. ただし前回照合から `24時間` 以内なら release 照合を省略してよい。
+8. 取得済み cache の release と最新 release が異なる場合は、TTL 期限前でも stale 扱いにして再取得してよい。
+9. stale cache があればそれを即時読込しつつ、欠けている dataset / stale dataset / release 差分がある dataset だけをバックグラウンドで `overturemaps download` し直す。
+10. 再取得成功時は新 directory を一時パスに組み立て、整合性確認後に `replace()` 相当で切り替える。
+11. 再取得失敗時は stale dataset を使い続け、次回要求時に再試行してよい。
+12. release 照合の結果は `last_release_check_utc` と `last_seen_overture_release` として root metadata に保存し、次回起動時の 24 時間スキップ判定に使う。
 
 ## 11. テスト観点と設計上の分離
 
