@@ -42,7 +42,7 @@ def test_parse_args_cloud_opacity_override(monkeypatch) -> None:
 def test_parse_args_cloud_stripe_accepts_mode_only(monkeypatch) -> None:
     monkeypatch.setattr("sys.argv", ["zstarview", "--cloud-stripe", "alpha"])
     args = parse_args()
-    assert args.cloud_stripe == ("alpha", 50, 0.2)
+    assert args.cloud_stripe == ("alpha", 50, 0.25)
 
 
 def test_parse_args_cloud_stripe_accepts_mode_and_count(monkeypatch) -> None:

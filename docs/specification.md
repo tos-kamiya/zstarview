@@ -114,7 +114,7 @@ README より詳細に、何ができるか、どう振る舞うか、どのよ�
 - `--cloud-stripe`
   - `MODE[,COUNT[,WIDTH]]` 形式で受け付けてよい。
   - `MODE` は `width` または `alpha` としてよい。
-  - `--cloud-stripe width` は `width,50,0.85`、`--cloud-stripe alpha` は `alpha,50,0.2` と解釈してよい。
+  - `--cloud-stripe width` は `width,50,0.85`、`--cloud-stripe alpha` は `alpha,50,0.25` と解釈してよい。
   - `width` モードでは、雲量に応じて白線の本数と見かけの線幅を変えてよい。
   - `alpha` モードでは、白線の線幅を固定し、雲量に応じて白線 alpha を変えてよい。
 - `--sky-opacity`
