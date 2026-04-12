@@ -2,9 +2,13 @@ import numpy as np
 from PySide6.QtGui import QImage, QPainter
 
 from zstarview.render.earth_guide import (
+    EARTH_GUIDE_FOREGROUND_WIDTH,
+    EARTH_GUIDE_UNDERLAY_WIDTH,
     _effective_visible_altitude_limit_deg,
     _observer_dead_zone_km,
     _observer_visible_altitude_limit_deg,
+    earth_guide_line_alpha,
+    earth_guide_underlay_line_alpha,
     draw_earth_guide,
     load_earth_guide_rings,
 )
@@ -46,6 +50,13 @@ def test_draw_earth_guide_renders_visible_lines_below_horizon() -> None:
     top_half = int(np.count_nonzero(alpha[:120, :]))
     bottom_half = int(np.count_nonzero(alpha[120:, :]))
     assert bottom_half > top_half
+
+
+def test_earth_guide_underlay_is_thicker_and_softer() -> None:
+    opacity = 0.028
+
+    assert EARTH_GUIDE_UNDERLAY_WIDTH > EARTH_GUIDE_FOREGROUND_WIDTH
+    assert earth_guide_underlay_line_alpha(opacity) < earth_guide_line_alpha(opacity)
 
 
 def test_earth_guide_uses_geometric_horizon_by_default() -> None:
