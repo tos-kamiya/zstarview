@@ -1884,7 +1884,7 @@ def test_draw_sky_reference_lines_uses_wider_dash_patterns(monkeypatch) -> None:
     )
 
     assert dash_patterns[0::2] == [[], [], []]
-    assert dash_patterns[1::2] == [[12, 6], [4, 8], [10, 1]]
+    assert dash_patterns[1::2] == [[12, 6], [4, 6], [10, 1]]
     assert pen_styles[0::2] == [Qt.PenStyle.SolidLine, Qt.PenStyle.SolidLine, Qt.PenStyle.SolidLine]
     assert pen_styles[1::2] == [None, None, None]
     assert pen_alpha_values[0::2] == [40, 40, 40]
