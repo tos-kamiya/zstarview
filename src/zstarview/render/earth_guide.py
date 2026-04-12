@@ -21,6 +21,7 @@ EARTH_GUIDE_DEAD_ZONE_MIN_KM = 20.0
 EARTH_GUIDE_DEAD_ZONE_MAX_KM = 80.0
 EARTH_GUIDE_DEAD_ZONE_SCALE = 0.25
 EARTH_GUIDE_HORIZON_MARGIN_DEG = 1.0
+EARTH_GUIDE_UNDERLAY_WIDTH = 12.0
 EARTH_GUIDE_FOREGROUND_WIDTH = 1.5
 
 
@@ -104,7 +105,22 @@ def _observer_visible_altitude_limit_deg(
 def earth_guide_line_alpha(opacity: float) -> float:
     """Return the alpha curve used by the Earth guide foreground line."""
     opacity = max(0.0, min(1.0, float(opacity)))
-    return max(opacity, min(1.0, 0.42 + (opacity * 0.95)))
+    return max(opacity, min(1.0, 0.32 + (opacity * 0.78)))
+
+
+def earth_guide_underlay_line_alpha(opacity: float) -> float:
+    """Return the softer alpha curve used by the Earth guide underlay line."""
+    opacity = max(0.0, min(1.0, float(opacity)))
+    return max(0.0, min(1.0, 0.03 + (opacity * 0.12)))
+
+
+def _earth_guide_underlay_pass_specs(opacity: float) -> tuple[tuple[float, float], ...]:
+    base_alpha = earth_guide_underlay_line_alpha(opacity)
+    return (
+        (EARTH_GUIDE_UNDERLAY_WIDTH, base_alpha * 0.55),
+        (EARTH_GUIDE_UNDERLAY_WIDTH * 0.68, base_alpha * 0.78),
+        (EARTH_GUIDE_UNDERLAY_WIDTH * 0.42, base_alpha),
+    )
 
 
 def _surface_distance_km(point_xyz: np.ndarray, observer_up: np.ndarray) -> float:
@@ -456,10 +472,24 @@ def draw_earth_guide(
     dead_zone_km = _observer_dead_zone_km(observer_height_m)
     painter.save()
     try:
+        underlay_pens: list[QPen] = []
+        for width, alpha in _earth_guide_underlay_pass_specs(earth_guide_opacity):
+            underlay_color = QColor(*EARTH_GUIDE_LINE_COLOR)
+            underlay_color.setAlphaF(alpha)
+            pen = QPen(underlay_color, width, Qt.PenStyle.SolidLine)
+            pen.setCosmetic(True)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            underlay_pens.append(pen)
+
         alpha = earth_guide_line_alpha(earth_guide_opacity)
         line_color = QColor(*EARTH_GUIDE_LINE_COLOR)
         line_color.setAlphaF(alpha)
-        line_pen = QPen(line_color, EARTH_GUIDE_FOREGROUND_WIDTH, Qt.PenStyle.SolidLine)
+        line_pen = QPen(
+            line_color,
+            EARTH_GUIDE_FOREGROUND_WIDTH,
+            Qt.PenStyle.SolidLine,
+        )
         line_pen.setCosmetic(True)
         line_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         line_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
@@ -482,6 +512,9 @@ def draw_earth_guide(
                 if len(screen_points) < 2:
                     continue
                 poly = QPolygonF(screen_points)
+                for underlay_pen in underlay_pens:
+                    painter.setPen(underlay_pen)
+                    painter.drawPolyline(poly)
                 painter.setPen(line_pen)
                 painter.drawPolyline(poly)
     finally:
