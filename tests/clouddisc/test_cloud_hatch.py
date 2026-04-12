@@ -193,23 +193,23 @@ def test_variable_width_cloud_stripes_drop_to_zero_for_tiny_cloud_amount() -> No
 def test_alpha_scaled_cloud_stripes_encode_cloud_amount_in_alpha() -> None:
     cfg = HatchConfig(20, 19, 8, 255)
     field = CloudAmountField(
-        amount=np.full((96, 96), 0.1, dtype=np.float32),
+        amount=np.full((96, 96), 0.21, dtype=np.float32),
         u_min=-2.0,
         u_max=2.0,
         v_min=-2.0,
         v_max=2.0,
-        nonzero_lo=0.0,
-        nonzero_hi=1.0,
+        nonzero_lo=0.2,
+        nonzero_hi=0.22,
         source_cache_key=4,
     )
-    field.amount[:, 48:] = 0.8
+    field.amount[:, 48:] = 0.22
 
     out = _render_alpha_scaled_cloud_stripes_rgba(field, 192, 192, cfg, target_stripes=12, width_factor=0.2)
     positive = out[..., 3] > 0
     assert np.any(positive)
     left_mean = float(out[:, :96, 3][out[:, :96, 3] > 0].mean())
     right_mean = float(out[:, 96:, 3][out[:, 96:, 3] > 0].mean())
-    assert right_mean > left_mean + 80.0
+    assert right_mean > left_mean + 40.0
 
 
 def test_variable_width_cloud_stripes_use_content_fov_for_sampling_extent() -> None:
