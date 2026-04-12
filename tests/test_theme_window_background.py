@@ -12,3 +12,10 @@ def test_white_and_day_window_background_share_the_same_base_rgb() -> None:
     day_bg = THEME_STYLES_BY_PRESET["day"].window_background
 
     assert white_bg.base_rgb == day_bg.base_rgb
+
+
+def test_white_and_day_outline_colors_match_black_theme_outline() -> None:
+    expected_outline = (2, 2, 3, 236)
+    for preset in ("white", "day"):
+        assert THEME_STYLES_BY_PRESET[preset].text.outline == expected_outline
+        assert THEME_STYLES_BY_PRESET[preset].status_text.outline == expected_outline
