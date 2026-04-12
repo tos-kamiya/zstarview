@@ -274,6 +274,26 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `splash.py` は `ThemeStyle.splash` を色定義の参照元とし、背景 alpha は `ThemeStyle.window_background` から導出した平均 alpha を使う。
 - 明るい preset (`day`, `white`) では、暗い preset (`night`, `black`) より広い文字アウトライン幅を持てる。
 
+#### 4.3.0a カラーパレット参照
+
+`color-palette.png` の RGB 値は、描画色の調整時に参照する固定メモとして以下を残す。
+
+- 1色目: `(240, 173, 122)` / `#F0AD7A`
+  - never-rises tint
+- 2色目: `(206, 122, 240)` / `#CE7AF0`
+  - aircraft overlay
+  - satellite marker
+- 3色目: `(206, 240, 122)` / `#CEF07A`
+  - horizon line
+  - direction labels
+- 4色目: `(122, 226, 240)` / `#7AE2F0`
+  - asterisms
+- 5色目: `(148, 156, 131)` / `#949C83`
+  - ground-tone trial swatch
+- 6色目: `(112, 99, 89)` / `#706359`
+  - earth guide
+  - terrain horizon
+
 #### 4.3.1 描画リファクタリング方針
 
 - 将来の単発画像書き出し CLI に備え、描画処理は `SkyWindow` / Mixin 直結から、関数呼び出し中心の再利用可能なパイプラインへ寄せる方針とする。
