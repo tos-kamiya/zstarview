@@ -14,8 +14,8 @@ def test_white_and_day_window_background_share_the_same_base_rgb() -> None:
     assert white_bg.base_rgb == day_bg.base_rgb
 
 
-def test_white_and_day_outline_colors_match_black_theme_outline() -> None:
-    expected_outline = (2, 2, 3, 236)
-    for preset in ("white", "day"):
-        assert THEME_STYLES_BY_PRESET[preset].text.outline == expected_outline
-        assert THEME_STYLES_BY_PRESET[preset].status_text.outline == expected_outline
+def test_white_and_day_outline_colors_use_midpoint_tones() -> None:
+    assert THEME_STYLES_BY_PRESET["white"].text.outline == (66, 38, 17, 178)
+    assert THEME_STYLES_BY_PRESET["white"].status_text.outline == (64, 37, 17, 180)
+    assert THEME_STYLES_BY_PRESET["day"].text.outline == (65, 37, 22, 175)
+    assert THEME_STYLES_BY_PRESET["day"].status_text.outline == (61, 35, 21, 177)
