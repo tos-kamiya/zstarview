@@ -15,7 +15,7 @@ def test_white_and_day_window_background_share_the_same_base_rgb() -> None:
 
 
 def test_white_and_day_outline_colors_use_midpoint_tones() -> None:
-    assert THEME_STYLES_BY_PRESET["white"].text.outline == (66, 38, 17, 178)
-    assert THEME_STYLES_BY_PRESET["white"].status_text.outline == (64, 37, 17, 180)
-    assert THEME_STYLES_BY_PRESET["day"].text.outline == (65, 37, 22, 175)
-    assert THEME_STYLES_BY_PRESET["day"].status_text.outline == (61, 35, 21, 177)
+    assert THEME_STYLES_BY_PRESET["white"].text.outline == (79, 45, 19, 166)
+    assert THEME_STYLES_BY_PRESET["white"].status_text.outline == (76, 44, 19, 169)
+    assert THEME_STYLES_BY_PRESET["day"].text.outline == (78, 44, 25, 163)
+    assert THEME_STYLES_BY_PRESET["day"].status_text.outline == (73, 42, 24, 165)
