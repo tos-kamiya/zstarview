@@ -1,6 +1,6 @@
 # CPython Test Matrix
 
-`zstarview` を CPython 3.10 / 3.11 / 3.12 / 3.14 で確認するための手順です。
+`zstarview` を CPython 3.10 / 3.11 / 3.12 / 3.13 / 3.14 で確認するための手順です。
 
 `uv` を使い、各 Python バージョンごとに独立した仮想環境を作ってテストします。
 
@@ -22,6 +22,7 @@ scripts/run_python_matrix.sh
   - `3.10`
   - `3.11`
   - `3.12`
+  - `3.13`
   - `3.14`
 
 ## 1. 対象 Python を用意する
