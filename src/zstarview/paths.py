@@ -125,7 +125,7 @@ THEME_STYLES_BY_PRESET = {
             outline_width=3.0,
         ),
         window_background=WindowBackgroundStyle(
-            base_rgb=(242, 245, 250),
+            base_rgb=(226, 223, 222),
             delta_rgb=(46, 48, 50),
             outer_alpha=255,
             edge_alpha=200,
@@ -150,7 +150,7 @@ THEME_STYLES_BY_PRESET = {
             outline_width=3.0,
         ),
         window_background=WindowBackgroundStyle(
-            base_rgb=(230, 242, 255),
+            base_rgb=(226, 223, 222),
             delta_rgb=(28, 34, 34),
             outer_alpha=200,
             edge_alpha=80,
