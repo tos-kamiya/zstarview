@@ -508,3 +508,16 @@
   - 位置引数を `auto` にしたとき、`ip-api.com` の API を使って IP アドレスから現在地を取得する機能を追加した。
   - 取得結果は緯度、経度、タイムゾーン、地名を含む `ResolvedLocation` として扱い、他の地点指定と同じように起動時の観測地点へ反映するようにした。
   - その後、`ip-api.com` への自動問い合わせには 3 秒のレート制限を入れて、連続起動時の過剰アクセスを避けるようにした。
+
+- `--observation-info` の起動モード拡張
+  - 観測情報オーバーレイの起動モードを `auto / top / bottom / off` で明示的に指定できる `--observation-info` を追加した。
+  - 既存の `--show-observation-info-initial` は互換用に残し、GUI 側では `bool` なら `auto / off` に正規化して扱うようにした。
+  - GUI では `top / bottom` を pinned mode として扱い、マウス位置による HUD の自動移動を抑止するようにした。
+  - `zstarview-export-image` ではこの新しい起動モードを露出せず、従来どおり `--show-guidelines-initial` だけを headless 向けに残した。
+
+- 赤道・黄道の点線間隔調整
+  - 天の赤道と黄道の dash pattern を少し粗くして、通常ズームで点線がくっついて見えにくくなるようにした。
+  - 地平線の点線は従来どおり維持し、赤道・黄道だけを対象にした。
+
+- バージョン更新
+  - パッチレベルの更新として `__version__` を `1.9.7` に上げた。
