@@ -9,6 +9,7 @@ from zstarview.gui.window import DEFAULT_CLOUD_ALT_MIN_DEG, SkyWindow
 def _dummy_window(cloud_state):
     return SimpleNamespace(
         cloud_state=cloud_state,
+        cloud_disc_alpha=0.2,
         _predicted_cloud_satellite=lambda: "G19",
     )
 
