@@ -242,13 +242,19 @@ def _render_variable_width_cloud_stripes_rgba(
         return out
 
     alpha_u8 = int(np.clip(round(float(hatch_cfg.strength)), 1, 255))
+    fade_span = max(1.0, float(max_band) - 0.5)
+    fade = 1.0 - 0.5 * np.clip((phase - 0.5) / fade_span, 0.0, 1.0)
     if np.any(full_mask):
         out[..., :3][full_mask] = 255
-        out[..., 3][full_mask] = alpha_u8
+        out[..., 3][full_mask] = np.clip(np.round(alpha_u8 * fade[full_mask]), 0, alpha_u8).astype(np.uint8)
     if np.any(partial_mask):
         out[..., :3][partial_mask] = 255
         partial_alpha = np.clip(np.round(frac_levels * alpha_u8), 0, alpha_u8).astype(np.uint8)
-        out[..., 3][partial_mask] = partial_alpha[partial_mask]
+        out[..., 3][partial_mask] = np.clip(
+            np.round(partial_alpha[partial_mask].astype(np.float32) * fade[partial_mask]),
+            0,
+            alpha_u8,
+        ).astype(np.uint8)
     return out
 
 
