@@ -14,6 +14,11 @@ from .geometry import normalized_to_screen_xy
 from .guides import _clip_polyline_to_radius, _great_circle_altaz_points, split_by_gaps
 from .text import _text_bounds_at_baseline, draw_outlined_text, resolve_text_style
 
+ASTERISM_BASE_OUTLINE_WIDTH = 4.0
+ASTERISM_BASE_LINE_WIDTH = 2.5
+ASTERISM_HIGHLIGHT_OUTLINE_WIDTH = 3.2
+ASTERISM_HIGHLIGHT_LINE_WIDTH = 2.0
+
 
 def draw_asterisms(
     painter: QPainter,
@@ -52,13 +57,13 @@ def draw_asterisms(
     if preset in ("white", "day"):
         base_line_color = QColor(26, 114, 214, 25)
         base_outline_color = QColor(190, 220, 250, 12)
-        highlight_line_color = QColor(26, 114, 214, 124)
         highlight_outline_color = QColor(190, 220, 250, 52)
+        highlight_line_color = QColor(26, 114, 214, 124)
     else:
         base_line_color = QColor(82, 142, 214, 21)
         base_outline_color = QColor(24, 48, 86, 9)
-        highlight_line_color = QColor(120, 190, 255, 92)
         highlight_outline_color = QColor(32, 76, 130, 44)
+        highlight_line_color = QColor(120, 190, 255, 92)
 
     painter.save()
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
@@ -104,17 +109,6 @@ def draw_asterisms(
     def _draw_one_asterism(asterism: Any, outline_pen: QPen, line_pen: QPen) -> List[QPointF]:
         return _draw_segments(asterism.segments(), outline_pen, line_pen)
 
-    if draw_base:
-        base_outline_pen = _make_pen(base_outline_color, 4.0 * width_scale)
-        base_line_pen = _make_pen(base_line_color, 2.5 * width_scale)
-        base_segments: set[Tuple[str, str]] = set()
-        for asterism in ASTERISMS:
-            for source_a, source_b in asterism.segments():
-                if source_a == source_b:
-                    continue
-                base_segments.add(tuple(sorted((source_a, source_b))))
-        _draw_segments(sorted(base_segments), base_outline_pen, base_line_pen)
-
     highlighted_asterism = None
     if draw_highlight and highlighted_object is not None:
         hovered_obj, _ = highlighted_object
@@ -125,9 +119,20 @@ def draw_asterisms(
                 highlighted_asterism = pick_rotating_asterism(hovered_source_id, second_slot)
 
     label_points: List[QPointF] = []
+    if draw_base:
+        base_outline_pen = _make_pen(base_outline_color, ASTERISM_BASE_OUTLINE_WIDTH * width_scale)
+        base_line_pen = _make_pen(base_line_color, ASTERISM_BASE_LINE_WIDTH * width_scale)
+        base_segments: set[Tuple[str, str]] = set()
+        for asterism in ASTERISMS:
+            for source_a, source_b in asterism.segments():
+                if source_a == source_b:
+                    continue
+                base_segments.add(tuple(sorted((source_a, source_b))))
+        _draw_segments(sorted(base_segments), base_outline_pen, base_line_pen)
+
     if highlighted_asterism is not None:
-        highlight_outline_pen = _make_pen(highlight_outline_color, 3.2 * width_scale)
-        highlight_line_pen = _make_pen(highlight_line_color, 2.0 * width_scale)
+        highlight_outline_pen = _make_pen(highlight_outline_color, ASTERISM_HIGHLIGHT_OUTLINE_WIDTH * width_scale)
+        highlight_line_pen = _make_pen(highlight_line_color, ASTERISM_HIGHLIGHT_LINE_WIDTH * width_scale)
         label_points = _draw_one_asterism(highlighted_asterism, highlight_outline_pen, highlight_line_pen)
 
     if label_points:
