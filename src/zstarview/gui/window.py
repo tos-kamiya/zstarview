@@ -248,6 +248,20 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         """Keep the host window from clearing the client area during repaints."""
         event.accept()
 
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        if self._frameless_window or self._client_geometry_sync_done:
+            return
+        self._client_geometry_sync_done = True
+        target_client_width, target_client_height = self._target_client_size
+        current_client_width = int(self.client_width())
+        current_client_height = int(self.client_height())
+        delta_width = int(target_client_width) - current_client_width
+        delta_height = int(target_client_height) - current_client_height
+        if delta_width == 0 and delta_height == 0:
+            return
+        self.resize(self.width() + delta_width, self.height() + delta_height)
+
     def __init__(
         self,
         viewer_data: ViewerData,
@@ -454,6 +468,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 min_height=min_height,
             )
         )
+        self._target_client_size = (int(initial_width), int(initial_height))
+        self._client_geometry_sync_done = False
         self.setGeometry(initial_x, initial_y, initial_width, initial_height)
         self._client_widget = SkyWindowClientWidget(self)
         self._frameless_frame: Optional[FramelessWindowFrame] = None
@@ -1711,7 +1727,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
     def closeEvent(self, event: QCloseEvent) -> None:
         g = self.geometry()
-        save_last_window_geometry(g.x(), g.y(), g.width(), g.height())
+        save_last_window_geometry(g.x(), g.y(), self.client_width(), self.client_height())
         self._begin_shutdown()
         super().closeEvent(event)
 
