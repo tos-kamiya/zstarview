@@ -284,11 +284,34 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             if user_options.show_guidelines_initial is None
             else bool(user_options.show_guidelines_initial)
         )
-        self.show_overlay_info: bool = (
-            True
-            if user_options.show_overlay_info_initial is None
-            else bool(user_options.show_overlay_info_initial)
-        )
+        # Determine overlay info startup mode. The user option may be a mode string
+        # ('auto','top','bottom','off'), a legacy bool, or None.
+        raw_overlay_mode = user_options.show_overlay_info_initial
+        if isinstance(raw_overlay_mode, str):
+            overlay_mode = raw_overlay_mode
+        elif raw_overlay_mode is None:
+            overlay_mode = "auto"
+        else:
+            overlay_mode = "auto" if bool(raw_overlay_mode) else "off"
+        self._overlay_info_mode = overlay_mode
+        # Pinned when explicitly top or bottom
+        self._overlay_info_pinned = overlay_mode in ("top", "bottom")
+        # Visible unless 'off'
+        self.show_overlay_info: bool = overlay_mode != "off"
+        # Initialize overlay_info_bottom_left state: True means bottom-left, False means top-left
+        # When pinned, set the HUD state immediately so rendering respects the pin.
+        if overlay_mode == "bottom":
+            try:
+                self.state.overlay_info_bottom_left = True
+            except Exception:
+                # state may not yet be fully initialized; ignore and rely on the render path
+                pass
+        elif overlay_mode == "top":
+            try:
+                self.state.overlay_info_bottom_left = False
+            except Exception:
+                pass
+
         self._named_stars_by_band = catalogs.named_stars_by_band
         self._named_stars_search_all = catalogs.named_stars_search_all
         self.delta_t = runtime_options.delta_t
@@ -383,6 +406,16 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             satellite_overlay_points=None,
             aircraft_overlay_points=None,
         )
+        # Ensure overlay_info_bottom_left reflects the CLI startup mode now that
+        # the mutable state object exists. True==bottom-left, False==top-left.
+        try:
+            if getattr(self, "_overlay_info_mode", "auto") == "bottom":
+                self.state.overlay_info_bottom_left = True
+            elif getattr(self, "_overlay_info_mode", "auto") == "top":
+                self.state.overlay_info_bottom_left = False
+        except Exception:
+            pass
+
         self._enabled_satellite_groups: tuple[str, ...] = (SATELLITE_ISS_CACHE_KEY,)
         self._frame_cache_key: object | None = None
         self._frame_cache_image = None
@@ -754,6 +787,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         toggle_overlay_info_action = QAction("Observation Info", self)
         toggle_overlay_info_action.setCheckable(True)
         toggle_overlay_info_action.setChecked(self.show_overlay_info)
+        # Disable the menu toggle entirely when CLI explicitly set 'off'.
+        toggle_overlay_info_action.setEnabled(getattr(self, "_overlay_info_mode", "auto") != "off")
         toggle_overlay_info_action.triggered.connect(self.toggle_overlay_info)
         self.display_menu.addAction(toggle_overlay_info_action)
         self.addAction(toggle_overlay_info_action)
@@ -1527,7 +1562,30 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.request_client_update()
 
     def toggle_overlay_info(self) -> None:
+        # If CLI explicitly disabled the overlay, the menu toggle should be inert.
+        if getattr(self, "_overlay_info_mode", "auto") == "off":
+            self.show_overlay_info = False
+            if (
+                self._action_toggle_overlay_info is not None
+                and self._action_toggle_overlay_info.isChecked() != self.show_overlay_info
+            ):
+                self._action_toggle_overlay_info.setChecked(self.show_overlay_info)
+            return
+
+        # Toggle visibility. When re-enabling and the overlay is pinned, ensure
+        # the pinned position is enforced.
         self.show_overlay_info = not self.show_overlay_info
+
+        if self.show_overlay_info and getattr(self, "_overlay_info_pinned", False):
+            mode = getattr(self, "_overlay_info_mode", "auto")
+            try:
+                if mode == "bottom":
+                    self.state.overlay_info_bottom_left = True
+                elif mode == "top":
+                    self.state.overlay_info_bottom_left = False
+            except Exception:
+                pass
+
         if (
             self._action_toggle_overlay_info is not None
             and self._action_toggle_overlay_info.isChecked() != self.show_overlay_info
