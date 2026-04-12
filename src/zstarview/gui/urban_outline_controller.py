@@ -22,9 +22,11 @@ from ..data.import_overture_buildings import (
     is_derived_dataset_stale,
     import_overture_buildings_for_bbox,
     import_overture_buildings,
+    resolve_overture_release_for_cache_root,
 )
 from ..urban_outline_layer import resolve_urban_outline_layer_for_viewer
 from ..paths import OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR, SKYSCRAPER_TILES_FILE
+from ..paths import CACHE_PATH
 from ..types import UrbanOutlinePolyline, ViewerData
 
 logger = logging.getLogger(__name__)
@@ -132,6 +134,10 @@ class UrbanOutlineController(QObject):
     ) -> None:
         try:
             now = datetime.now(timezone.utc)
+            current_overture_release = resolve_overture_release_for_cache_root(
+                cache_root_dir=Path(CACHE_PATH),
+                now_utc=now,
+            )
             source = "cache"
             required_dirs = () if self._skyscraper_only else self._required_derived_dirs(viewer_data)
             for overture_feature_type, derived_dir in required_dirs:
@@ -140,6 +146,7 @@ class UrbanOutlineController(QObject):
                     derived_dir,
                     ttl_days=OVERTURE_CACHE_TTL_DAYS,
                     now_utc=now,
+                    expected_overture_release=current_overture_release,
                 )
                 if derived_exists and not derived_is_stale:
                     continue
@@ -166,6 +173,8 @@ class UrbanOutlineController(QObject):
                         dataset_name=derived_dir.parent.name,
                         keep_download=None,
                         no_stac=False,
+                        overture_release=current_overture_release,
+                        skip_release_lookup=True,
                         now_utc=now,
                     )
                     source = "overture"
@@ -202,6 +211,7 @@ class UrbanOutlineController(QObject):
                         derived_dir,
                         ttl_days=OVERTURE_CACHE_TTL_DAYS,
                         now_utc=now,
+                        expected_overture_release=current_overture_release,
                     )
                     if derived_exists and not derived_is_stale:
                         continue
@@ -236,6 +246,8 @@ class UrbanOutlineController(QObject):
                             dataset_name=tile.cache_key,
                             keep_download=None,
                             no_stac=False,
+                            overture_release=current_overture_release,
+                            skip_release_lookup=True,
                             now_utc=now,
                         )
                         source = "overture"

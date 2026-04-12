@@ -118,6 +118,11 @@ def test_fetch_urban_outline_layer_skips_skyscraper_lookup_when_radius_zero(monk
     monkeypatch.setattr(mod, "_required_feature_types", lambda _mode: ())
     monkeypatch.setattr(
         mod,
+        "resolve_overture_release_for_cache_root",
+        lambda **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        mod,
         "select_skyscraper_seed_tiles_for_viewer",
         lambda **_kwargs: (_ for _ in ()).throw(AssertionError("skyscraper lookup should be skipped")),
     )

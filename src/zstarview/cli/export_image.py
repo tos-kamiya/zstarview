@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import timezone
+from datetime import datetime, timezone
 import logging
 import math
 import os
@@ -36,6 +36,8 @@ from ..data.import_overture_buildings import (
     derive_dataset_name,
     import_overture_buildings,
     import_overture_buildings_for_bbox,
+    is_derived_dataset_stale,
+    resolve_overture_release_for_cache_root,
 )
 from ..data.skyscraper_tiles import (
     SKYSCRAPER_OUTER_RADIUS_KM,
@@ -449,6 +451,10 @@ def _fetch_urban_outline_layer(
 ) -> list[UrbanOutlinePolyline] | None:
     if _timed_out(deadline):
         raise TimeoutError("urban timed out")
+    current_overture_release = resolve_overture_release_for_cache_root(
+        cache_root_dir=Path(CACHE_PATH),
+        now_utc=datetime.now(timezone.utc),
+    )
     derived_root_dir = Path(OVERTURE_DERIVED_ROOT_DIR)
     required_feature_types = (
         ()
@@ -469,7 +475,11 @@ def _fetch_urban_outline_layer(
             / "bldg"
         )
         required_dirs.append(dataset_name)
-        if dataset_name.exists():
+        if dataset_name.exists() and not is_derived_dataset_stale(
+            dataset_name,
+            now_utc=datetime.now(timezone.utc),
+            expected_overture_release=current_overture_release,
+        ):
             continue
         import_overture_buildings(
             lat_deg=float(viewer_data.lat_deg),
@@ -483,6 +493,8 @@ def _fetch_urban_outline_layer(
             dataset_name=dataset_name.parent.name,
             keep_download=None,
             no_stac=False,
+            overture_release=current_overture_release,
+            skip_release_lookup=True,
         )
         if _timed_out(deadline):
             raise TimeoutError("urban timed out")
@@ -511,7 +523,11 @@ def _fetch_urban_outline_layer(
             tile, derived_root_dir=skyscraper_derived_root
         )
         skyscraper_dirs.append(derived_dir)
-        if derived_dir.exists():
+        if derived_dir.exists() and not is_derived_dataset_stale(
+            derived_dir,
+            now_utc=datetime.now(timezone.utc),
+            expected_overture_release=current_overture_release,
+        ):
             continue
         import_overture_buildings_for_bbox(
             bbox=(
@@ -530,6 +546,8 @@ def _fetch_urban_outline_layer(
             dataset_name=tile.cache_key,
             keep_download=None,
             no_stac=False,
+            overture_release=current_overture_release,
+            skip_release_lookup=True,
         )
         if _timed_out(deadline):
             raise TimeoutError("urban timed out")
