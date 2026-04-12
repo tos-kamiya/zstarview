@@ -5,7 +5,7 @@ from dataclasses import replace
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import Mock
-from PySide6.QtCore import QPoint, QRect
+from PySide6.QtCore import QPoint, QRect, Qt
 from PySide6.QtGui import QFont, QImage
 
 import zstarview.render.pipeline as pipeline_module
@@ -1826,10 +1826,14 @@ def test_draw_sky_reference_lines_uses_render_view_center_projection(
 
 def test_draw_sky_reference_lines_uses_wider_dash_patterns(monkeypatch) -> None:
     dash_patterns: list[list[int]] = []
+    pen_styles: list[object] = []
+    pen_alpha_values: list[int] = []
 
     class _FakePen:
-        def __init__(self, _color, _width, _style=None) -> None:
+        def __init__(self, color, _width, style=None) -> None:
             self._dash_pattern: list[int] = []
+            self._style = style
+            self._alpha = color.alpha() if hasattr(color, "alpha") else None
 
         def setCosmetic(self, *_args, **_kwargs) -> None:
             pass
@@ -1852,6 +1856,8 @@ def test_draw_sky_reference_lines_uses_wider_dash_patterns(monkeypatch) -> None:
 
         def setPen(self, pen) -> None:
             dash_patterns.append(list(getattr(pen, "_dash_pattern", [])))
+            pen_styles.append(getattr(pen, "_style", None))
+            pen_alpha_values.append(getattr(pen, "_alpha", None))
 
         def drawPolyline(self, *_args, **_kwargs) -> None:
             pass
@@ -1877,9 +1883,12 @@ def test_draw_sky_reference_lines_uses_wider_dash_patterns(monkeypatch) -> None:
         altaz_to_normalized_xy_func=lambda alt, az, view_center: (alt, az),
     )
 
-    assert dash_patterns[:2] == [[12, 6], [12, 6]]
-    assert dash_patterns[2:4] == [[6, 6], [6, 6]]
-    assert dash_patterns[4:6] == [[10, 1], [10, 1]]
+    assert dash_patterns[0::2] == [[], [], []]
+    assert dash_patterns[1::2] == [[12, 6], [4, 8], [10, 1]]
+    assert pen_styles[0::2] == [Qt.PenStyle.SolidLine, Qt.PenStyle.SolidLine, Qt.PenStyle.SolidLine]
+    assert pen_styles[1::2] == [None, None, None]
+    assert pen_alpha_values[0::2] == [40, 40, 40]
+    assert pen_alpha_values[1::2] == [255, 255, 255]
 
 
 def test_draw_urban_outlines_simplifies_narrow_outline_to_horizontal_segment(
