@@ -80,7 +80,7 @@ class RenderStyle:
     status_line_font: QFont
     show_background_gradient: bool
     show_custom_window_frame: bool
-    show_overlay_info: bool
+    show_observation_info: bool
     show_dso: bool
     show_asterisms: bool
     show_guidelines: bool
@@ -365,6 +365,7 @@ def _draw_background_layer(
         geometry,
         preset=style.visual_preset,
         content_fov_deg=_content_fov_deg(scene),
+        opaque=not style.show_custom_window_frame,
     )
     if style.show_custom_window_frame:
         render_background.draw_window_border(
@@ -672,7 +673,7 @@ def _draw_overlay_layer(
     label_reservations: list[QRectF],
     label_candidates: list[dict[str, Any]],
 ) -> None:
-    if not style.show_overlay_info:
+    if not style.show_observation_info:
         return
     render_overlay_info.draw_overlay_info(
         painter,

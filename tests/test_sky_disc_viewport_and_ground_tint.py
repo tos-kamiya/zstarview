@@ -147,6 +147,30 @@ def test_radial_background_fades_between_content_fov_and_window_edge() -> None:
     assert int(arr[10, 10, 3]) < int(arr[13, 80, 3])
 
 
+def test_radial_background_opaque_mode_keeps_full_alpha_at_edges() -> None:
+    geom = ScreenGeometry(center=(80, 80), radius=60)
+    rect = QRectF(0.0, 0.0, 160.0, 160.0)
+
+    img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
+    img.fill(0)
+    painter = QPainter(img)
+    draw_radial_background(
+        painter,
+        rect,
+        geom,
+        preset="night",
+        content_fov_deg=100.0,
+        opaque=True,
+    )
+    painter.end()
+
+    arr = qimage_to_np_rgba(img)
+
+    assert int(arr[80, 80, 3]) == 255
+    assert int(arr[13, 80, 3]) == 255
+    assert int(arr[10, 10, 3]) == 255
+
+
 def test_window_frame_makes_edges_more_opaque_than_center() -> None:
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)

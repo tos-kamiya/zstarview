@@ -11,7 +11,7 @@ import logging
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, Tuple, Union
+from typing import Callable, Optional, Tuple, Union
 
 import astropy.time
 from PySide6.QtCore import QEvent, QPoint, QRect, Qt, QTimer, Signal
@@ -245,8 +245,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     FRAMELESS_WINDOW = False
 
     def paintEvent(self, event: QPaintEvent) -> None:
-        """Let the host window paint only its native chrome; the client widget renders the sky view."""
-        QMainWindow.paintEvent(self, event)
+        """Keep the host window from clearing the client area during repaints."""
+        event.accept()
 
     def __init__(
         self,
@@ -284,29 +284,29 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             if user_options.show_guidelines_initial is None
             else bool(user_options.show_guidelines_initial)
         )
-        # Determine overlay info startup mode. The user option may be a mode string
+        # Determine observation info startup mode. The user option may be a mode string
         # ('auto','top','bottom','off'), a legacy bool, or None.
-        raw_overlay_mode = user_options.show_overlay_info_initial
-        if isinstance(raw_overlay_mode, str):
-            overlay_mode = raw_overlay_mode
-        elif raw_overlay_mode is None:
-            overlay_mode = "auto"
+        raw_observation_mode = user_options.show_observation_info_initial
+        if isinstance(raw_observation_mode, str):
+            observation_mode = raw_observation_mode
+        elif raw_observation_mode is None:
+            observation_mode = "auto"
         else:
-            overlay_mode = "auto" if bool(raw_overlay_mode) else "off"
-        self._overlay_info_mode = overlay_mode
+            observation_mode = "auto" if bool(raw_observation_mode) else "off"
+        self._observation_info_mode = observation_mode
         # Pinned when explicitly top or bottom
-        self._overlay_info_pinned = overlay_mode in ("top", "bottom")
+        self._observation_info_pinned = observation_mode in ("top", "bottom")
         # Visible unless 'off'
-        self.show_overlay_info: bool = overlay_mode != "off"
+        self.show_observation_info: bool = observation_mode != "off"
         # Initialize overlay_info_bottom_left state: True means bottom-left, False means top-left
         # When pinned, set the HUD state immediately so rendering respects the pin.
-        if overlay_mode == "bottom":
+        if observation_mode == "bottom":
             try:
                 self.state.overlay_info_bottom_left = True
             except Exception:
                 # state may not yet be fully initialized; ignore and rely on the render path
                 pass
-        elif overlay_mode == "top":
+        elif observation_mode == "top":
             try:
                 self.state.overlay_info_bottom_left = False
             except Exception:
@@ -406,12 +406,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             satellite_overlay_points=None,
             aircraft_overlay_points=None,
         )
-        # Ensure overlay_info_bottom_left reflects the CLI startup mode now that
+        # Ensure overlay_info_bottom_left reflects the startup mode now that
         # the mutable state object exists. True==bottom-left, False==top-left.
         try:
-            if getattr(self, "_overlay_info_mode", "auto") == "bottom":
+            if getattr(self, "_observation_info_mode", "auto") == "bottom":
                 self.state.overlay_info_bottom_left = True
-            elif getattr(self, "_overlay_info_mode", "auto") == "top":
+            elif getattr(self, "_observation_info_mode", "auto") == "top":
                 self.state.overlay_info_bottom_left = False
         except Exception:
             pass
@@ -425,6 +425,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setFocus(Qt.FocusReason.ActiveWindowFocusReason)
         self.setWindowIcon(QIcon(APP_ICON_FILE))
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
+        self.setAutoFillBackground(False)
         initial_x = 100
         initial_y = 100
         initial_width = WINDOW_WIDTH
@@ -466,7 +468,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._action_toggle_dso: Optional[QAction] = None
         self._action_toggle_asterisms: Optional[QAction] = None
         self._action_toggle_guidelines: Optional[QAction] = None
-        self._action_toggle_overlay_info: Optional[QAction] = None
+        self._action_toggle_observation_info: Optional[QAction] = None
         self._action_toggle_sky_disc: Optional[QAction] = None
         self._action_raise_view: Optional[QAction] = None
         self._action_lower_view: Optional[QAction] = None
@@ -694,199 +696,223 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.menu.addMenu(self.display_menu)
         self.menu.addMenu(self.observer_view_menu)
 
-        rotate_left = self.observer_view_menu.addAction(
-            f"Rotate Left (-{self.state.rotation_step:.0f}°)"
-        )
-        rotate_left.triggered.connect(
-            lambda: self._rotate_view(
+        self._add_menu_action(
+            self.observer_view_menu,
+            f"Rotate Left (-{self.state.rotation_step:.0f}°)",
+            triggered=lambda: self._rotate_view(
                 d_az=-self.state.rotation_step, interactive_viewport=True
-            )
+            ),
         )
-        rotate_right = self.observer_view_menu.addAction(
-            f"Rotate Right (+{self.state.rotation_step:.0f}°)"
-        )
-        rotate_right.triggered.connect(
-            lambda: self._rotate_view(
+        self._add_menu_action(
+            self.observer_view_menu,
+            f"Rotate Right (+{self.state.rotation_step:.0f}°)",
+            triggered=lambda: self._rotate_view(
                 d_az=+self.state.rotation_step, interactive_viewport=True
-            )
+            ),
         )
-        raise_view = self.observer_view_menu.addAction(
-            f"Raise View (+{self.state.rotation_step:.0f}° alt)"
-        )
-        raise_view.triggered.connect(
-            lambda: self._rotate_view(
+        self._action_raise_view = self._add_menu_action(
+            self.observer_view_menu,
+            f"Raise View (+{self.state.rotation_step:.0f}° alt)",
+            triggered=lambda: self._rotate_view(
                 d_alt=+self.state.rotation_step, interactive_viewport=True
-            )
+            ),
         )
-        self._action_raise_view = raise_view
-        lower_view = self.observer_view_menu.addAction(
-            f"Lower View (-{self.state.rotation_step:.0f}° alt)"
-        )
-        lower_view.triggered.connect(
-            lambda: self._rotate_view(
+        self._action_lower_view = self._add_menu_action(
+            self.observer_view_menu,
+            f"Lower View (-{self.state.rotation_step:.0f}° alt)",
+            triggered=lambda: self._rotate_view(
                 d_alt=-self.state.rotation_step, interactive_viewport=True
-            )
+            ),
         )
-        self._action_lower_view = lower_view
 
         self.observer_view_menu.addSeparator()
-        jump_named_star = QAction("Jump to Named Star...", self)
-        jump_named_star.setShortcut(QKeySequence("Ctrl+J"))
-        jump_named_star.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
-        jump_named_star.triggered.connect(self._open_named_star_jump_dialog)
-        self.search_menu.addAction(jump_named_star)
-        self.addAction(jump_named_star)
-        search_named_star = QAction("Search Stars and Asterisms...", self)
-        search_named_star.setShortcut(QKeySequence("Ctrl+F"))
-        search_named_star.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
-        search_named_star.triggered.connect(self._open_named_star_search_dialog)
-        self.search_menu.addAction(search_named_star)
-        self.addAction(search_named_star)
-        search_place = QAction("Search Places...", self)
-        search_place.triggered.connect(self._open_place_search_dialog)
-        self.search_menu.addAction(search_place)
+        self._add_menu_action(
+            self.search_menu,
+            "Jump to Named Star...",
+            shortcut=QKeySequence("Ctrl+J"),
+            triggered=self._open_named_star_jump_dialog,
+        )
+        self._add_menu_action(
+            self.search_menu,
+            "Search Stars and Asterisms...",
+            shortcut=QKeySequence("Ctrl+F"),
+            triggered=self._open_named_star_search_dialog,
+        )
+        self._add_menu_action(
+            self.search_menu,
+            "Search Places...",
+            triggered=self._open_place_search_dialog,
+        )
 
         self.display_menu.addSeparator()
-        toggle_enlarge_moon_action = QAction("Enlarge Moon", self)
-        toggle_enlarge_moon_action.setCheckable(True)
-        toggle_enlarge_moon_action.setChecked(self.enlarge_moon)
-        toggle_enlarge_moon_action.setShortcut(QKeySequence(Qt.Key.Key_M))
-        toggle_enlarge_moon_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
-        toggle_enlarge_moon_action.triggered.connect(self.toggle_enlarge_moon)
-        self.display_menu.addAction(toggle_enlarge_moon_action)
-        self.addAction(toggle_enlarge_moon_action)
-        self._action_enlarge_moon = toggle_enlarge_moon_action
-        toggle_dso_action = QAction("DSO", self)
-        toggle_dso_action.setCheckable(True)
-        toggle_dso_action.setChecked(self.show_dso)
-        toggle_dso_action.setEnabled(self.dso_catalog_np is not None)
-        toggle_dso_action.setShortcut(QKeySequence(Qt.Key.Key_D))
-        toggle_dso_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
-        toggle_dso_action.triggered.connect(self.toggle_dso)
-        self.display_menu.addAction(toggle_dso_action)
-        self.addAction(toggle_dso_action)
-        self._action_toggle_dso = toggle_dso_action
-        toggle_asterisms_action = QAction("Asterisms", self)
-        toggle_asterisms_action.setCheckable(True)
-        toggle_asterisms_action.setChecked(self.show_asterisms)
-        toggle_asterisms_action.setShortcut(QKeySequence(Qt.Key.Key_A))
-        toggle_asterisms_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
-        toggle_asterisms_action.triggered.connect(self.toggle_asterisms)
-        self.display_menu.addAction(toggle_asterisms_action)
-        self.addAction(toggle_asterisms_action)
-        self._action_toggle_asterisms = toggle_asterisms_action
-        toggle_guidelines_action = QAction("Guidelines", self)
-        toggle_guidelines_action.setCheckable(True)
-        toggle_guidelines_action.setChecked(self.show_guidelines)
-        toggle_guidelines_action.setShortcut(QKeySequence(Qt.Key.Key_G))
-        toggle_guidelines_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
-        toggle_guidelines_action.triggered.connect(self.toggle_guidelines)
-        self.display_menu.addAction(toggle_guidelines_action)
-        self.addAction(toggle_guidelines_action)
-        self._action_toggle_guidelines = toggle_guidelines_action
-        toggle_overlay_info_action = QAction("Observation Info", self)
-        toggle_overlay_info_action.setCheckable(True)
-        toggle_overlay_info_action.setChecked(self.show_overlay_info)
-        # Disable the menu toggle entirely when CLI explicitly set 'off'.
-        toggle_overlay_info_action.setEnabled(getattr(self, "_overlay_info_mode", "auto") != "off")
-        toggle_overlay_info_action.triggered.connect(self.toggle_overlay_info)
-        self.display_menu.addAction(toggle_overlay_info_action)
-        self.addAction(toggle_overlay_info_action)
-        self._action_toggle_overlay_info = toggle_overlay_info_action
+        self._action_enlarge_moon = self._add_checkable_menu_action(
+            self.display_menu,
+            "Enlarge Moon",
+            checked=self.enlarge_moon,
+            shortcut=QKeySequence(Qt.Key.Key_M),
+            triggered=self.toggle_enlarge_moon,
+        )
+        self._action_toggle_dso = self._add_checkable_menu_action(
+            self.display_menu,
+            "DSO",
+            checked=self.show_dso,
+            enabled=self.dso_catalog_np is not None,
+            shortcut=QKeySequence(Qt.Key.Key_D),
+            triggered=self.toggle_dso,
+        )
+        self._action_toggle_asterisms = self._add_checkable_menu_action(
+            self.display_menu,
+            "Asterisms",
+            checked=self.show_asterisms,
+            shortcut=QKeySequence(Qt.Key.Key_A),
+            triggered=self.toggle_asterisms,
+        )
+        self._action_toggle_guidelines = self._add_checkable_menu_action(
+            self.display_menu,
+            "Guidelines",
+            checked=self.show_guidelines,
+            shortcut=QKeySequence(Qt.Key.Key_G),
+            triggered=self.toggle_guidelines,
+        )
+        self._action_toggle_observation_info = self._add_checkable_menu_action(
+            self.display_menu,
+            "Observation Info",
+            checked=self.show_observation_info,
+            enabled=getattr(self, "_observation_info_mode", "auto") != "off",
+            triggered=self.toggle_observation_info,
+        )
 
         self.display_menu.addSeparator()
-        toggle_sky_disc_action = QAction("Sky Color Disc", self)
-        toggle_sky_disc_action.setCheckable(True)
-        toggle_sky_disc_action.setChecked(self.sky_disc_alpha > 0.0)
-        toggle_sky_disc_action.setShortcut(QKeySequence(Qt.Key.Key_S))
-        toggle_sky_disc_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
-        toggle_sky_disc_action.triggered.connect(self.toggle_sky_disc)
-        self.display_menu.addAction(toggle_sky_disc_action)
-        self.addAction(toggle_sky_disc_action)
-        self._action_toggle_sky_disc = toggle_sky_disc_action
-        toggle_clouds_action = QAction("Clouds", self)
-        toggle_clouds_action.setCheckable(True)
-        toggle_clouds_action.setChecked(self.cloud_disc_alpha > 0.0)
-        toggle_clouds_action.setShortcut(QKeySequence(Qt.Key.Key_C))
-        toggle_clouds_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
-        toggle_clouds_action.triggered.connect(self.toggle_clouds)
-        self.display_menu.addAction(toggle_clouds_action)
-        self.addAction(toggle_clouds_action)
-        self._action_toggle_clouds = toggle_clouds_action
-        toggle_satellites_action = QAction("Satellites", self)
-        toggle_satellites_action.setCheckable(True)
-        toggle_satellites_action.setChecked(self.satellite_opacity > 0.0)
-        toggle_satellites_action.setShortcut(QKeySequence(Qt.Key.Key_I))
-        toggle_satellites_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
-        toggle_satellites_action.triggered.connect(self.toggle_satellites)
-        self.display_menu.addAction(toggle_satellites_action)
-        self.addAction(toggle_satellites_action)
-        self._action_toggle_satellites = toggle_satellites_action
-        toggle_aircraft_action = QAction("Aircraft", self)
-        toggle_aircraft_action.setCheckable(True)
-        toggle_aircraft_action.setChecked(self.aircraft_opacity > 0.0)
-        toggle_aircraft_action.setShortcut(QKeySequence(Qt.Key.Key_P))
-        toggle_aircraft_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
-        toggle_aircraft_action.triggered.connect(self.toggle_aircraft)
-        self.display_menu.addAction(toggle_aircraft_action)
-        self.addAction(toggle_aircraft_action)
-        self._action_toggle_aircraft = toggle_aircraft_action
-        toggle_terrain_action = QAction("Terrain Horizon", self)
-        toggle_terrain_action.setCheckable(True)
-        toggle_terrain_action.setChecked(self.terrain_horizon_opacity > 0.0)
-        toggle_terrain_action.setShortcut(QKeySequence(Qt.Key.Key_T))
-        toggle_terrain_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
-        toggle_terrain_action.triggered.connect(self.toggle_terrain_horizon)
-        self.display_menu.addAction(toggle_terrain_action)
-        self.addAction(toggle_terrain_action)
-        self._action_toggle_terrain_horizon = toggle_terrain_action
-        toggle_earth_guide_action = QAction("Earth Guide", self)
-        toggle_earth_guide_action.setCheckable(True)
-        toggle_earth_guide_action.setChecked(self.earth_guide_opacity > 0.0)
-        toggle_earth_guide_action.setShortcut(QKeySequence(Qt.Key.Key_E))
-        toggle_earth_guide_action.setShortcutContext(
-            Qt.ShortcutContext.WindowShortcut
+        self._action_toggle_sky_disc = self._add_checkable_menu_action(
+            self.display_menu,
+            "Sky Color Disc",
+            checked=self.sky_disc_alpha > 0.0,
+            shortcut=QKeySequence(Qt.Key.Key_S),
+            triggered=self.toggle_sky_disc,
         )
-        toggle_earth_guide_action.triggered.connect(self.toggle_earth_guide)
-        self.display_menu.addAction(toggle_earth_guide_action)
-        self.addAction(toggle_earth_guide_action)
-        self._action_toggle_earth_guide = toggle_earth_guide_action
-        toggle_urban_outline_action = QAction("Urban Outline", self)
-        toggle_urban_outline_action.setCheckable(True)
-        toggle_urban_outline_action.setChecked(self.urban_outline_opacity > 0.0)
-        toggle_urban_outline_action.setShortcut(QKeySequence(Qt.Key.Key_U))
-        toggle_urban_outline_action.setShortcutContext(
-            Qt.ShortcutContext.WindowShortcut
+        self._action_toggle_clouds = self._add_checkable_menu_action(
+            self.display_menu,
+            "Clouds",
+            checked=self.cloud_disc_alpha > 0.0,
+            shortcut=QKeySequence(Qt.Key.Key_C),
+            triggered=self.toggle_clouds,
         )
-        toggle_urban_outline_action.triggered.connect(self.toggle_urban_outline)
-        self.display_menu.addAction(toggle_urban_outline_action)
-        self.addAction(toggle_urban_outline_action)
-        self._action_toggle_urban_outline = toggle_urban_outline_action
+        self._action_toggle_satellites = self._add_checkable_menu_action(
+            self.display_menu,
+            "Satellites",
+            checked=self.satellite_opacity > 0.0,
+            shortcut=QKeySequence(Qt.Key.Key_I),
+            triggered=self.toggle_satellites,
+        )
+        self._action_toggle_aircraft = self._add_checkable_menu_action(
+            self.display_menu,
+            "Aircraft",
+            checked=self.aircraft_opacity > 0.0,
+            shortcut=QKeySequence(Qt.Key.Key_P),
+            triggered=self.toggle_aircraft,
+        )
+        self._action_toggle_terrain_horizon = self._add_checkable_menu_action(
+            self.display_menu,
+            "Terrain Horizon",
+            checked=self.terrain_horizon_opacity > 0.0,
+            shortcut=QKeySequence(Qt.Key.Key_T),
+            triggered=self.toggle_terrain_horizon,
+        )
+        self._action_toggle_earth_guide = self._add_checkable_menu_action(
+            self.display_menu,
+            "Earth Guide",
+            checked=self.earth_guide_opacity > 0.0,
+            shortcut=QKeySequence(Qt.Key.Key_E),
+            triggered=self.toggle_earth_guide,
+        )
+        self._action_toggle_urban_outline = self._add_checkable_menu_action(
+            self.display_menu,
+            "Urban Outline",
+            checked=self.urban_outline_opacity > 0.0,
+            shortcut=QKeySequence(Qt.Key.Key_U),
+            triggered=self.toggle_urban_outline,
+        )
 
-        fullscreen_action = QAction("Fullscreen", self)
-        fullscreen_action.setShortcut(QKeySequence(Qt.Key.Key_F11))
-        fullscreen_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
-        fullscreen_action.triggered.connect(self.toggle_fullscreen)
-        self.file_menu.addAction(fullscreen_action)
-        self.addAction(fullscreen_action)
+        fullscreen_action = self._add_menu_action(
+            self.file_menu,
+            "Fullscreen",
+            shortcut=QKeySequence(Qt.Key.Key_F11),
+            triggered=self.toggle_fullscreen,
+        )
 
         self.file_menu.addSeparator()
-        exit_action = self.file_menu.addAction("Exit")
-        exit_action.setShortcut(QKeySequence(Qt.Key.Key_Q))
-        exit_action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
-        exit_action.triggered.connect(QApplication.quit)
-        self.addAction(exit_action)
+        exit_action = self._add_menu_action(
+            self.file_menu,
+            "Exit",
+            shortcut=QKeySequence(Qt.Key.Key_Q),
+            triggered=QApplication.quit,
+        )
 
         self.display_menu.addSeparator()
-        vmag_limit_action = self.display_menu.addAction(self._vmag_limit_menu_text())
+        vmag_limit_action = self._add_menu_action(
+            self.display_menu,
+            self._vmag_limit_menu_text(),
+        )
         vmag_limit_action.setEnabled(False)
-        version_action = self.file_menu.addAction(f"Version {__version__}")
+        version_action = self._add_menu_action(
+            self.file_menu,
+            f"Version {__version__}",
+        )
         version_action.setEnabled(False)
 
         if self._frameless_window:
             self.menu.addSeparator()
             self.menu.addAction(fullscreen_action)
             self.menu.addAction(exit_action)
+
+    def _create_menu_action(self, menu: QMenu, text: str) -> QAction:
+        """Create a menu action and add it to the target menu."""
+        action = QAction(text, self)
+        menu.addAction(action)
+        return action
+
+    def _add_menu_action(
+        self,
+        menu: QMenu,
+        text: str,
+        *,
+        shortcut: QKeySequence | str | int | None = None,
+        enabled: bool = True,
+        triggered: Callable[..., object] | None = None,
+    ) -> QAction:
+        """Create a non-checkable menu action."""
+        action = self._create_menu_action(menu, text)
+        if shortcut is not None:
+            action.setShortcut(QKeySequence(shortcut))
+            action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
+            self.addAction(action)
+        action.setEnabled(enabled)
+        if triggered is not None:
+            action.triggered.connect(triggered)
+        return action
+
+    def _add_checkable_menu_action(
+        self,
+        menu: QMenu,
+        text: str,
+        *,
+        checked: bool = False,
+        shortcut: QKeySequence | str | int | None = None,
+        enabled: bool = True,
+        triggered: Callable[..., object] | None = None,
+    ) -> QAction:
+        """Create a checkable menu action."""
+        action = self._create_menu_action(menu, text)
+        action.setCheckable(True)
+        action.setChecked(checked)
+        if shortcut is not None:
+            action.setShortcut(QKeySequence(shortcut))
+            action.setShortcutContext(Qt.ShortcutContext.WindowShortcut)
+            self.addAction(action)
+        action.setEnabled(enabled)
+        if triggered is not None:
+            action.triggered.connect(triggered)
+        return action
 
     def _attach_client_menu_button(self, parent: QWidget) -> None:
         """Attach the legacy popup-menu button directly on the client area."""
@@ -1561,23 +1587,23 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self._action_toggle_guidelines.setChecked(self.show_guidelines)
         self.request_client_update()
 
-    def toggle_overlay_info(self) -> None:
+    def toggle_observation_info(self) -> None:
         # If CLI explicitly disabled the overlay, the menu toggle should be inert.
-        if getattr(self, "_overlay_info_mode", "auto") == "off":
-            self.show_overlay_info = False
+        if getattr(self, "_observation_info_mode", "auto") == "off":
+            self.show_observation_info = False
             if (
-                self._action_toggle_overlay_info is not None
-                and self._action_toggle_overlay_info.isChecked() != self.show_overlay_info
+                self._action_toggle_observation_info is not None
+                and self._action_toggle_observation_info.isChecked() != self.show_observation_info
             ):
-                self._action_toggle_overlay_info.setChecked(self.show_overlay_info)
+                self._action_toggle_observation_info.setChecked(self.show_observation_info)
             return
 
         # Toggle visibility. When re-enabling and the overlay is pinned, ensure
         # the pinned position is enforced.
-        self.show_overlay_info = not self.show_overlay_info
+        self.show_observation_info = not self.show_observation_info
 
-        if self.show_overlay_info and getattr(self, "_overlay_info_pinned", False):
-            mode = getattr(self, "_overlay_info_mode", "auto")
+        if self.show_observation_info and getattr(self, "_observation_info_pinned", False):
+            mode = getattr(self, "_observation_info_mode", "auto")
             try:
                 if mode == "bottom":
                     self.state.overlay_info_bottom_left = True
@@ -1587,10 +1613,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 pass
 
         if (
-            self._action_toggle_overlay_info is not None
-            and self._action_toggle_overlay_info.isChecked() != self.show_overlay_info
+            self._action_toggle_observation_info is not None
+            and self._action_toggle_observation_info.isChecked()
+            != self.show_observation_info
         ):
-            self._action_toggle_overlay_info.setChecked(self.show_overlay_info)
+            self._action_toggle_observation_info.setChecked(self.show_observation_info)
         self.request_client_update()
 
     def toggle_sky_disc(self) -> None:

@@ -61,7 +61,7 @@ class SkyWindowRenderMixin:
             bool(self.show_dso),
             bool(self.show_asterisms),
             bool(getattr(self, "show_guidelines", True)),
-            bool(getattr(self, "show_overlay_info", True)),
+            bool(getattr(self, "show_observation_info", True)),
             bool(self.enlarge_moon),
             round(float(self.vmag_limit), 3),
             round(float(self.sky_disc_alpha), 3),
@@ -304,7 +304,7 @@ class SkyWindowRenderMixin:
             status_line_font=cast(QFont, status_line_font),
             show_background_gradient=True,
             show_custom_window_frame=bool(getattr(self, "_frameless_window", False)),
-            show_overlay_info=bool(getattr(self, "show_overlay_info", True)),
+            show_observation_info=bool(getattr(self, "show_observation_info", True)),
             show_dso=bool(getattr(self, "show_dso", False)),
             show_asterisms=bool(getattr(self, "show_asterisms", False)),
             show_guidelines=bool(getattr(self, "show_guidelines", True)),
@@ -336,7 +336,7 @@ class SkyWindowRenderMixin:
         )
         if mouse_pos is not None:
             # Respect pinned CLI modes: when pinned, do not move the overlay based on mouse.
-            if not getattr(self, "_overlay_info_pinned", False):
+            if not getattr(self, "_observation_info_pinned", False):
                 window_height = max(1, int(self.client_height()))
                 upper_threshold = float(window_height) / 3.0
                 lower_threshold = 2.0 * float(window_height) / 3.0

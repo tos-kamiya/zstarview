@@ -134,7 +134,7 @@ def _make_style(**overrides) -> pipeline_module.RenderStyle:
         "status_line_font": object(),
         "show_background_gradient": True,
         "show_custom_window_frame": False,
-        "show_overlay_info": True,
+        "show_observation_info": True,
         "show_dso": False,
         "show_asterisms": False,
         "show_guidelines": True,
@@ -187,13 +187,13 @@ def test_viewer_data_for_render_uses_render_view_center() -> None:
     assert got.show_observer_height is False
 
 
-def test_render_style_uses_window_overlay_info_toggle() -> None:
+def test_render_style_uses_window_observation_info_toggle() -> None:
     dummy = _WindowStub()
     dummy.visual_preset = "night"
     dummy.text_font = object()
     dummy.status_line_font = object()
     dummy._frameless_window = False
-    dummy.show_overlay_info = False
+    dummy.show_observation_info = False
     dummy.show_dso = True
     dummy.show_asterisms = False
     dummy.show_guidelines = True
@@ -212,7 +212,7 @@ def test_render_style_uses_window_overlay_info_toggle() -> None:
     style = SkyWindow._render_style(dummy)
 
     assert style.show_custom_window_frame is False
-    assert style.show_overlay_info is False
+    assert style.show_observation_info is False
 
 
 def test_render_hud_state_uses_upper_third_to_switch_overlay_to_bottom_left() -> None:
@@ -1493,7 +1493,7 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         status_line_font=object(),
         show_background_gradient=True,
         show_custom_window_frame=False,
-        show_overlay_info=True,
+        show_observation_info=True,
         show_dso=True,
         show_asterisms=False,
         show_guidelines=True,
@@ -1686,7 +1686,7 @@ def test_draw_overlay_layer_skips_static_info_when_disabled(monkeypatch) -> None
         geometry=SimpleNamespace(radius=100),
         viewport_rect=SimpleNamespace(height=lambda: 200),
         scene=_make_scene(),
-        style=_make_style(show_overlay_info=False),
+        style=_make_style(show_observation_info=False),
         mouse_pos=None,
         overlay_info_bottom_left=False,
         highlighted_object=None,

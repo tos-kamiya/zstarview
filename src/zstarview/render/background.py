@@ -70,6 +70,7 @@ def draw_radial_background(
     *,
     preset: str = "night",
     content_fov_deg: float = BACKGROUND_FIELD_OF_VIEW_DEG2,
+    opaque: bool = False,
 ) -> None:
     """Draw a radial sky gradient background."""
     assert geometry.radius >= 10
@@ -91,6 +92,10 @@ def draw_radial_background(
 
     theme = THEME_STYLES_BY_PRESET.get(preset, THEME_STYLES_BY_PRESET["black"])
     bg = theme.window_background
+    if opaque:
+        bg_alpha = 255
+    else:
+        bg_alpha = None
 
     def col(r: float, s: float) -> QColor:
         t = max(0.0, min(1.0, r / max(1.0, r_max)))
@@ -98,11 +103,15 @@ def draw_radial_background(
         gg = int(bg.base_rgb[1] - bg.delta_rgb[1] * t)
         bb = int(bg.base_rgb[2] - bg.delta_rgb[2] * t)
         aa = int(bg.outer_alpha * (1.0 - s) + bg.edge_alpha * s)
+        if bg_alpha is not None:
+            aa = bg_alpha
         return QColor(rr, gg, bb, aa)
 
     c = geometry.center
     g = QRadialGradient(QPointF(c[0], c[1]), r_max)
     inner_color = QColor(*bg.inner_rgba)
+    if bg_alpha is not None:
+        inner_color.setAlpha(bg_alpha)
     boundary_color = col(r_content, 0.3)
     edge_color = col(r_max, 1.0)
     g.setColorAt(0.0, inner_color)

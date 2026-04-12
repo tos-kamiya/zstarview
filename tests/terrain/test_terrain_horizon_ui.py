@@ -112,6 +112,63 @@ def _noop_request_client_update() -> None:
     return None
 
 
+class _DummyPaintEvent:
+    def __init__(self) -> None:
+        self.accepted = False
+
+    def accept(self) -> None:
+        self.accepted = True
+
+
+def _install_menu_action_helpers(dummy: SimpleNamespace, added_actions: list[object]) -> None:
+    def _add_menu_action(menu, text, *, shortcut=None, enabled=True, triggered=None):
+        action = window_module.QAction(text, dummy)
+        menu.addAction(action)
+        if shortcut is not None:
+            action.setShortcut(shortcut)
+            action.setShortcutContext(window_module.Qt.ShortcutContext.WindowShortcut)
+            dummy.addAction(action)
+        action.setEnabled(enabled)
+        if triggered is not None:
+            action.triggered.connect(triggered)
+        return action
+
+    def _add_checkable_menu_action(
+        menu, text, *, checked=False, shortcut=None, enabled=True, triggered=None
+    ):
+        action = window_module.QAction(text, dummy)
+        menu.addAction(action)
+        action.setCheckable(True)
+        action.setChecked(checked)
+        if shortcut is not None:
+            action.setShortcut(shortcut)
+            action.setShortcutContext(window_module.Qt.ShortcutContext.WindowShortcut)
+            dummy.addAction(action)
+        action.setEnabled(enabled)
+        if triggered is not None:
+            action.triggered.connect(triggered)
+        return action
+
+    dummy._add_menu_action = _add_menu_action
+    dummy._add_checkable_menu_action = _add_checkable_menu_action
+
+
+def test_paint_event_does_not_delegate_to_qmainwindow(monkeypatch) -> None:
+    called = []
+
+    def _fail(*_args, **_kwargs):
+        called.append("called")
+        raise AssertionError("QMainWindow.paintEvent should not be invoked")
+
+    monkeypatch.setattr(window_module.QMainWindow, "paintEvent", _fail)
+
+    event = _DummyPaintEvent()
+    SkyWindow.paintEvent(SimpleNamespace(), event)
+
+    assert event.accepted is True
+    assert called == []
+
+
 def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None:
     options = prepare_window_user_options(
         terrain_horizon_opacity=1.5,
@@ -138,7 +195,7 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
     assert options.terrain_horizon_gui_allowed is False
     assert options.earth_guide_gui_allowed is False
     assert options.urban_outline_gui_allowed is False
-    assert options.show_overlay_info_initial is None
+    assert options.show_observation_info_initial is None
 
 
 def test_toggle_clouds_respects_cli_lockout() -> None:
@@ -184,7 +241,7 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         dso_catalog_np=None,
         show_asterisms=False,
         show_guidelines=True,
-        show_overlay_info=True,
+        show_observation_info=True,
         sky_disc_alpha=0.2,
         cloud_disc_alpha=0.2,
         satellite_opacity=0.5,
@@ -201,7 +258,7 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         toggle_dso=lambda: None,
         toggle_asterisms=lambda: None,
         toggle_guidelines=lambda: None,
-        toggle_overlay_info=lambda: None,
+        toggle_observation_info=lambda: None,
         toggle_sky_disc=lambda: None,
         toggle_clouds=lambda: None,
         toggle_satellites=lambda: None,
@@ -213,6 +270,7 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         addAction=lambda action: added_actions.append(action),
         _vmag_limit_menu_text=lambda: "Vmag limit 6.0",
     )
+    _install_menu_action_helpers(dummy, added_actions)
 
     SkyWindow._build_window_menu(dummy)
 
@@ -241,7 +299,7 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         dso_catalog_np=None,
         show_asterisms=False,
         show_guidelines=True,
-        show_overlay_info=True,
+        show_observation_info=True,
         sky_disc_alpha=0.2,
         cloud_disc_alpha=0.2,
         satellite_opacity=0.5,
@@ -258,7 +316,7 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         toggle_dso=lambda: None,
         toggle_asterisms=lambda: None,
         toggle_guidelines=lambda: None,
-        toggle_overlay_info=lambda: None,
+        toggle_observation_info=lambda: None,
         toggle_sky_disc=lambda: None,
         toggle_clouds=lambda: None,
         toggle_satellites=lambda: None,
@@ -270,6 +328,7 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         addAction=lambda _action: None,
         _vmag_limit_menu_text=lambda: "Vmag limit 6.0",
     )
+    _install_menu_action_helpers(dummy, [])
 
     SkyWindow._build_window_menu(dummy)
 
@@ -307,24 +366,24 @@ def test_toggle_guidelines_disables_and_restores_opacity() -> None:
     assert calls == ["request", "request"]
 
 
-def test_toggle_overlay_info_updates_check_state() -> None:
+def test_toggle_observation_info_updates_check_state() -> None:
     dummy = SimpleNamespace()
-    dummy.show_overlay_info = False
-    dummy._action_toggle_overlay_info = _DummyAction(False)
+    dummy.show_observation_info = False
+    dummy._action_toggle_observation_info = _DummyAction(False)
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request")
     updates: list[str] = []
     dummy.update = lambda: updates.append("update")
 
-    SkyWindow.toggle_overlay_info(dummy)
+    SkyWindow.toggle_observation_info(dummy)
 
-    assert dummy.show_overlay_info is True
-    assert dummy._action_toggle_overlay_info.isChecked() is True
+    assert dummy.show_observation_info is True
+    assert dummy._action_toggle_observation_info.isChecked() is True
 
-    SkyWindow.toggle_overlay_info(dummy)
+    SkyWindow.toggle_observation_info(dummy)
 
-    assert dummy.show_overlay_info is False
-    assert dummy._action_toggle_overlay_info.isChecked() is False
+    assert dummy.show_observation_info is False
+    assert dummy._action_toggle_observation_info.isChecked() is False
     assert calls == ["request", "request"]
 
 
