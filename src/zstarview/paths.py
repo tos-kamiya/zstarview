@@ -117,12 +117,12 @@ THEME_STYLES_BY_PRESET = {
         text=TextStyle(
             text=(228, 158, 92),
             outline=(130, 74, 30, 120),
-            outline_width=3.6,
+            outline_width=3.0,
         ),
         status_text=TextStyle(
             text=(218, 150, 86),
             outline=(126, 72, 30, 124),
-            outline_width=3.6,
+            outline_width=3.0,
         ),
         window_background=WindowBackgroundStyle(
             base_rgb=(242, 245, 250),
@@ -142,12 +142,12 @@ THEME_STYLES_BY_PRESET = {
         text=TextStyle(
             text=(232, 142, 104),
             outline=(128, 72, 40, 114),
-            outline_width=3.6,
+            outline_width=3.0,
         ),
         status_text=TextStyle(
             text=(222, 136, 98),
             outline=(120, 68, 38, 118),
-            outline_width=3.6,
+            outline_width=3.0,
         ),
         window_background=WindowBackgroundStyle(
             base_rgb=(230, 242, 255),
