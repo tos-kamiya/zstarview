@@ -4,6 +4,7 @@ from PySide6.QtCore import QRect
 from zstarview.paths import HatchConfig
 from zstarview.gui.composite import (
     CloudAmountField,
+    _cloud_stripe_fade_factor,
     _render_alpha_scaled_cloud_stripes_rgba,
     build_cloud_amount_field,
     compose_cloud_over_sky,
@@ -158,6 +159,17 @@ def test_variable_width_cloud_stripes_fade_away_from_base_line() -> None:
     end_alpha = int(out[row_index, end, 3])
     assert start_alpha > end_alpha + 40
     assert end_alpha <= 170
+
+
+def test_cloud_stripe_fade_factor_is_ease_out() -> None:
+    fade_span = 10.0
+    fade_start = float(_cloud_stripe_fade_factor(np.array([0.5]), fade_span)[0])
+    fade_mid = float(_cloud_stripe_fade_factor(np.array([0.5 + fade_span * 0.5]), fade_span)[0])
+    fade_end = float(_cloud_stripe_fade_factor(np.array([0.5 + fade_span]), fade_span)[0])
+
+    assert fade_start == 1.0
+    assert fade_mid > 0.75
+    assert fade_end == 0.5
 
 
 def test_variable_width_cloud_stripes_anchor_lower_left_edge() -> None:
