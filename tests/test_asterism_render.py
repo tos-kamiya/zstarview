@@ -202,20 +202,24 @@ def test_draw_asterisms_scales_line_widths_with_star_upscale(monkeypatch) -> Non
     viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
     celestial_data = _celestial_data_with_asterism_star_positions()
     asterism = Asterism("test", "Test Asterism", (("HIP1", "HIP2"),))
+    label_candidates: list[dict[str, object]] = []
 
     monkeypatch.setattr(render_asterisms, "ASTERISMS", (asterism,))
+    monkeypatch.setattr(render_asterisms, "pick_rotating_asterism", lambda *_args, **_kwargs: asterism)
 
     render_asterisms.draw_asterisms(
         painter=painter,
         geometry=geometry,
         celestial_data=celestial_data,
         viewer_data=viewer,
-        highlighted_object=None,
+        highlighted_object=({"source_id": "HIP1", "name": "Star A"}, QPointF(120.0, 90.0)),
         text_font=QFont(),
+        label_candidates=label_candidates,
         line_width_scale=2.0,
     )
 
     assert painter.pen_widths[:2] == [8.0, 5.0]
+    assert [c["text"] for c in label_candidates] == ["Test Asterism"]
 
 
 def test_find_highlighted_object_accepts_unnamed_asterism_member(monkeypatch) -> None:
