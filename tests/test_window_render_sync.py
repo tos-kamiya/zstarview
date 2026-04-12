@@ -56,25 +56,59 @@ class _DummyCompositor:
 class _WindowStub:
     def __init__(self, **kwargs) -> None:
         self.__dict__.update(kwargs)
+        values = self.__dict__
+        self._frameless_window = values.get("_frameless_window", False)
+        self.observation_info_mode = values.get("observation_info_mode", "auto")
+        self.observation_info_pinned = values.get(
+            "observation_info_pinned", False
+        )
+        self.show_observation_info = values.get("show_observation_info", True)
+        self.show_dso = values.get("show_dso", False)
+        self.show_asterisms = values.get("show_asterisms", False)
+        self.show_guidelines = values.get("show_guidelines", True)
+        self.enlarge_moon = values.get("enlarge_moon", False)
+        self.star_base_radius = values.get("star_base_radius", 4.0)
+        self.star_visibility_boost = values.get("star_visibility_boost", 1.0)
+        self.vmag_limit = values.get("vmag_limit", 6.0)
+        self.cloud_disc_alpha = values.get("cloud_disc_alpha", 0.0)
+        self.satellite_opacity = values.get("satellite_opacity", 0.0)
+        self.aircraft_opacity = values.get("aircraft_opacity", 0.0)
+        self.terrain_horizon_opacity = values.get("terrain_horizon_opacity", 0.25)
+        self.earth_guide_opacity = values.get("earth_guide_opacity", 0.25)
+        self.urban_outline_opacity = values.get("urban_outline_opacity", 0.2)
+        self.show_urban_outline_layer = values.get("show_urban_outline_layer", True)
+        self.status_line_font = values.get("status_line_font", object())
+        self._star_render_expected_width = values.get(
+            "_star_render_expected_width", 600
+        )
+        self._enabled_satellite_groups = values.get(
+            "_enabled_satellite_groups", ("iss",)
+        )
+        self._disc_generation = values.get("_disc_generation", 0)
+        self._client_widget = values.get("_client_widget", None)
+        self.cloud_state = values.get("cloud_state", None)
+        self.satellite_state = values.get("satellite_state", None)
+        self.viewer_data = values.get("viewer_data", None)
+        self._cloud_controller = values.get("_cloud_controller", None)
 
     def client_width(self) -> int:
-        width = getattr(self, "width")
+        width = self.width
         return int(width() if callable(width) else width)
 
     def client_height(self) -> int:
-        height = getattr(self, "height")
+        height = self.height
         return int(height() if callable(height) else height)
 
     def client_size(self):
-        size = getattr(self, "size")
+        size = self.size
         return size() if callable(size) else size
 
     def client_rect(self):
-        rect = getattr(self, "rect")
+        rect = self.rect
         return rect() if callable(rect) else rect
 
     def request_client_update(self) -> None:
-        update = getattr(self, "update")
+        update = self.update
         if callable(update):
             update()
 

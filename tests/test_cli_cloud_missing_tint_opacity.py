@@ -63,7 +63,7 @@ def test_parse_args_overlay_visibility_defaults(monkeypatch) -> None:
     assert args.show_dso_initial is None
     assert args.show_asterisms_initial is None
     assert args.show_guidelines_initial is None
-    assert args.show_observation_info_initial is None
+    assert args.observation_info == "auto"
 
 
 def test_parse_args_overlay_visibility_override(monkeypatch) -> None:
@@ -82,10 +82,10 @@ def test_parse_args_show_guidelines_initial_override(monkeypatch) -> None:
     assert args.show_guidelines_initial is False
 
 
-def test_parse_args_show_observation_info_initial_override(monkeypatch) -> None:
-    monkeypatch.setattr("sys.argv", ["zstarview", "--show-observation-info-initial", "false"])
+def test_parse_args_observation_info_override(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "--observation-info", "off"])
     args = parse_args()
-    assert args.show_observation_info_initial is False
+    assert args.observation_info == "off"
 
 
 def test_parse_args_observer_height_override(monkeypatch) -> None:

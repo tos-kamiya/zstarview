@@ -195,7 +195,7 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
     assert options.terrain_horizon_gui_allowed is False
     assert options.earth_guide_gui_allowed is False
     assert options.urban_outline_gui_allowed is False
-    assert options.show_observation_info_initial is None
+    assert options.observation_info_mode is None
 
 
 def test_toggle_clouds_respects_cli_lockout() -> None:
@@ -242,6 +242,8 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         show_asterisms=False,
         show_guidelines=True,
         show_observation_info=True,
+        observation_info_mode="auto",
+        observation_info_pinned=False,
         sky_disc_alpha=0.2,
         cloud_disc_alpha=0.2,
         satellite_opacity=0.5,
@@ -300,6 +302,8 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         show_asterisms=False,
         show_guidelines=True,
         show_observation_info=True,
+        observation_info_mode="auto",
+        observation_info_pinned=False,
         sky_disc_alpha=0.2,
         cloud_disc_alpha=0.2,
         satellite_opacity=0.5,
@@ -369,6 +373,8 @@ def test_toggle_guidelines_disables_and_restores_opacity() -> None:
 def test_toggle_observation_info_updates_check_state() -> None:
     dummy = SimpleNamespace()
     dummy.show_observation_info = False
+    dummy.observation_info_mode = "auto"
+    dummy.observation_info_pinned = False
     dummy._action_toggle_observation_info = _DummyAction(False)
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request")
@@ -396,6 +402,8 @@ def test_vmag_limit_menu_text_formats_current_limit() -> None:
 def test_status_line_message_combines_cloud_and_terrain_segments() -> None:
     dummy = SimpleNamespace()
     dummy._cloud_status_line = lambda: "Clouds [AUTO]: downloading"
+    dummy._satellite_status_line = lambda: ""
+    dummy._aircraft_status_line = lambda: ""
     dummy._terrain_horizon_status_line = lambda: "Terrain horizon: loading DEM..."
     dummy._urban_outline_status_line = lambda: "Urban outline: downloading..."
 
@@ -769,7 +777,7 @@ def test_jump_to_search_target_keeps_negative_target_alt_for_highlight(
 
     dummy = SimpleNamespace()
     dummy.viewer_data = SimpleNamespace(
-        location=(35.0, 139.0), view_center=(20.0, 30.0)
+        location=(35.0, 139.0), view_center=(20.0, 30.0), observer_height_m=1.7
     )
     dummy.state = SimpleNamespace(
         jump_highlight_name=None,
@@ -784,7 +792,7 @@ def test_jump_to_search_target_keeps_negative_target_alt_for_highlight(
     dummy.request_sky_data_update = lambda: sync_calls.append("request")
     dummy.update = lambda: sync_calls.append("update")
 
-    target = SimpleNamespace(label="Circlet", ra_hours=1.0, dec_deg=2.0)
+    target = SimpleNamespace(label="Circlet", ra_hours=1.0, dec_deg=2.0, kind="star")
     SkyWindow._jump_to_search_target(dummy, target)
 
     assert dummy.viewer_data.view_center == (-5.0, 210.0)

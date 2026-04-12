@@ -285,17 +285,17 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             else bool(user_options.show_guidelines_initial)
         )
         # Determine observation info startup mode. The user option may be a mode string
-        # ('auto','top','bottom','off'), a legacy bool, or None.
-        raw_observation_mode = user_options.show_observation_info_initial
+        # ('auto','top','bottom','off') or None.
+        raw_observation_mode = user_options.observation_info_mode
         if isinstance(raw_observation_mode, str):
             observation_mode = raw_observation_mode
         elif raw_observation_mode is None:
             observation_mode = "auto"
         else:
             observation_mode = "auto" if bool(raw_observation_mode) else "off"
-        self._observation_info_mode = observation_mode
+        self.observation_info_mode = observation_mode
         # Pinned when explicitly top or bottom
-        self._observation_info_pinned = observation_mode in ("top", "bottom")
+        self.observation_info_pinned = observation_mode in ("top", "bottom")
         # Visible unless 'off'
         self.show_observation_info: bool = observation_mode != "off"
         # Initialize overlay_info_bottom_left state: True means bottom-left, False means top-left
@@ -409,14 +409,15 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         # Ensure overlay_info_bottom_left reflects the startup mode now that
         # the mutable state object exists. True==bottom-left, False==top-left.
         try:
-            if getattr(self, "_observation_info_mode", "auto") == "bottom":
+            if self.observation_info_mode == "bottom":
                 self.state.overlay_info_bottom_left = True
-            elif getattr(self, "_observation_info_mode", "auto") == "top":
+            elif self.observation_info_mode == "top":
                 self.state.overlay_info_bottom_left = False
         except Exception:
             pass
 
         self._enabled_satellite_groups: tuple[str, ...] = (SATELLITE_ISS_CACHE_KEY,)
+        self._disc_generation = 0
         self._frame_cache_key: object | None = None
         self._frame_cache_image = None
         self._present_frame_cache_key: object | None = None
@@ -778,7 +779,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.display_menu,
             "Observation Info",
             checked=self.show_observation_info,
-            enabled=getattr(self, "_observation_info_mode", "auto") != "off",
+            enabled=self.observation_info_mode != "off",
             triggered=self.toggle_observation_info,
         )
 
@@ -963,7 +964,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self._action_lower_view.setEnabled(float(alt) > OBSERVER_MIN_ALT_DEG)
 
     def client_width(self) -> int:
-        if getattr(self, "_client_widget", None) is not None:
+        if self._client_widget is not None:
             return self._client_widget.width()
         return (
             self.centralWidget().width()
@@ -972,7 +973,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
 
     def client_height(self) -> int:
-        if getattr(self, "_client_widget", None) is not None:
+        if self._client_widget is not None:
             return self._client_widget.height()
         return (
             self.centralWidget().height()
@@ -981,7 +982,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
 
     def client_size(self):
-        if getattr(self, "_client_widget", None) is not None:
+        if self._client_widget is not None:
             return self._client_widget.size()
         return (
             self.centralWidget().size()
@@ -990,7 +991,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
 
     def client_rect(self):
-        if getattr(self, "_client_widget", None) is not None:
+        if self._client_widget is not None:
             return self._client_widget.rect()
         return (
             self.centralWidget().rect()
@@ -999,7 +1000,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
 
     def request_client_update(self) -> None:
-        if getattr(self, "_client_widget", None) is not None:
+        if self._client_widget is not None:
             self._client_widget.update()
             return
         central = self.centralWidget()
@@ -1010,7 +1011,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
     def _handle_client_resize(self, event: QResizeEvent) -> None:
         self._begin_viewport_interaction_mode(preserve_cloud_buffers=True)
-        self._disc_generation = int(getattr(self, "_disc_generation", 0)) + 1
+        self._disc_generation = int(self._disc_generation) + 1
         if self._frameless_frame is None and self.menu_button is not None:
             button_size = self.menu_button.size()
             self.menu_button.move(self.client_width() - button_size.width(), 0)
@@ -1058,17 +1059,17 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self, preserve_cloud_buffers: bool = False
     ) -> None:
         self.state.viewport_interaction_mode = True
-        cloud_state = getattr(self, "cloud_state", None)
+        cloud_state = self.cloud_state
         cleared_cloud = False
         if cloud_state is not None:
             if not preserve_cloud_buffers:
-                if getattr(cloud_state, "image", None) is not None:
+                if cloud_state.image is not None:
                     cloud_state.image = None
                     cleared_cloud = True
-                if getattr(cloud_state, "missing_mask", None) is not None:
+                if cloud_state.missing_mask is not None:
                     cloud_state.missing_mask = None
                     cleared_cloud = True
-                if getattr(cloud_state, "cloud_amount_field", None) is not None:
+                if cloud_state.cloud_amount_field is not None:
                     cloud_state.cloud_amount_field = None
                     cleared_cloud = True
                 cloud_state.render_key = None
@@ -1076,11 +1077,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 cloud_state.missing_mask_key = None
         if cleared_cloud:
             self._compositor.invalidate()
-        cloud_controller = getattr(self, "_cloud_controller", None)
+        cloud_controller = self._cloud_controller
         if cloud_controller is not None:
-            invalidate = getattr(
-                cloud_controller, "invalidate_pending_render_results", None
-            )
+            invalidate = cloud_controller.invalidate_pending_render_results
             if callable(invalidate):
                 invalidate()
         self._viewport_interaction_idle_timer.start()
@@ -1149,7 +1148,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._jump_to_search_target(target)
 
     def _jump_to_search_target(self, target: SearchJumpTarget) -> None:
-        target_kind = getattr(target, "kind", "star")
+        target_kind = target.kind
         if target_kind == "satellite":
             target_altaz = self._find_satellite_jump_altaz(
                 target.object_key or target.label
@@ -1168,14 +1167,14 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             projection = project_place_target_to_altaz(
                 observer_latitude_deg=self.viewer_data.location[0],
                 observer_longitude_deg=self.viewer_data.location[1],
-                observer_height_m=getattr(self.viewer_data, "observer_height_m", 1.7),
+                observer_height_m=self.viewer_data.observer_height_m,
                 target_latitude_deg=target.latitude_deg,
                 target_longitude_deg=target.longitude_deg,
             )
             target_alt = float(projection.alt_deg)
             target_az = float(projection.az_deg) % 360.0
         else:
-            observer_height_m = getattr(self.viewer_data, "observer_height_m", 1.7)
+            observer_height_m = self.viewer_data.observer_height_m
             alt, az = radec_to_altaz(
                 target.ra_hours,
                 target.dec_deg,
@@ -1221,16 +1220,16 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
     def _find_satellite_jump_altaz(self, object_key: str) -> tuple[float, float] | None:
         records_by_group = dict(
-            getattr(self.satellite_state, "records_by_group", None) or {}
+            self.satellite_state.records_by_group or {}
         )
         enabled_groups = tuple(
-            getattr(self, "_enabled_satellite_groups", (SATELLITE_ISS_CACHE_KEY,))
+            self._enabled_satellite_groups
         )
         if not records_by_group:
             records_by_group = self._load_cached_satellite_records(enabled_groups)
         if not records_by_group:
             return None
-        observer_height_m = getattr(self.viewer_data, "observer_height_m", 1.7)
+        observer_height_m = self.viewer_data.observer_height_m
         altaz = find_satellite_altaz(
             records_by_group,
             object_key=object_key,
@@ -1589,7 +1588,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
     def toggle_observation_info(self) -> None:
         # If CLI explicitly disabled the overlay, the menu toggle should be inert.
-        if getattr(self, "_observation_info_mode", "auto") == "off":
+        if self.observation_info_mode == "off":
             self.show_observation_info = False
             if (
                 self._action_toggle_observation_info is not None
@@ -1602,8 +1601,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         # the pinned position is enforced.
         self.show_observation_info = not self.show_observation_info
 
-        if self.show_observation_info and getattr(self, "_observation_info_pinned", False):
-            mode = getattr(self, "_observation_info_mode", "auto")
+        if self.show_observation_info and self.observation_info_pinned:
+            mode = self.observation_info_mode
             try:
                 if mode == "bottom":
                     self.state.overlay_info_bottom_left = True

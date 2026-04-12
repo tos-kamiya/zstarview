@@ -8,7 +8,6 @@ from typing import Dict, Optional
 
 from ..aircraft import project_aircraft_snapshots
 from ..paths import CACHE_PATH
-from ..satellite_constants import SATELLITE_ISS_CACHE_KEY
 from ..satellites import project_satellite_records
 
 logger = logging.getLogger(__name__)
@@ -30,7 +29,7 @@ class SkyWindowUpdatesMixin:
         output_dir = self._resolve_aircraft_debug_snapshot_dir()
         if output_dir is None:
             return
-        render_current_image = getattr(self, "render_current_image", None)
+        render_current_image = self.render_current_image
         if not callable(render_current_image):
             return
         refreshed_at = payload.get("refreshed_at_utc")
@@ -62,12 +61,12 @@ class SkyWindowUpdatesMixin:
         cloud_message = self._cloud_status_line()
         if cloud_message:
             parts.append(cloud_message)
-        satellite_status_line = getattr(self, "_satellite_status_line", None)
+        satellite_status_line = self._satellite_status_line
         if callable(satellite_status_line):
             satellite_message = satellite_status_line()
             if satellite_message:
                 parts.append(satellite_message)
-        aircraft_status_line = getattr(self, "_aircraft_status_line", None)
+        aircraft_status_line = self._aircraft_status_line
         if callable(aircraft_status_line):
             aircraft_message = aircraft_status_line()
             if aircraft_message:
@@ -90,7 +89,7 @@ class SkyWindowUpdatesMixin:
             logger.debug("Skip cloud repaint emit during shutdown.")
 
     def _cloud_status_line(self) -> str:
-        cloud_disc_alpha = float(getattr(self, "cloud_disc_alpha", 1.0))
+        cloud_disc_alpha = float(self.cloud_disc_alpha)
         if cloud_disc_alpha <= 0.0 and not self.cloud_state.banner_text:
             return ""
         sat = self.cloud_state.current_satellite or self._predicted_cloud_satellite()
@@ -135,9 +134,9 @@ class SkyWindowUpdatesMixin:
         return ""
 
     def _aircraft_status_line(self) -> str:
-        if float(getattr(self, "aircraft_opacity", 0.0)) <= 0.0:
+        if float(self.aircraft_opacity) <= 0.0:
             return ""
-        aircraft_state = getattr(self, "aircraft_state", None)
+        aircraft_state = self.aircraft_state
         if aircraft_state is None:
             return ""
         if aircraft_state.banner_text:
@@ -147,9 +146,9 @@ class SkyWindowUpdatesMixin:
         return f"Aircraft: {aircraft_state.last_success_utc.strftime('%H:%MZ')}"
 
     def _satellite_status_line(self) -> str:
-        if float(getattr(self, "satellite_opacity", 0.0)) <= 0.0:
+        if float(self.satellite_opacity) <= 0.0:
             return ""
-        satellite_state = getattr(self, "satellite_state", None)
+        satellite_state = self.satellite_state
         if satellite_state is None:
             return ""
         if satellite_state.banner_text:
@@ -159,7 +158,7 @@ class SkyWindowUpdatesMixin:
         return f"Satellites: {satellite_state.element_epoch_utc.strftime('%H:%MZ')}"
 
     def _on_sky_data_calculated(self, payload: Dict) -> None:
-        current_generation = int(getattr(self, "_disc_generation", 0))
+        current_generation = int(self._disc_generation)
         payload_generation = int(payload.get("render_generation", current_generation))
         payload_width = int(
             payload.get("render_width_px", max(2, int(self.client_width())))
@@ -263,7 +262,7 @@ class SkyWindowUpdatesMixin:
             star_catalog_meta=self.star_catalog_meta,
             render_width_px=max(2, int(self.client_width())),
             render_height_px=max(2, int(self.client_height())),
-            render_generation=int(getattr(self, "_disc_generation", 0)),
+            render_generation=int(self._disc_generation),
         )
         if started:
             if is_initial_load:
@@ -287,13 +286,13 @@ class SkyWindowUpdatesMixin:
             radius_px=self.state.cloud_base_size,
             content_fov_deg=float(self.content_fov_deg),
             reason=reason,
-            render_generation=int(getattr(self, "_disc_generation", 0)),
+            render_generation=int(self._disc_generation),
         )
 
     def start_background_satellite_update(self, reason: str = "manual") -> bool:
         if self._is_shutting_down:
             return False
-        if float(getattr(self, "satellite_opacity", 0.0)) <= 0.0:
+        if float(self.satellite_opacity) <= 0.0:
             return False
         if self._satellite_controller is None:
             return False
@@ -304,36 +303,26 @@ class SkyWindowUpdatesMixin:
             observer_height_m=self.viewer_data.observer_height_m,
             time_obj=self._current_time_obj(),
             enabled_groups=tuple(
-                getattr(self, "_enabled_satellite_groups", (SATELLITE_ISS_CACHE_KEY,))
+                self._enabled_satellite_groups
             ),
             reason=reason,
         )
 
     def refresh_projected_satellite_overlay(self) -> None:
-        if float(getattr(self, "satellite_opacity", 0.0)) <= 0.0:
+        if float(self.satellite_opacity) <= 0.0:
             return
-        validity_remaining_ms = getattr(
-            self, "_satellite_validity_remaining_ms", lambda: None
-        )()
+        validity_remaining_ms = self._satellite_validity_remaining_ms()
         if validity_remaining_ms is not None and validity_remaining_ms <= 0:
             self.state.satellite_overlay_points = None
             self.satellite_state.overlay_points = None
             self.request_client_update()
             self.start_background_satellite_update(reason="time-window-shift")
             return
-        records_by_group = getattr(self.satellite_state, "records_by_group", None) or {}
+        records_by_group = self.satellite_state.records_by_group or {}
         if not records_by_group:
-            load_cached_records = getattr(self, "_load_cached_satellite_records", None)
-            if callable(load_cached_records):
-                records_by_group = load_cached_records(
-                    tuple(
-                        getattr(
-                            self,
-                            "_enabled_satellite_groups",
-                            (SATELLITE_ISS_CACHE_KEY,),
-                        )
-                    )
-                )
+            records_by_group = self._load_cached_satellite_records(
+                tuple(self._enabled_satellite_groups)
+            )
         if not records_by_group:
             self.state.satellite_overlay_points = None
             self.request_client_update()
@@ -377,27 +366,21 @@ class SkyWindowUpdatesMixin:
         )
         if banner:
             self.satellite_state.set_banner(banner)
-        if float(getattr(self, "satellite_opacity", 0.0)) > 0.0:
+        if float(self.satellite_opacity) > 0.0:
             self.state.satellite_overlay_points = payload.get("overlay_points")
-            schedule_next = getattr(self, "_schedule_next_satellite_refresh", None)
-            if callable(schedule_next):
-                schedule_next()
+            self._schedule_next_satellite_refresh()
         self.request_client_update()
 
     def _on_satellite_failed(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.satellite_state.set_error_banner(banner)
-        schedule_retry = getattr(self, "_schedule_satellite_retry_after_failure", None)
-        if (
-            callable(schedule_retry)
-            and float(getattr(self, "satellite_opacity", 0.0)) > 0.0
-        ):
-            schedule_retry()
+        if float(self.satellite_opacity) > 0.0:
+            self._schedule_satellite_retry_after_failure()
         self.request_client_update()
 
     def _on_cloud_ready(self, payload: Dict) -> None:
-        current_generation = int(getattr(self, "_disc_generation", 0))
+        current_generation = int(self._disc_generation)
         payload_generation = int(payload.get("render_generation", current_generation))
         if payload_generation != current_generation:
             logger.debug(
@@ -464,7 +447,7 @@ class SkyWindowUpdatesMixin:
     def start_background_aircraft_update(self, reason: str = "manual") -> bool:
         if self._is_shutting_down:
             return False
-        if float(getattr(self, "aircraft_opacity", 0.0)) <= 0.0:
+        if float(self.aircraft_opacity) <= 0.0:
             return False
         if self._aircraft_controller is None:
             return False
@@ -478,7 +461,7 @@ class SkyWindowUpdatesMixin:
         )
 
     def refresh_projected_aircraft_overlay(self) -> None:
-        if float(getattr(self, "aircraft_opacity", 0.0)) <= 0.0:
+        if float(self.aircraft_opacity) <= 0.0:
             return
         snapshots = self.aircraft_state.snapshots
         if not snapshots:
@@ -516,11 +499,9 @@ class SkyWindowUpdatesMixin:
         )
         if banner:
             self.aircraft_state.set_banner(banner)
-        if float(getattr(self, "aircraft_opacity", 0.0)) > 0.0:
+        if float(self.aircraft_opacity) > 0.0:
             self.state.aircraft_overlay_points = payload.get("overlay_points")
-            schedule_next = getattr(self, "_schedule_next_aircraft_refresh", None)
-            if callable(schedule_next):
-                schedule_next()
+            self._schedule_next_aircraft_refresh()
         self.request_client_update()
         self._maybe_save_aircraft_debug_snapshot(payload)
 
@@ -528,12 +509,8 @@ class SkyWindowUpdatesMixin:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.aircraft_state.set_error_banner(banner)
-        schedule_next = getattr(self, "_schedule_next_aircraft_refresh", None)
-        if (
-            callable(schedule_next)
-            and float(getattr(self, "aircraft_opacity", 0.0)) > 0.0
-        ):
-            schedule_next()
+        if float(self.aircraft_opacity) > 0.0:
+            self._schedule_next_aircraft_refresh()
         self.request_client_update()
 
     def _on_terrain_horizon_started(self, payload: Dict) -> None:

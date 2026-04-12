@@ -60,16 +60,16 @@ class SkyWindowRenderMixin:
             bool(render_viewer.show_observer_height),
             bool(self.show_dso),
             bool(self.show_asterisms),
-            bool(getattr(self, "show_guidelines", True)),
-            bool(getattr(self, "show_observation_info", True)),
+            bool(self.show_guidelines),
+            bool(self.show_observation_info),
             bool(self.enlarge_moon),
             round(float(self.vmag_limit), 3),
             round(float(self.sky_disc_alpha), 3),
             round(float(self.cloud_disc_alpha), 3),
             round(float(self.terrain_horizon_opacity), 3),
-            round(float(getattr(self, "earth_guide_opacity", 0.0)), 3),
+            round(float(self.earth_guide_opacity), 3),
             round(float(self.urban_outline_opacity), 3),
-            bool(getattr(self, "show_urban_outline_layer", True)),
+            bool(self.show_urban_outline_layer),
             self._render_cache_stamp(celestial_data),
             self._render_cache_stamp(self.state.sky_disc_image),
             self._render_cache_stamp(self.cloud_state.image),
@@ -83,10 +83,10 @@ class SkyWindowRenderMixin:
         if include_fast_overlays:
             key_parts.extend(
                 [
-                    round(float(getattr(self, "satellite_opacity", 0.0)), 3),
-                    round(float(getattr(self, "aircraft_opacity", 0.0)), 3),
+                    round(float(self.satellite_opacity), 3),
+                    round(float(self.aircraft_opacity), 3),
                     self._render_cache_stamp(
-                        getattr(self.state, "satellite_overlay_points", None)
+                        self.state.satellite_overlay_points
                     ),
                     self._render_cache_stamp(self.state.aircraft_overlay_points),
                 ]
@@ -154,9 +154,9 @@ class SkyWindowRenderMixin:
         return (
             "present-frame",
             base_frame_key,
-            round(float(getattr(self, "satellite_opacity", 0.0)), 3),
-            round(float(getattr(self, "aircraft_opacity", 0.0)), 3),
-            self._render_cache_stamp(getattr(self.state, "satellite_overlay_points", None)),
+            round(float(self.satellite_opacity), 3),
+            round(float(self.aircraft_opacity), 3),
+            self._render_cache_stamp(self.state.satellite_overlay_points),
             self._render_cache_stamp(self.state.aircraft_overlay_points),
             mouse_key,
             bool(hud.overlay_info_bottom_left),
@@ -282,7 +282,7 @@ class SkyWindowRenderMixin:
         render_viewer: ViewerData,
     ) -> RenderSceneData:
         state = self.state
-        cloud_state = getattr(self, "cloud_state", None)
+        cloud_state = self.cloud_state
         return RenderSceneData(
             viewer=render_viewer,
             celestial_data=celestial_data,
@@ -297,32 +297,28 @@ class SkyWindowRenderMixin:
         )
 
     def _render_style(self) -> RenderStyle:
-        status_line_font = getattr(self, "status_line_font", self.text_font)
+        status_line_font = self.status_line_font
         return RenderStyle(
             visual_preset=self.visual_preset,
             text_font=self.text_font,
             status_line_font=cast(QFont, status_line_font),
             show_background_gradient=True,
-            show_custom_window_frame=bool(getattr(self, "_frameless_window", False)),
-            show_observation_info=bool(getattr(self, "show_observation_info", True)),
-            show_dso=bool(getattr(self, "show_dso", False)),
-            show_asterisms=bool(getattr(self, "show_asterisms", False)),
-            show_guidelines=bool(getattr(self, "show_guidelines", True)),
-            enlarge_moon=bool(getattr(self, "enlarge_moon", False)),
-            star_base_radius=float(getattr(self, "star_base_radius", 1.0)),
-            star_visibility_boost=float(getattr(self, "star_visibility_boost", 1.0)),
-            vmag_limit=float(getattr(self, "vmag_limit", 6.0)),
-            cloud_disc_alpha=float(getattr(self, "cloud_disc_alpha", 0.0)),
-            satellite_opacity=float(getattr(self, "satellite_opacity", 0.0)),
-            terrain_horizon_opacity=float(
-                getattr(self, "terrain_horizon_opacity", 0.0)
-            ),
-            earth_guide_opacity=float(getattr(self, "earth_guide_opacity", 0.0)),
-            urban_outline_opacity=float(getattr(self, "urban_outline_opacity", 0.2)),
-            show_urban_outline_layer=bool(
-                getattr(self, "show_urban_outline_layer", True)
-            ),
-            aircraft_opacity=float(getattr(self, "aircraft_opacity", 1.0)),
+            show_custom_window_frame=bool(self._frameless_window),
+            show_observation_info=bool(self.show_observation_info),
+            show_dso=bool(self.show_dso),
+            show_asterisms=bool(self.show_asterisms),
+            show_guidelines=bool(self.show_guidelines),
+            enlarge_moon=bool(self.enlarge_moon),
+            star_base_radius=float(self.star_base_radius),
+            star_visibility_boost=float(self.star_visibility_boost),
+            vmag_limit=float(self.vmag_limit),
+            cloud_disc_alpha=float(self.cloud_disc_alpha),
+            satellite_opacity=float(self.satellite_opacity),
+            terrain_horizon_opacity=float(self.terrain_horizon_opacity),
+            earth_guide_opacity=float(self.earth_guide_opacity),
+            urban_outline_opacity=float(self.urban_outline_opacity),
+            show_urban_outline_layer=bool(self.show_urban_outline_layer),
+            aircraft_opacity=float(self.aircraft_opacity),
             star_render_expected_width=int(self._star_render_expected_width),
         )
 
@@ -336,7 +332,7 @@ class SkyWindowRenderMixin:
         )
         if mouse_pos is not None:
             # Respect pinned CLI modes: when pinned, do not move the overlay based on mouse.
-            if not getattr(self, "_observation_info_pinned", False):
+            if not self.observation_info_pinned:
                 window_height = max(1, int(self.client_height()))
                 upper_threshold = float(window_height) / 3.0
                 lower_threshold = 2.0 * float(window_height) / 3.0
