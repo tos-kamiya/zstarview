@@ -267,7 +267,7 @@ def _build_window_inputs_from_args(
         show_dso_initial=getattr(args, "show_dso_initial", None),
         show_asterisms_initial=getattr(args, "show_asterisms_initial", None),
         show_guidelines_initial=getattr(args, "show_guidelines_initial", None),
-        show_overlay_info_initial=getattr(args, "show_observation_info_initial", None),
+        show_observation_info_initial=getattr(args, "show_observation_info_initial", None),
         sky_disc_gui_allowed=getattr(args, "sky_opacity", 0.15) > 0.0,
         cloud_gui_allowed=overlay_availability.cloud
         and getattr(args, "cloud_opacity", 0.075) > 0.0,
@@ -690,7 +690,7 @@ def _build_render_style(
         status_line_font=status_line_font,
         show_background_gradient=False,
         show_custom_window_frame=False,
-        show_overlay_info=False,
+        show_observation_info=False,
         show_dso=show_dso,
         show_asterisms=show_asterisms,
         show_guidelines=show_guidelines,

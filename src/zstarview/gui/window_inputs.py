@@ -60,7 +60,7 @@ class SkyWindowUserOptions:
     show_asterisms_initial: Optional[bool] = None
     show_guidelines_initial: Optional[bool] = None
     # 'auto'|'top'|'bottom'|'off' or None. None means use default behavior (auto).
-    show_overlay_info_initial: Optional[str] = None
+    show_observation_info_initial: Optional[str] = None
     sky_disc_gui_allowed: bool = True
     cloud_gui_allowed: bool = True
     satellite_gui_allowed: bool = True
@@ -156,7 +156,7 @@ def prepare_window_user_options(
     show_asterisms_initial: Optional[bool] = None,
     show_guidelines_initial: Optional[bool] = None,
     # Accepts either bool (legacy), a mode string ("auto"/"top"/"bottom"/"off"), or None.
-    show_overlay_info_initial: Optional[str | bool] = None,
+    show_observation_info_initial: Optional[str | bool] = None,
     sky_disc_gui_allowed: bool = True,
     cloud_gui_allowed: bool = True,
     satellite_gui_allowed: bool = True,
@@ -166,13 +166,13 @@ def prepare_window_user_options(
     urban_outline_gui_allowed: bool = True,
 ) -> SkyWindowUserOptions:
     """Normalize user-facing options before constructing SkyWindow."""
-    # Normalize show_overlay_info_initial into a mode string or None.
-    if isinstance(show_overlay_info_initial, bool):
-        normalized_overlay_mode: Optional[str] = "auto" if show_overlay_info_initial else "off"
-    elif isinstance(show_overlay_info_initial, str):
-        normalized_overlay_mode = show_overlay_info_initial
+    # Normalize show_observation_info_initial into a mode string or None.
+    if isinstance(show_observation_info_initial, bool):
+        normalized_observation_mode: Optional[str] = "auto" if show_observation_info_initial else "off"
+    elif isinstance(show_observation_info_initial, str):
+        normalized_observation_mode = show_observation_info_initial
     else:
-        normalized_overlay_mode = None
+        normalized_observation_mode = None
 
     return SkyWindowUserOptions(
         sky_disc_alpha=min(1.0, max(0.0, sky_disc_alpha)),
@@ -191,7 +191,7 @@ def prepare_window_user_options(
         show_dso_initial=show_dso_initial,
         show_asterisms_initial=show_asterisms_initial,
         show_guidelines_initial=show_guidelines_initial,
-        show_overlay_info_initial=normalized_overlay_mode,
+        show_observation_info_initial=normalized_observation_mode,
         sky_disc_gui_allowed=bool(sky_disc_gui_allowed),
         cloud_gui_allowed=bool(cloud_gui_allowed),
         satellite_gui_allowed=bool(satellite_gui_allowed),
