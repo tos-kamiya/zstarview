@@ -301,9 +301,17 @@ def _render_alpha_scaled_cloud_stripes_rgba(
         return out
 
     sampled = np.clip(cloud_amount.amount.reshape(-1)[sample_idx], 0.0, 1.0)
+    if cloud_amount.nonzero_hi > cloud_amount.nonzero_lo + 1e-6:
+        normalized = (sampled - cloud_amount.nonzero_lo) / (
+            cloud_amount.nonzero_hi - cloud_amount.nonzero_lo
+        )
+    else:
+        normalized = sampled
+    normalized = np.clip(normalized, 0.0, 1.0)
+
     alpha_scale = float(np.clip(hatch_cfg.strength, 0, 255)) / 255.0
     alpha = np.zeros((h, w), dtype=np.float32)
-    alpha[draw_mask] = sampled[draw_mask] * 255.0 * alpha_scale
+    alpha[draw_mask] = normalized[draw_mask] * 255.0 * alpha_scale
     positive = alpha > 0.5
     if not np.any(positive):
         return out
