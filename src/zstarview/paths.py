@@ -116,12 +116,12 @@ THEME_STYLES_BY_PRESET = {
     "white": ThemeStyle(
         text=TextStyle(
             text=(228, 158, 92),
-            outline=(2, 2, 3, 236),
+            outline=(66, 38, 17, 178),
             outline_width=3.0,
         ),
         status_text=TextStyle(
             text=(218, 150, 86),
-            outline=(2, 2, 3, 236),
+            outline=(64, 37, 17, 180),
             outline_width=3.0,
         ),
         window_background=WindowBackgroundStyle(
@@ -141,12 +141,12 @@ THEME_STYLES_BY_PRESET = {
     "day": ThemeStyle(
         text=TextStyle(
             text=(232, 142, 104),
-            outline=(2, 2, 3, 236),
+            outline=(65, 37, 22, 175),
             outline_width=3.0,
         ),
         status_text=TextStyle(
             text=(222, 136, 98),
-            outline=(2, 2, 3, 236),
+            outline=(61, 35, 21, 177),
             outline_width=3.0,
         ),
         window_background=WindowBackgroundStyle(
