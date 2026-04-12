@@ -18,8 +18,8 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 - **Satellite cloud imagery and sky-color disc**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay, and the sky-color disc remains visible beneath the clouds. Missing regions are shown in faint yellow when satellite coverage is partial. See [an example with partial coverage and yellow missing-data tint](docs/images/screenshot5.png).
 - **Aircraft and artificial satellite overlays**: nearby aircraft from OpenSky can be drawn as purple predicted-motion polylines, and ISS can be drawn as a small purple cross marker between the planet and aircraft layers.
 - **Urban outline overlay**: major rooflines are drawn as a white urban outline overlay for the current viewpoint. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 60km radius.
-- **Terrain horizon and earth guide**: Copernicus DEM data can be downloaded to render the local terrain skyline. A subtle ocher terrain line follows the observer's surroundings, and the disc is filled with a ground color below the terrain horizon, or below the geometric horizon when terrain is disabled. Beneath that horizon, an independent earth guide layer draws simplified continental outlines to help with orientation.
-- **Guides**: guide overlays include the never-rises region in red, direction labels around the horizon, and a zenith marker.
+- **Terrain horizon and earth guide**: Copernicus DEM data can be downloaded to render the local terrain skyline. A dark olive-brown terrain line follows the observer's surroundings, and the disc is filled with the same ground tone below the terrain horizon, or below the geometric horizon when terrain is disabled. Beneath that horizon, an independent earth guide layer draws simplified continental outlines in that same ground tone to help with orientation.
+- **Guides**: guide overlays include the never-rises region in the warm peach warning tint from the top-left palette swatch, direction labels around the horizon, and a zenith marker.
 - **Flexible location input**: specify the observer location through the CLI argument using a city name, tower name, mountain name, direct latitude/longitude input, supported Google Maps coordinate URLs, or online place/station search via Nominatim.
 - **Adjustable view center**: adjust the view center with CLI options `-A` (altitude) and `-Z` (azimuth), or with the arrow keys. During view changes or window resize, the app briefly switches to a simplified interaction mode to keep navigation responsive.
 - **Terminal image export**: `zstarview-export-image` can render the sky headlessly and write it to a file or display it directly in sixel-capable terminals.
@@ -192,7 +192,7 @@ The CLI supports detailed startup configuration for location, time, and renderin
 
 \*3 The brightest-magnitude multiplier cannot exceed the classical Pogson value of \(100^{1/5}\approx2.512\).
 
-\*4 Terrain horizon rendering downloads Copernicus DEM tiles on first use and reuses the cached DEM later. When enabled, the terrain profile also becomes the boundary for the ground-color fill inside the disc. The earth guide is a separate layer with its own opacity toggle.
+\*4 Terrain horizon rendering downloads Copernicus DEM tiles on first use and reuses the cached DEM later. When enabled, the terrain profile also becomes the boundary for the ground-color fill inside the disc. The earth guide is a separate layer with its own opacity toggle, and both layers currently share the dark olive-brown ground tone from the palette.
 
 \*5 `--place` uses the public OpenStreetMap Nominatim search service. It sends a single search request with a User-Agent and Accept-Language. See the Nominatim usage policy if you plan to rely on this option heavily or from automation.
 
