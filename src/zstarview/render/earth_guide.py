@@ -482,22 +482,28 @@ def draw_earth_guide(
         else:
             max_depth = 12
             threshold_px = 24.0
-        underlay_pens: list[QPen] = []
-        for width, alpha in _earth_guide_underlay_pass_specs(earth_guide_opacity):
-            underlay_color = QColor(*EARTH_GUIDE_LINE_COLOR)
-            underlay_color.setAlphaF(alpha)
-            pen = QPen(underlay_color, width, Qt.PenStyle.SolidLine)
-            pen.setCosmetic(True)
-            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-            pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-            underlay_pens.append(pen)
+        if fast_mode:
+            line_alpha = max(0.0, min(1.0, 0.18 + (earth_guide_opacity * 0.25)))
+            line_width = max(0.7, EARTH_GUIDE_FOREGROUND_WIDTH * 0.75)
+            underlay_pens: list[QPen] = []
+        else:
+            underlay_pens = []
+            for width, alpha in _earth_guide_underlay_pass_specs(earth_guide_opacity):
+                underlay_color = QColor(*EARTH_GUIDE_LINE_COLOR)
+                underlay_color.setAlphaF(alpha)
+                pen = QPen(underlay_color, width, Qt.PenStyle.SolidLine)
+                pen.setCosmetic(True)
+                pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+                pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+                underlay_pens.append(pen)
+            line_alpha = earth_guide_line_alpha(earth_guide_opacity)
+            line_width = EARTH_GUIDE_FOREGROUND_WIDTH
 
-        alpha = earth_guide_line_alpha(earth_guide_opacity)
         line_color = QColor(*EARTH_GUIDE_LINE_COLOR)
-        line_color.setAlphaF(alpha)
+        line_color.setAlphaF(line_alpha)
         line_pen = QPen(
             line_color,
-            EARTH_GUIDE_FOREGROUND_WIDTH,
+            line_width,
             Qt.PenStyle.SolidLine,
         )
         line_pen.setCosmetic(True)
