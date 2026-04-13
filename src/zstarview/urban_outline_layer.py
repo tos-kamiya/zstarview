@@ -115,6 +115,7 @@ def _build_dynamic_urban_outline_layer(
         UrbanOutlinePolyline(
             points=[(point.altitude_deg, point.azimuth_deg) for point in outline.points],
             height_m=float(outline.height_m),
+            distance_km=float(outline.distance_km),
             source="base",
         )
         for outline in result.outlines

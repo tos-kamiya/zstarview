@@ -132,6 +132,7 @@ class UrbanOutlinePolyline:
 
     points: List[Tuple[float, float]]
     height_m: float
+    distance_km: float = float("inf")
     source: str = "base"
 
 

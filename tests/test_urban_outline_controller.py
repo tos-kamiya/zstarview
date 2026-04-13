@@ -134,6 +134,7 @@ def test_run_update_skips_base_outlines_in_skyscraper_only_mode(
             UrbanOutlinePolyline(
                 points=[(180.0, 12.0), (181.0, 12.5)],
                 height_m=220.0,
+                distance_km=0.75,
             )
         ]
 
@@ -154,6 +155,7 @@ def test_run_update_skips_base_outlines_in_skyscraper_only_mode(
                 UrbanOutlinePolyline(
                     points=[(180.0, 12.0), (181.0, 12.5)],
                     height_m=220.0,
+                    distance_km=0.75,
                     source="skyscraper",
                 )
             ],

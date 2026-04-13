@@ -1964,6 +1964,12 @@ def test_draw_urban_outlines_simplifies_narrow_outline_to_horizontal_segment(
         ],
         view_center=(45.0, 180.0),
         opacity=0.38,
+        is_in_fov_func=lambda *_args, **_kwargs: True,
+        altaz_to_normalized_xy_func=lambda alt, az, _view_center: (
+            float(az),
+            float(alt),
+        ),
+        normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
     )
 
     assert len(painter.polylines) == 1
@@ -1971,7 +1977,7 @@ def test_draw_urban_outlines_simplifies_narrow_outline_to_horizontal_segment(
     assert painter.polylines[0][0][1] == painter.polylines[0][1][1]
 
 
-def test_draw_urban_outlines_reduces_alpha_for_short_buildings(monkeypatch) -> None:
+def test_draw_urban_outlines_uses_fixed_alpha_and_near_underlay(monkeypatch) -> None:
     monkeypatch.setattr(
         render_terrain_module,
         "altaz_to_normalized_xy",
@@ -1991,6 +1997,7 @@ def test_draw_urban_outlines_reduces_alpha_for_short_buildings(monkeypatch) -> N
     class _Painter:
         def __init__(self) -> None:
             self.alpha_values: list[int] = []
+            self.width_values: list[float] = []
 
         def save(self) -> None:
             pass
@@ -2000,6 +2007,7 @@ def test_draw_urban_outlines_reduces_alpha_for_short_buildings(monkeypatch) -> N
 
         def setPen(self, pen) -> None:
             self.alpha_values.append(int(pen.color().alpha()))
+            self.width_values.append(float(pen.widthF()))
 
         def drawPolyline(self, _poly) -> None:
             pass
@@ -2009,14 +2017,38 @@ def test_draw_urban_outlines_reduces_alpha_for_short_buildings(monkeypatch) -> N
         painter,
         geometry=SimpleNamespace(center=(0, 0), radius=1),
         urban_outlines=[
-            UrbanOutlinePolyline(points=[(-10.0, 10.0), (-12.0, 12.0)], height_m=0.0),
-            UrbanOutlinePolyline(points=[(-10.0, 20.0), (-12.0, 22.0)], height_m=50.0),
+            UrbanOutlinePolyline(
+                points=[(-10.0, 10.0), (-12.0, 12.0)],
+                height_m=0.0,
+                distance_km=0.01,
+            ),
+            UrbanOutlinePolyline(
+                points=[(-10.0, 20.0), (-12.0, 22.0)],
+                height_m=50.0,
+                distance_km=0.5,
+            ),
         ],
         view_center=(45.0, 180.0),
         opacity=0.2,
+        is_in_fov_func=lambda *_args, **_kwargs: True,
+        altaz_to_normalized_xy_func=lambda alt, az, _view_center: (
+            float(az),
+            float(alt),
+        ),
+        normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
     )
 
-    assert painter.alpha_values == [13, 51]
+    assert painter.alpha_values == [1, 1, 5, 51, 1, 1, 5, 51]
+    assert [round(width, 1) for width in painter.width_values] == [
+        5.8,
+        2.4,
+        4.8,
+        1.1,
+        1.2,
+        1.0,
+        1.2,
+        0.7,
+    ]
 
 
 def test_draw_terrain_horizon_line_scales_line_widths(monkeypatch) -> None:

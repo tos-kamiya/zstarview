@@ -58,6 +58,7 @@ def test_resolve_urban_outline_layer_for_viewer_builds_dynamic_layer(monkeypatch
                         (),
                         {
                             "height_m": 45.0,
+                            "distance_km": 0.85,
                             "points": (
                                 type("Point", (), {"altitude_deg": -1.0, "azimuth_deg": 10.0})(),
                                 type("Point", (), {"altitude_deg": -2.0, "azimuth_deg": 12.0})(),
@@ -74,7 +75,13 @@ def test_resolve_urban_outline_layer_for_viewer_builds_dynamic_layer(monkeypatch
         derived_root_dir=tmp_path,
     )
 
-    assert got == [UrbanOutlinePolyline(points=[(-1.0, 10.0), (-2.0, 12.0)], height_m=45.0)]
+    assert got == [
+        UrbanOutlinePolyline(
+            points=[(-1.0, 10.0), (-2.0, 12.0)],
+            height_m=45.0,
+            distance_km=0.85,
+        )
+    ]
     assert select_calls[0][1]["radius_km"] == 2.5
     assert parse_calls[0][1] == {}
     assert compute_calls[0][0][0].viewpoint_height_m == 1.7
@@ -259,6 +266,7 @@ def test_resolve_urban_outline_layer_for_viewer_prefers_explicit_derived_dir(
                         (),
                         {
                             "height_m": 45.0,
+                            "distance_km": 0.85,
                             "points": (
                                 type("Point", (), {"altitude_deg": -1.0, "azimuth_deg": 10.0})(),
                             ),
@@ -275,7 +283,13 @@ def test_resolve_urban_outline_layer_for_viewer_prefers_explicit_derived_dir(
         derived_dir=tokyo_dir,
     )
 
-    assert got == [UrbanOutlinePolyline(points=[(-1.0, 10.0)], height_m=45.0)]
+    assert got == [
+        UrbanOutlinePolyline(
+            points=[(-1.0, 10.0)],
+            height_m=45.0,
+            distance_km=0.85,
+        )
+    ]
     assert seen_dirs == [tokyo_dir]
 
 
