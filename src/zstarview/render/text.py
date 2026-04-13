@@ -21,6 +21,17 @@ def _qcolor_from_rgba(color: tuple[int, ...]) -> QColor:
     return QColor(*color[:3], color[3])
 
 
+def blend_color_toward_white(color: QColor, amount: float = 0.1) -> QColor:
+    """Blend a color slightly toward white while preserving alpha."""
+    t = max(0.0, min(1.0, float(amount)))
+    return QColor(
+        int(round(color.red() * (1.0 - t) + 255.0 * t)),
+        int(round(color.green() * (1.0 - t) + 255.0 * t)),
+        int(round(color.blue() * (1.0 - t) + 255.0 * t)),
+        color.alpha(),
+    )
+
+
 def _text_bounds_at_baseline(text: str, font: QFont, baseline_pos: QPointF) -> QRectF:
     fm = QFontMetrics(font)
     bounds = fm.tightBoundingRect(text)
@@ -107,6 +118,26 @@ def resolve_text_style(
         text_color=text_color,
         outline_color=outline_color,
         outline_width=get_text_outline_width(preset, status_line=status_line),
+    )
+
+
+def resolve_label_text_style(
+    preset: str,
+    font: QFont,
+    *,
+    opacity: float = 1.0,
+) -> ResolvedTextStyle:
+    """Resolve a label style and suppress outlines in bright themes."""
+    style = resolve_text_style(preset, font, opacity=opacity)
+    if preset not in ("white", "day"):
+        return style
+    outline_color = QColor(style.outline_color)
+    outline_color.setAlpha(0)
+    return ResolvedTextStyle(
+        font=style.font,
+        text_color=style.text_color,
+        outline_color=outline_color,
+        outline_width=0.0,
     )
 
 
