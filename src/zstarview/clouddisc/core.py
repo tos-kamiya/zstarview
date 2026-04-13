@@ -99,6 +99,7 @@ class CloudDisc:
         self.cfg: CloudDiscConfig = cfg
         self.goes: GoesProvider = GoesProvider(cfg)
         self.hima: HimaProvider = HimaProvider(cfg)
+        self._last_bt_warm: float = float(cfg.bt_warm_k)
 
     def _now_rounded(self) -> dt.datetime:
         """
@@ -303,16 +304,23 @@ class CloudDisc:
             coverage_ratio = 1.0
         missing_mask = combined_inside_mask & ~combined_valid_mask
 
-        # Step 6: Estimate the warm and cold brightness temperature thresholds. These values
-        # are used to map the temperature range to the grayscale color range, enhancing contrast.
-        bt_warm, sample_arr = estimate_bt_warm_from_equator_band(
-            source.data_array,
-            lon_center_deg=lon,
-            delta_lon=60.0,
-            equator_lat=0.0,
-            warm_p=97.0,
-            half=5,
-        )
+        equator_band_missing = bool(getattr(source.data_array, "attrs", {}).get("equator_band_missing", False))
+        if equator_band_missing:
+            bt_warm = float(self._last_bt_warm)
+            sample_arr = np.array([], dtype=np.float32)
+            logger.info("Reusing previous Himawari bt_warm=%.2f because equator-band tiles are missing", bt_warm)
+        else:
+            bt_warm, sample_arr = estimate_bt_warm_from_equator_band(
+                source.data_array,
+                lon_center_deg=lon,
+                delta_lon=60.0,
+                equator_lat=0.0,
+                warm_p=97.0,
+                half=5,
+            )
+            if not np.isfinite(bt_warm):
+                bt_warm = float(self._last_bt_warm)
+                logger.info("Reusing previous Himawari bt_warm=%.2f because equator-band estimate was unavailable", bt_warm)
         bt_cold = estimate_bt_cold_hybrid(
             bt_for_threshold,
             threshold_mask_inside,
@@ -368,6 +376,7 @@ class CloudDisc:
                 img_acc += layer_img * blend_weight
         assert img_acc is not None
         img = np.clip(np.round(img_acc), 0, 255).astype(np.uint8)
+        self._last_bt_warm = float(bt_warm)
 
         meta = CloudMeta(
             satellite=source.satellite,

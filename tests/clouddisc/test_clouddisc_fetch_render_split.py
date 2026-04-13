@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime as dt
 from pathlib import Path
 import numpy as np
+import xarray as xr
 
 from zstarview.clouddisc import CloudDisc, CloudDiscConfig
 from zstarview.clouddisc.core import (
@@ -256,3 +257,62 @@ def test_render_from_source_with_coverage_blends_multiple_shells(monkeypatch, tm
     assert int(img[0, 1, 0]) == 34
     assert int(img[0, 0, 3]) == 200
     assert int(img[0, 1, 3]) == 200
+
+
+def test_render_from_source_reuses_previous_bt_warm_when_equator_band_missing(monkeypatch, tmp_path: Path) -> None:
+    clouddisc = CloudDisc(CloudDiscConfig(cache_dir=tmp_path))
+    clouddisc._last_bt_warm = 287.5
+    source = CloudSourceData(
+        source_key=SourceKey(
+            satellite="HIMAWARI",
+            timeslot_utc=dt.datetime(2026, 3, 4, 12, 30, tzinfo=dt.timezone.utc),
+            provider="HIMAWARI",
+        ),
+        data_array=xr.DataArray(
+            np.zeros((2, 2), dtype=np.float32),
+            dims=("y", "x"),
+            attrs={"equator_band_missing": True},
+        ),
+        satellite="HIMAWARI",
+        product="ISatSS-B13",
+        time_utc=dt.datetime(2026, 3, 4, 12, 30, tzinfo=dt.timezone.utc),
+        src_paths=[],
+    )
+
+    def fake_build_bt_sampler(_data_array):
+        def _sampler(lon_grid, lat_grid):
+            return np.full(lon_grid.shape, 250.0, dtype=np.float32)
+
+        return _sampler
+
+    captured_bt_warm: list[float] = []
+
+    monkeypatch.setattr("zstarview.clouddisc.core.build_bt_sampler", fake_build_bt_sampler)
+    monkeypatch.setattr(
+        "zstarview.clouddisc.core.az_project_lonlat_grid",
+        lambda **_kwargs: (
+            np.array([[139.0, 139.1], [139.2, 139.3]], dtype=np.float32),
+            np.array([[35.0, 35.1], [35.2, 35.3]], dtype=np.float32),
+            np.array([[True, True], [True, True]], dtype=bool),
+        ),
+    )
+    monkeypatch.setattr(
+        "zstarview.clouddisc.core.estimate_bt_warm_from_equator_band",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("equator-band estimator should not be called")),
+    )
+    monkeypatch.setattr(
+        "zstarview.clouddisc.core.estimate_bt_cold_hybrid",
+        lambda *args, **_kwargs: captured_bt_warm.append(float(args[3])) or 240.0,
+    )
+
+    clouddisc.render_from_source(
+        source=source,
+        lat=35.0,
+        lon=139.0,
+        alt=45.0,
+        az=180.0,
+        radius_px=1,
+    )
+
+    assert captured_bt_warm == [287.5]
+    assert clouddisc._last_bt_warm == 287.5
