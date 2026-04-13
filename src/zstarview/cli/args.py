@@ -447,9 +447,9 @@ def add_render_arguments(
     parser.add_argument(
         "--satellite-opacity",
         type=float,
-        default=0.5,
+        default=0.7,
         help=(
-            "Opacity of the artificial satellite overlay (0.0 - 1.0, default: 0.5). "
+            "Opacity of the artificial satellite overlay (0.0 - 1.0, default: 0.7). "
             "Set to 0.0 to disable satellite element fetch and rendering."
         ),
     )
