@@ -17,8 +17,9 @@ from .text import _text_bounds_at_baseline, draw_outlined_text, resolve_text_sty
 
 ASTERISM_BASE_OUTLINE_WIDTH = 3.0
 ASTERISM_BASE_LINE_WIDTH = 2.0
-ASTERISM_HIGHLIGHT_OUTLINE_WIDTH = 2.5
-ASTERISM_HIGHLIGHT_LINE_WIDTH = 1.5
+ASTERISM_HIGHLIGHT_OUTER_WIDTH = 5.0
+ASTERISM_HIGHLIGHT_MID_WIDTH = 3.2
+ASTERISM_HIGHLIGHT_CORE_WIDTH = 1.0
 
 
 def draw_asterisms(
@@ -57,8 +58,9 @@ def draw_asterisms(
 
     base_line_color = QColor(*PALETTE_ASTERISM_RGB, 24 if preset in ("white", "day") else 21)
     base_outline_color = QColor(*PALETTE_ASTERISM_RGB, 12 if preset in ("white", "day") else 9)
-    highlight_outline_color = QColor(*PALETTE_ASTERISM_RGB, 52 if preset in ("white", "day") else 44)
-    highlight_line_color = QColor(*PALETTE_ASTERISM_RGB, 124 if preset in ("white", "day") else 92)
+    highlight_outer_color = QColor(*PALETTE_ASTERISM_RGB, 14 if preset in ("white", "day") else 10)
+    highlight_mid_color = QColor(*PALETTE_ASTERISM_RGB, 54 if preset in ("white", "day") else 40)
+    highlight_core_color = QColor(*PALETTE_ASTERISM_RGB, 124 if preset in ("white", "day") else 92)
 
     painter.save()
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
@@ -74,8 +76,7 @@ def draw_asterisms(
 
     def _draw_segments(
         segments: Iterable[Tuple[str, str]],
-        outline_pen: QPen,
-        line_pen: QPen,
+        pens: Iterable[QPen],
     ) -> List[QPointF]:
         label_points: List[QPointF] = []
         for source_a, source_b in segments:
@@ -94,15 +95,14 @@ def draw_asterisms(
                     if len(frag) < 2:
                         continue
                     poly = QPolygonF([QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in frag])
-                    painter.setPen(outline_pen)
-                    painter.drawPolyline(poly)
-                    painter.setPen(line_pen)
-                    painter.drawPolyline(poly)
+                    for pen in pens:
+                        painter.setPen(pen)
+                        painter.drawPolyline(poly)
                     label_points.extend(poly)
         return label_points
 
-    def _draw_one_asterism(asterism: Any, outline_pen: QPen, line_pen: QPen) -> List[QPointF]:
-        return _draw_segments(asterism.segments(), outline_pen, line_pen)
+    def _draw_one_asterism(asterism: Any, pens: Iterable[QPen]) -> List[QPointF]:
+        return _draw_segments(asterism.segments(), pens)
 
     highlighted_asterism = None
     if draw_highlight and highlighted_object is not None:
@@ -123,12 +123,16 @@ def draw_asterisms(
                 if source_a == source_b:
                     continue
                 base_segments.add(tuple(sorted((source_a, source_b))))
-        _draw_segments(sorted(base_segments), base_outline_pen, base_line_pen)
+        _draw_segments(sorted(base_segments), (base_outline_pen, base_line_pen))
 
     if highlighted_asterism is not None:
-        highlight_outline_pen = _make_pen(highlight_outline_color, ASTERISM_HIGHLIGHT_OUTLINE_WIDTH * width_scale)
-        highlight_line_pen = _make_pen(highlight_line_color, ASTERISM_HIGHLIGHT_LINE_WIDTH * width_scale)
-        label_points = _draw_one_asterism(highlighted_asterism, highlight_outline_pen, highlight_line_pen)
+        highlight_outer_pen = _make_pen(highlight_outer_color, ASTERISM_HIGHLIGHT_OUTER_WIDTH * width_scale)
+        highlight_mid_pen = _make_pen(highlight_mid_color, ASTERISM_HIGHLIGHT_MID_WIDTH * width_scale)
+        highlight_core_pen = _make_pen(highlight_core_color, ASTERISM_HIGHLIGHT_CORE_WIDTH * width_scale)
+        label_points = _draw_one_asterism(
+            highlighted_asterism,
+            (highlight_outer_pen, highlight_mid_pen, highlight_core_pen),
+        )
 
     if label_points:
         cx = sum(pt.x() for pt in label_points) / len(label_points)
