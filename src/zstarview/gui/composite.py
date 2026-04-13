@@ -655,8 +655,9 @@ def _overlay_earth_guide(
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     earth_guide_opacity: float = 0.0,
     content_fov_deg: float = 90.0,
+    fast_mode: bool = False,
 ) -> QImage:
-    if observer_lat_deg is None or observer_lon_deg is None:
+    if fast_mode or observer_lat_deg is None or observer_lon_deg is None:
         return base_img
     out = (
         base_img
@@ -676,6 +677,7 @@ def _overlay_earth_guide(
             terrain_profile_altaz=terrain_profile_altaz,
             earth_guide_opacity=float(earth_guide_opacity),
             content_fov_deg=content_fov_deg,
+            fast_mode=bool(fast_mode),
         )
     finally:
         painter.end()
@@ -733,6 +735,7 @@ class SkyCompositorCache:
         terrain_horizon_opacity: float = 0.0,
         earth_guide_opacity: float = 0.0,
         content_fov_deg: float = 90.0,
+        fast_mode: bool = False,
     ) -> None:
         """Composite the sky/cloud layers (with cache) and draw into painter."""
         viewport = painter.viewport()
@@ -887,6 +890,7 @@ class SkyCompositorCache:
                 terrain_profile_altaz=terrain_profile_altaz,
                 earth_guide_opacity=earth_guide_opacity,
                 content_fov_deg=content_fov_deg,
+                fast_mode=fast_mode,
             )
             if missing_s is not None:
                 composited = overlay_missing_tint(

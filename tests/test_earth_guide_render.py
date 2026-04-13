@@ -1,9 +1,11 @@
 import numpy as np
 from PySide6.QtGui import QImage, QPainter
 
+import zstarview.gui.composite as render_composite
 from zstarview.render.earth_guide import (
     EARTH_GUIDE_FOREGROUND_WIDTH,
     EARTH_GUIDE_UNDERLAY_WIDTH,
+    EarthGuideRing,
     _effective_visible_altitude_limit_deg,
     _observer_dead_zone_km,
     _observer_visible_altitude_limit_deg,
@@ -71,3 +73,107 @@ def test_earth_guide_dead_zone_and_altitude_clip_scale_with_height() -> None:
     assert _observer_visible_altitude_limit_deg(180.0, 635.0, None) < -1.0
     assert _observer_visible_altitude_limit_deg(180.0, 635.0, [(12.0, 180.0)]) < -1.0
     assert _observer_visible_altitude_limit_deg(180.0, 0.0, [(-3.0, 180.0)]) == -3.0
+
+
+class _DummyPainter:
+    def __init__(self) -> None:
+        self.polylines: list[object] = []
+
+    def save(self) -> None:
+        pass
+
+    def restore(self) -> None:
+        pass
+
+    def setRenderHint(self, *_args, **_kwargs) -> None:  # noqa: N802 - Qt naming
+        pass
+
+    def setPen(self, *_args, **_kwargs) -> None:
+        pass
+
+    def drawPolyline(self, polyline) -> None:
+        self.polylines.append(polyline)
+
+
+def test_draw_earth_guide_fast_mode_subsamples_rings(monkeypatch) -> None:
+    rings = tuple(
+        EarthGuideRing(
+            source_name=f"ring-{idx}",
+            label_name=None,
+            points_lonlat_deg=np.asarray(
+                [(-10.0 + idx, -5.0), (0.0 + idx, 0.0), (10.0 + idx, 5.0)],
+                dtype=np.float64,
+            ),
+            points_xyz=np.asarray(
+                [(1.0, 0.0, 0.0), (0.5, 0.5, 0.7071), (0.0, 1.0, 0.0)],
+                dtype=np.float64,
+            ),
+        )
+        for idx in range(4)
+    )
+
+    seen: list[str] = []
+
+    monkeypatch.setattr("zstarview.render.earth_guide.load_earth_guide_rings", lambda path_str=None: rings)
+    monkeypatch.setattr(
+        "zstarview.render.earth_guide._ring_fragments_altaz",
+        lambda ring, **kwargs: seen.append(ring.source_name) or [[(0.0, 0.0), (1.0, 1.0)]],
+    )
+
+    painter = _DummyPainter()
+    draw_earth_guide(
+        painter,
+        geometry=ScreenGeometry(center=(120, 120), radius=100),
+        view_center=(0.0, 180.0),
+        observer_lat_deg=35.68,
+        observer_lon_deg=139.76,
+        observer_height_m=635.0,
+        terrain_profile_altaz=None,
+        earth_guide_opacity=0.028,
+        content_fov_deg=100.0,
+    )
+    assert seen == ["ring-0", "ring-1", "ring-2", "ring-3"]
+
+    seen.clear()
+    painter = _DummyPainter()
+    draw_earth_guide(
+        painter,
+        geometry=ScreenGeometry(center=(120, 120), radius=100),
+        view_center=(0.0, 180.0),
+        observer_lat_deg=35.68,
+        observer_lon_deg=139.76,
+        observer_height_m=635.0,
+        terrain_profile_altaz=None,
+        earth_guide_opacity=0.028,
+        content_fov_deg=100.0,
+        fast_mode=True,
+    )
+    assert seen == ["ring-0", "ring-2"]
+
+
+def test_overlay_earth_guide_skips_drawing_in_fast_mode(monkeypatch) -> None:
+    calls: list[bool] = []
+
+    monkeypatch.setattr(
+        render_composite,
+        "draw_earth_guide",
+        lambda _painter, **kwargs: calls.append(bool(kwargs["fast_mode"])),
+    )
+
+    image = QImage(16, 16, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(0)
+    out = render_composite._overlay_earth_guide(
+        image,
+        geometry=ScreenGeometry(center=(8, 8), radius=6),
+        view_center=(0.0, 180.0),
+        observer_lat_deg=35.68,
+        observer_lon_deg=139.76,
+        observer_height_m=635.0,
+        terrain_profile_altaz=None,
+        earth_guide_opacity=0.028,
+        content_fov_deg=100.0,
+        fast_mode=True,
+    )
+
+    assert calls == []
+    assert out.size() == image.size()
