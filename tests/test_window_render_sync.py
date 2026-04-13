@@ -22,6 +22,9 @@ from zstarview.types import CelestialData, UrbanOutlinePolyline, ViewerData
 from zstarview.gui.famous_star_shortcuts import SearchJumpTarget
 from zstarview.gui.window import SkyWindow
 from zstarview.gui.window_state import SkyWindowState
+from PySide6.QtWidgets import QApplication
+
+_app = QApplication.instance() or QApplication([])
 
 
 class _DummyTimer:
@@ -1931,7 +1934,60 @@ def test_draw_sky_reference_lines_uses_wider_dash_patterns(monkeypatch) -> None:
     assert pen_alpha_values[2::3] == [255, 255, 255]
     assert [round(width, 3) for width in pen_widths[0::3]] == [1.254, 1.254, 1.100]
     assert [round(width, 3) for width in pen_widths[1::3]] == [0.855, 0.855, 0.750]
-    assert [round(width, 3) for width in pen_widths[2::3]] == [0.570, 0.570, 0.500]
+    assert [round(width, 3) for width in pen_widths[2::3]] == [0.627, 0.627, 0.550]
+
+
+def test_draw_direction_labels_uses_horizon_line_color(monkeypatch) -> None:
+    seen_colors: list[tuple[int, int, int]] = []
+
+    class _Painter:
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setFont(self, _font) -> None:
+            pass
+
+        def setPen(self, _pen) -> None:
+            pass
+
+        def drawLine(self, *_args, **_kwargs) -> None:
+            pass
+
+        def viewport(self):
+            return QRect(0, 0, 200, 200)
+
+    def _capture(*_args, style=None, **_kwargs):
+        seen_colors.append(
+            (style.text_color.red(), style.text_color.green(), style.text_color.blue())
+        )
+
+    monkeypatch.setattr(render_guides_module, "draw_outlined_text", _capture)
+    monkeypatch.setattr(render_guides_module, "is_in_fov", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(
+        render_guides_module,
+        "altaz_to_normalized_xy",
+        lambda alt, az, view_center: (float(az), float(alt)),
+    )
+    monkeypatch.setattr(
+        render_guides_module,
+        "normalized_to_screen_xy",
+        lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+
+    render_guides_module.draw_direction_labels(
+        _Painter(),
+        geometry=SimpleNamespace(center=(0, 0), radius=1),
+        view_center=(30.0, 40.0),
+        text_font=QFont(),
+        preset="white",
+        content_fov_deg=180.0,
+    )
+
+    assert seen_colors
+    assert all(color == render_guides_module.HORIZON_LINE_COLOR for color in seen_colors)
 
 
 def test_draw_urban_outlines_simplifies_narrow_outline_to_horizontal_segment(

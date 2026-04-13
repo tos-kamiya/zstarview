@@ -17,7 +17,12 @@ from ..paths import (
 )
 from ..types import CelestialData, ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
-from .text import ResolvedTextStyle, _clamp_baseline_pos_to_viewport, draw_outlined_text, get_text_outline_width
+from .text import (
+    ResolvedTextStyle,
+    _clamp_baseline_pos_to_viewport,
+    draw_outlined_text,
+    resolve_label_text_style,
+)
 
 REFERENCE_LINE_OUTER_WIDTH = 1.1
 REFERENCE_LINE_MID_WIDTH = 0.75
@@ -357,13 +362,12 @@ def draw_direction_labels(
         view_center: The current view center to determine which labels are visible.
         text_font: The QFont to use for the labels.
     """
-    text_color = QColor(*HORIZON_LINE_COLOR)
-    outline_color = QColor.fromRgbF(0, 0, 0, 0.3)
+    label_style = resolve_label_text_style(preset, text_font)
     label_style = ResolvedTextStyle(
-        font=text_font,
-        text_color=text_color,
-        outline_color=outline_color,
-        outline_width=get_text_outline_width(preset),
+        font=label_style.font,
+        text_color=QColor(*HORIZON_LINE_COLOR),
+        outline_color=label_style.outline_color,
+        outline_width=label_style.outline_width,
     )
     marker_color = QColor(*HORIZON_LINE_COLOR)
     marker_pen = QPen(marker_color, 1.6)
