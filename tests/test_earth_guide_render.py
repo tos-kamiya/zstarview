@@ -113,6 +113,7 @@ def test_draw_earth_guide_fast_mode_subsamples_rings(monkeypatch) -> None:
     )
 
     seen: list[str] = []
+    polyline_counts: list[int] = []
 
     monkeypatch.setattr("zstarview.render.earth_guide.load_earth_guide_rings", lambda path_str=None: rings)
     monkeypatch.setattr(
@@ -132,7 +133,9 @@ def test_draw_earth_guide_fast_mode_subsamples_rings(monkeypatch) -> None:
         earth_guide_opacity=0.028,
         content_fov_deg=100.0,
     )
+    polyline_counts.append(len(painter.polylines))
     assert seen == ["ring-0", "ring-1", "ring-2", "ring-3"]
+    assert polyline_counts == [16]
 
     seen.clear()
     painter = _DummyPainter()
@@ -149,9 +152,10 @@ def test_draw_earth_guide_fast_mode_subsamples_rings(monkeypatch) -> None:
         fast_mode=True,
     )
     assert seen == ["ring-0", "ring-2"]
+    assert len(painter.polylines) == 2
 
 
-def test_overlay_earth_guide_skips_drawing_in_fast_mode(monkeypatch) -> None:
+def test_overlay_earth_guide_forwards_fast_mode(monkeypatch) -> None:
     calls: list[bool] = []
 
     monkeypatch.setattr(
@@ -175,5 +179,5 @@ def test_overlay_earth_guide_skips_drawing_in_fast_mode(monkeypatch) -> None:
         fast_mode=True,
     )
 
-    assert calls == []
+    assert calls == [True]
     assert out.size() == image.size()
