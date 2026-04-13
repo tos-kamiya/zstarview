@@ -45,6 +45,9 @@
 - Himawari partial-slot acceptance policy
   - Himawari ISatSS の slot 採用を、全 `88` タイルの完全一致ではなく、observer 描画と warm-threshold 推定に必要なタイルの充足基準へ寄せる方針に整理した。
   - 既存実装は slot 全体の完全性を先に見ていたが、必要タイルがそろっている場合まで捨ててしまうので、仕様・設計を先に合わせることにした。
+- Himawari far-miss clear-sky policy
+  - 観測者向け描画については、観測地点からおおむね `50 km` より遠い欠損タイルを `clear sky` として扱う方針に整理した。
+  - 赤道帯の warm-threshold 推定用タイルは別扱いとし、欠損時は前回の有効 warm-threshold を再利用するフォールバックを優先する。
 
 ### 2025-09-16
 
