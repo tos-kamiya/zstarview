@@ -46,6 +46,7 @@ def test_compute_urban_outlines_emits_polylines_for_nearby_building() -> None:
     assert result.buildings_considered == 1
     assert result.outlines_emitted >= 1
     assert result.outlines[0].height_m == 60.0
+    assert result.outlines[0].distance_km > 0.0
     assert len(result.outlines[0].points) >= 2
 
 

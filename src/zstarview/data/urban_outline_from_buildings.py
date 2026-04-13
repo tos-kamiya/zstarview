@@ -43,6 +43,7 @@ class UrbanPolylinePoint:
 @dataclass(frozen=True)
 class UrbanOutlinePolyline:
     height_m: float
+    distance_km: float
     points: tuple[UrbanPolylinePoint, ...]
 
 
@@ -211,6 +212,7 @@ def compute_urban_outlines(
                     outlines.append(
                         UrbanOutlinePolyline(
                             height_m=float(building.height_m),
+                            distance_km=float(min_distance / 1000.0),
                             points=tuple(run_points),
                         )
                     )

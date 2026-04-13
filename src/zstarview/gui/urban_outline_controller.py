@@ -347,6 +347,7 @@ class UrbanOutlineController(QObject):
                 UrbanOutlinePolyline(
                     points=list(outline.points),
                     height_m=float(outline.height_m),
+                    distance_km=float(outline.distance_km),
                     source="skyscraper",
                 )
                 for outline in extra_outlines
