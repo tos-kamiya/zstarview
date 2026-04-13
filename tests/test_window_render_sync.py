@@ -2038,15 +2038,15 @@ def test_draw_urban_outlines_uses_fixed_alpha_and_near_underlay(monkeypatch) -> 
         normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
     )
 
-    assert painter.alpha_values == [1, 1, 5, 51, 1, 1, 5, 51]
+    assert painter.alpha_values == [3, 2, 1, 51, 3, 2, 1, 51]
     assert [round(width, 1) for width in painter.width_values] == [
-        5.8,
-        2.4,
-        4.8,
+        4.6,
+        3.6,
+        2.2,
         1.1,
         1.2,
         1.0,
-        1.2,
+        1.0,
         0.7,
     ]
 

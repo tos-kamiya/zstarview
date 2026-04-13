@@ -16,11 +16,11 @@ from .guides import split_by_gaps
 
 URBAN_OUTLINE_FOREGROUND_MIN_WIDTH = 0.66
 URBAN_OUTLINE_FOREGROUND_MAX_WIDTH = 1.14
-URBAN_OUTLINE_FOREGROUND_CORE_WIDTH = 0.66
-URBAN_OUTLINE_UNDERLAY_MIN_WIDTH = 1.2
-URBAN_OUTLINE_UNDERLAY_WIDTH = 4.8
-URBAN_OUTLINE_UNDERLAY_MID_WIDTH = 2.4
-URBAN_OUTLINE_UNDERLAY_OUTER_WIDTH = 5.8
+URBAN_OUTLINE_FOREGROUND_CORE_WIDTH = 0.48
+URBAN_OUTLINE_UNDERLAY_MIN_WIDTH = 1.0
+URBAN_OUTLINE_UNDERLAY_WIDTH = 2.2
+URBAN_OUTLINE_UNDERLAY_MID_WIDTH = 3.6
+URBAN_OUTLINE_UNDERLAY_OUTER_WIDTH = 4.6
 URBAN_OUTLINE_UNDERLAY_MIN_DISTANCE_KM = 0.01
 URBAN_OUTLINE_NEAR_DISTANCE_KM = 0.5
 
@@ -31,7 +31,7 @@ def _urban_outline_foreground_alpha(opacity: float) -> float:
 
 def _urban_outline_underlay_alpha(opacity: float) -> float:
     opacity = max(0.0, min(1.0, float(opacity)))
-    return max(0.0, min(1.0, 0.01 + (opacity * 0.05)))
+    return max(0.0, min(1.0, 0.006 + (opacity * 0.03)))
 
 
 def _urban_outline_uses_underlay(distance_km: float) -> bool:
@@ -237,7 +237,7 @@ def draw_urban_outlines(
         if _urban_outline_uses_underlay(distance_km):
             underlay_color = QColor(*URBAN_OUTLINE_LAYER_LINE_COLOR)
             underlay_color.setAlpha(
-                max(0, min(255, int(round(255.0 * _urban_outline_underlay_alpha(opacity)))))
+                max(0, min(255, int(round(255.0 * (0.25 * _urban_outline_underlay_alpha(opacity))))))
             )
             underlay_pen = QPen(
                 underlay_color,
@@ -249,7 +249,7 @@ def draw_urban_outlines(
             underlay_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
             mid_underlay_color = QColor(*URBAN_OUTLINE_LAYER_LINE_COLOR)
             mid_underlay_color.setAlpha(
-                max(0, min(255, int(round(255.0 * (0.25 * _urban_outline_underlay_alpha(opacity))))))
+                max(0, min(255, int(round(255.0 * (0.50 * _urban_outline_underlay_alpha(opacity))))))
             )
             mid_underlay_pen = QPen(
                 mid_underlay_color,
@@ -261,7 +261,7 @@ def draw_urban_outlines(
             mid_underlay_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
             outer_underlay_color = QColor(*URBAN_OUTLINE_LAYER_LINE_COLOR)
             outer_underlay_color.setAlpha(
-                max(0, min(255, int(round(255.0 * (0.12 * _urban_outline_underlay_alpha(opacity))))))
+                max(0, min(255, int(round(255.0 * (0.90 * _urban_outline_underlay_alpha(opacity))))))
             )
             outer_underlay_pen = QPen(
                 outer_underlay_color,
