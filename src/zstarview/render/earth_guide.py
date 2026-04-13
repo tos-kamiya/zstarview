@@ -366,6 +366,8 @@ def _ring_fragments_altaz(
     view_center: tuple[float, float],
     content_fov_deg: float,
     terrain_profile_altaz: list[tuple[float, float]] | None,
+    max_depth: int,
+    threshold_px: float,
 ) -> list[list[tuple[float, float]]]:
     xyz_points = ring.points_xyz
     fragments: list[list[tuple[float, float]]] = []
@@ -376,8 +378,8 @@ def _ring_fragments_altaz(
             xyz_points[index],
             xyz_points[next_index],
             depth=0,
-            max_depth=12,
-            threshold_px=24.0,
+            max_depth=max_depth,
+            threshold_px=threshold_px,
             origin=origin,
             east=east,
             north=north,
@@ -458,6 +460,7 @@ def draw_earth_guide(
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     earth_guide_opacity: float = 0.028,
     content_fov_deg: float = 90.0,
+    fast_mode: bool = False,
 ) -> None:
     rings = load_earth_guide_rings()
     if not rings:
@@ -472,6 +475,13 @@ def draw_earth_guide(
     dead_zone_km = _observer_dead_zone_km(observer_height_m)
     painter.save()
     try:
+        if fast_mode:
+            rings = rings[::2] or rings[:1]
+            max_depth = 8
+            threshold_px = 40.0
+        else:
+            max_depth = 12
+            threshold_px = 24.0
         underlay_pens: list[QPen] = []
         for width, alpha in _earth_guide_underlay_pass_specs(earth_guide_opacity):
             underlay_color = QColor(*EARTH_GUIDE_LINE_COLOR)
@@ -507,6 +517,8 @@ def draw_earth_guide(
                 view_center=view_center,
                 content_fov_deg=content_fov_deg,
                 terrain_profile_altaz=terrain_profile_altaz,
+                max_depth=max_depth,
+                threshold_px=threshold_px,
             ):
                 screen_points = [QPointF(x, y) for x, y in fragment]
                 if len(screen_points) < 2:

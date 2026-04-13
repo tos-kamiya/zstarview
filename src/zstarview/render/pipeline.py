@@ -146,6 +146,7 @@ def render_base_scene_into_painter(
         scene=sky_cloud_scene,
         style=sky_cloud_style,
         compositor=compositor,
+        fast_mode=hud.viewport_interaction_mode,
     )
     _draw_guide_layer(
         painter,
@@ -410,6 +411,7 @@ def _draw_sky_cloud_layers(
     scene: RenderSceneData,
     style: RenderStyle,
     compositor: Any,
+    fast_mode: bool = False,
 ) -> None:
     compositor.draw(
         painter,
@@ -430,6 +432,7 @@ def _draw_sky_cloud_layers(
         ),
         earth_guide_opacity=style.earth_guide_opacity,
         content_fov_deg=_content_fov_deg(scene),
+        fast_mode=bool(fast_mode),
     )
 
 
