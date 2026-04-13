@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -10,6 +11,7 @@ from pyproj import CRS
 from pyproj import Transformer
 
 from zstarview.clouddisc import CloudDiscConfig
+from zstarview.clouddisc.types import DataNotFoundError
 from zstarview.clouddisc.providers._hima_isatss import (
     DATA_VAR,
     GRID_VAR,
@@ -190,7 +192,7 @@ def test_equator_tile_selection_extends_partial_himawari_subset(tmp_path: Path) 
         da.close()
 
 
-def test_find_isatss_skips_incomplete_latest_slot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_find_isatss_accepts_incomplete_latest_slot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     tile_dir = tmp_path / "tiles"
     tile_dir.mkdir()
     template_paths = _write_sparse_tile_set(tile_dir)
@@ -218,5 +220,41 @@ def test_find_isatss_skips_incomplete_latest_slot(tmp_path: Path, monkeypatch: p
     bucket, keys, used_time = provider._find_isatss(latest_time)
 
     assert bucket == "noaa-himawari9"
-    assert keys == stable_keys
-    assert used_time == stable_time
+    assert keys == incomplete_keys
+    assert used_time == latest_time
+
+
+def test_select_keys_for_observer_rejects_missing_required_tiles(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tile_dir = tmp_path / "tiles"
+    tile_dir.mkdir()
+    template_paths = _write_sparse_tile_set(tile_dir)
+    provider = HimaProvider(CloudDiscConfig(cache_dir=tmp_path / "cache"))
+
+    keys = [
+        f"AHI-L2-FLDK-ISatSS/2026/03/21/1800/{template_paths[i].name}"
+        for i in range(3)
+    ]
+
+    def fake_select_needed_tiles(**_kwargs):
+        return [SimpleNamespace(token="001"), SimpleNamespace(token="999")], np.array([], dtype=np.float64), np.array([], dtype=np.float64)
+
+    def fake_select_equator_tiles(**_kwargs):
+        return [], np.array([], dtype=np.float64), np.array([], dtype=np.float64)
+
+    monkeypatch.setattr(hima_module, "select_needed_tiles", fake_select_needed_tiles)
+    monkeypatch.setattr(hima_module, "select_equator_tiles", fake_select_equator_tiles)
+    monkeypatch.setattr(provider, "_download", lambda bucket, key: template_paths[0])
+
+    with pytest.raises(DataNotFoundError):
+        provider._select_keys_for_observer(
+            bucket="noaa-himawari9",
+            keys=keys,
+            when_utc=dt.datetime(2026, 3, 21, 18, 0, tzinfo=dt.timezone.utc),
+            observer_lat=35.483,
+            observer_lon=140.7,
+            cloud_shell_km=6376.0,
+            azimuth_samples=1440,
+            margin_tiles=1,
+        )

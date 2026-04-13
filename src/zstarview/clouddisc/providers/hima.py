@@ -82,19 +82,11 @@ class HimaProvider:
                 continue
             template_path = self._download(bucket, keys[0])
             expected_tile_count = load_template_from_tile(template_path, bucket=bucket).tile_count
-            if len(keys) < expected_tile_count:
-                logger.info(
-                    "Skipping incomplete %s slot under %s: found %d/%d ISatSS M1C13 tiles",
-                    bucket,
-                    format_prefix(search_time),
-                    len(keys),
-                    expected_tile_count,
-                )
-                continue
             logger.info(
-                "Checked %s and found %d ISatSS M1C13 tiles under %s",
+                "Checked %s and found %d/%d ISatSS M1C13 tiles under %s",
                 bucket,
                 len(keys),
+                expected_tile_count,
                 format_prefix(search_time),
             )
             return bucket, keys, search_time
@@ -133,7 +125,19 @@ class HimaProvider:
         )
         selected_tokens = {record.token for record in render_tiles} | {record.token for record in equator_tiles}
         key_map = {extract_tile_token(Path(key).name): key for key in keys}
-        selected_keys = [key_map[token] for token in sorted(selected_tokens) if token in key_map]
+        missing_tokens = sorted(token for token in selected_tokens if token not in key_map)
+        if missing_tokens:
+            logger.info(
+                "Skipping %s slot under %s: missing %d required ISatSS tiles for observer selection",
+                bucket,
+                format_prefix(when_utc),
+                len(missing_tokens),
+            )
+            raise DataNotFoundError(
+                "Required Himawari ISatSS tiles are missing for observer footprint",
+                meta=CloudMeta(satellite="HIMAWARI", product="ISatSS-B13", time_utc=when_utc, src_paths=[]),
+            )
+        selected_keys = [key_map[token] for token in sorted(selected_tokens)]
         if not selected_keys:
             raise DataNotFoundError(
                 "No Himawari ISatSS tiles selected for observer footprint",
