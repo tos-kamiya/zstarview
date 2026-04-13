@@ -454,6 +454,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - Himawari は `ISatSS M1C13` タイル群を直接 stitch し、`fixedgrid_projection` から `area` を再構築する
   - Himawari の observer 指定時は、描画用の局所タイルに加え、warm-threshold 推定用の赤道帯タイルを少数だけ追加取得する
   - Himawari の slot 採用は、88 タイルの完全一致を前提にせず、observer 描画と warm-threshold 推定に必要なタイルがそろっているかで判定してよい
+  - Himawari の観測者向け描画では、観測地点からおおむね `50 km` より遠い欠損タイルを clear-sky 扱いで補完してよい
+  - Himawari の warm-threshold 推定は赤道帯タイルを独立に扱い、欠損時は clear-sky 補完ではなく直近の有効な warm-threshold を再利用してよい
 - `src/zstarview/clouddisc/projectors/az.py`
   - 空ディスク向け投影
   - 既定 `alt_min_deg = 1.0°` により、地平線より少し上まで雲投影を残しつつ、極端な低仰角ノイズは可視マスクから外す
@@ -898,6 +900,8 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
    - Himawari は `ISatSS M1C13` タイルを stitch して BT field を作る。
    - Himawari の部分タイル取得では、observer 周辺の描画用タイルに加え、赤道帯の warm-threshold 推定用タイルを和集合で取得する。
    - Himawari の slot 選定では、全 88 タイルの完全性よりも、描画と warm-threshold 推定に必要なタイルの充足を優先してよい。
+   - Himawari の描画用タイルに限り、観測地点から 50 km より遠い欠損は clear-sky 相当として扱ってよい。
+   - Himawari の赤道帯タイルは別の warm-threshold 推定入力として扱い、欠損時は前回有効値へのフォールバックを優先してよい。
 4. 視点条件に応じて雲画像を描画する。
 5. `request_id` により古い結果を破棄し、最新結果のみ UI に反映する。
 6. 欠損領域がある場合は欠損マスクも渡す。
