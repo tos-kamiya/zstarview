@@ -8,12 +8,15 @@ from PySide6.QtGui import QColor, QFont, QFontMetrics, QImage, QPainter
 from PySide6.QtWidgets import QApplication
 
 from zstarview.render import background as render_background
+from zstarview.render import aircraft as render_aircraft
 from zstarview.render import guides as render_guides
 from zstarview.render import overlay_info as render_overlay_info
 from zstarview.render import satellites as render_satellites
 from zstarview.render import solar_system as render_solar_system
 from zstarview.render import stars as render_stars
 from zstarview.render import text as render_text
+from zstarview.paths import PALETTE_AIRCRAFT_AND_SATELLITE_RGB
+from zstarview.aircraft.types import AircraftOverlayPoint
 from zstarview.satellites.types import SatelliteOverlayPoint
 from zstarview.types import CelestialData, PlanetBody, ScreenGeometry, StarCatalogMeta, ViewerData
 
@@ -375,6 +378,95 @@ def test_satellite_overlay_keeps_overscan_position_beyond_90_deg(monkeypatch) ->
 
 
 app = QApplication.instance() or QApplication([])
+
+
+def test_satellite_label_uses_black_theme_style_in_white_theme(monkeypatch) -> None:
+    monkeypatch.setattr(render_satellites, "draw_gauge_cross", lambda *_args, **_kwargs: None)
+
+    image = QImage(40, 40, QImage.Format.Format_ARGB32_Premultiplied)
+    painter = QPainter(image)
+    try:
+        label_candidates: list[dict[str, object]] = []
+        render_satellites.draw_satellite_overlay(
+            painter=painter,
+            geometry=ScreenGeometry(center=(20, 20), radius=20),
+            satellite_points=[
+                SatelliteOverlayPoint(
+                    group_key="iss",
+                    satellite_name="ISS (ZARYA)",
+                    alt_deg=10.0,
+                    az_deg=151.0,
+                    marker_scale=0.3,
+                    show_label=True,
+                )
+            ],
+            view_center=(0.0, 151.0),
+            opacity=1.0,
+            label_candidates=label_candidates,
+            preset="white",
+        )
+    finally:
+        painter.end()
+
+    assert len(label_candidates) == 1
+    style = label_candidates[0]["style"]
+    expected_rgb = tuple(
+        int(round(component * 0.9 + 255 * 0.1)) for component in PALETTE_AIRCRAFT_AND_SATELLITE_RGB
+    )
+    assert (style.text_color.red(), style.text_color.green(), style.text_color.blue()) == expected_rgb
+    assert style.outline_width == render_text.resolve_text_style("day", QFont()).outline_width
+
+
+def test_aircraft_label_uses_black_theme_style_in_day_theme() -> None:
+    class _Painter:
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def font(self) -> QFont:
+            return QFont()
+
+        def setPen(self, *_args, **_kwargs) -> None:
+            pass
+
+        def setBrush(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawPolyline(self, *_args, **_kwargs) -> None:
+            pass
+
+    label_candidates: list[dict[str, object]] = []
+    render_aircraft.draw_aircraft_overlay(
+        painter=_Painter(),
+        geometry=ScreenGeometry(center=(20, 20), radius=20),
+        aircraft_points=[
+            AircraftOverlayPoint(
+                icao24="abc123",
+                callsign="TEST123",
+                alt_deg=10.0,
+                az_deg=151.0,
+                trail_alt_az_points=((10.0, 151.0), (10.2, 151.3)),
+                distance_km=5.0,
+                age_seconds=10.0,
+                alpha_scale=1.0,
+            )
+        ],
+        view_center=(0.0, 151.0),
+        opacity=1.0,
+        label_candidates=label_candidates,
+        preset="day",
+        content_fov_deg=180.0,
+    )
+
+    assert len(label_candidates) == 1
+    style = label_candidates[0]["style"]
+    expected_rgb = tuple(
+        int(round(component * 0.9 + 255 * 0.1)) for component in PALETTE_AIRCRAFT_AND_SATELLITE_RGB
+    )
+    assert (style.text_color.red(), style.text_color.green(), style.text_color.blue()) == expected_rgb
+    assert style.outline_width == render_text.resolve_text_style("night", QFont()).outline_width
 
 
 def test_hover_ignores_unnamed_stars() -> None:
