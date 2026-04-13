@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import datetime as dt
 from pathlib import Path
-from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -16,6 +15,7 @@ from zstarview.clouddisc.providers._hima_isatss import (
     DATA_VAR,
     GRID_VAR,
     TemplateMeta,
+    TileRecord,
     generate_sparse_layout,
     load_template_from_tile,
     select_equator_tiles,
@@ -231,20 +231,20 @@ def test_select_keys_for_observer_rejects_missing_required_tiles(
     tile_dir.mkdir()
     template_paths = _write_sparse_tile_set(tile_dir)
     provider = HimaProvider(CloudDiscConfig(cache_dir=tmp_path / "cache"))
+    near_missing_tile = TileRecord(token="901", row_offset=0, col_offset=0, x_min=0.0, x_max=1.0, y_min=0.0, y_max=1.0)
+    present_tile = TileRecord(token="002", row_offset=0, col_offset=2, x_min=2.0, x_max=3.0, y_min=0.0, y_max=1.0)
 
     keys = [
-        f"AHI-L2-FLDK-ISatSS/2026/03/21/1800/{template_paths[i].name}"
-        for i in range(3)
+        f"AHI-L2-FLDK-ISatSS/2026/03/21/1800/{template_paths[1].name}",
     ]
 
-    def fake_select_needed_tiles(**_kwargs):
-        return [SimpleNamespace(token="001"), SimpleNamespace(token="999")], np.array([], dtype=np.float64), np.array([], dtype=np.float64)
-
-    def fake_select_equator_tiles(**_kwargs):
-        return [], np.array([], dtype=np.float64), np.array([], dtype=np.float64)
-
-    monkeypatch.setattr(hima_module, "select_needed_tiles", fake_select_needed_tiles)
-    monkeypatch.setattr(hima_module, "select_equator_tiles", fake_select_equator_tiles)
+    monkeypatch.setattr(
+        hima_module,
+        "select_needed_tiles",
+        lambda **_kwargs: ([near_missing_tile, present_tile], np.array([], dtype=np.float64), np.array([], dtype=np.float64)),
+    )
+    monkeypatch.setattr(hima_module, "select_equator_tiles", lambda **_kwargs: ([], np.array([], dtype=np.float64), np.array([], dtype=np.float64)))
+    monkeypatch.setattr(hima_module, "tile_distance_km", lambda record, meta, *, observer_lat, observer_lon: 10.0 if record.token == "901" else 60.0)
     monkeypatch.setattr(provider, "_download", lambda bucket, key: template_paths[0])
 
     with pytest.raises(DataNotFoundError):
@@ -252,9 +252,37 @@ def test_select_keys_for_observer_rejects_missing_required_tiles(
             bucket="noaa-himawari9",
             keys=keys,
             when_utc=dt.datetime(2026, 3, 21, 18, 0, tzinfo=dt.timezone.utc),
-            observer_lat=35.483,
-            observer_lon=140.7,
+            observer_lat=0.0,
+            observer_lon=0.0,
             cloud_shell_km=6376.0,
             azimuth_samples=1440,
             margin_tiles=1,
         )
+
+
+def test_stitch_local_paths_fills_far_missing_render_tiles_as_clear_sky(tmp_path: Path) -> None:
+    tile_dir = tmp_path / "tiles"
+    tile_dir.mkdir()
+    paths = _write_sparse_tile_set(tile_dir)
+    provider = HimaProvider(CloudDiscConfig(cache_dir=tmp_path / "cache"))
+    meta = load_template_from_tile(sorted(tile_dir.glob("*M1C13*.nc"))[0], bucket="local")
+    far_missing_tile = generate_sparse_layout(meta)[0]
+    selected_paths = [path for path in paths if hima_module.extract_tile_token(path.name) != "001"]
+
+    da = provider._stitch_local_paths(
+        selected_paths,
+        source_label=str(tile_dir),
+        observer_lat=0.0,
+        observer_lon=0.0,
+        far_missing_render_tiles=[far_missing_tile],
+    )
+    try:
+        row0 = int(far_missing_tile.row_offset)
+        col0 = int(far_missing_tile.col_offset)
+        row1 = row0 + 2
+        col1 = col0 + 2
+        assert np.allclose(da.values[row0:row1, col0:col1], 315.0)
+        assert float(da.attrs["coverage_fraction"]) == 1.0
+        assert da.attrs["far_clear_fill_tile_count"] == 1
+    finally:
+        da.close()

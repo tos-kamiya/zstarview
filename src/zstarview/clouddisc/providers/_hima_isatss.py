@@ -16,7 +16,6 @@ import xarray as xr
 from pyproj import CRS, Transformer
 
 from ..geo_area import GeoArea
-
 from ..projectors.az import altaz_to_dir_ecef, geodetic_to_ecef
 from ._s3_io import list_s3_keys
 
@@ -61,6 +60,16 @@ class TileRecord:
     x_max: float
     y_min: float
     y_max: float
+
+
+@dataclass(frozen=True)
+class ObserverTileSelection:
+    selected_keys: list[str]
+    render_tiles: list[TileRecord]
+    equator_tiles: list[TileRecord]
+    far_missing_render_tiles: list[TileRecord]
+    near_missing_render_tiles: list[TileRecord]
+    missing_equator_tiles: list[TileRecord]
 
 
 def format_prefix(when_utc: dt.datetime) -> str:
@@ -304,6 +313,14 @@ def select_equator_tiles(
     selected = [record for record in records if record.token in selected_tokens]
     selected.sort(key=lambda item: item.token)
     return selected, poly_x, poly_y
+
+
+def tile_distance_km(record: TileRecord, meta: TemplateMeta, *, observer_lat: float, observer_lon: float) -> float:
+    to_proj = Transformer.from_crs("EPSG:4326", meta.crs, always_xy=True)
+    obs_x, obs_y = to_proj.transform(observer_lon, observer_lat)
+    center_x = (record.x_min + record.x_max) * 0.5
+    center_y = (record.y_min + record.y_max) * 0.5
+    return float(math.hypot(center_x - float(obs_x), center_y - float(obs_y)) / 1000.0)
 
 
 def _validate_same(values: Iterable[object], *, name: str) -> object:
