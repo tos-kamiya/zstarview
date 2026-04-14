@@ -14,13 +14,13 @@ from ..types import ScreenGeometry, UrbanOutlinePolyline
 from .geometry import normalized_to_screen_xy
 from .guides import split_by_gaps
 
-URBAN_OUTLINE_FOREGROUND_MIN_WIDTH = 0.66
-URBAN_OUTLINE_FOREGROUND_MAX_WIDTH = 1.14
-URBAN_OUTLINE_FOREGROUND_CORE_WIDTH = 0.48
-URBAN_OUTLINE_UNDERLAY_MIN_WIDTH = 1.0
-URBAN_OUTLINE_UNDERLAY_WIDTH = 2.2
-URBAN_OUTLINE_UNDERLAY_MID_WIDTH = 3.6
-URBAN_OUTLINE_UNDERLAY_OUTER_WIDTH = 4.6
+URBAN_OUTLINE_FOREGROUND_MIN_WIDTH = 1.32
+URBAN_OUTLINE_FOREGROUND_MAX_WIDTH = 2.28
+URBAN_OUTLINE_FOREGROUND_CORE_WIDTH = 0.96
+URBAN_OUTLINE_UNDERLAY_MIN_WIDTH = 2.0
+URBAN_OUTLINE_UNDERLAY_WIDTH = 4.4
+URBAN_OUTLINE_UNDERLAY_MID_WIDTH = 7.2
+URBAN_OUTLINE_UNDERLAY_OUTER_WIDTH = 9.2
 URBAN_OUTLINE_UNDERLAY_MIN_DISTANCE_KM = 0.01
 URBAN_OUTLINE_NEAR_DISTANCE_KM = 0.5
 
@@ -47,12 +47,12 @@ def _urban_outline_underlay_width(distance_km: float, *, width_scale: float = 1.
     )
     span = URBAN_OUTLINE_NEAR_DISTANCE_KM - URBAN_OUTLINE_UNDERLAY_MIN_DISTANCE_KM
     if span <= 0.0:
-        return URBAN_OUTLINE_UNDERLAY_WIDTH * max(1.0, float(width_scale))
+        return URBAN_OUTLINE_UNDERLAY_WIDTH * float(width_scale)
     t = (URBAN_OUTLINE_NEAR_DISTANCE_KM - d) / span
     base_width = URBAN_OUTLINE_UNDERLAY_MIN_WIDTH + (
         (URBAN_OUTLINE_UNDERLAY_WIDTH - URBAN_OUTLINE_UNDERLAY_MIN_WIDTH) * t
     )
-    return base_width * max(1.0, float(width_scale))
+    return base_width * float(width_scale)
 
 
 def _urban_outline_mid_width(distance_km: float, *, width_scale: float = 1.0) -> float:
@@ -64,10 +64,10 @@ def _urban_outline_mid_width(distance_km: float, *, width_scale: float = 1.0) ->
     )
     span = URBAN_OUTLINE_NEAR_DISTANCE_KM - URBAN_OUTLINE_UNDERLAY_MIN_DISTANCE_KM
     if span <= 0.0:
-        return URBAN_OUTLINE_UNDERLAY_MID_WIDTH * max(1.0, float(width_scale))
+        return URBAN_OUTLINE_UNDERLAY_MID_WIDTH * float(width_scale)
     t = (URBAN_OUTLINE_NEAR_DISTANCE_KM - d) / span
-    base_width = 1.0 + ((URBAN_OUTLINE_UNDERLAY_MID_WIDTH - 1.0) * t)
-    return base_width * max(1.0, float(width_scale))
+    base_width = 2.0 + ((URBAN_OUTLINE_UNDERLAY_MID_WIDTH - 2.0) * t)
+    return base_width * float(width_scale)
 
 
 def _urban_outline_outer_width(distance_km: float, *, width_scale: float = 1.0) -> float:
@@ -79,10 +79,10 @@ def _urban_outline_outer_width(distance_km: float, *, width_scale: float = 1.0) 
     )
     span = URBAN_OUTLINE_NEAR_DISTANCE_KM - URBAN_OUTLINE_UNDERLAY_MIN_DISTANCE_KM
     if span <= 0.0:
-        return URBAN_OUTLINE_UNDERLAY_OUTER_WIDTH * max(1.0, float(width_scale))
+        return URBAN_OUTLINE_UNDERLAY_OUTER_WIDTH * float(width_scale)
     t = (URBAN_OUTLINE_NEAR_DISTANCE_KM - d) / span
-    base_width = 1.2 + ((URBAN_OUTLINE_UNDERLAY_OUTER_WIDTH - 1.2) * t)
-    return base_width * max(1.0, float(width_scale))
+    base_width = 2.4 + ((URBAN_OUTLINE_UNDERLAY_OUTER_WIDTH - 2.4) * t)
+    return base_width * float(width_scale)
 
 
 def _urban_outline_foreground_width(distance_km: float, *, width_scale: float = 1.0) -> float:
@@ -100,7 +100,7 @@ def _urban_outline_foreground_width(distance_km: float, *, width_scale: float = 
         base_width = URBAN_OUTLINE_FOREGROUND_MIN_WIDTH + (
             (URBAN_OUTLINE_FOREGROUND_MAX_WIDTH - URBAN_OUTLINE_FOREGROUND_MIN_WIDTH) * t
         )
-    return base_width * max(1.0, float(width_scale))
+    return base_width * float(width_scale)
 
 
 def _minimal_azimuth_cover(azimuth_deg: List[float]) -> Tuple[float, float, float]:
@@ -166,7 +166,7 @@ def draw_terrain_horizon_line(
     color.setAlphaF(terrain_horizon_line_alpha(effective_opacity))
     outline = QColor(*TERRAIN_HORIZON_LINE_COLOR)
     outline.setAlpha(max(0, min(255, int(round(135.0 * effective_opacity + 35.0)))))
-    width_scale = max(1.0, float(line_width_scale))
+    width_scale = float(line_width_scale)
     painter.save()
     for frag in split_by_gaps_func(points):
         if len(frag) < 2:
@@ -212,7 +212,7 @@ def draw_urban_outlines(
         return
 
     painter.save()
-    width_scale = max(1.0, float(line_width_scale))
+    width_scale = float(line_width_scale)
     for outline_entry in urban_outlines:
         outline = list(outline_entry.points)
         distance_km = float(getattr(outline_entry, "distance_km", float("inf")))
