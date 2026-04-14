@@ -7,8 +7,8 @@ import numpy as np
 from PySide6.QtCore import QPoint, QPointF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
 
-from ..aircraft_constants import AIRCRAFT_OVERLAY_LINE_COLOR_RGB
 from ..astro import altaz_to_normalized_xy
+from ..paths import PALETTE_ASTERISM_RGB
 from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
 
@@ -150,10 +150,7 @@ def draw_deep_sky_shapes(
     if not np.any(finite_shape):
         return
 
-    if preset in ("white", "day"):
-        fill_rgb = (55, 132, 220)
-    else:
-        fill_rgb = (110, 185, 255)
+    fill_rgb = (110, 185, 255)
 
     painter.save()
     painter.setPen(Qt.PenStyle.NoPen)
@@ -199,10 +196,10 @@ def draw_dso_hover_info(
     alt = float(obj.get("alt", 0.0))
     az = float(obj.get("az", 0.0))
     if preset in ("white", "day"):
-        hover_pen = QColor(*AIRCRAFT_OVERLAY_LINE_COLOR_RGB, 220)
+        hover_pen = QColor(*PALETTE_ASTERISM_RGB, 220)
         hover_fill = QColor(70, 140, 230, 70)
     else:
-        hover_pen = QColor(110, 195, 255, 230)
+        hover_pen = QColor(*PALETTE_ASTERISM_RGB, 230)
         hover_fill = QColor(110, 185, 255, 62)
     base_poly = _dso_ellipse_polygon(
         alt_deg=alt,
