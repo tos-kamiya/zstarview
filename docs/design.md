@@ -274,6 +274,25 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `splash.py` は `ThemeStyle.splash` を色定義の参照元とし、背景 alpha は `ThemeStyle.window_background` から導出した平均 alpha を使う。
 - 明るい preset (`day`, `white`) では、暗い preset (`night`, `black`) より広い文字アウトライン幅を持てる。
 
+#### 4.3.0 テーマ文字色メモ
+
+`ThemeStyle.text` は HUD、マウスホバー中の名前ラベル、惑星ラベルなどの通常文字列に使われる。  
+`ThemeStyle.status_text` はステータス行などの補助文字列に使われる。  
+白系テーマは、読みやすさを少し上げるため、暖色寄りのままやや白に近い値へ寄せてある。
+
+- `night`
+  - text: `(180, 180, 180)` / `#B4B4B4`
+  - status_text: `(190, 190, 160)` / `#BEBEA0`
+- `white`
+  - text: `(229, 163, 100)` / `#E5A364`
+  - status_text: `(220, 155, 94)` / `#DC9B5E`
+- `day`
+  - text: `(233, 148, 112)` / `#E99470`
+  - status_text: `(224, 142, 106)` / `#E08E6A`
+- `black`
+  - text: `(246, 249, 255)` / `#F6F9FF`
+  - status_text: `(255, 220, 220)` / `#FFDCDC`
+
 #### 4.3.0a カラーパレット参照
 
 `color-palette.png` の RGB 値は、描画色の調整時に参照する固定メモとして以下を残す。
