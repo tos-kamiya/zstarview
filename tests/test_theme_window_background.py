@@ -19,3 +19,10 @@ def test_white_and_day_outline_colors_use_midpoint_tones() -> None:
     assert THEME_STYLES_BY_PRESET["white"].status_text.outline == (76, 44, 19, 169)
     assert THEME_STYLES_BY_PRESET["day"].text.outline == (78, 44, 25, 163)
     assert THEME_STYLES_BY_PRESET["day"].status_text.outline == (73, 42, 24, 165)
+
+
+def test_white_and_day_text_colors_are_slightly_brighter() -> None:
+    assert THEME_STYLES_BY_PRESET["white"].text.text == (229, 163, 100)
+    assert THEME_STYLES_BY_PRESET["white"].status_text.text == (220, 155, 94)
+    assert THEME_STYLES_BY_PRESET["day"].text.text == (233, 148, 112)
+    assert THEME_STYLES_BY_PRESET["day"].status_text.text == (224, 142, 106)
