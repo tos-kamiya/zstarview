@@ -410,9 +410,7 @@ def test_satellite_label_uses_black_theme_style_in_white_theme(monkeypatch) -> N
 
     assert len(label_candidates) == 1
     style = label_candidates[0]["style"]
-    expected_rgb = tuple(
-        int(round(component * 0.9 + 255 * 0.1)) for component in PALETTE_AIRCRAFT_AND_SATELLITE_RGB
-    )
+    expected_rgb = PALETTE_AIRCRAFT_AND_SATELLITE_RGB
     assert (style.text_color.red(), style.text_color.green(), style.text_color.blue()) == expected_rgb
     assert style.outline_width == render_text.resolve_text_style("day", QFont()).outline_width
 
@@ -462,9 +460,7 @@ def test_aircraft_label_uses_black_theme_style_in_day_theme() -> None:
 
     assert len(label_candidates) == 1
     style = label_candidates[0]["style"]
-    expected_rgb = tuple(
-        int(round(component * 0.9 + 255 * 0.1)) for component in PALETTE_AIRCRAFT_AND_SATELLITE_RGB
-    )
+    expected_rgb = PALETTE_AIRCRAFT_AND_SATELLITE_RGB
     assert (style.text_color.red(), style.text_color.green(), style.text_color.blue()) == expected_rgb
     assert style.outline_width == render_text.resolve_text_style("night", QFont()).outline_width
 
