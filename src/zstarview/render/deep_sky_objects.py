@@ -7,6 +7,7 @@ import numpy as np
 from PySide6.QtCore import QPoint, QPointF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
 
+from ..aircraft_constants import AIRCRAFT_OVERLAY_LINE_COLOR_RGB
 from ..astro import altaz_to_normalized_xy
 from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
@@ -198,7 +199,7 @@ def draw_dso_hover_info(
     alt = float(obj.get("alt", 0.0))
     az = float(obj.get("az", 0.0))
     if preset in ("white", "day"):
-        hover_pen = QColor(40, 122, 220, 220)
+        hover_pen = QColor(*AIRCRAFT_OVERLAY_LINE_COLOR_RGB, 220)
         hover_fill = QColor(70, 140, 230, 70)
     else:
         hover_pen = QColor(110, 195, 255, 230)

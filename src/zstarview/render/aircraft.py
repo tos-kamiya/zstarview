@@ -9,7 +9,7 @@ from ..astro import altaz_to_normalized_xy, is_in_fov
 from ..paths import FIELD_OF_VIEW_DEG
 from ..types import ScreenGeometry
 from .geometry import normalized_to_screen_xy
-from .text import blend_color_toward_white, resolve_text_style
+from .text import resolve_text_style
 
 _AIRCRAFT_CALLSIGN_MAX_DISTANCE_KM = 10.0
 _AIRCRAFT_MAX_DRAW_DISTANCE_KM = 50.0
@@ -35,7 +35,7 @@ def draw_aircraft_overlay(
     width_scale = max(1.0, float(line_width_scale))
     line_color = QColor(*AIRCRAFT_OVERLAY_LINE_COLOR_RGB, 255)
     label_style = resolve_text_style(preset, painter.font(), opacity=layer_opacity)
-    label_color = blend_color_toward_white(QColor(*AIRCRAFT_OVERLAY_LINE_COLOR_RGB), 0.1)
+    label_color = QColor(*AIRCRAFT_OVERLAY_LINE_COLOR_RGB)
     label_color.setAlpha(label_style.text_color.alpha())
     label_style = type(label_style)(
         font=label_style.font,
