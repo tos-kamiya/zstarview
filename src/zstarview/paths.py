@@ -115,12 +115,12 @@ THEME_STYLES_BY_PRESET = {
     ),
     "white": ThemeStyle(
         text=TextStyle(
-            text=(228, 158, 92),
+            text=(229, 163, 100),
             outline=(79, 45, 19, 166),
             outline_width=3.0,
         ),
         status_text=TextStyle(
-            text=(218, 150, 86),
+            text=(220, 155, 94),
             outline=(76, 44, 19, 169),
             outline_width=3.0,
         ),
@@ -135,17 +135,17 @@ THEME_STYLES_BY_PRESET = {
         splash=SplashStyle(
             gradient_rgb=((252, 252, 252), (234, 234, 234), (206, 206, 206)),
             frame_rgb=(158, 178, 206),
-            info_text_rgb=(228, 158, 92),
+            info_text_rgb=(229, 163, 100),
         ),
     ),
     "day": ThemeStyle(
         text=TextStyle(
-            text=(232, 142, 104),
+            text=(233, 148, 112),
             outline=(78, 44, 25, 163),
             outline_width=3.0,
         ),
         status_text=TextStyle(
-            text=(222, 136, 98),
+            text=(224, 142, 106),
             outline=(73, 42, 24, 165),
             outline_width=3.0,
         ),
@@ -160,7 +160,7 @@ THEME_STYLES_BY_PRESET = {
         splash=SplashStyle(
             gradient_rgb=((240, 248, 255), (226, 240, 252), (206, 228, 246)),
             frame_rgb=(158, 182, 206),
-            info_text_rgb=(232, 142, 104),
+            info_text_rgb=(233, 148, 112),
         ),
     ),
     "black": ThemeStyle(
