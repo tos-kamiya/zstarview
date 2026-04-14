@@ -49,13 +49,13 @@ Urban outline examples from several cities worldwide:
 <table>
   <tr>
     <td align="center" width="25%"><img src="docs/images/screenshot-tokyotower.png" alt="Near Tokyo Tower, Tokyo" width="100%" /></td>
-    <td align="center" width="25%"><img src="docs/images/screenshot-downtowndubai.png" alt="Downtown Dubai" width="100%" /></td>
+    <td align="center" width="25%"><img src="docs/images/screenshot-burjkhalifa.png" alt="Near Burj Khalifa, Dubai" width="100%" /></td>
     <td align="center" width="25%"><img src="docs/images/screenshot-marinabay.png" alt="Marina Bay, Singapore" width="100%" /></td>
     <td align="center" width="25%"><img src="docs/images/screenshot-sydney.png" alt="Circular Quay, Sydney" width="100%" /></td>
   </tr>
   <tr>
     <td align="center"><sub>Near Tokyo Tower, Tokyo</sub></td>
-    <td align="center"><sub>Downtown Dubai</sub></td>
+    <td align="center"><sub>Near Burj Khalifa, Dubai</sub></td>
     <td align="center"><sub>Marina Bay, Singapore</sub></td>
     <td align="center"><sub>Circular Quay, Sydney</sub></td>
   </tr>
