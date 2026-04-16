@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-04-13
+最終更新: 2026-04-17
 
 ## 1. この文書の位置づけ
 
@@ -475,6 +475,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - Himawari の slot 採用は、88 タイルの完全一致を前提にせず、observer 描画と warm-threshold 推定に必要なタイルがそろっているかで判定してよい
   - Himawari の観測者向け描画では、観測地点からおおむね `50 km` より遠い欠損タイルを clear-sky 扱いで補完してよい
   - Himawari の warm-threshold 推定は赤道帯タイルを独立に扱い、欠損時は clear-sky 補完ではなく直近の有効な warm-threshold を再利用してよい
+  - `_s3_io.py` は共通 S3 ダウンロード helper として、cache hit と download 完了後の両方を provider 固有 validator で検証してよい
+  - 検証に失敗した cached file は破棄し、再取得パスへ戻してよい
+  - 検証に失敗した freshly downloaded file は atomic replace せず破棄してよい
 - `src/zstarview/clouddisc/projectors/az.py`
   - 空ディスク向け投影
   - 既定 `alt_min_deg = 1.0°` により、地平線より少し上まで雲投影を残しつつ、極端な低仰角ノイズは可視マスクから外す
@@ -493,6 +496,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 地形地平線の状態保持
 - `src/zstarview/terrain/dem.py`
   - DEM 取得、読込、サンプリング
+  - GeoTIFF として読み込めるかを cache reuse 前に確認し、壊れた tile は破棄して再取得に戻す
 - `src/zstarview/terrain/horizon.py`
   - 方位ごとの見かけ地平線計算
 
@@ -1144,6 +1148,8 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - DEM / Overture 建物キャッシュは、各取得単位ごとに `fetched_at_utc` をメタデータとして持たせ、利用時に TTL 超過かどうかを判定できるようにする。
 - TTL 超過時は「即削除」ではなく「stale として再取得対象」に落とし、再取得成功までは既存キャッシュをフォールバック利用できるようにする。
 - 別系統の clean up は任意とし、長期間使われない stale キャッシュだけを後段で物理削除してよい。初期方針としては `TTL x 3` 超過を clean up 候補としてよい。
+- cache hit のたびに利用可能性を検証し、壊れた DEM / 建物 / 雲キャッシュは stale 扱いではなく invalid として破棄してよい。
+- freshly downloaded payload も、ファイル名が期待どおりでも実体が壊れていればキャッシュへ昇格させず再取得失敗として扱ってよい。
 - `--clear-long-lived-cache` は別系統の明示的削除手段として扱い、TTL 判定とは独立に `copernicus-dem`、`overture_buildings`、`overture_skyscrapers` を削除してよい。
 - ただし常用防止のため、cache root 直下に `clear_long_lived_cache_meta.json` を置き、`last_cleared_at_utc` を記録して `3日` のクールダウンを設ける。
 - クールダウン中に `--clear-long-lived-cache` が再度指定された場合は、削除を実行せず splash と通常ログの両方に拒否理由を表示して終了してよい。
