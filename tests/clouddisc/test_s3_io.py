@@ -33,9 +33,16 @@ class _Paginator:
 
 
 class _S3Client:
-    def __init__(self, *, paginator: _Paginator | None = None, download_exc: Exception | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        paginator: _Paginator | None = None,
+        download_exc: Exception | None = None,
+        payload: bytes = b"ok",
+    ) -> None:
         self._paginator = paginator or _Paginator()
         self._download_exc = download_exc
+        self._payload = payload
         self.download_calls = 0
 
     def get_paginator(self, name: str):
@@ -46,7 +53,7 @@ class _S3Client:
         self.download_calls += 1
         if self._download_exc is not None:
             raise self._download_exc
-        fileobj.write(b"ok")
+        fileobj.write(self._payload)
 
 
 def test_list_s3_keys_success() -> None:
@@ -111,6 +118,57 @@ def test_download_s3_object_skips_when_destination_exists(tmp_path: Path) -> Non
     assert out == dst
     assert dst.read_bytes() == b"cached"
     assert s3.download_calls == 0
+
+
+def test_download_s3_object_discards_invalid_cached_file(tmp_path: Path) -> None:
+    dst = tmp_path / "cached.bin"
+    dst.write_bytes(b"bad")
+    s3 = _S3Client(payload=b"ok")
+    seen: list[Path] = []
+
+    def validate(path: Path) -> None:
+        seen.append(path)
+        if path.read_bytes() != b"ok":
+            raise ValueError("invalid payload")
+
+    out = download_s3_object(
+        s3_client=s3,
+        bucket="bucket",
+        key="key",
+        dst=dst,
+        satellite="G18",
+        product="CMIPF-C13",
+        time_utc=datetime.now(timezone.utc),
+        validate_func=validate,
+    )
+    assert out == dst
+    assert dst.read_bytes() == b"ok"
+    assert s3.download_calls == 1
+    assert seen[0].read_bytes() == b"bad"
+    assert seen[1].read_bytes() == b"ok"
+
+
+def test_download_s3_object_rejects_invalid_download(tmp_path: Path) -> None:
+    dst = tmp_path / "new.bin"
+    s3 = _S3Client(payload=b"bad")
+
+    def validate(path: Path) -> None:
+        if path.read_bytes() != b"ok":
+            raise ValueError("invalid payload")
+
+    with pytest.raises(DownloadError):
+        download_s3_object(
+            s3_client=s3,
+            bucket="bucket",
+            key="key",
+            dst=dst,
+            satellite="HIMAWARI",
+            product="HSD/ISatSS-B13",
+            time_utc=datetime.now(timezone.utc),
+            validate_func=validate,
+        )
+    assert not dst.exists()
+    assert s3.download_calls == 1
 
 
 def test_download_s3_object_timeout_maps_to_custom_error(tmp_path: Path) -> None:
