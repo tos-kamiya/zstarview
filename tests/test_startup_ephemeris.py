@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import io
+import sys
+
 import pytest
 
-from zstarview.astro import _starfield_load
+from zstarview.astro import _starfield_load, load_ephemeris
 from zstarview.launch_time import LaunchSetupError
 from zstarview.gui.viewer import _verify_ephemeris_for_launch
 
@@ -16,12 +19,11 @@ def test_de442s_uses_naif_planets_url() -> None:
 def test_startup_verify_ephemeris_passes_when_loader_succeeds(monkeypatch) -> None:
     calls: list[str] = []
 
-    def fake_loader(filename: str) -> object:
-        calls.append(filename)
+    def fake_load_ephemeris() -> object:
+        calls.append("de442s.bsp")
         return object()
 
-    monkeypatch.setattr("zstarview.gui.viewer._starfield_load", fake_loader)
-    monkeypatch.setattr("zstarview.gui.viewer.EPHEMERIS_FILENAME", "de442s.bsp")
+    monkeypatch.setattr("zstarview.gui.viewer.load_ephemeris", fake_load_ephemeris)
 
     _verify_ephemeris_for_launch()
 
@@ -29,10 +31,32 @@ def test_startup_verify_ephemeris_passes_when_loader_succeeds(monkeypatch) -> No
 
 
 def test_startup_verify_ephemeris_aborts_on_oserror(monkeypatch) -> None:
-    def fake_loader(_filename: str) -> object:
+    def fake_load_ephemeris() -> object:
         raise OSError("network blocked")
 
-    monkeypatch.setattr("zstarview.gui.viewer._starfield_load", fake_loader)
+    monkeypatch.setattr("zstarview.gui.viewer.load_ephemeris", fake_load_ephemeris)
 
     with pytest.raises(LaunchSetupError):
         _verify_ephemeris_for_launch()
+
+
+def test_load_ephemeris_provides_dummy_standard_streams_when_missing(monkeypatch) -> None:
+    captured: list[tuple[object | None, object | None, str]] = []
+
+    def fake_loader(filename: str) -> object:
+        captured.append((sys.stdout, sys.stderr, filename))
+        return object()
+
+    monkeypatch.setattr("zstarview.astro._starfield_load", fake_loader)
+    monkeypatch.setattr("sys.stdout", None)
+    monkeypatch.setattr("sys.stderr", None)
+
+    load_ephemeris()
+
+    assert len(captured) == 1
+    stdout_obj, stderr_obj, filename = captured[0]
+    assert isinstance(stdout_obj, io.StringIO)
+    assert isinstance(stderr_obj, io.StringIO)
+    assert filename == "de442s.bsp"
+    assert sys.stdout is None
+    assert sys.stderr is None
