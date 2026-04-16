@@ -27,10 +27,11 @@ class _FakeS3Client:
         handle.write(b"fake-dem")
 
 
-def test_read_dem_tile_fetched_at_utc_migrates_legacy_cache(tmp_path: Path) -> None:
+def test_read_dem_tile_fetched_at_utc_migrates_legacy_cache(monkeypatch, tmp_path: Path) -> None:
     tile_path = tmp_path / "tile.tif"
     tile_path.write_bytes(b"legacy")
     now = datetime(2026, 3, 27, 2, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr("zstarview.terrain.dem._is_valid_dem_tile", lambda path: path.read_bytes() == b"legacy")
 
     fetched_at_utc = read_dem_tile_fetched_at_utc(tile_path, now_utc=now)
 
@@ -68,6 +69,10 @@ def test_fetch_copernicus_dem_uses_stale_tile_when_refresh_fails(monkeypatch, tm
     monkeypatch.setattr(
         "zstarview.terrain.dem.collect_copernicus_tile_keys",
         lambda _bbox: ["Copernicus_DSM_COG_30_N35_00_E139_00_DEM/Copernicus_DSM_COG_30_N35_00_E139_00_DEM.tif"],
+    )
+    monkeypatch.setattr(
+        "zstarview.terrain.dem._is_valid_dem_tile",
+        lambda path: path.read_bytes() == b"stale",
     )
 
     got = fetch_copernicus_dem(
@@ -134,6 +139,10 @@ def test_fetch_copernicus_dem_treats_legacy_tile_as_fresh_after_migration(monkey
     monkeypatch.setattr(
         "zstarview.terrain.dem.collect_copernicus_tile_keys",
         lambda _bbox: ["Copernicus_DSM_COG_30_N35_00_E139_00_DEM/Copernicus_DSM_COG_30_N35_00_E139_00_DEM.tif"],
+    )
+    monkeypatch.setattr(
+        "zstarview.terrain.dem._is_valid_dem_tile",
+        lambda path: path.read_bytes() == b"legacy",
     )
 
     got = fetch_copernicus_dem(

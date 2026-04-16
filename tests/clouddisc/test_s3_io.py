@@ -124,11 +124,12 @@ def test_download_s3_object_discards_invalid_cached_file(tmp_path: Path) -> None
     dst = tmp_path / "cached.bin"
     dst.write_bytes(b"bad")
     s3 = _S3Client(payload=b"ok")
-    seen: list[Path] = []
+    seen: list[tuple[str, bytes]] = []
 
     def validate(path: Path) -> None:
-        seen.append(path)
-        if path.read_bytes() != b"ok":
+        data = path.read_bytes()
+        seen.append((path.name, data))
+        if data != b"ok":
             raise ValueError("invalid payload")
 
     out = download_s3_object(
@@ -144,8 +145,7 @@ def test_download_s3_object_discards_invalid_cached_file(tmp_path: Path) -> None
     assert out == dst
     assert dst.read_bytes() == b"ok"
     assert s3.download_calls == 1
-    assert seen[0].read_bytes() == b"bad"
-    assert seen[1].read_bytes() == b"ok"
+    assert seen == [("cached.bin", b"bad"), ("cached.bin.tmp", b"ok")]
 
 
 def test_download_s3_object_rejects_invalid_download(tmp_path: Path) -> None:
