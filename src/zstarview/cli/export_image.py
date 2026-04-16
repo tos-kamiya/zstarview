@@ -28,7 +28,7 @@ from ..aircraft import (
 )
 from ..overlay_time import classify_target_time, overlay_availability_for_delta
 from ..satellites import project_satellite_records, resolve_satellite_elements_for_time
-from ..astro import _starfield_load
+from ..astro import load_ephemeris
 from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_lived_cache
 from ..catalog import load_dso_catalog, load_star_catalog
 from ..clouddisc import CloudDisc, CloudDiscConfig
@@ -138,7 +138,7 @@ def _load_dso_catalog_for_export():
 def _verify_ephemeris_for_export() -> None:
     logger.info("Checking ephemeris cache...")
     try:
-        _starfield_load(EPHEMERIS_FILENAME)
+        load_ephemeris()
     except OSError as exc:
         logger.error(
             "Failed to load ephemeris %s. The app cannot continue until this file "

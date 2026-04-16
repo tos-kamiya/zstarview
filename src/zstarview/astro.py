@@ -1,4 +1,7 @@
+import io
 import math
+import sys
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, List, Optional, Tuple, TypedDict, cast
 
@@ -36,6 +39,32 @@ _ICRS_UNIT_BASIS = SkyCoord(
     dec=np.array([0.0, 0.0, 90.0]) * u.deg,
     frame="icrs",
 )
+
+
+@contextmanager
+def _temporary_standard_stream_fallback():
+    """Provide dummy stdio streams for pythonw/gui-script downloads on Windows."""
+
+    original_stdout = sys.stdout
+    original_stderr = sys.stderr
+    fallback_stdout = io.StringIO() if original_stdout is None else None
+    fallback_stderr = io.StringIO() if original_stderr is None else None
+    try:
+        if fallback_stdout is not None:
+            sys.stdout = fallback_stdout
+        if fallback_stderr is not None:
+            sys.stderr = fallback_stderr
+        yield
+    finally:
+        sys.stdout = original_stdout
+        sys.stderr = original_stderr
+
+
+def load_ephemeris() -> Any:
+    """Load the configured ephemeris, even under Windows gui-script launches."""
+
+    with _temporary_standard_stream_fallback():
+        return _starfield_load(EPHEMERIS_FILENAME)
 
 
 class StarCatalogArrays(TypedDict):
@@ -455,7 +484,7 @@ def calculate_lunar_eclipse_data(t: astropy.time.Time, observer) -> LunarEclipse
     - apparent moon radius.
     """
     # Load planetary ephemerides
-    planets = _starfield_load(EPHEMERIS_FILENAME)
+    planets = load_ephemeris()
     earth = planets["earth"]
     sun = planets["sun"]
     moon = planets["moon"]
@@ -550,7 +579,7 @@ def _circle_overlap_area_fraction(R: float, r: float, d: float) -> float:
 
 
 def calculate_solar_eclipse_data(t: astropy.time.Time, observer) -> SolarEclipseInfo:
-    planets = _starfield_load(EPHEMERIS_FILENAME)
+    planets = load_ephemeris()
     sun = planets["sun"]
     moon = planets["moon"]
 
@@ -618,7 +647,7 @@ def calculate_planets(
     """Calculate all planetary bodies (Sun, Moon, planets)."""
     ts = skyfield.api.load.timescale()
     t = ts.from_astropy(astropy_time)
-    planets = _starfield_load(EPHEMERIS_FILENAME)
+    planets = load_ephemeris()
     observer = planets["earth"] + Topos(
         latitude_degrees=lat,
         longitude_degrees=lon,

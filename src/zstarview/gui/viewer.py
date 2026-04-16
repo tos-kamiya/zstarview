@@ -5,7 +5,7 @@ import math
 import json
 from dataclasses import replace
 
-from ..astro import _starfield_load
+from ..astro import load_ephemeris
 from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_lived_cache
 from ..catalog import load_dso_catalog, load_star_catalog
 from ..location_resolver import (
@@ -77,7 +77,7 @@ def _load_dso_catalog_for_launch():
 def _verify_ephemeris_for_launch() -> None:
     logger.info("Checking ephemeris cache...")
     try:
-        _starfield_load(EPHEMERIS_FILENAME)
+        load_ephemeris()
     except OSError as exc:
         logger.error(
             "Failed to load ephemeris %s. The app cannot continue until this file "
