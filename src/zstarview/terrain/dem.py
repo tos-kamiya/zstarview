@@ -231,6 +231,10 @@ def read_dem_tile_fetched_at_utc(
 ) -> datetime | None:
     if not tile_path.exists():
         return None
+    if not _is_valid_dem_tile(tile_path):
+        logger.warning("Discarding invalid DEM cache tile: %s", tile_path)
+        _discard_dem_tile(tile_path)
+        return None
     metadata_path = dem_tile_metadata_path(tile_path)
     payload: dict[str, object] = {}
     if metadata_path.exists():
@@ -274,6 +278,26 @@ def _write_dem_tile_metadata(tile_path: Path, payload: dict[str, object]) -> Non
     metadata_path.write_text(json.dumps(payload, sort_keys=True), encoding="utf-8")
 
 
+def _discard_dem_tile(tile_path: Path) -> None:
+    tile_path.unlink(missing_ok=True)
+    dem_tile_metadata_path(tile_path).unlink(missing_ok=True)
+
+
+def _is_valid_dem_tile(tile_path: Path) -> bool:
+    if not tile_path.exists():
+        return False
+    try:
+        import rasterio
+    except ImportError:
+        return True
+
+    try:
+        with rasterio.open(tile_path) as dataset:
+            return dataset.count > 0
+    except Exception:
+        return False
+
+
 def _parse_utc(text: str) -> datetime:
     return _normalize_utc(datetime.fromisoformat(str(text).replace("Z", "+00:00")))
 
@@ -314,7 +338,10 @@ def fetch_copernicus_dem(
     for key in tile_keys:
         dst = cache_dir / key
         if dst.exists():
-            if not is_dem_tile_stale(dst, ttl_days=ttl_days, now_utc=now):
+            if not _is_valid_dem_tile(dst):
+                logger.warning("Discarding invalid DEM cache tile: %s", dst)
+                _discard_dem_tile(dst)
+            elif not is_dem_tile_stale(dst, ttl_days=ttl_days, now_utc=now):
                 downloaded_paths.append(dst)
                 continue
             logger.info(
@@ -327,6 +354,10 @@ def fetch_copernicus_dem(
         try:
             with tmp_path.open("wb") as handle:
                 s3.download_fileobj(COPERNICUS_DEM_BUCKET, key, handle)
+            if not _is_valid_dem_tile(tmp_path):
+                raise RuntimeError(
+                    f"Downloaded DEM tile is not a valid GeoTIFF: s3://{COPERNICUS_DEM_BUCKET}/{key}"
+                )
             tmp_path.replace(dst)
             _write_dem_tile_metadata(
                 dst,

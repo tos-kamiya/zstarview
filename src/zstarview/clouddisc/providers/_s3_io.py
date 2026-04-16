@@ -5,12 +5,15 @@ Shared S3 I/O helpers for satellite providers.
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
-from typing import List
+from typing import Callable, List
 
 from botocore.exceptions import ConnectTimeoutError, ReadTimeoutError
 
 from ..types import CloudMeta, DownloadError, TimeoutError
+
+logger = logging.getLogger(__name__)
 
 
 def list_s3_keys(
@@ -67,16 +70,39 @@ def download_s3_object(
     satellite: str,
     product: str,
     time_utc,
+    validate_func: Callable[[Path], None] | None = None,
 ) -> Path:
     """Download an S3 object with atomic file replacement and unified errors."""
     if dst.exists():
-        return dst
+        if validate_func is None:
+            return dst
+        try:
+            validate_func(dst)
+            return dst
+        except Exception:
+            logger.warning("Discarding invalid cached file: %s", dst)
+            dst.unlink(missing_ok=True)
 
     dst.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = dst.with_suffix(dst.suffix + ".tmp")
     try:
         with tmp_path.open("wb") as f:
             s3_client.download_fileobj(bucket, key, f)
+        if validate_func is not None:
+            try:
+                validate_func(tmp_path)
+            except Exception as e:
+                logger.warning("Discarding invalid downloaded file: %s", tmp_path)
+                meta = CloudMeta(
+                    satellite=satellite,
+                    product=product,
+                    time_utc=time_utc,
+                    src_paths=[],
+                )
+                raise DownloadError(
+                    f"Downloaded s3://{bucket}/{key} failed validation",
+                    meta=meta,
+                ) from e
         tmp_path.replace(dst)
     except (ConnectTimeoutError, ReadTimeoutError) as e:
         meta = CloudMeta(

@@ -113,10 +113,6 @@ class GoesProvider:
     def _download(self, bucket: str, key: str) -> Path:
         """Downloads a file from S3, caching it locally using an atomic write."""
         dst = self.root / bucket / key
-        if dst.exists():
-            logger.debug("Using cached file: %s", dst)
-            return dst
-
         s3 = self._s3(bucket)
 
         logger.debug("Downloading s3://%s/%s", bucket, key)
@@ -128,6 +124,7 @@ class GoesProvider:
             satellite=_GOES_BUCKET_TO_SATELLITE[bucket],
             product="CMIPF-C13",
             time_utc=dt.datetime.now(dt.timezone.utc),
+            validate_func=lambda path: load_cmi_with_area(path),
         )
 
     def _fetch_bt_c13_once(self, sat: str, when_utc: dt.datetime, search_back_minutes: int) -> Optional[Tuple[xr.DataArray, dt.datetime, List[Path]]]:

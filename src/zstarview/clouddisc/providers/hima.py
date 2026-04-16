@@ -57,9 +57,6 @@ class HimaProvider:
 
     def _download(self, bucket: str, key: str) -> Path:
         dst = self.root_is / bucket / key
-        if dst.exists():
-            logger.debug("Using cached file: %s", dst)
-            return dst
         logger.debug("Downloading s3://%s/%s", bucket, key)
         return download_s3_object(
             s3_client=self._s3(),
@@ -69,6 +66,7 @@ class HimaProvider:
             satellite="HIMAWARI",
             product="ISatSS-B13",
             time_utc=dt.datetime.now(dt.timezone.utc),
+            validate_func=lambda path: load_template_from_tile(path, bucket=bucket),
         )
 
     def _find_isatss(self, when_utc: dt.datetime) -> Tuple[Optional[str], Optional[List[str]], Optional[dt.datetime]]:
