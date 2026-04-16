@@ -98,7 +98,7 @@ zstarview -Z E -A 25 Tokyo
 - Urban outline overlay: major rooflines are drawn for the current viewpoint, with optional distant skyscrapers in dense urban areas.
 - Flexible location input: start from a city, tower, mountain, lat/lon, or online place/station search.
 - Adjustable view center: change the view center from the CLI or with the arrow keys.
-- Python support: routinely tested on CPython 3.10, 3.11, 3.12, and 3.13.
+- Python support: routinely tested on CPython 3.10, 3.11, 3.12, 3.13, and 3.14.
 
 ## Common Options
 
