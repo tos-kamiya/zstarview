@@ -559,7 +559,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - Skyfield `EarthSatellite` を観測地点基準の `alt/az` へ変換
   - Horizons spacecraft の topocentric alt/az を直読
   - 視野内判定前の人工衛星描画用軽量モデルを生成
-  - `ISS` と Horizons spacecraft の marker scale とラベル情報を決定
+  - `ISS` と Horizons spacecraft の marker scale と hover 表示名を決定
 - `src/zstarview/gui/satellite_state.py`
   - `ISS` と Horizons spacecraft の最新軌道要素
   - 最新の描画用人工衛星マーカー列
@@ -573,7 +573,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 軌道要素取得結果の UI 反映
 - `src/zstarview/render/satellites.py`
   - 人工衛星マーカーの描画
-  - 航空機と同系統の紫色、小型クロス、`ISS` の marker を担当
+  - 航空機と同系統の紫色、小型クロス、人工衛星の marker を担当
 - `src/zstarview/render/pipeline.py`
   - `satellites` レイヤーを `planets` の後、`aircraft` の前へ挿入
 
@@ -700,7 +700,6 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `alt_deg`
   - `az_deg`
   - `marker_scale`
-  - `show_label`
   - 描画直前まで絞り込んだ人工衛星マーカーモデル
   - 初期実装では軌跡線を持たず、現在時刻の位置だけを保持する
 - `SatelliteState`
@@ -1050,11 +1049,13 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - 人工衛星描画は realtime view の現在時刻だけを描き、タイムシフト表示では描かない。
 - 初期実装では軌跡線を持たない。
 - `satellite_opacity <= 0.0` または `ISS` 表示が無効の間は、人工衛星 fetch timer と位置再計算 timer を止めてよい。
-- 描画は視野内に限定し、地平線下も表示してよい。`ISS` は少し大きい marker を使ってよい。
+- 描画は視野内に限定し、地平線下も表示してよい。
 - GUI 既定の有効対象は `ISS` としてよい。
 - 航空機と人工衛星の位置再計算は、共通 overlay projection timer で同期させてよい。
 - GUI から再表示したときは `last_success_utc` を見て fresh cache を優先し、不要な `wheretheiss.at` / CelesTrak 再取得を避けてよい。
 - stale cache は通常は再取得優先でよいが、失敗 backoff 中は表示継続に使ってよい。
+- 人工衛星マーカーは常時ラベルを描かず、hover 名表示を前提としてよい。
+- hover の表示名は `SatelliteOverlayPoint.satellite_name` から生成してよい。
 - タイムシフト表示では人工衛星レイヤー自体を無効化してよく、current cache の過去探索や archive snapshot は持たなくてよい。
 
 ### 8.5 航空機オーバーレイの更新粒度
