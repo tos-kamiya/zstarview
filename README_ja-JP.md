@@ -15,7 +15,7 @@
 - **DSO 表示**: 名前付きの DSO（銀河/散開星団/球状星団）を薄い青系の領域として表します。
 - **アステリズム表示**: （IAU の正式な星座境界ではなく通称のパターンとしての）星座（アステリズム）を暗い線で常時表示します。アステリズムに含まれる恒星にマウスホバーすると、そのアステリズムを明るく強調してラベルを表示します。同一の恒星にが複数のアステリズムに含まれる場合は 3 秒ごとに切り替えます。
 - **衛星雲画像・空色ディスク**: リアルタイムに Himawari/GOES 衛星のデータをダウンロードし、縞模様（ハッチ）の重ね描きとして表示します。空色ディスクは雲の下に見えるままで、衛星データが部分的な場合は欠損領域を薄い黄色で示します。[部分カバー時の黄色い欠損表示の例](docs/images/screenshot5.png) も参照してください。
-- **航空機と人工衛星のオーバーレイ**: OpenSky の近傍航空機を、予想移動方向付きの紫系ポリラインとして表示でき、ISS は惑星レイヤーと航空機レイヤーの間に小さな紫色のクロスマーカーとして表示できます。
+- **航空機と人工衛星のオーバーレイ**: OpenSky の近傍航空機を、予想移動方向付きの紫系ポリラインとして表示でき、ISS / JWST / Voyager 1 / Voyager 2 / Parker は惑星レイヤーと航空機レイヤーの間に小さな紫色のマーカーとして表示できます。
 - **都市アウトライン表示**: 現在の観測地点に対して、主要な建物屋根線を白い都市アウトラインとして表示します。高層建築が多い一部の都市では、半径 60km 以内の遠距離スカイスクレーパーも追加で表示されます。
 - **地形地平線・地球ガイド**: Copernicus DEM データをダウンロードして、地形地平線オーバーレイを表示します。観測者の地点に沿った、暗いオリーブブラウン系の地形線を表示します。地形地平線（地形地平線を表示しない場合には水平線）より下は同じ地面トーンで塗り分け、さらに参考情報として、向きの把握を助けるための独立した地球ガイドレイヤーが同じ地面トーンで簡略化した大陸アウトラインを描きます。
 - **ガイド表示**: 昇らない領域は少し明るい丸い警告マーカーとして表示し、地平線まわりの方位ラベルと天頂マーカーも重ねて表示します。
@@ -469,7 +469,7 @@ GUI では、キーボード操作とメニュー操作で視点移動、検索�
 ハンバーガーメニュー（`☰`）から次を利用できます。
 
 * **Jump to Named Star...**: 代表的な固有名星（`Vmag <= 2.0`）を北天 / 赤道付近 / 南天で選んで、視点中心をその星へ移動します。
-* **Search Stars and Asterisms...**: 固有名付き恒星、対応アステリウム、ISS を横断検索し、選択した対象へ移動します。
+* **Search Stars and Asterisms...**: 固有名付き恒星、対応アステリウム、ISS / JWST / Voyager 1 / Voyager 2 / Parker を横断検索し、選択した対象へ移動します。
 * **Search Places...**: OpenStreetMap Nominatim を使う別ダイアログを開き、地名・駅名・施設名の候補から選んだ地表地点の方向へ視点中心を移動します。
 * **Enlarge Moon**: 月の 5 倍表示を切り替えます。
 * **DSO**: DSO の重ね表示の表示/非表示を切り替えます。
@@ -478,7 +478,7 @@ GUI では、キーボード操作とメニュー操作で視点移動、検索�
 * **Sky Color Disc**: 空ディスク表示を、空色グラデーション表示とフラットな暗色ディスク表示で切り替えます。
 * **Clouds**: リアルタイム雲の重ね表示の表示/非表示を切り替えます。
 * **Aircraft**: OpenSky ベースの航空機オーバーレイの表示/非表示を切り替えます。CLI で `-a 0` / `--aircraft-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
-* **Satellites**: ISS の人工衛星オーバーレイの表示/非表示を切り替えます。CLI で `--satellite-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
+* **Satellites**: ISS / JWST / Voyager 1 / Voyager 2 / Parker の人工衛星オーバーレイの表示/非表示を切り替えます。CLI で `--satellite-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
 * **Terrain Horizon**: 地形地平線の重ね表示の表示/非表示を切り替えます。CLI で `--terrain-horizon-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
 * **Earth Guide**: 地平線下の地球ガイドの重ね表示の表示/非表示を切り替えます。CLI で `--earth-guide-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
 * **Urban Outline**: 都市アウトラインの重ね表示の表示/非表示を切り替えます。CLI で `--urban-outline-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
@@ -598,7 +598,7 @@ zstarview --window-frame window
 
 4. 人工衛星データ
 
-   人工衛星オーバーレイは実行時に ISS の軌道要素データを取得し、取得元は `wheretheiss.at` を優先し、失敗時だけ CelesTrak を使います。fresh な current cache は最大 24 時間まで再利用します。
+   人工衛星オーバーレイは実行時に ISS の軌道要素データを取得し、取得元は `wheretheiss.at` を優先し、失敗時だけ CelesTrak を使います。JWST / Voyager 1 / Voyager 2 / Parker は JPL Horizons を使います。fresh な current cache は ISS と Horizons 側の両方で最大 24 時間まで再利用します。
    このレイヤーはリアルタイム表示でのみ利用でき、タイムシフト表示では人工衛星の取得も描画も行いません。
    回線が細い、またはオフラインの場合は `--satellite-opacity 0` で人工衛星レイヤーを無効化してください。
    新しいキャッシュがすでにあれば、ネットワークがなくても人工衛星オーバーレイを表示し続けられます。
@@ -657,7 +657,7 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 | 実行時に OpenStreetMap Nominatim へ送る `--place` ジオコーディング要求 | `--place` 指定時だけ使うオンライン地名検索 | [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) | [Nominatim Usage Policy](https://operations.osmfoundation.org/policies/nominatim/) |
 | 実行時に `ip-api.com` へ送る IP ジオロケーション要求 | `auto` 指定時に使う IP ベースの現在地取得 | [ip-api.com](https://ip-api.com/) | [ip-api.com の利用条件 / プライバシーポリシー](https://ip-api.com/docs/legal) |
 | アプリのキャッシュディレクトリ配下にオンデマンドで保存される都市アウトラインキャッシュ | ダウンロードした Overture 建物データから生成した派生建物タイルと `tile_index.json` | `overturemaps` CLI を通じて実行時に取得する [Overture Maps Buildings](https://docs.overturemaps.org/guides/buildings/) | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) |
-| 実行時に `wheretheiss.at` から取得し、失敗時は CelesTrak を使う人工衛星オーバーレイ用データ | ISS 表示に使う軌道要素データ | [wheretheiss.at](https://wheretheiss.at/w/developer), [CelesTrak](https://celestrak.org/) | 利用条件やライセンスは各出典サイトを参照 |
+| 実行時に `wheretheiss.at` から取得し、失敗時は CelesTrak を使う人工衛星オーバーレイ用データ / JPL Horizons から取得する人工衛星オーバーレイ用データ | ISS 表示に使う軌道要素データ / JWST, Voyager 1, Voyager 2, Parker の表示に使う observer ephemeris | [wheretheiss.at](https://wheretheiss.at/w/developer), [CelesTrak](https://celestrak.org/), [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/) | 利用条件やライセンスは各出典サイトを参照 |
 | `dso.csv` | DSO（銀河/散開星団/球状星団）カタログ（OpenNGC 由来の生成データ） | [OpenNGC](https://github.com/mattiaverga/OpenNGC)（[PyOngc](https://github.com/mattiaverga/PyOngc) 経由で生成） | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)（OpenNGC データベース） |
 | アプリのキャッシュディレクトリ配下にオンデマンドで保存される地形 DEM キャッシュ | 地形地平線用の地形データ（Copernicus DEM GLO-90） | [Copernicus DEM / Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM)（アプリは公開 AWS 配布を利用） | Copernicus Data Space Ecosystem の案内する Copernicus DEM GLO-90 の利用条件（"Licence for COP-DEM-GLO-90-F Global 90m Full, Free & Open" / "Licence for the use of the Copernicus WorldDEM™-90"） |
 | `stars/IAU-Catalog of Star Names (always up to date).csv` | IAU 恒星名作業部会 (WGSN) による恒星固有名カタログ | [exopla.net](https://exopla.net/star-names/modern-iau-star-names/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
@@ -673,7 +673,7 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 * 都市アウトライン用の元データは **Overture Maps Buildings** から必要時に取得し、実行時利用向けに派生タイルへ変換したものです。
 * 恒星の固有名は IAU 恒星名作業部会 (WGSN) による承認済みリスト（[exopla.net](https://exopla.net/star-names/modern-iau-star-names/) 経由）を使用しています。
 * 雲データは気象衛星 **Himawari**（提供: JMA）および **NOAA GOES** シリーズ（提供: NOAA/NESDIS）による赤外線観測データを、それぞれの公開 S3 バケットから取得して利用しています。
-* 人工衛星オーバーレイで使う軌道要素データ（TLE/OMM）は **wheretheiss.at** を優先し、失敗時は **CelesTrak** を fallback として利用します。
+* 人工衛星オーバーレイで使う軌道要素データは、**ISS** については **wheretheiss.at** を優先し、失敗時は **CelesTrak** を fallback として利用します。**JWST** / **Voyager 1** / **Voyager 2** / **Parker** は **JPL Horizons** の observer ephemeris を利用します。
 * `--place` による地名・駅名検索は公開の OpenStreetMap Nominatim サービスを使っており、[Nominatim Usage Policy](https://operations.osmfoundation.org/policies/nominatim/) の対象です。
 * `auto` による IP ベースの現在地取得は **ip-api.com** を使っており、[ip-api.com の利用条件 / プライバシーポリシー](https://ip-api.com/docs/legal) の対象です。非商用利用の制限と 1 分あたり 45 リクエストの上限があります。
 * 地形地平線データは **Copernicus DEM GLO-90** に基づいており、欧州委員会のために ESA が管理するデータを、アプリでは公開 AWS 配布とローカルキャッシュを通じて利用しています。
