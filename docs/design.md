@@ -573,7 +573,10 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 軌道要素取得結果の UI 反映
 - `src/zstarview/render/satellites.py`
   - 人工衛星マーカーの描画
-  - 航空機と同系統の紫色、小型クロス、人工衛星の marker を担当
+  - 航空機と同系統の紫色、小型クロス、hover 時の線幅増加を含む人工衛星 marker を担当
+- `src/zstarview/render/overlay_info.py`
+  - 衛星 hover 名の表示
+  - 星 hover と独立した衛星 hover 表示の組み立て
 - `src/zstarview/render/pipeline.py`
   - `satellites` レイヤーを `planets` の後、`aircraft` の前へ挿入
 
@@ -1056,6 +1059,8 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - stale cache は通常は再取得優先でよいが、失敗 backoff 中は表示継続に使ってよい。
 - 人工衛星マーカーは常時ラベルを描かず、hover 名表示を前提としてよい。
 - hover の表示名は `SatelliteOverlayPoint.satellite_name` から生成してよい。
+- 人工衛星 hover は恒星 hover と独立して扱い、同時に成立してよい。
+- 人工衛星 hover の強調は丸囲みではなく、クロス記号の線幅を 2 倍にして示してよい。
 - タイムシフト表示では人工衛星レイヤー自体を無効化してよく、current cache の過去探索や archive snapshot は持たなくてよい。
 
 ### 8.5 航空機オーバーレイの更新粒度
