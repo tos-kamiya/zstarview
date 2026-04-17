@@ -61,13 +61,20 @@ class NamedStarJumpDialog(QDialog):
 
     def selected_star(self) -> Optional[NamedStarShortcut]:
         widget = self._tabs.currentWidget()
-        if not isinstance(widget, QListWidget):
-            return None
-        item = widget.currentItem()
-        if item is None:
-            return None
-        star = item.data(Qt.ItemDataRole.UserRole)
-        return star if isinstance(star, NamedStarShortcut) else None
+        if isinstance(widget, QListWidget):
+            item = widget.currentItem()
+            if item is not None:
+                star = item.data(Qt.ItemDataRole.UserRole)
+                if isinstance(star, NamedStarShortcut):
+                    return star
+        for list_widget in self._lists.values():
+            item = list_widget.currentItem()
+            if item is None:
+                continue
+            star = item.data(Qt.ItemDataRole.UserRole)
+            if isinstance(star, NamedStarShortcut):
+                return star
+        return None
 
     def _on_item_double_clicked(self, _item: QListWidgetItem) -> None:
         self.accept()

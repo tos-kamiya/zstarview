@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import inspect
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -28,6 +29,22 @@ from .types import CachedSatelliteElementSet, SatelliteOmmRecord
 logger = logging.getLogger(__name__)
 
 SatelliteFetcher = Callable[..., list[SatelliteOmmRecord]]
+
+
+def _call_fetcher_with_supported_kwargs(
+    fetcher: SatelliteFetcher,
+    group_key: str,
+    **kwargs: object,
+) -> list[SatelliteOmmRecord]:
+    signature = inspect.signature(fetcher)
+    if any(param.kind == inspect.Parameter.VAR_KEYWORD for param in signature.parameters.values()):
+        return fetcher(group_key, **kwargs)
+    supported_kwargs = {
+        name: value
+        for name, value in kwargs.items()
+        if name in signature.parameters
+    }
+    return fetcher(group_key, **supported_kwargs)
 
 
 @dataclass(frozen=True)
@@ -203,7 +220,8 @@ def fetch_cached_satellite_elements(
             failure_backoff_until_utc=metadata.failure_backoff_until_utc,
     )
     try:
-        records = effective_fetcher(
+        records = _call_fetcher_with_supported_kwargs(
+            effective_fetcher,
             group_key,
             timeout_s=timeout_s,
             target_time_utc=target_time_utc or now,

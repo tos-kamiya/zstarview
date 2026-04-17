@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import inspect
 from datetime import datetime, timezone
 from typing import Callable, Optional
 from urllib.error import URLError
@@ -36,6 +37,22 @@ def _is_timeout_url_error(exc: Exception) -> bool:
         if isinstance(reason, TimeoutError):
             return True
     return "timed out" in str(exc).lower()
+
+
+def _call_fetcher_with_supported_kwargs(
+    fetcher: SatelliteFetcher,
+    group_key: str,
+    **kwargs: object,
+) -> CachedSatelliteElementSet:
+    signature = inspect.signature(fetcher)
+    if any(param.kind == inspect.Parameter.VAR_KEYWORD for param in signature.parameters.values()):
+        return fetcher(group_key, **kwargs)
+    supported_kwargs = {
+        name: value
+        for name, value in kwargs.items()
+        if name in signature.parameters
+    }
+    return fetcher(group_key, **supported_kwargs)
 
 
 class SatelliteController(QObject):
@@ -119,7 +136,8 @@ class SatelliteController(QObject):
             time_mode: TimeMode = classify_target_time(target_time_utc)
             for group_key in enabled_groups:
                 try:
-                    fetched = self._fetcher(
+                    fetched = _call_fetcher_with_supported_kwargs(
+                        self._fetcher,
                         group_key,
                         target_time_utc=target_time_utc,
                         time_mode=time_mode,
