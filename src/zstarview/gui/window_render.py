@@ -4,12 +4,13 @@ import logging
 import time
 from typing import Any, cast
 
-from PySide6.QtCore import QPointF, Qt
+from PySide6.QtCore import QPoint, QPointF, Qt
 from PySide6.QtGui import QFont, QImage, QPainter, QPaintEvent
 
 from ..astro import altaz_to_normalized_xy, resolve_star_names
 from ..render import deep_sky_objects as render_deep_sky_objects
 from ..render import geometry as render_geometry
+from ..render import satellites as render_satellites
 from ..render import stars as render_stars
 from ..render import text as render_text
 from ..render.pipeline import (
@@ -24,6 +25,44 @@ from ..render.pipeline import (
 from ..types import CelestialData, ScreenGeometry, ViewerData
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_hover_targets(
+    *,
+    celestial_data: Any,
+    render_viewer: ViewerData,
+    mouse_pos: QPoint | None,
+    geometry: ScreenGeometry,
+    satellite_overlay_points: list[Any] | None,
+    show_dso: bool,
+) -> tuple[Any | None, Any | None, Any | None]:
+    highlighted_object = None
+    highlighted_dso = None
+    highlighted_satellite = None
+    if mouse_pos is None:
+        return highlighted_object, highlighted_dso, highlighted_satellite
+
+    highlighted_object = render_stars.find_highlighted_object(
+        celestial_data,
+        render_viewer,
+        mouse_pos,
+        geometry,
+    )
+    if show_dso:
+        highlighted_dso = render_deep_sky_objects.find_highlighted_dso(
+            celestial_data,
+            render_viewer,
+            mouse_pos,
+            geometry,
+        )
+    highlighted_satellite = render_satellites.find_highlighted_satellite(
+        satellite_overlay_points,
+        mouse_pos,
+        geometry,
+        render_viewer.view_center,
+        content_fov_deg=render_viewer.content_fov_deg,
+    )
+    return highlighted_object, highlighted_dso, highlighted_satellite
 
 
 class SkyWindowRenderMixin:
@@ -85,9 +124,7 @@ class SkyWindowRenderMixin:
                 [
                     round(float(self.satellite_opacity), 3),
                     round(float(self.aircraft_opacity), 3),
-                    self._render_cache_stamp(
-                        self.state.satellite_overlay_points
-                    ),
+                    self._render_cache_stamp(self.state.satellite_overlay_points),
                     self._render_cache_stamp(self.state.aircraft_overlay_points),
                 ]
             )
@@ -175,6 +212,7 @@ class SkyWindowRenderMixin:
         hud: RenderHudState,
         highlighted_object: Any | None,
         highlighted_dso: Any | None,
+        highlighted_satellite: Any | None,
     ) -> QImage:
         base_frame_image = SkyWindowRenderMixin._render_cached_frame_image(
             self,
@@ -200,16 +238,19 @@ class SkyWindowRenderMixin:
         return SkyWindowRenderMixin._render_cached_frame_image(
             self,
             frame_key=present_frame_key,
-            render_fn=lambda frame_painter: SkyWindowRenderMixin._draw_present_frame_layers(
-                self,
-                frame_painter=frame_painter,
-                base_frame_image=base_frame_image,
-                geometry=geometry,
-                scene=scene,
-                style=style,
-                hud=hud,
-                highlighted_object=highlighted_object,
-                highlighted_dso=highlighted_dso,
+            render_fn=lambda frame_painter: (
+                SkyWindowRenderMixin._draw_present_frame_layers(
+                    self,
+                    frame_painter=frame_painter,
+                    base_frame_image=base_frame_image,
+                    geometry=geometry,
+                    scene=scene,
+                    style=style,
+                    hud=hud,
+                    highlighted_object=highlighted_object,
+                    highlighted_dso=highlighted_dso,
+                    highlighted_satellite=highlighted_satellite,
+                )
             ),
             cache_key_attr="_present_frame_cache_key",
             cache_image_attr="_present_frame_cache_image",
@@ -226,6 +267,7 @@ class SkyWindowRenderMixin:
         hud: RenderHudState,
         highlighted_object: Any | None,
         highlighted_dso: Any | None,
+        highlighted_satellite: Any | None,
     ) -> None:
         frame_painter.drawImage(0, 0, base_frame_image)
         if not hud.viewport_interaction_mode:
@@ -234,17 +276,19 @@ class SkyWindowRenderMixin:
                 geometry=geometry,
                 scene=scene,
                 style=style,
+                highlighted_satellite=highlighted_satellite,
             )
-        render_hud_overlay_into_painter(
-            frame_painter,
-            geometry=geometry,
-            viewport_rect=self.client_rect(),
-            scene=scene,
-            style=style,
-            hud=hud,
-            highlighted_object=highlighted_object,
-            highlighted_dso=highlighted_dso,
-        )
+            render_hud_overlay_into_painter(
+                frame_painter,
+                geometry=geometry,
+                viewport_rect=self.client_rect(),
+                scene=scene,
+                style=style,
+                hud=hud,
+                highlighted_object=highlighted_object,
+                highlighted_dso=highlighted_dso,
+                highlighted_satellite=highlighted_satellite,
+            )
 
     def _viewer_data_for_render(self) -> ViewerData:
         return ViewerData(
@@ -344,7 +388,9 @@ class SkyWindowRenderMixin:
                 self.state.overlay_info_bottom_left = overlay_info_bottom_left
             else:
                 # Ensure the HUD uses the pinned position from state; do not override.
-                overlay_info_bottom_left = bool(getattr(self.state, "overlay_info_bottom_left", False))
+                overlay_info_bottom_left = bool(
+                    getattr(self.state, "overlay_info_bottom_left", False)
+                )
         return RenderHudState(
             mouse_pos=mouse_pos,
             overlay_info_bottom_left=overlay_info_bottom_left,
@@ -506,23 +552,16 @@ class SkyWindowRenderMixin:
             alt,
         )
 
-        highlighted_object = None
-        highlighted_dso = None
-        mouse_pos = self.state.mouse_pos
-        if mouse_pos is not None:
-            highlighted_object = render_stars.find_highlighted_object(
-                celestial_data,
-                render_viewer,
-                mouse_pos,
-                geometry,
+        highlighted_object, highlighted_dso, highlighted_satellite = (
+            _resolve_hover_targets(
+                celestial_data=celestial_data,
+                render_viewer=render_viewer,
+                mouse_pos=self.state.mouse_pos,
+                geometry=geometry,
+                satellite_overlay_points=self.state.satellite_overlay_points,
+                show_dso=bool(self.show_dso),
             )
-            if self.show_dso:
-                highlighted_dso = render_deep_sky_objects.find_highlighted_dso(
-                    celestial_data,
-                    render_viewer,
-                    mouse_pos,
-                    geometry,
-                )
+        )
         jump_highlight = self._active_jump_highlight_object(geometry)
         if jump_highlight is not None:
             highlighted_object = jump_highlight
@@ -545,5 +584,6 @@ class SkyWindowRenderMixin:
             hud=hud,
             highlighted_object=highlighted_object,
             highlighted_dso=highlighted_dso,
+            highlighted_satellite=highlighted_satellite,
         )
         painter.drawImage(0, 0, present_frame)

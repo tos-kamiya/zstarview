@@ -18,7 +18,13 @@ from zstarview.render import text as render_text
 from zstarview.paths import PALETTE_AIRCRAFT_AND_SATELLITE_RGB
 from zstarview.aircraft.types import AircraftOverlayPoint
 from zstarview.satellites.types import SatelliteOverlayPoint
-from zstarview.types import CelestialData, PlanetBody, ScreenGeometry, StarCatalogMeta, ViewerData
+from zstarview.types import (
+    CelestialData,
+    PlanetBody,
+    ScreenGeometry,
+    StarCatalogMeta,
+    ViewerData,
+)
 
 
 def _empty_star_catalog_meta() -> StarCatalogMeta:
@@ -61,7 +67,9 @@ def _empty_celestial_data(planets: list[PlanetBody]) -> CelestialData:
     )
 
 
-def _celestial_data_with_stars(stars: dict[str, np.ndarray], star_catalog_meta: StarCatalogMeta | None = None) -> CelestialData:
+def _celestial_data_with_stars(
+    stars: dict[str, np.ndarray], star_catalog_meta: StarCatalogMeta | None = None
+) -> CelestialData:
     return CelestialData(
         time=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
         planets=[],
@@ -102,13 +110,20 @@ def _star_table(
         "color_factor_base": np.ones(count, dtype=float),
     }
     source_values = [""] * count if source_ids is None else source_ids
-    name_indices = np.array([idx for idx, name in enumerate(names) if str(name).strip()], dtype=np.int32)
-    source_id_indices = np.array([idx for idx, value in enumerate(source_values) if str(value).strip()], dtype=np.int32)
+    name_indices = np.array(
+        [idx for idx, name in enumerate(names) if str(name).strip()], dtype=np.int32
+    )
+    source_id_indices = np.array(
+        [idx for idx, value in enumerate(source_values) if str(value).strip()],
+        dtype=np.int32,
+    )
     meta = StarCatalogMeta(
         name_indices=name_indices,
         names=np.array([names[idx] for idx in name_indices], dtype=object),
         source_id_indices=source_id_indices,
-        source_ids=np.array([source_values[idx] for idx in source_id_indices], dtype=object),
+        source_ids=np.array(
+            [source_values[idx] for idx in source_id_indices], dtype=object
+        ),
     )
     return stars, meta
 
@@ -119,25 +134,40 @@ def test_planets_are_drawn_with_disc_and_cross_markers(monkeypatch) -> None:
     cross_calls: list[tuple[float, float]] = []
     label_calls: list[str] = []
 
-    def fake_draw_planet_disc(_painter, _pos, color, *, radius_px=1.0, alpha=255) -> None:
+    def fake_draw_planet_disc(
+        _painter, _pos, color, *, radius_px=1.0, alpha=255
+    ) -> None:
         disc_calls.append((radius_px, alpha, color.getRgb()))
 
-    def fake_draw_planet_bloom(_painter, _pos, _color, *, core_radius_px=1.0, vmag=None) -> None:
+    def fake_draw_planet_bloom(
+        _painter, _pos, _color, *, core_radius_px=1.0, vmag=None
+    ) -> None:
         bloom_calls.append((core_radius_px, vmag))
 
-    def fake_draw_gauge_cross(_painter, _color, _center, *, scale=1.0, pen_width=1.0) -> None:
+    def fake_draw_gauge_cross(
+        _painter, _color, _center, *, scale=1.0, pen_width=1.0
+    ) -> None:
         cross_calls.append((scale, pen_width))
 
     def fake_draw_outlined_text(_painter, text, _pos, _font, *_args, **_kwargs) -> None:
         label_calls.append(text)
 
     monkeypatch.setattr(render_solar_system, "draw_planet_disc", fake_draw_planet_disc)
-    monkeypatch.setattr(render_solar_system, "draw_planet_bloom", fake_draw_planet_bloom)
+    monkeypatch.setattr(
+        render_solar_system, "draw_planet_bloom", fake_draw_planet_bloom
+    )
     monkeypatch.setattr(render_solar_system, "draw_gauge_cross", fake_draw_gauge_cross)
-    monkeypatch.setattr(render_solar_system, "draw_outlined_text", fake_draw_outlined_text)
+    monkeypatch.setattr(
+        render_solar_system, "draw_outlined_text", fake_draw_outlined_text
+    )
 
     mars = PlanetBody(name="mars", alt=45.0, az=180.0, symbol="♂", is_visible=True)
-    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+    )
     geometry = ScreenGeometry(center=(100, 100), radius=80)
 
     render_solar_system.draw_solar_system_bodies(
@@ -160,9 +190,13 @@ def test_planets_are_drawn_with_disc_and_cross_markers(monkeypatch) -> None:
     assert label_calls == ["Mars"]
 
 
-def test_planet_label_is_skipped_when_body_marker_is_outside_viewport(monkeypatch) -> None:
+def test_planet_label_is_skipped_when_body_marker_is_outside_viewport(
+    monkeypatch,
+) -> None:
     monkeypatch.setattr(render_solar_system, "draw_planet_disc", lambda *_a, **_k: None)
-    monkeypatch.setattr(render_solar_system, "draw_planet_bloom", lambda *_a, **_k: None)
+    monkeypatch.setattr(
+        render_solar_system, "draw_planet_bloom", lambda *_a, **_k: None
+    )
     monkeypatch.setattr(render_solar_system, "draw_gauge_cross", lambda *_a, **_k: None)
 
     image = QImage(40, 40, QImage.Format.Format_ARGB32_Premultiplied)
@@ -194,7 +228,12 @@ def test_planet_label_is_skipped_when_body_marker_is_outside_viewport(monkeypatc
 
 def test_hover_can_identify_planet_name() -> None:
     mars = PlanetBody(name="mars", alt=45.0, az=180.0, symbol="♂", is_visible=True)
-    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+    )
     geometry = ScreenGeometry(center=(120, 90), radius=70)
     mouse_pos = QPoint(120, 90)
 
@@ -217,11 +256,18 @@ def test_enlarge_moon_scales_display_radius_by_five(monkeypatch) -> None:
         moon_draw_radii.append(float(radius_px))
 
     monkeypatch.setattr(render_solar_system, "draw_moon", fake_draw_moon)
-    monkeypatch.setattr(render_solar_system, "draw_gauge_cross", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        render_solar_system, "draw_gauge_cross", lambda *_args, **_kwargs: None
+    )
 
     sun = PlanetBody(name="sun", alt=45.0, az=180.0, symbol="☉", is_visible=True)
     moon = PlanetBody(name="moon", alt=45.0, az=180.0, symbol="☾", is_visible=True)
-    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+    )
     geometry = ScreenGeometry(center=(100, 100), radius=80)
     celestial = _empty_celestial_data([sun, moon])
 
@@ -250,16 +296,27 @@ def test_enlarge_moon_scales_display_radius_by_five(monkeypatch) -> None:
 def test_planet_draw_and_hover_ignore_horizon_visibility_flag(monkeypatch) -> None:
     disc_calls: list[tuple[float, int, tuple[int, int, int, int]]] = []
 
-    def fake_draw_planet_disc(_painter, _pos, color, *, radius_px=1.0, alpha=255) -> None:
+    def fake_draw_planet_disc(
+        _painter, _pos, color, *, radius_px=1.0, alpha=255
+    ) -> None:
         disc_calls.append((radius_px, alpha, color.getRgb()))
 
     monkeypatch.setattr(render_solar_system, "draw_planet_disc", fake_draw_planet_disc)
-    monkeypatch.setattr(render_solar_system, "draw_planet_bloom", lambda *_a, **_k: None)
+    monkeypatch.setattr(
+        render_solar_system, "draw_planet_bloom", lambda *_a, **_k: None
+    )
     monkeypatch.setattr(render_solar_system, "draw_gauge_cross", lambda *_a, **_k: None)
-    monkeypatch.setattr(render_solar_system, "draw_outlined_text", lambda *_a, **_k: None)
+    monkeypatch.setattr(
+        render_solar_system, "draw_outlined_text", lambda *_a, **_k: None
+    )
 
     mars = PlanetBody(name="mars", alt=45.0, az=180.0, symbol="♂", is_visible=False)
-    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+    )
     geometry = ScreenGeometry(center=(120, 90), radius=70)
 
     render_solar_system.draw_solar_system_bodies(
@@ -285,12 +342,12 @@ def test_draw_gauge_cross_respects_small_scale() -> None:
     image.fill(0)
     painter = QPainter(image)
     try:
-            render_guides.draw_gauge_cross(
-                painter,
-                QColor(255, 255, 255, 255),
-                QPointF(32.0, 32.0),
-                scale=0.13,
-                pen_width=1.0,
+        render_guides.draw_gauge_cross(
+            painter,
+            QColor(255, 255, 255, 255),
+            QPointF(32.0, 32.0),
+            scale=0.13,
+            pen_width=1.0,
         )
     finally:
         painter.end()
@@ -310,7 +367,9 @@ def test_satellite_overlay_draws_below_horizon_marker_when_in_fov(monkeypatch) -
     monkeypatch.setattr(
         render_satellites,
         "draw_gauge_cross",
-        lambda _painter, _color, _center, *, scale=1.0, pen_width=1.0: cross_calls.append((scale, pen_width)),
+        lambda _painter, _color, _center, *, scale=1.0, pen_width=1.0: (
+            cross_calls.append((scale, pen_width))
+        ),
     )
 
     image = QImage(40, 40, QImage.Format.Format_ARGB32_Premultiplied)
@@ -325,8 +384,7 @@ def test_satellite_overlay_draws_below_horizon_marker_when_in_fov(monkeypatch) -
                     satellite_name="ISS (ZARYA)",
                     alt_deg=-40.0,
                     az_deg=151.0,
-                    marker_scale=0.3,
-                    show_label=True,
+                    marker_scale=0.42,
                 )
             ],
             view_center=(0.0, 151.0),
@@ -336,7 +394,7 @@ def test_satellite_overlay_draws_below_horizon_marker_when_in_fov(monkeypatch) -
     finally:
         painter.end()
 
-    assert cross_calls == [(0.3, 1.0)]
+    assert cross_calls == [(0.42, 1.0)]
 
 
 def test_satellite_overlay_keeps_overscan_position_beyond_90_deg(monkeypatch) -> None:
@@ -359,8 +417,7 @@ def test_satellite_overlay_keeps_overscan_position_beyond_90_deg(monkeypatch) ->
                     satellite_name="ISS (ZARYA)",
                     alt_deg=-50.0,
                     az_deg=180.0,
-                    marker_scale=0.3,
-                    show_label=False,
+                    marker_scale=0.42,
                 )
             ],
             view_center=(45.0, 180.0),
@@ -380,8 +437,10 @@ def test_satellite_overlay_keeps_overscan_position_beyond_90_deg(monkeypatch) ->
 app = QApplication.instance() or QApplication([])
 
 
-def test_satellite_label_uses_black_theme_style_in_white_theme(monkeypatch) -> None:
-    monkeypatch.setattr(render_satellites, "draw_gauge_cross", lambda *_args, **_kwargs: None)
+def test_satellite_overlay_does_not_add_labels(monkeypatch) -> None:
+    monkeypatch.setattr(
+        render_satellites, "draw_gauge_cross", lambda *_args, **_kwargs: None
+    )
 
     image = QImage(40, 40, QImage.Format.Format_ARGB32_Premultiplied)
     painter = QPainter(image)
@@ -396,23 +455,184 @@ def test_satellite_label_uses_black_theme_style_in_white_theme(monkeypatch) -> N
                     satellite_name="ISS (ZARYA)",
                     alt_deg=10.0,
                     az_deg=151.0,
-                    marker_scale=0.3,
-                    show_label=True,
+                    marker_scale=0.42,
                 )
             ],
             view_center=(0.0, 151.0),
             opacity=1.0,
             label_candidates=label_candidates,
-            preset="white",
         )
     finally:
         painter.end()
 
-    assert len(label_candidates) == 1
-    style = label_candidates[0]["style"]
-    expected_rgb = PALETTE_AIRCRAFT_AND_SATELLITE_RGB
-    assert (style.text_color.red(), style.text_color.green(), style.text_color.blue()) == expected_rgb
-    assert style.outline_width == render_text.resolve_text_style("day", QFont()).outline_width
+    assert label_candidates == []
+
+
+def test_satellite_overlay_info_shows_hover_name(monkeypatch) -> None:
+    class DummyPainter:
+        def setPen(self, *_args, **_kwargs) -> None:
+            pass
+
+        def setBrush(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawEllipse(self, *_args, **_kwargs) -> None:
+            raise AssertionError("satellite hover should not draw a circle")
+
+    painter = DummyPainter()
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+        observer_height_m=12.0,
+    )
+    geometry = ScreenGeometry(center=(120, 90), radius=70)
+    hovered_satellite = (
+        SatelliteOverlayPoint(
+            group_key="horizons",
+            satellite_name="JWST",
+            alt_deg=12.0,
+            az_deg=220.0,
+            marker_scale=0.3,
+        ),
+        QPointF(120.0, 90.0),
+    )
+    label_calls: list[tuple[str, QColor]] = []
+
+    def fake_draw_outlined_text(_painter, text, *_args, **kwargs) -> None:
+        style = kwargs["style"]
+        label_calls.append((str(text), style.text_color))
+
+    render_overlay_info.draw_overlay_info(
+        painter,
+        geometry,
+        _empty_celestial_data([]),
+        viewer,
+        vmag_limit=6.0,
+        enlarge_moon=False,
+        highlighted_dso=None,
+        highlighted_object=None,
+        highlighted_satellite=hovered_satellite,
+        text_font=QFont(),
+        get_text_style_func=render_text.get_text_style,
+        draw_outlined_text_func=fake_draw_outlined_text,
+        text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
+    )
+
+    assert any(
+        text == "JWST"
+        and (color.red(), color.green(), color.blue())
+        == PALETTE_AIRCRAFT_AND_SATELLITE_RGB
+        for text, color in label_calls
+    )
+
+
+def test_overlay_info_shows_star_and_satellite_labels_independently() -> None:
+    class DummyPainter:
+        def setPen(self, *_args, **_kwargs) -> None:
+            pass
+
+        def setBrush(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawEllipse(self, *_args, **_kwargs) -> None:
+            pass
+
+    painter = DummyPainter()
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+    )
+    geometry = ScreenGeometry(center=(120, 90), radius=70)
+    highlighted_object = ({"name": "Vega"}, QPointF(100.0, 80.0))
+    highlighted_satellite = (
+        SatelliteOverlayPoint(
+            group_key="iss",
+            satellite_name="ISS",
+            alt_deg=12.0,
+            az_deg=220.0,
+            marker_scale=0.42,
+        ),
+        QPointF(130.0, 95.0),
+    )
+    label_calls: list[tuple[str, QColor]] = []
+
+    def fake_draw_outlined_text(_painter, text, *_args, **kwargs) -> None:
+        style = kwargs["style"]
+        label_calls.append((str(text), style.text_color))
+
+    render_overlay_info.draw_overlay_info(
+        painter,
+        geometry,
+        _empty_celestial_data([]),
+        viewer,
+        vmag_limit=6.0,
+        enlarge_moon=False,
+        highlighted_dso=None,
+        highlighted_object=highlighted_object,
+        highlighted_satellite=highlighted_satellite,
+        text_font=QFont(),
+        get_text_style_func=render_text.get_text_style,
+        draw_outlined_text_func=fake_draw_outlined_text,
+        text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
+    )
+
+    label_names = {text for text, _color in label_calls}
+    assert "Vega" in label_names
+    assert "ISS" in label_names
+    assert any(
+        text == "ISS"
+        and (color.red(), color.green(), color.blue())
+        == PALETTE_AIRCRAFT_AND_SATELLITE_RGB
+        for text, color in label_calls
+    )
+
+
+def test_find_highlighted_satellite_prefers_nearest_marker(monkeypatch) -> None:
+    monkeypatch.setattr(render_satellites, "is_in_fov", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(
+        render_satellites,
+        "altaz_to_normalized_xy",
+        lambda alt, az, _view_center: (float(alt), float(az)),
+    )
+    monkeypatch.setattr(
+        render_satellites,
+        "normalized_to_screen_xy",
+        lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+
+    geometry = ScreenGeometry(center=(120, 90), radius=70)
+    view_center = (45.0, 180.0)
+    satellite_points = [
+        SatelliteOverlayPoint(
+            group_key="iss",
+            satellite_name="ISS",
+            alt_deg=120.0,
+            az_deg=90.0,
+            marker_scale=0.42,
+        ),
+        SatelliteOverlayPoint(
+            group_key="horizons",
+            satellite_name="JWST",
+            alt_deg=123.0,
+            az_deg=90.0,
+            marker_scale=0.30,
+        ),
+    ]
+
+    highlighted = render_satellites.find_highlighted_satellite(
+        satellite_points,
+        QPointF(121.0, 90.0),
+        geometry,
+        view_center,
+    )
+
+    assert highlighted is not None
+    satellite, _ = highlighted
+    assert satellite.satellite_name == "ISS"
 
 
 def test_aircraft_label_uses_black_theme_style_in_day_theme() -> None:
@@ -461,12 +681,24 @@ def test_aircraft_label_uses_black_theme_style_in_day_theme() -> None:
     assert len(label_candidates) == 1
     style = label_candidates[0]["style"]
     expected_rgb = PALETTE_AIRCRAFT_AND_SATELLITE_RGB
-    assert (style.text_color.red(), style.text_color.green(), style.text_color.blue()) == expected_rgb
-    assert style.outline_width == render_text.resolve_text_style("night", QFont()).outline_width
+    assert (
+        style.text_color.red(),
+        style.text_color.green(),
+        style.text_color.blue(),
+    ) == expected_rgb
+    assert (
+        style.outline_width
+        == render_text.resolve_text_style("night", QFont()).outline_width
+    )
 
 
 def test_hover_ignores_unnamed_stars() -> None:
-    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+    )
     geometry = ScreenGeometry(center=(120, 90), radius=70)
     mouse_pos = QPoint(120, 90)
 
@@ -484,7 +716,12 @@ def test_hover_ignores_unnamed_stars() -> None:
 
 
 def test_hover_returns_none_without_named_star() -> None:
-    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+    )
     geometry = ScreenGeometry(center=(120, 90), radius=70)
     mouse_pos = QPoint(120, 90)
 
@@ -511,7 +748,12 @@ def test_overlay_skips_label_for_planet(monkeypatch) -> None:
             pass
 
     painter = DummyPainter()
-    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+    )
     geometry = ScreenGeometry(center=(120, 90), radius=70)
     planet = PlanetBody(name="mars", alt=45.0, az=180.0, symbol="♂", is_visible=True)
     highlighted_object = (planet, QPointF(120.0, 90.0))
@@ -539,7 +781,9 @@ def test_overlay_skips_label_for_planet(monkeypatch) -> None:
     assert "mars" not in label_calls
 
 
-def test_overlay_info_includes_location_height_and_explicit_observer_height(monkeypatch) -> None:
+def test_overlay_info_includes_location_height_and_explicit_observer_height(
+    monkeypatch,
+) -> None:
     class DummyPainter:
         def setPen(self, *_args, **_kwargs) -> None:
             pass
@@ -592,7 +836,9 @@ def test_overlay_info_includes_location_height_and_explicit_observer_height(monk
     ]
 
 
-def test_overlay_info_first_line_top_margin_matches_left_margin_when_cursor_is_lower_half(monkeypatch) -> None:
+def test_overlay_info_first_line_top_margin_matches_left_margin_when_cursor_is_lower_half(
+    monkeypatch,
+) -> None:
     class DummyPainter:
         def setPen(self, *_args, **_kwargs) -> None:
             pass
@@ -702,7 +948,9 @@ def test_overlay_info_moves_to_bottom_when_cursor_is_in_upper_half(monkeypatch) 
     fm = QFontMetrics(QFont())
     bounds = fm.tightBoundingRect("Ag")
     line_height = int(fm.lineSpacing() * 1.2)
-    bottom_margin = 180.0 - (float(first_label_pos.y()) + float(bounds.bottom()) + 4.0 * line_height)
+    bottom_margin = 180.0 - (
+        float(first_label_pos.y()) + float(bounds.bottom()) + 4.0 * line_height
+    )
     left_margin = float(fm.lineSpacing())
     assert abs(bottom_margin - left_margin) <= 2.0
 
@@ -719,7 +967,9 @@ def test_format_overlay_info_lines_matches_static_overlay_order() -> None:
         show_observer_height=True,
     )
 
-    assert render_background.format_overlay_info_lines(_empty_celestial_data([]), viewer, 6.0) == [
+    assert render_background.format_overlay_info_lines(
+        _empty_celestial_data([]), viewer, 6.0
+    ) == [
         "t/Tokyo Skytree",
         "Tower height 634 m",
         "Observer height 12 m",

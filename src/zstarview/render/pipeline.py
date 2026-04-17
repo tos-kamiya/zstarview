@@ -197,6 +197,7 @@ def render_base_scene_into_painter(
             geometry=geometry,
             scene=scene,
             style=style,
+            highlighted_satellite=None,
             label_candidates=label_candidates,
         )
         _draw_aircraft_layer(
@@ -219,6 +220,7 @@ def render_fast_overlay_layers_into_painter(
     geometry: ScreenGeometry,
     scene: RenderSceneData,
     style: RenderStyle,
+    highlighted_satellite: Any | None = None,
 ) -> None:
     """Draw dynamic satellite/aircraft overlays and their labels."""
     if style.satellite_opacity <= 0.0 and style.aircraft_opacity <= 0.0:
@@ -230,6 +232,7 @@ def render_fast_overlay_layers_into_painter(
         geometry=geometry,
         scene=scene,
         style=style,
+        highlighted_satellite=highlighted_satellite,
         label_candidates=label_candidates,
     )
     _draw_aircraft_layer(
@@ -257,6 +260,7 @@ def render_hud_overlay_into_painter(
     hud: RenderHudState,
     highlighted_object: Any | None,
     highlighted_dso: Any | None,
+    highlighted_satellite: Any | None = None,
 ) -> None:
     if hud.viewport_interaction_mode:
         _draw_status_line(
@@ -274,6 +278,7 @@ def render_hud_overlay_into_painter(
         style=style,
         highlighted_object=highlighted_object,
         highlighted_dso=highlighted_dso,
+        highlighted_satellite=highlighted_satellite,
     )
     _draw_overlay_layer(
         painter,
@@ -708,6 +713,7 @@ def _draw_satellite_layer(
     geometry: ScreenGeometry,
     scene: RenderSceneData,
     style: RenderStyle,
+    highlighted_satellite: Any | None,
     label_candidates: list[dict[str, Any]],
 ) -> None:
     render_satellites.draw_satellite_overlay(
@@ -716,6 +722,9 @@ def _draw_satellite_layer(
         scene.satellite_overlay_points,
         scene.viewer.view_center,
         opacity=style.satellite_opacity,
+        highlighted_satellite=(
+            highlighted_satellite[0] if highlighted_satellite is not None else None
+        ),
         label_candidates=label_candidates,
         preset=style.visual_preset,
         content_fov_deg=_content_fov_deg(scene),
@@ -730,6 +739,7 @@ def _draw_hover_overlay_layer(
     style: RenderStyle,
     highlighted_object: Any | None,
     highlighted_dso: Any | None,
+    highlighted_satellite: Any | None,
 ) -> None:
     line_width_scale = compute_star_render_upscale_factor(
         geometry.radius * 2,
@@ -773,6 +783,7 @@ def _draw_hover_overlay_layer(
         highlighted_dso,
         highlighted_object,
         style.text_font,
+        highlighted_satellite,
         preset=style.visual_preset,
         draw_static_info=False,
         draw_hover_info=True,
