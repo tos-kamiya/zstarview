@@ -29,3 +29,33 @@ class SatelliteOverlayPoint:
     az_deg: float
     marker_scale: float
     show_label: bool
+
+
+def satellite_altaz_from_record(record: SatelliteOmmRecord) -> tuple[float | None, float | None]:
+    alt_keys = ("ALT_DEG", "ALTITUDE_DEG", "ELEV_DEG", "ELEVATION_DEG")
+    az_keys = ("AZ_DEG", "AZIMUTH_DEG")
+
+    alt_deg: float | None = None
+    az_deg: float | None = None
+
+    for key in alt_keys:
+        raw = record.get(key)
+        if raw is None:
+            continue
+        try:
+            alt_deg = float(raw)
+            break
+        except (TypeError, ValueError):
+            continue
+
+    for key in az_keys:
+        raw = record.get(key)
+        if raw is None:
+            continue
+        try:
+            az_deg = float(raw)
+            break
+        except (TypeError, ValueError):
+            continue
+
+    return alt_deg, az_deg

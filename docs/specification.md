@@ -699,13 +699,14 @@ CLI には次のビューポイント dataset 参照専用オプションを持�
 - 人工衛星レイヤーは、観測地点から見える人工衛星を「空にある人工物の補助表示」として重畳してよい。
 - 人工衛星レイヤーは、追尾用途の厳密表示ではなく、視覚的な位置関係の把握を目的とする。
 - 人工衛星レイヤーは現在時刻だけで表示してよく、過去時刻と未来時刻では無効化してよい。
-- 現在の表示対象は `ISS` のみとしてよい。
+- 現在の表示対象は `ISS`, `JWST`, `Voyager 1`, `Voyager 2`, `Parker` としてよい。
+- `ISS` は既存の地球周回衛星データ経路を使い、残りの 4 体は JPL Horizons の observer ephemeris を使ってよい。
 - 初期実装の GUI では人工衛星レイヤー全体をまとめて表示・非表示してよく、個別 sublayer toggle は必須としない。
 - 人工衛星の軌道計算には Skyfield の `EarthSatellite` を使ってよい。
 - 人工衛星の軌道要素は、外部ソースから取得した TLE または OMM 相当データをローカルキャッシュしてよい。
 - current 用の人工衛星 cache には、少なくとも `element_epoch_utc`、`fetched_at_utc`、データ取得元、直近取得試行時刻、直近失敗有無、失敗理由、次回再試行可能時刻を保持してよい。
 - 人工衛星データの主取得先は `wheretheiss.at` としてよく、ISS 用 TLE を取得できなかった場合だけ `CelesTrak stations` を fallback として試してよい。
-- current 用の軌道要素 cache の fresh 判定は `element_epoch_utc` 基準としてよい。現在の実装では `ISS` に `24時間` を使ってよい。
+- current 用の軌道要素 cache の fresh 判定は `element_epoch_utc` 基準としてよい。現在の実装では `ISS` と Horizons-backed spacecraft の両方に `24時間` を使ってよい。
 - current 用の軌道要素 cache が fresh 範囲を超えて古い場合は、起動時または次回更新時に再取得を試みてよい。
 - 直近の取得失敗で `failure_backoff_until_utc` が未来の場合は、アプリ再起動後であっても再取得を抑止してよい。
 - タイムシフト表示では人工衛星データの取得も表示も行わなくてよい。

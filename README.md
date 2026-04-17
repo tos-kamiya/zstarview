@@ -16,7 +16,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 - **Deep-sky objects**: named galaxies/open clusters/globular clusters are shown as soft blue extents.
 - **Asterism overlay**: popular line patterns rather than formal IAU constellation boundaries are shown as dim ambient lines. Mouse-hovering a star in an asterism brightens the matching pattern and shows its label, with 3-second rotation when multiple asterisms share that star.
 - **Satellite cloud imagery and sky-color disc**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay, and the sky-color disc remains visible beneath the clouds. Missing regions are shown in faint yellow when satellite coverage is partial. See [an example with partial coverage and yellow missing-data tint](docs/images/screenshot5.png).
-- **Aircraft and artificial satellite overlays**: nearby aircraft from OpenSky can be drawn as purple predicted-motion polylines, and ISS can be drawn as a small purple cross marker between the planet and aircraft layers.
+- **Aircraft and artificial satellite overlays**: nearby aircraft from OpenSky can be drawn as purple predicted-motion polylines, and ISS, JWST, Voyager 1, Voyager 2, and Parker can be drawn as small purple markers between the planet and aircraft layers.
 - **Urban outline overlay**: major rooflines are drawn as a white urban outline overlay for the current viewpoint. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 60km radius.
 - **Terrain horizon and earth guide**: Copernicus DEM data can be downloaded to render the local terrain skyline. A dark olive-brown terrain line follows the observer's surroundings, and the disc is filled with the same ground tone below the terrain horizon, or below the geometric horizon when terrain is disabled. Beneath that horizon, an independent earth guide layer draws simplified continental outlines in that same ground tone to help with orientation.
 - **Guides**: guide overlays include the never-rises region as a slightly brighter circular warning marker, direction labels around the horizon, and a zenith marker.
@@ -591,7 +591,7 @@ zstarview --window-frame window
 
 4. Artificial satellite data
 
-   The artificial satellite overlay fetches ISS orbital data at runtime, using `wheretheiss.at` as the primary source and CelesTrak as a fallback. A fresh current cache is reused for up to 24 hours.
+   The artificial satellite overlay fetches ISS orbital data at runtime, using `wheretheiss.at` as the primary source and CelesTrak as a fallback, and fetches JWST, Voyager 1, Voyager 2, and Parker from JPL Horizons. Fresh current caches are reused for up to 24 hours for both the ISS cache and the Horizons-backed spacecraft cache.
    The layer is available only for realtime views; time-shifted views do not fetch or display artificial satellites.
    If your network is slow or unavailable, disable the layer with `--satellite-opacity 0`.
    If a fresh cache is already present, the app can keep showing the satellite overlay without network access.

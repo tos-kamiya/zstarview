@@ -98,3 +98,20 @@ def test_find_satellite_altaz_returns_below_horizon_match(monkeypatch) -> None:
     )
 
     assert altaz == (-12.0, 210.0)
+
+
+def test_project_satellite_records_uses_horizons_altaz_records() -> None:
+    points = project_module.project_satellite_records(
+        {"horizons": [{"OBJECT_NAME": "JWST", "ALT_DEG": 12.5, "AZ_DEG": 220.0}]},
+        observer_lat=35.47,
+        observer_lon=133.05,
+        observer_height_m=0.0,
+        time_obj=astropy.time.Time("2026-03-22T12:00:00Z"),
+    )
+
+    assert len(points) == 1
+    assert points[0].group_key == "horizons"
+    assert points[0].satellite_name == "JWST"
+    assert points[0].alt_deg == 12.5
+    assert points[0].az_deg == 220.0
+    assert points[0].show_label is True

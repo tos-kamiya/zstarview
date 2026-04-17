@@ -1,6 +1,7 @@
 from .cache import (
     fetch_cached_satellite_elements,
     load_satellite_cache,
+    satellite_cache_scope_key,
     resolve_satellite_elements_for_time,
     save_satellite_cache,
     satellite_group_cache_path,
@@ -8,8 +9,13 @@ from .cache import (
 from .fetch import (
     CELESTRAK_GP_JSON_URL,
     CELESTRAK_GROUP_BY_KEY,
+    HORIZONS_API_URL,
+    HORIZONS_LOOKUP_API_URL,
+    HORIZONS_TARGETS_BY_KEY,
     WHERETHEISS_API_URL,
     build_celestrak_group_url,
+    build_horizons_lookup_url,
+    build_horizons_observer_url,
     build_earth_satellites,
     build_wheretheiss_tle_url,
     extract_element_epoch_utc,
@@ -17,21 +23,34 @@ from .fetch import (
     fetch_celestrak_group_by_key,
     fetch_celestrak_group_omm,
     fetch_iss_records,
+    fetch_horizons_lookup,
+    fetch_horizons_observer_csv,
+    fetch_horizons_records,
     fetch_wheretheiss_iss_tle,
     normalize_celestrak_omm_payload,
     normalize_wheretheiss_tle_payload,
 )
 from .project import find_satellite_altaz, project_satellite_records
-from .types import CachedSatelliteElementSet, SatelliteOmmRecord, SatelliteOverlayPoint
+from .types import (
+    CachedSatelliteElementSet,
+    SatelliteOmmRecord,
+    SatelliteOverlayPoint,
+    satellite_altaz_from_record,
+)
 
 __all__ = [
     "CELESTRAK_GP_JSON_URL",
     "CELESTRAK_GROUP_BY_KEY",
+    "HORIZONS_API_URL",
+    "HORIZONS_LOOKUP_API_URL",
+    "HORIZONS_TARGETS_BY_KEY",
     "WHERETHEISS_API_URL",
     "CachedSatelliteElementSet",
     "SatelliteOmmRecord",
     "SatelliteOverlayPoint",
     "build_celestrak_group_url",
+    "build_horizons_lookup_url",
+    "build_horizons_observer_url",
     "build_earth_satellites",
     "build_wheretheiss_tle_url",
     "extract_element_epoch_utc",
@@ -40,6 +59,9 @@ __all__ = [
     "fetch_celestrak_group_by_key",
     "fetch_celestrak_group_omm",
     "fetch_iss_records",
+    "fetch_horizons_lookup",
+    "fetch_horizons_observer_csv",
+    "fetch_horizons_records",
     "fetch_wheretheiss_iss_tle",
     "find_satellite_altaz",
     "load_satellite_cache",
@@ -47,6 +69,8 @@ __all__ = [
     "normalize_wheretheiss_tle_payload",
     "project_satellite_records",
     "resolve_satellite_elements_for_time",
+    "satellite_altaz_from_record",
+    "satellite_cache_scope_key",
     "satellite_group_cache_path",
     "save_satellite_cache",
 ]
