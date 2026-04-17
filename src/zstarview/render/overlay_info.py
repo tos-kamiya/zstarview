@@ -4,7 +4,15 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from PySide6.QtCore import QPoint, QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen
 
-from ..types import CelestialData, CelestialObject, PlanetBody, ScreenGeometry, ViewerData
+from ..satellite_constants import SATELLITE_OVERLAY_MARKER_COLOR_RGB
+from ..satellites.types import SatelliteOverlayPoint
+from ..types import (
+    CelestialData,
+    CelestialObject,
+    PlanetBody,
+    ScreenGeometry,
+    ViewerData,
+)
 from .background import format_overlay_info_lines
 from .deep_sky_objects import _DSO_HOVER_SIZE_GAIN, _dso_ellipse_polygon
 from .text import ResolvedTextStyle, get_text_outline_width
@@ -20,6 +28,7 @@ def draw_overlay_info(
     highlighted_dso: Optional[Tuple[CelestialObject, QPointF]],
     highlighted_object: Optional[Tuple[CelestialObject, QPointF]],
     text_font: QFont,
+    highlighted_satellite: Optional[Tuple[SatelliteOverlayPoint, QPointF]] = None,
     label_candidates: Optional[List[Dict[str, Any]]] = None,
     label_reservations: Optional[List[QRectF]] = None,
     *,
@@ -140,7 +149,9 @@ def draw_overlay_info(
                     ),
                 )
                 if label_reservations is not None:
-                    label_reservations.append(text_bounds_at_baseline_func(dso_name, text_font, label_pos))
+                    label_reservations.append(
+                        text_bounds_at_baseline_func(dso_name, text_font, label_pos)
+                    )
 
     if draw_hover_info and highlighted_object:
         obj, pos = highlighted_object
@@ -149,7 +160,11 @@ def draw_overlay_info(
         painter.drawEllipse(pos, 10, 10)
 
         if not isinstance(obj, PlanetBody):
-            name = getattr(obj, "name", "") if hasattr(obj, "name") else obj.get("name", "")
+            name = (
+                getattr(obj, "name", "")
+                if hasattr(obj, "name")
+                else obj.get("name", "")
+            )
             label_pos = QPointF(pos.x() + 15, pos.y() - 15)
             if label_candidates is not None:
                 label_candidates.append(
@@ -169,4 +184,43 @@ def draw_overlay_info(
                     style=text_style,
                 )
                 if label_reservations is not None:
-                    label_reservations.append(text_bounds_at_baseline_func(str(name), text_font, label_pos))
+                    label_reservations.append(
+                        text_bounds_at_baseline_func(str(name), text_font, label_pos)
+                    )
+
+    if draw_hover_info and highlighted_satellite:
+        satellite, pos = highlighted_satellite
+        satellite_name = str(satellite.satellite_name).strip()
+        if satellite_name:
+            satellite_text_color = QColor(*SATELLITE_OVERLAY_MARKER_COLOR_RGB)
+            satellite_text_color.setAlpha(text_color.alpha())
+            satellite_style = ResolvedTextStyle(
+                font=text_font,
+                text_color=satellite_text_color,
+                outline_color=text_style.outline_color,
+                outline_width=text_style.outline_width,
+            )
+            label_pos = QPointF(pos.x() + 15, pos.y() - 15)
+            if label_candidates is not None:
+                label_candidates.append(
+                    {
+                        "text": satellite_name,
+                        "pos": label_pos,
+                        "style": satellite_style,
+                        "priority": 11,
+                    }
+                )
+            else:
+                draw_outlined_text_func(
+                    painter,
+                    satellite_name,
+                    label_pos,
+                    text_font,
+                    style=satellite_style,
+                )
+                if label_reservations is not None:
+                    label_reservations.append(
+                        text_bounds_at_baseline_func(
+                            satellite_name, text_font, label_pos
+                        )
+                    )
