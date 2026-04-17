@@ -3,7 +3,7 @@
 **Zenith Star View** is a desktop sky viewer for your chosen location.
 
 It renders an all-sky view with stars, the Sun, Moon, planets, deep-sky objects, and guide overlays.
-When enabled, it can also add real-time cloud imagery, terrain horizon, urban outlines, nearby aircraft, and the ISS artificial satellite overlay.
+When enabled, it can also add real-time cloud imagery, terrain horizon, urban outlines, nearby aircraft, and the ISS/JWST/Voyager 1/Voyager 2/Parker artificial satellite overlays.
 Locations can be set by city or viewpoint name, direct coordinates, online place search, or supported Google Maps URLs.
 
 ## Screenshots
@@ -93,7 +93,8 @@ zstarview -Z E -A 25 Tokyo
 - Deep-sky objects: named galaxies/open clusters/globular clusters are shown as soft blue extents.
 - Asterism overlay: popular line patterns are shown as dim guide lines, alongside other sky guides such as the never-rises region.
 - Satellite cloud imagery and sky-color disc: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched overlay, with the sky-color disc still visible beneath the clouds.
-- Aircraft and artificial satellite overlays: nearby aircraft from OpenSky can be drawn on the sky view, and ISS can be drawn as a small purple cross marker between the planet and aircraft layers.
+- Aircraft and artificial satellite overlays: nearby aircraft from OpenSky can be drawn on the sky view, and ISS, JWST, Voyager 1, Voyager 2, and Parker can be drawn as small purple markers between the planet and aircraft layers. ISS uses `wheretheiss.at` with CelesTrak fallback, while the other four spacecraft use JPL Horizons.
+- Fresh current caches are reused for up to 24 hours for both the ISS cache and the Horizons-backed spacecraft cache.
 - Terrain horizon and earth guide: Copernicus DEM data can be used to render the local terrain skyline and ground region, with a separate below-horizon continental guide layer for orientation.
 - Urban outline overlay: major rooflines are drawn for the current viewpoint, with optional distant skyscrapers in dense urban areas.
 - Flexible location input: start from a city, tower, mountain, lat/lon, or online place/station search.
