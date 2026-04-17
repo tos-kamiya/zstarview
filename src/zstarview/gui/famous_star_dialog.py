@@ -19,6 +19,7 @@ from .famous_star_shortcuts import (
     DEC_BAND_EQUATOR,
     DEC_BAND_NORTH,
     DEC_BAND_SOUTH,
+    SATELLITE_JUMP_SHORTCUTS,
     NamedStarShortcut,
 )
 
@@ -26,7 +27,7 @@ from .famous_star_shortcuts import (
 class NamedStarJumpDialog(QDialog):
     def __init__(self, stars_by_band: Dict[str, List[NamedStarShortcut]], parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Jump to Famous Star")
+        self.setWindowTitle("Jump to Named Star")
         self.setModal(True)
         self.resize(460, 420)
 
@@ -38,13 +39,15 @@ class NamedStarJumpDialog(QDialog):
             (DEC_BAND_NORTH, "North"),
             (DEC_BAND_EQUATOR, "Equatorial"),
             (DEC_BAND_SOUTH, "South"),
+            ("satellites", "Artificial Satellites"),
         ]
         for key, label in tab_defs:
             lw = QListWidget(self)
             lw.itemDoubleClicked.connect(self._on_item_double_clicked)
             self._lists[key] = lw
-            self._tabs.addTab(lw, f"{label} ({len(stars_by_band.get(key, []))})")
-            for star in stars_by_band.get(key, []):
+            stars = list(stars_by_band.get(key, [])) if key != "satellites" else list(SATELLITE_JUMP_SHORTCUTS)
+            self._tabs.addTab(lw, f"{label} ({len(stars)})")
+            for star in stars:
                 suffix = star.subtitle or (f"Vmag {star.vmag:.2f}" if star.kind == "star" else "")
                 item = QListWidgetItem(f"{star.name}  ({suffix})" if suffix else star.name, lw)
                 item.setData(Qt.ItemDataRole.UserRole, star)
