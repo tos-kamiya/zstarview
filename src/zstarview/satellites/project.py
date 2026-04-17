@@ -8,7 +8,11 @@ import skyfield.api
 
 from ..satellite_constants import SATELLITE_HORIZONS_CACHE_KEY, SATELLITE_ISS_CACHE_KEY
 from .fetch import build_earth_satellites
-from .types import SatelliteOmmRecord, SatelliteOverlayPoint, satellite_altaz_from_record
+from .types import (
+    SatelliteOmmRecord,
+    SatelliteOverlayPoint,
+    satellite_altaz_from_record,
+)
 
 _DEFAULT_GROUP_ORDER = (SATELLITE_ISS_CACHE_KEY, SATELLITE_HORIZONS_CACHE_KEY)
 _MAX_MARKERS_BY_GROUP = {
@@ -16,8 +20,8 @@ _MAX_MARKERS_BY_GROUP = {
     SATELLITE_HORIZONS_CACHE_KEY: 4,
 }
 _MARKER_SCALE_BY_GROUP = {
-    SATELLITE_ISS_CACHE_KEY: 0.3,
-    SATELLITE_HORIZONS_CACHE_KEY: 0.18,
+    SATELLITE_ISS_CACHE_KEY: 0.42,
+    SATELLITE_HORIZONS_CACHE_KEY: 0.30,
 }
 
 
@@ -39,9 +43,13 @@ def project_satellite_records(
 
     overlay_points: list[SatelliteOverlayPoint] = []
     for group_key in _iter_group_order(records_by_group):
-        group_points = [point for point in projected_points if point.group_key == str(group_key)]
+        group_points = [
+            point for point in projected_points if point.group_key == str(group_key)
+        ]
         group_points.sort(key=lambda point: float(point.alt_deg), reverse=True)
-        overlay_points.extend(group_points[: _MAX_MARKERS_BY_GROUP.get(group_key, len(group_points))])
+        overlay_points.extend(
+            group_points[: _MAX_MARKERS_BY_GROUP.get(group_key, len(group_points))]
+        )
     return overlay_points
 
 
@@ -100,7 +108,6 @@ def compute_satellite_altaz_points(
                         alt_deg=float(alt_deg),
                         az_deg=float(az_deg),
                         marker_scale=float(_MARKER_SCALE_BY_GROUP.get(group_key, 0.13)),
-                        show_label=True,
                     )
                 )
             continue
@@ -118,18 +125,23 @@ def compute_satellite_altaz_points(
             points.append(
                 SatelliteOverlayPoint(
                     group_key=str(group_key),
-                    satellite_name=str(getattr(satellite, "name", "") or group_key.upper()),
+                    satellite_name=str(
+                        getattr(satellite, "name", "") or group_key.upper()
+                    ),
                     alt_deg=float(alt.degrees),
                     az_deg=float(az.degrees),
                     marker_scale=float(_MARKER_SCALE_BY_GROUP.get(group_key, 0.13)),
-                    show_label=group_key == SATELLITE_ISS_CACHE_KEY,
                 )
             )
     return points
 
 
-def _iter_group_order(records_by_group: Mapping[str, Sequence[SatelliteOmmRecord]]) -> list[str]:
-    ordered = [group_key for group_key in _DEFAULT_GROUP_ORDER if group_key in records_by_group]
+def _iter_group_order(
+    records_by_group: Mapping[str, Sequence[SatelliteOmmRecord]],
+) -> list[str]:
+    ordered = [
+        group_key for group_key in _DEFAULT_GROUP_ORDER if group_key in records_by_group
+    ]
     for group_key in records_by_group:
         if group_key not in ordered:
             ordered.append(str(group_key))

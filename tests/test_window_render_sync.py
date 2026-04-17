@@ -5,7 +5,7 @@ from dataclasses import replace
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import Mock
-from PySide6.QtCore import QPoint, QRect, Qt
+from PySide6.QtCore import QPoint, QPointF, QRect, Qt
 from PySide6.QtGui import QFont, QImage
 
 import zstarview.render.pipeline as pipeline_module
@@ -62,9 +62,7 @@ class _WindowStub:
         values = self.__dict__
         self._frameless_window = values.get("_frameless_window", False)
         self.observation_info_mode = values.get("observation_info_mode", "auto")
-        self.observation_info_pinned = values.get(
-            "observation_info_pinned", False
-        )
+        self.observation_info_pinned = values.get("observation_info_pinned", False)
         self.show_observation_info = values.get("show_observation_info", True)
         self.show_dso = values.get("show_dso", False)
         self.show_asterisms = values.get("show_asterisms", False)
@@ -1052,6 +1050,58 @@ def test_render_frame_cache_key_ignores_fast_overlay_state_for_base_cache() -> N
     assert key_a == key_b
 
 
+def test_resolve_hover_targets_keeps_star_and_satellite_candidates_independent(
+    monkeypatch,
+) -> None:
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+        observer_height_m=1.7,
+    )
+    geometry = SimpleNamespace(center=(100, 100), radius=80)
+    celestial_data = object()
+    mouse_pos = QPoint(12, 34)
+
+    star_hit = ({"name": "Vega"}, QPointF(10.0, 30.0))
+    satellite_hit = (
+        SimpleNamespace(satellite_name="ISS"),
+        QPointF(14.0, 36.0),
+    )
+
+    monkeypatch.setattr(
+        window_render_module.render_stars,
+        "find_highlighted_object",
+        lambda *_args, **_kwargs: star_hit,
+    )
+    monkeypatch.setattr(
+        window_render_module.render_deep_sky_objects,
+        "find_highlighted_dso",
+        lambda *_args, **_kwargs: {"name": "DSO"},
+    )
+    monkeypatch.setattr(
+        window_render_module.render_satellites,
+        "find_highlighted_satellite",
+        lambda *_args, **_kwargs: satellite_hit,
+    )
+
+    highlighted_object, highlighted_dso, highlighted_satellite = (
+        window_render_module._resolve_hover_targets(
+            celestial_data=celestial_data,
+            render_viewer=viewer,
+            mouse_pos=mouse_pos,
+            geometry=geometry,
+            satellite_overlay_points=[object()],
+            show_dso=True,
+        )
+    )
+
+    assert highlighted_object == star_hit
+    assert highlighted_dso == {"name": "DSO"}
+    assert highlighted_satellite == satellite_hit
+
+
 def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(
     monkeypatch,
 ) -> None:
@@ -1926,8 +1976,16 @@ def test_draw_sky_reference_lines_uses_wider_dash_patterns(monkeypatch) -> None:
     assert dash_patterns[0::3] == [[], [], []]
     assert dash_patterns[1::3] == [[], [], []]
     assert dash_patterns[2::3] == [[12, 6], [4, 6], [10, 1]]
-    assert pen_styles[0::3] == [Qt.PenStyle.SolidLine, Qt.PenStyle.SolidLine, Qt.PenStyle.SolidLine]
-    assert pen_styles[1::3] == [Qt.PenStyle.SolidLine, Qt.PenStyle.SolidLine, Qt.PenStyle.SolidLine]
+    assert pen_styles[0::3] == [
+        Qt.PenStyle.SolidLine,
+        Qt.PenStyle.SolidLine,
+        Qt.PenStyle.SolidLine,
+    ]
+    assert pen_styles[1::3] == [
+        Qt.PenStyle.SolidLine,
+        Qt.PenStyle.SolidLine,
+        Qt.PenStyle.SolidLine,
+    ]
     assert pen_styles[2::3] == [None, None, None]
     assert pen_alpha_values[0::3] == [18, 18, 18]
     assert pen_alpha_values[1::3] == [30, 30, 30]
@@ -1965,7 +2023,9 @@ def test_draw_direction_labels_uses_horizon_line_color(monkeypatch) -> None:
         )
 
     monkeypatch.setattr(render_guides_module, "draw_outlined_text", _capture)
-    monkeypatch.setattr(render_guides_module, "is_in_fov", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(
+        render_guides_module, "is_in_fov", lambda *_args, **_kwargs: True
+    )
     monkeypatch.setattr(
         render_guides_module,
         "altaz_to_normalized_xy",
@@ -1987,7 +2047,9 @@ def test_draw_direction_labels_uses_horizon_line_color(monkeypatch) -> None:
     )
 
     assert seen_colors
-    assert all(color == render_guides_module.HORIZON_LINE_COLOR for color in seen_colors)
+    assert all(
+        color == render_guides_module.HORIZON_LINE_COLOR for color in seen_colors
+    )
 
 
 def test_draw_urban_outlines_simplifies_narrow_outline_to_horizontal_segment(
@@ -2162,7 +2224,12 @@ def test_draw_urban_outlines_allows_sub_unit_width_scale(monkeypatch) -> None:
         normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
     )
 
-    assert [round(width, 2) for width in painter.width_values[:4]] == [4.6, 3.6, 2.2, 1.14]
+    assert [round(width, 2) for width in painter.width_values[:4]] == [
+        4.6,
+        3.6,
+        2.2,
+        1.14,
+    ]
 
 
 def test_draw_terrain_horizon_line_scales_line_widths(monkeypatch) -> None:

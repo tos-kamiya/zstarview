@@ -38,7 +38,7 @@ class _FakeSatellite:
         return _FakeDifference(self._alt_deg, self._az_deg)
 
 
-def test_project_satellite_records_marks_iss_with_label(monkeypatch) -> None:
+def test_project_satellite_records_marks_iss_with_marker_scale(monkeypatch) -> None:
     monkeypatch.setattr(
         project_module,
         "build_earth_satellites",
@@ -55,8 +55,7 @@ def test_project_satellite_records_marks_iss_with_label(monkeypatch) -> None:
 
     assert len(points) == 1
     assert points[0].group_key == "iss"
-    assert points[0].show_label is True
-    assert points[0].marker_scale == 0.3
+    assert points[0].marker_scale == 0.42
 
 
 def test_project_satellite_records_limits_to_single_iss_marker(monkeypatch) -> None:
@@ -78,7 +77,6 @@ def test_project_satellite_records_limits_to_single_iss_marker(monkeypatch) -> N
 
     assert [point.group_key for point in points] == ["iss"]
     assert [point.satellite_name for point in points] == ["ISS HIGH"]
-    assert points[0].show_label is True
 
 
 def test_find_satellite_altaz_returns_below_horizon_match(monkeypatch) -> None:
@@ -114,4 +112,4 @@ def test_project_satellite_records_uses_horizons_altaz_records() -> None:
     assert points[0].satellite_name == "JWST"
     assert points[0].alt_deg == 12.5
     assert points[0].az_deg == 220.0
-    assert points[0].show_label is True
+    assert points[0].marker_scale == 0.3
