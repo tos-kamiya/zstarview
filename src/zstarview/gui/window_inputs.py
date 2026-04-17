@@ -132,7 +132,7 @@ def prepare_window_catalogs(
         star_catalog_lod6_indices=(star_catalog_np["vmag"] <= 6.0).nonzero()[0].astype("int32", copy=False),
         star_catalog_meta=prepare_star_catalog_meta(star_catalog),
         dso_catalog_np=None if dso_catalog is None else prepare_deep_sky_catalog_arrays(dso_catalog),
-        named_stars_by_band=build_named_star_shortcuts(star_catalog, max_vmag=2.0, include_satellites=True),
+        named_stars_by_band=build_named_star_shortcuts(star_catalog, max_vmag=2.0, include_satellites=False),
         named_stars_search_all=build_search_jump_targets(star_catalog, include_satellites=True),
     )
 
