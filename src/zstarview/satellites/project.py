@@ -4,19 +4,20 @@ from collections.abc import Mapping, Sequence
 import re
 
 import astropy.time
-from skyfield.api import Topos
 import skyfield.api
 
-from ..satellite_constants import SATELLITE_ISS_CACHE_KEY
+from ..satellite_constants import SATELLITE_HORIZONS_CACHE_KEY, SATELLITE_ISS_CACHE_KEY
 from .fetch import build_earth_satellites
-from .types import SatelliteOmmRecord, SatelliteOverlayPoint
+from .types import SatelliteOmmRecord, SatelliteOverlayPoint, satellite_altaz_from_record
 
-_DEFAULT_GROUP_ORDER = (SATELLITE_ISS_CACHE_KEY,)
+_DEFAULT_GROUP_ORDER = (SATELLITE_ISS_CACHE_KEY, SATELLITE_HORIZONS_CACHE_KEY)
 _MAX_MARKERS_BY_GROUP = {
     SATELLITE_ISS_CACHE_KEY: 1,
+    SATELLITE_HORIZONS_CACHE_KEY: 4,
 }
 _MARKER_SCALE_BY_GROUP = {
     SATELLITE_ISS_CACHE_KEY: 0.3,
+    SATELLITE_HORIZONS_CACHE_KEY: 0.18,
 }
 
 
@@ -80,17 +81,36 @@ def compute_satellite_altaz_points(
     observer_height_m: float,
     time_obj: astropy.time.Time,
 ) -> list[SatelliteOverlayPoint]:
-    ts = skyfield.api.load.timescale()
-    t = ts.from_astropy(time_obj)
-    observer = Topos(
-        latitude_degrees=float(observer_lat),
-        longitude_degrees=float(observer_lon),
-        elevation_m=float(observer_height_m),
-    )
-
     points: list[SatelliteOverlayPoint] = []
     for group_key in _iter_group_order(records_by_group):
         records = records_by_group.get(group_key) or ()
+        if group_key == SATELLITE_HORIZONS_CACHE_KEY:
+            for record in records:
+                alt_deg, az_deg = satellite_altaz_from_record(record)
+                if alt_deg is None or az_deg is None:
+                    continue
+                points.append(
+                    SatelliteOverlayPoint(
+                        group_key=str(group_key),
+                        satellite_name=str(
+                            record.get("OBJECT_NAME")
+                            or record.get("HORIZONS_TARGET_NAME")
+                            or group_key.upper()
+                        ),
+                        alt_deg=float(alt_deg),
+                        az_deg=float(az_deg),
+                        marker_scale=float(_MARKER_SCALE_BY_GROUP.get(group_key, 0.13)),
+                        show_label=True,
+                    )
+                )
+            continue
+        ts = skyfield.api.load.timescale()
+        t = ts.from_astropy(time_obj)
+        observer = skyfield.api.Topos(
+            latitude_degrees=float(observer_lat),
+            longitude_degrees=float(observer_lon),
+            elevation_m=float(observer_height_m),
+        )
         satellites = build_earth_satellites(records, ts=ts)
         for satellite in satellites:
             topocentric = (satellite - observer).at(t)

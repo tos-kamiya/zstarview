@@ -73,7 +73,7 @@ from ..render.pipeline import (
     RenderStyle,
     render_base_scene_into_painter,
 )
-from ..satellite_constants import SATELLITE_ISS_CACHE_KEY
+from ..satellite_constants import SATELLITE_HORIZONS_CACHE_KEY, SATELLITE_ISS_CACHE_KEY
 from ..splash import setup_app
 from ..terrain import (
     EARTH_MEAN_RADIUS_M,
@@ -615,7 +615,10 @@ def _fetch_satellite_overlay_points(
     celestial_time_obj: object,
     target_time_utc,
     deadline: float | None,
-    enabled_groups: tuple[str, ...] = (SATELLITE_ISS_CACHE_KEY,),
+    enabled_groups: tuple[str, ...] = (
+        SATELLITE_ISS_CACHE_KEY,
+        SATELLITE_HORIZONS_CACHE_KEY,
+    ),
 ) -> object | None:
     if _timed_out(deadline):
         raise TimeoutError("satellites timed out")
@@ -629,6 +632,9 @@ def _fetch_satellite_overlay_points(
             target_time_utc=target_time_utc,
             time_mode=time_mode,
             timeout_s=timeout_s,
+            observer_lat=float(viewer_data.lat_deg),
+            observer_lon=float(viewer_data.lon_deg),
+            observer_height_m=float(viewer_data.observer_height_m),
         )
         logger.info("Satellite source [%s]: %s", group_key, fetched.source)
         records_by_group[group_key] = list(fetched.records)

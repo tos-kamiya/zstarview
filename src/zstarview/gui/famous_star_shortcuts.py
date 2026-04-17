@@ -52,6 +52,42 @@ SATELLITE_JUMP_SHORTCUTS = (
         kind="satellite",
         subtitle="Satellite",
     ),
+    NamedStarShortcut(
+        name="JWST",
+        ra_hours=0.0,
+        dec_deg=0.0,
+        vmag=99.0,
+        band=DEC_BAND_EQUATOR,
+        kind="satellite",
+        subtitle="Satellite",
+    ),
+    NamedStarShortcut(
+        name="Voyager 1",
+        ra_hours=0.0,
+        dec_deg=0.0,
+        vmag=99.0,
+        band=DEC_BAND_EQUATOR,
+        kind="satellite",
+        subtitle="Satellite",
+    ),
+    NamedStarShortcut(
+        name="Voyager 2",
+        ra_hours=0.0,
+        dec_deg=0.0,
+        vmag=99.0,
+        band=DEC_BAND_EQUATOR,
+        kind="satellite",
+        subtitle="Satellite",
+    ),
+    NamedStarShortcut(
+        name="Parker",
+        ra_hours=0.0,
+        dec_deg=0.0,
+        vmag=99.0,
+        band=DEC_BAND_EQUATOR,
+        kind="satellite",
+        subtitle="Satellite",
+    ),
 )
 
 

@@ -42,10 +42,11 @@ from ..clouddisc import (
 )
 from ..clouddisc.providers.select import pick_satellite
 from ..overlay_time import overlay_availability_for_delta, target_time_utc_from_delta
-from ..satellites import find_satellite_altaz, load_satellite_cache
+from ..satellites import find_satellite_altaz, load_satellite_cache, satellite_cache_scope_key
 from ..satellite_constants import (
     SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS,
     SATELLITE_FAILURE_RETRY_SECONDS,
+    SATELLITE_HORIZONS_CACHE_KEY,
     SATELLITE_ISS_CACHE_KEY,
     SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS,
 )
@@ -430,7 +431,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         except Exception:
             pass
 
-        self._enabled_satellite_groups: tuple[str, ...] = (SATELLITE_ISS_CACHE_KEY,)
+        self._enabled_satellite_groups: tuple[str, ...] = (
+            SATELLITE_ISS_CACHE_KEY,
+            SATELLITE_HORIZONS_CACHE_KEY,
+        )
         self._disc_generation = 0
         self._frame_cache_key: object | None = None
         self._frame_cache_image = None
@@ -1274,7 +1278,14 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     ) -> dict[str, list[dict[str, object]]]:
         records_by_group: dict[str, list[dict[str, object]]] = {}
         for group_key in enabled_groups:
-            cached = load_satellite_cache(group_key)
+            cache_scope = None
+            if group_key == SATELLITE_HORIZONS_CACHE_KEY:
+                cache_scope = satellite_cache_scope_key(
+                    observer_lat=float(self.viewer_data.location[0]),
+                    observer_lon=float(self.viewer_data.location[1]),
+                    observer_height_m=float(self.viewer_data.observer_height_m),
+                )
+            cached = load_satellite_cache(group_key, cache_scope_key=cache_scope)
             if cached is None:
                 continue
             records_by_group[str(group_key)] = list(cached.records)

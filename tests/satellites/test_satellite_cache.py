@@ -8,6 +8,7 @@ import pytest
 from zstarview.satellites.cache import (
     fetch_cached_satellite_elements,
     load_satellite_cache,
+    satellite_cache_scope_key,
     resolve_satellite_elements_for_time,
     save_satellite_fetch_failure,
     satellite_group_cache_path,
@@ -59,6 +60,40 @@ def test_save_and_load_satellite_cache_round_trip(tmp_path) -> None:
     assert cached.last_fetch_failed is False
     assert len(cached.records) == 1
     assert cached.records[0]["OBJECT_NAME"] == "ISS (ZARYA)"
+
+
+def test_save_and_load_satellite_cache_round_trip_with_scope_key(tmp_path) -> None:
+    element_epoch = datetime(2026, 4, 17, 12, 0, tzinfo=timezone.utc)
+    fetched_at = datetime(2026, 4, 17, 12, 5, tzinfo=timezone.utc)
+    scope_key = satellite_cache_scope_key(
+        observer_lat=35.0,
+        observer_lon=139.0,
+        observer_height_m=50.0,
+    )
+    save_satellite_cache(
+        "horizons",
+        [
+            {
+                "OBJECT_NAME": "JWST",
+                "EPOCH": element_epoch.isoformat(),
+                "ALT_DEG": 12.5,
+                "AZ_DEG": 220.0,
+                "_SOURCE": "horizons",
+            }
+        ],
+        element_epoch_utc=element_epoch,
+        fetched_at_utc=fetched_at,
+        cache_root=tmp_path,
+        cache_scope_key=scope_key,
+        source="horizons",
+    )
+
+    cached = load_satellite_cache("horizons", cache_root=tmp_path, cache_scope_key=scope_key)
+
+    assert cached is not None
+    assert cached.group_key == "horizons"
+    assert cached.records[0]["OBJECT_NAME"] == "JWST"
+    assert satellite_group_cache_path("horizons", cache_root=tmp_path, cache_scope_key=scope_key).is_file()
 
 
 def test_fetch_cached_satellite_elements_uses_fresh_cache_without_network(tmp_path) -> None:
@@ -162,6 +197,7 @@ def test_fetch_cached_satellite_elements_uses_iss_ttl(tmp_path) -> None:
     )
 
     assert SATELLITE_GROUP_VALIDITY_SECONDS["iss"] == 24 * 60 * 60
+    assert SATELLITE_GROUP_VALIDITY_SECONDS["horizons"] == 24 * 60 * 60
     assert called is False
     assert result.source == "cache-fresh"
 

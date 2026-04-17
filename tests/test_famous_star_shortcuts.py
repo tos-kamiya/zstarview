@@ -56,7 +56,7 @@ def test_build_named_star_shortcuts_includes_satellite_entries() -> None:
     grouped = build_named_star_shortcuts(df, max_vmag=2.0, include_satellites=True)
 
     names = [s.name for s in grouped[DEC_BAND_EQUATOR]]
-    assert "ISS" in names
+    assert {"ISS", "JWST", "Voyager 1", "Voyager 2", "Parker"}.issubset(set(names))
 
 
 def test_flatten_named_star_shortcuts_sorts_globally() -> None:

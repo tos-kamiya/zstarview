@@ -14,11 +14,13 @@ from ..satellite_constants import (
     SATELLITE_FAILURE_RETRY_SECONDS,
     SATELLITE_FETCH_TIMEOUT_SECONDS,
     SATELLITE_GROUP_VALIDITY_SECONDS,
+    SATELLITE_HORIZONS_CACHE_KEY,
 )
 from .fetch import (
     extract_record_source,
     extract_element_epoch_utc,
     fetch_iss_records,
+    fetch_horizons_records,
     filter_records_for_group,
 )
 from .types import CachedSatelliteElementSet, SatelliteOmmRecord
@@ -41,16 +43,38 @@ def satellite_group_cache_path(
     group_key: str,
     *,
     cache_root: str | Path = SATELLITE_CACHE_ROOT_DIR,
+    cache_scope_key: str | None = None,
 ) -> Path:
-    return Path(cache_root) / f"{group_key}.json"
+    root = Path(cache_root)
+    if cache_scope_key:
+        root = root / cache_scope_key
+    return root / f"{group_key}.json"
+
+
+def satellite_cache_scope_key(
+    *,
+    observer_lat: float,
+    observer_lon: float,
+    observer_height_m: float,
+) -> str:
+    return "earth_{lat:+08.4f}_{lon:+09.4f}_{height:+07.1f}".format(
+        lat=float(observer_lat),
+        lon=float(observer_lon),
+        height=float(observer_height_m),
+    )
 
 
 def load_satellite_cache(
     group_key: str,
     *,
     cache_root: str | Path = SATELLITE_CACHE_ROOT_DIR,
+    cache_scope_key: str | None = None,
 ) -> CachedSatelliteElementSet | None:
-    path = satellite_group_cache_path(group_key, cache_root=cache_root)
+    path = satellite_group_cache_path(
+        group_key,
+        cache_root=cache_root,
+        cache_scope_key=cache_scope_key,
+    )
     return _load_cached_set_from_path(path, group_key=group_key)
 
 
@@ -61,6 +85,7 @@ def save_satellite_cache(
     element_epoch_utc: datetime,
     fetched_at_utc: datetime,
     cache_root: str | Path = SATELLITE_CACHE_ROOT_DIR,
+    cache_scope_key: str | None = None,
     source: str = "celestrak",
     last_fetch_attempt_utc: datetime | None = None,
     last_fetch_failed: bool = False,
@@ -68,7 +93,11 @@ def save_satellite_cache(
     last_fetch_failure_utc: datetime | None = None,
     failure_backoff_until_utc: datetime | None = None,
 ) -> Path:
-    path = satellite_group_cache_path(group_key, cache_root=cache_root)
+    path = satellite_group_cache_path(
+        group_key,
+        cache_root=cache_root,
+        cache_scope_key=cache_scope_key,
+    )
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "group_key": str(group_key),
@@ -92,9 +121,14 @@ def save_satellite_fetch_failure(
     attempted_at_utc: datetime,
     error_text: str,
     cache_root: str | Path = SATELLITE_CACHE_ROOT_DIR,
+    cache_scope_key: str | None = None,
     backoff_seconds: int = SATELLITE_FAILURE_RETRY_SECONDS,
 ) -> Path:
-    path = satellite_group_cache_path(group_key, cache_root=cache_root)
+    path = satellite_group_cache_path(
+        group_key,
+        cache_root=cache_root,
+        cache_scope_key=cache_scope_key,
+    )
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = _load_cache_payload(path) or {}
     attempted_at = _normalize_utc(attempted_at_utc)
@@ -117,12 +151,24 @@ def fetch_cached_satellite_elements(
     fetcher: SatelliteFetcher = fetch_iss_records,
     timeout_s: float = SATELLITE_FETCH_TIMEOUT_SECONDS,
     cache_root: str | Path = SATELLITE_CACHE_ROOT_DIR,
+    cache_scope_key: str | None = None,
     fresh_ttl_seconds: int | None = None,
     now_utc: datetime | None = None,
+    target_time_utc: datetime | None = None,
+    observer_lat: float | None = None,
+    observer_lon: float | None = None,
+    observer_height_m: float | None = None,
 ) -> CachedSatelliteElementSet:
     now = _normalize_utc(now_utc or current_utc_time())
     ttl_seconds = _group_validity_seconds(group_key, fresh_ttl_seconds)
-    path = satellite_group_cache_path(group_key, cache_root=cache_root)
+    effective_fetcher = fetcher
+    if fetcher is fetch_iss_records and group_key == SATELLITE_HORIZONS_CACHE_KEY:
+        effective_fetcher = fetch_horizons_records
+    path = satellite_group_cache_path(
+        group_key,
+        cache_root=cache_root,
+        cache_scope_key=cache_scope_key,
+    )
     payload = _load_cache_payload(path)
     metadata = _fetch_metadata_from_payload(payload)
     cached = _load_cached_set_from_payload(payload, group_key=group_key)
@@ -155,15 +201,23 @@ def fetch_cached_satellite_elements(
             last_fetch_error=metadata.last_fetch_error,
             last_fetch_failure_utc=metadata.last_fetch_failure_utc,
             failure_backoff_until_utc=metadata.failure_backoff_until_utc,
-        )
+    )
     try:
-        records = fetcher(group_key, timeout_s=timeout_s)
+        records = effective_fetcher(
+            group_key,
+            timeout_s=timeout_s,
+            target_time_utc=target_time_utc or now,
+            observer_lat=observer_lat,
+            observer_lon=observer_lon,
+            observer_height_m=observer_height_m,
+        )
     except Exception as exc:
         save_satellite_fetch_failure(
             group_key,
             attempted_at_utc=now,
             error_text=str(exc),
             cache_root=cache_root,
+            cache_scope_key=cache_scope_key,
         )
         raise
     element_epoch_utc = extract_element_epoch_utc(records) or now
@@ -175,6 +229,7 @@ def fetch_cached_satellite_elements(
         element_epoch_utc=element_epoch_utc,
         fetched_at_utc=fetched_at_utc,
         cache_root=cache_root,
+        cache_scope_key=cache_scope_key,
         source=source,
         last_fetch_attempt_utc=fetched_at_utc,
     )
@@ -196,19 +251,43 @@ def resolve_satellite_elements_for_time(
     fetcher: SatelliteFetcher = fetch_iss_records,
     timeout_s: float = SATELLITE_FETCH_TIMEOUT_SECONDS,
     cache_root: str | Path = SATELLITE_CACHE_ROOT_DIR,
+    cache_scope_key: str | None = None,
     validity_seconds: int | None = None,
     now_utc: datetime | None = None,
+    observer_lat: float | None = None,
+    observer_lon: float | None = None,
+    observer_height_m: float | None = None,
 ) -> CachedSatelliteElementSet:
-    del target_time_utc
     if time_mode != "present":
         raise RuntimeError("Satellites: time-shifted view is not supported")
+    effective_fetcher = fetcher
+    if fetcher is fetch_iss_records and group_key == SATELLITE_HORIZONS_CACHE_KEY:
+        effective_fetcher = fetch_horizons_records
+    effective_cache_scope_key = cache_scope_key
+    if (
+        effective_cache_scope_key is None
+        and group_key == SATELLITE_HORIZONS_CACHE_KEY
+        and observer_lat is not None
+        and observer_lon is not None
+        and observer_height_m is not None
+    ):
+        effective_cache_scope_key = satellite_cache_scope_key(
+            observer_lat=float(observer_lat),
+            observer_lon=float(observer_lon),
+            observer_height_m=float(observer_height_m),
+        )
     return fetch_cached_satellite_elements(
         group_key,
-        fetcher=fetcher,
+        fetcher=effective_fetcher,
         timeout_s=timeout_s,
         cache_root=cache_root,
+        cache_scope_key=effective_cache_scope_key,
         fresh_ttl_seconds=_group_validity_seconds(group_key, validity_seconds),
         now_utc=now_utc,
+        target_time_utc=target_time_utc,
+        observer_lat=observer_lat,
+        observer_lon=observer_lon,
+        observer_height_m=observer_height_m,
     )
 
 

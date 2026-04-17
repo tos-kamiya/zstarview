@@ -542,11 +542,12 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `wheretheiss.at` ISS TLE endpoint の組み立て
   - fallback 用 CelesTrak `stations` endpoint の組み立て
   - ISS TLE payload と fallback OMM/JSON payload の正規化
+  - JPL Horizons lookup/observer API を使う spacecraft ephemeris fetch
   - Skyfield へ渡す軌道要素表現への変換
 - `src/zstarview/satellites/cache.py`
-  - ISS 用人工衛星キャッシュ file path 管理
+  - ISS と Horizons spacecraft 用人工衛星キャッシュ file path 管理
   - 軌道要素 JSON の永続保存と読込
-  - `ISS` 用 fresh TTL 判定
+  - `ISS` と Horizons spacecraft の fresh TTL 判定
   - 失敗メタデータと `failure_backoff_until_utc` の永続化
   - stale cache の backoff 再利用
 - `src/zstarview/satellites/types.py`
@@ -556,10 +557,11 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 - `src/zstarview/satellites/project.py`
   - Skyfield `EarthSatellite` を観測地点基準の `alt/az` へ変換
+  - Horizons spacecraft の topocentric alt/az を直読
   - 視野内判定前の人工衛星描画用軽量モデルを生成
-  - `ISS` marker の scale とラベル情報を決定
+  - `ISS` と Horizons spacecraft の marker scale とラベル情報を決定
 - `src/zstarview/gui/satellite_state.py`
-  - `ISS` の最新軌道要素
+  - `ISS` と Horizons spacecraft の最新軌道要素
   - 最新の描画用人工衛星マーカー列
   - 最終成功時刻
   - 読込中 / 取得中バナー
@@ -1044,7 +1046,7 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 
 ### 8.4 人工衛星レイヤーの更新粒度
 
-- 人工衛星の current 用軌道要素 cache の fresh 判定は `element_epoch_utc` 基準とし、現在の実装では `ISS=24時間` を用いてよい。表示上の位置再計算は `2秒` 間隔で行ってよい。
+- 人工衛星の current 用軌道要素 cache の fresh 判定は `element_epoch_utc` 基準とし、現在の実装では `ISS` と Horizons spacecraft の両方に `24時間` を用いてよい。表示上の位置再計算は `2秒` 間隔で行ってよい。
 - 人工衛星描画は realtime view の現在時刻だけを描き、タイムシフト表示では描かない。
 - 初期実装では軌跡線を持たない。
 - `satellite_opacity <= 0.0` または `ISS` 表示が無効の間は、人工衛星 fetch timer と位置再計算 timer を止めてよい。
@@ -1141,9 +1143,9 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - cache key は観測地点そのものではなく、実問い合わせに使う OpenSky `bbox` から導出する。
 - clean up は GOES/Himawari のような時刻ディレクトリ走査ではなく、航空機 cache root 配下の古い file を `fetched_at_utc` 基準で削除する簡易方式でよい。
 - 人工衛星の軌道要素 cache は current 1 層だけでよい。
-- `current` は `ISS` 用の少数 JSON file としてよく、cache key は `iss` 固定でよい。
+- `current` は `ISS` 用と Horizons spacecraft 用の 2 系列 JSON file としてよく、cache key は `iss` と `horizons` を使ってよい。
 - 人工衛星の current cache file には少なくとも `element_epoch_utc`、`fetched_at_utc`、`source`、`records`、`last_fetch_attempt_utc`、`last_fetch_failed`、`last_fetch_error`、`last_fetch_failure_utc`、`failure_backoff_until_utc` を保持する。
-- 人工衛星の current cache の fresh 判定は `element_epoch_utc` 基準とし、現在の実装では `ISS=24時間` を使う。
+- 人工衛星の current cache の fresh 判定は `element_epoch_utc` 基準とし、現在の実装では `ISS` と Horizons spacecraft の両方に `24時間` を使う。
 - fetch 失敗後の `2時間` backoff は cache file 側にも保存し、アプリ再起動後も継続してよい。
 - DEM / Overture 建物キャッシュは、各取得単位ごとに `fetched_at_utc` をメタデータとして持たせ、利用時に TTL 超過かどうかを判定できるようにする。
 - TTL 超過時は「即削除」ではなく「stale として再取得対象」に落とし、再取得成功までは既存キャッシュをフォールバック利用できるようにする。

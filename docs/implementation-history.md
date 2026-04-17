@@ -544,3 +544,11 @@
 - 雲ストライプ `width` モードの減衰カーブ調整
   - `width` モードの alpha 減衰を線形から ease-out 寄りの二乗カーブへ変更し、基準線付近の明るさを保ったまま遠側だけをゆるやかに薄くするようにした。
   - 実装に合わせて `docs/specification.md` と `docs/design.md` へ、`width` モードの alpha 減衰は線形に限らずゆるやかなカーブとしてよい、という説明を追記した。
+
+### 2026-04-17
+
+- 人工衛星レイヤーの Horizons spacecraft 拡張
+  - ISS の既存 TLE 経路は維持しつつ、JPL Horizons の observer ephemeris を使って `JWST`, `Voyager 1`, `Voyager 2`, `Parker` を追加した。
+  - Horizons 側は observer site 別に cache を分け、CSV 出力から直接 `alt/az` を読み取って既存の overlay model に流し込むようにした。
+  - ISS と Horizons spacecraft の cache TTL はともに `24h` に揃えた。
+  - `README.md`、`docs/specification.md`、`docs/design.md` を新しい表示対象とデータ経路に合わせて更新した。

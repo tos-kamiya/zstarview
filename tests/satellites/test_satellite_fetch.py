@@ -1,17 +1,24 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import logging
 
 from skyfield.api import EarthSatellite
 
 from zstarview.satellites.fetch import (
     CELESTRAK_GROUP_BY_KEY,
+    HORIZONS_API_URL,
+    HORIZONS_LOOKUP_API_URL,
+    HORIZONS_TARGETS_BY_KEY,
     WHERETHEISS_API_URL,
     build_celestrak_group_url,
+    build_horizons_lookup_url,
+    build_horizons_observer_url,
     build_earth_satellites,
     build_wheretheiss_tle_url,
     extract_record_source,
     fetch_iss_records,
+    fetch_horizons_records,
     filter_records_for_group,
     normalize_celestrak_omm_payload,
     normalize_wheretheiss_tle_payload,
@@ -56,6 +63,67 @@ def test_celestrak_group_mapping_covers_initial_layers() -> None:
     assert CELESTRAK_GROUP_BY_KEY == {
         "iss": "stations",
     }
+    assert "horizons" in HORIZONS_TARGETS_BY_KEY
+
+
+def test_build_horizons_lookup_url_targets_spacecraft_lookup() -> None:
+    url = build_horizons_lookup_url("James Webb Space Telescope")
+
+    assert HORIZONS_LOOKUP_API_URL in url
+    assert "group=sct" in url
+    assert "James%20Webb%20Space%20Telescope" in url
+
+
+def test_build_horizons_observer_url_targets_csv_observer_table() -> None:
+    url = build_horizons_observer_url(
+        "123",
+        target_time_utc=datetime(2026, 4, 17, 12, 0, tzinfo=timezone.utc),
+        observer_lat=35.0,
+        observer_lon=139.0,
+        observer_height_m=50.0,
+    )
+
+    assert HORIZONS_API_URL in url
+    assert "EPHEM_TYPE=OBSERVER" in url
+    assert "CSV_FORMAT=YES" in url
+    assert "QUANTITIES=%274%27" in url
+
+
+def test_fetch_horizons_records_builds_spacecraft_rows(monkeypatch) -> None:
+    lookup_calls: list[str] = []
+    observer_calls: list[str] = []
+
+    def fake_lookup(search_text: str, **_kwargs):
+        lookup_calls.append(search_text)
+        return {
+            "result": [
+                {
+                    "name": f"{search_text} (spacecraft)",
+                    "spkid": f"{search_text}-spkid",
+                    "alias": [search_text],
+                }
+            ]
+        }
+
+    def fake_csv(command: str, **_kwargs):
+        observer_calls.append(command)
+        return [["2026-Apr-17 12:00:00", "*", "m", "123.45", "67.89"]]
+
+    monkeypatch.setattr("zstarview.satellites.fetch.fetch_horizons_lookup", fake_lookup)
+    monkeypatch.setattr("zstarview.satellites.fetch.fetch_horizons_observer_csv", fake_csv)
+
+    records = fetch_horizons_records(
+        "horizons",
+        target_time_utc=datetime(2026, 4, 17, 12, 0, tzinfo=timezone.utc),
+        observer_lat=35.0,
+        observer_lon=139.0,
+        observer_height_m=50.0,
+    )
+
+    assert lookup_calls == ["JWST", "Voyager 1", "Voyager 2", "Parker Solar Probe"]
+    assert observer_calls == ["JWST-spkid", "Voyager 1-spkid", "Voyager 2-spkid", "Parker Solar Probe-spkid"]
+    assert [record["OBJECT_NAME"] for record in records] == ["JWST", "Voyager 1", "Voyager 2", "Parker"]
+    assert all(record["_SOURCE"] == "horizons" for record in records)
 
 
 def test_build_celestrak_group_url_uses_group_and_json_format() -> None:

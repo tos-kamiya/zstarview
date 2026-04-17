@@ -123,6 +123,9 @@ class SatelliteController(QObject):
                         group_key,
                         target_time_utc=target_time_utc,
                         time_mode=time_mode,
+                        observer_lat=observer_lat,
+                        observer_lon=observer_lon,
+                        observer_height_m=observer_height_m,
                     )
                 except Exception as exc:
                     if _is_expected_fetch_failure(exc):
