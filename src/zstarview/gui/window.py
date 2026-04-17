@@ -1285,7 +1285,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                     observer_lon=float(self.viewer_data.location[1]),
                     observer_height_m=float(self.viewer_data.observer_height_m),
                 )
-            cached = load_satellite_cache(group_key, cache_scope_key=cache_scope)
+            if cache_scope is None:
+                cached = load_satellite_cache(group_key)
+            else:
+                cached = load_satellite_cache(group_key, cache_scope_key=cache_scope)
             if cached is None:
                 continue
             records_by_group[str(group_key)] = list(cached.records)

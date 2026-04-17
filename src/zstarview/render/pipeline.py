@@ -739,7 +739,7 @@ def _draw_hover_overlay_layer(
     style: RenderStyle,
     highlighted_object: Any | None,
     highlighted_dso: Any | None,
-    highlighted_satellite: Any | None,
+    highlighted_satellite: Any | None = None,
 ) -> None:
     line_width_scale = compute_star_render_upscale_factor(
         geometry.radius * 2,
