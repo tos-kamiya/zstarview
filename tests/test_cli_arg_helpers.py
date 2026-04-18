@@ -127,6 +127,24 @@ def test_parse_args_accepts_earth_guide_opacity() -> None:
     assert args.earth_guide_opacity == 0.0
 
 
+def test_parse_args_accepts_terrain_horizon_opacity_short_option() -> None:
+    args = cli_args.parse_args(["-d", "0.5", "Matsue"])
+
+    assert args.terrain_horizon_opacity == 0.5
+
+
+def test_parse_args_accepts_earth_guide_opacity_short_option() -> None:
+    args = cli_args.parse_args(["-e", "0.4", "Matsue"])
+
+    assert args.earth_guide_opacity == 0.4
+
+
+def test_parse_args_accepts_urban_outline_opacity_short_option() -> None:
+    args = cli_args.parse_args(["-u", "0.3", "Matsue"])
+
+    assert args.urban_outline_opacity == 0.3
+
+
 def test_parse_args_defaults_sky_opacity_to_0_17() -> None:
     args = cli_args.parse_args(["Matsue"])
 

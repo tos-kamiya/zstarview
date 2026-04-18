@@ -562,6 +562,7 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         help="Whether to show guideline overlays at startup (true/false).",
     )
     parser.add_argument(
+        "-d",
         "--terrain-horizon-opacity",
         type=float,
         default=0.028,
@@ -571,6 +572,7 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         ),
     )
     parser.add_argument(
+        "-e",
         "--earth-guide-opacity",
         type=float,
         default=0.028,
@@ -589,6 +591,7 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         ),
     )
     parser.add_argument(
+        "-u",
         "--urban-outline-opacity",
         type=float,
         default=0.2,
