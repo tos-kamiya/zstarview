@@ -71,6 +71,9 @@ class SkyWindowUpdatesMixin:
             aircraft_message = aircraft_status_line()
             if aircraft_message:
                 parts.append(aircraft_message)
+        jpl_message = self._jpl_small_body_status_line()
+        if jpl_message:
+            parts.append(jpl_message)
         terrain_message = self._terrain_horizon_status_line()
         if terrain_message:
             parts.append(terrain_message)
@@ -156,6 +159,23 @@ class SkyWindowUpdatesMixin:
         if satellite_state.element_epoch_utc is None:
             return ""
         return f"Satellites: {satellite_state.element_epoch_utc.strftime('%H:%MZ')}"
+
+    def _jpl_small_body_status_line(self) -> str:
+        target = getattr(self.state, "persistent_search_target", None)
+        if target is None:
+            return ""
+        label = str(getattr(target, "label", "")).strip()
+        if not label:
+            return ""
+        next_refresh_utc = getattr(self.state, "persistent_search_next_refresh_utc", None)
+        last_error = str(getattr(self.state, "persistent_search_last_error", "")).strip()
+        if isinstance(next_refresh_utc, datetime):
+            refresh_part = next_refresh_utc.strftime("%H:%MZ")
+        else:
+            refresh_part = "pending"
+        if last_error:
+            return f"JPL [{label}]: retry {refresh_part} ({last_error})"
+        return f"JPL [{label}]: refresh {refresh_part}"
 
     def _on_sky_data_calculated(self, payload: Dict) -> None:
         current_generation = int(self._disc_generation)

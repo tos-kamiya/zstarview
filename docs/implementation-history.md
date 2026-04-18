@@ -563,3 +563,18 @@
   - JPL 小天体検索を既存の恒星・アステリズム検索 UI に統合し、選択対象へ視界中心を合わせる方針を確認した。
   - 結果の永続表示は、検索ダイアログ下部のチェックボックスで制御する方針にした。
   - 永続マーカーとラベルは、一時 jump highlight と別の状態として扱う前提で整理した。
+
+- JPL small-body 本体接続
+  - `Search Stars and Asterisms` ダイアログをタブ化し、JPL small body 用の検索タブと `Keep marker` / `Keep label` を追加した。
+  - `SearchJumpTarget` に JPL 用の `command` / `alt_deg` / `az_deg` / 永続フラグを追加し、`SkyWindowState` に永続ターゲットを保持するようにした。
+  - 永続マーカーは衛星クロスと同じ大きさで描画し、ラベルは単独のアウトラインテキストとして重ねるようにした。
+  - JPL 検索は Horizons lookup と observer ephemeris を使い、現在時刻の `alt/az` を検索結果として返す実装にした。
+
+- JPL small-body 永続更新の retry policy
+  - 永続表示対象の JPL small body について、検索時刻を起点に 1h ごとの再問い合わせを行う one-shot timer を追加した。
+  - 再問い合わせに失敗した場合は即時再試行せず、失敗時刻から 1h 後へ次回 retry を延期するようにした。
+  - retry の成功/失敗は `SkyWindowState` の `persistent_search_last_error` / `persistent_search_next_refresh_utc` で追跡し、HUD の status line に反映するようにした。
+
+- Validation note
+  - Modified GUI, renderer, and test files passed `py_compile` and `ruff check`.
+  - Full `pytest` execution was not possible in the active `.venv` because `pytest` is not installed there.

@@ -9,7 +9,9 @@ clouds, and all user interactions like rotation, zooming, and object highlightin
 
 import logging
 import time
+from dataclasses import replace
 from datetime import datetime, timezone
+from datetime import timedelta
 from pathlib import Path
 from typing import Callable, Optional, Tuple, Union
 
@@ -42,7 +44,13 @@ from ..clouddisc import (
 )
 from ..clouddisc.providers.select import pick_satellite
 from ..overlay_time import overlay_availability_for_delta, target_time_utc_from_delta
-from ..satellites import find_satellite_altaz, load_satellite_cache, satellite_cache_scope_key
+from ..satellites import (
+    fetch_horizons_lookup,
+    fetch_horizons_observer_csv,
+    find_satellite_altaz,
+    load_satellite_cache,
+    satellite_cache_scope_key,
+)
 from ..satellite_constants import (
     SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS,
     SATELLITE_FAILURE_RETRY_SECONDS,
@@ -84,6 +92,7 @@ from .satellite_state import SatelliteState
 from .satellite_controller import SatelliteController
 from .aircraft_state import AircraftState
 from .aircraft_controller import AircraftController
+from .jpl_small_body_controller import JplSmallBodyController
 from .terrain_state import TerrainHorizonState
 from .terrain_controller import TerrainHorizonController
 from .famous_star_dialog import NamedStarJumpDialog
@@ -516,6 +525,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._cloud_controller: Optional[CloudController] = None
         self._satellite_controller: Optional[SatelliteController] = None
         self._aircraft_controller: Optional[AircraftController] = None
+        self._jpl_small_body_controller: Optional[JplSmallBodyController] = None
         self._terrain_horizon_controller: Optional[TerrainHorizonController] = None
         self._urban_outline_controller: Optional[UrbanOutlineController] = None
         self._cloud_update_timer = QTimer(self)
@@ -574,6 +584,15 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._aircraft_controller.aircraft_started.connect(self._on_aircraft_started)
         self._aircraft_controller.aircraft_ready.connect(self._on_aircraft_ready)
         self._aircraft_controller.aircraft_failed.connect(self._on_aircraft_failed)
+        self._jpl_small_body_controller = JplSmallBodyController(parent=self)
+        self._jpl_small_body_controller.jpl_started.connect(self._on_jpl_started)
+        self._jpl_small_body_controller.jpl_ready.connect(self._on_jpl_ready)
+        self._jpl_small_body_controller.jpl_failed.connect(self._on_jpl_failed)
+        self._persistent_search_update_timer = QTimer(self)
+        self._persistent_search_update_timer.setSingleShot(True)
+        self._persistent_search_update_timer.timeout.connect(
+            self._on_persistent_search_refresh_timer
+        )
         if self._action_toggle_clouds is not None:
             self._action_toggle_clouds.setEnabled(
                 self._cloud_toggle_supported
@@ -1150,7 +1169,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._jump_to_named_star(star)
 
     def _open_named_star_search_dialog(self) -> None:
-        dialog = NamedStarSearchDialog(self._named_stars_search_all, self)
+        dialog = NamedStarSearchDialog(
+            self._named_stars_search_all,
+            self,
+            jpl_search_callback=self._search_jpl_small_body_targets,
+        )
         if dialog.exec() == 0:
             return
         target = dialog.selected_target()
@@ -1166,6 +1189,199 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if target is None:
             return
         self._jump_to_search_target(target)
+
+    def _search_jpl_small_body_targets(self, query: str) -> list[SearchJumpTarget]:
+        lookup_payload = fetch_horizons_lookup(query, group="sb")
+        result = lookup_payload.get("result")
+        if not isinstance(result, list) or not result:
+            return []
+
+        observer_lat = float(self.viewer_data.location[0])
+        observer_lon = float(self.viewer_data.location[1])
+        observer_height_m = float(self.viewer_data.observer_height_m)
+        target_time_utc = self._target_time_utc()
+        targets: list[SearchJumpTarget] = []
+        for item in result[:20]:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name", "")).strip()
+            if not name:
+                continue
+            spkid = str(item.get("spkid", "")).strip()
+            if not spkid:
+                continue
+            command = f"DES={spkid};"
+            try:
+                rows = fetch_horizons_observer_csv(
+                    command,
+                    target_time_utc=target_time_utc,
+                    observer_lat=observer_lat,
+                    observer_lon=observer_lon,
+                    observer_height_m=observer_height_m,
+                )
+            except Exception as exc:
+                logger.info("JPL small-body observer fetch failed for %s: %s", name, exc)
+                continue
+            alt_az = self._extract_horizons_altaz(rows)
+            if alt_az is None:
+                continue
+            alt_deg, az_deg = alt_az
+            type_name = str(item.get("type", "")).strip()
+            pdes = str(item.get("pdes", "")).strip()
+            subtitle_parts = [part for part in (type_name, pdes) if part]
+            targets.append(
+                SearchJumpTarget(
+                    label=name,
+                    kind="jpl_small_body",
+                    sort_key=(0.0, name.casefold()),
+                    subtitle=" / ".join(subtitle_parts) if subtitle_parts else "JPL Small Body",
+                    object_key=spkid,
+                    command=command,
+                    alt_deg=float(alt_deg),
+                    az_deg=float(az_deg) % 360.0,
+                    target_time_utc=target_time_utc,
+                )
+            )
+        targets.sort(key=lambda target: target.sort_key)
+        return targets
+
+    def _extract_horizons_altaz(self, rows: list[list[str]]) -> tuple[float, float] | None:
+        for row in rows:
+            numeric_values: list[float] = []
+            for value in row:
+                try:
+                    numeric_values.append(float(str(value).strip()))
+                except (TypeError, ValueError):
+                    continue
+            if len(numeric_values) >= 2:
+                return numeric_values[-1], numeric_values[-2]
+        return None
+
+    def _jpl_small_body_persistent_target(self) -> SearchJumpTarget | None:
+        target = self.state.persistent_search_target
+        if target is None:
+            return None
+        if not bool(getattr(target, "persistent_keep_marker", False)) and not bool(
+            getattr(target, "persistent_keep_label", False)
+        ):
+            return None
+        return target
+
+    def _clear_persistent_search(self) -> None:
+        self.state.persistent_search_target = None
+        self.state.persistent_search_reference_time_utc = None
+        self.state.persistent_search_next_refresh_utc = None
+        self.state.persistent_search_last_refresh_utc = None
+        self.state.persistent_search_last_error = None
+        if hasattr(self, "_persistent_search_update_timer") and self._persistent_search_update_timer.isActive():
+            self._persistent_search_update_timer.stop()
+
+    def _schedule_persistent_search_refresh(self) -> None:
+        if self._is_shutting_down:
+            return
+        target = self._jpl_small_body_persistent_target()
+        if target is None:
+            self._clear_persistent_search()
+            return
+        next_refresh_utc = self.state.persistent_search_next_refresh_utc
+        if next_refresh_utc is None:
+            reference_time_utc = target.target_time_utc or self._target_time_utc()
+            self.state.persistent_search_reference_time_utc = reference_time_utc
+            next_refresh_utc = reference_time_utc + timedelta(hours=1)
+            self.state.persistent_search_next_refresh_utc = next_refresh_utc
+        delay_ms = int(
+            max(
+                0.0,
+                round(
+                    (next_refresh_utc - datetime.now(timezone.utc)).total_seconds()
+                    * 1000.0
+                ),
+            )
+        )
+        self._persistent_search_update_timer.start(delay_ms)
+
+    def _on_persistent_search_refresh_timer(self) -> None:
+        if self._is_shutting_down:
+            return
+        target = self._jpl_small_body_persistent_target()
+        if target is None:
+            self._clear_persistent_search()
+            return
+        query_time_utc = self.state.persistent_search_next_refresh_utc
+        if query_time_utc is None:
+            query_time_utc = target.target_time_utc or self._target_time_utc()
+        if self._jpl_small_body_controller is None:
+            return
+        started = self._jpl_small_body_controller.update(
+            observer_lat=float(self.viewer_data.location[0]),
+            observer_lon=float(self.viewer_data.location[1]),
+            observer_height_m=float(self.viewer_data.observer_height_m),
+            target=target,
+            target_time_utc=query_time_utc,
+            reason="timer",
+        )
+        if not started:
+            return
+
+    def _on_jpl_started(self, payload: object) -> None:
+        banner = ""
+        if isinstance(payload, dict):
+            banner = str(payload.get("banner", "")).strip()
+        if banner:
+            self.state.persistent_search_last_error = None
+        self.request_client_update()
+
+    def _on_jpl_ready(self, payload: object) -> None:
+        if not isinstance(payload, dict):
+            return
+        target = payload.get("target")
+        if not isinstance(target, SearchJumpTarget):
+            return
+        current_target = self.state.persistent_search_target
+        if current_target is None:
+            return
+        if current_target.command != target.command or current_target.label != target.label:
+            return
+        target_time_utc = payload.get("target_time_utc")
+        if not isinstance(target_time_utc, datetime):
+            target_time_utc = current_target.target_time_utc or self._target_time_utc()
+        alt_deg = float(payload.get("alt_deg", current_target.alt_deg or 0.0))
+        az_deg = float(payload.get("az_deg", current_target.az_deg or 0.0)) % 360.0
+        updated_target = replace(
+            current_target,
+            alt_deg=alt_deg,
+            az_deg=az_deg,
+            target_time_utc=target_time_utc,
+        )
+        self.state.persistent_search_target = updated_target
+        self.state.persistent_search_reference_time_utc = target_time_utc
+        self.state.persistent_search_last_refresh_utc = payload.get("refreshed_at_utc")
+        self.state.persistent_search_last_error = None
+        self.state.persistent_search_next_refresh_utc = target_time_utc + timedelta(hours=1)
+        self.request_client_update()
+        self._schedule_persistent_search_refresh()
+
+    def _on_jpl_failed(self, payload: object) -> None:
+        if not isinstance(payload, dict):
+            return
+        target = payload.get("target")
+        if not isinstance(target, SearchJumpTarget):
+            return
+        current_target = self.state.persistent_search_target
+        if current_target is None:
+            return
+        if current_target.command != target.command or current_target.label != target.label:
+            return
+        refreshed_at_utc = payload.get("refreshed_at_utc")
+        if not isinstance(refreshed_at_utc, datetime):
+            refreshed_at_utc = datetime.now(timezone.utc)
+        self.state.persistent_search_last_error = str(payload.get("error", "")).strip() or str(
+            payload.get("banner", "")
+        ).strip()
+        self.state.persistent_search_last_refresh_utc = refreshed_at_utc
+        self.state.persistent_search_next_refresh_utc = refreshed_at_utc + timedelta(hours=1)
+        self.request_client_update()
+        self._schedule_persistent_search_refresh()
 
     def _jump_to_search_target(self, target: SearchJumpTarget) -> None:
         target_kind = target.kind
@@ -1193,6 +1409,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             )
             target_alt = float(projection.alt_deg)
             target_az = float(projection.az_deg) % 360.0
+        elif target_kind == "jpl_small_body":
+            if target.alt_deg is None or target.az_deg is None:
+                return
+            target_alt = float(target.alt_deg)
+            target_az = float(target.az_deg) % 360.0
         else:
             observer_height_m = self.viewer_data.observer_height_m
             alt, az = radec_to_altaz(
@@ -1216,6 +1437,21 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.state.jump_highlight_name = target.label
         self.state.jump_highlight_altaz = (target_alt, target_az)
         self.state.jump_highlight_until_ms = (time.monotonic() * 1000.0) + 3000.0
+        if target.kind == "jpl_small_body":
+            if target.persistent_keep_marker or target.persistent_keep_label:
+                self.state.persistent_search_target = target
+                self.state.persistent_search_reference_time_utc = (
+                    target.target_time_utc or self._target_time_utc()
+                )
+                self.state.persistent_search_last_error = None
+                self.state.persistent_search_last_refresh_utc = target.target_time_utc
+                self.state.persistent_search_next_refresh_utc = (
+                    (target.target_time_utc or self._target_time_utc())
+                    + timedelta(hours=1)
+                )
+                self._schedule_persistent_search_refresh()
+            else:
+                self._clear_persistent_search()
 
         self._begin_interaction_mode()
         self.request_sky_data_update()
@@ -1306,6 +1542,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self._satellite_controller.shutdown()
         if self._aircraft_controller is not None:
             self._aircraft_controller.shutdown()
+        if self._jpl_small_body_controller is not None:
+            self._jpl_small_body_controller.shutdown()
         if self._terrain_horizon_controller is not None:
             self._terrain_horizon_controller.shutdown()
         if self._urban_outline_controller is not None:
@@ -1322,6 +1560,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self._overlay_projection_timer.stop()
         if self._aircraft_update_timer.isActive():
             self._aircraft_update_timer.stop()
+        if hasattr(self, "_persistent_search_update_timer") and self._persistent_search_update_timer.isActive():
+            self._persistent_search_update_timer.stop()
         if self._interaction_idle_timer.isActive():
             self._interaction_idle_timer.stop()
         if self._viewport_interaction_idle_timer.isActive():
