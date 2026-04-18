@@ -78,6 +78,7 @@ from ..render.search_overlay import draw_search_target_overlay
 from ..search.resolver import compute_search_target_altaz, resolve_search_targets
 from ..search.jpl import search_jpl_targets
 from ..search.models import SearchJumpTarget
+from ..search.satellites import fetch_current_satellite_records, search_satellite_targets
 from ..satellite_constants import SATELLITE_HORIZONS_CACHE_KEY, SATELLITE_ISS_CACHE_KEY
 from ..splash import setup_app
 from ..terrain import (
@@ -248,17 +249,33 @@ def _build_window_inputs_from_args(
     search_overlay_target: SearchJumpTarget | None = None
     if search_query:
         target_time_utc = datetime.now(timezone.utc) + delta_t
-        resolution = resolve_search_targets(
-            search_query,
-            catalogs.named_stars_search_all,
-            jpl_search_callback=lambda query: search_jpl_targets(
-                query,
-                observer_lat=float(viewer_data.lat_deg),
-                observer_lon=float(viewer_data.lon_deg),
-                observer_height_m=float(viewer_data.observer_height_m),
-                target_time_utc=target_time_utc,
-            ),
-        )
+        try:
+            resolution = resolve_search_targets(
+                search_query,
+                catalogs.named_stars_search_all,
+                satellite_search_callback=lambda query: search_satellite_targets(
+                    query,
+                    observer_lat=float(viewer_data.lat_deg),
+                    observer_lon=float(viewer_data.lon_deg),
+                    observer_height_m=float(viewer_data.observer_height_m),
+                    target_time_utc=target_time_utc,
+                    fetch_records_by_group=lambda: fetch_current_satellite_records(
+                        observer_lat=float(viewer_data.lat_deg),
+                        observer_lon=float(viewer_data.lon_deg),
+                        observer_height_m=float(viewer_data.observer_height_m),
+                    ),
+                ),
+                jpl_search_callback=lambda query: search_jpl_targets(
+                    query,
+                    observer_lat=float(viewer_data.lat_deg),
+                    observer_lon=float(viewer_data.lon_deg),
+                    observer_height_m=float(viewer_data.observer_height_m),
+                    target_time_utc=target_time_utc,
+                ),
+            )
+        except Exception as exc:
+            sys.stderr.write(f"{exc}\n")
+            raise SystemExit(1) from exc
         candidates = resolution.candidates
         lines = [_format_search_candidate_line(target) for target in candidates]
         if getattr(args, "list", False):

@@ -13,6 +13,7 @@ def resolve_search_targets(
     query: str,
     local_targets: Sequence[SearchJumpTarget],
     *,
+    satellite_search_callback: Callable[[str], Sequence[SearchJumpTarget]] | None = None,
     jpl_search_callback: Callable[[str], Sequence[SearchJumpTarget]] | None = None,
 ) -> SearchResolution:
     spec = parse_search_query(query)
@@ -29,6 +30,21 @@ def resolve_search_targets(
             selected_target=local_matches[0] if len(local_matches) == 1 else None,
             status=f"Found {len(local_matches)} local result(s)",
         )
+
+    if satellite_search_callback is not None:
+        satellite_query = spec.value or spec.raw
+        satellite_candidates = tuple(satellite_search_callback(satellite_query))
+        if satellite_candidates:
+            return SearchResolution(
+                query=spec.raw,
+                candidates=satellite_candidates,
+                selected_target=(
+                    satellite_candidates[0] if len(satellite_candidates) == 1 else None
+                ),
+                status=(
+                    f"Found {len(satellite_candidates)} satellite result(s)"
+                ),
+            )
 
     if jpl_search_callback is None:
         return SearchResolution(query=spec.raw, candidates=tuple(), status="")

@@ -848,6 +848,34 @@ def test_jpl_small_body_failure_reschedules_one_hour_later() -> None:
     dummy.request_client_update.assert_called_once()
 
 
+def test_search_satellite_targets_resolves_known_artificial_satellites(monkeypatch) -> None:
+    satellite_records = {
+        "horizons": [
+            {"OBJECT_NAME": "JWST", "ALT_DEG": 12.5, "AZ_DEG": 220.0},
+        ]
+    }
+
+    dummy = _WindowStub()
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(20.0, 30.0),
+        observer_height_m=1.7,
+    )
+    dummy.satellite_state = SimpleNamespace(records_by_group=satellite_records)
+    dummy._load_cached_satellite_records = lambda enabled_groups: satellite_records
+    dummy._target_time_utc = lambda: datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc)
+
+    targets = SkyWindow._search_satellite_targets(dummy, "JWST")
+
+    assert len(targets) == 1
+    assert targets[0].label == "JWST"
+    assert targets[0].kind == "satellite"
+    assert targets[0].alt_deg == 12.5
+    assert targets[0].az_deg == 220.0
+
+
 def test_search_jpl_targets_includes_major_body_results(monkeypatch) -> None:
     lookup_calls: list[str] = []
 
@@ -897,8 +925,8 @@ def test_search_jpl_targets_includes_major_body_results(monkeypatch) -> None:
 
     targets = SkyWindow._search_jpl_targets(dummy, "Mars")
 
-    assert lookup_calls == ["mb", "sb"]
     assert targets
+    assert lookup_calls == ["mb", "sb"]
     assert targets[0].label == "Mars"
     assert targets[0].jpl_group == "mb"
 

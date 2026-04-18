@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from zstarview.search.models import SearchJumpTarget
 from zstarview.search.query import parse_search_query, search_target_matches_query
 from zstarview.search.resolver import resolve_search_targets
@@ -61,3 +63,51 @@ def test_resolve_search_targets_prefers_local_matches() -> None:
     assert resolution.selected_target is not None
     assert resolution.selected_target.label == "Ceres"
 
+
+def test_resolve_search_targets_prefers_known_satellites() -> None:
+    local_targets = []
+    satellite_calls: list[str] = []
+    jpl_calls: list[str] = []
+
+    def fake_satellite_search(query: str):
+        satellite_calls.append(query)
+        return [
+            SearchJumpTarget(
+                label="JWST",
+                kind="satellite",
+                sort_key=(0.0, "jwst"),
+                object_key="JWST",
+                alt_deg=10.0,
+                az_deg=20.0,
+            )
+        ]
+
+    def fake_jpl_search(query: str):
+        jpl_calls.append(query)
+        return []
+
+    resolution = resolve_search_targets(
+        "JWST",
+        local_targets,
+        satellite_search_callback=fake_satellite_search,
+        jpl_search_callback=fake_jpl_search,
+    )
+
+    assert satellite_calls == ["JWST"]
+    assert jpl_calls == []
+    assert len(resolution.candidates) == 1
+    assert resolution.selected_target is not None
+    assert resolution.selected_target.label == "JWST"
+
+
+def test_resolve_search_targets_propagates_missing_satellite_position() -> None:
+    def fake_satellite_search(_query: str):
+        raise RuntimeError("Satellite position unavailable for JWST")
+
+    with pytest.raises(RuntimeError, match="Satellite position unavailable"):
+        resolve_search_targets(
+            "JWST",
+            [],
+            satellite_search_callback=fake_satellite_search,
+            jpl_search_callback=lambda _query: [],
+        )

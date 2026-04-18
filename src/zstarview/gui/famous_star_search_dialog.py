@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Search-first dialog for named star, asterism, and small-body targets."""
+"""Search-first dialog for named star, asterism, satellite, and JPL targets."""
 from __future__ import annotations
 
 import threading
@@ -34,6 +34,7 @@ class NamedStarSearchDialog(QDialog):
         self,
         targets: List[SearchJumpTarget],
         parent: QWidget | None = None,
+        satellite_search_callback: Callable[[str], Sequence[SearchJumpTarget]] | None = None,
         jpl_search_callback: Callable[[str], Sequence[SearchJumpTarget]] | None = None,
     ) -> None:
         super().__init__(parent)
@@ -42,16 +43,18 @@ class NamedStarSearchDialog(QDialog):
         self.resize(560, 560)
 
         self._local_targets = list(targets)
+        self._satellite_search_callback = satellite_search_callback
         self._jpl_search_callback = jpl_search_callback
         self._jpl_search_request_id = 0
         self._jpl_search_in_progress = False
         self._local_result_count = 0
+        self._clear_persistent_marker_on_accept = False
         self.jpl_search_finished.connect(self._on_jpl_search_finished)
 
         outer = QVBoxLayout(self)
 
         intro = QLabel(
-            "Search stars and asterisms first. If there is no local match, the dialog can fall back to JPL small bodies.",
+            "Search stars and asterisms first. If there is no local match, the dialog can resolve known artificial satellites and then fall back to JPL bodies.",
             self,
         )
         intro.setWordWrap(True)
@@ -59,13 +62,13 @@ class NamedStarSearchDialog(QDialog):
 
         search_row = QHBoxLayout()
         self._search = QLineEdit(self)
-        self._search.setPlaceholderText("Type star, asterism, or small-body name...")
+        self._search.setPlaceholderText("Type star, asterism, satellite, or JPL body name...")
         self._search.textChanged.connect(self._apply_local_filter)
         self._search.returnPressed.connect(self.accept)
         search_row.addWidget(self._search)
         outer.addLayout(search_row)
 
-        self._jpl_search_button = QPushButton("Search JPL database", self)
+        self._jpl_search_button = QPushButton("Search satellites / JPL", self)
         self._jpl_search_button.clicked.connect(self._start_jpl_search)
         self._jpl_search_button.setEnabled(False)
         outer.addWidget(self._jpl_search_button)
@@ -98,6 +101,8 @@ class NamedStarSearchDialog(QDialog):
         self._apply_local_filter("")
 
     def selected_target(self) -> Optional[SearchJumpTarget]:
+        if self._clear_persistent_marker_on_accept:
+            return None
         item = self._list.currentItem()
         if item is None:
             return None
@@ -110,13 +115,14 @@ class NamedStarSearchDialog(QDialog):
         )
 
     def accept(self) -> None:  # noqa: D401 - Qt override
+        query = self._search.text().strip()
+        if not query:
+            self._clear_persistent_marker_on_accept = True
+            super().accept()
+            return
         target = self.selected_target()
         if target is not None:
             super().accept()
-            return
-
-        query = self._search.text().strip()
-        if not query:
             return
         if self._local_result_count > 0:
             self._select_first_visible()
@@ -124,6 +130,9 @@ class NamedStarSearchDialog(QDialog):
                 super().accept()
             return
         self._start_jpl_search()
+
+    def should_clear_persistent_marker(self) -> bool:
+        return self._clear_persistent_marker_on_accept
 
     def _apply_local_filter(self, text: str) -> None:
         query_spec = parse_search_query(text)
@@ -150,7 +159,7 @@ class NamedStarSearchDialog(QDialog):
                 "Sun and Moon are already handled by the solar-system view."
             )
         elif query_spec.normalized:
-            self._set_status("No local match. Use the JPL database button below.")
+            self._set_status("No local match. Use the satellites / JPL button below.")
         else:
             self._set_status("")
         self._sync_ok_button()
@@ -183,11 +192,11 @@ class NamedStarSearchDialog(QDialog):
         )
         self._jpl_search_button.setEnabled(enabled)
         if not query:
-            self._jpl_search_button.setText("Search JPL database")
+            self._jpl_search_button.setText("Search satellites / JPL")
         elif query_spec.normalized in _JPL_BYPASS_QUERIES:
             self._jpl_search_button.setText("Sun and Moon are already shown")
         else:
-            self._jpl_search_button.setText(f"Search JPL database for '{query}'")
+            self._jpl_search_button.setText(f"Search satellites / JPL for '{query}'")
 
     def _sync_ok_button(self) -> None:
         if self._ok_button is not None:
@@ -208,7 +217,7 @@ class NamedStarSearchDialog(QDialog):
             self._sync_jpl_button()
             return
         if self._jpl_search_callback is None:
-            self._set_status("JPL search is unavailable.")
+            self._set_status("Satellite/JPL search is unavailable.")
             self._sync_ok_button()
             self._sync_jpl_button()
             return
@@ -218,7 +227,7 @@ class NamedStarSearchDialog(QDialog):
         if self._ok_button is not None:
             self._ok_button.setEnabled(False)
         self._sync_jpl_button()
-        self._set_status(f"Searching JPL for '{query}'...")
+        self._set_status(f"Searching satellites / JPL for '{query}'...")
         worker = threading.Thread(
             target=self._run_jpl_search,
             args=(request_id, query),
@@ -228,13 +237,26 @@ class NamedStarSearchDialog(QDialog):
 
     def _run_jpl_search(self, request_id: int, query: str) -> None:
         try:
+            if self._satellite_search_callback is not None:
+                satellite_targets = list(self._satellite_search_callback(query))
+                if satellite_targets:
+                    self.jpl_search_finished.emit(
+                        request_id,
+                        satellite_targets,
+                        f"Found {len(satellite_targets)} satellite result(s)",
+                    )
+                    return
             targets = (
                 list(self._jpl_search_callback(query))
                 if self._jpl_search_callback is not None
                 else []
             )
         except Exception as exc:  # pragma: no cover - signal delivery path
-            self.jpl_search_finished.emit(request_id, [], f"JPL search failed: {exc}")
+            self.jpl_search_finished.emit(
+                request_id,
+                [],
+                f"Satellite/JPL search failed: {exc}",
+            )
             return
         status_text = (
             f"Found {len(targets)} JPL result(s)"

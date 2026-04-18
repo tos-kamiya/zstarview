@@ -15,7 +15,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 - **Solar-system bodies**: supports Sun, Moon, and major planets. Minor planets (asteroids) are not displayed yet.
 - **Deep-sky objects**: named galaxies/open clusters/globular clusters are shown as soft blue extents.
 - **Asterism overlay**: popular line patterns rather than formal IAU constellation boundaries are shown as dim ambient lines. Mouse-hovering a star in an asterism brightens the matching pattern and shows its label, with 3-second rotation when multiple asterisms share that star.
-- **Search Objects**: search named stars, asterisms, places, and JPL celestial bodies from one dialog. When local matches are not found, the search can fall back to JPL small bodies or major bodies, and persistent marker mode keeps both the marker and label visible on the selected target.
+- **Search Objects**: search named stars, asterisms, places, known artificial satellites, and JPL bodies from one dialog. When local matches are not found, known artificial satellites use the app's current position first; if a target is recognized as a known artificial satellite but its current position cannot be obtained, the search fails instead of falling back to JPL. Persistent marker mode keeps both the marker and label visible on the selected target.
 - **Satellite cloud imagery and sky-color disc**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay, and the sky-color disc remains visible beneath the clouds. Missing regions are shown in faint yellow when satellite coverage is partial. See [an example with partial coverage and yellow missing-data tint](docs/images/screenshot5.png).
 - **Aircraft and artificial satellite overlays**: nearby aircraft from OpenSky can be drawn as purple predicted-motion polylines, and ISS, JWST, Voyager 1, Voyager 2, and Parker can be drawn as small purple markers between the planet and aircraft layers.
 - **Urban outline overlay**: major rooflines are drawn as a white urban outline overlay for the current viewpoint. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 60km radius.
@@ -162,7 +162,7 @@ The CLI supports detailed startup configuration for location, time, and renderin
 
 | Option                                      | Description                                                                 | Default |
 | :------------------------------------------ | :-------------------------------------------------------------------------- | :------ |
-| `--search QUERY`                            | Resolve a named object at startup. Shared with GUI `Search Objects...` and `zstarview-export-image`; bare `QUERY` searches by label or ID (e.g. `Ceres`, `2000001`). |         |
+| `--search QUERY`                            | Resolve a named object at startup. Uses the same local-first matching as GUI `Search Objects...`; known artificial satellites use the app-side current position first and fail instead of falling back to JPL if their current position cannot be obtained, while CLI/export-image JPL lookup may include major bodies and small bodies; bare `QUERY` searches by label or ID (e.g. `Ceres`, `2000001`). |         |
 | `--search label=QUERY`                      | Search labels only (e.g. `label=Ceres`).                                    |         |
 | `--search id=QUERY`                         | Search IDs only (e.g. `id=2000001`).                                        |         |
 | `--search-keep-marker`                      | Keep the selected target as marker plus label.                              |         |
@@ -485,7 +485,7 @@ The GUI supports direct keyboard and menu-based navigation, search, and overlay 
 From the hamburger menu (`☰`), you can use:
 
 * **Jump to Named Star...**: Choose from representative named stars (`Vmag <= 2.0`), grouped into North / Equatorial / South, then jump the view center to that star.
-* **Search Objects...**: Search across named stars, supported asterisms, places, and JPL celestial bodies, then jump to the selected target. If the local star/asterism search finds nothing, the dialog can fall back to JPL major bodies and small bodies. Use `Keep marker` to keep both the marker and label visible after the jump.
+* **Search Objects...**: Search across named stars, supported asterisms, places, known artificial satellites, and JPL bodies, then jump to the selected target. If the local star/asterism search finds nothing, known artificial satellites use the app-side current position first; if a target is recognized as a known artificial satellite but its current position cannot be obtained, the search fails instead of falling back to JPL. Use `Keep marker` to keep both the marker and label visible after the jump.
 * **Search Places...**: Open a separate place-search dialog backed by OpenStreetMap Nominatim, list matching places/stations/facilities, and jump toward the selected ground location.
 * **Enlarge Moon**: Toggle moon enlarged to 5x size.
 * **DSO**: Toggle deep-sky object overlays on/off.
