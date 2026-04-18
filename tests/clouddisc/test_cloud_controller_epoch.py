@@ -68,6 +68,7 @@ def test_cloud_render_discards_stale_request_id() -> None:
         alt=45.0,
         az=180.0,
         radius_px=128,
+        content_fov_deg=90.0,
         reason="manual",
         request_id=1,
     )
@@ -81,8 +82,24 @@ def test_cloud_update_keeps_latest_pending_render_request() -> None:
     controller._render_is_running = True
     controller._source_is_running = True
 
-    controller.update(lat=35.0, lon=139.0, alt=45.0, az=180.0, radius_px=256, reason="manual")
-    controller.update(lat=35.0, lon=139.0, alt=50.0, az=200.0, radius_px=256, reason="manual")
+    controller.update(
+        lat=35.0,
+        lon=139.0,
+        alt=45.0,
+        az=180.0,
+        radius_px=256,
+        content_fov_deg=90.0,
+        reason="manual",
+    )
+    controller.update(
+        lat=35.0,
+        lon=139.0,
+        alt=50.0,
+        az=200.0,
+        radius_px=256,
+        content_fov_deg=90.0,
+        reason="manual",
+    )
 
     assert controller._pending_render_request is not None
     assert controller._pending_render_request["alt"] == 50.0
