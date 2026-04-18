@@ -71,9 +71,14 @@ def compute_search_target_altaz(
     observer_height_m: float,
     target_time_utc: datetime | None = None,
     satellite_altaz_resolver: Callable[[SearchJumpTarget], tuple[float, float] | None] | None = None,
+    jpl_altaz_resolver: Callable[[SearchJumpTarget], tuple[float, float] | None] | None = None,
 ) -> tuple[float, float] | None:
     if target.kind in {"jpl_small_body", "jpl_body"}:
         if target.alt_deg is None or target.az_deg is None:
+            if jpl_altaz_resolver is not None:
+                altaz = jpl_altaz_resolver(target)
+                if altaz is not None:
+                    return float(altaz[0]), float(altaz[1]) % 360.0
             return None
         return float(target.alt_deg), float(target.az_deg) % 360.0
     if target.kind == "satellite":

@@ -47,7 +47,7 @@ from ..gui.window_inputs import (
 )
 from ..overlay_time import target_time_utc_from_delta
 from ..search.jpl import search_jpl_targets
-from ..search.satellites import fetch_current_satellite_records, search_satellite_targets
+from ..search.satellites import search_satellite_targets
 from ..search.resolver import resolve_search_targets
 from ..cli.args import parse_args
 
@@ -318,22 +318,10 @@ def main() -> None:
                 catalogs.named_stars_search_all,
                 satellite_search_callback=lambda query: search_satellite_targets(
                     query,
-                    observer_lat=float(viewer_data.lat_deg),
-                    observer_lon=float(viewer_data.lon_deg),
-                    observer_height_m=float(viewer_data.observer_height_m),
                     target_time_utc=startup_target_time_utc,
-                    fetch_records_by_group=lambda: fetch_current_satellite_records(
-                        observer_lat=float(viewer_data.lat_deg),
-                        observer_lon=float(viewer_data.lon_deg),
-                        observer_height_m=float(viewer_data.observer_height_m),
-                        force_refresh=True,
-                    ),
                 ),
                 jpl_search_callback=lambda query: search_jpl_targets(
                     query,
-                    observer_lat=float(viewer_data.lat_deg),
-                    observer_lon=float(viewer_data.lon_deg),
-                    observer_height_m=float(viewer_data.observer_height_m),
                     target_time_utc=startup_target_time_utc,
                 ),
             )
