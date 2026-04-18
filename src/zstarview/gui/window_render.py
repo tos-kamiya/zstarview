@@ -13,6 +13,7 @@ from ..render import geometry as render_geometry
 from ..render import satellites as render_satellites
 from ..render import stars as render_stars
 from ..render import text as render_text
+from ..render.search_overlay import draw_search_target_overlay
 from ..render.pipeline import (
     RenderSceneData,
     RenderHudState,
@@ -473,50 +474,18 @@ class SkyWindowRenderMixin:
         target = getattr(self.state, "persistent_search_target", None)
         if target is None:
             return
-        alt = getattr(target, "alt_deg", None)
-        az = getattr(target, "az_deg", None)
-        if alt is None or az is None:
-            return
-        view_center = self.state.render_view_center
-        if not is_in_fov(
-            float(alt),
-            float(az),
-            view_center,
-            fov_deg=float(self.viewer_data.content_fov_deg),
-        ):
-            return
-
-        nx, ny = altaz_to_normalized_xy(float(alt), float(az), view_center)
-        px, py = render_geometry.normalized_to_screen_xy(nx, ny, geometry)
-        pos = QPointF(px, py)
-        color, _outline = render_text.get_text_style(self.visual_preset)
         if not bool(getattr(target, "persistent_keep_marker", False)):
             return
-
-        render_satellites.draw_gauge_cross(
+        draw_search_target_overlay(
             painter,
-            color,
-            pos,
-            scale=0.42,
-            pen_width=2.0,
-        )
-
-        label = str(getattr(target, "label", "")).strip()
-        if not label:
-            return
-        label_pos = QPointF(pos.x() + 12.0, pos.y() - 10.0)
-        label_pos = render_text._clamp_baseline_pos_to_viewport(
-            label,
-            self.text_font,
-            label_pos,
-            QRectF(painter.viewport()),
-        )
-        style = render_text.resolve_label_text_style(self.visual_preset, self.text_font)
-        render_text.draw_outlined_text(
-            painter,
-            label,
-            label_pos,
-            style=style,
+            geometry,
+            target,
+            view_center=self.state.render_view_center,
+            content_fov_deg=float(self.viewer_data.content_fov_deg),
+            visual_preset=self.visual_preset,
+            text_font=self.text_font,
+            draw_marker=True,
+            draw_label=True,
         )
 
     def render_current_image(self, *, include_hud: bool = False) -> QImage:

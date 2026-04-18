@@ -58,6 +58,7 @@ from ..paths import (
     CLOUD_SHELLS_KM,
     DSO_CSV_FILE,
     EPHEMERIS_FILENAME,
+    OBSERVER_MIN_ALT_DEG,
     OVERTURE_DERIVED_ROOT_DIR,
     OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR,
     STARS_CSV_FILE,
@@ -73,6 +74,10 @@ from ..render.pipeline import (
     RenderStyle,
     render_base_scene_into_painter,
 )
+from ..render.search_overlay import draw_search_target_overlay
+from ..search.resolver import compute_search_target_altaz, resolve_search_targets
+from ..search.jpl import search_jpl_targets
+from ..search.models import SearchJumpTarget
 from ..satellite_constants import SATELLITE_HORIZONS_CACHE_KEY, SATELLITE_ISS_CACHE_KEY
 from ..splash import setup_app
 from ..terrain import (
@@ -175,7 +180,11 @@ def _timed_out(deadline: float | None) -> bool:
 def _build_window_inputs_from_args(
     args: object,
 ) -> tuple[
-    PreparedWindowCatalogs, ViewerData, SkyWindowUserOptions, SkyWindowRuntimeOptions
+    PreparedWindowCatalogs,
+    ViewerData,
+    SkyWindowUserOptions,
+    SkyWindowRuntimeOptions,
+    SearchJumpTarget | None,
 ]:
     try:
         city = resolve_launch_location(
@@ -198,9 +207,6 @@ def _build_window_inputs_from_args(
     )
     overlay_availability = overlay_availability_for_delta(delta_t)
     star_catalog = _load_star_catalog_for_export(getattr(args, "vmag_limit", 6.0))
-    dso_catalog = _load_dso_catalog_for_export()
-    _verify_ephemeris_for_export()
-
     view_center = (
         getattr(args, "view_center_alt", 90.0),
         getattr(args, "view_center_az", 180.0),
@@ -221,7 +227,7 @@ def _build_window_inputs_from_args(
 
     catalogs = prepare_window_catalogs(
         star_catalog,
-        dso_catalog=dso_catalog,
+        dso_catalog=None,
         vmag_brightness_scale=vmag_brightness_scale,
     )
     viewer_data = prepare_window_viewer_data(
@@ -237,6 +243,64 @@ def _build_window_inputs_from_args(
         location_height_label=city.location_height_label,
         location_height_m=city.location_height_m,
         show_observer_height=getattr(args, "observer_height_m", None) is not None,
+    )
+
+    search_query = str(getattr(args, "search", "") or "").strip()
+    search_overlay_target: SearchJumpTarget | None = None
+    if search_query:
+        target_time_utc = datetime.now(timezone.utc) + delta_t
+        resolution = resolve_search_targets(
+            search_query,
+            catalogs.named_stars_search_all,
+            jpl_search_callback=lambda query: search_jpl_targets(
+                query,
+                observer_lat=float(viewer_data.lat_deg),
+                observer_lon=float(viewer_data.lon_deg),
+                observer_height_m=float(viewer_data.observer_height_m),
+                target_time_utc=target_time_utc,
+            ),
+        )
+        candidates = resolution.candidates
+        lines = [_format_search_candidate_line(target) for target in candidates]
+        if getattr(args, "list", False):
+            if lines:
+                sys.stdout.write("\n".join(lines) + "\n")
+                sys.stdout.flush()
+            return
+        if len(candidates) != 1 or resolution.selected_target is None:
+            sys.stderr.write(
+                _format_search_failure_message(search_query, len(candidates)) + "\n"
+            )
+            if lines:
+                sys.stderr.write("\n".join(lines) + "\n")
+                sys.stderr.flush()
+            raise SystemExit(1)
+        target = resolution.selected_target
+        altaz = compute_search_target_altaz(
+            target,
+            observer_lat=float(viewer_data.lat_deg),
+            observer_lon=float(viewer_data.lon_deg),
+            observer_height_m=float(viewer_data.observer_height_m),
+            target_time_utc=target_time_utc,
+        )
+        if altaz is not None:
+            viewer_data.view_center = (
+                _clamp_view_center_altitude(float(altaz[0])),
+                float(altaz[1]) % 360.0,
+            )
+            search_overlay_target = replace(
+                target,
+                alt_deg=float(altaz[0]),
+                az_deg=float(altaz[1]) % 360.0,
+            )
+
+    dso_catalog = _load_dso_catalog_for_export()
+    _verify_ephemeris_for_export()
+
+    catalogs = prepare_window_catalogs(
+        star_catalog,
+        dso_catalog=dso_catalog,
+        vmag_brightness_scale=vmag_brightness_scale,
     )
     user_options = prepare_window_user_options(
         sky_disc_alpha=getattr(args, "sky_opacity", 0.17),
@@ -302,7 +366,7 @@ def _build_window_inputs_from_args(
         window_geometry_arg=None,
         window_frame_mode=getattr(args, "window_frame", "frameless"),
     )
-    return catalogs, viewer_data, user_options, runtime_options
+    return catalogs, viewer_data, user_options, runtime_options, search_overlay_target
 
 
 def _load_fonts() -> tuple[QFont, QFont]:
@@ -656,6 +720,7 @@ def _render_image(
     scene: RenderSceneData,
     style: RenderStyle,
     compositor: SkyCompositorCache,
+    search_overlay_target: SearchJumpTarget | None = None,
 ) -> QImage:
     width, height = image_size
     image = QImage(width, height, QImage.Format.Format_ARGB32_Premultiplied)
@@ -682,6 +747,18 @@ def _render_image(
             ),
             compositor=compositor,
         )
+        if search_overlay_target is not None:
+            draw_search_target_overlay(
+                painter,
+                geometry,
+                search_overlay_target,
+                view_center=scene.viewer.view_center,
+                content_fov_deg=float(scene.viewer.content_fov_deg),
+                visual_preset=style.visual_preset,
+                text_font=style.text_font,
+                draw_marker=True,
+                draw_label=True,
+            )
     finally:
         painter.end()
     return image
@@ -878,6 +955,25 @@ def _write_export_overlay_summary_to_stderr(
     sys.stderr.flush()
 
 
+def _format_search_candidate_line(target: SearchJumpTarget) -> str:
+    parts = [
+        f"label={target.label}",
+        f"id={target.object_key or target.command or target.label}",
+        f"kind={target.kind}",
+    ]
+    return " | ".join(parts)
+
+
+def _format_search_failure_message(query: str, candidate_count: int) -> str:
+    if candidate_count <= 0:
+        return f"No search candidates found for {query!r}"
+    return f"Search query {query!r} matched {candidate_count} candidates"
+
+
+def _clamp_view_center_altitude(alt_deg: float) -> float:
+    return max(float(OBSERVER_MIN_ALT_DEG), min(90.0, float(alt_deg)))
+
+
 def main() -> None:
     args = parse_export_image_args()
     if getattr(args, "print_cache_dir", False):
@@ -898,7 +994,7 @@ def main() -> None:
         _require_sixel_terminal_support()
 
     try:
-        catalogs, viewer_data, user_options, runtime_options = (
+        catalogs, viewer_data, user_options, runtime_options, search_overlay_target = (
             _build_window_inputs_from_args(args)
         )
     except LaunchSetupError:
@@ -1044,6 +1140,7 @@ def main() -> None:
         scene=scene,
         style=style,
         compositor=compositor,
+        search_overlay_target=search_overlay_target,
     )
     saved_output = False
     if output_arg == "-":
