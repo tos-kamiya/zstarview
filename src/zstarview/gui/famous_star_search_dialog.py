@@ -103,7 +103,7 @@ class NamedStarSearchDialog(QDialog):
         target = item.data(Qt.ItemDataRole.UserRole)
         if not isinstance(target, SearchJumpTarget):
             return None
-        if target.kind != "jpl_small_body":
+        if not target.kind.startswith("jpl_"):
             return target
         return replace(
             target,

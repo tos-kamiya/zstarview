@@ -857,6 +857,50 @@ def test_search_jpl_targets_includes_major_body_results(monkeypatch) -> None:
     assert targets[0].jpl_group == "mb"
 
 
+def test_jump_to_jpl_major_body_target_keeps_overlay_without_refresh() -> None:
+    dummy = _WindowStub()
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(20.0, 30.0),
+        observer_height_m=1.7,
+    )
+    dummy.state = SkyWindowState(
+        render_view_center=(20.0, 30.0),
+        satellite_overlay_points=None,
+        persistent_search_target=None,
+    )
+    dummy.satellite_state = SimpleNamespace(
+        records_by_group={}, overlay_points=None, set_banner=Mock()
+    )
+    dummy._sync_view_altitude_actions = Mock()
+    dummy._begin_interaction_mode = Mock()
+    dummy.request_sky_data_update = Mock()
+    dummy.update = Mock()
+
+    SkyWindow._jump_to_search_target(
+        dummy,
+        SearchJumpTarget(
+            label="Mars",
+            kind="jpl_body",
+            sort_key=(0.0, "mars"),
+            subtitle="major body",
+            object_key="499",
+            command="499",
+            alt_deg=15.0,
+            az_deg=123.0,
+            jpl_group="mb",
+            persistent_keep_marker=True,
+            persistent_keep_label=True,
+        ),
+    )
+
+    assert dummy.state.persistent_search_target is not None
+    assert dummy.state.persistent_search_target.label == "Mars"
+    assert dummy.state.persistent_search_next_refresh_utc is None
+
+
 def test_refresh_projected_satellite_overlay_falls_back_to_disk_cache(
     monkeypatch,
 ) -> None:
