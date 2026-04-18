@@ -178,6 +178,7 @@ def fetch_cached_satellite_elements(
 ) -> CachedSatelliteElementSet:
     now = _normalize_utc(now_utc or current_utc_time())
     ttl_seconds = _group_validity_seconds(group_key, fresh_ttl_seconds)
+    force_refresh = ttl_seconds < 0
     effective_fetcher = fetcher
     if fetcher is fetch_iss_records and group_key == SATELLITE_HORIZONS_CACHE_KEY:
         effective_fetcher = fetch_horizons_records
@@ -189,7 +190,11 @@ def fetch_cached_satellite_elements(
     payload = _load_cache_payload(path)
     metadata = _fetch_metadata_from_payload(payload)
     cached = _load_cached_set_from_payload(payload, group_key=group_key)
-    if cached is not None and _within_validity(now, cached.element_epoch_utc, ttl_seconds):
+    if (
+        not force_refresh
+        and cached is not None
+        and _within_validity(now, cached.element_epoch_utc, ttl_seconds)
+    ):
         return CachedSatelliteElementSet(
             group_key=group_key,
             element_epoch_utc=cached.element_epoch_utc,
@@ -203,7 +208,8 @@ def fetch_cached_satellite_elements(
             failure_backoff_until_utc=metadata.failure_backoff_until_utc,
         )
     if (
-        cached is not None
+        not force_refresh
+        and cached is not None
         and metadata.failure_backoff_until_utc is not None
         and now < metadata.failure_backoff_until_utc
     ):
