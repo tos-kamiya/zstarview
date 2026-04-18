@@ -98,3 +98,18 @@ def test_named_star_search_dialog_applies_keep_flags_to_jpl_result() -> None:
     assert target is not None
     assert target.persistent_keep_marker is True
     assert target.persistent_keep_label is True
+
+
+def test_named_star_search_dialog_blocks_sun_and_moon_jpl_fallback() -> None:
+    dialog = NamedStarSearchDialog(
+        [],
+        jpl_search_callback=lambda _query: [],
+    )
+    called: list[str] = []
+    dialog._start_jpl_search = lambda: called.append("jpl")  # type: ignore[method-assign]
+
+    dialog._search.setText("Moon")
+
+    assert called == []
+    assert dialog._jpl_search_button.isEnabled() is False
+    assert "already shown" in dialog._jpl_search_button.text()

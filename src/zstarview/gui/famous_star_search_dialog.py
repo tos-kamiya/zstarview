@@ -23,6 +23,8 @@ from PySide6.QtWidgets import (
 
 from .famous_star_shortcuts import SearchJumpTarget
 
+_JPL_BYPASS_QUERIES = {"sun", "moon"}
+
 
 class NamedStarSearchDialog(QDialog):
     jpl_search_finished = Signal(int, object, str)
@@ -148,6 +150,10 @@ class NamedStarSearchDialog(QDialog):
                 f"Found {self._local_result_count} local result(s). Select one and press OK."
             )
             self._select_first_visible()
+        elif query in _JPL_BYPASS_QUERIES:
+            self._set_status(
+                "Sun and Moon are already handled by the solar-system view."
+            )
         elif query:
             self._set_status("No local match. Use the JPL database button below.")
         else:
@@ -173,10 +179,17 @@ class NamedStarSearchDialog(QDialog):
         if not hasattr(self, "_jpl_search_button"):
             return
         query = self._search.text().strip()
-        enabled = bool(query) and self._local_result_count == 0 and not self._jpl_search_in_progress
+        enabled = (
+            bool(query)
+            and self._local_result_count == 0
+            and query.casefold() not in _JPL_BYPASS_QUERIES
+            and not self._jpl_search_in_progress
+        )
         self._jpl_search_button.setEnabled(enabled)
         if not query:
             self._jpl_search_button.setText("Search JPL database")
+        elif query.casefold() in _JPL_BYPASS_QUERIES:
+            self._jpl_search_button.setText("Sun and Moon are already shown")
         else:
             self._jpl_search_button.setText(f"Search JPL database for '{query}'")
 
@@ -190,6 +203,12 @@ class NamedStarSearchDialog(QDialog):
     def _start_jpl_search(self) -> None:
         query = self._search.text().strip()
         if not query or self._jpl_search_in_progress:
+            return
+        if query.casefold() in _JPL_BYPASS_QUERIES:
+            self._set_status(
+                "Sun and Moon are already handled by the solar-system view."
+            )
+            self._sync_jpl_button()
             return
         if self._jpl_search_callback is None:
             self._set_status("JPL search is unavailable.")

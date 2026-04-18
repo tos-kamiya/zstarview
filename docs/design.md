@@ -466,6 +466,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 恒星・アステリズム検索は local first で実行し、候補が見つからない場合だけ JPL 小天体検索へフォールバックしてよい。
 - JPL フォールバックは major body と small body の両方を検索対象に含めてよい。
 - 検索欄の直下には、JPL データベースを明示して探すボタンを置いてよい。
+- `Sun` と `Moon` は JPL フォールバック対象から除外し、solar-system 側に委ねてよい。
 - JPL 小天体候補は、ネットワーク I/O を含む可能性があるため、検索・候補解決は UI スレッドを塞がない経路に寄せてよい。
 - JPL フォールバックの結果は major body と small body を含み、keep フラグが有効なら major body でも持続表示してよい。
 - JPL 検索結果の `kind` は、既存の `star` / `asterism` / `place` / `satellite` に加えて、小天体を識別できる値を持たせてよい。

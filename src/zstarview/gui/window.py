@@ -114,6 +114,7 @@ from .urban_outline_controller import UrbanOutlineController
 from .urban_outline_state import UrbanOutlineState
 
 logger = logging.getLogger(__name__)
+_JPL_BYPASS_QUERIES = {"sun", "moon"}
 
 
 WindowGeometryArg = Union[str, Tuple[int, int, int, int]]
@@ -1191,6 +1192,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._jump_to_search_target(target)
 
     def _search_jpl_targets(self, query: str) -> list[SearchJumpTarget]:
+        if query.strip().casefold() in _JPL_BYPASS_QUERIES:
+            return []
         targets: list[SearchJumpTarget] = []
         for group, group_label in (("mb", "major body"), ("sb", "small body")):
             try:
