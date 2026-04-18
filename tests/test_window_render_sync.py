@@ -931,6 +931,59 @@ def test_search_jpl_targets_includes_major_body_results(monkeypatch) -> None:
     assert targets[0].jpl_group == "mb"
 
 
+def test_search_jpl_targets_limits_candidates_to_500(monkeypatch) -> None:
+    lookup_calls: list[str] = []
+
+    def fake_lookup(query: str, *, group: str):
+        lookup_calls.append(group)
+        if group == "mb":
+            return {
+                "count": 600,
+                "result": [
+                    {
+                        "name": f"PANSTARRS-{idx}",
+                        "pdes": str(idx),
+                        "spkid": str(1000 + idx),
+                        "type": "asteroid",
+                    }
+                    for idx in range(600)
+                ],
+            }
+        return {"count": 0, "result": []}
+
+    def fake_observer_csv(
+        command: str,
+        *,
+        target_time_utc,
+        observer_lat,
+        observer_lon,
+        observer_height_m,
+        timeout_s=None,
+        base_url=None,
+    ):
+        return [["2026-04-18", "12:00", "1", "2", "3", "45.0", "120.0"]]
+
+    monkeypatch.setattr(window_module, "fetch_horizons_lookup", fake_lookup)
+    monkeypatch.setattr(window_module, "fetch_horizons_observer_csv", fake_observer_csv)
+
+    dummy = _WindowStub()
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(20.0, 30.0),
+        observer_height_m=1.7,
+    )
+    dummy._target_time_utc = lambda: datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc)
+
+    targets = SkyWindow._search_jpl_targets(dummy, "PANSTARRS")
+
+    assert lookup_calls == ["mb", "sb"]
+    assert len(targets) == 500
+    assert targets[0].label == "PANSTARRS-0"
+    assert targets[-1].label == "PANSTARRS-499"
+
+
 def test_search_jpl_targets_skips_sun_and_moon() -> None:
     dummy = _WindowStub()
     dummy.viewer_data = ViewerData(

@@ -13,6 +13,7 @@ from .query import parse_search_query
 logger = logging.getLogger(__name__)
 
 JPL_BYPASS_QUERIES = {"sun", "moon"}
+JPL_SEARCH_RESULT_LIMIT = 500
 
 
 def build_horizons_command(target: Mapping[str, object], *, group: str) -> str:
@@ -88,7 +89,7 @@ def search_jpl_targets(
         result = lookup_payload.get("result")
         if not isinstance(result, list) or not result:
             continue
-        for item in result[:20]:
+        for item in result[:JPL_SEARCH_RESULT_LIMIT]:
             if not isinstance(item, dict):
                 continue
             name = str(item.get("name", "")).strip()
