@@ -55,6 +55,7 @@ def test_compositor_cache_key_includes_missing_mask() -> None:
         view_center=(0.0, 0.0),
         cloud_amount_field=None,
         missing_mask=missing_none,
+        content_fov_deg=90.0,
     )
     p1.end()
 
@@ -70,6 +71,7 @@ def test_compositor_cache_key_includes_missing_mask() -> None:
         view_center=(0.0, 0.0),
         cloud_amount_field=None,
         missing_mask=missing_half,
+        content_fov_deg=90.0,
     )
     p2.end()
 
@@ -109,6 +111,7 @@ def test_compositor_terrain_profile_tints_ground_below_terrain_horizon() -> None
         None,
         cloud_alpha=0.0,
         view_center=(0.0, 0.0),
+        content_fov_deg=90.0,
     )
     p_flat.end()
 
@@ -123,6 +126,7 @@ def test_compositor_terrain_profile_tints_ground_below_terrain_horizon() -> None
         cloud_alpha=0.0,
         view_center=(0.0, 0.0),
         terrain_profile_altaz=terrain_profile,
+        content_fov_deg=90.0,
     )
     p_terrain.end()
 
@@ -153,6 +157,7 @@ def test_compositor_ground_tint_opacity_zero_makes_ground_fill_black() -> None:
         cloud_alpha=0.0,
         view_center=(0.0, 0.0),
         terrain_profile_altaz=terrain_profile,
+        content_fov_deg=90.0,
     )
     painter.end()
 
@@ -179,6 +184,7 @@ def test_compositor_reapplies_never_rises_tint_after_ground_fill() -> None:
         cloud_alpha=0.0,
         view_center=(0.0, 180.0),
         observer_lat_deg=35.0,
+        content_fov_deg=90.0,
     )
     painter.end()
 

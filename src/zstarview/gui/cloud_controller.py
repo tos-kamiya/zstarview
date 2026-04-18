@@ -79,7 +79,7 @@ class CloudController(QObject):
         alt: float,
         az: float,
         radius_px: int,
-        content_fov_deg: float = 100.0,
+        content_fov_deg: float,
         reason: str = "manual",
         render_generation: int = 0,
     ) -> None:
@@ -243,7 +243,7 @@ class CloudController(QObject):
         alt: float,
         az: float,
         radius_px: int,
-        content_fov_deg: float = 100.0,
+        content_fov_deg: float,
         reason: str,
         request_id: int,
         render_generation: int = 0,

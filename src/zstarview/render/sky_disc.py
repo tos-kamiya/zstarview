@@ -28,7 +28,7 @@ def _inverse_project_disc(
     geometry: ScreenGeometry,
     view_center: Tuple[float, float],
     *,
-    content_fov_deg: float = 90.0,
+    content_fov_deg: float,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Inverse-project pixels up to the requested content FOV."""
     radius_px = max(1.0, float(geometry.radius))
@@ -195,7 +195,7 @@ def draw_sky_color_disc(
     alpha: float = 1.0,
     disc_opacity: float = 1.0,
     eclipse_factor: float = 1.0,
-    content_fov_deg: float = 90.0,
+    content_fov_deg: float,
     image_size: Tuple[int, int] | None = None,
 ) -> QImage:
     """
@@ -277,7 +277,7 @@ def draw_uniform_sky_color_disc(
     geometry: ScreenGeometry,
     view_center: Tuple[float, float],
     *,
-    content_fov_deg: float = 90.0,
+    content_fov_deg: float,
     image_size: Tuple[int, int] | None = None,
     disc_opacity: float = 1.0,
 ) -> QImage:
