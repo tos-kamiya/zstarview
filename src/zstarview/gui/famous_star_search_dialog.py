@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Search-first dialog for named star and small-body jump targets."""
+"""Search-first dialog for named star, asterism, and small-body targets."""
 from __future__ import annotations
 
 import threading
 from dataclasses import replace
 from typing import Callable, List, Optional, Sequence
 
-from PySide6.QtCore import QEvent, Qt, Signal
-from PySide6.QtGui import QKeyEvent
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -17,8 +16,6 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QListWidgetItem,
-    QPushButton,
-    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -40,64 +37,45 @@ class NamedStarSearchDialog(QDialog):
         self.setModal(True)
         self.resize(560, 560)
 
+        self._local_targets = list(targets)
         self._jpl_search_callback = jpl_search_callback
-        self._jpl_targets: list[SearchJumpTarget] = []
         self._jpl_search_request_id = 0
+        self._jpl_search_in_progress = False
+        self._local_result_count = 0
         self.jpl_search_finished.connect(self._on_jpl_search_finished)
 
         outer = QVBoxLayout(self)
-        self._tabs = QTabWidget(self)
-        self._tabs.currentChanged.connect(lambda *_: self._sync_ok_button())
-        outer.addWidget(self._tabs)
 
-        self._local_tab = QWidget(self)
-        local_layout = QVBoxLayout(self._local_tab)
-        self._search = QLineEdit(self._local_tab)
-        self._search.setPlaceholderText("Type star or asterism name...")
-        self._search.textChanged.connect(self._apply_local_filter)
-        local_layout.addWidget(self._search)
-
-        self._list = QListWidget(self._local_tab)
-        self._list.itemDoubleClicked.connect(self._on_item_double_clicked)
-        for target in targets:
-            suffix = f"  ({target.subtitle})" if target.subtitle else ""
-            item = QListWidgetItem(f"{target.label}{suffix}", self._list)
-            item.setData(Qt.ItemDataRole.UserRole, target)
-        local_layout.addWidget(self._list)
-        self._tabs.addTab(self._local_tab, "Stars and Asterisms")
-
-        self._jpl_tab = QWidget(self)
-        jpl_layout = QVBoxLayout(self._jpl_tab)
-        jpl_layout.addWidget(
-            QLabel("Search JPL small bodies and keep the selected target on the map.", self._jpl_tab)
+        intro = QLabel(
+            "Search stars and asterisms first. If there is no local match, the dialog can fall back to JPL small bodies.",
+            self,
         )
-        self._jpl_search = QLineEdit(self._jpl_tab)
-        self._jpl_search.setPlaceholderText("Type Ceres, Eris, Haumea, Makemake...")
-        self._jpl_search.returnPressed.connect(self._start_jpl_search)
-        self._jpl_search.installEventFilter(self)
-        jpl_layout.addWidget(self._jpl_search)
+        intro.setWordWrap(True)
+        outer.addWidget(intro)
 
-        self._jpl_search_button = QPushButton("Search", self._jpl_tab)
-        self._jpl_search_button.clicked.connect(self._start_jpl_search)
-        jpl_layout.addWidget(self._jpl_search_button)
+        search_row = QHBoxLayout()
+        self._search = QLineEdit(self)
+        self._search.setPlaceholderText("Type star, asterism, or small-body name...")
+        self._search.textChanged.connect(self._apply_local_filter)
+        self._search.returnPressed.connect(self.accept)
+        search_row.addWidget(self._search)
+        outer.addLayout(search_row)
 
-        self._jpl_status = QLabel("", self._jpl_tab)
-        self._jpl_status.setVisible(False)
-        jpl_layout.addWidget(self._jpl_status)
+        self._list = QListWidget(self)
+        self._list.itemDoubleClicked.connect(self._on_item_double_clicked)
+        outer.addWidget(self._list)
 
-        self._jpl_list = QListWidget(self._jpl_tab)
-        self._jpl_list.itemDoubleClicked.connect(self._on_item_double_clicked)
-        jpl_layout.addWidget(self._jpl_list)
+        self._status = QLabel("", self)
+        self._status.setVisible(False)
+        outer.addWidget(self._status)
 
         keep_row = QHBoxLayout()
-        self._jpl_keep_marker = QCheckBox("Keep marker", self._jpl_tab)
-        self._jpl_keep_label = QCheckBox("Keep label", self._jpl_tab)
+        self._jpl_keep_marker = QCheckBox("Keep marker", self)
+        self._jpl_keep_label = QCheckBox("Keep label", self)
         keep_row.addWidget(self._jpl_keep_marker)
         keep_row.addWidget(self._jpl_keep_label)
         keep_row.addStretch(1)
-        jpl_layout.addLayout(keep_row)
-
-        self._tabs.addTab(self._jpl_tab, "JPL Small Bodies")
+        outer.addLayout(keep_row)
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
@@ -110,45 +88,69 @@ class NamedStarSearchDialog(QDialog):
             self._ok_button.setEnabled(False)
         outer.addWidget(buttons)
 
-        self._select_first_visible_local()
+        self._apply_local_filter("")
 
     def selected_target(self) -> Optional[SearchJumpTarget]:
-        current_tab = self._tabs.currentIndex()
-        if current_tab == 1:
-            item = self._jpl_list.currentItem()
-            if item is None:
-                return None
-            target = item.data(Qt.ItemDataRole.UserRole)
-            if not isinstance(target, SearchJumpTarget):
-                return None
-            return replace(
-                target,
-                persistent_keep_marker=self._jpl_keep_marker.isChecked(),
-                persistent_keep_label=self._jpl_keep_label.isChecked(),
-            )
-
         item = self._list.currentItem()
         if item is None:
             return None
         target = item.data(Qt.ItemDataRole.UserRole)
-        return target if isinstance(target, SearchJumpTarget) else None
+        if not isinstance(target, SearchJumpTarget):
+            return None
+        if target.kind != "jpl_small_body":
+            return target
+        return replace(
+            target,
+            persistent_keep_marker=self._jpl_keep_marker.isChecked(),
+            persistent_keep_label=self._jpl_keep_label.isChecked(),
+        )
+
+    def accept(self) -> None:  # noqa: D401 - Qt override
+        target = self.selected_target()
+        if target is not None:
+            super().accept()
+            return
+
+        query = self._search.text().strip()
+        if not query:
+            return
+        if self._local_result_count > 0:
+            self._select_first_visible()
+            if self.selected_target() is not None:
+                super().accept()
+            return
+        self._start_jpl_search()
 
     def _apply_local_filter(self, text: str) -> None:
         query = text.strip().casefold()
-        for i in range(self._list.count()):
-            item = self._list.item(i)
-            target = item.data(Qt.ItemDataRole.UserRole)
-            if not isinstance(target, SearchJumpTarget):
-                item.setHidden(True)
-                continue
-            if not query:
-                item.setHidden(False)
-                continue
-            haystack = f"{target.label} {target.subtitle}".casefold()
-            item.setHidden(query not in haystack)
-        self._select_first_visible_local()
+        self._list.clear()
 
-    def _select_first_visible_local(self) -> None:
+        matching_targets: list[SearchJumpTarget] = []
+        for target in self._local_targets:
+            haystack = f"{target.label} {target.subtitle}".casefold()
+            if not query or query in haystack:
+                matching_targets.append(target)
+
+        self._local_result_count = len(matching_targets)
+        for target in matching_targets:
+            suffix = f"  ({target.subtitle})" if target.subtitle else ""
+            item = QListWidgetItem(f"{target.label}{suffix}", self._list)
+            item.setData(Qt.ItemDataRole.UserRole, target)
+
+        if self._local_result_count > 0:
+            self._set_status(
+                f"Found {self._local_result_count} local result(s). Press Enter or OK to accept."
+            )
+            self._select_first_visible()
+        elif query:
+            self._set_status(
+                "No local match. Press Enter or OK to search JPL small bodies."
+            )
+        else:
+            self._set_status("")
+        self._sync_ok_button()
+
+    def _select_first_visible(self) -> None:
         for i in range(self._list.count()):
             item = self._list.item(i)
             if not item.isHidden():
@@ -158,65 +160,79 @@ class NamedStarSearchDialog(QDialog):
         self._list.setCurrentItem(None)
         self._sync_ok_button()
 
-    def _select_first_visible_jpl(self) -> None:
-        for i in range(self._jpl_list.count()):
-            item = self._jpl_list.item(i)
-            if not item.isHidden():
-                self._jpl_list.setCurrentItem(item)
-                self._sync_ok_button()
-                return
-        self._jpl_list.setCurrentItem(None)
-        self._sync_ok_button()
+    def _set_status(self, text: str) -> None:
+        self._status.setText(text)
+        self._status.setVisible(bool(text))
 
     def _sync_ok_button(self) -> None:
         if self._ok_button is not None:
-            self._ok_button.setEnabled(self.selected_target() is not None)
+            query = self._search.text().strip()
+            fallback_ready = (
+                bool(query)
+                and self._local_result_count == 0
+                and not self._jpl_search_in_progress
+                and self._jpl_search_callback is not None
+            )
+            self._ok_button.setEnabled(
+                self.selected_target() is not None or fallback_ready
+            )
 
     def _on_item_double_clicked(self, _item: QListWidgetItem) -> None:
         self.accept()
 
     def _start_jpl_search(self) -> None:
-        query = self._jpl_search.text().strip()
-        if not query:
+        query = self._search.text().strip()
+        if not query or self._jpl_search_in_progress:
             return
         if self._jpl_search_callback is None:
-            self._jpl_status.setText("JPL search is unavailable.")
-            self._jpl_status.setVisible(True)
+            self._set_status("JPL search is unavailable.")
+            self._sync_ok_button()
             return
         self._jpl_search_request_id += 1
         request_id = self._jpl_search_request_id
-        self._jpl_search_button.setEnabled(False)
-        self._jpl_status.setText(f"Searching JPL for '{query}'...")
-        self._jpl_status.setVisible(True)
-        worker = threading.Thread(target=self._run_jpl_search, args=(request_id, query), daemon=True)
+        self._jpl_search_in_progress = True
+        if self._ok_button is not None:
+            self._ok_button.setEnabled(False)
+        self._set_status(f"Searching JPL for '{query}'...")
+        worker = threading.Thread(
+            target=self._run_jpl_search,
+            args=(request_id, query),
+            daemon=True,
+        )
         worker.start()
 
     def _run_jpl_search(self, request_id: int, query: str) -> None:
         try:
-            targets = list(self._jpl_search_callback(query)) if self._jpl_search_callback is not None else []
-        except Exception as exc:  # pragma: no cover - exercised through signal delivery
+            targets = (
+                list(self._jpl_search_callback(query))
+                if self._jpl_search_callback is not None
+                else []
+            )
+        except Exception as exc:  # pragma: no cover - signal delivery path
             self.jpl_search_finished.emit(request_id, [], f"JPL search failed: {exc}")
             return
-        status_text = f"Found {len(targets)} JPL result(s)" if targets else "No JPL results found"
+        status_text = (
+            f"Found {len(targets)} JPL result(s)"
+            if targets
+            else "No JPL results found"
+        )
         self.jpl_search_finished.emit(request_id, targets, status_text)
 
-    def _on_jpl_search_finished(self, request_id: int, payload: object, status_text: str) -> None:
+    def _on_jpl_search_finished(
+        self, request_id: int, payload: object, status_text: str
+    ) -> None:
         if request_id != self._jpl_search_request_id:
             return
-        self._jpl_search_button.setEnabled(True)
-        self._jpl_targets = [target for target in payload if isinstance(target, SearchJumpTarget)]
-        self._jpl_list.clear()
-        for target in self._jpl_targets:
+        self._jpl_search_in_progress = False
+        targets = [target for target in payload if isinstance(target, SearchJumpTarget)]
+        self._list.clear()
+        for target in targets:
             suffix = f"  ({target.subtitle})" if target.subtitle else ""
-            item = QListWidgetItem(f"{target.label}{suffix}", self._jpl_list)
+            item = QListWidgetItem(f"{target.label}{suffix}", self._list)
             item.setData(Qt.ItemDataRole.UserRole, target)
-        self._jpl_status.setText(status_text)
-        self._jpl_status.setVisible(bool(status_text))
-        self._select_first_visible_jpl()
-
-    def eventFilter(self, watched: object, event: object) -> bool:
-        if watched is self._jpl_search and isinstance(event, QKeyEvent) and event.type() == QEvent.Type.KeyPress:
-            if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
-                self._start_jpl_search()
-                return True
-        return super().eventFilter(watched, event)
+        self._set_status(status_text)
+        if targets:
+            self._list.setCurrentRow(0)
+        else:
+            self._list.setCurrentItem(None)
+        self._sync_ok_button()

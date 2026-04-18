@@ -768,7 +768,7 @@ CLI には次のビューポイント dataset 参照専用オプションを持�
   - `Jump to Named Star...`
   - `Search Stars and Asterisms...`
   - `Search Places...`
-- `Search Stars and Asterisms...` は、恒星とアステリズムに加えて、JPL の小天体データベースや Horizons 由来の小天体候補を検索対象に含めてよい。
+- `Search Stars and Asterisms...` は、恒星とアステリズムを先に検索し、見つからない場合だけ JPL の小天体データベースや Horizons 由来の小天体候補へフォールバックしてよい。
 - `Layers` には各種表示トグルを置いてよい。
 - `View Direction` には左右回転と視線上下移動を置いてよい。
 - ハンバーガーメニューの当たり判定は右上隅の正方形領域に置いてよい。
@@ -797,7 +797,7 @@ CLI には次のビューポイント dataset 参照専用オプションを持�
 
 ### 8.2.2 GUI 小天体検索
 
-- `Search Stars and Asterisms...` の検索欄は、恒星、アステリズム、place に加えて、JPL の小天体データベースや Horizons で引ける小天体候補を扱ってよい。
+- `Search Stars and Asterisms...` の検索欄は、恒星、アステリズム、place を先に扱い、見つからない場合だけ JPL の小天体データベースや Horizons で引ける小天体候補へ問い合わせてよい。
 - 小天体候補を選んだ場合は、その時刻と観測地点における見かけの Alt/Az を求め、現在の視界中心をその方向へ移してよい。
 - 検索ダイアログの下部には、検索結果の表示を継続するかどうかを切り替えるチェックボックスを置いてよい。
 - そのチェックボックスには少なくとも `Keep marker` と `Keep label` を用意してよい。
