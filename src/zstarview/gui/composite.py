@@ -621,7 +621,7 @@ def _apply_ground_tint(
     geometry: ScreenGeometry,
     view_center: Tuple[float, float],
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
-    ground_tint_opacity: float = 1.0,
+    ground_tint_opacity: float = 0.1,
     observer_lat_deg: float | None = None,
     content_fov_deg: float = 90.0,
 ) -> QImage:
@@ -667,7 +667,7 @@ def _overlay_earth_guide(
     observer_lon_deg: float | None,
     observer_height_m: float = 0.0,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
-    earth_guide_opacity: float = 0.0,
+    earth_guide_opacity: float = 0.028,
     content_fov_deg: float = 90.0,
     fast_mode: bool = False,
 ) -> QImage:
@@ -710,7 +710,7 @@ class SkyCompositorCache:
         cloud_stripe_width_factor: float = 0.85,
         cloud_stripe_mode: str = "width",
         missing_tint_rgba: Tuple[int, int, int, int] = CLOUD_MISSING_TINT_RGBA,
-        ground_tint_opacity: float = 1.0,
+        ground_tint_opacity: float = 0.1,
     ) -> None:
         self._hatch_cfg = hatch_cfg
         self._gray_mix = gray_mix
@@ -746,8 +746,8 @@ class SkyCompositorCache:
         cloud_amount_field: Optional[CloudAmountField] = None,
         missing_mask: Optional[np.ndarray] = None,
         terrain_profile_altaz: list[tuple[float, float]] | None = None,
-        terrain_horizon_opacity: float = 0.0,
-        earth_guide_opacity: float = 0.0,
+        terrain_horizon_opacity: float = 0.028,
+        earth_guide_opacity: float = 0.028,
         content_fov_deg: float = 90.0,
         fast_mode: bool = False,
     ) -> None:

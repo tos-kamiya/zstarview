@@ -418,9 +418,9 @@ def add_render_arguments(
     parser.add_argument(
         "--sky-opacity",
         type=float,
-        default=0.15,
+        default=0.17,
         help=(
-            "Opacity of the simulated sky-color disc (0.0 - 1.0, default: 0.15). "
+            "Opacity of the simulated sky-color disc (0.0 - 1.0, default: 0.17). "
             "Set to 0.0 to disable sky-color rendering."
         ),
     )
@@ -440,7 +440,7 @@ def add_render_arguments(
         type=float,
         default=0.4,
         help=(
-            "Opacity of the aircraft overlay (0.0 - 1.0, default: 0.5). "
+            "Opacity of the aircraft overlay (0.0 - 1.0, default: 0.4). "
             "Set to 0.0 to disable aircraft queries and rendering."
         ),
     )

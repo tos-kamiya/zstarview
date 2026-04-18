@@ -239,7 +239,7 @@ def _build_window_inputs_from_args(
         show_observer_height=getattr(args, "observer_height_m", None) is not None,
     )
     user_options = prepare_window_user_options(
-        sky_disc_alpha=getattr(args, "sky_opacity", 0.15),
+        sky_disc_alpha=getattr(args, "sky_opacity", 0.17),
         cloud_disc_alpha=(
             0.0
             if (not overlay_availability.cloud)
@@ -270,7 +270,7 @@ def _build_window_inputs_from_args(
         show_asterisms_initial=getattr(args, "show_asterisms_initial", None),
         show_guidelines_initial=getattr(args, "show_guidelines_initial", None),
         observation_info_mode=getattr(args, "observation_info", "auto"),
-        sky_disc_gui_allowed=getattr(args, "sky_opacity", 0.15) > 0.0,
+        sky_disc_gui_allowed=getattr(args, "sky_opacity", 0.17) > 0.0,
         cloud_gui_allowed=overlay_availability.cloud
         and getattr(args, "cloud_opacity", 0.075) > 0.0,
         satellite_gui_allowed=overlay_availability.satellite
@@ -300,6 +300,7 @@ def _build_window_inputs_from_args(
         star_render_expected_width=getattr(args, "expected_render_width", 600),
         content_fov_deg=getattr(args, "content_fov_deg", 100.0),
         window_geometry_arg=None,
+        window_frame_mode=getattr(args, "window_frame", "frameless"),
     )
     return catalogs, viewer_data, user_options, runtime_options
 

@@ -36,7 +36,7 @@ class _Args:
     vmag_brightness_multiplier = 2.5
     content_fov_deg = 100.0
     observer_height_m = None
-    sky_opacity = 0.15
+    sky_opacity = 0.17
     cloud_opacity = 0.15
     satellite_opacity = 0.5
     aircraft_opacity = 0.5

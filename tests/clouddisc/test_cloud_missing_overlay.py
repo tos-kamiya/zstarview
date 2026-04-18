@@ -41,7 +41,7 @@ def test_compositor_cache_key_includes_missing_mask() -> None:
     missing_half[:, :32] = 255
 
     geom = ScreenGeometry(center=(32, 32), radius=32)
-    compositor = SkyCompositorCache()
+    compositor = SkyCompositorCache(ground_tint_opacity=1.0)
 
     canvas1 = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
     canvas1.fill(0)
@@ -96,7 +96,7 @@ def test_compositor_terrain_profile_tints_ground_below_terrain_horizon() -> None
     sky[..., 3] = 255
 
     geom = ScreenGeometry(center=(32, 32), radius=32)
-    compositor = SkyCompositorCache()
+    compositor = SkyCompositorCache(ground_tint_opacity=1.0)
     terrain_profile = [(30.0, float(az)) for az in range(360)]
 
     canvas_flat = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
