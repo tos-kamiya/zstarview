@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import math
+from datetime import datetime
 from typing import Dict, Iterable, List, Optional
 
 import polars as pl
@@ -40,6 +41,12 @@ class SearchJumpTarget:
     object_key: str = ""
     latitude_deg: float | None = None
     longitude_deg: float | None = None
+    command: str = ""
+    alt_deg: float | None = None
+    az_deg: float | None = None
+    target_time_utc: datetime | None = None
+    persistent_keep_marker: bool = False
+    persistent_keep_label: bool = False
 
 
 SATELLITE_JUMP_SHORTCUTS = (

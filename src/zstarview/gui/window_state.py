@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Optional
 
 from PySide6.QtCore import QPoint
 from PySide6.QtGui import QImage
 
 from ..aircraft.types import AircraftOverlayPoint
+from .famous_star_shortcuts import SearchJumpTarget
 from ..satellites.types import SatelliteOverlayPoint
 from ..types import CelestialData, StarsTable, UrbanOutlinePolyline, ViewCenterAltAz
 
@@ -27,6 +29,11 @@ class SkyWindowState:
     jump_highlight_name: Optional[str] = None
     jump_highlight_altaz: Optional[ViewCenterAltAz] = None
     jump_highlight_until_ms: float = 0.0
+    persistent_search_target: Optional[SearchJumpTarget] = None
+    persistent_search_reference_time_utc: Optional[datetime] = None
+    persistent_search_next_refresh_utc: Optional[datetime] = None
+    persistent_search_last_refresh_utc: Optional[datetime] = None
+    persistent_search_last_error: Optional[str] = None
     sky_update_pending: bool = False
     pending_star_vmag_limit: Optional[float] = None
     cloud_repaint_deferred: bool = False
