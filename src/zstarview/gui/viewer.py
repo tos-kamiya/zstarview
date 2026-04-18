@@ -5,6 +5,8 @@ import math
 import json
 from dataclasses import replace
 
+from PySide6.QtCore import QTimer
+
 from ..astro import load_ephemeris
 from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_lived_cache
 from ..catalog import load_dso_catalog, load_star_catalog
@@ -43,6 +45,9 @@ from ..gui.window_inputs import (
     prepare_window_user_options,
     prepare_window_viewer_data,
 )
+from ..overlay_time import target_time_utc_from_delta
+from ..search.jpl import search_jpl_targets
+from ..search.resolver import resolve_search_targets
 from ..cli.args import parse_args
 
 logger = logging.getLogger(__name__)
@@ -300,6 +305,29 @@ def main() -> None:
         runtime_options=runtime_options,
     )
 
+    startup_search = str(getattr(args, "search", "") or "").strip()
+    startup_target_time_utc = target_time_utc_from_delta(delta_t) if startup_search else None
+
+    def _run_startup_search() -> None:
+        if not startup_search or startup_target_time_utc is None:
+            return
+        resolution = resolve_search_targets(
+            startup_search,
+            catalogs.named_stars_search_all,
+            jpl_search_callback=lambda query: search_jpl_targets(
+                query,
+                observer_lat=float(viewer_data.lat_deg),
+                observer_lon=float(viewer_data.lon_deg),
+                observer_height_m=float(viewer_data.observer_height_m),
+                target_time_utc=startup_target_time_utc,
+            ),
+        )
+        if len(resolution.candidates) == 1 and resolution.selected_target is not None:
+            target = resolution.selected_target
+            if bool(getattr(args, "search_keep_marker", False)):
+                target = replace(target, persistent_keep_marker=True)
+            main_win._jump_to_search_target(target)
+
     def _on_initial_loaded():
         """
         Handles the signal that initial data has been loaded.
@@ -311,6 +339,8 @@ def main() -> None:
         app.setQuitOnLastWindowClosed(True)
         splash.close()
         root_logger.removeHandler(splash_handler)
+        if startup_search:
+            QTimer.singleShot(0, _run_startup_search)
 
     main_win.initial_data_loaded.connect(_on_initial_loaded)
 

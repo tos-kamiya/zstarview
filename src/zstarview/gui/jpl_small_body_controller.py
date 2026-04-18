@@ -9,7 +9,8 @@ from urllib.error import URLError
 from PySide6.QtCore import QObject, Signal
 
 from ..satellites import fetch_horizons_observer_csv
-from .famous_star_shortcuts import SearchJumpTarget
+from ..search.jpl import extract_horizons_altaz
+from ..search.models import SearchJumpTarget
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +92,7 @@ class JplSmallBodyController(QObject):
                 observer_lon=observer_lon,
                 observer_height_m=observer_height_m,
             )
-            alt_az = self._extract_altaz(rows)
+            alt_az = extract_horizons_altaz(rows)
             if alt_az is None:
                 raise RuntimeError("JPL observer table did not contain an alt/az sample")
             alt_deg, az_deg = alt_az
@@ -138,15 +139,3 @@ class JplSmallBodyController(QObject):
                 self.jpl_started.emit({"banner": "JPL: fetching small-body ephemeris..."})
                 worker = threading.Thread(target=self._run_update, kwargs=next_request, daemon=True)
                 worker.start()
-
-    def _extract_altaz(self, rows: list[list[str]]) -> tuple[float, float] | None:
-        for row in rows:
-            numeric_values: list[float] = []
-            for value in row:
-                try:
-                    numeric_values.append(float(str(value).strip()))
-                except (TypeError, ValueError):
-                    continue
-            if len(numeric_values) >= 2:
-                return numeric_values[-1], numeric_values[-2]
-        return None

@@ -2,15 +2,14 @@
 """Helpers for named-star jump shortcuts."""
 from __future__ import annotations
 
-from dataclasses import dataclass
 import math
-from datetime import datetime
 from typing import Dict, Iterable, List, Optional
 
 import polars as pl
 
 from ..asterisms import ASTERISMS
 from ..location_resolver import PlaceSearchCandidate
+from ..search.models import SearchJumpTarget
 
 
 DEC_BAND_NORTH = "north"
@@ -19,34 +18,25 @@ DEC_BAND_SOUTH = "south"
 DEC_BANDS = (DEC_BAND_NORTH, DEC_BAND_EQUATOR, DEC_BAND_SOUTH)
 
 
-@dataclass(frozen=True)
 class NamedStarShortcut:
-    name: str
-    ra_hours: float
-    dec_deg: float
-    vmag: float
-    band: str
-    kind: str = "star"
-    subtitle: str = ""
-
-
-@dataclass(frozen=True)
-class SearchJumpTarget:
-    label: str
-    kind: str
-    sort_key: tuple[float, str]
-    ra_hours: float = 0.0
-    dec_deg: float = 0.0
-    subtitle: str = ""
-    object_key: str = ""
-    latitude_deg: float | None = None
-    longitude_deg: float | None = None
-    command: str = ""
-    alt_deg: float | None = None
-    az_deg: float | None = None
-    target_time_utc: datetime | None = None
-    jpl_group: str = ""
-    persistent_keep_marker: bool = False
+    def __init__(
+        self,
+        *,
+        name: str,
+        ra_hours: float,
+        dec_deg: float,
+        vmag: float,
+        band: str,
+        kind: str = "star",
+        subtitle: str = "",
+    ) -> None:
+        self.name = name
+        self.ra_hours = ra_hours
+        self.dec_deg = dec_deg
+        self.vmag = vmag
+        self.band = band
+        self.kind = kind
+        self.subtitle = subtitle
 
 
 SATELLITE_JUMP_SHORTCUTS = (

@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .famous_star_shortcuts import SearchJumpTarget
+from ..search.models import SearchJumpTarget
 
 
 class PlaceSearchDialog(QDialog):

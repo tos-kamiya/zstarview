@@ -19,9 +19,9 @@ from ..astro import (
     prepare_star_catalog_arrays,
 )
 from ..types import StarCatalogMeta, ViewerData
+from ..search.models import SearchJumpTarget
 from .famous_star_shortcuts import (
     NamedStarShortcut,
-    SearchJumpTarget,
     build_named_star_shortcuts,
     build_search_jump_targets,
 )
