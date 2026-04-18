@@ -163,9 +163,9 @@ CLI では、場所・時刻・描画設定を細かく指定できます。
 
 | オプション | 説明 | デフォルト |
 | :--- | :--- | :--- |
-| `--search QUERY` | 起動時に対象を解決します。GUI の `Search Objects...` と `zstarview-export-image` でも同じルールを使い、`=` がなければラベルまたは ID で検索します。 | |
-| `--search label=QUERY` | ラベルだけを検索します。 | |
-| `--search id=QUERY` | ID だけを検索します。 | |
+| `--search QUERY` | 起動時に対象を解決します。GUI の `Search Objects...` と `zstarview-export-image` でも同じルールを使い、`=` がなければラベルまたは ID で検索します（例: `Ceres`, `2000001`）。 | |
+| `--search label=QUERY` | ラベルだけを検索します（例: `label=Ceres`）。 | |
+| `--search id=QUERY` | ID だけを検索します（例: `id=2000001`）。 | |
 | `--search-keep-marker` | 選択対象をマーカーとラベル付きで継続表示します。 | |
 | `--list` | `zstarview-export-image` 専用です。候補を表示して終了します。 | |
 
