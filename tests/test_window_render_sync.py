@@ -91,6 +91,7 @@ class _WindowStub:
         self.satellite_state = values.get("satellite_state", None)
         self.viewer_data = values.get("viewer_data", None)
         self._cloud_controller = values.get("_cloud_controller", None)
+        self.state = values.get("state", None)
 
     def client_width(self) -> int:
         width = self.width
@@ -112,6 +113,54 @@ class _WindowStub:
         update = self.update
         if callable(update):
             update()
+
+    def _target_time_utc(self):
+        target_time_utc = self.__dict__.get("_target_time_utc")
+        if callable(target_time_utc):
+            return target_time_utc()
+        return datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc)
+
+    def _build_horizons_command(self, target: dict[str, object], *, group: str) -> str:
+        spkid = str(target.get("spkid", "")).strip()
+        if spkid:
+            if group == "sb":
+                return f"DES={spkid};"
+            return spkid
+        pdes = str(target.get("pdes", "")).strip()
+        if pdes:
+            if group == "sb":
+                return f"DES={pdes};"
+            return pdes
+        name = str(target.get("name", "")).strip()
+        if name:
+            if group == "sb":
+                return name if name.endswith(";") else f"{name};"
+            return name
+        return ""
+
+    def _extract_horizons_altaz(self, rows: list[list[str]]) -> tuple[float, float] | None:
+        for row in rows:
+            numeric_values: list[float] = []
+            for value in row:
+                try:
+                    numeric_values.append(float(str(value).strip()))
+                except (TypeError, ValueError):
+                    continue
+            if len(numeric_values) >= 2:
+                return numeric_values[-1], numeric_values[-2]
+        return None
+
+    def _clear_persistent_search(self) -> None:
+        if self.state is None:
+            return
+        self.state.persistent_search_target = None
+        self.state.persistent_search_reference_time_utc = None
+        self.state.persistent_search_next_refresh_utc = None
+        self.state.persistent_search_last_refresh_utc = None
+        self.state.persistent_search_last_error = None
+
+    def _schedule_persistent_search_refresh(self) -> None:
+        return None
 
 
 def _make_scene(
