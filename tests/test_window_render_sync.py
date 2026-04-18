@@ -857,6 +857,20 @@ def test_search_jpl_targets_includes_major_body_results(monkeypatch) -> None:
     assert targets[0].jpl_group == "mb"
 
 
+def test_search_jpl_targets_skips_sun_and_moon() -> None:
+    dummy = _WindowStub()
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(20.0, 30.0),
+        observer_height_m=1.7,
+    )
+
+    assert SkyWindow._search_jpl_targets(dummy, "Sun") == []
+    assert SkyWindow._search_jpl_targets(dummy, "Moon") == []
+
+
 def test_jump_to_jpl_major_body_target_keeps_overlay_without_refresh() -> None:
     dummy = _WindowStub()
     dummy.viewer_data = ViewerData(
