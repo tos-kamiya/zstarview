@@ -15,6 +15,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 - **Solar-system bodies**: supports Sun, Moon, and major planets. Minor planets (asteroids) are not displayed yet.
 - **Deep-sky objects**: named galaxies/open clusters/globular clusters are shown as soft blue extents.
 - **Asterism overlay**: popular line patterns rather than formal IAU constellation boundaries are shown as dim ambient lines. Mouse-hovering a star in an asterism brightens the matching pattern and shows its label, with 3-second rotation when multiple asterisms share that star.
+- **Search Objects**: search named stars, asterisms, places, and JPL celestial bodies from one dialog. When local matches are not found, the search can fall back to JPL small bodies or major bodies, and persistent marker mode keeps both the marker and label visible on the selected target.
 - **Satellite cloud imagery and sky-color disc**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay, and the sky-color disc remains visible beneath the clouds. Missing regions are shown in faint yellow when satellite coverage is partial. See [an example with partial coverage and yellow missing-data tint](docs/images/screenshot5.png).
 - **Aircraft and artificial satellite overlays**: nearby aircraft from OpenSky can be drawn as purple predicted-motion polylines, and ISS, JWST, Voyager 1, Voyager 2, and Parker can be drawn as small purple markers between the planet and aircraft layers.
 - **Urban outline overlay**: major rooflines are drawn as a white urban outline overlay for the current viewpoint. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 60km radius.
@@ -461,7 +462,7 @@ The GUI supports direct keyboard and menu-based navigation, search, and overlay 
 * **E**: Toggle earth guide overlay
 * **U**: Toggle urban outline overlay
 * **Ctrl+J**: Open Jump to Named Star
-* **Ctrl+F**: Open Search Stars and Asterisms
+* **Ctrl+F**: Open Search Objects
 * **F11**: Toggle fullscreen display
 * **ESC**: Exit fullscreen
 * **Q**: Quit
@@ -471,7 +472,7 @@ The GUI supports direct keyboard and menu-based navigation, search, and overlay 
 From the hamburger menu (`☰`), you can use:
 
 * **Jump to Named Star...**: Choose from representative named stars (`Vmag <= 2.0`), grouped into North / Equatorial / South, then jump the view center to that star.
-* **Search Stars and Asterisms...**: Search across named stars, supported asterisms, and ISS, then jump to the selected target.
+* **Search Objects...**: Search across named stars, supported asterisms, places, and JPL celestial bodies, then jump to the selected target. If the local star/asterism search finds nothing, the dialog can fall back to JPL major bodies and small bodies. Use `Keep marker` to keep both the marker and label visible after the jump.
 * **Search Places...**: Open a separate place-search dialog backed by OpenStreetMap Nominatim, list matching places/stations/facilities, and jump toward the selected ground location.
 * **Enlarge Moon**: Toggle moon enlarged to 5x size.
 * **DSO**: Toggle deep-sky object overlays on/off.
@@ -649,6 +650,7 @@ All paths below are relative to `src/zstarview/data/`.
 | Runtime IP geolocation requests sent to `ip-api.com` | IP-based location lookup used when `auto` is requested | [ip-api.com](https://ip-api.com/) | [ip-api.com Terms of Service / Privacy Policy](https://ip-api.com/docs/legal) |
 | On-demand urban-outline cache under the app cache directory | Derived building tiles and `tile_index.json` files produced from downloaded Overture building data | [Overture Maps Buildings](https://docs.overturemaps.org/guides/buildings/) downloaded at runtime via the `overturemaps` CLI | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) |
 | Runtime aircraft overlay data fetched from OpenSky Network | Aircraft state vectors used for the optional nearby-aircraft overlay | [OpenSky Network REST API](https://openskynetwork.github.io/opensky-api/rest.html) | [OpenSky Network Terms of Use](https://opensky-network.org/about/terms-of-use) |
+| Runtime JPL Horizons / Small-Body Database requests | Search / ephemeris data used for celestial-body lookup and the JWST / Voyager / Parker spacecraft cache | [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/), [JPL Small-Body Database](https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html) | See the JPL/JPL SSD sites for current usage terms and data notes |
 | Runtime artificial satellite overlay data fetched from `wheretheiss.at` with CelesTrak fallback | Orbital-element data used for the optional ISS overlay | [wheretheiss.at](https://wheretheiss.at/w/developer), [CelesTrak](https://celestrak.org/) | See each source site for current terms and licensing details |
 | `dso.csv`                                                       | Deep-sky object catalog (named galaxies/open clusters/globular clusters; generated from OpenNGC) | [OpenNGC](https://github.com/mattiaverga/OpenNGC) via [PyOngc](https://github.com/mattiaverga/PyOngc) | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) (OpenNGC database) |
 | On-demand terrain DEM cache under the app cache directory | Terrain horizon source data (Copernicus DEM GLO-90) | [Copernicus DEM / Copernicus Data Space Ecosystem](https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM) via public AWS S3 distribution used by the app | Copernicus DEM GLO-90 access terms as described by Copernicus Data Space Ecosystem, including "Licence for COP-DEM-GLO-90-F Global 90m Full, Free & Open" / "Licence for the use of the Copernicus WorldDEM™-90" |
@@ -666,6 +668,7 @@ All paths below are relative to `src/zstarview/data/`.
 * Star proper names provided by the IAU Working Group on Star Names (via [exopla.net](https://exopla.net/star-names/modern-iau-star-names/)).
 * Cloud data are based on infrared observations from the **Himawari** satellite (provided by JMA) and the **NOAA GOES** series (provided by NOAA/NESDIS), retrieved from their public S3 buckets.
 * Aircraft overlay data are fetched from **OpenSky Network** at runtime and are subject to the [OpenSky Network Terms of Use](https://opensky-network.org/about/terms-of-use).
+* Celestial-body search uses **JPL Horizons** and the **JPL Small-Body Database** at runtime to resolve matches and observer ephemerides. Search results and ephemerides are subject to the current JPL/JPL SSD usage terms and data notes.
 * Orbital data (TLE/OMM) for the artificial satellite overlay are fetched from **wheretheiss.at** with **CelesTrak** as a fallback source.
 * Terrain horizon data are based on **Copernicus DEM GLO-90**, managed by ESA on behalf of the European Commission and obtained by the app through its public AWS distribution/cache flow.
 * Place/station search via `--place` uses the public OpenStreetMap Nominatim service and is subject to the [Nominatim Usage Policy](https://operations.osmfoundation.org/policies/nominatim/).
