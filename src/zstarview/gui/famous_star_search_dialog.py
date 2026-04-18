@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QPushButton,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -54,7 +55,7 @@ class NamedStarSearchDialog(QDialog):
         outer = QVBoxLayout(self)
 
         intro = QLabel(
-            "Search stars and asterisms first. If there is no local match, the dialog can resolve known artificial satellites and then fall back to JPL bodies.",
+            "Search stars and asterisms first. If there is no local match, the dialog can resolve known artificial satellites and then fall back to JPL bodies. JPL search shows up to 500 results.",
             self,
         )
         intro.setWordWrap(True)
@@ -62,19 +63,25 @@ class NamedStarSearchDialog(QDialog):
 
         search_row = QHBoxLayout()
         self._search = QLineEdit(self)
-        self._search.setPlaceholderText("Type star, asterism, satellite, or JPL body name...")
+        self._search.setPlaceholderText(
+            "Type star, asterism, satellite, or JPL body name..."
+        )
         self._search.textChanged.connect(self._apply_local_filter)
         self._search.returnPressed.connect(self.accept)
         search_row.addWidget(self._search)
         outer.addLayout(search_row)
 
-        self._jpl_search_button = QPushButton("Search satellites / JPL", self)
+        self._jpl_search_button = QPushButton("Search satellites / JPL (up to 500)", self)
         self._jpl_search_button.clicked.connect(self._start_jpl_search)
         self._jpl_search_button.setEnabled(False)
         outer.addWidget(self._jpl_search_button)
 
         self._list = QListWidget(self)
         self._list.itemDoubleClicked.connect(self._on_item_double_clicked)
+        self._list.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+        self._list.setMinimumHeight(220)
         outer.addWidget(self._list)
 
         self._status = QLabel("", self)
@@ -135,30 +142,36 @@ class NamedStarSearchDialog(QDialog):
         return self._clear_persistent_marker_on_accept
 
     def _apply_local_filter(self, text: str) -> None:
+        query_text = text.strip()
         query_spec = parse_search_query(text)
         self._list.clear()
 
-        matching_targets: list[SearchJumpTarget] = []
-        for target in self._local_targets:
-            if not query_spec.normalized or search_target_matches_query(target, query_spec):
-                matching_targets.append(target)
+        if not query_text:
+            matching_targets = list(self._local_targets)
+        else:
+            matching_targets = [
+                target
+                for target in self._local_targets
+                if search_target_matches_query(target, query_spec)
+            ]
 
-        self._local_result_count = len(matching_targets)
+        self._local_result_count = 0 if not query_text else len(matching_targets)
         for target in matching_targets:
             suffix = f"  ({target.subtitle})" if target.subtitle else ""
             item = QListWidgetItem(f"{target.label}{suffix}", self._list)
             item.setData(Qt.ItemDataRole.UserRole, target)
+            item.setHidden(not query_text)
 
         if self._local_result_count > 0:
             self._set_status(
                 f"Found {self._local_result_count} local result(s). Select one and press OK."
             )
             self._select_first_visible()
-        elif query_spec.normalized in _JPL_BYPASS_QUERIES:
+        elif query_text and query_spec.normalized in _JPL_BYPASS_QUERIES:
             self._set_status(
                 "Sun and Moon are already handled by the solar-system view."
             )
-        elif query_spec.normalized:
+        elif query_text and query_spec.normalized:
             self._set_status("No local match. Use the satellites / JPL button below.")
         else:
             self._set_status("")
@@ -192,11 +205,13 @@ class NamedStarSearchDialog(QDialog):
         )
         self._jpl_search_button.setEnabled(enabled)
         if not query:
-            self._jpl_search_button.setText("Search satellites / JPL")
+            self._jpl_search_button.setText("Search satellites / JPL (up to 500)")
         elif query_spec.normalized in _JPL_BYPASS_QUERIES:
             self._jpl_search_button.setText("Sun and Moon are already shown")
         else:
-            self._jpl_search_button.setText(f"Search satellites / JPL for '{query}'")
+            self._jpl_search_button.setText(
+                f"Search satellites / JPL (up to 500) for '{query}'"
+            )
 
     def _sync_ok_button(self) -> None:
         if self._ok_button is not None:
