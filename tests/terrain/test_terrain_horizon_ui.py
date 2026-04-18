@@ -417,6 +417,7 @@ def test_status_line_message_combines_cloud_and_terrain_segments() -> None:
     dummy._cloud_status_line = lambda: "Clouds [AUTO]: downloading"
     dummy._satellite_status_line = lambda: ""
     dummy._aircraft_status_line = lambda: ""
+    dummy._jpl_small_body_status_line = lambda: ""
     dummy._terrain_horizon_status_line = lambda: "Terrain horizon: loading DEM..."
     dummy._urban_outline_status_line = lambda: "Urban outline: downloading..."
 

@@ -1474,7 +1474,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 )
                 self.state.persistent_search_last_error = None
                 self.state.persistent_search_last_refresh_utc = target.target_time_utc
-                if target.jpl_group == "sb":
+                if target.kind == "jpl_small_body" or target.jpl_group == "sb":
                     self.state.persistent_search_next_refresh_utc = (
                         (target.target_time_utc or self._target_time_utc())
                         + timedelta(hours=1)
