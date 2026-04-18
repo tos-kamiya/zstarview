@@ -3,6 +3,10 @@ from __future__ import annotations
 import pytest
 
 from zstarview.__about__ import __version__
+from zstarview.cli.export_image import (
+    _clamp_view_center_altitude,
+    _format_search_failure_message,
+)
 from zstarview.cli.args import parse_export_image_args
 
 
@@ -99,6 +103,28 @@ def test_parse_export_image_args_accepts_print_cache_dir_without_output() -> Non
     args = parse_export_image_args(["--print-cache-dir"])
 
     assert args.print_cache_dir is True
+
+
+def test_parse_export_image_args_rejects_list_without_search() -> None:
+    with pytest.raises(SystemExit):
+        parse_export_image_args(["--list"])
+
+
+def test_parse_export_image_args_rejects_multiple_search_options() -> None:
+    with pytest.raises(SystemExit):
+        parse_export_image_args(["--search", "Ceres", "--search", "Mars", "-o", "out.png"])
+
+
+def test_format_search_failure_message_reports_no_results() -> None:
+    assert _format_search_failure_message("Jupyter", 0) == "No search candidates found for 'Jupyter'"
+
+
+def test_format_search_failure_message_reports_multiple_results() -> None:
+    assert _format_search_failure_message("Mars", 2) == "Search query 'Mars' matched 2 candidates"
+
+
+def test_clamp_view_center_altitude_matches_gui_floor() -> None:
+    assert _clamp_view_center_altitude(-20.0) == -5.0
 
 
 def test_parse_export_image_args_rejects_skyscraper_radius_smaller_than_base_radius() -> (
