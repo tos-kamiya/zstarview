@@ -195,7 +195,7 @@ def _render_variable_width_cloud_stripes_rgba(
     *,
     target_stripes: int = 50,
     width_factor: float = 0.85,
-    content_fov_deg: float = 90.0,
+    content_fov_deg: float,
 ) -> np.ndarray:
     """Render fixed-opacity cloud stripes whose width increases with cloud amount."""
     w = max(1, int(width))
@@ -273,7 +273,7 @@ def _render_alpha_scaled_cloud_stripes_rgba(
     *,
     target_stripes: int = 50,
     width_factor: float = 0.2,
-    content_fov_deg: float = 90.0,
+    content_fov_deg: float,
 ) -> np.ndarray:
     """Render fixed-width cloud stripes whose alpha follows cloud amount."""
     w = max(1, int(width))
@@ -342,7 +342,7 @@ def render_variable_width_cloud_stripes(
     *,
     target_stripes: int = 50,
     width_factor: float = 0.85,
-    content_fov_deg: float = 90.0,
+    content_fov_deg: float,
 ) -> QImage:
     out = _render_variable_width_cloud_stripes_rgba(
         cloud_amount,
@@ -365,7 +365,7 @@ def compose_cloud_over_sky(
     *,
     cloud_opacity: float = 1.0,
     gray_mix: float = 1.0,
-    content_fov_deg: float = 90.0,
+    content_fov_deg: float,
 ) -> QImage:
     """Composite cloud over sky with optional gray desaturation behind clouds.
 
@@ -521,7 +521,7 @@ def _inverse_project_disc(
     geometry: ScreenGeometry,
     view_center: Tuple[float, float],
     *,
-    content_fov_deg: float = 90.0,
+    content_fov_deg: float,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Inverse-project square composited pixels up to the requested content FOV."""
     cx = float(geometry.center[0])
@@ -623,7 +623,7 @@ def _apply_ground_tint(
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     ground_tint_opacity: float = 0.1,
     observer_lat_deg: float | None = None,
-    content_fov_deg: float = 90.0,
+    content_fov_deg: float,
 ) -> QImage:
     """Tint the composited disc below the geometric or terrain horizon."""
     out = qimage_to_np_rgba(
@@ -668,7 +668,7 @@ def _overlay_earth_guide(
     observer_height_m: float = 0.0,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     earth_guide_opacity: float = 0.028,
-    content_fov_deg: float = 90.0,
+    content_fov_deg: float,
     fast_mode: bool = False,
 ) -> QImage:
     if observer_lat_deg is None or observer_lon_deg is None:
@@ -748,7 +748,7 @@ class SkyCompositorCache:
         terrain_profile_altaz: list[tuple[float, float]] | None = None,
         terrain_horizon_opacity: float = 0.028,
         earth_guide_opacity: float = 0.028,
-        content_fov_deg: float = 90.0,
+        content_fov_deg: float,
         fast_mode: bool = False,
     ) -> None:
         """Composite the sky/cloud layers (with cache) and draw into painter."""

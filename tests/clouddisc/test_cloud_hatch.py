@@ -49,7 +49,7 @@ def test_variable_width_cloud_stripes_keep_peak_alpha_at_base_line() -> None:
     field = build_cloud_amount_field(np_rgba_to_qimage(arr), bins=64)
     cfg = HatchConfig(20, 19, 8, 173)
 
-    out = qimage_to_np_rgba(render_variable_width_cloud_stripes(field, 128, 128, cfg))
+    out = qimage_to_np_rgba(render_variable_width_cloud_stripes(field, 128, 128, cfg, content_fov_deg=90.0))
     positive = out[..., 3] > 0
     assert np.any(positive)
     assert int(out[..., 3][positive].max()) == 173
@@ -73,6 +73,7 @@ def test_compose_cloud_addition_is_weighted_by_cloud_alpha() -> None:
             dest_rect=QRect(0, 0, 8, 8),
             cloud_opacity=1.0,
             gray_mix=0.0,
+            content_fov_deg=90.0,
         )
     )
     # Alpha=0 cloud pixels should not brighten sky.
@@ -96,6 +97,7 @@ def test_compose_cloud_without_sky_uses_opaque_black_disc_base() -> None:
             dest_rect=QRect(0, 0, 8, 8),
             cloud_opacity=1.0,
             gray_mix=0.0,
+            content_fov_deg=90.0,
         )
     )
 
@@ -113,7 +115,7 @@ def test_variable_width_cloud_stripes_make_dense_regions_wider() -> None:
     field = build_cloud_amount_field(np_rgba_to_qimage(base), bins=96)
     cfg = HatchConfig(20, 19, 8, 255)
 
-    out = qimage_to_np_rgba(render_variable_width_cloud_stripes(field, 256, 256, cfg))
+    out = qimage_to_np_rgba(render_variable_width_cloud_stripes(field, 256, 256, cfg, content_fov_deg=90.0))
     left_ratio = float(np.mean(out[:, :128, 3] > 0))
     right_ratio = float(np.mean(out[:, 128:, 3] > 0))
     assert right_ratio > left_ratio + 0.08
@@ -127,8 +129,8 @@ def test_variable_width_cloud_stripes_stay_sparse_on_larger_canvas() -> None:
     field = build_cloud_amount_field(np_rgba_to_qimage(base), bins=96)
     cfg = HatchConfig(20, 19, 8, 255)
 
-    small = qimage_to_np_rgba(render_variable_width_cloud_stripes(field, 200, 200, cfg))
-    large = qimage_to_np_rgba(render_variable_width_cloud_stripes(field, 800, 800, cfg))
+    small = qimage_to_np_rgba(render_variable_width_cloud_stripes(field, 200, 200, cfg, content_fov_deg=90.0))
+    large = qimage_to_np_rgba(render_variable_width_cloud_stripes(field, 800, 800, cfg, content_fov_deg=90.0))
 
     # Larger canvas should not increase stripe occupancy; it should stay sparse or become sparser.
     small_ratio = float(np.mean(small[..., 3] > 0))
@@ -149,7 +151,16 @@ def test_variable_width_cloud_stripes_fade_away_from_base_line() -> None:
         source_cache_key=7,
     )
 
-    out = qimage_to_np_rgba(render_variable_width_cloud_stripes(field, 192, 192, cfg, width_factor=0.5))
+    out = qimage_to_np_rgba(
+        render_variable_width_cloud_stripes(
+            field,
+            192,
+            192,
+            cfg,
+            width_factor=0.5,
+            content_fov_deg=90.0,
+        )
+    )
     row_index = 96
     runs = _alpha_runs(out[row_index, :, 3])
     assert runs
@@ -194,8 +205,8 @@ def test_variable_width_cloud_stripes_anchor_lower_left_edge() -> None:
         nonzero_hi=1.0,
         source_cache_key=2,
     )
-    low_out = qimage_to_np_rgba(render_variable_width_cloud_stripes(low_field, 192, 192, cfg))
-    high_out = qimage_to_np_rgba(render_variable_width_cloud_stripes(high_field, 192, 192, cfg))
+    low_out = qimage_to_np_rgba(render_variable_width_cloud_stripes(low_field, 192, 192, cfg, content_fov_deg=90.0))
+    high_out = qimage_to_np_rgba(render_variable_width_cloud_stripes(high_field, 192, 192, cfg, content_fov_deg=90.0))
 
     row_index = 96
     low_runs = _alpha_runs(low_out[row_index, :, 3])
@@ -224,7 +235,7 @@ def test_variable_width_cloud_stripes_drop_to_zero_for_tiny_cloud_amount() -> No
         source_cache_key=3,
     )
 
-    out = qimage_to_np_rgba(render_variable_width_cloud_stripes(tiny_field, 192, 192, cfg))
+    out = qimage_to_np_rgba(render_variable_width_cloud_stripes(tiny_field, 192, 192, cfg, content_fov_deg=90.0))
     assert not np.any(out[..., 3] > 0)
 
 
@@ -242,7 +253,15 @@ def test_alpha_scaled_cloud_stripes_encode_cloud_amount_in_alpha() -> None:
     )
     field.amount[:, 48:] = 0.22
 
-    out = _render_alpha_scaled_cloud_stripes_rgba(field, 192, 192, cfg, target_stripes=12, width_factor=0.2)
+    out = _render_alpha_scaled_cloud_stripes_rgba(
+        field,
+        192,
+        192,
+        cfg,
+        target_stripes=12,
+        width_factor=0.2,
+        content_fov_deg=90.0,
+    )
     positive = out[..., 3] > 0
     assert np.any(positive)
     left_mean = float(out[:, :96, 3][out[:, :96, 3] > 0].mean())
@@ -284,7 +303,17 @@ def test_variable_width_cloud_stripes_use_fractional_alpha_for_partial_line() ->
         source_cache_key=6,
     )
 
-    out = qimage_to_np_rgba(render_variable_width_cloud_stripes(field, 192, 192, cfg, target_stripes=12, width_factor=0.5))
+    out = qimage_to_np_rgba(
+        render_variable_width_cloud_stripes(
+            field,
+            192,
+            192,
+            cfg,
+            target_stripes=12,
+            width_factor=0.5,
+            content_fov_deg=90.0,
+        )
+    )
     positive = out[..., 3][out[..., 3] > 0]
     assert np.any(positive)
     assert int(positive.max()) == 200

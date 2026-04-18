@@ -47,6 +47,7 @@ def test_sky_disc_raw_image_keeps_below_horizon_untinted() -> None:
         sun_altaz=(-90.0, 0.0),  # base sky becomes black in current model
         alpha=1.0,
         eclipse_factor=1.0,
+        content_fov_deg=90.0,
     )
     arr = qimage_to_np_rgba(img)
 
@@ -68,6 +69,7 @@ def test_sky_disc_can_reduce_disc_opacity_without_changing_rgb_samples() -> None
         alpha=1.0,
         disc_opacity=0.45,
         eclipse_factor=1.0,
+        content_fov_deg=90.0,
     )
     arr = qimage_to_np_rgba(img)
 
@@ -77,7 +79,7 @@ def test_sky_disc_can_reduce_disc_opacity_without_changing_rgb_samples() -> None
 
 def test_uniform_sky_disc_uses_single_disc_color() -> None:
     geom = ScreenGeometry(center=(80, 80), radius=80)
-    img = draw_uniform_sky_color_disc(geom, view_center=(0.0, 0.0))
+    img = draw_uniform_sky_color_disc(geom, view_center=(0.0, 0.0), content_fov_deg=90.0)
     arr = qimage_to_np_rgba(img)
 
     center_rgb = arr[80, 80, :3].astype(int)
@@ -92,7 +94,12 @@ def test_uniform_sky_disc_uses_single_disc_color() -> None:
 
 def test_uniform_sky_disc_can_reduce_disc_opacity() -> None:
     geom = ScreenGeometry(center=(80, 80), radius=80)
-    img = draw_uniform_sky_color_disc(geom, view_center=(0.0, 0.0), disc_opacity=0.45)
+    img = draw_uniform_sky_color_disc(
+        geom,
+        view_center=(0.0, 0.0),
+        disc_opacity=0.45,
+        content_fov_deg=90.0,
+    )
     arr = qimage_to_np_rgba(img)
 
     assert int(arr[80, 80, 3]) == 115
@@ -102,7 +109,7 @@ def test_uniform_sky_disc_can_reduce_disc_opacity() -> None:
 def test_uniform_sky_disc_content_fov_fills_corner_overscan_area() -> None:
     geom = ScreenGeometry(center=(80, 80), radius=80)
 
-    default_img = draw_uniform_sky_color_disc(geom, view_center=(90.0, 0.0))
+    default_img = draw_uniform_sky_color_disc(geom, view_center=(90.0, 0.0), content_fov_deg=90.0)
     overscan_img = draw_uniform_sky_color_disc(geom, view_center=(90.0, 0.0), content_fov_deg=110.0)
 
     default_arr = qimage_to_np_rgba(default_img)
