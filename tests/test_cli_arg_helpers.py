@@ -78,6 +78,18 @@ def test_main_help_text_uses_readme_like_groups() -> None:
     assert re.search(r"^\s+--list\s", help_text, re.M) is None
 
 
+def test_export_image_help_text_uses_shared_groups() -> None:
+    help_text = cli_args.build_export_image_argument_parser().format_help()
+
+    assert "Observing Location and Time" in help_text
+    assert "Search Objects at startup" in help_text
+    assert "Overlays" in help_text
+    assert "Export" in help_text
+    assert "General" in help_text
+    assert "--window-frame" not in help_text
+    assert re.search(r"^\s+--list\s", help_text, re.M) is not None
+
+
 def test_main_parser_version_option_prints_package_version(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
