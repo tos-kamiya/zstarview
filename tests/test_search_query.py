@@ -4,7 +4,7 @@ import pytest
 
 from zstarview.search.models import SearchJumpTarget
 from zstarview.search.query import parse_search_query, search_target_matches_query
-from zstarview.search.resolver import resolve_search_targets
+from zstarview.search.resolver import compute_search_target_altaz, resolve_search_targets
 
 
 def test_parse_search_query_supports_label_selector() -> None:
@@ -111,3 +111,41 @@ def test_resolve_search_targets_propagates_missing_satellite_position() -> None:
             satellite_search_callback=fake_satellite_search,
             jpl_search_callback=lambda _query: [],
         )
+
+
+def test_compute_search_target_altaz_uses_satellite_altaz() -> None:
+    target = SearchJumpTarget(
+        label="JWST",
+        kind="satellite",
+        sort_key=(0.0, "jwst"),
+        alt_deg=12.5,
+        az_deg=278.0,
+    )
+
+    assert compute_search_target_altaz(
+        target,
+        observer_lat=35.0,
+        observer_lon=135.0,
+        observer_height_m=50.0,
+    ) == (12.5, 278.0)
+
+
+def test_compute_search_target_altaz_uses_satellite_resolver_when_missing_altaz() -> None:
+    target = SearchJumpTarget(
+        label="JWST",
+        kind="satellite",
+        sort_key=(0.0, "jwst"),
+        object_key="JWST",
+    )
+
+    def fake_resolver(resolved_target: SearchJumpTarget) -> tuple[float, float] | None:
+        assert resolved_target.label == "JWST"
+        return 13.5, 279.0
+
+    assert compute_search_target_altaz(
+        target,
+        observer_lat=35.0,
+        observer_lon=135.0,
+        observer_height_m=50.0,
+        satellite_altaz_resolver=fake_resolver,
+    ) == (13.5, 279.0)

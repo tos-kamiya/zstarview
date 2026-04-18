@@ -71,6 +71,7 @@ def fetch_current_satellite_records(
     observer_height_m: float,
     enabled_groups: Sequence[str] = ("iss", "horizons"),
     timeout_s: float | None = None,
+    force_refresh: bool = False,
 ) -> dict[str, list[SatelliteOmmRecord]]:
     now_utc = datetime.now(timezone.utc)
     records_by_group: dict[str, list[SatelliteOmmRecord]] = {}
@@ -81,6 +82,7 @@ def fetch_current_satellite_records(
                 target_time_utc=now_utc,
                 time_mode="present",
                 timeout_s=timeout_s if timeout_s is not None else 60.0,
+                validity_seconds=-1 if force_refresh else None,
                 observer_lat=observer_lat,
                 observer_lon=observer_lon,
                 observer_height_m=observer_height_m,

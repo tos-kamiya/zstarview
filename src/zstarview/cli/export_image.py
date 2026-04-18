@@ -13,6 +13,7 @@ from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
+import astropy.time
 from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QPoint, QRect
 from PySide6.QtGui import QFont, QFontDatabase, QImage, QPainter
 
@@ -28,6 +29,7 @@ from ..aircraft import (
 )
 from ..overlay_time import classify_target_time, overlay_availability_for_delta
 from ..satellites import project_satellite_records, resolve_satellite_elements_for_time
+from ..satellites import find_satellite_altaz
 from ..astro import load_ephemeris
 from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_lived_cache
 from ..catalog import load_dso_catalog, load_star_catalog
@@ -173,6 +175,28 @@ def _remaining_timeout_seconds(deadline: float | None) -> float | None:
     return max(0.0, deadline - time.monotonic())
 
 
+def _resolve_current_satellite_altaz_for_export(
+    target: SearchJumpTarget,
+    *,
+    viewer_data: ViewerData,
+    target_time_utc: datetime,
+) -> tuple[float, float] | None:
+    records = fetch_current_satellite_records(
+        observer_lat=float(viewer_data.lat_deg),
+        observer_lon=float(viewer_data.lon_deg),
+        observer_height_m=float(viewer_data.observer_height_m),
+        force_refresh=True,
+    )
+    return find_satellite_altaz(
+        records,
+        object_key=target.object_key or target.label,
+        observer_lat=float(viewer_data.lat_deg),
+        observer_lon=float(viewer_data.lon_deg),
+        observer_height_m=float(viewer_data.observer_height_m),
+        time_obj=astropy.time.Time(target_time_utc),
+    )
+
+
 def _timed_out(deadline: float | None) -> bool:
     remaining = _remaining_timeout_seconds(deadline)
     return remaining is not None and remaining <= 0.0
@@ -263,6 +287,7 @@ def _build_window_inputs_from_args(
                         observer_lat=float(viewer_data.lat_deg),
                         observer_lon=float(viewer_data.lon_deg),
                         observer_height_m=float(viewer_data.observer_height_m),
+                        force_refresh=True,
                     ),
                 ),
                 jpl_search_callback=lambda query: search_jpl_targets(
@@ -298,6 +323,11 @@ def _build_window_inputs_from_args(
             observer_lon=float(viewer_data.lon_deg),
             observer_height_m=float(viewer_data.observer_height_m),
             target_time_utc=target_time_utc,
+            satellite_altaz_resolver=lambda satellite_target: _resolve_current_satellite_altaz_for_export(
+                satellite_target,
+                viewer_data=viewer_data,
+                target_time_utc=target_time_utc,
+            ),
         )
         if altaz is not None:
             viewer_data.view_center = (
