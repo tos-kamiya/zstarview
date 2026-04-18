@@ -565,7 +565,7 @@
   - 永続マーカーとラベルは、一時 jump highlight と別の状態として扱う前提で整理した。
 
 - JPL small-body 本体接続
-  - `Search Stars and Asterisms` ダイアログをタブ化し、JPL small body 用の検索タブと `Keep marker` / `Keep label` を追加した。
+  - `Search Stars and Asterisms` ダイアログを local first 方式にして、恒星・アステリズムの検索結果が無い場合だけ JPL small body へフォールバックするようにした。
   - `SearchJumpTarget` に JPL 用の `command` / `alt_deg` / `az_deg` / 永続フラグを追加し、`SkyWindowState` に永続ターゲットを保持するようにした。
   - 永続マーカーは衛星クロスと同じ大きさで描画し、ラベルは単独のアウトラインテキストとして重ねるようにした。
   - JPL 検索は Horizons lookup と observer ephemeris を使い、現在時刻の `alt/az` を検索結果として返す実装にした。

@@ -4,8 +4,13 @@ from types import SimpleNamespace
 
 from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QKeyEvent
+from PySide6.QtWidgets import QApplication
 
 from zstarview.gui.place_search_dialog import PlaceSearchDialog
+from zstarview.gui.famous_star_search_dialog import NamedStarSearchDialog
+from zstarview.gui.famous_star_shortcuts import SearchJumpTarget
+
+_app = QApplication.instance() or QApplication([])
 
 
 def test_place_search_dialog_enter_in_search_field_triggers_search() -> None:
@@ -23,3 +28,47 @@ def test_place_search_dialog_enter_in_search_field_triggers_search() -> None:
 
     assert handled is True
     assert calls == ["search"]
+
+
+def test_named_star_search_dialog_uses_local_match_before_jpl() -> None:
+    dialog = NamedStarSearchDialog(
+        [
+            SearchJumpTarget(
+                label="Sirius",
+                kind="star",
+                sort_key=(0.0, "sirius"),
+                subtitle="Vmag -1.44",
+            )
+        ],
+        jpl_search_callback=lambda _query: [],
+    )
+    called: list[str] = []
+    dialog._start_jpl_search = lambda: called.append("jpl")  # type: ignore[method-assign]
+
+    dialog._search.setText("siri")
+    dialog.accept()
+
+    assert called == []
+    assert dialog.selected_target() is not None
+    assert dialog.selected_target().label == "Sirius"
+
+
+def test_named_star_search_dialog_falls_back_to_jpl_when_local_empty() -> None:
+    dialog = NamedStarSearchDialog(
+        [
+            SearchJumpTarget(
+                label="Sirius",
+                kind="star",
+                sort_key=(0.0, "sirius"),
+                subtitle="Vmag -1.44",
+            )
+        ],
+        jpl_search_callback=lambda _query: [],
+    )
+    called: list[str] = []
+    dialog._start_jpl_search = lambda: called.append("jpl")  # type: ignore[method-assign]
+
+    dialog._search.setText("ceres")
+    dialog.accept()
+
+    assert called == ["jpl"]
