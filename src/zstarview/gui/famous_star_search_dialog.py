@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QListWidget,
     QListWidgetItem,
+    QPushButton,
     QVBoxLayout,
     QWidget,
 )
@@ -60,6 +61,11 @@ class NamedStarSearchDialog(QDialog):
         self._search.returnPressed.connect(self.accept)
         search_row.addWidget(self._search)
         outer.addLayout(search_row)
+
+        self._jpl_search_button = QPushButton("Search JPL database", self)
+        self._jpl_search_button.clicked.connect(self._start_jpl_search)
+        self._jpl_search_button.setEnabled(False)
+        outer.addWidget(self._jpl_search_button)
 
         self._list = QListWidget(self)
         self._list.itemDoubleClicked.connect(self._on_item_double_clicked)
@@ -139,16 +145,15 @@ class NamedStarSearchDialog(QDialog):
 
         if self._local_result_count > 0:
             self._set_status(
-                f"Found {self._local_result_count} local result(s). Press Enter or OK to accept."
+                f"Found {self._local_result_count} local result(s). Select one and press OK."
             )
             self._select_first_visible()
         elif query:
-            self._set_status(
-                "No local match. Press Enter or OK to search JPL small bodies."
-            )
+            self._set_status("No local match. Use the JPL database button below.")
         else:
             self._set_status("")
         self._sync_ok_button()
+        self._sync_jpl_button()
 
     def _select_first_visible(self) -> None:
         for i in range(self._list.count()):
@@ -164,18 +169,20 @@ class NamedStarSearchDialog(QDialog):
         self._status.setText(text)
         self._status.setVisible(bool(text))
 
+    def _sync_jpl_button(self) -> None:
+        if not hasattr(self, "_jpl_search_button"):
+            return
+        query = self._search.text().strip()
+        enabled = bool(query) and self._local_result_count == 0 and not self._jpl_search_in_progress
+        self._jpl_search_button.setEnabled(enabled)
+        if not query:
+            self._jpl_search_button.setText("Search JPL database")
+        else:
+            self._jpl_search_button.setText(f"Search JPL database for '{query}'")
+
     def _sync_ok_button(self) -> None:
         if self._ok_button is not None:
-            query = self._search.text().strip()
-            fallback_ready = (
-                bool(query)
-                and self._local_result_count == 0
-                and not self._jpl_search_in_progress
-                and self._jpl_search_callback is not None
-            )
-            self._ok_button.setEnabled(
-                self.selected_target() is not None or fallback_ready
-            )
+            self._ok_button.setEnabled(self.selected_target() is not None)
 
     def _on_item_double_clicked(self, _item: QListWidgetItem) -> None:
         self.accept()
@@ -187,12 +194,14 @@ class NamedStarSearchDialog(QDialog):
         if self._jpl_search_callback is None:
             self._set_status("JPL search is unavailable.")
             self._sync_ok_button()
+            self._sync_jpl_button()
             return
         self._jpl_search_request_id += 1
         request_id = self._jpl_search_request_id
         self._jpl_search_in_progress = True
         if self._ok_button is not None:
             self._ok_button.setEnabled(False)
+        self._sync_jpl_button()
         self._set_status(f"Searching JPL for '{query}'...")
         worker = threading.Thread(
             target=self._run_jpl_search,
@@ -236,3 +245,4 @@ class NamedStarSearchDialog(QDialog):
         else:
             self._list.setCurrentItem(None)
         self._sync_ok_button()
+        self._sync_jpl_button()

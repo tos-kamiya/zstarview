@@ -566,6 +566,8 @@
 
 - JPL small-body 本体接続
   - `Search Stars and Asterisms` ダイアログを local first 方式にして、恒星・アステリズムの検索結果が無い場合だけ JPL small body へフォールバックするようにした。
+  - 検索欄の直下に JPL database 検索ボタンを追加し、Enter キー依存ではなく明示的に JPL へ問い合わせられるようにした。
+  - JPL フォールバックは major body と small body の両方を問い合わせるようにした。
   - `SearchJumpTarget` に JPL 用の `command` / `alt_deg` / `az_deg` / 永続フラグを追加し、`SkyWindowState` に永続ターゲットを保持するようにした。
   - 永続マーカーは衛星クロスと同じ大きさで描画し、ラベルは単独のアウトラインテキストとして重ねるようにした。
   - JPL 検索は Horizons lookup と observer ephemeris を使い、現在時刻の `alt/az` を検索結果として返す実装にした。

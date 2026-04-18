@@ -72,3 +72,4 @@ def test_named_star_search_dialog_falls_back_to_jpl_when_local_empty() -> None:
     dialog.accept()
 
     assert called == ["jpl"]
+    assert "JPL database" in dialog._jpl_search_button.text()

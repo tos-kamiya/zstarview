@@ -1172,7 +1172,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         dialog = NamedStarSearchDialog(
             self._named_stars_search_all,
             self,
-            jpl_search_callback=self._search_jpl_small_body_targets,
+            jpl_search_callback=self._search_jpl_targets,
         )
         if dialog.exec() == 0:
             return
@@ -1190,60 +1190,88 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             return
         self._jump_to_search_target(target)
 
-    def _search_jpl_small_body_targets(self, query: str) -> list[SearchJumpTarget]:
-        lookup_payload = fetch_horizons_lookup(query, group="sb")
-        result = lookup_payload.get("result")
-        if not isinstance(result, list) or not result:
-            return []
-
-        observer_lat = float(self.viewer_data.location[0])
-        observer_lon = float(self.viewer_data.location[1])
-        observer_height_m = float(self.viewer_data.observer_height_m)
-        target_time_utc = self._target_time_utc()
+    def _search_jpl_targets(self, query: str) -> list[SearchJumpTarget]:
         targets: list[SearchJumpTarget] = []
-        for item in result[:20]:
-            if not isinstance(item, dict):
-                continue
-            name = str(item.get("name", "")).strip()
-            if not name:
-                continue
-            spkid = str(item.get("spkid", "")).strip()
-            if not spkid:
-                continue
-            command = f"DES={spkid};"
+        for group, group_label in (("mb", "major body"), ("sb", "small body")):
             try:
-                rows = fetch_horizons_observer_csv(
-                    command,
-                    target_time_utc=target_time_utc,
-                    observer_lat=observer_lat,
-                    observer_lon=observer_lon,
-                    observer_height_m=observer_height_m,
-                )
+                lookup_payload = fetch_horizons_lookup(query, group=group)
             except Exception as exc:
-                logger.info("JPL small-body observer fetch failed for %s: %s", name, exc)
+                logger.info("JPL %s lookup failed for %s: %s", group_label, query, exc)
                 continue
-            alt_az = self._extract_horizons_altaz(rows)
-            if alt_az is None:
+            result = lookup_payload.get("result")
+            if not isinstance(result, list) or not result:
                 continue
-            alt_deg, az_deg = alt_az
-            type_name = str(item.get("type", "")).strip()
-            pdes = str(item.get("pdes", "")).strip()
-            subtitle_parts = [part for part in (type_name, pdes) if part]
-            targets.append(
-                SearchJumpTarget(
-                    label=name,
-                    kind="jpl_small_body",
-                    sort_key=(0.0, name.casefold()),
-                    subtitle=" / ".join(subtitle_parts) if subtitle_parts else "JPL Small Body",
-                    object_key=spkid,
-                    command=command,
-                    alt_deg=float(alt_deg),
-                    az_deg=float(az_deg) % 360.0,
-                    target_time_utc=target_time_utc,
+
+            observer_lat = float(self.viewer_data.location[0])
+            observer_lon = float(self.viewer_data.location[1])
+            observer_height_m = float(self.viewer_data.observer_height_m)
+            target_time_utc = self._target_time_utc()
+            for item in result[:20]:
+                if not isinstance(item, dict):
+                    continue
+                name = str(item.get("name", "")).strip()
+                if not name:
+                    continue
+                command = self._build_horizons_command(item, group=group)
+                if not command:
+                    continue
+                try:
+                    rows = fetch_horizons_observer_csv(
+                        command,
+                        target_time_utc=target_time_utc,
+                        observer_lat=observer_lat,
+                        observer_lon=observer_lon,
+                        observer_height_m=observer_height_m,
+                    )
+                except Exception as exc:
+                    logger.info(
+                        "JPL %s observer fetch failed for %s: %s",
+                        group_label,
+                        name,
+                        exc,
+                    )
+                    continue
+                alt_az = self._extract_horizons_altaz(rows)
+                if alt_az is None:
+                    continue
+                alt_deg, az_deg = alt_az
+                type_name = str(item.get("type", "")).strip()
+                pdes = str(item.get("pdes", "")).strip()
+                subtitle_parts = [part for part in (group_label, type_name, pdes) if part]
+                targets.append(
+                    SearchJumpTarget(
+                        label=name,
+                        kind="jpl_body",
+                        sort_key=(0.0 if group == "mb" else 1.0, name.casefold()),
+                        subtitle=" / ".join(subtitle_parts) if subtitle_parts else "JPL Body",
+                        object_key=str(item.get("spkid", "")).strip(),
+                        command=command,
+                        alt_deg=float(alt_deg),
+                        az_deg=float(az_deg) % 360.0,
+                        target_time_utc=target_time_utc,
+                        jpl_group=group,
+                    )
                 )
-            )
         targets.sort(key=lambda target: target.sort_key)
         return targets
+
+    def _build_horizons_command(self, target: dict[str, object], *, group: str) -> str:
+        spkid = str(target.get("spkid", "")).strip()
+        if spkid:
+            if group == "sb":
+                return f"DES={spkid};"
+            return spkid
+        pdes = str(target.get("pdes", "")).strip()
+        if pdes:
+            if group == "sb":
+                return f"DES={pdes};"
+            return pdes
+        name = str(target.get("name", "")).strip()
+        if name:
+            if group == "sb":
+                return name if name.endswith(";") else f"{name};"
+            return name
+        return ""
 
     def _extract_horizons_altaz(self, rows: list[list[str]]) -> tuple[float, float] | None:
         for row in rows:
@@ -1409,7 +1437,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             )
             target_alt = float(projection.alt_deg)
             target_az = float(projection.az_deg) % 360.0
-        elif target_kind == "jpl_small_body":
+        elif target_kind in ("jpl_small_body", "jpl_body"):
             if target.alt_deg is None or target.az_deg is None:
                 return
             target_alt = float(target.alt_deg)
@@ -1437,8 +1465,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.state.jump_highlight_name = target.label
         self.state.jump_highlight_altaz = (target_alt, target_az)
         self.state.jump_highlight_until_ms = (time.monotonic() * 1000.0) + 3000.0
-        if target.kind == "jpl_small_body":
-            if target.persistent_keep_marker or target.persistent_keep_label:
+        if target.kind in ("jpl_small_body", "jpl_body"):
+            if (
+                target.jpl_group == "sb"
+                and (target.persistent_keep_marker or target.persistent_keep_label)
+            ):
                 self.state.persistent_search_target = target
                 self.state.persistent_search_reference_time_utc = (
                     target.target_time_utc or self._target_time_utc()
