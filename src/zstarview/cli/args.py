@@ -1,4 +1,5 @@
 import argparse
+import sys
 from typing import Sequence
 from typing import Tuple, Union
 
@@ -296,6 +297,387 @@ def add_time_arguments(parser: argparse.ArgumentParser) -> None:
             "Override the resolved location timezone for --datetime and on-screen time "
             "(for example: Asia/Tokyo, JST, UTC+9)."
         ),
+        )
+
+
+def add_search_arguments(
+    parser: argparse.ArgumentParser, *, include_list: bool = True
+) -> None:
+    """Add object-search arguments."""
+    parser.add_argument(
+        "--search",
+        type=str,
+        default=None,
+        metavar="QUERY",
+        help=(
+            "Search stars, asterisms, places, and JPL bodies at startup. "
+            "Bare queries search label and id; label= and id= limit the search."
+        ),
+    )
+    parser.add_argument(
+        "--list",
+        action="store_true",
+        help=(
+            "List search candidates one per line instead of resolving a unique target."
+            if include_list
+            else argparse.SUPPRESS
+        ),
+    )
+    parser.add_argument(
+        "--search-keep-marker",
+        action="store_true",
+        help=(
+            "Keep the selected search target as a persistent marker and label."
+        ),
+    )
+
+
+def add_observing_arguments(parser: argparse._ActionsContainer) -> None:
+    """Add observing location, time, and view-center arguments."""
+    add_location_arguments(parser)
+    parser.add_argument(
+        "-H",
+        "--hours",
+        type=float,
+        default=0,
+        help="Number of hours to add to current time (default: 0)",
+    )
+    parser.add_argument(
+        "-D",
+        "--days",
+        type=float,
+        default=0,
+        help="Number of days to add to current time (default: 0)",
+    )
+    parser.add_argument(
+        "--datetime",
+        type=str,
+        default=None,
+        help=(
+            "Set an absolute date and time in 'YYYY-MM-DD HH[:MM[:SS]] [TZ]' format "
+            "(e.g., '2025-09-12 9', '2025-09-12 09:00', '2025-09-12 9:0:0 JST'). "
+            "If TZ is omitted, the resolved location timezone is used. "
+            "Overrides --hours and --days."
+        ),
+    )
+    parser.add_argument(
+        "--timezone",
+        type=str,
+        default=None,
+        metavar="TZ",
+        help=(
+            "Override the resolved location timezone for --datetime and on-screen time "
+            "(for example: Asia/Tokyo, JST, UTC+9)."
+        ),
+    )
+    parser.add_argument(
+        "-V",
+        "--vmag-limit",
+        type=float,
+        default=6.0,
+        help=(
+            "Limit stars to Vmag <= this value (default: 6.0). "
+            f"Bundled catalogs clamp values above {_COMMITTED_VMAG_LIMIT_MAX:.1f}."
+        ),
+    )
+    parser.add_argument(
+        "--vmag-brightness-multiplier",
+        type=_parse_vmag_brightness_multiplier,
+        default=2.5,
+        help="Brightness multiplier per magnitude step (allowed range: 1.58-2.512, default: 2.5; 2.512 is the classical Pogson value).",
+    )
+    parser.add_argument(
+        "-m",
+        "--enlarge-moon",
+        action="store_true",
+        help="Show the moon in 5x size.",
+    )
+    parser.add_argument(
+        "-s",
+        "--star-base-radius",
+        type=float,
+        default=4.0,
+        help="Base size of 2nd-magnitude stars (default: 4.0)",
+    )
+    parser.add_argument(
+        "-w",
+        "--expected-render-width",
+        type=_parse_positive_int,
+        default=WINDOW_WIDTH,
+        help=(
+            "Expected window width for full-resolution star rendering (default: 600). "
+            "When the celestial disc width exceeds this, the star layer uses square-root scaling."
+        ),
+    )
+    parser.add_argument(
+        "-Z",
+        "--view-center-az",
+        type=_parse_azimuth,
+        default=180.0,
+        help=(
+            "Viewing azimuth angle [deg or compass] "
+            "(0=N, 90=E, 180=S, 270=W; also accepts N, NE, E, SE, S, SW, W, NW; default=180)"
+        ),
+    )
+    parser.add_argument(
+        "-A",
+        "--view-center-alt",
+        type=float,
+        default=90.0,
+        help="Viewing altitude angle [deg] (90=zenith, 0=horizon; default=90)",
+    )
+    parser.add_argument(
+        "--content-fov-deg",
+        type=_parse_content_fov_deg,
+        default=100.0,
+        help=(
+            "Shared overscan content FOV in degrees (allowed: 90-127, default: 100). "
+            "The window edge remains fixed at 90 degrees from the view center."
+        ),
+    )
+    parser.add_argument(
+        "--observer-height-m",
+        type=_parse_non_negative_float,
+        default=None,
+        help=(
+            "Observer height above local ground in meters. "
+            "Default: 1.7 for city/latlon/mountain and tower height + 1.7 for tower-name input."
+        ),
+    )
+    parser.add_argument(
+        "--use-building-top",
+        action="store_true",
+        help=(
+            "If the resolved location lies inside a building footprint, use that building's "
+            "highest top height as the observation base before adding observer eye height."
+        ),
+    )
+    return
+
+
+def add_sky_and_star_arguments(
+    parser: argparse._ActionsContainer, *, include_sky_update_interval: bool = True
+) -> None:
+    """Add the sky and star rendering arguments."""
+    parser.add_argument(
+        "--show-dso-initial",
+        type=_parse_bool,
+        default=None,
+        metavar="true|false",
+        help="Whether to show DSO overlays at startup (true/false).",
+    )
+    parser.add_argument(
+        "--show-asterisms-initial",
+        type=_parse_bool,
+        default=None,
+        metavar="true|false",
+        help="Whether to show asterism overlays at startup (true/false).",
+    )
+    parser.add_argument(
+        "--observation-info",
+        type=str,
+        default="auto",
+        choices=("auto", "top", "bottom", "off"),
+        metavar="auto|top|bottom|off",
+        help=(
+            "Observation info overlay mode at startup: auto (hover-avoid, default), "
+            "top (fixed top), bottom (fixed bottom), or off (hidden)."
+        ),
+    )
+    if include_sky_update_interval:
+        parser.add_argument(
+            "-i",
+            "--sky-update-interval",
+            type=int,
+            default=60,
+            help="Interval for updating stars/sky-color disc in sec. (default: 60).",
+        )
+
+
+def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
+    """Add overlay-related rendering arguments."""
+    parser.add_argument(
+        "-c",
+        "--cloud-opacity",
+        type=float,
+        default=0.075,
+        help=(
+            "Opacity of the clouds (0.0 - 1.0, default: 0.075). "
+            "Set to 0.0 to disable cloud rendering."
+        ),
+    )
+    parser.add_argument(
+        "--cloud-stripe",
+        type=_parse_cloud_stripe,
+        default=("width", 50, 0.85),
+        metavar="MODE[,COUNT[,WIDTH]]",
+        help=(
+            "Cloud stripe style as 'mode[,count[,width]]' "
+            "(defaults: width -> width,50,0.85; alpha -> alpha,50,0.25). "
+            "If either value is 0, cloud rendering is disabled."
+        ),
+    )
+    parser.add_argument(
+        "--cloud-missing-tint-opacity",
+        type=float,
+        default=float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0,
+        help=(
+            "Opacity for missing-cloud-data tint (0.0 - 1.0, default: "
+            f"{float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0:.3f})."
+        ),
+    )
+    parser.add_argument(
+        "-a",
+        "--aircraft-opacity",
+        type=float,
+        default=0.4,
+        help=(
+            "Opacity of the aircraft overlay (0.0 - 1.0, default: 0.4). "
+            "Set to 0.0 to disable aircraft queries and rendering."
+        ),
+    )
+    parser.add_argument(
+        "--satellite-opacity",
+        type=float,
+        default=0.7,
+        help=(
+            "Opacity of the artificial satellite overlay (0.0 - 1.0, default: 0.7). "
+            "Set to 0.0 to disable satellite element fetch and rendering."
+        ),
+    )
+    parser.add_argument(
+        "--show-guidelines-initial",
+        type=_parse_bool,
+        default=None,
+        metavar="true|false",
+        help="Whether to show guideline overlays at startup (true/false).",
+    )
+    parser.add_argument(
+        "--terrain-horizon-opacity",
+        type=float,
+        default=0.028,
+        help=(
+            "Opacity of the terrain horizon polyline (0.0 - 1.0, default: 0.028). "
+            "Set to 0.0 to disable DEM download, terrain-horizon calculation, and drawing."
+        ),
+    )
+    parser.add_argument(
+        "--earth-guide-opacity",
+        type=float,
+        default=0.028,
+        help=(
+            "Opacity of the Earth guide line layer (0.0 - 1.0, default: 0.028). "
+            "Set to 0.0 to disable Earth guide drawing and lock the GUI toggle off for that session."
+        ),
+    )
+    parser.add_argument(
+        "--ground-tint-opacity",
+        type=float,
+        default=0.1,
+        help=(
+            "Overlay opacity of the ground tint color below the geometric/terrain horizon "
+            "(0.0 - 1.0, default: 0.1)."
+        ),
+    )
+    parser.add_argument(
+        "--urban-outline-opacity",
+        type=float,
+        default=0.2,
+        help=(
+            "Opacity of the urban outline overlay (0.0 - 1.0, default: 0.2). "
+            "Set to 0.0 to disable urban outline rendering at startup."
+        ),
+    )
+    parser.add_argument(
+        "--urban-outline-feature-type",
+        choices=("both", "building"),
+        default="both",
+        help=(
+            "Urban outline Overture mode "
+            "(default: both). Use building to skip building_part overlays."
+        ),
+    )
+    parser.add_argument(
+        "-r",
+        "--urban-outline-radius-km",
+        type=_parse_non_negative_float,
+        default=2.5,
+        help=(
+            "Download and cache radius for the urban outline overlay in kilometers "
+            "(default: 2.5). This value becomes part of the cache key."
+        ),
+    )
+    parser.add_argument(
+        "--urban-outline-skyscraper-radius-km",
+        type=_parse_non_negative_float,
+        default=SKYSCRAPER_OUTER_RADIUS_KM,
+        help=(
+            "Outer radius for the far-range skyscraper urban outline layer in kilometers "
+            f"(default: {SKYSCRAPER_OUTER_RADIUS_KM:.1f}). "
+            "Use 0 to disable skyscraper-tile lookup for that run. "
+            "Otherwise it must be greater than or equal to --urban-outline-radius-km."
+        ),
+    )
+    parser.add_argument(
+        "-b",
+        "--urban-outline-min-building-height-m",
+        dest="urban_outline_min_height_m",
+        type=_parse_non_negative_float,
+        default=0.0,
+        help=(
+            "Minimum building height in meters for buildings included in the urban outline overlay "
+            "(default: 0.0). This value becomes part of the cache key."
+        ),
+    )
+    parser.add_argument(
+        "--urban-outline-skyscraper-only",
+        action="store_true",
+        help=(
+            "Validation mode: draw only the far-range skyscraper urban outline layer "
+            "and skip the normal near-range outline layer."
+        ),
+    )
+
+
+def add_general_arguments(parser: argparse._ActionsContainer) -> None:
+    """Add general-purpose CLI arguments."""
+    parser.add_argument(
+        "--window-geometry",
+        type=_parse_window_geometry,
+        default=None,
+        metavar="restore|X,Y,W,H",
+        help=(
+            "Window position and size. "
+            "Use 'restore' to load the last saved geometry, "
+            "or 'x,y,width,height' to set explicit values."
+        ),
+    )
+    parser.add_argument(
+        "--window-frame",
+        type=_parse_window_frame,
+        default="frameless",
+        metavar="{frameless,window}",
+        help=(
+            "Window decoration mode. "
+            "Use 'frameless' for the current borderless window or "
+            "'window' for a standard titled OS window."
+        ),
+    )
+    parser.add_argument(
+        "-t",
+        "--theme",
+        type=_parse_theme,
+        default="night",
+        metavar="{night,day,white,black}",
+        help="Theme preset for background and star contrast (default: night).",
+    )
+    parser.add_argument(
+        "--clear-long-lived-cache",
+        action="store_true",
+        help=(
+            "Delete cached DEM and urban-outline data before startup. "
+            "This clears copernicus-dem, overture_buildings, and overture_skyscrapers."
+        ),
     )
 
 
@@ -414,7 +796,6 @@ def add_render_arguments(
             "highest top height as the observation base before adding observer eye height."
         ),
     )
-
     parser.add_argument(
         "--sky-opacity",
         type=float,
@@ -529,43 +910,6 @@ def add_render_arguments(
             "and skip the normal near-range outline layer."
         ),
     )
-    parser.add_argument(
-        "--clear-long-lived-cache",
-        action="store_true",
-        help=(
-            "Delete cached DEM and urban-outline data before startup. "
-            "This clears copernicus-dem, overture_buildings, and overture_skyscrapers."
-        ),
-    )
-    parser.add_argument(
-        "--ground-tint-opacity",
-        type=float,
-        default=0.1,
-        help=(
-            "Overlay opacity of the ground tint color below the geometric/terrain horizon "
-            "(0.0 - 1.0, default: 0.1)."
-        ),
-    )
-    parser.add_argument(
-        "--cloud-stripe",
-        type=_parse_cloud_stripe,
-        default=("width", 50, 0.85),
-        metavar="MODE[,COUNT[,WIDTH]]",
-        help=(
-            "Cloud stripe style as 'mode[,count[,width]]' "
-            "(defaults: width -> width,50,0.85; alpha -> alpha,50,0.25). "
-            "If either value is 0, cloud rendering is disabled."
-        ),
-    )
-    parser.add_argument(
-        "--cloud-missing-tint-opacity",
-        type=float,
-        default=float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0,
-        help=(
-            "Opacity for missing-cloud-data tint (0.0 - 1.0, default: "
-            f"{float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0:.3f})."
-        ),
-    )
     if include_sky_update_interval:
         parser.add_argument(
             "-i",
@@ -596,7 +940,6 @@ def add_render_arguments(
             metavar="true|false",
             help="Whether to show guideline overlays at startup (true/false).",
         )
-        # New option: control observation-info overlay placement/mode at startup.
         parser.add_argument(
             "--observation-info",
             type=str,
@@ -608,15 +951,23 @@ def add_render_arguments(
                 "top (fixed top), bottom (fixed bottom), or off (hidden)."
             ),
         )
-    theme_default = "night"
-    parser.add_argument(
-        "-t",
-        "--theme",
-        type=_parse_theme,
-        default=theme_default,
-        metavar="{night,day,white,black}",
-        help="Theme preset for background and star contrast (default: night).",
-    )
+
+
+def add_main_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add main-CLI arguments grouped like the README."""
+    observing_group = parser.add_argument_group("Observing Location and Time")
+    search_group = parser.add_argument_group("Search Objects at startup")
+    dataset_group = parser.add_argument_group("Viewpoint dataset queries")
+    sky_group = parser.add_argument_group("Sky and Stars")
+    overlay_group = parser.add_argument_group("Overlays")
+    general_group = parser.add_argument_group("General")
+
+    add_observing_arguments(observing_group)
+    add_search_arguments(search_group, include_list=False)
+    add_dataset_query_arguments(dataset_group)
+    add_sky_and_star_arguments(sky_group)
+    add_overlay_arguments(overlay_group)
+    add_general_arguments(general_group)
 
 
 def build_main_argument_parser() -> argparse.ArgumentParser:
@@ -627,10 +978,7 @@ def build_main_argument_parser() -> argparse.ArgumentParser:
         action="version",
         version=f"%(prog)s {__version__}",
     )
-    add_location_arguments(parser)
-    add_dataset_query_arguments(parser)
-    add_time_arguments(parser)
-    add_render_arguments(parser)
+    add_main_arguments(parser)
     return parser
 
 
@@ -645,6 +993,7 @@ def build_export_image_argument_parser() -> argparse.ArgumentParser:
         version=f"%(prog)s {__version__}",
     )
     add_location_arguments(parser)
+    add_search_arguments(parser)
     add_time_arguments(parser)
     add_render_arguments(
         parser,
@@ -826,6 +1175,21 @@ def _validate_urban_outline_argument_combinations(
         )
 
 
+def _validate_main_search_arguments(
+    parser: argparse.ArgumentParser,
+    args: argparse.Namespace,
+    argv: Sequence[str] | None = None,
+) -> None:
+    if argv is not None:
+        search_option_count = sum(
+            1 for token in argv if token == "--search" or token.startswith("--search=")
+        )
+        if search_option_count > 1:
+            parser.error("--search may be specified only once")
+    if getattr(args, "list", False):
+        parser.error("--list is only supported by zstarview-export-image")
+
+
 def _normalize_vmag_limit(args: argparse.Namespace) -> None:
     if hasattr(args, "vmag_limit"):
         args.vmag_limit = min(float(args.vmag_limit), _COMMITTED_VMAG_LIMIT_MAX)
@@ -834,6 +1198,7 @@ def _normalize_vmag_limit(args: argparse.Namespace) -> None:
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     """Parse command-line arguments for the main zstarview app."""
     parser = build_main_argument_parser()
+    raw_argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv)
     _normalize_location_arguments(parser, args)
     _normalize_dataset_query_arguments(parser, args)
@@ -841,6 +1206,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     _validate_dataset_query_compatibility(parser, args)
     _validate_location_argument_combinations(parser, args)
     _validate_urban_outline_argument_combinations(parser, args)
+    _validate_main_search_arguments(parser, args, raw_argv)
 
     return args
 
@@ -848,16 +1214,20 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 def parse_export_image_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     """Parse command-line arguments for the export-image CLI."""
     parser = build_export_image_argument_parser()
+    raw_argv = list(sys.argv[1:] if argv is None else argv)
     args = parser.parse_args(argv)
     _normalize_location_arguments(parser, args)
     _normalize_vmag_limit(args)
     _validate_location_argument_combinations(parser, args)
     _validate_urban_outline_argument_combinations(parser, args)
+    _validate_main_search_arguments(parser, args, raw_argv)
     if args.print_cache_dir:
         if args.output or args.sixel:
             parser.error("--print-cache-dir cannot be used with --output or --sixel")
         return args
-    if not args.output and not args.sixel:
+    if args.list and not getattr(args, "search", None):
+        parser.error("--list requires --search")
+    if not args.output and not args.sixel and not args.list:
         parser.error("either --output or --sixel is required")
     if args.output == "-" and args.sixel:
         parser.error("--output - cannot be used together with --sixel")

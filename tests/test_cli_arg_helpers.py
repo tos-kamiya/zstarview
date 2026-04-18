@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 
 import pytest
 
@@ -66,6 +67,17 @@ def test_main_help_text_is_ascii_only_for_windows_consoles() -> None:
     assert all(ord(ch) < 128 for ch in help_text)
 
 
+def test_main_help_text_uses_readme_like_groups() -> None:
+    help_text = cli_args.build_main_argument_parser().format_help()
+
+    assert "Observing Location and Time" in help_text
+    assert "Search Objects at startup" in help_text
+    assert "Sky and Stars" in help_text
+    assert "Overlays" in help_text
+    assert "General" in help_text
+    assert re.search(r"^\s+--list\s", help_text, re.M) is None
+
+
 def test_main_parser_version_option_prints_package_version(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -107,3 +119,8 @@ def test_parse_args_defaults_sky_opacity_to_0_17() -> None:
     args = cli_args.parse_args(["Matsue"])
 
     assert args.sky_opacity == 0.17
+
+
+def test_parse_args_rejects_multiple_search_options() -> None:
+    with pytest.raises(SystemExit):
+        cli_args.parse_args(["--search", "Ceres", "--search", "Mars"])
