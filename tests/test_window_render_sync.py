@@ -1016,7 +1016,7 @@ def test_draw_persistent_search_overlay_draws_label_when_marker_is_kept(
     window_render_module.SkyWindowRenderMixin._draw_persistent_search_overlay(
         dummy,
         _Painter(),
-        geometry=SimpleNamespace(),
+        geometry=SimpleNamespace(center=(100, 100), radius=80),
     )
 
     assert draw_calls == ["marker", "label"]
