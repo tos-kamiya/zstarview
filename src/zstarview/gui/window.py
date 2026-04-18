@@ -46,7 +46,6 @@ from ..clouddisc.providers.select import pick_satellite
 from ..overlay_time import overlay_availability_for_delta, target_time_utc_from_delta
 from ..satellites import (
     fetch_horizons_lookup,
-    fetch_horizons_observer_csv,
     find_satellite_altaz,
     load_satellite_cache,
     satellite_cache_scope_key,
@@ -106,7 +105,7 @@ from .famous_star_shortcuts import (
     build_place_search_jump_targets,
 )
 from ..search.jpl import search_jpl_targets
-from ..search.satellites import fetch_current_satellite_records
+from ..search.jpl import resolve_jpl_target_altaz
 from ..search.satellites import search_satellite_targets
 from ..search.models import SearchJumpTarget
 from ..asterisms import ASTERISM_KEYS_BY_SOURCE_ID
@@ -120,7 +119,6 @@ from .urban_outline_controller import UrbanOutlineController
 from .urban_outline_state import UrbanOutlineState
 
 logger = logging.getLogger(__name__)
-_LEGACY_JPL_FETCH_HELPERS = (fetch_horizons_lookup, fetch_horizons_observer_csv)
 
 
 def radec_to_altaz(*args, **kwargs):
@@ -1214,42 +1212,26 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def _search_jpl_targets(self, query: str) -> list[SearchJumpTarget]:
         return search_jpl_targets(
             query,
-            observer_lat=float(self.viewer_data.location[0]),
-            observer_lon=float(self.viewer_data.location[1]),
-            observer_height_m=float(self.viewer_data.observer_height_m),
             target_time_utc=self._target_time_utc(),
             lookup_fetch=fetch_horizons_lookup,
-            observer_fetch=fetch_horizons_observer_csv,
         )
 
     def _search_satellite_targets(self, query: str) -> list[SearchJumpTarget]:
-        records_by_group = dict(self.satellite_state.records_by_group or {})
-        enabled_groups = tuple(self._enabled_satellite_groups)
-        cached_records = self._load_cached_satellite_records(enabled_groups)
-        fresh_records = fetch_current_satellite_records(
+        return search_satellite_targets(query, target_time_utc=self._target_time_utc())
+
+    def _find_satellite_jump_altaz(self, object_key: str) -> tuple[float, float] | None:
+        records = self.satellite_state.records_by_group or None
+        if not records:
+            records = self._load_cached_satellite_records(tuple(self._enabled_satellite_groups))
+        if not records:
+            return None
+        return find_satellite_altaz(
+            records,
+            object_key=object_key,
             observer_lat=float(self.viewer_data.location[0]),
             observer_lon=float(self.viewer_data.location[1]),
             observer_height_m=float(self.viewer_data.observer_height_m),
-            enabled_groups=enabled_groups,
-            force_refresh=True,
-        )
-        if not records_by_group:
-            records_by_group = fresh_records or cached_records
-        elif fresh_records:
-            merged_records = dict(records_by_group)
-            merged_records.update(fresh_records)
-            records_by_group = merged_records
-        elif cached_records:
-            merged_records = dict(records_by_group)
-            merged_records.update(cached_records)
-            records_by_group = merged_records
-        return search_satellite_targets(
-            query,
-            observer_lat=float(self.viewer_data.location[0]),
-            observer_lon=float(self.viewer_data.location[1]),
-            observer_height_m=float(self.viewer_data.observer_height_m),
-            target_time_utc=self._target_time_utc(),
-            records_by_group=records_by_group,
+            time_obj=self._current_time_obj(),
         )
 
     def _build_horizons_command(self, target: dict[str, object], *, group: str) -> str:
@@ -1414,9 +1396,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         else:
             current_time = datetime.now(timezone.utc)
         if target_kind == "satellite":
-            target_altaz = self._find_satellite_jump_altaz(
-                target.object_key or target.label
-            )
+            if target.alt_deg is not None and target.az_deg is not None:
+                target_altaz = (float(target.alt_deg), float(target.az_deg) % 360.0)
+            else:
+                target_altaz = self._find_satellite_jump_altaz(target.object_key or target.label)
             if target_altaz is None:
                 self.satellite_state.set_banner(
                     f"Satellites: {target.label} not available"
@@ -1438,10 +1421,20 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             target_alt = float(projection.alt_deg)
             target_az = float(projection.az_deg) % 360.0
         elif target.kind in ("jpl_small_body", "jpl_body"):
-            if target.alt_deg is None or target.az_deg is None:
+            if target.alt_deg is not None and target.az_deg is not None:
+                target_altaz = (float(target.alt_deg), float(target.az_deg) % 360.0)
+            else:
+                target_altaz = resolve_jpl_target_altaz(
+                    target,
+                    observer_lat=float(self.viewer_data.location[0]),
+                    observer_lon=float(self.viewer_data.location[1]),
+                    observer_height_m=float(self.viewer_data.observer_height_m),
+                    target_time_utc=target.target_time_utc or current_time,
+                )
+            if target_altaz is None:
                 return
-            target_alt = float(target.alt_deg)
-            target_az = float(target.az_deg) % 360.0
+            target_alt = float(target_altaz[0])
+            target_az = float(target_altaz[1]) % 360.0
         else:
             target_alt, target_az = radec_to_altaz(
                 target.ra_hours,
@@ -1507,41 +1500,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 sort_key=(star.vmag, star.name.casefold()),
                 object_key=star.name if star.kind == "satellite" else "",
             )
-        )
-
-    def _find_satellite_jump_altaz(self, object_key: str) -> tuple[float, float] | None:
-        records_by_group = dict(
-            self.satellite_state.records_by_group or {}
-        )
-        enabled_groups = tuple(
-            self._enabled_satellite_groups
-        )
-        if not records_by_group:
-            records_by_group = self._load_cached_satellite_records(enabled_groups)
-        if not records_by_group:
-            return None
-        observer_height_m = self.viewer_data.observer_height_m
-        altaz = find_satellite_altaz(
-            records_by_group,
-            object_key=object_key,
-            observer_lat=self.viewer_data.location[0],
-            observer_lon=self.viewer_data.location[1],
-            observer_height_m=observer_height_m,
-            time_obj=self._current_time_obj(),
-        )
-        if altaz is not None:
-            return altaz
-        merged_records = dict(records_by_group)
-        merged_records.update(self._load_cached_satellite_records(enabled_groups))
-        if merged_records == records_by_group:
-            return None
-        return find_satellite_altaz(
-            merged_records,
-            object_key=object_key,
-            observer_lat=self.viewer_data.location[0],
-            observer_lon=self.viewer_data.location[1],
-            observer_height_m=observer_height_m,
-            time_obj=self._current_time_obj(),
         )
 
     def _load_cached_satellite_records(

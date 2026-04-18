@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 from typing import Mapping
 from collections.abc import Sequence
@@ -51,16 +51,11 @@ def extract_horizons_altaz(rows: list[list[str]]) -> tuple[float, float] | None:
 def search_jpl_targets(
     query: str,
     *,
-    observer_lat: float,
-    observer_lon: float,
-    observer_height_m: float,
-    target_time_utc: datetime,
+    target_time_utc: datetime | None = None,
     groups: Sequence[str] = ("mb", "sb"),
     timeout_s: float | None = None,
     lookup_base_url: str | None = None,
-    horizons_base_url: str | None = None,
     lookup_fetch: Callable[..., dict[str, object]] | None = None,
-    observer_fetch: Callable[..., list[list[str]]] | None = None,
 ) -> list[SearchJumpTarget]:
     spec = parse_search_query(query)
     search_text = spec.value or spec.raw
@@ -71,13 +66,8 @@ def search_jpl_targets(
         fetch_kwargs["timeout_s"] = float(timeout_s)
     if lookup_base_url is not None:
         fetch_kwargs["base_url"] = lookup_base_url
-    observer_fetch_kwargs: dict[str, object] = {}
-    if timeout_s is not None:
-        observer_fetch_kwargs["timeout_s"] = float(timeout_s)
-    if horizons_base_url is not None:
-        observer_fetch_kwargs["base_url"] = horizons_base_url
     lookup_impl = lookup_fetch or fetch_horizons_lookup
-    observer_impl = observer_fetch or fetch_horizons_observer_csv
+    resolved_time_utc = target_time_utc or datetime.now(timezone.utc)
     targets: list[SearchJumpTarget] = []
     for group in tuple(str(group).strip() for group in groups if str(group).strip()):
         group_label = "major body" if group == "mb" else "small body" if group == "sb" else group
@@ -98,27 +88,6 @@ def search_jpl_targets(
             command = build_horizons_command(item, group=group)
             if not command:
                 continue
-            try:
-                rows = observer_impl(
-                    command,
-                    target_time_utc=target_time_utc,
-                    observer_lat=observer_lat,
-                    observer_lon=observer_lon,
-                    observer_height_m=observer_height_m,
-                    **observer_fetch_kwargs,
-                )
-            except Exception as exc:
-                logger.info(
-                    "JPL %s observer fetch failed for %s: %s",
-                    group_label,
-                    name,
-                    exc,
-                )
-                continue
-            alt_az = extract_horizons_altaz(rows)
-            if alt_az is None:
-                continue
-            alt_deg, az_deg = alt_az
             type_name = str(item.get("type", "")).strip()
             pdes = str(item.get("pdes", "")).strip()
             subtitle_parts = [part for part in (group_label, type_name, pdes) if part]
@@ -130,11 +99,39 @@ def search_jpl_targets(
                     subtitle=" / ".join(subtitle_parts) if subtitle_parts else "JPL Body",
                     object_key=str(item.get("spkid", "")).strip(),
                     command=command,
-                    alt_deg=float(alt_deg),
-                    az_deg=float(az_deg) % 360.0,
-                    target_time_utc=target_time_utc,
+                    target_time_utc=resolved_time_utc,
                     jpl_group=group,
                 )
             )
-    targets.sort(key=lambda target: target.sort_key)
     return targets
+
+
+def resolve_jpl_target_altaz(
+    target: SearchJumpTarget,
+    *,
+    observer_lat: float,
+    observer_lon: float,
+    observer_height_m: float,
+    target_time_utc: datetime | None = None,
+    observer_fetch: Callable[..., list[list[str]]] | None = None,
+    timeout_s: float | None = None,
+    horizons_base_url: str | None = None,
+) -> tuple[float, float] | None:
+    command = str(target.command).strip()
+    if not command:
+        return None
+    fetch_kwargs: dict[str, object] = {}
+    if timeout_s is not None:
+        fetch_kwargs["timeout_s"] = float(timeout_s)
+    if horizons_base_url is not None:
+        fetch_kwargs["base_url"] = horizons_base_url
+    observer_impl = observer_fetch or fetch_horizons_observer_csv
+    rows = observer_impl(
+        command,
+        target_time_utc=target_time_utc or target.target_time_utc or datetime.now(timezone.utc),
+        observer_lat=observer_lat,
+        observer_lon=observer_lon,
+        observer_height_m=observer_height_m,
+        **fetch_kwargs,
+    )
+    return extract_horizons_altaz(rows)

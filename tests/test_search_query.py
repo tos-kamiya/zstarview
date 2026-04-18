@@ -149,3 +149,25 @@ def test_compute_search_target_altaz_uses_satellite_resolver_when_missing_altaz(
         observer_height_m=50.0,
         satellite_altaz_resolver=fake_resolver,
     ) == (13.5, 279.0)
+
+
+def test_compute_search_target_altaz_uses_jpl_resolver_when_missing_altaz() -> None:
+    target = SearchJumpTarget(
+        label="Ceres",
+        kind="jpl_small_body",
+        sort_key=(0.0, "ceres"),
+        object_key="2000001",
+        command="DES=2000001;",
+    )
+
+    def fake_resolver(resolved_target: SearchJumpTarget) -> tuple[float, float] | None:
+        assert resolved_target.label == "Ceres"
+        return 21.5, 181.0
+
+    assert compute_search_target_altaz(
+        target,
+        observer_lat=35.0,
+        observer_lon=135.0,
+        observer_height_m=50.0,
+        jpl_altaz_resolver=fake_resolver,
+    ) == (21.5, 181.0)

@@ -71,9 +71,10 @@ def fetch_current_satellite_records(
     observer_height_m: float,
     enabled_groups: Sequence[str] = ("iss", "horizons"),
     timeout_s: float | None = None,
+    target_time_utc: datetime | None = None,
     force_refresh: bool = False,
 ) -> dict[str, list[SatelliteOmmRecord]]:
-    now_utc = datetime.now(timezone.utc)
+    now_utc = target_time_utc or datetime.now(timezone.utc)
     records_by_group: dict[str, list[SatelliteOmmRecord]] = {}
     for group_key in enabled_groups:
         try:
@@ -97,12 +98,7 @@ def fetch_current_satellite_records(
 def search_satellite_targets(
     query: str,
     *,
-    observer_lat: float,
-    observer_lon: float,
-    observer_height_m: float,
-    target_time_utc: datetime,
-    records_by_group: Mapping[str, Sequence[SatelliteOmmRecord]] | None = None,
-    fetch_records_by_group: Callable[[], Mapping[str, Sequence[SatelliteOmmRecord]]] | None = None,
+    target_time_utc: datetime | None = None,
 ) -> list[SearchJumpTarget]:
     spec = parse_search_query(query)
     search_text = spec.value or spec.raw
@@ -121,38 +117,62 @@ def search_satellite_targets(
     if not matching_specs:
         return []
 
+    search_time_utc = target_time_utc or datetime.now(timezone.utc)
+    return [
+        SearchJumpTarget(
+            label=target_spec.label,
+            kind="satellite",
+            sort_key=(0.0, target_spec.label.casefold()),
+            object_key=target_spec.label,
+            subtitle="Artificial satellite",
+            target_time_utc=search_time_utc,
+        )
+        for target_spec in matching_specs
+    ]
+
+
+def resolve_satellite_target_altaz(
+    target: SearchJumpTarget,
+    *,
+    observer_lat: float,
+    observer_lon: float,
+    observer_height_m: float,
+    target_time_utc: datetime | None = None,
+    records_by_group: Mapping[str, Sequence[SatelliteOmmRecord]] | None = None,
+    fetch_records_by_group: Callable[[], Mapping[str, Sequence[SatelliteOmmRecord]]] | None = None,
+    enabled_groups: Sequence[str] = ("iss", "horizons"),
+) -> tuple[float, float] | None:
+    object_key = target.object_key or target.label
+    if not object_key:
+        return None
     records = dict(records_by_group or {})
     if not records:
-        if fetch_records_by_group is None:
-            raise RuntimeError(f"Satellite position unavailable for {search_text}")
-        records = dict(fetch_records_by_group())
-
-    targets: list[SearchJumpTarget] = []
-    for target_spec in matching_specs:
-        altaz = find_satellite_altaz(
-            records,
-            object_key=target_spec.label,
-            observer_lat=observer_lat,
-            observer_lon=observer_lon,
-            observer_height_m=observer_height_m,
-            time_obj=_datetime_to_astropy_time(target_time_utc),
-        )
-        if altaz is None:
-            raise RuntimeError(f"Satellite position unavailable for {target_spec.label}")
-        alt_deg, az_deg = altaz
-        targets.append(
-            SearchJumpTarget(
-                label=target_spec.label,
-                kind="satellite",
-                sort_key=(0.0, target_spec.label.casefold()),
-                object_key=target_spec.label,
-                subtitle="Artificial satellite",
-                alt_deg=float(alt_deg),
-                az_deg=float(az_deg) % 360.0,
-                target_time_utc=target_time_utc,
+        if fetch_records_by_group is not None:
+            records = dict(fetch_records_by_group())
+        else:
+            records = dict(
+                fetch_current_satellite_records(
+                    observer_lat=observer_lat,
+                    observer_lon=observer_lon,
+                    observer_height_m=observer_height_m,
+                    enabled_groups=enabled_groups,
+                    target_time_utc=target_time_utc or target.target_time_utc or datetime.now(timezone.utc),
+                    force_refresh=True,
+                )
             )
-        )
-    return targets
+    if not records:
+        return None
+    time_obj = _datetime_to_astropy_time(
+        target_time_utc or target.target_time_utc or datetime.now(timezone.utc)
+    )
+    return find_satellite_altaz(
+        records,
+        object_key=object_key,
+        observer_lat=observer_lat,
+        observer_lon=observer_lon,
+        observer_height_m=observer_height_m,
+        time_obj=time_obj,
+    )
 
 
 def _normalize_satellite_name(value: str) -> str:
