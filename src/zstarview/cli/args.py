@@ -805,30 +805,6 @@ def add_render_arguments(
             "When the celestial disc width exceeds this, the star layer uses square-root scaling."
         ),
     )
-    if include_window_geometry:
-        parser.add_argument(
-            "--window-geometry",
-            type=_parse_window_geometry,
-            default=None,
-            metavar="restore|X,Y,W,H",
-            help=(
-                "Window position and size. "
-                "Use 'restore' to load the last saved geometry, "
-                "or 'x,y,width,height' to set explicit values."
-            ),
-        )
-    if include_window_frame:
-        parser.add_argument(
-            "--window-frame",
-            type=_parse_window_frame,
-            default="frameless",
-            metavar="{frameless,window}",
-            help=(
-                "Window decoration mode. "
-                "Use 'frameless' for the current borderless window or "
-                "'window' for a standard titled OS window."
-            ),
-        )
     parser.add_argument(
         "-Z",
         "--view-center-az",
@@ -985,6 +961,11 @@ def add_render_arguments(
             "Validation mode: draw only the far-range skyscraper urban outline layer "
             "and skip the normal near-range outline layer."
         ),
+    )
+    add_general_arguments(
+        parser,
+        include_window_geometry=include_window_geometry,
+        include_window_frame=include_window_frame,
     )
     if include_sky_update_interval:
         parser.add_argument(
