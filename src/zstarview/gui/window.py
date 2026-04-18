@@ -1370,9 +1370,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
     def _jump_to_search_target(self, target: SearchJumpTarget) -> None:
         target_kind = target.kind
-        current_time_obj = getattr(self, "_current_time_obj", None)
-        if callable(current_time_obj):
-            current_time = current_time_obj()
+        target_time_utc_fn = getattr(self, "_target_time_utc", None)
+        if callable(target_time_utc_fn):
+            current_time = target_time_utc_fn()
         else:
             current_time = datetime.now(timezone.utc)
         if target_kind == "satellite":
@@ -1426,7 +1426,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.state.jump_highlight_name = target.label
         self.state.jump_highlight_altaz = (target_alt, target_az)
         self.state.jump_highlight_until_ms = (time.monotonic() * 1000.0) + 3000.0
-        if target.persistent_keep_marker:
+        if bool(getattr(target, "persistent_keep_marker", False)):
             reference_time_utc = target.target_time_utc or current_time
             updated_target = replace(
                 target,
@@ -1446,7 +1446,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             else:
                 self.state.persistent_search_next_refresh_utc = None
         else:
-            self._clear_persistent_search()
+            clear_persistent_search = getattr(self, "_clear_persistent_search", None)
+            if callable(clear_persistent_search):
+                clear_persistent_search()
 
         self._begin_interaction_mode()
         self.request_sky_data_update()

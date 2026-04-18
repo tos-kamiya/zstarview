@@ -11,6 +11,7 @@ from PySide6.QtGui import QFont, QImage
 import zstarview.render.pipeline as pipeline_module
 import zstarview.render.guides as render_guides_module
 import zstarview.render.overlay_info as render_overlay_info_module
+import zstarview.render.search_overlay as search_overlay_module
 import zstarview.render.terrain as render_terrain_module
 import zstarview.render.text as render_text_module
 import zstarview.gui.window as window_module
@@ -969,23 +970,23 @@ def test_draw_persistent_search_overlay_draws_label_when_marker_is_kept(
             return QRect(0, 0, 200, 200)
 
     monkeypatch.setattr(
-        window_render_module.render_satellites,
+        search_overlay_module.render_guides,
         "draw_gauge_cross",
         lambda *_args, **_kwargs: draw_calls.append("marker"),
     )
     monkeypatch.setattr(
-        window_render_module.render_text,
+        search_overlay_module.render_text,
         "draw_outlined_text",
         lambda *_args, **_kwargs: draw_calls.append("label"),
     )
     monkeypatch.setattr(window_render_module, "is_in_fov", lambda *_args, **_kwargs: True)
     monkeypatch.setattr(
-        window_render_module,
+        search_overlay_module,
         "altaz_to_normalized_xy",
         lambda alt, az, view_center: (float(az), float(alt)),
     )
     monkeypatch.setattr(
-        window_render_module.render_geometry,
+        search_overlay_module,
         "normalized_to_screen_xy",
         lambda nx, ny, _geometry: (float(nx), float(ny)),
     )
