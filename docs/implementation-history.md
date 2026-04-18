@@ -579,6 +579,10 @@
   - 再問い合わせに失敗した場合は即時再試行せず、失敗時刻から 1h 後へ次回 retry を延期するようにした。
   - retry の成功/失敗は `SkyWindowState` の `persistent_search_last_error` / `persistent_search_next_refresh_utc` で追跡し、HUD の status line に反映するようにした。
 
+- Search Objects / export-image overlay follow-up
+  - `zstarview-export-image` でも検索結果の marker / label を出力画像へ重ねるようにし、検索で得た alt/az は GUI と同じ `-5°` 下限へ揃えた。
+  - 検索解決の共有設計は `search/` サブパッケージへ移したが、UI との切り分けや overlay 連携はまだ仮設計なので、`docs/design.md` に provisional note を追加した。
+
 - Validation note
   - Modified GUI, renderer, and test files passed `py_compile` and `ruff check`.
   - Full `pytest` execution was not possible in the active `.venv` because `pytest` is not installed there.

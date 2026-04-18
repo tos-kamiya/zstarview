@@ -60,6 +60,7 @@
   - CLI オプション定義と値解釈
   - タワー一覧・タワー詳細 JSON 出力の即時終了オプションを扱う
   - `--place`、`--place-countrycode`、`--place-lang` の online 地点検索オプションを扱う
+  - `--search`、`--list`、`--search-keep-marker` の検索オプションを扱い、GUI 起動時検索と export-image で同じ引数定義を共有する
   - `--theme` は `night`、`day`、`white`、`black` の 4 preset のみを受け付ける
   - 同梱星表の実上限に合わせ、`-V` / `--vmag-limit` は `10.5` を超える指定を parse 時点で `10.5` へ丸める
   - parser 構築は `add_location_arguments()`、`add_dataset_query_arguments()`、`add_time_arguments()`、`add_render_arguments()` の helper に分割し、将来の別 CLI からも再利用できるようにする
@@ -233,11 +234,30 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `--sixel` 指定時は、重い初期化やレイヤー取得へ進む前に `shutil.which("img2sixel")` で存在確認を行い、見つからない場合は明示エラーで終了する。
 - `--sixel` 指定時は、`lsix` と同様に `/dev/tty` へ `ESC[c` を送り、応答の device attributes に `4` が含まれる場合だけ SIXEL 対応とみなす。応答がない、または `4` を含まない場合は明示エラーで終了する。
 - `--output -` は PNG bytes を stdout へ直接流す用途とし、stdout を SIXEL 出力でも使う `--sixel` とは併用不可とする。
+- 検索関連オプションは 1 つの `--search QUERY` と `--search-keep-marker` を GUI 起動時検索と `zstarview-export-image` で共有してよく、`--list` は `zstarview-export-image` 専用の探索モードとして扱ってよい。
+- 単純文字列の `--search QUERY` は label と id の両方を候補にして解決してよい。
+- `--list` は検索結果を 1 行 1 件で列挙して終了する探索モードとし、`zstarview` GUI では受け付けずエラーにしてよい。
+- `--search-keep-marker` は、1 件に解決できた場合にその対象を描画へ持ち込むためのフラグとして扱ってよい。
+- `-A` と `-Z` は、それぞれ仰角と方位の固定値として扱い、未指定の軸だけ検索結果の `alt/az` で補完してよい。
+- 検索が 0 件または複数件のとき、`--list` が無ければ候補一覧を stderr へ出して非 0 終了し、`--list` があれば stdout へ 1 行 1 件で列挙して 0 終了してよい。
 - `opacity == 0` で無効化されたレイヤーは、取得キュー自体に積まず、layer timeout の待機対象からも外す。
 - 実装では `SkyWindow` と GUI controller 群には依存せず、sky/cloud/terrain/urban/aircraft を同期的に順番に取得してから、shared pipeline で `QImage` へ 1 回だけ描画して保存する。
 - export-image の雲経路は、GUI と同じく `numpy RGBA` と 2D missing-mask alpha を保持し、最終合成段まで `QImage` へ早期変換しない。
+- `zstarview-export-image` の検索解決は headless ルールを優先し、0 件または複数件では表示だけを行って終了し、1 件に解決できた場合だけ描画へ進む。
+- 1 件に解決できた場合は、検索結果の `alt/az` を使って未指定の軸だけを補完し、固定軸はそのまま残す。
+- `--search-keep-marker` が有効な場合、export-image はその 1 件の marker/label を描画状態へ持ち込んでよいが、プロセス外へ永続状態を残す必要はない。
 - Qt はフォント読込と `QImage` / `QPainter` 利用のためだけに初期化し、CLI 側ではバックグラウンド worker や signal ベースの寿命管理を持たない。
 - `gui/sky_worker.py` の celestial / sky-disc 計算は pure helper `compute_sky_snapshot()` として切り出し、GUI worker と export CLI の両方から共有する。
+
+#### 4.2.4a 検索リクエストの共有解決
+
+- この節では、`search/models.py` / `search/query.py` / `search/jpl.py` / `search/resolver.py` で共有する検索リクエスト設計を定義する。
+- `--search` は、GUI 起動時検索と `zstarview-export-image` の両方で共通の単一検索リクエストとして扱ってよい。
+- 検索リクエストは少なくとも raw query、`list_only`、`keep_marker` を持ち、必要なら `label` / `id` の限定解釈を表す selector を持ってよい。
+- `QUERY` に `=` が含まれない場合は label と id の両方を検索対象にし、`label=...` と `id=...` は片側だけを検索してよい。
+- 共有解決層は候補列挙だけを担当し、GUI で dialog を開くか、export-image で stderr へ流して終了するかは上位オーケストレーションで決めてよい。
+- 候補の正規化結果は `label`、`kind`、`id`、`command`、`source`、および必要なら当該時刻の `alt/az` を含む `SearchJumpTarget` に落としてよい。
+- 候補が 1 件だけに解決した場合は、その 1 件だけを後段の jump / render に渡してよい。
 
 ### 4.3 描画
 
@@ -535,6 +555,31 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 既存の衛星キャッシュと同様に、検索中は最新リクエスト優先の更新規則を使ってよい。
 - 失敗時は、候補検索失敗と位置取得失敗を別メッセージに分けてよい。
 - 候補検索に成功しても位置取得に失敗した場合は、候補一覧は残し、選択後の jump だけ失敗させてよい。
+
+#### 4.4.6 起動時検索オーケストレーション
+
+- `zstarview` の GUI 起動時検索は、`startup.py` で通常の地点解決と設定復元が終わったあとに、共通の検索リクエスト解決層へ渡す。
+- GUI 側は、候補が 1 件に解決した場合だけその対象へ視線を向け、必要なら `persistent_search_target` と `persistent_search_keep_marker` を初回描画前に設定する。
+- `--search-keep-marker` が付いている場合、GUI 起動直後の初期フレームから marker と label を表示する。
+- 候補が 0 件または複数件の場合、GUI は終了せず、`Search Objects...` ダイアログへ検索語と候補一覧を渡して再選択を促す。
+- GUI 側の初期検索は、対話ダイアログからの検索と同じ候補モデルを使い、ポスト処理だけを分ける。
+- `zstarview-export-image` 側は同じ共通解決層を使うが、0 件または複数件のときは描画へ進まず、`--list` の有無に応じて列挙終了かエラー終了を選ぶ。`--list` は export-image にだけ存在する。
+- 起動時検索と手動検索で同じ `SearchJumpTarget` を使い、GUI は jump highlight と persistent overlay を更新し、export-image は 1 回の描画入力として消費する。
+
+#### 4.4.7 検索共通化
+
+- 検索処理は、GUI ダイアログ、GUI 起動時検索、`zstarview-export-image` で共通利用するため、UI から切り出した resolver/service 群に分離する。
+- 検索 overlay の描画や `export-image` の `-5°` クランプのような UI 寄りの都合は、個別の renderer/helper に分ける。
+- 現在の構造は次の通りである。
+  - `search/models.py` は `SearchJumpTarget`、`SearchRequest`、`SearchResolution` などの共有データモデルを持つ。
+  - `search/query.py` は `--search` 文字列の正規化と `label=` / `id=` / bare query の解釈を担当する。
+  - `search/jpl.py` は SBDB / Horizons を使う JPL 候補生成と小天体位置取得を担当する。
+  - `search/resolver.py` は local first と JPL fallback の全体戦略、および `SearchJumpTarget` の `alt/az` 導出を担当する。
+  - GUI ダイアログは、候補生成戦略を持たず、resolver の返した候補を表示して選択を返す。
+  - `zstarview-export-image` は、resolver の 1 件解決結果だけを描画へ渡し、曖昧な場合は `--list` と非対話エラーを分けて扱う。
+  - `window.py` は、共通 resolver から返った 1 件結果に対して、視点移動と永続 overlay の state 更新だけを行う薄い orchestrator とする。
+  - `render/search_overlay.py` は、GUI と export-image の両方で使う marker / label 重ね描きを担当する。
+- この分割に合わせて、既存の `famous_star_shortcuts.py`、`famous_star_search_dialog.py`、`jpl_small_body_controller.py` の役割を整理する。
 
 ### 4.5 雲データ処理
 
