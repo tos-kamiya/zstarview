@@ -775,7 +775,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
         self._add_menu_action(
             self.search_menu,
-            "Search Stars and Asterisms...",
+            "Search Objects...",
             shortcut=QKeySequence("Ctrl+F"),
             triggered=self._open_named_star_search_dialog,
         )
@@ -1292,9 +1292,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         target = self.state.persistent_search_target
         if target is None:
             return None
-        if not bool(getattr(target, "persistent_keep_marker", False)) and not bool(
-            getattr(target, "persistent_keep_label", False)
-        ):
+        if not bool(getattr(target, "persistent_keep_marker", False)):
             return None
         return target
 
@@ -1469,7 +1467,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.state.jump_highlight_altaz = (target_alt, target_az)
         self.state.jump_highlight_until_ms = (time.monotonic() * 1000.0) + 3000.0
         if target.kind in ("jpl_small_body", "jpl_body"):
-            if target.persistent_keep_marker or target.persistent_keep_label:
+            if target.persistent_keep_marker:
                 self.state.persistent_search_target = target
                 self.state.persistent_search_reference_time_utc = (
                     target.target_time_utc or self._target_time_utc()

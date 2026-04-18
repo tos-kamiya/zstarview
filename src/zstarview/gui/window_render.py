@@ -490,17 +490,17 @@ class SkyWindowRenderMixin:
         px, py = render_geometry.normalized_to_screen_xy(nx, ny, geometry)
         pos = QPointF(px, py)
         color, _outline = render_text.get_text_style(self.visual_preset)
-        if bool(getattr(target, "persistent_keep_marker", False)):
-            render_satellites.draw_gauge_cross(
-                painter,
-                color,
-                pos,
-                scale=0.42,
-                pen_width=2.0,
-            )
-
-        if not bool(getattr(target, "persistent_keep_label", False)):
+        if not bool(getattr(target, "persistent_keep_marker", False)):
             return
+
+        render_satellites.draw_gauge_cross(
+            painter,
+            color,
+            pos,
+            scale=0.42,
+            pen_width=2.0,
+        )
+
         label = str(getattr(target, "label", "")).strip()
         if not label:
             return
