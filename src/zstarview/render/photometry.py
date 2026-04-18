@@ -84,21 +84,6 @@ def planet_marker_color(name: str) -> QColor:
     return QColor(palette.get(name, QColor(*TEXT_STYLES_BY_PRESET["night"].text)))
 
 
-def small_body_marker_color(name: str) -> QColor:
-    """Return a color for a dwarf planet or other named small body marker."""
-    normalized = name.strip().casefold()
-    palette = {
-        "ceres": QColor(122, 182, 118),
-        "eris": QColor(123, 198, 226),
-        "haumea": QColor(216, 178, 128),
-        "makemake": QColor(230, 188, 112),
-        "pluto": planet_marker_color("pluto"),
-    }
-    if normalized in palette:
-        return QColor(palette[normalized])
-    return QColor(196, 176, 132)
-
-
 def body_label_text(name: str) -> str:
     """Return a display label for a solar-system body name."""
     label = name.strip()

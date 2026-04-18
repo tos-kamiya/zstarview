@@ -10,7 +10,6 @@ from PySide6.QtGui import QFont, QImage, QPainter, QPaintEvent
 from ..astro import altaz_to_normalized_xy, is_in_fov, resolve_star_names
 from ..render import deep_sky_objects as render_deep_sky_objects
 from ..render import geometry as render_geometry
-from ..render import photometry as render_photometry
 from ..render import satellites as render_satellites
 from ..render import stars as render_stars
 from ..render import text as render_text
@@ -490,7 +489,7 @@ class SkyWindowRenderMixin:
         nx, ny = altaz_to_normalized_xy(float(alt), float(az), view_center)
         px, py = render_geometry.normalized_to_screen_xy(nx, ny, geometry)
         pos = QPointF(px, py)
-        color = render_photometry.small_body_marker_color(str(getattr(target, "label", "")))
+        color, _outline = render_text.get_text_style(self.visual_preset)
         if bool(getattr(target, "persistent_keep_marker", False)):
             render_satellites.draw_gauge_cross(
                 painter,
