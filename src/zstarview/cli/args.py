@@ -639,30 +639,37 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
     )
 
 
-def add_general_arguments(parser: argparse._ActionsContainer) -> None:
+def add_general_arguments(
+    parser: argparse._ActionsContainer,
+    *,
+    include_window_geometry: bool = True,
+    include_window_frame: bool = True,
+) -> None:
     """Add general-purpose CLI arguments."""
-    parser.add_argument(
-        "--window-geometry",
-        type=_parse_window_geometry,
-        default=None,
-        metavar="restore|X,Y,W,H",
-        help=(
-            "Window position and size. "
-            "Use 'restore' to load the last saved geometry, "
-            "or 'x,y,width,height' to set explicit values."
-        ),
-    )
-    parser.add_argument(
-        "--window-frame",
-        type=_parse_window_frame,
-        default="frameless",
-        metavar="{frameless,window}",
-        help=(
-            "Window decoration mode. "
-            "Use 'frameless' for the current borderless window or "
-            "'window' for a standard titled OS window."
-        ),
-    )
+    if include_window_geometry:
+        parser.add_argument(
+            "--window-geometry",
+            type=_parse_window_geometry,
+            default=None,
+            metavar="restore|X,Y,W,H",
+            help=(
+                "Window position and size. "
+                "Use 'restore' to load the last saved geometry, "
+                "or 'x,y,width,height' to set explicit values."
+            ),
+        )
+    if include_window_frame:
+        parser.add_argument(
+            "--window-frame",
+            type=_parse_window_frame,
+            default="frameless",
+            metavar="{frameless,window}",
+            help=(
+                "Window decoration mode. "
+                "Use 'frameless' for the current borderless window or "
+                "'window' for a standard titled OS window."
+            ),
+        )
     parser.add_argument(
         "-t",
         "--theme",
@@ -678,6 +685,64 @@ def add_general_arguments(parser: argparse._ActionsContainer) -> None:
             "Delete cached DEM and urban-outline data before startup. "
             "This clears copernicus-dem, overture_buildings, and overture_skyscrapers."
         ),
+    )
+
+
+def add_export_image_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add grouped arguments for the headless export-image CLI."""
+    observing_group = parser.add_argument_group("Observing Location and Time")
+    search_group = parser.add_argument_group("Search Objects at startup")
+    overlay_group = parser.add_argument_group("Overlays")
+    export_group = parser.add_argument_group("Export")
+    general_group = parser.add_argument_group("General")
+
+    add_observing_arguments(observing_group)
+    add_search_arguments(search_group, include_list=True)
+    add_overlay_arguments(overlay_group)
+    add_general_arguments(
+        general_group,
+        include_window_geometry=False,
+        include_window_frame=False,
+    )
+
+    export_group.add_argument(
+        "-o",
+        "--output",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Output image file path.",
+    )
+    export_group.add_argument(
+        "--image-size",
+        type=_parse_image_size,
+        default=(WINDOW_WIDTH, WINDOW_HEIGHT),
+        metavar="WIDTH,HEIGHT",
+        help=(
+            f"Output image size in pixels (default: {WINDOW_WIDTH},{WINDOW_HEIGHT})."
+        ),
+    )
+    export_group.add_argument(
+        "--layer-timeout-seconds",
+        type=_parse_non_negative_float,
+        default=90.0,
+        metavar="SECONDS",
+        help="Maximum time to wait for enabled external layers (default: 90).",
+    )
+    export_group.add_argument(
+        "--allow-partial-data",
+        action="store_true",
+        help="Allow saving an image even when enabled external layers fail or time out.",
+    )
+    export_group.add_argument(
+        "--print-cache-dir",
+        action="store_true",
+        help="Print the cache root directory and exit.",
+    )
+    export_group.add_argument(
+        "--sixel",
+        action="store_true",
+        help="Display the generated image in the terminal via img2sixel.",
     )
 
 
@@ -992,64 +1057,7 @@ def build_export_image_argument_parser() -> argparse.ArgumentParser:
         action="version",
         version=f"%(prog)s {__version__}",
     )
-    add_location_arguments(parser)
-    add_search_arguments(parser)
-    add_time_arguments(parser)
-    add_render_arguments(
-        parser,
-        include_window_geometry=False,
-        include_window_frame=False,
-        include_sky_update_interval=False,
-        include_startup_overlay_arguments=False,
-    )
-    # The export-image tool is headless. Keep guideline startup control available
-    # since it affects exported visuals, but do not expose other GUI-only startup flags.
-    parser.add_argument(
-        "--show-guidelines-initial",
-        type=_parse_bool,
-        default=None,
-        metavar="true|false",
-        help="Whether to show guideline overlays at startup (true/false).",
-    )
-    parser.add_argument(
-        "-o",
-        "--output",
-        type=str,
-        default=None,
-        metavar="PATH",
-        help="Output image file path.",
-    )
-    parser.add_argument(
-        "--image-size",
-        type=_parse_image_size,
-        default=(WINDOW_WIDTH, WINDOW_HEIGHT),
-        metavar="WIDTH,HEIGHT",
-        help=(
-            f"Output image size in pixels (default: {WINDOW_WIDTH},{WINDOW_HEIGHT})."
-        ),
-    )
-    parser.add_argument(
-        "--layer-timeout-seconds",
-        type=_parse_non_negative_float,
-        default=90.0,
-        metavar="SECONDS",
-        help="Maximum time to wait for enabled external layers (default: 90).",
-    )
-    parser.add_argument(
-        "--allow-partial-data",
-        action="store_true",
-        help="Allow saving an image even when enabled external layers fail or time out.",
-    )
-    parser.add_argument(
-        "--print-cache-dir",
-        action="store_true",
-        help="Print the cache root directory and exit.",
-    )
-    parser.add_argument(
-        "--sixel",
-        action="store_true",
-        help="Display the generated image in the terminal via img2sixel.",
-    )
+    add_export_image_arguments(parser)
     return parser
 
 
