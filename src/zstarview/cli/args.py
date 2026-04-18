@@ -1198,6 +1198,17 @@ def _normalize_vmag_limit(args: argparse.Namespace) -> None:
         args.vmag_limit = min(float(args.vmag_limit), _COMMITTED_VMAG_LIMIT_MAX)
 
 
+def _argv_has_option(argv: Sequence[str], *option_names: str) -> bool:
+    for token in argv:
+        for option_name in option_names:
+            if token == option_name or token.startswith(f"{option_name}="):
+                return True
+            if option_name.startswith("-") and not option_name.startswith("--"):
+                if token.startswith(option_name) and len(token) > len(option_name):
+                    return True
+    return False
+
+
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     """Parse command-line arguments for the main zstarview app."""
     parser = build_main_argument_parser()
@@ -1228,6 +1239,12 @@ def parse_export_image_args(argv: Sequence[str] | None = None) -> argparse.Names
         if args.output or args.sixel:
             parser.error("--print-cache-dir cannot be used with --output or --sixel")
         return args
+    args.view_center_alt_specified = _argv_has_option(
+        raw_argv, "-A", "--view-center-alt"
+    )
+    args.view_center_az_specified = _argv_has_option(
+        raw_argv, "-Z", "--view-center-az"
+    )
     if args.list and not getattr(args, "search", None):
         parser.error("--list requires --search")
     if not args.output and not args.sixel and not args.list:
