@@ -162,9 +162,9 @@ The CLI supports detailed startup configuration for location, time, and renderin
 
 | Option                                      | Description                                                                 | Default |
 | :------------------------------------------ | :-------------------------------------------------------------------------- | :------ |
-| `--search QUERY`                            | Resolve a named object at startup. Shared with GUI `Search Objects...` and `zstarview-export-image`; bare `QUERY` searches by label or ID. |         |
-| `--search label=QUERY`                      | Search labels only.                                                         |         |
-| `--search id=QUERY`                         | Search IDs only.                                                            |         |
+| `--search QUERY`                            | Resolve a named object at startup. Shared with GUI `Search Objects...` and `zstarview-export-image`; bare `QUERY` searches by label or ID (e.g. `Ceres`, `2000001`). |         |
+| `--search label=QUERY`                      | Search labels only (e.g. `label=Ceres`).                                    |         |
+| `--search id=QUERY`                         | Search IDs only (e.g. `id=2000001`).                                        |         |
 | `--search-keep-marker`                      | Keep the selected target as marker plus label.                              |         |
 | `--list`                                    | `zstarview-export-image` only. List candidates and exit without rendering.  |         |
 
