@@ -21,7 +21,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .famous_star_shortcuts import SearchJumpTarget
+from ..search.models import SearchJumpTarget
+from ..search.query import parse_search_query, search_target_matches_query
 
 _JPL_BYPASS_QUERIES = {"sun", "moon"}
 
@@ -103,8 +104,6 @@ class NamedStarSearchDialog(QDialog):
         target = item.data(Qt.ItemDataRole.UserRole)
         if not isinstance(target, SearchJumpTarget):
             return None
-        if not target.kind.startswith("jpl_"):
-            return target
         return replace(
             target,
             persistent_keep_marker=self._jpl_keep_marker.isChecked(),
@@ -127,13 +126,12 @@ class NamedStarSearchDialog(QDialog):
         self._start_jpl_search()
 
     def _apply_local_filter(self, text: str) -> None:
-        query = text.strip().casefold()
+        query_spec = parse_search_query(text)
         self._list.clear()
 
         matching_targets: list[SearchJumpTarget] = []
         for target in self._local_targets:
-            haystack = f"{target.label} {target.subtitle}".casefold()
-            if not query or query in haystack:
+            if not query_spec.normalized or search_target_matches_query(target, query_spec):
                 matching_targets.append(target)
 
         self._local_result_count = len(matching_targets)
@@ -147,11 +145,11 @@ class NamedStarSearchDialog(QDialog):
                 f"Found {self._local_result_count} local result(s). Select one and press OK."
             )
             self._select_first_visible()
-        elif query in _JPL_BYPASS_QUERIES:
+        elif query_spec.normalized in _JPL_BYPASS_QUERIES:
             self._set_status(
                 "Sun and Moon are already handled by the solar-system view."
             )
-        elif query:
+        elif query_spec.normalized:
             self._set_status("No local match. Use the JPL database button below.")
         else:
             self._set_status("")
@@ -176,16 +174,17 @@ class NamedStarSearchDialog(QDialog):
         if not hasattr(self, "_jpl_search_button"):
             return
         query = self._search.text().strip()
+        query_spec = parse_search_query(query)
         enabled = (
             bool(query)
             and self._local_result_count == 0
-            and query.casefold() not in _JPL_BYPASS_QUERIES
+            and query_spec.normalized not in _JPL_BYPASS_QUERIES
             and not self._jpl_search_in_progress
         )
         self._jpl_search_button.setEnabled(enabled)
         if not query:
             self._jpl_search_button.setText("Search JPL database")
-        elif query.casefold() in _JPL_BYPASS_QUERIES:
+        elif query_spec.normalized in _JPL_BYPASS_QUERIES:
             self._jpl_search_button.setText("Sun and Moon are already shown")
         else:
             self._jpl_search_button.setText(f"Search JPL database for '{query}'")
@@ -199,9 +198,10 @@ class NamedStarSearchDialog(QDialog):
 
     def _start_jpl_search(self) -> None:
         query = self._search.text().strip()
+        query_spec = parse_search_query(query)
         if not query or self._jpl_search_in_progress:
             return
-        if query.casefold() in _JPL_BYPASS_QUERIES:
+        if query_spec.normalized in _JPL_BYPASS_QUERIES:
             self._set_status(
                 "Sun and Moon are already handled by the solar-system view."
             )

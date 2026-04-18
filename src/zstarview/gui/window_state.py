@@ -8,7 +8,7 @@ from PySide6.QtCore import QPoint
 from PySide6.QtGui import QImage
 
 from ..aircraft.types import AircraftOverlayPoint
-from .famous_star_shortcuts import SearchJumpTarget
+from ..search.models import SearchJumpTarget
 from ..satellites.types import SatelliteOverlayPoint
 from ..types import CelestialData, StarsTable, UrbanOutlinePolyline, ViewCenterAltAz
 

@@ -36,7 +36,6 @@ from PySide6.QtWidgets import QWidget
 from ..__about__ import __version__
 from ..astro import (
     calculate_visible_stars,
-    radec_to_altaz,
 )
 from ..clouddisc import (
     CloudDisc,
@@ -76,7 +75,7 @@ from ..paths import (
     OBSERVER_MIN_ALT_DEG,
 )
 from ..config import load_last_window_geometry, save_last_window_geometry
-from ..location_resolver import project_place_target_to_altaz, search_place_candidates
+from ..location_resolver import search_place_candidates
 from ..render import geometry as render_geometry
 from ..render import stars as render_stars
 from ..render.pipeline import (
@@ -100,9 +99,11 @@ from .famous_star_search_dialog import NamedStarSearchDialog
 from .place_search_dialog import PlaceSearchDialog
 from .famous_star_shortcuts import (
     NamedStarShortcut,
-    SearchJumpTarget,
     build_place_search_jump_targets,
 )
+from ..search.jpl import search_jpl_targets
+from ..search.models import SearchJumpTarget
+from ..search.resolver import compute_search_target_altaz
 from ..asterisms import ASTERISM_KEYS_BY_SOURCE_ID
 from .sky_worker import SkyDataWorker
 from .window_inputs import PreparedWindowCatalogs
@@ -114,7 +115,7 @@ from .urban_outline_controller import UrbanOutlineController
 from .urban_outline_state import UrbanOutlineState
 
 logger = logging.getLogger(__name__)
-_JPL_BYPASS_QUERIES = {"sun", "moon"}
+_LEGACY_JPL_FETCH_HELPERS = (fetch_horizons_lookup, fetch_horizons_observer_csv)
 
 
 WindowGeometryArg = Union[str, Tuple[int, int, int, int]]
@@ -1192,71 +1193,15 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._jump_to_search_target(target)
 
     def _search_jpl_targets(self, query: str) -> list[SearchJumpTarget]:
-        if query.strip().casefold() in _JPL_BYPASS_QUERIES:
-            return []
-        targets: list[SearchJumpTarget] = []
-        for group, group_label in (("mb", "major body"), ("sb", "small body")):
-            try:
-                lookup_payload = fetch_horizons_lookup(query, group=group)
-            except Exception as exc:
-                logger.info("JPL %s lookup failed for %s: %s", group_label, query, exc)
-                continue
-            result = lookup_payload.get("result")
-            if not isinstance(result, list) or not result:
-                continue
-
-            observer_lat = float(self.viewer_data.location[0])
-            observer_lon = float(self.viewer_data.location[1])
-            observer_height_m = float(self.viewer_data.observer_height_m)
-            target_time_utc = self._target_time_utc()
-            for item in result[:20]:
-                if not isinstance(item, dict):
-                    continue
-                name = str(item.get("name", "")).strip()
-                if not name:
-                    continue
-                command = self._build_horizons_command(item, group=group)
-                if not command:
-                    continue
-                try:
-                    rows = fetch_horizons_observer_csv(
-                        command,
-                        target_time_utc=target_time_utc,
-                        observer_lat=observer_lat,
-                        observer_lon=observer_lon,
-                        observer_height_m=observer_height_m,
-                    )
-                except Exception as exc:
-                    logger.info(
-                        "JPL %s observer fetch failed for %s: %s",
-                        group_label,
-                        name,
-                        exc,
-                    )
-                    continue
-                alt_az = self._extract_horizons_altaz(rows)
-                if alt_az is None:
-                    continue
-                alt_deg, az_deg = alt_az
-                type_name = str(item.get("type", "")).strip()
-                pdes = str(item.get("pdes", "")).strip()
-                subtitle_parts = [part for part in (group_label, type_name, pdes) if part]
-                targets.append(
-                    SearchJumpTarget(
-                        label=name,
-                        kind="jpl_body",
-                        sort_key=(0.0 if group == "mb" else 1.0, name.casefold()),
-                        subtitle=" / ".join(subtitle_parts) if subtitle_parts else "JPL Body",
-                        object_key=str(item.get("spkid", "")).strip(),
-                        command=command,
-                        alt_deg=float(alt_deg),
-                        az_deg=float(az_deg) % 360.0,
-                        target_time_utc=target_time_utc,
-                        jpl_group=group,
-                    )
-                )
-        targets.sort(key=lambda target: target.sort_key)
-        return targets
+        return search_jpl_targets(
+            query,
+            observer_lat=float(self.viewer_data.location[0]),
+            observer_lon=float(self.viewer_data.location[1]),
+            observer_height_m=float(self.viewer_data.observer_height_m),
+            target_time_utc=self._target_time_utc(),
+            lookup_fetch=fetch_horizons_lookup,
+            observer_fetch=fetch_horizons_observer_csv,
+        )
 
     def _build_horizons_command(self, target: dict[str, object], *, group: str) -> str:
         spkid = str(target.get("spkid", "")).strip()
@@ -1426,35 +1371,18 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 return
             target_alt = float(target_altaz[0])
             target_az = float(target_altaz[1]) % 360.0
-        elif target_kind == "place":
-            if target.latitude_deg is None or target.longitude_deg is None:
-                return
-            projection = project_place_target_to_altaz(
-                observer_latitude_deg=self.viewer_data.location[0],
-                observer_longitude_deg=self.viewer_data.location[1],
-                observer_height_m=self.viewer_data.observer_height_m,
-                target_latitude_deg=target.latitude_deg,
-                target_longitude_deg=target.longitude_deg,
-            )
-            target_alt = float(projection.alt_deg)
-            target_az = float(projection.az_deg) % 360.0
-        elif target_kind in ("jpl_small_body", "jpl_body"):
-            if target.alt_deg is None or target.az_deg is None:
-                return
-            target_alt = float(target.alt_deg)
-            target_az = float(target.az_deg) % 360.0
         else:
-            observer_height_m = self.viewer_data.observer_height_m
-            alt, az = radec_to_altaz(
-                target.ra_hours,
-                target.dec_deg,
-                self.viewer_data.location[0],
-                self.viewer_data.location[1],
-                observer_height_m,
-                self._current_time_obj(),
+            target_altaz = compute_search_target_altaz(
+                target,
+                observer_lat=float(self.viewer_data.location[0]),
+                observer_lon=float(self.viewer_data.location[1]),
+                observer_height_m=float(self.viewer_data.observer_height_m),
+                target_time_utc=self._current_time_obj(),
             )
-            target_alt = float(alt)
-            target_az = float(az) % 360.0
+            if target_altaz is None:
+                return
+            target_alt = float(target_altaz[0])
+            target_az = float(target_altaz[1]) % 360.0
         # When jumping to a target, keep the jump highlight altitude as-reported
         # (may be negative), but clamp the actual view center to the horizon (0°)
         # so the view doesn't go below the horizon automatically.
@@ -1466,24 +1394,29 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.state.jump_highlight_name = target.label
         self.state.jump_highlight_altaz = (target_alt, target_az)
         self.state.jump_highlight_until_ms = (time.monotonic() * 1000.0) + 3000.0
-        if target.kind in ("jpl_small_body", "jpl_body"):
-            if target.persistent_keep_marker:
-                self.state.persistent_search_target = target
-                self.state.persistent_search_reference_time_utc = (
-                    target.target_time_utc or self._target_time_utc()
+        if target.persistent_keep_marker:
+            updated_target = replace(
+                target,
+                alt_deg=target_alt,
+                az_deg=target_az,
+                persistent_keep_marker=True,
+            )
+            self.state.persistent_search_target = updated_target
+            self.state.persistent_search_reference_time_utc = (
+                target.target_time_utc or self._target_time_utc()
+            )
+            self.state.persistent_search_last_error = None
+            self.state.persistent_search_last_refresh_utc = target.target_time_utc
+            if target.kind == "jpl_small_body" or target.jpl_group == "sb":
+                self.state.persistent_search_next_refresh_utc = (
+                    (target.target_time_utc or self._target_time_utc())
+                    + timedelta(hours=1)
                 )
-                self.state.persistent_search_last_error = None
-                self.state.persistent_search_last_refresh_utc = target.target_time_utc
-                if target.kind == "jpl_small_body" or target.jpl_group == "sb":
-                    self.state.persistent_search_next_refresh_utc = (
-                        (target.target_time_utc or self._target_time_utc())
-                        + timedelta(hours=1)
-                    )
-                    self._schedule_persistent_search_refresh()
-                else:
-                    self.state.persistent_search_next_refresh_utc = None
+                self._schedule_persistent_search_refresh()
             else:
-                self._clear_persistent_search()
+                self.state.persistent_search_next_refresh_utc = None
+        else:
+            self._clear_persistent_search()
 
         self._begin_interaction_mode()
         self.request_sky_data_update()
