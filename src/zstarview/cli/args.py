@@ -460,6 +460,15 @@ def add_sky_and_star_arguments(
 ) -> None:
     """Add the sky and star rendering arguments."""
     parser.add_argument(
+        "--sky-opacity",
+        type=float,
+        default=0.17,
+        help=(
+            "Opacity of the simulated sky-color disc (0.0 - 1.0, default: 0.17). "
+            "Set to 0.0 to disable sky-color rendering."
+        ),
+    )
+    parser.add_argument(
         "--show-dso-initial",
         type=_parse_bool,
         default=None,
@@ -692,12 +701,14 @@ def add_export_image_arguments(parser: argparse.ArgumentParser) -> None:
     """Add grouped arguments for the headless export-image CLI."""
     observing_group = parser.add_argument_group("Observing Location and Time")
     search_group = parser.add_argument_group("Search Objects at startup")
+    sky_group = parser.add_argument_group("Sky and Stars")
     overlay_group = parser.add_argument_group("Overlays")
     export_group = parser.add_argument_group("Export")
     general_group = parser.add_argument_group("General")
 
     add_observing_arguments(observing_group)
     add_search_arguments(search_group, include_list=True)
+    add_sky_and_star_arguments(sky_group, include_sky_update_interval=False)
     add_overlay_arguments(overlay_group)
     add_general_arguments(
         general_group,

@@ -184,7 +184,6 @@ def _build_window_inputs_from_args(
     ViewerData,
     SkyWindowUserOptions,
     SkyWindowRuntimeOptions,
-    SearchJumpTarget | None,
 ]:
     try:
         city = resolve_launch_location(
@@ -366,7 +365,8 @@ def _build_window_inputs_from_args(
         window_geometry_arg=None,
         window_frame_mode=getattr(args, "window_frame", "frameless"),
     )
-    return catalogs, viewer_data, user_options, runtime_options, search_overlay_target
+    setattr(viewer_data, "_search_overlay_target", search_overlay_target)
+    return catalogs, viewer_data, user_options, runtime_options
 
 
 def _load_fonts() -> tuple[QFont, QFont]:
@@ -994,9 +994,10 @@ def main() -> None:
         _require_sixel_terminal_support()
 
     try:
-        catalogs, viewer_data, user_options, runtime_options, search_overlay_target = (
-            _build_window_inputs_from_args(args)
+        catalogs, viewer_data, user_options, runtime_options = _build_window_inputs_from_args(
+            args
         )
+        search_overlay_target = getattr(viewer_data, "_search_overlay_target", None)
     except LaunchSetupError:
         raise SystemExit(1)
 

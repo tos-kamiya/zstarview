@@ -36,6 +36,7 @@ from PySide6.QtWidgets import QWidget
 from ..__about__ import __version__
 from ..astro import (
     calculate_visible_stars,
+    radec_to_altaz as _radec_to_altaz,
 )
 from ..clouddisc import (
     CloudDisc,
@@ -75,7 +76,10 @@ from ..paths import (
     OBSERVER_MIN_ALT_DEG,
 )
 from ..config import load_last_window_geometry, save_last_window_geometry
-from ..location_resolver import search_place_candidates
+from ..location_resolver import (
+    project_place_target_to_altaz as _project_place_target_to_altaz,
+    search_place_candidates,
+)
 from ..render import geometry as render_geometry
 from ..render import stars as render_stars
 from ..render.pipeline import (
@@ -103,7 +107,6 @@ from .famous_star_shortcuts import (
 )
 from ..search.jpl import search_jpl_targets
 from ..search.models import SearchJumpTarget
-from ..search.resolver import compute_search_target_altaz
 from ..asterisms import ASTERISM_KEYS_BY_SOURCE_ID
 from .sky_worker import SkyDataWorker
 from .window_inputs import PreparedWindowCatalogs
@@ -116,6 +119,14 @@ from .urban_outline_state import UrbanOutlineState
 
 logger = logging.getLogger(__name__)
 _LEGACY_JPL_FETCH_HELPERS = (fetch_horizons_lookup, fetch_horizons_observer_csv)
+
+
+def radec_to_altaz(*args, **kwargs):
+    return _radec_to_altaz(*args, **kwargs)
+
+
+def project_place_target_to_altaz(*args, **kwargs):
+    return _project_place_target_to_altaz(*args, **kwargs)
 
 
 WindowGeometryArg = Union[str, Tuple[int, int, int, int]]
@@ -1359,6 +1370,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
     def _jump_to_search_target(self, target: SearchJumpTarget) -> None:
         target_kind = target.kind
+        current_time_obj = getattr(self, "_current_time_obj", None)
+        if callable(current_time_obj):
+            current_time = current_time_obj()
+        else:
+            current_time = datetime.now(timezone.utc)
         if target_kind == "satellite":
             target_altaz = self._find_satellite_jump_altaz(
                 target.object_key or target.label
@@ -1371,18 +1387,34 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 return
             target_alt = float(target_altaz[0])
             target_az = float(target_altaz[1]) % 360.0
-        else:
-            target_altaz = compute_search_target_altaz(
-                target,
-                observer_lat=float(self.viewer_data.location[0]),
-                observer_lon=float(self.viewer_data.location[1]),
-                observer_height_m=float(self.viewer_data.observer_height_m),
-                target_time_utc=self._current_time_obj(),
-            )
-            if target_altaz is None:
+        elif target_kind == "place":
+            if target.latitude_deg is None or target.longitude_deg is None:
                 return
-            target_alt = float(target_altaz[0])
-            target_az = float(target_altaz[1]) % 360.0
+            projection = project_place_target_to_altaz(
+                observer_latitude_deg=float(self.viewer_data.location[0]),
+                observer_longitude_deg=float(self.viewer_data.location[1]),
+                observer_height_m=float(self.viewer_data.observer_height_m),
+                target_latitude_deg=float(target.latitude_deg),
+                target_longitude_deg=float(target.longitude_deg),
+            )
+            target_alt = float(projection.alt_deg)
+            target_az = float(projection.az_deg) % 360.0
+        elif target.kind in ("jpl_small_body", "jpl_body"):
+            if target.alt_deg is None or target.az_deg is None:
+                return
+            target_alt = float(target.alt_deg)
+            target_az = float(target.az_deg) % 360.0
+        else:
+            target_alt, target_az = radec_to_altaz(
+                target.ra_hours,
+                target.dec_deg,
+                float(self.viewer_data.location[0]),
+                float(self.viewer_data.location[1]),
+                float(self.viewer_data.observer_height_m),
+                current_time,
+            )
+            target_alt = float(target_alt)
+            target_az = float(target_az) % 360.0
         # When jumping to a target, keep the jump highlight altitude as-reported
         # (may be negative), but clamp the actual view center to the horizon (0°)
         # so the view doesn't go below the horizon automatically.
@@ -1395,6 +1427,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.state.jump_highlight_altaz = (target_alt, target_az)
         self.state.jump_highlight_until_ms = (time.monotonic() * 1000.0) + 3000.0
         if target.persistent_keep_marker:
+            reference_time_utc = target.target_time_utc or current_time
             updated_target = replace(
                 target,
                 alt_deg=target_alt,
@@ -1402,15 +1435,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 persistent_keep_marker=True,
             )
             self.state.persistent_search_target = updated_target
-            self.state.persistent_search_reference_time_utc = (
-                target.target_time_utc or self._target_time_utc()
-            )
+            self.state.persistent_search_reference_time_utc = reference_time_utc
             self.state.persistent_search_last_error = None
             self.state.persistent_search_last_refresh_utc = target.target_time_utc
             if target.kind == "jpl_small_body" or target.jpl_group == "sb":
                 self.state.persistent_search_next_refresh_utc = (
-                    (target.target_time_utc or self._target_time_utc())
-                    + timedelta(hours=1)
+                    reference_time_utc + timedelta(hours=1)
                 )
                 self._schedule_persistent_search_refresh()
             else:
