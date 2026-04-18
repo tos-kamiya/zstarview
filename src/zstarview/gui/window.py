@@ -437,6 +437,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
         # --- Viewer and Window Setup ---
         self.viewer_data = viewer_data
+        self._search_view_center_base = tuple(self.viewer_data.view_center)
+        self._search_view_center_alt_specified = False
+        self._search_view_center_az_specified = False
         self.state = SkyWindowState(
             render_view_center=tuple(self.viewer_data.view_center),
             urban_outlines=None,
@@ -1449,8 +1452,15 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         # When jumping to a target, keep the jump highlight altitude as-reported
         # (may be negative), but clamp the actual view center to the horizon (0°)
         # so the view doesn't go below the horizon automatically.
-        new_alt = max(OBSERVER_MIN_ALT_DEG, min(90.0, target_alt))
-        new_az = target_az
+        base_alt, base_az = tuple(
+            getattr(self, "_search_view_center_base", self.viewer_data.view_center)
+        )
+        fixed_alt = bool(getattr(self, "_search_view_center_alt_specified", False))
+        fixed_az = bool(getattr(self, "_search_view_center_az_specified", False))
+        new_alt = float(base_alt) if fixed_alt else max(
+            OBSERVER_MIN_ALT_DEG, min(90.0, target_alt)
+        )
+        new_az = float(base_az) % 360.0 if fixed_az else target_az
         self.viewer_data.view_center = (new_alt, new_az)
         self._sync_view_altitude_actions()
 
