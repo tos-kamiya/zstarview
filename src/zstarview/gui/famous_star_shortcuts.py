@@ -47,7 +47,6 @@ class SearchJumpTarget:
     target_time_utc: datetime | None = None
     jpl_group: str = ""
     persistent_keep_marker: bool = False
-    persistent_keep_label: bool = False
 
 
 SATELLITE_JUMP_SHORTCUTS = (

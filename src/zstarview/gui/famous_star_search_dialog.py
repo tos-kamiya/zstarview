@@ -36,7 +36,7 @@ class NamedStarSearchDialog(QDialog):
         jpl_search_callback: Callable[[str], Sequence[SearchJumpTarget]] | None = None,
     ) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Search Stars and Asterisms")
+        self.setWindowTitle("Search Objects")
         self.setModal(True)
         self.resize(560, 560)
 
@@ -79,9 +79,7 @@ class NamedStarSearchDialog(QDialog):
 
         keep_row = QHBoxLayout()
         self._jpl_keep_marker = QCheckBox("Keep marker", self)
-        self._jpl_keep_label = QCheckBox("Keep label", self)
         keep_row.addWidget(self._jpl_keep_marker)
-        keep_row.addWidget(self._jpl_keep_label)
         keep_row.addStretch(1)
         outer.addLayout(keep_row)
 
@@ -110,7 +108,6 @@ class NamedStarSearchDialog(QDialog):
         return replace(
             target,
             persistent_keep_marker=self._jpl_keep_marker.isChecked(),
-            persistent_keep_label=self._jpl_keep_label.isChecked(),
         )
 
     def accept(self) -> None:  # noqa: D401 - Qt override

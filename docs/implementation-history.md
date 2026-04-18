@@ -28,8 +28,8 @@
 - GUI 上で時刻を前後できるダイナミックなタイムシフト操作を追加する
 - CLI 仕様と内部データ構造の対応表を設計書へ追加する
 - 必要に応じて `CloudController` と `SkyWindow` の責務境界を再評価する
-- Search Stars and Asterisms ダイアログに JPL 小天体検索と継続表示オプションを追加する
-  - `Keep marker` と `Keep label` を持つ下部チェックボックスを設ける
+- Search Objects ダイアログに JPL 小天体検索と継続表示オプションを追加する
+  - `Keep marker` を持つ下部チェックボックスを設ける
   - 一時 jump highlight と永続マーカー/ラベルの状態を分離する
   - 永続表示は積み増しではなく、最新の 1 件へ置き換える
 - 航空機オーバーレイの OpenSky 問い合わせ節約策を検討する
@@ -559,16 +559,16 @@
 
 ### 2026-04-18
 
-- Search Stars and Asterisms 拡張の設計メモ
+- Search Objects 拡張の設計メモ
   - JPL 小天体検索を既存の恒星・アステリズム検索 UI に統合し、選択対象へ視界中心を合わせる方針を確認した。
   - 結果の永続表示は、検索ダイアログ下部のチェックボックスで制御する方針にした。
   - 永続マーカーとラベルは、一時 jump highlight と別の状態として扱う前提で整理した。
 
 - JPL small-body 本体接続
-  - `Search Stars and Asterisms` ダイアログを local first 方式にして、恒星・アステリズムの検索結果が無い場合だけ JPL small body へフォールバックするようにした。
+  - `Search Objects` ダイアログを local first 方式にして、恒星・アステリズムの検索結果が無い場合だけ JPL small body へフォールバックするようにした。
   - 検索欄の直下に JPL database 検索ボタンを追加し、Enter キー依存ではなく明示的に JPL へ問い合わせられるようにした。
   - JPL フォールバックは major body と small body の両方を問い合わせるようにした。
-  - `Keep marker` / `Keep label` は JPL 結果にも反映し、major body の場合も持続表示だけは残るようにした。
+  - `Keep marker` は JPL 結果にも反映し、major body の場合も持続表示だけは残るようにした。
   - `Sun` と `Moon` は JPL フォールバックから除外し、solar-system 側の表示に委ねるようにした。
   - `SearchJumpTarget` に JPL 用の `command` / `alt_deg` / `az_deg` / 永続フラグを追加し、`SkyWindowState` に永続ターゲットを保持するようにした。
   - 永続マーカーは衛星クロスと同じ大きさで描画し、ラベルは単独のアウトラインテキストとして重ねるようにした。

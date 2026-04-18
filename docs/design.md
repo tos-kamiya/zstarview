@@ -456,8 +456,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 #### 4.4.2 検索ダイアログの持続表示オプション
 
-- `gui/famous_star_search_dialog.py` は、検索語入力、候補一覧、確定/取消に加えて、結果を継続表示するためのチェックボックス領域を持ってよい。
-- チェックボックスは少なくとも `Keep marker` と `Keep label` の 2 つを持つ。
+- `gui/famous_star_search_dialog.py` は、`Search Objects...` ダイアログとして、検索語入力、候補一覧、確定/取消に加えて、結果を継続表示するためのチェックボックス領域を持ってよい。
+- チェックボックスは `Keep marker` の 1 つだけを持ち、マーカーとラベルの両方を継続表示する意味にしてよい。
 - これらの設定は検索 UI のフィルタ条件ではなく、ジャンプ後の表示保持フラグとして扱う。
 - 継続表示フラグは `SkyWindowState` の一時 jump highlight とは別の状態として保持してよい。
 - 一時 jump highlight は従来どおり 3 秒程度で消えるが、継続表示フラグで選ばれたマーカーとラベルは、利用者が明示的に解除するまで残してよい。
@@ -484,13 +484,12 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 #### 4.4.4 永続検索状態モデル
 
-- 永続表示は、`SkyWindowState` に次の3系統を持たせると扱いやすい。
+- 永続表示は、`SkyWindowState` に次の2系統を持たせると扱いやすい。
   - `persistent_search_target`
   - `persistent_search_keep_marker`
-  - `persistent_search_keep_label`
 - `persistent_search_target` は、最後に選ばれた 1 件の検索対象だけを保持する。
 - `persistent_search_target` には `SearchJumpTarget` をそのまま使ってよいが、将来の拡張のために `kind` と `object_key` を正として扱い、描画用の一時座標は別途導出してよい。
-- `persistent_search_keep_marker` と `persistent_search_keep_label` は、検索ダイアログ下部のチェックボックス状態をそのまま反映する。
+- `persistent_search_keep_marker` は、検索ダイアログ下部のチェックボックス状態をそのまま反映する。
 - 永続表示は「対象の識別」と「見かけ位置の再計算」を分ける。
   - 識別は `persistent_search_target`
   - 位置は `celestial_data` 更新時に再計算
@@ -501,10 +500,10 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `JPL 小天体` は SBDB/Horizons 由来の時刻依存位置を使う
 - 小天体の軌跡を 1 時間程度で描く場合は、`persistent_search_target` とは別に、描画用の短期 trajectory cache を追加してよい。
 - この trajectory cache は検索状態そのものではなく、`SkyWindowState` の描画補助として扱う。
-- 画面に見せるラベルは、`persistent_search_keep_label` が有効なときだけ描画する。
+- 画面に見せるラベルは、`persistent_search_keep_marker` が有効なときに同時に描画する。
 - 画面に見せるマーカーは、`persistent_search_keep_marker` が有効なときだけ描画する。
 - 検索を再実行した場合は、積み増しではなく `persistent_search_target` を上書きする。
-- 明示解除は、`persistent_search_target = None` に加えて、両方の keep フラグを `False` に戻す経路を持ってよい。
+- 明示解除は、`persistent_search_target = None` に加えて、`persistent_search_keep_marker = False` に戻す経路を持ってよい。
 
 #### 4.4.5 JPL 小天体検索サービスとキャッシュ
 

@@ -681,7 +681,6 @@ def test_jump_to_jpl_small_body_target_can_set_persistent_overlay() -> None:
             alt_deg=12.5,
             az_deg=220.0,
             persistent_keep_marker=True,
-            persistent_keep_label=True,
         ),
     )
 
@@ -691,7 +690,6 @@ def test_jump_to_jpl_small_body_target_can_set_persistent_overlay() -> None:
     assert dummy.state.persistent_search_target is not None
     assert dummy.state.persistent_search_target.label == "Ceres"
     assert dummy.state.persistent_search_target.persistent_keep_marker is True
-    assert dummy.state.persistent_search_target.persistent_keep_label is True
     assert dummy.state.persistent_search_next_refresh_utc == datetime(
         2026, 4, 18, 13, 0, tzinfo=timezone.utc
     )
@@ -716,7 +714,6 @@ def test_jump_to_jpl_small_body_target_without_keep_flags_clears_overlay() -> No
             alt_deg=10.0,
             az_deg=30.0,
             persistent_keep_marker=True,
-            persistent_keep_label=True,
         ),
     )
     dummy.satellite_state = SimpleNamespace(
@@ -764,7 +761,6 @@ def test_jpl_small_body_failure_reschedules_one_hour_later() -> None:
         az_deg=220.0,
         target_time_utc=datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
         persistent_keep_marker=True,
-        persistent_keep_label=True,
     )
     dummy.state = SkyWindowState(
         render_view_center=(20.0, 30.0),
@@ -906,13 +902,75 @@ def test_jump_to_jpl_major_body_target_keeps_overlay_without_refresh() -> None:
             az_deg=123.0,
             jpl_group="mb",
             persistent_keep_marker=True,
-            persistent_keep_label=True,
         ),
     )
 
     assert dummy.state.persistent_search_target is not None
     assert dummy.state.persistent_search_target.label == "Mars"
     assert dummy.state.persistent_search_next_refresh_utc is None
+
+
+def test_draw_persistent_search_overlay_draws_label_when_marker_is_kept(
+    monkeypatch,
+) -> None:
+    draw_calls: list[str] = []
+
+    class _Painter:
+        def viewport(self):
+            return QRect(0, 0, 200, 200)
+
+    monkeypatch.setattr(
+        window_render_module.render_satellites,
+        "draw_gauge_cross",
+        lambda *_args, **_kwargs: draw_calls.append("marker"),
+    )
+    monkeypatch.setattr(
+        window_render_module.render_text,
+        "draw_outlined_text",
+        lambda *_args, **_kwargs: draw_calls.append("label"),
+    )
+    monkeypatch.setattr(window_render_module, "is_in_fov", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(
+        window_render_module,
+        "altaz_to_normalized_xy",
+        lambda alt, az, view_center: (float(az), float(alt)),
+    )
+    monkeypatch.setattr(
+        window_render_module.render_geometry,
+        "normalized_to_screen_xy",
+        lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+
+    dummy = _WindowStub()
+    dummy.visual_preset = "white"
+    dummy.text_font = QFont()
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(20.0, 30.0),
+        observer_height_m=1.7,
+        content_fov_deg=180.0,
+    )
+    dummy.state = SkyWindowState(
+        render_view_center=(20.0, 30.0),
+        persistent_search_target=SearchJumpTarget(
+            label="Ceres",
+            kind="jpl_small_body",
+            sort_key=(0.0, "ceres"),
+            alt_deg=12.5,
+            az_deg=220.0,
+            persistent_keep_marker=True,
+        ),
+    )
+
+    window_render_module.SkyWindowRenderMixin._draw_persistent_search_overlay(
+        dummy,
+        _Painter(),
+        geometry=SimpleNamespace(),
+    )
+
+    assert draw_calls == ["marker", "label"]
 
 
 def test_refresh_projected_satellite_overlay_falls_back_to_disk_cache(

@@ -75,7 +75,7 @@ def test_named_star_search_dialog_falls_back_to_jpl_when_local_empty() -> None:
     assert "JPL database" in dialog._jpl_search_button.text()
 
 
-def test_named_star_search_dialog_applies_keep_flags_to_jpl_result() -> None:
+def test_named_star_search_dialog_applies_keep_marker_to_jpl_result() -> None:
     dialog = NamedStarSearchDialog(
         [
             SearchJumpTarget(
@@ -88,7 +88,6 @@ def test_named_star_search_dialog_applies_keep_flags_to_jpl_result() -> None:
         jpl_search_callback=lambda _query: [],
     )
     dialog._jpl_keep_marker.setChecked(True)
-    dialog._jpl_keep_label.setChecked(True)
     item = dialog._list.item(0)
     assert item is not None
     dialog._list.setCurrentItem(item)
@@ -97,7 +96,6 @@ def test_named_star_search_dialog_applies_keep_flags_to_jpl_result() -> None:
 
     assert target is not None
     assert target.persistent_keep_marker is True
-    assert target.persistent_keep_label is True
 
 
 def test_named_star_search_dialog_blocks_sun_and_moon_jpl_fallback() -> None:
