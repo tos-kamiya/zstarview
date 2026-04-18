@@ -47,6 +47,7 @@ from ..gui.window_inputs import (
 )
 from ..overlay_time import target_time_utc_from_delta
 from ..search.jpl import search_jpl_targets
+from ..search.satellites import fetch_current_satellite_records, search_satellite_targets
 from ..search.resolver import resolve_search_targets
 from ..cli.args import parse_args
 
@@ -311,17 +312,33 @@ def main() -> None:
     def _run_startup_search() -> None:
         if not startup_search or startup_target_time_utc is None:
             return
-        resolution = resolve_search_targets(
-            startup_search,
-            catalogs.named_stars_search_all,
-            jpl_search_callback=lambda query: search_jpl_targets(
-                query,
-                observer_lat=float(viewer_data.lat_deg),
-                observer_lon=float(viewer_data.lon_deg),
-                observer_height_m=float(viewer_data.observer_height_m),
-                target_time_utc=startup_target_time_utc,
-            ),
-        )
+        try:
+            resolution = resolve_search_targets(
+                startup_search,
+                catalogs.named_stars_search_all,
+                satellite_search_callback=lambda query: search_satellite_targets(
+                    query,
+                    observer_lat=float(viewer_data.lat_deg),
+                    observer_lon=float(viewer_data.lon_deg),
+                    observer_height_m=float(viewer_data.observer_height_m),
+                    target_time_utc=startup_target_time_utc,
+                    fetch_records_by_group=lambda: fetch_current_satellite_records(
+                        observer_lat=float(viewer_data.lat_deg),
+                        observer_lon=float(viewer_data.lon_deg),
+                        observer_height_m=float(viewer_data.observer_height_m),
+                    ),
+                ),
+                jpl_search_callback=lambda query: search_jpl_targets(
+                    query,
+                    observer_lat=float(viewer_data.lat_deg),
+                    observer_lon=float(viewer_data.lon_deg),
+                    observer_height_m=float(viewer_data.observer_height_m),
+                    target_time_utc=startup_target_time_utc,
+                ),
+            )
+        except Exception as exc:
+            logger.error("Startup search failed: %s", exc)
+            return
         if len(resolution.candidates) == 1 and resolution.selected_target is not None:
             target = resolution.selected_target
             if bool(getattr(args, "search_keep_marker", False)):

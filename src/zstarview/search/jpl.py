@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 import logging
 from typing import Mapping
+from collections.abc import Sequence
 from collections.abc import Callable
 
 from ..satellites import fetch_horizons_lookup, fetch_horizons_observer_csv
@@ -53,6 +54,7 @@ def search_jpl_targets(
     observer_lon: float,
     observer_height_m: float,
     target_time_utc: datetime,
+    groups: Sequence[str] = ("mb", "sb"),
     timeout_s: float | None = None,
     lookup_base_url: str | None = None,
     horizons_base_url: str | None = None,
@@ -76,7 +78,8 @@ def search_jpl_targets(
     lookup_impl = lookup_fetch or fetch_horizons_lookup
     observer_impl = observer_fetch or fetch_horizons_observer_csv
     targets: list[SearchJumpTarget] = []
-    for group, group_label in (("mb", "major body"), ("sb", "small body")):
+    for group in tuple(str(group).strip() for group in groups if str(group).strip()):
+        group_label = "major body" if group == "mb" else "small body" if group == "sb" else group
         try:
             lookup_payload = lookup_impl(search_text, group=group, **fetch_kwargs)
         except Exception as exc:

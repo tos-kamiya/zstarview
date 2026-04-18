@@ -106,6 +106,7 @@ from .famous_star_shortcuts import (
     build_place_search_jump_targets,
 )
 from ..search.jpl import search_jpl_targets
+from ..search.satellites import search_satellite_targets
 from ..search.models import SearchJumpTarget
 from ..asterisms import ASTERISM_KEYS_BY_SOURCE_ID
 from .sky_worker import SkyDataWorker
@@ -1185,9 +1186,15 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         dialog = NamedStarSearchDialog(
             self._named_stars_search_all,
             self,
+            satellite_search_callback=self._search_satellite_targets,
             jpl_search_callback=self._search_jpl_targets,
         )
         if dialog.exec() == 0:
+            return
+        if dialog.should_clear_persistent_marker():
+            clear_persistent_search = getattr(self, "_clear_persistent_search", None)
+            if callable(clear_persistent_search):
+                clear_persistent_search()
             return
         target = dialog.selected_target()
         if target is None:
@@ -1212,6 +1219,25 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             target_time_utc=self._target_time_utc(),
             lookup_fetch=fetch_horizons_lookup,
             observer_fetch=fetch_horizons_observer_csv,
+        )
+
+    def _search_satellite_targets(self, query: str) -> list[SearchJumpTarget]:
+        records_by_group = dict(self.satellite_state.records_by_group or {})
+        enabled_groups = tuple(self._enabled_satellite_groups)
+        cached_records = self._load_cached_satellite_records(enabled_groups)
+        if not records_by_group:
+            records_by_group = cached_records
+        elif cached_records:
+            merged_records = dict(records_by_group)
+            merged_records.update(cached_records)
+            records_by_group = merged_records
+        return search_satellite_targets(
+            query,
+            observer_lat=float(self.viewer_data.location[0]),
+            observer_lon=float(self.viewer_data.location[1]),
+            observer_height_m=float(self.viewer_data.observer_height_m),
+            target_time_utc=self._target_time_utc(),
+            records_by_group=records_by_group,
         )
 
     def _build_horizons_command(self, target: dict[str, object], *, group: str) -> str:
