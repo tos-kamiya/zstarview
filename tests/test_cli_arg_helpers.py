@@ -121,6 +121,13 @@ def test_parse_args_accepts_window_frame_mode() -> None:
     assert args.window_frame == "window"
 
 
+def test_parse_args_marks_explicit_view_center_values() -> None:
+    args = cli_args.parse_args(["-A90", "--view-center-az=180", "Matsue"])
+
+    assert args.view_center_alt_specified is True
+    assert args.view_center_az_specified is True
+
+
 def test_parse_args_accepts_earth_guide_opacity() -> None:
     args = cli_args.parse_args(["--earth-guide-opacity", "0", "Matsue"])
 

@@ -305,6 +305,12 @@ def main() -> None:
         user_options=user_options,
         runtime_options=runtime_options,
     )
+    main_win._search_view_center_alt_specified = bool(
+        getattr(args, "view_center_alt_specified", False)
+    )
+    main_win._search_view_center_az_specified = bool(
+        getattr(args, "view_center_az_specified", False)
+    )
 
     startup_search = str(getattr(args, "search", "") or "").strip()
     startup_target_time_utc = target_time_utc_from_delta(delta_t) if startup_search else None

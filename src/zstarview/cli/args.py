@@ -1221,6 +1221,12 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     _validate_location_argument_combinations(parser, args)
     _validate_urban_outline_argument_combinations(parser, args)
     _validate_main_search_arguments(parser, args, raw_argv)
+    args.view_center_alt_specified = _argv_has_option(
+        raw_argv, "-A", "--view-center-alt"
+    )
+    args.view_center_az_specified = _argv_has_option(
+        raw_argv, "-Z", "--view-center-az"
+    )
 
     return args
 
