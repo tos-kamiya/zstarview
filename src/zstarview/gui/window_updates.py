@@ -169,6 +169,8 @@ class SkyWindowUpdatesMixin:
             return ""
         next_refresh_utc = getattr(self.state, "persistent_search_next_refresh_utc", None)
         last_error = str(getattr(self.state, "persistent_search_last_error", "")).strip()
+        if getattr(target, "jpl_group", "") != "sb" and not last_error:
+            return f"JPL [{label}]: held"
         if isinstance(next_refresh_utc, datetime):
             refresh_part = next_refresh_utc.strftime("%H:%MZ")
         else:

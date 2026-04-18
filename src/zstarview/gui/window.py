@@ -1466,21 +1466,21 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.state.jump_highlight_altaz = (target_alt, target_az)
         self.state.jump_highlight_until_ms = (time.monotonic() * 1000.0) + 3000.0
         if target.kind in ("jpl_small_body", "jpl_body"):
-            if (
-                target.jpl_group == "sb"
-                and (target.persistent_keep_marker or target.persistent_keep_label)
-            ):
+            if target.persistent_keep_marker or target.persistent_keep_label:
                 self.state.persistent_search_target = target
                 self.state.persistent_search_reference_time_utc = (
                     target.target_time_utc or self._target_time_utc()
                 )
                 self.state.persistent_search_last_error = None
                 self.state.persistent_search_last_refresh_utc = target.target_time_utc
-                self.state.persistent_search_next_refresh_utc = (
-                    (target.target_time_utc or self._target_time_utc())
-                    + timedelta(hours=1)
-                )
-                self._schedule_persistent_search_refresh()
+                if target.jpl_group == "sb":
+                    self.state.persistent_search_next_refresh_utc = (
+                        (target.target_time_utc or self._target_time_utc())
+                        + timedelta(hours=1)
+                    )
+                    self._schedule_persistent_search_refresh()
+                else:
+                    self.state.persistent_search_next_refresh_utc = None
             else:
                 self._clear_persistent_search()
 
