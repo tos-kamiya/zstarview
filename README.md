@@ -180,10 +180,10 @@ If `-A` or `-Z` is also given, that axis stays fixed and the search result fills
 | `-a`, `--aircraft-opacity OPACITY`          | Opacity of the aircraft overlay (0.0–1.0). Use 0.0 to disable aircraft queries and drawing for that run. | `0.5` |
 | `--satellite-opacity OPACITY`               | Opacity of the artificial satellite overlay (0.0–1.0). Use 0.0 to disable satellite element fetch and drawing for that run. | `0.5` |
 | `--show-guidelines-initial true\|false`     | Whether guideline overlays are shown at startup. This controls the geometric horizon, celestial equator, ecliptic, direction labels, and zenith marker. | `show` |
-| `--terrain-horizon-opacity OPACITY`         | Opacity of the terrain horizon polyline (0.0–1.0). Use 0.0 to disable DEM download, terrain-horizon calculation, terrain-horizon drawing, and the earth guide. \*4 | `0.028` |
-| `--earth-guide-opacity OPACITY`             | Opacity of the below-horizon earth guide line layer (0.0–1.0). Use 0.0 to disable earth-guide drawing for that run. \*4 | `0.028` |
+| `-d`, `--terrain-horizon-opacity OPACITY`   | Opacity of the terrain horizon polyline (0.0–1.0). Use 0.0 to disable DEM download, terrain-horizon calculation, terrain-horizon drawing, and the earth guide. \*4 | `0.028` |
+| `-e`, `--earth-guide-opacity OPACITY`       | Opacity of the below-horizon earth guide line layer (0.0–1.0). Use 0.0 to disable earth-guide drawing for that run. \*4 | `0.028` |
 | `--ground-tint-opacity OPACITY`             | Strength of the ground-color fill below the geometric/terrain horizon (0.0–1.0). | `0.1` |
-| `--urban-outline-opacity OPACITY`           | Opacity of the urban outline overlay (0.0–1.0). Use 0.0 to disable it for that run. | `0.2` |
+| `-u`, `--urban-outline-opacity OPACITY`     | Opacity of the urban outline overlay (0.0–1.0). Use 0.0 to disable it for that run. | `0.2` |
 | `--urban-outline-feature-type {both,building}` | Overture cache mode for the urban outline. `both` combines `building` and `building_part`, preferring parts when available. | `both` |
 | `-r`, `--urban-outline-radius-km RADIUS_KM` | Fetch and render urban-outline buildings within this radius from the observer location. The value is also part of the cache key. | `2.5` |
 | `--urban-outline-skyscraper-radius-km RADIUS_KM` | Outer radius of the far-range skyscraper helper layer. Use `0` to disable skyscraper-tile lookup for that run; otherwise the value must be greater than or equal to `--urban-outline-radius-km`. | `60.0` |
@@ -496,9 +496,9 @@ From the hamburger menu (`☰`), you can use:
 * **Clouds**: Toggle real-time cloud overlays on/off.
 * **Aircraft**: Toggle the OpenSky-based aircraft overlay on/off. If disabled from the CLI with `-a 0` / `--aircraft-opacity 0`, the menu item cannot re-enable it for that run.
 * **Satellites**: Toggle the ISS artificial satellite overlay on/off. If disabled from the CLI with `--satellite-opacity 0`, the menu item cannot re-enable it for that run.
-* **Terrain Horizon**: Toggle the terrain skyline overlay on/off. If disabled from the CLI with `--terrain-horizon-opacity 0`, the menu item cannot re-enable it for that run.
-* **Earth Guide**: Toggle the below-horizon earth-guide overlay on/off. If disabled from the CLI with `--earth-guide-opacity 0`, the menu item cannot re-enable it for that run.
-* **Urban Outline**: Toggle the Overture-derived urban roofline overlay on/off. If disabled from the CLI with `--urban-outline-opacity 0`, the menu item cannot re-enable it for that run.
+* **Terrain Horizon**: Toggle the terrain skyline overlay on/off. If disabled from the CLI with `-d 0` / `--terrain-horizon-opacity 0`, the menu item cannot re-enable it for that run.
+* **Earth Guide**: Toggle the below-horizon earth-guide overlay on/off. If disabled from the CLI with `-e 0` / `--earth-guide-opacity 0`, the menu item cannot re-enable it for that run.
+* **Urban Outline**: Toggle the Overture-derived urban roofline overlay on/off. If disabled from the CLI with `-u 0` / `--urban-outline-opacity 0`, the menu item cannot re-enable it for that run.
 * **Fullscreen**: Toggle fullscreen display.
 * **Exit**: Quit the application.
 
@@ -600,7 +600,7 @@ zstarview --window-frame window
 3. Terrain horizon
 
    Terrain horizon rendering downloads Copernicus DEM tiles once and then reuses the local cache.
-   If your network is slow or unavailable, disable terrain horizon rendering with `--terrain-horizon-opacity 0`.
+   If your network is slow or unavailable, disable terrain horizon rendering with `-d 0` or `--terrain-horizon-opacity 0`.
    You can still explore stars/planets and sky colors without terrain overlays.
 
 4. Artificial satellite data
