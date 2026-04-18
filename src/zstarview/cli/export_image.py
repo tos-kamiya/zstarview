@@ -249,6 +249,8 @@ def _build_window_inputs_from_args(
     search_query = str(getattr(args, "search", "") or "").strip()
     search_overlay_target: SearchJumpTarget | None = None
     if search_query:
+        fixed_alt = bool(getattr(args, "view_center_alt_specified", False))
+        fixed_az = bool(getattr(args, "view_center_az_specified", False))
         target_time_utc = datetime.now(timezone.utc) + delta_t
         try:
             resolution = resolve_search_targets(
@@ -304,14 +306,19 @@ def _build_window_inputs_from_args(
             ),
         )
         if altaz is not None:
-            viewer_data.view_center = (
-                _clamp_view_center_altitude(float(altaz[0])),
-                float(altaz[1]) % 360.0,
+            target_alt = _clamp_view_center_altitude(float(altaz[0]))
+            target_az = float(altaz[1]) % 360.0
+            viewer_data.view_center = _search_view_center_for_target(
+                base_view_center=view_center,
+                target_alt_deg=target_alt,
+                target_az_deg=target_az,
+                fixed_alt=fixed_alt,
+                fixed_az=fixed_az,
             )
             search_overlay_target = replace(
                 target,
-                alt_deg=float(altaz[0]),
-                az_deg=float(altaz[1]) % 360.0,
+                alt_deg=target_alt,
+                az_deg=target_az,
             )
 
     dso_catalog = _load_dso_catalog_for_export()
@@ -993,6 +1000,23 @@ def _format_search_failure_message(query: str, candidate_count: int) -> str:
 
 def _clamp_view_center_altitude(alt_deg: float) -> float:
     return max(float(OBSERVER_MIN_ALT_DEG), min(90.0, float(alt_deg)))
+
+
+def _search_view_center_for_target(
+    *,
+    base_view_center: tuple[float, float],
+    target_alt_deg: float,
+    target_az_deg: float,
+    fixed_alt: bool,
+    fixed_az: bool,
+) -> tuple[float, float]:
+    view_center_alt = (
+        float(base_view_center[0])
+        if fixed_alt
+        else _clamp_view_center_altitude(target_alt_deg)
+    )
+    view_center_az = float(base_view_center[1]) if fixed_az else float(target_az_deg) % 360.0
+    return view_center_alt, view_center_az
 
 
 def main() -> None:

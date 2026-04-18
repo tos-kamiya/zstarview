@@ -6,6 +6,7 @@ from zstarview.__about__ import __version__
 from zstarview.cli.export_image import (
     _clamp_view_center_altitude,
     _format_search_failure_message,
+    _search_view_center_for_target,
 )
 from zstarview.cli.args import parse_export_image_args
 
@@ -55,6 +56,13 @@ def test_parse_export_image_args_accepts_sixel_without_output() -> None:
     assert args.city == "Matsue"
     assert args.sixel is True
     assert args.output is None
+
+
+def test_parse_export_image_args_marks_explicit_view_center_values() -> None:
+    args = parse_export_image_args(["-A90", "--view-center-az=180", "-o", "out.png"])
+
+    assert args.view_center_alt_specified is True
+    assert args.view_center_az_specified is True
 
 
 def test_parse_export_image_args_requires_output_or_sixel() -> None:
@@ -125,6 +133,32 @@ def test_format_search_failure_message_reports_multiple_results() -> None:
 
 def test_clamp_view_center_altitude_matches_gui_floor() -> None:
     assert _clamp_view_center_altitude(-20.0) == -5.0
+
+
+def test_search_view_center_for_target_honors_fixed_axes() -> None:
+    assert _search_view_center_for_target(
+        base_view_center=(5.0, 180.0),
+        target_alt_deg=12.5,
+        target_az_deg=220.0,
+        fixed_alt=True,
+        fixed_az=False,
+    ) == (5.0, 220.0)
+
+    assert _search_view_center_for_target(
+        base_view_center=(45.0, 210.0),
+        target_alt_deg=12.5,
+        target_az_deg=220.0,
+        fixed_alt=False,
+        fixed_az=True,
+    ) == (12.5, 210.0)
+
+    assert _search_view_center_for_target(
+        base_view_center=(5.0, 210.0),
+        target_alt_deg=12.5,
+        target_az_deg=220.0,
+        fixed_alt=True,
+        fixed_az=True,
+    ) == (5.0, 210.0)
 
 
 def test_parse_export_image_args_rejects_skyscraper_radius_smaller_than_base_radius() -> (
