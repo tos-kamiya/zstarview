@@ -45,6 +45,7 @@ class SearchJumpTarget:
     alt_deg: float | None = None
     az_deg: float | None = None
     target_time_utc: datetime | None = None
+    jpl_group: str = ""
     persistent_keep_marker: bool = False
     persistent_keep_label: bool = False
 
