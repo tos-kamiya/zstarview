@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-04-17
+最終更新: 2026-04-18
 
 ## 1. この文書の位置づけ
 
@@ -423,7 +423,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `src/zstarview/gui/famous_star_dialog.py`
   - 代表恒星ジャンプ UI
 - `src/zstarview/gui/famous_star_search_dialog.py`
-  - 星・アステリズム・place 検索 UI
+  - 星・アステリズム・place・JPL 小天体検索 UI
 - `src/zstarview/gui/famous_star_shortcuts.py`
   - ジャンプ・検索用データの整形
 
@@ -453,6 +453,84 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 失敗時に描画 state や視界中心を変更してはならない。
 - 検索ダイアログを開くメニュー項目は、debug-oriented な補助機能としてキーボードショートカットを持たなくてよい。
 - 初期仕様では、place 検索結果の永続保存、検索履歴、CLI からの place ターゲット検索、place ターゲットの継続追跡は扱わない。
+
+#### 4.4.2 検索ダイアログの持続表示オプション
+
+- `gui/famous_star_search_dialog.py` は、検索語入力、候補一覧、確定/取消に加えて、結果を継続表示するためのチェックボックス領域を持ってよい。
+- チェックボックスは少なくとも `Keep marker` と `Keep label` の 2 つを持つ。
+- これらの設定は検索 UI のフィルタ条件ではなく、ジャンプ後の表示保持フラグとして扱う。
+- 継続表示フラグは `SkyWindowState` の一時 jump highlight とは別の状態として保持してよい。
+- 一時 jump highlight は従来どおり 3 秒程度で消えるが、継続表示フラグで選ばれたマーカーとラベルは、利用者が明示的に解除するまで残してよい。
+- 継続表示対象は積み増さず、検索のたびに現在の 1 件へ置き換える実装としてよい。
+- 継続表示対象は、星、アステリズム、place、衛星、JPL 小天体のいずれでもよいが、描画側ではターゲット種別に応じてラベル文言だけを切り替える。
+- JPL 小天体候補は、ネットワーク I/O を含む可能性があるため、検索・候補解決は UI スレッドを塞がない経路に寄せてよい。
+- JPL 検索結果の `kind` は、既存の `star` / `asterism` / `place` / `satellite` に加えて、小天体を識別できる値を持たせてよい。
+- 結果を継続表示する際のマーカーは、衛星マーカーと同程度の見かけサイズを再利用してよい。
+- 継続ラベルは、通常の hover ラベルより高い優先度で扱い、重なり回避で消えすぎないようにしてよい。
+
+#### 4.4.3 検索ジャンプと描画状態
+
+- `SkyWindowCoreMixin._jump_to_search_target()` は、選択した対象の現在時刻における見かけ方向を計算し、`viewer_data.view_center` を更新する役割を持つ。
+- 既存の `jump_highlight_name` / `jump_highlight_altaz` / `jump_highlight_until_ms` は、一時的な視覚フィードバック専用として保持する。
+- 持続マーカーと持続ラベルは、上記の一時 jump highlight とは別の状態にし、HUD か補助オーバーレイとして再描画できるようにする。
+- 持続マーカーと持続ラベルは単一対象の状態として保持し、複数対象の集合を管理しなくてよい。
+- 描画キャッシュのキーには、持続マーカー/ラベルの有無と対象の識別子を含めてよい。
+- これにより、結果の永続表示を切り替えたときだけ frame cache を破棄し、通常のマウス hover や短い jump highlight では base frame を再利用できる。
+
+#### 4.4.4 永続検索状態モデル
+
+- 永続表示は、`SkyWindowState` に次の3系統を持たせると扱いやすい。
+  - `persistent_search_target`
+  - `persistent_search_keep_marker`
+  - `persistent_search_keep_label`
+- `persistent_search_target` は、最後に選ばれた 1 件の検索対象だけを保持する。
+- `persistent_search_target` には `SearchJumpTarget` をそのまま使ってよいが、将来の拡張のために `kind` と `object_key` を正として扱い、描画用の一時座標は別途導出してよい。
+- `persistent_search_keep_marker` と `persistent_search_keep_label` は、検索ダイアログ下部のチェックボックス状態をそのまま反映する。
+- 永続表示は「対象の識別」と「見かけ位置の再計算」を分ける。
+  - 識別は `persistent_search_target`
+  - 位置は `celestial_data` 更新時に再計算
+- 位置再計算は、対象種別ごとに既存ロジックへ寄せてよい。
+  - `star` / `asterism` はカタログや既存投影を使う
+  - `place` は緯度経度から固定変換する
+  - `satellite` は既存衛星投影を使う
+  - `JPL 小天体` は SBDB/Horizons 由来の時刻依存位置を使う
+- 小天体の軌跡を 1 時間程度で描く場合は、`persistent_search_target` とは別に、描画用の短期 trajectory cache を追加してよい。
+- この trajectory cache は検索状態そのものではなく、`SkyWindowState` の描画補助として扱う。
+- 画面に見せるラベルは、`persistent_search_keep_label` が有効なときだけ描画する。
+- 画面に見せるマーカーは、`persistent_search_keep_marker` が有効なときだけ描画する。
+- 検索を再実行した場合は、積み増しではなく `persistent_search_target` を上書きする。
+- 明示解除は、`persistent_search_target = None` に加えて、両方の keep フラグを `False` に戻す経路を持ってよい。
+
+#### 4.4.5 JPL 小天体検索サービスとキャッシュ
+
+- JPL 小天体検索は、`famous_star_search_dialog.py` 直下でネットワーク処理を書かず、検索サービス関数か controller 経由で行ってよい。
+- サービス層は少なくとも次の2段に分けると扱いやすい。
+  - **候補検索**: SBDB 由来の名前・番号・別名の解決
+  - **位置取得**: Horizons 由来の observer ephemeris またはそれに準じる時刻依存位置取得
+- 候補検索は、検索ボックスで Enter / Search が押されたときだけ実行してよい。文字入力のたびに再問い合わせしなくてよい。
+- 候補検索結果は、`normalized_query` をキーにした短期キャッシュを持ってよい。
+  - 同一セッション内の再検索を減らす目的で、`24h` 程度の TTL を使ってよい。
+  - 更新追従を少し早くしたいなら、実装上は `6h` 程度へ短縮してもよい。
+- 候補一覧には少なくとも次を含めてよい。
+  - 表示名
+  - 小天体番号または designation
+  - 種別
+  - 検索元
+- 候補から 1 件を選んだ後は、その 1 件だけを `persistent_search_target` に反映する。
+- 位置取得は、選択対象・観測地点・高度・時刻をキーにした別キャッシュを持ってよい。
+  - 小天体の見かけ位置は時刻で変化するため、候補検索キャッシュと同じ寿命で扱わない。
+  - 位置取得キャッシュは 1 時間程度の窓で再利用してよい。
+  - 1 時間単位で更新するなら、`[現在時刻の前後 30 分]` のような窓をまとめて取ってよい。
+- 位置取得キャッシュは、少なくとも次の情報でキー化してよい。
+  - 小天体の一意 ID
+  - 観測者の緯度
+  - 観測者の経度
+  - 観測者の高度
+  - 観測時刻の hour bucket
+- 位置取得結果は、描画用の `alt/az` 列と、必要なら短期 trajectory として保持してよい。
+- 既存の衛星キャッシュと同様に、検索中は最新リクエスト優先の更新規則を使ってよい。
+- 失敗時は、候補検索失敗と位置取得失敗を別メッセージに分けてよい。
+- 候補検索に成功しても位置取得に失敗した場合は、候補一覧は残し、選択後の jump だけ失敗させてよい。
 
 ### 4.5 雲データ処理
 
