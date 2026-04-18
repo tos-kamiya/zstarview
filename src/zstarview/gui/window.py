@@ -106,6 +106,7 @@ from .famous_star_shortcuts import (
     build_place_search_jump_targets,
 )
 from ..search.jpl import search_jpl_targets
+from ..search.satellites import fetch_current_satellite_records
 from ..search.satellites import search_satellite_targets
 from ..search.models import SearchJumpTarget
 from ..asterisms import ASTERISM_KEYS_BY_SOURCE_ID
@@ -1225,8 +1226,19 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         records_by_group = dict(self.satellite_state.records_by_group or {})
         enabled_groups = tuple(self._enabled_satellite_groups)
         cached_records = self._load_cached_satellite_records(enabled_groups)
+        fresh_records = fetch_current_satellite_records(
+            observer_lat=float(self.viewer_data.location[0]),
+            observer_lon=float(self.viewer_data.location[1]),
+            observer_height_m=float(self.viewer_data.observer_height_m),
+            enabled_groups=enabled_groups,
+            force_refresh=True,
+        )
         if not records_by_group:
-            records_by_group = cached_records
+            records_by_group = fresh_records or cached_records
+        elif fresh_records:
+            merged_records = dict(records_by_group)
+            merged_records.update(fresh_records)
+            records_by_group = merged_records
         elif cached_records:
             merged_records = dict(records_by_group)
             merged_records.update(cached_records)

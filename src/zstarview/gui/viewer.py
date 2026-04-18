@@ -326,6 +326,7 @@ def main() -> None:
                         observer_lat=float(viewer_data.lat_deg),
                         observer_lon=float(viewer_data.lon_deg),
                         observer_height_m=float(viewer_data.observer_height_m),
+                        force_refresh=True,
                     ),
                 ),
                 jpl_search_callback=lambda query: search_jpl_targets(
