@@ -108,6 +108,7 @@ zstarview auto
 zstarview "Tokyo Skytree"
 zstarview "35.68;139.76" --datetime "2025-09-12 21 JST"
 zstarview --place "Matsue Station" --place-countrycode jp
+zstarview --search Ceres
 ```
 
 CLI では、場所・時刻・描画設定を細かく指定できます。
@@ -157,6 +158,18 @@ CLI では、場所・時刻・描画設定を細かく指定できます。
 | `--show-dso-initial true\|false` | 起動時に DSO を表示するかを指定します。 | 自動（カタログがあれば表示） |
 | `--show-asterisms-initial true\|false` | 起動時にアステリウムを表示するかを指定します。 | `show` |
 | `--show-observation-info-initial true\|false` | 起動時に観測情報ブロックを表示するかを指定します。 | `show` |
+
+#### 起動時の Search Objects
+
+| オプション | 説明 | デフォルト |
+| :--- | :--- | :--- |
+| `--search QUERY` | 起動時に対象を解決します。GUI の `Search Objects...` と `zstarview-export-image` でも同じルールを使い、`=` がなければラベルまたは ID で検索します。 | |
+| `--search label=QUERY` | ラベルだけを検索します。 | |
+| `--search id=QUERY` | ID だけを検索します。 | |
+| `--search-keep-marker` | 選択対象をマーカーとラベル付きで継続表示します。 | |
+| `--list` | `zstarview-export-image` 専用です。候補を表示して終了します。 | |
+
+`-A` または `-Z` が指定されている場合は、その軸を固定し、未指定側だけを検索結果で補います。検索結果の高度角は `-5°` にクランプされます。
 
 #### オーバーレイ
 
