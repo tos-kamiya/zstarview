@@ -107,6 +107,7 @@ zstarview auto
 zstarview "Tokyo Skytree"
 zstarview "35.68;139.76" --datetime "2025-09-12 21 JST"
 zstarview --place "Matsue Station" --place-countrycode jp
+zstarview --search Ceres
 ```
 
 The CLI supports detailed startup configuration for location, time, and rendering.
@@ -156,6 +157,18 @@ The CLI supports detailed startup configuration for location, time, and renderin
 | `--show-dso-initial true\|false`            | Whether DSO overlays are shown at startup.                                  | auto (`show` when catalog is available) |
 | `--show-asterisms-initial true\|false`      | Whether asterism overlays are shown at startup.                             | `show` |
 | `--observation-info auto\|top\|bottom\|off` | Startup mode for the observation-info block.                                 | `auto` |
+
+#### Search Objects at startup
+
+| Option                                      | Description                                                                 | Default |
+| :------------------------------------------ | :-------------------------------------------------------------------------- | :------ |
+| `--search QUERY`                            | Resolve a named object at startup. Shared with GUI `Search Objects...` and `zstarview-export-image`; bare `QUERY` searches by label or ID. |         |
+| `--search label=QUERY`                      | Search labels only.                                                         |         |
+| `--search id=QUERY`                         | Search IDs only.                                                            |         |
+| `--search-keep-marker`                      | Keep the selected target as marker plus label.                              |         |
+| `--list`                                    | `zstarview-export-image` only. List candidates and exit without rendering.  |         |
+
+If `-A` or `-Z` is also given, that axis stays fixed and the search result fills the other axis. The search result altitude is clamped to `-5°`.
 
 #### Overlays
 
