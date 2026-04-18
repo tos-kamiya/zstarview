@@ -43,14 +43,14 @@ class PreparedWindowCatalogs:
 class SkyWindowUserOptions:
     """User-facing window options that influence rendering and toggles."""
 
-    sky_disc_alpha: float = 0.3
-    cloud_disc_alpha: float = 0.6
+    sky_disc_alpha: float = 0.17
+    cloud_disc_alpha: float = 0.075
     satellite_opacity: float = 0.7
-    aircraft_opacity: float = 0.6
+    aircraft_opacity: float = 0.4
     terrain_horizon_opacity: float = 0.028
     earth_guide_opacity: float = 0.028
     urban_outline_opacity: float = 0.2
-    ground_tint_opacity: float = 1.0
+    ground_tint_opacity: float = 0.1
     enlarge_moon: bool = False
     star_base_radius: float = 4.0
     vmag_limit: float = 6.0
@@ -95,11 +95,11 @@ def prepare_window_viewer_data(
     city_data: tuple[float, float, str],
     view_center: tuple[float, float],
     *,
-    content_fov_deg: float = 100.0,
-    observer_height_m: float = 1.7,
-    location_height_label: str | None = None,
-    location_height_m: float | None = None,
-    show_observer_height: bool = False,
+    content_fov_deg: float,
+    observer_height_m: float,
+    location_height_label: str | None,
+    location_height_m: float | None,
+    show_observer_height: bool,
 ) -> ViewerData:
     """Build the viewer input consumed by SkyWindow."""
     lat, lon, tz_name = city_data
@@ -139,30 +139,30 @@ def prepare_window_catalogs(
 
 def prepare_window_user_options(
     *,
-    sky_disc_alpha: float = 0.3,
-    cloud_disc_alpha: float = 0.6,
-    satellite_opacity: float = 0.7,
-    aircraft_opacity: float = 0.6,
-    terrain_horizon_opacity: float = 0.028,
-    earth_guide_opacity: float = 0.028,
-    urban_outline_opacity: float = 0.2,
-    ground_tint_opacity: float = 1.0,
-    enlarge_moon: bool = False,
-    star_base_radius: float = 4.0,
-    vmag_limit: float = 6.0,
-    visual_preset: str = "night",
-    star_visibility_boost: float = 1.0,
-    show_dso_initial: Optional[bool] = None,
-    show_asterisms_initial: Optional[bool] = None,
-    show_guidelines_initial: Optional[bool] = None,
-    observation_info_mode: Optional[str] = None,
-    sky_disc_gui_allowed: bool = True,
-    cloud_gui_allowed: bool = True,
-    satellite_gui_allowed: bool = True,
-    aircraft_gui_allowed: bool = True,
-    terrain_horizon_gui_allowed: bool = True,
-    earth_guide_gui_allowed: bool = True,
-    urban_outline_gui_allowed: bool = True,
+    sky_disc_alpha: float,
+    cloud_disc_alpha: float,
+    satellite_opacity: float,
+    aircraft_opacity: float,
+    terrain_horizon_opacity: float,
+    earth_guide_opacity: float,
+    urban_outline_opacity: float,
+    ground_tint_opacity: float,
+    enlarge_moon: bool,
+    star_base_radius: float,
+    vmag_limit: float,
+    visual_preset: str,
+    star_visibility_boost: float,
+    show_dso_initial: Optional[bool],
+    show_asterisms_initial: Optional[bool],
+    show_guidelines_initial: Optional[bool],
+    observation_info_mode: Optional[str],
+    sky_disc_gui_allowed: bool,
+    cloud_gui_allowed: bool,
+    satellite_gui_allowed: bool,
+    aircraft_gui_allowed: bool,
+    terrain_horizon_gui_allowed: bool,
+    earth_guide_gui_allowed: bool,
+    urban_outline_gui_allowed: bool,
 ) -> SkyWindowUserOptions:
     """Normalize user-facing options before constructing SkyWindow."""
     return SkyWindowUserOptions(
@@ -195,20 +195,20 @@ def prepare_window_user_options(
 
 def prepare_window_runtime_options(
     *,
-    delta_t: timedelta = timedelta(0),
-    sky_update_interval: int = 60,
-    urban_outline_radius_km: float = 2.5,
-    urban_outline_skyscraper_radius_km: float = SKYSCRAPER_OUTER_RADIUS_KM,
-    urban_outline_min_height_m: float = 0.0,
-    urban_outline_feature_type: str = "both",
-    urban_outline_skyscraper_only: bool = False,
-    cloud_stripe_style: tuple[int, float] = (50, 0.85),
-    cloud_stripe_mode: str = "width",
-    cloud_missing_tint_opacity: float = float(CLOUD_MISSING_TINT_RGBA[3]) / 255.0,
-    star_render_expected_width: int = 600,
-    content_fov_deg: float = 100.0,
-    window_geometry_arg: Optional[str | tuple[int, int, int, int]] = None,
-    window_frame_mode: str = "frameless",
+    delta_t: timedelta,
+    sky_update_interval: int,
+    urban_outline_radius_km: float,
+    urban_outline_skyscraper_radius_km: float,
+    urban_outline_min_height_m: float,
+    urban_outline_feature_type: str,
+    urban_outline_skyscraper_only: bool,
+    cloud_stripe_style: tuple[int, float],
+    cloud_stripe_mode: str,
+    cloud_missing_tint_opacity: float,
+    star_render_expected_width: int,
+    content_fov_deg: float,
+    window_geometry_arg: Optional[str | tuple[int, int, int, int]],
+    window_frame_mode: str,
 ) -> SkyWindowRuntimeOptions:
     """Normalize runtime options before constructing SkyWindow."""
     return SkyWindowRuntimeOptions(

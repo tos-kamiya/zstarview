@@ -171,13 +171,26 @@ def test_paint_event_does_not_delegate_to_qmainwindow(monkeypatch) -> None:
 
 def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None:
     options = prepare_window_user_options(
+        sky_disc_alpha=0.17,
+        cloud_disc_alpha=0.075,
+        satellite_opacity=0.7,
         terrain_horizon_opacity=1.5,
         earth_guide_opacity=1.5,
         urban_outline_opacity=1.5,
         aircraft_opacity=1.5,
         ground_tint_opacity=1.5,
+        enlarge_moon=False,
+        star_base_radius=4.0,
+        vmag_limit=6.0,
+        visual_preset="night",
+        star_visibility_boost=1.0,
+        show_dso_initial=None,
+        show_asterisms_initial=None,
+        show_guidelines_initial=None,
+        observation_info_mode=None,
         sky_disc_gui_allowed=False,
         cloud_gui_allowed=False,
+        satellite_gui_allowed=True,
         aircraft_gui_allowed=False,
         terrain_horizon_gui_allowed=False,
         earth_guide_gui_allowed=False,
@@ -218,7 +231,7 @@ def test_toggle_sky_disc_respects_cli_lockout() -> None:
     dummy = SimpleNamespace()
     dummy._sky_disc_gui_allowed = False
     dummy.sky_disc_alpha = 0.0
-    dummy._sky_disc_alpha_when_enabled = 0.3
+    dummy._sky_disc_alpha_when_enabled = 0.17
     dummy._action_toggle_sky_disc = _DummyAction(False)
     dummy.update = lambda: (_ for _ in ()).throw(AssertionError("should not repaint"))
 
@@ -710,7 +723,7 @@ def test_toggle_sky_disc_enables_gradient_and_requests_refresh() -> None:
     dummy = SimpleNamespace()
     dummy._sky_disc_gui_allowed = True
     dummy.sky_disc_alpha = 0.0
-    dummy._sky_disc_alpha_when_enabled = 0.3
+    dummy._sky_disc_alpha_when_enabled = 0.17
     dummy._action_toggle_sky_disc = _DummyAction(False)
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request-client")
@@ -720,7 +733,7 @@ def test_toggle_sky_disc_enables_gradient_and_requests_refresh() -> None:
 
     SkyWindow.toggle_sky_disc(dummy)
 
-    assert dummy.sky_disc_alpha == 0.3
+    assert dummy.sky_disc_alpha == 0.17
     assert dummy._action_toggle_sky_disc.isChecked() is True
     assert calls == ["invalidate", "request", "request-client"]
 
@@ -728,8 +741,8 @@ def test_toggle_sky_disc_enables_gradient_and_requests_refresh() -> None:
 def test_toggle_sky_disc_switches_to_flat_disc_and_requests_refresh() -> None:
     dummy = SimpleNamespace()
     dummy._sky_disc_gui_allowed = True
-    dummy.sky_disc_alpha = 0.3
-    dummy._sky_disc_alpha_when_enabled = 0.3
+    dummy.sky_disc_alpha = 0.17
+    dummy._sky_disc_alpha_when_enabled = 0.17
     dummy._action_toggle_sky_disc = _DummyAction(True)
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request-client")

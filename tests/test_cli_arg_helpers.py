@@ -101,3 +101,9 @@ def test_parse_args_accepts_earth_guide_opacity() -> None:
     args = cli_args.parse_args(["--earth-guide-opacity", "0", "Matsue"])
 
     assert args.earth_guide_opacity == 0.0
+
+
+def test_parse_args_defaults_sky_opacity_to_0_17() -> None:
+    args = cli_args.parse_args(["Matsue"])
+
+    assert args.sky_opacity == 0.17
