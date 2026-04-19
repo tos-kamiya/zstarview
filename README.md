@@ -31,7 +31,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 The first screenshot shows the asterism overlay and also serves as a terrain-horizon example.
 The second screenshot shows the aircraft overlay together with the never-rises region.
 The third screenshot shows a denser star field rendered with `-V10.5 -s4.5`.
-The fourth screenshot shows terminal output via sixel using `zstarview-export-image`.
+The fourth screenshot shows `zstarview-export-image` searching for and displaying `PANSTARRS (C/2026 R3)` in a sixel terminal.
 
   <p align="center">
     <img src="docs/images/screenshot1.png" alt="Screenshot showing the asterism overlay and a terrain horizon example" width="49%" />
@@ -40,7 +40,7 @@ The fourth screenshot shows terminal output via sixel using `zstarview-export-im
 
   <p align="center">
     <img src="docs/images/screenshot3.png" alt="Screenshot showing a denser star field rendered with -V10.5 -s4.5" width="49%" />
-    <img src="docs/images/screenshot6.png" alt="Screenshot showing sixel terminal output from zstarview-export-image" width="49%" />
+    <img src="docs/images/screenshot6.png" alt="Screenshot showing zstarview-export-image searching for and displaying PANSTARRS (C/2026 R3) in a sixel terminal" width="49%" />
   </p>
 
 Note: higher magnitude limits increase rendering time. See [about magnitude limit](#about-magnitude-limit).
