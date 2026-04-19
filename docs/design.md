@@ -435,6 +435,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 天球ディスク幅が `expected-render-width` 以下なら等倍描画し、それを超える場合は `expected-render-width * sqrt(disc_width / expected-render-width)` に従って内部描画面を縮小する
   - 縮小時は低解像度 `QImage` に恒星を描いてからウィンドウ全体へ拡大転写し、大型ウィンドウでの負荷を抑える
   - ベースフレームの `QImage` キャッシュを持ち、geometry、描画入力、interaction mode などが不変なら前回ベースフレームをそのまま再利用する
+  - このフレームキャッシュは描画時の実行時キャッシュであり、永続キャッシュの設計は `10.x` に分離する
   - hover 対象、jump highlight、status line、static observation overlay はキャッシュ後に HUD として重ねる
 - `src/zstarview/gui/window_updates.py`
   - バックグラウンド更新結果の反映
@@ -568,18 +569,15 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 #### 4.4.7 検索共通化
 
-- 検索処理は、GUI ダイアログ、GUI 起動時検索、`zstarview-export-image` で共通利用するため、UI から切り出した resolver/service 群に分離する。
-- 検索 overlay の描画や `export-image` の `-5°` クランプのような UI 寄りの都合は、個別の renderer/helper に分ける。
+- 検索処理は、GUI ダイアログ、GUI 起動時検索、`zstarview-export-image` で共通利用するため、UI から切り出した resolver/service 群に分離している。
+- 検索仕様の詳細は `4.2.7` にまとめ、ここでは配置だけを述べる。
 - 現在の構造は次の通りである。
-  - `search/models.py` は `SearchJumpTarget`、`SearchRequest`、`SearchResolution` などの共有データモデルを持つ。
-  - `search/query.py` は `--search` 文字列の正規化と `label=` / `id=` / bare query の解釈を担当する。
-  - `search/jpl.py` は SBDB / Horizons を使う JPL 候補生成と小天体位置取得を担当する。
-  - `search/resolver.py` は local first と JPL fallback の全体戦略、および `SearchJumpTarget` の `alt/az` 導出を担当する。
-  - GUI ダイアログは、候補生成戦略を持たず、resolver の返した候補を表示して選択を返す。
-  - `zstarview-export-image` は、resolver の 1 件解決結果だけを描画へ渡し、曖昧な場合は `--list` と非対話エラーを分けて扱う。
+  - `search/models.py` は共有データモデルを持つ。
+  - `search/query.py` は検索文字列の正規化を担当する。
+  - `search/jpl.py` は JPL 候補生成と小天体位置取得を担当する。
+  - `search/resolver.py` は共通解決戦略を担当する。
+  - `render/search_overlay.py` は GUI と export-image の両方で使う marker / label 重ね描きを担当する。
   - `window.py` は、共通 resolver から返った 1 件結果に対して、視点移動と永続 overlay の state 更新だけを行う薄い orchestrator とする。
-  - `render/search_overlay.py` は、GUI と export-image の両方で使う marker / label 重ね描きを担当する。
-- この分割に合わせて、既存の `famous_star_shortcuts.py`、`famous_star_search_dialog.py`、`jpl_small_body_controller.py` の役割を整理する。
 
 ### 4.5 雲データ処理
 
@@ -813,6 +811,28 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `cloud_amount_field`: ストライプ線幅生成用の雲量場
   - `meta`、`coverage_ratio`、`source_key`、`render_key`、`request_id` などの更新メタデータ
 
+雲レイヤーの内部表現は、`CloudState` と `CloudImageState` が担う。  
+`CloudController` は取得結果を `QImage` に先に変換せず、NumPy ベースの雲バッファとして保持してよい。  
+`SkyCompositorCache` は cloud image / missing mask / cloud amount field を NumPy ベースで扱い、ストライプ描画、masking、missing tint 適用をそのまま進めてよい。  
+雲投影モデルは、単一球殻だけに固定せず、同じ source から複数の代表高度球殻へ再投影してから混合してよい。
+
+内部表現の詳細は次の通り。
+
+- `clouddisc` のランタイム出力は `numpy RGBA` と 2D missing-mask 配列を基本形とする。
+- 3 層混合を使う場合、scene cloud amount に応じて `5km` 単層側から `3km` / `5km` / `7km` の既定配分へ滑らかに遷移してよい。
+- 低雲量側と高雲量側の境界は、概ね `0.25` と `0.65` の補間帯として扱ってよい。
+- この複数高度モデルは物理的な雲頂高度推定ではなく、単一高度投影で生じる視差由来の不自然な穴を緩和するための視覚補正として位置付ける。
+- `cloud_amount_field` は、雲 RGBA の alpha から `(u, v)` 正規化座標上へ集約した 2D 雲量場として扱ってよい。
+- ストライプ描画では、`width` モードと `alpha` モードの 2 方式を持ってよい。
+- `width` モードでは、基準線から片側へ 1px 単位で白線を積み上げ、整数本数に加えて次の 1 本だけ小数部相当の alpha を与えてよい。
+- `width` モードの alpha 減衰は線形に限らず、基準線付近を保って遠側でゆるやかに落ちる ease-out カーブとしてよい。
+- `alpha` モードでは、白線幅は固定とし、雲量に応じて白線 alpha を変えてよい。
+- 外周境界の見た目を和らげるため、cloud fetch/render 側に小さな overscan を持たせてよい。
+- 雲量場の再正規化では、非ゼロ値の下側 `8 percentile` と上側 `92 percentile` を使ってよい。
+- `--cloud-opacity` は追加の内部係数を掛けず、そのまま最終 cloud 合成 opacity として使ってよい。
+- `QImage` 化は、合成済み画像または最終描画に必要になった段階でのみ行う。
+- これにより、cloud path の `QImage <-> NumPy` 往復と、missing mask の不要な 4ch 展開を避ける。
+
 雲パイプラインでは 2 種類のキーを分離して扱う。
 
 - `SourceKey`
@@ -952,6 +972,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 3. 計算結果を `CelestialData` と描画補助データとして UI へ返す。
 4. `SkyWindow` が内部状態を更新し、再描画する。
 
+この節は sky disc と恒星・太陽・月・惑星・補助線の共通更新フローを扱う。  
+雲、人工衛星、地形地平線、都市アウトライン、航空機は、それぞれ `6.3` から `6.8` の個別フローで扱う。
+
 視線変更とリサイズの連続入力時は例外的に `viewport_interaction_mode` を使う。
 
 1. `render_view_center` を即時更新する。
@@ -959,59 +982,6 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 3. 補助線と地形地平線は、保持済みデータを `render_view_center` で再投影して追随させる。
 4. 雲はこのモード中に旧視線の bitmap を描かず、一時的に非表示としてよい。
 5. 最後の入力から 0.7 秒経過後に通常更新を 1 回だけ開始する。
-
-#### 6.2.1 雲レイヤー内部表現
-
-- `clouddisc` のランタイム出力は `numpy RGBA` と 2D missing-mask 配列を基本形とする。
-- `CloudController` は `QImage` を先に作らず、そのまま `CloudImageState` へ渡してよい。
-- `SkyCompositorCache` は cloud image / missing mask / cloud amount field を NumPy ベースで扱い、ストライプ描画、masking、missing tint 適用をそのまま進めてよい。
-- 雲投影モデルは、単一球殻だけに固定せず、同じ source から複数の代表高度球殻へ再投影してから混合してよい。
-- 3 層混合を使う場合、scene cloud amount に応じて `5km` 単層側から `3km` / `5km` / `7km` の既定配分へ滑らかに遷移してよい。
-- 低雲量側と高雲量側の境界は、概ね `0.25` と `0.65` の補間帯として扱ってよい。
-- この複数高度モデルは物理的な雲頂高度推定ではなく、単一高度投影で生じる視差由来の不自然な穴を緩和するための視覚補正として位置付ける。
-- `cloud_amount_field` は、雲 RGBA の alpha から `(u, v)` 正規化座標上へ集約した 2D 雲量場として扱ってよい。
-- ストライプ描画では、`width` モードと `alpha` モードの 2 方式を持ってよい。
-- `width` モードでは、基準線から片側へ 1px 単位で白線を積み上げ、整数本数に加えて次の 1 本だけ小数部相当の alpha を与えてよい。
-- `width` モードの alpha 減衰は線形に限らず、基準線付近を保って遠側でゆるやかに落ちる ease-out カーブとしてよい。
-- `alpha` モードでは、白線幅は固定とし、雲量に応じて白線 alpha を変えてよい。
-- 外周境界の見た目を和らげるため、cloud fetch/render 側に小さな overscan を持たせてよい。
-- 雲量場の再正規化では、非ゼロ値の下側 `8 percentile` と上側 `92 percentile` を使ってよい。
-- `--cloud-opacity` は追加の内部係数を掛けず、そのまま最終 cloud 合成 opacity として使ってよい。
-- `QImage` 化は、合成済み画像または最終描画に必要になった段階でのみ行う。
-- これにより、cloud path の `QImage <-> NumPy` 往復と、missing mask の不要な 4ch 展開を避ける。
-
-#### 6.2.2 ビューポート幾何
-
-- `get_screen_geometry()` は sky/cloud disc 用に固定 `10px` の内側余白を持たず、ウィンドウ全体を基準に geometry を計算してよい。
-- border は別レイヤーとして後段で重ねるため、sky/cloud disc は border の下まで描かれてよい。
-
-#### 6.2.3 地平線下地球ガイド投影
-
-- 地平線下地球ガイドは、地球固定の粗い大陸ポリゴンを観測者基準で再投影する補助レイヤーとして扱う。
-- 目的はユーザー向け方位ガイドであり、地理院地図や GIS と同等の厳密性は要求しない。
-- 入力は少なくとも、観測地点 `lat/lon`、観測者高さ、`view_center`、screen geometry、`content_fov_deg`、地形地平線 profile の有無を含む。
-- まず各ポリゴン頂点を `lat/lon -> ECEF-like 3D` へ変換する。
-- 次に観測点 `O` と `east / north / up` 基底を作り、各頂点 `P` から視線 `v = normalize(P - O)` を作る。
-- `dot(v, up) >= 0` の頂点は、幾何学的には地平線上側候補であるため、地平線下ガイドには直接は使わない。
-- 境界をまたぐ辺は、`dot(v, up) = 0` となる近傍で線形補間し、地平線下側だけを残してよい。
-- 採用頂点は `east / north / up` 基底へ射影し、観測者ローカルの見かけ方位・仰角に相当する量へ変換する。
-- 最終的な screen 変換は既存の `alt/az -> normalized xy -> screen xy` 系へ合わせてよい。これにより視線回転、FOV、overscan と自然に整合する。
-- 観測者高さが増えると地平線がわずかに下がるため、`dot(v, up)` ベースの採否もそれに応じて変化してよい。
-- 地形地平線が有効な場合は、球面地球ベースで求めた地球ガイドをさらに terrain horizon profile でクリップしてよい。
-- ガイドが地平線付近でちらつくのを防ぐため、`dot(v, up)` が 0 近傍の領域には小さなフェザーまたは alpha 減衰を入れてよい。
-- データが粗ポリゴンである以上、初期実装では海岸線の細部や小島の再現は意図的に捨ててよい。
-- 画像キャッシュキーには、少なくとも `observer lat/lon/height`、`view_center`、`geometry`、`content_fov_deg`、ガイド有効フラグ、terrain horizon クリップ条件を含めてよい。
-- 描画順は、地面ティントの後、guide 線やラベルより前を既定としてよい。これにより下側の補助情報として読める一方、方位ラベルや地平線線は埋もれにくい。
-
-#### 6.2.4 最終フレームキャッシュ
-
-Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行するため、空の内容が変わらない repaint では重い描画をやり直さないようにする。
-
-1. `window_render.py` は、geometry、描画入力、hover、jump highlight、interaction mode、ステータス行文言などからフレームキーを作る。
-2. キーが前回と同じなら、保持済みの最終フレーム `QImage` を `drawImage()` するだけで終了する。
-3. キーが変わったときだけ、背景、空ディスク、雲、地形、都市アウトライン、星、惑星、オーバーレイ、ラベル、ステータス行を一時 `QImage` に順に描いて新しいフレームとして保存する。
-
-この最終フレームキャッシュは `SkyCompositorCache` の上位にある。`SkyCompositorCache` は sky/cloud 合成だけを再利用し、その出力を含むウィンドウ全体の描画結果をさらに `window_render.py` 側でキャッシュする二段構えにしている。
 
 ### 6.3 人工衛星更新フロー
 
@@ -1074,11 +1044,12 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 1. sky disc を生成する。
 2. 恒星、惑星、月、補助線を重ねる。
 3. 地形地平線があれば地平線関連描画へ反映する。
-4. 都市アウトラインがあれば白線オーバーレイとして描画する。
-5. 人工衛星があれば紫色の小型クロスマーカーとして描画する。
-6. 航空機オーバーレイがあれば紫色の折れ線オーバーレイとして描画する。
-7. 雲画像と欠損ティントを合成する。
-8. ラベル、オーバーレイ、ステータス行を描画する。
+4. 地平線下地球ガイドがあれば、地形地平線とは別の補助レイヤーとして描画する。
+5. 都市アウトラインがあれば白線オーバーレイとして描画する。
+6. 人工衛星があれば紫色の小型クロスマーカーとして描画する。
+7. 航空機オーバーレイがあれば紫色の折れ線オーバーレイとして描画する。
+8. 雲画像と欠損ティントを合成する。
+9. ラベル、オーバーレイ、ステータス行を描画する。
 
 ### 6.8 都市アウトライン更新フロー
 
