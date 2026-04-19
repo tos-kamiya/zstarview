@@ -897,6 +897,43 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_and_invalidates_ol
     assert calls == ["invalidate-compositor", "invalidate-cloud", "start-timer"]
 
 
+def test_begin_viewport_interaction_mode_preserves_cloud_buffers_while_cloud_update_is_running() -> (
+    None
+):
+    calls: list[str] = []
+    dummy = SimpleNamespace()
+    dummy.state = SimpleNamespace(viewport_interaction_mode=False)
+    dummy.cloud_state = SimpleNamespace(
+        image=object(),
+        missing_mask=object(),
+        cloud_amount_field=object(),
+        render_key="render-key",
+        request_id=42,
+        missing_mask_key=99,
+    )
+    dummy._compositor = SimpleNamespace(
+        invalidate=lambda: calls.append("invalidate-compositor")
+    )
+    dummy._cloud_controller = SimpleNamespace(
+        has_in_flight_update=lambda: True,
+        invalidate_pending_render_results=lambda: calls.append("invalidate-cloud"),
+    )
+    dummy._viewport_interaction_idle_timer = SimpleNamespace(
+        start=lambda: calls.append("start-timer")
+    )
+
+    SkyWindow._begin_viewport_interaction_mode(dummy)
+
+    assert dummy.state.viewport_interaction_mode is True
+    assert dummy.cloud_state.image is not None
+    assert dummy.cloud_state.missing_mask is not None
+    assert dummy.cloud_state.cloud_amount_field is not None
+    assert dummy.cloud_state.render_key == "render-key"
+    assert dummy.cloud_state.request_id == 42
+    assert dummy.cloud_state.missing_mask_key == 99
+    assert calls == ["invalidate-cloud", "start-timer"]
+
+
 def test_handle_client_resize_preserves_visible_cloud_buffers() -> None:
     calls: list[str] = []
     dummy = SimpleNamespace()
@@ -954,6 +991,26 @@ def test_cloud_failed_preserves_last_visible_cloud_frame() -> None:
     assert dummy.cloud_state.missing_mask is not None
     assert dummy.cloud_state.cloud_amount_field is not None
     assert calls == ["banner:Clouds: temporary failure", "repaint"]
+
+
+def test_cloud_failed_repaints_status_line_during_interaction() -> None:
+    calls: list[str] = []
+    dummy = SimpleNamespace()
+    dummy.state = SimpleNamespace(interaction_mode=True)
+    dummy.cloud_state = SimpleNamespace(
+        image=object(),
+        missing_mask=object(),
+        cloud_amount_field=object(),
+        banner_text=None,
+        set_error_banner=lambda text: calls.append(f"banner:{text}"),
+    )
+    dummy._safe_request_cloud_repaint = lambda: calls.append("repaint")
+
+    SkyWindowUpdatesMixin._on_cloud_failed(
+        dummy, {"banner": "Clouds: Clouds fetch timed out"}
+    )
+
+    assert calls == ["banner:Clouds: Clouds fetch timed out", "repaint"]
 
 
 def test_discard_stale_disc_images_clears_cached_sky_and_cloud_buffers() -> None:

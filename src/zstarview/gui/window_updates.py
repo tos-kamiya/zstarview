@@ -98,8 +98,11 @@ class SkyWindowUpdatesMixin:
         sat = self.cloud_state.current_satellite or self._predicted_cloud_satellite()
         if self.cloud_state.banner_text:
             detail = self.cloud_state.banner_text.removeprefix("Clouds:").strip()
-            if "download" in detail.lower():
+            detail_lower = detail.lower()
+            if detail_lower.startswith("downloading"):
                 return f"Clouds [{sat}]: downloading"
+            if any(token in detail_lower for token in ("timed out", "error", "failed", "failure")):
+                return f"Clouds [{sat}]: download failed"
             return f"Clouds [{sat}]: {detail}"
         meta = self.cloud_state.meta
         if meta is not None:
@@ -436,7 +439,6 @@ class SkyWindowUpdatesMixin:
             self.cloud_state.set_error_banner(banner)
         if self.state.interaction_mode:
             self.state.cloud_repaint_deferred = True
-            return
         if banner:
             self._safe_request_cloud_repaint()
 
