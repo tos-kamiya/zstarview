@@ -44,10 +44,10 @@
   - 入力イベント
   - バックグラウンド更新の起動と反映
 - 外部データ連携層
-- 衛星クラウドデータ取得
-- DEM 取得
-- Overture 建物データ取得
-- キャッシュ管理
+  - 衛星クラウドデータ取得
+  - DEM 取得
+  - Overture 建物データ取得
+  - キャッシュ管理
 
 ## 4. モジュール構成
 
@@ -113,7 +113,7 @@
 - `src/zstarview/types.py`
   - ドメインデータの共有型
 
-### 4.2.1 ビューポイント dataset 参照専用 CLI
+#### 4.2.1 ビューポイント dataset 参照専用 CLI
 
 同梱 `tower_viewpoints.json` と `mountain_viewpoints.json` を直接参照する軽量 CLI 経路を持つ。
 
@@ -141,7 +141,7 @@
   - tower の短縮 alias は、固有名詞として成立するものだけを人手で追加する。
 - tower / mountain とも、数字だけの部分一致では解決しない。
 
-### 4.2.2 `--place` による Nominatim 検索起動
+#### 4.2.2 `--place` による Nominatim 検索起動
 
 `--place QUERY` は、既存の `location` 引数とは別の明示的な online resolver 経路を持つ。
 
@@ -160,7 +160,7 @@
 - HTTP エラー、レート制限、通信失敗、JSON 解析失敗、0 件結果は `StartupAbortError` 相当で起動中断とし、logger 経由でターミナルとスプラッシュへ表示する。
 - Nominatim 利用は起動時の単発検索に限定し、候補列挙だけの反復照会経路は持たない。
 
-### 4.2.2a `--use-building-top` による起動地点高さ補正
+#### 4.2.3 `--use-building-top` による起動地点高さ補正
 
 `--use-building-top` は、都市名、`--place`、緯度経度、Google Maps URL で解決した地点について、建物頂部を観測基準に使う補助経路である。
 
@@ -173,7 +173,7 @@
 - 候補建物が見つからない場合は、従来どおり地表基準の `observer_height_m`を使う。
 - 利用者向けの地点情報には `Building height` を表示してよい。
 
-### 4.2.2b `auto` による現在地自動取得起動
+#### 4.2.4 `auto` による現在地自動取得起動
 
 地点引数として `auto`（大文字小文字不問）が指定された場合、外部サービスを利用して現在地を推定する。
 
@@ -191,7 +191,7 @@
   - 解決された地点は、他の指定方法と同様に次回起動用設定として保存する。
   - 保存形式は緯度経度ベース（`lat;lon`）または構造化オブジェクトであってよい。
 
-### 4.2.3 前回地点の保存形式
+#### 4.2.5 前回地点の保存形式
 
 前回地点保存は後方互換のため複数形式を許容する。
 
@@ -205,7 +205,7 @@
 - `config.py` は `str | object` を読めるようにし、未知形式は安全側で無視または起動失敗へ正規化する。
 - 保存形式が異なっても、起動後に UI へ渡す地点モデルは共通の `ResolvedLocation` に揃える。
 
-### 4.2.4 単発画像書き出し CLI
+#### 4.2.6 単発画像書き出し CLI
 
 GUI 常駐とは別に、1 枚の画像を書き出して終了する headless CLI 経路を持つ。
 
@@ -249,7 +249,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - Qt はフォント読込と `QImage` / `QPainter` 利用のためだけに初期化し、CLI 側ではバックグラウンド worker や signal ベースの寿命管理を持たない。
 - `gui/sky_worker.py` の celestial / sky-disc 計算は pure helper `compute_sky_snapshot()` として切り出し、GUI worker と export CLI の両方から共有する。
 
-#### 4.2.4a 検索リクエストの共有解決
+#### 4.2.7 検索リクエストの共有解決
 
 - この節では、`search/models.py` / `search/query.py` / `search/jpl.py` / `search/resolver.py` で共有する検索リクエスト設計を定義する。
 - `--search` は、GUI 起動時検索と `zstarview-export-image` の両方で共通の単一検索リクエストとして扱ってよい。
@@ -281,7 +281,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 星空、雲、欠損ティント、地面色の合成
   - 雲ハッチ、縞密度生成、欠損マスク適用は NumPy ベースで進め、合成結果の出力段で `QImage` に戻す
 
-#### 4.3.0 テーマ表示定義
+#### 4.3.1 テーマ表示定義
 
 - `paths.py` には `ThemeStyle` を持つ。
 - `ThemeStyle` は少なくとも次を含む。
@@ -294,7 +294,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `splash.py` は `ThemeStyle.splash` を色定義の参照元とし、背景 alpha は `ThemeStyle.window_background` から導出した平均 alpha を使う。
 - 明るい preset (`day`, `white`) では、暗い preset (`night`, `black`) より広い文字アウトライン幅を持てる。
 
-#### 4.3.0 テーマ文字色メモ
+#### 4.3.2 テーマ文字色メモ
 
 `ThemeStyle.text` は HUD、マウスホバー中の名前ラベル、惑星ラベルなどの通常文字列に使われる。  
 `ThemeStyle.status_text` はステータス行などの補助文字列に使われる。  
@@ -313,7 +313,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - text: `(246, 249, 255)` / `#F6F9FF`
   - status_text: `(255, 220, 220)` / `#FFDCDC`
 
-#### 4.3.0a カラーパレット参照
+#### 4.3.3 カラーパレット参照
 
 `color-palette.png` の RGB 値は、描画色の調整時に参照する固定メモとして以下を残す。
 
@@ -333,29 +333,29 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - earth guide
   - terrain horizon
 
-#### 4.3.1 描画リファクタリング方針
+#### 4.3.4 描画境界と責務分離
 
-- 将来の単発画像書き出し CLI に備え、描画処理は `SkyWindow` / Mixin 直結から、関数呼び出し中心の再利用可能なパイプラインへ寄せる方針とする。
+- 描画処理は `SkyWindow` / Mixin 直結ではなく、関数呼び出し中心の再利用可能なパイプラインへ分離している。
 - 共通化の中心は「最終的に何をどう描くか」であり、「どの順序でデータを取得するか」ではない。
-- GUI 経路と将来の CLI 経路は、別々のオーケストレーションを持ってよい。
-  - GUI 経路は、従来どおり星空の初期表示を優先し、雲・地形地平線・都市アウトライン・航空機を後段で非同期に反映してよい。
-  - CLI 経路は、必要なレイヤーを逐次取得して 1 回だけ描画する構成を許容する。
-- このため、描画層では少なくとも次の境界を意識する。
+- GUI 経路と CLI 経路は別々のオーケストレーションを持つ。
+  - GUI 経路は、星空の初期表示を優先し、雲・地形地平線・都市アウトライン・航空機を後段で非同期に反映する。
+  - CLI 経路は、必要なレイヤーを逐次取得して 1 回だけ描画する。
+- 描画層では少なくとも次の境界を持つ。
   - 描画入力: 観測地点、時刻、視線方向、画面サイズ、表示オプション
   - レイヤー入力: celestial、sky disc、cloud、terrain horizon、urban outline、aircraft overlay などの描画用データ
   - 描画関数群: `QPainter` または `QImage` に対して各レイヤーを順に描く純粋寄りの関数
-- `gui/window_render.py` は最終的に、hover 判定、jump highlight、frame cache、interaction mode など GUI 固有の責務に寄せ、描画本体は薄いラッパに縮小するのが望ましい。
+- `gui/window_render.py` は、hover 判定、jump highlight、frame cache、interaction mode など GUI 固有の責務を担い、描画本体への依存を薄く保つ。
 
-#### 4.3.2 現在の描画パイプライン到達点
+#### 4.3.5 描画パイプライン構成
 
 - 共有描画本体は `src/zstarview/render/pipeline.py` に置く。
 - 共有描画入力は次の 3 つに分ける。
-- `RenderSceneData`
-- `RenderStyle`
-- `RenderHudState`
+  - `RenderSceneData`
+  - `RenderStyle`
+  - `RenderHudState`
 - `render_scene_into_painter()` と下位の `draw_*` 関数群は、`geometry`、`viewport_rect`、`scene`、`style`、`hud` を明示的に受ける。
 - `RenderStyle` は `show_guidelines` を持ち、guide レイヤーと viewport interaction 中の reference line 描画を同じ boolean で制御する。
-- `RenderPipelineState` のような中間ラッパ型は廃止し、shared pipeline 側では直接引数で依存関係を表す。
+- `RenderPipelineState` のような中間ラッパ型は使わず、shared pipeline 側では直接引数で依存関係を表す。
 - `RenderSceneData` の cloud image / cloud missing mask は `QImage` ではなく NumPy 配列を持ち、cloud path の変換回数を抑える。
 - `gui/window_render.py` は、`paintEvent()` 本線、scene/style/hud の組み立て、frame cache、jump highlight、hover 解決など GUI 固有処理に絞る。
 - 現在の通常描画順は概ね次のとおり。
@@ -378,21 +378,21 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `show_guidelines == False` のときは、guide レイヤー本体だけでなく、viewport interaction 中の sky reference line 描画もまとめて省略してよい。
 - `show_overlay_info` は GUI 側の表示トグルとして保持し、既定では `True` でよい。
 
-#### 4.3.3 次段のリファクタリング方針
+#### 4.3.6 ベース描画と HUD 分離の現在状態
 
-- 次段の主目的は、hover/HUD とベース描画の分離である。
-- `guide` レイヤーは HUD ではなくベース描画側に残す。
-- ベース描画には、少なくとも `background`、`sky-cloud`、`guide`、`terrain`、`stars`、`planets`、`satellites`、`aircraft`、`labels` を含める想定とする。
-- HUD 側には、少なくとも次を寄せる方向で整理する。
+- shared pipeline は `render_base_scene_into_painter()` と `render_hud_overlay_into_painter()` に分かれている。
+- `guide` レイヤーはベース描画側に残す。
+- ベース描画は `background`、`sky-cloud`、`guide`、`terrain`、`stars`、`planets`、`satellites`、`aircraft`、`labels` を担当する。
+- HUD 側は少なくとも次を担当する。
   - 恒星ホバー
   - DSO ホバー
   - static observation overlay
   - jump highlight
   - status line
-- `paintEvent()` は最終的に「ベースフレームをキャッシュし、その上に hover/HUD を都度重ねる」形を目指す。
-- この変更により、ベースフレーム cache key から `mouse_pos` や hover 対象名などの高頻度変化要素を外し、キャッシュ効率を改善する。
+- `paintEvent()` はベースフレームをキャッシュし、その上に hover/HUD を都度重ねる構成になっている。
+- ベースフレーム cache key から `mouse_pos`、hover 対象名、jump highlight 名、status message を外し、キャッシュ効率を上げている。
 
-#### 4.3.4 hover/HUD 分離の現在位置
+#### 4.3.7 hover/HUD 分離の現在位置
 
 - shared pipeline は、`render_base_scene_into_painter()` と `render_hud_overlay_into_painter()` に分かれている。
 - ベース描画は、`background`、`sky-cloud`、`guide`、`terrain`、`stars`、`planets`、`satellites`、`aircraft`、`labels` を担当する。
@@ -447,7 +447,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `src/zstarview/gui/famous_star_shortcuts.py`
   - ジャンプ・検索用データの整形
 
-### 4.4.1 GUI place 検索ターゲット
+#### 4.4.1 GUI place 検索ターゲット
 
 - GUI の検索機能は、既存の恒星・アステリズムに加えて `place` ターゲットを扱ってよい。
 - `place` ターゲットは Nominatim 検索結果を正規化した固定地表点であり、少なくとも `name`、`display_name`、`latitude_deg`、`longitude_deg`、`kind=\"place\"` を持つ。
@@ -840,7 +840,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - エラーバナー
   - 軌道要素は `24時間` 単位で更新し、マーカー列は `5秒` ごとに再計算してよい
 
-### 5.6 地形地平線関連
+#### 5.6 地形地平線関連
 
 - `TerrainHorizonState`
   - 地形地平線の点列
@@ -850,7 +850,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `(altitude_deg, azimuth_deg)` の系列として保持する
   - 地点依存、時刻非依存のデータとして扱う
 
-### 5.6.1 地平線下地球ガイド関連
+#### 5.6.1 地平線下地球ガイド関連
 
 - `SubsurfaceEarthGuideState`
   - 粗い大陸ポリゴンまたはそれと等価な低解像度 land-mask の参照
@@ -883,7 +883,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - Earth guide は terrain horizon と独立した表示レイヤーとして扱い、`opacity == 0` のときは取得・計算・描画をスキップしてよい。
 - Earth guide を CLI で `0` にした場合は、そのセッションの GUI トグルをロックアウトしてよい。
 
-### 5.6.2 近傍除外と地平線クリップ
+#### 5.6.2 近傍除外と地平線クリップ
 
 - 自己帰属しやすい足元周辺の land 折れ線は、閉ポリゴン化よりも近傍除外を優先してよい。
 - 近傍除外は地表距離ベースで扱い、観測者高度に応じて伸縮させてよい。
@@ -960,7 +960,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 4. 雲はこのモード中に旧視線の bitmap を描かず、一時的に非表示としてよい。
 5. 最後の入力から 0.7 秒経過後に通常更新を 1 回だけ開始する。
 
-### 6.2.0 雲レイヤー内部表現
+#### 6.2.1 雲レイヤー内部表現
 
 - `clouddisc` のランタイム出力は `numpy RGBA` と 2D missing-mask 配列を基本形とする。
 - `CloudController` は `QImage` を先に作らず、そのまま `CloudImageState` へ渡してよい。
@@ -980,12 +980,12 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `QImage` 化は、合成済み画像または最終描画に必要になった段階でのみ行う。
 - これにより、cloud path の `QImage <-> NumPy` 往復と、missing mask の不要な 4ch 展開を避ける。
 
-### 6.2.0a ビューポート幾何
+#### 6.2.2 ビューポート幾何
 
 - `get_screen_geometry()` は sky/cloud disc 用に固定 `10px` の内側余白を持たず、ウィンドウ全体を基準に geometry を計算してよい。
 - border は別レイヤーとして後段で重ねるため、sky/cloud disc は border の下まで描かれてよい。
 
-### 6.2.0b 地平線下地球ガイド投影
+#### 6.2.3 地平線下地球ガイド投影
 
 - 地平線下地球ガイドは、地球固定の粗い大陸ポリゴンを観測者基準で再投影する補助レイヤーとして扱う。
 - 目的はユーザー向け方位ガイドであり、地理院地図や GIS と同等の厳密性は要求しない。
@@ -1003,7 +1003,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 画像キャッシュキーには、少なくとも `observer lat/lon/height`、`view_center`、`geometry`、`content_fov_deg`、ガイド有効フラグ、terrain horizon クリップ条件を含めてよい。
 - 描画順は、地面ティントの後、guide 線やラベルより前を既定としてよい。これにより下側の補助情報として読める一方、方位ラベルや地平線線は埋もれにくい。
 
-### 6.2.1 最終フレームキャッシュ
+#### 6.2.4 最終フレームキャッシュ
 
 Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行するため、空の内容が変わらない repaint では重い描画をやり直さないようにする。
 
@@ -1316,6 +1316,32 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - この補完時刻は元の実取得時刻ではなく移行時刻として扱う。
 - そのため既存 cache は移行後の最初の TTL 周期だけ実際より新しく見えるが、大量再取得を避けるため許容してよい。
 
+#### 10.4.1 DEM フロー
+
+1. `TerrainHorizonController` が必要 tile 一覧を確定する。
+2. 各 tile について sidecar metadata から `fetched_at_utc` を読む。無い場合は現在時刻で補完して書き戻す。
+3. fresh なら既存 tile をそのまま使う。
+4. stale なら既存 tile を入力に含めつつ、バックグラウンドで同じ key を再取得する。
+5. 再取得成功時は `*.tmp` + `replace()` で tile 本体と metadata を更新する。
+6. 再取得失敗時は stale tile を使い続け、UI には stale 利用中であることを示してよい。
+
+#### 10.4.2 Overture 建物フロー
+
+1. `UrbanOutlineController` は通常 derived dataset と skyscraper tile cache をそれぞれ独立に fresh/stale 判定する。
+2. `mode=both` の場合、`building` と `building_part` は別々に TTL 判定し、片方だけ stale ならその片方だけ再取得する。
+3. 通常 derived dataset は dataset directory 単位で metadata を持ち、`cache_meta.json` などの sidecar file に `fetched_at_utc`、半径、mode、最小高さなどの cache key 情報を保持する。`fetched_at_utc` が無い旧 cache は、`cache_meta.json` の `mtime` を優先し、次に `bldg` directory の `mtime` を使って推定してよい。推定した時刻は書き戻してよい。
+   `overture_release` も sidecar に保持し、release 照合時に同一 release かどうかを比較する。
+   `overture_release` が無い、または sidecar の読込に失敗した場合は release 不明として TTL 判定に落とす。
+4. skyscraper 補助レイヤーは tile directory 単位で metadata を持ち、seed tile ごとに stale 判定する。
+5. fresh cache があればそれを即時読込する。
+6. 起動時または都市アウトライン初回有効化時にネットワーク接続がある場合は、Overture の最新 release を確認してよい。
+7. ただし前回照合から `24時間` 以内なら release 照合を省略してよい。
+8. 取得済み cache の release と最新 release が異なる場合は、TTL 期限前でも stale 扱いにして再取得してよい。
+9. stale cache があればそれを即時読込しつつ、欠けている dataset / stale dataset / release 差分がある dataset だけをバックグラウンドで `overturemaps download` し直す。
+10. 再取得成功時は新 directory を一時パスに組み立て、整合性確認後に `replace()` 相当で切り替える。
+11. 再取得失敗時は stale dataset を使い続け、次回要求時に再試行してよい。
+12. release 照合の結果は `last_release_check_utc` と `last_seen_overture_release` として root metadata に保存し、次回起動時の 24 時間スキップ判定に使う。
+
 #### 10.4.3 Overture release metadata 形式
 
 - dataset / tile sidecar
@@ -1373,32 +1399,6 @@ Qt はメニュー操作やボタン状態変化でも `paintEvent` を再発行
 - `src/zstarview/cli/export_image.py`
   - headless 経路でも同じ release 照合補助を共有する。
   - GUI と同じ root-level metadata を読むことで、release チェックの 24 時間抑制を共通化する。
-
-#### 10.4.1 DEM フロー
-
-1. `TerrainHorizonController` が必要 tile 一覧を確定する。
-2. 各 tile について sidecar metadata から `fetched_at_utc` を読む。無い場合は現在時刻で補完して書き戻す。
-3. fresh なら既存 tile をそのまま使う。
-4. stale なら既存 tile を入力に含めつつ、バックグラウンドで同じ key を再取得する。
-5. 再取得成功時は `*.tmp` + `replace()` で tile 本体と metadata を更新する。
-6. 再取得失敗時は stale tile を使い続け、UI には stale 利用中であることを示してよい。
-
-#### 10.4.2 Overture 建物フロー
-
-1. `UrbanOutlineController` は通常 derived dataset と skyscraper tile cache をそれぞれ独立に fresh/stale 判定する。
-2. `mode=both` の場合、`building` と `building_part` は別々に TTL 判定し、片方だけ stale ならその片方だけ再取得する。
-3. 通常 derived dataset は dataset directory 単位で metadata を持ち、`cache_meta.json` などの sidecar file に `fetched_at_utc`、半径、mode、最小高さなどの cache key 情報を保持する。`fetched_at_utc` が無い旧 cache は、`cache_meta.json` の `mtime` を優先し、次に `bldg` directory の `mtime` を使って推定してよい。推定した時刻は書き戻してよい。
-   `overture_release` も sidecar に保持し、release 照合時に同一 release かどうかを比較する。
-   `overture_release` が無い、または sidecar の読込に失敗した場合は release 不明として TTL 判定に落とす。
-4. skyscraper 補助レイヤーは tile directory 単位で metadata を持ち、seed tile ごとに stale 判定する。
-5. fresh cache があればそれを即時読込する。
-6. 起動時または都市アウトライン初回有効化時にネットワーク接続がある場合は、Overture の最新 release を確認してよい。
-7. ただし前回照合から `24時間` 以内なら release 照合を省略してよい。
-8. 取得済み cache の release と最新 release が異なる場合は、TTL 期限前でも stale 扱いにして再取得してよい。
-9. stale cache があればそれを即時読込しつつ、欠けている dataset / stale dataset / release 差分がある dataset だけをバックグラウンドで `overturemaps download` し直す。
-10. 再取得成功時は新 directory を一時パスに組み立て、整合性確認後に `replace()` 相当で切り替える。
-11. 再取得失敗時は stale dataset を使い続け、次回要求時に再試行してよい。
-12. release 照合の結果は `last_release_check_utc` と `last_seen_overture_release` として root metadata に保存し、次回起動時の 24 時間スキップ判定に使う。
 
 ## 11. テスト観点と設計上の分離
 
