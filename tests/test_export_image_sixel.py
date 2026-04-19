@@ -224,6 +224,14 @@ def test_write_export_overlay_summary_to_stderr_emits_gui_metadata(
         location_height_m=634.0,
         show_observer_height=True,
     )
+    target = mod.SearchJumpTarget(
+        label="Ceres",
+        kind="jpl_small_body",
+        sort_key=(0.0, "Ceres"),
+        object_key="2000001",
+        alt_deg=12.25,
+        az_deg=34.5,
+    )
 
     mod._write_export_overlay_summary_to_stderr(
         viewer_data=viewer,
@@ -233,6 +241,7 @@ def test_write_export_overlay_summary_to_stderr_emits_gui_metadata(
             {"time": Time("2026-02-27T00:00:00", format="isot", scale="utc")},
         )(),
         vmag_limit=6.0,
+        search_overlay_target=target,
     )
 
     text = stderr_buffer.getvalue()
@@ -241,7 +250,12 @@ def test_write_export_overlay_summary_to_stderr_emits_gui_metadata(
     assert "Observer height 12 m\n" in text
     assert "2026-02-27 00:00:00 UTC\n" in text
     assert "Alt 45°  Az 180° (S)\n" in text
-    assert text.endswith("Vmag limit 6.0\n")
+    assert "Vmag limit 6.0\n" in text
+    assert (
+        "Search target label=Ceres | id=2000001 | kind=jpl_small_body | alt=12.2 deg | "
+        "az=34.5 deg\n"
+    ) in text
+    assert text.endswith("az=34.5 deg\n")
 
 
 def test_main_writes_overlay_summary_before_sixel(
@@ -253,6 +267,12 @@ def test_main_writes_overlay_summary_before_sixel(
         timezone_name="UTC",
         city_name="Tokyo",
         view_center=(45.0, 180.0),
+    )
+    viewer._search_overlay_target = mod.SearchJumpTarget(
+        label="Ceres",
+        kind="jpl_small_body",
+        sort_key=(0.0, "Ceres"),
+        object_key="2000001",
     )
     catalogs = SimpleNamespace(
         star_catalog_np=object(),
@@ -315,7 +335,9 @@ def test_main_writes_overlay_summary_before_sixel(
     monkeypatch.setattr(
         mod,
         "_write_export_overlay_summary_to_stderr",
-        lambda **_kwargs: events.append("summary"),
+        lambda **kwargs: events.append(
+            f"summary:{getattr(kwargs['search_overlay_target'], 'label', '')}"
+        ),
     )
     monkeypatch.setattr(
         mod,
@@ -327,7 +349,7 @@ def test_main_writes_overlay_summary_before_sixel(
 
     mod.main()
 
-    assert events == ["summary", "sixel:/usr/bin/img2sixel"]
+    assert events == ["summary:Ceres", "sixel:/usr/bin/img2sixel"]
 
 
 def test_main_rejects_unsupported_sixel_terminal_before_loading_inputs(

@@ -972,6 +972,7 @@ def _write_export_overlay_summary_to_stderr(
     viewer_data: ViewerData,
     celestial_data: CelestialData,
     vmag_limit: float,
+    search_overlay_target: SearchJumpTarget | None = None,
 ) -> None:
     lines = render_background.format_overlay_info_lines(
         celestial_data,
@@ -979,8 +980,23 @@ def _write_export_overlay_summary_to_stderr(
         vmag_limit,
         include_vmag_limit=True,
     )
+    if search_overlay_target is not None:
+        lines.append(_format_search_target_line(search_overlay_target))
     sys.stderr.write("\n".join(lines) + "\n")
     sys.stderr.flush()
+
+
+def _format_search_target_line(target: SearchJumpTarget) -> str:
+    parts = [
+        f"Search target label={target.label}",
+        f"id={target.object_key or target.command or target.label}",
+        f"kind={target.kind}",
+    ]
+    if target.alt_deg is not None:
+        parts.append(f"alt={float(target.alt_deg):.1f} deg")
+    if target.az_deg is not None:
+        parts.append(f"az={float(target.az_deg):.1f} deg")
+    return " | ".join(parts)
 
 
 def _format_search_candidate_line(target: SearchJumpTarget) -> str:
@@ -1206,6 +1222,7 @@ def main() -> None:
             viewer_data=viewer_data,
             celestial_data=celestial_data,
             vmag_limit=float(style.vmag_limit),
+            search_overlay_target=search_overlay_target,
         )
         assert img2sixel_bin is not None
         sixel_ok = _write_sixel_to_stdout(image, img2sixel_bin=img2sixel_bin)
@@ -1217,6 +1234,7 @@ def main() -> None:
         viewer_data=viewer_data,
         celestial_data=celestial_data,
         vmag_limit=float(style.vmag_limit),
+        search_overlay_target=search_overlay_target,
     )
 
 
