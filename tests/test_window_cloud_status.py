@@ -25,6 +25,17 @@ def test_cloud_status_line_shows_downloading() -> None:
     assert got == "Clouds [HIMAWARI]: downloading"
 
 
+def test_cloud_status_line_shows_download_failed() -> None:
+    state = SimpleNamespace(
+        current_satellite="HIMAWARI",
+        banner_text="Clouds: Clouds fetch timed out",
+        meta=None,
+        coverage_ratio=None,
+    )
+    got = SkyWindow._cloud_status_line(_dummy_window(state))
+    assert got == "Clouds [HIMAWARI]: download failed"
+
+
 def test_cloud_status_line_shows_partial_when_coverage_incomplete() -> None:
     meta = SimpleNamespace(
         satellite="HIMAWARI",

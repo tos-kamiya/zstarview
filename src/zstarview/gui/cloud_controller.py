@@ -71,6 +71,16 @@ class CloudController(QObject):
             self._pending_render_request = None
             self._last_render_request = None
 
+    def has_in_flight_update(self) -> bool:
+        """Return True while any cloud fetch or render work is still running."""
+        with self._lock:
+            return (
+                self._source_is_running
+                or self._render_is_running
+                or self._pending_source_request is not None
+                or self._pending_render_request is not None
+            )
+
     def update(
         self,
         *,

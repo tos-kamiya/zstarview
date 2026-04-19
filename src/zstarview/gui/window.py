@@ -1115,6 +1115,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     ) -> None:
         self.state.viewport_interaction_mode = True
         cloud_state = self.cloud_state
+        cloud_controller = self._cloud_controller
+        preserve_cloud_buffers = bool(preserve_cloud_buffers) or (
+            cloud_controller is not None
+            and hasattr(cloud_controller, "has_in_flight_update")
+            and bool(cloud_controller.has_in_flight_update())
+        )
         cleared_cloud = False
         if cloud_state is not None:
             if not preserve_cloud_buffers:
@@ -1132,7 +1138,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 cloud_state.missing_mask_key = None
         if cleared_cloud:
             self._compositor.invalidate()
-        cloud_controller = self._cloud_controller
         if cloud_controller is not None:
             invalidate = cloud_controller.invalidate_pending_render_results
             if callable(invalidate):
