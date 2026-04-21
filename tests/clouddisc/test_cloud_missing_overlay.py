@@ -190,3 +190,4 @@ def test_compositor_reapplies_never_rises_tint_after_ground_fill() -> None:
 
     arr = qimage_to_np_rgba(canvas)
     assert np.array_equal(arr[40, 32, :3], np.array([141, 120, 104], dtype=np.uint8))
+
