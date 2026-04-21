@@ -588,6 +588,18 @@
   - 検索解決の共有設計は `search/` サブパッケージへ移したが、UI との切り分けや overlay 連携はまだ仮設計なので、`docs/design.md` に provisional note を追加した。
 
 - Validation note
+
+### 2026-04-22
+
+- Voyager 1 検索経路の整理
+  - `Search Objects...` と CLI 検索で使う `satellite` 経路を `ISS` のみに限定し、`JWST`, `Voyager 1`, `Voyager 2`, `Parker` は JPL 検索結果として扱うようにした。
+  - ローカル検索候補の組み立てから衛星ショートカットを外し、`kind="satellite"` の曖昧な検索結果が Voyager 系へ混入しないようにした。
+  - これにより、Voyager 1 の検索結果は `JPL [Voyager 1 (spacecraft)]` として扱われ、Horizons observer ephemeris の `alt/az` と比較しやすくした。
+
+- JPL / Horizons デバッグ情報の強化
+  - JPL 解決ログに `target_time_utc` と observer の緯度・経度・標高を含め、手動ダウンロードした Horizons CSV と GUI の比較条件を明示できるようにした。
+  - 永続検索ターゲット更新ログには `kind`, `group`, `command`, `alt`, `az` を含め、`satellite` 経路と `jpl_body` 経路の取り違えを追跡しやすくした。
+  - JPL small-body status line では、エラー文字列が無い場合に `None` を表示せず、`retry pending` などの状態だけを見せるようにした。
   - Modified GUI, renderer, and test files passed `py_compile` and `ruff check`.
   - Full `pytest` execution was not possible in the active `.venv` because `pytest` is not installed there.
 

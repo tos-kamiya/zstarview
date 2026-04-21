@@ -89,6 +89,14 @@ def test_build_horizons_observer_url_targets_csv_observer_table() -> None:
     assert "QUANTITIES=%274%27" in url
 
 
+def test_extract_horizons_altaz_returns_elevation_then_azimuth() -> None:
+    from zstarview.search.jpl import extract_horizons_altaz
+
+    rows = [["2026-Apr-21 00:00", "*", "m", "275.973171", "13.039035"]]
+
+    assert extract_horizons_altaz(rows) == (13.039035, 275.973171)
+
+
 def test_fetch_horizons_records_builds_spacecraft_rows(monkeypatch) -> None:
     lookup_calls: list[str] = []
     observer_calls: list[str] = []
@@ -123,6 +131,8 @@ def test_fetch_horizons_records_builds_spacecraft_rows(monkeypatch) -> None:
     assert lookup_calls == ["JWST", "Voyager 1", "Voyager 2", "Parker Solar Probe"]
     assert observer_calls == ["JWST-spkid", "Voyager 1-spkid", "Voyager 2-spkid", "Parker Solar Probe-spkid"]
     assert [record["OBJECT_NAME"] for record in records] == ["JWST", "Voyager 1", "Voyager 2", "Parker"]
+    assert [record["ALT_DEG"] for record in records] == [67.89, 67.89, 67.89, 67.89]
+    assert [record["AZ_DEG"] for record in records] == [123.45, 123.45, 123.45, 123.45]
     assert all(record["_SOURCE"] == "horizons" for record in records)
 
 

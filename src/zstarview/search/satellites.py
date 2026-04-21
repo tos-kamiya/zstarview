@@ -31,36 +31,6 @@ SATELLITE_TARGETS: tuple[SatelliteTargetSpec, ...] = (
             "INTERNATIONAL SPACE STATION",
         ),
     ),
-    SatelliteTargetSpec(
-        label="JWST",
-        aliases=(
-            "JWST",
-            "JAMES WEBB SPACE TELESCOPE",
-            "JAMES WEBB",
-        ),
-    ),
-    SatelliteTargetSpec(
-        label="Voyager 1",
-        aliases=(
-            "VOYAGER 1",
-            "VOYAGER-1",
-        ),
-    ),
-    SatelliteTargetSpec(
-        label="Voyager 2",
-        aliases=(
-            "VOYAGER 2",
-            "VOYAGER-2",
-        ),
-    ),
-    SatelliteTargetSpec(
-        label="Parker",
-        aliases=(
-            "PARKER",
-            "PARKER SOLAR PROBE",
-            "SOLAR PROBE PLUS",
-        ),
-    ),
 )
 
 

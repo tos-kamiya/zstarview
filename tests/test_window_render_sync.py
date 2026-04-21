@@ -151,7 +151,7 @@ class _WindowStub:
                 except (TypeError, ValueError):
                     continue
             if len(numeric_values) >= 2:
-                return numeric_values[-1], numeric_values[-2]
+                return numeric_values[1], numeric_values[0]
         return None
 
     def _clear_persistent_search(self) -> None:
@@ -165,6 +165,12 @@ class _WindowStub:
 
     def _schedule_persistent_search_refresh(self) -> None:
         return None
+
+    def _log_persistent_search_target_update(self, **kwargs) -> None:
+        window_module.SkyWindowCoreMixin._log_persistent_search_target_update(
+            self,
+            **kwargs,
+        )
 
 
 def _make_scene(
@@ -700,7 +706,7 @@ def test_jump_to_place_target_uses_projected_altaz(monkeypatch) -> None:
     dummy.request_sky_data_update.assert_called_once()
 
 
-def test_jump_to_jpl_small_body_target_can_set_persistent_overlay() -> None:
+def test_jump_to_jpl_small_body_target_can_set_persistent_overlay(caplog) -> None:
     dummy = _WindowStub()
     dummy.viewer_data = ViewerData(
         location=(35.0, 139.0),
@@ -717,25 +723,27 @@ def test_jump_to_jpl_small_body_target_can_set_persistent_overlay() -> None:
     dummy.satellite_state = SimpleNamespace(
         records_by_group={}, overlay_points=None, set_banner=Mock()
     )
+    dummy._target_time_utc = lambda: datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc)
     dummy._sync_view_altitude_actions = Mock()
     dummy._begin_interaction_mode = Mock()
     dummy.request_sky_data_update = Mock()
     dummy.update = Mock()
 
-    SkyWindow._jump_to_search_target(
-        dummy,
-        SearchJumpTarget(
-            label="Ceres",
-            kind="jpl_small_body",
-            sort_key=(0.0, "ceres"),
-            subtitle="Asteroid / 1 Ceres",
-            object_key="20000001",
-            command="DES=20000001;",
-            alt_deg=12.5,
-            az_deg=220.0,
-            persistent_keep_marker=True,
-        ),
-    )
+    with caplog.at_level("INFO"):
+        SkyWindow._jump_to_search_target(
+            dummy,
+            SearchJumpTarget(
+                label="Ceres",
+                kind="jpl_small_body",
+                sort_key=(0.0, "ceres"),
+                subtitle="Asteroid / 1 Ceres",
+                object_key="20000001",
+                command="DES=20000001;",
+                alt_deg=12.5,
+                az_deg=220.0,
+                persistent_keep_marker=True,
+            ),
+        )
 
     assert dummy.viewer_data.view_center == (12.5, 220.0)
     assert dummy.state.jump_highlight_name == "Ceres"
@@ -746,6 +754,9 @@ def test_jump_to_jpl_small_body_target_can_set_persistent_overlay() -> None:
     assert dummy.state.persistent_search_next_refresh_utc == datetime(
         2026, 4, 18, 13, 0, tzinfo=timezone.utc
     )
+    assert "JPL persistent target set: label=Ceres kind=jpl_small_body group=<none>" in caplog.text
+    assert "target_time_utc=2026-04-18T12:00:00+00:00" in caplog.text
+    assert "alt=12.5 az=220.0 command=DES=20000001;" in caplog.text
 
 
 def test_jump_to_jpl_small_body_target_honors_fixed_search_axes() -> None:
@@ -893,6 +904,53 @@ def test_jpl_small_body_failure_reschedules_one_hour_later() -> None:
     dummy.request_client_update.assert_called_once()
 
 
+def test_on_jpl_ready_logs_refreshed_persistent_target(caplog) -> None:
+    dummy = _WindowStub()
+    current_target = SearchJumpTarget(
+        label="Voyager 1",
+        kind="jpl_small_body",
+        sort_key=(0.0, "voyager 1"),
+        subtitle="spacecraft",
+        object_key="-31",
+        command="DES=-31;",
+        alt_deg=48.6,
+        az_deg=245.6,
+        target_time_utc=datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
+        jpl_group="sb",
+        persistent_keep_marker=True,
+    )
+    dummy.state = SkyWindowState(
+        render_view_center=(20.0, 30.0),
+        satellite_overlay_points=None,
+        persistent_search_target=current_target,
+        persistent_search_next_refresh_utc=datetime(2026, 4, 18, 13, 0, tzinfo=timezone.utc),
+        persistent_search_reference_time_utc=datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
+    )
+    dummy.request_client_update = Mock()
+    dummy._schedule_persistent_search_refresh = Mock()
+
+    with caplog.at_level("INFO"):
+        SkyWindow._on_jpl_ready(
+            dummy,
+            {
+                "target": current_target,
+                "target_time_utc": datetime(2026, 4, 18, 13, 0, tzinfo=timezone.utc),
+                "refreshed_at_utc": datetime(2026, 4, 18, 13, 2, tzinfo=timezone.utc),
+                "alt_deg": 49.1,
+                "az_deg": 244.7,
+                "rows": [["2026-Apr-18 13:00:00", "*", "m", "244.7", "49.1"]],
+                "reason": "timer",
+            },
+        )
+
+    assert dummy.state.persistent_search_target is not None
+    assert dummy.state.persistent_search_target.alt_deg == 49.1
+    assert dummy.state.persistent_search_target.az_deg == 244.7
+    assert "JPL persistent target refreshed: label=Voyager 1 kind=jpl_small_body group=sb" in caplog.text
+    assert "target_time_utc=2026-04-18T13:00:00+00:00" in caplog.text
+    assert "alt=49.1 az=244.7 command=DES=-31;" in caplog.text
+
+
 def test_search_satellite_targets_resolves_known_artificial_satellites(monkeypatch) -> None:
     dummy = _WindowStub()
     dummy.viewer_data = ViewerData(
@@ -904,10 +962,10 @@ def test_search_satellite_targets_resolves_known_artificial_satellites(monkeypat
     )
     dummy._target_time_utc = lambda: datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc)
 
-    targets = SkyWindow._search_satellite_targets(dummy, "JWST")
+    targets = SkyWindow._search_satellite_targets(dummy, "ISS")
 
     assert len(targets) == 1
-    assert targets[0].label == "JWST"
+    assert targets[0].label == "ISS"
     assert targets[0].kind == "satellite"
     assert targets[0].alt_deg is None
     assert targets[0].az_deg is None

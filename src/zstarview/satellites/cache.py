@@ -11,6 +11,7 @@ from typing import Callable
 from ..overlay_time import TimeMode, current_utc_time
 from ..paths import SATELLITE_CACHE_ROOT_DIR
 from ..satellite_constants import (
+    SATELLITE_CACHE_FORMAT_VERSION,
     SATELLITE_ELEMENT_VALID_SECONDS,
     SATELLITE_FAILURE_RETRY_SECONDS,
     SATELLITE_FETCH_TIMEOUT_SECONDS,
@@ -29,6 +30,7 @@ from .types import CachedSatelliteElementSet, SatelliteOmmRecord
 logger = logging.getLogger(__name__)
 
 SatelliteFetcher = Callable[..., list[SatelliteOmmRecord]]
+SATELLITE_CACHE_PAYLOAD_VERSION_KEY = "cache_format_version"
 
 
 def _call_fetcher_with_supported_kwargs(
@@ -117,6 +119,7 @@ def save_satellite_cache(
     )
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
+        SATELLITE_CACHE_PAYLOAD_VERSION_KEY: SATELLITE_CACHE_FORMAT_VERSION,
         "group_key": str(group_key),
         "element_epoch_utc": _normalize_utc(element_epoch_utc).isoformat(),
         "fetched_at_utc": _normalize_utc(fetched_at_utc).isoformat(),
@@ -150,6 +153,7 @@ def save_satellite_fetch_failure(
     payload = _load_cache_payload(path) or {}
     attempted_at = _normalize_utc(attempted_at_utc)
     payload["group_key"] = str(group_key)
+    payload[SATELLITE_CACHE_PAYLOAD_VERSION_KEY] = SATELLITE_CACHE_FORMAT_VERSION
     payload["last_fetch_attempt_utc"] = attempted_at.isoformat()
     payload["last_fetch_failed"] = True
     payload["last_fetch_error"] = str(error_text).strip()
@@ -350,6 +354,9 @@ def _cached_set_from_payload(
 ) -> CachedSatelliteElementSet:
     if not isinstance(payload, dict):
         raise ValueError("cache payload must be a dict")
+    cache_version = payload.get(SATELLITE_CACHE_PAYLOAD_VERSION_KEY)
+    if int(cache_version) != int(SATELLITE_CACHE_FORMAT_VERSION):
+        raise ValueError("unsupported cache format version")
     stored_group_key = str(payload.get("group_key", group_key or ""))
     effective_group_key = str(group_key or stored_group_key)
     records_payload = payload.get("records")

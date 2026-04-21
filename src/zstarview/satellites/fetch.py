@@ -388,7 +388,8 @@ def _extract_altaz_from_csv_row(row: list[str]) -> tuple[float | None, float | N
             numeric_values.append(parsed)
     if len(numeric_values) < 2:
         return None, None
-    return numeric_values[-1], numeric_values[-2]
+    # Horizons observer CSV reports azimuth first and elevation second.
+    return numeric_values[1], numeric_values[0]
 
 
 def _parse_float(value: object) -> float | None:
@@ -476,10 +477,11 @@ def build_earth_satellites(
 
 
 def _log_fetch_attempt_failure(source_name: str, exc: Exception) -> None:
+    detail = f"{exc.__class__.__name__}: {exc!s}" if str(exc).strip() else exc.__class__.__name__
     if _is_timeout_error(exc):
-        logger.warning("ISS fetch failed via %s: %s", source_name, exc)
+        logger.warning("Satellite fetch failed via %s: %s", source_name, detail)
         return
-    logger.info("ISS fetch failed via %s: %s", source_name, exc)
+    logger.info("Satellite fetch failed via %s: %s", source_name, detail)
 
 
 def _is_timeout_error(exc: Exception) -> bool:

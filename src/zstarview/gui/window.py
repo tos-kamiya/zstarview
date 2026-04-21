@@ -1334,7 +1334,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 except (TypeError, ValueError):
                     continue
             if len(numeric_values) >= 2:
-                return numeric_values[-1], numeric_values[-2]
+                # Horizons observer CSV reports azimuth first and elevation second.
+                return numeric_values[1], numeric_values[0]
         return None
 
     def _jpl_small_body_persistent_target(self) -> SearchJumpTarget | None:
@@ -1409,6 +1410,27 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.state.persistent_search_last_error = None
         self.request_client_update()
 
+    def _log_persistent_search_target_update(
+        self,
+        *,
+        action: str,
+        target: SearchJumpTarget,
+        target_time_utc: datetime,
+        alt_deg: float,
+        az_deg: float,
+    ) -> None:
+        logger.info(
+            "JPL persistent target %s: label=%s kind=%s group=%s target_time_utc=%s alt=%.1f az=%.1f command=%s",
+            action,
+            str(getattr(target, "label", "")).strip() or "<unnamed>",
+            str(getattr(target, "kind", "")).strip() or "<unknown>",
+            str(getattr(target, "jpl_group", "")).strip() or "<none>",
+            target_time_utc.astimezone(timezone.utc).isoformat(),
+            float(alt_deg),
+            float(az_deg) % 360.0,
+            str(getattr(target, "command", "")).strip() or "<missing>",
+        )
+
     def _on_jpl_ready(self, payload: object) -> None:
         if not isinstance(payload, dict):
             return
@@ -1430,6 +1452,13 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             alt_deg=alt_deg,
             az_deg=az_deg,
             target_time_utc=target_time_utc,
+        )
+        self._log_persistent_search_target_update(
+            action="refreshed",
+            target=updated_target,
+            target_time_utc=target_time_utc,
+            alt_deg=alt_deg,
+            az_deg=az_deg,
         )
         self.state.persistent_search_target = updated_target
         self.state.persistent_search_reference_time_utc = target_time_utc
@@ -1453,9 +1482,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         refreshed_at_utc = payload.get("refreshed_at_utc")
         if not isinstance(refreshed_at_utc, datetime):
             refreshed_at_utc = datetime.now(timezone.utc)
-        self.state.persistent_search_last_error = str(payload.get("error", "")).strip() or str(
-            payload.get("banner", "")
-        ).strip()
+        error_text = str(payload.get("error", "")).strip()
+        banner_text = str(payload.get("banner", "")).strip()
+        last_error = error_text or banner_text
+        if last_error.casefold() == "none":
+            last_error = ""
+        self.state.persistent_search_last_error = last_error
         self.state.persistent_search_last_refresh_utc = refreshed_at_utc
         self.state.persistent_search_next_refresh_utc = refreshed_at_utc + timedelta(hours=1)
         self.request_client_update()
@@ -1544,6 +1576,13 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 alt_deg=target_alt,
                 az_deg=target_az,
                 persistent_keep_marker=True,
+            )
+            self._log_persistent_search_target_update(
+                action="set",
+                target=updated_target,
+                target_time_utc=reference_time_utc,
+                alt_deg=target_alt,
+                az_deg=target_az,
             )
             self.state.persistent_search_target = updated_target
             self.state.persistent_search_reference_time_utc = reference_time_utc

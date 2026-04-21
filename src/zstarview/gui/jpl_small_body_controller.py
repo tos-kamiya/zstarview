@@ -79,12 +79,22 @@ class JplSmallBodyController(QObject):
     ) -> None:
         next_request: Optional[dict[str, object]] = None
         try:
+            target_label = str(getattr(target, "label", "")).strip() or "<unnamed>"
             command = str(target.command).strip()
             if not command:
                 command = f"DES={target.object_key};" if target.object_key else ""
             if not command:
                 raise RuntimeError("JPL small-body target has no usable command")
-            logger.info("Fetching JPL small-body ephemeris (%s)...", reason)
+            logger.info(
+                "Fetching JPL small-body ephemeris (%s): target=%s command=%s target_time_utc=%s observer=(lat=%s lon=%s height_m=%s)",
+                reason,
+                target_label,
+                command,
+                target_time_utc.astimezone(timezone.utc).isoformat(),
+                observer_lat,
+                observer_lon,
+                observer_height_m,
+            )
             rows = fetch_horizons_observer_csv(
                 command,
                 target_time_utc=target_time_utc,
@@ -111,10 +121,16 @@ class JplSmallBodyController(QObject):
                     }
                 )
         except Exception as exc:
-            if isinstance(exc, URLError):
-                logger.warning("JPL small-body update failed: %s", exc)
-            else:
-                logger.warning("JPL small-body update failed: %s", exc, exc_info=True)
+            logger.warning(
+                "JPL small-body update failed (%s): target=%s command=%s target_time_utc=%s error=%s exception=%r",
+                reason,
+                str(getattr(target, "label", "")).strip() or "<unnamed>",
+                str(getattr(target, "command", "")).strip() or "<missing>",
+                target_time_utc.astimezone(timezone.utc).isoformat(),
+                str(exc).strip() or exc.__class__.__name__,
+                exc,
+                exc_info=not isinstance(exc, URLError),
+            )
             with self._lock:
                 should_emit = not self._stopping and request_id == self._latest_request_id
             if should_emit:
