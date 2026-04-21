@@ -90,6 +90,16 @@ class SkyWindowRuntimeOptions:
     window_frame_mode: str = "frameless"
 
 
+def _apply_visibility_boost(opacity: float, visibility_boost: float, tier_scale: float) -> float:
+    """Increase opacity by a tiered boost while keeping the value in range."""
+    base_opacity = min(1.0, max(0.0, float(opacity)))
+    boost = max(1.0, float(visibility_boost))
+    if base_opacity <= 0.0 or boost <= 1.0 or tier_scale <= 0.0:
+        return base_opacity
+    boosted = base_opacity * (1.0 + (boost - 1.0) * float(tier_scale))
+    return min(1.0, boosted)
+
+
 def prepare_window_viewer_data(
     city_name: str,
     city_data: tuple[float, float, str],
@@ -154,6 +164,7 @@ def prepare_window_user_options(
     vmag_limit: float,
     visual_preset: str,
     star_visibility_boost: float,
+    visibility_boost: float,
     show_dso_initial: Optional[bool],
     show_asterisms_initial: Optional[bool],
     show_guidelines_initial: Optional[bool],
@@ -167,15 +178,16 @@ def prepare_window_user_options(
     urban_outline_gui_allowed: bool,
 ) -> SkyWindowUserOptions:
     """Normalize user-facing options before constructing SkyWindow."""
+    visibility_boost = max(1.0, float(visibility_boost))
     return SkyWindowUserOptions(
-        sky_disc_alpha=min(1.0, max(0.0, sky_disc_alpha)),
-        cloud_disc_alpha=min(1.0, max(0.0, cloud_disc_alpha)),
-        satellite_opacity=min(1.0, max(0.0, satellite_opacity)),
-        aircraft_opacity=min(1.0, max(0.0, aircraft_opacity)),
-        terrain_horizon_opacity=min(1.0, max(0.0, terrain_horizon_opacity)),
-        earth_guide_opacity=min(1.0, max(0.0, earth_guide_opacity)),
-        urban_outline_opacity=min(1.0, max(0.0, urban_outline_opacity)),
-        ground_tint_opacity=min(1.0, max(0.0, ground_tint_opacity)),
+        sky_disc_alpha=_apply_visibility_boost(sky_disc_alpha, visibility_boost, 0.25),
+        cloud_disc_alpha=_apply_visibility_boost(cloud_disc_alpha, visibility_boost, 0.25),
+        satellite_opacity=_apply_visibility_boost(satellite_opacity, visibility_boost, 0.25),
+        aircraft_opacity=_apply_visibility_boost(aircraft_opacity, visibility_boost, 0.25),
+        terrain_horizon_opacity=_apply_visibility_boost(terrain_horizon_opacity, visibility_boost, 1.0),
+        earth_guide_opacity=_apply_visibility_boost(earth_guide_opacity, visibility_boost, 1.0),
+        urban_outline_opacity=_apply_visibility_boost(urban_outline_opacity, visibility_boost, 1.0),
+        ground_tint_opacity=_apply_visibility_boost(ground_tint_opacity, visibility_boost, 0.25),
         enlarge_moon=bool(enlarge_moon),
         star_base_radius=max(2.0, star_base_radius),
         vmag_limit=vmag_limit,
@@ -207,12 +219,14 @@ def prepare_window_runtime_options(
     cloud_stripe_style: tuple[int, float],
     cloud_stripe_mode: str,
     cloud_missing_tint_opacity: float,
+    visibility_boost: float,
     star_render_expected_width: int,
     content_fov_deg: float,
     window_geometry_arg: Optional[str | tuple[int, int, int, int]],
     window_frame_mode: str,
 ) -> SkyWindowRuntimeOptions:
     """Normalize runtime options before constructing SkyWindow."""
+    visibility_boost = max(1.0, float(visibility_boost))
     return SkyWindowRuntimeOptions(
         delta_t=delta_t,
         sky_update_interval=max(1, int(sky_update_interval)),
@@ -223,7 +237,7 @@ def prepare_window_runtime_options(
         urban_outline_skyscraper_only=bool(urban_outline_skyscraper_only),
         cloud_stripe_style=cloud_stripe_style,
         cloud_stripe_mode=("alpha" if str(cloud_stripe_mode) == "alpha" else "width"),
-        cloud_missing_tint_opacity=min(1.0, max(0.0, cloud_missing_tint_opacity)),
+        cloud_missing_tint_opacity=_apply_visibility_boost(cloud_missing_tint_opacity, visibility_boost, 1.0),
         star_render_expected_width=max(1, int(star_render_expected_width)),
         content_fov_deg=max(90.0, min(127.0, float(content_fov_deg))),
         window_geometry_arg=window_geometry_arg,
