@@ -773,7 +773,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.menu.addMenu(self.search_menu)
         self.menu.addMenu(self.display_menu)
         self.menu.addMenu(self.observer_view_menu)
-        self.menu.addMenu(self.help_menu)
 
         self._add_menu_action(
             self.observer_view_menu,
@@ -924,7 +923,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             triggered=self.toggle_fullscreen,
         )
 
-        self.file_menu.addSeparator()
+        self._attach_help_menu_to_file_menu()
         exit_action = self._add_menu_action(
             self.file_menu,
             "Exit",
@@ -941,10 +940,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._add_help_menu_actions(self.help_menu)
 
         if self._frameless_window:
-            self.menu.addSeparator()
-            self.menu.addAction(square_client_area_action)
-            self.menu.addAction(fullscreen_action)
-            self.menu.addAction(exit_action)
+            self._attach_help_menu_to_frameless_menu(
+                square_client_area_action,
+                fullscreen_action,
+                exit_action,
+            )
 
     def _create_menu_action(self, menu: QMenu, text: str) -> QAction:
         """Create a menu action and add it to the target menu."""
@@ -1003,9 +1003,28 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         version_action.setEnabled(False)
         self._add_menu_action(
             menu,
-            "Code, Data Licenses, and Credits...",
+            "Code, Data Licenses, and Credits ->",
             triggered=open_code_data_licenses_and_credits,
         )
+
+    def _attach_help_menu_to_file_menu(self) -> None:
+        self.file_menu.addSeparator()
+        self.file_menu.addMenu(self.help_menu)
+        self.file_menu.addSeparator()
+
+    def _attach_help_menu_to_frameless_menu(
+        self,
+        square_client_area_action: QAction,
+        fullscreen_action: QAction,
+        exit_action: QAction,
+    ) -> None:
+        self.menu.addSeparator()
+        self.menu.addAction(square_client_area_action)
+        self.menu.addAction(fullscreen_action)
+        self.menu.addSeparator()
+        self.menu.addMenu(self.help_menu)
+        self.menu.addSeparator()
+        self.menu.addAction(exit_action)
 
     def _attach_client_menu_button(self, parent: QWidget) -> None:
         """Attach the legacy popup-menu button directly on the client area."""
