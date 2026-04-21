@@ -444,9 +444,9 @@ def add_observing_arguments(parser: argparse._ActionsContainer) -> None:
     parser.add_argument(
         "--edge-fov-deg",
         type=_parse_edge_fov_deg,
-        default=90.0,
+        default=96.0,
         help=(
-            "Projected edge field of view in degrees (default: 90). "
+            "Projected edge field of view in degrees (default: 96). "
             "This controls how angular distance maps to the window edge."
         ),
     )
@@ -1202,6 +1202,17 @@ def _validate_urban_outline_argument_combinations(
         )
 
 
+def _validate_fov_relationship(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> None:
+    edge_fov_deg = getattr(args, "edge_fov_deg", None)
+    content_fov_deg = getattr(args, "content_fov_deg", None)
+    if edge_fov_deg is None or content_fov_deg is None:
+        return
+    if float(edge_fov_deg) > float(content_fov_deg):
+        parser.error("--edge-fov-deg must be less than or equal to --content-fov-deg")
+
+
 def _validate_main_search_arguments(
     parser: argparse.ArgumentParser,
     args: argparse.Namespace,
@@ -1244,6 +1255,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     _validate_dataset_query_compatibility(parser, args)
     _validate_location_argument_combinations(parser, args)
     _validate_urban_outline_argument_combinations(parser, args)
+    _validate_fov_relationship(parser, args)
     _validate_main_search_arguments(parser, args, raw_argv)
     args.view_center_alt_specified = _argv_has_option(
         raw_argv, "-A", "--view-center-alt"
@@ -1264,6 +1276,7 @@ def parse_export_image_args(argv: Sequence[str] | None = None) -> argparse.Names
     _normalize_vmag_limit(args)
     _validate_location_argument_combinations(parser, args)
     _validate_urban_outline_argument_combinations(parser, args)
+    _validate_fov_relationship(parser, args)
     _validate_main_search_arguments(parser, args, raw_argv)
     if args.print_cache_dir:
         if args.output or args.sixel:

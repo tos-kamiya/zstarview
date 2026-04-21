@@ -79,7 +79,7 @@ class ViewerData:
     timezone_name: str
     city_name: str
     view_center: ViewCenterAltAz = (90.0, 180.0)  # (alt_deg, az_deg)
-    edge_fov_deg: float = 90.0
+    edge_fov_deg: float = 96.0
     content_fov_deg: float = 115.0
     observer_height_m: float = 1.7
     location_height_label: str | None = None

@@ -236,7 +236,7 @@ def _build_window_inputs_from_args(
         city.display_name,
         (city.lat, city.lon, city.tz),
         view_center,
-        edge_fov_deg=getattr(args, "edge_fov_deg", 90.0),
+        edge_fov_deg=getattr(args, "edge_fov_deg", 96.0),
         content_fov_deg=getattr(args, "content_fov_deg", 115.0),
         observer_height_m=(
             city.observer_height_m
