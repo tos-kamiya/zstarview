@@ -13,9 +13,9 @@ ImageSizeArg = Tuple[int, int]
 _VMAG_MULTIPLIER_MIN = 10.0**0.2
 _VMAG_MULTIPLIER_MAX = 10.0**0.4
 _EDGE_FOV_MIN = 0.0
-_EDGE_FOV_MAX = 127.0
+_EDGE_FOV_MAX = 135.0
 _CONTENT_FOV_MIN = 90.0
-_CONTENT_FOV_MAX = 127.0
+_CONTENT_FOV_MAX = 135.0
 _COMMITTED_VMAG_LIMIT_MAX = 10.5
 
 
@@ -455,7 +455,7 @@ def add_observing_arguments(parser: argparse._ActionsContainer) -> None:
         type=_parse_content_fov_deg,
         default=115.0,
         help=(
-            "Shared overscan content FOV in degrees (allowed: 90-127, default: 115). "
+            "Shared overscan content FOV in degrees (allowed: 90-135, default: 115). "
             "The window edge remains fixed at 90 degrees from the view center."
         ),
     )
@@ -864,7 +864,7 @@ def add_render_arguments(
         type=_parse_content_fov_deg,
         default=115.0,
         help=(
-            "Shared overscan content FOV in degrees (allowed: 90-127, default: 115). "
+            "Shared overscan content FOV in degrees (allowed: 90-135, default: 115). "
             "The window edge remains fixed at 90 degrees from the view center."
         ),
     )
