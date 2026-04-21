@@ -5,6 +5,8 @@ from dataclasses import replace
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import Mock
+
+import numpy as np
 from PySide6.QtCore import QPoint, QPointF, QRect, Qt
 from PySide6.QtGui import QFont, QImage
 
@@ -17,9 +19,10 @@ import zstarview.render.text as render_text_module
 import zstarview.gui.window as window_module
 import zstarview.gui.window_render as window_render_module
 import zstarview.gui.window_updates as window_updates_module
+import zstarview.render.solar_system as render_solar_system_module
 from zstarview.location_resolver import PlaceTargetProjection
 from zstarview.satellite_constants import SATELLITE_FAILURE_RETRY_SECONDS
-from zstarview.types import CelestialData, UrbanOutlinePolyline, ViewerData
+from zstarview.types import CelestialData, PlanetBody, UrbanOutlinePolyline, ViewerData
 from zstarview.gui.famous_star_shortcuts import SearchJumpTarget
 from zstarview.gui.window import SkyWindow
 from zstarview.gui.window_state import SkyWindowState
@@ -2246,6 +2249,73 @@ def test_draw_planet_layer_passes_marker_scale(monkeypatch) -> None:
         style=_make_style(star_render_expected_width=600),
         enlarge_moon=False,
         label_candidates=[],
+    )
+
+    assert seen_marker_scales == [
+        pipeline_module.compute_star_render_upscale_factor(1200, 600)
+    ]
+
+
+def test_draw_hover_overlay_passes_marker_scale_to_moon(monkeypatch) -> None:
+    seen_marker_scales: list[float] = []
+
+    monkeypatch.setattr(
+        render_solar_system_module,
+        "draw_hovered_moon_overlay",
+        lambda *_args, **kwargs: seen_marker_scales.append(
+            float(kwargs.get("marker_scale", 1.0))
+        ),
+    )
+    monkeypatch.setattr(
+        render_overlay_info_module,
+        "draw_overlay_info",
+        lambda *_args, **_kwargs: None,
+    )
+
+    scene = _make_scene(
+        celestial_data=CelestialData(
+            time=astropy.time.Time("2026-03-09T00:00:00", scale="utc"),
+            planets=[
+                PlanetBody(name="sun", alt=45.0, az=180.0, symbol="☉", is_visible=True),
+                PlanetBody(name="moon", alt=45.0, az=180.0, symbol="☾", is_visible=True),
+            ],
+            stars={
+                "star_index": np.array([], dtype=np.int64),
+                "alt": np.array([], dtype=np.float64),
+                "az": np.array([], dtype=np.float64),
+                "vmag": np.array([], dtype=np.float64),
+                "bv": np.array([], dtype=np.float64),
+                "size_factor": np.array([], dtype=np.float64),
+                "color_factor_base": np.array([], dtype=np.float64),
+            },
+            deep_sky_objects={
+                "id": np.array([], dtype=np.int64),
+                "name": np.array([], dtype=object),
+                "type": np.array([], dtype=object),
+                "alt": np.array([], dtype=np.float64),
+                "az": np.array([], dtype=np.float64),
+                "vmag": np.array([], dtype=np.float64),
+                "major_arcmin": np.array([], dtype=np.float64),
+                "minor_arcmin": np.array([], dtype=np.float64),
+                "pa_deg": np.array([], dtype=np.float64),
+            },
+            celestial_equator_points=[],
+            ecliptic_points=[],
+            horizon_points=[],
+        )
+    )
+
+    pipeline_module._draw_hover_overlay_layer(
+        painter=object(),
+        geometry=SimpleNamespace(radius=600),
+        scene=scene,
+        style=_make_style(
+            star_render_expected_width=600,
+            show_asterisms=False,
+            show_observation_info=False,
+        ),
+        highlighted_object=({"name": "moon"}, QPointF(10.0, 10.0)),
+        highlighted_dso=None,
     )
 
     assert seen_marker_scales == [

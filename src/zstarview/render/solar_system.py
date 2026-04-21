@@ -303,6 +303,8 @@ def draw_hovered_moon_overlay(
     celestial_data: CelestialData,
     viewer_data: ViewerData,
     highlighted_object: Optional[Tuple[CelestialObject, QPointF]],
+    *,
+    marker_scale: float = 1.0,
 ) -> None:
     if highlighted_object is None:
         return
@@ -324,4 +326,5 @@ def draw_hovered_moon_overlay(
         moon_altaz,
         True,
         text_color,
+        marker_scale,
     )

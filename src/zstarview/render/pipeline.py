@@ -533,10 +533,6 @@ def _draw_urban_outline_layer(
 ) -> None:
     if not style.show_urban_outline_layer:
         return
-    line_width_scale = compute_star_render_upscale_factor(
-        geometry.radius * 2,
-        style.star_render_expected_width,
-    )
     render_terrain.draw_urban_outlines(
         painter,
         geometry,
@@ -770,6 +766,7 @@ def _draw_hover_overlay_layer(
         scene.celestial_data,
         scene.viewer,
         highlighted_object,
+        marker_scale=line_width_scale,
     )
     _draw_dso_hover_layer(
         painter,
