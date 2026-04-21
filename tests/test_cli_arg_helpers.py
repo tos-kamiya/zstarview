@@ -20,6 +20,7 @@ def _build_export_like_parser() -> argparse.ArgumentParser:
         include_sky_update_interval=False,
         include_startup_overlay_arguments=False,
     )
+    parser.add_argument("--edge-fov-deg", type=float, default=96.0)
     return parser
 
 
@@ -49,6 +50,24 @@ def test_render_argument_helpers_can_build_parser_without_gui_only_options() -> 
     assert not hasattr(args, "sky_update_interval")
     assert not hasattr(args, "show_dso_initial")
     assert not hasattr(args, "show_asterisms_initial")
+
+
+def test_render_argument_helpers_reject_edge_fov_larger_than_content_fov() -> None:
+    parser = _build_export_like_parser()
+
+    args = parser.parse_args(
+        [
+            "--place",
+            "Matsue",
+            "--edge-fov-deg",
+            "120",
+            "--content-fov-deg",
+            "110",
+        ]
+    )
+
+    with pytest.raises(SystemExit):
+        cli_args._validate_fov_relationship(parser, args)
 
 
 def test_dataset_query_validation_works_with_parser_missing_gui_only_options() -> None:
