@@ -277,13 +277,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             return
         self._client_geometry_sync_done = True
         target_client_width, target_client_height = self._target_client_size
-        current_client_width = int(self.client_width())
-        current_client_height = int(self.client_height())
-        delta_width = int(target_client_width) - current_client_width
-        delta_height = int(target_client_height) - current_client_height
-        if delta_width == 0 and delta_height == 0:
-            return
-        self.resize(self.width() + delta_width, self.height() + delta_height)
+        self._resize_client_area(target_client_width, target_client_height)
 
     def __init__(
         self,
@@ -735,6 +729,24 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self._end_viewport_interaction_mode
         )
 
+    def _resize_client_area(self, target_client_width: int, target_client_height: int) -> None:
+        """Resize the host so the client widget reaches the requested size."""
+        if self.isFullScreen() or self.isMaximized():
+            self.showNormal()
+        self._target_client_size = (int(target_client_width), int(target_client_height))
+        current_client_width = int(self.client_width())
+        current_client_height = int(self.client_height())
+        delta_width = int(target_client_width) - current_client_width
+        delta_height = int(target_client_height) - current_client_height
+        if delta_width == 0 and delta_height == 0:
+            return
+        self.resize(self.width() + delta_width, self.height() + delta_height)
+
+    def square_client_area(self) -> None:
+        """Resize the client area so width and height match."""
+        side = max(1, int(self.client_width()))
+        self._resize_client_area(side, side)
+
     def _install_window_host(self) -> None:
         """Install the host-specific window chrome around the shared client widget."""
         raise NotImplementedError
@@ -889,6 +901,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             triggered=self.toggle_urban_outline,
         )
 
+        square_client_area_action = self._add_menu_action(
+            self.file_menu,
+            "Square Client Area",
+            triggered=self.square_client_area,
+        )
         fullscreen_action = self._add_menu_action(
             self.file_menu,
             "Fullscreen",
@@ -918,6 +935,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
         if self._frameless_window:
             self.menu.addSeparator()
+            self.menu.addAction(square_client_area_action)
             self.menu.addAction(fullscreen_action)
             self.menu.addAction(exit_action)
 

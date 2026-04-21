@@ -282,6 +282,7 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         toggle_earth_guide=lambda: None,
         toggle_urban_outline=lambda: None,
         toggle_fullscreen=lambda: None,
+        square_client_area=lambda: None,
         addAction=lambda action: added_actions.append(action),
         _vmag_limit_menu_text=lambda: "Vmag limit 6.0",
     )
@@ -299,7 +300,7 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
     ]
 
     assert root_titles == ["Search", "Layers", "View Direction"]
-    assert root_actions[-2:] == ["Fullscreen", "Exit"]
+    assert root_actions[-3:] == ["Square Client Area", "Fullscreen", "Exit"]
 
 
 def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -> None:
@@ -342,6 +343,7 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         toggle_earth_guide=lambda: None,
         toggle_urban_outline=lambda: None,
         toggle_fullscreen=lambda: None,
+        square_client_area=lambda: None,
         addAction=lambda _action: None,
         _vmag_limit_menu_text=lambda: "Vmag limit 6.0",
     )
@@ -357,9 +359,15 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         for entry in dummy.menu.entries
         if isinstance(entry, _DummyMenuAction) and not entry.separator
     ]
+    file_actions = [
+        entry.text
+        for entry in dummy.file_menu.entries
+        if isinstance(entry, _DummyMenuAction) and not entry.separator
+    ]
 
     assert root_titles == ["File", "Search", "Layers", "View Direction"]
     assert root_actions == []
+    assert file_actions[:3] == ["Square Client Area", "Fullscreen", "Exit"]
 
 
 def test_toggle_guidelines_disables_and_restores_opacity() -> None:
@@ -410,6 +418,24 @@ def test_vmag_limit_menu_text_formats_current_limit() -> None:
     dummy = SimpleNamespace(vmag_limit=6.5)
 
     assert SkyWindow._vmag_limit_menu_text(dummy) == "Vmag limit 6.5"
+
+
+def test_square_client_area_resizes_height_to_match_width() -> None:
+    calls: list[tuple[int, int]] = []
+    dummy = SimpleNamespace()
+    dummy._target_client_size = (640, 480)
+    dummy.isFullScreen = lambda: False
+    dummy.isMaximized = lambda: False
+    dummy.client_width = lambda: 960
+    dummy.client_height = lambda: 540
+    dummy.width = lambda: 1000
+    dummy.height = lambda: 600
+    dummy.resize = lambda width, height: calls.append((width, height))
+
+    SkyWindow._resize_client_area(dummy, 960, 960)
+
+    assert dummy._target_client_size == (960, 960)
+    assert calls == [(1000, 1020)]
 
 
 def test_status_line_message_combines_cloud_and_terrain_segments() -> None:
