@@ -6,6 +6,7 @@ from zstarview.gui.composite import (
     CloudAmountField,
     _cloud_stripe_fade_factor,
     _render_alpha_scaled_cloud_stripes_rgba,
+    _stripe_render_grids,
     build_cloud_amount_field,
     compose_cloud_over_sky,
     render_variable_width_cloud_stripes,
@@ -181,6 +182,28 @@ def test_cloud_stripe_fade_factor_is_ease_out() -> None:
     assert fade_start == 1.0
     assert fade_mid > 0.75
     assert fade_end == 0.5
+
+
+def test_stripe_render_grids_use_baseline_projection_for_sampling() -> None:
+    phase, line_mask, inside_disc, sample_idx = _stripe_render_grids(
+        16,
+        16,
+        10,
+        8.5,
+        8.0,
+        8.0,
+        8.0,
+        16,
+        16,
+        90.0,
+    )
+
+    assert bool(line_mask[2, 6])
+    assert bool(line_mask[1, 7])
+    assert bool(inside_disc[2, 6])
+    assert bool(inside_disc[1, 7])
+    assert int(sample_idx[2, 6]) == int(sample_idx[1, 7])
+    assert float(phase[2, 6]) != float(phase[1, 7])
 
 
 def test_variable_width_cloud_stripes_anchor_lower_left_edge() -> None:
