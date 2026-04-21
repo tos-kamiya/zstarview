@@ -5,6 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 import zstarview.gui.terrain_controller as terrain_controller_module
 import zstarview.gui.window as window_module
 from zstarview.terrain.dem import COPERNICUS_DEM_BUCKET
@@ -177,13 +178,14 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
         terrain_horizon_opacity=1.5,
         earth_guide_opacity=1.5,
         urban_outline_opacity=1.5,
-        aircraft_opacity=1.5,
-        ground_tint_opacity=1.5,
+        aircraft_opacity=0.4,
+        ground_tint_opacity=0.2,
         enlarge_moon=False,
         star_base_radius=4.0,
         vmag_limit=6.0,
         visual_preset="night",
         star_visibility_boost=1.0,
+        visibility_boost=2.0,
         show_dso_initial=None,
         show_asterisms_initial=None,
         show_guidelines_initial=None,
@@ -200,8 +202,11 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
     assert options.terrain_horizon_opacity == 1.0
     assert options.earth_guide_opacity == 1.0
     assert options.urban_outline_opacity == 1.0
-    assert options.aircraft_opacity == 1.0
-    assert options.ground_tint_opacity == 1.0
+    assert options.sky_disc_alpha == pytest.approx(0.2125)
+    assert options.cloud_disc_alpha == pytest.approx(0.09375)
+    assert options.satellite_opacity == 0.875
+    assert options.aircraft_opacity == 0.5
+    assert options.ground_tint_opacity == 0.25
     assert options.sky_disc_gui_allowed is False
     assert options.cloud_gui_allowed is False
     assert options.aircraft_gui_allowed is False

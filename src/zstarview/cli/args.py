@@ -616,6 +616,15 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         ),
     )
     parser.add_argument(
+        "--visibility-boost",
+        type=float,
+        default=1.0,
+        help=(
+            "Tiered opacity boost for hard-to-see layers (0.0 - 1.0 base, default: 1.0). "
+            "Values above 1.0 increase supplemental layers more than small figure layers."
+        ),
+    )
+    parser.add_argument(
         "-u",
         "--urban-outline-opacity",
         type=float,
@@ -933,6 +942,15 @@ def add_render_arguments(
         ),
     )
     parser.add_argument(
+        "--visibility-boost",
+        type=float,
+        default=1.0,
+        help=(
+            "Tiered opacity boost for hard-to-see layers (0.0 - 1.0 base, default: 1.0). "
+            "Values above 1.0 increase supplemental layers more than small figure layers."
+        ),
+    )
+    parser.add_argument(
         "--urban-outline-opacity",
         type=float,
         default=0.2,
@@ -1162,6 +1180,7 @@ def _validate_dataset_query_compatibility(
             or has_non_default("urban_outline_skyscraper_only")
             or has_non_default("clear_long_lived_cache")
             or has_non_default("ground_tint_opacity")
+            or has_non_default("visibility_boost")
             or has_non_default("cloud_stripe")
             or has_non_default("cloud_missing_tint_opacity")
             or has_non_default("sky_update_interval")

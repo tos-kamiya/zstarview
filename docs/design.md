@@ -1155,9 +1155,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `--sky-opacity 0`、`--cloud-opacity 0`、`--terrain-horizon-opacity 0`、`--earth-guide-opacity 0`、`--urban-outline-opacity 0` は、そのセッションで各 GUI トグルをロックアウトする。
 - `--visibility-boost` のような視認性補正は、CLI 層で `SkyWindowUserOptions` の opacity 群へ変換し、下流の描画コードには最終値だけを渡してよい。
 - 補助レイヤーは強く、小さい図形レイヤーは少し、主役レイヤーは据え置きという tiered profile として扱ってよい。
-- 変換の初期案としては、補助レイヤーは `visibility_boost` をそのまま適用し、小さい図形レイヤーは増分の `25%` だけを適用し、主役レイヤーは `1.0` のままにしてよい。
-- tiered profile の対象は、`ground tint`、`never-rises tint`、`terrain horizon`、`earth guide`、`urban outline`、`cloud missing tint` のような補助表示と、航空機、人工衛星、月マーカー、短いラベルなどの小さい図形レイヤーとしてよい。
+- 変換の初期案としては、地形地平線、Earth guide、都市アウトライン、cloud missing tint のような補助レイヤーは `visibility_boost` をそのまま適用し、sky disc、cloud disc、航空機、人工衛星、月マーカー、短いラベル、ground tint のような小さい図形や薄い補助表示は増分の `25%` だけを適用し、主役レイヤーは `1.0` のままにしてよい。
 - 星、sky disc、雲本体、背景グラデーションのような主役レイヤーは、原則として boost しなくてよい。
+- ただし sky disc / cloud disc は視認性低下が気になる環境向けに、補正対象として扱ってよい。
 - 具体的には、`prepare_window_user_options` で `visibility_boost` を tier 別係数へ展開し、`prepare_window_runtime_options` 以降は通常の opacity 値として扱ってよい。
 
 ### 8.4 人工衛星レイヤーの更新粒度
