@@ -546,7 +546,8 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         metavar="MODE[,COUNT[,WIDTH]]",
         help=(
             "Cloud stripe style as 'mode[,count[,width]]' "
-            "(defaults: width -> width,50,0.85; alpha -> alpha,50,0.25). "
+            "(count is scaled with the star render surface size; defaults: "
+            "width -> width,50,0.85; alpha -> alpha,50,0.25). "
             "If either value is 0, cloud rendering is disabled."
         ),
     )
