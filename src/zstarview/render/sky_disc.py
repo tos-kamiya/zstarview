@@ -239,34 +239,6 @@ def draw_sky_color_disc(
         alpha=alpha,
         eclipse_factor=eclipse_factor,
     )
-    # Mark declinations that never rise at the observer latitude.
-    never_rises = np.zeros_like(alt, dtype=bool)
-    if observer_lat_deg is not None:
-        lat = float(np.clip(observer_lat_deg, -90.0, 90.0))
-        lat_rad = math.radians(lat)
-        alt_rad = np.radians(alt)
-        az_rad = np.radians(az)
-        # Convert (alt, az, lat) to declination:
-        # sin(dec) = sin(alt)*sin(lat) + cos(alt)*cos(lat)*cos(az)
-        # (az: 0=N, 90=E)
-        sin_dec = np.sin(alt_rad) * math.sin(lat_rad) + np.cos(alt_rad) * math.cos(lat_rad) * np.cos(az_rad)
-        sin_dec = np.clip(sin_dec, -1.0, 1.0)
-        dec = np.degrees(np.arcsin(sin_dec))
-        if lat > 0.0:
-            threshold = lat - 90.0
-            never_rises = dec <= threshold
-        elif lat < 0.0:
-            threshold = lat + 90.0
-            never_rises = dec >= threshold
-        else:
-            never_rises = np.zeros_like(dec, dtype=bool)
-    # Apply never-rises tint at the end so it remains visible after grading.
-    if np.any(never_rises):
-        colors[never_rises] = np.clip(
-            colors[never_rises] + NEVER_RISES_TINT_RGB[None, :] * np.float32(NEVER_RISES_TINT_STRENGTH),
-            0.0,
-            1.0,
-        )
     colors = np.clip(colors, 0.0, 1.0)
 
     rgb_u8 = np.clip(np.round(colors * 255.0), 0, 255).astype(np.uint8)

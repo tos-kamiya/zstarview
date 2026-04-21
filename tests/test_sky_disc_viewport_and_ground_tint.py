@@ -77,6 +77,35 @@ def test_sky_disc_can_reduce_disc_opacity_without_changing_rgb_samples() -> None
     assert int(arr[20, 80, :3].max()) <= 1
 
 
+def test_sky_disc_ignores_never_rises_tint_by_observer_latitude() -> None:
+    geom = ScreenGeometry(center=(80, 80), radius=80)
+    north_img = draw_sky_color_disc(
+        geom,
+        view_center=(10.0, 180.0),
+        sun_altaz=(45.0, 180.0),
+        observer_lat_deg=35.0,
+        alpha=1.0,
+        eclipse_factor=1.0,
+        content_fov_deg=90.0,
+    )
+    south_img = draw_sky_color_disc(
+        geom,
+        view_center=(10.0, 180.0),
+        sun_altaz=(45.0, 180.0),
+        observer_lat_deg=-35.0,
+        alpha=1.0,
+        eclipse_factor=1.0,
+        content_fov_deg=90.0,
+    )
+
+    north_arr = qimage_to_np_rgba(north_img)
+    south_arr = qimage_to_np_rgba(south_img)
+
+    # The raw sky disc should no longer inject the never-rises tint; that is
+    # handled later by the compositor.
+    assert np.array_equal(north_arr[120, 80, :3], south_arr[120, 80, :3])
+
+
 def test_uniform_sky_disc_uses_single_disc_color() -> None:
     geom = ScreenGeometry(center=(80, 80), radius=80)
     img = draw_uniform_sky_color_disc(geom, view_center=(0.0, 0.0), content_fov_deg=90.0)
