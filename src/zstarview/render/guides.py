@@ -35,6 +35,27 @@ def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
     return float(viewer_data.content_fov_deg)
 
 
+def _project_altaz_to_normalized_xy(
+    alt_deg: float,
+    az_deg: float,
+    view_center: tuple[float, float],
+    *,
+    edge_fov_deg: float,
+) -> tuple[float, float]:
+    try:
+        return altaz_to_normalized_xy(
+            alt_deg,
+            az_deg,
+            view_center,
+            edge_fov_deg=edge_fov_deg,
+        )
+    except TypeError as exc:
+        try:
+            return altaz_to_normalized_xy(alt_deg, az_deg, view_center)
+        except TypeError:
+            raise exc
+
+
 def split_by_gaps(points: List[Tuple[float, float]]) -> List[List[Tuple[float, float]]]:
     """
     Split a polyline by large gaps to avoid drawing long, straight lines
@@ -214,7 +235,7 @@ def draw_sky_reference_lines(
     *,
     content_fov_deg: float | None = None,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
-    altaz_to_normalized_xy_func: Callable[[float, float, Tuple[float, float]], Tuple[float, float]] = altaz_to_normalized_xy,
+    altaz_to_normalized_xy_func: Callable[..., tuple[float, float]] | None = None,
 ) -> None:
     """
     Draw celestial reference lines like the equator, ecliptic, and horizon.
@@ -245,10 +266,19 @@ def draw_sky_reference_lines(
     ) -> None:
         width_scale = max(1.0, float(width_scale))
         points: List[Tuple[float, float]] = []
+        project_xy = altaz_to_normalized_xy if altaz_to_normalized_xy_func is None else altaz_to_normalized_xy_func
         for alt, az in altaz_points:
             if not is_in_fov_func(float(alt), float(az), viewer_data.view_center, fov_deg=effective_fov_deg):
                 continue
-            nx, ny = altaz_to_normalized_xy_func(float(alt), float(az), viewer_data.view_center)
+            try:
+                nx, ny = project_xy(
+                    float(alt),
+                    float(az),
+                    viewer_data.view_center,
+                    edge_fov_deg=float(viewer_data.edge_fov_deg),
+                )
+            except TypeError:
+                nx, ny = project_xy(float(alt), float(az), viewer_data.view_center)
             points.append((nx, ny))
         for frag in split_by_gaps(points):
             if len(frag) < 2:
@@ -321,6 +351,7 @@ def draw_zenith_marker(
     geometry: ScreenGeometry,
     view_center: Tuple[float, float],
     *,
+    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
     content_fov_deg: float = FIELD_OF_VIEW_DEG,
 ) -> None:
     """
@@ -337,7 +368,12 @@ def draw_zenith_marker(
     for alt in (90.0, -90.0):
         if not is_in_fov(alt, az_ref, view_center, fov_deg=content_fov_deg):
             continue
-        nx, ny = altaz_to_normalized_xy(alt, az_ref, view_center)
+        nx, ny = _project_altaz_to_normalized_xy(
+            alt,
+            az_ref,
+            view_center,
+            edge_fov_deg=edge_fov_deg,
+        )
         x, y = normalized_to_screen_xy(nx, ny, geometry)
         painter.drawLine(QPointF(x - s, y - s), QPointF(x + s, y + s))
         painter.drawLine(QPointF(x - s, y + s), QPointF(x + s, y - s))
@@ -351,6 +387,7 @@ def draw_direction_labels(
     mouse_pos: QPoint | None = None,
     *,
     preset: str = "night",
+    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
     content_fov_deg: float = FIELD_OF_VIEW_DEG,
 ) -> None:
     """
@@ -386,15 +423,45 @@ def draw_direction_labels(
     for label, az in DIRECTIONS.items():
         if not is_in_fov(marker_alt, az, view_center, fov_deg=content_fov_deg):
             continue
-        marker_nx, marker_ny = altaz_to_normalized_xy(marker_alt, az, view_center)
+        marker_nx, marker_ny = _project_altaz_to_normalized_xy(
+            marker_alt,
+            az,
+            view_center,
+            edge_fov_deg=edge_fov_deg,
+        )
         pos = QPointF(*normalized_to_screen_xy(marker_nx, marker_ny, geometry))
-        label_nx, label_ny = altaz_to_normalized_xy(label_alt, az, view_center)
+        label_nx, label_ny = _project_altaz_to_normalized_xy(
+            label_alt,
+            az,
+            view_center,
+            edge_fov_deg=edge_fov_deg,
+        )
         label_pos = QPointF(*normalized_to_screen_xy(label_nx, label_ny, geometry))
 
         az_prev = (az - tangent_probe_deg + 360.0) % 360.0
         az_next = (az + tangent_probe_deg) % 360.0
-        p_prev = QPointF(*normalized_to_screen_xy(*altaz_to_normalized_xy(marker_alt, az_prev, view_center), geometry))
-        p_next = QPointF(*normalized_to_screen_xy(*altaz_to_normalized_xy(marker_alt, az_next, view_center), geometry))
+        p_prev = QPointF(
+            *normalized_to_screen_xy(
+                *_project_altaz_to_normalized_xy(
+                    marker_alt,
+                    az_prev,
+                    view_center,
+                    edge_fov_deg=edge_fov_deg,
+                ),
+                geometry,
+            )
+        )
+        p_next = QPointF(
+            *normalized_to_screen_xy(
+                *_project_altaz_to_normalized_xy(
+                    marker_alt,
+                    az_next,
+                    view_center,
+                    edge_fov_deg=edge_fov_deg,
+                ),
+                geometry,
+            )
+        )
         tx = p_next.x() - p_prev.x()
         ty = p_next.y() - p_prev.y()
         t_norm = math.hypot(tx, ty)

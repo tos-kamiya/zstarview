@@ -11,6 +11,8 @@ def _altaz_to_normalized_xy_vectorized(
     alt_deg: np.ndarray,
     az_deg: np.ndarray,
     view_center_altaz_deg: Tuple[float, float],
+    *,
+    edge_fov_deg: float = 90.0,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Vectorized conversion of altitude/azimuth to normalized screen coordinates."""
     center_alt, center_az = view_center_altaz_deg
@@ -23,7 +25,8 @@ def _altaz_to_normalized_xy_vectorized(
     )
     theta = np.arccos(np.clip(cos_theta, -1.0, 1.0))
 
-    r = theta / (math.pi / 2)
+    edge_fov_rad = math.radians(max(1.0e-6, float(edge_fov_deg)))
+    r = theta / edge_fov_rad
     dx = np.cos(alt2) * np.sin(az2 - az1)
     dy = np.cos(alt1) * np.sin(alt2) - np.sin(alt1) * np.cos(alt2) * np.cos(az2 - az1)
     length = np.hypot(dx, dy)

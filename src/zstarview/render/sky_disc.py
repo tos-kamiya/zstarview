@@ -28,6 +28,7 @@ def _inverse_project_disc(
     geometry: ScreenGeometry,
     view_center: Tuple[float, float],
     *,
+    edge_fov_deg: float,
     content_fov_deg: float,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Inverse-project pixels up to the requested content FOV."""
@@ -37,13 +38,14 @@ def _inverse_project_disc(
     nx, ny = np.meshgrid(xs, ys)
 
     rr2 = nx * nx + ny * ny
-    max_r = max(0.0, float(content_fov_deg) / 90.0)
+    edge_fov = max(1.0e-6, float(edge_fov_deg))
+    max_r = max(0.0, float(content_fov_deg) / edge_fov)
     inside = rr2 <= (max_r * max_r)
     if not np.any(inside):
         return np.array([], dtype=np.float32), np.array([], dtype=np.float32), inside
 
     r = np.sqrt(rr2[inside]).astype(np.float32)
-    theta = r * (np.pi / 2.0)
+    theta = np.radians(r * edge_fov)
 
     # Bearing from local north (clockwise): north=(0,-1), east=(1,0).
     psi = np.arctan2(nx[inside], -ny[inside])
@@ -195,6 +197,7 @@ def draw_sky_color_disc(
     alpha: float = 1.0,
     disc_opacity: float = 1.0,
     eclipse_factor: float = 1.0,
+    edge_fov_deg: float = 90.0,
     content_fov_deg: float,
     image_size: Tuple[int, int] | None = None,
 ) -> QImage:
@@ -219,6 +222,7 @@ def draw_sky_color_disc(
         height,
         local_geometry,
         view_center,
+        edge_fov_deg=edge_fov_deg,
         content_fov_deg=content_fov_deg,
     )
 
@@ -277,6 +281,7 @@ def draw_uniform_sky_color_disc(
     geometry: ScreenGeometry,
     view_center: Tuple[float, float],
     *,
+    edge_fov_deg: float = 90.0,
     content_fov_deg: float,
     image_size: Tuple[int, int] | None = None,
     disc_opacity: float = 1.0,
@@ -298,6 +303,7 @@ def draw_uniform_sky_color_disc(
         height,
         local_geometry,
         view_center,
+        edge_fov_deg=edge_fov_deg,
         content_fov_deg=content_fov_deg,
     )
     rgba = np.zeros((height, width, 4), dtype=np.uint8)

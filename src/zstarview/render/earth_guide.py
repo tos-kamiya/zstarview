@@ -204,6 +204,7 @@ def _project_xyz_to_screen_point(
     dead_zone_km: float,
     geometry: ScreenGeometry,
     view_center: tuple[float, float],
+    edge_fov_deg: float,
     content_fov_deg: float,
     terrain_profile_altaz: list[tuple[float, float]] | None,
 ) -> tuple[tuple[float, float], bool] | None:
@@ -213,7 +214,7 @@ def _project_xyz_to_screen_point(
     alt_deg, az_deg = altaz
     if not is_in_fov(alt_deg, az_deg, view_center, fov_deg=content_fov_deg):
         return None
-    nx, ny = altaz_to_normalized_xy(alt_deg, az_deg, view_center)
+    nx, ny = altaz_to_normalized_xy(alt_deg, az_deg, view_center, edge_fov_deg=edge_fov_deg)
     screen_xy = normalized_to_screen_xy(nx, ny, geometry)
     limit_deg = _observer_visible_altitude_limit_deg(
         az_deg,
@@ -239,6 +240,7 @@ def _segment_screen_fragments(
     dead_zone_km: float,
     geometry: ScreenGeometry,
     view_center: tuple[float, float],
+    edge_fov_deg: float,
     content_fov_deg: float,
     terrain_profile_altaz: list[tuple[float, float]] | None,
 ) -> list[list[tuple[float, float]]]:
@@ -252,6 +254,7 @@ def _segment_screen_fragments(
         dead_zone_km=dead_zone_km,
         geometry=geometry,
         view_center=view_center,
+        edge_fov_deg=edge_fov_deg,
         content_fov_deg=content_fov_deg,
         terrain_profile_altaz=terrain_profile_altaz,
     )
@@ -265,6 +268,7 @@ def _segment_screen_fragments(
         dead_zone_km=dead_zone_km,
         geometry=geometry,
         view_center=view_center,
+        edge_fov_deg=edge_fov_deg,
         content_fov_deg=content_fov_deg,
         terrain_profile_altaz=terrain_profile_altaz,
     )
@@ -284,6 +288,7 @@ def _segment_screen_fragments(
         dead_zone_km=dead_zone_km,
         geometry=geometry,
         view_center=view_center,
+        edge_fov_deg=edge_fov_deg,
         content_fov_deg=content_fov_deg,
         terrain_profile_altaz=terrain_profile_altaz,
     )
@@ -315,6 +320,7 @@ def _segment_screen_fragments(
             dead_zone_km=dead_zone_km,
             geometry=geometry,
             view_center=view_center,
+            edge_fov_deg=edge_fov_deg,
             content_fov_deg=content_fov_deg,
             terrain_profile_altaz=terrain_profile_altaz,
         )
@@ -332,6 +338,7 @@ def _segment_screen_fragments(
             dead_zone_km=dead_zone_km,
             geometry=geometry,
             view_center=view_center,
+            edge_fov_deg=edge_fov_deg,
             content_fov_deg=content_fov_deg,
             terrain_profile_altaz=terrain_profile_altaz,
         )
@@ -364,6 +371,7 @@ def _ring_fragments_altaz(
     dead_zone_km: float,
     geometry: ScreenGeometry,
     view_center: tuple[float, float],
+    edge_fov_deg: float,
     content_fov_deg: float,
     terrain_profile_altaz: list[tuple[float, float]] | None,
     max_depth: int,
@@ -388,6 +396,7 @@ def _ring_fragments_altaz(
             dead_zone_km=dead_zone_km,
             geometry=geometry,
             view_center=view_center,
+            edge_fov_deg=edge_fov_deg,
             content_fov_deg=content_fov_deg,
             terrain_profile_altaz=terrain_profile_altaz,
         )
@@ -459,6 +468,7 @@ def draw_earth_guide(
     observer_height_m: float,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     earth_guide_opacity: float = 0.028,
+    edge_fov_deg: float = 90.0,
     content_fov_deg: float = 90.0,
     fast_mode: bool = False,
 ) -> None:
@@ -521,6 +531,7 @@ def draw_earth_guide(
                 dead_zone_km=dead_zone_km,
                 geometry=geometry,
                 view_center=view_center,
+                edge_fov_deg=edge_fov_deg,
                 content_fov_deg=content_fov_deg,
                 terrain_profile_altaz=terrain_profile_altaz,
                 max_depth=max_depth,

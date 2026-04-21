@@ -69,13 +69,14 @@ def draw_radial_background(
     geometry: ScreenGeometry,
     *,
     preset: str = "night",
+    edge_fov_deg: float = 90.0,
     content_fov_deg: float = BACKGROUND_FIELD_OF_VIEW_DEG2,
     opaque: bool = False,
 ) -> None:
     """Draw a radial sky gradient background."""
     assert geometry.radius >= 10
     fov_outer = max(float(BACKGROUND_FIELD_OF_VIEW_DEG1), float(content_fov_deg))
-    r_content = float(geometry.radius * (fov_outer / 90.0))
+    r_content = float(geometry.radius * (fov_outer / max(1.0e-6, float(edge_fov_deg))))
     cx = float(geometry.center[0])
     cy = float(geometry.center[1])
     corners = (

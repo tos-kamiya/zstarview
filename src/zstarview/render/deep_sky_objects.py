@@ -59,7 +59,12 @@ def _dso_ellipse_polygon(
         alt_i = float(alt_deg) + d_north
         alt_i = max(-89.8, min(89.8, alt_i))
         az_i = (float(az_deg) + (d_east / cos_alt)) % 360.0
-        nx, ny = altaz_to_normalized_xy(alt_i, az_i, viewer_data.view_center)
+        nx, ny = altaz_to_normalized_xy(
+            alt_i,
+            az_i,
+            viewer_data.view_center,
+            edge_fov_deg=float(viewer_data.edge_fov_deg),
+        )
         px, py = normalized_to_screen_xy(nx, ny, geometry)
         pts.append(QPointF(px, py))
     return QPolygonF(pts)
@@ -97,7 +102,12 @@ def find_highlighted_dso(
     for idx in valid:
         alt = float(dso["alt"][idx])
         az = float(dso["az"][idx])
-        nx, ny = altaz_to_normalized_xy(alt, az, viewer_data.view_center)
+        nx, ny = altaz_to_normalized_xy(
+            alt,
+            az,
+            viewer_data.view_center,
+            edge_fov_deg=float(viewer_data.edge_fov_deg),
+        )
         x, y = normalized_to_screen_xy(nx, ny, geometry)
         dist_sq = (mouse_pf.x() - x) ** 2 + (mouse_pf.y() - y) ** 2
         poly = _dso_ellipse_polygon(

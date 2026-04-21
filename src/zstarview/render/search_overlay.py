@@ -10,12 +10,34 @@ from . import text as render_text
 from .geometry import normalized_to_screen_xy
 
 
+def _project_altaz_to_normalized_xy(
+    alt_deg: float,
+    az_deg: float,
+    view_center: tuple[float, float],
+    *,
+    edge_fov_deg: float,
+) -> tuple[float, float]:
+    try:
+        return altaz_to_normalized_xy(
+            alt_deg,
+            az_deg,
+            view_center,
+            edge_fov_deg=edge_fov_deg,
+        )
+    except TypeError as exc:
+        try:
+            return altaz_to_normalized_xy(alt_deg, az_deg, view_center)
+        except TypeError:
+            raise exc
+
+
 def draw_search_target_overlay(
     painter: QPainter,
     geometry,
     target: SearchJumpTarget,
     *,
     view_center: tuple[float, float],
+    edge_fov_deg: float,
     content_fov_deg: float,
     visual_preset: str,
     text_font,
@@ -30,7 +52,12 @@ def draw_search_target_overlay(
     if not is_in_fov(float(alt), float(az), view_center, fov_deg=float(content_fov_deg)):
         return
 
-    nx, ny = altaz_to_normalized_xy(float(alt), float(az), view_center)
+    nx, ny = _project_altaz_to_normalized_xy(
+        float(alt),
+        float(az),
+        view_center,
+        edge_fov_deg=edge_fov_deg,
+    )
     px, py = normalized_to_screen_xy(nx, ny, geometry)
     pos = QPointF(px, py)
     color, _outline = render_text.get_text_style(visual_preset)

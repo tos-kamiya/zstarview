@@ -101,8 +101,13 @@ def _draw_moon_planet(
 ) -> None:
     moon_zoom = 5 if enlarge_moon else 1
     marker_scale = max(1.0, float(marker_scale))
-    sun_dir_in_moon_frame, screen_rotation_deg = calculate_moon_render_data(sun_altaz, moon_altaz, viewer_data.view_center)
-    base_moon_radius_px = max((0.25 / 90.0) * geometry.radius, 2.5)
+    sun_dir_in_moon_frame, screen_rotation_deg = calculate_moon_render_data(
+        sun_altaz,
+        moon_altaz,
+        viewer_data.view_center,
+        edge_fov_deg=float(viewer_data.edge_fov_deg),
+    )
+    base_moon_radius_px = max((0.25 / float(viewer_data.edge_fov_deg)) * geometry.radius, 2.5)
     moon_radius_px = base_moon_radius_px * moon_zoom * marker_scale
     draw_moon(
         painter,
@@ -191,6 +196,7 @@ def draw_solar_system_bodies(
     draw_markers: bool = True,
     draw_labels: bool = True,
     preset: str = "night",
+    edge_fov_deg: float = 90.0,
     content_fov_deg: float | None = None,
     marker_scale: float = 1.0,
 ) -> None:
@@ -212,13 +218,18 @@ def draw_solar_system_bodies(
 
         pos = QPointF(
             *normalized_to_screen_xy(
-                *altaz_to_normalized_xy(body.alt, body.az, viewer_data.view_center),
+                *altaz_to_normalized_xy(
+                    body.alt,
+                    body.az,
+                    viewer_data.view_center,
+                    edge_fov_deg=float(edge_fov_deg),
+                ),
                 geometry,
             )
         )
         marker_visible = True
         if body.name == "moon":
-            base_moon_radius_px = max((0.25 / 90.0) * geometry.radius, 2.5)
+            base_moon_radius_px = max((0.25 / float(edge_fov_deg)) * geometry.radius, 2.5)
             moon_zoom = 5 if enlarge_moon else 1
             marker_visible = _marker_intersects_viewport(
                 painter,

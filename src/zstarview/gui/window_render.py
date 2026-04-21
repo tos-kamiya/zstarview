@@ -62,6 +62,7 @@ def _resolve_hover_targets(
         mouse_pos,
         geometry,
         render_viewer.view_center,
+        edge_fov_deg=float(render_viewer.edge_fov_deg),
         content_fov_deg=render_viewer.content_fov_deg,
     )
     return highlighted_object, highlighted_dso, highlighted_satellite
@@ -298,6 +299,7 @@ class SkyWindowRenderMixin:
             timezone_name=self.viewer_data.timezone_name,
             city_name=self.viewer_data.city_name,
             view_center=self.state.render_view_center,
+            edge_fov_deg=self.viewer_data.edge_fov_deg,
             content_fov_deg=self.viewer_data.content_fov_deg,
             observer_height_m=self.viewer_data.observer_height_m,
             location_height_label=self.viewer_data.location_height_label,
@@ -463,6 +465,7 @@ class SkyWindowRenderMixin:
             alt,
             az,
             self.state.render_view_center,
+            edge_fov_deg=float(self.viewer_data.edge_fov_deg),
         )
         px, py = render_geometry.normalized_to_screen_xy(nx, ny, geometry)
         return ({"name": target_name}, QPointF(px, py))
@@ -482,6 +485,7 @@ class SkyWindowRenderMixin:
             geometry,
             target,
             view_center=self.state.render_view_center,
+            edge_fov_deg=float(self.viewer_data.edge_fov_deg),
             content_fov_deg=float(self.viewer_data.content_fov_deg),
             visual_preset=self.visual_preset,
             text_font=self.text_font,
