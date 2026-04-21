@@ -119,6 +119,11 @@ def _cloud_stripe_fade_factor(phase: np.ndarray, fade_span: float) -> np.ndarray
     return 1.0 - 0.5 * np.square(progress)
 
 
+def _cloud_render_content_fov_deg(content_fov_deg: float) -> float:
+    """Return a slightly expanded FOV for cloud rendering before final clipping."""
+    return min(180.0, max(0.0, float(content_fov_deg) + 12.0))
+
+
 def build_cloud_amount_field_from_rgba(
     cloud: np.ndarray,
     *,
@@ -232,7 +237,7 @@ def _render_variable_width_cloud_stripes_rgba(
         rr,
         bins_u,
         bins_v,
-        content_fov_deg,
+        _cloud_render_content_fov_deg(content_fov_deg),
     )
     sampled = np.clip(cloud_amount.amount.reshape(-1)[sample_idx], 0.0, 1.0)
     if cloud_amount.nonzero_hi > cloud_amount.nonzero_lo + 1e-6:
@@ -309,7 +314,7 @@ def _render_alpha_scaled_cloud_stripes_rgba(
         rr,
         bins_u,
         bins_v,
-        content_fov_deg,
+        _cloud_render_content_fov_deg(content_fov_deg),
     )
     draw_mask = inside_disc & line_mask & (phase <= max_band)
     if not np.any(draw_mask):

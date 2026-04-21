@@ -5,6 +5,7 @@ from zstarview.paths import HatchConfig
 from zstarview.gui.composite import (
     CloudAmountField,
     _cloud_stripe_fade_factor,
+    _cloud_render_content_fov_deg,
     _render_alpha_scaled_cloud_stripes_rgba,
     _stripe_render_grids,
     build_cloud_amount_field,
@@ -182,6 +183,11 @@ def test_cloud_stripe_fade_factor_is_ease_out() -> None:
     assert fade_start == 1.0
     assert fade_mid > 0.75
     assert fade_end == 0.5
+
+
+def test_cloud_render_content_fov_adds_sky_margin() -> None:
+    assert _cloud_render_content_fov_deg(110.0) == 122.0
+    assert _cloud_render_content_fov_deg(170.0) == 180.0
 
 
 def test_stripe_render_grids_use_baseline_projection_for_sampling() -> None:
