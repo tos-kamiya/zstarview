@@ -304,7 +304,7 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         if isinstance(entry, _DummyMenuAction) and not entry.separator
     ]
 
-    assert root_titles == ["Search", "Layers", "View Direction"]
+    assert root_titles == ["Search", "Layers", "View Direction", "Help"]
     assert root_actions[-3:] == ["Square Client Area", "Fullscreen", "Exit"]
 
 

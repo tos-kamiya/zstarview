@@ -923,7 +923,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             triggered=self.toggle_fullscreen,
         )
 
-        self._attach_help_menu_to_file_menu()
+        self.file_menu.addSeparator()
+        self.file_menu.addMenu(self.help_menu)
+        self.file_menu.addSeparator()
         exit_action = self._add_menu_action(
             self.file_menu,
             "Exit",
@@ -937,14 +939,25 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self._vmag_limit_menu_text(),
         )
         vmag_limit_action.setEnabled(False)
-        self._add_help_menu_actions(self.help_menu)
+        version_action = self._add_menu_action(
+            self.help_menu,
+            f"Version {__version__}",
+        )
+        version_action.setEnabled(False)
+        self._add_menu_action(
+            self.help_menu,
+            "Code, Data Licenses, and Credits ->",
+            triggered=open_code_data_licenses_and_credits,
+        )
 
         if self._frameless_window:
-            self._attach_help_menu_to_frameless_menu(
-                square_client_area_action,
-                fullscreen_action,
-                exit_action,
-            )
+            self.menu.addSeparator()
+            self.menu.addAction(square_client_area_action)
+            self.menu.addAction(fullscreen_action)
+            self.menu.addSeparator()
+            self.menu.addMenu(self.help_menu)
+            self.menu.addSeparator()
+            self.menu.addAction(exit_action)
 
     def _create_menu_action(self, menu: QMenu, text: str) -> QAction:
         """Create a menu action and add it to the target menu."""
