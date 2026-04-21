@@ -214,6 +214,10 @@
   - `content_fov_deg` の外側には、ウィンドウ背景へ自然につなぐ短い背景フェード帯を持たせる方針にした。
   - その後、低仰角の横長ウィンドウで sky disc と雲レイヤーが `radius*2` の固定正方形に見えていた問題を修正し、実ウィンドウ geometry に沿って overscan を広げるようにした。
 
+- version bump
+  - `__version__` を `1.20.8` に上げた。
+  - 前回の hover 月描画の `marker_scale` 伝搬修正を含む一連の変更を、区切りのよいパッチとして記録するための更新。
+
 - リサイズ直後の stale disc 描画を抑止
   - `resizeEvent` 直後に sky-disc / cloud-disc の古い画像キャッシュを破棄し、新しい window state で再生成するようにした。
   - sky/cloud worker の payload には resize generation を持たせ、現在の window generation と render size に合わない結果は破棄するようにした。
