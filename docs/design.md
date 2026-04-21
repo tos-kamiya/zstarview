@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-04-21
+最終更新: 2026-04-22
 
 ## 1. この文書の位置づけ
 
@@ -359,6 +359,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `RenderStyle` は `show_guidelines` を持ち、guide レイヤーと viewport interaction 中の reference line 描画を同じ boolean で制御する。
 - `RenderPipelineState` のような中間ラッパ型は使わず、shared pipeline 側では直接引数で依存関係を表す。
 - `RenderSceneData` の cloud image / cloud missing mask は `QImage` ではなく NumPy 配列を持ち、cloud path の変換回数を抑える。
+- shared pipeline は星レイヤーの縮小レンダリング面サイズを一度計算し、cloud stripe density の参照値としても再利用してよい。
 - `gui/window_render.py` は、`paintEvent()` 本線、scene/style/hud の組み立て、frame cache、jump highlight、hover 解決など GUI 固有処理に絞る。
 - 現在の通常描画順は概ね次のとおり。
   - `background`
@@ -831,8 +832,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - この複数高度モデルは物理的な雲頂高度推定ではなく、単一高度投影で生じる視差由来の不自然な穴を緩和するための視覚補正として位置付ける。
 - `cloud_amount_field` は、雲 RGBA の alpha から `(u, v)` 正規化座標上へ集約した 2D 雲量場として扱ってよい。
 - ストライプ描画では、`width` モードと `alpha` モードの 2 方式を持ってよい。
-- `width` モードでは、基準線から片側へ 1px 単位で白線を積み上げ、整数本数に加えて次の 1 本だけ小数部相当の alpha を与えてよい。
-- `width` モードの alpha 減衰は線形に限らず、基準線付近を保って遠側でゆるやかに落ちる ease-out カーブとしてよい。
+- `width` モードでは、基準線を中心に左右対称へ白線を積み上げ、整数本数に加えて次の 1 本だけ小数部相当の alpha を与えてよい。
+- `width` モードでは、ストライプ中心間隔を基準密度の 1/2 に詰めてよい。これにより、中心対称のまま修正前と同程度の本数を維持してよい。
+- `width` モードの alpha 減衰は線形に限らず、基準線付近を強く保って外側でゆるやかに落ちる ease-out カーブとしてよい。
 - `alpha` モードでは、白線幅は固定とし、雲量に応じて白線 alpha を変えてよい。
 - 外周境界の見た目を和らげるため、cloud fetch/render 側に小さな overscan を持たせてよい。
 - 雲量場の再正規化では、非ゼロ値の下側 `8 percentile` と上側 `92 percentile` を使ってよい。
