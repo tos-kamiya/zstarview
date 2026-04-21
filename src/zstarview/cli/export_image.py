@@ -208,7 +208,7 @@ def _build_window_inputs_from_args(
         timezone_override=getattr(args, "timezone", None),
     )
     overlay_availability = overlay_availability_for_delta(delta_t)
-    star_catalog = _load_star_catalog_for_export(getattr(args, "vmag_limit", 6.0))
+    star_catalog = _load_star_catalog_for_export(getattr(args, "vmag_limit", 7.0))
     view_center = (
         getattr(args, "view_center_alt", 90.0),
         getattr(args, "view_center_az", 180.0),
@@ -355,7 +355,7 @@ def _build_window_inputs_from_args(
         ground_tint_opacity=getattr(args, "ground_tint_opacity", 0.1),
         enlarge_moon=bool(getattr(args, "enlarge_moon", False)),
         star_base_radius=getattr(args, "star_base_radius", 4.0),
-        vmag_limit=getattr(args, "vmag_limit", 6.0),
+        vmag_limit=getattr(args, "vmag_limit", 7.0),
         visual_preset=visual_preset,
         star_visibility_boost=star_visibility_boost,
         show_dso_initial=getattr(args, "show_dso_initial", None),

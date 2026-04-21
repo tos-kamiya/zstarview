@@ -109,6 +109,12 @@ def test_parse_args_clamps_vmag_limit_to_committed_catalog_max() -> None:
     assert args.vmag_limit == 10.5
 
 
+def test_parse_args_defaults_vmag_limit_to_seven() -> None:
+    args = cli_args.parse_args([])
+
+    assert args.vmag_limit == 7.0
+
+
 def test_parse_args_accepts_clear_long_lived_cache() -> None:
     args = cli_args.parse_args(["--clear-long-lived-cache", "Matsue"])
 

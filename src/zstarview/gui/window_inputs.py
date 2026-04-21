@@ -53,7 +53,7 @@ class SkyWindowUserOptions:
     ground_tint_opacity: float = 0.1
     enlarge_moon: bool = False
     star_base_radius: float = 4.0
-    vmag_limit: float = 6.0
+    vmag_limit: float = 7.0
     visual_preset: str = "night"
     star_visibility_boost: float = 1.0
     show_dso_initial: Optional[bool] = None

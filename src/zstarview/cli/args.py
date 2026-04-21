@@ -374,9 +374,9 @@ def add_observing_arguments(parser: argparse._ActionsContainer) -> None:
         "-V",
         "--vmag-limit",
         type=float,
-        default=6.0,
+        default=7.0,
         help=(
-            "Limit stars to Vmag <= this value (default: 6.0). "
+            "Limit stars to Vmag <= this value (default: 7.0). "
             f"Bundled catalogs clamp values above {_COMMITTED_VMAG_LIMIT_MAX:.1f}."
         ),
     )
@@ -773,9 +773,9 @@ def add_render_arguments(
         "-V",
         "--vmag-limit",
         type=float,
-        default=6.0,
+        default=7.0,
         help=(
-            "Limit stars to Vmag <= this value (default: 6.0). "
+            "Limit stars to Vmag <= this value (default: 7.0). "
             f"Bundled catalogs clamp values above {_COMMITTED_VMAG_LIMIT_MAX:.1f}."
         ),
     )
