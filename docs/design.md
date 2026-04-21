@@ -434,6 +434,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 恒星レイヤは描画時に現在のウィンドウサイズから内部レンダリング面サイズを再計算する
   - 天球ディスク幅が `expected-render-width` 以下なら等倍描画し、それを超える場合は `expected-render-width * sqrt(disc_width / expected-render-width)` に従って内部描画面を縮小する
   - 縮小時は低解像度 `QImage` に恒星を描いてからウィンドウ全体へ拡大転写し、大型ウィンドウでの負荷を抑える
+  - 惑星と月のマーカーも同じ内部アップスケール係数を `marker_scale` として受け取り、円盤や月面の見た目半径を恒星レイヤと揃える
+  - アステリズムと都市アウトラインの線幅はこの係数で膨らませず、内部描画面上では固定幅として扱う
   - ベースフレームの `QImage` キャッシュを持ち、geometry、描画入力、interaction mode などが不変なら前回ベースフレームをそのまま再利用する
   - このフレームキャッシュは描画時の実行時キャッシュであり、永続キャッシュの設計は `10.x` に分離する
   - hover 対象、jump highlight、status line、static observation overlay はキャッシュ後に HUD として重ねる
