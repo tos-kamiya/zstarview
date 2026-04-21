@@ -5,8 +5,6 @@ import astropy
 import astropy.time
 import numpy as np
 
-from .paths import FIELD_OF_VIEW_DEG
-
 # --- Unit-oriented type aliases (contract clarity) ---
 Deg: TypeAlias = float
 AltDeg: TypeAlias = Deg
@@ -81,7 +79,7 @@ class ViewerData:
     timezone_name: str
     city_name: str
     view_center: ViewCenterAltAz = (90.0, 180.0)  # (alt_deg, az_deg)
-    content_fov_deg: float = float(FIELD_OF_VIEW_DEG)
+    content_fov_deg: float = 115.0
     observer_height_m: float = 1.7
     location_height_label: str | None = None
     location_height_m: float | None = None
