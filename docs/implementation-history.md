@@ -208,7 +208,7 @@
   - 視認性を改善しつつ、既存 UI の認知コストを増やさない方針にした。
 
 - 共有 overscan 視野 (`--content-fov-deg`)
-  - `--content-fov-deg` の既定値を `100°` とし、ウィンドウ端 `90°` 固定のまま全レイヤーの描画対象を広げられるようにした。
+  - `--content-fov-deg` の既定値を `115°` とし、ウィンドウ端 `90°` 固定のまま全レイヤーの描画対象を広げられるようにした。
   - 背景グラデーション、sky disc、雲合成、雲ハッチ、地面ティント、ガイド線、都市アウトライン、航空機、明るい星の簡易表示経路も同じ overscan 視野へ揃えた。
   - 暗い星だけを旧来の `90°` 境界で追加的に落とす最適化は削除した。
   - `content_fov_deg` の外側には、ウィンドウ背景へ自然につなぐ短い背景フェード帯を持たせる方針にした。
@@ -586,3 +586,10 @@
 - Validation note
   - Modified GUI, renderer, and test files passed `py_compile` and `ruff check`.
   - Full `pytest` execution was not possible in the active `.venv` because `pytest` is not installed there.
+
+### 2026-04-21
+
+- Cloud stripe pre-composite debug dump
+  - Added an optional debug dump for the pre-composite cloud stripe image so the width/alpha stripe result can be inspected before sky composition.
+  - The dump is gated by `ZSTARVIEW_DEBUG_SAVE_CLOUD_STRIPE_FRAME`; the default destination is `CACHE_PATH/debug/cloud-stripe`, and an explicit path can be supplied instead.
+  - Added regression coverage to ensure the snapshot is written only when the debug flag is enabled.

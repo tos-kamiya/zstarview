@@ -429,9 +429,9 @@ def add_observing_arguments(parser: argparse._ActionsContainer) -> None:
     parser.add_argument(
         "--content-fov-deg",
         type=_parse_content_fov_deg,
-        default=100.0,
+        default=115.0,
         help=(
-            "Shared overscan content FOV in degrees (allowed: 90-127, default: 100). "
+            "Shared overscan content FOV in degrees (allowed: 90-127, default: 115). "
             "The window edge remains fixed at 90 degrees from the view center."
         ),
     )
@@ -828,9 +828,9 @@ def add_render_arguments(
     parser.add_argument(
         "--content-fov-deg",
         type=_parse_content_fov_deg,
-        default=100.0,
+        default=115.0,
         help=(
-            "Shared overscan content FOV in degrees (allowed: 90-127, default: 100). "
+            "Shared overscan content FOV in degrees (allowed: 90-127, default: 115). "
             "The window edge remains fixed at 90 degrees from the view center."
         ),
     )
