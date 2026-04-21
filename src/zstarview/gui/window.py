@@ -16,10 +16,11 @@ from pathlib import Path
 from typing import Callable, Optional, Tuple, Union
 
 import astropy.time
-from PySide6.QtCore import QEvent, QPoint, QRect, Qt, QTimer, Signal
+from PySide6.QtCore import QEvent, QPoint, QRect, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import (
     QAction,
     QCloseEvent,
+    QDesktopServices,
     QFont,
     QFontDatabase,
     QGuiApplication,
@@ -119,6 +120,14 @@ from .urban_outline_controller import UrbanOutlineController
 from .urban_outline_state import UrbanOutlineState
 
 logger = logging.getLogger(__name__)
+
+GITHUB_CODE_DATA_LICENSES_AND_CREDITS_URL = (
+    "https://github.com/tos-kamiya/zstarview#code-data-licenses-and-credits"
+)
+
+
+def open_code_data_licenses_and_credits() -> None:
+    QDesktopServices.openUrl(QUrl(GITHUB_CODE_DATA_LICENSES_AND_CREDITS_URL))
 
 
 def radec_to_altaz(*args, **kwargs):
@@ -758,11 +767,13 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.search_menu = QMenu("Search", self)
         self.observer_view_menu = QMenu("View Direction", self)
         self.display_menu = QMenu("Layers", self)
+        self.help_menu = QMenu("Help", self)
         if not self._frameless_window:
             self.menu.addMenu(self.file_menu)
         self.menu.addMenu(self.search_menu)
         self.menu.addMenu(self.display_menu)
         self.menu.addMenu(self.observer_view_menu)
+        self.menu.addMenu(self.help_menu)
 
         self._add_menu_action(
             self.observer_view_menu,
@@ -927,11 +938,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self._vmag_limit_menu_text(),
         )
         vmag_limit_action.setEnabled(False)
-        version_action = self._add_menu_action(
-            self.file_menu,
-            f"Version {__version__}",
-        )
-        version_action.setEnabled(False)
+        self._add_help_menu_actions(self.help_menu)
 
         if self._frameless_window:
             self.menu.addSeparator()
@@ -987,6 +994,18 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if triggered is not None:
             action.triggered.connect(triggered)
         return action
+
+    def _add_help_menu_actions(self, menu: QMenu) -> None:
+        version_action = self._add_menu_action(
+            menu,
+            f"Version {__version__}",
+        )
+        version_action.setEnabled(False)
+        self._add_menu_action(
+            menu,
+            "Code, Data Licenses, and Credits...",
+            triggered=open_code_data_licenses_and_credits,
+        )
 
     def _attach_client_menu_button(self, parent: QWidget) -> None:
         """Attach the legacy popup-menu button directly on the client area."""
@@ -2131,6 +2150,7 @@ class StandardSkyWindow(SkyWindowCoreMixin, QMainWindow):
         menu_bar.addMenu(self.search_menu)
         menu_bar.addMenu(self.display_menu)
         menu_bar.addMenu(self.observer_view_menu)
+        menu_bar.addMenu(self.help_menu)
 
 
 SkyWindow = FramelessSkyWindow
