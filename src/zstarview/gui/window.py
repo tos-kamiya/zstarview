@@ -1134,11 +1134,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.state.viewport_interaction_mode = True
         cloud_state = self.cloud_state
         cloud_controller = self._cloud_controller
-        preserve_cloud_buffers = bool(preserve_cloud_buffers) or (
-            cloud_controller is not None
-            and hasattr(cloud_controller, "has_in_flight_update")
-            and bool(cloud_controller.has_in_flight_update())
-        )
+        preserve_cloud_buffers = bool(preserve_cloud_buffers)
         cleared_cloud = False
         if cloud_state is not None:
             if not preserve_cloud_buffers:

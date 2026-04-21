@@ -923,7 +923,7 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_and_invalidates_ol
     assert calls == ["invalidate-compositor", "invalidate-cloud", "start-timer"]
 
 
-def test_begin_viewport_interaction_mode_preserves_cloud_buffers_while_cloud_update_is_running() -> (
+def test_begin_viewport_interaction_mode_clears_cloud_buffers_even_while_cloud_update_is_running() -> (
     None
 ):
     calls: list[str] = []
@@ -951,13 +951,13 @@ def test_begin_viewport_interaction_mode_preserves_cloud_buffers_while_cloud_upd
     SkyWindow._begin_viewport_interaction_mode(dummy)
 
     assert dummy.state.viewport_interaction_mode is True
-    assert dummy.cloud_state.image is not None
-    assert dummy.cloud_state.missing_mask is not None
-    assert dummy.cloud_state.cloud_amount_field is not None
-    assert dummy.cloud_state.render_key == "render-key"
-    assert dummy.cloud_state.request_id == 42
-    assert dummy.cloud_state.missing_mask_key == 99
-    assert calls == ["invalidate-cloud", "start-timer"]
+    assert dummy.cloud_state.image is None
+    assert dummy.cloud_state.missing_mask is None
+    assert dummy.cloud_state.cloud_amount_field is None
+    assert dummy.cloud_state.render_key is None
+    assert dummy.cloud_state.request_id is None
+    assert dummy.cloud_state.missing_mask_key is None
+    assert calls == ["invalidate-compositor", "invalidate-cloud", "start-timer"]
 
 
 def test_handle_client_resize_preserves_visible_cloud_buffers() -> None:
