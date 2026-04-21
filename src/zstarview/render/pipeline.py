@@ -729,6 +729,10 @@ def _draw_satellite_layer(
         label_candidates=label_candidates,
         preset=style.visual_preset,
         content_fov_deg=_content_fov_deg(scene),
+        marker_scale=compute_star_render_upscale_factor(
+            geometry.radius * 2,
+            style.star_render_expected_width,
+        ),
     )
 
 

@@ -462,6 +462,43 @@ def test_satellite_overlay_draws_below_horizon_marker_when_in_fov(monkeypatch) -
     assert cross_calls == [(0.42, 1.0)]
 
 
+def test_satellite_overlay_scales_marker_with_window_scale(monkeypatch) -> None:
+    cross_calls: list[tuple[float, float]] = []
+
+    monkeypatch.setattr(
+        render_satellites,
+        "draw_gauge_cross",
+        lambda _painter, _color, _center, *, scale=1.0, pen_width=1.0: (
+            cross_calls.append((scale, pen_width))
+        ),
+    )
+
+    image = QImage(40, 40, QImage.Format.Format_ARGB32_Premultiplied)
+    painter = QPainter(image)
+    try:
+        render_satellites.draw_satellite_overlay(
+            painter=painter,
+            geometry=ScreenGeometry(center=(20, 20), radius=20),
+            satellite_points=[
+                SatelliteOverlayPoint(
+                    group_key="iss",
+                    satellite_name="ISS (ZARYA)",
+                    alt_deg=-40.0,
+                    az_deg=151.0,
+                    marker_scale=0.42,
+                )
+            ],
+            view_center=(0.0, 151.0),
+            opacity=1.0,
+            label_candidates=[],
+            marker_scale=2.5,
+        )
+    finally:
+        painter.end()
+
+    assert cross_calls == [(1.05, 1.0)]
+
+
 def test_satellite_overlay_keeps_overscan_position_beyond_90_deg(monkeypatch) -> None:
     positions: list[tuple[float, float]] = []
 

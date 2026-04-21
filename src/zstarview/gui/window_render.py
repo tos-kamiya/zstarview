@@ -4,10 +4,10 @@ import logging
 import time
 from typing import Any, cast
 
-from PySide6.QtCore import QPoint, QPointF, QRectF, Qt
+from PySide6.QtCore import QPoint, QPointF, Qt
 from PySide6.QtGui import QFont, QImage, QPainter, QPaintEvent
 
-from ..astro import altaz_to_normalized_xy, is_in_fov, resolve_star_names
+from ..astro import altaz_to_normalized_xy, resolve_star_names
 from ..render import deep_sky_objects as render_deep_sky_objects
 from ..render import geometry as render_geometry
 from ..render import satellites as render_satellites
@@ -19,6 +19,7 @@ from ..render.pipeline import (
     RenderHudState,
     RenderStyle,
     compute_star_render_surface_size,
+    compute_star_render_upscale_factor,
     render_base_scene_into_painter,
     render_fast_overlay_layers_into_painter,
     render_hud_overlay_into_painter,
@@ -486,6 +487,10 @@ class SkyWindowRenderMixin:
             text_font=self.text_font,
             draw_marker=True,
             draw_label=True,
+            marker_scale=compute_star_render_upscale_factor(
+                geometry.radius * 2,
+                int(self._star_render_expected_width),
+            ),
         )
 
     def render_current_image(self, *, include_hud: bool = False) -> QImage:

@@ -21,6 +21,7 @@ def draw_search_target_overlay(
     text_font,
     draw_marker: bool = True,
     draw_label: bool = True,
+    marker_scale: float = 1.0,
 ) -> None:
     alt = getattr(target, "alt_deg", None)
     az = getattr(target, "az_deg", None)
@@ -39,7 +40,7 @@ def draw_search_target_overlay(
             painter,
             color,
             pos,
-            scale=0.42,
+            scale=0.42 * max(1.0, float(marker_scale)),
             pen_width=2.0,
         )
 

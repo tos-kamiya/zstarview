@@ -1072,7 +1072,7 @@ def test_draw_persistent_search_overlay_draws_label_when_marker_is_kept(
         "draw_outlined_text",
         lambda *_args, **_kwargs: draw_calls.append("label"),
     )
-    monkeypatch.setattr(window_render_module, "is_in_fov", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(search_overlay_module, "is_in_fov", lambda *_args, **_kwargs: True)
     monkeypatch.setattr(
         search_overlay_module,
         "altaz_to_normalized_xy",
@@ -1114,6 +1114,77 @@ def test_draw_persistent_search_overlay_draws_label_when_marker_is_kept(
     )
 
     assert draw_calls == ["marker", "label"]
+
+
+def test_draw_persistent_search_overlay_scales_marker_with_window_scale(
+    monkeypatch,
+) -> None:
+    marker_scales: list[float] = []
+
+    class _Painter:
+        def viewport(self):
+            return QRect(0, 0, 200, 200)
+
+    monkeypatch.setattr(
+        window_render_module,
+        "compute_star_render_upscale_factor",
+        lambda *_args, **_kwargs: 2.5,
+    )
+    monkeypatch.setattr(
+        search_overlay_module.render_guides,
+        "draw_gauge_cross",
+        lambda *_args, **kwargs: marker_scales.append(
+            float(kwargs.get("scale", 1.0))
+        ),
+    )
+    monkeypatch.setattr(
+        search_overlay_module.render_text,
+        "draw_outlined_text",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(search_overlay_module, "is_in_fov", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(
+        search_overlay_module,
+        "altaz_to_normalized_xy",
+        lambda alt, az, view_center: (float(az), float(alt)),
+    )
+    monkeypatch.setattr(
+        search_overlay_module,
+        "normalized_to_screen_xy",
+        lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+
+    dummy = _WindowStub()
+    dummy.visual_preset = "white"
+    dummy.text_font = QFont()
+    dummy._star_render_expected_width = 600
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(20.0, 30.0),
+        observer_height_m=1.7,
+        content_fov_deg=180.0,
+    )
+    dummy.state = SkyWindowState(
+        render_view_center=(20.0, 30.0),
+        persistent_search_target=SearchJumpTarget(
+            label="Ceres",
+            kind="jpl_small_body",
+            sort_key=(0.0, "ceres"),
+            alt_deg=12.5,
+            az_deg=220.0,
+            persistent_keep_marker=True,
+        ),
+    )
+
+    window_render_module.SkyWindowRenderMixin._draw_persistent_search_overlay(
+        dummy,
+        _Painter(),
+        geometry=SimpleNamespace(center=(100, 100), radius=80),
+    )
+
+    assert marker_scales == [1.05]
 
 
 def test_refresh_projected_satellite_overlay_falls_back_to_disk_cache(
