@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import pytest
 
+from zstarview.search.jpl import resolve_jpl_target_altaz
 from zstarview.search.models import SearchJumpTarget
 from zstarview.search.query import parse_search_query, search_target_matches_query
 from zstarview.search.resolver import compute_search_target_altaz, resolve_search_targets
@@ -87,13 +90,13 @@ def test_resolve_search_targets_prefers_known_satellites() -> None:
         return []
 
     resolution = resolve_search_targets(
-        "JWST",
+        "ISS",
         local_targets,
         satellite_search_callback=fake_satellite_search,
         jpl_search_callback=fake_jpl_search,
     )
 
-    assert satellite_calls == ["JWST"]
+    assert satellite_calls == ["ISS"]
     assert jpl_calls == []
     assert len(resolution.candidates) == 1
     assert resolution.selected_target is not None
@@ -106,7 +109,7 @@ def test_resolve_search_targets_propagates_missing_satellite_position() -> None:
 
     with pytest.raises(RuntimeError, match="Satellite position unavailable"):
         resolve_search_targets(
-            "JWST",
+            "ISS",
             [],
             satellite_search_callback=fake_satellite_search,
             jpl_search_callback=lambda _query: [],
@@ -171,3 +174,37 @@ def test_compute_search_target_altaz_uses_jpl_resolver_when_missing_altaz() -> N
         observer_height_m=50.0,
         jpl_altaz_resolver=fake_resolver,
     ) == (21.5, 181.0)
+
+
+def test_resolve_jpl_target_altaz_logs_target_time_and_observer(caplog) -> None:
+    target = SearchJumpTarget(
+        label="Voyager 1 (spacecraft)",
+        kind="jpl_body",
+        sort_key=(0.0, "voyager 1 (spacecraft)"),
+        command="-31",
+        target_time_utc=datetime(2026, 4, 21, 21, 15, 10, tzinfo=timezone.utc),
+        jpl_group="mb",
+    )
+
+    def fake_observer_fetch(command: str, **kwargs):
+        assert command == "-31"
+        assert kwargs["target_time_utc"] == datetime(2026, 4, 21, 21, 15, 10, tzinfo=timezone.utc)
+        assert kwargs["observer_lat"] == 35.28
+        assert kwargs["observer_lon"] == 133.03
+        assert kwargs["observer_height_m"] == 0.0
+        return [["2026-Apr-21 21:15:10", "*", "m", "233.1", "42.1"]]
+
+    with caplog.at_level("INFO"):
+        altaz = resolve_jpl_target_altaz(
+            target,
+            observer_lat=35.28,
+            observer_lon=133.03,
+            observer_height_m=0.0,
+            observer_fetch=fake_observer_fetch,
+        )
+
+    assert altaz == (42.1, 233.1)
+    assert "Resolving JPL target alt/az: label=Voyager 1 (spacecraft)" in caplog.text
+    assert "target_time_utc=2026-04-21T21:15:10+00:00" in caplog.text
+    assert "observer=(lat=35.28 lon=133.03 height_m=0.0)" in caplog.text
+    assert "Resolved JPL target alt/az: label=Voyager 1 (spacecraft) command=-31 alt=42.1 az=233.1" in caplog.text

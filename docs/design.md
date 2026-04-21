@@ -489,7 +489,10 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 一時 jump highlight は従来どおり 3 秒程度で消えるが、継続表示フラグで選ばれたマーカーとラベルは、利用者が明示的に解除するまで残してよい。
 - 継続表示対象は積み増さず、検索のたびに現在の 1 件へ置き換える実装としてよい。
 - 継続表示対象は、星、アステリズム、place、衛星、JPL 小天体のいずれでもよいが、描画側ではターゲット種別に応じてラベル文言だけを切り替える。
-- 恒星・アステリズム検索は local first で実行し、候補が見つからない場合だけ JPL 小天体検索へフォールバックしてよい。
+- `Search Objects...` は local first で実行し、恒星、アステリズム、place を先に調べてよい。
+- local 候補が見つからない場合だけ、`ISS` 専用の衛星検索経路を現在位置基準で試してよい。
+- `ISS` として認識されたのに現在位置ベースの位置解決に失敗した場合は、その検索を失敗として扱ってよく、同じ検索語を JPL へ自動フォールバックしてはならない。
+- local / `ISS` の両方で候補が見つからない場合だけ JPL 小天体検索へフォールバックしてよい。
 - JPL フォールバックは major body と small body の両方を検索対象に含めてよい。
 - 検索欄の直下には、JPL データベースを明示して探すボタンを置いてよい。
 - `Sun` と `Moon` は JPL フォールバック対象から除外し、solar-system 側に委ねてよい。
@@ -522,7 +525,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 位置再計算は、対象種別ごとに既存ロジックへ寄せてよい。
   - `star` / `asterism` はカタログや既存投影を使う
   - `place` は緯度経度から固定変換する
-  - `satellite` は既存衛星投影を使う
+  - `satellite` は `ISS` 専用の既存衛星投影を使う
   - `JPL 小天体` は SBDB/Horizons 由来の時刻依存位置を使う
 - 小天体の軌跡を 1 時間程度で描く場合は、`persistent_search_target` とは別に、描画用の短期 trajectory cache を追加してよい。
 - この trajectory cache は検索状態そのものではなく、`SkyWindowState` の描画補助として扱う。
@@ -672,7 +675,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `wheretheiss.at` ISS TLE endpoint の組み立て
   - fallback 用 CelesTrak `stations` endpoint の組み立て
   - ISS TLE payload と fallback OMM/JSON payload の正規化
-  - JPL Horizons lookup/observer API を使う spacecraft ephemeris fetch
+  - JPL Horizons lookup/observer API を使う overlay 用 spacecraft ephemeris fetch
   - Skyfield へ渡す軌道要素表現への変換
 - `src/zstarview/satellites/cache.py`
   - ISS と Horizons spacecraft 用人工衛星キャッシュ file path 管理
@@ -1013,6 +1016,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 17. `SkyWindow` は `satellite_ready` または位置再計算完了を受けたら `SkyWindowState` を更新し、再描画する。
 18. 通常描画では人工衛星を `planets` の後、`aircraft` の前に描く。
 19. 初期実装では人工衛星と月・惑星の接近時に特別な隠蔽処理は行わなくてよい。
+20. `Search Objects...` と CLI 検索の `satellite` 解決は `ISS` だけを対象にしてよく、`JWST` / `Voyager 1` / `Voyager 2` / `Parker` は JPL 検索結果として扱ってよい。
+21. `build_search_jump_targets(..., include_satellites=False)` を使う経路では、ローカル検索候補へ衛星ショートカットを混ぜなくてよい。
 
 ### 6.4 時刻モードによる補助レイヤー可否判定
 
@@ -1168,6 +1173,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `satellite_opacity <= 0.0` または `ISS` 表示が無効の間は、人工衛星 fetch timer と位置再計算 timer を止めてよい。
 - 描画は視野内に限定し、地平線下も表示してよい。
 - GUI 既定の有効対象は `ISS` としてよい。
+- `Search Objects...` の `satellite` 経路も `ISS` 専用としてよく、Horizons spacecraft は検索時には JPL small-body / major-body 経路へ寄せてよい。
 - 航空機と人工衛星の位置再計算は、共通 overlay projection timer で同期させてよい。
 - GUI から再表示したときは `last_success_utc` を見て fresh cache を優先し、不要な `wheretheiss.at` / CelesTrak 再取得を避けてよい。
 - stale cache は通常は再取得優先でよいが、失敗 backoff 中は表示継続に使ってよい。
@@ -1267,6 +1273,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `current` は `ISS` 用と Horizons spacecraft 用の 2 系列 JSON file としてよく、cache key は `iss` と `horizons` を使ってよい。
 - 人工衛星の current cache file には少なくとも `element_epoch_utc`、`fetched_at_utc`、`source`、`records`、`last_fetch_attempt_utc`、`last_fetch_failed`、`last_fetch_error`、`last_fetch_failure_utc`、`failure_backoff_until_utc` を保持する。
 - 人工衛星の current cache の fresh 判定は `element_epoch_utc` 基準とし、現在の実装では `ISS` と Horizons spacecraft の両方に `24時間` を使う。
+- `iss` と `horizons` はキー名だけでなく payload 形状も分けてよく、`iss` は TLE/OMM 系 records、`horizons` は observer site 別の topocentric `alt/az` records を保持してよい。
 - fetch 失敗後の `2時間` backoff は cache file 側にも保存し、アプリ再起動後も継続してよい。
 - DEM / Overture 建物キャッシュは、各取得単位ごとに `fetched_at_utc` をメタデータとして持たせ、利用時に TTL 超過かどうかを判定できるようにする。
 - TTL 超過時は「即削除」ではなく「stale として再取得対象」に落とし、再取得成功までは既存キャッシュをフォールバック利用できるようにする。

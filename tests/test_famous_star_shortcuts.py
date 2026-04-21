@@ -11,6 +11,7 @@ from zstarview.gui.famous_star_shortcuts import (
     classify_declination_band,
     flatten_named_star_shortcuts,
 )
+from zstarview.gui.window_inputs import prepare_window_catalogs
 
 
 def test_classify_declination_band_thresholds() -> None:
@@ -105,6 +106,23 @@ def test_build_search_jump_targets_includes_asterisms() -> None:
     circlet = next(t for t in targets if t.label == "Circlet of Pisces")
     assert circlet.kind == "asterism"
     assert circlet.subtitle == "Asterism"
+
+
+def test_prepare_window_catalogs_search_targets_exclude_satellite_shortcuts() -> None:
+    df = pl.DataFrame(
+        {
+            "Name": ["Sirius"],
+            "RAh": [6.75],
+            "Dec": [-16.7],
+            "Vmag": [-1.44],
+            "B-V": [0.0],
+            "SourceId": ["HIP32349"],
+        }
+    )
+
+    catalogs = prepare_window_catalogs(df)
+
+    assert all(target.kind != "satellite" for target in catalogs.named_stars_search_all)
 
 
 def test_build_place_search_jump_targets_uses_importance_and_coordinates() -> None:

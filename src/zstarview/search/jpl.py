@@ -44,7 +44,8 @@ def extract_horizons_altaz(rows: list[list[str]]) -> tuple[float, float] | None:
             except (TypeError, ValueError):
                 continue
         if len(numeric_values) >= 2:
-            return numeric_values[-1], numeric_values[-2]
+            # Horizons observer CSV reports azimuth first and elevation second.
+            return numeric_values[1], numeric_values[0]
     return None
 
 
@@ -120,18 +121,44 @@ def resolve_jpl_target_altaz(
     command = str(target.command).strip()
     if not command:
         return None
+    effective_target_time_utc = target_time_utc or target.target_time_utc or datetime.now(timezone.utc)
     fetch_kwargs: dict[str, object] = {}
     if timeout_s is not None:
         fetch_kwargs["timeout_s"] = float(timeout_s)
     if horizons_base_url is not None:
         fetch_kwargs["base_url"] = horizons_base_url
     observer_impl = observer_fetch or fetch_horizons_observer_csv
+    logger.info(
+        "Resolving JPL target alt/az: label=%s group=%s command=%s target_time_utc=%s observer=(lat=%s lon=%s height_m=%s)",
+        str(target.label).strip() or "<unnamed>",
+        str(target.jpl_group).strip() or "<none>",
+        command,
+        effective_target_time_utc.astimezone(timezone.utc).isoformat(),
+        observer_lat,
+        observer_lon,
+        observer_height_m,
+    )
     rows = observer_impl(
         command,
-        target_time_utc=target_time_utc or target.target_time_utc or datetime.now(timezone.utc),
+        target_time_utc=effective_target_time_utc,
         observer_lat=observer_lat,
         observer_lon=observer_lon,
         observer_height_m=observer_height_m,
         **fetch_kwargs,
     )
-    return extract_horizons_altaz(rows)
+    altaz = extract_horizons_altaz(rows)
+    if altaz is None:
+        logger.info(
+            "Resolved JPL target alt/az: label=%s command=%s result=<none>",
+            str(target.label).strip() or "<unnamed>",
+            command,
+        )
+        return None
+    logger.info(
+        "Resolved JPL target alt/az: label=%s command=%s alt=%.1f az=%.1f",
+        str(target.label).strip() or "<unnamed>",
+        command,
+        float(altaz[0]),
+        float(altaz[1]) % 360.0,
+    )
+    return altaz

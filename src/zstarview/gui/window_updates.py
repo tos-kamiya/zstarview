@@ -170,17 +170,34 @@ class SkyWindowUpdatesMixin:
         label = str(getattr(target, "label", "")).strip()
         if not label:
             return ""
+        altaz_suffix = self._target_altaz_suffix(target)
         next_refresh_utc = getattr(self.state, "persistent_search_next_refresh_utc", None)
         last_error = str(getattr(self.state, "persistent_search_last_error", "")).strip()
+        if last_error.casefold() == "none":
+            last_error = ""
         if getattr(target, "jpl_group", "") != "sb" and not last_error:
-            return f"JPL [{label}]: held"
+            return f"JPL [{label}]: held{altaz_suffix}"
         if isinstance(next_refresh_utc, datetime):
             refresh_part = next_refresh_utc.strftime("%H:%MZ")
         else:
             refresh_part = "pending"
         if last_error:
-            return f"JPL [{label}]: retry {refresh_part} ({last_error})"
-        return f"JPL [{label}]: refresh {refresh_part}"
+            return f"JPL [{label}]: retry {refresh_part} ({last_error}){altaz_suffix}"
+        if getattr(target, "jpl_group", "") == "sb":
+            return f"JPL [{label}]: retry {refresh_part}{altaz_suffix}"
+        return f"JPL [{label}]: refresh {refresh_part}{altaz_suffix}"
+
+    def _target_altaz_suffix(self, target: object) -> str:
+        alt = getattr(target, "alt_deg", None)
+        az = getattr(target, "az_deg", None)
+        if alt is None or az is None:
+            return ""
+        try:
+            alt_deg = float(alt)
+            az_deg = float(az) % 360.0
+        except (TypeError, ValueError):
+            return ""
+        return f" [alt={alt_deg:.1f} az={az_deg:.1f}]"
 
     def _on_sky_data_calculated(self, payload: Dict) -> None:
         current_generation = int(self._disc_generation)

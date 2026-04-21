@@ -460,6 +460,55 @@ def test_status_line_message_combines_cloud_and_terrain_segments() -> None:
     )
 
 
+def test_jpl_small_body_status_line_includes_altaz() -> None:
+    dummy = SimpleNamespace()
+    dummy.state = SimpleNamespace(
+        persistent_search_target=SimpleNamespace(
+            label="Voyager 1",
+            alt_deg=23.3005,
+            az_deg=91.2564,
+            jpl_group="mb",
+        ),
+        persistent_search_next_refresh_utc=None,
+        persistent_search_last_error="",
+    )
+    dummy._target_altaz_suffix = lambda target: SkyWindowUpdatesMixin._target_altaz_suffix(
+        dummy,
+        target,
+    )
+
+    altaz_suffix = SkyWindowUpdatesMixin._target_altaz_suffix(
+        dummy,
+        dummy.state.persistent_search_target,
+    )
+    got = SkyWindowUpdatesMixin._jpl_small_body_status_line(dummy)
+
+    assert altaz_suffix == " [alt=23.3 az=91.3]"
+    assert got == "JPL [Voyager 1]: held [alt=23.3 az=91.3]"
+
+
+def test_jpl_small_body_status_line_omits_literal_none_error() -> None:
+    dummy = SimpleNamespace()
+    dummy.state = SimpleNamespace(
+        persistent_search_target=SimpleNamespace(
+            label="Voyager 1",
+            alt_deg=48.6,
+            az_deg=245.6,
+            jpl_group="sb",
+        ),
+        persistent_search_next_refresh_utc=None,
+        persistent_search_last_error=None,
+    )
+    dummy._target_altaz_suffix = lambda target: SkyWindowUpdatesMixin._target_altaz_suffix(
+        dummy,
+        target,
+    )
+
+    got = SkyWindowUpdatesMixin._jpl_small_body_status_line(dummy)
+
+    assert got == "JPL [Voyager 1]: retry pending [alt=48.6 az=245.6]"
+
+
 def test_toggle_terrain_horizon_respects_cli_lockout() -> None:
     dummy = SimpleNamespace()
     dummy._terrain_horizon_gui_allowed = False
