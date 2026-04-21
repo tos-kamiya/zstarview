@@ -86,7 +86,8 @@ def _stripe_render_grids(
     rr: float,
     bins_u: int,
     bins_v: int,
-    content_fov_deg: float,
+    edge_fov_deg: float = 90.0,
+    content_fov_deg: float = 90.0,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Cache stripe geometry and baseline-projected field sampling grids."""
     w = max(1, int(width))
@@ -98,7 +99,7 @@ def _stripe_render_grids(
     phase = u_mod.astype(np.float32, copy=False) + 0.5
     line_mask = phase <= float(max_band)
 
-    max_r = max(0.0, float(content_fov_deg) / 90.0)
+    max_r = max(0.0, float(content_fov_deg) / max(1.0e-6, float(edge_fov_deg)))
     y, x = np.ogrid[:h, :w]
     inside_disc = ((x - cx) ** 2 + (y - cy) ** 2) <= ((rr * max_r) + 0.25) ** 2
     sample_radius = max(1.0, rr * max_r)
@@ -203,7 +204,8 @@ def _render_variable_width_cloud_stripes_rgba(
     *,
     target_stripes: int = 50,
     width_factor: float = 0.85,
-    content_fov_deg: float,
+    edge_fov_deg: float = 90.0,
+    content_fov_deg: float = 90.0,
 ) -> np.ndarray:
     """Render fixed-opacity cloud stripes whose width increases with cloud amount."""
     w = max(1, int(width))
@@ -237,6 +239,7 @@ def _render_variable_width_cloud_stripes_rgba(
         rr,
         bins_u,
         bins_v,
+        edge_fov_deg,
         _cloud_render_content_fov_deg(content_fov_deg),
     )
     sampled = np.clip(cloud_amount.amount.reshape(-1)[sample_idx], 0.0, 1.0)
@@ -281,7 +284,8 @@ def _render_alpha_scaled_cloud_stripes_rgba(
     *,
     target_stripes: int = 50,
     width_factor: float = 0.2,
-    content_fov_deg: float,
+    edge_fov_deg: float = 90.0,
+    content_fov_deg: float = 90.0,
 ) -> np.ndarray:
     """Render fixed-width cloud stripes whose alpha follows cloud amount."""
     w = max(1, int(width))
@@ -314,6 +318,7 @@ def _render_alpha_scaled_cloud_stripes_rgba(
         rr,
         bins_u,
         bins_v,
+        edge_fov_deg,
         _cloud_render_content_fov_deg(content_fov_deg),
     )
     draw_mask = inside_disc & line_mask & (phase <= max_band)
@@ -350,6 +355,7 @@ def render_variable_width_cloud_stripes(
     *,
     target_stripes: int = 50,
     width_factor: float = 0.85,
+    edge_fov_deg: float = 90.0,
     content_fov_deg: float,
 ) -> QImage:
     out = _render_variable_width_cloud_stripes_rgba(
@@ -360,6 +366,7 @@ def render_variable_width_cloud_stripes(
         geometry=geometry,
         target_stripes=target_stripes,
         width_factor=width_factor,
+        edge_fov_deg=edge_fov_deg,
         content_fov_deg=content_fov_deg,
     )
     return np_rgba_to_qimage(out)
@@ -373,7 +380,8 @@ def compose_cloud_over_sky(
     *,
     cloud_opacity: float = 1.0,
     gray_mix: float = 1.0,
-    content_fov_deg: float,
+    edge_fov_deg: float = 90.0,
+    content_fov_deg: float = 90.0,
 ) -> QImage:
     """Composite cloud over sky with optional gray desaturation behind clouds.
 
@@ -402,7 +410,7 @@ def compose_cloud_over_sky(
         cx = float(geometry.center[0]) - float(dest_rect.x())
         cy = float(geometry.center[1]) - float(dest_rect.y())
         rr = max(1.0, float(geometry.radius))
-    max_r = max(0.0, float(content_fov_deg) / 90.0)
+    max_r = max(0.0, float(content_fov_deg) / max(1.0e-6, float(edge_fov_deg)))
     y, x = np.ogrid[:h, :w]
     r2 = (x - cx) ** 2 + (y - cy) ** 2
     disc_mask = r2 <= ((rr * max_r) + 0.25) ** 2
@@ -529,6 +537,7 @@ def _inverse_project_disc(
     geometry: ScreenGeometry,
     view_center: Tuple[float, float],
     *,
+    edge_fov_deg: float,
     content_fov_deg: float,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Inverse-project square composited pixels up to the requested content FOV."""
@@ -540,13 +549,13 @@ def _inverse_project_disc(
     nx, ny = np.meshgrid(xs, ys)
 
     rr2 = nx * nx + ny * ny
-    max_r = max(0.0, float(content_fov_deg) / 90.0)
+    max_r = max(0.0, float(content_fov_deg) / max(1.0e-6, float(edge_fov_deg)))
     inside = rr2 <= (max_r * max_r)
     if not np.any(inside):
         return np.array([], dtype=np.float32), np.array([], dtype=np.float32), inside
 
     r = np.sqrt(rr2[inside]).astype(np.float32)
-    theta = r * (np.pi / 2.0)
+    theta = np.radians(r * max(1.0e-6, float(edge_fov_deg)))
     psi = np.arctan2(nx[inside], -ny[inside])
 
     alt_c, az_c = view_center
@@ -631,6 +640,7 @@ def _apply_ground_tint(
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     ground_tint_opacity: float = 0.1,
     observer_lat_deg: float | None = None,
+    edge_fov_deg: float = 90.0,
     content_fov_deg: float,
 ) -> QImage:
     """Tint the composited disc below the geometric or terrain horizon."""
@@ -642,6 +652,7 @@ def _apply_ground_tint(
         out.shape[0],
         geometry,
         view_center,
+        edge_fov_deg=edge_fov_deg,
         content_fov_deg=content_fov_deg,
     )
     if alt.size == 0:
@@ -676,6 +687,7 @@ def _overlay_earth_guide(
     observer_height_m: float = 0.0,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     earth_guide_opacity: float = 0.028,
+    edge_fov_deg: float = 90.0,
     content_fov_deg: float,
     fast_mode: bool = False,
 ) -> QImage:
@@ -698,6 +710,7 @@ def _overlay_earth_guide(
             observer_height_m=float(observer_height_m),
             terrain_profile_altaz=terrain_profile_altaz,
             earth_guide_opacity=float(earth_guide_opacity),
+            edge_fov_deg=edge_fov_deg,
             content_fov_deg=content_fov_deg,
             fast_mode=bool(fast_mode),
         )
@@ -756,6 +769,7 @@ class SkyCompositorCache:
         terrain_profile_altaz: list[tuple[float, float]] | None = None,
         terrain_horizon_opacity: float = 0.028,
         earth_guide_opacity: float = 0.028,
+        edge_fov_deg: float = 90.0,
         content_fov_deg: float,
         fast_mode: bool = False,
     ) -> None:
@@ -838,7 +852,7 @@ class SkyCompositorCache:
                 cx = float(geometry.center[0]) - float(x)
                 cy = float(geometry.center[1]) - float(y)
                 rr = max(1.0, float(geometry.radius))
-                max_r = max(0.0, float(content_fov_deg) / 90.0)
+                max_r = max(0.0, float(content_fov_deg) / max(1.0e-6, float(edge_fov_deg)))
                 yy, xx = np.ogrid[:h, :w]
                 disc_mask = ((xx - cx) ** 2 + (yy - cy) ** 2) <= ((rr * max_r) + 0.25) ** 2
                 arr[..., 3][disc_mask] = 255
@@ -867,6 +881,7 @@ class SkyCompositorCache:
                         geometry=geometry,
                         target_stripes=self._cloud_target_stripes,
                         width_factor=self._cloud_stripe_width_factor,
+                        edge_fov_deg=edge_fov_deg,
                         content_fov_deg=content_fov_deg,
                     )
                 else:
@@ -878,6 +893,7 @@ class SkyCompositorCache:
                         geometry=geometry,
                         target_stripes=self._cloud_target_stripes,
                         width_factor=self._cloud_stripe_width_factor,
+                        edge_fov_deg=edge_fov_deg,
                         content_fov_deg=content_fov_deg,
                     )
                 if missing_s is not None:
@@ -892,6 +908,7 @@ class SkyCompositorCache:
                     geometry=geometry,
                     cloud_opacity=cloud_alpha,
                     gray_mix=self._gray_mix,
+                    edge_fov_deg=edge_fov_deg,
                     content_fov_deg=content_fov_deg,
                 )
             composited = _apply_ground_tint(
@@ -901,6 +918,7 @@ class SkyCompositorCache:
                 terrain_profile_altaz=terrain_profile_altaz,
                 ground_tint_opacity=self._ground_tint_opacity,
                 observer_lat_deg=observer_lat_deg,
+                edge_fov_deg=edge_fov_deg,
                 content_fov_deg=content_fov_deg,
             )
             composited = _overlay_earth_guide(
@@ -912,6 +930,7 @@ class SkyCompositorCache:
                 observer_height_m=observer_height_m,
                 terrain_profile_altaz=terrain_profile_altaz,
                 earth_guide_opacity=earth_guide_opacity,
+                edge_fov_deg=edge_fov_deg,
                 content_fov_deg=content_fov_deg,
                 fast_mode=fast_mode,
             )

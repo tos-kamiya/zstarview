@@ -140,7 +140,12 @@ def find_highlighted_object(
             valid_indices = np.nonzero(hover_mask)[0]
             alt_named = stars["alt"][hover_mask]
             az_named = stars["az"][hover_mask]
-            nx, ny = _altaz_to_normalized_xy_vectorized(alt_named, az_named, viewer_data.view_center)
+            nx, ny = _altaz_to_normalized_xy_vectorized(
+                alt_named,
+                az_named,
+                viewer_data.view_center,
+                edge_fov_deg=float(viewer_data.edge_fov_deg),
+            )
             x, y = _normalized_to_screen_xy_vectorized(nx, ny, geometry)
             dist_sq = (mouse_pos.x() - x) ** 2 + (mouse_pos.y() - y) ** 2
             closest_idx = np.argmin(dist_sq)
@@ -159,7 +164,12 @@ def find_highlighted_object(
         # For planets, allow below-horizon display as long as they are in the current FOV.
         if not is_in_fov(body.alt, body.az, viewer_data.view_center, fov_deg=content_fov_deg):
             continue
-        nx, ny = altaz_to_normalized_xy(body.alt, body.az, viewer_data.view_center)
+        nx, ny = altaz_to_normalized_xy(
+            body.alt,
+            body.az,
+            viewer_data.view_center,
+            edge_fov_deg=float(viewer_data.edge_fov_deg),
+        )
         px, py = normalized_to_screen_xy(nx, ny, geometry)
         dist_sq = (mouse_pos.x() - px) ** 2 + (mouse_pos.y() - py) ** 2
         if dist_sq < min_dist_sq:
@@ -234,7 +244,12 @@ def draw_stars(
         return
 
     # Convert directions to pixel centers.
-    nx, ny = _altaz_to_normalized_xy_vectorized(alt, az, viewer_data.view_center)
+    nx, ny = _altaz_to_normalized_xy_vectorized(
+        alt,
+        az,
+        viewer_data.view_center,
+        edge_fov_deg=float(viewer_data.edge_fov_deg),
+    )
     x, y = _normalized_to_screen_xy_vectorized(nx, ny, geometry)
 
     bv_clamped = np.nan_to_num(bv, nan=0.45)

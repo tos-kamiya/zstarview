@@ -64,7 +64,7 @@ def draw_asterisms(
 
     painter.save()
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
-    clip_radius = effective_fov_deg / 90.0
+    clip_radius = effective_fov_deg / max(1.0e-6, float(viewer_data.edge_fov_deg))
     width_scale = max(1.0, float(line_width_scale))
 
     def _make_pen(color: QColor, width: float) -> QPen:
@@ -87,7 +87,12 @@ def draw_asterisms(
             arc_altaz = _great_circle_altaz_points(pos_a[0], pos_a[1], pos_b[0], pos_b[1])
             arc_points: List[Tuple[float, float]] = []
             for alt_i, az_i in arc_altaz:
-                nx_i, ny_i = altaz_to_normalized_xy(alt_i, az_i, viewer_data.view_center)
+                nx_i, ny_i = altaz_to_normalized_xy(
+                    alt_i,
+                    az_i,
+                    viewer_data.view_center,
+                    edge_fov_deg=float(viewer_data.edge_fov_deg),
+                )
                 arc_points.append((nx_i, ny_i))
             for raw_frag in split_by_gaps(arc_points):
                 clipped_frags = _clip_polyline_to_radius(raw_frag, clip_radius)

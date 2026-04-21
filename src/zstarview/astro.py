@@ -256,10 +256,16 @@ def prepare_deep_sky_catalog_arrays(dso_df: pl.DataFrame) -> DeepSkyCatalogArray
     }
 
 
-def altaz_to_normalized_xy(alt: float, az: float, view_center: Tuple[float, float]) -> Tuple[float, float]:
+def altaz_to_normalized_xy(
+    alt: float,
+    az: float,
+    view_center: Tuple[float, float],
+    *,
+    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
+) -> Tuple[float, float]:
     """Convert alt/az to normalized screen coordinates relative to a view center.
 
-    Returns (nx, ny) where 1.0 equals 90 degrees of angular distance.
+    Returns (nx, ny) where 1.0 equals `edge_fov_deg` degrees of angular distance.
     """
     center_alt, center_az = view_center
     alt1 = math.radians(center_alt)
@@ -270,7 +276,8 @@ def altaz_to_normalized_xy(alt: float, az: float, view_center: Tuple[float, floa
     cos_theta = math.sin(alt1) * math.sin(alt2) + math.cos(alt1) * math.cos(alt2) * math.cos(az2 - az1)
     theta = math.acos(max(-1.0, min(1.0, cos_theta)))
 
-    r = theta / (math.pi / 2)
+    edge_fov_rad = math.radians(max(1.0e-6, float(edge_fov_deg)))
+    r = theta / edge_fov_rad
 
     dx = math.cos(alt2) * math.sin(az2 - az1)
     dy = math.cos(alt1) * math.sin(alt2) - math.sin(alt1) * math.cos(alt2) * math.cos(az2 - az1)
@@ -728,6 +735,8 @@ def calculate_moon_render_data(
     sun_altaz: Optional[Tuple[float, float]],
     moon_altaz: Optional[Tuple[float, float]],
     view_center: Tuple[float, float],
+    *,
+    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
 ) -> Tuple[np.ndarray, float]:
     """
     Calculates all necessary data for rendering the moon.
@@ -781,8 +790,18 @@ def calculate_moon_render_data(
     if moon_altaz:
         # Get screen coordinates for the moon's center and a point just "above" it
         m_alt, m_az = moon_altaz
-        nx_center, ny_center = altaz_to_normalized_xy(m_alt, m_az, view_center)
-        nx_up, ny_up = altaz_to_normalized_xy(m_alt + 0.1, m_az, view_center)
+        nx_center, ny_center = altaz_to_normalized_xy(
+            m_alt,
+            m_az,
+            view_center,
+            edge_fov_deg=edge_fov_deg,
+        )
+        nx_up, ny_up = altaz_to_normalized_xy(
+            m_alt + 0.1,
+            m_az,
+            view_center,
+            edge_fov_deg=edge_fov_deg,
+        )
 
         # Calculate the angle of the "up" direction on the screen
         dx = nx_up - nx_center

@@ -12,6 +12,8 @@ ImageSizeArg = Tuple[int, int]
 
 _VMAG_MULTIPLIER_MIN = 10.0**0.2
 _VMAG_MULTIPLIER_MAX = 10.0**0.4
+_EDGE_FOV_MIN = 0.0
+_EDGE_FOV_MAX = 127.0
 _CONTENT_FOV_MIN = 90.0
 _CONTENT_FOV_MAX = 127.0
 _COMMITTED_VMAG_LIMIT_MAX = 10.5
@@ -127,6 +129,19 @@ def _parse_content_fov_deg(value: str) -> float:
     if not (_CONTENT_FOV_MIN <= out <= _CONTENT_FOV_MAX):
         raise argparse.ArgumentTypeError(
             f"Value must be between {_CONTENT_FOV_MIN:.0f} and {_CONTENT_FOV_MAX:.0f} degrees."
+        )
+    return out
+
+
+def _parse_edge_fov_deg(value: str) -> float:
+    """Parse the projected edge FOV angle."""
+    try:
+        out = float(value)
+    except (TypeError, ValueError) as exc:
+        raise argparse.ArgumentTypeError(f"Invalid edge FOV: {value!r}") from exc
+    if not (_EDGE_FOV_MIN < out <= _EDGE_FOV_MAX):
+        raise argparse.ArgumentTypeError(
+            f"Value must be greater than {_EDGE_FOV_MIN:.0f} and at most {_EDGE_FOV_MAX:.0f} degrees."
         )
     return out
 
@@ -425,6 +440,15 @@ def add_observing_arguments(parser: argparse._ActionsContainer) -> None:
         type=float,
         default=90.0,
         help="Viewing altitude angle [deg] (90=zenith, 0=horizon; default=90)",
+    )
+    parser.add_argument(
+        "--edge-fov-deg",
+        type=_parse_edge_fov_deg,
+        default=90.0,
+        help=(
+            "Projected edge field of view in degrees (default: 90). "
+            "This controls how angular distance maps to the window edge."
+        ),
     )
     parser.add_argument(
         "--content-fov-deg",

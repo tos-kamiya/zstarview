@@ -343,6 +343,7 @@ def _draw_viewport_interaction_layers(
         scene.viewer.view_center,
         opacity=style.terrain_horizon_opacity,
         line_width_scale=line_width_scale,
+        edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=_content_fov_deg(scene),
     )
 
@@ -370,6 +371,7 @@ def _draw_background_layer(
         QRectF(viewport_rect),
         geometry,
         preset=style.visual_preset,
+        edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=_content_fov_deg(scene),
         opaque=not style.show_custom_window_frame,
     )
@@ -399,12 +401,14 @@ def _draw_guide_layer(
         style.text_font,
         None,
         preset=style.visual_preset,
+        edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=content_fov_deg,
     )
     render_guides.draw_zenith_marker(
         painter,
         geometry,
         scene.viewer.view_center,
+        edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=content_fov_deg,
     )
 
@@ -425,6 +429,7 @@ def _draw_sky_cloud_layers(
         scene.cloud_image,
         cloud_alpha=style.cloud_disc_alpha,
         view_center=scene.viewer.view_center,
+        edge_fov_deg=float(scene.viewer.edge_fov_deg),
         observer_lat_deg=scene.viewer.location[0],
         observer_lon_deg=scene.viewer.location[1],
         observer_height_m=scene.viewer.observer_height_m,
@@ -494,6 +499,7 @@ def _draw_terrain_layers(
         scene.viewer.view_center,
         opacity=style.terrain_horizon_opacity,
         line_width_scale=line_width_scale,
+        edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=content_fov_deg,
     )
     _draw_urban_outline_layer(
@@ -540,6 +546,7 @@ def _draw_urban_outline_layer(
         scene.viewer.view_center,
         opacity=style.urban_outline_opacity,
         line_width_scale=1.0,
+        edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=_content_fov_deg(scene),
     )
 
@@ -565,6 +572,7 @@ def _draw_aircraft_layer(
         line_width_scale=line_width_scale,
         label_candidates=label_candidates,
         preset=style.visual_preset,
+        edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=_content_fov_deg(scene),
     )
 
@@ -662,6 +670,7 @@ def _draw_planet_layer(
         label_candidates=label_candidates,
         draw_labels=True,
         preset=style.visual_preset,
+        edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=_content_fov_deg(scene),
         marker_scale=marker_scale,
     )
@@ -728,6 +737,7 @@ def _draw_satellite_layer(
         ),
         label_candidates=label_candidates,
         preset=style.visual_preset,
+        edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=_content_fov_deg(scene),
         marker_scale=compute_star_render_upscale_factor(
             geometry.radius * 2,

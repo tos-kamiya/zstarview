@@ -103,6 +103,27 @@ def _urban_outline_foreground_width(distance_km: float, *, width_scale: float = 
     return base_width * float(width_scale)
 
 
+def _project_altaz_to_normalized_xy(
+    alt_deg: float,
+    az_deg: float,
+    view_center: tuple[float, float],
+    *,
+    edge_fov_deg: float,
+) -> tuple[float, float]:
+    try:
+        return altaz_to_normalized_xy(
+            alt_deg,
+            az_deg,
+            view_center,
+            edge_fov_deg=edge_fov_deg,
+        )
+    except TypeError as exc:
+        try:
+            return altaz_to_normalized_xy(alt_deg, az_deg, view_center)
+        except TypeError:
+            raise exc
+
+
 def _minimal_azimuth_cover(azimuth_deg: List[float]) -> Tuple[float, float, float]:
     if not azimuth_deg:
         return 0.0, 0.0, 0.0
@@ -139,6 +160,7 @@ def draw_terrain_horizon_line(
     *,
     opacity: float = 1.0,
     line_width_scale: float = 1.0,
+    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
     content_fov_deg: float = FIELD_OF_VIEW_DEG,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
     altaz_to_normalized_xy_func: Callable[[float, float, Tuple[float, float]], Tuple[float, float]] = altaz_to_normalized_xy,
@@ -156,7 +178,20 @@ def draw_terrain_horizon_line(
     for alt, az in terrain_profile_altaz:
         if not is_in_fov_func(float(alt), float(az), view_center, fov_deg=content_fov_deg):
             continue
-        nx, ny = altaz_to_normalized_xy_func(float(alt), float(az), view_center)
+        try:
+            nx, ny = altaz_to_normalized_xy_func(
+                float(alt),
+                float(az),
+                view_center,
+                edge_fov_deg=float(edge_fov_deg),
+            )
+        except TypeError:
+            nx, ny = _project_altaz_to_normalized_xy(
+                float(alt),
+                float(az),
+                view_center,
+                edge_fov_deg=edge_fov_deg,
+            )
         points.append((nx, ny))
 
     if len(points) < 2:
@@ -198,6 +233,7 @@ def draw_urban_outlines(
     *,
     opacity: float = 0.2,
     line_width_scale: float = 1.0,
+    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
     content_fov_deg: float = FIELD_OF_VIEW_DEG,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
     altaz_to_normalized_xy_func: Callable[[float, float, Tuple[float, float]], Tuple[float, float]] = altaz_to_normalized_xy,
@@ -300,8 +336,32 @@ def draw_urban_outlines(
         if az_span_deg < 0.5:
             representative_alt_deg = float(sum(float(alt) for alt, _az in outline) / len(outline))
             if representative_alt_deg >= -60.0:
-                start_nx, start_ny = altaz_to_normalized_xy_func(representative_alt_deg, az_start_deg, view_center)
-                end_nx, end_ny = altaz_to_normalized_xy_func(representative_alt_deg, az_end_deg, view_center)
+                try:
+                    start_nx, start_ny = altaz_to_normalized_xy_func(
+                        representative_alt_deg,
+                        az_start_deg,
+                        view_center,
+                        edge_fov_deg=float(edge_fov_deg),
+                    )
+                    end_nx, end_ny = altaz_to_normalized_xy_func(
+                        representative_alt_deg,
+                        az_end_deg,
+                        view_center,
+                        edge_fov_deg=float(edge_fov_deg),
+                    )
+                except TypeError:
+                    start_nx, start_ny = _project_altaz_to_normalized_xy(
+                        representative_alt_deg,
+                        az_start_deg,
+                        view_center,
+                        edge_fov_deg=edge_fov_deg,
+                    )
+                    end_nx, end_ny = _project_altaz_to_normalized_xy(
+                        representative_alt_deg,
+                        az_end_deg,
+                        view_center,
+                        edge_fov_deg=edge_fov_deg,
+                    )
                 x1, y1 = normalized_to_screen_xy_func(start_nx, start_ny, geometry)
                 x2, y2 = normalized_to_screen_xy_func(end_nx, end_ny, geometry)
                 y = (float(y1) + float(y2)) * 0.5
@@ -315,7 +375,20 @@ def draw_urban_outlines(
                     _draw_points(points)
                 points = []
                 continue
-            nx, ny = altaz_to_normalized_xy_func(float(alt), float(az), view_center)
+            try:
+                nx, ny = altaz_to_normalized_xy_func(
+                    float(alt),
+                    float(az),
+                    view_center,
+                    edge_fov_deg=float(edge_fov_deg),
+                )
+            except TypeError:
+                nx, ny = _project_altaz_to_normalized_xy(
+                    float(alt),
+                    float(az),
+                    view_center,
+                    edge_fov_deg=edge_fov_deg,
+                )
             points.append((nx, ny))
         if len(points) >= 2:
             _draw_points(points)

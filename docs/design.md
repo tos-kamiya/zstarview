@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-04-18
+最終更新: 2026-04-21
 
 ## 1. この文書の位置づけ
 
@@ -62,6 +62,7 @@
   - `--place`、`--place-countrycode`、`--place-lang` の online 地点検索オプションを扱う
   - `--search`、`--list`、`--search-keep-marker` の検索オプションを扱い、GUI 起動時検索と export-image で同じ引数定義を共有する
   - `--theme` は `night`、`day`、`white`、`black` の 4 preset のみを受け付ける
+  - `--edge-fov-deg` は起動時の画面投影スケールを、`--content-fov-deg` は描画対象の保持範囲を制御する
   - 同梱星表の実上限に合わせ、`-V` / `--vmag-limit` は `10.5` を超える指定を parse 時点で `10.5` へ丸める
   - parser 構築は `add_location_arguments()`、`add_dataset_query_arguments()`、`add_time_arguments()`、`add_render_arguments()` の helper に分割し、将来の別 CLI からも再利用できるようにする
   - ガイドライン表示は `--show-guidelines-initial` として扱い、DSO / アステリウムと同じ起動時 boolean 指定に揃える
@@ -83,6 +84,7 @@
 - `src/zstarview/astro.py`
   - 恒星、太陽、月、惑星、補助線の計算
   - 可視判定と投影前データ生成
+  - `altaz_to_normalized_xy()` と `is_in_fov()` は画面投影用の edge FOV と保持対象の content FOV を分け、前者で正規化半径を決め、後者で描画可否を決める
 - `src/zstarview/catalog.py`
   - 星カタログの読込と描画用配列の前処理
   - 同梱の分割星カタログは `stars_base` (`vmag <= 6`)、`stars_extra7` (`6 < vmag <= 7`)、`stars_extra8` (`7 < vmag <= 8`)、`stars_extra9` (`8 < vmag <= 9`)、`stars_extra10` (`9 < vmag <= 10`)、`stars_extra_faint` (`10 < vmag <= 10.5`) を前提とする
@@ -736,10 +738,13 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 観測地点
   - タイムゾーン
   - 表示中心の方位・高度
+  - 画面投影用の edge FOV
+  - 描画対象保持用の content FOV
   - 観測者の目線高さ
   - 地点表示用の補足高さラベルと値
   - 観測者高さを UI 表示するかどうかのフラグ
   - 画面描画に必要な視点情報
+  - `edge_fov_deg` は起動時固定値として扱い、実行中のリサイズや hover 状態では変えない
 
 地点 dataset が持つ高さ情報と `ViewerData.observer_height_m` は別概念として扱う。
 

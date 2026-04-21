@@ -249,6 +249,7 @@ def main() -> None:
         city.display_name,
         (city.lat, city.lon, city.tz),
         view_center,
+        edge_fov_deg=args.edge_fov_deg,
         content_fov_deg=args.content_fov_deg,
         observer_height_m=city.observer_height_m if args.observer_height_m is None else args.observer_height_m,
         location_height_label=city.location_height_label,

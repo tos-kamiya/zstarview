@@ -25,6 +25,7 @@ def draw_aircraft_overlay(
     line_width_scale: float = 1.0,
     label_candidates: Optional[List[Dict[str, Any]]] = None,
     preset: str = "night",
+    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
     content_fov_deg: float = FIELD_OF_VIEW_DEG,
 ) -> None:
     layer_opacity = max(0.0, min(1.0, float(opacity)))
@@ -76,12 +77,17 @@ def draw_aircraft_overlay(
         ):
             polyline_points: list[QPointF] = []
             for sample_alt_deg, sample_az_deg in trail_points:
-                sample_nx, sample_ny = altaz_to_normalized_xy(sample_alt_deg, sample_az_deg, view_center)
+                sample_nx, sample_ny = altaz_to_normalized_xy(
+                    sample_alt_deg,
+                    sample_az_deg,
+                    view_center,
+                    edge_fov_deg=edge_fov_deg,
+                )
                 sample_px, sample_py = normalized_to_screen_xy(sample_nx, sample_ny, geometry)
                 polyline_points.append(QPointF(float(sample_px), float(sample_py)))
             if len(polyline_points) >= 2:
                 painter.drawPolyline(QPolygonF(polyline_points))
-        nx, ny = altaz_to_normalized_xy(alt, az, view_center)
+        nx, ny = altaz_to_normalized_xy(alt, az, view_center, edge_fov_deg=edge_fov_deg)
         px, py = normalized_to_screen_xy(nx, ny, geometry)
         pos = QPointF(float(px), float(py))
         callsign = (point.callsign or "").strip()

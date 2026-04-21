@@ -525,6 +525,7 @@ def test_satellite_overlay_keeps_overscan_position_beyond_90_deg(monkeypatch) ->
             view_center=(45.0, 180.0),
             opacity=1.0,
             label_candidates=[],
+            edge_fov_deg=110.0,
             content_fov_deg=110.0,
         )
     finally:
@@ -533,7 +534,7 @@ def test_satellite_overlay_keeps_overscan_position_beyond_90_deg(monkeypatch) ->
     assert len(positions) == 1
     x, y = positions[0]
     assert math.isclose(x, 120.0, abs_tol=0.2)
-    assert math.isclose(y, 204.4, abs_tol=0.3)
+    assert math.isclose(y, 189.1, abs_tol=0.3)
 
 
 app = QApplication.instance() or QApplication([])

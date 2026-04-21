@@ -236,6 +236,7 @@ def _build_window_inputs_from_args(
         city.display_name,
         (city.lat, city.lon, city.tz),
         view_center,
+        edge_fov_deg=getattr(args, "edge_fov_deg", 90.0),
         content_fov_deg=getattr(args, "content_fov_deg", 115.0),
         observer_height_m=(
             city.observer_height_m
@@ -460,9 +461,9 @@ def _fetch_cloud_layer(
             alt=float(viewer_data.view_alt_deg),
             az=float(viewer_data.view_az_deg),
             radius_px=DEFAULT_CLOUD_BASE_SIZE,
-            edge_fov_deg=float(viewer_data.content_fov_deg)
+            edge_fov_deg=float(viewer_data.edge_fov_deg)
             + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-            mask_fov_deg=float(viewer_data.content_fov_deg)
+            mask_fov_deg=float(viewer_data.edge_fov_deg)
             + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
             cloud_shells_km=CLOUD_SHELLS_KM,
         )
@@ -782,6 +783,7 @@ def _render_image(
                 geometry,
                 search_overlay_target,
                 view_center=scene.viewer.view_center,
+                edge_fov_deg=float(scene.viewer.edge_fov_deg),
                 content_fov_deg=float(scene.viewer.content_fov_deg),
                 visual_preset=style.visual_preset,
                 text_font=style.text_font,
@@ -1096,6 +1098,7 @@ def main() -> None:
         delta_t=runtime_options.delta_t,
         sky_disc_alpha=float(user_options.sky_disc_alpha),
         sky_disc_base_size=max(image_size),
+        edge_fov_deg=float(viewer_data.edge_fov_deg),
         content_fov_deg=float(viewer_data.content_fov_deg),
         visual_preset=str(user_options.visual_preset),
         star_catalog_meta=getattr(catalogs, "star_catalog_meta", None),

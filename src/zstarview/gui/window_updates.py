@@ -282,6 +282,7 @@ class SkyWindowUpdatesMixin:
             delta_t=self.delta_t,
             sky_disc_alpha=self.sky_disc_alpha,
             sky_disc_base_size=self.state.sky_disc_base_size,
+            edge_fov_deg=float(self.viewer_data.edge_fov_deg),
             content_fov_deg=float(self.content_fov_deg),
             visual_preset=self.visual_preset,
             star_catalog_meta=self.star_catalog_meta,
