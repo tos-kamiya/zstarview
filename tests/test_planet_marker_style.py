@@ -699,7 +699,7 @@ def test_find_highlighted_satellite_prefers_nearest_marker(monkeypatch) -> None:
     monkeypatch.setattr(
         render_satellites,
         "altaz_to_normalized_xy",
-        lambda alt, az, _view_center: (float(alt), float(az)),
+        lambda alt, az, _view_center, **_kwargs: (float(alt), float(az)),
     )
     monkeypatch.setattr(
         render_satellites,
