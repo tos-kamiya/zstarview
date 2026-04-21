@@ -126,6 +126,13 @@ def render_base_scene_into_painter(
     compositor: Any,
     draw_fast_overlays: bool = True,
 ) -> None:
+    win_w, win_h = _window_size(viewport_rect)
+    star_surface_size = compute_star_render_surface_size(
+        win_w,
+        win_h,
+        geometry.radius * 2,
+        style.star_render_expected_width,
+    )
     _clear_background_layer(painter, viewport_rect)
     _draw_background_layer(
         painter,
@@ -146,6 +153,7 @@ def render_base_scene_into_painter(
         scene=sky_cloud_scene,
         style=sky_cloud_style,
         compositor=compositor,
+        star_render_surface_size=star_surface_size,
         fast_mode=hud.viewport_interaction_mode,
     )
     _draw_guide_layer(
@@ -182,6 +190,7 @@ def render_base_scene_into_painter(
         viewport_rect=viewport_rect,
         scene=scene,
         style=style,
+        star_render_surface_size=star_surface_size,
     )
     _draw_planet_layer(
         painter,
@@ -334,6 +343,7 @@ def _draw_viewport_interaction_layers(
         viewport_rect=viewport_rect,
         scene=replace(scene, celestial_data=interaction_celestial_data),
         style=style,
+        star_render_surface_size=None,
         draw_vmag_limit=ORIENTATION_INTERACTION_STAR_VMAG_LIMIT,
     )
     render_terrain.draw_terrain_horizon_line(
@@ -420,6 +430,7 @@ def _draw_sky_cloud_layers(
     scene: RenderSceneData,
     style: RenderStyle,
     compositor: Any,
+    star_render_surface_size: tuple[int, int],
     fast_mode: bool = False,
 ) -> None:
     compositor.draw(
@@ -428,6 +439,7 @@ def _draw_sky_cloud_layers(
         scene.sky_disc_image,
         scene.cloud_image,
         cloud_alpha=style.cloud_disc_alpha,
+        density_reference_size=star_render_surface_size,
         view_center=scene.viewer.view_center,
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         observer_lat_deg=scene.viewer.location[0],
@@ -584,15 +596,20 @@ def _draw_star_layer(
     viewport_rect: QRect,
     scene: RenderSceneData,
     style: RenderStyle,
+    star_render_surface_size: tuple[int, int] | None = None,
     draw_vmag_limit: float | None = None,
 ) -> None:
     draw_data = scene.celestial_data
     win_w, win_h = _window_size(viewport_rect)
-    low_w, low_h = compute_star_render_surface_size(
-        win_w,
-        win_h,
-        geometry.radius * 2,
-        style.star_render_expected_width,
+    low_w, low_h = (
+        compute_star_render_surface_size(
+            win_w,
+            win_h,
+            geometry.radius * 2,
+            style.star_render_expected_width,
+        )
+        if star_render_surface_size is None
+        else (max(1, int(star_render_surface_size[0])), max(1, int(star_render_surface_size[1])))
     )
     content_fov_deg = _content_fov_deg(scene)
     if low_w == win_w and low_h == win_h:

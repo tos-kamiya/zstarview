@@ -18,7 +18,11 @@ import numpy as np
 from PySide6.QtCore import QRect, Qt
 from PySide6.QtGui import QImage, QPainter
 
-from ..paths import CLOUD_HATCH_DEFAULT, CLOUD_MISSING_TINT_RGBA, HatchConfig
+from ..paths import (
+    CLOUD_HATCH_DEFAULT,
+    CLOUD_MISSING_TINT_RGBA,
+    HatchConfig,
+)
 from ..render.earth_guide import draw_earth_guide
 from ..render.sky_disc import GROUND_TINT_RGB, NEVER_RISES_TINT_RGB, NEVER_RISES_TINT_STRENGTH
 from ..types import ScreenGeometry
@@ -114,6 +118,21 @@ def _stripe_render_grids(
     return (phase, line_mask, inside_disc, u_idx * bins_v + v_idx)
 
 
+def _scaled_cloud_target_stripes(
+    target_stripes: int,
+    reference_width: int,
+    reference_height: int,
+) -> int:
+    """Scale the stripe count with the reference render surface size."""
+    base_diameter = 600.0
+    reference_diameter = max(
+        1.0,
+        float(min(max(1, int(reference_width)), max(1, int(reference_height)))),
+    )
+    scaled = float(max(1, int(target_stripes))) * reference_diameter / base_diameter
+    return max(1, int(round(scaled)))
+
+
 def _cloud_stripe_fade_factor(phase: np.ndarray, fade_span: float) -> np.ndarray:
     """Return a gentle fade curve for variable-width cloud stripes."""
     progress = np.clip((phase - 0.5) / max(1.0, float(fade_span)), 0.0, 1.0)
@@ -204,15 +223,21 @@ def _render_variable_width_cloud_stripes_rgba(
     *,
     target_stripes: int = 50,
     width_factor: float = 0.85,
+    density_reference_size: tuple[int, int] | None = None,
     edge_fov_deg: float = 90.0,
     content_fov_deg: float = 90.0,
 ) -> np.ndarray:
     """Render fixed-opacity cloud stripes whose width increases with cloud amount."""
     w = max(1, int(width))
     h = max(1, int(height))
+    ref_w, ref_h = (
+        (w, h)
+        if density_reference_size is None
+        else (max(1, int(density_reference_size[0])), max(1, int(density_reference_size[1])))
+    )
 
     diameter_px = float(min(w, h))
-    stripes = max(1, int(target_stripes))
+    stripes = _scaled_cloud_target_stripes(target_stripes, ref_w, ref_h)
     wf = float(np.clip(width_factor, 0.1, 0.95))
     period = int(np.clip(round(diameter_px / stripes), 14, 64))
     max_band = max(2.0, float(period) * wf)
@@ -284,15 +309,21 @@ def _render_alpha_scaled_cloud_stripes_rgba(
     *,
     target_stripes: int = 50,
     width_factor: float = 0.2,
+    density_reference_size: tuple[int, int] | None = None,
     edge_fov_deg: float = 90.0,
     content_fov_deg: float = 90.0,
 ) -> np.ndarray:
     """Render fixed-width cloud stripes whose alpha follows cloud amount."""
     w = max(1, int(width))
     h = max(1, int(height))
+    ref_w, ref_h = (
+        (w, h)
+        if density_reference_size is None
+        else (max(1, int(density_reference_size[0])), max(1, int(density_reference_size[1])))
+    )
 
     diameter_px = float(min(w, h))
-    stripes = max(1, int(target_stripes))
+    stripes = _scaled_cloud_target_stripes(target_stripes, ref_w, ref_h)
     wf = max(0.01, float(width_factor))
     period = int(np.clip(round(diameter_px / stripes), 14, 64))
     max_band = max(1.0, float(period) * wf)
@@ -355,6 +386,7 @@ def render_variable_width_cloud_stripes(
     *,
     target_stripes: int = 50,
     width_factor: float = 0.85,
+    density_reference_size: tuple[int, int] | None = None,
     edge_fov_deg: float = 90.0,
     content_fov_deg: float,
 ) -> QImage:
@@ -366,6 +398,7 @@ def render_variable_width_cloud_stripes(
         geometry=geometry,
         target_stripes=target_stripes,
         width_factor=width_factor,
+        density_reference_size=density_reference_size,
         edge_fov_deg=edge_fov_deg,
         content_fov_deg=content_fov_deg,
     )
@@ -760,6 +793,7 @@ class SkyCompositorCache:
         cloud_img: Optional[np.ndarray | QImage],
         *,
         cloud_alpha: float,
+        density_reference_size: tuple[int, int] | None = None,
         view_center: Tuple[float, float] = (0.0, 0.0),
         observer_lat_deg: float | None = None,
         observer_lon_deg: float | None = None,
@@ -829,6 +863,12 @@ class SkyCompositorCache:
             self._missing_tint_rgba,
             self._ground_tint_opacity,
             self._gray_mix,
+            None
+            if density_reference_size is None
+            else (
+                max(1, int(density_reference_size[0])),
+                max(1, int(density_reference_size[1])),
+            ),
             self._cloud_target_stripes,
             self._cloud_stripe_width_factor,
             self._cloud_stripe_mode,
@@ -881,6 +921,7 @@ class SkyCompositorCache:
                         geometry=geometry,
                         target_stripes=self._cloud_target_stripes,
                         width_factor=self._cloud_stripe_width_factor,
+                        density_reference_size=density_reference_size,
                         edge_fov_deg=edge_fov_deg,
                         content_fov_deg=content_fov_deg,
                     )
@@ -893,6 +934,7 @@ class SkyCompositorCache:
                         geometry=geometry,
                         target_stripes=self._cloud_target_stripes,
                         width_factor=self._cloud_stripe_width_factor,
+                        density_reference_size=density_reference_size,
                         edge_fov_deg=edge_fov_deg,
                         content_fov_deg=content_fov_deg,
                     )
