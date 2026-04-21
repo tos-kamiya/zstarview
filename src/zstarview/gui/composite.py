@@ -11,9 +11,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import lru_cache
-from datetime import datetime, timezone
-from pathlib import Path
-import os
 import math
 from typing import Optional, Tuple, cast
 
@@ -21,52 +18,11 @@ import numpy as np
 from PySide6.QtCore import QRect, Qt
 from PySide6.QtGui import QImage, QPainter
 
-from ..paths import CACHE_PATH, CLOUD_HATCH_DEFAULT, CLOUD_MISSING_TINT_RGBA, HatchConfig
+from ..paths import CLOUD_HATCH_DEFAULT, CLOUD_MISSING_TINT_RGBA, HatchConfig
 from ..render.earth_guide import draw_earth_guide
 from ..render.sky_disc import GROUND_TINT_RGB, NEVER_RISES_TINT_RGB, NEVER_RISES_TINT_STRENGTH
 from ..types import ScreenGeometry
 from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
-
-
-def _resolve_cloud_debug_snapshot_dir() -> Path | None:
-    raw = os.getenv("ZSTARVIEW_DEBUG_SAVE_CLOUD_STRIPE_FRAME", "").strip()
-    if not raw:
-        return None
-    lowered = raw.lower()
-    if lowered in {"0", "false", "no", "off"}:
-        return None
-    if lowered in {"1", "true", "yes", "on"}:
-        return Path(CACHE_PATH) / "debug" / "cloud-stripe"
-    return Path(raw).expanduser()
-
-
-def _save_cloud_debug_snapshot(
-    cloud_img_rgba: np.ndarray | QImage,
-    *,
-    mode: str,
-    output_dir: Path,
-) -> None:
-    try:
-        output_dir.mkdir(parents=True, exist_ok=True)
-        image = (
-            cloud_img_rgba
-            if isinstance(cloud_img_rgba, QImage)
-            else np_rgba_to_qimage(np.array(cloud_img_rgba, copy=False))
-        )
-        safe_mode = "".join(
-            ch if (ch.isascii() and (ch.isalnum() or ch in {"-", "_", "."})) else "-"
-            for ch in str(mode).strip().lower()
-        ).strip("-")
-        if not safe_mode:
-            safe_mode = "width"
-        refreshed_at = datetime.now(timezone.utc)
-        filename = f"cloud-precompose-{refreshed_at.strftime('%Y%m%dT%H%M%SZ')}-{safe_mode}.png"
-        output_path = output_dir / filename
-        if not image.save(str(output_path), "PNG"):
-            return
-    except Exception:
-        return
-
 
 @dataclass(frozen=True)
 class CloudAmountField:
@@ -921,14 +877,6 @@ class SkyCompositorCache:
                     )
                 if missing_s is not None:
                     cloud_s = _mask_cloud_alpha_by_missing_rgba(cloud_s, missing_s)
-                debug_output_dir = _resolve_cloud_debug_snapshot_dir()
-                if debug_output_dir is not None:
-                    _save_cloud_debug_snapshot(
-                        cloud_s,
-                        mode=self._cloud_stripe_mode,
-                        output_dir=debug_output_dir,
-                    )
-
             if cloud_s is None or cloud_alpha <= 0.0:
                 composited = sky_s
             else:
