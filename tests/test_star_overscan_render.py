@@ -86,7 +86,7 @@ def test_draw_stars_keeps_faint_overscan_star_outside_90_deg_background() -> Non
         painter.end()
 
     arr = qimage_to_np_rgba(image)
-    assert int(arr[204, 120, 3]) > 0
+    assert int(arr[199, 120, 3]) > 0
 
 
 def test_draw_stars_uses_peak_channel_as_alpha_for_faint_pixels() -> None:
