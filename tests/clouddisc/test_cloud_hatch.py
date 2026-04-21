@@ -169,7 +169,7 @@ def test_variable_width_cloud_stripes_use_star_surface_density() -> None:
     assert len(large_runs) > len(small_runs)
 
 
-def test_variable_width_cloud_stripes_fade_away_from_base_line() -> None:
+def test_variable_width_cloud_stripes_fade_away_from_center_line() -> None:
     cfg = HatchConfig(20, 19, 8, 255)
     field = CloudAmountField(
         amount=np.full((96, 96), 1.0, dtype=np.float32),
@@ -197,10 +197,14 @@ def test_variable_width_cloud_stripes_fade_away_from_base_line() -> None:
     assert runs
 
     start, end = runs[len(runs) // 2]
-    start_alpha = int(out[row_index, start, 3])
-    end_alpha = int(out[row_index, end, 3])
-    assert start_alpha > end_alpha + 40
-    assert end_alpha <= 170
+    center = out.shape[1] // 2
+    assert start < center < end
+    assert abs((center - start) - (end - center)) <= 1
+    center_alpha = int(out[row_index, center, 3])
+    left_alpha = int(out[row_index, start, 3])
+    right_alpha = int(out[row_index, end, 3])
+    assert center_alpha > left_alpha + 40
+    assert center_alpha > right_alpha + 40
 
 
 def test_cloud_stripe_fade_factor_is_ease_out() -> None:
@@ -241,7 +245,7 @@ def test_stripe_render_grids_use_baseline_projection_for_sampling() -> None:
     assert float(phase[2, 6]) != float(phase[1, 7])
 
 
-def test_variable_width_cloud_stripes_anchor_lower_left_edge() -> None:
+def test_variable_width_cloud_stripes_anchor_center_line() -> None:
     cfg = HatchConfig(20, 19, 8, 255)
     low_field = CloudAmountField(
         amount=np.full((96, 96), 0.2, dtype=np.float32),
@@ -272,12 +276,16 @@ def test_variable_width_cloud_stripes_anchor_lower_left_edge() -> None:
     assert low_runs
     assert high_runs
 
-    low_start, low_end = low_runs[1]
-    matching_high = next((run for run in high_runs if run[0] == low_start), None)
-    assert matching_high is not None
-    high_start, high_end = matching_high
-    assert high_start == low_start
-    assert high_end > low_end
+    center = low_out.shape[1] // 2
+    low_match = next((run for run in low_runs if run[0] <= center <= run[1]), None)
+    high_match = next((run for run in high_runs if run[0] <= center <= run[1]), None)
+    assert low_match is not None
+    assert high_match is not None
+    low_start, low_end = low_match
+    high_start, high_end = high_match
+    assert low_start < center < low_end
+    assert high_start < center < high_end
+    assert (high_end - high_start) > (low_end - low_start)
 
 
 def test_variable_width_cloud_stripes_drop_to_zero_for_tiny_cloud_amount() -> None:

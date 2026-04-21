@@ -92,6 +92,7 @@ def _stripe_render_grids(
     bins_v: int,
     edge_fov_deg: float = 90.0,
     content_fov_deg: float = 90.0,
+    centered: bool = False,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Cache stripe geometry and baseline-projected field sampling grids."""
     w = max(1, int(width))
@@ -99,15 +100,22 @@ def _stripe_render_grids(
     xs = np.arange(w, dtype=np.int32)[None, :]
     ys = np.arange(h, dtype=np.int32)[:, None]
     u_pix = xs - ys
-    u_mod = np.mod(u_pix, int(period))
-    phase = u_mod.astype(np.float32, copy=False) + 0.5
+    period_i = max(1, int(period))
+    if centered:
+        center_offset = period_i // 2
+        u_mod = np.mod(u_pix + center_offset, period_i)
+        phase = np.abs(u_mod.astype(np.float32, copy=False) + 0.5 - float(center_offset))
+        u_base = np.floor_divide(u_pix + center_offset, period_i) * period_i + center_offset
+    else:
+        u_mod = np.mod(u_pix, period_i)
+        phase = u_mod.astype(np.float32, copy=False) + 0.5
+        u_base = np.floor_divide(u_pix, period_i) * period_i
     line_mask = phase <= float(max_band)
 
     max_r = max(0.0, float(content_fov_deg) / max(1.0e-6, float(edge_fov_deg)))
     y, x = np.ogrid[:h, :w]
     inside_disc = ((x - cx) ** 2 + (y - cy) ** 2) <= ((rr * max_r) + 0.25) ** 2
     sample_radius = max(1.0, rr * max_r)
-    u_base = np.floor_divide(u_pix, int(period)) * int(period)
     v_pix = xs + ys
     x_base = (v_pix + u_base).astype(np.float32, copy=False) * 0.5
     y_base = (v_pix - u_base).astype(np.float32, copy=False) * 0.5
@@ -239,8 +247,9 @@ def _render_variable_width_cloud_stripes_rgba(
     diameter_px = float(min(w, h))
     stripes = _scaled_cloud_target_stripes(target_stripes, ref_w, ref_h)
     wf = float(np.clip(width_factor, 0.1, 0.95))
-    period = int(np.clip(round(diameter_px / stripes), 14, 64))
-    max_band = max(2.0, float(period) * wf)
+    base_period = int(np.clip(round(diameter_px / stripes), 14, 64))
+    period = base_period
+    max_band = max(1.0, float(base_period) * wf * 0.5)
 
     if geometry is None:
         cx = (w - 1) * 0.5
@@ -266,6 +275,7 @@ def _render_variable_width_cloud_stripes_rgba(
         bins_v,
         edge_fov_deg,
         _cloud_render_content_fov_deg(content_fov_deg),
+        centered=True,
     )
     sampled = np.clip(cloud_amount.amount.reshape(-1)[sample_idx], 0.0, 1.0)
     if cloud_amount.nonzero_hi > cloud_amount.nonzero_lo + 1e-6:
