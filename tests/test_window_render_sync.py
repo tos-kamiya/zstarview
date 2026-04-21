@@ -1775,7 +1775,7 @@ def test_draw_viewport_interaction_layers_skips_urban_outlines(monkeypatch) -> N
     assert seen_view_centers == []
 
 
-def test_draw_terrain_layers_only_scales_asterisms_and_terrain(monkeypatch) -> None:
+def test_draw_terrain_layers_keeps_asterisms_and_urban_outline_widths_fixed(monkeypatch) -> None:
     calls: dict[str, list[float]] = {
         "asterisms": [],
         "terrain": [],
@@ -1861,7 +1861,7 @@ def test_draw_terrain_layers_only_scales_asterisms_and_terrain(monkeypatch) -> N
         label_candidates=[],
     )
 
-    assert calls["asterisms"] == [expected_line_width_scale]
+    assert calls["asterisms"] == [1.0]
     assert calls["terrain"] == [expected_line_width_scale]
     assert calls["reference"] == [1.0]
     assert calls["direction"] == []
@@ -2225,6 +2225,31 @@ def test_render_base_scene_can_skip_fast_overlays(monkeypatch) -> None:
         "stars",
         "planets",
         "labels",
+    ]
+
+
+def test_draw_planet_layer_passes_marker_scale(monkeypatch) -> None:
+    seen_marker_scales: list[float] = []
+
+    monkeypatch.setattr(
+        pipeline_module.render_solar_system,
+        "draw_solar_system_bodies",
+        lambda *_args, **kwargs: seen_marker_scales.append(
+            float(kwargs.get("marker_scale", 1.0))
+        ),
+    )
+
+    pipeline_module._draw_planet_layer(
+        painter=object(),
+        geometry=SimpleNamespace(radius=600),
+        scene=_make_scene(),
+        style=_make_style(star_render_expected_width=600),
+        enlarge_moon=False,
+        label_candidates=[],
+    )
+
+    assert seen_marker_scales == [
+        pipeline_module.compute_star_render_upscale_factor(1200, 600)
     ]
 
 

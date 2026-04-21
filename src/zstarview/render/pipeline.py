@@ -475,7 +475,7 @@ def _draw_terrain_layers(
             label_reservations,
             label_candidates=label_candidates,
             preset=style.visual_preset,
-            line_width_scale=line_width_scale,
+            line_width_scale=1.0,
             content_fov_deg=content_fov_deg,
             draw_base=True,
             draw_highlight=False,
@@ -543,7 +543,7 @@ def _draw_urban_outline_layer(
         scene.urban_outlines,
         scene.viewer.view_center,
         opacity=style.urban_outline_opacity,
-        line_width_scale=line_width_scale,
+        line_width_scale=1.0,
         content_fov_deg=_content_fov_deg(scene),
     )
 
@@ -652,6 +652,10 @@ def _draw_planet_layer(
     enlarge_moon: bool,
     label_candidates: list[dict[str, Any]],
 ) -> None:
+    marker_scale = compute_star_render_upscale_factor(
+        geometry.radius * 2,
+        style.star_render_expected_width,
+    )
     render_solar_system.draw_solar_system_bodies(
         painter,
         geometry,
@@ -663,6 +667,7 @@ def _draw_planet_layer(
         draw_labels=True,
         preset=style.visual_preset,
         content_fov_deg=_content_fov_deg(scene),
+        marker_scale=marker_scale,
     )
 
 

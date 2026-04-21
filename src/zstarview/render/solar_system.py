@@ -97,11 +97,13 @@ def _draw_moon_planet(
     moon_altaz: Tuple[float, float],
     enlarge_moon: bool,
     cross_color: QColor,
+    marker_scale: float,
 ) -> None:
     moon_zoom = 5 if enlarge_moon else 1
+    marker_scale = max(1.0, float(marker_scale))
     sun_dir_in_moon_frame, screen_rotation_deg = calculate_moon_render_data(sun_altaz, moon_altaz, viewer_data.view_center)
     base_moon_radius_px = max((0.25 / 90.0) * geometry.radius, 2.5)
-    moon_radius_px = base_moon_radius_px * moon_zoom
+    moon_radius_px = base_moon_radius_px * moon_zoom * marker_scale
     draw_moon(
         painter,
         pos,
@@ -111,7 +113,7 @@ def _draw_moon_planet(
         opacity=1.0 if not enlarge_moon else 0.7,
         base_color=_moon_eclipse_overlay_color(body),
     )
-    draw_gauge_cross(painter, cross_color, pos)
+    draw_gauge_cross(painter, cross_color, pos, scale=marker_scale, pen_width=marker_scale)
 
 
 def _marker_intersects_viewport(painter: QPainter, pos: QPointF, radius_px: float) -> bool:
@@ -190,9 +192,11 @@ def draw_solar_system_bodies(
     draw_labels: bool = True,
     preset: str = "night",
     content_fov_deg: float | None = None,
+    marker_scale: float = 1.0,
 ) -> None:
     moon_body, sun_altaz, moon_altaz = _collect_sun_moon_context(celestial_data.planets)
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
+    marker_scale = max(1.0, float(marker_scale))
 
     text_color = QColor(*TEXT_STYLES_BY_PRESET["night"].text)
     if text_font is not None:
@@ -216,15 +220,27 @@ def draw_solar_system_bodies(
         if body.name == "moon":
             base_moon_radius_px = max((0.25 / 90.0) * geometry.radius, 2.5)
             moon_zoom = 5 if enlarge_moon else 1
-            marker_visible = _marker_intersects_viewport(painter, pos, base_moon_radius_px * moon_zoom)
+            marker_visible = _marker_intersects_viewport(
+                painter,
+                pos,
+                base_moon_radius_px * moon_zoom * marker_scale,
+            )
         else:
             radius_px, _alpha = planet_disc_style_from_vmag(body.vmag)
-            bloom_radius, _center_alpha, _mid_alpha = planet_bloom_profile_from_vmag(body.vmag, radius_px)
-            marker_visible = _marker_intersects_viewport(painter, pos, max(radius_px, bloom_radius))
+            scaled_radius_px = radius_px * marker_scale
+            bloom_radius, _center_alpha, _mid_alpha = planet_bloom_profile_from_vmag(
+                body.vmag,
+                scaled_radius_px,
+            )
+            marker_visible = _marker_intersects_viewport(
+                painter,
+                pos,
+                max(scaled_radius_px, bloom_radius),
+            )
 
         if draw_markers:
             if body.name == "sun":
-                draw_gauge_cross(painter, text_color, pos)
+                draw_gauge_cross(painter, text_color, pos, scale=marker_scale, pen_width=marker_scale)
             elif body.name == "moon" and moon_body and sun_altaz and moon_altaz:
                 _draw_moon_planet(
                     painter,
@@ -236,14 +252,22 @@ def draw_solar_system_bodies(
                     moon_altaz,
                     enlarge_moon,
                     text_color,
+                    marker_scale,
                 )
             else:
                 radius_px, alpha = planet_disc_style_from_vmag(body.vmag)
+                radius_px = radius_px * marker_scale
                 marker_color = planet_marker_color(body.name)
                 draw_planet_bloom(painter, pos, marker_color, core_radius_px=radius_px, vmag=body.vmag)
                 marker_color.setAlpha(alpha)
                 draw_planet_disc(painter, pos, marker_color, radius_px=radius_px, alpha=alpha)
-                draw_gauge_cross(painter, text_color, pos, scale=0.55, pen_width=1.0)
+                draw_gauge_cross(
+                    painter,
+                    text_color,
+                    pos,
+                    scale=0.55 * marker_scale,
+                    pen_width=marker_scale,
+                )
 
         if draw_labels and body.name != "sun" and marker_visible:
             label_text = body_label_text(body.name)
