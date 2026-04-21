@@ -293,6 +293,71 @@ def test_enlarge_moon_scales_display_radius_by_five(monkeypatch) -> None:
     assert moon_draw_radii[1] == 12.5
 
 
+def test_marker_scale_applies_to_planets_and_moon(monkeypatch) -> None:
+    planet_draw_radii: list[float] = []
+    moon_draw_radii: list[float] = []
+
+    def fake_draw_planet_disc(_painter, _pos, _color, *, radius_px=1.0, alpha=255) -> None:
+        planet_draw_radii.append(float(radius_px))
+
+    def fake_draw_planet_bloom(_painter, _pos, _color, *, core_radius_px=1.0, vmag=None) -> None:
+        return None
+
+    def fake_draw_moon(_painter, _center, radius_px, *_args, **_kwargs) -> None:
+        moon_draw_radii.append(float(radius_px))
+
+    monkeypatch.setattr(render_solar_system, "draw_planet_disc", fake_draw_planet_disc)
+    monkeypatch.setattr(render_solar_system, "draw_planet_bloom", fake_draw_planet_bloom)
+    monkeypatch.setattr(render_solar_system, "draw_moon", fake_draw_moon)
+    monkeypatch.setattr(
+        render_solar_system, "draw_gauge_cross", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        render_solar_system, "draw_outlined_text", lambda *_args, **_kwargs: None
+    )
+
+    sun = PlanetBody(name="sun", alt=45.0, az=180.0, symbol="☉", is_visible=True)
+    moon = PlanetBody(name="moon", alt=45.0, az=180.0, symbol="☾", is_visible=True)
+    mars = PlanetBody(
+        name="mars",
+        alt=45.0,
+        az=180.0,
+        symbol="♂",
+        is_visible=True,
+        vmag=0.0,
+    )
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+    )
+    geometry = ScreenGeometry(center=(100, 100), radius=80)
+    celestial = _empty_celestial_data([sun, moon, mars])
+
+    render_solar_system.draw_solar_system_bodies(
+        painter=object(),
+        geometry=geometry,
+        celestial_data=celestial,
+        viewer_data=viewer,
+        enlarge_moon=False,
+        marker_scale=1.0,
+    )
+    render_solar_system.draw_solar_system_bodies(
+        painter=object(),
+        geometry=geometry,
+        celestial_data=celestial,
+        viewer_data=viewer,
+        enlarge_moon=False,
+        marker_scale=2.0,
+    )
+
+    assert len(planet_draw_radii) == 2
+    assert planet_draw_radii[1] == planet_draw_radii[0] * 2.0
+    assert len(moon_draw_radii) == 2
+    assert moon_draw_radii[1] == moon_draw_radii[0] * 2.0
+
+
 def test_planet_draw_and_hover_ignore_horizon_visibility_flag(monkeypatch) -> None:
     disc_calls: list[tuple[float, int, tuple[int, int, int, int]]] = []
 
