@@ -139,7 +139,7 @@ The CLI supports detailed startup configuration for location, time, and renderin
 | `--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"` | Specify an absolute date/time. Time may be given as `HH`, `HH:MM`, or `HH:MM:SS`. If no TZ is specified, UTC is assumed. \*1 |         |
 | `-Z`, `--view-center-az VIEW_CENTER_AZ`     | Viewing azimuth (degrees or compass points).                                | `180`   |
 | `-A`, `--view-center-alt VIEW_CENTER_ALT`   | Viewing altitude angle (90=zenith, 0=horizon).                              | `90`    |
-| `--content-fov-deg DEGREES`                 | Shared overscan content FOV for all layers. The window edge still corresponds to `90°` from the view center; values above `90` let sky/cloud/background content extend beyond the window edge and reduce empty corner regions. Allowed range: `90`–`127`. | `100` |
+| `--content-fov-deg DEGREES`                 | Shared overscan content FOV for all layers. The window edge still corresponds to `90°` from the view center; values above `90` let sky/cloud/background content extend beyond the window edge and reduce empty corner regions. Allowed range: `90`–`127`. | `115` |
 | `--observer-height-m METERS`                | Observer eye height above the local observation surface in meters. This replaces the default eye height of `1.7` meters. For tower and mountain viewpoints, the viewpoint's own height/elevation remains separate from this value. | `1.7` |
 | `--use-building-top`                        | Experimental. For city / `--place` / direct-coordinate / supported Google Maps URL input, if a building is found within about 5 meters of the resolved location, use that building's highest top height as the observation base. Tower and mountain viewpoints are not affected. | off |
 
@@ -151,7 +151,7 @@ The CLI supports detailed startup configuration for location, time, and renderin
 | `-m`, `--enlarge-moon`                      | Show the moon in 5x size.                                                   |         |
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | Base size of 2nd-magnitude stars.                                           | `4.0`   |
 | `-w`, `--expected-render-width EXPECTED_RENDER_WIDTH` | Expected window width for full-resolution star rendering. When celestial-disc width exceeds this, star rendering uses square-root scaling. | `600` |
-| `-V`, `--vmag-limit V_MAG_LIMIT`            | Maximum visual magnitude of stars to display.                               | `6.0`   |
+| `-V`, `--vmag-limit V_MAG_LIMIT`            | Maximum visual magnitude of stars to display.                               | `7.0`   |
 | `--vmag-brightness-multiplier MULTIPLIER`   | Brightness multiplier per magnitude step (allowed range 1.58–2.512, default `2.5`; 2.512 is the historical Pogson ratio). \*3 | `2.5`   |
 | `-i`, `--sky-update-interval SECONDS`       | Interval for updating stars/sky-color disc in seconds.                      | `60`   |
 | `--show-dso-initial true\|false`            | Whether DSO overlays are shown at startup.                                  | auto (`show` when catalog is available) |
@@ -248,7 +248,7 @@ Examples: `-Z E`, `-Z ne`, `-Z SSW` (202.5°).
 #### About magnitude limit
 
 Use `-V magnitude` to limit the displayed stars to those brighter than the given magnitude.
-The default is `-V 6.0`. The bundled catalog currently supports up to `-V 10.5`, for which the candidate star set contains about 536,000 stars.
+The default is `-V 7.0`. The bundled catalog currently supports up to `-V 10.5`, for which the candidate star set contains about 536,000 stars.
 Note that higher values will increase rendering time.
 
 #### About theme presets
