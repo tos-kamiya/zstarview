@@ -1076,7 +1076,7 @@ def test_draw_persistent_search_overlay_draws_label_when_marker_is_kept(
     monkeypatch.setattr(
         search_overlay_module,
         "altaz_to_normalized_xy",
-        lambda alt, az, view_center: (float(az), float(alt)),
+        lambda alt, az, view_center, **_kwargs: (float(az), float(alt)),
     )
     monkeypatch.setattr(
         search_overlay_module,
@@ -1146,7 +1146,7 @@ def test_draw_persistent_search_overlay_scales_marker_with_window_scale(
     monkeypatch.setattr(
         search_overlay_module,
         "altaz_to_normalized_xy",
-        lambda alt, az, view_center: (float(az), float(alt)),
+        lambda alt, az, view_center, **_kwargs: (float(az), float(alt)),
     )
     monkeypatch.setattr(
         search_overlay_module,
@@ -2535,7 +2535,7 @@ def test_draw_sky_reference_lines_uses_render_view_center_projection(
             observer_height_m=10.0,
         ),
         is_in_fov_func=lambda *_args, **_kwargs: True,
-        altaz_to_normalized_xy_func=lambda alt, az, view_center: (
+        altaz_to_normalized_xy_func=lambda alt, az, view_center, **_kwargs: (
             calls.append(view_center) or (alt, az)
         ),
     )
@@ -2602,7 +2602,7 @@ def test_draw_sky_reference_lines_uses_wider_dash_patterns(monkeypatch) -> None:
             observer_height_m=10.0,
         ),
         is_in_fov_func=lambda *_args, **_kwargs: True,
-        altaz_to_normalized_xy_func=lambda alt, az, view_center: (alt, az),
+        altaz_to_normalized_xy_func=lambda alt, az, view_center, **_kwargs: (alt, az),
     )
 
     assert dash_patterns[0::3] == [[], [], []]
@@ -2661,7 +2661,7 @@ def test_draw_direction_labels_uses_horizon_line_color(monkeypatch) -> None:
     monkeypatch.setattr(
         render_guides_module,
         "altaz_to_normalized_xy",
-        lambda alt, az, view_center: (float(az), float(alt)),
+        lambda alt, az, view_center, **_kwargs: (float(az), float(alt)),
     )
     monkeypatch.setattr(
         render_guides_module,
@@ -2715,7 +2715,7 @@ def test_draw_urban_outlines_simplifies_narrow_outline_to_horizontal_segment(
         view_center=(45.0, 180.0),
         opacity=0.38,
         is_in_fov_func=lambda *_args, **_kwargs: True,
-        altaz_to_normalized_xy_func=lambda alt, az, _view_center: (
+        altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
             float(az),
             float(alt),
         ),
@@ -2731,7 +2731,7 @@ def test_draw_urban_outlines_uses_fixed_alpha_and_near_underlay(monkeypatch) -> 
     monkeypatch.setattr(
         render_terrain_module,
         "altaz_to_normalized_xy",
-        lambda alt, az, _view_center: (float(az), float(alt)),
+        lambda alt, az, _view_center, **_kwargs: (float(az), float(alt)),
     )
     monkeypatch.setattr(
         render_terrain_module,
@@ -2781,7 +2781,7 @@ def test_draw_urban_outlines_uses_fixed_alpha_and_near_underlay(monkeypatch) -> 
         view_center=(45.0, 180.0),
         opacity=0.2,
         is_in_fov_func=lambda *_args, **_kwargs: True,
-        altaz_to_normalized_xy_func=lambda alt, az, _view_center: (
+        altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
             float(az),
             float(alt),
         ),
@@ -2805,7 +2805,7 @@ def test_draw_urban_outlines_allows_sub_unit_width_scale(monkeypatch) -> None:
     monkeypatch.setattr(
         render_terrain_module,
         "altaz_to_normalized_xy",
-        lambda alt, az, _view_center: (float(az), float(alt)),
+        lambda alt, az, _view_center, **_kwargs: (float(az), float(alt)),
     )
     monkeypatch.setattr(
         render_terrain_module,
@@ -2849,7 +2849,7 @@ def test_draw_urban_outlines_allows_sub_unit_width_scale(monkeypatch) -> None:
         opacity=0.38,
         line_width_scale=0.5,
         is_in_fov_func=lambda *_args, **_kwargs: True,
-        altaz_to_normalized_xy_func=lambda alt, az, _view_center: (
+        altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
             float(alt),
             float(az),
         ),
@@ -2873,7 +2873,7 @@ def test_draw_terrain_horizon_line_scales_line_widths(monkeypatch) -> None:
     monkeypatch.setattr(
         render_terrain_module,
         "altaz_to_normalized_xy",
-        lambda alt, az, _view_center: (float(az), float(alt)),
+        lambda alt, az, _view_center, **_kwargs: (float(az), float(alt)),
     )
     monkeypatch.setattr(
         render_terrain_module,
@@ -2906,7 +2906,7 @@ def test_draw_terrain_horizon_line_scales_line_widths(monkeypatch) -> None:
         opacity=0.38,
         line_width_scale=2.0,
         is_in_fov_func=lambda *_args, **_kwargs: True,
-        altaz_to_normalized_xy_func=lambda alt, az, _view_center: (
+        altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
             float(az),
             float(alt),
         ),

@@ -42,18 +42,12 @@ def _project_altaz_to_normalized_xy(
     *,
     edge_fov_deg: float,
 ) -> tuple[float, float]:
-    try:
-        return altaz_to_normalized_xy(
-            alt_deg,
-            az_deg,
-            view_center,
-            edge_fov_deg=edge_fov_deg,
-        )
-    except TypeError as exc:
-        try:
-            return altaz_to_normalized_xy(alt_deg, az_deg, view_center)
-        except TypeError:
-            raise exc
+    return altaz_to_normalized_xy(
+        alt_deg,
+        az_deg,
+        view_center,
+        edge_fov_deg=edge_fov_deg,
+    )
 
 
 def split_by_gaps(points: List[Tuple[float, float]]) -> List[List[Tuple[float, float]]]:
