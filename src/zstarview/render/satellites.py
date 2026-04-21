@@ -66,12 +66,14 @@ def draw_satellite_overlay(
     label_candidates: Optional[List[Dict[str, Any]]] = None,
     preset: str = "night",
     content_fov_deg: float = FIELD_OF_VIEW_DEG,
+    marker_scale: float = 1.0,
 ) -> None:
     layer_opacity = max(0.0, min(1.0, float(opacity)))
     if not satellite_points or layer_opacity <= 0.0:
         return
 
     painter.save()
+    width_scale = max(1.0, float(marker_scale))
     marker_color = QColor(
         *SATELLITE_OVERLAY_MARKER_COLOR_RGB,
         max(
@@ -90,7 +92,7 @@ def draw_satellite_overlay(
             painter,
             marker_color,
             pos,
-            scale=float(point.marker_scale),
+            scale=float(point.marker_scale) * width_scale,
             pen_width=2.0 if point is highlighted_satellite else 1.0,
         )
     painter.restore()

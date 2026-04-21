@@ -72,6 +72,7 @@ from ..render.pipeline import (
     RenderHudState,
     RenderSceneData,
     RenderStyle,
+    compute_star_render_upscale_factor,
     render_base_scene_into_painter,
 )
 from ..render.search_overlay import draw_search_target_overlay
@@ -786,6 +787,10 @@ def _render_image(
                 text_font=style.text_font,
                 draw_marker=True,
                 draw_label=True,
+                marker_scale=compute_star_render_upscale_factor(
+                    geometry.radius * 2,
+                    style.star_render_expected_width,
+                ),
             )
     finally:
         painter.end()
