@@ -1132,25 +1132,11 @@ def test_search_satellite_targets_resolves_known_artificial_satellites(monkeypat
     assert targets[0].az_deg is None
 
 
-def test_search_jpl_targets_includes_major_body_results(monkeypatch) -> None:
+def test_search_jpl_targets_skips_solar_system_bodies(monkeypatch) -> None:
     lookup_calls: list[str] = []
 
     def fake_lookup(query: str, *, group: str):
         lookup_calls.append(group)
-        if group == "mb":
-            return {
-                "count": 1,
-                "result": [
-                    {
-                        "name": "Mars",
-                        "pdes": "4",
-                        "spkid": "499",
-                        "type": "planet",
-                    }
-                ],
-            }
-        if group == "sb":
-            return {"count": 0, "result": []}
         return {"count": 0, "result": []}
 
     monkeypatch.setattr(window_module, "fetch_horizons_lookup", fake_lookup)
@@ -1167,12 +1153,8 @@ def test_search_jpl_targets_includes_major_body_results(monkeypatch) -> None:
 
     targets = SkyWindow._search_jpl_targets(dummy, "Mars")
 
-    assert targets
-    assert lookup_calls == ["mb", "sb"]
-    assert targets[0].label == "Mars"
-    assert targets[0].jpl_group == "mb"
-    assert targets[0].alt_deg is None
-    assert targets[0].az_deg is None
+    assert targets == []
+    assert lookup_calls == []
 
 
 def test_search_jpl_targets_limits_candidates_to_500(monkeypatch) -> None:
@@ -1215,7 +1197,7 @@ def test_search_jpl_targets_limits_candidates_to_500(monkeypatch) -> None:
     assert targets[-1].label == "PANSTARRS-499"
 
 
-def test_search_jpl_targets_skips_sun_and_moon() -> None:
+def test_search_jpl_targets_skips_solar_system_bodies_directly() -> None:
     dummy = _WindowStub()
     dummy.viewer_data = ViewerData(
         location=(35.0, 139.0),
@@ -1227,6 +1209,7 @@ def test_search_jpl_targets_skips_sun_and_moon() -> None:
 
     assert SkyWindow._search_jpl_targets(dummy, "Sun") == []
     assert SkyWindow._search_jpl_targets(dummy, "Moon") == []
+    assert SkyWindow._search_jpl_targets(dummy, "Mars") == []
 
 
 def test_jump_to_jpl_major_body_target_keeps_overlay_without_refresh() -> None:

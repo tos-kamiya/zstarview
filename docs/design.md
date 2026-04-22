@@ -493,9 +493,15 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - local 候補が見つからない場合だけ、`ISS` 専用の衛星検索経路を現在位置基準で試してよい。
 - `ISS` として認識されたのに現在位置ベースの位置解決に失敗した場合は、その検索を失敗として扱ってよく、同じ検索語を JPL へ自動フォールバックしてはならない。
 - local / `ISS` の両方で候補が見つからない場合だけ JPL 小天体検索へフォールバックしてよい。`JWST` / `Voyager 1` / `Voyager 2` / `Parker` はこの JPL 経路で扱い、以後の継続表示も同一の追跡状態で維持してよい。
+- 検索・継続表示の分類は次の対応として扱ってよい。
+  - `local` = 恒星 / アステリズム / place
+  - `satellite` = `ISS`
+  - `JPL-backed spacecraft` = `JWST` / `Voyager 1` / `Voyager 2` / `Parker`
+  - `solar-system bodies` = `Sun` / `Moon` / 惑星
+  - `JPL small bodies` = 小惑星 / 彗星など
 - JPL フォールバックは major body と small body の両方を検索対象に含めてよい。
 - 検索欄の直下には、JPL データベースを明示して探すボタンを置いてよい。
-- `Sun` と `Moon` は JPL フォールバック対象から除外し、solar-system 側に委ねてよい。
+- `Sun` / `Moon` / 惑星 は JPL フォールバック対象から除外し、solar-system 側に委ねてよい。
 - JPL 小天体候補は、ネットワーク I/O を含む可能性があるため、検索・候補解決は UI スレッドを塞がない経路に寄せてよい。
 - JPL フォールバックの結果は major body と small body を含み、keep フラグが有効なら major body でも持続表示してよい。
 - JPL 検索結果の `kind` は、既存の `star` / `asterism` / `place` / `satellite` に加えて、小天体を識別できる値を持たせてよい。

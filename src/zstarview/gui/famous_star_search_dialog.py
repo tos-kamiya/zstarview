@@ -22,10 +22,11 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ..search.constants import SOLAR_SYSTEM_BODY_QUERIES
 from ..search.models import SearchJumpTarget
 from ..search.query import parse_search_query, search_target_matches_query
 
-_JPL_BYPASS_QUERIES = {"sun", "moon"}
+_JPL_BYPASS_QUERIES = SOLAR_SYSTEM_BODY_QUERIES
 
 
 class NamedStarSearchDialog(QDialog):
@@ -169,7 +170,7 @@ class NamedStarSearchDialog(QDialog):
             self._select_first_visible()
         elif query_text and query_spec.normalized in _JPL_BYPASS_QUERIES:
             self._set_status(
-                "Sun and Moon are already handled by the solar-system view."
+                "Solar-system bodies are already handled by the solar-system view."
             )
         elif query_text and query_spec.normalized:
             self._set_status("No local match. Use the satellites / JPL button below.")
@@ -199,7 +200,6 @@ class NamedStarSearchDialog(QDialog):
         query_spec = parse_search_query(query)
         enabled = (
             bool(query)
-            and self._local_result_count == 0
             and query_spec.normalized not in _JPL_BYPASS_QUERIES
             and not self._jpl_search_in_progress
         )
@@ -207,7 +207,7 @@ class NamedStarSearchDialog(QDialog):
         if not query:
             self._jpl_search_button.setText("Search satellites / JPL (up to 500)")
         elif query_spec.normalized in _JPL_BYPASS_QUERIES:
-            self._jpl_search_button.setText("Sun and Moon are already shown")
+            self._jpl_search_button.setText("Solar-system bodies are already shown")
         else:
             self._jpl_search_button.setText(
                 f"Search satellites / JPL (up to 500) for '{query}'"
@@ -227,7 +227,7 @@ class NamedStarSearchDialog(QDialog):
             return
         if query_spec.normalized in _JPL_BYPASS_QUERIES:
             self._set_status(
-                "Sun and Moon are already handled by the solar-system view."
+                "Solar-system bodies are already handled by the solar-system view."
             )
             self._sync_jpl_button()
             return

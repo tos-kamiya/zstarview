@@ -75,6 +75,24 @@ def test_named_star_search_dialog_falls_back_to_jpl_when_local_empty() -> None:
     assert "satellites / JPL" in dialog._jpl_search_button.text()
 
 
+def test_named_star_search_dialog_keeps_jpl_button_enabled_for_local_matches() -> None:
+    dialog = NamedStarSearchDialog(
+        [
+            SearchJumpTarget(
+                label="Sirius",
+                kind="star",
+                sort_key=(0.0, "sirius"),
+                subtitle="Vmag -1.44",
+            )
+        ],
+        jpl_search_callback=lambda _query: [],
+    )
+
+    dialog._search.setText("siri")
+
+    assert dialog._jpl_search_button.isEnabled() is True
+
+
 def test_named_star_search_dialog_applies_keep_marker_to_jpl_result() -> None:
     dialog = NamedStarSearchDialog(
         [
@@ -98,7 +116,7 @@ def test_named_star_search_dialog_applies_keep_marker_to_jpl_result() -> None:
     assert target.persistent_keep_marker is True
 
 
-def test_named_star_search_dialog_blocks_sun_and_moon_jpl_fallback() -> None:
+def test_named_star_search_dialog_blocks_solar_system_body_jpl_fallback() -> None:
     dialog = NamedStarSearchDialog(
         [],
         jpl_search_callback=lambda _query: [],
@@ -106,7 +124,7 @@ def test_named_star_search_dialog_blocks_sun_and_moon_jpl_fallback() -> None:
     called: list[str] = []
     dialog._start_jpl_search = lambda: called.append("jpl")  # type: ignore[method-assign]
 
-    dialog._search.setText("Moon")
+    dialog._search.setText("Mars")
 
     assert called == []
     assert dialog._jpl_search_button.isEnabled() is False

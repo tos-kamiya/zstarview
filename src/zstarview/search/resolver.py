@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from ..location_resolver import project_place_target_to_altaz
 from ..astro import radec_to_altaz
+from .constants import SOLAR_SYSTEM_BODY_QUERIES
 from .jpl import project_jpl_target_altaz_from_state_vector
 from .models import SearchJumpTarget, SearchResolution
 from .query import parse_search_query, search_target_matches_query
@@ -19,6 +20,8 @@ def resolve_search_targets(
 ) -> SearchResolution:
     spec = parse_search_query(query)
     if not spec.normalized:
+        return SearchResolution(query=spec.raw, candidates=tuple(), status="")
+    if spec.normalized in SOLAR_SYSTEM_BODY_QUERIES:
         return SearchResolution(query=spec.raw, candidates=tuple(), status="")
 
     local_matches = tuple(
