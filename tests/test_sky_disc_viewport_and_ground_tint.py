@@ -264,7 +264,8 @@ def test_window_frame_draws_top_right_menu_square_inside_frame() -> None:
     arr = qimage_to_np_rgba(img)
 
     assert int(arr[20, 145, 3]) > 0
-    assert int(arr[20, 125, 3]) == 0
+    assert int(arr[20, 125, 3]) > 0
+    assert int(arr[30, 125, 3]) == 0
     assert int(arr[35, 145, 3]) > 0
     assert int(arr[35, 125, 3]) == 0
 
@@ -329,5 +330,5 @@ def test_window_frame_menu_panel_position_is_consistent_across_presets() -> None
 
     assert int(night_arr[20, 145, 3]) > 0
     assert int(black_arr[20, 145, 3]) > 0
-    assert int(night_arr[20, 125, 3]) == 0
-    assert int(black_arr[20, 125, 3]) == 0
+    assert int(night_arr[30, 125, 3]) == 0
+    assert int(black_arr[30, 125, 3]) == 0

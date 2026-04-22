@@ -15,6 +15,9 @@ from ..paths import (
 from ..types import CelestialData, ScreenGeometry, ViewerData
 
 
+FRAMELESS_WINDOW_BORDER_WIDTH = 24.0
+
+
 def format_overlay_info_lines(
     celestial_data: CelestialData,
     viewer_data: ViewerData,
@@ -134,7 +137,7 @@ def draw_window_border(
     preset: str = "night",
 ) -> None:
     """Draw a broad but subtle border around the window edges."""
-    border_width = 16.0
+    border_width = FRAMELESS_WINDOW_BORDER_WIDTH
     max_border_width = 0.25 * min(float(rect.width()), float(rect.height()))
     border_width = min(border_width, max_border_width)
     if border_width <= 0.0:
