@@ -783,6 +783,11 @@ def add_export_image_arguments(parser: argparse.ArgumentParser) -> None:
         help="Allow saving an image even when enabled external layers fail or time out.",
     )
     export_group.add_argument(
+        "--include-direction-grid",
+        action="store_true",
+        help="Include the direction grid in exported images.",
+    )
+    export_group.add_argument(
         "--print-cache-dir",
         action="store_true",
         help="Print the cache root directory and exit.",
@@ -1187,6 +1192,7 @@ def _validate_dataset_query_compatibility(
             or has_non_default("show_dso_initial")
             or has_non_default("show_asterisms_initial")
             or has_non_default("show_guidelines_initial")
+            or has_non_default("include_direction_grid")
             or has_non_default("theme")
         )
         if incompatible_non_default:

@@ -105,6 +105,7 @@ def test_export_image_help_text_uses_shared_groups() -> None:
     assert "Overlays" in help_text
     assert "Export" in help_text
     assert "General" in help_text
+    assert "--include-direction-grid" in help_text
     assert "--window-frame" not in help_text
     assert re.search(r"^\s+--list\s", help_text, re.M) is not None
 
