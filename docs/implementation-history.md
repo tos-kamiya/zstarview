@@ -613,3 +613,5 @@
   - Added an optional debug dump for the pre-composite cloud stripe image so the width/alpha stripe result can be inspected before sky composition.
   - The dump is gated by `ZSTARVIEW_DEBUG_SAVE_CLOUD_STRIPE_FRAME`; the default destination is `CACHE_PATH/debug/cloud-stripe`, and an explicit path can be supplied instead.
   - Added regression coverage to ensure the snapshot is written only when the debug flag is enabled.
+- 2026-04-22
+  - Patch-level release bump to `1.20.15`.
