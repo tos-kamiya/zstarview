@@ -68,6 +68,7 @@ from ..paths import (
 )
 from ..render import background as render_background
 from ..render import geometry as render_geometry
+from ..render import guides as render_guides
 from ..render.pipeline import (
     RenderHudState,
     RenderSceneData,
@@ -765,6 +766,7 @@ def _render_image(
     scene: RenderSceneData,
     style: RenderStyle,
     compositor: SkyCompositorCache,
+    draw_direction_grid: bool = False,
     search_overlay_target: SearchJumpTarget | None = None,
 ) -> QImage:
     width, height = image_size
@@ -792,6 +794,14 @@ def _render_image(
             ),
             compositor=compositor,
         )
+        if draw_direction_grid:
+            render_guides.draw_direction_grid_overlay(
+                painter,
+                geometry,
+                scene.viewer.view_center,
+                edge_fov_deg=float(scene.viewer.edge_fov_deg),
+                content_fov_deg=float(scene.viewer.content_fov_deg),
+            )
         if search_overlay_target is not None:
             draw_search_target_overlay(
                 painter,
@@ -1225,6 +1235,7 @@ def main() -> None:
         scene=scene,
         style=style,
         compositor=compositor,
+        draw_direction_grid=bool(getattr(args, "include_direction_grid", False)),
         search_overlay_target=search_overlay_target,
     )
     saved_output = False

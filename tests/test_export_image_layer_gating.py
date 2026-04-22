@@ -105,6 +105,39 @@ def test_build_window_inputs_propagates_cloud_stripe_mode(monkeypatch) -> None:
     assert runtime_options.cloud_stripe_mode == "alpha"
 
 
+def test_render_image_draws_direction_grid_when_requested(monkeypatch) -> None:
+    scene = SimpleNamespace(
+        viewer=SimpleNamespace(
+            view_alt_deg=90.0,
+            view_center=(0.0, 0.0),
+            edge_fov_deg=95.0,
+            content_fov_deg=100.0,
+        )
+    )
+    style = SimpleNamespace()
+    compositor = SimpleNamespace()
+    calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+
+    monkeypatch.setattr(mod, "render_base_scene_into_painter", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        mod.render_guides,
+        "draw_direction_grid_overlay",
+        lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+
+    image = mod._render_image(
+        image_size=(64, 64),
+        scene=scene,
+        style=style,
+        compositor=compositor,
+        draw_direction_grid=True,
+    )
+
+    assert image.width() == 64
+    assert image.height() == 64
+    assert len(calls) == 1
+
+
 def test_fetch_urban_outline_layer_skips_skyscraper_lookup_when_radius_zero(monkeypatch) -> None:
     viewer_data = SimpleNamespace(lat_deg=35.0, lon_deg=139.0, observer_height_m=1.7)
     runtime_options = SkyWindowRuntimeOptions(

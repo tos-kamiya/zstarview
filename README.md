@@ -392,6 +392,8 @@ Use `zstarview-export-image` for one-shot image export without starting the GUI.
 zstarview-export-image Matsue -o matsue.png
 ```
 
+Add `--include-direction-grid` to burn the direction grid into the exported image.
+
 `zstarview-export-image` writes the usual location/time/view/vmag summary to `stderr` after rendering, or immediately before terminal image output when `--sixel` is used.
 
 For troubleshooting or manual cache maintenance, you can print the cache root directory without rendering:
