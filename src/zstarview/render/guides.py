@@ -1,4 +1,5 @@
 import math
+from dataclasses import dataclass
 from typing import Callable, List, Tuple
 
 import numpy as np
@@ -29,6 +30,38 @@ REFERENCE_LINE_MID_WIDTH = 0.75
 REFERENCE_LINE_FG_WIDTH = 0.55
 REFERENCE_LINE_OUTER_ALPHA = 18
 REFERENCE_LINE_MID_ALPHA = 30
+_DIRECTION_MARKER_HIT_RADIUS_PX = 9.0
+GRID_MAJOR_OUTER_WIDTH = 0.85
+GRID_MAJOR_MID_WIDTH = 0.55
+GRID_MAJOR_FG_WIDTH = 0.35
+GRID_MAJOR_OUTER_ALPHA = 24
+GRID_MAJOR_MID_ALPHA = 48
+GRID_MAJOR_FG_ALPHA = 190
+GRID_HORIZON_SPAN_DEG = 18.0
+GRID_ALTITUDE_SAMPLES = 73
+GRID_HORIZON_SAMPLES = 37
+GRID_MAJOR_ALTITUDE_BANDS = (-75.0, -45.0, 0.0, 45.0, 75.0)
+GRID_EMPHASIZED_ALTITUDE_BANDS = (45.0, 75.0)
+GRID_EMPHASIZED_WIDTH_SCALE = 1.2
+GRID_FINE_WIDTH_SCALE = 0.3
+GRID_FINE_ALTITUDE_BANDS = tuple(
+    float(value)
+    for value in range(-80, 81, 10)
+    if value != 0
+)
+GRID_FINE_AZIMUTHS = tuple(
+    float(value)
+    for value in range(0, 360, 10)
+    if value % 45 != 0
+)
+GRID_PARALLEL_AZ_SAMPLES = 145
+
+
+@dataclass(frozen=True, slots=True)
+class DirectionMarkerHover:
+    label: str
+    az_deg: float
+    screen_pos: QPointF
 
 
 def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
@@ -48,6 +81,47 @@ def _project_altaz_to_normalized_xy(
         view_center,
         edge_fov_deg=edge_fov_deg,
     )
+
+
+def resolve_direction_marker_hover(
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    mouse_pos: QPoint | None,
+    *,
+    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
+    content_fov_deg: float = FIELD_OF_VIEW_DEG,
+) -> DirectionMarkerHover | None:
+    if mouse_pos is None:
+        return None
+
+    mouse_x = float(mouse_pos.x())
+    mouse_y = float(mouse_pos.y())
+    best: DirectionMarkerHover | None = None
+    best_dist_sq = _DIRECTION_MARKER_HIT_RADIUS_PX * _DIRECTION_MARKER_HIT_RADIUS_PX
+    marker_alt = 0.0
+
+    for label, az in DIRECTIONS.items():
+        if not is_in_fov(marker_alt, az, view_center, fov_deg=content_fov_deg):
+            continue
+        marker_nx, marker_ny = _project_altaz_to_normalized_xy(
+            marker_alt,
+            az,
+            view_center,
+            edge_fov_deg=edge_fov_deg,
+        )
+        screen_x, screen_y = normalized_to_screen_xy(marker_nx, marker_ny, geometry)
+        dx = float(screen_x) - mouse_x
+        dy = float(screen_y) - mouse_y
+        dist_sq = (dx * dx) + (dy * dy)
+        if dist_sq <= best_dist_sq:
+            best = DirectionMarkerHover(
+                label=label,
+                az_deg=float(az),
+                screen_pos=QPointF(float(screen_x), float(screen_y)),
+            )
+            best_dist_sq = dist_sq
+
+    return best
 
 
 def split_by_gaps(points: List[Tuple[float, float]]) -> List[List[Tuple[float, float]]]:
@@ -512,3 +586,201 @@ def draw_direction_labels(
             text_font,
             style=label_style,
         )
+
+
+def _draw_direction_polyline(
+    painter: QPainter,
+    points: List[Tuple[float, float]],
+    geometry: ScreenGeometry,
+    *,
+    outer_width: float,
+    mid_width: float,
+    fg_width: float,
+    outer_alpha: int,
+    mid_alpha: int,
+    fg_alpha: int,
+) -> None:
+    fragments = split_by_gaps(points)
+    if not fragments:
+        return
+
+    def _make_pen(width: float, alpha: int) -> QPen:
+        color = QColor(*HORIZON_LINE_COLOR)
+        color.setAlpha(alpha)
+        pen = QPen(color, width)
+        pen.setCosmetic(True)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        return pen
+
+    for frag in fragments:
+        if len(frag) < 2:
+            continue
+        poly = QPolygonF([QPointF(*normalized_to_screen_xy(x, y, geometry)) for x, y in frag])
+        painter.setPen(_make_pen(outer_width, outer_alpha))
+        painter.drawPolyline(poly)
+        painter.setPen(_make_pen(mid_width, mid_alpha))
+        painter.drawPolyline(poly)
+        painter.setPen(_make_pen(fg_width, fg_alpha))
+        painter.drawPolyline(poly)
+
+
+def draw_direction_hover_guide(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    mouse_pos: QPoint | None,
+    *,
+    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
+    content_fov_deg: float = FIELD_OF_VIEW_DEG,
+) -> None:
+    hover = resolve_direction_marker_hover(
+        geometry,
+        view_center,
+        mouse_pos,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+    )
+    if hover is None:
+        return
+
+    painter.save()
+    meridian_alt_samples = np.linspace(-90.0, 90.0, GRID_ALTITUDE_SAMPLES)
+    horizon_az_center_samples = np.linspace(
+        -GRID_HORIZON_SPAN_DEG,
+        GRID_HORIZON_SPAN_DEG,
+        GRID_HORIZON_SAMPLES,
+    )
+    parallel_az_samples = np.linspace(0.0, 360.0, GRID_PARALLEL_AZ_SAMPLES, endpoint=False)
+
+    for _label, az in DIRECTIONS.items():
+        meridian_points: list[tuple[float, float]] = []
+        for alt in meridian_alt_samples:
+            if not is_in_fov(float(alt), az, view_center, fov_deg=content_fov_deg):
+                continue
+            nx, ny = _project_altaz_to_normalized_xy(
+                float(alt),
+                az,
+                view_center,
+                edge_fov_deg=edge_fov_deg,
+            )
+            meridian_points.append((nx, ny))
+
+        horizon_points: list[tuple[float, float]] = []
+        for az_offset in horizon_az_center_samples:
+            az_norm = (float(az) + float(az_offset)) % 360.0
+            if not is_in_fov(0.0, az_norm, view_center, fov_deg=content_fov_deg):
+                continue
+            nx, ny = _project_altaz_to_normalized_xy(
+                0.0,
+                az_norm,
+                view_center,
+                edge_fov_deg=edge_fov_deg,
+            )
+            horizon_points.append((nx, ny))
+
+        _draw_direction_polyline(
+            painter,
+            meridian_points,
+            geometry,
+            outer_width=GRID_MAJOR_OUTER_WIDTH,
+            mid_width=GRID_MAJOR_MID_WIDTH,
+            fg_width=GRID_MAJOR_FG_WIDTH,
+            outer_alpha=GRID_MAJOR_OUTER_ALPHA,
+            mid_alpha=GRID_MAJOR_MID_ALPHA,
+            fg_alpha=GRID_MAJOR_FG_ALPHA,
+        )
+        _draw_direction_polyline(
+            painter,
+            horizon_points,
+            geometry,
+            outer_width=GRID_MAJOR_OUTER_WIDTH * 0.92,
+            mid_width=GRID_MAJOR_MID_WIDTH * 0.92,
+            fg_width=GRID_MAJOR_FG_WIDTH * 0.92,
+            outer_alpha=GRID_MAJOR_OUTER_ALPHA,
+            mid_alpha=GRID_MAJOR_MID_ALPHA,
+            fg_alpha=GRID_MAJOR_FG_ALPHA,
+        )
+
+    for alt in GRID_MAJOR_ALTITUDE_BANDS:
+        parallel_points: list[tuple[float, float]] = []
+        for az in parallel_az_samples:
+            az_norm = float(az) % 360.0
+            if not is_in_fov(float(alt), az_norm, view_center, fov_deg=content_fov_deg):
+                continue
+            nx, ny = _project_altaz_to_normalized_xy(
+                float(alt),
+                az_norm,
+                view_center,
+                edge_fov_deg=edge_fov_deg,
+            )
+            parallel_points.append((nx, ny))
+
+        major_scale = (
+            GRID_EMPHASIZED_WIDTH_SCALE
+            if alt in GRID_EMPHASIZED_ALTITUDE_BANDS
+            else 1.0
+        )
+        _draw_direction_polyline(
+            painter,
+            parallel_points,
+            geometry,
+            outer_width=GRID_MAJOR_OUTER_WIDTH * major_scale,
+            mid_width=GRID_MAJOR_MID_WIDTH * major_scale,
+            fg_width=GRID_MAJOR_FG_WIDTH * major_scale,
+            outer_alpha=GRID_MAJOR_OUTER_ALPHA,
+            mid_alpha=GRID_MAJOR_MID_ALPHA,
+            fg_alpha=GRID_MAJOR_FG_ALPHA,
+        )
+
+    for alt in GRID_FINE_ALTITUDE_BANDS:
+        parallel_points: list[tuple[float, float]] = []
+        for az in parallel_az_samples:
+            az_norm = float(az) % 360.0
+            if not is_in_fov(float(alt), az_norm, view_center, fov_deg=content_fov_deg):
+                continue
+            nx, ny = _project_altaz_to_normalized_xy(
+                float(alt),
+                az_norm,
+                view_center,
+                edge_fov_deg=edge_fov_deg,
+            )
+            parallel_points.append((nx, ny))
+
+        _draw_direction_polyline(
+            painter,
+            parallel_points,
+            geometry,
+            outer_width=GRID_MAJOR_OUTER_WIDTH * GRID_FINE_WIDTH_SCALE,
+            mid_width=GRID_MAJOR_MID_WIDTH * GRID_FINE_WIDTH_SCALE,
+            fg_width=GRID_MAJOR_FG_WIDTH * GRID_FINE_WIDTH_SCALE,
+            outer_alpha=GRID_MAJOR_OUTER_ALPHA,
+            mid_alpha=GRID_MAJOR_MID_ALPHA,
+            fg_alpha=GRID_MAJOR_FG_ALPHA,
+        )
+
+    for az in GRID_FINE_AZIMUTHS:
+        meridian_points = []
+        for alt in meridian_alt_samples:
+            if not is_in_fov(float(alt), az, view_center, fov_deg=content_fov_deg):
+                continue
+            nx, ny = _project_altaz_to_normalized_xy(
+                float(alt),
+                az,
+                view_center,
+                edge_fov_deg=edge_fov_deg,
+            )
+            meridian_points.append((nx, ny))
+
+        _draw_direction_polyline(
+            painter,
+            meridian_points,
+            geometry,
+            outer_width=GRID_MAJOR_OUTER_WIDTH * GRID_FINE_WIDTH_SCALE,
+            mid_width=GRID_MAJOR_MID_WIDTH * GRID_FINE_WIDTH_SCALE,
+            fg_width=GRID_MAJOR_FG_WIDTH * GRID_FINE_WIDTH_SCALE,
+            outer_alpha=GRID_MAJOR_OUTER_ALPHA,
+            mid_alpha=GRID_MAJOR_MID_ALPHA,
+            fg_alpha=GRID_MAJOR_FG_ALPHA,
+        )
+    painter.restore()
