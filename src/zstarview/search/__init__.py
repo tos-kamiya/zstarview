@@ -1,3 +1,4 @@
+from .constants import SOLAR_SYSTEM_BODY_QUERIES
 from .jpl import (
     JPL_BYPASS_QUERIES,
     build_horizons_command,
@@ -17,6 +18,7 @@ from .satellites import (
 
 __all__ = [
     "JPL_BYPASS_QUERIES",
+    "SOLAR_SYSTEM_BODY_QUERIES",
     "SearchJumpTarget",
     "SearchQuerySpec",
     "SearchRequest",

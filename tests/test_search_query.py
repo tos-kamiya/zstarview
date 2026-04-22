@@ -104,6 +104,31 @@ def test_resolve_search_targets_prefers_known_satellites() -> None:
     assert resolution.selected_target.label == "JWST"
 
 
+def test_resolve_search_targets_skips_solar_system_bodies() -> None:
+    local_targets = []
+    satellite_calls: list[str] = []
+    jpl_calls: list[str] = []
+
+    def fake_satellite_search(query: str):
+        satellite_calls.append(query)
+        return []
+
+    def fake_jpl_search(query: str):
+        jpl_calls.append(query)
+        return []
+
+    resolution = resolve_search_targets(
+        "Mars",
+        local_targets,
+        satellite_search_callback=fake_satellite_search,
+        jpl_search_callback=fake_jpl_search,
+    )
+
+    assert resolution.candidates == ()
+    assert satellite_calls == []
+    assert jpl_calls == []
+
+
 def test_resolve_search_targets_propagates_missing_satellite_position() -> None:
     def fake_satellite_search(_query: str):
         raise RuntimeError("Satellite position unavailable for JWST")

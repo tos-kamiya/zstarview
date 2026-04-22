@@ -14,12 +14,13 @@ from ..satellites import (
     fetch_horizons_observer_csv,
     fetch_horizons_vector_csv,
 )
+from .constants import SOLAR_SYSTEM_BODY_QUERIES
 from .models import SearchJumpTarget
 from .query import parse_search_query
 
 logger = logging.getLogger(__name__)
 
-JPL_BYPASS_QUERIES = {"sun", "moon"}
+JPL_BYPASS_QUERIES = SOLAR_SYSTEM_BODY_QUERIES
 JPL_SEARCH_RESULT_LIMIT = 500
 
 
