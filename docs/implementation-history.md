@@ -1,6 +1,6 @@
 # zstarview 実装履歴
 
-最終更新: 2026-04-18
+最終更新: 2026-04-22
 
 ## 1. この文書の位置づけ
 
@@ -590,6 +590,10 @@
 - Validation note
 
 ### 2026-04-22
+
+- Topic: FOV default alignment
+  - Decision: Change the default projected edge FOV to `95°` and the default shared content FOV to `110°`.
+  - Rationale: The defaults used by the CLI, runtime viewer data, and GUI input layer should match so the app starts with a consistent projection scale and overscan budget.
 
 - Voyager 1 検索経路の整理
   - `Search Objects...` と CLI 検索で使う `satellite` 経路を `ISS` のみに限定し、`JWST`, `Voyager 1`, `Voyager 2`, `Parker` は JPL 検索結果として扱うようにした。

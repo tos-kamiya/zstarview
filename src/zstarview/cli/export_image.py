@@ -236,8 +236,8 @@ def _build_window_inputs_from_args(
         city.display_name,
         (city.lat, city.lon, city.tz),
         view_center,
-        edge_fov_deg=getattr(args, "edge_fov_deg", 96.0),
-        content_fov_deg=getattr(args, "content_fov_deg", 115.0),
+        edge_fov_deg=getattr(args, "edge_fov_deg", 95.0),
+        content_fov_deg=getattr(args, "content_fov_deg", 110.0),
         observer_height_m=(
             city.observer_height_m
             if getattr(args, "observer_height_m", None) is None
@@ -406,7 +406,7 @@ def _build_window_inputs_from_args(
         cloud_missing_tint_opacity=getattr(args, "cloud_missing_tint_opacity", 0.0),
         visibility_boost=getattr(args, "visibility_boost", 1.0),
         star_render_expected_width=getattr(args, "expected_render_width", 600),
-        content_fov_deg=getattr(args, "content_fov_deg", 115.0),
+        content_fov_deg=getattr(args, "content_fov_deg", 110.0),
         window_geometry_arg=None,
         window_frame_mode=getattr(args, "window_frame", "frameless"),
     )

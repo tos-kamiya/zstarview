@@ -20,7 +20,7 @@ def _build_export_like_parser() -> argparse.ArgumentParser:
         include_sky_update_interval=False,
         include_startup_overlay_arguments=False,
     )
-    parser.add_argument("--edge-fov-deg", type=float, default=96.0)
+    parser.add_argument("--edge-fov-deg", type=float, default=95.0)
     return parser
 
 
