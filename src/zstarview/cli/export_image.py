@@ -78,8 +78,8 @@ from ..render.pipeline import (
 from ..render.search_overlay import draw_search_target_overlay
 from ..search.resolver import compute_search_target_altaz, resolve_search_targets
 from ..search.jpl import search_jpl_targets
+from ..search.jpl import resolve_jpl_target_state_vector
 from ..search.models import SearchJumpTarget
-from ..search.jpl import resolve_jpl_target_altaz
 from ..search.satellites import resolve_satellite_target_altaz, search_satellite_targets
 from ..satellite_constants import SATELLITE_HORIZONS_CACHE_KEY, SATELLITE_ISS_CACHE_KEY
 from ..splash import setup_app
@@ -286,6 +286,26 @@ def _build_window_inputs_from_args(
                 sys.stderr.flush()
             raise SystemExit(1)
         target = resolution.selected_target
+        if (
+            target.kind in {"jpl_small_body", "jpl_body"}
+            and (
+                target.horizons_epoch_utc is None
+                or target.horizons_position_km is None
+                or target.horizons_velocity_km_s is None
+            )
+        ):
+            state_vector = resolve_jpl_target_state_vector(
+                target,
+                target_time_utc=target_time_utc,
+            )
+            if state_vector is not None:
+                horizons_epoch_utc, horizons_position_km, horizons_velocity_km_s = state_vector
+                target = replace(
+                    target,
+                    horizons_epoch_utc=horizons_epoch_utc,
+                    horizons_position_km=horizons_position_km,
+                    horizons_velocity_km_s=horizons_velocity_km_s,
+                )
         altaz = compute_search_target_altaz(
             target,
             observer_lat=float(viewer_data.lat_deg),
@@ -294,13 +314,6 @@ def _build_window_inputs_from_args(
             target_time_utc=target_time_utc,
             satellite_altaz_resolver=lambda satellite_target: resolve_satellite_target_altaz(
                 satellite_target,
-                observer_lat=float(viewer_data.lat_deg),
-                observer_lon=float(viewer_data.lon_deg),
-                observer_height_m=float(viewer_data.observer_height_m),
-                target_time_utc=target_time_utc,
-            ),
-            jpl_altaz_resolver=lambda jpl_target: resolve_jpl_target_altaz(
-                jpl_target,
                 observer_lat=float(viewer_data.lat_deg),
                 observer_lon=float(viewer_data.lon_deg),
                 observer_height_m=float(viewer_data.observer_height_m),

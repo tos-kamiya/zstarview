@@ -98,9 +98,27 @@ def test_find_satellite_altaz_returns_below_horizon_match(monkeypatch) -> None:
     assert altaz == (-12.0, 210.0)
 
 
-def test_project_satellite_records_uses_horizons_altaz_records() -> None:
+def test_project_satellite_records_uses_horizons_state_vector_records(monkeypatch) -> None:
+    monkeypatch.setattr(
+        project_module,
+        "_project_horizons_record_to_altaz",
+        lambda record, **kwargs: (12.5, 220.0),
+    )
     points = project_module.project_satellite_records(
-        {"horizons": [{"OBJECT_NAME": "JWST", "ALT_DEG": 12.5, "AZ_DEG": 220.0}]},
+        {
+            "horizons": [
+                {
+                    "OBJECT_NAME": "JWST",
+                    "EPOCH": "2026-03-22T12:00:00+00:00",
+                    "HORIZONS_X_KM": 1.0,
+                    "HORIZONS_Y_KM": 2.0,
+                    "HORIZONS_Z_KM": 3.0,
+                    "HORIZONS_VX_KM_S": 0.1,
+                    "HORIZONS_VY_KM_S": 0.2,
+                    "HORIZONS_VZ_KM_S": 0.3,
+                }
+            ]
+        },
         observer_lat=35.47,
         observer_lon=133.05,
         observer_height_m=0.0,

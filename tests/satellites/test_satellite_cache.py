@@ -135,6 +135,39 @@ def test_load_satellite_cache_rejects_old_format(tmp_path) -> None:
     cached = load_satellite_cache("iss", cache_root=tmp_path)
 
     assert cached is None
+    assert not path.exists()
+
+
+def test_fetch_cached_satellite_elements_deletes_old_format_cache(tmp_path) -> None:
+    path = satellite_group_cache_path("iss", cache_root=tmp_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "cache_format_version": SATELLITE_CACHE_FORMAT_VERSION - 1,
+                "group_key": "iss",
+                "element_epoch_utc": "2026-03-22T12:00:00+00:00",
+                "fetched_at_utc": "2026-03-22T12:05:00+00:00",
+                "source": "celestrak",
+                "records": [_sample_record()],
+            },
+            separators=(",", ":"),
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    result = fetch_cached_satellite_elements(
+        "iss",
+        fetcher=lambda *_args, **_kwargs: [_sample_record(epoch="2026-03-22T18:00:00.000000")],
+        cache_root=tmp_path,
+        now_utc=datetime(2026, 3, 22, 13, 0, tzinfo=timezone.utc),
+        fresh_ttl_seconds=6 * 60 * 60,
+    )
+
+    assert result.source == "celestrak"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert payload["cache_format_version"] == SATELLITE_CACHE_FORMAT_VERSION
 
 
 def test_fetch_cached_satellite_elements_uses_fresh_cache_without_network(tmp_path) -> None:

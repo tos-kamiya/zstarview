@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from ..location_resolver import project_place_target_to_altaz
 from ..astro import radec_to_altaz
+from .jpl import project_jpl_target_altaz_from_state_vector
 from .models import SearchJumpTarget, SearchResolution
 from .query import parse_search_query, search_target_matches_query
 
@@ -71,16 +72,23 @@ def compute_search_target_altaz(
     observer_height_m: float,
     target_time_utc: datetime | None = None,
     satellite_altaz_resolver: Callable[[SearchJumpTarget], tuple[float, float] | None] | None = None,
-    jpl_altaz_resolver: Callable[[SearchJumpTarget], tuple[float, float] | None] | None = None,
 ) -> tuple[float, float] | None:
     if target.kind in {"jpl_small_body", "jpl_body"}:
-        if target.alt_deg is None or target.az_deg is None:
-            if jpl_altaz_resolver is not None:
-                altaz = jpl_altaz_resolver(target)
-                if altaz is not None:
-                    return float(altaz[0]), float(altaz[1]) % 360.0
-            return None
-        return float(target.alt_deg), float(target.az_deg) % 360.0
+        if (
+            target.horizons_epoch_utc is not None
+            and target.horizons_position_km is not None
+            and target.horizons_velocity_km_s is not None
+        ):
+            altaz = project_jpl_target_altaz_from_state_vector(
+                target,
+                observer_lat=float(observer_lat),
+                observer_lon=float(observer_lon),
+                observer_height_m=float(observer_height_m),
+                time_obj=target_time_utc or datetime.now(timezone.utc),
+            )
+            if altaz is not None:
+                return float(altaz[0]), float(altaz[1]) % 360.0
+        return None
     if target.kind == "satellite":
         if target.alt_deg is not None and target.az_deg is not None:
             return float(target.alt_deg), float(target.az_deg) % 360.0

@@ -8,6 +8,8 @@ clouds, and all user interactions like rotation, zooming, and object highlightin
 """
 
 import logging
+import os
+import sys
 import time
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -106,7 +108,8 @@ from .famous_star_shortcuts import (
     build_place_search_jump_targets,
 )
 from ..search.jpl import search_jpl_targets
-from ..search.jpl import resolve_jpl_target_altaz
+from ..search.jpl import project_jpl_target_altaz_from_state_vector
+from ..search.jpl import resolve_jpl_target_state_vector
 from ..search.satellites import search_satellite_targets
 from ..search.models import SearchJumpTarget
 from ..asterisms import ASTERISM_KEYS_BY_SOURCE_ID
@@ -120,6 +123,19 @@ from .urban_outline_controller import UrbanOutlineController
 from .urban_outline_state import UrbanOutlineState
 
 logger = logging.getLogger(__name__)
+
+_JPL_DEBUG_ENV = "ZSTARVIEW_DEBUG_JPL_SEARCH"
+
+
+def _jpl_debug_enabled() -> bool:
+    raw = os.getenv(_JPL_DEBUG_ENV, "").strip().casefold()
+    return raw in {"1", "true", "yes", "on"}
+
+
+def _jpl_debug_print(message: str) -> None:
+    if not _jpl_debug_enabled():
+        return
+    print(f"[jpl-debug] {message}", file=sys.stderr, flush=True)
 
 GITHUB_CODE_DATA_LICENSES_AND_CREDITS_URL = (
     "https://github.com/tos-kamiya/zstarview#code-data-licenses-and-credits"
@@ -1283,9 +1299,17 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._jump_to_search_target(target)
 
     def _search_jpl_targets(self, query: str) -> list[SearchJumpTarget]:
+        target_time_utc = self._target_time_utc()
+        delta_t = getattr(self, "delta_t", None)
+        _jpl_debug_print(
+            "search "
+            f"query={query!r} "
+            f"delta_t={delta_t!r} "
+            f"target_time_utc={target_time_utc.astimezone(timezone.utc).isoformat()}"
+        )
         return search_jpl_targets(
             query,
-            target_time_utc=self._target_time_utc(),
+            target_time_utc=target_time_utc,
             lookup_fetch=fetch_horizons_lookup,
         )
 
@@ -1445,10 +1469,57 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         target_time_utc = payload.get("target_time_utc")
         if not isinstance(target_time_utc, datetime):
             target_time_utc = current_target.target_time_utc or self._target_time_utc()
-        alt_deg = float(payload.get("alt_deg", current_target.alt_deg or 0.0))
-        az_deg = float(payload.get("az_deg", current_target.az_deg or 0.0)) % 360.0
-        updated_target = replace(
+        horizons_epoch_utc = payload.get("horizons_epoch_utc")
+        horizons_position_km = payload.get("horizons_position_km")
+        horizons_velocity_km_s = payload.get("horizons_velocity_km_s")
+        viewer_data = getattr(self, "viewer_data", None)
+        projected_altaz = None
+        if not (
+            viewer_data is not None
+            and isinstance(horizons_epoch_utc, datetime)
+            and isinstance(horizons_position_km, (list, tuple))
+            and isinstance(horizons_velocity_km_s, (list, tuple))
+        ):
+            _jpl_debug_print(
+                "ready-skip "
+                f"label={target.label} command={target.command} "
+                f"target_time_utc={target_time_utc.astimezone(timezone.utc).isoformat()} "
+                f"epoch={horizons_epoch_utc!r} pos={horizons_position_km!r} vel={horizons_velocity_km_s!r}"
+            )
+            return
+        vector_target = replace(
             current_target,
+            horizons_epoch_utc=horizons_epoch_utc,
+            horizons_position_km=tuple(horizons_position_km),
+            horizons_velocity_km_s=tuple(horizons_velocity_km_s),
+        )
+        projected_altaz = project_jpl_target_altaz_from_state_vector(
+            vector_target,
+            observer_lat=float(viewer_data.location[0]),
+            observer_lon=float(viewer_data.location[1]),
+            observer_height_m=float(viewer_data.observer_height_m),
+            time_obj=self._current_time_obj(),
+        )
+        if projected_altaz is None:
+            _jpl_debug_print(
+                "ready-project-none "
+                f"label={target.label} command={target.command} "
+                f"target_time_utc={target_time_utc.astimezone(timezone.utc).isoformat()} "
+                f"epoch={horizons_epoch_utc.astimezone(timezone.utc).isoformat()} "
+                f"pos={tuple(horizons_position_km)!r} vel={tuple(horizons_velocity_km_s)!r}"
+            )
+            return
+        alt_deg, az_deg = projected_altaz
+        _jpl_debug_print(
+            "ready "
+            f"label={target.label} command={target.command} "
+            f"target_time_utc={target_time_utc.astimezone(timezone.utc).isoformat()} "
+            f"epoch={horizons_epoch_utc.astimezone(timezone.utc).isoformat()} "
+            f"pos={tuple(horizons_position_km)!r} vel={tuple(horizons_velocity_km_s)!r} "
+            f"projected_alt={float(alt_deg):.3f} projected_az={float(az_deg) % 360.0:.3f}"
+        )
+        updated_target = replace(
+            vector_target,
             alt_deg=alt_deg,
             az_deg=az_deg,
             target_time_utc=target_time_utc,
@@ -1500,6 +1571,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             current_time = target_time_utc_fn()
         else:
             current_time = datetime.now(timezone.utc)
+        current_time_obj_fn = getattr(self, "_current_time_obj", None)
+        if callable(current_time_obj_fn):
+            current_time_obj = current_time_obj_fn()
+        else:
+            current_time_obj = astropy.time.Time(current_time)
         if target_kind == "satellite":
             if target.alt_deg is not None and target.az_deg is not None:
                 target_altaz = (float(target.alt_deg), float(target.az_deg) % 360.0)
@@ -1526,20 +1602,56 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             target_alt = float(projection.alt_deg)
             target_az = float(projection.az_deg) % 360.0
         elif target.kind in ("jpl_small_body", "jpl_body"):
-            if target.alt_deg is not None and target.az_deg is not None:
-                target_altaz = (float(target.alt_deg), float(target.az_deg) % 360.0)
-            else:
-                target_altaz = resolve_jpl_target_altaz(
+            state_vector_target = target
+            if (
+                target.horizons_epoch_utc is None
+                or target.horizons_position_km is None
+                or target.horizons_velocity_km_s is None
+            ):
+                state_vector = resolve_jpl_target_state_vector(
                     target,
-                    observer_lat=float(self.viewer_data.location[0]),
-                    observer_lon=float(self.viewer_data.location[1]),
-                    observer_height_m=float(self.viewer_data.observer_height_m),
                     target_time_utc=target.target_time_utc or current_time,
                 )
+                if state_vector is None:
+                    _jpl_debug_print(
+                        "jump-resolve-none "
+                        f"label={target.label} command={target.command} "
+                        f"target_time_utc={(target.target_time_utc or current_time).astimezone(timezone.utc).isoformat()}"
+                    )
+                    return
+                horizons_epoch_utc, horizons_position_km, horizons_velocity_km_s = state_vector
+                state_vector_target = replace(
+                    target,
+                    horizons_epoch_utc=horizons_epoch_utc,
+                    horizons_position_km=horizons_position_km,
+                    horizons_velocity_km_s=horizons_velocity_km_s,
+                )
+            target_altaz = project_jpl_target_altaz_from_state_vector(
+                state_vector_target,
+                observer_lat=float(self.viewer_data.location[0]),
+                observer_lon=float(self.viewer_data.location[1]),
+                observer_height_m=float(self.viewer_data.observer_height_m),
+                time_obj=current_time_obj,
+            )
             if target_altaz is None:
+                _jpl_debug_print(
+                    "jump-project-none "
+                    f"label={target.label} command={target.command} "
+                    f"target_time_utc={(target.target_time_utc or current_time).astimezone(timezone.utc).isoformat()} "
+                    f"epoch={state_vector_target.horizons_epoch_utc.astimezone(timezone.utc).isoformat() if state_vector_target.horizons_epoch_utc else '<none>'} "
+                    f"pos={state_vector_target.horizons_position_km!r} vel={state_vector_target.horizons_velocity_km_s!r}"
+                )
                 return
             target_alt = float(target_altaz[0])
             target_az = float(target_altaz[1]) % 360.0
+            _jpl_debug_print(
+                "jump "
+                f"label={target.label} command={target.command} "
+                f"target_time_utc={(target.target_time_utc or current_time).astimezone(timezone.utc).isoformat()} "
+                f"epoch={state_vector_target.horizons_epoch_utc.astimezone(timezone.utc).isoformat() if state_vector_target.horizons_epoch_utc else '<none>'} "
+                f"pos={state_vector_target.horizons_position_km!r} vel={state_vector_target.horizons_velocity_km_s!r} "
+                f"projected_alt={target_alt:.3f} projected_az={target_az:.3f}"
+            )
         else:
             target_alt, target_az = radec_to_altaz(
                 target.ra_hours,
@@ -1571,11 +1683,17 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.state.jump_highlight_until_ms = (time.monotonic() * 1000.0) + 3000.0
         if bool(getattr(target, "persistent_keep_marker", False)):
             reference_time_utc = target.target_time_utc or current_time
+            horizons_epoch_utc = state_vector_target.horizons_epoch_utc
+            horizons_position_km = state_vector_target.horizons_position_km
+            horizons_velocity_km_s = state_vector_target.horizons_velocity_km_s
             updated_target = replace(
-                target,
+                state_vector_target,
                 alt_deg=target_alt,
                 az_deg=target_az,
                 persistent_keep_marker=True,
+                horizons_epoch_utc=horizons_epoch_utc,
+                horizons_position_km=horizons_position_km,
+                horizons_velocity_km_s=horizons_velocity_km_s,
             )
             self._log_persistent_search_target_update(
                 action="set",
@@ -1588,7 +1706,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.state.persistent_search_reference_time_utc = reference_time_utc
             self.state.persistent_search_last_error = None
             self.state.persistent_search_last_refresh_utc = target.target_time_utc
-            if target.kind == "jpl_small_body" or target.jpl_group == "sb":
+            if target.kind in {"jpl_small_body", "jpl_body"}:
                 self.state.persistent_search_next_refresh_utc = (
                     reference_time_utc + timedelta(hours=1)
                 )
@@ -1724,7 +1842,16 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._sync_overlay_projection_timer()
 
     def _target_time_utc(self) -> datetime:
-        return target_time_utc_from_delta(self.delta_t)
+        delta_t = getattr(self, "delta_t", None)
+        if delta_t is None:
+            delta_t = timedelta(0)
+        target_time_utc = target_time_utc_from_delta(delta_t)
+        _jpl_debug_print(
+            "target-time "
+            f"delta_t={delta_t!r} "
+            f"target_time_utc={target_time_utc.astimezone(timezone.utc).isoformat()}"
+        )
+        return target_time_utc
 
     def _satellite_validity_remaining_ms(self) -> int | None:
         refreshed_at_utc = self.satellite_state.refreshed_at_utc
@@ -1759,6 +1886,13 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self._schedule_next_satellite_refresh()
 
     def _on_overlay_projection_timer(self) -> None:
+        refresh_persistent_search = getattr(
+            self,
+            "refresh_projected_persistent_search_target",
+            None,
+        )
+        if callable(refresh_persistent_search):
+            refresh_persistent_search()
         if self._satellite_layer_enabled():
             self.refresh_projected_satellite_overlay()
         if self._aircraft_layer_enabled():

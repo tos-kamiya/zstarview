@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import numpy as np
+import pytest
 from PySide6.QtCore import QPoint, QPointF, QRect, Qt
 from PySide6.QtGui import QFont, QImage
 
@@ -729,21 +730,34 @@ def test_jump_to_jpl_small_body_target_can_set_persistent_overlay(caplog) -> Non
     dummy.request_sky_data_update = Mock()
     dummy.update = Mock()
 
-    with caplog.at_level("INFO"):
-        SkyWindow._jump_to_search_target(
-            dummy,
-            SearchJumpTarget(
-                label="Ceres",
-                kind="jpl_small_body",
-                sort_key=(0.0, "ceres"),
-                subtitle="Asteroid / 1 Ceres",
-                object_key="20000001",
-                command="DES=20000001;",
-                alt_deg=12.5,
-                az_deg=220.0,
-                persistent_keep_marker=True,
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(
+            window_module,
+            "resolve_jpl_target_state_vector",
+            lambda target, **kwargs: (
+                datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
+                (1.0, 2.0, 3.0),
+                (0.1, 0.2, 0.3),
             ),
         )
+        monkeypatch.setattr(
+            window_module,
+            "project_jpl_target_altaz_from_state_vector",
+            lambda target, **kwargs: (12.5, 220.0),
+        )
+        with caplog.at_level("INFO"):
+            SkyWindow._jump_to_search_target(
+                dummy,
+                SearchJumpTarget(
+                    label="Ceres",
+                    kind="jpl_small_body",
+                    sort_key=(0.0, "ceres"),
+                    subtitle="Asteroid / 1 Ceres",
+                    object_key="20000001",
+                    command="DES=20000001;",
+                    persistent_keep_marker=True,
+                ),
+            )
 
     assert dummy.viewer_data.view_center == (12.5, 220.0)
     assert dummy.state.jump_highlight_name == "Ceres"
@@ -757,6 +771,65 @@ def test_jump_to_jpl_small_body_target_can_set_persistent_overlay(caplog) -> Non
     assert "JPL persistent target set: label=Ceres kind=jpl_small_body group=<none>" in caplog.text
     assert "target_time_utc=2026-04-18T12:00:00+00:00" in caplog.text
     assert "alt=12.5 az=220.0 command=DES=20000001;" in caplog.text
+
+
+def test_jump_to_jpl_small_body_target_uses_state_vector_when_present(monkeypatch) -> None:
+    dummy = _WindowStub()
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(20.0, 30.0),
+        observer_height_m=1.7,
+    )
+    dummy.state = SkyWindowState(
+        render_view_center=(20.0, 30.0),
+        satellite_overlay_points=None,
+        persistent_search_target=None,
+    )
+    dummy.satellite_state = SimpleNamespace(
+        records_by_group={}, overlay_points=None, set_banner=Mock()
+    )
+    dummy._target_time_utc = lambda: datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc)
+    dummy._sync_view_altitude_actions = Mock()
+    dummy._begin_interaction_mode = Mock()
+    dummy.request_sky_data_update = Mock()
+    dummy.update = Mock()
+    dummy._current_time_obj = lambda: astropy.time.Time("2026-04-18T12:00:00Z")
+
+    monkeypatch.setattr(
+        window_module,
+        "resolve_jpl_target_state_vector",
+        lambda target, **kwargs: (
+            datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
+            (1.0, 2.0, 3.0),
+            (0.1, 0.2, 0.3),
+        ),
+    )
+    monkeypatch.setattr(
+        window_module,
+        "project_jpl_target_altaz_from_state_vector",
+        lambda target, **kwargs: (11.5, 221.0),
+    )
+
+    SkyWindow._jump_to_search_target(
+        dummy,
+        SearchJumpTarget(
+            label="Ceres",
+            kind="jpl_small_body",
+            sort_key=(0.0, "ceres"),
+            subtitle="Asteroid / 1 Ceres",
+            object_key="20000001",
+            command="DES=20000001;",
+            persistent_keep_marker=True,
+        ),
+    )
+
+    assert dummy.viewer_data.view_center == (11.5, 221.0)
+    assert dummy.state.jump_highlight_altaz == (11.5, 221.0)
+    assert dummy.state.persistent_search_target is not None
+    assert dummy.state.persistent_search_target.horizons_position_km == (1.0, 2.0, 3.0)
+    assert dummy.state.persistent_search_target.horizons_velocity_km_s == (0.1, 0.2, 0.3)
 
 
 def test_jump_to_jpl_small_body_target_honors_fixed_search_axes() -> None:
@@ -784,19 +857,32 @@ def test_jump_to_jpl_small_body_target_honors_fixed_search_axes() -> None:
     dummy.request_sky_data_update = Mock()
     dummy.update = Mock()
 
-    SkyWindow._jump_to_search_target(
-        dummy,
-        SearchJumpTarget(
-            label="Ceres",
-            kind="jpl_small_body",
-            sort_key=(0.0, "ceres"),
-            subtitle="Asteroid / 1 Ceres",
-            object_key="20000001",
-            command="DES=20000001;",
-            alt_deg=12.5,
-            az_deg=220.0,
-        ),
-    )
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(
+            window_module,
+            "resolve_jpl_target_state_vector",
+            lambda target, **kwargs: (
+                datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
+                (1.0, 2.0, 3.0),
+                (0.1, 0.2, 0.3),
+            ),
+        )
+        monkeypatch.setattr(
+            window_module,
+            "project_jpl_target_altaz_from_state_vector",
+            lambda target, **kwargs: (12.5, 220.0),
+        )
+        SkyWindow._jump_to_search_target(
+            dummy,
+            SearchJumpTarget(
+                label="Ceres",
+                kind="jpl_small_body",
+                sort_key=(0.0, "ceres"),
+                subtitle="Asteroid / 1 Ceres",
+                object_key="20000001",
+                command="DES=20000001;",
+            ),
+        )
 
     assert dummy.viewer_data.view_center == (5.0, 220.0)
 
@@ -830,19 +916,32 @@ def test_jump_to_jpl_small_body_target_without_keep_flags_clears_overlay() -> No
     dummy.request_sky_data_update = Mock()
     dummy.update = Mock()
 
-    SkyWindow._jump_to_search_target(
-        dummy,
-        SearchJumpTarget(
-            label="Ceres",
-            kind="jpl_small_body",
-            sort_key=(0.0, "ceres"),
-            subtitle="Asteroid / 1 Ceres",
-            object_key="20000001",
-            command="DES=20000001;",
-            alt_deg=12.5,
-            az_deg=220.0,
-        ),
-    )
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(
+            window_module,
+            "resolve_jpl_target_state_vector",
+            lambda target, **kwargs: (
+                datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
+                (1.0, 2.0, 3.0),
+                (0.1, 0.2, 0.3),
+            ),
+        )
+        monkeypatch.setattr(
+            window_module,
+            "project_jpl_target_altaz_from_state_vector",
+            lambda target, **kwargs: (12.5, 220.0),
+        )
+        SkyWindow._jump_to_search_target(
+            dummy,
+            SearchJumpTarget(
+                label="Ceres",
+                kind="jpl_small_body",
+                sort_key=(0.0, "ceres"),
+                subtitle="Asteroid / 1 Ceres",
+                object_key="20000001",
+                command="DES=20000001;",
+            ),
+        )
 
     assert dummy.state.persistent_search_target is None
 
@@ -906,6 +1005,14 @@ def test_jpl_small_body_failure_reschedules_one_hour_later() -> None:
 
 def test_on_jpl_ready_logs_refreshed_persistent_target(caplog) -> None:
     dummy = _WindowStub()
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(20.0, 30.0),
+        observer_height_m=1.7,
+    )
+    dummy._current_time_obj = lambda: astropy.time.Time("2026-04-18T13:00:00Z")
     current_target = SearchJumpTarget(
         label="Voyager 1",
         kind="jpl_small_body",
@@ -915,6 +1022,9 @@ def test_on_jpl_ready_logs_refreshed_persistent_target(caplog) -> None:
         command="DES=-31;",
         alt_deg=48.6,
         az_deg=245.6,
+        horizons_epoch_utc=datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
+        horizons_position_km=(1.0, 2.0, 3.0),
+        horizons_velocity_km_s=(0.1, 0.2, 0.3),
         target_time_utc=datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
         jpl_group="sb",
         persistent_keep_marker=True,
@@ -928,27 +1038,78 @@ def test_on_jpl_ready_logs_refreshed_persistent_target(caplog) -> None:
     )
     dummy.request_client_update = Mock()
     dummy._schedule_persistent_search_refresh = Mock()
-
-    with caplog.at_level("INFO"):
-        SkyWindow._on_jpl_ready(
-            dummy,
-            {
-                "target": current_target,
-                "target_time_utc": datetime(2026, 4, 18, 13, 0, tzinfo=timezone.utc),
-                "refreshed_at_utc": datetime(2026, 4, 18, 13, 2, tzinfo=timezone.utc),
-                "alt_deg": 49.1,
-                "az_deg": 244.7,
-                "rows": [["2026-Apr-18 13:00:00", "*", "m", "244.7", "49.1"]],
-                "reason": "timer",
-            },
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(
+            window_module,
+            "project_jpl_target_altaz_from_state_vector",
+            lambda target, **kwargs: (49.1, 244.7),
         )
+
+        with caplog.at_level("INFO"):
+            SkyWindow._on_jpl_ready(
+                dummy,
+                {
+                    "target": current_target,
+                    "target_time_utc": datetime(2026, 4, 18, 13, 0, tzinfo=timezone.utc),
+                    "refreshed_at_utc": datetime(2026, 4, 18, 13, 2, tzinfo=timezone.utc),
+                    "horizons_epoch_utc": datetime(2026, 4, 18, 13, 0, tzinfo=timezone.utc),
+                    "horizons_position_km": (4.0, 5.0, 6.0),
+                    "horizons_velocity_km_s": (0.4, 0.5, 0.6),
+                    "rows": [["2026-Apr-18 13:00:00", "*", "m", "244.7", "49.1"]],
+                    "reason": "timer",
+                },
+            )
 
     assert dummy.state.persistent_search_target is not None
     assert dummy.state.persistent_search_target.alt_deg == 49.1
     assert dummy.state.persistent_search_target.az_deg == 244.7
+    assert dummy.state.persistent_search_target.horizons_position_km == (4.0, 5.0, 6.0)
+    assert dummy.state.persistent_search_target.horizons_velocity_km_s == (0.4, 0.5, 0.6)
     assert "JPL persistent target refreshed: label=Voyager 1 kind=jpl_small_body group=sb" in caplog.text
     assert "target_time_utc=2026-04-18T13:00:00+00:00" in caplog.text
     assert "alt=49.1 az=244.7 command=DES=-31;" in caplog.text
+
+
+def test_refresh_projected_persistent_search_target_reprojects_state_vector(monkeypatch) -> None:
+    dummy = _WindowStub()
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(20.0, 30.0),
+        observer_height_m=1.7,
+    )
+    dummy._current_time_obj = lambda: astropy.time.Time("2026-04-18T13:00:00Z")
+    dummy.state = SkyWindowState(
+        render_view_center=(20.0, 30.0),
+        persistent_search_target=SearchJumpTarget(
+            label="Voyager 1",
+            kind="jpl_small_body",
+            sort_key=(0.0, "voyager 1"),
+            command="DES=-31;",
+            alt_deg=48.6,
+            az_deg=245.6,
+            horizons_epoch_utc=datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
+            horizons_position_km=(1.0, 2.0, 3.0),
+            horizons_velocity_km_s=(0.1, 0.2, 0.3),
+            persistent_keep_marker=True,
+        ),
+    )
+    dummy.request_client_update = Mock()
+    monkeypatch.setattr(
+        window_updates_module,
+        "project_jpl_target_altaz_from_state_vector",
+        lambda target, **kwargs: (12.5, 220.0),
+    )
+
+    window_updates_module.SkyWindowUpdatesMixin.refresh_projected_persistent_search_target(
+        dummy
+    )
+
+    assert dummy.state.persistent_search_target is not None
+    assert dummy.state.persistent_search_target.alt_deg == 12.5
+    assert dummy.state.persistent_search_target.az_deg == 220.0
+    assert dummy.request_client_update.called
 
 
 def test_search_satellite_targets_resolves_known_artificial_satellites(monkeypatch) -> None:
@@ -1090,25 +1251,40 @@ def test_jump_to_jpl_major_body_target_keeps_overlay_without_refresh() -> None:
     dummy.request_sky_data_update = Mock()
     dummy.update = Mock()
 
-    SkyWindow._jump_to_search_target(
-        dummy,
-        SearchJumpTarget(
-            label="Mars",
-            kind="jpl_body",
-            sort_key=(0.0, "mars"),
-            subtitle="major body",
-            object_key="499",
-            command="499",
-            alt_deg=15.0,
-            az_deg=123.0,
-            jpl_group="mb",
-            persistent_keep_marker=True,
-        ),
-    )
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(
+            window_module,
+            "resolve_jpl_target_state_vector",
+            lambda target, **kwargs: (
+                datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
+                (1.0, 2.0, 3.0),
+                (0.1, 0.2, 0.3),
+            ),
+        )
+        monkeypatch.setattr(
+            window_module,
+            "project_jpl_target_altaz_from_state_vector",
+            lambda target, **kwargs: (15.0, 123.0),
+        )
+        SkyWindow._jump_to_search_target(
+            dummy,
+            SearchJumpTarget(
+                label="Mars",
+                kind="jpl_body",
+                sort_key=(0.0, "mars"),
+                subtitle="major body",
+                object_key="499",
+                command="499",
+                jpl_group="mb",
+                persistent_keep_marker=True,
+            ),
+        )
 
     assert dummy.state.persistent_search_target is not None
     assert dummy.state.persistent_search_target.label == "Mars"
-    assert dummy.state.persistent_search_next_refresh_utc is None
+    assert dummy.state.persistent_search_next_refresh_utc == datetime(
+        2026, 4, 18, 13, 0, tzinfo=timezone.utc
+    )
 
 
 def test_draw_persistent_search_overlay_draws_label_when_marker_is_kept(

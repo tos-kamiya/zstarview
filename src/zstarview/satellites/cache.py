@@ -193,7 +193,7 @@ def fetch_cached_satellite_elements(
     )
     payload = _load_cache_payload(path)
     metadata = _fetch_metadata_from_payload(payload)
-    cached = _load_cached_set_from_payload(payload, group_key=group_key)
+    cached = _load_cached_set_from_path(path, group_key=group_key)
     if (
         not force_refresh
         and cached is not None
@@ -321,7 +321,12 @@ def resolve_satellite_elements_for_time(
 
 def _load_cached_set_from_path(path: Path, *, group_key: str | None = None) -> CachedSatelliteElementSet | None:
     payload = _load_cache_payload(path)
-    return _load_cached_set_from_payload(payload, group_key=group_key)
+    try:
+        return _load_cached_set_from_payload(payload, group_key=group_key)
+    except ValueError as exc:
+        if str(exc).strip() == "unsupported cache format version":
+            _remove_stale_cache_file(path)
+        return None
 
 
 def _load_cached_set_from_payload(
@@ -333,6 +338,8 @@ def _load_cached_set_from_payload(
         return None
     try:
         return _cached_set_from_payload(payload, group_key=group_key)
+    except ValueError:
+        raise
     except Exception:
         return None
 
@@ -355,7 +362,10 @@ def _cached_set_from_payload(
     if not isinstance(payload, dict):
         raise ValueError("cache payload must be a dict")
     cache_version = payload.get(SATELLITE_CACHE_PAYLOAD_VERSION_KEY)
-    if int(cache_version) != int(SATELLITE_CACHE_FORMAT_VERSION):
+    try:
+        if int(cache_version) != int(SATELLITE_CACHE_FORMAT_VERSION):
+            raise ValueError("unsupported cache format version")
+    except (TypeError, ValueError):
         raise ValueError("unsupported cache format version")
     stored_group_key = str(payload.get("group_key", group_key or ""))
     effective_group_key = str(group_key or stored_group_key)
@@ -394,6 +404,13 @@ def _cached_set_from_payload(
         last_fetch_failure_utc=metadata.last_fetch_failure_utc,
         failure_backoff_until_utc=metadata.failure_backoff_until_utc,
     )
+
+
+def _remove_stale_cache_file(path: Path) -> None:
+    try:
+        path.unlink(missing_ok=True)
+    except OSError:
+        logger.warning("Failed to remove stale satellite cache: %s", path, exc_info=True)
 
 
 def _fetch_metadata_from_payload(payload: object) -> SatelliteFetchMetadata:

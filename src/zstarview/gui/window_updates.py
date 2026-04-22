@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Optional
@@ -9,8 +11,21 @@ from typing import Dict, Optional
 from ..aircraft import project_aircraft_snapshots
 from ..paths import CACHE_PATH
 from ..satellites import project_satellite_records
+from ..search.jpl import project_jpl_target_altaz_from_state_vector
 
 logger = logging.getLogger(__name__)
+_JPL_DEBUG_ENV = "ZSTARVIEW_DEBUG_JPL_SEARCH"
+
+
+def _jpl_debug_enabled() -> bool:
+    raw = os.getenv(_JPL_DEBUG_ENV, "").strip().casefold()
+    return raw in {"1", "true", "yes", "on"}
+
+
+def _jpl_debug_print(message: str) -> None:
+    if not _jpl_debug_enabled():
+        return
+    print(f"[jpl-debug] {message}", file=sys.stderr, flush=True)
 
 
 class SkyWindowUpdatesMixin:
@@ -380,6 +395,56 @@ class SkyWindowUpdatesMixin:
         )
         self.satellite_state.overlay_points = overlay_points
         self.state.satellite_overlay_points = overlay_points
+        self.request_client_update()
+
+    def refresh_projected_persistent_search_target(self) -> None:
+        target = getattr(self.state, "persistent_search_target", None)
+        if target is None:
+            return
+        if not bool(getattr(target, "persistent_keep_marker", False)):
+            return
+        if getattr(target, "kind", "") not in {"jpl_small_body", "jpl_body"}:
+            return
+        projected_altaz = project_jpl_target_altaz_from_state_vector(
+            target,
+            observer_lat=float(self.viewer_data.location[0]),
+            observer_lon=float(self.viewer_data.location[1]),
+            observer_height_m=float(self.viewer_data.observer_height_m),
+            time_obj=self._current_time_obj(),
+        )
+        if projected_altaz is None:
+            _jpl_debug_print(
+                "refresh-project-none "
+                f"label={target.label} command={target.command} "
+                f"target_time_utc={getattr(target, 'target_time_utc', None)!r} "
+                f"epoch={getattr(target, 'horizons_epoch_utc', None)!r} "
+                f"pos={getattr(target, 'horizons_position_km', None)!r} "
+                f"vel={getattr(target, 'horizons_velocity_km_s', None)!r}"
+            )
+            return
+        alt_deg, az_deg = projected_altaz
+        _jpl_debug_print(
+            "refresh "
+            f"label={target.label} command={target.command} "
+            f"target_time_utc={getattr(target, 'target_time_utc', None)!r} "
+            f"epoch={getattr(target, 'horizons_epoch_utc', None)!r} "
+            f"pos={getattr(target, 'horizons_position_km', None)!r} "
+            f"vel={getattr(target, 'horizons_velocity_km_s', None)!r} "
+            f"projected_alt={float(alt_deg):.3f} projected_az={float(az_deg) % 360.0:.3f}"
+        )
+        if (
+            target.alt_deg is not None
+            and target.az_deg is not None
+            and abs(float(target.alt_deg) - float(alt_deg)) < 1e-9
+            and abs((float(target.az_deg) % 360.0) - float(az_deg)) < 1e-9
+        ):
+            return
+        updated_target = replace(
+            target,
+            alt_deg=float(alt_deg),
+            az_deg=float(az_deg) % 360.0,
+        )
+        self.state.persistent_search_target = updated_target
         self.request_client_update()
 
     def _on_cloud_started(self, payload: Dict) -> None:

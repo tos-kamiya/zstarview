@@ -8,8 +8,8 @@ from urllib.error import URLError
 
 from PySide6.QtCore import QObject, Signal
 
-from ..satellites import fetch_horizons_observer_csv
-from ..search.jpl import extract_horizons_altaz
+from ..search.jpl import extract_horizons_state_vector
+from ..satellites import fetch_horizons_vector_csv
 from ..search.models import SearchJumpTarget
 
 logger = logging.getLogger(__name__)
@@ -86,39 +86,35 @@ class JplSmallBodyController(QObject):
             if not command:
                 raise RuntimeError("JPL small-body target has no usable command")
             logger.info(
-                "Fetching JPL small-body ephemeris (%s): target=%s command=%s target_time_utc=%s observer=(lat=%s lon=%s height_m=%s)",
+                "Fetching JPL small-body state vector (%s): target=%s command=%s target_time_utc=%s",
                 reason,
                 target_label,
                 command,
                 target_time_utc.astimezone(timezone.utc).isoformat(),
-                observer_lat,
-                observer_lon,
-                observer_height_m,
             )
-            rows = fetch_horizons_observer_csv(
+            vector_rows = fetch_horizons_vector_csv(
                 command,
                 target_time_utc=target_time_utc,
-                observer_lat=observer_lat,
-                observer_lon=observer_lon,
-                observer_height_m=observer_height_m,
             )
-            alt_az = extract_horizons_altaz(rows)
-            if alt_az is None:
-                raise RuntimeError("JPL observer table did not contain an alt/az sample")
-            alt_deg, az_deg = alt_az
+            state_vector = extract_horizons_state_vector(vector_rows)
+            if state_vector is None:
+                raise RuntimeError("JPL vector table did not contain a state vector sample")
             with self._lock:
                 should_emit = not self._stopping and request_id == self._latest_request_id
             if should_emit:
+                position_km, velocity_km_s = state_vector
+                payload = {
+                    "target": target,
+                    "target_time_utc": target_time_utc.astimezone(timezone.utc),
+                    "refreshed_at_utc": datetime.now(timezone.utc),
+                    "rows": vector_rows,
+                    "reason": reason,
+                    "horizons_epoch_utc": target_time_utc.astimezone(timezone.utc),
+                    "horizons_position_km": position_km,
+                    "horizons_velocity_km_s": velocity_km_s,
+                }
                 self.jpl_ready.emit(
-                    {
-                        "target": target,
-                        "target_time_utc": target_time_utc.astimezone(timezone.utc),
-                        "refreshed_at_utc": datetime.now(timezone.utc),
-                        "alt_deg": float(alt_deg),
-                        "az_deg": float(az_deg) % 360.0,
-                        "rows": rows,
-                        "reason": reason,
-                    }
+                    payload
                 )
         except Exception as exc:
             logger.warning(
