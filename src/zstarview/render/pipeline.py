@@ -285,6 +285,7 @@ def render_hud_overlay_into_painter(
         geometry=geometry,
         scene=scene,
         style=style,
+        mouse_pos=hud.mouse_pos,
         highlighted_object=highlighted_object,
         highlighted_dso=highlighted_dso,
         highlighted_satellite=highlighted_satellite,
@@ -769,6 +770,7 @@ def _draw_hover_overlay_layer(
     geometry: ScreenGeometry,
     scene: RenderSceneData,
     style: RenderStyle,
+    mouse_pos: QPoint | None,
     highlighted_object: Any | None,
     highlighted_dso: Any | None,
     highlighted_satellite: Any | None = None,
@@ -806,6 +808,15 @@ def _draw_hover_overlay_layer(
         style=style,
         highlighted_dso=highlighted_dso,
     )
+    if style.show_guidelines:
+        render_guides.draw_direction_hover_guide(
+            painter,
+            geometry,
+            scene.viewer.view_center,
+            mouse_pos,
+            edge_fov_deg=float(scene.viewer.edge_fov_deg),
+            content_fov_deg=_content_fov_deg(scene),
+        )
     render_overlay_info.draw_overlay_info(
         painter,
         geometry,
