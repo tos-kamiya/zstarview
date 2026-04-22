@@ -91,6 +91,33 @@ def build_horizons_observer_url(
     return f"{base_url}?{urlencode(params, quote_via=quote)}"
 
 
+def build_horizons_vector_url(
+    command: str,
+    *,
+    target_time_utc: datetime,
+    base_url: str = HORIZONS_API_URL,
+) -> str:
+    tlist = target_time_utc.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    params = {
+        "format": "json",
+        "COMMAND": f"'{command}'",
+        "OBJ_DATA": "NO",
+        "MAKE_EPHEM": "YES",
+        "EPHEM_TYPE": "VECTORS",
+        "CENTER": "'500@399'",
+        "REF_SYSTEM": "ICRF",
+        "REF_PLANE": "FRAME",
+        "OUT_UNITS": "KM-S",
+        "VEC_TABLE": "'2'",
+        "TIME_TYPE": "UT",
+        "TIME_DIGITS": "SECONDS",
+        "EXTRA_PREC": "YES",
+        "CSV_FORMAT": "YES",
+        "TLIST": f"'{tlist}'",
+    }
+    return f"{base_url}?{urlencode(params, quote_via=quote)}"
+
+
 def fetch_celestrak_group_omm(
     group_name: str,
     *,
@@ -141,6 +168,32 @@ def fetch_horizons_observer_csv(
             observer_lat=observer_lat,
             observer_lon=observer_lon,
             observer_height_m=observer_height_m,
+            base_url=base_url,
+        ),
+        headers={"Accept": "application/json"},
+    )
+    with urlopen(request, timeout=float(timeout_s)) as response:
+        payload = json.load(response)
+    if not isinstance(payload, dict):
+        return []
+    error = payload.get("error")
+    if error:
+        raise RuntimeError(str(error).strip())
+    result_text = str(payload.get("result", ""))
+    return _parse_horizons_observer_csv(result_text)
+
+
+def fetch_horizons_vector_csv(
+    command: str,
+    *,
+    target_time_utc: datetime,
+    timeout_s: float = SATELLITE_FETCH_TIMEOUT_SECONDS,
+    base_url: str = HORIZONS_API_URL,
+) -> list[list[str]]:
+    request = Request(
+        build_horizons_vector_url(
+            command,
+            target_time_utc=target_time_utc,
             base_url=base_url,
         ),
         headers={"Accept": "application/json"},
@@ -229,10 +282,9 @@ def fetch_horizons_records(
     lookup_base_url: str = HORIZONS_LOOKUP_API_URL,
     horizons_base_url: str = HORIZONS_API_URL,
 ) -> list[SatelliteOmmRecord]:
+    del observer_lat, observer_lon, observer_height_m
     if group_key != SATELLITE_HORIZONS_CACHE_KEY:
         raise KeyError(group_key)
-    if observer_lat is None or observer_lon is None or observer_height_m is None:
-        raise ValueError("Horizons spacecraft fetch requires observer coordinates")
     records: list[SatelliteOmmRecord] = []
     for label, aliases in HORIZONS_TARGETS_BY_KEY[SATELLITE_HORIZONS_CACHE_KEY]:
         resolved = _resolve_horizons_target(
@@ -247,24 +299,21 @@ def fetch_horizons_records(
         if not command:
             continue
         try:
-            rows = fetch_horizons_observer_csv(
+            rows = fetch_horizons_vector_csv(
                 command,
                 target_time_utc=target_time_utc,
-                observer_lat=observer_lat,
-                observer_lon=observer_lon,
-                observer_height_m=observer_height_m,
                 timeout_s=timeout_s,
                 base_url=horizons_base_url,
             )
         except Exception as exc:
             _log_fetch_attempt_failure(f"Horizons {label}", exc)
             continue
-        parsed_altaz: tuple[float, float] | None = None
+        parsed_state_vector: tuple[float, float, float, float, float, float] | None = None
         for row in rows:
-            parsed_altaz = _extract_altaz_from_csv_row(row)
-            if parsed_altaz[0] is not None and parsed_altaz[1] is not None:
+            parsed_state_vector = _extract_state_vector_from_csv_row(row)
+            if parsed_state_vector is not None:
                 break
-        if parsed_altaz is None or parsed_altaz[0] is None or parsed_altaz[1] is None:
+        if parsed_state_vector is None:
             continue
         records.append(
             {
@@ -272,8 +321,14 @@ def fetch_horizons_records(
                 "HORIZONS_TARGET_NAME": str(resolved.get("name", label)).strip() or label,
                 "HORIZONS_SPKID": command,
                 "EPOCH": target_time_utc.astimezone(timezone.utc).isoformat(),
-                "ALT_DEG": float(parsed_altaz[0]),
-                "AZ_DEG": float(parsed_altaz[1]),
+                "HORIZONS_X_KM": float(parsed_state_vector[0]),
+                "HORIZONS_Y_KM": float(parsed_state_vector[1]),
+                "HORIZONS_Z_KM": float(parsed_state_vector[2]),
+                "HORIZONS_VX_KM_S": float(parsed_state_vector[3]),
+                "HORIZONS_VY_KM_S": float(parsed_state_vector[4]),
+                "HORIZONS_VZ_KM_S": float(parsed_state_vector[5]),
+                "HORIZONS_CENTER": "500@399",
+                "HORIZONS_REF_SYSTEM": "ICRF",
                 _SOURCE_KEY: "horizons",
             }
         )
@@ -392,6 +447,28 @@ def _extract_altaz_from_csv_row(row: list[str]) -> tuple[float | None, float | N
     return numeric_values[1], numeric_values[0]
 
 
+def _extract_state_vector_from_csv_row(
+    row: list[str],
+) -> tuple[float, float, float, float, float, float] | None:
+    numeric_values: list[float] = []
+    for value in row:
+        parsed = _parse_float(value)
+        if parsed is not None:
+            numeric_values.append(parsed)
+    if len(numeric_values) >= 7 and _looks_like_julian_date(numeric_values[0]):
+        numeric_values = numeric_values[1:]
+    if len(numeric_values) < 6:
+        return None
+    return (
+        numeric_values[0],
+        numeric_values[1],
+        numeric_values[2],
+        numeric_values[3],
+        numeric_values[4],
+        numeric_values[5],
+    )
+
+
 def _parse_float(value: object) -> float | None:
     try:
         text = str(value).strip()
@@ -400,6 +477,10 @@ def _parse_float(value: object) -> float | None:
         return float(text)
     except (TypeError, ValueError):
         return None
+
+
+def _looks_like_julian_date(value: float) -> bool:
+    return 2_000_000.0 <= float(value) <= 3_000_000.0
 
 
 def _normalize_horizons_name(value: str) -> str:

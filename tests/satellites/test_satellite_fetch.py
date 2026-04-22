@@ -14,6 +14,7 @@ from zstarview.satellites.fetch import (
     build_celestrak_group_url,
     build_horizons_lookup_url,
     build_horizons_observer_url,
+    build_horizons_vector_url,
     build_earth_satellites,
     build_wheretheiss_tle_url,
     extract_record_source,
@@ -89,6 +90,18 @@ def test_build_horizons_observer_url_targets_csv_observer_table() -> None:
     assert "QUANTITIES=%274%27" in url
 
 
+def test_build_horizons_vector_url_targets_csv_state_vector_table() -> None:
+    url = build_horizons_vector_url(
+        "123",
+        target_time_utc=datetime(2026, 4, 17, 12, 0, tzinfo=timezone.utc),
+    )
+
+    assert HORIZONS_API_URL in url
+    assert "EPHEM_TYPE=VECTORS" in url
+    assert "VEC_TABLE=%272%27" in url
+    assert "REF_SYSTEM=ICRF" in url
+
+
 def test_extract_horizons_altaz_returns_elevation_then_azimuth() -> None:
     from zstarview.search.jpl import extract_horizons_altaz
 
@@ -99,7 +112,7 @@ def test_extract_horizons_altaz_returns_elevation_then_azimuth() -> None:
 
 def test_fetch_horizons_records_builds_spacecraft_rows(monkeypatch) -> None:
     lookup_calls: list[str] = []
-    observer_calls: list[str] = []
+    vector_calls: list[str] = []
 
     def fake_lookup(search_text: str, **_kwargs):
         lookup_calls.append(search_text)
@@ -114,11 +127,11 @@ def test_fetch_horizons_records_builds_spacecraft_rows(monkeypatch) -> None:
         }
 
     def fake_csv(command: str, **_kwargs):
-        observer_calls.append(command)
-        return [["2026-Apr-17 12:00:00", "*", "m", "123.45", "67.89"]]
+        vector_calls.append(command)
+        return [["2026-Apr-17 12:00:00", "1.0", "2.0", "3.0", "0.1", "0.2", "0.3"]]
 
     monkeypatch.setattr("zstarview.satellites.fetch.fetch_horizons_lookup", fake_lookup)
-    monkeypatch.setattr("zstarview.satellites.fetch.fetch_horizons_observer_csv", fake_csv)
+    monkeypatch.setattr("zstarview.satellites.fetch.fetch_horizons_vector_csv", fake_csv)
 
     records = fetch_horizons_records(
         "horizons",
@@ -129,11 +142,55 @@ def test_fetch_horizons_records_builds_spacecraft_rows(monkeypatch) -> None:
     )
 
     assert lookup_calls == ["JWST", "Voyager 1", "Voyager 2", "Parker Solar Probe"]
-    assert observer_calls == ["JWST-spkid", "Voyager 1-spkid", "Voyager 2-spkid", "Parker Solar Probe-spkid"]
+    assert vector_calls == ["JWST-spkid", "Voyager 1-spkid", "Voyager 2-spkid", "Parker Solar Probe-spkid"]
     assert [record["OBJECT_NAME"] for record in records] == ["JWST", "Voyager 1", "Voyager 2", "Parker"]
-    assert [record["ALT_DEG"] for record in records] == [67.89, 67.89, 67.89, 67.89]
-    assert [record["AZ_DEG"] for record in records] == [123.45, 123.45, 123.45, 123.45]
+    assert [record["HORIZONS_X_KM"] for record in records] == [1.0, 1.0, 1.0, 1.0]
+    assert [record["HORIZONS_VZ_KM_S"] for record in records] == [0.3, 0.3, 0.3, 0.3]
     assert all(record["_SOURCE"] == "horizons" for record in records)
+
+
+def test_fetch_horizons_records_skips_julian_date_prefix(monkeypatch) -> None:
+    def fake_lookup(search_text: str, **_kwargs):
+        return {
+            "result": [
+                {
+                    "name": f"{search_text} (spacecraft)",
+                    "spkid": f"{search_text}-spkid",
+                    "alias": [search_text],
+                }
+            ]
+        }
+
+    def fake_csv(command: str, **_kwargs):
+        return [
+            [
+                "2460792.500000000",
+                "2026-Apr-17 12:00:00",
+                "1.0",
+                "2.0",
+                "3.0",
+                "0.1",
+                "0.2",
+                "0.3",
+                "0.4",
+                "0.5",
+                "0.6",
+            ]
+        ]
+
+    monkeypatch.setattr("zstarview.satellites.fetch.fetch_horizons_lookup", fake_lookup)
+    monkeypatch.setattr("zstarview.satellites.fetch.fetch_horizons_vector_csv", fake_csv)
+
+    records = fetch_horizons_records(
+        "horizons",
+        target_time_utc=datetime(2026, 4, 17, 12, 0, tzinfo=timezone.utc),
+        observer_lat=35.0,
+        observer_lon=139.0,
+        observer_height_m=50.0,
+    )
+
+    assert [record["HORIZONS_X_KM"] for record in records] == [1.0, 1.0, 1.0, 1.0]
+    assert [record["HORIZONS_VZ_KM_S"] for record in records] == [0.3, 0.3, 0.3, 0.3]
 
 
 def test_build_celestrak_group_url_uses_group_and_json_format() -> None:
@@ -224,7 +281,7 @@ def test_fetch_iss_records_logs_primary_timeout_before_fallback(caplog, monkeypa
         records = fetch_iss_records("iss")
 
     assert len(records) == 1
-    assert "ISS fetch failed via wheretheiss.at: timed out" in caplog.text
+    assert "Satellite fetch failed via wheretheiss.at: RuntimeError: timed out" in caplog.text
 
 
 def test_fetch_iss_records_logs_fallback_failure_too(caplog, monkeypatch) -> None:
@@ -245,5 +302,5 @@ def test_fetch_iss_records_logs_fallback_failure_too(caplog, monkeypatch) -> Non
         else:
             raise AssertionError("expected fallback failure")
 
-    assert "ISS fetch failed via wheretheiss.at: primary unavailable" in caplog.text
-    assert "ISS fetch failed via CelesTrak fallback: fallback timed out" in caplog.text
+    assert "Satellite fetch failed via wheretheiss.at: RuntimeError: primary unavailable" in caplog.text
+    assert "Satellite fetch failed via CelesTrak fallback: RuntimeError: fallback timed out" in caplog.text

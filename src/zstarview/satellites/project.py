@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from collections.abc import Mapping, Sequence
 import re
 
 import astropy.time
+from astropy import units as u
+from astropy.coordinates import AltAz, CartesianRepresentation, EarthLocation, GCRS, SkyCoord
 import skyfield.api
 
 from ..satellite_constants import SATELLITE_HORIZONS_CACHE_KEY, SATELLITE_ISS_CACHE_KEY
@@ -94,7 +97,13 @@ def compute_satellite_altaz_points(
         records = records_by_group.get(group_key) or ()
         if group_key == SATELLITE_HORIZONS_CACHE_KEY:
             for record in records:
-                alt_deg, az_deg = satellite_altaz_from_record(record)
+                alt_deg, az_deg = _project_horizons_record_to_altaz(
+                    record,
+                    observer_lat=observer_lat,
+                    observer_lon=observer_lon,
+                    observer_height_m=observer_height_m,
+                    time_obj=time_obj,
+                )
                 if alt_deg is None or az_deg is None:
                     continue
                 points.append(
@@ -134,6 +143,81 @@ def compute_satellite_altaz_points(
                 )
             )
     return points
+
+
+def _project_horizons_record_to_altaz(
+    record: SatelliteOmmRecord,
+    *,
+    observer_lat: float,
+    observer_lon: float,
+    observer_height_m: float,
+    time_obj: astropy.time.Time,
+) -> tuple[float | None, float | None]:
+    state_vector = _horizons_state_vector_from_record(record)
+    if state_vector is None:
+        return satellite_altaz_from_record(record)
+    epoch_utc = _horizons_epoch_utc_from_record(record)
+    if epoch_utc is None:
+        return satellite_altaz_from_record(record)
+    position_km, velocity_km_s = state_vector
+    try:
+        current_utc = time_obj.to_datetime(timezone.utc)
+    except Exception:
+        current_utc = datetime.now(timezone.utc)
+    delta_seconds = (current_utc - epoch_utc).total_seconds()
+    x_km = position_km[0] + velocity_km_s[0] * delta_seconds
+    y_km = position_km[1] + velocity_km_s[1] * delta_seconds
+    z_km = position_km[2] + velocity_km_s[2] * delta_seconds
+    location = EarthLocation(
+        lat=float(observer_lat) * u.deg,
+        lon=float(observer_lon) * u.deg,
+        height=float(observer_height_m) * u.m,
+    )
+    altaz_frame = AltAz(obstime=time_obj, location=location)
+    coords = SkyCoord(
+        CartesianRepresentation(
+            x=float(x_km) * u.km,
+            y=float(y_km) * u.km,
+            z=float(z_km) * u.km,
+        ),
+        frame=GCRS(obstime=time_obj),
+    )
+    altaz = coords.transform_to(altaz_frame)
+    return float(altaz.alt.deg), float(altaz.az.deg) % 360.0
+
+
+def _horizons_state_vector_from_record(
+    record: SatelliteOmmRecord,
+) -> tuple[tuple[float, float, float], tuple[float, float, float]] | None:
+    position_keys = (
+        "HORIZONS_X_KM",
+        "HORIZONS_Y_KM",
+        "HORIZONS_Z_KM",
+    )
+    velocity_keys = (
+        "HORIZONS_VX_KM_S",
+        "HORIZONS_VY_KM_S",
+        "HORIZONS_VZ_KM_S",
+    )
+    try:
+        position = tuple(float(record[key]) for key in position_keys)
+        velocity = tuple(float(record[key]) for key in velocity_keys)
+    except (KeyError, TypeError, ValueError):
+        return None
+    return position, velocity
+
+
+def _horizons_epoch_utc_from_record(record: SatelliteOmmRecord) -> datetime | None:
+    raw_epoch = str(record.get("EPOCH", "")).strip()
+    if not raw_epoch:
+        return None
+    try:
+        parsed = datetime.fromisoformat(raw_epoch.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
 
 
 def _iter_group_order(

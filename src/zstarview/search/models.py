@@ -18,6 +18,9 @@ class SearchJumpTarget:
     command: str = ""
     alt_deg: float | None = None
     az_deg: float | None = None
+    horizons_epoch_utc: datetime | None = None
+    horizons_position_km: tuple[float, float, float] | None = None
+    horizons_velocity_km_s: tuple[float, float, float] | None = None
     target_time_utc: datetime | None = None
     jpl_group: str = ""
     persistent_keep_marker: bool = False
@@ -36,4 +39,3 @@ class SearchResolution:
     candidates: tuple[SearchJumpTarget, ...]
     selected_target: SearchJumpTarget | None = None
     status: str = ""
-

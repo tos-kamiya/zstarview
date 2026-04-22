@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import pytest
 
 from zstarview.search.jpl import resolve_jpl_target_altaz
+from zstarview.search.jpl import resolve_jpl_target_state_vector
 from zstarview.search.models import SearchJumpTarget
 from zstarview.search.query import parse_search_query, search_target_matches_query
 from zstarview.search.resolver import compute_search_target_altaz, resolve_search_targets
@@ -154,26 +155,39 @@ def test_compute_search_target_altaz_uses_satellite_resolver_when_missing_altaz(
     ) == (13.5, 279.0)
 
 
-def test_compute_search_target_altaz_uses_jpl_resolver_when_missing_altaz() -> None:
+def test_compute_search_target_altaz_uses_jpl_state_vector_when_present() -> None:
     target = SearchJumpTarget(
         label="Ceres",
         kind="jpl_small_body",
         sort_key=(0.0, "ceres"),
         object_key="2000001",
         command="DES=2000001;",
+        horizons_epoch_utc=datetime(2026, 4, 21, 21, 15, 10, tzinfo=timezone.utc),
+        horizons_position_km=(1.0, 2.0, 3.0),
+        horizons_velocity_km_s=(0.1, 0.2, 0.3),
     )
 
-    def fake_resolver(resolved_target: SearchJumpTarget) -> tuple[float, float] | None:
+    def fake_project(
+        resolved_target: SearchJumpTarget,
+        **kwargs,
+    ) -> tuple[float, float] | None:
         assert resolved_target.label == "Ceres"
+        assert kwargs["observer_lat"] == 35.0
+        assert kwargs["observer_lon"] == 135.0
+        assert kwargs["observer_height_m"] == 50.0
         return 21.5, 181.0
 
-    assert compute_search_target_altaz(
-        target,
-        observer_lat=35.0,
-        observer_lon=135.0,
-        observer_height_m=50.0,
-        jpl_altaz_resolver=fake_resolver,
-    ) == (21.5, 181.0)
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(
+            "zstarview.search.resolver.project_jpl_target_altaz_from_state_vector",
+            fake_project,
+        )
+        assert compute_search_target_altaz(
+            target,
+            observer_lat=35.0,
+            observer_lon=135.0,
+            observer_height_m=50.0,
+        ) == (21.5, 181.0)
 
 
 def test_resolve_jpl_target_altaz_logs_target_time_and_observer(caplog) -> None:
@@ -208,3 +222,59 @@ def test_resolve_jpl_target_altaz_logs_target_time_and_observer(caplog) -> None:
     assert "target_time_utc=2026-04-21T21:15:10+00:00" in caplog.text
     assert "observer=(lat=35.28 lon=133.03 height_m=0.0)" in caplog.text
     assert "Resolved JPL target alt/az: label=Voyager 1 (spacecraft) command=-31 alt=42.1 az=233.1" in caplog.text
+
+
+def test_resolve_jpl_target_state_vector_logs_command_and_time(caplog) -> None:
+    target = SearchJumpTarget(
+        label="Voyager 1 (spacecraft)",
+        kind="jpl_body",
+        sort_key=(0.0, "voyager 1 (spacecraft)"),
+        command="-31",
+        target_time_utc=datetime(2026, 4, 21, 21, 15, 10, tzinfo=timezone.utc),
+        jpl_group="mb",
+    )
+
+    def fake_vector_fetch(command: str, **kwargs):
+        assert command == "-31"
+        assert kwargs["target_time_utc"] == datetime(2026, 4, 21, 21, 15, 10, tzinfo=timezone.utc)
+        return [["2026-Apr-21 21:15:10", "1.0", "2.0", "3.0", "0.1", "0.2", "0.3"]]
+
+    with caplog.at_level("INFO"):
+        state_vector = resolve_jpl_target_state_vector(
+            target,
+            vector_fetch=fake_vector_fetch,
+        )
+
+    assert state_vector == (
+        datetime(2026, 4, 21, 21, 15, 10, tzinfo=timezone.utc),
+        (1.0, 2.0, 3.0),
+        (0.1, 0.2, 0.3),
+    )
+    assert "Resolving JPL target state vector: label=Voyager 1 (spacecraft)" in caplog.text
+    assert "target_time_utc=2026-04-21T21:15:10+00:00" in caplog.text
+    assert "Resolved JPL target state vector: label=Voyager 1 (spacecraft) command=-31 x=1.000 y=2.000 z=3.000" in caplog.text
+
+
+def test_extract_horizons_state_vector_skips_julian_date_prefix() -> None:
+    from zstarview.search.jpl import extract_horizons_state_vector
+
+    rows = [
+        [
+            "2460792.500000000",
+            "2026-Apr-21 00:00:00.0000",
+            "1.0",
+            "2.0",
+            "3.0",
+            "0.1",
+            "0.2",
+            "0.3",
+            "0.4",
+            "0.5",
+            "0.6",
+        ]
+    ]
+
+    assert extract_horizons_state_vector(rows) == (
+        (1.0, 2.0, 3.0),
+        (0.1, 0.2, 0.3),
+    )
