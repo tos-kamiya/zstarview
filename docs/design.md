@@ -220,12 +220,15 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `--image-size`
   - `--layer-timeout-seconds`
   - `--allow-partial-data`
+  - `--include-direction-grid`
   - `--sixel`
 - `--window-geometry`、`--window-frame`、`--sky-update-interval` は GUI 専用とし、この CLI では parser に載せない。
 - dataset 参照専用オプション群も、この CLI では parser に載せない。
 - 地点解決と天体計算は GUI と同じ下位ロジックを共有するが、レイヤー取得順序は GUI と共有しない。
 - 出力画像には既定で hover/HUD を含めず、`RenderSceneData` と `RenderStyle` を中心にベース描画だけを行う想定とする。
 - `guide` はベース描画に含めてよい。
+- `--include-direction-grid` が指定された場合、export-image 専用の静的方向グリッドを guide の上に重ねてよい。
+- この方向グリッドは GUI の hover guidance とは別実装で、単発の書き出し画像にだけ適用してよい。
 - export 画像では static overlay info も既定で描かない。
 - export 画像では GUI 向けの外周背景グラデーションも描かず、`content_fov_deg` の外側は透明のままにする。
 - 外部依存レイヤーの取得は逐次でも並列でもよいが、CLI 側では「いつまで待つか」と「部分データを許容するか」を引数で決められるようにする。
