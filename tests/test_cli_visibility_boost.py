@@ -35,7 +35,7 @@ def test_prepare_window_runtime_options_boosts_cloud_missing_tint() -> None:
         cloud_missing_tint_opacity=0.2,
         visibility_boost=2.0,
         star_render_expected_width=600,
-        content_fov_deg=115.0,
+        content_fov_deg=110.0,
         window_geometry_arg=None,
         window_frame_mode="frameless",
     )

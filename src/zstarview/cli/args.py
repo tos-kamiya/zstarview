@@ -444,18 +444,18 @@ def add_observing_arguments(parser: argparse._ActionsContainer) -> None:
     parser.add_argument(
         "--edge-fov-deg",
         type=_parse_edge_fov_deg,
-        default=96.0,
+        default=95.0,
         help=(
-            "Projected edge field of view in degrees (default: 96). "
+            "Projected edge field of view in degrees (default: 95). "
             "This controls how angular distance maps to the window edge."
         ),
     )
     parser.add_argument(
         "--content-fov-deg",
         type=_parse_content_fov_deg,
-        default=115.0,
+        default=110.0,
         help=(
-            "Shared overscan content FOV in degrees (allowed: 90-135, default: 115). "
+            "Shared overscan content FOV in degrees (allowed: 90-135, default: 110). "
             "The window edge remains fixed at 90 degrees from the view center."
         ),
     )
@@ -862,9 +862,9 @@ def add_render_arguments(
     parser.add_argument(
         "--content-fov-deg",
         type=_parse_content_fov_deg,
-        default=115.0,
+        default=110.0,
         help=(
-            "Shared overscan content FOV in degrees (allowed: 90-135, default: 115). "
+            "Shared overscan content FOV in degrees (allowed: 90-135, default: 110). "
             "The window edge remains fixed at 90 degrees from the view center."
         ),
     )

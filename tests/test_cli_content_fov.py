@@ -5,8 +5,8 @@ from zstarview.cli.args import parse_args
 
 def test_content_fov_default_is_current_overscan() -> None:
     args = parse_args([])
-    assert args.content_fov_deg == 115.0
-    assert args.edge_fov_deg == 96.0
+    assert args.content_fov_deg == 110.0
+    assert args.edge_fov_deg == 95.0
 
 
 def test_content_fov_accepts_valid_overscan_value() -> None:
