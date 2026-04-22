@@ -31,19 +31,10 @@ REFERENCE_LINE_FG_WIDTH = 0.55
 REFERENCE_LINE_OUTER_ALPHA = 18
 REFERENCE_LINE_MID_ALPHA = 30
 _DIRECTION_MARKER_HIT_RADIUS_PX = 9.0
-GRID_MAJOR_OUTER_WIDTH = 0.85
-GRID_MAJOR_MID_WIDTH = 0.55
-GRID_MAJOR_FG_WIDTH = 0.35
-GRID_MAJOR_OUTER_ALPHA = 24
-GRID_MAJOR_MID_ALPHA = 48
-GRID_MAJOR_FG_ALPHA = 190
-GRID_HORIZON_SPAN_DEG = 18.0
+GRID_LINE_WIDTH = 0.255
+GRID_LINE_ALPHA = 190
 GRID_ALTITUDE_SAMPLES = 73
-GRID_HORIZON_SAMPLES = 37
-GRID_MAJOR_ALTITUDE_BANDS = (-75.0, -45.0, 0.0, 45.0, 75.0)
-GRID_EMPHASIZED_ALTITUDE_BANDS = (45.0, 75.0)
-GRID_EMPHASIZED_WIDTH_SCALE = 1.2
-GRID_FINE_WIDTH_SCALE = 0.3
+GRID_ALTITUDE_BANDS = (0.0,)
 GRID_FINE_ALTITUDE_BANDS = tuple(
     float(value)
     for value in range(-80, 81, 10)
@@ -52,7 +43,6 @@ GRID_FINE_ALTITUDE_BANDS = tuple(
 GRID_FINE_AZIMUTHS = tuple(
     float(value)
     for value in range(0, 360, 10)
-    if value % 45 != 0
 )
 GRID_PARALLEL_AZ_SAMPLES = 145
 
@@ -593,12 +583,8 @@ def _draw_direction_polyline(
     points: List[Tuple[float, float]],
     geometry: ScreenGeometry,
     *,
-    outer_width: float,
-    mid_width: float,
-    fg_width: float,
-    outer_alpha: int,
-    mid_alpha: int,
-    fg_alpha: int,
+    width: float,
+    alpha: int,
 ) -> None:
     fragments = split_by_gaps(points)
     if not fragments:
@@ -617,11 +603,7 @@ def _draw_direction_polyline(
         if len(frag) < 2:
             continue
         poly = QPolygonF([QPointF(*normalized_to_screen_xy(x, y, geometry)) for x, y in frag])
-        painter.setPen(_make_pen(outer_width, outer_alpha))
-        painter.drawPolyline(poly)
-        painter.setPen(_make_pen(mid_width, mid_alpha))
-        painter.drawPolyline(poly)
-        painter.setPen(_make_pen(fg_width, fg_alpha))
+        painter.setPen(_make_pen(width, alpha))
         painter.drawPolyline(poly)
 
 
@@ -681,65 +663,11 @@ def _draw_direction_grid(
     painter.save()
     try:
         meridian_alt_samples = np.linspace(-90.0, 90.0, GRID_ALTITUDE_SAMPLES)
-        horizon_az_center_samples = np.linspace(
-            -GRID_HORIZON_SPAN_DEG,
-            GRID_HORIZON_SPAN_DEG,
-            GRID_HORIZON_SAMPLES,
-        )
         parallel_az_samples = np.linspace(
             0.0, 360.0, GRID_PARALLEL_AZ_SAMPLES, endpoint=False
         )
 
-        for _label, az in DIRECTIONS.items():
-            meridian_points: list[tuple[float, float]] = []
-            for alt in meridian_alt_samples:
-                if not is_in_fov(float(alt), az, view_center, fov_deg=content_fov_deg):
-                    continue
-                nx, ny = _project_altaz_to_normalized_xy(
-                    float(alt),
-                    az,
-                    view_center,
-                    edge_fov_deg=edge_fov_deg,
-                )
-                meridian_points.append((nx, ny))
-
-            horizon_points: list[tuple[float, float]] = []
-            for az_offset in horizon_az_center_samples:
-                az_norm = (float(az) + float(az_offset)) % 360.0
-                if not is_in_fov(0.0, az_norm, view_center, fov_deg=content_fov_deg):
-                    continue
-                nx, ny = _project_altaz_to_normalized_xy(
-                    0.0,
-                    az_norm,
-                    view_center,
-                    edge_fov_deg=edge_fov_deg,
-                )
-                horizon_points.append((nx, ny))
-
-            _draw_direction_polyline(
-                painter,
-                meridian_points,
-                geometry,
-                outer_width=GRID_MAJOR_OUTER_WIDTH,
-                mid_width=GRID_MAJOR_MID_WIDTH,
-                fg_width=GRID_MAJOR_FG_WIDTH,
-                outer_alpha=GRID_MAJOR_OUTER_ALPHA,
-                mid_alpha=GRID_MAJOR_MID_ALPHA,
-                fg_alpha=GRID_MAJOR_FG_ALPHA,
-            )
-            _draw_direction_polyline(
-                painter,
-                horizon_points,
-                geometry,
-                outer_width=GRID_MAJOR_OUTER_WIDTH * 0.92,
-                mid_width=GRID_MAJOR_MID_WIDTH * 0.92,
-                fg_width=GRID_MAJOR_FG_WIDTH * 0.92,
-                outer_alpha=GRID_MAJOR_OUTER_ALPHA,
-                mid_alpha=GRID_MAJOR_MID_ALPHA,
-                fg_alpha=GRID_MAJOR_FG_ALPHA,
-            )
-
-        for alt in GRID_MAJOR_ALTITUDE_BANDS:
+        for alt in GRID_ALTITUDE_BANDS:
             parallel_points: list[tuple[float, float]] = []
             for az in parallel_az_samples:
                 az_norm = float(az) % 360.0
@@ -753,21 +681,12 @@ def _draw_direction_grid(
                 )
                 parallel_points.append((nx, ny))
 
-            major_scale = (
-                GRID_EMPHASIZED_WIDTH_SCALE
-                if alt in GRID_EMPHASIZED_ALTITUDE_BANDS
-                else 1.0
-            )
             _draw_direction_polyline(
                 painter,
                 parallel_points,
                 geometry,
-                outer_width=GRID_MAJOR_OUTER_WIDTH * major_scale,
-                mid_width=GRID_MAJOR_MID_WIDTH * major_scale,
-                fg_width=GRID_MAJOR_FG_WIDTH * major_scale,
-                outer_alpha=GRID_MAJOR_OUTER_ALPHA,
-                mid_alpha=GRID_MAJOR_MID_ALPHA,
-                fg_alpha=GRID_MAJOR_FG_ALPHA,
+                width=GRID_LINE_WIDTH,
+                alpha=GRID_LINE_ALPHA,
             )
 
         for alt in GRID_FINE_ALTITUDE_BANDS:
@@ -788,38 +707,31 @@ def _draw_direction_grid(
                 painter,
                 parallel_points,
                 geometry,
-                outer_width=GRID_MAJOR_OUTER_WIDTH * GRID_FINE_WIDTH_SCALE,
-                mid_width=GRID_MAJOR_MID_WIDTH * GRID_FINE_WIDTH_SCALE,
-                fg_width=GRID_MAJOR_FG_WIDTH * GRID_FINE_WIDTH_SCALE,
-                outer_alpha=GRID_MAJOR_OUTER_ALPHA,
-                mid_alpha=GRID_MAJOR_MID_ALPHA,
-                fg_alpha=GRID_MAJOR_FG_ALPHA,
+                width=GRID_LINE_WIDTH,
+                alpha=GRID_LINE_ALPHA,
+            )
+
+        for az in GRID_FINE_AZIMUTHS:
+            meridian_points = []
+            for alt in meridian_alt_samples:
+                if not is_in_fov(
+                    float(alt), az, view_center, fov_deg=content_fov_deg
+                ):
+                    continue
+                nx, ny = _project_altaz_to_normalized_xy(
+                    float(alt),
+                    az,
+                    view_center,
+                    edge_fov_deg=edge_fov_deg,
+                )
+                meridian_points.append((nx, ny))
+
+            _draw_direction_polyline(
+                painter,
+                meridian_points,
+                geometry,
+                width=GRID_LINE_WIDTH,
+                alpha=GRID_LINE_ALPHA,
             )
     finally:
         painter.restore()
-
-    for az in GRID_FINE_AZIMUTHS:
-        meridian_points = []
-        for alt in meridian_alt_samples:
-            if not is_in_fov(float(alt), az, view_center, fov_deg=content_fov_deg):
-                continue
-            nx, ny = _project_altaz_to_normalized_xy(
-                float(alt),
-                az,
-                view_center,
-                edge_fov_deg=edge_fov_deg,
-            )
-            meridian_points.append((nx, ny))
-
-        _draw_direction_polyline(
-            painter,
-            meridian_points,
-            geometry,
-            outer_width=GRID_MAJOR_OUTER_WIDTH * GRID_FINE_WIDTH_SCALE,
-            mid_width=GRID_MAJOR_MID_WIDTH * GRID_FINE_WIDTH_SCALE,
-            fg_width=GRID_MAJOR_FG_WIDTH * GRID_FINE_WIDTH_SCALE,
-            outer_alpha=GRID_MAJOR_OUTER_ALPHA,
-            mid_alpha=GRID_MAJOR_MID_ALPHA,
-            fg_alpha=GRID_MAJOR_FG_ALPHA,
-        )
-    painter.restore()

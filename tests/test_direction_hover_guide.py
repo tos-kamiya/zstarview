@@ -81,7 +81,7 @@ def test_draw_direction_hover_guide_draws_for_hovered_marker() -> None:
     assert changed
 
 
-def test_draw_direction_hover_guide_draws_all_direction_guides(monkeypatch) -> None:
+def test_draw_direction_hover_guide_draws_only_fine_direction_guides(monkeypatch) -> None:
     geometry = ScreenGeometry(center=(200, 200), radius=180)
     view_center = (0.0, 0.0)
     mouse_pos = QPoint(200, 200)
@@ -121,10 +121,10 @@ def test_draw_direction_hover_guide_draws_all_direction_guides(monkeypatch) -> N
     finally:
         painter.end()
 
-    assert call_count == 69
+    assert call_count == 53
 
 
-def test_draw_direction_grid_overlay_draws_all_direction_guides(monkeypatch) -> None:
+def test_draw_direction_grid_overlay_draws_only_fine_direction_guides(monkeypatch) -> None:
     geometry = ScreenGeometry(center=(200, 200), radius=180)
     view_center = (0.0, 0.0)
 
@@ -153,4 +153,4 @@ def test_draw_direction_grid_overlay_draws_all_direction_guides(monkeypatch) -> 
     finally:
         painter.end()
 
-    assert call_count == 69
+    assert call_count == 53
