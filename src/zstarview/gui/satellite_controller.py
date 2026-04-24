@@ -215,7 +215,14 @@ class SatelliteController(QObject):
                     element_epoch_utc = fetched.element_epoch_utc
             if not records_by_group:
                 if failed_groups:
-                    raise RuntimeError("Satellites: unavailable")
+                    banner = failure_messages[0] if failure_messages else "unavailable"
+                    if not banner.startswith("Satellites:"):
+                        banner = f"Satellites: {banner}"
+                    with self._lock:
+                        should_emit = not self._stopping and request_id == self._latest_request_id
+                    if should_emit:
+                        self.satellite_failed.emit({"banner": banner})
+                    return
                 raise RuntimeError("Satellites: no enabled groups")
             overlay_points = self._projector(
                 records_by_group,
