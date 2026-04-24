@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-04-24
+最終更新: 2026-04-25
 
 ## 1. この文書の位置づけ
 
@@ -361,6 +361,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `RenderHudState`
 - `render_scene_into_painter()` と下位の `draw_*` 関数群は、`geometry`、`viewport_rect`、`scene`、`style`、`hud` を明示的に受ける。
 - `RenderStyle` は `show_guidelines` を持ち、guide レイヤーと viewport interaction 中の reference line 描画を同じ boolean で制御する。
+- `RenderStyle` は `outline_bright_bodies` も持ち、`vmag < 2.0` の恒星と太陽・月・惑星の outline-only 表示を共有パイプラインへ伝える。
 - `RenderPipelineState` のような中間ラッパ型は使わず、shared pipeline 側では直接引数で依存関係を表す。
 - `RenderSceneData` の cloud image / cloud missing mask は `QImage` ではなく NumPy 配列を持ち、cloud path の変換回数を抑える。
 - shared pipeline は星レイヤーの縮小レンダリング面サイズを一度計算し、cloud stripe density の参照値としても再利用してよい。
@@ -398,6 +399,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - static observation overlay
   - jump highlight
   - status line
+- `outline_bright_bodies` が有効な場合、`stars` は `vmag < 2.0` の恒星をダイヤの輪郭のみで描き、`planets` は太陽・月・惑星の塗りつぶしを省いて輪郭のみを描く。
+- このモードでは月の拡大表示は行わず、`enlarge_moon` を描画入力としては参照しなくてよい。
+- 月の phase 塗りや惑星円盤の内部塗りは `outline_bright_bodies` で抑止してよいが、通常の色選択や hover 判定は維持してよい。
 - `paintEvent()` はベースフレームをキャッシュし、その上に hover/HUD を都度重ねる構成になっている。
 - ベースフレーム cache key から `mouse_pos`、hover 対象名、jump highlight 名、status message を外し、キャッシュ効率を上げている。
 - status line は短い記号接頭辞を使い、レイヤーが CLI/GUI の設定で無効化されている場合は `---` を付けて不在であることを明示してよい。
@@ -447,6 +451,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 天球ディスク幅が `expected-render-width` 以下なら等倍描画し、それを超える場合は `expected-render-width * sqrt(disc_width / expected-render-width)` に従って内部描画面を縮小する
   - 縮小時は低解像度 `QImage` に恒星を描いてからウィンドウ全体へ拡大転写し、大型ウィンドウでの負荷を抑える
   - 惑星と月のマーカーも同じ内部アップスケール係数を `marker_scale` として受け取り、円盤や月面の見た目半径を恒星レイヤと揃える
+  - `outline_bright_bodies` は、`vmag < 2.0` の恒星を塗りつぶしなしのダイヤ輪郭へ切り替え、太陽・月・惑星を輪郭のみのマーカーへ切り替える表示フラグとして扱う
+  - `outline_bright_bodies` が有効な場合は `enlarge_moon` を無視してよい
   - アステリズムと都市アウトラインの線幅はこの係数で膨らませず、内部描画面上では固定幅として扱う
   - ベースフレームの `QImage` キャッシュを持ち、geometry、描画入力、interaction mode などが不変なら前回ベースフレームをそのまま再利用する
   - このフレームキャッシュは描画時の実行時キャッシュであり、永続キャッシュの設計は `10.x` に分離する

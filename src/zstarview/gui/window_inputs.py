@@ -52,6 +52,7 @@ class SkyWindowUserOptions:
     urban_outline_opacity: float = 0.2
     ground_tint_opacity: float = 0.1
     enlarge_moon: bool = False
+    outline_bright_bodies: bool = False
     star_base_radius: float = 4.0
     vmag_limit: float = 7.0
     visual_preset: str = "night"
@@ -161,6 +162,7 @@ def prepare_window_user_options(
     urban_outline_opacity: float,
     ground_tint_opacity: float,
     enlarge_moon: bool,
+    outline_bright_bodies: bool,
     star_base_radius: float,
     vmag_limit: float,
     visual_preset: str,
@@ -190,6 +192,7 @@ def prepare_window_user_options(
         urban_outline_opacity=_apply_visibility_boost(urban_outline_opacity, visibility_boost, 1.0),
         ground_tint_opacity=_apply_visibility_boost(ground_tint_opacity, visibility_boost, 0.25),
         enlarge_moon=bool(enlarge_moon),
+        outline_bright_bodies=bool(outline_bright_bodies),
         star_base_radius=max(2.0, star_base_radius),
         vmag_limit=vmag_limit,
         visual_preset=visual_preset,

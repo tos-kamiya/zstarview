@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QPainter, QRadialGradient
+from PySide6.QtGui import QColor, QFont, QPainter, QPen, QRadialGradient
 
 from ..astro import altaz_to_normalized_xy, calculate_moon_render_data, is_in_fov
 from ..paths import TEXT_STYLES_BY_PRESET
@@ -87,6 +87,23 @@ def _moon_eclipse_overlay_color(body: PlanetBody) -> Optional[QColor]:
     return None
 
 
+def draw_moon_outline(
+    painter: QPainter,
+    center: QPointF,
+    radius_px: float,
+    color: QColor,
+) -> None:
+    outline_radius = max(1.5, float(radius_px))
+    pen_width = max(1.25, min(3.0, outline_radius * 0.08))
+    pen = QPen(color, pen_width)
+    pen.setCosmetic(True)
+    painter.save()
+    painter.setBrush(Qt.BrushStyle.NoBrush)
+    painter.setPen(pen)
+    painter.drawEllipse(center, outline_radius, outline_radius)
+    painter.restore()
+
+
 def _draw_moon_planet(
     painter: QPainter,
     pos: QPointF,
@@ -96,10 +113,11 @@ def _draw_moon_planet(
     sun_altaz: Tuple[float, float],
     moon_altaz: Tuple[float, float],
     enlarge_moon: bool,
+    outline_bright_bodies: bool,
     cross_color: QColor,
     marker_scale: float,
 ) -> None:
-    moon_zoom = 5 if enlarge_moon else 1
+    moon_zoom = 1 if outline_bright_bodies else (5 if enlarge_moon else 1)
     marker_scale = max(1.0, float(marker_scale))
     sun_dir_in_moon_frame, screen_rotation_deg = calculate_moon_render_data(
         sun_altaz,
@@ -109,16 +127,23 @@ def _draw_moon_planet(
     )
     base_moon_radius_px = max((0.25 / float(viewer_data.edge_fov_deg)) * geometry.radius, 2.5)
     moon_radius_px = base_moon_radius_px * moon_zoom * marker_scale
-    draw_moon(
-        painter,
-        pos,
-        moon_radius_px,
-        sun_dir_in_moon_frame=sun_dir_in_moon_frame,
-        screen_rotation_deg=screen_rotation_deg,
-        opacity=1.0 if not enlarge_moon else 0.7,
-        base_color=_moon_eclipse_overlay_color(body),
-    )
-    draw_gauge_cross(painter, cross_color, pos, scale=marker_scale, pen_width=marker_scale)
+    if outline_bright_bodies:
+        outline_color = _moon_eclipse_overlay_color(body)
+        if outline_color is None:
+            outline_color = QColor(220, 220, 220, 220)
+        draw_moon_outline(painter, pos, moon_radius_px, outline_color)
+    else:
+        draw_moon(
+            painter,
+            pos,
+            moon_radius_px,
+            sun_dir_in_moon_frame=sun_dir_in_moon_frame,
+            screen_rotation_deg=screen_rotation_deg,
+            opacity=1.0 if not enlarge_moon else 0.7,
+            base_color=_moon_eclipse_overlay_color(body),
+        )
+    if not outline_bright_bodies:
+        draw_gauge_cross(painter, cross_color, pos, scale=marker_scale, pen_width=marker_scale)
 
 
 def _marker_intersects_viewport(painter: QPainter, pos: QPointF, radius_px: float) -> bool:
@@ -147,6 +172,25 @@ def draw_planet_disc(
     painter.save()
     painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(fill)
+    painter.drawEllipse(pos, r, r)
+    painter.restore()
+
+
+def draw_planet_outline(
+    painter: QPainter,
+    pos: QPointF,
+    color: QColor,
+    *,
+    radius_px: float,
+) -> None:
+    r = max(1.5, float(radius_px))
+    pen_width = max(1.25, min(3.0, r * 0.08))
+    pen = QPen(QColor(color))
+    pen.setWidthF(pen_width)
+    pen.setCosmetic(True)
+    painter.save()
+    painter.setBrush(Qt.BrushStyle.NoBrush)
+    painter.setPen(pen)
     painter.drawEllipse(pos, r, r)
     painter.restore()
 
@@ -189,6 +233,7 @@ def draw_solar_system_bodies(
     celestial_data: CelestialData,
     viewer_data: ViewerData,
     enlarge_moon: bool,
+    outline_bright_bodies: bool = False,
     *,
     text_font: Optional[QFont] = None,
     label_candidates: Optional[List[Dict[str, Any]]] = None,
@@ -230,7 +275,7 @@ def draw_solar_system_bodies(
         marker_visible = True
         if body.name == "moon":
             base_moon_radius_px = max((0.25 / float(edge_fov_deg)) * geometry.radius, 2.5)
-            moon_zoom = 5 if enlarge_moon else 1
+            moon_zoom = 1 if outline_bright_bodies else (5 if enlarge_moon else 1)
             marker_visible = _marker_intersects_viewport(
                 painter,
                 pos,
@@ -251,7 +296,21 @@ def draw_solar_system_bodies(
 
         if draw_markers:
             if body.name == "sun":
-                draw_gauge_cross(painter, text_color, pos, scale=marker_scale, pen_width=marker_scale)
+                if outline_bright_bodies:
+                    draw_planet_outline(
+                        painter,
+                        pos,
+                        text_color,
+                        radius_px=max(1.5, 1.75 * marker_scale),
+                    )
+                else:
+                    draw_gauge_cross(
+                        painter,
+                        text_color,
+                        pos,
+                        scale=marker_scale,
+                        pen_width=marker_scale,
+                    )
             elif body.name == "moon" and moon_body and sun_altaz and moon_altaz:
                 _draw_moon_planet(
                     painter,
@@ -262,6 +321,7 @@ def draw_solar_system_bodies(
                     sun_altaz,
                     moon_altaz,
                     enlarge_moon,
+                    outline_bright_bodies,
                     text_color,
                     marker_scale,
                 )
@@ -269,16 +329,25 @@ def draw_solar_system_bodies(
                 radius_px, alpha = planet_disc_style_from_vmag(body.vmag)
                 radius_px = radius_px * marker_scale
                 marker_color = planet_marker_color(body.name)
-                draw_planet_bloom(painter, pos, marker_color, core_radius_px=radius_px, vmag=body.vmag)
-                marker_color.setAlpha(alpha)
-                draw_planet_disc(painter, pos, marker_color, radius_px=radius_px, alpha=alpha)
-                draw_gauge_cross(
-                    painter,
-                    text_color,
-                    pos,
-                    scale=0.55 * marker_scale,
-                    pen_width=marker_scale,
-                )
+                if outline_bright_bodies:
+                    draw_planet_outline(painter, pos, marker_color, radius_px=radius_px)
+                else:
+                    draw_planet_bloom(
+                        painter,
+                        pos,
+                        marker_color,
+                        core_radius_px=radius_px,
+                        vmag=body.vmag,
+                    )
+                    marker_color.setAlpha(alpha)
+                    draw_planet_disc(painter, pos, marker_color, radius_px=radius_px, alpha=alpha)
+                    draw_gauge_cross(
+                        painter,
+                        text_color,
+                        pos,
+                        scale=0.55 * marker_scale,
+                        pen_width=marker_scale,
+                    )
 
         if draw_labels and body.name != "sun" and marker_visible:
             label_text = body_label_text(body.name)
@@ -316,6 +385,7 @@ def draw_hovered_moon_overlay(
     highlighted_object: Optional[Tuple[CelestialObject, QPointF]],
     *,
     marker_scale: float = 1.0,
+    outline_bright_bodies: bool = False,
 ) -> None:
     if highlighted_object is None:
         return
@@ -335,7 +405,8 @@ def draw_hovered_moon_overlay(
         viewer_data,
         sun_altaz,
         moon_altaz,
-        True,
+        not outline_bright_bodies,
+        outline_bright_bodies,
         text_color,
         marker_scale,
     )

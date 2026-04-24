@@ -390,6 +390,7 @@ class SkyWindowRenderMixin:
             show_asterisms=bool(self.show_asterisms),
             show_guidelines=bool(self.show_guidelines),
             enlarge_moon=bool(self.enlarge_moon),
+            outline_bright_bodies=bool(getattr(self, "outline_bright_bodies", False)),
             star_base_radius=float(self.star_base_radius),
             star_visibility_boost=float(self.star_visibility_boost),
             vmag_limit=float(self.vmag_limit),

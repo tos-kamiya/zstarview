@@ -181,6 +181,7 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
         aircraft_opacity=0.4,
         ground_tint_opacity=0.2,
         enlarge_moon=False,
+        outline_bright_bodies=False,
         star_base_radius=4.0,
         vmag_limit=6.0,
         visual_preset="night",

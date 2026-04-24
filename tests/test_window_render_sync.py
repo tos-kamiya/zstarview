@@ -234,6 +234,7 @@ def _make_style(**overrides) -> pipeline_module.RenderStyle:
         "show_asterisms": False,
         "show_guidelines": True,
         "enlarge_moon": False,
+        "outline_bright_bodies": False,
         "star_base_radius": 4.0,
         "star_visibility_boost": 1.0,
         "vmag_limit": 6.0,
@@ -2342,6 +2343,7 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         show_asterisms=False,
         show_guidelines=True,
         enlarge_moon=False,
+        outline_bright_bodies=False,
         star_base_radius=4.0,
         star_visibility_boost=1.0,
         vmag_limit=6.0,
@@ -3170,3 +3172,23 @@ def test_draw_terrain_horizon_line_uses_edge_fov_for_projection() -> None:
     points_120 = _render(120.0)
 
     assert points_120[0][1] < points_90[0][1]
+
+
+def test_draw_star_layer_forwards_outline_flag(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_draw_stars(*_args, **kwargs) -> None:
+        captured.update(kwargs)
+
+    monkeypatch.setattr(pipeline_module.render_stars, "draw_stars", fake_draw_stars)
+
+    pipeline_module._draw_star_layer(
+        painter=object(),
+        geometry=SimpleNamespace(center=(120, 120), radius=80),
+        viewport_rect=QRect(0, 0, 240, 240),
+        scene=_make_scene(),
+        style=_make_style(outline_bright_bodies=True),
+        star_render_surface_size=(240, 240),
+    )
+
+    assert captured["outline_bright_bodies"] is True
