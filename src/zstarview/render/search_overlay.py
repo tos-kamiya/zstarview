@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, Dict, List, Optional
+
 from PySide6.QtCore import QPointF, QRectF
 from PySide6.QtGui import QPainter
 
@@ -38,6 +40,8 @@ def draw_search_target_overlay(
     draw_marker: bool = True,
     draw_label: bool = True,
     marker_scale: float = 1.0,
+    label_candidates: Optional[List[Dict[str, Any]]] = None,
+    label_reservations: Optional[List[QRectF]] = None,
 ) -> None:
     alt = getattr(target, "alt_deg", None)
     az = getattr(target, "az_deg", None)
@@ -72,13 +76,27 @@ def draw_search_target_overlay(
     if not label:
         return
     label_pos = QPointF(pos.x() + 12.0, pos.y() - 10.0)
+    style = render_text.resolve_label_text_style(visual_preset, text_font)
+    if label_candidates is not None:
+        label_candidates.append(
+            {
+                "text": label,
+                "pos": label_pos,
+                "style": style,
+                "priority": 15,
+            }
+        )
+        return
     label_pos = render_text._clamp_baseline_pos_to_viewport(
         label,
         text_font,
         label_pos,
         QRectF(painter.viewport()),
     )
-    style = render_text.resolve_label_text_style(visual_preset, text_font)
+    if label_reservations is not None:
+        label_reservations.append(
+            render_text._text_bounds_at_baseline(label, text_font, label_pos)
+        )
     render_text.draw_outlined_text(
         painter,
         label,

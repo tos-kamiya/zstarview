@@ -16,6 +16,7 @@ from . import guides as render_guides
 from . import overlay_info as render_overlay_info
 from . import aircraft as render_aircraft
 from . import satellites as render_satellites
+from . import search_overlay as render_search_overlay
 from . import solar_system as render_solar_system
 from . import stars as render_stars
 from . import terrain as render_terrain
@@ -125,6 +126,8 @@ def render_base_scene_into_painter(
     hud: RenderHudState,
     compositor: Any,
     draw_fast_overlays: bool = True,
+    label_candidates: list[dict[str, Any]] | None = None,
+    draw_labels: bool = True,
 ) -> None:
     win_w, win_h = _window_size(viewport_rect)
     star_surface_size = compute_star_render_surface_size(
@@ -174,7 +177,7 @@ def render_base_scene_into_painter(
         return
 
     label_reservations: list[QRectF] = []
-    label_candidates: list[dict[str, Any]] = []
+    local_label_candidates = label_candidates if label_candidates is not None else []
     _draw_terrain_layers(
         painter,
         geometry=geometry,
@@ -182,7 +185,7 @@ def render_base_scene_into_painter(
         style=style,
         highlighted_object=None,
         label_reservations=label_reservations,
-        label_candidates=label_candidates,
+        label_candidates=local_label_candidates,
     )
     _draw_star_layer(
         painter,
@@ -198,7 +201,7 @@ def render_base_scene_into_painter(
         scene=scene,
         style=style,
         enlarge_moon=bool(style.enlarge_moon),
-        label_candidates=label_candidates,
+        label_candidates=local_label_candidates,
     )
     if draw_fast_overlays:
         _draw_satellite_layer(
@@ -207,20 +210,21 @@ def render_base_scene_into_painter(
             scene=scene,
             style=style,
             highlighted_satellite=None,
-            label_candidates=label_candidates,
+            label_candidates=local_label_candidates,
         )
         _draw_aircraft_layer(
             painter,
             geometry=geometry,
             scene=scene,
             style=style,
-            label_candidates=label_candidates,
+            label_candidates=local_label_candidates,
         )
-    _draw_label_layer(
-        painter,
-        style=style,
-        label_candidates=label_candidates,
-    )
+    if draw_labels and local_label_candidates:
+        _draw_label_layer(
+            painter,
+            style=style,
+            label_candidates=local_label_candidates,
+        )
 
 
 def render_fast_overlay_layers_into_painter(
@@ -230,32 +234,34 @@ def render_fast_overlay_layers_into_painter(
     scene: RenderSceneData,
     style: RenderStyle,
     highlighted_satellite: Any | None = None,
+    label_candidates: list[dict[str, Any]] | None = None,
+    draw_labels: bool = True,
 ) -> None:
     """Draw dynamic satellite/aircraft overlays and their labels."""
     if style.satellite_opacity <= 0.0 and style.aircraft_opacity <= 0.0:
         return
 
-    label_candidates: list[dict[str, Any]] = []
+    local_label_candidates = label_candidates if label_candidates is not None else []
     _draw_satellite_layer(
         painter,
         geometry=geometry,
         scene=scene,
         style=style,
         highlighted_satellite=highlighted_satellite,
-        label_candidates=label_candidates,
+        label_candidates=local_label_candidates,
     )
     _draw_aircraft_layer(
         painter,
         geometry=geometry,
         scene=scene,
         style=style,
-        label_candidates=label_candidates,
+        label_candidates=local_label_candidates,
     )
-    if label_candidates:
+    if draw_labels and local_label_candidates:
         _draw_label_layer(
             painter,
             style=style,
-            label_candidates=label_candidates,
+            label_candidates=local_label_candidates,
         )
 
 
@@ -270,6 +276,8 @@ def render_hud_overlay_into_painter(
     highlighted_object: Any | None,
     highlighted_dso: Any | None,
     highlighted_satellite: Any | None = None,
+    label_candidates: list[dict[str, Any]] | None = None,
+    search_overlay_target: Any | None = None,
 ) -> None:
     if hud.viewport_interaction_mode:
         _draw_status_line(
@@ -289,7 +297,32 @@ def render_hud_overlay_into_painter(
         highlighted_object=highlighted_object,
         highlighted_dso=highlighted_dso,
         highlighted_satellite=highlighted_satellite,
+        label_candidates=label_candidates,
     )
+    if search_overlay_target is not None:
+        render_search_overlay.draw_search_target_overlay(
+            painter,
+            geometry,
+            search_overlay_target,
+            view_center=scene.viewer.view_center,
+            edge_fov_deg=float(scene.viewer.edge_fov_deg),
+            content_fov_deg=_content_fov_deg(scene),
+            visual_preset=style.visual_preset,
+            text_font=style.text_font,
+            draw_marker=True,
+            draw_label=False,
+            marker_scale=compute_star_render_upscale_factor(
+                geometry.radius * 2,
+                style.star_render_expected_width,
+            ),
+            label_candidates=label_candidates,
+        )
+    if label_candidates:
+        _draw_label_layer(
+            painter,
+            style=style,
+            label_candidates=label_candidates,
+        )
     _draw_overlay_layer(
         painter,
         geometry=geometry,
@@ -302,7 +335,6 @@ def render_hud_overlay_into_painter(
         highlighted_dso=None,
         enlarge_moon=bool(style.enlarge_moon),
         label_reservations=[],
-        label_candidates=[],
     )
     _draw_status_line(
         painter,
@@ -774,6 +806,7 @@ def _draw_hover_overlay_layer(
     highlighted_object: Any | None,
     highlighted_dso: Any | None,
     highlighted_satellite: Any | None = None,
+    label_candidates: list[dict[str, Any]] | None = None,
 ) -> None:
     line_width_scale = compute_star_render_upscale_factor(
         geometry.radius * 2,
@@ -828,6 +861,7 @@ def _draw_hover_overlay_layer(
         highlighted_object,
         style.text_font,
         highlighted_satellite,
+        label_candidates=label_candidates,
         preset=style.visual_preset,
         draw_static_info=False,
         draw_hover_info=True,

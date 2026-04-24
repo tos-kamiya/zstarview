@@ -69,6 +69,7 @@ from ..paths import (
 from ..render import background as render_background
 from ..render import geometry as render_geometry
 from ..render import guides as render_guides
+from ..render import text as render_text
 from ..render.pipeline import (
     RenderHudState,
     RenderSceneData,
@@ -779,6 +780,7 @@ def _render_image(
         geometry = render_geometry.get_screen_geometry(
             width, height, scene.viewer.view_alt_deg
         )
+        label_candidates: list[dict[str, object]] = []
         render_base_scene_into_painter(
             painter,
             geometry=geometry,
@@ -793,6 +795,8 @@ def _render_image(
                 status_message=None,
             ),
             compositor=compositor,
+            label_candidates=label_candidates,
+            draw_labels=False,
         )
         if draw_direction_grid:
             render_guides.draw_direction_grid_overlay(
@@ -813,12 +817,14 @@ def _render_image(
                 visual_preset=style.visual_preset,
                 text_font=style.text_font,
                 draw_marker=True,
-                draw_label=True,
                 marker_scale=compute_star_render_upscale_factor(
                     geometry.radius * 2,
                     style.star_render_expected_width,
                 ),
+                label_candidates=label_candidates,
             )
+        if label_candidates:
+            render_text._draw_label_candidates(painter, label_candidates, style.text_font)
     finally:
         painter.end()
     return image
