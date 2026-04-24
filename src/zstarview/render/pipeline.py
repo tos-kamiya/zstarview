@@ -86,7 +86,7 @@ class RenderStyle:
     show_asterisms: bool
     show_guidelines: bool
     enlarge_moon: bool
-    outline_bright_bodies: bool
+    bright_bodies_mode: str
     star_base_radius: float
     star_visibility_boost: float
     vmag_limit: float
@@ -202,7 +202,7 @@ def render_base_scene_into_painter(
         scene=scene,
         style=style,
         enlarge_moon=bool(style.enlarge_moon),
-        outline_bright_bodies=bool(style.outline_bright_bodies),
+        outline_bright_bodies=style.bright_bodies_mode == "outline",
         label_candidates=local_label_candidates,
     )
     if draw_fast_overlays:
@@ -641,9 +641,10 @@ def _draw_star_layer(
         geometry.radius * 2,
         style.star_render_expected_width,
     )
+    outline_bright_bodies = style.bright_bodies_mode == "outline"
     low_w, low_h = (
         (win_w, win_h)
-        if style.outline_bright_bodies
+        if outline_bright_bodies
         else compute_star_render_surface_size(
             win_w,
             win_h,
@@ -662,7 +663,7 @@ def _draw_star_layer(
             scene.viewer,
             style.star_base_radius,
             visibility_boost=style.star_visibility_boost,
-            outline_bright_bodies=bool(style.outline_bright_bodies),
+            outline_bright_bodies=outline_bright_bodies,
             outline_render_scale=outline_render_scale,
             draw_vmag_limit=draw_vmag_limit
             if draw_vmag_limit is not None
@@ -693,7 +694,7 @@ def _draw_star_layer(
         scene.viewer,
         style.star_base_radius,
         visibility_boost=style.star_visibility_boost,
-        outline_bright_bodies=bool(style.outline_bright_bodies),
+        outline_bright_bodies=outline_bright_bodies,
         outline_render_scale=outline_render_scale,
         draw_vmag_limit=draw_vmag_limit
         if draw_vmag_limit is not None
@@ -849,7 +850,7 @@ def _draw_hover_overlay_layer(
         scene.viewer,
         highlighted_object,
         marker_scale=line_width_scale,
-        outline_bright_bodies=bool(style.outline_bright_bodies),
+        outline_bright_bodies=style.bright_bodies_mode == "outline",
     )
     _draw_dso_hover_layer(
         painter,

@@ -408,9 +408,10 @@ def add_observing_arguments(parser: argparse._ActionsContainer) -> None:
         help="Show the moon in 5x size.",
     )
     parser.add_argument(
-        "--outline-bright-bodies",
-        action="store_true",
-        help="Draw bright stars, planets, and the moon as outline-only markers.",
+        "--bright-bodies",
+        choices=("outline", "fill"),
+        default="outline",
+        help="Bright bodies rendering mode: outline or fill (default: outline).",
     )
     parser.add_argument(
         "-s",
@@ -836,9 +837,10 @@ def add_render_arguments(
         help="Show the moon in 5x size.",
     )
     parser.add_argument(
-        "--outline-bright-bodies",
-        action="store_true",
-        help="Draw bright stars, planets, and the moon as outline-only markers.",
+        "--bright-bodies",
+        choices=("outline", "fill"),
+        default="outline",
+        help="Bright bodies rendering mode: outline or fill (default: outline).",
     )
     parser.add_argument(
         "-s",
@@ -1174,7 +1176,7 @@ def _validate_dataset_query_compatibility(
             or has_non_default("vmag_limit")
             or has_non_default("vmag_brightness_multiplier")
             or has_non_default("enlarge_moon")
-            or has_non_default("outline_bright_bodies")
+            or has_non_default("bright_bodies")
             or has_non_default("star_base_radius")
             or has_non_default("expected_render_width")
             or has_non_default("window_geometry")

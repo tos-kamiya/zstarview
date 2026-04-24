@@ -422,7 +422,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._urban_outline_gui_allowed = bool(user_options.urban_outline_gui_allowed)
         self.show_urban_outline_layer: bool = self.urban_outline_opacity > 0.0
         self.enlarge_moon = user_options.enlarge_moon
-        self.outline_bright_bodies = user_options.outline_bright_bodies
+        self.bright_bodies_mode = user_options.bright_bodies_mode
         self.star_base_radius = user_options.star_base_radius
         self.vmag_limit = user_options.vmag_limit
         self.sky_update_interval = runtime_options.sky_update_interval

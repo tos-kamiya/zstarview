@@ -266,7 +266,7 @@ def main() -> None:
         urban_outline_opacity=args.urban_outline_opacity,
         ground_tint_opacity=args.ground_tint_opacity,
         enlarge_moon=args.enlarge_moon,
-        outline_bright_bodies=args.outline_bright_bodies,
+        bright_bodies_mode=args.bright_bodies,
         star_base_radius=args.star_base_radius,
         vmag_limit=args.vmag_limit,
         visual_preset=visual_preset,
