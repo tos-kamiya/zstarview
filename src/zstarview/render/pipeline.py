@@ -219,7 +219,7 @@ def render_base_scene_into_painter(
             style=style,
             label_candidates=local_label_candidates,
         )
-    if draw_labels and local_label_candidates:
+    if draw_labels:
         _draw_label_layer(
             painter,
             style=style,
@@ -257,7 +257,7 @@ def render_fast_overlay_layers_into_painter(
         style=style,
         label_candidates=local_label_candidates,
     )
-    if draw_labels and local_label_candidates:
+    if draw_labels:
         _draw_label_layer(
             painter,
             style=style,
@@ -803,7 +803,7 @@ def _draw_hover_overlay_layer(
     geometry: ScreenGeometry,
     scene: RenderSceneData,
     style: RenderStyle,
-    mouse_pos: QPoint | None,
+    mouse_pos: QPoint | None = None,
     highlighted_object: Any | None,
     highlighted_dso: Any | None,
     highlighted_satellite: Any | None = None,
