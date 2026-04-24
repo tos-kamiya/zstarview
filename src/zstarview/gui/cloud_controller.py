@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Callable, Optional
 
 import numpy as np
 from PySide6.QtCore import QObject, Signal
@@ -54,13 +55,15 @@ class CloudController(QObject):
         self._stopping = False
         self._cleanup_counter = 0
         self._cleanup_interval = 10
+        self._active_workers: set[threading.Thread] = set()
         self._lock = threading.Lock()
 
-    def shutdown(self) -> None:
+    def shutdown(self, *, wait_timeout_s: float | None = None) -> None:
         with self._lock:
             self._stopping = True
             self._pending_source_request = None
             self._pending_render_request = None
+        self._wait_for_workers(wait_timeout_s)
 
     def invalidate_pending_render_results(self) -> None:
         """Mark in-flight render results as stale and drop queued render work."""
@@ -79,6 +82,7 @@ class CloudController(QObject):
                 or self._render_is_running
                 or self._pending_source_request is not None
                 or self._pending_render_request is not None
+                or bool(self._active_workers)
             )
 
     def update(
@@ -136,18 +140,15 @@ class CloudController(QObject):
                     run_cleanup = self._tick_cleanup()
 
         if run_cleanup:
-            cleanup_thread = threading.Thread(target=self._cleanup_cache, daemon=True)
-            cleanup_thread.start()
+            self._spawn_worker(target=self._cleanup_cache, kwargs={}, label="cleanup")
 
         if start_source_req is not None:
             sat = self._predicted_satellite(start_source_req["lat"], start_source_req["lon"])
             self.cloud_started.emit({"satellite": sat, "banner": "Clouds: downloading..."})
-            source_worker = threading.Thread(target=self._run_source_update, kwargs=start_source_req, daemon=True)
-            source_worker.start()
+            self._spawn_worker(target=self._run_source_update, kwargs=start_source_req, label="source")
 
         if start_render_req is not None:
-            render_worker = threading.Thread(target=self._run_render_update, kwargs=start_render_req, daemon=True)
-            render_worker.start()
+            self._spawn_worker(target=self._run_render_update, kwargs=start_render_req, label="render")
 
     def _tick_cleanup(self) -> bool:
         run = (self._cleanup_counter % self._cleanup_interval) == 0
@@ -160,6 +161,56 @@ class CloudController(QObject):
 
     def _predicted_satellite(self, lat: float, lon: float) -> str:
         return pick_satellite(lat, lon, ("AUTO",))
+
+    def _spawn_worker(
+        self,
+        *,
+        target: Callable[..., None],
+        kwargs: dict[str, object],
+        label: str,
+    ) -> None:
+        def runner() -> None:
+            try:
+                target(**kwargs)
+            finally:
+                self._unregister_worker(threading.current_thread())
+
+        worker = threading.Thread(target=runner, name=f"CloudController-{label}", daemon=True)
+        with self._lock:
+            if self._stopping:
+                return
+            self._active_workers.add(worker)
+        try:
+            worker.start()
+        except Exception:
+            with self._lock:
+                self._active_workers.discard(worker)
+            raise
+
+    def _unregister_worker(self, worker: threading.Thread) -> None:
+        with self._lock:
+            self._active_workers.discard(worker)
+
+    def _wait_for_workers(self, wait_timeout_s: float | None) -> None:
+        deadline = None if wait_timeout_s is None else time.monotonic() + max(0.0, float(wait_timeout_s))
+        while True:
+            with self._lock:
+                workers = tuple(self._active_workers)
+            if not workers:
+                return
+            if deadline is None:
+                for worker in workers:
+                    worker.join()
+                continue
+            remaining = deadline - time.monotonic()
+            if remaining <= 0.0:
+                logger.warning(
+                    "Timed out waiting for %d cloud worker thread(s) to finish during shutdown",
+                    len(workers),
+                )
+                return
+            for worker in workers:
+                worker.join(timeout=remaining)
 
     def _cleanup_cache(self) -> None:
         try:
@@ -208,8 +259,7 @@ class CloudController(QObject):
                                 self._pending_render_request = dict(rerender_req)
                                 rerender_req = None
                 if rerender_req is not None:
-                    worker = threading.Thread(target=self._run_render_update, kwargs=rerender_req, daemon=True)
-                    worker.start()
+                    self._spawn_worker(target=self._run_render_update, kwargs=rerender_req, label="render")
             except VisibilityError as e:
                 logger.error("Invalid params for cloud-disc image generation: %s", e)
                 self.cloud_failed.emit({"banner": "Clouds: unsupported region"})
@@ -239,11 +289,10 @@ class CloudController(QObject):
             if next_req is not None:
                 sat = self._predicted_satellite(next_req["lat"], next_req["lon"])
                 self.cloud_started.emit({"satellite": sat, "banner": "Clouds: downloading..."})
-                worker = threading.Thread(target=self._run_source_update, kwargs=next_req, daemon=True)
                 with self._lock:
                     if not self._stopping:
                         self._source_is_running = True
-                worker.start()
+                self._spawn_worker(target=self._run_source_update, kwargs=next_req, label="source")
 
     def _run_render_update(
         self,
@@ -317,5 +366,4 @@ class CloudController(QObject):
                     self._pending_render_request = None
                     self._render_is_running = True
             if next_req is not None:
-                worker = threading.Thread(target=self._run_render_update, kwargs=next_req, daemon=True)
-                worker.start()
+                self._spawn_worker(target=self._run_render_update, kwargs=next_req, label="render")

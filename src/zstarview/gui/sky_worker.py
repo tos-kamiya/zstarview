@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Tuple
+from typing import Callable, Dict, Tuple
 
 import astropy
 import astropy.time
@@ -174,11 +175,13 @@ class SkyDataWorker(QObject):
         self._lock = threading.Lock()
         self._running = False
         self._stopping = False
+        self._active_workers: set[threading.Thread] = set()
 
-    def shutdown(self) -> None:
+    def shutdown(self, *, wait_timeout_s: float | None = None) -> None:
         """Stop accepting/emitting updates during application shutdown."""
         with self._lock:
             self._stopping = True
+        self._wait_for_workers(wait_timeout_s)
 
     def update(
         self,
@@ -208,7 +211,7 @@ class SkyDataWorker(QObject):
                 return False
             self._running = True
 
-        t = threading.Thread(
+        self._spawn_worker(
             target=self._run_update,
             kwargs={
                 "lat": lat,
@@ -230,10 +233,59 @@ class SkyDataWorker(QObject):
                 "render_height_px": render_height_px,
                 "render_generation": render_generation,
             },
-            daemon=True,
+            label="sky",
         )
-        t.start()
         return True
+
+    def _spawn_worker(
+        self,
+        *,
+        target: Callable[..., None],
+        kwargs: dict[str, object],
+        label: str,
+    ) -> None:
+        def runner() -> None:
+            try:
+                target(**kwargs)
+            finally:
+                self._unregister_worker(threading.current_thread())
+
+        worker = threading.Thread(target=runner, name=f"SkyDataWorker-{label}", daemon=True)
+        with self._lock:
+            if self._stopping:
+                return
+            self._active_workers.add(worker)
+        try:
+            worker.start()
+        except Exception:
+            with self._lock:
+                self._active_workers.discard(worker)
+            raise
+
+    def _unregister_worker(self, worker: threading.Thread) -> None:
+        with self._lock:
+            self._active_workers.discard(worker)
+
+    def _wait_for_workers(self, wait_timeout_s: float | None) -> None:
+        deadline = None if wait_timeout_s is None else time.monotonic() + max(0.0, float(wait_timeout_s))
+        while True:
+            with self._lock:
+                workers = tuple(self._active_workers)
+            if not workers:
+                return
+            if deadline is None:
+                for worker in workers:
+                    worker.join()
+                continue
+            remaining = deadline - time.monotonic()
+            if remaining <= 0.0:
+                logger.warning(
+                    "Timed out waiting for %d sky worker thread(s) to finish during shutdown",
+                    len(workers),
+                )
+                return
+            for worker in workers:
+                worker.join(timeout=remaining)
 
     def _run_update(
         self,
@@ -291,3 +343,4 @@ class SkyDataWorker(QObject):
         finally:
             with self._lock:
                 self._running = False
+                self._active_workers.discard(threading.current_thread())
