@@ -86,6 +86,7 @@ class RenderStyle:
     show_asterisms: bool
     show_guidelines: bool
     enlarge_moon: bool
+    outline_bright_bodies: bool
     star_base_radius: float
     star_visibility_boost: float
     vmag_limit: float
@@ -200,7 +201,8 @@ def render_base_scene_into_painter(
         geometry=geometry,
         scene=scene,
         style=style,
-        enlarge_moon=bool(style.enlarge_moon),
+        enlarge_moon=bool(style.enlarge_moon) and not bool(style.outline_bright_bodies),
+        outline_bright_bodies=bool(style.outline_bright_bodies),
         label_candidates=local_label_candidates,
     )
     if draw_fast_overlays:
@@ -333,7 +335,7 @@ def render_hud_overlay_into_painter(
         overlay_info_bottom_left=hud.overlay_info_bottom_left,
         highlighted_object=None,
         highlighted_dso=None,
-        enlarge_moon=bool(style.enlarge_moon),
+        enlarge_moon=bool(style.enlarge_moon) and not bool(style.outline_bright_bodies),
         label_reservations=[],
         label_candidates=label_candidates,
     )
@@ -635,8 +637,14 @@ def _draw_star_layer(
 ) -> None:
     draw_data = scene.celestial_data
     win_w, win_h = _window_size(viewport_rect)
+    outline_render_scale = compute_star_render_upscale_factor(
+        geometry.radius * 2,
+        style.star_render_expected_width,
+    )
     low_w, low_h = (
-        compute_star_render_surface_size(
+        (win_w, win_h)
+        if style.outline_bright_bodies
+        else compute_star_render_surface_size(
             win_w,
             win_h,
             geometry.radius * 2,
@@ -654,6 +662,8 @@ def _draw_star_layer(
             scene.viewer,
             style.star_base_radius,
             visibility_boost=style.star_visibility_boost,
+            outline_bright_bodies=bool(style.outline_bright_bodies),
+            outline_render_scale=outline_render_scale,
             draw_vmag_limit=draw_vmag_limit
             if draw_vmag_limit is not None
             else style.vmag_limit,
@@ -683,6 +693,8 @@ def _draw_star_layer(
         scene.viewer,
         style.star_base_radius,
         visibility_boost=style.star_visibility_boost,
+        outline_bright_bodies=bool(style.outline_bright_bodies),
+        outline_render_scale=outline_render_scale,
         draw_vmag_limit=draw_vmag_limit
         if draw_vmag_limit is not None
         else style.vmag_limit,
@@ -705,6 +717,7 @@ def _draw_planet_layer(
     scene: RenderSceneData,
     style: RenderStyle,
     enlarge_moon: bool,
+    outline_bright_bodies: bool = False,
     label_candidates: list[dict[str, Any]],
 ) -> None:
     marker_scale = compute_star_render_upscale_factor(
@@ -717,6 +730,7 @@ def _draw_planet_layer(
         scene.celestial_data,
         scene.viewer,
         enlarge_moon,
+        outline_bright_bodies=outline_bright_bodies,
         text_font=style.text_font,
         label_candidates=label_candidates,
         draw_labels=True,
@@ -835,6 +849,7 @@ def _draw_hover_overlay_layer(
         scene.viewer,
         highlighted_object,
         marker_scale=line_width_scale,
+        outline_bright_bodies=bool(style.outline_bright_bodies),
     )
     _draw_dso_hover_layer(
         painter,
