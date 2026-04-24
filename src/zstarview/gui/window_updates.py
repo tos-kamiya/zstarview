@@ -15,6 +15,25 @@ from ..search.jpl import project_jpl_target_altaz_from_state_vector
 
 logger = logging.getLogger(__name__)
 _JPL_DEBUG_ENV = "ZSTARVIEW_DEBUG_JPL_SEARCH"
+_STATUS_CLOUD = "☁"
+_STATUS_SATELLITE = "🛰"
+_STATUS_AIRCRAFT = "✈"
+_STATUS_TERRAIN = "▲"
+_STATUS_URBAN = "🂓"
+
+
+def _status_segment(icon: str, text: str, *, hidden: bool = False) -> str:
+    if hidden:
+        return f"{icon} ---"
+    clean = str(text).strip()
+    return f"{icon} {clean}" if clean else icon
+
+
+def _strip_status_prefix(text: str, prefix: str) -> str:
+    clean = str(text).strip()
+    if clean.casefold().startswith(prefix.casefold()):
+        clean = clean[len(prefix):].strip()
+    return clean
 
 
 def _jpl_debug_enabled() -> bool:
@@ -108,17 +127,17 @@ class SkyWindowUpdatesMixin:
 
     def _cloud_status_line(self) -> str:
         cloud_disc_alpha = float(self.cloud_disc_alpha)
-        if cloud_disc_alpha <= 0.0 and not self.cloud_state.banner_text:
-            return ""
+        if cloud_disc_alpha <= 0.0:
+            return _status_segment(_STATUS_CLOUD, "", hidden=True)
         sat = self.cloud_state.current_satellite or self._predicted_cloud_satellite()
         if self.cloud_state.banner_text:
-            detail = self.cloud_state.banner_text.removeprefix("Clouds:").strip()
+            detail = _strip_status_prefix(self.cloud_state.banner_text, "Clouds:")
             detail_lower = detail.lower()
             if detail_lower.startswith("downloading"):
-                return f"Clouds [{sat}]: downloading"
+                return _status_segment(_STATUS_CLOUD, f"{sat} downloading")
             if any(token in detail_lower for token in ("timed out", "error", "failed", "failure")):
-                return f"Clouds [{sat}]: download failed"
-            return f"Clouds [{sat}]: {detail}"
+                return _status_segment(_STATUS_CLOUD, f"{sat} failed")
+            return _status_segment(_STATUS_CLOUD, f"{sat} {detail}")
         meta = self.cloud_state.meta
         if meta is not None:
             try:
@@ -126,57 +145,63 @@ class SkyWindowUpdatesMixin:
                 coverage = self.cloud_state.coverage_ratio
                 if coverage is not None and coverage < 0.999:
                     pct = int(round(max(0.0, min(1.0, float(coverage))) * 100.0))
-                    return f"Clouds [{meta.satellite}]: partial {pct}% {t}"
-                return f"Clouds [{meta.satellite}]: {meta.product} {t}"
+                    return _status_segment(_STATUS_CLOUD, f"{meta.satellite} {pct}% {t}")
+                return _status_segment(_STATUS_CLOUD, f"{meta.satellite} {meta.product} {t}")
             except Exception:
                 pass
-        return f"Clouds [{sat}]: idle"
+        return _status_segment(_STATUS_CLOUD, f"{sat} idle")
 
     def _terrain_horizon_status_line(self) -> str:
-        if (
-            self.terrain_horizon_opacity <= 0.0
-            and not self.terrain_horizon_state.banner_text
-        ):
-            return ""
+        if self.terrain_horizon_opacity <= 0.0:
+            return _status_segment(_STATUS_TERRAIN, "", hidden=True)
         if self.terrain_horizon_state.banner_text:
-            return self.terrain_horizon_state.banner_text
+            detail = _strip_status_prefix(
+                self.terrain_horizon_state.banner_text,
+                "Terrain horizon:",
+            )
+            return _status_segment(_STATUS_TERRAIN, detail)
+        if self.terrain_horizon_state.current_source:
+            return _status_segment(_STATUS_TERRAIN, str(self.terrain_horizon_state.current_source))
         return ""
 
     def _urban_outline_status_line(self) -> str:
-        if (
-            self.urban_outline_opacity <= 0.0
-            and not self.urban_outline_state.banner_text
-        ):
-            return ""
+        if self.urban_outline_opacity <= 0.0:
+            return _status_segment(_STATUS_URBAN, "", hidden=True)
         if self.urban_outline_state.banner_text:
-            return self.urban_outline_state.banner_text
+            detail = _strip_status_prefix(
+                self.urban_outline_state.banner_text,
+                "Urban outline:",
+            )
+            return _status_segment(_STATUS_URBAN, detail)
         if self.urban_outline_state.current_source:
-            return f"Urban outline: {self.urban_outline_state.current_source}"
+            return _status_segment(_STATUS_URBAN, str(self.urban_outline_state.current_source))
         return ""
 
     def _aircraft_status_line(self) -> str:
         if float(self.aircraft_opacity) <= 0.0:
-            return ""
+            return _status_segment(_STATUS_AIRCRAFT, "", hidden=True)
         aircraft_state = self.aircraft_state
         if aircraft_state is None:
             return ""
         if aircraft_state.banner_text:
-            return aircraft_state.banner_text
+            detail = _strip_status_prefix(aircraft_state.banner_text, "Aircraft:")
+            return _status_segment(_STATUS_AIRCRAFT, detail)
         if aircraft_state.last_success_utc is None:
             return ""
-        return f"Aircraft: {aircraft_state.last_success_utc.strftime('%H:%MZ')}"
+        return _status_segment(_STATUS_AIRCRAFT, aircraft_state.last_success_utc.strftime("%H:%MZ"))
 
     def _satellite_status_line(self) -> str:
         if float(self.satellite_opacity) <= 0.0:
-            return ""
+            return _status_segment(_STATUS_SATELLITE, "", hidden=True)
         satellite_state = self.satellite_state
         if satellite_state is None:
             return ""
         if satellite_state.banner_text:
-            return satellite_state.banner_text
+            detail = _strip_status_prefix(satellite_state.banner_text, "Satellites:")
+            return _status_segment(_STATUS_SATELLITE, detail)
         if satellite_state.element_epoch_utc is None:
             return ""
-        return f"Satellites: {satellite_state.element_epoch_utc.strftime('%H:%MZ')}"
+        return _status_segment(_STATUS_SATELLITE, satellite_state.element_epoch_utc.strftime("%H:%MZ"))
 
     def _jpl_small_body_status_line(self) -> str:
         target = getattr(self.state, "persistent_search_target", None)

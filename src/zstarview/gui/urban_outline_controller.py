@@ -289,10 +289,7 @@ class UrbanOutlineController(QObject):
             else:
                 logger.warning("Urban outline update failed: %s", exc, exc_info=True)
             if not self._stopping:
-                if missing_overturemaps:
-                    self.urban_failed.emit({"banner": "Urban outline: Could not find overturemaps"})
-                else:
-                    self.urban_failed.emit({"banner": f"Urban outline: {exc}"})
+                self.urban_failed.emit({"banner": "Urban outline: unavailable"})
         finally:
             with self._lock:
                 self._running = False
