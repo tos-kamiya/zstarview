@@ -191,6 +191,15 @@ class SkyWindowRenderMixin:
             self.state.jump_highlight_altaz,
             round(float(self.state.jump_highlight_until_ms), 3),
         )
+        search_target = getattr(self.state, "persistent_search_target", None)
+        search_key = None
+        if search_target is not None:
+            search_key = (
+                getattr(search_target, "label", None),
+                getattr(search_target, "alt_deg", None),
+                getattr(search_target, "az_deg", None),
+                bool(getattr(search_target, "persistent_keep_marker", False)),
+            )
         return (
             "present-frame",
             base_frame_key,
@@ -203,6 +212,7 @@ class SkyWindowRenderMixin:
             bool(hud.viewport_interaction_mode),
             hud.status_message,
             jump_key,
+            search_key,
         )
 
     def _render_present_frame_image(
@@ -217,21 +227,36 @@ class SkyWindowRenderMixin:
         highlighted_dso: Any | None,
         highlighted_satellite: Any | None,
     ) -> QImage:
+        base_label_candidates: list[dict[str, Any]] = []
         base_frame_image = SkyWindowRenderMixin._render_cached_frame_image(
             self,
             frame_key=base_frame_key,
-            render_fn=lambda frame_painter: render_base_scene_into_painter(
-                frame_painter,
-                geometry=geometry,
-                viewport_rect=self.client_rect(),
-                scene=scene,
-                style=style,
-                hud=hud,
-                compositor=self._compositor,
-                draw_fast_overlays=False,
+            render_fn=lambda frame_painter: (
+                render_base_scene_into_painter(
+                    frame_painter,
+                    geometry=geometry,
+                    viewport_rect=self.client_rect(),
+                    scene=scene,
+                    style=style,
+                    hud=hud,
+                    compositor=self._compositor,
+                    draw_fast_overlays=False,
+                    label_candidates=base_label_candidates,
+                    draw_labels=False,
+                ),
+                setattr(
+                    self,
+                    "_cached_base_label_candidates",
+                    list(base_label_candidates),
+                ),
             ),
             cache_key_attr="_frame_cache_key",
             cache_image_attr="_frame_cache_image",
+        )
+        cached_base_label_candidates = getattr(
+            self,
+            "_cached_base_label_candidates",
+            [],
         )
         present_frame_key = SkyWindowRenderMixin._present_frame_cache_key(
             self,
@@ -246,6 +271,7 @@ class SkyWindowRenderMixin:
                     self,
                     frame_painter=frame_painter,
                     base_frame_image=base_frame_image,
+                    base_label_candidates=cached_base_label_candidates,
                     geometry=geometry,
                     scene=scene,
                     style=style,
@@ -264,6 +290,7 @@ class SkyWindowRenderMixin:
         *,
         frame_painter: QPainter,
         base_frame_image: QImage,
+        base_label_candidates: list[dict[str, Any]] | tuple[dict[str, Any], ...] | None,
         geometry: ScreenGeometry,
         scene: RenderSceneData,
         style: RenderStyle,
@@ -274,13 +301,17 @@ class SkyWindowRenderMixin:
     ) -> None:
         frame_painter.drawImage(0, 0, base_frame_image)
         if not hud.viewport_interaction_mode:
+            label_candidates: list[dict[str, Any]] = list(base_label_candidates or [])
             render_fast_overlay_layers_into_painter(
                 frame_painter,
                 geometry=geometry,
                 scene=scene,
                 style=style,
                 highlighted_satellite=highlighted_satellite,
+                label_candidates=label_candidates,
+                draw_labels=False,
             )
+            search_target = getattr(self.state, "persistent_search_target", None)
             render_hud_overlay_into_painter(
                 frame_painter,
                 geometry=geometry,
@@ -291,6 +322,8 @@ class SkyWindowRenderMixin:
                 highlighted_object=highlighted_object,
                 highlighted_dso=highlighted_dso,
                 highlighted_satellite=highlighted_satellite,
+                label_candidates=label_candidates,
+                search_overlay_target=search_target,
             )
 
     def _viewer_data_for_render(self) -> ViewerData:
@@ -530,16 +563,19 @@ class SkyWindowRenderMixin:
                 celestial_data=celestial_data,
                 render_viewer=render_viewer,
             )
-            render_base_scene_into_painter(
-                painter,
-                geometry=geometry,
-                viewport_rect=self.client_rect(),
-                scene=scene,
-                style=style,
-                hud=hud,
-                compositor=self._compositor,
-            )
             if include_hud:
+                label_candidates: list[dict[str, Any]] = []
+                render_base_scene_into_painter(
+                    painter,
+                    geometry=geometry,
+                    viewport_rect=self.client_rect(),
+                    scene=scene,
+                    style=style,
+                    hud=hud,
+                    compositor=self._compositor,
+                    label_candidates=label_candidates,
+                    draw_labels=False,
+                )
                 highlighted_object = None
                 highlighted_dso = None
                 jump_highlight = self._active_jump_highlight_object(geometry)
@@ -554,8 +590,19 @@ class SkyWindowRenderMixin:
                     hud=hud,
                     highlighted_object=highlighted_object,
                     highlighted_dso=highlighted_dso,
+                    label_candidates=label_candidates,
+                    search_overlay_target=getattr(self.state, "persistent_search_target", None),
                 )
-            self._draw_persistent_search_overlay(painter, geometry)
+            else:
+                render_base_scene_into_painter(
+                    painter,
+                    geometry=geometry,
+                    viewport_rect=self.client_rect(),
+                    scene=scene,
+                    style=style,
+                    hud=hud,
+                    compositor=self._compositor,
+                )
             return image
         finally:
             painter.end()
@@ -620,4 +667,3 @@ class SkyWindowRenderMixin:
             highlighted_satellite=highlighted_satellite,
         )
         painter.drawImage(0, 0, present_frame)
-        self._draw_persistent_search_overlay(painter, geometry)
