@@ -648,3 +648,9 @@
   - Decision: let `enlarge_moon` and hovered moon rendering use the normal filled moon artwork even when `outline_bright_bodies` is enabled.
   - Rationale: the outline-only mode should reduce footprint for ordinary bright bodies, but the enlarged moon view is explicitly meant to show the rendered moon, not a hollow marker.
   - Result: moon enlargement now bypasses the outline-only fallback while the rest of the outline-only behavior remains unchanged.
+
+### 2026-04-25
+
+- Bright-bodies mode rename plan
+  - `--outline-bright-bodies` is being replaced by `--bright-bodies {outline,fill}` so the default state can be `outline` without encoding the mode as a boolean flag.
+  - The new form keeps the intent explicit, removes the legacy flag entirely, and leaves room for future non-boolean body rendering modes.
