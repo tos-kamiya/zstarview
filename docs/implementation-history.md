@@ -59,6 +59,9 @@
   - 天頂を見上げた視点で観測方位を回転したとき、月相画像が空の回転と逆向きに回る問題を修正した。
   - `calculate_moon_render_data()` の画面回転角は、投影上の月ローカル上方向に同じ向きで追随する符号に戻した。
   - 天頂視点で `view_center` の方位を変えたとき、月の画面回転差も同じ向きになることを単体テストで固定した。
+- Direction grid cleanup
+  - GUI の hover grid と CLI export の static grid が共有する `_draw_direction_grid()` 内で、同一スタイルの緯線描画ループを一本化した。
+  - GUI/CLI の入口は維持し、描画結果を変えずに内部重複だけを減らした。
 
 ### 2025-09-16
 
