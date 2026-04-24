@@ -247,7 +247,8 @@ def test_window_frame_draws_bottom_right_grip_triangle_inside_frame() -> None:
     assert int(arr[147, 147, 3]) > 0
     assert int(arr[134, 147, 3]) > 0
     assert int(arr[147, 134, 3]) > 0
-    assert int(arr[128, 128, 3]) == 0
+    assert int(arr[128, 124, 3]) > 0
+    assert int(arr[128, 112, 3]) == 0
 
 
 def test_window_frame_draws_top_right_menu_square_inside_frame() -> None:
