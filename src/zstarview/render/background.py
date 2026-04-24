@@ -194,7 +194,7 @@ def draw_window_border(
         painter.drawLine(QPointF(menu_left, y), QPointF(menu_right, y))
     painter.setPen(Qt.PenStyle.NoPen)
     inner_right = right - border_width
-    grip_size = 14.0
+    grip_size = 28.0
     inner_bottom = bottom - border_width
     painter.drawPolygon(
         QPolygonF(
