@@ -809,7 +809,6 @@ def calculate_moon_render_data(
         if abs(dx) > 1e-6 or abs(dy) > 1e-6:
             screen_up_angle_rad = math.atan2(dy, dx)
             # The image's "up" is vertical (points to -Y), so rotate to match the screen's "up"
-            # After user feedback, the correct rotation is to flip the sign.
-            screen_rotation_deg = -(math.degrees(screen_up_angle_rad) - 90)
+            screen_rotation_deg = math.degrees(screen_up_angle_rad) - 90
 
     return sun_dir_in_moon_frame, screen_rotation_deg
