@@ -40,6 +40,7 @@ GRID_FINE_ALTITUDE_BANDS = tuple(
     for value in range(-80, 81, 10)
     if value != 0
 )
+GRID_PARALLEL_ALTITUDES = GRID_ALTITUDE_BANDS + GRID_FINE_ALTITUDE_BANDS
 GRID_FINE_AZIMUTHS = tuple(
     float(value)
     for value in range(0, 360, 10)
@@ -667,29 +668,7 @@ def _draw_direction_grid(
             0.0, 360.0, GRID_PARALLEL_AZ_SAMPLES, endpoint=False
         )
 
-        for alt in GRID_ALTITUDE_BANDS:
-            parallel_points: list[tuple[float, float]] = []
-            for az in parallel_az_samples:
-                az_norm = float(az) % 360.0
-                if not is_in_fov(float(alt), az_norm, view_center, fov_deg=content_fov_deg):
-                    continue
-                nx, ny = _project_altaz_to_normalized_xy(
-                    float(alt),
-                    az_norm,
-                    view_center,
-                    edge_fov_deg=edge_fov_deg,
-                )
-                parallel_points.append((nx, ny))
-
-            _draw_direction_polyline(
-                painter,
-                parallel_points,
-                geometry,
-                width=GRID_LINE_WIDTH,
-                alpha=GRID_LINE_ALPHA,
-            )
-
-        for alt in GRID_FINE_ALTITUDE_BANDS:
+        for alt in GRID_PARALLEL_ALTITUDES:
             parallel_points: list[tuple[float, float]] = []
             for az in parallel_az_samples:
                 az_norm = float(az) % 360.0
