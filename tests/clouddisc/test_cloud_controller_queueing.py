@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import threading
+import time
+
 from zstarview.gui.cloud_controller import CloudController
 
 
@@ -63,3 +66,48 @@ def test_source_completion_queues_rerender_when_render_is_running() -> None:
 
     assert controller._pending_render_request is not None
     assert controller._pending_render_request["request_id"] == 10
+
+
+def test_cloud_shutdown_waits_for_active_worker_threads(monkeypatch) -> None:
+    controller = CloudController(_DummyCloudDisc())
+    controller._latest_source = object()
+    controller._render_is_running = True
+
+    worker_started = threading.Event()
+    worker_release = threading.Event()
+
+    def fake_run_source_update(**kwargs):
+        worker_started.set()
+        worker_release.wait(timeout=2.0)
+
+    monkeypatch.setattr(controller, "_run_source_update", fake_run_source_update)
+
+    controller.update(
+        lat=35.0,
+        lon=139.0,
+        alt=45.0,
+        az=180.0,
+        radius_px=256,
+        content_fov_deg=90.0,
+        reason="manual",
+    )
+
+    assert worker_started.wait(timeout=1.0)
+
+    shutdown_done = threading.Event()
+
+    def run_shutdown() -> None:
+        controller.shutdown(wait_timeout_s=1.0)
+        shutdown_done.set()
+
+    shutdown_thread = threading.Thread(target=run_shutdown)
+    shutdown_thread.start()
+
+    time.sleep(0.05)
+    assert not shutdown_done.is_set()
+
+    worker_release.set()
+    assert shutdown_done.wait(timeout=1.0)
+    shutdown_thread.join(timeout=1.0)
+
+    assert not controller._active_workers

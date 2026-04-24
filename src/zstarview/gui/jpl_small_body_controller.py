@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Callable, Optional
 from urllib.error import URLError
 
 from PySide6.QtCore import QObject, Signal
@@ -26,12 +27,14 @@ class JplSmallBodyController(QObject):
         self._stopping = False
         self._pending_request: Optional[dict[str, object]] = None
         self._latest_request_id = 0
+        self._active_workers: set[threading.Thread] = set()
         self._lock = threading.Lock()
 
-    def shutdown(self) -> None:
+    def shutdown(self, *, wait_timeout_s: float | None = None) -> None:
         with self._lock:
             self._stopping = True
             self._pending_request = None
+        self._wait_for_workers(wait_timeout_s)
 
     def update(
         self,
@@ -62,9 +65,58 @@ class JplSmallBodyController(QObject):
             self._running = True
 
         self.jpl_started.emit({"banner": "JPL: fetching small-body ephemeris..."})
-        worker = threading.Thread(target=self._run_update, kwargs=request, daemon=True)
-        worker.start()
+        self._spawn_worker(target=self._run_update, kwargs=request, label="jpl")
         return True
+
+    def _spawn_worker(
+        self,
+        *,
+        target: Callable[..., None],
+        kwargs: dict[str, object],
+        label: str,
+    ) -> None:
+        def runner() -> None:
+            try:
+                target(**kwargs)
+            finally:
+                self._unregister_worker(threading.current_thread())
+
+        worker = threading.Thread(target=runner, name=f"JplSmallBodyController-{label}", daemon=True)
+        with self._lock:
+            if self._stopping:
+                return
+            self._active_workers.add(worker)
+        try:
+            worker.start()
+        except Exception:
+            with self._lock:
+                self._active_workers.discard(worker)
+            raise
+
+    def _unregister_worker(self, worker: threading.Thread) -> None:
+        with self._lock:
+            self._active_workers.discard(worker)
+
+    def _wait_for_workers(self, wait_timeout_s: float | None) -> None:
+        deadline = None if wait_timeout_s is None else time.monotonic() + max(0.0, float(wait_timeout_s))
+        while True:
+            with self._lock:
+                workers = tuple(self._active_workers)
+            if not workers:
+                return
+            if deadline is None:
+                for worker in workers:
+                    worker.join()
+                continue
+            remaining = deadline - time.monotonic()
+            if remaining <= 0.0:
+                logger.warning(
+                    "Timed out waiting for %d JPL worker thread(s) to finish during shutdown",
+                    len(workers),
+                )
+                return
+            for worker in workers:
+                worker.join(timeout=remaining)
 
     def _run_update(
         self,
@@ -149,5 +201,4 @@ class JplSmallBodyController(QObject):
                     self._running = True
             if next_request is not None:
                 self.jpl_started.emit({"banner": "JPL: fetching small-body ephemeris..."})
-                worker = threading.Thread(target=self._run_update, kwargs=next_request, daemon=True)
-                worker.start()
+                self._spawn_worker(target=self._run_update, kwargs=next_request, label="jpl")
