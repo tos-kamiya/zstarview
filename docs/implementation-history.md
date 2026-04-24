@@ -63,6 +63,9 @@
   - GUI の hover grid と CLI export の static grid が共有する `_draw_direction_grid()` 内で、同一スタイルの緯線描画ループを一本化した。
   - GUI/CLI の入口は維持し、描画結果を変えずに内部重複だけを減らした。
 
+- version bump
+  - `__version__` を `1.20.17` に上げた。
+
 ### 2025-09-16
 
 - 実装履歴文書の前身を作成
