@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-04-22
+最終更新: 2026-04-24
 
 ## 1. この文書の位置づけ
 
@@ -383,6 +383,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 幾何学的な地平線、天の赤道、黄道も `show_guidelines` に従う guide 系表示として扱う。
 - `show_guidelines == False` のときは、guide レイヤー本体だけでなく、viewport interaction 中の sky reference line 描画もまとめて省略してよい。
 - `show_overlay_info` は GUI 側の表示トグルとして保持し、既定では `True` でよい。
+- 文字ラベルは、星、DSO、アステリズム、衛星、航空機、検索結果などの候補をいったん集約してから、HUD 直前に一括描画してよい。
+- その一括描画では、先に配置したラベルの予約矩形を共有し、後から描くラベルほど既存ラベルを避けるようにしてよい。
 
 #### 4.3.6 ベース描画と HUD 分離の現在状態
 
@@ -397,6 +399,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - status line
 - `paintEvent()` はベースフレームをキャッシュし、その上に hover/HUD を都度重ねる構成になっている。
 - ベースフレーム cache key から `mouse_pos`、hover 対象名、jump highlight 名、status message を外し、キャッシュ効率を上げている。
+- status line は短い記号接頭辞を使い、レイヤーが CLI/GUI の設定で無効化されている場合は `---` を付けて不在であることを明示してよい。
+- status line の失敗文言は、完全な例外文字列ではなく、`failed`、`timed out`、`unavailable`、`partial` などの短い要約へ正規化してよい。
 
 #### 4.3.7 hover/HUD 分離の現在位置
 
