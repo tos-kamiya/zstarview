@@ -27,6 +27,7 @@ class DraggableWindow(QMainWindow):
         """Initializes the DraggableWindow."""
         super().__init__(*args, **kwargs)
         self._drag_active: bool = False
+        self._drag_interaction_active: bool = False
         self._drag_pos: QPoint = QPoint(0, 0)
         self._drag_exclusions: Set[QWidget] = set()
         self._drag_targets: Set[QWidget] = set()
@@ -88,6 +89,10 @@ class DraggableWindow(QMainWindow):
             if self._is_in_exclusions(child):
                 return False
 
+            begin_drag_interaction = getattr(self, "_begin_window_drag", None)
+            if callable(begin_drag_interaction):
+                self._drag_interaction_active = bool(begin_drag_interaction())
+
             wh = self.windowHandle()
             if wh and wh.startSystemMove():
                 event.accept()
@@ -116,6 +121,11 @@ class DraggableWindow(QMainWindow):
 
     def _end_drag(self, event: QMouseEvent) -> bool:
         self._drag_active = False
+        if self._drag_interaction_active:
+            end_drag_interaction = getattr(self, "_end_window_drag", None)
+            if callable(end_drag_interaction):
+                end_drag_interaction()
+            self._drag_interaction_active = False
         event.accept()
         return True
 
