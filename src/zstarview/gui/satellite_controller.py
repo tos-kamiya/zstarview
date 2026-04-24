@@ -163,13 +163,7 @@ class SatelliteController(QObject):
                     element_epoch_utc = fetched.element_epoch_utc
             if not records_by_group:
                 if failed_groups:
-                    unique_messages = []
-                    for message in failure_messages:
-                        if message not in unique_messages:
-                            unique_messages.append(message)
-                    if len(unique_messages) == 1:
-                        raise RuntimeError(unique_messages[0])
-                    raise RuntimeError("Satellites: failed to fetch orbital elements")
+                    raise RuntimeError("Satellites: unavailable")
                 raise RuntimeError("Satellites: no enabled groups")
             overlay_points = self._projector(
                 records_by_group,
@@ -183,7 +177,7 @@ class SatelliteController(QObject):
             if should_emit:
                 banner = ""
                 if failed_groups:
-                    banner = f"Satellites: partial ({', '.join(sorted(failed_groups))} unavailable)"
+                    banner = "Satellites: partial"
                 self.satellite_ready.emit(
                     {
                         "records_by_group": records_by_group,
@@ -201,8 +195,7 @@ class SatelliteController(QObject):
             with self._lock:
                 should_emit = not self._stopping and request_id == self._latest_request_id
             if should_emit:
-                message = str(exc).strip()
-                banner = message if message.startswith("Satellites:") else f"Satellites: {message}"
+                banner = "Satellites: timed out" if _is_timeout_url_error(exc) else "Satellites: unavailable"
                 self.satellite_failed.emit({"banner": banner})
         finally:
             with self._lock:

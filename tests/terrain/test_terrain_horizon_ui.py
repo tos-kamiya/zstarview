@@ -460,6 +460,20 @@ def test_status_line_message_combines_cloud_and_terrain_segments() -> None:
     )
 
 
+def test_status_line_message_keeps_placeholder_icons_for_hidden_layers() -> None:
+    dummy = SimpleNamespace()
+    dummy._cloud_status_line = lambda: "☁ ---"
+    dummy._satellite_status_line = lambda: "🛰 ---"
+    dummy._aircraft_status_line = lambda: "✈ ---"
+    dummy._jpl_small_body_status_line = lambda: ""
+    dummy._terrain_horizon_status_line = lambda: "▲ ---"
+    dummy._urban_outline_status_line = lambda: "🂓 ---"
+
+    got = SkyWindowUpdatesMixin._status_line_message(dummy)
+
+    assert got == "☁ --- | 🛰 --- | ✈ --- | ▲ --- | 🂓 ---"
+
+
 def test_jpl_small_body_status_line_includes_altaz() -> None:
     dummy = SimpleNamespace()
     dummy.state = SimpleNamespace(
@@ -1086,11 +1100,9 @@ def test_cloud_failed_repaints_status_line_during_interaction() -> None:
     )
     dummy._safe_request_cloud_repaint = lambda: calls.append("repaint")
 
-    SkyWindowUpdatesMixin._on_cloud_failed(
-        dummy, {"banner": "Clouds: Clouds fetch timed out"}
-    )
+    SkyWindowUpdatesMixin._on_cloud_failed(dummy, {"banner": "Clouds: timed out"})
 
-    assert calls == ["banner:Clouds: Clouds fetch timed out", "repaint"]
+    assert calls == ["banner:Clouds: timed out", "repaint"]
 
 
 def test_discard_stale_disc_images_clears_cached_sky_and_cloud_buffers() -> None:

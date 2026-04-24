@@ -212,22 +212,22 @@ class CloudController(QObject):
                     worker.start()
             except VisibilityError as e:
                 logger.error("Invalid params for cloud-disc image generation: %s", e)
-                self.cloud_failed.emit({"banner": "Clouds: no supported satellite for this region"})
+                self.cloud_failed.emit({"banner": "Clouds: unsupported region"})
             except DownloadError as e:
                 logger.warning("Network/S3 download error: %s", e)
-                self.cloud_failed.emit({"banner": "Clouds: Network/S3 download error"})
+                self.cloud_failed.emit({"banner": "Clouds: download failed"})
             except TimeoutError as e:
                 logger.warning("Clouds fetch timed out: %s", e)
-                self.cloud_failed.emit({"banner": "Clouds: Clouds fetch timed out"})
+                self.cloud_failed.emit({"banner": "Clouds: timed out"})
             except DataNotFoundError as e:
                 logger.info("Satellite data not found in search window: %s", e)
-                self.cloud_failed.emit({"banner": "Clouds: Satellite data not found in search window"})
+                self.cloud_failed.emit({"banner": "Clouds: unavailable"})
             except RenderError as e:
                 logger.error("Failed to decode/render satellite data: %s", e)
-                self.cloud_failed.emit({"banner": "Clouds: Failed to decode/render satellite data"})
+                self.cloud_failed.emit({"banner": "Clouds: decode failed"})
             except CloudDiscError as e:
                 logger.error("Unexpected clouddisc error: %s", e)
-                self.cloud_failed.emit({"banner": "Clouds: Unexpected clouddisc error"})
+                self.cloud_failed.emit({"banner": "Clouds: unavailable"})
         except Exception as e:
             logger.error("Cloud source update failed: %s", e, exc_info=True)
         finally:

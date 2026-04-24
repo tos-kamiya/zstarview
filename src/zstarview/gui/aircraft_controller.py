@@ -140,7 +140,7 @@ class AircraftController(QObject):
             with self._lock:
                 should_emit = not self._stopping and request_id == self._latest_request_id
             if should_emit:
-                self.aircraft_failed.emit({"banner": f"Aircraft: {exc}"})
+                self.aircraft_failed.emit({"banner": "Aircraft: unavailable"})
         finally:
             with self._lock:
                 self._running = False

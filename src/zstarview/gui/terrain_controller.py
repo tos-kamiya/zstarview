@@ -179,7 +179,7 @@ class TerrainHorizonController(QObject):
                 self._failed_this_session = True
                 should_emit = not self._stopping
             if should_emit:
-                self.terrain_failed.emit({"banner": f"Terrain horizon: {exc}"})
+                self.terrain_failed.emit({"banner": "Terrain horizon: unavailable"})
         finally:
             with self._lock:
                 self._running = False

@@ -22,7 +22,7 @@ def test_cloud_status_line_shows_downloading() -> None:
         coverage_ratio=None,
     )
     got = SkyWindow._cloud_status_line(_dummy_window(state))
-    assert got == "Clouds [HIMAWARI]: downloading"
+    assert got == "☁ HIMAWARI downloading"
 
 
 def test_cloud_status_line_shows_download_failed() -> None:
@@ -33,7 +33,7 @@ def test_cloud_status_line_shows_download_failed() -> None:
         coverage_ratio=None,
     )
     got = SkyWindow._cloud_status_line(_dummy_window(state))
-    assert got == "Clouds [HIMAWARI]: download failed"
+    assert got == "☁ HIMAWARI failed"
 
 
 def test_cloud_status_line_shows_partial_when_coverage_incomplete() -> None:
@@ -49,7 +49,7 @@ def test_cloud_status_line_shows_partial_when_coverage_incomplete() -> None:
         coverage_ratio=0.72,
     )
     got = SkyWindow._cloud_status_line(_dummy_window(state))
-    assert got == "Clouds [HIMAWARI]: partial 72% 01:20Z"
+    assert got == "☁ HIMAWARI 72% 01:20Z"
 
 
 def test_cloud_status_line_shows_idle_without_meta_or_banner() -> None:
@@ -60,7 +60,67 @@ def test_cloud_status_line_shows_idle_without_meta_or_banner() -> None:
         coverage_ratio=None,
     )
     got = SkyWindow._cloud_status_line(_dummy_window(state))
-    assert got == "Clouds [G19]: idle"
+    assert got == "☁ G19 idle"
+
+
+def test_satellite_status_line_shows_epoch_with_icon() -> None:
+    state = SimpleNamespace(
+        banner_text=None,
+        element_epoch_utc=datetime(2026, 3, 5, 1, 20, tzinfo=timezone.utc),
+    )
+    dummy = SimpleNamespace(satellite_state=state, satellite_opacity=0.2)
+
+    got = SkyWindow._satellite_status_line(dummy)
+
+    assert got == "🛰 01:20Z"
+
+
+def test_aircraft_status_line_shows_last_success_with_icon() -> None:
+    state = SimpleNamespace(
+        banner_text=None,
+        last_success_utc=datetime(2026, 3, 5, 1, 20, tzinfo=timezone.utc),
+    )
+    dummy = SimpleNamespace(aircraft_state=state, aircraft_opacity=0.2)
+
+    got = SkyWindow._aircraft_status_line(dummy)
+
+    assert got == "✈ 01:20Z"
+
+
+def test_terrain_and_urban_status_lines_show_icons() -> None:
+    terrain_state = SimpleNamespace(banner_text="Terrain horizon: loading DEM...", current_source="DEM")
+    urban_state = SimpleNamespace(banner_text="Urban outline: downloading...", current_source="overture")
+    dummy = SimpleNamespace(
+        terrain_horizon_state=terrain_state,
+        terrain_horizon_opacity=0.2,
+        urban_outline_state=urban_state,
+        urban_outline_opacity=0.2,
+    )
+
+    assert SkyWindow._terrain_horizon_status_line(dummy) == "▲ loading DEM..."
+    assert SkyWindow._urban_outline_status_line(dummy) == "🂓 downloading..."
+
+
+def test_hidden_status_lines_show_placeholder_icons() -> None:
+    dummy = SimpleNamespace(
+        cloud_state=SimpleNamespace(banner_text="Clouds: downloading…"),
+        cloud_disc_alpha=0.0,
+        _predicted_cloud_satellite=lambda: "G19",
+        satellite_state=SimpleNamespace(banner_text="Satellites: partial"),
+        satellite_opacity=0.0,
+        aircraft_state=SimpleNamespace(banner_text="Aircraft: unavailable"),
+        aircraft_opacity=0.0,
+        terrain_horizon_state=SimpleNamespace(banner_text="Terrain horizon: unavailable", current_source=None),
+        terrain_horizon_opacity=0.0,
+        urban_outline_state=SimpleNamespace(banner_text="Urban outline: unavailable", current_source=None),
+        urban_outline_opacity=0.0,
+    )
+
+    assert SkyWindow._cloud_status_line(dummy) == "☁ ---"
+    assert SkyWindow._satellite_status_line(dummy) == "🛰 ---"
+    assert SkyWindow._aircraft_status_line(dummy) == "✈ ---"
+    assert SkyWindow._terrain_horizon_status_line(dummy) == "▲ ---"
+    assert SkyWindow._urban_outline_status_line(dummy) == "🂓 ---"
 
 
 def test_default_cloud_horizon_cutoff_is_one_degree() -> None:
