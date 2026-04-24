@@ -56,7 +56,7 @@
   - 輪郭が低解像度の内部星面で潰れないよう、`outline_bright_bodies` 有効時は星レイヤの縮小レンダリングを止めてフル解像度で描画するようにした。
   - フル解像度化で星が小さく見えすぎないよう、輪郭モードでも通常の星レイヤ拡大率をサイズ計算へ戻した。
   - 恒星の輪郭はさらに細く見えるよう、輪郭ダイヤの表示スケールと強度を通常の星強調より下げた。
-  - 惑星・月レイヤでは、太陽・月・惑星を輪郭のみへ切り替え、`outline_bright_bodies` 有効時は `enlarge_moon` を無効として扱うようにした。
+  - 惑星・月レイヤでは、太陽をクロスのみ、惑星を輪郭のみへ切り替え、月は通常表示では輪郭のみとしつつ、`enlarge_moon` と hover による拡大表示は通常の月レンダリングを使うようにした。
   - 回帰テストとして、星の center pixel が空くこと、惑星・月の描画経路が outline-only へ切り替わること、window render の配線が通ることを確認した。
 
 ### 2026-04-14
@@ -643,3 +643,8 @@
   - Added regression coverage to ensure the snapshot is written only when the debug flag is enabled.
 - 2026-04-22
   - Patch-level release bump to `1.20.15`.
+
+- Topic: enlarged moon in outline mode
+  - Decision: let `enlarge_moon` and hovered moon rendering use the normal filled moon artwork even when `outline_bright_bodies` is enabled.
+  - Rationale: the outline-only mode should reduce footprint for ordinary bright bodies, but the enlarged moon view is explicitly meant to show the rendered moon, not a hollow marker.
+  - Result: moon enlargement now bypasses the outline-only fallback while the rest of the outline-only behavior remains unchanged.
