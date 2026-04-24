@@ -142,8 +142,7 @@ def _draw_moon_planet(
             opacity=1.0 if not enlarge_moon else 0.7,
             base_color=_moon_eclipse_overlay_color(body),
         )
-    if not outline_bright_bodies:
-        draw_gauge_cross(painter, cross_color, pos, scale=marker_scale, pen_width=marker_scale)
+    draw_gauge_cross(painter, cross_color, pos, scale=marker_scale, pen_width=marker_scale)
 
 
 def _marker_intersects_viewport(painter: QPainter, pos: QPointF, radius_px: float) -> bool:
@@ -303,6 +302,13 @@ def draw_solar_system_bodies(
                         text_color,
                         radius_px=max(1.5, 1.75 * marker_scale),
                     )
+                    draw_gauge_cross(
+                        painter,
+                        text_color,
+                        pos,
+                        scale=marker_scale,
+                        pen_width=marker_scale,
+                    )
                 else:
                     draw_gauge_cross(
                         painter,
@@ -331,6 +337,13 @@ def draw_solar_system_bodies(
                 marker_color = planet_marker_color(body.name)
                 if outline_bright_bodies:
                     draw_planet_outline(painter, pos, marker_color, radius_px=radius_px)
+                    draw_gauge_cross(
+                        painter,
+                        text_color,
+                        pos,
+                        scale=0.55 * marker_scale,
+                        pen_width=marker_scale,
+                    )
                 else:
                     draw_planet_bloom(
                         painter,
