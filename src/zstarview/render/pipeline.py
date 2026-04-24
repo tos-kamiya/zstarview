@@ -201,7 +201,7 @@ def render_base_scene_into_painter(
         geometry=geometry,
         scene=scene,
         style=style,
-        enlarge_moon=bool(style.enlarge_moon) and not bool(style.outline_bright_bodies),
+        enlarge_moon=bool(style.enlarge_moon),
         outline_bright_bodies=bool(style.outline_bright_bodies),
         label_candidates=local_label_candidates,
     )
@@ -335,7 +335,7 @@ def render_hud_overlay_into_painter(
         overlay_info_bottom_left=hud.overlay_info_bottom_left,
         highlighted_object=None,
         highlighted_dso=None,
-        enlarge_moon=bool(style.enlarge_moon) and not bool(style.outline_bright_bodies),
+        enlarge_moon=bool(style.enlarge_moon),
         label_reservations=[],
         label_candidates=label_candidates,
     )
