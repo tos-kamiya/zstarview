@@ -5,7 +5,13 @@ from PySide6.QtGui import QColor, QFont, QImage, QPainter
 from PySide6.QtWidgets import QApplication
 
 from zstarview.render import search_overlay as render_search_overlay
+from zstarview.render import pipeline as render_pipeline
 from zstarview.render import text as render_text
+from zstarview.render import asterisms as render_asterisms
+from zstarview.render import deep_sky_objects as render_deep_sky_objects
+from zstarview.render import overlay_info as render_overlay_info
+from zstarview.render import guides as render_guides
+from zstarview.render import solar_system as render_solar_system
 from zstarview.search.models import SearchJumpTarget
 from zstarview.types import ScreenGeometry
 
@@ -88,3 +94,71 @@ def test_draw_search_target_overlay_appends_label_candidate() -> None:
     assert len(label_candidates) == 1
     assert label_candidates[0]["text"] == "Mars"
     assert label_candidates[0]["priority"] == 15
+
+
+def test_hover_overlay_passes_label_candidates_to_asterisms(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_draw_asterisms(
+        painter,
+        geometry,
+        celestial_data,
+        viewer_data,
+        highlighted_object,
+        text_font,
+        label_reservations=None,
+        label_candidates=None,
+        **kwargs,
+    ) -> None:
+        captured["label_candidates"] = label_candidates
+
+    monkeypatch.setattr(render_asterisms, "draw_asterisms", fake_draw_asterisms)
+    monkeypatch.setattr(render_solar_system, "draw_hovered_moon_overlay", lambda *args, **kwargs: None)
+    monkeypatch.setattr(render_deep_sky_objects, "draw_dso_hover_info", lambda *args, **kwargs: None)
+    monkeypatch.setattr(render_guides, "draw_direction_hover_guide", lambda *args, **kwargs: None)
+    monkeypatch.setattr(render_overlay_info, "draw_overlay_info", lambda *args, **kwargs: None)
+    monkeypatch.setattr(render_pipeline, "_draw_dso_hover_layer", lambda *args, **kwargs: None)
+
+    scene = type(
+        "Scene",
+        (),
+        {
+            "celestial_data": object(),
+            "viewer": type(
+                "Viewer",
+                (),
+                {"view_center": (45.0, 180.0), "edge_fov_deg": 95.0, "content_fov_deg": 110.0},
+            )(),
+        },
+    )()
+    style = type(
+        "Style",
+        (),
+        {
+            "show_asterisms": True,
+            "text_font": QFont(),
+            "visual_preset": "night",
+            "star_render_expected_width": 128,
+            "show_guidelines": False,
+            "vmag_limit": 6.0,
+        },
+    )()
+
+    img = QImage(64, 64, QImage.Format.Format_ARGB32_Premultiplied)
+    img.fill(0)
+    painter = QPainter(img)
+    try:
+        render_pipeline._draw_hover_overlay_layer(
+            painter=painter,
+            geometry=ScreenGeometry(center=(32, 32), radius=32),
+            scene=scene,
+            style=style,
+            mouse_pos=None,
+            highlighted_object=({"source_id": "HIP1", "name": "Star A"}, QPointF(32.0, 32.0)),
+            highlighted_dso=None,
+            label_candidates=[],
+        )
+    finally:
+        painter.end()
+
+    assert captured["label_candidates"] == []

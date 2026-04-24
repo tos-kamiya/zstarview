@@ -335,6 +335,7 @@ def render_hud_overlay_into_painter(
         highlighted_dso=None,
         enlarge_moon=bool(style.enlarge_moon),
         label_reservations=[],
+        label_candidates=label_candidates,
     )
     _draw_status_line(
         painter,
@@ -825,6 +826,7 @@ def _draw_hover_overlay_layer(
             content_fov_deg=_content_fov_deg(scene),
             draw_base=False,
             draw_highlight=True,
+            label_candidates=label_candidates,
         )
     render_solar_system.draw_hovered_moon_overlay(
         painter,
