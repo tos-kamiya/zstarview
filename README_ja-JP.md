@@ -90,6 +90,14 @@ pipx install zstarview
 pipx upgrade zstarview
 ```
 
+最初の動作確認:
+
+```bash
+zstarview auto -A5 -Zn
+```
+
+これは、現在地を自動検出して (`auto`)、北側の低い空を中心に表示する (`-A5 -Zn`) 起動例です。
+
 > 注記: X11 ライブラリやネットワークが細い場合の回避策などは、下のトラブルシューティングを参照してください。
 
 ## 使い方
