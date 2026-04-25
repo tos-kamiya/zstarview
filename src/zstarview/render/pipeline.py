@@ -113,6 +113,10 @@ def _content_fov_deg(scene: RenderSceneData) -> float:
     return float(scene.viewer.content_fov_deg)
 
 
+def _bright_bodies_mode(style: Any) -> str:
+    return str(getattr(style, "bright_bodies_mode", "outline"))
+
+
 def _window_size(viewport_rect: QRect) -> tuple[int, int]:
     return (int(viewport_rect.width()), int(viewport_rect.height()))
 
@@ -202,7 +206,7 @@ def render_base_scene_into_painter(
         scene=scene,
         style=style,
         enlarge_moon=bool(style.enlarge_moon),
-        outline_bright_bodies=style.bright_bodies_mode == "outline",
+        outline_bright_bodies=_bright_bodies_mode(style) == "outline",
         label_candidates=local_label_candidates,
     )
     if draw_fast_overlays:
@@ -641,7 +645,7 @@ def _draw_star_layer(
         geometry.radius * 2,
         style.star_render_expected_width,
     )
-    outline_bright_bodies = style.bright_bodies_mode == "outline"
+    outline_bright_bodies = _bright_bodies_mode(style) == "outline"
     low_w, low_h = (
         (win_w, win_h)
         if outline_bright_bodies
@@ -850,7 +854,7 @@ def _draw_hover_overlay_layer(
         scene.viewer,
         highlighted_object,
         marker_scale=line_width_scale,
-        outline_bright_bodies=style.bright_bodies_mode == "outline",
+        outline_bright_bodies=_bright_bodies_mode(style) == "outline",
     )
     _draw_dso_hover_layer(
         painter,
