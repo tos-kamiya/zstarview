@@ -654,3 +654,9 @@
 - Bright-bodies mode rename plan
   - `--outline-bright-bodies` is being replaced by `--bright-bodies {outline,fill}` so the default state can be `outline` without encoding the mode as a boolean flag.
   - The new form keeps the intent explicit, removes the legacy flag entirely, and leaves room for future non-boolean body rendering modes.
+- Star size threshold refinement
+  - The large-star outline treatment was narrowed to stars whose rendered size is `>= 7px`, and the outline stroke for that path is `2px`.
+  - Stars below that threshold remain filled rectangles, which keeps the outlined-star footprint restricted to the largest markers.
+  - The implementation now batches full-fit outline rectangles by size to reduce Python-loop overhead, with a scalar fallback only for clipped edge cases.
+- Documentation sync
+  - Updated `docs/specification.md` and `docs/design.md` to describe the current size-based star rendering behavior and the `bright_bodies_mode` outline interaction.
