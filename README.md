@@ -89,6 +89,15 @@ Upgrade:
 pipx upgrade zstarview
 ```
 
+First run check:
+
+```bash
+zstarview auto -A5 -Zn
+```
+
+This starts zstarview using automatic location detection (`auto`), with the
+view centered near the northern horizon (`-A5 -Zn`).
+
 > Note: Troubleshooting tips (including X11 libraries and slow network) are summarized below.
 
 ## Usage
