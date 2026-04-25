@@ -362,6 +362,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `render_scene_into_painter()` と下位の `draw_*` 関数群は、`geometry`、`viewport_rect`、`scene`、`style`、`hud` を明示的に受ける。
 - `RenderStyle` は `show_guidelines` を持ち、guide レイヤーと viewport interaction 中の reference line 描画を同じ boolean で制御する。
 - `RenderStyle` は `bright_bodies_mode` を持ち、`vmag < 2.0` の恒星と太陽・月・惑星の outline/fill 表示を共有パイプラインへ伝える。
+- 恒星レイヤーは `size_px` に応じて描画を切り替え、`1px` は単一ピクセル+微弱ぼかし、`2px` は 2x2、`3px` から `6px` は塗りつぶし矩形、`7px` 以上は 2px 枠線矩形として扱ってよい。
+- `vmag < 2.0` の恒星は、通常モードではダイヤ形の上書き強調を重ねてよく、`bright_bodies_mode == "outline"` ではその輪郭のみを使ってよい。
 - `RenderPipelineState` のような中間ラッパ型は使わず、shared pipeline 側では直接引数で依存関係を表す。
 - `RenderSceneData` の cloud image / cloud missing mask は `QImage` ではなく NumPy 配列を持ち、cloud path の変換回数を抑える。
 - shared pipeline は星レイヤーの縮小レンダリング面サイズを一度計算し、cloud stripe density の参照値としても再利用してよい。
@@ -402,6 +404,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `bright_bodies_mode == "outline"` の場合、`stars` は `vmag < 2.0` の恒星をダイヤの輪郭のみで描き、`planets` は太陽をクロスカーソルのみ、惑星を輪郭のみで描く。
 - `bright_bodies_mode == "outline"` の場合、月は通常の占有面積を抑えるため輪郭のみで描くが、`enlarge_moon` や hover による拡大表示では通常の月レンダリングを優先してよい。
 - 月の phase 塗りや惑星円盤の内部塗りは `bright_bodies_mode == "outline"` で抑止してよいが、拡大月については塗りつぶしを残してよい。
+- `stars` の通常描画では、`7px` 以上の恒星のみ 2px 枠線矩形へ切り替え、それ未満は塗りつぶし矩形を維持してよい。`bright_bodies_mode == "outline"` の明るい星ダイヤはこの切り替えより優先してよい。
 - `paintEvent()` はベースフレームをキャッシュし、その上に hover/HUD を都度重ねる構成になっている。
 - ベースフレーム cache key から `mouse_pos`、hover 対象名、jump highlight 名、status message を外し、キャッシュ効率を上げている。
 - status line は短い記号接頭辞を使い、レイヤーが CLI/GUI の設定で無効化されている場合は `---` を付けて不在であることを明示してよい。
