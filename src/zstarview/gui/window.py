@@ -963,11 +963,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.file_menu.addSeparator()
         self.file_menu.addMenu(self.help_menu)
         self.file_menu.addSeparator()
+        request_quit = getattr(self, "_request_application_quit", None)
         exit_action = self._add_menu_action(
             self.file_menu,
             "Exit",
             shortcut=QKeySequence(Qt.Key.Key_Q),
-            triggered=self._request_application_quit,
+            triggered=request_quit if callable(request_quit) else None,
         )
 
         self.display_menu.addSeparator()
