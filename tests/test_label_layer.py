@@ -64,6 +64,55 @@ def test_draw_label_candidates_uses_priority_order_and_offsets(monkeypatch) -> N
     assert captured[1][1:] != (40.0, 60.0)
 
 
+def test_draw_label_candidates_prefers_upper_item_when_pair_clusters(monkeypatch) -> None:
+    captured: list[str] = []
+
+    def fake_draw_outlined_text(
+        painter,
+        text,
+        pos,
+        font=None,
+        text_color=QColor(255, 255, 255),
+        outline_color=QColor(0, 0, 0, 0),
+        outline_width=3.0,
+        *,
+        style=None,
+    ) -> None:
+        del painter, pos, font, text_color, outline_color, outline_width, style
+        captured.append(text)
+
+    def fake_text_bounds(text: str, font: QFont, baseline_pos: QPointF) -> QRectF:
+        del text, font
+        return QRectF(float(baseline_pos.x()), float(baseline_pos.y()) - 4.0, 40.0, 20.0)
+
+    monkeypatch.setattr(render_text, "draw_outlined_text", fake_draw_outlined_text)
+    monkeypatch.setattr(render_text, "_text_bounds_at_baseline", fake_text_bounds)
+
+    img = QImage(240, 200, QImage.Format.Format_ARGB32_Premultiplied)
+    img.fill(0)
+    painter = QPainter(img)
+    font = QFont()
+    font.setPointSize(12)
+    style = render_text.ResolvedTextStyle(
+        font=font,
+        text_color=QColor(255, 255, 255),
+        outline_color=QColor(0, 0, 0),
+        outline_width=2.0,
+    )
+
+    render_text._draw_label_candidates(
+        painter,
+        [
+            {"text": "Lower", "pos": QPointF(80.0, 120.0), "style": style, "priority": 10},
+            {"text": "Upper", "pos": QPointF(80.0, 100.0), "style": style, "priority": 10},
+        ],
+        font,
+    )
+    painter.end()
+
+    assert captured[:2] == ["Upper", "Lower"]
+
+
 def test_draw_label_candidates_explores_more_offsets_for_dense_clusters(monkeypatch) -> None:
     captured: list[tuple[str, float, float]] = []
 

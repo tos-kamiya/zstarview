@@ -54,6 +54,12 @@ def _rect_overlap_count(rect: QRectF, others: List[QRectF], pad_px: float = 2.0)
     )
 
 
+def _rects_overlap(rect_a: QRectF, rect_b: QRectF, pad_px: float = 2.0) -> bool:
+    return rect_a.adjusted(-pad_px, -pad_px, pad_px, pad_px).intersects(
+        rect_b.adjusted(-pad_px, -pad_px, pad_px, pad_px)
+    )
+
+
 def _label_candidate_offsets() -> Tuple[Tuple[float, float], ...]:
     """Return an ordered search pattern for label placement."""
     offsets = [
@@ -117,6 +123,107 @@ def _clamp_baseline_pos_to_viewport(
         dy -= rect.bottom() - bottom
 
     return QPointF(baseline_pos.x() + dx, baseline_pos.y() + dy)
+
+
+def _label_candidate_layout(
+    text: str,
+    font: QFont,
+    anchor: QPointF,
+    viewport: QRectF,
+) -> tuple[QPointF, QRectF]:
+    baseline_pos = _clamp_baseline_pos_to_viewport(text, font, anchor, viewport)
+    rect = _text_bounds_at_baseline(text, font, baseline_pos)
+    return baseline_pos, rect
+
+
+def _cluster_label_candidate_groups(
+    items: List[Dict[str, Any]],
+    *,
+    pad_px: float = 2.0,
+) -> List[List[int]]:
+    if len(items) <= 1:
+        return [list(range(len(items)))] if items else []
+
+    parent = list(range(len(items)))
+
+    def find(index: int) -> int:
+        root = index
+        while parent[root] != root:
+            root = parent[root]
+        while parent[index] != index:
+            parent[index], index = root, parent[index]
+        return root
+
+    def union(left: int, right: int) -> None:
+        left_root = find(left)
+        right_root = find(right)
+        if left_root != right_root:
+            parent[right_root] = left_root
+
+    for left_index in range(len(items)):
+        left_rect = items[left_index]["base_rect"]
+        if not isinstance(left_rect, QRectF):
+            continue
+        for right_index in range(left_index + 1, len(items)):
+            right_rect = items[right_index]["base_rect"]
+            if not isinstance(right_rect, QRectF):
+                continue
+            if _rects_overlap(left_rect, right_rect, pad_px=pad_px):
+                union(left_index, right_index)
+
+    grouped_indices: dict[int, List[int]] = {}
+    for index in range(len(items)):
+        root = find(index)
+        grouped_indices.setdefault(root, []).append(index)
+
+    ordered_groups: List[List[int]] = []
+    seen_roots: set[int] = set()
+    for index in range(len(items)):
+        root = find(index)
+        if root in seen_roots:
+            continue
+        seen_roots.add(root)
+        ordered_groups.append(grouped_indices[root])
+    return ordered_groups
+
+
+def _order_label_candidate_group(
+    items: List[Dict[str, Any]],
+    group: List[int],
+) -> List[int]:
+    if len(group) <= 1:
+        return list(group)
+
+    if len(group) == 2:
+        return sorted(
+            group,
+            key=lambda index: (
+                float(items[index]["base_rect"].top()),
+                int(items[index]["priority"]),
+                float(items[index]["base_rect"].left()),
+                index,
+            ),
+        )
+
+    cx = sum(float(items[index]["base_rect"].center().x()) for index in group) / float(len(group))
+    cy = sum(float(items[index]["base_rect"].center().y()) for index in group) / float(len(group))
+    return sorted(
+        group,
+        key=lambda index: (
+            (
+                float(items[index]["base_rect"].center().x()) - cx
+            )
+            ** 2
+            + (
+                float(items[index]["base_rect"].center().y()) - cy
+            )
+            ** 2,
+            float(items[index]["base_rect"].top()),
+            float(items[index]["base_rect"].left()),
+            int(items[index]["priority"]),
+            index,
+        ),
+    )
 
 
 def get_text_style(preset: str = "night", *, status_line: bool = False) -> Tuple[QColor, QColor]:
@@ -215,13 +322,12 @@ def _draw_label_candidates(
     """Draw label candidates as the final label layer with overlap avoidance."""
     if not candidates:
         return
-    reservations: List[QRectF] = []
-    offsets = _label_candidate_offsets()
     painter.save()
     painter.setFont(text_font)
     viewport = QRectF(painter.viewport())
     ordered = sorted(candidates, key=lambda c: int(c.get("priority", 999)))
-    for cand in ordered:
+    items: List[Dict[str, Any]] = []
+    for order_index, cand in enumerate(ordered):
         text = str(cand.get("text", "")).strip()
         if not text:
             continue
@@ -240,7 +346,33 @@ def _draw_label_candidates(
                 outline_color=outline_color,
                 outline_width=float(cand.get("outline_width", 3.0)),
             )
-        hide_on_overlap = bool(cand.get("hide_on_overlap", False))
+        base_pos, base_rect = _label_candidate_layout(text, text_font, anchor, viewport)
+        items.append(
+            {
+                "cand": cand,
+                "text": text,
+                "anchor": anchor,
+                "style": style,
+                "base_pos": base_pos,
+                "base_rect": base_rect,
+                "priority": int(cand.get("priority", 999)),
+                "hide_on_overlap": bool(cand.get("hide_on_overlap", False)),
+                "order_index": order_index,
+            }
+        )
+
+    reservations: List[QRectF] = []
+    offsets = _label_candidate_offsets()
+    placement_order: List[Dict[str, Any]] = []
+    for group in _cluster_label_candidate_groups(items):
+        for index in _order_label_candidate_group(items, group):
+            placement_order.append(items[index])
+
+    for item in placement_order:
+        text = item["text"]
+        anchor = item["anchor"]
+        style = item["style"]
+        hide_on_overlap = bool(item["hide_on_overlap"])
         placed = False
         best_nonfree: Optional[Tuple[int, float, QPointF, QRectF]] = None
         for dx, dy in offsets:
