@@ -54,6 +54,41 @@ def _rect_overlap_count(rect: QRectF, others: List[QRectF], pad_px: float = 2.0)
     )
 
 
+def _label_candidate_offsets() -> Tuple[Tuple[float, float], ...]:
+    """Return an ordered search pattern for label placement."""
+    offsets = [
+        (0.0, 0.0),
+        (12.0, 0.0),
+        (-12.0, 0.0),
+        (0.0, -12.0),
+        (0.0, 12.0),
+        (20.0, -10.0),
+        (-20.0, -10.0),
+        (24.0, 0.0),
+        (-24.0, 0.0),
+        (0.0, -24.0),
+        (0.0, 24.0),
+        (30.0, -14.0),
+        (-30.0, -14.0),
+        (30.0, 14.0),
+        (-30.0, 14.0),
+    ]
+    for radius in (42.0, 54.0, 66.0):
+        offsets.extend(
+            [
+                (radius, 0.0),
+                (-radius, 0.0),
+                (0.0, -radius),
+                (0.0, radius),
+                (radius, -radius * 0.5),
+                (-radius, -radius * 0.5),
+                (radius, radius * 0.5),
+                (-radius, radius * 0.5),
+            ]
+        )
+    return tuple(offsets)
+
+
 def _clamp_baseline_pos_to_viewport(
     text: str,
     font: QFont,
@@ -181,23 +216,7 @@ def _draw_label_candidates(
     if not candidates:
         return
     reservations: List[QRectF] = []
-    offsets = (
-        (0.0, 0.0),
-        (12.0, 0.0),
-        (-12.0, 0.0),
-        (0.0, -12.0),
-        (0.0, 12.0),
-        (20.0, -10.0),
-        (-20.0, -10.0),
-        (24.0, 0.0),
-        (-24.0, 0.0),
-        (0.0, -24.0),
-        (0.0, 24.0),
-        (30.0, -14.0),
-        (-30.0, -14.0),
-        (30.0, 14.0),
-        (-30.0, 14.0),
-    )
+    offsets = _label_candidate_offsets()
     painter.save()
     painter.setFont(text_font)
     viewport = QRectF(painter.viewport())

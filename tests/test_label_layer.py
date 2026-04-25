@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QPointF
+from PySide6.QtCore import QPointF, QRectF
 from PySide6.QtGui import QColor, QFont, QImage, QPainter
 from PySide6.QtWidgets import QApplication
 
@@ -62,6 +62,62 @@ def test_draw_label_candidates_uses_priority_order_and_offsets(monkeypatch) -> N
     assert captured[0][1:] != captured[1][1:]
     assert captured[0][1] == 40.0
     assert captured[1][1:] != (40.0, 60.0)
+
+
+def test_draw_label_candidates_explores_more_offsets_for_dense_clusters(monkeypatch) -> None:
+    captured: list[tuple[str, float, float]] = []
+
+    def fake_draw_outlined_text(
+        painter,
+        text,
+        pos,
+        font=None,
+        text_color=QColor(255, 255, 255),
+        outline_color=QColor(0, 0, 0, 0),
+        outline_width=3.0,
+        *,
+        style=None,
+    ) -> None:
+        captured.append((text, float(pos.x()), float(pos.y())))
+
+    def fake_text_bounds(text: str, font: QFont, baseline_pos: QPointF) -> QRectF:
+        del text, font
+        return QRectF(float(baseline_pos.x()), float(baseline_pos.y()), 2.0, 2.0)
+
+    monkeypatch.setattr(render_text, "draw_outlined_text", fake_draw_outlined_text)
+    monkeypatch.setattr(render_text, "_text_bounds_at_baseline", fake_text_bounds)
+
+    img = QImage(240, 240, QImage.Format.Format_ARGB32_Premultiplied)
+    img.fill(0)
+    painter = QPainter(img)
+    font = QFont()
+    font.setPointSize(12)
+    style = render_text.ResolvedTextStyle(
+        font=font,
+        text_color=QColor(255, 255, 255),
+        outline_color=QColor(0, 0, 0),
+        outline_width=2.0,
+    )
+
+    render_text._draw_label_candidates(
+        painter,
+        [
+            {
+                "text": f"Label {idx}",
+                "pos": QPointF(120.0, 120.0),
+                "style": style,
+                "priority": 10,
+                "hide_on_overlap": True,
+            }
+            for idx in range(16)
+        ],
+        font,
+    )
+    painter.end()
+
+    assert len(captured) == 16
+    assert captured[-1][0] == "Label 15"
+    assert max(abs(captured[-1][1] - 120.0), abs(captured[-1][2] - 120.0)) >= 42.0
 
 
 def test_draw_search_target_overlay_appends_label_candidate() -> None:
