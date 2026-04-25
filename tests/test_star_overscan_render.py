@@ -53,6 +53,14 @@ def _single_star_celestial_data(
     )
 
 
+def _alpha_bbox_width(image: QImage) -> int:
+    arr = qimage_to_np_rgba(image)
+    xs = np.nonzero(arr[:, :, 3])[1]
+    if xs.size == 0:
+        return 0
+    return int(xs.max() - xs.min() + 1)
+
+
 def test_draw_stars_keeps_faint_overscan_star_outside_90_deg_background() -> None:
     image = QImage(240, 240, QImage.Format.Format_ARGB32_Premultiplied)
     image.fill(0)
@@ -214,3 +222,68 @@ def test_draw_stars_renders_7px_and_larger_stars_as_outline_rectangles() -> None
     assert int(center[3]) == 0
     assert int(top_edge[3]) > 0
     assert int(np.count_nonzero(arr[:, :, 3])) > 0
+
+
+def test_draw_stars_keeps_bright_diamonds_no_smaller_than_outline_rectangles_at_high_scale() -> None:
+    geometry = ScreenGeometry(center=(120, 120), radius=80)
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(90.0, 180.0),
+        content_fov_deg=90.0,
+    )
+
+    bright_image = QImage(240, 240, QImage.Format.Format_ARGB32_Premultiplied)
+    bright_image.fill(0)
+    bright_painter = QPainter(bright_image)
+    try:
+        bright_data = _single_star_celestial_data(
+            alt=90.0,
+            az=180.0,
+            vmag=1.9,
+            bv=0.0,
+            size_factor=0.27,
+            color_factor_base=1.0,
+        )
+        render_stars.draw_stars(
+            bright_painter,
+            geometry,
+            bright_data,
+            viewer,
+            star_base_radius=20.0,
+            outline_bright_bodies=True,
+            outline_render_scale=2.5,
+            viewport_size=(240, 240),
+            content_fov_deg=90.0,
+        )
+    finally:
+        bright_painter.end()
+
+    faint_image = QImage(240, 240, QImage.Format.Format_ARGB32_Premultiplied)
+    faint_image.fill(0)
+    faint_painter = QPainter(faint_image)
+    try:
+        faint_data = _single_star_celestial_data(
+            alt=90.0,
+            az=180.0,
+            vmag=5.5,
+            bv=0.0,
+            size_factor=0.27,
+            color_factor_base=1.0,
+        )
+        render_stars.draw_stars(
+            faint_painter,
+            geometry,
+            faint_data,
+            viewer,
+            star_base_radius=20.0,
+            outline_bright_bodies=True,
+            outline_render_scale=2.5,
+            viewport_size=(240, 240),
+            content_fov_deg=90.0,
+        )
+    finally:
+        faint_painter.end()
+
+    assert _alpha_bbox_width(bright_image) >= _alpha_bbox_width(faint_image)

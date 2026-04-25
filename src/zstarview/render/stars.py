@@ -27,7 +27,8 @@ _star_render_cache: tuple[tuple, QImage] | None = None
 _MAG2_TO_MAG1_SIZE_SCALE = 10.0 ** 0.12
 _DIAMOND_OVERLAY_GAIN = 0.85
 _OUTLINE_DIAMOND_GAIN = 1.25
-_OUTLINE_DIAMOND_SCALE = 0.72
+_DIAMOND_OVERLAY_SCALE = 0.72
+_OUTLINE_DIAMOND_SCALE = 1.08
 _SINGLE_STAR_GAUSSIAN_STRENGTH = 0.12
 
 
@@ -548,12 +549,12 @@ def draw_stars(
         for local_i, idx in enumerate(bright_indices):
             cx = float(ix[idx])
             cy = float(iy[idx])
+            diamond_scale = (
+                _OUTLINE_DIAMOND_SCALE if outline_bright_bodies else _DIAMOND_OVERLAY_SCALE
+            )
             half_diag = max(
                 0.5,
-                0.5
-                * float(size_px[idx])
-                * float(bright_scale[local_i])
-                * _OUTLINE_DIAMOND_SCALE,
+                0.5 * float(size_px[idx]) * float(bright_scale[local_i]) * diamond_scale,
             )
             if outline_bright_bodies:
                 _draw_diamond_outline_rgb(
