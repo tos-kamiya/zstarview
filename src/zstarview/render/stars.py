@@ -123,6 +123,76 @@ def _draw_diamond_outline_rgb(
     _draw_rgb_line(arr, *left, *top, color)
 
 
+def _draw_rect_outline_rgb(
+    arr: np.ndarray,
+    x0: int,
+    y0: int,
+    x1: int,
+    y1: int,
+    color: np.ndarray,
+    thickness: int = 1,
+) -> None:
+    if x1 <= x0 or y1 <= y0:
+        return
+    t = max(1, int(thickness))
+    x1_i = min(x1, x0 + t)
+    y1_i = min(y1, y0 + t)
+    x0_i = max(x0, x1 - t)
+    y0_i = max(y0, y1 - t)
+    arr[y0:y1_i, x0:x1, :] += color
+    if y0_i > y0:
+        arr[y0_i:y1, x0:x1, :] += color
+    if x1_i > x0:
+        arr[y0:y1, x0:x1_i, :] += color
+    if x0_i > x0:
+        arr[y0:y1, x0_i:x1, :] += color
+
+
+def _draw_rect_outline_batch_rgb(
+    arr: np.ndarray,
+    x0: np.ndarray,
+    y0: np.ndarray,
+    size_px: int,
+    colors: np.ndarray,
+    width_px: int,
+    thickness: int = 1,
+) -> None:
+    """Draw same-sized rectangular outlines in batches for better performance."""
+    if x0.size == 0:
+        return
+    if size_px <= 0:
+        return
+
+    flat = arr.reshape(-1, 3)
+    t = max(1, int(thickness))
+    band = min(size_px, t)
+    x_offsets = np.arange(size_px, dtype=int)
+    color_rows = np.repeat(colors, band * size_px, axis=0)
+
+    x_band = np.repeat(x0, band)
+    top_rows = np.repeat(y0, band) + np.tile(np.arange(band, dtype=int), x0.size)
+    top_idx = (top_rows[:, None] * width_px + x_band[:, None] + x_offsets[None, :]).reshape(-1)
+    np.add.at(flat, top_idx, color_rows)
+
+    bottom_y0 = y0 + size_px - band
+    bottom_rows = np.repeat(bottom_y0, band) + np.tile(np.arange(band, dtype=int), x0.size)
+    bottom_idx = (bottom_rows[:, None] * width_px + x_band[:, None] + x_offsets[None, :]).reshape(-1)
+    np.add.at(flat, bottom_idx, color_rows)
+
+    if size_px <= band * 2:
+        return
+
+    inner_y_offsets = np.arange(band, size_px - band, dtype=int)
+    side_colors = np.repeat(colors, inner_y_offsets.size, axis=0)
+
+    y_band = np.repeat(y0, inner_y_offsets.size) + np.tile(inner_y_offsets, x0.size)
+    left_idx = (y_band * width_px + np.repeat(x0, inner_y_offsets.size)).reshape(-1)
+    right_x = x0 + size_px - 1
+    right_idx = (y_band * width_px + np.repeat(right_x, inner_y_offsets.size)).reshape(-1)
+    np.add.at(flat, left_idx, side_colors)
+    np.add.at(flat, right_idx, side_colors)
+
+
 def _star_cache_key(
     alt: np.ndarray,
     az: np.ndarray,
@@ -394,7 +464,8 @@ def draw_stars(
     single_mask = valid_base & size_one & (~bright_outline_mask)
     size2_full_fit = (x0 >= 0) & (y0 >= 0) & (x1 <= width_px) & (y1 <= height_px)
     size2_mask = valid_base & size_two & size2_full_fit & (~bright_outline_mask)
-    multi_mask = valid_base & ~(size_one | size_two) & (~bright_outline_mask)
+    size3_to_6_mask = valid_base & (size_px >= 3) & (size_px <= 6) & (~bright_outline_mask)
+    outline_mask = valid_base & (size_px >= 7) & (~bright_outline_mask)
     single_indices = np.nonzero(single_mask)[0]
     if single_indices.size > 0:
         single_layer = np.zeros_like(canvas)
@@ -419,9 +490,56 @@ def draw_stars(
         np.add.at(flat_size2, base_idx + width_px + 1, colors_size2)
         canvas += size2_layer
 
-    multi_indices = np.nonzero(multi_mask)[0]
-    for idx in multi_indices:
-        canvas[y0_clamped[idx]:y1_clamped[idx], x0_clamped[idx]:x1_clamped[idx], :] += star_colors[idx]
+    size3_to_6_indices = np.nonzero(size3_to_6_mask)[0]
+    if size3_to_6_indices.size > 0:
+        for idx in size3_to_6_indices:
+            canvas[
+                y0_clamped[idx]:y1_clamped[idx],
+                x0_clamped[idx]:x1_clamped[idx],
+                :,
+            ] += star_colors[idx]
+
+    outline_indices = np.nonzero(outline_mask)[0]
+    if outline_indices.size > 0:
+        outline_sizes = size_px[outline_indices]
+        outline_x0 = x0[outline_indices]
+        outline_y0 = y0[outline_indices]
+        outline_x1 = x1[outline_indices]
+        outline_y1 = y1[outline_indices]
+        outline_colors = star_colors[outline_indices]
+
+        outline_full_fit = (
+            (outline_x0 >= 0)
+            & (outline_y0 >= 0)
+            & (outline_x1 <= width_px)
+            & (outline_y1 <= height_px)
+        )
+        if np.any(outline_full_fit):
+            full_fit_indices = np.nonzero(outline_full_fit)[0]
+            for size_value in np.unique(outline_sizes[full_fit_indices]):
+                size_mask = outline_full_fit & (outline_sizes == size_value)
+                size_indices = np.nonzero(size_mask)[0]
+                _draw_rect_outline_batch_rgb(
+                    canvas,
+                    outline_x0[size_indices],
+                    outline_y0[size_indices],
+                    int(size_value),
+                    outline_colors[size_indices],
+                    width_px,
+                    thickness=2,
+                )
+
+        clipped_indices = np.nonzero(~outline_full_fit)[0]
+        for idx in clipped_indices:
+            _draw_rect_outline_rgb(
+                canvas,
+                int(x0_clamped[outline_indices[idx]]),
+                int(y0_clamped[outline_indices[idx]]),
+                int(x1_clamped[outline_indices[idx]]),
+                int(y1_clamped[outline_indices[idx]]),
+                outline_colors[idx],
+                thickness=2,
+            )
 
     # Overlay a rotated square (diamond) for bright stars to emphasize stars above 2nd magnitude.
     bright_indices = np.nonzero(valid_base & (vmag < 2.0))[0]
