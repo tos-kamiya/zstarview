@@ -33,7 +33,7 @@ from PySide6.QtGui import (
     QPaintEvent,
     QResizeEvent,
 )
-from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QPushButton, QSizeGrip
+from PySide6.QtWidgets import QApplication, QLabel, QMainWindow, QMenu, QPushButton, QSizeGrip
 from PySide6.QtWidgets import QWidget
 
 from ..__about__ import __version__
@@ -226,6 +226,25 @@ class SkyWindowClientWidget(SkyWindowRenderMixin, QWidget):
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         self._owner._handle_client_key_press(event)
+
+
+class ShutdownMessageOverlay(QLabel):
+    """Centered shutdown message shown while background workers are stopping."""
+
+    def __init__(self, parent: QWidget) -> None:
+        super().__init__("Shutting down (closing sub-processes)... please wait.", parent)
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.setWordWrap(True)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.setStyleSheet(
+            "QLabel {"
+            " background-color: rgba(0, 0, 0, 150);"
+            " color: rgba(255, 255, 255, 225);"
+            " border: 3px solid rgba(255, 255, 255, 55);"
+            " padding: 10px 18px;"
+            " font-size: 16px;"
+            "}"
+        )
 
 
 class FramelessWindowFrame(QWidget):
@@ -521,6 +540,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._client_geometry_sync_done = False
         self.setGeometry(initial_x, initial_y, initial_width, initial_height)
         self._client_widget = SkyWindowClientWidget(self)
+        self._shutdown_overlay: Optional[ShutdownMessageOverlay] = None
         self._frameless_frame: Optional[FramelessWindowFrame] = None
         self.menu_button: Optional[QPushButton] = None
         self.size_grip: Optional[QSizeGrip] = None
@@ -947,7 +967,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.file_menu,
             "Exit",
             shortcut=QKeySequence(Qt.Key.Key_Q),
-            triggered=QApplication.quit,
+            triggered=self._request_application_quit,
         )
 
         self.display_menu.addSeparator()
@@ -1024,6 +1044,40 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if triggered is not None:
             action.triggered.connect(triggered)
         return action
+
+    def _ensure_shutdown_overlay(self) -> ShutdownMessageOverlay:
+        if self._shutdown_overlay is None:
+            self._shutdown_overlay = ShutdownMessageOverlay(self)
+        self._shutdown_overlay.setGeometry(self._shutdown_message_geometry())
+        return self._shutdown_overlay
+
+    def _shutdown_message_geometry(self) -> QRect:
+        overlay = self._shutdown_overlay
+        client_width = max(1, int(self.client_width()))
+        width = max(1, int(round(client_width * 0.95)))
+        width = min(width, client_width)
+        if overlay is None:
+            height = 64
+        else:
+            height = max(1, int(overlay.sizeHint().height()))
+        x = max(0, (client_width - width) // 2)
+        y = max(0, (int(self.height()) - height) // 2)
+        return QRect(x, y, width, height)
+
+    def _show_shutdown_message(self) -> None:
+        overlay = self._ensure_shutdown_overlay()
+        overlay.raise_()
+        overlay.show()
+        overlay.setGeometry(self._shutdown_message_geometry())
+        QApplication.processEvents()
+
+    def _hide_shutdown_message(self) -> None:
+        if self._shutdown_overlay is not None:
+            self._shutdown_overlay.hide()
+
+    def _request_application_quit(self) -> None:
+        self._show_shutdown_message()
+        QApplication.quit()
 
     def _add_help_menu_actions(self, menu: QMenu) -> None:
         version_action = self._add_menu_action(
@@ -1766,37 +1820,41 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if self._is_shutting_down:
             return
         self._is_shutting_down = True
-        self._sky_worker.shutdown()
-        if self._cloud_controller is not None:
-            self._cloud_controller.shutdown()
-        if self._satellite_controller is not None:
-            self._satellite_controller.shutdown()
-        if self._aircraft_controller is not None:
-            self._aircraft_controller.shutdown()
-        if self._jpl_small_body_controller is not None:
-            self._jpl_small_body_controller.shutdown()
-        if self._terrain_horizon_controller is not None:
-            self._terrain_horizon_controller.shutdown()
-        if self._urban_outline_controller is not None:
-            self._urban_outline_controller.shutdown()
-        if self._sky_data_update_timer.isActive():
-            self._sky_data_update_timer.stop()
-        if self._asterism_check_timer.isActive():
-            self._asterism_check_timer.stop()
-        if self._cloud_update_timer.isActive():
-            self._cloud_update_timer.stop()
-        if self._satellite_update_timer.isActive():
-            self._satellite_update_timer.stop()
-        if self._overlay_projection_timer.isActive():
-            self._overlay_projection_timer.stop()
-        if self._aircraft_update_timer.isActive():
-            self._aircraft_update_timer.stop()
-        if hasattr(self, "_persistent_search_update_timer") and self._persistent_search_update_timer.isActive():
-            self._persistent_search_update_timer.stop()
-        if self._interaction_idle_timer.isActive():
-            self._interaction_idle_timer.stop()
-        if self._viewport_interaction_idle_timer.isActive():
-            self._viewport_interaction_idle_timer.stop()
+        self._show_shutdown_message()
+        try:
+            self._sky_worker.shutdown()
+            if self._cloud_controller is not None:
+                self._cloud_controller.shutdown()
+            if self._satellite_controller is not None:
+                self._satellite_controller.shutdown()
+            if self._aircraft_controller is not None:
+                self._aircraft_controller.shutdown()
+            if self._jpl_small_body_controller is not None:
+                self._jpl_small_body_controller.shutdown()
+            if self._terrain_horizon_controller is not None:
+                self._terrain_horizon_controller.shutdown()
+            if self._urban_outline_controller is not None:
+                self._urban_outline_controller.shutdown()
+            if self._sky_data_update_timer.isActive():
+                self._sky_data_update_timer.stop()
+            if self._asterism_check_timer.isActive():
+                self._asterism_check_timer.stop()
+            if self._cloud_update_timer.isActive():
+                self._cloud_update_timer.stop()
+            if self._satellite_update_timer.isActive():
+                self._satellite_update_timer.stop()
+            if self._overlay_projection_timer.isActive():
+                self._overlay_projection_timer.stop()
+            if self._aircraft_update_timer.isActive():
+                self._aircraft_update_timer.stop()
+            if hasattr(self, "_persistent_search_update_timer") and self._persistent_search_update_timer.isActive():
+                self._persistent_search_update_timer.stop()
+            if self._interaction_idle_timer.isActive():
+                self._interaction_idle_timer.stop()
+            if self._viewport_interaction_idle_timer.isActive():
+                self._viewport_interaction_idle_timer.stop()
+        finally:
+            self._hide_shutdown_message()
 
     def _on_asterism_check_tick(self) -> None:
         if self._is_shutting_down:
@@ -2331,7 +2389,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 self.showNormal()
             event.accept()
         elif key == Qt.Key.Key_Q:
-            QApplication.quit()
+            self._request_application_quit()
             event.accept()
         else:
             super().keyPressEvent(event)

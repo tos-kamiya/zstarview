@@ -660,6 +660,7 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 - `U` で都市アウトライン表示を切り替える。
 - `F11` で fullscreen を切り替える。
 - `Q` で終了する。
+- `Exit` または `Q` で終了を始めたとき、バックグラウンドの停止待ち中はウィンドウ中央に `Shutting down (closing sub-processes)... please wait.` と表示してよい。
 
 ### 8.2 メニュー操作
 
