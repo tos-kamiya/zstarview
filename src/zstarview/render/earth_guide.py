@@ -21,6 +21,15 @@ EARTH_GUIDE_DEAD_ZONE_MIN_KM = 20.0
 EARTH_GUIDE_DEAD_ZONE_MAX_KM = 80.0
 EARTH_GUIDE_DEAD_ZONE_SCALE = 0.25
 EARTH_GUIDE_HORIZON_MARGIN_DEG = 1.0
+EARTH_GUIDE_FILL_DEAD_ZONE_KM = 600.0
+EARTH_GUIDE_FILL_CELL_AREA_DEG2 = 10.0
+EARTH_GUIDE_FILL_LINE_WIDTH_PX = 1.35
+EARTH_GUIDE_FILL_ALPHA = 0.12
+EARTH_GUIDE_FILL_FAST_MODE_THINNING = 3
+EARTH_GUIDE_FILL_SAMPLER_MODE = "equal_area"
+EARTH_GUIDE_FILL_SOUTH_POLE_CUTOFF_LAT_DEG = -60.0
+EARTH_GUIDE_FILL_LAT_BAND_DEG = 0.5
+EARTH_GUIDE_FILL_MAX_LON_GAP_DEG = 8.0
 EARTH_GUIDE_UNDERLAY_WIDTH = 12.0
 EARTH_GUIDE_FOREGROUND_WIDTH = 1.5
 
@@ -31,6 +40,9 @@ class EarthGuideRing:
     label_name: str | None
     points_lonlat_deg: np.ndarray
     points_xyz: np.ndarray
+    approx_area_deg2: float | None = None
+    fill_points_lonlat_deg: np.ndarray | None = None
+    fill_points_xyz: np.ndarray | None = None
 
 
 def _lonlat_to_unit_xyz(lon_deg: float, lat_deg: float) -> tuple[float, float, float]:
@@ -42,6 +54,128 @@ def _lonlat_to_unit_xyz(lon_deg: float, lat_deg: float) -> tuple[float, float, f
         cos_lat * math.sin(lon_rad),
         math.sin(lat_rad),
     )
+
+
+def _wrap_lon_deg(lon_deg: float) -> float:
+    return ((float(lon_deg) + 180.0) % 360.0) - 180.0
+
+
+def _unwrap_ring_lonlat_deg(points_lonlat_deg: np.ndarray) -> np.ndarray:
+    lon = np.asarray(points_lonlat_deg[:, 0], dtype=np.float64)
+    lat = np.asarray(points_lonlat_deg[:, 1], dtype=np.float64)
+    lon_unwrapped = np.degrees(np.unwrap(np.radians(lon)))
+    return np.column_stack((lon_unwrapped, lat))
+
+
+def _point_in_polygon_2d(x: float, y: float, polygon_xy: np.ndarray) -> bool:
+    count = len(polygon_xy)
+    if count < 3:
+        return False
+    inside = False
+    prev_x = float(polygon_xy[-1][0])
+    prev_y = float(polygon_xy[-1][1])
+    for index in range(count):
+        curr_x = float(polygon_xy[index][0])
+        curr_y = float(polygon_xy[index][1])
+        if ((curr_y > y) != (prev_y > y)) and (
+            x < ((prev_x - curr_x) * (y - curr_y) / ((prev_y - curr_y) or 1.0e-12)) + curr_x
+        ):
+            inside = not inside
+        prev_x = curr_x
+        prev_y = curr_y
+    return inside
+
+
+def _fill_lat_band_key(lat_deg: float, band_deg: float = EARTH_GUIDE_FILL_LAT_BAND_DEG) -> int:
+    band = max(1.0e-3, float(band_deg))
+    return int(round(float(lat_deg) / band))
+
+
+def _build_ring_fill_points(
+    ring: EarthGuideRing,
+    *,
+    sampler_mode: str = EARTH_GUIDE_FILL_SAMPLER_MODE,
+    target_cell_area_deg2: float = EARTH_GUIDE_FILL_CELL_AREA_DEG2,
+) -> tuple[np.ndarray, np.ndarray]:
+    points_lonlat = np.asarray(ring.points_lonlat_deg, dtype=np.float64)
+    if len(points_lonlat) < 3:
+        return (
+            np.empty((0, 2), dtype=np.float64),
+            np.empty((0, 3), dtype=np.float64),
+        )
+
+    lonlat_unwrapped = _unwrap_ring_lonlat_deg(points_lonlat)
+    lon_min = float(np.min(lonlat_unwrapped[:, 0]))
+    lon_max = float(np.max(lonlat_unwrapped[:, 0]))
+    lat_min = float(np.min(lonlat_unwrapped[:, 1]))
+    lat_max = float(np.max(lonlat_unwrapped[:, 1]))
+
+    if lat_max < EARTH_GUIDE_FILL_SOUTH_POLE_CUTOFF_LAT_DEG:
+        return (
+            np.empty((0, 2), dtype=np.float64),
+            np.empty((0, 3), dtype=np.float64),
+        )
+
+    lat_span = max(1.0e-6, lat_max - lat_min)
+    approx_area = float(ring.approx_area_deg2 or max(1.0, lat_span * max(1.0e-6, lon_max - lon_min)))
+    cell_area = max(6.0, float(target_cell_area_deg2))
+    target_points = max(8, int(round(approx_area / cell_area)))
+    sampler_mode = str(sampler_mode)
+
+    points: list[tuple[float, float]] = []
+    if sampler_mode == "latlon":
+        lat_step = max(1.5, math.sqrt(cell_area))
+        lon_step = lat_step
+        lat_positions = np.arange(lat_min, lat_max + (lat_step * 0.5), lat_step, dtype=np.float64)
+        for row_index, lat in enumerate(lat_positions):
+            if not (lat_min <= float(lat) <= lat_max):
+                continue
+            lon_offset = 0.0 if (row_index % 2 == 0) else lon_step * 0.5
+            lon_positions = np.arange(
+                lon_min + lon_offset,
+                lon_max + lon_step,
+                lon_step,
+                dtype=np.float64,
+            )
+            for lon in lon_positions:
+                if _point_in_polygon_2d(float(lon), float(lat), lonlat_unwrapped):
+                    points.append((_wrap_lon_deg(float(lon)), float(lat)))
+    else:
+        band_count = max(2, int(round(math.sqrt(target_points))))
+        sin_min = math.sin(math.radians(lat_min))
+        sin_max = math.sin(math.radians(lat_max))
+        sin_span = max(1.0e-6, sin_max - sin_min)
+        row_height_deg = lat_span / float(band_count)
+        for row_index in range(band_count):
+            row_sin_min = sin_min + (sin_span * (row_index / band_count))
+            row_sin_max = sin_min + (sin_span * ((row_index + 1) / band_count))
+            row_lat = math.degrees(math.asin(max(-1.0, min(1.0, (row_sin_min + row_sin_max) * 0.5))))
+            cos_lat = max(0.2, math.cos(math.radians(row_lat)))
+            lon_step = max(1.5, cell_area / max(1.0e-6, row_height_deg * cos_lat))
+            lon_offset = 0.0 if (row_index % 2 == 0) else lon_step * 0.5
+            lon_positions = np.arange(
+                lon_min + lon_offset,
+                lon_max + lon_step,
+                lon_step,
+                dtype=np.float64,
+            )
+            if sampler_mode == "jitter":
+                jitter = min(0.35 * lon_step, 0.65)
+                lon_positions = lon_positions + ((row_index % 3) - 1) * jitter * 0.5
+            for lon in lon_positions:
+                lat = math.degrees(math.asin(max(-1.0, min(1.0, (row_sin_min + row_sin_max) * 0.5))))
+                if _point_in_polygon_2d(float(lon), float(lat), lonlat_unwrapped):
+                    points.append((_wrap_lon_deg(float(lon)), float(lat)))
+
+    if not points:
+        return (
+            np.empty((0, 2), dtype=np.float64),
+            np.empty((0, 3), dtype=np.float64),
+        )
+
+    lonlat = np.asarray(points, dtype=np.float64)
+    xyz = np.asarray([_lonlat_to_unit_xyz(float(lon), float(lat)) for lon, lat in lonlat], dtype=np.float64)
+    return lonlat, xyz
 
 
 def _observer_basis(
@@ -223,6 +357,108 @@ def _project_xyz_to_screen_point(
     )
     visible = _surface_distance_km(xyz, up) >= dead_zone_km and alt_deg <= limit_deg
     return (screen_xy, visible)
+
+
+def _project_fill_xyz_to_screen_point(
+    xyz: np.ndarray,
+    *,
+    origin: np.ndarray,
+    east: np.ndarray,
+    north: np.ndarray,
+    up: np.ndarray,
+    observer_height_m: float,
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    edge_fov_deg: float,
+    content_fov_deg: float,
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+) -> tuple[tuple[float, float], bool] | None:
+    projected = _project_xyz_to_screen_point(
+        xyz,
+        origin=origin,
+        east=east,
+        north=north,
+        up=up,
+        observer_height_m=observer_height_m,
+        dead_zone_km=EARTH_GUIDE_FILL_DEAD_ZONE_KM,
+        geometry=geometry,
+        view_center=view_center,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+        terrain_profile_altaz=terrain_profile_altaz,
+    )
+    return projected
+
+
+def _draw_fill_segments_for_ring(
+    painter: QPainter,
+    ring: EarthGuideRing,
+    *,
+    origin: np.ndarray,
+    east: np.ndarray,
+    north: np.ndarray,
+    up: np.ndarray,
+    observer_height_m: float,
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    edge_fov_deg: float,
+    content_fov_deg: float,
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+    fill_pen: QPen,
+    fill_thinning: int,
+    fast_mode: bool,
+) -> None:
+    fill_points_xyz = ring.fill_points_xyz
+    fill_points_lonlat = ring.fill_points_lonlat_deg
+    if fill_points_xyz is None or fill_points_lonlat is None:
+        return
+    if len(fill_points_xyz) == 0 or len(fill_points_lonlat) == 0:
+        return
+
+    grouped: dict[int, list[tuple[float, tuple[float, float]]]] = {}
+    for point_index, ((lon_deg, lat_deg), xyz) in enumerate(zip(fill_points_lonlat, fill_points_xyz)):
+        if fill_thinning > 1 and ((point_index + _fill_lat_band_key(float(lat_deg))) % fill_thinning != 0):
+            continue
+        projected = _project_fill_xyz_to_screen_point(
+            xyz,
+            origin=origin,
+            east=east,
+            north=north,
+            up=up,
+            observer_height_m=observer_height_m,
+            geometry=geometry,
+            view_center=view_center,
+            edge_fov_deg=edge_fov_deg,
+            content_fov_deg=content_fov_deg,
+            terrain_profile_altaz=terrain_profile_altaz,
+        )
+        if projected is None:
+            continue
+        screen_xy, visible = projected
+        if not visible:
+            continue
+        band_key = _fill_lat_band_key(float(lat_deg))
+        grouped.setdefault(band_key, []).append((float(lon_deg), screen_xy))
+
+    if not grouped:
+        return
+
+    painter.setPen(fill_pen)
+    lon_gap_limit = EARTH_GUIDE_FILL_MAX_LON_GAP_DEG * (1.15 if fast_mode else 1.0)
+    for band_key in sorted(grouped):
+        band_points = grouped[band_key]
+        if len(band_points) < 2:
+            continue
+        band_points.sort(key=lambda item: item[0])
+        prev_lon, prev_xy = band_points[0]
+        for lon_deg, xy in band_points[1:]:
+            if abs(float(lon_deg) - prev_lon) <= lon_gap_limit:
+                painter.drawLine(
+                    QPointF(prev_xy[0], prev_xy[1]),
+                    QPointF(xy[0], xy[1]),
+                )
+            prev_lon = lon_deg
+            prev_xy = xy
 
 
 def _segment_screen_fragments(
@@ -447,12 +683,27 @@ def load_earth_guide_rings(path_str: str = EARTH_GUIDE_LAND_FILE) -> tuple[Earth
             xyz.append(_lonlat_to_unit_xyz(lon_deg, lat_deg))
         if len(lonlat) < 3:
             continue
+        approx_area_deg2: float | None = None
+        raw_area = item.get("approx_area_deg2")
+        if isinstance(raw_area, (int, float)):
+            approx_area_deg2 = float(raw_area)
+        ring = EarthGuideRing(
+            source_name=str(item.get("source_name", "")),
+            label_name=(str(item["label_name"]) if item.get("label_name") else None),
+            points_lonlat_deg=np.asarray(lonlat, dtype=np.float64),
+            points_xyz=np.asarray(xyz, dtype=np.float64),
+            approx_area_deg2=approx_area_deg2,
+        )
+        fill_lonlat, fill_xyz = _build_ring_fill_points(ring)
         rings.append(
             EarthGuideRing(
-                source_name=str(item.get("source_name", "")),
-                label_name=(str(item["label_name"]) if item.get("label_name") else None),
-                points_lonlat_deg=np.asarray(lonlat, dtype=np.float64),
-                points_xyz=np.asarray(xyz, dtype=np.float64),
+                source_name=ring.source_name,
+                label_name=ring.label_name,
+                points_lonlat_deg=ring.points_lonlat_deg,
+                points_xyz=ring.points_xyz,
+                approx_area_deg2=ring.approx_area_deg2,
+                fill_points_lonlat_deg=fill_lonlat,
+                fill_points_xyz=fill_xyz,
             )
         )
     return tuple(rings)
@@ -492,6 +743,43 @@ def draw_earth_guide(
         else:
             max_depth = 12
             threshold_px = 24.0
+        fill_alpha = max(
+            0.0,
+            min(1.0, EARTH_GUIDE_FILL_ALPHA + (float(earth_guide_opacity) * 0.35)),
+        )
+        fill_color = QColor(*EARTH_GUIDE_LINE_COLOR)
+        fill_color.setAlphaF(fill_alpha)
+        fill_line_width = max(
+            0.8,
+            EARTH_GUIDE_FILL_LINE_WIDTH_PX * (0.82 if fast_mode else 1.0),
+        )
+        fill_pen = QPen(fill_color, fill_line_width, Qt.PenStyle.SolidLine)
+        fill_pen.setCosmetic(True)
+        fill_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        fill_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        fill_thinning = EARTH_GUIDE_FILL_FAST_MODE_THINNING if fast_mode else 1
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        painter.setPen(fill_pen)
+        for ring in rings:
+            _draw_fill_segments_for_ring(
+                painter,
+                ring,
+                origin=origin,
+                east=east,
+                north=north,
+                up=up,
+                observer_height_m=observer_height_m,
+                geometry=geometry,
+                view_center=view_center,
+                edge_fov_deg=edge_fov_deg,
+                content_fov_deg=content_fov_deg,
+                terrain_profile_altaz=terrain_profile_altaz,
+                fill_pen=fill_pen,
+                fill_thinning=fill_thinning,
+                fast_mode=fast_mode,
+            )
+        painter.restore()
         if fast_mode:
             line_alpha = max(0.0, min(1.0, 0.18 + (earth_guide_opacity * 0.25)))
             line_width = max(0.7, EARTH_GUIDE_FOREGROUND_WIDTH * 0.75)

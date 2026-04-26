@@ -6,6 +6,7 @@ from zstarview.render.earth_guide import (
     EARTH_GUIDE_FOREGROUND_WIDTH,
     EARTH_GUIDE_UNDERLAY_WIDTH,
     EarthGuideRing,
+    _build_ring_fill_points,
     _effective_visible_altitude_limit_deg,
     _observer_dead_zone_km,
     _observer_visible_altitude_limit_deg,
@@ -78,6 +79,7 @@ def test_earth_guide_dead_zone_and_altitude_clip_scale_with_height() -> None:
 class _DummyPainter:
     def __init__(self) -> None:
         self.polylines: list[object] = []
+        self.lines: list[object] = []
 
     def save(self) -> None:
         pass
@@ -91,8 +93,73 @@ class _DummyPainter:
     def setPen(self, *_args, **_kwargs) -> None:
         pass
 
+    def setBrush(self, *_args, **_kwargs) -> None:
+        pass
+
     def drawPolyline(self, polyline) -> None:
         self.polylines.append(polyline)
+
+    def drawLine(self, *args) -> None:
+        self.lines.append(args)
+
+
+def test_build_ring_fill_points_generates_points_for_simple_landmass() -> None:
+    ring = EarthGuideRing(
+        source_name="test",
+        label_name=None,
+        points_lonlat_deg=np.asarray(
+            [(-10.0, -10.0), (10.0, -10.0), (10.0, 10.0), (-10.0, 10.0)],
+            dtype=np.float64,
+        ),
+        points_xyz=np.asarray(
+            [
+                (-10.0, -10.0, 0.0),
+                (10.0, -10.0, 0.0),
+                (10.0, 10.0, 0.0),
+                (-10.0, 10.0, 0.0),
+            ],
+            dtype=np.float64,
+        ),
+        approx_area_deg2=400.0,
+    )
+
+    lonlat, xyz = _build_ring_fill_points(ring, sampler_mode="equal_area")
+
+    assert len(lonlat) > 0
+    assert len(xyz) == len(lonlat)
+    assert np.all(np.abs(lonlat[:, 0]) <= 10.0)
+    assert np.all(np.abs(lonlat[:, 1]) <= 10.0)
+
+
+def test_build_ring_fill_points_skips_antarctica_like_rings() -> None:
+    ring = EarthGuideRing(
+        source_name="Antarctica",
+        label_name=None,
+        points_lonlat_deg=np.asarray(
+            [
+                (-58.0, -64.0),
+                (-65.0, -68.0),
+                (-60.0, -74.0),
+                (-77.0, -77.0),
+                (-73.0, -79.0),
+                (-78.0, -83.0),
+                (-28.0, -80.0),
+                (-35.0, -78.0),
+                (-6.0, -70.0),
+                (38.0, -69.0),
+                (54.0, -65.0),
+                (68.0, -67.0),
+            ],
+            dtype=np.float64,
+        ),
+        points_xyz=np.asarray([(0.0, 0.0, 1.0)] * 12, dtype=np.float64),
+        approx_area_deg2=6008.0,
+    )
+
+    lonlat, xyz = _build_ring_fill_points(ring, sampler_mode="equal_area")
+
+    assert len(lonlat) == 0
+    assert len(xyz) == 0
 
 
 def test_draw_earth_guide_fast_mode_subsamples_rings(monkeypatch) -> None:
@@ -153,6 +220,52 @@ def test_draw_earth_guide_fast_mode_subsamples_rings(monkeypatch) -> None:
     )
     assert seen == ["ring-0", "ring-2"]
     assert len(painter.polylines) == 2
+
+
+def test_draw_earth_guide_renders_fill_points_before_outline(monkeypatch) -> None:
+    ring = EarthGuideRing(
+        source_name="ring-fill",
+        label_name=None,
+        points_lonlat_deg=np.asarray(
+            [(-20.0, -10.0), (20.0, -10.0), (20.0, 10.0), (-20.0, 10.0)],
+            dtype=np.float64,
+        ),
+        points_xyz=np.asarray(
+            [(-20.0, -10.0, 0.0), (20.0, -10.0, 0.0), (20.0, 10.0, 0.0), (-20.0, 10.0, 0.0)],
+            dtype=np.float64,
+        ),
+        approx_area_deg2=800.0,
+        fill_points_lonlat_deg=np.asarray(
+            [(0.0, 0.0), (5.0, 0.0), (-5.0, 0.0)],
+            dtype=np.float64,
+        ),
+        fill_points_xyz=np.asarray(
+            [(0.5, 0.0, 0.0), (0.49, 0.05, 0.0), (0.49, -0.05, 0.0)],
+            dtype=np.float64,
+        ),
+    )
+
+    monkeypatch.setattr("zstarview.render.earth_guide.load_earth_guide_rings", lambda path_str=None: (ring,))
+    monkeypatch.setattr(
+        "zstarview.render.earth_guide._ring_fragments_altaz",
+        lambda ring, **kwargs: [[(0.0, 0.0), (1.0, 1.0)]],
+    )
+
+    painter = _DummyPainter()
+    draw_earth_guide(
+        painter,
+        geometry=ScreenGeometry(center=(120, 120), radius=100),
+        view_center=(0.0, 180.0),
+        observer_lat_deg=35.68,
+        observer_lon_deg=139.76,
+        observer_height_m=635.0,
+        terrain_profile_altaz=None,
+        earth_guide_opacity=0.028,
+        content_fov_deg=100.0,
+    )
+
+    assert len(painter.lines) > 0
+    assert len(painter.polylines) > 0
 
 
 def test_overlay_earth_guide_forwards_fast_mode(monkeypatch) -> None:
