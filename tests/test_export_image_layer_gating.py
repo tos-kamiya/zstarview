@@ -35,7 +35,18 @@ class _Args:
     theme = "night"
     vmag_brightness_multiplier = 2.5
     content_fov_deg = 100.0
+    edge_fov_deg = 95.0
     observer_height_m = None
+    search = ""
+    list = False
+    view_center_alt_specified = False
+    view_center_az_specified = False
+    output = None
+    image_size = (1280, 720)
+    layer_timeout_seconds = 30.0
+    allow_partial_data = False
+    include_direction_grid = False
+    window_frame = "frameless"
     sky_opacity = 0.17
     cloud_opacity = 0.15
     satellite_opacity = 0.5
@@ -78,7 +89,7 @@ def _patch_common(monkeypatch, *, delta_t: timedelta) -> None:
 def test_build_window_inputs_disables_all_realtime_overlays_for_past(monkeypatch) -> None:
     _patch_common(monkeypatch, delta_t=timedelta(days=-1))
 
-    _catalogs, _viewer_data, user_options, _runtime_options = mod._build_window_inputs_from_args(_Args())
+    _catalogs, _viewer_data, user_options, _runtime_options, _search_overlay_target = mod._build_window_inputs_from_args(_Args())
 
     assert user_options.cloud_disc_alpha == 0.0
     assert user_options.aircraft_opacity == 0.0
@@ -88,7 +99,7 @@ def test_build_window_inputs_disables_all_realtime_overlays_for_past(monkeypatch
 def test_build_window_inputs_disables_all_realtime_overlays_for_future(monkeypatch) -> None:
     _patch_common(monkeypatch, delta_t=timedelta(days=1))
 
-    _catalogs, _viewer_data, user_options, _runtime_options = mod._build_window_inputs_from_args(_Args())
+    _catalogs, _viewer_data, user_options, _runtime_options, _search_overlay_target = mod._build_window_inputs_from_args(_Args())
 
     assert user_options.cloud_disc_alpha == 0.0
     assert user_options.aircraft_opacity == 0.0
@@ -100,7 +111,7 @@ def test_build_window_inputs_propagates_cloud_stripe_mode(monkeypatch) -> None:
 
     args = _Args()
     args.cloud_stripe = ("alpha", 50, 0.2)
-    _catalogs, _viewer_data, _user_options, runtime_options = mod._build_window_inputs_from_args(args)
+    _catalogs, _viewer_data, _user_options, runtime_options, _search_overlay_target = mod._build_window_inputs_from_args(args)
 
     assert runtime_options.cloud_stripe_mode == "alpha"
 

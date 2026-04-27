@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, cast
+from typing import Callable, cast
 
 from PySide6.QtCore import QPoint, QPointF, Qt
 from PySide6.QtGui import QFont, QImage, QPainter, QPaintEvent
@@ -24,20 +24,25 @@ from ..render.pipeline import (
     render_fast_overlay_layers_into_painter,
     render_hud_overlay_into_painter,
 )
-from ..types import CelestialData, ScreenGeometry, ViewerData
+from ..satellites.types import SatelliteOverlayPoint
+from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
 
 logger = logging.getLogger(__name__)
 
 
 def _resolve_hover_targets(
     *,
-    celestial_data: Any,
+    celestial_data: CelestialData,
     render_viewer: ViewerData,
     mouse_pos: QPoint | None,
     geometry: ScreenGeometry,
-    satellite_overlay_points: list[Any] | None,
+    satellite_overlay_points: list[object] | None,
     show_dso: bool,
-) -> tuple[Any | None, Any | None, Any | None]:
+) -> tuple[
+    tuple[CelestialObject, QPointF] | None,
+    tuple[CelestialObject, QPointF] | None,
+    tuple[SatelliteOverlayPoint, QPointF] | None,
+]:
     highlighted_object = None
     highlighted_dso = None
     highlighted_satellite = None
@@ -69,7 +74,7 @@ def _resolve_hover_targets(
 
 
 class SkyWindowRenderMixin:
-    def _render_cache_stamp(self, value: Any) -> Any:
+    def _render_cache_stamp(self, value: object) -> object:
         if value is None:
             return None
         if hasattr(value, "cacheKey"):
@@ -83,8 +88,8 @@ class SkyWindowRenderMixin:
         celestial_data: CelestialData,
         render_viewer: ViewerData,
         include_fast_overlays: bool = True,
-    ) -> tuple[Any, ...]:
-        key_parts: list[Any] = [
+    ) -> tuple[object, ...]:
+        key_parts: list[object] = [
             int(self.client_width()),
             int(self.client_height()),
             tuple(geometry.center),
@@ -137,8 +142,8 @@ class SkyWindowRenderMixin:
     def _draw_cached_frame(
         self,
         painter: QPainter,
-        frame_key: tuple[Any, ...],
-        render_fn: Any,
+        frame_key: tuple[object, ...],
+        render_fn: Callable[[QPainter], None],
     ) -> None:
         frame_cache_image = SkyWindowRenderMixin._render_cached_frame_image(
             self,
@@ -152,8 +157,8 @@ class SkyWindowRenderMixin:
     def _render_cached_frame_image(
         self,
         *,
-        frame_key: tuple[Any, ...],
-        render_fn: Any,
+        frame_key: tuple[object, ...],
+        render_fn: Callable[[QPainter], None],
         cache_key_attr: str,
         cache_image_attr: str,
     ) -> QImage:
@@ -180,9 +185,9 @@ class SkyWindowRenderMixin:
     def _present_frame_cache_key(
         self,
         *,
-        base_frame_key: tuple[Any, ...],
+        base_frame_key: tuple[object, ...],
         hud: RenderHudState,
-    ) -> tuple[Any, ...]:
+    ) -> tuple[object, ...]:
         mouse_pos = hud.mouse_pos
         mouse_key = None
         if mouse_pos is not None:
@@ -219,16 +224,16 @@ class SkyWindowRenderMixin:
     def _render_present_frame_image(
         self,
         *,
-        base_frame_key: tuple[Any, ...],
+        base_frame_key: tuple[object, ...],
         geometry: ScreenGeometry,
         scene: RenderSceneData,
         style: RenderStyle,
         hud: RenderHudState,
-        highlighted_object: Any | None,
-        highlighted_dso: Any | None,
-        highlighted_satellite: Any | None,
+        highlighted_object: tuple[CelestialObject, QPointF] | None,
+        highlighted_dso: tuple[CelestialObject, QPointF] | None,
+        highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None,
     ) -> QImage:
-        base_label_candidates: list[dict[str, Any]] = []
+        base_label_candidates: list[dict[str, object]] = []
         base_frame_image = SkyWindowRenderMixin._render_cached_frame_image(
             self,
             frame_key=base_frame_key,
@@ -254,11 +259,7 @@ class SkyWindowRenderMixin:
             cache_key_attr="_frame_cache_key",
             cache_image_attr="_frame_cache_image",
         )
-        cached_base_label_candidates = getattr(
-            self,
-            "_cached_base_label_candidates",
-            [],
-        )
+        cached_base_label_candidates = getattr(self, "_cached_base_label_candidates", [])
         present_frame_key = SkyWindowRenderMixin._present_frame_cache_key(
             self,
             base_frame_key=base_frame_key,
@@ -291,18 +292,18 @@ class SkyWindowRenderMixin:
         *,
         frame_painter: QPainter,
         base_frame_image: QImage,
-        base_label_candidates: list[dict[str, Any]] | tuple[dict[str, Any], ...] | None,
+        base_label_candidates: list[dict[str, object]] | tuple[dict[str, object], ...] | None,
         geometry: ScreenGeometry,
         scene: RenderSceneData,
         style: RenderStyle,
         hud: RenderHudState,
-        highlighted_object: Any | None,
-        highlighted_dso: Any | None,
-        highlighted_satellite: Any | None,
+        highlighted_object: tuple[CelestialObject, QPointF] | None,
+        highlighted_dso: tuple[CelestialObject, QPointF] | None,
+        highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None,
     ) -> None:
         frame_painter.drawImage(0, 0, base_frame_image)
         if not hud.viewport_interaction_mode:
-            label_candidates: list[dict[str, Any]] = list(base_label_candidates or [])
+            label_candidates: list[dict[str, object]] = list(base_label_candidates or [])
             render_fast_overlay_layers_into_painter(
                 frame_painter,
                 geometry=geometry,
@@ -566,7 +567,7 @@ class SkyWindowRenderMixin:
                 render_viewer=render_viewer,
             )
             if include_hud:
-                label_candidates: list[dict[str, Any]] = []
+                label_candidates: list[dict[str, object]] = []
                 render_base_scene_into_painter(
                     painter,
                     geometry=geometry,

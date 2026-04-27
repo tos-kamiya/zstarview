@@ -301,6 +301,7 @@ def test_main_writes_overlay_summary_before_sixel(
             image_size=(4, 4),
             layer_timeout_seconds=30.0,
             allow_partial_data=False,
+            include_direction_grid=False,
         ),
     )
     monkeypatch.setattr(mod, "setup_root_logger", lambda: None)
@@ -308,7 +309,13 @@ def test_main_writes_overlay_summary_before_sixel(
     monkeypatch.setattr(
         mod,
         "_build_window_inputs_from_args",
-        lambda _args: (catalogs, viewer, user_options, runtime_options),
+        lambda _args: (
+            catalogs,
+            viewer,
+            user_options,
+            runtime_options,
+            viewer._search_overlay_target,
+        ),
     )
     monkeypatch.setattr(
         mod,

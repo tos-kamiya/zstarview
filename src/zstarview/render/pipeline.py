@@ -5,10 +5,15 @@ import math
 from typing import Any
 
 import numpy as np
-from PySide6.QtCore import QPoint, QRect, QRectF, Qt
+from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt
 from PySide6.QtGui import QFont, QImage, QPainter
 
+from ..aircraft.types import AircraftOverlayPoint
+from ..gui.composite import CloudAmountField, SkyCompositorCache
+from ..satellites.types import SatelliteOverlayPoint
 from ..types import CelestialData, ScreenGeometry, ViewerData
+from ..types import CelestialObject, StarsTable, UrbanOutlinePolyline
+from ..search.models import SearchJumpTarget
 from . import asterisms as render_asterisms
 from . import background as render_background
 from . import deep_sky_objects as render_deep_sky_objects
@@ -67,11 +72,11 @@ class RenderSceneData:
     sky_disc_image: QImage | None
     cloud_image: np.ndarray | None
     cloud_missing_mask: np.ndarray | None
-    cloud_amount_field: Any | None
+    cloud_amount_field: CloudAmountField | None
     terrain_horizon_profile: list[tuple[float, float]] | None
-    urban_outlines: Any | None
-    satellite_overlay_points: Any | None
-    aircraft_overlay_points: Any | None
+    urban_outlines: list[UrbanOutlinePolyline] | None
+    satellite_overlay_points: list[SatelliteOverlayPoint] | None
+    aircraft_overlay_points: list[AircraftOverlayPoint] | None
 
 
 @dataclass(frozen=True)
@@ -105,7 +110,7 @@ class RenderHudState:
     mouse_pos: QPoint | None
     overlay_info_bottom_left: bool
     viewport_interaction_mode: bool
-    viewport_interaction_stars: Any | None
+    viewport_interaction_stars: StarsTable | None
     status_message: str | None
 
 
@@ -113,8 +118,8 @@ def _content_fov_deg(scene: RenderSceneData) -> float:
     return float(scene.viewer.content_fov_deg)
 
 
-def _bright_bodies_mode(style: Any) -> str:
-    return str(getattr(style, "bright_bodies_mode", "outline"))
+def _bright_bodies_mode(style: RenderStyle) -> str:
+    return str(style.bright_bodies_mode)
 
 
 def _window_size(viewport_rect: QRect) -> tuple[int, int]:
@@ -129,7 +134,7 @@ def render_base_scene_into_painter(
     scene: RenderSceneData,
     style: RenderStyle,
     hud: RenderHudState,
-    compositor: Any,
+    compositor: SkyCompositorCache,
     draw_fast_overlays: bool = True,
     label_candidates: list[dict[str, Any]] | None = None,
     draw_labels: bool = True,
@@ -239,7 +244,7 @@ def render_fast_overlay_layers_into_painter(
     geometry: ScreenGeometry,
     scene: RenderSceneData,
     style: RenderStyle,
-    highlighted_satellite: Any | None = None,
+    highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None = None,
     label_candidates: list[dict[str, Any]] | None = None,
     draw_labels: bool = True,
 ) -> None:
@@ -279,11 +284,11 @@ def render_hud_overlay_into_painter(
     scene: RenderSceneData,
     style: RenderStyle,
     hud: RenderHudState,
-    highlighted_object: Any | None,
-    highlighted_dso: Any | None,
-    highlighted_satellite: Any | None = None,
+    highlighted_object: tuple[CelestialObject, QPointF] | None,
+    highlighted_dso: tuple[CelestialObject, QPointF] | None,
+    highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None = None,
     label_candidates: list[dict[str, Any]] | None = None,
-    search_overlay_target: Any | None = None,
+    search_overlay_target: SearchJumpTarget | None = None,
 ) -> None:
     if hud.viewport_interaction_mode:
         _draw_status_line(
@@ -470,7 +475,7 @@ def _draw_sky_cloud_layers(
     geometry: ScreenGeometry,
     scene: RenderSceneData,
     style: RenderStyle,
-    compositor: Any,
+    compositor: SkyCompositorCache,
     star_render_surface_size: tuple[int, int],
     fast_mode: bool = False,
 ) -> None:
@@ -505,7 +510,7 @@ def _draw_terrain_layers(
     geometry: ScreenGeometry,
     scene: RenderSceneData,
     style: RenderStyle,
-    highlighted_object: Any | None,
+    highlighted_object: tuple[CelestialObject, QPointF] | None,
     label_reservations: list[QRectF],
     label_candidates: list[dict[str, Any]],
 ) -> None:
@@ -569,7 +574,7 @@ def _draw_dso_hover_layer(
     geometry: ScreenGeometry,
     scene: RenderSceneData,
     style: RenderStyle,
-    highlighted_dso: Any | None,
+    highlighted_dso: tuple[CelestialObject, QPointF] | None,
 ) -> None:
     if not style.show_dso:
         return
@@ -759,8 +764,8 @@ def _draw_overlay_layer(
     style: RenderStyle,
     mouse_pos: QPoint | None,
     overlay_info_bottom_left: bool,
-    highlighted_object: Any | None,
-    highlighted_dso: Any | None,
+    highlighted_object: tuple[CelestialObject, QPointF] | None,
+    highlighted_dso: tuple[CelestialObject, QPointF] | None,
     enlarge_moon: bool,
     label_reservations: list[QRectF],
     label_candidates: list[dict[str, Any]],
@@ -797,7 +802,7 @@ def _draw_satellite_layer(
     geometry: ScreenGeometry,
     scene: RenderSceneData,
     style: RenderStyle,
-    highlighted_satellite: Any | None,
+    highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None,
     label_candidates: list[dict[str, Any]],
 ) -> None:
     render_satellites.draw_satellite_overlay(
@@ -827,9 +832,9 @@ def _draw_hover_overlay_layer(
     scene: RenderSceneData,
     style: RenderStyle,
     mouse_pos: QPoint | None = None,
-    highlighted_object: Any | None,
-    highlighted_dso: Any | None,
-    highlighted_satellite: Any | None = None,
+    highlighted_object: tuple[CelestialObject, QPointF] | None,
+    highlighted_dso: tuple[CelestialObject, QPointF] | None,
+    highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None = None,
     label_candidates: list[dict[str, Any]] | None = None,
 ) -> None:
     line_width_scale = compute_star_render_upscale_factor(

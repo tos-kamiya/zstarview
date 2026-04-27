@@ -189,6 +189,7 @@ def _build_window_inputs_from_args(
     ViewerData,
     SkyWindowUserOptions,
     SkyWindowRuntimeOptions,
+    SearchJumpTarget | None,
 ]:
     try:
         city = resolve_launch_location(
@@ -200,33 +201,30 @@ def _build_window_inputs_from_args(
         )
     except LocationResolveError as exc:
         raise LaunchSetupError() from exc
-    if getattr(args, "timezone", None) is not None:
-        city = replace(city, tz=getattr(args, "timezone"))
+    timezone_arg = args.timezone
+    if timezone_arg is not None:
+        city = replace(city, tz=timezone_arg)
     delta_t = parse_launch_time_arguments(
-        getattr(args, "datetime", None),
-        getattr(args, "days", 0),
-        getattr(args, "hours", 0),
+        args.datetime,
+        args.days,
+        args.hours,
         timezone_name=city.tz,
-        timezone_override=getattr(args, "timezone", None),
+        timezone_override=timezone_arg,
     )
     overlay_availability = overlay_availability_for_delta(delta_t)
-    star_catalog = _load_star_catalog_for_export(getattr(args, "vmag_limit", 7.0))
+    star_catalog = _load_star_catalog_for_export(args.vmag_limit)
     view_center = (
-        getattr(args, "view_center_alt", 90.0),
-        getattr(args, "view_center_az", 180.0),
+        args.view_center_alt,
+        args.view_center_az,
     )
     view_center = (min(90.0, max(-5.0, view_center[0])), view_center[1] % 360.0)
-    cloud_stripe_mode, cloud_stripe_count, cloud_stripe_width = getattr(
-        args,
-        "cloud_stripe",
-        ("width", 50, 0.85),
-    )
-    visual_preset = getattr(args, "theme", "night")
+    cloud_stripe_mode, cloud_stripe_count, cloud_stripe_width = args.cloud_stripe
+    visual_preset = args.theme
     star_visibility_boost = (
         1.12 if visual_preset == "white" else 1.05 if visual_preset == "day" else 1.0
     )
     vmag_brightness_scale = -math.log10(
-        getattr(args, "vmag_brightness_multiplier", 2.5)
+        args.vmag_brightness_multiplier
     )
 
     catalogs = prepare_window_catalogs(
@@ -238,23 +236,19 @@ def _build_window_inputs_from_args(
         city.display_name,
         (city.lat, city.lon, city.tz),
         view_center,
-        edge_fov_deg=getattr(args, "edge_fov_deg", 95.0),
-        content_fov_deg=getattr(args, "content_fov_deg", 110.0),
-        observer_height_m=(
-            city.observer_height_m
-            if getattr(args, "observer_height_m", None) is None
-            else getattr(args, "observer_height_m")
-        ),
+        edge_fov_deg=args.edge_fov_deg,
+        content_fov_deg=args.content_fov_deg,
+        observer_height_m=city.observer_height_m if args.observer_height_m is None else args.observer_height_m,
         location_height_label=city.location_height_label,
         location_height_m=city.location_height_m,
-        show_observer_height=getattr(args, "observer_height_m", None) is not None,
+        show_observer_height=args.observer_height_m is not None,
     )
 
-    search_query = str(getattr(args, "search", "") or "").strip()
+    search_query = str(args.search or "").strip()
     search_overlay_target: SearchJumpTarget | None = None
     if search_query:
-        fixed_alt = bool(getattr(args, "view_center_alt_specified", False))
-        fixed_az = bool(getattr(args, "view_center_az_specified", False))
+        fixed_alt = bool(args.view_center_alt_specified)
+        fixed_az = bool(args.view_center_az_specified)
         target_time_utc = datetime.now(timezone.utc) + delta_t
         try:
             resolution = resolve_search_targets(
@@ -274,7 +268,7 @@ def _build_window_inputs_from_args(
             raise SystemExit(1) from exc
         candidates = resolution.candidates
         lines = [_format_search_candidate_line(target) for target in candidates]
-        if getattr(args, "list", False):
+        if args.list:
             if lines:
                 sys.stdout.write("\n".join(lines) + "\n")
                 sys.stdout.flush()
@@ -371,8 +365,8 @@ def _build_window_inputs_from_args(
         ground_tint_opacity=getattr(args, "ground_tint_opacity", 0.1),
         enlarge_moon=bool(getattr(args, "enlarge_moon", False)),
         bright_bodies_mode=str(getattr(args, "bright_bodies", "outline")),
-        star_base_radius=getattr(args, "star_base_radius", 4.0),
-        vmag_limit=getattr(args, "vmag_limit", 7.0),
+        star_base_radius=args.star_base_radius,
+        vmag_limit=args.vmag_limit,
         visual_preset=visual_preset,
         star_visibility_boost=star_visibility_boost,
         visibility_boost=getattr(args, "visibility_boost", 1.0),
@@ -411,10 +405,9 @@ def _build_window_inputs_from_args(
         star_render_expected_width=getattr(args, "expected_render_width", 600),
         content_fov_deg=getattr(args, "content_fov_deg", 110.0),
         window_geometry_arg=None,
-        window_frame_mode=getattr(args, "window_frame", "frameless"),
+        window_frame_mode=args.window_frame,
     )
-    setattr(viewer_data, "_search_overlay_target", search_overlay_target)
-    return catalogs, viewer_data, user_options, runtime_options
+    return catalogs, viewer_data, user_options, runtime_options, search_overlay_target
 
 
 def _load_fonts() -> tuple[QFont, QFont]:
@@ -1095,10 +1088,9 @@ def main() -> None:
         _require_sixel_terminal_support()
 
     try:
-        catalogs, viewer_data, user_options, runtime_options = _build_window_inputs_from_args(
+        catalogs, viewer_data, user_options, runtime_options, search_overlay_target = _build_window_inputs_from_args(
             args
         )
-        search_overlay_target = getattr(viewer_data, "_search_overlay_target", None)
     except LaunchSetupError:
         raise SystemExit(1)
 
@@ -1107,11 +1099,11 @@ def main() -> None:
 
     text_font, status_line_font = _load_fonts()
     compositor = _build_compositor(runtime_options, user_options)
-    output_arg = getattr(args, "output", None)
+    output_arg = args.output
     output_path = None if output_arg in {None, "-"} else Path(output_arg).expanduser()
-    image_size = tuple(int(v) for v in getattr(args, "image_size"))
-    deadline = _deadline_after(float(getattr(args, "layer_timeout_seconds", 30.0)))
-    allow_partial_data = bool(getattr(args, "allow_partial_data", False))
+    image_size = tuple(int(v) for v in args.image_size)
+    deadline = _deadline_after(float(args.layer_timeout_seconds))
+    allow_partial_data = bool(args.allow_partial_data)
 
     use_lod6_catalog = float(user_options.vmag_limit) <= 6.0
     star_catalog = catalogs.star_catalog_np
@@ -1243,7 +1235,7 @@ def main() -> None:
         scene=scene,
         style=style,
         compositor=compositor,
-        draw_direction_grid=bool(getattr(args, "include_direction_grid", False)),
+        draw_direction_grid=bool(args.include_direction_grid),
         search_overlay_target=search_overlay_target,
     )
     saved_output = False
