@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
 
@@ -24,6 +24,7 @@ class SkyWindowState:
     viewport_interaction_idle_ms: int = 700
     viewport_interaction_mode: bool = False
     viewport_interaction_stars: Optional[StarsTable] = None
+    held_view_rotation_keys: set[int] = field(default_factory=set)
     pending_view_rotation_alt: float = 0.0
     pending_view_rotation_az: float = 0.0
     mouse_pos: Optional[QPoint] = None
