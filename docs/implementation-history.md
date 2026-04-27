@@ -667,3 +667,6 @@
   - Moved celestial equator and ecliptic refinement into the renderer and subdivided by screen-space error instead of relying on fixed angular spacing.
   - Kept the astro layer at coarse control points and added regression coverage for both the control-point contract and adaptive drawing behavior.
   - This matches the Earth-guide drawing strategy more closely and prevents visibly angular lines at fullscreen sizes.
+- Arrow-key viewport interaction handoff
+  - Kept viewport-interaction mode active while arrow keys are physically held, then ended the simplified mode on key release instead of the previous idle-timer handoff.
+  - Deferred the normal cloud and terrain restart until the refreshed sky disc arrives, so release-time repaints do not show an intermediate black partial sphere.
