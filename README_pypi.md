@@ -38,6 +38,11 @@ Urban outline examples from several cities worldwide:
     <td align="center"><sub>Marina Bay, Singapore</sub></td>
     <td align="center"><sub>Near Burj Khalifa, Dubai</sub></td>
   </tr>
+</table>
+
+<div style="height: 0.8em;"></div>
+
+<table>
   <tr>
     <td align="center" width="33%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-lauterbrunnen.png" alt="Lauterbrunnen, Switzerland" width="100%" /></td>
     <td align="center" width="33%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-sagradafamilia.png" alt="Park beside Sagrada Familia, Barcelona" width="100%" /></td>

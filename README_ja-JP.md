@@ -57,6 +57,11 @@
     <td align="center"><sub>マリーナベイ（シンガポール）</sub></td>
     <td align="center"><sub>ブルジュ・ハリファ付近（ドバイ）</sub></td>
   </tr>
+</table>
+
+<div style="height: 0.8em;"></div>
+
+<table>
   <tr>
     <td align="center" width="33%"><img src="docs/images/screenshot-lauterbrunnen.png" alt="ラウターブルンネン（Lauterbrunnen, スイス）" width="100%" /></td>
     <td align="center" width="33%"><img src="docs/images/screenshot-sagradafamilia.png" alt="サグラダファミリア横の公園" width="100%" /></td>
