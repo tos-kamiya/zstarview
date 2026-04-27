@@ -48,15 +48,23 @@
 
 <table>
   <tr>
-    <td align="center" width="25%"><img src="docs/images/screenshot-tokyotower.png" alt="東京タワー付近（東京）" width="100%" /></td>
-    <td align="center" width="25%"><img src="docs/images/screenshot-burjkhalifa.png" alt="ブルジュ・ハリファ付近（ドバイ）" width="100%" /></td>
-    <td align="center" width="25%"><img src="docs/images/screenshot-marinabay.png" alt="マリーナベイ（シンガポール）" width="100%" /></td>
-    <td align="center" width="25%"><img src="docs/images/screenshot-sydney.png" alt="サーキュラー・キー（シドニー）" width="100%" /></td>
+    <td align="center" width="33%"><img src="docs/images/screenshot-tokyotower.png" alt="東京タワー付近（東京）" width="100%" /></td>
+    <td align="center" width="33%"><img src="docs/images/screenshot-marinabay.png" alt="マリーナベイ（シンガポール）" width="100%" /></td>
+    <td align="center" width="33%"><img src="docs/images/screenshot-burjkhalifa.png" alt="ブルジュ・ハリファ付近（ドバイ）" width="100%" /></td>
   </tr>
   <tr>
     <td align="center"><sub>東京タワー付近（東京）</sub></td>
-    <td align="center"><sub>ブルジュ・ハリファ付近（ドバイ）</sub></td>
     <td align="center"><sub>マリーナベイ（シンガポール）</sub></td>
+    <td align="center"><sub>ブルジュ・ハリファ付近（ドバイ）</sub></td>
+  </tr>
+  <tr>
+    <td align="center" width="33%"><img src="docs/images/screenshot-lauterbrunnen.png" alt="ラウターブルンネン（Lauterbrunnen, スイス）" width="100%" /></td>
+    <td align="center" width="33%"><img src="docs/images/screenshot-sagradafamilia.png" alt="サグラダファミリア横の公園" width="100%" /></td>
+    <td align="center" width="33%"><img src="docs/images/screenshot-sydney.png" alt="サーキュラー・キー（シドニー）" width="100%" /></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>ラウターブルンネン（Lauterbrunnen, スイス）</sub></td>
+    <td align="center"><sub>サグラダファミリア横の公園</sub></td>
     <td align="center"><sub>サーキュラー・キー（シドニー）</sub></td>
   </tr>
 </table>
