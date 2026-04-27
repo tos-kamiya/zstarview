@@ -243,6 +243,7 @@ def test_hover_overlay_passes_label_candidates_to_asterisms(monkeypatch) -> None
             "show_asterisms": True,
             "text_font": QFont(),
             "visual_preset": "night",
+            "bright_bodies_mode": "outline",
             "star_render_expected_width": 128,
             "show_guidelines": False,
             "vmag_limit": 6.0,
