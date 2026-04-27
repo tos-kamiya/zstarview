@@ -532,6 +532,7 @@ def test_on_sky_data_calculated_triggers_release_followup_updates() -> None:
     )
 
     assert dummy.state.viewport_interaction_release_pending is False
+    assert dummy.state.viewport_interaction_mode is False
     assert cloud_calls == ["view-change-release", "view-change-release"]
 
 
@@ -1336,6 +1337,7 @@ def test_handle_client_key_release_ends_viewport_interaction_mode() -> None:
 
     assert dummy._viewport_rotation_keys_down == set()
     assert dummy.state.viewport_interaction_release_pending is True
+    assert dummy.state.viewport_interaction_mode is True
     dummy.request_sky_data_update.assert_called_once_with(
         reason="viewport-interaction-release"
     )

@@ -1342,12 +1342,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     ) -> None:
         if not self.state.viewport_interaction_mode:
             return
-        self.state.viewport_interaction_mode = False
-        self.state.viewport_interaction_stars = None
         self.request_sky_data_update(reason=reason)
         if reason.endswith("release"):
             self.state.viewport_interaction_release_pending = True
             return
+        self.state.viewport_interaction_mode = False
+        self.state.viewport_interaction_stars = None
         refresh_reason = (
             "view-change-release"
             if reason.endswith("release")

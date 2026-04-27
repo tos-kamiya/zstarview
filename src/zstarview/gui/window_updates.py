@@ -279,19 +279,20 @@ class SkyWindowUpdatesMixin:
         self.state.celestial_data = payload["celestial"]
         self.state.sky_disc_image = payload["sky_disc"]
 
-        self._compositor.invalidate()
-        self.request_client_update()
-
         if (
             getattr(self.state, "viewport_interaction_release_pending", False)
-            and not self.state.viewport_interaction_mode
         ):
             self.state.viewport_interaction_release_pending = False
+            self.state.viewport_interaction_mode = False
+            self.state.viewport_interaction_stars = None
             if not self._is_shutting_down:
                 self.start_background_cloud_update(reason="view-change-release")
                 self.start_background_terrain_horizon_update(
                     reason="view-change-release"
                 )
+
+        self._compositor.invalidate()
+        self.request_client_update()
 
         if not self._sky_data_update_timer.isActive():
             self._sky_data_update_timer.start(self.sky_update_interval * 1000)
