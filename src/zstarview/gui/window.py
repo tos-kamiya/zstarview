@@ -227,6 +227,9 @@ class SkyWindowClientWidget(SkyWindowRenderMixin, QWidget):
     def keyPressEvent(self, event: QKeyEvent) -> None:
         self._owner._handle_client_key_press(event)
 
+    def keyReleaseEvent(self, event: QKeyEvent) -> None:
+        self._owner._handle_client_key_release(event)
+
 
 class ShutdownMessageOverlay(QLabel):
     """Centered shutdown message shown while background workers are stopping."""
@@ -1258,7 +1261,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.start_background_terrain_horizon_update(reason="view-change-idle")
 
     def _begin_viewport_interaction_mode(
-        self, preserve_cloud_buffers: bool = False
+        self,
+        preserve_cloud_buffers: bool = False,
+        *,
+        start_idle_timer: bool = True,
     ) -> None:
         self.state.viewport_interaction_mode = True
         cloud_state = self.cloud_state
@@ -1285,7 +1291,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             invalidate = cloud_controller.invalidate_pending_render_results
             if callable(invalidate):
                 invalidate()
-        self._viewport_interaction_idle_timer.start()
+        if start_idle_timer:
+            self._viewport_interaction_idle_timer.start()
 
     def _update_viewport_interaction_stars(self) -> None:
         if self.state.celestial_data is None:
@@ -1317,9 +1324,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.state.pending_view_rotation_alt += float(d_alt)
         self.state.pending_view_rotation_az += float(d_az)
         if not self.state.viewport_interaction_mode:
-            self._begin_viewport_interaction_mode()
-        else:
-            self._viewport_interaction_idle_timer.start()
+            self._begin_viewport_interaction_mode(start_idle_timer=False)
         if not self._view_rotation_flush_timer.isActive():
             self._view_rotation_flush_timer.start()
 
@@ -1338,6 +1343,32 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._sync_view_altitude_actions()
         self._update_viewport_interaction_stars()
         self.request_client_update()
+
+    def _start_viewport_interaction_idle_timer(self) -> None:
+        if self.state.viewport_interaction_mode:
+            self._viewport_interaction_idle_timer.start()
+
+    def _handle_client_key_release(self, event: QKeyEvent) -> None:
+        key = event.key()
+        if key not in (
+            Qt.Key.Key_Left,
+            Qt.Key.Key_Right,
+            Qt.Key.Key_Up,
+            Qt.Key.Key_Down,
+        ):
+            return
+        if event.isAutoRepeat():
+            event.accept()
+            return
+        self.state.held_view_rotation_keys.discard(int(key))
+        if self.state.held_view_rotation_keys:
+            event.accept()
+            return
+        if self._view_rotation_flush_timer.isActive():
+            self._view_rotation_flush_timer.stop()
+        self._flush_pending_view_rotation()
+        self._start_viewport_interaction_idle_timer()
+        event.accept()
 
     def show_menu(self) -> None:
         if self.menu_button is None:
@@ -2367,15 +2398,19 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
         # --- View Control ---
         if key == Qt.Key.Key_Left:
+            self.state.held_view_rotation_keys.add(int(key))
             self._queue_view_rotation(d_az=-self.state.rotation_step)
             event.accept()
         elif key == Qt.Key.Key_Right:
+            self.state.held_view_rotation_keys.add(int(key))
             self._queue_view_rotation(d_az=self.state.rotation_step)
             event.accept()
         elif key == Qt.Key.Key_Up:
+            self.state.held_view_rotation_keys.add(int(key))
             self._queue_view_rotation(d_alt=self.state.rotation_step)
             event.accept()
         elif key == Qt.Key.Key_Down:
+            self.state.held_view_rotation_keys.add(int(key))
             self._queue_view_rotation(d_alt=-self.state.rotation_step)
             event.accept()
 

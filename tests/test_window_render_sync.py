@@ -44,6 +44,9 @@ class _DummyTimer:
         self._active = True
         self.started_with.append(0 if ms is None else ms)
 
+    def stop(self) -> None:
+        self._active = False
+
 
 class _DummySignal:
     def __init__(self) -> None:
@@ -1228,7 +1231,9 @@ def test_queue_view_rotation_batches_pending_inputs() -> None:
     dummy._viewport_interaction_idle_timer = _DummyTimer(active=False)
     dummy._view_rotation_flush_timer = _DummyTimer(active=False)
     dummy._begin_viewport_interaction_mode = (
-        lambda: SkyWindow._begin_viewport_interaction_mode(dummy)
+        lambda *args, **kwargs: SkyWindow._begin_viewport_interaction_mode(
+            dummy, *args, **kwargs
+        )
     )
     dummy._update_viewport_interaction_stars = (
         lambda: SkyWindow._update_viewport_interaction_stars(dummy)
@@ -1251,7 +1256,54 @@ def test_queue_view_rotation_batches_pending_inputs() -> None:
     assert dummy.state.pending_view_rotation_az == 0.0
     dummy._sync_view_altitude_actions.assert_called_once()
     dummy.request_client_update.assert_called_once()
-    assert dummy._viewport_interaction_idle_timer.started_with == [0, 0, 0]
+    assert dummy._viewport_interaction_idle_timer.started_with == []
+
+
+def test_handle_client_key_release_starts_idle_timer_after_last_arrow_key() -> None:
+    dummy = _WindowStub()
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(20.0, 30.0),
+        observer_height_m=1.7,
+    )
+    dummy.state = SkyWindowState(
+        render_view_center=(20.0, 30.0),
+        viewport_interaction_mode=True,
+        held_view_rotation_keys={int(Qt.Key.Key_Left)},
+        pending_view_rotation_az=10.0,
+    )
+    dummy._sync_view_altitude_actions = Mock()
+    dummy.request_client_update = Mock()
+    dummy._viewport_interaction_idle_timer = _DummyTimer(active=False)
+    dummy._view_rotation_flush_timer = _DummyTimer(active=True)
+    dummy._update_viewport_interaction_stars = (
+        lambda: SkyWindow._update_viewport_interaction_stars(dummy)
+    )
+    dummy._flush_pending_view_rotation = (
+        lambda: SkyWindow._flush_pending_view_rotation(dummy)
+    )
+    dummy._start_viewport_interaction_idle_timer = (
+        lambda: SkyWindow._start_viewport_interaction_idle_timer(dummy)
+    )
+
+    event = SimpleNamespace(
+        key=lambda: Qt.Key.Key_Left,
+        isAutoRepeat=lambda: False,
+        accept=Mock(),
+    )
+
+    SkyWindow._handle_client_key_release(dummy, event)
+
+    assert dummy.viewer_data.view_center == (20.0, 40.0)
+    assert dummy.state.pending_view_rotation_alt == 0.0
+    assert dummy.state.pending_view_rotation_az == 0.0
+    assert dummy._view_rotation_flush_timer.started_with == []
+    assert dummy._viewport_interaction_idle_timer.started_with == [0]
+    dummy._sync_view_altitude_actions.assert_called_once()
+    dummy.request_client_update.assert_called_once()
+    event.accept.assert_called_once()
 
 
 def test_end_viewport_interaction_mode_marks_idle_reason() -> None:
