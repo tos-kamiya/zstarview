@@ -46,8 +46,6 @@ GRID_FINE_AZIMUTHS = tuple(
     for value in range(0, 360, 10)
 )
 GRID_PARALLEL_AZ_SAMPLES = 145
-REFERENCE_LINE_MAX_SCREEN_ERROR_PX = 0.85
-REFERENCE_LINE_MAX_RECURSION_DEPTH = 11
 
 
 @dataclass(frozen=True, slots=True)
@@ -117,28 +115,37 @@ def resolve_direction_marker_hover(
     return best
 
 
-def split_by_gaps(points: List[Tuple[float, float]]) -> List[List[Tuple[float, float]]]:
-    """
-    Split a polyline by large gaps to avoid drawing long, straight lines
-    across the screen when a celestial path wraps around.
-
-    Args:
-        points: A list of (x, y) tuples representing the polyline.
-
-    Returns:
-        A list of polyline fragments, where each fragment is a list of points.
-    """
-
-    def dist(p1: Tuple[float, float], p2: Tuple[float, float]) -> float:
-        return math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
-
-    fragments: List[List[Tuple[float, float]]] = [[]]
-    for p in points:
-        if not fragments[-1] or dist(p, fragments[-1][-1]) < 0.2:
-            fragments[-1].append(p)
-        else:
-            fragments.append([p])
-    return fragments
+def _project_reference_altaz_point(
+    alt_deg: float,
+    az_deg: float,
+    *,
+    view_center: tuple[float, float],
+    edge_fov_deg: float,
+    content_fov_deg: float,
+    is_in_fov_func: Callable[..., bool],
+    altaz_to_normalized_xy_func: Callable[..., tuple[float, float]] | None,
+) -> tuple[tuple[float, float], bool]:
+    project_xy = (
+        altaz_to_normalized_xy
+        if altaz_to_normalized_xy_func is None
+        else altaz_to_normalized_xy_func
+    )
+    try:
+        nx, ny = project_xy(
+            float(alt_deg),
+            float(az_deg),
+            view_center,
+            edge_fov_deg=edge_fov_deg,
+        )
+    except TypeError:
+        nx, ny = project_xy(float(alt_deg), float(az_deg), view_center)
+    visible = is_in_fov_func(
+        float(alt_deg),
+        float(az_deg),
+        view_center,
+        fov_deg=content_fov_deg,
+    )
+    return (float(nx), float(ny)), bool(visible)
 
 
 def _altaz_to_neu_unit(alt_deg: float, az_deg: float) -> np.ndarray:
@@ -150,7 +157,7 @@ def _altaz_to_neu_unit(alt_deg: float, az_deg: float) -> np.ndarray:
         [
             c_alt * math.cos(az),  # north
             c_alt * math.sin(az),  # east
-            math.sin(alt),         # up
+            math.sin(alt),  # up
         ],
         dtype=float,
     )
@@ -200,182 +207,28 @@ def _great_circle_altaz_points(
     return out
 
 
-def _interpolate_great_circle_altaz(
-    start_alt: float,
-    start_az: float,
-    end_alt: float,
-    end_az: float,
-) -> Tuple[float, float]:
-    v0 = _altaz_to_neu_unit(start_alt, start_az)
-    v1 = _altaz_to_neu_unit(end_alt, end_az)
-    dot = float(np.clip(np.dot(v0, v1), -1.0, 1.0))
-    omega = math.acos(dot)
-    if omega < 1.0e-6:
-        return (float(start_alt), float(start_az))
-    sin_omega = math.sin(omega)
-    if abs(sin_omega) < 1.0e-8:
-        return (float(start_alt), float(start_az))
-    w0 = math.sin(0.5 * omega) / sin_omega
-    w1 = math.sin(0.5 * omega) / sin_omega
-    v = (w0 * v0) + (w1 * v1)
-    norm = float(np.linalg.norm(v))
-    if norm <= 1.0e-12:
-        return (float(start_alt), float(start_az))
-    return _neu_unit_to_altaz(v / norm)
+def split_by_gaps(points: List[Tuple[float, float]]) -> List[List[Tuple[float, float]]]:
+    """
+    Split a polyline by large gaps to avoid drawing long, straight lines
+    across the screen when a celestial path wraps around.
 
+    Args:
+        points: A list of (x, y) tuples representing the polyline.
 
-def _point_to_segment_distance(
-    point: tuple[float, float],
-    start: tuple[float, float],
-    end: tuple[float, float],
-) -> float:
-    px, py = point
-    x0, y0 = start
-    x1, y1 = end
-    dx = x1 - x0
-    dy = y1 - y0
-    denom = (dx * dx) + (dy * dy)
-    if denom <= 1.0e-12:
-        return math.hypot(px - x0, py - y0)
-    t = ((px - x0) * dx + (py - y0) * dy) / denom
-    t = max(0.0, min(1.0, t))
-    proj_x = x0 + (t * dx)
-    proj_y = y0 + (t * dy)
-    return math.hypot(px - proj_x, py - proj_y)
+    Returns:
+        A list of polyline fragments, where each fragment is a list of points.
+    """
 
+    def dist(p1: Tuple[float, float], p2: Tuple[float, float]) -> float:
+        return math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
 
-def _project_reference_altaz_point(
-    alt_deg: float,
-    az_deg: float,
-    *,
-    view_center: tuple[float, float],
-    edge_fov_deg: float,
-    content_fov_deg: float,
-    is_in_fov_func: Callable[..., bool],
-    altaz_to_normalized_xy_func: Callable[..., tuple[float, float]] | None,
-) -> tuple[tuple[float, float], bool]:
-    project_xy = altaz_to_normalized_xy if altaz_to_normalized_xy_func is None else altaz_to_normalized_xy_func
-    try:
-        nx, ny = project_xy(
-            float(alt_deg),
-            float(az_deg),
-            view_center,
-            edge_fov_deg=edge_fov_deg,
-        )
-    except TypeError:
-        nx, ny = project_xy(float(alt_deg), float(az_deg), view_center)
-    visible = is_in_fov_func(float(alt_deg), float(az_deg), view_center, fov_deg=content_fov_deg)
-    return (float(nx), float(ny)), bool(visible)
-
-
-def _adaptive_reference_line_fragments(
-    start_alt: float,
-    start_az: float,
-    end_alt: float,
-    end_az: float,
-    *,
-    geometry: ScreenGeometry,
-    view_center: tuple[float, float],
-    edge_fov_deg: float,
-    content_fov_deg: float,
-    is_in_fov_func: Callable[..., bool],
-    altaz_to_normalized_xy_func: Callable[..., tuple[float, float]] | None,
-    threshold_px: float,
-    depth: int,
-    max_depth: int,
-) -> list[list[tuple[float, float]]]:
-    start = _project_reference_altaz_point(
-        start_alt,
-        start_az,
-        view_center=view_center,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
-        is_in_fov_func=is_in_fov_func,
-        altaz_to_normalized_xy_func=altaz_to_normalized_xy_func,
-    )
-    end = _project_reference_altaz_point(
-        end_alt,
-        end_az,
-        view_center=view_center,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
-        is_in_fov_func=is_in_fov_func,
-        altaz_to_normalized_xy_func=altaz_to_normalized_xy_func,
-    )
-
-    start_xy, start_visible = start
-    end_xy, end_visible = end
-    start_screen = normalized_to_screen_xy(start_xy[0], start_xy[1], geometry)
-    end_screen = normalized_to_screen_xy(end_xy[0], end_xy[1], geometry)
-    mid_alt, mid_az = _interpolate_great_circle_altaz(start_alt, start_az, end_alt, end_az)
-    midpoint = _project_reference_altaz_point(
-        mid_alt,
-        mid_az,
-        view_center=view_center,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
-        is_in_fov_func=is_in_fov_func,
-        altaz_to_normalized_xy_func=altaz_to_normalized_xy_func,
-    )
-
-    midpoint_xy, midpoint_visible = midpoint
-    midpoint_screen = normalized_to_screen_xy(midpoint_xy[0], midpoint_xy[1], geometry)
-    screen_span = math.hypot(end_screen[0] - start_screen[0], end_screen[1] - start_screen[1])
-    deviation_px = _point_to_segment_distance(midpoint_screen, start_screen, end_screen)
-    should_split = (
-        deviation_px > threshold_px
-        or screen_span > threshold_px * 3.0
-        or start_visible != end_visible
-        or midpoint_visible != start_visible
-        or midpoint_visible != end_visible
-    )
-    if should_split and depth < max_depth:
-        left = _adaptive_reference_line_fragments(
-            start_alt,
-            start_az,
-            mid_alt,
-            mid_az,
-            geometry=geometry,
-            view_center=view_center,
-            edge_fov_deg=edge_fov_deg,
-            content_fov_deg=content_fov_deg,
-            is_in_fov_func=is_in_fov_func,
-            altaz_to_normalized_xy_func=altaz_to_normalized_xy_func,
-            threshold_px=threshold_px,
-            depth=depth + 1,
-            max_depth=max_depth,
-        )
-        right = _adaptive_reference_line_fragments(
-            mid_alt,
-            mid_az,
-            end_alt,
-            end_az,
-            geometry=geometry,
-            view_center=view_center,
-            edge_fov_deg=edge_fov_deg,
-            content_fov_deg=content_fov_deg,
-            is_in_fov_func=is_in_fov_func,
-            altaz_to_normalized_xy_func=altaz_to_normalized_xy_func,
-            threshold_px=threshold_px,
-            depth=depth + 1,
-            max_depth=max_depth,
-        )
-        if len(left) == 1 and len(right) == 1:
-            left_fragment = left[0]
-            right_fragment = right[0]
-            if left_fragment and right_fragment and left_fragment[-1] == right_fragment[0]:
-                return [left_fragment[:-1] + right_fragment]
-        if left and right and left[-1][-1] == right[0][0]:
-            return left[:-1] + right
-        return left + right
-
-    if start_visible and end_visible:
-        return [[start_screen, end_screen]]
-    if start_visible and midpoint_visible:
-        return [[start_screen, midpoint_screen]]
-    if midpoint_visible and end_visible:
-        return [[midpoint_screen, end_screen]]
-    return []
+    fragments: List[List[Tuple[float, float]]] = [[]]
+    for p in points:
+        if not fragments[-1] or dist(p, fragments[-1][-1]) < 0.2:
+            fragments[-1].append(p)
+        else:
+            fragments.append([p])
+    return fragments
 
 
 def _clip_polyline_to_radius(
