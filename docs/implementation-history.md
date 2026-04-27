@@ -1,6 +1,6 @@
 # zstarview 実装履歴
 
-最終更新: 2026-04-25
+最終更新: 2026-04-27
 
 ## 1. この文書の位置づけ
 
@@ -660,3 +660,10 @@
   - The implementation now batches full-fit outline rectangles by size to reduce Python-loop overhead, with a scalar fallback only for clipped edge cases.
 - Documentation sync
   - Updated `docs/specification.md` and `docs/design.md` to describe the current size-based star rendering behavior and the `bright_bodies_mode` outline interaction.
+
+### 2026-04-27
+
+- Celestial reference line smoothing
+  - Moved celestial equator and ecliptic refinement into the renderer and subdivided by screen-space error instead of relying on fixed angular spacing.
+  - Kept the astro layer at coarse control points and added regression coverage for both the control-point contract and adaptive drawing behavior.
+  - This matches the Earth-guide drawing strategy more closely and prevents visibly angular lines at fullscreen sizes.
