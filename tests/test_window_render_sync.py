@@ -1246,7 +1246,7 @@ def test_queue_view_rotation_batches_pending_inputs() -> None:
     assert dummy.state.pending_view_rotation_alt == 5.0
     assert dummy.state.pending_view_rotation_az == 10.0
     assert dummy.state.viewport_interaction_mode is True
-    assert dummy._view_rotation_flush_timer.started_with == [0]
+    assert dummy._view_rotation_flush_timer.started_with == [50, 50, 50]
 
     SkyWindow._flush_pending_view_rotation(dummy)
 
