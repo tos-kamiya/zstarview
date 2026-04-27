@@ -504,6 +504,16 @@ def draw_sky_reference_lines(
         width_scale: float = 1.0,
     ) -> None:
         width_scale = max(1.0, float(width_scale))
+        if len(altaz_points) == 1:
+            _project_reference_altaz_point(
+                float(altaz_points[0][0]),
+                float(altaz_points[0][1]),
+                view_center=viewer_data.view_center,
+                edge_fov_deg=float(viewer_data.edge_fov_deg),
+                content_fov_deg=effective_fov_deg,
+                is_in_fov_func=is_in_fov_func,
+                altaz_to_normalized_xy_func=altaz_to_normalized_xy_func,
+            )
         fragments: List[List[Tuple[float, float]]] = []
         for start, end in zip(altaz_points, altaz_points[1:]):
             fragments.extend(
