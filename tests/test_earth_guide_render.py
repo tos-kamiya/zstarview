@@ -222,6 +222,60 @@ def test_draw_earth_guide_fast_mode_subsamples_rings(monkeypatch) -> None:
     assert len(painter.polylines) == 2
 
 
+def test_draw_earth_guide_fast_mode_skips_fill_lines(monkeypatch) -> None:
+    ring = EarthGuideRing(
+        source_name="ring-fill-fast",
+        label_name=None,
+        points_lonlat_deg=np.asarray(
+            [(-20.0, -10.0), (20.0, -10.0), (20.0, 10.0), (-20.0, 10.0)],
+            dtype=np.float64,
+        ),
+        points_xyz=np.asarray(
+            [(-20.0, -10.0, 0.0), (20.0, -10.0, 0.0), (20.0, 10.0, 0.0), (-20.0, 10.0, 0.0)],
+            dtype=np.float64,
+        ),
+        approx_area_deg2=800.0,
+        fill_points_lonlat_deg=np.asarray(
+            [(0.0, 0.0), (5.0, 0.0), (-5.0, 0.0)],
+            dtype=np.float64,
+        ),
+        fill_points_xyz=np.asarray(
+            [(0.5, 0.0, 0.0), (0.49, 0.05, 0.0), (0.49, -0.05, 0.0)],
+            dtype=np.float64,
+        ),
+    )
+
+    fill_calls: list[str] = []
+
+    monkeypatch.setattr("zstarview.render.earth_guide.load_earth_guide_rings", lambda path_str=None: (ring,))
+    monkeypatch.setattr(
+        "zstarview.render.earth_guide._ring_fragments_altaz",
+        lambda ring, **kwargs: [[(0.0, 0.0), (1.0, 1.0)]],
+    )
+    monkeypatch.setattr(
+        "zstarview.render.earth_guide._draw_fill_segments_for_ring",
+        lambda *args, **kwargs: fill_calls.append("called"),
+    )
+
+    painter = _DummyPainter()
+    draw_earth_guide(
+        painter,
+        geometry=ScreenGeometry(center=(120, 120), radius=100),
+        view_center=(0.0, 180.0),
+        observer_lat_deg=35.68,
+        observer_lon_deg=139.76,
+        observer_height_m=635.0,
+        terrain_profile_altaz=None,
+        earth_guide_opacity=0.028,
+        content_fov_deg=100.0,
+        fast_mode=True,
+    )
+
+    assert fill_calls == []
+    assert len(painter.polylines) > 0
+    assert len(painter.lines) == 0
+
+
 def test_draw_earth_guide_renders_fill_points_before_outline(monkeypatch) -> None:
     ring = EarthGuideRing(
         source_name="ring-fill",
