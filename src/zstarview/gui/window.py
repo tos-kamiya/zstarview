@@ -227,6 +227,9 @@ class SkyWindowClientWidget(SkyWindowRenderMixin, QWidget):
     def keyPressEvent(self, event: QKeyEvent) -> None:
         self._owner._handle_client_key_press(event)
 
+    def keyReleaseEvent(self, event: QKeyEvent) -> None:
+        self._owner._handle_client_key_release(event)
+
 
 class ShutdownMessageOverlay(QLabel):
     """Centered shutdown message shown while background workers are stopping."""
@@ -485,6 +488,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             satellite_overlay_points=None,
             aircraft_overlay_points=None,
         )
+        self._viewport_rotation_keys_down: set[int] = set()
         # Ensure overlay_info_bottom_left reflects the startup mode now that
         # the mutable state object exists. True==bottom-left, False==top-left.
         try:
@@ -1258,6 +1262,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         start_idle_timer: bool = True,
     ) -> None:
         self.state.viewport_interaction_mode = True
+        self.state.viewport_interaction_release_pending = False
         cloud_state = self.cloud_state
         cloud_controller = self._cloud_controller
         preserve_cloud_buffers = bool(preserve_cloud_buffers)
@@ -1301,14 +1306,25 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
         self.state.viewport_interaction_stars = stars
 
-    def _end_viewport_interaction_mode(self) -> None:
+    def _end_viewport_interaction_mode(
+        self,
+        reason: str = "viewport-interaction-idle",
+    ) -> None:
         if not self.state.viewport_interaction_mode:
             return
         self.state.viewport_interaction_mode = False
         self.state.viewport_interaction_stars = None
-        self.request_sky_data_update(reason="viewport-interaction-idle")
-        self.start_background_cloud_update(reason="view-change-idle")
-        self.start_background_terrain_horizon_update(reason="view-change-idle")
+        self.request_sky_data_update(reason=reason)
+        if reason.endswith("release"):
+            self.state.viewport_interaction_release_pending = True
+            return
+        refresh_reason = (
+            "view-change-release"
+            if reason.endswith("release")
+            else "view-change-idle"
+        )
+        self.start_background_cloud_update(reason=refresh_reason)
+        self.start_background_terrain_horizon_update(reason=refresh_reason)
         self.request_client_update()
 
     def show_menu(self) -> None:
@@ -2317,9 +2333,13 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         d_az: float = 0.0,
         *,
         interactive_viewport: bool = False,
+        start_viewport_idle_timer: bool = True,
     ) -> None:
         if interactive_viewport:
-            self._begin_viewport_interaction_mode()
+            if not bool(getattr(self.state, "viewport_interaction_mode", False)):
+                self._begin_viewport_interaction_mode(
+                    start_idle_timer=start_viewport_idle_timer
+                )
         else:
             self._begin_interaction_mode()
         alt, az = self.viewer_data.view_center
@@ -2334,21 +2354,52 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             return
         self.request_sky_data_update()
 
+    def _viewport_rotation_keys(self) -> set[int]:
+        keys = getattr(self, "_viewport_rotation_keys_down", None)
+        if keys is None:
+            keys = set()
+            self._viewport_rotation_keys_down = keys
+        return keys
+
     def _handle_client_key_press(self, event: QKeyEvent) -> None:
         key = event.key()
 
         # --- View Control ---
         if key == Qt.Key.Key_Left:
-            self._rotate_view(d_az=-self.state.rotation_step, interactive_viewport=True)
+            if not event.isAutoRepeat():
+                self._viewport_rotation_keys().add(key)
+            self._rotate_view(
+                d_az=-self.state.rotation_step,
+                interactive_viewport=True,
+                start_viewport_idle_timer=False,
+            )
             event.accept()
         elif key == Qt.Key.Key_Right:
-            self._rotate_view(d_az=self.state.rotation_step, interactive_viewport=True)
+            if not event.isAutoRepeat():
+                self._viewport_rotation_keys().add(key)
+            self._rotate_view(
+                d_az=self.state.rotation_step,
+                interactive_viewport=True,
+                start_viewport_idle_timer=False,
+            )
             event.accept()
         elif key == Qt.Key.Key_Up:
-            self._rotate_view(d_alt=self.state.rotation_step, interactive_viewport=True)
+            if not event.isAutoRepeat():
+                self._viewport_rotation_keys().add(key)
+            self._rotate_view(
+                d_alt=self.state.rotation_step,
+                interactive_viewport=True,
+                start_viewport_idle_timer=False,
+            )
             event.accept()
         elif key == Qt.Key.Key_Down:
-            self._rotate_view(d_alt=-self.state.rotation_step, interactive_viewport=True)
+            if not event.isAutoRepeat():
+                self._viewport_rotation_keys().add(key)
+            self._rotate_view(
+                d_alt=-self.state.rotation_step,
+                interactive_viewport=True,
+                start_viewport_idle_timer=False,
+            )
             event.accept()
 
         # --- Toggles ---
@@ -2396,6 +2447,26 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             event.accept()
         else:
             super().keyPressEvent(event)
+
+    def _handle_client_key_release(self, event: QKeyEvent) -> None:
+        key = event.key()
+        if key not in {
+            Qt.Key.Key_Left,
+            Qt.Key.Key_Right,
+            Qt.Key.Key_Up,
+            Qt.Key.Key_Down,
+        }:
+            return
+        if event.isAutoRepeat():
+            event.accept()
+            return
+        keys_down = self._viewport_rotation_keys()
+        keys_down.discard(key)
+        if not keys_down:
+            self._end_viewport_interaction_mode(
+                reason="viewport-interaction-release"
+            )
+        event.accept()
 
 
 class FramelessSkyWindow(SkyWindowCoreMixin, DraggableWindow):

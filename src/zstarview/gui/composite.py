@@ -869,6 +869,7 @@ class SkyCompositorCache:
             float(observer_height_m),
             float(terrain_horizon_opacity),
             float(earth_guide_opacity),
+            bool(fast_mode),
             hatch_key,
             self._missing_tint_rgba,
             self._ground_tint_opacity,
@@ -963,16 +964,17 @@ class SkyCompositorCache:
                     edge_fov_deg=edge_fov_deg,
                     content_fov_deg=content_fov_deg,
                 )
-            composited = _apply_ground_tint(
-                composited,
-                geometry=geometry,
-                view_center=view_center,
-                terrain_profile_altaz=terrain_profile_altaz,
-                ground_tint_opacity=self._ground_tint_opacity,
-                observer_lat_deg=observer_lat_deg,
-                edge_fov_deg=edge_fov_deg,
-                content_fov_deg=content_fov_deg,
-            )
+            if not fast_mode:
+                composited = _apply_ground_tint(
+                    composited,
+                    geometry=geometry,
+                    view_center=view_center,
+                    terrain_profile_altaz=terrain_profile_altaz,
+                    ground_tint_opacity=self._ground_tint_opacity,
+                    observer_lat_deg=observer_lat_deg,
+                    edge_fov_deg=edge_fov_deg,
+                    content_fov_deg=content_fov_deg,
+                )
             composited = _overlay_earth_guide(
                 composited,
                 geometry=geometry,
