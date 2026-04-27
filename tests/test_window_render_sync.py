@@ -40,9 +40,9 @@ class _DummyTimer:
     def isActive(self) -> bool:  # noqa: N802 - Qt naming
         return self._active
 
-    def start(self, ms: int) -> None:
+    def start(self, ms: int | None = None) -> None:
         self._active = True
-        self.started_with.append(ms)
+        self.started_with.append(0 if ms is None else ms)
 
 
 class _DummySignal:
@@ -1211,6 +1211,47 @@ def test_search_jpl_targets_skips_solar_system_bodies_directly() -> None:
     assert SkyWindow._search_jpl_targets(dummy, "Sun") == []
     assert SkyWindow._search_jpl_targets(dummy, "Moon") == []
     assert SkyWindow._search_jpl_targets(dummy, "Mars") == []
+
+
+def test_queue_view_rotation_batches_pending_inputs() -> None:
+    dummy = _WindowStub()
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(20.0, 30.0),
+        observer_height_m=1.7,
+    )
+    dummy.state = SkyWindowState(render_view_center=(20.0, 30.0))
+    dummy._sync_view_altitude_actions = Mock()
+    dummy.request_client_update = Mock()
+    dummy._viewport_interaction_idle_timer = _DummyTimer(active=False)
+    dummy._view_rotation_flush_timer = _DummyTimer(active=False)
+    dummy._begin_viewport_interaction_mode = (
+        lambda: SkyWindow._begin_viewport_interaction_mode(dummy)
+    )
+    dummy._update_viewport_interaction_stars = (
+        lambda: SkyWindow._update_viewport_interaction_stars(dummy)
+    )
+
+    SkyWindow._queue_view_rotation(dummy, d_az=5.0)
+    SkyWindow._queue_view_rotation(dummy, d_az=5.0)
+    SkyWindow._queue_view_rotation(dummy, d_alt=5.0)
+
+    assert dummy.state.pending_view_rotation_alt == 5.0
+    assert dummy.state.pending_view_rotation_az == 10.0
+    assert dummy.state.viewport_interaction_mode is True
+    assert dummy._view_rotation_flush_timer.started_with == [0]
+
+    SkyWindow._flush_pending_view_rotation(dummy)
+
+    assert dummy.viewer_data.view_center == (25.0, 40.0)
+    assert dummy.state.render_view_center == (25.0, 40.0)
+    assert dummy.state.pending_view_rotation_alt == 0.0
+    assert dummy.state.pending_view_rotation_az == 0.0
+    dummy._sync_view_altitude_actions.assert_called_once()
+    dummy.request_client_update.assert_called_once()
+    assert dummy._viewport_interaction_idle_timer.started_with == [0, 0, 0]
 
 
 def test_jump_to_jpl_major_body_target_keeps_overlay_without_refresh() -> None:
