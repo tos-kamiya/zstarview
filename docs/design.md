@@ -1010,6 +1010,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 現在の視点
   - 直近の描画用視点
   - `viewport_interaction_mode` による簡易描画状態
+  - `viewport_interaction_release_pending` による release 後の通常更新待ち状態
   - `viewport_interaction_stars` による簡易描画用の明るい星テーブル
   - ホバー対象
   - ハイライト対象
@@ -1065,7 +1066,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 2. 明るい星 (`vmag <= 4.0`) のみ同期的に再計算し、簡易描画に使う。
 3. 補助線と地形地平線は、保持済みデータを `render_view_center` で再投影して追随させる。
 4. 雲はこのモード中に旧視線の bitmap を描かず、一時的に非表示としてよい。
-5. 最後の入力から 0.7 秒経過後に通常更新を 1 回だけ開始する。
+5. 矢印キーの `release` で簡易モードを終え、sky 更新を要求する。
+6. 新しい sky disc が返ってきた時点で、`view-change-release` 起点の cloud / terrain 再開を行ってよい。
+7. そのため、簡易モードの終了は固定時間ではなく、最後の物理キー解放と sky 更新完了の 2 段階で扱ってよい。
 
 ### 6.3 人工衛星更新フロー
 
