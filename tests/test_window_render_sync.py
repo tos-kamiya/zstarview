@@ -3189,6 +3189,8 @@ def test_draw_star_layer_forwards_outline_flag(monkeypatch) -> None:
         scene=_make_scene(),
         style=_make_style(bright_bodies_mode="outline"),
         star_render_surface_size=(240, 240),
+        fast_mode=True,
     )
 
     assert captured["outline_bright_bodies"] is True
+    assert captured["fast_mode"] is True

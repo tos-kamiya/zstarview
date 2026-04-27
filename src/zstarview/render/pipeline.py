@@ -385,6 +385,7 @@ def _draw_viewport_interaction_layers(
         style=style,
         star_render_surface_size=None,
         draw_vmag_limit=ORIENTATION_INTERACTION_STAR_VMAG_LIMIT,
+        fast_mode=True,
     )
     render_terrain.draw_terrain_horizon_line(
         painter,
@@ -638,6 +639,7 @@ def _draw_star_layer(
     style: RenderStyle,
     star_render_surface_size: tuple[int, int] | None = None,
     draw_vmag_limit: float | None = None,
+    fast_mode: bool = False,
 ) -> None:
     draw_data = scene.celestial_data
     win_w, win_h = _window_size(viewport_rect)
@@ -672,6 +674,7 @@ def _draw_star_layer(
             draw_vmag_limit=draw_vmag_limit
             if draw_vmag_limit is not None
             else style.vmag_limit,
+            fast_mode=fast_mode,
             viewport_size=(win_w, win_h),
             content_fov_deg=content_fov_deg,
         )
@@ -703,6 +706,7 @@ def _draw_star_layer(
         draw_vmag_limit=draw_vmag_limit
         if draw_vmag_limit is not None
         else style.vmag_limit,
+        fast_mode=fast_mode,
         viewport_size=(low_w, low_h),
         content_fov_deg=content_fov_deg,
     )

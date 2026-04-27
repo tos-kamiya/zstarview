@@ -207,6 +207,7 @@ def _star_cache_key(
     outline_bright_bodies: bool,
     outline_render_scale: float,
     draw_vmag_limit: float | None,
+    fast_mode: bool,
 ) -> tuple:
     return (
         _array_hash(alt),
@@ -223,6 +224,7 @@ def _star_cache_key(
         bool(outline_bright_bodies),
         float(outline_render_scale),
         None if draw_vmag_limit is None else float(draw_vmag_limit),
+        bool(fast_mode),
     )
 
 
@@ -328,6 +330,7 @@ def draw_stars(
     outline_bright_bodies: bool = False,
     outline_render_scale: float = 1.0,
     draw_vmag_limit: Optional[float] = None,
+    fast_mode: bool = False,
     viewport_size: Tuple[int, int] | None = None,
     content_fov_deg: float | None = None,
 ) -> None:
@@ -357,6 +360,7 @@ def draw_stars(
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
     visibility_boost = float(np.clip(visibility_boost, 0.7, 2.0))
     outline_render_scale = max(1.0, float(outline_render_scale))
+    fast_mode = bool(fast_mode)
 
     if draw_vmag_limit is not None:
         draw_mask = stars["vmag"] <= float(draw_vmag_limit)
@@ -427,6 +431,7 @@ def draw_stars(
         outline_bright_bodies,
         outline_render_scale,
         draw_vmag_limit,
+        fast_mode,
     )
     global _star_render_cache
     if _star_render_cache and _star_render_cache[0] == cache_key:
@@ -465,8 +470,12 @@ def draw_stars(
     single_mask = valid_base & size_one & (~bright_outline_mask)
     size2_full_fit = (x0 >= 0) & (y0 >= 0) & (x1 <= width_px) & (y1 <= height_px)
     size2_mask = valid_base & size_two & size2_full_fit & (~bright_outline_mask)
-    size3_to_6_mask = valid_base & (size_px >= 3) & (size_px <= 6) & (~bright_outline_mask)
-    outline_mask = valid_base & (size_px >= 7) & (~bright_outline_mask)
+    if fast_mode:
+        size3_to_6_mask = valid_base & (size_px >= 3) & (~bright_outline_mask)
+        outline_mask = np.zeros_like(valid_base, dtype=bool)
+    else:
+        size3_to_6_mask = valid_base & (size_px >= 3) & (size_px <= 6) & (~bright_outline_mask)
+        outline_mask = valid_base & (size_px >= 7) & (~bright_outline_mask)
     single_indices = np.nonzero(single_mask)[0]
     if single_indices.size > 0:
         single_layer = np.zeros_like(canvas)
