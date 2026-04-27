@@ -753,7 +753,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
         self._sky_data_update_timer = QTimer(self)
         self._sky_data_update_timer.timeout.connect(
-            self.start_background_sky_data_update
+            lambda: self.start_background_sky_data_update(reason="timer")
         )
 
         self._asterism_check_timer = QTimer(self)
@@ -1253,7 +1253,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if not self.state.interaction_mode:
             return
         self.state.interaction_mode = False
-        self.request_sky_data_update()
+        self.request_sky_data_update(reason="interaction-idle")
         self.start_background_cloud_update(reason="view-change-idle")
         self.start_background_terrain_horizon_update(reason="view-change-idle")
 
@@ -1308,7 +1308,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             return
         self.state.viewport_interaction_mode = False
         self.state.viewport_interaction_stars = None
-        self.request_sky_data_update()
+        self.request_sky_data_update(reason="viewport-interaction-idle")
         self.start_background_cloud_update(reason="view-change-idle")
         self.start_background_terrain_horizon_update(reason="view-change-idle")
         self.request_client_update()

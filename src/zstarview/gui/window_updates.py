@@ -265,7 +265,7 @@ class SkyWindowUpdatesMixin:
                 current_height,
             )
             if not self._is_shutting_down:
-                self.request_sky_data_update()
+                self.request_sky_data_update(reason="stale-render")
             return
         if not self.state.viewport_interaction_mode:
             view_center = payload.get("view_center", self.viewer_data.view_center)
@@ -295,6 +295,7 @@ class SkyWindowUpdatesMixin:
         if self.state.sky_update_pending and not self._is_shutting_down:
             self.request_sky_data_update(
                 self.state.pending_star_vmag_limit,
+                reason="pending-follow-up",
             )
 
         if self.state.cloud_repaint_deferred and not self.state.interaction_mode:
@@ -304,21 +305,28 @@ class SkyWindowUpdatesMixin:
     def request_sky_data_update(
         self,
         star_vmag_limit: Optional[float] = None,
+        *,
+        reason: str = "manual",
     ) -> None:
         if self.start_background_sky_data_update(
             star_vmag_limit=star_vmag_limit,
+            reason=reason,
         ):
             self.state.sky_update_pending = False
             self.state.pending_star_vmag_limit = None
             return
         self.state.sky_update_pending = True
         self.state.pending_star_vmag_limit = star_vmag_limit
-        logger.debug("Sky data update deferred; worker is busy.")
+        logger.debug(
+            "Sky data update deferred; worker is busy (reason=%s).",
+            reason,
+        )
 
     def start_background_sky_data_update(
         self,
         is_initial_load: bool = False,
         star_vmag_limit: Optional[float] = None,
+        reason: str = "manual",
     ) -> bool:
         lat, lon = self.viewer_data.location
         use_lod6_catalog = star_vmag_limit is not None and float(star_vmag_limit) <= 6.0
@@ -349,9 +357,9 @@ class SkyWindowUpdatesMixin:
         )
         if started:
             if is_initial_load:
-                logger.info("Calculating initial sky data...")
+                logger.info("Calculating initial sky data (reason=%s)...", reason)
             else:
-                logger.info("Updating sky data...")
+                logger.info("Updating sky data (reason=%s)...", reason)
         return started
 
     def start_background_cloud_update(self, reason: str = "manual") -> None:

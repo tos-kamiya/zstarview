@@ -230,9 +230,9 @@ class CloudController(QObject):
         next_req: Optional[dict] = None
         try:
             if reason == "initial":
-                logger.info("Fetching initial cloud data...")
+                logger.info("Fetching initial cloud data (reason=%s)...", reason)
             else:
-                logger.info("Fetching cloud source data...")
+                logger.info("Fetching cloud source data (reason=%s)...", reason)
 
             try:
                 source = self._clouddisc.fetch_source(
@@ -326,8 +326,9 @@ class CloudController(QObject):
                 cloud_shells_km=CLOUD_SHELLS_KM,
             )
             logger.info(
-                "Cloud render ready (request_id=%s, sat=%s, product=%s, data_time=%s, coverage=%.1f%%)",
+                "Cloud render ready (request_id=%s, reason=%s, sat=%s, product=%s, data_time=%s, coverage=%.1f%%)",
                 request_id,
+                reason,
                 getattr(meta, "satellite", "?"),
                 getattr(meta, "product", "?"),
                 getattr(meta, "time_utc", "?"),
