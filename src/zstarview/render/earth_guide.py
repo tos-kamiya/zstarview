@@ -743,43 +743,40 @@ def draw_earth_guide(
         else:
             max_depth = 12
             threshold_px = 24.0
-        fill_alpha = max(
-            0.0,
-            min(1.0, EARTH_GUIDE_FILL_ALPHA + (float(earth_guide_opacity) * 0.35)),
-        )
-        fill_color = QColor(*EARTH_GUIDE_LINE_COLOR)
-        fill_color.setAlphaF(fill_alpha)
-        fill_line_width = max(
-            0.8,
-            EARTH_GUIDE_FILL_LINE_WIDTH_PX * (0.82 if fast_mode else 1.0),
-        )
-        fill_pen = QPen(fill_color, fill_line_width, Qt.PenStyle.SolidLine)
-        fill_pen.setCosmetic(True)
-        fill_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        fill_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-        fill_thinning = EARTH_GUIDE_FILL_FAST_MODE_THINNING if fast_mode else 1
-        painter.save()
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        painter.setPen(fill_pen)
-        for ring in rings:
-            _draw_fill_segments_for_ring(
-                painter,
-                ring,
-                origin=origin,
-                east=east,
-                north=north,
-                up=up,
-                observer_height_m=observer_height_m,
-                geometry=geometry,
-                view_center=view_center,
-                edge_fov_deg=edge_fov_deg,
-                content_fov_deg=content_fov_deg,
-                terrain_profile_altaz=terrain_profile_altaz,
-                fill_pen=fill_pen,
-                fill_thinning=fill_thinning,
-                fast_mode=fast_mode,
+            fill_alpha = max(
+                0.0,
+                min(1.0, EARTH_GUIDE_FILL_ALPHA + (float(earth_guide_opacity) * 0.35)),
             )
-        painter.restore()
+            fill_color = QColor(*EARTH_GUIDE_LINE_COLOR)
+            fill_color.setAlphaF(fill_alpha)
+            fill_line_width = 1.35
+            fill_pen = QPen(fill_color, fill_line_width, Qt.PenStyle.SolidLine)
+            fill_pen.setCosmetic(True)
+            fill_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            fill_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            fill_thinning = 1
+            painter.save()
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            painter.setPen(fill_pen)
+            for ring in rings:
+                _draw_fill_segments_for_ring(
+                    painter,
+                    ring,
+                    origin=origin,
+                    east=east,
+                    north=north,
+                    up=up,
+                    observer_height_m=observer_height_m,
+                    geometry=geometry,
+                    view_center=view_center,
+                    edge_fov_deg=edge_fov_deg,
+                    content_fov_deg=content_fov_deg,
+                    terrain_profile_altaz=terrain_profile_altaz,
+                    fill_pen=fill_pen,
+                    fill_thinning=fill_thinning,
+                    fast_mode=fast_mode,
+                )
+            painter.restore()
         if fast_mode:
             line_alpha = max(0.0, min(1.0, 0.18 + (earth_guide_opacity * 0.25)))
             line_width = max(0.7, EARTH_GUIDE_FOREGROUND_WIDTH * 0.75)
