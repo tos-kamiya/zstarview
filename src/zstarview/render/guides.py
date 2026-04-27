@@ -514,53 +514,54 @@ def draw_sky_reference_lines(
                 is_in_fov_func=is_in_fov_func,
                 altaz_to_normalized_xy_func=altaz_to_normalized_xy_func,
             )
-        fragments: List[List[Tuple[float, float]]] = []
-        for start, end in zip(altaz_points, altaz_points[1:]):
-            fragments.extend(
-                _adaptive_reference_line_fragments(
-                    float(start[0]),
-                    float(start[1]),
-                    float(end[0]),
-                    float(end[1]),
-                    geometry=geometry,
-                    view_center=viewer_data.view_center,
-                    edge_fov_deg=float(viewer_data.edge_fov_deg),
-                    content_fov_deg=effective_fov_deg,
-                    is_in_fov_func=is_in_fov_func,
-                    altaz_to_normalized_xy_func=altaz_to_normalized_xy_func,
-                    threshold_px=REFERENCE_LINE_MAX_SCREEN_ERROR_PX,
-                    depth=0,
-                    max_depth=REFERENCE_LINE_MAX_RECURSION_DEPTH,
-                )
-            )
+        projected_points: List[Tuple[float, float]] = []
+        for alt_deg, az_deg in altaz_points:
+            nx, ny = _project_reference_altaz_point(
+                float(alt_deg),
+                float(az_deg),
+                view_center=viewer_data.view_center,
+                edge_fov_deg=float(viewer_data.edge_fov_deg),
+                content_fov_deg=effective_fov_deg,
+                is_in_fov_func=is_in_fov_func,
+                altaz_to_normalized_xy_func=altaz_to_normalized_xy_func,
+            )[0]
+            projected_points.append((nx, ny))
+        fragments = split_by_gaps(projected_points)
         for frag in fragments:
             if len(frag) < 2:
                 continue
-            pts = [QPointF(x, y) for x, y in frag]
-            poly = QPolygonF(pts)
+            clipped_frags = _clip_polyline_to_radius(frag, effective_fov_deg / max(1.0e-6, float(viewer_data.edge_fov_deg)))
+            for clipped_frag in clipped_frags:
+                if len(clipped_frag) < 2:
+                    continue
+                pts = [
+                    QPointF(*normalized_to_screen_xy(x, y, geometry))
+                    for x, y in clipped_frag
+                ]
+                poly = QPolygonF(pts)
 
-            outer = _make_reference_pen(
-                color,
-                REFERENCE_LINE_OUTER_WIDTH * width_scale,
-                REFERENCE_LINE_OUTER_ALPHA,
-                Qt.PenStyle.SolidLine,
-            )
-            painter.setPen(outer)
-            painter.drawPolyline(poly)
+                outer = _make_reference_pen(
+                    color,
+                    REFERENCE_LINE_OUTER_WIDTH * width_scale,
+                    REFERENCE_LINE_OUTER_ALPHA,
+                    Qt.PenStyle.SolidLine,
+                )
+                painter.setPen(outer)
+                painter.drawPolyline(poly)
 
-            mid = _make_reference_pen(
-                color,
-                REFERENCE_LINE_MID_WIDTH * width_scale,
-                REFERENCE_LINE_MID_ALPHA,
-                Qt.PenStyle.SolidLine,
-            )
-            painter.setPen(mid)
-            painter.drawPolyline(poly)
+                mid = _make_reference_pen(
+                    color,
+                    REFERENCE_LINE_MID_WIDTH * width_scale,
+                    REFERENCE_LINE_MID_ALPHA,
+                    Qt.PenStyle.SolidLine,
+                )
+                painter.setPen(mid)
+                painter.drawPolyline(poly)
 
-            fg = _make_reference_pen(color, REFERENCE_LINE_FG_WIDTH * width_scale, 255)
-            fg.setDashPattern(dash_pattern)
-            painter.setPen(fg)
-            painter.drawPolyline(poly)
+                fg = _make_reference_pen(color, REFERENCE_LINE_FG_WIDTH * width_scale, 255)
+                fg.setDashPattern(dash_pattern)
+                painter.setPen(fg)
+                painter.drawPolyline(poly)
 
     # Keep the equator/ecliptic dash cadence visibly separated at normal zoom.
     _draw_reference_line(celestial_data.celestial_equator_points, CELESTIAL_EQUATOR_COLOR, [12, 6], width_scale=1.14)
