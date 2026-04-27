@@ -2916,7 +2916,8 @@ def test_draw_sky_reference_lines_uses_render_view_center_projection(
         ),
     )
 
-    assert calls == [(55.0, 200.0), (55.0, 200.0), (55.0, 200.0)]
+    assert len(calls) == 6
+    assert calls == [(55.0, 200.0)] * 6
 
 
 def test_draw_sky_reference_lines_uses_wider_dash_patterns(monkeypatch) -> None:
@@ -2966,9 +2967,9 @@ def test_draw_sky_reference_lines_uses_wider_dash_patterns(monkeypatch) -> None:
         _Painter(),
         geometry=SimpleNamespace(center=(0, 0), radius=1),
         celestial_data=SimpleNamespace(
-            celestial_equator_points=[(1.0, 2.0), (1.05, 2.05)],
-            ecliptic_points=[(3.0, 4.0), (3.05, 4.05)],
-            horizon_points=[(5.0, 6.0), (5.05, 6.05)],
+            celestial_equator_points=[(0.10, 0.20), (0.12, 0.22)],
+            ecliptic_points=[(0.30, 0.40), (0.32, 0.42)],
+            horizon_points=[(0.50, 0.60), (0.52, 0.62)],
         ),
         viewer_data=ViewerData(
             location=(35.0, 139.0),

@@ -33,7 +33,14 @@ from PySide6.QtGui import (
     QPaintEvent,
     QResizeEvent,
 )
-from PySide6.QtWidgets import QApplication, QLabel, QMainWindow, QMenu, QPushButton, QSizeGrip
+from PySide6.QtWidgets import (
+    QApplication,
+    QLabel,
+    QMainWindow,
+    QMenu,
+    QPushButton,
+    QSizeGrip,
+)
 from PySide6.QtWidgets import QWidget
 
 from ..__about__ import __version__
@@ -268,10 +275,12 @@ class FramelessWindowFrame(QWidget):
         self.menu_button.setStyleSheet(self._owner._menu_button_style_sheet())
         self.menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.menu_button.clicked.connect(self._owner.show_menu)
+        self.menu_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         self.size_grip = QSizeGrip(self)
         self.size_grip.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
         self.size_grip.setStyleSheet(self._owner._size_grip_style_sheet())
+        self.size_grip.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
         self._layout_chrome()
 
@@ -317,6 +326,24 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def paintEvent(self, event: QPaintEvent) -> None:
         """Keep the host window from clearing the client area during repaints."""
         event.accept()
+
+    def eventFilter(self, watched: object, event: QEvent) -> bool:
+        if isinstance(watched, QApplication):
+            if event.type() in (QEvent.Type.KeyPress, QEvent.Type.KeyRelease):
+                key_event = event if isinstance(event, QKeyEvent) else None
+                if key_event is not None and key_event.key() in {
+                    Qt.Key.Key_Left,
+                    Qt.Key.Key_Right,
+                    Qt.Key.Key_Up,
+                    Qt.Key.Key_Down,
+                }:
+                    if QApplication.activePopupWidget() is None and self.isActiveWindow():
+                        if event.type() == QEvent.Type.KeyPress:
+                            self._handle_client_key_press(key_event)
+                        else:
+                            self._handle_client_key_release(key_event)
+                        return True
+        return super().eventFilter(watched, event)
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
@@ -564,6 +591,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._action_lower_view: Optional[QAction] = None
         self._build_window_menu()
         self._install_window_host()
+        app = QApplication.instance()
+        if app is not None:
+            app.installEventFilter(self)
         self._client_widget.setFocus(Qt.FocusReason.ActiveWindowFocusReason)
 
         # --- Fonts ---
@@ -2481,6 +2511,8 @@ class FramelessSkyWindow(SkyWindowCoreMixin, DraggableWindow):
         self.setWindowFlags(self.windowFlags() | Qt.WindowType.FramelessWindowHint)
         self._frameless_frame = FramelessWindowFrame(self, self._client_widget)
         self.setCentralWidget(self._frameless_frame)
+        self.setFocusProxy(self._client_widget)
+        self._frameless_frame.setFocusProxy(self._client_widget)
         self.menu_button = self._frameless_frame.menu_button
         self.size_grip = self._frameless_frame.size_grip
         self.add_drag_target(self._client_widget)
@@ -2494,6 +2526,7 @@ class StandardSkyWindow(SkyWindowCoreMixin, QMainWindow):
 
     def _install_window_host(self) -> None:
         self.setCentralWidget(self._client_widget)
+        self.setFocusProxy(self._client_widget)
         menu_bar = self.menuBar()
         menu_bar.addMenu(self.file_menu)
         menu_bar.addMenu(self.search_menu)
