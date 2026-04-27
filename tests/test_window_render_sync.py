@@ -1254,6 +1254,31 @@ def test_queue_view_rotation_batches_pending_inputs() -> None:
     assert dummy._viewport_interaction_idle_timer.started_with == [0, 0, 0]
 
 
+def test_end_viewport_interaction_mode_marks_idle_reason() -> None:
+    dummy = _WindowStub()
+    dummy.state = SkyWindowState(
+        render_view_center=(20.0, 30.0),
+        viewport_interaction_mode=True,
+    )
+    dummy.request_sky_data_update = Mock()
+    dummy.start_background_cloud_update = Mock()
+    dummy.start_background_terrain_horizon_update = Mock()
+    dummy.request_client_update = Mock()
+
+    SkyWindow._end_viewport_interaction_mode(dummy)
+
+    dummy.request_sky_data_update.assert_called_once_with(
+        reason="viewport-interaction-idle"
+    )
+    dummy.start_background_cloud_update.assert_called_once_with(
+        reason="view-change-idle"
+    )
+    dummy.start_background_terrain_horizon_update.assert_called_once_with(
+        reason="view-change-idle"
+    )
+    dummy.request_client_update.assert_called_once()
+
+
 def test_jump_to_jpl_major_body_target_keeps_overlay_without_refresh() -> None:
     dummy = _WindowStub()
     dummy.viewer_data = ViewerData(
