@@ -484,6 +484,57 @@ def test_on_sky_data_calculated_preserves_render_center_during_viewport_interact
     assert dummy.state.render_view_center == (40.0, 150.0)
 
 
+def test_on_sky_data_calculated_triggers_release_followup_updates() -> None:
+    dummy = _WindowStub()
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(40.0, 150.0),
+        observer_height_m=1.7,
+    )
+    dummy.state = SkyWindowState(
+        render_view_center=(40.0, 150.0),
+        viewport_interaction_release_pending=True,
+    )
+    dummy._compositor = _DummyCompositor()
+    dummy._sky_data_update_timer = _DummyTimer(active=True)
+    dummy._cloud_update_timer = _DummyTimer(active=False)
+    dummy._clouddisc = None
+    dummy.cloud_disc_alpha = 0.2
+    dummy.sky_update_interval = 60
+    dummy.initial_data_loaded = _DummySignal()
+    dummy._is_shutting_down = False
+    dummy._disc_generation = 0
+    dummy.width = lambda: 640
+    dummy.height = lambda: 480
+    dummy.request_sky_data_update = lambda *_args, **_kwargs: None
+    dummy._safe_request_cloud_repaint = lambda: None
+    dummy.request_client_update = lambda: None
+    cloud_calls: list[str] = []
+    dummy.start_background_cloud_update = lambda **kwargs: cloud_calls.append(
+        str(kwargs.get("reason"))
+    )
+    dummy.start_background_terrain_horizon_update = lambda **kwargs: cloud_calls.append(
+        str(kwargs.get("reason"))
+    )
+
+    SkyWindow._on_sky_data_calculated(
+        dummy,
+        {
+            "celestial": object(),
+            "sky_disc": object(),
+            "view_center": (15.0, 120.0),
+            "render_width_px": 640,
+            "render_height_px": 480,
+            "render_generation": 0,
+        },
+    )
+
+    assert dummy.state.viewport_interaction_release_pending is False
+    assert cloud_calls == ["view-change-release", "view-change-release"]
+
+
 def test_schedule_satellite_retry_after_failure_uses_two_hour_backoff() -> None:
     dummy = _WindowStub()
     dummy.satellite_opacity = 0.5
@@ -1237,17 +1288,60 @@ def test_handle_client_key_press_rotates_view_immediately() -> None:
     dummy._update_viewport_interaction_stars = (
         lambda: SkyWindow._update_viewport_interaction_stars(dummy)
     )
+    dummy._viewport_rotation_keys = lambda: SkyWindow._viewport_rotation_keys(dummy)
 
-    event = SimpleNamespace(key=lambda: Qt.Key.Key_Left, accept=Mock())
+    event = SimpleNamespace(
+        key=lambda: Qt.Key.Key_Left,
+        isAutoRepeat=lambda: False,
+        accept=Mock(),
+    )
 
     SkyWindow._handle_client_key_press(dummy, event)
 
     assert dummy.viewer_data.view_center == (20.0, 25.0)
     assert dummy.state.render_view_center == (20.0, 25.0)
     assert dummy.state.viewport_interaction_mode is True
-    assert dummy._viewport_interaction_idle_timer.started_with == [0]
+    assert dummy._viewport_interaction_idle_timer.started_with == []
+    assert dummy._viewport_rotation_keys_down == {Qt.Key.Key_Left}
     dummy._sync_view_altitude_actions.assert_called_once()
     dummy.request_client_update.assert_called_once()
+    event.accept.assert_called_once()
+
+
+def test_handle_client_key_release_ends_viewport_interaction_mode() -> None:
+    dummy = _WindowStub()
+    dummy.state = SkyWindowState(
+        render_view_center=(20.0, 30.0),
+        viewport_interaction_mode=True,
+    )
+    dummy._viewport_rotation_keys_down = {Qt.Key.Key_Left}
+    dummy._viewport_rotation_keys = lambda: SkyWindow._viewport_rotation_keys(dummy)
+    dummy._end_viewport_interaction_mode = (
+        lambda *args, **kwargs: SkyWindow._end_viewport_interaction_mode(
+            dummy, *args, **kwargs
+        )
+    )
+    dummy.request_sky_data_update = Mock()
+    dummy.start_background_cloud_update = Mock()
+    dummy.start_background_terrain_horizon_update = Mock()
+    dummy.request_client_update = Mock()
+
+    event = SimpleNamespace(
+        key=lambda: Qt.Key.Key_Left,
+        isAutoRepeat=lambda: False,
+        accept=Mock(),
+    )
+
+    SkyWindow._handle_client_key_release(dummy, event)
+
+    assert dummy._viewport_rotation_keys_down == set()
+    assert dummy.state.viewport_interaction_release_pending is True
+    dummy.request_sky_data_update.assert_called_once_with(
+        reason="viewport-interaction-release"
+    )
+    dummy.start_background_cloud_update.assert_not_called()
+    dummy.start_background_terrain_horizon_update.assert_not_called()
+    dummy.request_client_update.assert_not_called()
     event.accept.assert_called_once()
 
 

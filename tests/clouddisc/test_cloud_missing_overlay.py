@@ -137,6 +137,55 @@ def test_compositor_terrain_profile_tints_ground_below_terrain_horizon() -> None
     assert np.array_equal(arr_terrain[24, 32, :3], np.array([112, 99, 89], dtype=np.uint8))
 
 
+def test_compositor_fast_mode_skips_ground_tint_and_never_rises_tint() -> None:
+    sky = np.zeros((64, 64, 4), dtype=np.uint8)
+    sky[..., :3] = 100
+    sky[..., 3] = 255
+
+    geom = ScreenGeometry(center=(32, 32), radius=32)
+    compositor = SkyCompositorCache(ground_tint_opacity=1.0)
+    terrain_profile = [(30.0, float(az)) for az in range(360)]
+
+    canvas_normal = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
+    canvas_normal.fill(0)
+    painter_normal = QPainter(canvas_normal)
+    compositor.draw(
+        painter_normal,
+        geom,
+        np_rgba_to_qimage(sky),
+        None,
+        cloud_alpha=0.0,
+        view_center=(0.0, 180.0),
+        observer_lat_deg=35.0,
+        terrain_profile_altaz=terrain_profile,
+        content_fov_deg=90.0,
+        fast_mode=False,
+    )
+    painter_normal.end()
+
+    canvas_fast = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
+    canvas_fast.fill(0)
+    painter_fast = QPainter(canvas_fast)
+    compositor.draw(
+        painter_fast,
+        geom,
+        np_rgba_to_qimage(sky),
+        None,
+        cloud_alpha=0.0,
+        view_center=(0.0, 180.0),
+        observer_lat_deg=35.0,
+        terrain_profile_altaz=terrain_profile,
+        content_fov_deg=90.0,
+        fast_mode=True,
+    )
+    painter_fast.end()
+
+    arr_normal = qimage_to_np_rgba(canvas_normal)
+    arr_fast = qimage_to_np_rgba(canvas_fast)
+    assert np.array_equal(arr_normal[40, 32, :3], np.array([131, 113, 99], dtype=np.uint8))
+    assert np.array_equal(arr_fast[40, 32, :3], np.array([100, 100, 100], dtype=np.uint8))
+
+
 def test_compositor_ground_tint_opacity_zero_makes_ground_fill_black() -> None:
     sky = np.zeros((64, 64, 4), dtype=np.uint8)
     sky[..., :3] = 100

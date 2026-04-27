@@ -919,7 +919,9 @@ def test_rotate_view_in_orientation_mode_updates_render_center_without_full_refr
     dummy.state = SimpleNamespace(render_view_center=(20.0, 30.0))
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request-client")
-    dummy._begin_viewport_interaction_mode = lambda: calls.append("begin-viewport")
+    dummy._begin_viewport_interaction_mode = lambda *args, **kwargs: calls.append(
+        "begin-viewport"
+    )
     dummy._begin_interaction_mode = lambda: calls.append("begin")
     dummy._sync_view_altitude_actions = lambda: calls.append("sync")
     dummy._update_viewport_interaction_stars = lambda: calls.append("bright-stars")
@@ -940,7 +942,9 @@ def test_end_viewport_interaction_mode_requests_full_refresh() -> None:
     )
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request-client")
-    dummy.request_sky_data_update = lambda: calls.append("sky")
+    dummy.request_sky_data_update = lambda **kwargs: calls.append(
+        str(kwargs.get("reason"))
+    )
     dummy.start_background_cloud_update = lambda **kwargs: calls.append(
         str(kwargs.get("reason"))
     )
@@ -953,7 +957,12 @@ def test_end_viewport_interaction_mode_requests_full_refresh() -> None:
 
     assert dummy.state.viewport_interaction_mode is False
     assert dummy.state.viewport_interaction_stars is None
-    assert calls == ["sky", "view-change-idle", "view-change-idle", "request-client"]
+    assert calls == [
+        "viewport-interaction-idle",
+        "view-change-idle",
+        "view-change-idle",
+        "request-client",
+    ]
 
 
 def test_begin_viewport_interaction_mode_clears_cloud_buffers_and_invalidates_old_render() -> (
@@ -1049,8 +1058,8 @@ def test_handle_client_resize_preserves_visible_cloud_buffers() -> None:
     dummy.start_background_cloud_update = lambda **kwargs: calls.append(
         str(kwargs.get("reason"))
     )
-    dummy._begin_viewport_interaction_mode = lambda preserve_cloud_buffers=False: (
-        calls.append(f"begin:{preserve_cloud_buffers}")
+    dummy._begin_viewport_interaction_mode = lambda *args, **kwargs: (
+        calls.append(f"begin:{kwargs.get('preserve_cloud_buffers', False)}")
     )
 
     SkyWindow._handle_client_resize(dummy, SimpleNamespace())
