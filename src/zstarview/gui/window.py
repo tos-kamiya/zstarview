@@ -774,6 +774,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._viewport_interaction_idle_timer.timeout.connect(
             self._end_viewport_interaction_mode
         )
+        self._view_rotation_flush_timer = QTimer(self)
+        self._view_rotation_flush_timer.setSingleShot(True)
+        self._view_rotation_flush_timer.setInterval(0)
+        self._view_rotation_flush_timer.timeout.connect(
+            self._flush_pending_view_rotation
+        )
 
     def _resize_client_area(self, target_client_width: int, target_client_height: int) -> None:
         """Resize the host so the client widget reaches the requested size."""
@@ -1305,6 +1311,32 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.request_sky_data_update()
         self.start_background_cloud_update(reason="view-change-idle")
         self.start_background_terrain_horizon_update(reason="view-change-idle")
+        self.request_client_update()
+
+    def _queue_view_rotation(self, d_alt: float = 0.0, d_az: float = 0.0) -> None:
+        self.state.pending_view_rotation_alt += float(d_alt)
+        self.state.pending_view_rotation_az += float(d_az)
+        if not self.state.viewport_interaction_mode:
+            self._begin_viewport_interaction_mode()
+        else:
+            self._viewport_interaction_idle_timer.start()
+        if not self._view_rotation_flush_timer.isActive():
+            self._view_rotation_flush_timer.start()
+
+    def _flush_pending_view_rotation(self) -> None:
+        d_alt = float(self.state.pending_view_rotation_alt)
+        d_az = float(self.state.pending_view_rotation_az)
+        if d_alt == 0.0 and d_az == 0.0:
+            return
+        self.state.pending_view_rotation_alt = 0.0
+        self.state.pending_view_rotation_az = 0.0
+        alt, az = self.viewer_data.view_center
+        new_alt = max(OBSERVER_MIN_ALT_DEG, min(90.0, alt + d_alt))
+        new_az = (az + d_az) % 360.0
+        self.viewer_data.view_center = (new_alt, new_az)
+        self.state.render_view_center = (new_alt, new_az)
+        self._sync_view_altitude_actions()
+        self._update_viewport_interaction_stars()
         self.request_client_update()
 
     def show_menu(self) -> None:
@@ -2335,18 +2367,16 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
         # --- View Control ---
         if key == Qt.Key.Key_Left:
-            self._rotate_view(d_az=-self.state.rotation_step, interactive_viewport=True)
+            self._queue_view_rotation(d_az=-self.state.rotation_step)
             event.accept()
         elif key == Qt.Key.Key_Right:
-            self._rotate_view(d_az=self.state.rotation_step, interactive_viewport=True)
+            self._queue_view_rotation(d_az=self.state.rotation_step)
             event.accept()
         elif key == Qt.Key.Key_Up:
-            self._rotate_view(d_alt=self.state.rotation_step, interactive_viewport=True)
+            self._queue_view_rotation(d_alt=self.state.rotation_step)
             event.accept()
         elif key == Qt.Key.Key_Down:
-            self._rotate_view(
-                d_alt=-self.state.rotation_step, interactive_viewport=True
-            )
+            self._queue_view_rotation(d_alt=-self.state.rotation_step)
             event.accept()
 
         # --- Toggles ---

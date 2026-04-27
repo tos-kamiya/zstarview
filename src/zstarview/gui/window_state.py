@@ -24,6 +24,8 @@ class SkyWindowState:
     viewport_interaction_idle_ms: int = 700
     viewport_interaction_mode: bool = False
     viewport_interaction_stars: Optional[StarsTable] = None
+    pending_view_rotation_alt: float = 0.0
+    pending_view_rotation_az: float = 0.0
     mouse_pos: Optional[QPoint] = None
     overlay_info_bottom_left: bool = False
     jump_highlight_name: Optional[str] = None
