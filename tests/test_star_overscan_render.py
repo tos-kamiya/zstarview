@@ -221,6 +221,49 @@ def test_draw_stars_renders_7px_and_larger_stars_as_outline_rectangles() -> None
 
     assert int(center[3]) == 0
     assert int(top_edge[3]) > 0
+
+
+def test_draw_stars_fast_mode_renders_7px_and_larger_stars_as_filled_rectangles() -> None:
+    image = QImage(240, 240, QImage.Format.Format_ARGB32_Premultiplied)
+    image.fill(0)
+    painter = QPainter(image)
+    try:
+        geometry = ScreenGeometry(center=(120, 120), radius=80)
+        viewer = ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="UTC",
+            city_name="Tokyo",
+            view_center=(90.0, 180.0),
+            content_fov_deg=90.0,
+        )
+        celestial_data = _single_star_celestial_data(
+            alt=90.0,
+            az=180.0,
+            vmag=5.5,
+            bv=0.0,
+            size_factor=0.27,
+            color_factor_base=1.0,
+        )
+
+        render_stars.draw_stars(
+            painter,
+            geometry,
+            celestial_data,
+            viewer,
+            star_base_radius=20.0,
+            viewport_size=(240, 240),
+            content_fov_deg=90.0,
+            fast_mode=True,
+        )
+    finally:
+        painter.end()
+
+    arr = qimage_to_np_rgba(image)
+    center = arr[120, 120, :]
+    top_edge = arr[117, 120, :]
+
+    assert int(center[3]) > 0
+    assert int(top_edge[3]) > 0
     assert int(np.count_nonzero(arr[:, :, 3])) > 0
 
 
