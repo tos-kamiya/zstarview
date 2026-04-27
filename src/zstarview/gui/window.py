@@ -779,7 +779,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
         self._view_rotation_flush_timer = QTimer(self)
         self._view_rotation_flush_timer.setSingleShot(True)
-        self._view_rotation_flush_timer.setInterval(0)
+        self._view_rotation_flush_timer.setInterval(self.state.view_rotation_flush_ms)
         self._view_rotation_flush_timer.timeout.connect(
             self._flush_pending_view_rotation
         )
@@ -1325,8 +1325,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.state.pending_view_rotation_az += float(d_az)
         if not self.state.viewport_interaction_mode:
             self._begin_viewport_interaction_mode(start_idle_timer=False)
-        if not self._view_rotation_flush_timer.isActive():
-            self._view_rotation_flush_timer.start()
+        self._view_rotation_flush_timer.start(self.state.view_rotation_flush_ms)
 
     def _flush_pending_view_rotation(self) -> None:
         d_alt = float(self.state.pending_view_rotation_alt)

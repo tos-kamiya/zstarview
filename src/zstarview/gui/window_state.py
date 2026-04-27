@@ -22,6 +22,7 @@ class SkyWindowState:
     interaction_idle_ms: int = 300
     interaction_mode: bool = False
     viewport_interaction_idle_ms: int = 700
+    view_rotation_flush_ms: int = 50
     viewport_interaction_mode: bool = False
     viewport_interaction_stars: Optional[StarsTable] = None
     held_view_rotation_keys: set[int] = field(default_factory=set)
