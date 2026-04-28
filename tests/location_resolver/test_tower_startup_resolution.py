@@ -129,7 +129,7 @@ def test_startup_resolve_city_accepts_at_lat_lon(monkeypatch) -> None:
     location = resolve_launch_location("@35.4824704,133.0683567")
 
     assert location.kind == "coords"
-    assert location.display_name == "Lat: 35.48, Lon: 133.07"
+    assert location.display_name == "Lat: 35.48247, Lon: 133.06836"
     assert location.persistence_key == "35.482470;133.068357"
     assert location.tz == "Asia/Tokyo"
     assert location.cc == "JP"
@@ -147,7 +147,7 @@ def test_startup_resolve_city_accepts_plain_lat_lon_with_space(monkeypatch) -> N
     location = resolve_launch_location("35.4824704, 133.0683567")
 
     assert location.kind == "coords"
-    assert location.display_name == "Lat: 35.48, Lon: 133.07"
+    assert location.display_name == "Lat: 35.48247, Lon: 133.06836"
     assert location.persistence_key == "35.482470;133.068357"
     assert location.tz == "Asia/Tokyo"
     assert location.cc == "JP"
@@ -165,7 +165,7 @@ def test_startup_resolve_city_accepts_at_lat_lon_with_space(monkeypatch) -> None
     location = resolve_launch_location("@35.4824704, 133.0683567")
 
     assert location.kind == "coords"
-    assert location.display_name == "Lat: 35.48, Lon: 133.07"
+    assert location.display_name == "Lat: 35.48247, Lon: 133.06836"
     assert location.persistence_key == "35.482470;133.068357"
     assert location.tz == "Asia/Tokyo"
     assert location.cc == "JP"
@@ -188,7 +188,7 @@ def test_startup_resolve_city_accepts_google_maps_url(monkeypatch) -> None:
     )
 
     assert location.kind == "coords"
-    assert location.display_name == "Lat: 34.69, Lon: 135.20"
+    assert location.display_name == "Lat: 34.69385, Lon: 135.19605"
     assert location.persistence_key == "34.693849;135.196045"
     assert location.tz == "Asia/Tokyo"
 

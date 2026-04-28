@@ -18,6 +18,10 @@ from urllib.request import Request, urlopen
 
 from zstarview.data import build_derived_tile_index
 from zstarview.paths import CACHE_PATH
+from zstarview.utils.latlon_format import (
+    LAT_LON_DECIMALS,
+    format_lat_lon_cache_segment,
+)
 
 EARTH_RADIUS_KM = 6371.0088
 DEFAULT_FETCH_RADIUS_KM = 2.5
@@ -236,7 +240,9 @@ def derive_dataset_name(
 ) -> str:
     return (
         f"overture_{feature_type}"
-        f"_lat{lat_deg:.4f}_lon{lon_deg:.4f}_r{radius_km:.1f}km"
+        f"_lat{format_lat_lon_cache_segment(lat_deg, decimals=LAT_LON_DECIMALS)}"
+        f"_lon{format_lat_lon_cache_segment(lon_deg, decimals=LAT_LON_DECIMALS)}"
+        f"_r{radius_km:.1f}km"
         f"_h{float(min_building_height_m):.1f}m"
     ).replace("-", "m").replace(".", "p")
 

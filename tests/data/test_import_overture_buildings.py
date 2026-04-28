@@ -30,6 +30,14 @@ def test_bbox_from_point_covers_requested_radius() -> None:
     assert round(east - west, 4) > 0.05
 
 
+def test_derive_dataset_name_uses_shared_latlon_precision() -> None:
+    mod = _load_module()
+
+    got = mod.derive_dataset_name(35.4824704, 133.0683567, 2.5, "building")
+
+    assert got == "overture_building_lat35p48247_lon133p06836_r2p5km_h0p0m"
+
+
 def test_convert_feature_to_building_uses_height_and_geometry() -> None:
     mod = _load_module()
 
