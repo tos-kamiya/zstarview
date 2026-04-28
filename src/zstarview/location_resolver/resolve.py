@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, List
 from ..config import load_last_city, save_last_city
 from ..paths import CITY_ADMIN1_CODES_FILE, CITY_COORD_FILE
 from ..paths import OVERTURE_DERIVED_ROOT_DIR
+from ..utils.latlon_format import format_lat_lon_display
 from ..utils.resolve_city import (
     CityRec,
     load_admin1_names,
@@ -627,16 +628,16 @@ def resolve_launch_location(
             logger.info("Parsed location: Lat=%.6f, Lon=%.6f, Timezone=%s", lat, lon, timezone_name)
             return _maybe_apply_building_top_viewpoint(
                 ResolvedLocation(
-                display_name=f"Lat: {lat:.2f}, Lon: {lon:.2f}",
-                lat=lat,
-                lon=lon,
-                tz=timezone_name,
-                persistence_key=f"{lat:.6f};{lon:.6f}",
-                observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
-                kind="coords",
-                location_height_label=None,
-                location_height_m=None,
-                cc=nearest_city.cc if nearest_city is not None else "",
+                    display_name=format_lat_lon_display(lat, lon),
+                    lat=lat,
+                    lon=lon,
+                    tz=timezone_name,
+                    persistence_key=f"{lat:.6f};{lon:.6f}",
+                    observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
+                    kind="coords",
+                    location_height_label=None,
+                    location_height_m=None,
+                    cc=nearest_city.cc if nearest_city is not None else "",
                 ),
                 enabled=use_building_top,
             )
