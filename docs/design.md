@@ -322,8 +322,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - text: `(242, 245, 250)` / `#F2F5FA`
   - status_text: `(255, 224, 224)` / `#FFE0E0`
   - sky disc opacity: `0.4`
-  - window border: omitted
-  - grip triangle: inset reduced toward the corner
+  - window chrome: menu square uses theme-contrast fill and hamburger lines;
+    grip uses the same line color as a single inset diagonal stroke
 
 #### 4.3.3 カラーパレット参照
 
