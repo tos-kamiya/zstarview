@@ -280,6 +280,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 天の赤道、黄道、地平線などの補助線を `(alt, az)` サンプル列から描画時に `render_view_center` 基準で投影する
 - `src/zstarview/render/background.py`
   - テーマ定義に基づいてウィンドウ背景 radial gradient を描画する
+  - 端へ行くほど急に抜けないよう、四隅の透明度は内部より少しだけ高く保つ
   - 独自ウィンドウ枠は frameless host のときだけ描画する
 - `src/zstarview/splash.py`
   - テーマ定義に基づいてスプラッシュ背景、枠線、情報文字色を構成する
