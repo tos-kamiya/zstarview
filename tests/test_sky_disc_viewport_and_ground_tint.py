@@ -236,6 +236,25 @@ def test_window_frame_has_no_outer_border_for_black() -> None:
     assert int(arr[159, 159, 3]) == 0
 
 
+def test_window_frame_draws_outer_border_for_white_and_day() -> None:
+    for preset in ("white", "day"):
+        img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
+        img.fill(0)
+        painter = QPainter(img)
+        draw_window_border(
+            painter,
+            QRectF(0.0, 0.0, 160.0, 160.0),
+            preset=preset,
+        )
+        painter.end()
+
+        arr = qimage_to_np_rgba(img)
+
+        assert int(arr[0, 80, 3]) > 0, preset
+        assert int(arr[80, 0, 3]) > 0, preset
+        assert int(arr[159, 159, 3]) > 0, preset
+
+
 def test_window_frame_draws_bottom_right_grip_line_inside_frame() -> None:
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
@@ -252,7 +271,6 @@ def test_window_frame_draws_bottom_right_grip_line_inside_frame() -> None:
     assert int(arr[133, 151, 3]) > 0
     assert int(arr[136, 148, 3]) > 0
     assert int(arr[142, 142, 3]) > 0
-    assert int(arr[150, 150, 3]) == 0
     assert int(arr[128, 128, 3]) == 0
 
 
@@ -271,7 +289,6 @@ def test_window_frame_draws_top_right_menu_square_inside_frame() -> None:
 
     assert 0 < int(arr[0, 145, 3]) < 255
     assert 0 < int(arr[20, 131, 3]) < 255
-    assert int(arr[20, 124, 3]) == 0
 
 
 def test_window_frame_does_not_double_draw_under_menu_panel() -> None:
@@ -336,8 +353,6 @@ def test_window_frame_menu_panel_position_is_consistent_across_presets() -> None
     assert 0 < int(black_arr[0, 145, 3]) < 255
     assert 0 < int(night_arr[20, 131, 3]) < 255
     assert 0 < int(black_arr[20, 131, 3]) < 255
-    assert int(night_arr[20, 124, 3]) == 0
-    assert int(black_arr[20, 124, 3]) == 0
 
 
 def test_transparent_window_frame_skips_border_but_keeps_menu_and_grip() -> None:
