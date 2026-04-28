@@ -2243,6 +2243,7 @@ def test_draw_terrain_layers_keeps_asterisms_and_urban_outline_widths_fixed(monk
     calls: dict[str, list[float]] = {
         "asterisms": [],
         "terrain": [],
+        "terrain_secondary": [],
         "reference": [],
         "direction": [],
         "zenith": [],
@@ -2273,6 +2274,13 @@ def test_draw_terrain_layers_keeps_asterisms_and_urban_outline_widths_fixed(monk
         pipeline_module.render_terrain,
         "draw_terrain_horizon_line",
         lambda *_args, **kwargs: calls["terrain"].append(
+            float(kwargs.get("line_width_scale", 1.0))
+        ),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
+        "draw_terrain_secondary_ridges",
+        lambda *_args, **kwargs: calls["terrain_secondary"].append(
             float(kwargs.get("line_width_scale", 1.0))
         ),
     )
@@ -2318,6 +2326,12 @@ def test_draw_terrain_layers_keeps_asterisms_and_urban_outline_widths_fixed(monk
             ),
             celestial_data=object(),
             terrain_horizon_profile=[(1.0, 10.0), (2.0, 20.0)],
+            terrain_horizon_secondary_profile_altaz_layers=[
+                [(1.0, 10.0), (2.0, 20.0)]
+            ],
+            terrain_horizon_secondary_profile_distances_m_layers=[
+                [10_000.0, 12_000.0]
+            ],
         ),
         style=_make_style(show_asterisms=True),
         highlighted_object=None,
@@ -2326,7 +2340,8 @@ def test_draw_terrain_layers_keeps_asterisms_and_urban_outline_widths_fixed(monk
     )
 
     assert calls["asterisms"] == [1.0]
-    assert calls["terrain"] == [expected_line_width_scale]
+    assert calls["terrain"] == []
+    assert calls["terrain_secondary"] == [expected_line_width_scale]
     assert calls["reference"] == [1.0]
     assert calls["direction"] == []
     assert calls["zenith"] == []
@@ -3310,7 +3325,7 @@ def test_draw_terrain_horizon_line_scales_line_widths(monkeypatch) -> None:
         normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
     )
 
-    assert painter.pen_widths[:2] == [7.2, 2.4]
+    assert painter.pen_widths == [7.2]
 
 
 def test_draw_terrain_horizon_line_scales_widths_by_distance(monkeypatch) -> None:
@@ -3366,9 +3381,8 @@ def test_draw_terrain_horizon_line_scales_widths_by_distance(monkeypatch) -> Non
         normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
     )
 
-    assert len(painter.pen_widths) >= 4
-    assert painter.pen_widths[0] > painter.pen_widths[2]
-    assert painter.pen_widths[1] > painter.pen_widths[3]
+    assert len(painter.pen_widths) == 2
+    assert painter.pen_widths[0] > painter.pen_widths[1]
 
 
 def test_draw_terrain_secondary_ridges_use_fixed_widths(monkeypatch) -> None:
@@ -3411,8 +3425,16 @@ def test_draw_terrain_secondary_ridges_use_fixed_widths(monkeypatch) -> None:
     render_terrain_module.draw_terrain_secondary_ridges(
         painter,
         geometry=SimpleNamespace(center=(0, 0), radius=1),
-        terrain_secondary_profile_layers=[[(0.0, 0.0), (0.0, 0.1), (0.0, 0.2)]],
-        terrain_secondary_profile_distances_m_layers=[[1_000.0, 50_000.0, 120_000.0]],
+        terrain_secondary_profile_layers=[
+            [(0.0, 0.0), (0.0, 0.1), (0.0, 0.2)],
+            [(0.1, 0.0), (0.1, 0.1), (0.1, 0.2)],
+            [(0.2, 0.0), (0.2, 0.1), (0.2, 0.2)],
+        ],
+        terrain_secondary_profile_distances_m_layers=[
+            [1_000.0, 2_000.0, 3_000.0],
+            [10_000.0, 12_000.0, 15_000.0],
+            [50_000.0, 60_000.0, 70_000.0],
+        ],
         view_center=(45.0, 180.0),
         opacity=0.38,
         line_width_scale=1.0,
@@ -3425,9 +3447,10 @@ def test_draw_terrain_secondary_ridges_use_fixed_widths(monkeypatch) -> None:
         normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
     )
 
-    assert len(painter.pen_widths) == 2
-    assert painter.pen_widths[0] == pytest.approx(render_terrain_module.TERRAIN_DISTANCE_BAND_OUTLINE_WIDTH)
-    assert painter.pen_widths[1] == pytest.approx(render_terrain_module.TERRAIN_DISTANCE_BAND_FG_WIDTH)
+    assert len(painter.pen_widths) == 3
+    assert painter.pen_widths[0] == pytest.approx(2.16)
+    assert painter.pen_widths[0] > painter.pen_widths[1] > painter.pen_widths[2]
+    assert painter.pen_widths[2] == pytest.approx(1.14)
 
 
 def test_draw_terrain_horizon_line_uses_edge_fov_for_projection() -> None:

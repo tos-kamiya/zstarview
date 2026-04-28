@@ -683,5 +683,6 @@
 
 - Distance-band terrain ridge preview
   - Replaced the previous chained secondary-ridge experiment with concentric distance-band ridge lines at 3.75, 7.5, 15, 30, 60, and 120 km.
-  - Kept the primary terrain horizon unchanged and rendered the banded overlay as fixed-width red lines for a simpler visual read.
+  - Kept the primary terrain horizon only for fast-mode interaction rendering and rendered the banded overlay as the normal-mode terrain visualization.
+  - Aligned the nearest normal-mode band with the fast-mode horizon width and moved its alpha closer to the fast-mode look, then tapered farther bands down from there.
   - Updated the horizon extraction, renderer, state plumbing, and regression tests to carry banded ridge polylines instead of visibility-pruned secondary peaks.

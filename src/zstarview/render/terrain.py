@@ -23,10 +23,11 @@ URBAN_OUTLINE_UNDERLAY_MID_WIDTH = 7.2
 URBAN_OUTLINE_UNDERLAY_OUTER_WIDTH = 9.2
 URBAN_OUTLINE_UNDERLAY_MIN_DISTANCE_KM = 0.01
 URBAN_OUTLINE_NEAR_DISTANCE_KM = 0.5
+TERRAIN_HORIZON_FAST_WIDTH = 3.6
 TERRAIN_HORIZON_FAR_BASE_WIDTH = 1.9
-TERRAIN_HORIZON_FAR_FG_WIDTH = 0.65
-TERRAIN_DISTANCE_BAND_OUTLINE_WIDTH = 2.4
-TERRAIN_DISTANCE_BAND_FG_WIDTH = 0.95
+TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH = 2.16
+TERRAIN_DISTANCE_BAND_FAR_OUTLINE_WIDTH = 1.14
+TERRAIN_DISTANCE_BAND_DECAY_EXPONENT = 1.35
 
 
 def _urban_outline_foreground_alpha(opacity: float) -> float:
@@ -145,7 +146,7 @@ def _minimal_azimuth_cover(azimuth_deg: List[float]) -> Tuple[float, float, floa
 
 
 def terrain_horizon_line_alpha(opacity: float) -> float:
-    """Return the alpha curve used by the terrain horizon foreground line."""
+    """Return the alpha curve used by the terrain horizon line."""
     opacity = max(0.0, min(1.0, float(opacity)))
     return max(opacity, min(1.0, 0.42 + (opacity * 0.95)))
 
@@ -154,6 +155,33 @@ def terrain_secondary_ridge_line_alpha(opacity: float) -> float:
     """Return the alpha curve used by the secondary ridge overlay."""
     opacity = max(0.0, min(1.0, float(opacity)))
     return max(0.0, min(1.0, 0.08 + (opacity * 0.28)))
+
+
+def _distance_band_widths(
+    band_index: int,
+    band_count: int,
+) -> float:
+    if band_count <= 1:
+        return float(TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH)
+    t = max(0.0, min(1.0, float(band_index) / float(band_count - 1)))
+    eased_t = t ** TERRAIN_DISTANCE_BAND_DECAY_EXPONENT
+    outline_width = TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH - (
+        eased_t * (TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH - TERRAIN_DISTANCE_BAND_FAR_OUTLINE_WIDTH)
+    )
+    return outline_width
+
+
+def _distance_band_alpha(
+    band_index: int,
+    band_count: int,
+    opacity: float,
+) -> float:
+    near_alpha = terrain_horizon_line_alpha(opacity)
+    far_alpha = terrain_secondary_ridge_line_alpha(opacity * 0.35)
+    if band_count <= 1:
+        return near_alpha
+    t = max(0.0, min(1.0, float(band_index) / float(band_count - 1)))
+    return near_alpha - (t * (near_alpha - far_alpha))
 
 
 def _draw_terrain_profile_layer(
@@ -165,10 +193,7 @@ def _draw_terrain_profile_layer(
     *,
     opacity: float,
     base_width: float,
-    fg_width: float,
     far_base_width: float,
-    far_fg_width: float,
-    outline_alpha: int,
     fg_alpha: float,
     line_width_scale: float,
     color_rgb: tuple[int, int, int],
@@ -219,8 +244,6 @@ def _draw_terrain_profile_layer(
 
     color = QColor(*color_rgb)
     color.setAlphaF(max(0.0, min(1.0, float(fg_alpha))))
-    outline = QColor(*color_rgb)
-    outline.setAlpha(max(0, min(255, int(round(float(outline_alpha) * effective_opacity + 18.0)))))
     width_scale = float(line_width_scale)
     has_distance_widths = distance_widths and (not fast_mode) and terrain_profile_distances_m is not None
     if has_distance_widths:
@@ -238,18 +261,11 @@ def _draw_terrain_profile_layer(
         frag_points = [QPointF(*normalized_to_screen_xy_func(nx, ny, geometry)) for nx, ny in frag]
         if not has_distance_widths:
             poly = QPolygonF(frag_points)
-            base = QPen(outline, float(base_width) * width_scale, Qt.PenStyle.SolidLine)
-            base.setCosmetic(True)
-            base.setCapStyle(Qt.PenCapStyle.RoundCap)
-            base.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-            painter.setPen(base)
-            painter.drawPolyline(poly)
-
-            fg = QPen(color, float(fg_width) * width_scale, Qt.PenStyle.SolidLine)
-            fg.setCosmetic(True)
-            fg.setCapStyle(Qt.PenCapStyle.RoundCap)
-            fg.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-            painter.setPen(fg)
+            pen = QPen(color, float(base_width) * width_scale, Qt.PenStyle.SolidLine)
+            pen.setCosmetic(True)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            painter.setPen(pen)
             painter.drawPolyline(poly)
         else:
             if len(frag_points) >= 2:
@@ -267,19 +283,11 @@ def _draw_terrain_profile_layer(
                     else:
                         t = max(0.0, min(1.0, segment_dist_m / max_distance_m))
                     base_width_m = float(base_width) - (t * (float(base_width) - float(far_base_width)))
-                    fg_width_m = float(fg_width) - (t * (float(fg_width) - float(far_fg_width)))
-                    base = QPen(outline, base_width_m * width_scale, Qt.PenStyle.SolidLine)
-                    base.setCosmetic(True)
-                    base.setCapStyle(Qt.PenCapStyle.RoundCap)
-                    base.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-                    painter.setPen(base)
-                    painter.drawLine(start, end)
-
-                    fg = QPen(color, fg_width_m * width_scale, Qt.PenStyle.SolidLine)
-                    fg.setCosmetic(True)
-                    fg.setCapStyle(Qt.PenCapStyle.RoundCap)
-                    fg.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-                    painter.setPen(fg)
+                    pen = QPen(color, base_width_m * width_scale, Qt.PenStyle.SolidLine)
+                    pen.setCosmetic(True)
+                    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+                    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+                    painter.setPen(pen)
                     painter.drawLine(start, end)
         point_index += len(frag)
     painter.restore()
@@ -310,11 +318,8 @@ def draw_terrain_horizon_line(
         terrain_profile_distances_m,
         view_center,
         opacity=opacity,
-        base_width=3.6,
-        fg_width=1.2,
+        base_width=TERRAIN_HORIZON_FAST_WIDTH,
         far_base_width=TERRAIN_HORIZON_FAR_BASE_WIDTH,
-        far_fg_width=TERRAIN_HORIZON_FAR_FG_WIDTH,
-        outline_alpha=135,
         fg_alpha=terrain_horizon_line_alpha(opacity),
         line_width_scale=line_width_scale,
         color_rgb=TERRAIN_HORIZON_LINE_COLOR,
@@ -346,7 +351,7 @@ def draw_terrain_secondary_ridges(
     normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], Tuple[float, float]] = normalized_to_screen_xy,
     split_by_gaps_func: Callable[[List[Tuple[float, float]]], List[List[Tuple[float, float]]]] = split_by_gaps,
 ) -> None:
-    """Draw fixed-width red ridge bands grouped by distance interval."""
+    """Draw fixed-width ridge bands grouped by distance interval."""
     if fast_mode or not terrain_secondary_profile_layers or opacity <= 0.0:
         return
 
@@ -354,13 +359,23 @@ def draw_terrain_secondary_ridges(
     if ridge_opacity <= 0.0:
         return
 
-    ridge_color_rgb = (255, 48, 48)
+    ridge_color_rgb = TERRAIN_HORIZON_LINE_COLOR
     if terrain_secondary_profile_distances_m_layers is not None and len(terrain_secondary_profile_distances_m_layers) != len(terrain_secondary_profile_layers):
         terrain_secondary_profile_distances_m_layers = None
+    layer_count = len(terrain_secondary_profile_layers)
     for layer_index, layer in enumerate(terrain_secondary_profile_layers):
         layer_distances_m = None
         if terrain_secondary_profile_distances_m_layers is not None:
             layer_distances_m = terrain_secondary_profile_distances_m_layers[layer_index]
+        base_width = _distance_band_widths(
+            layer_index,
+            layer_count,
+        )
+        band_alpha = _distance_band_alpha(
+            layer_index,
+            layer_count,
+            opacity,
+        )
         _draw_terrain_profile_layer(
             painter,
             geometry,
@@ -368,12 +383,9 @@ def draw_terrain_secondary_ridges(
             layer_distances_m,
             view_center,
             opacity=opacity,
-            base_width=TERRAIN_DISTANCE_BAND_OUTLINE_WIDTH,
-            fg_width=TERRAIN_DISTANCE_BAND_FG_WIDTH,
-            far_base_width=TERRAIN_DISTANCE_BAND_OUTLINE_WIDTH,
-            far_fg_width=TERRAIN_DISTANCE_BAND_FG_WIDTH,
-            outline_alpha=72,
-            fg_alpha=ridge_opacity,
+            base_width=base_width,
+            far_base_width=base_width,
+            fg_alpha=band_alpha,
             line_width_scale=line_width_scale,
             color_rgb=ridge_color_rgb,
             fast_mode=fast_mode,

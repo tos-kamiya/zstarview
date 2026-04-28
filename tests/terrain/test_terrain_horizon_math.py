@@ -11,6 +11,7 @@ from zstarview.terrain.horizon import (
     build_distance_samples,
     compute_apparent_altitudes,
 )
+from zstarview.render.terrain import _distance_band_alpha
 from zstarview.terrain.dem import DemGrid, sample_ground_elevation
 
 
@@ -127,6 +128,14 @@ def test_select_distance_band_peak_index_includes_last_upper_bound() -> None:
     )
 
     assert got == 4
+
+
+def test_distance_band_alpha_drops_with_distance() -> None:
+    near = _distance_band_alpha(0, 4, 0.38)
+    far = _distance_band_alpha(3, 4, 0.38)
+
+    assert near > far
+    assert far < 0.15
 
 
 def test_sample_ground_elevation_uses_default_elevation_for_nodata() -> None:
