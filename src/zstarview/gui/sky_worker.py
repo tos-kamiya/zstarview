@@ -31,7 +31,7 @@ from ..astro import (
     calculate_visible_stars,
     eclipse_factor_from_info,
 )
-from ..paths import SKY_DISC_OPACITY_BY_PRESET
+from ..paths import THEME_STYLES_BY_PRESET
 from ..render import sky_disc
 from ..render import geometry as render_geometry
 from ..types import CelestialData, StarCatalogMeta
@@ -135,7 +135,8 @@ def compute_sky_snapshot(
         render_height = max(2, int(render_height_px or sky_disc_base_size))
         fixed_geom = render_geometry.get_screen_geometry(render_width, render_height, view_center[0])
         ef = eclipse_factor_from_info(solar_eclipse_info)
-        disc_opacity = float(SKY_DISC_OPACITY_BY_PRESET.get(visual_preset, 1.0))
+        theme = THEME_STYLES_BY_PRESET.get(visual_preset, THEME_STYLES_BY_PRESET["night"])
+        disc_opacity = float(theme.sky_disc.opacity)
         if sky_disc_alpha > 0.0:
             sky_disc_img = sky_disc.draw_sky_color_disc(
                 fixed_geom,

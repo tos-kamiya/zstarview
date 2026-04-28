@@ -7,7 +7,7 @@ from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QRadialGradient
 
 from ..astro import altaz_to_normalized_xy, calculate_moon_render_data, is_in_fov
-from ..paths import TEXT_STYLES_BY_PRESET
+from ..paths import THEME_STYLES_BY_PRESET
 from ..types import CelestialData, CelestialObject, PlanetBody, ScreenGeometry, ViewerData
 from ..utils.image import generate_moon_phase_rgba
 from .geometry import normalized_to_screen_xy
@@ -249,7 +249,7 @@ def draw_solar_system_bodies(
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
     marker_scale = max(1.0, float(marker_scale))
 
-    text_color = QColor(*TEXT_STYLES_BY_PRESET["night"].text)
+    text_color = QColor(*THEME_STYLES_BY_PRESET["night"].text.foreground_rgb)
     if text_font is not None:
         painter.setFont(text_font)
         label_font = text_font
@@ -395,7 +395,7 @@ def draw_hovered_moon_overlay(
     moon_body, sun_altaz, moon_altaz = _collect_sun_moon_context(celestial_data.planets)
     if moon_body is None or sun_altaz is None or moon_altaz is None:
         return
-    text_color = QColor(*TEXT_STYLES_BY_PRESET["night"].text)
+    text_color = QColor(*THEME_STYLES_BY_PRESET["night"].text.foreground_rgb)
     _draw_moon_planet(
         painter,
         pos,

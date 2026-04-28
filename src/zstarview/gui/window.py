@@ -74,7 +74,6 @@ from ..paths import (
     CACHE_PATH,
     CLOUD_UPDATE_INTERVAL,
     GUI_BUTTON_SIZE,
-    GUI_MENU_TEXT_COLOR,
     TEXT_FONT_PATH,
     TEXT_FONT_SIZE,
     STATUS_LINE_FONT_SIZE,
@@ -83,6 +82,7 @@ from ..paths import (
     WINDOW_WIDTH,
     CLOUD_MISSING_TINT_RGBA,
     OBSERVER_MIN_ALT_DEG,
+    THEME_STYLES_BY_PRESET,
 )
 from ..config import load_last_window_geometry, save_last_window_geometry
 from ..location_resolver import (
@@ -1158,7 +1158,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         return f"Vmag limit {self.vmag_limit:.1f}"
 
     def _menu_button_style_sheet(self) -> str:
-        text = "#%02x%02x%02x" % GUI_MENU_TEXT_COLOR
+        theme = THEME_STYLES_BY_PRESET.get(self.visual_preset, THEME_STYLES_BY_PRESET["night"])
+        chrome = theme.window_chrome
+        text = "#%02x%02x%02x" % chrome.menu_button_text_rgb
         return (
             "QPushButton {"
             " border: none;"
@@ -1167,12 +1169,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             f" color: {text};"
             "}"
             "QPushButton:hover {"
-            " color: white;"
-            " background-color: rgba(255, 255, 255, 0.10);"
+            f" color: rgb({chrome.menu_hover_text_rgb[0]}, {chrome.menu_hover_text_rgb[1]}, {chrome.menu_hover_text_rgb[2]});"
+            f" background-color: rgba({chrome.menu_hover_bg_rgba[0]}, {chrome.menu_hover_bg_rgba[1]}, {chrome.menu_hover_bg_rgba[2]}, {chrome.menu_hover_bg_rgba[3]});"
             "}"
             "QPushButton:pressed {"
-            " color: white;"
-            " background-color: rgba(255, 255, 255, 0.16);"
+            f" color: rgb({chrome.menu_pressed_text_rgb[0]}, {chrome.menu_pressed_text_rgb[1]}, {chrome.menu_pressed_text_rgb[2]});"
+            f" background-color: rgba({chrome.menu_pressed_bg_rgba[0]}, {chrome.menu_pressed_bg_rgba[1]}, {chrome.menu_pressed_bg_rgba[2]}, {chrome.menu_pressed_bg_rgba[3]});"
             "}"
             "QPushButton:menu-indicator { image: none; }"
         )

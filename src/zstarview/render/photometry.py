@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 import numpy as np
 from PySide6.QtGui import QColor
 
-from ..paths import TEXT_STYLES_BY_PRESET
+from ..paths import THEME_STYLES_BY_PRESET
 
 
 def bv_to_rgb_vectorized(bv: np.ndarray) -> np.ndarray:
@@ -81,7 +81,7 @@ def planet_marker_color(name: str) -> QColor:
         "neptune": QColor(108, 152, 234),
         "pluto": QColor(194, 166, 132),
     }
-    return QColor(palette.get(name, QColor(*TEXT_STYLES_BY_PRESET["night"].text)))
+    return QColor(palette.get(name, QColor(*THEME_STYLES_BY_PRESET["night"].text.foreground_rgb)))
 
 
 def body_label_text(name: str) -> str:

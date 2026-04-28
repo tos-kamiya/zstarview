@@ -17,58 +17,6 @@ from ..types import CelestialData, ScreenGeometry, ViewerData
 FRAMELESS_WINDOW_BORDER_WIDTH = 24.0
 
 
-def _theme_chrome_fill_color(preset: str, theme) -> QColor:
-    """Return a subdued fill color for the menu square and grip triangle."""
-    base_rgb = theme.window_background.base_rgb
-    if preset == "day":
-        return QColor(
-            min(255, base_rgb[0] + 2),
-            min(255, base_rgb[1] + 2),
-            min(255, base_rgb[2] + 2),
-            112,
-        )
-    if preset == "night":
-        return QColor(
-            max(0, base_rgb[0] + 2),
-            max(0, base_rgb[1] + 2),
-            max(0, base_rgb[2] + 2),
-            112,
-        )
-    if preset == "white":
-        return QColor(
-            max(0, base_rgb[0] - 18),
-            max(0, base_rgb[1] - 18),
-            max(0, base_rgb[2] - 18),
-            100,
-        )
-    if preset == "black":
-        return QColor(
-            min(255, base_rgb[0] + 22),
-            min(255, base_rgb[1] + 22),
-            min(255, base_rgb[2] + 22),
-            100,
-        )
-    return QColor(
-        max(0, min(255, base_rgb[0] + 6)),
-        max(0, min(255, base_rgb[1] + 6)),
-        max(0, min(255, base_rgb[2] + 6)),
-        96,
-    )
-
-
-def _theme_chrome_line_color(theme) -> QColor:
-    """Return a muted contrasting line color for the hamburger icon."""
-    base_rgb = theme.window_background.base_rgb
-    luminance = (
-        0.2126 * float(base_rgb[0])
-        + 0.7152 * float(base_rgb[1])
-        + 0.0722 * float(base_rgb[2])
-    )
-    if luminance >= 128.0:
-        return QColor(70, 70, 70, 220)
-    return QColor(210, 210, 210, 220)
-
-
 def format_overlay_info_lines(
     celestial_data: CelestialData,
     viewer_data: ViewerData,
@@ -195,8 +143,9 @@ def draw_window_border(
         return
 
     theme = THEME_STYLES_BY_PRESET.get(preset, THEME_STYLES_BY_PRESET["night"])
-    chrome_fill_color = _theme_chrome_fill_color(preset, theme)
-    chrome_line_color = _theme_chrome_line_color(theme)
+    chrome = theme.window_chrome
+    chrome_fill_color = QColor(*chrome.menu_fill_rgba)
+    chrome_line_color = QColor(*chrome.menu_icon_rgba)
 
     top = float(rect.top())
     right = float(rect.right())

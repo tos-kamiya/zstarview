@@ -231,7 +231,7 @@ def get_text_style(preset: str = "night", *, status_line: bool = False) -> Tuple
     """Return (text_color, outline_color) for the selected preset and text role."""
     theme = THEME_STYLES_BY_PRESET.get(preset, THEME_STYLES_BY_PRESET["night"])
     style = theme.status_text if status_line else theme.text
-    return _qcolor_from_rgba(style.text), _qcolor_from_rgba(style.outline)
+    return _qcolor_from_rgba(style.foreground_rgb), _qcolor_from_rgba(style.outline_rgba)
 
 
 def get_text_outline_width(preset: str = "night", *, status_line: bool = False) -> float:
