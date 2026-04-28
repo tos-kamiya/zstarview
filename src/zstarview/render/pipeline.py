@@ -555,18 +555,6 @@ def _draw_terrain_layers(
             scene.celestial_data,
             scene.viewer,
         )
-    render_terrain.draw_terrain_horizon_line(
-        painter,
-        geometry,
-        scene.terrain_horizon_profile,
-        scene.terrain_horizon_profile_distances_m,
-        scene.viewer.view_center,
-        opacity=style.terrain_horizon_opacity,
-        line_width_scale=line_width_scale,
-        fast_mode=False,
-        edge_fov_deg=float(scene.viewer.edge_fov_deg),
-        content_fov_deg=content_fov_deg,
-    )
     render_terrain.draw_terrain_secondary_ridges(
         painter,
         geometry,
