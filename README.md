@@ -19,7 +19,8 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 - **Satellite cloud imagery and sky-color disc**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay, and the sky-color disc remains visible beneath the clouds. Missing regions are shown in faint yellow when satellite coverage is partial. See [an example with partial coverage and yellow missing-data tint](docs/images/screenshot5.png).
 - **Aircraft and artificial satellite overlays**: nearby aircraft from OpenSky can be drawn as purple predicted-motion polylines, and ISS, JWST, Voyager 1, Voyager 2, and Parker can be drawn as small purple markers between the planet and aircraft layers.
 - **Urban outline overlay**: major rooflines are drawn as a white urban outline overlay for the current viewpoint. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 60km radius.
-- **Terrain horizon and earth guide**: Copernicus DEM data can be downloaded to render the local terrain skyline. A dark olive-brown terrain line follows the observer's surroundings, and the disc is filled with the same ground tone below the terrain horizon, or below the geometric horizon when terrain is disabled. Beneath that horizon, an independent earth guide layer draws a simplified continental hatch pattern in that same ground tone to help with orientation.
+- **Terrain horizon**: Copernicus DEM data can be downloaded to render the local terrain skyline. The terrain overlay shows banded ridge lines in the same horizon color, with nearby bands drawn thicker and distant bands drawn thinner. The disc is filled with the same ground tone below the terrain horizon, or below the geometric horizon when terrain is disabled.
+- **Earth guide**: An independent layer draws a simplified continental hatch pattern below the horizon in the same ground tone to help with orientation.
 - **Guides**: guide overlays include the never-rises region as a slightly brighter circular warning marker, direction labels around the horizon, and a zenith marker.
 - **Flexible location input**: specify the observer location through the CLI argument using a city name, tower name, mountain name, direct latitude/longitude input, supported Google Maps coordinate URLs, or online place/station search via Nominatim.
 - **Adjustable view center**: adjust the view center with CLI options `-A` (altitude) and `-Z` (azimuth), or with the arrow keys. During view changes or window resize, the app briefly switches to a simplified interaction mode to keep navigation responsive.
@@ -45,7 +46,7 @@ The fourth screenshot shows `zstarview-export-image` searching for and displayin
 
 Note: higher magnitude limits increase rendering time. See [about magnitude limit](#about-magnitude-limit).
 
-Urban outline examples from several cities worldwide:
+Urban outline and terrain horizon examples from several cities worldwide:
 
 <table>
   <tr>
