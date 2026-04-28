@@ -189,7 +189,7 @@ def test_radial_background_fades_between_content_fov_and_window_edge() -> None:
     # Around the content-FOV boundary there should still be visible alpha.
     assert int(arr[13, 80, 3]) > 0
     # Toward the window corner, the fade should become more transparent.
-    assert int(arr[10, 10, 3]) < int(arr[13, 80, 3])
+    assert int(arr[10, 10, 3]) < int(arr[30, 30, 3])
 
 
 def test_radial_background_opaque_mode_keeps_full_alpha_at_edges() -> None:
