@@ -295,9 +295,12 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 通常テキスト用 `TextStyle`
   - ステータス行用 `TextStyle`
   - ウィンドウ背景用 `WindowBackgroundStyle`
+  - ウィンドウ chrome 用 `WindowChromeStyle`
+  - sky-disc 用 `SkyDiscStyle`
   - スプラッシュ用 `SplashStyle`
 - `render/text.py` は `ThemeStyle` から文字色、アウトライン色、アウトライン幅を解決する。
-- `render/background.py` は `ThemeStyle.window_background` を唯一の参照元として、背景 gradient と frameless 用 border 色を決める。
+- `render/background.py` は `ThemeStyle.window_background` と `ThemeStyle.window_chrome` を参照元として、背景 gradient と frameless 用 border 色を決める。
+- `gui/sky_worker.py` は `ThemeStyle.sky_disc` を参照して sky-disc opacity を決める。
 - `splash.py` は `ThemeStyle.splash` を色定義の参照元とし、背景 alpha は `ThemeStyle.window_background` から導出した平均 alpha を使う。
 - 明るい preset (`day`, `white`) では、暗い preset (`night`, `black`) より広い文字アウトライン幅を持てる。
 

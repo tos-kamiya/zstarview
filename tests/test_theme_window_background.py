@@ -15,17 +15,17 @@ def test_white_and_day_window_background_share_the_same_base_rgb() -> None:
 
 
 def test_white_and_day_outline_colors_use_midpoint_tones() -> None:
-    assert THEME_STYLES_BY_PRESET["white"].text.outline == (79, 45, 19, 166)
-    assert THEME_STYLES_BY_PRESET["white"].status_text.outline == (76, 44, 19, 169)
-    assert THEME_STYLES_BY_PRESET["day"].text.outline == (78, 44, 25, 163)
-    assert THEME_STYLES_BY_PRESET["day"].status_text.outline == (73, 42, 24, 165)
+    assert THEME_STYLES_BY_PRESET["white"].text.outline_rgba == (79, 45, 19, 166)
+    assert THEME_STYLES_BY_PRESET["white"].status_text.outline_rgba == (76, 44, 19, 169)
+    assert THEME_STYLES_BY_PRESET["day"].text.outline_rgba == (78, 44, 25, 163)
+    assert THEME_STYLES_BY_PRESET["day"].status_text.outline_rgba == (73, 42, 24, 165)
 
 
 def test_white_and_day_text_colors_are_slightly_brighter() -> None:
-    assert THEME_STYLES_BY_PRESET["white"].text.text == (229, 163, 100)
-    assert THEME_STYLES_BY_PRESET["white"].status_text.text == (220, 155, 94)
-    assert THEME_STYLES_BY_PRESET["day"].text.text == (233, 148, 112)
-    assert THEME_STYLES_BY_PRESET["day"].status_text.text == (224, 142, 106)
+    assert THEME_STYLES_BY_PRESET["white"].text.foreground_rgb == (229, 163, 100)
+    assert THEME_STYLES_BY_PRESET["white"].status_text.foreground_rgb == (220, 155, 94)
+    assert THEME_STYLES_BY_PRESET["day"].text.foreground_rgb == (233, 148, 112)
+    assert THEME_STYLES_BY_PRESET["day"].status_text.foreground_rgb == (224, 142, 106)
 
 
 def test_transparent_theme_uses_low_alpha_dark_background() -> None:
@@ -38,3 +38,13 @@ def test_transparent_theme_uses_low_alpha_dark_background() -> None:
     assert transparent.inner_rgba[3] < black.inner_rgba[3]
     assert transparent.outer_alpha < black.outer_alpha
     assert transparent.edge_alpha < black.edge_alpha
+
+
+def test_theme_style_groups_window_chrome_and_sky_disc_values() -> None:
+    transparent = THEME_STYLES_BY_PRESET["transparent"]
+    white = THEME_STYLES_BY_PRESET["white"]
+    night = THEME_STYLES_BY_PRESET["night"]
+
+    assert transparent.sky_disc.opacity == 0.4
+    assert white.window_chrome.menu_button_text_rgb == (70, 70, 70)
+    assert night.window_chrome.menu_button_text_rgb == (210, 210, 210)

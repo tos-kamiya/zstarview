@@ -14,7 +14,7 @@ from ..paths import (
     ECLIPTIC_COLOR,
     FIELD_OF_VIEW_DEG,
     HORIZON_LINE_COLOR,
-    TEXT_STYLES_BY_PRESET,
+    THEME_STYLES_BY_PRESET,
 )
 from ..types import CelestialData, ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
@@ -471,7 +471,7 @@ def draw_zenith_marker(
     """
     az_ref = view_center[1]
     s = 7
-    painter.setPen(QPen(QColor(*TEXT_STYLES_BY_PRESET["night"].text), 1))
+    painter.setPen(QPen(QColor(*THEME_STYLES_BY_PRESET["night"].text.foreground_rgb), 1))
     for alt in (90.0, -90.0):
         if not is_in_fov(alt, az_ref, view_center, fov_deg=content_fov_deg):
             continue
