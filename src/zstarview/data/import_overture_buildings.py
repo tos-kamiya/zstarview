@@ -19,8 +19,9 @@ from urllib.request import Request, urlopen
 from zstarview.data import build_derived_tile_index
 from zstarview.paths import CACHE_PATH
 from zstarview.utils.latlon_format import (
-    LAT_LON_DECIMALS,
+    LAT_LON_CACHE_DECIMALS,
     format_lat_lon_cache_segment,
+    format_lat_lon_value,
 )
 
 EARTH_RADIUS_KM = 6371.0088
@@ -231,6 +232,18 @@ def bbox_from_point(lat_deg: float, lon_deg: float, radius_km: float) -> tuple[f
     )
 
 
+def _great_circle_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    lat1_rad = math.radians(lat1)
+    lat2_rad = math.radians(lat2)
+    dlat = lat2_rad - lat1_rad
+    dlon = math.radians(lon2 - lon1)
+    a = (
+        math.sin(dlat / 2.0) ** 2
+        + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon / 2.0) ** 2
+    )
+    return EARTH_RADIUS_KM * 2.0 * math.asin(min(1.0, math.sqrt(a)))
+
+
 def derive_dataset_name(
     lat_deg: float,
     lon_deg: float,
@@ -240,8 +253,8 @@ def derive_dataset_name(
 ) -> str:
     return (
         f"overture_{feature_type}"
-        f"_lat{format_lat_lon_cache_segment(lat_deg, decimals=LAT_LON_DECIMALS)}"
-        f"_lon{format_lat_lon_cache_segment(lon_deg, decimals=LAT_LON_DECIMALS)}"
+        f"_lat{format_lat_lon_cache_segment(lat_deg, decimals=LAT_LON_CACHE_DECIMALS)}"
+        f"_lon{format_lat_lon_cache_segment(lon_deg, decimals=LAT_LON_CACHE_DECIMALS)}"
         f"_r{radius_km:.1f}km"
         f"_h{float(min_building_height_m):.1f}m"
     ).replace("-", "m").replace(".", "p")
@@ -361,6 +374,113 @@ def write_derived_dataset_metadata(
     return metadata_path
 
 
+def _metadata_float_value(payload: dict[str, object], key: str) -> float | None:
+    value = payload.get(key)
+    if isinstance(value, (int, float)):
+        return float(value)
+    return None
+
+
+def _iter_existing_derived_dataset_dirs(derived_root_dir: Path) -> tuple[Path, ...]:
+    if not derived_root_dir.exists():
+        return ()
+    return tuple(path for path in sorted(derived_root_dir.glob("*/bldg")) if path.is_dir())
+
+
+def _find_reusable_derived_dataset_dir(
+    *,
+    derived_root_dir: Path,
+    target_dataset_dir: Path,
+    feature_type: str,
+    min_building_height_m: float,
+    query_lat_deg: float,
+    query_lon_deg: float,
+    query_radius_km: float,
+    expected_overture_release: str | None,
+    now_utc: datetime,
+) -> Path | None:
+    target_lat_key = format_lat_lon_value(query_lat_deg, decimals=LAT_LON_CACHE_DECIMALS)
+    target_lon_key = format_lat_lon_value(query_lon_deg, decimals=LAT_LON_CACHE_DECIMALS)
+    target_radius_key = f"{float(query_radius_km):.1f}"
+    target_height_key = f"{float(min_building_height_m):.1f}"
+    best_candidate: tuple[float, float, Path] | None = None
+
+    for candidate_dir in _iter_existing_derived_dataset_dirs(derived_root_dir):
+        if candidate_dir == target_dataset_dir:
+            continue
+        payload = read_derived_dataset_metadata(candidate_dir)
+        if not isinstance(payload, dict):
+            continue
+        if str(payload.get("feature_type", "")) != feature_type:
+            continue
+        candidate_height_m = _metadata_float_value(payload, "min_building_height_m")
+        if candidate_height_m is None:
+            continue
+        if f"{candidate_height_m:.1f}" != target_height_key:
+            continue
+        candidate_radius_km = _metadata_float_value(payload, "query_radius_km")
+        if candidate_radius_km is None:
+            continue
+        if f"{candidate_radius_km:.1f}" != target_radius_key:
+            continue
+        candidate_lat_deg = _metadata_float_value(payload, "query_lat_deg")
+        candidate_lon_deg = _metadata_float_value(payload, "query_lon_deg")
+        if candidate_lat_deg is None or candidate_lon_deg is None:
+            continue
+        if format_lat_lon_value(candidate_lat_deg, decimals=LAT_LON_CACHE_DECIMALS) != target_lat_key:
+            continue
+        if format_lat_lon_value(candidate_lon_deg, decimals=LAT_LON_CACHE_DECIMALS) != target_lon_key:
+            continue
+        fetched_at_utc = read_derived_dataset_fetched_at_utc(candidate_dir, now_utc=now_utc)
+        if fetched_at_utc is None:
+            continue
+        if expected_overture_release is not None:
+            cached_release = read_derived_dataset_overture_release(candidate_dir)
+            if cached_release is not None and cached_release != expected_overture_release:
+                continue
+        if (now_utc - fetched_at_utc) > timedelta(days=max(0, int(OVERTURE_CACHE_TTL_DAYS))):
+            continue
+        candidate_score = (
+            _great_circle_distance_km(query_lat_deg, query_lon_deg, candidate_lat_deg, candidate_lon_deg),
+            -fetched_at_utc.timestamp(),
+        )
+        if best_candidate is None or candidate_score < best_candidate[:2]:
+            best_candidate = (candidate_score[0], candidate_score[1], candidate_dir)
+
+    if best_candidate is None:
+        return None
+    return best_candidate[2]
+
+
+def _copy_reusable_derived_dataset(
+    *,
+    source_derived_dir: Path,
+    target_derived_dir: Path,
+    target_dataset_name: str,
+    query_lat_deg: float,
+    query_lon_deg: float,
+    query_radius_km: float,
+    feature_type: str,
+    min_building_height_m: float,
+) -> Path:
+    target_derived_dir.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(source_derived_dir.parent, target_derived_dir.parent, dirs_exist_ok=True)
+    source_payload = read_derived_dataset_metadata(target_derived_dir) or {}
+    payload = dict(source_payload)
+    payload["dataset_name"] = target_dataset_name
+    payload["feature_type"] = feature_type
+    payload["min_building_height_m"] = float(min_building_height_m)
+    payload["query_lat_deg"] = float(query_lat_deg)
+    payload["query_lon_deg"] = float(query_lon_deg)
+    payload["query_radius_km"] = float(query_radius_km)
+    payload["cache_reused_from_dataset_name"] = str(source_payload.get("dataset_name", source_derived_dir.parent.name))
+    payload["cache_reused_from_query_lat_deg"] = source_payload.get("query_lat_deg")
+    payload["cache_reused_from_query_lon_deg"] = source_payload.get("query_lon_deg")
+    payload["cache_reused_from_query_radius_km"] = source_payload.get("query_radius_km")
+    write_derived_dataset_metadata(target_derived_dir, payload=payload)
+    return target_derived_dir
+
+
 def import_overture_buildings(
     *,
     lat_deg: float,
@@ -451,6 +571,37 @@ def import_overture_buildings_for_bbox(
     )
     derived_dir = derived_root_dir / dataset_dir_name / "bldg"
     tile_path = derived_dir / f"{dataset_dir_name}.json"
+
+    if query_lat_deg is not None and query_lon_deg is not None and query_radius_km is not None:
+        if derived_dir.exists() and not is_derived_dataset_stale(
+            derived_dir,
+            ttl_days=OVERTURE_CACHE_TTL_DAYS,
+            now_utc=fetched_at_utc,
+            expected_overture_release=current_overture_release,
+        ):
+            return derived_dir
+        reusable_derived_dir = _find_reusable_derived_dataset_dir(
+            derived_root_dir=derived_root_dir,
+            target_dataset_dir=derived_dir,
+            feature_type=feature_type,
+            min_building_height_m=min_building_height_m,
+            query_lat_deg=float(query_lat_deg),
+            query_lon_deg=float(query_lon_deg),
+            query_radius_km=float(query_radius_km),
+            expected_overture_release=current_overture_release,
+            now_utc=fetched_at_utc,
+        )
+        if reusable_derived_dir is not None:
+            return _copy_reusable_derived_dataset(
+                source_derived_dir=reusable_derived_dir,
+                target_derived_dir=derived_dir,
+                target_dataset_name=dataset_dir_name,
+                query_lat_deg=float(query_lat_deg),
+                query_lon_deg=float(query_lon_deg),
+                query_radius_km=float(query_radius_km),
+                feature_type=feature_type,
+                min_building_height_m=min_building_height_m,
+            )
 
     with tempfile.TemporaryDirectory(prefix="overture-import-") as temp_dir_str:
         temp_dir = Path(temp_dir_str)
