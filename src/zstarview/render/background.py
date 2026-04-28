@@ -2,20 +2,71 @@ import math
 from zoneinfo import ZoneInfo
 
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF, QRadialGradient
+from PySide6.QtGui import QColor, QPainter, QPen, QRadialGradient
 
 from ..paths import (
     BACKGROUND_FIELD_OF_VIEW_DEG1,
     BACKGROUND_FIELD_OF_VIEW_DEG2,
     DIRECTIONS,
     GUI_BUTTON_SIZE,
-    GUI_MENU_TEXT_COLOR,
     THEME_STYLES_BY_PRESET,
 )
 from ..types import CelestialData, ScreenGeometry, ViewerData
 
 
 FRAMELESS_WINDOW_BORDER_WIDTH = 24.0
+
+
+def _theme_chrome_fill_color(preset: str, theme) -> QColor:
+    """Return a subdued fill color for the menu square and grip triangle."""
+    base_rgb = theme.window_background.base_rgb
+    if preset == "day":
+        return QColor(
+            min(255, base_rgb[0] + 2),
+            min(255, base_rgb[1] + 2),
+            min(255, base_rgb[2] + 2),
+            112,
+        )
+    if preset == "night":
+        return QColor(
+            max(0, base_rgb[0] + 2),
+            max(0, base_rgb[1] + 2),
+            max(0, base_rgb[2] + 2),
+            112,
+        )
+    if preset == "white":
+        return QColor(
+            max(0, base_rgb[0] - 18),
+            max(0, base_rgb[1] - 18),
+            max(0, base_rgb[2] - 18),
+            100,
+        )
+    if preset == "black":
+        return QColor(
+            min(255, base_rgb[0] + 22),
+            min(255, base_rgb[1] + 22),
+            min(255, base_rgb[2] + 22),
+            100,
+        )
+    return QColor(
+        max(0, min(255, base_rgb[0] + 6)),
+        max(0, min(255, base_rgb[1] + 6)),
+        max(0, min(255, base_rgb[2] + 6)),
+        96,
+    )
+
+
+def _theme_chrome_line_color(theme) -> QColor:
+    """Return a muted contrasting line color for the hamburger icon."""
+    base_rgb = theme.window_background.base_rgb
+    luminance = (
+        0.2126 * float(base_rgb[0])
+        + 0.7152 * float(base_rgb[1])
+        + 0.0722 * float(base_rgb[2])
+    )
+    if luminance >= 128.0:
+        return QColor(70, 70, 70, 220)
+    return QColor(210, 210, 210, 220)
 
 
 def format_overlay_info_lines(
@@ -136,8 +187,7 @@ def draw_window_border(
     *,
     preset: str = "night",
 ) -> None:
-    """Draw a broad but subtle border around the window edges."""
-    is_transparent_theme = preset == "transparent"
+    """Draw the menu and resize affordances for the custom window chrome."""
     border_width = FRAMELESS_WINDOW_BORDER_WIDTH
     max_border_width = 0.25 * min(float(rect.width()), float(rect.height()))
     border_width = min(border_width, max_border_width)
@@ -145,10 +195,9 @@ def draw_window_border(
         return
 
     theme = THEME_STYLES_BY_PRESET.get(preset, THEME_STYLES_BY_PRESET["night"])
-    rr, gg, bb, aa = theme.window_background.border_rgba
-    border_color = QColor(rr, gg, bb, aa)
+    chrome_fill_color = _theme_chrome_fill_color(preset, theme)
+    chrome_line_color = _theme_chrome_line_color(theme)
 
-    left = float(rect.left())
     top = float(rect.top())
     right = float(rect.right())
     bottom = float(rect.bottom())
@@ -158,54 +207,26 @@ def draw_window_border(
 
     painter.save()
     painter.setPen(Qt.PenStyle.NoPen)
-    painter.setBrush(border_color)
-    if not is_transparent_theme:
-        painter.drawRect(QRectF(left, top, border_width, rect.height()))
-        painter.drawRect(
-            QRectF(
-                right - border_width,
-                top + menu_size,
-                border_width,
-                max(0.0, rect.height() - menu_size),
-            )
-        )
-        painter.drawRect(
-            QRectF(
-                left + border_width,
-                top,
-                max(0.0, menu_left_edge - (left + border_width)),
-                border_width,
-            )
-        )
-        painter.drawRect(
-            QRectF(
-                left + border_width,
-                bottom - border_width,
-                max(0.0, rect.width() - 2.0 * border_width),
-                border_width,
-            )
-        )
+    painter.setBrush(chrome_fill_color)
     painter.drawRect(QRectF(menu_left_edge, menu_top_edge, menu_size, menu_size))
-    menu_icon_color = QColor(*GUI_MENU_TEXT_COLOR)
-    menu_icon_pen = QPen(menu_icon_color, 2.0)
+    menu_icon_pen = QPen(chrome_line_color, 2.0)
     menu_icon_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
     painter.setPen(menu_icon_pen)
     menu_left = menu_left_edge + 9.0
     menu_right = menu_left_edge + menu_size - 9.0
     for y in (menu_top_edge + 9.0, menu_top_edge + 14.0, menu_top_edge + 19.0):
         painter.drawLine(QPointF(menu_left, y), QPointF(menu_right, y))
-    painter.setPen(Qt.PenStyle.NoPen)
-    grip_inset = 1.5 if is_transparent_theme else border_width
+    painter.setBrush(Qt.BrushStyle.NoBrush)
+    grip_inset = 0.0
     inner_right = right - grip_inset
-    grip_size = 28.0
+    grip_size = 33.6
     inner_bottom = bottom - grip_inset
-    painter.drawPolygon(
-        QPolygonF(
-            [
-                QPointF(inner_right, inner_bottom),
-                QPointF(inner_right - grip_size, inner_bottom),
-                QPointF(inner_right, inner_bottom - grip_size),
-            ]
-        )
+    grip_line_inset = 6.0
+    grip_pen = QPen(chrome_line_color, 2.0)
+    grip_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    painter.setPen(grip_pen)
+    painter.drawLine(
+        QPointF(inner_right - grip_line_inset, inner_bottom - grip_size + grip_line_inset),
+        QPointF(inner_right - grip_size + grip_line_inset, inner_bottom - grip_line_inset),
     )
     painter.restore()

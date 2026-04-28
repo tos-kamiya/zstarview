@@ -216,7 +216,7 @@ def test_radial_background_opaque_mode_keeps_full_alpha_at_edges() -> None:
     assert int(arr[10, 10, 3]) == 255
 
 
-def test_window_frame_makes_edges_more_opaque_than_center() -> None:
+def test_window_frame_has_no_outer_border_for_black() -> None:
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
     painter = QPainter(img)
@@ -229,12 +229,14 @@ def test_window_frame_makes_edges_more_opaque_than_center() -> None:
 
     arr = qimage_to_np_rgba(img)
 
-    assert int(arr[1, 80, 3]) > 0
-    assert int(arr[1, 80, 3]) > int(arr[80, 80, 3])
-    assert int(arr[80, 1, 3]) > int(arr[80, 80, 3])
+    assert int(arr[1, 80, 3]) == 0
+    assert int(arr[80, 1, 3]) == 0
+    assert 0 < int(arr[0, 145, 3]) < 255
+    assert 0 < int(arr[20, 131, 3]) < 255
+    assert int(arr[159, 159, 3]) == 0
 
 
-def test_window_frame_draws_bottom_right_grip_triangle_inside_frame() -> None:
+def test_window_frame_draws_bottom_right_grip_line_inside_frame() -> None:
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
     painter = QPainter(img)
@@ -247,11 +249,11 @@ def test_window_frame_draws_bottom_right_grip_triangle_inside_frame() -> None:
 
     arr = qimage_to_np_rgba(img)
 
-    assert int(arr[147, 147, 3]) > 0
-    assert int(arr[134, 147, 3]) > 0
-    assert int(arr[147, 134, 3]) > 0
-    assert int(arr[128, 124, 3]) > 0
-    assert int(arr[128, 112, 3]) == 0
+    assert int(arr[133, 151, 3]) > 0
+    assert int(arr[136, 148, 3]) > 0
+    assert int(arr[142, 142, 3]) > 0
+    assert int(arr[150, 150, 3]) == 0
+    assert int(arr[128, 128, 3]) == 0
 
 
 def test_window_frame_draws_top_right_menu_square_inside_frame() -> None:
@@ -267,11 +269,9 @@ def test_window_frame_draws_top_right_menu_square_inside_frame() -> None:
 
     arr = qimage_to_np_rgba(img)
 
-    assert int(arr[20, 145, 3]) > 0
-    assert int(arr[20, 125, 3]) > 0
-    assert int(arr[30, 125, 3]) == 0
-    assert int(arr[35, 145, 3]) > 0
-    assert int(arr[35, 125, 3]) == 0
+    assert 0 < int(arr[0, 145, 3]) < 255
+    assert 0 < int(arr[20, 131, 3]) < 255
+    assert int(arr[20, 124, 3]) == 0
 
 
 def test_window_frame_does_not_double_draw_under_menu_panel() -> None:
@@ -332,10 +332,12 @@ def test_window_frame_menu_panel_position_is_consistent_across_presets() -> None
     night_arr = qimage_to_np_rgba(night_img)
     black_arr = qimage_to_np_rgba(black_img)
 
-    assert int(night_arr[20, 145, 3]) > 0
-    assert int(black_arr[20, 145, 3]) > 0
-    assert int(night_arr[30, 125, 3]) == 0
-    assert int(black_arr[30, 125, 3]) == 0
+    assert 0 < int(night_arr[0, 145, 3]) < 255
+    assert 0 < int(black_arr[0, 145, 3]) < 255
+    assert 0 < int(night_arr[20, 131, 3]) < 255
+    assert 0 < int(black_arr[20, 131, 3]) < 255
+    assert int(night_arr[20, 124, 3]) == 0
+    assert int(black_arr[20, 124, 3]) == 0
 
 
 def test_transparent_window_frame_skips_border_but_keeps_menu_and_grip() -> None:
@@ -353,5 +355,7 @@ def test_transparent_window_frame_skips_border_but_keeps_menu_and_grip() -> None
 
     assert int(arr[1, 80, 3]) == 0
     assert int(arr[80, 1, 3]) == 0
-    assert int(arr[20, 145, 3]) > 0
-    assert int(arr[155, 155, 3]) > 0
+    assert 0 < int(arr[0, 145, 3]) < 255
+    assert 0 < int(arr[20, 131, 3]) < 255
+    assert int(arr[133, 151, 3]) > 0
+    assert int(arr[136, 148, 3]) > 0
