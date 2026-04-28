@@ -374,6 +374,11 @@ class SkyWindowRenderMixin:
             cloud_missing_mask=getattr(cloud_state, "missing_mask", None),
             cloud_amount_field=getattr(cloud_state, "cloud_amount_field", None),
             terrain_horizon_profile=getattr(state, "terrain_horizon_profile", None),
+            terrain_horizon_secondary_profile_altaz_layers=getattr(
+                state,
+                "terrain_horizon_secondary_profile_altaz_layers",
+                None,
+            ),
             urban_outlines=getattr(state, "urban_outlines", None),
             satellite_overlay_points=getattr(state, "satellite_overlay_points", None),
             aircraft_overlay_points=getattr(state, "aircraft_overlay_points", None),

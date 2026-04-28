@@ -74,6 +74,7 @@ class RenderSceneData:
     cloud_missing_mask: np.ndarray | None
     cloud_amount_field: CloudAmountField | None
     terrain_horizon_profile: list[tuple[float, float]] | None
+    terrain_horizon_secondary_profile_altaz_layers: list[list[tuple[float, float]]] | None
     urban_outlines: list[UrbanOutlinePolyline] | None
     satellite_overlay_points: list[SatelliteOverlayPoint] | None
     aircraft_overlay_points: list[AircraftOverlayPoint] | None
@@ -402,6 +403,16 @@ def _draw_viewport_interaction_layers(
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=_content_fov_deg(scene),
     )
+    render_terrain.draw_terrain_secondary_ridges(
+        painter,
+        geometry,
+        scene.terrain_horizon_secondary_profile_altaz_layers,
+        scene.viewer.view_center,
+        opacity=max(0.0, float(style.terrain_horizon_opacity) * 0.72),
+        line_width_scale=line_width_scale,
+        edge_fov_deg=float(scene.viewer.edge_fov_deg),
+        content_fov_deg=_content_fov_deg(scene),
+    )
 
 
 def _clear_background_layer(painter: QPainter, viewport_rect: QRect) -> None:
@@ -556,6 +567,16 @@ def _draw_terrain_layers(
         scene.terrain_horizon_profile,
         scene.viewer.view_center,
         opacity=style.terrain_horizon_opacity,
+        line_width_scale=line_width_scale,
+        edge_fov_deg=float(scene.viewer.edge_fov_deg),
+        content_fov_deg=content_fov_deg,
+    )
+    render_terrain.draw_terrain_secondary_ridges(
+        painter,
+        geometry,
+        scene.terrain_horizon_secondary_profile_altaz_layers,
+        scene.viewer.view_center,
+        opacity=max(0.0, float(style.terrain_horizon_opacity) * 0.72),
         line_width_scale=line_width_scale,
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=content_fov_deg,

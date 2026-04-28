@@ -146,22 +146,32 @@ def terrain_horizon_line_alpha(opacity: float) -> float:
     return max(opacity, min(1.0, 0.42 + (opacity * 0.95)))
 
 
-def draw_terrain_horizon_line(
+def terrain_secondary_ridge_line_alpha(opacity: float) -> float:
+    """Return the alpha curve used by the secondary ridge overlay."""
+    opacity = max(0.0, min(1.0, float(opacity)))
+    return max(0.0, min(1.0, 0.08 + (opacity * 0.28)))
+
+
+def _draw_terrain_profile_layer(
     painter: QPainter,
     geometry: ScreenGeometry,
     terrain_profile_altaz: list[tuple[float, float]] | None,
     view_center: tuple[float, float],
     *,
-    opacity: float = 1.0,
-    line_width_scale: float = 1.0,
-    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
-    content_fov_deg: float = FIELD_OF_VIEW_DEG,
-    is_in_fov_func: Callable[..., bool] = is_in_fov,
-    altaz_to_normalized_xy_func: Callable[[float, float, Tuple[float, float]], Tuple[float, float]] = altaz_to_normalized_xy,
-    normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], Tuple[float, float]] = normalized_to_screen_xy,
-    split_by_gaps_func: Callable[[List[Tuple[float, float]]], List[List[Tuple[float, float]]]] = split_by_gaps,
+    opacity: float,
+    base_width: float,
+    fg_width: float,
+    outline_alpha: int,
+    fg_alpha: float,
+    line_width_scale: float,
+    color_rgb: tuple[int, int, int],
+    edge_fov_deg: float,
+    content_fov_deg: float,
+    is_in_fov_func: Callable[..., bool],
+    altaz_to_normalized_xy_func: Callable[[float, float, Tuple[float, float]], Tuple[float, float]],
+    normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], Tuple[float, float]],
+    split_by_gaps_func: Callable[[List[Tuple[float, float]]], List[List[Tuple[float, float]]]],
 ) -> None:
-    """Draw a terrain horizon polyline as an extra overlay over the geometric horizon."""
     if not terrain_profile_altaz or opacity <= 0.0:
         return
     effective_opacity = max(0.0, min(1.0, float(opacity)))
@@ -191,10 +201,10 @@ def draw_terrain_horizon_line(
     if len(points) < 2:
         return
 
-    color = QColor(*TERRAIN_HORIZON_LINE_COLOR)
-    color.setAlphaF(terrain_horizon_line_alpha(effective_opacity))
-    outline = QColor(*TERRAIN_HORIZON_LINE_COLOR)
-    outline.setAlpha(max(0, min(255, int(round(135.0 * effective_opacity + 35.0)))))
+    color = QColor(*color_rgb)
+    color.setAlphaF(max(0.0, min(1.0, float(fg_alpha))))
+    outline = QColor(*color_rgb)
+    outline.setAlpha(max(0, min(255, int(round(float(outline_alpha) * effective_opacity + 18.0)))))
     width_scale = float(line_width_scale)
     painter.save()
     for frag in split_by_gaps_func(points):
@@ -203,20 +213,103 @@ def draw_terrain_horizon_line(
         pts = [QPointF(*normalized_to_screen_xy_func(nx, ny, geometry)) for nx, ny in frag]
         poly = QPolygonF(pts)
 
-        base = QPen(outline, 3.6 * width_scale, Qt.PenStyle.SolidLine)
+        base = QPen(outline, float(base_width) * width_scale, Qt.PenStyle.SolidLine)
         base.setCosmetic(True)
         base.setCapStyle(Qt.PenCapStyle.RoundCap)
         base.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
         painter.setPen(base)
         painter.drawPolyline(poly)
 
-        fg = QPen(color, 1.2 * width_scale, Qt.PenStyle.SolidLine)
+        fg = QPen(color, float(fg_width) * width_scale, Qt.PenStyle.SolidLine)
         fg.setCosmetic(True)
         fg.setCapStyle(Qt.PenCapStyle.RoundCap)
         fg.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
         painter.setPen(fg)
         painter.drawPolyline(poly)
     painter.restore()
+
+
+def draw_terrain_horizon_line(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+    view_center: tuple[float, float],
+    *,
+    opacity: float = 1.0,
+    line_width_scale: float = 1.0,
+    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
+    content_fov_deg: float = FIELD_OF_VIEW_DEG,
+    is_in_fov_func: Callable[..., bool] = is_in_fov,
+    altaz_to_normalized_xy_func: Callable[[float, float, Tuple[float, float]], Tuple[float, float]] = altaz_to_normalized_xy,
+    normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], Tuple[float, float]] = normalized_to_screen_xy,
+    split_by_gaps_func: Callable[[List[Tuple[float, float]]], List[List[Tuple[float, float]]]] = split_by_gaps,
+) -> None:
+    """Draw a terrain horizon polyline as an extra overlay over the geometric horizon."""
+    _draw_terrain_profile_layer(
+        painter,
+        geometry,
+        terrain_profile_altaz,
+        view_center,
+        opacity=opacity,
+        base_width=3.6,
+        fg_width=1.2,
+        outline_alpha=135,
+        fg_alpha=terrain_horizon_line_alpha(opacity),
+        line_width_scale=line_width_scale,
+        color_rgb=TERRAIN_HORIZON_LINE_COLOR,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+        is_in_fov_func=is_in_fov_func,
+        altaz_to_normalized_xy_func=altaz_to_normalized_xy_func,
+        normalized_to_screen_xy_func=normalized_to_screen_xy_func,
+        split_by_gaps_func=split_by_gaps_func,
+    )
+
+
+def draw_terrain_secondary_ridges(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    terrain_secondary_profile_layers: list[list[tuple[float, float]]] | None,
+    view_center: tuple[float, float],
+    *,
+    opacity: float = 0.25,
+    line_width_scale: float = 1.0,
+    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
+    content_fov_deg: float = FIELD_OF_VIEW_DEG,
+    is_in_fov_func: Callable[..., bool] = is_in_fov,
+    altaz_to_normalized_xy_func: Callable[[float, float, Tuple[float, float]], Tuple[float, float]] = altaz_to_normalized_xy,
+    normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], Tuple[float, float]] = normalized_to_screen_xy,
+    split_by_gaps_func: Callable[[List[Tuple[float, float]]], List[List[Tuple[float, float]]]] = split_by_gaps,
+) -> None:
+    """Draw low-opacity auxiliary ridge polylines behind the main terrain silhouette."""
+    if not terrain_secondary_profile_layers or opacity <= 0.0:
+        return
+
+    ridge_opacity = terrain_secondary_ridge_line_alpha(opacity)
+    if ridge_opacity <= 0.0:
+        return
+
+    ridge_color_rgb = (255, 48, 48)
+    for layer in terrain_secondary_profile_layers:
+        _draw_terrain_profile_layer(
+            painter,
+            geometry,
+            layer,
+            view_center,
+            opacity=opacity,
+            base_width=2.4,
+            fg_width=0.82,
+            outline_alpha=72,
+            fg_alpha=ridge_opacity,
+            line_width_scale=line_width_scale,
+            color_rgb=ridge_color_rgb,
+            edge_fov_deg=edge_fov_deg,
+            content_fov_deg=content_fov_deg,
+            is_in_fov_func=is_in_fov_func,
+            altaz_to_normalized_xy_func=altaz_to_normalized_xy_func,
+            normalized_to_screen_xy_func=normalized_to_screen_xy_func,
+            split_by_gaps_func=split_by_gaps_func,
+        )
 
 
 def draw_urban_outlines(
