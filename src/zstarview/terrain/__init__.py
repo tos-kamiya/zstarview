@@ -10,10 +10,12 @@ from .dem import (
 )
 from .horizon import (
     EARTH_MEAN_RADIUS_M,
+    HorizonLayerSet,
     HorizonProfilePoint,
     ObserverLocation,
     build_distance_samples,
     compute_apparent_altitudes,
+    compute_horizon_layers,
     compute_horizon_profile,
     reduce_profile_to_altaz,
 )
@@ -24,12 +26,14 @@ __all__ = [
     "DownloadedDem",
     "EARTH_MEAN_RADIUS_M",
     "GeoTiffDem",
+    "HorizonLayerSet",
     "HorizonProfilePoint",
     "ObserverLocation",
     "WGS84_GEOD",
     "build_distance_samples",
     "build_download_bbox",
     "compute_apparent_altitudes",
+    "compute_horizon_layers",
     "compute_horizon_profile",
     "fetch_copernicus_dem",
     "reduce_profile_to_altaz",

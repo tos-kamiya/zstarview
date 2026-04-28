@@ -3,7 +3,12 @@ from __future__ import annotations
 import numpy as np
 from rasterio.transform import Affine
 
-from zstarview.terrain.horizon import build_distance_samples, compute_apparent_altitudes
+from zstarview.terrain.horizon import (
+    _prune_secondary_peak_indices_by_visibility,
+    _should_break_secondary_ridge,
+    build_distance_samples,
+    compute_apparent_altitudes,
+)
 from zstarview.terrain.dem import DemGrid, sample_ground_elevation
 
 
@@ -30,6 +35,38 @@ def test_compute_apparent_altitudes_is_zero_for_equal_height_flat_short_range() 
     )
 
     assert abs(float(got[0])) < 1e-3
+
+
+def test_should_break_secondary_ridge_on_large_distance_jump() -> None:
+    assert _should_break_secondary_ridge(
+        3_000.0,
+        9_500.0,
+        max_distance_jump_ratio=0.25,
+    )
+
+
+def test_should_keep_secondary_ridge_on_small_distance_change() -> None:
+    assert not _should_break_secondary_ridge(
+        3_000.0,
+        3_700.0,
+        max_distance_jump_ratio=0.25,
+    )
+
+
+def test_prune_secondary_peak_indices_by_visibility_drops_farther_lower_peak() -> None:
+    altitudes = np.array([0.2, 0.7, 0.6, 0.9], dtype=np.float64)
+
+    got = _prune_secondary_peak_indices_by_visibility(altitudes, [0, 1, 2, 3])
+
+    assert got == [0, 1, 3]
+
+
+def test_prune_secondary_peak_indices_by_visibility_keeps_farther_higher_peak() -> None:
+    altitudes = np.array([0.2, 0.1, 0.4, 0.3], dtype=np.float64)
+
+    got = _prune_secondary_peak_indices_by_visibility(altitudes, [0, 1, 2, 3])
+
+    assert got == [0, 2]
 
 
 def test_sample_ground_elevation_uses_default_elevation_for_nodata() -> None:

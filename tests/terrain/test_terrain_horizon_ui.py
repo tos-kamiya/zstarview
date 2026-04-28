@@ -810,6 +810,7 @@ def test_terrain_controller_treats_missing_ocean_tiles_as_empty_profile(
     assert ready_payloads == [
         {
             "profile_altaz": [],
+            "secondary_profile_altaz_layers": [],
             "source": f"{COPERNICUS_DEM_BUCKET}:ocean",
         }
     ]

@@ -11,6 +11,7 @@ import sys
 import time
 from dataclasses import replace
 from pathlib import Path
+from typing import TypedDict
 
 import numpy as np
 from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QPoint, QRect
@@ -78,6 +79,11 @@ from ..render.pipeline import (
     render_base_scene_into_painter,
 )
 from ..render.search_overlay import draw_search_target_overlay
+
+
+class TerrainHorizonPayload(TypedDict):
+    profile_altaz: list[tuple[float, float]]
+    secondary_profile_altaz_layers: list[list[tuple[float, float]]]
 from ..search.resolver import compute_search_target_altaz, resolve_search_targets
 from ..search.jpl import search_jpl_targets
 from ..search.jpl import resolve_jpl_target_state_vector
@@ -92,7 +98,7 @@ from ..terrain import (
     WGS84_GEOD,
     build_distance_samples,
     build_download_bbox,
-    compute_horizon_profile,
+    compute_horizon_layers,
     fetch_copernicus_dem,
     reduce_profile_to_altaz,
     sample_ground_elevation,
@@ -490,7 +496,7 @@ def _fetch_terrain_horizon_layer(
     *,
     viewer_data: ViewerData,
     deadline: float | None,
-) -> list[tuple[float, float]] | None:
+) -> TerrainHorizonPayload:
     if _timed_out(deadline):
         raise TimeoutError("terrain timed out")
     try:
@@ -507,7 +513,10 @@ def _fetch_terrain_horizon_layer(
             != "No Copernicus DEM tiles were downloaded for the requested area."
         ):
             raise
-        return []
+        return {
+            "profile_altaz": [],
+            "secondary_profile_altaz_layers": [],
+        }
     dem = GeoTiffDem(download.paths, default_elevation_m=0.0)
     try:
         bbox = build_download_bbox(
@@ -528,7 +537,7 @@ def _fetch_terrain_horizon_layer(
             observer_ground_m=ground_m,
             observer_eye_m=float(viewer_data.observer_height_m),
         )
-        points = compute_horizon_profile(
+        layers = compute_horizon_layers(
             dem_grid=dem_grid,
             geod=WGS84_GEOD,
             observer=observer,
@@ -542,7 +551,12 @@ def _fetch_terrain_horizon_layer(
         dem.close()
     if _timed_out(deadline):
         raise TimeoutError("terrain timed out")
-    return reduce_profile_to_altaz(points)
+    return {
+        "profile_altaz": reduce_profile_to_altaz(layers.main_profile),
+        "secondary_profile_altaz_layers": [
+            reduce_profile_to_altaz(layer) for layer in layers.secondary_layers
+        ],
+    }
 
 
 def _required_feature_types(feature_type: str) -> tuple[str, ...]:
@@ -1152,12 +1166,17 @@ def main() -> None:
                 raise SystemExit(1)
 
     terrain_horizon_profile = None
+    terrain_horizon_secondary_profile_altaz_layers = None
     if user_options.terrain_horizon_opacity > 0.0:
         try:
-            terrain_horizon_profile = _fetch_terrain_horizon_layer(
+            terrain_horizon_payload = _fetch_terrain_horizon_layer(
                 viewer_data=viewer_data,
                 deadline=deadline,
             )
+            terrain_horizon_profile = terrain_horizon_payload["profile_altaz"]
+            terrain_horizon_secondary_profile_altaz_layers = terrain_horizon_payload[
+                "secondary_profile_altaz_layers"
+            ]
         except Exception as exc:
             logger.warning("Export layer unavailable: terrain (%s)", exc)
             layer_failures.append("terrain")
@@ -1226,6 +1245,7 @@ def main() -> None:
         cloud_missing_mask=cloud_missing_mask,
         cloud_amount_field=cloud_amount_field,
         terrain_horizon_profile=terrain_horizon_profile,
+        terrain_horizon_secondary_profile_altaz_layers=terrain_horizon_secondary_profile_altaz_layers,
         urban_outlines=urban_outlines,
         satellite_overlay_points=satellite_overlay_points,
         aircraft_overlay_points=aircraft_overlay_points,

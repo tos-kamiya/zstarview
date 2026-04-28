@@ -17,7 +17,7 @@ from ..terrain import (
     WGS84_GEOD,
     build_distance_samples,
     build_download_bbox,
-    compute_horizon_profile,
+    compute_horizon_layers,
     fetch_copernicus_dem,
     reduce_profile_to_altaz,
     sample_ground_elevation,
@@ -171,6 +171,7 @@ class TerrainHorizonController(QObject):
                     self.terrain_ready.emit(
                         {
                             "profile_altaz": [],
+                            "secondary_profile_altaz_layers": [],
                             "source": f"{COPERNICUS_DEM_BUCKET}:ocean",
                         }
                     )
@@ -195,7 +196,7 @@ class TerrainHorizonController(QObject):
                     observer_ground_m=ground_m,
                     observer_eye_m=observer_height_m,
                 )
-                points = compute_horizon_profile(
+                layers = compute_horizon_layers(
                     dem_grid=dem_grid,
                     geod=WGS84_GEOD,
                     observer=observer,
@@ -211,7 +212,10 @@ class TerrainHorizonController(QObject):
             finally:
                 dem.close()
 
-            profile_altaz = reduce_profile_to_altaz(points)
+            profile_altaz = reduce_profile_to_altaz(layers.main_profile)
+            secondary_profile_altaz_layers = [
+                reduce_profile_to_altaz(layer) for layer in layers.secondary_layers
+            ]
             with self._lock:
                 if not self._stopping:
                     self._completed_for_location = (float(lat), float(lon), float(observer_height_m))
@@ -222,6 +226,7 @@ class TerrainHorizonController(QObject):
                 self.terrain_ready.emit(
                     {
                         "profile_altaz": profile_altaz,
+                        "secondary_profile_altaz_layers": secondary_profile_altaz_layers,
                         "source": f"{COPERNICUS_DEM_BUCKET}:{download.source}",
                     }
                 )
