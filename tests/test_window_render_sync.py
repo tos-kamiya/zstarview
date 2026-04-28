@@ -179,6 +179,9 @@ def _make_scene(
     viewer: ViewerData | None = None,
     celestial_data: CelestialData | object | None = None,
     terrain_horizon_profile: object | None = None,
+    terrain_horizon_profile_distances_m: object | None = None,
+    terrain_horizon_secondary_profile_altaz_layers: object | None = None,
+    terrain_horizon_secondary_profile_distances_m_layers: object | None = None,
     urban_outlines: object | None = None,
 ) -> pipeline_module.RenderSceneData:
     if viewer is None:
@@ -216,7 +219,9 @@ def _make_scene(
         cloud_missing_mask=None,
         cloud_amount_field=None,
         terrain_horizon_profile=terrain_horizon_profile,
-        terrain_horizon_secondary_profile_altaz_layers=None,
+        terrain_horizon_profile_distances_m=terrain_horizon_profile_distances_m,
+        terrain_horizon_secondary_profile_altaz_layers=terrain_horizon_secondary_profile_altaz_layers,
+        terrain_horizon_secondary_profile_distances_m_layers=terrain_horizon_secondary_profile_distances_m_layers,
         urban_outlines=urban_outlines,
         satellite_overlay_points=None,
         aircraft_overlay_points=None,
@@ -2110,6 +2115,7 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     seen_profiles: list[object] = []
     seen_view_centers: list[object] = []
     seen_line_width_scales: list[float] = []
+    secondary_calls: list[object] = []
     expected_line_width_scale = pipeline_module.compute_star_render_upscale_factor(
         1200, 600
     )
@@ -2122,11 +2128,16 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     monkeypatch.setattr(
         pipeline_module.render_terrain,
         "draw_terrain_horizon_line",
-        lambda _p, _g, profile, view_center, **kwargs: (
+        lambda _p, _g, profile, distances, view_center, **kwargs: (
             seen_profiles.append(profile),
             seen_view_centers.append(view_center),
             seen_line_width_scales.append(float(kwargs.get("line_width_scale", 1.0))),
         ),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
+        "draw_terrain_secondary_ridges",
+        lambda *_args, **_kwargs: secondary_calls.append("called"),
     )
     monkeypatch.setattr(
         pipeline_module.render_guides,
@@ -2165,6 +2176,7 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     assert seen_profiles == [terrain_profile]
     assert seen_view_centers == [(50.0, 210.0)]
     assert seen_line_width_scales == [expected_line_width_scale]
+    assert secondary_calls == []
 
 
 def test_draw_viewport_interaction_layers_skips_urban_outlines(monkeypatch) -> None:
@@ -2488,7 +2500,9 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         cloud_missing_mask=None,
         cloud_amount_field=None,
         terrain_horizon_profile=None,
+        terrain_horizon_profile_distances_m=None,
         terrain_horizon_secondary_profile_altaz_layers=None,
+        terrain_horizon_secondary_profile_distances_m_layers=None,
         urban_outlines=None,
         satellite_overlay_points=None,
         aircraft_overlay_points=None,
@@ -3283,9 +3297,11 @@ def test_draw_terrain_horizon_line_scales_line_widths(monkeypatch) -> None:
         painter,
         geometry=SimpleNamespace(center=(0, 0), radius=1),
         terrain_profile_altaz=[(0.0, 0.0), (0.1, 0.1)],
+        terrain_profile_distances_m=None,
         view_center=(45.0, 180.0),
         opacity=0.38,
         line_width_scale=2.0,
+        fast_mode=True,
         is_in_fov_func=lambda *_args, **_kwargs: True,
         altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
             float(az),
@@ -3295,6 +3311,123 @@ def test_draw_terrain_horizon_line_scales_line_widths(monkeypatch) -> None:
     )
 
     assert painter.pen_widths[:2] == [7.2, 2.4]
+
+
+def test_draw_terrain_horizon_line_scales_widths_by_distance(monkeypatch) -> None:
+    monkeypatch.setattr(
+        render_terrain_module,
+        "is_in_fov",
+        lambda *_args, **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        render_terrain_module,
+        "altaz_to_normalized_xy",
+        lambda alt, az, _view_center, **_kwargs: (float(az), float(alt)),
+    )
+    monkeypatch.setattr(
+        render_terrain_module,
+        "normalized_to_screen_xy",
+        lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+
+    class _Painter:
+        def __init__(self) -> None:
+            self.pen_widths: list[float] = []
+
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setPen(self, pen) -> None:
+            self.pen_widths.append(float(pen.widthF()))
+
+        def drawLine(self, *_args) -> None:
+            pass
+
+        def drawPolyline(self, *_args) -> None:
+            pass
+
+    painter = _Painter()
+    render_terrain_module.draw_terrain_horizon_line(
+        painter,
+        geometry=SimpleNamespace(center=(0, 0), radius=1),
+        terrain_profile_altaz=[(0.0, 0.0), (0.0, 0.1), (0.0, 0.2)],
+        terrain_profile_distances_m=[1_000.0, 50_000.0, 120_000.0],
+        view_center=(45.0, 180.0),
+        opacity=0.38,
+        line_width_scale=1.0,
+        is_in_fov_func=lambda *_args, **_kwargs: True,
+        altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
+            float(az),
+            float(alt),
+        ),
+        normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+
+    assert len(painter.pen_widths) >= 4
+    assert painter.pen_widths[0] > painter.pen_widths[2]
+    assert painter.pen_widths[1] > painter.pen_widths[3]
+
+
+def test_draw_terrain_secondary_ridges_use_fixed_widths(monkeypatch) -> None:
+    monkeypatch.setattr(
+        render_terrain_module,
+        "is_in_fov",
+        lambda *_args, **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        render_terrain_module,
+        "altaz_to_normalized_xy",
+        lambda alt, az, _view_center, **_kwargs: (float(az), float(alt)),
+    )
+    monkeypatch.setattr(
+        render_terrain_module,
+        "normalized_to_screen_xy",
+        lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+
+    class _Painter:
+        def __init__(self) -> None:
+            self.pen_widths: list[float] = []
+
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setPen(self, pen) -> None:
+            self.pen_widths.append(float(pen.widthF()))
+
+        def drawLine(self, *_args) -> None:
+            pass
+
+        def drawPolyline(self, *_args) -> None:
+            pass
+
+    painter = _Painter()
+    render_terrain_module.draw_terrain_secondary_ridges(
+        painter,
+        geometry=SimpleNamespace(center=(0, 0), radius=1),
+        terrain_secondary_profile_layers=[[(0.0, 0.0), (0.0, 0.1), (0.0, 0.2)]],
+        terrain_secondary_profile_distances_m_layers=[[1_000.0, 50_000.0, 120_000.0]],
+        view_center=(45.0, 180.0),
+        opacity=0.38,
+        line_width_scale=1.0,
+        fast_mode=False,
+        is_in_fov_func=lambda *_args, **_kwargs: True,
+        altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
+            float(az),
+            float(alt),
+        ),
+        normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+
+    assert len(painter.pen_widths) == 2
+    assert painter.pen_widths[0] == pytest.approx(render_terrain_module.TERRAIN_DISTANCE_BAND_OUTLINE_WIDTH)
+    assert painter.pen_widths[1] == pytest.approx(render_terrain_module.TERRAIN_DISTANCE_BAND_FG_WIDTH)
 
 
 def test_draw_terrain_horizon_line_uses_edge_fov_for_projection() -> None:
@@ -3320,10 +3453,12 @@ def test_draw_terrain_horizon_line_uses_edge_fov_for_projection() -> None:
             painter,
             geometry=SimpleNamespace(center=(0, 0), radius=1),
             terrain_profile_altaz=[(0.0, 180.0), (0.0, 190.0)],
+            terrain_profile_distances_m=None,
             view_center=(45.0, 180.0),
             opacity=0.38,
             edge_fov_deg=edge_fov_deg,
             content_fov_deg=180.0,
+            fast_mode=True,
             is_in_fov_func=lambda *_args, **_kwargs: True,
             normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
         )

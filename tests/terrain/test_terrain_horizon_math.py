@@ -5,6 +5,8 @@ from rasterio.transform import Affine
 
 from zstarview.terrain.horizon import (
     _prune_secondary_peak_indices_by_visibility,
+    _prune_secondary_peak_indices_by_main_profile,
+    _select_distance_band_peak_index,
     _should_break_secondary_ridge,
     build_distance_samples,
     compute_apparent_altitudes,
@@ -67,6 +69,64 @@ def test_prune_secondary_peak_indices_by_visibility_keeps_farther_higher_peak() 
     got = _prune_secondary_peak_indices_by_visibility(altitudes, [0, 1, 2, 3])
 
     assert got == [0, 2]
+
+
+def test_prune_secondary_peak_indices_by_main_profile_drops_lower_than_main() -> None:
+    altitudes = np.array([0.2, 0.7, 0.6, 0.9], dtype=np.float64)
+    distances = np.array([100.0, 200.0, 300.0, 400.0], dtype=np.float64)
+
+    got = _prune_secondary_peak_indices_by_main_profile(
+        altitudes,
+        distances,
+        [0, 1, 2, 3],
+        main_peak_distance_m=250.0,
+    )
+
+    assert got == [0, 1]
+
+
+def test_prune_secondary_peak_indices_by_main_profile_keeps_higher_than_main() -> None:
+    altitudes = np.array([0.2, 0.7, 0.6, 0.9], dtype=np.float64)
+    distances = np.array([100.0, 200.0, 300.0, 400.0], dtype=np.float64)
+
+    got = _prune_secondary_peak_indices_by_main_profile(
+        altitudes,
+        distances,
+        [0, 1, 2, 3],
+        main_peak_distance_m=450.0,
+    )
+
+    assert got == [0, 1, 2, 3]
+
+
+def test_select_distance_band_peak_index_prefers_highest_in_band() -> None:
+    altitudes = np.array([0.1, 0.6, 0.3, 0.9, 0.4], dtype=np.float64)
+    distances = np.array([5_000.0, 20_000.0, 35_000.0, 42_000.0, 70_000.0], dtype=np.float64)
+
+    got = _select_distance_band_peak_index(
+        altitudes,
+        distances,
+        band_min_m=10_000.0,
+        band_max_m=50_000.0,
+        include_upper_bound=False,
+    )
+
+    assert got == 3
+
+
+def test_select_distance_band_peak_index_includes_last_upper_bound() -> None:
+    altitudes = np.array([0.1, 0.6, 0.3, 0.9, 0.4], dtype=np.float64)
+    distances = np.array([5_000.0, 20_000.0, 35_000.0, 42_000.0, 120_000.0], dtype=np.float64)
+
+    got = _select_distance_band_peak_index(
+        altitudes,
+        distances,
+        band_min_m=80_000.0,
+        band_max_m=120_000.0,
+        include_upper_bound=True,
+    )
+
+    assert got == 4
 
 
 def test_sample_ground_elevation_uses_default_elevation_for_nodata() -> None:

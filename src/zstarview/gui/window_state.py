@@ -44,7 +44,9 @@ class SkyWindowState:
     sky_disc_image: Optional[QImage] = None
     cloud_base_size: int = 256
     terrain_horizon_profile: Optional[list[tuple[float, float]]] = None
+    terrain_horizon_profile_distances_m: Optional[list[float]] = None
     terrain_horizon_secondary_profile_altaz_layers: Optional[list[list[tuple[float, float]]]] = None
+    terrain_horizon_secondary_profile_distances_m_layers: Optional[list[list[float]]] = None
     urban_outlines: Optional[list[UrbanOutlinePolyline]] = None
     satellite_overlay_points: Optional[list[SatelliteOverlayPoint]] = None
     aircraft_overlay_points: Optional[list[AircraftOverlayPoint]] = None

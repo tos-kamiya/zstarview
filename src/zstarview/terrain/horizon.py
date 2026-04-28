@@ -38,6 +38,9 @@ class HorizonLayerSet:
     secondary_layers: list[list[HorizonProfilePoint]]
 
 
+DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM = (3.75, 7.5, 15.0, 30.0, 60.0, 120.0)
+
+
 def build_distance_samples(max_distance_km: float, sample_step_m: float) -> np.ndarray:
     max_distance_m = max_distance_km * 1000.0
     if max_distance_m <= 0.0:
@@ -134,6 +137,36 @@ def _select_secondary_peak_indices(
     return selected
 
 
+def _select_distance_band_peak_index(
+    altitude_row_deg: np.ndarray,
+    distance_row_m: np.ndarray,
+    *,
+    band_min_m: float,
+    band_max_m: float,
+    include_upper_bound: bool,
+) -> int | None:
+    values = np.asarray(altitude_row_deg, dtype=np.float64)
+    distances = np.asarray(distance_row_m, dtype=np.float64)
+    if values.size == 0 or values.size != distances.size:
+        return None
+    lower = float(band_min_m)
+    upper = float(band_max_m)
+    if not (math.isfinite(lower) and math.isfinite(upper)) or upper <= lower:
+        return None
+
+    lower_mask = distances >= lower
+    upper_mask = distances <= upper if include_upper_bound else distances < upper
+    mask = lower_mask & upper_mask & np.isfinite(values) & np.isfinite(distances)
+    if not np.any(mask):
+        return None
+
+    masked_values = np.where(mask, values, -np.inf)
+    peak_index = int(np.argmax(masked_values))
+    if not math.isfinite(float(masked_values[peak_index])):
+        return None
+    return peak_index
+
+
 def _prune_secondary_peak_indices_by_visibility(
     altitude_row_deg: np.ndarray,
     secondary_peak_indices: Sequence[int],
@@ -150,6 +183,27 @@ def _prune_secondary_peak_indices_by_visibility(
         visible_indices.append(index)
         best_altitude_deg = altitude_deg
     return visible_indices
+
+
+def _prune_secondary_peak_indices_by_main_profile(
+    altitude_row_deg: np.ndarray,
+    distance_row_m: np.ndarray,
+    secondary_peak_indices: Sequence[int],
+    *,
+    main_peak_distance_m: float,
+) -> list[int]:
+    values = np.asarray(altitude_row_deg, dtype=np.float64)
+    distances = np.asarray(distance_row_m, dtype=np.float64)
+    filtered_indices: list[int] = []
+    main_distance_m = float(main_peak_distance_m)
+    for index in sorted(int(value) for value in secondary_peak_indices):
+        if index < 0 or index >= values.size:
+            continue
+        distance_m = float(distances[index])
+        if distance_m >= main_distance_m - 1.0e-9:
+            continue
+        filtered_indices.append(index)
+    return filtered_indices
 
 
 def _should_break_secondary_ridge(
@@ -205,11 +259,7 @@ def compute_horizon_layers(
     dem_resampling: str,
     earth_radius_m: float,
     refraction_coefficient: float,
-    max_secondary_peaks: int = 2,
-    min_prominence_deg: float = 0.08,
-    min_drop_deg: float = 0.05,
-    min_separation_m: float = 1_200.0,
-    max_distance_jump_ratio: float = 0.25,
+    distance_band_edges_km: Sequence[float] = DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM,
 ) -> HorizonLayerSet:
     if azimuth_step_deg <= 0.0:
         raise ValueError("azimuth_step_deg must be positive.")
@@ -268,54 +318,48 @@ def compute_horizon_layers(
     if not points:
         raise ValueError("The DEM did not provide any valid samples for the scan.")
 
-    active_secondary_layers: list[list[HorizonProfilePoint] | None] = [None for _ in range(max(0, int(max_secondary_peaks)))]
-    secondary_layers: list[list[HorizonProfilePoint]] = []
+    band_edges_km = sorted(
+        {
+            float(edge)
+            for edge in distance_band_edges_km
+            if math.isfinite(float(edge)) and float(edge) > 0.0
+        }
+    )
+    band_limits_m: list[tuple[float, float]] = []
+    band_start_m = 0.0
+    for band_edge_km in band_edges_km:
+        band_end_m = float(band_edge_km) * 1000.0
+        if band_end_m <= band_start_m:
+            continue
+        band_limits_m.append((band_start_m, band_end_m))
+        band_start_m = band_end_m
+
+    band_layers: list[list[HorizonProfilePoint]] = [[] for _ in band_limits_m]
     for row_index, azimuth_deg in enumerate(azimuths):
         if not valid_rows[row_index]:
             continue
-        secondary_indices = _select_secondary_peak_indices(
-            altitude_deg[row_index],
-            distance_grid_m[row_index],
-            main_peak_index=int(peak_indices[row_index]),
-            min_prominence_deg=float(min_prominence_deg),
-            min_drop_deg=float(min_drop_deg),
-            min_separation_m=float(min_separation_m),
-            max_secondary_peaks=max(0, int(max_secondary_peaks)),
-        )
-        secondary_indices = _prune_secondary_peak_indices_by_visibility(
-            altitude_deg[row_index],
-            secondary_indices,
-        )
-        for layer_index, peak_index in enumerate(secondary_indices):
-            if layer_index >= len(active_secondary_layers):
-                break
-            point = HorizonProfilePoint(
-                azimuth_deg=float(azimuth_deg),
-                altitude_deg=float(altitude_deg[row_index, peak_index]),
-                distance_m=float(distance_grid_m[row_index, peak_index]),
-                latitude_deg=float(ray_lat_deg[row_index, peak_index]),
-                longitude_deg=float(ray_lon_deg[row_index, peak_index]),
-                terrain_elevation_m=float(terrain_m[row_index, peak_index]),
+        for band_index, (band_min_m, band_max_m) in enumerate(band_limits_m):
+            peak_index = _select_distance_band_peak_index(
+                altitude_deg[row_index],
+                distance_grid_m[row_index],
+                band_min_m=band_min_m,
+                band_max_m=band_max_m,
+                include_upper_bound=band_index == len(band_limits_m) - 1,
             )
-            current_fragment = active_secondary_layers[layer_index]
-            if (
-                current_fragment is None
-                or _should_break_secondary_ridge(
-                    current_fragment[-1].distance_m,
-                    point.distance_m,
-                    max_distance_jump_ratio=float(max_distance_jump_ratio),
+            if peak_index is None:
+                continue
+            band_layers[band_index].append(
+                HorizonProfilePoint(
+                    azimuth_deg=float(azimuth_deg),
+                    altitude_deg=float(altitude_deg[row_index, peak_index]),
+                    distance_m=float(distance_grid_m[row_index, peak_index]),
+                    latitude_deg=float(ray_lat_deg[row_index, peak_index]),
+                    longitude_deg=float(ray_lon_deg[row_index, peak_index]),
+                    terrain_elevation_m=float(terrain_m[row_index, peak_index]),
                 )
-            ):
-                if current_fragment is not None and len(current_fragment) >= 2:
-                    secondary_layers.append(current_fragment)
-                current_fragment = [point]
-                active_secondary_layers[layer_index] = current_fragment
-            else:
-                current_fragment.append(point)
+            )
 
-    for fragment in active_secondary_layers:
-        if fragment is not None and len(fragment) >= 2:
-            secondary_layers.append(fragment)
+    secondary_layers = [layer for layer in band_layers if len(layer) >= 2]
     return HorizonLayerSet(main_profile=points, secondary_layers=secondary_layers)
 
 
