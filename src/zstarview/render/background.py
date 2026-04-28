@@ -178,4 +178,20 @@ def draw_window_border(
         QPointF(inner_right - grip_line_inset, inner_bottom - grip_size + grip_line_inset),
         QPointF(inner_right - grip_size + grip_line_inset, inner_bottom - grip_line_inset),
     )
+    if preset in {"white", "day"}:
+        border_width = float(GUI_BUTTON_SIZE)
+        border_color = QColor(*theme.window_background.border_rgba)
+        border_w = float(border_width)
+        left = float(rect.left())
+        top = float(rect.top())
+        width = float(rect.width())
+        height = float(rect.height())
+        inner_width = max(0.0, width - (2.0 * border_w))
+        painter.fillRect(QRectF(left + border_w, top, inner_width, border_w), border_color)
+        painter.fillRect(
+            QRectF(left + border_w, top + height - border_w, inner_width, border_w),
+            border_color,
+        )
+        painter.fillRect(QRectF(left, top, border_w, height), border_color)
+        painter.fillRect(QRectF(left + width - border_w, top, border_w, height), border_color)
     painter.restore()

@@ -195,7 +195,7 @@ THEME_STYLES_BY_PRESET = {
             base_rgb=(10, 12, 16),
             delta_rgb=(7, 9, 11),
             outer_alpha=200,
-            edge_alpha=94,
+            edge_alpha=120,
             inner_rgba=(4, 4, 4, 255),
             border_rgba=(30, 34, 40, 45),
         ),
