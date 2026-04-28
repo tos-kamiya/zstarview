@@ -61,7 +61,7 @@
   - タワー一覧・タワー詳細 JSON 出力の即時終了オプションを扱う
   - `--place`、`--place-countrycode`、`--place-lang` の online 地点検索オプションを扱う
   - `--search`、`--list`、`--search-keep-marker` の検索オプションを扱い、GUI 起動時検索と export-image で同じ引数定義を共有する
-  - `--theme` は `night`、`day`、`white`、`black` の 4 preset のみを受け付ける
+- `--theme` は `night`、`day`、`white`、`black`、`transparent` の 5 preset を受け付ける
   - `--edge-fov-deg` は起動時の画面投影スケールを、`--content-fov-deg` は描画対象の保持範囲を制御する
   - 同梱星表の実上限に合わせ、`-V` / `--vmag-limit` は `10.5` を超える指定を parse 時点で `10.5` へ丸める
   - parser 構築は `add_location_arguments()`、`add_dataset_query_arguments()`、`add_time_arguments()`、`add_render_arguments()` の helper に分割し、将来の別 CLI からも再利用できるようにする
@@ -318,6 +318,12 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `black`
   - text: `(246, 249, 255)` / `#F6F9FF`
   - status_text: `(255, 220, 220)` / `#FFDCDC`
+- `transparent`
+  - text: `(242, 245, 250)` / `#F2F5FA`
+  - status_text: `(255, 224, 224)` / `#FFE0E0`
+  - sky disc opacity: `0.4`
+  - window border: omitted
+  - grip triangle: inset reduced toward the corner
 
 #### 4.3.3 カラーパレット参照
 

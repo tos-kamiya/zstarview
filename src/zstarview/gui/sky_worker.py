@@ -31,6 +31,7 @@ from ..astro import (
     calculate_visible_stars,
     eclipse_factor_from_info,
 )
+from ..paths import SKY_DISC_OPACITY_BY_PRESET
 from ..render import sky_disc
 from ..render import geometry as render_geometry
 from ..types import CelestialData, StarCatalogMeta
@@ -134,6 +135,7 @@ def compute_sky_snapshot(
         render_height = max(2, int(render_height_px or sky_disc_base_size))
         fixed_geom = render_geometry.get_screen_geometry(render_width, render_height, view_center[0])
         ef = eclipse_factor_from_info(solar_eclipse_info)
+        disc_opacity = float(SKY_DISC_OPACITY_BY_PRESET.get(visual_preset, 1.0))
         if sky_disc_alpha > 0.0:
             sky_disc_img = sky_disc.draw_sky_color_disc(
                 fixed_geom,
@@ -141,7 +143,7 @@ def compute_sky_snapshot(
                 sun_altaz,
                 observer_lat_deg=lat,
                 alpha=sky_disc_alpha,
-                disc_opacity=1.0,
+                disc_opacity=disc_opacity,
                 eclipse_factor=ef,
                 edge_fov_deg=edge_fov_deg,
                 content_fov_deg=content_fov_deg,
@@ -154,7 +156,7 @@ def compute_sky_snapshot(
                 edge_fov_deg=edge_fov_deg,
                 content_fov_deg=content_fov_deg,
                 image_size=(render_width, render_height),
-                disc_opacity=1.0,
+                disc_opacity=disc_opacity,
             )
 
     payload: Dict[str, object] = {"celestial": celestial_data, "sky_disc": sky_disc_img}

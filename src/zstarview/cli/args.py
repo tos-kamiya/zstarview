@@ -42,11 +42,13 @@ def _parse_theme(value: str) -> str:
         "day": "day",
         "white": "white",
         "black": "black",
+        "transparent": "transparent",
+        "translucent": "transparent",
     }
     if key in allowed:
         return allowed[key]
     raise argparse.ArgumentTypeError(
-        f"Invalid theme: {value!r}. Use one of: night, day, white, black."
+        f"Invalid theme: {value!r}. Use one of: night, day, white, black, transparent."
     )
 
 
@@ -727,7 +729,7 @@ def add_general_arguments(
         "--theme",
         type=_parse_theme,
         default="night",
-        metavar="{night,day,white,black}",
+        metavar="{night,day,white,black,transparent}",
         help="Theme preset for background and star contrast (default: night).",
     )
     parser.add_argument(
