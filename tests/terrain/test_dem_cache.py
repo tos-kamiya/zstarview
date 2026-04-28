@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import pytest
+
 from zstarview.terrain.dem import (
     COPERNICUS_DEM_BUCKET,
     dem_tile_metadata_path,
@@ -25,6 +27,12 @@ class _FakeS3Client:
         if self.should_fail:
             raise RuntimeError("network down")
         handle.write(b"fake-dem")
+
+
+class _FakeInvalidTileS3Client(_FakeS3Client):
+    def download_fileobj(self, bucket: str, key: str, handle) -> None:
+        self.calls.append((bucket, key))
+        handle.write(b"not-a-geotiff")
 
 
 def test_read_dem_tile_fetched_at_utc_migrates_legacy_cache(monkeypatch, tmp_path: Path) -> None:
@@ -126,6 +134,28 @@ def test_fetch_copernicus_dem_discards_invalid_existing_tile(monkeypatch, tmp_pa
     assert got.source == "download"
     assert fake_s3.calls == [(COPERNICUS_DEM_BUCKET, tile_relpath)]
     assert tile_path.read_bytes() == b"fake-dem"
+
+
+def test_fetch_copernicus_dem_skips_invalid_downloaded_tile(monkeypatch, tmp_path: Path) -> None:
+    tile_relpath = "Copernicus_DSM_COG_30_N35_00_E139_00_DEM/Copernicus_DSM_COG_30_N35_00_E139_00_DEM.tif"
+    fake_s3 = _FakeInvalidTileS3Client(should_fail=False)
+    monkeypatch.setattr("zstarview.terrain.dem.anonymous_s3_client", lambda: fake_s3)
+    monkeypatch.setattr("zstarview.terrain.dem.build_download_bbox", lambda **_kwargs: (0.0, 0.0, 1.0, 1.0))
+    monkeypatch.setattr("zstarview.terrain.dem.collect_copernicus_tile_keys", lambda _bbox: [tile_relpath])
+    monkeypatch.setattr("zstarview.terrain.dem._is_valid_dem_tile", lambda path: path.read_bytes() == b"fake-dem")
+
+    with pytest.raises(RuntimeError, match="No Copernicus DEM tiles were downloaded for the requested area."):
+        fetch_copernicus_dem(
+            observer_lat_deg=35.0,
+            observer_lon_deg=139.0,
+            max_distance_km=1.0,
+            margin_km=0.0,
+            cache_dir=tmp_path,
+            now_utc=datetime(2026, 3, 27, 2, 0, tzinfo=timezone.utc),
+        )
+
+    assert fake_s3.calls == [(COPERNICUS_DEM_BUCKET, tile_relpath)]
+    assert not (tmp_path / tile_relpath).exists()
 
 
 def test_fetch_copernicus_dem_treats_legacy_tile_as_fresh_after_migration(monkeypatch, tmp_path: Path) -> None:
