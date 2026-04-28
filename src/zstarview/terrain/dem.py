@@ -355,9 +355,12 @@ def fetch_copernicus_dem(
             with tmp_path.open("wb") as handle:
                 s3.download_fileobj(COPERNICUS_DEM_BUCKET, key, handle)
             if not _is_valid_dem_tile(tmp_path):
-                raise RuntimeError(
-                    f"Downloaded DEM tile is not a valid GeoTIFF: s3://{COPERNICUS_DEM_BUCKET}/{key}"
+                logger.warning(
+                    "Discarding invalid downloaded DEM tile: s3://%s/%s",
+                    COPERNICUS_DEM_BUCKET,
+                    key,
                 )
+                continue
             tmp_path.replace(dst)
             _write_dem_tile_metadata(
                 dst,
