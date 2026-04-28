@@ -83,7 +83,9 @@ from ..render.search_overlay import draw_search_target_overlay
 
 class TerrainHorizonPayload(TypedDict):
     profile_altaz: list[tuple[float, float]]
+    profile_distances_m: list[float]
     secondary_profile_altaz_layers: list[list[tuple[float, float]]]
+    secondary_profile_distances_m_layers: list[list[float]]
 from ..search.resolver import compute_search_target_altaz, resolve_search_targets
 from ..search.jpl import search_jpl_targets
 from ..search.jpl import resolve_jpl_target_state_vector
@@ -515,7 +517,9 @@ def _fetch_terrain_horizon_layer(
             raise
         return {
             "profile_altaz": [],
+            "profile_distances_m": [],
             "secondary_profile_altaz_layers": [],
+            "secondary_profile_distances_m_layers": [],
         }
     dem = GeoTiffDem(download.paths, default_elevation_m=0.0)
     try:
@@ -553,8 +557,12 @@ def _fetch_terrain_horizon_layer(
         raise TimeoutError("terrain timed out")
     return {
         "profile_altaz": reduce_profile_to_altaz(layers.main_profile),
+        "profile_distances_m": [float(point.distance_m) for point in layers.main_profile],
         "secondary_profile_altaz_layers": [
             reduce_profile_to_altaz(layer) for layer in layers.secondary_layers
+        ],
+        "secondary_profile_distances_m_layers": [
+            [float(point.distance_m) for point in layer] for layer in layers.secondary_layers
         ],
     }
 
@@ -1166,7 +1174,9 @@ def main() -> None:
                 raise SystemExit(1)
 
     terrain_horizon_profile = None
+    terrain_horizon_profile_distances_m = None
     terrain_horizon_secondary_profile_altaz_layers = None
+    terrain_horizon_secondary_profile_distances_m_layers = None
     if user_options.terrain_horizon_opacity > 0.0:
         try:
             terrain_horizon_payload = _fetch_terrain_horizon_layer(
@@ -1174,8 +1184,12 @@ def main() -> None:
                 deadline=deadline,
             )
             terrain_horizon_profile = terrain_horizon_payload["profile_altaz"]
+            terrain_horizon_profile_distances_m = terrain_horizon_payload["profile_distances_m"]
             terrain_horizon_secondary_profile_altaz_layers = terrain_horizon_payload[
                 "secondary_profile_altaz_layers"
+            ]
+            terrain_horizon_secondary_profile_distances_m_layers = terrain_horizon_payload[
+                "secondary_profile_distances_m_layers"
             ]
         except Exception as exc:
             logger.warning("Export layer unavailable: terrain (%s)", exc)
@@ -1245,7 +1259,9 @@ def main() -> None:
         cloud_missing_mask=cloud_missing_mask,
         cloud_amount_field=cloud_amount_field,
         terrain_horizon_profile=terrain_horizon_profile,
+        terrain_horizon_profile_distances_m=terrain_horizon_profile_distances_m,
         terrain_horizon_secondary_profile_altaz_layers=terrain_horizon_secondary_profile_altaz_layers,
+        terrain_horizon_secondary_profile_distances_m_layers=terrain_horizon_secondary_profile_distances_m_layers,
         urban_outlines=urban_outlines,
         satellite_overlay_points=satellite_overlay_points,
         aircraft_overlay_points=aircraft_overlay_points,

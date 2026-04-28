@@ -674,12 +674,20 @@ class SkyWindowUpdatesMixin:
     def _on_terrain_horizon_ready(self, payload: Dict) -> None:
         self.terrain_horizon_state.set_result(
             payload["profile_altaz"],
+            profile_distances_m=payload.get("profile_distances_m"),
             secondary_profile_altaz_layers=payload.get("secondary_profile_altaz_layers"),
+            secondary_profile_distances_m_layers=payload.get(
+                "secondary_profile_distances_m_layers"
+            ),
             source=str(payload.get("source", "")).strip(),
         )
         self.state.terrain_horizon_profile = payload["profile_altaz"]
+        self.state.terrain_horizon_profile_distances_m = payload.get("profile_distances_m")
         self.state.terrain_horizon_secondary_profile_altaz_layers = payload.get(
             "secondary_profile_altaz_layers"
+        )
+        self.state.terrain_horizon_secondary_profile_distances_m_layers = payload.get(
+            "secondary_profile_distances_m_layers"
         )
         self._compositor.invalidate()
         self.request_client_update()
@@ -688,7 +696,9 @@ class SkyWindowUpdatesMixin:
         banner = str(payload.get("banner", "")).strip()
         self.terrain_horizon_state.clear_profile()
         self.state.terrain_horizon_profile = None
+        self.state.terrain_horizon_profile_distances_m = None
         self.state.terrain_horizon_secondary_profile_altaz_layers = None
+        self.state.terrain_horizon_secondary_profile_distances_m_layers = None
         if banner:
             self.terrain_horizon_state.set_error_banner(banner)
         self._compositor.invalidate()

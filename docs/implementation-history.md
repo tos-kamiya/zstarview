@@ -678,3 +678,10 @@
 - Arrow-key viewport interaction handoff
   - Kept viewport-interaction mode active while arrow keys are physically held, then ended the simplified mode on key release instead of the previous idle-timer handoff.
   - Deferred the normal cloud and terrain restart until the refreshed sky disc arrives, so release-time repaints do not show an intermediate black partial sphere.
+
+### 2026-04-29
+
+- Distance-band terrain ridge preview
+  - Replaced the previous chained secondary-ridge experiment with concentric distance-band ridge lines at 3.75, 7.5, 15, 30, 60, and 120 km.
+  - Kept the primary terrain horizon unchanged and rendered the banded overlay as fixed-width red lines for a simpler visual read.
+  - Updated the horizon extraction, renderer, state plumbing, and regression tests to carry banded ridge polylines instead of visibility-pruned secondary peaks.
