@@ -33,7 +33,6 @@ AIRCRAFT_CACHE_ROOT_DIR = os.path.join(CACHE_PATH, "aircraft", "opensky")
 SATELLITE_CACHE_ROOT_DIR = os.path.join(CACHE_PATH, "satellites", "celestrak")
 
 # Window UI
-GUI_MENU_TEXT_COLOR = (128, 128, 128)
 GUI_BUTTON_SIZE = 30
 WINDOW_WIDTH = 600
 WINDOW_HEIGHT = 600
@@ -55,9 +54,17 @@ PALETTE_ASTERISM_RGB = (122, 226, 240)
 
 @dataclass(frozen=True, slots=True)
 class TextStyle:
-    text: tuple[int, ...]
-    outline: tuple[int, ...]
+    foreground_rgb: tuple[int, ...]
+    outline_rgba: tuple[int, ...]
     outline_width: float = 3.0
+
+    @property
+    def text(self) -> tuple[int, ...]:
+        return self.foreground_rgb
+
+    @property
+    def outline(self) -> tuple[int, ...]:
+        return self.outline_rgba
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,31 +89,118 @@ class SplashStyle:
 
 
 @dataclass(frozen=True, slots=True)
+class WindowChromeStyle:
+    menu_fill_rgba: tuple[int, int, int, int]
+    menu_icon_rgba: tuple[int, int, int, int]
+    menu_button_text_rgb: tuple[int, int, int]
+    menu_hover_text_rgb: tuple[int, int, int] = (255, 255, 255)
+    menu_pressed_text_rgb: tuple[int, int, int] = (255, 255, 255)
+    menu_hover_bg_rgba: tuple[int, int, int, int] = (255, 255, 255, 26)
+    menu_pressed_bg_rgba: tuple[int, int, int, int] = (255, 255, 255, 40)
+
+
+@dataclass(frozen=True, slots=True)
+class SkyDiscStyle:
+    opacity: float
+
+
+@dataclass(frozen=True, slots=True)
 class ThemeStyle:
     text: TextStyle
     status_text: TextStyle
     window_background: WindowBackgroundStyle
+    window_chrome: WindowChromeStyle
+    sky_disc: SkyDiscStyle
     splash: SplashStyle
+
+
+def _theme_background_luminance(base_rgb: tuple[int, int, int]) -> float:
+    return (
+        0.2126 * float(base_rgb[0])
+        + 0.7152 * float(base_rgb[1])
+        + 0.0722 * float(base_rgb[2])
+    )
+
+
+def _theme_chrome_fill_rgba(
+    preset: str,
+    base_rgb: tuple[int, int, int],
+) -> tuple[int, int, int, int]:
+    if preset == "day":
+        return (
+            min(255, base_rgb[0] + 2),
+            min(255, base_rgb[1] + 2),
+            min(255, base_rgb[2] + 2),
+            112,
+        )
+    if preset == "night":
+        return (
+            max(0, base_rgb[0] + 2),
+            max(0, base_rgb[1] + 2),
+            max(0, base_rgb[2] + 2),
+            112,
+        )
+    if preset == "white":
+        return (
+            max(0, base_rgb[0] - 18),
+            max(0, base_rgb[1] - 18),
+            max(0, base_rgb[2] - 18),
+            100,
+        )
+    if preset == "black":
+        return (
+            min(255, base_rgb[0] + 22),
+            min(255, base_rgb[1] + 22),
+            min(255, base_rgb[2] + 22),
+            100,
+        )
+    return (
+        max(0, min(255, base_rgb[0] + 6)),
+        max(0, min(255, base_rgb[1] + 6)),
+        max(0, min(255, base_rgb[2] + 6)),
+        96,
+    )
+
+
+def _theme_chrome_icon_rgba(base_rgb: tuple[int, int, int]) -> tuple[int, int, int, int]:
+    if _theme_background_luminance(base_rgb) >= 128.0:
+        return (70, 70, 70, 220)
+    return (210, 210, 210, 220)
+
+
+def _theme_window_chrome(preset: str, base_rgb: tuple[int, int, int]) -> WindowChromeStyle:
+    icon_rgba = _theme_chrome_icon_rgba(base_rgb)
+    return WindowChromeStyle(
+        menu_fill_rgba=_theme_chrome_fill_rgba(preset, base_rgb),
+        menu_icon_rgba=icon_rgba,
+        menu_button_text_rgb=icon_rgba[:3],
+    )
+
+
+def _theme_sky_disc(opacity: float) -> SkyDiscStyle:
+    return SkyDiscStyle(opacity=float(opacity))
 
 
 THEME_STYLES_BY_PRESET = {
     "night": ThemeStyle(
         text=TextStyle(
-            text=(180, 180, 180),
-            outline=(0, 0, 0, 76),
+            foreground_rgb=(180, 180, 180),
+            outline_rgba=(0, 0, 0, 76),
         ),
         status_text=TextStyle(
-            text=(190, 190, 160),
-            outline=(0, 0, 0, 76),
+            foreground_rgb=(190, 190, 160),
+            outline_rgba=(0, 0, 0, 76),
         ),
         window_background=WindowBackgroundStyle(
             base_rgb=(10, 12, 16),
             delta_rgb=(7, 9, 11),
             outer_alpha=200,
-            edge_alpha=100,
+            edge_alpha=94,
             inner_rgba=(4, 4, 4, 255),
             border_rgba=(30, 34, 40, 45),
         ),
+        window_chrome=_theme_window_chrome("night", (10, 12, 16)),
+        sky_disc=_theme_sky_disc(1.0),
         splash=SplashStyle(
             gradient_rgb=((12, 14, 20), (8, 10, 14), (4, 6, 9)),
             frame_rgb=(70, 76, 92),
@@ -115,23 +209,25 @@ THEME_STYLES_BY_PRESET = {
     ),
     "white": ThemeStyle(
         text=TextStyle(
-            text=(229, 163, 100),
-            outline=(79, 45, 19, 166),
+            foreground_rgb=(229, 163, 100),
+            outline_rgba=(79, 45, 19, 166),
             outline_width=3.0,
         ),
         status_text=TextStyle(
-            text=(220, 155, 94),
-            outline=(76, 44, 19, 169),
+            foreground_rgb=(220, 155, 94),
+            outline_rgba=(76, 44, 19, 169),
             outline_width=3.0,
         ),
         window_background=WindowBackgroundStyle(
             base_rgb=(240, 238, 237),
             delta_rgb=(38, 40, 42),
             outer_alpha=255,
-            edge_alpha=220,
+            edge_alpha=214,
             inner_rgba=(4, 4, 4, 255),
             border_rgba=(254, 254, 255, 112),
         ),
+        window_chrome=_theme_window_chrome("white", (240, 238, 237)),
+        sky_disc=_theme_sky_disc(1.0),
         splash=SplashStyle(
             gradient_rgb=((252, 252, 252), (234, 234, 234), (206, 206, 206)),
             frame_rgb=(158, 178, 206),
@@ -140,23 +236,25 @@ THEME_STYLES_BY_PRESET = {
     ),
     "day": ThemeStyle(
         text=TextStyle(
-            text=(233, 148, 112),
-            outline=(78, 44, 25, 163),
+            foreground_rgb=(233, 148, 112),
+            outline_rgba=(78, 44, 25, 163),
             outline_width=3.0,
         ),
         status_text=TextStyle(
-            text=(224, 142, 106),
-            outline=(73, 42, 24, 165),
+            foreground_rgb=(224, 142, 106),
+            outline_rgba=(73, 42, 24, 165),
             outline_width=3.0,
         ),
         window_background=WindowBackgroundStyle(
             base_rgb=(226, 223, 222),
             delta_rgb=(28, 34, 34),
             outer_alpha=200,
-            edge_alpha=100,
+            edge_alpha=94,
             inner_rgba=(4, 4, 4, 255),
             border_rgba=(250, 252, 255, 35),
         ),
+        window_chrome=_theme_window_chrome("day", (226, 223, 222)),
+        sky_disc=_theme_sky_disc(1.0),
         splash=SplashStyle(
             gradient_rgb=((240, 248, 255), (226, 240, 252), (206, 228, 246)),
             frame_rgb=(158, 182, 206),
@@ -165,21 +263,23 @@ THEME_STYLES_BY_PRESET = {
     ),
     "black": ThemeStyle(
         text=TextStyle(
-            text=(246, 249, 255),
-            outline=(2, 2, 3, 236),
+            foreground_rgb=(246, 249, 255),
+            outline_rgba=(2, 2, 3, 236),
         ),
         status_text=TextStyle(
-            text=(255, 220, 220),
-            outline=(2, 2, 3, 236),
+            foreground_rgb=(255, 220, 220),
+            outline_rgba=(2, 2, 3, 236),
         ),
         window_background=WindowBackgroundStyle(
             base_rgb=(12, 12, 12),
             delta_rgb=(9, 9, 9),
             outer_alpha=255,
-            edge_alpha=220,
+            edge_alpha=214,
             inner_rgba=(4, 4, 4, 255),
             border_rgba=(34, 34, 36, 128),
         ),
+        window_chrome=_theme_window_chrome("black", (12, 12, 12)),
+        sky_disc=_theme_sky_disc(1.0),
         splash=SplashStyle(
             gradient_rgb=((6, 6, 6), (3, 3, 3), (0, 0, 0)),
             frame_rgb=(56, 56, 64),
@@ -188,21 +288,23 @@ THEME_STYLES_BY_PRESET = {
     ),
     "transparent": ThemeStyle(
         text=TextStyle(
-            text=(242, 245, 250),
-            outline=(4, 4, 6, 214),
+            foreground_rgb=(242, 245, 250),
+            outline_rgba=(4, 4, 6, 214),
         ),
         status_text=TextStyle(
-            text=(255, 224, 224),
-            outline=(4, 4, 6, 214),
+            foreground_rgb=(255, 224, 224),
+            outline_rgba=(4, 4, 6, 214),
         ),
         window_background=WindowBackgroundStyle(
             base_rgb=(8, 8, 9),
             delta_rgb=(5, 5, 6),
             outer_alpha=86,
-            edge_alpha=40,
+            edge_alpha=35,
             inner_rgba=(4, 4, 4, 104),
             border_rgba=(24, 24, 28, 60),
         ),
+        window_chrome=_theme_window_chrome("transparent", (8, 8, 9)),
+        sky_disc=_theme_sky_disc(0.4),
         splash=SplashStyle(
             gradient_rgb=((8, 8, 8), (4, 4, 4), (0, 0, 0)),
             frame_rgb=(56, 56, 64),
@@ -213,17 +315,6 @@ THEME_STYLES_BY_PRESET = {
 
 THEME_PRESET_NAMES = tuple(THEME_STYLES_BY_PRESET.keys())
 BRIGHT_THEME_PRESETS = frozenset({"day", "white"})
-SKY_DISC_OPACITY_BY_PRESET = {
-    "night": 1.0,
-    "black": 1.0,
-    "day": 1.0,
-    "white": 1.0,
-    "transparent": 0.4,
-}
-
-TEXT_STYLES_BY_PRESET = {
-    preset: theme.text for preset, theme in THEME_STYLES_BY_PRESET.items()
-}
 
 
 HORIZON_LINE_COLOR = PALETTE_HORIZON_AND_LABEL_RGB
