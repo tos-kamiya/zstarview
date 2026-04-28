@@ -158,7 +158,7 @@
 - 候補は `importance` 降順で扱い、先頭候補を起動地点として採用する。
 - 複数候補が得られた場合でも起動時の対話選択は行わず、候補一覧を標準エラーまたは logger 出力へ流しつつ先頭候補を採用する。
 - `name` には Nominatim の `display_name` を保持し、GUI の地点表示にはその全体をそのまま使う。
-- 緯度経度を直接入力した場合の GUI 表示は、小数点以下 5 桁で整形してよい。表示用の丸め規則は `utils/latlon_format.py` にまとめ、建物 cache 名の座標部分とも共有してよい。
+- 緯度経度を直接入力した場合の GUI 表示は、小数点以下 5 桁で整形してよい。表示用の丸め規則は `utils/latlon_format.py` にまとめ、表示用定数と cache 再利用用定数を分けて管理してよい。
 - タイムゾーンは、採用した座標から最近傍の GeoNames 都市を引いて補完する。補完できない場合は UTC を使う。
 - HTTP エラー、レート制限、通信失敗、JSON 解析失敗、0 件結果は `StartupAbortError` 相当で起動中断とし、logger 経由でターミナルとスプラッシュへ表示する。
 - Nominatim 利用は起動時の単発検索に限定し、候補列挙だけの反復照会経路は持たない。
@@ -1459,13 +1459,13 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - dataset / tile sidecar の読み書きを担当する。
   - `fetched_at_utc`、`overture_release`、cache key を同じ sidecar に保存する。
   - 再取得成功時に release version を sidecar へ反映する。
-  - `lat/lon` を埋め込む dataset 名は、表示と同じ 5 桁丸め規則を共有しつつ、既存の記号置換規則を保って cache 互換性を維持する。
+  - `lat/lon` を埋め込む dataset 名は、cache 再利用用の 4 桁丸め規則を使い、表示用の 5 桁丸めとは分離して扱う。
 - `src/zstarview/cache_maintenance.py`
   - 長寿命 cache 削除とは独立した root-level release check metadata の読み書き補助を持ってよい。
   - ただし cache 削除ロジック自体は release 照合に依存させない。
 - `src/zstarview/utils/latlon_format.py`
-  - GUI 表示と Overture dataset 名で共通利用する緯度経度フォーマッタを持つ。
-  - 緯度経度の小数桁数を 1 箇所で変更できるようにする。
+  - GUI 表示用の 5 桁フォーマッタと、建物 dataset 名 / cache 再利用判定用の 4 桁フォーマッタを持つ。
+  - 緯度経度の小数桁数をそれぞれ 1 箇所で変更できるようにする。
 - `src/zstarview/gui/urban_outline_controller.py`
   - 起動時 / 初回有効化時の release 照合をトリガーする。
   - release 照合の失敗は警告ログに留め、表示中の cache は TTL で扱う。
