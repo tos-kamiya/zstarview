@@ -158,7 +158,7 @@ def test_radial_background_uses_black_inner_disc_for_all_main_themes() -> None:
     geom = ScreenGeometry(center=(80, 80), radius=60)
     rect = QRectF(0.0, 0.0, 160.0, 160.0)
 
-    for preset in ("white", "day", "night", "black"):
+    for preset in ("white", "day", "night", "black", "transparent"):
         img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
         img.fill(0)
         painter = QPainter(img)
@@ -168,7 +168,10 @@ def test_radial_background_uses_black_inner_disc_for_all_main_themes() -> None:
         arr = qimage_to_np_rgba(img)
         center_rgb = arr[80, 80, :3].astype(int)
 
-        assert np.array_equal(center_rgb, np.array([4, 4, 4])), preset
+        if preset == "transparent":
+            assert int(center_rgb.max()) <= 5, preset
+        else:
+            assert np.array_equal(center_rgb, np.array([4, 4, 4])), preset
 
 
 def test_radial_background_fades_between_content_fov_and_window_edge() -> None:
@@ -333,3 +336,22 @@ def test_window_frame_menu_panel_position_is_consistent_across_presets() -> None
     assert int(black_arr[20, 145, 3]) > 0
     assert int(night_arr[30, 125, 3]) == 0
     assert int(black_arr[30, 125, 3]) == 0
+
+
+def test_transparent_window_frame_skips_border_but_keeps_menu_and_grip() -> None:
+    img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
+    img.fill(0)
+    painter = QPainter(img)
+    draw_window_border(
+        painter,
+        QRectF(0.0, 0.0, 160.0, 160.0),
+        preset="transparent",
+    )
+    painter.end()
+
+    arr = qimage_to_np_rgba(img)
+
+    assert int(arr[1, 80, 3]) == 0
+    assert int(arr[80, 1, 3]) == 0
+    assert int(arr[20, 145, 3]) > 0
+    assert int(arr[155, 155, 3]) > 0

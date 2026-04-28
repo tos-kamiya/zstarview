@@ -10,6 +10,11 @@ def test_parse_theme_accepts_black_case_insensitive() -> None:
     assert _parse_theme(" BLACK ") == "black"
 
 
+def test_parse_theme_accepts_transparent_and_alias() -> None:
+    assert _parse_theme("transparent") == "transparent"
+    assert _parse_theme(" translucent ") == "transparent"
+
+
 def test_parse_theme_rejects_invalid_theme_with_updated_message() -> None:
     try:
         _parse_theme("dark")
@@ -18,4 +23,4 @@ def test_parse_theme_rejects_invalid_theme_with_updated_message() -> None:
     else:
         raise AssertionError("Expected argparse.ArgumentTypeError for invalid theme")
 
-    assert "night, day, white, black" in message
+    assert "night, day, white, black, transparent" in message

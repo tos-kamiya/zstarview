@@ -8,6 +8,7 @@ from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy, resolve_star_source_ids
 from ..asterisms import ASTERISMS, pick_rotating_asterism
+from ..paths import BRIGHT_THEME_PRESETS
 from ..paths import PALETTE_ASTERISM_RGB
 from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
 from .stars import _content_fov_deg_from_viewer
@@ -56,11 +57,12 @@ def draw_asterisms(
     if not star_altaz_by_source:
         return
 
-    base_line_color = QColor(*PALETTE_ASTERISM_RGB, 24 if preset in ("white", "day") else 21)
-    base_outline_color = QColor(*PALETTE_ASTERISM_RGB, 12 if preset in ("white", "day") else 9)
-    highlight_outer_color = QColor(*PALETTE_ASTERISM_RGB, 14 if preset in ("white", "day") else 10)
-    highlight_mid_color = QColor(*PALETTE_ASTERISM_RGB, 54 if preset in ("white", "day") else 40)
-    highlight_core_color = QColor(*PALETTE_ASTERISM_RGB, 124 if preset in ("white", "day") else 92)
+    is_bright_theme = preset in BRIGHT_THEME_PRESETS
+    base_line_color = QColor(*PALETTE_ASTERISM_RGB, 24 if is_bright_theme else 21)
+    base_outline_color = QColor(*PALETTE_ASTERISM_RGB, 12 if is_bright_theme else 9)
+    highlight_outer_color = QColor(*PALETTE_ASTERISM_RGB, 14 if is_bright_theme else 10)
+    highlight_mid_color = QColor(*PALETTE_ASTERISM_RGB, 54 if is_bright_theme else 40)
+    highlight_core_color = QColor(*PALETTE_ASTERISM_RGB, 124 if is_bright_theme else 92)
 
     painter.save()
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)

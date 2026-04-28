@@ -87,7 +87,7 @@ def test_draw_deep_sky_shapes_uses_the_same_fill_color_in_all_themes(monkeypatch
         lambda **_kwargs: SimpleNamespace(),
     )
 
-    for preset in ("night", "black", "white", "day"):
+    for preset in ("night", "black", "transparent", "white", "day"):
         painter.brush_rgbs.clear()
         render_deep_sky_objects.draw_deep_sky_shapes(
             painter,
@@ -121,7 +121,7 @@ def test_draw_dso_hover_info_uses_asterism_outline_color_in_all_themes() -> None
         SimpleNamespace(),
     )
 
-    for preset in ("night", "black", "white", "day"):
+    for preset in ("night", "black", "transparent", "white", "day"):
         painter.pen_rgbs.clear()
         render_deep_sky_objects.draw_dso_hover_info(
             painter,

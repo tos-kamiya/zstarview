@@ -137,6 +137,7 @@ def draw_window_border(
     preset: str = "night",
 ) -> None:
     """Draw a broad but subtle border around the window edges."""
+    is_transparent_theme = preset == "transparent"
     border_width = FRAMELESS_WINDOW_BORDER_WIDTH
     max_border_width = 0.25 * min(float(rect.width()), float(rect.height()))
     border_width = min(border_width, max_border_width)
@@ -158,31 +159,32 @@ def draw_window_border(
     painter.save()
     painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(border_color)
-    painter.drawRect(QRectF(left, top, border_width, rect.height()))
-    painter.drawRect(
-        QRectF(
-            right - border_width,
-            top + menu_size,
-            border_width,
-            max(0.0, rect.height() - menu_size),
+    if not is_transparent_theme:
+        painter.drawRect(QRectF(left, top, border_width, rect.height()))
+        painter.drawRect(
+            QRectF(
+                right - border_width,
+                top + menu_size,
+                border_width,
+                max(0.0, rect.height() - menu_size),
+            )
         )
-    )
-    painter.drawRect(
-        QRectF(
-            left + border_width,
-            top,
-            max(0.0, menu_left_edge - (left + border_width)),
-            border_width,
+        painter.drawRect(
+            QRectF(
+                left + border_width,
+                top,
+                max(0.0, menu_left_edge - (left + border_width)),
+                border_width,
+            )
         )
-    )
-    painter.drawRect(
-        QRectF(
-            left + border_width,
-            bottom - border_width,
-            max(0.0, rect.width() - 2.0 * border_width),
-            border_width,
+        painter.drawRect(
+            QRectF(
+                left + border_width,
+                bottom - border_width,
+                max(0.0, rect.width() - 2.0 * border_width),
+                border_width,
+            )
         )
-    )
     painter.drawRect(QRectF(menu_left_edge, menu_top_edge, menu_size, menu_size))
     menu_icon_color = QColor(*GUI_MENU_TEXT_COLOR)
     menu_icon_pen = QPen(menu_icon_color, 2.0)
@@ -193,9 +195,10 @@ def draw_window_border(
     for y in (menu_top_edge + 9.0, menu_top_edge + 14.0, menu_top_edge + 19.0):
         painter.drawLine(QPointF(menu_left, y), QPointF(menu_right, y))
     painter.setPen(Qt.PenStyle.NoPen)
-    inner_right = right - border_width
+    grip_inset = 1.5 if is_transparent_theme else border_width
+    inner_right = right - grip_inset
     grip_size = 28.0
-    inner_bottom = bottom - border_width
+    inner_bottom = bottom - grip_inset
     painter.drawPolygon(
         QPolygonF(
             [

@@ -186,6 +186,39 @@ THEME_STYLES_BY_PRESET = {
             info_text_rgb=(244, 248, 255),
         ),
     ),
+    "transparent": ThemeStyle(
+        text=TextStyle(
+            text=(242, 245, 250),
+            outline=(4, 4, 6, 214),
+        ),
+        status_text=TextStyle(
+            text=(255, 224, 224),
+            outline=(4, 4, 6, 214),
+        ),
+        window_background=WindowBackgroundStyle(
+            base_rgb=(8, 8, 9),
+            delta_rgb=(5, 5, 6),
+            outer_alpha=86,
+            edge_alpha=24,
+            inner_rgba=(4, 4, 4, 104),
+            border_rgba=(24, 24, 28, 60),
+        ),
+        splash=SplashStyle(
+            gradient_rgb=((8, 8, 8), (4, 4, 4), (0, 0, 0)),
+            frame_rgb=(56, 56, 64),
+            info_text_rgb=(244, 248, 255),
+        ),
+    ),
+}
+
+THEME_PRESET_NAMES = tuple(THEME_STYLES_BY_PRESET.keys())
+BRIGHT_THEME_PRESETS = frozenset({"day", "white"})
+SKY_DISC_OPACITY_BY_PRESET = {
+    "night": 1.0,
+    "black": 1.0,
+    "day": 1.0,
+    "white": 1.0,
+    "transparent": 0.4,
 }
 
 TEXT_STYLES_BY_PRESET = {

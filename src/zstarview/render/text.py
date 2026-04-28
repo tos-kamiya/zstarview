@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from PySide6.QtCore import QPointF, QRect, QRectF
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPainterPath, QPen
 
+from ..paths import BRIGHT_THEME_PRESETS
 from ..paths import THEME_STYLES_BY_PRESET
 
 
@@ -271,7 +272,7 @@ def resolve_label_text_style(
 ) -> ResolvedTextStyle:
     """Resolve a label style and suppress outlines in bright themes."""
     style = resolve_text_style(preset, font, opacity=opacity)
-    if preset not in ("white", "day"):
+    if preset not in BRIGHT_THEME_PRESETS:
         return style
     outline_color = QColor(style.outline_color)
     outline_color.setAlpha(0)

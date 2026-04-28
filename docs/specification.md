@@ -137,9 +137,12 @@ README より詳細に、何ができるか、どう振る舞うか、どのよ�
   - `window` では独自外枠、ハンバーガーメニュー、サイズ変更グリップは表示しない。
   - `window` のタイトルバー表示は地点名のみとしてよい。
 - `--theme`
-  - `night`、`day`、`white`、`black` を受け付ける。
+  - `night`、`day`、`white`、`black`、`transparent` を受け付ける。
   - テーマは、少なくとも通常ラベル、ステータス行、ウィンドウ背景、スプラッシュスクリーンの配色と透明度に反映される。
   - `day` と `white` では、暗いテーマよりも文字アウトライン幅を広くしてよい。
+  - `transparent` は黒寄りの半透明背景を使うテーマとしてよい。
+  - `transparent` では空色ディスクの見た目にも、他テーマより低い alpha を使ってよい。目安は `0.4` 前後としてよい。
+  - `transparent` ではフレームの外枠を描かず、右上メニューと右下グリップだけを残してよい。
 - `--urban-outline-opacity`
 - `-r`, `--urban-outline-radius-km`
 - `--urban-outline-skyscraper-radius-km`

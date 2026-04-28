@@ -26,3 +26,15 @@ def test_white_and_day_text_colors_are_slightly_brighter() -> None:
     assert THEME_STYLES_BY_PRESET["white"].status_text.text == (220, 155, 94)
     assert THEME_STYLES_BY_PRESET["day"].text.text == (233, 148, 112)
     assert THEME_STYLES_BY_PRESET["day"].status_text.text == (224, 142, 106)
+
+
+def test_transparent_theme_uses_low_alpha_dark_background() -> None:
+    transparent = THEME_STYLES_BY_PRESET["transparent"].window_background
+    black = THEME_STYLES_BY_PRESET["black"].window_background
+
+    assert transparent.base_rgb[0] <= 8
+    assert transparent.base_rgb[1] <= 8
+    assert transparent.base_rgb[2] <= 9
+    assert transparent.inner_rgba[3] < black.inner_rgba[3]
+    assert transparent.outer_alpha < black.outer_alpha
+    assert transparent.edge_alpha < black.edge_alpha
