@@ -59,6 +59,9 @@
   - 惑星・月レイヤでは、太陽をクロスのみ、惑星を輪郭のみへ切り替え、月は通常表示では輪郭のみとしつつ、`enlarge_moon` と hover による拡大表示は通常の月レンダリングを使うようにした。
   - 回帰テストとして、星の center pixel が空くこと、惑星・月の描画経路が outline-only へ切り替わること、window render の配線が通ることを確認した。
 
+- version bump
+  - `__version__` を `1.21.7` に上げた。
+
 ### 2026-04-14
 
 - Himawari partial-slot acceptance policy
