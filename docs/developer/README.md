@@ -17,6 +17,9 @@
   - OpenNGC (`pyongc`) を使った DSO カタログ生成手順
 - `docs/developer/viewpoint-dataset-generation.md`
   - tower / mountain viewpoint dataset の生成フローと運用方針
+- `docs/developer/urban-outline-shape-audit-script.md`
+  - derived building tiles に含まれる小さな footprint の分布を調べる監査スクリプト
+  - 1m ビンの CSV ヒストグラム出力を含む
 
 ## Notes
 
