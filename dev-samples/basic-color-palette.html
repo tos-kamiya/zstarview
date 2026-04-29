@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>zstarview basic color palette</title>
+  <style>
+    :root {
+      --bg: #111318;
+      --panel: #181b22;
+      --text: #eef2f7;
+      --muted: #a9b2c1;
+      --border: rgba(255, 255, 255, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top, rgba(255, 255, 255, 0.08), transparent 36%),
+        linear-gradient(180deg, #171a21 0%, var(--bg) 100%);
+    }
+
+    main {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 40px 20px 28px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 4vw, 40px);
+      letter-spacing: 0.02em;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .meta {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 18px;
+      margin-top: 24px;
+    }
+
+    .swatch {
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--panel);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.24);
+    }
+
+    .color {
+      height: 180px;
+    }
+
+    .info {
+      padding: 16px 16px 18px;
+    }
+
+    .name {
+      margin: 0 0 8px;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .usage {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 42px;
+    }
+
+    .code {
+      display: inline-block;
+      margin-right: 8px;
+      margin-top: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.05);
+      font-family: Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .palette-1 { background: rgb(240, 173, 122); }
+    .palette-2 { background: rgb(206, 122, 240); }
+    .palette-3 { background: rgb(206, 240, 122); }
+    .palette-4 { background: rgb(122, 226, 240); }
+    .palette-5 { background: rgb(216, 206, 192); }
+
+    .footer {
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .history {
+      margin-top: 30px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+    }
+
+    .history h2 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      letter-spacing: 0.01em;
+    }
+
+    .history-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .mini-swatch {
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .mini-color {
+      height: 72px;
+    }
+
+    .mini-info {
+      padding: 10px 12px 12px;
+    }
+
+    .mini-title {
+      margin: 0 0 4px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .mini-code {
+      margin: 0;
+      color: var(--muted);
+      font-family: Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    a {
+      color: #9dd3ff;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>zstarview basic color palette</h1>
+    <p>docs/design.md の「4.3.3 カラーパレット参照」にある基本4色の見本です。</p>
+
+    <div class="meta">
+      <p>各スウォッチは RGB と HEX を併記しています。背景色は見本の識別用で、パレット本体には含めていません。</p>
+    </div>
+
+    <section class="grid" aria-label="basic color swatches">
+      <article class="swatch">
+        <div class="color palette-1" aria-hidden="true"></div>
+        <div class="info">
+          <h2 class="name">1色目 - never-rises tint</h2>
+          <div class="code">RGB(240, 173, 122)</div>
+          <div class="code">#F0AD7A</div>
+          <div class="code">HSV(26°, 49.2%, 94.1%)</div>
+          <p class="usage">Never-rises 領域のティント色。</p>
+        </div>
+      </article>
+
+      <article class="swatch">
+        <div class="color palette-2" aria-hidden="true"></div>
+        <div class="info">
+          <h2 class="name">2色目 - aircraft / satellite</h2>
+          <div class="code">RGB(206, 122, 240)</div>
+          <div class="code">#CE7AF0</div>
+          <div class="code">HSV(283°, 49.2%, 94.1%)</div>
+          <p class="usage">航空機オーバーレイと衛星マーカーの色。</p>
+        </div>
+      </article>
+
+      <article class="swatch">
+        <div class="color palette-3" aria-hidden="true"></div>
+        <div class="info">
+          <h2 class="name">3色目 - horizon / labels</h2>
+          <div class="code">RGB(206, 240, 122)</div>
+          <div class="code">#CEF07A</div>
+          <div class="code">HSV(77°, 49.2%, 94.1%)</div>
+          <p class="usage">地平線線と方位ラベルの色。</p>
+        </div>
+      </article>
+
+      <article class="swatch">
+        <div class="color palette-4" aria-hidden="true"></div>
+        <div class="info">
+          <h2 class="name">4色目 - asterisms</h2>
+          <div class="code">RGB(122, 226, 240)</div>
+          <div class="code">#7AE2F0</div>
+          <div class="code">HSV(187°, 49.2%, 94.1%)</div>
+          <p class="usage">アステリズム線の色。</p>
+        </div>
+      </article>
+
+      <article class="swatch">
+        <div class="color palette-5" aria-hidden="true"></div>
+        <div class="info">
+          <h2 class="name">5色目 - terrain horizon</h2>
+          <div class="code">RGB(216, 206, 192)</div>
+          <div class="code">#D8CEC0</div>
+          <div class="code">HSV(31°, 11.1%, 84.7%)</div>
+          <p class="usage">地形地平線の色。1色目に少し寄せた、暖色寄りの中間色。</p>
+        </div>
+      </article>
+    </section>
+
+    <p class="footer">
+      Source: <a href="../docs/design.md">docs/design.md</a>
+    </p>
+  </main>
+</body>
+</html>
