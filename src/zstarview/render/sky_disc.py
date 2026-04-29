@@ -4,13 +4,13 @@ from typing import Tuple
 import numpy as np
 from PySide6.QtGui import QImage
 
-from ..paths import PALETTE_NEVER_RISES_RGB, TERRAIN_HORIZON_LINE_COLOR
+from ..paths import PALETTE_NEVER_RISES_RGB
 from ..types import ScreenGeometry
 from .qt_image import np_rgba_to_qimage
 
 
 TURBIDITY = 5  # 2 (clear blue sky) to 10 (hazy white sky)
-GROUND_TINT_RGB = np.array(TERRAIN_HORIZON_LINE_COLOR, dtype=np.float32) / 255.0
+GROUND_TINT_RGB = np.array(PALETTE_NEVER_RISES_RGB, dtype=np.float32) / 255.0
 NEVER_RISES_TINT_RGB = np.array(PALETTE_NEVER_RISES_RGB, dtype=np.float32) / 255.0
 NEVER_RISES_TINT_STRENGTH = 0.08
 FLAT_SKY_DISC_RGB_U8 = np.array([10, 10, 10], dtype=np.uint8)

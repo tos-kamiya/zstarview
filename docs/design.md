@@ -343,11 +343,10 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - direction labels
 - 4色目: `(122, 226, 240)` / `#7AE2F0`
   - asterisms
-- 5色目: `(148, 156, 131)` / `#949C83`
-  - ground-tone trial swatch
+- 5色目: `(216, 206, 192)` / `#D8CEC0`
+  - terrain horizon
 - 6色目: `(112, 99, 89)` / `#706359`
   - earth guide
-  - terrain horizon
 
 #### 4.3.4 描画境界と責務分離
 
