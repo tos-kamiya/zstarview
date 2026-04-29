@@ -448,6 +448,15 @@ def _build_compositor(
     )
 
 
+def _abort_export_without_partial_data() -> None:
+    logger.error(
+        "Export aborted because partial data is not allowed. Re-run with "
+        "--allow-partial-data to continue and still output an image when "
+        "terrain, urban, aircraft, or satellite data cannot be downloaded."
+    )
+    raise SystemExit(1)
+
+
 def _fetch_cloud_layer(
     *,
     viewer_data: ViewerData,
@@ -1170,9 +1179,6 @@ def main() -> None:
             )
         except Exception as exc:
             logger.warning("Export layer unavailable: cloud (%s)", exc)
-            layer_failures.append("cloud")
-            if not allow_partial_data:
-                raise SystemExit(1)
 
     terrain_horizon_profile = None
     terrain_horizon_profile_distances_m = None
@@ -1196,7 +1202,7 @@ def main() -> None:
             logger.warning("Export layer unavailable: terrain (%s)", exc)
             layer_failures.append("terrain")
             if not allow_partial_data:
-                raise SystemExit(1)
+                _abort_export_without_partial_data()
 
     urban_outlines = None
     if user_options.urban_outline_opacity > 0.0:
@@ -1210,7 +1216,7 @@ def main() -> None:
             logger.warning("Export layer unavailable: urban (%s)", exc)
             layer_failures.append("urban")
             if not allow_partial_data:
-                raise SystemExit(1)
+                _abort_export_without_partial_data()
 
     aircraft_overlay_points = None
     if user_options.aircraft_opacity > 0.0:
@@ -1224,7 +1230,7 @@ def main() -> None:
             logger.warning("Export layer unavailable: aircraft (%s)", exc)
             layer_failures.append("aircraft")
             if not allow_partial_data:
-                raise SystemExit(1)
+                _abort_export_without_partial_data()
 
     satellite_overlay_points = None
     if user_options.satellite_opacity > 0.0:
@@ -1239,11 +1245,10 @@ def main() -> None:
             logger.warning("Export layer unavailable: satellites (%s)", exc)
             layer_failures.append("satellites")
             if not allow_partial_data:
-                raise SystemExit(1)
+                _abort_export_without_partial_data()
 
     if layer_failures and not allow_partial_data:
-        logger.error("Export aborted because partial data is not allowed.")
-        raise SystemExit(1)
+        _abort_export_without_partial_data()
 
     style = _build_render_style(
         text_font=text_font,

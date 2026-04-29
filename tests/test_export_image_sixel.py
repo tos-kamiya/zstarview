@@ -359,6 +359,194 @@ def test_main_writes_overlay_summary_before_sixel(
     assert events == ["summary:Ceres", "sixel:/usr/bin/img2sixel"]
 
 
+def test_main_continues_when_cloud_layer_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[str] = []
+    viewer = mod.ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+    )
+    catalogs = SimpleNamespace(
+        star_catalog_np=object(),
+        star_catalog_lod6_indices=object(),
+        star_catalog_meta=None,
+        dso_catalog_np=None,
+    )
+    user_options = SimpleNamespace(
+        vmag_limit=6.0,
+        sky_disc_alpha=0.0,
+        cloud_disc_alpha=0.25,
+        satellite_opacity=0.0,
+        terrain_horizon_opacity=0.0,
+        urban_outline_opacity=0.0,
+        aircraft_opacity=0.0,
+        visual_preset="night",
+    )
+    runtime_options = SimpleNamespace(delta_t=0.0)
+
+    monkeypatch.setattr(
+        mod,
+        "parse_export_image_args",
+        lambda: SimpleNamespace(
+            sixel=True,
+            output=None,
+            image_size=(4, 4),
+            layer_timeout_seconds=30.0,
+            allow_partial_data=False,
+            include_direction_grid=False,
+        ),
+    )
+    monkeypatch.setattr(mod, "setup_root_logger", lambda: None)
+    monkeypatch.setattr(mod, "_require_img2sixel_binary", lambda: "/usr/bin/img2sixel")
+    monkeypatch.setattr(mod, "_require_sixel_terminal_support", lambda: None)
+    monkeypatch.setattr(
+        mod,
+        "_build_window_inputs_from_args",
+        lambda _args: (
+            catalogs,
+            viewer,
+            user_options,
+            runtime_options,
+            None,
+        ),
+    )
+    monkeypatch.setattr(
+        mod,
+        "setup_app",
+        lambda _name: SimpleNamespace(setQuitOnLastWindowClosed=lambda _flag: None),
+    )
+    monkeypatch.setattr(mod, "_load_fonts", lambda: (object(), object()))
+    monkeypatch.setattr(mod, "_build_compositor", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(
+        mod,
+        "compute_sky_snapshot",
+        lambda **_kwargs: {
+            "celestial": SimpleNamespace(
+                time=Time("2026-02-27T00:00:00", format="isot", scale="utc")
+            ),
+            "sky_disc": None,
+        },
+    )
+    monkeypatch.setattr(
+        mod,
+        "_fetch_cloud_layer",
+        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("No supported satellite for this region")),
+    )
+    monkeypatch.setattr(
+        mod,
+        "_build_render_style",
+        lambda **_kwargs: SimpleNamespace(vmag_limit=6.0),
+    )
+    monkeypatch.setattr(mod, "_render_image", lambda **_kwargs: object())
+    monkeypatch.setattr(
+        mod,
+        "_write_export_overlay_summary_to_stderr",
+        lambda **_kwargs: events.append("summary"),
+    )
+    monkeypatch.setattr(
+        mod,
+        "_write_sixel_to_stdout",
+        lambda _image, *, img2sixel_bin: events.append(f"sixel:{img2sixel_bin}") or True,
+    )
+
+    mod.main()
+
+    assert events == ["summary", "sixel:/usr/bin/img2sixel"]
+
+
+def test_main_reports_partial_data_note_when_terrain_layer_aborts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    messages: list[str] = []
+    viewer = mod.ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+    )
+    catalogs = SimpleNamespace(
+        star_catalog_np=object(),
+        star_catalog_lod6_indices=object(),
+        star_catalog_meta=None,
+        dso_catalog_np=None,
+    )
+    user_options = SimpleNamespace(
+        vmag_limit=6.0,
+        sky_disc_alpha=0.0,
+        cloud_disc_alpha=0.0,
+        satellite_opacity=0.0,
+        terrain_horizon_opacity=0.05,
+        urban_outline_opacity=0.0,
+        aircraft_opacity=0.0,
+        visual_preset="night",
+    )
+    runtime_options = SimpleNamespace(delta_t=0.0)
+
+    monkeypatch.setattr(
+        mod,
+        "parse_export_image_args",
+        lambda: SimpleNamespace(
+            sixel=True,
+            output=None,
+            image_size=(4, 4),
+            layer_timeout_seconds=30.0,
+            allow_partial_data=False,
+            include_direction_grid=False,
+        ),
+    )
+    monkeypatch.setattr(mod, "setup_root_logger", lambda: None)
+    monkeypatch.setattr(mod, "_require_img2sixel_binary", lambda: "/usr/bin/img2sixel")
+    monkeypatch.setattr(mod, "_require_sixel_terminal_support", lambda: None)
+    monkeypatch.setattr(
+        mod,
+        "_build_window_inputs_from_args",
+        lambda _args: (
+            catalogs,
+            viewer,
+            user_options,
+            runtime_options,
+            None,
+        ),
+    )
+    monkeypatch.setattr(
+        mod,
+        "setup_app",
+        lambda _name: SimpleNamespace(setQuitOnLastWindowClosed=lambda _flag: None),
+    )
+    monkeypatch.setattr(mod, "_load_fonts", lambda: (object(), object()))
+    monkeypatch.setattr(mod, "_build_compositor", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(
+        mod,
+        "compute_sky_snapshot",
+        lambda **_kwargs: {
+            "celestial": SimpleNamespace(
+                time=Time("2026-02-27T00:00:00", format="isot", scale="utc")
+            ),
+            "sky_disc": None,
+        },
+    )
+    monkeypatch.setattr(
+        mod,
+        "_fetch_terrain_horizon_layer",
+        lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("terrain timed out")),
+    )
+    monkeypatch.setattr(
+        mod.logger,
+        "error",
+        lambda message, *args, **kwargs: messages.append(
+            message % args if args else message
+        ),
+    )
+
+    with pytest.raises(SystemExit):
+        mod.main()
+
+    assert any("--allow-partial-data" in message for message in messages)
+
+
 def test_main_rejects_unsupported_sixel_terminal_before_loading_inputs(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
