@@ -146,8 +146,8 @@ def test_select_distance_band_peak_index_includes_last_upper_bound() -> None:
 
 
 def test_distance_band_alpha_drops_with_distance() -> None:
-    near = _distance_band_alpha(0, 4, 0.38)
-    far = _distance_band_alpha(3, 4, 0.38)
+    near = _distance_band_alpha(0, 7, 0.38)
+    far = _distance_band_alpha(6, 7, 0.38)
 
     assert near > far
     assert far < 0.1
@@ -170,7 +170,7 @@ def test_compute_horizon_layers_adds_nearest_secondary_band() -> None:
         refraction_coefficient=0.0,
     )
 
-    assert DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM[0] == 1.0
+    assert DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM[0] == 2.0
     assert len(layers.secondary_layers) == len(DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM)
     assert [point.distance_m for point in layers.secondary_layers[0]] == [500.0, 500.0]
 

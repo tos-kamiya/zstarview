@@ -27,9 +27,7 @@ URBAN_OUTLINE_HEIGHT_THICKEN_START_M = 100.0
 URBAN_OUTLINE_HEIGHT_THICKEN_FULL_M = 600.0
 TERRAIN_HORIZON_FAST_WIDTH = 3.6
 TERRAIN_HORIZON_FAR_BASE_WIDTH = 1.9
-TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH = 2.52
-TERRAIN_DISTANCE_BAND_FAR_OUTLINE_WIDTH = 1.33
-TERRAIN_DISTANCE_BAND_DECAY_EXPONENT = 1.35
+TERRAIN_DISTANCE_BAND_OUTLINE_WIDTH = 2.0
 
 
 def _urban_outline_foreground_alpha(opacity: float) -> float:
@@ -176,14 +174,7 @@ def _distance_band_widths(
     band_index: int,
     band_count: int,
 ) -> float:
-    if band_count <= 1:
-        return float(TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH)
-    t = max(0.0, min(1.0, float(band_index) / float(band_count - 1)))
-    eased_t = t ** TERRAIN_DISTANCE_BAND_DECAY_EXPONENT
-    outline_width = TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH - (
-        eased_t * (TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH - TERRAIN_DISTANCE_BAND_FAR_OUTLINE_WIDTH)
-    )
-    return outline_width
+    return float(TERRAIN_DISTANCE_BAND_OUTLINE_WIDTH)
 
 
 def _distance_band_alpha(
