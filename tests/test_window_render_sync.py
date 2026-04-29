@@ -3510,11 +3510,13 @@ def test_draw_terrain_secondary_ridges_use_fixed_widths(monkeypatch) -> None:
         normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
     )
 
-    assert len(painter.pen_widths) == 3
+    assert len(painter.pen_widths) == 6
     assert all(
-        width == pytest.approx(render_terrain_module.TERRAIN_DISTANCE_BAND_OUTLINE_WIDTH)
-        for width in painter.pen_widths
+        underlay > foreground
+        for underlay, foreground in zip(painter.pen_widths[0::2], painter.pen_widths[1::2])
     )
+    assert painter.pen_widths[1] > painter.pen_widths[3] > painter.pen_widths[5]
+    assert painter.pen_widths[0] > painter.pen_widths[2] > painter.pen_widths[4]
 
 
 def test_draw_terrain_horizon_line_uses_edge_fov_for_projection() -> None:
