@@ -67,6 +67,12 @@ class _Args:
     expected_render_width = 600
 
 
+class _ArgsWithoutWindowFrame(_Args):
+    @property
+    def window_frame(self) -> str:
+        raise AttributeError("window_frame")
+
+
 def _patch_common(monkeypatch, *, delta_t: timedelta) -> None:
     monkeypatch.setattr(mod, "resolve_launch_location", lambda *args, **kwargs: _City())
     monkeypatch.setattr(mod, "parse_launch_time_arguments", lambda *args, **kwargs: delta_t)
@@ -114,6 +120,23 @@ def test_build_window_inputs_propagates_cloud_stripe_mode(monkeypatch) -> None:
     _catalogs, _viewer_data, _user_options, runtime_options, _search_overlay_target = mod._build_window_inputs_from_args(args)
 
     assert runtime_options.cloud_stripe_mode == "alpha"
+
+
+def test_build_window_inputs_defaults_export_image_to_frameless(monkeypatch) -> None:
+    _patch_common(monkeypatch, delta_t=timedelta(0))
+
+    captured: dict[str, str] = {}
+    real_prepare_window_runtime_options = mod.prepare_window_runtime_options
+
+    def _capture_window_frame_mode(*args, **kwargs):
+        captured["window_frame_mode"] = kwargs["window_frame_mode"]
+        return real_prepare_window_runtime_options(*args, **kwargs)
+
+    monkeypatch.setattr(mod, "prepare_window_runtime_options", _capture_window_frame_mode)
+
+    mod._build_window_inputs_from_args(_ArgsWithoutWindowFrame())
+
+    assert captured["window_frame_mode"] == "frameless"
 
 
 def test_render_image_draws_direction_grid_when_requested(monkeypatch) -> None:

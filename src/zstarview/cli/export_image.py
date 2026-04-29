@@ -79,13 +79,6 @@ from ..render.pipeline import (
     render_base_scene_into_painter,
 )
 from ..render.search_overlay import draw_search_target_overlay
-
-
-class TerrainHorizonPayload(TypedDict):
-    profile_altaz: list[tuple[float, float]]
-    profile_distances_m: list[float]
-    secondary_profile_altaz_layers: list[list[tuple[float, float]]]
-    secondary_profile_distances_m_layers: list[list[float]]
 from ..search.resolver import compute_search_target_altaz, resolve_search_targets
 from ..search.jpl import search_jpl_targets
 from ..search.jpl import resolve_jpl_target_state_vector
@@ -121,6 +114,14 @@ from ..urban_outline_layer import resolve_urban_outline_layer_for_viewer
 from .args import parse_export_image_args
 
 logger = logging.getLogger(__name__)
+
+
+class TerrainHorizonPayload(TypedDict):
+    profile_altaz: list[tuple[float, float]]
+    profile_distances_m: list[float]
+    secondary_profile_altaz_layers: list[list[tuple[float, float]]]
+    secondary_profile_distances_m_layers: list[list[float]]
+
 
 DEFAULT_CLOUD_ALT_MIN_DEG = 1.0
 DEFAULT_CLOUD_FOV_OVERSCAN_DEG = 2.0
@@ -413,7 +414,7 @@ def _build_window_inputs_from_args(
         star_render_expected_width=getattr(args, "expected_render_width", 600),
         content_fov_deg=getattr(args, "content_fov_deg", 110.0),
         window_geometry_arg=None,
-        window_frame_mode=args.window_frame,
+        window_frame_mode="frameless",
     )
     return catalogs, viewer_data, user_options, runtime_options, search_overlay_target
 
