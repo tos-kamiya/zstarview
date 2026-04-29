@@ -59,6 +59,25 @@
       "viewpoint_height_m": 634.0
     },
     {
+      "id": "wikidata:Q18547",
+      "name": "上海中心",
+      "names": [
+        "上海中心"
+      ],
+      "labels": {},
+      "qid": "Q18547",
+      "latitude_deg": 31.2355,
+      "longitude_deg": 121.501,
+      "height_m": 632.0,
+      "viewpoint_types": [
+        "tower_or_high_observation"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q18547",
+      "location_arg": "31.235500;121.501000",
+      "slug": "上海中心",
+      "viewpoint_height_m": 632.0
+    },
+    {
       "id": "wikidata:Q168400",
       "name": "Canton Tower",
       "names": [
@@ -87,6 +106,25 @@
       "location_arg": "23.109200;113.319147",
       "slug": "Canton_Tower",
       "viewpoint_height_m": 600.0
+    },
+    {
+      "id": "wikidata:Q1077308",
+      "name": "平安金融中心",
+      "names": [
+        "平安金融中心"
+      ],
+      "labels": {},
+      "qid": "Q1077308",
+      "latitude_deg": 22.536666666,
+      "longitude_deg": 114.050277777,
+      "height_m": 599.05,
+      "viewpoint_types": [
+        "tower_or_high_observation"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q1077308",
+      "location_arg": "22.536667;114.050278",
+      "slug": "平安金融中心",
+      "viewpoint_height_m": 599.05
     },
     {
       "id": "wikidata:Q134883",
@@ -118,6 +156,25 @@
       "location_arg": "43.642753;-79.387147",
       "slug": "CN_Tower",
       "viewpoint_height_m": 553.3
+    },
+    {
+      "id": "wikidata:Q11245",
+      "name": "ワン・ワールド・トレード・センター",
+      "names": [
+        "ワン・ワールド・トレード・センター"
+      ],
+      "labels": {},
+      "qid": "Q11245",
+      "latitude_deg": 40.713,
+      "longitude_deg": -74.0135,
+      "height_m": 541.3,
+      "viewpoint_types": [
+        "tower_or_high_observation"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q11245",
+      "location_arg": "40.713000;-74.013500",
+      "slug": "ワン・ワールド・トレード・センター",
+      "viewpoint_height_m": 541.3
     },
     {
       "id": "wikidata:Q181324",
@@ -180,6 +237,25 @@
       "viewpoint_height_m": 468.0
     },
     {
+      "id": "wikidata:Q80852",
+      "name": "上海環球金融中心",
+      "names": [
+        "上海環球金融中心"
+      ],
+      "labels": {},
+      "qid": "Q80852",
+      "latitude_deg": 31.236666666,
+      "longitude_deg": 121.502777777,
+      "height_m": 492.0,
+      "viewpoint_types": [
+        "tower_or_high_observation"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q80852",
+      "location_arg": "31.236667;121.502778",
+      "slug": "上海環球金融中心",
+      "viewpoint_height_m": 492.0
+    },
+    {
       "id": "wikidata:Q622796",
       "name": "Milad Tower",
       "names": [
@@ -233,6 +309,30 @@
       "wikidata_url": "https://www.wikidata.org/wiki/Q745016",
       "location_arg": "3.152828;101.703749",
       "slug": "Kuala_Lumpur_Tower",
+      "viewpoint_height_m": 421.0
+    },
+    {
+      "id": "wikidata:Q80813",
+      "name": "Jin Mao Tower",
+      "names": [
+        "Jin Mao Tower",
+        "金茂大厦",
+        "ジンマオタワー"
+      ],
+      "labels": {
+        "en": "Jin Mao Tower",
+        "ja": "ジンマオタワー"
+      },
+      "qid": "Q80813",
+      "latitude_deg": 31.237222222,
+      "longitude_deg": 121.501388888,
+      "height_m": 421.0,
+      "viewpoint_types": [
+        "tower_or_high_observation"
+      ],
+      "wikidata_url": "https://www.wikidata.org/wiki/Q80813",
+      "location_arg": "31.237222;121.501389",
+      "slug": "Jin_Mao_Tower",
       "viewpoint_height_m": 421.0
     },
     {
