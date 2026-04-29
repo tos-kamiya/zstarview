@@ -3560,6 +3560,52 @@ def test_draw_terrain_horizon_line_uses_edge_fov_for_projection() -> None:
     assert points_120[0][1] < points_90[0][1]
 
 
+def test_draw_terrain_horizon_line_rotates_profile_away_from_north_seam() -> None:
+    class _Painter:
+        def __init__(self) -> None:
+            self.polylines: list[list[tuple[float, float]]] = []
+
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setPen(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawPolyline(self, poly) -> None:
+            self.polylines.append([(poly.at(i).x(), poly.at(i).y()) for i in range(poly.count())])
+
+    painter = _Painter()
+    render_terrain_module.draw_terrain_horizon_line(
+        painter,
+        geometry=SimpleNamespace(center=(0, 0), radius=1),
+        terrain_profile_altaz=[
+            (0.0, 0.0),
+            (0.0, 10.0),
+            (0.0, 180.0),
+            (0.0, 190.0),
+        ],
+        terrain_profile_distances_m=None,
+        view_center=(45.0, 180.0),
+        opacity=0.38,
+        edge_fov_deg=120.0,
+        content_fov_deg=180.0,
+        fast_mode=True,
+        is_in_fov_func=lambda *_args, **_kwargs: True,
+        altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
+            float(az),
+            float(alt),
+        ),
+        split_by_gaps_func=lambda points: [points],
+        normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+
+    assert painter.polylines
+    assert [point[0] for point in painter.polylines[0]] == [180.0, 190.0, 0.0, 10.0]
+
+
 def test_draw_star_layer_forwards_outline_flag(monkeypatch) -> None:
     captured: dict[str, object] = {}
 
