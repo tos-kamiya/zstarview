@@ -165,6 +165,28 @@ def _minimal_azimuth_cover(azimuth_deg: List[float]) -> Tuple[float, float, floa
     return start, end, span
 
 
+def _rotate_profile_by_largest_azimuth_gap(
+    samples: list[tuple[float, float, float]],
+) -> list[tuple[float, float, float]]:
+    if len(samples) < 3:
+        return samples
+    ordered = sorted(
+        samples,
+        key=lambda item: float(item[1]) % 360.0,
+    )
+    azimuths = [float(sample[1]) % 360.0 for sample in ordered]
+    augmented = azimuths + [azimuths[0] + 360.0]
+    largest_gap = -1.0
+    gap_index = 0
+    for index in range(len(azimuths)):
+        gap = augmented[index + 1] - augmented[index]
+        if gap > largest_gap:
+            largest_gap = gap
+            gap_index = index
+    start_index = (gap_index + 1) % len(ordered)
+    return ordered[start_index:] + ordered[:start_index]
+
+
 def terrain_horizon_line_alpha(opacity: float) -> float:
     """Return the alpha curve used by the terrain horizon line."""
     opacity = max(0.0, min(1.0, float(opacity)))
@@ -264,11 +286,23 @@ def _draw_terrain_profile_layer(
     if terrain_profile_distances_m is not None and len(terrain_profile_distances_m) != len(terrain_profile_altaz):
         terrain_profile_distances_m = None
 
-    points: list[tuple[float, float]] = []
-    distances_m: list[float] = []
+    samples: list[tuple[float, float, float]] = []
     for index, (alt, az) in enumerate(terrain_profile_altaz):
         if not is_in_fov_func(float(alt), float(az), view_center, fov_deg=content_fov_deg):
             continue
+        if terrain_profile_distances_m is not None:
+            distance_m = float(terrain_profile_distances_m[index])
+        else:
+            distance_m = float("nan")
+        samples.append((float(alt), float(az), distance_m))
+
+    if len(samples) < 2:
+        return
+
+    samples = _rotate_profile_by_largest_azimuth_gap(samples)
+    projected_points: list[tuple[float, float]] = []
+    distances_m: list[float] = []
+    for alt, az, distance_m in samples:
         try:
             nx, ny = altaz_to_normalized_xy_func(
                 float(alt),
@@ -283,14 +317,9 @@ def _draw_terrain_profile_layer(
                 view_center,
                 edge_fov_deg=edge_fov_deg,
             )
-        points.append((nx, ny))
-        if terrain_profile_distances_m is not None:
-            distances_m.append(float(terrain_profile_distances_m[index]))
-        else:
-            distances_m.append(float("nan"))
-
-    if len(points) < 2:
-        return
+        projected_points.append((nx, ny))
+        distances_m.append(distance_m)
+    points = projected_points
 
     color = QColor(*color_rgb)
     color.setAlphaF(max(0.0, min(1.0, float(fg_alpha))))
