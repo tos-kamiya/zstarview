@@ -169,7 +169,7 @@ def terrain_horizon_line_alpha(opacity: float) -> float:
 def terrain_secondary_ridge_line_alpha(opacity: float) -> float:
     """Return the alpha curve used by the secondary ridge overlay."""
     opacity = max(0.0, min(1.0, float(opacity)))
-    return max(0.0, min(1.0, 0.08 + (opacity * 0.28)))
+    return max(0.0, min(1.0, 0.06 + (opacity * 0.22)))
 
 
 def _distance_band_widths(

@@ -371,7 +371,7 @@ def _build_window_inputs_from_args(
         terrain_horizon_opacity=getattr(args, "terrain_horizon_opacity", 0.02),
         earth_guide_opacity=getattr(args, "earth_guide_opacity", 0.028),
         urban_outline_opacity=getattr(args, "urban_outline_opacity", 0.2),
-        ground_tint_opacity=getattr(args, "ground_tint_opacity", 0.08),
+        ground_tint_opacity=getattr(args, "ground_tint_opacity", 0.04),
         enlarge_moon=bool(getattr(args, "enlarge_moon", False)),
         bright_bodies_mode=str(getattr(args, "bright_bodies", "outline")),
         star_base_radius=args.star_base_radius,
@@ -515,7 +515,7 @@ def _fetch_terrain_horizon_layer(
         download = fetch_copernicus_dem(
             observer_lat_deg=float(viewer_data.lat_deg),
             observer_lon_deg=float(viewer_data.lon_deg),
-            max_distance_km=120.0,
+            max_distance_km=128.0,
             margin_km=10.0,
             cache_dir=Path(CACHE_PATH) / "copernicus-dem",
         )
@@ -536,7 +536,7 @@ def _fetch_terrain_horizon_layer(
         bbox = build_download_bbox(
             lat_deg=float(viewer_data.lat_deg),
             lon_deg=float(viewer_data.lon_deg),
-            radius_km=130.0,
+            radius_km=138.0,
         )
         dem_grid = dem.build_grid(bbox)
         ground_m = sample_ground_elevation(
@@ -556,7 +556,7 @@ def _fetch_terrain_horizon_layer(
             geod=WGS84_GEOD,
             observer=observer,
             azimuth_step_deg=1.0,
-            distance_samples_m=build_distance_samples(120.0, 90.0),
+            distance_samples_m=build_distance_samples(128.0, 90.0),
             dem_resampling="bilinear",
             earth_radius_m=EARTH_MEAN_RADIUS_M,
             refraction_coefficient=0.13,

@@ -3,7 +3,11 @@ from __future__ import annotations
 import numpy as np
 from rasterio.transform import Affine
 
+from zstarview.terrain.dem import WGS84_GEOD
 from zstarview.terrain.horizon import (
+    DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM,
+    ObserverLocation,
+    compute_horizon_layers,
     _prune_secondary_peak_indices_by_visibility,
     _prune_secondary_peak_indices_by_main_profile,
     _select_distance_band_peak_index,
@@ -18,6 +22,17 @@ from zstarview.terrain.dem import DemGrid, sample_ground_elevation
 class _IdentityTransformer:
     def transform(self, lon_deg: np.ndarray, lat_deg: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         return lon_deg, lat_deg
+
+
+class _FlatDemGrid:
+    def sample_lonlat(
+        self,
+        lon_deg: np.ndarray,
+        lat_deg: np.ndarray,
+        *,
+        method: str = "bilinear",
+    ) -> np.ndarray:
+        return np.zeros_like(lon_deg, dtype=np.float64)
 
 
 def test_build_distance_samples_covers_requested_distance() -> None:
@@ -135,7 +150,29 @@ def test_distance_band_alpha_drops_with_distance() -> None:
     far = _distance_band_alpha(3, 4, 0.38)
 
     assert near > far
-    assert far < 0.15
+    assert far < 0.1
+
+
+def test_compute_horizon_layers_adds_nearest_secondary_band() -> None:
+    layers = compute_horizon_layers(
+        dem_grid=_FlatDemGrid(),
+        geod=WGS84_GEOD,
+        observer=ObserverLocation(
+            latitude_deg=35.0,
+            longitude_deg=139.0,
+            observer_ground_m=0.0,
+            observer_eye_m=0.0,
+        ),
+        azimuth_step_deg=180.0,
+        distance_samples_m=build_distance_samples(128.0, 500.0),
+        dem_resampling="bilinear",
+        earth_radius_m=6_371_008.8,
+        refraction_coefficient=0.0,
+    )
+
+    assert DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM[0] == 1.0
+    assert len(layers.secondary_layers) == len(DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM)
+    assert [point.distance_m for point in layers.secondary_layers[0]] == [500.0, 500.0]
 
 
 def test_sample_ground_elevation_uses_default_elevation_for_nodata() -> None:
