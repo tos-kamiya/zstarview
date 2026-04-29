@@ -4,8 +4,20 @@ import numpy as np
 from PySide6.QtGui import QImage, QPainter
 
 from zstarview.gui.composite import SkyCompositorCache, mask_cloud_alpha_by_missing, overlay_missing_tint
+from zstarview.paths import PALETTE_NEVER_RISES_RGB
 from zstarview.types import ScreenGeometry
 from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
+
+
+EXPECTED_GROUND_TINT_RGB = np.array(PALETTE_NEVER_RISES_RGB, dtype=np.uint8)
+EXPECTED_NEVER_RISES_TINT_RGB = np.clip(
+    np.round(
+        np.array(PALETTE_NEVER_RISES_RGB, dtype=np.float32)
+        * (1.0 + 0.08)
+    ),
+    0,
+    255,
+).astype(np.uint8)
 
 
 def test_overlay_missing_with_hatch_tints_only_missing_region() -> None:
@@ -134,7 +146,7 @@ def test_compositor_terrain_profile_tints_ground_below_terrain_horizon() -> None
     arr_terrain = qimage_to_np_rgba(canvas_terrain)
 
     assert np.array_equal(arr_flat[24, 32, :3], np.array([100, 100, 100], dtype=np.uint8))
-    assert np.array_equal(arr_terrain[24, 32, :3], np.array([112, 99, 89], dtype=np.uint8))
+    assert np.array_equal(arr_terrain[24, 32, :3], EXPECTED_GROUND_TINT_RGB)
 
 
 def test_compositor_fast_mode_skips_ground_tint_and_never_rises_tint() -> None:
@@ -182,7 +194,7 @@ def test_compositor_fast_mode_skips_ground_tint_and_never_rises_tint() -> None:
 
     arr_normal = qimage_to_np_rgba(canvas_normal)
     arr_fast = qimage_to_np_rgba(canvas_fast)
-    assert np.array_equal(arr_normal[40, 32, :3], np.array([131, 113, 99], dtype=np.uint8))
+    assert np.array_equal(arr_normal[40, 32, :3], EXPECTED_NEVER_RISES_TINT_RGB)
     assert np.array_equal(arr_fast[40, 32, :3], np.array([100, 100, 100], dtype=np.uint8))
 
 
@@ -238,4 +250,4 @@ def test_compositor_reapplies_never_rises_tint_after_ground_fill() -> None:
     painter.end()
 
     arr = qimage_to_np_rgba(canvas)
-    assert np.array_equal(arr[40, 32, :3], np.array([131, 113, 99], dtype=np.uint8))
+    assert np.array_equal(arr[40, 32, :3], EXPECTED_NEVER_RISES_TINT_RGB)
