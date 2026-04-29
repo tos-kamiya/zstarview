@@ -15,7 +15,7 @@ from zstarview.terrain.horizon import (
     build_distance_samples,
     compute_apparent_altitudes,
 )
-from zstarview.render.terrain import _distance_band_alpha
+from zstarview.render.terrain import _distance_band_alpha, _distance_band_underlay_alpha, _distance_band_underlay_width, _distance_band_widths
 from zstarview.terrain.dem import DemGrid, sample_ground_elevation
 
 
@@ -147,10 +147,29 @@ def test_select_distance_band_peak_index_includes_last_upper_bound() -> None:
 
 def test_distance_band_alpha_drops_with_distance() -> None:
     near = _distance_band_alpha(0, 7, 0.38)
+    mid = _distance_band_alpha(3, 7, 0.38)
     far = _distance_band_alpha(6, 7, 0.38)
 
-    assert near > far
-    assert far < 0.1
+    assert near > mid > far
+    assert far < 0.08
+
+
+def test_distance_band_underlay_blur_increases_while_alpha_drops() -> None:
+    near_width = _distance_band_underlay_width(0, 7)
+    mid_width = _distance_band_underlay_width(3, 7)
+    far_width = _distance_band_underlay_width(6, 7)
+    near_foreground = _distance_band_widths(0, 7)
+    mid_foreground = _distance_band_widths(3, 7)
+    far_foreground = _distance_band_widths(6, 7)
+    near_alpha = _distance_band_underlay_alpha(0, 7, 0.38)
+    mid_alpha = _distance_band_underlay_alpha(3, 7, 0.38)
+    far_alpha = _distance_band_underlay_alpha(6, 7, 0.38)
+
+    assert near_width > near_foreground
+    assert mid_width > mid_foreground
+    assert far_width > far_foreground
+    assert near_alpha > mid_alpha > far_alpha
+    assert far_alpha < 0.01
 
 
 def test_compute_horizon_layers_adds_nearest_secondary_band() -> None:

@@ -27,7 +27,14 @@ URBAN_OUTLINE_HEIGHT_THICKEN_START_M = 100.0
 URBAN_OUTLINE_HEIGHT_THICKEN_FULL_M = 600.0
 TERRAIN_HORIZON_FAST_WIDTH = 3.6
 TERRAIN_HORIZON_FAR_BASE_WIDTH = 1.9
-TERRAIN_DISTANCE_BAND_OUTLINE_WIDTH = 2.0
+TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH = 2.0
+TERRAIN_DISTANCE_BAND_FAR_OUTLINE_WIDTH = 1.1
+TERRAIN_DISTANCE_BAND_WIDTH_DECAY_EXPONENT = 1.35
+TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_SCALE = 1.15
+TERRAIN_DISTANCE_BAND_UNDERLAY_FAR_SCALE = 1.55
+TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_ALPHA_SCALE = 0.10
+TERRAIN_DISTANCE_BAND_UNDERLAY_FAR_ALPHA_SCALE = 0.06
+TERRAIN_DISTANCE_BAND_ALPHA_DECAY_EXPONENT = 1.65
 
 
 def _urban_outline_foreground_alpha(opacity: float) -> float:
@@ -167,14 +174,50 @@ def terrain_horizon_line_alpha(opacity: float) -> float:
 def terrain_secondary_ridge_line_alpha(opacity: float) -> float:
     """Return the alpha curve used by the secondary ridge overlay."""
     opacity = max(0.0, min(1.0, float(opacity)))
-    return max(0.0, min(1.0, 0.06 + (opacity * 0.22)))
+    return max(0.0, min(1.0, 0.04 + (opacity * 0.16)))
 
 
 def _distance_band_widths(
     band_index: int,
     band_count: int,
 ) -> float:
-    return float(TERRAIN_DISTANCE_BAND_OUTLINE_WIDTH)
+    if band_count <= 1:
+        return float(TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH)
+    t = max(0.0, min(1.0, float(band_index) / float(band_count - 1)))
+    eased_t = t ** TERRAIN_DISTANCE_BAND_WIDTH_DECAY_EXPONENT
+    outline_width = TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH - (
+        eased_t * (TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH - TERRAIN_DISTANCE_BAND_FAR_OUTLINE_WIDTH)
+    )
+    return float(outline_width)
+
+
+def _distance_band_underlay_width(
+    band_index: int,
+    band_count: int,
+) -> float:
+    if band_count <= 1:
+        return float(TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH) * TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_SCALE
+    t = max(0.0, min(1.0, float(band_index) / float(band_count - 1)))
+    scale = TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_SCALE + (
+        t * (TERRAIN_DISTANCE_BAND_UNDERLAY_FAR_SCALE - TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_SCALE)
+    )
+    return float(_distance_band_widths(band_index, band_count)) * scale
+
+
+def _distance_band_underlay_alpha(
+    band_index: int,
+    band_count: int,
+    opacity: float,
+) -> float:
+    band_alpha = _distance_band_alpha(band_index, band_count, opacity)
+    if band_count <= 1:
+        return band_alpha * TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_ALPHA_SCALE
+    t = max(0.0, min(1.0, float(band_index) / float(band_count - 1)))
+    eased_t = t ** TERRAIN_DISTANCE_BAND_ALPHA_DECAY_EXPONENT
+    scale = TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_ALPHA_SCALE + (
+        eased_t * (TERRAIN_DISTANCE_BAND_UNDERLAY_FAR_ALPHA_SCALE - TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_ALPHA_SCALE)
+    )
+    return band_alpha * scale
 
 
 def _distance_band_alpha(
@@ -187,7 +230,8 @@ def _distance_band_alpha(
     if band_count <= 1:
         return near_alpha
     t = max(0.0, min(1.0, float(band_index) / float(band_count - 1)))
-    return near_alpha - (t * (near_alpha - far_alpha))
+    eased_t = t ** TERRAIN_DISTANCE_BAND_ALPHA_DECAY_EXPONENT
+    return near_alpha - (eased_t * (near_alpha - far_alpha))
 
 
 def _draw_terrain_profile_layer(
@@ -377,11 +421,42 @@ def draw_terrain_secondary_ridges(
             layer_index,
             layer_count,
         )
+        underlay_width = _distance_band_underlay_width(
+            layer_index,
+            layer_count,
+        )
         band_alpha = _distance_band_alpha(
             layer_index,
             layer_count,
             opacity,
         )
+        underlay_alpha = _distance_band_underlay_alpha(
+            layer_index,
+            layer_count,
+            opacity,
+        )
+        if underlay_alpha > 0.0 and underlay_width > base_width:
+            _draw_terrain_profile_layer(
+                painter,
+                geometry,
+                layer,
+                layer_distances_m,
+                view_center,
+                opacity=opacity,
+                base_width=underlay_width,
+                far_base_width=underlay_width,
+                fg_alpha=underlay_alpha,
+                line_width_scale=line_width_scale,
+                color_rgb=ridge_color_rgb,
+                fast_mode=fast_mode,
+                distance_widths=False,
+                edge_fov_deg=edge_fov_deg,
+                content_fov_deg=content_fov_deg,
+                is_in_fov_func=is_in_fov_func,
+                altaz_to_normalized_xy_func=altaz_to_normalized_xy_func,
+                normalized_to_screen_xy_func=normalized_to_screen_xy_func,
+                split_by_gaps_func=split_by_gaps_func,
+            )
         _draw_terrain_profile_layer(
             painter,
             geometry,
