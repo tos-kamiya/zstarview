@@ -23,6 +23,8 @@ URBAN_OUTLINE_UNDERLAY_MID_WIDTH = 7.2
 URBAN_OUTLINE_UNDERLAY_OUTER_WIDTH = 9.2
 URBAN_OUTLINE_UNDERLAY_MIN_DISTANCE_KM = 0.01
 URBAN_OUTLINE_NEAR_DISTANCE_KM = 0.5
+URBAN_OUTLINE_HEIGHT_THICKEN_START_M = 100.0
+URBAN_OUTLINE_HEIGHT_THICKEN_FULL_M = 600.0
 TERRAIN_HORIZON_FAST_WIDTH = 3.6
 TERRAIN_HORIZON_FAR_BASE_WIDTH = 1.9
 TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH = 2.52
@@ -32,6 +34,19 @@ TERRAIN_DISTANCE_BAND_DECAY_EXPONENT = 1.35
 
 def _urban_outline_foreground_alpha(opacity: float) -> float:
     return max(0.0, min(1.0, float(opacity)))
+
+
+def _urban_outline_height_width_scale(height_m: float) -> float:
+    height_m = float(height_m)
+    if height_m <= URBAN_OUTLINE_HEIGHT_THICKEN_START_M:
+        return 1.0
+    if height_m >= URBAN_OUTLINE_HEIGHT_THICKEN_FULL_M:
+        return 2.0
+    span = URBAN_OUTLINE_HEIGHT_THICKEN_FULL_M - URBAN_OUTLINE_HEIGHT_THICKEN_START_M
+    if span <= 0.0:
+        return 2.0
+    t = (height_m - URBAN_OUTLINE_HEIGHT_THICKEN_START_M) / span
+    return 1.0 + t
 
 
 def _urban_outline_underlay_alpha(opacity: float) -> float:
@@ -428,6 +443,8 @@ def draw_urban_outlines(
         distance_km = float(getattr(outline_entry, "distance_km", float("inf")))
         if len(outline) < 2:
             continue
+        height_scale = _urban_outline_height_width_scale(float(getattr(outline_entry, "height_m", 0.0)))
+        thickened_width_scale = width_scale * height_scale
         foreground_color = QColor(*URBAN_OUTLINE_LAYER_LINE_COLOR)
         foreground_color.setAlpha(
             max(0, min(255, int(round(255.0 * _urban_outline_foreground_alpha(opacity)))))
@@ -451,7 +468,7 @@ def draw_urban_outlines(
             )
             underlay_pen = QPen(
                 underlay_color,
-                _urban_outline_underlay_width(distance_km, width_scale=width_scale),
+                _urban_outline_underlay_width(distance_km, width_scale=thickened_width_scale),
                 Qt.PenStyle.SolidLine,
             )
             underlay_pen.setCosmetic(True)
@@ -463,7 +480,7 @@ def draw_urban_outlines(
             )
             mid_underlay_pen = QPen(
                 mid_underlay_color,
-                _urban_outline_mid_width(distance_km, width_scale=width_scale),
+                _urban_outline_mid_width(distance_km, width_scale=thickened_width_scale),
                 Qt.PenStyle.SolidLine,
             )
             mid_underlay_pen.setCosmetic(True)
@@ -475,7 +492,7 @@ def draw_urban_outlines(
             )
             outer_underlay_pen = QPen(
                 outer_underlay_color,
-                _urban_outline_outer_width(distance_km, width_scale=width_scale),
+                _urban_outline_outer_width(distance_km, width_scale=thickened_width_scale),
                 Qt.PenStyle.SolidLine,
             )
             outer_underlay_pen.setCosmetic(True)
