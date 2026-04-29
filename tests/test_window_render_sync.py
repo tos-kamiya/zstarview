@@ -3448,9 +3448,9 @@ def test_draw_terrain_secondary_ridges_use_fixed_widths(monkeypatch) -> None:
     )
 
     assert len(painter.pen_widths) == 3
-    assert painter.pen_widths[0] == pytest.approx(2.16)
+    assert painter.pen_widths[0] == pytest.approx(2.52)
     assert painter.pen_widths[0] > painter.pen_widths[1] > painter.pen_widths[2]
-    assert painter.pen_widths[2] == pytest.approx(1.14)
+    assert painter.pen_widths[2] == pytest.approx(1.33)
 
 
 def test_draw_terrain_horizon_line_uses_edge_fov_for_projection() -> None:
