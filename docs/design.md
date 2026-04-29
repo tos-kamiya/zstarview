@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-04-28
+最終更新: 2026-04-30
 
 ## 1. この文書の位置づけ
 
@@ -1149,10 +1149,12 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 ### 6.6 地形地平線更新フロー
 
 1. `TerrainHorizonController` が地点に応じた DEM 更新要求を受ける。
-2. 必要な DEM タイルを取得またはキャッシュから読込する。
-3. 方位ごとに見かけ地平線を計算する。
-4. 結果を地形地平線プロファイルとして UI に返す。
-5. 画面再投影時は既存プロファイルを使い回し、再取得はしない。
+2. `TerrainHorizonController` と export-image の地形処理は、`max_distance_km=128.0` を基準に距離サンプルを作る。
+3. DEM 取得側は `max_distance_km + 10.0 km` のマージンを足した bbox を使うため、現行実装では `138 km` 相当までのタイルを対象にする。
+4. 必要な DEM タイルを取得またはキャッシュから読込する。
+5. 方位ごとに見かけ地平線を計算する。
+6. 結果を地形地平線プロファイルとして UI に返す。
+7. 画面再投影時は既存プロファイルを使い回し、再取得はしない。
 
 ### 6.7 描画フロー
 
@@ -1186,8 +1188,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 16. `UrbanOutlineController` は通常レイヤーと skyscraper レイヤーをマージして 1 回の `urban_ready` として反映する。skyscraper 取得が失敗した場合は、通常レイヤーだけで `urban_ready` してよい。
 17. `--urban-outline-skyscraper-only` 指定時は、通常近距離 derived dataset の確認・取得・解決をスキップし、skyscraper レイヤーだけを解決する。
 18. 描画時は `50m` 以上を CLI 指定 opacity の基準とし、`0m` ではその `25%` になるよう高さ比例で alpha を下げる。
-19. 結果の outline 列は `UrbanOutlineState` と `SkyWindowState.urban_outlines` に反映し、再描画する。
-20. 取得中や失敗時はバナー文字列を UI 状態へ反映する。
+19. 高層建物の見やすさを上げるため、`100m` から `600m` の間で下地線の線幅だけを線形に太くしてよい。前景の濃い線は固定幅のまま維持してよい。
+20. 結果の outline 列は `UrbanOutlineState` と `SkyWindowState.urban_outlines` に反映し、再描画する。
+21. 取得中や失敗時はバナー文字列を UI 状態へ反映する。
 
 補足:
 - 旧 `list[list[(alt, az)]]` 形式の runtime 互換コードは削除し、都市アウトライン描画は `UrbanOutlinePolyline` のみを受け付ける。
@@ -1261,7 +1264,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `--sky-opacity 0`、`--cloud-opacity 0`、`--terrain-horizon-opacity 0`、`--earth-guide-opacity 0`、`--urban-outline-opacity 0` は、そのセッションで各 GUI トグルをロックアウトする。
 - `--visibility-boost` のような視認性補正は、CLI 層で `SkyWindowUserOptions` の opacity 群へ変換し、下流の描画コードには最終値だけを渡してよい。
 - 補助レイヤーは強く、小さい図形レイヤーは少し、主役レイヤーは据え置きという tiered profile として扱ってよい。
-- 変換の初期案としては、地形地平線、Earth guide、都市アウトライン、cloud missing tint のような補助レイヤーは `visibility_boost` をそのまま適用し、sky disc、cloud disc、航空機、人工衛星、月マーカー、短いラベル、ground tint のような小さい図形や薄い補助表示は増分の `25%` だけを適用し、主役レイヤーは `1.0` のままにしてよい。
+- 変換の初期案としては、地形地平線、Earth guide、都市アウトライン、cloud missing tint のような補助レイヤーは `visibility_boost` をそのまま適用し、sky disc、cloud disc、航空機、人工衛星、月マーカー、短いラベル、ground tint のような小さい図形や薄い補助表示は増分の `25%` だけを適用し、主役レイヤーは `1.0` のままにしてよい。ground tint の既定濃さは `0.04` 程度、never-rises tint は `0.06` 程度でよい。
 - 星、sky disc、雲本体、背景グラデーションのような主役レイヤーは、原則として boost しなくてよい。
 - ただし sky disc / cloud disc は視認性低下が気になる環境向けに、補正対象として扱ってよい。
 - 具体的には、`prepare_window_user_options` で `visibility_boost` を tier 別係数へ展開し、`prepare_window_runtime_options` 以降は通常の opacity 値として扱ってよい。
@@ -1304,6 +1307,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 遠距離スカイスクレーパー補助レイヤーは `building_part` を使わず `building` のみを扱い、runtime では `min_distance_km` を使って通常レイヤー半径より内側の建物を落とす。
 - 建物の高さ属性 `height_m` は Overture 建物属性の地表基準高さとして保持し、見かけ仰角計算では DEM から求めた `ground_elevation_m` を必ず加える。
 - `building_part` の `min_height_m` は、底面が地表より上から始まる場合のオフセットとして保持する。現在の上端輪郭描画では頂部計算を変えないが、将来の底面表現や厚み表現に利用してよい。
+- 描画の見やすさのため、高層建物の下地線だけは `height_m` に応じて太くしてよい。`100m` までは既定幅、`600m` 以上で 2 倍相当まで線形に増やしてよいが、最後の前景線は固定幅にしてよい。
 - 観測者側も `observer_height_m` 単独ではなく、観測地点の DEM 地盤標高を加えた絶対標高で扱う。
 - 仰角計算式は `atan2((ground_elevation_m + height_m) - (observer_ground_elevation_m + observer_height_m), distance_m)` を正本とする。
 - 現行 derived tile に `ground_elevation_m` を永続化しない場合でも、runtime 解決時に DEM サンプリングして同等の結果を得られることを優先する。
@@ -1390,6 +1394,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 - 目的は、毎回の再ダウンロードを避けつつ、長期間放置された DEM / 建物キャッシュが無期限に固定化されることを防ぐことである。
 - DEM は更新頻度が低いため、`fresh=90日`、`stale>90日` とする。
+- 地形地平線の距離帯は `1 / 2 / 4 / 8 / 16 / 32 / 64 / 128 km` を初期値として扱い、最遠帯までの計算は `128 km` を基準に行ってよい。
 - Overture 建物由来 cache は DEM より更新頻度が高いため、通常 derived dataset / skyscraper tile ともに `fresh=30日`、`stale>30日` とする。
 - 上記の TTL とは別に、可能な場合は Overture release の差分確認を追加の freshness シグナルとして使ってよい。
 - release 照合は起動時または都市アウトライン初回有効化時に行ってよいが、前回照合から `24時間` 以内なら省略してよい。
@@ -1416,6 +1421,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 2. 各 tile について sidecar metadata から `fetched_at_utc` を読む。無い場合は現在時刻で補完して書き戻す。
 3. fresh なら既存 tile をそのまま使う。
 4. stale なら既存 tile を入力に含めつつ、バックグラウンドで同じ key を再取得する。
+5. 距離帯や描画上限を変えても、既存 tile のうち要求範囲に重なるものは再利用し、外周で新たに必要になった tile だけを追加取得してよい。
 5. 再取得成功時は `*.tmp` + `replace()` で tile 本体と metadata を更新する。
 6. 再取得失敗時は stale tile を使い続け、UI には stale 利用中であることを示してよい。
 

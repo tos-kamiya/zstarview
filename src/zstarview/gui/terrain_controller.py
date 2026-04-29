@@ -36,7 +36,7 @@ class TerrainHorizonController(QObject):
         *,
         cache_dir: Path,
         observer_eye_m: float = 1.7,
-        max_distance_km: float = 120.0,
+        max_distance_km: float = 128.0,
         download_margin_km: float = 10.0,
         sample_step_m: float = 90.0,
         azimuth_step_deg: float = 1.0,
