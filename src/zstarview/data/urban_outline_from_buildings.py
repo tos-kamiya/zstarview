@@ -36,6 +36,7 @@ DEFAULT_EDGE_SAMPLE_STEP_M = 10.0
 HOLE_RING_SUPPRESSION_MIN_DISTANCE_M = 1000.0
 HOLE_RING_SUPPRESSION_MAX_SPAN_M = 250.0
 VERTICAL_THIN_RUN_MAX_NORMALIZED_HEIGHT = 0.01
+VERTICAL_THIN_RUN_MAX_ABS_ALTITUDE_DEG = 5.0
 
 
 @dataclass(frozen=True)
@@ -298,6 +299,8 @@ def _maybe_linearize_run_points(
         return run_points
 
     alt = np.array([point.altitude_deg for point in run_points], dtype=np.float64)
+    if float(np.max(np.abs(alt))) > VERTICAL_THIN_RUN_MAX_ABS_ALTITUDE_DEG:
+        return run_points
     az = np.array([point.azimuth_deg for point in run_points], dtype=np.float64)
     ny = np.array(
         [
