@@ -290,8 +290,8 @@ def test_maybe_linearize_run_points_collapses_vertical_thin_run() -> None:
 
     assert len(result) == 2
     assert result[0].altitude_deg == result[1].altitude_deg
-    assert result[0].azimuth_deg == run_points[0].azimuth_deg
-    assert result[1].azimuth_deg == run_points[-1].azimuth_deg
+    assert len({point.azimuth_deg for point in result}) == 2
+    assert {point.azimuth_deg for point in result} <= {10.0, 20.0, 30.0}
 
 
 def test_maybe_linearize_run_points_keeps_taller_run() -> None:
@@ -309,3 +309,22 @@ def test_maybe_linearize_run_points_keeps_taller_run() -> None:
     )
 
     assert result == run_points
+
+
+def test_maybe_linearize_run_points_keeps_distinct_endpoints_for_tight_vertical_run() -> None:
+    mod = _load_module()
+    run_points = [
+        mod.UrbanPolylinePoint(azimuth_deg=22.0, altitude_deg=30.0),
+        mod.UrbanPolylinePoint(azimuth_deg=22.0, altitude_deg=30.05),
+        mod.UrbanPolylinePoint(azimuth_deg=22.0, altitude_deg=30.1),
+    ]
+
+    result = mod._maybe_linearize_run_points(
+        run_points,
+        view_center=(5.0, 0.0),
+        edge_fov_deg=95.0,
+    )
+
+    assert len(result) == 2
+    assert result[0] != result[1]
+    assert {point.altitude_deg for point in result} == {30.0, 30.1}
