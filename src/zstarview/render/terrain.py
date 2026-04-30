@@ -7,6 +7,7 @@ from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 from ..astro import altaz_to_normalized_xy, is_in_fov
 from ..paths import (
     FIELD_OF_VIEW_DEG,
+    PALETTE_ASTERISM_RGB,
     TERRAIN_HORIZON_LINE_COLOR,
     URBAN_OUTLINE_LAYER_LINE_COLOR,
 )
@@ -34,7 +35,11 @@ TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_SCALE = 1.15
 TERRAIN_DISTANCE_BAND_UNDERLAY_FAR_SCALE = 1.55
 TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_ALPHA_SCALE = 0.10
 TERRAIN_DISTANCE_BAND_UNDERLAY_FAR_ALPHA_SCALE = 0.06
-TERRAIN_DISTANCE_BAND_ALPHA_DECAY_EXPONENT = 1.65
+TERRAIN_DISTANCE_BAND_ALPHA_DECAY_EXPONENT = 1.85
+TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB = PALETTE_ASTERISM_RGB
+TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB = TERRAIN_HORIZON_LINE_COLOR
+TERRAIN_SECONDARY_RIDGE_OCCLUSION_BIN_DEG = 1.0
+TERRAIN_SECONDARY_RIDGE_OCCLUSION_EPSILON_DEG = 0.05
 
 
 def _urban_outline_foreground_alpha(opacity: float) -> float:
@@ -196,7 +201,24 @@ def terrain_horizon_line_alpha(opacity: float) -> float:
 def terrain_secondary_ridge_line_alpha(opacity: float) -> float:
     """Return the alpha curve used by the secondary ridge overlay."""
     opacity = max(0.0, min(1.0, float(opacity)))
-    return max(0.0, min(1.0, 0.04 + (opacity * 0.16)))
+    return max(0.0, min(1.0, 0.03 + (opacity * 0.12)))
+
+
+def _azimuth_bin_key(az_deg: float, *, bin_size_deg: float = TERRAIN_SECONDARY_RIDGE_OCCLUSION_BIN_DEG) -> int:
+    if bin_size_deg <= 0.0:
+        return 0
+    az = float(az_deg) % 360.0
+    return int(math.floor(az / float(bin_size_deg)))
+
+
+def _circular_midpoint_azimuth_deg(start_az_deg: float, end_az_deg: float) -> float:
+    start = math.radians(float(start_az_deg) % 360.0)
+    end = math.radians(float(end_az_deg) % 360.0)
+    sin_sum = math.sin(start) + math.sin(end)
+    cos_sum = math.cos(start) + math.cos(end)
+    if abs(sin_sum) < 1.0e-12 and abs(cos_sum) < 1.0e-12:
+        return float(start_az_deg) % 360.0
+    return math.degrees(math.atan2(sin_sum, cos_sum)) % 360.0
 
 
 def _distance_band_widths(
@@ -438,14 +460,44 @@ def draw_terrain_secondary_ridges(
     if ridge_opacity <= 0.0:
         return
 
-    ridge_color_rgb = TERRAIN_HORIZON_LINE_COLOR
     if terrain_secondary_profile_distances_m_layers is not None and len(terrain_secondary_profile_distances_m_layers) != len(terrain_secondary_profile_layers):
         terrain_secondary_profile_distances_m_layers = None
     layer_count = len(terrain_secondary_profile_layers)
+    overlay_scale = 1.7
+    overlay_alpha_scale = 0.2
+    max_visible_alt_by_bin: dict[int, float] = {}
+
+    def _draw_segment(
+        start: QPointF,
+        end: QPointF,
+        *,
+        color_rgb: tuple[int, int, int],
+        alpha: float,
+        width: float,
+    ) -> None:
+        color = QColor(*color_rgb)
+        color.setAlphaF(max(0.0, min(1.0, float(alpha))))
+        pen = QPen(color, float(width), Qt.PenStyle.SolidLine)
+        pen.setCosmetic(True)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(pen)
+        painter.drawLine(start, end)
+
+    def _make_pen(
+        color_rgb: tuple[int, int, int],
+        alpha: float,
+        width: float,
+    ) -> QPen:
+        color = QColor(*color_rgb)
+        color.setAlphaF(max(0.0, min(1.0, float(alpha))))
+        pen = QPen(color, float(width), Qt.PenStyle.SolidLine)
+        pen.setCosmetic(True)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        return pen
+
     for layer_index, layer in enumerate(terrain_secondary_profile_layers):
-        layer_distances_m = None
-        if terrain_secondary_profile_distances_m_layers is not None:
-            layer_distances_m = terrain_secondary_profile_distances_m_layers[layer_index]
         base_width = _distance_band_widths(
             layer_index,
             layer_count,
@@ -464,49 +516,87 @@ def draw_terrain_secondary_ridges(
             layer_count,
             opacity,
         )
-        if underlay_alpha > 0.0 and underlay_width > base_width:
-            _draw_terrain_profile_layer(
-                painter,
-                geometry,
-                layer,
-                layer_distances_m,
-                view_center,
-                opacity=opacity,
-                base_width=underlay_width,
-                far_base_width=underlay_width,
-                fg_alpha=underlay_alpha,
-                line_width_scale=line_width_scale,
-                color_rgb=ridge_color_rgb,
-                fast_mode=fast_mode,
-                distance_widths=False,
-                edge_fov_deg=edge_fov_deg,
-                content_fov_deg=content_fov_deg,
-                is_in_fov_func=is_in_fov_func,
-                altaz_to_normalized_xy_func=altaz_to_normalized_xy_func,
-                normalized_to_screen_xy_func=normalized_to_screen_xy_func,
-                split_by_gaps_func=split_by_gaps_func,
+        visible_points: list[tuple[float, float]] = []
+        visible_altaz: list[tuple[float, float]] = []
+        for alt, az in layer:
+            if not is_in_fov_func(float(alt), float(az), view_center, fov_deg=content_fov_deg):
+                continue
+            try:
+                nx, ny = altaz_to_normalized_xy_func(
+                    float(alt),
+                    float(az),
+                    view_center,
+                    edge_fov_deg=float(edge_fov_deg),
+                )
+            except TypeError:
+                nx, ny = _project_altaz_to_normalized_xy(
+                    float(alt),
+                    float(az),
+                    view_center,
+                    edge_fov_deg=edge_fov_deg,
+                )
+            visible_points.append((nx, ny))
+            visible_altaz.append((float(alt), float(az)))
+
+        if len(visible_points) < 2:
+            continue
+
+        point_fragments = split_by_gaps_func(visible_points) if len(visible_points) > 2 else [visible_points]
+        for frag in point_fragments:
+            if len(frag) < 2:
+                continue
+            frag_points = [QPointF(*normalized_to_screen_xy_func(nx, ny, geometry)) for nx, ny in frag]
+            poly = QPolygonF(frag_points)
+            if underlay_alpha > 0.0 and underlay_width > base_width:
+                painter.setPen(
+                    _make_pen(
+                        TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB,
+                        underlay_alpha,
+                        float(underlay_width) * float(line_width_scale),
+                    )
+                )
+                painter.drawPolyline(poly)
+            painter.setPen(
+                _make_pen(
+                    TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB,
+                    band_alpha,
+                    float(base_width) * float(line_width_scale),
+                )
             )
-        _draw_terrain_profile_layer(
-            painter,
-            geometry,
-            layer,
-            layer_distances_m,
-            view_center,
-            opacity=opacity,
-            base_width=base_width,
-            far_base_width=base_width,
-            fg_alpha=band_alpha,
-            line_width_scale=line_width_scale,
-            color_rgb=ridge_color_rgb,
-            fast_mode=fast_mode,
-            distance_widths=False,
-            edge_fov_deg=edge_fov_deg,
-            content_fov_deg=content_fov_deg,
-            is_in_fov_func=is_in_fov_func,
-            altaz_to_normalized_xy_func=altaz_to_normalized_xy_func,
-            normalized_to_screen_xy_func=normalized_to_screen_xy_func,
-            split_by_gaps_func=split_by_gaps_func,
-        )
+            painter.drawPolyline(poly)
+
+        point_offset = 0
+        for frag in point_fragments:
+            if len(frag) < 2:
+                point_offset += len(frag)
+                continue
+            frag_points = [QPointF(*normalized_to_screen_xy_func(nx, ny, geometry)) for nx, ny in frag]
+            frag_altaz = visible_altaz[point_offset:point_offset + len(frag)]
+            point_offset += len(frag)
+            for start_idx, (start_point, end_point) in enumerate(zip(frag_points, frag_points[1:])):
+                start_alt, start_az = frag_altaz[start_idx]
+                end_alt, end_az = frag_altaz[start_idx + 1]
+                segment_mid_alt = 0.5 * (float(start_alt) + float(end_alt))
+                segment_mid_az = _circular_midpoint_azimuth_deg(float(start_az), float(end_az))
+                bin_key = _azimuth_bin_key(segment_mid_az)
+                is_occluded = segment_mid_alt <= (
+                    max_visible_alt_by_bin.get(bin_key, float("-inf"))
+                    - TERRAIN_SECONDARY_RIDGE_OCCLUSION_EPSILON_DEG
+                )
+                if is_occluded:
+                    continue
+                max_visible_alt_by_bin[bin_key] = max(
+                    max_visible_alt_by_bin.get(bin_key, float("-inf")),
+                    segment_mid_alt,
+                )
+                visible_width = max(0.7, base_width * overlay_scale)
+                _draw_segment(
+                    start_point,
+                    end_point,
+                    color_rgb=TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB,
+                    alpha=band_alpha * overlay_alpha_scale,
+                    width=visible_width * float(line_width_scale),
+                )
 
 
 def draw_urban_outlines(
