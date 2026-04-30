@@ -172,26 +172,18 @@ def _minimal_azimuth_cover(azimuth_deg: List[float]) -> Tuple[float, float, floa
     return start, end, span
 
 
-def _rotate_profile_by_largest_azimuth_gap(
+def _rotate_profile_to_seam_azimuth(
     samples: list[tuple[float, float, float]],
+    *,
+    seam_az_deg: float,
 ) -> list[tuple[float, float, float]]:
     if len(samples) < 3:
         return samples
-    ordered = sorted(
+    seam = float(seam_az_deg) % 360.0
+    return sorted(
         samples,
-        key=lambda item: float(item[1]) % 360.0,
+        key=lambda item: (float(item[1]) - seam) % 360.0,
     )
-    azimuths = [float(sample[1]) % 360.0 for sample in ordered]
-    augmented = azimuths + [azimuths[0] + 360.0]
-    largest_gap = -1.0
-    gap_index = 0
-    for index in range(len(azimuths)):
-        gap = augmented[index + 1] - augmented[index]
-        if gap > largest_gap:
-            largest_gap = gap
-            gap_index = index
-    start_index = (gap_index + 1) % len(ordered)
-    return ordered[start_index:] + ordered[:start_index]
 
 
 def terrain_horizon_line_alpha(opacity: float) -> float:
@@ -226,6 +218,13 @@ def _circular_midpoint_azimuth_deg(start_az_deg: float, end_az_deg: float) -> fl
 def _circular_azimuth_delta_deg(start_az_deg: float, end_az_deg: float) -> float:
     delta = (float(end_az_deg) - float(start_az_deg)) % 360.0
     return min(delta, 360.0 - delta)
+
+
+def _straddles_seam_azimuth(start_az_deg: float, end_az_deg: float, seam_az_deg: float) -> bool:
+    seam = float(seam_az_deg) % 360.0
+    start_rel = (float(start_az_deg) - seam) % 360.0
+    end_rel = (float(end_az_deg) - seam) % 360.0
+    return abs(start_rel - end_rel) > 180.0
 
 
 def _solid_pen(color_rgb: tuple[int, int, int], alpha: float, width: float) -> QPen:
@@ -338,7 +337,10 @@ def _draw_terrain_profile_layer(
     if len(samples) < 2:
         return
 
-    samples = _rotate_profile_by_largest_azimuth_gap(samples)
+    samples = _rotate_profile_to_seam_azimuth(
+        samples,
+        seam_az_deg=(float(view_center[1]) + 180.0) % 360.0,
+    )
     projected_points: list[tuple[float, float]] = []
     distances_m: list[float] = []
     for alt, az, distance_m in samples:
@@ -483,8 +485,45 @@ def draw_terrain_secondary_ridges(
     overlay_scale = 1.7
     overlay_alpha_scale = 0.2
     max_visible_alt_by_bin: dict[int, float] = {}
+    seam_az_deg = (float(view_center[1]) + 180.0) % 360.0
+
+    def _can_bridge_seam(
+        start_point: QPointF,
+        start_altaz: tuple[float, float],
+        end_point: QPointF,
+        end_altaz: tuple[float, float],
+    ) -> bool:
+        bridge_az_gap = _circular_azimuth_delta_deg(start_altaz[1], end_altaz[1])
+        bridge_straddles_seam = _straddles_seam_azimuth(
+            float(start_altaz[1]),
+            float(end_altaz[1]),
+            seam_az_deg,
+        )
+        bridge_screen_gap = math.hypot(
+            float(end_point.x()) - float(start_point.x()),
+            float(end_point.y()) - float(start_point.y()),
+        )
+        return (
+            bridge_az_gap <= TERRAIN_SECONDARY_RIDGE_SEAM_BRIDGE_AZ_GAP_DEG
+            and bridge_straddles_seam
+            and bridge_screen_gap <= TERRAIN_SECONDARY_RIDGE_SEAM_BRIDGE_SCREEN_GAP
+        )
 
     for layer_index, layer in enumerate(terrain_secondary_profile_layers):
+        if terrain_secondary_profile_distances_m_layers is not None:
+            layer_distances = terrain_secondary_profile_distances_m_layers[layer_index]
+        else:
+            layer_distances = [float("nan")] * len(layer)
+        layer_samples = [
+            (float(alt), float(az), float(distance_m))
+            for (alt, az), distance_m in zip(layer, layer_distances)
+        ]
+        if len(layer_samples) >= 3:
+            layer_samples = _rotate_profile_to_seam_azimuth(
+                layer_samples,
+                seam_az_deg=seam_az_deg,
+            )
+
         base_width = _distance_band_widths(
             layer_index,
             layer_count,
@@ -505,7 +544,7 @@ def draw_terrain_secondary_ridges(
         )
         visible_points: list[tuple[float, float]] = []
         visible_altaz: list[tuple[float, float]] = []
-        for alt, az in layer:
+        for alt, az, _distance_m in layer_samples:
             if not is_in_fov_func(float(alt), float(az), view_center, fov_deg=content_fov_deg):
                 continue
             try:
@@ -529,10 +568,14 @@ def draw_terrain_secondary_ridges(
             continue
 
         point_fragments = split_by_gaps_func(visible_points) if len(visible_points) > 2 else [visible_points]
+        point_offset = 0
         for frag in point_fragments:
             if len(frag) < 2:
+                point_offset += len(frag)
                 continue
             frag_points = [QPointF(*normalized_to_screen_xy_func(nx, ny, geometry)) for nx, ny in frag]
+            frag_altaz = visible_altaz[point_offset:point_offset + len(frag)]
+            point_offset += len(frag)
             poly = QPolygonF(frag_points)
             if underlay_alpha > 0.0 and underlay_width > base_width:
                 painter.setPen(
@@ -543,14 +586,14 @@ def draw_terrain_secondary_ridges(
                     )
                 )
                 painter.drawPolyline(poly)
-            painter.setPen(
-                _solid_pen(
-                    TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB,
-                    band_alpha,
-                    float(base_width) * float(line_width_scale),
+                painter.setPen(
+                    _solid_pen(
+                        TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB,
+                        band_alpha,
+                        float(base_width) * float(line_width_scale),
+                    )
                 )
-            )
-            painter.drawPolyline(poly)
+                painter.drawPolyline(poly)
 
         point_offset = 0
         visible_bridge_start: tuple[QPointF, tuple[float, float]] | None = None
@@ -594,20 +637,11 @@ def draw_terrain_secondary_ridges(
         if visible_bridge_start is not None and visible_bridge_end is not None:
             bridge_start_point, bridge_start_altaz = visible_bridge_start
             bridge_end_point, bridge_end_altaz = visible_bridge_end
-            bridge_az_gap = _circular_azimuth_delta_deg(bridge_start_altaz[1], bridge_end_altaz[1])
-            bridge_start_az = float(bridge_start_altaz[1]) % 360.0
-            bridge_end_az = float(bridge_end_altaz[1]) % 360.0
-            bridge_straddles_zero = (
-                abs(bridge_start_az - bridge_end_az) > 180.0
-            )
-            bridge_screen_gap = math.hypot(
-                float(bridge_end_point.x()) - float(bridge_start_point.x()),
-                float(bridge_end_point.y()) - float(bridge_start_point.y()),
-            )
-            if (
-                bridge_az_gap <= TERRAIN_SECONDARY_RIDGE_SEAM_BRIDGE_AZ_GAP_DEG
-                and bridge_straddles_zero
-                and bridge_screen_gap <= TERRAIN_SECONDARY_RIDGE_SEAM_BRIDGE_SCREEN_GAP
+            if _can_bridge_seam(
+                bridge_start_point,
+                bridge_start_altaz,
+                bridge_end_point,
+                bridge_end_altaz,
             ):
                 bridge_mid_alt = 0.5 * (float(bridge_start_altaz[0]) + float(bridge_end_altaz[0]))
                 bridge_mid_az = _circular_midpoint_azimuth_deg(
