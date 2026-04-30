@@ -3587,7 +3587,6 @@ def test_draw_terrain_secondary_ridges_swaps_visible_and_occluded_colors(monkeyp
     assert painter.pen_rgbs[2] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB
     assert painter.pen_rgbs[3] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB
     assert painter.pen_rgbs[4] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB
-    assert painter.pen_rgbs[2] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB
 
 
 def test_secondary_ridge_alpha_base_is_lower() -> None:

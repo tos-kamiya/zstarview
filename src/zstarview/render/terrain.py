@@ -221,6 +221,16 @@ def _circular_midpoint_azimuth_deg(start_az_deg: float, end_az_deg: float) -> fl
     return math.degrees(math.atan2(sin_sum, cos_sum)) % 360.0
 
 
+def _solid_pen(color_rgb: tuple[int, int, int], alpha: float, width: float) -> QPen:
+    color = QColor(*color_rgb)
+    color.setAlphaF(max(0.0, min(1.0, float(alpha))))
+    pen = QPen(color, float(width), Qt.PenStyle.SolidLine)
+    pen.setCosmetic(True)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+    return pen
+
+
 def _distance_band_widths(
     band_index: int,
     band_count: int,
@@ -467,36 +477,6 @@ def draw_terrain_secondary_ridges(
     overlay_alpha_scale = 0.2
     max_visible_alt_by_bin: dict[int, float] = {}
 
-    def _draw_segment(
-        start: QPointF,
-        end: QPointF,
-        *,
-        color_rgb: tuple[int, int, int],
-        alpha: float,
-        width: float,
-    ) -> None:
-        color = QColor(*color_rgb)
-        color.setAlphaF(max(0.0, min(1.0, float(alpha))))
-        pen = QPen(color, float(width), Qt.PenStyle.SolidLine)
-        pen.setCosmetic(True)
-        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-        painter.setPen(pen)
-        painter.drawLine(start, end)
-
-    def _make_pen(
-        color_rgb: tuple[int, int, int],
-        alpha: float,
-        width: float,
-    ) -> QPen:
-        color = QColor(*color_rgb)
-        color.setAlphaF(max(0.0, min(1.0, float(alpha))))
-        pen = QPen(color, float(width), Qt.PenStyle.SolidLine)
-        pen.setCosmetic(True)
-        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-        return pen
-
     for layer_index, layer in enumerate(terrain_secondary_profile_layers):
         base_width = _distance_band_widths(
             layer_index,
@@ -549,7 +529,7 @@ def draw_terrain_secondary_ridges(
             poly = QPolygonF(frag_points)
             if underlay_alpha > 0.0 and underlay_width > base_width:
                 painter.setPen(
-                    _make_pen(
+                    _solid_pen(
                         TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB,
                         underlay_alpha,
                         float(underlay_width) * float(line_width_scale),
@@ -557,7 +537,7 @@ def draw_terrain_secondary_ridges(
                 )
                 painter.drawPolyline(poly)
             painter.setPen(
-                _make_pen(
+                _solid_pen(
                     TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB,
                     band_alpha,
                     float(base_width) * float(line_width_scale),
@@ -590,13 +570,14 @@ def draw_terrain_secondary_ridges(
                     segment_mid_alt,
                 )
                 visible_width = max(0.7, base_width * overlay_scale)
-                _draw_segment(
-                    start_point,
-                    end_point,
-                    color_rgb=TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB,
-                    alpha=band_alpha * overlay_alpha_scale,
-                    width=visible_width * float(line_width_scale),
+                painter.setPen(
+                    _solid_pen(
+                        TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB,
+                        band_alpha * overlay_alpha_scale,
+                        visible_width * float(line_width_scale),
+                    )
                 )
+                painter.drawLine(start_point, end_point)
 
 
 def draw_urban_outlines(
