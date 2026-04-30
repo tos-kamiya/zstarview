@@ -42,6 +42,10 @@ TERRAIN_SECONDARY_RIDGE_OCCLUSION_BIN_DEG = 1.0
 TERRAIN_SECONDARY_RIDGE_OCCLUSION_EPSILON_DEG = 0.05
 TERRAIN_SECONDARY_RIDGE_SEAM_BRIDGE_SCREEN_GAP = 0.25
 TERRAIN_SECONDARY_RIDGE_SEAM_BRIDGE_AZ_GAP_DEG = 4.0
+TERRAIN_SECONDARY_RIDGE_GLOW_OUTER_WIDTH_SCALE = 2.05
+TERRAIN_SECONDARY_RIDGE_GLOW_MID_WIDTH_SCALE = 1.35
+TERRAIN_SECONDARY_RIDGE_GLOW_OUTER_ALPHA_SCALE = 0.06
+TERRAIN_SECONDARY_RIDGE_GLOW_MID_ALPHA_SCALE = 0.18
 
 
 def _urban_outline_foreground_alpha(opacity: float) -> float:
@@ -292,6 +296,27 @@ def _distance_band_alpha(
     t = max(0.0, min(1.0, float(band_index) / float(band_count - 1)))
     eased_t = t ** TERRAIN_DISTANCE_BAND_ALPHA_DECAY_EXPONENT
     return near_alpha - (eased_t * (near_alpha - far_alpha))
+
+
+def _terrain_secondary_ridge_glow_pass_specs(
+    visible_width: float,
+    base_alpha: float,
+) -> tuple[tuple[float, float], ...]:
+    core_width = max(0.7, float(visible_width))
+    return (
+        (
+            max(core_width, core_width * TERRAIN_SECONDARY_RIDGE_GLOW_OUTER_WIDTH_SCALE),
+            max(0.0, min(1.0, float(base_alpha) * TERRAIN_SECONDARY_RIDGE_GLOW_OUTER_ALPHA_SCALE)),
+        ),
+        (
+            max(core_width, core_width * TERRAIN_SECONDARY_RIDGE_GLOW_MID_WIDTH_SCALE),
+            max(0.0, min(1.0, float(base_alpha) * TERRAIN_SECONDARY_RIDGE_GLOW_MID_ALPHA_SCALE)),
+        ),
+        (
+            core_width,
+            max(0.0, min(1.0, float(base_alpha))),
+        ),
+    )
 
 
 def _draw_terrain_profile_layer(
@@ -625,14 +650,19 @@ def draw_terrain_secondary_ridges(
                     segment_mid_alt,
                 )
                 visible_width = max(0.7, base_width * overlay_scale)
-                painter.setPen(
-                    _solid_pen(
-                        TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB,
-                        band_alpha * overlay_alpha_scale,
-                        visible_width * float(line_width_scale),
+                visible_alpha = band_alpha * overlay_alpha_scale
+                for width_scale, alpha_scale in _terrain_secondary_ridge_glow_pass_specs(
+                    visible_width,
+                    visible_alpha,
+                ):
+                    painter.setPen(
+                        _solid_pen(
+                            TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB,
+                            alpha_scale,
+                            width_scale * float(line_width_scale),
+                        )
                     )
-                )
-                painter.drawLine(start_point, end_point)
+                    painter.drawLine(start_point, end_point)
 
         if visible_bridge_start is not None and visible_bridge_end is not None:
             bridge_start_point, bridge_start_altaz = visible_bridge_start
@@ -653,14 +683,20 @@ def draw_terrain_secondary_ridges(
                     max_visible_alt_by_bin.get(bridge_bin_key, float("-inf"))
                     - TERRAIN_SECONDARY_RIDGE_OCCLUSION_EPSILON_DEG
                 ):
-                    painter.setPen(
-                        _solid_pen(
-                            TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB,
-                            band_alpha * overlay_alpha_scale,
-                            max(0.7, base_width * overlay_scale) * float(line_width_scale),
+                    visible_width = max(0.7, base_width * overlay_scale)
+                    visible_alpha = band_alpha * overlay_alpha_scale
+                    for width_scale, alpha_scale in _terrain_secondary_ridge_glow_pass_specs(
+                        visible_width,
+                        visible_alpha,
+                    ):
+                        painter.setPen(
+                            _solid_pen(
+                                TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB,
+                                alpha_scale,
+                                width_scale * float(line_width_scale),
+                            )
                         )
-                    )
-                    painter.drawLine(bridge_start_point, bridge_end_point)
+                        painter.drawLine(bridge_start_point, bridge_end_point)
 
 
 def draw_urban_outlines(
