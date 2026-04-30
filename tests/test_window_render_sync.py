@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import astropy.time
+import math
 from dataclasses import replace
 from datetime import datetime, timezone
 from types import SimpleNamespace
@@ -3655,6 +3656,64 @@ def test_secondary_ridge_overlay_alpha_is_scaled_down(monkeypatch) -> None:
 
     assert len(painter.alphas) == 5
     assert painter.alphas[2] < painter.alphas[1] * 0.4
+
+
+def test_draw_terrain_secondary_ridges_bridges_seam_near_zero(monkeypatch) -> None:
+    monkeypatch.setattr(
+        render_terrain_module,
+        "is_in_fov",
+        lambda *_args, **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        render_terrain_module,
+        "split_by_gaps",
+        lambda points: [points],
+    )
+
+    class _Painter:
+        def __init__(self) -> None:
+            self.lines: list[tuple[tuple[float, float], tuple[float, float]]] = []
+
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setPen(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawLine(self, start, end) -> None:
+            self.lines.append(((float(start.x()), float(start.y())), (float(end.x()), float(end.y()))))
+
+        def drawPolyline(self, *_args) -> None:
+            pass
+
+    painter = _Painter()
+    render_terrain_module.draw_terrain_secondary_ridges(
+        painter,
+        geometry=SimpleNamespace(center=(0, 0), radius=1),
+        terrain_secondary_profile_layers=[
+            [(5.0, 359.0), (5.0, 0.0), (5.0, 1.0)],
+        ],
+        terrain_secondary_profile_distances_m_layers=[
+            [1_000.0, 2_000.0, 3_000.0],
+        ],
+        view_center=(45.0, 180.0),
+        opacity=0.38,
+        line_width_scale=1.0,
+        fast_mode=False,
+        is_in_fov_func=lambda *_args, **_kwargs: True,
+        altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
+            math.sin(math.radians(float(az))),
+            float(alt),
+        ),
+        normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+
+    assert len(painter.lines) == 3
+    assert painter.lines[-1][0][0] < 0.0
+    assert painter.lines[-1][1][0] > 0.0
 
 
 def test_draw_terrain_horizon_line_uses_edge_fov_for_projection() -> None:
