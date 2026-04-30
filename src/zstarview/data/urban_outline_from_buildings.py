@@ -26,6 +26,7 @@ from zstarview.data.urban_outline_common import (  # noqa: E402
     project_ring_xy,
     sample_ring_points_xy,
 )
+from zstarview.astro import altaz_to_normalized_xy  # noqa: E402
 from zstarview.location_resolver import TowerViewpoint, load_tower_viewpoints, resolve_tower_viewpoint  # noqa: E402
 from zstarview.location_resolver.viewpoints import normalize_viewpoint_name  # noqa: E402
 
@@ -34,6 +35,7 @@ DEFAULT_MIN_BUILDING_HEIGHT_M = 40.0
 DEFAULT_EDGE_SAMPLE_STEP_M = 10.0
 HOLE_RING_SUPPRESSION_MIN_DISTANCE_M = 1000.0
 HOLE_RING_SUPPRESSION_MAX_SPAN_M = 250.0
+VERTICAL_THIN_RUN_MAX_NORMALIZED_HEIGHT = 0.02
 
 
 @dataclass(frozen=True)
@@ -160,6 +162,8 @@ def compute_urban_outlines(
     radius_km: float,
     min_distance_km: float = 0.0,
     observer_ground_elevation_m: float = 0.0,
+    view_center: tuple[float, float] | None = None,
+    edge_fov_deg: float = 90.0,
     edge_sample_step_m: float,
 ) -> UrbanOutlineResult:
     if radius_km <= 0.0:
@@ -201,6 +205,8 @@ def compute_urban_outlines(
             min_distance_m=min_distance_m,
             radius_m=radius_m,
             edge_sample_step_m=edge_sample_step_m,
+            view_center=view_center,
+            edge_fov_deg=edge_fov_deg,
             outlines=outlines,
         )
         for ring_xy in projected_rings[1:]:
@@ -214,6 +220,8 @@ def compute_urban_outlines(
                 min_distance_m=min_distance_m,
                 radius_m=radius_m,
                 edge_sample_step_m=edge_sample_step_m,
+                view_center=view_center,
+                edge_fov_deg=edge_fov_deg,
                 outlines=outlines,
             )
 
@@ -234,6 +242,8 @@ def _emit_ring_outlines(
     min_distance_m: float,
     radius_m: float,
     edge_sample_step_m: float,
+    view_center: tuple[float, float] | None,
+    edge_fov_deg: float,
     outlines: list[UrbanOutlinePolyline],
 ) -> None:
     sampled_points = sample_ring_points_xy(ring_xy, sample_step_m=edge_sample_step_m)
@@ -253,6 +263,11 @@ def _emit_ring_outlines(
         run_points: list[UrbanPolylinePoint] = []
         for az, alt in zip(azimuth_deg[run], altitude_deg[run]):
             run_points.append(UrbanPolylinePoint(azimuth_deg=float(az), altitude_deg=float(alt)))
+        run_points = _maybe_linearize_run_points(
+            run_points,
+            view_center=view_center,
+            edge_fov_deg=edge_fov_deg,
+        )
         if len(run_points) >= 2:
             outlines.append(
                 UrbanOutlinePolyline(
@@ -271,6 +286,39 @@ def _should_skip_hole_ring(ring_xy: np.ndarray, *, building_distance_m: float) -
     span_x_m = float(np.ptp(ring_xy[:, 0]))
     span_y_m = float(np.ptp(ring_xy[:, 1]))
     return max(span_x_m, span_y_m) <= HOLE_RING_SUPPRESSION_MAX_SPAN_M
+
+
+def _maybe_linearize_run_points(
+    run_points: list[UrbanPolylinePoint],
+    *,
+    view_center: tuple[float, float] | None,
+    edge_fov_deg: float,
+) -> list[UrbanPolylinePoint]:
+    if view_center is None or len(run_points) < 2:
+        return run_points
+
+    alt = np.array([point.altitude_deg for point in run_points], dtype=np.float64)
+    az = np.array([point.azimuth_deg for point in run_points], dtype=np.float64)
+    ny = np.array(
+        [
+            altaz_to_normalized_xy(float(alt_deg), float(az_deg), view_center, edge_fov_deg=edge_fov_deg)[1]
+            for alt_deg, az_deg in zip(alt, az, strict=True)
+        ],
+        dtype=np.float64,
+    )
+    if float(np.ptp(ny)) > VERTICAL_THIN_RUN_MAX_NORMALIZED_HEIGHT:
+        return run_points
+
+    return [
+        UrbanPolylinePoint(
+            azimuth_deg=float(run_points[0].azimuth_deg),
+            altitude_deg=float(np.mean(alt)),
+        ),
+        UrbanPolylinePoint(
+            azimuth_deg=float(run_points[-1].azimuth_deg),
+            altitude_deg=float(np.mean(alt)),
+        ),
+    ]
 
 
 def np_hypot_xy(points_xy):
