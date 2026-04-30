@@ -361,6 +361,11 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - レイヤー入力: celestial、sky disc、cloud、terrain horizon、urban outline、aircraft overlay などの描画用データ
   - 描画関数群: `QPainter` または `QImage` に対して各レイヤーを順に描く純粋寄りの関数
 - `gui/window_render.py` は、hover 判定、jump highlight、frame cache、interaction mode など GUI 固有の責務を担い、描画本体への依存を薄く保つ。
+- `terrain` レイヤーは、地形地平線の主線と副稜線を担当する。
+  - 主線は距離に応じた線幅と alpha を使い、近い側ほど強く、遠い側ほど弱く描いてよい。
+  - 副稜線はまず従来色の連続ポリラインとして全体を描き、その後に見えている部分だけを別色の細い線で上塗りしてよい。
+  - 可視/不可視の判定は、方位を粗い bin にまとめたうえで、近い稜線から見た最大仰角を保持する単純な occlusion heuristic でよい。
+  - 上塗り線は、下地線より細く、alpha も弱くして空の光のような縁取りとして扱ってよい。
 
 #### 4.3.5 描画パイプライン構成
 

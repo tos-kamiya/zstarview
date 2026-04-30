@@ -40,6 +40,8 @@ TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB = PALETTE_ASTERISM_RGB
 TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB = TERRAIN_HORIZON_LINE_COLOR
 TERRAIN_SECONDARY_RIDGE_OCCLUSION_BIN_DEG = 1.0
 TERRAIN_SECONDARY_RIDGE_OCCLUSION_EPSILON_DEG = 0.05
+TERRAIN_SECONDARY_RIDGE_SEAM_BRIDGE_SCREEN_GAP = 0.25
+TERRAIN_SECONDARY_RIDGE_SEAM_BRIDGE_AZ_GAP_DEG = 4.0
 
 
 def _urban_outline_foreground_alpha(opacity: float) -> float:
@@ -219,6 +221,11 @@ def _circular_midpoint_azimuth_deg(start_az_deg: float, end_az_deg: float) -> fl
     if abs(sin_sum) < 1.0e-12 and abs(cos_sum) < 1.0e-12:
         return float(start_az_deg) % 360.0
     return math.degrees(math.atan2(sin_sum, cos_sum)) % 360.0
+
+
+def _circular_azimuth_delta_deg(start_az_deg: float, end_az_deg: float) -> float:
+    delta = (float(end_az_deg) - float(start_az_deg)) % 360.0
+    return min(delta, 360.0 - delta)
 
 
 def _solid_pen(color_rgb: tuple[int, int, int], alpha: float, width: float) -> QPen:
@@ -546,6 +553,8 @@ def draw_terrain_secondary_ridges(
             painter.drawPolyline(poly)
 
         point_offset = 0
+        visible_bridge_start: tuple[QPointF, tuple[float, float]] | None = None
+        visible_bridge_end: tuple[QPointF, tuple[float, float]] | None = None
         for frag in point_fragments:
             if len(frag) < 2:
                 point_offset += len(frag)
@@ -553,6 +562,9 @@ def draw_terrain_secondary_ridges(
             frag_points = [QPointF(*normalized_to_screen_xy_func(nx, ny, geometry)) for nx, ny in frag]
             frag_altaz = visible_altaz[point_offset:point_offset + len(frag)]
             point_offset += len(frag)
+            if visible_bridge_start is None:
+                visible_bridge_start = (frag_points[0], frag_altaz[0])
+            visible_bridge_end = (frag_points[-1], frag_altaz[-1])
             for start_idx, (start_point, end_point) in enumerate(zip(frag_points, frag_points[1:])):
                 start_alt, start_az = frag_altaz[start_idx]
                 end_alt, end_az = frag_altaz[start_idx + 1]
@@ -578,6 +590,43 @@ def draw_terrain_secondary_ridges(
                     )
                 )
                 painter.drawLine(start_point, end_point)
+
+        if visible_bridge_start is not None and visible_bridge_end is not None:
+            bridge_start_point, bridge_start_altaz = visible_bridge_start
+            bridge_end_point, bridge_end_altaz = visible_bridge_end
+            bridge_az_gap = _circular_azimuth_delta_deg(bridge_start_altaz[1], bridge_end_altaz[1])
+            bridge_start_az = float(bridge_start_altaz[1]) % 360.0
+            bridge_end_az = float(bridge_end_altaz[1]) % 360.0
+            bridge_straddles_zero = (
+                abs(bridge_start_az - bridge_end_az) > 180.0
+            )
+            bridge_screen_gap = math.hypot(
+                float(bridge_end_point.x()) - float(bridge_start_point.x()),
+                float(bridge_end_point.y()) - float(bridge_start_point.y()),
+            )
+            if (
+                bridge_az_gap <= TERRAIN_SECONDARY_RIDGE_SEAM_BRIDGE_AZ_GAP_DEG
+                and bridge_straddles_zero
+                and bridge_screen_gap <= TERRAIN_SECONDARY_RIDGE_SEAM_BRIDGE_SCREEN_GAP
+            ):
+                bridge_mid_alt = 0.5 * (float(bridge_start_altaz[0]) + float(bridge_end_altaz[0]))
+                bridge_mid_az = _circular_midpoint_azimuth_deg(
+                    float(bridge_start_altaz[1]),
+                    float(bridge_end_altaz[1]),
+                )
+                bridge_bin_key = _azimuth_bin_key(bridge_mid_az)
+                if bridge_mid_alt > (
+                    max_visible_alt_by_bin.get(bridge_bin_key, float("-inf"))
+                    - TERRAIN_SECONDARY_RIDGE_OCCLUSION_EPSILON_DEG
+                ):
+                    painter.setPen(
+                        _solid_pen(
+                            TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB,
+                            band_alpha * overlay_alpha_scale,
+                            max(0.7, base_width * overlay_scale) * float(line_width_scale),
+                        )
+                    )
+                    painter.drawLine(bridge_start_point, bridge_end_point)
 
 
 def draw_urban_outlines(
