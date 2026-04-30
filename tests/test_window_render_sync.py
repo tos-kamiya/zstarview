@@ -3511,14 +3511,15 @@ def test_draw_terrain_secondary_ridges_use_fixed_widths(monkeypatch) -> None:
         normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
     )
 
-    assert len(painter.pen_widths) == 12
-    for offset in (0, 4, 8):
-        chunk = painter.pen_widths[offset : offset + 4]
+    assert len(painter.pen_widths) == 24
+    for offset in (0, 8, 16):
+        chunk = painter.pen_widths[offset : offset + 8]
         assert chunk[0] > chunk[1]
-        assert all(overlay > chunk[1] for overlay in chunk[2:])
-        assert chunk[2] >= chunk[1] * 1.6
-    assert painter.pen_widths[1] > painter.pen_widths[5] > painter.pen_widths[9]
-    assert painter.pen_widths[0] > painter.pen_widths[4] > painter.pen_widths[8]
+        assert chunk[2] > chunk[3] > chunk[4]
+        assert chunk[5] > chunk[6] > chunk[7]
+        assert chunk[4] == pytest.approx(chunk[7])
+    assert painter.pen_widths[1] > painter.pen_widths[9] > painter.pen_widths[17]
+    assert painter.pen_widths[0] > painter.pen_widths[8] > painter.pen_widths[16]
 
 
 def test_draw_terrain_secondary_ridges_swaps_visible_and_occluded_colors(monkeypatch) -> None:
@@ -3582,12 +3583,14 @@ def test_draw_terrain_secondary_ridges_swaps_visible_and_occluded_colors(monkeyp
         normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
     )
 
-    assert len(painter.pen_rgbs) == 5
+    assert len(painter.pen_rgbs) == 7
     assert painter.pen_rgbs[0] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB
     assert painter.pen_rgbs[1] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB
     assert painter.pen_rgbs[2] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB
-    assert painter.pen_rgbs[3] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB
-    assert painter.pen_rgbs[4] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB
+    assert painter.pen_rgbs[3] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB
+    assert painter.pen_rgbs[4] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB
+    assert painter.pen_rgbs[5] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB
+    assert painter.pen_rgbs[6] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB
 
 
 def test_secondary_ridge_alpha_base_is_lower() -> None:
@@ -3654,8 +3657,9 @@ def test_secondary_ridge_overlay_alpha_is_scaled_down(monkeypatch) -> None:
         normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
     )
 
-    assert len(painter.alphas) == 5
-    assert painter.alphas[2] < painter.alphas[1] * 0.4
+    assert len(painter.alphas) == 7
+    assert painter.alphas[2] < painter.alphas[3] < painter.alphas[4]
+    assert painter.alphas[4] < painter.alphas[1] * 0.4
 
 
 def test_draw_terrain_secondary_ridges_bridges_seam_near_zero(monkeypatch) -> None:
@@ -3712,13 +3716,14 @@ def test_draw_terrain_secondary_ridges_bridges_seam_near_zero(monkeypatch) -> No
         split_by_gaps_func=lambda points: [points],
     )
 
-    assert len(painter.lines) == 3
-    assert painter.lines[0][0][0] == pytest.approx(0.0)
-    assert painter.lines[0][1][0] == pytest.approx(math.sin(math.radians(1.0)))
-    assert painter.lines[1][0][0] == pytest.approx(math.sin(math.radians(1.0)))
-    assert painter.lines[1][1][0] == pytest.approx(math.sin(math.radians(359.0)))
-    assert painter.lines[2][0][0] == pytest.approx(0.0)
-    assert painter.lines[2][1][0] == pytest.approx(math.sin(math.radians(359.0)))
+    assert len(painter.lines) == 9
+    expected_lines = [
+        ((0.0, 5.0), (math.sin(math.radians(1.0)), 5.0)),
+        ((math.sin(math.radians(1.0)), 5.0), (math.sin(math.radians(359.0)), 5.0)),
+        ((0.0, 5.0), (math.sin(math.radians(359.0)), 5.0)),
+    ]
+    for expected_start, expected_end in expected_lines:
+        assert painter.lines.count((expected_start, expected_end)) == 3
 
 
 def test_draw_terrain_horizon_line_uses_edge_fov_for_projection() -> None:
