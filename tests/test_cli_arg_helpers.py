@@ -166,6 +166,12 @@ def test_parse_args_accepts_terrain_horizon_opacity_short_option() -> None:
     assert args.terrain_horizon_opacity == 0.5
 
 
+def test_parse_args_defaults_terrain_horizon_opacity() -> None:
+    args = cli_args.parse_args(["Matsue"])
+
+    assert args.terrain_horizon_opacity == 0.008
+
+
 def test_parse_args_accepts_earth_guide_opacity_short_option() -> None:
     args = cli_args.parse_args(["-e", "0.4", "Matsue"])
 

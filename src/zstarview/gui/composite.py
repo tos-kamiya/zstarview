@@ -681,7 +681,7 @@ def _apply_ground_tint(
     geometry: ScreenGeometry,
     view_center: Tuple[float, float],
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
-    ground_tint_opacity: float = 0.08,
+    ground_tint_opacity: float = 0.04,
     observer_lat_deg: float | None = None,
     edge_fov_deg: float = 90.0,
     content_fov_deg: float,
@@ -774,7 +774,7 @@ class SkyCompositorCache:
         cloud_stripe_width_factor: float = 0.85,
         cloud_stripe_mode: str = "width",
         missing_tint_rgba: Tuple[int, int, int, int] = CLOUD_MISSING_TINT_RGBA,
-        ground_tint_opacity: float = 0.08,
+        ground_tint_opacity: float = 0.04,
     ) -> None:
         self._hatch_cfg = hatch_cfg
         self._gray_mix = gray_mix
@@ -811,7 +811,7 @@ class SkyCompositorCache:
         cloud_amount_field: Optional[CloudAmountField] = None,
         missing_mask: Optional[np.ndarray] = None,
         terrain_profile_altaz: list[tuple[float, float]] | None = None,
-        terrain_horizon_opacity: float = 0.02,
+        terrain_horizon_opacity: float = 0.008,
         earth_guide_opacity: float = 0.028,
         edge_fov_deg: float = 90.0,
         content_fov_deg: float,
