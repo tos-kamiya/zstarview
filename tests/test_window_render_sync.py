@@ -9,7 +9,7 @@ from unittest.mock import Mock
 import numpy as np
 import pytest
 from PySide6.QtCore import QPoint, QPointF, QRect, Qt
-from PySide6.QtGui import QFont, QImage
+from PySide6.QtGui import QColor, QFont, QImage
 
 import zstarview.render.pipeline as pipeline_module
 import zstarview.render.guides as render_guides_module
@@ -3510,13 +3510,152 @@ def test_draw_terrain_secondary_ridges_use_fixed_widths(monkeypatch) -> None:
         normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
     )
 
-    assert len(painter.pen_widths) == 6
-    assert all(
-        underlay > foreground
-        for underlay, foreground in zip(painter.pen_widths[0::2], painter.pen_widths[1::2])
+    assert len(painter.pen_widths) == 12
+    for offset in (0, 4, 8):
+        chunk = painter.pen_widths[offset : offset + 4]
+        assert chunk[0] > chunk[1]
+        assert all(overlay > chunk[1] for overlay in chunk[2:])
+        assert chunk[2] >= chunk[1] * 1.6
+    assert painter.pen_widths[1] > painter.pen_widths[5] > painter.pen_widths[9]
+    assert painter.pen_widths[0] > painter.pen_widths[4] > painter.pen_widths[8]
+
+
+def test_draw_terrain_secondary_ridges_swaps_visible_and_occluded_colors(monkeypatch) -> None:
+    monkeypatch.setattr(
+        render_terrain_module,
+        "is_in_fov",
+        lambda *_args, **_kwargs: True,
     )
-    assert painter.pen_widths[1] > painter.pen_widths[3] > painter.pen_widths[5]
-    assert painter.pen_widths[0] > painter.pen_widths[2] > painter.pen_widths[4]
+    monkeypatch.setattr(
+        render_terrain_module,
+        "altaz_to_normalized_xy",
+        lambda alt, az, _view_center, **_kwargs: (float(az), float(alt)),
+    )
+    monkeypatch.setattr(
+        render_terrain_module,
+        "normalized_to_screen_xy",
+        lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+
+    class _Painter:
+        def __init__(self) -> None:
+            self.pen_rgbs: list[tuple[int, int, int]] = []
+
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setPen(self, pen) -> None:
+            color = QColor(pen.color())
+            self.pen_rgbs.append((color.red(), color.green(), color.blue()))
+
+        def drawLine(self, *_args) -> None:
+            pass
+
+        def drawPolyline(self, *_args) -> None:
+            pass
+
+    painter = _Painter()
+    render_terrain_module.draw_terrain_secondary_ridges(
+        painter,
+        geometry=SimpleNamespace(center=(0, 0), radius=1),
+        terrain_secondary_profile_layers=[
+            [(20.0, 0.0), (20.0, 0.1)],
+            [(10.0, 0.0), (10.0, 0.1)],
+        ],
+        terrain_secondary_profile_distances_m_layers=[
+            [1_000.0, 2_000.0],
+            [10_000.0, 12_000.0],
+        ],
+        view_center=(45.0, 180.0),
+        opacity=0.38,
+        line_width_scale=1.0,
+        fast_mode=False,
+        is_in_fov_func=lambda *_args, **_kwargs: True,
+        altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
+            float(az),
+            float(alt),
+        ),
+        normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+
+    assert len(painter.pen_rgbs) == 5
+    assert painter.pen_rgbs[0] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB
+    assert painter.pen_rgbs[1] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB
+    assert painter.pen_rgbs[2] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB
+    assert painter.pen_rgbs[3] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB
+    assert painter.pen_rgbs[4] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_OCCLUDED_COLOR_RGB
+    assert painter.pen_rgbs[2] == render_terrain_module.TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB
+
+
+def test_secondary_ridge_alpha_base_is_lower() -> None:
+    assert render_terrain_module.terrain_secondary_ridge_line_alpha(0.38) < 0.08
+
+
+def test_secondary_ridge_overlay_alpha_is_scaled_down(monkeypatch) -> None:
+    monkeypatch.setattr(
+        render_terrain_module,
+        "is_in_fov",
+        lambda *_args, **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        render_terrain_module,
+        "altaz_to_normalized_xy",
+        lambda alt, az, _view_center, **_kwargs: (float(az), float(alt)),
+    )
+    monkeypatch.setattr(
+        render_terrain_module,
+        "normalized_to_screen_xy",
+        lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+
+    class _Painter:
+        def __init__(self) -> None:
+            self.alphas: list[float] = []
+
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setPen(self, pen) -> None:
+            self.alphas.append(float(pen.color().alphaF()))
+
+        def drawLine(self, *_args) -> None:
+            pass
+
+        def drawPolyline(self, *_args) -> None:
+            pass
+
+    painter = _Painter()
+    render_terrain_module.draw_terrain_secondary_ridges(
+        painter,
+        geometry=SimpleNamespace(center=(0, 0), radius=1),
+        terrain_secondary_profile_layers=[
+            [(20.0, 0.0), (20.0, 0.1)],
+            [(10.0, 0.0), (10.0, 0.1)],
+        ],
+        terrain_secondary_profile_distances_m_layers=[
+            [1_000.0, 2_000.0],
+            [10_000.0, 12_000.0],
+        ],
+        view_center=(45.0, 180.0),
+        opacity=0.38,
+        line_width_scale=1.0,
+        fast_mode=False,
+        is_in_fov_func=lambda *_args, **_kwargs: True,
+        altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
+            float(az),
+            float(alt),
+        ),
+        normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+
+    assert len(painter.alphas) == 5
+    assert painter.alphas[2] < painter.alphas[1] * 0.4
 
 
 def test_draw_terrain_horizon_line_uses_edge_fov_for_projection() -> None:
