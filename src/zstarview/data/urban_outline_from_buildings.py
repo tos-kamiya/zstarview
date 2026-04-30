@@ -32,6 +32,8 @@ from zstarview.location_resolver.viewpoints import normalize_viewpoint_name  # n
 DEFAULT_RADIUS_KM = 3.0
 DEFAULT_MIN_BUILDING_HEIGHT_M = 40.0
 DEFAULT_EDGE_SAMPLE_STEP_M = 10.0
+HOLE_RING_SUPPRESSION_MIN_DISTANCE_M = 1000.0
+HOLE_RING_SUPPRESSION_MAX_SPAN_M = 250.0
 
 
 @dataclass(frozen=True)
@@ -190,32 +192,30 @@ def compute_urban_outlines(
         if max_distance <= min_distance_m:
             continue
         buildings_considered += 1
-        for ring_xy in projected_rings:
-            sampled_points = sample_ring_points_xy(ring_xy, sample_step_m=edge_sample_step_m)
-            if sampled_points.size == 0:
+        outer_ring_xy = projected_rings[0]
+        _emit_ring_outlines(
+            building=building,
+            ring_xy=outer_ring_xy,
+            observer_elevation_m=observer_elevation_m,
+            building_distance_m=min_distance,
+            min_distance_m=min_distance_m,
+            radius_m=radius_m,
+            edge_sample_step_m=edge_sample_step_m,
+            outlines=outlines,
+        )
+        for ring_xy in projected_rings[1:]:
+            if _should_skip_hole_ring(ring_xy, building_distance_m=min_distance):
                 continue
-            distances = np_hypot_xy(sampled_points)
-            valid = (distances > max(0.1, min_distance_m)) & (distances <= radius_m)
-            if not valid.any():
-                continue
-            azimuth_deg = (np_degrees_arctan2(sampled_points[:, 0], sampled_points[:, 1]) + 360.0) % 360.0
-            building_top_elevation_m = float(building.ground_elevation_m) + float(building.height_m)
-            altitude_deg = np_degrees_arctan2_scalar(
-                building_top_elevation_m - observer_elevation_m,
-                distances,
+            _emit_ring_outlines(
+                building=building,
+                ring_xy=ring_xy,
+                observer_elevation_m=observer_elevation_m,
+                building_distance_m=min_distance,
+                min_distance_m=min_distance_m,
+                radius_m=radius_m,
+                edge_sample_step_m=edge_sample_step_m,
+                outlines=outlines,
             )
-            for run in iter_true_runs(valid):
-                run_points: list[UrbanPolylinePoint] = []
-                for az, alt in zip(azimuth_deg[run], altitude_deg[run]):
-                    run_points.append(UrbanPolylinePoint(azimuth_deg=float(az), altitude_deg=float(alt)))
-                if len(run_points) >= 2:
-                    outlines.append(
-                        UrbanOutlinePolyline(
-                            height_m=float(building.height_m),
-                            distance_km=float(min_distance / 1000.0),
-                            points=tuple(run_points),
-                        )
-                    )
 
     return UrbanOutlineResult(
         tower=tower,
@@ -223,6 +223,54 @@ def compute_urban_outlines(
         buildings_considered=buildings_considered,
         outlines_emitted=len(outlines),
     )
+
+
+def _emit_ring_outlines(
+    *,
+    building: BuildingFootprint,
+    ring_xy: np.ndarray,
+    observer_elevation_m: float,
+    building_distance_m: float,
+    min_distance_m: float,
+    radius_m: float,
+    edge_sample_step_m: float,
+    outlines: list[UrbanOutlinePolyline],
+) -> None:
+    sampled_points = sample_ring_points_xy(ring_xy, sample_step_m=edge_sample_step_m)
+    if sampled_points.size == 0:
+        return
+    distances = np_hypot_xy(sampled_points)
+    valid = (distances > max(0.1, min_distance_m)) & (distances <= radius_m)
+    if not valid.any():
+        return
+    azimuth_deg = (np_degrees_arctan2(sampled_points[:, 0], sampled_points[:, 1]) + 360.0) % 360.0
+    building_top_elevation_m = float(building.ground_elevation_m) + float(building.height_m)
+    altitude_deg = np_degrees_arctan2_scalar(
+        building_top_elevation_m - observer_elevation_m,
+        distances,
+    )
+    for run in iter_true_runs(valid):
+        run_points: list[UrbanPolylinePoint] = []
+        for az, alt in zip(azimuth_deg[run], altitude_deg[run]):
+            run_points.append(UrbanPolylinePoint(azimuth_deg=float(az), altitude_deg=float(alt)))
+        if len(run_points) >= 2:
+            outlines.append(
+                UrbanOutlinePolyline(
+                    height_m=float(building.height_m),
+                    distance_km=float(building_distance_m / 1000.0),
+                    points=tuple(run_points),
+                )
+            )
+
+
+def _should_skip_hole_ring(ring_xy: np.ndarray, *, building_distance_m: float) -> bool:
+    if building_distance_m < HOLE_RING_SUPPRESSION_MIN_DISTANCE_M:
+        return False
+    if ring_xy.ndim != 2 or ring_xy.shape[0] == 0:
+        return False
+    span_x_m = float(np.ptp(ring_xy[:, 0]))
+    span_y_m = float(np.ptp(ring_xy[:, 1]))
+    return max(span_x_m, span_y_m) <= HOLE_RING_SUPPRESSION_MAX_SPAN_M
 
 
 def np_hypot_xy(points_xy):

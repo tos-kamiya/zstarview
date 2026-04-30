@@ -194,3 +194,81 @@ def test_compute_urban_outlines_min_height_does_not_change_top_height() -> None:
     assert low_result.outlines_emitted >= 1
     assert floating_result.outlines_emitted >= 1
     assert low_result.outlines[0].points == floating_result.outlines[0].points
+
+
+def test_compute_urban_outlines_skips_small_hole_rings_for_far_building() -> None:
+    mod = _load_module()
+    tower = SimpleNamespace(
+        latitude_deg=35.0,
+        longitude_deg=139.0,
+        viewpoint_height_m=0.0,
+    )
+    building = mod.BuildingFootprint(
+        building_id="far-hole",
+        height_m=80.0,
+        rings_lonlat=(
+            (
+                (139.0280, 35.0000),
+                (139.0320, 35.0000),
+                (139.0320, 35.0040),
+                (139.0280, 35.0040),
+                (139.0280, 35.0000),
+            ),
+            (
+                (139.0299, 35.0019),
+                (139.0301, 35.0019),
+                (139.0301, 35.0021),
+                (139.0299, 35.0021),
+                (139.0299, 35.0019),
+            ),
+        ),
+    )
+
+    result = mod.compute_urban_outlines(
+        tower,
+        (building,),
+        radius_km=5.0,
+        edge_sample_step_m=10.0,
+    )
+
+    assert result.buildings_considered == 1
+    assert result.outlines_emitted == 1
+
+
+def test_compute_urban_outlines_keeps_hole_rings_for_near_building() -> None:
+    mod = _load_module()
+    tower = SimpleNamespace(
+        latitude_deg=35.0,
+        longitude_deg=139.0,
+        viewpoint_height_m=0.0,
+    )
+    building = mod.BuildingFootprint(
+        building_id="near-hole",
+        height_m=80.0,
+        rings_lonlat=(
+            (
+                (139.0030, 35.0000),
+                (139.0070, 35.0000),
+                (139.0070, 35.0040),
+                (139.0030, 35.0040),
+                (139.0030, 35.0000),
+            ),
+            (
+                (139.0049, 35.0019),
+                (139.0051, 35.0019),
+                (139.0051, 35.0021),
+                (139.0049, 35.0021),
+                (139.0049, 35.0019),
+            ),
+        ),
+    )
+
+    result = mod.compute_urban_outlines(
+        tower,
+        (building,),
+        radius_km=5.0,
+        edge_sample_step_m=10.0,
+    )
+
+    assert result.buildings_considered == 1
+    assert result.outlines_emitted >= 2
