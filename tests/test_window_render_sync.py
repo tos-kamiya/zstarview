@@ -3709,11 +3709,16 @@ def test_draw_terrain_secondary_ridges_bridges_seam_near_zero(monkeypatch) -> No
             float(alt),
         ),
         normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
+        split_by_gaps_func=lambda points: [points],
     )
 
     assert len(painter.lines) == 3
-    assert painter.lines[-1][0][0] < 0.0
-    assert painter.lines[-1][1][0] > 0.0
+    assert painter.lines[0][0][0] == pytest.approx(0.0)
+    assert painter.lines[0][1][0] == pytest.approx(math.sin(math.radians(1.0)))
+    assert painter.lines[1][0][0] == pytest.approx(math.sin(math.radians(1.0)))
+    assert painter.lines[1][1][0] == pytest.approx(math.sin(math.radians(359.0)))
+    assert painter.lines[2][0][0] == pytest.approx(0.0)
+    assert painter.lines[2][1][0] == pytest.approx(math.sin(math.radians(359.0)))
 
 
 def test_draw_terrain_horizon_line_uses_edge_fov_for_projection() -> None:
@@ -3800,7 +3805,7 @@ def test_draw_terrain_horizon_line_rotates_profile_away_from_north_seam() -> Non
     )
 
     assert painter.polylines
-    assert [point[0] for point in painter.polylines[0]] == [180.0, 190.0, 0.0, 10.0]
+    assert [point[0] for point in painter.polylines[0]] == [0.0, 10.0, 180.0, 190.0]
 
 
 def test_draw_star_layer_forwards_outline_flag(monkeypatch) -> None:
