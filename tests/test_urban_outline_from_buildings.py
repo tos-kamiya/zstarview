@@ -272,3 +272,40 @@ def test_compute_urban_outlines_keeps_hole_rings_for_near_building() -> None:
 
     assert result.buildings_considered == 1
     assert result.outlines_emitted >= 2
+
+
+def test_maybe_linearize_run_points_collapses_vertical_thin_run() -> None:
+    mod = _load_module()
+    run_points = [
+        mod.UrbanPolylinePoint(azimuth_deg=10.0, altitude_deg=1.0),
+        mod.UrbanPolylinePoint(azimuth_deg=20.0, altitude_deg=1.0),
+        mod.UrbanPolylinePoint(azimuth_deg=30.0, altitude_deg=1.0),
+    ]
+
+    result = mod._maybe_linearize_run_points(
+        run_points,
+        view_center=(1.0, 20.0),
+        edge_fov_deg=90.0,
+    )
+
+    assert len(result) == 2
+    assert result[0].altitude_deg == result[1].altitude_deg
+    assert result[0].azimuth_deg == run_points[0].azimuth_deg
+    assert result[1].azimuth_deg == run_points[-1].azimuth_deg
+
+
+def test_maybe_linearize_run_points_keeps_taller_run() -> None:
+    mod = _load_module()
+    run_points = [
+        mod.UrbanPolylinePoint(azimuth_deg=10.0, altitude_deg=0.0),
+        mod.UrbanPolylinePoint(azimuth_deg=10.0, altitude_deg=2.5),
+        mod.UrbanPolylinePoint(azimuth_deg=10.0, altitude_deg=5.0),
+    ]
+
+    result = mod._maybe_linearize_run_points(
+        run_points,
+        view_center=(0.0, 10.0),
+        edge_fov_deg=90.0,
+    )
+
+    assert result == run_points

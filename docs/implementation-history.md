@@ -81,6 +81,11 @@
   - この圧縮は描画段階ではなく `compute_urban_outlines()` 側で行い、`draw_urban_outlines()` を単純な表示器として保つ。
   - 目標は、遠距離の密集地で polyline 点数と Qt 描画コストをさらに減らしつつ、見た目の変化を最小化すること。
 
+- 次期都市アウトライン最適化の実装
+  - `compute_urban_outlines()` で、視点中心に対する正規化縦幅が十分小さい run を 2 点の水平線分へ圧縮するようにした。
+  - 線分化の判定は描画層に入れず、生成段階で完了させることで Qt 側の polyline 構築を減らした。
+  - 回帰テストとして、縦方向に薄い run が 2 点へ落ちることと、縦幅の大きい run が従来どおり残ることを追加した。
+
 ### 2026-04-14
 
 - Himawari partial-slot acceptance policy
