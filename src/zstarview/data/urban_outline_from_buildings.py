@@ -35,7 +35,7 @@ DEFAULT_MIN_BUILDING_HEIGHT_M = 40.0
 DEFAULT_EDGE_SAMPLE_STEP_M = 10.0
 HOLE_RING_SUPPRESSION_MIN_DISTANCE_M = 1000.0
 HOLE_RING_SUPPRESSION_MAX_SPAN_M = 250.0
-VERTICAL_THIN_RUN_MAX_NORMALIZED_HEIGHT = 0.02
+VERTICAL_THIN_RUN_MAX_NORMALIZED_HEIGHT = 0.01
 
 
 @dataclass(frozen=True)
@@ -309,15 +309,18 @@ def _maybe_linearize_run_points(
     if float(np.ptp(ny)) > VERTICAL_THIN_RUN_MAX_NORMALIZED_HEIGHT:
         return run_points
 
+    start_index = int(np.argmin(ny))
+    end_index = int(np.argmax(ny))
+    if start_index == end_index:
+        start_index = 0
+        end_index = len(run_points) - 1
+
+    if start_index == end_index:
+        return run_points
+
     return [
-        UrbanPolylinePoint(
-            azimuth_deg=float(run_points[0].azimuth_deg),
-            altitude_deg=float(np.mean(alt)),
-        ),
-        UrbanPolylinePoint(
-            azimuth_deg=float(run_points[-1].azimuth_deg),
-            altitude_deg=float(np.mean(alt)),
-        ),
+        run_points[start_index],
+        run_points[end_index],
     ]
 
 

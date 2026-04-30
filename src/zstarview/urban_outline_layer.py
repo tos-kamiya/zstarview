@@ -33,6 +33,7 @@ def resolve_urban_outline_layer_for_viewer(
         lat_deg=float(viewer_data.lat_deg),
         lon_deg=float(viewer_data.lon_deg),
         observer_height_m=float(viewer_data.observer_height_m),
+        edge_fov_deg=float(viewer_data.edge_fov_deg),
         derived_root_dir=Path(derived_root_dir),
         dem_cache_dir=Path(dem_cache_dir),
         derived_dir=None if derived_dir is None else Path(derived_dir),
@@ -40,6 +41,7 @@ def resolve_urban_outline_layer_for_viewer(
         radius_km=float(radius_km),
         min_distance_km=float(min_distance_km),
         min_height_m=float(min_height_m),
+        view_center=tuple(float(v) for v in viewer_data.view_center),
     )
 
 
@@ -49,6 +51,7 @@ def _build_dynamic_urban_outline_layer(
     lat_deg: float,
     lon_deg: float,
     observer_height_m: float,
+    edge_fov_deg: float,
     derived_root_dir: Path,
     dem_cache_dir: Path,
     derived_dir: Path | None = None,
@@ -56,6 +59,7 @@ def _build_dynamic_urban_outline_layer(
     radius_km: float = DEFAULT_FETCH_RADIUS_KM,
     min_distance_km: float = 0.0,
     min_height_m: float = 0.0,
+    view_center: tuple[float, float] | None = None,
 ) -> list[UrbanOutlinePolyline] | None:
     if derived_dirs is not None:
         candidate_dirs = tuple(path for path in derived_dirs if path.exists())
@@ -109,6 +113,8 @@ def _build_dynamic_urban_outline_layer(
         radius_km=radius_km,
         min_distance_km=min_distance_km,
         observer_ground_elevation_m=observer_ground_elevation_m,
+        view_center=view_center,
+        edge_fov_deg=edge_fov_deg,
         edge_sample_step_m=10.0,
     )
     outlines = [
