@@ -775,41 +775,6 @@ def draw_urban_outlines(
                 _draw_fragments(fragments, underlay_pen)
             _draw_fragments(fragments, foreground_pen)
 
-        azimuth_deg = [float(az) % 360.0 for _alt, az in outline]
-        az_start_deg, az_end_deg, az_span_deg = minimal_azimuth_cover_func(azimuth_deg)
-        if az_span_deg < 0.5:
-            representative_alt_deg = float(sum(float(alt) for alt, _az in outline) / len(outline))
-            if representative_alt_deg >= -60.0:
-                try:
-                    start_nx, start_ny = altaz_to_normalized_xy_func(
-                        representative_alt_deg,
-                        az_start_deg,
-                        view_center,
-                        edge_fov_deg=float(edge_fov_deg),
-                    )
-                    end_nx, end_ny = altaz_to_normalized_xy_func(
-                        representative_alt_deg,
-                        az_end_deg,
-                        view_center,
-                        edge_fov_deg=float(edge_fov_deg),
-                    )
-                except TypeError:
-                    start_nx, start_ny = _project_altaz_to_normalized_xy(
-                        representative_alt_deg,
-                        az_start_deg,
-                        view_center,
-                        edge_fov_deg=edge_fov_deg,
-                    )
-                    end_nx, end_ny = _project_altaz_to_normalized_xy(
-                        representative_alt_deg,
-                        az_end_deg,
-                        view_center,
-                        edge_fov_deg=edge_fov_deg,
-                    )
-                y = (float(start_ny) + float(end_ny)) * 0.5
-                _draw_points([(float(start_nx), y), (float(end_nx), y)])
-            continue
-
         points: list[tuple[float, float]] = []
         for alt, az in outline:
             if float(alt) < -60.0 or not is_in_fov_func(float(alt), float(az), view_center, fov_deg=content_fov_deg):

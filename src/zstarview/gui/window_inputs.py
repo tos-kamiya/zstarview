@@ -47,10 +47,10 @@ class SkyWindowUserOptions:
     cloud_disc_alpha: float = 0.075
     satellite_opacity: float = 0.7
     aircraft_opacity: float = 0.4
-    terrain_horizon_opacity: float = 0.02
+    terrain_horizon_opacity: float = 0.008
     earth_guide_opacity: float = 0.028
     urban_outline_opacity: float = 0.2
-    ground_tint_opacity: float = 0.08
+    ground_tint_opacity: float = 0.04
     enlarge_moon: bool = False
     bright_bodies_mode: str = "outline"
     star_base_radius: float = 4.0

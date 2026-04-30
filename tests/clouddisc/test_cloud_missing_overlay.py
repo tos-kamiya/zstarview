@@ -13,7 +13,7 @@ EXPECTED_GROUND_TINT_RGB = np.array(PALETTE_NEVER_RISES_RGB, dtype=np.uint8)
 EXPECTED_NEVER_RISES_TINT_RGB = np.clip(
     np.round(
         np.array(PALETTE_NEVER_RISES_RGB, dtype=np.float32)
-        * (1.0 + 0.08)
+        * (1.0 + 0.06)
     ),
     0,
     255,
