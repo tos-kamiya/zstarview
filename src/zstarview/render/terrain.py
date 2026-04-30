@@ -13,7 +13,7 @@ from ..paths import (
 )
 from ..types import ScreenGeometry, UrbanOutlinePolyline
 from .geometry import normalized_to_screen_xy
-from .guides import split_by_gaps
+from .guides import _clip_polyline_to_radius, split_by_gaps
 
 URBAN_OUTLINE_FOREGROUND_MIN_WIDTH = 1.32
 URBAN_OUTLINE_FOREGROUND_MAX_WIDTH = 2.28
@@ -762,7 +762,11 @@ def draw_urban_outlines(
         def _draw_points(points: list[tuple[float, float]]) -> None:
             if len(points) < 2:
                 return
-            fragments = [points] if len(points) == 2 else split_by_gaps_func(points)
+            if len(points) == 2:
+                clip_radius = float(content_fov_deg) / max(1.0e-6, float(edge_fov_deg))
+                fragments = _clip_polyline_to_radius(points, clip_radius)
+            else:
+                fragments = split_by_gaps_func(points)
             if outer_underlay_pen is not None:
                 _draw_fragments(fragments, outer_underlay_pen)
             if mid_underlay_pen is not None:
@@ -802,10 +806,8 @@ def draw_urban_outlines(
                         view_center,
                         edge_fov_deg=edge_fov_deg,
                     )
-                x1, y1 = normalized_to_screen_xy_func(start_nx, start_ny, geometry)
-                x2, y2 = normalized_to_screen_xy_func(end_nx, end_ny, geometry)
-                y = (float(y1) + float(y2)) * 0.5
-                _draw_points([(float(x1), y), (float(x2), y)])
+                y = (float(start_ny) + float(end_ny)) * 0.5
+                _draw_points([(float(start_nx), y), (float(end_nx), y)])
             continue
 
         points: list[tuple[float, float]] = []
