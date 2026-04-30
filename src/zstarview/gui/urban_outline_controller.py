@@ -112,7 +112,7 @@ class UrbanOutlineController(QObject):
             path.exists() and not is_derived_dataset_stale(path, ttl_days=OVERTURE_CACHE_TTL_DAYS, now_utc=now)
             for path in skyscraper_dirs
         ):
-            self.urban_started.emit({"banner": "Urban outline: loading cache..."})
+            self.urban_started.emit({"banner": "Urban outline: building..."})
         else:
             self.urban_started.emit({"banner": "Urban outline: downloading..."})
 
