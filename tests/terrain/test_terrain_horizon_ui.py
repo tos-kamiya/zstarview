@@ -1041,9 +1041,10 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_even_while_cloud_u
     assert calls == ["invalidate-compositor", "invalidate-cloud", "start-timer"]
 
 
-def test_handle_client_resize_preserves_visible_cloud_buffers() -> None:
+def test_handle_client_resize_clears_visible_cloud_buffers() -> None:
     calls: list[str] = []
     dummy = SimpleNamespace()
+    dummy.state = SimpleNamespace(viewport_interaction_mode=False)
     dummy._disc_generation = 0
     dummy._frameless_frame = None
     dummy.menu_button = None
@@ -1056,25 +1057,39 @@ def test_handle_client_resize_preserves_visible_cloud_buffers() -> None:
         missing_mask_key=99,
     )
     dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
+    dummy._cloud_controller = SimpleNamespace(
+        invalidate_pending_render_results=lambda: calls.append("invalidate-cloud")
+    )
+    dummy._viewport_interaction_idle_timer = SimpleNamespace(
+        start=lambda: calls.append("start-timer")
+    )
     dummy.request_sky_data_update = lambda: calls.append("sky")
     dummy.request_client_update = lambda: calls.append("client")
     dummy.start_background_cloud_update = lambda **kwargs: calls.append(
         str(kwargs.get("reason"))
     )
     dummy._begin_viewport_interaction_mode = lambda *args, **kwargs: (
-        calls.append(f"begin:{kwargs.get('preserve_cloud_buffers', False)}")
+        SkyWindow._begin_viewport_interaction_mode(dummy, *args, **kwargs)
     )
 
     SkyWindow._handle_client_resize(dummy, SimpleNamespace())
 
     assert dummy._disc_generation == 1
-    assert dummy.cloud_state.image is not None
-    assert dummy.cloud_state.missing_mask is not None
-    assert dummy.cloud_state.cloud_amount_field is not None
-    assert dummy.cloud_state.render_key == "render-key"
-    assert dummy.cloud_state.request_id == 42
-    assert dummy.cloud_state.missing_mask_key == 99
-    assert calls == ["begin:True", "invalidate", "sky", "client", "resize"]
+    assert dummy.cloud_state.image is None
+    assert dummy.cloud_state.missing_mask is None
+    assert dummy.cloud_state.cloud_amount_field is None
+    assert dummy.cloud_state.render_key is None
+    assert dummy.cloud_state.request_id is None
+    assert dummy.cloud_state.missing_mask_key is None
+    assert calls == [
+        "invalidate",
+        "invalidate-cloud",
+        "start-timer",
+        "invalidate",
+        "sky",
+        "client",
+        "resize",
+    ]
 
 
 def test_cloud_failed_preserves_last_visible_cloud_frame() -> None:
