@@ -319,6 +319,29 @@ def _terrain_secondary_ridge_glow_pass_specs(
     )
 
 
+def _draw_terrain_secondary_ridge_glow(
+    painter: QPainter,
+    start_point: QPointF,
+    end_point: QPointF,
+    *,
+    visible_width: float,
+    visible_alpha: float,
+    line_width_scale: float,
+) -> None:
+    for width_scale, alpha_scale in _terrain_secondary_ridge_glow_pass_specs(
+        visible_width,
+        visible_alpha,
+    ):
+        painter.setPen(
+            _solid_pen(
+                TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB,
+                alpha_scale,
+                width_scale * float(line_width_scale),
+            )
+        )
+        painter.drawLine(start_point, end_point)
+
+
 def _draw_terrain_profile_layer(
     painter: QPainter,
     geometry: ScreenGeometry,
@@ -649,20 +672,14 @@ def draw_terrain_secondary_ridges(
                     max_visible_alt_by_bin.get(bin_key, float("-inf")),
                     segment_mid_alt,
                 )
-                visible_width = max(0.7, base_width * overlay_scale)
-                visible_alpha = band_alpha * overlay_alpha_scale
-                for width_scale, alpha_scale in _terrain_secondary_ridge_glow_pass_specs(
-                    visible_width,
-                    visible_alpha,
-                ):
-                    painter.setPen(
-                        _solid_pen(
-                            TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB,
-                            alpha_scale,
-                            width_scale * float(line_width_scale),
-                        )
-                    )
-                    painter.drawLine(start_point, end_point)
+                _draw_terrain_secondary_ridge_glow(
+                    painter,
+                    start_point,
+                    end_point,
+                    visible_width=max(0.7, base_width * overlay_scale),
+                    visible_alpha=band_alpha * overlay_alpha_scale,
+                    line_width_scale=line_width_scale,
+                )
 
         if visible_bridge_start is not None and visible_bridge_end is not None:
             bridge_start_point, bridge_start_altaz = visible_bridge_start
@@ -683,20 +700,14 @@ def draw_terrain_secondary_ridges(
                     max_visible_alt_by_bin.get(bridge_bin_key, float("-inf"))
                     - TERRAIN_SECONDARY_RIDGE_OCCLUSION_EPSILON_DEG
                 ):
-                    visible_width = max(0.7, base_width * overlay_scale)
-                    visible_alpha = band_alpha * overlay_alpha_scale
-                    for width_scale, alpha_scale in _terrain_secondary_ridge_glow_pass_specs(
-                        visible_width,
-                        visible_alpha,
-                    ):
-                        painter.setPen(
-                            _solid_pen(
-                                TERRAIN_SECONDARY_RIDGE_VISIBLE_COLOR_RGB,
-                                alpha_scale,
-                                width_scale * float(line_width_scale),
-                            )
-                        )
-                        painter.drawLine(bridge_start_point, bridge_end_point)
+                    _draw_terrain_secondary_ridge_glow(
+                        painter,
+                        bridge_start_point,
+                        bridge_end_point,
+                        visible_width=max(0.7, base_width * overlay_scale),
+                        visible_alpha=band_alpha * overlay_alpha_scale,
+                        line_width_scale=line_width_scale,
+                    )
 
 
 def draw_urban_outlines(
