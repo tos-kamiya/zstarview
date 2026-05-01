@@ -19,7 +19,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 - **Satellite cloud imagery and sky-color disc**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay, and the sky-color disc remains visible beneath the clouds. Missing regions are shown in faint yellow when satellite coverage is partial. See [an example with partial coverage and yellow missing-data tint](docs/images/screenshot5.png).
 - **Aircraft and artificial satellite overlays**: nearby aircraft from OpenSky can be drawn as purple predicted-motion polylines, and ISS, JWST, Voyager 1, Voyager 2, and Parker can be drawn as small purple markers between the planet and aircraft layers.
 - **Urban outline overlay**: major rooflines are drawn as a white urban outline overlay for the current viewpoint. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 60km radius.
-- **Terrain horizon**: Copernicus DEM data can be downloaded to render the local terrain skyline. The terrain overlay shows banded ridge lines in the same horizon color, with nearby bands drawn thicker and distant bands drawn thinner. The disc is filled with the same ground tone below the terrain horizon, or below the geometric horizon when terrain is disabled.
+- **Terrain horizon**: Copernicus DEM data can be downloaded to render the local terrain skyline. The terrain overlay shows banded ridge lines in the same horizon color, with nearby bands drawn thicker and distant bands drawn thinner. Blue-tinted ridge lines mark the parts visible from the observer, not hidden by nearer ridges. The disc is filled with the same ground tone below the terrain horizon, or below the geometric horizon when terrain is disabled.
 - **Earth guide**: An independent layer draws a simplified continental hatch pattern below the horizon in the same ground tone to help with orientation.
 - **Guides**: guide overlays include the never-rises region as a slightly brighter circular warning marker, direction labels around the horizon, and a zenith marker.
 - **Flexible location input**: specify the observer location through the CLI argument using a city name, tower name, mountain name, direct latitude/longitude input, supported Google Maps coordinate URLs, or online place/station search via Nominatim.
@@ -66,12 +66,12 @@ Urban outline and terrain horizon examples from several cities worldwide:
 <table>
   <tr>
     <td align="center" width="33%"><img src="docs/images/screenshot-jungfraujoch.png" alt="Jungfraujoch, Switzerland" width="100%" /></td>
-    <td align="center" width="33%"><img src="docs/images/screenshot-sagradafamilia.png" alt="Front view of Sagrada Familia, Barcelona" width="100%" /></td>
+    <td align="center" width="33%"><img src="docs/images/screenshot-sagradafamilia.png" alt="Sagrada Familia, Barcelona" width="100%" /></td>
     <td align="center" width="33%"><img src="docs/images/screenshot-sydney.png" alt="Circular Quay, Sydney" width="100%" /></td>
   </tr>
   <tr>
     <td align="center"><sub>Jungfraujoch, Switzerland</sub></td>
-    <td align="center"><sub>Front view of Sagrada Familia, Barcelona</sub></td>
+    <td align="center"><sub>Sagrada Familia, Barcelona</sub></td>
     <td align="center"><sub>Circular Quay, Sydney</sub></td>
   </tr>
 </table>

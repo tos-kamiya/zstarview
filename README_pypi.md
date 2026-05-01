@@ -25,7 +25,7 @@ The fourth screenshot shows `zstarview-export-image --search "C/1861 G1" --sixel
 
 Note: higher magnitude limits increase rendering time. See [about magnitude limit](https://github.com/tos-kamiya/zstarview#about-magnitude-limit).
 
-Urban outline examples from several cities worldwide:
+Urban outline and terrain horizon examples from several cities worldwide:
 
 <table>
   <tr>
@@ -45,12 +45,12 @@ Urban outline examples from several cities worldwide:
 <table>
   <tr>
     <td align="center" width="33%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-jungfraujoch.png" alt="Jungfraujoch, Switzerland" width="100%" /></td>
-    <td align="center" width="33%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-sagradafamilia.png" alt="Front view of Sagrada Familia, Barcelona" width="100%" /></td>
+    <td align="center" width="33%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-sagradafamilia.png" alt="Sagrada Familia, Barcelona" width="100%" /></td>
     <td align="center" width="33%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-sydney.png" alt="Circular Quay, Sydney" width="100%" /></td>
   </tr>
   <tr>
     <td align="center"><sub>Jungfraujoch, Switzerland</sub></td>
-    <td align="center"><sub>Front view of Sagrada Familia, Barcelona</sub></td>
+    <td align="center"><sub>Sagrada Familia, Barcelona</sub></td>
     <td align="center"><sub>Circular Quay, Sydney</sub></td>
   </tr>
 </table>
@@ -82,6 +82,15 @@ pip install zstarview
 > Installation is now possible there, but Windows Security may still block
 > Python extension modules during startup on some systems. If that happens,
 > see the troubleshooting notes in the main project README.
+
+First run check:
+
+```bash
+zstarview auto -A5 -Zn
+```
+
+This starts zstarview using automatic location detection (`auto`), with the
+view centered near the northern horizon (`-A5 -Zn`).
 
 ## Quick Start
 
