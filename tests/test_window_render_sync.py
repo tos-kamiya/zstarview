@@ -947,6 +947,62 @@ def test_jump_to_jpl_small_body_target_honors_fixed_search_axes() -> None:
     assert dummy.viewer_data.view_center == (5.0, 220.0)
 
 
+def test_jump_to_jpl_small_body_target_can_disable_fixed_search_axes() -> None:
+    dummy = _WindowStub()
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(5.0, 210.0),
+        observer_height_m=1.7,
+    )
+    dummy._search_view_center_base = (5.0, 210.0)
+    dummy._search_view_center_alt_specified = True
+    dummy._search_view_center_az_specified = True
+    dummy.state = SkyWindowState(
+        render_view_center=(5.0, 210.0),
+        satellite_overlay_points=None,
+        persistent_search_target=None,
+    )
+    dummy.satellite_state = SimpleNamespace(
+        records_by_group={}, overlay_points=None, set_banner=Mock()
+    )
+    dummy._sync_view_altitude_actions = Mock()
+    dummy._begin_interaction_mode = Mock()
+    dummy.request_sky_data_update = Mock()
+    dummy.update = Mock()
+
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(
+            window_module,
+            "resolve_jpl_target_state_vector",
+            lambda target, **kwargs: (
+                datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
+                (1.0, 2.0, 3.0),
+                (0.1, 0.2, 0.3),
+            ),
+        )
+        monkeypatch.setattr(
+            window_module,
+            "project_jpl_target_altaz_from_state_vector",
+            lambda target, **kwargs: (12.5, 220.0),
+        )
+        SkyWindow._jump_to_search_target(
+            dummy,
+            SearchJumpTarget(
+                label="Ceres",
+                kind="jpl_small_body",
+                sort_key=(0.0, "ceres"),
+                subtitle="Asteroid / 1 Ceres",
+                object_key="20000001",
+                command="DES=20000001;",
+                preserve_cli_view_center=False,
+            ),
+        )
+
+    assert dummy.viewer_data.view_center == (12.5, 220.0)
+
+
 def test_jump_to_jpl_small_body_target_without_keep_flags_clears_overlay() -> None:
     dummy = _WindowStub()
     dummy.viewer_data = ViewerData(

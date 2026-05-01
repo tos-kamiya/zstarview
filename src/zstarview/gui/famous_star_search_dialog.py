@@ -36,6 +36,9 @@ class NamedStarSearchDialog(QDialog):
         self,
         targets: List[SearchJumpTarget],
         parent: QWidget | None = None,
+        *,
+        cli_view_center_alt_specified: bool = False,
+        cli_view_center_az_specified: bool = False,
         satellite_search_callback: Callable[[str], Sequence[SearchJumpTarget]] | None = None,
         jpl_search_callback: Callable[[str], Sequence[SearchJumpTarget]] | None = None,
     ) -> None:
@@ -51,6 +54,8 @@ class NamedStarSearchDialog(QDialog):
         self._jpl_search_in_progress = False
         self._local_result_count = 0
         self._clear_persistent_marker_on_accept = False
+        self._cli_view_center_alt_specified = bool(cli_view_center_alt_specified)
+        self._cli_view_center_az_specified = bool(cli_view_center_az_specified)
         self.jpl_search_finished.connect(self._on_jpl_search_finished)
 
         outer = QVBoxLayout(self)
@@ -95,6 +100,17 @@ class NamedStarSearchDialog(QDialog):
         keep_row.addStretch(1)
         outer.addLayout(keep_row)
 
+        cli_keep_row = QHBoxLayout()
+        self._cli_view_center_keep = QCheckBox("Keep CLI-specified Alt/Az", self)
+        cli_view_center_enabled = (
+            self._cli_view_center_alt_specified or self._cli_view_center_az_specified
+        )
+        self._cli_view_center_keep.setEnabled(cli_view_center_enabled)
+        self._cli_view_center_keep.setChecked(cli_view_center_enabled)
+        cli_keep_row.addWidget(self._cli_view_center_keep)
+        cli_keep_row.addStretch(1)
+        outer.addLayout(cli_keep_row)
+
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
             parent=self,
@@ -120,6 +136,7 @@ class NamedStarSearchDialog(QDialog):
         return replace(
             target,
             persistent_keep_marker=self._jpl_keep_marker.isChecked(),
+            preserve_cli_view_center=self._cli_view_center_keep.isChecked(),
         )
 
     def accept(self) -> None:  # noqa: D401 - Qt override

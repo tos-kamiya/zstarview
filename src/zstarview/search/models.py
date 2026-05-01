@@ -24,6 +24,7 @@ class SearchJumpTarget:
     target_time_utc: datetime | None = None
     jpl_group: str = ""
     persistent_keep_marker: bool = False
+    preserve_cli_view_center: bool | None = None
 
 
 @dataclass(frozen=True)

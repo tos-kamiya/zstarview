@@ -30,6 +30,53 @@ def test_place_search_dialog_enter_in_search_field_triggers_search() -> None:
     assert calls == ["search"]
 
 
+def test_place_search_dialog_disables_cli_view_center_checkbox_without_cli_axes() -> None:
+    dialog = PlaceSearchDialog(
+        lambda _query: [],
+        cli_view_center_alt_specified=False,
+        cli_view_center_az_specified=False,
+    )
+
+    assert dialog._cli_view_center_keep.isEnabled() is False
+    assert dialog._cli_view_center_keep.isChecked() is False
+
+
+def test_place_search_dialog_enables_cli_view_center_checkbox_with_cli_axes() -> None:
+    dialog = PlaceSearchDialog(
+        lambda _query: [],
+        cli_view_center_alt_specified=True,
+        cli_view_center_az_specified=False,
+    )
+
+    assert dialog._cli_view_center_keep.isEnabled() is True
+    assert dialog._cli_view_center_keep.isChecked() is True
+
+
+def test_place_search_dialog_selected_target_carries_cli_view_center_choice() -> None:
+    dialog = PlaceSearchDialog(
+        lambda _query: [],
+        cli_view_center_alt_specified=True,
+        cli_view_center_az_specified=False,
+    )
+    dialog._cli_view_center_keep.setChecked(False)
+    dialog._place_targets = [
+        SearchJumpTarget(
+            label="Tokyo Station",
+            kind="place",
+            sort_key=(0.0, "tokyo station"),
+            subtitle="Place / railway / station",
+            latitude_deg=35.681236,
+            longitude_deg=139.767125,
+        )
+    ]
+    dialog._rebuild_list()
+
+    target = dialog.selected_target()
+
+    assert target is not None
+    assert target.preserve_cli_view_center is False
+
+
 def test_named_star_search_dialog_uses_local_match_before_jpl() -> None:
     dialog = NamedStarSearchDialog(
         [
@@ -51,6 +98,67 @@ def test_named_star_search_dialog_uses_local_match_before_jpl() -> None:
     assert called == []
     assert dialog.selected_target() is not None
     assert dialog.selected_target().label == "Sirius"
+
+
+def test_named_star_search_dialog_disables_cli_view_center_checkbox_without_cli_axes() -> None:
+    dialog = NamedStarSearchDialog(
+        [
+            SearchJumpTarget(
+                label="Sirius",
+                kind="star",
+                sort_key=(0.0, "sirius"),
+                subtitle="Vmag -1.44",
+            )
+        ],
+        cli_view_center_alt_specified=False,
+        cli_view_center_az_specified=False,
+        jpl_search_callback=lambda _query: [],
+    )
+
+    assert dialog._cli_view_center_keep.isEnabled() is False
+    assert dialog._cli_view_center_keep.isChecked() is False
+
+
+def test_named_star_search_dialog_enables_cli_view_center_checkbox_with_cli_axes() -> None:
+    dialog = NamedStarSearchDialog(
+        [
+            SearchJumpTarget(
+                label="Sirius",
+                kind="star",
+                sort_key=(0.0, "sirius"),
+                subtitle="Vmag -1.44",
+            )
+        ],
+        cli_view_center_alt_specified=True,
+        cli_view_center_az_specified=False,
+        jpl_search_callback=lambda _query: [],
+    )
+
+    assert dialog._cli_view_center_keep.isEnabled() is True
+    assert dialog._cli_view_center_keep.isChecked() is True
+
+
+def test_named_star_search_dialog_selected_target_carries_cli_view_center_choice() -> None:
+    dialog = NamedStarSearchDialog(
+        [
+            SearchJumpTarget(
+                label="Sirius",
+                kind="star",
+                sort_key=(0.0, "sirius"),
+                subtitle="Vmag -1.44",
+            )
+        ],
+        cli_view_center_alt_specified=True,
+        cli_view_center_az_specified=False,
+        jpl_search_callback=lambda _query: [],
+    )
+    dialog._cli_view_center_keep.setChecked(False)
+    dialog._search.setText("siri")
+
+    target = dialog.selected_target()
+
+    assert target is not None
+    assert target.preserve_cli_view_center is False
 
 
 def test_named_star_search_dialog_falls_back_to_jpl_when_local_empty() -> None:
@@ -114,6 +222,7 @@ def test_named_star_search_dialog_applies_keep_marker_to_jpl_result() -> None:
 
     assert target is not None
     assert target.persistent_keep_marker is True
+    assert target.preserve_cli_view_center is False
 
 
 def test_named_star_search_dialog_blocks_solar_system_body_jpl_fallback() -> None:

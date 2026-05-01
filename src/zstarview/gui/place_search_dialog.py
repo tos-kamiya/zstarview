@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+from dataclasses import replace
 from typing import Callable, Optional, Sequence
 
 from PySide6.QtCore import QEvent, Qt, Signal
@@ -10,6 +11,8 @@ from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
+    QCheckBox,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
     QListWidget,
@@ -29,6 +32,9 @@ class PlaceSearchDialog(QDialog):
         self,
         place_search_callback: Callable[[str], Sequence[SearchJumpTarget]],
         parent: QWidget | None = None,
+        *,
+        cli_view_center_alt_specified: bool = False,
+        cli_view_center_az_specified: bool = False,
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle("Search Places")
@@ -38,6 +44,8 @@ class PlaceSearchDialog(QDialog):
         self._place_search_callback = place_search_callback
         self._place_targets: list[SearchJumpTarget] = []
         self._place_search_request_id = 0
+        self._cli_view_center_alt_specified = bool(cli_view_center_alt_specified)
+        self._cli_view_center_az_specified = bool(cli_view_center_az_specified)
         self.place_search_finished.connect(self._on_place_search_finished)
 
         layout = QVBoxLayout(self)
@@ -54,6 +62,17 @@ class PlaceSearchDialog(QDialog):
         self._status = QLabel("", self)
         self._status.setVisible(False)
         layout.addWidget(self._status)
+
+        cli_keep_row = QHBoxLayout()
+        self._cli_view_center_keep = QCheckBox("Keep CLI-specified Alt/Az", self)
+        cli_view_center_enabled = (
+            self._cli_view_center_alt_specified or self._cli_view_center_az_specified
+        )
+        self._cli_view_center_keep.setEnabled(cli_view_center_enabled)
+        self._cli_view_center_keep.setChecked(cli_view_center_enabled)
+        cli_keep_row.addWidget(self._cli_view_center_keep)
+        cli_keep_row.addStretch(1)
+        layout.addLayout(cli_keep_row)
 
         self._list = QListWidget(self)
         self._list.itemDoubleClicked.connect(self._on_item_double_clicked)
@@ -72,7 +91,12 @@ class PlaceSearchDialog(QDialog):
         if item is None:
             return None
         target = item.data(Qt.ItemDataRole.UserRole)
-        return target if isinstance(target, SearchJumpTarget) else None
+        if not isinstance(target, SearchJumpTarget):
+            return None
+        return replace(
+            target,
+            preserve_cli_view_center=self._cli_view_center_keep.isChecked(),
+        )
 
     def _rebuild_list(self) -> None:
         self._list.clear()
