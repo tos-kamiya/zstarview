@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-05-01
+最終更新: 2026-05-02
 
 ## 1. この文書の位置づけ
 
@@ -522,6 +522,10 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 - `gui/famous_star_search_dialog.py` は、`Search Objects...` ダイアログとして、検索語入力、候補一覧、確定/取消に加えて、結果を継続表示するためのチェックボックス領域を持ってよい。
 - チェックボックスは `Keep marker` の 1 つだけを持ち、マーカーとラベルの両方を継続表示する意味にしてよい。
+- `Search Objects...` と place 検索ダイアログは、`Keep CLI-specified Alt/Az` のチェックボックスを別に持ってよい。
+- そのチェックボックスは、起動時に `-A` または `-Z` が明示されている場合だけ有効とし、初期状態ではチェック済みにしてよい。
+- `-A` / `-Z` のうち指定された軸だけを保持し、未指定の軸は検索対象の `alt/az` で補完してよい。
+- `SearchJumpTarget` に `preserve_cli_view_center` を持たせ、ダイアログの選択結果から検索ジャンプへ保持意図を伝えてよい。
 - これらの設定は検索 UI のフィルタ条件ではなく、ジャンプ後の表示保持フラグとして扱う。
 - 継続表示フラグは `SkyWindowState` の一時 jump highlight とは別の状態として保持してよい。
 - 一時 jump highlight は従来どおり 3 秒程度で消えるが、継続表示フラグで選ばれたマーカーとラベルは、利用者が明示的に解除するまで残してよい。
@@ -549,6 +553,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 #### 4.4.3 検索ジャンプと描画状態
 
 - `SkyWindowCoreMixin._jump_to_search_target()` は、選択した対象の現在時刻における見かけ方向を計算し、`viewer_data.view_center` を更新する役割を持つ。
+- `preserve_cli_view_center` が `False` のときだけ、`_search_view_center_alt_specified` / `_search_view_center_az_specified` による固定を外してよい。
+- `preserve_cli_view_center` が `True` か未指定のときは、既存の CLI 固定フラグの意味を維持してよい。
 - 既存の `jump_highlight_name` / `jump_highlight_altaz` / `jump_highlight_until_ms` は、一時的な視覚フィードバック専用として保持する。
 - 持続マーカーと持続ラベルは、上記の一時 jump highlight とは別の状態にし、HUD か補助オーバーレイとして再描画できるようにする。
 - 持続マーカーと持続ラベルは単一対象の状態として保持し、複数対象の集合を管理しなくてよい。
@@ -616,6 +622,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `zstarview` の GUI 起動時検索は、`startup.py` で通常の地点解決と設定復元が終わったあとに、共通の検索リクエスト解決層へ渡す。
 - GUI 側は、候補が 1 件に解決した場合だけその対象へ視線を向け、必要なら `persistent_search_target` と `persistent_search_keep_marker` を初回描画前に設定する。
 - `--search-keep-marker` が付いている場合、GUI 起動直後の初期フレームから marker と label を表示する。
+- GUI の検索ダイアログで CLI 視線保持チェックが無効な場合は、検索結果に `preserve_cli_view_center=False` を持たせて `_jump_to_search_target()` へ渡してよい。
 - `JWST` / `Voyager 1` / `Voyager 2` / `Parker` の場合は、初回結果の `alt/az` を固定座標として保存せず、後続の描画 tick で追跡状態から再投影してよい。
 - 候補が 0 件または複数件の場合、GUI は終了せず、`Search Objects...` ダイアログへ検索語と候補一覧を渡して再選択を促す。
 - GUI 側の初期検索は、対話ダイアログからの検索と同じ候補モデルを使い、ポスト処理だけを分ける。

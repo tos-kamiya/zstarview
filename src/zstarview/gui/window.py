@@ -1382,6 +1382,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         dialog = NamedStarSearchDialog(
             self._named_stars_search_all,
             self,
+            cli_view_center_alt_specified=bool(
+                getattr(self, "_search_view_center_alt_specified", False)
+            ),
+            cli_view_center_az_specified=bool(
+                getattr(self, "_search_view_center_az_specified", False)
+            ),
             satellite_search_callback=self._search_satellite_targets,
             jpl_search_callback=self._search_jpl_targets,
         )
@@ -1398,7 +1404,16 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._jump_to_search_target(target)
 
     def _open_place_search_dialog(self) -> None:
-        dialog = PlaceSearchDialog(self._search_place_jump_targets, self)
+        dialog = PlaceSearchDialog(
+            self._search_place_jump_targets,
+            self,
+            cli_view_center_alt_specified=bool(
+                getattr(self, "_search_view_center_alt_specified", False)
+            ),
+            cli_view_center_az_specified=bool(
+                getattr(self, "_search_view_center_az_specified", False)
+            ),
+        )
         if dialog.exec() == 0:
             return
         target = dialog.selected_target()
@@ -1777,8 +1792,14 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         base_alt, base_az = tuple(
             getattr(self, "_search_view_center_base", self.viewer_data.view_center)
         )
+        preserve_cli_view_center = getattr(
+            target, "preserve_cli_view_center", None
+        )
         fixed_alt = bool(getattr(self, "_search_view_center_alt_specified", False))
         fixed_az = bool(getattr(self, "_search_view_center_az_specified", False))
+        if preserve_cli_view_center is False:
+            fixed_alt = False
+            fixed_az = False
         new_alt = float(base_alt) if fixed_alt else max(
             OBSERVER_MIN_ALT_DEG, min(90.0, target_alt)
         )
