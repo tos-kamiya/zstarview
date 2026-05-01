@@ -1242,7 +1242,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         super().update()
 
     def _handle_client_resize(self, event: QResizeEvent) -> None:
-        self._begin_viewport_interaction_mode(preserve_cloud_buffers=True)
+        self._begin_viewport_interaction_mode()
         self._disc_generation = int(self._disc_generation) + 1
         if self._frameless_frame is None and self.menu_button is not None:
             button_size = self.menu_button.size()
