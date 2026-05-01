@@ -2348,17 +2348,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.request_client_update()
         event.accept()
 
-    def _begin_window_drag(self) -> bool:
-        if self._is_shutting_down or self.state.viewport_interaction_mode:
-            return False
-        self._begin_viewport_interaction_mode()
-        return True
-
-    def _end_window_drag(self) -> None:
-        if not self.state.viewport_interaction_mode:
-            return
-        self._end_viewport_interaction_mode()
-
     def _rotate_view(
         self,
         d_alt: float = 0.0,

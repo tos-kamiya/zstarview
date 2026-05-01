@@ -354,7 +354,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 共通化の中心は「最終的に何をどう描くか」であり、「どの順序でデータを取得するか」ではない。
 - GUI 経路と CLI 経路は別々のオーケストレーションを持つ。
   - GUI 経路は、星空の初期表示を優先し、雲・地形地平線・都市アウトライン・航空機を後段で非同期に反映する。
-  - GUI の frameless window drag は viewport interaction の一種として扱い、ドラッグ中は雲や sky 系の重い再取得・再描画を抑えてよい。
+  - GUI の frameless window drag は OS / compositor の移動処理へ委ね、viewport interaction とは分離する。
   - CLI 経路は、必要なレイヤーを逐次取得して 1 回だけ描画する。
 - 描画層では少なくとも次の境界を持つ。
   - 描画入力: 観測地点、時刻、視線方向、画面サイズ、表示オプション
@@ -457,7 +457,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `src/zstarview/gui/window.py`
   - UI 状態と更新制御の集約点
   - 共通ロジックは `SkyWindowCoreMixin` に置く
-  - frameless window のドラッグ開始と終了を受けて viewport interaction の begin/end を呼び出す
+  - frameless window のドラッグ移動は `DraggableWindow` に委ね、通常の再描画抑制とは分離する
   - 描画対象のクライアント領域は `SkyWindowClientWidget` として分離する
   - ホストウィンドウは `FramelessSkyWindow` と `StandardSkyWindow` に分ける
   - `FramelessWindowFrame` は frameless 専用の外装であり、独自外枠、ハンバーガーボタン、サイズ変更グリップを持つ
@@ -638,10 +638,10 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 - `src/zstarview/gui/draggable_window.py`
   - frameless window のドラッグ開始・移動・終了をまとめて扱う
-  - クライアント領域のドラッグを開始したら、親 window 側の begin/end hook を呼んで viewport interaction mode と同期してよい
   - 実際の移動は Qt の system move か、環境に応じた代替移動処理へ委ねてよい
-- GUI のウィンドウドラッグは、サイズ変更と同様に viewport interaction として扱ってよい。
-- drag 中は既存の sky / cloud バッファを保持し、重い補助レイヤーの再取得や再描画は通常状態へ戻るまで遅延してよい。
+- GUI のウィンドウドラッグは viewport interaction mode へ入らない。
+- Wayland では system move 中の再描画が compositor によって抑えられる場合があり、Windows では drag 開始時の fast-mode 再描画が操作感を悪化させる場合があるため、drag と fast-mode は結合しない。
+- 方位/仰角変更とリサイズは引き続き viewport interaction mode を使ってよい。
 
 ### 4.5 雲データ処理
 
