@@ -3095,7 +3095,7 @@ def test_draw_direction_labels_uses_horizon_line_color(monkeypatch) -> None:
     )
 
 
-def test_draw_urban_outlines_simplifies_narrow_outline_to_horizontal_segment(
+def test_draw_urban_outlines_clips_two_point_outline_out_of_view(
     monkeypatch,
 ) -> None:
     class _Painter:
@@ -3133,9 +3133,7 @@ def test_draw_urban_outlines_simplifies_narrow_outline_to_horizontal_segment(
         normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
     )
 
-    assert len(painter.polylines) == 1
-    assert len(painter.polylines[0]) == 2
-    assert painter.polylines[0][0][1] == painter.polylines[0][1][1]
+    assert painter.polylines == []
 
 
 def test_draw_urban_outlines_uses_fixed_alpha_and_near_underlay(monkeypatch) -> None:
