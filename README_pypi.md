@@ -44,12 +44,12 @@ Urban outline examples from several cities worldwide:
 
 <table>
   <tr>
-    <td align="center" width="33%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-lauterbrunnen.png" alt="Lauterbrunnen, Switzerland" width="100%" /></td>
+    <td align="center" width="33%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-jungfraujoch.png" alt="Jungfraujoch, Switzerland" width="100%" /></td>
     <td align="center" width="33%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-sagradafamilia.png" alt="Front view of Sagrada Familia, Barcelona" width="100%" /></td>
     <td align="center" width="33%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-sydney.png" alt="Circular Quay, Sydney" width="100%" /></td>
   </tr>
   <tr>
-    <td align="center"><sub>Lauterbrunnen, Switzerland</sub></td>
+    <td align="center"><sub>Jungfraujoch, Switzerland</sub></td>
     <td align="center"><sub>Front view of Sagrada Familia, Barcelona</sub></td>
     <td align="center"><sub>Circular Quay, Sydney</sub></td>
   </tr>

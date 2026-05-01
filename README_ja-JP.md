@@ -64,12 +64,12 @@
 
 <table>
   <tr>
-    <td align="center" width="33%"><img src="docs/images/screenshot-lauterbrunnen.png" alt="ラウターブルンネン（Lauterbrunnen, スイス）" width="100%" /></td>
+    <td align="center" width="33%"><img src="docs/images/screenshot-jungfraujoch.png" alt="ユングフラウヨッホ（Jungfraujoch, スイス）" width="100%" /></td>
     <td align="center" width="33%"><img src="docs/images/screenshot-sagradafamilia.png" alt="サグラダファミリア正面" width="100%" /></td>
     <td align="center" width="33%"><img src="docs/images/screenshot-sydney.png" alt="サーキュラー・キー（シドニー）" width="100%" /></td>
   </tr>
   <tr>
-    <td align="center"><sub>ラウターブルンネン（Lauterbrunnen, スイス）</sub></td>
+    <td align="center"><sub>ユングフラウヨッホ（Jungfraujoch, スイス）</sub></td>
     <td align="center"><sub>サグラダファミリア正面</sub></td>
     <td align="center"><sub>サーキュラー・キー（シドニー）</sub></td>
   </tr>
