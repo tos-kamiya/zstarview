@@ -6,7 +6,7 @@ from PySide6.QtCore import QPointF, QRectF
 from PySide6.QtGui import QPainter
 
 from ..astro import altaz_to_normalized_xy, is_in_fov
-from ..paths import ThemeStyle
+from ..paths import THEME_STYLES_BY_PRESET, ThemeStyle
 from ..search.models import SearchJumpTarget
 from . import guides as render_guides
 from . import text as render_text
@@ -42,8 +42,14 @@ def draw_search_target_overlay(
     marker_scale: float = 1.0,
     label_candidates: Optional[List[Dict[str, Any]]] = None,
     label_reservations: Optional[List[QRectF]] = None,
-    theme: ThemeStyle,
+    theme: ThemeStyle | None = None,
+    visual_preset: str | None = None,
 ) -> None:
+    if theme is None:
+        if visual_preset is not None:
+            theme = THEME_STYLES_BY_PRESET.get(visual_preset, THEME_STYLES_BY_PRESET["night"])
+        else:
+            theme = THEME_STYLES_BY_PRESET["night"]
     alt = getattr(target, "alt_deg", None)
     az = getattr(target, "az_deg", None)
     if alt is None or az is None:
