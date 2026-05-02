@@ -31,14 +31,14 @@ Urban outline and terrain horizon examples from several cities worldwide:
   <tr>
     <td align="center" width="20%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-sydney.png" alt="Circular Quay, Sydney" width="100%" /></td>
     <td align="center" width="20%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-tokyotower.png" alt="Near Tokyo Tower, Tokyo" width="100%" /></td>
-    <td align="center" width="20%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-mtfuji.png" alt="View of Mt. Fuji" width="100%" /></td>
+    <td align="center" width="20%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-mtfuji.png" alt="View of Mt. Fuji, Japan" width="100%" /></td>
     <td align="center" width="20%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-marinabay.png" alt="Marina Bay, Singapore" width="100%" /></td>
     <td align="center" width="20%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-burjkhalifa.png" alt="Near Burj Khalifa, Dubai" width="100%" /></td>
   </tr>
   <tr>
     <td align="center"><sub>Circular Quay, Sydney</sub></td>
     <td align="center"><sub>Near Tokyo Tower, Tokyo</sub></td>
-    <td align="center"><sub>View of Mt. Fuji</sub></td>
+    <td align="center"><sub>View of Mt. Fuji, Japan</sub></td>
     <td align="center"><sub>Marina Bay, Singapore</sub></td>
     <td align="center"><sub>Near Burj Khalifa, Dubai</sub></td>
   </tr>
@@ -48,16 +48,16 @@ Urban outline and terrain horizon examples from several cities worldwide:
 
 <table>
   <tr>
-    <td align="center" width="20%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-capeofgoodhope.png" alt="Cape of Good Hope, South Africa" width="100%" /></td>
     <td align="center" width="20%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-jungfraujoch.png" alt="Jungfraujoch, Switzerland" width="100%" /></td>
     <td align="center" width="20%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-sagradafamilia.png" alt="Sagrada Familia, Barcelona" width="100%" /></td>
+    <td align="center" width="20%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-ushuaia.png" alt="Ushuaia, Argentina" width="100%" /></td>
     <td align="center" width="20%"><img src="https://raw.githubusercontent.com/tos-kamiya/zstarview/main/docs/images/screenshot-uyuni.png" alt="Uyuni Salt Flat, Bolivia" width="100%" /></td>
     <td align="center" width="20%"></td>
   </tr>
   <tr>
-    <td align="center"><sub>Cape of Good Hope, South Africa</sub></td>
     <td align="center"><sub>Jungfraujoch, Switzerland</sub></td>
     <td align="center"><sub>Sagrada Familia, Barcelona</sub></td>
+    <td align="center"><sub>Ushuaia, Argentina</sub></td>
     <td align="center"><sub>Uyuni Salt Flat, Bolivia</sub></td>
     <td align="center"><sub></sub></td>
   </tr>

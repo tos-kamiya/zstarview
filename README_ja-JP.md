@@ -68,16 +68,16 @@
 
 <table>
   <tr>
-    <td align="center" width="20%"><img src="docs/images/screenshot-capeofgoodhope.png" alt="喜望峰（南アフリカ）" width="100%" /></td>
     <td align="center" width="20%"><img src="docs/images/screenshot-jungfraujoch.png" alt="ユングフラウヨッホ（Jungfraujoch, スイス）" width="100%" /></td>
-    <td align="center" width="20%"><img src="docs/images/screenshot-sagradafamilia.png" alt="サグラダファミリア正面" width="100%" /></td>
+    <td align="center" width="20%"><img src="docs/images/screenshot-sagradafamilia.png" alt="サグラダファミリア（バルセロナ）" width="100%" /></td>
+    <td align="center" width="20%"><img src="docs/images/screenshot-ushuaia.png" alt="ウシュアイア（アルゼンチン）" width="100%" /></td>
     <td align="center" width="20%"><img src="docs/images/screenshot-uyuni.png" alt="ユウニ塩湖（ボリビア）" width="100%" /></td>
     <td align="center" width="20%"></td>
   </tr>
   <tr>
-    <td align="center"><sub>喜望峰（南アフリカ）</sub></td>
     <td align="center"><sub>ユングフラウヨッホ（Jungfraujoch, スイス）</sub></td>
-    <td align="center"><sub>サグラダファミリア正面</sub></td>
+    <td align="center"><sub>サグラダファミリア（バルセロナ）</sub></td>
+    <td align="center"><sub>ウシュアイア（アルゼンチン）</sub></td>
     <td align="center"><sub>ユウニ塩湖（ボリビア）</sub></td>
     <td align="center"><sub></sub></td>
   </tr>
