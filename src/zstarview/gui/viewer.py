@@ -37,6 +37,7 @@ from ..paths import (
     APP_DISPLAY_NAME,
     DSO_CSV_FILE,
     EPHEMERIS_FILENAME,
+    THEME_STYLES_BY_PRESET,
     STARS_CSV_FILE,
 )
 from ..gui.window_inputs import (
@@ -194,7 +195,13 @@ def main() -> None:
     root_logger = setup_root_logger()
     logger.info(f"{APP_DISPLAY_NAME} starting...")
 
-    splash, splash_handler, set_splash_context = setup_splash_and_attach_logger(app, app_name, root_logger, args.theme)
+    theme = THEME_STYLES_BY_PRESET.get(args.theme, THEME_STYLES_BY_PRESET["night"])
+    splash, splash_handler, set_splash_context = setup_splash_and_attach_logger(
+        app,
+        app_name,
+        root_logger,
+        theme,
+    )
     if getattr(args, "clear_long_lived_cache", False):
         try:
             logger.info("Clearing long-lived cache on user request...")
@@ -237,7 +244,7 @@ def main() -> None:
     view_center = (min(90.0, max(-5.0, view_center[0])), view_center[1] % 360)
     cloud_stripe_mode, cloud_stripe_count, cloud_stripe_width = args.cloud_stripe
     visual_preset = args.theme
-    star_visibility_boost = 1.12 if visual_preset == "white" else 1.05 if visual_preset == "day" else 1.0
+    star_visibility_boost = theme.star_visibility_boost
     vmag_brightness_scale = -math.log10(args.vmag_brightness_multiplier)
     catalogs = prepare_window_catalogs(
         star_catalog,

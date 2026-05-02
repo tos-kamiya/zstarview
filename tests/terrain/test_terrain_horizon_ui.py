@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 import zstarview.gui.terrain_controller as terrain_controller_module
 import zstarview.gui.window as window_module
+from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.terrain.dem import COPERNICUS_DEM_BUCKET
 from zstarview.gui.window import SkyWindow
 from zstarview.gui.terrain_controller import TerrainHorizonController
@@ -1191,9 +1192,9 @@ def test_show_menu_syncs_actions_before_opening_menu() -> None:
 
 
 def test_menu_button_style_sheet_uses_translucent_background_for_night_preset() -> None:
-    dummy = SimpleNamespace(visual_preset="night")
+    dummy = SimpleNamespace(theme=THEME_STYLES_BY_PRESET["night"])
 
-    style = SkyWindow._menu_button_style_sheet(dummy)
+    style = SkyWindow._menu_button_style_sheet(dummy, dummy.theme)
 
     assert "background: transparent;" in style
     assert "background-color: rgba(255, 255, 255, 26);" in style
@@ -1201,16 +1202,16 @@ def test_menu_button_style_sheet_uses_translucent_background_for_night_preset() 
 
 
 def test_menu_button_style_sheet_uses_light_background_for_day_preset() -> None:
-    dummy = SimpleNamespace(visual_preset="day")
+    dummy = SimpleNamespace(theme=THEME_STYLES_BY_PRESET["day"])
 
-    style = SkyWindow._menu_button_style_sheet(dummy)
+    style = SkyWindow._menu_button_style_sheet(dummy, dummy.theme)
 
     assert "background: transparent;" in style
     assert "background-color: rgba(255, 255, 255, 26);" in style
 
 
 def test_size_grip_style_sheet_is_transparent() -> None:
-    dummy = SimpleNamespace(visual_preset="night")
+    dummy = SimpleNamespace(theme=THEME_STYLES_BY_PRESET["night"])
 
     style = SkyWindow._size_grip_style_sheet(dummy)
 

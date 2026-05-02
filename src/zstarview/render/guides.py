@@ -14,7 +14,7 @@ from ..paths import (
     ECLIPTIC_COLOR,
     FIELD_OF_VIEW_DEG,
     HORIZON_LINE_COLOR,
-    THEME_STYLES_BY_PRESET,
+    ThemeStyle,
 )
 from ..types import CelestialData, ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
@@ -458,6 +458,7 @@ def draw_zenith_marker(
     geometry: ScreenGeometry,
     view_center: Tuple[float, float],
     *,
+    theme: ThemeStyle,
     edge_fov_deg: float = FIELD_OF_VIEW_DEG,
     content_fov_deg: float = FIELD_OF_VIEW_DEG,
 ) -> None:
@@ -471,7 +472,7 @@ def draw_zenith_marker(
     """
     az_ref = view_center[1]
     s = 7
-    painter.setPen(QPen(QColor(*THEME_STYLES_BY_PRESET["night"].text.foreground_rgb), 1))
+    painter.setPen(QPen(QColor(*theme.text.foreground_rgb), 1))
     for alt in (90.0, -90.0):
         if not is_in_fov(alt, az_ref, view_center, fov_deg=content_fov_deg):
             continue
@@ -493,7 +494,7 @@ def draw_direction_labels(
     text_font: QFont,
     mouse_pos: QPoint | None = None,
     *,
-    preset: str = "night",
+    theme: ThemeStyle,
     edge_fov_deg: float = FIELD_OF_VIEW_DEG,
     content_fov_deg: float = FIELD_OF_VIEW_DEG,
 ) -> None:
@@ -506,7 +507,7 @@ def draw_direction_labels(
         view_center: The current view center to determine which labels are visible.
         text_font: The QFont to use for the labels.
     """
-    label_style = resolve_label_text_style(preset, text_font)
+    label_style = resolve_label_text_style(theme, text_font)
     label_style = ResolvedTextStyle(
         font=label_style.font,
         text_color=QColor(*HORIZON_LINE_COLOR),

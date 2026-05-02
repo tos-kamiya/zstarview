@@ -2,6 +2,7 @@ import numpy as np
 from PySide6.QtCore import QRectF
 from PySide6.QtGui import QImage, QPainter
 
+from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.paths import PALETTE_NEVER_RISES_RGB
 from zstarview.render.background import draw_radial_background, draw_window_border
 from zstarview.render.geometry import get_screen_geometry
@@ -159,10 +160,11 @@ def test_radial_background_uses_black_inner_disc_for_all_main_themes() -> None:
     rect = QRectF(0.0, 0.0, 160.0, 160.0)
 
     for preset in ("white", "day", "night", "black", "transparent"):
+        theme = THEME_STYLES_BY_PRESET[preset]
         img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
         img.fill(0)
         painter = QPainter(img)
-        draw_radial_background(painter, rect, geom, preset=preset)
+        draw_radial_background(painter, rect, geom, theme=theme)
         painter.end()
 
         arr = qimage_to_np_rgba(img)
@@ -170,6 +172,7 @@ def test_radial_background_uses_black_inner_disc_for_all_main_themes() -> None:
 
         if preset == "transparent":
             assert int(center_rgb.max()) <= 5, preset
+            assert np.array_equal(arr[80, 80], arr[20, 20]), preset
         else:
             assert np.array_equal(center_rgb, np.array([4, 4, 4])), preset
 
@@ -181,7 +184,13 @@ def test_radial_background_fades_between_content_fov_and_window_edge() -> None:
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
     painter = QPainter(img)
-    draw_radial_background(painter, rect, geom, preset="night", content_fov_deg=100.0)
+    draw_radial_background(
+        painter,
+        rect,
+        geom,
+        theme=THEME_STYLES_BY_PRESET["night"],
+        content_fov_deg=100.0,
+    )
     painter.end()
 
     arr = qimage_to_np_rgba(img)
@@ -203,7 +212,7 @@ def test_radial_background_opaque_mode_keeps_full_alpha_at_edges() -> None:
         painter,
         rect,
         geom,
-        preset="night",
+        theme=THEME_STYLES_BY_PRESET["night"],
         content_fov_deg=100.0,
         opaque=True,
     )
@@ -217,13 +226,14 @@ def test_radial_background_opaque_mode_keeps_full_alpha_at_edges() -> None:
 
 
 def test_window_frame_has_no_outer_border_for_black() -> None:
+    theme = THEME_STYLES_BY_PRESET["black"]
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
     painter = QPainter(img)
     draw_window_border(
         painter,
         QRectF(0.0, 0.0, 160.0, 160.0),
-        preset="black",
+        theme=theme,
     )
     painter.end()
 
@@ -238,13 +248,14 @@ def test_window_frame_has_no_outer_border_for_black() -> None:
 
 def test_window_frame_draws_outer_border_for_white_and_day() -> None:
     for preset in ("white", "day"):
+        theme = THEME_STYLES_BY_PRESET[preset]
         img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
         img.fill(0)
         painter = QPainter(img)
         draw_window_border(
             painter,
             QRectF(0.0, 0.0, 160.0, 160.0),
-            preset=preset,
+            theme=theme,
         )
         painter.end()
 
@@ -256,13 +267,14 @@ def test_window_frame_draws_outer_border_for_white_and_day() -> None:
 
 
 def test_window_frame_draws_bottom_right_grip_line_inside_frame() -> None:
+    theme = THEME_STYLES_BY_PRESET["white"]
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
     painter = QPainter(img)
     draw_window_border(
         painter,
         QRectF(0.0, 0.0, 160.0, 160.0),
-        preset="white",
+        theme=theme,
     )
     painter.end()
 
@@ -275,13 +287,14 @@ def test_window_frame_draws_bottom_right_grip_line_inside_frame() -> None:
 
 
 def test_window_frame_draws_top_right_menu_square_inside_frame() -> None:
+    theme = THEME_STYLES_BY_PRESET["white"]
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
     painter = QPainter(img)
     draw_window_border(
         painter,
         QRectF(0.0, 0.0, 160.0, 160.0),
-        preset="white",
+        theme=theme,
     )
     painter.end()
 
@@ -292,13 +305,14 @@ def test_window_frame_draws_top_right_menu_square_inside_frame() -> None:
 
 
 def test_window_frame_does_not_double_draw_under_menu_panel() -> None:
+    theme = THEME_STYLES_BY_PRESET["white"]
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
     painter = QPainter(img)
     draw_window_border(
         painter,
         QRectF(0.0, 0.0, 160.0, 160.0),
-        preset="white",
+        theme=theme,
     )
     painter.end()
 
@@ -308,13 +322,14 @@ def test_window_frame_does_not_double_draw_under_menu_panel() -> None:
 
 
 def test_window_frame_draws_hamburger_icon_lines() -> None:
+    theme = THEME_STYLES_BY_PRESET["white"]
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
     painter = QPainter(img)
     draw_window_border(
         painter,
         QRectF(0.0, 0.0, 160.0, 160.0),
-        preset="white",
+        theme=theme,
     )
     painter.end()
 
@@ -326,13 +341,15 @@ def test_window_frame_draws_hamburger_icon_lines() -> None:
 
 
 def test_window_frame_menu_panel_position_is_consistent_across_presets() -> None:
+    night_theme = THEME_STYLES_BY_PRESET["night"]
+    black_theme = THEME_STYLES_BY_PRESET["black"]
     night_img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     night_img.fill(0)
     night_painter = QPainter(night_img)
     draw_window_border(
         night_painter,
         QRectF(0.0, 0.0, 160.0, 160.0),
-        preset="night",
+        theme=night_theme,
     )
     night_painter.end()
 
@@ -342,7 +359,7 @@ def test_window_frame_menu_panel_position_is_consistent_across_presets() -> None
     draw_window_border(
         black_painter,
         QRectF(0.0, 0.0, 160.0, 160.0),
-        preset="black",
+        theme=black_theme,
     )
     black_painter.end()
 
@@ -356,13 +373,14 @@ def test_window_frame_menu_panel_position_is_consistent_across_presets() -> None
 
 
 def test_transparent_window_frame_skips_border_but_keeps_menu_and_grip() -> None:
+    theme = THEME_STYLES_BY_PRESET["transparent"]
     img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
     painter = QPainter(img)
     draw_window_border(
         painter,
         QRectF(0.0, 0.0, 160.0, 160.0),
-        preset="transparent",
+        theme=theme,
     )
     painter.end()
 

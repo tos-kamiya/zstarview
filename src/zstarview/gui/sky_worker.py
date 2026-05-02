@@ -31,7 +31,7 @@ from ..astro import (
     calculate_visible_stars,
     eclipse_factor_from_info,
 )
-from ..paths import THEME_STYLES_BY_PRESET
+from ..paths import ThemeStyle
 from ..render import sky_disc
 from ..render import geometry as render_geometry
 from ..types import CelestialData, StarCatalogMeta
@@ -54,7 +54,7 @@ def compute_sky_snapshot(
     sky_disc_base_size: int,
     edge_fov_deg: float,
     content_fov_deg: float,
-    visual_preset: str = "night",
+    theme: ThemeStyle,
     star_catalog_meta: StarCatalogMeta | None = None,
     render_width_px: int | None = None,
     render_height_px: int | None = None,
@@ -135,7 +135,6 @@ def compute_sky_snapshot(
         render_height = max(2, int(render_height_px or sky_disc_base_size))
         fixed_geom = render_geometry.get_screen_geometry(render_width, render_height, view_center[0])
         ef = eclipse_factor_from_info(solar_eclipse_info)
-        theme = THEME_STYLES_BY_PRESET.get(visual_preset, THEME_STYLES_BY_PRESET["night"])
         disc_opacity = float(theme.sky_disc.opacity)
         if sky_disc_alpha > 0.0:
             sky_disc_img = sky_disc.draw_sky_color_disc(
@@ -202,7 +201,7 @@ class SkyDataWorker(QObject):
         sky_disc_base_size: int,
         edge_fov_deg: float,
         content_fov_deg: float,
-        visual_preset: str = "night",
+        theme: ThemeStyle,
         star_catalog_meta: StarCatalogMeta | None = None,
         render_width_px: int | None = None,
         render_height_px: int | None = None,
@@ -230,7 +229,7 @@ class SkyDataWorker(QObject):
                 "sky_disc_base_size": sky_disc_base_size,
                 "edge_fov_deg": edge_fov_deg,
                 "content_fov_deg": content_fov_deg,
-                "visual_preset": visual_preset,
+                "theme": theme,
                 "star_catalog_meta": star_catalog_meta,
                 "render_width_px": render_width_px,
                 "render_height_px": render_height_px,
@@ -306,7 +305,7 @@ class SkyDataWorker(QObject):
         sky_disc_base_size: int,
         edge_fov_deg: float,
         content_fov_deg: float,
-        visual_preset: str,
+        theme: ThemeStyle,
         star_catalog_meta: StarCatalogMeta | None,
         render_width_px: int | None,
         render_height_px: int | None,
@@ -327,7 +326,7 @@ class SkyDataWorker(QObject):
                 sky_disc_base_size=sky_disc_base_size,
                 edge_fov_deg=edge_fov_deg,
                 content_fov_deg=content_fov_deg,
-                visual_preset=visual_preset,
+                theme=theme,
                 star_catalog_meta=star_catalog_meta,
                 render_width_px=render_width_px,
                 render_height_px=render_height_px,

@@ -8,8 +8,7 @@ from PySide6.QtCore import QPoint, QPointF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy
-from ..paths import BRIGHT_THEME_PRESETS
-from ..paths import PALETTE_ASTERISM_RGB
+from ..paths import PALETTE_ASTERISM_RGB, ThemeStyle
 from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
 
@@ -149,7 +148,7 @@ def draw_deep_sky_shapes(
     celestial_data: CelestialData,
     viewer_data: ViewerData,
     *,
-    preset: str = "night",
+    theme: ThemeStyle,
 ) -> None:
     dso = celestial_data.deep_sky_objects
     if dso["alt"].size == 0:
@@ -195,7 +194,7 @@ def draw_dso_hover_info(
     highlighted_dso: Optional[Tuple[CelestialObject, QPointF]],
     text_font: QFont,
     *,
-    preset: str = "night",
+    theme: ThemeStyle,
 ) -> None:
     del text_font
     if not highlighted_dso:
@@ -206,7 +205,7 @@ def draw_dso_hover_info(
     pa_deg = float(obj.get("pa_deg", 0.0))
     alt = float(obj.get("alt", 0.0))
     az = float(obj.get("az", 0.0))
-    if preset in BRIGHT_THEME_PRESETS:
+    if theme.label_outline_suppressed:
         hover_pen = QColor(*PALETTE_ASTERISM_RGB, 220)
         hover_fill = QColor(70, 140, 230, 70)
     else:

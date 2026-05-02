@@ -272,7 +272,7 @@ class FramelessWindowFrame(QWidget):
 
         self.menu_button = QPushButton("", self)
         self.menu_button.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
-        self.menu_button.setStyleSheet(self._owner._menu_button_style_sheet())
+        self.menu_button.setStyleSheet(self._owner._menu_button_style_sheet(self._owner.theme))
         self.menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.menu_button.clicked.connect(self._owner.show_menu)
         self.menu_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -489,6 +489,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             runtime_options.urban_outline_skyscraper_only
         )
         self.visual_preset = user_options.visual_preset
+        self.theme = THEME_STYLES_BY_PRESET.get(
+            self.visual_preset,
+            THEME_STYLES_BY_PRESET["night"],
+        )
         self.star_visibility_boost = user_options.star_visibility_boost
         self._star_render_expected_width = runtime_options.star_render_expected_width
         self.content_fov_deg = float(runtime_options.content_fov_deg)
@@ -1149,7 +1153,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         """Attach the legacy popup-menu button directly on the client area."""
         self.menu_button = QPushButton("", parent)
         self.menu_button.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
-        self.menu_button.setStyleSheet(self._menu_button_style_sheet())
+        self.menu_button.setStyleSheet(self._menu_button_style_sheet(self.theme))
         self.menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.menu_button.clicked.connect(self.show_menu)
         self.menu_button.raise_()
@@ -1157,8 +1161,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def _vmag_limit_menu_text(self) -> str:
         return f"Vmag limit {self.vmag_limit:.1f}"
 
-    def _menu_button_style_sheet(self) -> str:
-        theme = THEME_STYLES_BY_PRESET.get(self.visual_preset, THEME_STYLES_BY_PRESET["night"])
+    def _menu_button_style_sheet(self, theme) -> str:
         chrome = theme.window_chrome
         text = "#%02x%02x%02x" % chrome.menu_button_text_rgb
         return (

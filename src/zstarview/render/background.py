@@ -9,7 +9,7 @@ from ..paths import (
     BACKGROUND_FIELD_OF_VIEW_DEG2,
     DIRECTIONS,
     GUI_BUTTON_SIZE,
-    THEME_STYLES_BY_PRESET,
+    ThemeStyle,
 )
 from ..types import CelestialData, ScreenGeometry, ViewerData
 
@@ -70,7 +70,7 @@ def draw_radial_background(
     rect: QRectF,
     geometry: ScreenGeometry,
     *,
-    preset: str = "night",
+    theme: ThemeStyle,
     edge_fov_deg: float = 90.0,
     content_fov_deg: float = BACKGROUND_FIELD_OF_VIEW_DEG2,
     opaque: bool = False,
@@ -93,12 +93,20 @@ def draw_radial_background(
     def pos(r: float) -> float:
         return max(0.0, min(1.0, r / r_max))
 
-    theme = THEME_STYLES_BY_PRESET.get(preset, THEME_STYLES_BY_PRESET["black"])
     bg = theme.window_background
     if opaque:
         bg_alpha = 255
     else:
         bg_alpha = None
+
+    if bg.flat_background:
+        fill_color = QColor(*bg.inner_rgba)
+        if bg_alpha is not None:
+            fill_color.setAlpha(bg_alpha)
+        painter.save()
+        painter.fillRect(rect, fill_color)
+        painter.restore()
+        return
 
     def col(r: float, s: float) -> QColor:
         t = max(0.0, min(1.0, r / max(1.0, r_max)))
@@ -133,7 +141,7 @@ def draw_window_border(
     painter: QPainter,
     rect: QRectF,
     *,
-    preset: str = "night",
+    theme: ThemeStyle,
 ) -> None:
     """Draw the menu and resize affordances for the custom window chrome."""
     border_width = FRAMELESS_WINDOW_BORDER_WIDTH
@@ -142,7 +150,6 @@ def draw_window_border(
     if border_width <= 0.0:
         return
 
-    theme = THEME_STYLES_BY_PRESET.get(preset, THEME_STYLES_BY_PRESET["night"])
     chrome = theme.window_chrome
     chrome_fill_color = QColor(*chrome.menu_fill_rgba)
     chrome_line_color = QColor(*chrome.menu_icon_rgba)
@@ -178,7 +185,7 @@ def draw_window_border(
         QPointF(inner_right - grip_line_inset, inner_bottom - grip_size + grip_line_inset),
         QPointF(inner_right - grip_size + grip_line_inset, inner_bottom - grip_line_inset),
     )
-    if preset in {"white", "day"}:
+    if theme.window_background.draw_outer_border:
         border_width = float(GUI_BUTTON_SIZE)
         border_color = QColor(*theme.window_background.border_rgba)
         border_w = float(border_width)

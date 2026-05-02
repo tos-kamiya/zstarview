@@ -292,7 +292,7 @@ Use `--theme` to change the background treatment and contrast style.
 
 * `night`: default dark theme
 * `black`: darker opaque background
-* `transparent`: dark translucent background for already-dark desktops
+* `transparent`: dark translucent background for already-dark desktops; use a flat, uniform alpha
 * `day`: bright sky/background treatment
 * `white`: brightest light theme
 

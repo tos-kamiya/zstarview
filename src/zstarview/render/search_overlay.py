@@ -6,6 +6,7 @@ from PySide6.QtCore import QPointF, QRectF
 from PySide6.QtGui import QPainter
 
 from ..astro import altaz_to_normalized_xy, is_in_fov
+from ..paths import ThemeStyle
 from ..search.models import SearchJumpTarget
 from . import guides as render_guides
 from . import text as render_text
@@ -35,13 +36,13 @@ def draw_search_target_overlay(
     view_center: tuple[float, float],
     edge_fov_deg: float,
     content_fov_deg: float,
-    visual_preset: str,
     text_font,
     draw_marker: bool = True,
     draw_label: bool = True,
     marker_scale: float = 1.0,
     label_candidates: Optional[List[Dict[str, Any]]] = None,
     label_reservations: Optional[List[QRectF]] = None,
+    theme: ThemeStyle,
 ) -> None:
     alt = getattr(target, "alt_deg", None)
     az = getattr(target, "az_deg", None)
@@ -58,7 +59,7 @@ def draw_search_target_overlay(
     )
     px, py = normalized_to_screen_xy(nx, ny, geometry)
     pos = QPointF(px, py)
-    color, _outline = render_text.get_text_style(visual_preset)
+    color, _outline = render_text.get_text_style(theme)
 
     if draw_marker:
         render_guides.draw_gauge_cross(
@@ -76,7 +77,7 @@ def draw_search_target_overlay(
     if not label:
         return
     label_pos = QPointF(pos.x() + 12.0, pos.y() - 10.0)
-    style = render_text.resolve_label_text_style(visual_preset, text_font)
+    style = render_text.resolve_label_text_style(theme, text_font)
     if label_candidates is not None:
         label_candidates.append(
             {

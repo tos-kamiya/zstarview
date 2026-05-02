@@ -361,7 +361,7 @@ class SkyWindowUpdatesMixin:
             sky_disc_base_size=self.state.sky_disc_base_size,
             edge_fov_deg=float(self.viewer_data.edge_fov_deg),
             content_fov_deg=float(self.content_fov_deg),
-            visual_preset=self.visual_preset,
+            theme=self.theme,
             star_catalog_meta=self.star_catalog_meta,
             render_width_px=max(2, int(self.client_width())),
             render_height_px=max(2, int(self.client_height())),

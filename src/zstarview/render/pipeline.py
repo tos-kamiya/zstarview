@@ -14,6 +14,7 @@ from ..satellites.types import SatelliteOverlayPoint
 from ..types import CelestialData, ScreenGeometry, ViewerData
 from ..types import CelestialObject, StarsTable, UrbanOutlinePolyline
 from ..search.models import SearchJumpTarget
+from ..paths import THEME_STYLES_BY_PRESET, ThemeStyle
 from . import asterisms as render_asterisms
 from . import background as render_background
 from . import deep_sky_objects as render_deep_sky_objects
@@ -106,6 +107,7 @@ class RenderStyle:
     show_urban_outline_layer: bool
     aircraft_opacity: float
     star_render_expected_width: int
+    theme: ThemeStyle = THEME_STYLES_BY_PRESET["night"]
 
 
 @dataclass(frozen=True)
@@ -321,7 +323,6 @@ def render_hud_overlay_into_painter(
             view_center=scene.viewer.view_center,
             edge_fov_deg=float(scene.viewer.edge_fov_deg),
             content_fov_deg=_content_fov_deg(scene),
-            visual_preset=style.visual_preset,
             text_font=style.text_font,
             draw_marker=True,
             draw_label=False,
@@ -330,6 +331,7 @@ def render_hud_overlay_into_painter(
                 style.star_render_expected_width,
             ),
             label_candidates=label_candidates,
+            theme=style.theme,
         )
     if label_candidates:
         _draw_label_layer(
@@ -431,7 +433,7 @@ def _draw_background_layer(
         painter,
         QRectF(viewport_rect),
         geometry,
-        preset=style.visual_preset,
+        theme=style.theme,
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=_content_fov_deg(scene),
         opaque=not style.show_custom_window_frame,
@@ -440,7 +442,7 @@ def _draw_background_layer(
         render_background.draw_window_border(
             painter,
             QRectF(viewport_rect),
-            preset=style.visual_preset,
+            theme=style.theme,
         )
 
 
@@ -461,7 +463,7 @@ def _draw_guide_layer(
         scene.viewer.view_center,
         style.text_font,
         None,
-        preset=style.visual_preset,
+        theme=style.theme,
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=content_fov_deg,
     )
@@ -469,6 +471,7 @@ def _draw_guide_layer(
         painter,
         geometry,
         scene.viewer.view_center,
+        theme=style.theme,
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=content_fov_deg,
     )
@@ -530,7 +533,7 @@ def _draw_terrain_layers(
             geometry,
             scene.celestial_data,
             scene.viewer,
-            preset=style.visual_preset,
+            theme=style.theme,
         )
     if style.show_asterisms:
         render_asterisms.draw_asterisms(
@@ -542,7 +545,7 @@ def _draw_terrain_layers(
             style.text_font,
             label_reservations,
             label_candidates=label_candidates,
-            preset=style.visual_preset,
+            theme=style.theme,
             line_width_scale=1.0,
             content_fov_deg=content_fov_deg,
             draw_base=True,
@@ -591,7 +594,7 @@ def _draw_dso_hover_layer(
         scene.viewer,
         highlighted_dso,
         style.text_font,
-        preset=style.visual_preset,
+        theme=style.theme,
     )
 
 
@@ -636,7 +639,7 @@ def _draw_aircraft_layer(
         opacity=style.aircraft_opacity,
         line_width_scale=line_width_scale,
         label_candidates=label_candidates,
-        preset=style.visual_preset,
+        theme=style.theme,
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=_content_fov_deg(scene),
     )
@@ -755,7 +758,7 @@ def _draw_planet_layer(
         text_font=style.text_font,
         label_candidates=label_candidates,
         draw_labels=True,
-        preset=style.visual_preset,
+        theme=style.theme,
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=_content_fov_deg(scene),
         marker_scale=marker_scale,
@@ -794,10 +797,9 @@ def _draw_overlay_layer(
         viewport_rect=viewport_rect,
         mouse_pos=mouse_pos,
         bottom_left=overlay_info_bottom_left,
-        preset=style.visual_preset,
+        theme=style.theme,
         draw_static_info=True,
         draw_hover_info=False,
-        get_text_style_func=render_text.get_text_style,
         draw_outlined_text_func=render_text.draw_outlined_text,
         text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
     )
@@ -822,7 +824,7 @@ def _draw_satellite_layer(
             highlighted_satellite[0] if highlighted_satellite is not None else None
         ),
         label_candidates=label_candidates,
-        preset=style.visual_preset,
+        theme=style.theme,
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=_content_fov_deg(scene),
         marker_scale=compute_star_render_upscale_factor(
@@ -856,7 +858,7 @@ def _draw_hover_overlay_layer(
             scene.viewer,
             highlighted_object,
             style.text_font,
-            preset=style.visual_preset,
+            theme=style.theme,
             line_width_scale=line_width_scale,
             content_fov_deg=_content_fov_deg(scene),
             draw_base=False,
@@ -871,6 +873,7 @@ def _draw_hover_overlay_layer(
         highlighted_object,
         marker_scale=line_width_scale,
         outline_bright_bodies=_bright_bodies_mode(style) == "outline",
+        theme=style.theme,
     )
     _draw_dso_hover_layer(
         painter,
@@ -900,10 +903,9 @@ def _draw_hover_overlay_layer(
         style.text_font,
         highlighted_satellite,
         label_candidates=label_candidates,
-        preset=style.visual_preset,
+        theme=style.theme,
         draw_static_info=False,
         draw_hover_info=True,
-        get_text_style_func=render_text.get_text_style,
         draw_outlined_text_func=render_text.draw_outlined_text,
         text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
     )
@@ -932,5 +934,5 @@ def _draw_status_line(
         message=hud.status_message,
         status_line_font=style.status_line_font,
         viewport_rect=viewport_rect,
-        preset=style.visual_preset,
+        theme=style.theme,
     )

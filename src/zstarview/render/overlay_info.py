@@ -5,6 +5,7 @@ from PySide6.QtCore import QPoint, QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen
 
 from ..satellite_constants import SATELLITE_OVERLAY_MARKER_COLOR_RGB
+from ..paths import THEME_STYLES_BY_PRESET, ThemeStyle
 from ..satellites.types import SatelliteOverlayPoint
 from ..types import (
     CelestialData,
@@ -15,7 +16,7 @@ from ..types import (
 )
 from .background import format_overlay_info_lines
 from .deep_sky_objects import _DSO_HOVER_SIZE_GAIN, _dso_ellipse_polygon
-from .text import ResolvedTextStyle, get_text_outline_width
+from .text import ResolvedTextStyle, get_text_outline_width, get_text_style
 
 
 def draw_overlay_info(
@@ -35,10 +36,10 @@ def draw_overlay_info(
     viewport_rect: Any | None = None,
     mouse_pos: Optional[QPoint] = None,
     bottom_left: bool = False,
-    preset: str = "night",
+    theme: ThemeStyle | None = None,
+    get_text_style_func: Callable[..., tuple[QColor, QColor]] | None = None,
     draw_static_info: bool = True,
     draw_hover_info: bool = True,
-    get_text_style_func: Callable[[str], Tuple[QColor, QColor]],
     draw_outlined_text_func: Callable[..., None],
     text_bounds_at_baseline_func: Callable[[str, QFont, QPointF], QRectF],
 ) -> None:
@@ -49,13 +50,17 @@ def draw_overlay_info(
     and information about any highlighted celestial object.
     """
     del enlarge_moon
+    del get_text_style_func
 
-    text_color, outline_color = get_text_style_func(preset)
+    if theme is None:
+        theme = THEME_STYLES_BY_PRESET["night"]
+
+    text_color, outline_color = get_text_style(theme)
     text_style = ResolvedTextStyle(
         font=text_font,
         text_color=text_color,
         outline_color=outline_color,
-        outline_width=get_text_outline_width(preset),
+        outline_width=get_text_outline_width(theme),
     )
 
     font_metrics = QFontMetrics(text_font)

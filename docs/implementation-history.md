@@ -40,6 +40,22 @@
 
 ## 4. 実装履歴
 
+### 2026-05-03
+
+- `transparent` テーマの背景フラット化
+  - `transparent` の `window_background` を平坦化し、`delta_rgb` を `0` にした。
+  - `outer_alpha`、`edge_alpha`、`inner_rgba` の alpha を揃えて、半径方向の alpha 変化をなくした。
+  - 背景描画側ではテーマ名ではなく `WindowBackgroundStyle.flat_background` を見て、単色の半透明塗りへ切り替えるようにした。
+  - 回帰テストとして、`transparent` の背景が中心と隅で同一 RGBA になることを追加した。
+
+- テーマ依存パラメータの追加整理
+  - `WindowBackgroundStyle.draw_outer_border` を追加し、白系テーマの外枠描画をテーマ設定へ移した。
+  - `ThemeStyle.star_visibility_boost` を追加し、`viewer` と `export_image` の `white` / `day` 分岐をテーマ値参照へ置き換えた。
+  - `WindowChromeStyle.menu_fill_rgba` は各テーマの明示値として定義する形に整理した。
+  - `RenderStyle.theme` を追加し、`window_render` と `export_image` で解決したテーマ実体を `pipeline` へ渡すようにした。
+  - `draw_radial_background()` と `draw_window_border()` は `ThemeStyle` を直接受け取るようにして、描画側からのテーマ引き直しを外した。
+  - これで、レンダラー側のテーマ名による条件分岐をさらに減らした。
+
 ### 2026-05-02
 
 - 検索ダイアログの CLI Alt/Az 保持チェック
