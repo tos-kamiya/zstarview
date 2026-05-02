@@ -5,7 +5,7 @@ from PySide6.QtCore import QPoint, QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen
 
 from ..satellite_constants import SATELLITE_OVERLAY_MARKER_COLOR_RGB
-from ..paths import THEME_STYLES_BY_PRESET, ThemeStyle
+from ..paths import ThemeStyle
 from ..satellites.types import SatelliteOverlayPoint
 from ..types import (
     CelestialData,
@@ -36,8 +36,7 @@ def draw_overlay_info(
     viewport_rect: Any | None = None,
     mouse_pos: Optional[QPoint] = None,
     bottom_left: bool = False,
-    theme: ThemeStyle | None = None,
-    get_text_style_func: Callable[..., tuple[QColor, QColor]] | None = None,
+    theme: ThemeStyle,
     draw_static_info: bool = True,
     draw_hover_info: bool = True,
     draw_outlined_text_func: Callable[..., None],
@@ -50,10 +49,6 @@ def draw_overlay_info(
     and information about any highlighted celestial object.
     """
     del enlarge_moon
-    del get_text_style_func
-
-    if theme is None:
-        theme = THEME_STYLES_BY_PRESET["night"]
 
     text_color, outline_color = get_text_style(theme)
     text_style = ResolvedTextStyle(

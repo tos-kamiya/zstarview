@@ -7,7 +7,7 @@ from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QRadialGradient
 
 from ..astro import altaz_to_normalized_xy, calculate_moon_render_data, is_in_fov
-from ..paths import THEME_STYLES_BY_PRESET, ThemeStyle
+from ..paths import ThemeStyle
 from ..types import CelestialData, CelestialObject, PlanetBody, ScreenGeometry, ViewerData
 from ..utils.image import generate_moon_phase_rgba
 from .geometry import normalized_to_screen_xy
@@ -240,13 +240,11 @@ def draw_solar_system_bodies(
     label_reservations: Optional[List[QRectF]] = None,
     draw_markers: bool = True,
     draw_labels: bool = True,
-    theme: ThemeStyle | None = None,
+    theme: ThemeStyle,
     edge_fov_deg: float = 90.0,
     content_fov_deg: float | None = None,
     marker_scale: float = 1.0,
 ) -> None:
-    if theme is None:
-        theme = THEME_STYLES_BY_PRESET["night"]
     moon_body, sun_altaz, moon_altaz = _collect_sun_moon_context(celestial_data.planets)
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
     marker_scale = max(1.0, float(marker_scale))
@@ -387,10 +385,8 @@ def draw_hovered_moon_overlay(
     *,
     marker_scale: float = 1.0,
     outline_bright_bodies: bool = False,
-    theme: ThemeStyle | None = None,
+    theme: ThemeStyle,
 ) -> None:
-    if theme is None:
-        theme = THEME_STYLES_BY_PRESET["night"]
     if highlighted_object is None:
         return
     obj, pos = highlighted_object

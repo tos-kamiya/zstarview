@@ -177,6 +177,7 @@ def test_planets_are_drawn_with_disc_and_cross_markers(monkeypatch) -> None:
         celestial_data=_empty_celestial_data([mars]),
         viewer_data=viewer,
         enlarge_moon=False,
+        theme=THEME_STYLES_BY_PRESET["night"],
     )
 
     assert len(disc_calls) == 1
@@ -220,6 +221,7 @@ def test_planet_label_is_skipped_when_body_marker_is_outside_viewport(
             viewer_data=viewer,
             enlarge_moon=False,
             label_candidates=label_candidates,
+            theme=THEME_STYLES_BY_PRESET["night"],
         )
     finally:
         painter.end()
@@ -278,6 +280,7 @@ def test_enlarge_moon_scales_display_radius_by_five(monkeypatch) -> None:
         celestial_data=celestial,
         viewer_data=viewer,
         enlarge_moon=False,
+        theme=THEME_STYLES_BY_PRESET["night"],
         label_candidates=[],
     )
     render_solar_system.draw_solar_system_bodies(
@@ -287,6 +290,7 @@ def test_enlarge_moon_scales_display_radius_by_five(monkeypatch) -> None:
         viewer_data=viewer,
         enlarge_moon=True,
         label_candidates=[],
+        theme=THEME_STYLES_BY_PRESET["night"],
     )
 
     assert len(moon_draw_radii) == 2
@@ -349,6 +353,7 @@ def test_outline_bright_bodies_keeps_enlarged_moon_filled(monkeypatch) -> None:
         enlarge_moon=True,
         outline_bright_bodies=True,
         label_candidates=[],
+        theme=THEME_STYLES_BY_PRESET["night"],
     )
 
     assert moon_outline_radii == []
@@ -393,6 +398,7 @@ def test_hovered_moon_is_filled_even_in_outline_mode(monkeypatch) -> None:
         viewer_data=viewer,
         highlighted_object=(moon, QPointF(100.0, 100.0)),
         outline_bright_bodies=True,
+        theme=THEME_STYLES_BY_PRESET["night"],
     )
 
     assert moon_outline_radii == []
@@ -448,6 +454,7 @@ def test_marker_scale_applies_to_planets_and_moon(monkeypatch) -> None:
         viewer_data=viewer,
         enlarge_moon=False,
         marker_scale=1.0,
+        theme=THEME_STYLES_BY_PRESET["night"],
     )
     render_solar_system.draw_solar_system_bodies(
         painter=object(),
@@ -456,6 +463,7 @@ def test_marker_scale_applies_to_planets_and_moon(monkeypatch) -> None:
         viewer_data=viewer,
         enlarge_moon=False,
         marker_scale=2.0,
+        theme=THEME_STYLES_BY_PRESET["night"],
     )
 
     assert len(planet_draw_radii) == 2
@@ -496,6 +504,7 @@ def test_planet_draw_and_hover_ignore_horizon_visibility_flag(monkeypatch) -> No
         celestial_data=_empty_celestial_data([mars]),
         viewer_data=viewer,
         enlarge_moon=False,
+        theme=THEME_STYLES_BY_PRESET["night"],
     )
     assert len(disc_calls) == 1
 
@@ -561,6 +570,7 @@ def test_satellite_overlay_draws_below_horizon_marker_when_in_fov(monkeypatch) -
             view_center=(0.0, 151.0),
             opacity=1.0,
             label_candidates=[],
+            theme=THEME_STYLES_BY_PRESET["night"],
         )
     finally:
         painter.end()
@@ -598,6 +608,7 @@ def test_satellite_overlay_scales_marker_with_window_scale(monkeypatch) -> None:
             opacity=1.0,
             label_candidates=[],
             marker_scale=2.5,
+            theme=THEME_STYLES_BY_PRESET["night"],
         )
     finally:
         painter.end()
@@ -633,6 +644,7 @@ def test_satellite_overlay_keeps_overscan_position_beyond_90_deg(monkeypatch) ->
             label_candidates=[],
             edge_fov_deg=110.0,
             content_fov_deg=110.0,
+            theme=THEME_STYLES_BY_PRESET["night"],
         )
     finally:
         painter.end()
@@ -670,6 +682,7 @@ def test_satellite_overlay_does_not_add_labels(monkeypatch) -> None:
             view_center=(0.0, 151.0),
             opacity=1.0,
             label_candidates=label_candidates,
+            theme=THEME_STYLES_BY_PRESET["night"],
         )
     finally:
         painter.end()
@@ -724,9 +737,9 @@ def test_satellite_overlay_info_shows_hover_name(monkeypatch) -> None:
         highlighted_object=None,
         highlighted_satellite=hovered_satellite,
         text_font=QFont(),
-        get_text_style_func=render_text.get_text_style,
         draw_outlined_text_func=fake_draw_outlined_text,
         text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
+        theme=THEME_STYLES_BY_PRESET["night"],
     )
 
     assert any(
@@ -784,9 +797,9 @@ def test_overlay_info_shows_star_and_satellite_labels_independently() -> None:
         highlighted_object=highlighted_object,
         highlighted_satellite=highlighted_satellite,
         text_font=QFont(),
-        get_text_style_func=render_text.get_text_style,
         draw_outlined_text_func=fake_draw_outlined_text,
         text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
+        theme=THEME_STYLES_BY_PRESET["night"],
     )
 
     label_names = {text for text, _color in label_calls}
@@ -883,7 +896,7 @@ def test_aircraft_label_uses_black_theme_style_in_day_theme() -> None:
         view_center=(0.0, 151.0),
         opacity=1.0,
         label_candidates=label_candidates,
-        preset="day",
+        theme=THEME_STYLES_BY_PRESET["day"],
         content_fov_deg=180.0,
     )
 
@@ -982,9 +995,9 @@ def test_overlay_skips_label_for_planet(monkeypatch) -> None:
         highlighted_dso=None,
         highlighted_object=highlighted_object,
         text_font=QFont(),
-        get_text_style_func=render_text.get_text_style,
         draw_outlined_text_func=fake_draw_outlined_text,
         text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
+        theme=THEME_STYLES_BY_PRESET["night"],
     )
 
     assert "mars" not in label_calls
@@ -1031,9 +1044,9 @@ def test_overlay_info_includes_location_height_and_explicit_observer_height(
         highlighted_dso=None,
         highlighted_object=None,
         text_font=QFont(),
-        get_text_style_func=render_text.get_text_style,
         draw_outlined_text_func=fake_draw_outlined_text,
         text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
+        theme=THEME_STYLES_BY_PRESET["night"],
     )
 
     assert label_calls == [
@@ -1092,9 +1105,9 @@ def test_overlay_info_first_line_top_margin_matches_left_margin_when_cursor_is_l
         viewport_rect=QRectF(0.0, 0.0, 240.0, 180.0),
         mouse_pos=QPoint(10, 170),
         bottom_left=False,
-        get_text_style_func=render_text.get_text_style,
         draw_outlined_text_func=fake_draw_outlined_text,
         text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
+        theme=THEME_STYLES_BY_PRESET["night"],
     )
 
     assert first_label_pos is not None
@@ -1148,9 +1161,9 @@ def test_overlay_info_moves_to_bottom_when_cursor_is_in_upper_half(monkeypatch) 
         viewport_rect=QRectF(0.0, 0.0, 240.0, 180.0),
         mouse_pos=QPoint(10, 20),
         bottom_left=True,
-        get_text_style_func=render_text.get_text_style,
         draw_outlined_text_func=fake_draw_outlined_text,
         text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
+        theme=THEME_STYLES_BY_PRESET["night"],
     )
 
     assert first_label_pos is not None

@@ -31,7 +31,7 @@ from ..astro import (
     calculate_visible_stars,
     eclipse_factor_from_info,
 )
-from ..paths import THEME_STYLES_BY_PRESET, ThemeStyle
+from ..paths import ThemeStyle
 from ..render import sky_disc
 from ..render import geometry as render_geometry
 from ..types import CelestialData, StarCatalogMeta
@@ -54,8 +54,7 @@ def compute_sky_snapshot(
     sky_disc_base_size: int,
     edge_fov_deg: float,
     content_fov_deg: float,
-    theme: ThemeStyle | None = None,
-    visual_preset: str | None = None,
+    theme: ThemeStyle,
     star_catalog_meta: StarCatalogMeta | None = None,
     render_width_px: int | None = None,
     render_height_px: int | None = None,
@@ -199,22 +198,16 @@ class SkyDataWorker(QObject):
         star_subset_indices: np.ndarray | None = None,
         delta_t: timedelta,
         sky_disc_alpha: float,
-        sky_disc_base_size: int,
-        edge_fov_deg: float,
-        content_fov_deg: float,
-        theme: ThemeStyle | None = None,
-        visual_preset: str | None = None,
-        star_catalog_meta: StarCatalogMeta | None = None,
+    sky_disc_base_size: int,
+    edge_fov_deg: float,
+    content_fov_deg: float,
+    theme: ThemeStyle,
+    star_catalog_meta: StarCatalogMeta | None = None,
         render_width_px: int | None = None,
         render_height_px: int | None = None,
         render_generation: int = 0,
     ) -> bool:
         """Start background computation if idle; return False when already running."""
-        if theme is None:
-            theme = THEME_STYLES_BY_PRESET.get(
-                visual_preset or "night",
-                THEME_STYLES_BY_PRESET["night"],
-            )
         with self._lock:
             if self._stopping or self._running:
                 return False
