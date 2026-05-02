@@ -50,29 +50,18 @@ Urban outline and terrain horizon examples from several cities worldwide:
 
 <table>
   <tr>
-    <td align="center" width="33%"><img src="docs/images/screenshot-sydney.png" alt="Circular Quay, Sydney" width="100%" /></td>
-    <td align="center" width="33%"><img src="docs/images/screenshot-tokyotower.png" alt="Near Tokyo Tower, Tokyo" width="100%" /></td>
-    <td align="center" width="33%"><img src="docs/images/screenshot-mtfuji.png" alt="View of Mt. Fuji" width="100%" /></td>
+    <td align="center" width="20%"><img src="docs/images/screenshot-sydney.png" alt="Circular Quay, Sydney" width="100%" /></td>
+    <td align="center" width="20%"><img src="docs/images/screenshot-tokyotower.png" alt="Near Tokyo Tower, Tokyo" width="100%" /></td>
+    <td align="center" width="20%"><img src="docs/images/screenshot-mtfuji.png" alt="View of Mt. Fuji" width="100%" /></td>
+    <td align="center" width="20%"><img src="docs/images/screenshot-marinabay.png" alt="Marina Bay, Singapore" width="100%" /></td>
+    <td align="center" width="20%"><img src="docs/images/screenshot-burjkhalifa.png" alt="Near Burj Khalifa, Dubai" width="100%" /></td>
   </tr>
   <tr>
     <td align="center"><sub>Circular Quay, Sydney</sub></td>
     <td align="center"><sub>Near Tokyo Tower, Tokyo</sub></td>
     <td align="center"><sub>View of Mt. Fuji</sub></td>
-  </tr>
-</table>
-
-<div style="height: 0.8em;"></div>
-
-<table>
-  <tr>
-    <td align="center" width="33%"><img src="docs/images/screenshot-marinabay.png" alt="Marina Bay, Singapore" width="100%" /></td>
-    <td align="center" width="33%"><img src="docs/images/screenshot-burjkhalifa.png" alt="Near Burj Khalifa, Dubai" width="100%" /></td>
-    <td align="center" width="33%"><img src="docs/images/screenshot-capeofgoodhope.png" alt="Cape of Good Hope, South Africa" width="100%" /></td>
-  </tr>
-  <tr>
     <td align="center"><sub>Marina Bay, Singapore</sub></td>
     <td align="center"><sub>Near Burj Khalifa, Dubai</sub></td>
-    <td align="center"><sub>Cape of Good Hope, South Africa</sub></td>
   </tr>
 </table>
 
@@ -80,14 +69,18 @@ Urban outline and terrain horizon examples from several cities worldwide:
 
 <table>
   <tr>
-    <td align="center" width="33%"><img src="docs/images/screenshot-jungfraujoch.png" alt="Jungfraujoch, Switzerland" width="100%" /></td>
-    <td align="center" width="33%"><img src="docs/images/screenshot-sagradafamilia.png" alt="Sagrada Familia, Barcelona" width="100%" /></td>
-    <td align="center" width="33%"><img src="docs/images/screenshot-uyuni.png" alt="Uyuni Salt Flat, Bolivia" width="100%" /></td>
+    <td align="center" width="20%"><img src="docs/images/screenshot-capeofgoodhope.png" alt="Cape of Good Hope, South Africa" width="100%" /></td>
+    <td align="center" width="20%"><img src="docs/images/screenshot-jungfraujoch.png" alt="Jungfraujoch, Switzerland" width="100%" /></td>
+    <td align="center" width="20%"><img src="docs/images/screenshot-sagradafamilia.png" alt="Sagrada Familia, Barcelona" width="100%" /></td>
+    <td align="center" width="20%"><img src="docs/images/screenshot-uyuni.png" alt="Uyuni Salt Flat, Bolivia" width="100%" /></td>
+    <td align="center" width="20%"></td>
   </tr>
   <tr>
+    <td align="center"><sub>Cape of Good Hope, South Africa</sub></td>
     <td align="center"><sub>Jungfraujoch, Switzerland</sub></td>
     <td align="center"><sub>Sagrada Familia, Barcelona</sub></td>
     <td align="center"><sub>Uyuni Salt Flat, Bolivia</sub></td>
+    <td align="center"><sub></sub></td>
   </tr>
 </table>
 
