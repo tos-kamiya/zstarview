@@ -6,9 +6,118 @@ from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.paths import PALETTE_NEVER_RISES_RGB
 from zstarview.render.background import draw_radial_background, draw_window_border
 from zstarview.render.geometry import get_screen_geometry
-from zstarview.render.sky_disc import NEVER_RISES_TINT_RGB, draw_sky_color_disc, draw_uniform_sky_color_disc
+from zstarview.render.sky_disc import (
+    NEVER_RISES_TINT_RGB,
+    draw_sky_color_disc,
+    draw_uniform_sky_color_disc,
+    sky_color_samples,
+)
 from zstarview.types import ScreenGeometry
 from zstarview.render.qt_image import qimage_to_np_rgba
+
+
+def test_sky_color_samples_get_brighter_as_alpha_increases() -> None:
+    alt = np.array([60.0], dtype=np.float32)
+    az = np.array([0.0], dtype=np.float32)
+
+    low_alpha = sky_color_samples(
+        alt,
+        az,
+        (20.0, 0.0),
+        alpha=0.2,
+        saturation=1.35,
+        exposure=1.14,
+        eclipse_factor=1.0,
+    )[0]
+    high_alpha = sky_color_samples(
+        alt,
+        az,
+        (20.0, 0.0),
+        alpha=1.0,
+        saturation=1.35,
+        exposure=1.14,
+        eclipse_factor=1.0,
+    )[0]
+
+    assert float(high_alpha.mean()) > float(low_alpha.mean())
+
+
+def test_sky_color_samples_get_less_warm_as_sun_rises() -> None:
+    alt = np.array([20.0], dtype=np.float32)
+    az = np.array([0.0], dtype=np.float32)
+
+    low_sun = sky_color_samples(
+        alt,
+        az,
+        (0.5, 0.0),
+        alpha=1.0,
+        saturation=1.35,
+        exposure=1.14,
+        eclipse_factor=1.0,
+    )[0]
+    higher_sun = sky_color_samples(
+        alt,
+        az,
+        (15.0, 0.0),
+        alpha=1.0,
+        saturation=1.35,
+        exposure=1.14,
+        eclipse_factor=1.0,
+    )[0]
+
+    assert float(low_sun[0] - low_sun[2]) > float(higher_sun[0] - higher_sun[2])
+
+
+def test_sky_color_samples_shift_with_sun_azimuth_off_zenith() -> None:
+    alt = np.array([45.0, 45.0], dtype=np.float32)
+    az = np.array([0.0, 90.0], dtype=np.float32)
+
+    sun_west = sky_color_samples(
+        alt,
+        az,
+        (7.5, 0.0),
+        alpha=1.0,
+        saturation=1.35,
+        exposure=1.14,
+        eclipse_factor=1.0,
+    )
+    sun_south = sky_color_samples(
+        alt,
+        az,
+        (7.5, 180.0),
+        alpha=1.0,
+        saturation=1.35,
+        exposure=1.14,
+        eclipse_factor=1.0,
+    )
+
+    assert np.max(np.abs(sun_west - sun_south)) > 0.01
+
+
+def test_sky_color_samples_spread_rayleigh_blue_farther_when_sun_is_lower() -> None:
+    alt = np.array([60.0], dtype=np.float32)
+    far_az = np.array([150.0], dtype=np.float32)
+
+    low_sun = sky_color_samples(
+        alt,
+        far_az,
+        (1.0, 0.0),
+        alpha=1.0,
+        saturation=1.35,
+        exposure=1.14,
+        eclipse_factor=1.0,
+    )[0]
+    higher_sun = sky_color_samples(
+        alt,
+        far_az,
+        (20.0, 0.0),
+        alpha=1.0,
+        saturation=1.35,
+        exposure=1.14,
+        eclipse_factor=1.0,
+    )[0]
+
+    assert float(low_sun[2] - low_sun[0]) > float(higher_sun[2] - higher_sun[0])
 
 
 def test_screen_geometry_wide_mode_top_is_always_tangent() -> None:
@@ -57,8 +166,9 @@ def test_sky_disc_raw_image_keeps_below_horizon_untinted() -> None:
     bottom_rgb = arr[140, 80, :3].astype(int)
 
     # Ground tint is applied later by the compositor, not in the raw sky disc.
-    assert int(top_rgb.max()) <= 1
-    assert int(bottom_rgb.max()) <= 1
+    assert int(top_rgb.max()) <= 20
+    assert int(bottom_rgb.max()) <= 20
+    assert np.array_equal(top_rgb, bottom_rgb)
 
 
 def test_sky_disc_can_reduce_disc_opacity_without_changing_rgb_samples() -> None:
@@ -75,7 +185,7 @@ def test_sky_disc_can_reduce_disc_opacity_without_changing_rgb_samples() -> None
     arr = qimage_to_np_rgba(img)
 
     assert int(arr[20, 80, 3]) == 115
-    assert int(arr[20, 80, :3].max()) <= 1
+    assert int(arr[20, 80, :3].max()) <= 20
 
 
 def test_sky_disc_ignores_never_rises_tint_by_observer_latitude() -> None:

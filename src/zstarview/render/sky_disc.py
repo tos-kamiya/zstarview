@@ -15,6 +15,27 @@ NEVER_RISES_TINT_RGB = np.array(PALETTE_NEVER_RISES_RGB, dtype=np.float32) / 255
 NEVER_RISES_TINT_STRENGTH = 0.06
 FLAT_SKY_DISC_RGB_U8 = np.array([10, 10, 10], dtype=np.uint8)
 
+NIGHT_SKY_RGB = np.array([0.01, 0.02, 0.05], dtype=np.float32)
+HORIZON_DAY_RGB = np.array([0.96, 0.73, 0.50], dtype=np.float32)
+ZENITH_DAY_RGB = np.array([0.24, 0.48, 0.86], dtype=np.float32)
+HAZE_RGB = np.array([0.99, 0.96, 0.92], dtype=np.float32)
+RAYLEIGH_BLUE_RGB = np.array([0.18, 0.34, 0.82], dtype=np.float32)
+SUN_GLOW_RGB = np.array([1.00, 0.89, 0.70], dtype=np.float32)
+SUNSET_RGB = np.array([1.00, 0.54, 0.20], dtype=np.float32)
+ANTI_SOLAR_RGB = np.array([0.14, 0.18, 0.34], dtype=np.float32)
+
+SUNSET_START_ALT_DEG = 4.0
+SUNSET_END_ALT_DEG = 18.0
+SUN_GLOW_EXPONENT_BASE = 1.75
+ANTI_SOLAR_EXPONENT = 2.1
+HAZE_STRENGTH_MIN = 0.16
+HAZE_STRENGTH_MAX = 0.68
+RAYLEIGH_STRENGTH = 0.58
+SUN_GLOW_STRENGTH = 0.42
+SUNSET_STRENGTH = 0.24
+ANTI_SOLAR_STRENGTH = 0.20
+SATURATION_CHROMA_SCALE = 0.35
+
 
 def _smoothstep(edge0: float, edge1: float, x: float) -> float:
     """Performs a smooth Hermite interpolation between 0 and 1."""
@@ -77,6 +98,8 @@ def _get_sky_color_vectorized(
     view_alt_deg: np.ndarray,
     view_az_deg: np.ndarray,
     sun_altaz: Tuple[float, float],
+    *,
+    saturation: float,
 ) -> np.ndarray:
     """Vectorized sky color model for many sky directions at once."""
     sun_alt_deg, sun_az_deg = sun_altaz
@@ -84,19 +107,25 @@ def _get_sky_color_vectorized(
     if n == 0:
         return np.zeros((0, 3), dtype=np.float32)
     if sun_alt_deg <= -10.0:
-        return np.zeros((n, 3), dtype=np.float32)
+        return np.repeat(NIGHT_SKY_RGB[None, :], n, axis=0)
 
     tau = float(np.clip((TURBIDITY - 2.0) / 8.0, 0.0, 1.0))
+    colorfulness = float(np.clip(1.0 + (float(saturation) - 1.0) * SATURATION_CHROMA_SCALE, 0.75, 1.25))
     t_alt = np.clip(view_alt_deg / 90.0, 0.0, 1.0)
     sun_up = _smoothstep(-8.0, 6.0, sun_alt_deg)
     twilight = _smoothstep(-10.0, 0.0, sun_alt_deg)
+    sunset = 1.0 - _smoothstep(SUNSET_START_ALT_DEG, SUNSET_END_ALT_DEG, sun_alt_deg)
+    low_altitude = 1.0 - t_alt
+    high_altitude = t_alt
 
-    horizon_day = np.array([0.98, 0.70, 0.45], dtype=np.float32)
-    zenith_day = np.array([0.18, 0.42, 0.93], dtype=np.float32)
-    base = horizon_day[None, :] + (zenith_day - horizon_day)[None, :] * t_alt[:, None]
+    horizon_day = HORIZON_DAY_RGB[None, :]
+    zenith_day = ZENITH_DAY_RGB[None, :]
+    base = horizon_day + (zenith_day - horizon_day) * t_alt[:, None]
 
-    haze = (0.22 + 0.48 * (1.0 - t_alt)) * (0.65 + 0.55 * tau)
-    base = base + (1.0 - base) * haze[:, None]
+    haze_strength = (HAZE_STRENGTH_MIN + HAZE_STRENGTH_MAX * low_altitude) * (0.72 + 0.48 * tau)
+    haze_strength = np.clip(haze_strength * (0.88 + 0.12 * sunset), 0.0, 1.0)
+    haze_color = HAZE_RGB[None, :]
+    base = base + (haze_color - base) * haze_strength[:, None]
 
     a1 = np.radians(view_alt_deg)
     z1 = np.radians(view_az_deg)
@@ -104,58 +133,34 @@ def _get_sky_color_vectorized(
     z2 = math.radians(sun_az_deg)
     cos_g = np.sin(a1) * math.sin(a2) + np.cos(a1) * math.cos(a2) * np.cos(z2 - z1)
     cos_g = np.clip(cos_g, -1.0, 1.0)
-    sun_angle = np.arccos(cos_g)
 
-    f = np.maximum(0.0, np.cos(sun_angle))
-    glow = f ** (1.9 - 0.55 * tau)
-    sun_tint = np.array([1.0, 0.82, 0.58], dtype=np.float32) + (
-        np.array([1.0, 0.92, 0.78], dtype=np.float32) - np.array([1.0, 0.82, 0.58], dtype=np.float32)
-    ) * tau
-    color = base + sun_tint[None, :] * (0.52 * glow * sun_up)[:, None]
+    forward = np.maximum(0.0, cos_g)
+    back = np.maximum(0.0, -cos_g)
 
-    anti = np.maximum(0.0, np.cos(np.pi - sun_angle))
-    anti_boost = anti**2.2
-    color += np.array([0.06, 0.10, 0.20], dtype=np.float32)[None, :] * (0.24 * anti_boost * sun_up)[:, None]
+    rayleigh_angle = 1.0 - cos_g * cos_g
+    rayleigh_spread = 0.55 + 0.75 * sunset
+    rayleigh_amount = rayleigh_angle * rayleigh_spread * sun_up * (0.34 + 0.66 * high_altitude)
+    rayleigh_amount *= 0.78 + 0.22 * tau
+    rayleigh_strength = np.clip(RAYLEIGH_STRENGTH * rayleigh_amount * colorfulness, 0.0, 1.0)
+    color = base + (RAYLEIGH_BLUE_RGB[None, :] - base) * rayleigh_strength[:, None]
 
-    night = np.array([0.01, 0.02, 0.05], dtype=np.float32)
-    color = night[None, :] + (color - night[None, :]) * twilight
+    anti_amount = (back**ANTI_SOLAR_EXPONENT) * sun_up * (0.25 + 0.75 * high_altitude)
+    anti_strength = np.clip(ANTI_SOLAR_STRENGTH * anti_amount * (0.85 + 0.15 * colorfulness), 0.0, 1.0)
+    color = color + (ANTI_SOLAR_RGB[None, :] - color) * anti_strength[:, None]
 
-    max_luma = 0.28 + 0.20 * sun_up
-    luma = np.sum(color * np.array([0.299, 0.587, 0.114], dtype=np.float32)[None, :], axis=1)
-    scale = np.ones_like(luma)
-    clip_mask = luma > max_luma
-    scale[clip_mask] = max_luma / np.maximum(luma[clip_mask], 1e-6)
-    color = color * scale[:, None]
+    glow_exponent = SUN_GLOW_EXPONENT_BASE - 0.25 * tau
+    sun_glow_amount = (forward**glow_exponent) * sun_up
+    sun_glow_strength = np.clip(SUN_GLOW_STRENGTH * sun_glow_amount * (0.92 + 0.08 * colorfulness), 0.0, 1.0)
+    color = color + (SUN_GLOW_RGB[None, :] - color) * sun_glow_strength[:, None]
+
+    sunset_amount = sunset * low_altitude * (forward ** (1.20 - 0.20 * tau))
+    sunset_amount *= 0.70 + 0.30 * sun_up
+    sunset_strength = np.clip(SUNSET_STRENGTH * sunset_amount * (0.92 + 0.08 * colorfulness), 0.0, 1.0)
+    color = color + (SUNSET_RGB[None, :] - color) * sunset_strength[:, None]
+
+    color = NIGHT_SKY_RGB[None, :] + (color - NIGHT_SKY_RGB[None, :]) * twilight
 
     return np.clip(color, 0.0, 1.0).astype(np.float32)
-
-
-def _grade_color(
-    color: np.ndarray,
-    *,
-    saturation: float = 1.0,
-    exposure: float = 1.0,
-    gamma: float = 1.0,
-) -> np.ndarray:
-    """
-    Sky-disc-only color grading:
-      1) luma-based saturation (BT.601/709)
-      2) exposure scaling
-      3) simple power-law gamma (on current space)
-    Assumes color is a numpy array in [0,1] and *not* premultiplied.
-    """
-    luma = np.sum(color * np.array([0.299, 0.587, 0.114], dtype=np.float32)[None, :], axis=1, keepdims=True)
-
-    color = luma + (color - luma) * saturation
-    color *= exposure
-
-    if gamma > 0.0 and gamma != 1.0:
-        inv = 1.0 / gamma
-        color = np.power(np.maximum(0.0, color), inv)
-
-    color = color / (1.0 + 0.35 * color)
-
-    return np.clip(color, 0.0, 1.0)
 
 
 def sky_color_samples(
@@ -168,7 +173,7 @@ def sky_color_samples(
     alpha: float = 1.0,
     eclipse_factor: float = 1.0,
 ) -> np.ndarray:
-    """Return graded sky RGB samples for (alt, az) arrays."""
+    """Return sky RGB samples for (alt, az) arrays."""
     alt = np.asarray(view_alt_deg, dtype=np.float32)
     az = np.asarray(view_az_deg, dtype=np.float32)
     if alt.shape != az.shape:
@@ -176,13 +181,9 @@ def sky_color_samples(
     if alt.size == 0:
         return np.zeros((0, 3), dtype=np.float32)
 
-    colors = _get_sky_color_vectorized(alt.reshape(-1), az.reshape(-1), sun_altaz)
-    gamma = (1.0 - alpha) * 0.2 + 1.0 if alpha < 1.0 else 1.0
-    colors = _grade_color(colors, saturation=saturation, exposure=exposure, gamma=gamma)
-
-    sky_scale = max(0.0, float(alpha))
-    eclipse_scale = max(0.0, float(eclipse_factor))
-    colors *= sky_scale * eclipse_scale
+    colors = _get_sky_color_vectorized(alt.reshape(-1), az.reshape(-1), sun_altaz, saturation=saturation)
+    colors *= max(0.0, float(exposure))
+    colors *= max(0.0, float(alpha)) * max(0.0, float(eclipse_factor))
     return np.clip(colors, 0.0, 1.0).astype(np.float32)
 
 
