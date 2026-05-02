@@ -6,7 +6,7 @@ from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 from ..aircraft.types import AircraftOverlayPoint
 from ..aircraft_constants import AIRCRAFT_FADE_START_SECONDS, AIRCRAFT_OVERLAY_LINE_COLOR_RGB
 from ..astro import altaz_to_normalized_xy, is_in_fov
-from ..paths import FIELD_OF_VIEW_DEG
+from ..paths import FIELD_OF_VIEW_DEG, THEME_STYLES_BY_PRESET, ThemeStyle
 from ..types import ScreenGeometry
 from .geometry import normalized_to_screen_xy
 from .text import resolve_text_style
@@ -24,10 +24,13 @@ def draw_aircraft_overlay(
     opacity: float = 1.0,
     line_width_scale: float = 1.0,
     label_candidates: Optional[List[Dict[str, Any]]] = None,
-    preset: str = "night",
+    theme: ThemeStyle | None = None,
+    preset: str | None = None,
     edge_fov_deg: float = FIELD_OF_VIEW_DEG,
     content_fov_deg: float = FIELD_OF_VIEW_DEG,
 ) -> None:
+    if theme is None:
+        theme = THEME_STYLES_BY_PRESET.get(preset or "night", THEME_STYLES_BY_PRESET["night"])
     layer_opacity = max(0.0, min(1.0, float(opacity)))
     if not aircraft_points or layer_opacity <= 0.0:
         return
@@ -35,7 +38,7 @@ def draw_aircraft_overlay(
     painter.save()
     width_scale = max(1.0, float(line_width_scale))
     line_color = QColor(*AIRCRAFT_OVERLAY_LINE_COLOR_RGB, 255)
-    label_style = resolve_text_style(preset, painter.font(), opacity=layer_opacity)
+    label_style = resolve_text_style(theme, painter.font(), opacity=layer_opacity)
     label_color = QColor(*AIRCRAFT_OVERLAY_LINE_COLOR_RGB)
     label_color.setAlpha(label_style.text_color.alpha())
     label_style = type(label_style)(

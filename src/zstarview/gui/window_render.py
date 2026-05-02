@@ -24,10 +24,19 @@ from ..render.pipeline import (
     render_fast_overlay_layers_into_painter,
     render_hud_overlay_into_painter,
 )
+from ..paths import THEME_STYLES_BY_PRESET, ThemeStyle
 from ..satellites.types import SatelliteOverlayPoint
 from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_window_theme(self) -> ThemeStyle:
+    theme = getattr(self, "theme", None)
+    if theme is not None:
+        return theme
+    visual_preset = getattr(self, "visual_preset", "night")
+    return THEME_STYLES_BY_PRESET.get(visual_preset, THEME_STYLES_BY_PRESET["night"])
 
 
 def _resolve_hover_targets(
@@ -397,6 +406,7 @@ class SkyWindowRenderMixin:
     def _render_style(self) -> RenderStyle:
         status_line_font = self.status_line_font
         return RenderStyle(
+            theme=_resolve_window_theme(self),
             visual_preset=self.visual_preset,
             text_font=self.text_font,
             status_line_font=cast(QFont, status_line_font),
@@ -538,7 +548,7 @@ class SkyWindowRenderMixin:
             view_center=self.state.render_view_center,
             edge_fov_deg=float(self.viewer_data.edge_fov_deg),
             content_fov_deg=float(self.viewer_data.content_fov_deg),
-            visual_preset=self.visual_preset,
+            theme=_resolve_window_theme(self),
             text_font=self.text_font,
             draw_marker=True,
             draw_label=True,
@@ -561,7 +571,7 @@ class SkyWindowRenderMixin:
         try:
             celestial_data = self.state.celestial_data
             if celestial_data is None:
-                loading_color, _ = render_text.get_text_style(self.visual_preset)
+                loading_color, _ = render_text.get_text_style(_resolve_window_theme(self))
                 painter.setPen(loading_color)
                 painter.setFont(self.text_font)
                 painter.drawText(
@@ -632,7 +642,7 @@ class SkyWindowRenderMixin:
 
         celestial_data = self.state.celestial_data
         if celestial_data is None:
-            loading_color, _ = render_text.get_text_style(self.visual_preset)
+            loading_color, _ = render_text.get_text_style(_resolve_window_theme(self))
             painter.setPen(loading_color)
             painter.setFont(self.text_font)
             painter.drawText(

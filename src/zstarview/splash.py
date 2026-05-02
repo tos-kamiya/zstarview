@@ -9,7 +9,7 @@ from PySide6.QtGui import QColor, QGuiApplication, QIcon, QLinearGradient, QPain
 from PySide6.QtWidgets import QApplication, QSplashScreen
 
 from .__about__ import __version__
-from .paths import APP_AUTHOR, APP_DISPLAY_NAME, APP_ICON_FILE, APP_ID, CACHE_PATH, THEME_STYLES_BY_PRESET
+from .paths import APP_AUTHOR, APP_DISPLAY_NAME, APP_ICON_FILE, APP_ID, CACHE_PATH, ThemeStyle
 
 logger = logging.getLogger(__name__)
 
@@ -25,9 +25,8 @@ def _with_alpha(color: QColor, alpha: int) -> QColor:
     result.setAlpha(max(0, min(255, int(alpha))))
     return result
 
-def _get_splash_palette(visual_preset: str) -> tuple[list[QColor], QColor, QColor]:
+def _get_splash_palette(theme: ThemeStyle) -> tuple[list[QColor], QColor, QColor]:
     """Return gradient colors, frame color, and default message color for splash."""
-    theme = THEME_STYLES_BY_PRESET.get(visual_preset, THEME_STYLES_BY_PRESET["night"])
     background_alpha = theme.window_background.average_alpha()
     splash = theme.splash
     return (
@@ -42,10 +41,10 @@ def _get_splash_palette(visual_preset: str) -> tuple[list[QColor], QColor, QColo
 
 
 def _build_splash_pixmap(
-    visual_preset: str, width: int = 400, height: int = 200
+    theme: ThemeStyle, width: int = 400, height: int = 200
 ) -> QPixmap:
     """Create a splash background matching the selected visual preset."""
-    grad_colors, frame_color, _ = _get_splash_palette(visual_preset)
+    grad_colors, frame_color, _ = _get_splash_palette(theme)
     pixmap = QPixmap(width, height)
     pixmap.fill(Qt.GlobalColor.transparent)
     painter = QPainter(pixmap)
@@ -103,12 +102,12 @@ def setup_splash_and_attach_logger(
     app: QApplication,
     app_name: str,
     root_logger: logging.Logger,
-    visual_preset: str,
+    theme: ThemeStyle,
 ) -> Tuple[QSplashScreen, SplashLogHandler, Callable[[str], None]]:
     """Create a splash screen and attach a temporary log handler."""
     splash = QSplashScreen(QPixmap(400, 200), Qt.WindowType.WindowStaysOnTopHint)
-    _, _, info_color = _get_splash_palette(visual_preset)
-    splash.setPixmap(_build_splash_pixmap(visual_preset, 400, 200))
+    _, _, info_color = _get_splash_palette(theme)
+    splash.setPixmap(_build_splash_pixmap(theme, 400, 200))
     splash.show()
 
     context_line = ""

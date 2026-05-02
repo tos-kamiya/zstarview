@@ -76,6 +76,8 @@ class WindowBackgroundStyle:
     edge_alpha: int
     inner_rgba: tuple[int, int, int, int]
     border_rgba: tuple[int, int, int, int]
+    flat_background: bool = False
+    draw_outer_border: bool = False
 
     def average_alpha(self) -> int:
         boundary_alpha = int(round(self.outer_alpha * 0.7 + self.edge_alpha * 0.3))
@@ -113,6 +115,8 @@ class ThemeStyle:
     window_chrome: WindowChromeStyle
     sky_disc: SkyDiscStyle
     splash: SplashStyle
+    star_visibility_boost: float = 1.0
+    label_outline_suppressed: bool = False
 
 
 def _theme_background_luminance(base_rgb: tuple[int, int, int]) -> float:
@@ -123,56 +127,19 @@ def _theme_background_luminance(base_rgb: tuple[int, int, int]) -> float:
     )
 
 
-def _theme_chrome_fill_rgba(
-    preset: str,
-    base_rgb: tuple[int, int, int],
-) -> tuple[int, int, int, int]:
-    if preset == "day":
-        return (
-            min(255, base_rgb[0] + 2),
-            min(255, base_rgb[1] + 2),
-            min(255, base_rgb[2] + 2),
-            112,
-        )
-    if preset == "night":
-        return (
-            max(0, base_rgb[0] + 2),
-            max(0, base_rgb[1] + 2),
-            max(0, base_rgb[2] + 2),
-            112,
-        )
-    if preset == "white":
-        return (
-            max(0, base_rgb[0] - 18),
-            max(0, base_rgb[1] - 18),
-            max(0, base_rgb[2] - 18),
-            100,
-        )
-    if preset == "black":
-        return (
-            min(255, base_rgb[0] + 22),
-            min(255, base_rgb[1] + 22),
-            min(255, base_rgb[2] + 22),
-            100,
-        )
-    return (
-        max(0, min(255, base_rgb[0] + 6)),
-        max(0, min(255, base_rgb[1] + 6)),
-        max(0, min(255, base_rgb[2] + 6)),
-        96,
-    )
-
-
 def _theme_chrome_icon_rgba(base_rgb: tuple[int, int, int]) -> tuple[int, int, int, int]:
     if _theme_background_luminance(base_rgb) >= 128.0:
         return (70, 70, 70, 220)
     return (210, 210, 210, 220)
 
 
-def _theme_window_chrome(preset: str, base_rgb: tuple[int, int, int]) -> WindowChromeStyle:
+def _theme_window_chrome(
+    fill_rgba: tuple[int, int, int, int],
+    base_rgb: tuple[int, int, int],
+) -> WindowChromeStyle:
     icon_rgba = _theme_chrome_icon_rgba(base_rgb)
     return WindowChromeStyle(
-        menu_fill_rgba=_theme_chrome_fill_rgba(preset, base_rgb),
+        menu_fill_rgba=fill_rgba,
         menu_icon_rgba=icon_rgba,
         menu_button_text_rgb=icon_rgba[:3],
     )
@@ -200,13 +167,14 @@ THEME_STYLES_BY_PRESET = {
             inner_rgba=(4, 4, 4, 255),
             border_rgba=(30, 34, 40, 45),
         ),
-        window_chrome=_theme_window_chrome("night", (10, 12, 16)),
+        window_chrome=_theme_window_chrome((12, 14, 18, 112), (10, 12, 16)),
         sky_disc=_theme_sky_disc(1.0),
         splash=SplashStyle(
             gradient_rgb=((12, 14, 20), (8, 10, 14), (4, 6, 9)),
             frame_rgb=(70, 76, 92),
             info_text_rgb=(228, 236, 250),
         ),
+        star_visibility_boost=1.0,
     ),
     "white": ThemeStyle(
         text=TextStyle(
@@ -226,14 +194,17 @@ THEME_STYLES_BY_PRESET = {
             edge_alpha=214,
             inner_rgba=(4, 4, 4, 255),
             border_rgba=(254, 254, 255, 112),
+            draw_outer_border=True,
         ),
-        window_chrome=_theme_window_chrome("white", (240, 238, 237)),
+        window_chrome=_theme_window_chrome((222, 220, 219, 100), (240, 238, 237)),
         sky_disc=_theme_sky_disc(1.0),
         splash=SplashStyle(
             gradient_rgb=((252, 252, 252), (234, 234, 234), (206, 206, 206)),
             frame_rgb=(158, 178, 206),
             info_text_rgb=(229, 163, 100),
         ),
+        star_visibility_boost=1.12,
+        label_outline_suppressed=True,
     ),
     "day": ThemeStyle(
         text=TextStyle(
@@ -253,14 +224,17 @@ THEME_STYLES_BY_PRESET = {
             edge_alpha=94,
             inner_rgba=(4, 4, 4, 255),
             border_rgba=(250, 252, 255, 35),
+            draw_outer_border=True,
         ),
-        window_chrome=_theme_window_chrome("day", (226, 223, 222)),
+        window_chrome=_theme_window_chrome((228, 225, 224, 112), (226, 223, 222)),
         sky_disc=_theme_sky_disc(1.0),
         splash=SplashStyle(
             gradient_rgb=((240, 248, 255), (226, 240, 252), (206, 228, 246)),
             frame_rgb=(158, 182, 206),
             info_text_rgb=(233, 148, 112),
         ),
+        star_visibility_boost=1.05,
+        label_outline_suppressed=True,
     ),
     "black": ThemeStyle(
         text=TextStyle(
@@ -279,13 +253,14 @@ THEME_STYLES_BY_PRESET = {
             inner_rgba=(4, 4, 4, 255),
             border_rgba=(34, 34, 36, 128),
         ),
-        window_chrome=_theme_window_chrome("black", (12, 12, 12)),
+        window_chrome=_theme_window_chrome((34, 34, 34, 100), (12, 12, 12)),
         sky_disc=_theme_sky_disc(1.0),
         splash=SplashStyle(
             gradient_rgb=((6, 6, 6), (3, 3, 3), (0, 0, 0)),
             frame_rgb=(56, 56, 64),
             info_text_rgb=(244, 248, 255),
         ),
+        star_visibility_boost=1.0,
     ),
     "transparent": ThemeStyle(
         text=TextStyle(
@@ -298,19 +273,21 @@ THEME_STYLES_BY_PRESET = {
         ),
         window_background=WindowBackgroundStyle(
             base_rgb=(8, 8, 9),
-            delta_rgb=(5, 5, 6),
-            outer_alpha=86,
-            edge_alpha=35,
-            inner_rgba=(4, 4, 4, 104),
+            delta_rgb=(0, 0, 0),
+            outer_alpha=80,
+            edge_alpha=80,
+            inner_rgba=(4, 4, 4, 80),
             border_rgba=(24, 24, 28, 60),
+            flat_background=True,
         ),
-        window_chrome=_theme_window_chrome("transparent", (8, 8, 9)),
+        window_chrome=_theme_window_chrome((14, 14, 15, 96), (8, 8, 9)),
         sky_disc=_theme_sky_disc(0.4),
         splash=SplashStyle(
             gradient_rgb=((8, 8, 8), (4, 4, 4), (0, 0, 0)),
             frame_rgb=(56, 56, 64),
             info_text_rgb=(244, 248, 255),
         ),
+        star_visibility_boost=1.0,
     ),
 }
 

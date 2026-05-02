@@ -8,8 +8,7 @@ from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy, resolve_star_source_ids
 from ..asterisms import ASTERISMS, pick_rotating_asterism
-from ..paths import BRIGHT_THEME_PRESETS
-from ..paths import PALETTE_ASTERISM_RGB
+from ..paths import PALETTE_ASTERISM_RGB, ThemeStyle
 from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
 from .stars import _content_fov_deg_from_viewer
 from .geometry import normalized_to_screen_xy
@@ -33,7 +32,7 @@ def draw_asterisms(
     label_reservations: Optional[List[QRectF]] = None,
     label_candidates: Optional[List[Dict[str, Any]]] = None,
     *,
-    preset: str = "night",
+    theme: ThemeStyle,
     line_width_scale: float = 1.0,
     content_fov_deg: float | None = None,
     draw_base: bool = True,
@@ -57,7 +56,7 @@ def draw_asterisms(
     if not star_altaz_by_source:
         return
 
-    is_bright_theme = preset in BRIGHT_THEME_PRESETS
+    is_bright_theme = theme.label_outline_suppressed
     base_line_color = QColor(*PALETTE_ASTERISM_RGB, 24 if is_bright_theme else 21)
     base_outline_color = QColor(*PALETTE_ASTERISM_RGB, 12 if is_bright_theme else 9)
     highlight_outer_color = QColor(*PALETTE_ASTERISM_RGB, 14 if is_bright_theme else 10)
@@ -145,7 +144,7 @@ def draw_asterisms(
         cx = sum(pt.x() for pt in label_points) / len(label_points)
         cy = sum(pt.y() for pt in label_points) / len(label_points)
         label_pos = QPointF(cx + 8.0, cy - 8.0)
-        text_style = resolve_text_style(preset, text_font)
+        text_style = resolve_text_style(theme, text_font)
         if label_candidates is not None:
             label_candidates.append(
                 {

@@ -255,6 +255,11 @@ def _make_style(**overrides) -> pipeline_module.RenderStyle:
         "star_render_expected_width": 600,
     }
     values.update(overrides)
+    if "theme" not in overrides:
+        values["theme"] = pipeline_module.THEME_STYLES_BY_PRESET.get(
+            values["visual_preset"],
+            pipeline_module.THEME_STYLES_BY_PRESET["night"],
+        )
     return pipeline_module.RenderStyle(**values)
 
 
@@ -380,8 +385,8 @@ def test_status_line_text_always_uses_night_style(monkeypatch) -> None:
 
     calls: list[tuple[str, bool]] = []
 
-    def fake_get_text_style(preset: str = "night", *, status_line: bool = False):
-        calls.append((preset, status_line))
+    def fake_get_text_style(theme, *, status_line: bool = False):
+        calls.append((theme, status_line))
         return (object(), object())
 
     monkeypatch.setattr(render_text_module, "get_text_style", fake_get_text_style)
@@ -2580,6 +2585,7 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         aircraft_overlay_points=None,
     )
     style = pipeline_module.RenderStyle(
+        theme=pipeline_module.THEME_STYLES_BY_PRESET["night"],
         visual_preset="night",
         text_font=object(),
         status_line_font=object(),
@@ -3141,7 +3147,7 @@ def test_draw_direction_labels_uses_horizon_line_color(monkeypatch) -> None:
         geometry=SimpleNamespace(center=(0, 0), radius=1),
         view_center=(30.0, 40.0),
         text_font=QFont(),
-        preset="white",
+        theme=window_module.THEME_STYLES_BY_PRESET["white"],
         content_fov_deg=180.0,
     )
 

@@ -62,6 +62,8 @@ from ..paths import (
     OBSERVER_MIN_ALT_DEG,
     OVERTURE_DERIVED_ROOT_DIR,
     OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR,
+    THEME_STYLES_BY_PRESET,
+    ThemeStyle,
     STARS_CSV_FILE,
     STATUS_LINE_FONT_SIZE,
     TEXT_FONT_PATH,
@@ -230,7 +232,8 @@ def _build_window_inputs_from_args(
     cloud_stripe_mode, cloud_stripe_count, cloud_stripe_width = args.cloud_stripe
     visual_preset = args.theme
     star_visibility_boost = (
-        1.12 if visual_preset == "white" else 1.05 if visual_preset == "day" else 1.0
+        THEME_STYLES_BY_PRESET.get(visual_preset, THEME_STYLES_BY_PRESET["night"])
+        .star_visibility_boost
     )
     vmag_brightness_scale = -math.log10(
         args.vmag_brightness_multiplier
@@ -840,7 +843,7 @@ def _render_image(
                 view_center=scene.viewer.view_center,
                 edge_fov_deg=float(scene.viewer.edge_fov_deg),
                 content_fov_deg=float(scene.viewer.content_fov_deg),
-                visual_preset=style.visual_preset,
+                theme=style.theme,
                 text_font=style.text_font,
                 draw_marker=True,
                 marker_scale=compute_star_render_upscale_factor(
@@ -863,6 +866,7 @@ def _build_render_style(
     catalogs: PreparedWindowCatalogs,
     user_options: SkyWindowUserOptions,
     runtime_options: SkyWindowRuntimeOptions,
+    theme: ThemeStyle,
 ) -> RenderStyle:
     show_dso = catalogs.dso_catalog_np is not None
     if user_options.show_dso_initial is not None:
@@ -880,6 +884,7 @@ def _build_render_style(
         else bool(user_options.show_guidelines_initial)
     )
     return RenderStyle(
+        theme=theme,
         visual_preset=user_options.visual_preset,
         text_font=text_font,
         status_line_font=status_line_font,
@@ -1143,6 +1148,7 @@ def main() -> None:
         catalogs.star_catalog_lod6_indices if use_lod6_catalog else None
     )
     star_vmag_limit = None if use_lod6_catalog else float(user_options.vmag_limit)
+    theme = THEME_STYLES_BY_PRESET.get(user_options.visual_preset, THEME_STYLES_BY_PRESET["night"])
     sky_payload = compute_sky_snapshot(
         lat=float(viewer_data.lat_deg),
         lon=float(viewer_data.lon_deg),
@@ -1157,7 +1163,7 @@ def main() -> None:
         sky_disc_base_size=max(image_size),
         edge_fov_deg=float(viewer_data.edge_fov_deg),
         content_fov_deg=float(viewer_data.content_fov_deg),
-        visual_preset=str(user_options.visual_preset),
+        theme=theme,
         star_catalog_meta=getattr(catalogs, "star_catalog_meta", None),
         render_width_px=int(image_size[0]),
         render_height_px=int(image_size[1]),
@@ -1256,6 +1262,7 @@ def main() -> None:
         catalogs=catalogs,
         user_options=user_options,
         runtime_options=runtime_options,
+        theme=theme,
     )
     scene = RenderSceneData(
         viewer=viewer_data,

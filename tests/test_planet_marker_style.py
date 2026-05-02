@@ -16,6 +16,7 @@ from zstarview.render import solar_system as render_solar_system
 from zstarview.render import stars as render_stars
 from zstarview.render import text as render_text
 from zstarview.paths import PALETTE_AIRCRAFT_AND_SATELLITE_RGB
+from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.aircraft.types import AircraftOverlayPoint
 from zstarview.satellites.types import SatelliteOverlayPoint
 from zstarview.types import (
@@ -896,7 +897,7 @@ def test_aircraft_label_uses_black_theme_style_in_day_theme() -> None:
     ) == expected_rgb
     assert (
         style.outline_width
-        == render_text.resolve_text_style("night", QFont()).outline_width
+        == render_text.resolve_text_style(THEME_STYLES_BY_PRESET["night"], QFont()).outline_width
     )
 
 

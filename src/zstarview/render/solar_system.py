@@ -7,7 +7,7 @@ from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QRadialGradient
 
 from ..astro import altaz_to_normalized_xy, calculate_moon_render_data, is_in_fov
-from ..paths import THEME_STYLES_BY_PRESET
+from ..paths import THEME_STYLES_BY_PRESET, ThemeStyle
 from ..types import CelestialData, CelestialObject, PlanetBody, ScreenGeometry, ViewerData
 from ..utils.image import generate_moon_phase_rgba
 from .geometry import normalized_to_screen_xy
@@ -240,22 +240,24 @@ def draw_solar_system_bodies(
     label_reservations: Optional[List[QRectF]] = None,
     draw_markers: bool = True,
     draw_labels: bool = True,
-    preset: str = "night",
+    theme: ThemeStyle | None = None,
     edge_fov_deg: float = 90.0,
     content_fov_deg: float | None = None,
     marker_scale: float = 1.0,
 ) -> None:
+    if theme is None:
+        theme = THEME_STYLES_BY_PRESET["night"]
     moon_body, sun_altaz, moon_altaz = _collect_sun_moon_context(celestial_data.planets)
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
     marker_scale = max(1.0, float(marker_scale))
 
-    text_color = QColor(*THEME_STYLES_BY_PRESET["night"].text.foreground_rgb)
+    text_color = QColor(*theme.text.foreground_rgb)
     if text_font is not None:
         painter.setFont(text_font)
         label_font = text_font
     else:
         label_font = painter.font() if hasattr(painter, "font") else QFont()
-    label_style = resolve_text_style(preset, label_font)
+    label_style = resolve_text_style(theme, label_font)
 
     for body in celestial_data.planets:
         if not is_in_fov(body.alt, body.az, viewer_data.view_center, fov_deg=effective_fov_deg):
@@ -385,7 +387,10 @@ def draw_hovered_moon_overlay(
     *,
     marker_scale: float = 1.0,
     outline_bright_bodies: bool = False,
+    theme: ThemeStyle | None = None,
 ) -> None:
+    if theme is None:
+        theme = THEME_STYLES_BY_PRESET["night"]
     if highlighted_object is None:
         return
     obj, pos = highlighted_object
@@ -395,7 +400,7 @@ def draw_hovered_moon_overlay(
     moon_body, sun_altaz, moon_altaz = _collect_sun_moon_context(celestial_data.planets)
     if moon_body is None or sun_altaz is None or moon_altaz is None:
         return
-    text_color = QColor(*THEME_STYLES_BY_PRESET["night"].text.foreground_rgb)
+    text_color = QColor(*theme.text.foreground_rgb)
     _draw_moon_planet(
         painter,
         pos,

@@ -35,6 +35,10 @@ def test_transparent_theme_uses_low_alpha_dark_background() -> None:
     assert transparent.base_rgb[0] <= 8
     assert transparent.base_rgb[1] <= 8
     assert transparent.base_rgb[2] <= 9
+    assert transparent.flat_background is True
+    assert transparent.draw_outer_border is False
+    assert transparent.delta_rgb == (0, 0, 0)
+    assert transparent.inner_rgba[3] == transparent.outer_alpha == transparent.edge_alpha
     assert transparent.inner_rgba[3] < black.inner_rgba[3]
     assert transparent.outer_alpha < black.outer_alpha
     assert transparent.edge_alpha < black.edge_alpha
@@ -45,6 +49,13 @@ def test_theme_style_groups_window_chrome_and_sky_disc_values() -> None:
     white = THEME_STYLES_BY_PRESET["white"]
     night = THEME_STYLES_BY_PRESET["night"]
 
+    assert transparent.window_chrome.menu_fill_rgba == (14, 14, 15, 96)
+    assert white.window_background.draw_outer_border is True
+    assert THEME_STYLES_BY_PRESET["day"].window_background.draw_outer_border is True
+    assert night.window_background.draw_outer_border is False
+    assert transparent.star_visibility_boost == 1.0
+    assert white.star_visibility_boost == 1.12
+    assert THEME_STYLES_BY_PRESET["day"].star_visibility_boost == 1.05
     assert transparent.sky_disc.opacity == 0.4
     assert white.window_chrome.menu_button_text_rgb == (70, 70, 70)
     assert night.window_chrome.menu_button_text_rgb == (210, 210, 210)
