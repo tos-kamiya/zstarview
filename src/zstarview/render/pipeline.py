@@ -127,6 +127,14 @@ def _bright_bodies_mode(style: RenderStyle) -> str:
     return str(style.bright_bodies_mode)
 
 
+def _style_theme(style: RenderStyle) -> ThemeStyle:
+    theme = getattr(style, "theme", None)
+    if theme is not None:
+        return theme
+    visual_preset = getattr(style, "visual_preset", "night")
+    return THEME_STYLES_BY_PRESET.get(visual_preset, THEME_STYLES_BY_PRESET["night"])
+
+
 def _window_size(viewport_rect: QRect) -> tuple[int, int]:
     return (int(viewport_rect.width()), int(viewport_rect.height()))
 
@@ -331,7 +339,7 @@ def render_hud_overlay_into_painter(
                 style.star_render_expected_width,
             ),
             label_candidates=label_candidates,
-            theme=style.theme,
+            theme=_style_theme(style),
         )
     if label_candidates:
         _draw_label_layer(
@@ -433,7 +441,7 @@ def _draw_background_layer(
         painter,
         QRectF(viewport_rect),
         geometry,
-        theme=style.theme,
+        theme=_style_theme(style),
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=_content_fov_deg(scene),
         opaque=not style.show_custom_window_frame,
@@ -442,7 +450,7 @@ def _draw_background_layer(
         render_background.draw_window_border(
             painter,
             QRectF(viewport_rect),
-            theme=style.theme,
+            theme=_style_theme(style),
         )
 
 
@@ -463,7 +471,7 @@ def _draw_guide_layer(
         scene.viewer.view_center,
         style.text_font,
         None,
-        theme=style.theme,
+        theme=_style_theme(style),
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=content_fov_deg,
     )
@@ -471,7 +479,7 @@ def _draw_guide_layer(
         painter,
         geometry,
         scene.viewer.view_center,
-        theme=style.theme,
+        theme=_style_theme(style),
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=content_fov_deg,
     )
@@ -533,7 +541,7 @@ def _draw_terrain_layers(
             geometry,
             scene.celestial_data,
             scene.viewer,
-            theme=style.theme,
+            theme=_style_theme(style),
         )
     if style.show_asterisms:
         render_asterisms.draw_asterisms(
@@ -545,7 +553,7 @@ def _draw_terrain_layers(
             style.text_font,
             label_reservations,
             label_candidates=label_candidates,
-            theme=style.theme,
+            theme=_style_theme(style),
             line_width_scale=1.0,
             content_fov_deg=content_fov_deg,
             draw_base=True,
@@ -594,7 +602,7 @@ def _draw_dso_hover_layer(
         scene.viewer,
         highlighted_dso,
         style.text_font,
-        theme=style.theme,
+        theme=_style_theme(style),
     )
 
 
@@ -639,7 +647,7 @@ def _draw_aircraft_layer(
         opacity=style.aircraft_opacity,
         line_width_scale=line_width_scale,
         label_candidates=label_candidates,
-        theme=style.theme,
+        theme=_style_theme(style),
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=_content_fov_deg(scene),
     )
@@ -758,7 +766,7 @@ def _draw_planet_layer(
         text_font=style.text_font,
         label_candidates=label_candidates,
         draw_labels=True,
-        theme=style.theme,
+        theme=_style_theme(style),
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=_content_fov_deg(scene),
         marker_scale=marker_scale,
@@ -797,7 +805,7 @@ def _draw_overlay_layer(
         viewport_rect=viewport_rect,
         mouse_pos=mouse_pos,
         bottom_left=overlay_info_bottom_left,
-        theme=style.theme,
+        theme=_style_theme(style),
         draw_static_info=True,
         draw_hover_info=False,
         draw_outlined_text_func=render_text.draw_outlined_text,
@@ -824,7 +832,7 @@ def _draw_satellite_layer(
             highlighted_satellite[0] if highlighted_satellite is not None else None
         ),
         label_candidates=label_candidates,
-        theme=style.theme,
+        theme=_style_theme(style),
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=_content_fov_deg(scene),
         marker_scale=compute_star_render_upscale_factor(
@@ -858,7 +866,7 @@ def _draw_hover_overlay_layer(
             scene.viewer,
             highlighted_object,
             style.text_font,
-            theme=style.theme,
+            theme=_style_theme(style),
             line_width_scale=line_width_scale,
             content_fov_deg=_content_fov_deg(scene),
             draw_base=False,
@@ -873,7 +881,7 @@ def _draw_hover_overlay_layer(
         highlighted_object,
         marker_scale=line_width_scale,
         outline_bright_bodies=_bright_bodies_mode(style) == "outline",
-        theme=style.theme,
+        theme=_style_theme(style),
     )
     _draw_dso_hover_layer(
         painter,
@@ -903,7 +911,7 @@ def _draw_hover_overlay_layer(
         style.text_font,
         highlighted_satellite,
         label_candidates=label_candidates,
-        theme=style.theme,
+        theme=_style_theme(style),
         draw_static_info=False,
         draw_hover_info=True,
         draw_outlined_text_func=render_text.draw_outlined_text,
@@ -934,5 +942,5 @@ def _draw_status_line(
         message=hud.status_message,
         status_line_font=style.status_line_font,
         viewport_rect=viewport_rect,
-        theme=style.theme,
+        theme=_style_theme(style),
     )
