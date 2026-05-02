@@ -12,6 +12,7 @@ from zstarview.render import deep_sky_objects as render_deep_sky_objects
 from zstarview.render import overlay_info as render_overlay_info
 from zstarview.render import guides as render_guides
 from zstarview.render import solar_system as render_solar_system
+from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.search.models import SearchJumpTarget
 from zstarview.types import ScreenGeometry
 
@@ -189,10 +190,10 @@ def test_draw_search_target_overlay_appends_label_candidate() -> None:
         view_center=(45.0, 180.0),
         edge_fov_deg=95.0,
         content_fov_deg=110.0,
-        visual_preset="night",
         text_font=QFont(),
         draw_marker=False,
         label_candidates=label_candidates,
+        theme=THEME_STYLES_BY_PRESET["night"],
     )
     painter.end()
 
@@ -243,6 +244,7 @@ def test_hover_overlay_passes_label_candidates_to_asterisms(monkeypatch) -> None
             "show_asterisms": True,
             "text_font": QFont(),
             "visual_preset": "night",
+            "theme": THEME_STYLES_BY_PRESET["night"],
             "bright_bodies_mode": "outline",
             "star_render_expected_width": 128,
             "show_guidelines": False,

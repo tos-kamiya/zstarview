@@ -22,6 +22,7 @@ import zstarview.gui.window as window_module
 import zstarview.gui.window_render as window_render_module
 import zstarview.gui.window_updates as window_updates_module
 import zstarview.render.solar_system as render_solar_system_module
+from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.location_resolver import PlaceTargetProjection
 from zstarview.satellite_constants import SATELLITE_FAILURE_RETRY_SECONDS
 from zstarview.types import CelestialData, PlanetBody, UrbanOutlinePolyline, ViewerData
@@ -85,6 +86,7 @@ class _WindowStub:
         self.urban_outline_opacity = values.get("urban_outline_opacity", 0.2)
         self.show_urban_outline_layer = values.get("show_urban_outline_layer", True)
         self.status_line_font = values.get("status_line_font", object())
+        self.theme = values.get("theme", THEME_STYLES_BY_PRESET["night"])
         self._star_render_expected_width = values.get(
             "_star_render_expected_width", 600
         )
@@ -399,10 +401,10 @@ def test_status_line_text_always_uses_night_style(monkeypatch) -> None:
         message="loading",
         status_line_font=QFont(),
         viewport_rect=SimpleNamespace(bottom=lambda: 100),
-        preset="day",
+        theme=THEME_STYLES_BY_PRESET["day"],
     )
 
-    assert calls == [("night", True)]
+    assert calls == [(THEME_STYLES_BY_PRESET["day"], True)]
 
 
 def test_on_sky_data_calculated_updates_render_snapshot_once() -> None:

@@ -7,7 +7,7 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication
 
 from zstarview.asterisms import Asterism
-from zstarview.paths import ASTERISM_CLIP_FIELD_OF_VIEW_DEG
+from zstarview.paths import ASTERISM_CLIP_FIELD_OF_VIEW_DEG, THEME_STYLES_BY_PRESET
 from zstarview.render import asterisms as render_asterisms
 from zstarview.render import stars as render_stars
 from zstarview.types import CelestialData, ScreenGeometry, StarCatalogMeta, ViewerData
@@ -88,6 +88,7 @@ def test_draw_asterisms_draws_dim_overlay_without_hover(monkeypatch) -> None:
         viewer_data=viewer,
         highlighted_object=None,
         text_font=QFont(),
+        theme=THEME_STYLES_BY_PRESET["night"],
     )
 
     assert painter.polyline_count == 2
@@ -112,6 +113,7 @@ def test_draw_asterisms_hover_adds_bright_overlay_and_label(monkeypatch) -> None
         highlighted_object=({"source_id": "HIP1", "name": "Star A"}, QPointF(120.0, 90.0)),
         text_font=QFont(),
         label_candidates=label_candidates,
+        theme=THEME_STYLES_BY_PRESET["night"],
     )
 
     assert painter.polyline_count == 5
@@ -136,6 +138,7 @@ def test_draw_asterisms_deduplicates_shared_dim_segments(monkeypatch) -> None:
         viewer_data=viewer,
         highlighted_object=None,
         text_font=QFont(),
+        theme=THEME_STYLES_BY_PRESET["night"],
     )
 
     assert painter.polyline_count == 2
@@ -189,6 +192,7 @@ def test_draw_asterisms_clips_with_asterism_specific_wide_fov(monkeypatch) -> No
         viewer_data=viewer,
         highlighted_object=None,
         text_font=QFont(),
+        theme=THEME_STYLES_BY_PRESET["night"],
     )
 
     assert painter.polyline_count == 2
@@ -217,6 +221,7 @@ def test_draw_asterisms_scales_line_widths_with_star_upscale(monkeypatch) -> Non
         text_font=QFont(),
         label_candidates=label_candidates,
         line_width_scale=2.0,
+        theme=THEME_STYLES_BY_PRESET["night"],
     )
 
     assert painter.pen_widths[:5] == [6.0, 4.0, 10.0, 6.4, 2.0]

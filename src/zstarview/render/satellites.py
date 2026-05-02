@@ -4,7 +4,7 @@ from PySide6.QtCore import QPoint, QPointF
 from PySide6.QtGui import QColor, QPainter
 
 from ..astro import altaz_to_normalized_xy, is_in_fov
-from ..paths import FIELD_OF_VIEW_DEG, THEME_STYLES_BY_PRESET, ThemeStyle
+from ..paths import FIELD_OF_VIEW_DEG, ThemeStyle
 from ..satellite_constants import (
     SATELLITE_OVERLAY_MARKER_COLOR_RGB,
     SATELLITE_OVERLAY_MARKER_MAX_ALPHA,
@@ -80,15 +80,11 @@ def draw_satellite_overlay(
     opacity: float = 1.0,
     highlighted_satellite: SatelliteOverlayPoint | None = None,
     label_candidates: Optional[List[Dict[str, Any]]] = None,
-    theme: ThemeStyle | None = None,
-    preset: str = "night",
+    theme: ThemeStyle,
     edge_fov_deg: float = FIELD_OF_VIEW_DEG,
     content_fov_deg: float = FIELD_OF_VIEW_DEG,
     marker_scale: float = 1.0,
 ) -> None:
-    if theme is None:
-        theme = THEME_STYLES_BY_PRESET.get(preset, THEME_STYLES_BY_PRESET["night"])
-    del theme
     layer_opacity = max(0.0, min(1.0, float(opacity)))
     if not satellite_points or layer_opacity <= 0.0:
         return

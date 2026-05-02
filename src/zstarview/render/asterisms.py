@@ -32,7 +32,7 @@ def draw_asterisms(
     label_reservations: Optional[List[QRectF]] = None,
     label_candidates: Optional[List[Dict[str, Any]]] = None,
     *,
-    theme: ThemeStyle | None = None,
+    theme: ThemeStyle,
     line_width_scale: float = 1.0,
     content_fov_deg: float | None = None,
     draw_base: bool = True,
@@ -56,10 +56,6 @@ def draw_asterisms(
     if not star_altaz_by_source:
         return
 
-    if theme is None:
-        from ..paths import THEME_STYLES_BY_PRESET
-
-        theme = THEME_STYLES_BY_PRESET["night"]
     is_bright_theme = theme.label_outline_suppressed
     base_line_color = QColor(*PALETTE_ASTERISM_RGB, 24 if is_bright_theme else 21)
     base_outline_color = QColor(*PALETTE_ASTERISM_RGB, 12 if is_bright_theme else 9)

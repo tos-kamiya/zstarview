@@ -14,6 +14,7 @@ from zstarview.gui.satellite_controller import SatelliteController
 from zstarview.gui.sky_worker import SkyDataWorker
 from zstarview.gui.terrain_controller import TerrainHorizonController
 from zstarview.gui.urban_outline_controller import UrbanOutlineController
+from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.types import ViewerData
 
 
@@ -136,7 +137,7 @@ def test_sky_worker_shutdown_waits(monkeypatch) -> None:
             sky_disc_base_size=16,
             edge_fov_deg=90.0,
             content_fov_deg=90.0,
-            visual_preset="night",
+            theme=THEME_STYLES_BY_PRESET["night"],
             star_catalog_meta=None,
             render_width_px=16,
             render_height_px=16,

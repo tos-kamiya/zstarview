@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from PySide6.QtCore import QPointF, QRect, QRectF
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPainterPath, QPen
 
-from ..paths import THEME_STYLES_BY_PRESET, ThemeStyle
+from ..paths import ThemeStyle
 
 
 @dataclass(frozen=True, slots=True)
@@ -19,17 +19,6 @@ def _qcolor_from_rgba(color: tuple[int, ...]) -> QColor:
     if len(color) == 3:
         return QColor(*color)
     return QColor(*color[:3], color[3])
-
-
-def _resolve_theme(theme_or_preset: ThemeStyle | str | None) -> ThemeStyle:
-    if isinstance(theme_or_preset, ThemeStyle):
-        return theme_or_preset
-    if isinstance(theme_or_preset, str):
-        return THEME_STYLES_BY_PRESET.get(
-            theme_or_preset,
-            THEME_STYLES_BY_PRESET["night"],
-        )
-    return THEME_STYLES_BY_PRESET["night"]
 
 
 def blend_color_toward_white(color: QColor, amount: float = 0.1) -> QColor:
@@ -238,36 +227,33 @@ def _order_label_candidate_group(
 
 
 def get_text_style(
-    theme: ThemeStyle | str | None = None,
+    theme: ThemeStyle,
     *,
     status_line: bool = False,
 ) -> Tuple[QColor, QColor]:
     """Return (text_color, outline_color) for the selected theme and text role."""
-    theme = _resolve_theme(theme)
     style = theme.status_text if status_line else theme.text
     return _qcolor_from_rgba(style.foreground_rgb), _qcolor_from_rgba(style.outline_rgba)
 
 
 def get_text_outline_width(
-    theme: ThemeStyle | str | None = None,
+    theme: ThemeStyle,
     *,
     status_line: bool = False,
 ) -> float:
     """Return the outline stroke width for the selected theme and text role."""
-    theme = _resolve_theme(theme)
     style = theme.status_text if status_line else theme.text
     return float(style.outline_width)
 
 
 def resolve_text_style(
-    theme: ThemeStyle | str | None,
+    theme: ThemeStyle,
     font: QFont,
     *,
     status_line: bool = False,
     opacity: float = 1.0,
 ) -> ResolvedTextStyle:
     """Resolve a theme into a concrete text render style."""
-    theme = _resolve_theme(theme)
     text_color, outline_color = get_text_style(theme, status_line=status_line)
     alpha_scale = max(0.0, min(1.0, float(opacity)))
     if alpha_scale < 1.0:
@@ -284,13 +270,12 @@ def resolve_text_style(
 
 
 def resolve_label_text_style(
-    theme: ThemeStyle | str | None,
+    theme: ThemeStyle,
     font: QFont,
     *,
     opacity: float = 1.0,
 ) -> ResolvedTextStyle:
     """Resolve a label style and suppress outlines in bright themes."""
-    theme = _resolve_theme(theme)
     style = resolve_text_style(theme, font, opacity=opacity)
     if not theme.label_outline_suppressed:
         return style
@@ -437,19 +422,17 @@ def _draw_status_line_text(
     status_line_font: QFont,
     viewport_rect: QRect,
     *,
-    theme: ThemeStyle | str | None = None,
-    preset: str | None = None,
+    theme: ThemeStyle,
 ) -> None:
     """Draw a single-line status message at the bottom-left corner."""
     if not message:
         return
-    theme_key: ThemeStyle | str = theme if theme is not None else "night"
-    text_color, outline_color = get_text_style(theme_key, status_line=True)
+    text_color, outline_color = get_text_style(theme, status_line=True)
     style = ResolvedTextStyle(
         font=status_line_font,
         text_color=text_color,
         outline_color=outline_color,
-        outline_width=get_text_outline_width(theme_key, status_line=True),
+        outline_width=get_text_outline_width(theme, status_line=True),
     )
 
     painter.save()
