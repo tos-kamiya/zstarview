@@ -423,7 +423,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         overlay_availability = overlay_availability_for_delta(self.delta_t)
         self.sky_disc_alpha = user_options.sky_disc_alpha
         self._sky_disc_alpha_when_enabled = (
-            user_options.sky_disc_alpha if user_options.sky_disc_alpha > 0.0 else 0.17
+            user_options.sky_disc_alpha if user_options.sky_disc_alpha > 0.0 else 0.1
         )
         requested_satellite_opacity = user_options.satellite_opacity
         self._satellite_toggle_supported = overlay_availability.satellite
