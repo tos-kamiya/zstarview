@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 from PySide6.QtGui import QImage, QPainter
 
 import zstarview.gui.composite as render_composite
@@ -10,6 +11,7 @@ from zstarview.render.earth_guide import (
     _effective_visible_altitude_limit_deg,
     _observer_dead_zone_km,
     _observer_visible_altitude_limit_deg,
+    _earth_guide_underlay_pass_specs,
     earth_guide_line_alpha,
     earth_guide_underlay_line_alpha,
     draw_earth_guide,
@@ -80,6 +82,8 @@ class _DummyPainter:
     def __init__(self) -> None:
         self.polylines: list[object] = []
         self.lines: list[object] = []
+        self.pen_widths: list[float] = []
+        self.pen_alphas: list[float] = []
 
     def save(self) -> None:
         pass
@@ -90,8 +94,9 @@ class _DummyPainter:
     def setRenderHint(self, *_args, **_kwargs) -> None:  # noqa: N802 - Qt naming
         pass
 
-    def setPen(self, *_args, **_kwargs) -> None:
-        pass
+    def setPen(self, pen, *_args, **_kwargs) -> None:
+        self.pen_widths.append(float(pen.widthF()))
+        self.pen_alphas.append(float(pen.color().alphaF()))
 
     def setBrush(self, *_args, **_kwargs) -> None:
         pass
@@ -348,3 +353,75 @@ def test_overlay_earth_guide_forwards_fast_mode(monkeypatch) -> None:
 
     assert calls == [True]
     assert out.size() == image.size()
+
+
+def test_draw_earth_guide_scales_fast_mode_lines_with_visibility_boost() -> None:
+    painter = _DummyPainter()
+
+    draw_earth_guide(
+        painter,
+        geometry=ScreenGeometry(center=(120, 120), radius=100),
+        view_center=(0.0, 180.0),
+        observer_lat_deg=35.68,
+        observer_lon_deg=139.76,
+        observer_height_m=635.0,
+        terrain_profile_altaz=None,
+        earth_guide_opacity=0.028,
+        visibility_boost=2.0,
+        content_fov_deg=100.0,
+        fast_mode=True,
+    )
+
+    expected_width = max(0.7, EARTH_GUIDE_FOREGROUND_WIDTH * 0.75)
+    expected_alpha = 0.18 + (0.028 * 0.25)
+    assert painter.pen_widths
+    assert all(width == expected_width for width in painter.pen_widths)
+    assert all(abs(alpha - expected_alpha) < 1.0e-3 for alpha in painter.pen_alphas)
+
+
+def test_draw_earth_guide_boosts_only_thin_underlay_pass(monkeypatch) -> None:
+    ring = EarthGuideRing(
+        source_name="ring",
+        label_name=None,
+        points_lonlat_deg=np.asarray([(0.0, 0.0), (1.0, 1.0), (-1.0, 1.0)], dtype=np.float64),
+        points_xyz=np.asarray([(0.0, 0.0, 1.0), (0.1, 0.1, 1.0), (-0.1, 0.1, 1.0)], dtype=np.float64),
+        approx_area_deg2=1.0,
+    )
+
+    monkeypatch.setattr("zstarview.render.earth_guide.load_earth_guide_rings", lambda path_str=None: (ring,))
+    monkeypatch.setattr(
+        "zstarview.render.earth_guide._draw_fill_segments_for_ring",
+        lambda *args, **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "zstarview.render.earth_guide._ring_fragments_altaz",
+        lambda *args, **kwargs: [[(0.0, 0.0), (1.0, 1.0)]],
+    )
+
+    painter = _DummyPainter()
+    draw_earth_guide(
+        painter,
+        geometry=ScreenGeometry(center=(120, 120), radius=100),
+        view_center=(0.0, 180.0),
+        observer_lat_deg=35.68,
+        observer_lon_deg=139.76,
+        observer_height_m=635.0,
+        terrain_profile_altaz=None,
+        earth_guide_opacity=0.028,
+        visibility_boost=2.0,
+        content_fov_deg=100.0,
+        fast_mode=False,
+    )
+
+    base_specs = list(_earth_guide_underlay_pass_specs(0.028))
+    assert len(painter.pen_widths) >= 4
+    underlay_widths = painter.pen_widths[-4:-1]
+    underlay_alphas = painter.pen_alphas[-4:-1]
+    assert underlay_widths[0] == pytest.approx(base_specs[0][0])
+    assert underlay_widths[1] == pytest.approx(base_specs[1][0])
+    assert underlay_widths[2] == pytest.approx(base_specs[2][0] * 2.0)
+    assert painter.pen_widths[-1] == pytest.approx(EARTH_GUIDE_FOREGROUND_WIDTH)
+    assert abs(underlay_alphas[0] - base_specs[0][1]) < 1.0e-3
+    assert abs(underlay_alphas[1] - base_specs[1][1]) < 1.0e-3
+    assert abs(underlay_alphas[2] - (base_specs[2][1] * 2.0)) < 1.0e-3
+    assert abs(painter.pen_alphas[-1] - earth_guide_line_alpha(0.028)) < 1.0e-3

@@ -719,6 +719,7 @@ def draw_earth_guide(
     observer_height_m: float,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     earth_guide_opacity: float = 0.028,
+    visibility_boost: float = 1.0,
     edge_fov_deg: float = 90.0,
     content_fov_deg: float = 90.0,
     fast_mode: bool = False,
@@ -734,6 +735,7 @@ def draw_earth_guide(
         observer_height_m,
     )
     dead_zone_km = _observer_dead_zone_km(observer_height_m)
+    boost_scale = max(1.0, float(visibility_boost))
     painter.save()
     try:
         if fast_mode:
@@ -783,10 +785,11 @@ def draw_earth_guide(
             underlay_pens: list[QPen] = []
         else:
             underlay_pens = []
-            for width, alpha in _earth_guide_underlay_pass_specs(earth_guide_opacity):
+            for pass_index, (width, alpha) in enumerate(_earth_guide_underlay_pass_specs(earth_guide_opacity)):
+                pass_boost = boost_scale if pass_index == 2 else 1.0
                 underlay_color = QColor(*EARTH_GUIDE_LINE_COLOR)
-                underlay_color.setAlphaF(alpha)
-                pen = QPen(underlay_color, width, Qt.PenStyle.SolidLine)
+                underlay_color.setAlphaF(max(0.0, min(1.0, alpha * pass_boost)))
+                pen = QPen(underlay_color, width * pass_boost, Qt.PenStyle.SolidLine)
                 pen.setCosmetic(True)
                 pen.setCapStyle(Qt.PenCapStyle.RoundCap)
                 pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)

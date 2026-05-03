@@ -30,6 +30,8 @@ TERRAIN_HORIZON_FAST_WIDTH = 3.6
 TERRAIN_HORIZON_FAR_BASE_WIDTH = 1.9
 TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH = 2.0
 TERRAIN_DISTANCE_BAND_FAR_OUTLINE_WIDTH = 1.1
+TERRAIN_DISTANCE_BAND_NEAR_DISTANCE_KM = 0.5
+TERRAIN_DISTANCE_BAND_FAR_DISTANCE_KM = 128.0
 TERRAIN_DISTANCE_BAND_WIDTH_DECAY_EXPONENT = 1.35
 TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_SCALE = 1.15
 TERRAIN_DISTANCE_BAND_UNDERLAY_FAR_SCALE = 1.55
@@ -242,12 +244,20 @@ def _solid_pen(color_rgb: tuple[int, int, int], alpha: float, width: float) -> Q
 
 
 def _distance_band_widths(
-    band_index: int,
+    *,
+    distance_km: float,
     band_count: int,
 ) -> float:
     if band_count <= 1:
         return float(TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH)
-    t = max(0.0, min(1.0, float(band_index) / float(band_count - 1)))
+    near_km = float(TERRAIN_DISTANCE_BAND_NEAR_DISTANCE_KM)
+    far_km = float(TERRAIN_DISTANCE_BAND_FAR_DISTANCE_KM)
+    d = max(near_km, min(far_km, float(distance_km)))
+    span = math.log(far_km / near_km) if far_km > near_km else 0.0
+    if span > 0.0:
+        t = max(0.0, min(1.0, math.log(d / near_km) / span))
+    else:
+        t = 0.0
     eased_t = t ** TERRAIN_DISTANCE_BAND_WIDTH_DECAY_EXPONENT
     outline_width = TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH - (
         eased_t * (TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH - TERRAIN_DISTANCE_BAND_FAR_OUTLINE_WIDTH)
@@ -256,27 +266,43 @@ def _distance_band_widths(
 
 
 def _distance_band_underlay_width(
-    band_index: int,
+    *,
+    distance_km: float,
     band_count: int,
 ) -> float:
     if band_count <= 1:
         return float(TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH) * TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_SCALE
-    t = max(0.0, min(1.0, float(band_index) / float(band_count - 1)))
+    near_km = float(TERRAIN_DISTANCE_BAND_NEAR_DISTANCE_KM)
+    far_km = float(TERRAIN_DISTANCE_BAND_FAR_DISTANCE_KM)
+    d = max(near_km, min(far_km, float(distance_km)))
+    span = math.log(far_km / near_km) if far_km > near_km else 0.0
+    if span > 0.0:
+        t = max(0.0, min(1.0, math.log(d / near_km) / span))
+    else:
+        t = 0.0
     scale = TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_SCALE + (
         t * (TERRAIN_DISTANCE_BAND_UNDERLAY_FAR_SCALE - TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_SCALE)
     )
-    return float(_distance_band_widths(band_index, band_count)) * scale
+    return float(_distance_band_widths(distance_km=distance_km, band_count=band_count)) * scale
 
 
 def _distance_band_underlay_alpha(
-    band_index: int,
+    *,
+    distance_km: float,
     band_count: int,
     opacity: float,
 ) -> float:
-    band_alpha = _distance_band_alpha(band_index, band_count, opacity)
+    band_alpha = _distance_band_alpha(distance_km=distance_km, band_count=band_count, opacity=opacity)
     if band_count <= 1:
         return band_alpha * TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_ALPHA_SCALE
-    t = max(0.0, min(1.0, float(band_index) / float(band_count - 1)))
+    near_km = float(TERRAIN_DISTANCE_BAND_NEAR_DISTANCE_KM)
+    far_km = float(TERRAIN_DISTANCE_BAND_FAR_DISTANCE_KM)
+    d = max(near_km, min(far_km, float(distance_km)))
+    span = math.log(far_km / near_km) if far_km > near_km else 0.0
+    if span > 0.0:
+        t = max(0.0, min(1.0, math.log(d / near_km) / span))
+    else:
+        t = 0.0
     eased_t = t ** TERRAIN_DISTANCE_BAND_ALPHA_DECAY_EXPONENT
     scale = TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_ALPHA_SCALE + (
         eased_t * (TERRAIN_DISTANCE_BAND_UNDERLAY_FAR_ALPHA_SCALE - TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_ALPHA_SCALE)
@@ -285,7 +311,8 @@ def _distance_band_underlay_alpha(
 
 
 def _distance_band_alpha(
-    band_index: int,
+    *,
+    distance_km: float,
     band_count: int,
     opacity: float,
 ) -> float:
@@ -293,7 +320,14 @@ def _distance_band_alpha(
     far_alpha = terrain_secondary_ridge_line_alpha(opacity * 0.35)
     if band_count <= 1:
         return near_alpha
-    t = max(0.0, min(1.0, float(band_index) / float(band_count - 1)))
+    near_km = float(TERRAIN_DISTANCE_BAND_NEAR_DISTANCE_KM)
+    far_km = float(TERRAIN_DISTANCE_BAND_FAR_DISTANCE_KM)
+    d = max(near_km, min(far_km, float(distance_km)))
+    span = math.log(far_km / near_km) if far_km > near_km else 0.0
+    if span > 0.0:
+        t = max(0.0, min(1.0, math.log(d / near_km) / span))
+    else:
+        t = 0.0
     eased_t = t ** TERRAIN_DISTANCE_BAND_ALPHA_DECAY_EXPONENT
     return near_alpha - (eased_t * (near_alpha - far_alpha))
 
@@ -562,6 +596,12 @@ def draw_terrain_secondary_ridges(
             layer_distances = terrain_secondary_profile_distances_m_layers[layer_index]
         else:
             layer_distances = [float("nan")] * len(layer)
+        finite_layer_distances_km = [
+            float(distance_m) / 1000.0
+            for distance_m in layer_distances
+            if math.isfinite(float(distance_m))
+        ]
+        representative_distance_km = max(finite_layer_distances_km) if finite_layer_distances_km else None
         layer_samples = [
             (float(alt), float(az), float(distance_m))
             for (alt, az), distance_m in zip(layer, layer_distances)
@@ -573,22 +613,22 @@ def draw_terrain_secondary_ridges(
             )
 
         base_width = _distance_band_widths(
-            layer_index,
-            layer_count,
+            distance_km=representative_distance_km,
+            band_count=layer_count,
         )
         underlay_width = _distance_band_underlay_width(
-            layer_index,
-            layer_count,
+            distance_km=representative_distance_km,
+            band_count=layer_count,
         )
         band_alpha = _distance_band_alpha(
-            layer_index,
-            layer_count,
-            opacity,
+            distance_km=representative_distance_km,
+            band_count=layer_count,
+            opacity=opacity,
         )
         underlay_alpha = _distance_band_underlay_alpha(
-            layer_index,
-            layer_count,
-            opacity,
+            distance_km=representative_distance_km,
+            band_count=layer_count,
+            opacity=opacity,
         )
         visible_points: list[tuple[float, float]] = []
         visible_altaz: list[tuple[float, float]] = []

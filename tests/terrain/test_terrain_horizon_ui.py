@@ -203,12 +203,14 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
 
     assert options.terrain_horizon_opacity == 0.4
     assert options.earth_guide_opacity == 1.0
+    assert options.earth_guide_visibility_boost == 2.0
     assert options.urban_outline_opacity == 1.0
-    assert options.sky_disc_alpha == pytest.approx(0.2125)
-    assert options.cloud_disc_alpha == pytest.approx(0.09375)
-    assert options.satellite_opacity == 0.875
-    assert options.aircraft_opacity == 0.5
-    assert options.ground_tint_opacity == 0.25
+    assert options.sky_disc_alpha == pytest.approx(0.34)
+    assert options.cloud_disc_alpha == pytest.approx(0.15)
+    assert options.satellite_opacity == 1.0
+    assert options.aircraft_opacity == 0.8
+    assert options.ground_tint_opacity == 0.4
+    assert options.asterism_visibility_boost == pytest.approx(2.0)
     assert options.sky_disc_gui_allowed is False
     assert options.cloud_gui_allowed is False
     assert options.aircraft_gui_allowed is False

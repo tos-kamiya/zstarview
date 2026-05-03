@@ -77,6 +77,8 @@ class _WindowStub:
         self.enlarge_moon = values.get("enlarge_moon", False)
         self.star_base_radius = values.get("star_base_radius", 4.0)
         self.star_visibility_boost = values.get("star_visibility_boost", 1.0)
+        self.asterism_visibility_boost = values.get("asterism_visibility_boost", 1.0)
+        self.earth_guide_visibility_boost = values.get("earth_guide_visibility_boost", 1.0)
         self.vmag_limit = values.get("vmag_limit", 6.0)
         self.cloud_disc_alpha = values.get("cloud_disc_alpha", 0.0)
         self.satellite_opacity = values.get("satellite_opacity", 0.0)
@@ -246,6 +248,8 @@ def _make_style(**overrides) -> pipeline_module.RenderStyle:
         "bright_bodies_mode": "outline",
         "star_base_radius": 4.0,
         "star_visibility_boost": 1.0,
+        "asterism_visibility_boost": 1.0,
+        "earth_guide_visibility_boost": 1.0,
         "vmag_limit": 6.0,
         "cloud_disc_alpha": 0.0,
         "satellite_opacity": 0.0,
@@ -2303,7 +2307,7 @@ def test_draw_viewport_interaction_layers_skips_urban_outlines(monkeypatch) -> N
     assert seen_view_centers == []
 
 
-def test_draw_terrain_layers_keeps_asterisms_and_urban_outline_widths_fixed(monkeypatch) -> None:
+def test_draw_terrain_layers_scales_asterisms_but_keeps_urban_outline_widths_fixed(monkeypatch) -> None:
     calls: dict[str, list[float]] = {
         "asterisms": [],
         "terrain": [],
@@ -2331,7 +2335,7 @@ def test_draw_terrain_layers_keeps_asterisms_and_urban_outline_widths_fixed(monk
         pipeline_module.render_asterisms,
         "draw_asterisms",
         lambda *_args, **kwargs: calls["asterisms"].append(
-            float(kwargs.get("line_width_scale", 1.0))
+            float(kwargs.get("base_line_width_scale", kwargs.get("line_width_scale", 1.0)))
         ),
     )
     monkeypatch.setattr(
@@ -2397,13 +2401,13 @@ def test_draw_terrain_layers_keeps_asterisms_and_urban_outline_widths_fixed(monk
                 [10_000.0, 12_000.0]
             ],
         ),
-        style=_make_style(show_asterisms=True),
+        style=_make_style(show_asterisms=True, asterism_visibility_boost=2.0),
         highlighted_object=None,
         label_reservations=[],
         label_candidates=[],
     )
 
-    assert calls["asterisms"] == [1.0]
+    assert calls["asterisms"] == [expected_line_width_scale * 2.0]
     assert calls["terrain"] == []
     assert calls["terrain_secondary"] == [expected_line_width_scale]
     assert calls["reference"] == [1.0]
@@ -2601,6 +2605,8 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         bright_bodies_mode="outline",
         star_base_radius=4.0,
         star_visibility_boost=1.0,
+        asterism_visibility_boost=1.0,
+        earth_guide_visibility_boost=1.0,
         vmag_limit=6.0,
         cloud_disc_alpha=0.0,
         satellite_opacity=0.0,
