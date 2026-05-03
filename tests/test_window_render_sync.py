@@ -297,7 +297,7 @@ def test_viewer_data_for_render_uses_render_view_center() -> None:
     assert got.location == (35.0, 139.0)
     assert got.observer_height_m == 123.0
     assert got.location_height_label is None
-    assert got.location_height_m is None
+    assert got.location_height_m == 0.0
     assert got.show_observer_height is False
 
 

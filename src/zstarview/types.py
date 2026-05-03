@@ -82,8 +82,9 @@ class ViewerData:
     edge_fov_deg: float = 95.0
     content_fov_deg: float = 110.0
     observer_height_m: float = 1.7
+    ground_elevation_m: float = 0.0
     location_height_label: str | None = None
-    location_height_m: float | None = None
+    location_height_m: float = 0.0
     show_observer_height: bool = False
 
     @property

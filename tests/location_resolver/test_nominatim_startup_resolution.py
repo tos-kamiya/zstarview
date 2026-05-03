@@ -5,6 +5,14 @@ import pytest
 from zstarview.location_resolver import LocationResolveError, resolve_launch_location
 
 
+@pytest.fixture(autouse=True)
+def _stub_ground_elevation(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "zstarview.location_resolver.resolve._resolve_ground_elevation_m",
+        lambda **_kwargs: 0.0,
+    )
+
+
 def test_startup_resolve_city_accepts_place_query(monkeypatch) -> None:
     saved_payloads: list[object] = []
 
