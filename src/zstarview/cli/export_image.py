@@ -46,6 +46,7 @@ from ..data.skyscraper_tiles import (
     select_skyscraper_seed_tiles_for_viewer,
     skyscraper_tile_derived_dir,
 )
+from ..cli.args import SKY_OPACITY_DEFAULT
 from ..launch_time import (
     LaunchSetupError,
     parse_launch_time_arguments,
@@ -353,7 +354,7 @@ def _build_window_inputs_from_args(
         vmag_brightness_scale=vmag_brightness_scale,
     )
     user_options = prepare_window_user_options(
-        sky_disc_alpha=getattr(args, "sky_opacity", 0.17),
+        sky_disc_alpha=getattr(args, "sky_opacity", SKY_OPACITY_DEFAULT),
         cloud_disc_alpha=(
             0.0
             if (not overlay_availability.cloud)
@@ -386,7 +387,7 @@ def _build_window_inputs_from_args(
         show_asterisms_initial=getattr(args, "show_asterisms_initial", None),
         show_guidelines_initial=getattr(args, "show_guidelines_initial", None),
         observation_info_mode=getattr(args, "observation_info", "auto"),
-        sky_disc_gui_allowed=getattr(args, "sky_opacity", 0.17) > 0.0,
+        sky_disc_gui_allowed=getattr(args, "sky_opacity", SKY_OPACITY_DEFAULT) > 0.0,
         cloud_gui_allowed=overlay_availability.cloud
         and getattr(args, "cloud_opacity", 0.075) > 0.0,
         satellite_gui_allowed=overlay_availability.satellite
