@@ -289,6 +289,21 @@ def resolve_label_text_style(
     )
 
 
+def recolor_text_style(
+    style: ResolvedTextStyle,
+    rgb: tuple[int, int, int],
+) -> ResolvedTextStyle:
+    """Return a copy of a resolved text style with a new text color."""
+    text_color = QColor(*rgb)
+    text_color.setAlpha(style.text_color.alpha())
+    return ResolvedTextStyle(
+        font=style.font,
+        text_color=text_color,
+        outline_color=QColor(style.outline_color),
+        outline_width=style.outline_width,
+    )
+
+
 def draw_outlined_text(
     painter: QPainter,
     text: str,

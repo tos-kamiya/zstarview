@@ -16,6 +16,7 @@ from zstarview.render import solar_system as render_solar_system
 from zstarview.render import stars as render_stars
 from zstarview.render import text as render_text
 from zstarview.paths import PALETTE_AIRCRAFT_AND_SATELLITE_RGB
+from zstarview.render.deep_sky_objects import DSO_LABEL_RGB
 from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.aircraft.types import AircraftOverlayPoint
 from zstarview.satellites.types import SatelliteOverlayPoint
@@ -809,6 +810,65 @@ def test_overlay_info_shows_star_and_satellite_labels_independently() -> None:
         text == "ISS"
         and (color.red(), color.green(), color.blue())
         == PALETTE_AIRCRAFT_AND_SATELLITE_RGB
+        for text, color in label_calls
+    )
+
+
+def test_overlay_info_colors_dso_labels_like_the_dso_marker() -> None:
+    class DummyPainter:
+        def setPen(self, *_args, **_kwargs) -> None:
+            pass
+
+        def setBrush(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawEllipse(self, *_args, **_kwargs) -> None:
+            pass
+
+    painter = DummyPainter()
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+    )
+    geometry = ScreenGeometry(center=(120, 90), radius=70)
+    highlighted_dso = (
+        {
+            "name": "Andromeda Galaxy",
+            "alt": 45.0,
+            "az": 180.0,
+            "major_arcmin": 30.0,
+            "minor_arcmin": 20.0,
+            "pa_deg": 0.0,
+        },
+        QPointF(120.0, 90.0),
+    )
+    label_calls: list[tuple[str, QColor]] = []
+
+    def fake_draw_outlined_text(_painter, text, *_args, **kwargs) -> None:
+        style = kwargs["style"]
+        label_calls.append((str(text), style.text_color))
+
+    render_overlay_info.draw_overlay_info(
+        painter,
+        geometry,
+        _empty_celestial_data([]),
+        viewer,
+        vmag_limit=6.0,
+        enlarge_moon=False,
+        highlighted_dso=highlighted_dso,
+        highlighted_object=None,
+        highlighted_satellite=None,
+        text_font=QFont(),
+        draw_outlined_text_func=fake_draw_outlined_text,
+        text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
+        theme=THEME_STYLES_BY_PRESET["night"],
+    )
+
+    assert any(
+        text == "Andromeda Galaxy"
+        and (color.red(), color.green(), color.blue()) == DSO_LABEL_RGB
         for text, color in label_calls
     )
 

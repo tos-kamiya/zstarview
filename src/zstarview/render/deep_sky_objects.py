@@ -16,6 +16,7 @@ _DSO_SHAPE_SIZE_GAIN = 1.0
 _DSO_HOVER_SIZE_GAIN = 3.0
 _DSO_SHAPE_MIN_MAJOR_ARCMIN = 15.0
 _DSO_CATALOG_LIKE_NAME_RE = re.compile(r"^(M\d+|NGC\d+|IC\d+|MEL\d+|MWSC\d+)$", re.IGNORECASE)
+DSO_LABEL_RGB = (110, 185, 255)
 
 
 def _is_named_dso(name: object, obj_id: object) -> bool:
@@ -160,8 +161,6 @@ def draw_deep_sky_shapes(
     if not np.any(finite_shape):
         return
 
-    fill_rgb = (110, 185, 255)
-
     painter.save()
     painter.setPen(Qt.PenStyle.NoPen)
 
@@ -171,7 +170,7 @@ def draw_deep_sky_shapes(
         az = float(dso["az"][idx])
         major_deg = float(major[idx]) / 60.0
         alpha = int(np.clip(round(95.0 - 14.0 * math.sqrt(max(0.0, major_deg))), 56, 110))
-        painter.setBrush(QColor(fill_rgb[0], fill_rgb[1], fill_rgb[2], alpha))
+        painter.setBrush(QColor(DSO_LABEL_RGB[0], DSO_LABEL_RGB[1], DSO_LABEL_RGB[2], alpha))
         poly = _dso_ellipse_polygon(
             alt_deg=alt,
             az_deg=az,

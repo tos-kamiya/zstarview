@@ -13,7 +13,7 @@ from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
 from .stars import _content_fov_deg_from_viewer
 from .geometry import normalized_to_screen_xy
 from .guides import _clip_polyline_to_radius, _great_circle_altaz_points, split_by_gaps
-from .text import _text_bounds_at_baseline, draw_outlined_text, resolve_text_style
+from .text import _text_bounds_at_baseline, draw_outlined_text, recolor_text_style, resolve_text_style
 
 ASTERISM_BASE_OUTLINE_WIDTH = 4.0
 ASTERISM_BASE_MID_WIDTH = 2.6
@@ -156,7 +156,7 @@ def draw_asterisms(
         cx = sum(pt.x() for pt in label_points) / len(label_points)
         cy = sum(pt.y() for pt in label_points) / len(label_points)
         label_pos = QPointF(cx + 8.0, cy - 8.0)
-        text_style = resolve_text_style(theme, text_font)
+        text_style = recolor_text_style(resolve_text_style(theme, text_font), PALETTE_ASTERISM_RGB)
         if label_candidates is not None:
             label_candidates.append(
                 {

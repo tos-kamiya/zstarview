@@ -16,7 +16,8 @@ from ..types import (
 )
 from .background import format_overlay_info_lines
 from .deep_sky_objects import _DSO_HOVER_SIZE_GAIN, _dso_ellipse_polygon
-from .text import ResolvedTextStyle, get_text_outline_width, get_text_style
+from .deep_sky_objects import DSO_LABEL_RGB
+from .text import ResolvedTextStyle, get_text_outline_width, get_text_style, recolor_text_style
 
 
 def draw_overlay_info(
@@ -105,7 +106,7 @@ def draw_overlay_info(
         pa_deg = float(dso_obj.get("pa_deg", 0.0))
         alt = float(dso_obj.get("alt", 0.0))
         az = float(dso_obj.get("az", 0.0))
-        dso_label_color = QColor(text_color)
+        dso_label_style = recolor_text_style(text_style, DSO_LABEL_RGB)
         hover_poly = _dso_ellipse_polygon(
             alt_deg=alt,
             az_deg=az,
@@ -126,12 +127,7 @@ def draw_overlay_info(
                     {
                         "text": dso_name,
                         "pos": label_pos,
-                        "style": ResolvedTextStyle(
-                            font=text_font,
-                            text_color=dso_label_color,
-                            outline_color=text_style.outline_color,
-                            outline_width=text_style.outline_width,
-                        ),
+                        "style": dso_label_style,
                         "priority": 20,
                     }
                 )
@@ -141,12 +137,7 @@ def draw_overlay_info(
                     dso_name,
                     label_pos,
                     text_font,
-                    style=ResolvedTextStyle(
-                        font=text_font,
-                        text_color=dso_label_color,
-                        outline_color=text_style.outline_color,
-                        outline_width=text_style.outline_width,
-                    ),
+                    style=dso_label_style,
                 )
                 if label_reservations is not None:
                     label_reservations.append(
