@@ -737,3 +737,10 @@
   - Kept the primary terrain horizon only for fast-mode interaction rendering and rendered the banded overlay as the normal-mode terrain visualization.
   - Aligned the nearest normal-mode band with the fast-mode horizon width and moved its alpha closer to the fast-mode look, then tapered farther bands down from there.
   - Updated the horizon extraction, renderer, state plumbing, and regression tests to carry banded ridge polylines instead of visibility-pruned secondary peaks.
+
+### 2026-05-03
+
+- Object-colored hover labels
+  - Kept star and planet labels on the theme text color, but changed DSO and asterism hover labels to use the corresponding object colors.
+  - This makes the auxiliary labels visually match the item being described without changing the conventional white labels for stars and planets.
+  - Validation: `pytest tests/test_asterism_render.py tests/test_planet_marker_style.py tests/test_deep_sky_objects_render.py tests/test_window_render_sync.py -q`
