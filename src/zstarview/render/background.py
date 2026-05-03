@@ -170,21 +170,6 @@ def draw_window_border(
     painter.setPen(menu_icon_pen)
     menu_left = menu_left_edge + 9.0
     menu_right = menu_left_edge + menu_size - 9.0
-    for y in (menu_top_edge + 9.0, menu_top_edge + 14.0, menu_top_edge + 19.0):
-        painter.drawLine(QPointF(menu_left, y), QPointF(menu_right, y))
-    painter.setBrush(Qt.BrushStyle.NoBrush)
-    grip_inset = 0.0
-    inner_right = right - grip_inset
-    grip_size = 33.6
-    inner_bottom = bottom - grip_inset
-    grip_line_inset = 6.0
-    grip_pen = QPen(chrome_line_color, 2.0)
-    grip_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-    painter.setPen(grip_pen)
-    painter.drawLine(
-        QPointF(inner_right - grip_line_inset, inner_bottom - grip_size + grip_line_inset),
-        QPointF(inner_right - grip_size + grip_line_inset, inner_bottom - grip_line_inset),
-    )
     if theme.window_background.draw_outer_border:
         border_width = float(GUI_BUTTON_SIZE)
         border_color = QColor(*theme.window_background.border_rgba)
@@ -201,4 +186,6 @@ def draw_window_border(
         )
         painter.fillRect(QRectF(left, top, border_w, height), border_color)
         painter.fillRect(QRectF(left + width - border_w, top, border_w, height), border_color)
+    for y in (menu_top_edge + 9.0, menu_top_edge + 14.0, menu_top_edge + 19.0):
+        painter.drawLine(QPointF(menu_left, y), QPointF(menu_right, y))
     painter.restore()
