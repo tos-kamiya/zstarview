@@ -57,6 +57,8 @@ class SkyWindowUserOptions:
     vmag_limit: float = 7.0
     visual_preset: str = "night"
     star_visibility_boost: float = 1.0
+    asterism_visibility_boost: float = 1.0
+    earth_guide_visibility_boost: float = 1.0
     show_dso_initial: Optional[bool] = None
     show_asterisms_initial: Optional[bool] = None
     show_guidelines_initial: Optional[bool] = None
@@ -99,6 +101,15 @@ def _apply_visibility_boost(opacity: float, visibility_boost: float, tier_scale:
         return base_opacity
     boosted = base_opacity * (1.0 + (boost - 1.0) * float(tier_scale))
     return min(1.0, boosted)
+
+
+def _apply_visibility_boost_scale(scale: float, visibility_boost: float, tier_scale: float) -> float:
+    """Increase a multiplicative scale using the same tiered boost model."""
+    base_scale = max(1.0, float(scale))
+    boost = max(1.0, float(visibility_boost))
+    if boost <= 1.0 or tier_scale <= 0.0:
+        return base_scale
+    return base_scale * (1.0 + (boost - 1.0) * float(tier_scale))
 
 
 def prepare_window_viewer_data(
@@ -183,20 +194,22 @@ def prepare_window_user_options(
     """Normalize user-facing options before constructing SkyWindow."""
     visibility_boost = max(1.0, float(visibility_boost))
     return SkyWindowUserOptions(
-        sky_disc_alpha=_apply_visibility_boost(sky_disc_alpha, visibility_boost, 0.25),
-        cloud_disc_alpha=_apply_visibility_boost(cloud_disc_alpha, visibility_boost, 0.25),
-        satellite_opacity=_apply_visibility_boost(satellite_opacity, visibility_boost, 0.25),
-        aircraft_opacity=_apply_visibility_boost(aircraft_opacity, visibility_boost, 0.25),
+        sky_disc_alpha=_apply_visibility_boost(sky_disc_alpha, visibility_boost, 1.0),
+        cloud_disc_alpha=_apply_visibility_boost(cloud_disc_alpha, visibility_boost, 1.0),
+        satellite_opacity=_apply_visibility_boost(satellite_opacity, visibility_boost, 1.0),
+        aircraft_opacity=_apply_visibility_boost(aircraft_opacity, visibility_boost, 1.0),
         terrain_horizon_opacity=0.4 * _apply_visibility_boost(terrain_horizon_opacity, visibility_boost, 1.0),
         earth_guide_opacity=_apply_visibility_boost(earth_guide_opacity, visibility_boost, 1.0),
         urban_outline_opacity=_apply_visibility_boost(urban_outline_opacity, visibility_boost, 1.0),
-        ground_tint_opacity=_apply_visibility_boost(ground_tint_opacity, visibility_boost, 0.25),
+        ground_tint_opacity=_apply_visibility_boost(ground_tint_opacity, visibility_boost, 1.0),
         enlarge_moon=bool(enlarge_moon),
         bright_bodies_mode=str(bright_bodies_mode).strip().lower(),
         star_base_radius=max(2.0, star_base_radius),
         vmag_limit=vmag_limit,
         visual_preset=visual_preset,
         star_visibility_boost=star_visibility_boost,
+        asterism_visibility_boost=_apply_visibility_boost_scale(1.0, visibility_boost, 1.0),
+        earth_guide_visibility_boost=visibility_boost,
         show_dso_initial=show_dso_initial,
         show_asterisms_initial=show_asterisms_initial,
         show_guidelines_initial=show_guidelines_initial,

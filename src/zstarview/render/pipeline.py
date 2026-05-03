@@ -98,6 +98,8 @@ class RenderStyle:
     bright_bodies_mode: str
     star_base_radius: float
     star_visibility_boost: float
+    asterism_visibility_boost: float
+    earth_guide_visibility_boost: float
     vmag_limit: float
     cloud_disc_alpha: float
     satellite_opacity: float
@@ -507,6 +509,7 @@ def _draw_sky_cloud_layers(
             else None
         ),
         earth_guide_opacity=style.earth_guide_opacity,
+        earth_guide_visibility_boost=style.earth_guide_visibility_boost,
         content_fov_deg=_content_fov_deg(scene),
         fast_mode=bool(fast_mode),
     )
@@ -546,7 +549,9 @@ def _draw_terrain_layers(
             label_reservations,
             label_candidates=label_candidates,
             theme=style.theme,
-            line_width_scale=1.0,
+            line_width_scale=line_width_scale,
+            base_line_width_scale=line_width_scale * float(style.asterism_visibility_boost),
+            base_line_alpha_scale=float(style.asterism_visibility_boost),
             content_fov_deg=content_fov_deg,
             draw_base=True,
             draw_highlight=False,

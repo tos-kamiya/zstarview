@@ -898,6 +898,8 @@ def _build_render_style(
         bright_bodies_mode=str(user_options.bright_bodies_mode),
         star_base_radius=float(user_options.star_base_radius),
         star_visibility_boost=float(user_options.star_visibility_boost),
+        asterism_visibility_boost=float(user_options.asterism_visibility_boost),
+        earth_guide_visibility_boost=float(user_options.earth_guide_visibility_boost),
         vmag_limit=float(user_options.vmag_limit),
         cloud_disc_alpha=float(user_options.cloud_disc_alpha),
         satellite_opacity=float(user_options.satellite_opacity),

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import astropy.time
 import numpy as np
+import pytest
 from PySide6.QtCore import QPoint, QPointF
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication
@@ -20,6 +21,7 @@ class DummyPainter:
         self.polyline_count = 0
         self.polylines = []
         self.pen_widths: list[float] = []
+        self.pen_alphas: list[float] = []
 
     def save(self) -> None:
         pass
@@ -29,6 +31,7 @@ class DummyPainter:
 
     def setPen(self, pen, *_args, **_kwargs) -> None:
         self.pen_widths.append(float(pen.widthF()))
+        self.pen_alphas.append(float(pen.color().alphaF()))
 
     def drawPolyline(self, _poly) -> None:
         self.polyline_count += 1
@@ -91,7 +94,83 @@ def test_draw_asterisms_draws_dim_overlay_without_hover(monkeypatch) -> None:
         theme=THEME_STYLES_BY_PRESET["night"],
     )
 
-    assert painter.polyline_count == 2
+    assert painter.polyline_count == 3
+
+
+def test_draw_asterisms_keeps_dim_overlay_base_widths_fixed(monkeypatch) -> None:
+    painter = DummyPainter()
+    geometry = ScreenGeometry(center=(120, 90), radius=70)
+    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
+    celestial_data = _celestial_data_with_asterism_star_positions()
+    asterism = Asterism("test", "Test Asterism", (("HIP1", "HIP2"),))
+
+    monkeypatch.setattr(render_asterisms, "ASTERISMS", (asterism,))
+
+    render_asterisms.draw_asterisms(
+        painter=painter,
+        geometry=geometry,
+        celestial_data=celestial_data,
+        viewer_data=viewer,
+        highlighted_object=None,
+        text_font=QFont(),
+        theme=THEME_STYLES_BY_PRESET["night"],
+        line_width_scale=2.0,
+    )
+
+    assert painter.polyline_count == 3
+    assert painter.pen_widths == [8.0, 5.2, 2.8]
+
+
+def test_draw_asterisms_scales_dim_overlay_alpha_with_visibility_boost(monkeypatch) -> None:
+    painter = DummyPainter()
+    geometry = ScreenGeometry(center=(120, 90), radius=70)
+    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
+    celestial_data = _celestial_data_with_asterism_star_positions()
+    asterism = Asterism("test", "Test Asterism", (("HIP1", "HIP2"),))
+
+    monkeypatch.setattr(render_asterisms, "ASTERISMS", (asterism,))
+
+    render_asterisms.draw_asterisms(
+        painter=painter,
+        geometry=geometry,
+        celestial_data=celestial_data,
+        viewer_data=viewer,
+        highlighted_object=None,
+        text_font=QFont(),
+        theme=THEME_STYLES_BY_PRESET["night"],
+        base_line_width_scale=2.0,
+        base_line_alpha_scale=2.0,
+    )
+
+    assert painter.pen_alphas[:3] == [
+        pytest.approx(5 / 255.0),
+        pytest.approx(10 / 255.0),
+        pytest.approx(32 / 255.0),
+    ]
+    assert painter.pen_widths[:3] == [4.0, 2.6, 2.8]
+
+
+def test_draw_asterisms_dim_overlay_uses_softer_alpha(monkeypatch) -> None:
+    painter = DummyPainter()
+    geometry = ScreenGeometry(center=(120, 90), radius=70)
+    viewer = ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo", view_center=(45.0, 180.0))
+    celestial_data = _celestial_data_with_asterism_star_positions()
+    asterism = Asterism("test", "Test Asterism", (("HIP1", "HIP2"),))
+
+    monkeypatch.setattr(render_asterisms, "ASTERISMS", (asterism,))
+
+    render_asterisms.draw_asterisms(
+        painter=painter,
+        geometry=geometry,
+        celestial_data=celestial_data,
+        viewer_data=viewer,
+        highlighted_object=None,
+        text_font=QFont(),
+        theme=THEME_STYLES_BY_PRESET["night"],
+    )
+
+    assert painter.pen_alphas == sorted(painter.pen_alphas)
+    assert painter.pen_alphas[-1] < 0.1
 
 
 def test_draw_asterisms_hover_adds_bright_overlay_and_label(monkeypatch) -> None:
@@ -116,7 +195,7 @@ def test_draw_asterisms_hover_adds_bright_overlay_and_label(monkeypatch) -> None
         theme=THEME_STYLES_BY_PRESET["night"],
     )
 
-    assert painter.polyline_count == 5
+    assert painter.polyline_count == 6
     assert painter.pen_widths[-1] == 1.0
     assert [c["text"] for c in label_candidates] == ["Test Asterism"]
 
@@ -141,7 +220,7 @@ def test_draw_asterisms_deduplicates_shared_dim_segments(monkeypatch) -> None:
         theme=THEME_STYLES_BY_PRESET["night"],
     )
 
-    assert painter.polyline_count == 2
+    assert painter.polyline_count == 3
 
 
 def test_draw_asterisms_clips_with_asterism_specific_wide_fov(monkeypatch) -> None:
@@ -195,7 +274,7 @@ def test_draw_asterisms_clips_with_asterism_specific_wide_fov(monkeypatch) -> No
         theme=THEME_STYLES_BY_PRESET["night"],
     )
 
-    assert painter.polyline_count == 2
+    assert painter.polyline_count == 3
     ys = [point[1] for polyline in painter.polylines for point in polyline]
     assert ys
     assert max(ys) <= geometry.center[1] + (geometry.radius * (ASTERISM_CLIP_FIELD_OF_VIEW_DEG / 90.0)) + 1.0e-6
@@ -224,7 +303,7 @@ def test_draw_asterisms_scales_line_widths_with_star_upscale(monkeypatch) -> Non
         theme=THEME_STYLES_BY_PRESET["night"],
     )
 
-    assert painter.pen_widths[:5] == [6.0, 4.0, 10.0, 6.4, 2.0]
+    assert painter.pen_widths[:6] == [8.0, 5.2, 2.8, 10.0, 6.4, 2.0]
     assert [c["text"] for c in label_candidates] == ["Test Asterism"]
 
 

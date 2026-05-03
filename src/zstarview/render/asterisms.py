@@ -15,8 +15,9 @@ from .geometry import normalized_to_screen_xy
 from .guides import _clip_polyline_to_radius, _great_circle_altaz_points, split_by_gaps
 from .text import _text_bounds_at_baseline, draw_outlined_text, resolve_text_style
 
-ASTERISM_BASE_OUTLINE_WIDTH = 3.0
-ASTERISM_BASE_LINE_WIDTH = 2.0
+ASTERISM_BASE_OUTLINE_WIDTH = 4.0
+ASTERISM_BASE_MID_WIDTH = 2.6
+ASTERISM_BASE_LINE_WIDTH = 1.4
 ASTERISM_HIGHLIGHT_OUTER_WIDTH = 5.0
 ASTERISM_HIGHLIGHT_MID_WIDTH = 3.2
 ASTERISM_HIGHLIGHT_CORE_WIDTH = 1.0
@@ -34,6 +35,8 @@ def draw_asterisms(
     *,
     theme: ThemeStyle,
     line_width_scale: float = 1.0,
+    base_line_width_scale: float = 1.0,
+    base_line_alpha_scale: float = 1.0,
     content_fov_deg: float | None = None,
     draw_base: bool = True,
     draw_highlight: bool = True,
@@ -57,8 +60,6 @@ def draw_asterisms(
         return
 
     is_bright_theme = theme.label_outline_suppressed
-    base_line_color = QColor(*PALETTE_ASTERISM_RGB, 24 if is_bright_theme else 21)
-    base_outline_color = QColor(*PALETTE_ASTERISM_RGB, 12 if is_bright_theme else 9)
     highlight_outer_color = QColor(*PALETTE_ASTERISM_RGB, 14 if is_bright_theme else 10)
     highlight_mid_color = QColor(*PALETTE_ASTERISM_RGB, 54 if is_bright_theme else 40)
     highlight_core_color = QColor(*PALETTE_ASTERISM_RGB, 124 if is_bright_theme else 92)
@@ -67,6 +68,8 @@ def draw_asterisms(
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
     clip_radius = effective_fov_deg / max(1.0e-6, float(viewer_data.edge_fov_deg))
     width_scale = max(1.0, float(line_width_scale))
+    base_width_scale = max(1.0, float(base_line_width_scale))
+    base_alpha_scale = max(1.0, float(base_line_alpha_scale))
 
     def _make_pen(color: QColor, width: float) -> QPen:
         pen = QPen(color, width)
@@ -110,6 +113,17 @@ def draw_asterisms(
     def _draw_one_asterism(asterism: Any, pens: Iterable[QPen]) -> List[QPointF]:
         return _draw_segments(asterism.segments(), pens)
 
+    def _base_passes() -> tuple[QPen, ...]:
+        outer_color = QColor(*PALETTE_ASTERISM_RGB, 7 if is_bright_theme else 5)
+        mid_color = QColor(*PALETTE_ASTERISM_RGB, 14 if is_bright_theme else 10)
+        core_color = QColor(*PALETTE_ASTERISM_RGB, min(255, int(round((22 if is_bright_theme else 16) * base_alpha_scale))))
+        core_width_scale = base_width_scale if base_width_scale > 1.0 else width_scale
+        return (
+            _make_pen(outer_color, ASTERISM_BASE_OUTLINE_WIDTH * width_scale),
+            _make_pen(mid_color, ASTERISM_BASE_MID_WIDTH * width_scale),
+            _make_pen(core_color, ASTERISM_BASE_LINE_WIDTH * core_width_scale),
+        )
+
     highlighted_asterism = None
     if draw_highlight and highlighted_object is not None:
         hovered_obj, _ = highlighted_object
@@ -121,15 +135,13 @@ def draw_asterisms(
 
     label_points: List[QPointF] = []
     if draw_base:
-        base_outline_pen = _make_pen(base_outline_color, ASTERISM_BASE_OUTLINE_WIDTH * width_scale)
-        base_line_pen = _make_pen(base_line_color, ASTERISM_BASE_LINE_WIDTH * width_scale)
         base_segments: set[Tuple[str, str]] = set()
         for asterism in ASTERISMS:
             for source_a, source_b in asterism.segments():
                 if source_a == source_b:
                     continue
                 base_segments.add(tuple(sorted((source_a, source_b))))
-        _draw_segments(sorted(base_segments), (base_outline_pen, base_line_pen))
+        _draw_segments(sorted(base_segments), _base_passes())
 
     if highlighted_asterism is not None:
         highlight_outer_pen = _make_pen(highlight_outer_color, ASTERISM_HIGHLIGHT_OUTER_WIDTH * width_scale)

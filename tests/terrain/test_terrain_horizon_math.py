@@ -146,24 +146,24 @@ def test_select_distance_band_peak_index_includes_last_upper_bound() -> None:
 
 
 def test_distance_band_alpha_drops_with_distance() -> None:
-    near = _distance_band_alpha(0, 7, 0.38)
-    mid = _distance_band_alpha(3, 7, 0.38)
-    far = _distance_band_alpha(6, 7, 0.38)
+    near = _distance_band_alpha(distance_km=0.5, band_count=9, opacity=0.38)
+    mid = _distance_band_alpha(distance_km=4.0, band_count=9, opacity=0.38)
+    far = _distance_band_alpha(distance_km=128.0, band_count=9, opacity=0.38)
 
     assert near > mid > far
     assert far < 0.08
 
 
 def test_distance_band_underlay_blur_increases_while_alpha_drops() -> None:
-    near_width = _distance_band_underlay_width(0, 7)
-    mid_width = _distance_band_underlay_width(3, 7)
-    far_width = _distance_band_underlay_width(6, 7)
-    near_foreground = _distance_band_widths(0, 7)
-    mid_foreground = _distance_band_widths(3, 7)
-    far_foreground = _distance_band_widths(6, 7)
-    near_alpha = _distance_band_underlay_alpha(0, 7, 0.38)
-    mid_alpha = _distance_band_underlay_alpha(3, 7, 0.38)
-    far_alpha = _distance_band_underlay_alpha(6, 7, 0.38)
+    near_width = _distance_band_underlay_width(distance_km=0.5, band_count=9)
+    mid_width = _distance_band_underlay_width(distance_km=4.0, band_count=9)
+    far_width = _distance_band_underlay_width(distance_km=128.0, band_count=9)
+    near_foreground = _distance_band_widths(distance_km=0.5, band_count=9)
+    mid_foreground = _distance_band_widths(distance_km=4.0, band_count=9)
+    far_foreground = _distance_band_widths(distance_km=128.0, band_count=9)
+    near_alpha = _distance_band_underlay_alpha(distance_km=0.5, band_count=9, opacity=0.38)
+    mid_alpha = _distance_band_underlay_alpha(distance_km=4.0, band_count=9, opacity=0.38)
+    far_alpha = _distance_band_underlay_alpha(distance_km=128.0, band_count=9, opacity=0.38)
 
     assert near_width > near_foreground
     assert mid_width > mid_foreground
@@ -189,9 +189,28 @@ def test_compute_horizon_layers_adds_nearest_secondary_band() -> None:
         refraction_coefficient=0.0,
     )
 
-    assert DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM[0] == 2.0
-    assert len(layers.secondary_layers) == len(DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM)
+    assert DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM[:2] == (0.5, 1.0)
+    assert len(layers.secondary_layers) >= 2
     assert [point.distance_m for point in layers.secondary_layers[0]] == [500.0, 500.0]
+    assert [point.distance_m for point in layers.secondary_layers[1]] == [1000.0, 1000.0]
+
+
+def test_distance_band_widths_start_thickest_and_taper_down() -> None:
+    widths = [
+        _distance_band_widths(distance_km=distance_km, band_count=9)
+        for distance_km in (0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0, 128.0)
+    ]
+
+    assert widths[0] > widths[1] > widths[2]
+    assert widths[0] == max(widths)
+
+
+def test_distance_band_widths_follow_distance_even_with_more_bands() -> None:
+    near = _distance_band_widths(distance_km=0.5, band_count=9)
+    mid = _distance_band_widths(distance_km=1.0, band_count=9)
+    farther = _distance_band_widths(distance_km=2.0, band_count=9)
+
+    assert near > mid > farther
 
 
 def test_sample_ground_elevation_uses_default_elevation_for_nodata() -> None:
