@@ -282,6 +282,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - テーマ定義に基づいてウィンドウ背景 radial gradient を描画する
   - 端へ行くほど急に抜けないよう、四隅の透明度は内部より少しだけ高く保つ
   - 独自ウィンドウ枠は frameless host のときだけ描画する
+  - 右下の resize handle は `QSizeGrip` ではなく専用の子ウィジェットで実装し、その `paintEvent()` で斜線マーカーを描く
 - `src/zstarview/splash.py`
   - テーマ定義に基づいてスプラッシュ背景、枠線、情報文字色を構成する
 - `src/zstarview/gui/composite.py`
@@ -327,7 +328,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - status_text: `(255, 224, 224)` / `#FFE0E0`
   - sky disc opacity: `0.4`
   - window chrome: menu square uses theme-contrast fill and hamburger lines;
-    grip uses the same line color as a single inset diagonal stroke
+    grip uses a dedicated resize-handle widget that draws a single diagonal stroke itself
 
 #### 4.3.3 カラーパレット参照
 
@@ -461,7 +462,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - frameless window のドラッグ移動は `DraggableWindow` に委ね、通常の再描画抑制とは分離する
   - 描画対象のクライアント領域は `SkyWindowClientWidget` として分離する
   - ホストウィンドウは `FramelessSkyWindow` と `StandardSkyWindow` に分ける
-  - `FramelessWindowFrame` は frameless 専用の外装であり、独自外枠、ハンバーガーボタン、サイズ変更グリップを持つ
+  - `FramelessWindowFrame` は frameless 専用の外装であり、独自外枠、ハンバーガーボタン、専用 resize handle を持つ
   - `StandardSkyWindow` は OS 標準の `QMainWindow` とメニューバーを使い、独自外枠は描かない
   - 共通 action は `File`、`Search`、`Layers`、`View Direction` の 4 系統に編成する
   - frameless ではハンバーガーメニューの 1 階層目に同じ 4 系統の submenu を並べる
