@@ -16,6 +16,7 @@ class _City:
     lon: float = 139.0
     tz: str = "UTC"
     observer_height_m: float = 1.7
+    ground_elevation_m: float | None = 35.0
     location_height_label: str | None = None
     location_height_m: float | None = None
 

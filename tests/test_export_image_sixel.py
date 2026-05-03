@@ -220,6 +220,7 @@ def test_write_export_overlay_summary_to_stderr_emits_gui_metadata(
         city_name="Tokyo",
         view_center=(45.0, 180.0),
         observer_height_m=12.0,
+        ground_elevation_m=35.0,
         location_height_label="Tower height",
         location_height_m=634.0,
         show_observer_height=True,
@@ -246,8 +247,8 @@ def test_write_export_overlay_summary_to_stderr_emits_gui_metadata(
 
     text = stderr_buffer.getvalue()
     assert text.startswith("Tokyo\n")
-    assert "Tower height 634 m\n" in text
-    assert "Observer height 12 m\n" in text
+    assert "Lat: 35.00000, Lon: 139.00000\n" in text
+    assert "Ground elevation 35 m; Building height 634 m\n" in text
     assert "2026-02-27 00:00:00 UTC\n" in text
     assert "Alt 45°  Az 180° (S)\n" in text
     assert "Vmag limit 6.0\n" in text

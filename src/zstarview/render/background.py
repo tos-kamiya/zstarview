@@ -11,6 +11,7 @@ from ..paths import (
     GUI_BUTTON_SIZE,
     ThemeStyle,
 )
+from ..utils.location_display import build_location_info_lines
 from ..types import CelestialData, ScreenGeometry, ViewerData
 
 
@@ -25,12 +26,6 @@ def format_overlay_info_lines(
     include_vmag_limit: bool = False,
 ) -> list[str]:
     """Return the static observation overlay text lines."""
-
-    def format_height_m(value_m: float) -> str:
-        rounded = round(float(value_m))
-        if abs(float(value_m) - rounded) < 0.05:
-            return f"{int(rounded)} m"
-        return f"{float(value_m):.1f} m"
 
     alt_deg, az_deg = viewer_data.view_center
 
@@ -53,12 +48,13 @@ def format_overlay_info_lines(
     except Exception:
         lines.append(utc_time.to_datetime().strftime("%Y-%m-%d %H:%M:%S UTC"))
 
-    location_parts = [viewer_data.city_name]
-    if viewer_data.location_height_label and viewer_data.location_height_m is not None:
-        location_parts.append(f"{viewer_data.location_height_label} {format_height_m(viewer_data.location_height_m)}")
-    if viewer_data.show_observer_height:
-        location_parts.append(f"Observer height {format_height_m(viewer_data.observer_height_m)}")
-    lines = location_parts + lines
+    lines = build_location_info_lines(
+        viewer_data.city_name,
+        viewer_data.lat_deg,
+        viewer_data.lon_deg,
+        ground_elevation_m=viewer_data.ground_elevation_m,
+        location_height_m=viewer_data.location_height_m,
+    ) + lines
     lines.append(f"Alt {alt_deg:.0f}{deg}  Az {az_deg:.0f}{deg} ({compass})")
     if include_vmag_limit:
         lines.append(f"Vmag limit {vmag_limit:.1f}")
@@ -156,7 +152,6 @@ def draw_window_border(
 
     top = float(rect.top())
     right = float(rect.right())
-    bottom = float(rect.bottom())
     menu_size = float(GUI_BUTTON_SIZE)
     menu_left_edge = right - menu_size + 1.0
     menu_top_edge = top

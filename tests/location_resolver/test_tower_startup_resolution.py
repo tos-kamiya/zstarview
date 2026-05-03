@@ -7,6 +7,14 @@ from zstarview.location_resolver.viewpoints import Viewpoint
 from zstarview.data.urban_outline_common import BuildingFootprint
 
 
+@pytest.fixture(autouse=True)
+def _stub_ground_elevation(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "zstarview.location_resolver.resolve._resolve_ground_elevation_m",
+        lambda **_kwargs: 0.0,
+    )
+
+
 def test_startup_resolve_city_accepts_tower_name(monkeypatch) -> None:
     monkeypatch.setattr("zstarview.location_resolver.resolve.load_last_city", lambda: None)
     monkeypatch.setattr("zstarview.location_resolver.resolve.save_last_city", lambda _value: None)
@@ -232,7 +240,7 @@ def test_startup_resolve_city_keeps_default_height_when_no_building_found(monkey
     assert location.kind == "coords"
     assert location.observer_height_m == 1.7
     assert location.location_height_label is None
-    assert location.location_height_m is None
+    assert location.location_height_m == 0.0
 
 
 def test_find_building_top_height_m_accepts_nearby_building_within_5m() -> None:

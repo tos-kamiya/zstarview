@@ -11,8 +11,9 @@ from typing import TYPE_CHECKING, Any, List
 
 from ..config import load_last_city, save_last_city
 from ..paths import CITY_ADMIN1_CODES_FILE, CITY_COORD_FILE
-from ..paths import OVERTURE_DERIVED_ROOT_DIR
+from ..paths import COPERNICUS_DEM_CACHE_DIR, OVERTURE_DERIVED_ROOT_DIR
 from ..utils.latlon_format import format_lat_lon_display
+from ..utils.location_display import format_location_summary
 from ..utils.resolve_city import (
     CityRec,
     load_admin1_names,
@@ -25,6 +26,7 @@ from .mountains import resolve_mountain_viewpoint
 from .nominatim import search_nominatim
 from .towers import resolve_tower_viewpoint
 from .viewpoints import Viewpoint, prefixed_viewpoint_name, split_prefixed_viewpoint
+from ..terrain import GeoTiffDem, build_download_bbox, fetch_copernicus_dem, sample_ground_elevation
 
 if TYPE_CHECKING:
     from ..data.urban_outline_common import BuildingFootprint
@@ -49,8 +51,9 @@ class ResolvedLocation:
     observer_height_m: float
     kind: str
     persistence_value: str | dict[str, Any] | None = None
+    ground_elevation_m: float = 0.0
     location_height_label: str | None = None
-    location_height_m: float | None = None
+    location_height_m: float = 0.0
     cc: str = ""
 
 
@@ -266,14 +269,75 @@ def _maybe_apply_building_top_viewpoint(
         observer_height_m=float(building_top_height_m) + DEFAULT_OBSERVER_HEIGHT_M,
         kind=location.kind,
         persistence_value=location.persistence_value,
+        ground_elevation_m=location.ground_elevation_m,
         location_height_label="Building height",
         location_height_m=float(building_top_height_m),
         cc=location.cc,
     )
 
 
+def _resolve_ground_elevation_m(
+    *,
+    lat_deg: float,
+    lon_deg: float,
+    cache_dir: str | Path = COPERNICUS_DEM_CACHE_DIR,
+) -> float:
+    try:
+        download = fetch_copernicus_dem(
+            observer_lat_deg=lat_deg,
+            observer_lon_deg=lon_deg,
+            max_distance_km=0.25,
+            margin_km=0.0,
+            cache_dir=Path(cache_dir),
+        )
+    except Exception:
+        logger.warning(
+            "Ground elevation lookup failed for lat=%.6f lon=%.6f",
+            lat_deg,
+            lon_deg,
+            exc_info=True,
+        )
+        return 0.0
+
+    dem = GeoTiffDem(download.paths, default_elevation_m=0.0)
+    try:
+        bbox = build_download_bbox(lat_deg=lat_deg, lon_deg=lon_deg, radius_km=0.25)
+        dem_grid = dem.build_grid(bbox)
+        ground_elevation_m = float(
+            sample_ground_elevation(
+                dem_grid,
+                latitude_deg=lat_deg,
+                longitude_deg=lon_deg,
+                dem_resampling="bilinear",
+            )
+        )
+    except Exception:
+        logger.warning(
+            "Failed to sample ground elevation for lat=%.6f lon=%.6f",
+            lat_deg,
+            lon_deg,
+            exc_info=True,
+        )
+        return 0.0
+    finally:
+        dem.close()
+
+    if not math.isfinite(ground_elevation_m):
+        return 0.0
+    return ground_elevation_m
+
+
 def format_splash_location(city: ResolvedLocation) -> str:
-    return f"Location: {city.display_name}"
+    return (
+        "Location: "
+        + format_location_summary(
+            city.display_name,
+            city.lat,
+            city.lon,
+            ground_elevation_m=city.ground_elevation_m,
+            location_height_m=city.location_height_m,
+        )
+    )
 
 
 def _great_circle_distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -314,15 +378,13 @@ def _viewpoint_to_location(
     timezone_name = nearest_city.tz if nearest_city is not None else "UTC"
     viewpoint_height_m = 0.0 if viewpoint.viewpoint_height_m is None else float(viewpoint.viewpoint_height_m)
     location_height_label: str | None = None
-    location_height_m: float | None = None
+    location_height_m: float = 0.0
     if viewpoint.kind == "tower" and viewpoint.height_m > 0.0:
-        location_height_label = "Tower height"
+        location_height_label = "Building height"
         location_height_m = float(viewpoint.height_m)
     elif viewpoint.kind == "mountain":
-        raw_elevation_m = viewpoint.meta.get("elevation_m")
-        if isinstance(raw_elevation_m, (int, float)) and float(raw_elevation_m) > 0.0:
-            location_height_label = "Elevation"
-            location_height_m = float(raw_elevation_m)
+        location_height_label = None
+        location_height_m = 0.0
     return ResolvedLocation(
         display_name=prefixed_viewpoint_name(viewpoint.kind, viewpoint.name),
         lat=viewpoint.latitude_deg,
@@ -331,6 +393,10 @@ def _viewpoint_to_location(
         persistence_key=prefixed_viewpoint_name(viewpoint.kind, viewpoint.name),
         observer_height_m=viewpoint_height_m + DEFAULT_OBSERVER_HEIGHT_M,
         kind=viewpoint.kind,
+        ground_elevation_m=_resolve_ground_elevation_m(
+            lat_deg=float(viewpoint.latitude_deg),
+            lon_deg=float(viewpoint.longitude_deg),
+        ),
         location_height_label=location_height_label,
         location_height_m=location_height_m,
         cc=nearest_city.cc if nearest_city is not None else "",
@@ -368,8 +434,9 @@ def _nominatim_result_to_location(
         observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
         kind="place",
         persistence_value=persistence_value,
+        ground_elevation_m=_resolve_ground_elevation_m(lat_deg=lat, lon_deg=lon),
         location_height_label=None,
-        location_height_m=None,
+        location_height_m=0.0,
         cc=nearest_city.cc if nearest_city is not None else "",
     )
 
@@ -405,7 +472,9 @@ def _restore_persisted_location(
                 observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
                 kind="auto",
                 persistence_value=stored_location,
+                ground_elevation_m=_resolve_ground_elevation_m(lat_deg=lat, lon_deg=lon),
                 cc=cc or "",
+                location_height_m=0.0,
             )
         logger.warning("Ignoring malformed persisted auto location payload")
         return None
@@ -635,8 +704,9 @@ def resolve_launch_location(
                     persistence_key=f"{lat:.6f};{lon:.6f}",
                     observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
                     kind="coords",
+                    ground_elevation_m=_resolve_ground_elevation_m(lat_deg=lat, lon_deg=lon),
                     location_height_label=None,
-                    location_height_m=None,
+                    location_height_m=0.0,
                     cc=nearest_city.cc if nearest_city is not None else "",
                 ),
                 enabled=use_building_top,
@@ -736,8 +806,9 @@ def resolve_launch_location(
             persistence_key=city_str,
             observer_height_m=DEFAULT_OBSERVER_HEIGHT_M,
             kind="city",
+            ground_elevation_m=_resolve_ground_elevation_m(lat_deg=city.lat, lon_deg=city.lon),
             location_height_label=None,
-            location_height_m=None,
+            location_height_m=0.0,
             cc=city.cc,
         )
         persist_location = True

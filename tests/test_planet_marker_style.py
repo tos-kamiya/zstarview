@@ -1083,6 +1083,7 @@ def test_overlay_info_includes_location_height_and_explicit_observer_height(
         city_name="t/Tokyo Skytree",
         view_center=(45.0, 180.0),
         observer_height_m=12.0,
+        ground_elevation_m=35.0,
         location_height_label="Tower height",
         location_height_m=634.0,
         show_observer_height=True,
@@ -1111,8 +1112,8 @@ def test_overlay_info_includes_location_height_and_explicit_observer_height(
 
     assert label_calls == [
         "t/Tokyo Skytree",
-        "Tower height 634 m",
-        "Observer height 12 m",
+        "Lat: 35.00000, Lon: 139.00000",
+        "Ground elevation 35 m; Building height 634 m",
         "2026-02-27 00:00:00 UTC",
         "Alt 45°  Az 180° (S)",
     ]
@@ -1138,6 +1139,7 @@ def test_overlay_info_first_line_top_margin_matches_left_margin_when_cursor_is_l
         city_name="t/Tokyo Skytree",
         view_center=(45.0, 180.0),
         observer_height_m=12.0,
+        ground_elevation_m=35.0,
         location_height_label="Tower height",
         location_height_m=634.0,
         show_observer_height=True,
@@ -1196,6 +1198,7 @@ def test_overlay_info_moves_to_bottom_when_cursor_is_in_upper_half(monkeypatch) 
         city_name="t/Tokyo Skytree",
         view_center=(45.0, 180.0),
         observer_height_m=12.0,
+        ground_elevation_m=35.0,
         location_height_label="Tower height",
         location_height_m=634.0,
         show_observer_height=True,
@@ -1244,6 +1247,7 @@ def test_format_overlay_info_lines_matches_static_overlay_order() -> None:
         city_name="t/Tokyo Skytree",
         view_center=(45.0, 180.0),
         observer_height_m=12.0,
+        ground_elevation_m=35.0,
         location_height_label="Tower height",
         location_height_m=634.0,
         show_observer_height=True,
@@ -1253,8 +1257,8 @@ def test_format_overlay_info_lines_matches_static_overlay_order() -> None:
         _empty_celestial_data([]), viewer, 6.0
     ) == [
         "t/Tokyo Skytree",
-        "Tower height 634 m",
-        "Observer height 12 m",
+        "Lat: 35.00000, Lon: 139.00000",
+        "Ground elevation 35 m; Building height 634 m",
         "2026-02-27 00:00:00 UTC",
         "Alt 45°  Az 180° (S)",
     ]

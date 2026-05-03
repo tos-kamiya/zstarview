@@ -259,6 +259,7 @@ def main() -> None:
         edge_fov_deg=args.edge_fov_deg,
         content_fov_deg=args.content_fov_deg,
         observer_height_m=city.observer_height_m if args.observer_height_m is None else args.observer_height_m,
+        ground_elevation_m=city.ground_elevation_m,
         location_height_label=city.location_height_label,
         location_height_m=city.location_height_m,
         show_observer_height=args.observer_height_m is not None,
