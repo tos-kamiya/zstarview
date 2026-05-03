@@ -575,11 +575,11 @@
 
 - ### 2026-04-29
 
-- 地形地平線の副稜線と遮蔽ルール
-  - 地形地平線に、副稜線を補助レイヤーとして追加し、山並みの重なりや視界の遷移が読み取れるようにした。
-  - 同一方位では、より近い副稜線がより高く見えている場合に、より遠くて低い副稜線を表示しないルールを採用した。
+- 地形地平線の距離帯ごとの副稜線と遮蔽ルール
+  - 地形地平線に、距離帯ごとの副稜線を補助レイヤーとして追加し、山並みの重なりや視界の遷移が読み取れるようにした。
+  - 同一方位では、より近い距離帯ごとの副稜線がより高く見えている場合に、より遠くて低い距離帯ごとの副稜線を表示しないルールを採用した。
   - これは、前景の山塊が背後の稜線を物理的に隠すという見え方を優先し、納得度の低い線の重なりを抑えるためである。
-  - 副稜線は主シルエットの可読性を損なわない範囲で、低 opacity の補助情報として扱う。
+  - 距離帯ごとの副稜線は主シルエットの可読性を損なわない範囲で、低 opacity の補助情報として扱う。
 
 ### 2026-04-11
 
@@ -733,7 +733,7 @@
 ### 2026-04-29
 
 - Distance-band terrain ridge preview
-  - Replaced the previous chained secondary-ridge experiment with concentric distance-band ridge lines at 3.75, 7.5, 15, 30, 60, and 120 km.
+- Replaced the previous chained secondary-ridge experiment with concentric distance-band secondary ridges at 3.75, 7.5, 15, 30, 60, and 120 km.
   - Kept the primary terrain horizon only for fast-mode interaction rendering and rendered the banded overlay as the normal-mode terrain visualization.
   - Aligned the nearest normal-mode band with the fast-mode horizon width and moved its alpha closer to the fast-mode look, then tapered farther bands down from there.
   - Updated the horizon extraction, renderer, state plumbing, and regression tests to carry banded ridge polylines instead of visibility-pruned secondary peaks.
