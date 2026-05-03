@@ -744,3 +744,7 @@
   - Kept star and planet labels on the theme text color, but changed DSO and asterism hover labels to use the corresponding object colors.
   - This makes the auxiliary labels visually match the item being described without changing the conventional white labels for stars and planets.
   - Validation: `pytest tests/test_asterism_render.py tests/test_planet_marker_style.py tests/test_deep_sky_objects_render.py tests/test_window_render_sync.py -q`
+
+- Version bump
+  - Bumped `__version__` from `1.21.14` to `1.21.15`.
+  - This follows the sky-opacity default restoration and keeps the patch-level version in sync with the current code state.
