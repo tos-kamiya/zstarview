@@ -20,15 +20,13 @@ def build_location_info_lines(
 ) -> list[str]:
     lines = []
     lat_lon_text = format_lat_lon_display(lat_deg, lon_deg)
-    display_text = str(display_name)
-    if display_text.strip() and display_text != lat_lon_text:
-        lines.append(display_text)
-    lines.append(lat_lon_text)
     ground = max(0.0, float(ground_elevation_m))
     structure = max(0.0, float(location_height_m))
+    display_text = str(display_name).strip()
+    if display_text and display_text != lat_lon_text:
+        lines.append(display_text)
     lines.append(
-        "Ground elevation "
-        f"{format_height_m(ground)}; Building height {format_height_m(structure)}"
+        f"{lat_lon_text} | Ground: {format_height_m(ground)}, Building: {format_height_m(structure)}"
     )
     return lines
 

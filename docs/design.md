@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-05-02
+最終更新: 2026-05-04
 
 ## 1. この文書の位置づけ
 
@@ -174,7 +174,7 @@
 - `building_part` がある場合は、親建物とその part 群を同一グループとして扱い、そのグループの最大 `height_m` を建物頂部高として採用してよい。
 - `min_height_m` は浮いた底面の属性として保持するが、この経路で観測基準に使う値は上端であるため、観測基準高の決定には最大 `height_m` を使う。
 - 候補建物が見つからない場合は、従来どおり地表基準の `observer_height_m`を使う。
-- 利用者向けの地点情報には `Building height` を表示してよい。
+- 利用者向けの地点情報には、地点名がある場合は 1 行目に名前、2 行目に `Lat: ..., Lon: ... | Ground: ..., Building: ...` の compact summary を表示してよい。
 
 #### 4.2.4 `auto` による現在地自動取得起動
 
@@ -230,7 +230,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `guide` はベース描画に含めてよい。
 - `--include-direction-grid` が指定された場合、export-image 専用の静的方向グリッドを guide の上に重ねてよい。
 - この方向グリッドは GUI の hover guidance とは別実装で、単発の書き出し画像にだけ適用してよい。
-- export 画像では static overlay info も既定で描かない。
+- export 画像では static overlay info を画像に焼き込まず、代わりに stderr へ compact summary を出してよい。
+  - summary には、地点名がある場合は名前行と `Lat: ..., Lon: ... | Ground: ..., Building: ...` の 1 行要約、時刻、Alt/Az を含めてよい。
 - export 画像では GUI 向けの外周背景グラデーションも描かず、`content_fov_deg` の外側は透明のままにする。
 - 外部依存レイヤーの取得は逐次でも並列でもよいが、CLI 側では「いつまで待つか」と「部分データを許容するか」を引数で決められるようにする。
 - 既定は安全側として「部分データは保存しない」とし、明示的に `--allow-partial-data` を指定したときだけ部分出力を許可する。
@@ -397,7 +398,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `hover-overlay`
   - `overlay`
   - `status`
-- ここでいう `overlay` は、地点名、時刻、Alt/Az、地点高さ、観測者高さなどの static observation overlay を指す。`Vmag limit` は GUI メニューの disabled 項目で示す。
+- ここでいう `overlay` は、地点名、Lat/Lon、`Ground ...; Building ...` の 1 行要約、時刻、Alt/Az などの static observation overlay を指す。`Vmag limit` は GUI メニューの disabled 項目で示す。
 - static overlay は hover 系 HUD と同じ更新タイミングに揃えるため、ベース描画ではなく HUD 描画側で重ねる。
 - `guide` は方位ラベルと天頂マーカーを含む独立レイヤーであり、空色・雲合成の上、通常の hover/HUD オーバーレイより手前に置く。
 - 幾何学的な地平線、天の赤道、黄道も `show_guidelines` に従う guide 系表示として扱う。
@@ -447,7 +448,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - static observation overlay は `mouse_pos` に応じて左上と左下を切り替えるため、HUD 側で毎フレーム再評価する。
 - 位置切替にはヒステリシスを入れ、上 1/3 で左下、下 1/3 で左上へ切り替え、中央 1/3 では直前位置を保持してよい。
 - static observation overlay は、GUI の `show_overlay_info` が有効なときだけ HUD 側で描画する。
-- overlay 行順は、地点名、時刻、Alt/Az を先頭に固定してよい。
+- overlay 行順は、地点名または `Lat/Lon`、`Ground ...; Building ...` の 1 行要約、時刻、Alt/Az を先頭に固定してよい。
 - overlay anchor の保持状態は window state に持たせてよい。
 - 月の `5x` 拡大は、角半径の生値ではなく「通常時の見た目半径」を基準に適用する。
 - `guide` レイヤーはベース側に残し、マウス位置によるラベル回避には依存しない安定描画として扱う。
@@ -790,6 +791,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - ランタイム本線で使う `NumPy <-> QImage` 変換補助
 - `src/zstarview/utils/qt_pil.py`
   - 補助用途の `Pillow <-> Qt` 変換
+- `src/zstarview/utils/location_display.py`
+  - スプラッシュ、静的 overlay、export-image stderr 向けの地点要約整形
+  - `Lat: ..., Lon: ... | Ground: ..., Building: ...` の表示を共通化し、座標指定時は名前行を省略して重複表示を避ける
 - `src/zstarview/data/import_overture_buildings.py`
   - `lat/lon + radius` に対応する bbox を計算する
   - `overturemaps download` を呼び、`building` および必要に応じて `building_part` を取得する
@@ -810,7 +814,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 画面投影用の edge FOV
   - 描画対象保持用の content FOV
   - 観測者の目線高さ
-  - 地点表示用の補足高さラベルと値
+  - 地盤標高と構造物高の表示用値
   - 観測者高さを UI 表示するかどうかのフラグ
   - 画面描画に必要な視点情報
   - `edge_fov_deg` は起動時固定値として扱い、実行中のリサイズや hover 状態では変えない
@@ -825,6 +829,13 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - どの入力種別でも、基準観測点から観測者の目線までの高さ
   - CLI `--observer-height-m` はこの値だけを置き換える
   - 既定値は `1.7m`
+- `ViewerData.ground_elevation_m`
+  - DEM から求めた観測地点の地盤標高
+  - DEM を取れない場合は `0.0m` へ正規化してよい
+- `ViewerData.location_height_m`
+  - 建物頂部、タワー高、または解決済み地点の構造物高を表す
+  - 該当しない場合は `0.0m` へ正規化してよい
+  - public な地点要約では、名前行を別にした上で `Lat: ..., Lon: ... | Ground: ..., Building: ...` として示してよい
 - `BuildingFootprint`
   - `height_m` は Overture 建物属性から得た地表基準の建物高を表す
   - `ground_elevation_m` は DEM から求めた建物 footprint 代表点の地盤標高を表す
