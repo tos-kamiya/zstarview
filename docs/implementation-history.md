@@ -748,3 +748,7 @@
 - Version bump
   - Bumped `__version__` from `1.21.14` to `1.21.15`.
   - This follows the sky-opacity default restoration and keeps the patch-level version in sync with the current code state.
+
+- Version bump
+  - Bumped `__version__` from `1.21.16` to `1.21.17`.
+  - This records the final location-summary layout update and keeps the patch-level version aligned with the source tree.
