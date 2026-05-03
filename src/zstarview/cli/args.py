@@ -12,6 +12,7 @@ ImageSizeArg = Tuple[int, int]
 
 _VMAG_MULTIPLIER_MIN = 10.0**0.2
 _VMAG_MULTIPLIER_MAX = 10.0**0.4
+SKY_OPACITY_DEFAULT = 0.13
 _EDGE_FOV_MIN = 0.0
 _EDGE_FOV_MAX = 135.0
 _CONTENT_FOV_MIN = 90.0
@@ -494,9 +495,9 @@ def add_sky_and_star_arguments(
     parser.add_argument(
         "--sky-opacity",
         type=float,
-        default=0.17,
+        default=SKY_OPACITY_DEFAULT,
         help=(
-            "Opacity of the simulated sky-color disc (0.0 - 1.0, default: 0.17). "
+            f"Opacity of the simulated sky-color disc (0.0 - 1.0, default: {SKY_OPACITY_DEFAULT}). "
             "Set to 0.0 to disable sky-color rendering."
         ),
     )
@@ -907,9 +908,9 @@ def add_render_arguments(
     parser.add_argument(
         "--sky-opacity",
         type=float,
-        default=0.17,
+        default=SKY_OPACITY_DEFAULT,
         help=(
-            "Opacity of the simulated sky-color disc (0.0 - 1.0, default: 0.17). "
+            f"Opacity of the simulated sky-color disc (0.0 - 1.0, default: {SKY_OPACITY_DEFAULT}). "
             "Set to 0.0 to disable sky-color rendering."
         ),
     )

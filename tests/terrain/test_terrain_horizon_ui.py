@@ -10,6 +10,7 @@ from PySide6.QtCore import QRect
 from PySide6.QtGui import QImage, QPainter
 import zstarview.gui.terrain_controller as terrain_controller_module
 import zstarview.gui.window as window_module
+from zstarview.cli.args import SKY_OPACITY_DEFAULT
 from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.render.qt_image import qimage_to_np_rgba
 from zstarview.terrain.dem import COPERNICUS_DEM_BUCKET
@@ -176,7 +177,7 @@ def test_paint_event_does_not_delegate_to_qmainwindow(monkeypatch) -> None:
 
 def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None:
     options = prepare_window_user_options(
-        sky_disc_alpha=0.17,
+        sky_disc_alpha=SKY_OPACITY_DEFAULT,
         cloud_disc_alpha=0.075,
         satellite_opacity=0.7,
         terrain_horizon_opacity=1.5,
@@ -208,7 +209,7 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
     assert options.earth_guide_opacity == 1.0
     assert options.earth_guide_visibility_boost == 2.0
     assert options.urban_outline_opacity == 1.0
-    assert options.sky_disc_alpha == pytest.approx(0.34)
+    assert options.sky_disc_alpha == pytest.approx(0.26)
     assert options.cloud_disc_alpha == pytest.approx(0.15)
     assert options.satellite_opacity == 1.0
     assert options.aircraft_opacity == 0.8
@@ -243,7 +244,7 @@ def test_toggle_sky_disc_respects_cli_lockout() -> None:
     dummy = SimpleNamespace()
     dummy._sky_disc_gui_allowed = False
     dummy.sky_disc_alpha = 0.0
-    dummy._sky_disc_alpha_when_enabled = 0.17
+    dummy._sky_disc_alpha_when_enabled = SKY_OPACITY_DEFAULT
     dummy._action_toggle_sky_disc = _DummyAction(False)
     dummy.update = lambda: (_ for _ in ()).throw(AssertionError("should not repaint"))
 
@@ -828,7 +829,7 @@ def test_toggle_sky_disc_enables_gradient_and_requests_refresh() -> None:
     dummy = SimpleNamespace()
     dummy._sky_disc_gui_allowed = True
     dummy.sky_disc_alpha = 0.0
-    dummy._sky_disc_alpha_when_enabled = 0.17
+    dummy._sky_disc_alpha_when_enabled = SKY_OPACITY_DEFAULT
     dummy._action_toggle_sky_disc = _DummyAction(False)
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request-client")
@@ -838,7 +839,7 @@ def test_toggle_sky_disc_enables_gradient_and_requests_refresh() -> None:
 
     SkyWindow.toggle_sky_disc(dummy)
 
-    assert dummy.sky_disc_alpha == 0.17
+    assert dummy.sky_disc_alpha == SKY_OPACITY_DEFAULT
     assert dummy._action_toggle_sky_disc.isChecked() is True
     assert calls == ["invalidate", "request", "request-client"]
 
@@ -846,8 +847,8 @@ def test_toggle_sky_disc_enables_gradient_and_requests_refresh() -> None:
 def test_toggle_sky_disc_switches_to_flat_disc_and_requests_refresh() -> None:
     dummy = SimpleNamespace()
     dummy._sky_disc_gui_allowed = True
-    dummy.sky_disc_alpha = 0.17
-    dummy._sky_disc_alpha_when_enabled = 0.17
+    dummy.sky_disc_alpha = SKY_OPACITY_DEFAULT
+    dummy._sky_disc_alpha_when_enabled = SKY_OPACITY_DEFAULT
     dummy._action_toggle_sky_disc = _DummyAction(True)
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request-client")

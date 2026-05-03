@@ -55,6 +55,7 @@ from ..clouddisc import (
     CloudDiscConfig,
 )
 from ..clouddisc.providers.select import pick_satellite
+from ..cli.args import SKY_OPACITY_DEFAULT
 from ..overlay_time import overlay_availability_for_delta, target_time_utc_from_delta
 from ..satellites import (
     fetch_horizons_lookup,
@@ -646,7 +647,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         overlay_availability = overlay_availability_for_delta(self.delta_t)
         self.sky_disc_alpha = user_options.sky_disc_alpha
         self._sky_disc_alpha_when_enabled = (
-            user_options.sky_disc_alpha if user_options.sky_disc_alpha > 0.0 else 0.17
+            user_options.sky_disc_alpha
+            if user_options.sky_disc_alpha > 0.0
+            else SKY_OPACITY_DEFAULT
         )
         requested_satellite_opacity = user_options.satellite_opacity
         self._satellite_toggle_supported = overlay_availability.satellite

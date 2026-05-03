@@ -5,6 +5,7 @@ from datetime import timedelta
 from types import SimpleNamespace
 
 import zstarview.cli.export_image as mod
+from zstarview.cli.args import SKY_OPACITY_DEFAULT
 from zstarview.gui.window_inputs import SkyWindowRuntimeOptions
 
 
@@ -47,7 +48,7 @@ class _Args:
     allow_partial_data = False
     include_direction_grid = False
     window_frame = "frameless"
-    sky_opacity = 0.17
+    sky_opacity = SKY_OPACITY_DEFAULT
     cloud_opacity = 0.15
     satellite_opacity = 0.5
     aircraft_opacity = 0.5
