@@ -18,10 +18,11 @@ from pathlib import Path
 from typing import Callable, Optional, Tuple, Union
 
 import astropy.time
-from PySide6.QtCore import QEvent, QPoint, QRect, Qt, QTimer, QUrl, Signal
+from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import (
     QAction,
     QCloseEvent,
+    QColor,
     QDesktopServices,
     QFont,
     QFontDatabase,
@@ -31,6 +32,8 @@ from PySide6.QtGui import (
     QKeySequence,
     QMouseEvent,
     QPaintEvent,
+    QPainter,
+    QPen,
     QResizeEvent,
 )
 from PySide6.QtWidgets import (
@@ -39,7 +42,6 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMenu,
     QPushButton,
-    QSizeGrip,
 )
 from PySide6.QtWidgets import QWidget
 
@@ -131,7 +133,80 @@ from .urban_outline_state import UrbanOutlineState
 
 logger = logging.getLogger(__name__)
 
+
+def _resize_event_size(event: QResizeEvent, attr: str) -> tuple[int, int]:
+    value = getattr(event, attr, None)
+    if callable(value):
+        try:
+            size = value()
+            return int(size.width()), int(size.height())
+        except Exception:
+            pass
+    return (-1, -1)
+
+
+def _widget_rect_tuple(widget: QWidget) -> tuple[int, int, int, int]:
+    geometry = getattr(widget, "geometry", None)
+    if callable(geometry):
+        try:
+            rect = geometry()
+            return rect.getRect()
+        except Exception:
+            pass
+    return (-1, -1, -1, -1)
+
+
+def _widget_visible(widget: QWidget) -> bool:
+    visible = getattr(widget, "isVisible", None)
+    if callable(visible):
+        try:
+            return bool(visible())
+        except Exception:
+            pass
+    return False
+
+
+def _widget_parent_name(widget: QWidget) -> str:
+    parent_widget = getattr(widget, "parentWidget", None)
+    if callable(parent_widget):
+        try:
+            parent = parent_widget()
+            if parent is not None:
+                return type(parent).__name__
+        except Exception:
+            pass
+    return "None"
+
+
+def _chrome_debug_print(message: str) -> None:
+    if _chrome_debug_enabled():
+        print(message, file=sys.stderr, flush=True)
+
+
+def _chrome_event_name(event_type: QEvent.Type) -> str:
+    name = getattr(event_type, "name", None)
+    return str(name) if name is not None else str(int(event_type))
+
+
+def _draw_resize_grip_marker(painter: QPainter, rect: QRect) -> None:
+    if rect.width() <= 2 or rect.height() <= 2:
+        return
+    color = QColor(220, 220, 220, 225)
+    pen = QPen(color, 2.0)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    painter.save()
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+    painter.setPen(pen)
+    right = float(rect.right()) - 6.0
+    bottom = float(rect.bottom()) - 6.0
+    painter.drawLine(
+        QPointF(right - 16.0, bottom),
+        QPointF(right, bottom - 16.0),
+    )
+    painter.restore()
+
 _JPL_DEBUG_ENV = "ZSTARVIEW_DEBUG_JPL_SEARCH"
+_CHROME_DEBUG_ENV = "ZSTARVIEW_DEBUG_WINDOW_CHROME"
 
 
 def _jpl_debug_enabled() -> bool:
@@ -143,6 +218,11 @@ def _jpl_debug_print(message: str) -> None:
     if not _jpl_debug_enabled():
         return
     print(f"[jpl-debug] {message}", file=sys.stderr, flush=True)
+
+
+def _chrome_debug_enabled() -> bool:
+    raw = os.getenv(_CHROME_DEBUG_ENV, "").strip().casefold()
+    return raw in {"1", "true", "yes", "on"}
 
 GITHUB_CODE_DATA_LICENSES_AND_CREDITS_URL = (
     "https://github.com/tos-kamiya/zstarview#code-data-licenses-and-credits"
@@ -257,6 +337,93 @@ class ShutdownMessageOverlay(QLabel):
         )
 
 
+class ResizeGripWidget(QWidget):
+    """Bottom-right resize affordance with explicit paint and drag handling."""
+
+    def __init__(self, owner: "SkyWindowCoreMixin", parent: QWidget) -> None:
+        super().__init__(parent)
+        self._owner = owner
+        self._drag_active = False
+        self._drag_start_global_pos: QPoint | None = None
+        self._drag_start_size: tuple[int, int] | None = None
+        self.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
+        self.setCursor(Qt.CursorShape.SizeFDiagCursor)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
+        self.setAutoFillBackground(False)
+
+    def _start_system_resize(self, event: QMouseEvent) -> bool:
+        window_handle = self.windowHandle()
+        if window_handle is None:
+            return False
+        start_system_resize = getattr(window_handle, "startSystemResize", None)
+        if not callable(start_system_resize):
+            return False
+        try:
+            return bool(
+                start_system_resize(
+                    Qt.Edge.BottomEdge | Qt.Edge.RightEdge,
+                )
+            )
+        except Exception:
+            return False
+
+    def _begin_manual_resize(self, event: QMouseEvent) -> None:
+        self._drag_active = True
+        self._drag_start_global_pos = event.globalPosition().toPoint()
+        window = self.window()
+        self._drag_start_size = (int(window.width()), int(window.height()))
+        event.accept()
+
+    def _update_manual_resize(self, event: QMouseEvent) -> bool:
+        if not self._drag_active:
+            return False
+        if not (event.buttons() & Qt.MouseButton.LeftButton):
+            return False
+        if self._drag_start_global_pos is None or self._drag_start_size is None:
+            return False
+        window = self.window()
+        delta = event.globalPosition().toPoint() - self._drag_start_global_pos
+        min_size = window.minimumSize()
+        new_width = max(int(min_size.width()), self._drag_start_size[0] + int(delta.x()))
+        new_height = max(int(min_size.height()), self._drag_start_size[1] + int(delta.y()))
+        window.resize(new_width, new_height)
+        event.accept()
+        return True
+
+    def paintEvent(self, event: QPaintEvent) -> None:
+        super().paintEvent(event)
+        painter = QPainter(self)
+        try:
+            _draw_resize_grip_marker(painter, self.rect())
+        finally:
+            painter.end()
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        if event.button() != Qt.MouseButton.LeftButton:
+            super().mousePressEvent(event)
+            return
+        if self._start_system_resize(event):
+            event.accept()
+            return
+        self._begin_manual_resize(event)
+
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        if self._update_manual_resize(event):
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton and self._drag_active:
+            self._drag_active = False
+            self._drag_start_global_pos = None
+            self._drag_start_size = None
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
+
+
 class FramelessWindowFrame(QWidget):
     """Frameless-only window chrome that hosts the client widget and overlay controls."""
 
@@ -277,15 +444,63 @@ class FramelessWindowFrame(QWidget):
         self.menu_button.clicked.connect(self._owner.show_menu)
         self.menu_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
 
-        self.size_grip = QSizeGrip(self)
-        self.size_grip.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
+        self.size_grip = ResizeGripWidget(self._owner, self)
         self.size_grip.setStyleSheet(self._owner._size_grip_style_sheet())
-        self.size_grip.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.size_grip.installEventFilter(self)
+        self._client_widget.installEventFilter(self)
 
         self._layout_chrome()
 
     def overlay_widgets(self) -> list[QWidget]:
         return [self.menu_button, self.size_grip]
+
+    def _log_chrome_state(self, prefix: str) -> None:
+        if not _chrome_debug_enabled():
+            return
+        menu_geo = self.menu_button.geometry()
+        grip_geo = self.size_grip.geometry()
+        _chrome_debug_print(
+            "%s: frame=%sx%s client=%sx%s menu=%s visible=%s grip=%s visible=%s grip_parent=%s"
+            % (
+                prefix,
+                self.width(),
+                self.height(),
+                self._client_widget.width(),
+                self._client_widget.height(),
+                menu_geo.getRect(),
+                self.menu_button.isVisible(),
+                grip_geo.getRect(),
+                self.size_grip.isVisible(),
+                type(self.size_grip.parentWidget()).__name__,
+            )
+        )
+
+    def eventFilter(self, watched: object, event: QEvent) -> bool:
+        if _chrome_debug_enabled() and isinstance(watched, QWidget):
+            if watched in {self.size_grip, self._client_widget}:
+                event_type = event.type()
+                if event_type in {
+                    QEvent.Type.Resize,
+                    QEvent.Type.Move,
+                    QEvent.Type.Show,
+                    QEvent.Type.Hide,
+                    QEvent.Type.Paint,
+                    QEvent.Type.MouseButtonPress,
+                    QEvent.Type.MouseButtonRelease,
+                    QEvent.Type.MouseMove,
+                }:
+                    _chrome_debug_print(
+                        "chrome-event: watched=%s type=%s geom=%s visible=%s"
+                        % (
+                            "size_grip"
+                            if watched is self.size_grip
+                            else "client_widget",
+                            _chrome_event_name(event_type),
+                            _widget_rect_tuple(watched),
+                            _widget_visible(watched),
+                        )
+                    )
+        return super().eventFilter(watched, event)
 
     def _layout_chrome(self) -> None:
         self._client_widget.setGeometry(self.rect())
@@ -297,10 +512,18 @@ class FramelessWindowFrame(QWidget):
         )
         self.menu_button.raise_()
         self.size_grip.raise_()
+        self._log_chrome_state("layout-chrome")
 
     def resizeEvent(self, event: QResizeEvent) -> None:
-        self._layout_chrome()
+        if _chrome_debug_enabled():
+            old_w, old_h = _resize_event_size(event, "oldSize")
+            new_w, new_h = _resize_event_size(event, "size")
+            _chrome_debug_print(
+                "frameless-frame-resize: old=%sx%s new=%sx%s"
+                % (old_w, old_h, new_w, new_h)
+            )
         super().resizeEvent(event)
+        self._layout_chrome()
 
 
 class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
@@ -580,7 +803,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._shutdown_overlay: Optional[ShutdownMessageOverlay] = None
         self._frameless_frame: Optional[FramelessWindowFrame] = None
         self.menu_button: Optional[QPushButton] = None
-        self.size_grip: Optional[QSizeGrip] = None
+        self.size_grip: Optional[QWidget] = None
         self._action_enlarge_moon: Optional[QAction] = None
         self._action_toggle_clouds: Optional[QAction] = None
         self._action_toggle_satellites: Optional[QAction] = None
@@ -1185,7 +1408,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
 
     def _size_grip_style_sheet(self) -> str:
-        return "QSizeGrip { border: none; background: transparent;}"
+        return "QWidget { border: none; background: transparent;}"
 
     def _raise_overlay_widgets(self) -> None:
         if self.menu_button is not None:
@@ -1247,18 +1470,35 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         super().update()
 
     def _handle_client_resize(self, event: QResizeEvent) -> None:
+        old_w, old_h = _resize_event_size(event, "oldSize")
+        new_w, new_h = _resize_event_size(event, "size")
+        if _chrome_debug_enabled():
+            _chrome_debug_print(
+                "client-resize: old=%sx%s new=%sx%s frameless=%s"
+                % (old_w, old_h, new_w, new_h, self._frameless_frame is not None)
+            )
         self._begin_viewport_interaction_mode()
         self._disc_generation = int(self._disc_generation) + 1
         if self._frameless_frame is None and self.menu_button is not None:
             button_size = self.menu_button.size()
             self.menu_button.move(self.client_width() - button_size.width(), 0)
-            self._raise_overlay_widgets()
 
         # Invalidate the composition cache since the size has changed
         self._compositor.invalidate()
         self.request_sky_data_update()
         self.request_client_update()
         self.start_background_cloud_update(reason="resize")
+        self._raise_overlay_widgets()
+        if self.size_grip is not None:
+            if _chrome_debug_enabled():
+                _chrome_debug_print(
+                    "client-resize-post: grip=%s visible=%s parent=%s"
+                    % (
+                        _widget_rect_tuple(self.size_grip),
+                        _widget_visible(self.size_grip),
+                        _widget_parent_name(self.size_grip),
+                    )
+                )
 
     def _discard_stale_disc_images(self) -> None:
         discarded = False

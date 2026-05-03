@@ -6,9 +6,12 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
+from PySide6.QtCore import QRect
+from PySide6.QtGui import QImage, QPainter
 import zstarview.gui.terrain_controller as terrain_controller_module
 import zstarview.gui.window as window_module
 from zstarview.paths import THEME_STYLES_BY_PRESET
+from zstarview.render.qt_image import qimage_to_np_rgba
 from zstarview.terrain.dem import COPERNICUS_DEM_BUCKET
 from zstarview.gui.window import SkyWindow
 from zstarview.gui.terrain_controller import TerrainHorizonController
@@ -1049,8 +1052,9 @@ def test_handle_client_resize_clears_visible_cloud_buffers() -> None:
     dummy = SimpleNamespace()
     dummy.state = SimpleNamespace(viewport_interaction_mode=False)
     dummy._disc_generation = 0
-    dummy._frameless_frame = None
-    dummy.menu_button = None
+    dummy._frameless_frame = object()
+    dummy.menu_button = SimpleNamespace(raise_=lambda: calls.append("raise-menu"))
+    dummy.size_grip = SimpleNamespace(raise_=lambda: calls.append("raise-grip"))
     dummy.cloud_state = SimpleNamespace(
         image=object(),
         missing_mask=object(),
@@ -1070,6 +1074,10 @@ def test_handle_client_resize_clears_visible_cloud_buffers() -> None:
     dummy.request_client_update = lambda: calls.append("client")
     dummy.start_background_cloud_update = lambda **kwargs: calls.append(
         str(kwargs.get("reason"))
+    )
+    dummy._raise_overlay_widgets = lambda: (
+        calls.append("raise-menu"),
+        calls.append("raise-grip"),
     )
     dummy._begin_viewport_interaction_mode = lambda *args, **kwargs: (
         SkyWindow._begin_viewport_interaction_mode(dummy, *args, **kwargs)
@@ -1092,6 +1100,8 @@ def test_handle_client_resize_clears_visible_cloud_buffers() -> None:
         "sky",
         "client",
         "resize",
+        "raise-menu",
+        "raise-grip",
     ]
 
 
@@ -1218,6 +1228,19 @@ def test_size_grip_style_sheet_is_transparent() -> None:
     style = SkyWindow._size_grip_style_sheet(dummy)
 
     assert "background: transparent;" in style
+
+
+def test_resize_grip_widget_paints_a_visible_marker() -> None:
+    img = QImage(30, 30, QImage.Format.Format_ARGB32_Premultiplied)
+    img.fill(0)
+    painter = QPainter(img)
+    window_module._draw_resize_grip_marker(painter, QRect(0, 0, 30, 30))
+    painter.end()
+
+    arr = qimage_to_np_rgba(img)
+    assert int(arr[9, 21, 3]) > 0
+    assert int(arr[14, 16, 3]) > 0
+    assert int(arr[19, 11, 3]) > 0
 
 
 def test_update_viewport_interaction_stars_uses_bright_limit(monkeypatch) -> None:

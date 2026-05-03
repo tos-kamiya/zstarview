@@ -500,5 +500,23 @@ def test_transparent_window_frame_skips_border_but_keeps_menu_and_grip() -> None
     assert int(arr[80, 1, 3]) == 0
     assert 0 < int(arr[0, 145, 3]) < 255
     assert 0 < int(arr[20, 131, 3]) < 255
-    assert int(arr[133, 151, 3]) > 0
-    assert int(arr[136, 148, 3]) > 0
+    assert int(arr[133, 151, 3]) == 0
+    assert int(arr[136, 148, 3]) == 0
+
+
+def test_window_border_does_not_draw_bottom_right_grip_line() -> None:
+    theme = THEME_STYLES_BY_PRESET["transparent"]
+    img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
+    img.fill(0)
+    painter = QPainter(img)
+    draw_window_border(
+        painter,
+        QRectF(0.0, 0.0, 160.0, 160.0),
+        theme=theme,
+    )
+    painter.end()
+
+    arr = qimage_to_np_rgba(img)
+
+    assert int(arr[142, 142, 3]) == 0
+    assert int(arr[136, 148, 3]) == 0
