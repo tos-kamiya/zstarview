@@ -1112,8 +1112,7 @@ def test_overlay_info_includes_location_height_and_explicit_observer_height(
 
     assert label_calls == [
         "t/Tokyo Skytree",
-        "Lat: 35.00000, Lon: 139.00000",
-        "Ground elevation 35 m; Building height 634 m",
+        "Lat: 35.00000, Lon: 139.00000 | Ground: 35 m, Building: 634 m",
         "2026-02-27 00:00:00 UTC",
         "Alt 45°  Az 180° (S)",
     ]
@@ -1234,7 +1233,7 @@ def test_overlay_info_moves_to_bottom_when_cursor_is_in_upper_half(monkeypatch) 
     bounds = fm.tightBoundingRect("Ag")
     line_height = int(fm.lineSpacing() * 1.2)
     bottom_margin = 180.0 - (
-        float(first_label_pos.y()) + float(bounds.bottom()) + 4.0 * line_height
+        float(first_label_pos.y()) + float(bounds.bottom()) + 3.0 * line_height
     )
     left_margin = float(fm.lineSpacing())
     assert abs(bottom_margin - left_margin) <= 2.0
@@ -1257,8 +1256,7 @@ def test_format_overlay_info_lines_matches_static_overlay_order() -> None:
         _empty_celestial_data([]), viewer, 6.0
     ) == [
         "t/Tokyo Skytree",
-        "Lat: 35.00000, Lon: 139.00000",
-        "Ground elevation 35 m; Building height 634 m",
+        "Lat: 35.00000, Lon: 139.00000 | Ground: 35 m, Building: 634 m",
         "2026-02-27 00:00:00 UTC",
         "Alt 45°  Az 180° (S)",
     ]

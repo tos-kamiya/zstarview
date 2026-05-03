@@ -270,7 +270,7 @@ def _maybe_apply_building_top_viewpoint(
         kind=location.kind,
         persistence_value=location.persistence_value,
         ground_elevation_m=location.ground_elevation_m,
-        location_height_label="Building height",
+        location_height_label="Building",
         location_height_m=float(building_top_height_m),
         cc=location.cc,
     )
@@ -380,7 +380,7 @@ def _viewpoint_to_location(
     location_height_label: str | None = None
     location_height_m: float = 0.0
     if viewpoint.kind == "tower" and viewpoint.height_m > 0.0:
-        location_height_label = "Building height"
+        location_height_label = "Building"
         location_height_m = float(viewpoint.height_m)
     elif viewpoint.kind == "mountain":
         location_height_label = None
