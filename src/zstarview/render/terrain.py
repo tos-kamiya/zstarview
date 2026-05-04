@@ -73,7 +73,7 @@ def _urban_outline_underlay_alpha(opacity: float) -> float:
     return max(0.0, min(1.0, 0.006 + (opacity * 0.03)))
 
 
-def _dampen_alpha_for_width(alpha: float, width: float) -> float:
+def _dampen_alpha_for_narrow_width(alpha: float, width: float) -> float:
     width_alpha_scale = min(1.0, max(0.0, float(width)))
     return max(0.0, min(1.0, float(alpha) * width_alpha_scale))
 
@@ -346,21 +346,21 @@ def _terrain_secondary_ridge_glow_pass_specs(
     return (
         (
             max(core_width, core_width * TERRAIN_SECONDARY_RIDGE_GLOW_OUTER_WIDTH_SCALE),
-            _dampen_alpha_for_width(
+            _dampen_alpha_for_narrow_width(
                 float(base_alpha) * TERRAIN_SECONDARY_RIDGE_GLOW_OUTER_ALPHA_SCALE,
                 core_width,
             ),
         ),
         (
             max(core_width, core_width * TERRAIN_SECONDARY_RIDGE_GLOW_MID_WIDTH_SCALE),
-            _dampen_alpha_for_width(
+            _dampen_alpha_for_narrow_width(
                 float(base_alpha) * TERRAIN_SECONDARY_RIDGE_GLOW_MID_ALPHA_SCALE,
                 core_width,
             ),
         ),
         (
             core_width,
-            _dampen_alpha_for_width(float(base_alpha), core_width),
+            _dampen_alpha_for_narrow_width(float(base_alpha), core_width),
         ),
     )
 
@@ -797,7 +797,15 @@ def draw_urban_outlines(
         foreground_width = _urban_outline_foreground_width(distance_km, width_scale=width_scale)
         foreground_color = QColor(*URBAN_OUTLINE_LAYER_LINE_COLOR)
         foreground_color.setAlpha(
-            int(round(255.0 * _dampen_alpha_for_width(_urban_outline_foreground_alpha(opacity), foreground_width)))
+            int(
+                round(
+                    255.0
+                    * _dampen_alpha_for_narrow_width(
+                        _urban_outline_foreground_alpha(opacity),
+                        foreground_width,
+                    )
+                )
+            )
         )
         foreground_pen = QPen(
             foreground_color,
@@ -815,7 +823,15 @@ def draw_urban_outlines(
             underlay_width = _urban_outline_underlay_width(distance_km, width_scale=thickened_width_scale)
             underlay_color = QColor(*URBAN_OUTLINE_LAYER_LINE_COLOR)
             underlay_color.setAlpha(
-                int(round(255.0 * _dampen_alpha_for_width(0.25 * _urban_outline_underlay_alpha(opacity), underlay_width)))
+                int(
+                    round(
+                        255.0
+                        * _dampen_alpha_for_narrow_width(
+                            0.25 * _urban_outline_underlay_alpha(opacity),
+                            underlay_width,
+                        )
+                    )
+                )
             )
             underlay_pen = QPen(
                 underlay_color,
@@ -828,7 +844,15 @@ def draw_urban_outlines(
             mid_underlay_width = _urban_outline_mid_width(distance_km, width_scale=thickened_width_scale)
             mid_underlay_color = QColor(*URBAN_OUTLINE_LAYER_LINE_COLOR)
             mid_underlay_color.setAlpha(
-                int(round(255.0 * _dampen_alpha_for_width(0.50 * _urban_outline_underlay_alpha(opacity), mid_underlay_width)))
+                int(
+                    round(
+                        255.0
+                        * _dampen_alpha_for_narrow_width(
+                            0.50 * _urban_outline_underlay_alpha(opacity),
+                            mid_underlay_width,
+                        )
+                    )
+                )
             )
             mid_underlay_pen = QPen(
                 mid_underlay_color,
@@ -841,7 +865,15 @@ def draw_urban_outlines(
             outer_underlay_width = _urban_outline_outer_width(distance_km, width_scale=thickened_width_scale)
             outer_underlay_color = QColor(*URBAN_OUTLINE_LAYER_LINE_COLOR)
             outer_underlay_color.setAlpha(
-                int(round(255.0 * _dampen_alpha_for_width(0.90 * _urban_outline_underlay_alpha(opacity), outer_underlay_width)))
+                int(
+                    round(
+                        255.0
+                        * _dampen_alpha_for_narrow_width(
+                            0.90 * _urban_outline_underlay_alpha(opacity),
+                            outer_underlay_width,
+                        )
+                    )
+                )
             )
             outer_underlay_pen = QPen(
                 outer_underlay_color,
