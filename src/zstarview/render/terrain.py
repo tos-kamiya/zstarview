@@ -32,6 +32,7 @@ TERRAIN_DISTANCE_BAND_NEAR_OUTLINE_WIDTH = 2.0
 TERRAIN_DISTANCE_BAND_FAR_OUTLINE_WIDTH = 1.1
 TERRAIN_DISTANCE_BAND_NEAR_DISTANCE_KM = 0.5
 TERRAIN_DISTANCE_BAND_FAR_DISTANCE_KM = 128.0
+TERRAIN_DISTANCE_BAND_REFERENCE_ALPHA_DISTANCE_KM = 4.0
 TERRAIN_DISTANCE_BAND_WIDTH_DECAY_EXPONENT = 1.35
 TERRAIN_DISTANCE_BAND_UNDERLAY_NEAR_SCALE = 1.15
 TERRAIN_DISTANCE_BAND_UNDERLAY_FAR_SCALE = 1.55
@@ -568,6 +569,7 @@ def draw_terrain_secondary_ridges(
     overlay_alpha_scale = 0.2
     max_visible_alt_by_bin: dict[int, float] = {}
     seam_az_deg = (float(view_center[1]) + 180.0) % 360.0
+    alpha_distance_km = TERRAIN_DISTANCE_BAND_REFERENCE_ALPHA_DISTANCE_KM
 
     def _can_bridge_seam(
         start_point: QPointF,
@@ -621,12 +623,12 @@ def draw_terrain_secondary_ridges(
             band_count=layer_count,
         )
         band_alpha = _distance_band_alpha(
-            distance_km=representative_distance_km,
+            distance_km=alpha_distance_km,
             band_count=layer_count,
             opacity=opacity,
         )
         underlay_alpha = _distance_band_underlay_alpha(
-            distance_km=representative_distance_km,
+            distance_km=alpha_distance_km,
             band_count=layer_count,
             opacity=opacity,
         )

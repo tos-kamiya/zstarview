@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 from rasterio.transform import Affine
 
 from zstarview.terrain.dem import WGS84_GEOD
@@ -16,6 +17,7 @@ from zstarview.terrain.horizon import (
     compute_apparent_altitudes,
 )
 from zstarview.render.terrain import _distance_band_alpha, _distance_band_underlay_alpha, _distance_band_underlay_width, _distance_band_widths
+from zstarview.render.terrain import draw_terrain_secondary_ridges
 from zstarview.terrain.dem import DemGrid, sample_ground_elevation
 
 
@@ -152,6 +154,68 @@ def test_distance_band_alpha_drops_with_distance() -> None:
 
     assert near > mid > far
     assert far < 0.08
+
+
+def test_secondary_ridge_render_uses_four_km_alpha_for_all_bands(monkeypatch) -> None:
+    seen_alphas: list[float] = []
+
+    def fake_solid_pen(_color_rgb, alpha, _width):
+        seen_alphas.append(float(alpha))
+        return object()
+
+    def fake_draw_glow(*_args, **_kwargs) -> None:
+        return None
+
+    class _FakePainter:
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setPen(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawPolyline(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawLine(self, *_args, **_kwargs) -> None:
+            pass
+
+    monkeypatch.setattr("zstarview.render.terrain._solid_pen", fake_solid_pen)
+    monkeypatch.setattr("zstarview.render.terrain._draw_terrain_secondary_ridge_glow", fake_draw_glow)
+
+    draw_terrain_secondary_ridges(
+        _FakePainter(),  # type: ignore[arg-type]
+        geometry=type("Geometry", (), {"center": (0, 0), "radius": 100})(),
+        terrain_secondary_profile_layers=[
+            [(1.0, 10.0), (2.0, 20.0)],
+            [(1.0, 10.0), (2.0, 20.0)],
+        ],
+        terrain_secondary_profile_distances_m_layers=[
+            [500.0, 500.0],
+            [128000.0, 128000.0],
+        ],
+        view_center=(0.0, 0.0),
+        opacity=0.38,
+        line_width_scale=1.0,
+        fast_mode=False,
+        is_in_fov_func=lambda *_args, **_kwargs: True,
+        altaz_to_normalized_xy_func=lambda alt_deg, az_deg, _view_center, *, edge_fov_deg=95.0: (
+            alt_deg / 90.0,
+            az_deg / 180.0,
+        ),
+        normalized_to_screen_xy_func=lambda nx, ny, _geometry: (nx, ny),
+        split_by_gaps_func=lambda points: [points],
+    )
+
+    assert len(seen_alphas) == 4
+    expected_band_alpha = _distance_band_alpha(distance_km=4.0, band_count=2, opacity=0.38)
+    expected_underlay_alpha = _distance_band_underlay_alpha(distance_km=4.0, band_count=2, opacity=0.38)
+    assert seen_alphas[0] == pytest.approx(expected_underlay_alpha)
+    assert seen_alphas[1] == pytest.approx(expected_band_alpha)
+    assert seen_alphas[2] == pytest.approx(expected_underlay_alpha)
+    assert seen_alphas[3] == pytest.approx(expected_band_alpha)
 
 
 def test_distance_band_underlay_blur_increases_while_alpha_drops() -> None:
