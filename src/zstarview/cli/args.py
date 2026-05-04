@@ -599,9 +599,9 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         "-d",
         "--terrain-horizon-opacity",
         type=float,
-        default=0.008,
+        default=0.003,
         help=(
-            "Opacity of the terrain horizon polyline (0.0 - 1.0, default: 0.008). "
+            "Opacity of the terrain horizon polyline (0.0 - 1.0, default: 0.003). "
             "Set to 0.0 to disable DEM download, terrain-horizon calculation, and drawing."
         ),
     )
@@ -946,9 +946,9 @@ def add_render_arguments(
     parser.add_argument(
         "--terrain-horizon-opacity",
         type=float,
-        default=0.008,
+        default=0.003,
         help=(
-            "Opacity of the terrain horizon polyline (0.0 - 1.0, default: 0.008). "
+            "Opacity of the terrain horizon polyline (0.0 - 1.0, default: 0.003). "
             "Set to 0.0 to disable DEM download, terrain-horizon calculation, and drawing."
         ),
     )
