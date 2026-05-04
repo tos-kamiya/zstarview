@@ -670,6 +670,8 @@ def draw_terrain_secondary_ridges(
 
         point_fragments = split_by_gaps_func(visible_points) if len(visible_points) > 2 else [visible_points]
         point_offset = 0
+        visible_bridge_start: tuple[QPointF, tuple[float, float]] | None = None
+        visible_bridge_end: tuple[QPointF, tuple[float, float]] | None = None
         for frag in point_fragments:
             if len(frag) < 2:
                 point_offset += len(frag)
@@ -677,6 +679,9 @@ def draw_terrain_secondary_ridges(
             frag_points = [QPointF(*normalized_to_screen_xy_func(nx, ny, geometry)) for nx, ny in frag]
             frag_altaz = visible_altaz[point_offset:point_offset + len(frag)]
             point_offset += len(frag)
+            if visible_bridge_start is None:
+                visible_bridge_start = (frag_points[0], frag_altaz[0])
+            visible_bridge_end = (frag_points[-1], frag_altaz[-1])
             poly = QPolygonF(frag_points)
             if underlay_alpha > 0.0 and underlay_width > base_width:
                 painter.setPen(
@@ -695,20 +700,6 @@ def draw_terrain_secondary_ridges(
                     )
                 )
                 painter.drawPolyline(poly)
-
-        point_offset = 0
-        visible_bridge_start: tuple[QPointF, tuple[float, float]] | None = None
-        visible_bridge_end: tuple[QPointF, tuple[float, float]] | None = None
-        for frag in point_fragments:
-            if len(frag) < 2:
-                point_offset += len(frag)
-                continue
-            frag_points = [QPointF(*normalized_to_screen_xy_func(nx, ny, geometry)) for nx, ny in frag]
-            frag_altaz = visible_altaz[point_offset:point_offset + len(frag)]
-            point_offset += len(frag)
-            if visible_bridge_start is None:
-                visible_bridge_start = (frag_points[0], frag_altaz[0])
-            visible_bridge_end = (frag_points[-1], frag_altaz[-1])
             for start_idx, (start_point, end_point) in enumerate(zip(frag_points, frag_points[1:])):
                 start_alt, start_az = frag_altaz[start_idx]
                 end_alt, end_az = frag_altaz[start_idx + 1]
