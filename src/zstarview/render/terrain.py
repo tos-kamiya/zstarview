@@ -337,19 +337,36 @@ def _terrain_secondary_ridge_glow_pass_specs(
     visible_width: float,
     base_alpha: float,
 ) -> tuple[tuple[float, float], ...]:
-    core_width = max(0.7, float(visible_width))
+    core_width = max(0.0, float(visible_width))
+    width_alpha_scale = min(1.0, core_width)
     return (
         (
             max(core_width, core_width * TERRAIN_SECONDARY_RIDGE_GLOW_OUTER_WIDTH_SCALE),
-            max(0.0, min(1.0, float(base_alpha) * TERRAIN_SECONDARY_RIDGE_GLOW_OUTER_ALPHA_SCALE)),
+            max(
+                0.0,
+                min(
+                    1.0,
+                    float(base_alpha)
+                    * TERRAIN_SECONDARY_RIDGE_GLOW_OUTER_ALPHA_SCALE
+                    * width_alpha_scale,
+                ),
+            ),
         ),
         (
             max(core_width, core_width * TERRAIN_SECONDARY_RIDGE_GLOW_MID_WIDTH_SCALE),
-            max(0.0, min(1.0, float(base_alpha) * TERRAIN_SECONDARY_RIDGE_GLOW_MID_ALPHA_SCALE)),
+            max(
+                0.0,
+                min(
+                    1.0,
+                    float(base_alpha)
+                    * TERRAIN_SECONDARY_RIDGE_GLOW_MID_ALPHA_SCALE
+                    * width_alpha_scale,
+                ),
+            ),
         ),
         (
             core_width,
-            max(0.0, min(1.0, float(base_alpha))),
+            max(0.0, min(1.0, float(base_alpha) * width_alpha_scale)),
         ),
     )
 
@@ -718,7 +735,7 @@ def draw_terrain_secondary_ridges(
                     painter,
                     start_point,
                     end_point,
-                    visible_width=max(0.7, base_width * overlay_scale),
+                    visible_width=max(0.0, base_width * overlay_scale),
                     visible_alpha=band_alpha * overlay_alpha_scale,
                     line_width_scale=line_width_scale,
                 )
@@ -746,7 +763,7 @@ def draw_terrain_secondary_ridges(
                         painter,
                         bridge_start_point,
                         bridge_end_point,
-                        visible_width=max(0.7, base_width * overlay_scale),
+                        visible_width=max(0.0, base_width * overlay_scale),
                         visible_alpha=band_alpha * overlay_alpha_scale,
                         line_width_scale=line_width_scale,
                     )
