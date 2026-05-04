@@ -3343,6 +3343,72 @@ def test_draw_urban_outlines_allows_sub_unit_width_scale(monkeypatch) -> None:
     ]
 
 
+def test_draw_urban_outlines_scales_alpha_for_subpixel_widths(monkeypatch) -> None:
+    monkeypatch.setattr(
+        render_terrain_module,
+        "altaz_to_normalized_xy",
+        lambda alt, az, _view_center, **_kwargs: (float(az), float(alt)),
+    )
+    monkeypatch.setattr(
+        render_terrain_module,
+        "normalized_to_screen_xy",
+        lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+    monkeypatch.setattr(
+        render_terrain_module,
+        "is_in_fov",
+        lambda *_args, **_kwargs: True,
+    )
+
+    class _Painter:
+        def __init__(self) -> None:
+            self.alpha_values: list[int] = []
+            self.width_values: list[float] = []
+
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setPen(self, pen) -> None:
+            self.alpha_values.append(int(pen.color().alpha()))
+            self.width_values.append(float(pen.widthF()))
+
+        def drawPolyline(self, _poly) -> None:
+            pass
+
+    painter = _Painter()
+    render_terrain_module.draw_urban_outlines(
+        painter,
+        geometry=SimpleNamespace(center=(0, 0), radius=1),
+        urban_outlines=[
+            UrbanOutlinePolyline(
+                points=[(-10.0, 10.0), (-12.0, 12.0)],
+                height_m=0.0,
+                distance_km=0.01,
+            )
+        ],
+        view_center=(45.0, 180.0),
+        opacity=0.2,
+        line_width_scale=0.1,
+        is_in_fov_func=lambda *_args, **_kwargs: True,
+        altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
+            float(az),
+            float(alt),
+        ),
+        normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+
+    assert painter.alpha_values == [3, 1, 0, 12]
+    assert [round(width, 3) for width in painter.width_values] == [
+        0.92,
+        0.72,
+        0.44,
+        0.228,
+    ]
+
+
 def test_draw_urban_outlines_thickens_tall_buildings(monkeypatch) -> None:
     monkeypatch.setattr(
         render_terrain_module,

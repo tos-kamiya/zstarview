@@ -73,6 +73,11 @@ def _urban_outline_underlay_alpha(opacity: float) -> float:
     return max(0.0, min(1.0, 0.006 + (opacity * 0.03)))
 
 
+def _urban_outline_alpha_for_width(alpha: float, width: float) -> float:
+    width_alpha_scale = min(1.0, max(0.0, float(width)))
+    return max(0.0, min(1.0, float(alpha) * width_alpha_scale))
+
+
 def _urban_outline_uses_underlay(distance_km: float) -> bool:
     return math.isfinite(float(distance_km)) and float(distance_km) <= URBAN_OUTLINE_NEAR_DISTANCE_KM
 
@@ -802,7 +807,21 @@ def draw_urban_outlines(
         thickened_width_scale = width_scale * height_scale
         foreground_color = QColor(*URBAN_OUTLINE_LAYER_LINE_COLOR)
         foreground_color.setAlpha(
-            max(0, min(255, int(round(255.0 * _urban_outline_foreground_alpha(opacity)))))
+            max(
+                0,
+                min(
+                    255,
+                    int(
+                        round(
+                            255.0
+                            * _urban_outline_alpha_for_width(
+                                _urban_outline_foreground_alpha(opacity),
+                                _urban_outline_foreground_width(distance_km, width_scale=width_scale),
+                            )
+                        )
+                    ),
+                ),
+            )
         )
         foreground_pen = QPen(
             foreground_color,
@@ -817,37 +836,82 @@ def draw_urban_outlines(
         mid_underlay_pen = None
         outer_underlay_pen = None
         if _urban_outline_uses_underlay(distance_km):
+            underlay_width = _urban_outline_underlay_width(distance_km, width_scale=thickened_width_scale)
             underlay_color = QColor(*URBAN_OUTLINE_LAYER_LINE_COLOR)
             underlay_color.setAlpha(
-                max(0, min(255, int(round(255.0 * (0.25 * _urban_outline_underlay_alpha(opacity))))))
+                max(
+                    0,
+                    min(
+                        255,
+                        int(
+                            round(
+                                255.0
+                                * _urban_outline_alpha_for_width(
+                                    0.25 * _urban_outline_underlay_alpha(opacity),
+                                    underlay_width,
+                                )
+                            )
+                        ),
+                    ),
+                )
             )
             underlay_pen = QPen(
                 underlay_color,
-                _urban_outline_underlay_width(distance_km, width_scale=thickened_width_scale),
+                underlay_width,
                 Qt.PenStyle.SolidLine,
             )
             underlay_pen.setCosmetic(True)
             underlay_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             underlay_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            mid_underlay_width = _urban_outline_mid_width(distance_km, width_scale=thickened_width_scale)
             mid_underlay_color = QColor(*URBAN_OUTLINE_LAYER_LINE_COLOR)
             mid_underlay_color.setAlpha(
-                max(0, min(255, int(round(255.0 * (0.50 * _urban_outline_underlay_alpha(opacity))))))
+                max(
+                    0,
+                    min(
+                        255,
+                        int(
+                            round(
+                                255.0
+                                * _urban_outline_alpha_for_width(
+                                    0.50 * _urban_outline_underlay_alpha(opacity),
+                                    mid_underlay_width,
+                                )
+                            )
+                        ),
+                    ),
+                )
             )
             mid_underlay_pen = QPen(
                 mid_underlay_color,
-                _urban_outline_mid_width(distance_km, width_scale=thickened_width_scale),
+                mid_underlay_width,
                 Qt.PenStyle.SolidLine,
             )
             mid_underlay_pen.setCosmetic(True)
             mid_underlay_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             mid_underlay_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            outer_underlay_width = _urban_outline_outer_width(distance_km, width_scale=thickened_width_scale)
             outer_underlay_color = QColor(*URBAN_OUTLINE_LAYER_LINE_COLOR)
             outer_underlay_color.setAlpha(
-                max(0, min(255, int(round(255.0 * (0.90 * _urban_outline_underlay_alpha(opacity))))))
+                max(
+                    0,
+                    min(
+                        255,
+                        int(
+                            round(
+                                255.0
+                                * _urban_outline_alpha_for_width(
+                                    0.90 * _urban_outline_underlay_alpha(opacity),
+                                    outer_underlay_width,
+                                )
+                            )
+                        ),
+                    ),
+                )
             )
             outer_underlay_pen = QPen(
                 outer_underlay_color,
-                _urban_outline_outer_width(distance_km, width_scale=thickened_width_scale),
+                outer_underlay_width,
                 Qt.PenStyle.SolidLine,
             )
             outer_underlay_pen.setCosmetic(True)
