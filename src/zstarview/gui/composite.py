@@ -813,7 +813,7 @@ class SkyCompositorCache:
         cloud_amount_field: Optional[CloudAmountField] = None,
         missing_mask: Optional[np.ndarray] = None,
         terrain_profile_altaz: list[tuple[float, float]] | None = None,
-        terrain_horizon_opacity: float = 0.008,
+        terrain_horizon_opacity: float = 0.003,
         earth_guide_opacity: float = 0.028,
         earth_guide_visibility_boost: float = 1.0,
         edge_fov_deg: float = 90.0,

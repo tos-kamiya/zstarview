@@ -124,7 +124,7 @@ README より詳細に、何ができるか、どう振る舞うか、どのよ�
 - `--sky-opacity`
 - `--sky-opacity` は、sky color disc の色強度を直接制御する値として扱ってよい。
 - `--terrain-horizon-opacity`
-  - 既定値は `0.008` としてよい。
+  - 既定値は `0.003` としてよい。
 - `--earth-guide-opacity`
   - 地平線下の地球裏面ガイドの表示強度を指定する。
   - 既定値は `0.028` としてよい。

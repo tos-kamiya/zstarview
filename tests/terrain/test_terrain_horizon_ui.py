@@ -205,7 +205,7 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
         urban_outline_gui_allowed=False,
     )
 
-    assert options.terrain_horizon_opacity == 0.4
+    assert options.terrain_horizon_opacity == 1.0
     assert options.earth_guide_opacity == 1.0
     assert options.earth_guide_visibility_boost == 2.0
     assert options.urban_outline_opacity == 1.0
