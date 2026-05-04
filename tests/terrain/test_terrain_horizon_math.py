@@ -16,7 +16,13 @@ from zstarview.terrain.horizon import (
     build_distance_samples,
     compute_apparent_altitudes,
 )
-from zstarview.render.terrain import _distance_band_alpha, _distance_band_underlay_alpha, _distance_band_underlay_width, _distance_band_widths
+from zstarview.render.terrain import (
+    _distance_band_alpha,
+    _distance_band_underlay_alpha,
+    _distance_band_underlay_width,
+    _distance_band_widths,
+    _terrain_secondary_ridge_glow_pass_specs,
+)
 from zstarview.render.terrain import draw_terrain_secondary_ridges
 from zstarview.terrain.dem import DemGrid, sample_ground_elevation
 
@@ -216,6 +222,15 @@ def test_secondary_ridge_render_uses_four_km_alpha_for_all_bands(monkeypatch) ->
     assert seen_alphas[1] == pytest.approx(expected_band_alpha)
     assert seen_alphas[2] == pytest.approx(expected_underlay_alpha)
     assert seen_alphas[3] == pytest.approx(expected_band_alpha)
+
+
+def test_secondary_ridge_glow_scales_alpha_for_subpixel_widths() -> None:
+    specs = _terrain_secondary_ridge_glow_pass_specs(0.5, 0.8)
+
+    assert specs[2][0] == pytest.approx(0.5)
+    assert specs[2][1] == pytest.approx(0.4)
+    assert specs[1][1] < 0.4
+    assert specs[0][1] < specs[1][1]
 
 
 def test_distance_band_underlay_blur_increases_while_alpha_drops() -> None:
