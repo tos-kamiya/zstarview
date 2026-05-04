@@ -218,7 +218,7 @@ def test_startup_resolve_city_uses_building_top_when_enabled(monkeypatch) -> Non
 
     assert location.kind == "coords"
     assert location.observer_height_m == 43.7
-    assert location.location_height_label == "Building height"
+    assert location.location_height_label == "Building"
     assert location.location_height_m == 42.0
 
 
