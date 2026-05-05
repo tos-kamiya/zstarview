@@ -49,18 +49,16 @@
 
 <table>
   <tr>
-    <td align="center" width="20%"><img src="docs/images/screenshot-sydney.png" alt="サーキュラー・キー（シドニー）" width="100%" /></td>
-    <td align="center" width="20%"><img src="docs/images/screenshot-tokyotower.png" alt="東京タワー付近（東京）" width="100%" /></td>
-    <td align="center" width="20%"><img src="docs/images/screenshot-mtfuji.png" alt="山中湖から望む富士山" width="100%" /></td>
-    <td align="center" width="20%"><img src="docs/images/screenshot-marinabay.png" alt="マリーナベイ（シンガポール）" width="100%" /></td>
-    <td align="center" width="20%"><img src="docs/images/screenshot-burjkhalifa.png" alt="ブルジュ・ハリファ付近（ドバイ）" width="100%" /></td>
+    <td align="center" width="25%"><img src="docs/images/screenshot-sydney.png" alt="サーキュラー・キー（シドニー）" width="100%" /></td>
+    <td align="center" width="25%"><img src="docs/images/screenshot-tokyotower.png" alt="東京タワー付近（東京）" width="100%" /></td>
+    <td align="center" width="25%"><img src="docs/images/screenshot-mtfuji.png" alt="山中湖から望む富士山" width="100%" /></td>
+    <td align="center" width="25%"><img src="docs/images/screenshot-marinabay.png" alt="マリーナベイ（シンガポール）" width="100%" /></td>
   </tr>
   <tr>
     <td align="center"><sub>サーキュラー・キー（シドニー）</sub></td>
     <td align="center"><sub>東京タワー付近（東京）</sub></td>
     <td align="center"><sub>山中湖から望む富士山</sub></td>
     <td align="center"><sub>マリーナベイ（シンガポール）</sub></td>
-    <td align="center"><sub>ブルジュ・ハリファ付近（ドバイ）</sub></td>
   </tr>
 </table>
 
@@ -68,18 +66,16 @@
 
 <table>
   <tr>
-    <td align="center" width="20%"><img src="docs/images/screenshot-jungfraujoch.png" alt="ユングフラウヨッホ（Jungfraujoch, スイス）" width="100%" /></td>
-    <td align="center" width="20%"><img src="docs/images/screenshot-sagradafamilia.png" alt="サグラダファミリア（バルセロナ）" width="100%" /></td>
-    <td align="center" width="20%"><img src="docs/images/screenshot-ushuaia.png" alt="ウシュアイア（アルゼンチン）" width="100%" /></td>
-    <td align="center" width="20%"><img src="docs/images/screenshot-uyuni.png" alt="ユウニ塩湖（ボリビア）" width="100%" /></td>
-    <td align="center" width="20%"></td>
+    <td align="center" width="25%"><img src="docs/images/screenshot-burjkhalifa.png" alt="ブルジュ・ハリファ付近（ドバイ）" width="100%" /></td>
+    <td align="center" width="25%"><img src="docs/images/screenshot-jungfraujoch.png" alt="ユングフラウヨッホ（Jungfraujoch, スイス）" width="100%" /></td>
+    <td align="center" width="25%"><img src="docs/images/screenshot-sagradafamilia.png" alt="サグラダファミリア（バルセロナ）" width="100%" /></td>
+    <td align="center" width="25%"><img src="docs/images/screenshot-ushuaia.png" alt="ウシュアイア（アルゼンチン）" width="100%" /></td>
   </tr>
   <tr>
+    <td align="center"><sub>ブルジュ・ハリファ付近（ドバイ）</sub></td>
     <td align="center"><sub>ユングフラウヨッホ（Jungfraujoch, スイス）</sub></td>
     <td align="center"><sub>サグラダファミリア（バルセロナ）</sub></td>
     <td align="center"><sub>ウシュアイア（アルゼンチン）</sub></td>
-    <td align="center"><sub>ユウニ塩湖（ボリビア）</sub></td>
-    <td align="center"><sub></sub></td>
   </tr>
 </table>
 
