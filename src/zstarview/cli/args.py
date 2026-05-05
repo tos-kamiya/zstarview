@@ -164,14 +164,8 @@ def _parse_bool(value: str) -> bool:
 def _parse_sky_disc_style(value: str) -> str:
     """Parse the sky-disc fill style."""
     text = (value or "").strip().lower()
-    allowed = {
-        "grid": "grid",
-        "map": "grid",
-        "smooth": "smooth",
-        "gradient": "smooth",
-    }
-    if text in allowed:
-        return allowed[text]
+    if text in {"grid", "smooth"}:
+        return text
     raise argparse.ArgumentTypeError(
         f"Invalid sky disc style: {value!r}. Use 'grid' or 'smooth'."
     )

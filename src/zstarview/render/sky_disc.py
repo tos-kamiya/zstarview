@@ -222,10 +222,8 @@ def _sample_sky_color_grid(
 
 def _normalize_sky_disc_style(style: str) -> str:
     value = str(style).strip().lower()
-    if value in {SKY_DISC_STYLE_GRID, "map"}:
-        return SKY_DISC_STYLE_GRID
-    if value in {SKY_DISC_STYLE_SMOOTH, "gradient", "smooth"}:
-        return SKY_DISC_STYLE_SMOOTH
+    if value in {SKY_DISC_STYLE_GRID, SKY_DISC_STYLE_SMOOTH}:
+        return value
     return SKY_DISC_STYLE_GRID
 
 
