@@ -24,7 +24,6 @@ from ..paths import (
     HatchConfig,
 )
 from ..render.earth_guide import draw_earth_guide
-from ..render.sky_disc import GROUND_TINT_RGB, NEVER_RISES_TINT_RGB, NEVER_RISES_TINT_STRENGTH
 from ..types import ScreenGeometry
 from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 
@@ -675,18 +674,19 @@ def _never_rises_mask(
     return dec >= (lat + 90.0)
 
 
-def _apply_ground_tint(
+def _apply_ground_reset(
     base_img: QImage,
     *,
     geometry: ScreenGeometry,
     view_center: Tuple[float, float],
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
-    ground_tint_opacity: float = 0.04,
-    observer_lat_deg: float | None = None,
+    ground_reset_rgba: tuple[int, int, int, int] | None = None,
     edge_fov_deg: float = 90.0,
     content_fov_deg: float,
 ) -> QImage:
-    """Tint the composited disc below the geometric or terrain horizon."""
+    """Reset the disc below the geometric or terrain horizon to a neutral background."""
+    if ground_reset_rgba is None:
+        return base_img
     out = qimage_to_np_rgba(
         base_img if base_img.format() == QImage.Format_RGBA8888 else base_img.convertToFormat(QImage.Format_RGBA8888)
     )
@@ -706,17 +706,12 @@ def _apply_ground_tint(
     if not np.any(ground_mask):
         return np_rgba_to_qimage(out)
     rgb = out[..., :3][inside].astype(np.float32) / 255.0
-    opacity = np.float32(np.clip(ground_tint_opacity, 0.0, 1.0))
-    rgb[ground_mask] = GROUND_TINT_RGB[None, :] * opacity
-    never_rises = _never_rises_mask(alt, az, observer_lat_deg)
-    never_rises_ground = ground_mask & never_rises
-    if np.any(never_rises_ground):
-        rgb[never_rises_ground] = np.clip(
-            rgb[never_rises_ground] + NEVER_RISES_TINT_RGB[None, :] * np.float32(NEVER_RISES_TINT_STRENGTH),
-            0.0,
-            1.0,
-        )
+    alpha = out[..., 3][inside].astype(np.float32) / 255.0
+    reset_rgb = np.array(ground_reset_rgba[:3], dtype=np.float32) / 255.0
+    rgb[ground_mask] = reset_rgb[None, :]
+    alpha[ground_mask] = 1.0
     out[..., :3][inside] = np.clip(np.round(rgb * 255.0), 0, 255).astype(np.uint8)
+    out[..., 3][inside] = np.clip(np.round(alpha * 255.0), 0, 255).astype(np.uint8)
     return np_rgba_to_qimage(out)
 
 
@@ -728,12 +723,12 @@ def _overlay_earth_guide(
     observer_lat_deg: float | None,
     observer_lon_deg: float | None,
     observer_height_m: float = 0.0,
-        terrain_profile_altaz: list[tuple[float, float]] | None = None,
-        earth_guide_opacity: float = 0.028,
-        visibility_boost: float = 1.0,
-        edge_fov_deg: float = 90.0,
-        content_fov_deg: float,
-        fast_mode: bool = False,
+    terrain_profile_altaz: list[tuple[float, float]] | None = None,
+    earth_guide_opacity: float = 0.028,
+    visibility_boost: float = 1.0,
+    edge_fov_deg: float = 90.0,
+    content_fov_deg: float,
+    fast_mode: bool = False,
 ) -> QImage:
     if observer_lat_deg is None or observer_lon_deg is None:
         return base_img
@@ -816,6 +811,7 @@ class SkyCompositorCache:
         terrain_horizon_opacity: float = 0.003,
         earth_guide_opacity: float = 0.028,
         earth_guide_visibility_boost: float = 1.0,
+        ground_reset_rgba: tuple[int, int, int, int] | None = None,
         edge_fov_deg: float = 90.0,
         content_fov_deg: float,
         fast_mode: bool = False,
@@ -875,8 +871,10 @@ class SkyCompositorCache:
             bool(fast_mode),
             hatch_key,
             self._missing_tint_rgba,
-            self._ground_tint_opacity,
             self._gray_mix,
+            None
+            if ground_reset_rgba is None
+            else tuple(int(np.clip(c, 0, 255)) for c in ground_reset_rgba),
             None
             if density_reference_size is None
             else (
@@ -967,17 +965,15 @@ class SkyCompositorCache:
                     edge_fov_deg=edge_fov_deg,
                     content_fov_deg=content_fov_deg,
                 )
-            if not fast_mode:
-                composited = _apply_ground_tint(
-                    composited,
-                    geometry=geometry,
-                    view_center=view_center,
-                    terrain_profile_altaz=terrain_profile_altaz,
-                    ground_tint_opacity=self._ground_tint_opacity,
-                    observer_lat_deg=observer_lat_deg,
-                    edge_fov_deg=edge_fov_deg,
-                    content_fov_deg=content_fov_deg,
-                )
+            composited = _apply_ground_reset(
+                composited,
+                geometry=geometry,
+                view_center=view_center,
+                terrain_profile_altaz=terrain_profile_altaz,
+                ground_reset_rgba=ground_reset_rgba,
+                edge_fov_deg=edge_fov_deg,
+                content_fov_deg=content_fov_deg,
+            )
             composited = _overlay_earth_guide(
                 composited,
                 geometry=geometry,

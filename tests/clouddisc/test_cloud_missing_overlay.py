@@ -4,20 +4,8 @@ import numpy as np
 from PySide6.QtGui import QImage, QPainter
 
 from zstarview.gui.composite import SkyCompositorCache, mask_cloud_alpha_by_missing, overlay_missing_tint
-from zstarview.paths import PALETTE_NEVER_RISES_RGB
 from zstarview.types import ScreenGeometry
 from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
-
-
-EXPECTED_GROUND_TINT_RGB = np.array(PALETTE_NEVER_RISES_RGB, dtype=np.uint8)
-EXPECTED_NEVER_RISES_TINT_RGB = np.clip(
-    np.round(
-        np.array(PALETTE_NEVER_RISES_RGB, dtype=np.float32)
-        * (1.0 + 0.06)
-    ),
-    0,
-    255,
-).astype(np.uint8)
 
 
 def test_overlay_missing_with_hatch_tints_only_missing_region() -> None:
@@ -104,7 +92,7 @@ def test_mask_cloud_alpha_by_missing_cuts_cloud_pixels() -> None:
     assert int(out[5, 6, 3]) == 0
 
 
-def test_compositor_terrain_profile_tints_ground_below_terrain_horizon() -> None:
+def test_compositor_terrain_profile_does_not_add_ground_fill() -> None:
     sky = np.zeros((64, 64, 4), dtype=np.uint8)
     sky[..., :3] = 100
     sky[..., 3] = 255
@@ -146,10 +134,10 @@ def test_compositor_terrain_profile_tints_ground_below_terrain_horizon() -> None
     arr_terrain = qimage_to_np_rgba(canvas_terrain)
 
     assert np.array_equal(arr_flat[24, 32, :3], np.array([100, 100, 100], dtype=np.uint8))
-    assert np.array_equal(arr_terrain[24, 32, :3], EXPECTED_GROUND_TINT_RGB)
+    assert np.array_equal(arr_terrain[24, 32, :3], np.array([100, 100, 100], dtype=np.uint8))
 
 
-def test_compositor_fast_mode_skips_ground_tint_and_never_rises_tint() -> None:
+def test_compositor_fast_mode_matches_normal_mode_without_ground_fill() -> None:
     sky = np.zeros((64, 64, 4), dtype=np.uint8)
     sky[..., :3] = 100
     sky[..., 3] = 255
@@ -194,11 +182,41 @@ def test_compositor_fast_mode_skips_ground_tint_and_never_rises_tint() -> None:
 
     arr_normal = qimage_to_np_rgba(canvas_normal)
     arr_fast = qimage_to_np_rgba(canvas_fast)
-    assert np.array_equal(arr_normal[40, 32, :3], EXPECTED_NEVER_RISES_TINT_RGB)
+    assert np.array_equal(arr_normal[40, 32, :3], np.array([100, 100, 100], dtype=np.uint8))
     assert np.array_equal(arr_fast[40, 32, :3], np.array([100, 100, 100], dtype=np.uint8))
 
 
-def test_compositor_ground_tint_opacity_zero_makes_ground_fill_black() -> None:
+def test_compositor_ground_reset_replaces_lower_disc_with_background() -> None:
+    sky = np.zeros((64, 64, 4), dtype=np.uint8)
+    sky[..., :3] = 100
+    sky[..., 3] = 255
+
+    geom = ScreenGeometry(center=(32, 32), radius=32)
+    compositor = SkyCompositorCache(ground_tint_opacity=1.0)
+    terrain_profile = [(45.0, float(az)) for az in range(360)]
+
+    canvas = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
+    canvas.fill(0)
+    painter = QPainter(canvas)
+    compositor.draw(
+        painter,
+        geom,
+        np_rgba_to_qimage(sky),
+        None,
+        cloud_alpha=0.0,
+        view_center=(0.0, 0.0),
+        terrain_profile_altaz=terrain_profile,
+        ground_reset_rgba=(12, 34, 56, 255),
+        content_fov_deg=90.0,
+    )
+    painter.end()
+
+    arr = qimage_to_np_rgba(canvas)
+    assert np.array_equal(arr[32, 32, :3], np.array([12, 34, 56], dtype=np.uint8))
+    assert int(arr[32, 32, 3]) == 255
+
+
+def test_compositor_ground_tint_opacity_no_longer_changes_output() -> None:
     sky = np.zeros((64, 64, 4), dtype=np.uint8)
     sky[..., :3] = 100
     sky[..., 3] = 255
@@ -223,10 +241,10 @@ def test_compositor_ground_tint_opacity_zero_makes_ground_fill_black() -> None:
     painter.end()
 
     arr = qimage_to_np_rgba(canvas)
-    assert np.array_equal(arr[24, 32, :3], np.array([0, 0, 0], dtype=np.uint8))
+    assert np.array_equal(arr[24, 32, :3], np.array([100, 100, 100], dtype=np.uint8))
 
 
-def test_compositor_reapplies_never_rises_tint_after_ground_fill() -> None:
+def test_compositor_observer_latitude_no_longer_adds_never_rises_tint() -> None:
     sky = np.zeros((64, 64, 4), dtype=np.uint8)
     sky[..., :3] = 100
     sky[..., 3] = 255
@@ -250,4 +268,4 @@ def test_compositor_reapplies_never_rises_tint_after_ground_fill() -> None:
     painter.end()
 
     arr = qimage_to_np_rgba(canvas)
-    assert np.array_equal(arr[40, 32, :3], EXPECTED_NEVER_RISES_TINT_RGB)
+    assert np.array_equal(arr[40, 32, :3], np.array([100, 100, 100], dtype=np.uint8))
