@@ -54,6 +54,7 @@ def test_attach_help_menu_to_frameless_menu_places_help_before_exit() -> None:
     menu = QMenu("Menu")
     help_menu = QMenu("Help")
     square_action = window_module.QAction("Square Client Area", menu)
+    default_size_action = window_module.QAction("Default Window Size", menu)
     fullscreen_action = window_module.QAction("Fullscreen", menu)
     exit_action = window_module.QAction("Exit", menu)
 
@@ -63,6 +64,7 @@ def test_attach_help_menu_to_frameless_menu_places_help_before_exit() -> None:
     window_module.SkyWindowCoreMixin._attach_help_menu_to_frameless_menu(
         recorder,
         square_action,
+        default_size_action,
         fullscreen_action,
         exit_action,
     )
@@ -71,13 +73,14 @@ def test_attach_help_menu_to_frameless_menu_places_help_before_exit() -> None:
     assert [action.text() for action in actions] == [
         "",
         "Square Client Area",
+        "Default Window Size",
         "Fullscreen",
         "",
         "Help",
         "",
         "Exit",
     ]
-    assert actions[4].menu() is help_menu
+    assert actions[5].menu() is help_menu
 
 
 def test_open_code_data_licenses_and_credits_launches_browser(monkeypatch) -> None:

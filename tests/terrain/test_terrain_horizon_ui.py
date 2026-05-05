@@ -298,6 +298,7 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         toggle_urban_outline=lambda: None,
         toggle_fullscreen=lambda: None,
         square_client_area=lambda: None,
+        _restore_default_window_size=lambda: None,
         addAction=lambda action: added_actions.append(action),
         _vmag_limit_menu_text=lambda: "Vmag limit 6.0",
     )
@@ -315,8 +316,9 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
     ]
 
     assert root_titles == ["Search", "Layers", "View Direction", "Help"]
-    assert root_actions[-4:] == [
+    assert root_actions == [
         "Square Client Area",
+        "Default Window Size",
         "Fit to Screen",
         "Fullscreen",
         "Exit",
@@ -364,6 +366,7 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         toggle_urban_outline=lambda: None,
         toggle_fullscreen=lambda: None,
         square_client_area=lambda: None,
+        _restore_default_window_size=lambda: None,
         addAction=lambda _action: None,
         _vmag_limit_menu_text=lambda: "Vmag limit 6.0",
     )
@@ -387,8 +390,9 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
 
     assert root_titles == ["File", "Search", "Layers", "View Direction"]
     assert root_actions == []
-    assert file_actions[:4] == [
+    assert file_actions[:5] == [
         "Square Client Area",
+        "Default Window Size",
         "Fit to Screen",
         "Fullscreen",
         "Exit",
@@ -461,6 +465,18 @@ def test_square_client_area_resizes_height_to_match_width() -> None:
 
     assert dummy._target_client_size == (960, 960)
     assert calls == [(1000, 1020)]
+
+
+def test_restore_default_window_size_uses_default_client_dimensions() -> None:
+    calls: list[tuple[int, int]] = []
+    dummy = SimpleNamespace()
+    dummy.isFullScreen = lambda: False
+    dummy.isMaximized = lambda: False
+    dummy._resize_client_area = lambda width, height: calls.append((width, height))
+
+    SkyWindow._restore_default_window_size(dummy)
+
+    assert calls == [(window_module.WINDOW_WIDTH, window_module.WINDOW_HEIGHT)]
 
 
 def test_status_line_message_combines_cloud_and_terrain_segments() -> None:
