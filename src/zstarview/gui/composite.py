@@ -15,8 +15,8 @@ import math
 from typing import Optional, Tuple, cast
 
 import numpy as np
-from PySide6.QtCore import QRect, Qt
-from PySide6.QtGui import QImage, QPainter
+from PySide6.QtCore import QPointF, QRect, Qt
+from PySide6.QtGui import QColor, QImage, QPainter, QPen, QPolygonF
 
 from ..paths import (
     CLOUD_HATCH_DEFAULT,
@@ -24,7 +24,10 @@ from ..paths import (
     PALETTE_NEVER_RISES_RGB,
     HatchConfig,
 )
+from ..astro import altaz_to_normalized_xy
 from ..render.earth_guide import draw_earth_guide
+from ..render.guides import _clip_polyline_to_radius, split_by_gaps
+from ..render.geometry import normalized_to_screen_xy
 from ..types import ScreenGeometry
 from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 
@@ -675,6 +678,47 @@ def _never_rises_mask(
     return dec >= (lat + 90.0)
 
 
+def _neu_unit_to_altaz(vec: np.ndarray) -> Tuple[float, float]:
+    north = float(vec[0])
+    east = float(vec[1])
+    up = float(np.clip(float(vec[2]), -1.0, 1.0))
+    alt_deg = math.degrees(math.asin(up))
+    az_deg = math.degrees(math.atan2(east, north)) % 360.0
+    return alt_deg, az_deg
+
+
+def _never_rises_circle_altaz(
+    observer_lat_deg: float | None,
+    *,
+    step_deg: float = 4.0,
+) -> list[tuple[float, float]]:
+    if observer_lat_deg is None:
+        return []
+    lat = float(np.clip(observer_lat_deg, -90.0, 90.0))
+    if abs(lat) < 1.0e-6:
+        return []
+
+    dec_deg = lat - 90.0 if lat > 0.0 else lat + 90.0
+    lat_rad = math.radians(lat)
+    dec_rad = math.radians(dec_deg)
+    sin_lat = math.sin(lat_rad)
+    cos_lat = math.cos(lat_rad)
+    sin_dec = math.sin(dec_rad)
+    cos_dec = math.cos(dec_rad)
+
+    circle: list[tuple[float, float]] = []
+    for theta_deg in range(0, 360 + int(step_deg), int(step_deg)):
+        ha_rad = math.radians(float(theta_deg))
+        sin_alt = (sin_lat * sin_dec) + (cos_lat * cos_dec * math.cos(ha_rad))
+        sin_alt = max(-1.0, min(1.0, sin_alt))
+        alt_deg = math.degrees(math.asin(sin_alt))
+        y = -cos_dec * math.sin(ha_rad)
+        x = (sin_dec * cos_lat) - (cos_dec * sin_lat * math.cos(ha_rad))
+        az_deg = math.degrees(math.atan2(y, x)) % 360.0
+        circle.append((float(alt_deg), float(az_deg)))
+    return circle
+
+
 def _apply_ground_reset(
     base_img: QImage,
     *,
@@ -721,7 +765,6 @@ def _overlay_never_rises_outline(
     *,
     geometry: ScreenGeometry,
     view_center: Tuple[float, float],
-    terrain_profile_altaz: list[tuple[float, float]] | None = None,
     observer_lat_deg: float | None = None,
     never_rises_opacity: float = 0.2,
     edge_fov_deg: float = 90.0,
@@ -736,43 +779,54 @@ def _overlay_never_rises_outline(
     out = qimage_to_np_rgba(
         base_img if base_img.format() == QImage.Format_RGBA8888 else base_img.convertToFormat(QImage.Format_RGBA8888)
     )
-    alt, az, inside = _inverse_project_disc(
-        out.shape[1],
-        out.shape[0],
-        geometry,
-        view_center,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
-    )
-    if alt.size == 0:
+    if observer_lat_deg is None:
         return np_rgba_to_qimage(out)
 
-    horizon_alt = _interpolate_terrain_horizon_altitude(az, terrain_profile_altaz)
-    ground_mask = alt < horizon_alt
-    never_rises_ground = ground_mask & _never_rises_mask(alt, az, observer_lat_deg)
-    if not np.any(never_rises_ground):
+    circle_altaz = _never_rises_circle_altaz(observer_lat_deg)
+    if len(circle_altaz) < 2:
         return np_rgba_to_qimage(out)
 
-    ground_mask_full = np.zeros((out.shape[0], out.shape[1]), dtype=bool)
-    ground_mask_full[inside] = never_rises_ground
-    padded = np.pad(ground_mask_full, 1, mode="constant", constant_values=False)
-    boundary = ground_mask_full & ~(
-        padded[:-2, 1:-1]
-        & padded[2:, 1:-1]
-        & padded[1:-1, :-2]
-        & padded[1:-1, 2:]
-        & padded[:-2, :-2]
-        & padded[:-2, 2:]
-        & padded[2:, :-2]
-        & padded[2:, 2:]
-    )
-    if not np.any(boundary):
-        return np_rgba_to_qimage(out)
+    projected: list[tuple[float, float]] = []
+    for alt_deg, az_deg in circle_altaz:
+        nx, ny = altaz_to_normalized_xy(
+            float(alt_deg),
+            float(az_deg),
+            view_center,
+            edge_fov_deg=edge_fov_deg,
+        )
+        projected.append((float(nx), float(ny)))
 
-    outline_rgb = np.array(PALETTE_NEVER_RISES_RGB, dtype=np.uint8)
-    out[..., :3][boundary] = outline_rgb[None, :]
-    out[..., 3][boundary] = alpha_u8
-    return np_rgba_to_qimage(out)
+    paint_img = np_rgba_to_qimage(out).convertToFormat(QImage.Format.Format_ARGB32_Premultiplied)
+    painter = QPainter(paint_img)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+    try:
+        outline_color = np.array(PALETTE_NEVER_RISES_RGB, dtype=np.uint8)
+        pen_color = QColor(int(outline_color[0]), int(outline_color[1]), int(outline_color[2]))
+        pen_color.setAlpha(alpha_u8)
+        pen = QPen(pen_color, 1.5, Qt.PenStyle.DotLine)
+        pen.setCosmetic(True)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(pen)
+        for fragment in split_by_gaps(projected):
+            clipped_frags = _clip_polyline_to_radius(
+                fragment,
+                content_fov_deg / max(1.0e-6, float(edge_fov_deg)),
+            )
+            for clipped_frag in clipped_frags:
+                if len(clipped_frag) < 2:
+                    continue
+                painter.drawPolyline(
+                    QPolygonF(
+                        [
+                            QPointF(*normalized_to_screen_xy(x, y, geometry))
+                            for x, y in clipped_frag
+                        ]
+                    )
+                )
+    finally:
+        painter.end()
+    return paint_img
 
 
 def _overlay_earth_guide(
@@ -1054,7 +1108,6 @@ class SkyCompositorCache:
                 composited,
                 geometry=geometry,
                 view_center=view_center,
-                terrain_profile_altaz=terrain_profile_altaz,
                 observer_lat_deg=observer_lat_deg,
                 never_rises_opacity=never_rises_opacity,
                 edge_fov_deg=edge_fov_deg,
