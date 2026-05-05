@@ -25,11 +25,21 @@ from ..paths import (
     HatchConfig,
 )
 from ..astro import altaz_to_normalized_xy
-from ..render.earth_guide import draw_earth_guide
-from ..render.guides import _clip_polyline_to_radius, split_by_gaps
+from ..render.earth_guide import draw_earth_guide, earth_guide_line_alpha
+from ..render.guides import (
+    REFERENCE_LINE_FG_WIDTH,
+    REFERENCE_LINE_MID_ALPHA,
+    REFERENCE_LINE_MID_WIDTH,
+    REFERENCE_LINE_OUTER_ALPHA,
+    REFERENCE_LINE_OUTER_WIDTH,
+    _clip_polyline_to_radius,
+    split_by_gaps,
+)
 from ..render.geometry import normalized_to_screen_xy
 from ..types import ScreenGeometry
 from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
+
+NEVER_RISES_GUIDE_WIDTH_SCALE = 1.14
 
 @dataclass(frozen=True)
 class CloudAmountField:
@@ -802,12 +812,29 @@ def _overlay_never_rises_outline(
     try:
         outline_color = np.array(PALETTE_NEVER_RISES_RGB, dtype=np.uint8)
         pen_color = QColor(int(outline_color[0]), int(outline_color[1]), int(outline_color[2]))
-        pen_color.setAlpha(alpha_u8)
-        pen = QPen(pen_color, 1.5, Qt.PenStyle.DotLine)
-        pen.setCosmetic(True)
-        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-        painter.setPen(pen)
+        outer = QColor(pen_color)
+        outer.setAlpha(REFERENCE_LINE_OUTER_ALPHA)
+        mid = QColor(pen_color)
+        mid.setAlpha(REFERENCE_LINE_MID_ALPHA)
+        fg = QColor(pen_color)
+        fg.setAlpha(int(np.clip(round(255.0 * earth_guide_line_alpha(never_rises_opacity)), 0, 255)))
+
+        outer_pen = QPen(outer, REFERENCE_LINE_OUTER_WIDTH * NEVER_RISES_GUIDE_WIDTH_SCALE, Qt.PenStyle.SolidLine)
+        outer_pen.setCosmetic(True)
+        outer_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        outer_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+
+        mid_pen = QPen(mid, REFERENCE_LINE_MID_WIDTH * NEVER_RISES_GUIDE_WIDTH_SCALE, Qt.PenStyle.SolidLine)
+        mid_pen.setCosmetic(True)
+        mid_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        mid_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+
+        fg_pen = QPen(fg, REFERENCE_LINE_FG_WIDTH * NEVER_RISES_GUIDE_WIDTH_SCALE, Qt.PenStyle.SolidLine)
+        fg_pen.setCosmetic(True)
+        fg_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        fg_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        fg_pen.setDashPattern([12, 6])
+
         for fragment in split_by_gaps(projected):
             clipped_frags = _clip_polyline_to_radius(
                 fragment,
@@ -816,14 +843,18 @@ def _overlay_never_rises_outline(
             for clipped_frag in clipped_frags:
                 if len(clipped_frag) < 2:
                     continue
-                painter.drawPolyline(
-                    QPolygonF(
-                        [
-                            QPointF(*normalized_to_screen_xy(x, y, geometry))
-                            for x, y in clipped_frag
-                        ]
-                    )
+                poly = QPolygonF(
+                    [
+                        QPointF(*normalized_to_screen_xy(x, y, geometry))
+                        for x, y in clipped_frag
+                    ]
                 )
+                painter.setPen(outer_pen)
+                painter.drawPolyline(poly)
+                painter.setPen(mid_pen)
+                painter.drawPolyline(poly)
+                painter.setPen(fg_pen)
+                painter.drawPolyline(poly)
     finally:
         painter.end()
     return paint_img
