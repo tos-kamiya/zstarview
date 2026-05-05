@@ -1259,10 +1259,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             "Square Client Area",
             triggered=self.square_client_area,
         )
+        fit_to_screen = getattr(self, "_fit_client_area_to_screen", None)
         fit_to_screen_action = self._add_menu_action(
             self.file_menu,
             "Fit to Screen",
-            triggered=self._fit_client_area_to_screen,
+            triggered=fit_to_screen if callable(fit_to_screen) else None,
         )
         fullscreen_action = self._add_menu_action(
             self.file_menu,
