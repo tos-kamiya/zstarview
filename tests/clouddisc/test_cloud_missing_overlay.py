@@ -274,3 +274,32 @@ def test_compositor_observer_latitude_draws_never_rises_outline() -> None:
     assert np.all(changed_rgb[:, 0] >= changed_rgb[:, 1])
     assert np.all(changed_rgb[:, 1] >= changed_rgb[:, 2])
     assert np.all(arr[..., 3][outline_mask] == 255)
+
+
+def test_compositor_guidelines_toggle_hides_never_rises_outline() -> None:
+    sky = np.zeros((64, 64, 4), dtype=np.uint8)
+    sky[..., :3] = 100
+    sky[..., 3] = 255
+
+    geom = ScreenGeometry(center=(32, 32), radius=32)
+    compositor = SkyCompositorCache(ground_tint_opacity=1.0)
+
+    canvas = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
+    canvas.fill(0)
+    painter = QPainter(canvas)
+    compositor.draw(
+        painter,
+        geom,
+        np_rgba_to_qimage(sky),
+        None,
+        cloud_alpha=0.0,
+        view_center=(0.0, 180.0),
+        observer_lat_deg=35.0,
+        show_guidelines=False,
+        earth_guide_opacity=0.0,
+        content_fov_deg=90.0,
+    )
+    painter.end()
+
+    arr = qimage_to_np_rgba(canvas)
+    assert np.array_equal(arr[..., :3], sky[..., :3])
