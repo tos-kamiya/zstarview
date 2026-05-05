@@ -503,6 +503,7 @@ def _draw_sky_cloud_layers(
         observer_height_m=scene.viewer.observer_height_m,
         cloud_amount_field=scene.cloud_amount_field,
         missing_mask=scene.cloud_missing_mask,
+        show_guidelines=style.show_guidelines,
         terrain_profile_altaz=(
             scene.terrain_horizon_profile
             if style.terrain_horizon_opacity > 0.0

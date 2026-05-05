@@ -952,6 +952,7 @@ class SkyCompositorCache:
         observer_height_m: float = 0.0,
         cloud_amount_field: Optional[CloudAmountField] = None,
         missing_mask: Optional[np.ndarray] = None,
+        show_guidelines: bool = True,
         terrain_profile_altaz: list[tuple[float, float]] | None = None,
         terrain_horizon_opacity: float = 0.003,
         earth_guide_opacity: float = 0.028,
@@ -1012,6 +1013,7 @@ class SkyCompositorCache:
             None if observer_lat_deg is None else float(observer_lat_deg),
             None if observer_lon_deg is None else float(observer_lon_deg),
             float(observer_height_m),
+            bool(show_guidelines),
             float(terrain_horizon_opacity),
             float(earth_guide_opacity),
             float(never_rises_opacity),
@@ -1135,15 +1137,16 @@ class SkyCompositorCache:
                 content_fov_deg=content_fov_deg,
                 fast_mode=fast_mode,
             )
-            composited = _overlay_never_rises_outline(
-                composited,
-                geometry=geometry,
-                view_center=view_center,
-                observer_lat_deg=observer_lat_deg,
-                never_rises_opacity=never_rises_opacity,
-                edge_fov_deg=edge_fov_deg,
-                content_fov_deg=content_fov_deg,
-            )
+            if show_guidelines:
+                composited = _overlay_never_rises_outline(
+                    composited,
+                    geometry=geometry,
+                    view_center=view_center,
+                    observer_lat_deg=observer_lat_deg,
+                    never_rises_opacity=never_rises_opacity,
+                    edge_fov_deg=edge_fov_deg,
+                    content_fov_deg=content_fov_deg,
+                )
             if missing_s is not None:
                 composited = overlay_missing_tint(
                     composited,
