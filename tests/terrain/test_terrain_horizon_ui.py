@@ -313,7 +313,12 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
     ]
 
     assert root_titles == ["Search", "Layers", "View Direction", "Help"]
-    assert root_actions[-3:] == ["Square Client Area", "Fullscreen", "Exit"]
+    assert root_actions[-4:] == [
+        "Square Client Area",
+        "Fit to Screen",
+        "Fullscreen",
+        "Exit",
+    ]
 
 
 def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -> None:
@@ -380,7 +385,12 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
 
     assert root_titles == ["File", "Search", "Layers", "View Direction"]
     assert root_actions == []
-    assert file_actions[:3] == ["Square Client Area", "Fullscreen", "Exit"]
+    assert file_actions[:4] == [
+        "Square Client Area",
+        "Fit to Screen",
+        "Fullscreen",
+        "Exit",
+    ]
 
 
 def test_toggle_guidelines_disables_and_restores_opacity() -> None:
