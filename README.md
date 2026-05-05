@@ -137,7 +137,7 @@ zstarview --place "Matsue Station" --place-countrycode jp
 zstarview --search Ceres
 ```
 
-The CLI supports detailed startup configuration for location, time, and rendering.
+The CLI supports detailed startup configuration for location, time, datasets, and rendering.
 
 <details>
   <summary>CLI reference</summary>
@@ -171,22 +171,6 @@ The CLI supports detailed startup configuration for location, time, and renderin
 | `--observer-height-m METERS`                | Observer eye height above the local observation surface in meters. This replaces the default eye height of `1.7` meters. For tower and mountain viewpoints, the viewpoint's own height/elevation remains separate from this value. | `1.7` |
 | `--use-building-top`                        | Experimental. For city / `--place` / direct-coordinate / supported Google Maps URL input, if a building is found within about 5 meters of the resolved location, use that building's highest top height as the observation base. Tower and mountain viewpoints are not affected. | off |
 
-#### Sky and Stars
-
-| Option                                      | Description                                                                 | Default |
-| :------------------------------------------ | :-------------------------------------------------------------------------- | :------ |
-| `--sky-opacity SKY_OPACITY`                 | Opacity of the simulated sky-color disc (0.0–1.0). Use 0.0 to disable.      | `0.15`   |
-| `--bright-bodies {outline,fill}`            | Bright bodies rendering mode. `outline` renders bright stars as diamond outlines, planets as outlines, and the Moon as outline-only except for enlarged moon / hover moon views. `fill` keeps the normal filled rendering. | `outline` |
-| `-m`, `--enlarge-moon`                      | Show the moon in 5x size.                                                   |         |
-| `-s`, `--star-base-radius STAR_BASE_RADIUS` | Base size of 2nd-magnitude stars.                                           | `4.0`   |
-| `-w`, `--expected-render-width EXPECTED_RENDER_WIDTH` | Expected window width for full-resolution star rendering. When celestial-disc width exceeds this, star rendering uses square-root scaling. | `600` |
-| `-V`, `--vmag-limit V_MAG_LIMIT`            | Maximum visual magnitude of stars to display.                               | `7.0`   |
-| `--vmag-brightness-multiplier MULTIPLIER`   | Brightness multiplier per magnitude step (allowed range 1.58–2.512, default `2.5`; 2.512 is the historical Pogson ratio). \*3 | `2.5`   |
-| `-i`, `--sky-update-interval SECONDS`       | Interval for updating stars/sky-color disc in seconds.                      | `60`   |
-| `--show-dso-initial true\|false`            | Whether DSO overlays are shown at startup.                                  | auto (`show` when catalog is available) |
-| `--show-asterisms-initial true\|false`      | Whether asterism overlays are shown at startup.                             | `show` |
-| `--observation-info auto\|top\|bottom\|off` | Startup mode for the observation-info block.                                 | `auto` |
-
 #### Search Objects at startup
 
 | Option                                      | Description                                                                 | Default |
@@ -198,6 +182,47 @@ The CLI supports detailed startup configuration for location, time, and renderin
 | `--list`                                    | `zstarview-export-image` only. List candidates and exit without rendering.  |         |
 
 If `-A` or `-Z` is also given, that axis stays fixed and the search result fills the other axis. The search result altitude is clamped to `-5°`.
+
+#### Viewpoint dataset queries
+
+You can inspect the bundled tower/viewpoint and mountain/viewpoint datasets without launching the GUI.
+
+| Option                                      | Description                                                                 | Default |
+| :------------------------------------------ | :-------------------------------------------------------------------------- | :------ |
+| `-h`, `--help`                              | Show this help message and exit.                                            |         |
+| `--list-viewpoints {t,m}`                   | Print bundled tower (`t`) or mountain (`m`) primary names and exit. Output lines use `t/NAME` or `m/NAME`; ASCII fallback names are preferred when available. |         |
+| `--list-viewpoint-names {t,m}`              | Print bundled tower (`t`) or mountain (`m`) names including localized and ASCII-fallback names, then exit. Output lines use `t/NAME` or `m/NAME`. |         |
+| `--show-viewpoint-json NAME`                | Resolve a bundled viewpoint and print its JSON metadata, including `ascii_name` when available, then exit. Prefix `NAME` with `t/` or `m/` to force tower-only or mountain-only resolution. |         |
+
+```bash
+zstarview --list-viewpoints t
+zstarview --list-viewpoint-names t
+zstarview --show-viewpoint-json "t/Tokyo Skytree"
+zstarview --list-viewpoints m
+zstarview --show-viewpoint-json "m/Mount Fuji"
+```
+
+These options are mutually exclusive, do not accept the `location` argument, and cannot be combined with time/rendering options.
+`--list-viewpoints` prefers ASCII fallback names when available.
+`--list-viewpoint-names` includes both the original spellings and ASCII fallback spellings.
+`--show-viewpoint-json` reports an ambiguity error with prefixed candidates if an unprefixed name matches both a tower and a mountain exactly.
+
+#### Sky and Stars
+
+| Option                                      | Description                                                                 | Default |
+| :------------------------------------------ | :-------------------------------------------------------------------------- | :------ |
+| `--sky-opacity SKY_OPACITY`                 | Opacity of the simulated sky-color disc (0.0–1.0). Use 0.0 to disable.      | `0.15`   |
+| `--sky-disc-style {grid,smooth}`            | Sky-disc fill style. `grid` uses the map-like 10-degree cell fill and is the default; `smooth` uses the previous continuous gradient. | `grid` |
+| `--bright-bodies {outline,fill}`            | Bright bodies rendering mode. `outline` renders bright stars as diamond outlines, planets as outlines, and the Moon as outline-only except for enlarged moon / hover moon views. `fill` keeps the normal filled rendering. | `outline` |
+| `-m`, `--enlarge-moon`                      | Show the moon in 5x size.                                                   |         |
+| `-s`, `--star-base-radius STAR_BASE_RADIUS` | Base size of 2nd-magnitude stars.                                           | `4.0`   |
+| `-w`, `--expected-render-width EXPECTED_RENDER_WIDTH` | Expected window width for full-resolution star rendering. When celestial-disc width exceeds this, star rendering uses square-root scaling. | `600` |
+| `-V`, `--vmag-limit V_MAG_LIMIT`            | Maximum visual magnitude of stars to display.                               | `7.0`   |
+| `--vmag-brightness-multiplier MULTIPLIER`   | Brightness multiplier per magnitude step (allowed range 1.58–2.512, default `2.5`; 2.512 is the historical Pogson ratio). \*3 | `2.5`   |
+| `-i`, `--sky-update-interval SECONDS`       | Interval for updating stars/sky-color disc in seconds.                      | `60`   |
+| `--show-dso-initial true\|false`            | Whether DSO overlays are shown at startup.                                  | auto (`show` when catalog is available) |
+| `--show-asterisms-initial true\|false`      | Whether asterism overlays are shown at startup.                             | `show` |
+| `--observation-info auto\|top\|bottom\|off` | Startup mode for the observation-info block.                                 | `auto` |
 
 #### Overlays
 
@@ -436,30 +461,6 @@ If you really need to bypass the `--clear-long-lived-cache` cooldown, first run 
 - `overture_buildings`
 - `overture_skyscrapers`
 
-### Viewpoint dataset CLI queries
-
-You can inspect the bundled tower/viewpoint and mountain/viewpoint datasets without launching the GUI.
-
-| Option                                      | Description                                                                 | Default |
-| :------------------------------------------ | :-------------------------------------------------------------------------- | :------ |
-| `-h`, `--help`                              | Show this help message and exit.                                            |         |
-| `--list-viewpoints {t,m}`                   | Print bundled tower (`t`) or mountain (`m`) primary names and exit. Output lines use `t/NAME` or `m/NAME`; ASCII fallback names are preferred when available. |         |
-| `--list-viewpoint-names {t,m}`              | Print bundled tower (`t`) or mountain (`m`) names including localized and ASCII-fallback names, then exit. Output lines use `t/NAME` or `m/NAME`. |         |
-| `--show-viewpoint-json NAME`                | Resolve a bundled viewpoint and print its JSON metadata, including `ascii_name` when available, then exit. Prefix `NAME` with `t/` or `m/` to force tower-only or mountain-only resolution. |         |
-
-```bash
-zstarview --list-viewpoints t
-zstarview --list-viewpoint-names t
-zstarview --show-viewpoint-json "t/Tokyo Skytree"
-zstarview --list-viewpoints m
-zstarview --show-viewpoint-json "m/Mount Fuji"
-```
-
-These options are mutually exclusive, do not accept the `location` argument, and cannot be combined with time/rendering options.
-`--list-viewpoints` prefers ASCII fallback names when available.
-`--list-viewpoint-names` includes both the original spellings and ASCII fallback spellings.
-`--show-viewpoint-json` reports an ambiguity error with prefixed candidates if an unprefixed name matches both a tower and a mountain exactly.
-
 ### Generating a `.desktop` launcher (GNOME only)
 
 On GNOME-based environments (including Ubuntu Dock and DockToPanel),
@@ -499,7 +500,7 @@ The GUI supports direct keyboard and menu-based navigation, search, and overlay 
 * **D**: Toggle DSO overlays
 * **A**: Toggle asterism overlays
 * **G**: Toggle guideline overlays
-* **S**: Toggle sky-color shading between gradient and flat-disc mode
+* **S**: Toggle sky-color disc visibility
 * **C**: Toggle cloud overlays
 * **P**: Toggle aircraft overlay
 * **I**: Toggle artificial satellite overlay
