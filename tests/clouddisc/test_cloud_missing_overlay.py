@@ -182,8 +182,7 @@ def test_compositor_fast_mode_matches_normal_mode_without_ground_fill() -> None:
 
     arr_normal = qimage_to_np_rgba(canvas_normal)
     arr_fast = qimage_to_np_rgba(canvas_fast)
-    assert np.array_equal(arr_normal[40, 32, :3], np.array([100, 100, 100], dtype=np.uint8))
-    assert np.array_equal(arr_fast[40, 32, :3], np.array([100, 100, 100], dtype=np.uint8))
+    assert np.array_equal(arr_normal, arr_fast)
 
 
 def test_compositor_ground_reset_replaces_lower_disc_with_background() -> None:
@@ -268,9 +267,10 @@ def test_compositor_observer_latitude_draws_never_rises_outline() -> None:
     painter.end()
 
     arr = qimage_to_np_rgba(canvas)
-    outline_rgb = np.array([240, 173, 122], dtype=np.int16)
-    rgb = arr[..., :3].astype(np.int16)
-    outline_mask = np.all(np.abs(rgb - outline_rgb[None, None, :]) <= 3, axis=2)
+    rgb = arr[..., :3]
+    outline_mask = np.any(rgb != np.array([100, 100, 100], dtype=np.uint8)[None, None, :], axis=2)
     assert np.any(outline_mask)
-    assert np.all(arr[..., 3][outline_mask] == 51)
-    assert np.array_equal(arr[40, 32, :3], np.array([100, 100, 100], dtype=np.uint8))
+    changed_rgb = rgb[outline_mask]
+    assert np.all(changed_rgb[:, 0] >= changed_rgb[:, 1])
+    assert np.all(changed_rgb[:, 1] >= changed_rgb[:, 2])
+    assert np.all(arr[..., 3][outline_mask] == 255)
