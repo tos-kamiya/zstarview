@@ -161,6 +161,22 @@ def _parse_bool(value: str) -> bool:
     )
 
 
+def _parse_sky_disc_style(value: str) -> str:
+    """Parse the sky-disc fill style."""
+    text = (value or "").strip().lower()
+    allowed = {
+        "grid": "grid",
+        "map": "grid",
+        "smooth": "smooth",
+        "gradient": "smooth",
+    }
+    if text in allowed:
+        return allowed[text]
+    raise argparse.ArgumentTypeError(
+        f"Invalid sky disc style: {value!r}. Use 'grid' or 'smooth'."
+    )
+
+
 def _parse_window_geometry(value: str) -> WindowGeometryArg:
     """Parse window geometry as 'restore' or 'x,y,width,height'."""
     text = (value or "").strip()
@@ -499,6 +515,16 @@ def add_sky_and_star_arguments(
         help=(
             f"Opacity of the simulated sky-color disc (0.0 - 1.0, default: {SKY_OPACITY_DEFAULT}). "
             "Set to 0.0 to disable sky-color rendering."
+        ),
+    )
+    parser.add_argument(
+        "--sky-disc-style",
+        type=_parse_sky_disc_style,
+        default="grid",
+        metavar="{grid,smooth}",
+        help=(
+            "Sky-disc fill style. Use 'grid' for the map-like 10-degree cell fill "
+            "(default) or 'smooth' for the previous continuous gradient."
         ),
     )
     parser.add_argument(
@@ -1189,6 +1215,7 @@ def _validate_dataset_query_compatibility(
             or has_non_default("content_fov_deg")
             or has_non_default("observer_height_m")
             or has_non_default("sky_opacity")
+            or has_non_default("sky_disc_style")
             or has_non_default("cloud_opacity")
             or has_non_default("aircraft_opacity")
             or has_non_default("satellite_opacity")
