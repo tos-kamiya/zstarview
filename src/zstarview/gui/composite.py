@@ -682,7 +682,6 @@ def _apply_ground_reset(
     view_center: Tuple[float, float],
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     ground_reset_rgba: tuple[int, int, int, int] | None = None,
-    observer_lat_deg: float | None = None,
     edge_fov_deg: float = 90.0,
     content_fov_deg: float,
 ) -> QImage:
@@ -724,11 +723,15 @@ def _overlay_never_rises_outline(
     view_center: Tuple[float, float],
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     observer_lat_deg: float | None = None,
+    never_rises_opacity: float = 0.2,
     edge_fov_deg: float = 90.0,
     content_fov_deg: float,
 ) -> QImage:
     """Draw a thin never-rises outline using the historic accent color."""
     if observer_lat_deg is None:
+        return base_img
+    alpha_u8 = int(np.clip(round(255.0 * float(never_rises_opacity)), 0, 255))
+    if alpha_u8 <= 0:
         return base_img
     out = qimage_to_np_rgba(
         base_img if base_img.format() == QImage.Format_RGBA8888 else base_img.convertToFormat(QImage.Format_RGBA8888)
@@ -768,7 +771,7 @@ def _overlay_never_rises_outline(
 
     outline_rgb = np.array(PALETTE_NEVER_RISES_RGB, dtype=np.uint8)
     out[..., :3][boundary] = outline_rgb[None, :]
-    out[..., 3][boundary] = 255
+    out[..., 3][boundary] = alpha_u8
     return np_rgba_to_qimage(out)
 
 
@@ -868,6 +871,7 @@ class SkyCompositorCache:
         terrain_horizon_opacity: float = 0.003,
         earth_guide_opacity: float = 0.028,
         earth_guide_visibility_boost: float = 1.0,
+        never_rises_opacity: float = 0.2,
         ground_reset_rgba: tuple[int, int, int, int] | None = None,
         edge_fov_deg: float = 90.0,
         content_fov_deg: float,
@@ -925,6 +929,7 @@ class SkyCompositorCache:
             float(observer_height_m),
             float(terrain_horizon_opacity),
             float(earth_guide_opacity),
+            float(never_rises_opacity),
             bool(fast_mode),
             hatch_key,
             self._missing_tint_rgba,
@@ -1028,7 +1033,6 @@ class SkyCompositorCache:
                 view_center=view_center,
                 terrain_profile_altaz=terrain_profile_altaz,
                 ground_reset_rgba=ground_reset_rgba,
-                observer_lat_deg=observer_lat_deg,
                 edge_fov_deg=edge_fov_deg,
                 content_fov_deg=content_fov_deg,
             )
@@ -1052,6 +1056,7 @@ class SkyCompositorCache:
                 view_center=view_center,
                 terrain_profile_altaz=terrain_profile_altaz,
                 observer_lat_deg=observer_lat_deg,
+                never_rises_opacity=never_rises_opacity,
                 edge_fov_deg=edge_fov_deg,
                 content_fov_deg=content_fov_deg,
             )

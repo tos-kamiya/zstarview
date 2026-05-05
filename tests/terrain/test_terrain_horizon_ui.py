@@ -183,6 +183,7 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
         satellite_opacity=0.7,
         terrain_horizon_opacity=1.5,
         earth_guide_opacity=1.5,
+        never_rises_opacity=0.5,
         urban_outline_opacity=1.5,
         aircraft_opacity=0.4,
         ground_tint_opacity=0.2,
@@ -209,6 +210,7 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
     assert options.terrain_horizon_opacity == 1.0
     assert options.earth_guide_opacity == 1.0
     assert options.earth_guide_visibility_boost == 2.0
+    assert options.never_rises_opacity == 1.0
     assert options.urban_outline_opacity == 1.0
     assert options.sky_disc_alpha == pytest.approx(0.26)
     assert options.sky_disc_style == "grid"

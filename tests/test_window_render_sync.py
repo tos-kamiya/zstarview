@@ -86,6 +86,7 @@ class _WindowStub:
         self.aircraft_opacity = values.get("aircraft_opacity", 0.0)
         self.terrain_horizon_opacity = values.get("terrain_horizon_opacity", 0.25)
         self.earth_guide_opacity = values.get("earth_guide_opacity", 0.25)
+        self.never_rises_opacity = values.get("never_rises_opacity", 0.2)
         self.urban_outline_opacity = values.get("urban_outline_opacity", 0.2)
         self.show_urban_outline_layer = values.get("show_urban_outline_layer", True)
         self.status_line_font = values.get("status_line_font", object())
@@ -256,6 +257,7 @@ def _make_style(**overrides) -> pipeline_module.RenderStyle:
         "satellite_opacity": 0.0,
         "terrain_horizon_opacity": 0.25,
         "earth_guide_opacity": 0.25,
+        "never_rises_opacity": 0.2,
         "urban_outline_opacity": 0.2,
         "show_urban_outline_layer": True,
         "aircraft_opacity": 0.0,
@@ -2665,6 +2667,7 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         satellite_opacity=0.0,
         terrain_horizon_opacity=0.0,
         earth_guide_opacity=0.0,
+        never_rises_opacity=0.0,
         urban_outline_opacity=0.0,
         show_urban_outline_layer=False,
         aircraft_opacity=0.0,
