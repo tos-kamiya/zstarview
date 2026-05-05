@@ -383,6 +383,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `RenderHudState`
 - `render_scene_into_painter()` と下位の `draw_*` 関数群は、`geometry`、`viewport_rect`、`scene`、`style`、`hud` を明示的に受ける。
 - `RenderStyle` は `show_guidelines` を持ち、guide レイヤーと viewport interaction 中の reference line 描画を同じ boolean で制御する。
+- never-rises の円弧は guide 系表示の一部として扱い、`show_guidelines` が False のときは表示しない。
 - `RenderStyle` は `bright_bodies_mode` を持ち、`vmag < 2.0` の恒星と太陽・月・惑星の outline/fill 表示を共有パイプラインへ伝える。
 - 恒星レイヤーは `size_px` に応じて描画を切り替え、`1px` は単一ピクセル+微弱ぼかし、`2px` は 2x2、`3px` から `6px` は塗りつぶし矩形、`7px` 以上は 2px 枠線矩形として扱ってよい。
 - `vmag < 2.0` の恒星は、通常モードではダイヤ形の上書き強調を重ねてよく、`bright_bodies_mode == "outline"` ではその輪郭のみを使ってよい。
@@ -407,7 +408,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - ここでいう `overlay` は、地点名、Lat/Lon、`Ground ...; Building ...` の 1 行要約、時刻、Alt/Az などの static observation overlay を指す。`Vmag limit` は GUI メニューの disabled 項目で示す。
 - static overlay は hover 系 HUD と同じ更新タイミングに揃えるため、ベース描画ではなく HUD 描画側で重ねる。
 - `guide` は方位ラベルと天頂マーカーを含む独立レイヤーであり、空色・雲合成の上、通常の hover/HUD オーバーレイより手前に置く。
-- 幾何学的な地平線、天の赤道、黄道も `show_guidelines` に従う guide 系表示として扱う。
+- 幾何学的な地平線、天の赤道、黄道、never-rises の円弧も `show_guidelines` に従う guide 系表示として扱う。
 - 幾何学的な地平線、天の赤道、黄道の線分は、固定刻みの点列をそのまま描くのではなく、画面空間の誤差に応じて再帰分割してから `drawPolyline()` へ渡してよい。
 - 再帰分割はスクリーン座標系で誤差を評価し、ウィンドウが大きいほど細かく、縮小時は粗くなるようにしてよい。
 - `show_guidelines == False` のときは、guide レイヤー本体だけでなく、viewport interaction 中の sky reference line 描画もまとめて省略してよい。
