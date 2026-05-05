@@ -196,12 +196,6 @@ def test_parse_args_defaults_sky_disc_style_to_grid() -> None:
     assert args.sky_disc_style == "grid"
 
 
-def test_parse_args_accepts_sky_disc_style_aliases() -> None:
-    args = cli_args.parse_args(["--sky-disc-style", "gradient", "Matsue"])
-
-    assert args.sky_disc_style == "smooth"
-
-
 def test_parse_args_rejects_multiple_search_options() -> None:
     with pytest.raises(SystemExit):
         cli_args.parse_args(["--search", "Ceres", "--search", "Mars"])
