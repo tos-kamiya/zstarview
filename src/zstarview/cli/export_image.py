@@ -356,6 +356,7 @@ def _build_window_inputs_from_args(
     )
     user_options = prepare_window_user_options(
         sky_disc_alpha=getattr(args, "sky_opacity", SKY_OPACITY_DEFAULT),
+        sky_disc_style=getattr(args, "sky_disc_style", "grid"),
         cloud_disc_alpha=(
             0.0
             if (not overlay_availability.cloud)
@@ -1164,6 +1165,7 @@ def main() -> None:
         star_subset_indices=star_subset_indices,
         delta_t=runtime_options.delta_t,
         sky_disc_alpha=float(user_options.sky_disc_alpha),
+        sky_disc_style=str(user_options.sky_disc_style),
         sky_disc_base_size=max(image_size),
         edge_fov_deg=float(viewer_data.edge_fov_deg),
         content_fov_deg=float(viewer_data.content_fov_deg),

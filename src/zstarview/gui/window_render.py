@@ -114,6 +114,7 @@ class SkyWindowRenderMixin:
             getattr(self, "bright_bodies_mode", "outline"),
             round(float(self.vmag_limit), 3),
             round(float(self.sky_disc_alpha), 3),
+            getattr(self, "sky_disc_style", "grid"),
             round(float(self.cloud_disc_alpha), 3),
             round(float(self.terrain_horizon_opacity), 3),
             round(float(self.earth_guide_opacity), 3),

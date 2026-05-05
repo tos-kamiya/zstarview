@@ -1,4 +1,5 @@
 import math
+from functools import lru_cache
 from typing import Tuple
 
 import numpy as np
@@ -36,6 +37,8 @@ SUNSET_STRENGTH = 0.264
 ANTI_SOLAR_STRENGTH = 0.16
 SATURATION_CHROMA_SCALE = 0.35
 SKY_DISC_GRID_STEP_DEG = 10.0
+SKY_DISC_STYLE_GRID = "grid"
+SKY_DISC_STYLE_SMOOTH = "smooth"
 
 
 def _smoothstep(edge0: float, edge1: float, x: float) -> float:
@@ -217,6 +220,78 @@ def _sample_sky_color_grid(
     )
 
 
+def _normalize_sky_disc_style(style: str) -> str:
+    value = str(style).strip().lower()
+    if value in {SKY_DISC_STYLE_GRID, "map"}:
+        return SKY_DISC_STYLE_GRID
+    if value in {SKY_DISC_STYLE_SMOOTH, "gradient", "smooth"}:
+        return SKY_DISC_STYLE_SMOOTH
+    return SKY_DISC_STYLE_GRID
+
+
+@lru_cache(maxsize=32)
+def _render_sky_color_disc_cached(
+    style: str,
+    width: int,
+    height: int,
+    center_x: int,
+    center_y: int,
+    radius: int,
+    view_alt_deg: float,
+    view_az_deg: float,
+    sun_alt_deg: float,
+    sun_az_deg: float,
+    exposure: float,
+    saturation: float,
+    alpha: float,
+    disc_opacity: float,
+    eclipse_factor: float,
+    edge_fov_deg: float,
+    content_fov_deg: float,
+) -> QImage:
+    local_geometry = ScreenGeometry(center=(center_x, center_y), radius=radius)
+    alt, az, inside = _inverse_project_disc(
+        width,
+        height,
+        local_geometry,
+        (view_alt_deg, view_az_deg),
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+    )
+
+    rgba = np.zeros((height, width, 4), dtype=np.uint8)
+    if alt.size == 0:
+        return np_rgba_to_qimage(rgba).convertToFormat(QImage.Format.Format_ARGB32_Premultiplied)
+
+    if style == SKY_DISC_STYLE_GRID:
+        colors = _sample_sky_color_grid(
+            alt,
+            az,
+            (sun_alt_deg, sun_az_deg),
+            exposure=exposure,
+            saturation=saturation,
+            alpha=alpha,
+            eclipse_factor=eclipse_factor,
+        )
+    else:
+        colors = sky_color_samples(
+            alt,
+            az,
+            (sun_alt_deg, sun_az_deg),
+            exposure=exposure,
+            saturation=saturation,
+            alpha=alpha,
+            eclipse_factor=eclipse_factor,
+        )
+    colors = np.clip(colors, 0.0, 1.0)
+
+    rgb_u8 = np.clip(np.round(colors * 255.0), 0, 255).astype(np.uint8)
+    alpha_u8 = int(round(max(0.0, min(1.0, float(disc_opacity))) * 255.0))
+    rgba[..., 3][inside] = alpha_u8
+    rgba[..., :3][inside] = rgb_u8
+    return np_rgba_to_qimage(rgba).convertToFormat(QImage.Format.Format_ARGB32_Premultiplied)
+
+
 def draw_sky_color_disc(
     geometry: ScreenGeometry,
     view_center: Tuple[float, float],
@@ -231,6 +306,7 @@ def draw_sky_color_disc(
     edge_fov_deg: float = 90.0,
     content_fov_deg: float,
     image_size: Tuple[int, int] | None = None,
+    sky_disc_style: str = SKY_DISC_STYLE_GRID,
 ) -> QImage:
     """
     Draw sky color disc using one-pass NumPy inverse projection.
@@ -247,37 +323,26 @@ def draw_sky_color_disc(
         local_geometry = geometry
     if radius < 1:
         return QImage(width, height, QImage.Format.Format_ARGB32_Premultiplied)
-
-    alt, az, inside = _inverse_project_disc(
+    normalized_style = _normalize_sky_disc_style(sky_disc_style)
+    return _render_sky_color_disc_cached(
+        normalized_style,
         width,
         height,
-        local_geometry,
-        view_center,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
+        int(local_geometry.center[0]),
+        int(local_geometry.center[1]),
+        int(local_geometry.radius),
+        float(view_center[0]),
+        float(view_center[1]),
+        float(sun_altaz[0]),
+        float(sun_altaz[1]),
+        float(exposure),
+        float(saturation),
+        float(alpha),
+        float(disc_opacity),
+        float(eclipse_factor),
+        float(edge_fov_deg),
+        float(content_fov_deg),
     )
-
-    rgba = np.zeros((height, width, 4), dtype=np.uint8)
-    if alt.size == 0:
-        return np_rgba_to_qimage(rgba).convertToFormat(QImage.Format.Format_ARGB32_Premultiplied)
-
-    colors = _sample_sky_color_grid(
-        alt,
-        az,
-        sun_altaz,
-        exposure=exposure,
-        saturation=saturation,
-        alpha=alpha,
-        eclipse_factor=eclipse_factor,
-    )
-    colors = np.clip(colors, 0.0, 1.0)
-
-    rgb_u8 = np.clip(np.round(colors * 255.0), 0, 255).astype(np.uint8)
-    alpha_u8 = int(round(max(0.0, min(1.0, float(disc_opacity))) * 255.0))
-    rgba[..., 3][inside] = alpha_u8
-    rgba[..., :3][inside] = rgb_u8
-
-    return np_rgba_to_qimage(rgba).convertToFormat(QImage.Format.Format_ARGB32_Premultiplied)
 
 
 def draw_uniform_sky_color_disc(
