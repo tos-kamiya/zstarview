@@ -1165,7 +1165,7 @@ def main() -> None:
         star_subset_indices=star_subset_indices,
         delta_t=runtime_options.delta_t,
         sky_disc_alpha=float(user_options.sky_disc_alpha),
-        sky_disc_style=str(user_options.sky_disc_style),
+        sky_disc_style=str(getattr(user_options, "sky_disc_style", "grid")),
         sky_disc_base_size=max(image_size),
         edge_fov_deg=float(viewer_data.edge_fov_deg),
         content_fov_deg=float(viewer_data.content_fov_deg),
