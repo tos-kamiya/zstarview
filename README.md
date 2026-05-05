@@ -211,7 +211,7 @@ These options are mutually exclusive, do not accept the `location` argument, and
 
 | Option                                      | Description                                                                 | Default |
 | :------------------------------------------ | :-------------------------------------------------------------------------- | :------ |
-| `--sky-opacity SKY_OPACITY`                 | Opacity of the simulated sky-color disc (0.0–1.0). Use 0.0 to disable.      | `0.15`   |
+| `--sky-opacity SKY_OPACITY`                 | Opacity of the simulated sky-color disc (0.0–1.0). Use 0.0 to disable.      | `0.1`    |
 | `--sky-disc-style {grid,smooth}`            | Sky-disc fill style. `grid` uses the map-like 10-degree cell fill; `smooth` uses the previous continuous gradient and is the default. | `smooth` |
 | `--bright-bodies {outline,fill}`            | Bright bodies rendering mode. `outline` renders bright stars as diamond outlines, planets as outlines, and the Moon as outline-only except for enlarged moon / hover moon views. `fill` keeps the normal filled rendering. | `outline` |
 | `-m`, `--enlarge-moon`                      | Show the moon in 5x size.                                                   |         |
