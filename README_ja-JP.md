@@ -137,7 +137,7 @@ zstarview --place "Matsue Station" --place-countrycode jp
 zstarview --search Ceres
 ```
 
-CLI では、場所・時刻・描画設定を細かく指定できます。
+CLI では、場所・時刻・データセット・描画設定を細かく指定できます。
 
 <details>
   <summary>CLI リファレンス</summary>
@@ -171,22 +171,6 @@ CLI では、場所・時刻・描画設定を細かく指定できます。
 | `--observer-height-m METERS` | 観測地点の基準面から見た観測者の目線高さをメートルで指定します。既定の目線高さ `1.7` を置き換えます。タワーや山のビューポイント自体の高さ・標高とは別に扱われます。 | `1.7` |
 | `--use-building-top` | 実験中。都市名、`--place`、直接座標、対応 Google Maps URL で解決した地点について、解決地点の約 5m 以内に建物が見つかった場合、その建物の最も高い頂部を観測基準として使います。タワー/山ビューポイントには適用しません。 | off |
 
-#### 星空と天体
-
-| オプション | 説明 | デフォルト |
-| :--- | :--- | :--- |
-| `--sky-opacity SKY_OPACITY` | 空の色ディスクの不透明度を指定します（0.0〜1.0）。0.0 で描画を無効化します。 | `0.15` |
-| `--bright-bodies {outline,fill}` | 明るい天体の描画モードを指定します。`outline` では明るい恒星をひし形輪郭、惑星を輪郭のみ、月を通常表示では輪郭のみで描画し、`--enlarge-moon` や月ホバー時は通常の月描画を使います。`fill` では従来どおり塗りつぶし表示にします。 | `outline` |
-| `-m`, `--enlarge-moon` | 月を 5 倍に拡大して表示します。 | |
-| `-s`, `--star-base-radius STAR_BASE_RADIUS` | 2 等星の基本サイズを指定します。 | `4.0` |
-| `-w`, `--expected-render-width EXPECTED_RENDER_WIDTH` | 恒星をフル解像度で描画する想定ウィンドウ幅を指定します。天球幅がこの値を超える場合、恒星レイヤーは平方根スケーリングで描画します。 | `600` |
-| `-V`, `--vmag-limit V_MAG_LIMIT` | 表示する恒星の等級上限を指定します。 | `7.0` |
-| `--vmag-brightness-multiplier MULTIPLIER` | 等級 1 段階あたりの光量変化倍率（`1.58`〜`2.512`、デフォルト `2.5`。Pogson の定義は `2.512`）を指定します。※3 | `2.5` |
-| `-i`, `--sky-update-interval SECONDS` | 星空を更新する時間間隔（秒）を指定します。 | `60` |
-| `--show-dso-initial true\|false` | 起動時に DSO を表示するかを指定します。 | 自動（カタログがあれば表示） |
-| `--show-asterisms-initial true\|false` | 起動時にアステリウムを表示するかを指定します。 | `show` |
-| `--show-observation-info-initial true\|false` | 起動時に観測情報ブロックを表示するかを指定します。 | `show` |
-
 #### 起動時の Search Objects
 
 | オプション | 説明 | デフォルト |
@@ -198,6 +182,47 @@ CLI では、場所・時刻・描画設定を細かく指定できます。
 | `--list` | `zstarview-export-image` 専用です。候補を表示して終了します。 | |
 
 `-A` または `-Z` が指定されている場合は、その軸を固定し、未指定側だけを検索結果で補います。検索結果の高度角は `-5°` にクランプされます。
+
+#### ビューポイントデータ参照ツール
+
+GUI を起動せずに、同梱タワー/展望地点データと山頂ビューポイントデータを参照できます。
+
+| オプション | 説明 | デフォルト |
+| :--- | :--- | :--- |
+| `-h`, `--help` | ヘルプメッセージを表示して終了します。 | |
+| `--list-viewpoints {t,m}` | 同梱タワー (`t`) または山 (`m`) の主表示名を出力して終了します。各行は `t/NAME` または `m/NAME` 形式で、利用可能な場合は ASCII 代替名を優先します。 | |
+| `--list-viewpoint-names {t,m}` | 同梱タワー (`t`) または山 (`m`) の名前を、多言語名と ASCII 代替名込みで一覧出力して終了します。各行は `t/NAME` または `m/NAME` 形式です。 | |
+| `--show-viewpoint-json NAME` | 指定名で同梱ビューポイントを解決し、利用可能な場合は `ascii_name` を含む JSON メタデータを出力して終了します。`t/` または `m/` を付けると対象 kind を明示できます。 | |
+
+```bash
+zstarview --list-viewpoints t
+zstarview --list-viewpoint-names t
+zstarview --show-viewpoint-json "t/Tokyo Skytree"
+zstarview --list-viewpoints m
+zstarview --show-viewpoint-json "m/Mount Fuji"
+```
+
+これらのオプションは相互排他で、`location` 引数や時刻・描画オプションとは併用できません。
+`--list-viewpoints` では、利用可能な場合は ASCII 代替名を優先表示します。
+`--list-viewpoint-names` では、元の綴りと ASCII 代替綴りの両方を含みます。
+prefix なしの `--show-viewpoint-json` で tower と mountain の両方に完全一致した場合は、`t/...` / `m/...` 候補を列挙して曖昧一致エラーにします。
+
+#### 星空と天体
+
+| オプション | 説明 | デフォルト |
+| :--- | :--- | :--- |
+| `--sky-opacity SKY_OPACITY` | 空の色ディスクの不透明度を指定します（0.0〜1.0）。0.0 で描画を無効化します。 | `0.15` |
+| `--sky-disc-style {grid,smooth}` | 空ディスクの塗り分け方式を指定します。`grid` は地図風の 10 度区画塗りで、これが既定です。`smooth` は従来の連続グラデーション表示です。 | `grid` |
+| `--bright-bodies {outline,fill}` | 明るい天体の描画モードを指定します。`outline` では明るい恒星をひし形輪郭、惑星を輪郭のみ、月を通常表示では輪郭のみで描画し、`--enlarge-moon` や月ホバー時は通常の月描画を使います。`fill` では従来どおり塗りつぶし表示にします。 | `outline` |
+| `-m`, `--enlarge-moon` | 月を 5 倍に拡大して表示します。 | |
+| `-s`, `--star-base-radius STAR_BASE_RADIUS` | 2 等星の基本サイズを指定します。 | `4.0` |
+| `-w`, `--expected-render-width EXPECTED_RENDER_WIDTH` | 恒星をフル解像度で描画する想定ウィンドウ幅を指定します。天球幅がこの値を超える場合、恒星レイヤーは平方根スケーリングで描画します。 | `600` |
+| `-V`, `--vmag-limit V_MAG_LIMIT` | 表示する恒星の等級上限を指定します。 | `7.0` |
+| `--vmag-brightness-multiplier MULTIPLIER` | 等級 1 段階あたりの光量変化倍率（`1.58`〜`2.512`、デフォルト `2.5`。Pogson の定義は `2.512`）を指定します。※3 | `2.5` |
+| `-i`, `--sky-update-interval SECONDS` | 星空を更新する時間間隔（秒）を指定します。 | `60` |
+| `--show-dso-initial true\|false` | 起動時に DSO を表示するかを指定します。 | 自動（カタログがあれば表示） |
+| `--show-asterisms-initial true\|false` | 起動時にアステリウムを表示するかを指定します。 | `show` |
+| `--show-observation-info-initial true\|false` | 起動時に観測情報ブロックを表示するかを指定します。 | `show` |
 
 #### オーバーレイ
 
@@ -433,30 +458,6 @@ zstarview-export-image --print-cache-dir
 - `overture_buildings`
 - `overture_skyscrapers`
 
-### ビューポイントデータ参照ツール
-
-GUI を起動せずに、同梱タワー/展望地点データと山頂ビューポイントデータを参照できます。
-
-| オプション | 説明 | デフォルト |
-| :--- | :--- | :--- |
-| `-h`, `--help` | ヘルプメッセージを表示して終了します。 | |
-| `--list-viewpoints {t,m}` | 同梱タワー (`t`) または山 (`m`) の主表示名を出力して終了します。各行は `t/NAME` または `m/NAME` 形式で、利用可能な場合は ASCII 代替名を優先します。 | |
-| `--list-viewpoint-names {t,m}` | 同梱タワー (`t`) または山 (`m`) の名前を、多言語名と ASCII 代替名込みで一覧出力して終了します。各行は `t/NAME` または `m/NAME` 形式です。 | |
-| `--show-viewpoint-json NAME` | 指定名で同梱ビューポイントを解決し、利用可能な場合は `ascii_name` を含む JSON メタデータを出力して終了します。`t/` または `m/` を付けると対象 kind を明示できます。 | |
-
-```bash
-zstarview --list-viewpoints t
-zstarview --list-viewpoint-names t
-zstarview --show-viewpoint-json "t/Tokyo Skytree"
-zstarview --list-viewpoints m
-zstarview --show-viewpoint-json "m/Mount Fuji"
-```
-
-これらのオプションは相互排他で、`location` 引数や時刻・描画オプションとは併用できません。
-`--list-viewpoints` では、利用可能な場合は ASCII 代替名を優先表示します。
-`--list-viewpoint-names` では、元の綴りと ASCII 代替綴りの両方を含みます。
-prefix なしの `--show-viewpoint-json` で tower と mountain の両方に完全一致した場合は、`t/...` / `m/...` 候補を列挙して曖昧一致エラーにします。
-
 ### `.desktop` ランチャーの生成（GNOME専用）
 
 GNOME 系デスクトップ環境（Ubuntu Dock や DockToPanel を含む）では、
@@ -496,7 +497,7 @@ GUI では、キーボード操作とメニュー操作で視点移動、検索�
 * **D**: DSO 重ね表示の表示/非表示を切り替え
 * **A**: アステリウム重ね表示の表示/非表示を切り替え
 * **G**: ガイドライン表示の表示/非表示を切り替え
-* **S**: 空ディスク表示をグラデーションとフラットディスクで切り替え
+* **S**: 空ディスクの表示を切り替え
 * **C**: 雲の重ね表示の表示/非表示を切り替え
 * **P**: 航空機オーバーレイの表示/非表示を切り替え
 * **I**: 人工衛星オーバーレイの表示/非表示を切り替え
