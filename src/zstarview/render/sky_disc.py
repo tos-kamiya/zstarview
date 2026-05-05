@@ -35,6 +35,7 @@ SUN_GLOW_STRENGTH = 0.42
 SUNSET_STRENGTH = 0.264
 ANTI_SOLAR_STRENGTH = 0.16
 SATURATION_CHROMA_SCALE = 0.35
+SKY_DISC_GRID_STEP_DEG = 10.0
 
 
 def _smoothstep(edge0: float, edge1: float, x: float) -> float:
@@ -187,6 +188,35 @@ def sky_color_samples(
     return np.clip(colors, 0.0, 1.0).astype(np.float32)
 
 
+def _sample_sky_color_grid(
+    view_alt_deg: np.ndarray,
+    view_az_deg: np.ndarray,
+    sun_altaz: Tuple[float, float],
+    *,
+    exposure: float,
+    saturation: float,
+    alpha: float,
+    eclipse_factor: float,
+) -> np.ndarray:
+    """Quantize sky samples to a coarse 10-degree altitude/azimuth grid."""
+    step = float(SKY_DISC_GRID_STEP_DEG)
+    alt = np.asarray(view_alt_deg, dtype=np.float32)
+    az = np.asarray(view_az_deg, dtype=np.float32)
+    alt_band = np.floor((np.clip(alt, -90.0, 90.0 - 1.0e-6) + 90.0) / step)
+    az_band = np.floor(np.mod(az, 360.0) / step)
+    alt_center = -90.0 + (alt_band * step) + (step * 0.5)
+    az_center = (az_band * step) + (step * 0.5)
+    return sky_color_samples(
+        alt_center,
+        az_center,
+        sun_altaz,
+        exposure=exposure,
+        saturation=saturation,
+        alpha=alpha,
+        eclipse_factor=eclipse_factor,
+    )
+
+
 def draw_sky_color_disc(
     geometry: ScreenGeometry,
     view_center: Tuple[float, float],
@@ -231,7 +261,7 @@ def draw_sky_color_disc(
     if alt.size == 0:
         return np_rgba_to_qimage(rgba).convertToFormat(QImage.Format.Format_ARGB32_Premultiplied)
 
-    colors = sky_color_samples(
+    colors = _sample_sky_color_grid(
         alt,
         az,
         sun_altaz,
