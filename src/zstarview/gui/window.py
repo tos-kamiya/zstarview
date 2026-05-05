@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Callable, Optional, Tuple, Union
 
 import astropy.time
-from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, Qt, QTimer, QUrl, Signal
+from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, QSize, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import (
     QAction,
     QCloseEvent,
@@ -1054,6 +1054,46 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             return
         self.resize(self.width() + delta_width, self.height() + delta_height)
 
+    def _fit_client_area_to_screen(self) -> None:
+        """Resize the client area to the largest aspect-preserving size on screen."""
+        current_client_width = max(1, int(self.client_width()))
+        current_client_height = max(1, int(self.client_height()))
+        if self.isFullScreen() or self.isMaximized():
+            self.showNormal()
+
+        screen = None
+        window_handle = self.windowHandle()
+        if window_handle is not None:
+            screen = window_handle.screen()
+        if screen is None:
+            screen = self.screen()
+        if screen is None:
+            screen = QGuiApplication.primaryScreen()
+        if screen is None:
+            return
+
+        available_geometry = screen.availableGeometry()
+        if not available_geometry.isValid():
+            return
+
+        frame_width = max(0, int(self.width()) - int(self.client_width()))
+        frame_height = max(0, int(self.height()) - int(self.client_height()))
+        max_window_width = max(1, int(available_geometry.width()) - frame_width)
+        max_window_height = max(1, int(available_geometry.height()) - frame_height)
+
+        target_window_size = (
+            QSize(current_client_width, current_client_height)
+            .scaled(max_window_width, max_window_height, Qt.AspectRatioMode.KeepAspectRatio)
+        )
+        target_client_width = max(1, int(target_window_size.width()))
+        target_client_height = max(1, int(target_window_size.height()))
+        if (
+            target_client_width == current_client_width
+            and target_client_height == current_client_height
+        ):
+            return
+        self._resize_client_area(target_client_width, target_client_height)
+
     def square_client_area(self) -> None:
         """Resize the client area so width and height match."""
         side = max(1, int(self.client_width()))
@@ -1219,6 +1259,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             "Square Client Area",
             triggered=self.square_client_area,
         )
+        fit_to_screen_action = self._add_menu_action(
+            self.file_menu,
+            "Fit to Screen",
+            triggered=self._fit_client_area_to_screen,
+        )
         fullscreen_action = self._add_menu_action(
             self.file_menu,
             "Fullscreen",
@@ -1257,6 +1302,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if self._frameless_window:
             self.menu.addSeparator()
             self.menu.addAction(square_client_area_action)
+            self.menu.addAction(fit_to_screen_action)
             self.menu.addAction(fullscreen_action)
             self.menu.addSeparator()
             self.menu.addMenu(self.help_menu)
