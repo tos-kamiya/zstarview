@@ -992,7 +992,7 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_and_invalidates_ol
 ):
     calls: list[str] = []
     dummy = SimpleNamespace()
-    dummy.state = SimpleNamespace(viewport_interaction_mode=False)
+    dummy.state = SimpleNamespace(viewport_interaction_mode=False, sky_disc_image=None)
     dummy.cloud_state = SimpleNamespace(
         image=object(),
         missing_mask=object(),
@@ -1063,7 +1063,7 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_even_while_cloud_u
 def test_handle_client_resize_clears_visible_cloud_buffers() -> None:
     calls: list[str] = []
     dummy = SimpleNamespace()
-    dummy.state = SimpleNamespace(viewport_interaction_mode=False)
+    dummy.state = SimpleNamespace(viewport_interaction_mode=False, sky_disc_image=None)
     dummy._disc_generation = 0
     dummy._frameless_frame = object()
     dummy.menu_button = SimpleNamespace(raise_=lambda: calls.append("raise-menu"))
@@ -1091,6 +1091,9 @@ def test_handle_client_resize_clears_visible_cloud_buffers() -> None:
     dummy._raise_overlay_widgets = lambda: (
         calls.append("raise-menu"),
         calls.append("raise-grip"),
+    )
+    dummy._discard_stale_disc_images = lambda: SkyWindow._discard_stale_disc_images(  # type: ignore[attr-defined]
+        dummy
     )
     dummy._begin_viewport_interaction_mode = lambda *args, **kwargs: (
         SkyWindow._begin_viewport_interaction_mode(dummy, *args, **kwargs)

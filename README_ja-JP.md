@@ -212,7 +212,7 @@ prefix なしの `--show-viewpoint-json` で tower と mountain の両方に完�
 | オプション | 説明 | デフォルト |
 | :--- | :--- | :--- |
 | `--sky-opacity SKY_OPACITY` | 空の色ディスクの不透明度を指定します（0.0〜1.0）。0.0 で描画を無効化します。 | `0.15` |
-| `--sky-disc-style {grid,smooth}` | 空ディスクの塗り分け方式を指定します。`grid` は地図風の 10 度区画塗りで、これが既定です。`smooth` は従来の連続グラデーション表示です。 | `grid` |
+| `--sky-disc-style {grid,smooth}` | 空ディスクの塗り分け方式を指定します。`grid` は地図風の 10 度区画塗り、`smooth` は従来の連続グラデーション表示で、これが既定です。 | `smooth` |
 | `--bright-bodies {outline,fill}` | 明るい天体の描画モードを指定します。`outline` では明るい恒星をひし形輪郭、惑星を輪郭のみ、月を通常表示では輪郭のみで描画し、`--enlarge-moon` や月ホバー時は通常の月描画を使います。`fill` では従来どおり塗りつぶし表示にします。 | `outline` |
 | `-m`, `--enlarge-moon` | 月を 5 倍に拡大して表示します。 | |
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | 2 等星の基本サイズを指定します。 | `4.0` |
