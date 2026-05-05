@@ -272,6 +272,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 恒星描画と hover object 選択
 - `src/zstarview/render/sky_disc.py`
   - sky color disc の生成
+  - `grid` / `smooth` の 2 系統を持つ
+  - `grid` は 10 度刻みの alt/az 区画を代表色で塗る地図風表示、`smooth` は連続グラデーション表示として扱う
+  - 実描画は render surface 寸法、view center、sun alt/az、FOV、opacity、style をキーにキャッシュしてよい
 - `src/zstarview/render/text.py`
   - preset ごとの文字色、アウトライン色、アウトライン幅の解決
 - `src/zstarview/render/asterisms.py`
@@ -303,6 +306,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `render/text.py` は `ThemeStyle` から文字色、アウトライン色、アウトライン幅を解決する。
 - `render/background.py` は `ThemeStyle.window_background` と `ThemeStyle.window_chrome` を参照元として、背景 gradient と frameless 用 border 色を決める。
 - `gui/sky_worker.py` は `ThemeStyle.sky_disc` を参照して sky-disc opacity を決める。
+- `gui/sky_worker.py` は sky-disc の style と render surface 寸法を含めて生成し、描画結果を worker 側の入力で再利用してよい。
 - `splash.py` は `ThemeStyle.splash` を色定義の参照元とし、背景 alpha は `ThemeStyle.window_background` から導出した平均 alpha を使う。
 - 明るい preset (`day`, `white`) では、暗い preset (`night`, `black`) より広い文字アウトライン幅を持てる。
 
@@ -386,6 +390,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `RenderSceneData` の cloud image / cloud missing mask は `QImage` ではなく NumPy 配列を持ち、cloud path の変換回数を抑える。
 - shared pipeline は星レイヤーの縮小レンダリング面サイズを一度計算し、cloud stripe density の参照値としても再利用してよい。
 - `gui/window_render.py` は、`paintEvent()` 本線、scene/style/hud の組み立て、frame cache、jump highlight、hover 解決など GUI 固有処理に絞る。
+- `gui/window_render.py` の frame cache key には sky-disc の style を含めてよく、grid/smooth の切り替えで base frame を再生成してよい。
 - 現在の通常描画順は概ね次のとおり。
   - `background`
   - `sky-cloud`
