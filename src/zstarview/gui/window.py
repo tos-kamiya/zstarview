@@ -206,7 +206,6 @@ def _draw_resize_grip_marker(painter: QPainter, rect: QRect) -> None:
     )
     painter.restore()
 
-RESIZE_FEEDBACK_WINDOW_OPACITY = 0.82
 _JPL_DEBUG_ENV = "ZSTARVIEW_DEBUG_JPL_SEARCH"
 _CHROME_DEBUG_ENV = "ZSTARVIEW_DEBUG_WINDOW_CHROME"
 
@@ -348,50 +347,12 @@ class ResizeGripWidget(QWidget):
         self._drag_active = False
         self._drag_start_global_pos: QPoint | None = None
         self._drag_start_size: tuple[int, int] | None = None
-        self._resize_feedback_active = False
-        self._resize_feedback_previous_opacity: float | None = None
         self.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
         self.setCursor(Qt.CursorShape.SizeFDiagCursor)
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
         self.setAutoFillBackground(False)
-
-    def _set_resize_feedback_active(self, active: bool) -> None:
-        window = self.window()
-        if active:
-            if self._resize_feedback_active:
-                return
-            try:
-                current_opacity = float(window.windowOpacity())
-            except Exception:
-                current_opacity = 1.0
-            self._resize_feedback_previous_opacity = current_opacity
-            try:
-                window.setWindowOpacity(
-                    min(current_opacity, RESIZE_FEEDBACK_WINDOW_OPACITY)
-                )
-            except Exception:
-                self._resize_feedback_previous_opacity = None
-            self._resize_feedback_active = True
-            return
-        if not self._resize_feedback_active:
-            return
-        previous_opacity = self._resize_feedback_previous_opacity
-        self._resize_feedback_active = False
-        self._resize_feedback_previous_opacity = None
-        if previous_opacity is None:
-            return
-        try:
-            window.setWindowOpacity(previous_opacity)
-        except Exception:
-            return
-
-    def _reset_resize_drag_state(self) -> None:
-        self._drag_active = False
-        self._drag_start_global_pos = None
-        self._drag_start_size = None
-        self._set_resize_feedback_active(False)
 
     def _start_system_resize(self, event: QMouseEvent) -> bool:
         window_handle = self.windowHandle()
@@ -401,17 +362,11 @@ class ResizeGripWidget(QWidget):
         if not callable(start_system_resize):
             return False
         try:
-            started = bool(
+            return bool(
                 start_system_resize(
                     Qt.Edge.BottomEdge | Qt.Edge.RightEdge,
                 )
             )
-            if started:
-                self._drag_active = True
-                self._drag_start_global_pos = None
-                self._drag_start_size = None
-                self._set_resize_feedback_active(True)
-            return started
         except Exception:
             return False
 
@@ -420,14 +375,12 @@ class ResizeGripWidget(QWidget):
         self._drag_start_global_pos = event.globalPosition().toPoint()
         window = self.window()
         self._drag_start_size = (int(window.width()), int(window.height()))
-        self._set_resize_feedback_active(True)
         event.accept()
 
     def _update_manual_resize(self, event: QMouseEvent) -> bool:
         if not self._drag_active:
             return False
         if not (event.buttons() & Qt.MouseButton.LeftButton):
-            self._reset_resize_drag_state()
             return False
         if self._drag_start_global_pos is None or self._drag_start_size is None:
             return False
@@ -464,7 +417,9 @@ class ResizeGripWidget(QWidget):
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         if event.button() == Qt.MouseButton.LeftButton and self._drag_active:
-            self._reset_resize_drag_state()
+            self._drag_active = False
+            self._drag_start_global_pos = None
+            self._drag_start_size = None
             event.accept()
             return
         super().mouseReleaseEvent(event)
