@@ -14,7 +14,6 @@ from ..render import satellites as render_satellites
 from ..render import stars as render_stars
 from ..render import text as render_text
 from ..render.search_overlay import draw_search_target_overlay
-from ..debug_timing import log_earth_guide_timing
 from ..render.pipeline import (
     RenderSceneData,
     RenderHudState,
@@ -75,58 +74,12 @@ def _resolve_hover_targets(
 
 
 class SkyWindowRenderMixin:
-    _PRESENT_FRAME_KEY_LABELS = (
-        "kind",
-        "base_frame_key",
-        "satellite_opacity",
-        "aircraft_opacity",
-        "satellite_points",
-        "aircraft_points",
-        "mouse_key",
-        "overlay_info_bottom_left",
-        "viewport_interaction_mode",
-        "jump_key",
-        "search_key",
-    )
-
     def _render_cache_stamp(self, value: object) -> object:
         if value is None:
             return None
         if hasattr(value, "cacheKey"):
             return int(value.cacheKey())
         return id(value)
-
-    def _log_frame_key_diff(
-        self,
-        old_key: tuple[object, ...],
-        new_key: tuple[object, ...],
-    ) -> None:
-        if len(old_key) != len(new_key):
-            log_earth_guide_timing(
-                "frame_cache",
-                "present_frame key length changed old=%d new=%d"
-                % (len(old_key), len(new_key)),
-            )
-            return
-        changed: list[str] = []
-        for label, old_value, new_value in zip(
-            self._PRESENT_FRAME_KEY_LABELS,
-            old_key,
-            new_key,
-            strict=True,
-        ):
-            if old_value == new_value:
-                continue
-            changed.append(
-                "%s=%r->%r" % (label, old_value, new_value)
-            )
-            if len(changed) >= 4:
-                break
-        if changed:
-            log_earth_guide_timing(
-                "frame_cache",
-                "present_frame key diff " + "; ".join(changed),
-            )
 
     def _render_frame_cache_key(
         self,
@@ -218,23 +171,10 @@ class SkyWindowRenderMixin:
         render_fn: Callable[[QPainter], None],
         cache_key_attr: str,
         cache_image_attr: str,
-        debug_name: str | None = None,
     ) -> QImage:
         frame_cache_key = getattr(self, cache_key_attr, None)
         frame_cache_image = cast(QImage | None, getattr(self, cache_image_attr, None))
-        cache_label = debug_name or cache_key_attr.lstrip("_")
         if frame_cache_key != frame_key or frame_cache_image is None:
-            if cache_label == "present_frame" and isinstance(frame_cache_key, tuple):
-                self._log_frame_key_diff(frame_cache_key, frame_key)
-            log_earth_guide_timing(
-                "frame_cache",
-                "%s miss key_changed=%s has_image=%s"
-                % (
-                    cache_label,
-                    frame_cache_key != frame_key,
-                    frame_cache_image is not None,
-                ),
-            )
             frame = QImage(
                 self.client_size(),
                 QImage.Format.Format_ARGB32_Premultiplied,
@@ -249,11 +189,6 @@ class SkyWindowRenderMixin:
                 frame_painter.end()
             setattr(self, cache_image_attr, frame)
             setattr(self, cache_key_attr, frame_key)
-            log_earth_guide_timing(
-                "frame_cache",
-                "%s rebuilt size=%sx%s"
-                % (cache_label, frame.width(), frame.height()),
-            )
             return frame
         return cast(QImage, frame_cache_image)
 
@@ -332,7 +267,6 @@ class SkyWindowRenderMixin:
             ),
             cache_key_attr="_frame_cache_key",
             cache_image_attr="_frame_cache_image",
-            debug_name="base_frame",
         )
         cached_base_label_candidates = getattr(self, "_cached_base_label_candidates", [])
         present_frame_key = SkyWindowRenderMixin._present_frame_cache_key(
@@ -360,7 +294,6 @@ class SkyWindowRenderMixin:
             ),
             cache_key_attr="_present_frame_cache_key",
             cache_image_attr="_present_frame_cache_image",
-            debug_name="present_frame",
         )
 
     def _draw_present_frame_layers(
@@ -753,17 +686,6 @@ class SkyWindowRenderMixin:
         scene, style, hud = self._render_inputs(
             celestial_data=celestial_data,
             render_viewer=render_viewer,
-        )
-        log_earth_guide_timing(
-            "paintEvent",
-            "viewport_interaction=%s terrain_profile=%s earth_guide_opacity=%.4f view_center=(%.3f, %.3f)"
-            % (
-                bool(hud.viewport_interaction_mode),
-                "yes" if scene.terrain_horizon_profile else "no",
-                float(style.earth_guide_opacity),
-                float(scene.viewer.view_center[0]),
-                float(scene.viewer.view_center[1]),
-            ),
         )
         present_frame = self._render_present_frame_image(
             base_frame_key=frame_key,
