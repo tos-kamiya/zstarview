@@ -339,7 +339,7 @@ class ShutdownMessageOverlay(QLabel):
 
 
 class ResizeGripWidget(QWidget):
-    """Bottom-right resize affordance with explicit paint and drag handling."""
+    """Resize affordance with explicit paint and drag handling."""
 
     def __init__(self, owner: "SkyWindowCoreMixin", parent: QWidget) -> None:
         super().__init__(parent)
@@ -1055,6 +1055,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             return
         self.resize(self.width() + delta_width, self.height() + delta_height)
 
+    def _restore_default_window_size(self) -> None:
+        """Return the window to the application's default client size."""
+        if self.isFullScreen() or self.isMaximized():
+            self.showNormal()
+        self._resize_client_area(WINDOW_WIDTH, WINDOW_HEIGHT)
+
     def _fit_client_area_to_screen(self) -> None:
         """Resize the client area to the largest aspect-preserving size on screen."""
         current_client_width = max(1, int(self.client_width()))
@@ -1260,6 +1266,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             "Square Client Area",
             triggered=self.square_client_area,
         )
+        restore_default_size_action = self._add_menu_action(
+            self.file_menu,
+            "Default Window Size",
+            triggered=self._restore_default_window_size,
+        )
         fit_to_screen = getattr(self, "_fit_client_area_to_screen", None)
         fit_to_screen_action = self._add_menu_action(
             self.file_menu,
@@ -1304,6 +1315,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if self._frameless_window:
             self.menu.addSeparator()
             self.menu.addAction(square_client_area_action)
+            self.menu.addAction(restore_default_size_action)
             self.menu.addAction(fit_to_screen_action)
             self.menu.addAction(fullscreen_action)
             self.menu.addSeparator()
@@ -1414,11 +1426,13 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def _attach_help_menu_to_frameless_menu(
         self,
         square_client_area_action: QAction,
+        restore_default_size_action: QAction,
         fullscreen_action: QAction,
         exit_action: QAction,
     ) -> None:
         self.menu.addSeparator()
         self.menu.addAction(square_client_area_action)
+        self.menu.addAction(restore_default_size_action)
         self.menu.addAction(fullscreen_action)
         self.menu.addSeparator()
         self.menu.addMenu(self.help_menu)
@@ -1543,16 +1557,15 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.request_client_update()
         self.start_background_cloud_update(reason="resize")
         self._raise_overlay_widgets()
-        if self.size_grip is not None:
-            if _chrome_debug_enabled():
-                _chrome_debug_print(
-                    "client-resize-post: grip=%s visible=%s parent=%s"
-                    % (
-                        _widget_rect_tuple(self.size_grip),
-                        _widget_visible(self.size_grip),
-                        _widget_parent_name(self.size_grip),
-                    )
+        if self.size_grip is not None and _chrome_debug_enabled():
+            _chrome_debug_print(
+                "client-resize-post: grip=%s visible=%s parent=%s"
+                % (
+                    _widget_rect_tuple(self.size_grip),
+                    _widget_visible(self.size_grip),
+                    _widget_parent_name(self.size_grip),
                 )
+            )
 
     def _discard_stale_disc_images(self) -> None:
         discarded = False
