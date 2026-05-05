@@ -21,6 +21,7 @@ from PySide6.QtGui import QImage, QPainter
 from ..paths import (
     CLOUD_HATCH_DEFAULT,
     CLOUD_MISSING_TINT_RGBA,
+    PALETTE_NEVER_RISES_RGB,
     HatchConfig,
 )
 from ..render.earth_guide import draw_earth_guide
@@ -681,6 +682,7 @@ def _apply_ground_reset(
     view_center: Tuple[float, float],
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     ground_reset_rgba: tuple[int, int, int, int] | None = None,
+    observer_lat_deg: float | None = None,
     edge_fov_deg: float = 90.0,
     content_fov_deg: float,
 ) -> QImage:
@@ -712,6 +714,61 @@ def _apply_ground_reset(
     alpha[ground_mask] = 1.0
     out[..., :3][inside] = np.clip(np.round(rgb * 255.0), 0, 255).astype(np.uint8)
     out[..., 3][inside] = np.clip(np.round(alpha * 255.0), 0, 255).astype(np.uint8)
+    return np_rgba_to_qimage(out)
+
+
+def _overlay_never_rises_outline(
+    base_img: QImage,
+    *,
+    geometry: ScreenGeometry,
+    view_center: Tuple[float, float],
+    terrain_profile_altaz: list[tuple[float, float]] | None = None,
+    observer_lat_deg: float | None = None,
+    edge_fov_deg: float = 90.0,
+    content_fov_deg: float,
+) -> QImage:
+    """Draw a thin never-rises outline using the historic accent color."""
+    if observer_lat_deg is None:
+        return base_img
+    out = qimage_to_np_rgba(
+        base_img if base_img.format() == QImage.Format_RGBA8888 else base_img.convertToFormat(QImage.Format_RGBA8888)
+    )
+    alt, az, inside = _inverse_project_disc(
+        out.shape[1],
+        out.shape[0],
+        geometry,
+        view_center,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+    )
+    if alt.size == 0:
+        return np_rgba_to_qimage(out)
+
+    horizon_alt = _interpolate_terrain_horizon_altitude(az, terrain_profile_altaz)
+    ground_mask = alt < horizon_alt
+    never_rises_ground = ground_mask & _never_rises_mask(alt, az, observer_lat_deg)
+    if not np.any(never_rises_ground):
+        return np_rgba_to_qimage(out)
+
+    ground_mask_full = np.zeros((out.shape[0], out.shape[1]), dtype=bool)
+    ground_mask_full[inside] = never_rises_ground
+    padded = np.pad(ground_mask_full, 1, mode="constant", constant_values=False)
+    boundary = ground_mask_full & ~(
+        padded[:-2, 1:-1]
+        & padded[2:, 1:-1]
+        & padded[1:-1, :-2]
+        & padded[1:-1, 2:]
+        & padded[:-2, :-2]
+        & padded[:-2, 2:]
+        & padded[2:, :-2]
+        & padded[2:, 2:]
+    )
+    if not np.any(boundary):
+        return np_rgba_to_qimage(out)
+
+    outline_rgb = np.array(PALETTE_NEVER_RISES_RGB, dtype=np.uint8)
+    out[..., :3][boundary] = outline_rgb[None, :]
+    out[..., 3][boundary] = 255
     return np_rgba_to_qimage(out)
 
 
@@ -971,6 +1028,7 @@ class SkyCompositorCache:
                 view_center=view_center,
                 terrain_profile_altaz=terrain_profile_altaz,
                 ground_reset_rgba=ground_reset_rgba,
+                observer_lat_deg=observer_lat_deg,
                 edge_fov_deg=edge_fov_deg,
                 content_fov_deg=content_fov_deg,
             )
@@ -987,6 +1045,15 @@ class SkyCompositorCache:
                 edge_fov_deg=edge_fov_deg,
                 content_fov_deg=content_fov_deg,
                 fast_mode=fast_mode,
+            )
+            composited = _overlay_never_rises_outline(
+                composited,
+                geometry=geometry,
+                view_center=view_center,
+                terrain_profile_altaz=terrain_profile_altaz,
+                observer_lat_deg=observer_lat_deg,
+                edge_fov_deg=edge_fov_deg,
+                content_fov_deg=content_fov_deg,
             )
             if missing_s is not None:
                 composited = overlay_missing_tint(

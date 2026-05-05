@@ -244,7 +244,7 @@ def test_compositor_ground_tint_opacity_no_longer_changes_output() -> None:
     assert np.array_equal(arr[24, 32, :3], np.array([100, 100, 100], dtype=np.uint8))
 
 
-def test_compositor_observer_latitude_no_longer_adds_never_rises_tint() -> None:
+def test_compositor_observer_latitude_draws_never_rises_outline() -> None:
     sky = np.zeros((64, 64, 4), dtype=np.uint8)
     sky[..., :3] = 100
     sky[..., 3] = 255
@@ -268,4 +268,6 @@ def test_compositor_observer_latitude_no_longer_adds_never_rises_tint() -> None:
     painter.end()
 
     arr = qimage_to_np_rgba(canvas)
+    outline_rgb = np.array([240, 173, 122], dtype=np.uint8)
+    assert np.any(np.all(arr[..., :3] == outline_rgb, axis=2))
     assert np.array_equal(arr[40, 32, :3], np.array([100, 100, 100], dtype=np.uint8))
