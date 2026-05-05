@@ -35,8 +35,6 @@ def test_render_argument_helpers_can_build_parser_without_gui_only_options() -> 
             "110",
             "--earth-guide-opacity",
             "0.12",
-            "--never-rises-opacity",
-            "0.31",
             "--theme",
             "day",
         ]
@@ -46,7 +44,6 @@ def test_render_argument_helpers_can_build_parser_without_gui_only_options() -> 
     assert args.place == "Matsue Station"
     assert args.content_fov_deg == 110.0
     assert args.earth_guide_opacity == 0.12
-    assert args.never_rises_opacity == 0.31
     assert args.theme == "day"
     assert not hasattr(args, "window_geometry")
     assert not hasattr(args, "window_frame")
@@ -179,12 +176,6 @@ def test_parse_args_accepts_earth_guide_opacity_short_option() -> None:
     args = cli_args.parse_args(["-e", "0.4", "Matsue"])
 
     assert args.earth_guide_opacity == 0.4
-
-
-def test_parse_args_defaults_never_rises_opacity() -> None:
-    args = cli_args.parse_args(["Matsue"])
-
-    assert args.never_rises_opacity == 0.2
 
 
 def test_parse_args_accepts_urban_outline_opacity_short_option() -> None:

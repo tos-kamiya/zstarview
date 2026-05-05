@@ -670,7 +670,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
         self.terrain_horizon_opacity = user_options.terrain_horizon_opacity
         self.earth_guide_opacity = user_options.earth_guide_opacity
-        self.never_rises_opacity = user_options.never_rises_opacity
         self.urban_outline_opacity = user_options.urban_outline_opacity
         self.ground_tint_opacity = user_options.ground_tint_opacity
         self._terrain_horizon_opacity_when_enabled = (
