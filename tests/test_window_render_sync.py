@@ -9,8 +9,9 @@ from unittest.mock import Mock
 
 import numpy as np
 import pytest
-from PySide6.QtCore import QPoint, QPointF, QRect, Qt
+from PySide6.QtCore import QPoint, QPointF, QRect, QSize, Qt
 from PySide6.QtGui import QColor, QFont, QImage
+from PySide6.QtGui import QResizeEvent
 
 import zstarview.render.pipeline as pipeline_module
 import zstarview.render.guides as render_guides_module
@@ -1237,6 +1238,58 @@ def test_refresh_projected_persistent_search_target_reprojects_state_vector(monk
     assert dummy.state.persistent_search_target.alt_deg == 12.5
     assert dummy.state.persistent_search_target.az_deg == 220.0
     assert dummy.request_client_update.called
+
+
+def test_handle_client_resize_discards_stale_disc_images() -> None:
+    dummy = _WindowStub()
+    dummy._frameless_frame = None
+    dummy.menu_button = None
+    dummy.size_grip = None
+    dummy._compositor = _DummyCompositor()
+    dummy._begin_viewport_interaction_mode = Mock()
+    dummy.request_sky_data_update = Mock()
+    dummy.request_client_update = Mock()
+    dummy.start_background_cloud_update = Mock()
+    dummy._raise_overlay_widgets = Mock()
+    dummy._discard_stale_disc_images = lambda: window_module.SkyWindowCoreMixin._discard_stale_disc_images(  # type: ignore[attr-defined]
+        dummy
+    )
+    dummy.cloud_controller = None
+    dummy._cloud_controller = None
+    dummy.cloud_state = SimpleNamespace(
+        image=np.zeros((2, 2, 4), dtype=np.uint8),
+        missing_mask=np.ones((2, 2), dtype=np.uint8),
+        cloud_amount_field=SimpleNamespace(),
+        render_key=object(),
+        request_id=1,
+        missing_mask_key=2,
+    )
+    dummy.state = SkyWindowState(
+        render_view_center=(20.0, 30.0),
+        sky_disc_image=QImage(4, 4, QImage.Format.Format_ARGB32_Premultiplied),
+    )
+    dummy.width = lambda: 200
+    dummy.height = lambda: 100
+    dummy.client_width = lambda: 200
+    dummy.client_height = lambda: 100
+
+    event = QResizeEvent(QSize(220, 120), QSize(200, 100))
+
+    SkyWindow._handle_client_resize(dummy, event)
+
+    assert dummy._disc_generation == 1
+    assert dummy.state.sky_disc_image is None
+    assert dummy.cloud_state.image is None
+    assert dummy.cloud_state.missing_mask is None
+    assert dummy.cloud_state.cloud_amount_field is None
+    assert dummy.cloud_state.render_key is None
+    assert dummy.cloud_state.request_id is None
+    assert dummy.cloud_state.missing_mask_key is None
+    assert dummy._compositor.invalidated is True
+    dummy._begin_viewport_interaction_mode.assert_called_once()
+    dummy.request_sky_data_update.assert_called_once()
+    dummy.request_client_update.assert_called_once()
+    dummy.start_background_cloud_update.assert_called_once_with(reason="resize")
 
 
 def test_search_satellite_targets_resolves_known_artificial_satellites(monkeypatch) -> None:
