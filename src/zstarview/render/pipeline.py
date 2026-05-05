@@ -510,6 +510,7 @@ def _draw_sky_cloud_layers(
         ),
         earth_guide_opacity=style.earth_guide_opacity,
         earth_guide_visibility_boost=style.earth_guide_visibility_boost,
+        ground_reset_rgba=style.theme.window_background.inner_rgba,
         content_fov_deg=_content_fov_deg(scene),
         fast_mode=bool(fast_mode),
     )
