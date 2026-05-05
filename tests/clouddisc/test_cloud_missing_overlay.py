@@ -268,6 +268,9 @@ def test_compositor_observer_latitude_draws_never_rises_outline() -> None:
     painter.end()
 
     arr = qimage_to_np_rgba(canvas)
-    outline_rgb = np.array([240, 173, 122], dtype=np.uint8)
-    assert np.any(np.all(arr[..., :3] == outline_rgb, axis=2))
+    outline_rgb = np.array([240, 173, 122], dtype=np.int16)
+    rgb = arr[..., :3].astype(np.int16)
+    outline_mask = np.all(np.abs(rgb - outline_rgb[None, None, :]) <= 3, axis=2)
+    assert np.any(outline_mask)
+    assert np.all(arr[..., 3][outline_mask] == 51)
     assert np.array_equal(arr[40, 32, :3], np.array([100, 100, 100], dtype=np.uint8))

@@ -645,6 +645,15 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         ),
     )
     parser.add_argument(
+        "--never-rises-opacity",
+        type=float,
+        default=0.2,
+        help=(
+            "Opacity of the never-rises outline (0.0 - 1.0, default: 0.2). "
+            "Set to 0.0 to hide the outline while keeping the earth guide itself enabled."
+        ),
+    )
+    parser.add_argument(
         "--visibility-boost",
         type=float,
         default=1.0,
@@ -982,6 +991,15 @@ def add_render_arguments(
         ),
     )
     parser.add_argument(
+        "--never-rises-opacity",
+        type=float,
+        default=0.2,
+        help=(
+            "Opacity of the never-rises outline (0.0 - 1.0, default: 0.2). "
+            "Set to 0.0 to hide the outline while keeping the earth guide itself enabled."
+        ),
+    )
+    parser.add_argument(
         "--visibility-boost",
         type=float,
         default=1.0,
@@ -1215,6 +1233,7 @@ def _validate_dataset_query_compatibility(
             or has_non_default("satellite_opacity")
             or has_non_default("terrain_horizon_opacity")
             or has_non_default("earth_guide_opacity")
+            or has_non_default("never_rises_opacity")
             or has_non_default("urban_outline_opacity")
             or has_non_default("urban_outline_radius_km")
             or has_non_default("urban_outline_min_height_m")
