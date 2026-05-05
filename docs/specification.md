@@ -125,7 +125,7 @@ README より詳細に、何ができるか、どう振る舞うか、どのよ�
 - `--sky-opacity` は、sky color disc の色強度を直接制御する値として扱ってよい。
 - `--sky-disc-style`
   - `grid` または `smooth` を受け付ける。
-  - 既定値は `grid` としてよい。
+  - 既定値は `smooth` とする。
   - `grid` は 10 度刻みの alt/az 区画ごとに 1 色を割り当てる地図風の sky disc とする。
   - `smooth` は従来の連続的な sky disc 表示とする。
 - `--terrain-horizon-opacity`
@@ -529,7 +529,7 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 - `--content-fov-deg` は全レイヤー共通で適用し、特定レイヤーだけが狭い視野のまま残らないこと。
 - 背景グラデーション、sky disc、雲合成、地面ティントも同じ `--content-fov-deg` に追従すること。
 - 横長ウィンドウかつ低仰角のレイアウトでも、sky disc と雲レイヤーは `radius*2` の固定正方形ではなく実ウィンドウ形状に追従して overscan を表現すること。
-- sky disc は `grid` / `smooth` の2種類の表示方式を持ち、既定では `grid` を使ってよい。
+- sky disc は `grid` / `smooth` の2種類の表示方式を持ち、既定では `smooth` を使う。
 - `grid` 表示では、sky disc を 10 度刻みの alt/az 区画ごとに代表色で塗ってよい。
 - `--content-fov-deg` 外側には、表示の打ち切りを急に見せないための短いフェード帯を置いてよい。
 

@@ -514,11 +514,11 @@ def add_sky_and_star_arguments(
     parser.add_argument(
         "--sky-disc-style",
         type=_parse_sky_disc_style,
-        default="grid",
+        default="smooth",
         metavar="{grid,smooth}",
         help=(
             "Sky-disc fill style. Use 'grid' for the map-like 10-degree cell fill "
-            "(default) or 'smooth' for the previous continuous gradient."
+            "or 'smooth' for the previous continuous gradient (default)."
         ),
     )
     parser.add_argument(

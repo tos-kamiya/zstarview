@@ -190,10 +190,10 @@ def test_parse_args_defaults_sky_opacity_to_0_13() -> None:
     assert args.sky_opacity == 0.13
 
 
-def test_parse_args_defaults_sky_disc_style_to_grid() -> None:
+def test_parse_args_defaults_sky_disc_style_to_smooth() -> None:
     args = cli_args.parse_args(["Matsue"])
 
-    assert args.sky_disc_style == "grid"
+    assert args.sky_disc_style == "smooth"
 
 
 def test_parse_args_rejects_multiple_search_options() -> None:

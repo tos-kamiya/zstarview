@@ -44,7 +44,7 @@ class SkyWindowUserOptions:
     """User-facing window options that influence rendering and toggles."""
 
     sky_disc_alpha: float = 0.1
-    sky_disc_style: str = "grid"
+    sky_disc_style: str = "smooth"
     cloud_disc_alpha: float = 0.075
     satellite_opacity: float = 0.7
     aircraft_opacity: float = 0.4
