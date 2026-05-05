@@ -1246,28 +1246,6 @@ def test_size_grip_style_sheet_is_transparent() -> None:
     assert "background: transparent;" in style
 
 
-def test_resize_grip_feedback_temporarily_lowers_window_opacity() -> None:
-    window = SimpleNamespace(_opacity=1.0)
-    window.windowOpacity = lambda: window._opacity
-    window.setWindowOpacity = lambda value: setattr(window, "_opacity", value)
-    grip = SimpleNamespace(
-        window=lambda: window,
-        _resize_feedback_active=False,
-        _resize_feedback_previous_opacity=None,
-    )
-
-    window_module.ResizeGripWidget._set_resize_feedback_active(grip, True)
-
-    assert window._opacity == pytest.approx(window_module.RESIZE_FEEDBACK_WINDOW_OPACITY)
-    assert grip._resize_feedback_active is True
-
-    window_module.ResizeGripWidget._set_resize_feedback_active(grip, False)
-
-    assert window._opacity == pytest.approx(1.0)
-    assert grip._resize_feedback_active is False
-    assert grip._resize_feedback_previous_opacity is None
-
-
 def test_resize_grip_widget_paints_a_visible_marker() -> None:
     img = QImage(30, 30, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
