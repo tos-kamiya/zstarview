@@ -1,6 +1,6 @@
 # zstarview 仕様書
 
-最終更新: 2026-05-04
+最終更新: 2026-05-08
 
 ## 1. この文書の位置づけ
 
@@ -124,11 +124,15 @@ README より詳細に、何ができるか、どう振る舞うか、どのよ�
 - `--sky-opacity`
 - `--sky-opacity` は、sky color disc の色強度を直接制御する値として扱ってよい。
 - sky disc は連続的な表示のみとし、地図風の `grid` 塗り分けは提供しない。
-- `--sky-disc-alt-rings`
-  - `true` または `false` を受け付ける。
-  - 既定値は `false` とする。
-  - `true` の場合、sky disc と背景に対して Alt 30 度ごとの細い明るさのハイライトを重ねてよい。
-  - リングは薄い強調表示として扱い、alpha を抜いたり弱めたりしなくてよい。
+- `--sky-disc-altaz-rings`
+  - `off`、`dimalt`、`altaz` を受け付ける。
+  - 既定値は `dimalt` とする。
+  - `dimalt` の場合、sky disc と背景に対して、控えめな altitude ring のみを重ねてよい。
+  - `altaz` の場合、sky disc と背景に対して、alt/az のフルグリッドを重ねてよい。
+- `--sky-disc-altaz-rings-hover`
+  - `off`、`dimalt`、`altaz` を受け付ける。
+  - 既定値は `altaz` とする。
+  - 値の意味は `--sky-disc-altaz-rings` と同じとする。
 - `--terrain-horizon-opacity`
   - 既定値は `0.003` としてよい。
 - `--earth-guide-opacity`
