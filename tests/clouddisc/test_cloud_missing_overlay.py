@@ -1,9 +1,17 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 from PySide6.QtGui import QImage, QPainter
 
-from zstarview.gui.composite import SkyCompositorCache, mask_cloud_alpha_by_missing, overlay_missing_tint
+import zstarview.gui.composite as render_composite
+from zstarview.gui.composite import (
+    NEVER_RISES_GUIDE_WIDTH_SCALE,
+    SkyCompositorCache,
+    mask_cloud_alpha_by_missing,
+    overlay_missing_tint,
+)
+from zstarview.render.guides import REFERENCE_LINE_FG_WIDTH, REFERENCE_LINE_MID_WIDTH, REFERENCE_LINE_OUTER_WIDTH
 from zstarview.types import ScreenGeometry
 from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 
@@ -303,3 +311,79 @@ def test_compositor_guidelines_toggle_hides_never_rises_outline() -> None:
 
     arr = qimage_to_np_rgba(canvas)
     assert np.array_equal(arr[..., :3], sky[..., :3])
+
+
+def test_never_rises_outline_uses_double_width_scale(monkeypatch) -> None:
+    base = QImage(16, 16, QImage.Format_ARGB32_Premultiplied)
+    base.fill(0)
+    geom = ScreenGeometry(center=(8, 8), radius=8)
+
+    class _DummyColor:
+        def __init__(self, alpha: float) -> None:
+            self._alpha = alpha
+
+        def alphaF(self) -> float:
+            return self._alpha
+
+    class _DummyPen:
+        def __init__(self, width: float, alpha: float) -> None:
+            self._width = width
+            self._color = _DummyColor(alpha)
+
+        def widthF(self) -> float:
+            return self._width
+
+        def color(self) -> _DummyColor:
+            return self._color
+
+    class _DummyPainter:
+        def __init__(self) -> None:
+            self.pen_widths: list[float] = []
+
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setRenderHint(self, *_args, **_kwargs) -> None:  # noqa: N802 - Qt naming
+            pass
+
+        def setPen(self, pen, *_args, **_kwargs) -> None:
+            self.pen_widths.append(float(pen.widthF()))
+
+        def drawPolyline(self, *_args, **_kwargs) -> None:
+            pass
+
+        def end(self) -> None:
+            pass
+
+    class _DummyQPainter:
+        class RenderHint:
+            Antialiasing = object()
+
+        def __new__(cls, *_args, **_kwargs):
+            return dummy_painter
+
+    dummy_painter = _DummyPainter()
+    monkeypatch.setattr(render_composite, "_never_rises_circle_altaz", lambda _lat_deg: [(0.0, 0.0), (0.0, 10.0)])
+    monkeypatch.setattr(render_composite, "split_by_gaps", lambda projected: [projected])
+    monkeypatch.setattr(render_composite, "_clip_polyline_to_radius", lambda fragment, _ratio: [fragment])
+    monkeypatch.setattr(render_composite, "normalized_to_screen_xy", lambda x, y, _geometry: (x, y))
+    monkeypatch.setattr(render_composite, "QPainter", _DummyQPainter)
+
+    render_composite._overlay_never_rises_outline(
+        base,
+        geometry=geom,
+        view_center=(0.0, 180.0),
+        observer_lat_deg=35.0,
+        never_rises_opacity=0.2,
+        content_fov_deg=90.0,
+    )
+
+    assert NEVER_RISES_GUIDE_WIDTH_SCALE == pytest.approx(2.28)
+    assert dummy_painter.pen_widths == [
+        pytest.approx(REFERENCE_LINE_OUTER_WIDTH * NEVER_RISES_GUIDE_WIDTH_SCALE),
+        pytest.approx(REFERENCE_LINE_MID_WIDTH * NEVER_RISES_GUIDE_WIDTH_SCALE),
+        pytest.approx(REFERENCE_LINE_FG_WIDTH * NEVER_RISES_GUIDE_WIDTH_SCALE),
+    ]

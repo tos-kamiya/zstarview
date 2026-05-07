@@ -45,7 +45,7 @@ from ..render.background import (
 from ..types import ScreenGeometry
 from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 
-NEVER_RISES_GUIDE_WIDTH_SCALE = 1.14
+NEVER_RISES_GUIDE_WIDTH_SCALE = 2.28
 ALT_RING_DIMALT_SAMPLE_AZ_STEP_DEG = 30.0
 
 
