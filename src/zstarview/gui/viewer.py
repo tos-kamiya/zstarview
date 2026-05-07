@@ -267,7 +267,8 @@ def main() -> None:
     user_options = prepare_window_user_options(
         sky_disc_alpha=args.sky_opacity,
         sky_disc_style=args.sky_disc_style,
-        sky_disc_alt_rings=args.sky_disc_alt_rings,
+        sky_disc_altaz_rings=args.sky_disc_altaz_rings,
+        sky_disc_altaz_rings_hover=args.sky_disc_altaz_rings_hover,
         cloud_disc_alpha=0.0 if cloud_stripe_count == 0 or cloud_stripe_width == 0.0 else args.cloud_opacity,
         satellite_opacity=args.satellite_opacity,
         aircraft_opacity=args.aircraft_opacity,

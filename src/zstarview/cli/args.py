@@ -171,6 +171,16 @@ def _parse_sky_disc_style(value: str) -> str:
     )
 
 
+def _parse_sky_disc_altaz_rings_mode(value: str) -> str:
+    """Parse the sky-disc alt/az ring visibility mode."""
+    text = (value or "").strip().lower()
+    if text in {"off", "dimalt", "altaz"}:
+        return text
+    raise argparse.ArgumentTypeError(
+        f"Invalid sky disc alt/az rings mode: {value!r}. Use 'off', 'dimalt', or 'altaz'."
+    )
+
+
 def _parse_window_geometry(value: str) -> WindowGeometryArg:
     """Parse window geometry as 'restore' or 'x,y,width,height'."""
     text = (value or "").strip()
@@ -519,13 +529,23 @@ def add_sky_and_star_arguments(
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "--sky-disc-alt-rings",
-        type=_parse_bool,
-        default=False,
-        metavar="true|false",
+        "--sky-disc-altaz-rings",
+        type=_parse_sky_disc_altaz_rings_mode,
+        default="dimalt",
+        metavar="{off,dimalt,altaz}",
         help=(
-            "Draw Alt 30-degree rings over the sky disc and background as a subtle "
-            "brightness highlight."
+            "Draw the always-visible sky-disc alt/az grid overlay. "
+            "Use 'dimalt' for subtle altitude rings or 'altaz' for the full grid."
+        ),
+    )
+    parser.add_argument(
+        "--sky-disc-altaz-rings-hover",
+        type=_parse_sky_disc_altaz_rings_mode,
+        default="altaz",
+        metavar="{off,dimalt,altaz}",
+        help=(
+            "Draw the hover-time sky-disc alt/az grid overlay. "
+            "Use 'dimalt' for subtle altitude rings or 'altaz' for the full grid."
         ),
     )
     parser.add_argument(
@@ -641,15 +661,6 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         ),
     )
     parser.add_argument(
-        "--visibility-boost",
-        type=float,
-        default=1.0,
-        help=(
-            "Tiered opacity boost for hard-to-see layers (0.0 - 1.0 base, default: 1.0). "
-            "Values above 1.0 increase supplemental layers more than small figure layers."
-        ),
-    )
-    parser.add_argument(
         "-u",
         "--urban-outline-opacity",
         type=float,
@@ -758,6 +769,15 @@ def add_general_arguments(
         help=(
             "Observation info overlay mode at startup: auto (hover-avoid), "
             "top (fixed top), bottom (fixed bottom, default), or off (hidden)."
+        ),
+    )
+    parser.add_argument(
+        "--visibility-boost",
+        type=float,
+        default=1.0,
+        help=(
+            "Tiered opacity boost for hard-to-see layers (0.0 - 1.0 base, default: 1.0). "
+            "Values above 1.0 increase supplemental layers more than small figure layers."
         ),
     )
     parser.add_argument(
@@ -989,15 +1009,6 @@ def add_render_arguments(
         ),
     )
     parser.add_argument(
-        "--visibility-boost",
-        type=float,
-        default=1.0,
-        help=(
-            "Tiered opacity boost for hard-to-see layers (0.0 - 1.0 base, default: 1.0). "
-            "Values above 1.0 increase supplemental layers more than small figure layers."
-        ),
-    )
-    parser.add_argument(
         "--urban-outline-opacity",
         type=float,
         default=0.2,
@@ -1217,7 +1228,8 @@ def _validate_dataset_query_compatibility(
             or has_non_default("observer_height_m")
             or has_non_default("sky_opacity")
             or has_non_default("sky_disc_style")
-            or has_non_default("sky_disc_alt_rings")
+            or has_non_default("sky_disc_altaz_rings")
+            or has_non_default("sky_disc_altaz_rings_hover")
             or has_non_default("cloud_opacity")
             or has_non_default("aircraft_opacity")
             or has_non_default("satellite_opacity")

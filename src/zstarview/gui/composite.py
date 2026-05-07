@@ -586,7 +586,7 @@ def apply_altitude_ring_highlights(
     *,
     theme: ThemeStyle | None = None,
     edge_fov_deg: float = 90.0,
-    altaz_rings_mode: str = "off",
+    altaz_rings_mode: str = "dimalt",
 ) -> QImage:
     """Add a subtle Alt-ring highlight inside a sky-disc image."""
     if sky_img.isNull():
@@ -1075,7 +1075,7 @@ class SkyCompositorCache:
         edge_fov_deg: float = 90.0,
         content_fov_deg: float,
         fast_mode: bool = False,
-        sky_disc_altaz_rings: str = "off",
+        sky_disc_altaz_rings: str = "dimalt",
     ) -> None:
         """Composite the sky/cloud layers (with cache) and draw into painter."""
         viewport = painter.viewport()

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QPointF, QRectF
+from PySide6.QtCore import QPointF, QRect, QRectF
 from PySide6.QtGui import QColor, QFont, QImage, QPainter
 from PySide6.QtWidgets import QApplication
 
@@ -259,6 +259,7 @@ def test_hover_overlay_passes_label_candidates_to_asterisms(monkeypatch) -> None
         render_pipeline._draw_hover_overlay_layer(
             painter=painter,
             geometry=ScreenGeometry(center=(32, 32), radius=32),
+            viewport_rect=QRect(0, 0, 64, 64),
             scene=scene,
             style=style,
             mouse_pos=None,

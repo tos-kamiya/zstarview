@@ -357,7 +357,8 @@ def _build_window_inputs_from_args(
     user_options = prepare_window_user_options(
         sky_disc_alpha=getattr(args, "sky_opacity", SKY_OPACITY_DEFAULT),
         sky_disc_style=getattr(args, "sky_disc_style", "smooth"),
-        sky_disc_alt_rings=bool(getattr(args, "sky_disc_alt_rings", False)),
+        sky_disc_altaz_rings=getattr(args, "sky_disc_altaz_rings", "dimalt"),
+        sky_disc_altaz_rings_hover=getattr(args, "sky_disc_altaz_rings_hover", "altaz"),
         cloud_disc_alpha=(
             0.0
             if (not overlay_availability.cloud)
@@ -906,7 +907,8 @@ def _build_render_style(
         asterism_visibility_boost=float(user_options.asterism_visibility_boost),
         earth_guide_visibility_boost=float(user_options.earth_guide_visibility_boost),
         vmag_limit=float(user_options.vmag_limit),
-        sky_disc_alt_rings=bool(user_options.sky_disc_alt_rings),
+        sky_disc_altaz_rings=str(user_options.sky_disc_altaz_rings),
+        sky_disc_altaz_rings_hover=str(user_options.sky_disc_altaz_rings_hover),
         cloud_disc_alpha=float(user_options.cloud_disc_alpha),
         satellite_opacity=float(user_options.satellite_opacity),
         terrain_horizon_opacity=float(user_options.terrain_horizon_opacity),

@@ -89,6 +89,7 @@ def test_main_help_text_is_ascii_only_for_windows_consoles() -> None:
 def test_main_help_text_uses_readme_like_groups() -> None:
     help_text = cli_args.build_main_argument_parser().format_help()
     general_match = re.search(r"\nGeneral:\n(?P<section>.*)$", help_text, re.S)
+    overlays_match = re.search(r"\nOverlays:\n(?P<section>.*?)(?:\n\n[A-Z][^\n]*:\n|$)", help_text, re.S)
 
     assert "Observing Location and Time" in help_text
     assert "Search Objects at startup" in help_text
@@ -97,12 +98,16 @@ def test_main_help_text_uses_readme_like_groups() -> None:
     assert "General" in help_text
     assert general_match is not None
     assert "--observation-info" in general_match.group("section")
+    assert "--visibility-boost" in general_match.group("section")
+    assert overlays_match is not None
+    assert "--visibility-boost" not in overlays_match.group("section")
     assert re.search(r"^\s+--list\s", help_text, re.M) is None
 
 
 def test_export_image_help_text_uses_shared_groups() -> None:
     help_text = cli_args.build_export_image_argument_parser().format_help()
     general_match = re.search(r"\nGeneral:\n(?P<section>.*)$", help_text, re.S)
+    overlays_match = re.search(r"\nOverlays:\n(?P<section>.*?)(?:\n\n[A-Z][^\n]*:\n|$)", help_text, re.S)
 
     assert "Observing Location and Time" in help_text
     assert "Search Objects at startup" in help_text
@@ -111,6 +116,9 @@ def test_export_image_help_text_uses_shared_groups() -> None:
     assert "General" in help_text
     assert general_match is not None
     assert "--observation-info" in general_match.group("section")
+    assert "--visibility-boost" in general_match.group("section")
+    assert overlays_match is not None
+    assert "--visibility-boost" not in overlays_match.group("section")
     assert "--include-direction-grid" in help_text
     assert "--window-frame" not in help_text
     assert re.search(r"^\s+--list\s", help_text, re.M) is not None
@@ -208,16 +216,26 @@ def test_parse_args_defaults_sky_disc_style_to_smooth() -> None:
     assert args.sky_disc_style == "smooth"
 
 
-def test_parse_args_defaults_sky_disc_alt_rings_to_false() -> None:
+def test_parse_args_defaults_sky_disc_altaz_rings() -> None:
     args = cli_args.parse_args(["Matsue"])
 
-    assert args.sky_disc_alt_rings is False
+    assert args.sky_disc_altaz_rings == "dimalt"
+    assert args.sky_disc_altaz_rings_hover == "altaz"
 
 
-def test_parse_args_accepts_sky_disc_alt_rings_toggle() -> None:
-    args = cli_args.parse_args(["--sky-disc-alt-rings", "true", "Matsue"])
+def test_parse_args_accepts_sky_disc_altaz_ring_modes() -> None:
+    args = cli_args.parse_args(
+        [
+            "--sky-disc-altaz-rings",
+            "dimalt",
+            "--sky-disc-altaz-rings-hover",
+            "off",
+            "Matsue",
+        ]
+    )
 
-    assert args.sky_disc_alt_rings is True
+    assert args.sky_disc_altaz_rings == "dimalt"
+    assert args.sky_disc_altaz_rings_hover == "off"
 
 
 def test_parse_args_rejects_sky_disc_grid_style() -> None:
