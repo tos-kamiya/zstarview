@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-05-04
+最終更新: 2026-05-08
 
 ## 1. この文書の位置づけ
 
@@ -276,8 +276,10 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 連続的な sky disc を生成する
   - 実描画は render surface 寸法、view center、sun alt/az、FOV、opacity をキーにキャッシュしてよい
 - `src/zstarview/gui/composite.py`
-  - sky-disc 合成の直前または直後に Alt 30 度リングの明るさハイライトを適用する
-  - リングは色付きの太線ではなく、sky-disc と背景に薄い強調を重ねる
+  - sky-disc 合成の直前または直後に Alt/Az オーバーレイの always モードを適用する
+  - always モードの既定は `dimalt`、hover モードの既定は `altaz`
+  - `dimalt` は控えめな altitude ring、`altaz` は guide レイヤー相当のフルグリッドとして扱う
+  - hover モードは HUD レイヤーで同じモード語彙を使い、mouse hover 時に追加表示してよい
 - `src/zstarview/render/text.py`
   - preset ごとの文字色、アウトライン色、アウトライン幅の解決
 - `src/zstarview/render/asterisms.py`
@@ -411,6 +413,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - ここでいう `overlay` は、地点名、Lat/Lon、`Ground ...; Building ...` の 1 行要約、時刻、Alt/Az などの static observation overlay を指す。`Vmag limit` は GUI メニューの disabled 項目で示す。
 - static overlay は hover 系 HUD と同じ更新タイミングに揃えるため、ベース描画ではなく HUD 描画側で重ねる。
 - `guide` は方位ラベルと天頂マーカーを含む独立レイヤーであり、空色・雲合成の上、通常の hover/HUD オーバーレイより手前に置く。
+- `guide` レイヤーには天頂マーカーの「×」が含まれる。
 - 幾何学的な地平線、天の赤道、黄道、never-rises の円弧も `show_guidelines` に従う guide 系表示として扱う。
 - 幾何学的な地平線、天の赤道、黄道の線分は、固定刻みの点列をそのまま描くのではなく、画面空間の誤差に応じて再帰分割してから `drawPolyline()` へ渡してよい。
 - 再帰分割はスクリーン座標系で誤差を評価し、ウィンドウが大きいほど細かく、縮小時は粗くなるようにしてよい。
