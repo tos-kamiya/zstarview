@@ -69,7 +69,7 @@ class _WindowStub:
         self.__dict__.update(kwargs)
         values = self.__dict__
         self._frameless_window = values.get("_frameless_window", False)
-        self.observation_info_mode = values.get("observation_info_mode", "auto")
+        self.observation_info_mode = values.get("observation_info_mode", "bottom")
         self.observation_info_pinned = values.get("observation_info_pinned", False)
         self.show_observation_info = values.get("show_observation_info", True)
         self.show_dso = values.get("show_dso", False)

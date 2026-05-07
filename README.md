@@ -223,7 +223,6 @@ These options are mutually exclusive, do not accept the `location` argument, and
 | `-i`, `--sky-update-interval SECONDS`       | Interval for updating stars/sky-color disc in seconds.                      | `60`   |
 | `--show-dso-initial true\|false`            | Whether DSO overlays are shown at startup.                                  | auto (`show` when catalog is available) |
 | `--show-asterisms-initial true\|false`      | Whether asterism overlays are shown at startup.                             | `show` |
-| `--observation-info auto\|top\|bottom\|off` | Startup mode for the observation-info block.                                 | `auto` |
 
 #### Overlays
 
@@ -251,6 +250,7 @@ These options are mutually exclusive, do not accept the `location` argument, and
 | `-h`, `--help`                              | Show this help message and exit.                                            |         |
 | `--window-geometry restore\|X,Y,W,H` | Set initial window geometry. Use `restore` to load the last saved position/size, or `X,Y,W,H` to specify explicit integers. Note: on Wayland, window position restore is not available (size restore works). |         |
 | `--window-frame {frameless,window}` | Choose window decorations. `frameless` keeps the current borderless presentation; `window` uses the platform title bar and frame. | `frameless` |
+| `--observation-info auto\|top\|bottom\|off` | Startup mode for the observation-info block.                                 | `bottom` |
 | `--include-direction-grid`                 | `zstarview-export-image` only. Include the direction grid in exported images, with 30-degree major lines and 10-degree intersection crosses. |         |
 | `-t`, `--theme {night,day,white,black,transparent}` | Theme preset for background and star contrast.                              | `night` |
 | `--visibility-boost MULTIPLIER`             | Visibility boost for faint support layers. Values above `1.0` raise opacity for layers such as the terrain horizon, earth guide, urban outline, sky disc, cloud disc, satellites, aircraft, and ground tint. | `1.0` |
@@ -525,7 +525,7 @@ From the hamburger menu (`☰`), you can use:
 * **DSO**: Toggle deep-sky object overlays on/off.
 * **Asterisms**: Toggle asterism overlays on/off (when enabled, dim overlays stay visible; hovering a member star brightens the matching asterism and shows its label).
 * **Guidelines**: Toggle the geometric horizon, celestial equator, ecliptic, never-rises circle, direction labels, and zenith marker on/off.
-* **Observation Info**: Toggle the observation-info block on/off. When shown, it stays at the top-left by default and moves to the bottom-left when the cursor enters the upper third of the window, keeping its previous corner while the cursor stays in the middle third.
+* **Observation Info**: Toggle the observation-info block on/off. When shown, it stays at the bottom-left by default; `auto` keeps the older hover-avoid placement behavior.
 * **Sky Color Disc**: Switch between the full sky-color gradient and the flat dark-disc fallback.
 * **Clouds**: Toggle real-time cloud overlays on/off.
 * **Aircraft**: Toggle the OpenSky-based aircraft overlay on/off. If disabled from the CLI with `-a 0` / `--aircraft-opacity 0`, the menu item cannot re-enable it for that run.
