@@ -913,6 +913,14 @@ def _draw_hover_overlay_layer(
         )
     if direction_hover is not None:
         if style.sky_disc_altaz_rings_hover == "dimalt":
+            dimalt_sample_color = render_background.sample_background_disc_edge_color(
+                QRectF(viewport_rect),
+                geometry,
+                theme=style.theme,
+                edge_fov_deg=float(scene.viewer.edge_fov_deg),
+                content_fov_deg=_content_fov_deg(scene),
+                opaque=not style.show_custom_window_frame,
+            )
             render_background.draw_altitude_ring_overlay(
                 painter,
                 QRectF(viewport_rect),
@@ -921,6 +929,9 @@ def _draw_hover_overlay_layer(
                 theme=style.theme,
                 edge_fov_deg=float(scene.viewer.edge_fov_deg),
                 content_fov_deg=_content_fov_deg(scene),
+                ring_color=render_background.dimalt_ring_pen_color_from_color(
+                    dimalt_sample_color
+                ),
             )
         elif style.sky_disc_altaz_rings_hover == "altaz":
             render_guides.draw_direction_grid_overlay(

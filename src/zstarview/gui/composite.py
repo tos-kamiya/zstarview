@@ -15,7 +15,7 @@ import math
 from typing import Optional, Tuple, cast
 
 import numpy as np
-from PySide6.QtCore import QPointF, QRect, Qt
+from PySide6.QtCore import QPointF, QRect, QRectF, Qt
 from PySide6.QtGui import QColor, QImage, QPainter, QPen, QPolygonF
 
 from ..paths import (
@@ -37,12 +37,76 @@ from ..render.guides import (
     split_by_gaps,
 )
 from ..render.geometry import normalized_to_screen_xy
-from ..render.background import ALT_RING_HIGHLIGHT_ALPHA, ALT_RING_PEN_WIDTH
+from ..render.background import (
+    dimalt_ring_brightness_score_from_rgba,
+    dimalt_ring_pen_color_from_color,
+    draw_altitude_ring_overlay,
+)
 from ..types import ScreenGeometry
 from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 
 NEVER_RISES_GUIDE_WIDTH_SCALE = 1.14
-ALT_RING_SAMPLE_STEP_DEG = 1.0
+ALT_RING_DIMALT_SAMPLE_AZ_STEP_DEG = 30.0
+
+
+def _dimalt_ring_color_for_sky_image(
+    sky_img: QImage,
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    *,
+    alt_deg: float,
+    edge_fov_deg: float,
+) -> QColor | None:
+    """Estimate a dimalt stroke color for one altitude ring."""
+    if sky_img.isNull() or geometry.radius < 1:
+        return None
+
+    width = sky_img.width()
+    height = sky_img.height()
+    if width <= 0 or height <= 0:
+        return None
+
+    cx = float(geometry.center[0])
+    cy = float(geometry.center[1])
+    radius = float(geometry.radius)
+    samples: list[tuple[float, QColor]] = []
+    az_deg = 0.0
+    while az_deg <= 360.0 + 1.0e-6:
+        nx, ny = altaz_to_normalized_xy(
+            float(alt_deg),
+            float(az_deg),
+            view_center,
+            edge_fov_deg=edge_fov_deg,
+        )
+        x = int(round(cx + (nx * radius)))
+        y = int(round(cy + (ny * radius)))
+        if 0 <= x < width and 0 <= y < height:
+            color = sky_img.pixelColor(x, y)
+            if color.alpha() > 0:
+                samples.append(
+                    (
+                        dimalt_ring_brightness_score_from_rgba(
+                            color.red(),
+                            color.green(),
+                            color.blue(),
+                            color.alpha(),
+                        ),
+                        color,
+                    )
+                )
+        az_deg += ALT_RING_DIMALT_SAMPLE_AZ_STEP_DEG
+
+    if not samples:
+        return None
+
+    samples.sort(key=lambda item: item[0])
+    mid = len(samples) // 2
+    if len(samples) % 2 == 1:
+        _, color = samples[mid]
+    else:
+        _, color = samples[mid - 1]
+    return dimalt_ring_pen_color_from_color(color)
+
 
 @dataclass(frozen=True)
 class CloudAmountField:
@@ -522,6 +586,7 @@ def apply_altitude_ring_highlights(
     *,
     theme: ThemeStyle | None = None,
     edge_fov_deg: float = 90.0,
+    altaz_rings_mode: str = "off",
 ) -> QImage:
     """Add a subtle Alt-ring highlight inside a sky-disc image."""
     if sky_img.isNull():
@@ -531,31 +596,29 @@ def apply_altitude_ring_highlights(
     radius = float(geometry.radius)
     if radius < 1.0:
         return out
+    if theme is None:
+        return out
 
-    cx = float(geometry.center[0])
-    cy = float(geometry.center[1])
     painter = QPainter(out)
     try:
-        painter.setRenderHint(QPainter.Antialiasing, True)
-        painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
-        ring_pen = QPen(QColor(255, 255, 255, ALT_RING_HIGHLIGHT_ALPHA), ALT_RING_PEN_WIDTH)
-        ring_pen.setCosmetic(True)
-        ring_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        ring_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-        painter.setPen(ring_pen)
-        for alt_deg in range(30, 90, 30):
-            points = QPolygonF()
-            az_deg = 0.0
-            while az_deg <= 360.0 + 1.0e-6:
-                nx, ny = altaz_to_normalized_xy(
-                    float(alt_deg),
-                    float(az_deg),
+        if altaz_rings_mode == "dimalt":
+            def dimalt_ring_color_for_alt_deg(alt_deg: float) -> QColor | None:
+                return _dimalt_ring_color_for_sky_image(
+                    out,
+                    geometry,
                     view_center,
+                    alt_deg=alt_deg,
                     edge_fov_deg=edge_fov_deg,
                 )
-                points.append(QPointF(cx + (nx * radius), cy + (ny * radius)))
-                az_deg += ALT_RING_SAMPLE_STEP_DEG
-            painter.drawPolyline(points)
+            draw_altitude_ring_overlay(
+                painter,
+                QRectF(0.0, 0.0, out.width(), out.height()),
+                geometry,
+                view_center=view_center,
+                theme=theme,
+                edge_fov_deg=edge_fov_deg,
+                ring_color_for_alt_deg=dimalt_ring_color_for_alt_deg,
+            )
     finally:
         painter.end()
     return out
@@ -1012,7 +1075,7 @@ class SkyCompositorCache:
         edge_fov_deg: float = 90.0,
         content_fov_deg: float,
         fast_mode: bool = False,
-        sky_disc_alt_rings: bool = False,
+        sky_disc_altaz_rings: str = "off",
     ) -> None:
         """Composite the sky/cloud layers (with cache) and draw into painter."""
         viewport = painter.viewport()
@@ -1084,7 +1147,7 @@ class SkyCompositorCache:
             self._cloud_target_stripes,
             self._cloud_stripe_width_factor,
             self._cloud_stripe_mode,
-            bool(sky_disc_alt_rings),
+            str(sky_disc_altaz_rings),
             None
             if theme is None
             else (
@@ -1163,13 +1226,14 @@ class SkyCompositorCache:
                     )
                 if missing_s is not None:
                     cloud_s = _mask_cloud_alpha_by_missing_rgba(cloud_s, missing_s)
-            if sky_disc_alt_rings and sky_s is not None:
+            if sky_disc_altaz_rings == "dimalt" and sky_s is not None:
                 sky_s = apply_altitude_ring_highlights(
                     sky_s,
                     geometry,
                     view_center,
                     theme=theme,
                     edge_fov_deg=edge_fov_deg,
+                    altaz_rings_mode="dimalt",
                 )
                 if cloud_s is None or cloud_alpha <= 0.0:
                     composited = sky_s
