@@ -801,7 +801,7 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 - 検索ダイアログで `Keep marker` を有効にした対象は、jump highlight とは別の持続マーカーとして描画してよい。
 - 検索ダイアログで `Keep marker` を有効にした対象は、hover とは別の持続マーカーと持続ラベルとして描画してよい。
 - 観測情報 overlay は、星名や月 hover 表示より前面に描いてよい。
-- オーバーレイの表示モードは起動時に CLI 引数 `--observation-info=(auto|top|bottom|off)` で指定できる。意味は次の通り: `auto`（既存のマウス回避動作、既定）、`top`（ウィンドウ上部に固定表示）、`bottom`（ウィンドウ下部に固定表示）、`off`（非表示）。
+- オーバーレイの表示モードは起動時に CLI 引数 `--observation-info=(auto|top|bottom|off)` で指定できる。意味は次の通り: `auto`（既存のマウス回避動作）、`top`（ウィンドウ上部に固定表示）、`bottom`（ウィンドウ下部に固定表示、既定）、`off`（非表示）。
 - headless な `zstarview-export-image` ではこのオプションは無視する（`--help` に注記すること）。
 - メニュー動作: CLI が `off` の場合はメニュー項目を無効化（グレーアウト）する。CLI が `auto`/`top`/`bottom` の場合はメニューで On/Off を切替可能とし、On にすると CLI 指定モード（auto/top/bottom）に復帰、Off にすると非表示にする。メニューでの切替はセッションのみであり、設定ファイルへは保存しない。
 - オーバーレイが `top` または `bottom` に固定されている場合、マウスホバーによる位置移動は行わない。

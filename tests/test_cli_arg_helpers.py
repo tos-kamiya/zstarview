@@ -88,23 +88,29 @@ def test_main_help_text_is_ascii_only_for_windows_consoles() -> None:
 
 def test_main_help_text_uses_readme_like_groups() -> None:
     help_text = cli_args.build_main_argument_parser().format_help()
+    general_match = re.search(r"\nGeneral:\n(?P<section>.*)$", help_text, re.S)
 
     assert "Observing Location and Time" in help_text
     assert "Search Objects at startup" in help_text
     assert "Sky and Stars" in help_text
     assert "Overlays" in help_text
     assert "General" in help_text
+    assert general_match is not None
+    assert "--observation-info" in general_match.group("section")
     assert re.search(r"^\s+--list\s", help_text, re.M) is None
 
 
 def test_export_image_help_text_uses_shared_groups() -> None:
     help_text = cli_args.build_export_image_argument_parser().format_help()
+    general_match = re.search(r"\nGeneral:\n(?P<section>.*)$", help_text, re.S)
 
     assert "Observing Location and Time" in help_text
     assert "Search Objects at startup" in help_text
     assert "Overlays" in help_text
     assert "Export" in help_text
     assert "General" in help_text
+    assert general_match is not None
+    assert "--observation-info" in general_match.group("section")
     assert "--include-direction-grid" in help_text
     assert "--window-frame" not in help_text
     assert re.search(r"^\s+--list\s", help_text, re.M) is not None
@@ -139,6 +145,12 @@ def test_parse_args_accepts_clear_long_lived_cache() -> None:
     args = cli_args.parse_args(["--clear-long-lived-cache", "Matsue"])
 
     assert args.clear_long_lived_cache is True
+
+
+def test_parse_args_defaults_observation_info_to_bottom() -> None:
+    args = cli_args.parse_args(["Matsue"])
+
+    assert args.observation_info == "bottom"
 
 
 def test_parse_args_accepts_window_frame_mode() -> None:

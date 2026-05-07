@@ -542,17 +542,6 @@ def add_sky_and_star_arguments(
         metavar="true|false",
         help="Whether to show asterism overlays at startup (true/false).",
     )
-    parser.add_argument(
-        "--observation-info",
-        type=str,
-        default="auto",
-        choices=("auto", "top", "bottom", "off"),
-        metavar="auto|top|bottom|off",
-        help=(
-            "Observation info overlay mode at startup: auto (hover-avoid, default), "
-            "top (fixed top), bottom (fixed bottom), or off (hidden)."
-        ),
-    )
     if include_sky_update_interval:
         parser.add_argument(
             "-i",
@@ -759,6 +748,17 @@ def add_general_arguments(
         default="night",
         metavar="{night,day,white,black,transparent}",
         help="Theme preset for background and star contrast (default: night).",
+    )
+    parser.add_argument(
+        "--observation-info",
+        type=str,
+        default="bottom",
+        choices=("auto", "top", "bottom", "off"),
+        metavar="auto|top|bottom|off",
+        help=(
+            "Observation info overlay mode at startup: auto (hover-avoid), "
+            "top (fixed top), bottom (fixed bottom, default), or off (hidden)."
+        ),
     )
     parser.add_argument(
         "--clear-long-lived-cache",
@@ -1093,12 +1093,12 @@ def add_render_arguments(
         parser.add_argument(
             "--observation-info",
             type=str,
-            default="auto",
+            default="bottom",
             choices=("auto", "top", "bottom", "off"),
             metavar="auto|top|bottom|off",
             help=(
-                "Observation info overlay mode at startup: auto (hover-avoid, default), "
-                "top (fixed top), bottom (fixed bottom), or off (hidden)."
+                "Observation info overlay mode at startup: auto (hover-avoid), "
+                "top (fixed top), bottom (fixed bottom, default), or off (hidden)."
             ),
         )
 
