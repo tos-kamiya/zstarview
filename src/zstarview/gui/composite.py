@@ -945,7 +945,6 @@ def _overlay_never_rises_outline(
         fg_pen.setCosmetic(True)
         fg_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         fg_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-        fg_pen.setDashPattern([12, 6])
 
         for fragment in split_by_gaps(projected):
             clipped_frags = _clip_polyline_to_radius(

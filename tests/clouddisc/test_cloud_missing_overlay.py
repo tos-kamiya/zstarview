@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QImage, QPainter
 
 import zstarview.gui.composite as render_composite
@@ -339,6 +340,7 @@ def test_never_rises_outline_uses_double_width_scale(monkeypatch) -> None:
     class _DummyPainter:
         def __init__(self) -> None:
             self.pen_widths: list[float] = []
+            self.pen_styles: list[object] = []
 
         def save(self) -> None:
             pass
@@ -351,6 +353,7 @@ def test_never_rises_outline_uses_double_width_scale(monkeypatch) -> None:
 
         def setPen(self, pen, *_args, **_kwargs) -> None:
             self.pen_widths.append(float(pen.widthF()))
+            self.pen_styles.append(pen.style())
 
         def drawPolyline(self, *_args, **_kwargs) -> None:
             pass
@@ -386,4 +389,9 @@ def test_never_rises_outline_uses_double_width_scale(monkeypatch) -> None:
         pytest.approx(REFERENCE_LINE_OUTER_WIDTH * NEVER_RISES_GUIDE_WIDTH_SCALE),
         pytest.approx(REFERENCE_LINE_MID_WIDTH * NEVER_RISES_GUIDE_WIDTH_SCALE),
         pytest.approx(REFERENCE_LINE_FG_WIDTH * NEVER_RISES_GUIDE_WIDTH_SCALE),
+    ]
+    assert dummy_painter.pen_styles == [
+        Qt.PenStyle.SolidLine,
+        Qt.PenStyle.SolidLine,
+        Qt.PenStyle.SolidLine,
     ]
