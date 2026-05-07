@@ -31,8 +31,12 @@ REFERENCE_LINE_FG_WIDTH = 0.55
 REFERENCE_LINE_OUTER_ALPHA = 18
 REFERENCE_LINE_MID_ALPHA = 30
 _DIRECTION_MARKER_HIT_RADIUS_PX = 9.0
-GRID_LINE_WIDTH = 0.255
+GRID_LINE_WIDTH = 0.51
 GRID_LINE_ALPHA = 190
+GRID_MAJOR_LINE_WIDTH_SCALE = 1.0
+GRID_MINOR_CROSS_HALF_LEN_SCALE = 0.006
+GRID_MINOR_CROSS_WIDTH = 0.51
+GRID_MINOR_CROSS_SAMPLE_DEG = 1.5
 GRID_ALTITUDE_SAMPLES = 73
 GRID_ALTITUDE_BANDS = (0.0,)
 GRID_FINE_ALTITUDE_BANDS = tuple(
@@ -46,6 +50,15 @@ GRID_FINE_AZIMUTHS = tuple(
     for value in range(0, 360, 10)
 )
 GRID_PARALLEL_AZ_SAMPLES = 145
+
+
+def _is_major_grid_step(value: float) -> bool:
+    return math.isclose(abs(float(value)) % 30.0, 0.0, abs_tol=1.0e-6)
+
+
+def _direction_grid_minor_cross_half_len(surface_size: tuple[int, int]) -> float:
+    width, height = surface_size
+    return max(1.5, float(min(max(1, int(width)), max(1, int(height)))) * GRID_MINOR_CROSS_HALF_LEN_SCALE)
 
 
 @dataclass(frozen=True, slots=True)
@@ -657,9 +670,96 @@ def _draw_direction_polyline(
         painter.drawPolyline(poly)
 
 
+def _draw_direction_cross_marker(
+    painter: QPainter,
+    alt_deg: float,
+    az_deg: float,
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    *,
+    edge_fov_deg: float,
+    width: float,
+    alpha: int,
+    half_len: float,
+) -> None:
+    if not is_in_fov(float(alt_deg), float(az_deg), view_center, fov_deg=FIELD_OF_VIEW_DEG):
+        return
+
+    delta = float(GRID_MINOR_CROSS_SAMPLE_DEG)
+    alt_lo = max(-90.0, float(alt_deg) - delta)
+    alt_hi = min(90.0, float(alt_deg) + delta)
+    az_lo = (float(az_deg) - delta) % 360.0
+    az_hi = (float(az_deg) + delta) % 360.0
+
+    alt_lo_nx, alt_lo_ny = _project_altaz_to_normalized_xy(
+        alt_lo,
+        float(az_deg),
+        view_center,
+        edge_fov_deg=edge_fov_deg,
+    )
+    alt_hi_nx, alt_hi_ny = _project_altaz_to_normalized_xy(
+        alt_hi,
+        float(az_deg),
+        view_center,
+        edge_fov_deg=edge_fov_deg,
+    )
+    az_lo_nx, az_lo_ny = _project_altaz_to_normalized_xy(
+        float(alt_deg),
+        az_lo,
+        view_center,
+        edge_fov_deg=edge_fov_deg,
+    )
+    az_hi_nx, az_hi_ny = _project_altaz_to_normalized_xy(
+        float(alt_deg),
+        az_hi,
+        view_center,
+        edge_fov_deg=edge_fov_deg,
+    )
+
+    alt_vec_x = alt_hi_nx - alt_lo_nx
+    alt_vec_y = alt_hi_ny - alt_lo_ny
+    az_vec_x = az_hi_nx - az_lo_nx
+    az_vec_y = az_hi_ny - az_lo_ny
+    alt_norm = math.hypot(alt_vec_x, alt_vec_y)
+    az_norm = math.hypot(az_vec_x, az_vec_y)
+    if alt_norm <= 1.0e-6 or az_norm <= 1.0e-6:
+        return
+
+    alt_unit_x = alt_vec_x / alt_norm
+    alt_unit_y = alt_vec_y / alt_norm
+    az_unit_x = az_vec_x / az_norm
+    az_unit_y = az_vec_y / az_norm
+
+    color = QColor(*HORIZON_LINE_COLOR)
+    color.setAlpha(alpha)
+    pen = QPen(color, width)
+    pen.setCosmetic(True)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+    painter.setPen(pen)
+    cx, cy = normalized_to_screen_xy(
+        *altaz_to_normalized_xy(
+            float(alt_deg),
+            float(az_deg),
+            view_center,
+            edge_fov_deg=edge_fov_deg,
+        ),
+        geometry,
+    )
+    painter.drawLine(
+        QPointF(cx - (alt_unit_x * half_len), cy - (alt_unit_y * half_len)),
+        QPointF(cx + (alt_unit_x * half_len), cy + (alt_unit_y * half_len)),
+    )
+    painter.drawLine(
+        QPointF(cx - (az_unit_x * half_len), cy - (az_unit_y * half_len)),
+        QPointF(cx + (az_unit_x * half_len), cy + (az_unit_y * half_len)),
+    )
+
+
 def draw_direction_hover_guide(
     painter: QPainter,
     geometry: ScreenGeometry,
+    surface_size: tuple[int, int],
     view_center: tuple[float, float],
     mouse_pos: QPoint | None,
     *,
@@ -679,6 +779,7 @@ def draw_direction_hover_guide(
     _draw_direction_grid(
         painter,
         geometry,
+        surface_size,
         view_center,
         edge_fov_deg=edge_fov_deg,
         content_fov_deg=content_fov_deg,
@@ -688,6 +789,7 @@ def draw_direction_hover_guide(
 def draw_direction_grid_overlay(
     painter: QPainter,
     geometry: ScreenGeometry,
+    surface_size: tuple[int, int],
     view_center: tuple[float, float],
     *,
     edge_fov_deg: float = FIELD_OF_VIEW_DEG,
@@ -696,6 +798,7 @@ def draw_direction_grid_overlay(
     _draw_direction_grid(
         painter,
         geometry,
+        surface_size,
         view_center,
         edge_fov_deg=edge_fov_deg,
         content_fov_deg=content_fov_deg,
@@ -705,6 +808,7 @@ def draw_direction_grid_overlay(
 def _draw_direction_grid(
     painter: QPainter,
     geometry: ScreenGeometry,
+    surface_size: tuple[int, int],
     view_center: tuple[float, float],
     *,
     edge_fov_deg: float,
@@ -717,7 +821,20 @@ def _draw_direction_grid(
             0.0, 360.0, GRID_PARALLEL_AZ_SAMPLES, endpoint=False
         )
 
-        for alt in GRID_PARALLEL_ALTITUDES:
+        major_parallel_alts = tuple(
+            alt for alt in GRID_PARALLEL_ALTITUDES if _is_major_grid_step(alt)
+        )
+        minor_parallel_alts = tuple(
+            alt for alt in GRID_PARALLEL_ALTITUDES if not _is_major_grid_step(alt)
+        )
+        major_azimuths = tuple(
+            az for az in GRID_FINE_AZIMUTHS if _is_major_grid_step(az)
+        )
+        minor_azimuths = tuple(
+            az for az in GRID_FINE_AZIMUTHS if not _is_major_grid_step(az)
+        )
+
+        for alt in major_parallel_alts:
             parallel_points: list[tuple[float, float]] = []
             for az in parallel_az_samples:
                 az_norm = float(az) % 360.0
@@ -735,11 +852,12 @@ def _draw_direction_grid(
                 painter,
                 parallel_points,
                 geometry,
-                width=GRID_LINE_WIDTH,
+                width=GRID_LINE_WIDTH
+                * (GRID_MAJOR_LINE_WIDTH_SCALE if _is_major_grid_step(alt) else 1.0),
                 alpha=GRID_LINE_ALPHA,
             )
 
-        for az in GRID_FINE_AZIMUTHS:
+        for az in major_azimuths:
             meridian_points = []
             for alt in meridian_alt_samples:
                 if not is_in_fov(
@@ -758,8 +876,31 @@ def _draw_direction_grid(
                 painter,
                 meridian_points,
                 geometry,
-                width=GRID_LINE_WIDTH,
+                width=GRID_LINE_WIDTH
+                * (GRID_MAJOR_LINE_WIDTH_SCALE if _is_major_grid_step(az) else 1.0),
                 alpha=GRID_LINE_ALPHA,
             )
+
+        for alt in minor_parallel_alts:
+            for az in minor_azimuths:
+                if not is_in_fov(float(alt), float(az), view_center, fov_deg=content_fov_deg):
+                    continue
+                nx, ny = _project_altaz_to_normalized_xy(
+                    float(alt),
+                    float(az),
+                    view_center,
+                    edge_fov_deg=edge_fov_deg,
+                )
+                _draw_direction_cross_marker(
+                    painter,
+                    float(alt),
+                    float(az),
+                    geometry,
+                    view_center,
+                    edge_fov_deg=edge_fov_deg,
+                    width=GRID_MINOR_CROSS_WIDTH,
+                    alpha=GRID_LINE_ALPHA,
+                    half_len=_direction_grid_minor_cross_half_len(surface_size),
+                )
     finally:
         painter.restore()

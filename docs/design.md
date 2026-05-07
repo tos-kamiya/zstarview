@@ -230,6 +230,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `guide` はベース描画に含めてよい。
 - `--include-direction-grid` が指定された場合、export-image 専用の静的方向グリッドを guide の上に重ねてよい。
 - この方向グリッドは GUI の hover guidance とは別実装で、単発の書き出し画像にだけ適用してよい。
+- 30 度刻みの主線は通常の線で描き、10 度刻みの交点は小さな十字で示してよい。
 - export 画像では static overlay info を画像に焼き込まず、代わりに stderr へ compact summary を出してよい。
   - summary には、地点名がある場合は名前行と `Lat: ..., Lon: ... | Ground: ..., Building: ...` の 1 行要約、時刻、Alt/Az を含めてよい。
 - export 画像では GUI 向けの外周背景グラデーションも描かず、`content_fov_deg` の外側は透明のままにする。

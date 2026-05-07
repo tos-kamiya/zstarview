@@ -835,6 +835,7 @@ def _render_image(
             render_guides.draw_direction_grid_overlay(
                 painter,
                 geometry,
+                (width, height),
                 scene.viewer.view_center,
                 edge_fov_deg=float(scene.viewer.edge_fov_deg),
                 content_fov_deg=float(scene.viewer.content_fov_deg),

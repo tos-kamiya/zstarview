@@ -310,6 +310,7 @@ def render_hud_overlay_into_painter(
     _draw_hover_overlay_layer(
         painter,
         geometry=geometry,
+        viewport_rect=viewport_rect,
         scene=scene,
         style=style,
         mouse_pos=hud.mouse_pos,
@@ -844,6 +845,7 @@ def _draw_hover_overlay_layer(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
+    viewport_rect: QRect,
     scene: RenderSceneData,
     style: RenderStyle,
     mouse_pos: QPoint | None = None,
@@ -892,6 +894,7 @@ def _draw_hover_overlay_layer(
         render_guides.draw_direction_hover_guide(
             painter,
             geometry,
+            (int(viewport_rect.width()), int(viewport_rect.height())),
             scene.viewer.view_center,
             mouse_pos,
             edge_fov_deg=float(scene.viewer.edge_fov_deg),
