@@ -4,7 +4,12 @@ from PySide6.QtGui import QImage, QPainter
 
 from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.paths import PALETTE_NEVER_RISES_RGB
-from zstarview.render.background import draw_radial_background, draw_window_border
+from zstarview.astro import altaz_to_normalized_xy
+from zstarview.gui.composite import SkyCompositorCache
+from zstarview.render.background import (
+    draw_radial_background,
+    draw_window_border,
+)
 from zstarview.render.geometry import get_screen_geometry
 from zstarview.render.sky_disc import (
     NEVER_RISES_TINT_RGB,
@@ -13,7 +18,7 @@ from zstarview.render.sky_disc import (
     sky_color_samples,
 )
 from zstarview.types import ScreenGeometry
-from zstarview.render.qt_image import qimage_to_np_rgba
+from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 
 
 def test_sky_color_samples_get_brighter_as_alpha_increases() -> None:
@@ -260,6 +265,48 @@ def test_uniform_sky_disc_content_fov_fills_corner_overscan_area() -> None:
     assert int(overscan_arr[20, 20, 3]) == 255
 
 
+def test_altitude_rings_add_sky_disc_highlight_before_compositing() -> None:
+    geom = ScreenGeometry(center=(80, 80), radius=80)
+    sky = np.zeros((160, 160, 4), dtype=np.uint8)
+    sky[..., :3] = 90
+    sky[..., 3] = 255
+
+    compositor = SkyCompositorCache(ground_tint_opacity=0.0)
+    canvas = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
+    canvas.fill(0)
+    painter = QPainter(canvas)
+    try:
+        compositor.draw(
+            painter,
+            geom,
+            np_rgba_to_qimage(sky),
+            None,
+            cloud_alpha=0.0,
+            view_center=(90.0, 180.0),
+            theme=THEME_STYLES_BY_PRESET["white"],
+            edge_fov_deg=90.0,
+            content_fov_deg=110.0,
+            sky_disc_alt_rings=True,
+        )
+    finally:
+        painter.end()
+
+    arr = qimage_to_np_rgba(canvas)
+    nx, ny = altaz_to_normalized_xy(
+        30.0,
+        180.0,
+        (90.0, 180.0),
+        edge_fov_deg=90.0,
+    )
+    x = int(round(geom.center[0] + (nx * geom.radius)))
+    y = int(round(geom.center[1] + (ny * geom.radius)))
+    y0 = max(0, y - 1)
+    y1 = min(arr.shape[0], y + 2)
+    x0 = max(0, x - 1)
+    x1 = min(arr.shape[1], x + 2)
+    assert float(arr[y0:y1, x0:x1, :3].mean()) > 90.0
+
+
 def test_never_rises_tint_uses_first_palette_swatch() -> None:
     expected = np.array(PALETTE_NEVER_RISES_RGB, dtype=np.float32) / 255.0
     assert np.allclose(NEVER_RISES_TINT_RGB, expected)
@@ -309,6 +356,53 @@ def test_radial_background_fades_between_content_fov_and_window_edge() -> None:
     assert int(arr[13, 80, 3]) > 0
     # Toward the window corner, the fade should become more transparent.
     assert int(arr[10, 10, 3]) < int(arr[30, 30, 3])
+
+
+def test_radial_background_alt_rings_add_background_highlight() -> None:
+    geom = ScreenGeometry(center=(80, 80), radius=60)
+    rect = QRectF(0.0, 0.0, 160.0, 160.0)
+
+    base_img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
+    base_img.fill(0)
+    base_painter = QPainter(base_img)
+    draw_radial_background(
+        base_painter,
+        rect,
+        geom,
+        theme=THEME_STYLES_BY_PRESET["night"],
+        view_center=(90.0, 180.0),
+    )
+    base_painter.end()
+
+    ring_img = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
+    ring_img.fill(0)
+    ring_painter = QPainter(ring_img)
+    draw_radial_background(
+        ring_painter,
+        rect,
+        geom,
+        theme=THEME_STYLES_BY_PRESET["night"],
+        view_center=(90.0, 180.0),
+        alt_rings=True,
+    )
+    ring_painter.end()
+
+    base_arr = qimage_to_np_rgba(base_img)
+    ring_arr = qimage_to_np_rgba(ring_img)
+    nx, ny = altaz_to_normalized_xy(
+        30.0,
+        180.0,
+        (90.0, 180.0),
+        edge_fov_deg=90.0,
+    )
+    x = int(round(geom.center[0] + (nx * geom.radius)))
+    y = int(round(geom.center[1] + (ny * geom.radius)))
+    y0 = max(0, y - 1)
+    y1 = min(ring_arr.shape[0], y + 2)
+    x0 = max(0, x - 1)
+    x1 = min(ring_arr.shape[1], x + 2)
+    assert float(ring_arr[y0:y1, x0:x1, :3].mean()) > float(base_arr[y0:y1, x0:x1, :3].mean())
+    assert int(ring_arr[y0:y1, x0:x1, 3].max()) >= int(base_arr[y0:y1, x0:x1, 3].max())
 
 
 def test_radial_background_opaque_mode_keeps_full_alpha_at_edges() -> None:

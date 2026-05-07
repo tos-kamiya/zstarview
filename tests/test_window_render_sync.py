@@ -9,7 +9,7 @@ from unittest.mock import Mock
 
 import numpy as np
 import pytest
-from PySide6.QtCore import QPoint, QPointF, QRect, QSize, Qt
+from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, QSize, Qt
 from PySide6.QtGui import QColor, QFont, QImage
 from PySide6.QtGui import QResizeEvent
 
@@ -252,6 +252,7 @@ def _make_style(**overrides) -> pipeline_module.RenderStyle:
         "asterism_visibility_boost": 1.0,
         "earth_guide_visibility_boost": 1.0,
         "vmag_limit": 6.0,
+        "sky_disc_alt_rings": False,
         "cloud_disc_alpha": 0.0,
         "satellite_opacity": 0.0,
         "terrain_horizon_opacity": 0.25,
@@ -2661,6 +2662,7 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         asterism_visibility_boost=1.0,
         earth_guide_visibility_boost=1.0,
         vmag_limit=6.0,
+        sky_disc_alt_rings=False,
         cloud_disc_alpha=0.0,
         satellite_opacity=0.0,
         terrain_horizon_opacity=0.0,
@@ -3952,6 +3954,73 @@ def test_draw_terrain_horizon_line_uses_edge_fov_for_projection() -> None:
     points_120 = _render(120.0)
 
     assert points_120[0][1] < points_90[0][1]
+
+
+def test_draw_terrain_horizon_line_uses_background_edge_color(monkeypatch) -> None:
+    monkeypatch.setattr(
+        render_terrain_module.render_background,
+        "sample_background_disc_edge_color",
+        lambda *_args, **_kwargs: QColor(12, 34, 56, 78),
+    )
+    monkeypatch.setattr(
+        render_terrain_module,
+        "is_in_fov",
+        lambda *_args, **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        render_terrain_module,
+        "altaz_to_normalized_xy",
+        lambda alt, az, _view_center, **_kwargs: (float(az), float(alt)),
+    )
+    monkeypatch.setattr(
+        render_terrain_module,
+        "normalized_to_screen_xy",
+        lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+
+    class _Painter:
+        def __init__(self) -> None:
+            self.pen_colors: list[tuple[int, int, int, int]] = []
+
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setPen(self, pen) -> None:
+            color = QColor(pen.color())
+            self.pen_colors.append(
+                (color.red(), color.green(), color.blue(), color.alpha())
+            )
+
+        def drawLine(self, *_args) -> None:
+            pass
+
+        def drawPolyline(self, *_args) -> None:
+            pass
+
+    painter = _Painter()
+    render_terrain_module.draw_terrain_horizon_line(
+        painter,
+        geometry=SimpleNamespace(center=(0, 0), radius=1),
+        terrain_profile_altaz=[(0.0, 0.0), (0.0, 0.1)],
+        terrain_profile_distances_m=None,
+        view_center=(45.0, 180.0),
+        opacity=0.38,
+        line_width_scale=1.0,
+        fast_mode=True,
+        viewport_rect=QRectF(0.0, 0.0, 100.0, 100.0),
+        theme=THEME_STYLES_BY_PRESET["night"],
+        is_in_fov_func=lambda *_args, **_kwargs: True,
+        altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
+            float(az),
+            float(alt),
+        ),
+        normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+
+    assert painter.pen_colors == [(12, 34, 56, 78)]
 
 
 def test_draw_terrain_horizon_line_rotates_profile_away_from_north_seam() -> None:

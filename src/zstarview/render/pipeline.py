@@ -101,6 +101,7 @@ class RenderStyle:
     asterism_visibility_boost: float
     earth_guide_visibility_boost: float
     vmag_limit: float
+    sky_disc_alt_rings: bool
     cloud_disc_alpha: float
     satellite_opacity: float
     terrain_horizon_opacity: float
@@ -408,6 +409,8 @@ def _draw_viewport_interaction_layers(
         opacity=style.terrain_horizon_opacity,
         line_width_scale=line_width_scale,
         fast_mode=True,
+        viewport_rect=viewport_rect,
+        theme=style.theme,
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=_content_fov_deg(scene),
     )
@@ -439,6 +442,8 @@ def _draw_background_layer(
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=_content_fov_deg(scene),
         opaque=not style.show_custom_window_frame,
+        alt_rings=bool(style.sky_disc_alt_rings),
+        view_center=scene.viewer.view_center,
     )
     if style.show_custom_window_frame:
         render_background.draw_window_border(
@@ -465,14 +470,6 @@ def _draw_guide_layer(
         scene.viewer.view_center,
         style.text_font,
         None,
-        theme=style.theme,
-        edge_fov_deg=float(scene.viewer.edge_fov_deg),
-        content_fov_deg=content_fov_deg,
-    )
-    render_guides.draw_zenith_marker(
-        painter,
-        geometry,
-        scene.viewer.view_center,
         theme=style.theme,
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=content_fov_deg,
@@ -512,8 +509,10 @@ def _draw_sky_cloud_layers(
         earth_guide_opacity=style.earth_guide_opacity,
         earth_guide_visibility_boost=style.earth_guide_visibility_boost,
         ground_reset_rgba=style.theme.window_background.inner_rgba,
+        theme=style.theme,
         content_fov_deg=_content_fov_deg(scene),
         fast_mode=bool(fast_mode),
+        sky_disc_alt_rings=bool(style.sky_disc_alt_rings),
     )
 
 

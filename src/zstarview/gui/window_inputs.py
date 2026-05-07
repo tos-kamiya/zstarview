@@ -45,6 +45,7 @@ class SkyWindowUserOptions:
 
     sky_disc_alpha: float = 0.1
     sky_disc_style: str = "smooth"
+    sky_disc_alt_rings: bool = False
     cloud_disc_alpha: float = 0.075
     satellite_opacity: float = 0.7
     aircraft_opacity: float = 0.4
@@ -169,6 +170,7 @@ def prepare_window_user_options(
     *,
     sky_disc_alpha: float,
     sky_disc_style: str,
+    sky_disc_alt_rings: bool,
     cloud_disc_alpha: float,
     satellite_opacity: float,
     aircraft_opacity: float,
@@ -200,6 +202,7 @@ def prepare_window_user_options(
     return SkyWindowUserOptions(
         sky_disc_alpha=_apply_visibility_boost(sky_disc_alpha, visibility_boost, 1.0),
         sky_disc_style=str(sky_disc_style).strip().lower(),
+        sky_disc_alt_rings=bool(sky_disc_alt_rings),
         cloud_disc_alpha=_apply_visibility_boost(cloud_disc_alpha, visibility_boost, 1.0),
         satellite_opacity=_apply_visibility_boost(satellite_opacity, visibility_boost, 1.0),
         aircraft_opacity=_apply_visibility_boost(aircraft_opacity, visibility_boost, 1.0),

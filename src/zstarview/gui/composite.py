@@ -23,6 +23,7 @@ from ..paths import (
     CLOUD_MISSING_TINT_RGBA,
     PALETTE_NEVER_RISES_RGB,
     HatchConfig,
+    ThemeStyle,
 )
 from ..astro import altaz_to_normalized_xy
 from ..render.earth_guide import draw_earth_guide, earth_guide_line_alpha
@@ -36,10 +37,12 @@ from ..render.guides import (
     split_by_gaps,
 )
 from ..render.geometry import normalized_to_screen_xy
+from ..render.background import ALT_RING_HIGHLIGHT_ALPHA, ALT_RING_PEN_WIDTH
 from ..types import ScreenGeometry
 from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 
 NEVER_RISES_GUIDE_WIDTH_SCALE = 1.14
+ALT_RING_SAMPLE_STEP_DEG = 1.0
 
 @dataclass(frozen=True)
 class CloudAmountField:
@@ -512,6 +515,52 @@ def compose_cloud_over_sky(
     return np_rgba_to_qimage(out)
 
 
+def apply_altitude_ring_highlights(
+    sky_img: QImage,
+    geometry: ScreenGeometry,
+    view_center: Tuple[float, float],
+    *,
+    theme: ThemeStyle | None = None,
+    edge_fov_deg: float = 90.0,
+) -> QImage:
+    """Add a subtle Alt-ring highlight inside a sky-disc image."""
+    if sky_img.isNull():
+        return sky_img
+
+    out = sky_img.copy()
+    radius = float(geometry.radius)
+    if radius < 1.0:
+        return out
+
+    cx = float(geometry.center[0])
+    cy = float(geometry.center[1])
+    painter = QPainter(out)
+    try:
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
+        ring_pen = QPen(QColor(255, 255, 255, ALT_RING_HIGHLIGHT_ALPHA), ALT_RING_PEN_WIDTH)
+        ring_pen.setCosmetic(True)
+        ring_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        ring_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(ring_pen)
+        for alt_deg in range(30, 90, 30):
+            points = QPolygonF()
+            az_deg = 0.0
+            while az_deg <= 360.0 + 1.0e-6:
+                nx, ny = altaz_to_normalized_xy(
+                    float(alt_deg),
+                    float(az_deg),
+                    view_center,
+                    edge_fov_deg=edge_fov_deg,
+                )
+                points.append(QPointF(cx + (nx * radius), cy + (ny * radius)))
+                az_deg += ALT_RING_SAMPLE_STEP_DEG
+            painter.drawPolyline(points)
+    finally:
+        painter.end()
+    return out
+
+
 def overlay_missing_tint(
     base_img: QImage,
     missing_mask_alpha: np.ndarray,
@@ -959,9 +1008,11 @@ class SkyCompositorCache:
         earth_guide_visibility_boost: float = 1.0,
         never_rises_opacity: float = 0.2,
         ground_reset_rgba: tuple[int, int, int, int] | None = None,
+        theme: ThemeStyle | None = None,
         edge_fov_deg: float = 90.0,
         content_fov_deg: float,
         fast_mode: bool = False,
+        sky_disc_alt_rings: bool = False,
     ) -> None:
         """Composite the sky/cloud layers (with cache) and draw into painter."""
         viewport = painter.viewport()
@@ -1033,6 +1084,17 @@ class SkyCompositorCache:
             self._cloud_target_stripes,
             self._cloud_stripe_width_factor,
             self._cloud_stripe_mode,
+            bool(sky_disc_alt_rings),
+            None
+            if theme is None
+            else (
+                tuple(int(c) for c in theme.window_background.base_rgb),
+                tuple(int(c) for c in theme.window_background.delta_rgb),
+                int(theme.window_background.outer_alpha),
+                int(theme.window_background.edge_alpha),
+                bool(theme.window_background.flat_background),
+                bool(theme.window_background.draw_outer_border),
+            ),
         )
 
         if self._composite_key != comp_key or self._composited_img is None:
@@ -1101,6 +1163,27 @@ class SkyCompositorCache:
                     )
                 if missing_s is not None:
                     cloud_s = _mask_cloud_alpha_by_missing_rgba(cloud_s, missing_s)
+            if sky_disc_alt_rings and sky_s is not None:
+                sky_s = apply_altitude_ring_highlights(
+                    sky_s,
+                    geometry,
+                    view_center,
+                    theme=theme,
+                    edge_fov_deg=edge_fov_deg,
+                )
+                if cloud_s is None or cloud_alpha <= 0.0:
+                    composited = sky_s
+                else:
+                    composited = compose_cloud_over_sky(
+                        sky_img=sky_s,
+                        cloud_img_rgba=cloud_s,
+                        dest_rect=QRect(0, 0, w, h),
+                        geometry=geometry,
+                        cloud_opacity=cloud_alpha,
+                        gray_mix=self._gray_mix,
+                        edge_fov_deg=edge_fov_deg,
+                        content_fov_deg=content_fov_deg,
+                    )
             if cloud_s is None or cloud_alpha <= 0.0:
                 composited = sky_s
             else:

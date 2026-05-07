@@ -2,7 +2,7 @@ import math
 from zoneinfo import ZoneInfo
 
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QColor, QPainter, QPen, QRadialGradient
+from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen, QPolygonF, QRadialGradient
 
 from ..paths import (
     BACKGROUND_FIELD_OF_VIEW_DEG1,
@@ -11,11 +11,14 @@ from ..paths import (
     GUI_BUTTON_SIZE,
     ThemeStyle,
 )
+from ..astro import altaz_to_normalized_xy
 from ..utils.location_display import build_location_info_lines
 from ..types import CelestialData, ScreenGeometry, ViewerData
 
 
 FRAMELESS_WINDOW_BORDER_WIDTH = 24.0
+ALT_RING_HIGHLIGHT_ALPHA = 12
+ALT_RING_PEN_WIDTH = 2.0
 
 
 def format_overlay_info_lines(
@@ -70,6 +73,8 @@ def draw_radial_background(
     edge_fov_deg: float = 90.0,
     content_fov_deg: float = BACKGROUND_FIELD_OF_VIEW_DEG2,
     opaque: bool = False,
+    alt_rings: bool = False,
+    view_center: tuple[float, float] = (0.0, 0.0),
 ) -> None:
     """Draw a radial sky gradient background."""
     assert geometry.radius >= 10
@@ -130,7 +135,109 @@ def draw_radial_background(
     painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(g)
     painter.drawRect(rect)
+    if alt_rings:
+        _apply_background_altitude_ring_highlights(
+            painter,
+            rect,
+            geometry,
+            view_center=view_center,
+            theme=theme,
+            edge_fov_deg=edge_fov_deg,
+            content_fov_deg=content_fov_deg,
+        )
     painter.restore()
+
+
+def sample_background_disc_edge_color(
+    rect: QRectF,
+    geometry: ScreenGeometry,
+    *,
+    theme: ThemeStyle,
+    edge_fov_deg: float = 90.0,
+    content_fov_deg: float = BACKGROUND_FIELD_OF_VIEW_DEG2,
+    opaque: bool = False,
+) -> QColor:
+    """Return the background color used nearest the sky-disc boundary."""
+    bg = theme.window_background
+    if opaque:
+        bg_alpha = 255
+    else:
+        bg_alpha = None
+
+    if bg.flat_background:
+        fill_color = QColor(*bg.inner_rgba)
+        if bg_alpha is not None:
+            fill_color.setAlpha(bg_alpha)
+        return fill_color
+
+    fov_outer = max(float(BACKGROUND_FIELD_OF_VIEW_DEG1), float(content_fov_deg))
+    r_content = float(geometry.radius * (fov_outer / max(1.0e-6, float(edge_fov_deg))))
+    cx = float(geometry.center[0])
+    cy = float(geometry.center[1])
+    corners = (
+        (float(rect.left()), float(rect.top())),
+        (float(rect.right()), float(rect.top())),
+        (float(rect.left()), float(rect.bottom())),
+        (float(rect.right()), float(rect.bottom())),
+    )
+    r_window = max(math.hypot(x - cx, y - cy) for x, y in corners)
+    r_max = float(max(r_content + 1.0, r_window))
+    t = max(0.0, min(1.0, r_content / max(1.0, r_max)))
+    rr = int(bg.base_rgb[0] - bg.delta_rgb[0] * t)
+    gg = int(bg.base_rgb[1] - bg.delta_rgb[1] * t)
+    bb = int(bg.base_rgb[2] - bg.delta_rgb[2] * t)
+    aa = int(bg.outer_alpha * 0.7 + bg.edge_alpha * 0.3)
+    if bg_alpha is not None:
+        aa = bg_alpha
+    return QColor(rr, gg, bb, aa)
+
+
+def _apply_background_altitude_ring_highlights(
+    painter: QPainter,
+    rect: QRectF,
+    geometry: ScreenGeometry,
+    *,
+    view_center: tuple[float, float],
+    theme: ThemeStyle,
+    edge_fov_deg: float,
+    content_fov_deg: float,
+) -> None:
+    """Overlay subtle Alt-ring highlights clipped to the sky disc."""
+    if geometry.radius < 1:
+        return
+
+    cx = float(geometry.center[0])
+    cy = float(geometry.center[1])
+    radius = float(geometry.radius)
+    disc_fov = max(float(BACKGROUND_FIELD_OF_VIEW_DEG1), float(content_fov_deg))
+    disc_radius = radius * (disc_fov / max(1.0e-6, float(edge_fov_deg)))
+    clip_path = QPainterPath()
+    clip_path.addEllipse(QPointF(cx, cy), float(disc_radius), float(disc_radius))
+
+    painter.save()
+    try:
+        painter.setClipPath(clip_path)
+        painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
+        ring_pen = QPen(QColor(255, 255, 255, ALT_RING_HIGHLIGHT_ALPHA), ALT_RING_PEN_WIDTH)
+        ring_pen.setCosmetic(True)
+        ring_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        ring_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(ring_pen)
+        for alt_deg in range(30, 90, 30):
+            points = QPolygonF()
+            az_deg = 0.0
+            while az_deg <= 360.0 + 1.0e-6:
+                nx, ny = altaz_to_normalized_xy(
+                    float(alt_deg),
+                    float(az_deg),
+                    view_center,
+                    edge_fov_deg=edge_fov_deg,
+                )
+                points.append(QPointF(cx + (nx * radius), cy + (ny * radius)))
+                az_deg += 1.0
+            painter.drawPolyline(points)
+    finally:
+        painter.restore()
 
 
 def draw_window_border(
