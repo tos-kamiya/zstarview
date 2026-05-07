@@ -821,7 +821,7 @@ def add_export_image_arguments(parser: argparse.ArgumentParser) -> None:
     export_group.add_argument(
         "--include-direction-grid",
         action="store_true",
-        help="Include the direction grid in exported images.",
+        help="Include the direction grid in exported images, with 30-degree major lines and 10-degree intersection crosses.",
     )
     export_group.add_argument(
         "--print-cache-dir",
