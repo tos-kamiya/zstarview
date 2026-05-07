@@ -1,4 +1,5 @@
 import math
+from typing import Callable
 from zoneinfo import ZoneInfo
 
 from PySide6.QtCore import QPointF, QRectF, Qt
@@ -19,6 +20,41 @@ from ..types import CelestialData, ScreenGeometry, ViewerData
 FRAMELESS_WINDOW_BORDER_WIDTH = 24.0
 ALT_RING_HIGHLIGHT_ALPHA = 12
 ALT_RING_PEN_WIDTH = 2.0
+ALT_RING_DIMALT_BRIGHTNESS_THRESHOLD = 64.0
+ALT_RING_DIMALT_DARKEN_FACTOR = 0.87
+ALT_RING_DIMALT_LIGHTEN_MIX = 0.05
+
+
+def dimalt_ring_brightness_score_from_rgba(
+    red: int,
+    green: int,
+    blue: int,
+    alpha: int,
+) -> float:
+    """Return an 8-bit brightness score weighted by alpha."""
+    luma = ((77 * int(red)) + (150 * int(green)) + (29 * int(blue))) >> 8
+    return float(luma) * float(int(alpha)) / 255.0
+
+
+def dimalt_ring_pen_color_from_color(color: QColor) -> QColor:
+    """Return a dimalt stroke color derived from a sampled QColor."""
+    score = dimalt_ring_brightness_score_from_rgba(
+        color.red(),
+        color.green(),
+        color.blue(),
+        color.alpha(),
+    )
+    if score > ALT_RING_DIMALT_BRIGHTNESS_THRESHOLD:
+        factor = max(0.0, min(1.0, ALT_RING_DIMALT_DARKEN_FACTOR))
+        red = int(round(float(color.red()) * factor))
+        green = int(round(float(color.green()) * factor))
+        blue = int(round(float(color.blue()) * factor))
+    else:
+        mix = max(0.0, min(1.0, ALT_RING_DIMALT_LIGHTEN_MIX))
+        red = int(round(float(color.red()) + (255.0 - float(color.red())) * mix))
+        green = int(round(float(color.green()) + (255.0 - float(color.green())) * mix))
+        blue = int(round(float(color.blue()) + (255.0 - float(color.blue())) * mix))
+    return QColor(red, green, blue, color.alpha())
 
 
 def format_overlay_info_lines(
@@ -73,7 +109,7 @@ def draw_radial_background(
     edge_fov_deg: float = 90.0,
     content_fov_deg: float = BACKGROUND_FIELD_OF_VIEW_DEG2,
     opaque: bool = False,
-    alt_rings: bool = False,
+    altaz_rings_mode: str = "off",
     view_center: tuple[float, float] = (0.0, 0.0),
 ) -> None:
     """Draw a radial sky gradient background."""
@@ -135,8 +171,16 @@ def draw_radial_background(
     painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(g)
     painter.drawRect(rect)
-    if alt_rings:
-        _apply_background_altitude_ring_highlights(
+    if altaz_rings_mode == "dimalt":
+        background_sample_color = sample_background_disc_edge_color(
+            rect,
+            geometry,
+            theme=theme,
+            edge_fov_deg=edge_fov_deg,
+            content_fov_deg=content_fov_deg,
+            opaque=opaque,
+        )
+        draw_altitude_ring_overlay(
             painter,
             rect,
             geometry,
@@ -144,8 +188,35 @@ def draw_radial_background(
             theme=theme,
             edge_fov_deg=edge_fov_deg,
             content_fov_deg=content_fov_deg,
+            ring_color=dimalt_ring_pen_color_from_color(background_sample_color),
         )
     painter.restore()
+
+
+def draw_altitude_ring_overlay(
+    painter: QPainter,
+    rect: QRectF,
+    geometry: ScreenGeometry,
+    *,
+    view_center: tuple[float, float],
+    theme: ThemeStyle,
+    edge_fov_deg: float = 90.0,
+    content_fov_deg: float = BACKGROUND_FIELD_OF_VIEW_DEG2,
+    ring_color: QColor | None = None,
+    ring_color_for_alt_deg: Callable[[float], QColor | None] | None = None,
+) -> None:
+    """Overlay subtle altitude rings clipped to the sky disc."""
+    _apply_background_altitude_ring_highlights(
+        painter,
+        rect,
+        geometry,
+        view_center=view_center,
+        theme=theme,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+        ring_color=ring_color,
+        ring_color_for_alt_deg=ring_color_for_alt_deg,
+    )
 
 
 def sample_background_disc_edge_color(
@@ -201,6 +272,8 @@ def _apply_background_altitude_ring_highlights(
     theme: ThemeStyle,
     edge_fov_deg: float,
     content_fov_deg: float,
+    ring_color: QColor | None,
+    ring_color_for_alt_deg: Callable[[float], QColor | None] | None,
 ) -> None:
     """Overlay subtle Alt-ring highlights clipped to the sky disc."""
     if geometry.radius < 1:
@@ -218,12 +291,18 @@ def _apply_background_altitude_ring_highlights(
     try:
         painter.setClipPath(clip_path)
         painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
-        ring_pen = QPen(QColor(255, 255, 255, ALT_RING_HIGHLIGHT_ALPHA), ALT_RING_PEN_WIDTH)
-        ring_pen.setCosmetic(True)
-        ring_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        ring_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-        painter.setPen(ring_pen)
         for alt_deg in range(30, 90, 30):
+            base_color = (
+                ring_color_for_alt_deg(float(alt_deg))
+                if ring_color_for_alt_deg is not None
+                else ring_color
+            )
+            ring_pen_color = QColor(255, 255, 255) if base_color is None else QColor(base_color)
+            ring_pen = QPen(ring_pen_color, ALT_RING_PEN_WIDTH)
+            ring_pen.setCosmetic(True)
+            ring_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            ring_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            painter.setPen(ring_pen)
             points = QPolygonF()
             az_deg = 0.0
             while az_deg <= 360.0 + 1.0e-6:

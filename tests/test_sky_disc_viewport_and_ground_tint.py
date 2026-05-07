@@ -1,12 +1,13 @@
 import numpy as np
 from PySide6.QtCore import QRectF
-from PySide6.QtGui import QImage, QPainter
+from PySide6.QtGui import QColor, QImage, QPainter
 
 from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.paths import PALETTE_NEVER_RISES_RGB
 from zstarview.astro import altaz_to_normalized_xy
-from zstarview.gui.composite import SkyCompositorCache
+from zstarview.gui.composite import SkyCompositorCache, _dimalt_ring_color_for_sky_image
 from zstarview.render.background import (
+    dimalt_ring_pen_color_from_color,
     draw_radial_background,
     draw_window_border,
 )
@@ -123,6 +124,56 @@ def test_sky_color_samples_spread_rayleigh_blue_farther_when_sun_is_lower() -> N
     )[0]
 
     assert float(low_sun[2] - low_sun[0]) > float(higher_sun[2] - higher_sun[0])
+
+
+def test_dimalt_ring_pen_color_darkens_sample_color() -> None:
+    bright_sample = QColor(200, 180, 160, 123)
+    bright_result = dimalt_ring_pen_color_from_color(bright_sample)
+
+    dark_sample = QColor(20, 18, 16, 123)
+    dark_result = dimalt_ring_pen_color_from_color(dark_sample)
+
+    assert bright_result.alpha() == bright_sample.alpha()
+    assert bright_result.red() < bright_sample.red()
+    assert bright_result.green() < bright_sample.green()
+    assert bright_result.blue() < bright_sample.blue()
+
+    assert dark_result.alpha() == dark_sample.alpha()
+    assert dark_result.red() > dark_sample.red()
+    assert dark_result.green() > dark_sample.green()
+    assert dark_result.blue() > dark_sample.blue()
+
+
+def test_dimalt_ring_color_uses_alt_specific_samples() -> None:
+    geom = ScreenGeometry(center=(80, 80), radius=80)
+    y, x = np.ogrid[:160, :160]
+    dist = np.sqrt((x - 80.0) ** 2 + (y - 80.0) ** 2)
+    radial = np.clip((dist / 80.0) * 220.0 + 20.0, 0.0, 255.0).astype(np.uint8)
+    sky = np.zeros((160, 160, 4), dtype=np.uint8)
+    sky[..., 0] = radial
+    sky[..., 1] = radial
+    sky[..., 2] = radial
+    sky[..., 3] = 255
+    img = np_rgba_to_qimage(sky)
+
+    bright_ring = _dimalt_ring_color_for_sky_image(
+        img,
+        geom,
+        (90.0, 180.0),
+        alt_deg=30.0,
+        edge_fov_deg=90.0,
+    )
+    dark_ring = _dimalt_ring_color_for_sky_image(
+        img,
+        geom,
+        (90.0, 180.0),
+        alt_deg=60.0,
+        edge_fov_deg=90.0,
+    )
+
+    assert bright_ring is not None
+    assert dark_ring is not None
+    assert bright_ring.red() > dark_ring.red()
 
 
 def test_screen_geometry_wide_mode_top_is_always_tangent() -> None:
@@ -265,7 +316,7 @@ def test_uniform_sky_disc_content_fov_fills_corner_overscan_area() -> None:
     assert int(overscan_arr[20, 20, 3]) == 255
 
 
-def test_altitude_rings_add_sky_disc_highlight_before_compositing() -> None:
+def test_altitude_rings_dim_sky_disc_before_compositing() -> None:
     geom = ScreenGeometry(center=(80, 80), radius=80)
     sky = np.zeros((160, 160, 4), dtype=np.uint8)
     sky[..., :3] = 90
@@ -286,7 +337,7 @@ def test_altitude_rings_add_sky_disc_highlight_before_compositing() -> None:
             theme=THEME_STYLES_BY_PRESET["white"],
             edge_fov_deg=90.0,
             content_fov_deg=110.0,
-            sky_disc_alt_rings=True,
+            sky_disc_altaz_rings="dimalt",
         )
     finally:
         painter.end()
@@ -304,7 +355,7 @@ def test_altitude_rings_add_sky_disc_highlight_before_compositing() -> None:
     y1 = min(arr.shape[0], y + 2)
     x0 = max(0, x - 1)
     x1 = min(arr.shape[1], x + 2)
-    assert float(arr[y0:y1, x0:x1, :3].mean()) > 90.0
+    assert float(arr[y0:y1, x0:x1, :3].mean()) < 90.0
 
 
 def test_never_rises_tint_uses_first_palette_swatch() -> None:
@@ -358,7 +409,7 @@ def test_radial_background_fades_between_content_fov_and_window_edge() -> None:
     assert int(arr[10, 10, 3]) < int(arr[30, 30, 3])
 
 
-def test_radial_background_alt_rings_add_background_highlight() -> None:
+def test_radial_background_alt_rings_dim_background() -> None:
     geom = ScreenGeometry(center=(80, 80), radius=60)
     rect = QRectF(0.0, 0.0, 160.0, 160.0)
 
@@ -383,7 +434,7 @@ def test_radial_background_alt_rings_add_background_highlight() -> None:
         geom,
         theme=THEME_STYLES_BY_PRESET["night"],
         view_center=(90.0, 180.0),
-        alt_rings=True,
+        altaz_rings_mode="dimalt",
     )
     ring_painter.end()
 
