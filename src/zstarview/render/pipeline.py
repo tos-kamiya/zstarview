@@ -101,7 +101,8 @@ class RenderStyle:
     asterism_visibility_boost: float
     earth_guide_visibility_boost: float
     vmag_limit: float
-    sky_disc_alt_rings: bool
+    sky_disc_altaz_rings: str
+    sky_disc_altaz_rings_hover: str
     cloud_disc_alpha: float
     satellite_opacity: float
     terrain_horizon_opacity: float
@@ -180,6 +181,7 @@ def render_base_scene_into_painter(
     _draw_guide_layer(
         painter,
         geometry=geometry,
+        viewport_rect=viewport_rect,
         scene=scene,
         style=style,
     )
@@ -443,7 +445,7 @@ def _draw_background_layer(
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=_content_fov_deg(scene),
         opaque=not style.show_custom_window_frame,
-        alt_rings=bool(style.sky_disc_alt_rings),
+        altaz_rings_mode=style.sky_disc_altaz_rings,
         view_center=scene.viewer.view_center,
     )
     if style.show_custom_window_frame:
@@ -458,12 +460,22 @@ def _draw_guide_layer(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
+    viewport_rect: QRect,
     scene: RenderSceneData,
     style: RenderStyle,
 ) -> None:
     """Draw guide annotations that should float above sky/cloud but below scene overlays."""
     if not style.show_guidelines:
         return
+    if style.sky_disc_altaz_rings == "altaz":
+        render_guides.draw_direction_grid_overlay(
+            painter,
+            geometry,
+            _window_size(viewport_rect),
+            scene.viewer.view_center,
+            edge_fov_deg=float(scene.viewer.edge_fov_deg),
+            content_fov_deg=_content_fov_deg(scene),
+        )
     content_fov_deg = _content_fov_deg(scene)
     render_guides.draw_direction_labels(
         painter,
@@ -513,7 +525,7 @@ def _draw_sky_cloud_layers(
         theme=style.theme,
         content_fov_deg=_content_fov_deg(scene),
         fast_mode=bool(fast_mode),
-        sky_disc_alt_rings=bool(style.sky_disc_alt_rings),
+        sky_disc_altaz_rings=str(style.sky_disc_altaz_rings),
     )
 
 
@@ -890,16 +902,35 @@ def _draw_hover_overlay_layer(
         style=style,
         highlighted_dso=highlighted_dso,
     )
-    if style.show_guidelines:
-        render_guides.draw_direction_hover_guide(
-            painter,
+    direction_hover = None
+    if style.show_guidelines and mouse_pos is not None:
+        direction_hover = render_guides.resolve_direction_marker_hover(
             geometry,
-            (int(viewport_rect.width()), int(viewport_rect.height())),
             scene.viewer.view_center,
             mouse_pos,
             edge_fov_deg=float(scene.viewer.edge_fov_deg),
             content_fov_deg=_content_fov_deg(scene),
         )
+    if direction_hover is not None:
+        if style.sky_disc_altaz_rings_hover == "dimalt":
+            render_background.draw_altitude_ring_overlay(
+                painter,
+                QRectF(viewport_rect),
+                geometry,
+                view_center=scene.viewer.view_center,
+                theme=style.theme,
+                edge_fov_deg=float(scene.viewer.edge_fov_deg),
+                content_fov_deg=_content_fov_deg(scene),
+            )
+        elif style.sky_disc_altaz_rings_hover == "altaz":
+            render_guides.draw_direction_grid_overlay(
+                painter,
+                geometry,
+                _window_size(viewport_rect),
+                scene.viewer.view_center,
+                edge_fov_deg=float(scene.viewer.edge_fov_deg),
+                content_fov_deg=_content_fov_deg(scene),
+            )
     render_overlay_info.draw_overlay_info(
         painter,
         geometry,

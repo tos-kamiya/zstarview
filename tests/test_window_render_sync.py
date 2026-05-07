@@ -252,7 +252,8 @@ def _make_style(**overrides) -> pipeline_module.RenderStyle:
         "asterism_visibility_boost": 1.0,
         "earth_guide_visibility_boost": 1.0,
         "vmag_limit": 6.0,
-        "sky_disc_alt_rings": False,
+        "sky_disc_altaz_rings": "off",
+        "sky_disc_altaz_rings_hover": "altaz",
         "cloud_disc_alpha": 0.0,
         "satellite_opacity": 0.0,
         "terrain_horizon_opacity": 0.25,
@@ -2662,7 +2663,8 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         asterism_visibility_boost=1.0,
         earth_guide_visibility_boost=1.0,
         vmag_limit=6.0,
-        sky_disc_alt_rings=False,
+        sky_disc_altaz_rings="off",
+        sky_disc_altaz_rings_hover="altaz",
         cloud_disc_alpha=0.0,
         satellite_opacity=0.0,
         terrain_horizon_opacity=0.0,
@@ -2914,6 +2916,7 @@ def test_draw_hover_overlay_passes_marker_scale_to_moon(monkeypatch) -> None:
     pipeline_module._draw_hover_overlay_layer(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
+        viewport_rect=QRect(0, 0, 1200, 1200),
         scene=scene,
         style=_make_style(
             star_render_expected_width=600,
@@ -2927,6 +2930,61 @@ def test_draw_hover_overlay_passes_marker_scale_to_moon(monkeypatch) -> None:
     assert seen_marker_scales == [
         pipeline_module.compute_star_render_upscale_factor(1200, 600)
     ]
+
+
+def test_draw_hover_overlay_requires_direction_marker_hover(monkeypatch) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr(
+        pipeline_module.render_guides,
+        "resolve_direction_marker_hover",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_background,
+        "draw_altitude_ring_overlay",
+        lambda *_args, **_kwargs: calls.append("background-rings"),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_guides,
+        "draw_direction_grid_overlay",
+        lambda *_args, **_kwargs: calls.append("grid"),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_asterisms,
+        "draw_asterisms",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_solar_system,
+        "draw_hovered_moon_overlay",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_dso_hover_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        render_overlay_info_module,
+        "draw_overlay_info",
+        lambda *_args, **_kwargs: None,
+    )
+
+    pipeline_module._draw_hover_overlay_layer(
+        painter=object(),
+        geometry=SimpleNamespace(radius=600),
+        viewport_rect=QRect(0, 0, 1200, 1200),
+        scene=_make_scene(celestial_data=object()),
+        style=_make_style(
+            show_guidelines=True,
+            sky_disc_altaz_rings_hover="altaz",
+        ),
+        highlighted_object=None,
+        highlighted_dso=None,
+        mouse_pos=QPoint(600, 600),
+    )
+
+    assert calls == []
 
 
 def test_draw_overlay_layer_skips_static_info_when_disabled(monkeypatch) -> None:
@@ -3027,6 +3085,7 @@ def test_draw_hover_overlay_layer_enlarges_hovered_moon_by_name(monkeypatch) -> 
     pipeline_module._draw_hover_overlay_layer(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
+        viewport_rect=QRect(0, 0, 1200, 1200),
         scene=_make_scene(celestial_data=object()),
         style=_make_style(),
         highlighted_object=({"name": "moon"}, object()),
