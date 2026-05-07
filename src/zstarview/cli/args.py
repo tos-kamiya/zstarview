@@ -164,10 +164,10 @@ def _parse_bool(value: str) -> bool:
 def _parse_sky_disc_style(value: str) -> str:
     """Parse the sky-disc fill style."""
     text = (value or "").strip().lower()
-    if text in {"grid", "smooth"}:
+    if text == "smooth":
         return text
     raise argparse.ArgumentTypeError(
-        f"Invalid sky disc style: {value!r}. Use 'grid' or 'smooth'."
+        f"Invalid sky disc style: {value!r}. Use 'smooth'."
     )
 
 
@@ -515,10 +515,17 @@ def add_sky_and_star_arguments(
         "--sky-disc-style",
         type=_parse_sky_disc_style,
         default="smooth",
-        metavar="{grid,smooth}",
+        metavar="{smooth}",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--sky-disc-alt-rings",
+        type=_parse_bool,
+        default=False,
+        metavar="true|false",
         help=(
-            "Sky-disc fill style. Use 'grid' for the map-like 10-degree cell fill "
-            "or 'smooth' for the previous continuous gradient (default)."
+            "Draw Alt 30-degree rings over the sky disc and background as a subtle "
+            "brightness highlight."
         ),
     )
     parser.add_argument(
@@ -1210,6 +1217,7 @@ def _validate_dataset_query_compatibility(
             or has_non_default("observer_height_m")
             or has_non_default("sky_opacity")
             or has_non_default("sky_disc_style")
+            or has_non_default("sky_disc_alt_rings")
             or has_non_default("cloud_opacity")
             or has_non_default("aircraft_opacity")
             or has_non_default("satellite_opacity")

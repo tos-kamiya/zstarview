@@ -647,6 +647,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         overlay_availability = overlay_availability_for_delta(self.delta_t)
         self.sky_disc_alpha = user_options.sky_disc_alpha
         self.sky_disc_style = user_options.sky_disc_style
+        self.sky_disc_alt_rings = user_options.sky_disc_alt_rings
         self._sky_disc_alpha_when_enabled = (
             user_options.sky_disc_alpha
             if user_options.sky_disc_alpha > 0.0

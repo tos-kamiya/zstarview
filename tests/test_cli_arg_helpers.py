@@ -196,6 +196,23 @@ def test_parse_args_defaults_sky_disc_style_to_smooth() -> None:
     assert args.sky_disc_style == "smooth"
 
 
+def test_parse_args_defaults_sky_disc_alt_rings_to_false() -> None:
+    args = cli_args.parse_args(["Matsue"])
+
+    assert args.sky_disc_alt_rings is False
+
+
+def test_parse_args_accepts_sky_disc_alt_rings_toggle() -> None:
+    args = cli_args.parse_args(["--sky-disc-alt-rings", "true", "Matsue"])
+
+    assert args.sky_disc_alt_rings is True
+
+
+def test_parse_args_rejects_sky_disc_grid_style() -> None:
+    with pytest.raises(SystemExit):
+        cli_args.parse_args(["--sky-disc-style", "grid", "Matsue"])
+
+
 def test_parse_args_rejects_multiple_search_options() -> None:
     with pytest.raises(SystemExit):
         cli_args.parse_args(["--search", "Ceres", "--search", "Mars"])

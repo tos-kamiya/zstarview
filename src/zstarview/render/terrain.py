@@ -1,7 +1,7 @@
 import math
 from typing import Callable, List, Tuple
 
-from PySide6.QtCore import QPointF, Qt
+from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy, is_in_fov
@@ -10,7 +10,9 @@ from ..paths import (
     PALETTE_ASTERISM_RGB,
     TERRAIN_HORIZON_LINE_COLOR,
     URBAN_OUTLINE_LAYER_LINE_COLOR,
+    ThemeStyle,
 )
+from . import background as render_background
 from ..types import ScreenGeometry, UrbanOutlinePolyline
 from .geometry import normalized_to_screen_xy
 from .guides import _clip_polyline_to_radius, split_by_gaps
@@ -517,6 +519,8 @@ def draw_terrain_horizon_line(
     opacity: float = 1.0,
     line_width_scale: float = 1.0,
     fast_mode: bool = False,
+    viewport_rect: QRectF | None = None,
+    theme: ThemeStyle | None = None,
     edge_fov_deg: float = FIELD_OF_VIEW_DEG,
     content_fov_deg: float = FIELD_OF_VIEW_DEG,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
@@ -525,6 +529,23 @@ def draw_terrain_horizon_line(
     split_by_gaps_func: Callable[[List[Tuple[float, float]]], List[List[Tuple[float, float]]]] = split_by_gaps,
 ) -> None:
     """Draw a terrain horizon polyline as an extra overlay over the geometric horizon."""
+    color_rgb = TERRAIN_HORIZON_LINE_COLOR
+    fg_alpha = terrain_horizon_line_alpha(opacity)
+    if theme is not None and viewport_rect is not None:
+        background_edge_color = render_background.sample_background_disc_edge_color(
+            viewport_rect,
+            geometry,
+            theme=theme,
+            edge_fov_deg=float(edge_fov_deg),
+            content_fov_deg=float(content_fov_deg),
+            opaque=False,
+        )
+        color_rgb = (
+            background_edge_color.red(),
+            background_edge_color.green(),
+            background_edge_color.blue(),
+        )
+        fg_alpha = min(fg_alpha, float(background_edge_color.alphaF()))
     _draw_terrain_profile_layer(
         painter,
         geometry,
@@ -534,9 +555,9 @@ def draw_terrain_horizon_line(
         opacity=opacity,
         base_width=TERRAIN_HORIZON_FAST_WIDTH,
         far_base_width=TERRAIN_HORIZON_FAR_BASE_WIDTH,
-        fg_alpha=terrain_horizon_line_alpha(opacity),
+        fg_alpha=fg_alpha,
         line_width_scale=line_width_scale,
-        color_rgb=TERRAIN_HORIZON_LINE_COLOR,
+        color_rgb=color_rgb,
         fast_mode=fast_mode,
         distance_widths=True,
         edge_fov_deg=edge_fov_deg,

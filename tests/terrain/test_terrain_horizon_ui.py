@@ -178,7 +178,8 @@ def test_paint_event_does_not_delegate_to_qmainwindow(monkeypatch) -> None:
 def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None:
     options = prepare_window_user_options(
         sky_disc_alpha=SKY_OPACITY_DEFAULT,
-        sky_disc_style="grid",
+        sky_disc_style="smooth",
+        sky_disc_alt_rings=False,
         cloud_disc_alpha=0.075,
         satellite_opacity=0.7,
         terrain_horizon_opacity=1.5,
@@ -210,8 +211,9 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
     assert options.earth_guide_opacity == 1.0
     assert options.earth_guide_visibility_boost == 2.0
     assert options.urban_outline_opacity == 1.0
-    assert options.sky_disc_alpha == pytest.approx(0.26)
-    assert options.sky_disc_style == "grid"
+    assert options.sky_disc_alpha == pytest.approx(0.2)
+    assert options.sky_disc_style == "smooth"
+    assert options.sky_disc_alt_rings is False
     assert options.cloud_disc_alpha == pytest.approx(0.15)
     assert options.satellite_opacity == 1.0
     assert options.aircraft_opacity == 0.8
