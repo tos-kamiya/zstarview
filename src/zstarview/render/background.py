@@ -109,7 +109,7 @@ def draw_radial_background(
     edge_fov_deg: float = 90.0,
     content_fov_deg: float = BACKGROUND_FIELD_OF_VIEW_DEG2,
     opaque: bool = False,
-    altaz_rings_mode: str = "off",
+    altaz_rings_mode: str = "dimalt",
     view_center: tuple[float, float] = (0.0, 0.0),
 ) -> None:
     """Draw a radial sky gradient background."""
