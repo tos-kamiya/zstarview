@@ -487,6 +487,14 @@ def _draw_guide_layer(
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=content_fov_deg,
     )
+    render_guides.draw_zenith_marker(
+        painter,
+        geometry,
+        scene.viewer.view_center,
+        theme=style.theme,
+        edge_fov_deg=float(scene.viewer.edge_fov_deg),
+        content_fov_deg=content_fov_deg,
+    )
 
 
 def _draw_sky_cloud_layers(

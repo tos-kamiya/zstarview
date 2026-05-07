@@ -252,7 +252,7 @@ def _make_style(**overrides) -> pipeline_module.RenderStyle:
         "asterism_visibility_boost": 1.0,
         "earth_guide_visibility_boost": 1.0,
         "vmag_limit": 6.0,
-        "sky_disc_altaz_rings": "off",
+        "sky_disc_altaz_rings": "dimalt",
         "sky_disc_altaz_rings_hover": "altaz",
         "cloud_disc_alpha": 0.0,
         "satellite_opacity": 0.0,
@@ -2760,6 +2760,31 @@ def test_render_scene_hides_cloud_bitmap_during_viewport_interaction(
     )
 
     assert captured == {"cloud_disc_alpha": 0.0, "sky_disc_image": None}
+
+
+def test_draw_guide_layer_draws_zenith_marker(monkeypatch) -> None:
+    calls: list[str] = []
+
+    monkeypatch.setattr(
+        pipeline_module.render_guides,
+        "draw_direction_labels",
+        lambda *_args, **_kwargs: calls.append("direction"),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_guides,
+        "draw_zenith_marker",
+        lambda *_args, **_kwargs: calls.append("zenith"),
+    )
+
+    pipeline_module._draw_guide_layer(
+        painter=object(),
+        geometry=SimpleNamespace(center=(100, 100), radius=80),
+        viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
+        scene=_make_scene(),
+        style=_make_style(show_guidelines=True),
+    )
+
+    assert calls == ["direction", "zenith"]
 
 
 def test_render_base_scene_can_skip_fast_overlays(monkeypatch) -> None:
