@@ -212,7 +212,8 @@ prefix なしの `--show-viewpoint-json` で tower と mountain の両方に完�
 | オプション | 説明 | デフォルト |
 | :--- | :--- | :--- |
 | `--sky-opacity SKY_OPACITY` | 空の色ディスクの不透明度を指定します（0.0〜1.0）。0.0 で描画を無効化します。 | `0.15` |
-| `--sky-disc-style {grid,smooth}` | 空ディスクの塗り分け方式を指定します。`grid` は地図風の 10 度区画塗り、`smooth` は従来の連続グラデーション表示で、これが既定です。 | `smooth` |
+| `--sky-disc-altaz-rings {off,dimalt,altaz}` | 常時表示の空ディスク方位/高度オーバーレイです。`dimalt` は控えめな高度リング、`altaz` はフルグリッドを表示します。 | `dimalt` |
+| `--sky-disc-altaz-rings-hover {off,dimalt,altaz}` | ホバー時の空ディスク方位/高度オーバーレイです。意味は上記と同じです。 | `altaz` |
 | `--bright-bodies {outline,fill}` | 明るい天体の描画モードを指定します。`outline` では明るい恒星をひし形輪郭、惑星を輪郭のみ、月を通常表示では輪郭のみで描画し、`--enlarge-moon` や月ホバー時は通常の月描画を使います。`fill` では従来どおり塗りつぶし表示にします。 | `outline` |
 | `-m`, `--enlarge-moon` | 月を 5 倍に拡大して表示します。 | |
 | `-s`, `--star-base-radius STAR_BASE_RADIUS` | 2 等星の基本サイズを指定します。 | `4.0` |
@@ -222,7 +223,6 @@ prefix なしの `--show-viewpoint-json` で tower と mountain の両方に完�
 | `-i`, `--sky-update-interval SECONDS` | 星空を更新する時間間隔（秒）を指定します。 | `60` |
 | `--show-dso-initial true\|false` | 起動時に DSO を表示するかを指定します。 | 自動（カタログがあれば表示） |
 | `--show-asterisms-initial true\|false` | 起動時にアステリウムを表示するかを指定します。 | `show` |
-| `--show-observation-info-initial true\|false` | 起動時に観測情報ブロックを表示するかを指定します。 | `show` |
 
 #### オーバーレイ
 
@@ -250,6 +250,7 @@ prefix なしの `--show-viewpoint-json` で tower と mountain の両方に完�
 | `-h`, `--help` | ヘルプメッセージを表示して終了します。 | |
 | `--window-geometry restore\|X,Y,W,H` | 初期ウィンドウ位置と大きさを指定します。`restore` で前回終了時の位置/サイズを復元し、`X,Y,W,H` で整数値を直接指定できます。Wayland ではウィンドウ位置の復元は利用できません（サイズ復元は有効です）。 | |
 | `--window-frame {frameless,window}` | ウィンドウ装飾モードを選びます。`frameless` は従来の枠なし表示、`window` は OS 標準のタイトルバーと枠を使います。 | `frameless` |
+| `--observation-info auto\|top\|bottom\|off` | 起動時の観測情報ブロックの表示モードを指定します。 | `bottom` |
 | `--include-direction-grid` | `zstarview-export-image` 専用です。出力画像に方向グリッドを含めます。 | |
 | `-t`, `--theme {night,day,white,black,transparent}` | 背景と星の見え方のテーマを指定します。 | `night` |
 | `--visibility-boost MULTIPLIER` | 薄い補助レイヤーの見やすさを持ち上げる倍率です。`1.0` より大きい値で、地形地平線・地球ガイド・都市アウトライン・空/雲ディスク・人工衛星・航空機・地面 tint などの不透明度を底上げします。 | `1.0` |
