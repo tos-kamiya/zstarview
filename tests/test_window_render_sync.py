@@ -645,7 +645,7 @@ def test_jump_to_satellite_target_uses_cached_satellite_records_below_horizon(
         ),
     )
 
-    assert dummy.viewer_data.view_center == (-5.0, 123.0)
+    assert dummy.viewer_data.view_center == (-12.0, 123.0)
     assert dummy.state.jump_highlight_name == "ISS"
     assert dummy.state.jump_highlight_altaz == (-12.0, 123.0)
     dummy.request_sky_data_update.assert_called_once()
@@ -774,7 +774,7 @@ def test_jump_to_place_target_uses_projected_altaz(monkeypatch) -> None:
         ),
     )
 
-    # Allow the view center to go below the horizon (>= -5.0°) per policy.
+    # Allow the view center to go below the horizon (>= -45.0°) per policy.
     assert dummy.viewer_data.view_center == (-3.5, 145.0)
     assert dummy.state.jump_highlight_name == "Tokyo Station"
     assert dummy.state.jump_highlight_altaz == (-3.5, 145.0)

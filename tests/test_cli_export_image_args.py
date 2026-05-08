@@ -9,6 +9,7 @@ from zstarview.cli.export_image import (
     _search_view_center_for_target,
 )
 from zstarview.cli.args import parse_export_image_args
+from zstarview.paths import OBSERVER_MAX_ALT_DEG, OBSERVER_MIN_ALT_DEG
 
 
 def test_parse_export_image_args_accepts_shared_and_export_specific_options() -> None:
@@ -134,7 +135,9 @@ def test_format_search_failure_message_reports_multiple_results() -> None:
 
 
 def test_clamp_view_center_altitude_matches_gui_floor() -> None:
-    assert _clamp_view_center_altitude(-20.0) == -5.0
+    assert _clamp_view_center_altitude(-50.0) == OBSERVER_MIN_ALT_DEG
+    assert _clamp_view_center_altitude(-20.0) == -20.0
+    assert _clamp_view_center_altitude(120.0) == OBSERVER_MAX_ALT_DEG
 
 
 def test_search_view_center_for_target_honors_fixed_axes() -> None:

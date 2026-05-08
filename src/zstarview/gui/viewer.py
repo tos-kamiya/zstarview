@@ -37,6 +37,8 @@ from ..paths import (
     APP_DISPLAY_NAME,
     DSO_CSV_FILE,
     EPHEMERIS_FILENAME,
+    OBSERVER_MAX_ALT_DEG,
+    OBSERVER_MIN_ALT_DEG,
     THEME_STYLES_BY_PRESET,
     STARS_CSV_FILE,
 )
@@ -241,7 +243,10 @@ def main() -> None:
         return
 
     view_center = (args.view_center_alt, args.view_center_az)
-    view_center = (min(90.0, max(-5.0, view_center[0])), view_center[1] % 360)
+    view_center = (
+        min(OBSERVER_MAX_ALT_DEG, max(OBSERVER_MIN_ALT_DEG, view_center[0])),
+        view_center[1] % 360,
+    )
     cloud_stripe_mode, cloud_stripe_count, cloud_stripe_width = args.cloud_stripe
     visual_preset = args.theme
     star_visibility_boost = theme.star_visibility_boost
