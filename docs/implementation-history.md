@@ -671,7 +671,7 @@
   - retry の成功/失敗は `SkyWindowState` の `persistent_search_last_error` / `persistent_search_next_refresh_utc` で追跡し、HUD の status line に反映するようにした。
 
 - Search Objects / export-image overlay follow-up
-  - `zstarview-export-image` でも検索結果の marker / label を出力画像へ重ねるようにし、検索で得た alt/az は GUI と同じ `-5°` 下限へ揃えた。
+  - `zstarview-export-image` でも検索結果の marker / label を出力画像へ重ねるようにし、検索で得た alt/az は GUI と同じ `-45°` 下限へ揃えた。
   - 検索解決の共有設計は `search/` サブパッケージへ移したが、UI との切り分けや overlay 連携はまだ仮設計なので、`docs/design.md` に provisional note を追加した。
 
 - Validation note

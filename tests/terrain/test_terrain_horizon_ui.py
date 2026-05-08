@@ -946,7 +946,7 @@ def test_jump_to_search_target_keeps_negative_target_alt_for_highlight(
     target = SimpleNamespace(label="Circlet", ra_hours=1.0, dec_deg=2.0, kind="star")
     SkyWindow._jump_to_search_target(dummy, target)
 
-    assert dummy.viewer_data.view_center == (-5.0, 210.0)
+    assert dummy.viewer_data.view_center == (-12.5, 210.0)
     assert dummy.state.jump_highlight_name == "Circlet"
     assert dummy.state.jump_highlight_altaz == (-12.5, 210.0)
     assert dummy.state.jump_highlight_until_ms > 0.0

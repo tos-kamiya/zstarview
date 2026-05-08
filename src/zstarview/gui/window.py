@@ -84,6 +84,7 @@ from ..paths import (
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
     CLOUD_MISSING_TINT_RGBA,
+    OBSERVER_MAX_ALT_DEG,
     OBSERVER_MIN_ALT_DEG,
     THEME_STYLES_BY_PRESET,
 )
@@ -1486,7 +1487,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def _sync_view_altitude_actions(self) -> None:
         alt, _ = self.viewer_data.view_center
         if self._action_raise_view is not None:
-            self._action_raise_view.setEnabled(float(alt) < 90.0)
+            self._action_raise_view.setEnabled(float(alt) < OBSERVER_MAX_ALT_DEG)
         if self._action_lower_view is not None:
             self._action_lower_view.setEnabled(float(alt) > OBSERVER_MIN_ALT_DEG)
 
@@ -2115,7 +2116,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             fixed_alt = False
             fixed_az = False
         new_alt = float(base_alt) if fixed_alt else max(
-            OBSERVER_MIN_ALT_DEG, min(90.0, target_alt)
+            OBSERVER_MIN_ALT_DEG, min(OBSERVER_MAX_ALT_DEG, target_alt)
         )
         new_az = float(base_az) % 360.0 if fixed_az else target_az
         self.viewer_data.view_center = (new_alt, new_az)
@@ -2699,7 +2700,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         else:
             self._begin_interaction_mode()
         alt, az = self.viewer_data.view_center
-        new_alt = max(OBSERVER_MIN_ALT_DEG, min(90.0, alt + d_alt))
+        new_alt = max(
+            OBSERVER_MIN_ALT_DEG,
+            min(OBSERVER_MAX_ALT_DEG, alt + d_alt),
+        )
         new_az = (az + d_az) % 360.0
         self.viewer_data.view_center = (new_alt, new_az)
         self.state.render_view_center = (new_alt, new_az)

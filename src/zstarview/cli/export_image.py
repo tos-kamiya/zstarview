@@ -61,6 +61,7 @@ from ..paths import (
     DSO_CSV_FILE,
     EPHEMERIS_FILENAME,
     OBSERVER_MIN_ALT_DEG,
+    OBSERVER_MAX_ALT_DEG,
     OVERTURE_DERIVED_ROOT_DIR,
     OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR,
     THEME_STYLES_BY_PRESET,
@@ -229,7 +230,10 @@ def _build_window_inputs_from_args(
         args.view_center_alt,
         args.view_center_az,
     )
-    view_center = (min(90.0, max(-5.0, view_center[0])), view_center[1] % 360.0)
+    view_center = (
+        min(OBSERVER_MAX_ALT_DEG, max(OBSERVER_MIN_ALT_DEG, view_center[0])),
+        view_center[1] % 360.0,
+    )
     cloud_stripe_mode, cloud_stripe_count, cloud_stripe_width = args.cloud_stripe
     visual_preset = args.theme
     star_visibility_boost = (
@@ -1095,7 +1099,7 @@ def _format_search_failure_message(query: str, candidate_count: int) -> str:
 
 
 def _clamp_view_center_altitude(alt_deg: float) -> float:
-    return max(float(OBSERVER_MIN_ALT_DEG), min(90.0, float(alt_deg)))
+    return max(float(OBSERVER_MIN_ALT_DEG), min(float(OBSERVER_MAX_ALT_DEG), float(alt_deg)))
 
 
 def _search_view_center_for_target(
