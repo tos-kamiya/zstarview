@@ -63,7 +63,7 @@ def test_parse_args_overlay_visibility_defaults(monkeypatch) -> None:
     assert args.show_dso_initial is None
     assert args.show_asterisms_initial is None
     assert args.show_guidelines_initial is None
-    assert args.observation_info == "auto"
+    assert args.observation_info == "bottom"
 
 
 def test_parse_args_overlay_visibility_override(monkeypatch) -> None:

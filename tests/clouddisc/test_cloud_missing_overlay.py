@@ -12,7 +12,14 @@ from zstarview.gui.composite import (
     mask_cloud_alpha_by_missing,
     overlay_missing_tint,
 )
-from zstarview.render.guides import REFERENCE_LINE_FG_WIDTH, REFERENCE_LINE_MID_WIDTH, REFERENCE_LINE_OUTER_WIDTH
+from zstarview.render.earth_guide import earth_guide_line_alpha
+from zstarview.render.guides import (
+    REFERENCE_LINE_FG_WIDTH,
+    REFERENCE_LINE_MID_ALPHA,
+    REFERENCE_LINE_MID_WIDTH,
+    REFERENCE_LINE_OUTER_ALPHA,
+    REFERENCE_LINE_OUTER_WIDTH,
+)
 from zstarview.types import ScreenGeometry
 from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 
@@ -341,6 +348,7 @@ def test_never_rises_outline_uses_double_width_scale(monkeypatch) -> None:
         def __init__(self) -> None:
             self.pen_widths: list[float] = []
             self.pen_styles: list[object] = []
+            self.pen_alphas: list[float] = []
 
         def save(self) -> None:
             pass
@@ -354,6 +362,7 @@ def test_never_rises_outline_uses_double_width_scale(monkeypatch) -> None:
         def setPen(self, pen, *_args, **_kwargs) -> None:
             self.pen_widths.append(float(pen.widthF()))
             self.pen_styles.append(pen.style())
+            self.pen_alphas.append(float(pen.color().alphaF()))
 
         def drawPolyline(self, *_args, **_kwargs) -> None:
             pass
@@ -384,11 +393,16 @@ def test_never_rises_outline_uses_double_width_scale(monkeypatch) -> None:
         content_fov_deg=90.0,
     )
 
-    assert NEVER_RISES_GUIDE_WIDTH_SCALE == pytest.approx(2.28)
+    assert NEVER_RISES_GUIDE_WIDTH_SCALE == pytest.approx(4.56)
     assert dummy_painter.pen_widths == [
         pytest.approx(REFERENCE_LINE_OUTER_WIDTH * NEVER_RISES_GUIDE_WIDTH_SCALE),
         pytest.approx(REFERENCE_LINE_MID_WIDTH * NEVER_RISES_GUIDE_WIDTH_SCALE),
         pytest.approx(REFERENCE_LINE_FG_WIDTH * NEVER_RISES_GUIDE_WIDTH_SCALE),
+    ]
+    assert dummy_painter.pen_alphas == [
+        pytest.approx((REFERENCE_LINE_OUTER_ALPHA / 255.0) * 0.5),
+        pytest.approx((REFERENCE_LINE_MID_ALPHA / 255.0) * 0.5),
+        pytest.approx(round(255.0 * earth_guide_line_alpha(0.2) * 0.5) / 255.0),
     ]
     assert dummy_painter.pen_styles == [
         Qt.PenStyle.SolidLine,
