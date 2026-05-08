@@ -45,7 +45,8 @@ from ..render.background import (
 from ..types import ScreenGeometry
 from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 
-NEVER_RISES_GUIDE_WIDTH_SCALE = 2.28
+NEVER_RISES_GUIDE_WIDTH_SCALE = 4.56
+NEVER_RISES_GUIDE_ALPHA_SCALE = 0.5
 ALT_RING_DIMALT_SAMPLE_AZ_STEP_DEG = 30.0
 
 
@@ -925,11 +926,19 @@ def _overlay_never_rises_outline(
         outline_color = np.array(PALETTE_NEVER_RISES_RGB, dtype=np.uint8)
         pen_color = QColor(int(outline_color[0]), int(outline_color[1]), int(outline_color[2]))
         outer = QColor(pen_color)
-        outer.setAlpha(REFERENCE_LINE_OUTER_ALPHA)
+        outer.setAlpha(int(np.clip(round(REFERENCE_LINE_OUTER_ALPHA * NEVER_RISES_GUIDE_ALPHA_SCALE), 0, 255)))
         mid = QColor(pen_color)
-        mid.setAlpha(REFERENCE_LINE_MID_ALPHA)
+        mid.setAlpha(int(np.clip(round(REFERENCE_LINE_MID_ALPHA * NEVER_RISES_GUIDE_ALPHA_SCALE), 0, 255)))
         fg = QColor(pen_color)
-        fg.setAlpha(int(np.clip(round(255.0 * earth_guide_line_alpha(never_rises_opacity)), 0, 255)))
+        fg.setAlpha(
+            int(
+                np.clip(
+                    round(255.0 * earth_guide_line_alpha(never_rises_opacity) * NEVER_RISES_GUIDE_ALPHA_SCALE),
+                    0,
+                    255,
+                )
+            )
+        )
 
         outer_pen = QPen(outer, REFERENCE_LINE_OUTER_WIDTH * NEVER_RISES_GUIDE_WIDTH_SCALE, Qt.PenStyle.SolidLine)
         outer_pen.setCosmetic(True)

@@ -422,6 +422,7 @@ def test_radial_background_alt_rings_dim_background() -> None:
         geom,
         theme=THEME_STYLES_BY_PRESET["night"],
         view_center=(90.0, 180.0),
+        altaz_rings_mode="off",
     )
     base_painter.end()
 
