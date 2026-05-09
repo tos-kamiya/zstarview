@@ -83,3 +83,25 @@ def test_main_writes_tile_index_json(tmp_path: Path) -> None:
     assert payload["city_name"] == "test"
     assert payload["tile_count"] == 1
     assert payload["tiles"][0]["building_count"] == 2
+
+
+def test_main_quiet_suppresses_status_line(tmp_path: Path, monkeypatch, capsys) -> None:
+    mod = _load_module()
+    derived_dir = tmp_path / "quiet_test" / "bldg"
+    derived_dir.mkdir(parents=True)
+
+    payload = {"tile_count": 3}
+    calls: list[tuple[Path, dict[str, object]]] = []
+
+    monkeypatch.setattr(mod, "build_tile_index_payload", lambda _derived_dir: payload)
+    monkeypatch.setattr(
+        mod,
+        "write_tile_index",
+        lambda path, payload_arg: calls.append((path, payload_arg)),
+    )
+
+    rc = mod.main(["--derived-dir", str(derived_dir)], quiet=True)
+
+    assert rc == 0
+    assert calls == [(derived_dir / "tile_index.json", payload)]
+    assert capsys.readouterr().out == ""

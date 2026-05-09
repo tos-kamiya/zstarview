@@ -212,6 +212,7 @@ def _resolve_building_top_height_m(
                 dataset_name=None,
                 keep_download=None,
                 no_stac=False,
+                quiet=True,
             )
         except Exception:
             logger.warning(
