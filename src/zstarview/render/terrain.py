@@ -576,6 +576,8 @@ def draw_terrain_secondary_ridges(
     terrain_secondary_profile_distances_m_layers: list[list[float]] | None,
     view_center: tuple[float, float],
     *,
+    terrain_main_profile_altaz: list[tuple[float, float]] | None = None,
+    terrain_main_profile_distances_m: list[float] | None = None,
     opacity: float = 0.25,
     line_width_scale: float = 1.0,
     fast_mode: bool = False,
@@ -587,7 +589,30 @@ def draw_terrain_secondary_ridges(
     split_by_gaps_func: Callable[[List[Tuple[float, float]]], List[List[Tuple[float, float]]]] = split_by_gaps,
 ) -> None:
     """Draw fixed-width ridge bands grouped by distance interval."""
-    if fast_mode or not terrain_secondary_profile_layers or opacity <= 0.0:
+    if opacity <= 0.0:
+        return
+
+    if fast_mode:
+        if terrain_main_profile_altaz:
+            draw_terrain_horizon_line(
+                painter,
+                geometry,
+                terrain_profile_altaz=terrain_main_profile_altaz,
+                terrain_profile_distances_m=terrain_main_profile_distances_m,
+                view_center=view_center,
+                opacity=opacity,
+                line_width_scale=line_width_scale,
+                fast_mode=True,
+                edge_fov_deg=edge_fov_deg,
+                content_fov_deg=content_fov_deg,
+                is_in_fov_func=is_in_fov_func,
+                altaz_to_normalized_xy_func=altaz_to_normalized_xy_func,
+                normalized_to_screen_xy_func=normalized_to_screen_xy_func,
+                split_by_gaps_func=split_by_gaps_func,
+            )
+        return
+
+    if not terrain_secondary_profile_layers:
         return
 
     ridge_opacity = terrain_secondary_ridge_line_alpha(opacity)
