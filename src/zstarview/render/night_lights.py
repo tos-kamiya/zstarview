@@ -14,16 +14,15 @@ from .geometry import normalized_to_screen_xy
 from .guides import split_by_gaps
 
 NIGHT_LIGHTS_BASE_ALPHA_SCALE = 1.0
-NIGHT_LIGHTS_MID_NEAR_ALPHA_SCALE = 0.50
-NIGHT_LIGHTS_MID_FAR_ALPHA_SCALE = 0.3
-NIGHT_LIGHTS_OUTER_ALPHA_SCALE = 0.1
+NIGHT_LIGHTS_BAND_SPECS: tuple[tuple[float, float], ...] = (
+    (0.1, 3.2),
+    (0.3, 1.7),
+    (0.50, 0.9),
+    (1.0, 0.5),
+)
 NIGHT_LIGHTS_MIN_BRIGHTNESS = 0.02
 NIGHT_LIGHTS_GLOW_RGB = (244, 246, 248)
 NIGHT_LIGHTS_DRAW_AZIMUTH_STEP_DEG = 0.5
-NIGHT_LIGHTS_OUTER_WIDTH_SCALE = 3.2
-NIGHT_LIGHTS_MID_FAR_WIDTH_SCALE = 1.7
-NIGHT_LIGHTS_MID_NEAR_WIDTH_SCALE = 0.9
-NIGHT_LIGHTS_CORE_WIDTH_SCALE = 0.5
 NIGHT_LIGHTS_DISTANCE_NEAR_KM = 0.5
 NIGHT_LIGHTS_DISTANCE_FAR_KM = 128.0
 
@@ -270,12 +269,7 @@ def draw_night_light_glow(
             alpha = min(1.0, frag_strength * NIGHT_LIGHTS_BASE_ALPHA_SCALE * layer_opacity * sun_factor)
             color = QColor(*fill_rgb)
 
-            for alpha_scale, width_scale in (
-                (NIGHT_LIGHTS_OUTER_ALPHA_SCALE, NIGHT_LIGHTS_OUTER_WIDTH_SCALE),
-                (NIGHT_LIGHTS_MID_FAR_ALPHA_SCALE, NIGHT_LIGHTS_MID_FAR_WIDTH_SCALE),
-                (NIGHT_LIGHTS_MID_NEAR_ALPHA_SCALE, NIGHT_LIGHTS_MID_NEAR_WIDTH_SCALE),
-                (1.0, NIGHT_LIGHTS_CORE_WIDTH_SCALE),
-            ):
+            for alpha_scale, width_scale in NIGHT_LIGHTS_BAND_SPECS:
                 color.setAlphaF(max(0.0, min(1.0, alpha * alpha_scale)))
                 painter.setPen(Qt.PenStyle.NoPen)
                 painter.setBrush(color)
