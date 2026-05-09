@@ -3,7 +3,7 @@
 **Zenith Star View** is a desktop sky viewer for your chosen location.
 
 It renders an all-sky view with stars, the Sun, Moon, planets, deep-sky objects, and guide overlays.
-When enabled, it can also add real-time cloud imagery, terrain horizon, urban outlines, nearby aircraft, and the ISS/JWST/Voyager 1/Voyager 2/Parker artificial satellite overlays.
+When enabled, it can also add real-time cloud imagery, terrain horizon, urban outlines, night lights, nearby aircraft, and the ISS/JWST/Voyager 1/Voyager 2/Parker artificial satellite overlays.
 Locations can be set by city or viewpoint name, direct coordinates, online place search, or supported Google Maps URLs.
 
 ## Screenshots
@@ -123,6 +123,7 @@ zstarview -Z E -A 25 Tokyo
 - Fresh current caches are reused for up to 24 hours for both the ISS cache and the Horizons-backed spacecraft cache.
 - Terrain horizon and earth guide: Copernicus DEM data can be used to render the local terrain skyline and ground region, with a separate below-horizon continental hatch layer for orientation.
 - Urban outline overlay: major rooflines are drawn for the current viewpoint, with optional distant skyscrapers in dense urban areas.
+- Night lights overlay: NASA Earth at Night / Black Marble 2016 Grayscale 500m GeoTIFF tiles are downloaded on demand, cached locally, and rendered as a separate glow layer above the horizon and terrain ridges. Tune it with `--night-light-opacity`.
 - Flexible location input: start from a city, tower, mountain, lat/lon, or online place/station search.
 - Adjustable view center: change the view center from the CLI or with the arrow keys.
 - Python support: routinely tested on CPython 3.10, 3.11, 3.12, 3.13, and 3.14.
@@ -145,7 +146,8 @@ Notes:
 - `--place` uses the public OpenStreetMap Nominatim search service and sends a single request with a User-Agent and `Accept-Language`.
 - Satellite cloud rendering downloads Himawari/GOES data from public S3 buckets.
 - Terrain horizon rendering downloads Copernicus DEM tiles on first use and reuses cached data later.
-- Detailed layer-tuning options such as per-layer opacity remain available in the main README.
+- Night-light tiles are downloaded on demand and cached locally.
+- Detailed layer-tuning options such as per-layer opacity remain available in the main README, including `--night-light-opacity`.
 
 ## Code, Data Licenses, and Credits
 

@@ -5,7 +5,7 @@
 **Zenith Star View** は、選んだ場所の空を表示するデスクトップ向けのスカイビューアです。
 
 指定した場所と時刻の天球に、恒星、太陽、月、惑星、DSO、アステリズムを表示します。
-必要に応じて、地形地平線、都市アウトライン、近傍の航空機と人工衛星も重ねて表示できます。
+必要に応じて、地形地平線、都市アウトライン、夜灯り、近傍の航空機と人工衛星も重ねて表示できます。
 観測地点は都市名やビューポイント名、緯度経度、オンライン地名検索、Google Maps の URL などで指定できます。
 
 **特徴:**
@@ -18,6 +18,7 @@
 - **衛星雲画像・空色ディスク**: リアルタイムに Himawari/GOES 衛星のデータをダウンロードし、縞模様（ハッチ）の重ね描きとして表示します。空色ディスクは雲の下に見えるままで、衛星データが部分的な場合は欠損領域を薄い黄色で示します。[部分カバー時の黄色い欠損表示の例](docs/images/screenshot5.png) も参照してください。
 - **航空機と人工衛星のオーバーレイ**: OpenSky の近傍航空機を、予想移動方向付きの紫系ポリラインとして表示でき、ISS / JWST / Voyager 1 / Voyager 2 / Parker は惑星レイヤーと航空機レイヤーの間に小さな紫色のマーカーとして表示できます。
 - **都市アウトライン表示**: 現在の観測地点に対して、主要な建物屋根線を白い都市アウトラインとして表示します。高層建築が多い一部の都市では、半径 60km 以内の遠距離スカイスクレーパーも追加で表示されます。
+- **夜灯り表示**: NASA Earth at Night / Black Marble の 2016 Grayscale 500m GeoTIFF タイルを必要時にダウンロードしてローカルにキャッシュし、地平線や地形稜線の少し上に独立したグローとして表示します。強さは `--night-light-opacity` で調整できます。
 - **地形地平線**: Copernicus DEM データをダウンロードして、地形地平線オーバーレイを表示します。帯状の稜線を同じ地平線色で描き、近い帯ほど太く、遠い帯ほど細くなります。青く差した稜線は、観測者から見える、手前の稜線に隠れない部分を示します。地形地平線（地形地平線を表示しない場合には水平線）より下は同じ地面トーンで塗り分けます。
 - **地球ガイド**: 参考情報として、向きの把握を助けるための独立した地球ガイドレイヤーが同じ地面トーンで簡略化した大陸アウトラインを描きます。
 - **ガイド表示**: 昇らない領域は少し明るい丸い警告マーカーとして表示し、地平線まわりの方位ラベルと天頂マーカーも重ねて表示します。
@@ -231,6 +232,7 @@ prefix なしの `--show-viewpoint-json` で tower と mountain の両方に完�
 | `-c`, `--cloud-opacity CLOUD_OPACITY` | 雲の不透明度を指定します（0.0〜1.0）。0.0 で描画を無効化します。※2 | `0.07` |
 | `--cloud-stripe MODE[,COUNT[,WIDTH]]` | 雲ストライプの方式を指定します。`width` は中心対称のストライプを描き、雲量に応じて見かけの線幅を変えます。`alpha` は線幅を固定したまま線の alpha を変えます。`COUNT` は既定の 600x600 星レンダリング面でのストライプ密度として扱い、実際の描画時には星レイヤーの縮小レンダリング面サイズに合わせてスケールします。`width` は `width,50,0.85`、`alpha` は `alpha,50,0.25` に展開されます。count または width を `0` にすると雲描画を無効化します。 | `width,50,0.85` |
 | `--cloud-missing-tint-opacity OPACITY` | 雲欠損領域を示す黄色の濃さを指定します（0.0〜1.0）。 | `0.176` |
+| `--night-light-opacity OPACITY` | 夜灯りオーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、起動中の Black Marble のダウンロードと描画を無効化します。 | `0.02` |
 | `-a`, `--aircraft-opacity OPACITY` | 航空機オーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、その起動中の航空機問い合わせと描画を無効化します。 | `0.5` |
 | `--satellite-opacity OPACITY` | 人工衛星オーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、その起動中の軌道要素取得と描画を無効化します。 | `0.5` |
 | `--show-guidelines-initial true\|false` | 起動時にガイドライン表示を有効にするかを指定します。対象は幾何学的地平線、天の赤道、黄道、never-rises 円、方位ラベル、天頂マーカーです。 | `show` |
@@ -493,13 +495,14 @@ GUI では、キーボード操作とメニュー操作で視点移動、検索�
 
 * **← / →**: 視線の方位を ±5° 回転
 * **↑ / ↓**: 視線の高度を ±5° 変更（0°..90° にクランプ）
-  方向キー入力が続く間と最後の入力から約 0.7 秒の間は、ビューポート操作用の簡易描画モードになります。この間は `Vmag <= 4.0` の恒星、天の赤道、黄道、地平線、地形地平線、方位ラベル、天頂マーカーのみを表示し、惑星、全星等の星空、空ディスク、雲、DSO、アステリウム、都市アウトラインは一時的に非表示になります。
+  方向キー入力が続く間と最後の入力から約 0.7 秒の間は、ビューポート操作用の簡易描画モードになります。この間は `Vmag <= 4.0` の恒星、天の赤道、黄道、地平線、地形地平線、方位ラベル、天頂マーカーのみを表示し、惑星、全星等の星空、空ディスク、雲、夜灯り、DSO、アステリウム、都市アウトラインは一時的に非表示になります。
 * **M**: 月の 5 倍表示をトグル
 * **D**: DSO 重ね表示の表示/非表示を切り替え
 * **A**: アステリウム重ね表示の表示/非表示を切り替え
 * **G**: ガイドライン表示の表示/非表示を切り替え
 * **S**: 空ディスクの表示を切り替え
 * **C**: 雲の重ね表示の表示/非表示を切り替え
+* **L**: 夜灯りオーバーレイの表示/非表示を切り替え
 * **P**: 航空機オーバーレイの表示/非表示を切り替え
 * **I**: 人工衛星オーバーレイの表示/非表示を切り替え
 * **T**: 地形地平線の重ね表示の表示/非表示を切り替え
@@ -524,6 +527,7 @@ GUI では、キーボード操作とメニュー操作で視点移動、検索�
 * **Guidelines**: 幾何学的地平線、天の赤道、黄道、実線の never-rises 円、方位ラベル、天頂マーカーの表示/非表示を切り替えます。
 * **Sky Color Disc**: 空ディスク表示を、空色グラデーション表示とフラットな暗色ディスク表示で切り替えます。
 * **Clouds**: リアルタイム雲の重ね表示の表示/非表示を切り替えます。
+* **Night Lights**: NASA Earth at Night / Black Marble の夜灯りオーバーレイの表示/非表示を切り替えます。CLI で `--night-light-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
 * **Aircraft**: OpenSky ベースの航空機オーバーレイの表示/非表示を切り替えます。CLI で `-a 0` / `--aircraft-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
 * **Satellites**: ISS / JWST / Voyager 1 / Voyager 2 / Parker の人工衛星オーバーレイの表示/非表示を切り替えます。CLI で `--satellite-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
 * **Terrain Horizon**: 地形地平線の重ね表示の表示/非表示を切り替えます。CLI で `-d 0` / `--terrain-horizon-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
@@ -643,14 +647,21 @@ zstarview --window-frame window
    地球ガイドだけを止めたい場合は `-e 0` / `--earth-guide-opacity 0` を使えます。
    地形地平線を無効化しても、恒星・惑星・空の色の表示は利用できます。
 
-4. 人工衛星データ
+4. 夜灯りデータ
+
+   夜灯りは NASA Earth at Night / Black Marble の 2016 Grayscale 500m GeoTIFF タイルを使います。
+   タイルは必要時にダウンロードされ、ローカルにキャッシュされます。
+   回線が細い、またはオフラインの場合は `--night-light-opacity 0` で夜灯りレイヤーを無効化してください。
+   キャッシュがすでにあれば、ネットワークがなくても夜灯りオーバーレイを表示し続けられます。
+
+5. 人工衛星データ
 
    人工衛星オーバーレイは実行時に ISS の軌道要素データを取得し、取得元は `wheretheiss.at` を優先し、失敗時だけ CelesTrak を使います。JWST / Voyager 1 / Voyager 2 / Parker は JPL Horizons を使います。fresh な current cache は ISS と Horizons 側の両方で最大 24 時間まで再利用します。
    このレイヤーはリアルタイム表示でのみ利用でき、タイムシフト表示では人工衛星の取得も描画も行いません。
    回線が細い、またはオフラインの場合は `--satellite-opacity 0` で人工衛星レイヤーを無効化してください。
    新しいキャッシュがすでにあれば、ネットワークがなくても人工衛星オーバーレイを表示し続けられます。
 
-5. 航空機データ
+6. 航空機データ
 
    航空機オーバーレイは実行時に OpenSky Network の state data を取得します。
    既定では 5 分ごとに再取得します。この間隔は、無料枠での利用や一時的な取得失敗・再試行に対して余裕を持たせるため、過度に短くせず保守的に設定しています。
@@ -704,6 +715,7 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 | 実行時に OpenStreetMap Nominatim へ送る `--place` ジオコーディング要求 | `--place` 指定時だけ使うオンライン地名検索 | [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) | [Nominatim Usage Policy](https://operations.osmfoundation.org/policies/nominatim/) |
 | 実行時に `ip-api.com` へ送る IP ジオロケーション要求 | `auto` 指定時に使う IP ベースの現在地取得 | [ip-api.com](https://ip-api.com/) | [ip-api.com の利用条件 / プライバシーポリシー](https://ip-api.com/docs/legal) |
 | アプリのキャッシュディレクトリ配下にオンデマンドで保存される都市アウトラインキャッシュ | ダウンロードした Overture 建物データから生成した派生建物タイルと `tile_index.json` | `overturemaps` CLI を通じて実行時に取得する [Overture Maps Buildings](https://docs.overturemaps.org/guides/buildings/) | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) |
+| アプリのキャッシュディレクトリ配下にオンデマンドで保存される夜灯りキャッシュ | 夜灯りオーバーレイ用の NASA Earth at Night / Black Marble 2016 Grayscale 500m GeoTIFF タイル | [NASA Earth at Night / Black Marble maps](https://science.nasa.gov/earth/earth-observatory/earth-at-night/maps/) | ソースページに記載された NASA のデータ利用条件 |
 | 実行時に JPL Horizons / Small-Body Database へ送る検索・エフェメリス要求 | 天体検索結果と observer ephemeris / JWST, Voyager 1, Voyager 2, Parker の表示に使う observer ephemeris | [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/), [JPL Small-Body Database](https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html) | 利用条件やデータに関する案内は各 JPL / JPL SSD サイトを参照 |
 | 実行時に `wheretheiss.at` から取得し、失敗時は CelesTrak を使う人工衛星オーバーレイ用データ | ISS 表示に使う軌道要素データ | [wheretheiss.at](https://wheretheiss.at/w/developer), [CelesTrak](https://celestrak.org/) | 利用条件やライセンスは各出典サイトを参照 |
 | `dso.csv` | DSO（銀河/散開星団/球状星団）カタログ（OpenNGC 由来の生成データ） | [OpenNGC](https://github.com/mattiaverga/OpenNGC)（[PyOngc](https://github.com/mattiaverga/PyOngc) 経由で生成） | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)（OpenNGC データベース） |
@@ -719,6 +731,7 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 * 山頂ビューポイントの起動データは Wikipedia で収集した候補を Wikidata メタデータで正規化したものであり、ここでは Wikidata の CC0 条件に従って再配布しています。
 * earth ガイド用の大陸ポリゴンは Natural Earth 1:110m land polygons を簡略化したもので、Natural Earth はこれを public domain としています。ここでは出典として明記しています。
 * 都市アウトライン用の元データは **Overture Maps Buildings** から必要時に取得し、実行時利用向けに派生タイルへ変換したものです。
+* 夜灯り用データは NASA Earth at Night / Black Marble から必要時に取得し、実行時利用向けに GeoTIFF タイルとしてローカルにキャッシュされます。
 * 恒星の固有名は IAU 恒星名作業部会 (WGSN) による承認済みリスト（[exopla.net](https://exopla.net/star-names/modern-iau-star-names/) 経由）を使用しています。
 * 雲データは気象衛星 **Himawari**（提供: JMA）および **NOAA GOES** シリーズ（提供: NOAA/NESDIS）による赤外線観測データを、それぞれの公開 S3 バケットから取得して利用しています。
 * 人工衛星オーバーレイで使う軌道要素データは、**ISS** については **wheretheiss.at** を優先し、失敗時は **CelesTrak** を fallback として利用します。**JWST** / **Voyager 1** / **Voyager 2** / **Parker** は **JPL Horizons** の observer ephemeris を利用します。
