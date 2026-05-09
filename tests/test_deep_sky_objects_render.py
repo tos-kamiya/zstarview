@@ -6,7 +6,8 @@ import astropy.time
 import numpy as np
 from PySide6.QtGui import QColor
 
-from zstarview.paths import PALETTE_ASTERISM_RGB, THEME_STYLES_BY_PRESET
+from zstarview.render.deep_sky_objects import DSO_LABEL_RGB
+from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.render import deep_sky_objects as render_deep_sky_objects
 from zstarview.types import CelestialData, ScreenGeometry, ViewerData
 
@@ -101,7 +102,7 @@ def test_draw_deep_sky_shapes_uses_the_same_fill_color_in_all_themes(monkeypatch
         assert painter.brush_rgbs[0][:3] == (110, 185, 255)
 
 
-def test_draw_dso_hover_info_uses_asterism_outline_color_in_all_themes() -> None:
+def test_draw_dso_hover_info_uses_dso_label_color_in_all_themes() -> None:
     painter = _DummyPainter()
     geometry = ScreenGeometry(center=(120, 90), radius=70)
     viewer = ViewerData(
@@ -134,4 +135,4 @@ def test_draw_dso_hover_info_uses_asterism_outline_color_in_all_themes() -> None
             theme=theme,
         )
         assert painter.pen_rgbs
-        assert painter.pen_rgbs[-1][:3] == PALETTE_ASTERISM_RGB
+        assert painter.pen_rgbs[-1][:3] == DSO_LABEL_RGB
