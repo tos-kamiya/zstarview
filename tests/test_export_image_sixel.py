@@ -242,6 +242,7 @@ def test_write_export_overlay_summary_to_stderr_emits_gui_metadata(
             {"time": Time("2026-02-27T00:00:00", format="isot", scale="utc")},
         )(),
         vmag_limit=6.0,
+        cloud_coverage_ratio=0.625,
         search_overlay_target=target,
     )
 
@@ -252,10 +253,16 @@ def test_write_export_overlay_summary_to_stderr_emits_gui_metadata(
     assert "2026-02-27 00:00:00 UTC\n" in text
     assert "Alt 45°  Az 180° (S)\n" in text
     assert "Vmag limit 6.0\n" in text
+    assert "Cloud coverage 62.5%\n" in text
     assert (
         "Search target label=Ceres | id=2000001 | kind=jpl_small_body | alt=12.2 deg | "
         "az=34.5 deg\n"
     ) in text
+    assert text.index("Vmag limit 6.0\n") < text.index("Cloud coverage 62.5%\n")
+    assert text.index("Cloud coverage 62.5%\n") < text.index(
+        "Search target label=Ceres | id=2000001 | kind=jpl_small_body | alt=12.2 deg | "
+        "az=34.5 deg\n"
+    )
     assert text.endswith("az=34.5 deg\n")
 
 
