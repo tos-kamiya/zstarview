@@ -1,6 +1,6 @@
 # zstarview 実装履歴
 
-最終更新: 2026-05-02
+最終更新: 2026-05-09
 
 ## 1. この文書の位置づけ
 
@@ -752,3 +752,10 @@
 - Version bump
   - Bumped `__version__` from `1.21.16` to `1.21.17`.
   - This records the final location-summary layout update and keeps the patch-level version aligned with the source tree.
+
+### 2026-05-09
+
+- Night light band tuning and seam handling
+  - Split the night-light glow into four draw layers, keeping the core band and dividing the mid-range glow into `MID_NEAR` and `MID_FAR`.
+  - Moved the night-light seam to the azimuth behind the observer instead of hard-coding a seam at `az=0°`.
+  - Kept the underlying distance-band integration and cached base profile behavior unchanged.
