@@ -544,9 +544,9 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 - sky disc は連続的な表示を基本とし、必要なら Alt 30 度ごとのリングを別レイヤーとして重ねてよい。
 - `--content-fov-deg` 外側には、表示の打ち切りを急に見せないための短いフェード帯を置いてよい。
 
-### 7.4 ガイドライン表示
+### 7.4 Sky Guides 表示
 
-- ガイドラインとは、幾何学的地平線、天の赤道、黄道、方位ラベル、天頂マーカーをまとめた表示群を指す。
+- Sky Guides とは、幾何学的地平線、天の赤道、黄道、方位ラベル、天頂マーカーをまとめた表示群を指す。
 - 起動時の既定値は、表示する設定としてよい。
 - GUI 実行中は、メニューから `Sky Guides` をトグルして表示・非表示を切り替えられてよい。
 - CLI では `--show-guidelines-initial true|false` で起動時の初期状態を指定してよい。
@@ -753,6 +753,10 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 - `zstarview-export-image` の検索解決は、GUI と同じ検索規則を使ってよいが、曖昧さが残る場合は非対話エラーで終了してよい。
 - `zstarview-export-image` の検索結果 marker/label は、出力画像に重ねてよい。
 - `Layers` には各種表示トグルを置いてよい。
+  - 空側のまとまりは `Sky Color`、`Clouds`、`Satellites`、`Aircraft` として扱ってよい。
+  - 地面側のまとまりは `Night Lights`、`Urban Outline`、`Terrain Horizon`、`Earth Guide` として扱ってよい。
+  - `Sky Color` は sky color disc を on/off してよい。
+  - `Sky Guides` は幾何学的地平線、天の赤道、黄道、never-rises 領域、方位ラベル、天頂マーカーをまとめて on/off してよい。
   - `Night Lights` は独立トグルとして扱い、夜間光オーバーレイだけを on/off してよい。
   - `Night Lights` の強度は `--night-light-opacity` に従ってよい。
 - `View Direction` には左右回転と視線上下移動を置いてよい。
