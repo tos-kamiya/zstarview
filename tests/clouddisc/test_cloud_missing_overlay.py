@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QImage, QPainter
 
 import zstarview.gui.composite as render_composite
+from zstarview import night_lights as night_lights_module
 from zstarview.gui.composite import (
     NEVER_RISES_GUIDE_WIDTH_SCALE,
     SkyCompositorCache,
@@ -199,6 +200,52 @@ def test_compositor_fast_mode_matches_normal_mode_without_ground_fill() -> None:
     arr_normal = qimage_to_np_rgba(canvas_normal)
     arr_fast = qimage_to_np_rgba(canvas_fast)
     assert np.array_equal(arr_normal, arr_fast)
+
+
+def test_compositor_fast_mode_skips_night_light_overlay(monkeypatch) -> None:
+    sky = np.zeros((64, 64, 4), dtype=np.uint8)
+    sky[..., :3] = 100
+    sky[..., 3] = 255
+
+    geom = ScreenGeometry(center=(32, 32), radius=32)
+    compositor = SkyCompositorCache(ground_tint_opacity=1.0)
+    night_profile = night_lights_module.NightLightGlowProfile(
+        samples=(
+            night_lights_module.NightLightGlowSample(
+                azimuth_deg=180.0,
+                horizon_alt_deg=0.0,
+                strength=1.0,
+            ),
+        ),
+        sun_alt_deg=-5.0,
+    )
+
+    calls: list[bool] = []
+    monkeypatch.setattr(
+        render_composite,
+        "draw_night_light_glow",
+        lambda *args, **kwargs: calls.append(True),
+    )
+
+    canvas = QImage(64, 64, QImage.Format_ARGB32_Premultiplied)
+    canvas.fill(0)
+    painter = QPainter(canvas)
+    compositor.draw(
+        painter,
+        geom,
+        np_rgba_to_qimage(sky),
+        None,
+        cloud_alpha=0.0,
+        view_center=(0.0, 180.0),
+        observer_lat_deg=35.0,
+        terrain_profile_altaz=[(0.0, float(az)) for az in range(360)],
+        night_light_glow_profile=night_profile,
+        content_fov_deg=90.0,
+        fast_mode=True,
+    )
+    painter.end()
+
+    assert calls == []
 
 
 def test_compositor_ground_reset_replaces_lower_disc_with_background() -> None:
