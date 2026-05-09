@@ -1076,6 +1076,9 @@ class SkyCompositorCache:
         missing_mask: Optional[np.ndarray] = None,
         show_guidelines: bool = True,
         terrain_profile_altaz: list[tuple[float, float]] | None = None,
+        terrain_profile_distances_m: list[float] | None = None,
+        terrain_secondary_profile_altaz_layers: list[list[tuple[float, float]]] | None = None,
+        terrain_secondary_profile_distances_m_layers: list[list[float]] | None = None,
         night_light_glow_profile: NightLightGlowProfile | None = None,
         terrain_horizon_opacity: float = 0.003,
         earth_guide_opacity: float = 0.028,
@@ -1116,14 +1119,52 @@ class SkyCompositorCache:
             if terrain_profile_altaz
             else ()
         )
-        night_light_key = (
+        terrain_distance_key = (
+            tuple(round(float(distance_m), 3) for distance_m in terrain_profile_distances_m)
+            if terrain_profile_distances_m is not None
+            else ()
+        )
+        terrain_secondary_key = (
             tuple(
-                (
-                    round(float(sample.azimuth_deg) % 360.0, 3),
-                    round(float(sample.horizon_alt_deg), 3),
-                    round(float(sample.strength), 4),
-                )
-                for sample in getattr(night_light_glow_profile, "samples", ())
+                tuple((round(float(alt), 3), round(float(az) % 360.0, 3)) for alt, az in layer)
+                for layer in terrain_secondary_profile_altaz_layers
+            )
+            if terrain_secondary_profile_altaz_layers
+            else ()
+        )
+        terrain_secondary_distance_key = (
+            tuple(
+                tuple(round(float(distance_m), 3) for distance_m in layer)
+                for layer in terrain_secondary_profile_distances_m_layers
+            )
+            if terrain_secondary_profile_distances_m_layers
+            else ()
+        )
+        night_light_key = (
+            (
+                tuple(
+                    (
+                        round(float(sample.azimuth_deg) % 360.0, 3),
+                        round(float(sample.horizon_alt_deg), 3),
+                        round(float(sample.strength), 4),
+                    )
+                    for sample in getattr(night_light_glow_profile, "samples", ())
+                ),
+                tuple(
+                    (
+                        round(float(band_profile.min_distance_km), 3),
+                        round(float(band_profile.max_distance_km), 3),
+                        tuple(
+                            (
+                                round(float(sample.azimuth_deg) % 360.0, 3),
+                                round(float(sample.horizon_alt_deg), 3),
+                                round(float(sample.strength), 4),
+                            )
+                            for sample in getattr(band_profile, "samples", ())
+                        ),
+                    )
+                    for band_profile in getattr(night_light_glow_profile, "band_profiles", ())
+                ),
             )
             if night_light_glow_profile is not None
             else ()
@@ -1141,6 +1182,9 @@ class SkyCompositorCache:
             amount_ck,
             missing_ck,
             terrain_key,
+            terrain_distance_key,
+            terrain_secondary_key,
+            terrain_secondary_distance_key,
             w,
             h,
             tuple(geometry.center),
@@ -1333,6 +1377,11 @@ class SkyCompositorCache:
                         viewport_rect=QRectF(0.0, 0.0, float(w), float(h)),
                         profile=night_light_glow_profile,
                         terrain_profile_altaz=terrain_profile_altaz if terrain_profile_altaz else None,
+                        terrain_profile_distances_m=terrain_profile_distances_m,
+                        terrain_secondary_profile_altaz_layers=terrain_secondary_profile_altaz_layers,
+                        terrain_secondary_profile_distances_m_layers=(
+                            terrain_secondary_profile_distances_m_layers
+                        ),
                         view_center=view_center,
                         theme=theme,
                         opacity=float(night_light_opacity),

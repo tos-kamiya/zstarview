@@ -17,6 +17,7 @@ import numpy as np
 import rasterio
 from pyproj import Geod, Transformer
 
+from .terrain.horizon import DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM
 from .paths import NIGHT_LIGHTS_CACHE_DIR
 
 logger = logging.getLogger(__name__)
@@ -28,9 +29,10 @@ NIGHT_LIGHTS_TILE_COUNT = len(NIGHT_LIGHTS_TILE_NAMES)
 NIGHT_LIGHTS_TILE_WIDTH_DEG = 90.0
 NIGHT_LIGHTS_TILE_HEIGHT_DEG = 90.0
 NIGHT_LIGHTS_MAX_DISTANCE_KM = 128.0
-NIGHT_LIGHTS_DISTANCE_STEP_KM = 1.0
+NIGHT_LIGHTS_DISTANCE_STEP_KM = 0.5
+NIGHT_LIGHTS_ATTENUATION_SCALE_M = 22_000.0
 NIGHT_LIGHTS_AZIMUTH_SMOOTHING_WIDTH = 2
-NIGHT_LIGHTS_BAND_CENTER_OFFSET_DEG = 2.0
+NIGHT_LIGHTS_BAND_CENTER_OFFSET_DEG = 1.5
 NIGHT_LIGHTS_BAND_HALF_WIDTH_DEG = 3.0
 NIGHT_LIGHTS_MAX_ALPHA = 0.48
 NIGHT_LIGHTS_RGB = (240, 173, 122)
@@ -63,11 +65,19 @@ class NightLightGlowSample:
 
 
 @dataclass(frozen=True)
+class NightLightDistanceBandProfile:
+    min_distance_km: float
+    max_distance_km: float
+    samples: tuple[NightLightGlowSample, ...]
+
+
+@dataclass(frozen=True)
 class NightLightGlowProfile:
     samples: tuple[NightLightGlowSample, ...]
     sun_alt_deg: float
     band_center_offset_deg: float = NIGHT_LIGHTS_BAND_CENTER_OFFSET_DEG
     band_half_width_deg: float = NIGHT_LIGHTS_BAND_HALF_WIDTH_DEG
+    band_profiles: tuple[NightLightDistanceBandProfile, ...] = ()
 
 
 def _cache_root(cache_root: str | os.PathLike[str] | None = None) -> Path:
@@ -273,16 +283,16 @@ def _sample_dataset_points(
     return np.asarray(values, dtype=np.float64)
 
 
-def _sample_ray_brightness(
+def _sample_ray_brightness_curve(
     *,
     tile_paths: dict[str, Path],
     observer_lat_deg: float,
     observer_lon_deg: float,
     azimuth_deg: float,
     distances_m: np.ndarray,
-) -> float:
+) -> np.ndarray:
     if distances_m.size == 0:
-        return 0.0
+        return np.zeros(0, dtype=np.float64)
     lon0 = float(observer_lon_deg)
     lat0 = float(observer_lat_deg)
     az = np.full(distances_m.shape, float(azimuth_deg), dtype=np.float64)
@@ -310,8 +320,30 @@ def _sample_ray_brightness(
         indices = grouped_indices[tile_name]
         samples[np.asarray(indices, dtype=np.int64)] = tile_samples
 
-    attenuation = np.exp(-distances_m / 30_000.0) / (np.maximum(distances_m / 1000.0, 1.0) + 1.0)
-    return float(np.sum(samples * attenuation))
+    attenuation = np.exp(-distances_m / float(NIGHT_LIGHTS_ATTENUATION_SCALE_M)) / (
+        np.maximum(distances_m / 1000.0, 1.0) + 1.0
+    )
+    return np.cumsum(samples * attenuation)
+
+
+def _sample_ray_brightness(
+    *,
+    tile_paths: dict[str, Path],
+    observer_lat_deg: float,
+    observer_lon_deg: float,
+    azimuth_deg: float,
+    distances_m: np.ndarray,
+) -> float:
+    curve = _sample_ray_brightness_curve(
+        tile_paths=tile_paths,
+        observer_lat_deg=observer_lat_deg,
+        observer_lon_deg=observer_lon_deg,
+        azimuth_deg=azimuth_deg,
+        distances_m=distances_m,
+    )
+    if curve.size == 0:
+        return 0.0
+    return float(curve[-1])
 
 
 def _build_azimuth_grid(
@@ -353,6 +385,27 @@ def night_light_strength_factor(sun_alt_deg: float) -> float:
     return 1.0 - _smoothstep(NIGHT_LIGHTS_SUN_BLEND_START_ALT_DEG, 0.0, sun_alt)
 
 
+def _distance_band_ranges_km(max_distance_km: float) -> tuple[tuple[float, float], ...]:
+    max_distance = float(max_distance_km)
+    if max_distance <= 0.0:
+        return ()
+    band_edges = [
+        float(edge)
+        for edge in DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM
+        if math.isfinite(float(edge)) and 0.0 < float(edge) <= max_distance + 1.0e-9
+    ]
+    if not band_edges or band_edges[-1] < max_distance - 1.0e-9:
+        band_edges.append(max_distance)
+    band_ranges: list[tuple[float, float]] = []
+    band_start = 0.0
+    for band_end in band_edges:
+        if band_end <= band_start:
+            continue
+        band_ranges.append((band_start, band_end))
+        band_start = band_end
+    return tuple(band_ranges)
+
+
 @functools.lru_cache(maxsize=64)
 def _compute_night_light_base_profile(
     *,
@@ -373,40 +426,94 @@ def _compute_night_light_base_profile(
     az_grid, horizon_alt_values = _build_azimuth_grid(terrain_profile_key)
     if az_grid.size == 0:
         return None
+    band_ranges_km = _distance_band_ranges_km(max_distance_km)
+    if not band_ranges_km:
+        return None
     distances_m = np.arange(
         max(1000.0, float(distance_step_km) * 1000.0),
         float(max_distance_km) * 1000.0 + 0.5,
         float(distance_step_km) * 1000.0,
         dtype=np.float64,
     )
-    raw_strengths = np.zeros(az_grid.size, dtype=np.float64)
+    band_distance_indices = [
+        max(
+            0,
+            min(
+                distances_m.size - 1,
+                int(np.searchsorted(distances_m, float(distance_km) * 1000.0, side="right") - 1),
+            ),
+        )
+        for _band_min_km, distance_km in band_ranges_km
+    ]
+    previous_band_distance_indices = [
+        -1,
+        *band_distance_indices[:-1],
+    ]
+    full_raw_strengths = np.zeros(az_grid.size, dtype=np.float64)
+    raw_strengths_by_band = [
+        np.zeros(az_grid.size, dtype=np.float64)
+        for _ in band_ranges_km
+    ]
     for index, az in enumerate(az_grid.tolist()):
-        raw_strengths[index] = _sample_ray_brightness(
+        brightness_curve = _sample_ray_brightness_curve(
             tile_paths=tile_paths,
             observer_lat_deg=observer_lat_deg,
             observer_lon_deg=observer_lon_deg,
             azimuth_deg=float(az),
             distances_m=distances_m,
         )
-    raw_strengths = _circular_smooth(raw_strengths)
-    scale = float(np.percentile(raw_strengths, 95))
+        if brightness_curve.size == 0:
+            continue
+        full_raw_strengths[index] = float(brightness_curve[-1])
+        for band_index, (distance_index, previous_distance_index) in enumerate(
+            zip(band_distance_indices, previous_band_distance_indices, strict=True)
+        ):
+            band_value = float(brightness_curve[distance_index])
+            if previous_distance_index >= 0:
+                band_value -= float(brightness_curve[previous_distance_index])
+            raw_strengths_by_band[band_index][index] = max(0.0, band_value)
+
+    full_raw_strengths = _circular_smooth(full_raw_strengths)
+    raw_strengths_by_band = [
+        _circular_smooth(raw_strengths)
+        for raw_strengths in raw_strengths_by_band
+    ]
+    scale = float(np.percentile(full_raw_strengths, 95))
     if not math.isfinite(scale) or scale <= 0.0:
         return None
-    strengths = np.sqrt(np.clip(raw_strengths / scale, 0.0, None))
-    strengths = np.clip(strengths * 1.35, 0.0, 1.0)
-    if not np.any(strengths > 0.0):
+    full_strengths = np.clip(np.sqrt(np.clip(full_raw_strengths / scale, 0.0, None)) * 1.35, 0.0, 1.0)
+    band_strengths = [
+        np.clip(np.sqrt(np.clip(raw_strengths / scale, 0.0, None)) * 1.35, 0.0, 1.0)
+        for raw_strengths in raw_strengths_by_band
+    ]
+    if not np.any(full_strengths > 0.0) or not any(np.any(strengths > 0.0) for strengths in band_strengths):
         return None
-    samples = tuple(
-        NightLightGlowSample(
-            azimuth_deg=float(az_grid[index]) % 360.0,
-            horizon_alt_deg=float(horizon_alt_values[index]),
-            strength=float(strengths[index]),
+    band_profiles = tuple(
+        NightLightDistanceBandProfile(
+            min_distance_km=float(band_min_km),
+            max_distance_km=float(distance_km),
+            samples=tuple(
+                NightLightGlowSample(
+                    azimuth_deg=float(az_grid[index]) % 360.0,
+                    horizon_alt_deg=float(horizon_alt_values[index]),
+                    strength=float(strengths[index]),
+                )
+                for index in range(az_grid.size)
+            ),
         )
-        for index in range(az_grid.size)
+        for (band_min_km, distance_km), strengths in zip(band_ranges_km, band_strengths, strict=True)
     )
     return NightLightGlowProfile(
-        samples=samples,
+        samples=tuple(
+            NightLightGlowSample(
+                azimuth_deg=float(az_grid[index]) % 360.0,
+                horizon_alt_deg=float(horizon_alt_values[index]),
+                strength=float(full_strengths[index]),
+            )
+            for index in range(az_grid.size)
+        ),
         sun_alt_deg=0.0,
+        band_profiles=band_profiles,
     )
 
 
