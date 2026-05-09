@@ -491,6 +491,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `FramelessWindowFrame` は frameless 専用の外装であり、独自外枠、ハンバーガーボタン、専用 resize handle を持つ
   - `StandardSkyWindow` は OS 標準の `QMainWindow` とメニューバーを使い、独自外枠は描かない
   - 共通 action は `File`、`Search`、`Layers`、`View Direction` の 4 系統に編成する
+  - `Layers` は空側の `Sky Color`、`Clouds`、`Satellites`、`Aircraft` と、地面側の `Night Lights`、`Urban Outline`、`Terrain Horizon`、`Earth Guide` に分ける
+  - `Sky Guides` は地平線・赤道・黄道・never-rises 領域・方位ラベル・天頂マーカーをまとめた表示群として扱う
   - frameless ではハンバーガーメニューの 1 階層目に同じ 4 系統の submenu を並べる
 - `src/zstarview/gui/window_state.py`
   - 画面状態の保持
