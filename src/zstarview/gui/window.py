@@ -673,7 +673,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
         self.terrain_horizon_opacity = user_options.terrain_horizon_opacity
         self.earth_guide_opacity = user_options.earth_guide_opacity
-        requested_night_light_opacity = user_options.night_light_opacity
+        requested_night_light_opacity = getattr(user_options, "night_light_opacity", 0.02)
         self._night_light_toggle_supported = bool(user_options.night_light_gui_allowed)
         self._night_light_opacity_when_enabled = (
             requested_night_light_opacity
@@ -1274,10 +1274,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._action_toggle_night_lights = self._add_checkable_menu_action(
             self.display_menu,
             "Night Lights",
-            checked=self.night_light_opacity > 0.0,
-            enabled=self._night_light_toggle_supported,
+            checked=float(getattr(self, "night_light_opacity", 0.0)) > 0.0,
+            enabled=bool(getattr(self, "_night_light_toggle_supported", False)),
             shortcut=QKeySequence(Qt.Key.Key_L),
-            triggered=self.toggle_night_lights,
+            triggered=getattr(self, "toggle_night_lights", lambda: None),
         )
         self._action_toggle_urban_outline = self._add_checkable_menu_action(
             self.display_menu,
@@ -2665,12 +2665,14 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.request_client_update()
 
     def toggle_night_lights(self) -> None:
-        if not self._night_light_toggle_supported:
+        if not bool(getattr(self, "_night_light_toggle_supported", False)):
             if self._action_toggle_night_lights is not None:
-                self._action_toggle_night_lights.setChecked(self.night_light_opacity > 0.0)
+                self._action_toggle_night_lights.setChecked(
+                    float(getattr(self, "night_light_opacity", 0.0)) > 0.0
+                )
             return
 
-        enable_night_lights = self.night_light_opacity <= 0.0
+        enable_night_lights = float(getattr(self, "night_light_opacity", 0.0)) <= 0.0
         self.night_light_opacity = (
             self._night_light_opacity_when_enabled if enable_night_lights else 0.0
         )

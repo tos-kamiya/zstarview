@@ -175,7 +175,7 @@ def prepare_window_user_options(
     sky_disc_style: str,
     sky_disc_altaz_rings: str,
     sky_disc_altaz_rings_hover: str,
-    night_light_opacity: float,
+    night_light_opacity: float = 0.02,
     cloud_disc_alpha: float,
     satellite_opacity: float,
     aircraft_opacity: float,
@@ -200,7 +200,7 @@ def prepare_window_user_options(
     aircraft_gui_allowed: bool,
     terrain_horizon_gui_allowed: bool,
     earth_guide_gui_allowed: bool,
-    night_light_gui_allowed: bool,
+    night_light_gui_allowed: bool = True,
     urban_outline_gui_allowed: bool,
 ) -> SkyWindowUserOptions:
     """Normalize user-facing options before constructing SkyWindow."""

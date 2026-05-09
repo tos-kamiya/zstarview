@@ -1231,7 +1231,7 @@ def main() -> None:
 
     night_light_glow_profile = None
     sun_alt_deg = None
-    for body in celestial_data.planets:
+    for body in getattr(celestial_data, "planets", ()):
         if body.name == "sun":
             sun_alt_deg = float(body.alt)
             break

@@ -116,11 +116,11 @@ class RenderStyle:
     satellite_opacity: float
     terrain_horizon_opacity: float
     earth_guide_opacity: float
-    night_light_opacity: float
-    urban_outline_opacity: float
-    show_urban_outline_layer: bool
-    aircraft_opacity: float
-    star_render_expected_width: int
+    night_light_opacity: float = 0.02
+    urban_outline_opacity: float = 0.2
+    show_urban_outline_layer: bool = True
+    aircraft_opacity: float = 0.5
+    star_render_expected_width: int = 600
     theme: ThemeStyle = THEME_STYLES_BY_PRESET["night"]
 
 
