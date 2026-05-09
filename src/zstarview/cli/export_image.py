@@ -477,9 +477,9 @@ def _fetch_cloud_layer(
     viewer_data: ViewerData,
     user_options: SkyWindowUserOptions,
     deadline: float | None,
-) -> tuple[np.ndarray | None, np.ndarray | None, object | None]:
+) -> tuple[np.ndarray | None, np.ndarray | None, object | None, float | None]:
     if user_options.cloud_disc_alpha <= 0.0:
-        return (None, None, None)
+        return (None, None, None, None)
     if _timed_out(deadline):
         raise TimeoutError("cloud timed out")
 
@@ -516,7 +516,7 @@ def _fetch_cloud_layer(
         raise TimeoutError("cloud timed out")
     missing_mask_alpha = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
     cloud_amount_field = build_cloud_amount_field_from_rgba(cloud_rgba)
-    return (cloud_rgba, missing_mask_alpha, cloud_amount_field)
+    return (cloud_rgba, missing_mask_alpha, cloud_amount_field, float(_coverage_ratio))
 
 
 def _fetch_terrain_horizon_layer(
@@ -1060,6 +1060,7 @@ def _write_export_overlay_summary_to_stderr(
     viewer_data: ViewerData,
     celestial_data: CelestialData,
     vmag_limit: float,
+    cloud_coverage_ratio: float | None = None,
     search_overlay_target: SearchJumpTarget | None = None,
 ) -> None:
     lines = render_background.format_overlay_info_lines(
@@ -1068,6 +1069,10 @@ def _write_export_overlay_summary_to_stderr(
         vmag_limit,
         include_vmag_limit=True,
     )
+    if cloud_coverage_ratio is None:
+        lines.append("Cloud coverage n/a")
+    else:
+        lines.append(f"Cloud coverage {float(cloud_coverage_ratio) * 100.0:.1f}%")
     if search_overlay_target is not None:
         lines.append(_format_search_target_line(search_overlay_target))
     sys.stderr.write("\n".join(lines) + "\n")
@@ -1195,9 +1200,15 @@ def main() -> None:
     cloud_image = None
     cloud_missing_mask = None
     cloud_amount_field = None
+    cloud_coverage_ratio: float | None = None
     if user_options.cloud_disc_alpha > 0.0:
         try:
-            cloud_image, cloud_missing_mask, cloud_amount_field = _fetch_cloud_layer(
+            (
+                cloud_image,
+                cloud_missing_mask,
+                cloud_amount_field,
+                cloud_coverage_ratio,
+            ) = _fetch_cloud_layer(
                 viewer_data=viewer_data,
                 user_options=user_options,
                 deadline=deadline,
@@ -1342,6 +1353,7 @@ def main() -> None:
             viewer_data=viewer_data,
             celestial_data=celestial_data,
             vmag_limit=float(style.vmag_limit),
+            cloud_coverage_ratio=cloud_coverage_ratio,
             search_overlay_target=search_overlay_target,
         )
         assert img2sixel_bin is not None
@@ -1354,6 +1366,7 @@ def main() -> None:
         viewer_data=viewer_data,
         celestial_data=celestial_data,
         vmag_limit=float(style.vmag_limit),
+        cloud_coverage_ratio=cloud_coverage_ratio,
         search_overlay_target=search_overlay_target,
     )
 
