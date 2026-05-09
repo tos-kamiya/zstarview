@@ -654,9 +654,9 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
     parser.add_argument(
         "--night-light-opacity",
         type=float,
-        default=0.04,
+        default=0.022,
         help=(
-            "Opacity of the night light overlay (0.0 - 1.0, default: 0.04). "
+            "Opacity of the night light overlay (0.0 - 1.0, default: 0.022). "
             "Set to 0.0 to disable night light rendering and lock the GUI toggle off for that session."
         ),
     )
