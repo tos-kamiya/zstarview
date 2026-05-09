@@ -538,6 +538,21 @@ def _draw_sky_cloud_layers(
             if style.terrain_horizon_opacity > 0.0
             else None
         ),
+        terrain_profile_distances_m=(
+            scene.terrain_horizon_profile_distances_m
+            if style.terrain_horizon_opacity > 0.0
+            else None
+        ),
+        terrain_secondary_profile_altaz_layers=(
+            scene.terrain_horizon_secondary_profile_altaz_layers
+            if style.terrain_horizon_opacity > 0.0
+            else None
+        ),
+        terrain_secondary_profile_distances_m_layers=(
+            scene.terrain_horizon_secondary_profile_distances_m_layers
+            if style.terrain_horizon_opacity > 0.0
+            else None
+        ),
         night_light_glow_profile=scene.night_light_glow_profile,
         earth_guide_opacity=style.earth_guide_opacity,
         earth_guide_visibility_boost=style.earth_guide_visibility_boost,

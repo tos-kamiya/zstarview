@@ -130,6 +130,9 @@ class SkyWindowRenderMixin:
             if self.cloud_state.cloud_amount_field is None
             else int(self.cloud_state.cloud_amount_field.source_cache_key),
             self._render_cache_stamp(self.state.terrain_horizon_profile),
+            self._render_cache_stamp(self.state.terrain_horizon_profile_distances_m),
+            self._render_cache_stamp(self.state.terrain_horizon_secondary_profile_altaz_layers),
+            self._render_cache_stamp(self.state.terrain_horizon_secondary_profile_distances_m_layers),
             self._render_cache_stamp(self.state.urban_outlines),
         ]
         if include_fast_overlays:
