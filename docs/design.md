@@ -64,6 +64,7 @@
   - `--search`、`--list`、`--search-keep-marker` の検索オプションを扱い、GUI 起動時検索と export-image で同じ引数定義を共有する
 - `--theme` は `night`、`day`、`white`、`black`、`transparent` の 5 preset を受け付ける
   - `--edge-fov-deg` は起動時の画面投影スケールを、`--content-fov-deg` は描画対象の保持範囲を制御する
+  - `--night-light-opacity` は夜間光オーバーレイの基礎強度を制御し、GUI の Layers メニュー上の Night Lights トグルと同じ意味を持つ
   - 同梱星表の実上限に合わせ、`-V` / `--vmag-limit` は `10.5` を超える指定を parse 時点で `10.5` へ丸める
   - parser 構築は `add_location_arguments()`、`add_dataset_query_arguments()`、`add_time_arguments()`、`add_render_arguments()` の helper に分割し、将来の別 CLI からも再利用できるようにする
   - ガイドライン表示は `--show-guidelines-initial` として扱い、DSO / アステリウムと同じ起動時 boolean 指定に揃える
@@ -296,7 +297,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 右下の resize handle は `QSizeGrip` ではなく専用の子ウィジェットで実装し、その `paintEvent()` で斜線マーカーを描く
 - `src/zstarview/render/night_lights.py`
   - 夜間光 GeoTIFF から方位ごとの glow band を生成する
-  - 地形地平線の少し上に重ねるための、固定角度帯の強度マップを作る
+  - 距離帯ごとの区間積分プロファイルを作り、主稜線と副稜線の各 band に対応づける
+  - 地形地平線や副稜線の少し上に重ねるための、固定角度帯の強度マップを作る
+  - 地形地平線が無い場合は、水平線を基準にする
 - `src/zstarview/splash.py`
   - テーマ定義に基づいてスプラッシュ背景、枠線、情報文字色を構成する
 - `src/zstarview/gui/composite.py`
@@ -1426,6 +1429,10 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 夜間光 GeoTIFF は versioned static cache として保持し、2016 Grayscale 500m tiled 版を初回利用時にのみ取得してよい。
 - 夜間光 GeoTIFF は TTL による定期再取得を前提にせず、欠損、破損、明示的な cache 削除、または別版への切り替え時だけ再取得してよい。
 - 夜間光 cache は `science.nasa.gov` の Earth at Night flat maps から direct GeoTIFF を落とすだけでよく、Earthdata login token を要求しなくてよい。
+- 夜間光は観測地点ごとに重い基礎プロファイルをキャッシュし、sun_alt は連続係数として描画時に掛けてよい。
+- 距離帯は `0.5 / 1 / 2 / 4 / 8 / 16 / 32 / 64 / 128 km` を初期値として扱ってよい。
+- 距離帯ごとの band profile は、その band 区間だけの積分値を使ってよく、遠い band は近距離分を引き継がない。
+- 地形地平線を描かない場合は、水平線を fallback にしてよい。
 - 航空機スナップショットは `bbox` 単位の少数 JSON file として短寿命永続キャッシュしてよい。
 - 航空機 cache file には少なくとも `bbox`、`fetched_at_utc`、`source`、`snapshots` を保持する。
 - cache key は観測地点そのものではなく、実問い合わせに使う OpenSky `bbox` から導出する。
@@ -1570,8 +1577,11 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - tile 名は `A1` 〜 `D2` の 8 枚を前提にしてよい。
 - 起動時に cache があれば再利用し、無ければバックグラウンドでダウンロードを開始してよい。
 - ダウンロード失敗時は夜間光レイヤーだけ unavailable とし、他のレイヤーは継続してよい。
-- 画面上の効果は、地形地平線の少し上に置く固定角度帯の glow で表現し、角度の中心は演出として固定してよい。
-- glow の強度は、方位ごとのサンプルを距離減衰付きで積算した値とし、夜景の細かな分布は brightness へ畳み込んでよい。
+- 観測地点ごとの基礎 profile は重いので、`observer_lat/lon + terrain horizon` 単位でキャッシュしてよい。
+- `sun_alt` は profile そのものには含めず、連続係数として描画時に掛けてよい。
+- 画面上の効果は、地形地平線または副稜線の少し上に置く固定角度帯の glow で表現し、角度の中心は演出として固定してよい。
+- glow の強度は、方位ごとのサンプルを距離帯ごとに区間積分した値とし、各 band にはその区間だけの brightness を割り当ててよい。
+- 地形地平線や副稜線が無い場合は、水平線を fallback にしてよい。
 - 500m グリッド由来の段差を避けるため、GeoTIFF 読込時に双一次補間や方位方向の平滑化を行ってよい。
 
 ## 11. テスト観点と設計上の分離
