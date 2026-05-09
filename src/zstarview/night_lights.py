@@ -34,6 +34,7 @@ NIGHT_LIGHTS_BAND_CENTER_OFFSET_DEG = 2.0
 NIGHT_LIGHTS_BAND_HALF_WIDTH_DEG = 3.0
 NIGHT_LIGHTS_MAX_ALPHA = 0.48
 NIGHT_LIGHTS_RGB = (240, 173, 122)
+NIGHT_LIGHTS_SUN_BLEND_START_ALT_DEG = -6.0
 
 _TILE_URL_RE = re.compile(
     r'href="(?P<url>[^"]*BlackMarble_2016_(?P<tile>[A-D][12])_geo_gray\.tif)"',
@@ -229,6 +230,17 @@ def _tile_name_for_latlon(lat_deg: float, lon_deg: float) -> str:
     return f"{'ABCD'[col]}{1 + row}"
 
 
+def _terrain_profile_cache_key(
+    terrain_profile_altaz: Sequence[tuple[float, float]] | None,
+) -> tuple[tuple[float, float], ...]:
+    if not terrain_profile_altaz:
+        return ()
+    return tuple(
+        (round(float(alt_deg), 3), round(float(az_deg) % 360.0, 3))
+        for alt_deg, az_deg in terrain_profile_altaz
+    )
+
+
 @functools.lru_cache(maxsize=8)
 def _open_dataset_cached(path_str: str, mtime_ns: int) -> rasterio.io.DatasetReader:
     _ = mtime_ns
@@ -324,27 +336,41 @@ def _circular_smooth(values: np.ndarray, width: int = NIGHT_LIGHTS_AZIMUTH_SMOOT
     return smoothed[width:-width]
 
 
-def compute_night_light_glow_profile(
+def _smoothstep(edge0: float, edge1: float, value: float) -> float:
+    lo = float(edge0)
+    hi = float(edge1)
+    x = float(value)
+    if hi <= lo:
+        return 0.0 if x <= lo else 1.0
+    t = max(0.0, min(1.0, (x - lo) / (hi - lo)))
+    return t * t * (3.0 - 2.0 * t)
+
+
+def night_light_strength_factor(sun_alt_deg: float) -> float:
+    sun_alt = float(sun_alt_deg)
+    if sun_alt >= 0.0:
+        return 0.0
+    return 1.0 - _smoothstep(NIGHT_LIGHTS_SUN_BLEND_START_ALT_DEG, 0.0, sun_alt)
+
+
+@functools.lru_cache(maxsize=64)
+def _compute_night_light_base_profile(
     *,
     observer_lat_deg: float,
     observer_lon_deg: float,
-    sun_alt_deg: float,
-    terrain_profile_altaz: Sequence[tuple[float, float]] | None = None,
+    terrain_profile_key: tuple[tuple[float, float], ...],
     cache_root: str | os.PathLike[str] | None = None,
     timeout_s: float = 60.0,
     download_timeout_s: float = 300.0,
     max_distance_km: float = NIGHT_LIGHTS_MAX_DISTANCE_KM,
     distance_step_km: float = NIGHT_LIGHTS_DISTANCE_STEP_KM,
 ) -> NightLightGlowProfile | None:
-    if float(sun_alt_deg) >= 0.0:
-        return None
-
     tile_paths = _ensure_night_light_tiles(
         cache_root=cache_root,
         timeout_s=timeout_s,
         download_timeout_s=download_timeout_s,
     )
-    az_grid, horizon_alt_values = _build_azimuth_grid(terrain_profile_altaz)
+    az_grid, horizon_alt_values = _build_azimuth_grid(terrain_profile_key)
     if az_grid.size == 0:
         return None
     distances_m = np.arange(
@@ -380,7 +406,33 @@ def compute_night_light_glow_profile(
     )
     return NightLightGlowProfile(
         samples=samples,
-        sun_alt_deg=float(sun_alt_deg),
+        sun_alt_deg=0.0,
+    )
+
+
+def compute_night_light_glow_profile(
+    *,
+    observer_lat_deg: float,
+    observer_lon_deg: float,
+    sun_alt_deg: float,
+    terrain_profile_altaz: Sequence[tuple[float, float]] | None = None,
+    cache_root: str | os.PathLike[str] | None = None,
+    timeout_s: float = 60.0,
+    download_timeout_s: float = 300.0,
+    max_distance_km: float = NIGHT_LIGHTS_MAX_DISTANCE_KM,
+    distance_step_km: float = NIGHT_LIGHTS_DISTANCE_STEP_KM,
+) -> NightLightGlowProfile | None:
+    if night_light_strength_factor(sun_alt_deg) <= 0.0:
+        return None
+    return _compute_night_light_base_profile(
+        observer_lat_deg=float(observer_lat_deg),
+        observer_lon_deg=float(observer_lon_deg),
+        terrain_profile_key=_terrain_profile_cache_key(terrain_profile_altaz),
+        cache_root=cache_root,
+        timeout_s=timeout_s,
+        download_timeout_s=download_timeout_s,
+        max_distance_km=float(max_distance_km),
+        distance_step_km=float(distance_step_km),
     )
 
 
