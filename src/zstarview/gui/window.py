@@ -673,6 +673,16 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
         self.terrain_horizon_opacity = user_options.terrain_horizon_opacity
         self.earth_guide_opacity = user_options.earth_guide_opacity
+        requested_night_light_opacity = user_options.night_light_opacity
+        self._night_light_toggle_supported = bool(user_options.night_light_gui_allowed)
+        self._night_light_opacity_when_enabled = (
+            requested_night_light_opacity
+            if requested_night_light_opacity > 0.0
+            else 0.02
+        )
+        self.night_light_opacity = (
+            requested_night_light_opacity if self._night_light_toggle_supported else 0.0
+        )
         self.urban_outline_opacity = user_options.urban_outline_opacity
         self.ground_tint_opacity = user_options.ground_tint_opacity
         self._terrain_horizon_opacity_when_enabled = (
@@ -817,6 +827,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._action_toggle_aircraft: Optional[QAction] = None
         self._action_toggle_terrain_horizon: Optional[QAction] = None
         self._action_toggle_earth_guide: Optional[QAction] = None
+        self._action_toggle_night_lights: Optional[QAction] = None
         self._action_toggle_urban_outline: Optional[QAction] = None
         self._action_toggle_dso: Optional[QAction] = None
         self._action_toggle_asterisms: Optional[QAction] = None
@@ -970,6 +981,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             )
         if self._action_toggle_earth_guide is not None:
             self._action_toggle_earth_guide.setEnabled(self._earth_guide_gui_allowed)
+        if self._action_toggle_night_lights is not None:
+            self._action_toggle_night_lights.setEnabled(
+                self._night_light_toggle_supported
+            )
         if self._action_toggle_sky_disc is not None:
             self._action_toggle_sky_disc.setEnabled(self._sky_disc_gui_allowed)
         if self._action_toggle_urban_outline is not None:
@@ -1255,6 +1270,14 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             checked=self.earth_guide_opacity > 0.0,
             shortcut=QKeySequence(Qt.Key.Key_E),
             triggered=self.toggle_earth_guide,
+        )
+        self._action_toggle_night_lights = self._add_checkable_menu_action(
+            self.display_menu,
+            "Night Lights",
+            checked=self.night_light_opacity > 0.0,
+            enabled=self._night_light_toggle_supported,
+            shortcut=QKeySequence(Qt.Key.Key_L),
+            triggered=self.toggle_night_lights,
         )
         self._action_toggle_urban_outline = self._add_checkable_menu_action(
             self.display_menu,
@@ -2641,6 +2664,23 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._compositor.invalidate()
         self.request_client_update()
 
+    def toggle_night_lights(self) -> None:
+        if not self._night_light_toggle_supported:
+            if self._action_toggle_night_lights is not None:
+                self._action_toggle_night_lights.setChecked(self.night_light_opacity > 0.0)
+            return
+
+        enable_night_lights = self.night_light_opacity <= 0.0
+        self.night_light_opacity = (
+            self._night_light_opacity_when_enabled if enable_night_lights else 0.0
+        )
+        if (
+            self._action_toggle_night_lights is not None
+            and self._action_toggle_night_lights.isChecked() != enable_night_lights
+        ):
+            self._action_toggle_night_lights.setChecked(enable_night_lights)
+        self.request_client_update()
+
     def toggle_urban_outline(self) -> None:
         if not self._urban_outline_gui_allowed:
             if self._action_toggle_urban_outline is not None:
@@ -2777,6 +2817,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             event.accept()
         elif key == Qt.Key.Key_E:
             self.toggle_earth_guide()
+            event.accept()
+        elif key == Qt.Key.Key_L:
+            self.toggle_night_lights()
             event.accept()
         elif key == Qt.Key.Key_U:
             self.toggle_urban_outline()

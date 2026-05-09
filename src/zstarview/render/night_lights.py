@@ -13,9 +13,9 @@ from ..types import ScreenGeometry
 from .geometry import normalized_to_screen_xy
 from .guides import split_by_gaps
 
-NIGHT_LIGHTS_CORE_ALPHA_SCALE = 0.12
-NIGHT_LIGHTS_MID_ALPHA_SCALE = 0.02
-NIGHT_LIGHTS_OUTER_ALPHA_SCALE = 0.015
+NIGHT_LIGHTS_BASE_ALPHA_SCALE = 1.0
+NIGHT_LIGHTS_MID_ALPHA_SCALE = 0.12
+NIGHT_LIGHTS_OUTER_ALPHA_SCALE = 0.08
 NIGHT_LIGHTS_MIN_BRIGHTNESS = 0.02
 NIGHT_LIGHTS_GLOW_RGB = (244, 246, 248)
 NIGHT_LIGHTS_DRAW_AZIMUTH_STEP_DEG = 0.5
@@ -61,12 +61,14 @@ def draw_night_light_glow(
     terrain_profile_altaz: list[tuple[float, float]] | None,
     view_center: tuple[float, float],
     theme: ThemeStyle,
+    opacity: float = 1.0,
     edge_fov_deg: float,
     content_fov_deg: float,
 ) -> None:
     del viewport_rect, theme, content_fov_deg
 
-    if profile is None or not profile.samples:
+    layer_opacity = max(0.0, min(1.0, float(opacity)))
+    if profile is None or not profile.samples or layer_opacity <= 0.0:
         return
     samples = [sample for sample in profile.samples if float(sample.strength) > 0.0]
     if not samples:
@@ -160,7 +162,7 @@ def draw_night_light_glow(
             strength = max(float(start_strength), float(end_strength))
             if strength < NIGHT_LIGHTS_MIN_BRIGHTNESS:
                 continue
-            alpha = min(1.0, strength * NIGHT_LIGHTS_CORE_ALPHA_SCALE)
+            alpha = min(1.0, strength * NIGHT_LIGHTS_BASE_ALPHA_SCALE * layer_opacity)
             color = QColor(*fill_rgb)
 
             color.setAlphaF(max(0.0, min(1.0, alpha * NIGHT_LIGHTS_OUTER_ALPHA_SCALE)))
@@ -179,7 +181,7 @@ def draw_night_light_glow(
             painter.setPen(mid_pen)
             painter.drawLine(start, end)
 
-            color.setAlphaF(max(0.0, min(1.0, alpha * NIGHT_LIGHTS_CORE_ALPHA_SCALE)))
+            color.setAlphaF(max(0.0, min(1.0, alpha)))
             core_pen = QPen(color, width_px * NIGHT_LIGHTS_CORE_WIDTH_SCALE, Qt.PenStyle.SolidLine)
             core_pen.setCosmetic(True)
             core_pen.setCapStyle(Qt.PenCapStyle.RoundCap)

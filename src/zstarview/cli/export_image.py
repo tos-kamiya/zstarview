@@ -364,6 +364,7 @@ def _build_window_inputs_from_args(
         sky_disc_style=getattr(args, "sky_disc_style", "smooth"),
         sky_disc_altaz_rings=getattr(args, "sky_disc_altaz_rings", "dimalt"),
         sky_disc_altaz_rings_hover=getattr(args, "sky_disc_altaz_rings_hover", "altaz"),
+        night_light_opacity=getattr(args, "night_light_opacity", 0.02),
         cloud_disc_alpha=(
             0.0
             if (not overlay_availability.cloud)
@@ -406,6 +407,7 @@ def _build_window_inputs_from_args(
         terrain_horizon_gui_allowed=getattr(args, "terrain_horizon_opacity", 0.003)
         > 0.0,
         earth_guide_gui_allowed=getattr(args, "earth_guide_opacity", 0.028) > 0.0,
+        night_light_gui_allowed=getattr(args, "night_light_opacity", 0.02) > 0.0,
         urban_outline_gui_allowed=getattr(args, "urban_outline_opacity", 0.2) > 0.0,
     )
     runtime_options = prepare_window_runtime_options(
@@ -918,6 +920,7 @@ def _build_render_style(
         satellite_opacity=float(user_options.satellite_opacity),
         terrain_horizon_opacity=float(user_options.terrain_horizon_opacity),
         earth_guide_opacity=float(user_options.earth_guide_opacity),
+        night_light_opacity=float(user_options.night_light_opacity),
         urban_outline_opacity=float(user_options.urban_outline_opacity),
         show_urban_outline_layer=float(user_options.urban_outline_opacity) > 0.0,
         aircraft_opacity=float(user_options.aircraft_opacity),
