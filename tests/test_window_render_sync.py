@@ -1792,7 +1792,7 @@ def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
-        "draw_terrain_horizon_line",
+        "draw_terrain_secondary_ridges",
         lambda *_args, **_kwargs: calls.append(("terrain", None)),
     )
     monkeypatch.setattr(
@@ -2158,7 +2158,7 @@ def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
-        "draw_terrain_horizon_line",
+        "draw_terrain_secondary_ridges",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
@@ -2235,7 +2235,8 @@ def test_draw_urban_outline_layer_skips_when_hidden(monkeypatch) -> None:
 
 
 def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> None:
-    seen_profiles: list[object] = []
+    seen_secondary_profiles: list[object] = []
+    seen_main_profiles: list[object] = []
     seen_view_centers: list[object] = []
     seen_line_width_scales: list[float] = []
     secondary_calls: list[object] = []
@@ -2250,17 +2251,14 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
-        "draw_terrain_horizon_line",
-        lambda _p, _g, profile, distances, view_center, **kwargs: (
-            seen_profiles.append(profile),
+        "draw_terrain_secondary_ridges",
+        lambda _p, _g, secondary_profiles, _secondary_distances, view_center, **kwargs: (
+            seen_secondary_profiles.append(secondary_profiles),
+            seen_main_profiles.append(kwargs.get("terrain_main_profile_altaz")),
             seen_view_centers.append(view_center),
             seen_line_width_scales.append(float(kwargs.get("line_width_scale", 1.0))),
+            secondary_calls.append(bool(kwargs.get("fast_mode", False))),
         ),
-    )
-    monkeypatch.setattr(
-        pipeline_module.render_terrain,
-        "draw_terrain_secondary_ridges",
-        lambda *_args, **_kwargs: secondary_calls.append("called"),
     )
     monkeypatch.setattr(
         pipeline_module.render_guides,
@@ -2296,10 +2294,11 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
         hud=_make_hud(),
     )
 
-    assert seen_profiles == [terrain_profile]
+    assert seen_secondary_profiles == [None]
+    assert seen_main_profiles == [terrain_profile]
     assert seen_view_centers == [(50.0, 210.0)]
     assert seen_line_width_scales == [expected_line_width_scale]
-    assert secondary_calls == []
+    assert secondary_calls == [True]
 
 
 def test_draw_viewport_interaction_layers_skips_urban_outlines(monkeypatch) -> None:
@@ -2313,7 +2312,7 @@ def test_draw_viewport_interaction_layers_skips_urban_outlines(monkeypatch) -> N
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
-        "draw_terrain_horizon_line",
+        "draw_terrain_secondary_ridges",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
@@ -2395,7 +2394,7 @@ def test_draw_terrain_layers_scales_asterisms_but_keeps_urban_outline_widths_fix
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
-        "draw_terrain_horizon_line",
+        "draw_terrain_secondary_ridges",
         lambda *_args, **kwargs: calls["terrain"].append(
             float(kwargs.get("line_width_scale", 1.0))
         ),
@@ -2496,7 +2495,7 @@ def test_draw_terrain_layers_does_not_draw_dso_hover_info(monkeypatch) -> None:
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
-        "draw_terrain_horizon_line",
+        "draw_terrain_secondary_ridges",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
