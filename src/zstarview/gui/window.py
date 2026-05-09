@@ -1215,7 +1215,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
         self._action_toggle_guidelines = self._add_checkable_menu_action(
             self.display_menu,
-            "Guidelines",
+            "Sky Guides",
             checked=self.show_guidelines,
             shortcut=QKeySequence(Qt.Key.Key_G),
             triggered=self.toggle_guidelines,
@@ -1231,7 +1231,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.display_menu.addSeparator()
         self._action_toggle_sky_disc = self._add_checkable_menu_action(
             self.display_menu,
-            "Sky Color Disc",
+            "Sky Color",
             checked=self.sky_disc_alpha > 0.0,
             shortcut=QKeySequence(Qt.Key.Key_S),
             triggered=self.toggle_sky_disc,
