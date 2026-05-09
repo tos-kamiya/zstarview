@@ -1308,7 +1308,7 @@ class SkyCompositorCache:
                 content_fov_deg=content_fov_deg,
                 fast_mode=fast_mode,
             )
-            if night_light_glow_profile is not None:
+            if night_light_glow_profile is not None and not fast_mode:
                 night_geometry = ScreenGeometry(
                     center=(int(geometry.center[0]) - x, int(geometry.center[1]) - y),
                     radius=int(geometry.radius),

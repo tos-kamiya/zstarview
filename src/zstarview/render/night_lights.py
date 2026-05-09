@@ -13,12 +13,15 @@ from ..types import ScreenGeometry
 from .geometry import normalized_to_screen_xy
 from .guides import split_by_gaps
 
-NIGHT_LIGHTS_CORE_ALPHA_SCALE = 1.0
-NIGHT_LIGHTS_MID_ALPHA_SCALE = 0.44
-NIGHT_LIGHTS_OUTER_ALPHA_SCALE = 0.16
+NIGHT_LIGHTS_CORE_ALPHA_SCALE = 0.12
+NIGHT_LIGHTS_MID_ALPHA_SCALE = 0.02
+NIGHT_LIGHTS_OUTER_ALPHA_SCALE = 0.015
 NIGHT_LIGHTS_MIN_BRIGHTNESS = 0.02
-NIGHT_LIGHTS_GLOW_RGB = (240, 200, 140)
+NIGHT_LIGHTS_GLOW_RGB = (244, 246, 248)
 NIGHT_LIGHTS_DRAW_AZIMUTH_STEP_DEG = 0.5
+NIGHT_LIGHTS_OUTER_WIDTH_SCALE = 4.5
+NIGHT_LIGHTS_MID_WIDTH_SCALE = 2.85
+NIGHT_LIGHTS_CORE_WIDTH_SCALE = 0.8
 
 
 def _band_width_px(
@@ -161,7 +164,7 @@ def draw_night_light_glow(
             color = QColor(*fill_rgb)
 
             color.setAlphaF(max(0.0, min(1.0, alpha * NIGHT_LIGHTS_OUTER_ALPHA_SCALE)))
-            outer_pen = QPen(color, width_px * 3.0, Qt.PenStyle.SolidLine)
+            outer_pen = QPen(color, width_px * NIGHT_LIGHTS_OUTER_WIDTH_SCALE, Qt.PenStyle.SolidLine)
             outer_pen.setCosmetic(True)
             outer_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             outer_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
@@ -169,7 +172,7 @@ def draw_night_light_glow(
             painter.drawLine(start, end)
 
             color.setAlphaF(max(0.0, min(1.0, alpha * NIGHT_LIGHTS_MID_ALPHA_SCALE)))
-            mid_pen = QPen(color, width_px * 1.9, Qt.PenStyle.SolidLine)
+            mid_pen = QPen(color, width_px * NIGHT_LIGHTS_MID_WIDTH_SCALE, Qt.PenStyle.SolidLine)
             mid_pen.setCosmetic(True)
             mid_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             mid_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
@@ -177,7 +180,7 @@ def draw_night_light_glow(
             painter.drawLine(start, end)
 
             color.setAlphaF(max(0.0, min(1.0, alpha * NIGHT_LIGHTS_CORE_ALPHA_SCALE)))
-            core_pen = QPen(color, width_px * 1.0, Qt.PenStyle.SolidLine)
+            core_pen = QPen(color, width_px * NIGHT_LIGHTS_CORE_WIDTH_SCALE, Qt.PenStyle.SolidLine)
             core_pen.setCosmetic(True)
             core_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             core_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)

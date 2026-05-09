@@ -111,9 +111,9 @@ def test_draw_night_light_glow_smoke() -> None:
     assert any(
         (
             (color := image.pixelColor(x, y)).alpha() > 0
-            and color.red() > color.green()
-            and color.green() > color.blue()
+            and max(color.red(), color.green(), color.blue()) - min(color.red(), color.green(), color.blue()) <= 20
         )
         for x in range(image.width())
         for y in range(image.height())
     )
+
