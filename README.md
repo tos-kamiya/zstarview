@@ -502,8 +502,8 @@ The GUI supports direct keyboard and menu-based navigation, search, and overlay 
 * **M**: Toggle moon enlarged to 5x size
 * **D**: Toggle DSO overlays
 * **A**: Toggle asterism overlays
-* **G**: Toggle guideline overlays
-* **S**: Toggle sky-color disc visibility
+* **G**: Toggle sky guides
+* **S**: Toggle sky color visibility
 * **C**: Toggle cloud overlays
 * **L**: Toggle night lights overlay
 * **P**: Toggle aircraft overlay
@@ -529,7 +529,7 @@ From the hamburger menu (`☰`), you can use:
 * **Asterisms**: Toggle asterism overlays on/off (when enabled, dim overlays stay visible; hovering a member star brightens the matching asterism and shows its label).
 * **Guidelines**: Toggle the geometric horizon, celestial equator, ecliptic, never-rises solid circle, direction labels, and zenith marker on/off.
 * **Observation Info**: Toggle the observation-info block on/off. When shown, it stays at the bottom-left by default; `auto` keeps the older hover-avoid placement behavior.
-* **Sky Color Disc**: Switch between the full sky-color gradient and the flat dark-disc fallback.
+* **Sky Color**: Switch between the full sky-color gradient and the flat dark-disc fallback.
 * **Clouds**: Toggle real-time cloud overlays on/off.
 * **Night Lights**: Toggle the NASA Earth at Night / Black Marble overlay on/off. If disabled from the CLI with `--night-light-opacity 0`, the menu item cannot re-enable it for that run.
 * **Aircraft**: Toggle the OpenSky-based aircraft overlay on/off. If disabled from the CLI with `-a 0` / `--aircraft-opacity 0`, the menu item cannot re-enable it for that run.
