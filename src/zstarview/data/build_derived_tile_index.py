@@ -127,7 +127,7 @@ def _parse_tile_bbox(payload: object) -> dict[str, float] | None:
         return None
 
 
-def main(argv: Sequence[str]) -> int:
+def main(argv: Sequence[str], *, quiet: bool = False) -> int:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
 
@@ -135,7 +135,8 @@ def main(argv: Sequence[str]) -> int:
     output = args.output or (derived_dir / "tile_index.json")
     payload = build_tile_index_payload(derived_dir)
     write_tile_index(output, payload)
-    print(f"[ok] tile-index: {output}  tiles={payload['tile_count']}")
+    if not quiet:
+        print(f"[ok] tile-index: {output}  tiles={payload['tile_count']}")
     return 0
 
 

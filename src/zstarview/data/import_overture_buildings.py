@@ -377,6 +377,7 @@ def import_overture_buildings(
     overture_release: str | None = None,
     skip_release_lookup: bool = False,
     now_utc: datetime | None = None,
+    quiet: bool = False,
 ) -> Path:
     overturemaps_path = shutil.which(overturemaps_bin)
     if overturemaps_path is None:
@@ -409,6 +410,7 @@ def import_overture_buildings(
         query_lon_deg=lon_deg,
         query_radius_km=radius_km,
         now_utc=now_utc,
+        quiet=quiet,
     )
 
 
@@ -429,6 +431,7 @@ def import_overture_buildings_for_bbox(
     query_lon_deg: float | None = None,
     query_radius_km: float | None = None,
     now_utc: datetime | None = None,
+    quiet: bool = False,
 ) -> Path:
     overturemaps_path = shutil.which(overturemaps_bin) or overturemaps_bin
     fetched_at_utc = _normalize_utc(now_utc or datetime.now(timezone.utc))
@@ -484,7 +487,7 @@ def import_overture_buildings_for_bbox(
 
     tile_path.parent.mkdir(parents=True, exist_ok=True)
     tile_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    build_derived_tile_index.main(["--derived-dir", str(derived_dir)])
+    build_derived_tile_index.main(["--derived-dir", str(derived_dir)], quiet=quiet)
     write_derived_dataset_metadata(
         derived_dir,
         payload={
@@ -762,7 +765,7 @@ def compute_building_bbox(
     return (min_lat, min_lon, max_lat, max_lon)
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: Sequence[str] | None = None, *, quiet: bool = False) -> int:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
 
@@ -782,7 +785,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         keep_download=args.keep_download,
         no_stac=bool(args.no_stac),
     )
-    print(f"[ok] imported overture buildings -> {derived_dir}")
+    if not quiet:
+        print(f"[ok] imported overture buildings -> {derived_dir}")
     return 0
 
 

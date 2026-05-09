@@ -228,6 +228,7 @@ class UrbanOutlineController(QObject):
                         overture_release=current_overture_release,
                         skip_release_lookup=True,
                         now_utc=now,
+                        quiet=True,
                     )
                     source = "overture"
                 except Exception:
@@ -301,6 +302,7 @@ class UrbanOutlineController(QObject):
                             overture_release=current_overture_release,
                             skip_release_lookup=True,
                             now_utc=now,
+                            quiet=True,
                         )
                         source = "overture"
                     except Exception:
