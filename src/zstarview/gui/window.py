@@ -1257,20 +1257,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             shortcut=QKeySequence(Qt.Key.Key_P),
             triggered=self.toggle_aircraft,
         )
-        self._action_toggle_terrain_horizon = self._add_checkable_menu_action(
-            self.display_menu,
-            "Terrain Horizon",
-            checked=self.terrain_horizon_opacity > 0.0,
-            shortcut=QKeySequence(Qt.Key.Key_T),
-            triggered=self.toggle_terrain_horizon,
-        )
-        self._action_toggle_earth_guide = self._add_checkable_menu_action(
-            self.display_menu,
-            "Earth Guide",
-            checked=self.earth_guide_opacity > 0.0,
-            shortcut=QKeySequence(Qt.Key.Key_E),
-            triggered=self.toggle_earth_guide,
-        )
+        self.display_menu.addSeparator()
         self._action_toggle_night_lights = self._add_checkable_menu_action(
             self.display_menu,
             "Night Lights",
@@ -1285,6 +1272,20 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             checked=self.urban_outline_opacity > 0.0,
             shortcut=QKeySequence(Qt.Key.Key_U),
             triggered=self.toggle_urban_outline,
+        )
+        self._action_toggle_terrain_horizon = self._add_checkable_menu_action(
+            self.display_menu,
+            "Terrain Horizon",
+            checked=self.terrain_horizon_opacity > 0.0,
+            shortcut=QKeySequence(Qt.Key.Key_T),
+            triggered=self.toggle_terrain_horizon,
+        )
+        self._action_toggle_earth_guide = self._add_checkable_menu_action(
+            self.display_menu,
+            "Earth Guide",
+            checked=self.earth_guide_opacity > 0.0,
+            shortcut=QKeySequence(Qt.Key.Key_E),
+            triggered=self.toggle_earth_guide,
         )
 
         square_client_area_action = self._add_menu_action(
