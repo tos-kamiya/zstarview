@@ -232,7 +232,7 @@ prefix なしの `--show-viewpoint-json` で tower と mountain の両方に完�
 | `-c`, `--cloud-opacity CLOUD_OPACITY` | 雲の不透明度を指定します（0.0〜1.0）。0.0 で描画を無効化します。※2 | `0.07` |
 | `--cloud-stripe MODE[,COUNT[,WIDTH]]` | 雲ストライプの方式を指定します。`width` は中心対称のストライプを描き、雲量に応じて見かけの線幅を変えます。`alpha` は線幅を固定したまま線の alpha を変えます。`COUNT` は既定の 600x600 星レンダリング面でのストライプ密度として扱い、実際の描画時には星レイヤーの縮小レンダリング面サイズに合わせてスケールします。`width` は `width,50,0.85`、`alpha` は `alpha,50,0.25` に展開されます。count または width を `0` にすると雲描画を無効化します。 | `width,50,0.85` |
 | `--cloud-missing-tint-opacity OPACITY` | 雲欠損領域を示す黄色の濃さを指定します（0.0〜1.0）。 | `0.176` |
-| `--night-light-opacity OPACITY` | 夜灯りオーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、起動中の Black Marble のダウンロードと描画を無効化します。 | `0.02` |
+| `--night-light-opacity OPACITY` | 夜灯りオーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、起動中の Black Marble のダウンロードと描画を無効化します。 | `0.022` |
 | `-a`, `--aircraft-opacity OPACITY` | 航空機オーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、その起動中の航空機問い合わせと描画を無効化します。 | `0.5` |
 | `--satellite-opacity OPACITY` | 人工衛星オーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、その起動中の軌道要素取得と描画を無効化します。 | `0.5` |
 | `--show-guidelines-initial true\|false` | 起動時にガイドライン表示を有効にするかを指定します。対象は幾何学的地平線、天の赤道、黄道、never-rises 円、方位ラベル、天頂マーカーです。 | `show` |

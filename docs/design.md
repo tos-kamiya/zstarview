@@ -299,7 +299,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 夜間光 GeoTIFF から方位ごとの glow band を生成する
   - 距離帯ごとの区間積分プロファイルを作り、主稜線と副稜線の各 band に対応づける
   - 地形地平線や副稜線の少し上に重ねるための、固定角度帯の強度マップを作る
-  - 描画層は `CORE / MID_NEAR / MID_FAR / OUTER` の 4 段として重ね、`MID` と `OUTER` を段階的に薄くする
+  - 描画層は 4 本の band を `NIGHT_LIGHTS_BAND_SPECS = ((alpha_scale, width_scale), ...)` の形でまとめ、外側から順に重ねている
+  - band の並びは外側から内側へ向かって `alpha` を強く、`width` を細くしていく
   - 帯の切れ目は観測者の真後ろを seam として扱い、固定の `az=0°` では切らない
   - 地形地平線が無い場合は、水平線を基準にする
 - `src/zstarview/splash.py`
