@@ -95,6 +95,10 @@ def _build_band_polygon(
     return polygon
 
 
+def _seam_relative_azimuth_deg(azimuth_deg: float, seam_az_deg: float) -> float:
+    return (float(azimuth_deg) - float(seam_az_deg)) % 360.0
+
+
 def night_light_distance_strength_factor(distance_km: float, band_count: int) -> float:
     if band_count <= 1:
         return 1.0
@@ -178,8 +182,6 @@ def draw_night_light_glow(
         return
 
     band_half_width_deg = float(profile.band_half_width_deg)
-    seam_az_deg = (float(view_center[1]) + 180.0) % 360.0
-
     for layer_index, layer_altaz in enumerate(layer_altaz_sets):
         if not layer_altaz or len(layer_altaz) < 2:
             continue
@@ -190,19 +192,19 @@ def draw_night_light_glow(
                 for sample in selected_samples
                 if float(sample.strength) > 0.0
             ),
-            key=lambda sample: (float(sample.azimuth_deg) - seam_az_deg) % 360.0,
+            key=lambda sample: _seam_relative_azimuth_deg(sample.azimuth_deg, seam_az_deg),
         )
         if len(ordered) < 2:
             continue
 
-        night_az = np.asarray([float(sample.azimuth_deg) % 360.0 for sample in ordered], dtype=np.float64)
+        night_az = np.asarray(
+            [_seam_relative_azimuth_deg(sample.azimuth_deg, seam_az_deg) for sample in ordered],
+            dtype=np.float64,
+        )
         night_strengths = np.asarray([float(sample.strength) for sample in ordered], dtype=np.float64)
         if night_az.size < 2:
             continue
 
-        night_az_sorted = np.argsort(night_az)
-        night_az = night_az[night_az_sorted]
-        night_strengths = night_strengths[night_az_sorted]
         night_az_ext = np.concatenate([night_az[-1:] - 360.0, night_az, night_az[:1] + 360.0])
         night_strengths_ext = np.concatenate([night_strengths[-1:], night_strengths, night_strengths[:1]])
         layer_samples = sorted(
@@ -210,27 +212,27 @@ def draw_night_light_glow(
                 (float(alt_deg), float(az_deg) % 360.0)
                 for alt_deg, az_deg in layer_altaz
             ),
-            key=lambda item: (float(item[1]) - seam_az_deg) % 360.0,
+            key=lambda item: _seam_relative_azimuth_deg(item[1], seam_az_deg),
         )
-        layer_az = np.asarray([az for _, az in layer_samples], dtype=np.float64)
+        layer_az = np.asarray(
+            [_seam_relative_azimuth_deg(az, seam_az_deg) for _, az in layer_samples],
+            dtype=np.float64,
+        )
         layer_horizon_alt = np.asarray([alt for alt, _ in layer_samples], dtype=np.float64)
         if layer_az.size < 2:
             continue
 
-        layer_az_sorted = np.argsort(layer_az)
-        layer_az = layer_az[layer_az_sorted]
-        layer_horizon_alt = layer_horizon_alt[layer_az_sorted]
         layer_strengths = np.interp(layer_az, night_az_ext, night_strengths_ext)
         draw_az = layer_az
         projected_points: list[tuple[float, float]] = []
         strengths: list[float] = []
         center_alts: list[float] = []
-        for az_deg, horizon_alt, strength in zip(draw_az.tolist(), layer_horizon_alt.tolist(), layer_strengths.tolist()):
+        for seam_az_deg_value, horizon_alt, strength in zip(draw_az.tolist(), layer_horizon_alt.tolist(), layer_strengths.tolist()):
             center_alt = float(horizon_alt) + float(profile.band_center_offset_deg)
             try:
                 nx, ny = altaz_to_normalized_xy(
                     center_alt,
-                    float(az_deg),
+                    (float(seam_az_deg_value) + seam_az_deg) % 360.0,
                     view_center,
                     edge_fov_deg=float(edge_fov_deg),
                 )
