@@ -6,7 +6,7 @@ See the starry sky, even when it's cloudy or the sun is out.
 The name emphasizes the *zenith*, the point directly overhead.
 
 It renders an all-sky view with stars, the Sun, Moon, planets, deep-sky objects, and guide overlays.
-When enabled, it can also add real-time cloud imagery, terrain horizon, urban outlines, and nearby aircraft.
+When enabled, it can also add real-time cloud imagery, terrain horizon, urban outlines, night lights, and nearby aircraft.
 Locations can be set by city or viewpoint name, direct coordinates, online place search, or supported Google Maps URLs.
 
 **Features:**
@@ -19,6 +19,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 - **Satellite cloud imagery and sky-color disc**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay, and the sky-color disc remains visible beneath the clouds. Missing regions are shown in faint yellow when satellite coverage is partial. See [an example with partial coverage and yellow missing-data tint](docs/images/screenshot5.png).
 - **Aircraft and artificial satellite overlays**: nearby aircraft from OpenSky can be drawn as purple predicted-motion polylines, and ISS, JWST, Voyager 1, Voyager 2, and Parker can be drawn as small purple markers between the planet and aircraft layers.
 - **Urban outline overlay**: major rooflines are drawn as a white urban outline overlay for the current viewpoint. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 60km radius.
+- **Night lights overlay**: NASA Earth at Night / Black Marble 2016 Grayscale 500m GeoTIFF tiles are downloaded on demand, cached locally, and rendered as a separate glow layer above the horizon and terrain ridges. The layer strength can be tuned with `--night-light-opacity`.
 - **Terrain horizon**: Copernicus DEM data can be downloaded to render the local terrain skyline. The terrain overlay shows banded ridge lines in the same horizon color, with nearby bands drawn thicker and distant bands drawn thinner. Blue-tinted ridge lines mark the parts visible from the observer, not hidden by nearer ridges. The disc is filled with the same ground tone below the terrain horizon, or below the geometric horizon when terrain is disabled.
 - **Earth guide**: An independent layer draws a simplified continental hatch pattern below the horizon in the same ground tone to help with orientation.
 - **Guides**: guide overlays include the never-rises region as a guide-line style solid circle in the same visual family as the celestial equator, along with direction labels around the horizon and a zenith marker.
@@ -231,6 +232,7 @@ These options are mutually exclusive, do not accept the `location` argument, and
 | `-c`, `--cloud-opacity CLOUD_OPACITY`       | Opacity of cloud rendering (0.0–1.0). Use 0.0 to disable. \*2                | `0.07`   |
 | `--cloud-stripe MODE[,COUNT[,WIDTH]]`       | Cloud stripe style. `width` draws centered symmetric stripes whose visible width varies with cloud amount; `alpha` keeps width fixed and varies stripe alpha. `COUNT` is treated as the stripe density for the default 600x600 star render surface, and the effective count is scaled to match the star layer's downsampled surface size. `width` expands to `width,50,0.85`; `alpha` expands to `alpha,50,0.25`. If count or width is `0`, cloud rendering is disabled. | `width,50,0.85` |
 | `--cloud-missing-tint-opacity OPACITY`      | Opacity of missing-cloud-data yellow tint (0.0–1.0).                          | `0.176` |
+| `--night-light-opacity OPACITY`             | Opacity of the NASA night-light overlay (0.0–1.0). Use 0.0 to disable the on-demand Black Marble download and drawing for that run. | `0.02` |
 | `-a`, `--aircraft-opacity OPACITY`          | Opacity of the aircraft overlay (0.0–1.0). Use 0.0 to disable aircraft queries and drawing for that run. | `0.5` |
 | `--satellite-opacity OPACITY`               | Opacity of the artificial satellite overlay (0.0–1.0). Use 0.0 to disable satellite element fetch and drawing for that run. | `0.5` |
 | `--show-guidelines-initial true\|false`     | Whether guideline overlays are shown at startup. This controls the geometric horizon, celestial equator, ecliptic, never-rises circle, direction labels, and zenith marker. | `show` |
@@ -496,13 +498,14 @@ The GUI supports direct keyboard and menu-based navigation, search, and overlay 
 
 * **← / →**: Rotate view azimuth by ±5°
 * **↑ / ↓**: Change view altitude by ±5° (clamped to 0°..90°)
-  While arrow-key input continues, the app keeps a simplified viewport-interaction mode for about 0.7 seconds after the last input. In this mode, it shows stars up to `Vmag <= 4.0`, the celestial equator, ecliptic, horizon, terrain horizon, direction labels, and the zenith marker; planets, full star density, sky-color disc, clouds, DSO, asterisms, and urban outlines are temporarily hidden.
+  While arrow-key input continues, the app keeps a simplified viewport-interaction mode for about 0.7 seconds after the last input. In this mode, it shows stars up to `Vmag <= 4.0`, the celestial equator, ecliptic, horizon, terrain horizon, direction labels, and the zenith marker; planets, full star density, sky-color disc, clouds, night lights, DSO, asterisms, and urban outlines are temporarily hidden.
 * **M**: Toggle moon enlarged to 5x size
 * **D**: Toggle DSO overlays
 * **A**: Toggle asterism overlays
 * **G**: Toggle guideline overlays
 * **S**: Toggle sky-color disc visibility
 * **C**: Toggle cloud overlays
+* **L**: Toggle night lights overlay
 * **P**: Toggle aircraft overlay
 * **I**: Toggle artificial satellite overlay
 * **T**: Toggle terrain horizon overlay
@@ -528,6 +531,7 @@ From the hamburger menu (`☰`), you can use:
 * **Observation Info**: Toggle the observation-info block on/off. When shown, it stays at the bottom-left by default; `auto` keeps the older hover-avoid placement behavior.
 * **Sky Color Disc**: Switch between the full sky-color gradient and the flat dark-disc fallback.
 * **Clouds**: Toggle real-time cloud overlays on/off.
+* **Night Lights**: Toggle the NASA Earth at Night / Black Marble overlay on/off. If disabled from the CLI with `--night-light-opacity 0`, the menu item cannot re-enable it for that run.
 * **Aircraft**: Toggle the OpenSky-based aircraft overlay on/off. If disabled from the CLI with `-a 0` / `--aircraft-opacity 0`, the menu item cannot re-enable it for that run.
 * **Satellites**: Toggle the ISS artificial satellite overlay on/off. If disabled from the CLI with `--satellite-opacity 0`, the menu item cannot re-enable it for that run.
 * **Terrain Horizon**: Toggle the terrain skyline overlay on/off. If disabled from the CLI with `-d 0` / `--terrain-horizon-opacity 0`, the menu item cannot re-enable it for that run.
@@ -637,14 +641,21 @@ zstarview --window-frame window
    If your network is slow or unavailable, disable terrain horizon rendering with `-d 0` or `--terrain-horizon-opacity 0`.
    You can still explore stars/planets and sky colors without terrain overlays.
 
-4. Artificial satellite data
+4. Night-light data
+
+   Night lights use NASA Earth at Night / Black Marble 2016 Grayscale 500m GeoTIFF tiles.
+   The app downloads the tiles on demand, caches them locally, and reuses the cache on later launches.
+   If your network is slow or unavailable, disable the layer with `--night-light-opacity 0`.
+   If the cache is already present, the app can keep showing the night-light overlay without network access.
+
+5. Artificial satellite data
 
    The artificial satellite overlay fetches ISS orbital data at runtime, using `wheretheiss.at` as the primary source and CelesTrak as a fallback, and fetches JWST, Voyager 1, Voyager 2, and Parker from JPL Horizons. Fresh current caches are reused for up to 24 hours for both the ISS cache and the Horizons-backed spacecraft cache.
    The layer is available only for realtime views; time-shifted views do not fetch or display artificial satellites.
    If your network is slow or unavailable, disable the layer with `--satellite-opacity 0`.
    If a fresh cache is already present, the app can keep showing the satellite overlay without network access.
 
-5. Aircraft data
+6. Aircraft data
 
    The aircraft overlay fetches OpenSky Network state data at runtime.
    By default it refreshes once every 5 minutes. This interval is intentionally conservative so the app keeps practical headroom for free-tier use, temporary failures, and retries rather than polling more aggressively.
@@ -696,6 +707,7 @@ All paths below are relative to `src/zstarview/data/`.
 | Runtime `--place` geocoding requests sent to OpenStreetMap Nominatim | Online place-name geocoding used only when `--place` is requested | [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) | [Nominatim Usage Policy](https://operations.osmfoundation.org/policies/nominatim/) |
 | Runtime IP geolocation requests sent to `ip-api.com` | IP-based location lookup used when `auto` is requested | [ip-api.com](https://ip-api.com/) | [ip-api.com Terms of Service / Privacy Policy](https://ip-api.com/docs/legal) |
 | On-demand urban-outline cache under the app cache directory | Derived building tiles and `tile_index.json` files produced from downloaded Overture building data | [Overture Maps Buildings](https://docs.overturemaps.org/guides/buildings/) downloaded at runtime via the `overturemaps` CLI | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) |
+| On-demand night-light cache under the app cache directory | NASA Earth at Night / Black Marble 2016 Grayscale 500m GeoTIFF tiles used for the optional night-light overlay | [NASA Earth at Night / Black Marble maps](https://science.nasa.gov/earth/earth-observatory/earth-at-night/maps/) | NASA data use terms as published on the source pages |
 | Runtime aircraft overlay data fetched from OpenSky Network | Aircraft state vectors used for the optional nearby-aircraft overlay | [OpenSky Network REST API](https://openskynetwork.github.io/opensky-api/rest.html) | [OpenSky Network Terms of Use](https://opensky-network.org/about/terms-of-use) |
 | Runtime JPL Horizons / Small-Body Database requests | Search / ephemeris data used for celestial-body lookup and the JWST / Voyager / Parker spacecraft cache | [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/), [JPL Small-Body Database](https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html) | See the JPL/JPL SSD sites for current usage terms and data notes |
 | Runtime artificial satellite overlay data fetched from `wheretheiss.at` with CelesTrak fallback | Orbital-element data used for the optional ISS overlay | [wheretheiss.at](https://wheretheiss.at/w/developer), [CelesTrak](https://celestrak.org/) | See each source site for current terms and licensing details |
@@ -712,6 +724,7 @@ All paths below are relative to `src/zstarview/data/`.
 * Mountain/viewpoint startup data are curated from Wikipedia candidates and normalized with Wikidata metadata; redistributed here under Wikidata's CC0 data terms.
 * Earth-guide land geometry is derived from Natural Earth 1:110m land polygons. Natural Earth treats the data as public domain; credit is optional, but we note the source here.
 * Urban outline source data are downloaded on demand from **Overture Maps Buildings** and converted into cached derived building tiles for runtime use.
+* Night-light source data are downloaded on demand from NASA Earth at Night / Black Marble and cached locally as GeoTIFF tiles for runtime use.
 * Star proper names provided by the IAU Working Group on Star Names (via [exopla.net](https://exopla.net/star-names/modern-iau-star-names/)).
 * Cloud data are based on infrared observations from the **Himawari** satellite (provided by JMA) and the **NOAA GOES** series (provided by NOAA/NESDIS), retrieved from their public S3 buckets.
 * Aircraft overlay data are fetched from **OpenSky Network** at runtime and are subject to the [OpenSky Network Terms of Use](https://opensky-network.org/about/terms-of-use).
