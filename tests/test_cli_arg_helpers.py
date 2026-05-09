@@ -198,6 +198,12 @@ def test_parse_args_accepts_earth_guide_opacity_short_option() -> None:
     assert args.earth_guide_opacity == 0.4
 
 
+def test_parse_args_defaults_night_light_opacity() -> None:
+    args = cli_args.parse_args(["Matsue"])
+
+    assert args.night_light_opacity == 0.022
+
+
 def test_parse_args_accepts_urban_outline_opacity_short_option() -> None:
     args = cli_args.parse_args(["-u", "0.3", "Matsue"])
 

@@ -424,7 +424,7 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
         aircraft_opacity=0.5,
         terrain_horizon_opacity=0.1,
         earth_guide_opacity=0.1,
-        night_light_opacity=0.02,
+        night_light_opacity=0.022,
         _night_light_toggle_supported=True,
         urban_outline_opacity=0.2,
         vmag_limit=6.0,
