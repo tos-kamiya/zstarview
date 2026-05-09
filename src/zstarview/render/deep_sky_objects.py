@@ -8,7 +8,7 @@ from PySide6.QtCore import QPoint, QPointF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy
-from ..paths import PALETTE_ASTERISM_RGB, ThemeStyle
+from ..paths import ThemeStyle
 from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
 
@@ -204,12 +204,10 @@ def draw_dso_hover_info(
     pa_deg = float(obj.get("pa_deg", 0.0))
     alt = float(obj.get("alt", 0.0))
     az = float(obj.get("az", 0.0))
-    if theme.label_outline_suppressed:
-        hover_pen = QColor(*PALETTE_ASTERISM_RGB, 220)
-        hover_fill = QColor(70, 140, 230, 70)
-    else:
-        hover_pen = QColor(*PALETTE_ASTERISM_RGB, 230)
-        hover_fill = QColor(110, 185, 255, 62)
+    hover_fill_alpha = 70 if theme.label_outline_suppressed else 62
+    hover_pen_alpha = 220 if theme.label_outline_suppressed else 230
+    hover_pen = QColor(DSO_LABEL_RGB[0], DSO_LABEL_RGB[1], DSO_LABEL_RGB[2], hover_pen_alpha)
+    hover_fill = QColor(DSO_LABEL_RGB[0], DSO_LABEL_RGB[1], DSO_LABEL_RGB[2], hover_fill_alpha)
     base_poly = _dso_ellipse_polygon(
         alt_deg=alt,
         az_deg=az,
