@@ -10,6 +10,7 @@ from PySide6.QtGui import QFont, QImage, QPainter
 
 from ..aircraft.types import AircraftOverlayPoint
 from ..gui.composite import CloudAmountField, SkyCompositorCache
+from ..night_lights import NightLightGlowProfile
 from ..satellites.types import SatelliteOverlayPoint
 from ..types import CelestialData, ScreenGeometry, ViewerData
 from ..types import CelestialObject, StarsTable, UrbanOutlinePolyline
@@ -81,6 +82,7 @@ class RenderSceneData:
     urban_outlines: list[UrbanOutlinePolyline] | None
     satellite_overlay_points: list[SatelliteOverlayPoint] | None
     aircraft_overlay_points: list[AircraftOverlayPoint] | None
+    night_light_glow_profile: NightLightGlowProfile | None = None
 
 
 @dataclass(frozen=True)
@@ -447,6 +449,7 @@ def _draw_background_layer(
         opaque=not style.show_custom_window_frame,
         altaz_rings_mode=style.sky_disc_altaz_rings,
         view_center=scene.viewer.view_center,
+        terrain_profile_altaz=scene.terrain_horizon_profile,
     )
     if style.show_custom_window_frame:
         render_background.draw_window_border(
@@ -527,6 +530,7 @@ def _draw_sky_cloud_layers(
             if style.terrain_horizon_opacity > 0.0
             else None
         ),
+        night_light_glow_profile=scene.night_light_glow_profile,
         earth_guide_opacity=style.earth_guide_opacity,
         earth_guide_visibility_boost=style.earth_guide_visibility_boost,
         ground_reset_rgba=style.theme.window_background.inner_rgba,
@@ -535,8 +539,6 @@ def _draw_sky_cloud_layers(
         fast_mode=bool(fast_mode),
         sky_disc_altaz_rings=str(style.sky_disc_altaz_rings),
     )
-
-
 def _draw_terrain_layers(
     painter: QPainter,
     *,

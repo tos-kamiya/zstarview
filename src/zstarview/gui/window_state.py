@@ -10,6 +10,7 @@ from PySide6.QtGui import QImage
 from ..aircraft.types import AircraftOverlayPoint
 from ..search.models import SearchJumpTarget
 from ..satellites.types import SatelliteOverlayPoint
+from ..night_lights import NightLightGlowProfile
 from ..types import CelestialData, StarsTable, UrbanOutlinePolyline, ViewCenterAltAz
 
 
@@ -50,3 +51,4 @@ class SkyWindowState:
     urban_outlines: Optional[list[UrbanOutlinePolyline]] = None
     satellite_overlay_points: Optional[list[SatelliteOverlayPoint]] = None
     aircraft_overlay_points: Optional[list[AircraftOverlayPoint]] = None
+    night_light_glow_profile: Optional[NightLightGlowProfile] = None

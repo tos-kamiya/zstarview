@@ -16,7 +16,7 @@ from typing import Optional, Tuple, cast
 
 import numpy as np
 from PySide6.QtCore import QPointF, QRect, QRectF, Qt
-from PySide6.QtGui import QColor, QImage, QPainter, QPen, QPolygonF
+from PySide6.QtGui import QColor, QImage, QPainter, QPainterPath, QPen, QPolygonF
 
 from ..paths import (
     CLOUD_HATCH_DEFAULT,
@@ -26,6 +26,8 @@ from ..paths import (
     ThemeStyle,
 )
 from ..astro import altaz_to_normalized_xy
+from ..night_lights import NightLightGlowProfile
+from ..render.night_lights import draw_night_light_glow
 from ..render.earth_guide import draw_earth_guide, earth_guide_line_alpha
 from ..render.guides import (
     REFERENCE_LINE_FG_WIDTH,
@@ -1074,6 +1076,7 @@ class SkyCompositorCache:
         missing_mask: Optional[np.ndarray] = None,
         show_guidelines: bool = True,
         terrain_profile_altaz: list[tuple[float, float]] | None = None,
+        night_light_glow_profile: NightLightGlowProfile | None = None,
         terrain_horizon_opacity: float = 0.003,
         earth_guide_opacity: float = 0.028,
         earth_guide_visibility_boost: float = 1.0,
@@ -1111,6 +1114,18 @@ class SkyCompositorCache:
             if terrain_profile_altaz
             else ()
         )
+        night_light_key = (
+            tuple(
+                (
+                    round(float(sample.azimuth_deg) % 360.0, 3),
+                    round(float(sample.horizon_alt_deg), 3),
+                    round(float(sample.strength), 4),
+                )
+                for sample in getattr(night_light_glow_profile, "samples", ())
+            )
+            if night_light_glow_profile is not None
+            else ()
+        )
         hatch_key = (
             self._hatch_cfg.tile_w_px,
             self._hatch_cfg.tile_h_px,
@@ -1141,6 +1156,7 @@ class SkyCompositorCache:
             float(never_rises_opacity),
             bool(fast_mode),
             hatch_key,
+            night_light_key,
             self._missing_tint_rgba,
             self._gray_mix,
             None
@@ -1292,6 +1308,34 @@ class SkyCompositorCache:
                 content_fov_deg=content_fov_deg,
                 fast_mode=fast_mode,
             )
+            if night_light_glow_profile is not None:
+                night_geometry = ScreenGeometry(
+                    center=(int(geometry.center[0]) - x, int(geometry.center[1]) - y),
+                    radius=int(geometry.radius),
+                )
+                night_painter = QPainter(composited)
+                try:
+                    clip_path = QPainterPath()
+                    clip_radius = max(1.0, float(night_geometry.radius) * max(0.0, float(content_fov_deg) / max(1.0e-6, float(edge_fov_deg))))
+                    clip_path.addEllipse(
+                        QPointF(float(night_geometry.center[0]), float(night_geometry.center[1])),
+                        clip_radius,
+                        clip_radius,
+                    )
+                    night_painter.setClipPath(clip_path)
+                    draw_night_light_glow(
+                        night_painter,
+                        geometry=night_geometry,
+                        viewport_rect=QRectF(0.0, 0.0, float(w), float(h)),
+                        profile=night_light_glow_profile,
+                        terrain_profile_altaz=terrain_profile_altaz if terrain_profile_altaz else None,
+                        view_center=view_center,
+                        theme=theme,
+                        edge_fov_deg=edge_fov_deg,
+                        content_fov_deg=content_fov_deg,
+                    )
+                finally:
+                    night_painter.end()
             if show_guidelines:
                 composited = _overlay_never_rises_outline(
                     composited,

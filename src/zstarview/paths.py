@@ -31,6 +31,7 @@ OVERTURE_DERIVED_ROOT_DIR = os.path.join(CACHE_PATH, "overture_buildings")
 OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR = os.path.join(CACHE_PATH, "overture_skyscrapers")
 AIRCRAFT_CACHE_ROOT_DIR = os.path.join(CACHE_PATH, "aircraft", "opensky")
 SATELLITE_CACHE_ROOT_DIR = os.path.join(CACHE_PATH, "satellites", "celestrak")
+NIGHT_LIGHTS_CACHE_DIR = os.path.join(CACHE_PATH, "night_lights")
 
 # Window UI
 GUI_BUTTON_SIZE = 30
