@@ -1080,6 +1080,7 @@ class SkyCompositorCache:
         terrain_horizon_opacity: float = 0.003,
         earth_guide_opacity: float = 0.028,
         earth_guide_visibility_boost: float = 1.0,
+        night_light_opacity: float = 0.02,
         never_rises_opacity: float = 0.2,
         ground_reset_rgba: tuple[int, int, int, int] | None = None,
         theme: ThemeStyle | None = None,
@@ -1153,6 +1154,7 @@ class SkyCompositorCache:
             bool(show_guidelines),
             float(terrain_horizon_opacity),
             float(earth_guide_opacity),
+            float(night_light_opacity),
             float(never_rises_opacity),
             bool(fast_mode),
             hatch_key,
@@ -1308,7 +1310,7 @@ class SkyCompositorCache:
                 content_fov_deg=content_fov_deg,
                 fast_mode=fast_mode,
             )
-            if night_light_glow_profile is not None and not fast_mode:
+            if night_light_glow_profile is not None and not fast_mode and float(night_light_opacity) > 0.0:
                 night_geometry = ScreenGeometry(
                     center=(int(geometry.center[0]) - x, int(geometry.center[1]) - y),
                     radius=int(geometry.radius),
@@ -1331,6 +1333,7 @@ class SkyCompositorCache:
                         terrain_profile_altaz=terrain_profile_altaz if terrain_profile_altaz else None,
                         view_center=view_center,
                         theme=theme,
+                        opacity=float(night_light_opacity),
                         edge_fov_deg=edge_fov_deg,
                         content_fov_deg=content_fov_deg,
                     )

@@ -652,6 +652,15 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         ),
     )
     parser.add_argument(
+        "--night-light-opacity",
+        type=float,
+        default=0.02,
+        help=(
+            "Opacity of the night light overlay (0.0 - 1.0, default: 0.02). "
+            "Set to 0.0 to disable night light rendering and lock the GUI toggle off for that session."
+        ),
+    )
+    parser.add_argument(
         "--ground-tint-opacity",
         type=float,
         default=0.04,
@@ -1009,6 +1018,15 @@ def add_render_arguments(
         ),
     )
     parser.add_argument(
+        "--night-light-opacity",
+        type=float,
+        default=0.02,
+        help=(
+            "Opacity of the night light overlay (0.0 - 1.0, default: 0.02). "
+            "Set to 0.0 to disable night light rendering and lock the GUI toggle off for that session."
+        ),
+    )
+    parser.add_argument(
         "--urban-outline-opacity",
         type=float,
         default=0.2,
@@ -1235,6 +1253,7 @@ def _validate_dataset_query_compatibility(
             or has_non_default("satellite_opacity")
             or has_non_default("terrain_horizon_opacity")
             or has_non_default("earth_guide_opacity")
+            or has_non_default("night_light_opacity")
             or has_non_default("urban_outline_opacity")
             or has_non_default("urban_outline_radius_km")
             or has_non_default("urban_outline_min_height_m")

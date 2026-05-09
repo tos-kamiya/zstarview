@@ -109,6 +109,7 @@ class RenderStyle:
     satellite_opacity: float
     terrain_horizon_opacity: float
     earth_guide_opacity: float
+    night_light_opacity: float
     urban_outline_opacity: float
     show_urban_outline_layer: bool
     aircraft_opacity: float
@@ -533,6 +534,7 @@ def _draw_sky_cloud_layers(
         night_light_glow_profile=scene.night_light_glow_profile,
         earth_guide_opacity=style.earth_guide_opacity,
         earth_guide_visibility_boost=style.earth_guide_visibility_boost,
+        night_light_opacity=style.night_light_opacity,
         ground_reset_rgba=style.theme.window_background.inner_rgba,
         theme=style.theme,
         content_fov_deg=_content_fov_deg(scene),

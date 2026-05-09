@@ -117,3 +117,81 @@ def test_draw_night_light_glow_smoke() -> None:
         for y in range(image.height())
     )
 
+
+def test_draw_night_light_glow_respects_opacity() -> None:
+    profile = night_lights.NightLightGlowProfile(
+        samples=(
+            night_lights.NightLightGlowSample(
+                azimuth_deg=175.0,
+                horizon_alt_deg=0.0,
+                strength=0.7,
+            ),
+            night_lights.NightLightGlowSample(
+                azimuth_deg=185.0,
+                horizon_alt_deg=0.0,
+                strength=1.0,
+            ),
+        ),
+        sun_alt_deg=-5.0,
+    )
+
+    full = QImage(120, 80, QImage.Format.Format_ARGB32_Premultiplied)
+    full.fill(0)
+    p_full = QPainter(full)
+    try:
+        draw_night_light_glow(
+            p_full,
+                geometry=ScreenGeometry(center=(60, 40), radius=36),
+                viewport_rect=QRectF(0.0, 0.0, 120.0, 80.0),
+                profile=profile,
+                terrain_profile_altaz=[(0.0, 175.0), (0.0, 185.0)],
+                view_center=(0.0, 180.0),
+                theme=THEME_STYLES_BY_PRESET["night"],
+                opacity=1.0,
+            edge_fov_deg=95.0,
+            content_fov_deg=110.0,
+        )
+    finally:
+        p_full.end()
+
+    dim = QImage(120, 80, QImage.Format.Format_ARGB32_Premultiplied)
+    dim.fill(0)
+    p_dim = QPainter(dim)
+    try:
+        draw_night_light_glow(
+            p_dim,
+                geometry=ScreenGeometry(center=(60, 40), radius=36),
+                viewport_rect=QRectF(0.0, 0.0, 120.0, 80.0),
+                profile=profile,
+                terrain_profile_altaz=[(0.0, 175.0), (0.0, 185.0)],
+                view_center=(0.0, 180.0),
+                theme=THEME_STYLES_BY_PRESET["night"],
+                opacity=0.25,
+            edge_fov_deg=95.0,
+            content_fov_deg=110.0,
+        )
+    finally:
+        p_dim.end()
+
+    zero = QImage(120, 80, QImage.Format.Format_ARGB32_Premultiplied)
+    zero.fill(0)
+    p_zero = QPainter(zero)
+    try:
+        draw_night_light_glow(
+            p_zero,
+                geometry=ScreenGeometry(center=(60, 40), radius=36),
+                viewport_rect=QRectF(0.0, 0.0, 120.0, 80.0),
+                profile=profile,
+                terrain_profile_altaz=[(0.0, 175.0), (0.0, 185.0)],
+                view_center=(0.0, 180.0),
+                theme=THEME_STYLES_BY_PRESET["night"],
+                opacity=0.0,
+            edge_fov_deg=95.0,
+            content_fov_deg=110.0,
+        )
+    finally:
+        p_zero.end()
+
+    assert any(full.pixelColor(x, y).alpha() > 0 for x in range(full.width()) for y in range(full.height()))
+    assert any(dim.pixelColor(x, y).alpha() > 0 for x in range(dim.width()) for y in range(dim.height()))
+    assert not any(zero.pixelColor(x, y).alpha() > 0 for x in range(zero.width()) for y in range(zero.height()))
