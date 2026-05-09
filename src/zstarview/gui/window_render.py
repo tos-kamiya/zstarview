@@ -140,16 +140,12 @@ class SkyWindowRenderMixin:
                 [
                     round(float(self.satellite_opacity), 3),
                     round(float(self.aircraft_opacity), 3),
-                    self._render_cache_stamp(
-                        None
-                        if self.state.satellite_overlay_points is None
-                        else tuple(self.state.satellite_overlay_points)
-                    ),
-                    self._render_cache_stamp(
-                        None
-                        if self.state.aircraft_overlay_points is None
-                        else tuple(self.state.aircraft_overlay_points)
-                    ),
+                    None
+                    if self.state.satellite_overlay_points is None
+                    else tuple(self.state.satellite_overlay_points),
+                    None
+                    if self.state.aircraft_overlay_points is None
+                    else tuple(self.state.aircraft_overlay_points),
                 ]
             )
         return tuple(key_parts)
