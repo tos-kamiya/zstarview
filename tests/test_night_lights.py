@@ -38,6 +38,14 @@ def test_compute_night_light_glow_profile_returns_none_for_daytime() -> None:
     assert profile is None
 
 
+def test_night_light_strength_factor_is_continuous() -> None:
+    assert night_lights.night_light_strength_factor(1.0) == 0.0
+    assert night_lights.night_light_strength_factor(0.0) == 0.0
+    assert 0.0 < night_lights.night_light_strength_factor(-3.0) < 1.0
+    assert night_lights.night_light_strength_factor(-6.0) == 1.0
+    assert night_lights.night_light_strength_factor(-10.0) == 1.0
+
+
 def test_compute_night_light_glow_profile_uses_mocked_sampling(tmp_path, monkeypatch) -> None:
     tile_paths = {}
     for tile in night_lights.NIGHT_LIGHTS_TILE_NAMES:
@@ -72,6 +80,49 @@ def test_compute_night_light_glow_profile_uses_mocked_sampling(tmp_path, monkeyp
     assert strengths[0] <= strengths[1] <= strengths[2]
 
 
+def test_compute_night_light_glow_profile_reuses_location_cache(tmp_path, monkeypatch) -> None:
+    tile_paths = {}
+    for tile in night_lights.NIGHT_LIGHTS_TILE_NAMES:
+        path = tmp_path / f"{tile}.tif"
+        path.write_text("dummy", encoding="utf-8")
+        tile_paths[tile] = path
+
+    monkeypatch.setattr(night_lights, "_ensure_night_light_tiles", lambda **_kwargs: tile_paths)
+    monkeypatch.setattr(
+        night_lights,
+        "_build_azimuth_grid",
+        lambda terrain_profile_altaz=None: (
+            np.asarray([0.0, 90.0, 180.0], dtype=np.float64),
+            np.zeros(3, dtype=np.float64),
+        ),
+    )
+    call_count = {"count": 0}
+
+    def _sample_ray_brightness(**kwargs) -> float:
+        call_count["count"] += 1
+        return float(kwargs["azimuth_deg"]) / 180.0
+
+    monkeypatch.setattr(night_lights, "_sample_ray_brightness", _sample_ray_brightness)
+    night_lights._compute_night_light_base_profile.cache_clear()
+    try:
+        profile1 = night_lights.compute_night_light_glow_profile(
+            observer_lat_deg=35.0,
+            observer_lon_deg=139.0,
+            sun_alt_deg=-5.0,
+        )
+        profile2 = night_lights.compute_night_light_glow_profile(
+            observer_lat_deg=35.0,
+            observer_lon_deg=139.0,
+            sun_alt_deg=-10.0,
+        )
+    finally:
+        night_lights._compute_night_light_base_profile.cache_clear()
+
+    assert profile1 is not None
+    assert profile2 is not None
+    assert call_count["count"] == 3
+
+
 def test_draw_night_light_glow_smoke() -> None:
     image = QImage(200, 100, QImage.Format.Format_ARGB32_Premultiplied)
     image.fill(0)
@@ -97,6 +148,7 @@ def test_draw_night_light_glow_smoke() -> None:
             ],
             view_center=(0.0, 180.0),
             theme=THEME_STYLES_BY_PRESET["night"],
+            sun_alt_deg=-5.0,
             edge_fov_deg=95.0,
             content_fov_deg=110.0,
         )
@@ -148,6 +200,7 @@ def test_draw_night_light_glow_respects_opacity() -> None:
                 view_center=(0.0, 180.0),
                 theme=THEME_STYLES_BY_PRESET["night"],
                 opacity=1.0,
+                sun_alt_deg=-5.0,
             edge_fov_deg=95.0,
             content_fov_deg=110.0,
         )
@@ -167,6 +220,7 @@ def test_draw_night_light_glow_respects_opacity() -> None:
                 view_center=(0.0, 180.0),
                 theme=THEME_STYLES_BY_PRESET["night"],
                 opacity=0.25,
+                sun_alt_deg=-5.0,
             edge_fov_deg=95.0,
             content_fov_deg=110.0,
         )
@@ -186,6 +240,7 @@ def test_draw_night_light_glow_respects_opacity() -> None:
                 view_center=(0.0, 180.0),
                 theme=THEME_STYLES_BY_PRESET["night"],
                 opacity=0.0,
+                sun_alt_deg=-5.0,
             edge_fov_deg=95.0,
             content_fov_deg=110.0,
         )

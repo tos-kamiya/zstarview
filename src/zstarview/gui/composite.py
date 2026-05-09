@@ -1081,6 +1081,7 @@ class SkyCompositorCache:
         earth_guide_opacity: float = 0.028,
         earth_guide_visibility_boost: float = 1.0,
         night_light_opacity: float = 0.02,
+        night_light_sun_alt_deg: float | None = None,
         never_rises_opacity: float = 0.2,
         ground_reset_rgba: tuple[int, int, int, int] | None = None,
         theme: ThemeStyle | None = None,
@@ -1155,6 +1156,7 @@ class SkyCompositorCache:
             float(terrain_horizon_opacity),
             float(earth_guide_opacity),
             float(night_light_opacity),
+            None if night_light_sun_alt_deg is None else round(float(night_light_sun_alt_deg), 3),
             float(never_rises_opacity),
             bool(fast_mode),
             hatch_key,
@@ -1334,6 +1336,7 @@ class SkyCompositorCache:
                         view_center=view_center,
                         theme=theme,
                         opacity=float(night_light_opacity),
+                        sun_alt_deg=night_light_sun_alt_deg,
                         edge_fov_deg=edge_fov_deg,
                         content_fov_deg=content_fov_deg,
                     )

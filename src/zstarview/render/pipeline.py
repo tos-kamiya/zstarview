@@ -32,6 +32,13 @@ from . import text as render_text
 ORIENTATION_INTERACTION_STAR_VMAG_LIMIT = 4.0
 
 
+def _sun_alt_deg(celestial_data: CelestialData) -> float | None:
+    for body in celestial_data.planets:
+        if body.name == "sun":
+            return float(body.alt)
+    return None
+
+
 def compute_star_render_surface_size(
     width_px: int,
     height_px: int,
@@ -535,6 +542,7 @@ def _draw_sky_cloud_layers(
         earth_guide_opacity=style.earth_guide_opacity,
         earth_guide_visibility_boost=style.earth_guide_visibility_boost,
         night_light_opacity=style.night_light_opacity,
+        night_light_sun_alt_deg=_sun_alt_deg(scene.celestial_data),
         ground_reset_rgba=style.theme.window_background.inner_rgba,
         theme=style.theme,
         content_fov_deg=_content_fov_deg(scene),

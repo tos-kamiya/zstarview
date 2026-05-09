@@ -7,7 +7,7 @@ from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QPainter, QPen
 
 from ..astro import altaz_to_normalized_xy
-from ..night_lights import NightLightGlowProfile
+from ..night_lights import NightLightGlowProfile, night_light_strength_factor
 from ..paths import ThemeStyle
 from ..types import ScreenGeometry
 from .geometry import normalized_to_screen_xy
@@ -62,13 +62,15 @@ def draw_night_light_glow(
     view_center: tuple[float, float],
     theme: ThemeStyle,
     opacity: float = 1.0,
+    sun_alt_deg: float | None = None,
     edge_fov_deg: float,
     content_fov_deg: float,
 ) -> None:
     del viewport_rect, theme, content_fov_deg
 
     layer_opacity = max(0.0, min(1.0, float(opacity)))
-    if profile is None or not profile.samples or layer_opacity <= 0.0:
+    sun_factor = 1.0 if sun_alt_deg is None else night_light_strength_factor(sun_alt_deg)
+    if profile is None or not profile.samples or layer_opacity <= 0.0 or sun_factor <= 0.0:
         return
     samples = [sample for sample in profile.samples if float(sample.strength) > 0.0]
     if not samples:
@@ -162,7 +164,7 @@ def draw_night_light_glow(
             strength = max(float(start_strength), float(end_strength))
             if strength < NIGHT_LIGHTS_MIN_BRIGHTNESS:
                 continue
-            alpha = min(1.0, strength * NIGHT_LIGHTS_BASE_ALPHA_SCALE * layer_opacity)
+            alpha = min(1.0, strength * NIGHT_LIGHTS_BASE_ALPHA_SCALE * layer_opacity * sun_factor)
             color = QColor(*fill_rgb)
 
             color.setAlphaF(max(0.0, min(1.0, alpha * NIGHT_LIGHTS_OUTER_ALPHA_SCALE)))
