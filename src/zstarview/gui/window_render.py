@@ -122,6 +122,7 @@ class SkyWindowRenderMixin:
             bool(self.show_urban_outline_layer),
             self._render_cache_stamp(celestial_data),
             self._render_cache_stamp(self.state.sky_disc_image),
+            self._render_cache_stamp(self.state.night_light_glow_profile),
             self._render_cache_stamp(self.cloud_state.image),
             self._render_cache_stamp(self.cloud_state.missing_mask),
             None
@@ -404,6 +405,7 @@ class SkyWindowRenderMixin:
             urban_outlines=getattr(state, "urban_outlines", None),
             satellite_overlay_points=getattr(state, "satellite_overlay_points", None),
             aircraft_overlay_points=getattr(state, "aircraft_overlay_points", None),
+            night_light_glow_profile=getattr(state, "night_light_glow_profile", None),
         )
 
     def _render_style(self) -> RenderStyle:

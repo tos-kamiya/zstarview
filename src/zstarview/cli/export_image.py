@@ -28,6 +28,7 @@ from ..aircraft import (
     project_aircraft_snapshots,
 )
 from ..overlay_time import classify_target_time, overlay_availability_for_delta
+from ..night_lights import compute_night_light_glow_profile
 from ..satellites import project_satellite_records, resolve_satellite_elements_for_time
 from ..astro import load_ephemeris
 from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_lived_cache
@@ -1225,6 +1226,23 @@ def main() -> None:
             if not allow_partial_data:
                 _abort_export_without_partial_data()
 
+    night_light_glow_profile = None
+    sun_alt_deg = None
+    for body in celestial_data.planets:
+        if body.name == "sun":
+            sun_alt_deg = float(body.alt)
+            break
+    if sun_alt_deg is not None and sun_alt_deg < 0.0:
+        try:
+            night_light_glow_profile = compute_night_light_glow_profile(
+                observer_lat_deg=float(viewer_data.lat_deg),
+                observer_lon_deg=float(viewer_data.lon_deg),
+                sun_alt_deg=float(sun_alt_deg),
+                terrain_profile_altaz=terrain_horizon_profile,
+            )
+        except Exception as exc:
+            logger.warning("Export layer unavailable: night lights (%s)", exc)
+
     urban_outlines = None
     if user_options.urban_outline_opacity > 0.0:
         try:
@@ -1293,6 +1311,7 @@ def main() -> None:
         urban_outlines=urban_outlines,
         satellite_overlay_points=satellite_overlay_points,
         aircraft_overlay_points=aircraft_overlay_points,
+        night_light_glow_profile=night_light_glow_profile,
     )
     image = _render_image(
         image_size=image_size,

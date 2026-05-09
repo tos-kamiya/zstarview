@@ -278,6 +278,7 @@ class SkyWindowUpdatesMixin:
                 self.state.render_view_center = tuple(self.viewer_data.view_center)
         self.state.celestial_data = payload["celestial"]
         self.state.sky_disc_image = payload["sky_disc"]
+        self.state.night_light_glow_profile = payload.get("night_light_glow_profile")
 
         if (
             getattr(self.state, "viewport_interaction_release_pending", False)

@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-05-08
+最終更新: 2026-05-09
 
 ## 1. この文書の位置づけ
 
@@ -47,6 +47,7 @@
   - 衛星クラウドデータ取得
   - DEM 取得
   - Overture 建物データ取得
+  - 夜間光 GeoTIFF 取得
   - キャッシュ管理
 
 ## 4. モジュール構成
@@ -78,6 +79,7 @@
 - `src/zstarview/paths.py`
   - 設定・キャッシュ・データのパス解決
   - テーマ preset ごとの共有表示定義を持つ
+  - 夜間光 cache root の解決を持つ
 
 ### 4.2 ドメイン計算
 
@@ -292,11 +294,16 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 端へ行くほど急に抜けないよう、四隅の透明度は内部より少しだけ高く保つ
   - 独自ウィンドウ枠は frameless host のときだけ描画する
   - 右下の resize handle は `QSizeGrip` ではなく専用の子ウィジェットで実装し、その `paintEvent()` で斜線マーカーを描く
+- `src/zstarview/render/night_lights.py`
+  - 夜間光 GeoTIFF から方位ごとの glow band を生成する
+  - 地形地平線の少し上に重ねるための、固定角度帯の強度マップを作る
 - `src/zstarview/splash.py`
   - テーマ定義に基づいてスプラッシュ背景、枠線、情報文字色を構成する
 - `src/zstarview/gui/composite.py`
   - 星空、雲、欠損ティント、地面色の合成
   - 雲ハッチ、縞密度生成、欠損マスク適用は NumPy ベースで進め、合成結果の出力段で `QImage` に戻す
+- `src/zstarview/night_lights/*.py`
+  - NASA Earth at Night/Black Marble 2016 Grayscale 500m tiled GeoTIFF の取得、cache、検証、簡易投影を担当する
 
 #### 4.3.1 テーマ表示定義
 
@@ -1401,6 +1408,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 衛星クラウドデータ
 - DEM タイル
 - Overture 建物データ
+- NASA Earth at Night / Black Marble 2016 Grayscale 500m tiled GeoTIFF
 - OpenSky 航空機 state vector
 - `wheretheiss.at` ISS TLE
 - CelesTrak `stations` fallback OMM JSON
@@ -1415,6 +1423,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 地形地平線の計算済みポリラインは永続化しない。
 - 雲は取得ソースと中間成果物をキャッシュし、視点変更時の再利用を優先する。
 - 雲の source から作る sampler は source 単位で再利用してよい。Alt/Az 変更で source が同じ場合、sampler の再構築は避ける。
+- 夜間光 GeoTIFF は versioned static cache として保持し、2016 Grayscale 500m tiled 版を初回利用時にのみ取得してよい。
+- 夜間光 GeoTIFF は TTL による定期再取得を前提にせず、欠損、破損、明示的な cache 削除、または別版への切り替え時だけ再取得してよい。
+- 夜間光 cache は `science.nasa.gov` の Earth at Night flat maps から direct GeoTIFF を落とすだけでよく、Earthdata login token を要求しなくてよい。
 - 航空機スナップショットは `bbox` 単位の少数 JSON file として短寿命永続キャッシュしてよい。
 - 航空機 cache file には少なくとも `bbox`、`fetched_at_utc`、`source`、`snapshots` を保持する。
 - cache key は観測地点そのものではなく、実問い合わせに使う OpenSky `bbox` から導出する。
@@ -1429,6 +1440,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - TTL 超過時は「即削除」ではなく「stale として再取得対象」に落とし、再取得成功までは既存キャッシュをフォールバック利用できるようにする。
 - 別系統の clean up は任意とし、長期間使われない stale キャッシュだけを後段で物理削除してよい。初期方針としては `TTL x 3` 超過を clean up 候補としてよい。
 - cache hit のたびに利用可能性を検証し、壊れた DEM / 建物 / 雲キャッシュは stale 扱いではなく invalid として破棄してよい。
+- cache hit のたびに利用可能性を検証し、壊れた夜間光 GeoTIFF も invalid として破棄してよい。
 - freshly downloaded payload も、ファイル名が期待どおりでも実体が壊れていればキャッシュへ昇格させず再取得失敗として扱ってよい。
 - `--clear-long-lived-cache` は別系統の明示的削除手段として扱い、TTL 判定とは独立に `copernicus-dem`、`overture_buildings`、`overture_skyscrapers` を削除してよい。
 - ただし常用防止のため、cache root 直下に `clear_long_lived_cache_meta.json` を置き、`last_cleared_at_utc` を記録して `3日` のクールダウンを設ける。
@@ -1441,6 +1453,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - DEM は更新頻度が低いため、`fresh=90日`、`stale>90日` とする。
 - 地形地平線の距離帯は `0.5 / 1 / 2 / 4 / 8 / 16 / 32 / 64 / 128 km` を初期値として扱い、最遠帯までの計算は `128 km` を基準に行ってよい。
 - Overture 建物由来 cache は DEM より更新頻度が高いため、通常 derived dataset / skyscraper tile ともに `fresh=30日`、`stale>30日` とする。
+- 夜間光 cache は static versioned dataset として扱い、TTL ベースの fresh/stale 判定を持たず、未取得・破損・版切り替え時のみ再取得してよい。
 - 上記の TTL とは別に、可能な場合は Overture release の差分確認を追加の freshness シグナルとして使ってよい。
 - release 照合は起動時または都市アウトライン初回有効化時に行ってよいが、前回照合から `24時間` 以内なら省略してよい。
 - stale 判定に使う基準時刻は、すべての取得単位で `fetched_at_utc` に統一する。
@@ -1548,6 +1561,18 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `src/zstarview/cli/export_image.py`
   - headless 経路でも同じ release 照合補助を共有する。
   - GUI と同じ root-level metadata を読むことで、release チェックの 24 時間抑制を共通化する。
+
+### 10.5 夜間光データ
+
+- 夜間光データは NASA `Earth at Night/Black Marble: Flat Maps` の `2016 Grayscale` 500m tiled GeoTIFF を前提とする。
+- 取得元は `science.nasa.gov` の flat maps ページに置かれた direct GeoTIFF リンクでよく、Earthdata 認証を要求しなくてよい。
+- アプリは cache root 配下に versioned directory を持ち、初回利用時だけ対象 tile をダウンロードしてよい。
+- tile 名は `A1` 〜 `D2` の 8 枚を前提にしてよい。
+- 起動時に cache があれば再利用し、無ければバックグラウンドでダウンロードを開始してよい。
+- ダウンロード失敗時は夜間光レイヤーだけ unavailable とし、他のレイヤーは継続してよい。
+- 画面上の効果は、地形地平線の少し上に置く固定角度帯の glow で表現し、角度の中心は演出として固定してよい。
+- glow の強度は、方位ごとのサンプルを距離減衰付きで積算した値とし、夜景の細かな分布は brightness へ畳み込んでよい。
+- 500m グリッド由来の段差を避けるため、GeoTIFF 読込時に双一次補間や方位方向の平滑化を行ってよい。
 
 ## 11. テスト観点と設計上の分離
 
