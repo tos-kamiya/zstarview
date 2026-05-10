@@ -15,23 +15,21 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 - **Solar-system bodies**: supports Sun, Moon, and major planets. Minor planets (asteroids) are not displayed yet.
 - **Search**: search named stars, asterisms, places, known artificial satellites, and JPL bodies from one dialog. When local matches are not found, known artificial satellites use the app's current position first; if a target is recognized as a known artificial satellite but its current position cannot be obtained, the search fails instead of falling back to JPL. Persistent marker mode keeps both the marker and label visible on the selected target.
 - **Overlay groups**: the features below are grouped by display layer, and each overlay can be toggled individually from the menu or with its keyboard shortcut.
-- **Flexible location input**: specify the observer location through the CLI argument using a city name, tower name, mountain name, direct latitude/longitude input, supported Google Maps coordinate URLs, or online place/station search via Nominatim.
-- **Adjustable view center**: adjust the view center with CLI options `-A` (altitude) and `-Z` (azimuth), or with the arrow keys. During view changes or window resize, the app briefly switches to a simplified interaction mode to keep navigation responsive.
+- **Flexible location and view center**: specify the observer location with a city name, tower name, mountain name, direct latitude/longitude input, supported Google Maps coordinate URLs, or online place/station search via Nominatim. Adjust the view center with `-A` / `-Z` or the arrow keys. The HUD also shows the observer location and the current `alt/az` view center.
 - **Terminal image export**: `zstarview-export-image` can render the sky headlessly and write it to a file or display it directly in sixel-capable terminals.
 - **Python support**: the project is routinely tested on CPython 3.10, 3.11, 3.12, 3.13, and 3.14.
 
-**Sky content overlays:**
+**Celestial overlays:**
 
 - **Deep-sky objects**: named galaxies/open clusters/globular clusters are shown as soft blue extents.
 - **Asterism overlay**: popular line patterns rather than formal IAU constellation boundaries are shown as dim ambient lines. Mouse-hovering a star in an asterism brightens the matching pattern and shows its label, with 3-second rotation when multiple asterisms share that star.
 - **Sky Guides**: guide overlays include the never-rises region as a guide-line style solid circle in the same visual family as the celestial equator, along with direction labels around the horizon and a zenith marker.
-- **Observation Info**: a compact observation-info block can be shown on the screen to summarize the current view and observing context.
 
 **Atmospheric and man-made overlays:**
 
 - **Sky Color**: the sky-color disc can be shown as a gradient sky disc or as a flat dark-disc fallback.
 - **Clouds**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay, and the sky-color disc remains visible beneath the clouds. Missing regions are shown in faint yellow when satellite coverage is partial. See [an example with partial coverage and yellow missing-data tint](docs/images/screenshot5.png).
-- **Satellites**: ISS, JWST, Voyager 1, Voyager 2, and Parker can be drawn as small purple markers between the planet and aircraft layers.
+- **Artificial satellites**: ISS, JWST, Voyager 1, Voyager 2, and Parker can be drawn as small purple markers between the planet and aircraft layers.
 - **Aircraft**: nearby aircraft from OpenSky can be drawn as purple predicted-motion polylines.
 
 **Building and ground guide overlays:**
