@@ -70,14 +70,14 @@ Urban outline and terrain horizon examples from several cities worldwide:
   <tr>
     <td align="center" width="25%"><img src="docs/images/screenshot-burjkhalifa.png" alt="Near Burj Khalifa, Dubai" width="100%" /></td>
     <td align="center" width="25%"><img src="docs/images/screenshot-jungfraujoch.png" alt="Jungfraujoch, Switzerland" width="100%" /></td>
+    <td align="center" width="25%"><img src="docs/images/screenshot-manarola.png" alt="Manarola, Italy" width="100%" /></td>
     <td align="center" width="25%"><img src="docs/images/screenshot-sagradafamilia.png" alt="Sagrada Familia, Barcelona" width="100%" /></td>
-    <td align="center" width="25%"><img src="docs/images/screenshot-ushuaia.png" alt="Ushuaia, Argentina" width="100%" /></td>
   </tr>
   <tr>
     <td align="center"><sub>Near Burj Khalifa, Dubai</sub></td>
     <td align="center"><sub>Jungfraujoch, Switzerland</sub></td>
+    <td align="center"><sub>Manarola, Italy</sub></td>
     <td align="center"><sub>Sagrada Familia, Barcelona</sub></td>
-    <td align="center"><sub>Ushuaia, Argentina</sub></td>
   </tr>
 </table>
 
