@@ -544,6 +544,7 @@ def compose_cloud_over_sky(
     if not np.any(sky_np[..., 3]):
         sky_np[..., 3][disc_mask] = 255
 
+    cop = float(np.clip(cloud_opacity, 0.0, 1.0))
     sky_rgb_u16 = sky_np[..., :3].astype(np.uint16)
     sky_alpha_u16 = sky_np[..., 3].astype(np.uint16)
     r = sky_rgb_u16[..., 0]
@@ -551,14 +552,20 @@ def compose_cloud_over_sky(
     b = sky_rgb_u16[..., 2]
     gray_u8 = ((77 * r + 150 * g + 29 * b) >> 8).astype(np.uint8)
 
-    a = (cloud_np[..., 3].astype(np.float32) / 255.0) * float(np.clip(gray_mix, 0.0, 1.0))
+    # Keep the grayscale underlay tied to the visible cloud strength so low-opacity
+    # clouds do not still flatten the sky into a fully gray disc.
+    a = (
+        cloud_np[..., 3].astype(np.float32)
+        / 255.0
+        * float(np.clip(gray_mix, 0.0, 1.0))
+        * cop
+    )
     a8 = (np.clip(a, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint16)
     inv_a8 = 255 - a8
 
     gray_u16 = gray_u8.astype(np.uint16)
     base_u16 = (inv_a8[:, :, None] * sky_rgb_u16 + a8[:, :, None] * gray_u16[:, :, None]) // 255
 
-    cop = float(np.clip(cloud_opacity, 0.0, 1.0))
     out_alpha_u16 = sky_alpha_u16.copy()
     if cop > 0.0:
         cop_u16 = int(round(cop * 255))

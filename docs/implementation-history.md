@@ -759,3 +759,9 @@
   - Split the night-light glow into four draw layers, keeping the core band and dividing the mid-range glow into `MID_NEAR` and `MID_FAR`.
   - Moved the night-light seam to the azimuth behind the observer instead of hard-coding a seam at `az=0°`.
   - Kept the underlying distance-band integration and cached base profile behavior unchanged.
+
+### 2026-05-11
+
+- Cloud opacity compositing clarification
+  - Adjusted the cloud composite path so `--cloud-opacity` also scales the gray underlay mixed behind cloud strokes, not only the additive cloud layer and final alpha.
+  - Updated the specification and design docs to describe `--cloud-opacity` as the final cloud-compositing strength, including the gray desaturation blend.

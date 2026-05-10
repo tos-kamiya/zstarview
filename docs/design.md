@@ -945,7 +945,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `alpha` モードでは、白線幅は固定とし、雲量に応じて白線 alpha を変えてよい。
 - 外周境界の見た目を和らげるため、cloud fetch/render 側に小さな overscan を持たせてよい。
 - 雲量場の再正規化では、非ゼロ値の下側 `8 percentile` と上側 `92 percentile` を使ってよい。
-- `--cloud-opacity` は追加の内部係数を掛けず、そのまま最終 cloud 合成 opacity として使ってよい。
+- `--cloud-opacity` は追加の内部係数を掛けず、そのまま最終 cloud 合成 opacity として使ってよい。ここでの合成には、雲ストライプの加算成分と、その下地として使うグレー化の混合率の両方を含めてよい。
 - `QImage` 化は、合成済み画像または最終描画に必要になった段階でのみ行う。
 - これにより、cloud path の `QImage <-> NumPy` 往復と、missing mask の不要な 4ch 展開を避ける。
 
