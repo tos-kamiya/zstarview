@@ -5,7 +5,7 @@
 **Zenith Star View** は、選んだ場所の空を表示するデスクトップ向けのスカイビューアです。
 
 指定した場所と時刻の天球に、恒星、太陽、月、惑星、DSO、アステリズムを表示します。
-必要に応じて、地形地平線、都市アウトライン、夜灯り、近傍の航空機と人工衛星も重ねて表示できます。
+必要に応じて、地形地平線、都市アウトライン、夜間光、近傍の航空機と人工衛星も重ねて表示できます。
 観測地点は都市名やビューポイント名、緯度経度、オンライン地名検索、Google Maps の URL などで指定できます。
 
 **特徴:**
@@ -243,7 +243,7 @@ prefix なしの `--show-viewpoint-json` で tower と mountain の両方に完�
 | `-c`, `--cloud-opacity CLOUD_OPACITY` | 雲の不透明度を指定します（0.0〜1.0）。0.0 で描画を無効化します。※2 | `0.07` |
 | `--cloud-stripe MODE[,COUNT[,WIDTH]]` | 雲ストライプの方式を指定します。`width` は中心対称のストライプを描き、雲量に応じて見かけの線幅を変えます。`alpha` は線幅を固定したまま線の alpha を変えます。`COUNT` は既定の 600x600 星レンダリング面でのストライプ密度として扱い、実際の描画時には星レイヤーの縮小レンダリング面サイズに合わせてスケールします。`width` は `width,50,0.85`、`alpha` は `alpha,50,0.25` に展開されます。count または width を `0` にすると雲描画を無効化します。 | `width,50,0.85` |
 | `--cloud-missing-tint-opacity OPACITY` | 雲欠損領域を示す黄色の濃さを指定します（0.0〜1.0）。 | `0.176` |
-| `--night-light-opacity OPACITY` | 夜灯りオーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、起動中の Black Marble のダウンロードと描画を無効化します。 | `0.022` |
+| `--night-light-opacity OPACITY` | 夜間光オーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、起動中の Black Marble のダウンロードと描画を無効化します。 | `0.022` |
 | `-a`, `--aircraft-opacity OPACITY` | 航空機オーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、その起動中の航空機問い合わせと描画を無効化します。 | `0.5` |
 | `--satellite-opacity OPACITY` | 人工衛星オーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、その起動中の軌道要素取得と描画を無効化します。 | `0.5` |
 | `--show-guidelines-initial true\|false` | 起動時にガイドライン表示を有効にするかを指定します。対象は幾何学的地平線、天の赤道、黄道、never-rises 円、方位ラベル、天頂マーカーです。 | `show` |
@@ -506,14 +506,14 @@ GUI では、キーボード操作とメニュー操作で視点移動、検索�
 
 * **← / →**: 視線の方位を ±5° 回転
 * **↑ / ↓**: 視線の高度を ±5° 変更（0°..90° にクランプ）
-  方向キー入力が続く間と最後の入力から約 0.7 秒の間は、ビューポート操作用の簡易描画モードになります。この間は `Vmag <= 4.0` の恒星、天の赤道、黄道、地平線、地形地平線、方位ラベル、天頂マーカーのみを表示し、惑星、全星等の星空、空ディスク、雲、夜灯り、DSO、アステリウム、都市アウトラインは一時的に非表示になります。
+  方向キー入力が続く間と最後の入力から約 0.7 秒の間は、ビューポート操作用の簡易描画モードになります。この間は `Vmag <= 4.0` の恒星、天の赤道、黄道、地平線、地形地平線、方位ラベル、天頂マーカーのみを表示し、惑星、全星等の星空、空ディスク、雲、夜間光、DSO、アステリウム、都市アウトラインは一時的に非表示になります。
 * **M**: 月の 5 倍表示をトグル
 * **D**: DSO 重ね表示の表示/非表示を切り替え
 * **A**: アステリウム重ね表示の表示/非表示を切り替え
 * **G**: Sky Guides の表示/非表示を切り替え
 * **S**: Sky Color の表示を切り替え
 * **C**: 雲の重ね表示の表示/非表示を切り替え
-* **L**: 夜灯りオーバーレイの表示/非表示を切り替え
+* **L**: 夜間光オーバーレイの表示/非表示を切り替え
 * **P**: 航空機オーバーレイの表示/非表示を切り替え
 * **I**: 人工衛星オーバーレイの表示/非表示を切り替え
 * **T**: 地形地平線の重ね表示の表示/非表示を切り替え
@@ -538,7 +538,7 @@ GUI では、キーボード操作とメニュー操作で視点移動、検索�
 * **Guidelines**: 幾何学的地平線、天の赤道、黄道、実線の never-rises 円、方位ラベル、天頂マーカーの表示/非表示を切り替えます。
 * **Sky Color**: 空ディスク表示を、空色グラデーション表示とフラットな暗色ディスク表示で切り替えます。
 * **Clouds**: リアルタイム雲の重ね表示の表示/非表示を切り替えます。
-* **Night Lights**: NASA Earth at Night / Black Marble の夜灯りオーバーレイの表示/非表示を切り替えます。CLI で `--night-light-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
+* **Night Lights**: NASA Earth at Night / Black Marble の夜間光オーバーレイの表示/非表示を切り替えます。CLI で `--night-light-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
 * **Aircraft**: OpenSky ベースの航空機オーバーレイの表示/非表示を切り替えます。CLI で `-a 0` / `--aircraft-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
 * **Satellites**: ISS / JWST / Voyager 1 / Voyager 2 / Parker の人工衛星オーバーレイの表示/非表示を切り替えます。CLI で `--satellite-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
 * **Terrain Horizon**: 地形地平線の重ね表示の表示/非表示を切り替えます。CLI で `-d 0` / `--terrain-horizon-opacity 0` を指定して起動した場合、その起動中はメニューから再有効化できません。
@@ -658,12 +658,12 @@ zstarview --window-frame window
    地球ガイドだけを止めたい場合は `-e 0` / `--earth-guide-opacity 0` を使えます。
    地形地平線を無効化しても、恒星・惑星・空の色の表示は利用できます。
 
-4. 夜灯りデータ
+4. 夜間光データ
 
-   夜灯りは NASA Earth at Night / Black Marble の 2016 Grayscale 500m GeoTIFF タイルを使います。
+   夜間光は NASA Earth at Night / Black Marble の 2016 Grayscale 500m GeoTIFF タイルを使います。
    タイルは必要時にダウンロードされ、ローカルにキャッシュされます。
-   回線が細い、またはオフラインの場合は `--night-light-opacity 0` で夜灯りレイヤーを無効化してください。
-   キャッシュがすでにあれば、ネットワークがなくても夜灯りオーバーレイを表示し続けられます。
+   回線が細い、またはオフラインの場合は `--night-light-opacity 0` で夜間光レイヤーを無効化してください。
+   キャッシュがすでにあれば、ネットワークがなくても夜間光オーバーレイを表示し続けられます。
 
 5. 人工衛星データ
 
@@ -722,11 +722,11 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 | `cities1000.txt`, `admin1CodesASCII.txt` | 人口 1000 人以上の都市一覧 | [GeoNames](https://download.geonames.org/export/dump/) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | `viewpoints/tower_viewpoints.json` | タワー名起動用に同梱している展望塔/タワーデータ（Wikidata 由来の整形データ） | [Wikidata](https://www.wikidata.org/) をローカル整形したもの（手順は `dev-samples/` に記録） | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)（Wikidata データ） |
 | `viewpoints/mountain_viewpoints.json` | 山名起動用に同梱している山頂ビューポイントデータ（Wikipedia で収集した候補を Wikidata メタデータで正規化したデータ） | [Wikipedia](https://www.wikipedia.org/) での候補収集と [Wikidata](https://www.wikidata.org/) による正規化手順（`dev-samples/` に記録） | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)（Wikidata データ） |
-| `earth_guide_land_110m.json` | 地平線下の earth ガイド用ハッチングを生成するための簡略化した陸地形状（Natural Earth 1:110m land polygons 由来） | [Natural Earth](https://www.naturalearthdata.com/) | [Public domain](https://www.naturalearthdata.com/about/terms-of-use/) |
+| `earth_guide_land_110m.json` | 地平線下の地球ガイド用ハッチングを生成するための簡略化した陸地形状（Natural Earth 1:110m land polygons 由来） | [Natural Earth](https://www.naturalearthdata.com/) | [Public domain](https://www.naturalearthdata.com/about/terms-of-use/) |
 | 実行時に OpenStreetMap Nominatim へ送る `--place` ジオコーディング要求 | `--place` 指定時だけ使うオンライン地名検索 | [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) | [Nominatim Usage Policy](https://operations.osmfoundation.org/policies/nominatim/) |
 | 実行時に `ip-api.com` へ送る IP ジオロケーション要求 | `auto` 指定時に使う IP ベースの現在地取得 | [ip-api.com](https://ip-api.com/) | [ip-api.com の利用条件 / プライバシーポリシー](https://ip-api.com/docs/legal) |
 | アプリのキャッシュディレクトリ配下にオンデマンドで保存される都市アウトラインキャッシュ | ダウンロードした Overture 建物データから生成した派生建物タイルと `tile_index.json` | `overturemaps` CLI を通じて実行時に取得する [Overture Maps Buildings](https://docs.overturemaps.org/guides/buildings/) | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) |
-| アプリのキャッシュディレクトリ配下にオンデマンドで保存される夜灯りキャッシュ | 夜灯りオーバーレイ用の NASA Earth at Night / Black Marble 2016 Grayscale 500m GeoTIFF タイル | [NASA Earth at Night / Black Marble maps](https://science.nasa.gov/earth/earth-observatory/earth-at-night/maps/) | ソースページに記載された NASA のデータ利用条件 |
+| アプリのキャッシュディレクトリ配下にオンデマンドで保存される夜間光キャッシュ | 夜間光オーバーレイ用の NASA Earth at Night / Black Marble 2016 Grayscale 500m GeoTIFF タイル | [NASA Earth at Night / Black Marble maps](https://science.nasa.gov/earth/earth-observatory/earth-at-night/maps/) | ソースページに記載された NASA のデータ利用条件 |
 | 実行時に JPL Horizons / Small-Body Database へ送る検索・エフェメリス要求 | 天体検索結果と observer ephemeris / JWST, Voyager 1, Voyager 2, Parker の表示に使う observer ephemeris | [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/), [JPL Small-Body Database](https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html) | 利用条件やデータに関する案内は各 JPL / JPL SSD サイトを参照 |
 | 実行時に `wheretheiss.at` から取得し、失敗時は CelesTrak を使う人工衛星オーバーレイ用データ | ISS 表示に使う軌道要素データ | [wheretheiss.at](https://wheretheiss.at/w/developer), [CelesTrak](https://celestrak.org/) | 利用条件やライセンスは各出典サイトを参照 |
 | `dso.csv` | DSO（銀河/散開星団/球状星団）カタログ（OpenNGC 由来の生成データ） | [OpenNGC](https://github.com/mattiaverga/OpenNGC)（[PyOngc](https://github.com/mattiaverga/PyOngc) 経由で生成） | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)（OpenNGC データベース） |
@@ -736,25 +736,25 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 
 ## クレジット
 
-* 天文データを提供していただいている CDS Strasbourg および ESA Hipparcos Mission に感謝します。
-* 都市データは GeoNames に基づいています。
-* タワー/展望塔の起動データは Wikidata に基づく整形データであり、Wikidata の CC0 条件に従って再配布しています。
-* 山頂ビューポイントの起動データは Wikipedia で収集した候補を Wikidata メタデータで正規化したものであり、ここでは Wikidata の CC0 条件に従って再配布しています。
-* earth ガイド用の大陸ポリゴンは Natural Earth 1:110m land polygons を簡略化したもので、Natural Earth はこれを public domain としています。ここでは出典として明記しています。
+* 天文データを提供していただいている **CDS Strasbourg** および **ESA Hipparcos Mission** に感謝します。
+* 都市データは **GeoNames** に基づいています。
+* タワー/展望塔の起動データは **Wikidata** に基づく整形データであり、Wikidata の CC0 条件に従って再配布しています。
+* 山頂ビューポイントの起動データは **Wikipedia** で収集した候補を **Wikidata** メタデータで正規化したものであり、ここでは Wikidata の CC0 条件に従って再配布しています。
+* 地球ガイド用の大陸ポリゴンは **Natural Earth** 1:110m land polygons を簡略化したもので、Natural Earth はこれを public domain としています。ここでは出典として明記しています。
+* 地形地平線用の地形データは **Copernicus DEM GLO-90** に基づいており、欧州委員会のために **ESA** が管理するデータを、アプリでは公開 AWS 配布とローカルキャッシュを通じて利用しています。
 * 都市アウトライン用の元データは **Overture Maps Buildings** から必要時に取得し、実行時利用向けに派生タイルへ変換したものです。
-* 夜灯り用データは NASA Earth at Night / Black Marble から必要時に取得し、実行時利用向けに GeoTIFF タイルとしてローカルにキャッシュされます。
-* 恒星の固有名は IAU 恒星名作業部会 (WGSN) による承認済みリスト（[exopla.net](https://exopla.net/star-names/modern-iau-star-names/) 経由）を使用しています。
-* 雲データは気象衛星 **Himawari**（提供: JMA）および **NOAA GOES** シリーズ（提供: NOAA/NESDIS）による赤外線観測データを、それぞれの公開 S3 バケットから取得して利用しています。
+* 夜間光用データは **NASA** Earth at Night / Black Marble から必要時に取得し、実行時利用向けに GeoTIFF タイルとしてローカルにキャッシュされます。
+* 恒星の固有名は **IAU** 恒星名作業部会 (**WGSN**) による承認済みリスト（[exopla.net](https://exopla.net/star-names/modern-iau-star-names/) 経由）を使用しています。
+* 雲データは気象衛星 **Himawari**（提供: **JMA**）および **NOAA GOES** シリーズ（提供: **NOAA/NESDIS**）による赤外線観測データを、それぞれの公開 S3 バケットから取得して利用しています。
 * 人工衛星オーバーレイで使う軌道要素データは、**ISS** については **wheretheiss.at** を優先し、失敗時は **CelesTrak** を fallback として利用します。**JWST** / **Voyager 1** / **Voyager 2** / **Parker** は **JPL Horizons** の observer ephemeris を利用します。
 * JPL 天体検索は **JPL Horizons** と **JPL Small-Body Database** を使って天体名の解決と observer ephemeris の取得を行います。検索結果やエフェメリスの利用条件・注意事項は各 JPL / JPL SSD サイトを参照してください。
-* `--place` による地名・駅名検索は公開の OpenStreetMap Nominatim サービスを使っており、[Nominatim Usage Policy](https://operations.osmfoundation.org/policies/nominatim/) の対象です。
+* `--place` による地名・駅名検索は公開の **OpenStreetMap Nominatim** サービスを使っており、[Nominatim Usage Policy](https://operations.osmfoundation.org/policies/nominatim/) の対象です。
 * `auto` による IP ベースの現在地取得は **ip-api.com** を使っており、[ip-api.com の利用条件 / プライバシーポリシー](https://ip-api.com/docs/legal) の対象です。非商用利用の制限と 1 分あたり 45 リクエストの上限があります。
-* 地形地平線データは **Copernicus DEM GLO-90** に基づいており、欧州委員会のために ESA が管理するデータを、アプリでは公開 AWS 配布とローカルキャッシュを通じて利用しています。
-* 大規模建物データを公開している Overture Maps とそのソースデータ提供者に感謝します。
-* 雲画像や地形 DEM の取得に利用している公開 S3 配布/ミラーを提供している AWS および各データ提供者に感謝します。
-* フォントは Google Noto Project を利用しています。
-* ウィンドウタイトル「Zenith Star View」は ChatGPT の提案に由来します。
-* Gemini および ChatGPT に、仕様の相談、コード生成、デバッグなど、多くの助力をいただきました。
+* 大規模建物データを公開している **Overture Maps** とそのソースデータ提供者に感謝します。
+* 雲画像や地形 DEM の取得に利用している公開 S3 配布/ミラーを提供している **AWS** および各データ提供者に感謝します。
+* フォントは **Google Noto Project** を利用しています。
+* ウィンドウタイトル「Zenith Star View」は **ChatGPT** の提案に由来します。
+* **Gemini** および **ChatGPT** に、仕様の相談、コード生成、デバッグなど、多くの助力をいただきました。
 
 </details>
 

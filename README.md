@@ -243,12 +243,12 @@ These options are mutually exclusive, do not accept the `location` argument, and
 | `-c`, `--cloud-opacity CLOUD_OPACITY`       | Opacity of cloud rendering (0.0–1.0). Use 0.0 to disable. \*2                | `0.07`   |
 | `--cloud-stripe MODE[,COUNT[,WIDTH]]`       | Cloud stripe style. `width` draws centered symmetric stripes whose visible width varies with cloud amount; `alpha` keeps width fixed and varies stripe alpha. `COUNT` is treated as the stripe density for the default 600x600 star render surface, and the effective count is scaled to match the star layer's downsampled surface size. `width` expands to `width,50,0.85`; `alpha` expands to `alpha,50,0.25`. If count or width is `0`, cloud rendering is disabled. | `width,50,0.85` |
 | `--cloud-missing-tint-opacity OPACITY`      | Opacity of missing-cloud-data yellow tint (0.0–1.0).                          | `0.176` |
-| `--night-light-opacity OPACITY`             | Opacity of the NASA night-light overlay (0.0–1.0). Use 0.0 to disable the on-demand Black Marble download and drawing for that run. | `0.022` |
+| `--night-light-opacity OPACITY`             | Opacity of the NASA night lights overlay (0.0–1.0). Use 0.0 to disable the on-demand Black Marble download and drawing for that run. | `0.022` |
 | `-a`, `--aircraft-opacity OPACITY`          | Opacity of the aircraft overlay (0.0–1.0). Use 0.0 to disable aircraft queries and drawing for that run. | `0.5` |
 | `--satellite-opacity OPACITY`               | Opacity of the artificial satellite overlay (0.0–1.0). Use 0.0 to disable satellite element fetch and drawing for that run. | `0.5` |
 | `--show-guidelines-initial true\|false`     | Whether guideline overlays are shown at startup. This controls the geometric horizon, celestial equator, ecliptic, never-rises circle, direction labels, and zenith marker. | `show` |
-| `-d`, `--terrain-horizon-opacity OPACITY`   | Opacity of the terrain horizon polyline (0.0–1.0). Use 0.0 to disable DEM download, terrain-horizon calculation, terrain-horizon drawing, and the earth guide. \*4 | `0.003` |
-| `-e`, `--earth-guide-opacity OPACITY`       | Opacity of the below-horizon earth guide line layer (0.0–1.0). Use 0.0 to disable earth-guide drawing for that run. \*4 | `0.028` |
+| `-d`, `--terrain-horizon-opacity OPACITY`   | Opacity of the terrain horizon polyline (0.0–1.0). Use 0.0 to disable DEM download, terrain-horizon calculation, terrain-horizon drawing, and the Earth guide. \*4 | `0.003` |
+| `-e`, `--earth-guide-opacity OPACITY`       | Opacity of the below-horizon Earth guide line layer (0.0–1.0). Use 0.0 to disable Earth guide drawing for that run. \*4 | `0.028` |
 | `--ground-tint-opacity OPACITY`             | Strength of the ground-color fill below the geometric/terrain horizon (0.0–1.0). | `0.1` |
 | `-u`, `--urban-outline-opacity OPACITY`     | Opacity of the urban outline overlay (0.0–1.0). Use 0.0 to disable it for that run. | `0.2` |
 | `--urban-outline-feature-type {both,building}` | Overture cache mode for the urban outline. `both` combines `building` and `building_part`, preferring parts when available. | `both` |
@@ -266,7 +266,7 @@ These options are mutually exclusive, do not accept the `location` argument, and
 | `--observation-info auto\|top\|bottom\|off` | Startup mode for the observation-info block.                                 | `bottom` |
 | `--include-direction-grid`                 | `zstarview-export-image` only. Include the direction grid in exported images, with 30-degree major lines and 10-degree intersection crosses. |         |
 | `-t`, `--theme {night,day,white,black,transparent}` | Theme preset for background and star contrast.                              | `night` |
-| `--visibility-boost MULTIPLIER`             | Visibility boost for faint support layers. Values above `1.0` raise opacity for layers such as the terrain horizon, earth guide, urban outline, sky disc, cloud disc, satellites, aircraft, and ground tint. | `1.0` |
+| `--visibility-boost MULTIPLIER`             | Visibility boost for faint support layers. Values above `1.0` raise opacity for layers such as the terrain horizon, Earth guide, urban outline, sky disc, cloud disc, satellites, aircraft, and ground tint. | `1.0` |
 | `--clear-long-lived-cache`                  | Troubleshooting option. Delete long-lived DEM and urban-outline caches before startup. If used again within 3 days, startup is refused and the app tells you when retry is allowed. | |
 
 \*1 When using non-realtime sky options (`--hours`, `--days`, `--datetime`), cloud, aircraft, and artificial satellite overlays are not shown.
@@ -276,7 +276,7 @@ These options are mutually exclusive, do not accept the `location` argument, and
 
 \*3 The brightest-magnitude multiplier cannot exceed the classical Pogson value of \(100^{1/5}\approx2.512\).
 
-\*4 Terrain horizon rendering downloads Copernicus DEM tiles on first use and reuses the cached DEM later. When enabled, the terrain profile also becomes the boundary for the ground-color fill inside the disc. The earth guide is a separate layer with its own opacity toggle, and both layers currently share the dark olive-brown ground tone from the palette.
+\*4 Terrain horizon rendering downloads Copernicus DEM tiles on first use and reuses the cached DEM later. When enabled, the terrain profile also becomes the boundary for the ground-color fill inside the disc. The Earth guide is a separate layer with its own opacity toggle, and both layers currently share the dark olive-brown ground tone from the palette.
 
 \*5 `--place` uses the public OpenStreetMap Nominatim search service. It sends a single search request with a User-Agent and Accept-Language. See the Nominatim usage policy if you plan to rely on this option heavily or from automation.
 
@@ -652,12 +652,12 @@ zstarview --window-frame window
    If your network is slow or unavailable, disable terrain horizon rendering with `-d 0` or `--terrain-horizon-opacity 0`.
    You can still explore stars/planets and sky colors without terrain overlays.
 
-4. Night-light data
+4. Night lights data
 
    Night lights use NASA Earth at Night / Black Marble 2016 Grayscale 500m GeoTIFF tiles.
    The app downloads the tiles on demand, caches them locally, and reuses the cache on later launches.
    If your network is slow or unavailable, disable the layer with `--night-light-opacity 0`.
-   If the cache is already present, the app can keep showing the night-light overlay without network access.
+   If the cache is already present, the app can keep showing the night lights overlay without network access.
 
 5. Artificial satellite data
 
@@ -714,11 +714,11 @@ All paths below are relative to `src/zstarview/data/`.
 | `cities1000.txt`, `admin1CodesASCII.txt`                       | List of cities with a population of 1000 or more | [GeoNames](https://download.geonames.org/export/dump/)             | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)                                                                           |
 | `viewpoints/tower_viewpoints.json`                             | Tower/viewpoint dataset packaged for tower-name startup resolution (derived and normalized from Wikidata) | [Wikidata](https://www.wikidata.org/) via local normalization/query workflow documented in `docs/developer/viewpoint-dataset-generation.md` | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) (Wikidata data) |
 | `viewpoints/mountain_viewpoints.json`                          | Mountain/viewpoint dataset packaged for mountain-name startup resolution (Wikipedia-curated candidates normalized with Wikidata metadata) | [Wikipedia](https://www.wikipedia.org/) candidate collection plus [Wikidata](https://www.wikidata.org/) normalization workflow documented in `docs/developer/viewpoint-dataset-generation.md` | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) (Wikidata data) |
-| `earth_guide_land_110m.json`                                   | Simplified land geometry used to generate the below-horizon earth-guide hatch pattern, derived from Natural Earth 1:110m land polygons | [Natural Earth](https://www.naturalearthdata.com/) | [Public domain](https://www.naturalearthdata.com/about/terms-of-use/) |
+| `earth_guide_land_110m.json`                                   | Simplified land geometry used to generate the below-horizon Earth guide hatch pattern, derived from Natural Earth 1:110m land polygons | [Natural Earth](https://www.naturalearthdata.com/) | [Public domain](https://www.naturalearthdata.com/about/terms-of-use/) |
 | Runtime `--place` geocoding requests sent to OpenStreetMap Nominatim | Online place-name geocoding used only when `--place` is requested | [OpenStreetMap Nominatim](https://nominatim.openstreetmap.org/) | [Nominatim Usage Policy](https://operations.osmfoundation.org/policies/nominatim/) |
 | Runtime IP geolocation requests sent to `ip-api.com` | IP-based location lookup used when `auto` is requested | [ip-api.com](https://ip-api.com/) | [ip-api.com Terms of Service / Privacy Policy](https://ip-api.com/docs/legal) |
 | On-demand urban-outline cache under the app cache directory | Derived building tiles and `tile_index.json` files produced from downloaded Overture building data | [Overture Maps Buildings](https://docs.overturemaps.org/guides/buildings/) downloaded at runtime via the `overturemaps` CLI | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) |
-| On-demand night-light cache under the app cache directory | NASA Earth at Night / Black Marble 2016 Grayscale 500m GeoTIFF tiles used for the optional night-light overlay | [NASA Earth at Night / Black Marble maps](https://science.nasa.gov/earth/earth-observatory/earth-at-night/maps/) | NASA data use terms as published on the source pages |
+| On-demand night lights cache under the app cache directory | NASA Earth at Night / Black Marble 2016 Grayscale 500m GeoTIFF tiles used for the optional night lights overlay | [NASA Earth at Night / Black Marble maps](https://science.nasa.gov/earth/earth-observatory/earth-at-night/maps/) | NASA data use terms as published on the source pages |
 | Runtime aircraft overlay data fetched from OpenSky Network | Aircraft state vectors used for the optional nearby-aircraft overlay | [OpenSky Network REST API](https://openskynetwork.github.io/opensky-api/rest.html) | [OpenSky Network Terms of Use](https://opensky-network.org/about/terms-of-use) |
 | Runtime JPL Horizons / Small-Body Database requests | Search / ephemeris data used for celestial-body lookup and the JWST / Voyager / Parker spacecraft cache | [JPL Horizons](https://ssd.jpl.nasa.gov/horizons/), [JPL Small-Body Database](https://ssd.jpl.nasa.gov/tools/sbdb_lookup.html) | See the JPL/JPL SSD sites for current usage terms and data notes |
 | Runtime artificial satellite overlay data fetched from `wheretheiss.at` with CelesTrak fallback | Orbital-element data used for the optional ISS overlay | [wheretheiss.at](https://wheretheiss.at/w/developer), [CelesTrak](https://celestrak.org/) | See each source site for current terms and licensing details |
@@ -733,22 +733,22 @@ All paths below are relative to `src/zstarview/data/`.
 * City data based on GeoNames.
 * Tower/viewpoint startup data are derived from Wikidata and redistributed under Wikidata's CC0 data terms.
 * Mountain/viewpoint startup data are curated from Wikipedia candidates and normalized with Wikidata metadata; redistributed here under Wikidata's CC0 data terms.
-* Earth-guide land geometry is derived from Natural Earth 1:110m land polygons. Natural Earth treats the data as public domain; credit is optional, but we note the source here.
+* Earth guide land geometry is derived from **Natural Earth** 1:110m land polygons. Natural Earth treats the data as public domain; credit is optional, but we note the source here.
 * Urban outline source data are downloaded on demand from **Overture Maps Buildings** and converted into cached derived building tiles for runtime use.
-* Night-light source data are downloaded on demand from NASA Earth at Night / Black Marble and cached locally as GeoTIFF tiles for runtime use.
-* Star proper names provided by the IAU Working Group on Star Names (via [exopla.net](https://exopla.net/star-names/modern-iau-star-names/)).
-* Cloud data are based on infrared observations from the **Himawari** satellite (provided by JMA) and the **NOAA GOES** series (provided by NOAA/NESDIS), retrieved from their public S3 buckets.
+* Night lights source data are downloaded on demand from **NASA** Earth at Night / Black Marble and cached locally as GeoTIFF tiles for runtime use.
+* Star proper names provided by the **IAU** Working Group on Star Names (**WGSN**) (via [exopla.net](https://exopla.net/star-names/modern-iau-star-names/)).
+* Cloud data are based on infrared observations from the **Himawari** satellite (provided by **JMA**) and the **NOAA GOES** series (provided by **NOAA/NESDIS**), retrieved from their public S3 buckets.
 * Aircraft overlay data are fetched from **OpenSky Network** at runtime and are subject to the [OpenSky Network Terms of Use](https://opensky-network.org/about/terms-of-use).
 * Celestial-body search uses **JPL Horizons** and the **JPL Small-Body Database** at runtime to resolve matches and observer ephemerides. Search results and ephemerides are subject to the current JPL/JPL SSD usage terms and data notes.
 * Orbital data (TLE/OMM) for the artificial satellite overlay are fetched from **wheretheiss.at** with **CelesTrak** as a fallback source.
-* Terrain horizon data are based on **Copernicus DEM GLO-90**, managed by ESA on behalf of the European Commission and obtained by the app through its public AWS distribution/cache flow.
-* Place/station search via `--place` uses the public OpenStreetMap Nominatim service and is subject to the [Nominatim Usage Policy](https://operations.osmfoundation.org/policies/nominatim/).
+* Terrain horizon data are based on **Copernicus DEM GLO-90**, managed by **ESA** on behalf of the European Commission and obtained by the app through its public AWS distribution/cache flow.
+* Place/station search via `--place` uses the public **OpenStreetMap Nominatim** service and is subject to the [Nominatim Usage Policy](https://operations.osmfoundation.org/policies/nominatim/).
 * Automatic IP-based location lookup uses **ip-api.com** and is subject to the [ip-api.com Terms of Service / Privacy Policy](https://ip-api.com/docs/legal), including its non-commercial-use restriction and 45 requests per minute limit.
-* Thanks to Overture Maps and its source data contributors for making large-scale building data available.
-* Thanks to AWS and dataset providers for making the public S3 distribution/mirror endpoints available for cloud imagery and terrain DEM access.
-* Fonts provided by the Google Noto Project.
-* The window title "Zenith Star View" was suggested by ChatGPT.
-* Specification discussions, code generation, and debugging were greatly assisted by Gemini and ChatGPT.
+* Thanks to **Overture Maps** and its source data contributors for making large-scale building data available.
+* Thanks to **AWS** and dataset providers for making the public S3 distribution/mirror endpoints available for cloud imagery and terrain DEM access.
+* Fonts provided by the **Google Noto Project**.
+* The window title "Zenith Star View" was suggested by **ChatGPT**.
+* Specification discussions, code generation, and debugging were greatly assisted by **Gemini** and **ChatGPT**.
 
 </details>
 
