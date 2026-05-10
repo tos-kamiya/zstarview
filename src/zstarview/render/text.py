@@ -458,7 +458,7 @@ def _draw_status_line_text(
     x = margin
     draw_outlined_text(
         painter,
-        "> " + message,
+        message,
         QPointF(x, baseline_y),
         status_line_font,
         style=style,
