@@ -190,7 +190,7 @@ class UrbanOutlineController(QObject):
                 cache_root_dir=Path(CACHE_PATH),
                 now_utc=now,
             )
-            source = "cache"
+            source = "Urban: cache"
             required_dirs = () if self._skyscraper_only else self._required_derived_dirs(viewer_data)
             for overture_feature_type, derived_dir in required_dirs:
                 derived_exists = derived_dir.exists()
@@ -230,7 +230,7 @@ class UrbanOutlineController(QObject):
                         now_utc=now,
                         quiet=True,
                     )
-                    source = "overture"
+                    source = "Urban: cache"
                 except Exception:
                     if derived_dir.exists():
                         logger.warning(
@@ -238,7 +238,7 @@ class UrbanOutlineController(QObject):
                             derived_dir,
                             exc_info=True,
                         )
-                        source = "cache-stale"
+                        source = "Urban: cache"
                         continue
                     raise
 
@@ -304,7 +304,7 @@ class UrbanOutlineController(QObject):
                             now_utc=now,
                             quiet=True,
                         )
-                        source = "overture"
+                        source = "Urban: cache"
                     except Exception:
                         if derived_dir.exists():
                             logger.warning(
@@ -312,7 +312,7 @@ class UrbanOutlineController(QObject):
                                 derived_dir,
                                 exc_info=True,
                             )
-                            source = "cache-stale"
+                            source = "Urban: cache"
                             continue
                         raise
                 skyscraper_outlines = resolve_urban_outline_layer_for_viewer(

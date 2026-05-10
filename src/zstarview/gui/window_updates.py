@@ -91,6 +91,7 @@ class SkyWindowUpdatesMixin:
             logger.warning("Aircraft debug snapshot failed: %s", exc, exc_info=True)
 
     def _status_line_message(self) -> str:
+        vertical_bar = "\u23ae"
         parts: list[str] = []
         cloud_message = self._cloud_status_line()
         if cloud_message:
@@ -114,7 +115,7 @@ class SkyWindowUpdatesMixin:
         urban_message = self._urban_outline_status_line()
         if urban_message:
             parts.append(urban_message)
-        return " | ".join(parts)
+        return f"{vertical_bar} %s {vertical_bar}" % f" {vertical_bar} ".join(parts)
 
     def _safe_request_cloud_repaint(self) -> None:
         """Best-effort repaint request; ignores teardown-time signal errors."""

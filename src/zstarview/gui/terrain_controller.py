@@ -11,7 +11,6 @@ from PySide6.QtCore import QObject, Signal
 
 from ..terrain import (
     EARTH_MEAN_RADIUS_M,
-    COPERNICUS_DEM_BUCKET,
     GeoTiffDem,
     ObserverLocation,
     WGS84_GEOD,
@@ -174,7 +173,7 @@ class TerrainHorizonController(QObject):
                             "profile_distances_m": [],
                             "secondary_profile_altaz_layers": [],
                             "secondary_profile_distances_m_layers": [],
-                            "source": f"{COPERNICUS_DEM_BUCKET}:ocean",
+                            "source": "Dem: cache",
                         }
                     )
                 return
@@ -235,7 +234,7 @@ class TerrainHorizonController(QObject):
                         "profile_distances_m": profile_distances_m,
                         "secondary_profile_altaz_layers": secondary_profile_altaz_layers,
                         "secondary_profile_distances_m_layers": secondary_profile_distances_m_layers,
-                        "source": f"{COPERNICUS_DEM_BUCKET}:{download.source}",
+                        "source": "Dem: cache",
                     }
                 )
         except Exception as exc:
