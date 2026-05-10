@@ -13,20 +13,33 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 
 - **Stars**: the sky view shows stars from the selected catalog, with asterisms and other overlays layered on top.
 - **Solar-system bodies**: supports Sun, Moon, and major planets. Minor planets (asteroids) are not displayed yet.
-- **Deep-sky objects**: named galaxies/open clusters/globular clusters are shown as soft blue extents.
-- **Asterism overlay**: popular line patterns rather than formal IAU constellation boundaries are shown as dim ambient lines. Mouse-hovering a star in an asterism brightens the matching pattern and shows its label, with 3-second rotation when multiple asterisms share that star.
-- **Search Objects**: search named stars, asterisms, places, known artificial satellites, and JPL bodies from one dialog. When local matches are not found, known artificial satellites use the app's current position first; if a target is recognized as a known artificial satellite but its current position cannot be obtained, the search fails instead of falling back to JPL. Persistent marker mode keeps both the marker and label visible on the selected target.
-- **Satellite cloud imagery and sky-color disc**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay, and the sky-color disc remains visible beneath the clouds. Missing regions are shown in faint yellow when satellite coverage is partial. See [an example with partial coverage and yellow missing-data tint](docs/images/screenshot5.png).
-- **Aircraft and artificial satellite overlays**: nearby aircraft from OpenSky can be drawn as purple predicted-motion polylines, and ISS, JWST, Voyager 1, Voyager 2, and Parker can be drawn as small purple markers between the planet and aircraft layers.
-- **Urban outline overlay**: major rooflines are drawn as a white urban outline overlay for the current viewpoint. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 60km radius.
-- **Night lights overlay**: NASA Earth at Night / Black Marble 2016 Grayscale 500m GeoTIFF tiles are downloaded on demand, cached locally, and rendered as a separate glow layer above the horizon and terrain ridges. The layer strength can be tuned with `--night-light-opacity`.
-- **Terrain horizon**: Copernicus DEM data can be downloaded to render the local terrain skyline. The terrain overlay shows banded ridge lines in the same horizon color, with nearby bands drawn thicker and distant bands drawn thinner. Blue-tinted ridge lines mark the parts visible from the observer, not hidden by nearer ridges. The disc is filled with the same ground tone below the terrain horizon, or below the geometric horizon when terrain is disabled.
-- **Earth guide**: An independent layer draws a simplified continental hatch pattern below the horizon in the same ground tone to help with orientation.
-- **Guides**: guide overlays include the never-rises region as a guide-line style solid circle in the same visual family as the celestial equator, along with direction labels around the horizon and a zenith marker.
+- **Search**: search named stars, asterisms, places, known artificial satellites, and JPL bodies from one dialog. When local matches are not found, known artificial satellites use the app's current position first; if a target is recognized as a known artificial satellite but its current position cannot be obtained, the search fails instead of falling back to JPL. Persistent marker mode keeps both the marker and label visible on the selected target.
+- **Overlay groups**: the features below are grouped by display layer, and each overlay can be toggled individually from the menu or with its keyboard shortcut.
 - **Flexible location input**: specify the observer location through the CLI argument using a city name, tower name, mountain name, direct latitude/longitude input, supported Google Maps coordinate URLs, or online place/station search via Nominatim.
 - **Adjustable view center**: adjust the view center with CLI options `-A` (altitude) and `-Z` (azimuth), or with the arrow keys. During view changes or window resize, the app briefly switches to a simplified interaction mode to keep navigation responsive.
 - **Terminal image export**: `zstarview-export-image` can render the sky headlessly and write it to a file or display it directly in sixel-capable terminals.
 - **Python support**: the project is routinely tested on CPython 3.10, 3.11, 3.12, 3.13, and 3.14.
+
+**Sky content overlays:**
+
+- **Deep-sky objects**: named galaxies/open clusters/globular clusters are shown as soft blue extents.
+- **Asterism overlay**: popular line patterns rather than formal IAU constellation boundaries are shown as dim ambient lines. Mouse-hovering a star in an asterism brightens the matching pattern and shows its label, with 3-second rotation when multiple asterisms share that star.
+- **Sky Guides**: guide overlays include the never-rises region as a guide-line style solid circle in the same visual family as the celestial equator, along with direction labels around the horizon and a zenith marker.
+- **Observation Info**: a compact observation-info block can be shown on the screen to summarize the current view and observing context.
+
+**Atmospheric and man-made overlays:**
+
+- **Sky Color**: the sky-color disc can be shown as a gradient sky disc or as a flat dark-disc fallback.
+- **Clouds**: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched (striped) overlay, and the sky-color disc remains visible beneath the clouds. Missing regions are shown in faint yellow when satellite coverage is partial. See [an example with partial coverage and yellow missing-data tint](docs/images/screenshot5.png).
+- **Satellites**: ISS, JWST, Voyager 1, Voyager 2, and Parker can be drawn as small purple markers between the planet and aircraft layers.
+- **Aircraft**: nearby aircraft from OpenSky can be drawn as purple predicted-motion polylines.
+
+**Building and ground guide overlays:**
+
+- **Earth guide**: an independent layer draws a simplified continental hatch pattern below the horizon in the same ground tone to help with orientation.
+- **Terrain horizon**: Copernicus DEM data can be downloaded to render the local terrain skyline. The terrain overlay shows banded ridge lines in the same horizon color, with nearby bands drawn thicker and distant bands drawn thinner. Blue-tinted ridge lines mark the parts visible from the observer, not hidden by nearer ridges. The disc is filled with the same ground tone below the terrain horizon, or below the geometric horizon when terrain is disabled.
+- **Urban outline**: major rooflines are drawn as a white urban outline overlay for the current viewpoint. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 60km radius.
+- **Night lights**: NASA Earth at Night / Black Marble 2016 Grayscale 500m GeoTIFF tiles are downloaded on demand, cached locally, and rendered as a separate glow layer above the horizon and terrain ridges. The layer strength can be tuned with `--night-light-opacity`.
 
 ## Screenshots
 
