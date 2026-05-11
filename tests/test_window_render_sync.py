@@ -446,14 +446,14 @@ def test_on_sky_data_calculated_updates_render_snapshot_once() -> None:
     payload = {
         "celestial": celestial,
         "sky_disc": sky_disc,
-        "view_center": (15.0, 120.0),
+        "view_center": (20.0, 30.0),
         "render_width_px": 640,
         "render_height_px": 480,
         "render_generation": 0,
     }
     SkyWindow._on_sky_data_calculated(dummy, payload)
 
-    assert dummy.state.render_view_center == (15.0, 120.0)
+    assert dummy.state.render_view_center == (20.0, 30.0)
     assert dummy.state.celestial_data is celestial
     assert dummy.state.sky_disc_image is sky_disc
     assert dummy._compositor.invalidated is True
@@ -495,7 +495,7 @@ def test_on_sky_data_calculated_preserves_render_center_during_viewport_interact
         {
             "celestial": object(),
             "sky_disc": object(),
-            "view_center": (15.0, 120.0),
+            "view_center": (40.0, 150.0),
             "render_width_px": 640,
             "render_height_px": 480,
             "render_generation": 0,
@@ -545,7 +545,7 @@ def test_on_sky_data_calculated_triggers_release_followup_updates() -> None:
         {
             "celestial": object(),
             "sky_disc": object(),
-            "view_center": (15.0, 120.0),
+            "view_center": (40.0, 150.0),
             "render_width_px": 640,
             "render_height_px": 480,
             "render_generation": 0,
@@ -555,6 +555,53 @@ def test_on_sky_data_calculated_triggers_release_followup_updates() -> None:
     assert dummy.state.viewport_interaction_release_pending is False
     assert dummy.state.viewport_interaction_mode is False
     assert cloud_calls == ["view-change-release", "view-change-release"]
+
+
+def test_on_sky_data_calculated_discards_stale_view_center_after_jump() -> None:
+    dummy = _WindowStub()
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(14.25, 87.0),
+        observer_height_m=1.7,
+    )
+    dummy.state = SkyWindowState(
+        render_view_center=(14.25, 87.0),
+        viewport_interaction_mode=False,
+    )
+    dummy._compositor = _DummyCompositor()
+    dummy._sky_data_update_timer = _DummyTimer(active=True)
+    dummy._cloud_update_timer = _DummyTimer(active=False)
+    dummy._clouddisc = None
+    dummy.cloud_disc_alpha = 0.2
+    dummy.sky_update_interval = 60
+    dummy.initial_data_loaded = _DummySignal()
+    dummy._is_shutting_down = False
+    dummy._disc_generation = 0
+    dummy.width = lambda: 640
+    dummy.height = lambda: 480
+    retry_calls: list[str] = []
+    dummy.request_sky_data_update = lambda *_args, **kwargs: retry_calls.append(
+        str(kwargs.get("reason"))
+    )
+    dummy._safe_request_cloud_repaint = lambda: None
+    dummy.update = lambda: None
+
+    SkyWindow._on_sky_data_calculated(
+        dummy,
+        {
+            "celestial": object(),
+            "sky_disc": object(),
+            "view_center": (0.0, 180.0),
+            "render_width_px": 640,
+            "render_height_px": 480,
+            "render_generation": 0,
+        },
+    )
+
+    assert dummy.state.render_view_center == (14.25, 87.0)
+    assert retry_calls == ["stale-view-center"]
 
 
 def test_schedule_satellite_retry_after_failure_uses_two_hour_backoff() -> None:
@@ -2716,6 +2763,74 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         "overlay",
         "status",
     ]
+
+
+def test_render_hud_overlay_draws_persistent_search_label(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_hover_overlay_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_overlay_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_status_line",
+        lambda *_args, **_kwargs: None,
+    )
+
+    def fake_draw_search_target_overlay(*_args, **kwargs) -> None:
+        captured.update(kwargs)
+        label_candidates = kwargs.get("label_candidates")
+        if isinstance(label_candidates, list):
+            label_candidates.append({"text": "Dubhe", "priority": 15})
+
+    monkeypatch.setattr(
+        pipeline_module.render_search_overlay,
+        "draw_search_target_overlay",
+        fake_draw_search_target_overlay,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_label_layer",
+        lambda *_args, **kwargs: captured.update({"labels": kwargs["label_candidates"]}),
+    )
+
+    pipeline_module.render_hud_overlay_into_painter(
+        painter=object(),
+        geometry=SimpleNamespace(center=(100, 100), radius=80),
+        viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
+        scene=replace(
+            _make_scene(),
+            viewer=ViewerData(
+                location=(35.0, 139.0),
+                timezone_name="Asia/Tokyo",
+                city_name="Tokyo",
+                view_center=(45.0, 180.0),
+                observer_height_m=1.7,
+            ),
+        ),
+        style=_make_style(star_render_expected_width=600),
+        hud=_make_hud(),
+        highlighted_object=None,
+        highlighted_dso=None,
+        label_candidates=[],
+        search_overlay_target=SearchJumpTarget(
+            label="Dubhe",
+            kind="star",
+            sort_key=(0.0, "dubhe"),
+            alt_deg=50.0,
+            az_deg=20.0,
+            persistent_keep_marker=True,
+        ),
+    )
+
+    assert captured["draw_label"] is True
+    assert captured["labels"] == [{"text": "Dubhe", "priority": 15}]
 
 
 def test_render_scene_hides_cloud_bitmap_during_viewport_interaction(

@@ -341,7 +341,7 @@ def render_hud_overlay_into_painter(
             content_fov_deg=_content_fov_deg(scene),
             text_font=style.text_font,
             draw_marker=True,
-            draw_label=False,
+            draw_label=True,
             marker_scale=compute_star_render_upscale_factor(
                 geometry.radius * 2,
                 style.star_render_expected_width,

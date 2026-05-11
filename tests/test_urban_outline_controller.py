@@ -71,7 +71,7 @@ def test_run_update_keeps_base_outlines_when_skyscraper_phase_fails(monkeypatch,
 
     controller._run_update(viewer_data=viewer, dataset_name="tokyo-test", reason="manual")
 
-    assert ready_payloads == [{"outlines": ["base-outline"], "source": "cache"}]
+    assert ready_payloads == [{"outlines": ["base-outline"], "source": "Urban: cache"}]
 
 
 def test_run_update_skips_base_outlines_in_skyscraper_only_mode(
@@ -159,7 +159,7 @@ def test_run_update_skips_base_outlines_in_skyscraper_only_mode(
                     source="skyscraper",
                 )
             ],
-            "source": "overture",
+            "source": "Urban: cache",
         }
     ]
 
@@ -211,7 +211,7 @@ def test_run_update_refreshes_stale_base_cache(monkeypatch, tmp_path: Path) -> N
     controller._run_update(viewer_data=viewer, dataset_name="tokyo-test", reason="manual")
 
     assert refresh_calls == ["refresh"]
-    assert ready_payloads == [{"outlines": ["outline"], "source": "overture"}]
+    assert ready_payloads == [{"outlines": ["outline"], "source": "Urban: cache"}]
 
 
 def test_run_update_refreshes_when_release_changes(monkeypatch, tmp_path: Path) -> None:
@@ -261,4 +261,4 @@ def test_run_update_refreshes_when_release_changes(monkeypatch, tmp_path: Path) 
     controller._run_update(viewer_data=viewer, dataset_name="tokyo-test", reason="manual")
 
     assert refresh_calls == ["refresh"]
-    assert ready_payloads == [{"outlines": ["outline"], "source": "overture"}]
+    assert ready_payloads == [{"outlines": ["outline"], "source": "Urban: cache"}]

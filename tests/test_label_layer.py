@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from PySide6.QtCore import QPointF, QRect, QRectF
 from PySide6.QtGui import QColor, QFont, QImage, QPainter
 from PySide6.QtWidgets import QApplication
@@ -200,6 +201,55 @@ def test_draw_search_target_overlay_appends_label_candidate() -> None:
     assert len(label_candidates) == 1
     assert label_candidates[0]["text"] == "Mars"
     assert label_candidates[0]["priority"] == 15
+
+
+def test_draw_search_target_overlay_keeps_label_at_edge_of_content_fov() -> None:
+    img = QImage(240, 120, QImage.Format.Format_ARGB32_Premultiplied)
+    img.fill(0)
+    painter = QPainter(img)
+    draw_calls: list[str] = []
+    target = SearchJumpTarget(
+        label="Mars",
+        kind="planet",
+        sort_key=(0.0, "mars"),
+        alt_deg=45.0,
+        az_deg=120.0,
+    )
+
+    def fake_is_in_fov(alt, az, view_center, *, fov_deg):
+        del alt, az, view_center
+        return float(fov_deg) == 95.0
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(render_search_overlay, "is_in_fov", fake_is_in_fov)
+    monkeypatch.setattr(
+        render_search_overlay.render_guides,
+        "draw_gauge_cross",
+        lambda *_args, **_kwargs: draw_calls.append("marker"),
+    )
+    monkeypatch.setattr(
+        render_search_overlay.render_text,
+        "draw_outlined_text",
+        lambda *_args, **_kwargs: draw_calls.append("label"),
+    )
+    try:
+        render_search_overlay.draw_search_target_overlay(
+            painter,
+            ScreenGeometry(center=(120, 60), radius=80),
+            target,
+            view_center=(45.0, 180.0),
+            edge_fov_deg=95.0,
+            content_fov_deg=110.0,
+            text_font=QFont(),
+            draw_marker=True,
+            draw_label=True,
+            theme=THEME_STYLES_BY_PRESET["night"],
+        )
+    finally:
+        monkeypatch.undo()
+        painter.end()
+
+    assert draw_calls == ["marker", "label"]
 
 
 def test_hover_overlay_passes_label_candidates_to_asterisms(monkeypatch) -> None:

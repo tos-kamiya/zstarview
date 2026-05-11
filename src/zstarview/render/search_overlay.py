@@ -48,7 +48,7 @@ def draw_search_target_overlay(
     az = getattr(target, "az_deg", None)
     if alt is None or az is None:
         return
-    if not is_in_fov(float(alt), float(az), view_center, fov_deg=float(content_fov_deg)):
+    if not is_in_fov(float(alt), float(az), view_center, fov_deg=float(edge_fov_deg)):
         return
 
     nx, ny = _project_altaz_to_normalized_xy(

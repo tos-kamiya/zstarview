@@ -2028,6 +2028,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
     def _jump_to_search_target(self, target: SearchJumpTarget) -> None:
         target_kind = target.kind
+        state_vector_target = target
         target_time_utc_fn = getattr(self, "_target_time_utc", None)
         if callable(target_time_utc_fn):
             current_time = target_time_utc_fn()
@@ -2144,6 +2145,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
         new_az = float(base_az) % 360.0 if fixed_az else target_az
         self.viewer_data.view_center = (new_alt, new_az)
+        self.state.render_view_center = (new_alt, new_az)
         self._sync_view_altitude_actions()
 
         self.state.jump_highlight_name = target.label
@@ -2163,13 +2165,17 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 horizons_position_km=horizons_position_km,
                 horizons_velocity_km_s=horizons_velocity_km_s,
             )
-            self._log_persistent_search_target_update(
-                action="set",
-                target=updated_target,
-                target_time_utc=reference_time_utc,
-                alt_deg=target_alt,
-                az_deg=target_az,
+            log_persistent_target_update = getattr(
+                self, "_log_persistent_search_target_update", None
             )
+            if callable(log_persistent_target_update):
+                log_persistent_target_update(
+                    action="set",
+                    target=updated_target,
+                    target_time_utc=reference_time_utc,
+                    alt_deg=target_alt,
+                    az_deg=target_az,
+                )
             self.state.persistent_search_target = updated_target
             self.state.persistent_search_reference_time_utc = reference_time_utc
             self.state.persistent_search_last_error = None

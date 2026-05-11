@@ -15,6 +15,7 @@ from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.render.qt_image import qimage_to_np_rgba
 from zstarview.terrain.dem import COPERNICUS_DEM_BUCKET
 from zstarview.gui.window import SkyWindow
+from zstarview.search.models import SearchJumpTarget
 from zstarview.gui.terrain_controller import TerrainHorizonController
 from zstarview.gui.window_inputs import prepare_window_user_options
 from zstarview.gui.window_updates import SkyWindowUpdatesMixin
@@ -577,7 +578,7 @@ def test_status_line_message_combines_cloud_and_terrain_segments() -> None:
 
     assert (
         got
-        == "Clouds [AUTO]: downloading | Terrain horizon: loading DEM... | Urban outline: downloading..."
+        == "⎮ Clouds [AUTO]: downloading ⎮ Terrain horizon: loading DEM... ⎮ Urban outline: downloading... ⎮"
     )
 
 
@@ -592,7 +593,7 @@ def test_status_line_message_keeps_placeholder_icons_for_hidden_layers() -> None
 
     got = SkyWindowUpdatesMixin._status_line_message(dummy)
 
-    assert got == "☁ --- | 🛰 --- | ✈ --- | ▲ --- | 🂓 ---"
+    assert got == "⎮ ☁ --- ⎮ 🛰 --- ⎮ ✈ --- ⎮ ▲ --- ⎮ 🂓 --- ⎮"
 
 
 def test_jpl_small_body_status_line_includes_altaz() -> None:
@@ -933,7 +934,7 @@ def test_terrain_controller_treats_missing_ocean_tiles_as_empty_profile(
             "profile_distances_m": [],
             "secondary_profile_altaz_layers": [],
             "secondary_profile_distances_m_layers": [],
-            "source": f"{COPERNICUS_DEM_BUCKET}:ocean",
+            "source": "Dem: cache",
         }
     ]
 
@@ -1031,6 +1032,57 @@ def test_jump_to_search_target_keeps_negative_target_alt_for_highlight(
     assert dummy.state.jump_highlight_name == "Circlet"
     assert dummy.state.jump_highlight_altaz == (-12.5, 210.0)
     assert dummy.state.jump_highlight_until_ms > 0.0
+    assert sync_calls == ["sync", "begin", "request", "request-client"]
+
+
+def test_jump_to_search_target_can_keep_marker_for_local_star(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        window_module, "radec_to_altaz", lambda *_args, **_kwargs: (14.25, 87.0)
+    )
+
+    dummy = SimpleNamespace()
+    dummy.viewer_data = SimpleNamespace(
+        location=(35.0, 139.0), view_center=(20.0, 30.0), observer_height_m=1.7
+    )
+    dummy.state = SimpleNamespace(
+        jump_highlight_name=None,
+        jump_highlight_altaz=None,
+        jump_highlight_until_ms=0.0,
+        persistent_search_target=None,
+        persistent_search_reference_time_utc=None,
+        persistent_search_next_refresh_utc=None,
+        persistent_search_last_refresh_utc=None,
+        persistent_search_last_error=None,
+    )
+    sync_calls: list[str] = []
+    dummy.request_client_update = lambda: sync_calls.append("request-client")
+    dummy._sync_view_altitude_actions = lambda: sync_calls.append("sync")
+    dummy._current_time_obj = lambda: object()
+    dummy._begin_interaction_mode = lambda: sync_calls.append("begin")
+    dummy.request_sky_data_update = lambda: sync_calls.append("request")
+    dummy._clear_persistent_search = lambda: sync_calls.append("clear")
+
+    target = SearchJumpTarget(
+        label="Sirius",
+        kind="star",
+        sort_key=(0.0, "sirius"),
+        ra_hours=6.75,
+        dec_deg=-16.7,
+        persistent_keep_marker=True,
+    )
+    SkyWindow._jump_to_search_target(dummy, target)
+
+    assert dummy.viewer_data.view_center == (14.25, 87.0)
+    assert dummy.state.render_view_center == (14.25, 87.0)
+    assert dummy.state.jump_highlight_name == "Sirius"
+    assert dummy.state.jump_highlight_altaz == (14.25, 87.0)
+    assert dummy.state.jump_highlight_until_ms > 0.0
+    assert dummy.state.persistent_search_target is not None
+    assert dummy.state.persistent_search_target.label == "Sirius"
+    assert dummy.state.persistent_search_target.persistent_keep_marker is True
+    assert dummy.state.persistent_search_next_refresh_utc is None
     assert sync_calls == ["sync", "begin", "request", "request-client"]
 
 
