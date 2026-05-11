@@ -70,6 +70,8 @@ class SkyWindowUpdatesMixin:
         if not isinstance(refreshed_at, datetime):
             refreshed_at = datetime.now(timezone.utc)
         source = str(payload.get("source", "")).strip().lower() or "ready"
+        if source == "cache-fresh":
+            return
         safe_source = "".join(
             ch if (ch.isascii() and (ch.isalnum() or ch in {"-", "_", "."})) else "-"
             for ch in source

@@ -811,6 +811,46 @@ def test_on_aircraft_ready_skips_debug_snapshot_when_disabled(monkeypatch) -> No
     assert calls == ["schedule", "request"]
 
 
+def test_on_aircraft_ready_skips_debug_snapshot_for_cache_fresh(monkeypatch, tmp_path) -> None:
+    refreshed_at = datetime(2026, 3, 24, 12, 34, 56, tzinfo=timezone.utc)
+    dummy = SimpleNamespace()
+    dummy.aircraft_state = _DummyAircraftState()
+    dummy.aircraft_opacity = 1.0
+    dummy.state = SimpleNamespace(aircraft_overlay_points=None)
+    calls: list[str] = []
+    dummy.request_client_update = lambda: calls.append("request")
+    dummy._schedule_next_aircraft_refresh = lambda: calls.append("schedule")
+    dummy.update = lambda: calls.append("update")
+    dummy.render_current_image = lambda **kwargs: (_ for _ in ()).throw(
+        AssertionError("should not render")
+    )
+    dummy._maybe_save_aircraft_debug_snapshot = lambda payload: (
+        SkyWindowUpdatesMixin._maybe_save_aircraft_debug_snapshot(
+            dummy,
+            payload,
+        )
+    )
+    dummy._resolve_aircraft_debug_snapshot_dir = lambda: (
+        SkyWindowUpdatesMixin._resolve_aircraft_debug_snapshot_dir(dummy)
+    )
+    monkeypatch.setenv("ZSTARVIEW_DEBUG_SAVE_AIRCRAFT_READY_FRAME", str(tmp_path))
+
+    SkyWindowUpdatesMixin._on_aircraft_ready(
+        dummy,
+        {
+            "snapshots": ["s1"],
+            "overlay_points": ["p1"],
+            "bbox": "bbox",
+            "refreshed_at_utc": refreshed_at,
+            "source": "cache-fresh",
+        },
+    )
+
+    assert dummy.state.aircraft_overlay_points == ["p1"]
+    assert calls == ["schedule", "request"]
+    assert list(tmp_path.iterdir()) == []
+
+
 def test_toggle_terrain_horizon_enables_opacity_and_requests_background_update() -> (
     None
 ):
