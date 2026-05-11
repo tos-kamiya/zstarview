@@ -1523,6 +1523,42 @@ def test_handle_client_key_release_ends_viewport_interaction_mode() -> None:
     event.accept.assert_called_once()
 
 
+def test_handle_client_mouse_move_is_ignored_during_startup_block() -> None:
+    dummy = _WindowStub()
+    dummy._startup_input_blocked = lambda: True
+    dummy.state = SkyWindowState(
+        render_view_center=(20.0, 30.0),
+        mouse_pos=None,
+    )
+    dummy.request_client_update = Mock()
+
+    event = SimpleNamespace(pos=lambda: QPoint(10, 20), accept=Mock())
+
+    SkyWindow._handle_client_mouse_move(dummy, event)
+
+    assert dummy.state.mouse_pos is None
+    dummy.request_client_update.assert_not_called()
+    event.accept.assert_called_once()
+
+
+def test_render_hud_state_ignores_mouse_position_during_startup_block() -> None:
+    dummy = _WindowStub()
+    dummy._startup_input_blocked = lambda: True
+    dummy.state = SkyWindowState(
+        render_view_center=(20.0, 30.0),
+        mouse_pos=QPoint(10, 20),
+        overlay_info_bottom_left=False,
+    )
+    dummy.observation_info_pinned = False
+    dummy.client_height = lambda: 300
+    dummy._status_line_message = lambda: "status"
+
+    hud = window_render_module.SkyWindowRenderMixin._render_hud_state(dummy)
+
+    assert hud.mouse_pos is None
+    assert hud.overlay_info_bottom_left is False
+
+
 def test_end_viewport_interaction_mode_marks_idle_reason() -> None:
     dummy = _WindowStub()
     dummy.state = SkyWindowState(

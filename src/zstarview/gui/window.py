@@ -308,15 +308,27 @@ class SkyWindowClientWidget(SkyWindowRenderMixin, QWidget):
         super().resizeEvent(event)
 
     def leaveEvent(self, event: QEvent) -> None:
+        if getattr(self._owner, "_startup_input_blocked", lambda: False)():
+            event.accept()
+            return
         self._owner._handle_client_leave(event)
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        if getattr(self._owner, "_startup_input_blocked", lambda: False)():
+            event.accept()
+            return
         self._owner._handle_client_mouse_move(event)
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
+        if getattr(self._owner, "_startup_input_blocked", lambda: False)():
+            event.accept()
+            return
         self._owner._handle_client_key_press(event)
 
     def keyReleaseEvent(self, event: QKeyEvent) -> None:
+        if getattr(self._owner, "_startup_input_blocked", lambda: False)():
+            event.accept()
+            return
         self._owner._handle_client_key_release(event)
 
 
@@ -555,6 +567,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def eventFilter(self, watched: object, event: QEvent) -> bool:
         if isinstance(watched, QApplication):
             if event.type() in (QEvent.Type.KeyPress, QEvent.Type.KeyRelease):
+                if getattr(self, "_startup_input_blocked", lambda: False)():
+                    return True
                 key_event = event if isinstance(event, QKeyEvent) else None
                 if key_event is not None and key_event.key() in {
                     Qt.Key.Key_Left,
@@ -572,6 +586,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
+        self._startup_window_shown = True
+        self._maybe_release_startup_input_block()
         if self._frameless_window or self._client_geometry_sync_done:
             return
         self._client_geometry_sync_done = True
@@ -761,6 +777,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             satellite_overlay_points=None,
             aircraft_overlay_points=None,
         )
+        self._startup_initial_data_loaded = False
+        self._startup_window_shown = False
+        self._startup_input_release_pending = False
+        self._startup_input_blocked_state = True
         self._viewport_rotation_keys_down: set[int] = set()
         # Ensure overlay_info_bottom_left reflects the startup mode now that
         # the mutable state object exists. True==bottom-left, False==top-left.
@@ -1031,6 +1051,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._sky_worker = SkyDataWorker(self)
         self._sky_worker.data_ready.connect(self._on_sky_data_calculated)
         self.cloud_repaint_requested.connect(self.request_client_update)
+        self.initial_data_loaded.connect(self._on_initial_data_loaded)
 
         app = QApplication.instance()
         if app is not None:
@@ -2234,6 +2255,31 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             records_by_group[str(group_key)] = list(cached.records)
         return records_by_group
 
+    def _startup_input_blocked(self) -> bool:
+        return bool(getattr(self, "_startup_input_blocked_state", False))
+
+    def _on_initial_data_loaded(self) -> None:
+        self._startup_initial_data_loaded = True
+        self._maybe_release_startup_input_block()
+
+    def _maybe_release_startup_input_block(self) -> None:
+        if self._is_shutting_down:
+            return
+        if not self._startup_input_blocked_state:
+            return
+        if not self._startup_initial_data_loaded:
+            return
+        if not self._startup_window_shown:
+            return
+        if self._startup_input_release_pending:
+            return
+        self._startup_input_release_pending = True
+        QTimer.singleShot(0, self._release_startup_input_block)
+
+    def _release_startup_input_block(self) -> None:
+        self._startup_input_release_pending = False
+        self._startup_input_blocked_state = False
+
     def _begin_shutdown(self) -> None:
         """Stop scheduling new background work while the app is closing."""
         if self._is_shutting_down:
@@ -2729,6 +2775,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         super().closeEvent(event)
 
     def _handle_client_mouse_move(self, event: QMouseEvent) -> None:
+        if getattr(self, "_startup_input_blocked", lambda: False)():
+            event.accept()
+            return
         self.state.mouse_pos = event.pos()
         self.request_client_update()
         event.accept()
@@ -2771,6 +2820,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         return keys
 
     def _handle_client_key_press(self, event: QKeyEvent) -> None:
+        if getattr(self, "_startup_input_blocked", lambda: False)():
+            event.accept()
+            return
         key = event.key()
 
         # --- View Control ---
@@ -2861,6 +2913,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             super().keyPressEvent(event)
 
     def _handle_client_key_release(self, event: QKeyEvent) -> None:
+        if getattr(self, "_startup_input_blocked", lambda: False)():
+            event.accept()
+            return
         key = event.key()
         if key not in {
             Qt.Key.Key_Left,

@@ -446,6 +446,8 @@ class SkyWindowRenderMixin:
         if hasattr(self, "_status_line_message"):
             status_message = self._status_line_message()
         mouse_pos = self.state.mouse_pos
+        if getattr(self, "_startup_input_blocked", lambda: False)():
+            mouse_pos = None
         overlay_info_bottom_left = bool(
             getattr(self.state, "overlay_info_bottom_left", False)
         )
@@ -669,12 +671,15 @@ class SkyWindowRenderMixin:
             int(self.client_height()),
             alt,
         )
+        mouse_pos = self.state.mouse_pos
+        if getattr(self, "_startup_input_blocked", lambda: False)():
+            mouse_pos = None
 
         highlighted_object, highlighted_dso, highlighted_satellite = (
             _resolve_hover_targets(
                 celestial_data=celestial_data,
                 render_viewer=render_viewer,
-                mouse_pos=self.state.mouse_pos,
+                mouse_pos=mouse_pos,
                 geometry=geometry,
                 satellite_overlay_points=self.state.satellite_overlay_points,
                 show_dso=bool(self.show_dso),
