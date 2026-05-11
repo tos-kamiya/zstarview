@@ -270,6 +270,22 @@ class SkyWindowUpdatesMixin:
             return
         if not self.state.viewport_interaction_mode:
             view_center = payload.get("view_center", self.viewer_data.view_center)
+            current_view_center = tuple(self.viewer_data.view_center)
+            if not (
+                isinstance(view_center, (tuple, list))
+                and len(view_center) >= 2
+                and abs(float(view_center[0]) - float(current_view_center[0])) < 1e-9
+                and abs(float(view_center[1]) - float(current_view_center[1])) < 1e-9
+            ):
+                logger.debug(
+                    "Discard stale sky payload view_center=%s current=%s generation=%s",
+                    view_center,
+                    current_view_center,
+                    payload_generation,
+                )
+                if not self._is_shutting_down:
+                    self.request_sky_data_update(reason="stale-view-center")
+                return
             if isinstance(view_center, (tuple, list)) and len(view_center) >= 2:
                 self.state.render_view_center = (
                     float(view_center[0]),
