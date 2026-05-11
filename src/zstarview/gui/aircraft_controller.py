@@ -188,7 +188,7 @@ class AircraftController(QObject):
                     }
                 )
         except Exception as exc:
-            logger.warning("Aircraft update failed: %s", exc, exc_info=True)
+            logger.warning("Aircraft update failed: %s", exc)
             with self._lock:
                 should_emit = not self._stopping and request_id == self._latest_request_id
             if should_emit:

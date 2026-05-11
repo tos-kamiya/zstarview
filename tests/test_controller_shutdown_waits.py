@@ -4,6 +4,7 @@ import threading
 import time
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
+from urllib.error import URLError
 
 import astropy.time
 import numpy as np
@@ -78,6 +79,34 @@ def test_aircraft_controller_shutdown_waits(monkeypatch) -> None:
         )
 
     _assert_shutdown_waits(monkeypatch, controller, trigger_update)
+
+
+def test_aircraft_controller_timeout_is_logged_without_traceback(monkeypatch, caplog) -> None:
+    controller = AircraftController()
+    fetch_started = threading.Event()
+
+    def fake_fetcher(_bbox):
+        fetch_started.set()
+        raise URLError(TimeoutError("timed out"))
+
+    monkeypatch.setattr(controller, "_fetcher", fake_fetcher)
+
+    with caplog.at_level("WARNING", logger="zstarview.gui.aircraft_controller"):
+        controller.update(
+            observer_lat=35.0,
+            observer_lon=139.0,
+            observer_height_m=1.7,
+            time_obj=astropy.time.Time(datetime(2026, 4, 25, 0, 0, tzinfo=timezone.utc)),
+            reason="manual",
+        )
+
+        assert fetch_started.wait(timeout=1.0)
+        deadline = time.time() + 1.0
+        while controller._active_workers and time.time() < deadline:  # noqa: SLF001
+            time.sleep(0.01)
+
+    assert "Aircraft update failed: <urlopen error timed out>" in caplog.text
+    assert "Traceback (most recent call last)" not in caplog.text
 
 
 def test_jpl_controller_shutdown_waits(monkeypatch) -> None:
