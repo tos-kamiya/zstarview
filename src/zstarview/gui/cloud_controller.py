@@ -49,7 +49,6 @@ class CloudController(QObject):
         self._render_is_running = False
         self._pending_source_request: Optional[dict] = None
         self._pending_render_request: Optional[dict] = None
-        self._last_render_request: Optional[dict] = None
         self._latest_source: Optional[CloudSourceData] = None
         self._latest_request_id = 0
         self._stopping = False
@@ -72,7 +71,6 @@ class CloudController(QObject):
                 return
             self._latest_request_id += 1
             self._pending_render_request = None
-            self._last_render_request = None
 
     def has_in_flight_update(self) -> bool:
         """Return True while any cloud fetch or render work is still running."""
@@ -122,22 +120,23 @@ class CloudController(QObject):
             self._latest_request_id += 1
             request_id = int(self._latest_request_id)
             render_req["request_id"] = request_id
-            self._last_render_request = dict(render_req)
-
-            if self._render_is_running:
-                self._pending_render_request = dict(render_req)
-            else:
-                start_render_req = dict(render_req)
-                self._render_is_running = True
 
             need_source = self._latest_source is None or self._should_refresh_source(reason)
             if need_source:
+                self._pending_render_request = dict(render_req)
                 if self._source_is_running:
                     self._pending_source_request = dict(source_req)
                 else:
                     self._source_is_running = True
                     start_source_req = dict(source_req)
                     run_cleanup = self._tick_cleanup()
+            elif self._source_is_running:
+                self._pending_render_request = dict(render_req)
+            elif self._render_is_running:
+                self._pending_render_request = dict(render_req)
+            else:
+                start_render_req = dict(render_req)
+                self._render_is_running = True
 
         if run_cleanup:
             self._spawn_worker(target=self._cleanup_cache, kwargs={}, label="cleanup")
@@ -246,18 +245,16 @@ class CloudController(QObject):
                 rerender_req = None
                 with self._lock:
                     if not self._stopping:
-                        if self._pending_render_request is not None:
+                        if self._pending_source_request is not None:
+                            next_req = dict(self._pending_source_request)
+                            self._pending_source_request = None
+                        elif (
+                            self._pending_render_request is not None
+                            and not self._render_is_running
+                        ):
                             rerender_req = dict(self._pending_render_request)
                             self._pending_render_request = None
-                        elif self._last_render_request is not None:
-                            rerender_req = dict(self._last_render_request)
-                        if rerender_req is not None:
-                            if not self._render_is_running:
-                                self._render_is_running = True
-                            else:
-                                # Keep latest rerender request queued while current render is running.
-                                self._pending_render_request = dict(rerender_req)
-                                rerender_req = None
+                            self._render_is_running = True
                 if rerender_req is not None:
                     self._spawn_worker(target=self._run_render_update, kwargs=rerender_req, label="render")
             except VisibilityError as e:
@@ -362,7 +359,12 @@ class CloudController(QObject):
         finally:
             with self._lock:
                 self._render_is_running = False
-                if not self._stopping and self._pending_render_request is not None:
+                if (
+                    not self._stopping
+                    and self._pending_render_request is not None
+                    and not self._source_is_running
+                    and self._pending_source_request is None
+                ):
                     next_req = self._pending_render_request
                     self._pending_render_request = None
                     self._render_is_running = True
