@@ -16,6 +16,7 @@ from ..search.jpl import project_jpl_target_altaz_from_state_vector
 logger = logging.getLogger(__name__)
 _JPL_DEBUG_ENV = "ZSTARVIEW_DEBUG_JPL_SEARCH"
 _STATUS_CLOUD = "☁"
+_STATUS_WATER = "💧"
 _STATUS_SATELLITE = "🛰"
 _STATUS_AIRCRAFT = "✈"
 _STATUS_TERRAIN = "▲"
@@ -117,6 +118,9 @@ class SkyWindowUpdatesMixin:
         terrain_message = self._terrain_horizon_status_line()
         if terrain_message:
             parts.append(terrain_message)
+        water_message = self._water_overlay_status_line()
+        if water_message:
+            parts.append(water_message)
         urban_message = self._urban_outline_status_line()
         if urban_message:
             parts.append(urban_message)
@@ -169,6 +173,27 @@ class SkyWindowUpdatesMixin:
         if self.terrain_horizon_state.current_source:
             return _status_segment(_STATUS_TERRAIN, str(self.terrain_horizon_state.current_source))
         return ""
+
+    def _water_overlay_status_line(self) -> str:
+        if self.water_overlay_opacity <= 0.0:
+            return _status_segment(_STATUS_WATER, "", hidden=True)
+        state = self.water_overlay_state
+        if state.banner_text:
+            detail = _strip_status_prefix(state.banner_text, "Water surface:")
+            return _status_segment(_STATUS_WATER, detail)
+        points = state.points
+        if points is None:
+            return ""
+        count = len(points)
+        source = str(state.current_source or "").strip()
+        mode = str(state.current_mode or "").strip()
+        detail_parts: list[str] = []
+        if source:
+            detail_parts.append(source)
+        detail_parts.append(f"{count} pts")
+        if mode:
+            detail_parts.append(mode)
+        return _status_segment(_STATUS_WATER, " ".join(detail_parts))
 
     def _urban_outline_status_line(self) -> str:
         if self.urban_outline_opacity <= 0.0:
@@ -814,6 +839,15 @@ class SkyWindowUpdatesMixin:
         dem_points = payload.get("dem_points")
         mode = str(payload.get("mode", "")).strip().lower() or "sea"
         source = str(payload.get("source", "")).strip() or "ready"
+        count = len(points) if isinstance(points, list) else 0
+        logger.info(
+            "Water surface ready: mode=%s source=%s points=%d sea_points=%s dem_points=%s",
+            mode,
+            source,
+            count,
+            len(sea_points) if isinstance(sea_points, list) else "-",
+            len(dem_points) if isinstance(dem_points, list) else "-",
+        )
         if mode == "dem":
             self.water_overlay_state.set_dem_result(dem_points or points, source=source)
         else:

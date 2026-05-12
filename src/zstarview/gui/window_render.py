@@ -492,6 +492,7 @@ class SkyWindowRenderMixin:
             night_light_opacity=float(getattr(self, "night_light_opacity", 0.0)),
             urban_outline_opacity=float(self.urban_outline_opacity),
             show_urban_outline_layer=bool(self.show_urban_outline_layer),
+            water_overlay_opacity=float(getattr(self, "water_overlay_opacity", 0.82)),
             aircraft_opacity=float(self.aircraft_opacity),
             star_render_expected_width=int(self._star_render_expected_width),
         )

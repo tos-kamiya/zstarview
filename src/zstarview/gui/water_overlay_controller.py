@@ -155,7 +155,7 @@ class WaterOverlayController(QObject):
             self._running = True
             self._active_key = key
 
-        self.water_started.emit({"banner": "Water overlay: loading..."})
+        self.water_started.emit({"banner": "Water surface: loading..."})
         try:
             self._spawn_worker(
                 target=self._run_update,
@@ -243,9 +243,9 @@ class WaterOverlayController(QObject):
     ) -> None:
         try:
             if reason == "initial":
-                logger.info("Fetching initial water overlay data...")
+                logger.info("Fetching initial water surface data...")
             else:
-                logger.info("Fetching water overlay data...")
+                logger.info("Fetching water surface data...")
 
             scope_cache = self._ensure_scope_cache(
                 scope_key=scope_key,
@@ -285,7 +285,7 @@ class WaterOverlayController(QObject):
                     source="Water: Overpass",
                 )
         except Exception as exc:
-            logger.warning("Water overlay update failed: %s", exc, exc_info=True)
+            logger.warning("Water surface update failed: %s", exc, exc_info=True)
             if cached_scope is not None:
                 fallback_variant = self._select_cached_variant(
                     cached_scope,
@@ -311,7 +311,7 @@ class WaterOverlayController(QObject):
                 if should_emit:
                     self._failed_key = key
             if should_emit:
-                self.water_failed.emit({"banner": f"Water overlay: failed ({exc})"})
+                self.water_failed.emit({"banner": f"Water surface: failed ({exc})"})
         finally:
             with self._lock:
                 self._running = False

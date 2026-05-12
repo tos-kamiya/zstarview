@@ -121,6 +121,7 @@ class RenderStyle:
     night_light_opacity: float = 0.02
     urban_outline_opacity: float = 0.2
     show_urban_outline_layer: bool = True
+    water_overlay_opacity: float = 0.82
     aircraft_opacity: float = 0.5
     star_render_expected_width: int = 600
     theme: ThemeStyle = THEME_STYLES_BY_PRESET["night"]
@@ -447,7 +448,7 @@ def _draw_viewport_interaction_layers(
         geometry,
         scene.water_overlay_points,
         scene.viewer.view_center,
-        opacity=0.82,
+        opacity=style.water_overlay_opacity,
         line_width_scale=line_width_scale,
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=_content_fov_deg(scene),
@@ -653,7 +654,7 @@ def _draw_terrain_layers(
         geometry,
         scene.water_overlay_points,
         scene.viewer.view_center,
-        opacity=0.82,
+        opacity=style.water_overlay_opacity,
         line_width_scale=line_width_scale,
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=content_fov_deg,

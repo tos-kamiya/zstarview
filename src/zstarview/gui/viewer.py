@@ -228,6 +228,7 @@ def main() -> None:
         terrain_horizon_opacity=args.terrain_horizon_opacity,
         earth_guide_opacity=args.earth_guide_opacity,
         urban_outline_opacity=args.urban_outline_opacity,
+        water_overlay_opacity=args.water_surface_opacity,
         ground_tint_opacity=args.ground_tint_opacity,
         enlarge_moon=args.enlarge_moon,
         bright_bodies_mode=args.bright_bodies,

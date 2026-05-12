@@ -829,6 +829,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
         self.terrain_horizon_opacity = user_options.terrain_horizon_opacity
         self.earth_guide_opacity = user_options.earth_guide_opacity
+        self.water_overlay_opacity = user_options.water_overlay_opacity
         requested_night_light_opacity = getattr(user_options, "night_light_opacity", 0.02)
         self._night_light_toggle_supported = bool(user_options.night_light_gui_allowed)
         self._night_light_opacity_when_enabled = (
@@ -845,6 +846,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             user_options.terrain_horizon_opacity
             if user_options.terrain_horizon_opacity > 0.0
             else 0.25
+        )
+        self._water_overlay_opacity_when_enabled = (
+            user_options.water_overlay_opacity
+            if user_options.water_overlay_opacity > 0.0
+            else 0.82
         )
         self._earth_guide_opacity_when_enabled = (
             user_options.earth_guide_opacity
@@ -865,7 +871,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
         self._earth_guide_gui_allowed = bool(user_options.earth_guide_gui_allowed)
         self._urban_outline_gui_allowed = bool(user_options.urban_outline_gui_allowed)
+        self._water_overlay_gui_allowed = True
         self.show_urban_outline_layer: bool = self.urban_outline_opacity > 0.0
+        self.show_water_overlay_layer: bool = self.water_overlay_opacity > 0.0
         self.enlarge_moon = user_options.enlarge_moon
         self.bright_bodies_mode = user_options.bright_bodies_mode
         self.star_base_radius = user_options.star_base_radius
@@ -981,13 +989,14 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._startup_log_overlay: Optional[StartupLogOverlay] = None
         self._shutdown_overlay: Optional[ShutdownMessageOverlay] = None
         self._frameless_frame: Optional[FramelessWindowFrame] = None
-        self.menu_button: Optional[QPushButton] = None
+        self.menu_button: Optional[QWidget] = None
         self.size_grip: Optional[QWidget] = None
         self._action_enlarge_moon: Optional[QAction] = None
         self._action_toggle_clouds: Optional[QAction] = None
         self._action_toggle_satellites: Optional[QAction] = None
         self._action_toggle_aircraft: Optional[QAction] = None
         self._action_toggle_terrain_horizon: Optional[QAction] = None
+        self._action_toggle_water_overlay: Optional[QAction] = None
         self._action_toggle_earth_guide: Optional[QAction] = None
         self._action_toggle_night_lights: Optional[QAction] = None
         self._action_toggle_urban_outline: Optional[QAction] = None
@@ -1514,6 +1523,14 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             checked=self.terrain_horizon_opacity > 0.0,
             shortcut=QKeySequence(Qt.Key.Key_T),
             triggered=self.toggle_terrain_horizon,
+        )
+        self._action_toggle_water_overlay = self._add_checkable_menu_action(
+            self.display_menu,
+            "Water Surface",
+            checked=self.water_overlay_opacity > 0.0,
+            enabled=bool(getattr(self, "_water_overlay_gui_allowed", True)),
+            shortcut=QKeySequence(Qt.Key.Key_W),
+            triggered=self.toggle_water_overlay,
         )
         self._action_toggle_earth_guide = self._add_checkable_menu_action(
             self.display_menu,
@@ -2954,6 +2971,26 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.start_background_water_overlay_update(reason="toggle-off")
         self.request_client_update()
 
+    def toggle_water_overlay(self) -> None:
+        if not bool(getattr(self, "_water_overlay_gui_allowed", True)):
+            if self._action_toggle_water_overlay is not None:
+                self._action_toggle_water_overlay.setChecked(
+                    self.water_overlay_opacity > 0.0
+                )
+            return
+
+        enable_water_overlay = self.water_overlay_opacity <= 0.0
+        self.water_overlay_opacity = (
+            self._water_overlay_opacity_when_enabled if enable_water_overlay else 0.0
+        )
+        self.show_water_overlay_layer = self.water_overlay_opacity > 0.0
+        if (
+            self._action_toggle_water_overlay is not None
+            and self._action_toggle_water_overlay.isChecked() != enable_water_overlay
+        ):
+            self._action_toggle_water_overlay.setChecked(enable_water_overlay)
+        self.request_client_update()
+
     def toggle_earth_guide(self) -> None:
         if not self._earth_guide_gui_allowed:
             if self._action_toggle_earth_guide is not None:
@@ -3130,6 +3167,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             event.accept()
         elif key == Qt.Key.Key_T:
             self.toggle_terrain_horizon()
+            event.accept()
+        elif key == Qt.Key.Key_W:
+            self.toggle_water_overlay()
             event.accept()
         elif key == Qt.Key.Key_E:
             self.toggle_earth_guide()

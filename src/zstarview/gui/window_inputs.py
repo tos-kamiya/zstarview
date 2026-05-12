@@ -54,6 +54,7 @@ class SkyWindowUserOptions:
     terrain_horizon_opacity: float = 0.003
     earth_guide_opacity: float = 0.028
     urban_outline_opacity: float = 0.2
+    water_overlay_opacity: float = 0.82
     ground_tint_opacity: float = 0.04
     enlarge_moon: bool = False
     bright_bodies_mode: str = "outline"
@@ -182,6 +183,7 @@ def prepare_window_user_options(
     terrain_horizon_opacity: float,
     earth_guide_opacity: float,
     urban_outline_opacity: float,
+    water_overlay_opacity: float,
     ground_tint_opacity: float,
     enlarge_moon: bool,
     bright_bodies_mode: str,
@@ -217,6 +219,7 @@ def prepare_window_user_options(
         terrain_horizon_opacity=_apply_visibility_boost(terrain_horizon_opacity, visibility_boost, 1.0),
         earth_guide_opacity=_apply_visibility_boost(earth_guide_opacity, visibility_boost, 1.0),
         urban_outline_opacity=_apply_visibility_boost(urban_outline_opacity, visibility_boost, 1.0),
+        water_overlay_opacity=_apply_visibility_boost(water_overlay_opacity, visibility_boost, 1.0),
         ground_tint_opacity=_apply_visibility_boost(ground_tint_opacity, visibility_boost, 1.0),
         enlarge_moon=bool(enlarge_moon),
         bright_bodies_mode=str(bright_bodies_mode).strip().lower(),

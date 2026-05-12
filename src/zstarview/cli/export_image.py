@@ -385,6 +385,7 @@ def _build_window_inputs_from_args(
         terrain_horizon_opacity=getattr(args, "terrain_horizon_opacity", 0.003),
         earth_guide_opacity=getattr(args, "earth_guide_opacity", 0.028),
         urban_outline_opacity=getattr(args, "urban_outline_opacity", 0.2),
+        water_overlay_opacity=getattr(args, "water_surface_opacity", 0.82),
         ground_tint_opacity=getattr(args, "ground_tint_opacity", 0.04),
         enlarge_moon=bool(getattr(args, "enlarge_moon", False)),
         bright_bodies_mode=str(getattr(args, "bright_bodies", "outline")),

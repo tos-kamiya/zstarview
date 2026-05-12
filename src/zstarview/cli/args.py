@@ -680,6 +680,15 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         ),
     )
     parser.add_argument(
+        "--water-surface-opacity",
+        type=float,
+        default=0.82,
+        help=(
+            "Opacity of the water surface layer (0.0 - 1.0, default: 0.82). "
+            "Set to 0.0 to disable water surface rendering at startup."
+        ),
+    )
+    parser.add_argument(
         "--urban-outline-feature-type",
         choices=("both", "building"),
         default="both",
@@ -1263,6 +1272,7 @@ def _validate_dataset_query_compatibility(
             or has_non_default("earth_guide_opacity")
             or has_non_default("night_light_opacity")
             or has_non_default("urban_outline_opacity")
+            or has_non_default("water_surface_opacity")
             or has_non_default("urban_outline_radius_km")
             or has_non_default("urban_outline_min_height_m")
             or has_non_default("urban_outline_feature_type")
