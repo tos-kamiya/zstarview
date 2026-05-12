@@ -21,7 +21,7 @@ from typing import Any, Iterable
 
 import numpy as np
 from pyproj import Geod
-from shapely.geometry import Point, Polygon
+from shapely.geometry import Point, Polygon, box
 from shapely.prepared import prep
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -35,7 +35,6 @@ from zstarview.terrain import (
     GeoTiffDem,
     ObserverLocation,
     WGS84_GEOD,
-    build_distance_samples,
     build_download_bbox,
     compute_horizon_layers,
     sample_ground_elevation,
@@ -81,13 +80,46 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     )
     parser.add_argument("--max-distance-km", type=float, default=32.0)
     parser.add_argument("--download-margin-km", type=float, default=5.0)
-    parser.add_argument("--sample-step-m", type=float, default=200.0)
+    parser.add_argument(
+        "--sample-step-m",
+        type=float,
+        dest="sample_step_m_legacy",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--sample-step-near-m",
+        type=float,
+        default=20.0,
+        help="Ray sample spacing in the near field, in meters (default: 20.0).",
+    )
+    parser.add_argument(
+        "--sample-step-far-m",
+        type=float,
+        default=100.0,
+        help="Ray sample spacing beyond the near field, in meters (default: 100.0).",
+    )
+    parser.add_argument(
+        "--sample-step-transition-km",
+        type=float,
+        default=2.0,
+        help="Distance from the observer where sampling switches from near to far spacing, in km (default: 2.0).",
+    )
     parser.add_argument("--azimuth-step-deg", type=float, default=2.0)
     parser.add_argument("--observer-height-m", type=float, default=1.7)
+    parser.add_argument(
+        "--water-extent-km",
+        type=float,
+        default=1.0,
+        help="Half-width of the square water overlay window centered on the observer in km (default: 1.0).",
+    )
     parser.add_argument("--dem-resampling", choices=("bilinear", "nearest"), default="bilinear")
     parser.add_argument("--canvas-size", type=int, default=1200)
     parser.add_argument("--canvas-padding", type=float, default=80.0)
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    if getattr(args, "sample_step_m_legacy", None) is not None:
+        args.sample_step_far_m = float(args.sample_step_m_legacy)
+    delattr(args, "sample_step_m_legacy")
+    return args
 
 
 def _load_water_footprints(path: Path) -> tuple[WaterPolygonFootprint, ...]:
@@ -143,7 +175,53 @@ def _load_tags(value: object) -> dict[str, str]:
     return result
 
 
-def _build_polygon_list(footprints: Iterable[WaterPolygonFootprint]) -> tuple[PreparedWaterPolygon, ...]:
+def _iter_polygon_parts(geometry: object) -> tuple[Polygon, ...]:
+    if not hasattr(geometry, "is_empty") or getattr(geometry, "is_empty"):
+        return ()
+    geom_type = getattr(geometry, "geom_type", "")
+    if geom_type == "Polygon":
+        return (geometry,)  # type: ignore[return-value]
+    if geom_type in {"MultiPolygon", "GeometryCollection"}:
+        parts: list[Polygon] = []
+        for item in getattr(geometry, "geoms", ()):
+            parts.extend(_iter_polygon_parts(item))
+        return tuple(parts)
+    return ()
+
+
+def _project_polygon_to_local_xy(
+    polygon: Polygon,
+    *,
+    observer_lon_deg: float,
+    observer_lat_deg: float,
+) -> Polygon:
+    outer_xy = [
+        _project_local_xy(observer_lon_deg, observer_lat_deg, float(lon), float(lat))
+        for lon, lat in polygon.exterior.coords
+    ]
+    hole_xy = [
+        [
+            _project_local_xy(observer_lon_deg, observer_lat_deg, float(lon), float(lat))
+            for lon, lat in hole.coords
+        ]
+        for hole in polygon.interiors
+    ]
+    projected = Polygon(outer_xy, hole_xy)
+    if not projected.is_valid:
+        projected = projected.buffer(0)
+    return projected
+
+
+def _build_polygon_list(
+    footprints: Iterable[WaterPolygonFootprint],
+    *,
+    observer: ObserverLocation,
+    water_extent_km: float,
+) -> tuple[PreparedWaterPolygon, ...]:
+    extent_m = float(water_extent_km) * 1000.0
+    if extent_m <= 0.0:
+        raise ValueError("water_extent_km must be positive")
+    clip_window = box(-extent_m, -extent_m, extent_m, extent_m)
     polygons: list[PreparedWaterPolygon] = []
     for footprint in footprints:
         outer_polygons: list[Polygon] = []
@@ -185,12 +263,15 @@ def _build_polygon_list(footprints: Iterable[WaterPolygonFootprint]) -> tuple[Pr
             polygon = Polygon(list(outer.exterior.coords), holes_by_outer[outer_index])
             if not polygon.is_valid:
                 polygon = polygon.buffer(0)
-            if polygon.is_empty or polygon.geom_type != "Polygon":
-                continue
-            polygons.append(PreparedWaterPolygon(polygon=polygon, prepared=prep(polygon)))
+            for part in _iter_polygon_parts(
+                _project_polygon_to_local_xy(
+                    polygon,
+                    observer_lon_deg=observer.longitude_deg,
+                    observer_lat_deg=observer.latitude_deg,
+                ).intersection(clip_window)
+            ):
+                polygons.append(PreparedWaterPolygon(polygon=part, prepared=prep(part)))
 
-    if not polygons:
-        raise ValueError("No valid water polygons were built from the input JSON.")
     return tuple(polygons)
 
 
@@ -240,18 +321,62 @@ def _project_local_xy(
     return x_m, y_m
 
 
+def _build_distance_samples(
+    *,
+    max_distance_km: float,
+    near_step_m: float,
+    far_step_m: float,
+    transition_km: float,
+) -> np.ndarray:
+    if max_distance_km <= 0.0:
+        raise ValueError("max_distance_km must be positive")
+    if near_step_m <= 0.0:
+        raise ValueError("sample-step-near-m must be positive")
+    if far_step_m <= 0.0:
+        raise ValueError("sample-step-far-m must be positive")
+    if transition_km < 0.0:
+        raise ValueError("sample-step-transition-km must be non-negative")
+
+    max_distance_m = float(max_distance_km) * 1000.0
+    transition_m = min(float(transition_km) * 1000.0, max_distance_m)
+
+    near_samples = np.arange(0.0, transition_m + float(near_step_m) * 0.5, float(near_step_m), dtype=np.float64)
+    if near_samples.size == 0 or near_samples[-1] < transition_m:
+        near_samples = np.append(near_samples, transition_m)
+
+    far_start_m = transition_m + float(far_step_m)
+    if far_start_m > max_distance_m:
+        far_samples = np.empty(0, dtype=np.float64)
+    else:
+        far_samples = np.arange(far_start_m, max_distance_m + float(far_step_m) * 0.5, float(far_step_m), dtype=np.float64)
+
+    samples = np.concatenate([near_samples, far_samples])
+    if samples.size == 0 or samples[0] != 0.0:
+        samples = np.insert(samples, 0, 0.0)
+    if samples[-1] < max_distance_m:
+        samples = np.append(samples, max_distance_m)
+    return np.unique(samples)
+
+
 def _sample_rays(
     *,
     observer: ObserverLocation,
     dem_grid,
     water_polygons: tuple[PreparedWaterPolygon, ...],
     max_distance_km: float,
-    sample_step_m: float,
+    sample_step_near_m: float,
+    sample_step_far_m: float,
+    sample_step_transition_km: float,
     azimuth_step_deg: float,
     dem_resampling: str,
 ) -> tuple[list[WaterRunSegment], dict[str, object]]:
     azimuths = np.arange(0.0, 360.0, float(azimuth_step_deg), dtype=np.float64)
-    distances_m = build_distance_samples(float(max_distance_km), float(sample_step_m))
+    distances_m = _build_distance_samples(
+        max_distance_km=float(max_distance_km),
+        near_step_m=float(sample_step_near_m),
+        far_step_m=float(sample_step_far_m),
+        transition_km=float(sample_step_transition_km),
+    )
     az_grid_deg, distance_grid_m = np.meshgrid(azimuths, distances_m, indexing="ij")
     flat_count = az_grid_deg.size
 
@@ -266,7 +391,13 @@ def _sample_rays(
     water_mask = np.zeros_like(lon_grid_deg, dtype=bool)
     for row_index in range(lon_grid_deg.shape[0]):
         for col_index in range(lon_grid_deg.shape[1]):
-            point = Point(float(lon_grid_deg[row_index, col_index]), float(lat_grid_deg[row_index, col_index]))
+            x_m, y_m = _project_local_xy(
+                observer.longitude_deg,
+                observer.latitude_deg,
+                float(lon_grid_deg[row_index, col_index]),
+                float(lat_grid_deg[row_index, col_index]),
+            )
+            point = Point(x_m, y_m)
             water_mask[row_index, col_index] = any(
                 prepared.prepared.intersects(point) for prepared in water_polygons
             )
@@ -369,7 +500,6 @@ def _collect_svg_points(
     runs: Iterable[WaterRunSegment],
     polygons: Iterable[Polygon],
     *,
-    observer: ObserverLocation,
     max_distance_km: float,
     padding_m: float,
 ) -> tuple[float, float, float, float]:
@@ -379,15 +509,13 @@ def _collect_svg_points(
     min_y = -max_distance_m
     max_y = max_distance_m
     for polygon in polygons:
-        for lon, lat in polygon.exterior.coords:
-            x_m, y_m = _project_local_xy(observer.longitude_deg, observer.latitude_deg, float(lon), float(lat))
+        for x_m, y_m in polygon.exterior.coords:
             min_x = min(min_x, x_m)
             max_x = max(max_x, x_m)
             min_y = min(min_y, y_m)
             max_y = max(max_y, y_m)
         for hole in polygon.interiors:
-            for lon, lat in hole.coords:
-                x_m, y_m = _project_local_xy(observer.longitude_deg, observer.latitude_deg, float(lon), float(lat))
+            for x_m, y_m in hole.coords:
                 min_x = min(min_x, x_m)
                 max_x = max(max_x, x_m)
                 min_y = min(min_y, y_m)
@@ -422,7 +550,6 @@ def _svg_polyline(points: Iterable[tuple[float, float]]) -> str:
 def _polygon_to_svg_path(
     polygon: Polygon,
     *,
-    observer: ObserverLocation,
     min_x: float,
     max_y: float,
     scale: float,
@@ -430,14 +557,8 @@ def _polygon_to_svg_path(
 ) -> str:
     def ring_to_path(coords: Iterable[tuple[float, float]]) -> str:
         points = [
-            _svg_xy(
-                *_project_local_xy(observer.longitude_deg, observer.latitude_deg, float(lon), float(lat)),
-                min_x=min_x,
-                max_y=max_y,
-                scale=scale,
-                margin_px=margin_px,
-            )
-            for lon, lat in coords
+            _svg_xy(x_m, y_m, min_x=min_x, max_y=max_y, scale=scale, margin_px=margin_px)
+            for x_m, y_m in coords
         ]
         if not points:
             return ""
@@ -467,7 +588,6 @@ def _render_svg(
     min_x, max_x, min_y, max_y = _collect_svg_points(
         runs,
         polygons,
-        observer=observer,
         max_distance_km=max_distance_km,
         padding_m=canvas_padding,
     )
@@ -506,7 +626,6 @@ def _render_svg(
     for polygon in polygons:
         path_data = _polygon_to_svg_path(
             polygon,
-            observer=observer,
             min_x=min_x,
             max_y=max_y_px,
             scale=scale,
@@ -572,7 +691,6 @@ def _render_svg(
 def main(argv: list[str]) -> int:
     args = _parse_args(argv)
     water_footprints = _load_water_footprints(args.water_json)
-    prepared_polygons = _build_polygon_list(water_footprints)
 
     if args.fetch_dem:
         from zstarview.terrain import fetch_copernicus_dem
@@ -616,12 +734,19 @@ def main(argv: list[str]) -> int:
             observer_ground_m=observer_ground_m,
             observer_eye_m=float(args.observer_height_m),
         )
+        prepared_polygons = _build_polygon_list(
+            water_footprints,
+            observer=observer,
+            water_extent_km=float(args.water_extent_km),
+        )
         runs, scan_summary = _sample_rays(
             observer=observer,
             dem_grid=dem_grid,
             water_polygons=prepared_polygons,
             max_distance_km=float(args.max_distance_km),
-            sample_step_m=float(args.sample_step_m),
+            sample_step_near_m=float(args.sample_step_near_m),
+            sample_step_far_m=float(args.sample_step_far_m),
+            sample_step_transition_km=float(args.sample_step_transition_km),
             azimuth_step_deg=float(args.azimuth_step_deg),
             dem_resampling=str(args.dem_resampling),
         )
@@ -637,6 +762,10 @@ def main(argv: list[str]) -> int:
         },
         "cache_dir": str(args.cache_dir),
         "dem_source": dem_source,
+        "water_extent_km": float(args.water_extent_km),
+        "sample_step_near_m": float(args.sample_step_near_m),
+        "sample_step_far_m": float(args.sample_step_far_m),
+        "sample_step_transition_km": float(args.sample_step_transition_km),
         "water_polygon_count": len(prepared_polygons),
         "water_run_count": len(runs),
         "scan": scan_summary,
@@ -668,6 +797,9 @@ def main(argv: list[str]) -> int:
         f"water_polygons={len(prepared_polygons)} "
         f"water_runs={len(runs)} "
         f"water_samples={scan_summary['water_total']}/{scan_summary['sample_total']} "
+        f"water_extent_km={float(args.water_extent_km):.1f} "
+        f"sample_step_near_m={float(args.sample_step_near_m):.0f} "
+        f"sample_step_far_m={float(args.sample_step_far_m):.0f} "
         f"cache_dir={args.cache_dir}"
     )
     return 0
