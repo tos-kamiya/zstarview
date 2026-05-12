@@ -6,7 +6,7 @@ from ..paths import APP_DISPLAY_NAME, APP_ICON_FILE, APP_ID
 
 _dir = os.path.dirname(os.path.abspath(__file__))
 
-APP_COMMAND = "zstarview"
+APP_COMMAND = "zstarview-gui"
 DESKTOP_FILE = f"{APP_ID}.desktop"
 
 DESKTOP_TEMPLATE = """[Desktop Entry]

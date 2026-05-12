@@ -1601,9 +1601,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
         # Invalidate the composition cache since the size has changed
         self._compositor.invalidate()
-        self.request_sky_data_update()
         self.request_client_update()
-        self.start_background_cloud_update(reason="resize")
         self._raise_overlay_widgets()
         if self.size_grip is not None and _chrome_debug_enabled():
             _chrome_debug_print(
@@ -1704,7 +1702,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     ) -> None:
         if not self.state.viewport_interaction_mode:
             return
-        self.request_sky_data_update(reason=reason)
+        self.request_sky_data_update(
+            reason=reason,
+            allow_during_viewport_interaction=True,
+        )
         if reason.endswith("release"):
             self.state.viewport_interaction_release_pending = True
             return
@@ -1888,6 +1889,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
     def _on_persistent_search_refresh_timer(self) -> None:
         if self._is_shutting_down:
+            return
+        if self._viewport_interaction_active():
             return
         target = self._jpl_small_body_persistent_target()
         if target is None:
@@ -2405,11 +2408,15 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def _on_satellite_refresh_timer(self) -> None:
         if not self._satellite_layer_enabled():
             return
+        if self._viewport_interaction_active():
+            return
         started = self.start_background_satellite_update(reason="timer")
         if not started:
             self._schedule_next_satellite_refresh()
 
     def _on_overlay_projection_timer(self) -> None:
+        if self._viewport_interaction_active():
+            return
         refresh_persistent_search = getattr(
             self,
             "refresh_projected_persistent_search_target",
@@ -2480,6 +2487,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
     def _on_aircraft_refresh_timer(self) -> None:
         if not self._aircraft_layer_enabled():
+            return
+        if self._viewport_interaction_active():
             return
         started = self.start_background_aircraft_update(reason="timer")
         if not started:

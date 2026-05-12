@@ -48,6 +48,9 @@ def _jpl_debug_print(message: str) -> None:
 
 
 class SkyWindowUpdatesMixin:
+    def _viewport_interaction_active(self) -> bool:
+        return bool(getattr(self.state, "viewport_interaction_mode", False))
+
     def _resolve_aircraft_debug_snapshot_dir(self) -> Path | None:
         raw = os.getenv("ZSTARVIEW_DEBUG_SAVE_AIRCRAFT_READY_FRAME", "").strip()
         if not raw:
@@ -339,10 +342,20 @@ class SkyWindowUpdatesMixin:
         star_vmag_limit: Optional[float] = None,
         *,
         reason: str = "manual",
+        allow_during_viewport_interaction: bool = False,
     ) -> None:
+        if self._viewport_interaction_active() and not allow_during_viewport_interaction:
+            self.state.sky_update_pending = True
+            self.state.pending_star_vmag_limit = star_vmag_limit
+            logger.debug(
+                "Sky data update deferred during viewport interaction (reason=%s).",
+                reason,
+            )
+            return
         if self.start_background_sky_data_update(
             star_vmag_limit=star_vmag_limit,
             reason=reason,
+            allow_during_viewport_interaction=allow_during_viewport_interaction,
         ):
             self.state.sky_update_pending = False
             self.state.pending_star_vmag_limit = None
@@ -359,7 +372,10 @@ class SkyWindowUpdatesMixin:
         is_initial_load: bool = False,
         star_vmag_limit: Optional[float] = None,
         reason: str = "manual",
+        allow_during_viewport_interaction: bool = False,
     ) -> bool:
+        if self._viewport_interaction_active() and not allow_during_viewport_interaction:
+            return False
         lat, lon = self.viewer_data.location
         use_lod6_catalog = star_vmag_limit is not None and float(star_vmag_limit) <= 6.0
         star_catalog = self.star_catalog_np
@@ -398,6 +414,8 @@ class SkyWindowUpdatesMixin:
     def start_background_cloud_update(self, reason: str = "manual") -> None:
         if self._is_shutting_down:
             return
+        if self._viewport_interaction_active():
+            return
         if not (self._cloud_controller and self.cloud_disc_alpha > 0.0):
             return
         lat, lon = self.viewer_data.location
@@ -415,6 +433,8 @@ class SkyWindowUpdatesMixin:
 
     def start_background_satellite_update(self, reason: str = "manual") -> bool:
         if self._is_shutting_down:
+            return False
+        if self._viewport_interaction_active():
             return False
         if float(self.satellite_opacity) <= 0.0:
             return False
@@ -434,6 +454,8 @@ class SkyWindowUpdatesMixin:
 
     def refresh_projected_satellite_overlay(self) -> None:
         if float(self.satellite_opacity) <= 0.0:
+            return
+        if self._viewport_interaction_active():
             return
         validity_remaining_ms = self._satellite_validity_remaining_ms()
         if validity_remaining_ms is not None and validity_remaining_ms <= 0:
@@ -466,6 +488,8 @@ class SkyWindowUpdatesMixin:
     def refresh_projected_persistent_search_target(self) -> None:
         target = getattr(self.state, "persistent_search_target", None)
         if target is None:
+            return
+        if self._viewport_interaction_active():
             return
         if not bool(getattr(target, "persistent_keep_marker", False)):
             return
@@ -594,6 +618,8 @@ class SkyWindowUpdatesMixin:
     def start_background_terrain_horizon_update(self, reason: str = "manual") -> bool:
         if self._is_shutting_down:
             return False
+        if self._viewport_interaction_active():
+            return False
         if (
             self.terrain_horizon_opacity <= 0.0
             or self._terrain_horizon_controller is None
@@ -610,6 +636,8 @@ class SkyWindowUpdatesMixin:
     def start_background_urban_outline_update(self, reason: str = "manual") -> bool:
         if self._is_shutting_down:
             return False
+        if self._viewport_interaction_active():
+            return False
         if self.urban_outline_opacity <= 0.0 or self._urban_outline_controller is None:
             return False
         return self._urban_outline_controller.update(
@@ -619,6 +647,8 @@ class SkyWindowUpdatesMixin:
 
     def start_background_aircraft_update(self, reason: str = "manual") -> bool:
         if self._is_shutting_down:
+            return False
+        if self._viewport_interaction_active():
             return False
         if float(self.aircraft_opacity) <= 0.0:
             return False
@@ -635,6 +665,8 @@ class SkyWindowUpdatesMixin:
 
     def refresh_projected_aircraft_overlay(self) -> None:
         if float(self.aircraft_opacity) <= 0.0:
+            return
+        if self._viewport_interaction_active():
             return
         snapshots = self.aircraft_state.snapshots
         if not snapshots:

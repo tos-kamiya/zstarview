@@ -299,6 +299,52 @@ class SkyWindowRenderMixin:
             cache_image_attr="_present_frame_cache_image",
         )
 
+    def _render_fast_frame_image(
+        self,
+        *,
+        base_frame_key: tuple[object, ...],
+        geometry: ScreenGeometry,
+        scene: RenderSceneData,
+        style: RenderStyle,
+        hud: RenderHudState,
+        highlighted_object: tuple[CelestialObject, QPointF] | None,
+        highlighted_dso: tuple[CelestialObject, QPointF] | None,
+        highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None,
+    ) -> QImage:
+        return self._render_present_frame_image(
+            base_frame_key=base_frame_key,
+            geometry=geometry,
+            scene=scene,
+            style=style,
+            hud=hud,
+            highlighted_object=highlighted_object,
+            highlighted_dso=highlighted_dso,
+            highlighted_satellite=highlighted_satellite,
+        )
+
+    def _render_normal_frame_image(
+        self,
+        *,
+        base_frame_key: tuple[object, ...],
+        geometry: ScreenGeometry,
+        scene: RenderSceneData,
+        style: RenderStyle,
+        hud: RenderHudState,
+        highlighted_object: tuple[CelestialObject, QPointF] | None,
+        highlighted_dso: tuple[CelestialObject, QPointF] | None,
+        highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None,
+    ) -> QImage:
+        return self._render_present_frame_image(
+            base_frame_key=base_frame_key,
+            geometry=geometry,
+            scene=scene,
+            style=style,
+            hud=hud,
+            highlighted_object=highlighted_object,
+            highlighted_dso=highlighted_dso,
+            highlighted_satellite=highlighted_satellite,
+        )
+
     def _draw_present_frame_layers(
         self,
         *,
@@ -314,6 +360,19 @@ class SkyWindowRenderMixin:
         highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None,
     ) -> None:
         frame_painter.drawImage(0, 0, base_frame_image)
+        render_hud_overlay_into_painter(
+            frame_painter,
+            geometry=geometry,
+            viewport_rect=self.client_rect(),
+            scene=scene,
+            style=style,
+            hud=hud,
+            highlighted_object=highlighted_object,
+            highlighted_dso=highlighted_dso,
+            highlighted_satellite=highlighted_satellite,
+            label_candidates=[] if hud.viewport_interaction_mode else list(base_label_candidates or []),
+            search_overlay_target=getattr(self.state, "persistent_search_target", None),
+        )
         if not hud.viewport_interaction_mode:
             label_candidates: list[dict[str, object]] = list(base_label_candidates or [])
             render_fast_overlay_layers_into_painter(
@@ -324,20 +383,6 @@ class SkyWindowRenderMixin:
                 highlighted_satellite=highlighted_satellite,
                 label_candidates=label_candidates,
                 draw_labels=False,
-            )
-            search_target = getattr(self.state, "persistent_search_target", None)
-            render_hud_overlay_into_painter(
-                frame_painter,
-                geometry=geometry,
-                viewport_rect=self.client_rect(),
-                scene=scene,
-                style=style,
-                hud=hud,
-                highlighted_object=highlighted_object,
-                highlighted_dso=highlighted_dso,
-                highlighted_satellite=highlighted_satellite,
-                label_candidates=label_candidates,
-                search_overlay_target=search_target,
             )
 
     def _viewer_data_for_render(self) -> ViewerData:
@@ -699,14 +744,26 @@ class SkyWindowRenderMixin:
             celestial_data=celestial_data,
             render_viewer=render_viewer,
         )
-        present_frame = self._render_present_frame_image(
-            base_frame_key=frame_key,
-            geometry=geometry,
-            scene=scene,
-            style=style,
-            hud=hud,
-            highlighted_object=highlighted_object,
-            highlighted_dso=highlighted_dso,
-            highlighted_satellite=highlighted_satellite,
-        )
+        if self.state.viewport_interaction_mode:
+            present_frame = self._render_fast_frame_image(
+                base_frame_key=frame_key,
+                geometry=geometry,
+                scene=scene,
+                style=style,
+                hud=hud,
+                highlighted_object=highlighted_object,
+                highlighted_dso=highlighted_dso,
+                highlighted_satellite=highlighted_satellite,
+            )
+        else:
+            present_frame = self._render_normal_frame_image(
+                base_frame_key=frame_key,
+                geometry=geometry,
+                scene=scene,
+                style=style,
+                hud=hud,
+                highlighted_object=highlighted_object,
+                highlighted_dso=highlighted_dso,
+                highlighted_satellite=highlighted_satellite,
+            )
         painter.drawImage(0, 0, present_frame)
