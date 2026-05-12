@@ -20,7 +20,6 @@ _STATUS_SATELLITE = "🛰"
 _STATUS_AIRCRAFT = "✈"
 _STATUS_TERRAIN = "▲"
 _STATUS_URBAN = "🂓"
-_STATUS_WATER = "≈"
 
 
 def _status_segment(icon: str, text: str, *, hidden: bool = False) -> str:
@@ -121,9 +120,6 @@ class SkyWindowUpdatesMixin:
         urban_message = self._urban_outline_status_line()
         if urban_message:
             parts.append(urban_message)
-        water_message = self._water_overlay_status_line()
-        if water_message:
-            parts.append(water_message)
         return f"{vertical_bar} %s {vertical_bar}" % f" {vertical_bar} ".join(parts)
 
     def _safe_request_cloud_repaint(self) -> None:
@@ -185,19 +181,6 @@ class SkyWindowUpdatesMixin:
             return _status_segment(_STATUS_URBAN, detail)
         if self.urban_outline_state.current_source:
             return _status_segment(_STATUS_URBAN, str(self.urban_outline_state.current_source))
-        return ""
-
-    def _water_overlay_status_line(self) -> str:
-        if float(getattr(self, "water_overlay_opacity", 0.0)) <= 0.0:
-            return _status_segment(_STATUS_WATER, "", hidden=True)
-        if self.water_overlay_state.banner_text:
-            detail = _strip_status_prefix(
-                self.water_overlay_state.banner_text,
-                "Water overlay:",
-            )
-            return _status_segment(_STATUS_WATER, detail)
-        if self.water_overlay_state.current_source:
-            return _status_segment(_STATUS_WATER, str(self.water_overlay_state.current_source))
         return ""
 
     def _aircraft_status_line(self) -> str:
@@ -662,20 +645,6 @@ class SkyWindowUpdatesMixin:
             reason=reason,
         )
 
-    def start_background_water_overlay_update(self, reason: str = "manual") -> bool:
-        if self._is_shutting_down:
-            return False
-        if self._viewport_interaction_active():
-            return False
-        if float(getattr(self, "water_overlay_opacity", 0.0)) <= 0.0:
-            return False
-        if self._water_overlay_controller is None:
-            return False
-        return self._water_overlay_controller.update(
-            viewer_data=self.viewer_data,
-            reason=reason,
-        )
-
     def start_background_aircraft_update(self, reason: str = "manual") -> bool:
         if self._is_shutting_down:
             return False
@@ -810,30 +779,5 @@ class SkyWindowUpdatesMixin:
         self.state.urban_outlines = None
         if banner:
             self.urban_outline_state.set_error_banner(banner)
-        self._compositor.invalidate()
-        self.request_client_update()
-
-    def _on_water_overlay_started(self, payload: Dict) -> None:
-        banner = str(payload.get("banner", "")).strip()
-        if banner:
-            self.water_overlay_state.banner_text = banner
-        self.request_client_update()
-
-    def _on_water_overlay_ready(self, payload: Dict) -> None:
-        surfaces = payload.get("surfaces")
-        self.water_overlay_state.set_result(
-            surfaces,
-            source=str(payload.get("source", "")).strip() or "ready",
-        )
-        self.state.water_surfaces = surfaces
-        self._compositor.invalidate()
-        self.request_client_update()
-
-    def _on_water_overlay_failed(self, payload: Dict) -> None:
-        banner = str(payload.get("banner", "")).strip()
-        self.water_overlay_state.clear_surfaces()
-        self.state.water_surfaces = None
-        if banner:
-            self.water_overlay_state.set_error_banner(banner)
         self._compositor.invalidate()
         self.request_client_update()

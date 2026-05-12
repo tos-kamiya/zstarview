@@ -16,7 +16,6 @@ from ..types import CelestialData, ScreenGeometry, ViewerData
 from ..types import CelestialObject, StarsTable, UrbanOutlinePolyline
 from ..search.models import SearchJumpTarget
 from ..paths import THEME_STYLES_BY_PRESET, ThemeStyle
-from ..water_surface_mesh import WaterSurfaceMesh
 from . import asterisms as render_asterisms
 from . import background as render_background
 from . import deep_sky_objects as render_deep_sky_objects
@@ -27,7 +26,6 @@ from . import satellites as render_satellites
 from . import search_overlay as render_search_overlay
 from . import solar_system as render_solar_system
 from . import stars as render_stars
-from . import water as render_water
 from . import terrain as render_terrain
 from . import text as render_text
 
@@ -89,7 +87,6 @@ class RenderSceneData:
     terrain_horizon_secondary_profile_altaz_layers: list[list[tuple[float, float]]] | None
     terrain_horizon_secondary_profile_distances_m_layers: list[list[float]] | None
     urban_outlines: list[UrbanOutlinePolyline] | None
-    water_surfaces: list[WaterSurfaceMesh] | None
     satellite_overlay_points: list[SatelliteOverlayPoint] | None
     aircraft_overlay_points: list[AircraftOverlayPoint] | None
     night_light_glow_profile: NightLightGlowProfile | None = None
@@ -122,8 +119,6 @@ class RenderStyle:
     night_light_opacity: float = 0.02
     urban_outline_opacity: float = 0.2
     show_urban_outline_layer: bool = True
-    show_water_overlay_layer: bool = True
-    water_overlay_opacity: float = 0.28
     aircraft_opacity: float = 0.5
     star_render_expected_width: int = 600
     theme: ThemeStyle = THEME_STYLES_BY_PRESET["night"]
@@ -641,12 +636,6 @@ def _draw_terrain_layers(
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=content_fov_deg,
     )
-    _draw_water_layer(
-        painter,
-        geometry=geometry,
-        scene=scene,
-        style=style,
-    )
     _draw_urban_outline_layer(
         painter,
         geometry=geometry,
@@ -690,28 +679,6 @@ def _draw_urban_outline_layer(
         scene.urban_outlines,
         scene.viewer.view_center,
         opacity=style.urban_outline_opacity,
-        line_width_scale=1.0,
-        edge_fov_deg=float(scene.viewer.edge_fov_deg),
-        content_fov_deg=_content_fov_deg(scene),
-    )
-
-
-def _draw_water_layer(
-    painter: QPainter,
-    *,
-    geometry: ScreenGeometry,
-    scene: RenderSceneData,
-    style: RenderStyle,
-) -> None:
-    if not style.show_water_overlay_layer:
-        return
-    render_water.draw_water_surface_meshes(
-        painter,
-        geometry,
-        scene.water_surfaces,
-        scene.viewer.view_center,
-        observer_elevation_m=float(scene.viewer.ground_elevation_m) + float(scene.viewer.observer_height_m),
-        opacity=style.water_overlay_opacity,
         line_width_scale=1.0,
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=_content_fov_deg(scene),

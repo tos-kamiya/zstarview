@@ -923,8 +923,6 @@ def _build_render_style(
         night_light_opacity=float(user_options.night_light_opacity),
         urban_outline_opacity=float(user_options.urban_outline_opacity),
         show_urban_outline_layer=float(user_options.urban_outline_opacity) > 0.0,
-        show_water_overlay_layer=True,
-        water_overlay_opacity=0.28,
         aircraft_opacity=float(user_options.aircraft_opacity),
         star_render_expected_width=int(runtime_options.star_render_expected_width),
     )
@@ -1325,7 +1323,6 @@ def main() -> None:
         terrain_horizon_secondary_profile_altaz_layers=terrain_horizon_secondary_profile_altaz_layers,
         terrain_horizon_secondary_profile_distances_m_layers=terrain_horizon_secondary_profile_distances_m_layers,
         urban_outlines=urban_outlines,
-        water_surfaces=None,
         satellite_overlay_points=satellite_overlay_points,
         aircraft_overlay_points=aircraft_overlay_points,
         night_light_glow_profile=night_light_glow_profile,
