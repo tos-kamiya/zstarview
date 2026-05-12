@@ -27,7 +27,7 @@ from ..paths import (
 )
 from ..astro import altaz_to_normalized_xy
 from ..night_lights import NightLightGlowProfile
-from ..render.night_lights import draw_night_light_glow
+from ..render.night_lights import draw_night_light_glow_normal
 from ..render.earth_guide import (
     draw_earth_guide_fast,
     draw_earth_guide_normal,
@@ -1382,7 +1382,7 @@ class SkyCompositorCache:
                         clip_radius,
                     )
                     night_painter.setClipPath(clip_path)
-                    draw_night_light_glow(
+                    draw_night_light_glow_normal(
                         night_painter,
                         geometry=night_geometry,
                         viewport_rect=QRectF(0.0, 0.0, float(w), float(h)),

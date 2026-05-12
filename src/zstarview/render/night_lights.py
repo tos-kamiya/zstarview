@@ -113,7 +113,7 @@ def night_light_distance_strength_factor(distance_km: float, band_count: int) ->
     return 0.2 + (0.8 * eased_t)
 
 
-def draw_night_light_glow(
+def _draw_night_light_glow_impl(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
@@ -283,3 +283,78 @@ def draw_night_light_glow(
             point_index += len(fragment)
 
     painter.restore()
+
+
+def draw_night_light_glow_normal(
+    painter: QPainter,
+    *,
+    geometry: ScreenGeometry,
+    viewport_rect: QRectF,
+    profile: NightLightGlowProfile | None,
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+    terrain_profile_distances_m: list[float] | None = None,
+    terrain_secondary_profile_altaz_layers: list[list[tuple[float, float]]] | None = None,
+    terrain_secondary_profile_distances_m_layers: list[list[float]] | None = None,
+    view_center: tuple[float, float],
+    theme: ThemeStyle,
+    opacity: float = 1.0,
+    sun_alt_deg: float | None = None,
+    edge_fov_deg: float,
+    content_fov_deg: float,
+) -> None:
+    """Draw the full normal-mode night light glow."""
+    _draw_night_light_glow_impl(
+        painter,
+        geometry=geometry,
+        viewport_rect=viewport_rect,
+        profile=profile,
+        terrain_profile_altaz=terrain_profile_altaz,
+        terrain_profile_distances_m=terrain_profile_distances_m,
+        terrain_secondary_profile_altaz_layers=terrain_secondary_profile_altaz_layers,
+        terrain_secondary_profile_distances_m_layers=terrain_secondary_profile_distances_m_layers,
+        view_center=view_center,
+        theme=theme,
+        opacity=opacity,
+        sun_alt_deg=sun_alt_deg,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+    )
+
+
+def draw_night_light_glow(
+    painter: QPainter,
+    *,
+    geometry: ScreenGeometry,
+    viewport_rect: QRectF,
+    profile: NightLightGlowProfile | None,
+    terrain_profile_altaz: list[tuple[float, float]] | None,
+    terrain_profile_distances_m: list[float] | None = None,
+    terrain_secondary_profile_altaz_layers: list[list[tuple[float, float]]] | None = None,
+    terrain_secondary_profile_distances_m_layers: list[list[float]] | None = None,
+    view_center: tuple[float, float],
+    theme: ThemeStyle,
+    opacity: float = 1.0,
+    sun_alt_deg: float | None = None,
+    edge_fov_deg: float,
+    content_fov_deg: float,
+    fast_mode: bool = False,
+) -> None:
+    """Compatibility wrapper kept for existing callers."""
+    if fast_mode:
+        return
+    draw_night_light_glow_normal(
+        painter,
+        geometry=geometry,
+        viewport_rect=viewport_rect,
+        profile=profile,
+        terrain_profile_altaz=terrain_profile_altaz,
+        terrain_profile_distances_m=terrain_profile_distances_m,
+        terrain_secondary_profile_altaz_layers=terrain_secondary_profile_altaz_layers,
+        terrain_secondary_profile_distances_m_layers=terrain_secondary_profile_distances_m_layers,
+        view_center=view_center,
+        theme=theme,
+        opacity=opacity,
+        sun_alt_deg=sun_alt_deg,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+    )
