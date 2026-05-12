@@ -743,7 +743,10 @@ def _draw_star_layer(
     )
     content_fov_deg = _content_fov_deg(scene)
     if low_w == win_w and low_h == win_h:
-        render_stars.draw_stars(
+        draw_stars = (
+            render_stars.draw_stars_fast if fast_mode else render_stars.draw_stars_normal
+        )
+        draw_stars(
             painter,
             geometry,
             draw_data,
@@ -755,7 +758,6 @@ def _draw_star_layer(
             draw_vmag_limit=draw_vmag_limit
             if draw_vmag_limit is not None
             else style.vmag_limit,
-            fast_mode=fast_mode,
             viewport_size=(win_w, win_h),
             content_fov_deg=content_fov_deg,
         )
@@ -775,7 +777,8 @@ def _draw_star_layer(
         ),
         radius=max(1, int(round(geometry.radius * min(sx, sy)))),
     )
-    render_stars.draw_stars(
+    draw_stars = render_stars.draw_stars_fast if fast_mode else render_stars.draw_stars_normal
+    draw_stars(
         low_painter,
         low_geometry,
         draw_data,
@@ -787,7 +790,6 @@ def _draw_star_layer(
         draw_vmag_limit=draw_vmag_limit
         if draw_vmag_limit is not None
         else style.vmag_limit,
-        fast_mode=fast_mode,
         viewport_size=(low_w, low_h),
         content_fov_deg=content_fov_deg,
     )
