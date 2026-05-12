@@ -734,8 +734,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 ### 4.6.1 水面オーバーレイ処理
 
 - `src/zstarview/water_overlay.py`
-  - 観測地点近傍の OSM 水域を取得し、描画可能な water polygon / waterway 線へ正規化する
-  - `natural=water`、`waterway=riverbank`、`waterway=river|stream|canal|drain` を主対象にする
+  - 観測地点近傍の OSM 水域を取得し、描画可能な water polygon へ正規化する
+  - `natural=water`、`waterway=riverbank` の polygon を主対象にする
+  - `waterway=river|stream|canal|drain` の中心線は本設計では採用しない
   - polygon の outer / inner ring を復元し、inner ring を穴として扱える内部表現へ変換する
   - `water only style` を描画プリセットとして適用し、`water polygon` を塗りつぶし対象として描画層へ渡す
 - `src/zstarview/gui/water_state.py`
@@ -745,7 +746,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - latest-request-wins と TTL 判定を適用する
   - 取得成功 / 失敗 / stale 再利用を UI へ反映する
 - `src/zstarview/render/water.py`
-  - water polygon の淡い塗りと境界線、waterway 線の細線描画を担当する
+  - water polygon の淡い塗りと境界線を担当する
   - 海岸線は初期段階では線描画のまま扱ってよい
 
 ### 4.7 航空機オーバーレイ処理
@@ -1522,14 +1523,14 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 #### 10.4.1.1 水面フロー
 
-1. 水面レイヤーは観測地点中心の bbox で解決し、`natural=water`、`waterway=riverbank`、`waterway=river|stream|canal|drain` を主対象にしてよい。
+1. 水面レイヤーは観測地点中心の bbox で解決し、`natural=water`、`waterway=riverbank` の polygon を主対象にしてよい。
 2. polygon 系は outer / inner ring を保持し、inner ring は描画時に穴として扱ってよい。
-3. line 系は水路中心線として保持し、polygon が無い場合の補助表現としてよい。
-4. cache は long-lived cache として扱い、`fetched_at_utc` を基準に `90日` で fresh/stale を判定してよい。
-5. stale になった場合は既存 cache を即時利用しつつ、同じ bbox の再取得をバックグラウンドで試みてよい。
-6. 取得失敗や空振り bbox は短寿命の負 cache にしてよく、正の cache があればそれを優先して継続利用してよい。
-7. 画面描画は `water only style` と `water polygon` を分離し、前者は強調プリセット、後者は地物表現として扱ってよい。
-8. 海岸線の全面面化は必須ではなく、初期段階では線描画のままでもよい。
+3. cache は long-lived cache として扱い、`fetched_at_utc` を基準に `90日` で fresh/stale を判定してよい。
+4. stale になった場合は既存 cache を即時利用しつつ、同じ bbox の再取得をバックグラウンドで試みてよい。
+5. 取得失敗や空振り bbox は短寿命の負 cache にしてよく、正の cache があればそれを優先して継続利用してよい。
+6. 画面描画は `water only style` と `water polygon` を分離し、前者は強調プリセット、後者は地物表現として扱ってよい。
+7. 海岸線の全面面化は必須ではなく、初期段階では線描画のままでもよい。
+8. cache key は観測地点中心の `lat/lon`、`radius_km`、`source`、`feature_set` から導出し、`bbox` はその派生値として扱ってよい。
 
 #### 10.4.2 Overture 建物フロー
 
