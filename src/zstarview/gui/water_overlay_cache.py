@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from ..paths import CACHE_PATH
-from ..water_overlay import WaterOverlayPoint
+from ..water_overlay import WaterPolygonFootprint
 
 WATER_OVERLAY_CACHE_ROOT_DIR = Path(CACHE_PATH) / "water_overlay"
 WATER_OVERLAY_CACHE_FORMAT_VERSION = 1
@@ -15,9 +15,8 @@ WATER_OVERLAY_CACHE_RETENTION_SECONDS = 90 * 24 * 60 * 60
 
 @dataclass(frozen=True, slots=True)
 class WaterOverlayCacheSnapshot:
-    points: tuple[WaterOverlayPoint, ...]
+    footprints: tuple[WaterPolygonFootprint, ...]
     water_polygon_count: int
-    water_point_count: int
     fetched_at_utc: datetime | None = None
 
 
@@ -25,18 +24,12 @@ def water_overlay_cache_scope_key(
     *,
     observer_lat_deg: float,
     observer_lon_deg: float,
-    observer_height_m: float,
     radius_km: float,
-    sample_step_m: float,
-    azimuth_step_deg: float,
 ) -> str:
-    return "earth_{lat:+08.4f}_{lon:+09.4f}_{height:+07.1f}_r{radius:.2f}_s{sample:.3f}_a{azimuth:.2f}".format(
+    return "earth_{lat:+08.4f}_{lon:+09.4f}_r{radius:.2f}".format(
         lat=float(observer_lat_deg),
         lon=float(observer_lon_deg),
-        height=float(observer_height_m),
         radius=float(radius_km),
-        sample=float(sample_step_m),
-        azimuth=float(azimuth_step_deg),
     )
 
 
@@ -63,25 +56,16 @@ def load_water_overlay_cache(
     if not isinstance(payload, dict):
         return None
     try:
-        points_payload = payload.get("points", [])
-        points: list[WaterOverlayPoint] = []
-        if isinstance(points_payload, list):
-            for item in points_payload:
-                if not isinstance(item, dict):
-                    continue
-                points.append(
-                    WaterOverlayPoint(
-                        water_id=str(item.get("water_id", "water")),
-                        alt_deg=float(item.get("alt_deg", 0.0)),
-                        az_deg=float(item.get("az_deg", 0.0)),
-                        distance_km=float(item.get("distance_km", 0.0)),
-                        alpha_scale=float(item.get("alpha_scale", 1.0)),
-                    )
-                )
+        footprints_payload = payload.get("footprints", [])
+        footprints: list[WaterPolygonFootprint] = []
+        if isinstance(footprints_payload, list):
+            for item in footprints_payload:
+                footprint = _deserialize_footprint(item)
+                if footprint is not None:
+                    footprints.append(footprint)
         return WaterOverlayCacheSnapshot(
-            points=tuple(points),
+            footprints=tuple(footprints),
             water_polygon_count=int(payload.get("water_polygon_count", 0)),
-            water_point_count=int(payload.get("water_point_count", len(points))),
             fetched_at_utc=_parse_optional_utc(payload.get("fetched_at_utc")),
         )
     except Exception:
@@ -101,21 +85,59 @@ def save_water_overlay_cache(
         "scope_key": str(scope_key),
         "fetched_at_utc": _serialize_optional_utc(snapshot.fetched_at_utc),
         "water_polygon_count": int(snapshot.water_polygon_count),
-        "water_point_count": int(snapshot.water_point_count),
-        "points": [_serialize_point(point) for point in snapshot.points],
+        "footprints": [_serialize_footprint(footprint) for footprint in snapshot.footprints],
     }
     path.write_text(json.dumps(payload, separators=(",", ":"), sort_keys=True), encoding="utf-8")
     return path
 
 
-def _serialize_point(point: WaterOverlayPoint) -> dict[str, float | str]:
+def _serialize_footprint(footprint: WaterPolygonFootprint) -> dict[str, object]:
     return {
-        "water_id": str(point.water_id),
-        "alt_deg": float(point.alt_deg),
-        "az_deg": float(point.az_deg),
-        "distance_km": float(point.distance_km),
-        "alpha_scale": float(point.alpha_scale),
+        "water_id": str(footprint.water_id),
+        "kind": str(footprint.kind),
+        "outer_rings_lonlat": [
+            [[float(lon), float(lat)] for lon, lat in ring]
+            for ring in footprint.outer_rings_lonlat
+        ],
+        "inner_rings_lonlat": [
+            [[float(lon), float(lat)] for lon, lat in ring]
+            for ring in footprint.inner_rings_lonlat
+        ],
+        "source": str(footprint.source),
+        "tags": dict(footprint.tags),
     }
+
+
+def _deserialize_footprint(payload: object) -> WaterPolygonFootprint | None:
+    if not isinstance(payload, dict):
+        return None
+    try:
+        outer_rings = tuple(
+            tuple((float(lon), float(lat)) for lon, lat in ring)
+            for ring in payload.get("outer_rings_lonlat", [])
+            if isinstance(ring, list)
+        )
+        inner_rings = tuple(
+            tuple((float(lon), float(lat)) for lon, lat in ring)
+            for ring in payload.get("inner_rings_lonlat", [])
+            if isinstance(ring, list)
+        )
+        tags_obj = payload.get("tags", {})
+        tags: dict[str, str] = {}
+        if isinstance(tags_obj, dict):
+            for key, value in tags_obj.items():
+                if isinstance(key, str) and isinstance(value, str):
+                    tags[key] = value
+        return WaterPolygonFootprint(
+            water_id=str(payload.get("water_id", "water")),
+            kind=str(payload.get("kind", "water_polygon")),
+            outer_rings_lonlat=outer_rings,
+            inner_rings_lonlat=inner_rings,
+            source=str(payload.get("source", "")),
+            tags=tags,
+        )
+    except Exception:
+        return None
 
 
 def _normalize_utc(value: datetime) -> datetime:

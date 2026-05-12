@@ -1139,7 +1139,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._search_view_center_base = tuple(self.viewer_data.view_center)
         self.state.render_view_center = tuple(self.viewer_data.view_center)
         self.setWindowTitle(self.viewer_data.city_name)
-        self.start_background_water_overlay_update(reason="location-ready")
 
     def apply_startup_delta_t(self, delta_t: timedelta) -> None:
         """Replace the temporary startup delta with the resolved launch time delta."""
@@ -2858,9 +2857,15 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             and self._action_toggle_terrain_horizon.isChecked() != enable_terrain
         ):
             self._action_toggle_terrain_horizon.setChecked(enable_terrain)
+        if not enable_terrain:
+            self.terrain_horizon_state.ground_elevation_m = 0.0
+        self._refresh_water_overlay_active_points()
         self._compositor.invalidate()
         if enable_terrain:
             self.start_background_terrain_horizon_update(reason="toggle-on")
+            self.start_background_water_overlay_update(reason="toggle-on")
+        else:
+            self.start_background_water_overlay_update(reason="toggle-off")
         self.request_client_update()
 
     def toggle_earth_guide(self) -> None:

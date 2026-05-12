@@ -173,6 +173,7 @@ class TerrainHorizonController(QObject):
                             "profile_distances_m": [],
                             "secondary_profile_altaz_layers": [],
                             "secondary_profile_distances_m_layers": [],
+                            "ground_elevation_m": 0.0,
                             "source": "Dem: cache",
                         }
                     )
@@ -227,16 +228,17 @@ class TerrainHorizonController(QObject):
 
             with self._lock:
                 should_emit = not self._stopping
-            if should_emit:
-                self.terrain_ready.emit(
-                    {
-                        "profile_altaz": profile_altaz,
-                        "profile_distances_m": profile_distances_m,
-                        "secondary_profile_altaz_layers": secondary_profile_altaz_layers,
-                        "secondary_profile_distances_m_layers": secondary_profile_distances_m_layers,
-                        "source": "Dem: cache",
-                    }
-                )
+                if should_emit:
+                    self.terrain_ready.emit(
+                        {
+                            "profile_altaz": profile_altaz,
+                            "profile_distances_m": profile_distances_m,
+                            "secondary_profile_altaz_layers": secondary_profile_altaz_layers,
+                            "secondary_profile_distances_m_layers": secondary_profile_distances_m_layers,
+                            "ground_elevation_m": ground_m,
+                            "source": "Dem: cache",
+                        }
+                    )
         except Exception as exc:
             logger.warning("Terrain horizon update failed: %s", exc, exc_info=True)
             with self._lock:

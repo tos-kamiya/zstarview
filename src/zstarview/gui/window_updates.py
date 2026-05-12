@@ -640,8 +640,31 @@ class SkyWindowUpdatesMixin:
             return False
         return self._water_overlay_controller.update(
             viewer_data=self.viewer_data,
+            observer_ground_m=self._water_overlay_ground_elevation_m(),
+            use_dem_ground=self._water_overlay_use_dem_ground(),
             reason=reason,
         )
+
+    def _water_overlay_ground_elevation_m(self) -> float:
+        if self.terrain_horizon_opacity <= 0.0:
+            return 0.0
+        ground_m = self.terrain_horizon_state.ground_elevation_m
+        if ground_m is None:
+            return 0.0
+        return max(0.0, float(ground_m))
+
+    def _water_overlay_use_dem_ground(self) -> bool:
+        if self.terrain_horizon_opacity <= 0.0:
+            return False
+        if self.terrain_horizon_state.failed_this_session:
+            return False
+        profile_altaz = self.terrain_horizon_state.profile_altaz
+        return bool(profile_altaz)
+
+    def _refresh_water_overlay_active_points(self) -> None:
+        use_dem = self._water_overlay_use_dem_ground()
+        self.water_overlay_state.select_active_points(use_dem=use_dem)
+        self.state.water_overlay_points = self.water_overlay_state.points
 
     def start_background_urban_outline_update(self, reason: str = "manual") -> bool:
         if self._is_shutting_down:
@@ -744,6 +767,11 @@ class SkyWindowUpdatesMixin:
             ),
             source=str(payload.get("source", "")).strip(),
         )
+        ground_elevation_m = payload.get("ground_elevation_m")
+        if isinstance(ground_elevation_m, (int, float)):
+            self.terrain_horizon_state.ground_elevation_m = float(ground_elevation_m)
+        else:
+            self.terrain_horizon_state.ground_elevation_m = 0.0
         self.state.terrain_horizon_profile = payload["profile_altaz"]
         self.state.terrain_horizon_profile_distances_m = payload.get("profile_distances_m")
         self.state.terrain_horizon_secondary_profile_altaz_layers = payload.get(
@@ -752,18 +780,25 @@ class SkyWindowUpdatesMixin:
         self.state.terrain_horizon_secondary_profile_distances_m_layers = payload.get(
             "secondary_profile_distances_m_layers"
         )
+        self._refresh_water_overlay_active_points()
+        if not self._is_shutting_down:
+            self.start_background_water_overlay_update(reason="terrain-ready")
         self._compositor.invalidate()
         self.request_client_update()
 
     def _on_terrain_horizon_failed(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         self.terrain_horizon_state.clear_profile()
+        self.terrain_horizon_state.ground_elevation_m = 0.0
         self.state.terrain_horizon_profile = None
         self.state.terrain_horizon_profile_distances_m = None
         self.state.terrain_horizon_secondary_profile_altaz_layers = None
         self.state.terrain_horizon_secondary_profile_distances_m_layers = None
+        self._refresh_water_overlay_active_points()
         if banner:
             self.terrain_horizon_state.set_error_banner(banner)
+        if not self._is_shutting_down:
+            self.start_background_water_overlay_update(reason="terrain-failed")
         self._compositor.invalidate()
         self.request_client_update()
 
@@ -775,17 +810,26 @@ class SkyWindowUpdatesMixin:
 
     def _on_water_overlay_ready(self, payload: Dict) -> None:
         points = payload.get("points")
+        sea_points = payload.get("sea_points")
+        dem_points = payload.get("dem_points")
+        mode = str(payload.get("mode", "")).strip().lower() or "sea"
         source = str(payload.get("source", "")).strip() or "ready"
-        self.water_overlay_state.set_result(points, source=source)
-        self.state.water_overlay_points = points
+        if mode == "dem":
+            self.water_overlay_state.set_dem_result(dem_points or points, source=source)
+        else:
+            self.water_overlay_state.set_sea_level_result(sea_points or points, source=source)
+        if isinstance(sea_points, list):
+            self.water_overlay_state.sea_level_points = sea_points
+        if isinstance(dem_points, list):
+            self.water_overlay_state.dem_points = dem_points
+        self._refresh_water_overlay_active_points()
         self.request_client_update()
 
     def _on_water_overlay_failed(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
-        self.water_overlay_state.clear_points()
-        self.state.water_overlay_points = None
         if banner:
             self.water_overlay_state.set_error_banner(banner)
+        self._refresh_water_overlay_active_points()
         self.request_client_update()
 
     def _on_urban_outline_started(self, payload: Dict) -> None:

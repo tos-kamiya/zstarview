@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable, Optional
 
@@ -32,6 +33,15 @@ from .water_overlay_cache import (
 logger = logging.getLogger(__name__)
 
 
+@dataclass(slots=True)
+class _WaterOverlayScopeCache:
+    footprints: tuple
+    fetched_at_utc: datetime | None
+    sea_points: tuple | None = None
+    dem_points: tuple | None = None
+    dem_ground_m: float | None = None
+
+
 class WaterOverlayController(QObject):
     water_started = Signal(object)
     water_ready = Signal(object)
@@ -58,8 +68,11 @@ class WaterOverlayController(QObject):
         self._cache_retention_seconds = int(WATER_OVERLAY_CACHE_RETENTION_SECONDS)
         self._running = False
         self._stopping = False
-        self._completed_key: Optional[tuple[float, float, float]] = None
-        self._failed_key: Optional[tuple[float, float, float]] = None
+        self._active_key: Optional[tuple[float, float, float, float, bool]] = None
+        self._completed_key: Optional[tuple[float, float, float, float, bool]] = None
+        self._failed_key: Optional[tuple[float, float, float, float, bool]] = None
+        self._pending_request: tuple[ViewerData, float, bool, str] | None = None
+        self._scope_cache: dict[str, _WaterOverlayScopeCache] = {}
         self._active_workers: set[threading.Thread] = set()
         self._lock = threading.Lock()
 
@@ -72,6 +85,8 @@ class WaterOverlayController(QObject):
         self,
         *,
         viewer_data: ViewerData,
+        observer_ground_m: float,
+        use_dem_ground: bool,
         reason: str = "manual",
     ) -> bool:
         now = datetime.now(timezone.utc)
@@ -79,35 +94,58 @@ class WaterOverlayController(QObject):
             float(viewer_data.lat_deg),
             float(viewer_data.lon_deg),
             float(viewer_data.observer_height_m),
+            float(observer_ground_m),
+            bool(use_dem_ground),
         )
         scope_key = water_overlay_cache_scope_key(
             observer_lat_deg=float(viewer_data.lat_deg),
             observer_lon_deg=float(viewer_data.lon_deg),
-            observer_height_m=float(viewer_data.observer_height_m),
             radius_km=self._radius_km,
-            sample_step_m=self._sample_step_m,
-            azimuth_step_deg=self._azimuth_step_deg,
         )
-        cached = load_water_overlay_cache(scope_key)
-        if cached is not None:
-            if water_overlay_cache_is_recent(
-                cached,
-                now_utc=now,
-                max_age_seconds=self._cache_retention_seconds,
-            ):
-                self._emit_cached_result(cached)
+        with self._lock:
+            in_memory_scope = self._scope_cache.get(scope_key)
+        cached_scope = in_memory_scope
+        if cached_scope is None:
+            snapshot = self._load_scope_snapshot(scope_key, now=now)
+            if snapshot is not None:
+                cached_scope = self._scope_cache_from_snapshot(snapshot)
+        if cached_scope is not None:
+            cached_variant = self._select_cached_variant(
+                cached_scope,
+                use_dem_ground=bool(use_dem_ground),
+                observer_ground_m=float(observer_ground_m),
+            )
+            if cached_variant is not None:
+                self._emit_variant(
+                    cached_variant["points"],
+                    mode=cached_variant["mode"],
+                    sea_points=cached_scope.sea_points,
+                    dem_points=cached_scope.dem_points,
+                    water_polygon_count=len(cached_scope.footprints),
+                    source="Water: cache",
+                )
                 with self._lock:
+                    self._active_key = key
                     self._completed_key = key
                     self._failed_key = None
+                    self._pending_request = None
                 return False
         with self._lock:
             if self._stopping or self._running:
+                if self._running and self._completed_key != key and self._failed_key != key:
+                    self._pending_request = (
+                        viewer_data,
+                        float(observer_ground_m),
+                        bool(use_dem_ground),
+                        reason,
+                    )
                 return False
             if self._completed_key == key:
                 return False
             if self._failed_key == key:
                 return False
             self._running = True
+            self._active_key = key
 
         self.water_started.emit({"banner": "Water overlay: loading..."})
         try:
@@ -117,10 +155,12 @@ class WaterOverlayController(QObject):
                     "lat_deg": float(viewer_data.lat_deg),
                     "lon_deg": float(viewer_data.lon_deg),
                     "observer_height_m": float(viewer_data.observer_height_m),
+                    "observer_ground_m": float(observer_ground_m),
+                    "use_dem_ground": bool(use_dem_ground),
                     "reason": reason,
                     "key": key,
                     "scope_key": scope_key,
-                    "cached": cached,
+                    "cached_scope": cached_scope,
                 },
                 label="water",
             )
@@ -186,10 +226,12 @@ class WaterOverlayController(QObject):
         lat_deg: float,
         lon_deg: float,
         observer_height_m: float,
+        observer_ground_m: float,
+        use_dem_ground: bool,
         reason: str,
-        key: tuple[float, float, float],
+        key: tuple[float, float, float, float, bool],
         scope_key: str,
-        cached: WaterOverlayCacheSnapshot | None,
+        cached_scope: _WaterOverlayScopeCache | None,
     ) -> None:
         try:
             if reason == "initial":
@@ -197,6 +239,115 @@ class WaterOverlayController(QObject):
             else:
                 logger.info("Fetching water overlay data...")
 
+            scope_cache = self._ensure_scope_cache(
+                scope_key=scope_key,
+                lat_deg=float(lat_deg),
+                lon_deg=float(lon_deg),
+                cached_scope=cached_scope,
+                now_utc=datetime.now(timezone.utc),
+            )
+            active_points, sea_points, dem_points = self._build_requested_variants(
+                scope_cache,
+                observer_lat_deg=float(lat_deg),
+                observer_lon_deg=float(lon_deg),
+                observer_height_m=float(observer_height_m),
+                observer_ground_m=float(observer_ground_m),
+                use_dem_ground=bool(use_dem_ground),
+            )
+            mode = "dem" if use_dem_ground and dem_points is not None else "sea"
+            self._store_scope_cache(
+                scope_key,
+                scope_cache,
+                sea_points=sea_points,
+                dem_points=dem_points,
+                dem_ground_m=float(observer_ground_m) if use_dem_ground else None,
+            )
+            with self._lock:
+                should_emit = (not self._stopping) and self._active_key == key
+                if should_emit:
+                    self._completed_key = key
+                    self._failed_key = None
+            if should_emit:
+                self._emit_variant(
+                    active_points,
+                    mode=mode,
+                    sea_points=sea_points,
+                    dem_points=dem_points,
+                    water_polygon_count=len(scope_cache.footprints),
+                    source="Water: Overpass",
+                )
+        except Exception as exc:
+            logger.warning("Water overlay update failed: %s", exc, exc_info=True)
+            if cached_scope is not None:
+                fallback_variant = self._select_cached_variant(
+                    cached_scope,
+                    use_dem_ground=bool(use_dem_ground),
+                    observer_ground_m=float(observer_ground_m),
+                )
+                if fallback_variant is not None and self._active_key == key:
+                    self._emit_variant(
+                        fallback_variant["points"],
+                        mode=fallback_variant["mode"],
+                        sea_points=cached_scope.sea_points,
+                        dem_points=cached_scope.dem_points,
+                        water_polygon_count=len(cached_scope.footprints),
+                        source="Water: cache-stale",
+                    )
+                with self._lock:
+                    if self._active_key == key:
+                        self._completed_key = key
+                        self._failed_key = None
+                return
+            with self._lock:
+                should_emit = (not self._stopping) and self._active_key == key
+                if should_emit:
+                    self._failed_key = key
+            if should_emit:
+                self.water_failed.emit({"banner": f"Water overlay: failed ({exc})"})
+        finally:
+            with self._lock:
+                self._running = False
+                pending_request = self._pending_request
+                self._pending_request = None
+            if pending_request is not None and not self._stopping:
+                pending_viewer_data, pending_ground_m, pending_use_dem, pending_reason = pending_request
+                self.update(
+                    viewer_data=pending_viewer_data,
+                    observer_ground_m=pending_ground_m,
+                    use_dem_ground=pending_use_dem,
+                    reason=pending_reason,
+                )
+
+    def _ensure_scope_cache(
+        self,
+        *,
+        scope_key: str,
+        lat_deg: float,
+        lon_deg: float,
+        cached_scope: _WaterOverlayScopeCache | None,
+        now_utc: datetime,
+    ) -> _WaterOverlayScopeCache:
+        with self._lock:
+            cached = self._scope_cache.get(scope_key)
+            if cached is not None:
+                return cached
+        snapshot = cached_scope if cached_scope is not None else self._load_scope_snapshot_any(scope_key)
+        if snapshot is not None and not isinstance(snapshot, _WaterOverlayScopeCache):
+            snapshot = self._scope_cache_from_snapshot(snapshot)
+        if snapshot is not None and water_overlay_cache_is_recent(
+            snapshot,
+            now_utc=now_utc,
+            max_age_seconds=self._cache_retention_seconds,
+        ):
+            cache = snapshot
+            with self._lock:
+                self._scope_cache[scope_key] = cache
+            return cache
+
+        if snapshot is None:
+            snapshot = WaterOverlayCacheSnapshot(footprints=(), water_polygon_count=0, fetched_at_utc=None)
+
+        try:
             bbox = bbox_from_point(float(lat_deg), float(lon_deg), self._radius_km)
             payload = fetch_overpass_json(
                 bbox=bbox,
@@ -208,62 +359,148 @@ class WaterOverlayController(QObject):
             if not isinstance(elements, list):
                 raise RuntimeError("Overpass payload missing elements")
             footprints = extract_water_polygons(elements)
-            points = sample_water_overlay_points(
-                footprints,
-                observer_lat_deg=float(lat_deg),
-                observer_lon_deg=float(lon_deg),
-                observer_height_m=float(observer_height_m),
+            fresh_snapshot = WaterOverlayCacheSnapshot(
+                footprints=footprints,
+                water_polygon_count=len(footprints),
+                fetched_at_utc=now_utc,
+            )
+            save_water_overlay_cache(scope_key, fresh_snapshot)
+            cache = _WaterOverlayScopeCache(
+                footprints=footprints,
+                fetched_at_utc=now_utc,
+            )
+            with self._lock:
+                self._scope_cache[scope_key] = cache
+            return cache
+        except Exception:
+            if snapshot.footprints:
+                cache = _WaterOverlayScopeCache(
+                    footprints=snapshot.footprints,
+                    fetched_at_utc=snapshot.fetched_at_utc,
+                )
+                with self._lock:
+                    self._scope_cache[scope_key] = cache
+                return cache
+            raise
+
+    def _load_scope_snapshot(
+        self,
+        scope_key: str,
+        *,
+        now: datetime,
+    ) -> WaterOverlayCacheSnapshot | None:
+        snapshot = load_water_overlay_cache(scope_key)
+        if snapshot is None:
+            return None
+        if water_overlay_cache_is_recent(
+            snapshot,
+            now_utc=now,
+            max_age_seconds=self._cache_retention_seconds,
+        ):
+            return snapshot
+        return None
+
+    def _load_scope_snapshot_any(self, scope_key: str) -> WaterOverlayCacheSnapshot | None:
+        return load_water_overlay_cache(scope_key)
+
+    def _scope_cache_from_snapshot(
+        self,
+        snapshot: WaterOverlayCacheSnapshot,
+    ) -> _WaterOverlayScopeCache:
+        return _WaterOverlayScopeCache(
+            footprints=snapshot.footprints,
+            fetched_at_utc=snapshot.fetched_at_utc,
+        )
+
+    def _build_requested_variants(
+        self,
+        scope_cache: _WaterOverlayScopeCache,
+        *,
+        observer_lat_deg: float,
+        observer_lon_deg: float,
+        observer_height_m: float,
+        observer_ground_m: float,
+        use_dem_ground: bool,
+    ) -> tuple[tuple, tuple | None, tuple | None]:
+        sea_points = scope_cache.sea_points
+        if sea_points is None:
+            sea_points = sample_water_overlay_points(
+                scope_cache.footprints,
+                observer_lat_deg=observer_lat_deg,
+                observer_lon_deg=observer_lon_deg,
+                observer_height_m=observer_height_m,
                 max_distance_km=self._radius_km,
                 sample_step_m=self._sample_step_m,
                 azimuth_step_deg=self._azimuth_step_deg,
             )
-            snapshot = WaterOverlayCacheSnapshot(
-                points=points,
-                water_polygon_count=len(footprints),
-                water_point_count=len(points),
-                fetched_at_utc=datetime.now(timezone.utc),
+        dem_points = scope_cache.dem_points
+        if use_dem_ground and dem_points is None:
+            dem_points = sample_water_overlay_points(
+                scope_cache.footprints,
+                observer_lat_deg=observer_lat_deg,
+                observer_lon_deg=observer_lon_deg,
+                observer_height_m=observer_height_m + observer_ground_m,
+                max_distance_km=self._radius_km,
+                sample_step_m=self._sample_step_m,
+                azimuth_step_deg=self._azimuth_step_deg,
             )
-            save_water_overlay_cache(scope_key, snapshot)
-            with self._lock:
-                if not self._stopping:
-                    self._completed_key = key
-                    self._failed_key = None
-                should_emit = not self._stopping
-            if should_emit:
-                self.water_ready.emit(
-                    {
-                        "points": list(points),
-                        "source": "Water: Overpass",
-                        "water_polygon_count": len(footprints),
-                        "water_point_count": len(points),
-                }
-            )
-        except Exception as exc:
-            logger.warning("Water overlay update failed: %s", exc, exc_info=True)
-            if cached is not None:
-                self._emit_cached_result(cached)
-                with self._lock:
-                    self._completed_key = key
-                    self._failed_key = None
-                return
-            with self._lock:
-                self._failed_key = key
-                should_emit = not self._stopping
-            if should_emit:
-                self.water_failed.emit({"banner": f"Water overlay: failed ({exc})"})
-        finally:
-            with self._lock:
-                self._running = False
+        active_points = dem_points if use_dem_ground and dem_points is not None else sea_points
+        return active_points, sea_points, dem_points
 
-    def _emit_cached_result(
+    def _store_scope_cache(
         self,
-        cached: WaterOverlayCacheSnapshot,
+        scope_key: str,
+        scope_cache: _WaterOverlayScopeCache,
+        *,
+        sea_points: tuple | None,
+        dem_points: tuple | None,
+        dem_ground_m: float | None,
     ) -> None:
-        self.water_ready.emit(
-            {
-                "points": list(cached.points),
-                "source": "Water: cache",
-                "water_polygon_count": cached.water_polygon_count,
-                "water_point_count": cached.water_point_count,
-            }
-        )
+        with self._lock:
+            if sea_points is not None:
+                scope_cache.sea_points = sea_points
+            if dem_points is not None:
+                scope_cache.dem_points = dem_points
+                scope_cache.dem_ground_m = dem_ground_m
+            self._scope_cache[scope_key] = scope_cache
+
+    def _select_cached_variant(
+        self,
+        scope_cache: _WaterOverlayScopeCache,
+        *,
+        use_dem_ground: bool,
+        observer_ground_m: float,
+    ) -> dict[str, object] | None:
+        if use_dem_ground:
+            if scope_cache.dem_points is not None and (
+                scope_cache.dem_ground_m is None
+                or abs(float(scope_cache.dem_ground_m) - float(observer_ground_m)) < 1e-6
+            ):
+                return {"mode": "dem", "points": scope_cache.dem_points}
+            return None
+        if scope_cache.sea_points is not None:
+            return {"mode": "sea", "points": scope_cache.sea_points}
+        return None
+
+    def _emit_variant(
+        self,
+        points: tuple,
+        *,
+        mode: str,
+        sea_points: tuple | None,
+        dem_points: tuple | None,
+        water_polygon_count: int,
+        source: str,
+    ) -> None:
+        payload = {
+            "points": list(points),
+            "mode": mode,
+            "source": source,
+            "water_polygon_count": int(water_polygon_count),
+            "water_point_count": len(points),
+        }
+        if sea_points is not None:
+            payload["sea_points"] = list(sea_points)
+        if dem_points is not None:
+            payload["dem_points"] = list(dem_points)
+        self.water_ready.emit(payload)
