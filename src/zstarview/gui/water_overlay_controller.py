@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from datetime import datetime, timezone
 from typing import Callable, Optional
 
 from PySide6.QtCore import QObject, Signal
@@ -18,6 +19,14 @@ from ..water_overlay import (
     extract_water_polygons,
     fetch_overpass_json,
     sample_water_overlay_points,
+)
+from .water_overlay_cache import (
+    WaterOverlayCacheSnapshot,
+    WATER_OVERLAY_CACHE_RETENTION_SECONDS,
+    load_water_overlay_cache,
+    save_water_overlay_cache,
+    water_overlay_cache_is_recent,
+    water_overlay_cache_scope_key,
 )
 
 logger = logging.getLogger(__name__)
@@ -46,9 +55,11 @@ class WaterOverlayController(QObject):
         self._endpoint = endpoint
         self._user_agent = user_agent
         self._timeout_s = float(timeout_s)
+        self._cache_retention_seconds = int(WATER_OVERLAY_CACHE_RETENTION_SECONDS)
         self._running = False
         self._stopping = False
         self._completed_key: Optional[tuple[float, float, float]] = None
+        self._failed_key: Optional[tuple[float, float, float]] = None
         self._active_workers: set[threading.Thread] = set()
         self._lock = threading.Lock()
 
@@ -63,15 +74,38 @@ class WaterOverlayController(QObject):
         viewer_data: ViewerData,
         reason: str = "manual",
     ) -> bool:
+        now = datetime.now(timezone.utc)
         key = (
             float(viewer_data.lat_deg),
             float(viewer_data.lon_deg),
             float(viewer_data.observer_height_m),
         )
+        scope_key = water_overlay_cache_scope_key(
+            observer_lat_deg=float(viewer_data.lat_deg),
+            observer_lon_deg=float(viewer_data.lon_deg),
+            observer_height_m=float(viewer_data.observer_height_m),
+            radius_km=self._radius_km,
+            sample_step_m=self._sample_step_m,
+            azimuth_step_deg=self._azimuth_step_deg,
+        )
+        cached = load_water_overlay_cache(scope_key)
+        if cached is not None:
+            if water_overlay_cache_is_recent(
+                cached,
+                now_utc=now,
+                max_age_seconds=self._cache_retention_seconds,
+            ):
+                self._emit_cached_result(cached)
+                with self._lock:
+                    self._completed_key = key
+                    self._failed_key = None
+                return False
         with self._lock:
             if self._stopping or self._running:
                 return False
             if self._completed_key == key:
+                return False
+            if self._failed_key == key:
                 return False
             self._running = True
 
@@ -85,6 +119,8 @@ class WaterOverlayController(QObject):
                     "observer_height_m": float(viewer_data.observer_height_m),
                     "reason": reason,
                     "key": key,
+                    "scope_key": scope_key,
+                    "cached": cached,
                 },
                 label="water",
             )
@@ -152,6 +188,8 @@ class WaterOverlayController(QObject):
         observer_height_m: float,
         reason: str,
         key: tuple[float, float, float],
+        scope_key: str,
+        cached: WaterOverlayCacheSnapshot | None,
     ) -> None:
         try:
             if reason == "initial":
@@ -179,9 +217,17 @@ class WaterOverlayController(QObject):
                 sample_step_m=self._sample_step_m,
                 azimuth_step_deg=self._azimuth_step_deg,
             )
+            snapshot = WaterOverlayCacheSnapshot(
+                points=points,
+                water_polygon_count=len(footprints),
+                water_point_count=len(points),
+                fetched_at_utc=datetime.now(timezone.utc),
+            )
+            save_water_overlay_cache(scope_key, snapshot)
             with self._lock:
                 if not self._stopping:
                     self._completed_key = key
+                    self._failed_key = None
                 should_emit = not self._stopping
             if should_emit:
                 self.water_ready.emit(
@@ -190,14 +236,34 @@ class WaterOverlayController(QObject):
                         "source": "Water: Overpass",
                         "water_polygon_count": len(footprints),
                         "water_point_count": len(points),
-                    }
-                )
+                }
+            )
         except Exception as exc:
             logger.warning("Water overlay update failed: %s", exc, exc_info=True)
+            if cached is not None:
+                self._emit_cached_result(cached)
+                with self._lock:
+                    self._completed_key = key
+                    self._failed_key = None
+                return
             with self._lock:
+                self._failed_key = key
                 should_emit = not self._stopping
             if should_emit:
                 self.water_failed.emit({"banner": f"Water overlay: failed ({exc})"})
         finally:
             with self._lock:
                 self._running = False
+
+    def _emit_cached_result(
+        self,
+        cached: WaterOverlayCacheSnapshot,
+    ) -> None:
+        self.water_ready.emit(
+            {
+                "points": list(cached.points),
+                "source": "Water: cache",
+                "water_polygon_count": cached.water_polygon_count,
+                "water_point_count": cached.water_point_count,
+            }
+        )
