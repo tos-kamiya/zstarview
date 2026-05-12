@@ -1,12 +1,7 @@
 # SPDX-FileCopyrightText: 2025-present Toshihiro Kamiya <kamiya@mbj.nifty.com>
 #
 # SPDX-License-Identifier: MIT
-"""Current GUI application entrypoint.
-
-This module intentionally keeps a thin wrapper around the legacy viewer entrypoint
-so the command-line surface can move to ``zstarview-gui`` without deleting the
-older implementation file yet.
-"""
+"""Current GUI application entrypoint."""
 
 from __future__ import annotations
 
