@@ -797,6 +797,14 @@ def add_general_arguments(
             "This clears copernicus-dem, overture_buildings, and overture_skyscrapers."
         ),
     )
+    parser.add_argument(
+        "--close-on-startup-error",
+        action="store_true",
+        help=(
+            "Close the app automatically with a non-zero exit code when startup "
+            "fails instead of keeping the error log visible in the window."
+        ),
+    )
 
 
 def add_export_image_arguments(parser: argparse.ArgumentParser) -> None:

@@ -1,9 +1,9 @@
 import sys
-import time
 import logging
 import math
 import json
 from dataclasses import replace
+from datetime import timedelta
 
 from PySide6.QtCore import QTimer
 
@@ -11,7 +11,6 @@ from ..astro import load_ephemeris
 from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_lived_cache
 from ..catalog import load_dso_catalog, load_star_catalog
 from ..location_resolver import (
-    format_splash_location,
     find_exact_viewpoint_matches,
     list_mountain_all_names,
     list_mountain_primary_names,
@@ -42,6 +41,7 @@ from ..paths import (
     THEME_STYLES_BY_PRESET,
     STARS_CSV_FILE,
 )
+from ..startup_log import BufferedStartupLogHandler
 from ..gui.window_inputs import (
     prepare_window_catalogs,
     prepare_window_runtime_options,
@@ -53,6 +53,7 @@ from ..search.jpl import search_jpl_targets
 from ..search.satellites import search_satellite_targets
 from ..search.resolver import resolve_search_targets
 from ..cli.args import parse_args
+from ..types import ViewerData
 
 logger = logging.getLogger(__name__)
 
@@ -187,66 +188,20 @@ def main() -> None:
     if cli_exit_code is not None:
         raise SystemExit(cli_exit_code)
 
-    from ..splash import setup_app, setup_splash_and_attach_logger
+    from ..splash import setup_app
     from ..gui.window import FramelessSkyWindow, StandardSkyWindow
 
     app_name = APP_DISPLAY_NAME
     app = setup_app(app_name)
-    app.setQuitOnLastWindowClosed(False)
 
     root_logger = setup_root_logger()
+    startup_log_handler = BufferedStartupLogHandler()
+    root_logger.addHandler(startup_log_handler)
     logger.info(f"{APP_DISPLAY_NAME} starting...")
 
     theme = THEME_STYLES_BY_PRESET.get(args.theme, THEME_STYLES_BY_PRESET["night"])
-    splash, splash_handler, set_splash_context = setup_splash_and_attach_logger(
-        app,
-        app_name,
-        root_logger,
-        theme,
-    )
-    if getattr(args, "clear_long_lived_cache", False):
-        try:
-            logger.info("Clearing long-lived cache on user request...")
-            clear_long_lived_cache()
-        except LongLivedCacheClearCooldownError as exc:
-            logger.error("%s", exc)
-            time.sleep(3)
-            splash.close()
-            root_logger.removeHandler(splash_handler)
-            return
-
-    try:
-        city = resolve_launch_location(
-            args.city,
-            place_query=args.place,
-            place_countrycode=args.place_countrycode,
-            place_lang=args.place_lang,
-            use_building_top=bool(getattr(args, "use_building_top", False)),
-        )
-        if args.timezone is not None:
-            city = replace(city, tz=args.timezone)
-        set_splash_context(format_splash_location(city))
-        delta_t = parse_launch_time_arguments(
-            args.datetime,
-            args.days,
-            args.hours,
-            timezone_name=city.tz,
-            timezone_override=args.timezone,
-        )
-        star_catalog = _load_star_catalog_for_launch(args.vmag_limit)
-        dso_catalog = _load_dso_catalog_for_launch()
-        _verify_ephemeris_for_launch()
-    except (LocationResolveError, LaunchSetupError):
-        time.sleep(3)
-        splash.close()
-        root_logger.removeHandler(splash_handler)
-        return
-
-    view_center = (args.view_center_alt, args.view_center_az)
-    view_center = (
-        min(OBSERVER_MAX_ALT_DEG, max(OBSERVER_MIN_ALT_DEG, view_center[0])),
-        view_center[1] % 360,
-    )
+    star_catalog = _load_star_catalog_for_launch(args.vmag_limit)
+    dso_catalog = _load_dso_catalog_for_launch()
     cloud_stripe_mode, cloud_stripe_count, cloud_stripe_width = args.cloud_stripe
     visual_preset = args.theme
     star_visibility_boost = theme.star_visibility_boost
@@ -256,18 +211,10 @@ def main() -> None:
         dso_catalog=dso_catalog,
         vmag_brightness_scale=vmag_brightness_scale,
     )
-
-    viewer_data = prepare_window_viewer_data(
-        city.display_name,
-        (city.lat, city.lon, city.tz),
-        view_center,
-        edge_fov_deg=args.edge_fov_deg,
-        content_fov_deg=args.content_fov_deg,
-        observer_height_m=city.observer_height_m if args.observer_height_m is None else args.observer_height_m,
-        ground_elevation_m=city.ground_elevation_m,
-        location_height_label=city.location_height_label,
-        location_height_m=city.location_height_m,
-        show_observer_height=args.observer_height_m is not None,
+    view_center = (args.view_center_alt, args.view_center_az)
+    view_center = (
+        min(OBSERVER_MAX_ALT_DEG, max(OBSERVER_MIN_ALT_DEG, view_center[0])),
+        view_center[1] % 360,
     )
     user_options = prepare_window_user_options(
         sky_disc_alpha=args.sky_opacity,
@@ -303,7 +250,7 @@ def main() -> None:
         urban_outline_gui_allowed=args.urban_outline_opacity > 0.0,
     )
     runtime_options = prepare_window_runtime_options(
-        delta_t=delta_t,
+        delta_t=timedelta(0),
         sky_update_interval=args.sky_update_interval,
         urban_outline_radius_km=args.urban_outline_radius_km,
         urban_outline_skyscraper_radius_km=args.urban_outline_skyscraper_radius_km,
@@ -321,63 +268,147 @@ def main() -> None:
     )
     window_cls = FramelessSkyWindow if args.window_frame == "frameless" else StandardSkyWindow
     main_win = window_cls(
-        viewer_data,
+        ViewerData(
+            location=(0.0, 0.0),
+            timezone_name="UTC",
+            city_name="Loading...",
+            view_center=view_center,
+            edge_fov_deg=args.edge_fov_deg,
+            content_fov_deg=args.content_fov_deg,
+            observer_height_m=1.7 if args.observer_height_m is None else args.observer_height_m,
+            ground_elevation_m=0.0,
+            location_height_label=None,
+            location_height_m=0.0,
+            show_observer_height=args.observer_height_m is not None,
+        ),
         catalogs,
         user_options=user_options,
         runtime_options=runtime_options,
+        defer_initial_load=True,
     )
-    main_win._search_view_center_alt_specified = bool(
-        getattr(args, "view_center_alt_specified", False)
-    )
-    main_win._search_view_center_az_specified = bool(
-        getattr(args, "view_center_az_specified", False)
-    )
+    startup_log_overlay = main_win._ensure_startup_log_overlay()
+    startup_log_handler.set_consumer(startup_log_overlay.append_line)
+    startup_log_overlay.show()
+    startup_log_overlay.raise_()
+    main_win.show()
+    app.setQuitOnLastWindowClosed(True)
+    app.processEvents()
 
-    startup_search = str(getattr(args, "search", "") or "").strip()
-    startup_target_time_utc = target_time_utc_from_delta(delta_t) if startup_search else None
+    close_on_startup_error = bool(getattr(args, "close_on_startup_error", False))
+    startup_handler_attached = True
 
-    def _run_startup_search() -> None:
-        if not startup_search or startup_target_time_utc is None:
+    def _detach_startup_logging(*, hide_overlay: bool) -> None:
+        nonlocal startup_handler_attached
+        if not startup_handler_attached:
             return
+        startup_log_handler.set_consumer(None)
+        if hide_overlay:
+            main_win._hide_startup_log_overlay()
+        root_logger.removeHandler(startup_log_handler)
+        startup_handler_attached = False
+
+    startup_error = False
+    city = None
+    delta_t = timedelta(0)
+    if getattr(args, "clear_long_lived_cache", False):
         try:
-            resolution = resolve_search_targets(
-                startup_search,
-                catalogs.named_stars_search_all,
-                satellite_search_callback=lambda query: search_satellite_targets(
-                    query,
-                    target_time_utc=startup_target_time_utc,
-                ),
-                jpl_search_callback=lambda query: search_jpl_targets(
-                    query,
-                    target_time_utc=startup_target_time_utc,
-                ),
+            logger.info("Clearing long-lived cache on user request...")
+            clear_long_lived_cache()
+        except LongLivedCacheClearCooldownError as exc:
+            logger.error("Startup failed: %s", exc)
+            startup_error = True
+
+    if not startup_error:
+        try:
+            city = resolve_launch_location(
+                args.city,
+                place_query=args.place,
+                place_countrycode=args.place_countrycode,
+                place_lang=args.place_lang,
+                use_building_top=bool(getattr(args, "use_building_top", False)),
             )
-        except Exception as exc:
-            logger.error("Startup search failed: %s", exc)
-            return
-        if len(resolution.candidates) == 1 and resolution.selected_target is not None:
-            target = resolution.selected_target
-            if bool(getattr(args, "search_keep_marker", False)):
-                target = replace(target, persistent_keep_marker=True)
-            main_win._jump_to_search_target(target)
+            if args.timezone is not None:
+                city = replace(city, tz=args.timezone)
+            delta_t = parse_launch_time_arguments(
+                args.datetime,
+                args.days,
+                args.hours,
+                timezone_name=city.tz,
+                timezone_override=args.timezone,
+            )
+            _verify_ephemeris_for_launch()
+        except (LocationResolveError, LaunchSetupError) as exc:
+            exc_text = str(exc).strip()
+            if exc_text:
+                logger.error("Startup failed: %s: %s", exc.__class__.__name__, exc_text)
+            else:
+                logger.error("Startup failed: %s", exc.__class__.__name__)
+            startup_error = True
 
-    def _on_initial_loaded():
-        """
-        Handles the signal that initial data has been loaded.
+    if startup_error:
+        if close_on_startup_error:
+            QTimer.singleShot(0, lambda: app.exit(1))
+    elif city is not None:
+        startup_search = str(getattr(args, "search", "") or "").strip()
+        startup_target_time_utc = (
+            target_time_utc_from_delta(delta_t) if startup_search else None
+        )
 
-        Shows the main window, closes the splash screen, and removes the
-        temporary splash screen log handler.
-        """
-        main_win.show()
-        app.setQuitOnLastWindowClosed(True)
-        splash.close()
-        root_logger.removeHandler(splash_handler)
-        if startup_search:
-            QTimer.singleShot(0, _run_startup_search)
+        viewer_data = prepare_window_viewer_data(
+            city.display_name,
+            (city.lat, city.lon, city.tz),
+            view_center,
+            edge_fov_deg=args.edge_fov_deg,
+            content_fov_deg=args.content_fov_deg,
+            observer_height_m=(
+                city.observer_height_m
+                if args.observer_height_m is None
+                else args.observer_height_m
+            ),
+            ground_elevation_m=city.ground_elevation_m,
+            location_height_label=city.location_height_label,
+            location_height_m=city.location_height_m,
+            show_observer_height=args.observer_height_m is not None,
+        )
+        main_win.apply_startup_delta_t(delta_t)
+        main_win.apply_startup_viewer_data(viewer_data)
 
-    main_win.initial_data_loaded.connect(_on_initial_loaded)
+        def _run_startup_search() -> None:
+            if not startup_search or startup_target_time_utc is None:
+                return
+            try:
+                resolution = resolve_search_targets(
+                    startup_search,
+                    catalogs.named_stars_search_all,
+                    satellite_search_callback=lambda query: search_satellite_targets(
+                        query,
+                        target_time_utc=startup_target_time_utc,
+                    ),
+                    jpl_search_callback=lambda query: search_jpl_targets(
+                        query,
+                        target_time_utc=startup_target_time_utc,
+                    ),
+                )
+            except Exception as exc:
+                logger.error("Startup search failed: %s", exc)
+                return
+            if len(resolution.candidates) == 1 and resolution.selected_target is not None:
+                target = resolution.selected_target
+                if bool(getattr(args, "search_keep_marker", False)):
+                    target = replace(target, persistent_keep_marker=True)
+                main_win._jump_to_search_target(target)
 
-    sys.exit(app.exec())
+        def _on_initial_loaded() -> None:
+            _detach_startup_logging(hide_overlay=True)
+            if startup_search:
+                QTimer.singleShot(0, _run_startup_search)
+
+        main_win.initial_data_loaded.connect(_on_initial_loaded)
+        main_win.start_initial_data_load()
+
+    exit_code = app.exec()
+    _detach_startup_logging(hide_overlay=False)
+    sys.exit(exit_code)
 
 
 if __name__ == "__main__":

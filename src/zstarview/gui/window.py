@@ -11,6 +11,7 @@ import logging
 import os
 import sys
 import time
+from html import escape
 from dataclasses import replace
 from datetime import datetime, timezone
 from datetime import timedelta
@@ -42,6 +43,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMenu,
     QPushButton,
+    QTextEdit,
 )
 from PySide6.QtWidgets import QWidget
 
@@ -305,6 +307,7 @@ class SkyWindowClientWidget(SkyWindowRenderMixin, QWidget):
 
     def resizeEvent(self, event: QResizeEvent) -> None:
         self._owner._handle_client_resize(event)
+        self._owner._layout_startup_log_overlay()
         super().resizeEvent(event)
 
     def leaveEvent(self, event: QEvent) -> None:
@@ -349,6 +352,52 @@ class ShutdownMessageOverlay(QLabel):
             " font-size: 16px;"
             "}"
         )
+
+
+class StartupLogOverlay(QTextEdit):
+    """Temporary log view shown in the main window during startup."""
+
+    line_received = Signal(str, int)
+
+    def __init__(self, parent: QWidget) -> None:
+        super().__init__(parent)
+        self.setReadOnly(True)
+        self.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
+        self.setUndoRedoEnabled(False)
+        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.setStyleSheet(
+            "QTextEdit {"
+            " background-color: rgba(0, 0, 0, 180);"
+            " color: rgba(245, 245, 245, 230);"
+            " border: 2px solid rgba(255, 255, 255, 60);"
+            " padding: 10px 12px;"
+            " font-family: monospace;"
+            " font-size: 10px;"
+            "}"
+        )
+        fixed_font = QFont("Monospace")
+        fixed_font.setStyleHint(QFont.StyleHint.Monospace)
+        self.setFont(fixed_font)
+        self.document().setMaximumBlockCount(200)
+        self.line_received.connect(self._append_line)
+
+    def append_line(self, line: str, levelno: int) -> None:
+        self.line_received.emit(line, int(levelno))
+
+    def _line_color(self, levelno: int) -> str:
+        if levelno >= logging.ERROR:
+            return "#ff8080"
+        if levelno >= logging.WARNING:
+            return "#ffcf80"
+        return "#f5f5f5"
+
+    def _append_line(self, line: str, levelno: int) -> None:
+        color = self._line_color(levelno)
+        self.append(f"<span style=\"color: {color}\">{escape(line)}</span>")
+        scrollbar = self.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
+        QApplication.processEvents()
 
 
 class ResizeGripWidget(QWidget):
@@ -600,6 +649,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         catalogs: PreparedWindowCatalogs,
         user_options: SkyWindowUserOptions,
         runtime_options: SkyWindowRuntimeOptions,
+        *,
+        defer_initial_load: bool = False,
     ) -> None:
         """
         Initializes the SkyWindow.
@@ -777,6 +828,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             satellite_overlay_points=None,
             aircraft_overlay_points=None,
         )
+        self._startup_initial_load_started = False
         self._startup_initial_data_loaded = False
         self._startup_window_shown = False
         self._startup_input_release_pending = False
@@ -837,6 +889,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._client_geometry_sync_done = False
         self.setGeometry(initial_x, initial_y, initial_width, initial_height)
         self._client_widget = SkyWindowClientWidget(self)
+        self._startup_log_overlay: Optional[StartupLogOverlay] = None
         self._shutdown_overlay: Optional[ShutdownMessageOverlay] = None
         self._frameless_frame: Optional[FramelessWindowFrame] = None
         self.menu_button: Optional[QPushButton] = None
@@ -1034,17 +1087,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         # Cloud error banner is kept inside CloudImageState
 
         # --- Initial Data Load ---
-        self.start_background_sky_data_update(is_initial_load=True)
-        if self._clouddisc and self.cloud_disc_alpha > 0.0:
-            self.start_background_cloud_update(reason="initial")
-        if self.terrain_horizon_opacity > 0.0:
-            self.start_background_terrain_horizon_update(reason="initial")
-        if self.urban_outline_opacity > 0.0:
-            self.start_background_urban_outline_update(reason="initial")
-        if self._satellite_layer_enabled():
-            self._enable_satellite_layer(reason="initial")
-        if self._aircraft_layer_enabled():
-            self._enable_aircraft_layer(reason="initial")
+        if not defer_initial_load:
+            self.start_initial_data_load()
 
     def _setup_update_infrastructure(self) -> None:
         """Initialize timers, worker, and signal wiring for background updates."""
@@ -1080,6 +1124,80 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._viewport_interaction_idle_timer.timeout.connect(
             self._end_viewport_interaction_mode
         )
+
+    def apply_startup_viewer_data(self, viewer_data: ViewerData) -> None:
+        """Replace the temporary startup viewer data with the resolved location."""
+        self.viewer_data = viewer_data
+        self._search_view_center_base = tuple(self.viewer_data.view_center)
+        self.state.render_view_center = tuple(self.viewer_data.view_center)
+        self.setWindowTitle(self.viewer_data.city_name)
+
+    def apply_startup_delta_t(self, delta_t: timedelta) -> None:
+        """Replace the temporary startup delta with the resolved launch time delta."""
+        self.delta_t = delta_t
+        overlay_availability = overlay_availability_for_delta(self.delta_t)
+        self._satellite_toggle_supported = overlay_availability.satellite
+        self._satellite_opacity_when_enabled = (
+            self._satellite_opacity_when_enabled
+            if self._satellite_opacity_when_enabled > 0.0
+            else 1.0
+        )
+        self.satellite_opacity = (
+            self._satellite_opacity_when_enabled
+            if self._satellite_toggle_supported
+            else 0.0
+        )
+        self._aircraft_toggle_supported = overlay_availability.aircraft
+        self._aircraft_opacity_when_enabled = (
+            self._aircraft_opacity_when_enabled
+            if self._aircraft_opacity_when_enabled > 0.0
+            else 1.0
+        )
+        self.aircraft_opacity = (
+            self._aircraft_opacity_when_enabled
+            if self._aircraft_toggle_supported
+            else 0.0
+        )
+        self._cloud_toggle_supported = overlay_availability.cloud
+        self._cloud_alpha_when_enabled = (
+            self._cloud_alpha_when_enabled
+            if self._cloud_alpha_when_enabled > 0.0
+            else 0.2
+        )
+        self.cloud_disc_alpha = (
+            self._cloud_alpha_when_enabled if self._cloud_toggle_supported else 0.0
+        )
+        if self._action_toggle_clouds is not None:
+            self._action_toggle_clouds.setEnabled(
+                self._cloud_toggle_supported
+                and self._clouddisc is not None
+                and self._cloud_gui_allowed
+            )
+        if self._action_toggle_satellites is not None:
+            self._action_toggle_satellites.setEnabled(
+                self._satellite_toggle_supported and self._satellite_gui_allowed
+            )
+        if self._action_toggle_aircraft is not None:
+            self._action_toggle_aircraft.setEnabled(
+                self._aircraft_toggle_supported and self._aircraft_gui_allowed
+            )
+
+    def start_initial_data_load(self) -> None:
+        """Kick off the initial background data load once the startup state is ready."""
+        if self._startup_initial_load_started:
+            return
+        self._startup_initial_load_started = True
+        self.start_background_sky_data_update(is_initial_load=True)
+        if self._clouddisc and self.cloud_disc_alpha > 0.0:
+            self.start_background_cloud_update(reason="initial")
+        if self.terrain_horizon_opacity > 0.0:
+            self.start_background_terrain_horizon_update(reason="initial")
+        if self.urban_outline_opacity > 0.0:
+            self.start_background_urban_outline_update(reason="initial")
+        if self._satellite_layer_enabled():
+            self._enable_satellite_layer(reason="initial")
+        if self._aircraft_layer_enabled():
+            self._enable_aircraft_layer(reason="initial")
 
     def _resize_client_area(self, target_client_width: int, target_client_height: int) -> None:
         """Resize the host so the client widget reaches the requested size."""
@@ -1426,6 +1544,20 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._shutdown_overlay.setGeometry(self._shutdown_message_geometry())
         return self._shutdown_overlay
 
+    def _ensure_startup_log_overlay(self) -> StartupLogOverlay:
+        if self._startup_log_overlay is None:
+            self._startup_log_overlay = StartupLogOverlay(self._client_widget)
+        self._layout_startup_log_overlay()
+        return self._startup_log_overlay
+
+    def _layout_startup_log_overlay(self) -> None:
+        overlay = self._startup_log_overlay
+        if overlay is None:
+            return
+        overlay.setGeometry(self._client_widget.rect())
+        if overlay.isVisible():
+            overlay.raise_()
+
     def _shutdown_message_geometry(self) -> QRect:
         overlay = self._shutdown_overlay
         client_width = max(1, int(self.client_width()))
@@ -1449,6 +1581,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def _hide_shutdown_message(self) -> None:
         if self._shutdown_overlay is not None:
             self._shutdown_overlay.hide()
+
+    def _hide_startup_log_overlay(self) -> None:
+        if self._startup_log_overlay is not None:
+            self._startup_log_overlay.hide()
 
     def _request_application_quit(self) -> None:
         self._show_shutdown_message()
@@ -1590,6 +1726,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 "client-resize: old=%sx%s new=%sx%s frameless=%s"
                 % (old_w, old_h, new_w, new_h, self._frameless_frame is not None)
             )
+        if not self._startup_initial_load_started:
+            self._layout_startup_log_overlay()
+            return
         self._begin_viewport_interaction_mode()
         self._disc_generation = int(self._disc_generation) + 1
         # Drop the previous sky/cloud discs immediately so a resize cannot
@@ -1651,6 +1790,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         *,
         start_idle_timer: bool = True,
     ) -> None:
+        if not self._startup_initial_load_started:
+            return
         self.state.viewport_interaction_mode = True
         self.state.viewport_interaction_release_pending = False
         cloud_state = self.cloud_state
@@ -1700,6 +1841,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self,
         reason: str = "viewport-interaction-idle",
     ) -> None:
+        if not self._startup_initial_load_started:
+            return
         if not self.state.viewport_interaction_mode:
             return
         self.request_sky_data_update(
