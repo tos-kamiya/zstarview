@@ -22,12 +22,13 @@ DEFAULT_WATER_RADIUS_KM = 2.0
 DEFAULT_WATER_SAMPLE_STEP_M = 1.25**5
 DEFAULT_WATER_AZIMUTH_STEP_DEG = 2.0
 DEFAULT_WATER_SAMPLE_GROWTH_FACTOR = 1.25
-DEFAULT_WATER_ALPHA_MIN = 0.18
+DEFAULT_WATER_ALPHA_MIN = 0.04
 
 POLYGON_WATER_KEYS = {
     ("natural", "water"),
     ("waterway", "riverbank"),
 }
+COASTLINE_WATER_TAG = {"natural": "coastline"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,7 +119,7 @@ def water_overlay_alpha_scale(distance_m: float, max_distance_m: float) -> float
         raise ValueError("max_distance_m must be positive")
     distance_ratio = max(0.0, min(1.0, float(distance_m) / float(max_distance_m)))
     alpha = DEFAULT_WATER_ALPHA_MIN + (1.0 - DEFAULT_WATER_ALPHA_MIN) * math.exp(
-        -2.2 * distance_ratio
+        -3.6 * distance_ratio
     )
     return max(DEFAULT_WATER_ALPHA_MIN, min(1.0, alpha))
 
@@ -131,6 +132,7 @@ def build_overpass_query(bbox: tuple[float, float, float, float]) -> str:
             "(",
             f'  way["natural"="water"]({south:.8f},{west:.8f},{north:.8f},{east:.8f});',
             f'  relation["natural"="water"]({south:.8f},{west:.8f},{north:.8f},{east:.8f});',
+            f'  way["natural"="coastline"]({south:.8f},{west:.8f},{north:.8f},{east:.8f});',
             f'  way["waterway"="riverbank"]({south:.8f},{west:.8f},{north:.8f},{east:.8f});',
             f'  relation["waterway"="riverbank"]({south:.8f},{west:.8f},{north:.8f},{east:.8f});',
             f'  way["waterway"~"^(river|stream|canal|drain)$"]({south:.8f},{west:.8f},{north:.8f},{east:.8f});',
@@ -289,6 +291,124 @@ def relation_is_water_relation(tags: dict[str, str]) -> bool:
     return False
 
 
+def _distance_to_segment(
+    point: tuple[float, float],
+    segment: tuple[tuple[float, float], tuple[float, float]],
+) -> float:
+    px, py = point
+    (ax, ay), (bx, by) = segment
+    dx = bx - ax
+    dy = by - ay
+    if dx == 0.0 and dy == 0.0:
+        return math.hypot(px - ax, py - ay)
+    t = ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)
+    t = max(0.0, min(1.0, t))
+    cx = ax + t * dx
+    cy = ay + t * dy
+    return math.hypot(px - cx, py - cy)
+
+
+def _point_is_right_of_segment(
+    point: tuple[float, float],
+    segment: tuple[tuple[float, float], tuple[float, float]],
+) -> bool:
+    px, py = point
+    (ax, ay), (bx, by) = segment
+    cross = (bx - ax) * (py - ay) - (by - ay) * (px - ax)
+    return cross < 0.0
+
+
+def _collect_coastline_segments(
+    elements: list[dict[str, Any]],
+) -> list[tuple[tuple[float, float], tuple[float, float]]]:
+    nodes = node_lookup(elements)
+    ways = way_lookup(elements, nodes)
+    segments: list[tuple[tuple[float, float], tuple[float, float]]] = []
+    for element in elements:
+        if element.get("type") != "way":
+            continue
+        tags = tags_to_dict(element.get("tags"))
+        if tags.get("natural") != "coastline":
+            continue
+        try:
+            way_id = int(element["id"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        points = ways.get(way_id)
+        if not points or len(points) < 2:
+            continue
+        segments.extend(tuple(pair) for pair in zip(points, points[1:]))
+    return segments
+
+
+def _polygon_is_water_face(
+    polygon: "Any",
+    coastline_segments: Sequence[tuple[tuple[float, float], tuple[float, float]]],
+) -> bool:
+    if not coastline_segments:
+        return False
+    rep = polygon.representative_point()
+    point = (float(rep.x), float(rep.y))
+    nearest_segments = sorted(
+        coastline_segments,
+        key=lambda segment: _distance_to_segment(point, segment),
+    )[:3]
+    if not nearest_segments:
+        return False
+    return _point_is_right_of_segment(point, nearest_segments[0])
+
+
+def _build_coastline_water_polygons(
+    elements: list[dict[str, Any]],
+    *,
+    bbox: tuple[float, float, float, float],
+) -> tuple[WaterPolygonFootprint, ...]:
+    try:
+        from shapely.geometry import LineString, box
+        from shapely.ops import polygonize, unary_union
+    except Exception:
+        return ()
+
+    coastline_segments = _collect_coastline_segments(elements)
+    if not coastline_segments:
+        return ()
+
+    west, south, east, north = bbox
+    coastline_lines = [
+        LineString([segment[0], segment[1]])
+        for segment in coastline_segments
+    ]
+    coastline_lines.append(LineString(list(box(west, south, east, north).exterior.coords)))
+    merged = unary_union(coastline_lines)
+    polygons = list(polygonize(merged))
+
+    footprints: list[WaterPolygonFootprint] = []
+    for polygon_index, polygon in enumerate(polygons):
+        if polygon.is_empty or polygon.area <= 0.0:
+            continue
+        if not _polygon_is_water_face(polygon, coastline_segments):
+            continue
+        outer_ring = normalize_ring(
+            tuple((float(lon), float(lat)) for lon, lat in polygon.exterior.coords)
+        )
+        inner_rings = tuple(
+            normalize_ring(tuple((float(lon), float(lat)) for lon, lat in interior.coords))
+            for interior in polygon.interiors
+            if len(interior.coords) >= 4
+        )
+        footprints.append(
+            WaterPolygonFootprint(
+                water_id=f"coastline/{polygon_index}",
+                kind="coastline",
+                outer_rings_lonlat=(outer_ring,),
+                inner_rings_lonlat=inner_rings,
+                source="coastline",
+                tags=dict(COASTLINE_WATER_TAG),
+            )
+        )
+    return tuple(footprints)
+
+
 def fetch_overpass_json(
     *,
     bbox: tuple[float, float, float, float],
@@ -323,7 +443,11 @@ def fetch_overpass_json(
     return loaded
 
 
-def extract_water_polygons(elements: list[dict[str, Any]]) -> tuple[WaterPolygonFootprint, ...]:
+def extract_water_polygons(
+    elements: list[dict[str, Any]],
+    *,
+    bbox: tuple[float, float, float, float] | None = None,
+) -> tuple[WaterPolygonFootprint, ...]:
     nodes = node_lookup(elements)
     ways = way_lookup(elements, nodes)
     relations = relation_lookup(elements)
@@ -395,6 +519,9 @@ def extract_water_polygons(elements: list[dict[str, Any]]) -> tuple[WaterPolygon
                 tags=tags,
             )
         )
+
+    if bbox is not None:
+        polygons.extend(_build_coastline_water_polygons(elements, bbox=bbox))
 
     return tuple(polygons)
 

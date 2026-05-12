@@ -105,10 +105,18 @@ class WaterOverlayController(QObject):
         with self._lock:
             in_memory_scope = self._scope_cache.get(scope_key)
         cached_scope = in_memory_scope
-        if cached_scope is None:
-            snapshot = self._load_scope_snapshot(scope_key, now=now)
-            if snapshot is not None:
-                cached_scope = self._scope_cache_from_snapshot(snapshot)
+        snapshot = self._load_scope_snapshot(scope_key, now=now)
+        if snapshot is not None:
+            snapshot_scope = self._scope_cache_from_snapshot(snapshot)
+            if (
+                cached_scope is None
+                or cached_scope.fetched_at_utc is None
+                or (
+                    snapshot_scope.fetched_at_utc is not None
+                    and cached_scope.fetched_at_utc < snapshot_scope.fetched_at_utc
+                )
+            ):
+                cached_scope = snapshot_scope
         if cached_scope is not None:
             cached_variant = self._select_cached_variant(
                 cached_scope,
@@ -358,7 +366,7 @@ class WaterOverlayController(QObject):
             elements = payload.get("elements")
             if not isinstance(elements, list):
                 raise RuntimeError("Overpass payload missing elements")
-            footprints = extract_water_polygons(elements)
+            footprints = extract_water_polygons(elements, bbox=bbox)
             fresh_snapshot = WaterOverlayCacheSnapshot(
                 footprints=footprints,
                 water_polygon_count=len(footprints),

@@ -70,6 +70,31 @@ def test_extract_water_polygons_keeps_outer_and_inner_rings() -> None:
     assert len(polygons[1].inner_rings_lonlat) == 1
 
 
+def test_extract_water_polygons_builds_coastline_water_with_island_hole() -> None:
+    elements: list[dict[str, object]] = [
+        _node(1, 3.0, 3.0),
+        _node(2, 7.0, 3.0),
+        _node(3, 7.0, 7.0),
+        _node(4, 3.0, 7.0),
+        _node(5, 1.0, 1.0),
+        _node(6, 2.0, 1.0),
+        _node(7, 2.0, 2.0),
+        _node(8, 1.0, 2.0),
+        _way(10, [1, 2, 3, 4, 1], {"natural": "coastline"}),
+        _way(20, [5, 6, 7, 8, 5], {"natural": "coastline"}),
+    ]
+
+    polygons = extract_water_polygons(
+        elements,
+        bbox=(0.0, 0.0, 10.0, 10.0),
+    )
+    coastline_polygons = [polygon for polygon in polygons if polygon.source == "coastline"]
+
+    assert len(coastline_polygons) == 1
+    assert coastline_polygons[0].kind == "coastline"
+    assert len(coastline_polygons[0].inner_rings_lonlat) == 2
+
+
 def test_water_surface_patch_classifies_flat_and_sloped() -> None:
     flat_patch = WaterSurfacePatch(
         patch_id="flat",

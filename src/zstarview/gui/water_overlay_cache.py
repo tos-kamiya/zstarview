@@ -9,7 +9,7 @@ from ..paths import CACHE_PATH
 from ..water_overlay import WaterPolygonFootprint
 
 WATER_OVERLAY_CACHE_ROOT_DIR = Path(CACHE_PATH) / "water_overlay"
-WATER_OVERLAY_CACHE_FORMAT_VERSION = 1
+WATER_OVERLAY_CACHE_FORMAT_VERSION = 2
 WATER_OVERLAY_CACHE_RETENTION_SECONDS = 90 * 24 * 60 * 60
 
 
@@ -54,6 +54,8 @@ def load_water_overlay_cache(
     except Exception:
         return None
     if not isinstance(payload, dict):
+        return None
+    if int(payload.get("cache_format_version", 0)) != WATER_OVERLAY_CACHE_FORMAT_VERSION:
         return None
     try:
         footprints_payload = payload.get("footprints", [])
