@@ -42,7 +42,6 @@ from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
     QMenu,
-    QPushButton,
     QTextEdit,
 )
 from PySide6.QtWidgets import QWidget
@@ -489,6 +488,95 @@ class ResizeGripWidget(QWidget):
         super().mouseReleaseEvent(event)
 
 
+class MenuButtonWidget(QWidget):
+    """Menu button with a custom drawn hamburger icon."""
+
+    clicked = Signal()
+
+    def __init__(self, chrome, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._chrome = chrome
+        self._hovered = False
+        self._pressed = False
+        self.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
+        self.setMouseTracking(True)
+
+    def enterEvent(self, event) -> None:
+        self._hovered = True
+        self.update()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event) -> None:
+        self._hovered = False
+        self._pressed = False
+        self.update()
+        super().leaveEvent(event)
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._pressed = True
+            self.update()
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            was_pressed = self._pressed
+            self._pressed = False
+            self.update()
+            if was_pressed and self.rect().contains(event.position().toPoint()):
+                self.clicked.emit()
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
+
+    def paintEvent(self, event: QPaintEvent) -> None:
+        painter = QPainter(self)
+        try:
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            chrome = self._chrome
+            if self._pressed:
+                background_rgba = chrome.menu_pressed_bg_rgba
+            elif self._hovered:
+                background_rgba = chrome.menu_hover_bg_rgba
+            else:
+                background_rgba = chrome.menu_fill_rgba
+            background = QColor(
+                background_rgba[0],
+                background_rgba[1],
+                background_rgba[2],
+                background_rgba[3],
+            )
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(background)
+            painter.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 5.0, 5.0)
+
+            color = QColor(
+                chrome.menu_button_text_rgb[0],
+                chrome.menu_button_text_rgb[1],
+                chrome.menu_button_text_rgb[2],
+            )
+            if not self.isEnabled():
+                color.setAlpha(128)
+            pen = QPen(color, 2.0)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            painter.setPen(pen)
+            width = float(self.width())
+            center_x = width / 2.0
+            line_half = max(4.0, min(8.0, width / 4.0))
+            center_y = float(self.height()) / 2.0
+            offsets = (-5.0, 0.0, 5.0)
+            for offset in offsets:
+                y = center_y + offset
+                painter.drawLine(
+                    QPointF(center_x - line_half, y),
+                    QPointF(center_x + line_half, y),
+                )
+        finally:
+            painter.end()
+
+
 class FramelessWindowFrame(QWidget):
     """Frameless-only window chrome that hosts the client widget and overlay controls."""
 
@@ -502,9 +590,8 @@ class FramelessWindowFrame(QWidget):
         self.setAutoFillBackground(False)
         self._client_widget.setParent(self)
 
-        self.menu_button = QPushButton("\u2630", self)
+        self.menu_button = MenuButtonWidget(self._owner.theme.window_chrome, self)
         self.menu_button.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
-        self.menu_button.setStyleSheet(self._owner._menu_button_style_sheet(self._owner.theme))
         self.menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.menu_button.clicked.connect(self._owner.show_menu)
         self.menu_button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -1634,9 +1721,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
     def _attach_client_menu_button(self, parent: QWidget) -> None:
         """Attach the legacy popup-menu button directly on the client area."""
-        self.menu_button = QPushButton("\u2630", parent)
+        self.menu_button = MenuButtonWidget(self.theme.window_chrome, parent)
         self.menu_button.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
-        self.menu_button.setStyleSheet(self._menu_button_style_sheet(self.theme))
         self.menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.menu_button.clicked.connect(self.show_menu)
         self.menu_button.raise_()
