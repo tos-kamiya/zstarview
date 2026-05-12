@@ -1569,6 +1569,7 @@ dependencies = [
     { name = "pyside6" },
     { name = "rasterio", version = "1.4.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "rasterio", version = "1.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "shapely" },
     { name = "skyfield" },
     { name = "xarray", version = "2025.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "xarray", version = "2026.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -1580,12 +1581,6 @@ dev = [
     { name = "pyongc" },
     { name = "pytest" },
     { name = "ruff" },
-    { name = "shapely" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "shapely" },
 ]
 
 [package.metadata]
@@ -1607,12 +1602,9 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "rasterio", specifier = ">=1.4.4" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.15.7" },
-    { name = "shapely", marker = "extra == 'dev'" },
+    { name = "shapely", specifier = ">=2.1.2,<3" },
     { name = "skyfield", specifier = ">=1.54,<2" },
     { name = "xarray", marker = "python_full_version < '3.11'", specifier = ">=2025.6,<2026.0" },
     { name = "xarray", marker = "python_full_version >= '3.11'", specifier = ">=2026.0,<2027.0" },
 ]
 provides-extras = ["dev"]
-
-[package.metadata.requires-dev]
-dev = [{ name = "shapely", specifier = ">=2.1.2" }]
