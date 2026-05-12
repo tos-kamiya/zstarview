@@ -709,7 +709,7 @@ def load_earth_guide_rings(path_str: str = EARTH_GUIDE_LAND_FILE) -> tuple[Earth
     return tuple(rings)
 
 
-def draw_earth_guide(
+def _draw_earth_guide_impl(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
@@ -836,3 +836,111 @@ def draw_earth_guide(
                 painter.drawPolyline(poly)
     finally:
         painter.restore()
+
+
+def draw_earth_guide_fast(
+    painter: QPainter,
+    *,
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    observer_lat_deg: float,
+    observer_lon_deg: float,
+    observer_height_m: float,
+    terrain_profile_altaz: list[tuple[float, float]] | None = None,
+    earth_guide_opacity: float = 0.028,
+    visibility_boost: float = 1.0,
+    edge_fov_deg: float = 90.0,
+    content_fov_deg: float = 90.0,
+) -> None:
+    """Draw the reduced fast-mode earth guide."""
+    _draw_earth_guide_impl(
+        painter,
+        geometry=geometry,
+        view_center=view_center,
+        observer_lat_deg=observer_lat_deg,
+        observer_lon_deg=observer_lon_deg,
+        observer_height_m=observer_height_m,
+        terrain_profile_altaz=terrain_profile_altaz,
+        earth_guide_opacity=earth_guide_opacity,
+        visibility_boost=visibility_boost,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+        fast_mode=True,
+    )
+
+
+def draw_earth_guide_normal(
+    painter: QPainter,
+    *,
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    observer_lat_deg: float,
+    observer_lon_deg: float,
+    observer_height_m: float,
+    terrain_profile_altaz: list[tuple[float, float]] | None = None,
+    earth_guide_opacity: float = 0.028,
+    visibility_boost: float = 1.0,
+    edge_fov_deg: float = 90.0,
+    content_fov_deg: float = 90.0,
+) -> None:
+    """Draw the full normal-mode earth guide."""
+    _draw_earth_guide_impl(
+        painter,
+        geometry=geometry,
+        view_center=view_center,
+        observer_lat_deg=observer_lat_deg,
+        observer_lon_deg=observer_lon_deg,
+        observer_height_m=observer_height_m,
+        terrain_profile_altaz=terrain_profile_altaz,
+        earth_guide_opacity=earth_guide_opacity,
+        visibility_boost=visibility_boost,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+        fast_mode=False,
+    )
+
+
+def draw_earth_guide(
+    painter: QPainter,
+    *,
+    geometry: ScreenGeometry,
+    view_center: tuple[float, float],
+    observer_lat_deg: float,
+    observer_lon_deg: float,
+    observer_height_m: float,
+    terrain_profile_altaz: list[tuple[float, float]] | None = None,
+    earth_guide_opacity: float = 0.028,
+    visibility_boost: float = 1.0,
+    edge_fov_deg: float = 90.0,
+    content_fov_deg: float = 90.0,
+    fast_mode: bool = False,
+) -> None:
+    """Compatibility wrapper kept for existing callers and tests."""
+    if fast_mode:
+        draw_earth_guide_fast(
+            painter,
+            geometry=geometry,
+            view_center=view_center,
+            observer_lat_deg=observer_lat_deg,
+            observer_lon_deg=observer_lon_deg,
+            observer_height_m=observer_height_m,
+            terrain_profile_altaz=terrain_profile_altaz,
+            earth_guide_opacity=earth_guide_opacity,
+            visibility_boost=visibility_boost,
+            edge_fov_deg=edge_fov_deg,
+            content_fov_deg=content_fov_deg,
+        )
+        return
+    draw_earth_guide_normal(
+        painter,
+        geometry=geometry,
+        view_center=view_center,
+        observer_lat_deg=observer_lat_deg,
+        observer_lon_deg=observer_lon_deg,
+        observer_height_m=observer_height_m,
+        terrain_profile_altaz=terrain_profile_altaz,
+        earth_guide_opacity=earth_guide_opacity,
+        visibility_boost=visibility_boost,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+    )

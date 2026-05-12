@@ -28,7 +28,11 @@ from ..paths import (
 from ..astro import altaz_to_normalized_xy
 from ..night_lights import NightLightGlowProfile
 from ..render.night_lights import draw_night_light_glow
-from ..render.earth_guide import draw_earth_guide, earth_guide_line_alpha
+from ..render.earth_guide import (
+    draw_earth_guide_fast,
+    draw_earth_guide_normal,
+    earth_guide_line_alpha,
+)
 from ..render.guides import (
     REFERENCE_LINE_FG_WIDTH,
     REFERENCE_LINE_MID_ALPHA,
@@ -1014,7 +1018,8 @@ def _overlay_earth_guide(
     painter = QPainter(out)
     painter.setRenderHint(QPainter.Antialiasing, True)
     try:
-        draw_earth_guide(
+        draw_earth_guide_fn = draw_earth_guide_fast if fast_mode else draw_earth_guide_normal
+        draw_earth_guide_fn(
             painter,
             geometry=geometry,
             view_center=view_center,
@@ -1026,7 +1031,6 @@ def _overlay_earth_guide(
             visibility_boost=float(visibility_boost),
             edge_fov_deg=edge_fov_deg,
             content_fov_deg=content_fov_deg,
-            fast_mode=bool(fast_mode),
         )
     finally:
         painter.end()
