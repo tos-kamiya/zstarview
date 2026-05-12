@@ -739,6 +739,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `waterway=river|stream|canal|drain` の中心線は本設計では採用しない
   - polygon の outer / inner ring を復元し、inner ring を穴として扱える内部表現へ変換する
   - 長い川や複雑な水域はローカル平面へ投影したうえで頂点を単純化し、必要なら constrained triangulation へ渡せるようにする
+  - 3点アンカーの DEM 標高差が小さい patch は flat とみなし、差がある patch は 3点で定まる傾いた平面として扱ってよい
+  - patch は 3点を捨てずに保持し、flat/sloped の判定だけを行う
   - `water only style` を描画プリセットとして適用し、`water polygon` を塗りつぶし対象として描画層へ渡す
 - `src/zstarview/gui/water_state.py`
   - 水面レイヤーの取得状態、cache 状態、描画用プロファイル列を保持する
@@ -1535,6 +1537,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 8. cache key は観測地点中心の `lat/lon`、`radius_km`、`source`、`feature_set` から導出し、`bbox` はその派生値として扱ってよい。
 9. 長い川や複雑なポリゴンは、観測地点基準のローカル平面へ投影したうえで `set_precision` と `simplify(preserve_topology=True)` をかけ、`constrained_delaunay_triangles` へ渡してもよい。
 10. 単純化と三角化の既定値はデータに応じて調整してよく、サンプルでは `grid_m=1.0`、`simplify_m=20.0` を試験値として使っている。
+11. 水面 patch は 3点アンカーをすべて保持し、DEM の標高差が `flat_threshold_m` 以下なら flat、超えるなら sloped plane として扱ってよい。
+12. flat/sloped の判定は長さしきい値の代替ではなく、実際の地形勾配に従って patch の表現を切り替えるための補助ルールとして扱ってよい。
 
 #### 10.4.2 Overture 建物フロー
 
