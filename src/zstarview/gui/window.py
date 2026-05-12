@@ -113,6 +113,8 @@ from .aircraft_controller import AircraftController
 from .jpl_small_body_controller import JplSmallBodyController
 from .terrain_state import TerrainHorizonState
 from .terrain_controller import TerrainHorizonController
+from .water_overlay_controller import WaterOverlayController
+from .water_overlay_state import WaterOverlayState
 from .famous_star_dialog import NamedStarJumpDialog
 from .famous_star_search_dialog import NamedStarSearchDialog
 from .place_search_dialog import PlaceSearchDialog
@@ -931,12 +933,14 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.satellite_state = SatelliteState()
         self.aircraft_state = AircraftState()
         self.terrain_horizon_state = TerrainHorizonState()
+        self.water_overlay_state = WaterOverlayState()
         self.urban_outline_state = UrbanOutlineState()
         self._cloud_controller: Optional[CloudController] = None
         self._satellite_controller: Optional[SatelliteController] = None
         self._aircraft_controller: Optional[AircraftController] = None
         self._jpl_small_body_controller: Optional[JplSmallBodyController] = None
         self._terrain_horizon_controller: Optional[TerrainHorizonController] = None
+        self._water_overlay_controller: Optional[WaterOverlayController] = None
         self._urban_outline_controller: Optional[UrbanOutlineController] = None
         self._cloud_update_timer = QTimer(self)
         self._cloud_update_timer.setInterval(CLOUD_UPDATE_INTERVAL * 1000)
@@ -1032,6 +1036,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._terrain_horizon_controller.terrain_failed.connect(
             self._on_terrain_horizon_failed
         )
+        self._water_overlay_controller = WaterOverlayController(parent=self)
+        self._water_overlay_controller.water_started.connect(self._on_water_overlay_started)
+        self._water_overlay_controller.water_ready.connect(self._on_water_overlay_ready)
+        self._water_overlay_controller.water_failed.connect(self._on_water_overlay_failed)
         self._urban_outline_controller = UrbanOutlineController(
             derived_root_dir=Path(OVERTURE_DERIVED_ROOT_DIR),
             min_building_height_m=self.urban_outline_min_height_m,
@@ -1131,6 +1139,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._search_view_center_base = tuple(self.viewer_data.view_center)
         self.state.render_view_center = tuple(self.viewer_data.view_center)
         self.setWindowTitle(self.viewer_data.city_name)
+        self.start_background_water_overlay_update(reason="location-ready")
 
     def apply_startup_delta_t(self, delta_t: timedelta) -> None:
         """Replace the temporary startup delta with the resolved launch time delta."""
@@ -1192,6 +1201,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.start_background_cloud_update(reason="initial")
         if self.terrain_horizon_opacity > 0.0:
             self.start_background_terrain_horizon_update(reason="initial")
+        self.start_background_water_overlay_update(reason="initial")
         if self.urban_outline_opacity > 0.0:
             self.start_background_urban_outline_update(reason="initial")
         if self._satellite_layer_enabled():
@@ -2444,6 +2454,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 self._jpl_small_body_controller.shutdown()
             if self._terrain_horizon_controller is not None:
                 self._terrain_horizon_controller.shutdown()
+            if self._water_overlay_controller is not None:
+                self._water_overlay_controller.shutdown()
             if self._urban_outline_controller is not None:
                 self._urban_outline_controller.shutdown()
             if self._sky_data_update_timer.isActive():

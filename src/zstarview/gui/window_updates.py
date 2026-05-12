@@ -633,6 +633,16 @@ class SkyWindowUpdatesMixin:
             reason=reason,
         )
 
+    def start_background_water_overlay_update(self, reason: str = "manual") -> bool:
+        if self._is_shutting_down:
+            return False
+        if self._water_overlay_controller is None:
+            return False
+        return self._water_overlay_controller.update(
+            viewer_data=self.viewer_data,
+            reason=reason,
+        )
+
     def start_background_urban_outline_update(self, reason: str = "manual") -> bool:
         if self._is_shutting_down:
             return False
@@ -755,6 +765,27 @@ class SkyWindowUpdatesMixin:
         if banner:
             self.terrain_horizon_state.set_error_banner(banner)
         self._compositor.invalidate()
+        self.request_client_update()
+
+    def _on_water_overlay_started(self, payload: Dict) -> None:
+        banner = str(payload.get("banner", "")).strip()
+        if banner:
+            self.water_overlay_state.banner_text = banner
+        self.request_client_update()
+
+    def _on_water_overlay_ready(self, payload: Dict) -> None:
+        points = payload.get("points")
+        source = str(payload.get("source", "")).strip() or "ready"
+        self.water_overlay_state.set_result(points, source=source)
+        self.state.water_overlay_points = points
+        self.request_client_update()
+
+    def _on_water_overlay_failed(self, payload: Dict) -> None:
+        banner = str(payload.get("banner", "")).strip()
+        self.water_overlay_state.clear_points()
+        self.state.water_overlay_points = None
+        if banner:
+            self.water_overlay_state.set_error_banner(banner)
         self.request_client_update()
 
     def _on_urban_outline_started(self, payload: Dict) -> None:

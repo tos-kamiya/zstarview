@@ -14,6 +14,7 @@ from ..paths import (
 )
 from . import background as render_background
 from ..types import ScreenGeometry, UrbanOutlinePolyline
+from ..water_overlay import WaterOverlayPoint
 from .geometry import normalized_to_screen_xy
 from .guides import _clip_polyline_to_radius, split_by_gaps
 
@@ -51,6 +52,9 @@ TERRAIN_SECONDARY_RIDGE_GLOW_OUTER_WIDTH_SCALE = 2.05
 TERRAIN_SECONDARY_RIDGE_GLOW_MID_WIDTH_SCALE = 1.35
 TERRAIN_SECONDARY_RIDGE_GLOW_OUTER_ALPHA_SCALE = 0.06
 TERRAIN_SECONDARY_RIDGE_GLOW_MID_ALPHA_SCALE = 0.18
+WATER_OVERLAY_POINT_COLOR_RGB = (96, 198, 255)
+WATER_OVERLAY_POINT_ALPHA = 190
+WATER_OVERLAY_POINT_RADIUS_PX = 1.8
 
 
 def _urban_outline_foreground_alpha(opacity: float) -> float:
@@ -986,4 +990,57 @@ def draw_urban_outlines(
             points.append((nx, ny))
         if len(points) >= 2:
             _draw_points(points)
+    painter.restore()
+
+
+def draw_water_overlay_points(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    water_points: list[WaterOverlayPoint] | None,
+    view_center: tuple[float, float],
+    *,
+    opacity: float = 0.85,
+    line_width_scale: float = 1.0,
+    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
+    content_fov_deg: float = FIELD_OF_VIEW_DEG,
+    is_in_fov_func: Callable[..., bool] = is_in_fov,
+    altaz_to_normalized_xy_func: Callable[[float, float, tuple[float, float]], tuple[float, float]] = altaz_to_normalized_xy,
+    normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], tuple[float, float]] = normalized_to_screen_xy,
+) -> None:
+    """Draw sampled water surface points as small blue dots."""
+    layer_opacity = max(0.0, min(1.0, float(opacity)))
+    if not water_points or layer_opacity <= 0.0:
+        return
+
+    painter.save()
+    dot_color = QColor(
+        *WATER_OVERLAY_POINT_COLOR_RGB,
+        max(0, min(255, int(round(WATER_OVERLAY_POINT_ALPHA * layer_opacity)))),
+    )
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(dot_color)
+    scale = max(1.0, float(line_width_scale))
+    base_radius = WATER_OVERLAY_POINT_RADIUS_PX * scale
+    for point in water_points:
+        alt = float(point.alt_deg)
+        az = float(point.az_deg)
+        if not is_in_fov_func(alt, az, view_center, fov_deg=content_fov_deg):
+            continue
+        try:
+            nx, ny = altaz_to_normalized_xy_func(
+                alt,
+                az,
+                view_center,
+                edge_fov_deg=float(edge_fov_deg),
+            )
+        except TypeError:
+            nx, ny = _project_altaz_to_normalized_xy(
+                alt,
+                az,
+                view_center,
+                edge_fov_deg=float(edge_fov_deg),
+            )
+        px, py = normalized_to_screen_xy_func(nx, ny, geometry)
+        radius = base_radius * max(0.75, min(1.2, float(point.alpha_scale)))
+        painter.drawEllipse(QPointF(float(px), float(py)), radius, radius)
     painter.restore()

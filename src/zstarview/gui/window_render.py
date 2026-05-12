@@ -457,6 +457,7 @@ class SkyWindowRenderMixin:
                 None,
             ),
             urban_outlines=getattr(state, "urban_outlines", None),
+            water_overlay_points=getattr(state, "water_overlay_points", None),
             satellite_overlay_points=getattr(state, "satellite_overlay_points", None),
             aircraft_overlay_points=getattr(state, "aircraft_overlay_points", None),
             night_light_glow_profile=getattr(state, "night_light_glow_profile", None),

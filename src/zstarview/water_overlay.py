@@ -1,11 +1,26 @@
 from __future__ import annotations
 
+import json
 import math
+import urllib.error
+import urllib.parse
+import urllib.request
 from dataclasses import dataclass
 from typing import Any, Iterable, Sequence
 
+import numpy as np
+
+from .location_resolver.place_projection import project_place_target_to_altaz
+from .terrain import WGS84_GEOD, build_distance_samples
+
 
 EARTH_RADIUS_KM = 6371.0088
+DEFAULT_WATER_OVERPASS_ENDPOINT = "https://overpass-api.de/api/interpreter"
+DEFAULT_WATER_USER_AGENT = "zstarview-water-overlay/0.1"
+DEFAULT_WATER_TIMEOUT_S = 60.0
+DEFAULT_WATER_RADIUS_KM = 2.0
+DEFAULT_WATER_SAMPLE_STEP_M = 20.0
+DEFAULT_WATER_AZIMUTH_STEP_DEG = 2.0
 
 POLYGON_WATER_KEYS = {
     ("natural", "water"),
@@ -46,6 +61,15 @@ class WaterSurfacePatch:
     def height_span_m(self) -> float:
         values = tuple(float(value) for value in self.anchor_elevations_m)
         return max(values) - min(values)
+
+
+@dataclass(frozen=True, slots=True)
+class WaterOverlayPoint:
+    water_id: str
+    alt_deg: float
+    az_deg: float
+    distance_km: float
+    alpha_scale: float = 1.0
 
 
 def bbox_from_point(lat_deg: float, lon_deg: float, radius_km: float) -> tuple[float, float, float, float]:
@@ -231,6 +255,40 @@ def relation_is_water_relation(tags: dict[str, str]) -> bool:
     return False
 
 
+def fetch_overpass_json(
+    *,
+    bbox: tuple[float, float, float, float],
+    endpoint: str = DEFAULT_WATER_OVERPASS_ENDPOINT,
+    user_agent: str = DEFAULT_WATER_USER_AGENT,
+    timeout_s: float = DEFAULT_WATER_TIMEOUT_S,
+) -> dict[str, Any]:
+    request_body = urllib.parse.urlencode({"data": build_overpass_query(bbox)}).encode("utf-8")
+    request = urllib.request.Request(
+        endpoint,
+        data=request_body,
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
+            "User-Agent": user_agent,
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=float(timeout_s)) as response:
+            payload = response.read()
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(f"Overpass HTTP error: {exc.code} {exc.reason}") from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"Overpass network error: {exc.reason}") from exc
+
+    try:
+        loaded = json.loads(payload.decode("utf-8"))
+    except Exception as exc:
+        raise RuntimeError("Overpass returned invalid JSON") from exc
+    if not isinstance(loaded, dict):
+        raise RuntimeError("Overpass returned a non-object JSON payload")
+    return loaded
+
+
 def extract_water_polygons(elements: list[dict[str, Any]]) -> tuple[WaterPolygonFootprint, ...]:
     nodes = node_lookup(elements)
     ways = way_lookup(elements, nodes)
@@ -305,6 +363,112 @@ def extract_water_polygons(elements: list[dict[str, Any]]) -> tuple[WaterPolygon
         )
 
     return tuple(polygons)
+
+
+def _point_in_ring(lon_deg: float, lat_deg: float, ring: Sequence[tuple[float, float]]) -> bool:
+    if len(ring) < 4:
+        return False
+    inside = False
+    x = float(lon_deg)
+    y = float(lat_deg)
+    for index in range(len(ring) - 1):
+        x0, y0 = ring[index]
+        x1, y1 = ring[index + 1]
+        if ((y0 > y) != (y1 > y)) and (y1 != y0):
+            x_cross = ((x1 - x0) * (y - y0) / (y1 - y0)) + x0
+            if x < x_cross:
+                inside = not inside
+    return inside
+
+
+def _footprint_bounds(footprint: WaterPolygonFootprint) -> tuple[float, float, float, float]:
+    min_lon = float("inf")
+    min_lat = float("inf")
+    max_lon = float("-inf")
+    max_lat = float("-inf")
+    for ring in footprint.outer_rings_lonlat:
+        for lon_deg, lat_deg in ring:
+            lon = float(lon_deg)
+            lat = float(lat_deg)
+            min_lon = min(min_lon, lon)
+            min_lat = min(min_lat, lat)
+            max_lon = max(max_lon, lon)
+            max_lat = max(max_lat, lat)
+    if not math.isfinite(min_lon):
+        return (0.0, 0.0, 0.0, 0.0)
+    return (min_lon, min_lat, max_lon, max_lat)
+
+
+def _point_in_footprint(lon_deg: float, lat_deg: float, footprint: WaterPolygonFootprint) -> bool:
+    for outer_ring in footprint.outer_rings_lonlat:
+        if not _point_in_ring(lon_deg, lat_deg, outer_ring):
+            continue
+        if any(_point_in_ring(lon_deg, lat_deg, inner_ring) for inner_ring in footprint.inner_rings_lonlat):
+            return False
+        return True
+    return False
+
+
+def sample_water_overlay_points(
+    footprints: Sequence[WaterPolygonFootprint],
+    *,
+    observer_lat_deg: float,
+    observer_lon_deg: float,
+    observer_height_m: float,
+    max_distance_km: float = DEFAULT_WATER_RADIUS_KM,
+    sample_step_m: float = DEFAULT_WATER_SAMPLE_STEP_M,
+    azimuth_step_deg: float = DEFAULT_WATER_AZIMUTH_STEP_DEG,
+) -> tuple[WaterOverlayPoint, ...]:
+    if max_distance_km <= 0.0:
+        raise ValueError("max_distance_km must be positive")
+    if sample_step_m <= 0.0:
+        raise ValueError("sample_step_m must be positive")
+    if azimuth_step_deg <= 0.0:
+        raise ValueError("azimuth_step_deg must be positive")
+
+    distances_m = build_distance_samples(float(max_distance_km), float(sample_step_m))
+    azimuths_deg = tuple(float(value) for value in np.arange(0.0, 360.0, float(azimuth_step_deg), dtype=np.float64))
+    points: list[WaterOverlayPoint] = []
+    observer_lon = float(observer_lon_deg)
+    observer_lat = float(observer_lat_deg)
+    observer_height = float(observer_height_m)
+    footprint_bounds = tuple((_footprint_bounds(footprint), footprint) for footprint in footprints)
+
+    for azimuth_deg in azimuths_deg:
+        for distance_m in distances_m:
+            lon_deg, lat_deg, _ = WGS84_GEOD.fwd(
+                observer_lon,
+                observer_lat,
+                float(azimuth_deg),
+                float(distance_m),
+            )
+            lon = float(lon_deg)
+            lat = float(lat_deg)
+            if not any(
+                (bounds[0] <= lon <= bounds[2])
+                and (bounds[1] <= lat <= bounds[3])
+                and _point_in_footprint(lon, lat, footprint)
+                for bounds, footprint in footprint_bounds
+            ):
+                continue
+            projection = project_place_target_to_altaz(
+                observer_latitude_deg=observer_lat,
+                observer_longitude_deg=observer_lon,
+                observer_height_m=observer_height,
+                target_latitude_deg=lat,
+                target_longitude_deg=lon,
+                target_height_m=0.0,
+            )
+            points.append(
+                WaterOverlayPoint(
+                    water_id="water",
+                    alt_deg=float(projection.alt_deg),
+                    az_deg=float(projection.az_deg),
+                    distance_km=float(projection.distance_km),
+                    alpha_scale=1.0,
+                )
+            )
+    return tuple(points)
 
 
 def classify_water_surface_mode(

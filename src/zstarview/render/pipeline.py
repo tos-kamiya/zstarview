@@ -12,6 +12,7 @@ from ..aircraft.types import AircraftOverlayPoint
 from ..gui.composite import CloudAmountField, SkyCompositorCache
 from ..night_lights import NightLightGlowProfile
 from ..satellites.types import SatelliteOverlayPoint
+from ..water_overlay import WaterOverlayPoint
 from ..types import CelestialData, ScreenGeometry, ViewerData
 from ..types import CelestialObject, StarsTable, UrbanOutlinePolyline
 from ..search.models import SearchJumpTarget
@@ -90,6 +91,7 @@ class RenderSceneData:
     satellite_overlay_points: list[SatelliteOverlayPoint] | None
     aircraft_overlay_points: list[AircraftOverlayPoint] | None
     night_light_glow_profile: NightLightGlowProfile | None = None
+    water_overlay_points: list[WaterOverlayPoint] | None = None
 
 
 @dataclass(frozen=True)
@@ -440,6 +442,16 @@ def _draw_viewport_interaction_layers(
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=_content_fov_deg(scene),
     )
+    render_terrain.draw_water_overlay_points(
+        painter,
+        geometry,
+        scene.water_overlay_points,
+        scene.viewer.view_center,
+        opacity=0.82,
+        line_width_scale=line_width_scale,
+        edge_fov_deg=float(scene.viewer.edge_fov_deg),
+        content_fov_deg=_content_fov_deg(scene),
+    )
 
 
 def _clear_background_layer(painter: QPainter, viewport_rect: QRect) -> None:
@@ -632,6 +644,16 @@ def _draw_terrain_layers(
         scene.terrain_horizon_secondary_profile_distances_m_layers,
         scene.viewer.view_center,
         opacity=max(0.0, float(style.terrain_horizon_opacity) * 0.72),
+        line_width_scale=line_width_scale,
+        edge_fov_deg=float(scene.viewer.edge_fov_deg),
+        content_fov_deg=content_fov_deg,
+    )
+    render_terrain.draw_water_overlay_points(
+        painter,
+        geometry,
+        scene.water_overlay_points,
+        scene.viewer.view_center,
+        opacity=0.82,
         line_width_scale=line_width_scale,
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=content_fov_deg,
