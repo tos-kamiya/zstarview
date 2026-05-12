@@ -1,6 +1,6 @@
 # zstarview 実装履歴
 
-最終更新: 2026-05-09
+最終更新: 2026-05-13
 
 ## 1. この文書の位置づけ
 
@@ -39,6 +39,12 @@
   - `building_part` の `min_height` / `height` の扱い、および derived tile へ `ground_elevation_m` を永続化するか runtime 解決に留めるかは実装時に再検討する。
 
 ## 4. 実装履歴
+
+### 2026-05-13
+
+- Water surface naming and docs sync
+  - Renamed the user-facing water layer label to `Water Surface` and made `--water-surface-opacity` the documented CLI option.
+  - Updated the specification and design docs to describe the current point-cloud water layer, including coastline handling, sea-level / DEM variants, and the GUI menu / status line terminology.
 
 ### 2026-05-12
 

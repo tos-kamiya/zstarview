@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-05-12
+最終更新: 2026-05-13
 
 ## 1. この文書の位置づけ
 
@@ -46,6 +46,7 @@
 - 外部データ連携層
   - 衛星クラウドデータ取得
   - DEM 取得
+  - 水面レイヤー取得
   - Overture 建物データ取得
   - 夜間光 GeoTIFF 取得
   - キャッシュ管理
@@ -65,6 +66,7 @@
 - `--theme` は `night`、`day`、`white`、`black`、`transparent` の 5 preset を受け付ける
   - `--edge-fov-deg` は起動時の画面投影スケールを、`--content-fov-deg` は描画対象の保持範囲を制御する
   - `--night-light-opacity` は夜間光オーバーレイの基礎強度を制御し、GUI の Layers メニュー上の Night Lights トグルと同じ意味を持つ
+  - `--water-surface-opacity` は水面レイヤーの初期表示強度を制御し、GUI の Layers メニュー上の `Water Surface` トグルと同じ意味を持つ
   - 同梱星表の実上限に合わせ、`-V` / `--vmag-limit` は `10.5` を超える指定を parse 時点で `10.5` へ丸める
   - parser 構築は `add_location_arguments()`、`add_dataset_query_arguments()`、`add_time_arguments()`、`add_render_arguments()` の helper に分割し、将来の別 CLI からも再利用できるようにする
   - ガイドライン表示は `--show-guidelines-initial` として扱い、DSO / アステリウムと同じ起動時 boolean 指定に揃える
@@ -730,30 +732,41 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - GeoTIFF として読み込めるかを cache reuse 前に確認し、壊れた tile は破棄して再取得に戻す
 - `src/zstarview/terrain/horizon.py`
   - 方位ごとの見かけ地平線計算
+- `src/zstarview/water_overlay.py`
+  - 観測地点近傍の OSM 水域を取得し、天球へ投影するための raw water footprint を正規化する
+  - `natural=water`、`waterway=riverbank` の polygon を主対象にし、`natural=coastline` は bbox 境界と合わせて海域 polygon へ戻す
+  - raw footprint から距離サンプルと alpha 減衰を計算し、sea-level / DEM の両 variant を作る
+- `src/zstarview/gui/water_overlay_state.py`
+  - 水面レイヤーの取得状態、sea-level / DEM の point set、status line 用の banner を保持する
+- `src/zstarview/gui/water_overlay_controller.py`
+  - 水面更新の実行制御
+  - latest-request-wins と TTL 判定を適用し、raw footprint cache と sea-level / DEM point set の切り替えを管理する
+- `src/zstarview/render/terrain.py`
+  - `WaterOverlayPoint` を小さな水色点として描画する
+  - 点の alpha は距離に応じた scale を反映し、terrain horizon の描画と同じ sky-dome 合成段へ重ねる
 
-### 4.6.1 水面オーバーレイ処理
+### 4.6.1 水面レイヤー処理
 
 - `src/zstarview/water_overlay.py`
-  - 観測地点近傍の OSM 水域を取得し、描画可能な water polygon へ正規化する
-  - `natural=water`、`waterway=riverbank` の polygon を主対象にする
+  - 観測地点近傍の OSM 水域を取得し、天球へ投影するための raw water footprint を正規化する
+  - `natural=water`、`waterway=riverbank` の polygon を主対象にし、`natural=coastline` は bbox 境界と合わせて海域 polygon へ戻す
   - `waterway=river|stream|canal|drain` の中心線は本設計では採用しない
-  - polygon の outer / inner ring を復元し、inner ring を穴として扱える内部表現へ変換する
-  - 長い川や複雑な水域はローカル平面へ投影したうえで頂点を単純化し、必要なら constrained triangulation へ渡せるようにする
-  - 3点アンカーの DEM 標高差が小さい patch は flat とみなし、差がある patch は 3点で定まる傾いた平面として扱ってよい
-  - patch は 3点を捨てずに保持し、flat/sloped の判定だけを行う
-  - `water only style` を描画プリセットとして適用し、`water polygon` を塗りつぶし対象として描画層へ渡す
-  - 細長い川や谷筋の水域は、terrain horizon と同じ距離サンプル列へ水色サンプルを重ねる補助表現を使ってよい
-- `src/zstarview/gui/water_state.py`
-  - 水面レイヤーの取得状態、cache 状態、描画用プロファイル列を保持する
-- `src/zstarview/gui/water_controller.py`
+  - polygon の outer / inner ring を復元し、inner ring を島や中州の穴として扱える内部表現へ変換する
+  - 距離サンプルは近距離を密、遠距離を疎にした幾何級数で生成し、alpha は距離に応じて減衰させる
+  - raw footprint から sea-level / DEM の point set を作る前処理を担う
+- `src/zstarview/gui/water_overlay_state.py`
+  - raw footprint 由来の sea-level / DEM point set と、現在の active points、表示中の mode/source/banners を保持する
+- `src/zstarview/gui/water_overlay_controller.py`
   - 水面更新の実行制御
-  - latest-request-wins と TTL 判定を適用する
-  - 取得成功 / 失敗 / stale 再利用を UI へ反映する
-- `src/zstarview/render/water.py`
-  - water polygon の淡い塗りと境界線を担当する
-  - 将来的なメッシュ描画では、単純化済み polygon から生成した三角形メッシュを受け取って塗りつぶしへ変換してよい
-  - terrain horizon の距離サンプル列から得た `water run` を帯または短いセグメントとして重畳してよい
-  - 海岸線は初期段階では線描画のまま扱ってよい
+  - latest-request-wins と TTL 判定を適用し、raw footprint cache と sea-level / DEM point set の切り替えを管理する
+  - terrain horizon の ON/OFF や DEM ready/fail に応じて、active points を再選択してよい
+- `src/zstarview/render/terrain.py`
+  - `WaterOverlayPoint` を小さな水色点として描画する
+  - 点の alpha は距離に応じた scale を反映し、terrain horizon の描画と同じ sky-dome 合成段へ重ねる
+- `src/zstarview/gui/window.py`
+  - `Water Surface` メニュー項目、`W` ショートカット、初期 opacity の入力を GUI 操作へ接続する
+- `src/zstarview/gui/window_updates.py`
+  - 水面レイヤーの status line と ready/fail banner をまとめる
 
 ### 4.7 航空機オーバーレイ処理
 
@@ -1455,7 +1468,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 - キャッシュ対象は再利用価値の高い外部取得データとする。
 - DEM データは永続キャッシュするが、保存期限の既定値は `90日` とする。
-- 水面オーバーレイの OSM 由来 cache も long-lived cache として扱い、保存期限の既定値は `90日` とする。
+- 水面レイヤーの OSM 由来 cache も long-lived cache として扱い、保存期限の既定値は `90日` とする。
 - Overture 建物由来の derived tile は地点条件ごとに永続キャッシュするが、保存期限の既定値は `30日` とする。
 - 遠距離スカイスクレーパー補助レイヤー用 derived tile は `overture_skyscrapers/<tile-cache-key>/bldg` 配下に tile 単位で永続キャッシュし、保存期限の既定値は通常建物キャッシュと同じ `30日` とする。
 - 地形地平線の計算済みポリラインは永続化しない。
@@ -1529,19 +1542,18 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 #### 10.4.1.1 水面フロー
 
-1. 水面レイヤーは観測地点中心の bbox で解決し、`natural=water`、`waterway=riverbank` の polygon を主対象にしてよい。
-2. polygon 系は outer / inner ring を保持し、inner ring は描画時に穴として扱ってよい。
-3. cache は long-lived cache として扱い、`fetched_at_utc` を基準に `90日` で fresh/stale を判定してよい。
-4. stale になった場合は既存 cache を即時利用しつつ、同じ bbox の再取得をバックグラウンドで試みてよい。
-5. 取得失敗や空振り bbox は短寿命の負 cache にしてよく、正の cache があればそれを優先して継続利用してよい。
-6. 画面描画は `water only style` と `water polygon` を分離し、前者は強調プリセット、後者は地物表現として扱ってよい。
-7. 海岸線の全面面化は必須ではなく、初期段階では線描画のままでもよい。
-8. cache key は観測地点中心の `lat/lon`、`radius_km`、`source`、`feature_set` から導出し、`bbox` はその派生値として扱ってよい。
-9. 長い川や複雑なポリゴンは、観測地点基準のローカル平面へ投影したうえで `set_precision` と `simplify(preserve_topology=True)` をかけ、`constrained_delaunay_triangles` へ渡してもよい。
-10. 単純化と三角化の既定値はデータに応じて調整してよく、サンプルでは `grid_m=1.0`、`simplify_m=20.0` を試験値として使っている。
-11. 水面 patch は 3点アンカーをすべて保持し、DEM の標高差が `flat_threshold_m` 以下なら flat、超えるなら sloped plane として扱ってよい。
-12. flat/sloped の判定は長さしきい値の代替ではなく、実際の地形勾配に従って patch の表現を切り替えるための補助ルールとして扱ってよい。
-13. 細長い川や谷筋の水域は、terrain horizon の距離サンプル列へ水色サンプルを重ねる `water run` として描画してよい。`water run` は連続する水域サンプルをまとめた短い線分または細い帯として扱い、ポリゴン面の暴れを避ける補助表現として位置付けてよい。
+1. 水面レイヤーは観測地点中心の bbox で raw footprint を解決し、`natural=water`、`waterway=riverbank` の polygon を主対象にしてよい。
+2. `natural=coastline` は bbox 境界と合わせて polygonize し、海岸線由来の海域面として扱ってよい。
+3. polygon 系は outer / inner ring を保持し、inner ring は島や中州の穴として扱ってよい。
+4. cache は long-lived cache として扱い、`fetched_at_utc` を基準に `90日` で fresh/stale を判定してよい。
+5. stale になった場合は既存 cache を即時利用しつつ、同じ bbox の再取得をバックグラウンドで試みてよい。
+6. 取得失敗や空振り bbox は短寿命の負 cache にしてよく、正の cache があればそれを優先して継続利用してよい。
+7. `WaterOverlayState` は sea-level / DEM の point set を両方保持し、terrain horizon の ON/OFF や DEM ready/fail に応じて active points を切り替えてよい。
+8. sea-level 版は ground=0m を基準にし、DEM 版は terrain horizon の地盤標高を使ってよい。
+9. 点群化は raw footprint を元に、近距離を密・遠距離を疎にした距離サンプル列で行い、遠い点ほど alpha を下げてよい。
+10. `WaterOverlayPoint` は `render/terrain.py` で小さな水色点として描画し、`RenderStyle.water_overlay_opacity` で全体強度を制御してよい。
+11. cache key は観測地点中心の `lat/lon`、`radius_km`、`source`、`feature_set` から導出し、`bbox` はその派生値として扱ってよい。
+12. `Water Surface` の GUI トグルや `--water-surface-opacity 0` は初期表示の有無を変えてよく、raw cache を破棄する必要はない。
 
 #### 10.4.2 Overture 建物フロー
 
