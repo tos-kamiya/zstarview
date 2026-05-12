@@ -429,17 +429,14 @@ def _draw_viewport_interaction_layers(
         draw_vmag_limit=ORIENTATION_INTERACTION_STAR_VMAG_LIMIT,
         fast_mode=True,
     )
-    render_terrain.draw_terrain_secondary_ridges(
+    render_terrain.draw_terrain_horizon_fast(
         painter,
         geometry,
-        scene.terrain_horizon_secondary_profile_altaz_layers,
-        scene.terrain_horizon_secondary_profile_distances_m_layers,
+        scene.terrain_horizon_profile,
+        scene.terrain_horizon_profile_distances_m,
         scene.viewer.view_center,
-        terrain_main_profile_altaz=scene.terrain_horizon_profile,
-        terrain_main_profile_distances_m=scene.terrain_horizon_profile_distances_m,
         opacity=style.terrain_horizon_opacity,
         line_width_scale=line_width_scale,
-        fast_mode=True,
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=_content_fov_deg(scene),
     )
@@ -636,7 +633,6 @@ def _draw_terrain_layers(
         scene.viewer.view_center,
         opacity=max(0.0, float(style.terrain_horizon_opacity) * 0.72),
         line_width_scale=line_width_scale,
-        fast_mode=False,
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=content_fov_deg,
     )
