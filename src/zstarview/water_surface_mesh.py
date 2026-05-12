@@ -26,6 +26,7 @@ class WaterSurfaceMesh:
     water_id: str
     kind: str
     surface_mode: str
+    surface_elevation_m: float
     triangles_xy_m: tuple[tuple[tuple[float, float], tuple[float, float], tuple[float, float]], ...]
     source: str
     simplified_grid_m: float
@@ -147,10 +148,15 @@ def build_water_surface_mesh(
         return None
 
     surface_mode = patch.surface_mode if patch is not None else "flat"
+    if patch is not None:
+        surface_elevation_m = float(sum(float(value) for value in patch.anchor_elevations_m) / 3.0)
+    else:
+        surface_elevation_m = 0.0
     return WaterSurfaceMesh(
         water_id=footprint.water_id,
         kind=footprint.kind,
         surface_mode=surface_mode,
+        surface_elevation_m=surface_elevation_m,
         triangles_xy_m=tuple(triangles),
         source=footprint.source,
         simplified_grid_m=float(grid_m),

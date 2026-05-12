@@ -1,0 +1,32 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Optional
+
+from ..water_surface_mesh import WaterSurfaceMesh
+
+
+@dataclass
+class WaterOverlayState:
+    surfaces: Optional[list[WaterSurfaceMesh]] = None
+    banner_text: Optional[str] = None
+    failed_this_session: bool = False
+    current_source: Optional[str] = None
+
+    def set_result(
+        self,
+        surfaces: list[WaterSurfaceMesh] | None,
+        *,
+        source: str,
+    ) -> None:
+        self.surfaces = surfaces
+        self.current_source = source
+        self.failed_this_session = False
+        self.banner_text = None
+
+    def set_error_banner(self, text: str) -> None:
+        self.banner_text = text
+        self.failed_this_session = True
+
+    def clear_surfaces(self) -> None:
+        self.surfaces = None

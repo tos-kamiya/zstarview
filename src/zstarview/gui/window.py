@@ -113,6 +113,8 @@ from .aircraft_controller import AircraftController
 from .jpl_small_body_controller import JplSmallBodyController
 from .terrain_state import TerrainHorizonState
 from .terrain_controller import TerrainHorizonController
+from .water_overlay_state import WaterOverlayState
+from .water_overlay_controller import WaterOverlayController
 from .famous_star_dialog import NamedStarJumpDialog
 from .famous_star_search_dialog import NamedStarSearchDialog
 from .place_search_dialog import PlaceSearchDialog
@@ -751,6 +753,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             requested_night_light_opacity if self._night_light_toggle_supported else 0.0
         )
         self.urban_outline_opacity = user_options.urban_outline_opacity
+        self.water_overlay_opacity = 0.28
         self.ground_tint_opacity = user_options.ground_tint_opacity
         self._terrain_horizon_opacity_when_enabled = (
             user_options.terrain_horizon_opacity
@@ -776,6 +779,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
         self._earth_guide_gui_allowed = bool(user_options.earth_guide_gui_allowed)
         self._urban_outline_gui_allowed = bool(user_options.urban_outline_gui_allowed)
+        self.show_water_overlay_layer: bool = self.water_overlay_opacity > 0.0
         self.show_urban_outline_layer: bool = self.urban_outline_opacity > 0.0
         self.enlarge_moon = user_options.enlarge_moon
         self.bright_bodies_mode = user_options.bright_bodies_mode
@@ -932,12 +936,14 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.aircraft_state = AircraftState()
         self.terrain_horizon_state = TerrainHorizonState()
         self.urban_outline_state = UrbanOutlineState()
+        self.water_overlay_state = WaterOverlayState()
         self._cloud_controller: Optional[CloudController] = None
         self._satellite_controller: Optional[SatelliteController] = None
         self._aircraft_controller: Optional[AircraftController] = None
         self._jpl_small_body_controller: Optional[JplSmallBodyController] = None
         self._terrain_horizon_controller: Optional[TerrainHorizonController] = None
         self._urban_outline_controller: Optional[UrbanOutlineController] = None
+        self._water_overlay_controller: Optional[WaterOverlayController] = None
         self._cloud_update_timer = QTimer(self)
         self._cloud_update_timer.setInterval(CLOUD_UPDATE_INTERVAL * 1000)
         self._cloud_update_timer.timeout.connect(
@@ -1047,6 +1053,20 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._urban_outline_controller.urban_ready.connect(self._on_urban_outline_ready)
         self._urban_outline_controller.urban_failed.connect(
             self._on_urban_outline_failed
+        )
+        self._water_overlay_controller = WaterOverlayController(
+            dem_cache_dir=terrain_cache_dir,
+            radius_km=self.urban_outline_radius_km,
+            parent=self,
+        )
+        self._water_overlay_controller.water_started.connect(
+            self._on_water_overlay_started
+        )
+        self._water_overlay_controller.water_ready.connect(
+            self._on_water_overlay_ready
+        )
+        self._water_overlay_controller.water_failed.connect(
+            self._on_water_overlay_failed
         )
         if self._action_toggle_terrain_horizon is not None:
             self._action_toggle_terrain_horizon.setEnabled(
@@ -1194,6 +1214,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.start_background_terrain_horizon_update(reason="initial")
         if self.urban_outline_opacity > 0.0:
             self.start_background_urban_outline_update(reason="initial")
+        if self.water_overlay_opacity > 0.0:
+            self.start_background_water_overlay_update(reason="initial")
         if self._satellite_layer_enabled():
             self._enable_satellite_layer(reason="initial")
         if self._aircraft_layer_enabled():
@@ -2446,6 +2468,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 self._terrain_horizon_controller.shutdown()
             if self._urban_outline_controller is not None:
                 self._urban_outline_controller.shutdown()
+            if self._water_overlay_controller is not None:
+                self._water_overlay_controller.shutdown()
             if self._sky_data_update_timer.isActive():
                 self._sky_data_update_timer.stop()
             if self._asterism_check_timer.isActive():
