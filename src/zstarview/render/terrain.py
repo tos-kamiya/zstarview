@@ -1018,7 +1018,6 @@ def draw_water_overlay_points(
         max(0, min(255, int(round(WATER_OVERLAY_POINT_ALPHA * layer_opacity)))),
     )
     painter.setPen(Qt.PenStyle.NoPen)
-    painter.setBrush(dot_color)
     scale = max(1.0, float(line_width_scale))
     base_radius = WATER_OVERLAY_POINT_RADIUS_PX * scale
     for point in water_points:
@@ -1041,6 +1040,19 @@ def draw_water_overlay_points(
                 edge_fov_deg=float(edge_fov_deg),
             )
         px, py = normalized_to_screen_xy_func(nx, ny, geometry)
-        radius = base_radius * max(0.75, min(1.2, float(point.alpha_scale)))
+        alpha_scale = max(0.0, min(1.0, float(point.alpha_scale)))
+        if alpha_scale <= 0.0:
+            continue
+        dot_color.setAlpha(
+            max(
+                0,
+                min(
+                    255,
+                    int(round(WATER_OVERLAY_POINT_ALPHA * layer_opacity * alpha_scale)),
+                ),
+            )
+        )
+        painter.setBrush(dot_color)
+        radius = base_radius
         painter.drawEllipse(QPointF(float(px), float(py)), radius, radius)
     painter.restore()

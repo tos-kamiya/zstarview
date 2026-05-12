@@ -11,7 +11,7 @@ from typing import Any, Iterable, Sequence
 import numpy as np
 
 from .location_resolver.place_projection import project_place_target_to_altaz
-from .terrain import WGS84_GEOD, build_distance_samples
+from .terrain import WGS84_GEOD
 
 
 EARTH_RADIUS_KM = 6371.0088
@@ -19,8 +19,10 @@ DEFAULT_WATER_OVERPASS_ENDPOINT = "https://overpass-api.de/api/interpreter"
 DEFAULT_WATER_USER_AGENT = "zstarview-water-overlay/0.1"
 DEFAULT_WATER_TIMEOUT_S = 60.0
 DEFAULT_WATER_RADIUS_KM = 2.0
-DEFAULT_WATER_SAMPLE_STEP_M = 20.0
+DEFAULT_WATER_SAMPLE_STEP_M = 1.25**5
 DEFAULT_WATER_AZIMUTH_STEP_DEG = 2.0
+DEFAULT_WATER_SAMPLE_GROWTH_FACTOR = 1.25
+DEFAULT_WATER_ALPHA_MIN = 0.18
 
 POLYGON_WATER_KEYS = {
     ("natural", "water"),
@@ -87,6 +89,38 @@ def bbox_from_point(lat_deg: float, lon_deg: float, radius_km: float) -> tuple[f
     min_lat = max(-90.0, lat_deg - lat_delta_deg)
     max_lat = min(90.0, lat_deg + lat_delta_deg)
     return min_lon, min_lat, max_lon, max_lat
+
+
+def build_geometric_distance_samples(
+    max_distance_km: float,
+    sample_start_m: float,
+    *,
+    growth_factor: float = DEFAULT_WATER_SAMPLE_GROWTH_FACTOR,
+) -> np.ndarray:
+    max_distance_m = max_distance_km * 1000.0
+    if max_distance_m <= 0.0:
+        raise ValueError("max_distance_km must be positive")
+    if sample_start_m <= 0.0:
+        raise ValueError("sample_start_m must be positive")
+    if growth_factor <= 1.0:
+        raise ValueError("growth_factor must be greater than 1.0")
+
+    samples: list[float] = []
+    distance_m = float(sample_start_m)
+    while distance_m <= max_distance_m:
+        samples.append(distance_m)
+        distance_m *= float(growth_factor)
+    return np.asarray(samples, dtype=np.float64)
+
+
+def water_overlay_alpha_scale(distance_m: float, max_distance_m: float) -> float:
+    if max_distance_m <= 0.0:
+        raise ValueError("max_distance_m must be positive")
+    distance_ratio = max(0.0, min(1.0, float(distance_m) / float(max_distance_m)))
+    alpha = DEFAULT_WATER_ALPHA_MIN + (1.0 - DEFAULT_WATER_ALPHA_MIN) * math.exp(
+        -2.2 * distance_ratio
+    )
+    return max(DEFAULT_WATER_ALPHA_MIN, min(1.0, alpha))
 
 
 def build_overpass_query(bbox: tuple[float, float, float, float]) -> str:
@@ -426,7 +460,10 @@ def sample_water_overlay_points(
     if azimuth_step_deg <= 0.0:
         raise ValueError("azimuth_step_deg must be positive")
 
-    distances_m = build_distance_samples(float(max_distance_km), float(sample_step_m))
+    distances_m = build_geometric_distance_samples(
+        float(max_distance_km),
+        float(sample_step_m),
+    )
     azimuths_deg = tuple(float(value) for value in np.arange(0.0, 360.0, float(azimuth_step_deg), dtype=np.float64))
     points: list[WaterOverlayPoint] = []
     observer_lon = float(observer_lon_deg)
@@ -465,7 +502,7 @@ def sample_water_overlay_points(
                     alt_deg=float(projection.alt_deg),
                     az_deg=float(projection.az_deg),
                     distance_km=float(projection.distance_km),
-                    alpha_scale=1.0,
+                    alpha_scale=water_overlay_alpha_scale(float(distance_m), float(max_distance_km) * 1000.0),
                 )
             )
     return tuple(points)
