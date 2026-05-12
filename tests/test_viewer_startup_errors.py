@@ -68,6 +68,7 @@ class _DummyWindow:
         type(self).last_instance = self
         self.overlay = _DummyOverlay()
         self.shown = 0
+        self.overlay_raise_calls = 0
         self.applied_delta = None
         self.applied_viewer_data = None
         self.initial_data_loaded = SimpleNamespace(connect=lambda _fn: None)
@@ -89,6 +90,9 @@ class _DummyWindow:
 
     def _hide_startup_log_overlay(self) -> None:
         self.overlay.hide()
+
+    def _raise_overlay_widgets(self) -> None:
+        self.overlay_raise_calls += 1
 
     def _jump_to_search_target(self, _target) -> None:
         return None
@@ -189,6 +193,7 @@ def test_main_keeps_startup_error_visible_by_default(monkeypatch) -> None:
     assert _DummyWindow.last_instance is not None
     assert _DummyWindow.last_instance.overlay.shown == 1
     assert _DummyWindow.last_instance.overlay.hidden == 0
+    assert _DummyWindow.last_instance.overlay_raise_calls >= 1
     assert any("Startup failed" in line for line, _level in _DummyWindow.last_instance.overlay.lines)
     assert any(level >= logging.ERROR for _line, level in _DummyWindow.last_instance.overlay.lines)
 
@@ -216,4 +221,5 @@ def test_main_auto_closes_on_startup_error_when_requested(monkeypatch) -> None:
     assert _DummyWindow.last_instance is not None
     assert _DummyWindow.last_instance.overlay.shown == 1
     assert _DummyWindow.last_instance.overlay.hidden == 0
+    assert _DummyWindow.last_instance.overlay_raise_calls >= 1
     assert any("Startup failed" in line for line, _level in _DummyWindow.last_instance.overlay.lines)

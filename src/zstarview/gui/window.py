@@ -500,7 +500,7 @@ class FramelessWindowFrame(QWidget):
         self.setAutoFillBackground(False)
         self._client_widget.setParent(self)
 
-        self.menu_button = QPushButton("", self)
+        self.menu_button = QPushButton("\u2630", self)
         self.menu_button.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
         self.menu_button.setStyleSheet(self._owner._menu_button_style_sheet(self._owner.theme))
         self.menu_button.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1625,7 +1625,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
     def _attach_client_menu_button(self, parent: QWidget) -> None:
         """Attach the legacy popup-menu button directly on the client area."""
-        self.menu_button = QPushButton("", parent)
+        self.menu_button = QPushButton("\u2630", parent)
         self.menu_button.setFixedSize(GUI_BUTTON_SIZE, GUI_BUTTON_SIZE)
         self.menu_button.setStyleSheet(self._menu_button_style_sheet(self.theme))
         self.menu_button.setCursor(Qt.CursorShape.PointingHandCursor)

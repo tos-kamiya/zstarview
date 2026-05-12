@@ -290,6 +290,7 @@ def main() -> None:
     startup_log_handler.set_consumer(startup_log_overlay.append_line)
     startup_log_overlay.show()
     startup_log_overlay.raise_()
+    main_win._raise_overlay_widgets()
     main_win.show()
     app.setQuitOnLastWindowClosed(True)
     app.processEvents()
@@ -346,6 +347,7 @@ def main() -> None:
             startup_error = True
 
     if startup_error:
+        main_win._raise_overlay_widgets()
         if close_on_startup_error:
             QTimer.singleShot(0, lambda: app.exit(1))
     elif city is not None:
