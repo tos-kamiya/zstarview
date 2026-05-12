@@ -319,7 +319,7 @@ def find_highlighted_object(
 
     return highlighted_object
 
-def _draw_stars_impl(
+def _draw_stars_render(
     painter: QPainter,
     geometry: ScreenGeometry,
     celestial_data: CelestialData,
@@ -615,6 +615,66 @@ def _draw_stars_impl(
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceOver)
 
 
+def _draw_stars_fast_impl(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    celestial_data: CelestialData,
+    viewer_data: ViewerData,
+    star_base_radius: float,
+    *,
+    visibility_boost: float = 1.0,
+    outline_bright_bodies: bool = False,
+    outline_render_scale: float = 1.0,
+    draw_vmag_limit: Optional[float] = None,
+    viewport_size: Tuple[int, int] | None = None,
+    content_fov_deg: float | None = None,
+) -> None:
+    _draw_stars_render(
+        painter,
+        geometry,
+        celestial_data,
+        viewer_data,
+        star_base_radius,
+        visibility_boost=visibility_boost,
+        outline_bright_bodies=outline_bright_bodies,
+        outline_render_scale=outline_render_scale,
+        draw_vmag_limit=draw_vmag_limit,
+        fast_mode=True,
+        viewport_size=viewport_size,
+        content_fov_deg=content_fov_deg,
+    )
+
+
+def _draw_stars_normal_impl(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    celestial_data: CelestialData,
+    viewer_data: ViewerData,
+    star_base_radius: float,
+    *,
+    visibility_boost: float = 1.0,
+    outline_bright_bodies: bool = False,
+    outline_render_scale: float = 1.0,
+    draw_vmag_limit: Optional[float] = None,
+    viewport_size: Tuple[int, int] | None = None,
+    content_fov_deg: float | None = None,
+) -> None:
+    _draw_stars_render(
+        painter,
+        geometry,
+        celestial_data,
+        viewer_data,
+        star_base_radius,
+        visibility_boost=visibility_boost,
+        outline_bright_bodies=outline_bright_bodies,
+        outline_render_scale=outline_render_scale,
+        draw_vmag_limit=draw_vmag_limit,
+        fast_mode=False,
+        viewport_size=viewport_size,
+        content_fov_deg=content_fov_deg,
+    )
+
+
 def draw_stars_fast(
     painter: QPainter,
     geometry: ScreenGeometry,
@@ -630,7 +690,7 @@ def draw_stars_fast(
     content_fov_deg: float | None = None,
 ) -> None:
     """Draw stars using the fast-mode star simplifications."""
-    _draw_stars_impl(
+    _draw_stars_fast_impl(
         painter,
         geometry,
         celestial_data,
@@ -640,7 +700,6 @@ def draw_stars_fast(
         outline_bright_bodies=outline_bright_bodies,
         outline_render_scale=outline_render_scale,
         draw_vmag_limit=draw_vmag_limit,
-        fast_mode=True,
         viewport_size=viewport_size,
         content_fov_deg=content_fov_deg,
     )
@@ -661,7 +720,7 @@ def draw_stars_normal(
     content_fov_deg: float | None = None,
 ) -> None:
     """Draw stars using the full normal-mode star renderer."""
-    _draw_stars_impl(
+    _draw_stars_normal_impl(
         painter,
         geometry,
         celestial_data,
@@ -671,7 +730,6 @@ def draw_stars_normal(
         outline_bright_bodies=outline_bright_bodies,
         outline_render_scale=outline_render_scale,
         draw_vmag_limit=draw_vmag_limit,
-        fast_mode=False,
         viewport_size=viewport_size,
         content_fov_deg=content_fov_deg,
     )
@@ -694,7 +752,7 @@ def draw_stars(
 ) -> None:
     """Compatibility wrapper kept for existing callers and tests."""
     if fast_mode:
-        draw_stars_fast(
+        _draw_stars_fast_impl(
             painter,
             geometry,
             celestial_data,
@@ -708,7 +766,7 @@ def draw_stars(
             content_fov_deg=content_fov_deg,
         )
         return
-    draw_stars_normal(
+    _draw_stars_normal_impl(
         painter,
         geometry,
         celestial_data,
