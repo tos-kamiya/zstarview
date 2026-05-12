@@ -23,6 +23,7 @@ from ..render.pipeline import (
     render_base_scene_into_painter,
     render_fast_overlay_layers_into_painter,
     render_hud_overlay_into_painter,
+    render_status_line_into_painter,
 )
 from ..satellites.types import SatelliteOverlayPoint
 from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
@@ -360,6 +361,25 @@ class SkyWindowRenderMixin:
         highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None,
     ) -> None:
         frame_painter.drawImage(0, 0, base_frame_image)
+        if hud.viewport_interaction_mode:
+            render_status_line_into_painter(
+                frame_painter,
+                viewport_rect=self.client_rect(),
+                style=style,
+                hud=hud,
+            )
+            return
+
+        label_candidates: list[dict[str, object]] = list(base_label_candidates or [])
+        render_fast_overlay_layers_into_painter(
+            frame_painter,
+            geometry=geometry,
+            scene=scene,
+            style=style,
+            highlighted_satellite=highlighted_satellite,
+            label_candidates=label_candidates,
+            draw_labels=False,
+        )
         render_hud_overlay_into_painter(
             frame_painter,
             geometry=geometry,
@@ -370,20 +390,9 @@ class SkyWindowRenderMixin:
             highlighted_object=highlighted_object,
             highlighted_dso=highlighted_dso,
             highlighted_satellite=highlighted_satellite,
-            label_candidates=[] if hud.viewport_interaction_mode else list(base_label_candidates or []),
+            label_candidates=label_candidates,
             search_overlay_target=getattr(self.state, "persistent_search_target", None),
         )
-        if not hud.viewport_interaction_mode:
-            label_candidates: list[dict[str, object]] = list(base_label_candidates or [])
-            render_fast_overlay_layers_into_painter(
-                frame_painter,
-                geometry=geometry,
-                scene=scene,
-                style=style,
-                highlighted_satellite=highlighted_satellite,
-                label_candidates=label_candidates,
-                draw_labels=False,
-            )
 
     def _viewer_data_for_render(self) -> ViewerData:
         return ViewerData(
@@ -716,23 +725,6 @@ class SkyWindowRenderMixin:
             int(self.client_height()),
             alt,
         )
-        mouse_pos = self.state.mouse_pos
-        if getattr(self, "_startup_input_blocked", lambda: False)():
-            mouse_pos = None
-
-        highlighted_object, highlighted_dso, highlighted_satellite = (
-            _resolve_hover_targets(
-                celestial_data=celestial_data,
-                render_viewer=render_viewer,
-                mouse_pos=mouse_pos,
-                geometry=geometry,
-                satellite_overlay_points=self.state.satellite_overlay_points,
-                show_dso=bool(self.show_dso),
-            )
-        )
-        jump_highlight = self._active_jump_highlight_object(geometry)
-        if jump_highlight is not None:
-            highlighted_object = jump_highlight
         frame_key = self._render_frame_cache_key(
             geometry=geometry,
             celestial_data=celestial_data,
@@ -751,11 +743,28 @@ class SkyWindowRenderMixin:
                 scene=scene,
                 style=style,
                 hud=hud,
-                highlighted_object=highlighted_object,
-                highlighted_dso=highlighted_dso,
-                highlighted_satellite=highlighted_satellite,
+                highlighted_object=None,
+                highlighted_dso=None,
+                highlighted_satellite=None,
             )
         else:
+            mouse_pos = self.state.mouse_pos
+            if getattr(self, "_startup_input_blocked", lambda: False)():
+                mouse_pos = None
+
+            highlighted_object, highlighted_dso, highlighted_satellite = (
+                _resolve_hover_targets(
+                    celestial_data=celestial_data,
+                    render_viewer=render_viewer,
+                    mouse_pos=mouse_pos,
+                    geometry=geometry,
+                    satellite_overlay_points=self.state.satellite_overlay_points,
+                    show_dso=bool(self.show_dso),
+                )
+            )
+            jump_highlight = self._active_jump_highlight_object(geometry)
+            if jump_highlight is not None:
+                highlighted_object = jump_highlight
             present_frame = self._render_normal_frame_image(
                 base_frame_key=frame_key,
                 geometry=geometry,

@@ -377,6 +377,22 @@ def render_hud_overlay_into_painter(
     )
 
 
+def render_status_line_into_painter(
+    painter: QPainter,
+    *,
+    viewport_rect: QRect,
+    style: RenderStyle,
+    hud: RenderHudState,
+) -> None:
+    """Draw only the status line used during viewport interaction."""
+    _draw_status_line(
+        painter,
+        viewport_rect=viewport_rect,
+        style=style,
+        hud=hud,
+    )
+
+
 def _draw_viewport_interaction_layers(
     painter: QPainter,
     *,
