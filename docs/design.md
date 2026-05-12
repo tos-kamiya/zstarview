@@ -731,6 +731,23 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `src/zstarview/terrain/horizon.py`
   - 方位ごとの見かけ地平線計算
 
+### 4.6.1 水面オーバーレイ処理
+
+- `src/zstarview/water_overlay.py`
+  - 観測地点近傍の OSM 水域を取得し、描画可能な water polygon / waterway 線へ正規化する
+  - `natural=water`、`waterway=riverbank`、`waterway=river|stream|canal|drain` を主対象にする
+  - polygon の outer / inner ring を復元し、inner ring を穴として扱える内部表現へ変換する
+  - `water only style` を描画プリセットとして適用し、`water polygon` を塗りつぶし対象として描画層へ渡す
+- `src/zstarview/gui/water_state.py`
+  - 水面レイヤーの取得状態、cache 状態、描画用プロファイル列を保持する
+- `src/zstarview/gui/water_controller.py`
+  - 水面更新の実行制御
+  - latest-request-wins と TTL 判定を適用する
+  - 取得成功 / 失敗 / stale 再利用を UI へ反映する
+- `src/zstarview/render/water.py`
+  - water polygon の淡い塗りと境界線、waterway 線の細線描画を担当する
+  - 海岸線は初期段階では線描画のまま扱ってよい
+
 ### 4.7 航空機オーバーレイ処理
 
 - `src/zstarview/gui/aircraft_controller.py`
@@ -1431,6 +1448,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 - キャッシュ対象は再利用価値の高い外部取得データとする。
 - DEM データは永続キャッシュするが、保存期限の既定値は `90日` とする。
+- 水面オーバーレイの OSM 由来 cache も long-lived cache として扱い、保存期限の既定値は `90日` とする。
 - Overture 建物由来の derived tile は地点条件ごとに永続キャッシュするが、保存期限の既定値は `30日` とする。
 - 遠距離スカイスクレーパー補助レイヤー用 derived tile は `overture_skyscrapers/<tile-cache-key>/bldg` 配下に tile 単位で永続キャッシュし、保存期限の既定値は通常建物キャッシュと同じ `30日` とする。
 - 地形地平線の計算済みポリラインは永続化しない。
@@ -1501,6 +1519,17 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 5. 距離帯や描画上限を変えても、既存 tile のうち要求範囲に重なるものは再利用し、外周で新たに必要になった tile だけを追加取得してよい。
 5. 再取得成功時は `*.tmp` + `replace()` で tile 本体と metadata を更新する。
 6. 再取得失敗時は stale tile を使い続け、UI には stale 利用中であることを示してよい。
+
+#### 10.4.1.1 水面フロー
+
+1. 水面レイヤーは観測地点中心の bbox で解決し、`natural=water`、`waterway=riverbank`、`waterway=river|stream|canal|drain` を主対象にしてよい。
+2. polygon 系は outer / inner ring を保持し、inner ring は描画時に穴として扱ってよい。
+3. line 系は水路中心線として保持し、polygon が無い場合の補助表現としてよい。
+4. cache は long-lived cache として扱い、`fetched_at_utc` を基準に `90日` で fresh/stale を判定してよい。
+5. stale になった場合は既存 cache を即時利用しつつ、同じ bbox の再取得をバックグラウンドで試みてよい。
+6. 取得失敗や空振り bbox は短寿命の負 cache にしてよく、正の cache があればそれを優先して継続利用してよい。
+7. 画面描画は `water only style` と `water polygon` を分離し、前者は強調プリセット、後者は地物表現として扱ってよい。
+8. 海岸線の全面面化は必須ではなく、初期段階では線描画のままでもよい。
 
 #### 10.4.2 Overture 建物フロー
 
