@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-05-09
+最終更新: 2026-05-12
 
 ## 1. この文書の位置づけ
 
@@ -54,10 +54,10 @@
 
 ### 4.1 起動・設定
 
-- `src/zstarview/zstarview.py`
-  - アプリケーションの主エントリポイント
+- `src/zstarview/gui/viewer.py`
+  - GUI アプリケーションの主エントリポイント
   - 起動シーケンスの組み立て
-- `src/zstarview/cli_args.py`
+- `src/zstarview/cli/args.py`
   - CLI オプション定義と値解釈
   - タワー一覧・タワー詳細 JSON 出力の即時終了オプションを扱う
   - `--place`、`--place-countrycode`、`--place-lang` の online 地点検索オプションを扱う
@@ -126,7 +126,7 @@
   - `--list-viewpoints KIND`
   - `--list-viewpoint-names KIND`
   - `--show-viewpoint-json NAME`
-- この経路では `startup.py` の都市解決や GUI 初期化へ進まず、`zstarview.py` が `tower_viewpoints.py` / `mountain_viewpoints.py` を直接呼び出して標準出力を書き、即時終了する。
+- この経路では `startup.py` の都市解決や GUI 初期化へ進まず、`zstarview` コマンドが `tower_viewpoints.py` / `mountain_viewpoints.py` を直接呼び出して標準出力を書き、即時終了する。
 - 一覧出力はローカル JSON のみを参照し、GeoNames、設定保存、ネットワークアクセスには触れない。
 - `KIND=t` は tower dataset、`KIND=m` は mountain dataset を選ぶ。
 - 一覧出力は `t/NAME` / `m/NAME` 形式で prefix 付き表示を返す。
@@ -451,6 +451,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 月の phase 塗りや惑星円盤の内部塗りは `bright_bodies_mode == "outline"` で抑止してよいが、拡大月については塗りつぶしを残してよい。
 - `stars` の通常描画では、`7px` 以上の恒星のみ 2px 枠線矩形へ切り替え、それ未満は塗りつぶし矩形を維持してよい。`bright_bodies_mode == "outline"` の明るい星ダイヤはこの切り替えより優先してよい。
 - `paintEvent()` はベースフレームをキャッシュし、その上に hover/HUD を都度重ねる構成になっている。
+- `paintEvent()` は `viewport_interaction_mode` に応じて fast / normal の描画入口を切り替える。
+- fast 側では、星・地平線・Earth guide の簡易入口を使い、夜間光グローや詳細 overlay を normal 側に寄せる。
 - ベースフレーム cache key から `mouse_pos`、hover 対象名、jump highlight 名、status message を外し、キャッシュ効率を上げている。
 - `labels` レイヤーは、各候補の既定配置矩形を見て局所グループを作り、グループ内では重心に近い候補から先に配置する軽量なクラスタ方式を使ってよい。
 - 文字色は、星名や惑星名は既定のテーマ文字色を使い、DSO とアステリズムのホバーラベルはそれぞれ本体色に寄せてよい。
@@ -501,6 +503,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - ユーザー指定値と実行時オプションの正規化
 - `src/zstarview/gui/window_render.py`
   - 再描画とレンダリング関連の UI ロジック
+  - `viewport_interaction_mode` に応じて fast / normal の描画入口を切り替える
+  - fast 側では、星・地平線・Earth guide・夜間光などの専用の簡易入口を使い、詳細 overlay を後回しにする
   - 恒星レイヤは描画時に現在のウィンドウサイズから内部レンダリング面サイズを再計算する
   - 天球ディスク幅が `expected-render-width` 以下なら等倍描画し、それを超える場合は `expected-render-width * sqrt(disc_width / expected-render-width)` に従って内部描画面を縮小する
   - 縮小時は低解像度 `QImage` に恒星を描いてからウィンドウ全体へ拡大転写し、大型ウィンドウでの負荷を抑える
@@ -1093,6 +1097,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `viewport_interaction_mode` による簡易描画状態
   - `viewport_interaction_release_pending` による release 後の通常更新待ち状態
   - `viewport_interaction_stars` による簡易描画用の明るい星テーブル
+  - `viewport_interaction_mode` は fast レンダリングの入口を選ぶ状態で、入力停止後に通常描画へ戻るまで保持する
   - ホバー対象
   - ハイライト対象
   - 各更新パイプラインの UI 反映状態
@@ -1124,7 +1129,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 ### 6.1 起動フロー
 
-1. `zstarview.py` が CLI とログを初期化する。
+1. `zstarview` が CLI とログを初期化する。
 2. 設定ファイルから前回の地点やウィンドウ状態を復元する。
 3. 入力を、`--place` による online 検索地点または通常の都市・タワー・山・座標として解決する。
 4. 星カタログや補助データを読み込む。
