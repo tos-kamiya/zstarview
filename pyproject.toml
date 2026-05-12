@@ -49,6 +49,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+  "shapely",
   "pytest",
   "pyongc",
   "mypy>=1.0.0",
@@ -140,6 +141,11 @@ exclude_lines = [
   "no cov",
   "if __name__ == .__main__.:",
   "if TYPE_CHECKING:",
+]
+
+[dependency-groups]
+dev = [
+    "shapely>=2.1.2",
 ]
 
 [project.gui-scripts]

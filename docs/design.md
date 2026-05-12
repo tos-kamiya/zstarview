@@ -738,6 +738,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `natural=water`、`waterway=riverbank` の polygon を主対象にする
   - `waterway=river|stream|canal|drain` の中心線は本設計では採用しない
   - polygon の outer / inner ring を復元し、inner ring を穴として扱える内部表現へ変換する
+  - 長い川や複雑な水域はローカル平面へ投影したうえで頂点を単純化し、必要なら constrained triangulation へ渡せるようにする
   - `water only style` を描画プリセットとして適用し、`water polygon` を塗りつぶし対象として描画層へ渡す
 - `src/zstarview/gui/water_state.py`
   - 水面レイヤーの取得状態、cache 状態、描画用プロファイル列を保持する
@@ -747,6 +748,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 取得成功 / 失敗 / stale 再利用を UI へ反映する
 - `src/zstarview/render/water.py`
   - water polygon の淡い塗りと境界線を担当する
+  - 将来的なメッシュ描画では、単純化済み polygon から生成した三角形メッシュを受け取って塗りつぶしへ変換してよい
   - 海岸線は初期段階では線描画のまま扱ってよい
 
 ### 4.7 航空機オーバーレイ処理
@@ -1531,6 +1533,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 6. 画面描画は `water only style` と `water polygon` を分離し、前者は強調プリセット、後者は地物表現として扱ってよい。
 7. 海岸線の全面面化は必須ではなく、初期段階では線描画のままでもよい。
 8. cache key は観測地点中心の `lat/lon`、`radius_km`、`source`、`feature_set` から導出し、`bbox` はその派生値として扱ってよい。
+9. 長い川や複雑なポリゴンは、観測地点基準のローカル平面へ投影したうえで `set_precision` と `simplify(preserve_topology=True)` をかけ、`constrained_delaunay_triangles` へ渡してもよい。
+10. 単純化と三角化の既定値はデータに応じて調整してよく、サンプルでは `grid_m=1.0`、`simplify_m=20.0` を試験値として使っている。
 
 #### 10.4.2 Overture 建物フロー
 
