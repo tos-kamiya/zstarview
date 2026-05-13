@@ -903,6 +903,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `ViewerData.ground_elevation_m`
   - DEM から求めた観測地点の地盤標高
   - DEM を取れない場合は `0.0m` へ正規化してよい
+  - terrain horizon の表示ON/OFFとは独立に保持してよく、起動時の DEM 解決結果を観測者基準の絶対高度計算へ流用してよい
 - `ViewerData.location_height_m`
   - 建物頂部、タワー高、または解決済み地点の構造物高を表す
   - 該当しない場合は `0.0m` へ正規化してよい
@@ -911,6 +912,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `height_m` は Overture 建物属性から得た地表基準の建物高を表す
   - `ground_elevation_m` は DEM から求めた建物 footprint 代表点の地盤標高を表す
   - 都市アウトライン計算では `top_elevation_m = ground_elevation_m + height_m` を用いる
+  - raw footprint は `rings_lonlat` のまま保持し、観測者基準へ変換した中間表現は別の vectorized cache として持ってよい
+  - 中間表現は観測地点、`observer_height_m`、`ground_elevation_m`、建物高さ条件に依存し、`view_center` は含めなくてよい
 
 ### 5.2 天体計算結果
 
@@ -1283,12 +1286,12 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 12. `compute_urban_outlines()` は `observer_ground_elevation_m + observer_height_m` を観測者標高、`ground_elevation_m + height_m` を建物頂部標高として見かけ仰角を計算する。
 13. `building_part` の `min_height` は derived tile では `min_height_m` として保持してよい。これは底面の持ち上がり量であり、頂部標高計算では `height_m` を ground-to-top として優先する。
 14. 遠距離スカイスクレーパー補助レイヤーで DEM が必要な場合も、専用 cache ではなく `copernicus-dem` の長寿命 cache を terrain horizon と共用してよい。
-15. `compute_urban_outlines()` は建物ごとの `height_m` を保持した輪郭列を返し、`resolve_urban_outline_layer_for_viewer()` はそれを `UrbanOutlinePolyline` の列に変換する。
+15. `compute_urban_outlines()` は建物ごとの `height_m` を保持した輪郭列を返し、必要なら observer-centric の `numpy` 配列や同等のベクトル化配列としてキャッシュしてよい。`resolve_urban_outline_layer_for_viewer()` はそれを `UrbanOutlinePolyline` の列に変換し、描画時の `view_center` 回転へ渡してよい。
 16. `UrbanOutlineController` は通常レイヤーと skyscraper レイヤーをマージして 1 回の `urban_ready` として反映する。skyscraper 取得が失敗した場合は、通常レイヤーだけで `urban_ready` してよい。
 17. `--urban-outline-skyscraper-only` 指定時は、通常近距離 derived dataset の確認・取得・解決をスキップし、skyscraper レイヤーだけを解決する。
 18. 描画時は `50m` 以上を CLI 指定 opacity の基準とし、`0m` ではその `25%` になるよう高さ比例で alpha を下げる。
 19. 高層建物の見やすさを上げるため、`100m` から `600m` の間で下地線の線幅だけを線形に太くしてよい。前景の濃い線は固定幅のまま維持してよい。
-20. 結果の outline 列は `UrbanOutlineState` と `SkyWindowState.urban_outlines` に反映し、再描画する。
+20. 結果の outline 列は `UrbanOutlineState` と `SkyWindowState.urban_outlines` に反映し、再描画する。`render_view_center` が変わった場合は、既存の observer-centric 配列を再投影するだけでよい。
 21. 取得中や失敗時はバナー文字列を UI 状態へ反映する。
 
 補足:
@@ -1412,6 +1415,66 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 現行 derived tile に `ground_elevation_m` を永続化しない場合でも、runtime 解決時に DEM サンプリングして同等の結果を得られることを優先する。
 - 遠距離スカイスクレーパー補助レイヤー用の DEM も、観測地点中心の `copernicus-dem` cache に保存して共用する。スカイスクレーパー専用 DEM sidecar や専用 DEM root は現時点では持たない。
 - `UrbanOutlinePolyline` は `source` を持ち、通常レイヤーと skyscraper レイヤーの由来を区別できる。ただし現行描画色は共通である。
+- 都市アウトラインの内部表現は三層に分けてよい。
+  - raw footprint: `lon/lat` の ring 群
+  - observer-centric cache: 観測者基準の `numpy` 配列または同等のベクトル化配列
+  - render polyline: `UrbanOutlinePolyline.points` に入る描画直前の点列
+- `view_center` は render polyline を画面へ回転させるための条件であり、raw footprint や observer-centric cache の生成キーには必須ではない。
+- 時刻は建物アウトラインの生成キーに含めなくてよい。建物は地表固定物として扱い、時刻で変わるのは天体や移動体だけでよい。
+- `observer_height_m`、`ground_elevation_m`、建物高さ条件が不変なら、観測者基準の配列は再利用してよい。`view_center` が変わった場合は再投影だけを行えばよい。
+- 観測者基準の配列は、`numpy` の角度配列や 2D 平面座標配列、あるいは 3D ローカルベクトル配列として持ってよい。描画時には `view_center` に応じた回転行列を一括適用してから最終投影してよい。
+
+#### 8.6.1 都市アウトラインの中間表現と責務分離
+
+都市アウトラインは、次の 3 層に分けて扱ってよい。
+
+- raw footprint layer
+  - `BuildingFootprint.rings_lonlat` をそのまま保持する
+  - derived tile の正本であり、地理データの更新や再取得の起点になる
+  - cache key は観測地点 `lat/lon`、建物条件、`radius_km`、`feature_type`、`min_height_m`、skyscraper 系の選択条件を含めてよい
+- observer-centric layer
+  - raw footprint を観測者原点のローカル座標へ変換した中間表現
+  - 実装は `numpy` ベースの配列でよく、`x/y` 平面配列、`alt/az` 配列、または 3D ローカルベクトル配列のいずれでもよい
+  - 生成条件は `lat/lon`、`observer_height_m`、`ground_elevation_m`、建物高さ条件、DEM 解決結果であり、`view_center` は含めなくてよい
+  - この層は「観測者が原点」という意味で topocentric な正規形として扱ってよい
+- render polyline layer
+  - observer-centric layer を `view_center` に応じて再投影した描画直前の点列
+  - `UrbanOutlinePolyline.points` はこの層の最終表現として保持してよい
+  - `view_center` が変わったときは raw footprint から作り直すのではなく、この層だけを再投影してよい
+
+実装時の責務は次のように分けてよい。
+
+- `compute_urban_outlines()`
+  - 建物の選別、距離判定、穴リングの省略、線分化判定を行う
+  - observer-centric layer を作る責務を持ってよい
+  - `view_center` を受け取る場合は、必要に応じて線分化判定にのみ使ってよい
+- `resolve_urban_outline_layer_for_viewer()`
+  - derived tile 読込結果と viewer state を受け取り、UI 向けの outline 列へ正規化する
+  - observer-centric cache がある場合はそれを使い、なければ `compute_urban_outlines()` へフォールバックしてよい
+- `UrbanOutlineController`
+  - derived dataset の取得、cache 判定、dataset merge を担う
+  - observer-centric cache の保存先または再利用単位を決めてよい
+- `SkyWindowRenderMixin` / `render/terrain.py`
+  - render polyline layer を受け取り、`view_center` に応じてスクリーンへ投影する
+  - 画面回転以外の geospatial 再計算を持たなくてよい
+
+中間表現の更新条件は次のとおりとする。
+
+- raw footprint layer の更新条件
+  - derived tile の更新、再ダウンロード、feature type の変更
+  - 建物高さの前処理条件の変更
+- observer-centric layer の更新条件
+  - 観測地点 `lat/lon` の変更
+  - `observer_height_m` の変更
+  - `ground_elevation_m` の変更
+  - 建物高さ条件や DEM 由来の補助値の変更
+- render polyline layer の更新条件
+  - `view_center` の変更
+  - 表示 FOV の変更
+  - 線分化や thin-run 判定の閾値変更
+
+この分離により、`view_center` の頻繁な変更は最終投影にだけ作用し、建物データの地理変換や距離判定を繰り返さずに済む。
+
 - ただし、投影後の screen-space 縦幅が十分小さい輪郭は、細い polyline ではなく 2 点線分に簡略化する。
 - 遠距離で外周リングの投影幅が小さい場合は、穴リングを描画対象から外してよい。外周リングは残し、`rings_lonlat[0]` を主要輪郭として使い、`rings_lonlat[1:]` は距離と見かけサイズに応じて省略してよい。
 - 穴リングの省略判定は、描画段階ではなく `compute_urban_outlines()` 側で行ってよい。これにより、投影・サンプル・フラグメント分割の前に不要な ring を落とせる。
