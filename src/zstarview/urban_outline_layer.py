@@ -10,7 +10,11 @@ import numpy as np
 from .data.derived_tile_cache import parse_derived_tile_buildings, select_derived_tile_envelopes
 from .data.import_overture_buildings import DEFAULT_FETCH_RADIUS_KM
 from .data.urban_outline_common import BuildingFootprint
-from .data.urban_outline_from_buildings import compute_urban_outlines
+from .data.urban_outline_from_buildings import (
+    compute_urban_outlines,
+    UrbanOutlineResult,
+    _maybe_linearize_run_points,
+)
 from .paths import COPERNICUS_DEM_CACHE_DIR, OVERTURE_DERIVED_ROOT_DIR
 from .terrain import GeoTiffDem, build_download_bbox, fetch_copernicus_dem
 from .types import UrbanOutlinePolyline, ViewerData
@@ -29,11 +33,10 @@ def resolve_urban_outline_layer_for_viewer(
     min_distance_km: float = 0.0,
     min_height_m: float = 0.0,
 ) -> list[UrbanOutlinePolyline] | None:
-    return _build_dynamic_urban_outline_layer(
+    observer_centric_result = _build_observer_centric_urban_outline_result(
         lat_deg=float(viewer_data.lat_deg),
         lon_deg=float(viewer_data.lon_deg),
         observer_height_m=float(viewer_data.observer_height_m),
-        edge_fov_deg=float(viewer_data.edge_fov_deg),
         derived_root_dir=Path(derived_root_dir),
         dem_cache_dir=Path(dem_cache_dir),
         derived_dir=None if derived_dir is None else Path(derived_dir),
@@ -41,17 +44,20 @@ def resolve_urban_outline_layer_for_viewer(
         radius_km=float(radius_km),
         min_distance_km=float(min_distance_km),
         min_height_m=float(min_height_m),
+    )
+    return _project_observer_centric_urban_outline_result(
+        observer_centric_result,
         view_center=tuple(float(v) for v in viewer_data.view_center),
+        edge_fov_deg=float(viewer_data.edge_fov_deg),
     )
 
 
 @lru_cache(maxsize=64)
-def _build_dynamic_urban_outline_layer(
+def _build_observer_centric_urban_outline_result(
     *,
     lat_deg: float,
     lon_deg: float,
     observer_height_m: float,
-    edge_fov_deg: float,
     derived_root_dir: Path,
     dem_cache_dir: Path,
     derived_dir: Path | None = None,
@@ -59,8 +65,7 @@ def _build_dynamic_urban_outline_layer(
     radius_km: float = DEFAULT_FETCH_RADIUS_KM,
     min_distance_km: float = 0.0,
     min_height_m: float = 0.0,
-    view_center: tuple[float, float] | None = None,
-) -> list[UrbanOutlinePolyline] | None:
+) -> UrbanOutlineResult | None:
     if derived_dirs is not None:
         candidate_dirs = tuple(path for path in derived_dirs if path.exists())
     elif derived_dir is not None:
@@ -113,20 +118,53 @@ def _build_dynamic_urban_outline_layer(
         radius_km=radius_km,
         min_distance_km=min_distance_km,
         observer_ground_elevation_m=observer_ground_elevation_m,
-        view_center=view_center,
-        edge_fov_deg=edge_fov_deg,
+        view_center=None,
+        edge_fov_deg=90.0,
         edge_sample_step_m=10.0,
     )
+    return result
+
+
+def _project_observer_centric_urban_outline_result(
+    result: UrbanOutlineResult,
+    *,
+    view_center: tuple[float, float],
+    edge_fov_deg: float,
+) -> list[UrbanOutlinePolyline] | None:
+    if result is None:
+        return None
+
     outlines = [
-        UrbanOutlinePolyline(
-            points=[(point.altitude_deg, point.azimuth_deg) for point in outline.points],
-            height_m=float(outline.height_m),
-            distance_km=float(outline.distance_km),
-            source="base",
+        _project_observer_centric_outline(
+            outline,
+            view_center=view_center,
+            edge_fov_deg=edge_fov_deg,
         )
         for outline in result.outlines
     ]
     return outlines or None
+
+
+def _project_observer_centric_outline(
+    outline,
+    *,
+    view_center: tuple[float, float],
+    edge_fov_deg: float,
+) -> UrbanOutlinePolyline | None:
+    run_points = list(outline.points)
+    run_points = _maybe_linearize_run_points(
+        run_points,
+        view_center=view_center,
+        edge_fov_deg=edge_fov_deg,
+    )
+    if len(run_points) == 0:
+        return None
+    return UrbanOutlinePolyline(
+        points=[(point.altitude_deg, point.azimuth_deg) for point in run_points],
+        height_m=float(outline.height_m),
+        distance_km=float(outline.distance_km),
+        source="base",
+    )
 
 
 def _merge_building_footprints(buildings: tuple[BuildingFootprint, ...]) -> tuple[BuildingFootprint, ...]:
