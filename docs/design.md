@@ -1551,7 +1551,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 7. `WaterOverlayState` は sea-level / DEM の point set を両方保持し、terrain horizon の ON/OFF や DEM ready/fail に応じて active points を切り替えてよい。
 8. sea-level 版は明示高度がない水域では観測地点の既知地盤標高を水面 fallback とし、DEM 版は terrain horizon の地盤標高と DEM target sampler を使ってよい。
 9. 点群化は raw footprint を元に、近距離を密・遠距離を疎にした距離サンプル列で行い、遠い点ほど alpha を下げてよい。
-10. `WaterOverlayPoint` は `render/terrain.py` で小さな水色点として描画し、`RenderStyle.water_overlay_opacity` で全体強度を制御してよい。
+10. `WaterOverlayPoint` は `render/terrain.py` で小さな水色点として描画し、`RenderStyle.water_overlay_opacity` をそのまま描画 alpha として使ってよい。既定値は `0.12` 程度としてよい。
 11. cache key は観測地点中心の `lat/lon`、`radius_km`、`source`、`feature_set` から導出し、`bbox` はその派生値として扱ってよい。
 12. `Water Surface` の GUI トグルや `--water-surface-opacity 0` は初期表示の有無を変えてよく、raw cache を破棄する必要はない。
 

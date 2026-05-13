@@ -850,7 +850,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._water_overlay_opacity_when_enabled = (
             user_options.water_overlay_opacity
             if user_options.water_overlay_opacity > 0.0
-            else 0.82
+            else 0.12
         )
         self._earth_guide_opacity_when_enabled = (
             user_options.earth_guide_opacity

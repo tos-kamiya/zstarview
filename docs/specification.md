@@ -163,7 +163,7 @@ README より詳細に、何ができるか、どう振る舞うか、どのよ�
 - `--urban-outline-opacity`
 - `--water-surface-opacity`
   - 水面レイヤーの表示強度を指定する。
-  - 既定値は `0.82` としてよい。
+  - 既定値は `0.12` としてよい。
   - `0` を指定した場合は、起動時に水面レイヤーを非表示としてよい。
 - `-r`, `--urban-outline-radius-km`
 - `--urban-outline-skyscraper-radius-km`

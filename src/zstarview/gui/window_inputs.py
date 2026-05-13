@@ -54,7 +54,7 @@ class SkyWindowUserOptions:
     terrain_horizon_opacity: float = 0.003
     earth_guide_opacity: float = 0.028
     urban_outline_opacity: float = 0.2
-    water_overlay_opacity: float = 0.82
+    water_overlay_opacity: float = 0.12
     ground_tint_opacity: float = 0.04
     enlarge_moon: bool = False
     bright_bodies_mode: str = "outline"

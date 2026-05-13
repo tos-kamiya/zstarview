@@ -52,8 +52,7 @@ TERRAIN_SECONDARY_RIDGE_GLOW_OUTER_WIDTH_SCALE = 2.05
 TERRAIN_SECONDARY_RIDGE_GLOW_MID_WIDTH_SCALE = 1.35
 TERRAIN_SECONDARY_RIDGE_GLOW_OUTER_ALPHA_SCALE = 0.06
 TERRAIN_SECONDARY_RIDGE_GLOW_MID_ALPHA_SCALE = 0.18
-WATER_OVERLAY_POINT_COLOR_RGB = (122, 240, 220)
-WATER_OVERLAY_POINT_ALPHA = 72
+WATER_OVERLAY_POINT_COLOR_RGB = (122, 218, 240)
 WATER_OVERLAY_POINT_RADIUS_PX = 2.7
 
 
@@ -1016,20 +1015,27 @@ def draw_water_overlay_points(
     points_to_draw = (
         _thin_water_overlay_points_pairwise(water_points) if pairwise_thinning else list(water_points)
     )
+    visible_points = _visible_water_overlay_points(
+        points_to_draw,
+        view_center=view_center,
+        content_fov_deg=float(content_fov_deg),
+        is_in_fov_func=is_in_fov_func,
+    )
+    if not visible_points:
+        return
+    dot_alpha = max(0, min(255, int(round(255.0 * layer_opacity))))
 
     painter.save()
     dot_color = QColor(
         *WATER_OVERLAY_POINT_COLOR_RGB,
-        max(0, min(255, int(round(WATER_OVERLAY_POINT_ALPHA * layer_opacity)))),
+        dot_alpha,
     )
     painter.setPen(Qt.PenStyle.NoPen)
     scale = max(1.0, float(line_width_scale))
     base_radius = WATER_OVERLAY_POINT_RADIUS_PX * scale
-    for point in points_to_draw:
+    for point in visible_points:
         alt = float(point.alt_deg)
         az = float(point.az_deg)
-        if not is_in_fov_func(alt, az, view_center, fov_deg=content_fov_deg):
-            continue
         try:
             nx, ny = altaz_to_normalized_xy_func(
                 alt,
@@ -1045,22 +1051,26 @@ def draw_water_overlay_points(
                 edge_fov_deg=float(edge_fov_deg),
             )
         px, py = normalized_to_screen_xy_func(nx, ny, geometry)
-        alpha_scale = max(0.0, min(1.0, float(point.alpha_scale)))
-        if alpha_scale <= 0.0:
-            continue
-        dot_color.setAlpha(
-            max(
-                0,
-                min(
-                    255,
-                    int(round(WATER_OVERLAY_POINT_ALPHA * layer_opacity * alpha_scale)),
-                ),
-            )
-        )
         painter.setBrush(dot_color)
         radius = base_radius
         painter.drawEllipse(QPointF(float(px), float(py)), radius, radius)
     painter.restore()
+
+
+def _visible_water_overlay_points(
+    water_points: list[WaterOverlayPoint],
+    *,
+    view_center: tuple[float, float],
+    content_fov_deg: float,
+    is_in_fov_func: Callable[..., bool],
+) -> list[WaterOverlayPoint]:
+    visible: list[WaterOverlayPoint] = []
+    for point in water_points:
+        alt = float(point.alt_deg)
+        az = float(point.az_deg)
+        if is_in_fov_func(alt, az, view_center, fov_deg=content_fov_deg):
+            visible.append(point)
+    return visible
 
 
 def _thin_water_overlay_points_pairwise(
