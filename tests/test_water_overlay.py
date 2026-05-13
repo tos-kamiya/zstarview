@@ -5,6 +5,7 @@ from zstarview.water_overlay import (
     WaterSurfacePatch,
     assemble_rings_from_segments,
     classify_water_surface_mode,
+    build_geometric_distance_samples,
     extract_water_polygons,
     sample_water_overlay_points,
 )
@@ -194,3 +195,11 @@ def test_sample_water_overlay_points_keeps_coastline_at_sea_level() -> None:
 
     assert points
     assert max(point.alt_deg for point in points) < -20.0
+
+
+def test_build_geometric_distance_samples_stays_dense_farther_out() -> None:
+    samples = build_geometric_distance_samples(2.0, 1.25**5)
+
+    assert len(samples) > 40
+    assert samples[-1] <= 2000.0
+    assert (samples[-1] - samples[-2]) < 300.0
