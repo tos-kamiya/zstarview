@@ -223,7 +223,7 @@ def test_compositor_fast_mode_skips_night_light_overlay(monkeypatch) -> None:
     calls: list[bool] = []
     monkeypatch.setattr(
         render_composite,
-        "draw_night_light_glow",
+        "draw_night_light_glow_normal",
         lambda *args, **kwargs: calls.append(True),
     )
 

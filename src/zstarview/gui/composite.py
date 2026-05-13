@@ -87,11 +87,6 @@ def draw_earth_guide(
     )
 
 
-def draw_night_light_glow(*args, fast_mode=False, **kwargs) -> None:
-    _ = fast_mode
-    draw_night_light_glow_normal(*args, **kwargs)
-
-
 def _dimalt_ring_color_for_sky_image(
     sky_img: QImage,
     geometry: ScreenGeometry,
@@ -1418,7 +1413,7 @@ class SkyCompositorCache:
                         clip_radius,
                     )
                     night_painter.setClipPath(clip_path)
-                    draw_night_light_glow(
+                    draw_night_light_glow_normal(
                         night_painter,
                         geometry=night_geometry,
                         viewport_rect=QRectF(0.0, 0.0, float(w), float(h)),
@@ -1435,7 +1430,6 @@ class SkyCompositorCache:
                         sun_alt_deg=night_light_sun_alt_deg,
                         edge_fov_deg=edge_fov_deg,
                         content_fov_deg=content_fov_deg,
-                        fast_mode=False,
                     )
                 finally:
                     night_painter.end()
