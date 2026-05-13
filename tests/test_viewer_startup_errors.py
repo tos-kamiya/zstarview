@@ -125,6 +125,7 @@ def _make_args(*, close_on_startup_error: bool) -> SimpleNamespace:
         terrain_horizon_opacity=0.003,
         earth_guide_opacity=0.028,
         urban_outline_opacity=0.2,
+        water_surface_opacity=0.12,
         ground_tint_opacity=0.04,
         enlarge_moon=False,
         bright_bodies="outline",
@@ -164,6 +165,8 @@ def _install_common_mocks(monkeypatch, args: SimpleNamespace):
     monkeypatch.setattr(viewer, "_handle_dataset_query_cli", lambda _args: None)
     monkeypatch.setattr(viewer, "setup_root_logger", lambda: root_logger)
     monkeypatch.setattr("zstarview.splash.setup_app", lambda _app_name: app)
+    monkeypatch.setattr(viewer.QTimer, "singleShot", lambda _msec, callback: callback())
+    monkeypatch.setattr(viewer._StartupBootstrap, "start", lambda self: self._run())
     monkeypatch.setattr(viewer, "_load_star_catalog_for_launch", lambda _vmag_limit: object())
     monkeypatch.setattr(viewer, "_load_dso_catalog_for_launch", lambda: None)
     monkeypatch.setattr(viewer, "prepare_window_catalogs", lambda *args, **kwargs: object())
@@ -215,7 +218,7 @@ def test_main_auto_closes_on_startup_error_when_requested(monkeypatch) -> None:
     assert exc_info.value.code == 1
     assert app.quit_on_last == [True]
     assert app.exit_codes == [1]
-    assert single_shot_calls == [0]
+    assert single_shot_calls == [0, 0]
     assert len(root_logger.added) == 1
     assert root_logger.removed == root_logger.added
     assert _DummyWindow.last_instance is not None

@@ -2,10 +2,11 @@ import sys
 import logging
 import math
 import json
+import threading
 from dataclasses import replace
 from datetime import timedelta
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QObject, QTimer, Signal
 
 from ..astro import load_ephemeris
 from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_lived_cache
@@ -56,6 +57,114 @@ from ..cli.args import parse_args
 from ..types import ViewerData
 
 logger = logging.getLogger(__name__)
+
+
+class _StartupBootstrap(QObject):
+    """Resolve launch-time state off the UI thread."""
+
+    finished = Signal(object)
+    failed = Signal(str)
+
+    def __init__(
+        self,
+        *,
+        args: object,
+        catalogs: object,
+        view_center: tuple[float, float],
+    ) -> None:
+        super().__init__()
+        self._args = args
+        self._catalogs = catalogs
+        self._view_center = (float(view_center[0]), float(view_center[1]))
+        self._started = False
+
+    def start(self) -> None:
+        if self._started:
+            return
+        self._started = True
+        worker = threading.Thread(target=self._run, name="StartupBootstrap", daemon=True)
+        worker.start()
+
+    def _run(self) -> None:
+        try:
+            startup_search = str(getattr(self._args, "search", "") or "").strip()
+            city = resolve_launch_location(
+                getattr(self._args, "city", None),
+                place_query=getattr(self._args, "place", None),
+                place_countrycode=getattr(self._args, "place_countrycode", None),
+                place_lang=getattr(self._args, "place_lang", "en"),
+                use_building_top=bool(getattr(self._args, "use_building_top", False)),
+            )
+            timezone_override = getattr(self._args, "timezone", None)
+            if timezone_override is not None:
+                city = replace(city, tz=timezone_override)
+            delta_t = parse_launch_time_arguments(
+                getattr(self._args, "datetime", None),
+                int(getattr(self._args, "days", 0)),
+                int(getattr(self._args, "hours", 0)),
+                timezone_name=city.tz,
+                timezone_override=timezone_override,
+            )
+            _verify_ephemeris_for_launch()
+            startup_search_target = None
+            if startup_search:
+                startup_target_time_utc = target_time_utc_from_delta(delta_t)
+                try:
+                    resolution = resolve_search_targets(
+                        startup_search,
+                        self._catalogs.named_stars_search_all,
+                        satellite_search_callback=lambda query: search_satellite_targets(
+                            query,
+                            target_time_utc=startup_target_time_utc,
+                        ),
+                        jpl_search_callback=lambda query: search_jpl_targets(
+                            query,
+                            target_time_utc=startup_target_time_utc,
+                        ),
+                    )
+                except Exception as exc:
+                    logger.error("Startup search failed: %s", exc)
+                else:
+                    if len(resolution.candidates) == 1 and resolution.selected_target is not None:
+                        startup_search_target = resolution.selected_target
+                        if bool(getattr(self._args, "search_keep_marker", False)):
+                            startup_search_target = replace(
+                                startup_search_target,
+                                persistent_keep_marker=True,
+                            )
+            viewer_data = prepare_window_viewer_data(
+                city.display_name,
+                (city.lat, city.lon, city.tz),
+                self._view_center,
+                edge_fov_deg=float(getattr(self._args, "edge_fov_deg", 95.0)),
+                content_fov_deg=float(getattr(self._args, "content_fov_deg", 110.0)),
+                observer_height_m=(
+                    city.observer_height_m
+                    if getattr(self._args, "observer_height_m", None) is None
+                    else float(getattr(self._args, "observer_height_m"))
+                ),
+                ground_elevation_m=city.ground_elevation_m,
+                location_height_label=city.location_height_label,
+                location_height_m=city.location_height_m,
+                show_observer_height=getattr(self._args, "observer_height_m", None) is not None,
+            )
+            self.finished.emit(
+                {
+                    "viewer_data": viewer_data,
+                    "delta_t": delta_t,
+                    "startup_search_target": startup_search_target,
+                }
+            )
+        except (LocationResolveError, LaunchSetupError) as exc:
+            exc_text = str(exc).strip()
+            if exc_text:
+                logger.error("Startup failed: %s: %s", exc.__class__.__name__, exc_text)
+            else:
+                logger.error("Startup failed: %s", exc.__class__.__name__)
+            self.failed.emit(str(exc))
+        except Exception as exc:
+            logger.error("Startup failed: %s", exc, exc_info=True)
+            self.failed.emit(str(exc))
 
 
 def _load_star_catalog_for_launch(vmag_limit: float | None):
@@ -298,6 +407,7 @@ def main() -> None:
 
     close_on_startup_error = bool(getattr(args, "close_on_startup_error", False))
     startup_handler_attached = True
+    pending_startup_search_target = None
 
     def _detach_startup_logging(*, hide_overlay: bool) -> None:
         nonlocal startup_handler_attached
@@ -310,8 +420,6 @@ def main() -> None:
         startup_handler_attached = False
 
     startup_error = False
-    city = None
-    delta_t = timedelta(0)
     if getattr(args, "clear_long_lived_cache", False):
         try:
             logger.info("Clearing long-lived cache on user request...")
@@ -320,94 +428,46 @@ def main() -> None:
             logger.error("Startup failed: %s", exc)
             startup_error = True
 
-    if not startup_error:
-        try:
-            city = resolve_launch_location(
-                args.city,
-                place_query=args.place,
-                place_countrycode=args.place_countrycode,
-                place_lang=args.place_lang,
-                use_building_top=bool(getattr(args, "use_building_top", False)),
-            )
-            if args.timezone is not None:
-                city = replace(city, tz=args.timezone)
-            delta_t = parse_launch_time_arguments(
-                args.datetime,
-                args.days,
-                args.hours,
-                timezone_name=city.tz,
-                timezone_override=args.timezone,
-            )
-            _verify_ephemeris_for_launch()
-        except (LocationResolveError, LaunchSetupError) as exc:
-            exc_text = str(exc).strip()
-            if exc_text:
-                logger.error("Startup failed: %s: %s", exc.__class__.__name__, exc_text)
-            else:
-                logger.error("Startup failed: %s", exc.__class__.__name__)
-            startup_error = True
-
     if startup_error:
         main_win._raise_overlay_widgets()
         if close_on_startup_error:
             QTimer.singleShot(0, lambda: app.exit(1))
-    elif city is not None:
-        startup_search = str(getattr(args, "search", "") or "").strip()
-        startup_target_time_utc = (
-            target_time_utc_from_delta(delta_t) if startup_search else None
+    else:
+        startup_bootstrap = _StartupBootstrap(
+            args=args,
+            catalogs=catalogs,
+            view_center=view_center,
         )
-
-        viewer_data = prepare_window_viewer_data(
-            city.display_name,
-            (city.lat, city.lon, city.tz),
-            view_center,
-            edge_fov_deg=args.edge_fov_deg,
-            content_fov_deg=args.content_fov_deg,
-            observer_height_m=(
-                city.observer_height_m
-                if args.observer_height_m is None
-                else args.observer_height_m
-            ),
-            ground_elevation_m=city.ground_elevation_m,
-            location_height_label=city.location_height_label,
-            location_height_m=city.location_height_m,
-            show_observer_height=args.observer_height_m is not None,
-        )
-        main_win.apply_startup_delta_t(delta_t)
-        main_win.apply_startup_viewer_data(viewer_data)
-
-        def _run_startup_search() -> None:
-            if not startup_search or startup_target_time_utc is None:
-                return
-            try:
-                resolution = resolve_search_targets(
-                    startup_search,
-                    catalogs.named_stars_search_all,
-                    satellite_search_callback=lambda query: search_satellite_targets(
-                        query,
-                        target_time_utc=startup_target_time_utc,
-                    ),
-                    jpl_search_callback=lambda query: search_jpl_targets(
-                        query,
-                        target_time_utc=startup_target_time_utc,
-                    ),
-                )
-            except Exception as exc:
-                logger.error("Startup search failed: %s", exc)
-                return
-            if len(resolution.candidates) == 1 and resolution.selected_target is not None:
-                target = resolution.selected_target
-                if bool(getattr(args, "search_keep_marker", False)):
-                    target = replace(target, persistent_keep_marker=True)
-                main_win._jump_to_search_target(target)
 
         def _on_initial_loaded() -> None:
+            nonlocal pending_startup_search_target
             _detach_startup_logging(hide_overlay=True)
-            if startup_search:
-                QTimer.singleShot(0, _run_startup_search)
+            if pending_startup_search_target is not None:
+                target = pending_startup_search_target
+                pending_startup_search_target = None
+                QTimer.singleShot(
+                    0,
+                    lambda: main_win._jump_to_search_target(target),
+                )
+
+        def _on_startup_ready(payload: object) -> None:
+            nonlocal pending_startup_search_target
+            data = dict(payload)
+            viewer_data = data["viewer_data"]
+            delta_t = data["delta_t"]
+            pending_startup_search_target = data.get("startup_search_target")
+            main_win.apply_startup_delta_t(delta_t)
+            main_win.apply_startup_viewer_data(viewer_data)
+            main_win.start_initial_data_load()
+
+        def _on_startup_failed(_message: str) -> None:
+            if close_on_startup_error:
+                QTimer.singleShot(0, lambda: app.exit(1))
 
         main_win.initial_data_loaded.connect(_on_initial_loaded)
-        main_win.start_initial_data_load()
+        startup_bootstrap.finished.connect(_on_startup_ready)
+        startup_bootstrap.failed.connect(_on_startup_failed)
+        QTimer.singleShot(0, startup_bootstrap.start)
 
     exit_code = app.exec()
     _detach_startup_logging(hide_overlay=False)
