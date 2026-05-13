@@ -737,14 +737,14 @@ All paths below are relative to `src/zstarview/data/`.
 * Earth guide land geometry is derived from **Natural Earth** 1:110m land polygons. Natural Earth treats the data as public domain; credit is optional, but we note the source here.
 * Urban outline source data are downloaded on demand from **Overture Maps Buildings** and converted into cached derived building tiles for runtime use.
 * Night lights source data are downloaded on demand from **NASA** Earth at Night / Black Marble and cached locally as GeoTIFF tiles for runtime use.
-* Star proper names provided by the **IAU** Working Group on Star Names (**WGSN**) (via [exopla.net](https://exopla.net/star-names/modern-iau-star-names/)).
+* Star proper names provided by the **IAU** Working Group on Star Names (**WGSN**) (via exopla.net).
 * Cloud data are based on infrared observations from the **Himawari** satellite (provided by **JMA**) and the **NOAA GOES** series (provided by **NOAA/NESDIS**), retrieved from their public S3 buckets.
-* Aircraft overlay data are fetched from **OpenSky Network** at runtime and are subject to the [OpenSky Network Terms of Use](https://opensky-network.org/about/terms-of-use).
+* Aircraft overlay data are fetched from **OpenSky Network** at runtime and are subject to the OpenSky Network Terms of Use.
 * Celestial-body search uses **JPL Horizons** and the **JPL Small-Body Database** at runtime to resolve matches and observer ephemerides. Search results and ephemerides are subject to the current JPL/JPL SSD usage terms and data notes.
 * Orbital data (TLE/OMM) for the artificial satellite overlay are fetched from **wheretheiss.at** with **CelesTrak** as a fallback source.
 * Terrain horizon data are based on **Copernicus DEM GLO-90**, managed by **ESA** on behalf of the European Commission and obtained by the app through its public AWS distribution/cache flow.
-* Place/station search via `--place` uses the public **OpenStreetMap Nominatim** service and is subject to the [Nominatim Usage Policy](https://operations.osmfoundation.org/policies/nominatim/).
-* Automatic IP-based location lookup uses **ip-api.com** and is subject to the [ip-api.com Terms of Service / Privacy Policy](https://ip-api.com/docs/legal), including its non-commercial-use restriction and 45 requests per minute limit.
+* Place/station search via `--place` uses the public **OpenStreetMap Nominatim** service and is subject to the Nominatim Usage Policy.
+* Automatic IP-based location lookup uses **ip-api.com** and is subject to the ip-api.com Terms of Service / Privacy Policy, including its non-commercial-use restriction and 45 requests per minute limit.
 * Water-surface overlay data are derived from **OpenStreetMap** water features fetched through **Overpass API** and are attributed to **OpenStreetMap contributors** under **ODbL 1.0**.
 * Thanks to **Overture Maps** and its source data contributors for making large-scale building data available.
 * Thanks to **AWS** and dataset providers for making the public S3 distribution/mirror endpoints available for cloud imagery and terrain DEM access.
