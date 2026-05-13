@@ -1439,7 +1439,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - この層は「観測者が原点」という意味で topocentric な正規形として扱ってよい
 - render polyline layer
   - observer-centric layer を `view_center` に応じて再投影した描画直前の点列
-  - `UrbanOutlinePolyline.points` はこの層の最終表現として保持してよい
+  - 実装上は `UrbanOutlinePolyline.points` に `alt/az` サンプルを保持し、`render/terrain.py` 側で最終スクリーン投影してよい
   - `view_center` が変わったときは raw footprint から作り直すのではなく、この層だけを再投影してよい
 
 実装時の責務は次のように分けてよい。
