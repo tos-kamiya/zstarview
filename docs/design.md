@@ -760,6 +760,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 水面更新の実行制御
   - latest-request-wins と TTL 判定を適用し、raw footprint cache と sea-level / DEM point set の切り替えを管理する
   - terrain horizon の ON/OFF や DEM ready/fail に応じて、active points を再選択してよい
+  - すでに取得済みの DEM 地盤高は保持してよく、terrain horizon の OFF は表示切り替えだけに使ってよい
 - `src/zstarview/render/terrain.py`
   - `WaterOverlayPoint` を小さな水色点として描画する
   - 点の alpha は距離に応じた scale を反映し、terrain horizon の描画と同じ sky-dome 合成段へ重ねる

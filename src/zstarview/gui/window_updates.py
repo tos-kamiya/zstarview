@@ -675,21 +675,14 @@ class SkyWindowUpdatesMixin:
         )
 
     def _water_overlay_ground_elevation_m(self) -> float:
-        viewer_ground_m = float(getattr(self.viewer_data, "ground_elevation_m", 0.0) or 0.0)
-        if self.terrain_horizon_opacity <= 0.0:
-            return max(0.0, viewer_ground_m)
         ground_m = self.terrain_horizon_state.ground_elevation_m
-        if ground_m is None:
-            return max(0.0, viewer_ground_m)
-        return max(0.0, float(ground_m))
+        if ground_m is not None:
+            return max(0.0, float(ground_m))
+        viewer_ground_m = float(getattr(self.viewer_data, "ground_elevation_m", 0.0) or 0.0)
+        return max(0.0, viewer_ground_m)
 
     def _water_overlay_use_dem_ground(self) -> bool:
-        if self.terrain_horizon_opacity <= 0.0:
-            return False
-        if self.terrain_horizon_state.failed_this_session:
-            return False
-        profile_altaz = self.terrain_horizon_state.profile_altaz
-        return bool(profile_altaz)
+        return self.terrain_horizon_state.ground_elevation_m is not None
 
     def _refresh_water_overlay_active_points(self) -> None:
         use_dem = self._water_overlay_use_dem_ground()
@@ -799,9 +792,9 @@ class SkyWindowUpdatesMixin:
         )
         ground_elevation_m = payload.get("ground_elevation_m")
         if isinstance(ground_elevation_m, (int, float)):
-            self.terrain_horizon_state.ground_elevation_m = float(ground_elevation_m)
-        else:
-            self.terrain_horizon_state.ground_elevation_m = 0.0
+            ground_value = float(ground_elevation_m)
+            self.terrain_horizon_state.ground_elevation_m = ground_value
+            self.viewer_data.ground_elevation_m = ground_value
         self.state.terrain_horizon_profile = payload["profile_altaz"]
         self.state.terrain_horizon_profile_distances_m = payload.get("profile_distances_m")
         self.state.terrain_horizon_secondary_profile_altaz_layers = payload.get(
@@ -819,7 +812,6 @@ class SkyWindowUpdatesMixin:
     def _on_terrain_horizon_failed(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         self.terrain_horizon_state.clear_profile()
-        self.terrain_horizon_state.ground_elevation_m = 0.0
         self.state.terrain_horizon_profile = None
         self.state.terrain_horizon_profile_distances_m = None
         self.state.terrain_horizon_secondary_profile_altaz_layers = None

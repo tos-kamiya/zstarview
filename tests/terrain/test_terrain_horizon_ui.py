@@ -13,7 +13,6 @@ import zstarview.gui.window as window_module
 from zstarview.cli.args import SKY_OPACITY_DEFAULT
 from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.render.qt_image import qimage_to_np_rgba
-from zstarview.terrain.dem import COPERNICUS_DEM_BUCKET
 from zstarview.gui.window import SkyWindow
 from zstarview.search.models import SearchJumpTarget
 from zstarview.gui.terrain_controller import TerrainHorizonController
@@ -870,6 +869,7 @@ def test_toggle_terrain_horizon_enables_opacity_and_requests_background_update()
     dummy.terrain_horizon_opacity = 0.0
     dummy._terrain_horizon_opacity_when_enabled = 0.25
     dummy._action_toggle_terrain_horizon = _DummyAction(False)
+    dummy.terrain_horizon_state = SimpleNamespace(ground_elevation_m=17.5)
     dummy._refresh_water_overlay_active_points = lambda: None
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request")
@@ -887,6 +887,70 @@ def test_toggle_terrain_horizon_enables_opacity_and_requests_background_update()
     assert dummy.terrain_horizon_opacity == 0.25
     assert dummy._action_toggle_terrain_horizon.isChecked() is True
     assert calls == ["invalidate", "toggle-on", "toggle-on", "request"]
+
+
+def test_toggle_terrain_horizon_off_keeps_retained_ground_elevation() -> None:
+    dummy = SimpleNamespace()
+    dummy._terrain_horizon_gui_allowed = True
+    dummy.terrain_horizon_opacity = 0.25
+    dummy._terrain_horizon_opacity_when_enabled = 0.25
+    dummy._action_toggle_terrain_horizon = _DummyAction(True)
+    dummy.terrain_horizon_state = SimpleNamespace(ground_elevation_m=42.0)
+    dummy._refresh_water_overlay_active_points = lambda: None
+    calls: list[str] = []
+    dummy.request_client_update = lambda: calls.append("request")
+    dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
+    dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(
+        str(kwargs.get("reason"))
+    )
+    dummy.start_background_water_overlay_update = lambda **kwargs: calls.append(
+        str(kwargs.get("reason"))
+    )
+    dummy.update = lambda: calls.append("update")
+
+    SkyWindow.toggle_terrain_horizon(dummy)
+
+    assert dummy.terrain_horizon_opacity == 0.0
+    assert dummy.terrain_horizon_state.ground_elevation_m == 42.0
+    assert dummy._action_toggle_terrain_horizon.isChecked() is False
+    assert calls == ["invalidate", "toggle-off", "request"]
+
+
+def test_water_overlay_ground_elevation_prefers_retained_terrain_ground() -> None:
+    dummy = SimpleNamespace(
+        terrain_horizon_state=SimpleNamespace(ground_elevation_m=123.4),
+        viewer_data=SimpleNamespace(ground_elevation_m=17.5),
+    )
+
+    got = SkyWindowUpdatesMixin._water_overlay_ground_elevation_m(dummy)
+
+    assert got == 123.4
+
+
+def test_terrain_horizon_failed_keeps_retained_ground_elevation() -> None:
+    dummy = SimpleNamespace()
+    dummy.terrain_horizon_state = SimpleNamespace(
+        ground_elevation_m=58.0,
+        clear_profile=lambda: None,
+        set_error_banner=lambda _text: None,
+    )
+    dummy.state = SimpleNamespace(
+        terrain_horizon_profile=[(1.0, 2.0)],
+        terrain_horizon_profile_distances_m=[1.0],
+        terrain_horizon_secondary_profile_altaz_layers=[[(1.0, 2.0)]],
+        terrain_horizon_secondary_profile_distances_m_layers=[[1.0]],
+    )
+    dummy._refresh_water_overlay_active_points = lambda: None
+    dummy._is_shutting_down = True
+    dummy.start_background_water_overlay_update = lambda **_kwargs: (_ for _ in ()).throw(
+        AssertionError("should not restart water overlay")
+    )
+    dummy._compositor = SimpleNamespace(invalidate=lambda: None)
+    dummy.request_client_update = lambda: None
+
+    SkyWindowUpdatesMixin._on_terrain_horizon_failed(dummy, {"banner": "Terrain horizon: unavailable"})
+
+    assert dummy.terrain_horizon_state.ground_elevation_m == 58.0
 
 
 def test_toggle_earth_guide_respects_cli_lockout() -> None:

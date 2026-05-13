@@ -2960,8 +2960,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             and self._action_toggle_terrain_horizon.isChecked() != enable_terrain
         ):
             self._action_toggle_terrain_horizon.setChecked(enable_terrain)
-        if not enable_terrain:
-            self.terrain_horizon_state.ground_elevation_m = 0.0
         self._refresh_water_overlay_active_points()
         self._compositor.invalidate()
         if enable_terrain:
