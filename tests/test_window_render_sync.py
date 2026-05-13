@@ -3950,7 +3950,6 @@ def test_draw_terrain_secondary_ridges_use_fixed_widths(monkeypatch) -> None:
         view_center=(45.0, 180.0),
         opacity=0.38,
         line_width_scale=1.0,
-        fast_mode=False,
         is_in_fov_func=lambda *_args, **_kwargs: True,
         altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
             float(az),
@@ -4022,7 +4021,6 @@ def test_draw_terrain_secondary_ridges_swaps_visible_and_occluded_colors(monkeyp
         view_center=(45.0, 180.0),
         opacity=0.38,
         line_width_scale=1.0,
-        fast_mode=False,
         is_in_fov_func=lambda *_args, **_kwargs: True,
         altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
             float(az),
@@ -4096,7 +4094,6 @@ def test_secondary_ridge_overlay_alpha_is_scaled_down(monkeypatch) -> None:
         view_center=(45.0, 180.0),
         opacity=0.38,
         line_width_scale=1.0,
-        fast_mode=False,
         is_in_fov_func=lambda *_args, **_kwargs: True,
         altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
             float(az),
@@ -4154,7 +4151,6 @@ def test_draw_terrain_secondary_ridges_bridges_seam_near_zero(monkeypatch) -> No
         view_center=(45.0, 180.0),
         opacity=0.38,
         line_width_scale=1.0,
-        fast_mode=False,
         is_in_fov_func=lambda *_args, **_kwargs: True,
         altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
             math.sin(math.radians(float(az))),
