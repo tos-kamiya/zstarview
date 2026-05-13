@@ -16,7 +16,7 @@ from ..search.jpl import project_jpl_target_altaz_from_state_vector
 logger = logging.getLogger(__name__)
 _JPL_DEBUG_ENV = "ZSTARVIEW_DEBUG_JPL_SEARCH"
 _STATUS_CLOUD = "☁"
-_STATUS_WATER = "💧"
+_STATUS_WATER = "W"
 _STATUS_SATELLITE = "🛰"
 _STATUS_AIRCRAFT = "✈"
 _STATUS_TERRAIN = "▲"
@@ -179,7 +179,7 @@ class SkyWindowUpdatesMixin:
             return _status_segment(_STATUS_WATER, "", hidden=True)
         state = self.water_overlay_state
         if state.banner_text:
-            detail = _strip_status_prefix(state.banner_text, "Water surface:")
+            detail = _strip_status_prefix(state.banner_text, "Water:")
             return _status_segment(_STATUS_WATER, detail)
         points = state.points
         if points is None:
@@ -188,11 +188,15 @@ class SkyWindowUpdatesMixin:
         source = str(state.current_source or "").strip()
         mode = str(state.current_mode or "").strip()
         detail_parts: list[str] = []
-        if source:
-            detail_parts.append(source)
-        detail_parts.append(f"{count} pts")
         if mode:
             detail_parts.append(mode)
+        if source:
+            lowered = source.casefold()
+            if "cache" in lowered:
+                detail_parts.append("cache")
+            elif "overpass" in lowered:
+                detail_parts.append("overpass")
+        detail_parts.append(str(count))
         return _status_segment(_STATUS_WATER, " ".join(detail_parts))
 
     def _urban_outline_status_line(self) -> str:
@@ -671,11 +675,12 @@ class SkyWindowUpdatesMixin:
         )
 
     def _water_overlay_ground_elevation_m(self) -> float:
+        viewer_ground_m = float(getattr(self.viewer_data, "ground_elevation_m", 0.0) or 0.0)
         if self.terrain_horizon_opacity <= 0.0:
-            return 0.0
+            return max(0.0, viewer_ground_m)
         ground_m = self.terrain_horizon_state.ground_elevation_m
         if ground_m is None:
-            return 0.0
+            return max(0.0, viewer_ground_m)
         return max(0.0, float(ground_m))
 
     def _water_overlay_use_dem_ground(self) -> bool:

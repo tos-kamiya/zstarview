@@ -6,12 +6,12 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
-from typing import Any, Iterable, Sequence
+from typing import Any, Callable, Iterable, Sequence
 
 import numpy as np
 
 from .location_resolver.place_projection import project_place_target_to_altaz
-from .terrain import WGS84_GEOD
+from .terrain import WGS84_GEOD, build_ray_scan_grid
 
 
 EARTH_RADIUS_KM = 6371.0088
@@ -570,12 +570,41 @@ def _point_in_footprint(lon_deg: float, lat_deg: float, footprint: WaterPolygonF
     return False
 
 
+def _footprint_explicit_surface_height_m(footprint: WaterPolygonFootprint) -> float | None:
+    tags = footprint.tags
+    raw_ele = tags.get("ele")
+    if raw_ele is not None:
+        try:
+            return float(raw_ele)
+        except (TypeError, ValueError):
+            pass
+    raw_water_level = tags.get("water_level")
+    if raw_water_level is not None:
+        try:
+            return float(raw_water_level)
+        except (TypeError, ValueError):
+            pass
+    return None
+
+
+def _footprint_is_sea_like(footprint: WaterPolygonFootprint) -> bool:
+    if footprint.kind == "coastline":
+        return True
+    tags = footprint.tags
+    if tags.get("natural") == "coastline":
+        return True
+    water_tag = tags.get("water")
+    return water_tag in {"sea", "ocean"}
+
+
 def sample_water_overlay_points(
     footprints: Sequence[WaterPolygonFootprint],
     *,
     observer_lat_deg: float,
     observer_lon_deg: float,
     observer_height_m: float,
+    fallback_surface_height_m: float = 0.0,
+    target_ground_elevation_m_sampler: Callable[[float, float], float] | None = None,
     max_distance_km: float = DEFAULT_WATER_RADIUS_KM,
     sample_step_m: float = DEFAULT_WATER_SAMPLE_STEP_M,
     azimuth_step_deg: float = DEFAULT_WATER_AZIMUTH_STEP_DEG,
@@ -591,37 +620,51 @@ def sample_water_overlay_points(
         float(max_distance_km),
         float(sample_step_m),
     )
-    azimuths_deg = tuple(float(value) for value in np.arange(0.0, 360.0, float(azimuth_step_deg), dtype=np.float64))
-    points: list[WaterOverlayPoint] = []
     observer_lon = float(observer_lon_deg)
     observer_lat = float(observer_lat_deg)
+    ray_scan = build_ray_scan_grid(
+        geod=WGS84_GEOD,
+        observer_latitude_deg=observer_lat,
+        observer_longitude_deg=observer_lon,
+        azimuth_step_deg=float(azimuth_step_deg),
+        distance_samples_m=distances_m,
+    )
+    points: list[WaterOverlayPoint] = []
     observer_height = float(observer_height_m)
     footprint_bounds = tuple((_footprint_bounds(footprint), footprint) for footprint in footprints)
 
-    for azimuth_deg in azimuths_deg:
-        for distance_m in distances_m:
-            lon_deg, lat_deg, _ = WGS84_GEOD.fwd(
-                observer_lon,
-                observer_lat,
-                float(azimuth_deg),
-                float(distance_m),
-            )
-            lon = float(lon_deg)
-            lat = float(lat_deg)
-            if not any(
-                (bounds[0] <= lon <= bounds[2])
-                and (bounds[1] <= lat <= bounds[3])
-                and _point_in_footprint(lon, lat, footprint)
-                for bounds, footprint in footprint_bounds
-            ):
+    for row_index, azimuth_deg in enumerate(ray_scan.azimuths_deg):
+        for col_index, distance_m in enumerate(ray_scan.distance_grid_m[row_index]):
+            lon = float(ray_scan.ray_lon_deg[row_index, col_index])
+            lat = float(ray_scan.ray_lat_deg[row_index, col_index])
+            matched_footprint = None
+            for bounds, footprint in footprint_bounds:
+                if not ((bounds[0] <= lon <= bounds[2]) and (bounds[1] <= lat <= bounds[3])):
+                    continue
+                if _point_in_footprint(lon, lat, footprint):
+                    matched_footprint = footprint
+                    break
+            if matched_footprint is None:
                 continue
+            explicit_target_height_m = _footprint_explicit_surface_height_m(matched_footprint)
+            if explicit_target_height_m is not None:
+                target_height_m = explicit_target_height_m
+            elif _footprint_is_sea_like(matched_footprint):
+                target_height_m = 0.0
+            elif target_ground_elevation_m_sampler is not None:
+                try:
+                    target_height_m = float(target_ground_elevation_m_sampler(lat, lon))
+                except Exception:
+                    target_height_m = float(fallback_surface_height_m)
+            else:
+                target_height_m = float(fallback_surface_height_m)
             projection = project_place_target_to_altaz(
                 observer_latitude_deg=observer_lat,
                 observer_longitude_deg=observer_lon,
                 observer_height_m=observer_height,
                 target_latitude_deg=lat,
                 target_longitude_deg=lon,
-                target_height_m=0.0,
+                target_height_m=target_height_m,
             )
             points.append(
                 WaterOverlayPoint(

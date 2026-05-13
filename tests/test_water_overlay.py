@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from zstarview.water_overlay import (
+    WaterPolygonFootprint,
     WaterSurfacePatch,
     assemble_rings_from_segments,
     classify_water_surface_mode,
     extract_water_polygons,
+    sample_water_overlay_points,
 )
 
 
@@ -114,3 +116,81 @@ def test_water_surface_patch_classifies_flat_and_sloped() -> None:
     assert flat_patch.surface_mode == "flat"
     assert sloped_patch.surface_mode == "sloped"
     assert classify_water_surface_mode((100.0, 101.0, 102.0), flat_threshold_m=3.0) == "flat"
+
+
+def test_sample_water_overlay_points_uses_fallback_surface_height() -> None:
+    footprint = WaterPolygonFootprint(
+        water_id="lake",
+        kind="natural_water",
+        outer_rings_lonlat=(
+            (
+                (-0.01, -0.01),
+                (0.01, -0.01),
+                (0.01, 0.01),
+                (-0.01, 0.01),
+                (-0.01, -0.01),
+            ),
+        ),
+        inner_rings_lonlat=(),
+        source="way",
+        tags={"natural": "water"},
+    )
+
+    sea_level_points = sample_water_overlay_points(
+        (footprint,),
+        observer_lat_deg=0.0,
+        observer_lon_deg=0.0,
+        observer_height_m=100.0,
+        fallback_surface_height_m=0.0,
+        max_distance_km=0.2,
+        sample_step_m=100.0,
+        azimuth_step_deg=90.0,
+    )
+    local_surface_points = sample_water_overlay_points(
+        (footprint,),
+        observer_lat_deg=0.0,
+        observer_lon_deg=0.0,
+        observer_height_m=100.0,
+        fallback_surface_height_m=100.0,
+        max_distance_km=0.2,
+        sample_step_m=100.0,
+        azimuth_step_deg=90.0,
+    )
+
+    assert sea_level_points
+    assert local_surface_points
+    assert max(point.alt_deg for point in local_surface_points) > -0.01
+    assert max(point.alt_deg for point in sea_level_points) < -20.0
+
+
+def test_sample_water_overlay_points_keeps_coastline_at_sea_level() -> None:
+    footprint = WaterPolygonFootprint(
+        water_id="coast",
+        kind="coastline",
+        outer_rings_lonlat=(
+            (
+                (-0.01, -0.01),
+                (0.01, -0.01),
+                (0.01, 0.01),
+                (-0.01, 0.01),
+                (-0.01, -0.01),
+            ),
+        ),
+        inner_rings_lonlat=(),
+        source="coastline",
+        tags={"natural": "coastline"},
+    )
+
+    points = sample_water_overlay_points(
+        (footprint,),
+        observer_lat_deg=0.0,
+        observer_lon_deg=0.0,
+        observer_height_m=100.0,
+        fallback_surface_height_m=100.0,
+        max_distance_km=0.2,
+        sample_step_m=100.0,
+        azimuth_step_deg=90.0,
+    )
+
+    assert points
+    assert max(point.alt_deg for point in points) < -20.0

@@ -5,6 +5,7 @@ import threading
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Callable, Optional
 
 from PySide6.QtCore import QObject, Signal
@@ -21,6 +22,11 @@ from ..water_overlay import (
     fetch_overpass_json,
     sample_water_overlay_points,
 )
+from ..terrain import GeoTiffDem
+from ..terrain import build_download_bbox
+from ..terrain import fetch_copernicus_dem
+from ..terrain import sample_ground_elevation
+from ..paths import CACHE_PATH
 from .water_overlay_cache import (
     WaterOverlayCacheSnapshot,
     WATER_OVERLAY_CACHE_RETENTION_SECONDS,
@@ -65,6 +71,7 @@ class WaterOverlayController(QObject):
         self._endpoint = endpoint
         self._user_agent = user_agent
         self._timeout_s = float(timeout_s)
+        self._dem_cache_dir = Path(CACHE_PATH) / "copernicus-dem"
         self._cache_retention_seconds = int(WATER_OVERLAY_CACHE_RETENTION_SECONDS)
         self._running = False
         self._stopping = False
@@ -155,7 +162,7 @@ class WaterOverlayController(QObject):
             self._running = True
             self._active_key = key
 
-        self.water_started.emit({"banner": "Water surface: loading..."})
+        self.water_started.emit({"banner": "Water: loading..."})
         try:
             self._spawn_worker(
                 target=self._run_update,
@@ -311,7 +318,7 @@ class WaterOverlayController(QObject):
                 if should_emit:
                     self._failed_key = key
             if should_emit:
-                self.water_failed.emit({"banner": f"Water surface: failed ({exc})"})
+                self.water_failed.emit({"banner": f"Water: failed ({exc})"})
         finally:
             with self._lock:
                 self._running = False
@@ -430,30 +437,79 @@ class WaterOverlayController(QObject):
         observer_ground_m: float,
         use_dem_ground: bool,
     ) -> tuple[tuple, tuple | None, tuple | None]:
+        observer_absolute_height_m = float(observer_height_m) + float(observer_ground_m)
         sea_points = scope_cache.sea_points
         if sea_points is None:
             sea_points = sample_water_overlay_points(
                 scope_cache.footprints,
                 observer_lat_deg=observer_lat_deg,
                 observer_lon_deg=observer_lon_deg,
-                observer_height_m=observer_height_m,
+                observer_height_m=observer_absolute_height_m,
+                fallback_surface_height_m=observer_ground_m,
                 max_distance_km=self._radius_km,
                 sample_step_m=self._sample_step_m,
                 azimuth_step_deg=self._azimuth_step_deg,
             )
         dem_points = scope_cache.dem_points
         if use_dem_ground and dem_points is None:
+            target_ground_sampler = self._build_target_ground_sampler(
+                observer_lat_deg=observer_lat_deg,
+                observer_lon_deg=observer_lon_deg,
+            )
             dem_points = sample_water_overlay_points(
                 scope_cache.footprints,
                 observer_lat_deg=observer_lat_deg,
                 observer_lon_deg=observer_lon_deg,
-                observer_height_m=observer_height_m + observer_ground_m,
+                observer_height_m=observer_absolute_height_m,
+                fallback_surface_height_m=observer_ground_m,
+                target_ground_elevation_m_sampler=target_ground_sampler,
                 max_distance_km=self._radius_km,
                 sample_step_m=self._sample_step_m,
                 azimuth_step_deg=self._azimuth_step_deg,
             )
         active_points = dem_points if use_dem_ground and dem_points is not None else sea_points
         return active_points, sea_points, dem_points
+
+    def _build_target_ground_sampler(
+        self,
+        *,
+        observer_lat_deg: float,
+        observer_lon_deg: float,
+    ) -> Callable[[float, float], float] | None:
+        try:
+            download = fetch_copernicus_dem(
+                observer_lat_deg=float(observer_lat_deg),
+                observer_lon_deg=float(observer_lon_deg),
+                max_distance_km=self._radius_km,
+                margin_km=10.0,
+                cache_dir=self._dem_cache_dir,
+            )
+            dem = GeoTiffDem(download.paths, default_elevation_m=0.0)
+        except Exception:
+            return None
+
+        try:
+            bbox = build_download_bbox(
+                lat_deg=float(observer_lat_deg),
+                lon_deg=float(observer_lon_deg),
+                radius_km=self._radius_km + 10.0,
+            )
+            dem_grid = dem.build_grid(bbox)
+        except Exception:
+            dem.close()
+            return None
+
+        dem.close()
+
+        def sampler(latitude_deg: float, longitude_deg: float) -> float:
+            return sample_ground_elevation(
+                dem_grid,
+                latitude_deg=float(latitude_deg),
+                longitude_deg=float(longitude_deg),
+                dem_resampling="bilinear",
+            )
+
+        return sampler
 
     def _store_scope_cache(
         self,

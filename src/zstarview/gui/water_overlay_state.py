@@ -44,19 +44,15 @@ class WaterOverlayState:
         if use_dem and self.dem_points is not None:
             self.points = self.dem_points
             self.current_mode = "dem"
-            self.current_source = "Water: DEM"
         elif use_dem and self.sea_level_points is not None:
             self.points = self.sea_level_points
             self.current_mode = "sea"
-            self.current_source = "Water: sea-level"
         elif not use_dem and self.sea_level_points is not None:
             self.points = self.sea_level_points
             self.current_mode = "sea"
-            self.current_source = "Water: sea-level"
         else:
             self.points = None
             self.current_mode = None
-            self.current_source = None
 
     def set_error_banner(self, text: str) -> None:
         self.banner_text = text
