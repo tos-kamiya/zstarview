@@ -167,6 +167,25 @@ class _StartupBootstrap(QObject):
             self.failed.emit(str(exc))
 
 
+class _StartupRevealGate:
+    """Track when startup overlay can be hidden."""
+
+    def __init__(self, *, requires_terrain: bool) -> None:
+        self._initial_loaded = False
+        self._terrain_resolved = not bool(requires_terrain)
+
+    def mark_initial_loaded(self) -> bool:
+        self._initial_loaded = True
+        return self.is_ready()
+
+    def mark_terrain_resolved(self) -> bool:
+        self._terrain_resolved = True
+        return self.is_ready()
+
+    def is_ready(self) -> bool:
+        return self._initial_loaded and self._terrain_resolved
+
+
 def _load_star_catalog_for_launch(vmag_limit: float | None):
     logger.info("Loading city and star data...")
     try:
@@ -441,6 +460,21 @@ def main() -> None:
 
         def _on_initial_loaded() -> None:
             nonlocal pending_startup_search_target
+            if not startup_reveal_gate.mark_initial_loaded():
+                return
+            _detach_startup_logging(hide_overlay=True)
+            if pending_startup_search_target is not None:
+                target = pending_startup_search_target
+                pending_startup_search_target = None
+                QTimer.singleShot(
+                    0,
+                    lambda: main_win._jump_to_search_target(target),
+                )
+
+        def _on_startup_terrain_resolved(_payload: object) -> None:
+            nonlocal pending_startup_search_target
+            if not startup_reveal_gate.mark_terrain_resolved():
+                return
             _detach_startup_logging(hide_overlay=True)
             if pending_startup_search_target is not None:
                 target = pending_startup_search_target
@@ -464,7 +498,17 @@ def main() -> None:
             if close_on_startup_error:
                 QTimer.singleShot(0, lambda: app.exit(1))
 
+        startup_reveal_gate = _StartupRevealGate(
+            requires_terrain=main_win.terrain_horizon_opacity > 0.0
+        )
         main_win.initial_data_loaded.connect(_on_initial_loaded)
+        if main_win.terrain_horizon_opacity > 0.0:
+            main_win._terrain_horizon_controller.terrain_ready.connect(
+                _on_startup_terrain_resolved
+            )
+            main_win._terrain_horizon_controller.terrain_failed.connect(
+                _on_startup_terrain_resolved
+            )
         startup_bootstrap.finished.connect(_on_startup_ready)
         startup_bootstrap.failed.connect(_on_startup_failed)
         QTimer.singleShot(0, startup_bootstrap.start)

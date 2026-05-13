@@ -398,7 +398,6 @@ class StartupLogOverlay(QTextEdit):
         self.append(f"<span style=\"color: {color}\">{escape(line)}</span>")
         scrollbar = self.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
-        QApplication.processEvents()
 
 
 class ResizeGripWidget(QWidget):

@@ -58,6 +58,7 @@
 - `src/zstarview/gui/viewer.py`
   - GUI アプリケーションの主エントリポイント
   - 起動シーケンスの組み立て
+  - startup overlay は初期 sky データと terrain DEM の両方が揃うまで維持し、ready/fail の両経路で初回表示の切り替えを行う
 - `src/zstarview/cli/args.py`
   - CLI オプション定義と値解釈
   - タワー一覧・タワー詳細 JSON 出力の即時終了オプションを扱う

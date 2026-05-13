@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from types import SimpleNamespace
+from typing import Callable
 
 import pytest
 
@@ -13,6 +14,7 @@ class _DummyApp:
     def __init__(self) -> None:
         self.quit_on_last: list[bool] = []
         self.exit_codes: list[int] = []
+        self.terrain_result: tuple[str, object] | None = None
 
     def setQuitOnLastWindowClosed(self, value: bool) -> None:
         self.quit_on_last.append(bool(value))
@@ -24,6 +26,13 @@ class _DummyApp:
         self.exit_codes.append(int(code))
 
     def exec(self) -> int:
+        if self.terrain_result is not None and _DummyWindow.last_instance is not None:
+            signal_name, payload = self.terrain_result
+            signal = getattr(
+                _DummyWindow.last_instance._terrain_horizon_controller, signal_name
+            )
+            signal.emit(payload)
+            self.terrain_result = None
         return self.exit_codes[-1] if self.exit_codes else 0
 
 
@@ -61,17 +70,44 @@ class _DummyOverlay:
         return None
 
 
+class _DummySignal:
+    def __init__(self) -> None:
+        self._callbacks: list[Callable[..., None]] = []
+
+    def connect(self, fn: Callable[..., None]) -> None:
+        self._callbacks.append(fn)
+
+    def emit(self, *args, **kwargs) -> None:
+        for fn in list(self._callbacks):
+            fn(*args, **kwargs)
+
+
+class _DummyTerrainController:
+    def __init__(self) -> None:
+        self.terrain_started = _DummySignal()
+        self.terrain_ready = _DummySignal()
+        self.terrain_failed = _DummySignal()
+
+
 class _DummyWindow:
     last_instance = None
 
     def __init__(self, *args, **kwargs) -> None:
         type(self).last_instance = self
+        user_options = kwargs.get("user_options")
+        if user_options is None and len(args) >= 3:
+            user_options = args[2]
         self.overlay = _DummyOverlay()
         self.shown = 0
         self.overlay_raise_calls = 0
         self.applied_delta = None
         self.applied_viewer_data = None
-        self.initial_data_loaded = SimpleNamespace(connect=lambda _fn: None)
+        self.terrain_horizon_opacity = float(
+            getattr(user_options, "terrain_horizon_opacity", 0.0)
+        )
+        self.post_initial_hidden_states: list[int] = []
+        self.initial_data_loaded = _DummySignal()
+        self._terrain_horizon_controller = _DummyTerrainController()
 
     def _ensure_startup_log_overlay(self) -> _DummyOverlay:
         return self.overlay
@@ -86,7 +122,8 @@ class _DummyWindow:
         self.applied_viewer_data = viewer_data
 
     def start_initial_data_load(self) -> None:
-        return None
+        self.initial_data_loaded.emit()
+        self.post_initial_hidden_states.append(self.overlay.hidden)
 
     def _hide_startup_log_overlay(self) -> None:
         self.overlay.hide()
@@ -158,7 +195,12 @@ def _make_args(*, close_on_startup_error: bool) -> SimpleNamespace:
     )
 
 
-def _install_common_mocks(monkeypatch, args: SimpleNamespace):
+def _install_common_mocks(
+    monkeypatch,
+    args: SimpleNamespace,
+    *,
+    resolve_location_raises: bool = True,
+):
     app = _DummyApp()
     root_logger = _DummyRootLogger()
     monkeypatch.setattr(viewer, "parse_args", lambda: args)
@@ -170,12 +212,28 @@ def _install_common_mocks(monkeypatch, args: SimpleNamespace):
     monkeypatch.setattr(viewer, "_load_star_catalog_for_launch", lambda _vmag_limit: object())
     monkeypatch.setattr(viewer, "_load_dso_catalog_for_launch", lambda: None)
     monkeypatch.setattr(viewer, "prepare_window_catalogs", lambda *args, **kwargs: object())
-    monkeypatch.setattr(viewer, "prepare_window_user_options", lambda **kwargs: object())
+    monkeypatch.setattr(viewer, "prepare_window_user_options", lambda **kwargs: SimpleNamespace(**kwargs))
     monkeypatch.setattr(viewer, "prepare_window_runtime_options", lambda **kwargs: object())
-    def _raise_location_error(*_args, **_kwargs):
-        raise LocationResolveError()
+    if resolve_location_raises:
+        def _raise_location_error(*_args, **_kwargs):
+            raise LocationResolveError()
 
-    monkeypatch.setattr(viewer, "resolve_launch_location", _raise_location_error)
+        monkeypatch.setattr(viewer, "resolve_launch_location", _raise_location_error)
+    else:
+        monkeypatch.setattr(
+            viewer,
+            "resolve_launch_location",
+            lambda *_args, **_kwargs: SimpleNamespace(
+                display_name="Dummy City",
+                lat=35.0,
+                lon=139.0,
+                tz="UTC",
+                observer_height_m=3.0,
+                ground_elevation_m=42.0,
+                location_height_label=None,
+                location_height_m=42.0,
+            ),
+        )
     monkeypatch.setattr("zstarview.gui.window.FramelessSkyWindow", _DummyWindow)
     monkeypatch.setattr("zstarview.gui.window.StandardSkyWindow", _DummyWindow)
     return app, root_logger
@@ -226,3 +284,48 @@ def test_main_auto_closes_on_startup_error_when_requested(monkeypatch) -> None:
     assert _DummyWindow.last_instance.overlay.hidden == 0
     assert _DummyWindow.last_instance.overlay_raise_calls >= 1
     assert any("Startup failed" in line for line, _level in _DummyWindow.last_instance.overlay.lines)
+
+
+def test_main_keeps_overlay_visible_until_terrain_resolves(monkeypatch) -> None:
+    args = _make_args(close_on_startup_error=False)
+    args.terrain_horizon_opacity = 0.25
+    app, root_logger = _install_common_mocks(
+        monkeypatch,
+        args,
+        resolve_location_raises=False,
+    )
+    app.terrain_result = ("terrain_ready", {"ground_elevation_m": 12.0})
+
+    with pytest.raises(SystemExit) as exc_info:
+        viewer.main()
+
+    assert exc_info.value.code == 0
+    assert app.quit_on_last == [True]
+    assert len(root_logger.added) == 1
+    assert root_logger.removed == root_logger.added
+    assert _DummyWindow.last_instance is not None
+    assert _DummyWindow.last_instance.overlay.shown == 1
+    assert _DummyWindow.last_instance.post_initial_hidden_states == [0]
+    assert _DummyWindow.last_instance.overlay.hidden == 1
+
+
+def test_main_hides_overlay_without_terrain_when_not_requested(monkeypatch) -> None:
+    args = _make_args(close_on_startup_error=False)
+    args.terrain_horizon_opacity = 0.0
+    app, root_logger = _install_common_mocks(
+        monkeypatch,
+        args,
+        resolve_location_raises=False,
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        viewer.main()
+
+    assert exc_info.value.code == 0
+    assert app.quit_on_last == [True]
+    assert len(root_logger.added) == 1
+    assert root_logger.removed == root_logger.added
+    assert _DummyWindow.last_instance is not None
+    assert _DummyWindow.last_instance.overlay.shown == 1
+    assert _DummyWindow.last_instance.post_initial_hidden_states == [1]
+    assert _DummyWindow.last_instance.overlay.hidden == 1

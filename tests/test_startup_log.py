@@ -55,3 +55,18 @@ def test_startup_log_overlay_colors_errors() -> None:
     html = overlay.toHtml()
     assert "startup failed" in html
     assert "#ff8080" in html
+
+
+def test_startup_log_overlay_append_line_does_not_process_events(monkeypatch) -> None:
+    parent = QWidget()
+    overlay = StartupLogOverlay(parent)
+    calls: list[int] = []
+
+    def _process_events() -> None:
+        calls.append(1)
+
+    monkeypatch.setattr(QApplication, "processEvents", staticmethod(_process_events))
+
+    overlay.append_line("startup line", logging.INFO)
+
+    assert calls == []
