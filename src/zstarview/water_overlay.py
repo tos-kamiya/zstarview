@@ -73,6 +73,8 @@ class WaterOverlayPoint:
     az_deg: float
     distance_km: float
     alpha_scale: float = 1.0
+    scan_azimuth_index: int | None = None
+    scan_distance_index: int | None = None
 
 
 def bbox_from_point(lat_deg: float, lon_deg: float, radius_km: float) -> tuple[float, float, float, float]:
@@ -673,6 +675,8 @@ def sample_water_overlay_points(
                     az_deg=float(projection.az_deg),
                     distance_km=float(projection.distance_km),
                     alpha_scale=water_overlay_alpha_scale(float(distance_m), float(max_distance_km) * 1000.0),
+                    scan_azimuth_index=int(row_index),
+                    scan_distance_index=int(col_index),
                 )
             )
     return tuple(points)

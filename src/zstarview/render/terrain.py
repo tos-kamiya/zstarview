@@ -1003,6 +1003,7 @@ def draw_water_overlay_points(
     line_width_scale: float = 1.0,
     edge_fov_deg: float = FIELD_OF_VIEW_DEG,
     content_fov_deg: float = FIELD_OF_VIEW_DEG,
+    pairwise_thinning: bool = True,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
     altaz_to_normalized_xy_func: Callable[[float, float, tuple[float, float]], tuple[float, float]] = altaz_to_normalized_xy,
     normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], tuple[float, float]] = normalized_to_screen_xy,
@@ -1012,6 +1013,10 @@ def draw_water_overlay_points(
     if not water_points or layer_opacity <= 0.0:
         return
 
+    points_to_draw = (
+        _thin_water_overlay_points_pairwise(water_points) if pairwise_thinning else list(water_points)
+    )
+
     painter.save()
     dot_color = QColor(
         *WATER_OVERLAY_POINT_COLOR_RGB,
@@ -1020,7 +1025,7 @@ def draw_water_overlay_points(
     painter.setPen(Qt.PenStyle.NoPen)
     scale = max(1.0, float(line_width_scale))
     base_radius = WATER_OVERLAY_POINT_RADIUS_PX * scale
-    for point in water_points:
+    for point in points_to_draw:
         alt = float(point.alt_deg)
         az = float(point.az_deg)
         if not is_in_fov_func(alt, az, view_center, fov_deg=content_fov_deg):
@@ -1056,3 +1061,42 @@ def draw_water_overlay_points(
         radius = base_radius
         painter.drawEllipse(QPointF(float(px), float(py)), radius, radius)
     painter.restore()
+
+
+def _thin_water_overlay_points_pairwise(
+    water_points: list[WaterOverlayPoint],
+) -> list[WaterOverlayPoint]:
+    grouped: dict[tuple[int, int], list[WaterOverlayPoint]] = {}
+    fallback: list[WaterOverlayPoint] = []
+    for point in water_points:
+        azimuth_index = getattr(point, "scan_azimuth_index", None)
+        distance_index = getattr(point, "scan_distance_index", None)
+        if not isinstance(azimuth_index, int) or not isinstance(distance_index, int):
+            fallback.append(point)
+            continue
+        group_key = (int(azimuth_index), int(distance_index) // 2)
+        grouped.setdefault(group_key, []).append(point)
+    if not grouped:
+        return fallback
+    ordered_grouped: list[WaterOverlayPoint] = []
+    for (azimuth_index, pair_index), points in sorted(grouped.items()):
+        preferred_parity = azimuth_index % 2
+        def _scan_distance_parity(point: WaterOverlayPoint) -> int:
+            distance_index = getattr(point, "scan_distance_index", None)
+            if not isinstance(distance_index, int):
+                return -1
+            return distance_index % 2
+
+        chosen = next(
+            (point for point in points if _scan_distance_parity(point) == preferred_parity),
+            None,
+        )
+        if chosen is None:
+            chosen = min(
+                points,
+                key=lambda item: int(getattr(item, "scan_distance_index", 0) or 0),
+            )
+        ordered_grouped.append(chosen)
+    if fallback:
+        ordered_grouped.extend(fallback)
+    return ordered_grouped

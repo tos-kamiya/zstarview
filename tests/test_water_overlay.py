@@ -4,11 +4,13 @@ from zstarview.water_overlay import (
     WaterPolygonFootprint,
     WaterSurfacePatch,
     assemble_rings_from_segments,
+    WaterOverlayPoint,
     classify_water_surface_mode,
     build_geometric_distance_samples,
     extract_water_polygons,
     sample_water_overlay_points,
 )
+from zstarview.render.terrain import _thin_water_overlay_points_pairwise
 
 
 def _node(node_id: int, lon: float, lat: float) -> dict[str, object]:
@@ -203,3 +205,23 @@ def test_build_geometric_distance_samples_stays_dense_farther_out() -> None:
     assert len(samples) > 40
     assert samples[-1] <= 2000.0
     assert (samples[-1] - samples[-2]) < 300.0
+
+
+def test_thin_water_overlay_points_pairwise_keeps_one_point_per_pair() -> None:
+    points = [
+        WaterOverlayPoint("water", 1.0, 10.0, 0.1, scan_azimuth_index=0, scan_distance_index=0),
+        WaterOverlayPoint("water", 2.0, 20.0, 0.2, scan_azimuth_index=0, scan_distance_index=1),
+        WaterOverlayPoint("water", 3.0, 30.0, 0.3, scan_azimuth_index=0, scan_distance_index=2),
+        WaterOverlayPoint("water", 4.0, 40.0, 0.4, scan_azimuth_index=0, scan_distance_index=3),
+        WaterOverlayPoint("water", 6.0, 60.0, 0.6, scan_azimuth_index=1, scan_distance_index=0),
+        WaterOverlayPoint("water", 7.0, 70.0, 0.7, scan_azimuth_index=1, scan_distance_index=1),
+        WaterOverlayPoint("water", 8.0, 80.0, 0.8, scan_azimuth_index=1, scan_distance_index=2),
+        WaterOverlayPoint("water", 9.0, 90.0, 0.9, scan_azimuth_index=1, scan_distance_index=3),
+        WaterOverlayPoint("water", 5.0, 50.0, 0.5),
+    ]
+
+    got = _thin_water_overlay_points_pairwise(points)
+
+    assert [point.scan_distance_index for point in got if point.scan_azimuth_index == 0] == [0, 2]
+    assert [point.scan_distance_index for point in got if point.scan_azimuth_index == 1] == [1, 3]
+    assert any(point.scan_distance_index is None for point in got)
