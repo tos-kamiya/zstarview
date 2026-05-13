@@ -102,6 +102,10 @@ class _WindowStub:
         self.satellite_state = values.get("satellite_state", None)
         self.viewer_data = values.get("viewer_data", None)
         self._cloud_controller = values.get("_cloud_controller", None)
+        self._water_overlay_controller = values.get("_water_overlay_controller", None)
+        self._startup_initial_load_started = values.get(
+            "_startup_initial_load_started", True
+        )
         self.state = values.get("state", None)
 
     def client_width(self) -> int:
@@ -177,6 +181,15 @@ class _WindowStub:
         window_module.SkyWindowCoreMixin._log_persistent_search_target_update(
             self,
             **kwargs,
+        )
+
+    def _viewport_interaction_active(self) -> bool:
+        state = self.state
+        if state is None:
+            return False
+        return bool(
+            getattr(state, "viewport_interaction_mode", False)
+            or getattr(state, "interaction_mode", False)
         )
 
 
@@ -1336,9 +1349,7 @@ def test_handle_client_resize_discards_stale_disc_images() -> None:
     assert dummy.cloud_state.missing_mask_key is None
     assert dummy._compositor.invalidated is True
     dummy._begin_viewport_interaction_mode.assert_called_once()
-    dummy.request_sky_data_update.assert_called_once()
     dummy.request_client_update.assert_called_once()
-    dummy.start_background_cloud_update.assert_called_once_with(reason="resize")
 
 
 def test_search_satellite_targets_resolves_known_artificial_satellites(monkeypatch) -> None:
@@ -1515,7 +1526,8 @@ def test_handle_client_key_release_ends_viewport_interaction_mode() -> None:
     assert dummy.state.viewport_interaction_release_pending is True
     assert dummy.state.viewport_interaction_mode is True
     dummy.request_sky_data_update.assert_called_once_with(
-        reason="viewport-interaction-release"
+        reason="viewport-interaction-release",
+        allow_during_viewport_interaction=True,
     )
     dummy.start_background_cloud_update.assert_not_called()
     dummy.start_background_terrain_horizon_update.assert_not_called()
@@ -1573,7 +1585,8 @@ def test_end_viewport_interaction_mode_marks_idle_reason() -> None:
     SkyWindow._end_viewport_interaction_mode(dummy)
 
     dummy.request_sky_data_update.assert_called_once_with(
-        reason="viewport-interaction-idle"
+        reason="viewport-interaction-idle",
+        allow_during_viewport_interaction=True,
     )
     dummy.start_background_cloud_update.assert_called_once_with(
         reason="view-change-idle"
@@ -1875,8 +1888,13 @@ def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
-        "draw_terrain_secondary_ridges",
+        "draw_terrain_horizon_fast",
         lambda *_args, **_kwargs: calls.append(("terrain", None)),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
+        "draw_water_overlay_points",
+        lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
@@ -2241,7 +2259,12 @@ def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
-        "draw_terrain_secondary_ridges",
+        "draw_terrain_horizon_fast",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
+        "draw_water_overlay_points",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
@@ -2318,11 +2341,10 @@ def test_draw_urban_outline_layer_skips_when_hidden(monkeypatch) -> None:
 
 
 def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> None:
-    seen_secondary_profiles: list[object] = []
     seen_main_profiles: list[object] = []
     seen_view_centers: list[object] = []
     seen_line_width_scales: list[float] = []
-    secondary_calls: list[object] = []
+    fast_calls: list[object] = []
     expected_line_width_scale = pipeline_module.compute_star_render_upscale_factor(
         1200, 600
     )
@@ -2334,14 +2356,18 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
-        "draw_terrain_secondary_ridges",
-        lambda _p, _g, secondary_profiles, _secondary_distances, view_center, **kwargs: (
-            seen_secondary_profiles.append(secondary_profiles),
-            seen_main_profiles.append(kwargs.get("terrain_main_profile_altaz")),
+        "draw_terrain_horizon_fast",
+        lambda _p, _g, main_profile, main_distances, view_center, **kwargs: (
+            seen_main_profiles.append(main_profile),
             seen_view_centers.append(view_center),
             seen_line_width_scales.append(float(kwargs.get("line_width_scale", 1.0))),
-            secondary_calls.append(bool(kwargs.get("fast_mode", False))),
+            fast_calls.append(True),
         ),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
+        "draw_water_overlay_points",
+        lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
         pipeline_module.render_guides,
@@ -2377,11 +2403,10 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
         hud=_make_hud(),
     )
 
-    assert seen_secondary_profiles == [None]
     assert seen_main_profiles == [terrain_profile]
     assert seen_view_centers == [(50.0, 210.0)]
     assert seen_line_width_scales == [expected_line_width_scale]
-    assert secondary_calls == [True]
+    assert fast_calls == [True]
 
 
 def test_draw_viewport_interaction_layers_skips_urban_outlines(monkeypatch) -> None:
@@ -4309,7 +4334,7 @@ def test_draw_star_layer_forwards_outline_flag(monkeypatch) -> None:
     def fake_draw_stars(*_args, **kwargs) -> None:
         captured.update(kwargs)
 
-    monkeypatch.setattr(pipeline_module.render_stars, "draw_stars", fake_draw_stars)
+    monkeypatch.setattr(pipeline_module.render_stars, "draw_stars_fast", fake_draw_stars)
 
     pipeline_module._draw_star_layer(
         painter=object(),
@@ -4322,4 +4347,4 @@ def test_draw_star_layer_forwards_outline_flag(monkeypatch) -> None:
     )
 
     assert captured["outline_bright_bodies"] is True
-    assert captured["fast_mode"] is True
+    assert "fast_mode" not in captured

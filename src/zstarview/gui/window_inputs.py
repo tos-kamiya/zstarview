@@ -183,7 +183,7 @@ def prepare_window_user_options(
     terrain_horizon_opacity: float,
     earth_guide_opacity: float,
     urban_outline_opacity: float,
-    water_overlay_opacity: float,
+    water_overlay_opacity: float = 0.12,
     ground_tint_opacity: float,
     enlarge_moon: bool,
     bright_bodies_mode: str,

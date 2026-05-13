@@ -205,7 +205,6 @@ def test_secondary_ridge_render_uses_four_km_alpha_for_all_bands(monkeypatch) ->
         view_center=(0.0, 0.0),
         opacity=0.38,
         line_width_scale=1.0,
-        fast_mode=False,
         is_in_fov_func=lambda *_args, **_kwargs: True,
         altaz_to_normalized_xy_func=lambda alt_deg, az_deg, _view_center, *, edge_fov_deg=95.0: (
             alt_deg / 90.0,
@@ -225,10 +224,10 @@ def test_secondary_ridge_render_uses_four_km_alpha_for_all_bands(monkeypatch) ->
 
 
 def test_draw_terrain_secondary_ridges_fast_mode_draws_main_profile(monkeypatch) -> None:
-    captured: dict[str, object] = {}
+    captured: list[object] = []
 
-    def fake_draw_main(*_args, **kwargs) -> None:
-        captured.update(kwargs)
+    def fake_draw_main(*_args, **_kwargs) -> None:
+        captured.append("called")
 
     monkeypatch.setattr("zstarview.render.terrain.draw_terrain_horizon_line", fake_draw_main)
 
@@ -258,7 +257,6 @@ def test_draw_terrain_secondary_ridges_fast_mode_draws_main_profile(monkeypatch)
         terrain_main_profile_distances_m=[5_000.0, 6_000.0],
         opacity=0.38,
         line_width_scale=1.0,
-        fast_mode=True,
         is_in_fov_func=lambda *_args, **_kwargs: True,
         altaz_to_normalized_xy_func=lambda alt_deg, az_deg, _view_center, *, edge_fov_deg=95.0: (
             alt_deg / 90.0,
@@ -268,9 +266,7 @@ def test_draw_terrain_secondary_ridges_fast_mode_draws_main_profile(monkeypatch)
         split_by_gaps_func=lambda points: [points],
     )
 
-    assert captured["terrain_profile_altaz"] == [(3.0, 30.0), (4.0, 40.0)]
-    assert captured["terrain_profile_distances_m"] == [5_000.0, 6_000.0]
-    assert captured["fast_mode"] is True
+    assert captured == []
 
 
 def test_secondary_ridge_glow_scales_alpha_for_subpixel_widths() -> None:

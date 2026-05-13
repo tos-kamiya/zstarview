@@ -189,6 +189,7 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
         urban_outline_opacity=1.5,
         aircraft_opacity=0.4,
         ground_tint_opacity=0.2,
+        water_overlay_opacity=0.12,
         enlarge_moon=False,
         bright_bodies_mode="outline",
         star_base_radius=4.0,
@@ -279,6 +280,7 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         observation_info_pinned=False,
         sky_disc_alpha=0.2,
         cloud_disc_alpha=0.2,
+        water_overlay_opacity=0.12,
         satellite_opacity=0.5,
         aircraft_opacity=0.5,
         terrain_horizon_opacity=0.1,
@@ -299,6 +301,7 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         toggle_satellites=lambda: None,
         toggle_aircraft=lambda: None,
         toggle_terrain_horizon=lambda: None,
+        toggle_water_overlay=lambda: None,
         toggle_earth_guide=lambda: None,
         toggle_urban_outline=lambda: None,
         toggle_fullscreen=lambda: None,
@@ -347,6 +350,7 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         observation_info_pinned=False,
         sky_disc_alpha=0.2,
         cloud_disc_alpha=0.2,
+        water_overlay_opacity=0.12,
         satellite_opacity=0.5,
         aircraft_opacity=0.5,
         terrain_horizon_opacity=0.1,
@@ -367,6 +371,7 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         toggle_satellites=lambda: None,
         toggle_aircraft=lambda: None,
         toggle_terrain_horizon=lambda: None,
+        toggle_water_overlay=lambda: None,
         toggle_earth_guide=lambda: None,
         toggle_urban_outline=lambda: None,
         toggle_fullscreen=lambda: None,
@@ -421,6 +426,7 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
         observation_info_pinned=False,
         sky_disc_alpha=0.2,
         cloud_disc_alpha=0.2,
+        water_overlay_opacity=0.12,
         satellite_opacity=0.5,
         aircraft_opacity=0.5,
         terrain_horizon_opacity=0.1,
@@ -445,6 +451,7 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
         toggle_satellites=lambda: None,
         toggle_aircraft=lambda: None,
         toggle_terrain_horizon=lambda: None,
+        toggle_water_overlay=lambda: None,
         toggle_earth_guide=lambda: None,
         toggle_fullscreen=lambda: None,
         square_client_area=lambda: None,
@@ -479,6 +486,7 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
         "Night Lights",
         "Urban Outline",
         "Terrain Horizon",
+        "Water Surface",
         "Earth Guide",
         "Vmag limit 6.0",
     ]
@@ -572,6 +580,7 @@ def test_status_line_message_combines_cloud_and_terrain_segments() -> None:
     dummy._aircraft_status_line = lambda: ""
     dummy._jpl_small_body_status_line = lambda: ""
     dummy._terrain_horizon_status_line = lambda: "Terrain horizon: loading DEM..."
+    dummy._water_overlay_status_line = lambda: ""
     dummy._urban_outline_status_line = lambda: "Urban outline: downloading..."
 
     got = SkyWindowUpdatesMixin._status_line_message(dummy)
@@ -589,6 +598,7 @@ def test_status_line_message_keeps_placeholder_icons_for_hidden_layers() -> None
     dummy._aircraft_status_line = lambda: "✈ ---"
     dummy._jpl_small_body_status_line = lambda: ""
     dummy._terrain_horizon_status_line = lambda: "▲ ---"
+    dummy._water_overlay_status_line = lambda: ""
     dummy._urban_outline_status_line = lambda: "🂓 ---"
 
     got = SkyWindowUpdatesMixin._status_line_message(dummy)
@@ -714,6 +724,7 @@ def test_start_background_aircraft_update_skips_when_layer_hidden() -> None:
     )
     dummy.viewer_data = SimpleNamespace(location=(35.0, 135.0), observer_height_m=1.7)
     dummy._current_time_obj = lambda: "time-obj"
+    dummy._viewport_interaction_active = lambda: False
 
     started = SkyWindowUpdatesMixin.start_background_aircraft_update(
         dummy, reason="manual"
@@ -859,10 +870,14 @@ def test_toggle_terrain_horizon_enables_opacity_and_requests_background_update()
     dummy.terrain_horizon_opacity = 0.0
     dummy._terrain_horizon_opacity_when_enabled = 0.25
     dummy._action_toggle_terrain_horizon = _DummyAction(False)
+    dummy._refresh_water_overlay_active_points = lambda: None
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request")
     dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
     dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(
+        str(kwargs.get("reason"))
+    )
+    dummy.start_background_water_overlay_update = lambda **kwargs: calls.append(
         str(kwargs.get("reason"))
     )
     dummy.update = lambda: calls.append("update")
@@ -871,7 +886,7 @@ def test_toggle_terrain_horizon_enables_opacity_and_requests_background_update()
 
     assert dummy.terrain_horizon_opacity == 0.25
     assert dummy._action_toggle_terrain_horizon.isChecked() is True
-    assert calls == ["invalidate", "toggle-on", "request"]
+    assert calls == ["invalidate", "toggle-on", "toggle-on", "request"]
 
 
 def test_toggle_earth_guide_respects_cli_lockout() -> None:
@@ -974,6 +989,7 @@ def test_terrain_controller_treats_missing_ocean_tiles_as_empty_profile(
             "profile_distances_m": [],
             "secondary_profile_altaz_layers": [],
             "secondary_profile_distances_m_layers": [],
+            "ground_elevation_m": 0.0,
             "source": "Dem: cache",
         }
     ]
@@ -1155,6 +1171,7 @@ def test_end_viewport_interaction_mode_requests_full_refresh() -> None:
     dummy.state = SimpleNamespace(
         viewport_interaction_mode=True, viewport_interaction_stars=object()
     )
+    dummy._startup_initial_load_started = True
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request-client")
     dummy.request_sky_data_update = lambda **kwargs: calls.append(
@@ -1203,6 +1220,7 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_and_invalidates_ol
     dummy._viewport_interaction_idle_timer = SimpleNamespace(
         start=lambda: calls.append("start-timer")
     )
+    dummy._startup_initial_load_started = True
 
     SkyWindow._begin_viewport_interaction_mode(dummy)
 
@@ -1240,6 +1258,7 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_even_while_cloud_u
     dummy._viewport_interaction_idle_timer = SimpleNamespace(
         start=lambda: calls.append("start-timer")
     )
+    dummy._startup_initial_load_started = True
 
     SkyWindow._begin_viewport_interaction_mode(dummy)
 
@@ -1276,6 +1295,7 @@ def test_handle_client_resize_clears_visible_cloud_buffers() -> None:
     dummy._viewport_interaction_idle_timer = SimpleNamespace(
         start=lambda: calls.append("start-timer")
     )
+    dummy._startup_initial_load_started = True
     dummy.request_sky_data_update = lambda: calls.append("sky")
     dummy.request_client_update = lambda: calls.append("client")
     dummy.start_background_cloud_update = lambda **kwargs: calls.append(
@@ -1306,9 +1326,7 @@ def test_handle_client_resize_clears_visible_cloud_buffers() -> None:
         "invalidate-cloud",
         "start-timer",
         "invalidate",
-        "sky",
         "client",
-        "resize",
         "raise-menu",
         "raise-grip",
     ]

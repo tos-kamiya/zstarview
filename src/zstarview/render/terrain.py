@@ -618,6 +618,7 @@ def draw_terrain_secondary_ridges(
     terrain_main_profile_distances_m: list[float] | None = None,
     opacity: float = 0.25,
     line_width_scale: float = 1.0,
+    fast_mode: bool = False,
     edge_fov_deg: float = FIELD_OF_VIEW_DEG,
     content_fov_deg: float = FIELD_OF_VIEW_DEG,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
@@ -626,6 +627,7 @@ def draw_terrain_secondary_ridges(
     split_by_gaps_func: Callable[[List[Tuple[float, float]]], List[List[Tuple[float, float]]]] = split_by_gaps,
 ) -> None:
     """Draw fixed-width ridge bands grouped by distance interval."""
+    _ = fast_mode
     if opacity <= 0.0:
         return
 

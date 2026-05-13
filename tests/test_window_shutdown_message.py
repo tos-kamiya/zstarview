@@ -85,6 +85,7 @@ def test_begin_shutdown_shows_message_around_controller_shutdown() -> None:
         _aircraft_controller=None,
         _jpl_small_body_controller=None,
         _terrain_horizon_controller=None,
+        _water_overlay_controller=None,
         _urban_outline_controller=None,
         _sky_data_update_timer=_TimerStub(False),
         _asterism_check_timer=_TimerStub(False),
