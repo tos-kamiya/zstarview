@@ -332,8 +332,8 @@ def test_overlay_earth_guide_forwards_fast_mode(monkeypatch) -> None:
 
     monkeypatch.setattr(
         render_composite,
-        "draw_earth_guide",
-        lambda _painter, **kwargs: calls.append(bool(kwargs["fast_mode"])),
+        "draw_earth_guide_fast",
+        lambda *_args, **_kwargs: calls.append(True),
     )
 
     image = QImage(16, 16, QImage.Format.Format_ARGB32_Premultiplied)

@@ -56,37 +56,6 @@ NEVER_RISES_GUIDE_ALPHA_SCALE = 0.5
 ALT_RING_DIMALT_SAMPLE_AZ_STEP_DEG = 30.0
 
 
-def draw_earth_guide(
-    painter,
-    *,
-    geometry,
-    view_center,
-    observer_lat_deg,
-    observer_lon_deg,
-    observer_height_m=0.0,
-    terrain_profile_altaz=None,
-    earth_guide_opacity=0.028,
-    visibility_boost=1.0,
-    edge_fov_deg=90.0,
-    content_fov_deg,
-    fast_mode=False,
-) -> None:
-    draw_earth_guide_fn = draw_earth_guide_fast if fast_mode else draw_earth_guide_normal
-    draw_earth_guide_fn(
-        painter,
-        geometry=geometry,
-        view_center=view_center,
-        observer_lat_deg=float(observer_lat_deg),
-        observer_lon_deg=float(observer_lon_deg),
-        observer_height_m=float(observer_height_m),
-        terrain_profile_altaz=terrain_profile_altaz,
-        earth_guide_opacity=float(earth_guide_opacity),
-        visibility_boost=float(visibility_boost),
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
-    )
-
-
 def _dimalt_ring_color_for_sky_image(
     sky_img: QImage,
     geometry: ScreenGeometry,
@@ -1049,7 +1018,8 @@ def _overlay_earth_guide(
     painter = QPainter(out)
     painter.setRenderHint(QPainter.Antialiasing, True)
     try:
-        draw_earth_guide(
+        draw_earth_guide_fn = draw_earth_guide_fast if fast_mode else draw_earth_guide_normal
+        draw_earth_guide_fn(
             painter,
             geometry=geometry,
             view_center=view_center,
@@ -1061,7 +1031,6 @@ def _overlay_earth_guide(
             visibility_boost=float(visibility_boost),
             edge_fov_deg=edge_fov_deg,
             content_fov_deg=content_fov_deg,
-            fast_mode=fast_mode,
         )
     finally:
         painter.end()
