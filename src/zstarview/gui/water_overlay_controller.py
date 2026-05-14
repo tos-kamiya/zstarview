@@ -302,7 +302,7 @@ class WaterOverlayController(QObject):
                     source="Water: Overpass",
                 )
         except Exception as exc:
-            logger.warning("Water surface update failed: %s", exc, exc_info=True)
+            logger.warning("Water surface update failed: %s", exc)
             if cached_scope is not None:
                 fallback_variant = self._select_cached_variant(
                     cached_scope,
@@ -328,7 +328,7 @@ class WaterOverlayController(QObject):
                 if should_emit:
                     self._failed_key = key
             if should_emit:
-                self.water_failed.emit({"banner": f"Water: failed ({exc})"})
+                self.water_failed.emit({"banner": f"Water: {exc}"})
         finally:
             with self._lock:
                 self._running = False

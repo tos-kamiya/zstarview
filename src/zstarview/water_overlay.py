@@ -457,16 +457,19 @@ def fetch_overpass_json(
         with urllib.request.urlopen(request, timeout=float(timeout_s)) as response:
             payload = response.read()
     except urllib.error.HTTPError as exc:
-        raise RuntimeError(f"Overpass HTTP error: {exc.code} {exc.reason}") from exc
+        raise RuntimeError(f"HTTP {exc.code}") from exc
     except urllib.error.URLError as exc:
-        raise RuntimeError(f"Overpass network error: {exc.reason}") from exc
+        reason = str(exc.reason).strip().casefold()
+        if "timed out" in reason:
+            raise RuntimeError("timeout") from exc
+        raise RuntimeError("network error") from exc
 
     try:
         loaded = json.loads(payload.decode("utf-8"))
     except Exception as exc:
-        raise RuntimeError("Overpass returned invalid JSON") from exc
+        raise RuntimeError("invalid JSON") from exc
     if not isinstance(loaded, dict):
-        raise RuntimeError("Overpass returned a non-object JSON payload")
+        raise RuntimeError("invalid payload")
     return loaded
 
 

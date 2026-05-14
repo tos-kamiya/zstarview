@@ -1,18 +1,23 @@
 from __future__ import annotations
 
+import urllib.error
+from unittest.mock import Mock
+
+import pytest
+
+from zstarview.render.terrain import _thin_water_overlay_points_pairwise
 from zstarview.water_overlay import (
+    WaterOverlayPoint,
     WaterPolygonFootprint,
     WaterSurfacePatch,
     assemble_rings_from_segments,
-    WaterOverlayPoint,
-    classify_water_surface_mode,
     build_geometric_distance_samples,
+    classify_water_surface_mode,
     extract_water_polygons,
     horizon_distance_km_from_height,
     resolve_water_scan_radius_km,
     sample_water_overlay_points,
 )
-from zstarview.render.terrain import _thin_water_overlay_points_pairwise
 
 
 def _node(node_id: int, lon: float, lat: float) -> dict[str, object]:
@@ -216,6 +221,36 @@ def test_resolve_water_scan_radius_scales_with_height() -> None:
     assert low == 2.0
     assert high > low
     assert high == horizon_distance_km_from_height(500.0) + 1.0
+
+
+def test_fetch_overpass_json_reports_compact_http_error(monkeypatch) -> None:
+    from zstarview import water_overlay
+
+    def fake_urlopen(*_args, **_kwargs):
+        raise urllib.error.HTTPError(
+            url="https://overpass-api.de/api/interpreter",
+            code=504,
+            msg="Gateway Timeout",
+            hdrs=None,
+            fp=Mock(),
+        )
+
+    monkeypatch.setattr(water_overlay.urllib.request, "urlopen", fake_urlopen)
+
+    with pytest.raises(RuntimeError, match=r"^HTTP 504$"):
+        water_overlay.fetch_overpass_json(bbox=(0.0, 0.0, 1.0, 1.0))
+
+
+def test_fetch_overpass_json_reports_timeout_as_compact_error(monkeypatch) -> None:
+    from zstarview import water_overlay
+
+    def fake_urlopen(*_args, **_kwargs):
+        raise urllib.error.URLError(TimeoutError("timed out"))
+
+    monkeypatch.setattr(water_overlay.urllib.request, "urlopen", fake_urlopen)
+
+    with pytest.raises(RuntimeError, match=r"^timeout$"):
+        water_overlay.fetch_overpass_json(bbox=(0.0, 0.0, 1.0, 1.0))
 
 
 def test_thin_water_overlay_points_pairwise_keeps_one_point_per_pair() -> None:
