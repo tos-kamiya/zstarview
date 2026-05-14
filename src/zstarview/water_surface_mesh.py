@@ -233,7 +233,7 @@ def _triangulate_shell(
     return tuple(result)
 
 
-def _clip_polygon_to_edge(
+def _clip_ring_to_edge(
     points: Sequence[tuple[float, float]],
     *,
     edge_value: float,
@@ -255,18 +255,20 @@ def _clip_polygon_to_edge(
             clipped.append(intersect(previous, current, edge_value))
         previous = current
         previous_inside = current_inside
+    if len(clipped) >= 2 and clipped[0] == clipped[-1]:
+        clipped = clipped[:-1]
     return clipped
 
 
-def _clip_triangle_to_rect(
-    triangle: Sequence[tuple[float, float]],
+def _clip_ring_to_rect(
+    ring: Sequence[tuple[float, float]],
     *,
     min_x: float,
     min_y: float,
     max_x: float,
     max_y: float,
 ) -> list[tuple[float, float]]:
-    clipped = list(triangle)
+    clipped = list(ring)
     if len(clipped) < 3:
         return []
 
@@ -308,95 +310,53 @@ def _clip_triangle_to_rect(
         t = (y_value - y0) / dy
         return (float(x0 + (t * (x1 - x0))), float(y_value))
 
-    clipped = _clip_polygon_to_edge(
+    clipped = _clip_ring_to_edge(
         clipped,
         edge_value=min_x,
         keep_inside=keep_left,
         intersect=intersect_vertical,
     )
-    clipped = _clip_polygon_to_edge(
+    clipped = _clip_ring_to_edge(
         clipped,
         edge_value=max_x,
         keep_inside=keep_right,
         intersect=intersect_vertical,
     )
-    clipped = _clip_polygon_to_edge(
+    clipped = _clip_ring_to_edge(
         clipped,
         edge_value=min_y,
         keep_inside=keep_bottom,
         intersect=intersect_horizontal,
     )
-    clipped = _clip_polygon_to_edge(
+    clipped = _clip_ring_to_edge(
         clipped,
         edge_value=max_y,
         keep_inside=keep_top,
         intersect=intersect_horizontal,
     )
-    if len(clipped) >= 2 and clipped[0] == clipped[-1]:
-        clipped = clipped[:-1]
+    if len(clipped) < 3:
+        return []
+    if clipped[0] != clipped[-1]:
+        clipped.append(clipped[0])
     return clipped
 
 
-def _triangulate_convex_polygon(
-    points: Sequence[tuple[float, float]],
-) -> tuple[tuple[tuple[float, float], tuple[float, float], tuple[float, float]], ...]:
-    body = list(points)
-    if len(body) < 3:
-        return ()
-    if body[0] == body[-1]:
-        body = body[:-1]
-    if len(body) < 3:
-        return ()
-    anchor = body[0]
-    triangles: list[tuple[tuple[float, float], tuple[float, float], tuple[float, float]]] = []
-    for index in range(1, len(body) - 1):
-        triangle = (anchor, body[index], body[index + 1])
-        triangles.append(
-            tuple((float(x), float(y)) for x, y in triangle)
-        )
-    return tuple(triangles)
+def _ring_bounds(points_xy: Sequence[tuple[float, float]]) -> tuple[float, float, float, float]:
+    xs = [point[0] for point in points_xy]
+    ys = [point[1] for point in points_xy]
+    if not xs or not ys:
+        return 0.0, 0.0, 0.0, 0.0
+    return min(xs), min(ys), max(xs), max(ys)
 
 
-def _split_triangles_by_grid(
-    triangles: Sequence[tuple[tuple[float, float], tuple[float, float], tuple[float, float]]],
-    *,
-    cell_m: float,
-) -> tuple[tuple[tuple[float, float], tuple[float, float], tuple[float, float]], ...]:
-    if cell_m <= 0.0:
-        return tuple(triangles)
-    if not triangles:
-        return ()
-
-    refined: list[tuple[tuple[float, float], tuple[float, float], tuple[float, float]]] = []
-    epsilon = max(1.0e-9, abs(cell_m) * 1.0e-12)
-    for triangle in triangles:
-        xs = [point[0] for point in triangle]
-        ys = [point[1] for point in triangle]
-        min_x = math.floor(min(xs) / cell_m) * cell_m
-        min_y = math.floor(min(ys) / cell_m) * cell_m
-        max_x = math.floor((max(xs) - epsilon) / cell_m) * cell_m + cell_m
-        max_y = math.floor((max(ys) - epsilon) / cell_m) * cell_m + cell_m
-        start_x = int(math.floor(min_x / cell_m))
-        end_x = int(math.floor((max_x - epsilon) / cell_m))
-        start_y = int(math.floor(min_y / cell_m))
-        end_y = int(math.floor((max_y - epsilon) / cell_m))
-        for cell_x in range(start_x, end_x + 1):
-            cell_min_x = float(cell_x) * cell_m
-            cell_max_x = cell_min_x + cell_m
-            for cell_y in range(start_y, end_y + 1):
-                cell_min_y = float(cell_y) * cell_m
-                cell_max_y = cell_min_y + cell_m
-                clipped = _clip_triangle_to_rect(
-                    triangle,
-                    min_x=cell_min_x,
-                    min_y=cell_min_y,
-                    max_x=cell_max_x,
-                    max_y=cell_max_y,
-                )
-                if len(clipped) < 3:
-                    continue
-                refined.extend(_triangulate_convex_polygon(clipped))
-    return tuple(refined)
+def _ring_centroid(points_xy: Sequence[tuple[float, float]]) -> tuple[float, float]:
+    body = _ring_body(points_xy)
+    if not body:
+        return 0.0, 0.0
+    sum_x = sum(point[0] for point in body)
+    sum_y = sum(point[1] for point in body)
+    count = float(len(body))
+    return sum_x / count, sum_y / count
 
 
 def _mean_surface_elevation_m(patch: WaterSurfacePatch | None) -> float:
@@ -446,13 +406,44 @@ def build_water_surface_mesh(
 
     assigned_holes = _assign_holes_to_shells(shells, holes)
     triangles: list[tuple[tuple[float, float], tuple[float, float], tuple[float, float]]] = []
+    cell_m = DEFAULT_SPLIT_CELL_M
+    epsilon = max(1.0e-9, abs(cell_m) * 1.0e-12)
     for shell, shell_holes in zip(shells, assigned_holes):
-        triangles.extend(_triangulate_shell(shell, shell_holes))
+        min_x, min_y, max_x, max_y = _ring_bounds(shell)
+        start_x = int(math.floor(min_x / cell_m))
+        end_x = int(math.floor((max_x - epsilon) / cell_m))
+        start_y = int(math.floor(min_y / cell_m))
+        end_y = int(math.floor((max_y - epsilon) / cell_m))
+        for cell_x in range(start_x, end_x + 1):
+            cell_min_x = float(cell_x) * cell_m
+            cell_max_x = cell_min_x + cell_m
+            for cell_y in range(start_y, end_y + 1):
+                cell_min_y = float(cell_y) * cell_m
+                cell_max_y = cell_min_y + cell_m
+                clipped_shell = _clip_ring_to_rect(
+                    shell,
+                    min_x=cell_min_x,
+                    min_y=cell_min_y,
+                    max_x=cell_max_x,
+                    max_y=cell_max_y,
+                )
+                if len(clipped_shell) < 4:
+                    continue
+                clipped_holes: list[list[tuple[float, float]]] = []
+                for hole in shell_holes:
+                    clipped_hole = _clip_ring_to_rect(
+                        hole,
+                        min_x=cell_min_x,
+                        min_y=cell_min_y,
+                        max_x=cell_max_x,
+                        max_y=cell_max_y,
+                    )
+                    if len(clipped_hole) < 4:
+                        continue
+                    if _point_in_ring(_ring_centroid(clipped_hole), clipped_shell):
+                        clipped_holes.append(clipped_hole)
+                triangles.extend(_triangulate_shell(clipped_shell, clipped_holes))
 
-    if not triangles:
-        return None
-
-    triangles = list(_split_triangles_by_grid(triangles, cell_m=DEFAULT_SPLIT_CELL_M))
     if not triangles:
         return None
 
