@@ -462,6 +462,8 @@ class WaterOverlayController(QObject):
         scan_radius_km: float,
     ) -> tuple[tuple, tuple | None, tuple | None]:
         observer_absolute_height_m = float(observer_height_m) + float(observer_ground_m)
+        # Keep a flat sea/lake variant around even when DEM mode is enabled, so
+        # the UI can switch between constant-height and terrain-following water.
         sea_points = scope_cache.sea_points
         if sea_points is None:
             sea_points = sample_water_overlay_points(
@@ -475,6 +477,8 @@ class WaterOverlayController(QObject):
                 azimuth_step_deg=self._azimuth_step_deg,
                 abort_event=self._download_abort_event,
             )
+        # DEM mode reuses the same footprints but projects river-like water
+        # against the local terrain sampler instead of the flat fallback level.
         dem_points = scope_cache.dem_points
         if use_dem_ground and dem_points is None:
             target_ground_sampler = self._build_target_ground_sampler(

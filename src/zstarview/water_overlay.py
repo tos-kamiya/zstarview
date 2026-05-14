@@ -602,6 +602,29 @@ def _footprint_explicit_surface_height_m(footprint: WaterPolygonFootprint) -> fl
     return None
 
 
+def _water_surface_height_m(
+    footprint: WaterPolygonFootprint,
+    *,
+    fallback_surface_height_m: float,
+    target_ground_elevation_m_sampler: Callable[[float, float], float] | None = None,
+    latitude_deg: float,
+    longitude_deg: float,
+) -> float:
+    explicit_target_height_m = _footprint_explicit_surface_height_m(footprint)
+    if explicit_target_height_m is not None:
+        return explicit_target_height_m
+    if _footprint_is_sea_like(footprint):
+        return 0.0
+    if _footprint_is_river_like(footprint):
+        if target_ground_elevation_m_sampler is not None:
+            try:
+                return float(target_ground_elevation_m_sampler(latitude_deg, longitude_deg))
+            except Exception:
+                return float(fallback_surface_height_m)
+        return float(fallback_surface_height_m)
+    return float(fallback_surface_height_m)
+
+
 def _footprint_is_sea_like(footprint: WaterPolygonFootprint) -> bool:
     tags = footprint.tags
     return classify_water_surface_category(tags, kind=footprint.kind) == "sea"
@@ -684,20 +707,13 @@ def sample_water_overlay_points(
                     break
             if matched_footprint is None:
                 continue
-            explicit_target_height_m = _footprint_explicit_surface_height_m(matched_footprint)
-            if explicit_target_height_m is not None:
-                target_height_m = explicit_target_height_m
-            elif _footprint_is_sea_like(matched_footprint):
-                target_height_m = 0.0
-            elif not _footprint_is_river_like(matched_footprint):
-                target_height_m = float(fallback_surface_height_m)
-            elif target_ground_elevation_m_sampler is not None:
-                try:
-                    target_height_m = float(target_ground_elevation_m_sampler(lat, lon))
-                except Exception:
-                    target_height_m = float(fallback_surface_height_m)
-            else:
-                target_height_m = float(fallback_surface_height_m)
+            target_height_m = _water_surface_height_m(
+                matched_footprint,
+                fallback_surface_height_m=fallback_surface_height_m,
+                target_ground_elevation_m_sampler=target_ground_elevation_m_sampler,
+                latitude_deg=lat,
+                longitude_deg=lon,
+            )
             projection = project_place_target_to_altaz(
                 observer_latitude_deg=observer_lat,
                 observer_longitude_deg=observer_lon,

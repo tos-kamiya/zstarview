@@ -117,6 +117,47 @@ def test_classify_water_surface_category_uses_tags_and_kind() -> None:
     assert classify_water_surface_category({"waterway": "riverbank"}) == "river"
 
 
+def test_water_surface_height_selection_prefers_explicit_level() -> None:
+    from zstarview import water_overlay
+
+    sea = WaterPolygonFootprint(
+        water_id="sea",
+        kind="coastline",
+        outer_rings_lonlat=(((0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0), (0.0, 0.0)),),
+        inner_rings_lonlat=(),
+        source="way",
+        tags={"natural": "coastline", "water_level": "12.5"},
+    )
+    river = WaterPolygonFootprint(
+        water_id="river",
+        kind="natural_water",
+        outer_rings_lonlat=(((0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0), (0.0, 0.0)),),
+        inner_rings_lonlat=(),
+        source="way",
+        tags={"natural": "water", "water": "river", "ele": "7.25"},
+    )
+
+    assert (
+        water_overlay._water_surface_height_m(  # noqa: SLF001
+            sea,
+            fallback_surface_height_m=3.0,
+            latitude_deg=0.0,
+            longitude_deg=0.0,
+        )
+        == 12.5
+    )
+    assert (
+        water_overlay._water_surface_height_m(  # noqa: SLF001
+            river,
+            fallback_surface_height_m=3.0,
+            target_ground_elevation_m_sampler=lambda *_args: 99.0,
+            latitude_deg=0.0,
+            longitude_deg=0.0,
+        )
+        == 7.25
+    )
+
+
 def test_water_surface_patch_classifies_flat_and_sloped() -> None:
     flat_patch = WaterSurfacePatch(
         patch_id="flat",
