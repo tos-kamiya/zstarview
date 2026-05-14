@@ -95,7 +95,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output-svg",
         type=Path,
-        help="Optional output path for a quick SVG preview.",
+        help="Optional output path for the simplified SVG preview.",
+    )
+    parser.add_argument(
+        "--output-svg-raw",
+        type=Path,
+        help="Optional output path for the unsimplified SVG preview.",
     )
     parser.add_argument(
         "--input-cache",
@@ -859,6 +864,7 @@ def build_svg_preview(
     center_lat_deg: float,
     center_lon_deg: float,
     radius_km: float,
+    simplify: bool,
     width: int,
     height: int,
     padding: float,
@@ -867,11 +873,14 @@ def build_svg_preview(
         bbox,
         bbox_from_point(float(center_lat_deg), float(center_lon_deg), float(radius_km)),
     )
-    polygons = _dedupe_adjacent_far_polygons(
-        list(polygons),
-        center_lon_deg=float(center_lon_deg),
-        center_lat_deg=float(center_lat_deg),
-    )
+    if simplify:
+        polygons = _dedupe_adjacent_far_polygons(
+            list(polygons),
+            center_lon_deg=float(center_lon_deg),
+            center_lat_deg=float(center_lat_deg),
+        )
+    else:
+        polygons = list(polygons)
     parts = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         (
@@ -1070,12 +1079,29 @@ def main(argv: list[str] | None = None) -> int:
             center_lat_deg=float(args.lat),
             center_lon_deg=float(args.lon),
             radius_km=float(args.radius_km),
+            simplify=True,
             width=int(args.svg_width),
             height=int(args.svg_height),
             padding=float(args.svg_padding),
         )
         args.output_svg.write_text(svg_text + "\n", encoding="utf-8")
         print(f"wrote_svg={args.output_svg}")
+
+    if args.output_svg_raw is not None:
+        args.output_svg_raw.parent.mkdir(parents=True, exist_ok=True)
+        svg_text = build_svg_preview(
+            polygons,
+            bbox=geometry_bounds(polygons, view_bbox),
+            center_lat_deg=float(args.lat),
+            center_lon_deg=float(args.lon),
+            radius_km=float(args.radius_km),
+            simplify=False,
+            width=int(args.svg_width),
+            height=int(args.svg_height),
+            padding=float(args.svg_padding),
+        )
+        args.output_svg_raw.write_text(svg_text + "\n", encoding="utf-8")
+        print(f"wrote_svg_raw={args.output_svg_raw}")
 
     print(
         f"summary polygons={len(polygons)} bbox={view_bbox[0]:.6f},{view_bbox[1]:.6f},{view_bbox[2]:.6f},{view_bbox[3]:.6f}",
