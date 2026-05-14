@@ -674,6 +674,10 @@ def _polygon_preview_anchor(
     return math.hypot(anchor_x, anchor_y) / 1000.0, anchor_x, anchor_y
 
 
+def _polygon_vertex_count(polygon: WaterPolygon) -> int:
+    return sum(len(ring) for ring in polygon.outer_rings) + sum(len(ring) for ring in polygon.inner_rings)
+
+
 def _dedupe_adjacent_far_polygons(
     polygons: list[WaterPolygon],
     *,
@@ -682,9 +686,18 @@ def _dedupe_adjacent_far_polygons(
     min_distance_km: float = 1.5,
     max_neighbor_distance_gap_km: float = 0.35,
     max_neighbor_offset_m: float = 250.0,
-) -> list[WaterPolygon]:
+) -> tuple[list[WaterPolygon], dict[str, int]]:
     if len(polygons) < 2:
-        return list(polygons)
+        kept = list(polygons)
+        vertex_count = sum(_polygon_vertex_count(polygon) for polygon in kept)
+        return kept, {
+            "raw_polygons": len(kept),
+            "kept_polygons": len(kept),
+            "removed_polygons": 0,
+            "raw_vertices": vertex_count,
+            "kept_vertices": vertex_count,
+            "removed_vertices": 0,
+        }
 
     scored: list[tuple[float, float, float, int, WaterPolygon]] = []
     for index, polygon in enumerate(polygons):
@@ -699,6 +712,7 @@ def _dedupe_adjacent_far_polygons(
     deduped: list[WaterPolygon] = []
     previous: tuple[float, float, float, int, WaterPolygon] | None = None
     dropped = 0
+    removed_vertices = 0
     for item in scored:
         if previous is not None:
             previous_distance_km, previous_x_m, previous_y_m, _, _ = previous
@@ -708,16 +722,34 @@ def _dedupe_adjacent_far_polygons(
             close_in_space = math.hypot(x_m - previous_x_m, y_m - previous_y_m) <= max_neighbor_offset_m
             if is_far and close_in_range and close_in_space:
                 dropped += 1
+                removed_vertices += _polygon_vertex_count(item[4])
                 continue
         deduped.append(item[4])
         previous = item
 
+    raw_vertices = sum(_polygon_vertex_count(polygon) for polygon in polygons)
+    kept_vertices = sum(_polygon_vertex_count(polygon) for polygon in deduped)
     if dropped:
         print(
-            f"deduped_far_polygons={dropped} kept={len(deduped)} total={len(polygons)}",
+            "deduped_far_polygons={dropped} raw_polygons={raw_polygons} kept_polygons={kept_polygons} "
+            "raw_vertices={raw_vertices} kept_vertices={kept_vertices} removed_vertices={removed_vertices}".format(
+                dropped=dropped,
+                raw_polygons=len(polygons),
+                kept_polygons=len(deduped),
+                raw_vertices=raw_vertices,
+                kept_vertices=kept_vertices,
+                removed_vertices=removed_vertices,
+            ),
             file=sys.stderr,
         )
-    return deduped
+    return deduped, {
+        "raw_polygons": len(polygons),
+        "kept_polygons": len(deduped),
+        "removed_polygons": dropped,
+        "raw_vertices": raw_vertices,
+        "kept_vertices": kept_vertices,
+        "removed_vertices": removed_vertices,
+    }
 
 
 def filter_water_polygons_to_bbox(
@@ -873,14 +905,38 @@ def build_svg_preview(
         bbox,
         bbox_from_point(float(center_lat_deg), float(center_lon_deg), float(radius_km)),
     )
+    raw_vertex_count = sum(_polygon_vertex_count(polygon) for polygon in polygons)
+    simplification_stats: dict[str, int] | None = None
     if simplify:
-        polygons = _dedupe_adjacent_far_polygons(
+        polygons, simplification_stats = _dedupe_adjacent_far_polygons(
             list(polygons),
             center_lon_deg=float(center_lon_deg),
             center_lat_deg=float(center_lat_deg),
         )
     else:
         polygons = list(polygons)
+    kept_vertex_count = sum(_polygon_vertex_count(polygon) for polygon in polygons)
+    if simplification_stats is None:
+        simplification_stats = {
+            "raw_polygons": len(polygons),
+            "kept_polygons": len(polygons),
+            "removed_polygons": 0,
+            "raw_vertices": raw_vertex_count,
+            "kept_vertices": kept_vertex_count,
+            "removed_vertices": 0,
+        }
+    print(
+        "svg_preview simplify={simplify} raw_polygons={raw_polygons} kept_polygons={kept_polygons} "
+        "raw_vertices={raw_vertices} kept_vertices={kept_vertices} removed_vertices={removed_vertices}".format(
+            simplify=str(bool(simplify)).lower(),
+            raw_polygons=int(simplification_stats["raw_polygons"]),
+            kept_polygons=int(simplification_stats["kept_polygons"]),
+            raw_vertices=int(simplification_stats["raw_vertices"]),
+            kept_vertices=int(simplification_stats["kept_vertices"]),
+            removed_vertices=int(simplification_stats["removed_vertices"]),
+        ),
+        file=sys.stderr,
+    )
     parts = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         (
