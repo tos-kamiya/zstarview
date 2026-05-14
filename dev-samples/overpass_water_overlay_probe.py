@@ -9,7 +9,6 @@ This sample keeps the pipeline intentionally simple:
    - outer rings
    - inner rings
 4. Write a normalized JSON payload and, optionally, a quick SVG preview.
-5. Optionally triangulate the polygon rings into SVG triangles for shape checks through the shared mesh helper.
 
 The script is meant for data-structure exploration, not production caching.
 """
@@ -26,10 +25,6 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
-
-from zstarview.water_overlay import WaterPolygonFootprint
-from zstarview.water_surface_mesh import build_water_surface_mesh
-
 
 EARTH_RADIUS_KM = 6371.0088
 EARTH_RADIUS_M = EARTH_RADIUS_KM * 1000.0
@@ -95,11 +90,6 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Optional output path for a quick SVG preview.",
     )
     parser.add_argument(
-        "--output-triangulated-svg",
-        type=Path,
-        help="Optional output path for a triangulated SVG preview.",
-    )
-    parser.add_argument(
         "--svg-width",
         type=int,
         default=1200,
@@ -116,18 +106,6 @@ def build_arg_parser() -> argparse.ArgumentParser:
         type=float,
         default=0.05,
         help="Extra padding around the query bbox in the SVG preview (default: 0.05).",
-    )
-    parser.add_argument(
-        "--triangulation-grid-m",
-        type=float,
-        default=1.0,
-        help="Precision grid in meters before triangulation (default: 1.0).",
-    )
-    parser.add_argument(
-        "--triangulation-simplify-m",
-        type=float,
-        default=20.0,
-        help="Topology-preserving simplify tolerance in meters before triangulation (default: 20.0).",
     )
     return parser
 
@@ -756,94 +734,6 @@ def svg_path_for_ring(
     return path_for_points(points)
 
 
-def build_triangulated_svg_preview(
-    polygons: list[WaterPolygon],
-    *,
-    bbox: tuple[float, float, float, float],
-    width: int,
-    height: int,
-    padding: float,
-    center_lon_deg: float,
-    center_lat_deg: float,
-    grid_m: float,
-    simplify_m: float,
-) -> str:
-    background_fill = "#f7fbff"
-    water_fill = "#8ecae6"
-    water_stroke = "#4a90c2"
-
-    local_rings: list[list[tuple[float, float]]] = []
-    for polygon in polygons:
-        for ring in polygon.outer_rings:
-            local_rings.append(
-                ring_to_local_points(
-                    ring,
-                    center_lon_deg=center_lon_deg,
-                    center_lat_deg=center_lat_deg,
-                )
-            )
-        for ring in polygon.inner_rings:
-            local_rings.append(
-                ring_to_local_points(
-                    ring,
-                    center_lon_deg=center_lon_deg,
-                    center_lat_deg=center_lat_deg,
-                )
-            )
-
-    bounds = local_points_bounds(local_rings)
-
-    parts = [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        (
-            f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
-            f'viewBox="0 0 {width} {height}">'
-        ),
-        f'<rect x="0" y="0" width="100%" height="100%" fill="{background_fill}"/>',
-    ]
-    for polygon in polygons:
-        footprint = WaterPolygonFootprint(
-            water_id=polygon.osm_id,
-            kind=polygon.kind,
-            outer_rings_lonlat=polygon.outer_rings,
-            inner_rings_lonlat=polygon.inner_rings,
-            source=polygon.source,
-            tags=polygon.tags,
-        )
-        mesh = build_water_surface_mesh(
-            footprint,
-            center_lat_deg=center_lat_deg,
-            center_lon_deg=center_lon_deg,
-            grid_m=grid_m,
-            simplify_tolerance_m=simplify_m,
-        )
-        if mesh is None:
-            continue
-        for triangle in mesh.triangles_xy_m:
-            points = project_local_points_to_svg(
-                list(triangle),
-                bounds=bounds,
-                width=width,
-                height=height,
-                padding=padding,
-            )
-            triangle_path_d = path_for_points(points)
-            if not triangle_path_d:
-                continue
-            parts.append(
-                (
-                    '<path d="{d}" fill="{fill}" fill-opacity="0.50" '
-                    'stroke="{stroke}" stroke-width="0.8" vector-effect="non-scaling-stroke"/>'
-                ).format(
-                    d=triangle_path_d,
-                    fill=water_fill,
-                    stroke=water_stroke,
-                )
-            )
-    parts.append("</svg>")
-    return "\n".join(parts)
-
-
 def build_svg_preview(
     polygons: list[WaterPolygon],
     *,
@@ -965,22 +855,6 @@ def main(argv: list[str] | None = None) -> int:
         )
         args.output_svg.write_text(svg_text + "\n", encoding="utf-8")
         print(f"wrote_svg={args.output_svg}")
-
-    if args.output_triangulated_svg is not None:
-        args.output_triangulated_svg.parent.mkdir(parents=True, exist_ok=True)
-        svg_text = build_triangulated_svg_preview(
-            polygons,
-            bbox=geometry_bounds(polygons, bbox),
-            width=int(args.svg_width),
-            height=int(args.svg_height),
-            padding=float(args.svg_padding),
-            center_lon_deg=float(args.lon),
-            center_lat_deg=float(args.lat),
-            grid_m=float(args.triangulation_grid_m),
-            simplify_m=float(args.triangulation_simplify_m),
-        )
-        args.output_triangulated_svg.write_text(svg_text + "\n", encoding="utf-8")
-        print(f"wrote_triangulated_svg={args.output_triangulated_svg}")
 
     print(
         f"summary polygons={len(polygons)} bbox={bbox[0]:.6f},{bbox[1]:.6f},{bbox[2]:.6f},{bbox[3]:.6f}",
