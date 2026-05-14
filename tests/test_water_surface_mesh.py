@@ -113,3 +113,42 @@ def test_build_water_surface_mesh_preserves_hole_area() -> None:
     got_area = sum(_triangle_area(triangle) for triangle in mesh.triangles_xy_m)
 
     assert abs(got_area - expected_area) / expected_area < 0.01
+
+
+def test_build_water_surface_mesh_can_split_triangles_by_grid() -> None:
+    footprint = WaterPolygonFootprint(
+        water_id="way/3",
+        kind="natural_water",
+        outer_rings_lonlat=(
+            (
+                (133.0, 35.0),
+                (133.02, 35.0),
+                (133.02, 35.02),
+                (133.0, 35.02),
+                (133.0, 35.0),
+            ),
+        ),
+        inner_rings_lonlat=(),
+        source="way",
+        tags={"natural": "water"},
+    )
+
+    mesh = build_water_surface_mesh(
+        footprint,
+        center_lat_deg=35.01,
+        center_lon_deg=133.01,
+        grid_m=1.0,
+        simplify_tolerance_m=1.0,
+        split_cell_m=300.0,
+    )
+
+    assert mesh is not None
+    assert mesh.split_cell_m == 300.0
+    assert len(mesh.triangles_xy_m) > 2
+
+    transformer = make_local_transformer(35.01, 133.01)
+    outer_xy = project_ring_xy(footprint.outer_rings_lonlat[0], transformer)
+    expected_area = _ring_area(outer_xy)
+    got_area = sum(_triangle_area(triangle) for triangle in mesh.triangles_xy_m)
+
+    assert abs(got_area - expected_area) / expected_area < 0.01

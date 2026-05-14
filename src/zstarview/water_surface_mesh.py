@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Callable, Sequence
 
 import mapbox_earcut as earcut
 import numpy as np
@@ -21,6 +21,7 @@ class WaterSurfaceMesh:
     source: str
     simplified_grid_m: float
     simplified_tolerance_m: float
+    split_cell_m: float
 
 
 def make_local_transformer(lat_deg: float, lon_deg: float) -> Transformer:
@@ -229,6 +230,172 @@ def _triangulate_shell(
     return tuple(result)
 
 
+def _clip_polygon_to_edge(
+    points: Sequence[tuple[float, float]],
+    *,
+    edge_value: float,
+    keep_inside: Callable[[float, float, float], bool],
+    intersect: Callable[[tuple[float, float], tuple[float, float], float], tuple[float, float]],
+) -> list[tuple[float, float]]:
+    if not points:
+        return []
+    clipped: list[tuple[float, float]] = []
+    previous = points[-1]
+    previous_inside = keep_inside(previous[0], previous[1], edge_value)
+    for current in points:
+        current_inside = keep_inside(current[0], current[1], edge_value)
+        if current_inside:
+            if not previous_inside:
+                clipped.append(intersect(previous, current, edge_value))
+            clipped.append((float(current[0]), float(current[1])))
+        elif previous_inside:
+            clipped.append(intersect(previous, current, edge_value))
+        previous = current
+        previous_inside = current_inside
+    return clipped
+
+
+def _clip_triangle_to_rect(
+    triangle: Sequence[tuple[float, float]],
+    *,
+    min_x: float,
+    min_y: float,
+    max_x: float,
+    max_y: float,
+) -> list[tuple[float, float]]:
+    clipped = list(triangle)
+    if len(clipped) < 3:
+        return []
+
+    def keep_left(x: float, _: float, edge_value: float) -> bool:
+        return x >= edge_value
+
+    def keep_right(x: float, _: float, edge_value: float) -> bool:
+        return x <= edge_value
+
+    def keep_bottom(_: float, y: float, edge_value: float) -> bool:
+        return y >= edge_value
+
+    def keep_top(_: float, y: float, edge_value: float) -> bool:
+        return y <= edge_value
+
+    def intersect_vertical(
+        p0: tuple[float, float],
+        p1: tuple[float, float],
+        x_value: float,
+    ) -> tuple[float, float]:
+        x0, y0 = p0
+        x1, y1 = p1
+        dx = x1 - x0
+        if dx == 0.0:
+            return (float(x_value), float(y0))
+        t = (x_value - x0) / dx
+        return (float(x_value), float(y0 + (t * (y1 - y0))))
+
+    def intersect_horizontal(
+        p0: tuple[float, float],
+        p1: tuple[float, float],
+        y_value: float,
+    ) -> tuple[float, float]:
+        x0, y0 = p0
+        x1, y1 = p1
+        dy = y1 - y0
+        if dy == 0.0:
+            return (float(x0), float(y_value))
+        t = (y_value - y0) / dy
+        return (float(x0 + (t * (x1 - x0))), float(y_value))
+
+    clipped = _clip_polygon_to_edge(
+        clipped,
+        edge_value=min_x,
+        keep_inside=keep_left,
+        intersect=intersect_vertical,
+    )
+    clipped = _clip_polygon_to_edge(
+        clipped,
+        edge_value=max_x,
+        keep_inside=keep_right,
+        intersect=intersect_vertical,
+    )
+    clipped = _clip_polygon_to_edge(
+        clipped,
+        edge_value=min_y,
+        keep_inside=keep_bottom,
+        intersect=intersect_horizontal,
+    )
+    clipped = _clip_polygon_to_edge(
+        clipped,
+        edge_value=max_y,
+        keep_inside=keep_top,
+        intersect=intersect_horizontal,
+    )
+    if len(clipped) >= 2 and clipped[0] == clipped[-1]:
+        clipped = clipped[:-1]
+    return clipped
+
+
+def _triangulate_convex_polygon(
+    points: Sequence[tuple[float, float]],
+) -> tuple[tuple[tuple[float, float], tuple[float, float], tuple[float, float]], ...]:
+    body = list(points)
+    if len(body) < 3:
+        return ()
+    if body[0] == body[-1]:
+        body = body[:-1]
+    if len(body) < 3:
+        return ()
+    anchor = body[0]
+    triangles: list[tuple[tuple[float, float], tuple[float, float], tuple[float, float]]] = []
+    for index in range(1, len(body) - 1):
+        triangle = (anchor, body[index], body[index + 1])
+        triangles.append(
+            tuple((float(x), float(y)) for x, y in triangle)
+        )
+    return tuple(triangles)
+
+
+def _split_triangles_by_grid(
+    triangles: Sequence[tuple[tuple[float, float], tuple[float, float], tuple[float, float]]],
+    *,
+    cell_m: float,
+) -> tuple[tuple[tuple[float, float], tuple[float, float], tuple[float, float]], ...]:
+    if cell_m <= 0.0:
+        return tuple(triangles)
+    if not triangles:
+        return ()
+
+    refined: list[tuple[tuple[float, float], tuple[float, float], tuple[float, float]]] = []
+    epsilon = max(1.0e-9, abs(cell_m) * 1.0e-12)
+    for triangle in triangles:
+        xs = [point[0] for point in triangle]
+        ys = [point[1] for point in triangle]
+        min_x = math.floor(min(xs) / cell_m) * cell_m
+        min_y = math.floor(min(ys) / cell_m) * cell_m
+        max_x = math.floor((max(xs) - epsilon) / cell_m) * cell_m + cell_m
+        max_y = math.floor((max(ys) - epsilon) / cell_m) * cell_m + cell_m
+        start_x = int(math.floor(min_x / cell_m))
+        end_x = int(math.floor((max_x - epsilon) / cell_m))
+        start_y = int(math.floor(min_y / cell_m))
+        end_y = int(math.floor((max_y - epsilon) / cell_m))
+        for cell_x in range(start_x, end_x + 1):
+            cell_min_x = float(cell_x) * cell_m
+            cell_max_x = cell_min_x + cell_m
+            for cell_y in range(start_y, end_y + 1):
+                cell_min_y = float(cell_y) * cell_m
+                cell_max_y = cell_min_y + cell_m
+                clipped = _clip_triangle_to_rect(
+                    triangle,
+                    min_x=cell_min_x,
+                    min_y=cell_min_y,
+                    max_x=cell_max_x,
+                    max_y=cell_max_y,
+                )
+                if len(clipped) < 3:
+                    continue
+                refined.extend(_triangulate_convex_polygon(clipped))
+    return tuple(refined)
+
+
 def _mean_surface_elevation_m(patch: WaterSurfacePatch | None) -> float:
     if patch is None:
         return 0.0
@@ -244,6 +411,7 @@ def build_water_surface_mesh(
     patch: WaterSurfacePatch | None = None,
     grid_m: float = 1.0,
     simplify_tolerance_m: float = 20.0,
+    split_cell_m: float = 0.0,
 ) -> WaterSurfaceMesh | None:
     if not footprint.outer_rings_lonlat:
         return None
@@ -282,6 +450,10 @@ def build_water_surface_mesh(
     if not triangles:
         return None
 
+    triangles = list(_split_triangles_by_grid(triangles, cell_m=split_cell_m))
+    if not triangles:
+        return None
+
     surface_mode = patch.surface_mode if patch is not None else "flat"
     return WaterSurfaceMesh(
         water_id=footprint.water_id,
@@ -292,4 +464,5 @@ def build_water_surface_mesh(
         source=footprint.source,
         simplified_grid_m=float(grid_m),
         simplified_tolerance_m=float(simplify_tolerance_m),
+        split_cell_m=float(split_cell_m),
     )
