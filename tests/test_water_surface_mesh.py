@@ -59,7 +59,8 @@ def test_build_water_surface_mesh_creates_triangles_for_simple_polygon() -> None
     assert mesh is not None
     assert mesh.water_id == "way/1"
     assert mesh.surface_mode == "flat"
-    assert len(mesh.triangles_xy_m) == 2
+    assert mesh.split_cell_m == 300.0
+    assert len(mesh.triangles_xy_m) > 2
 
     transformer = make_local_transformer(35.005, 133.005)
     outer_xy = project_ring_xy(footprint.outer_rings_lonlat[0], transformer)
@@ -139,7 +140,6 @@ def test_build_water_surface_mesh_can_split_triangles_by_grid() -> None:
         center_lon_deg=133.01,
         grid_m=1.0,
         simplify_tolerance_m=1.0,
-        split_cell_m=300.0,
     )
 
     assert mesh is not None

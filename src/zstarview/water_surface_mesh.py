@@ -24,6 +24,9 @@ class WaterSurfaceMesh:
     split_cell_m: float
 
 
+DEFAULT_SPLIT_CELL_M = 300.0
+
+
 def make_local_transformer(lat_deg: float, lon_deg: float) -> Transformer:
     local_crs = CRS.from_proj4(
         f"+proj=aeqd +lat_0={lat_deg} +lon_0={lon_deg} +datum=WGS84 +units=m +no_defs"
@@ -411,7 +414,6 @@ def build_water_surface_mesh(
     patch: WaterSurfacePatch | None = None,
     grid_m: float = 1.0,
     simplify_tolerance_m: float = 20.0,
-    split_cell_m: float = 0.0,
 ) -> WaterSurfaceMesh | None:
     if not footprint.outer_rings_lonlat:
         return None
@@ -450,7 +452,7 @@ def build_water_surface_mesh(
     if not triangles:
         return None
 
-    triangles = list(_split_triangles_by_grid(triangles, cell_m=split_cell_m))
+    triangles = list(_split_triangles_by_grid(triangles, cell_m=DEFAULT_SPLIT_CELL_M))
     if not triangles:
         return None
 
@@ -464,5 +466,5 @@ def build_water_surface_mesh(
         source=footprint.source,
         simplified_grid_m=float(grid_m),
         simplified_tolerance_m=float(simplify_tolerance_m),
-        split_cell_m=float(split_cell_m),
+        split_cell_m=DEFAULT_SPLIT_CELL_M,
     )
