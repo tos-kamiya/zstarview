@@ -28,7 +28,13 @@ def np_rgba_to_qimage(arr: np.ndarray) -> QImage:
     """
     Converts a NumPy RGBA array (H, W, 4) to a QImage.
     """
-    h, w, c = arr.shape
-    assert c == 4 and arr.dtype == np.uint8, "Input must be a (H, W, 4) uint8 array"
+    arr = np.asarray(arr)
+    if arr.ndim != 3 or arr.shape[2] != 4:
+        raise ValueError("Input must be a (H, W, 4) array")
+    if arr.dtype != np.uint8:
+        raise ValueError("Input must have dtype uint8")
+    if not arr.flags.c_contiguous:
+        arr = np.ascontiguousarray(arr)
+    h, w, _ = arr.shape
     qimg = QImage(arr.data, w, h, w * 4, QImage.Format_RGBA8888)
     return qimg.copy()
