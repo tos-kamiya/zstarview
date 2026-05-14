@@ -166,8 +166,8 @@ CLI では、場所・時刻・データセット・描画設定を細かく指�
 下のリンクは詳細なオプショングループです。各ドキュメントに、詳細なオプション表、注釈、例をまとめています。
 
 - [観測地点と時刻](docs/cli-observing-location-and-time-ja_JP.md)
+- [観測地点名参照ツール](docs/cli-viewpoint-dataset-queries-ja_JP.md)
 - [起動時の対象検索](docs/cli-search-objects-ja_JP.md)
-- [ビューポイントデータ参照ツール](docs/cli-viewpoint-dataset-queries-ja_JP.md)
 - [星空と天体](docs/cli-sky-and-stars-ja_JP.md)
 - [オーバーレイ](docs/cli-overlays-ja_JP.md)
 - [一般](docs/cli-general-ja_JP.md)
