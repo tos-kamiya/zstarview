@@ -103,6 +103,19 @@ from ..terrain import (
     reduce_profile_to_altaz,
     sample_ground_elevation,
 )
+from ..water_overlay import (
+    DEFAULT_WATER_AZIMUTH_STEP_DEG,
+    DEFAULT_WATER_OVERPASS_ENDPOINT,
+    DEFAULT_WATER_RADIUS_KM,
+    DEFAULT_WATER_SAMPLE_STEP_M,
+    DEFAULT_WATER_TIMEOUT_S,
+    DEFAULT_WATER_USER_AGENT,
+    bbox_from_point,
+    extract_water_polygons,
+    fetch_overpass_json,
+    WaterOverlayPoint,
+    sample_water_overlay_points,
+)
 from ..types import CelestialData, UrbanOutlinePolyline, ViewerData
 from ..gui.composite import SkyCompositorCache, build_cloud_amount_field_from_rgba
 from ..gui.sky_worker import compute_sky_snapshot
@@ -468,7 +481,7 @@ def _abort_export_without_partial_data() -> None:
     logger.error(
         "Export aborted because partial data is not allowed. Re-run with "
         "--allow-partial-data to continue and still output an image when "
-        "terrain, urban, aircraft, or satellite data cannot be downloaded."
+        "terrain, urban, water, aircraft, or satellite data cannot be downloaded."
     )
     raise SystemExit(1)
 
@@ -591,6 +604,47 @@ def _fetch_terrain_horizon_layer(
             [float(point.distance_m) for point in layer] for layer in layers.secondary_layers
         ],
     }
+
+
+def _fetch_water_overlay_layer(
+    *,
+    viewer_data: ViewerData,
+    deadline: float | None,
+) -> list[WaterOverlayPoint] | None:
+    if _timed_out(deadline):
+        raise TimeoutError("water timed out")
+
+    bbox = bbox_from_point(
+        float(viewer_data.lat_deg),
+        float(viewer_data.lon_deg),
+        DEFAULT_WATER_RADIUS_KM,
+    )
+    payload = fetch_overpass_json(
+        bbox=bbox,
+        endpoint=DEFAULT_WATER_OVERPASS_ENDPOINT,
+        user_agent=DEFAULT_WATER_USER_AGENT,
+        timeout_s=DEFAULT_WATER_TIMEOUT_S,
+    )
+    elements = payload.get("elements")
+    if not isinstance(elements, list):
+        raise RuntimeError("Overpass payload missing elements")
+    footprints = extract_water_polygons(elements, bbox=bbox)
+    if not footprints:
+        return None
+    if _timed_out(deadline):
+        raise TimeoutError("water timed out")
+    observer_ground_m = float(getattr(viewer_data, "ground_elevation_m", 0.0) or 0.0)
+    water_points = sample_water_overlay_points(
+        footprints,
+        observer_lat_deg=float(viewer_data.lat_deg),
+        observer_lon_deg=float(viewer_data.lon_deg),
+        observer_height_m=float(viewer_data.observer_height_m) + observer_ground_m,
+        fallback_surface_height_m=observer_ground_m,
+        max_distance_km=DEFAULT_WATER_RADIUS_KM,
+        sample_step_m=DEFAULT_WATER_SAMPLE_STEP_M,
+        azimuth_step_deg=DEFAULT_WATER_AZIMUTH_STEP_DEG,
+    )
+    return list(water_points) if water_points else None
 
 
 def _required_feature_types(feature_type: str) -> tuple[str, ...]:
@@ -1272,6 +1326,19 @@ def main() -> None:
             if not allow_partial_data:
                 _abort_export_without_partial_data()
 
+    water_overlay_points = None
+    if user_options.water_overlay_opacity > 0.0:
+        try:
+            water_overlay_points = _fetch_water_overlay_layer(
+                viewer_data=viewer_data,
+                deadline=deadline,
+            )
+        except Exception as exc:
+            logger.warning("Export layer unavailable: water (%s)", exc)
+            layer_failures.append("water")
+            if not allow_partial_data:
+                _abort_export_without_partial_data()
+
     aircraft_overlay_points = None
     if user_options.aircraft_opacity > 0.0:
         try:
@@ -1324,6 +1391,7 @@ def main() -> None:
         terrain_horizon_secondary_profile_altaz_layers=terrain_horizon_secondary_profile_altaz_layers,
         terrain_horizon_secondary_profile_distances_m_layers=terrain_horizon_secondary_profile_distances_m_layers,
         urban_outlines=urban_outlines,
+        water_overlay_points=water_overlay_points,
         satellite_overlay_points=satellite_overlay_points,
         aircraft_overlay_points=aircraft_overlay_points,
         night_light_glow_profile=night_light_glow_profile,

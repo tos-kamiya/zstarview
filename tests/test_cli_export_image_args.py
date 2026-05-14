@@ -19,6 +19,8 @@ def test_parse_export_image_args_accepts_shared_and_export_specific_options() ->
             "Matsue Station",
             "--content-fov-deg",
             "110",
+            "--water-surface-opacity",
+            "0.12",
             "--urban-outline-skyscraper-radius-km",
             "48",
             "--image-size",
@@ -34,6 +36,7 @@ def test_parse_export_image_args_accepts_shared_and_export_specific_options() ->
 
     assert args.place == "Matsue Station"
     assert args.content_fov_deg == 110.0
+    assert args.water_surface_opacity == 0.12
     assert args.urban_outline_skyscraper_radius_km == 48.0
     assert args.image_size == (1280, 720)
     assert args.layer_timeout_seconds == 12.5

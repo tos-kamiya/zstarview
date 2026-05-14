@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import zstarview.cli.export_image as mod
 from zstarview.cli.args import SKY_OPACITY_DEFAULT
 from zstarview.gui.window_inputs import SkyWindowRuntimeOptions
+from zstarview.water_overlay import WaterOverlayPoint, WaterPolygonFootprint
 
 
 @dataclass
@@ -203,3 +204,47 @@ def test_fetch_urban_outline_layer_skips_skyscraper_lookup_when_radius_zero(monk
     )
 
     assert got is None
+
+
+def test_fetch_water_overlay_layer_uses_observer_ground_and_eye_height(monkeypatch) -> None:
+    viewer_data = SimpleNamespace(
+        lat_deg=35.0,
+        lon_deg=139.0,
+        observer_height_m=1.7,
+        ground_elevation_m=42.0,
+    )
+    footprint = WaterPolygonFootprint(
+        water_id="lake",
+        kind="natural_water",
+        outer_rings_lonlat=(
+            (
+                (139.0, 35.0),
+                (139.01, 35.0),
+                (139.01, 35.01),
+                (139.0, 35.01),
+                (139.0, 35.0),
+            ),
+        ),
+        inner_rings_lonlat=(),
+        source="way",
+        tags={"natural": "water"},
+    )
+    captured: dict[str, float] = {}
+
+    monkeypatch.setattr(mod, "fetch_overpass_json", lambda **_kwargs: {"elements": []})
+    monkeypatch.setattr(mod, "extract_water_polygons", lambda *_args, **_kwargs: (footprint,))
+
+    def _sample_water_overlay_points(*_args, **kwargs):
+        captured["observer_height_m"] = float(kwargs["observer_height_m"])
+        captured["fallback_surface_height_m"] = float(kwargs["fallback_surface_height_m"])
+        captured["max_distance_km"] = float(kwargs["max_distance_km"])
+        return (WaterOverlayPoint("water", 10.0, 20.0, 0.5),)
+
+    monkeypatch.setattr(mod, "sample_water_overlay_points", _sample_water_overlay_points)
+
+    got = mod._fetch_water_overlay_layer(viewer_data=viewer_data, deadline=None)
+
+    assert got == [WaterOverlayPoint("water", 10.0, 20.0, 0.5)]
+    assert captured["observer_height_m"] == 43.7
+    assert captured["fallback_surface_height_m"] == 42.0
+    assert captured["max_distance_km"] == mod.DEFAULT_WATER_RADIUS_KM
