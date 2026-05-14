@@ -9,7 +9,7 @@ This sample keeps the pipeline intentionally simple:
    - outer rings
    - inner rings
 4. Write a normalized JSON payload and, optionally, a quick SVG preview.
-5. Optionally write a grid-split SVG preview that shows the 300m cell clipping for river-like polygons.
+5. Optionally write a secondary SVG preview that renders the same normalized polygons without extra mesh splitting.
 
 The script is meant for data-structure exploration, not production caching.
 """
@@ -31,7 +31,6 @@ from zstarview.water_overlay import (
     classify_water_surface_category,
     extract_water_polygons as extract_core_water_polygons,
 )
-from zstarview.water_surface_mesh import split_local_polygon_by_grid
 
 EARTH_RADIUS_KM = 6371.0088
 EARTH_RADIUS_M = EARTH_RADIUS_KM * 1000.0
@@ -40,7 +39,6 @@ DEFAULT_USER_AGENT = "zstarview-water-overlay-probe/0.1"
 DEFAULT_TIMEOUT_S = 60.0
 QUERY_MARGIN_KM = 2.0
 OVERPASS_SAMPLE_ATTEMPTS = 8
-GRID_SPLIT_CELL_M = 300.0
 
 POLYGON_WATER_KEYS = {
     ("natural", "water"),
@@ -102,7 +100,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output-split-svg",
         type=Path,
-        help="Optional output path for a 300m grid-split SVG preview of river-like polygons.",
+        help="Optional output path for a secondary SVG preview that uses the same normalized polygons.",
     )
     parser.add_argument(
         "--input-cache",
@@ -602,10 +600,6 @@ def _water_style(polygon: WaterPolygon) -> tuple[str, str, float]:
     return "#8ecae6", "#4a90c2", 0.50
 
 
-def _should_split_polygon(polygon: WaterPolygon) -> bool:
-    return classify_water_surface_category(polygon.tags, kind=polygon.kind) == "river"
-
-
 def filter_water_polygons_to_bbox(
     polygons: list[WaterPolygon],
     *,
@@ -858,51 +852,42 @@ def build_split_svg_preview(
     ):
         shell_holes = _assign_holes_to_shells(local_outer_rings, local_inner_rings)
         for shell, holes in zip(local_outer_rings, shell_holes):
-            if _should_split_polygon(polygon):
-                pieces = split_local_polygon_by_grid(
-                    shell,
-                    holes,
-                    cell_m=GRID_SPLIT_CELL_M,
-                )
-            else:
-                pieces = [(list(shell), [list(hole) for hole in holes])]
-            for piece_shell, piece_holes in pieces:
-                path_parts: list[str] = []
-                exterior_points = project_local_points_to_svg(
-                    piece_shell,
+            path_parts: list[str] = []
+            exterior_points = project_local_points_to_svg(
+                shell,
+                bounds=bounds,
+                width=width,
+                height=height,
+                padding=padding,
+            )
+            exterior_path = path_for_points(exterior_points)
+            if not exterior_path:
+                continue
+            path_parts.append(exterior_path)
+            for hole in holes:
+                interior_points = project_local_points_to_svg(
+                    hole,
                     bounds=bounds,
                     width=width,
                     height=height,
                     padding=padding,
                 )
-                exterior_path = path_for_points(exterior_points)
-                if not exterior_path:
-                    continue
-                path_parts.append(exterior_path)
-                for hole in piece_holes:
-                    interior_points = project_local_points_to_svg(
-                        hole,
-                        bounds=bounds,
-                        width=width,
-                        height=height,
-                        padding=padding,
-                    )
-                    interior_path = path_for_points(interior_points)
-                    if interior_path:
-                        path_parts.append(interior_path)
-                fill, stroke, fill_opacity = _water_style(polygon)
-                parts.append(
-                    (
-                        '<path d="{d}" fill="{fill}" fill-opacity="{fill_opacity:.2f}" '
-                        'stroke="{stroke}" stroke-width="0.8" vector-effect="non-scaling-stroke" '
-                        'fill-rule="evenodd"/>'
-                    ).format(
-                        d=" ".join(path_parts),
-                        fill=fill,
-                        stroke=stroke,
-                        fill_opacity=fill_opacity,
-                    )
+                interior_path = path_for_points(interior_points)
+                if interior_path:
+                    path_parts.append(interior_path)
+            fill, stroke, fill_opacity = _water_style(polygon)
+            parts.append(
+                (
+                    '<path d="{d}" fill="{fill}" fill-opacity="{fill_opacity:.2f}" '
+                    'stroke="{stroke}" stroke-width="0.8" vector-effect="non-scaling-stroke" '
+                    'fill-rule="evenodd"/>'
+                ).format(
+                    d=" ".join(path_parts),
+                    fill=fill,
+                    stroke=stroke,
+                    fill_opacity=fill_opacity,
                 )
+            )
     parts.append("</svg>")
     return "\n".join(parts)
 
