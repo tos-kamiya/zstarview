@@ -83,11 +83,11 @@
 ### 2026-05-02
 
 - 検索ダイアログの CLI Alt/Az 保持チェック
-  - GUI の `Search Objects...` と place 検索ダイアログに `Keep CLI-specified Alt/Az` を追加した。
+  - GUI の `対象検索...` と place 検索ダイアログに `Keep CLI-specified Alt/Az` を追加した。
   - `-A` / `-Z` の指定がある場合だけ有効化し、初期状態はチェック済みとした。
   - 指定された軸だけを CLI 視線として保持するようにした。
   - `preserve_cli_view_center` を `SearchJumpTarget` に載せ、選択結果から `_jump_to_search_target()` へ保持意図を渡すようにした。
-  - place 検索と Search Objects の両方で、保持フラグを無効にしたときは次回検索で CLI 視線へ戻さないことを明示した。
+  - place 検索と対象検索の両方で、保持フラグを無効にしたときは次回検索で CLI 視線へ戻さないことを明示した。
 
 ### 2026-04-25
 
@@ -674,13 +674,13 @@
 
 ### 2026-04-18
 
-- Search Objects 拡張の設計メモ
+- 対象検索拡張の設計メモ
   - JPL 小天体検索を既存の恒星・アステリズム検索 UI に統合し、選択対象へ視界中心を合わせる方針を確認した。
   - 結果の永続表示は、検索ダイアログ下部のチェックボックスで制御する方針にした。
   - 永続マーカーとラベルは、一時 jump highlight と別の状態として扱う前提で整理した。
 
 - JPL small-body 本体接続
-  - `Search Objects` ダイアログを local first 方式にして、恒星・アステリズムの検索結果が無い場合だけ JPL small body へフォールバックするようにした。
+  - `対象検索` ダイアログを local first 方式にして、恒星・アステリズムの検索結果が無い場合だけ JPL small body へフォールバックするようにした。
   - 検索欄の直下に JPL database 検索ボタンを追加し、Enter キー依存ではなく明示的に JPL へ問い合わせられるようにした。
   - JPL フォールバックは major body と small body の両方を問い合わせるようにした。
   - `Keep marker` は JPL 結果にも反映し、major body の場合も持続表示だけは残るようにした。
@@ -694,7 +694,7 @@
   - 再問い合わせに失敗した場合は即時再試行せず、失敗時刻から 1h 後へ次回 retry を延期するようにした。
   - retry の成功/失敗は `SkyWindowState` の `persistent_search_last_error` / `persistent_search_next_refresh_utc` で追跡し、HUD の status line に反映するようにした。
 
-- Search Objects / export-image overlay follow-up
+- 対象検索 / export-image overlay follow-up
   - `zstarview-export-image` でも検索結果の marker / label を出力画像へ重ねるようにし、検索で得た alt/az は GUI と同じ `-45°` 下限へ揃えた。
   - 検索解決の共有設計は `search/` サブパッケージへ移したが、UI との切り分けや overlay 連携はまだ仮設計なので、`docs/design.md` に provisional note を追加した。
 
@@ -707,7 +707,7 @@
   - Rationale: The defaults used by the CLI, runtime viewer data, and GUI input layer should match so the app starts with a consistent projection scale and overscan budget.
 
 - Voyager 1 検索経路の整理
-  - `Search Objects...` と CLI 検索で使う `satellite` 経路を `ISS` のみに限定し、`JWST`, `Voyager 1`, `Voyager 2`, `Parker` は JPL 検索結果として扱うようにした。
+  - `対象検索...` と CLI 検索で使う `satellite` 経路を `ISS` のみに限定し、`JWST`, `Voyager 1`, `Voyager 2`, `Parker` は JPL 検索結果として扱うようにした。
   - ローカル検索候補の組み立てから衛星ショートカットを外し、`kind="satellite"` の曖昧な検索結果が Voyager 系へ混入しないようにした。
   - これにより、Voyager 1 の検索結果は `JPL [Voyager 1 (spacecraft)]` として扱われ、Horizons observer ephemeris の `alt/az` と比較しやすくした。
 

@@ -558,9 +558,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 #### 4.4.2 検索ダイアログの持続表示オプション
 
-- `gui/famous_star_search_dialog.py` は、`Search Objects...` ダイアログとして、検索語入力、候補一覧、確定/取消に加えて、結果を継続表示するためのチェックボックス領域を持ってよい。
+- `gui/famous_star_search_dialog.py` は、`対象検索...` ダイアログとして、検索語入力、候補一覧、確定/取消に加えて、結果を継続表示するためのチェックボックス領域を持ってよい。
 - チェックボックスは `Keep marker` の 1 つだけを持ち、マーカーとラベルの両方を継続表示する意味にしてよい。
-- `Search Objects...` と place 検索ダイアログは、`Keep CLI-specified Alt/Az` のチェックボックスを別に持ってよい。
+- `対象検索...` と place 検索ダイアログは、`Keep CLI-specified Alt/Az` のチェックボックスを別に持ってよい。
 - そのチェックボックスは、起動時に `-A` または `-Z` が明示されている場合だけ有効とし、初期状態ではチェック済みにしてよい。
 - `-A` / `-Z` のうち指定された軸だけを保持し、未指定の軸は検索対象の `alt/az` で補完してよい。
 - `SearchJumpTarget` に `preserve_cli_view_center` を持たせ、ダイアログの選択結果から検索ジャンプへ保持意図を伝えてよい。
@@ -569,7 +569,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 一時 jump highlight は従来どおり 3 秒程度で消えるが、継続表示フラグで選ばれたマーカーとラベルは、利用者が明示的に解除するまで残してよい。
 - 継続表示対象は積み増さず、検索のたびに現在の 1 件へ置き換える実装としてよい。
 - 継続表示対象は、星、アステリズム、place、衛星、JPL 小天体のいずれでもよいが、描画側ではターゲット種別に応じてラベル文言だけを切り替える。
-- `Search Objects...` は local first で実行し、恒星、アステリズム、place を先に調べてよい。
+- `対象検索...` は local first で実行し、恒星、アステリズム、place を先に調べてよい。
 - local 候補が見つからない場合だけ、`ISS` 専用の衛星検索経路を現在位置基準で試してよい。
 - `ISS` として認識されたのに現在位置ベースの位置解決に失敗した場合は、その検索を失敗として扱ってよく、同じ検索語を JPL へ自動フォールバックしてはならない。
 - local / `ISS` の両方で候補が見つからない場合だけ JPL 小天体検索へフォールバックしてよい。`JWST` / `Voyager 1` / `Voyager 2` / `Parker` はこの JPL 経路で扱い、以後の継続表示も同一の追跡状態で維持してよい。
@@ -662,7 +662,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `--search-keep-marker` が付いている場合、GUI 起動直後の初期フレームから marker と label を表示する。
 - GUI の検索ダイアログで CLI 視線保持チェックが無効な場合は、検索結果に `preserve_cli_view_center=False` を持たせて `_jump_to_search_target()` へ渡してよい。
 - `JWST` / `Voyager 1` / `Voyager 2` / `Parker` の場合は、初回結果の `alt/az` を固定座標として保存せず、後続の描画 tick で追跡状態から再投影してよい。
-- 候補が 0 件または複数件の場合、GUI は終了せず、`Search Objects...` ダイアログへ検索語と候補一覧を渡して再選択を促す。
+- 候補が 0 件または複数件の場合、GUI は終了せず、`対象検索...` ダイアログへ検索語と候補一覧を渡して再選択を促す。
 - GUI 側の初期検索は、対話ダイアログからの検索と同じ候補モデルを使い、ポスト処理だけを分ける。
 - `zstarview-export-image` 側は同じ共通解決層を使うが、0 件または複数件のときは描画へ進まず、`--list` の有無に応じて列挙終了かエラー終了を選ぶ。`--list` は export-image にだけ存在する。
 - 起動時検索と手動検索で同じ `SearchJumpTarget` を使い、GUI は jump highlight と persistent overlay を更新し、export-image は 1 回の描画入力として消費する。
@@ -1221,7 +1221,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 17. `SkyWindow` は `satellite_ready` または位置再計算完了を受けたら `SkyWindowState` を更新し、再描画する。
 18. 通常描画では人工衛星を `planets` の後、`aircraft` の前に描く。
 19. 初期実装では人工衛星と月・惑星の接近時に特別な隠蔽処理は行わなくてよい。
-20. `Search Objects...` と CLI 検索の `satellite` 解決は `ISS` だけを対象にしてよく、`JWST` / `Voyager 1` / `Voyager 2` / `Parker` は JPL 検索結果として扱ってよい。継続表示は `command` と追跡状態を保持し、表示時に再投影してよい。
+20. `対象検索...` と CLI 検索の `satellite` 解決は `ISS` だけを対象にしてよく、`JWST` / `Voyager 1` / `Voyager 2` / `Parker` は JPL 検索結果として扱ってよい。継続表示は `command` と追跡状態を保持し、表示時に再投影してよい。
 21. `build_search_jump_targets(..., include_satellites=False)` を使う経路では、ローカル検索候補へ衛星ショートカットを混ぜなくてよい。
 
 ### 6.4 時刻モードによる補助レイヤー可否判定
@@ -1381,7 +1381,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `satellite_opacity <= 0.0` または `ISS` 表示が無効の間は、人工衛星 fetch timer と位置再計算 timer を止めてよい。
 - 描画は視野内に限定し、地平線下も表示してよい。
 - GUI 既定の有効対象は `ISS` としてよい。
-- `Search Objects...` の `satellite` 経路も `ISS` 専用としてよく、Horizons spacecraft は検索時には JPL small-body / major-body 経路へ寄せてよい。継続表示時は `command` と追跡状態を保持し、2 秒 tick ではローカル再投影してよい。
+- `対象検索...` の `satellite` 経路も `ISS` 専用としてよく、Horizons spacecraft は検索時には JPL small-body / major-body 経路へ寄せてよい。継続表示時は `command` と追跡状態を保持し、2 秒 tick ではローカル再投影してよい。
 - 航空機と人工衛星の位置再計算は、共通 overlay projection timer で同期させてよい。
 - GUI から再表示したときは `last_success_utc` を見て fresh cache を優先し、不要な `wheretheiss.at` / CelesTrak 再取得を避けてよい。
 - stale cache は通常は再取得優先でよいが、失敗 backoff 中は表示継続に使ってよい。

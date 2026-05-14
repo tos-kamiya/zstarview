@@ -36,7 +36,7 @@
 - **地球ガイド**: 参考情報として、向きの把握を助けるための独立した地球ガイドレイヤーが同じ地面トーンで簡略化した大陸アウトラインを描きます。
 - **地形地平線**: Copernicus DEM データをダウンロードして、地形地平線オーバーレイを表示します。帯状の稜線を同じ地平線色で描き、近い帯ほど太く、遠い帯ほど細くなります。青く差した稜線は、観測者から見える、手前の稜線に隠れない部分を示します。地形地平線（地形地平線を表示しない場合には水平線）より下は同じ地面トーンで塗り分けます。
 - **都市アウトライン**: 現在の観測地点に対して、主要な建物屋根線を白い都市アウトラインとして表示します。高層建築が多い一部の都市では、半径 60km 以内の遠距離の高層建築も追加で表示されます。
-- **水面**: 近傍の水域を小さな青いドットとして表示し、現在の観測地点のまわりの湖・海・河川敷の水面を示します。
+- **水面**: 近傍の水域を小さな青いドットとして表示し、現在の観測地点のまわりの湖・海・河川敷の水面を示します。詳細は [水面について](docs/cli-overlays-ja_JP.md#about-water-surface) を参照してください。
 - **夜間光**: NASA Earth at Night / Black Marble の 2016 Grayscale 500m GeoTIFF タイルを必要時にダウンロードしてローカルにキャッシュし、地平線や地形稜線の少し上に独立したグローとして表示します。
 
 ## スクリーンショット
@@ -56,7 +56,7 @@
     <img src="docs/images/screenshot6.png" alt="`zstarview-export-image --search \"C/1861 G1\" --sixel` でサッチャー彗星 (`C/1861 G1 Thatcher`) を表示したスクリーンショット" width="49%" />
   </p>
 
-注意: 等級上限を大きくすると描画時間も増えます。[等級上限オプションについて](#about-magnitude-limit) も参照してください。
+注意: 等級上限を大きくすると描画時間も増えます。[等級上限オプションについて](docs/cli-sky-and-stars-ja_JP.md#about-magnitude-limit) も参照してください。
 
 都市アウトラインと地形地平線の都市別スクリーンショット例:
 
@@ -152,10 +152,7 @@ zstarview --search Ceres
 
 CLI では、場所・時刻・データセット・描画設定を細かく指定できます。
 
-<details>
-  <summary>CLI リファレンス</summary>
-
-### CLI
+### CLI リファレンス
 
 #### 引数
 
@@ -166,286 +163,15 @@ CLI では、場所・時刻・データセット・描画設定を細かく指�
 | 緯度経度 | 直接座標（例: `35.68;139.76`, `@35.68,139.76`）または Google Maps URL | |
 | `auto` | IPアドレスによる現在地自動取得 | |
 
-#### 観測地点と時刻
+下のリンクは詳細なオプショングループです。各ドキュメントに、詳細なオプション表、注釈、例をまとめています。
 
-| オプション | 説明 | デフォルト |
-| :--- | :--- | :--- |
-| `-p`, `--place QUERY` | OpenStreetMap Nominatim で地名・駅名・施設名を検索し、最上位候補を観測地点として使います。位置引数 `location` とは併用できません。 | |
-| `--place-countrycode CODE` | `--place` の検索対象国を ISO 3166-1 alpha-2 形式の国コード（例: `jp`）で制限します。 | |
-| `--place-lang LANG` | `--place` の検索結果に対して Nominatim へ送る `Accept-Language` です。 | `en` |
-| `--timezone TZ` | 解決された観測地点のタイムゾーンを上書きして、`--datetime` の既定タイムゾーンと画面表示に使います。`JST`、`Asia/Tokyo`、`UTC+9` などを受け付けます。 | |
-| `-H`, `--hours HOURS` | 現在時刻に加算する時間数を指定します。※1 | `0` |
-| `-D`, `--days DAYS` | 現在時刻に加算する日数を指定します。※1 | `0` |
-| `--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"` | 絶対的な日時を指定します。時刻は `HH`、`HH:MM`、`HH:MM:SS` のいずれでも指定でき、タイムゾーン省略時は UTC 扱いです。※1 | |
-| `-Z`, `--view-center-az VIEW_CENTER_AZ` | 表示中心の方位角を指定します（度数または方位記号）。 | `180` |
-| `-A`, `--view-center-alt VIEW_CENTER_ALT` | 表示中心の高度角を指定します（90=天頂、0=地平線）。 | `90` |
-| `--edge-fov-deg DEGREES` | ウィンドウ端に対応する投影スケールを指定します。`96` なら、ウィンドウ端は視線中心から `96°` に対応します。 | `96` |
-| `--content-fov-deg DEGREES` | 全レイヤー共通の overscan 視野角を指定します。ウィンドウ端は引き続き視線中心から `90°` の位置に対応し、`90` を超える値では空・雲・背景などがウィンドウ外へはみ出して描画され、四隅の空白を減らせます。許容範囲は `90`〜`127` です。 | `115` |
-| `--observer-height-m METERS` | 観測地点の基準面から見た観測者の目線高さをメートルで指定します。既定の目線高さ `1.7` を置き換えます。タワーや山のビューポイント自体の高さ・標高とは別に扱われます。 | `1.7` |
-| `--use-building-top` | 実験中。都市名、`--place`、直接座標、対応 Google Maps URL で解決した地点について、解決地点の約 5m 以内に建物が見つかった場合、その建物の最も高い頂部を観測基準として使います。タワー/山ビューポイントには適用しません。 | off |
+- [観測地点と時刻](docs/cli-observing-location-and-time-ja_JP.md)
+- [起動時の対象検索](docs/cli-search-objects-ja_JP.md)
+- [ビューポイントデータ参照ツール](docs/cli-viewpoint-dataset-queries-ja_JP.md)
+- [星空と天体](docs/cli-sky-and-stars-ja_JP.md)
+- [オーバーレイ](docs/cli-overlays-ja_JP.md)
+- [一般](docs/cli-general-ja_JP.md)
 
-#### 起動時の Search Objects
-
-| オプション | 説明 | デフォルト |
-| :--- | :--- | :--- |
-| `--search QUERY` | 起動時に対象を解決します。GUI の `Search Objects...` と同じ local-first 検索を使い、既知の人工衛星はアプリ側の現在位置を優先し、人工衛星として認識されたのに現在位置を取得できない場合はエラーにして JPL へはフォールバックしません。CLI / export-image 側の JPL 解決は major body / small body を含めてもよいです。`=` がなければラベルまたは ID で検索します（例: `Ceres`, `2000001`）。 | |
-| `--search label=QUERY` | ラベルだけを検索します（例: `label=Ceres`）。 | |
-| `--search id=QUERY` | ID だけを検索します（例: `id=2000001`）。 | |
-| `--search-keep-marker` | 選択対象をマーカーとラベル付きで継続表示します。 | |
-| `--list` | `zstarview-export-image` 専用です。候補を表示して終了します。 | |
-
-`-A` または `-Z` が指定されている場合は、その軸を固定し、未指定側だけを検索結果で補います。検索結果の高度角は `-5°` にクランプされます。
-
-#### ビューポイントデータ参照ツール
-
-GUI を起動せずに、同梱タワー/展望地点データと山頂ビューポイントデータを参照できます。
-
-| オプション | 説明 | デフォルト |
-| :--- | :--- | :--- |
-| `-h`, `--help` | ヘルプメッセージを表示して終了します。 | |
-| `--list-viewpoints {t,m}` | 同梱タワー (`t`) または山 (`m`) の主表示名を出力して終了します。各行は `t/NAME` または `m/NAME` 形式で、利用可能な場合は ASCII 代替名を優先します。 | |
-| `--list-viewpoint-names {t,m}` | 同梱タワー (`t`) または山 (`m`) の名前を、多言語名と ASCII 代替名込みで一覧出力して終了します。各行は `t/NAME` または `m/NAME` 形式です。 | |
-| `--show-viewpoint-json NAME` | 指定名で同梱ビューポイントを解決し、利用可能な場合は `ascii_name` を含む JSON メタデータを出力して終了します。`t/` または `m/` を付けると対象 kind を明示できます。 | |
-
-```bash
-zstarview --list-viewpoints t
-zstarview --list-viewpoint-names t
-zstarview --show-viewpoint-json "t/Tokyo Skytree"
-zstarview --list-viewpoints m
-zstarview --show-viewpoint-json "m/Mount Fuji"
-```
-
-これらのオプションは相互排他で、`location` 引数や時刻・描画オプションとは併用できません。
-`--list-viewpoints` では、利用可能な場合は ASCII 代替名を優先表示します。
-`--list-viewpoint-names` では、元の綴りと ASCII 代替綴りの両方を含みます。
-prefix なしの `--show-viewpoint-json` で tower と mountain の両方に完全一致した場合は、`t/...` / `m/...` 候補を列挙して曖昧一致エラーにします。
-
-#### 星空と天体
-
-| オプション | 説明 | デフォルト |
-| :--- | :--- | :--- |
-| `--sky-opacity SKY_OPACITY` | 空の色ディスクの不透明度を指定します（0.0〜1.0）。0.0 で描画を無効化します。 | `0.15` |
-| `--sky-disc-altaz-rings {off,dimalt,altaz}` | 常時表示の空ディスク方位/高度オーバーレイです。`dimalt` は控えめな高度リング、`altaz` はフルグリッドを表示します。 | `dimalt` |
-| `--sky-disc-altaz-rings-hover {off,dimalt,altaz}` | ホバー時の空ディスク方位/高度オーバーレイです。意味は上記と同じです。 | `altaz` |
-| `--bright-bodies {outline,fill}` | 明るい天体の描画モードを指定します。`outline` では明るい恒星をひし形輪郭、惑星を輪郭のみ、月を通常表示では輪郭のみで描画し、`--enlarge-moon` や月ホバー時は通常の月描画を使います。`fill` では従来どおり塗りつぶし表示にします。 | `outline` |
-| `-m`, `--enlarge-moon` | 月を 5 倍に拡大して表示します。 | |
-| `-s`, `--star-base-radius STAR_BASE_RADIUS` | 2 等星の基本サイズを指定します。 | `4.0` |
-| `-w`, `--expected-render-width EXPECTED_RENDER_WIDTH` | 恒星をフル解像度で描画する想定ウィンドウ幅を指定します。天球幅がこの値を超える場合、恒星レイヤーは平方根スケーリングで描画します。 | `600` |
-| `-V`, `--vmag-limit V_MAG_LIMIT` | 表示する恒星の等級上限を指定します。 | `7.0` |
-| `--vmag-brightness-multiplier MULTIPLIER` | 等級 1 段階あたりの光量変化倍率（`1.58`〜`2.512`、デフォルト `2.5`。Pogson の定義は `2.512`）を指定します。※3 | `2.5` |
-| `-i`, `--sky-update-interval SECONDS` | 星空を更新する時間間隔（秒）を指定します。 | `60` |
-| `--show-dso-initial true\|false` | 起動時に DSO（deep-sky objects）を表示するかを指定します。 | 自動（カタログがあれば表示） |
-| `--show-asterisms-initial true\|false` | 起動時にアステリウムを表示するかを指定します。 | `show` |
-
-#### オーバーレイ
-
-| オプション | 説明 | デフォルト |
-| :--- | :--- | :--- |
-| `-c`, `--cloud-opacity CLOUD_OPACITY` | 雲の不透明度を指定します（0.0〜1.0）。0.0 で描画を無効化します。※2 | `0.07` |
-| `--cloud-stripe MODE[,COUNT[,WIDTH]]` | 雲ストライプの方式を指定します。`width` は中心対称のストライプを描き、雲量に応じて見かけの線幅を変えます。`alpha` は線幅を固定したまま線の alpha を変えます。`COUNT` は既定の 600x600 星レンダリング面でのストライプ密度として扱い、実際の描画時には星レイヤーの縮小レンダリング面サイズに合わせてスケールします。`width` は `width,50,0.85`、`alpha` は `alpha,50,0.25` に展開されます。count または width を `0` にすると雲描画を無効化します。 | `width,50,0.85` |
-| `--cloud-missing-tint-opacity OPACITY` | 雲欠損領域を示す黄色の濃さを指定します（0.0〜1.0）。 | `0.176` |
-| `--night-light-opacity OPACITY` | 夜間光オーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、起動中の Black Marble のダウンロードと描画を無効化します。 | `0.022` |
-| `--water-surface-opacity OPACITY` | 水面オーバーレイのドットの不透明度を指定します（0.0〜1.0）。0.0 で、起動中の水面データの取得とドット描画を無効化します。 | `0.12` |
-| `-a`, `--aircraft-opacity OPACITY` | 航空機オーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、起動中の航空機問い合わせと描画を無効化します。 | `0.5` |
-| `--satellite-opacity OPACITY` | 人工衛星オーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、起動中の軌道要素取得と描画を無効化します。 | `0.5` |
-| `--show-guidelines-initial true\|false` | 起動時にガイドライン表示を有効にするかを指定します。対象は幾何学的地平線、天の赤道、黄道、never-rises 円、方位ラベル、天頂マーカーです。 | `show` |
-| `-d`, `--terrain-horizon-opacity OPACITY` | 地形地平線ポリラインの不透明度を指定します（0.0〜1.0）。0.0 で DEM ダウンロード・地形地平線計算・描画・地球ガイドを無効化します。※4 | `0.003` |
-| `-e`, `--earth-guide-opacity OPACITY` | 地平線下の地球ガイド線レイヤーの不透明度を指定します（0.0〜1.0）。0.0 で、起動中の地球ガイド描画を無効化します。※4 | `0.028` |
-| `--ground-tint-opacity OPACITY` | 幾何学的地平線または地形地平線より下の地面色塗りの強さを指定します（0.0〜1.0）。 | `0.1` |
-| `-u`, `--urban-outline-opacity OPACITY` | 都市アウトライン重ね表示の不透明度を指定します（0.0〜1.0）。0.0 で起動中は表示を無効化します。 | `0.2` |
-| `-r`, `--urban-outline-radius-km RADIUS_KM` | 観測地点からこの半径内の建物を都市アウトラインとして取得・描画します。この値はキャッシュキーにも含まれます。 | `2.5` |
-| `--urban-outline-skyscraper-radius-km RADIUS_KM` | 遠距離の高層建築補助レイヤーの外側半径です。`0` を指定すると起動中は skyscraper tile 探索を無効化します。それ以外の値は `--urban-outline-radius-km` 以上でなければなりません。 | `60.0` |
-| `-b`, `--urban-outline-min-building-height-m METERS` | この高さ未満の建物を都市アウトライン取得時に除外します。この値はキャッシュキーにも含まれます。 | `0.0` |
-| `--urban-outline-feature-type {both,building}` | 都市アウトライン用の Overture キャッシュモードを指定します。`both` は `building` と `building_part` を組み合わせ、part がある場合はそちらを優先します。 | `both` |
-
-#### 一般
-
-| オプション | 説明 | デフォルト |
-| :--- | :--- | :--- |
-| `-h`, `--help` | ヘルプメッセージを表示して終了します。 | |
-| `--window-geometry restore\|X,Y,W,H` | 初期ウィンドウ位置と大きさを指定します。`restore` で前回終了時の位置/サイズを復元し、`X,Y,W,H` で整数値を直接指定できます。Wayland ではウィンドウ位置の復元は利用できません（サイズ復元は有効です）。 | |
-| `--window-frame {frameless,window}` | ウィンドウ装飾モードを選びます。`frameless` は従来の枠なし表示、`window` は OS 標準のタイトルバーと枠を使います。 | `frameless` |
-| `--observation-info auto\|top\|bottom\|off` | 起動時の観測情報ブロックの表示モードを指定します。 | `bottom` |
-| `--include-direction-grid` | `zstarview-export-image` 専用です。出力画像に方向グリッドを含めます。 | |
-| `-t`, `--theme {night,day,white,black,transparent}` | 背景と星の見え方のテーマを指定します。 | `night` |
-| `--visibility-boost MULTIPLIER` | 薄い補助レイヤーの見やすさを持ち上げる倍率です。`1.0` より大きい値で、地形地平線・地球ガイド・都市アウトライン・空/雲ディスク・人工衛星・航空機・地面 tint などの不透明度を底上げします。 | `1.0` |
-| `--clear-long-lived-cache` | トラブルシュート用オプションです。起動前に長寿命の DEM / 都市アウトラインキャッシュを削除します。3 日以内に再度使うと起動を拒否し、再実行可能日時を表示します。 | |
-
-※1 `--hours`、`--days`、`--datetime` でリアルタイムではない星空を表示した場合、雲、航空機、人工衛星は描画されません。
-
-※2 雲の描画は気象衛星（**Himawari** / **NOAA GOES**）の赤外線データを公開 S3 バケットから取得して行います。ネットワーク関連の注意や回避策は「トラブルシューティング」を参照してください。
-
-※3 最も明るい等級差の倍率は、古典的な Pogson 値 \(100^{1/5}\approx2.512\) を超えられません。
-
-※4 地形地平線表示は初回利用時に Copernicus DEM タイルをダウンロードし、以後はローカルキャッシュを再利用します。有効時はディスク内の地面/空の塗り分け境界にも地形プロファイルを使い、地球ガイドも同じ地面トーンの色で描画されます。
-
-※5 `--place` は公開の OpenStreetMap Nominatim 検索サービスを使います。User-Agent と Accept-Language を付けて 1 回だけ検索リクエストを送ります。高頻度利用や自動化で使う場合は、Nominatim の利用ポリシーを確認してください。
-
-#### `--place` の挙動
-
-`--place` は、通常の offline-first な `location` 引数とは別の、明示的な online resolver 経路です。
-
-- アプリは Nominatim へ 1 回だけ検索リクエストを送り、候補を importance 順で扱います。
-- 起動時に対話選択は行わず、最上位候補を自動で使います。
-- 候補が複数ある場合も最上位候補を使い、候補一覧はターミナルへ出力します。
-- GUI の地点表示には、Nominatim が返した長い地名をそのまま表示します。
-- 採用した結果は設定へ保存され、次回起動時は Nominatim へ再問い合わせせず再利用します。
-- `--use-building-top` は `--place` と併用できます。このモードは実験中で、ウィンドウ表示前に近傍建物データを解決するため起動が遅くなることがあります。
-
-#### 起動時のオーバーレイ表示設定
-
-起動時の初期表示をメニュー操作なしで切り替えるには、次を使います。
-
-```bash
-# DSO は非表示、アステリウムは表示で起動
-zstarview --show-dso-initial false --show-asterisms-initial true Tokyo
-```
-
-#### 表示中心オプションについて
-
-`-Z`（方位角）と `-A`（高度角）のオプションで、画面の表示中心を指定できます。
-
-デフォルトでは `-Z 180`（南向き）、`-A 90`（天頂）です。画面下が南、画面左が東で、天頂を見上げたような円形の表示になります。
-
-例えば、`-Z 90`（東向き）および `-A 25`（高度 25°、地平線から 25° 上）を指定すると、東の空を見上げる視野が生成されます。  
-
-方位角は度数または方位記号（大小区別なし）で指定できます。
-例: `-Z E`, `-Z ne`, `-Z SSW`（202.5°）。
-（対応表: 0=N, 90=E, 180=S, 270=W。N, NNE, NE, ENE, E, ESE, SE, SSE, S, SSW, SW, WSW, W, WNW, NW, NNW を受け付けます）
-
-<a id="about-magnitude-limit"></a>
-
-#### 等級上限オプションについて
-
-`-V 等級` で、指定した等級までの明るさの星を描画します。
-デフォルトは `-V 7.0` です。現在の同梱星表では最大 `-V 10.5` までサポートしており、その場合の描画候補となる恒星は約 536,000 個です。
-この値を大きくすると描画時間も増えます。
-
-#### テーマプリセットについて
-
-`--theme` を使うと、背景とコントラストの見え方を切り替えられます。
-
-* `night`: 標準の暗色テーマ
-* `black`: より黒く不透明な背景
-* `transparent`: 黒寄りの半透明背景。デスクトップ側も暗い場合に向く
-* `day`: 明るい昼空寄りの背景表現
-* `white`: 最も明るい淡色テーマ
-
-#### 日時指定オプションについて
-
-`--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"` で絶対的な日時を指定できます。
-時刻部分は「時」だけ、「時:分」、「時:分:秒」のいずれも使用可能です。
-タイムゾーン（TZ）を省略した場合は、解決された観測地点のタイムゾーンを使います。`--timezone TZ` を指定した場合はそちらを優先します。
-
-タイムゾーンは以下のいずれかの形式で指定できます:
-
-* よく使われる略称（JST, UTC, GMT, KST, HKT, AWST, ACST, AEST, NZST, NZDT, MSK, EAT）
-* IANA タイムゾーン名（例: `Asia/Tokyo`, `Europe/Moscow`）
-* UTC オフセット（例: `UTC+9`, `UTC-07:30`）
-
-例:
-
-```bash
-zstarview --datetime "2025-08-17 21:00:00 JST" Tokyo
-zstarview --datetime "2025-09-12 9" Tokyo         # 9時ちょうど
-zstarview --datetime "2025-09-12 09:00" Tokyo     # 9:00
-zstarview --datetime "2025-09-12 9:0:0 JST" Tokyo # 9:00:00 JST
-```
-
-#### 直接座標指定
-
-都市名の代わりに、直接座標を指定できます。
-
-* 形式:
-  * `緯度;経度`（セミコロン区切り）
-  * `@緯度,経度`
-  * `maps.google.com/` または `www.google.com/maps/` で始まる対応 Google Maps 共有 URL
-* 例:
-  * `35.68;139.76`
-  * `N35.68;E139.76`
-  * `-35.68;139.76`
-  * `S35.68;W139.76`
-  * `@35.68,139.76`
-  * `https://www.google.com/maps/@35.68,139.76,17z`
-  * `maps.google.com/maps/@35.68,139.76`
-  * `https://www.google.com/maps/place/...!3d35.68!4d139.76...`
-* 緯度は -90〜90、経度は -180〜180 の範囲でなければなりません。
-* `N/S/E/W` の方向記号を使えます（数値の負号がある場合はそちらを優先）。
-* 対応する Google Maps URL は、現在広く観測される共有リンク形式として `maps.google.com/` または `www.google.com/maps/` で始まるものを受け付けます。`https://` は省略できます。
-* Google Maps URL では、`!3dLAT!4dLON` があればその座標を優先し、なければ `@LAT,LON` を使います。
-* zoom、擬似的な高度、heading、pitch などの後続 URL 情報は無視します。
-* 直接座標で起動した場合、タイムゾーンは `--place` と同様に解決された地点座標から補完します。`--timezone TZ` を指定した場合はそちらを優先します。
-* 観測者の目線高さは `--observer-height-m` だけで指定します。Google Maps URL 内の高度らしき値は使いません。
-* `--use-building-top` は直接座標入力とも併用できます。この実験中モードでは、解決地点の近傍建物を探し、見つかった場合はその頂部を観測基準として使います。
-
-例:
-
-```bash
-zstarview "35.68;139.76"
-zstarview "@35.68,139.76"
-zstarview "www.google.com/maps/@35.68,139.76,17z"
-zstarview "N35.68;E139.76" --datetime "2025-09-12 21 JST"
-zstarview "35.68;139.76" --observer-height-m 120
-```
-
-#### タワー名入力
-
-Wikidata 由来の同梱タワー/展望地点データから起動することもできます。
-
-* 例:
-  * `Tokyo Skytree`
-  * `t/Tokyo Skytree`（タワー明示指定）
-  * `Tsutenkaku`（`Tsūtenkaku` の ASCII 代替表記）
-  * `Tokyo Tower`
-  * `wikidata:Q57965`
-* タワー名を使った場合、そのタワーの構造物高またはビューポイント高が基準観測点として使われます。
-* `--observer-height-m` は、その基準観測点からの観測者の目線高さだけを置き換えます（既定値 `1.7m`）。タワー自体の高さは置き換えません。
-* ダイアクリティカルマーク付き名称についても ASCII の代替表記で解決できます。
-* 画面上の地点情報では、タワービューポイントに対して `Tower height ... m` を表示することがあります。`--observer-height-m` を明示指定した場合は、別行で `Observer height ... m` を表示することがあります。
-
-例:
-
-```bash
-zstarview "Tokyo Skytree"
-zstarview "Tokyo Tower" --observer-height-m 150
-```
-
-山名の同梱ビューポイントデータから起動することもできます。
-
-* 例:
-  * `Mount Fuji`
-  * `m/Mount Fuji`（山明示指定）
-  * `Aconcagua`
-  * `Snezka`（`Sněžka` の ASCII 代替表記）
-  * `wikidata:Q39231`
-* 山名を使った場合、山頂ビューポイントが基準観測点として使われます。
-* `--observer-height-m` は、その山頂ビューポイントからの観測者の目線高さだけを置き換えます（既定値 `1.7m`）。
-* 山名についても ASCII の代替表記で解決できます。
-* 画面上の地点情報では、山ビューポイントに対して `Elevation ... m` を表示することがあります。`--observer-height-m` を明示指定した場合は、別行で `Observer height ... m` を表示することがあります。
-
-例:
-
-```bash
-zstarview "Mount Fuji"
-zstarview "Snezka"
-```
-
-`--datetime` のタイムゾーン指定例:
-
-- IANA ゾーン名: `--datetime "2025-09-12 21 Asia/Tokyo"`
-- UTC オフセット: `--datetime "2025-09-12 21 UTC+9"`
-
-### 対応しているアステリウム
-
-ここでの「アステリウム」は、見かけ上の星の並びを結んだ通称パターンです。  
-**IAU（国際天文学連合）が定義する正式な 88 星座の境界とは別概念**です。
-
-- 冬: `Winter Triangle`（冬の大三角）, `Orion's Belt`（オリオンの三ツ星）, `Winter Hexagon`（冬のダイヤモンド）, `Southern Cross`（南十字）, `Southern Pointers`, `Diamond Cross`, `False Cross`
-- 春: `Big Dipper`（北斗七星）, `Little Dipper`, `Spring Triangle`, `Arc to Arcturus`, `Leo Sickle`, `Southern Triangle`
-- 夏: `Summer Triangle`（夏の大三角）, `Northern Cross`（北十字）, `Teapot`, `Keystone`
-- 秋: `Great Square of Pegasus`（ペガススの四辺形）, `Circlet of Pisces`, `Water Jar of Aquarius`, `Cassiopeia W`, `House of Cepheus`, `Job's Coffin`
-
-</details>
 
 <details>
   <summary>ツール</summary>
@@ -522,7 +248,7 @@ GUI では、キーボード操作とメニュー操作で視点移動、検索�
 * **E**: 地平線下の地球ガイドの重ね表示の表示/非表示を切り替え
 * **U**: 都市アウトラインの重ね表示の表示/非表示を切り替え
 * **Ctrl+J**: Jump to Named Star を開く
-* **Ctrl+F**: Search Objects を開く
+* **Ctrl+F**: 対象検索を開く
 * **F11**: フルスクリーン表示の切り替え
 * **ESC**: フルスクリーンから復帰
 * **Q**: 終了
@@ -532,7 +258,7 @@ GUI では、キーボード操作とメニュー操作で視点移動、検索�
 ハンバーガーメニュー（`☰`）から次を利用できます。
 
 * **Jump to Named Star...**: 代表的な固有名星（`Vmag <= 2.0`）を北天 / 赤道付近 / 南天で選んで、視点中心をその星へ移動します。
-* **Search Objects...**: 固有名付き恒星、対応アステリウム、地名、既知の人工衛星、JPL の天体を横断検索し、選択した対象へ移動します。ローカル検索で見つからない場合は既知の人工衛星をアプリ側の現在位置で解決し、人工衛星として認識されたのに現在位置を取得できない場合はエラーにして JPL へはフォールバックしません。`Keep marker` を有効にすると、移動後もマーカーとラベルを継続表示します。
+* **対象検索...**: 固有名付き恒星、対応アステリウム、地名、既知の人工衛星、JPL の天体を横断検索し、選択した対象へ移動します。ローカル検索で見つからない場合は既知の人工衛星をアプリ側の現在位置で解決し、人工衛星として認識されたのに現在位置を取得できない場合はエラーにして JPL へはフォールバックしません。`Keep marker` を有効にすると、移動後もマーカーとラベルを継続表示します。
 * **Search Places...**: OpenStreetMap Nominatim を使う別ダイアログを開き、地名・駅名・施設名の候補から選んだ地表地点の方向へ視点中心を移動します。
 * **Enlarge Moon**: 月の 5 倍表示を切り替えます。
 * **DSO**: DSO の重ね表示の表示/非表示を切り替えます。
