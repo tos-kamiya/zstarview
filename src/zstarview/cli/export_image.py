@@ -1332,7 +1332,8 @@ def main() -> None:
                 _abort_export_without_partial_data()
 
     water_overlay_points = None
-    if user_options.water_overlay_opacity > 0.0:
+    water_overlay_opacity = float(getattr(user_options, "water_overlay_opacity", 0.12))
+    if water_overlay_opacity > 0.0:
         try:
             water_overlay_points = _fetch_water_overlay_layer(
                 viewer_data=viewer_data,
