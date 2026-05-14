@@ -9,7 +9,6 @@ This sample keeps the pipeline intentionally simple:
    - outer rings
    - inner rings
 4. Write a normalized JSON payload and, optionally, a quick SVG preview.
-5. Optionally write a secondary SVG preview that renders the same normalized polygons without extra mesh splitting.
 
 The script is meant for data-structure exploration, not production caching.
 """
@@ -96,11 +95,6 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--output-svg",
         type=Path,
         help="Optional output path for a quick SVG preview.",
-    )
-    parser.add_argument(
-        "--output-split-svg",
-        type=Path,
-        help="Optional output path for a secondary SVG preview that uses the same normalized polygons.",
     )
     parser.add_argument(
         "--input-cache",
@@ -696,29 +690,6 @@ def _point_in_ring(point: tuple[float, float], ring: Iterable[tuple[float, float
     return inside
 
 
-def _assign_holes_to_shells(
-    outer_rings: list[list[tuple[float, float]]],
-    inner_rings: list[list[tuple[float, float]]],
-) -> list[list[list[tuple[float, float]]]]:
-    shell_holes: list[list[list[tuple[float, float]]]] = [[] for _ in outer_rings]
-    shell_areas = []
-    for shell in outer_rings:
-        shell_areas.append(abs(_ring_signed_area(shell)))
-    for hole in inner_rings:
-        if len(hole) < 4:
-            continue
-        anchor = hole[0]
-        matches: list[int] = []
-        for shell_index, shell in enumerate(outer_rings):
-            if _point_in_ring(anchor, shell):
-                matches.append(shell_index)
-        if not matches:
-            continue
-        target_index = min(matches, key=lambda index: shell_areas[index])
-        shell_holes[target_index].append(hole)
-    return shell_holes
-
-
 def project_local_points_to_svg(
     points: list[tuple[float, float]],
     *,
@@ -795,99 +766,6 @@ def build_svg_preview(
                 'fill-rule="evenodd"/>'
             ).format(d=path_d, fill=fill, stroke=stroke, fill_opacity=fill_opacity)
         )
-    parts.append("</svg>")
-    return "\n".join(parts)
-
-
-def build_split_svg_preview(
-    polygons: list[WaterPolygon],
-    *,
-    width: int,
-    height: int,
-    padding: float,
-    center_lon_deg: float,
-    center_lat_deg: float,
-) -> str:
-    background_fill = "#f7fbff"
-
-    local_rings: list[list[tuple[float, float]]] = []
-    outer_rings_by_polygon: list[list[list[tuple[float, float]]]] = []
-    inner_rings_by_polygon: list[list[list[tuple[float, float]]]] = []
-    for polygon in polygons:
-        local_outer_rings: list[list[tuple[float, float]]] = []
-        for ring in polygon.outer_rings:
-            local_ring = ring_to_local_points(
-                ring,
-                center_lon_deg=center_lon_deg,
-                center_lat_deg=center_lat_deg,
-            )
-            local_rings.append(local_ring)
-            local_outer_rings.append(local_ring)
-        local_inner_rings: list[list[tuple[float, float]]] = []
-        for ring in polygon.inner_rings:
-            local_ring = ring_to_local_points(
-                ring,
-                center_lon_deg=center_lon_deg,
-                center_lat_deg=center_lat_deg,
-            )
-            local_rings.append(local_ring)
-            local_inner_rings.append(local_ring)
-        outer_rings_by_polygon.append(local_outer_rings)
-        inner_rings_by_polygon.append(local_inner_rings)
-
-    bounds = local_points_bounds(local_rings)
-
-    parts = [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        (
-            f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
-            f'viewBox="0 0 {width} {height}">'
-        ),
-        f'<rect x="0" y="0" width="100%" height="100%" fill="{background_fill}"/>',
-    ]
-    for polygon, local_outer_rings, local_inner_rings in zip(
-        polygons,
-        outer_rings_by_polygon,
-        inner_rings_by_polygon,
-    ):
-        shell_holes = _assign_holes_to_shells(local_outer_rings, local_inner_rings)
-        for shell, holes in zip(local_outer_rings, shell_holes):
-            path_parts: list[str] = []
-            exterior_points = project_local_points_to_svg(
-                shell,
-                bounds=bounds,
-                width=width,
-                height=height,
-                padding=padding,
-            )
-            exterior_path = path_for_points(exterior_points)
-            if not exterior_path:
-                continue
-            path_parts.append(exterior_path)
-            for hole in holes:
-                interior_points = project_local_points_to_svg(
-                    hole,
-                    bounds=bounds,
-                    width=width,
-                    height=height,
-                    padding=padding,
-                )
-                interior_path = path_for_points(interior_points)
-                if interior_path:
-                    path_parts.append(interior_path)
-            fill, stroke, fill_opacity = _water_style(polygon)
-            parts.append(
-                (
-                    '<path d="{d}" fill="{fill}" fill-opacity="{fill_opacity:.2f}" '
-                    'stroke="{stroke}" stroke-width="0.8" vector-effect="non-scaling-stroke" '
-                    'fill-rule="evenodd"/>'
-                ).format(
-                    d=" ".join(path_parts),
-                    fill=fill,
-                    stroke=stroke,
-                    fill_opacity=fill_opacity,
-                )
-            )
     parts.append("</svg>")
     return "\n".join(parts)
 
@@ -1005,19 +883,6 @@ def main(argv: list[str] | None = None) -> int:
         )
         args.output_svg.write_text(svg_text + "\n", encoding="utf-8")
         print(f"wrote_svg={args.output_svg}")
-
-    if args.output_split_svg is not None:
-        args.output_split_svg.parent.mkdir(parents=True, exist_ok=True)
-        svg_text = build_split_svg_preview(
-            polygons,
-            width=int(args.svg_width),
-            height=int(args.svg_height),
-            padding=float(args.svg_padding),
-            center_lon_deg=float(args.lon),
-            center_lat_deg=float(args.lat),
-        )
-        args.output_split_svg.write_text(svg_text + "\n", encoding="utf-8")
-        print(f"wrote_split_svg={args.output_split_svg}")
 
     print(
         f"summary polygons={len(polygons)} bbox={view_bbox[0]:.6f},{view_bbox[1]:.6f},{view_bbox[2]:.6f},{view_bbox[3]:.6f}",
