@@ -3,11 +3,12 @@ from __future__ import annotations
 import threading
 import time
 
+from zstarview.clouddisc.types import DownloadCancelledError
 from zstarview.gui.cloud_controller import CloudController
 
 
 class _DummyCloudDisc:
-    def fetch_source(self, *, lat: float, lon: float):  # pragma: no cover - not used
+    def fetch_source(self, *, lat: float, lon: float, abort_event=None):  # pragma: no cover - not used
         raise RuntimeError("unused")
 
     def render_from_source_with_coverage(self, **kwargs):  # pragma: no cover - not used
@@ -46,7 +47,7 @@ def test_cloud_update_keeps_latest_pending_source_request() -> None:
 
 def test_source_completion_keeps_pending_render_queued_when_render_is_running() -> None:
     class _SourceOnlyCloudDisc(_DummyCloudDisc):
-        def fetch_source(self, *, lat: float, lon: float):
+        def fetch_source(self, *, lat: float, lon: float, abort_event=None):
             return object()
 
     controller = CloudController(_SourceOnlyCloudDisc())
@@ -70,7 +71,7 @@ def test_source_completion_keeps_pending_render_queued_when_render_is_running() 
 
 def test_cloud_update_defers_render_until_source_is_ready() -> None:
     class _SourceAndRenderCloudDisc(_DummyCloudDisc):
-        def fetch_source(self, *, lat: float, lon: float):
+        def fetch_source(self, *, lat: float, lon: float, abort_event=None):
             return object()
 
         def render_from_source_with_coverage(self, **kwargs):
@@ -144,3 +145,45 @@ def test_cloud_shutdown_waits_for_active_worker_threads(monkeypatch) -> None:
     shutdown_thread.join(timeout=1.0)
 
     assert not controller._active_workers
+
+
+def test_cloud_shutdown_cancels_active_source_download(monkeypatch) -> None:
+    started = threading.Event()
+    seen_abort_event = threading.Event()
+
+    class _CancelableCloudDisc(_DummyCloudDisc):
+        def fetch_source(self, *, lat: float, lon: float, abort_event=None):
+            assert abort_event is not None
+            seen_abort_event.set()
+            started.set()
+            while not abort_event.is_set():
+                time.sleep(0.01)
+            raise DownloadCancelledError("Cancelled while downloading")
+
+    controller = CloudController(_CancelableCloudDisc())
+    controller._latest_source = None
+
+    controller.update(
+        lat=35.0,
+        lon=139.0,
+        alt=45.0,
+        az=180.0,
+        radius_px=256,
+        content_fov_deg=90.0,
+        reason="initial",
+    )
+
+    assert started.wait(timeout=1.0)
+    assert seen_abort_event.wait(timeout=1.0)
+
+    shutdown_done = threading.Event()
+
+    def run_shutdown() -> None:
+        controller.shutdown(wait_timeout_s=1.0)
+        shutdown_done.set()
+
+    shutdown_thread = threading.Thread(target=run_shutdown)
+    shutdown_thread.start()
+
+    assert shutdown_done.wait(timeout=1.0)
+    shutdown_thread.join(timeout=1.0)

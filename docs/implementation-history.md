@@ -797,3 +797,25 @@
 - Cloud opacity compositing clarification
   - Adjusted the cloud composite path so `--cloud-opacity` also scales the gray underlay mixed behind cloud strokes, not only the additive cloud layer and final alpha.
   - Updated the specification and design docs to describe `--cloud-opacity` as the final cloud-compositing strength, including the gray desaturation blend.
+
+### 2026-05-15
+
+- Cloud download cancellation on shutdown
+  - Added a cooperative abort event to cloud fetches so GUI shutdown can cancel in-flight GOES and Himawari downloads instead of waiting for every S3 transfer to finish.
+  - Wired the abort event through the cloud controller, cloud-disc fetch path, and S3 download helper; progress callbacks now raise `KeyboardInterrupt` when shutdown is requested so boto3 can cancel the managed transfer.
+  - Added regression coverage for canceled S3 downloads, Himawari fetch aborts, and cloud-controller shutdown signaling.
+
+- Terrain and urban-outline cancellation on shutdown
+  - Added the same cooperative abort event to Copernicus DEM fetches and Overture building imports so terrain-horizon and urban-outline shutdown can stop multi-file downloads early.
+  - Copernicus DEM downloads now raise a cancellation error from the S3 progress callback, and Overture downloads terminate the `overturemaps` subprocess when shutdown is requested.
+  - Added regression coverage for terrain-controller and urban-outline-controller shutdown cancellation plus direct function-level cancel tests.
+
+- Water overlay startup responsiveness
+  - Added cooperative cancellation to water overlay fetch and sampling paths so the controller can stop cleanly when shutdown is requested.
+  - Made the water overlay geometry loops yield periodically while they scan Overpass elements and project sample points, which keeps the GUI thread responsive during long startup updates.
+  - Added regression coverage for water-overlay cancellation and controller shutdown behavior.
+
+- Water overlay startup order
+  - Deferred the first water-overlay update until the terrain horizon has either resolved or been skipped, so the water layer no longer starts while terrain is still pending.
+  - When terrain is disabled, the initial water update still starts immediately; this preserves the previous behavior for that configuration.
+  - Added regression coverage for the startup ordering in both the terrain-enabled and terrain-disabled cases.

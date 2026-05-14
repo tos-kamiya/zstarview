@@ -814,7 +814,7 @@ class SkyWindowUpdatesMixin:
 
     def _on_water_overlay_started(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
-        if banner:
+        if banner and self.water_overlay_state.points is None:
             self.water_overlay_state.banner_text = banner
         self.request_client_update()
 

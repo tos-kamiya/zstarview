@@ -18,7 +18,7 @@ class _FakeCloudDisc:
             src_paths=[Path("/tmp/fake.nc")],
         )
 
-    def fetch_source(self, *, lat: float, lon: float):  # pragma: no cover - not used in direct tests
+    def fetch_source(self, *, lat: float, lon: float, abort_event=None):  # pragma: no cover - not used in direct tests
         return CloudSourceData(
             source_key=SourceKey(
                 satellite="HIMAWARI",

@@ -140,6 +140,12 @@ class DownloadError(CloudDiscError):
         super().__init__(message, meta=meta)
 
 
+class DownloadCancelledError(DownloadError):
+    """Raised when a download is cancelled cooperatively."""
+
+    pass
+
+
 class TimeoutError(DownloadError):
     """Raised when a download operation times out."""
 

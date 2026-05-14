@@ -9,6 +9,7 @@ from typing import Callable, Optional
 
 from PySide6.QtCore import QObject, Signal
 
+from ..clouddisc.types import DownloadCancelledError
 from ..terrain import (
     EARTH_MEAN_RADIUS_M,
     GeoTiffDem,
@@ -60,10 +61,12 @@ class TerrainHorizonController(QObject):
         self._completed_for_location: Optional[tuple[float, float, float]] = None
         self._active_workers: set[threading.Thread] = set()
         self._lock = threading.Lock()
+        self._download_abort_event = threading.Event()
 
     def shutdown(self, *, wait_timeout_s: float | None = None) -> None:
         with self._lock:
             self._stopping = True
+        self._download_abort_event.set()
         self._wait_for_workers(wait_timeout_s)
 
     def update(
@@ -155,7 +158,11 @@ class TerrainHorizonController(QObject):
                     max_distance_km=self._max_distance_km,
                     margin_km=self._download_margin_km,
                     cache_dir=self._cache_dir,
+                    abort_event=self._download_abort_event,
                 )
+            except DownloadCancelledError:
+                logger.info("Terrain horizon download cancelled")
+                return
             except RuntimeError as exc:
                 if str(exc) != "No Copernicus DEM tiles were downloaded for the requested area.":
                     raise

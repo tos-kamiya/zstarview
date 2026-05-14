@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -13,6 +14,8 @@ import numpy as np
 from botocore import UNSIGNED
 from botocore.config import Config
 from pyproj import CRS, Geod, Transformer
+
+from ..clouddisc.types import DownloadCancelledError
 
 
 WGS84_GEOD = Geod(ellps="WGS84")
@@ -317,6 +320,7 @@ def fetch_copernicus_dem(
     cache_dir: Path,
     ttl_days: int = DEM_CACHE_TTL_DAYS,
     now_utc: datetime | None = None,
+    abort_event: threading.Event | None = None,
 ) -> DownloadedDem:
     if margin_km < 0.0:
         raise ValueError("margin_km must be non-negative.")
@@ -336,6 +340,8 @@ def fetch_copernicus_dem(
     stale_fallback_used = False
 
     for key in tile_keys:
+        if abort_event is not None and abort_event.is_set():
+            raise DownloadCancelledError("Cancelled while downloading Copernicus DEM tiles")
         dst = cache_dir / key
         if dst.exists():
             if not _is_valid_dem_tile(dst):
@@ -353,7 +359,13 @@ def fetch_copernicus_dem(
         tmp_path = dst.with_suffix(dst.suffix + ".tmp")
         try:
             with tmp_path.open("wb") as handle:
-                s3.download_fileobj(COPERNICUS_DEM_BUCKET, key, handle)
+                callback = None
+                if abort_event is not None:
+                    def callback(_bytes_transferred: int) -> None:
+                        if abort_event.is_set():
+                            raise KeyboardInterrupt()
+
+                s3.download_fileobj(COPERNICUS_DEM_BUCKET, key, handle, Callback=callback)
             if not _is_valid_dem_tile(tmp_path):
                 logger.warning(
                     "Discarding invalid downloaded DEM tile: s3://%s/%s",
@@ -377,6 +389,8 @@ def fetch_copernicus_dem(
                 logger.warning("DEM refresh failed; using stale cached tile: %s", dst)
                 downloaded_paths.append(dst)
                 stale_fallback_used = True
+        except KeyboardInterrupt as exc:
+            raise DownloadCancelledError("Cancelled while downloading Copernicus DEM tiles") from exc
         except Exception as exc:
             message = str(exc)
             if "404" in message or "Not Found" in message or "NoSuchKey" in message:

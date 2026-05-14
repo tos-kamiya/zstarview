@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import threading
 
 import pytest
 
 from zstarview.terrain.dem import (
     COPERNICUS_DEM_BUCKET,
+    DownloadCancelledError,
     dem_tile_metadata_path,
     fetch_copernicus_dem,
     read_dem_tile_fetched_at_utc,
@@ -22,7 +24,7 @@ class _FakeS3Client:
         self.should_fail = should_fail
         self.calls: list[tuple[str, str]] = []
 
-    def download_fileobj(self, bucket: str, key: str, handle) -> None:
+    def download_fileobj(self, bucket: str, key: str, handle, Callback=None) -> None:
         self.calls.append((bucket, key))
         if self.should_fail:
             raise RuntimeError("network down")
@@ -30,9 +32,25 @@ class _FakeS3Client:
 
 
 class _FakeInvalidTileS3Client(_FakeS3Client):
-    def download_fileobj(self, bucket: str, key: str, handle) -> None:
+    def download_fileobj(self, bucket: str, key: str, handle, Callback=None) -> None:
         self.calls.append((bucket, key))
         handle.write(b"not-a-geotiff")
+
+
+class _CancelableFakeS3Client(_FakeS3Client):
+    def __init__(self, *, abort_event: threading.Event) -> None:
+        super().__init__(should_fail=False)
+        self._abort_event = abort_event
+
+    def download_fileobj(self, bucket: str, key: str, handle, Callback=None) -> None:
+        self.calls.append((bucket, key))
+        handle.write(b"part1")
+        if Callback is not None:
+            Callback(1)
+        self._abort_event.set()
+        handle.write(b"part2")
+        if Callback is not None:
+            Callback(1)
 
 
 def test_read_dem_tile_fetched_at_utc_migrates_legacy_cache(monkeypatch, tmp_path: Path) -> None:
@@ -188,3 +206,27 @@ def test_fetch_copernicus_dem_treats_legacy_tile_as_fresh_after_migration(monkey
     assert got.source == "cache"
     assert fake_s3.calls == []
     assert read_dem_tile_fetched_at_utc(tile_path, now_utc=now) == now
+
+
+def test_fetch_copernicus_dem_can_be_cancelled(monkeypatch, tmp_path: Path) -> None:
+    abort_event = threading.Event()
+    fake_s3 = _CancelableFakeS3Client(abort_event=abort_event)
+    monkeypatch.setattr("zstarview.terrain.dem.anonymous_s3_client", lambda: fake_s3)
+    monkeypatch.setattr("zstarview.terrain.dem.build_download_bbox", lambda **_kwargs: (0.0, 0.0, 1.0, 1.0))
+    monkeypatch.setattr(
+        "zstarview.terrain.dem.collect_copernicus_tile_keys",
+        lambda _bbox: ["Copernicus_DSM_COG_30_N35_00_E139_00_DEM/Copernicus_DSM_COG_30_N35_00_E139_00_DEM.tif"],
+    )
+
+    with pytest.raises(DownloadCancelledError):
+        fetch_copernicus_dem(
+            observer_lat_deg=35.0,
+            observer_lon_deg=139.0,
+            max_distance_km=1.0,
+            margin_km=0.0,
+            cache_dir=tmp_path,
+            now_utc=datetime(2026, 3, 27, 2, 0, tzinfo=timezone.utc),
+            abort_event=abort_event,
+        )
+
+    assert fake_s3.calls == [(COPERNICUS_DEM_BUCKET, "Copernicus_DSM_COG_30_N35_00_E139_00_DEM/Copernicus_DSM_COG_30_N35_00_E139_00_DEM.tif")]

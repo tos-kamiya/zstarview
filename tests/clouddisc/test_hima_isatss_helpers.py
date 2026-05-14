@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import threading
 from pathlib import Path
 
 import numpy as np
@@ -10,7 +11,7 @@ from pyproj import CRS
 from pyproj import Transformer
 
 from zstarview.clouddisc import CloudDiscConfig
-from zstarview.clouddisc.types import DataNotFoundError
+from zstarview.clouddisc.types import DataNotFoundError, DownloadCancelledError
 from zstarview.clouddisc.providers._hima_isatss import (
     DATA_VAR,
     GRID_VAR,
@@ -215,13 +216,42 @@ def test_find_isatss_accepts_incomplete_latest_slot(tmp_path: Path, monkeypatch:
 
     monkeypatch.setattr(hima_module, "find_matching_keys", fake_find_matching_keys)
     monkeypatch.setattr(provider, "_s3", lambda: object())
-    monkeypatch.setattr(provider, "_download", lambda bucket, key: template_paths[0])
+    monkeypatch.setattr(provider, "_download", lambda bucket, key, abort_event=None: template_paths[0])
 
     bucket, keys, used_time = provider._find_isatss(latest_time)
 
     assert bucket == "noaa-himawari9"
     assert keys == incomplete_keys
     assert used_time == latest_time
+
+
+def test_fetch_bt_c13_stops_when_cancelled(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = HimaProvider(CloudDiscConfig(cache_dir=tmp_path / "cache"))
+    abort_event = threading.Event()
+    abort_flag = abort_event
+    used_time = dt.datetime(2026, 3, 21, 18, 0, tzinfo=dt.timezone.utc)
+    keys = [f"tile-{idx:03d}.nc" for idx in range(1, 4)]
+    seen: list[str] = []
+
+    monkeypatch.setattr(provider, "_find_isatss", lambda when_utc, abort_event=None: ("noaa-himawari9", keys, used_time))
+
+    def fake_download(bucket: str, key: str, *, abort_event=None):
+        assert bucket == "noaa-himawari9"
+        assert abort_event is abort_flag
+        seen.append(key)
+        if len(seen) == 2:
+            raise DownloadCancelledError("Cancelled while downloading")
+        return tmp_path / key
+
+    monkeypatch.setattr(provider, "_download", fake_download)
+
+    with pytest.raises(DownloadCancelledError):
+        provider.fetch_bt_c13(
+            when_utc=used_time,
+            abort_event=abort_event,
+        )
+
+    assert seen == keys[:2]
 
 
 def test_select_keys_for_observer_rejects_missing_required_tiles(
@@ -245,7 +275,7 @@ def test_select_keys_for_observer_rejects_missing_required_tiles(
     )
     monkeypatch.setattr(hima_module, "select_equator_tiles", lambda **_kwargs: ([], np.array([], dtype=np.float64), np.array([], dtype=np.float64)))
     monkeypatch.setattr(hima_module, "tile_distance_km", lambda record, meta, *, observer_lat, observer_lon: 10.0 if record.token == "901" else 60.0)
-    monkeypatch.setattr(provider, "_download", lambda bucket, key: template_paths[0])
+    monkeypatch.setattr(provider, "_download", lambda bucket, key, abort_event=None: template_paths[0])
 
     with pytest.raises(DataNotFoundError):
         provider._select_keys_for_observer(

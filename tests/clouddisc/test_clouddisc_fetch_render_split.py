@@ -49,7 +49,7 @@ def test_fetch_source_and_render_from_source_compose_current_render_flow(monkeyp
     )
     calls = {"fetch": 0, "render": 0}
 
-    def fake_fetch_source(*, lat: float, lon: float, when_utc=None) -> CloudSourceData:
+    def fake_fetch_source(*, lat: float, lon: float, when_utc=None, abort_event=None) -> CloudSourceData:
         assert lat == 35.0
         assert lon == 139.0
         assert when_utc is None
@@ -171,7 +171,7 @@ def test_fetch_source_uses_max_shell_for_himawari_selection(monkeypatch, tmp_pat
 
     monkeypatch.setattr(clouddisc, "_select_satellite", lambda _lat, _lon: "HIMAWARI")
 
-    def fake_fetch_bt_c13(*, when_utc, observer_lat, observer_lon, cloud_shell_km):
+    def fake_fetch_bt_c13(*, when_utc, observer_lat, observer_lon, cloud_shell_km, abort_event=None):
         calls.append(float(cloud_shell_km))
         return object(), when_utc, []
 

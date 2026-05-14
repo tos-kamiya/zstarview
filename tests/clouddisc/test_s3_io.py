@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 import io
+import threading
 import sys
 
 import pytest
@@ -17,8 +18,8 @@ botocore_exceptions = pytest.importorskip("botocore.exceptions")
 ConnectTimeoutError = botocore_exceptions.ConnectTimeoutError
 ReadTimeoutError = botocore_exceptions.ReadTimeoutError
 
-from zstarview.clouddisc.providers._s3_io import download_s3_object, list_s3_keys
-from zstarview.clouddisc.types import DownloadError, TimeoutError
+from zstarview.clouddisc.providers._s3_io import download_s3_object, list_s3_keys  # noqa: E402
+from zstarview.clouddisc.types import DownloadCancelledError, DownloadError, TimeoutError  # noqa: E402
 
 
 class _Paginator:
@@ -49,11 +50,28 @@ class _S3Client:
         assert name == "list_objects_v2"
         return self._paginator
 
-    def download_fileobj(self, bucket: str, key: str, fileobj: io.BufferedWriter) -> None:
+    def download_fileobj(self, bucket: str, key: str, fileobj: io.BufferedWriter, Callback=None) -> None:
         self.download_calls += 1
         if self._download_exc is not None:
             raise self._download_exc
         fileobj.write(self._payload)
+
+
+class _CancelableS3Client(_S3Client):
+    def __init__(self, *, abort_event: threading.Event | None = None) -> None:
+        super().__init__()
+        self._abort_event = abort_event
+
+    def download_fileobj(self, bucket: str, key: str, fileobj: io.BufferedWriter, Callback=None) -> None:
+        self.download_calls += 1
+        fileobj.write(b"chunk1")
+        if Callback is not None:
+            Callback(1)
+        if self._abort_event is not None:
+            self._abort_event.set()
+        fileobj.write(b"chunk2")
+        if Callback is not None:
+            Callback(1)
 
 
 def test_list_s3_keys_success() -> None:
@@ -188,3 +206,26 @@ def test_download_s3_object_timeout_maps_to_custom_error(tmp_path: Path) -> None
     assert err.value.meta is not None
     assert err.value.meta.satellite == "HIMAWARI"
     assert not dst.exists()
+
+
+def test_download_s3_object_cancelled_download_aborts_and_cleans_up(tmp_path: Path) -> None:
+    dst = tmp_path / "new.bin"
+    abort_event = threading.Event()
+    s3 = _CancelableS3Client(abort_event=abort_event)
+
+    with pytest.raises(DownloadCancelledError) as err:
+        download_s3_object(
+            s3_client=s3,
+            bucket="bucket",
+            key="k",
+            dst=dst,
+            satellite="HIMAWARI",
+            product="HSD/ISatSS-B13",
+            time_utc=datetime.now(timezone.utc),
+            abort_event=abort_event,
+        )
+    assert "Cancelled while downloading" in str(err.value)
+    assert err.value.meta is not None
+    assert err.value.meta.satellite == "HIMAWARI"
+    assert not dst.exists()
+    assert s3.download_calls == 1

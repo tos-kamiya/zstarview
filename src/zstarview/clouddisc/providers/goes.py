@@ -9,6 +9,7 @@ channel 13 (longwave infrared) to get brightness temperatures for cloud renderin
 
 import datetime as dt
 import logging
+import threading
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -60,7 +61,7 @@ class GoesProvider:
         )
         return boto3.client("s3", region_name=_GOES_REGION[bucket], config=cfg)
 
-    def _list_hour(self, bucket: str, t: dt.datetime) -> List[str]:
+    def _list_hour(self, bucket: str, t: dt.datetime, *, abort_event: threading.Event | None = None) -> List[str]:
         """
         Lists all object keys for a given hour in the S3 bucket, with in-memory caching.
         The S3 path is structured as `ABI-L2-CMIPF/YYYY/DOY/HH/`.
@@ -83,6 +84,7 @@ class GoesProvider:
             product="CMIPF-C13",
             time_utc=t_utc,
             uri_label=f"S3 bucket s3://{bucket}/{prefix}",
+            abort_event=abort_event,
         )
 
         logger.debug("Found %d objects under %s", len(keys), prefix)
@@ -110,7 +112,7 @@ class GoesProvider:
             now_utc.hour,
         )
 
-    def _download(self, bucket: str, key: str) -> Path:
+    def _download(self, bucket: str, key: str, *, abort_event: threading.Event | None = None) -> Path:
         """Downloads a file from S3, caching it locally using an atomic write."""
         dst = self.root / bucket / key
         s3 = self._s3(bucket)
@@ -125,9 +127,10 @@ class GoesProvider:
             product="CMIPF-C13",
             time_utc=dt.datetime.now(dt.timezone.utc),
             validate_func=lambda path: load_cmi_with_area(path),
+            abort_event=abort_event,
         )
 
-    def _fetch_bt_c13_once(self, sat: str, when_utc: dt.datetime, search_back_minutes: int) -> Optional[Tuple[xr.DataArray, dt.datetime, List[Path]]]:
+    def _fetch_bt_c13_once(self, sat: str, when_utc: dt.datetime, search_back_minutes: int, *, abort_event: threading.Event | None = None) -> Optional[Tuple[xr.DataArray, dt.datetime, List[Path]]]:
         """
         Searches for and loads a single C13 brightness temp file for a given satellite and time.
         """
@@ -136,7 +139,7 @@ class GoesProvider:
         # Iterate backwards from the target time to find the most recent available file.
         for mback in range(0, search_back_minutes + 1, 10):
             search_time = when_utc - dt.timedelta(minutes=mback)
-            keys = self._list_hour(bucket, search_time)
+            keys = self._list_hour(bucket, search_time, abort_event=abort_event)
             if not keys:
                 continue
 
@@ -146,7 +149,7 @@ class GoesProvider:
                 continue
             key = keys_c13[-1]
 
-            path = self._download(bucket, key)
+            path = self._download(bucket, key, abort_event=abort_event)
 
             try:
                 da = load_cmi_with_area(path)
@@ -162,6 +165,7 @@ class GoesProvider:
         when_utc: dt.datetime,
         extra_back_minutes: int = 30,
         allowed_sats: Optional[Tuple[str, ...]] = None,
+        abort_event: threading.Event | None = None,
     ) -> Tuple[Tuple[xr.DataArray, dt.datetime, List[Path]], str]:
         """
         Fetches C13 data with a two-pass failover strategy.
@@ -201,14 +205,14 @@ class GoesProvider:
         # --- Pass 1: Standard search window ---
         logger.info("Searching GOES (order=%s, window=%dmin)", ",".join(order), self.cfg.search_back_minutes)
         for sat_name in order:
-            if res := self._fetch_bt_c13_once(sat_name, when_utc, self.cfg.search_back_minutes):
+            if res := self._fetch_bt_c13_once(sat_name, when_utc, self.cfg.search_back_minutes, abort_event=abort_event):
                 return res, sat_name
 
         # --- Pass 2: Widened search window ---
         widen_minutes = self.cfg.search_back_minutes + extra_back_minutes
         logger.info("Widening search window to %d minutes and retrying order=%s", widen_minutes, ",".join(order))
         for sat_name in order:
-            if res := self._fetch_bt_c13_once(sat_name, when_utc, widen_minutes):
+            if res := self._fetch_bt_c13_once(sat_name, when_utc, widen_minutes, abort_event=abort_event):
                 return res, sat_name
 
         meta = CloudMeta(satellite=order[0], product="CMIPF-C13", time_utc=when_utc, src_paths=[])

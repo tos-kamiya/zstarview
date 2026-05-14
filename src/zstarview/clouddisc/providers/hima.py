@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import datetime as dt
 import logging
+import threading
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -55,7 +56,7 @@ class HimaProvider:
         )
         return boto3.client("s3", config=s3_cfg)
 
-    def _download(self, bucket: str, key: str) -> Path:
+    def _download(self, bucket: str, key: str, *, abort_event: threading.Event | None = None) -> Path:
         dst = self.root_is / bucket / key
         logger.debug("Downloading s3://%s/%s", bucket, key)
         return download_s3_object(
@@ -67,9 +68,10 @@ class HimaProvider:
             product="ISatSS-B13",
             time_utc=dt.datetime.now(dt.timezone.utc),
             validate_func=lambda path: load_template_from_tile(path, bucket=bucket),
+            abort_event=abort_event,
         )
 
-    def _find_isatss(self, when_utc: dt.datetime) -> Tuple[Optional[str], Optional[List[str]], Optional[dt.datetime]]:
+    def _find_isatss(self, when_utc: dt.datetime, *, abort_event: threading.Event | None = None) -> Tuple[Optional[str], Optional[List[str]], Optional[dt.datetime]]:
         """Find available ISatSS C13 tile keys, searching backwards by slot."""
         s3_client = self._s3()
         for slot in range(0, self.cfg.search_back_minutes + 1, 10):
@@ -83,7 +85,7 @@ class HimaProvider:
                 )
             except FileNotFoundError:
                 continue
-            template_path = self._download(bucket, keys[0])
+            template_path = self._download(bucket, keys[0], abort_event=abort_event)
             expected_tile_count = load_template_from_tile(template_path, bucket=bucket).tile_count
             logger.info(
                 "Checked %s and found %d/%d ISatSS M1C13 tiles under %s",
@@ -107,8 +109,9 @@ class HimaProvider:
         azimuth_samples: int,
         margin_tiles: int,
         equator_margin_tiles: int = 0,
+        abort_event: threading.Event | None = None,
     ) -> ObserverTileSelection:
-        template_path = self._download(bucket, keys[0])
+        template_path = self._download(bucket, keys[0], abort_event=abort_event)
         meta = load_template_from_tile(template_path, bucket=bucket)
         render_tiles, _poly_x, _poly_y = select_needed_tiles(
             lat_deg=observer_lat,
@@ -207,6 +210,7 @@ class HimaProvider:
             azimuth_samples=azimuth_samples,
             margin_tiles=margin_tiles,
             equator_margin_tiles=equator_margin_tiles,
+            abort_event=None,
         )
         return selection.selected_keys
 
@@ -260,6 +264,7 @@ class HimaProvider:
         azimuth_samples: int = 1440,
         margin_tiles: int = 1,
         equator_margin_tiles: int = 0,
+        abort_event: threading.Event | None = None,
     ) -> Tuple[xr.DataArray, dt.datetime, List[Path]]:
         """
         Fetch Himawari ISatSS C13 brightness temperature data.
@@ -269,7 +274,7 @@ class HimaProvider:
         chosen timeslot are used.
         """
         logger.info("Searching for Himawari ISatSS M1C13 data...")
-        bucket, keys, used_time = self._find_isatss(when_utc)
+        bucket, keys, used_time = self._find_isatss(when_utc, abort_event=abort_event)
         if not bucket or not keys or used_time is None:
             meta = CloudMeta(satellite="HIMAWARI", product="ISatSS-B13", time_utc=when_utc, src_paths=[])
             raise DataNotFoundError("Himawari ISatSS B13 data not found in search window", meta=meta)
@@ -289,10 +294,11 @@ class HimaProvider:
                 azimuth_samples=int(azimuth_samples),
                 margin_tiles=int(margin_tiles),
                 equator_margin_tiles=int(equator_margin_tiles),
+                abort_event=abort_event,
             )
 
         try:
-            paths = [self._download(bucket, key) for key in selection.selected_keys]
+            paths = [self._download(bucket, key, abort_event=abort_event) for key in selection.selected_keys]
             da = self._stitch_local_paths(
                 paths,
                 source_label=f"s3://{bucket}/{format_prefix(used_time)}",

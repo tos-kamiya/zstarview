@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import math
+import threading
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -10,6 +12,7 @@ from typing import Any, Callable, Iterable, Sequence
 
 import numpy as np
 
+from .clouddisc.types import DownloadCancelledError
 from .location_resolver.place_projection import project_place_target_to_altaz
 from .terrain import WGS84_GEOD, build_ray_scan_grid
 
@@ -415,7 +418,9 @@ def fetch_overpass_json(
     endpoint: str = DEFAULT_WATER_OVERPASS_ENDPOINT,
     user_agent: str = DEFAULT_WATER_USER_AGENT,
     timeout_s: float = DEFAULT_WATER_TIMEOUT_S,
+    abort_event: threading.Event | None = None,
 ) -> dict[str, Any]:
+    _raise_if_abort_requested(abort_event)
     request_body = urllib.parse.urlencode({"data": build_overpass_query(bbox)}).encode("utf-8")
     request = urllib.request.Request(
         endpoint,
@@ -428,7 +433,9 @@ def fetch_overpass_json(
     )
     try:
         with urllib.request.urlopen(request, timeout=float(timeout_s)) as response:
+            _raise_if_abort_requested(abort_event)
             payload = response.read()
+            _raise_if_abort_requested(abort_event)
     except urllib.error.HTTPError as exc:
         raise RuntimeError(f"HTTP {exc.code}") from exc
     except urllib.error.URLError as exc:
@@ -450,7 +457,9 @@ def extract_water_polygons(
     elements: list[dict[str, Any]],
     *,
     bbox: tuple[float, float, float, float] | None = None,
+    abort_event: threading.Event | None = None,
 ) -> tuple[WaterPolygonFootprint, ...]:
+    _raise_if_abort_requested(abort_event)
     nodes = node_lookup(elements)
     ways = way_lookup(elements, nodes)
     relations = relation_lookup(elements)
@@ -458,7 +467,8 @@ def extract_water_polygons(
     polygons: list[WaterPolygonFootprint] = []
 
     way_tags: dict[int, dict[str, str]] = {}
-    for element in elements:
+    for element_index, element in enumerate(elements):
+        _cooperative_yield(abort_event, interval=256, iteration_index=element_index)
         if element.get("type") != "way":
             continue
         try:
@@ -467,7 +477,8 @@ def extract_water_polygons(
             continue
         way_tags[way_id] = tags_to_dict(element.get("tags"))
 
-    for way_id, points in ways.items():
+    for way_index, (way_id, points) in enumerate(ways.items()):
+        _cooperative_yield(abort_event, interval=256, iteration_index=way_index)
         tags = way_tags.get(way_id, {})
         if is_polygon_water_way(tags, points):
             polygons.append(
@@ -481,7 +492,8 @@ def extract_water_polygons(
                 )
             )
 
-    for relation_id, relation in relations.items():
+    for relation_index, (relation_id, relation) in enumerate(relations.items()):
+        _cooperative_yield(abort_event, interval=128, iteration_index=relation_index)
         tags = tags_to_dict(relation.get("tags"))
         if not relation_is_water_relation(tags):
             continue
@@ -600,6 +612,23 @@ def _footprint_is_river_like(footprint: WaterPolygonFootprint) -> bool:
     return classify_water_surface_category(tags, kind=footprint.kind) == "river"
 
 
+def _raise_if_abort_requested(abort_event: threading.Event | None) -> None:
+    if abort_event is not None and abort_event.is_set():
+        raise DownloadCancelledError("water overlay update cancelled")
+
+
+def _cooperative_yield(
+    abort_event: threading.Event | None,
+    *,
+    interval: int,
+    iteration_index: int,
+) -> None:
+    if interval <= 0 or iteration_index % interval != 0:
+        return
+    _raise_if_abort_requested(abort_event)
+    time.sleep(0)
+
+
 def sample_water_overlay_points(
     footprints: Sequence[WaterPolygonFootprint],
     *,
@@ -611,6 +640,7 @@ def sample_water_overlay_points(
     max_distance_km: float = DEFAULT_WATER_RADIUS_KM,
     sample_step_m: float = DEFAULT_WATER_SAMPLE_STEP_M,
     azimuth_step_deg: float = DEFAULT_WATER_AZIMUTH_STEP_DEG,
+    abort_event: threading.Event | None = None,
 ) -> tuple[WaterOverlayPoint, ...]:
     if max_distance_km <= 0.0:
         raise ValueError("max_distance_km must be positive")
@@ -623,6 +653,7 @@ def sample_water_overlay_points(
         float(max_distance_km),
         float(sample_step_m),
     )
+    _raise_if_abort_requested(abort_event)
     observer_lon = float(observer_lon_deg)
     observer_lat = float(observer_lat_deg)
     ray_scan = build_ray_scan_grid(
@@ -637,7 +668,11 @@ def sample_water_overlay_points(
     footprint_bounds = tuple((_footprint_bounds(footprint), footprint) for footprint in footprints)
 
     for row_index, azimuth_deg in enumerate(ray_scan.azimuths_deg):
+        _cooperative_yield(abort_event, interval=8, iteration_index=row_index)
         for col_index, distance_m in enumerate(ray_scan.distance_grid_m[row_index]):
+            if col_index % 128 == 0:
+                _raise_if_abort_requested(abort_event)
+                time.sleep(0)
             lon = float(ray_scan.ray_lon_deg[row_index, col_index])
             lat = float(ray_scan.ray_lat_deg[row_index, col_index])
             matched_footprint = None

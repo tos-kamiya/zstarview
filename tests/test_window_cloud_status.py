@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 from types import SimpleNamespace
 
 from zstarview.gui.window import DEFAULT_CLOUD_ALT_MIN_DEG, SkyWindow
+from zstarview.gui.water_overlay_state import WaterOverlayState
+from zstarview.gui.window_updates import SkyWindowUpdatesMixin
 
 
 def _dummy_window(cloud_state):
@@ -113,6 +115,37 @@ def test_water_status_line_shows_only_count_when_enabled() -> None:
     )
 
     assert SkyWindow._water_overlay_status_line(dummy) == "W 3"
+
+
+def test_water_overlay_started_does_not_override_visible_points_banner() -> None:
+    calls: list[str] = []
+    dummy = SimpleNamespace(
+        water_overlay_state=WaterOverlayState(
+            points=[object()],
+            banner_text=None,
+            current_source="Water: Overpass",
+            current_mode="sea",
+        ),
+        request_client_update=lambda: calls.append("update"),
+    )
+
+    SkyWindowUpdatesMixin._on_water_overlay_started(dummy, {"banner": "Water: loading..."})
+
+    assert dummy.water_overlay_state.banner_text is None
+    assert calls == ["update"]
+
+
+def test_water_overlay_started_sets_banner_before_points_exist() -> None:
+    calls: list[str] = []
+    dummy = SimpleNamespace(
+        water_overlay_state=WaterOverlayState(),
+        request_client_update=lambda: calls.append("update"),
+    )
+
+    SkyWindowUpdatesMixin._on_water_overlay_started(dummy, {"banner": "Water: loading..."})
+
+    assert dummy.water_overlay_state.banner_text == "Water: loading..."
+    assert calls == ["update"]
 
 
 def test_hidden_water_status_line_shows_placeholder_icon() -> None:

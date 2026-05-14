@@ -1295,7 +1295,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.start_background_cloud_update(reason="initial")
         if self.terrain_horizon_opacity > 0.0:
             self.start_background_terrain_horizon_update(reason="initial")
-        self.start_background_water_overlay_update(reason="initial")
+        elif self.water_overlay_opacity > 0.0:
+            self.start_background_water_overlay_update(reason="initial")
         if self.urban_outline_opacity > 0.0:
             self.start_background_urban_outline_update(reason="initial")
         if self._satellite_layer_enabled():

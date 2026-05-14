@@ -9,6 +9,7 @@ from a specific observer's perspective.
 
 import datetime as dt
 import logging
+import threading
 from typing import Optional, Sequence, Tuple
 from dataclasses import replace
 
@@ -149,6 +150,7 @@ class CloudDisc:
         lon: float,
         when_utc: Optional[dt.datetime] = None,
         cloud_shells_km: Sequence[float] = DEFAULT_CLOUD_SHELLS_KM,
+        abort_event: threading.Event | None = None,
     ) -> CloudSourceData:
         """Fetch cloud source data independently from camera-dependent rendering."""
         source_key = self.make_source_key(lat=lat, lon=lon, when_utc=when_utc)
@@ -162,6 +164,7 @@ class CloudDisc:
                 sat=sat,
                 when_utc=when,
                 allowed_sats=goes_visible,
+                abort_event=abort_event,
             )
             da, used_time, src_paths = res
             product = "CMIPF-C13"
@@ -171,6 +174,7 @@ class CloudDisc:
                 observer_lat=lat,
                 observer_lon=lon,
                 cloud_shell_km=shell_max_km,
+                abort_event=abort_event,
             )
             product = "ISatSS-B13"
         else:

@@ -4,8 +4,11 @@ import importlib.util
 import json
 import os
 import sys
+import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+import pytest
 
 
 def _load_module():
@@ -330,3 +333,53 @@ def test_resolve_overture_release_for_cache_root_reuses_recent_check(tmp_path: P
     )
 
     assert got_again == "2026-04-01.0"
+
+
+def test_import_overture_buildings_for_bbox_can_be_cancelled(tmp_path: Path, monkeypatch) -> None:
+    mod = _load_module()
+    abort_event = threading.Event()
+    abort_event.set()
+
+    class _FakeProc:
+        def __init__(self, command):
+            self.command = command
+            self.terminated = False
+            self.killed = False
+
+        def poll(self):
+            return None
+
+        def terminate(self):
+            self.terminated = True
+
+        def wait(self, timeout=None):
+            return 0
+
+        def kill(self):
+            self.killed = True
+
+    monkeypatch.setattr(mod.shutil, "which", lambda _name: "/usr/bin/overturemaps")
+    monkeypatch.setattr(mod.subprocess, "Popen", lambda command: _FakeProc(command))
+    monkeypatch.setattr(mod, "resolve_overture_release_for_cache_root", lambda **_kwargs: None)
+    monkeypatch.setattr(
+        mod,
+        "build_derived_tile_payload",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("should not reach payload build")),
+    )
+
+    with pytest.raises(mod.DownloadCancelledError):
+        mod.import_overture_buildings_for_bbox(
+            bbox=(139.0, 35.0, 139.1, 35.1),
+            derived_root_dir=tmp_path / "derived-root",
+            min_building_height_m=0.0,
+            feature_type="building",
+            fmt="geojsonseq",
+            overturemaps_bin="/usr/bin/overturemaps",
+            dataset_name="test",
+            keep_download=None,
+            no_stac=False,
+            skip_release_lookup=True,
+            now_utc=datetime(2026, 3, 27, 2, 0, tzinfo=timezone.utc),
+            quiet=True,
+            abort_event=abort_event,
+        )

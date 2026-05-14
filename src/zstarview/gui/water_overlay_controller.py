@@ -11,6 +11,7 @@ from typing import Callable, Optional
 from PySide6.QtCore import QObject, Signal
 
 from ..types import ViewerData
+from ..clouddisc.types import DownloadCancelledError
 from ..water_overlay import (
     DEFAULT_WATER_RADIUS_KM,
     DEFAULT_WATER_OVERPASS_ENDPOINT,
@@ -82,11 +83,13 @@ class WaterOverlayController(QObject):
         self._pending_request: tuple[ViewerData, float, bool, str] | None = None
         self._scope_cache: dict[str, _WaterOverlayScopeCache] = {}
         self._active_workers: set[threading.Thread] = set()
+        self._download_abort_event = threading.Event()
         self._lock = threading.Lock()
 
     def shutdown(self, *, wait_timeout_s: float | None = None) -> None:
         with self._lock:
             self._stopping = True
+            self._download_abort_event.set()
         self._wait_for_workers(wait_timeout_s)
 
     def update(
@@ -301,6 +304,8 @@ class WaterOverlayController(QObject):
                     water_polygon_count=len(scope_cache.footprints),
                     source="Water: Overpass",
                 )
+        except DownloadCancelledError:
+            return
         except Exception as exc:
             logger.warning("Water surface update failed: %s", exc)
             if cached_scope is not None:
@@ -380,11 +385,16 @@ class WaterOverlayController(QObject):
                 endpoint=self._endpoint or DEFAULT_WATER_OVERPASS_ENDPOINT,
                 user_agent=self._user_agent or DEFAULT_WATER_USER_AGENT,
                 timeout_s=self._timeout_s,
+                abort_event=self._download_abort_event,
             )
             elements = payload.get("elements")
             if not isinstance(elements, list):
                 raise RuntimeError("Overpass payload missing elements")
-            footprints = extract_water_polygons(elements, bbox=bbox)
+            footprints = extract_water_polygons(
+                elements,
+                bbox=bbox,
+                abort_event=self._download_abort_event,
+            )
             fresh_snapshot = WaterOverlayCacheSnapshot(
                 footprints=footprints,
                 water_polygon_count=len(footprints),
@@ -398,6 +408,8 @@ class WaterOverlayController(QObject):
             with self._lock:
                 self._scope_cache[scope_key] = cache
             return cache
+        except DownloadCancelledError:
+            raise
         except Exception:
             if snapshot.footprints:
                 cache = _WaterOverlayScopeCache(
@@ -461,6 +473,7 @@ class WaterOverlayController(QObject):
                 max_distance_km=scan_radius_km,
                 sample_step_m=self._sample_step_m,
                 azimuth_step_deg=self._azimuth_step_deg,
+                abort_event=self._download_abort_event,
             )
         dem_points = scope_cache.dem_points
         if use_dem_ground and dem_points is None:
@@ -479,6 +492,7 @@ class WaterOverlayController(QObject):
                 max_distance_km=scan_radius_km,
                 sample_step_m=self._sample_step_m,
                 azimuth_step_deg=self._azimuth_step_deg,
+                abort_event=self._download_abort_event,
             )
         active_points = dem_points if use_dem_ground and dem_points is not None else sea_points
         return active_points, sea_points, dem_points
@@ -497,8 +511,11 @@ class WaterOverlayController(QObject):
                 max_distance_km=scan_radius_km,
                 margin_km=10.0,
                 cache_dir=self._dem_cache_dir,
+                abort_event=self._download_abort_event,
             )
             dem = GeoTiffDem(download.paths, default_elevation_m=0.0)
+        except DownloadCancelledError:
+            raise
         except Exception:
             return None
 
@@ -509,6 +526,8 @@ class WaterOverlayController(QObject):
                 radius_km=scan_radius_km + 10.0,
             )
             dem_grid = dem.build_grid(bbox)
+        except DownloadCancelledError:
+            raise
         except Exception:
             dem.close()
             return None

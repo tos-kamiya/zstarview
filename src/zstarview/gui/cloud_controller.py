@@ -20,6 +20,7 @@ from ..clouddisc import (
     CloudDisc,
     CloudDiscError,
     DataNotFoundError,
+    DownloadCancelledError,
     DownloadError,
     RenderError,
     TimeoutError,
@@ -56,12 +57,14 @@ class CloudController(QObject):
         self._cleanup_interval = 10
         self._active_workers: set[threading.Thread] = set()
         self._lock = threading.Lock()
+        self._download_abort_event = threading.Event()
 
     def shutdown(self, *, wait_timeout_s: float | None = None) -> None:
         with self._lock:
             self._stopping = True
             self._pending_source_request = None
             self._pending_render_request = None
+        self._download_abort_event.set()
         self._wait_for_workers(wait_timeout_s)
 
     def invalidate_pending_render_results(self) -> None:
@@ -237,6 +240,7 @@ class CloudController(QObject):
                 source = self._clouddisc.fetch_source(
                     lat=lat,
                     lon=lon,
+                    abort_event=self._download_abort_event,
                 )
                 with self._lock:
                     if not self._stopping:
@@ -257,6 +261,8 @@ class CloudController(QObject):
                             self._render_is_running = True
                 if rerender_req is not None:
                     self._spawn_worker(target=self._run_render_update, kwargs=rerender_req, label="render")
+            except DownloadCancelledError:
+                logger.info("Cloud source download cancelled")
             except VisibilityError as e:
                 logger.error("Invalid params for cloud-disc image generation: %s", e)
                 self.cloud_failed.emit({"banner": "Clouds: unsupported region"})

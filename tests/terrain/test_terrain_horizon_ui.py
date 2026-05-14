@@ -953,6 +953,70 @@ def test_terrain_horizon_failed_keeps_retained_ground_elevation() -> None:
     assert dummy.terrain_horizon_state.ground_elevation_m == 58.0
 
 
+def test_start_initial_data_load_defers_water_until_terrain_ready() -> None:
+    dummy = SimpleNamespace()
+    dummy._startup_initial_load_started = False
+    dummy._clouddisc = None
+    dummy.cloud_disc_alpha = 0.0
+    dummy.terrain_horizon_opacity = 0.2
+    dummy.water_overlay_opacity = 0.2
+    dummy.urban_outline_opacity = 0.0
+    dummy._satellite_layer_enabled = lambda: False
+    dummy._aircraft_layer_enabled = lambda: False
+    calls: list[str] = []
+    dummy.start_background_sky_data_update = lambda **kwargs: calls.append(
+        f"sky:{kwargs.get('is_initial_load')}"
+    )
+    dummy.start_background_cloud_update = lambda **kwargs: calls.append(
+        f"cloud:{kwargs.get('reason')}"
+    )
+    dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(
+        f"terrain:{kwargs.get('reason')}"
+    )
+    dummy.start_background_water_overlay_update = lambda **kwargs: calls.append(
+        f"water:{kwargs.get('reason')}"
+    )
+    dummy.start_background_urban_outline_update = lambda **kwargs: calls.append(
+        f"urban:{kwargs.get('reason')}"
+    )
+
+    SkyWindow.start_initial_data_load(dummy)
+
+    assert calls == ["sky:True", "terrain:initial"]
+
+
+def test_start_initial_data_load_starts_water_when_terrain_disabled() -> None:
+    dummy = SimpleNamespace()
+    dummy._startup_initial_load_started = False
+    dummy._clouddisc = None
+    dummy.cloud_disc_alpha = 0.0
+    dummy.terrain_horizon_opacity = 0.0
+    dummy.water_overlay_opacity = 0.2
+    dummy.urban_outline_opacity = 0.0
+    dummy._satellite_layer_enabled = lambda: False
+    dummy._aircraft_layer_enabled = lambda: False
+    calls: list[str] = []
+    dummy.start_background_sky_data_update = lambda **kwargs: calls.append(
+        f"sky:{kwargs.get('is_initial_load')}"
+    )
+    dummy.start_background_cloud_update = lambda **kwargs: calls.append(
+        f"cloud:{kwargs.get('reason')}"
+    )
+    dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(
+        f"terrain:{kwargs.get('reason')}"
+    )
+    dummy.start_background_water_overlay_update = lambda **kwargs: calls.append(
+        f"water:{kwargs.get('reason')}"
+    )
+    dummy.start_background_urban_outline_update = lambda **kwargs: calls.append(
+        f"urban:{kwargs.get('reason')}"
+    )
+
+    SkyWindow.start_initial_data_load(dummy)
+
+    assert calls == ["sky:True", "water:initial"]
+
+
 def test_toggle_earth_guide_respects_cli_lockout() -> None:
     dummy = SimpleNamespace()
     dummy._earth_guide_gui_allowed = False

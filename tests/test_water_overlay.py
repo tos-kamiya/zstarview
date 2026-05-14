@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import urllib.error
+import threading
 from unittest.mock import Mock
 
 import pytest
@@ -19,6 +20,7 @@ from zstarview.water_overlay import (
     resolve_water_scan_radius_km,
     sample_water_overlay_points,
 )
+from zstarview.clouddisc.types import DownloadCancelledError
 
 
 def _node(node_id: int, lon: float, lat: float) -> dict[str, object]:
@@ -323,6 +325,53 @@ def test_fetch_overpass_json_reports_timeout_as_compact_error(monkeypatch) -> No
 
     with pytest.raises(RuntimeError, match=r"^timeout$"):
         water_overlay.fetch_overpass_json(bbox=(0.0, 0.0, 1.0, 1.0))
+
+
+def test_fetch_overpass_json_can_be_cancelled(monkeypatch) -> None:
+    from zstarview import water_overlay
+
+    abort_event = threading.Event()
+    abort_event.set()
+
+    with pytest.raises(DownloadCancelledError):
+        water_overlay.fetch_overpass_json(
+            bbox=(0.0, 0.0, 1.0, 1.0),
+            abort_event=abort_event,
+        )
+
+
+def test_sample_water_overlay_points_can_be_cancelled() -> None:
+    footprint = WaterPolygonFootprint(
+        water_id="lake",
+        kind="natural_water",
+        outer_rings_lonlat=(
+            (
+                (-0.01, -0.01),
+                (0.01, -0.01),
+                (0.01, 0.01),
+                (-0.01, 0.01),
+                (-0.01, -0.01),
+            ),
+        ),
+        inner_rings_lonlat=(),
+        source="way",
+        tags={"natural": "water"},
+    )
+    abort_event = threading.Event()
+    abort_event.set()
+
+    with pytest.raises(DownloadCancelledError):
+        sample_water_overlay_points(
+            (footprint,),
+            observer_lat_deg=0.0,
+            observer_lon_deg=0.0,
+            observer_height_m=100.0,
+            fallback_surface_height_m=0.0,
+            max_distance_km=0.2,
+            sample_step_m=100.0,
+            azimuth_step_deg=90.0,
+            abort_event=abort_event,
+        )
 
 
 def test_thin_water_overlay_points_pairwise_keeps_one_point_per_pair() -> None:

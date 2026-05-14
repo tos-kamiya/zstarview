@@ -10,6 +10,7 @@ from typing import Callable, Optional
 
 from PySide6.QtCore import QObject, Signal
 
+from ..clouddisc.types import DownloadCancelledError
 from ..data.skyscraper_tiles import (
     SKYSCRAPER_OUTER_RADIUS_KM,
     SkyscraperSeedTile,
@@ -69,10 +70,12 @@ class UrbanOutlineController(QObject):
         self._completed_key: Optional[str] = None
         self._active_workers: set[threading.Thread] = set()
         self._lock = threading.Lock()
+        self._download_abort_event = threading.Event()
 
     def shutdown(self, *, wait_timeout_s: float | None = None) -> None:
         with self._lock:
             self._stopping = True
+        self._download_abort_event.set()
         self._wait_for_workers(wait_timeout_s)
 
     def update(
@@ -185,10 +188,13 @@ class UrbanOutlineController(QObject):
         reason: str,
     ) -> None:
         try:
+            if self._download_abort_event.is_set():
+                return
             now = datetime.now(timezone.utc)
             current_overture_release = resolve_overture_release_for_cache_root(
                 cache_root_dir=Path(CACHE_PATH),
                 now_utc=now,
+                abort_event=self._download_abort_event,
             )
             source = "Urban: cache"
             required_dirs = () if self._skyscraper_only else self._required_derived_dirs(viewer_data)
@@ -229,8 +235,12 @@ class UrbanOutlineController(QObject):
                         skip_release_lookup=True,
                         now_utc=now,
                         quiet=True,
+                        abort_event=self._download_abort_event,
                     )
                     source = "Urban: cache"
+                except DownloadCancelledError:
+                    logger.info("Urban outline download cancelled")
+                    return
                 except Exception:
                     if derived_dir.exists():
                         logger.warning(
@@ -303,8 +313,12 @@ class UrbanOutlineController(QObject):
                             skip_release_lookup=True,
                             now_utc=now,
                             quiet=True,
+                            abort_event=self._download_abort_event,
                         )
                         source = "Urban: cache"
+                    except DownloadCancelledError:
+                        logger.info("Skyscraper urban-outline download cancelled")
+                        return
                     except Exception:
                         if derived_dir.exists():
                             logger.warning(

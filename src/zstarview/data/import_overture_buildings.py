@@ -11,6 +11,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Sequence
@@ -18,6 +20,7 @@ from urllib.request import Request, urlopen
 
 from zstarview.data import build_derived_tile_index
 from zstarview.paths import CACHE_PATH
+from zstarview.clouddisc.types import DownloadCancelledError
 from zstarview.utils.latlon_format import (
     LAT_LON_CACHE_DECIMALS,
     format_lat_lon_cache_segment,
@@ -103,6 +106,7 @@ def resolve_overture_release_for_cache_root(
     now_utc: datetime | None = None,
     catalog_url: str = OVERTURE_RELEASE_CATALOG_URL,
     timeout_seconds: float = OVERTURE_RELEASE_CATALOG_TIMEOUT_SECONDS,
+    abort_event: threading.Event | None = None,
 ) -> str | None:
     now = _normalize_utc(now_utc or datetime.now(timezone.utc))
     metadata = read_overture_release_check_metadata(cache_root_dir=cache_root_dir) or {}
@@ -114,6 +118,9 @@ def resolve_overture_release_for_cache_root(
     ):
         if isinstance(last_seen_overture_release, str) and last_seen_overture_release.strip():
             return last_seen_overture_release.strip()
+        return None
+
+    if abort_event is not None and abort_event.is_set():
         return None
 
     checked_payload: dict[str, object] = dict(metadata)
@@ -142,6 +149,31 @@ def resolve_overture_release_for_cache_root(
         cache_root_dir=cache_root_dir,
     )
     return latest_release
+
+
+def _run_download_command(command: list[str], *, abort_event: threading.Event | None = None) -> subprocess.CompletedProcess[str]:
+    if abort_event is None:
+        return subprocess.run(command, check=False)
+
+    proc = subprocess.Popen(command)
+    try:
+        while True:
+            if abort_event.is_set():
+                proc.terminate()
+                try:
+                    proc.wait(timeout=1.0)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    proc.wait()
+                raise DownloadCancelledError("Cancelled while running overturemaps download")
+            returncode = proc.poll()
+            if returncode is not None:
+                return subprocess.CompletedProcess(command, returncode)
+            time.sleep(0.1)
+    finally:
+        if proc.poll() is None and abort_event is not None and abort_event.is_set():
+            proc.kill()
+            proc.wait()
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -378,6 +410,7 @@ def import_overture_buildings(
     skip_release_lookup: bool = False,
     now_utc: datetime | None = None,
     quiet: bool = False,
+    abort_event: threading.Event | None = None,
 ) -> Path:
     overturemaps_path = shutil.which(overturemaps_bin)
     if overturemaps_path is None:
@@ -411,6 +444,7 @@ def import_overture_buildings(
         query_radius_km=radius_km,
         now_utc=now_utc,
         quiet=quiet,
+        abort_event=abort_event,
     )
 
 
@@ -432,6 +466,7 @@ def import_overture_buildings_for_bbox(
     query_radius_km: float | None = None,
     now_utc: datetime | None = None,
     quiet: bool = False,
+    abort_event: threading.Event | None = None,
 ) -> Path:
     overturemaps_path = shutil.which(overturemaps_bin) or overturemaps_bin
     fetched_at_utc = _normalize_utc(now_utc or datetime.now(timezone.utc))
@@ -443,6 +478,7 @@ def import_overture_buildings_for_bbox(
             or resolve_overture_release_for_cache_root(
                 cache_root_dir=Path(CACHE_PATH),
                 now_utc=fetched_at_utc,
+                abort_event=abort_event,
             )
         )
     dataset_dir_name = dataset_name or derive_dataset_name(
@@ -466,7 +502,7 @@ def import_overture_buildings_for_bbox(
             output_path=download_path,
             no_stac=no_stac,
         )
-        completed = subprocess.run(command, check=False)
+        completed = _run_download_command(command, abort_event=abort_event)
         if completed.returncode != 0:
             raise RuntimeError(f"overturemaps download failed with return code {completed.returncode}")
         if keep_download is not None:
