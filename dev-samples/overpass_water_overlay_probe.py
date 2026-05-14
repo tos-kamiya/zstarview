@@ -128,24 +128,6 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=0.05,
         help="Extra padding around the query bbox in the SVG preview (default: 0.05).",
     )
-    parser.add_argument(
-        "--simplify-min-distance-km",
-        type=float,
-        default=1.0,
-        help="Minimum distance before nearby polygons can be merged in the simplified SVG (default: 1.0).",
-    )
-    parser.add_argument(
-        "--simplify-max-distance-gap-km",
-        type=float,
-        default=0.5,
-        help="Maximum distance gap between adjacent far polygons for simplification (default: 0.5).",
-    )
-    parser.add_argument(
-        "--simplify-max-offset-m",
-        type=float,
-        default=400.0,
-        help="Maximum local offset between adjacent far polygons for simplification (default: 400.0).",
-    )
     return parser
 
 
@@ -696,94 +678,187 @@ def _polygon_vertex_count(polygon: WaterPolygon) -> int:
     return sum(len(ring) for ring in polygon.outer_rings) + sum(len(ring) for ring in polygon.inner_rings)
 
 
-def _simplification_thresholds_for_distance_km(distance_km: float) -> tuple[float, float, float]:
+def _polygon_preview_metrics(
+    polygon: WaterPolygon,
+    *,
+    center_lon_deg: float,
+    center_lat_deg: float,
+) -> tuple[float, float, float, float, float]:
+    xs: list[float] = []
+    ys: list[float] = []
+    for ring in polygon.outer_rings:
+        for lon, lat in ring:
+            x_m, y_m = project_lonlat_to_local_m(
+                float(lon),
+                float(lat),
+                center_lon_deg=center_lon_deg,
+                center_lat_deg=center_lat_deg,
+            )
+            xs.append(x_m)
+            ys.append(y_m)
+    if not xs or not ys:
+        return float("inf"), 0.0, 0.0, 0.0, 0.0
+    anchor_x = sum(xs) / len(xs)
+    anchor_y = sum(ys) / len(ys)
+    span_x_m = max(xs) - min(xs)
+    span_y_m = max(ys) - min(ys)
+    return math.hypot(anchor_x, anchor_y) / 1000.0, anchor_x, anchor_y, span_x_m, span_y_m
+
+
+def _vertex_spacing_threshold_for_distance_km(distance_km: float) -> float:
     if distance_km < 1.0:
-        return float("inf"), 0.0, 0.0
-    if distance_km < 2.0:
-        return 1.0, 0.20, 120.0
-    if distance_km < 3.5:
-        return 1.2, 0.35, 220.0
-    return 1.5, 0.55, 420.0
+        return 0.0
+    # Use an inverse-distance curve so far-field geometry is preserved more
+    # tightly while nearby rings can be thinned a little more aggressively.
+    return 180.0 / max(1.0, float(distance_km))
 
 
-def _dedupe_adjacent_far_polygons(
+def _simplify_closed_ring_by_vertex_spacing(
+    ring: tuple[tuple[float, float], ...],
+    *,
+    center_lon_deg: float,
+    center_lat_deg: float,
+    threshold_m: float,
+) -> tuple[tuple[tuple[float, float], ...], int]:
+    body = _ring_body(ring)
+    if len(body) < 4 or threshold_m <= 0.0:
+        return ring, 0
+
+    points = ring_to_local_points(
+        tuple(body + [body[0]]),
+        center_lon_deg=center_lon_deg,
+        center_lat_deg=center_lat_deg,
+    )[:-1]
+    removed = 0
+    while len(points) > 3:
+        n_points = len(points)
+        best_index: int | None = None
+        best_score = float("inf")
+        for index in range(n_points):
+            prev_point = points[index - 1]
+            point = points[index]
+            next_point = points[(index + 1) % n_points]
+            prev_distance_m = math.hypot(
+                point[0] - prev_point[0],
+                point[1] - prev_point[1],
+            )
+            next_distance_m = math.hypot(
+                next_point[0] - point[0],
+                next_point[1] - point[1],
+            )
+            score = min(prev_distance_m, next_distance_m)
+            if score < threshold_m and score < best_score:
+                best_score = score
+                best_index = index
+        if best_index is None:
+            break
+        points.pop(best_index)
+        removed += 1
+
+    simplified = local_points_to_ring(
+        points,
+        center_lon_deg=center_lon_deg,
+        center_lat_deg=center_lat_deg,
+    )
+    return simplified, removed
+
+
+def _simplify_polygon_by_vertex_spacing(
+    polygon: WaterPolygon,
+    *,
+    center_lon_deg: float,
+    center_lat_deg: float,
+) -> tuple[WaterPolygon, int]:
+    distance_km, _, _, _, _ = _polygon_preview_metrics(
+        polygon,
+        center_lon_deg=center_lon_deg,
+        center_lat_deg=center_lat_deg,
+    )
+    threshold_m = _vertex_spacing_threshold_for_distance_km(distance_km)
+    if threshold_m <= 0.0:
+        return polygon, 0
+
+    removed_vertices = 0
+    simplified_outer: list[tuple[tuple[float, float], ...]] = []
+    for ring in polygon.outer_rings:
+        simplified_ring, removed = _simplify_closed_ring_by_vertex_spacing(
+            ring,
+            center_lon_deg=center_lon_deg,
+            center_lat_deg=center_lat_deg,
+            threshold_m=threshold_m,
+        )
+        simplified_outer.append(simplified_ring)
+        removed_vertices += removed
+
+    simplified_inner: list[tuple[tuple[float, float], ...]] = []
+    for ring in polygon.inner_rings:
+        simplified_ring, removed = _simplify_closed_ring_by_vertex_spacing(
+            ring,
+            center_lon_deg=center_lon_deg,
+            center_lat_deg=center_lat_deg,
+            threshold_m=threshold_m,
+        )
+        simplified_inner.append(simplified_ring)
+        removed_vertices += removed
+
+    if removed_vertices == 0:
+        return polygon, 0
+    return (
+        WaterPolygon(
+            osm_id=polygon.osm_id,
+            kind=polygon.kind,
+            outer_rings=tuple(simplified_outer),
+            inner_rings=tuple(simplified_inner),
+            source=polygon.source,
+            tags=polygon.tags,
+        ),
+        removed_vertices,
+    )
+
+
+def _simplify_polygons_by_vertex_spacing(
     polygons: list[WaterPolygon],
     *,
     center_lon_deg: float,
     center_lat_deg: float,
-    min_distance_km: float = 1.0,
-    max_neighbor_distance_gap_km: float = 0.5,
-    max_neighbor_offset_m: float = 400.0,
 ) -> tuple[list[WaterPolygon], dict[str, int]]:
-    if len(polygons) < 2:
-        kept = list(polygons)
-        vertex_count = sum(_polygon_vertex_count(polygon) for polygon in kept)
-        return kept, {
-            "raw_polygons": len(kept),
-            "kept_polygons": len(kept),
-            "removed_polygons": 0,
-            "raw_vertices": vertex_count,
-            "kept_vertices": vertex_count,
-            "removed_vertices": 0,
-        }
-
-    scored: list[tuple[float, float, float, int, WaterPolygon]] = []
-    for index, polygon in enumerate(polygons):
-        distance_km, anchor_x, anchor_y = _polygon_preview_anchor(
+    simplified_polygons: list[WaterPolygon] = []
+    removed_vertices = 0
+    simplified_polygon_count = 0
+    for polygon in polygons:
+        simplified_polygon, polygon_removed_vertices = _simplify_polygon_by_vertex_spacing(
             polygon,
             center_lon_deg=center_lon_deg,
             center_lat_deg=center_lat_deg,
         )
-        scored.append((distance_km, anchor_x, anchor_y, index, polygon))
-    scored.sort(key=lambda item: (item[0], item[1], item[2], item[3]))
-
-    deduped: list[WaterPolygon] = []
-    previous: tuple[float, float, float, int, WaterPolygon] | None = None
-    dropped = 0
-    removed_vertices = 0
-    for item in scored:
-        if previous is not None:
-            previous_distance_km, previous_x_m, previous_y_m, _, _ = previous
-            distance_km, x_m, y_m, _, _ = item
-            effective_distance_km = max(previous_distance_km, distance_km)
-            tier_min_distance_km, tier_gap_km, tier_offset_m = _simplification_thresholds_for_distance_km(
-                effective_distance_km
-            )
-            tier_min_distance_km = max(tier_min_distance_km, float(min_distance_km))
-            tier_gap_km = max(tier_gap_km, float(max_neighbor_distance_gap_km))
-            tier_offset_m = max(tier_offset_m, float(max_neighbor_offset_m))
-            is_far = previous_distance_km >= tier_min_distance_km and distance_km >= tier_min_distance_km
-            close_in_range = abs(distance_km - previous_distance_km) <= tier_gap_km
-            close_in_space = math.hypot(x_m - previous_x_m, y_m - previous_y_m) <= tier_offset_m
-            if is_far and close_in_range and close_in_space:
-                dropped += 1
-                removed_vertices += _polygon_vertex_count(item[4])
-                continue
-        deduped.append(item[4])
-        previous = item
+        simplified_polygons.append(simplified_polygon)
+        if polygon_removed_vertices > 0:
+            simplified_polygon_count += 1
+            removed_vertices += polygon_removed_vertices
 
     raw_vertices = sum(_polygon_vertex_count(polygon) for polygon in polygons)
-    kept_vertices = sum(_polygon_vertex_count(polygon) for polygon in deduped)
-    if dropped:
+    kept_vertices = max(0, raw_vertices - removed_vertices)
+    if removed_vertices:
         print(
-            "deduped_far_polygons={dropped} raw_polygons={raw_polygons} kept_polygons={kept_polygons} "
+            "simplified_polygons={simplified_polygons} raw_polygons={raw_polygons} kept_polygons={kept_polygons} "
             "raw_vertices={raw_vertices} kept_vertices={kept_vertices} removed_vertices={removed_vertices}".format(
-                dropped=dropped,
+                simplified_polygons=simplified_polygon_count,
                 raw_polygons=len(polygons),
-                kept_polygons=len(deduped),
+                kept_polygons=len(simplified_polygons),
                 raw_vertices=raw_vertices,
                 kept_vertices=kept_vertices,
                 removed_vertices=removed_vertices,
             ),
             file=sys.stderr,
         )
-    return deduped, {
+    return simplified_polygons, {
         "raw_polygons": len(polygons),
-        "kept_polygons": len(deduped),
-        "removed_polygons": dropped,
+        "kept_polygons": len(simplified_polygons),
+        "removed_polygons": 0,
         "raw_vertices": raw_vertices,
         "kept_vertices": kept_vertices,
         "removed_vertices": removed_vertices,
+        "simplified_polygons": simplified_polygon_count,
     }
 
 
@@ -932,9 +1007,6 @@ def build_svg_preview(
     center_lon_deg: float,
     radius_km: float,
     simplify: bool,
-    simplify_min_distance_km: float,
-    simplify_max_distance_gap_km: float,
-    simplify_max_offset_m: float,
     width: int,
     height: int,
     padding: float,
@@ -946,13 +1018,10 @@ def build_svg_preview(
     raw_vertex_count = sum(_polygon_vertex_count(polygon) for polygon in polygons)
     simplification_stats: dict[str, int] | None = None
     if simplify:
-        polygons, simplification_stats = _dedupe_adjacent_far_polygons(
+        polygons, simplification_stats = _simplify_polygons_by_vertex_spacing(
             list(polygons),
             center_lon_deg=float(center_lon_deg),
             center_lat_deg=float(center_lat_deg),
-            min_distance_km=float(simplify_min_distance_km),
-            max_neighbor_distance_gap_km=float(simplify_max_distance_gap_km),
-            max_neighbor_offset_m=float(simplify_max_offset_m),
         )
     else:
         polygons = list(polygons)
@@ -1177,9 +1246,6 @@ def main(argv: list[str] | None = None) -> int:
             center_lon_deg=float(args.lon),
             radius_km=float(args.radius_km),
             simplify=True,
-            simplify_min_distance_km=float(args.simplify_min_distance_km),
-            simplify_max_distance_gap_km=float(args.simplify_max_distance_gap_km),
-            simplify_max_offset_m=float(args.simplify_max_offset_m),
             width=int(args.svg_width),
             height=int(args.svg_height),
             padding=float(args.svg_padding),
@@ -1196,9 +1262,6 @@ def main(argv: list[str] | None = None) -> int:
             center_lon_deg=float(args.lon),
             radius_km=float(args.radius_km),
             simplify=False,
-            simplify_min_distance_km=float(args.simplify_min_distance_km),
-            simplify_max_distance_gap_km=float(args.simplify_max_distance_gap_km),
-            simplify_max_offset_m=float(args.simplify_max_offset_m),
             width=int(args.svg_width),
             height=int(args.svg_height),
             padding=float(args.svg_padding),
