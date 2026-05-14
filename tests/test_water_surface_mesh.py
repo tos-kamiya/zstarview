@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 from zstarview.water_overlay import WaterPolygonFootprint, WaterSurfacePatch
-from zstarview.water_surface_mesh import build_water_surface_mesh, make_local_transformer, project_ring_xy
+from zstarview.water_surface_mesh import (
+    build_water_surface_mesh,
+    make_local_transformer,
+    project_ring_xy,
+    split_local_polygon_by_grid,
+)
 
 
 def _ring_area(points: list[tuple[float, float]]) -> float:
@@ -151,4 +156,21 @@ def test_build_water_surface_mesh_can_split_triangles_by_grid() -> None:
     expected_area = _ring_area(outer_xy)
     got_area = sum(_triangle_area(triangle) for triangle in mesh.triangles_xy_m)
 
+    assert abs(got_area - expected_area) / expected_area < 0.01
+
+
+def test_split_local_polygon_by_grid_splits_shells() -> None:
+    shell = [
+        (0.0, 0.0),
+        (900.0, 0.0),
+        (900.0, 900.0),
+        (0.0, 900.0),
+        (0.0, 0.0),
+    ]
+
+    pieces = split_local_polygon_by_grid(shell, [], cell_m=300.0)
+
+    assert len(pieces) > 1
+    expected_area = 900.0 * 900.0
+    got_area = sum(_ring_area(piece_shell) for piece_shell, _ in pieces)
     assert abs(got_area - expected_area) / expected_area < 0.01

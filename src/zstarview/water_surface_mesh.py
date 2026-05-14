@@ -359,6 +359,59 @@ def _ring_centroid(points_xy: Sequence[tuple[float, float]]) -> tuple[float, flo
     return sum_x / count, sum_y / count
 
 
+def split_local_polygon_by_grid(
+    shell: Sequence[tuple[float, float]],
+    holes: Sequence[Sequence[tuple[float, float]]],
+    *,
+    cell_m: float = DEFAULT_SPLIT_CELL_M,
+) -> list[tuple[list[tuple[float, float]], list[list[tuple[float, float]]]]]:
+    if cell_m <= 0.0:
+        return [(list(shell), [list(hole) for hole in holes])]
+    if len(shell) < 4:
+        return []
+
+    min_x, min_y, max_x, max_y = _ring_bounds(shell)
+    if min_x >= max_x or min_y >= max_y:
+        return []
+
+    pieces: list[tuple[list[tuple[float, float]], list[list[tuple[float, float]]]]] = []
+    epsilon = max(1.0e-9, abs(cell_m) * 1.0e-12)
+    start_x = int(math.floor(min_x / cell_m))
+    end_x = int(math.floor((max_x - epsilon) / cell_m))
+    start_y = int(math.floor(min_y / cell_m))
+    end_y = int(math.floor((max_y - epsilon) / cell_m))
+    for cell_x in range(start_x, end_x + 1):
+        cell_min_x = float(cell_x) * cell_m
+        cell_max_x = cell_min_x + cell_m
+        for cell_y in range(start_y, end_y + 1):
+            cell_min_y = float(cell_y) * cell_m
+            cell_max_y = cell_min_y + cell_m
+            clipped_shell = _clip_ring_to_rect(
+                shell,
+                min_x=cell_min_x,
+                min_y=cell_min_y,
+                max_x=cell_max_x,
+                max_y=cell_max_y,
+            )
+            if len(clipped_shell) < 4:
+                continue
+            clipped_holes: list[list[tuple[float, float]]] = []
+            for hole in holes:
+                clipped_hole = _clip_ring_to_rect(
+                    hole,
+                    min_x=cell_min_x,
+                    min_y=cell_min_y,
+                    max_x=cell_max_x,
+                    max_y=cell_max_y,
+                )
+                if len(clipped_hole) < 4:
+                    continue
+                if _point_in_ring(_ring_centroid(clipped_hole), clipped_shell):
+                    clipped_holes.append(clipped_hole)
+            pieces.append((clipped_shell, clipped_holes))
+    return pieces
+
+
 def _mean_surface_elevation_m(patch: WaterSurfacePatch | None) -> float:
     if patch is None:
         return 0.0
@@ -406,43 +459,13 @@ def build_water_surface_mesh(
 
     assigned_holes = _assign_holes_to_shells(shells, holes)
     triangles: list[tuple[tuple[float, float], tuple[float, float], tuple[float, float]]] = []
-    cell_m = DEFAULT_SPLIT_CELL_M
-    epsilon = max(1.0e-9, abs(cell_m) * 1.0e-12)
     for shell, shell_holes in zip(shells, assigned_holes):
-        min_x, min_y, max_x, max_y = _ring_bounds(shell)
-        start_x = int(math.floor(min_x / cell_m))
-        end_x = int(math.floor((max_x - epsilon) / cell_m))
-        start_y = int(math.floor(min_y / cell_m))
-        end_y = int(math.floor((max_y - epsilon) / cell_m))
-        for cell_x in range(start_x, end_x + 1):
-            cell_min_x = float(cell_x) * cell_m
-            cell_max_x = cell_min_x + cell_m
-            for cell_y in range(start_y, end_y + 1):
-                cell_min_y = float(cell_y) * cell_m
-                cell_max_y = cell_min_y + cell_m
-                clipped_shell = _clip_ring_to_rect(
-                    shell,
-                    min_x=cell_min_x,
-                    min_y=cell_min_y,
-                    max_x=cell_max_x,
-                    max_y=cell_max_y,
-                )
-                if len(clipped_shell) < 4:
-                    continue
-                clipped_holes: list[list[tuple[float, float]]] = []
-                for hole in shell_holes:
-                    clipped_hole = _clip_ring_to_rect(
-                        hole,
-                        min_x=cell_min_x,
-                        min_y=cell_min_y,
-                        max_x=cell_max_x,
-                        max_y=cell_max_y,
-                    )
-                    if len(clipped_hole) < 4:
-                        continue
-                    if _point_in_ring(_ring_centroid(clipped_hole), clipped_shell):
-                        clipped_holes.append(clipped_hole)
-                triangles.extend(_triangulate_shell(clipped_shell, clipped_holes))
+        for clipped_shell, clipped_holes in split_local_polygon_by_grid(
+            shell,
+            shell_holes,
+            cell_m=DEFAULT_SPLIT_CELL_M,
+        ):
+            triangles.extend(_triangulate_shell(clipped_shell, clipped_holes))
 
     if not triangles:
         return None

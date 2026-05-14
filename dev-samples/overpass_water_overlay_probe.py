@@ -9,6 +9,7 @@ This sample keeps the pipeline intentionally simple:
    - outer rings
    - inner rings
 4. Write a normalized JSON payload and, optionally, a quick SVG preview.
+5. Optionally write a grid-split SVG preview that shows the 300m cell clipping.
 
 The script is meant for data-structure exploration, not production caching.
 """
@@ -26,11 +27,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
+from zstarview.water_surface_mesh import split_local_polygon_by_grid
+
 EARTH_RADIUS_KM = 6371.0088
 EARTH_RADIUS_M = EARTH_RADIUS_KM * 1000.0
 DEFAULT_ENDPOINT = "https://overpass-api.de/api/interpreter"
 DEFAULT_USER_AGENT = "zstarview-water-overlay-probe/0.1"
 DEFAULT_TIMEOUT_S = 60.0
+GRID_SPLIT_CELL_M = 300.0
 
 POLYGON_WATER_KEYS = {
     ("natural", "water"),
@@ -88,6 +92,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
         "--output-svg",
         type=Path,
         help="Optional output path for a quick SVG preview.",
+    )
+    parser.add_argument(
+        "--output-split-svg",
+        type=Path,
+        help="Optional output path for a 300m grid-split SVG preview.",
     )
     parser.add_argument(
         "--svg-width",
@@ -521,47 +530,6 @@ def local_points_bounds(points_groups: list[list[tuple[float, float]]]) -> tuple
     return min(xs), min(ys), max(xs), max(ys)
 
 
-def _import_shapely_geometry() -> tuple[Any, Any]:
-    try:
-        from shapely.geometry import Polygon, box
-    except ImportError as exc:  # pragma: no cover - optional dev dependency
-        raise RuntimeError(
-            "shapely is required for grid-split triangulation; install the dev extra and rerun uv sync"
-        ) from exc
-    return Polygon, box
-
-
-def _geometry_polygons(geometry: Any) -> list[Any]:
-    geom_type = getattr(geometry, "geom_type", "")
-    if geom_type == "Polygon":
-        return [geometry]
-    if geom_type in {"MultiPolygon", "GeometryCollection"}:
-        parts: list[Any] = []
-        for part in getattr(geometry, "geoms", []):
-            parts.extend(_geometry_polygons(part))
-        return parts
-    return []
-
-
-def _build_local_polygon_geometry(
-    outer_ring: list[tuple[float, float]],
-    hole_rings: list[list[tuple[float, float]]],
-) -> Any | None:
-    polygon_cls, _ = _import_shapely_geometry()
-    if len(outer_ring) < 4:
-        return None
-    polygon = polygon_cls(outer_ring, holes=hole_rings or None)
-    if polygon.is_empty or float(polygon.area) <= 0.0:
-        return None
-    if not polygon.is_valid:
-        repaired = polygon.buffer(0.0)
-        if not repaired.is_empty:
-            polygon = repaired
-    if polygon.is_empty or float(polygon.area) <= 0.0:
-        return None
-    return polygon
-
-
 def _ring_body(points_xy: Iterable[tuple[float, float]]) -> list[tuple[float, float]]:
     ring = list(points_xy)
     if len(ring) >= 2 and ring[0] == ring[-1]:
@@ -599,38 +567,6 @@ def _point_in_ring(point: tuple[float, float], ring: Iterable[tuple[float, float
     return inside
 
 
-def _split_polygon_by_grid(polygon: Any, cell_m: float) -> list[Any]:
-    if cell_m <= 0.0:
-        return [polygon]
-    _, box = _import_shapely_geometry()
-    min_x, min_y, max_x, max_y = polygon.bounds
-    if min_x >= max_x or min_y >= max_y:
-        return []
-    start_x = math.floor(min_x / cell_m)
-    end_x = math.floor(max_x / cell_m)
-    start_y = math.floor(min_y / cell_m)
-    end_y = math.floor(max_y / cell_m)
-    pieces: list[Any] = []
-    seen_keys: set[tuple[float, float, float, float]] = set()
-    for cell_x in range(int(start_x), int(end_x) + 1):
-        for cell_y in range(int(start_y), int(end_y) + 1):
-            min_cell_x = float(cell_x) * cell_m
-            min_cell_y = float(cell_y) * cell_m
-            max_cell_x = min_cell_x + cell_m
-            max_cell_y = min_cell_y + cell_m
-            cell_key = (min_cell_x, min_cell_y, max_cell_x, max_cell_y)
-            if cell_key in seen_keys:
-                continue
-            seen_keys.add(cell_key)
-            cell = box(min_cell_x, min_cell_y, max_cell_x, max_cell_y)
-            clipped = polygon.intersection(cell)
-            for part in _geometry_polygons(clipped):
-                if part.is_empty or float(part.area) <= 0.0:
-                    continue
-                pieces.append(part)
-    return pieces
-
-
 def _assign_holes_to_shells(
     outer_rings: list[list[tuple[float, float]]],
     inner_rings: list[list[tuple[float, float]]],
@@ -652,45 +588,6 @@ def _assign_holes_to_shells(
         target_index = min(matches, key=lambda index: shell_areas[index])
         shell_holes[target_index].append(hole)
     return shell_holes
-
-
-def build_local_triangulation_pieces(
-    polygon: WaterPolygon,
-    *,
-    center_lon_deg: float,
-    center_lat_deg: float,
-    cell_m: float,
-) -> list[tuple[list[tuple[float, float]], list[list[tuple[float, float]]]]]:
-    outer_rings = [
-        ring_to_local_points(
-            ring,
-            center_lon_deg=center_lon_deg,
-            center_lat_deg=center_lat_deg,
-        )
-        for ring in polygon.outer_rings
-    ]
-    inner_rings = [
-        ring_to_local_points(
-            ring,
-            center_lon_deg=center_lon_deg,
-            center_lat_deg=center_lat_deg,
-        )
-        for ring in polygon.inner_rings
-    ]
-    shell_holes = _assign_holes_to_shells(outer_rings, inner_rings)
-    pieces: list[tuple[list[tuple[float, float]], list[list[tuple[float, float]]]]] = []
-    for shell, holes in zip(outer_rings, shell_holes):
-        local_polygon = _build_local_polygon_geometry(shell, holes)
-        if local_polygon is None:
-            continue
-        for piece in _split_polygon_by_grid(local_polygon, cell_m):
-            if piece.is_empty or float(piece.area) <= 0.0:
-                continue
-            piece_shell = list(piece.exterior.coords)
-            piece_holes = [list(interior.coords) for interior in piece.interiors if len(interior.coords) >= 4]
-            if len(piece_shell) >= 4:
-                pieces.append((piece_shell, piece_holes))
-    return pieces
 
 
 def project_local_points_to_svg(
@@ -768,6 +665,96 @@ def build_svg_preview(
                 'fill-rule="evenodd"/>'
             ).format(d=path_d)
         )
+    parts.append("</svg>")
+    return "\n".join(parts)
+
+
+def build_split_svg_preview(
+    polygons: list[WaterPolygon],
+    *,
+    width: int,
+    height: int,
+    padding: float,
+    center_lon_deg: float,
+    center_lat_deg: float,
+) -> str:
+    background_fill = "#f7fbff"
+    water_fill = "#8ecae6"
+    water_stroke = "#4a90c2"
+
+    local_rings: list[list[tuple[float, float]]] = []
+    outer_rings_by_polygon: list[list[list[tuple[float, float]]]] = []
+    inner_rings_by_polygon: list[list[list[tuple[float, float]]]] = []
+    for polygon in polygons:
+        local_outer_rings: list[list[tuple[float, float]]] = []
+        for ring in polygon.outer_rings:
+            local_ring = ring_to_local_points(
+                ring,
+                center_lon_deg=center_lon_deg,
+                center_lat_deg=center_lat_deg,
+            )
+            local_rings.append(local_ring)
+            local_outer_rings.append(local_ring)
+        local_inner_rings: list[list[tuple[float, float]]] = []
+        for ring in polygon.inner_rings:
+            local_ring = ring_to_local_points(
+                ring,
+                center_lon_deg=center_lon_deg,
+                center_lat_deg=center_lat_deg,
+            )
+            local_rings.append(local_ring)
+            local_inner_rings.append(local_ring)
+        outer_rings_by_polygon.append(local_outer_rings)
+        inner_rings_by_polygon.append(local_inner_rings)
+
+    bounds = local_points_bounds(local_rings)
+
+    parts = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        (
+            f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
+            f'viewBox="0 0 {width} {height}">'
+        ),
+        f'<rect x="0" y="0" width="100%" height="100%" fill="{background_fill}"/>',
+    ]
+    for local_outer_rings, local_inner_rings in zip(outer_rings_by_polygon, inner_rings_by_polygon):
+        shell_holes = _assign_holes_to_shells(local_outer_rings, local_inner_rings)
+        for shell, holes in zip(local_outer_rings, shell_holes):
+            for piece_shell, piece_holes in split_local_polygon_by_grid(shell, holes, cell_m=GRID_SPLIT_CELL_M):
+                path_parts: list[str] = []
+                exterior_points = project_local_points_to_svg(
+                    piece_shell,
+                    bounds=bounds,
+                    width=width,
+                    height=height,
+                    padding=padding,
+                )
+                exterior_path = path_for_points(exterior_points)
+                if not exterior_path:
+                    continue
+                path_parts.append(exterior_path)
+                for hole in piece_holes:
+                    interior_points = project_local_points_to_svg(
+                        hole,
+                        bounds=bounds,
+                        width=width,
+                        height=height,
+                        padding=padding,
+                    )
+                    interior_path = path_for_points(interior_points)
+                    if interior_path:
+                        path_parts.append(interior_path)
+                parts.append(
+                    (
+                        '<path d="{d}" fill="{fill}" fill-opacity="0.50" '
+                        'stroke="{stroke}" stroke-width="0.8" vector-effect="non-scaling-stroke" '
+                        'fill-rule="evenodd"/>'
+                    ).format(
+                        d=" ".join(path_parts),
+                        fill=water_fill,
+                        stroke=water_stroke,
+                    )
+                )
     parts.append("</svg>")
     return "\n".join(parts)
 
@@ -855,6 +842,19 @@ def main(argv: list[str] | None = None) -> int:
         )
         args.output_svg.write_text(svg_text + "\n", encoding="utf-8")
         print(f"wrote_svg={args.output_svg}")
+
+    if args.output_split_svg is not None:
+        args.output_split_svg.parent.mkdir(parents=True, exist_ok=True)
+        svg_text = build_split_svg_preview(
+            polygons,
+            width=int(args.svg_width),
+            height=int(args.svg_height),
+            padding=float(args.svg_padding),
+            center_lon_deg=float(args.lon),
+            center_lat_deg=float(args.lat),
+        )
+        args.output_split_svg.write_text(svg_text + "\n", encoding="utf-8")
+        print(f"wrote_split_svg={args.output_split_svg}")
 
     print(
         f"summary polygons={len(polygons)} bbox={bbox[0]:.6f},{bbox[1]:.6f},{bbox[2]:.6f},{bbox[3]:.6f}",
