@@ -770,6 +770,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `Water Surface` メニュー項目、`W` ショートカット、初期 opacity の入力を GUI 操作へ接続する
 - `src/zstarview/gui/window_updates.py`
   - 水面レイヤーの status line と ready/fail banner をまとめる
+  - status line は `W ---` / `W <count>` の最小表現にして、mode/source を出さない
 
 ### 4.7 航空機オーバーレイ処理
 

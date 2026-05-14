@@ -676,6 +676,7 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 
 - 水面レイヤーは、観測地点周辺の水域を、小さな青いドットとして天球上に重畳してよい。
 - GUI 上の表示名は `Water Surface` としてよく、`W` で on/off してよい。
+- 水面の status line は `W ---` で無効状態を示し、有効時は `W <count>` のように表示してよい。`dem`、`sea`、`overpass`、`cache` などの入手元や内部 mode は表示しなくてよい。
 - OSM 由来データを前提とし、`natural=water` の水域ポリゴン、`waterway=riverbank` の水域ポリゴンを主対象にしてよい。
 - `natural=coastline` は bbox 内で取得し、bbox 境界と合わせて面化したうえで海域ポリゴンとして扱ってよい。
 - `waterway=river|stream|canal|drain` の中心線は本設計では採用せず、必要なら将来のフォールバック表現として別扱いにしてよい。
