@@ -9,7 +9,7 @@ This sample keeps the pipeline intentionally simple:
    - outer rings
    - inner rings
 4. Write a normalized JSON payload and, optionally, a quick SVG preview.
-5. Optionally write a grid-split SVG preview that shows the 300m cell clipping.
+5. Optionally write a grid-split SVG preview that shows the 300m cell clipping for river-like polygons.
 
 The script is meant for data-structure exploration, not production caching.
 """
@@ -27,6 +27,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
+from zstarview.water_overlay import (
+    classify_water_surface_category,
+    extract_water_polygons as extract_core_water_polygons,
+)
 from zstarview.water_surface_mesh import split_local_polygon_by_grid
 
 EARTH_RADIUS_KM = 6371.0088
@@ -34,6 +38,8 @@ EARTH_RADIUS_M = EARTH_RADIUS_KM * 1000.0
 DEFAULT_ENDPOINT = "https://overpass-api.de/api/interpreter"
 DEFAULT_USER_AGENT = "zstarview-water-overlay-probe/0.1"
 DEFAULT_TIMEOUT_S = 60.0
+QUERY_MARGIN_KM = 2.0
+OVERPASS_SAMPLE_ATTEMPTS = 8
 GRID_SPLIT_CELL_M = 300.0
 
 POLYGON_WATER_KEYS = {
@@ -96,7 +102,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output-split-svg",
         type=Path,
-        help="Optional output path for a 300m grid-split SVG preview.",
+        help="Optional output path for a 300m grid-split SVG preview of river-like polygons.",
+    )
+    parser.add_argument(
+        "--input-cache",
+        type=Path,
+        help=(
+            "Optional input cache JSON written by zstarview. "
+            "When set, the script skips Overpass and renders polygons from the cache."
+        ),
     )
     parser.add_argument(
         "--svg-width",
@@ -321,13 +335,16 @@ def relation_is_water_relation(tags: dict[str, str]) -> bool:
     return False
 
 
-def extract_water_features(elements: list[dict[str, Any]]) -> list[WaterPolygon]:
+def extract_water_features(
+    elements: list[dict[str, Any]],
+    *,
+    bbox: tuple[float, float, float, float] | None,
+) -> list[WaterPolygon]:
     nodes = node_lookup(elements)
     ways = way_lookup(elements, nodes)
     relations = relation_lookup(elements)
 
     polygons: list[WaterPolygon] = []
-
     way_tags: dict[int, dict[str, str]] = {}
     for element in elements:
         if element.get("type") != "way":
@@ -394,6 +411,27 @@ def extract_water_features(elements: list[dict[str, Any]]) -> list[WaterPolygon]
             )
         )
 
+    if bbox is not None:
+        core_polygons = extract_core_water_polygons(elements, bbox=bbox)
+        for footprint in core_polygons:
+            if footprint.kind != "coastline":
+                continue
+            polygons.append(
+                WaterPolygon(
+                    osm_id=str(footprint.water_id),
+                    kind=str(footprint.kind),
+                    outer_rings=tuple(
+                        tuple(tuple(point) for point in ring)
+                        for ring in footprint.outer_rings_lonlat
+                    ),
+                    inner_rings=tuple(
+                        tuple(tuple(point) for point in ring)
+                        for ring in footprint.inner_rings_lonlat
+                    ),
+                    source=str(footprint.source),
+                    tags=dict(footprint.tags),
+                )
+            )
     return polygons
 
 
@@ -530,6 +568,103 @@ def local_points_bounds(points_groups: list[list[tuple[float, float]]]) -> tuple
     return min(xs), min(ys), max(xs), max(ys)
 
 
+def _ring_bounds(ring: tuple[tuple[float, float], ...]) -> tuple[float, float, float, float]:
+    min_x = float("inf")
+    min_y = float("inf")
+    max_x = float("-inf")
+    max_y = float("-inf")
+    for x, y in ring:
+        min_x = min(min_x, float(x))
+        min_y = min(min_y, float(y))
+        max_x = max(max_x, float(x))
+        max_y = max(max_y, float(y))
+    if not math.isfinite(min_x):
+        return 0.0, 0.0, 0.0, 0.0
+    return min_x, min_y, max_x, max_y
+
+
+def _polygon_overlaps_bbox(polygon: WaterPolygon, bbox: tuple[float, float, float, float]) -> bool:
+    west, south, east, north = bbox
+    for ring in polygon.outer_rings + polygon.inner_rings:
+        min_x, min_y, max_x, max_y = _ring_bounds(ring)
+        if max_x < west or max_y < south or min_x > east or min_y > north:
+            continue
+        return True
+    return False
+
+
+def _water_style(polygon: WaterPolygon) -> tuple[str, str, float]:
+    category = classify_water_surface_category(polygon.tags, kind=polygon.kind)
+    if category == "sea":
+        return "#f59e0b", "#c2410c", 0.42
+    if category == "river":
+        return "#4db6ff", "#2b7fbf", 0.55
+    return "#8ecae6", "#4a90c2", 0.50
+
+
+def _should_split_polygon(polygon: WaterPolygon) -> bool:
+    return classify_water_surface_category(polygon.tags, kind=polygon.kind) == "river"
+
+
+def filter_water_polygons_to_bbox(
+    polygons: list[WaterPolygon],
+    *,
+    bbox: tuple[float, float, float, float],
+) -> list[WaterPolygon]:
+    return [polygon for polygon in polygons if _polygon_overlaps_bbox(polygon, bbox)]
+
+
+def load_water_polygons_from_cache(path: Path) -> list[WaterPolygon]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise RuntimeError("Cache payload is not a JSON object")
+    if int(payload.get("cache_format_version", 0)) != 2:
+        raise RuntimeError("Unsupported cache format version")
+    footprints = payload.get("footprints", [])
+    if not isinstance(footprints, list):
+        raise RuntimeError("Cache payload missing footprints")
+
+    polygons: list[WaterPolygon] = []
+    for item in footprints:
+        if not isinstance(item, dict):
+            continue
+        outer_rings_raw = item.get("outer_rings_lonlat", [])
+        inner_rings_raw = item.get("inner_rings_lonlat", [])
+        outer_rings: list[tuple[tuple[float, float], ...]] = []
+        inner_rings: list[tuple[tuple[float, float], ...]] = []
+        if isinstance(outer_rings_raw, list):
+            for ring in outer_rings_raw:
+                if not isinstance(ring, list):
+                    continue
+                points = tuple((float(lon), float(lat)) for lon, lat in ring)
+                if len(points) >= 4:
+                    outer_rings.append(points)
+        if isinstance(inner_rings_raw, list):
+            for ring in inner_rings_raw:
+                if not isinstance(ring, list):
+                    continue
+                points = tuple((float(lon), float(lat)) for lon, lat in ring)
+                if len(points) >= 4:
+                    inner_rings.append(points)
+        if not outer_rings:
+            continue
+        polygons.append(
+            WaterPolygon(
+                osm_id=str(item.get("water_id", "water")),
+                kind=str(item.get("kind", "water_polygon")),
+                outer_rings=tuple(outer_rings),
+                inner_rings=tuple(inner_rings),
+                source=str(item.get("source", "")),
+                tags={
+                    str(key): str(value)
+                    for key, value in dict(item.get("tags", {})).items()
+                    if isinstance(key, str) and isinstance(value, str)
+                },
+            )
+        )
+    return polygons
+
+
 def _ring_body(points_xy: Iterable[tuple[float, float]]) -> list[tuple[float, float]]:
     ring = list(points_xy)
     if len(ring) >= 2 and ring[0] == ring[-1]:
@@ -650,6 +785,7 @@ def build_svg_preview(
     for polygon in polygons:
         if not polygon.outer_rings:
             continue
+        fill, stroke, fill_opacity = _water_style(polygon)
         path_d = " ".join(
             svg_path_for_ring(ring, bbox=bbox, width=width, height=height, padding=padding)
             for ring in polygon.outer_rings
@@ -660,10 +796,10 @@ def build_svg_preview(
         )
         parts.append(
             (
-                '<path d="{d}" fill="#8ecae6" fill-opacity="0.45" '
-                'stroke="#4a90c2" stroke-width="1.2" vector-effect="non-scaling-stroke" '
+                '<path d="{d}" fill="{fill}" fill-opacity="{fill_opacity:.2f}" '
+                'stroke="{stroke}" stroke-width="1.2" vector-effect="non-scaling-stroke" '
                 'fill-rule="evenodd"/>'
-            ).format(d=path_d)
+            ).format(d=path_d, fill=fill, stroke=stroke, fill_opacity=fill_opacity)
         )
     parts.append("</svg>")
     return "\n".join(parts)
@@ -679,8 +815,6 @@ def build_split_svg_preview(
     center_lat_deg: float,
 ) -> str:
     background_fill = "#f7fbff"
-    water_fill = "#8ecae6"
-    water_stroke = "#4a90c2"
 
     local_rings: list[list[tuple[float, float]]] = []
     outer_rings_by_polygon: list[list[list[tuple[float, float]]]] = []
@@ -717,10 +851,22 @@ def build_split_svg_preview(
         ),
         f'<rect x="0" y="0" width="100%" height="100%" fill="{background_fill}"/>',
     ]
-    for local_outer_rings, local_inner_rings in zip(outer_rings_by_polygon, inner_rings_by_polygon):
+    for polygon, local_outer_rings, local_inner_rings in zip(
+        polygons,
+        outer_rings_by_polygon,
+        inner_rings_by_polygon,
+    ):
         shell_holes = _assign_holes_to_shells(local_outer_rings, local_inner_rings)
         for shell, holes in zip(local_outer_rings, shell_holes):
-            for piece_shell, piece_holes in split_local_polygon_by_grid(shell, holes, cell_m=GRID_SPLIT_CELL_M):
+            if _should_split_polygon(polygon):
+                pieces = split_local_polygon_by_grid(
+                    shell,
+                    holes,
+                    cell_m=GRID_SPLIT_CELL_M,
+                )
+            else:
+                pieces = [(list(shell), [list(hole) for hole in holes])]
+            for piece_shell, piece_holes in pieces:
                 path_parts: list[str] = []
                 exterior_points = project_local_points_to_svg(
                     piece_shell,
@@ -744,15 +890,17 @@ def build_split_svg_preview(
                     interior_path = path_for_points(interior_points)
                     if interior_path:
                         path_parts.append(interior_path)
+                fill, stroke, fill_opacity = _water_style(polygon)
                 parts.append(
                     (
-                        '<path d="{d}" fill="{fill}" fill-opacity="0.50" '
+                        '<path d="{d}" fill="{fill}" fill-opacity="{fill_opacity:.2f}" '
                         'stroke="{stroke}" stroke-width="0.8" vector-effect="non-scaling-stroke" '
                         'fill-rule="evenodd"/>'
                     ).format(
                         d=" ".join(path_parts),
-                        fill=water_fill,
-                        stroke=water_stroke,
+                        fill=fill,
+                        stroke=stroke,
+                        fill_opacity=fill_opacity,
                     )
                 )
     parts.append("</svg>")
@@ -801,22 +949,52 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
 
-    bbox = bbox_from_point(args.lat, args.lon, float(args.radius_km))
-    query = build_overpass_query(bbox)
-    payload = fetch_overpass_json(
-        endpoint=args.endpoint,
-        query=query,
-        user_agent=args.user_agent,
-        timeout_s=float(args.timeout_s),
+    view_bbox = bbox_from_point(args.lat, args.lon, float(args.radius_km))
+    query_bbox = bbox_from_point(
+        args.lat,
+        args.lon,
+        float(args.radius_km) + QUERY_MARGIN_KM,
     )
-    elements = payload.get("elements")
-    if not isinstance(elements, list):
-        raise RuntimeError("Overpass payload is missing the elements array")
+    polygons: list[WaterPolygon]
+    if args.input_cache is not None:
+        polygons = load_water_polygons_from_cache(args.input_cache)
+        polygons = filter_water_polygons_to_bbox(polygons, bbox=view_bbox)
+        query = build_overpass_query(query_bbox)
+    else:
+        query = build_overpass_query(query_bbox)
+        polygons = []
+        best_coastline_count = -1
+        best_polygon_count = -1
+        for _ in range(OVERPASS_SAMPLE_ATTEMPTS):
+            payload = fetch_overpass_json(
+                endpoint=args.endpoint,
+                query=query,
+                user_agent=args.user_agent,
+                timeout_s=float(args.timeout_s),
+            )
+            elements = payload.get("elements")
+            if not isinstance(elements, list):
+                raise RuntimeError("Overpass payload is missing the elements array")
 
-    polygons = extract_water_features(elements)
+            candidate_polygons = extract_water_features(elements, bbox=query_bbox)
+            candidate_polygons = filter_water_polygons_to_bbox(candidate_polygons, bbox=view_bbox)
+            coastline_count = sum(1 for polygon in candidate_polygons if polygon.kind == "coastline")
+            polygon_count = len(candidate_polygons)
+            if (
+                coastline_count > best_coastline_count
+                or (
+                    coastline_count == best_coastline_count
+                    and polygon_count > best_polygon_count
+                )
+            ):
+                polygons = candidate_polygons
+                best_coastline_count = coastline_count
+                best_polygon_count = polygon_count
+            if coastline_count > 0:
+                break
     normalized = serialize_water_layer(
         polygons,
-        bbox=bbox,
+        bbox=view_bbox,
         radius_km=float(args.radius_km),
         endpoint=args.endpoint,
         center_lat_deg=float(args.lat),
@@ -835,7 +1013,7 @@ def main(argv: list[str] | None = None) -> int:
         args.output_svg.parent.mkdir(parents=True, exist_ok=True)
         svg_text = build_svg_preview(
             polygons,
-            bbox=geometry_bounds(polygons, bbox),
+            bbox=geometry_bounds(polygons, view_bbox),
             width=int(args.svg_width),
             height=int(args.svg_height),
             padding=float(args.svg_padding),
@@ -857,7 +1035,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"wrote_split_svg={args.output_split_svg}")
 
     print(
-        f"summary polygons={len(polygons)} bbox={bbox[0]:.6f},{bbox[1]:.6f},{bbox[2]:.6f},{bbox[3]:.6f}",
+        f"summary polygons={len(polygons)} bbox={view_bbox[0]:.6f},{view_bbox[1]:.6f},{view_bbox[2]:.6f},{view_bbox[3]:.6f}",
         file=sys.stderr,
     )
     return 0

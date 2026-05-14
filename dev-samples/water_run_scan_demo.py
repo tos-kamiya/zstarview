@@ -9,6 +9,8 @@ The purpose is to test the idea of drawing water as scan-aligned blue runs
 instead of a separate full-screen polygon layer.
 """
 
+# ruff: noqa: E402
+
 from __future__ import annotations
 
 import argparse
@@ -17,12 +19,9 @@ import math
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Iterable
 
 import numpy as np
-from pyproj import Geod
-from shapely.geometry import Point, Polygon, box
-from shapely.prepared import prep
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SRC_ROOT = REPO_ROOT / "src"
@@ -45,8 +44,13 @@ from zstarview.water_overlay import WaterPolygonFootprint
 
 @dataclass(frozen=True)
 class PreparedWaterPolygon:
-    polygon: Polygon
-    prepared: Any
+    water_id: str
+    kind: str
+    outer_rings_xy: tuple[tuple[tuple[float, float], ...], ...]
+    inner_rings_xy: tuple[tuple[tuple[float, float], ...], ...]
+    bounds_xy: tuple[float, float, float, float]
+    source: str
+    tags: dict[str, str]
 
 
 @dataclass(frozen=True)
@@ -175,41 +179,58 @@ def _load_tags(value: object) -> dict[str, str]:
     return result
 
 
-def _iter_polygon_parts(geometry: object) -> tuple[Polygon, ...]:
-    if not hasattr(geometry, "is_empty") or getattr(geometry, "is_empty"):
-        return ()
-    geom_type = getattr(geometry, "geom_type", "")
-    if geom_type == "Polygon":
-        return (geometry,)  # type: ignore[return-value]
-    if geom_type in {"MultiPolygon", "GeometryCollection"}:
-        parts: list[Polygon] = []
-        for item in getattr(geometry, "geoms", ()):
-            parts.extend(_iter_polygon_parts(item))
-        return tuple(parts)
-    return ()
+def _ring_body(points: Iterable[tuple[float, float]]) -> list[tuple[float, float]]:
+    ring = list(points)
+    if len(ring) >= 2 and ring[0] == ring[-1]:
+        ring = ring[:-1]
+    if len(ring) < 3:
+        return []
+    return ring
 
 
-def _project_polygon_to_local_xy(
-    polygon: Polygon,
-    *,
-    observer_lon_deg: float,
-    observer_lat_deg: float,
-) -> Polygon:
-    outer_xy = [
-        _project_local_xy(observer_lon_deg, observer_lat_deg, float(lon), float(lat))
-        for lon, lat in polygon.exterior.coords
-    ]
-    hole_xy = [
-        [
-            _project_local_xy(observer_lon_deg, observer_lat_deg, float(lon), float(lat))
-            for lon, lat in hole.coords
-        ]
-        for hole in polygon.interiors
-    ]
-    projected = Polygon(outer_xy, hole_xy)
-    if not projected.is_valid:
-        projected = projected.buffer(0)
-    return projected
+def _ring_bounds(points: Iterable[tuple[float, float]]) -> tuple[float, float, float, float]:
+    min_x = float("inf")
+    min_y = float("inf")
+    max_x = float("-inf")
+    max_y = float("-inf")
+    for x, y in points:
+        min_x = min(min_x, float(x))
+        min_y = min(min_y, float(y))
+        max_x = max(max_x, float(x))
+        max_y = max(max_y, float(y))
+    if not math.isfinite(min_x):
+        return 0.0, 0.0, 0.0, 0.0
+    return min_x, min_y, max_x, max_y
+
+
+def _point_in_ring_xy(point: tuple[float, float], ring: Iterable[tuple[float, float]]) -> bool:
+    body = _ring_body(ring)
+    if len(body) < 3:
+        return False
+    x, y = point
+    inside = False
+    for index in range(len(body)):
+        x0, y0 = body[index]
+        x1, y1 = body[(index + 1) % len(body)]
+        if ((y0 > y) != (y1 > y)) and (y1 != y0):
+            x_cross = ((x1 - x0) * (y - y0) / (y1 - y0)) + x0
+            if x < x_cross:
+                inside = not inside
+    return inside
+
+
+def _footprint_contains_point_xy(
+    point: tuple[float, float],
+    outer_rings_xy: tuple[tuple[tuple[float, float], ...], ...],
+    inner_rings_xy: tuple[tuple[tuple[float, float], ...], ...],
+) -> bool:
+    for outer_ring in outer_rings_xy:
+        if not _point_in_ring_xy(point, outer_ring):
+            continue
+        if any(_point_in_ring_xy(point, inner_ring) for inner_ring in inner_rings_xy):
+            return False
+        return True
+    return False
 
 
 def _build_polygon_list(
@@ -221,56 +242,54 @@ def _build_polygon_list(
     extent_m = float(water_extent_km) * 1000.0
     if extent_m <= 0.0:
         raise ValueError("water_extent_km must be positive")
-    clip_window = box(-extent_m, -extent_m, extent_m, extent_m)
     polygons: list[PreparedWaterPolygon] = []
     for footprint in footprints:
-        outer_polygons: list[Polygon] = []
+        outer_rings_xy: list[tuple[tuple[float, float], ...]] = []
         for ring in footprint.outer_rings_lonlat:
-            if len(ring) < 4:
-                continue
-            polygon = Polygon([(float(lon), float(lat)) for lon, lat in ring])
-            if not polygon.is_valid:
-                polygon = polygon.buffer(0)
-            if polygon.is_empty:
-                continue
-            if polygon.geom_type == "Polygon":
-                outer_polygons.append(polygon)
+            projected = tuple(
+                _project_local_xy(observer.longitude_deg, observer.latitude_deg, float(lon), float(lat))
+                for lon, lat in ring
+            )
+            if len(projected) >= 4:
+                outer_rings_xy.append(projected)
 
-        hole_polygons: list[Polygon] = []
+        inner_rings_xy: list[tuple[tuple[float, float], ...]] = []
         for ring in footprint.inner_rings_lonlat:
-            if len(ring) < 4:
-                continue
-            hole = Polygon([(float(lon), float(lat)) for lon, lat in ring])
-            if not hole.is_valid:
-                hole = hole.buffer(0)
-            if hole.is_empty or hole.geom_type != "Polygon":
-                continue
-            hole_polygons.append(hole)
+            projected = tuple(
+                _project_local_xy(observer.longitude_deg, observer.latitude_deg, float(lon), float(lat))
+                for lon, lat in ring
+            )
+            if len(projected) >= 4:
+                inner_rings_xy.append(projected)
 
-        holes_by_outer: list[list[list[tuple[float, float]]]] = [[] for _ in outer_polygons]
-        for hole in hole_polygons:
-            hole_anchor = hole.representative_point()
-            assigned = False
-            for outer_index, outer in enumerate(outer_polygons):
-                if outer.contains(hole_anchor):
-                    holes_by_outer[outer_index].append(list(hole.exterior.coords))
-                    assigned = True
-                    break
-            if not assigned and outer_polygons:
-                holes_by_outer[0].append(list(hole.exterior.coords))
+        if not outer_rings_xy:
+            continue
 
-        for outer_index, outer in enumerate(outer_polygons):
-            polygon = Polygon(list(outer.exterior.coords), holes_by_outer[outer_index])
-            if not polygon.is_valid:
-                polygon = polygon.buffer(0)
-            for part in _iter_polygon_parts(
-                _project_polygon_to_local_xy(
-                    polygon,
-                    observer_lon_deg=observer.longitude_deg,
-                    observer_lat_deg=observer.latitude_deg,
-                ).intersection(clip_window)
-            ):
-                polygons.append(PreparedWaterPolygon(polygon=part, prepared=prep(part)))
+        bounds_x = float("inf")
+        bounds_y = float("inf")
+        bounds_max_x = float("-inf")
+        bounds_max_y = float("-inf")
+        for ring in list(outer_rings_xy) + list(inner_rings_xy):
+            min_x, min_y, max_x, max_y = _ring_bounds(ring)
+            bounds_x = min(bounds_x, min_x)
+            bounds_y = min(bounds_y, min_y)
+            bounds_max_x = max(bounds_max_x, max_x)
+            bounds_max_y = max(bounds_max_y, max_y)
+
+        if bounds_x > extent_m or bounds_y > extent_m or bounds_max_x < -extent_m or bounds_max_y < -extent_m:
+            continue
+
+        polygons.append(
+            PreparedWaterPolygon(
+                water_id=str(footprint.water_id),
+                kind=str(footprint.kind),
+                outer_rings_xy=tuple(outer_rings_xy),
+                inner_rings_xy=tuple(inner_rings_xy),
+                bounds_xy=(bounds_x, bounds_y, bounds_max_x, bounds_max_y),
+                source=str(footprint.source),
+                tags=dict(footprint.tags),
+            )
+        )
 
     return tuple(polygons)
 
@@ -397,9 +416,10 @@ def _sample_rays(
                 float(lon_grid_deg[row_index, col_index]),
                 float(lat_grid_deg[row_index, col_index]),
             )
-            point = Point(x_m, y_m)
+            point = (x_m, y_m)
             water_mask[row_index, col_index] = any(
-                prepared.prepared.intersects(point) for prepared in water_polygons
+                _footprint_contains_point_xy(point, prepared.outer_rings_xy, prepared.inner_rings_xy)
+                for prepared in water_polygons
             )
 
     runs: list[WaterRunSegment] = []
@@ -498,7 +518,7 @@ def _build_run_segment(
 
 def _collect_svg_points(
     runs: Iterable[WaterRunSegment],
-    polygons: Iterable[Polygon],
+    polygons: Iterable[PreparedWaterPolygon],
     *,
     max_distance_km: float,
     padding_m: float,
@@ -509,13 +529,8 @@ def _collect_svg_points(
     min_y = -max_distance_m
     max_y = max_distance_m
     for polygon in polygons:
-        for x_m, y_m in polygon.exterior.coords:
-            min_x = min(min_x, x_m)
-            max_x = max(max_x, x_m)
-            min_y = min(min_y, y_m)
-            max_y = max(max_y, y_m)
-        for hole in polygon.interiors:
-            for x_m, y_m in hole.coords:
+        for ring in polygon.outer_rings_xy + polygon.inner_rings_xy:
+            for x_m, y_m in ring:
                 min_x = min(min_x, x_m)
                 max_x = max(max_x, x_m)
                 min_y = min(min_y, y_m)
@@ -548,7 +563,7 @@ def _svg_polyline(points: Iterable[tuple[float, float]]) -> str:
 
 
 def _polygon_to_svg_path(
-    polygon: Polygon,
+    polygon: PreparedWaterPolygon,
     *,
     min_x: float,
     max_y: float,
@@ -567,8 +582,8 @@ def _polygon_to_svg_path(
         parts.append("Z")
         return " ".join(parts)
 
-    path_parts = [ring_to_path(polygon.exterior.coords)]
-    path_parts.extend(ring_to_path(hole.coords) for hole in polygon.interiors)
+    path_parts = [ring_to_path(ring) for ring in polygon.outer_rings_xy]
+    path_parts.extend(ring_to_path(ring) for ring in polygon.inner_rings_xy)
     return " ".join(part for part in path_parts if part)
 
 
@@ -584,10 +599,9 @@ def _render_svg(
     summary: dict[str, object],
     azimuth_step_deg: float,
 ) -> None:
-    polygons = tuple(item.polygon for item in prepared_polygons)
     min_x, max_x, min_y, max_y = _collect_svg_points(
         runs,
-        polygons,
+        prepared_polygons,
         max_distance_km=max_distance_km,
         padding_m=canvas_padding,
     )
@@ -606,7 +620,7 @@ def _render_svg(
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{canvas_size}" height="{canvas_size}" viewBox="0 0 {canvas_size} {canvas_size}">',
         '<rect x="0" y="0" width="100%" height="100%" fill="#f8fbff"/>',
         '<g font-family="monospace" font-size="13" fill="#2c3e50">',
-        f'<text x="18" y="24">water-run scan demo</text>',
+        '<text x="18" y="24">water-run scan demo</text>',
         f'<text x="18" y="42">observer={observer.latitude_deg:.5f},{observer.longitude_deg:.5f}</text>',
         f'<text x="18" y="60">water_runs={summary["water_run_count"]} water_samples={summary["water_total"]}/{summary["sample_total"]}</text>',
         f'<text x="18" y="78">cache={summary["cache_dir"]}</text>',
@@ -623,7 +637,7 @@ def _render_svg(
             f'<line x1="{x0:.2f}" y1="{y0:.2f}" x2="{x1:.2f}" y2="{y1:.2f}" stroke="#d4dde6" stroke-width="1"/>'
         )
 
-    for polygon in polygons:
+    for polygon in prepared_polygons:
         path_data = _polygon_to_svg_path(
             polygon,
             min_x=min_x,

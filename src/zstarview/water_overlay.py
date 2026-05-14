@@ -30,6 +30,7 @@ POLYGON_WATER_KEYS = {
     ("waterway", "riverbank"),
 }
 COASTLINE_WATER_TAG = {"natural": "coastline"}
+RIVER_LIKE_WATER_TAG_VALUES = {"river", "stream", "canal", "drain"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -311,38 +312,25 @@ def polygon_kind_from_tags(tags: dict[str, str]) -> str:
     return "water_polygon"
 
 
+def classify_water_surface_category(
+    tags: dict[str, str],
+    *,
+    kind: str | None = None,
+) -> str:
+    if kind == "coastline" or tags.get("natural") == "coastline":
+        return "sea"
+    water_tag = tags.get("water")
+    waterway_tag = tags.get("waterway")
+    if water_tag in RIVER_LIKE_WATER_TAG_VALUES or waterway_tag == "riverbank":
+        return "river"
+    return "lake"
+
+
 def relation_is_water_relation(tags: dict[str, str]) -> bool:
     for key, value in POLYGON_WATER_KEYS:
         if tags.get(key) == value:
             return True
     return False
-
-
-def _distance_to_segment(
-    point: tuple[float, float],
-    segment: tuple[tuple[float, float], tuple[float, float]],
-) -> float:
-    px, py = point
-    (ax, ay), (bx, by) = segment
-    dx = bx - ax
-    dy = by - ay
-    if dx == 0.0 and dy == 0.0:
-        return math.hypot(px - ax, py - ay)
-    t = ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)
-    t = max(0.0, min(1.0, t))
-    cx = ax + t * dx
-    cy = ay + t * dy
-    return math.hypot(px - cx, py - cy)
-
-
-def _point_is_right_of_segment(
-    point: tuple[float, float],
-    segment: tuple[tuple[float, float], tuple[float, float]],
-) -> bool:
-    px, py = point
-    (ax, ay), (bx, by) = segment
-    cross = (bx - ax) * (py - ay) - (by - ay) * (px - ax)
-    return cross < 0.0
 
 
 def _collect_coastline_segments(
@@ -368,72 +356,12 @@ def _collect_coastline_segments(
     return segments
 
 
-def _polygon_is_water_face(
-    polygon: "Any",
-    coastline_segments: Sequence[tuple[tuple[float, float], tuple[float, float]]],
-) -> bool:
-    if not coastline_segments:
-        return False
-    rep = polygon.representative_point()
-    point = (float(rep.x), float(rep.y))
-    nearest_segments = sorted(
-        coastline_segments,
-        key=lambda segment: _distance_to_segment(point, segment),
-    )[:3]
-    if not nearest_segments:
-        return False
-    return _point_is_right_of_segment(point, nearest_segments[0])
-
-
 def _build_coastline_water_polygons(
     elements: list[dict[str, Any]],
     *,
     bbox: tuple[float, float, float, float],
 ) -> tuple[WaterPolygonFootprint, ...]:
-    try:
-        from shapely.geometry import LineString, box
-        from shapely.ops import polygonize, unary_union
-    except Exception:
-        return _build_coastline_water_polygons_fallback(elements, bbox=bbox)
-
-    coastline_segments = _collect_coastline_segments(elements)
-    if not coastline_segments:
-        return ()
-
-    west, south, east, north = bbox
-    coastline_lines = [
-        LineString([segment[0], segment[1]])
-        for segment in coastline_segments
-    ]
-    coastline_lines.append(LineString(list(box(west, south, east, north).exterior.coords)))
-    merged = unary_union(coastline_lines)
-    polygons = list(polygonize(merged))
-
-    footprints: list[WaterPolygonFootprint] = []
-    for polygon_index, polygon in enumerate(polygons):
-        if polygon.is_empty or polygon.area <= 0.0:
-            continue
-        if not _polygon_is_water_face(polygon, coastline_segments):
-            continue
-        outer_ring = normalize_ring(
-            tuple((float(lon), float(lat)) for lon, lat in polygon.exterior.coords)
-        )
-        inner_rings = tuple(
-            normalize_ring(tuple((float(lon), float(lat)) for lon, lat in interior.coords))
-            for interior in polygon.interiors
-            if len(interior.coords) >= 4
-        )
-        footprints.append(
-            WaterPolygonFootprint(
-                water_id=f"coastline/{polygon_index}",
-                kind="coastline",
-                outer_rings_lonlat=(outer_ring,),
-                inner_rings_lonlat=inner_rings,
-                source="coastline",
-                tags=dict(COASTLINE_WATER_TAG),
-            )
-        )
-    return tuple(footprints)
+    return _build_coastline_water_polygons_fallback(elements, bbox=bbox)
 
 
 def _build_coastline_water_polygons_fallback(
@@ -663,13 +591,13 @@ def _footprint_explicit_surface_height_m(footprint: WaterPolygonFootprint) -> fl
 
 
 def _footprint_is_sea_like(footprint: WaterPolygonFootprint) -> bool:
-    if footprint.kind == "coastline":
-        return True
     tags = footprint.tags
-    if tags.get("natural") == "coastline":
-        return True
-    water_tag = tags.get("water")
-    return water_tag in {"sea", "ocean"}
+    return classify_water_surface_category(tags, kind=footprint.kind) == "sea"
+
+
+def _footprint_is_river_like(footprint: WaterPolygonFootprint) -> bool:
+    tags = footprint.tags
+    return classify_water_surface_category(tags, kind=footprint.kind) == "river"
 
 
 def sample_water_overlay_points(
@@ -726,6 +654,8 @@ def sample_water_overlay_points(
                 target_height_m = explicit_target_height_m
             elif _footprint_is_sea_like(matched_footprint):
                 target_height_m = 0.0
+            elif not _footprint_is_river_like(matched_footprint):
+                target_height_m = float(fallback_surface_height_m)
             elif target_ground_elevation_m_sampler is not None:
                 try:
                     target_height_m = float(target_ground_elevation_m_sampler(lat, lon))

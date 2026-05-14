@@ -1,6 +1,6 @@
 # zstarview 実装履歴
 
-最終更新: 2026-05-13
+最終更新: 2026-05-15
 
 ## 1. この文書の位置づけ
 
@@ -37,6 +37,14 @@
   - 現状は Overture の `height_m` をそのまま観測者高さと比較しており、建物側と観測地点側の地盤標高差を無視している。
   - 今後は `building_top_masl = building_ground_dem_m + height_m`、`observer_masl = observer_ground_dem_m + observer_height_m` を正本とする。
   - `building_part` の `min_height` / `height` の扱い、および derived tile へ `ground_elevation_m` を永続化するか runtime 解決に留めるかは実装時に再検討する。
+
+## 4. 2026-05-15
+
+- Water surface classification and dependency cleanup
+  - Added a shared water-category classifier to `src/zstarview/water_overlay.py` so sea, river-like, and lake-like water footprints use the same tag-based rule in core code and dev samples.
+  - Kept river-like surfaces as the only diagnostic 300m grid split target.
+  - Removed `shapely` and `mapbox-earcut` from the project dependency set and kept water geometry handling in pure Python.
+  - Updated the dev-sample SVG previews and the water-run scan demo to avoid geometry-library dependencies outside SVG path generation.
 
 ## 4. 実装履歴
 

@@ -735,7 +735,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 方位ごとの見かけ地平線計算
 - `src/zstarview/water_overlay.py`
   - 観測地点近傍の OSM 水域を取得し、天球へ投影するための raw water footprint を正規化する
-  - `natural=water`、`waterway=riverbank` の polygon を主対象にし、`natural=coastline` は bbox 境界と合わせて海域 polygon へ戻す
+  - `natural=water`、`waterway=riverbank` の polygon を主対象にし、`natural=coastline` は海域 polygon として扱う
   - raw footprint から地平線距離ベースの上限と `1.15^n` 近傍のリング列サンプリングを計算し、sea-level / DEM の両 variant を作る
 - `src/zstarview/gui/water_overlay_state.py`
   - 水面レイヤーの取得状態、sea-level / DEM の point set、status line 用の banner を保持する
@@ -750,7 +750,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 - `src/zstarview/water_overlay.py`
   - 観測地点近傍の OSM 水域を取得し、天球へ投影するための raw water footprint を正規化する
-  - `natural=water`、`waterway=riverbank` の polygon を主対象にし、`natural=coastline` は bbox 境界と合わせて海域 polygon へ戻す
+  - `natural=water`、`waterway=riverbank` の polygon を主対象にし、`natural=coastline` は海域 polygon として扱う
   - `waterway=river|stream|canal|drain` の中心線は本設計では採用しない
   - polygon の outer / inner ring を復元し、inner ring を島や中州の穴として扱える内部表現へ変換する
   - スキャン上限は観測高度からの地平線距離で決め、点の配置は近距離を密・遠距離を疎にした `1.15^n` 近傍のリング列で行う
@@ -1610,7 +1610,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 #### 10.4.1.1 水面フロー
 
 1. 水面レイヤーは観測地点中心の bbox で raw footprint を解決し、`natural=water`、`waterway=riverbank` の polygon を主対象にしてよい。
-2. `natural=coastline` は bbox 境界と合わせて polygonize し、海岸線由来の海域面として扱ってよい。
+2. `natural=coastline` は海域面として扱ってよい。実装は純 Python の ring reconstruction を前提にし、外部 geometry ライブラリに依存しなくてよい。`dev-samples/` 側の SVG 変換も同じ前提で動かしてよい。
 3. polygon 系は outer / inner ring を保持し、inner ring は島や中州の穴として扱ってよい。
 4. cache は long-lived cache として扱い、`fetched_at_utc` を基準に `90日` で fresh/stale を判定してよい。
 5. stale になった場合は既存 cache を即時利用しつつ、同じ bbox の再取得をバックグラウンドで試みてよい。

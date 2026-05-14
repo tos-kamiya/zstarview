@@ -35,7 +35,6 @@ dependencies = [
   "astropy>=7,<8; python_version >= '3.11'",
   "skyfield>=1.54,<2",
   "numpy>=2.2,<2.4",
-  "mapbox-earcut>=2.0.0,<3",
   "Pillow>=12,<13",
   "polars>=1.38,<2",
   "boto3>=1.42,<2",
@@ -50,7 +49,6 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-  "shapely",
   "pytest",
   "pyongc",
   "mypy>=1.0.0",

@@ -1,27 +1,9 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
 from typing import Callable, Sequence
 
-import mapbox_earcut as earcut
-import numpy as np
 from pyproj import CRS, Transformer
-
-from .water_overlay import WaterPolygonFootprint, WaterSurfacePatch
-
-
-@dataclass(frozen=True, slots=True)
-class WaterSurfaceMesh:
-    water_id: str
-    kind: str
-    surface_mode: str
-    surface_elevation_m: float
-    triangles_xy_m: tuple[tuple[tuple[float, float], tuple[float, float], tuple[float, float]], ...]
-    source: str
-    simplified_grid_m: float
-    simplified_tolerance_m: float
-    split_cell_m: float
 
 
 DEFAULT_SPLIT_CELL_M = 300.0
@@ -186,51 +168,6 @@ def _assign_holes_to_shells(
         target_index = min(matches, key=lambda index: shell_areas[index])
         assigned[target_index].append(hole)
     return assigned
-
-
-def _triangulate_shell(
-    shell: list[tuple[float, float]],
-    holes: Sequence[list[tuple[float, float]]],
-) -> tuple[tuple[tuple[float, float], tuple[float, float], tuple[float, float]], ...]:
-    vertices: list[tuple[float, float]] = []
-    ring_ends: list[int] = []
-
-    def add_ring(ring: Sequence[tuple[float, float]]) -> None:
-        body = _ring_body(ring)
-        if len(body) < 3:
-            return
-        vertices.extend(body)
-        ring_ends.append(len(vertices))
-
-    add_ring(shell)
-    for hole in holes:
-        add_ring(hole)
-
-    if not ring_ends or ring_ends[-1] != len(vertices):
-        return ()
-
-    vertices_array = np.asarray(vertices, dtype=np.float64)
-    ring_ends_array = np.asarray(ring_ends, dtype=np.uint32)
-    if vertices_array.shape[0] < 3:
-        return ()
-
-    indices = earcut.triangulate_float64(vertices_array, ring_ends_array)
-    if indices.size == 0:
-        return ()
-
-    result: list[tuple[tuple[float, float], tuple[float, float], tuple[float, float]]] = []
-    for tri_start in range(0, int(indices.size), 3):
-        tri_indices = indices[tri_start : tri_start + 3]
-        if len(tri_indices) < 3:
-            continue
-        triangle = tuple(
-            tuple(vertices_array[int(index)])
-            for index in tri_indices
-        )
-        result.append(
-            tuple((float(x), float(y)) for x, y in triangle)
-        )
-    return tuple(result)
 
 
 def _clip_ring_to_edge(
@@ -410,75 +347,3 @@ def split_local_polygon_by_grid(
                     clipped_holes.append(clipped_hole)
             pieces.append((clipped_shell, clipped_holes))
     return pieces
-
-
-def _mean_surface_elevation_m(patch: WaterSurfacePatch | None) -> float:
-    if patch is None:
-        return 0.0
-    values = [float(value) for value in patch.anchor_elevations_m]
-    return sum(values) / float(len(values))
-
-
-def build_water_surface_mesh(
-    footprint: WaterPolygonFootprint,
-    *,
-    center_lat_deg: float,
-    center_lon_deg: float,
-    patch: WaterSurfacePatch | None = None,
-    grid_m: float = 1.0,
-    simplify_tolerance_m: float = 20.0,
-) -> WaterSurfaceMesh | None:
-    if not footprint.outer_rings_lonlat:
-        return None
-    transformer = make_local_transformer(center_lat_deg, center_lon_deg)
-
-    shells: list[list[tuple[float, float]]] = []
-    for outer_ring in footprint.outer_rings_lonlat:
-        projected = project_ring_xy(outer_ring, transformer)
-        rounded = _round_ring(projected, grid_m=grid_m)
-        body = _simplify_body(_ring_body(rounded), tolerance_m=simplify_tolerance_m)
-        if len(body) < 3:
-            continue
-        if _ring_signed_area(body) < 0.0:
-            body = list(reversed(body))
-        shells.append(body + [body[0]])
-
-    if not shells:
-        return None
-
-    holes: list[list[tuple[float, float]]] = []
-    for inner_ring in footprint.inner_rings_lonlat:
-        projected = project_ring_xy(inner_ring, transformer)
-        rounded = _round_ring(projected, grid_m=grid_m)
-        body = _simplify_body(_ring_body(rounded), tolerance_m=simplify_tolerance_m)
-        if len(body) < 3:
-            continue
-        if _ring_signed_area(body) > 0.0:
-            body = list(reversed(body))
-        holes.append(body + [body[0]])
-
-    assigned_holes = _assign_holes_to_shells(shells, holes)
-    triangles: list[tuple[tuple[float, float], tuple[float, float], tuple[float, float]]] = []
-    for shell, shell_holes in zip(shells, assigned_holes):
-        for clipped_shell, clipped_holes in split_local_polygon_by_grid(
-            shell,
-            shell_holes,
-            cell_m=DEFAULT_SPLIT_CELL_M,
-        ):
-            triangles.extend(_triangulate_shell(clipped_shell, clipped_holes))
-
-    if not triangles:
-        return None
-
-    surface_mode = patch.surface_mode if patch is not None else "flat"
-    return WaterSurfaceMesh(
-        water_id=footprint.water_id,
-        kind=footprint.kind,
-        surface_mode=surface_mode,
-        surface_elevation_m=_mean_surface_elevation_m(patch),
-        triangles_xy_m=tuple(triangles),
-        source=footprint.source,
-        simplified_grid_m=float(grid_m),
-        simplified_tolerance_m=float(simplify_tolerance_m),
-        split_cell_m=DEFAULT_SPLIT_CELL_M,
-    )

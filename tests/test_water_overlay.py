@@ -12,6 +12,7 @@ from zstarview.water_overlay import (
     WaterSurfacePatch,
     assemble_rings_from_segments,
     build_geometric_distance_samples,
+    classify_water_surface_category,
     classify_water_surface_mode,
     extract_water_polygons,
     horizon_distance_km_from_height,
@@ -107,6 +108,13 @@ def test_extract_water_polygons_builds_coastline_water_with_island_hole() -> Non
     assert len(coastline_polygons[0].inner_rings_lonlat) == 2
 
 
+def test_classify_water_surface_category_uses_tags_and_kind() -> None:
+    assert classify_water_surface_category({"natural": "coastline"}) == "sea"
+    assert classify_water_surface_category({"water": "lake"}) == "lake"
+    assert classify_water_surface_category({"water": "river"}) == "river"
+    assert classify_water_surface_category({"waterway": "riverbank"}) == "river"
+
+
 def test_water_surface_patch_classifies_flat_and_sloped() -> None:
     flat_patch = WaterSurfacePatch(
         patch_id="flat",
@@ -171,6 +179,70 @@ def test_sample_water_overlay_points_uses_fallback_surface_height() -> None:
     assert local_surface_points
     assert max(point.alt_deg for point in local_surface_points) > -0.01
     assert max(point.alt_deg for point in sea_level_points) < -20.0
+
+
+def test_sample_water_overlay_points_uses_ground_sampler_for_river_like_only() -> None:
+    lake = WaterPolygonFootprint(
+        water_id="lake",
+        kind="natural_water",
+        outer_rings_lonlat=(
+            (
+                (-0.01, -0.01),
+                (0.01, -0.01),
+                (0.01, 0.01),
+                (-0.01, 0.01),
+                (-0.01, -0.01),
+            ),
+        ),
+        inner_rings_lonlat=(),
+        source="way",
+        tags={"natural": "water", "water": "lake"},
+    )
+    river = WaterPolygonFootprint(
+        water_id="river",
+        kind="natural_water",
+        outer_rings_lonlat=(
+            (
+                (-0.01, -0.01),
+                (0.01, -0.01),
+                (0.01, 0.01),
+                (-0.01, 0.01),
+                (-0.01, -0.01),
+            ),
+        ),
+        inner_rings_lonlat=(),
+        source="way",
+        tags={"natural": "water", "water": "river"},
+    )
+
+    lake_sampler = Mock(return_value=123.0)
+    river_sampler = Mock(return_value=123.0)
+
+    sample_water_overlay_points(
+        (lake,),
+        observer_lat_deg=0.0,
+        observer_lon_deg=0.0,
+        observer_height_m=100.0,
+        fallback_surface_height_m=50.0,
+        target_ground_elevation_m_sampler=lake_sampler,
+        max_distance_km=0.2,
+        sample_step_m=100.0,
+        azimuth_step_deg=90.0,
+    )
+    sample_water_overlay_points(
+        (river,),
+        observer_lat_deg=0.0,
+        observer_lon_deg=0.0,
+        observer_height_m=100.0,
+        fallback_surface_height_m=50.0,
+        target_ground_elevation_m_sampler=river_sampler,
+        max_distance_km=0.2,
+        sample_step_m=100.0,
+        azimuth_step_deg=90.0,
+    )
+
+    assert lake_sampler.call_count == 0
+    assert river_sampler.call_count > 0
 
 
 def test_sample_water_overlay_points_keeps_coastline_at_sea_level() -> None:

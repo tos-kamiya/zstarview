@@ -651,6 +651,8 @@ class SkyWindowUpdatesMixin:
     def start_background_water_overlay_update(self, reason: str = "manual") -> bool:
         if self._is_shutting_down:
             return False
+        if self.water_overlay_opacity <= 0.0:
+            return False
         if self._water_overlay_controller is None:
             return False
         return self._water_overlay_controller.update(
