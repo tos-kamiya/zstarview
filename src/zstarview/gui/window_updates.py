@@ -182,22 +182,8 @@ class SkyWindowUpdatesMixin:
             detail = _strip_status_prefix(state.banner_text, "Water:")
             return _status_segment(_STATUS_WATER, detail)
         points = state.points
-        if points is None:
-            return ""
-        count = len(points)
-        source = str(state.current_source or "").strip()
-        mode = str(state.current_mode or "").strip()
-        detail_parts: list[str] = []
-        if mode:
-            detail_parts.append(mode)
-        if source:
-            lowered = source.casefold()
-            if "cache" in lowered:
-                detail_parts.append("cache")
-            elif "overpass" in lowered:
-                detail_parts.append("overpass")
-        detail_parts.append(str(count))
-        return _status_segment(_STATUS_WATER, " ".join(detail_parts))
+        count = len(points) if isinstance(points, list) else 0
+        return _status_segment(_STATUS_WATER, str(count))
 
     def _urban_outline_status_line(self) -> str:
         if self.urban_outline_opacity <= 0.0:

@@ -101,6 +101,34 @@ def test_terrain_and_urban_status_lines_show_icons() -> None:
     assert SkyWindow._urban_outline_status_line(dummy) == "🂓 downloading..."
 
 
+def test_water_status_line_shows_only_count_when_enabled() -> None:
+    dummy = SimpleNamespace(
+        water_overlay_state=SimpleNamespace(
+            banner_text=None,
+            points=[object(), object(), object()],
+            current_source="Water: overpass",
+            current_mode="dem",
+        ),
+        water_overlay_opacity=0.2,
+    )
+
+    assert SkyWindow._water_overlay_status_line(dummy) == "W 3"
+
+
+def test_hidden_water_status_line_shows_placeholder_icon() -> None:
+    dummy = SimpleNamespace(
+        water_overlay_state=SimpleNamespace(
+            banner_text=None,
+            points=None,
+            current_source=None,
+            current_mode=None,
+        ),
+        water_overlay_opacity=0.0,
+    )
+
+    assert SkyWindow._water_overlay_status_line(dummy) == "W ---"
+
+
 def test_hidden_status_lines_show_placeholder_icons() -> None:
     dummy = SimpleNamespace(
         cloud_state=SimpleNamespace(banner_text="Clouds: downloading…"),
