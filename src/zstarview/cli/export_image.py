@@ -114,6 +114,7 @@ from ..water_overlay import (
     extract_water_polygons,
     fetch_overpass_json,
     WaterOverlayPoint,
+    resolve_water_scan_radius_km,
     sample_water_overlay_points,
 )
 from ..types import CelestialData, UrbanOutlinePolyline, ViewerData
@@ -614,10 +615,15 @@ def _fetch_water_overlay_layer(
     if _timed_out(deadline):
         raise TimeoutError("water timed out")
 
+    observer_ground_m = float(getattr(viewer_data, "ground_elevation_m", 0.0) or 0.0)
+    scan_radius_km = resolve_water_scan_radius_km(
+        float(viewer_data.observer_height_m) + observer_ground_m,
+        minimum_distance_km=DEFAULT_WATER_RADIUS_KM,
+    )
     bbox = bbox_from_point(
         float(viewer_data.lat_deg),
         float(viewer_data.lon_deg),
-        DEFAULT_WATER_RADIUS_KM,
+        scan_radius_km,
     )
     payload = fetch_overpass_json(
         bbox=bbox,
@@ -633,14 +639,13 @@ def _fetch_water_overlay_layer(
         return None
     if _timed_out(deadline):
         raise TimeoutError("water timed out")
-    observer_ground_m = float(getattr(viewer_data, "ground_elevation_m", 0.0) or 0.0)
     water_points = sample_water_overlay_points(
         footprints,
         observer_lat_deg=float(viewer_data.lat_deg),
         observer_lon_deg=float(viewer_data.lon_deg),
         observer_height_m=float(viewer_data.observer_height_m) + observer_ground_m,
         fallback_surface_height_m=observer_ground_m,
-        max_distance_km=DEFAULT_WATER_RADIUS_KM,
+        max_distance_km=scan_radius_km,
         sample_step_m=DEFAULT_WATER_SAMPLE_STEP_M,
         azimuth_step_deg=DEFAULT_WATER_AZIMUTH_STEP_DEG,
     )

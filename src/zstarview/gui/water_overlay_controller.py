@@ -21,6 +21,7 @@ from ..water_overlay import (
     extract_water_polygons,
     fetch_overpass_json,
     sample_water_overlay_points,
+    resolve_water_scan_radius_km,
 )
 from ..terrain import GeoTiffDem
 from ..terrain import build_download_bbox
@@ -97,6 +98,11 @@ class WaterOverlayController(QObject):
         reason: str = "manual",
     ) -> bool:
         now = datetime.now(timezone.utc)
+        observer_absolute_height_m = float(viewer_data.observer_height_m) + float(observer_ground_m)
+        scan_radius_km = resolve_water_scan_radius_km(
+            observer_absolute_height_m,
+            minimum_distance_km=self._radius_km,
+        )
         key = (
             float(viewer_data.lat_deg),
             float(viewer_data.lon_deg),
@@ -107,7 +113,7 @@ class WaterOverlayController(QObject):
         scope_key = water_overlay_cache_scope_key(
             observer_lat_deg=float(viewer_data.lat_deg),
             observer_lon_deg=float(viewer_data.lon_deg),
-            radius_km=self._radius_km,
+            radius_km=scan_radius_km,
         )
         with self._lock:
             in_memory_scope = self._scope_cache.get(scope_key)
@@ -175,6 +181,7 @@ class WaterOverlayController(QObject):
                     "reason": reason,
                     "key": key,
                     "scope_key": scope_key,
+                    "scan_radius_km": scan_radius_km,
                     "cached_scope": cached_scope,
                 },
                 label="water",
@@ -246,6 +253,7 @@ class WaterOverlayController(QObject):
         reason: str,
         key: tuple[float, float, float, float, bool],
         scope_key: str,
+        scan_radius_km: float,
         cached_scope: _WaterOverlayScopeCache | None,
     ) -> None:
         try:
@@ -258,6 +266,7 @@ class WaterOverlayController(QObject):
                 scope_key=scope_key,
                 lat_deg=float(lat_deg),
                 lon_deg=float(lon_deg),
+                scan_radius_km=scan_radius_km,
                 cached_scope=cached_scope,
                 now_utc=datetime.now(timezone.utc),
             )
@@ -268,6 +277,7 @@ class WaterOverlayController(QObject):
                 observer_height_m=float(observer_height_m),
                 observer_ground_m=float(observer_ground_m),
                 use_dem_ground=bool(use_dem_ground),
+                scan_radius_km=scan_radius_km,
             )
             mode = "dem" if use_dem_ground and dem_points is not None else "sea"
             self._store_scope_cache(
@@ -339,6 +349,7 @@ class WaterOverlayController(QObject):
         scope_key: str,
         lat_deg: float,
         lon_deg: float,
+        scan_radius_km: float,
         cached_scope: _WaterOverlayScopeCache | None,
         now_utc: datetime,
     ) -> _WaterOverlayScopeCache:
@@ -363,7 +374,7 @@ class WaterOverlayController(QObject):
             snapshot = WaterOverlayCacheSnapshot(footprints=(), water_polygon_count=0, fetched_at_utc=None)
 
         try:
-            bbox = bbox_from_point(float(lat_deg), float(lon_deg), self._radius_km)
+            bbox = bbox_from_point(float(lat_deg), float(lon_deg), float(scan_radius_km))
             payload = fetch_overpass_json(
                 bbox=bbox,
                 endpoint=self._endpoint or DEFAULT_WATER_OVERPASS_ENDPOINT,
@@ -436,6 +447,7 @@ class WaterOverlayController(QObject):
         observer_height_m: float,
         observer_ground_m: float,
         use_dem_ground: bool,
+        scan_radius_km: float,
     ) -> tuple[tuple, tuple | None, tuple | None]:
         observer_absolute_height_m = float(observer_height_m) + float(observer_ground_m)
         sea_points = scope_cache.sea_points
@@ -446,7 +458,7 @@ class WaterOverlayController(QObject):
                 observer_lon_deg=observer_lon_deg,
                 observer_height_m=observer_absolute_height_m,
                 fallback_surface_height_m=observer_ground_m,
-                max_distance_km=self._radius_km,
+                max_distance_km=scan_radius_km,
                 sample_step_m=self._sample_step_m,
                 azimuth_step_deg=self._azimuth_step_deg,
             )
@@ -455,6 +467,7 @@ class WaterOverlayController(QObject):
             target_ground_sampler = self._build_target_ground_sampler(
                 observer_lat_deg=observer_lat_deg,
                 observer_lon_deg=observer_lon_deg,
+                scan_radius_km=scan_radius_km,
             )
             dem_points = sample_water_overlay_points(
                 scope_cache.footprints,
@@ -463,7 +476,7 @@ class WaterOverlayController(QObject):
                 observer_height_m=observer_absolute_height_m,
                 fallback_surface_height_m=observer_ground_m,
                 target_ground_elevation_m_sampler=target_ground_sampler,
-                max_distance_km=self._radius_km,
+                max_distance_km=scan_radius_km,
                 sample_step_m=self._sample_step_m,
                 azimuth_step_deg=self._azimuth_step_deg,
             )
@@ -475,12 +488,13 @@ class WaterOverlayController(QObject):
         *,
         observer_lat_deg: float,
         observer_lon_deg: float,
+        scan_radius_km: float,
     ) -> Callable[[float, float], float] | None:
         try:
             download = fetch_copernicus_dem(
                 observer_lat_deg=float(observer_lat_deg),
                 observer_lon_deg=float(observer_lon_deg),
-                max_distance_km=self._radius_km,
+                max_distance_km=scan_radius_km,
                 margin_km=10.0,
                 cache_dir=self._dem_cache_dir,
             )
@@ -492,7 +506,7 @@ class WaterOverlayController(QObject):
             bbox = build_download_bbox(
                 lat_deg=float(observer_lat_deg),
                 lon_deg=float(observer_lon_deg),
-                radius_km=self._radius_km + 10.0,
+                radius_km=scan_radius_km + 10.0,
             )
             dem_grid = dem.build_grid(bbox)
         except Exception:

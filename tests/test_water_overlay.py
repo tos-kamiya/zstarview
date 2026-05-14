@@ -7,7 +7,10 @@ from zstarview.water_overlay import (
     WaterOverlayPoint,
     classify_water_surface_mode,
     build_geometric_distance_samples,
+    build_water_scan_distance_samples,
     extract_water_polygons,
+    horizon_distance_km_from_height,
+    resolve_water_scan_radius_km,
     sample_water_overlay_points,
 )
 from zstarview.render.terrain import _thin_water_overlay_points_pairwise
@@ -205,6 +208,24 @@ def test_build_geometric_distance_samples_stays_dense_farther_out() -> None:
     assert len(samples) > 40
     assert samples[-1] <= 2000.0
     assert (samples[-1] - samples[-2]) < 300.0
+
+
+def test_resolve_water_scan_radius_scales_with_height() -> None:
+    low = resolve_water_scan_radius_km(0.0)
+    high = resolve_water_scan_radius_km(500.0)
+
+    assert low == 2.0
+    assert high > low
+    assert high == horizon_distance_km_from_height(500.0) + 1.0
+
+
+def test_build_water_scan_distance_samples_tracks_tan_spacing() -> None:
+    samples = build_water_scan_distance_samples(2.0, 100.0, 1.25**5, altitude_step_deg=5.0)
+
+    assert len(samples) > 0
+    assert samples[0] >= 1.25**5
+    assert samples[-1] <= 2000.0
+    assert all(left < right for left, right in zip(samples, samples[1:]))
 
 
 def test_thin_water_overlay_points_pairwise_keeps_one_point_per_pair() -> None:

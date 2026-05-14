@@ -19,8 +19,10 @@ DEFAULT_WATER_OVERPASS_ENDPOINT = "https://overpass-api.de/api/interpreter"
 DEFAULT_WATER_USER_AGENT = "zstarview-water-overlay/0.1"
 DEFAULT_WATER_TIMEOUT_S = 60.0
 DEFAULT_WATER_RADIUS_KM = 2.0
+DEFAULT_WATER_HORIZON_MARGIN_KM = 1.0
 DEFAULT_WATER_SAMPLE_STEP_M = 1.25**5
 DEFAULT_WATER_AZIMUTH_STEP_DEG = 2.0
+DEFAULT_WATER_ALTITUDE_STEP_DEG = 1.0
 DEFAULT_WATER_SAMPLE_GROWTH_FACTOR = 1.15
 DEFAULT_WATER_ALPHA_MIN = 0.04
 
@@ -94,6 +96,30 @@ def bbox_from_point(lat_deg: float, lon_deg: float, radius_km: float) -> tuple[f
     return min_lon, min_lat, max_lon, max_lat
 
 
+def horizon_distance_km_from_height(height_m: float) -> float:
+    height_m = max(0.0, float(height_m))
+    if height_m <= 0.0:
+        return 0.0
+    earth_radius_m = EARTH_RADIUS_KM * 1000.0
+    return math.sqrt(((earth_radius_m + height_m) ** 2) - (earth_radius_m**2)) / 1000.0
+
+
+def resolve_water_scan_radius_km(
+    observer_height_m: float,
+    *,
+    minimum_distance_km: float = DEFAULT_WATER_RADIUS_KM,
+    horizon_margin_km: float = DEFAULT_WATER_HORIZON_MARGIN_KM,
+) -> float:
+    if minimum_distance_km <= 0.0:
+        raise ValueError("minimum_distance_km must be positive")
+    if horizon_margin_km < 0.0:
+        raise ValueError("horizon_margin_km must be non-negative")
+    return max(
+        float(minimum_distance_km),
+        horizon_distance_km_from_height(observer_height_m) + float(horizon_margin_km),
+    )
+
+
 def build_geometric_distance_samples(
     max_distance_km: float,
     sample_start_m: float,
@@ -114,6 +140,40 @@ def build_geometric_distance_samples(
         samples.append(distance_m)
         distance_m *= float(growth_factor)
     return np.asarray(samples, dtype=np.float64)
+
+
+def build_water_scan_distance_samples(
+    max_distance_km: float,
+    observer_height_m: float,
+    sample_start_m: float,
+    *,
+    altitude_step_deg: float = DEFAULT_WATER_ALTITUDE_STEP_DEG,
+) -> np.ndarray:
+    max_distance_m = float(max_distance_km) * 1000.0
+    if max_distance_m <= 0.0:
+        raise ValueError("max_distance_km must be positive")
+    if sample_start_m <= 0.0:
+        raise ValueError("sample_start_m must be positive")
+    if altitude_step_deg <= 0.0:
+        raise ValueError("altitude_step_deg must be positive")
+
+    effective_height_m = max(1.0, float(observer_height_m))
+    near_distance_m = max(1.0, float(sample_start_m))
+    far_distance_m = max(near_distance_m, max_distance_m)
+    start_alt_deg = -math.degrees(math.atan2(effective_height_m, near_distance_m))
+    end_alt_deg = -math.degrees(math.atan2(effective_height_m, far_distance_m))
+    altitude_samples_deg = np.arange(
+        start_alt_deg,
+        end_alt_deg + (float(altitude_step_deg) * 0.5),
+        float(altitude_step_deg),
+        dtype=np.float64,
+    )
+    if altitude_samples_deg.size == 0:
+        altitude_samples_deg = np.asarray((start_alt_deg, end_alt_deg), dtype=np.float64)
+    elif altitude_samples_deg[-1] < end_alt_deg - 1.0e-9:
+        altitude_samples_deg = np.append(altitude_samples_deg, end_alt_deg)
+    distances_m = effective_height_m / np.tan(np.radians(np.abs(altitude_samples_deg)))
+    return np.asarray(np.clip(distances_m, near_distance_m, far_distance_m), dtype=np.float64)
 
 
 def water_overlay_alpha_scale(distance_m: float, max_distance_m: float) -> float:
@@ -610,6 +670,7 @@ def sample_water_overlay_points(
     max_distance_km: float = DEFAULT_WATER_RADIUS_KM,
     sample_step_m: float = DEFAULT_WATER_SAMPLE_STEP_M,
     azimuth_step_deg: float = DEFAULT_WATER_AZIMUTH_STEP_DEG,
+    altitude_step_deg: float = DEFAULT_WATER_ALTITUDE_STEP_DEG,
 ) -> tuple[WaterOverlayPoint, ...]:
     if max_distance_km <= 0.0:
         raise ValueError("max_distance_km must be positive")
@@ -617,10 +678,14 @@ def sample_water_overlay_points(
         raise ValueError("sample_step_m must be positive")
     if azimuth_step_deg <= 0.0:
         raise ValueError("azimuth_step_deg must be positive")
+    if altitude_step_deg <= 0.0:
+        raise ValueError("altitude_step_deg must be positive")
 
-    distances_m = build_geometric_distance_samples(
+    distances_m = build_water_scan_distance_samples(
         float(max_distance_km),
+        float(observer_height_m),
         float(sample_step_m),
+        altitude_step_deg=float(altitude_step_deg),
     )
     observer_lon = float(observer_lon_deg)
     observer_lat = float(observer_lat_deg)
