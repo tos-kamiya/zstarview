@@ -75,6 +75,11 @@ def _resolve_hover_targets(
 
 
 class SkyWindowRenderMixin:
+    def _startup_splash_visible(self) -> bool:
+        owner = getattr(self, "_owner", self)
+        overlay = getattr(owner, "_startup_log_overlay", None)
+        return bool(overlay is not None and overlay.isVisible())
+
     def _render_cache_stamp(self, value: object) -> object:
         if value is None:
             return None
@@ -704,6 +709,15 @@ class SkyWindowRenderMixin:
             painter.end()
 
     def paintEvent(self, event: QPaintEvent) -> None:
+        startup_splash_visible = getattr(self, "_startup_splash_visible", None)
+        if callable(startup_splash_visible):
+            if startup_splash_visible():
+                return
+        else:
+            owner = getattr(self, "_owner", self)
+            overlay = getattr(owner, "_startup_log_overlay", None)
+            if overlay is not None and overlay.isVisible():
+                return
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         painter.setRenderHint(QPainter.SmoothPixmapTransform, True)

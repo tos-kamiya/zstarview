@@ -1999,6 +1999,27 @@ def test_render_cached_frame_image_reuses_existing_image() -> None:
     assert image_a.cacheKey() == image_b.cacheKey()
 
 
+def test_paint_event_skips_rendering_while_startup_overlay_visible(
+    monkeypatch,
+) -> None:
+    class _VisibleOverlay:
+        def isVisible(self) -> bool:  # noqa: N802 - Qt naming
+            return True
+
+    class _FailPainter:
+        def __init__(self, *_args, **_kwargs) -> None:
+            raise AssertionError("QPainter should not be constructed while startup overlay is visible")
+
+    dummy = _WindowStub(
+        _startup_log_overlay=_VisibleOverlay(),
+        state=SkyWindowState(render_view_center=(45.0, 180.0)),
+    )
+
+    monkeypatch.setattr(window_render_module, "QPainter", _FailPainter)
+
+    window_render_module.SkyWindowRenderMixin.paintEvent(dummy, SimpleNamespace())
+
+
 def test_render_frame_cache_key_ignores_hover_and_status_state() -> None:
     geometry = SimpleNamespace(center=(100, 100), radius=80)
     celestial_data = object()
