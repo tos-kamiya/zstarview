@@ -696,6 +696,16 @@ def _polygon_vertex_count(polygon: WaterPolygon) -> int:
     return sum(len(ring) for ring in polygon.outer_rings) + sum(len(ring) for ring in polygon.inner_rings)
 
 
+def _simplification_thresholds_for_distance_km(distance_km: float) -> tuple[float, float, float]:
+    if distance_km < 1.0:
+        return float("inf"), 0.0, 0.0
+    if distance_km < 2.0:
+        return 1.0, 0.20, 120.0
+    if distance_km < 3.5:
+        return 1.2, 0.35, 220.0
+    return 1.5, 0.55, 420.0
+
+
 def _dedupe_adjacent_far_polygons(
     polygons: list[WaterPolygon],
     *,
@@ -735,9 +745,16 @@ def _dedupe_adjacent_far_polygons(
         if previous is not None:
             previous_distance_km, previous_x_m, previous_y_m, _, _ = previous
             distance_km, x_m, y_m, _, _ = item
-            is_far = previous_distance_km >= min_distance_km and distance_km >= min_distance_km
-            close_in_range = abs(distance_km - previous_distance_km) <= max_neighbor_distance_gap_km
-            close_in_space = math.hypot(x_m - previous_x_m, y_m - previous_y_m) <= max_neighbor_offset_m
+            effective_distance_km = max(previous_distance_km, distance_km)
+            tier_min_distance_km, tier_gap_km, tier_offset_m = _simplification_thresholds_for_distance_km(
+                effective_distance_km
+            )
+            tier_min_distance_km = max(tier_min_distance_km, float(min_distance_km))
+            tier_gap_km = max(tier_gap_km, float(max_neighbor_distance_gap_km))
+            tier_offset_m = max(tier_offset_m, float(max_neighbor_offset_m))
+            is_far = previous_distance_km >= tier_min_distance_km and distance_km >= tier_min_distance_km
+            close_in_range = abs(distance_km - previous_distance_km) <= tier_gap_km
+            close_in_space = math.hypot(x_m - previous_x_m, y_m - previous_y_m) <= tier_offset_m
             if is_far and close_in_range and close_in_space:
                 dropped += 1
                 removed_vertices += _polygon_vertex_count(item[4])
