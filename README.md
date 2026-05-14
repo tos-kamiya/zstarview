@@ -164,8 +164,8 @@ zstarview --search Ceres
 The links below cover the detailed option groups, and the linked docs files contain the detailed option tables, footnotes, and examples.
 
 - [Observing Location and Time](docs/cli-observing-location-and-time.md)
+- [Viewpoint Dataset Queries for Observing Locations](docs/cli-viewpoint-dataset-queries.md)
 - [Search Objects at startup](docs/cli-search-objects.md)
-- [Viewpoint dataset queries](docs/cli-viewpoint-dataset-queries.md)
 - [Sky and Stars](docs/cli-sky-and-stars.md)
 - [Overlays](docs/cli-overlays.md)
 - [General](docs/cli-general.md)
