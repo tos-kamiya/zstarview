@@ -23,6 +23,7 @@ from ..water_overlay import (
     fetch_overpass_json,
     sample_water_overlay_points,
     resolve_water_scan_radius_km,
+    simplify_water_footprints_for_observer,
 )
 from ..terrain import GeoTiffDem
 from ..terrain import build_download_bbox
@@ -465,9 +466,15 @@ class WaterOverlayController(QObject):
         # Keep a flat sea/lake variant around even when DEM mode is enabled, so
         # the UI can switch between constant-height and terrain-following water.
         sea_points = scope_cache.sea_points
+        need_sea_points = sea_points is None
         if sea_points is None:
-            sea_points = sample_water_overlay_points(
+            simplified_footprints = simplify_water_footprints_for_observer(
                 scope_cache.footprints,
+                observer_lat_deg=observer_lat_deg,
+                observer_lon_deg=observer_lon_deg,
+            )
+            sea_points = sample_water_overlay_points(
+                simplified_footprints,
                 observer_lat_deg=observer_lat_deg,
                 observer_lon_deg=observer_lon_deg,
                 observer_height_m=observer_absolute_height_m,
@@ -481,13 +488,19 @@ class WaterOverlayController(QObject):
         # against the local terrain sampler instead of the flat fallback level.
         dem_points = scope_cache.dem_points
         if use_dem_ground and dem_points is None:
+            if not need_sea_points:
+                simplified_footprints = simplify_water_footprints_for_observer(
+                    scope_cache.footprints,
+                    observer_lat_deg=observer_lat_deg,
+                    observer_lon_deg=observer_lon_deg,
+                )
             target_ground_sampler = self._build_target_ground_sampler(
                 observer_lat_deg=observer_lat_deg,
                 observer_lon_deg=observer_lon_deg,
                 scan_radius_km=scan_radius_km,
             )
             dem_points = sample_water_overlay_points(
-                scope_cache.footprints,
+                simplified_footprints,
                 observer_lat_deg=observer_lat_deg,
                 observer_lon_deg=observer_lon_deg,
                 observer_height_m=observer_absolute_height_m,

@@ -116,6 +116,7 @@ from ..water_overlay import (
     WaterOverlayPoint,
     resolve_water_scan_radius_km,
     sample_water_overlay_points,
+    simplify_water_footprints_for_observer,
 )
 from ..types import CelestialData, UrbanOutlinePolyline, ViewerData
 from ..gui.composite import SkyCompositorCache, build_cloud_amount_field_from_rgba
@@ -639,8 +640,13 @@ def _fetch_water_overlay_layer(
         return None
     if _timed_out(deadline):
         raise TimeoutError("water timed out")
-    water_points = sample_water_overlay_points(
+    simplified_footprints = simplify_water_footprints_for_observer(
         footprints,
+        observer_lat_deg=float(viewer_data.lat_deg),
+        observer_lon_deg=float(viewer_data.lon_deg),
+    )
+    water_points = sample_water_overlay_points(
+        simplified_footprints,
         observer_lat_deg=float(viewer_data.lat_deg),
         observer_lon_deg=float(viewer_data.lon_deg),
         observer_height_m=float(viewer_data.observer_height_m) + observer_ground_m,

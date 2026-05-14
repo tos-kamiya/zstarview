@@ -7,14 +7,17 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Callable, Iterable, Sequence
 
 import numpy as np
+from pyproj import Transformer
+from pyproj.enums import TransformDirection
 
 from .clouddisc.types import DownloadCancelledError
 from .location_resolver.place_projection import project_place_target_to_altaz
 from .terrain import WGS84_GEOD, build_ray_scan_grid
+from .water_surface_mesh import make_local_transformer, project_ring_xy
 
 
 EARTH_RADIUS_KM = 6371.0088
@@ -27,6 +30,7 @@ DEFAULT_WATER_SAMPLE_STEP_M = 1.25**5
 DEFAULT_WATER_AZIMUTH_STEP_DEG = 2.0
 DEFAULT_WATER_SAMPLE_GROWTH_FACTOR = 1.15
 DEFAULT_WATER_ALPHA_MIN = 0.04
+DEFAULT_WATER_VERTEX_SPACING_THRESHOLD_BASE_M = 180.0
 
 POLYGON_WATER_KEYS = {
     ("natural", "water"),
@@ -650,6 +654,154 @@ def _cooperative_yield(
         return
     _raise_if_abort_requested(abort_event)
     time.sleep(0)
+
+
+def _water_vertex_spacing_threshold_m(distance_km: float) -> float:
+    if distance_km < 1.0:
+        return 0.0
+    return DEFAULT_WATER_VERTEX_SPACING_THRESHOLD_BASE_M / max(1.0, float(distance_km))
+
+
+def _ring_body_xy(points_xy: Sequence[tuple[float, float]]) -> list[tuple[float, float]]:
+    ring = list(points_xy)
+    if len(ring) >= 2 and ring[0] == ring[-1]:
+        ring = ring[:-1]
+    if len(ring) < 3:
+        return []
+    return ring
+
+
+def _simplify_closed_ring_xy_by_vertex_spacing(
+    ring_xy: Sequence[tuple[float, float]],
+    *,
+    threshold_m: float,
+) -> tuple[list[tuple[float, float]], int]:
+    body = _ring_body_xy(ring_xy)
+    if len(body) < 4 or threshold_m <= 0.0:
+        return list(ring_xy), 0
+
+    points = list(body)
+    removed = 0
+    while len(points) > 3:
+        n_points = len(points)
+        best_index: int | None = None
+        best_key: tuple[float, float, float, int] | None = None
+        for index in range(n_points):
+            prev_point = points[index - 1]
+            point = points[index]
+            next_point = points[(index + 1) % n_points]
+            prev_distance_m = math.hypot(point[0] - prev_point[0], point[1] - prev_point[1])
+            next_distance_m = math.hypot(next_point[0] - point[0], next_point[1] - point[1])
+            score = min(prev_distance_m, next_distance_m)
+            key = (score, point[0], point[1], index)
+            if score < threshold_m and (best_key is None or key < best_key):
+                best_key = key
+                best_index = index
+        if best_index is None:
+            break
+        points.pop(best_index)
+        removed += 1
+
+    if len(points) < 3:
+        return list(ring_xy), 0
+    simplified = points + [points[0]]
+    return simplified, removed
+
+
+def _simplify_ring_lonlat_by_vertex_spacing(
+    ring_lonlat: Sequence[tuple[float, float]],
+    *,
+    transformer: Transformer,
+    threshold_m: float,
+) -> tuple[tuple[tuple[float, float], ...], int]:
+    ring_xy = project_ring_xy(tuple(ring_lonlat), transformer)
+    simplified_xy, removed = _simplify_closed_ring_xy_by_vertex_spacing(
+        ring_xy,
+        threshold_m=threshold_m,
+    )
+    if removed <= 0:
+        return tuple(tuple(point) for point in ring_lonlat), 0
+    xs = [point[0] for point in simplified_xy]
+    ys = [point[1] for point in simplified_xy]
+    lon_values, lat_values = transformer.transform(
+        xs,
+        ys,
+        direction=TransformDirection.INVERSE,
+    )
+    simplified_ring = tuple((float(lon), float(lat)) for lon, lat in zip(lon_values, lat_values))
+    if len(simplified_ring) < 4 or simplified_ring[0] != simplified_ring[-1]:
+        simplified_ring = simplified_ring + (simplified_ring[0],)
+    return simplified_ring, removed
+
+
+def _footprint_distance_km(
+    footprint: WaterPolygonFootprint,
+    *,
+    transformer: Transformer,
+) -> float:
+    xs: list[float] = []
+    ys: list[float] = []
+    for ring in footprint.outer_rings_lonlat:
+        ring_xy = project_ring_xy(ring, transformer)  # type: ignore[arg-type]
+        for x, y in ring_xy:
+            xs.append(float(x))
+            ys.append(float(y))
+    if not xs or not ys:
+        return float("inf")
+    anchor_x = sum(xs) / len(xs)
+    anchor_y = sum(ys) / len(ys)
+    return math.hypot(anchor_x, anchor_y) / 1000.0
+
+
+def simplify_water_footprints_for_observer(
+    footprints: Sequence[WaterPolygonFootprint],
+    *,
+    observer_lat_deg: float,
+    observer_lon_deg: float,
+) -> tuple[WaterPolygonFootprint, ...]:
+    transformer = make_local_transformer(float(observer_lat_deg), float(observer_lon_deg))
+    simplified: list[WaterPolygonFootprint] = []
+    for footprint in footprints:
+        threshold_m = _water_vertex_spacing_threshold_m(
+            _footprint_distance_km(footprint, transformer=transformer)
+        )
+        if threshold_m <= 0.0:
+            simplified.append(footprint)
+            continue
+
+        outer_rings: list[tuple[tuple[float, float], ...]] = []
+        inner_rings: list[tuple[tuple[float, float], ...]] = []
+        removed_vertices = 0
+
+        for ring in footprint.outer_rings_lonlat:
+            simplified_ring, removed = _simplify_ring_lonlat_by_vertex_spacing(
+                ring,
+                transformer=transformer,
+                threshold_m=threshold_m,
+            )
+            outer_rings.append(simplified_ring)
+            removed_vertices += removed
+
+        for ring in footprint.inner_rings_lonlat:
+            simplified_ring, removed = _simplify_ring_lonlat_by_vertex_spacing(
+                ring,
+                transformer=transformer,
+                threshold_m=threshold_m,
+            )
+            inner_rings.append(simplified_ring)
+            removed_vertices += removed
+
+        if removed_vertices <= 0:
+            simplified.append(footprint)
+            continue
+        simplified.append(
+            replace(
+                footprint,
+                outer_rings_lonlat=tuple(outer_rings),
+                inner_rings_lonlat=tuple(inner_rings),
+            )
+        )
+    return tuple(simplified)
 
 
 def sample_water_overlay_points(

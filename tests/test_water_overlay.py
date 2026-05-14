@@ -19,6 +19,7 @@ from zstarview.water_overlay import (
     horizon_distance_km_from_height,
     resolve_water_scan_radius_km,
     sample_water_overlay_points,
+    simplify_water_footprints_for_observer,
 )
 from zstarview.clouddisc.types import DownloadCancelledError
 
@@ -177,6 +178,52 @@ def test_water_surface_patch_classifies_flat_and_sloped() -> None:
     assert flat_patch.surface_mode == "flat"
     assert sloped_patch.surface_mode == "sloped"
     assert classify_water_surface_mode((100.0, 101.0, 102.0), flat_threshold_m=3.0) == "flat"
+
+
+def test_simplify_water_footprints_for_observer_thins_dense_far_ring() -> None:
+    footprint = WaterPolygonFootprint(
+        water_id="river",
+        kind="natural_water",
+        outer_rings_lonlat=(
+            (
+                (0.0200, 0.0000),
+                (0.0201, 0.0000),
+                (0.0202, 0.0000),
+                (0.0203, 0.0000),
+                (0.0210, 0.0000),
+                (0.0210, 0.0010),
+                (0.0200, 0.0010),
+                (0.0200, 0.0000),
+            ),
+        ),
+        inner_rings_lonlat=(),
+        source="way",
+        tags={"natural": "water", "water": "river"},
+    )
+    reversed_footprint = WaterPolygonFootprint(
+        water_id="river-reversed",
+        kind="natural_water",
+        outer_rings_lonlat=(tuple(reversed(footprint.outer_rings_lonlat[0])),),
+        inner_rings_lonlat=(),
+        source="way",
+        tags={"natural": "water", "water": "river"},
+    )
+
+    simplified = simplify_water_footprints_for_observer(
+        (footprint,),
+        observer_lat_deg=0.0,
+        observer_lon_deg=0.0,
+    )
+    simplified_reversed = simplify_water_footprints_for_observer(
+        (reversed_footprint,),
+        observer_lat_deg=0.0,
+        observer_lon_deg=0.0,
+    )
+
+    assert len(simplified) == 1
+    assert len(simplified[0].outer_rings_lonlat[0]) < len(footprint.outer_rings_lonlat[0])
+    assert simplified[0].outer_rings_lonlat[0][0] == simplified[0].outer_rings_lonlat[0][-1]
+    assert len(simplified_reversed[0].outer_rings_lonlat[0]) == len(simplified[0].outer_rings_lonlat[0])
 
 
 def test_sample_water_overlay_points_uses_fallback_surface_height() -> None:
