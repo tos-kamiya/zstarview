@@ -394,7 +394,7 @@ def _build_coastline_water_polygons(
         from shapely.geometry import LineString, box
         from shapely.ops import polygonize, unary_union
     except Exception:
-        return ()
+        return _build_coastline_water_polygons_fallback(elements, bbox=bbox)
 
     coastline_segments = _collect_coastline_segments(elements)
     if not coastline_segments:
@@ -434,6 +434,51 @@ def _build_coastline_water_polygons(
             )
         )
     return tuple(footprints)
+
+
+def _build_coastline_water_polygons_fallback(
+    elements: list[dict[str, Any]],
+    *,
+    bbox: tuple[float, float, float, float],
+) -> tuple[WaterPolygonFootprint, ...]:
+    coastline_segments = _collect_coastline_segments(elements)
+    if not coastline_segments:
+        return ()
+
+    coastline_rings = assemble_rings_from_segments(
+        [tuple(segment) for segment in coastline_segments]
+    )
+    if not coastline_rings:
+        return ()
+
+    west, south, east, north = bbox
+    outer_ring = normalize_ring(
+        (
+            (west, south),
+            (east, south),
+            (east, north),
+            (west, north),
+            (west, south),
+        )
+    )
+    inner_rings = tuple(
+        normalize_ring(ring)
+        for ring in coastline_rings
+        if is_closed_ring(normalize_ring(ring))
+    )
+    if not inner_rings:
+        return ()
+
+    return (
+        WaterPolygonFootprint(
+            water_id="coastline/0",
+            kind="coastline",
+            outer_rings_lonlat=(outer_ring,),
+            inner_rings_lonlat=inner_rings,
+            source="coastline",
+            tags=dict(COASTLINE_WATER_TAG),
+        ),
+    )
 
 
 def fetch_overpass_json(

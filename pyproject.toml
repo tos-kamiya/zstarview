@@ -29,13 +29,13 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: CPython",
 ]
 dependencies = [
-  "shapely>=2.1.2,<3",
   "appdirs>=1.4.4",
   "PySide6>=6.10,<7",
   "astropy>=6.1,<7; python_version < '3.11'",
   "astropy>=7,<8; python_version >= '3.11'",
   "skyfield>=1.54,<2",
   "numpy>=2.2,<2.4",
+  "mapbox-earcut>=2.0.0,<3",
   "Pillow>=12,<13",
   "polars>=1.38,<2",
   "boto3>=1.42,<2",
@@ -50,6 +50,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+  "shapely",
   "pytest",
   "pyongc",
   "mypy>=1.0.0",

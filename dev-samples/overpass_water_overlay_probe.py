@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Fetch and normalize nearby OSM water polygons for overlay prototyping.
 
-This sample keeps the pipeline intentionally simple and dependency-free:
+This sample keeps the pipeline intentionally simple:
 
 1. Query Overpass around a latitude/longitude center point.
 2. Reconstruct closed polygon rings from OSM nodes and ways.
@@ -9,10 +9,10 @@ This sample keeps the pipeline intentionally simple and dependency-free:
    - outer rings
    - inner rings
 4. Write a normalized JSON payload and, optionally, a quick SVG preview.
-5. Optionally triangulate the polygon rings into SVG triangles for shape checks.
+5. Optionally triangulate the polygon rings into SVG triangles for shape checks through the shared mesh helper.
+6. Optionally split polygons into a meter grid before triangulation to probe thin-shape behavior.
 
 The script is meant for data-structure exploration, not production caching.
-It uses only the Python standard library so it can be run directly.
 """
 
 from __future__ import annotations
@@ -28,14 +28,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
-try:
-    from shapely import Point, Polygon, constrained_delaunay_triangles, set_precision, simplify
-except ImportError:  # pragma: no cover - optional dev dependency
-    Point = None  # type: ignore[assignment]
-    Polygon = None  # type: ignore[assignment]
-    constrained_delaunay_triangles = None  # type: ignore[assignment]
-    set_precision = None  # type: ignore[assignment]
-    simplify = None  # type: ignore[assignment]
+from zstarview.water_overlay import WaterPolygonFootprint
+from zstarview.water_surface_mesh import build_water_surface_mesh
 
 
 EARTH_RADIUS_KM = 6371.0088
@@ -135,6 +129,15 @@ def build_arg_parser() -> argparse.ArgumentParser:
         type=float,
         default=20.0,
         help="Topology-preserving simplify tolerance in meters before triangulation (default: 20.0).",
+    )
+    parser.add_argument(
+        "--triangulation-cell-m",
+        type=float,
+        default=300.0,
+        help=(
+            "Optional grid cell size in meters for splitting polygons before triangulation "
+            "(default: 300.0)."
+        ),
     )
     return parser
 
@@ -471,6 +474,23 @@ def project_lonlat_to_local_m(
     return x, y
 
 
+def project_local_m_to_lonlat(
+    x_m: float,
+    y_m: float,
+    *,
+    center_lon_deg: float,
+    center_lat_deg: float,
+) -> tuple[float, float]:
+    center_lat_rad = math.radians(center_lat_deg)
+    lon_scale = EARTH_RADIUS_M * math.cos(center_lat_rad)
+    if abs(lon_scale) < 1.0e-9:
+        lon_deg = center_lon_deg
+    else:
+        lon_deg = center_lon_deg + math.degrees(x_m / lon_scale)
+    lat_deg = center_lat_deg + math.degrees(y_m / EARTH_RADIUS_M)
+    return lon_deg, lat_deg
+
+
 def ring_to_svg_points(
     ring: tuple[tuple[float, float], ...],
     *,
@@ -497,6 +517,18 @@ def ring_to_local_points(
     ]
 
 
+def local_points_to_ring(
+    points: Iterable[tuple[float, float]],
+    *,
+    center_lon_deg: float,
+    center_lat_deg: float,
+) -> tuple[tuple[float, float], ...]:
+    return tuple(
+        project_local_m_to_lonlat(x, y, center_lon_deg=center_lon_deg, center_lat_deg=center_lat_deg)
+        for x, y in points
+    )
+
+
 def path_for_points(points: list[tuple[float, float]]) -> str:
     if not points:
         return ""
@@ -519,6 +551,178 @@ def local_points_bounds(points_groups: list[list[tuple[float, float]]]) -> tuple
     if not xs or not ys:
         return 0.0, 0.0, 1.0, 1.0
     return min(xs), min(ys), max(xs), max(ys)
+
+
+def _import_shapely_geometry() -> tuple[Any, Any]:
+    try:
+        from shapely.geometry import Polygon, box
+    except ImportError as exc:  # pragma: no cover - optional dev dependency
+        raise RuntimeError(
+            "shapely is required for grid-split triangulation; install the dev extra and rerun uv sync"
+        ) from exc
+    return Polygon, box
+
+
+def _geometry_polygons(geometry: Any) -> list[Any]:
+    geom_type = getattr(geometry, "geom_type", "")
+    if geom_type == "Polygon":
+        return [geometry]
+    if geom_type in {"MultiPolygon", "GeometryCollection"}:
+        parts: list[Any] = []
+        for part in getattr(geometry, "geoms", []):
+            parts.extend(_geometry_polygons(part))
+        return parts
+    return []
+
+
+def _build_local_polygon_geometry(
+    outer_ring: list[tuple[float, float]],
+    hole_rings: list[list[tuple[float, float]]],
+) -> Any | None:
+    polygon_cls, _ = _import_shapely_geometry()
+    if len(outer_ring) < 4:
+        return None
+    polygon = polygon_cls(outer_ring, holes=hole_rings or None)
+    if polygon.is_empty or float(polygon.area) <= 0.0:
+        return None
+    if not polygon.is_valid:
+        repaired = polygon.buffer(0.0)
+        if not repaired.is_empty:
+            polygon = repaired
+    if polygon.is_empty or float(polygon.area) <= 0.0:
+        return None
+    return polygon
+
+
+def _ring_body(points_xy: Iterable[tuple[float, float]]) -> list[tuple[float, float]]:
+    ring = list(points_xy)
+    if len(ring) >= 2 and ring[0] == ring[-1]:
+        ring = ring[:-1]
+    if len(ring) < 3:
+        return []
+    return ring
+
+
+def _ring_signed_area(points_xy: Iterable[tuple[float, float]]) -> float:
+    body = _ring_body(points_xy)
+    if len(body) < 3:
+        return 0.0
+    area = 0.0
+    for index in range(len(body)):
+        x0, y0 = body[index]
+        x1, y1 = body[(index + 1) % len(body)]
+        area += x0 * y1 - x1 * y0
+    return 0.5 * area
+
+
+def _point_in_ring(point: tuple[float, float], ring: Iterable[tuple[float, float]]) -> bool:
+    body = _ring_body(ring)
+    if len(body) < 3:
+        return False
+    x, y = point
+    inside = False
+    for index in range(len(body)):
+        x0, y0 = body[index]
+        x1, y1 = body[(index + 1) % len(body)]
+        if ((y0 > y) != (y1 > y)) and (y1 != y0):
+            x_cross = ((x1 - x0) * (y - y0) / (y1 - y0)) + x0
+            if x < x_cross:
+                inside = not inside
+    return inside
+
+
+def _split_polygon_by_grid(polygon: Any, cell_m: float) -> list[Any]:
+    if cell_m <= 0.0:
+        return [polygon]
+    _, box = _import_shapely_geometry()
+    min_x, min_y, max_x, max_y = polygon.bounds
+    if min_x >= max_x or min_y >= max_y:
+        return []
+    start_x = math.floor(min_x / cell_m)
+    end_x = math.floor(max_x / cell_m)
+    start_y = math.floor(min_y / cell_m)
+    end_y = math.floor(max_y / cell_m)
+    pieces: list[Any] = []
+    seen_keys: set[tuple[float, float, float, float]] = set()
+    for cell_x in range(int(start_x), int(end_x) + 1):
+        for cell_y in range(int(start_y), int(end_y) + 1):
+            min_cell_x = float(cell_x) * cell_m
+            min_cell_y = float(cell_y) * cell_m
+            max_cell_x = min_cell_x + cell_m
+            max_cell_y = min_cell_y + cell_m
+            cell_key = (min_cell_x, min_cell_y, max_cell_x, max_cell_y)
+            if cell_key in seen_keys:
+                continue
+            seen_keys.add(cell_key)
+            cell = box(min_cell_x, min_cell_y, max_cell_x, max_cell_y)
+            clipped = polygon.intersection(cell)
+            for part in _geometry_polygons(clipped):
+                if part.is_empty or float(part.area) <= 0.0:
+                    continue
+                pieces.append(part)
+    return pieces
+
+
+def _assign_holes_to_shells(
+    outer_rings: list[list[tuple[float, float]]],
+    inner_rings: list[list[tuple[float, float]]],
+) -> list[list[list[tuple[float, float]]]]:
+    shell_holes: list[list[list[tuple[float, float]]]] = [[] for _ in outer_rings]
+    shell_areas = []
+    for shell in outer_rings:
+        shell_areas.append(abs(_ring_signed_area(shell)))
+    for hole in inner_rings:
+        if len(hole) < 4:
+            continue
+        anchor = hole[0]
+        matches: list[int] = []
+        for shell_index, shell in enumerate(outer_rings):
+            if _point_in_ring(anchor, shell):
+                matches.append(shell_index)
+        if not matches:
+            continue
+        target_index = min(matches, key=lambda index: shell_areas[index])
+        shell_holes[target_index].append(hole)
+    return shell_holes
+
+
+def build_local_triangulation_pieces(
+    polygon: WaterPolygon,
+    *,
+    center_lon_deg: float,
+    center_lat_deg: float,
+    cell_m: float,
+) -> list[tuple[list[tuple[float, float]], list[list[tuple[float, float]]]]]:
+    outer_rings = [
+        ring_to_local_points(
+            ring,
+            center_lon_deg=center_lon_deg,
+            center_lat_deg=center_lat_deg,
+        )
+        for ring in polygon.outer_rings
+    ]
+    inner_rings = [
+        ring_to_local_points(
+            ring,
+            center_lon_deg=center_lon_deg,
+            center_lat_deg=center_lat_deg,
+        )
+        for ring in polygon.inner_rings
+    ]
+    shell_holes = _assign_holes_to_shells(outer_rings, inner_rings)
+    pieces: list[tuple[list[tuple[float, float]], list[list[tuple[float, float]]]]] = []
+    for shell, holes in zip(outer_rings, shell_holes):
+        local_polygon = _build_local_polygon_geometry(shell, holes)
+        if local_polygon is None:
+            continue
+        for piece in _split_polygon_by_grid(local_polygon, cell_m):
+            if piece.is_empty or float(piece.area) <= 0.0:
+                continue
+            piece_shell = list(piece.exterior.coords)
+            piece_holes = [list(interior.coords) for interior in piece.interiors if len(interior.coords) >= 4]
+            if len(piece_shell) >= 4:
+                pieces.append((piece_shell, piece_holes))
+    return pieces
 
 
 def project_local_points_to_svg(
@@ -548,84 +752,6 @@ def project_local_points_to_svg(
     return projected
 
 
-def triangle_geometry_to_svg_path(
-    triangle: Any,
-    *,
-    bounds: tuple[float, float, float, float],
-    width: int,
-    height: int,
-    padding: float,
-) -> str:
-    coords = list(triangle.exterior.coords)
-    if len(coords) < 4:
-        return ""
-    if coords[0] == coords[-1]:
-        coords = coords[:-1]
-    points = project_local_points_to_svg(coords, bounds=bounds, width=width, height=height, padding=padding)
-    return path_for_points(points)
-
-
-def build_local_polygon(
-    shell_points: list[tuple[float, float]],
-    hole_points_list: list[list[tuple[float, float]]],
-    *,
-    grid_m: float,
-    simplify_m: float,
-) -> Any:
-    if Polygon is None:
-        raise RuntimeError("shapely is required for triangulated SVG output")
-    polygon = Polygon(shell_points, holes=hole_points_list or None)
-    if polygon.is_empty or not polygon.is_valid or polygon.area <= 0.0:
-        return None
-    if set_precision is not None and grid_m > 0.0:
-        polygon = set_precision(polygon, grid_m)
-    if simplify is not None and simplify_m > 0.0:
-        polygon = simplify(polygon, simplify_m, preserve_topology=True)
-    if polygon.is_empty or not polygon.is_valid or polygon.area <= 0.0:
-        return None
-    return polygon
-
-
-def ring_to_triangle_paths(
-    polygon_points: list[tuple[float, float]],
-    hole_points_list: list[list[tuple[float, float]]],
-    *,
-    bounds: tuple[float, float, float, float],
-    width: int,
-    height: int,
-    padding: float,
-    grid_m: float,
-    simplify_m: float,
-) -> list[str]:
-    if Polygon is None or constrained_delaunay_triangles is None:
-        raise RuntimeError("shapely is required for triangulated SVG output")
-    if len(polygon_points) < 3:
-        return []
-    polygon = build_local_polygon(
-        polygon_points,
-        hole_points_list,
-        grid_m=grid_m,
-        simplify_m=simplify_m,
-    )
-    if polygon is None:
-        return []
-    triangles = constrained_delaunay_triangles(polygon)
-    paths: list[str] = []
-    for triangle in triangles.geoms:
-        if triangle.is_empty or triangle.geom_type != "Polygon":
-            continue
-        path_d = triangle_geometry_to_svg_path(
-            triangle,
-            bounds=bounds,
-            width=width,
-            height=height,
-            padding=padding,
-        )
-        if path_d:
-            paths.append(path_d)
-    return paths
-
-
 def svg_path_for_ring(
     ring: tuple[tuple[float, float], ...],
     *,
@@ -651,38 +777,32 @@ def build_triangulated_svg_preview(
     center_lat_deg: float,
     grid_m: float,
     simplify_m: float,
+    cell_m: float,
 ) -> str:
-    if Polygon is None or constrained_delaunay_triangles is None:
-        raise RuntimeError(
-            "shapely is required for triangulated SVG output; install the dev extra and rerun uv sync"
-        )
     background_fill = "#f7fbff"
     water_fill = "#8ecae6"
     water_stroke = "#4a90c2"
 
-    shell_entries: list[tuple[list[tuple[float, float]], Any]] = []
-    hole_entries: list[list[tuple[float, float]]] = []
+    local_rings: list[list[tuple[float, float]]] = []
     for polygon in polygons:
         for ring in polygon.outer_rings:
-            points = ring_to_local_points(
-                ring,
-                center_lon_deg=center_lon_deg,
-                center_lat_deg=center_lat_deg,
+            local_rings.append(
+                ring_to_local_points(
+                    ring,
+                    center_lon_deg=center_lon_deg,
+                    center_lat_deg=center_lat_deg,
+                )
             )
-            shell_geom = build_local_polygon(points, [], grid_m=grid_m, simplify_m=simplify_m)
-            if shell_geom is None:
-                continue
-            shell_entries.append((points, shell_geom))
         for ring in polygon.inner_rings:
-            points = ring_to_local_points(
-                ring,
-                center_lon_deg=center_lon_deg,
-                center_lat_deg=center_lat_deg,
+            local_rings.append(
+                ring_to_local_points(
+                    ring,
+                    center_lon_deg=center_lon_deg,
+                    center_lat_deg=center_lat_deg,
+                )
             )
-            if len(points) >= 3:
-                hole_entries.append(points)
 
-    bounds = local_points_bounds([points for points, _ in shell_entries] + hole_entries)
+    bounds = local_points_bounds(local_rings)
 
     parts = [
         '<?xml version="1.0" encoding="UTF-8"?>',
@@ -692,71 +812,105 @@ def build_triangulated_svg_preview(
         ),
         f'<rect x="0" y="0" width="100%" height="100%" fill="{background_fill}"/>',
     ]
-    shell_holes: list[list[list[tuple[float, float]]]] = [[] for _ in shell_entries]
-    for points in hole_entries:
-        if len(points) < 3:
-            continue
-        assigned = False
-        hole_anchor = Point(points[0])
-        best_index = -1
-        best_area = float("inf")
-        for index, (_, shell_geom) in enumerate(shell_entries):
-            if not shell_geom.covers(hole_anchor):
-                continue
-            shell_area = float(shell_geom.area)
-            if shell_area < best_area:
-                best_index = index
-                best_area = shell_area
-        if best_index >= 0:
-            shell_holes[best_index].append(points)
-            assigned = True
-        if not assigned:
-            fallback_polygon = build_local_polygon(points, [], grid_m=grid_m, simplify_m=simplify_m)
-            if fallback_polygon is None:
-                continue
-            for triangle in constrained_delaunay_triangles(fallback_polygon).geoms:
-                if triangle.is_empty or triangle.geom_type != "Polygon":
+    for polygon in polygons:
+        if cell_m > 0.0:
+            pieces = build_local_triangulation_pieces(
+                polygon,
+                center_lon_deg=center_lon_deg,
+                center_lat_deg=center_lat_deg,
+                cell_m=cell_m,
+            )
+            for shell_points, hole_points_list in pieces:
+                footprint = WaterPolygonFootprint(
+                    water_id=f"{polygon.osm_id}@cell",
+                    kind=polygon.kind,
+                    outer_rings_lonlat=(
+                        local_points_to_ring(
+                            shell_points,
+                            center_lon_deg=center_lon_deg,
+                            center_lat_deg=center_lat_deg,
+                        ),
+                    ),
+                    inner_rings_lonlat=tuple(
+                        local_points_to_ring(
+                            hole_points,
+                            center_lon_deg=center_lon_deg,
+                            center_lat_deg=center_lat_deg,
+                        )
+                        for hole_points in hole_points_list
+                    ),
+                    source=polygon.source,
+                    tags=polygon.tags,
+                )
+                mesh = build_water_surface_mesh(
+                    footprint,
+                    center_lat_deg=center_lat_deg,
+                    center_lon_deg=center_lon_deg,
+                    grid_m=grid_m,
+                    simplify_tolerance_m=simplify_m,
+                )
+                if mesh is None:
                     continue
-                path_d = triangle_geometry_to_svg_path(
-                    triangle,
+                for triangle in mesh.triangles_xy_m:
+                    points = project_local_points_to_svg(
+                        list(triangle),
+                        bounds=bounds,
+                        width=width,
+                        height=height,
+                        padding=padding,
+                    )
+                    triangle_path_d = path_for_points(points)
+                    if not triangle_path_d:
+                        continue
+                    parts.append(
+                        (
+                            '<path d="{d}" fill="{fill}" fill-opacity="0.50" '
+                            'stroke="{stroke}" stroke-width="0.8" vector-effect="non-scaling-stroke"/>'
+                        ).format(
+                            d=triangle_path_d,
+                            fill=water_fill,
+                            stroke=water_stroke,
+                        )
+                    )
+        else:
+            footprint = WaterPolygonFootprint(
+                water_id=polygon.osm_id,
+                kind=polygon.kind,
+                outer_rings_lonlat=polygon.outer_rings,
+                inner_rings_lonlat=polygon.inner_rings,
+                source=polygon.source,
+                tags=polygon.tags,
+            )
+            mesh = build_water_surface_mesh(
+                footprint,
+                center_lat_deg=center_lat_deg,
+                center_lon_deg=center_lon_deg,
+                grid_m=grid_m,
+                simplify_tolerance_m=simplify_m,
+            )
+            if mesh is None:
+                continue
+            for triangle in mesh.triangles_xy_m:
+                points = project_local_points_to_svg(
+                    list(triangle),
                     bounds=bounds,
                     width=width,
                     height=height,
                     padding=padding,
                 )
-                if path_d:
-                    parts.append(
-                        (
-                            '<path d="{d}" fill="{fill}" fill-opacity="1.0" '
-                            'stroke="{stroke}" stroke-width="0.8" vector-effect="non-scaling-stroke"/>'
-                        ).format(
-                            d=path_d,
-                            fill=background_fill,
-                            stroke="#dbe9f6",
-                        )
+                triangle_path_d = path_for_points(points)
+                if not triangle_path_d:
+                    continue
+                parts.append(
+                    (
+                        '<path d="{d}" fill="{fill}" fill-opacity="0.50" '
+                        'stroke="{stroke}" stroke-width="0.8" vector-effect="non-scaling-stroke"/>'
+                    ).format(
+                        d=triangle_path_d,
+                        fill=water_fill,
+                        stroke=water_stroke,
                     )
-    for index, (points, _) in enumerate(shell_entries):
-        hole_list = shell_holes[index]
-        for triangle_path_d in ring_to_triangle_paths(
-            points,
-            hole_list,
-            bounds=bounds,
-            width=width,
-            height=height,
-            padding=padding,
-            grid_m=grid_m,
-            simplify_m=simplify_m,
-        ):
-            parts.append(
-                (
-                    '<path d="{d}" fill="{fill}" fill-opacity="0.50" '
-                    'stroke="{stroke}" stroke-width="0.8" vector-effect="non-scaling-stroke"/>'
-                ).format(
-                    d=triangle_path_d,
-                    fill=water_fill,
-                    stroke=water_stroke,
                 )
-            )
     parts.append("</svg>")
     return "\n".join(parts)
 
@@ -895,6 +1049,7 @@ def main(argv: list[str] | None = None) -> int:
             center_lat_deg=float(args.lat),
             grid_m=float(args.triangulation_grid_m),
             simplify_m=float(args.triangulation_simplify_m),
+            cell_m=float(args.triangulation_cell_m),
         )
         args.output_triangulated_svg.write_text(svg_text + "\n", encoding="utf-8")
         print(f"wrote_triangulated_svg={args.output_triangulated_svg}")
