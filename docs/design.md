@@ -736,7 +736,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `src/zstarview/water_overlay.py`
   - 観測地点近傍の OSM 水域を取得し、天球へ投影するための raw water footprint を正規化する
   - `natural=water`、`waterway=riverbank` の polygon を主対象にし、`natural=coastline` は bbox 境界と合わせて海域 polygon へ戻す
-  - raw footprint から距離サンプルと alpha 減衰を計算し、sea-level / DEM の両 variant を作る
+  - raw footprint から地平線距離ベースの上限と仰角ベースの点群サンプリングを計算し、sea-level / DEM の両 variant を作る
 - `src/zstarview/gui/water_overlay_state.py`
   - 水面レイヤーの取得状態、sea-level / DEM の point set、status line 用の banner を保持する
 - `src/zstarview/gui/water_overlay_controller.py`
@@ -753,7 +753,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `natural=water`、`waterway=riverbank` の polygon を主対象にし、`natural=coastline` は bbox 境界と合わせて海域 polygon へ戻す
   - `waterway=river|stream|canal|drain` の中心線は本設計では採用しない
   - polygon の outer / inner ring を復元し、inner ring を島や中州の穴として扱える内部表現へ変換する
-  - 距離サンプルは近距離を密、遠距離を疎にした幾何級数で生成し、alpha は距離に応じて減衰させる
+  - スキャン上限は観測高度からの地平線距離で決め、点の配置は仰角を一定刻みで走査して `tan` で距離へ戻す
+  - alpha は距離に応じて減衰させる
   - raw footprint から sea-level / DEM の point set を作る前処理を担う
 - `src/zstarview/gui/water_overlay_state.py`
   - raw footprint 由来の sea-level / DEM point set と、現在の active points、表示中の mode/source/banners を保持する
@@ -1615,7 +1616,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 6. 取得失敗や空振り bbox は短寿命の負 cache にしてよく、正の cache があればそれを優先して継続利用してよい。
 7. `WaterOverlayState` は sea-level / DEM の point set を両方保持し、terrain horizon の ON/OFF や DEM ready/fail に応じて active points を切り替えてよい。
 8. sea-level 版は明示高度がない水域では観測地点の既知地盤標高を水面 fallback とし、DEM 版は terrain horizon の地盤標高と DEM target sampler を使ってよい。
-9. 点群化は raw footprint を元に、近距離を密・遠距離を疎にした距離サンプル列で行い、遠い点ほど alpha を下げてよい。
+9. 点群化は raw footprint を元に、観測高度から求めた地平線距離を上限にして、仰角を一定刻みで走査し、必要に応じて `tan` で距離へ変換して点を置いてよい。遠い点ほど alpha を下げてよい。
 10. `WaterOverlayPoint` は `render/terrain.py` で小さな水色点として描画し、`RenderStyle.water_overlay_opacity` をそのまま描画 alpha として使ってよい。既定値は `0.12` 程度としてよい。
 11. cache key は観測地点中心の `lat/lon`、`radius_km`、`source`、`feature_set` から導出し、`bbox` はその派生値として扱ってよい。
 12. `Water Surface` の GUI トグルや `--water-surface-opacity 0` は初期表示の有無を変えてよく、raw cache を破棄する必要はない。
