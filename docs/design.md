@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-05-13
+最終更新: 2026-05-15
 
 ## 1. この文書の位置づけ
 
@@ -736,12 +736,17 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `src/zstarview/water_overlay.py`
   - 観測地点近傍の OSM 水域を取得し、天球へ投影するための raw water footprint を正規化する
   - `natural=water`、`waterway=riverbank` の polygon を主対象にし、`natural=coastline` は海域 polygon として扱う
+  - 湖・海は定高の水面ポリゴンとして扱い、川は DEM 地形に貼り付く水面テクスチャとして扱う
+  - 内外判定は外接矩形で候補を絞ったうえで、outer ring と inner ring に対する point-in-polygon 判定で行う
+  - 川の扱いは「スキャンライン上の点が内側か」を高速に判定するためにポリゴンを分割するのではなく、穴あり多角形のまま保持して候補絞り込みを行う
   - raw footprint から地平線距離ベースの上限と `1.15^n` 近傍のリング列サンプリングを計算し、sea-level / DEM の両 variant を作る
 - `src/zstarview/gui/water_overlay_state.py`
   - 水面レイヤーの取得状態、sea-level / DEM の point set、status line 用の banner を保持する
 - `src/zstarview/gui/water_overlay_controller.py`
   - 水面更新の実行制御
   - latest-request-wins と TTL 判定を適用し、raw footprint cache と sea-level / DEM point set の切り替えを管理する
+  - sea-level 版は湖・海のような定高水面を主対象とし、DEM 版は川のような地形追従水面を主対象として扱う
+  - DEM 版の水面点は、地形地平線の地盤標高と同じ sampled ground を使って地形に沿わせる
 - `src/zstarview/render/terrain.py`
   - `WaterOverlayPoint` を小さな水色点として描画する
   - 点の alpha は距離に応じた scale を反映し、terrain horizon の描画と同じ sky-dome 合成段へ重ねる
@@ -753,6 +758,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `natural=water`、`waterway=riverbank` の polygon を主対象にし、`natural=coastline` は海域 polygon として扱う
   - `waterway=river|stream|canal|drain` の中心線は本設計では採用しない
   - polygon の outer / inner ring を復元し、inner ring を島や中州の穴として扱える内部表現へ変換する
+  - 海・湖は単一の面として扱い、river-like footprint は DEM に沿う地表テクスチャとして扱う
+  - river-like footprint の高速化は、ポリゴン分割ではなく、外接矩形、ring ごとの判定、穴の除外で行う
   - スキャン上限は観測高度からの地平線距離で決め、点の配置は近距離を密・遠距離を疎にした `1.15^n` 近傍のリング列で行う
   - alpha は距離に応じて減衰させる
   - raw footprint から sea-level / DEM の point set を作る前処理を担う
@@ -761,6 +768,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `src/zstarview/gui/water_overlay_controller.py`
   - 水面更新の実行制御
   - latest-request-wins と TTL 判定を適用し、raw footprint cache と sea-level / DEM point set の切り替えを管理する
+  - sea-level 版は湖・海の平坦水面、DEM 版は川の地表追従水面に使い分ける
   - terrain horizon の ON/OFF や DEM ready/fail に応じて、active points を再選択してよい
   - すでに取得済みの DEM 地盤高は保持してよく、terrain horizon の OFF は表示切り替えだけに使ってよい
 - `src/zstarview/render/terrain.py`
