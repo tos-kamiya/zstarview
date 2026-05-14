@@ -37,7 +37,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 - **Earth guide**: an independent layer draws a simplified continental hatch pattern below the horizon in the same ground tone to help with orientation.
 - **Terrain horizon**: Copernicus DEM data can be downloaded to render the local terrain skyline. The terrain overlay shows banded ridge lines in the same horizon color, with nearby bands drawn thicker and distant bands drawn thinner. Blue-tinted ridge lines mark the parts visible from the observer, not hidden by nearer ridges. The disc is filled with the same ground tone below the terrain horizon, or below the geometric horizon when terrain is disabled.
 - **Urban outline**: major rooflines are drawn as a white urban outline overlay for the current viewpoint. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 60km radius.
-- **Water surface**: nearby water bodies are rendered as small blue dots, with sampled points marking lakes, seas, and riverbanks around the current viewpoint.
+- **Water surface**: nearby water bodies are rendered as small blue dots, with sampled points marking lakes, seas, and riverbanks around the current viewpoint. See [About Water Surface](docs/cli-overlays.md#about-water-surface).
 - **Night lights**: NASA Earth at Night / Black Marble 2016 Grayscale 500m GeoTIFF tiles are downloaded on demand, cached locally, and rendered as a separate glow layer above the horizon and terrain ridges.
 
 ## Screenshots
@@ -57,7 +57,7 @@ The fourth screenshot shows `zstarview-export-image --search "C/1861 G1" --sixel
     <img src="docs/images/screenshot6.png" alt="Screenshot showing zstarview-export-image --search C/1861 G1 --sixel displaying the Thatcher comet (C/1861 G1 Thatcher) in a sixel terminal" width="49%" />
   </p>
 
-Note: higher magnitude limits increase rendering time. See [about magnitude limit](#about-magnitude-limit).
+Note: higher magnitude limits increase rendering time. See [About magnitude limit](docs/cli-sky-and-stars.md#about-magnitude-limit).
 
 Urban outline and terrain horizon examples from several cities worldwide:
 
@@ -150,12 +150,7 @@ zstarview --place "Matsue Station" --place-countrycode jp
 zstarview --search Ceres
 ```
 
-The CLI supports detailed startup configuration for location, time, datasets, and rendering.
-
-<details>
-  <summary>CLI reference</summary>
-
-### CLI
+### CLI Reference
 
 #### Argument
 
@@ -166,289 +161,14 @@ The CLI supports detailed startup configuration for location, time, datasets, an
 | Coordinates | Direct coordinates (e.g., `35.68;139.76`, `@35.68,139.76`) or Google Maps URL | |
 | `auto` | Automatically detect current location via IP | |
 
-#### Observing Location and Time
-
-| Option                                      | Description                                                                 | Default |
-| :------------------------------------------ | :-------------------------------------------------------------------------- | :------ |
-| `-p`, `--place QUERY`                     | Search a place, station, or facility name via OpenStreetMap Nominatim and use the top candidate as the observing location. Cannot be used together with the positional `location` argument. | |
-| `--place-countrycode CODE`                 | Restrict `--place` search to an ISO 3166-1 alpha-2 country code such as `jp`. | |
-| `--place-lang LANG`                        | `Accept-Language` sent to Nominatim for `--place` search results.           | `en`    |
-| `--timezone TZ`                            | Override the resolved location timezone for `--datetime` and on-screen time. Accepts abbreviations, IANA names, and UTC offsets such as `JST`, `Asia/Tokyo`, or `UTC+9`. | |
-| `-H`, `--hours HOURS`                       | Number of hours to add to the current time. \*1                              | `0`     |
-| `-D`, `--days DAYS`                         | Number of days to add to the current time. \*1                               | `0`     |
-| `--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"` | Specify an absolute date/time. Time may be given as `HH`, `HH:MM`, or `HH:MM:SS`. If no TZ is specified, UTC is assumed. \*1 |         |
-| `-Z`, `--view-center-az VIEW_CENTER_AZ`     | Viewing azimuth (degrees or compass points).                                | `180`   |
-| `-A`, `--view-center-alt VIEW_CENTER_ALT`   | Viewing altitude angle (90=zenith, 0=horizon).                              | `90`    |
-| `--edge-fov-deg DEGREES`                    | Projection scale for the window edge. `95` means the window edge corresponds to `95°` from the view center. | `95`    |
-| `--content-fov-deg DEGREES`                 | Shared overscan content FOV for all layers. The window edge still corresponds to `90°` from the view center; values above `90` let sky/cloud/background content extend beyond the window edge and reduce empty corner regions. Allowed range: `90`–`127`. | `110` |
-| `--observer-height-m METERS`                | Observer eye height above the local observation surface in meters. This replaces the default eye height of `1.7` meters. For tower and mountain viewpoints, the viewpoint's own height/elevation remains separate from this value. | `1.7` |
-| `--use-building-top`                        | Experimental. For city / `--place` / direct-coordinate / supported Google Maps URL input, if a building is found within about 5 meters of the resolved location, use that building's highest top height as the observation base. Tower and mountain viewpoints are not affected. | off |
-
-#### Search Objects at startup
-
-| Option                                      | Description                                                                 | Default |
-| :------------------------------------------ | :-------------------------------------------------------------------------- | :------ |
-| `--search QUERY`                            | Resolve a named object at startup. Uses the same local-first matching as GUI `Search Objects...`; known artificial satellites use the app-side current position first and fail instead of falling back to JPL if their current position cannot be obtained, while CLI/export-image JPL lookup may include major bodies and small bodies; bare `QUERY` searches by label or ID (e.g. `Ceres`, `2000001`). |         |
-| `--search label=QUERY`                      | Search labels only (e.g. `label=Ceres`).                                    |         |
-| `--search id=QUERY`                         | Search IDs only (e.g. `id=2000001`).                                        |         |
-| `--search-keep-marker`                      | Keep the selected target as marker plus label.                              |         |
-| `--list`                                    | `zstarview-export-image` only. List candidates and exit without rendering.  |         |
-
-If `-A` or `-Z` is also given, that axis stays fixed and the search result fills the other axis. The search result altitude is clamped to `-5°`.
-
-#### Viewpoint dataset queries
-
-You can inspect the bundled tower/viewpoint and mountain/viewpoint datasets without launching the GUI.
-
-| Option                                      | Description                                                                 | Default |
-| :------------------------------------------ | :-------------------------------------------------------------------------- | :------ |
-| `-h`, `--help`                              | Show this help message and exit.                                            |         |
-| `--list-viewpoints {t,m}`                   | Print bundled tower (`t`) or mountain (`m`) primary names and exit. Output lines use `t/NAME` or `m/NAME`; ASCII fallback names are preferred when available. |         |
-| `--list-viewpoint-names {t,m}`              | Print bundled tower (`t`) or mountain (`m`) names including localized and ASCII-fallback names, then exit. Output lines use `t/NAME` or `m/NAME`. |         |
-| `--show-viewpoint-json NAME`                | Resolve a bundled viewpoint and print its JSON metadata, including `ascii_name` when available, then exit. Prefix `NAME` with `t/` or `m/` to force tower-only or mountain-only resolution. |         |
-
-```bash
-zstarview --list-viewpoints t
-zstarview --list-viewpoint-names t
-zstarview --show-viewpoint-json "t/Tokyo Skytree"
-zstarview --list-viewpoints m
-zstarview --show-viewpoint-json "m/Mount Fuji"
-```
-
-These options are mutually exclusive, do not accept the `location` argument, and cannot be combined with time/rendering options.
-`--list-viewpoints` prefers ASCII fallback names when available.
-`--list-viewpoint-names` includes both the original spellings and ASCII fallback spellings.
-`--show-viewpoint-json` reports an ambiguity error with prefixed candidates if an unprefixed name matches both a tower and a mountain exactly.
-
-#### Sky and Stars
-
-| Option                                      | Description                                                                 | Default |
-| :------------------------------------------ | :-------------------------------------------------------------------------- | :------ |
-| `--sky-opacity SKY_OPACITY`                 | Opacity of the simulated sky-color disc (0.0–1.0). Use 0.0 to disable.      | `0.1`    |
-| `--sky-disc-altaz-rings {off,dimalt,altaz}` | Always-visible sky-disc alt/az overlay. `dimalt` shows subtle altitude rings; `altaz` shows the full grid. | `dimalt` |
-| `--sky-disc-altaz-rings-hover {off,dimalt,altaz}` | Hover-time sky-disc alt/az overlay. Same meanings as above. | `altaz` |
-| `--bright-bodies {outline,fill}`            | Bright bodies rendering mode. `outline` renders bright stars as diamond outlines, planets as outlines, and the Moon as outline-only except for enlarged moon / hover moon views. `fill` keeps the normal filled rendering. | `outline` |
-| `-m`, `--enlarge-moon`                      | Show the moon in 5x size.                                                   |         |
-| `-s`, `--star-base-radius STAR_BASE_RADIUS` | Base size of 2nd-magnitude stars.                                           | `4.0`   |
-| `-w`, `--expected-render-width EXPECTED_RENDER_WIDTH` | Expected window width for full-resolution star rendering. When celestial-disc width exceeds this, star rendering uses square-root scaling. | `600` |
-| `-V`, `--vmag-limit V_MAG_LIMIT`            | Maximum visual magnitude of stars to display.                               | `7.0`   |
-| `--vmag-brightness-multiplier MULTIPLIER`   | Brightness multiplier per magnitude step (allowed range 1.58–2.512, default `2.5`; 2.512 is the historical Pogson ratio). \*3 | `2.5`   |
-| `-i`, `--sky-update-interval SECONDS`       | Interval for updating stars/sky-color disc in seconds.                      | `60`   |
-| `--show-dso-initial true\|false`            | Whether DSO overlays are shown at startup.                                  | auto (`show` when catalog is available) |
-| `--show-asterisms-initial true\|false`      | Whether asterism overlays are shown at startup.                             | `show` |
-
-#### Overlays
-
-| Option                                      | Description                                                                 | Default |
-| :------------------------------------------ | :-------------------------------------------------------------------------- | :------ |
-| `-c`, `--cloud-opacity CLOUD_OPACITY`       | Opacity of cloud rendering (0.0–1.0). Use 0.0 to disable. \*2                | `0.07`   |
-| `--cloud-stripe MODE[,COUNT[,WIDTH]]`       | Cloud stripe style. `width` draws centered symmetric stripes whose visible width varies with cloud amount; `alpha` keeps width fixed and varies stripe alpha. `COUNT` is treated as the stripe density for the default 600x600 star render surface, and the effective count is scaled to match the star layer's downsampled surface size. `width` expands to `width,50,0.85`; `alpha` expands to `alpha,50,0.25`. If count or width is `0`, cloud rendering is disabled. | `width,50,0.85` |
-| `--cloud-missing-tint-opacity OPACITY`      | Opacity of missing-cloud-data yellow tint (0.0–1.0).                          | `0.176` |
-| `--night-light-opacity OPACITY`             | Opacity of the NASA night lights overlay (0.0–1.0). Use 0.0 to disable the on-demand Black Marble download and drawing for that run. | `0.022` |
-| `--water-surface-opacity OPACITY`           | Opacity of the water-surface overlay dots (0.0–1.0). Use 0.0 to disable the on-demand water-surface download and drawing for that run. | `0.12` |
-| `-a`, `--aircraft-opacity OPACITY`          | Opacity of the aircraft overlay (0.0–1.0). Use 0.0 to disable aircraft queries and drawing for that run. | `0.5` |
-| `--satellite-opacity OPACITY`               | Opacity of the artificial satellite overlay (0.0–1.0). Use 0.0 to disable satellite element fetch and drawing for that run. | `0.5` |
-| `--show-guidelines-initial true\|false`     | Whether guideline overlays are shown at startup. This controls the geometric horizon, celestial equator, ecliptic, never-rises circle, direction labels, and zenith marker. | `show` |
-| `-d`, `--terrain-horizon-opacity OPACITY`   | Opacity of the terrain horizon polyline (0.0–1.0). Use 0.0 to disable DEM download, terrain-horizon calculation, terrain-horizon drawing, and the Earth guide. \*4 | `0.003` |
-| `-e`, `--earth-guide-opacity OPACITY`       | Opacity of the below-horizon Earth guide line layer (0.0–1.0). Use 0.0 to disable Earth guide drawing for that run. \*4 | `0.028` |
-| `--ground-tint-opacity OPACITY`             | Strength of the ground-color fill below the geometric/terrain horizon (0.0–1.0). | `0.1` |
-| `-u`, `--urban-outline-opacity OPACITY`     | Opacity of the urban outline overlay (0.0–1.0). Use 0.0 to disable it for that run. | `0.2` |
-| `--urban-outline-feature-type {both,building}` | Overture cache mode for the urban outline. `both` combines `building` and `building_part`, preferring parts when available. | `both` |
-| `-r`, `--urban-outline-radius-km RADIUS_KM` | Fetch and render urban-outline buildings within this radius from the observer location. The value is also part of the cache key. | `2.5` |
-| `--urban-outline-skyscraper-radius-km RADIUS_KM` | Outer radius of the far-range skyscraper helper layer. Use `0` to disable skyscraper-tile lookup for that run; otherwise the value must be greater than or equal to `--urban-outline-radius-km`. | `60.0` |
-| `-b`, `--urban-outline-min-building-height-m METERS` | Ignore buildings lower than this height when fetching/caching the urban outline. The value is also part of the cache key. | `0.0` |
-
-#### General
-
-| Option                                      | Description                                                                 | Default |
-| :------------------------------------------ | :-------------------------------------------------------------------------- | :------ |
-| `-h`, `--help`                              | Show this help message and exit.                                            |         |
-| `--window-geometry restore\|X,Y,W,H` | Set initial window geometry. Use `restore` to load the last saved position/size, or `X,Y,W,H` to specify explicit integers. Note: on Wayland, window position restore is not available (size restore works). |         |
-| `--window-frame {frameless,window}` | Choose window decorations. `frameless` keeps the current borderless presentation; `window` uses the platform title bar and frame. | `frameless` |
-| `--observation-info auto\|top\|bottom\|off` | Startup mode for the observation-info block.                                 | `bottom` |
-| `--include-direction-grid`                 | `zstarview-export-image` only. Include the direction grid in exported images, with 30-degree major lines and 10-degree intersection crosses. |         |
-| `-t`, `--theme {night,day,white,black,transparent}` | Theme preset for background and star contrast.                              | `night` |
-| `--visibility-boost MULTIPLIER`             | Visibility boost for faint support layers. Values above `1.0` raise opacity for layers such as the terrain horizon, Earth guide, urban outline, sky disc, cloud disc, satellites, aircraft, and ground tint. | `1.0` |
-| `--clear-long-lived-cache`                  | Troubleshooting option. Delete long-lived DEM and urban-outline caches before startup. If used again within 3 days, startup is refused and the app tells you when retry is allowed. | |
-
-\*1 When using non-realtime sky options (`--hours`, `--days`, `--datetime`), cloud, aircraft, and artificial satellite overlays are not shown.
-
-\*2 Cloud rendering uses infrared data from meteorological satellites (**Himawari** and **NOAA GOES** series), retrieved from their public S3 buckets.
-   See Troubleshooting for tips on slow networks or offline use (e.g., disabling clouds with `-c 0`).
-
-\*3 The brightest-magnitude multiplier cannot exceed the classical Pogson value of \(100^{1/5}\approx2.512\).
-
-\*4 Terrain horizon rendering downloads Copernicus DEM tiles on first use and reuses the cached DEM later. When enabled, the terrain profile also becomes the boundary for the ground-color fill inside the disc. The Earth guide is a separate layer with its own opacity toggle, and both layers currently share the dark olive-brown ground tone from the palette.
-
-\*5 `--place` uses the public OpenStreetMap Nominatim search service. It sends a single search request with a User-Agent and Accept-Language. See the Nominatim usage policy if you plan to rely on this option heavily or from automation.
-
-#### `--place` behavior
-
-`--place` is an explicit online resolver path separate from the normal offline-first `location` argument.
-
-- The app sends a single Nominatim search request and sorts candidates by importance.
-- Startup remains non-interactive: the top candidate is used automatically.
-- When multiple candidates are found, they are logged to the terminal and the top candidate is still used.
-- The full returned place name is shown in the GUI location label so mismatches are easier to notice.
-- The selected result is saved in config and reused on the next launch without re-querying Nominatim.
-- `--use-building-top` can be combined with `--place`. This mode is experimental and may delay startup because the app resolves nearby building data before opening the window.
-
-#### Overlay visibility at startup
-
-Use these options to control initial overlay states without post-launch menu operations:
-
-```bash
-# Start with DSO hidden and asterisms visible
-zstarview --show-dso-initial false --show-asterisms-initial true Tokyo
-```
-
-#### About the view center options
-
-The `-Z` (azimuth) and `-A` (altitude) options specify the center of the displayed sky.
-
-By default, `-Z 180` (facing south) and `-A 90` (zenith) are used.
-In this view, the bottom of the screen is south, the left side is east, and the display is a circular view looking straight up toward the zenith.
-
-For example, setting `-Z 90` (facing east) and `-A 25` (altitude 25° above the horizon) produces a sky view toward the eastern sky.  
-
-Azimuth can be given in degrees or compass points (case-insensitive).
-Examples: `-Z E`, `-Z ne`, `-Z SSW` (202.5°).
-(Compass mapping: 0=N, 90=E, 180=S, 270=W; accepts N, NNE, NE, ENE, E, ESE, SE, SSE, S, SSW, SW, WSW, W, WNW, NW, NNW.)
-
-<a id="about-magnitude-limit"></a>
-
-#### About magnitude limit
-
-Use `-V magnitude` to limit the displayed stars to those brighter than the given magnitude.
-The default is `-V 7.0`. The bundled catalog currently supports up to `-V 10.5`, for which the candidate star set contains about 536,000 stars.
-Note that higher values will increase rendering time.
-
-#### About theme presets
-
-Use `--theme` to change the background treatment and contrast style.
-
-* `night`: default dark theme
-* `black`: darker opaque background
-* `transparent`: dark translucent background for already-dark desktops; use a flat, uniform alpha
-* `day`: bright sky/background treatment
-* `white`: brightest light theme
-
-#### About the datetime option
-
-Use `--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"` to specify an absolute date and time.
-The time part may be just hours, hours\:minutes, or hours\:minutes\:seconds.
-If no timezone (TZ) is specified, the resolved location timezone is used. `--timezone TZ` overrides the resolved location timezone.
-
-Supported timezone formats:
-
-* A common abbreviation (JST, UTC, GMT, KST, HKT, AWST, ACST, AEST, NZST, NZDT, MSK, EAT)
-* A full IANA timezone name (e.g., `Asia/Tokyo`, `Europe/Moscow`)
-* A UTC offset (e.g., `UTC+9`, `UTC-07:30`)
-
-Examples:
-
-```bash
-zstarview --datetime "2025-08-17 21:00:00 JST" Tokyo
-zstarview --datetime "2025-09-12 9" Tokyo         # 9 o'clock
-zstarview --datetime "2025-09-12 09:00" Tokyo     # 9:00
-zstarview --datetime "2025-09-12 9:0:0 JST" Tokyo # 9:00:00 JST
-```
-
-#### Direct coordinate input
-
-Instead of a city name, you can directly specify coordinates.
-
-* Formats:
-  * `latitude;longitude` (semicolon separated)
-  * `@latitude,longitude`
-  * Supported Google Maps shared URLs starting with `maps.google.com/` or `www.google.com/maps/`
-* Examples:
-  * `35.68;139.76`
-  * `N35.68;E139.76`
-  * `-35.68;139.76`
-  * `S35.68;W139.76`
-  * `@35.68,139.76`
-  * `https://www.google.com/maps/@35.68,139.76,17z`
-  * `maps.google.com/maps/@35.68,139.76`
-  * `https://www.google.com/maps/place/...!3d35.68!4d139.76...`
-* Latitude must be between -90 and 90, longitude between -180 and 180.
-* Direction letters `N/S/E/W` can be used (negative sign takes precedence if both given).
-* Supported Google Maps URLs currently include the widely observed shared-link forms starting with `maps.google.com/` or `www.google.com/maps/`. `https://` may be omitted.
-* For supported Google Maps URLs, `!3dLAT!4dLON` is used when present. Otherwise `@LAT,LON` is used.
-* Zoom, altitude, heading, pitch, and similar trailing URL components are ignored.
-* When starting with direct coordinates, the timezone is resolved from the parsed location in the same way as `--place`. `--timezone TZ` overrides that result.
-* `--observer-height-m` remains the only way to specify observer eye height. Google Maps URL altitude-like fields do not affect observer height.
-* `--use-building-top` may be combined with direct-coordinate input. In this experimental mode, the app looks for a nearby building around the resolved point and uses its top as the observation base when found.
-
-Example:
-
-```bash
-zstarview "35.68;139.76"
-zstarview "@35.68,139.76"
-zstarview "www.google.com/maps/@35.68,139.76,17z"
-zstarview "N35.68;E139.76" --datetime "2025-09-12 21 JST"
-zstarview "35.68;139.76" --observer-height-m 120
-```
-
-#### Tower name input
-
-You can also start from a built-in tower/viewpoint dataset generated from Wikidata.
-
-* Examples:
-  * `Tokyo Skytree`
-  * `t/Tokyo Skytree` (explicit tower selection)
-  * `Tsutenkaku` (ASCII fallback for `Tsūtenkaku`)
-  * `Tokyo Tower`
-  * `wikidata:Q57965`
-* When a tower name is used, the tower's stored structural/viewpoint height is used as the base observation point.
-* `--observer-height-m` replaces only the observer eye height above that base point (default `1.7m`); it does not replace the tower's own height.
-* Tower resolution also accepts ASCII fallback spellings for names with diacritics.
-* In the on-screen location info, tower viewpoints may show `Tower height ... m`; if `--observer-height-m` is explicitly set, `Observer height ... m` may be shown on a separate line.
-
-Example:
-
-```bash
-zstarview "Tokyo Skytree"
-zstarview "Tokyo Tower" --observer-height-m 150
-```
-
-You can also start from the bundled mountain/viewpoint dataset.
-
-* Examples:
-  * `Mount Fuji`
-  * `m/Mount Fuji` (explicit mountain selection)
-  * `Aconcagua`
-  * `Snezka` (ASCII fallback for `Sněžka`)
-  * `wikidata:Q39231`
-* When a mountain name is used, the base observation point is the mountain summit viewpoint.
-* `--observer-height-m` replaces only the observer eye height above that summit point (default `1.7m`).
-* Mountain resolution also accepts ASCII fallback spellings for names with diacritics.
-* In the on-screen location info, mountain viewpoints may show `Elevation ... m`; if `--observer-height-m` is explicitly set, `Observer height ... m` may be shown on a separate line.
-
-Example:
-
-```bash
-zstarview "Mount Fuji"
-zstarview "Snezka"
-```
-
-Time zone examples for `--datetime`:
-
-- IANA zone name: `--datetime "2025-09-12 21 Asia/Tokyo"`
-- UTC offset: `--datetime "2025-09-12 21 UTC+9"`
-
-While resizing the window, the same simplified viewport-interaction mode is used so that the view stays responsive.
-
-### Supported Asterisms
-
-These overlays are **asterisms** (popular line patterns), not formal IAU constellation boundaries.
-
-- Winter: `Winter Triangle`, `Orion's Belt`, `Winter Hexagon`, `Southern Cross`, `Southern Pointers`, `Diamond Cross`, `False Cross`
-- Spring: `Big Dipper`, `Little Dipper`, `Spring Triangle`, `Arc to Arcturus`, `Leo Sickle`, `Southern Triangle`
-- Summer: `Summer Triangle`, `Northern Cross`, `Teapot`, `Keystone`
-- Autumn: `Great Square of Pegasus`, `Circlet of Pisces`, `Water Jar of Aquarius`, `Cassiopeia W`, `House of Cepheus`, `Job's Coffin`
-
-</details>
+The links below cover the detailed option groups, and the linked docs files contain the detailed option tables, footnotes, and examples.
+
+- [Observing Location and Time](docs/cli-observing-location-and-time.md)
+- [Search Objects at startup](docs/cli-search-objects.md)
+- [Viewpoint dataset queries](docs/cli-viewpoint-dataset-queries.md)
+- [Sky and Stars](docs/cli-sky-and-stars.md)
+- [Overlays](docs/cli-overlays.md)
+- [General](docs/cli-general.md)
 
 <details>
   <summary>Tools</summary>
