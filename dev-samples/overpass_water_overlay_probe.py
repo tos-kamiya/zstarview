@@ -9,6 +9,7 @@ This sample keeps the pipeline intentionally simple:
    - outer rings
    - inner rings
 4. Write a normalized JSON payload and, optionally, a quick SVG preview.
+   The SVG preview can also show the observer marker and distance rings.
 
 The script is meant for data-structure exploration, not production caching.
 """
@@ -443,6 +444,43 @@ def geometry_bounds(
     return min(xs), min(ys), max(xs), max(ys)
 
 
+def _circle_ring_lonlat(
+    *,
+    center_lon_deg: float,
+    center_lat_deg: float,
+    radius_km: float,
+    sample_count: int = 96,
+) -> tuple[tuple[float, float], ...]:
+    radius_m = max(0.0, float(radius_km)) * 1000.0
+    if radius_m <= 0.0:
+        return ((float(center_lon_deg), float(center_lat_deg)),)
+    sample_count = max(8, int(sample_count))
+    points: list[tuple[float, float]] = []
+    for index in range(sample_count):
+        angle = (2.0 * math.pi * index) / float(sample_count)
+        x_m = math.cos(angle) * radius_m
+        y_m = math.sin(angle) * radius_m
+        lon_deg, lat_deg = project_local_m_to_lonlat(
+            x_m,
+            y_m,
+            center_lon_deg=float(center_lon_deg),
+            center_lat_deg=float(center_lat_deg),
+        )
+        points.append((lon_deg, lat_deg))
+    points.append(points[0])
+    return tuple(points)
+
+
+def _build_distance_ring_values(radius_km: float) -> list[float]:
+    if radius_km <= 0.0:
+        return []
+    max_ring = max(1, int(math.floor(float(radius_km))))
+    rings = [float(index) for index in range(1, max_ring + 1)]
+    if not rings or abs(rings[-1] - float(radius_km)) > 1.0e-6:
+        rings.append(float(radius_km))
+    return rings
+
+
 def project_lonlat(
     lon_deg: float,
     lat_deg: float,
@@ -594,6 +632,89 @@ def _water_style(polygon: WaterPolygon) -> tuple[str, str, float]:
     return "#8ecae6", "#4a90c2", 0.50
 
 
+def _bbox_union(
+    a: tuple[float, float, float, float],
+    b: tuple[float, float, float, float],
+) -> tuple[float, float, float, float]:
+    return (
+        min(float(a[0]), float(b[0])),
+        min(float(a[1]), float(b[1])),
+        max(float(a[2]), float(b[2])),
+        max(float(a[3]), float(b[3])),
+    )
+
+
+def _polygon_preview_anchor(
+    polygon: WaterPolygon,
+    *,
+    center_lon_deg: float,
+    center_lat_deg: float,
+) -> tuple[float, float, float]:
+    xs: list[float] = []
+    ys: list[float] = []
+    for ring in polygon.outer_rings:
+        for lon, lat in ring:
+            x_m, y_m = project_lonlat_to_local_m(
+                float(lon),
+                float(lat),
+                center_lon_deg=center_lon_deg,
+                center_lat_deg=center_lat_deg,
+            )
+            xs.append(x_m)
+            ys.append(y_m)
+    if not xs or not ys:
+        return float("inf"), 0.0, 0.0
+    anchor_x = sum(xs) / len(xs)
+    anchor_y = sum(ys) / len(ys)
+    return math.hypot(anchor_x, anchor_y) / 1000.0, anchor_x, anchor_y
+
+
+def _dedupe_adjacent_far_polygons(
+    polygons: list[WaterPolygon],
+    *,
+    center_lon_deg: float,
+    center_lat_deg: float,
+    min_distance_km: float = 1.5,
+    max_neighbor_distance_gap_km: float = 0.35,
+    max_neighbor_offset_m: float = 250.0,
+) -> list[WaterPolygon]:
+    if len(polygons) < 2:
+        return list(polygons)
+
+    scored: list[tuple[float, float, float, int, WaterPolygon]] = []
+    for index, polygon in enumerate(polygons):
+        distance_km, anchor_x, anchor_y = _polygon_preview_anchor(
+            polygon,
+            center_lon_deg=center_lon_deg,
+            center_lat_deg=center_lat_deg,
+        )
+        scored.append((distance_km, anchor_x, anchor_y, index, polygon))
+    scored.sort(key=lambda item: (item[0], item[1], item[2], item[3]))
+
+    deduped: list[WaterPolygon] = []
+    previous: tuple[float, float, float, int, WaterPolygon] | None = None
+    dropped = 0
+    for item in scored:
+        if previous is not None:
+            previous_distance_km, previous_x_m, previous_y_m, _, _ = previous
+            distance_km, x_m, y_m, _, _ = item
+            is_far = previous_distance_km >= min_distance_km and distance_km >= min_distance_km
+            close_in_range = abs(distance_km - previous_distance_km) <= max_neighbor_distance_gap_km
+            close_in_space = math.hypot(x_m - previous_x_m, y_m - previous_y_m) <= max_neighbor_offset_m
+            if is_far and close_in_range and close_in_space:
+                dropped += 1
+                continue
+        deduped.append(item[4])
+        previous = item
+
+    if dropped:
+        print(
+            f"deduped_far_polygons={dropped} kept={len(deduped)} total={len(polygons)}",
+            file=sys.stderr,
+        )
+    return deduped
+
+
 def filter_water_polygons_to_bbox(
     polygons: list[WaterPolygon],
     *,
@@ -735,10 +856,22 @@ def build_svg_preview(
     polygons: list[WaterPolygon],
     *,
     bbox: tuple[float, float, float, float],
+    center_lat_deg: float,
+    center_lon_deg: float,
+    radius_km: float,
     width: int,
     height: int,
     padding: float,
 ) -> str:
+    preview_bbox = _bbox_union(
+        bbox,
+        bbox_from_point(float(center_lat_deg), float(center_lon_deg), float(radius_km)),
+    )
+    polygons = _dedupe_adjacent_far_polygons(
+        list(polygons),
+        center_lon_deg=float(center_lon_deg),
+        center_lat_deg=float(center_lat_deg),
+    )
     parts = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         (
@@ -747,16 +880,73 @@ def build_svg_preview(
         ),
         '<rect x="0" y="0" width="100%" height="100%" fill="#f7fbff"/>',
     ]
+    ring_values = _build_distance_ring_values(radius_km)
+    if ring_values:
+        center_x, center_y = project_lonlat(
+            float(center_lon_deg),
+            float(center_lat_deg),
+            bbox=preview_bbox,
+            width=width,
+            height=height,
+            padding=padding,
+        )
+        for ring_km in ring_values:
+            ring_points = ring_to_svg_points(
+                _circle_ring_lonlat(
+                    center_lon_deg=float(center_lon_deg),
+                    center_lat_deg=float(center_lat_deg),
+                    radius_km=float(ring_km),
+                ),
+                bbox=preview_bbox,
+                width=width,
+                height=height,
+                padding=padding,
+            )
+            parts.append(
+                (
+                    '<path d="{d}" fill="none" stroke="#6f8597" stroke-opacity="0.42" '
+                    'stroke-width="1.0" stroke-dasharray="5 4" vector-effect="non-scaling-stroke"/>'
+                ).format(d=path_for_points(ring_points))
+            )
+            label_x = min(float(width) - 24.0, center_x + 8.0)
+            label_y = max(16.0, center_y - 6.0)
+            parts.append(
+                (
+                    '<text x="{x:.1f}" y="{y:.1f}" font-family="sans-serif" font-size="12" '
+                    'fill="#5d7284" fill-opacity="0.92">{label:.1f} km</text>'
+                ).format(x=label_x, y=label_y, label=float(ring_km))
+            )
+        parts.append(
+            (
+                '<circle cx="{x:.1f}" cy="{y:.1f}" r="5.5" fill="#111827" fill-opacity="0.9" '
+                'stroke="#f8fafc" stroke-width="1.4" vector-effect="non-scaling-stroke"/>'
+            ).format(x=center_x, y=center_y)
+        )
+        parts.append(
+            (
+                '<path d="M {x1:.1f} {y1:.1f} L {x2:.1f} {y2:.1f} M {x3:.1f} {y3:.1f} L {x4:.1f} {y4:.1f}" '
+                'fill="none" stroke="#f8fafc" stroke-width="1.2" vector-effect="non-scaling-stroke"/>'
+            ).format(
+                x1=center_x - 9.0,
+                y1=center_y,
+                x2=center_x + 9.0,
+                y2=center_y,
+                x3=center_x,
+                y3=center_y - 9.0,
+                x4=center_x,
+                y4=center_y + 9.0,
+            )
+        )
     for polygon in polygons:
         if not polygon.outer_rings:
             continue
         fill, stroke, fill_opacity = _water_style(polygon)
         path_d = " ".join(
-            svg_path_for_ring(ring, bbox=bbox, width=width, height=height, padding=padding)
+            svg_path_for_ring(ring, bbox=preview_bbox, width=width, height=height, padding=padding)
             for ring in polygon.outer_rings
         )
         path_d += "".join(
-            f" {svg_path_for_ring(ring, bbox=bbox, width=width, height=height, padding=padding)}"
+            f" {svg_path_for_ring(ring, bbox=preview_bbox, width=width, height=height, padding=padding)}"
             for ring in polygon.inner_rings
         )
         parts.append(
@@ -877,6 +1067,9 @@ def main(argv: list[str] | None = None) -> int:
         svg_text = build_svg_preview(
             polygons,
             bbox=geometry_bounds(polygons, view_bbox),
+            center_lat_deg=float(args.lat),
+            center_lon_deg=float(args.lon),
+            radius_km=float(args.radius_km),
             width=int(args.svg_width),
             height=int(args.svg_height),
             padding=float(args.svg_padding),
