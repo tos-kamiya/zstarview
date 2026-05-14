@@ -128,6 +128,24 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=0.05,
         help="Extra padding around the query bbox in the SVG preview (default: 0.05).",
     )
+    parser.add_argument(
+        "--simplify-min-distance-km",
+        type=float,
+        default=1.0,
+        help="Minimum distance before nearby polygons can be merged in the simplified SVG (default: 1.0).",
+    )
+    parser.add_argument(
+        "--simplify-max-distance-gap-km",
+        type=float,
+        default=0.5,
+        help="Maximum distance gap between adjacent far polygons for simplification (default: 0.5).",
+    )
+    parser.add_argument(
+        "--simplify-max-offset-m",
+        type=float,
+        default=400.0,
+        help="Maximum local offset between adjacent far polygons for simplification (default: 400.0).",
+    )
     return parser
 
 
@@ -683,9 +701,9 @@ def _dedupe_adjacent_far_polygons(
     *,
     center_lon_deg: float,
     center_lat_deg: float,
-    min_distance_km: float = 1.5,
-    max_neighbor_distance_gap_km: float = 0.35,
-    max_neighbor_offset_m: float = 250.0,
+    min_distance_km: float = 1.0,
+    max_neighbor_distance_gap_km: float = 0.5,
+    max_neighbor_offset_m: float = 400.0,
 ) -> tuple[list[WaterPolygon], dict[str, int]]:
     if len(polygons) < 2:
         kept = list(polygons)
@@ -897,6 +915,9 @@ def build_svg_preview(
     center_lon_deg: float,
     radius_km: float,
     simplify: bool,
+    simplify_min_distance_km: float,
+    simplify_max_distance_gap_km: float,
+    simplify_max_offset_m: float,
     width: int,
     height: int,
     padding: float,
@@ -912,6 +933,9 @@ def build_svg_preview(
             list(polygons),
             center_lon_deg=float(center_lon_deg),
             center_lat_deg=float(center_lat_deg),
+            min_distance_km=float(simplify_min_distance_km),
+            max_neighbor_distance_gap_km=float(simplify_max_distance_gap_km),
+            max_neighbor_offset_m=float(simplify_max_offset_m),
         )
     else:
         polygons = list(polygons)
@@ -1136,6 +1160,9 @@ def main(argv: list[str] | None = None) -> int:
             center_lon_deg=float(args.lon),
             radius_km=float(args.radius_km),
             simplify=True,
+            simplify_min_distance_km=float(args.simplify_min_distance_km),
+            simplify_max_distance_gap_km=float(args.simplify_max_distance_gap_km),
+            simplify_max_offset_m=float(args.simplify_max_offset_m),
             width=int(args.svg_width),
             height=int(args.svg_height),
             padding=float(args.svg_padding),
@@ -1152,6 +1179,9 @@ def main(argv: list[str] | None = None) -> int:
             center_lon_deg=float(args.lon),
             radius_km=float(args.radius_km),
             simplify=False,
+            simplify_min_distance_km=float(args.simplify_min_distance_km),
+            simplify_max_distance_gap_km=float(args.simplify_max_distance_gap_km),
+            simplify_max_offset_m=float(args.simplify_max_offset_m),
             width=int(args.svg_width),
             height=int(args.svg_height),
             padding=float(args.svg_padding),
