@@ -22,8 +22,13 @@ def test_goes_failover_respects_allowed_satellites(tmp_path, monkeypatch) -> Non
     provider = GoesProvider(CloudDiscConfig(cache_dir=tmp_path))
     calls: list[str] = []
 
-    def fake_once(sat: str, when_utc: dt.datetime, search_back_minutes: int):
-        del when_utc, search_back_minutes
+    def fake_once(
+        sat: str,
+        when_utc: dt.datetime,
+        search_back_minutes: int,
+        abort_event=None,
+    ):
+        del when_utc, search_back_minutes, abort_event
         calls.append(sat)
         if sat == "G18":
             return _dummy_result()
