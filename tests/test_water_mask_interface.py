@@ -227,5 +227,9 @@ def test_load_water_surface_interface_lonlat_points_combines_near_and_far_roots(
     assert seen[0][1] == mod.DEFAULT_WATER_TILES_ROOT_125M
     assert seen[1][0] == 6.0
     assert seen[1][1] == mod.DEFAULT_WATER_TILES_ROOT_250M
-    assert seen[2][0] == 20.0
+    assert seen[2][0] == 12.0
     assert seen[2][1] == mod.DEFAULT_WATER_TILES_ROOT_500M
+    assert seen[3][0] == 18.0
+    assert seen[3][1] == mod.DEFAULT_WATER_TILES_ROOT_500M
+    assert seen[4][0] == 20.0
+    assert seen[4][1] == mod.DEFAULT_WATER_TILES_ROOT_500M

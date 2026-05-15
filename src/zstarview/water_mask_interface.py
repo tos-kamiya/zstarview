@@ -17,6 +17,8 @@ DEFAULT_WATER_TILES_ROOT_500M = Path(__file__).resolve().parent / "data" / "wate
 DEFAULT_WATER_TILES_ROOT = DEFAULT_WATER_TILES_ROOT_125M
 DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM = 2.0
 DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM_2 = 6.0
+DEFAULT_WATER_REPRESENTATIVE_SWITCH_DISTANCE_KM = 12.0
+DEFAULT_WATER_REPRESENTATIVE_SWITCH_DISTANCE_KM_2 = 18.0
 DEFAULT_WATER_INTERFACE_BBOX_SCALE = 1.2
 DEFAULT_WATER_INTERFACE_POINT_STRIDE = 1
 
@@ -97,6 +99,47 @@ def _band_category_for_tile_root(tile_root: Path) -> str:
     return "sea"
 
 
+def _water_band_specs(
+    *,
+    tile_root: Path | None,
+    max_distance_km: float,
+) -> list[tuple[Path, float, float | None, int]]:
+    if tile_root is None or tile_root == DEFAULT_WATER_TILES_ROOT:
+        return [
+            (
+                DEFAULT_WATER_TILES_ROOT_125M,
+                0.0,
+                min(float(max_distance_km), DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM),
+                1,
+            ),
+            (
+                DEFAULT_WATER_TILES_ROOT_250M,
+                DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM,
+                min(float(max_distance_km), DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM_2),
+                1,
+            ),
+            (
+                DEFAULT_WATER_TILES_ROOT_500M,
+                DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM_2,
+                min(float(max_distance_km), DEFAULT_WATER_REPRESENTATIVE_SWITCH_DISTANCE_KM),
+                1,
+            ),
+            (
+                DEFAULT_WATER_TILES_ROOT_500M,
+                DEFAULT_WATER_REPRESENTATIVE_SWITCH_DISTANCE_KM,
+                min(float(max_distance_km), DEFAULT_WATER_REPRESENTATIVE_SWITCH_DISTANCE_KM_2),
+                2,
+            ),
+            (
+                DEFAULT_WATER_TILES_ROOT_500M,
+                DEFAULT_WATER_REPRESENTATIVE_SWITCH_DISTANCE_KM_2,
+                float(max_distance_km),
+                4,
+            ),
+        ]
+    return [(tile_root, 0.0, float(max_distance_km), 1)]
+
+
 @dataclass(frozen=True, slots=True)
 class WaterSurfaceBandStats:
     band_name: str
@@ -174,6 +217,7 @@ def _extract_lonlat_points_from_mask(
     *,
     transform: object,
     stride: int = DEFAULT_WATER_INTERFACE_POINT_STRIDE,
+    representative_block_size: int = 1,
 ) -> tuple[tuple[float, float], ...]:
     water = np.asarray(mask, dtype=bool)
     if water.ndim != 2:
@@ -188,6 +232,24 @@ def _extract_lonlat_points_from_mask(
         cols = cols[keep]
         if rows.size == 0:
             return ()
+    representative_block_size = max(1, int(representative_block_size))
+    if representative_block_size > 1:
+        selected_indices: dict[tuple[int, int], tuple[int, int, float]] = {}
+        for row, col in zip(rows.tolist(), cols.tolist(), strict=False):
+            block_row = int(row) // representative_block_size
+            block_col = int(col) // representative_block_size
+            center_row = block_row * representative_block_size + (representative_block_size - 1) / 2.0
+            center_col = block_col * representative_block_size + (representative_block_size - 1) / 2.0
+            score = (float(row) - center_row) ** 2 + (float(col) - center_col) ** 2
+            key = (block_row, block_col)
+            current = selected_indices.get(key)
+            if current is None or score < current[2]:
+                selected_indices[key] = (int(row), int(col), float(score))
+        if not selected_indices:
+            return ()
+        ordered = [selected_indices[key] for key in sorted(selected_indices)]
+        rows = np.asarray([row for row, _col, _score in ordered], dtype=np.int64)
+        cols = np.asarray([col for _row, col, _score in ordered], dtype=np.int64)
     try:
         import rasterio.transform
     except ImportError as exc:  # pragma: no cover - dependency mismatch
@@ -203,6 +265,25 @@ def _extract_lonlat_points_from_mask(
     return tuple(points)
 
 
+def _mask_candidate_count(
+    mask: np.ndarray,
+    *,
+    stride: int = DEFAULT_WATER_INTERFACE_POINT_STRIDE,
+) -> int:
+    water = np.asarray(mask, dtype=bool)
+    if water.ndim != 2:
+        raise ValueError("mask must be a 2D array")
+    rows, cols = np.nonzero(water)
+    if rows.size == 0:
+        return 0
+    stride = max(1, int(stride))
+    if stride > 1:
+        keep = ((rows + cols) % stride) == 0
+        rows = rows[keep]
+        cols = cols[keep]
+    return int(rows.size)
+
+
 def _load_water_surface_interface_lonlat_points_for_root(
     *,
     center_lat_deg: float,
@@ -213,6 +294,7 @@ def _load_water_surface_interface_lonlat_points_for_root(
     stride: int = DEFAULT_WATER_INTERFACE_POINT_STRIDE,
     min_distance_km: float = 0.0,
     max_distance_km: float | None = None,
+    representative_block_size: int = 1,
 ) -> tuple[tuple[float, float], ...]:
     points, _stats = _load_water_surface_interface_lonlat_points_for_root_with_stats(
         center_lat_deg=center_lat_deg,
@@ -223,6 +305,7 @@ def _load_water_surface_interface_lonlat_points_for_root(
         stride=stride,
         min_distance_km=min_distance_km,
         max_distance_km=max_distance_km,
+        representative_block_size=representative_block_size,
     )
     return points
 
@@ -237,6 +320,7 @@ def _load_water_surface_interface_lonlat_points_for_root_with_stats(
     stride: int = DEFAULT_WATER_INTERFACE_POINT_STRIDE,
     min_distance_km: float = 0.0,
     max_distance_km: float | None = None,
+    representative_block_size: int = 1,
 ) -> tuple[tuple[tuple[float, float], ...], WaterSurfaceBandStats]:
     if radius_km <= 0.0:
         raise ValueError("radius_km must be positive")
@@ -246,6 +330,7 @@ def _load_water_surface_interface_lonlat_points_for_root_with_stats(
         raise ValueError("min_distance_km must be non-negative")
     if max_distance_km is not None and max_distance_km <= min_distance_km:
         raise ValueError("max_distance_km must be greater than min_distance_km")
+    representative_block_size = max(1, int(representative_block_size))
 
     request_bbox = bbox_from_point(float(center_lat_deg), float(center_lon_deg), float(radius_km))
     expanded_bbox = bbox_from_point(
@@ -282,12 +367,16 @@ def _load_water_surface_interface_lonlat_points_for_root_with_stats(
             if mask.size == 0:
                 continue
             loaded_tile_count += 1
+            raw_point_count += _mask_candidate_count(
+                mask,
+                stride=stride,
+            )
             boundary_points = _extract_lonlat_points_from_mask(
                 mask,
                 transform=dataset.window_transform(window),
                 stride=stride,
+                representative_block_size=representative_block_size,
             )
-            raw_point_count += len(boundary_points)
             collapsed_point_count += len(boundary_points)
             for lon, lat in boundary_points:
                 if request_bbox[0] <= lon <= request_bbox[2] and request_bbox[1] <= lat <= request_bbox[3]:
@@ -313,6 +402,8 @@ def _load_water_surface_interface_lonlat_points_for_root_with_stats(
         band_name = "500m"
     else:
         band_name = band_category
+    if representative_block_size > 1 and band_name == "500m":
+        band_name = f"{band_name} x{representative_block_size}"
     visible_point_count = len(points)
     stats = WaterSurfaceBandStats(
         band_name=band_name,
@@ -349,60 +440,25 @@ def load_water_surface_interface_lonlat_points(
     bbox_scale: float = DEFAULT_WATER_INTERFACE_BBOX_SCALE,
     stride: int = DEFAULT_WATER_INTERFACE_POINT_STRIDE,
 ) -> tuple[tuple[float, float], ...]:
-    tile_root = DEFAULT_WATER_TILES_ROOT if tile_root is None else tile_root
-    if tile_root == DEFAULT_WATER_TILES_ROOT:
-        near_tile_root = DEFAULT_WATER_TILES_ROOT_125M
-        mid_tile_root = DEFAULT_WATER_TILES_ROOT_250M
-        far_tile_root = DEFAULT_WATER_TILES_ROOT_500M
-    else:
-        near_tile_root = tile_root
-        mid_tile_root = tile_root
-        far_tile_root = tile_root
-
     points: set[tuple[float, float]] = set()
-    near_radius_km = min(float(radius_km), DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM)
-    near_points, _near_loaded_tile_count = _normalize_points_and_count(
-        _load_water_surface_interface_lonlat_points_for_root(
-        center_lat_deg=float(center_lat_deg),
-        center_lon_deg=float(center_lon_deg),
-        radius_km=near_radius_km,
-        tile_root=near_tile_root,
-        bbox_scale=bbox_scale,
-        stride=stride,
-        min_distance_km=0.0,
-        max_distance_km=DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM,
-    )
-    )
-    points.update(near_points)
-    mid_radius_km = min(float(radius_km), DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM_2)
-    if float(radius_km) > DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM and mid_tile_root != near_tile_root:
-        mid_points, _mid_loaded_tile_count = _normalize_points_and_count(
-            _load_water_surface_interface_lonlat_points_for_root(
+    for band_root, min_distance_km, max_distance_km, representative_block_size in _water_band_specs(
+        tile_root=tile_root,
+        max_distance_km=float(radius_km),
+    ):
+        if max_distance_km is not None and max_distance_km <= min_distance_km:
+            continue
+        band_points = _load_water_surface_interface_lonlat_points_for_root(
             center_lat_deg=float(center_lat_deg),
             center_lon_deg=float(center_lon_deg),
-            radius_km=mid_radius_km,
-            tile_root=mid_tile_root,
+            radius_km=float(max_distance_km),
+            tile_root=band_root,
             bbox_scale=bbox_scale,
             stride=stride,
-            min_distance_km=DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM,
-            max_distance_km=DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM_2,
+            min_distance_km=float(min_distance_km),
+            max_distance_km=max_distance_km,
+            representative_block_size=representative_block_size,
         )
-        )
-        points.update(mid_points)
-    if float(radius_km) > DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM_2 and far_tile_root != near_tile_root:
-        far_points, _far_loaded_tile_count = _normalize_points_and_count(
-            _load_water_surface_interface_lonlat_points_for_root(
-            center_lat_deg=float(center_lat_deg),
-            center_lon_deg=float(center_lon_deg),
-            radius_km=float(radius_km),
-            tile_root=far_tile_root,
-            bbox_scale=bbox_scale,
-            stride=stride,
-            min_distance_km=DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM_2,
-            max_distance_km=float(radius_km),
-        )
-        )
-        points.update(far_points)
+        points.update(band_points)
     return tuple(sorted(points))
 
 
@@ -418,34 +474,12 @@ def sample_water_surface_interface_points_with_stats(
 ) -> tuple[tuple[WaterOverlayPoint, ...], tuple[WaterSurfaceBandStats, ...]]:
     overlay_points: list[WaterOverlayPoint] = []
     band_stats: list[WaterSurfaceBandStats] = []
-    if tile_root is None or tile_root == DEFAULT_WATER_TILES_ROOT:
-        band_roots: list[tuple[Path, float, float | None]] = [
-            (
-                DEFAULT_WATER_TILES_ROOT_125M,
-                0.0,
-                min(float(max_distance_km), DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM),
-            ),
-        ]
-        if float(max_distance_km) > DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM:
-            band_roots.append(
-                (
-                    DEFAULT_WATER_TILES_ROOT_250M,
-                    DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM,
-                    min(float(max_distance_km), DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM_2),
-                )
-            )
-        if float(max_distance_km) > DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM_2:
-            band_roots.append(
-                (
-                    DEFAULT_WATER_TILES_ROOT_500M,
-                    DEFAULT_WATER_TILE_SWITCH_DISTANCE_KM_2,
-                    float(max_distance_km),
-                )
-            )
-    else:
-        band_roots = [(tile_root, 0.0, float(max_distance_km))]
-
-    for band_root, min_distance_km, max_distance_km_band in band_roots:
+    for band_root, min_distance_km, max_distance_km_band, representative_block_size in _water_band_specs(
+        tile_root=tile_root,
+        max_distance_km=float(max_distance_km),
+    ):
+        if max_distance_km_band is not None and max_distance_km_band <= min_distance_km:
+            continue
         lonlat_points, stats = _load_water_surface_interface_lonlat_points_for_root_with_stats(
             center_lat_deg=float(observer_lat_deg),
             center_lon_deg=float(observer_lon_deg),
@@ -455,6 +489,7 @@ def sample_water_surface_interface_points_with_stats(
             stride=stride,
             min_distance_km=float(min_distance_km),
             max_distance_km=max_distance_km_band,
+            representative_block_size=representative_block_size,
         )
         band_stats.append(stats)
         if not lonlat_points:
