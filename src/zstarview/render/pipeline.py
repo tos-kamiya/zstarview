@@ -13,7 +13,6 @@ from ..gui.composite import CloudAmountField, SkyCompositorCache
 from ..night_lights import NightLightGlowProfile
 from ..satellites.types import SatelliteOverlayPoint
 from ..water_overlay import WaterOverlayPoint
-from ..water_mask_interface import sample_water_surface_horizon_layers_points
 from ..types import CelestialData, ScreenGeometry, ViewerData
 from ..types import CelestialObject, StarsTable, UrbanOutlinePolyline
 from ..search.models import SearchJumpTarget
@@ -133,27 +132,8 @@ def _should_draw_water_overlay(scene: RenderSceneData, style: RenderStyle) -> bo
 
 
 def _terrain_horizon_water_overlay_points(scene: RenderSceneData) -> list[WaterOverlayPoint] | None:
-    terrain_profile = scene.terrain_horizon_profile
-    terrain_distances = scene.terrain_horizon_profile_distances_m
-    if terrain_profile and terrain_distances and len(terrain_profile) == len(terrain_distances):
-        water_points = sample_water_surface_horizon_layers_points(
-            observer_lat_deg=float(scene.viewer.location[0]),
-            observer_lon_deg=float(scene.viewer.location[1]),
-            horizon_profile_altaz=list(terrain_profile),
-            horizon_profile_distances_m=list(terrain_distances),
-            secondary_horizon_profile_altaz_layers=(
-                scene.terrain_horizon_secondary_profile_altaz_layers
-                if scene.terrain_horizon_secondary_profile_altaz_layers
-                else None
-            ),
-            secondary_horizon_profile_distances_m_layers=(
-                scene.terrain_horizon_secondary_profile_distances_m_layers
-                if scene.terrain_horizon_secondary_profile_distances_m_layers
-                else None
-            ),
-        )
-        return list(water_points) if water_points else None
-    return scene.water_overlay_points
+    water_points = scene.water_overlay_points
+    return list(water_points) if water_points else None
 
 
 @dataclass(frozen=True)

@@ -1295,8 +1295,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.start_background_cloud_update(reason="initial")
         if self.terrain_horizon_opacity > 0.0:
             self.start_background_terrain_horizon_update(reason="initial")
-        elif self.water_overlay_opacity > 0.0:
-            self.start_background_water_overlay_update(reason="initial")
         if self.urban_outline_opacity > 0.0:
             self.start_background_urban_outline_update(reason="initial")
         if self._satellite_layer_enabled():
@@ -2964,9 +2962,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._compositor.invalidate()
         if enable_terrain:
             self.start_background_terrain_horizon_update(reason="toggle-on")
-            self.start_background_water_overlay_update(reason="toggle-on")
-        else:
-            self.start_background_water_overlay_update(reason="toggle-off")
         self.request_client_update()
 
     def toggle_water_overlay(self) -> None:
@@ -2987,6 +2982,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             and self._action_toggle_water_overlay.isChecked() != enable_water_overlay
         ):
             self._action_toggle_water_overlay.setChecked(enable_water_overlay)
+        if enable_water_overlay and self.terrain_horizon_state.ground_elevation_m is not None:
+            self.start_background_water_overlay_update(reason="toggle-on")
         self.request_client_update()
 
     def toggle_earth_guide(self) -> None:

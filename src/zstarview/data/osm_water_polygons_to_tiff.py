@@ -10,7 +10,8 @@ gdal.UseExceptions()
 DEFAULT_INPUT_SHP = "water_polygons.shp"
 DEFAULT_BASE_TILE_ROOT = "water_tiles"
 RESOLUTION_TO_OUTPUT_DIR = {
-    100: "water_tiles_100m",
+    125: "water_tiles_125m",
+    250: "water_tiles_250m",
     500: "water_tiles_500m",
 }
 
@@ -28,11 +29,13 @@ def _write_marker(marker_path: Path) -> None:
 
 
 def _resolution_config(resolution_m: int) -> tuple[int, int, float, str]:
-    if resolution_m == 100:
-        return 40, 20, 5.0, RESOLUTION_TO_OUTPUT_DIR[100]
+    if resolution_m == 125:
+        return 32, 16, 4.0, RESOLUTION_TO_OUTPUT_DIR[125]
+    if resolution_m == 250:
+        return 16, 8, 2.0, RESOLUTION_TO_OUTPUT_DIR[250]
     if resolution_m == 500:
         return 8, 4, 1.0, RESOLUTION_TO_OUTPUT_DIR[500]
-    raise ValueError("resolution_m must be 100 or 500")
+    raise ValueError("resolution_m must be 125, 250, or 500")
 
 
 def _parse_args() -> argparse.Namespace:
@@ -45,8 +48,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--resolution-m",
         type=int,
-        choices=(100, 500),
-        default=100,
+        choices=(125, 250, 500),
+        default=125,
         help="Target raster resolution in meters.",
     )
     parser.add_argument(

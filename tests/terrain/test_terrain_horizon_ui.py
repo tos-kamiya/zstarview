@@ -878,16 +878,13 @@ def test_toggle_terrain_horizon_enables_opacity_and_requests_background_update()
     dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(
         str(kwargs.get("reason"))
     )
-    dummy.start_background_water_overlay_update = lambda **kwargs: calls.append(
-        str(kwargs.get("reason"))
-    )
     dummy.update = lambda: calls.append("update")
 
     SkyWindow.toggle_terrain_horizon(dummy)
 
     assert dummy.terrain_horizon_opacity == 0.25
     assert dummy._action_toggle_terrain_horizon.isChecked() is True
-    assert calls == ["invalidate", "toggle-on", "toggle-on", "request"]
+    assert calls == ["invalidate", "toggle-on", "request"]
 
 
 def test_toggle_terrain_horizon_off_keeps_retained_ground_elevation() -> None:
@@ -904,9 +901,6 @@ def test_toggle_terrain_horizon_off_keeps_retained_ground_elevation() -> None:
     dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(
         str(kwargs.get("reason"))
     )
-    dummy.start_background_water_overlay_update = lambda **kwargs: calls.append(
-        str(kwargs.get("reason"))
-    )
     dummy.update = lambda: calls.append("update")
 
     SkyWindow.toggle_terrain_horizon(dummy)
@@ -914,7 +908,7 @@ def test_toggle_terrain_horizon_off_keeps_retained_ground_elevation() -> None:
     assert dummy.terrain_horizon_opacity == 0.0
     assert dummy.terrain_horizon_state.ground_elevation_m == 42.0
     assert dummy._action_toggle_terrain_horizon.isChecked() is False
-    assert calls == ["invalidate", "toggle-off", "request"]
+    assert calls == ["invalidate", "request"]
 
 
 def test_water_overlay_ground_elevation_prefers_retained_terrain_ground() -> None:
@@ -974,9 +968,6 @@ def test_start_initial_data_load_defers_water_until_terrain_ready() -> None:
     dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(
         f"terrain:{kwargs.get('reason')}"
     )
-    dummy.start_background_water_overlay_update = lambda **kwargs: calls.append(
-        f"water:{kwargs.get('reason')}"
-    )
     dummy.start_background_urban_outline_update = lambda **kwargs: calls.append(
         f"urban:{kwargs.get('reason')}"
     )
@@ -986,7 +977,7 @@ def test_start_initial_data_load_defers_water_until_terrain_ready() -> None:
     assert calls == ["sky:True", "terrain:initial"]
 
 
-def test_start_initial_data_load_starts_water_when_terrain_disabled() -> None:
+def test_start_initial_data_load_skips_water_when_terrain_disabled() -> None:
     dummy = SimpleNamespace()
     dummy._startup_initial_load_started = False
     dummy._clouddisc = None
@@ -1006,16 +997,13 @@ def test_start_initial_data_load_starts_water_when_terrain_disabled() -> None:
     dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(
         f"terrain:{kwargs.get('reason')}"
     )
-    dummy.start_background_water_overlay_update = lambda **kwargs: calls.append(
-        f"water:{kwargs.get('reason')}"
-    )
     dummy.start_background_urban_outline_update = lambda **kwargs: calls.append(
         f"urban:{kwargs.get('reason')}"
     )
 
     SkyWindow.start_initial_data_load(dummy)
 
-    assert calls == ["sky:True", "water:initial"]
+    assert calls == ["sky:True"]
 
 
 def test_toggle_earth_guide_respects_cli_lockout() -> None:

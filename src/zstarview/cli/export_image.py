@@ -9,6 +9,7 @@ import select
 import subprocess
 import sys
 import time
+from collections import Counter
 from dataclasses import replace
 from pathlib import Path
 from typing import TypedDict
@@ -109,7 +110,8 @@ from ..water_overlay import (
     WaterOverlayPoint,
     resolve_water_scan_radius_km,
 )
-from ..water_mask_interface import sample_water_surface_interface_points
+from ..water_mask_interface import sample_water_surface_interface_points_with_stats
+from ..water_mask_interface import WaterSurfaceBandStats
 from ..types import CelestialData, UrbanOutlinePolyline, ViewerData
 from ..gui.composite import SkyCompositorCache, build_cloud_amount_field_from_rgba
 from ..gui.sky_worker import compute_sky_snapshot
@@ -201,6 +203,24 @@ def _remaining_timeout_seconds(deadline: float | None) -> float | None:
 def _timed_out(deadline: float | None) -> bool:
     remaining = _remaining_timeout_seconds(deadline)
     return remaining is not None and remaining <= 0.0
+
+
+def _water_overlay_band_stats_text(stats: WaterSurfaceBandStats) -> str:
+    return (
+        f"{stats.band_name} tiles={int(stats.loaded_tile_count)} "
+        f"raw={int(stats.raw_point_count)} "
+        f"collapsed={int(stats.collapsed_point_count)} "
+        f"visible={int(stats.visible_point_count)}"
+    )
+
+
+def _water_overlay_band_counts(points: list[WaterOverlayPoint] | tuple[WaterOverlayPoint, ...]) -> tuple[int, int, int]:
+    counts = Counter(str(getattr(point, "water_category", "")).strip().lower() for point in points)
+    return (
+        int(counts.get("sea-125", 0)),
+        int(counts.get("sea-250", 0)),
+        int(counts.get("sea-500", 0)),
+    )
 
 
 def _build_window_inputs_from_args(
@@ -633,18 +653,31 @@ def _fetch_water_overlay_layer(
     )
     if _timed_out(deadline):
         raise TimeoutError("water timed out")
-    water_points = sample_water_surface_interface_points(
+    water_points, band_stats = sample_water_surface_interface_points_with_stats(
         observer_lat_deg=float(viewer_data.lat_deg),
         observer_lon_deg=float(viewer_data.lon_deg),
         observer_height_m=float(viewer_data.observer_height_m) + observer_ground_m,
         max_distance_km=scan_radius_km,
     )
-    if water_points:
-        nearest_distance_km = min(float(point.distance_km) for point in water_points)
+    nearest_distance_km = min((float(point.distance_km) for point in water_points), default=None)
+    band_100_count, band_250_count, band_500_count = _water_overlay_band_counts(water_points)
+    for band_stat in band_stats:
+        logger.info("Water band stats: %s", _water_overlay_band_stats_text(band_stat))
+    if nearest_distance_km is None:
         logger.info(
-            "Water mask points: %d visible, nearest sea point %.3f km",
+            "Water mask points: 0 visible, nearest sea point n/a, bands: 125m=%d 250m=%d 500m=%d",
+            band_100_count,
+            band_250_count,
+            band_500_count,
+        )
+    else:
+        logger.info(
+            "Water mask points: %d visible, nearest sea point %.3f km, bands: 125m=%d 250m=%d 500m=%d",
             len(water_points),
             nearest_distance_km,
+            band_100_count,
+            band_250_count,
+            band_500_count,
         )
     return list(water_points) if water_points else None
 

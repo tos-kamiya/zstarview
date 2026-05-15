@@ -2430,6 +2430,71 @@ def test_draw_viewport_interaction_layers_skips_water_when_terrain_horizon_hidde
     assert calls == ["terrain"]
 
 
+def test_draw_viewport_interaction_layers_prefers_scene_water_overlay_points(
+    monkeypatch,
+) -> None:
+    terrain_calls: list[str] = []
+    seen_water_points: list[object] = []
+    sentinel_water_points = [object(), object()]
+
+    monkeypatch.setattr(
+        pipeline_module.render_guides,
+        "draw_sky_reference_lines",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
+        "draw_terrain_horizon_fast",
+        lambda *_args, **_kwargs: terrain_calls.append("terrain"),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
+        "draw_water_overlay_points",
+        lambda _p, _g, water_points, *_args, **_kwargs: seen_water_points.append(water_points),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
+        "draw_urban_outlines",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_guides,
+        "draw_direction_labels",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_guides,
+        "draw_zenith_marker",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_stars,
+        "draw_stars_fast",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_stars,
+        "draw_stars_normal",
+        lambda *_args, **_kwargs: None,
+    )
+
+    scene = replace(
+        _make_scene(terrain_horizon_profile=[(1.0, 10.0)]),
+        water_overlay_points=sentinel_water_points,
+    )
+    pipeline_module._draw_viewport_interaction_layers(
+        painter=object(),
+        geometry=SimpleNamespace(radius=600),
+        viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
+        scene=scene,
+        style=_make_style(terrain_horizon_opacity=0.25, water_overlay_opacity=0.5),
+        hud=_make_hud(),
+    )
+
+    assert terrain_calls == ["terrain"]
+    assert seen_water_points == [sentinel_water_points]
+
+
 def test_render_base_scene_skips_water_when_terrain_horizon_hidden(monkeypatch) -> None:
     calls: list[str] = []
     monkeypatch.setattr(pipeline_module, "_clear_background_layer", lambda *_args, **_kwargs: None)

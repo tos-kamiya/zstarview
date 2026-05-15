@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,9 +17,13 @@ from ..water_overlay import (
     DEFAULT_WATER_RADIUS_KM,
     DEFAULT_WATER_SAMPLE_STEP_M,
     DEFAULT_WATER_AZIMUTH_STEP_DEG,
+    WaterOverlayPoint,
     resolve_water_scan_radius_km,
 )
-from ..water_mask_interface import sample_water_surface_interface_points
+from ..water_mask_interface import (
+    WaterSurfaceBandStats,
+    sample_water_surface_interface_points_with_stats,
+)
 from ..terrain import GeoTiffDem
 from ..terrain import build_download_bbox
 from ..terrain import fetch_copernicus_dem
@@ -31,11 +36,30 @@ from .water_overlay_cache import (
 logger = logging.getLogger(__name__)
 
 
+def _water_overlay_band_counts(points: tuple[WaterOverlayPoint, ...] | list[WaterOverlayPoint]) -> tuple[int, int, int]:
+    counts = Counter(str(getattr(point, "water_category", "")).strip().lower() for point in points)
+    return (
+        int(counts.get("sea-125", 0)),
+        int(counts.get("sea-250", 0)),
+        int(counts.get("sea-500", 0)),
+    )
+
+
+def _water_overlay_band_stats_text(stats: WaterSurfaceBandStats) -> str:
+    return (
+        f"{stats.band_name} tiles={int(stats.loaded_tile_count)} "
+        f"raw={int(stats.raw_point_count)} "
+        f"collapsed={int(stats.collapsed_point_count)} "
+        f"visible={int(stats.visible_point_count)}"
+    )
+
+
 @dataclass(slots=True)
 class _WaterOverlayScopeCache:
     footprints: tuple
     fetched_at_utc: datetime | None
     sea_points: tuple | None = None
+    sea_band_stats: tuple[WaterSurfaceBandStats, ...] | None = None
     dem_points: tuple | None = None
     dem_ground_m: float | None = None
 
@@ -116,6 +140,8 @@ class WaterOverlayController(QObject):
                 observer_ground_m=float(observer_ground_m),
             )
             if cached_variant is not None:
+                for band_stat in cached_scope.sea_band_stats or ():
+                    logger.info("Water band stats: %s", _water_overlay_band_stats_text(band_stat))
                 self._emit_variant(
                     cached_variant["points"],
                     mode=cached_variant["mode"],
@@ -249,7 +275,7 @@ class WaterOverlayController(QObject):
                 cached_scope=cached_scope,
                 now_utc=datetime.now(timezone.utc),
             )
-            active_points, sea_points, dem_points = self._build_requested_variants(
+            active_points, sea_points, dem_points, band_stats = self._build_requested_variants(
                 scope_cache,
                 observer_lat_deg=float(lat_deg),
                 observer_lon_deg=float(lon_deg),
@@ -258,18 +284,32 @@ class WaterOverlayController(QObject):
                 use_dem_ground=bool(use_dem_ground),
                 scan_radius_km=scan_radius_km,
             )
-            if active_points:
-                nearest_distance_km = min(float(point.distance_km) for point in active_points)
+            nearest_distance_km = min((float(point.distance_km) for point in active_points), default=None)
+            band_100_count, band_250_count, band_500_count = _water_overlay_band_counts(active_points)
+            for band_stat in band_stats:
+                logger.info("Water band stats: %s", _water_overlay_band_stats_text(band_stat))
+            if nearest_distance_km is None:
                 logger.info(
-                    "Water mask points: %d visible, nearest sea point %.3f km",
+                    "Water mask points: 0 visible, nearest sea point n/a, bands: 125m=%d 250m=%d 500m=%d",
+                    band_100_count,
+                    band_250_count,
+                    band_500_count,
+                )
+            else:
+                logger.info(
+                    "Water mask points: %d visible, nearest sea point %.3f km, bands: 125m=%d 250m=%d 500m=%d",
                     len(active_points),
                     nearest_distance_km,
+                    band_100_count,
+                    band_250_count,
+                    band_500_count,
                 )
             mode = "sea"
             self._store_scope_cache(
                 scope_key,
                 scope_cache,
                 sea_points=sea_points,
+                sea_band_stats=band_stats,
                 dem_points=dem_points,
                 dem_ground_m=None,
             )
@@ -350,6 +390,7 @@ class WaterOverlayController(QObject):
                 footprints=(),
                 fetched_at_utc=now_utc,
                 sea_points=None,
+                sea_band_stats=None,
                 dem_points=None,
                 dem_ground_m=None,
             )
@@ -371,18 +412,20 @@ class WaterOverlayController(QObject):
         observer_ground_m: float,
         use_dem_ground: bool,
         scan_radius_km: float,
-    ) -> tuple[tuple, tuple | None, tuple | None]:
+    ) -> tuple[tuple, tuple | None, tuple | None, tuple[WaterSurfaceBandStats, ...]]:
         sea_points = scope_cache.sea_points
         if sea_points is None:
-            sea_points = sample_water_surface_interface_points(
+            sea_points, band_stats = sample_water_surface_interface_points_with_stats(
                 observer_lat_deg=observer_lat_deg,
                 observer_lon_deg=observer_lon_deg,
                 observer_height_m=float(observer_height_m) + float(observer_ground_m),
                 max_distance_km=scan_radius_km,
             )
+        else:
+            band_stats = ()
         active_points = sea_points
         dem_points = sea_points if use_dem_ground else None
-        return active_points, sea_points, dem_points
+        return active_points, sea_points, dem_points, band_stats
 
     def _build_target_ground_sampler(
         self,
@@ -437,12 +480,15 @@ class WaterOverlayController(QObject):
         scope_cache: _WaterOverlayScopeCache,
         *,
         sea_points: tuple | None,
+        sea_band_stats: tuple[WaterSurfaceBandStats, ...] | None,
         dem_points: tuple | None,
         dem_ground_m: float | None,
     ) -> None:
         with self._lock:
             if sea_points is not None:
                 scope_cache.sea_points = sea_points
+            if sea_band_stats is not None:
+                scope_cache.sea_band_stats = sea_band_stats
             if dem_points is not None:
                 scope_cache.dem_points = dem_points
                 scope_cache.dem_ground_m = dem_ground_m

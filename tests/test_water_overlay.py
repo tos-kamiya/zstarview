@@ -611,3 +611,16 @@ def test_thin_water_overlay_points_pairwise_keeps_one_point_per_pair() -> None:
     assert [point.scan_distance_index for point in got if point.scan_azimuth_index == 0] == [0, 2]
     assert [point.scan_distance_index for point in got if point.scan_azimuth_index == 1] == [1, 3]
     assert any(point.scan_distance_index is None for point in got)
+
+
+def test_water_overlay_point_color_rgb_differs_by_sea_band() -> None:
+    assert _water_overlay_point_color_rgb(  # noqa: SLF001
+        WaterOverlayPoint("a", 0.0, 0.0, 0.0, water_category="sea-125")
+    ) != _water_overlay_point_color_rgb(  # noqa: SLF001
+        WaterOverlayPoint("b", 0.0, 0.0, 0.0, water_category="sea-250")
+    )
+    assert _water_overlay_point_color_rgb(  # noqa: SLF001
+        WaterOverlayPoint("c", 0.0, 0.0, 0.0, water_category="sea-500")
+    ) != _water_overlay_point_color_rgb(  # noqa: SLF001
+        WaterOverlayPoint("d", 0.0, 0.0, 0.0, water_category="sea")
+    )

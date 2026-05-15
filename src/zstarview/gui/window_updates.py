@@ -807,8 +807,6 @@ class SkyWindowUpdatesMixin:
         self._refresh_water_overlay_active_points()
         if banner:
             self.terrain_horizon_state.set_error_banner(banner)
-        if not self._is_shutting_down:
-            self.start_background_water_overlay_update(reason="terrain-failed")
         self._compositor.invalidate()
         self.request_client_update()
 

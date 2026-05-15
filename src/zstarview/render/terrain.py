@@ -54,9 +54,12 @@ TERRAIN_SECONDARY_RIDGE_GLOW_OUTER_ALPHA_SCALE = 0.06
 TERRAIN_SECONDARY_RIDGE_GLOW_MID_ALPHA_SCALE = 0.18
 WATER_OVERLAY_POINT_COLOR_RGB = (122, 218, 240)
 WATER_OVERLAY_SEA_COLOR_RGB = (76, 140, 255)
+WATER_OVERLAY_SEA_125_COLOR_RGB = (76, 140, 255)
+WATER_OVERLAY_SEA_250_COLOR_RGB = (54, 200, 184)
+WATER_OVERLAY_SEA_500_COLOR_RGB = (255, 170, 64)
 WATER_OVERLAY_LAKE_COLOR_RGB = (104, 196, 168)
 WATER_OVERLAY_RIVER_COLOR_RGB = (94, 214, 255)
-WATER_OVERLAY_POINT_RADIUS_PX = 10.0
+WATER_OVERLAY_POINT_RADIUS_PX = 5.0
 
 
 def _urban_outline_foreground_alpha(opacity: float) -> float:
@@ -261,6 +264,12 @@ def _water_overlay_point_color_rgb(water_point: WaterOverlayPoint) -> tuple[int,
     category = str(getattr(water_point, "water_category", "")).strip().lower()
     if category == "sea":
         return WATER_OVERLAY_SEA_COLOR_RGB
+    if category == "sea-125":
+        return WATER_OVERLAY_SEA_125_COLOR_RGB
+    if category == "sea-250":
+        return WATER_OVERLAY_SEA_250_COLOR_RGB
+    if category == "sea-500":
+        return WATER_OVERLAY_SEA_500_COLOR_RGB
     if category == "river":
         return WATER_OVERLAY_RIVER_COLOR_RGB
     if category == "lake":

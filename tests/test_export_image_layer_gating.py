@@ -9,6 +9,7 @@ import zstarview.cli.export_image as mod
 import pytest
 from zstarview.cli.args import SKY_OPACITY_DEFAULT
 from zstarview.gui.window_inputs import SkyWindowRuntimeOptions
+from zstarview.water_mask_interface import WaterSurfaceBandStats
 from zstarview.water_overlay import WaterOverlayPoint
 
 
@@ -220,20 +221,32 @@ def test_fetch_water_overlay_layer_uses_observer_ground_and_eye_height(monkeypat
     def _sample_water_surface_interface_points(*_args, **kwargs):
         captured["observer_height_m"] = float(kwargs["observer_height_m"])
         captured["max_distance_km"] = float(kwargs["max_distance_km"])
-        return (WaterOverlayPoint("water", 10.0, 20.0, 0.5),)
+        return (
+            (WaterOverlayPoint("water", 10.0, 20.0, 0.5, water_category="sea-500"),),
+            (
+                WaterSurfaceBandStats("125m", 0, 0, 0, 0),
+                WaterSurfaceBandStats("250m", 0, 0, 0, 0),
+                WaterSurfaceBandStats("500m", 1, 9, 1, 1),
+            ),
+        )
 
-    monkeypatch.setattr(mod, "sample_water_surface_interface_points", _sample_water_surface_interface_points)
+    monkeypatch.setattr(
+        mod,
+        "sample_water_surface_interface_points_with_stats",
+        _sample_water_surface_interface_points,
+    )
 
     with caplog.at_level("INFO", logger="zstarview.cli.export_image"):
         got = mod._fetch_water_overlay_layer(viewer_data=viewer_data, deadline=None)
 
-    assert got == [WaterOverlayPoint("water", 10.0, 20.0, 0.5)]
+    assert got == [WaterOverlayPoint("water", 10.0, 20.0, 0.5, water_category="sea-500")]
     assert captured["observer_height_m"] == 43.7
     assert captured["max_distance_km"] == mod.resolve_water_scan_radius_km(
         43.7,
         minimum_distance_km=mod.DEFAULT_WATER_RADIUS_KM,
     )
-    assert "Water mask points: 1 visible, nearest sea point 0.500 km" in caplog.text
+    assert "Water band stats: 500m tiles=1 raw=9 collapsed=1 visible=1" in caplog.text
+    assert "Water mask points: 1 visible, nearest sea point 0.500 km, bands: 125m=0 250m=0 500m=1" in caplog.text
 
 
 def test_fetch_terrain_horizon_layer_uses_sea_level_fallback(monkeypatch) -> None:

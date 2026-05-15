@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import zstarview.gui.water_overlay_controller as mod
 from zstarview.gui.water_overlay_controller import WaterOverlayController
+from zstarview.water_mask_interface import WaterSurfaceBandStats
 from zstarview.water_overlay import WaterOverlayPoint
 
 
@@ -15,7 +16,7 @@ def test_water_overlay_controller_uses_compact_failure_banner_and_log(
 
     monkeypatch.setattr(
         mod,
-        "sample_water_surface_interface_points",
+        "sample_water_surface_interface_points_with_stats",
         lambda **kwargs: (_ for _ in ()).throw(RuntimeError("HTTP 504")),
     )
     controller._active_key = (35.0, 139.0, 1.7, 0.0, False)  # noqa: SLF001
@@ -45,11 +46,18 @@ def test_water_overlay_controller_uses_sea_mask_points_before_sampling(monkeypat
 
     monkeypatch.setattr(
         mod,
-        "sample_water_surface_interface_points",
+        "sample_water_surface_interface_points_with_stats",
         lambda **kwargs: (
             observed.setdefault("kwargs", kwargs),
-            WaterOverlayPoint("water-mask", 10.0, 20.0, 0.5, water_category="sea"),
-        )[1:],
+            (
+                (WaterOverlayPoint("water-mask", 10.0, 20.0, 0.5, water_category="sea-250"),),
+                (
+                    WaterSurfaceBandStats("125m", 0, 0, 0, 0),
+                    WaterSurfaceBandStats("250m", 1, 12, 1, 1),
+                    WaterSurfaceBandStats("500m", 0, 0, 0, 0),
+                ),
+            ),
+        )[1],
     )
 
     scope_cache = mod._WaterOverlayScopeCache(  # noqa: SLF001
@@ -73,4 +81,7 @@ def test_water_overlay_controller_uses_sea_mask_points_before_sampling(monkeypat
 
     assert float(observed["kwargs"]["observer_height_m"]) == 0.0
     assert float(observed["kwargs"]["max_distance_km"]) == 2.0
-    assert "Water mask points: 1 visible, nearest sea point 0.500 km" in caplog.text
+    assert "Water band stats: 125m tiles=0 raw=0 collapsed=0 visible=0" in caplog.text
+    assert "Water band stats: 250m tiles=1 raw=12 collapsed=1 visible=1" in caplog.text
+    assert "Water band stats: 500m tiles=0 raw=0 collapsed=0 visible=0" in caplog.text
+    assert "Water mask points: 1 visible, nearest sea point 0.500 km, bands: 125m=0 250m=1 500m=0" in caplog.text
