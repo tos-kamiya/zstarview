@@ -98,26 +98,18 @@ from ..terrain import (
     WGS84_GEOD,
     build_distance_samples,
     build_download_bbox,
+    compute_flat_ground_horizon_layers,
     compute_horizon_layers,
     fetch_copernicus_dem,
     reduce_profile_to_altaz,
     sample_ground_elevation,
 )
 from ..water_overlay import (
-    DEFAULT_WATER_AZIMUTH_STEP_DEG,
-    DEFAULT_WATER_OVERPASS_ENDPOINT,
     DEFAULT_WATER_RADIUS_KM,
-    DEFAULT_WATER_SAMPLE_STEP_M,
-    DEFAULT_WATER_TIMEOUT_S,
-    DEFAULT_WATER_USER_AGENT,
-    bbox_from_point,
-    extract_water_polygons,
-    fetch_overpass_json,
     WaterOverlayPoint,
     resolve_water_scan_radius_km,
-    sample_water_overlay_points,
-    simplify_water_footprints_for_observer,
 )
+from ..water_mask_interface import sample_water_surface_interface_points
 from ..types import CelestialData, UrbanOutlinePolyline, ViewerData
 from ..gui.composite import SkyCompositorCache, build_cloud_amount_field_from_rgba
 from ..gui.sky_worker import compute_sky_snapshot
@@ -556,11 +548,29 @@ def _fetch_terrain_horizon_layer(
             != "No Copernicus DEM tiles were downloaded for the requested area."
         ):
             raise
+        observer = ObserverLocation(
+            latitude_deg=float(viewer_data.lat_deg),
+            longitude_deg=float(viewer_data.lon_deg),
+            observer_ground_m=0.0,
+            observer_eye_m=float(viewer_data.observer_height_m),
+        )
+        layers = compute_flat_ground_horizon_layers(
+            geod=WGS84_GEOD,
+            observer=observer,
+            azimuth_step_deg=1.0,
+            distance_samples_m=build_distance_samples(128.0, 90.0),
+            earth_radius_m=EARTH_MEAN_RADIUS_M,
+            refraction_coefficient=0.13,
+        )
         return {
-            "profile_altaz": [],
-            "profile_distances_m": [],
-            "secondary_profile_altaz_layers": [],
-            "secondary_profile_distances_m_layers": [],
+            "profile_altaz": reduce_profile_to_altaz(layers.main_profile),
+            "profile_distances_m": [float(point.distance_m) for point in layers.main_profile],
+            "secondary_profile_altaz_layers": [
+                reduce_profile_to_altaz(layer) for layer in layers.secondary_layers
+            ],
+            "secondary_profile_distances_m_layers": [
+                [float(point.distance_m) for point in layer] for layer in layers.secondary_layers
+            ],
         }
     dem = GeoTiffDem(download.paths, default_elevation_m=0.0)
     try:
@@ -621,40 +631,21 @@ def _fetch_water_overlay_layer(
         float(viewer_data.observer_height_m) + observer_ground_m,
         minimum_distance_km=DEFAULT_WATER_RADIUS_KM,
     )
-    bbox = bbox_from_point(
-        float(viewer_data.lat_deg),
-        float(viewer_data.lon_deg),
-        scan_radius_km,
-    )
-    payload = fetch_overpass_json(
-        bbox=bbox,
-        endpoint=DEFAULT_WATER_OVERPASS_ENDPOINT,
-        user_agent=DEFAULT_WATER_USER_AGENT,
-        timeout_s=DEFAULT_WATER_TIMEOUT_S,
-    )
-    elements = payload.get("elements")
-    if not isinstance(elements, list):
-        raise RuntimeError("Overpass payload missing elements")
-    footprints = extract_water_polygons(elements, bbox=bbox)
-    if not footprints:
-        return None
     if _timed_out(deadline):
         raise TimeoutError("water timed out")
-    simplified_footprints = simplify_water_footprints_for_observer(
-        footprints,
-        observer_lat_deg=float(viewer_data.lat_deg),
-        observer_lon_deg=float(viewer_data.lon_deg),
-    )
-    water_points = sample_water_overlay_points(
-        simplified_footprints,
+    water_points = sample_water_surface_interface_points(
         observer_lat_deg=float(viewer_data.lat_deg),
         observer_lon_deg=float(viewer_data.lon_deg),
         observer_height_m=float(viewer_data.observer_height_m) + observer_ground_m,
-        fallback_surface_height_m=observer_ground_m,
         max_distance_km=scan_radius_km,
-        sample_step_m=DEFAULT_WATER_SAMPLE_STEP_M,
-        azimuth_step_deg=DEFAULT_WATER_AZIMUTH_STEP_DEG,
     )
+    if water_points:
+        nearest_distance_km = min(float(point.distance_km) for point in water_points)
+        logger.info(
+            "Water mask points: %d visible, nearest sea point %.3f km",
+            len(water_points),
+            nearest_distance_km,
+        )
     return list(water_points) if water_points else None
 
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import threading
 import time
+import threading
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from urllib.error import URLError
@@ -214,47 +214,16 @@ def test_urban_outline_controller_shutdown_cancels_download(monkeypatch, tmp_pat
 
 def test_water_overlay_controller_shutdown_cancels_download(monkeypatch) -> None:
     controller = WaterOverlayController()
-    started = threading.Event()
 
-    monkeypatch.setattr(controller, "_load_scope_snapshot", lambda *args, **kwargs: None)
-    monkeypatch.setattr(
-        controller,
-        "_select_cached_variant",
-        lambda *args, **kwargs: None,
-    )
+    def trigger_update() -> None:
+        controller.update(
+            viewer_data=ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo"),
+            observer_ground_m=0.0,
+            use_dem_ground=False,
+            reason="manual",
+        )
 
-    def fake_fetch_overpass_json(*, abort_event=None, **_kwargs):
-        assert abort_event is not None
-        started.set()
-        while not abort_event.is_set():
-            time.sleep(0.01)
-        raise DownloadCancelledError("Cancelled while fetching water overlay data")
-
-    monkeypatch.setattr("zstarview.gui.water_overlay_controller.fetch_overpass_json", fake_fetch_overpass_json)
-    monkeypatch.setattr(
-        "zstarview.gui.water_overlay_controller.extract_water_polygons",
-        lambda *_args, **_kwargs: (),
-    )
-
-    controller.update(
-        viewer_data=ViewerData(location=(35.0, 139.0), timezone_name="UTC", city_name="Tokyo"),
-        observer_ground_m=0.0,
-        use_dem_ground=False,
-        reason="manual",
-    )
-    assert started.wait(timeout=1.0)
-
-    done = threading.Event()
-
-    def run_shutdown() -> None:
-        controller.shutdown(wait_timeout_s=1.0)
-        done.set()
-
-    shutdown_thread = threading.Thread(target=run_shutdown)
-    shutdown_thread.start()
-
-    assert done.wait(timeout=1.0)
-    shutdown_thread.join(timeout=1.0)
+    _assert_shutdown_waits(monkeypatch, controller, trigger_update)
 
 
 def test_sky_worker_shutdown_waits(monkeypatch) -> None:

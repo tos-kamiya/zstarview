@@ -37,8 +37,9 @@ EARTH_RADIUS_M = EARTH_RADIUS_KM * 1000.0
 DEFAULT_ENDPOINT = "https://overpass-api.de/api/interpreter"
 DEFAULT_USER_AGENT = "zstarview-water-overlay-probe/0.1"
 DEFAULT_TIMEOUT_S = 60.0
-QUERY_MARGIN_KM = 2.0
+QUERY_BBOX_SCALE = 1.2
 OVERPASS_SAMPLE_ATTEMPTS = 8
+SVG_LAND_BACKGROUND = "#f4eadb"
 
 POLYGON_WATER_KEYS = {
     ("natural", "water"),
@@ -146,6 +147,10 @@ def bbox_from_point(lat_deg: float, lon_deg: float, radius_km: float) -> tuple[f
     min_lat = max(-90.0, lat_deg - lat_delta_deg)
     max_lat = min(90.0, lat_deg + lat_delta_deg)
     return min_lon, min_lat, max_lon, max_lat
+
+
+def expanded_query_bbox_from_point(lat_deg: float, lon_deg: float, radius_km: float) -> tuple[float, float, float, float]:
+    return bbox_from_point(lat_deg, lon_deg, radius_km * QUERY_BBOX_SCALE)
 
 
 def build_overpass_query(bbox: tuple[float, float, float, float]) -> str:
@@ -591,6 +596,28 @@ def path_for_points(points: list[tuple[float, float]]) -> str:
     )
 
 
+def _ring_signed_area(ring: tuple[tuple[float, float], ...]) -> float:
+    if len(ring) < 3:
+        return 0.0
+    area = 0.0
+    for index in range(len(ring) - 1):
+        x0, y0 = ring[index]
+        x1, y1 = ring[index + 1]
+        area += x0 * y1 - x1 * y0
+    return area * 0.5
+
+
+def _point_inside_bbox(
+    point: tuple[float, float],
+    bbox: tuple[float, float, float, float],
+    *,
+    tolerance: float = 1.0e-9,
+) -> bool:
+    west, south, east, north = bbox
+    x, y = point
+    return west - tolerance <= x <= east + tolerance and south - tolerance <= y <= north + tolerance
+
+
 def local_points_bounds(points_groups: list[list[tuple[float, float]]]) -> tuple[float, float, float, float]:
     xs: list[float] = []
     ys: list[float] = []
@@ -631,10 +658,10 @@ def _polygon_overlaps_bbox(polygon: WaterPolygon, bbox: tuple[float, float, floa
 def _water_style(polygon: WaterPolygon) -> tuple[str, str, float]:
     category = classify_water_surface_category(polygon.tags, kind=polygon.kind)
     if category == "sea":
-        return "#f59e0b", "#c2410c", 0.42
+        return "#4c8cff", "#2457b3", 0.42
     if category == "river":
         return "#4db6ff", "#2b7fbf", 0.55
-    return "#8ecae6", "#4a90c2", 0.50
+    return "#6ccaa8", "#2d8a6f", 0.50
 
 
 def _bbox_union(
@@ -674,6 +701,28 @@ def _polygon_preview_anchor(
     return math.hypot(anchor_x, anchor_y) / 1000.0, anchor_x, anchor_y
 
 
+def _ring_max_span_m(
+    ring: tuple[tuple[float, float], ...],
+    *,
+    center_lon_deg: float,
+    center_lat_deg: float,
+) -> float:
+    xs: list[float] = []
+    ys: list[float] = []
+    for lon, lat in ring:
+        x_m, y_m = project_lonlat_to_local_m(
+            float(lon),
+            float(lat),
+            center_lon_deg=center_lon_deg,
+            center_lat_deg=center_lat_deg,
+        )
+        xs.append(x_m)
+        ys.append(y_m)
+    if not xs or not ys:
+        return 0.0
+    return max(max(xs) - min(xs), max(ys) - min(ys))
+
+
 def _polygon_vertex_count(polygon: WaterPolygon) -> int:
     return sum(len(ring) for ring in polygon.outer_rings) + sum(len(ring) for ring in polygon.inner_rings)
 
@@ -706,11 +755,16 @@ def _polygon_preview_metrics(
 
 
 def _vertex_spacing_threshold_for_distance_km(distance_km: float) -> float:
-    if distance_km < 1.0:
-        return 0.0
-    # Use an inverse-distance curve so far-field geometry is preserved more
-    # tightly while nearby rings can be thinned a little more aggressively.
-    return 180.0 / max(1.0, float(distance_km))
+    # Scale the spacing threshold with distance so farther rings are thinned
+    # more aggressively than nearby ones.
+    return 50.0 * max(0.0, float(distance_km))
+
+
+def _vertex_spacing_threshold_for_pair_distance_km(
+    distance_a_km: float,
+    distance_b_km: float,
+) -> float:
+    return _vertex_spacing_threshold_for_distance_km(min(float(distance_a_km), float(distance_b_km)))
 
 
 def _simplify_closed_ring_by_vertex_spacing(
@@ -718,10 +772,9 @@ def _simplify_closed_ring_by_vertex_spacing(
     *,
     center_lon_deg: float,
     center_lat_deg: float,
-    threshold_m: float,
 ) -> tuple[tuple[tuple[float, float], ...], int]:
     body = _ring_body(ring)
-    if len(body) < 4 or threshold_m <= 0.0:
+    if len(body) < 4:
         return ring, 0
 
     points = ring_to_local_points(
@@ -729,6 +782,7 @@ def _simplify_closed_ring_by_vertex_spacing(
         center_lon_deg=center_lon_deg,
         center_lat_deg=center_lat_deg,
     )[:-1]
+    point_distances_km = [math.hypot(x, y) / 1000.0 for x, y in points]
     removed = 0
     while len(points) > 3:
         n_points = len(points)
@@ -746,13 +800,28 @@ def _simplify_closed_ring_by_vertex_spacing(
                 next_point[0] - point[0],
                 next_point[1] - point[1],
             )
-            score = min(prev_distance_m, next_distance_m)
-            if score < threshold_m and score < best_score:
+            prev_threshold_m = _vertex_spacing_threshold_for_pair_distance_km(
+                point_distances_km[index - 1],
+                point_distances_km[index],
+            )
+            next_threshold_m = _vertex_spacing_threshold_for_pair_distance_km(
+                point_distances_km[index],
+                point_distances_km[(index + 1) % n_points],
+            )
+            prev_score = (
+                prev_distance_m / prev_threshold_m if prev_threshold_m > 0.0 else float("inf")
+            )
+            next_score = (
+                next_distance_m / next_threshold_m if next_threshold_m > 0.0 else float("inf")
+            )
+            score = min(prev_score, next_score)
+            if score < 1.0 and score < best_score:
                 best_score = score
                 best_index = index
         if best_index is None:
             break
         points.pop(best_index)
+        point_distances_km.pop(best_index)
         removed += 1
 
     simplified = local_points_to_ring(
@@ -774,8 +843,7 @@ def _simplify_polygon_by_vertex_spacing(
         center_lon_deg=center_lon_deg,
         center_lat_deg=center_lat_deg,
     )
-    threshold_m = _vertex_spacing_threshold_for_distance_km(distance_km)
-    if threshold_m <= 0.0:
+    if distance_km <= 0.0:
         return polygon, 0
 
     removed_vertices = 0
@@ -785,7 +853,6 @@ def _simplify_polygon_by_vertex_spacing(
             ring,
             center_lon_deg=center_lon_deg,
             center_lat_deg=center_lat_deg,
-            threshold_m=threshold_m,
         )
         simplified_outer.append(simplified_ring)
         removed_vertices += removed
@@ -796,7 +863,6 @@ def _simplify_polygon_by_vertex_spacing(
             ring,
             center_lon_deg=center_lon_deg,
             center_lat_deg=center_lat_deg,
-            threshold_m=threshold_m,
         )
         simplified_inner.append(simplified_ring)
         removed_vertices += removed
@@ -816,6 +882,65 @@ def _simplify_polygon_by_vertex_spacing(
     )
 
 
+def _filter_polygon_by_size(
+    polygon: WaterPolygon,
+    *,
+    center_lon_deg: float,
+    center_lat_deg: float,
+) -> tuple[WaterPolygon | None, int]:
+    distance_km, _, _, _, _ = _polygon_preview_metrics(
+        polygon,
+        center_lon_deg=center_lon_deg,
+        center_lat_deg=center_lat_deg,
+    )
+    if distance_km <= 0.0:
+        return polygon, 0
+
+    category = classify_water_surface_category(polygon.tags, kind=polygon.kind)
+    if category in {"sea", "river"}:
+        return polygon, 0
+
+    threshold_m = _vertex_spacing_threshold_for_distance_km(distance_km)
+    if threshold_m <= 0.0:
+        return polygon, 0
+    size_threshold_m = threshold_m
+
+    kept_outer: list[tuple[tuple[float, float], ...]] = []
+    kept_inner: list[tuple[tuple[float, float], ...]] = []
+    removed_rings = 0
+    for ring in polygon.outer_rings:
+        if _ring_max_span_m(
+            ring,
+            center_lon_deg=center_lon_deg,
+            center_lat_deg=center_lat_deg,
+        ) >= size_threshold_m:
+            kept_outer.append(ring)
+        else:
+            removed_rings += 1
+    for ring in polygon.inner_rings:
+        if _ring_max_span_m(
+            ring,
+            center_lon_deg=center_lon_deg,
+            center_lat_deg=center_lat_deg,
+        ) >= size_threshold_m:
+            kept_inner.append(ring)
+        else:
+            removed_rings += 1
+    if not kept_outer:
+        return None, removed_rings
+    return (
+        WaterPolygon(
+            osm_id=polygon.osm_id,
+            kind=polygon.kind,
+            outer_rings=tuple(kept_outer),
+            inner_rings=tuple(kept_inner),
+            source=polygon.source,
+            tags=polygon.tags,
+        ),
+        removed_rings,
+    )
+
+
 def _simplify_polygons_by_vertex_spacing(
     polygons: list[WaterPolygon],
     *,
@@ -825,9 +950,20 @@ def _simplify_polygons_by_vertex_spacing(
     simplified_polygons: list[WaterPolygon] = []
     removed_vertices = 0
     simplified_polygon_count = 0
+    removed_polygons = 0
+    removed_rings = 0
     for polygon in polygons:
-        simplified_polygon, polygon_removed_vertices = _simplify_polygon_by_vertex_spacing(
+        filtered_polygon, polygon_removed_rings = _filter_polygon_by_size(
             polygon,
+            center_lon_deg=center_lon_deg,
+            center_lat_deg=center_lat_deg,
+        )
+        removed_rings += polygon_removed_rings
+        if filtered_polygon is None:
+            removed_polygons += 1
+            continue
+        simplified_polygon, polygon_removed_vertices = _simplify_polygon_by_vertex_spacing(
+            filtered_polygon,
             center_lon_deg=center_lon_deg,
             center_lat_deg=center_lat_deg,
         )
@@ -841,23 +977,27 @@ def _simplify_polygons_by_vertex_spacing(
     if removed_vertices:
         print(
             "simplified_polygons={simplified_polygons} raw_polygons={raw_polygons} kept_polygons={kept_polygons} "
-            "raw_vertices={raw_vertices} kept_vertices={kept_vertices} removed_vertices={removed_vertices}".format(
+            "raw_vertices={raw_vertices} kept_vertices={kept_vertices} removed_vertices={removed_vertices} "
+            "removed_rings={removed_rings} removed_polygons={removed_polygons}".format(
                 simplified_polygons=simplified_polygon_count,
                 raw_polygons=len(polygons),
                 kept_polygons=len(simplified_polygons),
                 raw_vertices=raw_vertices,
                 kept_vertices=kept_vertices,
                 removed_vertices=removed_vertices,
+                removed_rings=removed_rings,
+                removed_polygons=removed_polygons,
             ),
             file=sys.stderr,
         )
     return simplified_polygons, {
         "raw_polygons": len(polygons),
         "kept_polygons": len(simplified_polygons),
-        "removed_polygons": 0,
+        "removed_polygons": removed_polygons,
         "raw_vertices": raw_vertices,
         "kept_vertices": kept_vertices,
         "removed_vertices": removed_vertices,
+        "removed_rings": removed_rings,
         "simplified_polygons": simplified_polygon_count,
     }
 
@@ -868,6 +1008,29 @@ def filter_water_polygons_to_bbox(
     bbox: tuple[float, float, float, float],
 ) -> list[WaterPolygon]:
     return [polygon for polygon in polygons if _polygon_overlaps_bbox(polygon, bbox)]
+
+
+def _split_coastline_polygons(polygons: list[WaterPolygon]) -> tuple[list[WaterPolygon], list[WaterPolygon]]:
+    coastline: list[WaterPolygon] = []
+    others: list[WaterPolygon] = []
+    for polygon in polygons:
+        if polygon.kind == "coastline":
+            coastline.append(polygon)
+        else:
+            others.append(polygon)
+    return coastline, others
+
+
+def _radius_km_from_scope_key(scope_key: str | None) -> float | None:
+    if not scope_key:
+        return None
+    prefix = "_r"
+    if prefix not in scope_key:
+        return None
+    try:
+        return float(scope_key.rsplit(prefix, 1)[1])
+    except ValueError:
+        return None
 
 
 def load_water_polygons_from_cache(path: Path) -> list[WaterPolygon]:
@@ -919,6 +1082,26 @@ def load_water_polygons_from_cache(path: Path) -> list[WaterPolygon]:
             )
         )
     return polygons
+
+
+def load_request_bbox_from_cache(path: Path) -> tuple[float, float, float, float] | None:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise RuntimeError("Cache payload is not a JSON object")
+    query = payload.get("query")
+    if not isinstance(query, dict):
+        return None
+    bbox = query.get("bbox")
+    if not isinstance(bbox, dict):
+        return None
+    try:
+        west = float(bbox["west"])
+        south = float(bbox["south"])
+        east = float(bbox["east"])
+        north = float(bbox["north"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    return west, south, east, north
 
 
 def _ring_body(points_xy: Iterable[tuple[float, float]]) -> list[tuple[float, float]]:
@@ -999,10 +1182,29 @@ def svg_path_for_ring(
     return path_for_points(points)
 
 
+def svg_rect_for_bbox(
+    bbox: tuple[float, float, float, float],
+    *,
+    preview_bbox: tuple[float, float, float, float],
+    width: int,
+    height: int,
+    padding: float,
+) -> str:
+    west, south, east, north = bbox
+    x0, y0 = project_lonlat(west, north, bbox=preview_bbox, width=width, height=height, padding=padding)
+    x1, y1 = project_lonlat(east, south, bbox=preview_bbox, width=width, height=height, padding=padding)
+    return (
+        '<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" '
+        'fill="none" stroke="#111827" stroke-opacity="0.72" stroke-width="2.0" '
+        'stroke-dasharray="10 6" vector-effect="non-scaling-stroke"/>'
+    ).format(x=min(x0, x1), y=min(y0, y1), w=abs(x1 - x0), h=abs(y1 - y0))
+
+
 def build_svg_preview(
     polygons: list[WaterPolygon],
     *,
     bbox: tuple[float, float, float, float],
+    view_bbox: tuple[float, float, float, float],
     center_lat_deg: float,
     center_lon_deg: float,
     radius_km: float,
@@ -1034,16 +1236,20 @@ def build_svg_preview(
             "raw_vertices": raw_vertex_count,
             "kept_vertices": kept_vertex_count,
             "removed_vertices": 0,
+            "removed_rings": 0,
         }
     print(
         "svg_preview simplify={simplify} raw_polygons={raw_polygons} kept_polygons={kept_polygons} "
-        "raw_vertices={raw_vertices} kept_vertices={kept_vertices} removed_vertices={removed_vertices}".format(
+        "raw_vertices={raw_vertices} kept_vertices={kept_vertices} removed_vertices={removed_vertices} "
+        "removed_rings={removed_rings} removed_polygons={removed_polygons}".format(
             simplify=str(bool(simplify)).lower(),
             raw_polygons=int(simplification_stats["raw_polygons"]),
             kept_polygons=int(simplification_stats["kept_polygons"]),
             raw_vertices=int(simplification_stats["raw_vertices"]),
             kept_vertices=int(simplification_stats["kept_vertices"]),
             removed_vertices=int(simplification_stats["removed_vertices"]),
+            removed_rings=int(simplification_stats["removed_rings"]),
+            removed_polygons=int(simplification_stats["removed_polygons"]),
         ),
         file=sys.stderr,
     )
@@ -1053,7 +1259,7 @@ def build_svg_preview(
             f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
             f'viewBox="0 0 {width} {height}">'
         ),
-        '<rect x="0" y="0" width="100%" height="100%" fill="#f7fbff"/>',
+        f'<rect x="0" y="0" width="100%" height="100%" fill="{SVG_LAND_BACKGROUND}"/>',
     ]
     ring_values = _build_distance_ring_values(radius_km)
     if ring_values:
@@ -1112,6 +1318,15 @@ def build_svg_preview(
                 y4=center_y + 9.0,
             )
         )
+    parts.append(
+        svg_rect_for_bbox(
+            view_bbox,
+            preview_bbox=preview_bbox,
+            width=width,
+            height=height,
+            padding=padding,
+        )
+    )
     for polygon in polygons:
         if not polygon.outer_rings:
             continue
@@ -1178,18 +1393,18 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     view_bbox = bbox_from_point(args.lat, args.lon, float(args.radius_km))
-    query_bbox = bbox_from_point(
-        args.lat,
-        args.lon,
-        float(args.radius_km) + QUERY_MARGIN_KM,
-    )
+    query_bbox = expanded_query_bbox_from_point(args.lat, args.lon, float(args.radius_km))
     polygons: list[WaterPolygon]
     if args.input_cache is not None:
         polygons = load_water_polygons_from_cache(args.input_cache)
-        polygons = filter_water_polygons_to_bbox(polygons, bbox=view_bbox)
+        requested_bbox = view_bbox
+        coastline_polygons, other_polygons = _split_coastline_polygons(polygons)
+        polygons = filter_water_polygons_to_bbox(other_polygons, bbox=requested_bbox)
+        polygons.extend(filter_water_polygons_to_bbox(coastline_polygons, bbox=requested_bbox))
         query = build_overpass_query(query_bbox)
     else:
         query = build_overpass_query(query_bbox)
+        requested_bbox = query_bbox
         polygons = []
         best_coastline_count = -1
         best_polygon_count = -1
@@ -1220,6 +1435,9 @@ def main(argv: list[str] | None = None) -> int:
                 best_polygon_count = polygon_count
             if coastline_count > 0:
                 break
+        coastline_polygons, other_polygons = _split_coastline_polygons(polygons)
+        polygons = filter_water_polygons_to_bbox(other_polygons, bbox=requested_bbox)
+        polygons.extend(filter_water_polygons_to_bbox(coastline_polygons, bbox=requested_bbox))
     normalized = serialize_water_layer(
         polygons,
         bbox=view_bbox,
@@ -1242,6 +1460,7 @@ def main(argv: list[str] | None = None) -> int:
         svg_text = build_svg_preview(
             polygons,
             bbox=geometry_bounds(polygons, view_bbox),
+            view_bbox=view_bbox,
             center_lat_deg=float(args.lat),
             center_lon_deg=float(args.lon),
             radius_km=float(args.radius_km),
@@ -1258,6 +1477,7 @@ def main(argv: list[str] | None = None) -> int:
         svg_text = build_svg_preview(
             polygons,
             bbox=geometry_bounds(polygons, view_bbox),
+            view_bbox=view_bbox,
             center_lat_deg=float(args.lat),
             center_lon_deg=float(args.lon),
             radius_km=float(args.radius_km),

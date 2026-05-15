@@ -17,8 +17,10 @@ from .horizon import (
     build_distance_samples,
     build_ray_scan_grid,
     compute_apparent_altitudes,
+    compute_flat_ground_horizon_layers,
     compute_horizon_layers,
     compute_horizon_profile,
+    compute_sea_level_horizon_layers,
     reduce_profile_to_altaz,
 )
 
@@ -37,8 +39,10 @@ __all__ = [
     "build_ray_scan_grid",
     "build_download_bbox",
     "compute_apparent_altitudes",
+    "compute_flat_ground_horizon_layers",
     "compute_horizon_layers",
     "compute_horizon_profile",
+    "compute_sea_level_horizon_layers",
     "fetch_copernicus_dem",
     "reduce_profile_to_altaz",
     "sample_ground_elevation",

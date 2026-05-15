@@ -30,7 +30,9 @@ DEFAULT_WATER_SAMPLE_STEP_M = 1.25**5
 DEFAULT_WATER_AZIMUTH_STEP_DEG = 2.0
 DEFAULT_WATER_SAMPLE_GROWTH_FACTOR = 1.15
 DEFAULT_WATER_ALPHA_MIN = 0.04
-DEFAULT_WATER_VERTEX_SPACING_THRESHOLD_BASE_M = 180.0
+DEFAULT_WATER_VERTEX_SPACING_THRESHOLD_BASE_M = 50.0
+DEFAULT_WATER_QUERY_BBOX_SCALE = 1.2
+DEFAULT_WATER_LAKE_DROP_THRESHOLD_SCALE = 16.0
 
 POLYGON_WATER_KEYS = {
     ("natural", "water"),
@@ -84,6 +86,7 @@ class WaterOverlayPoint:
     alpha_scale: float = 1.0
     scan_azimuth_index: int | None = None
     scan_distance_index: int | None = None
+    water_category: str = "lake"
 
 
 def bbox_from_point(lat_deg: float, lon_deg: float, radius_km: float) -> tuple[float, float, float, float]:
@@ -101,6 +104,18 @@ def bbox_from_point(lat_deg: float, lon_deg: float, radius_km: float) -> tuple[f
     min_lat = max(-90.0, lat_deg - lat_delta_deg)
     max_lat = min(90.0, lat_deg + lat_delta_deg)
     return min_lon, min_lat, max_lon, max_lat
+
+
+def expanded_query_bbox_from_point(
+    lat_deg: float,
+    lon_deg: float,
+    radius_km: float,
+    *,
+    scale: float = DEFAULT_WATER_QUERY_BBOX_SCALE,
+) -> tuple[float, float, float, float]:
+    if scale <= 0.0:
+        raise ValueError("scale must be positive")
+    return bbox_from_point(lat_deg, lon_deg, float(radius_km) * float(scale))
 
 
 def horizon_distance_km_from_height(height_m: float) -> float:
@@ -657,9 +672,14 @@ def _cooperative_yield(
 
 
 def _water_vertex_spacing_threshold_m(distance_km: float) -> float:
-    if distance_km < 1.0:
-        return 0.0
-    return DEFAULT_WATER_VERTEX_SPACING_THRESHOLD_BASE_M / max(1.0, float(distance_km))
+    return DEFAULT_WATER_VERTEX_SPACING_THRESHOLD_BASE_M * max(0.0, float(distance_km))
+
+
+def _water_vertex_spacing_threshold_for_pair_m(
+    distance_a_km: float,
+    distance_b_km: float,
+) -> float:
+    return _water_vertex_spacing_threshold_m(min(float(distance_a_km), float(distance_b_km)))
 
 
 def _ring_body_xy(points_xy: Sequence[tuple[float, float]]) -> list[tuple[float, float]]:
@@ -673,14 +693,13 @@ def _ring_body_xy(points_xy: Sequence[tuple[float, float]]) -> list[tuple[float,
 
 def _simplify_closed_ring_xy_by_vertex_spacing(
     ring_xy: Sequence[tuple[float, float]],
-    *,
-    threshold_m: float,
 ) -> tuple[list[tuple[float, float]], int]:
     body = _ring_body_xy(ring_xy)
-    if len(body) < 4 or threshold_m <= 0.0:
+    if len(body) < 4:
         return list(ring_xy), 0
 
     points = list(body)
+    point_distances_km = [math.hypot(x, y) / 1000.0 for x, y in points]
     removed = 0
     while len(points) > 3:
         n_points = len(points)
@@ -692,14 +711,29 @@ def _simplify_closed_ring_xy_by_vertex_spacing(
             next_point = points[(index + 1) % n_points]
             prev_distance_m = math.hypot(point[0] - prev_point[0], point[1] - prev_point[1])
             next_distance_m = math.hypot(next_point[0] - point[0], next_point[1] - point[1])
-            score = min(prev_distance_m, next_distance_m)
+            prev_threshold_m = _water_vertex_spacing_threshold_for_pair_m(
+                point_distances_km[index - 1],
+                point_distances_km[index],
+            )
+            next_threshold_m = _water_vertex_spacing_threshold_for_pair_m(
+                point_distances_km[index],
+                point_distances_km[(index + 1) % n_points],
+            )
+            prev_score = (
+                prev_distance_m / prev_threshold_m if prev_threshold_m > 0.0 else float("inf")
+            )
+            next_score = (
+                next_distance_m / next_threshold_m if next_threshold_m > 0.0 else float("inf")
+            )
+            score = min(prev_score, next_score)
             key = (score, point[0], point[1], index)
-            if score < threshold_m and (best_key is None or key < best_key):
+            if score < 1.0 and (best_key is None or key < best_key):
                 best_key = key
                 best_index = index
         if best_index is None:
             break
         points.pop(best_index)
+        point_distances_km.pop(best_index)
         removed += 1
 
     if len(points) < 3:
@@ -712,13 +746,9 @@ def _simplify_ring_lonlat_by_vertex_spacing(
     ring_lonlat: Sequence[tuple[float, float]],
     *,
     transformer: Transformer,
-    threshold_m: float,
 ) -> tuple[tuple[tuple[float, float], ...], int]:
     ring_xy = project_ring_xy(tuple(ring_lonlat), transformer)
-    simplified_xy, removed = _simplify_closed_ring_xy_by_vertex_spacing(
-        ring_xy,
-        threshold_m=threshold_m,
-    )
+    simplified_xy, removed = _simplify_closed_ring_xy_by_vertex_spacing(ring_xy)
     if removed <= 0:
         return tuple(tuple(point) for point in ring_lonlat), 0
     xs = [point[0] for point in simplified_xy]
@@ -753,6 +783,53 @@ def _footprint_distance_km(
     return math.hypot(anchor_x, anchor_y) / 1000.0
 
 
+def _footprint_max_span_m(
+    footprint: WaterPolygonFootprint,
+    *,
+    transformer: Transformer,
+) -> float:
+    max_span_m = 0.0
+    for ring in footprint.outer_rings_lonlat:
+        ring_xy = project_ring_xy(ring, transformer)
+        xs = [float(x) for x, _ in ring_xy]
+        ys = [float(y) for _, y in ring_xy]
+        if not xs or not ys:
+            continue
+        max_span_m = max(
+            max_span_m,
+            max(xs) - min(xs),
+            max(ys) - min(ys),
+        )
+    return max_span_m
+
+
+def _footprint_surface_category(footprint: WaterPolygonFootprint) -> str:
+    if _footprint_is_sea_like(footprint):
+        return "sea"
+    if _footprint_is_river_like(footprint):
+        return "river"
+    if footprint.tags.get("water") == "lake":
+        return "lake"
+    return "other"
+
+
+def _footprint_is_small_far_water(
+    footprint: WaterPolygonFootprint,
+    *,
+    transformer: Transformer,
+    distance_km: float,
+) -> bool:
+    category = _footprint_surface_category(footprint)
+    if category in {"sea", "river"}:
+        return False
+    threshold_m = _water_vertex_spacing_threshold_m(distance_km)
+    if threshold_m <= 0.0:
+        return False
+    category_scale = DEFAULT_WATER_LAKE_DROP_THRESHOLD_SCALE if category in {"lake", "other"} else 1.0
+    size_threshold_m = threshold_m * category_scale
+    return _footprint_max_span_m(footprint, transformer=transformer) < size_threshold_m
+
+
 def simplify_water_footprints_for_observer(
     footprints: Sequence[WaterPolygonFootprint],
     *,
@@ -762,11 +839,15 @@ def simplify_water_footprints_for_observer(
     transformer = make_local_transformer(float(observer_lat_deg), float(observer_lon_deg))
     simplified: list[WaterPolygonFootprint] = []
     for footprint in footprints:
-        threshold_m = _water_vertex_spacing_threshold_m(
-            _footprint_distance_km(footprint, transformer=transformer)
-        )
-        if threshold_m <= 0.0:
+        footprint_distance_km = _footprint_distance_km(footprint, transformer=transformer)
+        if footprint_distance_km <= 0.0:
             simplified.append(footprint)
+            continue
+        if _footprint_is_small_far_water(
+            footprint,
+            transformer=transformer,
+            distance_km=footprint_distance_km,
+        ):
             continue
 
         outer_rings: list[tuple[tuple[float, float], ...]] = []
@@ -777,7 +858,6 @@ def simplify_water_footprints_for_observer(
             simplified_ring, removed = _simplify_ring_lonlat_by_vertex_spacing(
                 ring,
                 transformer=transformer,
-                threshold_m=threshold_m,
             )
             outer_rings.append(simplified_ring)
             removed_vertices += removed
@@ -786,7 +866,6 @@ def simplify_water_footprints_for_observer(
             simplified_ring, removed = _simplify_ring_lonlat_by_vertex_spacing(
                 ring,
                 transformer=transformer,
-                threshold_m=threshold_m,
             )
             inner_rings.append(simplified_ring)
             removed_vertices += removed
@@ -883,6 +962,10 @@ def sample_water_overlay_points(
                     alpha_scale=water_overlay_alpha_scale(float(distance_m), float(max_distance_km) * 1000.0),
                     scan_azimuth_index=int(row_index),
                     scan_distance_index=int(col_index),
+                    water_category=classify_water_surface_category(
+                        matched_footprint.tags,
+                        kind=matched_footprint.kind,
+                    ),
                 )
             )
     return tuple(points)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import urllib.error
 import threading
 from unittest.mock import Mock
@@ -7,6 +8,7 @@ from unittest.mock import Mock
 import pytest
 
 from zstarview.render.terrain import _thin_water_overlay_points_pairwise
+from zstarview.render.terrain import _water_overlay_point_color_rgb
 from zstarview.water_overlay import (
     WaterOverlayPoint,
     WaterPolygonFootprint,
@@ -17,6 +19,7 @@ from zstarview.water_overlay import (
     classify_water_surface_mode,
     extract_water_polygons,
     horizon_distance_km_from_height,
+    expanded_query_bbox_from_point,
     resolve_water_scan_radius_km,
     sample_water_overlay_points,
     simplify_water_footprints_for_observer,
@@ -116,6 +119,19 @@ def test_classify_water_surface_category_uses_tags_and_kind() -> None:
     assert classify_water_surface_category({"water": "lake"}) == "lake"
     assert classify_water_surface_category({"water": "river"}) == "river"
     assert classify_water_surface_category({"waterway": "riverbank"}) == "river"
+
+
+def test_water_overlay_point_color_rgb_uses_surface_category() -> None:
+    assert _water_overlay_point_color_rgb(
+        WaterOverlayPoint("sea", 0.0, 0.0, 0.0, water_category="sea")
+    ) != _water_overlay_point_color_rgb(
+        WaterOverlayPoint("lake", 0.0, 0.0, 0.0, water_category="lake")
+    )
+    assert _water_overlay_point_color_rgb(
+        WaterOverlayPoint("river", 0.0, 0.0, 0.0, water_category="river")
+    ) != _water_overlay_point_color_rgb(
+        WaterOverlayPoint("lake", 0.0, 0.0, 0.0, water_category="lake")
+    )
 
 
 def test_water_surface_height_selection_prefers_explicit_level() -> None:
@@ -224,6 +240,108 @@ def test_simplify_water_footprints_for_observer_thins_dense_far_ring() -> None:
     assert len(simplified[0].outer_rings_lonlat[0]) < len(footprint.outer_rings_lonlat[0])
     assert simplified[0].outer_rings_lonlat[0][0] == simplified[0].outer_rings_lonlat[0][-1]
     assert len(simplified_reversed[0].outer_rings_lonlat[0]) == len(simplified[0].outer_rings_lonlat[0])
+
+
+def test_simplify_water_footprints_for_observer_drops_small_far_water() -> None:
+    far_small_lake = WaterPolygonFootprint(
+        water_id="far-lake",
+        kind="natural_water",
+        outer_rings_lonlat=(
+            (
+                (0.2000, 0.2000),
+                (0.20005, 0.2000),
+                (0.20005, 0.20005),
+                (0.2000, 0.20005),
+                (0.2000, 0.2000),
+            ),
+        ),
+        inner_rings_lonlat=(),
+        source="way",
+        tags={"natural": "water", "water": "lake"},
+    )
+    far_other = WaterPolygonFootprint(
+        water_id="far-other",
+        kind="natural_water",
+        outer_rings_lonlat=(
+            (
+                (0.2000, 0.2000),
+                (0.20005, 0.2000),
+                (0.20005, 0.20005),
+                (0.2000, 0.20005),
+                (0.2000, 0.2000),
+            ),
+        ),
+        inner_rings_lonlat=(),
+        source="way",
+        tags={"natural": "water"},
+    )
+    far_river = WaterPolygonFootprint(
+        water_id="far-river",
+        kind="natural_water",
+        outer_rings_lonlat=(
+            (
+                (0.2000, 0.2000),
+                (0.2015, 0.2000),
+                (0.2015, 0.2015),
+                (0.2000, 0.2015),
+                (0.2000, 0.2000),
+            ),
+        ),
+        inner_rings_lonlat=(),
+        source="way",
+        tags={"natural": "water", "water": "river"},
+    )
+    near_kept_lake = WaterPolygonFootprint(
+        water_id="near-lake",
+        kind="natural_water",
+        outer_rings_lonlat=(
+            (
+                (0.0100, 0.0100),
+                (0.0500, 0.0100),
+                (0.0500, 0.0500),
+                (0.0100, 0.0500),
+                (0.0100, 0.0100),
+            ),
+        ),
+        inner_rings_lonlat=(),
+        source="way",
+        tags={"natural": "water", "water": "lake"},
+    )
+
+    simplified = simplify_water_footprints_for_observer(
+        (near_kept_lake, far_small_lake, far_other, far_river),
+        observer_lat_deg=0.0,
+        observer_lon_deg=0.0,
+    )
+
+    assert [footprint.water_id for footprint in simplified] == ["near-lake", "far-river"]
+
+
+def test_water_vertex_spacing_threshold_grows_with_distance() -> None:
+    from zstarview import water_overlay
+
+    near = water_overlay._water_vertex_spacing_threshold_m(  # noqa: SLF001
+        1.0,
+    )
+    far = water_overlay._water_vertex_spacing_threshold_m(  # noqa: SLF001
+        4.0,
+    )
+
+    assert near == 50.0
+    assert far == 200.0
+    assert far > near
+
+
+def test_water_vertex_spacing_threshold_uses_nearer_pair_distance() -> None:
+    from zstarview import water_overlay
+
+    assert (
+        water_overlay._water_vertex_spacing_threshold_for_pair_m(  # noqa: SLF001
+            0.5,
+            4.0,
+        )
+        == 25.0
+    )
 
 
 def test_sample_water_overlay_points_uses_fallback_surface_height() -> None:
@@ -383,6 +501,19 @@ def test_resolve_water_scan_radius_scales_with_height() -> None:
     assert low == 2.0
     assert high > low
     assert high == horizon_distance_km_from_height(500.0) + 1.0
+
+
+def test_expanded_query_bbox_from_point_scales_by_20_percent() -> None:
+    view_bbox = expanded_query_bbox_from_point(35.0, 139.0, 5.0, scale=1.0)
+    query_bbox = expanded_query_bbox_from_point(35.0, 139.0, 5.0)
+
+    view_width = view_bbox[2] - view_bbox[0]
+    view_height = view_bbox[3] - view_bbox[1]
+    query_width = query_bbox[2] - query_bbox[0]
+    query_height = query_bbox[3] - query_bbox[1]
+
+    assert math.isclose(query_width, view_width * 1.2, rel_tol=0.0, abs_tol=1e-12)
+    assert math.isclose(query_height, view_height * 1.2, rel_tol=0.0, abs_tol=1e-12)
 
 
 def test_fetch_overpass_json_reports_compact_http_error(monkeypatch) -> None:

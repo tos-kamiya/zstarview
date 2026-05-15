@@ -394,5 +394,79 @@ def compute_horizon_layers(
     return HorizonLayerSet(main_profile=points, secondary_layers=secondary_layers)
 
 
+def compute_flat_ground_horizon_layers(
+    *,
+    geod,
+    observer: ObserverLocation,
+    azimuth_step_deg: float,
+    distance_samples_m: np.ndarray,
+    earth_radius_m: float,
+    refraction_coefficient: float,
+    distance_band_edges_km: Sequence[float] = DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM,
+) -> HorizonLayerSet:
+    class _FlatDemGrid:
+        def sample_lonlat(
+            self,
+            lon_deg: np.ndarray,
+            lat_deg: np.ndarray,
+            *,
+            method: str = "bilinear",
+        ) -> np.ndarray:
+            return np.zeros_like(lon_deg, dtype=np.float64)
+
+    return compute_horizon_layers(
+        dem_grid=_FlatDemGrid(),
+        geod=geod,
+        observer=observer,
+        azimuth_step_deg=azimuth_step_deg,
+        distance_samples_m=distance_samples_m,
+        dem_resampling="bilinear",
+        earth_radius_m=earth_radius_m,
+        refraction_coefficient=refraction_coefficient,
+        distance_band_edges_km=distance_band_edges_km,
+    )
+
+
+def compute_sea_level_horizon_layers(
+    *,
+    geod,
+    observer: ObserverLocation,
+    azimuth_step_deg: float,
+    earth_radius_m: float,
+    refraction_coefficient: float,
+) -> HorizonLayerSet:
+    if azimuth_step_deg <= 0.0:
+        raise ValueError("azimuth_step_deg must be positive.")
+    if earth_radius_m <= 0.0:
+        raise ValueError("earth_radius_m must be positive.")
+    if refraction_coefficient >= 1.0:
+        raise ValueError("refraction_coefficient must be < 1.0.")
+
+    effective_radius_m = earth_radius_m / max(1.0 - refraction_coefficient, 1e-6)
+    observer_elevation_m = max(0.0, float(observer.observer_elevation_m))
+    horizon_distance_m = math.sqrt(max(0.0, observer_elevation_m * (2.0 * effective_radius_m + observer_elevation_m)))
+    azimuths_deg = np.arange(0.0, 360.0, float(azimuth_step_deg), dtype=np.float64)
+
+    points: list[HorizonProfilePoint] = []
+    for azimuth_deg in azimuths_deg:
+        lon_deg, lat_deg, _ = geod.fwd(
+            float(observer.longitude_deg),
+            float(observer.latitude_deg),
+            float(azimuth_deg),
+            float(horizon_distance_m),
+        )
+        points.append(
+            HorizonProfilePoint(
+                azimuth_deg=float(azimuth_deg),
+                altitude_deg=0.0,
+                distance_m=float(horizon_distance_m),
+                latitude_deg=float(lat_deg),
+                longitude_deg=float(lon_deg),
+                terrain_elevation_m=0.0,
+            )
+        )
+    return HorizonLayerSet(main_profile=points, secondary_layers=[])
+
+
 def reduce_profile_to_altaz(points: Sequence[HorizonProfilePoint]) -> list[tuple[float, float]]:
     return [(float(point.altitude_deg), float(point.azimuth_deg)) for point in points]

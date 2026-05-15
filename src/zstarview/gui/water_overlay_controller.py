@@ -14,28 +14,17 @@ from ..types import ViewerData
 from ..clouddisc.types import DownloadCancelledError
 from ..water_overlay import (
     DEFAULT_WATER_RADIUS_KM,
-    DEFAULT_WATER_OVERPASS_ENDPOINT,
-    DEFAULT_WATER_USER_AGENT,
     DEFAULT_WATER_SAMPLE_STEP_M,
     DEFAULT_WATER_AZIMUTH_STEP_DEG,
-    bbox_from_point,
-    extract_water_polygons,
-    fetch_overpass_json,
-    sample_water_overlay_points,
     resolve_water_scan_radius_km,
-    simplify_water_footprints_for_observer,
 )
+from ..water_mask_interface import sample_water_surface_interface_points
 from ..terrain import GeoTiffDem
 from ..terrain import build_download_bbox
 from ..terrain import fetch_copernicus_dem
 from ..terrain import sample_ground_elevation
 from ..paths import CACHE_PATH
 from .water_overlay_cache import (
-    WaterOverlayCacheSnapshot,
-    WATER_OVERLAY_CACHE_RETENTION_SECONDS,
-    load_water_overlay_cache,
-    save_water_overlay_cache,
-    water_overlay_cache_is_recent,
     water_overlay_cache_scope_key,
 )
 
@@ -75,7 +64,6 @@ class WaterOverlayController(QObject):
         self._user_agent = user_agent
         self._timeout_s = float(timeout_s)
         self._dem_cache_dir = Path(CACHE_PATH) / "copernicus-dem"
-        self._cache_retention_seconds = int(WATER_OVERLAY_CACHE_RETENTION_SECONDS)
         self._running = False
         self._stopping = False
         self._active_key: Optional[tuple[float, float, float, float, bool]] = None
@@ -101,7 +89,6 @@ class WaterOverlayController(QObject):
         use_dem_ground: bool,
         reason: str = "manual",
     ) -> bool:
-        now = datetime.now(timezone.utc)
         observer_absolute_height_m = float(viewer_data.observer_height_m) + float(observer_ground_m)
         scan_radius_km = resolve_water_scan_radius_km(
             observer_absolute_height_m,
@@ -122,18 +109,6 @@ class WaterOverlayController(QObject):
         with self._lock:
             in_memory_scope = self._scope_cache.get(scope_key)
         cached_scope = in_memory_scope
-        snapshot = self._load_scope_snapshot(scope_key, now=now)
-        if snapshot is not None:
-            snapshot_scope = self._scope_cache_from_snapshot(snapshot)
-            if (
-                cached_scope is None
-                or cached_scope.fetched_at_utc is None
-                or (
-                    snapshot_scope.fetched_at_utc is not None
-                    and cached_scope.fetched_at_utc < snapshot_scope.fetched_at_utc
-                )
-            ):
-                cached_scope = snapshot_scope
         if cached_scope is not None:
             cached_variant = self._select_cached_variant(
                 cached_scope,
@@ -262,9 +237,9 @@ class WaterOverlayController(QObject):
     ) -> None:
         try:
             if reason == "initial":
-                logger.info("Fetching initial water surface data...")
+                logger.info("Fetching initial water surface mask...")
             else:
-                logger.info("Fetching water surface data...")
+                logger.info("Fetching water surface mask...")
 
             scope_cache = self._ensure_scope_cache(
                 scope_key=scope_key,
@@ -283,13 +258,20 @@ class WaterOverlayController(QObject):
                 use_dem_ground=bool(use_dem_ground),
                 scan_radius_km=scan_radius_km,
             )
-            mode = "dem" if use_dem_ground and dem_points is not None else "sea"
+            if active_points:
+                nearest_distance_km = min(float(point.distance_km) for point in active_points)
+                logger.info(
+                    "Water mask points: %d visible, nearest sea point %.3f km",
+                    len(active_points),
+                    nearest_distance_km,
+                )
+            mode = "sea"
             self._store_scope_cache(
                 scope_key,
                 scope_cache,
                 sea_points=sea_points,
                 dem_points=dem_points,
-                dem_ground_m=float(observer_ground_m) if use_dem_ground else None,
+                dem_ground_m=None,
             )
             with self._lock:
                 should_emit = (not self._stopping) and self._active_key == key
@@ -303,7 +285,7 @@ class WaterOverlayController(QObject):
                     sea_points=sea_points,
                     dem_points=dem_points,
                     water_polygon_count=len(scope_cache.footprints),
-                    source="Water: Overpass",
+                    source="Water: sea mask",
                 )
         except DownloadCancelledError:
             return
@@ -363,48 +345,13 @@ class WaterOverlayController(QObject):
             cached = self._scope_cache.get(scope_key)
             if cached is not None:
                 return cached
-        snapshot = cached_scope if cached_scope is not None else self._load_scope_snapshot_any(scope_key)
-        if snapshot is not None and not isinstance(snapshot, _WaterOverlayScopeCache):
-            snapshot = self._scope_cache_from_snapshot(snapshot)
-        if snapshot is not None and water_overlay_cache_is_recent(
-            snapshot,
-            now_utc=now_utc,
-            max_age_seconds=self._cache_retention_seconds,
-        ):
-            cache = snapshot
-            with self._lock:
-                self._scope_cache[scope_key] = cache
-            return cache
-
-        if snapshot is None:
-            snapshot = WaterOverlayCacheSnapshot(footprints=(), water_polygon_count=0, fetched_at_utc=None)
-
         try:
-            bbox = bbox_from_point(float(lat_deg), float(lon_deg), float(scan_radius_km))
-            payload = fetch_overpass_json(
-                bbox=bbox,
-                endpoint=self._endpoint or DEFAULT_WATER_OVERPASS_ENDPOINT,
-                user_agent=self._user_agent or DEFAULT_WATER_USER_AGENT,
-                timeout_s=self._timeout_s,
-                abort_event=self._download_abort_event,
-            )
-            elements = payload.get("elements")
-            if not isinstance(elements, list):
-                raise RuntimeError("Overpass payload missing elements")
-            footprints = extract_water_polygons(
-                elements,
-                bbox=bbox,
-                abort_event=self._download_abort_event,
-            )
-            fresh_snapshot = WaterOverlayCacheSnapshot(
-                footprints=footprints,
-                water_polygon_count=len(footprints),
-                fetched_at_utc=now_utc,
-            )
-            save_water_overlay_cache(scope_key, fresh_snapshot)
             cache = _WaterOverlayScopeCache(
-                footprints=footprints,
+                footprints=(),
                 fetched_at_utc=now_utc,
+                sea_points=None,
+                dem_points=None,
+                dem_ground_m=None,
             )
             with self._lock:
                 self._scope_cache[scope_key] = cache
@@ -412,44 +359,7 @@ class WaterOverlayController(QObject):
         except DownloadCancelledError:
             raise
         except Exception:
-            if snapshot.footprints:
-                cache = _WaterOverlayScopeCache(
-                    footprints=snapshot.footprints,
-                    fetched_at_utc=snapshot.fetched_at_utc,
-                )
-                with self._lock:
-                    self._scope_cache[scope_key] = cache
-                return cache
             raise
-
-    def _load_scope_snapshot(
-        self,
-        scope_key: str,
-        *,
-        now: datetime,
-    ) -> WaterOverlayCacheSnapshot | None:
-        snapshot = load_water_overlay_cache(scope_key)
-        if snapshot is None:
-            return None
-        if water_overlay_cache_is_recent(
-            snapshot,
-            now_utc=now,
-            max_age_seconds=self._cache_retention_seconds,
-        ):
-            return snapshot
-        return None
-
-    def _load_scope_snapshot_any(self, scope_key: str) -> WaterOverlayCacheSnapshot | None:
-        return load_water_overlay_cache(scope_key)
-
-    def _scope_cache_from_snapshot(
-        self,
-        snapshot: WaterOverlayCacheSnapshot,
-    ) -> _WaterOverlayScopeCache:
-        return _WaterOverlayScopeCache(
-            footprints=snapshot.footprints,
-            fetched_at_utc=snapshot.fetched_at_utc,
-        )
 
     def _build_requested_variants(
         self,
@@ -462,56 +372,16 @@ class WaterOverlayController(QObject):
         use_dem_ground: bool,
         scan_radius_km: float,
     ) -> tuple[tuple, tuple | None, tuple | None]:
-        observer_absolute_height_m = float(observer_height_m) + float(observer_ground_m)
-        # Keep a flat sea/lake variant around even when DEM mode is enabled, so
-        # the UI can switch between constant-height and terrain-following water.
         sea_points = scope_cache.sea_points
-        need_sea_points = sea_points is None
         if sea_points is None:
-            simplified_footprints = simplify_water_footprints_for_observer(
-                scope_cache.footprints,
+            sea_points = sample_water_surface_interface_points(
                 observer_lat_deg=observer_lat_deg,
                 observer_lon_deg=observer_lon_deg,
-            )
-            sea_points = sample_water_overlay_points(
-                simplified_footprints,
-                observer_lat_deg=observer_lat_deg,
-                observer_lon_deg=observer_lon_deg,
-                observer_height_m=observer_absolute_height_m,
-                fallback_surface_height_m=observer_ground_m,
+                observer_height_m=float(observer_height_m) + float(observer_ground_m),
                 max_distance_km=scan_radius_km,
-                sample_step_m=self._sample_step_m,
-                azimuth_step_deg=self._azimuth_step_deg,
-                abort_event=self._download_abort_event,
             )
-        # DEM mode reuses the same footprints but projects river-like water
-        # against the local terrain sampler instead of the flat fallback level.
-        dem_points = scope_cache.dem_points
-        if use_dem_ground and dem_points is None:
-            if not need_sea_points:
-                simplified_footprints = simplify_water_footprints_for_observer(
-                    scope_cache.footprints,
-                    observer_lat_deg=observer_lat_deg,
-                    observer_lon_deg=observer_lon_deg,
-                )
-            target_ground_sampler = self._build_target_ground_sampler(
-                observer_lat_deg=observer_lat_deg,
-                observer_lon_deg=observer_lon_deg,
-                scan_radius_km=scan_radius_km,
-            )
-            dem_points = sample_water_overlay_points(
-                simplified_footprints,
-                observer_lat_deg=observer_lat_deg,
-                observer_lon_deg=observer_lon_deg,
-                observer_height_m=observer_absolute_height_m,
-                fallback_surface_height_m=observer_ground_m,
-                target_ground_elevation_m_sampler=target_ground_sampler,
-                max_distance_km=scan_radius_km,
-                sample_step_m=self._sample_step_m,
-                azimuth_step_deg=self._azimuth_step_deg,
-                abort_event=self._download_abort_event,
-            )
-        active_points = dem_points if use_dem_ground and dem_points is not None else sea_points
+        active_points = sea_points
+        dem_points = sea_points if use_dem_ground else None
         return active_points, sea_points, dem_points
 
     def _build_target_ground_sampler(

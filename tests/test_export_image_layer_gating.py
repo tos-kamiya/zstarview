@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import timedelta
+import math
 from types import SimpleNamespace
 
 import zstarview.cli.export_image as mod
+import pytest
 from zstarview.cli.args import SKY_OPACITY_DEFAULT
 from zstarview.gui.window_inputs import SkyWindowRuntimeOptions
-from zstarview.water_overlay import WaterOverlayPoint, WaterPolygonFootprint
+from zstarview.water_overlay import WaterOverlayPoint
 
 
 @dataclass
@@ -206,48 +208,54 @@ def test_fetch_urban_outline_layer_skips_skyscraper_lookup_when_radius_zero(monk
     assert got is None
 
 
-def test_fetch_water_overlay_layer_uses_observer_ground_and_eye_height(monkeypatch) -> None:
+def test_fetch_water_overlay_layer_uses_observer_ground_and_eye_height(monkeypatch, caplog) -> None:
     viewer_data = SimpleNamespace(
         lat_deg=35.0,
         lon_deg=139.0,
         observer_height_m=1.7,
         ground_elevation_m=42.0,
     )
-    footprint = WaterPolygonFootprint(
-        water_id="lake",
-        kind="natural_water",
-        outer_rings_lonlat=(
-            (
-                (139.0, 35.0),
-                (139.01, 35.0),
-                (139.01, 35.01),
-                (139.0, 35.01),
-                (139.0, 35.0),
-            ),
-        ),
-        inner_rings_lonlat=(),
-        source="way",
-        tags={"natural": "water"},
-    )
     captured: dict[str, float] = {}
 
-    monkeypatch.setattr(mod, "fetch_overpass_json", lambda **_kwargs: {"elements": []})
-    monkeypatch.setattr(mod, "extract_water_polygons", lambda *_args, **_kwargs: (footprint,))
-
-    def _sample_water_overlay_points(*_args, **kwargs):
+    def _sample_water_surface_interface_points(*_args, **kwargs):
         captured["observer_height_m"] = float(kwargs["observer_height_m"])
-        captured["fallback_surface_height_m"] = float(kwargs["fallback_surface_height_m"])
         captured["max_distance_km"] = float(kwargs["max_distance_km"])
         return (WaterOverlayPoint("water", 10.0, 20.0, 0.5),)
 
-    monkeypatch.setattr(mod, "sample_water_overlay_points", _sample_water_overlay_points)
+    monkeypatch.setattr(mod, "sample_water_surface_interface_points", _sample_water_surface_interface_points)
 
-    got = mod._fetch_water_overlay_layer(viewer_data=viewer_data, deadline=None)
+    with caplog.at_level("INFO", logger="zstarview.cli.export_image"):
+        got = mod._fetch_water_overlay_layer(viewer_data=viewer_data, deadline=None)
 
     assert got == [WaterOverlayPoint("water", 10.0, 20.0, 0.5)]
     assert captured["observer_height_m"] == 43.7
-    assert captured["fallback_surface_height_m"] == 42.0
     assert captured["max_distance_km"] == mod.resolve_water_scan_radius_km(
         43.7,
         minimum_distance_km=mod.DEFAULT_WATER_RADIUS_KM,
     )
+    assert "Water mask points: 1 visible, nearest sea point 0.500 km" in caplog.text
+
+
+def test_fetch_terrain_horizon_layer_uses_sea_level_fallback(monkeypatch) -> None:
+    viewer_data = SimpleNamespace(
+        lat_deg=35.0,
+        lon_deg=139.0,
+        observer_height_m=1.7,
+    )
+
+    def _raise_no_tiles(**_kwargs):
+        raise RuntimeError(
+            "No Copernicus DEM tiles were downloaded for the requested area."
+        )
+
+    monkeypatch.setattr(mod, "fetch_copernicus_dem", _raise_no_tiles)
+
+    got = mod._fetch_terrain_horizon_layer(viewer_data=viewer_data, deadline=None)
+
+    assert len(got["profile_altaz"]) == 360
+    assert len(got["profile_distances_m"]) == 360
+    assert len(got["secondary_profile_altaz_layers"]) >= 1
+    assert len(got["secondary_profile_distances_m_layers"]) >= 1
+    assert all(math.isfinite(alt) for alt, _az in got["profile_altaz"])
+    assert min(got["profile_distances_m"]) > 0.0
+    assert max(got["profile_distances_m"]) == pytest.approx(min(got["profile_distances_m"]))

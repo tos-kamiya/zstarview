@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import numpy as np
 import pytest
 from rasterio.transform import Affine
@@ -8,6 +9,7 @@ from zstarview.terrain.dem import WGS84_GEOD
 from zstarview.terrain.horizon import (
     DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM,
     ObserverLocation,
+    compute_flat_ground_horizon_layers,
     compute_horizon_layers,
     _prune_secondary_peak_indices_by_visibility,
     _prune_secondary_peak_indices_by_main_profile,
@@ -317,6 +319,29 @@ def test_compute_horizon_layers_adds_nearest_secondary_band() -> None:
     assert len(layers.secondary_layers) >= 2
     assert [point.distance_m for point in layers.secondary_layers[0]] == [500.0, 500.0]
     assert [point.distance_m for point in layers.secondary_layers[1]] == [1000.0, 1000.0]
+
+
+def test_compute_flat_ground_horizon_layers_builds_flat_horizon() -> None:
+    layers = compute_flat_ground_horizon_layers(
+        geod=WGS84_GEOD,
+        observer=ObserverLocation(
+            latitude_deg=35.0,
+            longitude_deg=139.0,
+            observer_ground_m=0.0,
+            observer_eye_m=1.7,
+        ),
+        azimuth_step_deg=90.0,
+        distance_samples_m=build_distance_samples(128.0, 500.0),
+        earth_radius_m=6_371_008.8,
+        refraction_coefficient=0.13,
+    )
+
+    assert len(layers.main_profile) == 4
+    distances = [point.distance_m for point in layers.main_profile]
+    assert min(distances) > 0.0
+    assert max(distances) == pytest.approx(min(distances))
+    assert all(math.isfinite(point.altitude_deg) for point in layers.main_profile)
+    assert len(layers.secondary_layers) >= 1
 
 
 def test_distance_band_widths_start_thickest_and_taper_down() -> None:

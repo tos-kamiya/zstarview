@@ -53,7 +53,10 @@ TERRAIN_SECONDARY_RIDGE_GLOW_MID_WIDTH_SCALE = 1.35
 TERRAIN_SECONDARY_RIDGE_GLOW_OUTER_ALPHA_SCALE = 0.06
 TERRAIN_SECONDARY_RIDGE_GLOW_MID_ALPHA_SCALE = 0.18
 WATER_OVERLAY_POINT_COLOR_RGB = (122, 218, 240)
-WATER_OVERLAY_POINT_RADIUS_PX = 2.7
+WATER_OVERLAY_SEA_COLOR_RGB = (76, 140, 255)
+WATER_OVERLAY_LAKE_COLOR_RGB = (104, 196, 168)
+WATER_OVERLAY_RIVER_COLOR_RGB = (94, 214, 255)
+WATER_OVERLAY_POINT_RADIUS_PX = 10.0
 
 
 def _urban_outline_foreground_alpha(opacity: float) -> float:
@@ -252,6 +255,17 @@ def _solid_pen(color_rgb: tuple[int, int, int], alpha: float, width: float) -> Q
     pen.setCapStyle(Qt.PenCapStyle.RoundCap)
     pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
     return pen
+
+
+def _water_overlay_point_color_rgb(water_point: WaterOverlayPoint) -> tuple[int, int, int]:
+    category = str(getattr(water_point, "water_category", "")).strip().lower()
+    if category == "sea":
+        return WATER_OVERLAY_SEA_COLOR_RGB
+    if category == "river":
+        return WATER_OVERLAY_RIVER_COLOR_RGB
+    if category == "lake":
+        return WATER_OVERLAY_LAKE_COLOR_RGB
+    return WATER_OVERLAY_POINT_COLOR_RGB
 
 
 def _distance_band_widths(
@@ -1026,10 +1040,6 @@ def draw_water_overlay_points(
     dot_alpha = max(0, min(255, int(round(255.0 * layer_opacity))))
 
     painter.save()
-    dot_color = QColor(
-        *WATER_OVERLAY_POINT_COLOR_RGB,
-        dot_alpha,
-    )
     painter.setPen(Qt.PenStyle.NoPen)
     scale = max(1.0, float(line_width_scale))
     base_radius = WATER_OVERLAY_POINT_RADIUS_PX * scale
@@ -1051,6 +1061,10 @@ def draw_water_overlay_points(
                 edge_fov_deg=float(edge_fov_deg),
             )
         px, py = normalized_to_screen_xy_func(nx, ny, geometry)
+        dot_color = QColor(
+            *_water_overlay_point_color_rgb(point),
+            dot_alpha,
+        )
         painter.setBrush(dot_color)
         radius = base_radius
         painter.drawEllipse(QPointF(float(px), float(py)), radius, radius)

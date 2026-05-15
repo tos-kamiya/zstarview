@@ -2304,6 +2304,36 @@ def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
+        pipeline_module,
+        "_draw_star_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_star_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_stars,
+        "draw_stars_fast",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_stars,
+        "draw_stars_normal",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_star_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_star_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
         pipeline_module.render_terrain,
         "draw_urban_outlines",
         lambda *_args, **_kwargs: None,
@@ -2337,6 +2367,133 @@ def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(
     )
 
     assert seen_stars == [interaction_stars]
+
+
+def test_draw_viewport_interaction_layers_skips_water_when_terrain_horizon_hidden(
+    monkeypatch,
+) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr(
+        pipeline_module.render_guides,
+        "draw_sky_reference_lines",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
+        "draw_terrain_horizon_fast",
+        lambda *_args, **_kwargs: calls.append("terrain"),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
+        "draw_water_overlay_points",
+        lambda *_args, **_kwargs: calls.append("water"),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
+        "draw_urban_outlines",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_guides,
+        "draw_direction_labels",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_guides,
+        "draw_zenith_marker",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_stars,
+        "draw_stars_fast",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_stars,
+        "draw_stars_normal",
+        lambda *_args, **_kwargs: None,
+    )
+
+    scene = replace(
+        _make_scene(terrain_horizon_profile=[(1.0, 10.0)]),
+        water_overlay_points=[object()],
+    )
+    pipeline_module._draw_viewport_interaction_layers(
+        painter=object(),
+        geometry=SimpleNamespace(radius=600),
+        viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
+        scene=scene,
+        style=_make_style(terrain_horizon_opacity=0.0, water_overlay_opacity=0.5),
+        hud=_make_hud(),
+    )
+
+    assert calls == ["terrain"]
+
+
+def test_render_base_scene_skips_water_when_terrain_horizon_hidden(monkeypatch) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr(pipeline_module, "_clear_background_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(pipeline_module, "_draw_background_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(pipeline_module, "_draw_sky_cloud_layers", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(pipeline_module, "_draw_guide_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(pipeline_module, "_draw_planet_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(pipeline_module, "_draw_satellite_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(pipeline_module, "_draw_aircraft_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(pipeline_module, "_draw_urban_outline_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(pipeline_module, "_draw_star_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(pipeline_module, "_draw_hover_overlay_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(pipeline_module, "_draw_label_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(pipeline_module, "_draw_status_line", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        pipeline_module.render_stars,
+        "draw_stars_fast",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_stars,
+        "draw_stars_normal",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
+        "draw_terrain_horizon_fast",
+        lambda *_args, **_kwargs: calls.append("terrain"),
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_terrain,
+        "draw_water_overlay_points",
+        lambda *_args, **_kwargs: calls.append("water"),
+    )
+
+    scene = replace(
+        _make_scene(terrain_horizon_profile=[(1.0, 10.0)]),
+        water_overlay_points=[object()],
+    )
+
+    class _Painter:
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setCompositionMode(self, *_args, **_kwargs) -> None:
+            pass
+
+        def fillRect(self, *_args, **_kwargs) -> None:
+            pass
+
+    pipeline_module.render_base_scene_into_painter(
+        painter=_Painter(),
+        geometry=SimpleNamespace(radius=600),
+        viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
+        scene=scene,
+        style=_make_style(terrain_horizon_opacity=0.0, water_overlay_opacity=0.5),
+        compositor=object(),
+        hud=_make_hud(),
+    )
+
+    assert calls == []
 
 
 def test_draw_urban_outline_layer_skips_when_hidden(monkeypatch) -> None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import math
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -1090,7 +1091,7 @@ def test_toggle_urban_outline_respects_cli_lockout() -> None:
     assert dummy._action_toggle_urban_outline.isChecked() is False
 
 
-def test_terrain_controller_treats_missing_ocean_tiles_as_empty_profile(
+def test_terrain_controller_uses_sea_level_horizon_when_dem_missing(
     tmp_path, monkeypatch
 ) -> None:
     controller = TerrainHorizonController(cache_dir=tmp_path)
@@ -1111,16 +1112,17 @@ def test_terrain_controller_treats_missing_ocean_tiles_as_empty_profile(
     controller._run_update(lat=20.0, lon=-30.0, observer_height_m=1.7, reason="initial")
 
     assert failed_payloads == []
-    assert ready_payloads == [
-        {
-            "profile_altaz": [],
-            "profile_distances_m": [],
-            "secondary_profile_altaz_layers": [],
-            "secondary_profile_distances_m_layers": [],
-            "ground_elevation_m": 0.0,
-            "source": "Dem: cache",
-        }
-    ]
+    assert len(ready_payloads) == 1
+    payload = ready_payloads[0]
+    assert payload["ground_elevation_m"] == 0.0
+    assert payload["source"] == "Flat-ground fallback"
+    assert len(payload["profile_altaz"]) == 360
+    assert len(payload["profile_distances_m"]) == 360
+    assert len(payload["secondary_profile_altaz_layers"]) >= 1
+    assert len(payload["secondary_profile_distances_m_layers"]) >= 1
+    assert all(math.isfinite(alt) for alt, _az in payload["profile_altaz"])
+    assert min(payload["profile_distances_m"]) > 0.0
+    assert max(payload["profile_distances_m"]) == pytest.approx(min(payload["profile_distances_m"]))
 
 
 def test_toggle_sky_disc_enables_gradient_and_requests_refresh() -> None:
