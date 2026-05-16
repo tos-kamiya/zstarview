@@ -15,7 +15,7 @@ from pyproj import Transformer
 from pyproj.enums import TransformDirection
 
 from .clouddisc.types import DownloadCancelledError
-from .location_resolver.place_projection import project_place_target_to_altaz
+from .location_resolver.place_projection import project_place_targets_to_altaz
 from .terrain import WGS84_GEOD, build_ray_scan_grid
 from .water_surface_mesh import make_local_transformer, project_ring_xy
 
@@ -996,6 +996,7 @@ def sample_water_overlay_points(
 
     for row_index, azimuth_deg in enumerate(ray_scan.azimuths_deg):
         _cooperative_yield(abort_event, interval=8, iteration_index=row_index)
+        matched_records: list[tuple[int, float, float, float, float, WaterPolygonFootprint]] = []
         for col_index, distance_m in enumerate(ray_scan.distance_grid_m[row_index]):
             if col_index % 128 == 0:
                 _raise_if_abort_requested(abort_event)
@@ -1018,14 +1019,31 @@ def sample_water_overlay_points(
                 latitude_deg=lat,
                 longitude_deg=lon,
             )
-            projection = project_place_target_to_altaz(
-                observer_latitude_deg=observer_lat,
-                observer_longitude_deg=observer_lon,
-                observer_height_m=observer_height,
-                target_latitude_deg=lat,
-                target_longitude_deg=lon,
-                target_height_m=target_height_m,
+            matched_records.append(
+                (
+                    int(col_index),
+                    float(distance_m),
+                    float(lat),
+                    float(lon),
+                    float(target_height_m),
+                    matched_footprint,
+                )
             )
+        if not matched_records:
+            continue
+        projections = project_place_targets_to_altaz(
+            observer_latitude_deg=observer_lat,
+            observer_longitude_deg=observer_lon,
+            observer_height_m=observer_height,
+            target_latitude_deg=[record[2] for record in matched_records],
+            target_longitude_deg=[record[3] for record in matched_records],
+            target_height_m=[record[4] for record in matched_records],
+        )
+        for (col_index, distance_m, lat, lon, _target_height_m, matched_footprint), projection in zip(
+            matched_records,
+            projections,
+            strict=False,
+        ):
             points.append(
                 WaterOverlayPoint(
                     water_id="water",

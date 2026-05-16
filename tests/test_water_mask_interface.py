@@ -162,8 +162,10 @@ def test_sample_water_surface_interface_ray_points_start_at_125m(monkeypatch) ->
     monkeypatch.setattr(mod, "_sample_water_mask_for_lonlat_points", lambda lonlat_points, **_kwargs: [True] * len(lonlat_points))
     monkeypatch.setattr(
         mod,
-        "project_place_target_to_altaz",
-        lambda **_kwargs: type("Projection", (), {"alt_deg": 1.0, "az_deg": 2.0, "distance_km": 3.0})(),
+        "project_place_targets_to_altaz",
+        lambda **_kwargs: (
+            type("Projection", (), {"alt_deg": 1.0, "az_deg": 2.0, "distance_km": 3.0})(),
+        ),
     )
 
     points, _stats = mod._sample_water_surface_interface_ray_points_for_root_with_stats(  # noqa: SLF001

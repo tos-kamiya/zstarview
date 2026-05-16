@@ -7,7 +7,7 @@ from typing import Callable
 
 import numpy as np
 
-from .location_resolver.place_projection import project_place_target_to_altaz
+from .location_resolver.place_projection import project_place_targets_to_altaz
 from .terrain import WGS84_GEOD, build_ray_scan_grid
 from .water_overlay import (
     DEFAULT_WATER_AZIMUTH_STEP_DEG,
@@ -475,7 +475,8 @@ def _sample_water_surface_interface_ray_points_for_root_with_stats(
             row_lonlat_points,
             tile_root=tile_root,
         )
-        for (col_index, _distance_m), (lon_deg, lat_deg), is_water in zip(
+        water_meta: list[tuple[int, float, float, float, float]] = []
+        for (col_index, distance_m), (lon_deg, lat_deg), is_water in zip(
             row_meta,
             row_lonlat_points,
             row_water_flags,
@@ -490,14 +491,30 @@ def _sample_water_surface_interface_ray_points_for_root_with_stats(
                     )
                 except Exception:
                     target_height_m = 0.0
-            projection = project_place_target_to_altaz(
-                observer_latitude_deg=float(center_lat_deg),
-                observer_longitude_deg=float(center_lon_deg),
-                observer_height_m=float(observer_height_m),
-                target_latitude_deg=float(lat_deg),
-                target_longitude_deg=float(lon_deg),
-                target_height_m=target_height_m,
+            water_meta.append(
+                (
+                    int(col_index),
+                    float(distance_m),
+                    float(lon_deg),
+                    float(lat_deg),
+                    float(target_height_m),
+                )
             )
+        if not water_meta:
+            continue
+        projections = project_place_targets_to_altaz(
+            observer_latitude_deg=float(center_lat_deg),
+            observer_longitude_deg=float(center_lon_deg),
+            observer_height_m=float(observer_height_m),
+            target_latitude_deg=[item[3] for item in water_meta],
+            target_longitude_deg=[item[2] for item in water_meta],
+            target_height_m=[item[4] for item in water_meta],
+        )
+        for (col_index, _distance_m, lon_deg, lat_deg, _target_height_m), projection in zip(
+            water_meta,
+            projections,
+            strict=False,
+        ):
             overlay_points.append(
                 WaterOverlayPoint(
                     water_id="water-mask",
