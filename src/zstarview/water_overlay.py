@@ -33,6 +33,7 @@ DEFAULT_WATER_ALPHA_MIN = 0.04
 DEFAULT_WATER_VERTEX_SPACING_THRESHOLD_BASE_M = 50.0
 DEFAULT_WATER_QUERY_BBOX_SCALE = 1.2
 DEFAULT_WATER_LAKE_DROP_THRESHOLD_SCALE = 16.0
+DEFAULT_WATER_SCAN_RADIUS_MAX_KM = 128.0
 
 POLYGON_WATER_KEYS = {
     ("natural", "water"),
@@ -136,10 +137,11 @@ def resolve_water_scan_radius_km(
         raise ValueError("minimum_distance_km must be positive")
     if horizon_margin_km < 0.0:
         raise ValueError("horizon_margin_km must be non-negative")
-    return max(
+    scan_radius_km = max(
         float(minimum_distance_km),
         horizon_distance_km_from_height(observer_height_m) + float(horizon_margin_km),
     )
+    return min(float(DEFAULT_WATER_SCAN_RADIUS_MAX_KM), float(scan_radius_km))
 
 
 def build_geometric_distance_samples(

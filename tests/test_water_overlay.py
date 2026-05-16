@@ -508,10 +508,12 @@ def test_build_geometric_distance_samples_stays_dense_farther_out() -> None:
 def test_resolve_water_scan_radius_scales_with_height() -> None:
     low = resolve_water_scan_radius_km(0.0)
     high = resolve_water_scan_radius_km(500.0)
+    capped = resolve_water_scan_radius_km(5000.0)
 
     assert low == 2.0
     assert high > low
     assert high == horizon_distance_km_from_height(500.0) + 1.0
+    assert capped == 128.0
 
 
 def test_expanded_query_bbox_from_point_scales_by_20_percent() -> None:
