@@ -12,7 +12,7 @@ import time
 from collections import Counter
 from dataclasses import replace
 from pathlib import Path
-from typing import TypedDict
+from typing import Callable, TypedDict
 
 import numpy as np
 from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QPoint, QRect
@@ -639,10 +639,55 @@ def _fetch_terrain_horizon_layer(
     }
 
 
+def _build_water_target_ground_sampler(
+    *,
+    viewer_data: ViewerData,
+    scan_radius_km: float,
+    deadline: float | None,
+) -> Callable[[float, float], float] | None:
+    if _timed_out(deadline):
+        raise TimeoutError("water timed out")
+    try:
+        download = fetch_copernicus_dem(
+            observer_lat_deg=float(viewer_data.lat_deg),
+            observer_lon_deg=float(viewer_data.lon_deg),
+            max_distance_km=scan_radius_km,
+            margin_km=10.0,
+            cache_dir=Path(CACHE_PATH) / "copernicus-dem",
+        )
+    except Exception:
+        return None
+
+    dem = GeoTiffDem(download.paths, default_elevation_m=0.0)
+    try:
+        bbox = build_download_bbox(
+            lat_deg=float(viewer_data.lat_deg),
+            lon_deg=float(viewer_data.lon_deg),
+            radius_km=scan_radius_km + 10.0,
+        )
+        dem_grid = dem.build_grid(bbox)
+    except Exception:
+        dem.close()
+        return None
+
+    dem.close()
+
+    def sampler(latitude_deg: float, longitude_deg: float) -> float:
+        return sample_ground_elevation(
+            dem_grid,
+            latitude_deg=float(latitude_deg),
+            longitude_deg=float(longitude_deg),
+            dem_resampling="bilinear",
+        )
+
+    return sampler
+
+
 def _fetch_water_overlay_layer(
     *,
     viewer_data: ViewerData,
     deadline: float | None,
+    target_ground_sampler: Callable[[float, float], float] | None = None,
 ) -> list[WaterOverlayPoint] | None:
     if _timed_out(deadline):
         raise TimeoutError("water timed out")
@@ -659,6 +704,7 @@ def _fetch_water_overlay_layer(
         observer_lon_deg=float(viewer_data.lon_deg),
         observer_height_m=float(viewer_data.observer_height_m) + observer_ground_m,
         max_distance_km=scan_radius_km,
+        target_ground_elevation_m_sampler=target_ground_sampler,
     )
     inland_points = sample_water_overlay_points_for_observer(
         observer_lat_deg=float(viewer_data.lat_deg),
@@ -666,6 +712,7 @@ def _fetch_water_overlay_layer(
         observer_height_m=float(viewer_data.observer_height_m) + observer_ground_m,
         fallback_surface_height_m=float(observer_ground_m),
         max_distance_km=scan_radius_km,
+        target_ground_elevation_m_sampler=target_ground_sampler,
     )
     water_points = tuple(sea_points) + tuple(inland_points)
     nearest_distance_km = min((float(point.distance_km) for point in water_points), default=None)
@@ -1374,9 +1421,20 @@ def main() -> None:
     water_overlay_opacity = float(getattr(user_options, "water_overlay_opacity", 0.12))
     if water_overlay_opacity > 0.0:
         try:
+            observer_ground_m = float(getattr(viewer_data, "ground_elevation_m", 0.0) or 0.0)
+            scan_radius_km = resolve_water_scan_radius_km(
+                float(viewer_data.observer_height_m) + observer_ground_m,
+                minimum_distance_km=DEFAULT_WATER_RADIUS_KM,
+            )
+            water_target_ground_sampler = _build_water_target_ground_sampler(
+                viewer_data=viewer_data,
+                scan_radius_km=scan_radius_km,
+                deadline=deadline,
+            )
             water_overlay_points = _fetch_water_overlay_layer(
                 viewer_data=viewer_data,
                 deadline=deadline,
+                target_ground_sampler=water_target_ground_sampler,
             )
         except Exception as exc:
             logger.warning("Export layer unavailable: water (%s)", exc)

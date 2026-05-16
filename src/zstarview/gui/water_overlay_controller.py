@@ -62,6 +62,7 @@ def _water_overlay_band_stats_text(stats: WaterSurfaceBandStats) -> str:
 class _WaterOverlayScopeCache:
     footprints: tuple
     fetched_at_utc: datetime | None
+    uses_dem_sampler: bool = False
     sea_mask_points: tuple | None = None
     inland_points: tuple | None = None
     sea_points: tuple | None = None
@@ -324,6 +325,7 @@ class WaterOverlayController(QObject):
                 scope_key,
                 scope_cache,
                 footprints=footprints,
+                uses_dem_sampler=scope_cache.uses_dem_sampler,
                 sea_mask_points=scope_cache.sea_mask_points,
                 inland_points=scope_cache.inland_points,
                 sea_points=sea_points,
@@ -407,6 +409,7 @@ class WaterOverlayController(QObject):
             cache = _WaterOverlayScopeCache(
                 footprints=(),
                 fetched_at_utc=now_utc,
+                uses_dem_sampler=False,
                 sea_mask_points=None,
                 inland_points=None,
                 sea_points=None,
@@ -434,15 +437,18 @@ class WaterOverlayController(QObject):
         scan_radius_km: float,
         target_ground_sampler: Callable[[float, float], float] | None,
     ) -> tuple[tuple, tuple | None, tuple | None, tuple[WaterSurfaceBandStats, ...], tuple]:
+        use_target_sampler = bool(use_dem_ground and target_ground_sampler is not None)
         sea_mask_points = scope_cache.sea_mask_points
-        if sea_mask_points is None:
+        if sea_mask_points is None or bool(scope_cache.uses_dem_sampler) != use_target_sampler:
             sea_mask_points, band_stats = sample_water_surface_interface_points_with_stats(
                 observer_lat_deg=observer_lat_deg,
                 observer_lon_deg=observer_lon_deg,
                 observer_height_m=float(observer_height_m) + float(observer_ground_m),
                 max_distance_km=scan_radius_km,
+                target_ground_elevation_m_sampler=target_ground_sampler if use_target_sampler else None,
             )
             scope_cache.sea_mask_points = sea_mask_points
+            scope_cache.uses_dem_sampler = use_target_sampler
         else:
             band_stats = ()
 
@@ -461,20 +467,22 @@ class WaterOverlayController(QObject):
 
         observer_absolute_height_m = float(observer_height_m) + float(observer_ground_m)
         inland_points = scope_cache.inland_points
-        if inland_points is None:
+        if inland_points is None or bool(scope_cache.uses_dem_sampler) != use_target_sampler:
             inland_points = sample_water_overlay_points(
                 footprints,
                 observer_lat_deg=observer_lat_deg,
                 observer_lon_deg=observer_lon_deg,
                 observer_height_m=observer_absolute_height_m,
                 fallback_surface_height_m=float(observer_ground_m),
+                target_ground_elevation_m_sampler=target_ground_sampler if use_target_sampler else None,
                 max_distance_km=scan_radius_km,
                 abort_event=self._download_abort_event,
             )
             scope_cache.inland_points = inland_points
+            scope_cache.uses_dem_sampler = use_target_sampler
         combined_sea_points = tuple(sea_mask_points) + tuple(inland_points)
 
-        if use_dem_ground and target_ground_sampler is not None:
+        if use_target_sampler:
             inland_dem_points = sample_water_overlay_points(
                 footprints,
                 observer_lat_deg=observer_lat_deg,
@@ -546,6 +554,7 @@ class WaterOverlayController(QObject):
         scope_cache: _WaterOverlayScopeCache,
         *,
         footprints: tuple | None,
+        uses_dem_sampler: bool | None,
         sea_mask_points: tuple | None,
         inland_points: tuple | None,
         sea_points: tuple | None,
@@ -556,6 +565,8 @@ class WaterOverlayController(QObject):
         with self._lock:
             if footprints is not None:
                 scope_cache.footprints = footprints
+            if uses_dem_sampler is not None:
+                scope_cache.uses_dem_sampler = bool(uses_dem_sampler)
             if sea_mask_points is not None:
                 scope_cache.sea_mask_points = sea_mask_points
             if inland_points is not None:

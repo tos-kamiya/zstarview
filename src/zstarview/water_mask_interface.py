@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
 
@@ -468,6 +469,7 @@ def sample_water_surface_interface_points_with_stats(
     observer_lon_deg: float,
     observer_height_m: float,
     max_distance_km: float,
+    target_ground_elevation_m_sampler: Callable[[float, float], float] | None = None,
     tile_root: Path | None = None,
     bbox_scale: float = DEFAULT_WATER_INTERFACE_BBOX_SCALE,
     stride: int = DEFAULT_WATER_INTERFACE_POINT_STRIDE,
@@ -496,13 +498,21 @@ def sample_water_surface_interface_points_with_stats(
             continue
         band_category = _band_category_for_tile_root(band_root)
         for lon_deg, lat_deg in lonlat_points:
+            target_height_m = 0.0
+            if target_ground_elevation_m_sampler is not None:
+                try:
+                    target_height_m = float(
+                        target_ground_elevation_m_sampler(float(lat_deg), float(lon_deg))
+                    )
+                except Exception:
+                    target_height_m = 0.0
             projection = project_place_target_to_altaz(
                 observer_latitude_deg=float(observer_lat_deg),
                 observer_longitude_deg=float(observer_lon_deg),
                 observer_height_m=float(observer_height_m),
                 target_latitude_deg=float(lat_deg),
                 target_longitude_deg=float(lon_deg),
-                target_height_m=0.0,
+                target_height_m=target_height_m,
             )
             overlay_points.append(
                 WaterOverlayPoint(
