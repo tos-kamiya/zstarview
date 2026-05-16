@@ -6,7 +6,7 @@
 | `--cloud-stripe MODE[,COUNT[,WIDTH]]` | 雲ストライプの方式を指定します。`width` は中心対称のストライプを描き、雲量に応じて見かけの線幅を変えます。`alpha` は線幅を固定したまま線の alpha を変えます。`COUNT` は既定の 600x600 星レンダリング面でのストライプ密度として扱い、実際の描画時には星レイヤーの縮小レンダリング面サイズに合わせてスケールします。`width` は `width,50,0.85`、`alpha` は `alpha,50,0.25` に展開されます。count または width を `0` にすると雲描画を無効化します。 | `width,50,0.85` |
 | `--cloud-missing-tint-opacity OPACITY` | 雲欠損領域を示す黄色の濃さを指定します（0.0〜1.0）。 | `0.176` |
 | `--night-light-opacity OPACITY` | 夜間光オーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、起動中の Black Marble のダウンロードと描画を無効化します。 | `0.022` |
-| `--water-surface-opacity OPACITY` | 水面オーバーレイのドットの不透明度を指定します（0.0〜1.0）。0.0 で、起動中の水面データの取得とドット描画を無効化します。 | `0.12` |
+| `--water-surface-opacity OPACITY` | 水面ドットの不透明度を指定します（0.0〜1.0）。0.0 で、起動中の水面データの取得とドット描画を無効化します。 | `0.12` |
 | `-a`, `--aircraft-opacity OPACITY` | 航空機オーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、起動中の航空機問い合わせと描画を無効化します。 | `0.5` |
 | `--satellite-opacity OPACITY` | 人工衛星オーバーレイの不透明度を指定します（0.0〜1.0）。0.0 で、起動中の軌道要素取得と描画を無効化します。 | `0.5` |
 | `--show-guidelines-initial true\|false` | 起動時にガイドライン表示を有効にするかを指定します。対象は幾何学的地平線、天の赤道、黄道、never-rises 円、方位ラベル、天頂マーカーです。 | `show` |
@@ -23,6 +23,6 @@
 
 #### 水面について
 
-水面の描画は 2 つの異なる経路を使います。海側の点は [OSM Water Polygons](https://osmdata.openstreetmap.de/data/water-polygons.html) 由来のローカル sea-mask タイルから、川・湖・池などの内陸水域の点は [Overpass API](https://overpass-api.de/) 経由で取得した OpenStreetMap データから生成します。
+水面の描画は 2 つの異なる経路を使います。海側のドットは [OSM Water Polygons](https://osmdata.openstreetmap.de/data/water-polygons.html) 由来のローカル sea-mask タイルから、川・湖・池などの内陸水域のドットは [Overpass API](https://overpass-api.de/) 経由で取得した OpenStreetMap データから生成します。
 
 海岸沿いの少し高い観測地点では、1 回の Overpass 問い合わせで 9MB 前後の内陸水域データを取得することがあります。取得した生データは観測地点ごとにキャッシュされますが、観測地点を何度も変えて実行すると、ダウンロード量が積み上がり、公開 Overpass インスタンスの目安である 1GB/日の安全ガイドラインに近づくことがあります。

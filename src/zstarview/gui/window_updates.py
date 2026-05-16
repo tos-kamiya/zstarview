@@ -841,7 +841,7 @@ class SkyWindowUpdatesMixin:
         source = str(payload.get("source", "")).strip() or "ready"
         count = len(points) if isinstance(points, list) else 0
         logger.info(
-            "Water surface ready: mode=%s source=%s points=%d sea_points=%s inland_points=%s dem_points=%s",
+            "Water surface dots ready: mode=%s source=%s dots=%d sea_dots=%s inland_dots=%s dem_dots=%s",
             mode,
             source,
             count,

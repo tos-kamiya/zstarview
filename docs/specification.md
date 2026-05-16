@@ -683,7 +683,7 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 - sea-mask の `1` を水、`0` を地面として扱ってよく、水ピクセル中心を観測者視点へ投影した点として表示してよい。
 - 水面の海側は、まず sea-mask が揃った段階で先行描画してよく、その後 inland water が揃った段階で合成結果へ更新してよい。
 - 海面の見え方は、観測地点からの距離に応じて alpha を減衰させてよい。`128km` での alpha は、既定で 1/16 程度まで落ちてよい。
-- 水点の表示は terrain horizon の描画に追従してよく、terrain horizon が OFF のときは水点も表示しなくてよい。
+- 水面ドットの表示は terrain horizon の描画に追従してよく、terrain horizon が OFF のときは水面ドットも表示しなくてよい。
 - `Terrain Horizon` が OFF の間は `Water Surface` の GUI 項目を無効化してよく、再び ON にしたときにだけ操作可能へ戻してよい。
 - inland water は既定では sea と合成して描いてよいが、内部的には別レイヤーとして保持してよい。
 - 水面レイヤーの点数や band 切り替えの内訳は、status line ではなく logger で確認してよい。
