@@ -160,12 +160,14 @@ class WaterOverlayController(QObject):
                 observer_ground_m=float(observer_ground_m),
             )
             if cached_variant is not None:
+                cached_sea_points = cached_scope.sea_mask_points or cached_scope.sea_points
                 for band_stat in cached_scope.sea_band_stats or ():
                     logger.info("Water band stats: %s", _water_overlay_band_stats_text(band_stat))
                 self._emit_variant(
                     cached_variant["points"],
                     mode=cached_variant["mode"],
-                    sea_points=cached_scope.sea_points,
+                    sea_points=cached_sea_points,
+                    inland_points=cached_scope.inland_points,
                     dem_points=cached_scope.dem_points,
                     water_polygon_count=len(cached_scope.footprints),
                     source="Water: cache",
@@ -304,7 +306,15 @@ class WaterOverlayController(QObject):
                 cached_scope=cached_scope,
                 now_utc=now_utc,
             )
-            active_points, sea_points, dem_points, band_stats, footprints = self._build_requested_variants(
+            (
+                active_points,
+                sea_mask_points,
+                sea_points,
+                inland_points,
+                dem_points,
+                band_stats,
+                footprints,
+            ) = self._build_requested_variants(
                 scope_cache,
                 observer_lat_deg=float(lat_deg),
                 observer_lon_deg=float(lon_deg),
@@ -321,6 +331,8 @@ class WaterOverlayController(QObject):
                     if use_dem_ground
                     else None
                 ),
+                key=key,
+                scope_key=scope_key,
                 terrain_horizon_profile_altaz=terrain_horizon_profile_altaz,
                 terrain_horizon_profile_distances_m=terrain_horizon_profile_distances_m,
                 terrain_horizon_secondary_profile_altaz_layers=terrain_horizon_secondary_profile_altaz_layers,
@@ -346,15 +358,14 @@ class WaterOverlayController(QObject):
                     band_250_count,
                     band_500_count,
                 )
-            mode = "dem" if use_dem_ground and dem_points is not None else "sea"
             self._store_scope_cache(
                 scope_key,
                 scope_cache,
                 footprints=footprints,
                 uses_dem_sampler=scope_cache.uses_dem_sampler,
-                sea_mask_points=scope_cache.sea_mask_points,
-                inland_points=scope_cache.inland_points,
+                sea_mask_points=sea_mask_points,
                 sea_points=sea_points,
+                inland_points=inland_points,
                 sea_band_stats=band_stats,
                 dem_points=dem_points,
                 dem_ground_m=float(observer_ground_m) if dem_points is not None else None,
@@ -367,8 +378,9 @@ class WaterOverlayController(QObject):
             if should_emit:
                 self._emit_variant(
                     active_points,
-                    mode=mode,
-                    sea_points=sea_points,
+                    mode="dem" if use_dem_ground and dem_points is not None else "sea",
+                    sea_points=sea_mask_points,
+                    inland_points=inland_points,
                     dem_points=dem_points,
                     water_polygon_count=len(scope_cache.footprints),
                     source="Water: sea mask + OSM",
@@ -384,10 +396,12 @@ class WaterOverlayController(QObject):
                     observer_ground_m=float(observer_ground_m),
                 )
                 if fallback_variant is not None and self._active_key == key:
+                    cached_sea_points = cached_scope.sea_mask_points or cached_scope.sea_points
                     self._emit_variant(
                         fallback_variant["points"],
                         mode=fallback_variant["mode"],
-                        sea_points=cached_scope.sea_points,
+                        sea_points=cached_sea_points,
+                        inland_points=cached_scope.inland_points,
                         dem_points=cached_scope.dem_points,
                         water_polygon_count=len(cached_scope.footprints),
                         source="Water: cache-stale",
@@ -531,11 +545,21 @@ class WaterOverlayController(QObject):
         use_dem_ground: bool,
         scan_radius_km: float,
         target_ground_sampler: Callable[[float, float], float] | None,
+        key: tuple[float, float, float, float, bool],
+        scope_key: str,
         terrain_horizon_profile_altaz: list[tuple[float, float]] | None = None,
         terrain_horizon_profile_distances_m: list[float] | None = None,
         terrain_horizon_secondary_profile_altaz_layers: list[list[tuple[float, float]]] | None = None,
         terrain_horizon_secondary_profile_distances_m_layers: list[list[float]] | None = None,
-    ) -> tuple[tuple, tuple | None, tuple | None, tuple[WaterSurfaceBandStats, ...], tuple]:
+    ) -> tuple[
+        tuple,
+        tuple | None,
+        tuple | None,
+        tuple | None,
+        tuple | None,
+        tuple[WaterSurfaceBandStats, ...],
+        tuple,
+    ]:
         use_target_sampler = bool(use_dem_ground and target_ground_sampler is not None)
         sea_mask_points = scope_cache.sea_mask_points
         if sea_mask_points is None or bool(scope_cache.uses_dem_sampler) != use_target_sampler:
@@ -550,6 +574,32 @@ class WaterOverlayController(QObject):
             scope_cache.uses_dem_sampler = use_target_sampler
         else:
             band_stats = ()
+
+        partial_sea_points = tuple(sea_mask_points)
+        with self._lock:
+            should_emit_partial = (not self._stopping) and self._active_key == key
+        if should_emit_partial:
+            self._store_scope_cache(
+                scope_key,
+                scope_cache,
+                footprints=None,
+                uses_dem_sampler=scope_cache.uses_dem_sampler,
+                sea_mask_points=partial_sea_points,
+                sea_points=None,
+                inland_points=None,
+                sea_band_stats=band_stats,
+                dem_points=None,
+                dem_ground_m=None,
+            )
+            self._emit_variant(
+                partial_sea_points,
+                mode="sea",
+                sea_points=partial_sea_points,
+                inland_points=None,
+                dem_points=None,
+                water_polygon_count=len(scope_cache.footprints),
+                source="Water: sea mask",
+            )
 
         footprints = scope_cache.footprints
         if not footprints:
@@ -598,7 +648,15 @@ class WaterOverlayController(QObject):
         else:
             dem_points = None
         active_points = dem_points if use_dem_ground and dem_points is not None else combined_sea_points
-        return active_points, combined_sea_points, dem_points, band_stats, footprints
+        return (
+            active_points,
+            tuple(sea_mask_points),
+            combined_sea_points,
+            tuple(inland_points),
+            dem_points,
+            band_stats,
+            footprints,
+        )
 
     def _build_target_ground_sampler(
         self,
@@ -703,6 +761,7 @@ class WaterOverlayController(QObject):
         *,
         mode: str,
         sea_points: tuple | None,
+        inland_points: tuple | None,
         dem_points: tuple | None,
         water_polygon_count: int,
         source: str,
@@ -716,6 +775,8 @@ class WaterOverlayController(QObject):
         }
         if sea_points is not None:
             payload["sea_points"] = list(sea_points)
+        if inland_points is not None:
+            payload["inland_points"] = list(inland_points)
         if dem_points is not None:
             payload["dem_points"] = list(dem_points)
         self.water_ready.emit(payload)

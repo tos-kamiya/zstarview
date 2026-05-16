@@ -9,6 +9,7 @@ from ..water_overlay import WaterOverlayPoint
 @dataclass
 class WaterOverlayState:
     sea_level_points: Optional[list[WaterOverlayPoint]] = None
+    inland_points: Optional[list[WaterOverlayPoint]] = None
     dem_points: Optional[list[WaterOverlayPoint]] = None
     points: Optional[list[WaterOverlayPoint]] = None
     banner_text: Optional[str] = None
@@ -23,6 +24,19 @@ class WaterOverlayState:
         source: str,
     ) -> None:
         self.sea_level_points = points
+        self.inland_points = None
+        self.current_mode = "sea"
+        self.current_source = source
+        self.failed_this_session = False
+        self.banner_text = None
+
+    def set_inland_result(
+        self,
+        points: list[WaterOverlayPoint] | None,
+        *,
+        source: str,
+    ) -> None:
+        self.inland_points = points
         self.current_mode = "sea"
         self.current_source = source
         self.failed_this_session = False
@@ -35,6 +49,7 @@ class WaterOverlayState:
         source: str,
     ) -> None:
         self.dem_points = points
+        self.inland_points = None
         self.current_mode = "dem"
         self.current_source = source
         self.failed_this_session = False
@@ -45,10 +60,10 @@ class WaterOverlayState:
             self.points = self.dem_points
             self.current_mode = "dem"
         elif use_dem and self.sea_level_points is not None:
-            self.points = self.sea_level_points
+            self.points = self._combined_points()
             self.current_mode = "sea"
-        elif not use_dem and self.sea_level_points is not None:
-            self.points = self.sea_level_points
+        elif not use_dem:
+            self.points = self._combined_points()
             self.current_mode = "sea"
         else:
             self.points = None
@@ -60,5 +75,16 @@ class WaterOverlayState:
 
     def clear_points(self) -> None:
         self.sea_level_points = None
+        self.inland_points = None
         self.dem_points = None
         self.points = None
+
+    def _combined_points(self) -> Optional[list[WaterOverlayPoint]]:
+        if self.sea_level_points is None and self.inland_points is None:
+            return None
+        combined: list[WaterOverlayPoint] = []
+        if self.sea_level_points is not None:
+            combined.extend(self.sea_level_points)
+        if self.inland_points is not None:
+            combined.extend(self.inland_points)
+        return combined

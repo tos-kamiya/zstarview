@@ -207,7 +207,15 @@ def test_build_requested_variants_combines_sea_and_inland_points(monkeypatch) ->
         else (),
     )
 
-    active_points, sea_points, dem_points, band_stats, footprints = controller._build_requested_variants(  # noqa: SLF001
+    (
+        active_points,
+        sea_mask_points,
+        sea_points,
+        inland_points,
+        dem_points,
+        band_stats,
+        footprints,
+    ) = controller._build_requested_variants(  # noqa: SLF001
         scope_cache,
         observer_lat_deg=35.0,
         observer_lon_deg=139.0,
@@ -216,10 +224,80 @@ def test_build_requested_variants_combines_sea_and_inland_points(monkeypatch) ->
         use_dem_ground=False,
         scan_radius_km=2.0,
         target_ground_sampler=None,
+        key=(35.0, 139.0, 1.7, 12.0, False),
+        scope_key="scope",
     )
 
     assert len(active_points) == 3
+    assert [point.water_category for point in sea_mask_points] == ["sea-125"]
     assert [point.water_category for point in sea_points] == ["sea-125", "river", "lake"]
+    assert [point.water_category for point in inland_points] == ["river", "lake"]
     assert dem_points is None
     assert band_stats == (WaterSurfaceBandStats("125m", 1, 1, 1, 1),)
     assert footprints == (footprint,)
+
+
+def test_run_update_emits_sea_then_combined_water_layers(monkeypatch) -> None:
+    controller = WaterOverlayController()
+    footprint = object()
+    scope_cache = mod._WaterOverlayScopeCache(  # noqa: SLF001
+        footprints=(footprint,),
+        fetched_at_utc=None,
+    )
+    emitted: list[dict[str, object]] = []
+
+    monkeypatch.setattr(
+        mod,
+        "sample_water_surface_interface_points_with_stats",
+        lambda **_kwargs: (
+            (
+                WaterOverlayPoint("sea", 1.0, 10.0, 0.5, water_category="sea-125"),
+            ),
+            (WaterSurfaceBandStats("125m", 1, 1, 1, 1),),
+        ),
+    )
+    monkeypatch.setattr(
+        mod,
+        "sample_water_overlay_points",
+        lambda footprints, **_kwargs: (
+            WaterOverlayPoint("inland", 2.0, 20.0, 1.5, water_category="river"),
+            WaterOverlayPoint("inland", 3.0, 30.0, 1.8, water_category="lake"),
+        )
+        if footprints
+        else (),
+    )
+    monkeypatch.setattr(
+        controller,
+        "_emit_variant",
+        lambda points, **payload: emitted.append(
+            {
+                "points": tuple(points),
+                **payload,
+            }
+        ),
+    )
+    monkeypatch.setattr(controller, "_store_scope_cache", lambda *args, **_kwargs: None)
+    monkeypatch.setattr(controller, "_build_target_ground_sampler", lambda **_kwargs: None)
+    controller._active_key = (35.0, 139.0, 1.7, 12.0, False)  # noqa: SLF001
+
+    controller._run_update(  # noqa: SLF001
+        lat_deg=35.0,
+        lon_deg=139.0,
+        observer_height_m=1.7,
+        observer_ground_m=12.0,
+        use_dem_ground=False,
+        reason="manual",
+        key=(35.0, 139.0, 1.7, 12.0, False),
+        scope_key="scope",
+        scan_radius_km=2.0,
+        cached_scope=scope_cache,
+    )
+
+    assert len(emitted) == 2
+    assert [point.water_category for point in emitted[0]["points"]] == ["sea-125"]
+    assert emitted[0]["mode"] == "sea"
+    assert emitted[0]["inland_points"] is None
+    assert [point.water_category for point in emitted[1]["points"]] == ["sea-125", "river", "lake"]
+    assert emitted[1]["mode"] == "sea"
+    assert [point.water_category for point in emitted[1]["sea_points"]] == ["sea-125"]
+    assert [point.water_category for point in emitted[1]["inland_points"]] == ["river", "lake"]

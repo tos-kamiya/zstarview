@@ -823,16 +823,18 @@ class SkyWindowUpdatesMixin:
     def _on_water_overlay_ready(self, payload: Dict) -> None:
         points = payload.get("points")
         sea_points = payload.get("sea_points")
+        inland_points = payload.get("inland_points")
         dem_points = payload.get("dem_points")
         mode = str(payload.get("mode", "")).strip().lower() or "sea"
         source = str(payload.get("source", "")).strip() or "ready"
         count = len(points) if isinstance(points, list) else 0
         logger.info(
-            "Water surface ready: mode=%s source=%s points=%d sea_points=%s dem_points=%s",
+            "Water surface ready: mode=%s source=%s points=%d sea_points=%s inland_points=%s dem_points=%s",
             mode,
             source,
             count,
             len(sea_points) if isinstance(sea_points, list) else "-",
+            len(inland_points) if isinstance(inland_points, list) else "-",
             len(dem_points) if isinstance(dem_points, list) else "-",
         )
         if mode == "dem":
@@ -841,6 +843,8 @@ class SkyWindowUpdatesMixin:
             self.water_overlay_state.set_sea_level_result(sea_points or points, source=source)
         if isinstance(sea_points, list):
             self.water_overlay_state.sea_level_points = sea_points
+        if isinstance(inland_points, list):
+            self.water_overlay_state.inland_points = inland_points
         if isinstance(dem_points, list):
             self.water_overlay_state.dem_points = dem_points
         self._refresh_water_overlay_active_points()
