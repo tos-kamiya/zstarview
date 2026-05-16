@@ -21,4 +21,6 @@
 
 #### About Water Surface
 
-Some coastal, higher viewpoints can make a single Overpass fetch return around 9 MB of water-surface data. The raw footprint is cached by viewpoint, but repeatedly changing viewpoints can accumulate download volume and may approach the public Overpass instance's rough 1 GB/day safety guideline.
+Water-surface rendering uses two different data paths: sea points come from local sea-mask tiles derived from [OSM Water Polygons](https://osmdata.openstreetmap.de/data/water-polygons.html), while inland water points come from OpenStreetMap features fetched through the [Overpass API](https://overpass-api.de/).
+
+Some coastal, higher viewpoints can make a single Overpass fetch return around 9 MB of inland water data. The raw footprint is cached by viewpoint, but repeatedly changing viewpoints can accumulate download volume and may approach the public Overpass instance's rough 1 GB/day safety guideline.
