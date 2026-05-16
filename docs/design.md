@@ -735,7 +735,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 方位ごとの見かけ地平線計算
 - `src/zstarview/water_overlay.py`
   - 観測地点近傍の sea-mask tile を点群化するための座標正規化を担う
-  - `natural=coastline` から生成した海ポリゴンを TIFF 化したローカル tile 群を主入力にする
+  - 海は `OSM Water Polygons` 由来のローカル sea-mask tile 群を主入力にする
+  - 川・湖・運河・水路などの inland water は Overpass API 経由の OSM フットプリントを別系統で取得する
   - `water_tiles_125m`、`water_tiles_250m`、`water_tiles_500m` を距離帯で切り替え、遠方 `500m` 帯は in-memory の代表点へ縮約する
   - 海面は観測地点中心の地理座標を `target_height_m = 0.0` に投影した点として扱い、輪郭ポリゴンの再構成は行わない
   - 水点は terrain horizon と同じ sky-dome 合成段へ重ねるが、海の内外判定や ring reconstruction は行わない
@@ -745,6 +746,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 海マスク更新の実行制御
   - latest-request-wins と TTL 判定を適用し、band cache と active point set の切り替えを管理する
   - terrain horizon が有効なときだけ水面点を表示し、地形地平線が非表示のときは水面点も抑止する
+  - sea-mask の取得結果と inland water の取得結果は別レイヤーとして保持し、入手経路も分けて扱う
   - 取得完了後の active point set は band stats と共に GUI / export-image へ渡す
 - `src/zstarview/render/terrain.py`
   - `WaterOverlayPoint` を小さな青色点として描画する

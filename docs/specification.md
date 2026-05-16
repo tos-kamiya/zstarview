@@ -674,7 +674,8 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 
 ### 7.13 水面レイヤー
 
-- 水面レイヤーは、海と inland water を別ソースとして扱ってよい。海はローカル sea-mask tile 群、川・湖・運河・水路などは OSM 由来の水域輪郭から点群化してよい。
+- 水面レイヤーは、海と inland water を別ソースとして扱ってよい。海は `OSM Water Polygons` 由来のローカル sea-mask tile 群、川・湖・運河・水路などは Overpass API 経由の OSM 内陸水域データから点群化してよい。
+- 海の取得経路と inland water の取得経路は異なってよく、海はタイルベース、inland water は Overpass 由来の輪郭ベースとして扱ってよい。
 - 海と inland water は色を分けてよく、海は `dev-samples/basic-color-palette.html` に合わせた青、川・湖は別の青系統としてよい。
 - GUI 上の表示名は `Water Surface` としてよく、`W` で on/off してよい。
 - 水面の status line は `W ---` で無効状態を示し、有効時は `W <count>` のように表示してよい。`dem`、`sea`、`overpass`、`cache` などの入手元や内部 mode は表示しなくてよい。

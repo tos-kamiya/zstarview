@@ -830,3 +830,7 @@
   - Split the water overlay runtime state into separate sea and inland layers, so the sea-mask result and OSM inland-water result can be tracked independently.
   - Made the controller emit a sea-only intermediate update first, then a combined sea + inland update after inland sampling completes.
   - Updated the specification and design docs to match the current behavior, including the separate inland-water cache and distinct sea/inland colors.
+
+- Water data source split in docs
+  - Clarified in the specification and design docs that sea-mask tiles come from OSM Water Polygons, while rivers, lakes, ponds, and similar inland water still come from Overpass-fetched OSM footprint data.
+  - Rationale: the user-facing and internal docs should reflect that the sea and inland acquisition paths are separate, even though they are presented together as one optional water overlay.
