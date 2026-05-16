@@ -109,6 +109,7 @@ from ..water_overlay import (
     DEFAULT_WATER_RADIUS_KM,
     WaterOverlayPoint,
     resolve_water_scan_radius_km,
+    sample_water_overlay_points_for_observer,
 )
 from ..water_mask_interface import sample_water_surface_interface_points_with_stats
 from ..water_mask_interface import WaterSurfaceBandStats
@@ -653,12 +654,20 @@ def _fetch_water_overlay_layer(
     )
     if _timed_out(deadline):
         raise TimeoutError("water timed out")
-    water_points, band_stats = sample_water_surface_interface_points_with_stats(
+    sea_points, band_stats = sample_water_surface_interface_points_with_stats(
         observer_lat_deg=float(viewer_data.lat_deg),
         observer_lon_deg=float(viewer_data.lon_deg),
         observer_height_m=float(viewer_data.observer_height_m) + observer_ground_m,
         max_distance_km=scan_radius_km,
     )
+    inland_points = sample_water_overlay_points_for_observer(
+        observer_lat_deg=float(viewer_data.lat_deg),
+        observer_lon_deg=float(viewer_data.lon_deg),
+        observer_height_m=float(viewer_data.observer_height_m) + observer_ground_m,
+        fallback_surface_height_m=float(observer_ground_m),
+        max_distance_km=scan_radius_km,
+    )
+    water_points = tuple(sea_points) + tuple(inland_points)
     nearest_distance_km = min((float(point.distance_km) for point in water_points), default=None)
     band_100_count, band_250_count, band_500_count = _water_overlay_band_counts(water_points)
     for band_stat in band_stats:

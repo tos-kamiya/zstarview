@@ -182,7 +182,6 @@ def build_overpass_query(bbox: tuple[float, float, float, float]) -> str:
             "(",
             f'  way["natural"="water"]({south:.8f},{west:.8f},{north:.8f},{east:.8f});',
             f'  relation["natural"="water"]({south:.8f},{west:.8f},{north:.8f},{east:.8f});',
-            f'  way["natural"="coastline"]({south:.8f},{west:.8f},{north:.8f},{east:.8f});',
             f'  way["waterway"="riverbank"]({south:.8f},{west:.8f},{north:.8f},{east:.8f});',
             f'  relation["waterway"="riverbank"]({south:.8f},{west:.8f},{north:.8f},{east:.8f});',
             f'  way["waterway"~"^(river|stream|canal|drain)$"]({south:.8f},{west:.8f},{north:.8f},{east:.8f});',
@@ -470,6 +469,78 @@ def fetch_overpass_json(
     if not isinstance(loaded, dict):
         raise RuntimeError("invalid payload")
     return loaded
+
+
+def fetch_water_overlay_footprints(
+    *,
+    observer_lat_deg: float,
+    observer_lon_deg: float,
+    max_distance_km: float,
+    endpoint: str = DEFAULT_WATER_OVERPASS_ENDPOINT,
+    user_agent: str = DEFAULT_WATER_USER_AGENT,
+    timeout_s: float = DEFAULT_WATER_TIMEOUT_S,
+    abort_event: threading.Event | None = None,
+) -> tuple[WaterPolygonFootprint, ...]:
+    bbox = expanded_query_bbox_from_point(
+        float(observer_lat_deg),
+        float(observer_lon_deg),
+        float(max_distance_km),
+    )
+    payload = fetch_overpass_json(
+        bbox=bbox,
+        endpoint=endpoint,
+        user_agent=user_agent,
+        timeout_s=timeout_s,
+        abort_event=abort_event,
+    )
+    elements = payload.get("elements")
+    if not isinstance(elements, list):
+        raise RuntimeError("invalid payload")
+    footprints = extract_water_polygons(elements, bbox=bbox, abort_event=abort_event)
+    return tuple(
+        footprint
+        for footprint in footprints
+        if not _footprint_is_sea_like(footprint)
+    )
+
+
+def sample_water_overlay_points_for_observer(
+    *,
+    observer_lat_deg: float,
+    observer_lon_deg: float,
+    observer_height_m: float,
+    max_distance_km: float = DEFAULT_WATER_RADIUS_KM,
+    fallback_surface_height_m: float = 0.0,
+    target_ground_elevation_m_sampler: Callable[[float, float], float] | None = None,
+    endpoint: str = DEFAULT_WATER_OVERPASS_ENDPOINT,
+    user_agent: str = DEFAULT_WATER_USER_AGENT,
+    timeout_s: float = DEFAULT_WATER_TIMEOUT_S,
+    abort_event: threading.Event | None = None,
+) -> tuple[WaterOverlayPoint, ...]:
+    footprints = fetch_water_overlay_footprints(
+        observer_lat_deg=observer_lat_deg,
+        observer_lon_deg=observer_lon_deg,
+        max_distance_km=max_distance_km,
+        endpoint=endpoint,
+        user_agent=user_agent,
+        timeout_s=timeout_s,
+        abort_event=abort_event,
+    )
+    simplified_footprints = simplify_water_footprints_for_observer(
+        footprints,
+        observer_lat_deg=observer_lat_deg,
+        observer_lon_deg=observer_lon_deg,
+    )
+    return sample_water_overlay_points(
+        simplified_footprints,
+        observer_lat_deg=observer_lat_deg,
+        observer_lon_deg=observer_lon_deg,
+        observer_height_m=observer_height_m,
+        fallback_surface_height_m=fallback_surface_height_m,
+        target_ground_elevation_m_sampler=target_ground_elevation_m_sampler,
+        max_distance_km=max_distance_km,
+        abort_event=abort_event,
+    )
 
 
 def extract_water_polygons(

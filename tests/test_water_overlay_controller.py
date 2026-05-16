@@ -59,6 +59,8 @@ def test_water_overlay_controller_uses_sea_mask_points_before_sampling(monkeypat
             ),
         )[1],
     )
+    monkeypatch.setattr(mod, "fetch_water_overlay_footprints", lambda *args, **_kwargs: ())
+    monkeypatch.setattr(mod, "sample_water_overlay_points", lambda *args, **_kwargs: ())
 
     scope_cache = mod._WaterOverlayScopeCache(  # noqa: SLF001
         footprints=(),
@@ -85,3 +87,53 @@ def test_water_overlay_controller_uses_sea_mask_points_before_sampling(monkeypat
     assert "Water band stats: 250m tiles=1 raw=12 collapsed=1 visible=1" in caplog.text
     assert "Water band stats: 500m tiles=0 raw=0 collapsed=0 visible=0" in caplog.text
     assert "Water mask points: 1 visible, nearest sea point 0.500 km, bands: 125m=0 250m=1 500m=0" in caplog.text
+
+
+def test_build_requested_variants_combines_sea_and_inland_points(monkeypatch) -> None:
+    controller = WaterOverlayController()
+    footprint = object()
+    scope_cache = mod._WaterOverlayScopeCache(  # noqa: SLF001
+        footprints=(),
+        fetched_at_utc=None,
+    )
+
+    monkeypatch.setattr(
+        mod,
+        "sample_water_surface_interface_points_with_stats",
+        lambda **_kwargs: (
+            (WaterOverlayPoint("sea", 1.0, 10.0, 0.5, water_category="sea-125"),),
+            (WaterSurfaceBandStats("125m", 1, 1, 1, 1),),
+        ),
+    )
+    monkeypatch.setattr(
+        mod,
+        "fetch_water_overlay_footprints",
+        lambda **_kwargs: (footprint,),
+    )
+    monkeypatch.setattr(
+        mod,
+        "sample_water_overlay_points",
+        lambda footprints, **_kwargs: (
+            WaterOverlayPoint("inland", 2.0, 20.0, 1.5, water_category="river"),
+            WaterOverlayPoint("inland", 3.0, 30.0, 1.8, water_category="lake"),
+        )
+        if footprints
+        else (),
+    )
+
+    active_points, sea_points, dem_points, band_stats, footprints = controller._build_requested_variants(  # noqa: SLF001
+        scope_cache,
+        observer_lat_deg=35.0,
+        observer_lon_deg=139.0,
+        observer_height_m=1.7,
+        observer_ground_m=12.0,
+        use_dem_ground=False,
+        scan_radius_km=2.0,
+        target_ground_sampler=None,
+    )
+
+    assert len(active_points) == 3
+    assert [point.water_category for point in sea_points] == ["sea-125", "river", "lake"]
+    assert dem_points is None
+    assert band_stats == (WaterSurfaceBandStats("125m", 1, 1, 1, 1),)
+    assert footprints == (footprint,)

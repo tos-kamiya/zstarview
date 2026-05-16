@@ -235,6 +235,11 @@ def test_fetch_water_overlay_layer_uses_observer_ground_and_eye_height(monkeypat
         "sample_water_surface_interface_points_with_stats",
         _sample_water_surface_interface_points,
     )
+    monkeypatch.setattr(
+        mod,
+        "sample_water_overlay_points_for_observer",
+        lambda **_kwargs: (),
+    )
 
     with caplog.at_level("INFO", logger="zstarview.cli.export_image"):
         got = mod._fetch_water_overlay_layer(viewer_data=viewer_data, deadline=None)

@@ -263,8 +263,14 @@ def _solid_pen(color_rgb: tuple[int, int, int], alpha: float, width: float) -> Q
 
 
 def _water_overlay_point_color_rgb(water_point: WaterOverlayPoint) -> tuple[int, int, int]:
-    _ = water_point
-    return WATER_OVERLAY_SEA_125_COLOR_RGB
+    category = str(getattr(water_point, "water_category", "")).strip().lower()
+    if category in {"sea", "sea-125", "sea-250", "sea-500"}:
+        return WATER_OVERLAY_SEA_COLOR_RGB
+    if category == "river":
+        return WATER_OVERLAY_RIVER_COLOR_RGB
+    if category == "lake":
+        return WATER_OVERLAY_LAKE_COLOR_RGB
+    return WATER_OVERLAY_POINT_COLOR_RGB
 
 
 def _water_overlay_distance_alpha_scale(distance_km: float) -> float:

@@ -16,6 +16,7 @@ from zstarview.water_overlay import (
     WaterSurfacePatch,
     assemble_rings_from_segments,
     build_geometric_distance_samples,
+    build_overpass_query,
     classify_water_surface_category,
     classify_water_surface_mode,
     extract_water_polygons,
@@ -122,17 +123,20 @@ def test_classify_water_surface_category_uses_tags_and_kind() -> None:
     assert classify_water_surface_category({"waterway": "riverbank"}) == "river"
 
 
-def test_water_overlay_point_color_rgb_is_unified_blue() -> None:
-    assert _water_overlay_point_color_rgb(
+def test_water_overlay_point_color_rgb_distinguishes_sea_and_inland_water() -> None:
+    sea_color = _water_overlay_point_color_rgb(
         WaterOverlayPoint("sea", 0.0, 0.0, 0.0, water_category="sea")
-    ) == _water_overlay_point_color_rgb(
-        WaterOverlayPoint("lake", 0.0, 0.0, 0.0, water_category="lake")
     )
-    assert _water_overlay_point_color_rgb(
+    river_color = _water_overlay_point_color_rgb(
         WaterOverlayPoint("river", 0.0, 0.0, 0.0, water_category="river")
-    ) == _water_overlay_point_color_rgb(
+    )
+    lake_color = _water_overlay_point_color_rgb(
         WaterOverlayPoint("lake", 0.0, 0.0, 0.0, water_category="lake")
     )
+
+    assert sea_color != river_color
+    assert sea_color != lake_color
+    assert river_color != lake_color
 
 
 def test_water_overlay_distance_alpha_scale_decays_with_distance() -> None:
@@ -631,3 +635,27 @@ def test_water_overlay_point_color_rgb_is_unified_for_sea_bands() -> None:
     ) == _water_overlay_point_color_rgb(  # noqa: SLF001
         WaterOverlayPoint("d", 0.0, 0.0, 0.0, water_category="sea")
     )
+
+
+def test_water_overlay_point_color_rgb_distinguishes_sea_and_inland_water() -> None:
+    sea_color = _water_overlay_point_color_rgb(  # noqa: SLF001
+        WaterOverlayPoint("sea", 0.0, 0.0, 0.0, water_category="sea-125")
+    )
+    river_color = _water_overlay_point_color_rgb(  # noqa: SLF001
+        WaterOverlayPoint("river", 0.0, 0.0, 0.0, water_category="river")
+    )
+    lake_color = _water_overlay_point_color_rgb(  # noqa: SLF001
+        WaterOverlayPoint("lake", 0.0, 0.0, 0.0, water_category="lake")
+    )
+
+    assert river_color != sea_color
+    assert lake_color != sea_color
+    assert river_color != lake_color
+
+
+def test_build_overpass_query_excludes_coastline() -> None:
+    query = build_overpass_query((0.0, 1.0, 2.0, 3.0))
+
+    assert 'natural"="coastline' not in query
+    assert 'natural"="water' in query
+    assert 'waterway"="riverbank' in query
