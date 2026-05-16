@@ -819,3 +819,7 @@
   - Deferred the first water-overlay update until the terrain horizon has either resolved or been skipped, so the water layer no longer starts while terrain is still pending.
   - When terrain is disabled, the initial water update still starts immediately; this preserves the previous behavior for that configuration.
   - Added regression coverage for the startup ordering in both the terrain-enabled and terrain-disabled cases.
+
+- Version bump
+  - Bumped `__version__` from `1.25.7` to `1.25.8`.
+  - This keeps the patch-level version aligned with the current source tree after the water-mask documentation updates and sea-mask rendering adjustments.
