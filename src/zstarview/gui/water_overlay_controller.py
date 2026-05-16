@@ -19,6 +19,9 @@ from ..water_overlay import (
     DEFAULT_WATER_RADIUS_KM,
     DEFAULT_WATER_SAMPLE_STEP_M,
     DEFAULT_WATER_AZIMUTH_STEP_DEG,
+    bbox_from_point,
+    extract_water_polygons,
+    fetch_overpass_json,
     WaterOverlayPoint,
     fetch_water_overlay_footprints,
     resolve_water_scan_radius_km,
@@ -34,7 +37,12 @@ from ..terrain import fetch_copernicus_dem
 from ..terrain import sample_ground_elevation
 from ..paths import CACHE_PATH
 from .water_overlay_cache import (
+    WaterOverlayCacheSnapshot,
+    WATER_OVERLAY_CACHE_RETENTION_SECONDS,
     water_overlay_cache_scope_key,
+    load_water_overlay_cache,
+    save_water_overlay_cache,
+    water_overlay_cache_is_recent,
 )
 
 logger = logging.getLogger(__name__)
@@ -95,6 +103,7 @@ class WaterOverlayController(QObject):
         self._user_agent = user_agent
         self._timeout_s = float(timeout_s)
         self._dem_cache_dir = Path(CACHE_PATH) / "copernicus-dem"
+        self._cache_retention_seconds = int(WATER_OVERLAY_CACHE_RETENTION_SECONDS)
         self._running = False
         self._stopping = False
         self._active_key: Optional[tuple[float, float, float, float, bool]] = None
@@ -280,6 +289,7 @@ class WaterOverlayController(QObject):
         terrain_horizon_secondary_profile_altaz_layers: list[list[tuple[float, float]]] | None = None,
         terrain_horizon_secondary_profile_distances_m_layers: list[list[float]] | None = None,
     ) -> None:
+        now_utc = datetime.now(timezone.utc)
         try:
             if reason == "initial":
                 logger.info("Fetching initial water surface mask...")
@@ -292,7 +302,7 @@ class WaterOverlayController(QObject):
                 lon_deg=float(lon_deg),
                 scan_radius_km=scan_radius_km,
                 cached_scope=cached_scope,
-                now_utc=datetime.now(timezone.utc),
+                now_utc=now_utc,
             )
             active_points, sea_points, dem_points, band_stats, footprints = self._build_requested_variants(
                 scope_cache,
@@ -421,17 +431,52 @@ class WaterOverlayController(QObject):
             cached = self._scope_cache.get(scope_key)
             if cached is not None:
                 return cached
-        try:
-            cache = _WaterOverlayScopeCache(
+        snapshot = cached_scope if cached_scope is not None else self._load_scope_snapshot(
+            scope_key,
+            now=now_utc,
+        )
+        if snapshot is not None and water_overlay_cache_is_recent(
+            snapshot,
+            now_utc=now_utc,
+            max_age_seconds=self._cache_retention_seconds,
+        ):
+            if isinstance(snapshot, _WaterOverlayScopeCache):
+                cache = snapshot
+            else:
+                cache = self._scope_cache_from_snapshot(snapshot)
+            with self._lock:
+                self._scope_cache[scope_key] = cache
+            return cache
+
+        if snapshot is None:
+            snapshot = WaterOverlayCacheSnapshot(
                 footprints=(),
+                water_polygon_count=0,
+                fetched_at_utc=None,
+            )
+
+        try:
+            bbox = bbox_from_point(float(lat_deg), float(lon_deg), float(scan_radius_km))
+            payload = fetch_overpass_json(
+                bbox=bbox,
+                endpoint=self._endpoint or DEFAULT_WATER_OVERPASS_ENDPOINT,
+                user_agent=self._user_agent or DEFAULT_WATER_USER_AGENT,
+                timeout_s=self._timeout_s,
+                abort_event=self._download_abort_event,
+            )
+            elements = payload.get("elements")
+            if not isinstance(elements, list):
+                raise RuntimeError("Overpass payload missing elements")
+            footprints = extract_water_polygons(elements, bbox=bbox, abort_event=self._download_abort_event)
+            fresh_snapshot = WaterOverlayCacheSnapshot(
+                footprints=footprints,
+                water_polygon_count=len(footprints),
                 fetched_at_utc=now_utc,
-                uses_dem_sampler=False,
-                sea_mask_points=None,
-                inland_points=None,
-                sea_points=None,
-                sea_band_stats=None,
-                dem_points=None,
-                dem_ground_m=None,
+            )
+            save_water_overlay_cache(scope_key, fresh_snapshot)
+            cache = _WaterOverlayScopeCache(
+                footprints=footprints,
+                fetched_at_utc=now_utc,
             )
             with self._lock:
                 self._scope_cache[scope_key] = cache
@@ -439,7 +484,41 @@ class WaterOverlayController(QObject):
         except DownloadCancelledError:
             raise
         except Exception:
+            if snapshot.footprints:
+                cache = _WaterOverlayScopeCache(
+                    footprints=snapshot.footprints,
+                    fetched_at_utc=snapshot.fetched_at_utc,
+                )
+                with self._lock:
+                    self._scope_cache[scope_key] = cache
+                return cache
             raise
+
+    def _load_scope_snapshot(
+        self,
+        scope_key: str,
+        *,
+        now: datetime,
+    ) -> WaterOverlayCacheSnapshot | None:
+        snapshot = load_water_overlay_cache(scope_key)
+        if snapshot is None:
+            return None
+        if water_overlay_cache_is_recent(
+            snapshot,
+            now_utc=now,
+            max_age_seconds=self._cache_retention_seconds,
+        ):
+            return snapshot
+        return None
+
+    def _scope_cache_from_snapshot(
+        self,
+        snapshot: WaterOverlayCacheSnapshot,
+    ) -> _WaterOverlayScopeCache:
+        return _WaterOverlayScopeCache(
+            footprints=snapshot.footprints,
+            fetched_at_utc=snapshot.fetched_at_utc,
+        )
 
     def _build_requested_variants(
         self,

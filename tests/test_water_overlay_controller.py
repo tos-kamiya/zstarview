@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import zstarview.gui.water_overlay_controller as mod
 from zstarview.gui.water_overlay_controller import WaterOverlayController
+from zstarview.gui.water_overlay_cache import WaterOverlayCacheSnapshot
 from zstarview.water_mask_interface import WaterSurfaceBandStats
 from zstarview.water_overlay import WaterOverlayPoint
+from zstarview.water_overlay import WaterPolygonFootprint
 
 
 def test_water_overlay_controller_uses_compact_failure_banner_and_log(
@@ -38,6 +42,88 @@ def test_water_overlay_controller_uses_compact_failure_banner_and_log(
     assert failures == [{"banner": "Water: HTTP 504"}]
     assert "Water surface update failed: HTTP 504" in caplog.text
     assert "Traceback" not in caplog.text
+
+
+def test_water_overlay_controller_uses_recent_disk_snapshot(monkeypatch) -> None:
+    controller = WaterOverlayController()
+    footprint = WaterPolygonFootprint(
+        water_id="water-1",
+        kind="water_polygon",
+        outer_rings_lonlat=(((139.0, 35.0), (139.1, 35.0), (139.1, 35.1), (139.0, 35.0)),),
+        inner_rings_lonlat=(),
+        source="test",
+        tags={},
+    )
+    snapshot = WaterOverlayCacheSnapshot(
+        footprints=(footprint,),
+        water_polygon_count=1,
+        fetched_at_utc=datetime.now(timezone.utc),
+    )
+
+    monkeypatch.setattr(mod, "load_water_overlay_cache", lambda *_args, **_kwargs: snapshot)
+    monkeypatch.setattr(
+        mod,
+        "fetch_overpass_json",
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("should not fetch overpass")),
+    )
+
+    scope_cache = controller._ensure_scope_cache(  # noqa: SLF001
+        scope_key="scope",
+        lat_deg=35.0,
+        lon_deg=139.0,
+        scan_radius_km=2.0,
+        cached_scope=None,
+        now_utc=datetime.now(timezone.utc),
+    )
+
+    assert scope_cache.footprints == snapshot.footprints
+    assert scope_cache.fetched_at_utc == snapshot.fetched_at_utc
+
+
+def test_water_overlay_controller_saves_fresh_disk_snapshot(monkeypatch) -> None:
+    controller = WaterOverlayController()
+    footprint = WaterPolygonFootprint(
+        water_id="water-2",
+        kind="water_polygon",
+        outer_rings_lonlat=(((139.0, 35.0), (139.2, 35.0), (139.2, 35.2), (139.0, 35.0)),),
+        inner_rings_lonlat=(),
+        source="test",
+        tags={},
+    )
+    saved: dict[str, object] = {}
+
+    monkeypatch.setattr(mod, "load_water_overlay_cache", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        mod,
+        "fetch_overpass_json",
+        lambda **_kwargs: {"elements": []},
+    )
+    monkeypatch.setattr(
+        mod,
+        "extract_water_polygons",
+        lambda *_args, **_kwargs: (footprint,),
+    )
+    monkeypatch.setattr(
+        mod,
+        "save_water_overlay_cache",
+        lambda scope_key, snapshot, **_kwargs: saved.setdefault(
+            "payload",
+            (scope_key, snapshot),
+        ),
+    )
+
+    scope_cache = controller._ensure_scope_cache(  # noqa: SLF001
+        scope_key="scope",
+        lat_deg=35.0,
+        lon_deg=139.0,
+        scan_radius_km=2.0,
+        cached_scope=None,
+        now_utc=datetime.now(timezone.utc),
+    )
+
+    assert scope_cache.footprints == (footprint,)
+    assert saved["payload"][0] == "scope"
+    assert saved["payload"][1].footprints == (footprint,)
 
 
 def test_water_overlay_controller_uses_sea_mask_points_before_sampling(monkeypatch, caplog) -> None:
