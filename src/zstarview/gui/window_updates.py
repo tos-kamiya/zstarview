@@ -52,6 +52,16 @@ class SkyWindowUpdatesMixin:
     def _viewport_interaction_active(self) -> bool:
         return bool(getattr(self.state, "viewport_interaction_mode", False))
 
+    def _water_overlay_action_enabled(self) -> bool:
+        if not bool(getattr(self, "_water_overlay_gui_allowed", True)):
+            return False
+        return float(getattr(self, "terrain_horizon_opacity", 0.0)) > 0.0
+
+    def _sync_water_overlay_action_enabled(self) -> None:
+        action = getattr(self, "_action_toggle_water_overlay", None)
+        if action is not None:
+            action.setEnabled(self._water_overlay_action_enabled())
+
     def _resolve_aircraft_debug_snapshot_dir(self) -> Path | None:
         raw = os.getenv("ZSTARVIEW_DEBUG_SAVE_AIRCRAFT_READY_FRAME", "").strip()
         if not raw:
@@ -798,6 +808,7 @@ class SkyWindowUpdatesMixin:
         self._refresh_water_overlay_active_points()
         if not self._is_shutting_down:
             self.start_background_water_overlay_update(reason="terrain-ready")
+        getattr(self, "_sync_water_overlay_action_enabled", lambda: None)()
         self._compositor.invalidate()
         self.request_client_update()
 
@@ -811,6 +822,7 @@ class SkyWindowUpdatesMixin:
         self._refresh_water_overlay_active_points()
         if banner:
             self.terrain_horizon_state.set_error_banner(banner)
+        getattr(self, "_sync_water_overlay_action_enabled", lambda: None)()
         self._compositor.invalidate()
         self.request_client_update()
 

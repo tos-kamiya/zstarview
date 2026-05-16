@@ -1522,7 +1522,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.display_menu,
             "Water Surface",
             checked=self.water_overlay_opacity > 0.0,
-            enabled=bool(getattr(self, "_water_overlay_gui_allowed", True)),
+            enabled=getattr(
+                self,
+                "_water_overlay_action_enabled",
+                lambda: bool(getattr(self, "_water_overlay_gui_allowed", True))
+                and float(getattr(self, "terrain_horizon_opacity", 0.0)) > 0.0,
+            )(),
             shortcut=QKeySequence(Qt.Key.Key_W),
             triggered=self.toggle_water_overlay,
         )
@@ -2944,6 +2949,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 self._action_toggle_terrain_horizon.setChecked(
                     self.terrain_horizon_opacity > 0.0
                 )
+            getattr(self, "_sync_water_overlay_action_enabled", lambda: None)()
             return
 
         enable_terrain = self.terrain_horizon_opacity <= 0.0
@@ -2956,13 +2962,20 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         ):
             self._action_toggle_terrain_horizon.setChecked(enable_terrain)
         self._refresh_water_overlay_active_points()
+        getattr(self, "_sync_water_overlay_action_enabled", lambda: None)()
         self._compositor.invalidate()
         if enable_terrain:
             self.start_background_terrain_horizon_update(reason="toggle-on")
         self.request_client_update()
 
     def toggle_water_overlay(self) -> None:
-        if not bool(getattr(self, "_water_overlay_gui_allowed", True)):
+        water_overlay_action_enabled = getattr(
+            self,
+            "_water_overlay_action_enabled",
+            lambda: bool(getattr(self, "_water_overlay_gui_allowed", True))
+            and float(getattr(self, "terrain_horizon_opacity", 0.0)) > 0.0,
+        )
+        if not water_overlay_action_enabled():
             if self._action_toggle_water_overlay is not None:
                 self._action_toggle_water_overlay.setChecked(
                     self.water_overlay_opacity > 0.0

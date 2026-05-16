@@ -493,6 +493,107 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
     assert len(separator_indexes) == 4
 
 
+def test_build_window_menu_disables_water_surface_when_terrain_horizon_off(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(window_module, "QMenu", _DummyMenu)
+    monkeypatch.setattr(window_module, "QAction", _DummyMenuAction)
+
+    dummy = SimpleNamespace(
+        _frameless_window=False,
+        state=SimpleNamespace(rotation_step=5.0),
+        enlarge_moon=False,
+        show_dso=False,
+        dso_catalog_np=None,
+        show_asterisms=False,
+        show_guidelines=True,
+        show_observation_info=True,
+        observation_info_mode="auto",
+        observation_info_pinned=False,
+        sky_disc_alpha=0.2,
+        cloud_disc_alpha=0.2,
+        water_overlay_opacity=0.12,
+        satellite_opacity=0.5,
+        aircraft_opacity=0.5,
+        terrain_horizon_opacity=0.0,
+        earth_guide_opacity=0.1,
+        urban_outline_opacity=0.2,
+        vmag_limit=6.0,
+        _rotate_view=lambda **_kwargs: None,
+        _open_named_star_jump_dialog=lambda: None,
+        _open_named_star_search_dialog=lambda: None,
+        _open_place_search_dialog=lambda: None,
+        toggle_enlarge_moon=lambda: None,
+        toggle_dso=lambda: None,
+        toggle_asterisms=lambda: None,
+        toggle_guidelines=lambda: None,
+        toggle_observation_info=lambda: None,
+        toggle_sky_disc=lambda: None,
+        toggle_clouds=lambda: None,
+        toggle_satellites=lambda: None,
+        toggle_aircraft=lambda: None,
+        toggle_terrain_horizon=lambda: None,
+        toggle_water_overlay=lambda: None,
+        toggle_earth_guide=lambda: None,
+        toggle_urban_outline=lambda: None,
+        toggle_fullscreen=lambda: None,
+        square_client_area=lambda: None,
+        _restore_default_window_size=lambda: None,
+        addAction=lambda _action: None,
+        _vmag_limit_menu_text=lambda: "Vmag limit 6.0",
+    )
+    _install_menu_action_helpers(dummy, [])
+
+    SkyWindow._build_window_menu(dummy)
+
+    water_action = next(
+        entry
+        for entry in dummy.display_menu.entries
+        if isinstance(entry, _DummyMenuAction) and entry.text == "Water Surface"
+    )
+
+    assert water_action.isEnabled() is False
+
+
+def test_toggle_terrain_horizon_disables_and_restores_water_surface_action() -> None:
+    dummy = SimpleNamespace()
+    dummy._terrain_horizon_gui_allowed = True
+    dummy._water_overlay_gui_allowed = True
+    dummy.terrain_horizon_opacity = 0.25
+    dummy._terrain_horizon_opacity_when_enabled = 0.25
+    dummy._action_toggle_terrain_horizon = _DummyAction(True)
+    dummy._action_toggle_water_overlay = _DummyAction(True)
+    dummy.terrain_horizon_state = SimpleNamespace(ground_elevation_m=42.0)
+    dummy._refresh_water_overlay_active_points = lambda: None
+    dummy._water_overlay_action_enabled = lambda: SkyWindowUpdatesMixin._water_overlay_action_enabled(
+        dummy
+    )
+    dummy._sync_water_overlay_action_enabled = (
+        lambda: SkyWindowUpdatesMixin._sync_water_overlay_action_enabled(dummy)
+    )
+    calls: list[str] = []
+    dummy.request_client_update = lambda: calls.append("request")
+    dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
+    dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(
+        str(kwargs.get("reason"))
+    )
+    dummy.update = lambda: calls.append("update")
+
+    SkyWindow.toggle_terrain_horizon(dummy)
+
+    assert dummy.terrain_horizon_opacity == 0.0
+    assert dummy._action_toggle_terrain_horizon.isChecked() is False
+    assert dummy._action_toggle_water_overlay.isEnabled() is False
+    assert calls == ["invalidate", "request"]
+
+    SkyWindow.toggle_terrain_horizon(dummy)
+
+    assert dummy.terrain_horizon_opacity == 0.25
+    assert dummy._action_toggle_terrain_horizon.isChecked() is True
+    assert dummy._action_toggle_water_overlay.isEnabled() is True
+    assert calls == ["invalidate", "request", "invalidate", "toggle-on", "request"]
+
+
 def test_toggle_guidelines_disables_and_restores_opacity() -> None:
     dummy = SimpleNamespace()
     dummy.show_guidelines = False

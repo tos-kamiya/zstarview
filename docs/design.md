@@ -746,6 +746,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 海マスク更新の実行制御
   - latest-request-wins と TTL 判定を適用し、band cache と active point set の切り替えを管理する
   - terrain horizon が有効なときだけ水面点を表示し、地形地平線が非表示のときは水面点も抑止する
+  - `Terrain Horizon` が OFF の間は `Water Surface` の QAction を無効化して、依存関係を GUI で明示する
   - sea-mask の取得結果と inland water の取得結果は別レイヤーとして保持し、入手経路も分けて扱う
   - 取得完了後の active point set は band stats と共に GUI / export-image へ渡す
 - `src/zstarview/render/terrain.py`
