@@ -140,6 +140,7 @@ class SkyWindowRenderMixin:
             self._render_cache_stamp(self.state.terrain_horizon_secondary_profile_altaz_layers),
             self._render_cache_stamp(self.state.terrain_horizon_secondary_profile_distances_m_layers),
             self._render_cache_stamp(self.state.urban_outlines),
+            self._render_cache_stamp(self.state.water_overlay_points),
         ]
         if include_fast_overlays:
             key_parts.extend(

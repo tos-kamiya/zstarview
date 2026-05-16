@@ -948,6 +948,36 @@ def test_terrain_horizon_failed_keeps_retained_ground_elevation() -> None:
     assert dummy.terrain_horizon_state.ground_elevation_m == 58.0
 
 
+def test_water_overlay_ready_invalidates_and_requests_refresh() -> None:
+    calls: list[str] = []
+    dummy = SimpleNamespace()
+    dummy.water_overlay_state = SimpleNamespace(
+        points=None,
+        sea_level_points=None,
+        dem_points=None,
+        banner_text="",
+        set_dem_result=lambda points, source=None: calls.append(f"dem:{len(points)}:{source}"),
+        set_sea_level_result=lambda points, source=None: calls.append(f"sea:{len(points)}:{source}"),
+        set_error_banner=lambda text: calls.append(f"error:{text}"),
+    )
+    dummy._refresh_water_overlay_active_points = lambda: calls.append("refresh")
+    dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
+    dummy.request_client_update = lambda: calls.append("request")
+
+    SkyWindowUpdatesMixin._on_water_overlay_ready(  # noqa: SLF001
+        dummy,
+        {
+            "points": [object()],
+            "sea_points": [object()],
+            "dem_points": None,
+            "mode": "sea",
+            "source": "ready",
+        },
+    )
+
+    assert calls == ["sea:1:ready", "refresh", "invalidate", "request"]
+
+
 def test_start_initial_data_load_defers_water_until_terrain_ready() -> None:
     dummy = SimpleNamespace()
     dummy._startup_initial_load_started = False

@@ -844,6 +844,7 @@ class SkyWindowUpdatesMixin:
         if isinstance(dem_points, list):
             self.water_overlay_state.dem_points = dem_points
         self._refresh_water_overlay_active_points()
+        self._compositor.invalidate()
         self.request_client_update()
 
     def _on_water_overlay_failed(self, payload: Dict) -> None:
@@ -851,6 +852,7 @@ class SkyWindowUpdatesMixin:
         if banner:
             self.water_overlay_state.set_error_banner(banner)
         self._refresh_water_overlay_active_points()
+        self._compositor.invalidate()
         self.request_client_update()
 
     def _on_urban_outline_started(self, payload: Dict) -> None:
