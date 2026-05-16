@@ -1611,16 +1611,18 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 #### 10.4.1.1 水面フロー
 
-1. 水面レイヤーは観測地点中心の sea-mask tile 群を読み、海域だけを点群化してよい。
-2. `natural=coastline` から生成したローカル TIFF を海マスクとして使ってよく、外部 geometry ライブラリに依存しなくてよい。
-3. 海マスクは `125m`、`250m`、`500m` の 3 段で読み分け、遠方 `500m` 帯は in-memory の代表点化で密度を下げてよい。
-4. 海マスクの `1` を水、`0` を地面として扱い、水ピクセル中心を観測点基準の `alt/az` に投影してよい。
-5. `WaterOverlayState` は sea-mask 由来の point set を保持し、terrain horizon の ON/OFF や DEM ready/fail に応じて active points を切り替えてよい。
-6. 水点は `target_height_m = 0.0` の地表貼り付けとして扱ってよく、地形地平線が非表示のときは水点も非表示にしてよい。
-7. 点群化後の alpha は `water_overlay_opacity` を基準にし、距離に応じた指数減衰をかけてよい。
-8. `WaterOverlayPoint` は `render/terrain.py` で小さな青色点として描画し、既定値は `3px` 程度としてよい。
-9. cache key は観測地点中心の `lat/lon` と距離帯、tile root から導出し、`bbox` はその派生値として扱ってよい。
-10. `Water Surface` の GUI トグルや `--water-surface-opacity 0` は初期表示の有無を変えてよく、tile cache を破棄する必要はない。
+1. 水面レイヤーは sea と inland water を別レイヤーとして扱ってよい。
+2. sea は観測地点中心の sea-mask tile 群を読み、海域だけを点群化してよい。
+3. inland water は OSM の河川、湖、運河、水路、riverbank 系輪郭から別途点群化してよい。
+4. sea mask は `125m`、`250m`、`500m` の 3 段で読み分け、遠方 `500m` 帯は in-memory の代表点化で密度を下げてよい。
+5. sea mask の `1` を水、`0` を地面として扱い、水ピクセル中心を観測点基準の `alt/az` に投影してよい。
+6. `WaterOverlayState` は sea と inland の point set を別保持し、terrain horizon の ON/OFF や DEM ready/fail に応じて active points を切り替えてよい。
+7. sea だけが先に計算できた場合は sea-only の中間更新を emit し、その後 inland 完了時に sea + inland の合成結果を emit してよい。
+8. 水点は `target_height_m = 0.0` の地表貼り付けとして扱ってよく、地形地平線が非表示のときは水点も非表示にしてよい。
+9. 点群化後の alpha は `water_overlay_opacity` を基準にし、距離に応じた指数減衰をかけてよい。
+10. `WaterOverlayPoint` は `render/terrain.py` で小さな点として描画し、海と inland で色を分けてよい。
+11. cache key は観測地点中心の `lat/lon` と距離帯、tile root から導出し、`bbox` はその派生値として扱ってよい。inland water の OSM footprint は `CACHE_PATH/water_overlay` 配下に JSON cache として保持してよい。
+12. `Water Surface` の GUI トグルや `--water-surface-opacity 0` は初期表示の有無を変えてよく、tile cache を破棄する必要はない。
 
 #### 10.4.2 Overture 建物フロー
 

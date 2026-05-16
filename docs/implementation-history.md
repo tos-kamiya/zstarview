@@ -823,3 +823,10 @@
 - Version bump
   - Bumped `__version__` from `1.25.7` to `1.25.8`.
   - This keeps the patch-level version aligned with the current source tree after the water-mask documentation updates and sea-mask rendering adjustments.
+
+## 4. 2026-05-16
+
+- Water overlay sea/inland split and two-stage redraw
+  - Split the water overlay runtime state into separate sea and inland layers, so the sea-mask result and OSM inland-water result can be tracked independently.
+  - Made the controller emit a sea-only intermediate update first, then a combined sea + inland update after inland sampling completes.
+  - Updated the specification and design docs to match the current behavior, including the separate inland-water cache and distinct sea/inland colors.

@@ -1,6 +1,6 @@
 # zstarview 仕様書
 
-最終更新: 2026-05-15
+最終更新: 2026-05-16
 
 ## 1. この文書の位置づけ
 
@@ -674,13 +674,16 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 
 ### 7.13 水面レイヤー
 
-- 水面レイヤーは、観測地点周辺の sea-mask tile を小さな青いドットとして天球上に重畳してよい。
+- 水面レイヤーは、海と inland water を別ソースとして扱ってよい。海はローカル sea-mask tile 群、川・湖・運河・水路などは OSM 由来の水域輪郭から点群化してよい。
+- 海と inland water は色を分けてよく、海は `dev-samples/basic-color-palette.html` に合わせた青、川・湖は別の青系統としてよい。
 - GUI 上の表示名は `Water Surface` としてよく、`W` で on/off してよい。
 - 水面の status line は `W ---` で無効状態を示し、有効時は `W <count>` のように表示してよい。`dem`、`sea`、`overpass`、`cache` などの入手元や内部 mode は表示しなくてよい。
-- `natural=coastline` から生成した sea-mask tile を使ってよい。`water_tiles_125m`、`water_tiles_250m`、`water_tiles_500m` の 3 段を距離帯で切り替え、遠距離 `500m` 帯は in-memory で代表点化してよい。
+- 海は `water_tiles_125m`、`water_tiles_250m`、`water_tiles_500m` の 3 段を距離帯で切り替え、遠距離 `500m` 帯は in-memory で代表点化してよい。
 - sea-mask の `1` を水、`0` を地面として扱ってよく、水ピクセル中心を観測者視点へ投影した点として表示してよい。
+- 水面の海側は、まず sea-mask が揃った段階で先行描画してよく、その後 inland water が揃った段階で合成結果へ更新してよい。
 - 海面の見え方は、観測地点からの距離に応じて alpha を減衰させてよい。`128km` での alpha は、既定で 1/16 程度まで落ちてよい。
 - 水点の表示は terrain horizon の描画に追従してよく、terrain horizon が OFF のときは水点も表示しなくてよい。
+- inland water は既定では sea と合成して描いてよいが、内部的には別レイヤーとして保持してよい。
 - 水面レイヤーの点数や band 切り替えの内訳は、status line ではなく logger で確認してよい。
 
 ### 7.14 航空機オーバーレイ
