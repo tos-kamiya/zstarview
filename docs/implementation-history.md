@@ -834,3 +834,7 @@
 - Water data source split in docs
   - Clarified in the specification and design docs that sea-mask tiles come from OSM Water Polygons, while rivers, lakes, ponds, and similar inland water still come from Overpass-fetched OSM footprint data.
   - Rationale: the user-facing and internal docs should reflect that the sea and inland acquisition paths are separate, even though they are presented together as one optional water overlay.
+
+- Water overlay CLI docs alignment
+  - Updated the CLI overlay docs in both English and Japanese to explain that sea points come from OSM Water Polygons sea-mask tiles, while inland water points come from Overpass-fetched OpenStreetMap features.
+  - Rationale: the user-facing overlay help should match the README and the main specification so the different acquisition paths are not conflated.
