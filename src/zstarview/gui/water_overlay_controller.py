@@ -48,8 +48,8 @@ from .water_overlay_cache import (
 logger = logging.getLogger(__name__)
 
 
-def _water_overlay_band_counts(points: tuple[WaterOverlayPoint, ...] | list[WaterOverlayPoint]) -> tuple[int, int, int]:
-    counts = Counter(str(getattr(point, "water_category", "")).strip().lower() for point in points)
+def _water_overlay_band_counts(dots: tuple[WaterOverlayPoint, ...] | list[WaterOverlayPoint]) -> tuple[int, int, int]:
+    counts = Counter(str(getattr(dot, "water_category", "")).strip().lower() for dot in dots)
     return (
         int(counts.get("sea-125", 0)),
         int(counts.get("sea-250", 0)),
@@ -71,11 +71,11 @@ class _WaterOverlayScopeCache:
     footprints: tuple
     fetched_at_utc: datetime | None
     uses_dem_sampler: bool = False
-    sea_mask_points: tuple | None = None
-    inland_points: tuple | None = None
-    sea_points: tuple | None = None
+    sea_mask_dots: tuple | None = None
+    inland_dots: tuple | None = None
+    sea_dots: tuple | None = None
     sea_band_stats: tuple[WaterSurfaceBandStats, ...] | None = None
-    dem_points: tuple | None = None
+    dem_dots: tuple | None = None
     dem_ground_m: float | None = None
 
 
@@ -160,15 +160,15 @@ class WaterOverlayController(QObject):
                 observer_ground_m=float(observer_ground_m),
             )
             if cached_variant is not None:
-                cached_sea_points = cached_scope.sea_mask_points or cached_scope.sea_points
+                cached_sea_dots = cached_scope.sea_mask_dots or cached_scope.sea_dots
                 for band_stat in cached_scope.sea_band_stats or ():
                     logger.info("Water band stats: %s", _water_overlay_band_stats_text(band_stat))
                 self._emit_variant(
-                    cached_variant["points"],
+                    cached_variant["dots"],
                     mode=cached_variant["mode"],
-                    sea_points=cached_sea_points,
-                    inland_points=cached_scope.inland_points,
-                    dem_points=cached_scope.dem_points,
+                    sea_dots=cached_sea_dots,
+                    inland_dots=cached_scope.inland_dots,
+                    dem_dots=cached_scope.dem_dots,
                     water_polygon_count=len(cached_scope.footprints),
                     source="Water: cache",
                 )
@@ -307,11 +307,11 @@ class WaterOverlayController(QObject):
                 now_utc=now_utc,
             )
             (
-                active_points,
-                sea_mask_points,
-                sea_points,
-                inland_points,
-                dem_points,
+                active_dots,
+                sea_mask_dots,
+                sea_dots,
+                inland_dots,
+                dem_dots,
                 band_stats,
                 footprints,
             ) = self._build_requested_variants(
@@ -338,37 +338,37 @@ class WaterOverlayController(QObject):
                 terrain_horizon_secondary_profile_altaz_layers=terrain_horizon_secondary_profile_altaz_layers,
                 terrain_horizon_secondary_profile_distances_m_layers=terrain_horizon_secondary_profile_distances_m_layers,
             )
-            nearest_distance_km = min((float(point.distance_km) for point in active_points), default=None)
-            band_100_count, band_250_count, band_500_count = _water_overlay_band_counts(active_points)
+            nearest_distance_km = min((float(dot.distance_km) for dot in active_dots), default=None)
+            band_100_count, band_250_count, band_500_count = _water_overlay_band_counts(active_dots)
             for band_stat in band_stats:
                 logger.info("Water band stats: %s", _water_overlay_band_stats_text(band_stat))
             if nearest_distance_km is None:
                 logger.info(
-                    "Water mask points: 0 visible, nearest sea point n/a, bands: 125m=%d 250m=%d 500m=%d",
+                    "Water mask dots: 0 visible, nearest sea dot n/a, bands: 125m=%d 250m=%d 500m=%d",
                     band_100_count,
                     band_250_count,
                     band_500_count,
                 )
             else:
                 logger.info(
-                    "Water mask points: %d visible, nearest sea point %.3f km, bands: 125m=%d 250m=%d 500m=%d",
-                    len(active_points),
+                    "Water mask dots: %d visible, nearest sea dot %.3f km, bands: 125m=%d 250m=%d 500m=%d",
+                    len(active_dots),
                     nearest_distance_km,
                     band_100_count,
                     band_250_count,
                     band_500_count,
                 )
-            self._store_scope_cache(
+                self._store_scope_cache(
                 scope_key,
                 scope_cache,
                 footprints=footprints,
                 uses_dem_sampler=scope_cache.uses_dem_sampler,
-                sea_mask_points=sea_mask_points,
-                sea_points=sea_points,
-                inland_points=inland_points,
+                sea_mask_dots=sea_mask_dots,
+                sea_dots=sea_dots,
+                inland_dots=inland_dots,
                 sea_band_stats=band_stats,
-                dem_points=dem_points,
-                dem_ground_m=float(observer_ground_m) if dem_points is not None else None,
+                dem_dots=dem_dots,
+                dem_ground_m=float(observer_ground_m) if dem_dots is not None else None,
             )
             with self._lock:
                 should_emit = (not self._stopping) and self._active_key == key
@@ -377,11 +377,11 @@ class WaterOverlayController(QObject):
                     self._failed_key = None
             if should_emit:
                 self._emit_variant(
-                    active_points,
-                    mode="dem" if use_dem_ground and dem_points is not None else "sea",
-                    sea_points=sea_mask_points,
-                    inland_points=inland_points,
-                    dem_points=dem_points,
+                    active_dots,
+                    mode="dem" if use_dem_ground and dem_dots is not None else "sea",
+                    sea_dots=sea_mask_dots,
+                    inland_dots=inland_dots,
+                    dem_dots=dem_dots,
                     water_polygon_count=len(scope_cache.footprints),
                     source="Water: sea mask + OSM",
                 )
@@ -396,13 +396,13 @@ class WaterOverlayController(QObject):
                     observer_ground_m=float(observer_ground_m),
                 )
                 if fallback_variant is not None and self._active_key == key:
-                    cached_sea_points = cached_scope.sea_mask_points or cached_scope.sea_points
+                    cached_sea_dots = cached_scope.sea_mask_dots or cached_scope.sea_dots
                     self._emit_variant(
-                        fallback_variant["points"],
+                        fallback_variant["dots"],
                         mode=fallback_variant["mode"],
-                        sea_points=cached_sea_points,
-                        inland_points=cached_scope.inland_points,
-                        dem_points=cached_scope.dem_points,
+                        sea_dots=cached_sea_dots,
+                        inland_dots=cached_scope.inland_dots,
+                        dem_dots=cached_scope.dem_dots,
                         water_polygon_count=len(cached_scope.footprints),
                         source="Water: cache-stale",
                     )
@@ -561,21 +561,21 @@ class WaterOverlayController(QObject):
         tuple,
     ]:
         use_target_sampler = bool(use_dem_ground and target_ground_sampler is not None)
-        sea_mask_points = scope_cache.sea_mask_points
-        if sea_mask_points is None or bool(scope_cache.uses_dem_sampler) != use_target_sampler:
-            sea_mask_points, band_stats = sample_water_surface_interface_points_with_stats(
+        sea_mask_dots = scope_cache.sea_mask_dots
+        if sea_mask_dots is None or bool(scope_cache.uses_dem_sampler) != use_target_sampler:
+            sea_mask_dots, band_stats = sample_water_surface_interface_points_with_stats(
                 observer_lat_deg=observer_lat_deg,
                 observer_lon_deg=observer_lon_deg,
                 observer_height_m=float(observer_height_m) + float(observer_ground_m),
                 max_distance_km=scan_radius_km,
                 target_ground_elevation_m_sampler=target_ground_sampler if use_target_sampler else None,
             )
-            scope_cache.sea_mask_points = sea_mask_points
+            scope_cache.sea_mask_dots = sea_mask_dots
             scope_cache.uses_dem_sampler = use_target_sampler
         else:
             band_stats = ()
 
-        partial_sea_points = tuple(sea_mask_points)
+        partial_sea_dots = tuple(sea_mask_dots)
         with self._lock:
             should_emit_partial = (not self._stopping) and self._active_key == key
         if should_emit_partial:
@@ -584,19 +584,19 @@ class WaterOverlayController(QObject):
                 scope_cache,
                 footprints=None,
                 uses_dem_sampler=scope_cache.uses_dem_sampler,
-                sea_mask_points=partial_sea_points,
-                sea_points=None,
-                inland_points=None,
+                sea_mask_dots=partial_sea_dots,
+                sea_dots=None,
+                inland_dots=None,
                 sea_band_stats=band_stats,
-                dem_points=None,
+                dem_dots=None,
                 dem_ground_m=None,
             )
             self._emit_variant(
-                partial_sea_points,
+                partial_sea_dots,
                 mode="sea",
-                sea_points=partial_sea_points,
-                inland_points=None,
-                dem_points=None,
+                sea_dots=partial_sea_dots,
+                inland_dots=None,
+                dem_dots=None,
                 water_polygon_count=len(scope_cache.footprints),
                 source="Water: sea mask",
             )
@@ -615,9 +615,9 @@ class WaterOverlayController(QObject):
             scope_cache.footprints = footprints
 
         observer_absolute_height_m = float(observer_height_m) + float(observer_ground_m)
-        inland_points = scope_cache.inland_points
-        if inland_points is None or bool(scope_cache.uses_dem_sampler) != use_target_sampler:
-            inland_points = sample_water_overlay_points(
+        inland_dots = scope_cache.inland_dots
+        if inland_dots is None or bool(scope_cache.uses_dem_sampler) != use_target_sampler:
+            inland_dots = sample_water_overlay_points(
                 footprints,
                 observer_lat_deg=observer_lat_deg,
                 observer_lon_deg=observer_lon_deg,
@@ -627,12 +627,12 @@ class WaterOverlayController(QObject):
                 max_distance_km=scan_radius_km,
                 abort_event=self._download_abort_event,
             )
-            scope_cache.inland_points = inland_points
+            scope_cache.inland_dots = inland_dots
             scope_cache.uses_dem_sampler = use_target_sampler
-        combined_sea_points = tuple(sea_mask_points) + tuple(inland_points)
+        combined_sea_dots = tuple(sea_mask_dots) + tuple(inland_dots)
 
         if use_target_sampler:
-            inland_dem_points = sample_water_overlay_points(
+            inland_dem_dots = sample_water_overlay_points(
                 footprints,
                 observer_lat_deg=observer_lat_deg,
                 observer_lon_deg=observer_lon_deg,
@@ -642,18 +642,18 @@ class WaterOverlayController(QObject):
                 max_distance_km=scan_radius_km,
                 abort_event=self._download_abort_event,
             )
-            dem_points: tuple | None = tuple(sea_mask_points) + tuple(inland_dem_points)
+            dem_dots: tuple | None = tuple(sea_mask_dots) + tuple(inland_dem_dots)
         elif use_dem_ground:
-            dem_points = combined_sea_points
+            dem_dots = combined_sea_dots
         else:
-            dem_points = None
-        active_points = dem_points if use_dem_ground and dem_points is not None else combined_sea_points
+            dem_dots = None
+        active_dots = dem_dots if use_dem_ground and dem_dots is not None else combined_sea_dots
         return (
-            active_points,
-            tuple(sea_mask_points),
-            combined_sea_points,
-            tuple(inland_points),
-            dem_points,
+            active_dots,
+            tuple(sea_mask_dots),
+            combined_sea_dots,
+            tuple(inland_dots),
+            dem_dots,
             band_stats,
             footprints,
         )
@@ -712,11 +712,11 @@ class WaterOverlayController(QObject):
         *,
         footprints: tuple | None,
         uses_dem_sampler: bool | None,
-        sea_mask_points: tuple | None,
-        inland_points: tuple | None,
-        sea_points: tuple | None,
+        sea_mask_dots: tuple | None,
+        inland_dots: tuple | None,
+        sea_dots: tuple | None,
         sea_band_stats: tuple[WaterSurfaceBandStats, ...] | None,
-        dem_points: tuple | None,
+        dem_dots: tuple | None,
         dem_ground_m: float | None,
     ) -> None:
         with self._lock:
@@ -724,16 +724,16 @@ class WaterOverlayController(QObject):
                 scope_cache.footprints = footprints
             if uses_dem_sampler is not None:
                 scope_cache.uses_dem_sampler = bool(uses_dem_sampler)
-            if sea_mask_points is not None:
-                scope_cache.sea_mask_points = sea_mask_points
-            if inland_points is not None:
-                scope_cache.inland_points = inland_points
-            if sea_points is not None:
-                scope_cache.sea_points = sea_points
+            if sea_mask_dots is not None:
+                scope_cache.sea_mask_dots = sea_mask_dots
+            if inland_dots is not None:
+                scope_cache.inland_dots = inland_dots
+            if sea_dots is not None:
+                scope_cache.sea_dots = sea_dots
             if sea_band_stats is not None:
                 scope_cache.sea_band_stats = sea_band_stats
-            if dem_points is not None:
-                scope_cache.dem_points = dem_points
+            if dem_dots is not None:
+                scope_cache.dem_dots = dem_dots
                 scope_cache.dem_ground_m = dem_ground_m
             self._scope_cache[scope_key] = scope_cache
 
@@ -745,38 +745,38 @@ class WaterOverlayController(QObject):
         observer_ground_m: float,
     ) -> dict[str, object] | None:
         if use_dem_ground:
-            if scope_cache.dem_points is not None and (
+            if scope_cache.dem_dots is not None and (
                 scope_cache.dem_ground_m is None
                 or abs(float(scope_cache.dem_ground_m) - float(observer_ground_m)) < 1e-6
             ):
-                return {"mode": "dem", "points": scope_cache.dem_points}
+                return {"mode": "dem", "dots": scope_cache.dem_dots}
             return None
-        if scope_cache.sea_points is not None:
-            return {"mode": "sea", "points": scope_cache.sea_points}
+        if scope_cache.sea_dots is not None:
+            return {"mode": "sea", "dots": scope_cache.sea_dots}
         return None
 
     def _emit_variant(
         self,
-        points: tuple,
+        dots: tuple,
         *,
         mode: str,
-        sea_points: tuple | None,
-        inland_points: tuple | None,
-        dem_points: tuple | None,
+        sea_dots: tuple | None,
+        inland_dots: tuple | None,
+        dem_dots: tuple | None,
         water_polygon_count: int,
         source: str,
     ) -> None:
         payload = {
-            "points": list(points),
+            "dots": list(dots),
             "mode": mode,
             "source": source,
             "water_polygon_count": int(water_polygon_count),
-            "water_point_count": len(points),
+            "water_dot_count": len(dots),
         }
-        if sea_points is not None:
-            payload["sea_points"] = list(sea_points)
-        if inland_points is not None:
-            payload["inland_points"] = list(inland_points)
-        if dem_points is not None:
-            payload["dem_points"] = list(dem_points)
+        if sea_dots is not None:
+            payload["sea_dots"] = list(sea_dots)
+        if inland_dots is not None:
+            payload["inland_dots"] = list(inland_dots)
+        if dem_dots is not None:
+            payload["dem_dots"] = list(dem_dots)
         self.water_ready.emit(payload)

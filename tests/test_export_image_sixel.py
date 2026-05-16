@@ -347,7 +347,7 @@ def test_main_writes_overlay_summary_before_sixel(
     monkeypatch.setattr(
         mod, "_build_render_style", lambda **_kwargs: SimpleNamespace(vmag_limit=6.0)
     )
-    monkeypatch.setattr(mod, "_fetch_water_overlay_layer", lambda **_kwargs: None)
+    monkeypatch.setattr(mod, "_fetch_water_overlay_dots_layer", lambda **_kwargs: None)
     monkeypatch.setattr(mod, "_render_image", lambda **_kwargs: object())
     monkeypatch.setattr(
         mod,
@@ -446,7 +446,7 @@ def test_main_continues_when_cloud_layer_is_unavailable(
         "_fetch_cloud_layer",
         lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("No supported satellite for this region")),
     )
-    monkeypatch.setattr(mod, "_fetch_water_overlay_layer", lambda **_kwargs: None)
+    monkeypatch.setattr(mod, "_fetch_water_overlay_dots_layer", lambda **_kwargs: None)
     monkeypatch.setattr(
         mod,
         "_build_render_style",

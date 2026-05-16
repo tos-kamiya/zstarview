@@ -683,7 +683,7 @@ def _build_water_target_ground_sampler(
     return sampler
 
 
-def _fetch_water_overlay_layer(
+def _fetch_water_overlay_dots_layer(
     *,
     viewer_data: ViewerData,
     deadline: float | None,
@@ -699,14 +699,14 @@ def _fetch_water_overlay_layer(
     )
     if _timed_out(deadline):
         raise TimeoutError("water timed out")
-    sea_points, band_stats = sample_water_surface_interface_points_with_stats(
+    sea_dots, band_stats = sample_water_surface_interface_points_with_stats(
         observer_lat_deg=float(viewer_data.lat_deg),
         observer_lon_deg=float(viewer_data.lon_deg),
         observer_height_m=float(viewer_data.observer_height_m) + observer_ground_m,
         max_distance_km=scan_radius_km,
         target_ground_elevation_m_sampler=target_ground_sampler,
     )
-    inland_points = sample_water_overlay_points_for_observer(
+    inland_dots = sample_water_overlay_points_for_observer(
         observer_lat_deg=float(viewer_data.lat_deg),
         observer_lon_deg=float(viewer_data.lon_deg),
         observer_height_m=float(viewer_data.observer_height_m) + observer_ground_m,
@@ -714,28 +714,28 @@ def _fetch_water_overlay_layer(
         max_distance_km=scan_radius_km,
         target_ground_elevation_m_sampler=target_ground_sampler,
     )
-    water_points = tuple(sea_points) + tuple(inland_points)
-    nearest_distance_km = min((float(point.distance_km) for point in water_points), default=None)
-    band_100_count, band_250_count, band_500_count = _water_overlay_band_counts(water_points)
+    water_dots = tuple(sea_dots) + tuple(inland_dots)
+    nearest_distance_km = min((float(dot.distance_km) for dot in water_dots), default=None)
+    band_100_count, band_250_count, band_500_count = _water_overlay_band_counts(water_dots)
     for band_stat in band_stats:
         logger.info("Water band stats: %s", _water_overlay_band_stats_text(band_stat))
     if nearest_distance_km is None:
         logger.info(
-            "Water mask points: 0 visible, nearest sea point n/a, bands: 125m=%d 250m=%d 500m=%d",
+            "Water mask dots: 0 visible, nearest sea dot n/a, bands: 125m=%d 250m=%d 500m=%d",
             band_100_count,
             band_250_count,
             band_500_count,
         )
     else:
         logger.info(
-            "Water mask points: %d visible, nearest sea point %.3f km, bands: 125m=%d 250m=%d 500m=%d",
-            len(water_points),
+            "Water mask dots: %d visible, nearest sea dot %.3f km, bands: 125m=%d 250m=%d 500m=%d",
+            len(water_dots),
             nearest_distance_km,
             band_100_count,
             band_250_count,
             band_500_count,
         )
-    return list(water_points) if water_points else None
+    return list(water_dots) if water_dots else None
 
 
 def _required_feature_types(feature_type: str) -> tuple[str, ...]:
@@ -1417,7 +1417,7 @@ def main() -> None:
             if not allow_partial_data:
                 _abort_export_without_partial_data()
 
-    water_overlay_points = None
+    water_overlay_dots = None
     water_overlay_opacity = float(getattr(user_options, "water_overlay_opacity", 0.12))
     if water_overlay_opacity > 0.0:
         try:
@@ -1431,7 +1431,7 @@ def main() -> None:
                 scan_radius_km=scan_radius_km,
                 deadline=deadline,
             )
-            water_overlay_points = _fetch_water_overlay_layer(
+            water_overlay_dots = _fetch_water_overlay_dots_layer(
                 viewer_data=viewer_data,
                 deadline=deadline,
                 target_ground_sampler=water_target_ground_sampler,
@@ -1494,7 +1494,7 @@ def main() -> None:
         terrain_horizon_secondary_profile_altaz_layers=terrain_horizon_secondary_profile_altaz_layers,
         terrain_horizon_secondary_profile_distances_m_layers=terrain_horizon_secondary_profile_distances_m_layers,
         urban_outlines=urban_outlines,
-        water_overlay_points=water_overlay_points,
+        water_overlay_dots=water_overlay_dots,
         satellite_overlay_points=satellite_overlay_points,
         aircraft_overlay_points=aircraft_overlay_points,
         night_light_glow_profile=night_light_glow_profile,

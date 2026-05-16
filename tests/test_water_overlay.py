@@ -7,7 +7,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from zstarview.render.terrain import _thin_water_overlay_points_pairwise
+from zstarview.render.terrain import _thin_water_overlay_dots_pairwise
 from zstarview.render.terrain import _water_overlay_distance_alpha_scale
 from zstarview.render.terrain import _water_overlay_point_color_rgb
 from zstarview.water_overlay import (
@@ -123,7 +123,7 @@ def test_classify_water_surface_category_uses_tags_and_kind() -> None:
     assert classify_water_surface_category({"waterway": "riverbank"}) == "river"
 
 
-def test_water_overlay_point_color_rgb_distinguishes_sea_and_inland_water() -> None:
+def test_water_overlay_point_color_rgb_distinguishes_sea_125_and_inland_water() -> None:
     sea_color = _water_overlay_point_color_rgb(
         WaterOverlayPoint("sea", 0.0, 0.0, 0.0, water_category="sea")
     )
@@ -619,7 +619,7 @@ def test_thin_water_overlay_points_pairwise_keeps_one_point_per_pair() -> None:
         WaterOverlayPoint("water", 5.0, 50.0, 0.5),
     ]
 
-    got = _thin_water_overlay_points_pairwise(points)
+    got = _thin_water_overlay_dots_pairwise(points)
 
     assert [point.scan_distance_index for point in got if point.scan_azimuth_index == 0] == [0, 2]
     assert [point.scan_distance_index for point in got if point.scan_azimuth_index == 1] == [1, 3]

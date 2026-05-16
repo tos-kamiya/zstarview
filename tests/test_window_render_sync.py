@@ -1895,7 +1895,7 @@ def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
-        "draw_water_overlay_points",
+        "draw_water_overlay_dots",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
@@ -2058,7 +2058,7 @@ def test_render_frame_cache_key_ignores_hover_and_status_state() -> None:
     dummy.state.sky_disc_image = object()
     dummy.state.terrain_horizon_profile = [(1.0, 2.0)]
     dummy.state.urban_outlines = [object()]
-    dummy.state.water_overlay_points = [object()]
+    dummy.state.water_overlay_dots = [object()]
     dummy.state.aircraft_overlay_points = [object()]
     dummy.state.mouse_pos = None
     dummy.state.jump_highlight_name = None
@@ -2123,7 +2123,7 @@ def test_render_frame_cache_key_tracks_water_overlay_state() -> None:
     dummy.state.sky_disc_image = object()
     dummy.state.terrain_horizon_profile = [(1.0, 2.0)]
     dummy.state.urban_outlines = [object()]
-    dummy.state.water_overlay_points = [object()]
+    dummy.state.water_overlay_dots = [object()]
     dummy.state.aircraft_overlay_points = [object()]
 
     key_a = SkyWindow._render_frame_cache_key(
@@ -2133,7 +2133,7 @@ def test_render_frame_cache_key_tracks_water_overlay_state() -> None:
         render_viewer=viewer,
     )
 
-    dummy.state.water_overlay_points = [object(), object()]
+    dummy.state.water_overlay_dots = [object(), object()]
 
     key_b = SkyWindow._render_frame_cache_key(
         dummy,
@@ -2345,7 +2345,7 @@ def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
-        "draw_water_overlay_points",
+        "draw_water_overlay_dots",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(
@@ -2445,7 +2445,7 @@ def test_draw_viewport_interaction_layers_skips_water_when_terrain_horizon_hidde
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
-        "draw_water_overlay_points",
+        "draw_water_overlay_dots",
         lambda *_args, **_kwargs: calls.append("water"),
     )
     monkeypatch.setattr(
@@ -2476,7 +2476,7 @@ def test_draw_viewport_interaction_layers_skips_water_when_terrain_horizon_hidde
 
     scene = replace(
         _make_scene(terrain_horizon_profile=[(1.0, 10.0)]),
-        water_overlay_points=[object()],
+        water_overlay_dots=[object()],
     )
     pipeline_module._draw_viewport_interaction_layers(
         painter=object(),
@@ -2509,7 +2509,7 @@ def test_draw_viewport_interaction_layers_prefers_scene_water_overlay_points(
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
-        "draw_water_overlay_points",
+        "draw_water_overlay_dots",
         lambda _p, _g, water_points, *_args, **_kwargs: seen_water_points.append(water_points),
     )
     monkeypatch.setattr(
@@ -2540,7 +2540,7 @@ def test_draw_viewport_interaction_layers_prefers_scene_water_overlay_points(
 
     scene = replace(
         _make_scene(terrain_horizon_profile=[(1.0, 10.0)]),
-        water_overlay_points=sentinel_water_points,
+        water_overlay_dots=sentinel_water_points,
     )
     pipeline_module._draw_viewport_interaction_layers(
         painter=object(),
@@ -2586,13 +2586,13 @@ def test_render_base_scene_skips_water_when_terrain_horizon_hidden(monkeypatch) 
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
-        "draw_water_overlay_points",
+        "draw_water_overlay_dots",
         lambda *_args, **_kwargs: calls.append("water"),
     )
 
     scene = replace(
         _make_scene(terrain_horizon_profile=[(1.0, 10.0)]),
-        water_overlay_points=[object()],
+        water_overlay_dots=[object()],
     )
 
     class _Painter:
@@ -2669,7 +2669,7 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
-        "draw_water_overlay_points",
+        "draw_water_overlay_dots",
         lambda *_args, **_kwargs: None,
     )
     monkeypatch.setattr(

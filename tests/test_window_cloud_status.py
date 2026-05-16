@@ -107,7 +107,7 @@ def test_water_status_line_shows_only_count_when_enabled() -> None:
     dummy = SimpleNamespace(
         water_overlay_state=SimpleNamespace(
             banner_text=None,
-            points=[object(), object(), object()],
+            dots=[object(), object(), object()],
             current_source="Water: overpass",
             current_mode="dem",
         ),
@@ -121,7 +121,7 @@ def test_water_overlay_started_does_not_override_visible_points_banner() -> None
     calls: list[str] = []
     dummy = SimpleNamespace(
         water_overlay_state=WaterOverlayState(
-            points=[object()],
+            dots=[object()],
             banner_text=None,
             current_source="Water: Overpass",
             current_mode="sea",
@@ -152,7 +152,7 @@ def test_hidden_water_status_line_shows_placeholder_icon() -> None:
     dummy = SimpleNamespace(
         water_overlay_state=SimpleNamespace(
             banner_text=None,
-            points=None,
+            dots=None,
             current_source=None,
             current_mode=None,
         ),

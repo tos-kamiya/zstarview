@@ -140,7 +140,7 @@ class SkyWindowRenderMixin:
             self._render_cache_stamp(self.state.terrain_horizon_secondary_profile_altaz_layers),
             self._render_cache_stamp(self.state.terrain_horizon_secondary_profile_distances_m_layers),
             self._render_cache_stamp(self.state.urban_outlines),
-            self._render_cache_stamp(self.state.water_overlay_points),
+            self._render_cache_stamp(self.state.water_overlay_dots),
         ]
         if include_fast_overlays:
             key_parts.extend(
@@ -463,7 +463,7 @@ class SkyWindowRenderMixin:
                 None,
             ),
             urban_outlines=getattr(state, "urban_outlines", None),
-            water_overlay_points=getattr(state, "water_overlay_points", None),
+            water_overlay_dots=getattr(state, "water_overlay_dots", None),
             satellite_overlay_points=getattr(state, "satellite_overlay_points", None),
             aircraft_overlay_points=getattr(state, "aircraft_overlay_points", None),
             night_light_glow_profile=getattr(state, "night_light_glow_profile", None),

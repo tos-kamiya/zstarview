@@ -91,7 +91,7 @@ class RenderSceneData:
     satellite_overlay_points: list[SatelliteOverlayPoint] | None
     aircraft_overlay_points: list[AircraftOverlayPoint] | None
     night_light_glow_profile: NightLightGlowProfile | None = None
-    water_overlay_points: list[WaterOverlayPoint] | None = None
+    water_overlay_dots: list[WaterOverlayPoint] | None = None
 
 
 @dataclass(frozen=True)
@@ -131,9 +131,9 @@ def _should_draw_water_overlay(scene: RenderSceneData, style: RenderStyle) -> bo
     return float(style.terrain_horizon_opacity) > 0.0 and scene.terrain_horizon_profile is not None
 
 
-def _terrain_horizon_water_overlay_points(scene: RenderSceneData) -> list[WaterOverlayPoint] | None:
-    water_points = scene.water_overlay_points
-    return list(water_points) if water_points else None
+def _terrain_horizon_water_overlay_dots(scene: RenderSceneData) -> list[WaterOverlayPoint] | None:
+    water_dots = scene.water_overlay_dots
+    return list(water_dots) if water_dots else None
 
 
 @dataclass(frozen=True)
@@ -453,11 +453,11 @@ def _draw_viewport_interaction_layers(
         content_fov_deg=_content_fov_deg(scene),
     )
     if _should_draw_water_overlay(scene, style):
-        water_points = _terrain_horizon_water_overlay_points(scene)
-        render_terrain.draw_water_overlay_points(
+        water_dots = _terrain_horizon_water_overlay_dots(scene)
+        render_terrain.draw_water_overlay_dots(
             painter,
             geometry,
-            water_points,
+            water_dots,
             scene.viewer.view_center,
             opacity=style.water_overlay_opacity,
             line_width_scale=line_width_scale,
@@ -661,11 +661,11 @@ def _draw_terrain_layers(
         content_fov_deg=content_fov_deg,
     )
     if _should_draw_water_overlay(scene, style):
-        water_points = _terrain_horizon_water_overlay_points(scene)
-        render_terrain.draw_water_overlay_points(
+        water_dots = _terrain_horizon_water_overlay_dots(scene)
+        render_terrain.draw_water_overlay_dots(
             painter,
             geometry,
-            water_points,
+            water_dots,
             scene.viewer.view_center,
             opacity=style.water_overlay_opacity,
             line_width_scale=line_width_scale,

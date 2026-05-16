@@ -8,83 +8,83 @@ from ..water_overlay import WaterOverlayPoint
 
 @dataclass
 class WaterOverlayState:
-    sea_level_points: Optional[list[WaterOverlayPoint]] = None
-    inland_points: Optional[list[WaterOverlayPoint]] = None
-    dem_points: Optional[list[WaterOverlayPoint]] = None
-    points: Optional[list[WaterOverlayPoint]] = None
+    sea_level_dots: Optional[list[WaterOverlayPoint]] = None
+    inland_dots: Optional[list[WaterOverlayPoint]] = None
+    dem_dots: Optional[list[WaterOverlayPoint]] = None
+    dots: Optional[list[WaterOverlayPoint]] = None
     banner_text: Optional[str] = None
     failed_this_session: bool = False
     current_source: Optional[str] = None
     current_mode: Optional[str] = None
 
-    def set_sea_level_result(
+    def set_sea_level_dots_result(
         self,
-        points: list[WaterOverlayPoint] | None,
+        dots: list[WaterOverlayPoint] | None,
         *,
         source: str,
     ) -> None:
-        self.sea_level_points = points
-        self.inland_points = None
+        self.sea_level_dots = dots
+        self.inland_dots = None
         self.current_mode = "sea"
         self.current_source = source
         self.failed_this_session = False
         self.banner_text = None
 
-    def set_inland_result(
+    def set_inland_dots_result(
         self,
-        points: list[WaterOverlayPoint] | None,
+        dots: list[WaterOverlayPoint] | None,
         *,
         source: str,
     ) -> None:
-        self.inland_points = points
+        self.inland_dots = dots
         self.current_mode = "sea"
         self.current_source = source
         self.failed_this_session = False
         self.banner_text = None
 
-    def set_dem_result(
+    def set_dem_dots_result(
         self,
-        points: list[WaterOverlayPoint] | None,
+        dots: list[WaterOverlayPoint] | None,
         *,
         source: str,
     ) -> None:
-        self.dem_points = points
-        self.inland_points = None
+        self.dem_dots = dots
+        self.inland_dots = None
         self.current_mode = "dem"
         self.current_source = source
         self.failed_this_session = False
         self.banner_text = None
 
-    def select_active_points(self, *, use_dem: bool) -> None:
-        if use_dem and self.dem_points is not None:
-            self.points = self.dem_points
+    def select_active_dots(self, *, use_dem: bool) -> None:
+        if use_dem and self.dem_dots is not None:
+            self.dots = self.dem_dots
             self.current_mode = "dem"
-        elif use_dem and self.sea_level_points is not None:
-            self.points = self._combined_points()
+        elif use_dem and self.sea_level_dots is not None:
+            self.dots = self._combined_dots()
             self.current_mode = "sea"
         elif not use_dem:
-            self.points = self._combined_points()
+            self.dots = self._combined_dots()
             self.current_mode = "sea"
         else:
-            self.points = None
+            self.dots = None
             self.current_mode = None
 
     def set_error_banner(self, text: str) -> None:
         self.banner_text = text
         self.failed_this_session = True
 
-    def clear_points(self) -> None:
-        self.sea_level_points = None
-        self.inland_points = None
-        self.dem_points = None
-        self.points = None
+    def clear_dots(self) -> None:
+        self.sea_level_dots = None
+        self.inland_dots = None
+        self.dem_dots = None
+        self.dots = None
 
-    def _combined_points(self) -> Optional[list[WaterOverlayPoint]]:
-        if self.sea_level_points is None and self.inland_points is None:
+    def _combined_dots(self) -> Optional[list[WaterOverlayPoint]]:
+        if self.sea_level_dots is None and self.inland_dots is None:
             return None
         combined: list[WaterOverlayPoint] = []
-        if self.sea_level_points is not None:
-            combined.extend(self.sea_level_points)
-        if self.inland_points is not None:
-            combined.extend(self.inland_points)
+        if self.sea_level_dots is not None:
+            combined.extend(self.sea_level_dots)
+        if self.inland_dots is not None:
+            combined.extend(self.inland_dots)
         return combined

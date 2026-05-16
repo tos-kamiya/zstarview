@@ -2961,7 +2961,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             and self._action_toggle_terrain_horizon.isChecked() != enable_terrain
         ):
             self._action_toggle_terrain_horizon.setChecked(enable_terrain)
-        self._refresh_water_overlay_active_points()
+        self._refresh_water_overlay_active_dots()
         getattr(self, "_sync_water_overlay_action_enabled", lambda: None)()
         self._compositor.invalidate()
         if enable_terrain:

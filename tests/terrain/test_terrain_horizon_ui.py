@@ -564,7 +564,7 @@ def test_toggle_terrain_horizon_disables_and_restores_water_surface_action() -> 
     dummy._action_toggle_terrain_horizon = _DummyAction(True)
     dummy._action_toggle_water_overlay = _DummyAction(True)
     dummy.terrain_horizon_state = SimpleNamespace(ground_elevation_m=42.0)
-    dummy._refresh_water_overlay_active_points = lambda: None
+    dummy._refresh_water_overlay_active_dots = lambda: None
     dummy._water_overlay_action_enabled = lambda: SkyWindowUpdatesMixin._water_overlay_action_enabled(
         dummy
     )
@@ -972,7 +972,7 @@ def test_toggle_terrain_horizon_enables_opacity_and_requests_background_update()
     dummy._terrain_horizon_opacity_when_enabled = 0.25
     dummy._action_toggle_terrain_horizon = _DummyAction(False)
     dummy.terrain_horizon_state = SimpleNamespace(ground_elevation_m=17.5)
-    dummy._refresh_water_overlay_active_points = lambda: None
+    dummy._refresh_water_overlay_active_dots = lambda: None
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request")
     dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
@@ -995,7 +995,7 @@ def test_toggle_terrain_horizon_off_keeps_retained_ground_elevation() -> None:
     dummy._terrain_horizon_opacity_when_enabled = 0.25
     dummy._action_toggle_terrain_horizon = _DummyAction(True)
     dummy.terrain_horizon_state = SimpleNamespace(ground_elevation_m=42.0)
-    dummy._refresh_water_overlay_active_points = lambda: None
+    dummy._refresh_water_overlay_active_dots = lambda: None
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request")
     dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
@@ -1036,7 +1036,7 @@ def test_terrain_horizon_failed_keeps_retained_ground_elevation() -> None:
         terrain_horizon_secondary_profile_altaz_layers=[[(1.0, 2.0)]],
         terrain_horizon_secondary_profile_distances_m_layers=[[1.0]],
     )
-    dummy._refresh_water_overlay_active_points = lambda: None
+    dummy._refresh_water_overlay_active_dots = lambda: None
     dummy._is_shutting_down = True
     dummy.start_background_water_overlay_update = lambda **_kwargs: (_ for _ in ()).throw(
         AssertionError("should not restart water overlay")
@@ -1053,24 +1053,24 @@ def test_water_overlay_ready_invalidates_and_requests_refresh() -> None:
     calls: list[str] = []
     dummy = SimpleNamespace()
     dummy.water_overlay_state = SimpleNamespace(
-        points=None,
-        sea_level_points=None,
-        dem_points=None,
+        dots=None,
+        sea_level_dots=None,
+        dem_dots=None,
         banner_text="",
-        set_dem_result=lambda points, source=None: calls.append(f"dem:{len(points)}:{source}"),
-        set_sea_level_result=lambda points, source=None: calls.append(f"sea:{len(points)}:{source}"),
+        set_dem_dots_result=lambda dots, source=None: calls.append(f"dem:{len(dots)}:{source}"),
+        set_sea_level_dots_result=lambda dots, source=None: calls.append(f"sea:{len(dots)}:{source}"),
         set_error_banner=lambda text: calls.append(f"error:{text}"),
     )
-    dummy._refresh_water_overlay_active_points = lambda: calls.append("refresh")
+    dummy._refresh_water_overlay_active_dots = lambda: calls.append("refresh")
     dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
     dummy.request_client_update = lambda: calls.append("request")
 
     SkyWindowUpdatesMixin._on_water_overlay_ready(  # noqa: SLF001
         dummy,
         {
-            "points": [object()],
-            "sea_points": [object()],
-            "dem_points": None,
+            "dots": [object()],
+            "sea_dots": [object()],
+            "dem_dots": None,
             "mode": "sea",
             "source": "ready",
         },

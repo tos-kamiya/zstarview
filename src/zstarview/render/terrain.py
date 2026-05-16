@@ -1022,10 +1022,10 @@ def draw_urban_outlines(
     painter.restore()
 
 
-def draw_water_overlay_points(
+def draw_water_overlay_dots(
     painter: QPainter,
     geometry: ScreenGeometry,
-    water_points: list[WaterOverlayPoint] | None,
+    water_dots: list[WaterOverlayPoint] | None,
     view_center: tuple[float, float],
     *,
     opacity: float = 0.85,
@@ -1037,16 +1037,16 @@ def draw_water_overlay_points(
     altaz_to_normalized_xy_func: Callable[[float, float, tuple[float, float]], tuple[float, float]] = altaz_to_normalized_xy,
     normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], tuple[float, float]] = normalized_to_screen_xy,
 ) -> None:
-    """Draw sampled water surface points as small blue dots."""
+    """Draw sampled water surface dots as small blue dots."""
     layer_opacity = max(0.0, min(1.0, float(opacity)))
-    if not water_points or layer_opacity <= 0.0:
+    if not water_dots or layer_opacity <= 0.0:
         return
 
-    points_to_draw = (
-        _thin_water_overlay_points_pairwise(water_points) if pairwise_thinning else list(water_points)
+    dots_to_draw = (
+        _thin_water_overlay_dots_pairwise(water_dots) if pairwise_thinning else list(water_dots)
     )
-    visible_points = _visible_water_overlay_points(
-        points_to_draw,
+    visible_points = _visible_water_overlay_dots(
+        dots_to_draw,
         view_center=view_center,
         content_fov_deg=float(content_fov_deg),
         is_in_fov_func=is_in_fov_func,
@@ -1089,15 +1089,15 @@ def draw_water_overlay_points(
     painter.restore()
 
 
-def _visible_water_overlay_points(
-    water_points: list[WaterOverlayPoint],
+def _visible_water_overlay_dots(
+    water_dots: list[WaterOverlayPoint],
     *,
     view_center: tuple[float, float],
     content_fov_deg: float,
     is_in_fov_func: Callable[..., bool],
 ) -> list[WaterOverlayPoint]:
     visible: list[WaterOverlayPoint] = []
-    for point in water_points:
+    for point in water_dots:
         alt = float(point.alt_deg)
         az = float(point.az_deg)
         if is_in_fov_func(alt, az, view_center, fov_deg=content_fov_deg):
@@ -1105,12 +1105,12 @@ def _visible_water_overlay_points(
     return visible
 
 
-def _thin_water_overlay_points_pairwise(
-    water_points: list[WaterOverlayPoint],
+def _thin_water_overlay_dots_pairwise(
+    water_dots: list[WaterOverlayPoint],
 ) -> list[WaterOverlayPoint]:
     grouped: dict[tuple[int, int], list[WaterOverlayPoint]] = {}
     fallback: list[WaterOverlayPoint] = []
-    for point in water_points:
+    for point in water_dots:
         azimuth_index = getattr(point, "scan_azimuth_index", None)
         distance_index = getattr(point, "scan_distance_index", None)
         if not isinstance(azimuth_index, int) or not isinstance(distance_index, int):

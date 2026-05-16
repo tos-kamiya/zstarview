@@ -172,7 +172,7 @@ def test_water_overlay_controller_uses_sea_mask_points_before_sampling(monkeypat
     assert "Water band stats: 125m tiles=0 raw=0 collapsed=0 visible=0" in caplog.text
     assert "Water band stats: 250m tiles=1 raw=12 collapsed=1 visible=1" in caplog.text
     assert "Water band stats: 500m tiles=0 raw=0 collapsed=0 visible=0" in caplog.text
-    assert "Water mask points: 1 visible, nearest sea point 0.500 km, bands: 125m=0 250m=1 500m=0" in caplog.text
+    assert "Water mask dots: 1 visible, nearest sea dot 0.500 km, bands: 125m=0 250m=1 500m=0" in caplog.text
 
 
 def test_build_requested_variants_combines_sea_and_inland_points(monkeypatch) -> None:
@@ -208,11 +208,11 @@ def test_build_requested_variants_combines_sea_and_inland_points(monkeypatch) ->
     )
 
     (
-        active_points,
-        sea_mask_points,
-        sea_points,
-        inland_points,
-        dem_points,
+        active_dots,
+        sea_mask_dots,
+        sea_dots,
+        inland_dots,
+        dem_dots,
         band_stats,
         footprints,
     ) = controller._build_requested_variants(  # noqa: SLF001
@@ -228,11 +228,11 @@ def test_build_requested_variants_combines_sea_and_inland_points(monkeypatch) ->
         scope_key="scope",
     )
 
-    assert len(active_points) == 3
-    assert [point.water_category for point in sea_mask_points] == ["sea-125"]
-    assert [point.water_category for point in sea_points] == ["sea-125", "river", "lake"]
-    assert [point.water_category for point in inland_points] == ["river", "lake"]
-    assert dem_points is None
+    assert len(active_dots) == 3
+    assert [point.water_category for point in sea_mask_dots] == ["sea-125"]
+    assert [point.water_category for point in sea_dots] == ["sea-125", "river", "lake"]
+    assert [point.water_category for point in inland_dots] == ["river", "lake"]
+    assert dem_dots is None
     assert band_stats == (WaterSurfaceBandStats("125m", 1, 1, 1, 1),)
     assert footprints == (footprint,)
 
@@ -269,9 +269,9 @@ def test_run_update_emits_sea_then_combined_water_layers(monkeypatch) -> None:
     monkeypatch.setattr(
         controller,
         "_emit_variant",
-        lambda points, **payload: emitted.append(
+        lambda dots, **payload: emitted.append(
             {
-                "points": tuple(points),
+                "dots": tuple(dots),
                 **payload,
             }
         ),
@@ -294,10 +294,10 @@ def test_run_update_emits_sea_then_combined_water_layers(monkeypatch) -> None:
     )
 
     assert len(emitted) == 2
-    assert [point.water_category for point in emitted[0]["points"]] == ["sea-125"]
+    assert [point.water_category for point in emitted[0]["dots"]] == ["sea-125"]
     assert emitted[0]["mode"] == "sea"
-    assert emitted[0]["inland_points"] is None
-    assert [point.water_category for point in emitted[1]["points"]] == ["sea-125", "river", "lake"]
+    assert emitted[0]["inland_dots"] is None
+    assert [point.water_category for point in emitted[1]["dots"]] == ["sea-125", "river", "lake"]
     assert emitted[1]["mode"] == "sea"
-    assert [point.water_category for point in emitted[1]["sea_points"]] == ["sea-125"]
-    assert [point.water_category for point in emitted[1]["inland_points"]] == ["river", "lake"]
+    assert [point.water_category for point in emitted[1]["sea_dots"]] == ["sea-125"]
+    assert [point.water_category for point in emitted[1]["inland_dots"]] == ["river", "lake"]

@@ -242,7 +242,7 @@ def test_fetch_water_overlay_layer_uses_observer_ground_and_eye_height(monkeypat
     )
 
     with caplog.at_level("INFO", logger="zstarview.cli.export_image"):
-        got = mod._fetch_water_overlay_layer(viewer_data=viewer_data, deadline=None)
+        got = mod._fetch_water_overlay_dots_layer(viewer_data=viewer_data, deadline=None)
 
     assert got == [WaterOverlayPoint("water", 10.0, 20.0, 0.5, water_category="sea-500")]
     assert captured["observer_height_m"] == 43.7
@@ -251,7 +251,7 @@ def test_fetch_water_overlay_layer_uses_observer_ground_and_eye_height(monkeypat
         minimum_distance_km=mod.DEFAULT_WATER_RADIUS_KM,
     )
     assert "Water band stats: 500m tiles=1 raw=9 collapsed=1 visible=1" in caplog.text
-    assert "Water mask points: 1 visible, nearest sea point 0.500 km, bands: 125m=0 250m=0 500m=1" in caplog.text
+    assert "Water mask dots: 1 visible, nearest sea dot 0.500 km, bands: 125m=0 250m=0 500m=1" in caplog.text
 
 
 def test_fetch_terrain_horizon_layer_uses_sea_level_fallback(monkeypatch) -> None:

@@ -50,7 +50,7 @@ class SkyWindowState:
     terrain_horizon_secondary_profile_altaz_layers: Optional[list[list[tuple[float, float]]]] = None
     terrain_horizon_secondary_profile_distances_m_layers: Optional[list[list[float]]] = None
     urban_outlines: Optional[list[UrbanOutlinePolyline]] = None
-    water_overlay_points: Optional[list[WaterOverlayPoint]] = None
+    water_overlay_dots: Optional[list[WaterOverlayPoint]] = None
     satellite_overlay_points: Optional[list[SatelliteOverlayPoint]] = None
     aircraft_overlay_points: Optional[list[AircraftOverlayPoint]] = None
     night_light_glow_profile: Optional[NightLightGlowProfile] = None
