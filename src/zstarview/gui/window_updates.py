@@ -660,6 +660,10 @@ class SkyWindowUpdatesMixin:
             observer_ground_m=self._water_overlay_ground_elevation_m(),
             use_dem_ground=self._water_overlay_use_dem_ground(),
             reason=reason,
+            terrain_horizon_profile_altaz=self.state.terrain_horizon_profile,
+            terrain_horizon_profile_distances_m=self.state.terrain_horizon_profile_distances_m,
+            terrain_horizon_secondary_profile_altaz_layers=self.state.terrain_horizon_secondary_profile_altaz_layers,
+            terrain_horizon_secondary_profile_distances_m_layers=self.state.terrain_horizon_secondary_profile_distances_m_layers,
         )
 
     def _water_overlay_ground_elevation_m(self) -> float:

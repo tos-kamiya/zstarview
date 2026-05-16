@@ -8,8 +8,14 @@ from typing import Callable
 import numpy as np
 
 from .location_resolver.place_projection import project_place_target_to_altaz
-from .terrain import WGS84_GEOD
-from .water_overlay import WaterOverlayPoint, bbox_from_point
+from .terrain import WGS84_GEOD, build_ray_scan_grid
+from .water_overlay import (
+    DEFAULT_WATER_AZIMUTH_STEP_DEG,
+    DEFAULT_WATER_SAMPLE_STEP_M,
+    build_geometric_distance_samples,
+    WaterOverlayPoint,
+    bbox_from_point,
+)
 
 
 DEFAULT_WATER_TILES_ROOT_125M = Path(__file__).resolve().parent / "data" / "water_tiles_125m"
@@ -22,6 +28,7 @@ DEFAULT_WATER_REPRESENTATIVE_SWITCH_DISTANCE_KM = 12.0
 DEFAULT_WATER_REPRESENTATIVE_SWITCH_DISTANCE_KM_2 = 18.0
 DEFAULT_WATER_INTERFACE_BBOX_SCALE = 1.2
 DEFAULT_WATER_INTERFACE_POINT_STRIDE = 1
+DEFAULT_WATER_INTERFACE_SAMPLE_MIN_DISTANCE_M = 125.0
 
 
 def _tile_paths(tile_root: Path) -> tuple[Path, ...]:
@@ -416,6 +423,114 @@ def _load_water_surface_interface_lonlat_points_for_root_with_stats(
     return tuple(sorted(points)), stats
 
 
+def _sample_water_surface_interface_ray_points_for_root_with_stats(
+    *,
+    center_lat_deg: float,
+    center_lon_deg: float,
+    observer_height_m: float,
+    radius_km: float,
+    tile_root: Path,
+    target_ground_elevation_m_sampler: Callable[[float, float], float] | None = None,
+    azimuth_step_deg: float = DEFAULT_WATER_AZIMUTH_STEP_DEG,
+    sample_step_m: float = DEFAULT_WATER_SAMPLE_STEP_M,
+) -> tuple[tuple[WaterOverlayPoint, ...], WaterSurfaceBandStats]:
+    if radius_km <= 0.0:
+        raise ValueError("radius_km must be positive")
+    if azimuth_step_deg <= 0.0:
+        raise ValueError("azimuth_step_deg must be positive")
+    if sample_step_m <= 0.0:
+        raise ValueError("sample_step_m must be positive")
+
+    distances_m = build_geometric_distance_samples(
+        float(radius_km),
+        float(sample_step_m),
+    )
+    distances_m = distances_m[distances_m >= float(DEFAULT_WATER_INTERFACE_SAMPLE_MIN_DISTANCE_M)]
+    ray_scan = build_ray_scan_grid(
+        geod=WGS84_GEOD,
+        observer_latitude_deg=float(center_lat_deg),
+        observer_longitude_deg=float(center_lon_deg),
+        azimuth_step_deg=float(azimuth_step_deg),
+        distance_samples_m=distances_m,
+    )
+
+    overlay_points: list[WaterOverlayPoint] = []
+    band_category = _band_category_for_tile_root(tile_root)
+    loaded_tile_count = len(_tile_paths(tile_root))
+    raw_point_count = 0
+    visible_point_count = 0
+
+    for row_index, azimuth_deg in enumerate(ray_scan.azimuths_deg):
+        row_lonlat_points: list[tuple[float, float]] = []
+        row_meta: list[tuple[int, float]] = []
+        for col_index, distance_m in enumerate(ray_scan.distance_grid_m[row_index]):
+            lon = float(ray_scan.ray_lon_deg[row_index, col_index])
+            lat = float(ray_scan.ray_lat_deg[row_index, col_index])
+            row_lonlat_points.append((lon, lat))
+            row_meta.append((int(col_index), float(distance_m)))
+        raw_point_count += len(row_lonlat_points)
+        if not row_lonlat_points:
+            continue
+        row_water_flags = _sample_water_mask_for_lonlat_points(
+            row_lonlat_points,
+            tile_root=tile_root,
+        )
+        for (col_index, _distance_m), (lon_deg, lat_deg), is_water in zip(
+            row_meta,
+            row_lonlat_points,
+            row_water_flags,
+        ):
+            if not is_water:
+                continue
+            target_height_m = 0.0
+            if target_ground_elevation_m_sampler is not None:
+                try:
+                    target_height_m = float(
+                        target_ground_elevation_m_sampler(float(lat_deg), float(lon_deg))
+                    )
+                except Exception:
+                    target_height_m = 0.0
+            projection = project_place_target_to_altaz(
+                observer_latitude_deg=float(center_lat_deg),
+                observer_longitude_deg=float(center_lon_deg),
+                observer_height_m=float(observer_height_m),
+                target_latitude_deg=float(lat_deg),
+                target_longitude_deg=float(lon_deg),
+                target_height_m=target_height_m,
+            )
+            overlay_points.append(
+                WaterOverlayPoint(
+                    water_id="water-mask",
+                    alt_deg=float(projection.alt_deg),
+                    az_deg=float(projection.az_deg),
+                    distance_km=float(projection.distance_km),
+                    alpha_scale=1.0,
+                    scan_azimuth_index=int(row_index),
+                    scan_distance_index=int(col_index),
+                    water_category=band_category,
+                )
+            )
+            visible_point_count += 1
+
+    if band_category == "sea-125":
+        band_name = "125m"
+    elif band_category == "sea-250":
+        band_name = "250m"
+    elif band_category == "sea-500":
+        band_name = "500m"
+    else:
+        band_name = band_category
+
+    stats = WaterSurfaceBandStats(
+        band_name=band_name,
+        loaded_tile_count=loaded_tile_count,
+        raw_point_count=raw_point_count,
+        collapsed_point_count=visible_point_count,
+        visible_point_count=visible_point_count,
+    )
+    return tuple(overlay_points), stats
+
+
 def _normalize_points_and_count(
     result: tuple[tuple[tuple[float, float], ...], int] | tuple[tuple[float, float], ...],
 ) -> tuple[tuple[tuple[float, float], ...], int]:
@@ -482,47 +597,18 @@ def sample_water_surface_interface_points_with_stats(
     ):
         if max_distance_km_band is not None and max_distance_km_band <= min_distance_km:
             continue
-        lonlat_points, stats = _load_water_surface_interface_lonlat_points_for_root_with_stats(
+        band_points, stats = _sample_water_surface_interface_ray_points_for_root_with_stats(
             center_lat_deg=float(observer_lat_deg),
             center_lon_deg=float(observer_lon_deg),
+            observer_height_m=float(observer_height_m),
             radius_km=float(max_distance_km_band),
             tile_root=band_root,
-            bbox_scale=bbox_scale,
-            stride=stride,
-            min_distance_km=float(min_distance_km),
-            max_distance_km=max_distance_km_band,
-            representative_block_size=representative_block_size,
+            target_ground_elevation_m_sampler=target_ground_elevation_m_sampler,
         )
         band_stats.append(stats)
-        if not lonlat_points:
+        if not band_points:
             continue
-        band_category = _band_category_for_tile_root(band_root)
-        for lon_deg, lat_deg in lonlat_points:
-            target_height_m = 0.0
-            if target_ground_elevation_m_sampler is not None:
-                try:
-                    target_height_m = float(
-                        target_ground_elevation_m_sampler(float(lat_deg), float(lon_deg))
-                    )
-                except Exception:
-                    target_height_m = 0.0
-            projection = project_place_target_to_altaz(
-                observer_latitude_deg=float(observer_lat_deg),
-                observer_longitude_deg=float(observer_lon_deg),
-                observer_height_m=float(observer_height_m),
-                target_latitude_deg=float(lat_deg),
-                target_longitude_deg=float(lon_deg),
-                target_height_m=target_height_m,
-            )
-            overlay_points.append(
-                WaterOverlayPoint(
-                    water_id="water-mask",
-                    alt_deg=float(projection.alt_deg),
-                    az_deg=float(projection.az_deg),
-                    distance_km=float(projection.distance_km),
-                    water_category=band_category,
-                )
-            )
+        overlay_points.extend(band_points)
     return tuple(overlay_points), tuple(band_stats)
 
 

@@ -119,6 +119,10 @@ class WaterOverlayController(QObject):
         observer_ground_m: float,
         use_dem_ground: bool,
         reason: str = "manual",
+        terrain_horizon_profile_altaz: list[tuple[float, float]] | None = None,
+        terrain_horizon_profile_distances_m: list[float] | None = None,
+        terrain_horizon_secondary_profile_altaz_layers: list[list[tuple[float, float]]] | None = None,
+        terrain_horizon_secondary_profile_distances_m_layers: list[list[float]] | None = None,
     ) -> bool:
         observer_absolute_height_m = float(viewer_data.observer_height_m) + float(observer_ground_m)
         scan_radius_km = resolve_water_scan_radius_km(
@@ -195,6 +199,10 @@ class WaterOverlayController(QObject):
                     "scope_key": scope_key,
                     "scan_radius_km": scan_radius_km,
                     "cached_scope": cached_scope,
+                    "terrain_horizon_profile_altaz": terrain_horizon_profile_altaz,
+                    "terrain_horizon_profile_distances_m": terrain_horizon_profile_distances_m,
+                    "terrain_horizon_secondary_profile_altaz_layers": terrain_horizon_secondary_profile_altaz_layers,
+                    "terrain_horizon_secondary_profile_distances_m_layers": terrain_horizon_secondary_profile_distances_m_layers,
                 },
                 label="water",
             )
@@ -267,6 +275,10 @@ class WaterOverlayController(QObject):
         scope_key: str,
         scan_radius_km: float,
         cached_scope: _WaterOverlayScopeCache | None,
+        terrain_horizon_profile_altaz: list[tuple[float, float]] | None = None,
+        terrain_horizon_profile_distances_m: list[float] | None = None,
+        terrain_horizon_secondary_profile_altaz_layers: list[list[tuple[float, float]]] | None = None,
+        terrain_horizon_secondary_profile_distances_m_layers: list[list[float]] | None = None,
     ) -> None:
         try:
             if reason == "initial":
@@ -299,6 +311,10 @@ class WaterOverlayController(QObject):
                     if use_dem_ground
                     else None
                 ),
+                terrain_horizon_profile_altaz=terrain_horizon_profile_altaz,
+                terrain_horizon_profile_distances_m=terrain_horizon_profile_distances_m,
+                terrain_horizon_secondary_profile_altaz_layers=terrain_horizon_secondary_profile_altaz_layers,
+                terrain_horizon_secondary_profile_distances_m_layers=terrain_horizon_secondary_profile_distances_m_layers,
             )
             nearest_distance_km = min((float(point.distance_km) for point in active_points), default=None)
             band_100_count, band_250_count, band_500_count = _water_overlay_band_counts(active_points)
@@ -436,6 +452,10 @@ class WaterOverlayController(QObject):
         use_dem_ground: bool,
         scan_radius_km: float,
         target_ground_sampler: Callable[[float, float], float] | None,
+        terrain_horizon_profile_altaz: list[tuple[float, float]] | None = None,
+        terrain_horizon_profile_distances_m: list[float] | None = None,
+        terrain_horizon_secondary_profile_altaz_layers: list[list[tuple[float, float]]] | None = None,
+        terrain_horizon_secondary_profile_distances_m_layers: list[list[float]] | None = None,
     ) -> tuple[tuple, tuple | None, tuple | None, tuple[WaterSurfaceBandStats, ...], tuple]:
         use_target_sampler = bool(use_dem_ground and target_ground_sampler is not None)
         sea_mask_points = scope_cache.sea_mask_points
