@@ -91,7 +91,7 @@ from ..paths import (
 )
 from ..config import load_last_window_geometry, save_last_window_geometry
 from ..location_resolver import (
-    project_place_target_to_altaz as _project_place_target_to_altaz,
+    project_place_targets_to_altaz as _project_place_targets_to_altaz,
     search_place_candidates,
 )
 from ..render import geometry as render_geometry
@@ -240,10 +240,6 @@ def open_code_data_licenses_and_credits() -> None:
 
 def radec_to_altaz(*args, **kwargs):
     return _radec_to_altaz(*args, **kwargs)
-
-
-def project_place_target_to_altaz(*args, **kwargs):
-    return _project_place_target_to_altaz(*args, **kwargs)
 
 
 WindowGeometryArg = Union[str, Tuple[int, int, int, int]]
@@ -2332,13 +2328,14 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         elif target_kind == "place":
             if target.latitude_deg is None or target.longitude_deg is None:
                 return
-            projection = project_place_target_to_altaz(
+            projection = _project_place_targets_to_altaz(
                 observer_latitude_deg=float(self.viewer_data.location[0]),
                 observer_longitude_deg=float(self.viewer_data.location[1]),
                 observer_height_m=float(self.viewer_data.observer_height_m),
-                target_latitude_deg=float(target.latitude_deg),
-                target_longitude_deg=float(target.longitude_deg),
-            )
+                target_latitude_deg=[float(target.latitude_deg)],
+                target_longitude_deg=[float(target.longitude_deg)],
+                target_height_m=[0.0],
+            )[0]
             target_alt = float(projection.alt_deg)
             target_az = float(projection.az_deg) % 360.0
         elif target.kind in ("jpl_small_body", "jpl_body"):

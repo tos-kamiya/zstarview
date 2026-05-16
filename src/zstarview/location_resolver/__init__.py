@@ -15,7 +15,6 @@ from .place_search import (
 )
 from .place_projection import (
     PlaceTargetProjection,
-    project_place_target_to_altaz,
     project_place_targets_to_altaz,
 )
 from .resolve import (
@@ -58,7 +57,6 @@ __all__ = [
     "mountain_viewpoint_to_dict",
     "normalize_place_search_candidates",
     "place_search_candidate_from_nominatim",
-    "project_place_target_to_altaz",
     "project_place_targets_to_altaz",
     "prefixed_viewpoint_name",
     "resolve_mountain_viewpoint",

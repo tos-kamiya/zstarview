@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from datetime import datetime, timezone
 
-from ..location_resolver import project_place_target_to_altaz
+from ..location_resolver import project_place_targets_to_altaz
 from ..astro import radec_to_altaz
 from .constants import SOLAR_SYSTEM_BODY_QUERIES
 from .jpl import project_jpl_target_altaz_from_state_vector
@@ -103,13 +103,14 @@ def compute_search_target_altaz(
     if target.kind == "place":
         if target.latitude_deg is None or target.longitude_deg is None:
             return None
-        projection = project_place_target_to_altaz(
+        projection = project_place_targets_to_altaz(
             observer_latitude_deg=float(observer_lat),
             observer_longitude_deg=float(observer_lon),
             observer_height_m=float(observer_height_m),
-            target_latitude_deg=float(target.latitude_deg),
-            target_longitude_deg=float(target.longitude_deg),
-        )
+            target_latitude_deg=[float(target.latitude_deg)],
+            target_longitude_deg=[float(target.longitude_deg)],
+            target_height_m=[0.0],
+        )[0]
         return float(projection.alt_deg), float(projection.az_deg) % 360.0
     if target_time_utc is None:
         target_time_utc = datetime.now(timezone.utc)

@@ -89,33 +89,6 @@ def _project_place_target_arrays_to_altaz(
     return alt_deg, az_deg, distance_km
 
 
-def project_place_target_to_altaz(
-    *,
-    observer_latitude_deg: float,
-    observer_longitude_deg: float,
-    observer_height_m: float,
-    target_latitude_deg: float,
-    target_longitude_deg: float,
-    target_height_m: float = 0.0,
-) -> PlaceTargetProjection:
-    alt_deg, az_deg, distance_km = _project_place_target_arrays_to_altaz(
-        observer_latitude_deg=observer_latitude_deg,
-        observer_longitude_deg=observer_longitude_deg,
-        observer_height_m=observer_height_m,
-        target_latitude_deg=float(target_latitude_deg),
-        target_longitude_deg=float(target_longitude_deg),
-        target_height_m=float(target_height_m),
-    )
-    return PlaceTargetProjection(
-        alt_deg=float(np.asarray(alt_deg)),
-        az_deg=float(np.asarray(az_deg)),
-        distance_km=float(np.asarray(distance_km)),
-        target_latitude_deg=float(target_latitude_deg),
-        target_longitude_deg=float(target_longitude_deg),
-        target_height_m=float(target_height_m),
-    )
-
-
 def project_place_targets_to_altaz(
     *,
     observer_latitude_deg: float,
@@ -169,6 +142,5 @@ def project_place_targets_to_altaz(
 
 __all__ = [
     "PlaceTargetProjection",
-    "project_place_target_to_altaz",
     "project_place_targets_to_altaz",
 ]

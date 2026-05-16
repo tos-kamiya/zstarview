@@ -792,14 +792,16 @@ def test_jump_to_satellite_target_sets_banner_when_not_available() -> None:
 def test_jump_to_place_target_uses_projected_altaz(monkeypatch) -> None:
     monkeypatch.setattr(
         window_module,
-        "project_place_target_to_altaz",
-        lambda **kwargs: PlaceTargetProjection(
-            alt_deg=-3.5,
-            az_deg=145.0,
-            distance_km=12.0,
-            target_latitude_deg=float(kwargs["target_latitude_deg"]),
-            target_longitude_deg=float(kwargs["target_longitude_deg"]),
-            target_height_m=0.0,
+        "_project_place_targets_to_altaz",
+        lambda **kwargs: (
+            PlaceTargetProjection(
+                alt_deg=-3.5,
+                az_deg=145.0,
+                distance_km=12.0,
+                target_latitude_deg=float(kwargs["target_latitude_deg"][0]),
+                target_longitude_deg=float(kwargs["target_longitude_deg"][0]),
+                target_height_m=float(kwargs["target_height_m"][0]),
+            ),
         ),
     )
 
