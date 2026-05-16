@@ -59,7 +59,9 @@ WATER_OVERLAY_SEA_250_COLOR_RGB = (54, 200, 184)
 WATER_OVERLAY_SEA_500_COLOR_RGB = (255, 170, 64)
 WATER_OVERLAY_LAKE_COLOR_RGB = (104, 196, 168)
 WATER_OVERLAY_RIVER_COLOR_RGB = (94, 214, 255)
-WATER_OVERLAY_POINT_RADIUS_PX = 5.0
+WATER_OVERLAY_POINT_RADIUS_PX = 3.0
+WATER_OVERLAY_DISTANCE_ALPHA_REFERENCE_KM = 128.0
+WATER_OVERLAY_DISTANCE_ALPHA_REFERENCE_SCALE = 16.0
 
 
 def _urban_outline_foreground_alpha(opacity: float) -> float:
@@ -261,20 +263,17 @@ def _solid_pen(color_rgb: tuple[int, int, int], alpha: float, width: float) -> Q
 
 
 def _water_overlay_point_color_rgb(water_point: WaterOverlayPoint) -> tuple[int, int, int]:
-    category = str(getattr(water_point, "water_category", "")).strip().lower()
-    if category == "sea":
-        return WATER_OVERLAY_SEA_COLOR_RGB
-    if category == "sea-125":
-        return WATER_OVERLAY_SEA_125_COLOR_RGB
-    if category == "sea-250":
-        return WATER_OVERLAY_SEA_250_COLOR_RGB
-    if category == "sea-500":
-        return WATER_OVERLAY_SEA_500_COLOR_RGB
-    if category == "river":
-        return WATER_OVERLAY_RIVER_COLOR_RGB
-    if category == "lake":
-        return WATER_OVERLAY_LAKE_COLOR_RGB
-    return WATER_OVERLAY_POINT_COLOR_RGB
+    _ = water_point
+    return WATER_OVERLAY_SEA_125_COLOR_RGB
+
+
+def _water_overlay_distance_alpha_scale(distance_km: float) -> float:
+    distance_km = max(0.0, float(distance_km))
+    if distance_km <= 0.0:
+        return 1.0
+    reference = max(1.0, float(WATER_OVERLAY_DISTANCE_ALPHA_REFERENCE_KM))
+    factor = max(1.0, float(WATER_OVERLAY_DISTANCE_ALPHA_REFERENCE_SCALE))
+    return float(math.exp(-math.log(factor) * (distance_km / reference)))
 
 
 def _distance_band_widths(
@@ -1070,9 +1069,11 @@ def draw_water_overlay_points(
                 edge_fov_deg=float(edge_fov_deg),
             )
         px, py = normalized_to_screen_xy_func(nx, ny, geometry)
+        distance_alpha = _water_overlay_distance_alpha_scale(float(point.distance_km))
+        point_alpha = max(0, min(255, int(round(dot_alpha * float(point.alpha_scale) * distance_alpha))))
         dot_color = QColor(
             *_water_overlay_point_color_rgb(point),
-            dot_alpha,
+            point_alpha,
         )
         painter.setBrush(dot_color)
         radius = base_radius

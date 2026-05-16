@@ -8,6 +8,7 @@ from unittest.mock import Mock
 import pytest
 
 from zstarview.render.terrain import _thin_water_overlay_points_pairwise
+from zstarview.render.terrain import _water_overlay_distance_alpha_scale
 from zstarview.render.terrain import _water_overlay_point_color_rgb
 from zstarview.water_overlay import (
     WaterOverlayPoint,
@@ -121,17 +122,23 @@ def test_classify_water_surface_category_uses_tags_and_kind() -> None:
     assert classify_water_surface_category({"waterway": "riverbank"}) == "river"
 
 
-def test_water_overlay_point_color_rgb_uses_surface_category() -> None:
+def test_water_overlay_point_color_rgb_is_unified_blue() -> None:
     assert _water_overlay_point_color_rgb(
         WaterOverlayPoint("sea", 0.0, 0.0, 0.0, water_category="sea")
-    ) != _water_overlay_point_color_rgb(
+    ) == _water_overlay_point_color_rgb(
         WaterOverlayPoint("lake", 0.0, 0.0, 0.0, water_category="lake")
     )
     assert _water_overlay_point_color_rgb(
         WaterOverlayPoint("river", 0.0, 0.0, 0.0, water_category="river")
-    ) != _water_overlay_point_color_rgb(
+    ) == _water_overlay_point_color_rgb(
         WaterOverlayPoint("lake", 0.0, 0.0, 0.0, water_category="lake")
     )
+
+
+def test_water_overlay_distance_alpha_scale_decays_with_distance() -> None:
+    assert _water_overlay_distance_alpha_scale(0.0) == 1.0
+    assert _water_overlay_distance_alpha_scale(128.0) == pytest.approx(0.0625, rel=1e-6)
+    assert _water_overlay_distance_alpha_scale(256.0) == pytest.approx(0.00390625, rel=1e-6)
 
 
 def test_water_surface_height_selection_prefers_explicit_level() -> None:
@@ -613,14 +620,14 @@ def test_thin_water_overlay_points_pairwise_keeps_one_point_per_pair() -> None:
     assert any(point.scan_distance_index is None for point in got)
 
 
-def test_water_overlay_point_color_rgb_differs_by_sea_band() -> None:
+def test_water_overlay_point_color_rgb_is_unified_for_sea_bands() -> None:
     assert _water_overlay_point_color_rgb(  # noqa: SLF001
         WaterOverlayPoint("a", 0.0, 0.0, 0.0, water_category="sea-125")
-    ) != _water_overlay_point_color_rgb(  # noqa: SLF001
+    ) == _water_overlay_point_color_rgb(  # noqa: SLF001
         WaterOverlayPoint("b", 0.0, 0.0, 0.0, water_category="sea-250")
     )
     assert _water_overlay_point_color_rgb(  # noqa: SLF001
         WaterOverlayPoint("c", 0.0, 0.0, 0.0, water_category="sea-500")
-    ) != _water_overlay_point_color_rgb(  # noqa: SLF001
+    ) == _water_overlay_point_color_rgb(  # noqa: SLF001
         WaterOverlayPoint("d", 0.0, 0.0, 0.0, water_category="sea")
     )
