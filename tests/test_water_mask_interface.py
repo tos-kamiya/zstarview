@@ -111,35 +111,53 @@ def test_sample_water_surface_interface_points_labels_tile_bands(monkeypatch) ->
     )
 
 
-def test_sample_water_surface_interface_points_can_use_ground_sampler(monkeypatch) -> None:
-    captured: list[float] = []
+def test_sample_water_surface_interface_points_keeps_sea_mask_at_zero_m(monkeypatch) -> None:
+    projected_heights: list[list[float]] = []
 
-    def _fake_load(*, tile_root, target_ground_elevation_m_sampler=None, **_kwargs):
-        if tile_root == mod.DEFAULT_WATER_TILES_ROOT_125M:
-            if target_ground_elevation_m_sampler is not None:
-                captured.append(float(target_ground_elevation_m_sampler(35.0, 139.0)))
-            return (
-                (mod.WaterOverlayPoint("water-mask", 1.0, 2.0, 3.0, water_category="sea-125"),),
-                WaterSurfaceBandStats("125m", 0, 0, 0, 1),
-            )
-        return (), WaterSurfaceBandStats("other", 0, 0, 0, 0)
+    def _fake_build_ray_scan_grid(**_kwargs):
+        return type(
+            "Scan",
+            (),
+            {
+                "azimuths_deg": [0.0],
+                "distance_grid_m": np.asarray([[349.0]], dtype=np.float64),
+                "ray_lon_deg": np.asarray([[139.001]], dtype=np.float64),
+                "ray_lat_deg": np.asarray([[35.001]], dtype=np.float64),
+            },
+        )()
+
+    def _fake_sample_water_mask_for_lonlat_points_with_stats(lonlat_points, **_kwargs):
+        return [True] * len(lonlat_points), 1
+
+    def _fake_project_place_targets_to_altaz(**kwargs):
+        projected_heights.append([float(value) for value in kwargs["target_height_m"]])
+        return (
+            type("Projection", (), {"alt_deg": 1.0, "az_deg": 2.0, "distance_km": 3.0})(),
+        )
 
     monkeypatch.setattr(
         mod,
-        "_sample_water_surface_interface_ray_points_for_root_with_stats",
-        _fake_load,
+        "build_ray_scan_grid",
+        _fake_build_ray_scan_grid,
     )
+    monkeypatch.setattr(
+        mod,
+        "_sample_water_mask_for_lonlat_points_with_stats",
+        _fake_sample_water_mask_for_lonlat_points_with_stats,
+    )
+    monkeypatch.setattr(mod, "project_place_targets_to_altaz", _fake_project_place_targets_to_altaz)
 
-    points, _band_stats = mod.sample_water_surface_interface_points_with_stats(  # noqa: SLF001
-        observer_lat_deg=35.0,
-        observer_lon_deg=139.0,
+    points, _band_stats = mod._sample_water_surface_interface_ray_points_for_root_with_stats(  # noqa: SLF001
+        center_lat_deg=35.0,
+        center_lon_deg=139.0,
         observer_height_m=1.7,
-        max_distance_km=10.0,
+        radius_km=10.0,
+        tile_root=mod.DEFAULT_WATER_TILES_ROOT_125M,
         target_ground_elevation_m_sampler=lambda _lat, _lon: 42.0,
     )
 
     assert points[0].water_category == "sea-125"
-    assert captured == [42.0]
+    assert projected_heights == [[0.0]]
 
 
 def test_sample_water_surface_interface_ray_points_start_at_125m(monkeypatch) -> None:

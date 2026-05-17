@@ -560,21 +560,13 @@ def _sample_water_surface_interface_ray_points_for_root_with_stats(
             ):
                 if not is_water:
                     continue
-                target_height_m = 0.0
-                if target_ground_elevation_m_sampler is not None:
-                    try:
-                        target_height_m = float(
-                            target_ground_elevation_m_sampler(float(lat_deg), float(lon_deg))
-                        )
-                    except Exception:
-                        target_height_m = 0.0
                 water_meta.append(
                     (
                         int(col_index),
                         float(distance_m),
                         float(lon_deg),
                         float(lat_deg),
-                        float(target_height_m),
+                        0.0,
                     )
                 )
             if not water_meta:

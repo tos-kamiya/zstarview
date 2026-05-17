@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-05-16
+最終更新: 2026-05-17
 
 ## 1. この文書の位置づけ
 
@@ -739,7 +739,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 川・湖・運河・水路などの inland water は Overpass API 経由の OSM フットプリントを別系統で取得する
   - `water_tiles_125m`、`water_tiles_250m`、`water_tiles_500m` を距離帯で切り替え、遠方 `500m` 帯は in-memory の代表点へ縮約する
   - sea-mask の評価は band 外側・ray 内側の順で進め、各 band 内では `rasterio.open()` した tile を短命キャッシュして再利用する
-  - 海面は観測地点中心の地理座標を `target_height_m = 0.0` に投影した点として扱い、輪郭ポリゴンの再構成は行わない
+  - 海面は観測地点中心の地理座標を `target_height_m = 0.0` に投影した点として扱い、sea-mask 側では DEM を参照しない
+  - inland water は別系統で DEM を使ってよいが、sea-mask の海面高は常に 0.0m に固定してよい
   - 水面ドットは terrain horizon と同じ sky-dome 合成段へ重ねるが、海の内外判定や ring reconstruction は行わない
 - `src/zstarview/gui/water_overlay_state.py`
   - 水面レイヤーの取得状態、sea-mask 由来の point set、status line 用の banner を保持する
@@ -760,8 +761,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `src/zstarview/water_overlay.py`
   - `water_tiles_125m`、`water_tiles_250m`、`water_tiles_500m` を距離帯ごとに読み分ける
   - `water_tiles_500m` は遠距離になるほど in-memory の代表点化を行い、点数を抑える
-  - ローカル sea mask の `1` を水、`0` を地面として扱い、水ピクセル中心を水面ドットへ変換する
-  - 点の投影は観測地点からの距離と方位を使って地理座標を復元し、`target_height_m = 0.0` の地表貼り付けとして扱う
+  - ローカル sea mask の `1` を水、`0` を地面として扱い、水ピクセル中心を常に `0.0m` の海面ドットへ変換する
+  - 点の投影は観測地点からの距離と方位を使って地理座標を復元し、海側は DEM を使わず `target_height_m = 0.0` として扱う
   - 海の輪郭生成や point-in-polygon 判定は行わず、海マスクの画素をそのまま点群化する
   - band ごとの ray scan では、同じ tile を複数 ray で使い回せるよう open dataset を band 内 cache として保持してよい
 - `src/zstarview/gui/water_overlay_state.py`

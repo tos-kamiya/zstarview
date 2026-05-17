@@ -562,17 +562,16 @@ class WaterOverlayController(QObject):
     ]:
         use_target_sampler = bool(use_dem_ground and target_ground_sampler is not None)
         sea_mask_dots = scope_cache.sea_mask_dots
-        if sea_mask_dots is None or bool(scope_cache.uses_dem_sampler) != use_target_sampler:
+        if sea_mask_dots is None:
             sea_mask_dots, band_stats = sample_water_surface_interface_points_with_stats(
                 observer_lat_deg=observer_lat_deg,
                 observer_lon_deg=observer_lon_deg,
                 observer_height_m=float(observer_height_m) + float(observer_ground_m),
                 max_distance_km=scan_radius_km,
-                target_ground_elevation_m_sampler=target_ground_sampler if use_target_sampler else None,
                 abort_event=self._download_abort_event,
             )
             scope_cache.sea_mask_dots = sea_mask_dots
-            scope_cache.uses_dem_sampler = use_target_sampler
+            scope_cache.uses_dem_sampler = False
         else:
             band_stats = ()
 

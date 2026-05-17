@@ -704,7 +704,6 @@ def _fetch_water_overlay_dots_layer(
         observer_lon_deg=float(viewer_data.lon_deg),
         observer_height_m=float(viewer_data.observer_height_m) + observer_ground_m,
         max_distance_km=scan_radius_km,
-        target_ground_elevation_m_sampler=target_ground_sampler,
     )
     inland_dots = sample_water_overlay_points_for_observer(
         observer_lat_deg=float(viewer_data.lat_deg),
