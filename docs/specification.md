@@ -678,6 +678,7 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 - 海の取得経路と inland water の取得経路は異なってよく、海はタイルベース、inland water は Overpass 由来の輪郭ベースとして扱ってよい。
 - 海と inland water は色を分けてよく、海は `dev-samples/basic-color-palette.html` に合わせた青、川・湖は別の青系統としてよい。
 - GUI 上の表示名は `Water Surface` としてよく、`W` で on/off してよい。
+- `Water Surface` は `Terrain Horizon` の表示に連動させてよく、地形地平線が有効なときだけ表示してよい。
 - 水面の status line は `W ---` で無効状態を示し、有効時は `W <count>` のように表示してよい。`dem`、`sea`、`overpass`、`cache` などの入手元や内部 mode は表示しなくてよい。
 - 海は `water_tiles_125m`、`water_tiles_250m`、`water_tiles_500m` の 3 段を距離帯で切り替え、遠距離 `500m` 帯は in-memory で代表点化してよい。
 - sea-mask の `1` を水、`0` を地面として扱ってよく、水ピクセル中心は常に海面高 `0.0m` として観測者視点へ投影した点として表示してよい。DEM の有無で海面高を変える必要はない。
