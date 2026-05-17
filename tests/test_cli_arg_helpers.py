@@ -104,6 +104,12 @@ def test_main_help_text_uses_readme_like_groups() -> None:
     assert re.search(r"^\s+--list\s", help_text, re.M) is None
 
 
+def test_main_parser_accepts_height_add_option() -> None:
+    args = cli_args.parse_args(["--height-add-m", "123", "Matsue"])
+
+    assert float(args.observer_height_m) == 123.0
+
+
 def test_export_image_help_text_uses_shared_groups() -> None:
     help_text = cli_args.build_export_image_argument_parser().format_help()
     general_match = re.search(r"\nGeneral:\n(?P<section>.*)$", help_text, re.S)

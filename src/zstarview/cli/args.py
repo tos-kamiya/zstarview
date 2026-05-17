@@ -489,12 +489,15 @@ def add_observing_arguments(parser: argparse._ActionsContainer) -> None:
         ),
     )
     parser.add_argument(
+        "--height-add-m",
         "--observer-height-m",
+        dest="observer_height_m",
         type=_parse_non_negative_float,
         default=None,
         help=(
-            "Observer height above local ground in meters. "
-            "Default: 1.7 for city/latlon/mountain and tower height + 1.7 for tower-name input."
+            "Additional height above the active observation base in meters. "
+            "Default: 1.7 for city/latlon/mountain and tower height + 1.7 for tower-name input. "
+            "--observer-height-m remains as a compatibility alias."
         ),
     )
     parser.add_argument(
@@ -962,12 +965,15 @@ def add_render_arguments(
         ),
     )
     parser.add_argument(
+        "--height-add-m",
         "--observer-height-m",
+        dest="observer_height_m",
         type=_parse_non_negative_float,
         default=None,
         help=(
-            "Observer height above local ground in meters. "
-            "Default: 1.7 for city/latlon/mountain and tower height + 1.7 for tower-name input."
+            "Additional height above the active observation base in meters. "
+            "Default: 1.7 for city/latlon/mountain and tower height + 1.7 for tower-name input. "
+            "--observer-height-m remains as a compatibility alias."
         ),
     )
     parser.add_argument(

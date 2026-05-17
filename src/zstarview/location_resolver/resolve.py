@@ -337,6 +337,7 @@ def format_splash_location(city: ResolvedLocation) -> str:
             city.lon,
             ground_elevation_m=city.ground_elevation_m,
             location_height_m=city.location_height_m,
+            height_add_m=city.observer_height_m,
         )
     )
 

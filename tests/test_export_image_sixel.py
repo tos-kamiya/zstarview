@@ -248,7 +248,7 @@ def test_write_export_overlay_summary_to_stderr_emits_gui_metadata(
 
     text = stderr_buffer.getvalue()
     assert text.startswith(
-        "Tokyo\nLat: 35.00000, Lon: 139.00000 | Ground: 35 m, Building: 634 m\n"
+        "Tokyo\nLat: 35.00000, Lon: 139.00000 | Ground: 35 m, Building: 634 m | Height add: 12 m\n"
     )
     assert "2026-02-27 00:00:00 UTC\n" in text
     assert "Alt 45°  Az 180° (S)\n" in text
