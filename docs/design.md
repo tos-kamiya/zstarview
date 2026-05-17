@@ -764,6 +764,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `Terrain Horizon` が OFF の間は `Water Surface` の QAction を無効化して、依存関係を GUI で明示する
   - sea-mask の取得結果と inland water の取得結果は別レイヤーとして保持し、入手経路も分けて扱う
   - GUI 更新時は Copernicus DEM を再取得せず、terrain controller が持つ地形情報を再利用する
+  - 保存する footprint は観測者基準で簡約し、遠方の細かな水域を落として cache サイズを抑える
   - 取得完了後の active point set は band stats と共に GUI / export-image へ渡す
   - band stats の `loaded_tile_count` は、実際に open した sea-mask tile の回数として扱い、総 tile 数ではない
 - `src/zstarview/render/terrain.py`

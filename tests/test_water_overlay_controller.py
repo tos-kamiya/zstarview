@@ -126,6 +126,62 @@ def test_water_overlay_controller_saves_fresh_disk_snapshot(monkeypatch) -> None
     assert saved["payload"][1].footprints == (footprint,)
 
 
+def test_water_overlay_controller_simplifies_recent_cached_footprints(
+    monkeypatch,
+) -> None:
+    controller = WaterOverlayController()
+    footprint = WaterPolygonFootprint(
+        water_id="river",
+        kind="natural_water",
+        outer_rings_lonlat=(
+            (
+                (0.0200, 0.0000),
+                (0.0201, 0.0000),
+                (0.0202, 0.0000),
+                (0.0203, 0.0000),
+                (0.0210, 0.0000),
+                (0.0210, 0.0010),
+                (0.0200, 0.0010),
+                (0.0200, 0.0000),
+            ),
+        ),
+        inner_rings_lonlat=(),
+        source="way",
+        tags={"natural": "water", "water": "river"},
+    )
+    snapshot = WaterOverlayCacheSnapshot(
+        footprints=(footprint,),
+        water_polygon_count=1,
+        fetched_at_utc=datetime.now(timezone.utc),
+    )
+    saved: dict[str, object] = {}
+
+    monkeypatch.setattr(mod, "load_water_overlay_cache", lambda *_args, **_kwargs: snapshot)
+    monkeypatch.setattr(
+        mod,
+        "save_water_overlay_cache",
+        lambda scope_key, snap, **_kwargs: saved.setdefault("payload", (scope_key, snap)),
+    )
+
+    scope_cache = controller._ensure_scope_cache(  # noqa: SLF001
+        scope_key="scope",
+        lat_deg=0.0,
+        lon_deg=0.0,
+        scan_radius_km=2.0,
+        cached_scope=None,
+        now_utc=datetime.now(timezone.utc),
+    )
+
+    assert len(scope_cache.footprints) == 1
+    assert len(scope_cache.footprints[0].outer_rings_lonlat[0]) < len(
+        footprint.outer_rings_lonlat[0]
+    )
+    assert saved["payload"][0] == "scope"
+    assert len(saved["payload"][1].footprints[0].outer_rings_lonlat[0]) < len(
+        footprint.outer_rings_lonlat[0]
+    )
+
+
 def test_water_overlay_controller_uses_sea_mask_points_before_sampling(monkeypatch, caplog) -> None:
     controller = WaterOverlayController()
     observed: dict[str, object] = {}

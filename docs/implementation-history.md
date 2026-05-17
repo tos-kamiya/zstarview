@@ -867,5 +867,10 @@
   - Added progress logging around sea-mask sampling, Overpass footprint fetch, and inland-water sampling, plus `faulthandler` enablement at startup for native crash diagnostics.
   - Added regression coverage to ensure the GUI water overlay no longer re-enters the DEM-fetch path during normal updates.
 
+- Water overlay cache simplification
+  - Simplified water-overlay footprints before saving or reloading them from the per-scope cache so distant, dense polygon geometry does not balloon the cache file.
+  - The cache now rewrites older recent snapshots to the simplified form on load, which keeps the `earth_..._r*.json` files smaller after the next successful update.
+  - Added regression coverage for the simplified cache path so the controller keeps storing the reduced geometry instead of the raw Overpass polygon set.
+
 - Validation
   - Confirmed the worker pool serializes tasks, the startup overlay tests still pass, the controller shutdown waits still behave, and the water overlay regression coverage passes after the GUI simplification.
