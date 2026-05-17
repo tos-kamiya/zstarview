@@ -13,8 +13,11 @@
 | `-A`, `--view-center-alt VIEW_CENTER_ALT` | Viewing altitude angle (90=zenith, 0=horizon). | `90` |
 | `--edge-fov-deg DEGREES` | Projection scale for the window edge. `95` means the window edge corresponds to `95°` from the view center. | `95` |
 | `--content-fov-deg DEGREES` | Shared overscan content FOV for all layers. The window edge still corresponds to `90°` from the view center; values above `90` let sky/cloud/background content extend beyond the window edge and reduce empty corner regions. Allowed range: `90`–`127`. | `110` |
-| `--height-add-m METERS` | Additional height above the active observation base in meters. This replaces the default add height of `1.7` meters. `--observer-height-m` remains as a compatibility alias. For tower and mountain viewpoints, the viewpoint's own height/elevation remains separate from this value. | `1.7` |
+| `--height-add-m METERS` | Additional height above the active observation base in meters. This replaces the default add height of `1.7` meters. For tower and mountain viewpoints, the viewpoint's own height/elevation remains separate from this value. | `1.7` |
 | `--use-building-top` | Experimental. For city / `--place` / direct-coordinate / supported Google Maps URL input, if a building is found within about 5 meters of the resolved location, use that building's highest top height as the active observation base. Tower and mountain viewpoints are not affected. | off |
+
+Note: `--observer-height-m` remains available as a compatibility alias for `--height-add-m`.
+When `--use-building-top` is enabled, the observation base switches to a nearby building top when one is available, and `--height-add-m` is added on top of that base.
 
 #### About `--place`
 
@@ -40,7 +43,6 @@ You can also start from a built-in tower/viewpoint dataset generated from Wikida
   * `wikidata:Q57965`
 * When a tower name is used, the tower's stored structural/viewpoint height is used as the base observation point.
 * `--height-add-m` adds only the extra height above that base point (default `1.7m`); it does not replace the tower's own height.
-* `--observer-height-m` remains available as a compatibility alias for `--height-add-m`.
 * Tower resolution also accepts ASCII fallback spellings for names with diacritics.
 * In the on-screen location info, tower viewpoints may show `Height: ground ..., building ..., add ...` on a separate line.
 
@@ -63,7 +65,6 @@ You can also start from the bundled mountain/viewpoint dataset.
   * `wikidata:Q39231`
 * When a mountain name is used, the base observation point is the mountain summit viewpoint.
 * `--height-add-m` adds only the extra height above that summit point (default `1.7m`).
-* `--observer-height-m` remains available as a compatibility alias for `--height-add-m`.
 * Mountain resolution also accepts ASCII fallback spellings for names with diacritics.
 * In the on-screen location info, mountain viewpoints may show `Height: ground ..., add ...` on a separate line.
 
@@ -119,5 +120,4 @@ Instead of a city name, you can directly specify coordinates.
 * Zoom, altitude, heading, pitch, and similar trailing URL components are ignored.
 * When starting with direct coordinates, the timezone is resolved from the parsed location in the same way as `--place`. `--timezone TZ` overrides that result.
 * `--height-add-m` remains the primary way to specify the additive height above the active base. Google Maps URL altitude-like fields do not affect this value.
-* `--observer-height-m` remains available as a compatibility alias for `--height-add-m`.
 * `--use-building-top` may be combined with direct-coordinate input. In this experimental mode, the app looks for a nearby building around the resolved point and uses its top as the observation base when found.
