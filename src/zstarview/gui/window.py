@@ -968,7 +968,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             aircraft_overlay_points=None,
         )
         self._startup_initial_load_started = False
+        self._startup_initial_sky_loaded = False
+        self._startup_initial_terrain_loaded = False
+        self._startup_initial_water_loaded = False
+        self._startup_initial_urban_loaded = False
         self._startup_initial_data_loaded = False
+        self._post_startup_background_updates_started = False
         self._startup_window_shown = False
         self._startup_input_release_pending = False
         self._startup_input_blocked_state = True
@@ -1334,17 +1339,13 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if self._startup_initial_load_started:
             return
         self._startup_initial_load_started = True
+        self._startup_initial_sky_loaded = False
+        self._startup_initial_terrain_loaded = False
+        self._startup_initial_water_loaded = False
+        self._startup_initial_urban_loaded = False
+        self._startup_initial_data_loaded = False
+        self._post_startup_background_updates_started = False
         self.start_background_sky_data_update(is_initial_load=True)
-        if self._clouddisc and self.cloud_disc_alpha > 0.0:
-            self.start_background_cloud_update(reason="initial")
-        if self.terrain_horizon_opacity > 0.0:
-            self.start_background_terrain_horizon_update(reason="initial")
-        if self.urban_outline_opacity > 0.0:
-            self.start_background_urban_outline_update(reason="initial")
-        if self._satellite_layer_enabled():
-            self._enable_satellite_layer(reason="initial")
-        if self._aircraft_layer_enabled():
-            self._enable_aircraft_layer(reason="initial")
 
     def _resize_client_area(self, target_client_width: int, target_client_height: int) -> None:
         """Resize the host so the client widget reaches the requested size."""
@@ -2609,6 +2610,26 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def _release_startup_input_block(self) -> None:
         self._startup_input_release_pending = False
         self._startup_input_blocked_state = False
+        self._start_post_startup_background_updates()
+
+    def _start_post_startup_background_updates(self) -> None:
+        if self._is_shutting_down:
+            return
+        if self._post_startup_background_updates_started:
+            return
+        if not self._startup_initial_data_loaded:
+            return
+        self._post_startup_background_updates_started = True
+        if not self._sky_data_update_timer.isActive():
+            self._sky_data_update_timer.start(self.sky_update_interval * 1000)
+        if self._clouddisc and self.cloud_disc_alpha > 0.0:
+            self.start_background_cloud_update(reason="startup")
+            if not self._cloud_update_timer.isActive():
+                self._cloud_update_timer.start()
+        if self._satellite_layer_enabled():
+            self._enable_satellite_layer(reason="startup")
+        if self._aircraft_layer_enabled():
+            self._enable_aircraft_layer(reason="startup")
 
     def _begin_shutdown(self) -> None:
         """Stop scheduling new background work while the app is closing."""

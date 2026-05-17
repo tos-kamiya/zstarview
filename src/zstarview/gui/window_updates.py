@@ -49,6 +49,12 @@ def _jpl_debug_print(message: str) -> None:
     print(f"[jpl-debug] {message}", file=sys.stderr, flush=True)
 
 
+def _initial_data_load_active(obj: object) -> bool:
+    return bool(getattr(obj, "_startup_initial_load_started", False)) and not bool(
+        getattr(obj, "_startup_initial_data_loaded", False)
+    )
+
+
 class SkyWindowUpdatesMixin:
     def _viewport_interaction_active(self) -> bool:
         return bool(getattr(self.state, "viewport_interaction_mode", False))
@@ -343,6 +349,11 @@ class SkyWindowUpdatesMixin:
         self._compositor.invalidate()
         self.request_client_update()
 
+        if _initial_data_load_active(self):
+            self._startup_initial_sky_loaded = True
+            self._continue_initial_data_load()
+            return
+
         if not self._sky_data_update_timer.isActive():
             self._sky_data_update_timer.start(self.sky_update_interval * 1000)
             if (
@@ -351,7 +362,6 @@ class SkyWindowUpdatesMixin:
                 and not self._cloud_update_timer.isActive()
             ):
                 self._cloud_update_timer.start()
-            self.initial_data_loaded.emit()
 
         if self.state.sky_update_pending and not self._is_shutting_down:
             self.request_sky_data_update(
@@ -362,6 +372,38 @@ class SkyWindowUpdatesMixin:
         if self.state.cloud_repaint_deferred and not self.state.interaction_mode:
             self.state.cloud_repaint_deferred = False
             self._safe_request_cloud_repaint()
+
+    def _continue_initial_data_load(self) -> None:
+        if self._is_shutting_down:
+            return
+        if not _initial_data_load_active(self):
+            return
+        if not self._startup_initial_sky_loaded:
+            return
+        if self.terrain_horizon_opacity > 0.0 and not self._startup_initial_terrain_loaded:
+            if self.start_background_terrain_horizon_update(reason="initial"):
+                return
+            return
+        if (
+            self.terrain_horizon_opacity > 0.0
+            and self.water_overlay_opacity > 0.0
+            and self.terrain_horizon_state.profile_altaz is not None
+            and not self._startup_initial_water_loaded
+        ):
+            if self.start_background_water_overlay_update(reason="initial"):
+                return
+            return
+        if self.urban_outline_opacity > 0.0 and not self._startup_initial_urban_loaded:
+            if self.start_background_urban_outline_update(reason="initial"):
+                return
+            return
+        self._finish_initial_data_load()
+
+    def _finish_initial_data_load(self) -> None:
+        if self._startup_initial_data_loaded:
+            return
+        self._startup_initial_data_loaded = True
+        self.initial_data_loaded.emit()
 
     def request_sky_data_update(
         self,
@@ -811,11 +853,21 @@ class SkyWindowUpdatesMixin:
             "secondary_profile_distances_m_layers"
         )
         self._refresh_water_overlay_active_dots()
+        startup_initial_load = _initial_data_load_active(self)
+        if startup_initial_load:
+            self._startup_initial_terrain_loaded = True
         if not self._is_shutting_down:
-            self.start_background_water_overlay_update(reason="terrain-ready")
+            if startup_initial_load:
+                if self.water_overlay_opacity > 0.0:
+                    self.start_background_water_overlay_update(reason="initial")
+            else:
+                self.start_background_water_overlay_update(reason="terrain-ready")
         getattr(self, "_sync_water_overlay_action_enabled", lambda: None)()
         self._compositor.invalidate()
         self.request_client_update()
+        if startup_initial_load and self.water_overlay_opacity <= 0.0:
+            self._continue_initial_data_load()
+            return
 
     def _on_terrain_horizon_failed(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
@@ -827,9 +879,13 @@ class SkyWindowUpdatesMixin:
         self._refresh_water_overlay_active_dots()
         if banner:
             self.terrain_horizon_state.set_error_banner(banner)
+        if _initial_data_load_active(self):
+            self._startup_initial_terrain_loaded = True
         getattr(self, "_sync_water_overlay_action_enabled", lambda: None)()
         self._compositor.invalidate()
         self.request_client_update()
+        if _initial_data_load_active(self):
+            self._continue_initial_data_load()
 
     def _on_water_overlay_started(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
@@ -865,16 +921,24 @@ class SkyWindowUpdatesMixin:
         if isinstance(dem_dots, list):
             self.water_overlay_state.dem_dots = dem_dots
         self._refresh_water_overlay_active_dots()
+        if _initial_data_load_active(self):
+            self._startup_initial_water_loaded = True
         self._compositor.invalidate()
         self.request_client_update()
+        if _initial_data_load_active(self):
+            self._continue_initial_data_load()
 
     def _on_water_overlay_failed(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.water_overlay_state.set_error_banner(banner)
         self._refresh_water_overlay_active_dots()
+        if _initial_data_load_active(self):
+            self._startup_initial_water_loaded = True
         self._compositor.invalidate()
         self.request_client_update()
+        if _initial_data_load_active(self):
+            self._continue_initial_data_load()
 
     def _on_urban_outline_started(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
@@ -889,8 +953,12 @@ class SkyWindowUpdatesMixin:
             source=str(payload.get("source", "")).strip() or "ready",
         )
         self.state.urban_outlines = outlines
+        if _initial_data_load_active(self):
+            self._startup_initial_urban_loaded = True
         self._compositor.invalidate()
         self.request_client_update()
+        if _initial_data_load_active(self):
+            self._continue_initial_data_load()
 
     def _on_urban_outline_failed(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
@@ -898,5 +966,9 @@ class SkyWindowUpdatesMixin:
         self.state.urban_outlines = None
         if banner:
             self.urban_outline_state.set_error_banner(banner)
+        if _initial_data_load_active(self):
+            self._startup_initial_urban_loaded = True
         self._compositor.invalidate()
         self.request_client_update()
+        if _initial_data_load_active(self):
+            self._continue_initial_data_load()

@@ -1079,7 +1079,7 @@ def test_water_overlay_ready_invalidates_and_requests_refresh() -> None:
     assert calls == ["sea:1:ready", "refresh", "invalidate", "request"]
 
 
-def test_start_initial_data_load_defers_water_until_terrain_ready() -> None:
+def test_start_initial_data_load_only_kicks_off_sky() -> None:
     dummy = SimpleNamespace()
     dummy._startup_initial_load_started = False
     dummy._clouddisc = None
@@ -1105,7 +1105,7 @@ def test_start_initial_data_load_defers_water_until_terrain_ready() -> None:
 
     SkyWindow.start_initial_data_load(dummy)
 
-    assert calls == ["sky:True", "terrain:initial"]
+    assert calls == ["sky:True"]
 
 
 def test_start_initial_data_load_skips_water_when_terrain_disabled() -> None:
@@ -1135,6 +1135,48 @@ def test_start_initial_data_load_skips_water_when_terrain_disabled() -> None:
     SkyWindow.start_initial_data_load(dummy)
 
     assert calls == ["sky:True"]
+
+
+def test_initial_data_load_advances_through_terrain_water_and_urban() -> None:
+    dummy = SimpleNamespace()
+    dummy._is_shutting_down = False
+    dummy._startup_initial_load_started = True
+    dummy._startup_initial_data_loaded = False
+    dummy._startup_initial_sky_loaded = True
+    dummy._startup_initial_terrain_loaded = False
+    dummy._startup_initial_water_loaded = False
+    dummy._startup_initial_urban_loaded = False
+    dummy.terrain_horizon_opacity = 0.2
+    dummy.water_overlay_opacity = 0.2
+    dummy.urban_outline_opacity = 0.2
+    dummy.terrain_horizon_state = SimpleNamespace(profile_altaz=None)
+    calls: list[str] = []
+    dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(
+        f"terrain:{kwargs.get('reason')}"
+    ) or True
+    dummy.start_background_water_overlay_update = lambda **kwargs: calls.append(
+        f"water:{kwargs.get('reason')}"
+    ) or True
+    dummy.start_background_urban_outline_update = lambda **kwargs: calls.append(
+        f"urban:{kwargs.get('reason')}"
+    ) or True
+    dummy._finish_initial_data_load = lambda: calls.append("finish")
+
+    SkyWindowUpdatesMixin._continue_initial_data_load(dummy)
+    assert calls == ["terrain:initial"]
+
+    dummy._startup_initial_terrain_loaded = True
+    dummy.terrain_horizon_state.profile_altaz = [(0.0, 0.0)]
+    SkyWindowUpdatesMixin._continue_initial_data_load(dummy)
+    assert calls == ["terrain:initial", "water:initial"]
+
+    dummy._startup_initial_water_loaded = True
+    SkyWindowUpdatesMixin._continue_initial_data_load(dummy)
+    assert calls == ["terrain:initial", "water:initial", "urban:initial"]
+
+    dummy._startup_initial_urban_loaded = True
+    SkyWindowUpdatesMixin._continue_initial_data_load(dummy)
+    assert calls == ["terrain:initial", "water:initial", "urban:initial", "finish"]
 
 
 def test_toggle_earth_guide_respects_cli_lockout() -> None:
