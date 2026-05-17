@@ -242,16 +242,16 @@ def _print_water_band_stats(
         f"ground_m={float(observer_ground_m):.3f} absolute_height_m={observer_absolute_height_m:.3f} "
         f"scan_radius_km={scan_radius_km:.3f}"
     )
-    total_loaded_tiles = 0
+    total_opened_tiles = 0
     for stats in band_stats:
-        total_loaded_tiles += int(stats.loaded_tile_count)
+        total_opened_tiles += int(stats.loaded_tile_count)
         print(
-            f"    {stats.band_name}: tiles={int(stats.loaded_tile_count)} "
+            f"    {stats.band_name}: opened_tiles={int(stats.loaded_tile_count)} "
             f"raw={int(stats.raw_point_count)} "
             f"collapsed={int(stats.collapsed_point_count)} "
             f"visible={int(stats.visible_point_count)}"
         )
-    print(f"    total_loaded_tiles={total_loaded_tiles}")
+    print(f"    total_opened_tiles={total_opened_tiles}")
 
 
 def _print_ray_scan_summary(

@@ -169,7 +169,11 @@ def test_sample_water_surface_interface_ray_points_start_at_125m(monkeypatch) ->
 
     monkeypatch.setattr(mod, "build_geometric_distance_samples", _fake_build_geometric_distance_samples)
     monkeypatch.setattr(mod, "build_ray_scan_grid", _fake_scan)
-    monkeypatch.setattr(mod, "_sample_water_mask_for_lonlat_points", lambda lonlat_points, **_kwargs: [True] * len(lonlat_points))
+    monkeypatch.setattr(
+        mod,
+        "_sample_water_mask_for_lonlat_points_with_stats",
+        lambda lonlat_points, **_kwargs: ([True] * len(lonlat_points), 1),
+    )
     monkeypatch.setattr(
         mod,
         "project_place_targets_to_altaz",
@@ -333,6 +337,39 @@ def test_sample_water_mask_for_lonlat_points_uses_resolution_specific_keys(
         [(135.0, 0.0)],
         tile_root=root_500,
     ) == [True]
+
+
+def test_sample_water_mask_for_lonlat_points_with_stats_counts_open_tiles(
+    tmp_path, monkeypatch
+) -> None:
+    root = tmp_path / "water"
+    root.mkdir()
+    (root / "tile_y2_x7.tif").write_bytes(b"")
+    (root / "tile_y2_x6.0").write_bytes(b"")
+
+    class _FakeDataset:
+        bounds = type("Bounds", (), {"left": 135.0, "right": 180.0, "bottom": -45.0, "top": 0.0})()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def sample(self, coords):
+            return [np.asarray([1], dtype=np.uint8) for _coord in coords]
+
+    import rasterio
+
+    monkeypatch.setattr(rasterio, "open", lambda *_args, **_kwargs: _FakeDataset())
+
+    flags, opened_tile_count = mod._sample_water_mask_for_lonlat_points_with_stats(  # noqa: SLF001
+        [(135.0, 0.0), (134.0, 0.0)],
+        tile_root=root,
+    )
+
+    assert flags == [True, False]
+    assert opened_tile_count == 1
 
 
 def test_load_water_surface_interface_lonlat_points_skips_marker_tiles(

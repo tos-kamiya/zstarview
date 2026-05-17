@@ -23,7 +23,7 @@ Add `--json` to emit machine-readable output.
 
 - `water_tile_overview.py`
 - Prints the tile grid, suffix counts, local probe samples, and per-band tile
-  read statistics for the sea mask around an observer location.
+  open statistics for the sea mask around an observer location.
 
 Run it with:
 

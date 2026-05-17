@@ -206,9 +206,21 @@ def _sample_water_mask_for_lonlat_points(
     *,
     tile_root: Path | None = None,
 ) -> list[bool]:
+    water_flags, _opened_tile_count = _sample_water_mask_for_lonlat_points_with_stats(
+        lonlat_points,
+        tile_root=tile_root,
+    )
+    return water_flags
+
+
+def _sample_water_mask_for_lonlat_points_with_stats(
+    lonlat_points: list[tuple[float, float]],
+    *,
+    tile_root: Path | None = None,
+) -> tuple[list[bool], int]:
     tile_root = DEFAULT_WATER_TILES_ROOT if tile_root is None else tile_root
     if not lonlat_points:
-        return []
+        return [], 0
 
     try:
         import rasterio
@@ -226,6 +238,7 @@ def _sample_water_mask_for_lonlat_points(
         if (key := _tile_key_from_path(path)) is not None
     }
     water_flags = [False] * len(lonlat_points)
+    opened_tile_count = 0
     for tile_key, indexed_points in points_by_tile.items():
         tile_path = tile_paths.get(tile_key)
         if tile_path is None:
@@ -235,6 +248,7 @@ def _sample_water_mask_for_lonlat_points(
             for point_index, _lon_deg, _lat_deg in indexed_points:
                 water_flags[point_index] = marker_value
             continue
+        opened_tile_count += 1
         with rasterio.open(tile_path) as dataset:
             bounded_points: list[tuple[int, float, float]] = []
             for point_index, lon_deg, lat_deg in indexed_points:
@@ -253,7 +267,7 @@ def _sample_water_mask_for_lonlat_points(
             for (point_index, _lon_deg, _lat_deg), sample in zip(bounded_points, samples):
                 if sample.size > 0 and float(sample[0]) > 0.0:
                     water_flags[point_index] = True
-    return water_flags
+    return water_flags, opened_tile_count
 
 
 def _extract_lonlat_points_from_mask(
@@ -498,7 +512,7 @@ def _sample_water_surface_interface_ray_points_for_root_with_stats(
 
     overlay_points: list[WaterOverlayPoint] = []
     band_category = _band_category_for_tile_root(tile_root)
-    loaded_tile_count = len(_tile_paths(tile_root))
+    loaded_tile_count = 0
     raw_point_count = 0
     visible_point_count = 0
 
@@ -517,10 +531,11 @@ def _sample_water_surface_interface_ray_points_for_root_with_stats(
         raw_point_count += len(row_lonlat_points)
         if not row_lonlat_points:
             continue
-        row_water_flags = _sample_water_mask_for_lonlat_points(
+        row_water_flags, opened_tile_count = _sample_water_mask_for_lonlat_points_with_stats(
             row_lonlat_points,
             tile_root=tile_root,
         )
+        loaded_tile_count += int(opened_tile_count)
         water_meta: list[tuple[int, float, float, float, float]] = []
         for (col_index, distance_m), (lon_deg, lat_deg), is_water in zip(
             row_meta,
