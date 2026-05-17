@@ -42,7 +42,7 @@ You can also start from a built-in tower/viewpoint dataset generated from Wikida
 * `--height-add-m` adds only the extra height above that base point (default `1.7m`); it does not replace the tower's own height.
 * `--observer-height-m` remains available as a compatibility alias for `--height-add-m`.
 * Tower resolution also accepts ASCII fallback spellings for names with diacritics.
-* In the on-screen location info, tower viewpoints may show `Tower height ... m`; if `--height-add-m` is explicitly set, `Height add ... m` may be shown on a separate line.
+* In the on-screen location info, tower viewpoints may show `Height: ground ..., building ..., add ...` on a separate line.
 
 Example:
 
@@ -65,7 +65,7 @@ You can also start from the bundled mountain/viewpoint dataset.
 * `--height-add-m` adds only the extra height above that summit point (default `1.7m`).
 * `--observer-height-m` remains available as a compatibility alias for `--height-add-m`.
 * Mountain resolution also accepts ASCII fallback spellings for names with diacritics.
-* In the on-screen location info, mountain viewpoints may show `Elevation ... m`; if `--height-add-m` is explicitly set, `Height add ... m` may be shown on a separate line.
+* In the on-screen location info, mountain viewpoints may show `Height: ground ..., add ...` on a separate line.
 
 Example:
 

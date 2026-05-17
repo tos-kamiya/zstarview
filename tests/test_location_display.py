@@ -18,7 +18,7 @@ def test_format_splash_location_includes_lat_lon_and_height() -> None:
         format_splash_location(location)
         == (
             "Location: t/Tokyo Skytree | Lat: 35.71006, Lon: 139.81070 | "
-            "Ground: 12.3 m, Building: 634 m | Height add: 1.7 m"
+            "Height: ground 12.3 m, building 634 m, add 1.7 m"
         )
     )
 
@@ -40,6 +40,6 @@ def test_format_splash_location_does_not_repeat_lat_lon_name() -> None:
         format_splash_location(location)
         == (
             "Location: Lat: 35.71006, Lon: 139.81070 | "
-            "Ground: 12.3 m, Building: 0 m | Height add: 1.7 m"
+            "Height: ground 12.3 m, add 1.7 m"
         )
     )

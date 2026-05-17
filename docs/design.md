@@ -181,7 +181,7 @@
 - `building_part` がある場合は、親建物とその part 群を同一グループとして扱い、そのグループの最大 `height_m` を建物頂部高として採用してよい。
 - `min_height_m` は浮いた底面の属性として保持するが、この経路で観測基準に使う値は上端であるため、観測基準高の決定には最大 `height_m` を使う。
 - 候補建物が見つからない場合は、従来どおり地表基準を観測基準として使う。
-- 利用者向けの地点情報には、地点名がある場合は 1 行目に名前、2 行目に `Lat: ..., Lon: ... | Ground: ..., Building: ... | Height add: ...` の compact summary を表示してよい。
+- 利用者向けの地点情報には、地点名がある場合は 1 行目に名前、2 行目に `Lat: ..., Lon: ... | Height: ground ..., [building ... , ]add ...` の compact summary を表示してよい。
 
 #### 4.2.4 `auto` による現在地自動取得起動
 
@@ -239,7 +239,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - この方向グリッドは GUI の hover guidance とは別実装で、単発の書き出し画像にだけ適用してよい。
 - 30 度刻みの主線は通常の線で描き、10 度刻みの交点は小さな十字で示してよい。
 - export 画像では static overlay info を画像に焼き込まず、代わりに stderr へ compact summary を出してよい。
-  - summary には、地点名がある場合は名前行と `Lat: ..., Lon: ... | Ground: ..., Building: ...` の 1 行要約、時刻、Alt/Az を含めてよい。
+  - summary には、地点名がある場合は名前行と `Lat: ..., Lon: ... | Height: ground ..., [building ... , ]add ...` の 1 行要約、時刻、Alt/Az を含めてよい。
 - export 画像では GUI 向けの外周背景グラデーションも描かず、`content_fov_deg` の外側は透明のままにする。
 - 外部依存レイヤーの取得は逐次でも並列でもよいが、CLI 側では「いつまで待つか」と「部分データを許容するか」を引数で決められるようにする。
 - 既定は安全側として「部分データは保存しない」とし、明示的に `--allow-partial-data` を指定したときだけ部分出力を許可する。
@@ -877,7 +877,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 補助用途の `Pillow <-> Qt` 変換
 - `src/zstarview/utils/location_display.py`
   - スプラッシュ、静的 overlay、export-image stderr 向けの地点要約整形
-  - `Lat: ..., Lon: ... | Ground: ..., Building: ...` の表示を共通化し、座標指定時は名前行を省略して重複表示を避ける
+  - `Lat: ..., Lon: ... | Height: ground ..., [building ... , ]add ...` の表示を共通化し、座標指定時は名前行を省略して重複表示を避ける
 - `src/zstarview/data/import_overture_buildings.py`
   - `lat/lon + radius` に対応する bbox を計算する
   - `overturemaps download` を呼び、`building` および必要に応じて `building_part` を取得する
@@ -921,7 +921,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `ViewerData.location_height_m`
   - 建物頂部、タワー高、または解決済み地点の構造物高を表す
   - 該当しない場合は `0.0m` へ正規化してよい
-  - public な地点要約では、名前行を別にした上で `Lat: ..., Lon: ... | Ground: ..., Building: ... | Height add: ...` として示してよい
+  - public な地点要約では、名前行を別にした上で `Lat: ..., Lon: ... | Height: ground ..., [building ... , ]add ...` として示してよい
 - `BuildingFootprint`
   - `height_m` は Overture 建物属性から得た地表基準の建物高を表す
   - `ground_elevation_m` は DEM から求めた建物 footprint 代表点の地盤標高を表す

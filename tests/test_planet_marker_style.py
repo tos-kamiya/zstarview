@@ -1112,7 +1112,7 @@ def test_overlay_info_includes_location_height_and_explicit_observer_height(
 
     assert label_calls == [
         "t/Tokyo Skytree",
-        "Lat: 35.00000, Lon: 139.00000 | Ground: 35 m, Building: 634 m | Height add: 12 m",
+        "Lat: 35.00000, Lon: 139.00000 | Height: ground 35 m, building 634 m, add 12 m",
         "2026-02-27 00:00:00 UTC",
         "Alt 45°  Az 180° (S)",
     ]
@@ -1256,7 +1256,7 @@ def test_format_overlay_info_lines_matches_static_overlay_order() -> None:
         _empty_celestial_data([]), viewer, 6.0
     ) == [
         "t/Tokyo Skytree",
-        "Lat: 35.00000, Lon: 139.00000 | Ground: 35 m, Building: 634 m | Height add: 12 m",
+        "Lat: 35.00000, Lon: 139.00000 | Height: ground 35 m, building 634 m, add 12 m",
         "2026-02-27 00:00:00 UTC",
         "Alt 45°  Az 180° (S)",
     ]

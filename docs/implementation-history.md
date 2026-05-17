@@ -53,7 +53,11 @@
 - 追加高さオプションの命名整理
   - 既存の `--observer-height-m` を、観測基準の上に足す追加高さという意味で整理し、仕様上の主名を `--height-add-m` に寄せる方針をまとめた。
   - `--use-building-top` は観測基準面を建物上端へ切り替えるモードとして維持する方針にした。
-  - GUI の地点表示は `Ground`、構造物高、`Height add` の合計が最終高度になるように説明を統一する方針を決めた。
+  - GUI の地点表示は `Height: ground ..., [building ... , ]add ...` の compact summary で最終高度の内訳が分かるようにした。
+
+- 地点要約の短縮表示
+  - 地点要約を `Height: ground ..., [building ... , ]add ...` に短縮し、`building` は 0 の場合だけ省く形へ整理した。
+  - 主ウィンドウ、スプラッシュ、export の要約表示を同じ compact 形式に揃えた。
 
 ### 2026-05-13
 

@@ -363,7 +363,7 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 - ただし、GUI の観測情報 overlay とメニューに表示される `Vmag limit` は、画像には焼き込まず `stderr` へテキストで出力してよい。
   - 通常のファイル保存または PNG 標準出力では、レンダリング完了後に `stderr` へ出力する。
   - `--sixel` 指定時は、端末画像の直前に `stderr` へ出力する。
-  - `stderr` の要約には、`Lat: ..., Lon: ... | Ground: ..., Building: ...` の 1 行要約、時刻、Alt/Az を含めてよい。
+  - `stderr` の要約には、`Lat: ..., Lon: ... | Height: ground ..., [building ... , ]add ...` の 1 行要約、時刻、Alt/Az を含めてよい。
 - `--content-fov-deg` の外側に置かれる GUI 向け背景グラデーションは export 画像には含めず、透明のままにしてよい。
 - 雲レイヤーの見え方と部分欠損の扱いは、可能な限り通常 GUI の表示経路と一致させてよい。
 - `--aircraft-opacity 0`、`--cloud-opacity 0`、`--terrain-horizon-opacity 0`、`--urban-outline-opacity 0` のときは、それぞれのレイヤー取得自体を省略してよい。
@@ -463,9 +463,9 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 
 ### 5.5 地点種別ごとの高さ情報
 
-- 地点名がある場合は 1 行目に地点名を示し、2 行目に `Lat: ..., Lon: ... | Ground: ..., Building: ... | Height add: ...` を示してよい。
+- 地点名がある場合は 1 行目に地点名を示し、2 行目に `Lat: ..., Lon: ... | Height: ground ..., [building ... , ]add ...` の compact summary を示してよい。
 - 緯度経度指定だけの場合は、地点名行を省略してよい。
-- `Height add` は通常の地点表示や静的 overlay に表示してよい。`Observer height` という旧ラベルは使わない。
+- `Height` は通常の地点表示や静的 overlay に表示してよい。`building` は地点固有の高さがある場合だけ含めてよい。
 - `--use-building-top` により建物頂部を観測基準にした場合は、`Building` の値にその頂部高を反映してよい。
 - 位置引数がすでに `Lat/Lon` 文字列に正規化されている場合は、表示名と `Lat/Lon` を重複表示しない。
 - `Height` だけの曖昧なラベルは使わず、地盤標高、構造物高、追加高さをそれぞれ明示してよい。
@@ -523,9 +523,9 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 - 地形地平線
 - 都市アウトライン
 - ステータス表示、地点表示、時刻表示
-- 地点名がある場合は 1 行目に地点名を表示し、2 行目に `Lat: ..., Lon: ... | Ground: ..., Building: ... | Height add: ...` を表示してよい。
+- 地点名がある場合は 1 行目に地点名を表示し、2 行目に `Lat: ..., Lon: ... | Height: ground ..., [building ... , ]add ...` を表示してよい。
 - 緯度経度指定だけの場合は、地点名行を省略してよい。
-- `Height add` は通常の地点表示で表示してよい。`Observer height` という旧ラベルは使わない。
+- `Height` は通常の地点表示で表示してよい。`building` は地点固有の高さがある場合だけ含めてよい。
 - `--use-building-top` により建物頂部を観測基準にした場合は、`Building` の値にその頂部高を反映してよい。
 - 位置引数がすでに `Lat/Lon` 文字列に正規化されている場合は、表示名と `Lat/Lon` を重複表示しない。
 

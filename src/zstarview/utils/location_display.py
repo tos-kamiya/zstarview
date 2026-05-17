@@ -27,8 +27,12 @@ def build_location_info_lines(
     display_text = str(display_name).strip()
     if display_text and display_text != lat_lon_text:
         lines.append(display_text)
+    height_parts = [f"ground {format_height_m(ground)}"]
+    if structure > 0.0:
+        height_parts.append(f"building {format_height_m(structure)}")
+    height_parts.append(f"add {format_height_m(height_add)}")
     lines.append(
-        f"{lat_lon_text} | Ground: {format_height_m(ground)}, Building: {format_height_m(structure)} | Height add: {format_height_m(height_add)}"
+        f"{lat_lon_text} | Height: {', '.join(height_parts)}"
     )
     return lines
 
