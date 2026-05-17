@@ -20,6 +20,9 @@
 - `docs/developer/urban-outline-shape-audit-script.md`
   - derived building tiles に含まれる小さな footprint の分布を調べる監査スクリプト
   - 1m ビンの CSV ヒストグラム出力を含む
+- `dev-samples/water_tile_overview.py`
+  - sea mask tile の解像度別グリッド、`0`/`1`/`.tif` の分布、近傍プローブを表示する確認用スクリプト
+  - `@lat,lon` の起動地点まわりで、どの tile がどう見えているかをざっくり確認するために使う
 
 ## Notes
 
