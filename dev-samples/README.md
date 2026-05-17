@@ -22,8 +22,8 @@ Add `--json` to emit machine-readable output.
 ## Water tile overview
 
 - `water_tile_overview.py`
-- Prints the tile grid, suffix counts, and local probe samples for the sea
-  mask around an observer location.
+- Prints the tile grid, suffix counts, local probe samples, and per-band tile
+  read statistics for the sea mask around an observer location.
 
 Run it with:
 
@@ -31,5 +31,6 @@ Run it with:
 uv run -p .venv/bin/python dev-samples/water_tile_overview.py --lat 0 --lon 135
 ```
 
-Add `--ray-scan` to show the full ray-scan summary that mirrors the water mask
-sampling path.
+Use `--observer-ground-m 8651` to inspect a high mountain site such as
+Everest. Add `--ray-scan` to show the full ray-scan summary that mirrors the
+water mask sampling path.

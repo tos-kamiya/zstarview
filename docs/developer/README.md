@@ -21,8 +21,8 @@
   - derived building tiles に含まれる小さな footprint の分布を調べる監査スクリプト
   - 1m ビンの CSV ヒストグラム出力を含む
 - `dev-samples/water_tile_overview.py`
-  - sea mask tile の解像度別グリッド、`0`/`1`/`.tif` の分布、近傍プローブを表示する確認用スクリプト
-  - `@lat,lon` の起動地点まわりで、どの tile がどう見えているかをざっくり確認するために使う
+  - sea mask tile の解像度別グリッド、`0`/`1`/`.tif` の分布、近傍プローブ、バンド別の読み込み tile 数を表示する確認用スクリプト
+  - `--observer-ground-m 8651` のように高地の地表高さを渡して、観測地点まわりでどの tile がどう見えているかをざっくり確認するために使う
 
 ## Notes
 

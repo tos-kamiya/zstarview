@@ -30,6 +30,7 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from zstarview.terrain import WGS84_GEOD, build_ray_scan_grid  # noqa: E402
+from zstarview.water_overlay import DEFAULT_WATER_RADIUS_KM, resolve_water_scan_radius_km  # noqa: E402
 from zstarview.water_mask_interface import (  # noqa: E402
     DEFAULT_WATER_TILES_ROOT_125M,
     DEFAULT_WATER_TILES_ROOT_250M,
@@ -38,6 +39,7 @@ from zstarview.water_mask_interface import (  # noqa: E402
     _tile_key_from_path,
     _tile_marker_value,
     _tile_paths,
+    sample_water_surface_interface_points_with_stats,
 )
 
 
@@ -54,6 +56,18 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--lat", type=float, required=True, help="Observer latitude in degrees.")
     parser.add_argument("--lon", type=float, required=True, help="Observer longitude in degrees.")
+    parser.add_argument(
+        "--observer-height-m",
+        type=float,
+        default=5.0,
+        help="Observer height above ground in meters (default: 5.0).",
+    )
+    parser.add_argument(
+        "--observer-ground-m",
+        type=float,
+        default=0.0,
+        help="Ground elevation in meters (default: 0.0).",
+    )
     parser.add_argument(
         "--probe-distances-km",
         default="0.25,0.5,1,2,4,8,12",
@@ -205,6 +219,41 @@ def _print_root_summary(
             )
 
 
+def _print_water_band_stats(
+    *,
+    observer_lat_deg: float,
+    observer_lon_deg: float,
+    observer_height_m: float,
+    observer_ground_m: float,
+) -> None:
+    observer_absolute_height_m = float(observer_height_m) + float(observer_ground_m)
+    scan_radius_km = resolve_water_scan_radius_km(
+        observer_absolute_height_m,
+        minimum_distance_km=DEFAULT_WATER_RADIUS_KM,
+    )
+    _, band_stats = sample_water_surface_interface_points_with_stats(
+        observer_lat_deg=float(observer_lat_deg),
+        observer_lon_deg=float(observer_lon_deg),
+        observer_height_m=observer_absolute_height_m,
+        max_distance_km=scan_radius_km,
+    )
+    print(
+        f"  water read stats: observer_height_m={float(observer_height_m):.3f} "
+        f"ground_m={float(observer_ground_m):.3f} absolute_height_m={observer_absolute_height_m:.3f} "
+        f"scan_radius_km={scan_radius_km:.3f}"
+    )
+    total_loaded_tiles = 0
+    for stats in band_stats:
+        total_loaded_tiles += int(stats.loaded_tile_count)
+        print(
+            f"    {stats.band_name}: tiles={int(stats.loaded_tile_count)} "
+            f"raw={int(stats.raw_point_count)} "
+            f"collapsed={int(stats.collapsed_point_count)} "
+            f"visible={int(stats.visible_point_count)}"
+        )
+    print(f"    total_loaded_tiles={total_loaded_tiles}")
+
+
 def _print_ray_scan_summary(
     *,
     tile_root_label: str,
@@ -301,6 +350,13 @@ def main() -> int:
                 azimuth_step_deg=float(args.azimuth_step_deg),
                 sample_step_m=float(args.sample_step_m),
             )
+
+    _print_water_band_stats(
+        observer_lat_deg=float(args.lat),
+        observer_lon_deg=float(args.lon),
+        observer_height_m=float(args.observer_height_m),
+        observer_ground_m=float(args.observer_ground_m),
+    )
     return 0
 
 
