@@ -60,3 +60,22 @@ def test_load_ephemeris_provides_dummy_standard_streams_when_missing(monkeypatch
     assert filename == "de442s.bsp"
     assert sys.stdout is None
     assert sys.stderr is None
+
+
+def test_load_ephemeris_caches_loaded_kernel(monkeypatch) -> None:
+    calls: list[tuple[object | None, object | None, str]] = []
+    sentinel = object()
+
+    def fake_loader(filename: str) -> object:
+        calls.append((sys.stdout, sys.stderr, filename))
+        return sentinel
+
+    monkeypatch.setattr("zstarview.astro._starfield_load", fake_loader)
+    monkeypatch.setattr("zstarview.astro._cached_ephemeris", None)
+
+    first = load_ephemeris()
+    second = load_ephemeris()
+
+    assert first is sentinel
+    assert second is sentinel
+    assert len(calls) == 1

@@ -1,6 +1,7 @@
 import io
 import math
 import sys
+import threading
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, List, Optional, Tuple, TypedDict, cast
@@ -33,6 +34,8 @@ _cache_path = Path(CACHE_PATH)
 _cache_path.mkdir(parents=True, exist_ok=True)
 _starfield_load = Loader(str(_cache_path))
 _starfield_load.urls[EPHEMERIS_FILENAME] = EPHEMERIS_URL.rpartition("/")[0] + "/"
+_ephemeris_lock = threading.Lock()
+_cached_ephemeris: Any | None = None
 
 _ICRS_UNIT_BASIS = SkyCoord(
     ra=np.array([0.0, 90.0, 0.0]) * u.deg,
@@ -62,9 +65,14 @@ def _temporary_standard_stream_fallback():
 
 def load_ephemeris() -> Any:
     """Load the configured ephemeris, even under Windows gui-script launches."""
-
-    with _temporary_standard_stream_fallback():
-        return _starfield_load(EPHEMERIS_FILENAME)
+    global _cached_ephemeris
+    if _cached_ephemeris is not None:
+        return _cached_ephemeris
+    with _ephemeris_lock:
+        if _cached_ephemeris is None:
+            with _temporary_standard_stream_fallback():
+                _cached_ephemeris = _starfield_load(EPHEMERIS_FILENAME)
+    return _cached_ephemeris
 
 
 class StarCatalogArrays(TypedDict):
