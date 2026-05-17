@@ -208,7 +208,7 @@ def _timed_out(deadline: float | None) -> bool:
 
 def _water_overlay_band_stats_text(stats: WaterSurfaceBandStats) -> str:
     return (
-        f"{stats.band_name} opened_tiles={int(stats.loaded_tile_count)} "
+        f"{stats.band_name} tiles={int(stats.loaded_tile_count)} "
         f"raw={int(stats.raw_point_count)} "
         f"collapsed={int(stats.collapsed_point_count)} "
         f"visible={int(stats.visible_point_count)}"
@@ -287,7 +287,11 @@ def _build_window_inputs_from_args(
         ground_elevation_m=city.ground_elevation_m,
         location_height_label=city.location_height_label,
         location_height_m=city.location_height_m,
-        height_add_m=city.height_add_m if args.observer_height_m is None else args.observer_height_m,
+        height_add_m=(
+            getattr(city, "height_add_m", 1.7)
+            if args.observer_height_m is None
+            else args.observer_height_m
+        ),
     )
 
     search_query = str(args.search or "").strip()

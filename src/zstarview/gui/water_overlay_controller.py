@@ -436,7 +436,12 @@ class WaterOverlayController(QObject):
             cached = self._scope_cache.get(scope_key)
             if cached is not None:
                 return cached
-        snapshot = cached_scope if cached_scope is not None else self._load_scope_snapshot(
+        if cached_scope is not None:
+            with self._lock:
+                self._scope_cache[scope_key] = cached_scope
+            return cached_scope
+
+        snapshot = self._load_scope_snapshot(
             scope_key,
             lat_deg=lat_deg,
             lon_deg=lon_deg,

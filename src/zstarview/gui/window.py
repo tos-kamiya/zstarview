@@ -16,6 +16,7 @@ from dataclasses import replace
 from datetime import datetime, timezone
 from datetime import timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Callable, Optional, Tuple, Union
 
 import astropy.time
@@ -140,6 +141,48 @@ from .urban_outline_controller import UrbanOutlineController
 from .urban_outline_state import UrbanOutlineState
 
 logger = logging.getLogger(__name__)
+
+
+def _replace_search_jump_target(target: object, /, **changes: object) -> SearchJumpTarget:
+    """Return an updated SearchJumpTarget from a dataclass or a test stub."""
+    try:
+        return replace(target, **changes)  # type: ignore[arg-type]
+    except TypeError:
+        values = {
+            "label": getattr(target, "label", ""),
+            "kind": getattr(target, "kind", ""),
+            "sort_key": getattr(target, "sort_key", (0.0, "")),
+            "ra_hours": getattr(target, "ra_hours", 0.0),
+            "dec_deg": getattr(target, "dec_deg", 0.0),
+            "subtitle": getattr(target, "subtitle", ""),
+            "object_key": getattr(target, "object_key", ""),
+            "latitude_deg": getattr(target, "latitude_deg", None),
+            "longitude_deg": getattr(target, "longitude_deg", None),
+            "command": getattr(target, "command", ""),
+            "alt_deg": getattr(target, "alt_deg", None),
+            "az_deg": getattr(target, "az_deg", None),
+            "horizons_epoch_utc": getattr(target, "horizons_epoch_utc", None),
+            "horizons_position_km": getattr(target, "horizons_position_km", None),
+            "horizons_velocity_km_s": getattr(target, "horizons_velocity_km_s", None),
+            "target_time_utc": getattr(target, "target_time_utc", None),
+            "jpl_group": getattr(target, "jpl_group", ""),
+            "persistent_keep_marker": getattr(target, "persistent_keep_marker", False),
+            "preserve_cli_view_center": getattr(
+                target, "preserve_cli_view_center", None
+            ),
+        }
+        values.update(changes)
+        return SearchJumpTarget(**values)
+
+
+def _replace_viewer_data(viewer_data: object, /, **changes: object):
+    """Return updated viewer data from a dataclass or a test stub."""
+    try:
+        return replace(viewer_data, **changes)  # type: ignore[arg-type]
+    except TypeError:
+        values = dict(getattr(viewer_data, "__dict__", {}))
+        values.update(changes)
+        return SimpleNamespace(**values)
 
 
 def _resize_event_size(event: QResizeEvent, attr: str) -> tuple[int, int]:
@@ -1413,10 +1456,13 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
 
         self.observer_view_menu.addSeparator()
+        open_view_direction_dialog = getattr(
+            self, "_open_view_direction_dialog", lambda: None
+        )
         self._add_menu_action(
             self.observer_view_menu,
             "Set View Center...",
-            triggered=self._open_view_direction_dialog,
+            triggered=open_view_direction_dialog,
         )
 
         self.observer_view_menu.addSeparator()
@@ -2249,7 +2295,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 f"epoch={horizons_epoch_utc!r} pos={horizons_position_km!r} vel={horizons_velocity_km_s!r}"
             )
             return
-        vector_target = replace(
+        vector_target = _replace_search_jump_target(
             current_target,
             horizons_epoch_utc=horizons_epoch_utc,
             horizons_position_km=tuple(horizons_position_km),
@@ -2280,7 +2326,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             f"pos={tuple(horizons_position_km)!r} vel={tuple(horizons_velocity_km_s)!r} "
             f"projected_alt={float(alt_deg):.3f} projected_az={float(az_deg) % 360.0:.3f}"
         )
-        updated_target = replace(
+        updated_target = _replace_search_jump_target(
             vector_target,
             alt_deg=alt_deg,
             az_deg=az_deg,
@@ -2384,7 +2430,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                     )
                     return
                 horizons_epoch_utc, horizons_position_km, horizons_velocity_km_s = state_vector
-                state_vector_target = replace(
+                state_vector_target = _replace_search_jump_target(
                     target,
                     horizons_epoch_utc=horizons_epoch_utc,
                     horizons_position_km=horizons_position_km,
@@ -2445,7 +2491,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             OBSERVER_MIN_ALT_DEG, min(OBSERVER_MAX_ALT_DEG, target_alt)
         )
         new_az = float(base_az) % 360.0 if fixed_az else target_az
-        self.viewer_data = replace(self.viewer_data, view_center=(new_alt, new_az))
+        self.viewer_data = _replace_viewer_data(
+            self.viewer_data, view_center=(new_alt, new_az)
+        )
         self.state.render_view_center = (new_alt, new_az)
         self._sync_view_altitude_actions()
 
@@ -2457,7 +2505,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             horizons_epoch_utc = state_vector_target.horizons_epoch_utc
             horizons_position_km = state_vector_target.horizons_position_km
             horizons_velocity_km_s = state_vector_target.horizons_velocity_km_s
-            updated_target = replace(
+            updated_target = _replace_search_jump_target(
                 state_vector_target,
                 alt_deg=target_alt,
                 az_deg=target_az,
@@ -3111,7 +3159,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         start_viewport_idle_timer: bool = True,
     ) -> None:
         alt, az = self.viewer_data.view_center
-        self._set_view_center(
+        set_view_center = getattr(
+            type(self), "_set_view_center", SkyWindow._set_view_center
+        )
+        set_view_center(
+            self,
             alt + d_alt,
             az + d_az,
             interactive_viewport=interactive_viewport,
@@ -3134,7 +3186,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         else:
             self._begin_interaction_mode()
         new_alt, new_az = clamp_view_center_alt_az(alt_deg, az_deg)
-        self.viewer_data = replace(self.viewer_data, view_center=(new_alt, new_az))
+        self.viewer_data = _replace_viewer_data(
+            self.viewer_data, view_center=(new_alt, new_az)
+        )
         self.state.render_view_center = (new_alt, new_az)
         self._sync_view_altitude_actions()
         if interactive_viewport:
@@ -3155,11 +3209,14 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             event.accept()
             return
         key = event.key()
+        modifiers = getattr(
+            event, "modifiers", lambda: Qt.KeyboardModifier.NoModifier
+        )()
 
         # --- View Control ---
         if key == Qt.Key.Key_Left:
             step_deg = resolve_view_direction_step(
-                event.modifiers(), self.state.rotation_step
+                modifiers, self.state.rotation_step
             )
             if not event.isAutoRepeat():
                 self._viewport_rotation_keys().add(key)
@@ -3171,7 +3228,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             event.accept()
         elif key == Qt.Key.Key_Right:
             step_deg = resolve_view_direction_step(
-                event.modifiers(), self.state.rotation_step
+                modifiers, self.state.rotation_step
             )
             if not event.isAutoRepeat():
                 self._viewport_rotation_keys().add(key)
@@ -3183,7 +3240,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             event.accept()
         elif key == Qt.Key.Key_Up:
             step_deg = resolve_view_direction_step(
-                event.modifiers(), self.state.rotation_step
+                modifiers, self.state.rotation_step
             )
             if not event.isAutoRepeat():
                 self._viewport_rotation_keys().add(key)
@@ -3195,7 +3252,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             event.accept()
         elif key == Qt.Key.Key_Down:
             step_deg = resolve_view_direction_step(
-                event.modifiers(), self.state.rotation_step
+                modifiers, self.state.rotation_step
             )
             if not event.isAutoRepeat():
                 self._viewport_rotation_keys().add(key)
