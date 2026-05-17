@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from concurrent.futures import Future
 from datetime import datetime, timezone
 from typing import Callable, Optional
 
@@ -18,6 +19,7 @@ from ..aircraft import (
     fetch_cached_opensky_states,
     project_aircraft_snapshots,
 )
+from .worker_pool import submit_gui_work, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +48,7 @@ class AircraftController(QObject):
         self._stopping = False
         self._pending_request: Optional[dict[str, object]] = None
         self._latest_request_id = 0
-        self._active_workers: set[threading.Thread] = set()
+        self._active_workers: set[Future[None]] = set()
         self._lock = threading.Lock()
 
     def shutdown(self, *, wait_timeout_s: float | None = None) -> None:
@@ -93,24 +95,19 @@ class AircraftController(QObject):
         label: str,
     ) -> None:
         def runner() -> None:
-            try:
-                target(**kwargs)
-            finally:
-                self._unregister_worker(threading.current_thread())
+            target(**kwargs)
 
-        worker = threading.Thread(target=runner, name=f"AircraftController-{label}", daemon=True)
+        worker = submit_gui_work(runner)
         with self._lock:
             if self._stopping:
                 return
             self._active_workers.add(worker)
-        try:
-            worker.start()
-        except Exception:
-            with self._lock:
+            if worker.done():
                 self._active_workers.discard(worker)
-            raise
+                return
+        worker.add_done_callback(self._unregister_worker)
 
-    def _unregister_worker(self, worker: threading.Thread) -> None:
+    def _unregister_worker(self, worker: Future[None]) -> None:
         with self._lock:
             self._active_workers.discard(worker)
 
@@ -122,18 +119,16 @@ class AircraftController(QObject):
             if not workers:
                 return
             if deadline is None:
-                for worker in workers:
-                    worker.join()
+                wait_for_gui_futures(workers, None)
                 continue
             remaining = deadline - time.monotonic()
             if remaining <= 0.0:
                 logger.warning(
-                    "Timed out waiting for %d aircraft worker thread(s) to finish during shutdown",
+                    "Timed out waiting for %d aircraft worker task(s) to finish during shutdown",
                     len(workers),
                 )
                 return
-            for worker in workers:
-                worker.join(timeout=remaining)
+            wait_for_gui_futures(workers, remaining)
 
     def _run_update(
         self,

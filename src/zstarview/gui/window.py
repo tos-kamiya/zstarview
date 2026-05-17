@@ -118,6 +118,7 @@ from .water_overlay_controller import WaterOverlayController
 from .water_overlay_state import WaterOverlayState
 from .famous_star_dialog import NamedStarJumpDialog
 from .famous_star_search_dialog import NamedStarSearchDialog
+from .worker_pool import shutdown_gui_worker_pool
 from .place_search_dialog import PlaceSearchDialog
 from .famous_star_shortcuts import (
     NamedStarShortcut,
@@ -2581,6 +2582,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 self._water_overlay_controller.shutdown()
             if self._urban_outline_controller is not None:
                 self._urban_outline_controller.shutdown()
+            shutdown_gui_worker_pool(wait=True)
             if self._sky_data_update_timer.isActive():
                 self._sky_data_update_timer.stop()
             if self._asterism_check_timer.isActive():

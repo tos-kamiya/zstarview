@@ -854,3 +854,18 @@
 - Water overlay CLI docs alignment
   - Updated the CLI overlay docs in both English and Japanese to explain that sea points come from OSM Water Polygons sea-mask tiles, while inland water points come from Overpass-fetched OpenStreetMap features.
   - Rationale: the user-facing overlay help should match the README and the main specification so the different acquisition paths are not conflated.
+
+## 2026-05-17
+
+- Shared GUI worker pool
+  - Routed long-running GUI background work through a single shared `ThreadPoolExecutor(max_workers=1)` and replaced per-task `threading.Thread` launches with `submit_gui_work(...)`.
+  - The migration covers sky, cloud, terrain, satellite, aircraft, water, urban-outline, startup bootstrap, and search dialog work so native-heavy tasks do not overlap.
+  - Added a lazy re-creation path after shutdown so the pool can be torn down during window close and still be used again inside the same process if needed.
+
+- Water overlay crash mitigation
+  - Removed the GUI water-overlay path's Copernicus DEM refetch and kept the update path on the terrain controller's existing ground information instead.
+  - Added progress logging around sea-mask sampling, Overpass footprint fetch, and inland-water sampling, plus `faulthandler` enablement at startup for native crash diagnostics.
+  - Added regression coverage to ensure the GUI water overlay no longer re-enters the DEM-fetch path during normal updates.
+
+- Validation
+  - Confirmed the worker pool serializes tasks, the startup overlay tests still pass, the controller shutdown waits still behave, and the water overlay regression coverage passes after the GUI simplification.

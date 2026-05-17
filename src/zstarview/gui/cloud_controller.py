@@ -11,6 +11,7 @@ import logging
 import threading
 import time
 from datetime import datetime, timezone
+from concurrent.futures import Future
 from typing import Callable, Optional
 
 import numpy as np
@@ -31,6 +32,8 @@ from ..clouddisc.types import CloudSourceData
 from ..clouddisc.providers.select import pick_satellite
 from ..paths import CLOUD_SHELLS_KM
 from .composite import build_cloud_amount_field_from_rgba
+from .native_work_lock import HEAVY_NATIVE_WORK_LOCK
+from .worker_pool import submit_gui_work, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
 DEFAULT_CLOUD_FOV_OVERSCAN_DEG = 2.0
@@ -55,7 +58,7 @@ class CloudController(QObject):
         self._stopping = False
         self._cleanup_counter = 0
         self._cleanup_interval = 10
-        self._active_workers: set[threading.Thread] = set()
+        self._active_workers: set[Future[None]] = set()
         self._lock = threading.Lock()
         self._download_abort_event = threading.Event()
 
@@ -172,24 +175,19 @@ class CloudController(QObject):
         label: str,
     ) -> None:
         def runner() -> None:
-            try:
-                target(**kwargs)
-            finally:
-                self._unregister_worker(threading.current_thread())
+            target(**kwargs)
 
-        worker = threading.Thread(target=runner, name=f"CloudController-{label}", daemon=True)
+        worker = submit_gui_work(runner)
         with self._lock:
             if self._stopping:
                 return
             self._active_workers.add(worker)
-        try:
-            worker.start()
-        except Exception:
-            with self._lock:
+            if worker.done():
                 self._active_workers.discard(worker)
-            raise
+                return
+        worker.add_done_callback(self._unregister_worker)
 
-    def _unregister_worker(self, worker: threading.Thread) -> None:
+    def _unregister_worker(self, worker: Future[None]) -> None:
         with self._lock:
             self._active_workers.discard(worker)
 
@@ -201,18 +199,16 @@ class CloudController(QObject):
             if not workers:
                 return
             if deadline is None:
-                for worker in workers:
-                    worker.join()
+                wait_for_gui_futures(workers, None)
                 continue
             remaining = deadline - time.monotonic()
             if remaining <= 0.0:
                 logger.warning(
-                    "Timed out waiting for %d cloud worker thread(s) to finish during shutdown",
+                    "Timed out waiting for %d cloud worker task(s) to finish during shutdown",
                     len(workers),
                 )
                 return
-            for worker in workers:
-                worker.join(timeout=remaining)
+            wait_for_gui_futures(workers, remaining)
 
     def _cleanup_cache(self) -> None:
         try:
@@ -237,11 +233,12 @@ class CloudController(QObject):
                 logger.info("Fetching cloud source data (reason=%s)...", reason)
 
             try:
-                source = self._clouddisc.fetch_source(
-                    lat=lat,
-                    lon=lon,
-                    abort_event=self._download_abort_event,
-                )
+                with HEAVY_NATIVE_WORK_LOCK:
+                    source = self._clouddisc.fetch_source(
+                        lat=lat,
+                        lon=lon,
+                        abort_event=self._download_abort_event,
+                    )
                 with self._lock:
                     if not self._stopping:
                         self._latest_source = source
@@ -317,17 +314,18 @@ class CloudController(QObject):
             if source is None:
                 return
 
-            cloud_rgba, meta, missing_mask, coverage_ratio = self._clouddisc.render_from_source_with_coverage(
-                source=source,
-                lat=lat,
-                lon=lon,
-                alt=alt,
-                az=az,
-                radius_px=radius_px,
-                edge_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-                mask_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
-                cloud_shells_km=CLOUD_SHELLS_KM,
-            )
+            with HEAVY_NATIVE_WORK_LOCK:
+                cloud_rgba, meta, missing_mask, coverage_ratio = self._clouddisc.render_from_source_with_coverage(
+                    source=source,
+                    lat=lat,
+                    lon=lon,
+                    alt=alt,
+                    az=az,
+                    radius_px=radius_px,
+                    edge_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+                    mask_fov_deg=content_fov_deg + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+                    cloud_shells_km=CLOUD_SHELLS_KM,
+                )
             logger.info(
                 "Cloud render ready (request_id=%s, reason=%s, sat=%s, product=%s, data_time=%s, coverage=%.1f%%)",
                 request_id,

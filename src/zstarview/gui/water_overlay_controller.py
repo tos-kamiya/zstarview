@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from concurrent.futures import Future
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -44,6 +45,7 @@ from .water_overlay_cache import (
     save_water_overlay_cache,
     water_overlay_cache_is_recent,
 )
+from .worker_pool import submit_gui_work, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +113,7 @@ class WaterOverlayController(QObject):
         self._failed_key: Optional[tuple[float, float, float, float, bool]] = None
         self._pending_request: tuple[ViewerData, float, bool, str] | None = None
         self._scope_cache: dict[str, _WaterOverlayScopeCache] = {}
-        self._active_workers: set[threading.Thread] = set()
+        self._active_workers: set[Future[None]] = set()
         self._download_abort_event = threading.Event()
         self._lock = threading.Lock()
 
@@ -231,24 +233,19 @@ class WaterOverlayController(QObject):
         label: str,
     ) -> None:
         def runner() -> None:
-            try:
-                target(**kwargs)
-            finally:
-                self._unregister_worker(threading.current_thread())
+            target(**kwargs)
 
-        worker = threading.Thread(target=runner, name=f"WaterOverlayController-{label}", daemon=True)
+        worker = submit_gui_work(runner)
         with self._lock:
             if self._stopping:
                 return
             self._active_workers.add(worker)
-        try:
-            worker.start()
-        except Exception:
-            with self._lock:
+            if worker.done():
                 self._active_workers.discard(worker)
-            raise
+                return
+        worker.add_done_callback(self._unregister_worker)
 
-    def _unregister_worker(self, worker: threading.Thread) -> None:
+    def _unregister_worker(self, worker: Future[None]) -> None:
         with self._lock:
             self._active_workers.discard(worker)
 
@@ -260,18 +257,16 @@ class WaterOverlayController(QObject):
             if not workers:
                 return
             if deadline is None:
-                for worker in workers:
-                    worker.join()
+                wait_for_gui_futures(workers, None)
                 continue
             remaining = deadline - time.monotonic()
             if remaining <= 0.0:
                 logger.warning(
-                    "Timed out waiting for %d water-overlay worker thread(s) to finish during shutdown",
+                    "Timed out waiting for %d water-overlay worker task(s) to finish during shutdown",
                     len(workers),
                 )
                 return
-            for worker in workers:
-                worker.join(timeout=remaining)
+            wait_for_gui_futures(workers, remaining)
 
     def _run_update(
         self,
@@ -322,15 +317,10 @@ class WaterOverlayController(QObject):
                 observer_ground_m=float(observer_ground_m),
                 use_dem_ground=bool(use_dem_ground),
                 scan_radius_km=scan_radius_km,
-                target_ground_sampler=(
-                    self._build_target_ground_sampler(
-                        observer_lat_deg=float(lat_deg),
-                        observer_lon_deg=float(lon_deg),
-                        scan_radius_km=scan_radius_km,
-                    )
-                    if use_dem_ground
-                    else None
-                ),
+                # The GUI already has terrain ground information from the terrain
+                # controller. Re-fetching Copernicus DEM tiles here duplicates a
+                # large native path and has been a crash source during startup.
+                target_ground_sampler=None,
                 key=key,
                 scope_key=scope_key,
                 terrain_horizon_profile_altaz=terrain_horizon_profile_altaz,
@@ -563,12 +553,18 @@ class WaterOverlayController(QObject):
         use_target_sampler = bool(use_dem_ground and target_ground_sampler is not None)
         sea_mask_dots = scope_cache.sea_mask_dots
         if sea_mask_dots is None:
+            logger.info("Water surface mask: sampling sea-level tiles...")
             sea_mask_dots, band_stats = sample_water_surface_interface_points_with_stats(
                 observer_lat_deg=observer_lat_deg,
                 observer_lon_deg=observer_lon_deg,
                 observer_height_m=float(observer_height_m) + float(observer_ground_m),
                 max_distance_km=scan_radius_km,
                 abort_event=self._download_abort_event,
+            )
+            logger.info(
+                "Water surface mask: sea-level tiles ready (%d dots, %d bands)",
+                len(sea_mask_dots),
+                len(band_stats),
             )
             scope_cache.sea_mask_dots = sea_mask_dots
             scope_cache.uses_dem_sampler = False
@@ -603,6 +599,7 @@ class WaterOverlayController(QObject):
 
         footprints = scope_cache.footprints
         if not footprints:
+            logger.info("Water surface mask: fetching Overpass water polygons...")
             footprints = fetch_water_overlay_footprints(
                 observer_lat_deg=observer_lat_deg,
                 observer_lon_deg=observer_lon_deg,
@@ -612,11 +609,16 @@ class WaterOverlayController(QObject):
                 timeout_s=self._timeout_s,
                 abort_event=self._download_abort_event,
             )
+            logger.info(
+                "Water surface mask: Overpass water polygons ready (%d footprints)",
+                len(footprints),
+            )
             scope_cache.footprints = footprints
 
         observer_absolute_height_m = float(observer_height_m) + float(observer_ground_m)
         inland_dots = scope_cache.inland_dots
         if inland_dots is None or bool(scope_cache.uses_dem_sampler) != use_target_sampler:
+            logger.info("Water surface mask: sampling inland water polygons...")
             inland_dots = sample_water_overlay_points(
                 footprints,
                 observer_lat_deg=observer_lat_deg,
@@ -626,6 +628,10 @@ class WaterOverlayController(QObject):
                 target_ground_elevation_m_sampler=target_ground_sampler if use_target_sampler else None,
                 max_distance_km=scan_radius_km,
                 abort_event=self._download_abort_event,
+            )
+            logger.info(
+                "Water surface mask: inland water polygons ready (%d dots)",
+                len(inland_dots),
             )
             scope_cache.inland_dots = inland_dots
             scope_cache.uses_dem_sampler = use_target_sampler

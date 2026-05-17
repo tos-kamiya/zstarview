@@ -2,7 +2,6 @@
 """Dialog for online place search targets."""
 from __future__ import annotations
 
-import threading
 from dataclasses import replace
 from typing import Callable, Optional, Sequence
 
@@ -23,6 +22,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..search.models import SearchJumpTarget
+from .worker_pool import submit_gui_work
 
 
 class PlaceSearchDialog(QDialog):
@@ -131,8 +131,7 @@ class PlaceSearchDialog(QDialog):
         self._place_search_button.setEnabled(False)
         self._status.setText(f"Searching places for '{query}'...")
         self._status.setVisible(True)
-        worker = threading.Thread(target=self._run_place_search, args=(request_id, query), daemon=True)
-        worker.start()
+        submit_gui_work(self._run_place_search, request_id=request_id, query=query)
 
     def _run_place_search(self, request_id: int, query: str) -> None:
         try:

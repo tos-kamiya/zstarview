@@ -169,9 +169,9 @@ def test_water_overlay_controller_uses_sea_mask_points_before_sampling(monkeypat
 
     assert float(observed["kwargs"]["observer_height_m"]) == 0.0
     assert float(observed["kwargs"]["max_distance_km"]) == 2.0
-    assert "Water band stats: 125m tiles=0 raw=0 collapsed=0 visible=0" in caplog.text
-    assert "Water band stats: 250m tiles=1 raw=12 collapsed=1 visible=1" in caplog.text
-    assert "Water band stats: 500m tiles=0 raw=0 collapsed=0 visible=0" in caplog.text
+    assert "Water band stats: 125m opened_tiles=0 raw=0 collapsed=0 visible=0" in caplog.text
+    assert "Water band stats: 250m opened_tiles=1 raw=12 collapsed=1 visible=1" in caplog.text
+    assert "Water band stats: 500m opened_tiles=0 raw=0 collapsed=0 visible=0" in caplog.text
     assert "Water mask dots: 1 visible, nearest sea dot 0.500 km, bands: 125m=0 250m=1 500m=0" in caplog.text
 
 
@@ -301,3 +301,64 @@ def test_run_update_emits_sea_then_combined_water_layers(monkeypatch) -> None:
     assert emitted[1]["mode"] == "sea"
     assert [point.water_category for point in emitted[1]["sea_dots"]] == ["sea-125"]
     assert [point.water_category for point in emitted[1]["inland_dots"]] == ["river", "lake"]
+
+
+def test_run_update_does_not_refetch_dem_for_gui_mode(monkeypatch) -> None:
+    controller = WaterOverlayController()
+    scope_cache = mod._WaterOverlayScopeCache(  # noqa: SLF001
+        footprints=(),
+        fetched_at_utc=None,
+        sea_mask_dots=(WaterOverlayPoint("sea", 1.0, 10.0, 0.5, water_category="sea-125"),),
+        sea_band_stats=(WaterSurfaceBandStats("125m", 1, 1, 1, 1),),
+    )
+    emitted: list[dict[str, object]] = []
+
+    monkeypatch.setattr(
+        mod,
+        "fetch_water_overlay_footprints",
+        lambda *args, **_kwargs: (WaterPolygonFootprint(
+            water_id="poly",
+            kind="water_polygon",
+            outer_rings_lonlat=(((0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 0.0)),),
+            inner_rings_lonlat=(),
+            source="test",
+            tags={},
+        ),),
+    )
+    monkeypatch.setattr(
+        mod,
+        "sample_water_overlay_points",
+        lambda footprints, **_kwargs: (
+            WaterOverlayPoint("inland", 2.0, 20.0, 1.5, water_category="river"),
+        )
+        if footprints
+        else (),
+    )
+    monkeypatch.setattr(
+        controller,
+        "_emit_variant",
+        lambda dots, **payload: emitted.append({"dots": tuple(dots), **payload}),
+    )
+    monkeypatch.setattr(controller, "_store_scope_cache", lambda *args, **_kwargs: None)
+    monkeypatch.setattr(
+        controller,
+        "_build_target_ground_sampler",
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("should not refetch DEM")),
+    )
+    controller._active_key = (35.0, 139.0, 1.7, 12.0, False)  # noqa: SLF001
+
+    controller._run_update(  # noqa: SLF001
+        lat_deg=35.0,
+        lon_deg=139.0,
+        observer_height_m=1.7,
+        observer_ground_m=12.0,
+        use_dem_ground=True,
+        reason="manual",
+        key=(35.0, 139.0, 1.7, 12.0, False),
+        scope_key="scope",
+        scan_radius_km=2.0,
+        cached_scope=scope_cache,
+    )
+
+    assert emitted
+    assert emitted[-1]["mode"] == "dem"

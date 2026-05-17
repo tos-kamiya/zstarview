@@ -524,6 +524,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - バックグラウンド更新結果の反映
 - `src/zstarview/gui/sky_worker.py`
   - 星空計算のバックグラウンド実行
+- `src/zstarview/gui/worker_pool.py`
+  - GUI の長時間処理をまとめる共有 `ThreadPoolExecutor(max_workers=1)` を管理する
+  - sky / cloud / terrain / satellite / aircraft / water / urban / search / startup の再計算はここへ集約し、native-heavy な処理の同時実行を避ける
 - `src/zstarview/gui/famous_star_dialog.py`
   - 代表恒星ジャンプ UI
 - `src/zstarview/gui/famous_star_search_dialog.py`
@@ -690,6 +693,13 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - Wayland では system move 中の再描画が compositor によって抑えられる場合があり、Windows では drag 開始時の fast-mode 再描画が操作感を悪化させる場合があるため、drag と fast-mode は結合しない。
 - 方位/仰角変更とリサイズは引き続き viewport interaction mode を使ってよい。
 
+#### 4.4.9 GUI の共有 worker pool
+
+- GUI の long-running background work は、`gui/worker_pool.py` の共有 `ThreadPoolExecutor(max_workers=1)` に集約している。
+- この pool は size 1 なので、sky / cloud / terrain / satellite / aircraft / water / urban / search / startup の native-heavy 処理は同時実行されない。
+- 各 controller は個別スレッドを直接作らず、`submit_gui_work()` で task を投げ、`Future` の完了で状態を解放する。
+- window teardown 時は `shutdown_gui_worker_pool(wait=True)` で pool を閉じるが、同一プロセス内の再初期化に備えて pool は遅延再生成可能としている。
+
 ### 4.5 雲データ処理
 
 - `src/zstarview/gui/cloud_controller.py`
@@ -753,6 +763,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - sea-mask の海面高を 0.0m 固定にしても、表示連動は terrain horizon に残すほうが見え方の整合性が高い
   - `Terrain Horizon` が OFF の間は `Water Surface` の QAction を無効化して、依存関係を GUI で明示する
   - sea-mask の取得結果と inland water の取得結果は別レイヤーとして保持し、入手経路も分けて扱う
+  - GUI 更新時は Copernicus DEM を再取得せず、terrain controller が持つ地形情報を再利用する
   - 取得完了後の active point set は band stats と共に GUI / export-image へ渡す
   - band stats の `loaded_tile_count` は、実際に open した sea-mask tile の回数として扱い、総 tile 数ではない
 - `src/zstarview/render/terrain.py`
@@ -773,7 +784,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `src/zstarview/gui/water_overlay_controller.py`
   - 海マスク更新の実行制御
   - latest-request-wins と TTL 判定を適用し、band cache と active point set の切り替えを管理する
-  - terrain horizon の ON/OFF や DEM ready/fail に応じて、active dots を再選択してよい
+  - terrain horizon の ON/OFF に応じて、active dots を再選択してよい
   - 取得済みの band stats は保持してよく、terrain horizon の OFF は表示切り替えだけに使ってよい
 - `src/zstarview/render/terrain.py`
   - `WaterOverlayPoint` を小さな青色点として描画する

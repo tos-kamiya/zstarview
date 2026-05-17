@@ -14,6 +14,7 @@ from zstarview.render.background import (
 from zstarview.render.geometry import get_screen_geometry
 from zstarview.render.sky_disc import (
     NEVER_RISES_TINT_RGB,
+    _render_sky_color_disc_cached,
     draw_sky_color_disc,
     draw_uniform_sky_color_disc,
     sky_color_samples,
@@ -124,6 +125,26 @@ def test_sky_color_samples_spread_rayleigh_blue_farther_when_sun_is_lower() -> N
     )[0]
 
     assert float(low_sun[2] - low_sun[0]) > float(higher_sun[2] - higher_sun[0])
+
+
+def test_sky_disc_cache_keeps_only_recent_qimages() -> None:
+    _render_sky_color_disc_cached.cache_clear()
+    geom = ScreenGeometry(center=(20, 20), radius=18)
+
+    for sun_alt in (5.0, 6.0, 7.0, 8.0):
+        draw_sky_color_disc(
+            geom,
+            (45.0, 180.0),
+            (sun_alt, 90.0),
+            alpha=1.0,
+            disc_opacity=1.0,
+            edge_fov_deg=90.0,
+            content_fov_deg=90.0,
+            image_size=(40, 40),
+        )
+
+    assert _render_sky_color_disc_cached.cache_info().maxsize == 2
+    assert _render_sky_color_disc_cached.cache_info().currsize <= 2
 
 
 def test_dimalt_ring_pen_color_darkens_sample_color() -> None:

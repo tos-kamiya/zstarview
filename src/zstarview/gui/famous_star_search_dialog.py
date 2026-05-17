@@ -2,7 +2,6 @@
 """Search-first dialog for named star, asterism, satellite, and JPL targets."""
 from __future__ import annotations
 
-import threading
 from dataclasses import replace
 from typing import Callable, List, Optional, Sequence
 
@@ -25,6 +24,7 @@ from PySide6.QtWidgets import (
 from ..search.constants import SOLAR_SYSTEM_BODY_QUERIES
 from ..search.models import SearchJumpTarget
 from ..search.query import parse_search_query, search_target_matches_query
+from .worker_pool import submit_gui_work
 
 _JPL_BYPASS_QUERIES = SOLAR_SYSTEM_BODY_QUERIES
 
@@ -260,12 +260,7 @@ class NamedStarSearchDialog(QDialog):
             self._ok_button.setEnabled(False)
         self._sync_jpl_button()
         self._set_status(f"Searching satellites / JPL for '{query}'...")
-        worker = threading.Thread(
-            target=self._run_jpl_search,
-            args=(request_id, query),
-            daemon=True,
-        )
-        worker.start()
+        submit_gui_work(self._run_jpl_search, request_id=request_id, query=query)
 
     def _run_jpl_search(self, request_id: int, query: str) -> None:
         try:

@@ -37,6 +37,10 @@ SUNSET_STRENGTH = 0.264
 ANTI_SOLAR_STRENGTH = 0.16
 SATURATION_CHROMA_SCALE = 0.35
 SKY_DISC_STYLE_SMOOTH = "smooth"
+# Periodic sky updates include continuously changing sun coordinates, so this
+# cache mostly protects immediate duplicate requests. Keep it small because
+# each entry can be a full-window QImage backed by Qt memory.
+_SKY_DISC_RENDER_CACHE_SIZE = 2
 
 
 def _smoothstep(edge0: float, edge1: float, x: float) -> float:
@@ -189,7 +193,7 @@ def sky_color_samples(
     return np.clip(colors, 0.0, 1.0).astype(np.float32)
 
 
-@lru_cache(maxsize=32)
+@lru_cache(maxsize=_SKY_DISC_RENDER_CACHE_SIZE)
 def _render_sky_color_disc_cached(
     style: str,
     width: int,

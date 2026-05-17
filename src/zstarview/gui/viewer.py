@@ -1,8 +1,8 @@
 import sys
+import faulthandler
 import logging
 import math
 import json
-import threading
 from dataclasses import replace
 from datetime import timedelta
 
@@ -55,8 +55,16 @@ from ..search.satellites import search_satellite_targets
 from ..search.resolver import resolve_search_targets
 from ..cli.args import parse_args
 from ..types import ViewerData
+from .worker_pool import submit_gui_work
 
 logger = logging.getLogger(__name__)
+
+
+def _enable_faulthandler() -> None:
+    try:
+        faulthandler.enable(all_threads=True)
+    except Exception:
+        pass
 
 
 class _StartupBootstrap(QObject):
@@ -82,8 +90,7 @@ class _StartupBootstrap(QObject):
         if self._started:
             return
         self._started = True
-        worker = threading.Thread(target=self._run, name="StartupBootstrap", daemon=True)
-        worker.start()
+        submit_gui_work(self._run)
 
     def _run(self) -> None:
         try:
@@ -141,10 +148,10 @@ class _StartupBootstrap(QObject):
                 ground_elevation_m=city.ground_elevation_m,
                 location_height_label=city.location_height_label,
                 location_height_m=city.location_height_m,
-                height_add_m=(
-                    city.height_add_m
-                    if getattr(self._args, "observer_height_m", None) is None
-                    else float(getattr(self._args, "observer_height_m"))
+                height_add_m=float(
+                    getattr(self._args, "observer_height_m", None)
+                    if getattr(self._args, "observer_height_m", None) is not None
+                    else getattr(city, "height_add_m", 1.7)
                 ),
             )
             self.finished.emit(
@@ -310,6 +317,7 @@ def _handle_dataset_query_cli(args: object) -> int | None:
 
 def main() -> None:
     """Main entry point for the star sky visualizer."""
+    _enable_faulthandler()
     args = parse_args()
     cli_exit_code = _handle_dataset_query_cli(args)
     if cli_exit_code is not None:

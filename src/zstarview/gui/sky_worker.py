@@ -11,6 +11,7 @@ import logging
 import threading
 import time
 from datetime import datetime, timedelta, timezone
+from concurrent.futures import Future
 from typing import Callable, Dict, Tuple
 
 import astropy
@@ -36,6 +37,8 @@ from ..paths import ThemeStyle
 from ..render import sky_disc
 from ..render import geometry as render_geometry
 from ..types import CelestialData, StarCatalogMeta
+from .native_work_lock import HEAVY_NATIVE_WORK_LOCK
+from .worker_pool import submit_gui_work, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
 
@@ -194,7 +197,7 @@ class SkyDataWorker(QObject):
         self._lock = threading.Lock()
         self._running = False
         self._stopping = False
-        self._active_workers: set[threading.Thread] = set()
+        self._active_workers: set[Future[None]] = set()
 
     def shutdown(self, *, wait_timeout_s: float | None = None) -> None:
         """Stop accepting/emitting updates during application shutdown."""
@@ -266,24 +269,19 @@ class SkyDataWorker(QObject):
         label: str,
     ) -> None:
         def runner() -> None:
-            try:
-                target(**kwargs)
-            finally:
-                self._unregister_worker(threading.current_thread())
+            target(**kwargs)
 
-        worker = threading.Thread(target=runner, name=f"SkyDataWorker-{label}", daemon=True)
+        future = submit_gui_work(runner)
         with self._lock:
             if self._stopping:
                 return
-            self._active_workers.add(worker)
-        try:
-            worker.start()
-        except Exception:
-            with self._lock:
-                self._active_workers.discard(worker)
-            raise
+            self._active_workers.add(future)
+            if future.done():
+                self._active_workers.discard(future)
+                return
+        future.add_done_callback(self._unregister_worker)
 
-    def _unregister_worker(self, worker: threading.Thread) -> None:
+    def _unregister_worker(self, worker: Future[None]) -> None:
         with self._lock:
             self._active_workers.discard(worker)
 
@@ -295,18 +293,16 @@ class SkyDataWorker(QObject):
             if not workers:
                 return
             if deadline is None:
-                for worker in workers:
-                    worker.join()
+                wait_for_gui_futures(workers, None)
                 continue
             remaining = deadline - time.monotonic()
             if remaining <= 0.0:
                 logger.warning(
-                    "Timed out waiting for %d sky worker thread(s) to finish during shutdown",
+                    "Timed out waiting for %d sky worker task(s) to finish during shutdown",
                     len(workers),
                 )
                 return
-            for worker in workers:
-                worker.join(timeout=remaining)
+            wait_for_gui_futures(workers, remaining)
 
     def _run_update(
         self,
@@ -332,27 +328,28 @@ class SkyDataWorker(QObject):
         render_generation: int,
     ) -> None:
         try:
-            payload = compute_sky_snapshot(
-                lat=lat,
-                lon=lon,
-                observer_height_m=observer_height_m,
-                view_center=view_center,
-                star_catalog=star_catalog,
-                dso_catalog=dso_catalog,
-                star_vmag_limit=star_vmag_limit,
-                star_subset_indices=star_subset_indices,
-                delta_t=delta_t,
-                sky_disc_alpha=sky_disc_alpha,
-                sky_disc_style=sky_disc_style,
-                sky_disc_base_size=sky_disc_base_size,
-                edge_fov_deg=edge_fov_deg,
-                content_fov_deg=content_fov_deg,
-                theme=theme,
-                star_catalog_meta=star_catalog_meta,
-                render_width_px=render_width_px,
-                render_height_px=render_height_px,
-                render_generation=render_generation,
-            )
+            with HEAVY_NATIVE_WORK_LOCK:
+                payload = compute_sky_snapshot(
+                    lat=lat,
+                    lon=lon,
+                    observer_height_m=observer_height_m,
+                    view_center=view_center,
+                    star_catalog=star_catalog,
+                    dso_catalog=dso_catalog,
+                    star_vmag_limit=star_vmag_limit,
+                    star_subset_indices=star_subset_indices,
+                    delta_t=delta_t,
+                    sky_disc_alpha=sky_disc_alpha,
+                    sky_disc_style=sky_disc_style,
+                    sky_disc_base_size=sky_disc_base_size,
+                    edge_fov_deg=edge_fov_deg,
+                    content_fov_deg=content_fov_deg,
+                    theme=theme,
+                    star_catalog_meta=star_catalog_meta,
+                    render_width_px=render_width_px,
+                    render_height_px=render_height_px,
+                    render_generation=render_generation,
+                )
             with self._lock:
                 if self._stopping:
                     return
@@ -366,4 +363,3 @@ class SkyDataWorker(QObject):
         finally:
             with self._lock:
                 self._running = False
-                self._active_workers.discard(threading.current_thread())
