@@ -872,6 +872,7 @@
   - The cache now writes simplified snapshots to `*_simplified.json` and keeps the legacy `*.json` as an input-only migration source.
   - When both files exist, the loader compares mtimes and regenerates the simplified cache from the newer legacy file if needed, which keeps the simplified cache current after a user updates from an older version.
   - Added info-level start/finish logging around the simplification path so slow legacy-cache migrations can be observed in the terminal or log file.
+  - Switched the simplification design toward distance-band grid snapping with `2^k m` fixed cells, a `0.5°` apparent-angle band threshold, and ring rejection when the snapped geometry collapses to a single point or near-zero area.
   - Added regression coverage for the simplified cache path so the controller keeps storing the reduced geometry instead of the raw Overpass polygon set.
 
 - Validation

@@ -781,6 +781,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 点の投影は観測地点からの距離と方位を使って地理座標を復元し、海側は DEM を使わず `target_height_m = 0.0` として扱う
   - 海の輪郭生成や point-in-polygon 判定は行わず、海マスクの画素をそのまま点群化する
   - band ごとの ray scan では、同じ tile を複数 ray で使い回せるよう open dataset を band 内 cache として保持してよい
+  - inland water footprint の簡約では、観測点からの距離に応じて `2^k m` の固定格子を使い、各 ring の点をその格子にスナップして重複点を落としてよい
+  - 格子 band の境界は、レイに直交する最も長く見える向きでの見かけ角が `0.5°` を超えないように決めてよい
+  - スナップ後に 1 つの点へ潰れる ring、または面積がほぼ `0` になった ring は退化として破棄してよい
 - `src/zstarview/gui/water_overlay_state.py`
   - sea-mask 由来の dot set と、現在の active dots、表示中の mode/source/banners を保持する
 - `src/zstarview/gui/water_overlay_controller.py`
