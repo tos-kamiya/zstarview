@@ -59,7 +59,7 @@ def test_save_and_load_water_overlay_cache_roundtrip(tmp_path) -> None:
     assert len(loaded.footprints) == 1
 
 
-def test_load_water_overlay_cache_migrates_newer_legacy_cache(tmp_path) -> None:
+def test_load_water_overlay_cache_migrates_newer_legacy_cache(tmp_path, caplog) -> None:
     scope_key = "earth_+00.0000_+000.0000_r2.00"
     simplified_path = water_overlay_cache_path(scope_key, cache_root=tmp_path)
     legacy_path = water_overlay_cache_legacy_path(scope_key, cache_root=tmp_path)
@@ -103,14 +103,17 @@ def test_load_water_overlay_cache_migrates_newer_legacy_cache(tmp_path) -> None:
     os.utime(simplified_path, (now, now))
     os.utime(legacy_path, (now + 10, now + 10))
 
-    loaded = load_water_overlay_cache(
-        scope_key,
-        cache_root=tmp_path,
-        observer_lat_deg=0.0,
-        observer_lon_deg=0.0,
-    )
+    with caplog.at_level("INFO", logger="zstarview.gui.water_overlay_cache"):
+        loaded = load_water_overlay_cache(
+            scope_key,
+            cache_root=tmp_path,
+            observer_lat_deg=0.0,
+            observer_lon_deg=0.0,
+        )
 
     assert loaded is not None
     assert len(loaded.footprints[0].outer_rings_lonlat[0]) < 8
     assert simplified_path.exists()
     assert simplified_path.stat().st_mtime_ns >= legacy_path.stat().st_mtime_ns
+    assert "Water overlay cache simplification started" in caplog.text
+    assert "Water overlay cache simplification finished" in caplog.text

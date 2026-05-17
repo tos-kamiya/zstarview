@@ -871,6 +871,7 @@
   - Simplified water-overlay footprints before saving or reloading them from the per-scope cache so distant, dense polygon geometry does not balloon the cache file.
   - The cache now writes simplified snapshots to `*_simplified.json` and keeps the legacy `*.json` as an input-only migration source.
   - When both files exist, the loader compares mtimes and regenerates the simplified cache from the newer legacy file if needed, which keeps the simplified cache current after a user updates from an older version.
+  - Added info-level start/finish logging around the simplification path so slow legacy-cache migrations can be observed in the terminal or log file.
   - Added regression coverage for the simplified cache path so the controller keeps storing the reduced geometry instead of the raw Overpass polygon set.
 
 - Validation

@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import json
+import logging
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
 from ..paths import CACHE_PATH
 from ..water_overlay import WaterPolygonFootprint
+
+logger = logging.getLogger(__name__)
 
 WATER_OVERLAY_CACHE_ROOT_DIR = Path(CACHE_PATH) / "water_overlay"
 WATER_OVERLAY_CACHE_FORMAT_VERSION = 2
@@ -170,6 +174,12 @@ def _maybe_rebuild_simplified_cache(
         return snapshot
     from ..water_overlay import simplify_water_footprints_for_observer
 
+    started_at = time.monotonic()
+    logger.info(
+        "Water overlay cache simplification started: scope=%s footprints=%d",
+        scope_key,
+        len(snapshot.footprints),
+    )
     simplified_footprints = simplify_water_footprints_for_observer(
         snapshot.footprints,
         observer_lat_deg=float(observer_lat_deg),
@@ -184,6 +194,15 @@ def _maybe_rebuild_simplified_cache(
         scope_key,
         rebuilt,
         cache_root=cache_root,
+    )
+    elapsed_s = max(0.0, time.monotonic() - started_at)
+    logger.info(
+        "Water overlay cache simplification finished: scope=%s input=%d output=%d removed=%d elapsed=%.3fs",
+        scope_key,
+        len(snapshot.footprints),
+        len(rebuilt.footprints),
+        max(0, len(snapshot.footprints) - len(rebuilt.footprints)),
+        elapsed_s,
     )
     return rebuilt
 
