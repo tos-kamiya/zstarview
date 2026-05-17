@@ -33,20 +33,20 @@
   - `name`, `alt`, `az`, `vmag`, `bv`
 - 観測者情報は少なくとも以下を一貫して保持する:
   - `location`: `(lat_deg, lon_deg)`
-  - `observer_height_m`: 地面からの高さ[m]
+  - `height_add_m`: 観測基準の上に乗る追加高さ[m]
 
-## 3.1 観測者高さの契約
+## 3.1 追加高さの契約
 
-- 公開CLIでは `observer_height_m` を扱う。
-- 値の意味は「地面からの高さ[m]」であり、海抜の絶対標高ではない。
+- 公開CLIでは `--height-add-m` を扱う。`--observer-height-m` は互換オプションとして残す。
+- 値の意味は「観測基準の上に乗る高さ[m]」であり、海抜の絶対標高ではない。
 - 既定値:
   - 都市名/緯度経度入力: `1.7`
   - タワー入力: `viewpoint_height_m + 1.7`
 - viewpoint dataset では tower 系に `viewpoint_height_m` を持てる。
-- `viewpoint_height_m` は、地表から観測基準点までの高さ[m]を表し、`observer_height_m` とは別概念とする。
-- 地形地平線側では `observer_ground_m + observer_height_m` の形で使う。
-- 天体計算側でも同じ `observer_height_m` を `EarthLocation` / `Topos` へ通す。
-- 将来 `observer_elevation_m` を公開する場合でも、内部では `observer_height_m` と混同しない。
+- `viewpoint_height_m` は、地表から観測基準点までの高さ[m]を表し、`height_add_m` とは別概念とする。
+- 地形地平線側では `observer_ground_m + height_add_m` の形で使う。
+- 天体計算側でも同じ `height_add_m` を `EarthLocation` / `Topos` へ通す。
+- 将来 `observer_elevation_m` を公開する場合でも、内部では `height_add_m` と混同しない。
 
 ## 4. API互換と移行
 

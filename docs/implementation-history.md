@@ -1,6 +1,6 @@
 # zstarview 実装履歴
 
-最終更新: 2026-05-15
+最終更新: 2026-05-17
 
 ## 1. この文書の位置づけ
 
@@ -47,6 +47,13 @@
   - Updated the dev-sample SVG previews and the water-run scan demo to avoid geometry-library dependencies outside SVG path generation.
 
 ## 4. 実装履歴
+
+### 2026-05-17
+
+- 追加高さオプションの命名整理
+  - 既存の `--observer-height-m` を、観測基準の上に足す追加高さという意味で整理し、仕様上の主名を `--height-add-m` に寄せる方針をまとめた。
+  - `--use-building-top` は観測基準面を建物上端へ切り替えるモードとして維持する方針にした。
+  - GUI の地点表示は `Ground`、構造物高、`Height add` の合計が最終高度になるように説明を統一する方針を決めた。
 
 ### 2026-05-13
 

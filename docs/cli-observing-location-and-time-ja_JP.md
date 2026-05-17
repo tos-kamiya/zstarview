@@ -13,7 +13,7 @@
 | `-A`, `--view-center-alt VIEW_CENTER_ALT` | 表示中心の高度角を指定します（90=天頂、0=地平線）。 | `90` |
 | `--edge-fov-deg DEGREES` | ウィンドウ端に対応する投影スケールを指定します。`96` なら、ウィンドウ端は視線中心から `96°` に対応します。 | `96` |
 | `--content-fov-deg DEGREES` | 全レイヤー共通の overscan 視野角を指定します。ウィンドウ端は引き続き視線中心から `90°` の位置に対応し、`90` を超える値では空・雲・背景などがウィンドウ外へはみ出して描画され、四隅の空白を減らせます。許容範囲は `90`〜`127` です。 | `115` |
-| `--observer-height-m METERS` | 観測地点の基準面から見た観測者の目線高さをメートルで指定します。既定の目線高さ `1.7` を置き換えます。タワーや山のビューポイント自体の高さ・標高とは別に扱われます。 | `1.7` |
+| `--height-add-m METERS` | 観測基準の上に追加する高さをメートルで指定します。既定の追加高さ `1.7` を置き換えます。`--observer-height-m` は互換オプションとして残ります。タワーや山のビューポイント自体の高さ・標高とは別に扱われます。 | `1.7` |
 | `--use-building-top` | 実験中。都市名、`--place`、直接座標、対応 Google Maps URL で解決した地点について、解決地点の約 5m 以内に建物が見つかった場合、その建物の最も高い頂部を観測基準として使います。タワー/山ビューポイントには適用しません。 | off |
 
 #### `--place` の挙動
@@ -38,15 +38,16 @@ Wikidata 由来の同梱タワー/展望地点データから起動すること�
   * `Tokyo Tower`
   * `wikidata:Q57965`
 * タワー名を使った場合、そのタワーの構造物高またはビューポイント高が基準観測点として使われます。
-* `--observer-height-m` は、その基準観測点からの観測者の目線高さだけを置き換えます（既定値 `1.7m`）。タワー自体の高さは置き換えません。
+* `--height-add-m` は、その基準観測点に加える高さだけを指定します（既定値 `1.7m`）。タワー自体の高さは置き換えません。
+* `--observer-height-m` は `--height-add-m` の互換オプションとして残ります。
 * ダイアクリティカルマーク付き名称についても ASCII の代替表記で解決できます。
-* 画面上の地点情報では、タワービューポイントに対して `Tower height ... m` を表示することがあります。`--observer-height-m` を明示指定した場合は、別行で `Observer height ... m` を表示することがあります。
+* 画面上の地点情報では、タワービューポイントに対して `Tower height ... m` を表示することがあります。`--height-add-m` を明示指定した場合は、別行で `Height add ... m` を表示することがあります。
 
 例:
 
 ```bash
 zstarview "Tokyo Skytree"
-zstarview "Tokyo Tower" --observer-height-m 150
+zstarview "Tokyo Tower" --height-add-m 150
 ```
 
 #### 山名入力
@@ -60,9 +61,10 @@ zstarview "Tokyo Tower" --observer-height-m 150
   * `Snezka`（`Sněžka` の ASCII 代替表記）
   * `wikidata:Q39231`
 * 山名を使った場合、山頂ビューポイントが基準観測点として使われます。
-* `--observer-height-m` は、その山頂ビューポイントからの観測者の目線高さだけを置き換えます（既定値 `1.7m`）。
+* `--height-add-m` は、その山頂ビューポイントに加える高さだけを指定します（既定値 `1.7m`）。
+* `--observer-height-m` は `--height-add-m` の互換オプションとして残ります。
 * 山名についても ASCII の代替表記で解決できます。
-* 画面上の地点情報では、山ビューポイントに対して `Elevation ... m` を表示することがあります。`--observer-height-m` を明示指定した場合は、別行で `Observer height ... m` を表示することがあります。
+* 画面上の地点情報では、山ビューポイントに対して `Elevation ... m` を表示することがあります。`--height-add-m` を明示指定した場合は、別行で `Height add ... m` を表示することがあります。
 
 例:
 
@@ -115,7 +117,8 @@ zstarview --datetime "2025-09-12 9:0:0 JST" Tokyo # 9:00:00 JST
 * Google Maps URL では、`!3dLAT!4dLON` があればその座標を優先し、なければ `@LAT,LON` を使います。
 * zoom、擬似的な高度、heading、pitch などの後続 URL 情報は無視します。
 * 直接座標で起動した場合、タイムゾーンは `--place` と同様に解決された地点座標から補完します。`--timezone TZ` を指定した場合はそちらを優先します。
-* 観測者の目線高さは `--observer-height-m` だけで指定します。Google Maps URL 内の高度らしき値は使いません。
+* 追加高さは `--height-add-m` で指定します。Google Maps URL 内の高度らしき値は使いません。
+* `--observer-height-m` は `--height-add-m` の互換オプションとして残ります。
 * `--use-building-top` は直接座標入力とも併用できます。この実験中モードでは、解決地点の近傍建物を探し、見つかった場合はその頂部を観測基準として使います。
 
 例:
@@ -125,5 +128,5 @@ zstarview "35.68;139.76"
 zstarview "@35.68,139.76"
 zstarview "www.google.com/maps/@35.68,139.76,17z"
 zstarview "N35.68;E139.76" --datetime "2025-09-12 21 JST"
-zstarview "35.68;139.76" --observer-height-m 120
+zstarview "35.68;139.76" --height-add-m 120
 ```

@@ -117,7 +117,8 @@
   - Nominatim 検索結果についても最近傍都市からタイムゾーンを補完
   - `t/NAME` / `m/NAME` の明示プレフィックスを解釈し、都市名解決より優先する
   - 観測点の基準高さと観測者の目線高さを合成して、実効観測高さを初期化する
-  - `--use-building-top` 指定時は、地点近傍の building / building_part を使って建物頂部基準の観測高さへ置き換える
+  - `--use-building-top` 指定時は、地点近傍の building / building_part を使って観測基準を建物頂部へ切り替える
+  - `--height-add-m` はその基準の上に足す追加高さで、`--observer-height-m` は互換エイリアスとして扱う
 - `src/zstarview/types.py`
   - ドメインデータの共有型
 
@@ -169,9 +170,9 @@
 - HTTP エラー、レート制限、通信失敗、JSON 解析失敗、0 件結果は `StartupAbortError` 相当で起動中断とし、logger 経由でターミナルとスプラッシュへ表示する。
 - Nominatim 利用は起動時の単発検索に限定し、候補列挙だけの反復照会経路は持たない。
 
-#### 4.2.3 `--use-building-top` による起動地点高さ補正
+#### 4.2.3 `--use-building-top` と `--height-add-m` による起動地点高さ補正
 
-`--use-building-top` は、都市名、`--place`、緯度経度、Google Maps URL で解決した地点について、建物頂部を観測基準に使う補助経路である。
+`--use-building-top` は、都市名、`--place`、緯度経度、Google Maps URL で解決した地点について、建物頂部を観測基準に使う補助経路である。`--height-add-m` は、その基準の上に乗る追加高さを指定する。
 
 - この補助経路は tower / mountain viewpoint には適用しない。
 - location resolver は、解決済みの緯度経度を中心に小半径の Overture building / building_part dataset を同期取得してよい。
@@ -179,8 +180,8 @@
 - 取得した building footprint 群に対して、指定地点を厳密に含む建物だけでなく、指定地点から `5m` 以内の建物も候補とする。
 - `building_part` がある場合は、親建物とその part 群を同一グループとして扱い、そのグループの最大 `height_m` を建物頂部高として採用してよい。
 - `min_height_m` は浮いた底面の属性として保持するが、この経路で観測基準に使う値は上端であるため、観測基準高の決定には最大 `height_m` を使う。
-- 候補建物が見つからない場合は、従来どおり地表基準の `observer_height_m`を使う。
-- 利用者向けの地点情報には、地点名がある場合は 1 行目に名前、2 行目に `Lat: ..., Lon: ... | Ground: ..., Building: ...` の compact summary を表示してよい。
+- 候補建物が見つからない場合は、従来どおり地表基準を観測基準として使う。
+- 利用者向けの地点情報には、地点名がある場合は 1 行目に名前、2 行目に `Lat: ..., Lon: ... | Ground: ..., Building: ... | Height add: ...` の compact summary を表示してよい。
 
 #### 4.2.4 `auto` による現在地自動取得起動
 
@@ -896,21 +897,22 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 表示中心の方位・高度
   - 画面投影用の edge FOV
   - 描画対象保持用の content FOV
-  - 観測者の目線高さ
+  - 基準観測点の上に乗る追加高さ
   - 地盤標高と構造物高の表示用値
-  - 観測者高さを UI 表示するかどうかのフラグ
+  - 追加高さを UI 表示するかどうかのフラグ
   - 画面描画に必要な視点情報
   - `edge_fov_deg` は起動時固定値として扱い、実行中のリサイズや hover 状態では変えない
 
-地点 dataset が持つ高さ情報と `ViewerData.observer_height_m` は別概念として扱う。
+地点 dataset が持つ高さ情報と追加高さは別概念として扱う。
 
 - mountain viewpoint
   - dataset 側の高さは山頂ビューポイントの海抜標高 `Elevation`
 - tower viewpoint
   - dataset 側の高さは地表からのタワー高またはビューポイント高 `Tower height`
-- `ViewerData.observer_height_m`
-  - どの入力種別でも、基準観測点から観測者の目線までの高さ
-  - CLI `--observer-height-m` はこの値だけを置き換える
+- `ViewerData.height_add_m`
+  - どの入力種別でも、基準観測点から観測者の追加高さ
+  - CLI `--height-add-m` はこの値を設定する
+  - CLI `--observer-height-m` は互換エイリアスとして残る
   - 既定値は `1.7m`
 - `ViewerData.ground_elevation_m`
   - DEM から求めた観測地点の地盤標高
@@ -919,13 +921,13 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `ViewerData.location_height_m`
   - 建物頂部、タワー高、または解決済み地点の構造物高を表す
   - 該当しない場合は `0.0m` へ正規化してよい
-  - public な地点要約では、名前行を別にした上で `Lat: ..., Lon: ... | Ground: ..., Building: ...` として示してよい
+  - public な地点要約では、名前行を別にした上で `Lat: ..., Lon: ... | Ground: ..., Building: ... | Height add: ...` として示してよい
 - `BuildingFootprint`
   - `height_m` は Overture 建物属性から得た地表基準の建物高を表す
   - `ground_elevation_m` は DEM から求めた建物 footprint 代表点の地盤標高を表す
   - 都市アウトライン計算では `top_elevation_m = ground_elevation_m + height_m` を用いる
   - raw footprint は `rings_lonlat` のまま保持し、観測者基準へ変換した中間表現は別の vectorized cache として持ってよい
-  - 中間表現は観測地点、`observer_height_m`、`ground_elevation_m`、建物高さ条件に依存し、`view_center` は含めなくてよい
+  - 中間表現は観測地点、`height_add_m`、`ground_elevation_m`、建物高さ条件に依存し、`view_center` は含めなくてよい
 
 ### 5.2 天体計算結果
 
@@ -1080,14 +1082,14 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 面積バケットは、概ね `2 / 4 / 8 deg^2` の3段とし、より大きな landmass はより粗くしてよい。
 - 地図データは地球固定座標系で持ち、少なくとも各頂点の `lat/lon` を保持する。
 - 実行時には各頂点を Earth-centered な 3D ベクトルへ変換して扱ってよい。
-- 観測点 `O` は、観測地点の `lat/lon` と観測者高さ `h` から球面地球半径 `R + h` 上の 3D ベクトルとして構成してよい。
+- 観測点 `O` は、観測地点の `lat/lon` と追加高さ `h` から球面地球半径 `R + h` 上の 3D ベクトルとして構成してよい。
 - 観測点の局所基底は `east / north / up` を採用してよい。
 - 各地表頂点 `P` について、観測点からの視線 `v = normalize(P - O)` と観測点天頂 `up = normalize(O)` を計算し、`dot(v, up) < 0` を満たす頂点だけを地平線下候補として扱ってよい。
 - 地表法線 `n = normalize(P)` は表示の可否の必須条件ではなく、地平線近傍の減衰や線色調整など style 用補助量として使ってよい。
 - 粗ポリゴンの辺が地平線境界をまたぐ場合は、両端の `dot(v, up)` 符号差を用いた線形補間で近似クリップしてよい。
 - 地図ガイドは厳密な地表可視判定ではなく、観測地点依存で破綻しない近似投影を優先してよい。
 - 地形地平線を使う場合でも、まず球面地球基準で地平線下候補を求め、その後に terrain horizon を最終クリップとして適用する二段構えにしてよい。
-- `observer_height_m` の変化は、観測点半径の増減として直接反映してよい。塔や展望台の数百メートル級高さ差も同じ式系で扱える。
+- `height_add_m` の変化は、観測点半径の増減として直接反映してよい。塔や展望台の数百メートル級高さ差も同じ式系で扱える。
 - earth-guide の描画は terrain horizon の前景線と同じ RGB / alpha カーブを共有し、前景線のみを使う単一ストロークでよい。
 - earth-guide の見かけ形状は、球面上の粗リングを観測者ローカルへ投影し、スクリーン空間で再帰分割して近傍だけ細かく、遠景は粗く描いてよい。
 - 再帰で得た短い断片は、連続するものだけ再結合して 1 本の polyline として描画してよい。
@@ -1101,7 +1103,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 近傍除外は地表距離ベースで扱い、観測者高度に応じて伸縮させてよい。
 - 目安として、地表上の除外半径 `dead_zone_km` は次で与えてよい。
   ```text
-  h_km = observer_height_m / 1000
+  h_km = height_add_m / 1000
   horizon_km = sqrt(2 * R_km * h_km)
   dead_zone_km = clamp(20, 0.25 * horizon_km, 80)
   ```
@@ -1295,7 +1297,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 9. runtime マージ時には、通常レイヤー側で `building_part` が持つ `parent_building_id` を参照し、対応する親 `building` 外形を除外する。
 10. runtime は都市アウトライン生成前に、観測地点の DEM 地盤標高 `observer_ground_elevation_m` を解決する。海上など `nodata` は terrain horizon と同様に `0.0m` として扱ってよい。
 11. runtime は各建物について DEM から footprint 代表点の `ground_elevation_m` を解決し、derived tile 読込結果へ付与する。代表点は polygon centroid を第一候補とし、centroid が polygon 外に出る場合は bbox center または外周サンプルの中央値へフォールバックしてよい。
-12. `compute_urban_outlines()` は `observer_ground_elevation_m + observer_height_m` を観測者標高、`ground_elevation_m + height_m` を建物頂部標高として見かけ仰角を計算する。
+12. `compute_urban_outlines()` は `observer_ground_elevation_m + height_add_m` を観測者標高、`ground_elevation_m + height_m` を建物頂部標高として見かけ仰角を計算する。
 13. `building_part` の `min_height` は derived tile では `min_height_m` として保持してよい。これは底面の持ち上がり量であり、頂部標高計算では `height_m` を ground-to-top として優先する。
 14. 遠距離スカイスクレーパー補助レイヤーで DEM が必要な場合も、専用 cache ではなく `copernicus-dem` の長寿命 cache を terrain horizon と共用してよい。
 15. `compute_urban_outlines()` は建物ごとの `height_m` を保持した輪郭列を返し、必要なら observer-centric の `numpy` 配列や同等のベクトル化配列としてキャッシュしてよい。`resolve_urban_outline_layer_for_viewer()` はそれを `UrbanOutlinePolyline` の列に変換し、描画時の `view_center` 回転へ渡してよい。
@@ -1422,8 +1424,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 建物の高さ属性 `height_m` は Overture 建物属性の地表基準高さとして保持し、見かけ仰角計算では DEM から求めた `ground_elevation_m` を必ず加える。
 - `building_part` の `min_height_m` は、底面が地表より上から始まる場合のオフセットとして保持する。現在の上端輪郭描画では頂部計算を変えないが、将来の底面表現や厚み表現に利用してよい。
 - 描画の見やすさのため、高層建物の下地線だけは `height_m` に応じて太くしてよい。`100m` までは既定幅、`600m` 以上で 2 倍相当まで線形に増やしてよいが、最後の前景線は固定幅にしてよい。
-- 観測者側も `observer_height_m` 単独ではなく、観測地点の DEM 地盤標高を加えた絶対標高で扱う。
-- 仰角計算式は `atan2((ground_elevation_m + height_m) - (observer_ground_elevation_m + observer_height_m), distance_m)` を正本とする。
+- 観測者側も `height_add_m` 単独ではなく、観測地点の DEM 地盤標高を加えた絶対標高で扱う。
+- 仰角計算式は `atan2((ground_elevation_m + height_m) - (observer_ground_elevation_m + height_add_m), distance_m)` を正本とする。
 - 現行 derived tile に `ground_elevation_m` を永続化しない場合でも、runtime 解決時に DEM サンプリングして同等の結果を得られることを優先する。
 - 遠距離スカイスクレーパー補助レイヤー用の DEM も、観測地点中心の `copernicus-dem` cache に保存して共用する。スカイスクレーパー専用 DEM sidecar や専用 DEM root は現時点では持たない。
 - `UrbanOutlinePolyline` は `source` を持ち、通常レイヤーと skyscraper レイヤーの由来を区別できる。ただし現行描画色は共通である。
@@ -1433,7 +1435,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - render polyline: `UrbanOutlinePolyline.points` に入る描画直前の点列
 - `view_center` は render polyline を画面へ回転させるための条件であり、raw footprint や observer-centric cache の生成キーには必須ではない。
 - 時刻は建物アウトラインの生成キーに含めなくてよい。建物は地表固定物として扱い、時刻で変わるのは天体や移動体だけでよい。
-- `observer_height_m`、`ground_elevation_m`、建物高さ条件が不変なら、観測者基準の配列は再利用してよい。`view_center` が変わった場合は再投影だけを行えばよい。
+- `height_add_m`、`ground_elevation_m`、建物高さ条件が不変なら、観測者基準の配列は再利用してよい。`view_center` が変わった場合は再投影だけを行えばよい。
 - 観測者基準の配列は、`numpy` の角度配列や 2D 平面座標配列、あるいは 3D ローカルベクトル配列として持ってよい。描画時には `view_center` に応じた回転行列を一括適用してから最終投影してよい。
 
 #### 8.6.1 都市アウトラインの中間表現と責務分離
@@ -1447,7 +1449,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - observer-centric layer
   - raw footprint を観測者原点のローカル座標へ変換した中間表現
   - 実装は `numpy` ベースの配列でよく、`x/y` 平面配列、`alt/az` 配列、または 3D ローカルベクトル配列のいずれでもよい
-  - 生成条件は `lat/lon`、`observer_height_m`、`ground_elevation_m`、建物高さ条件、DEM 解決結果であり、`view_center` は含めなくてよい
+  - 生成条件は `lat/lon`、`height_add_m`、`ground_elevation_m`、建物高さ条件、DEM 解決結果であり、`view_center` は含めなくてよい
   - この層は「観測者が原点」という意味で topocentric な正規形として扱ってよい
 - render polyline layer
   - observer-centric layer を `view_center` に応じて再投影した描画直前の点列
@@ -1477,7 +1479,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 建物高さの前処理条件の変更
 - observer-centric layer の更新条件
   - 観測地点 `lat/lon` の変更
-  - `observer_height_m` の変更
+  - `height_add_m` の変更
   - `ground_elevation_m` の変更
   - 建物高さ条件や DEM 由来の補助値の変更
 - render polyline layer の更新条件

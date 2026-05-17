@@ -63,8 +63,9 @@ tower dataset の高さ関連キーは次の意味で使い分ける。
   - 構造物そのものの高さ
 - `viewpoint_height_m`
   - 地表からの観測基準点の高さ
-- CLI `--observer-height-m`
-  - 観測基準点から観測者の目線までの高さ
+- CLI `--height-add-m`
+  - 観測基準点の上に乗る追加高さ
+  - `--observer-height-m` は互換オプションとして残す
 
 この bundled dataset は viewpoint 候補の一覧であって、各 viewpoint に対応する都市アウトライン用キャッシュが常に存在するとは限らない。  
 都市アウトラインは現在、起動時に Overture 建物データを取得してオンデマンド生成する方式である。
