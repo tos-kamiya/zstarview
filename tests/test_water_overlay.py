@@ -253,6 +253,53 @@ def test_simplify_water_footprints_for_observer_thins_dense_far_ring() -> None:
     assert len(simplified_reversed[0].outer_rings_lonlat[0]) == len(simplified[0].outer_rings_lonlat[0])
 
 
+def test_simplify_water_footprints_for_observer_is_direction_stable() -> None:
+    footprint = WaterPolygonFootprint(
+        water_id="river",
+        kind="natural_water",
+        outer_rings_lonlat=(
+            (
+                (0.0000, 0.0000),
+                (0.0004, 0.0000),
+                (0.0008, 0.0000),
+                (0.0012, 0.0000),
+                (0.0012, 0.0004),
+                (0.0008, 0.0004),
+                (0.0004, 0.0004),
+                (0.0000, 0.0004),
+                (0.0000, 0.0000),
+            ),
+        ),
+        inner_rings_lonlat=(),
+        source="way",
+        tags={"natural": "water", "water": "river"},
+    )
+    simplified_forward = simplify_water_footprints_for_observer(
+        (footprint,),
+        observer_lat_deg=0.0,
+        observer_lon_deg=0.0,
+    )
+    reversed_footprint = WaterPolygonFootprint(
+        water_id="river-reversed",
+        kind="natural_water",
+        outer_rings_lonlat=(tuple(reversed(footprint.outer_rings_lonlat[0])),),
+        inner_rings_lonlat=(),
+        source="way",
+        tags={"natural": "water", "water": "river"},
+    )
+    simplified_reversed = simplify_water_footprints_for_observer(
+        (reversed_footprint,),
+        observer_lat_deg=0.0,
+        observer_lon_deg=0.0,
+    )
+
+    assert simplified_forward
+    assert simplified_reversed
+    assert simplified_forward[0].outer_rings_lonlat[0] == tuple(
+        reversed(simplified_reversed[0].outer_rings_lonlat[0])
+    )
+
+
 def test_simplify_water_footprints_for_observer_drops_zero_area_ring() -> None:
     footprint = WaterPolygonFootprint(
         water_id="far-lake",

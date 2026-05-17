@@ -792,7 +792,6 @@ def _simplify_closed_ring_xy_by_distance_grid(
         return list(ring_xy), False
 
     snapped_body: list[tuple[float, float]] = []
-    seen_cells: set[tuple[float, float]] = set()
     for x, y in body:
         distance_m = math.hypot(float(x), float(y))
         grid_size_m = float(_grid_size_for_distance_m(distance_m))
@@ -800,12 +799,9 @@ def _simplify_closed_ring_xy_by_distance_grid(
             _snap_value_to_grid_m(float(x), grid_size_m),
             _snap_value_to_grid_m(float(y), grid_size_m),
         )
-        if snapped in seen_cells:
-            continue
         if snapped_body and snapped_body[-1] == snapped:
             continue
         snapped_body.append(snapped)
-        seen_cells.add(snapped)
 
     if len(snapped_body) < 3:
         return None, True
