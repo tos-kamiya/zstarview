@@ -253,8 +253,8 @@ def test_simplify_water_footprints_for_observer_thins_dense_far_ring() -> None:
     assert len(simplified_reversed[0].outer_rings_lonlat[0]) == len(simplified[0].outer_rings_lonlat[0])
 
 
-def test_simplify_water_footprints_for_observer_drops_small_far_water() -> None:
-    far_small_lake = WaterPolygonFootprint(
+def test_simplify_water_footprints_for_observer_drops_zero_area_ring() -> None:
+    footprint = WaterPolygonFootprint(
         water_id="far-lake",
         kind="natural_water",
         outer_rings_lonlat=(
@@ -270,89 +270,23 @@ def test_simplify_water_footprints_for_observer_drops_small_far_water() -> None:
         source="way",
         tags={"natural": "water", "water": "lake"},
     )
-    far_other = WaterPolygonFootprint(
-        water_id="far-other",
-        kind="natural_water",
-        outer_rings_lonlat=(
-            (
-                (0.2000, 0.2000),
-                (0.20005, 0.2000),
-                (0.20005, 0.20005),
-                (0.2000, 0.20005),
-                (0.2000, 0.2000),
-            ),
-        ),
-        inner_rings_lonlat=(),
-        source="way",
-        tags={"natural": "water"},
-    )
-    far_river = WaterPolygonFootprint(
-        water_id="far-river",
-        kind="natural_water",
-        outer_rings_lonlat=(
-            (
-                (0.2000, 0.2000),
-                (0.2015, 0.2000),
-                (0.2015, 0.2015),
-                (0.2000, 0.2015),
-                (0.2000, 0.2000),
-            ),
-        ),
-        inner_rings_lonlat=(),
-        source="way",
-        tags={"natural": "water", "water": "river"},
-    )
-    near_kept_lake = WaterPolygonFootprint(
-        water_id="near-lake",
-        kind="natural_water",
-        outer_rings_lonlat=(
-            (
-                (0.0100, 0.0100),
-                (0.0500, 0.0100),
-                (0.0500, 0.0500),
-                (0.0100, 0.0500),
-                (0.0100, 0.0100),
-            ),
-        ),
-        inner_rings_lonlat=(),
-        source="way",
-        tags={"natural": "water", "water": "lake"},
-    )
 
     simplified = simplify_water_footprints_for_observer(
-        (near_kept_lake, far_small_lake, far_other, far_river),
+        (footprint,),
         observer_lat_deg=0.0,
         observer_lon_deg=0.0,
     )
 
-    assert [footprint.water_id for footprint in simplified] == ["near-lake", "far-river"]
+    assert simplified == ()
 
 
-def test_water_vertex_spacing_threshold_grows_with_distance() -> None:
+def test_water_simplification_grid_size_grows_in_powers_of_two() -> None:
     from zstarview import water_overlay
 
-    near = water_overlay._water_vertex_spacing_threshold_m(  # noqa: SLF001
-        1.0,
-    )
-    far = water_overlay._water_vertex_spacing_threshold_m(  # noqa: SLF001
-        4.0,
-    )
-
-    assert near == 50.0
-    assert far == 200.0
-    assert far > near
-
-
-def test_water_vertex_spacing_threshold_uses_nearer_pair_distance() -> None:
-    from zstarview import water_overlay
-
-    assert (
-        water_overlay._water_vertex_spacing_threshold_for_pair_m(  # noqa: SLF001
-            0.5,
-            4.0,
-        )
-        == 25.0
-    )
+    assert water_overlay._grid_size_for_distance_m(0.0) == 1  # noqa: SLF001
+    assert water_overlay._grid_size_for_distance_m(150.0) == 1  # noqa: SLF001
+    assert water_overlay._grid_size_for_distance_m(250.0) == 2  # noqa: SLF001
+    assert water_overlay._grid_size_for_distance_m(500.0) == 4  # noqa: SLF001
 
 
 def test_sample_water_overlay_points_uses_fallback_surface_height() -> None:

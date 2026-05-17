@@ -121,9 +121,17 @@ def test_water_overlay_controller_saves_fresh_disk_snapshot(monkeypatch) -> None
         now_utc=datetime.now(timezone.utc),
     )
 
-    assert scope_cache.footprints == (footprint,)
+    from zstarview.water_overlay import simplify_water_footprints_for_observer
+
+    expected = simplify_water_footprints_for_observer(
+        (footprint,),
+        observer_lat_deg=35.0,
+        observer_lon_deg=139.0,
+    )
+
+    assert scope_cache.footprints == expected
     assert saved["payload"][0] == "scope"
-    assert saved["payload"][1].footprints == (footprint,)
+    assert saved["payload"][1].footprints == expected
 
 
 def test_water_overlay_controller_uses_recent_cached_footprints_as_is(

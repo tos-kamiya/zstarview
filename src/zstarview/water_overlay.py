@@ -30,9 +30,9 @@ DEFAULT_WATER_SAMPLE_STEP_M = 1.25**5
 DEFAULT_WATER_AZIMUTH_STEP_DEG = 2.0
 DEFAULT_WATER_SAMPLE_GROWTH_FACTOR = 1.15
 DEFAULT_WATER_ALPHA_MIN = 0.04
-DEFAULT_WATER_VERTEX_SPACING_THRESHOLD_BASE_M = 50.0
+DEFAULT_WATER_SIMPLIFICATION_APPARENT_ANGLE_DEG = 0.5
+DEFAULT_WATER_SIMPLIFICATION_MIN_GRID_M = 1.0
 DEFAULT_WATER_QUERY_BBOX_SCALE = 1.2
-DEFAULT_WATER_LAKE_DROP_THRESHOLD_SCALE = 16.0
 DEFAULT_WATER_SCAN_RADIUS_MAX_KM = 128.0
 
 POLYGON_WATER_KEYS = {
@@ -744,17 +744,6 @@ def _cooperative_yield(
     time.sleep(0)
 
 
-def _water_vertex_spacing_threshold_m(distance_km: float) -> float:
-    return DEFAULT_WATER_VERTEX_SPACING_THRESHOLD_BASE_M * max(0.0, float(distance_km))
-
-
-def _water_vertex_spacing_threshold_for_pair_m(
-    distance_a_km: float,
-    distance_b_km: float,
-) -> float:
-    return _water_vertex_spacing_threshold_m(min(float(distance_a_km), float(distance_b_km)))
-
-
 def _ring_body_xy(points_xy: Sequence[tuple[float, float]]) -> list[tuple[float, float]]:
     ring = list(points_xy)
     if len(ring) >= 2 and ring[0] == ring[-1]:
@@ -764,66 +753,80 @@ def _ring_body_xy(points_xy: Sequence[tuple[float, float]]) -> list[tuple[float,
     return ring
 
 
-def _simplify_closed_ring_xy_by_vertex_spacing(
-    ring_xy: Sequence[tuple[float, float]],
-) -> tuple[list[tuple[float, float]], int]:
-    body = _ring_body_xy(ring_xy)
-    if len(body) < 4:
-        return list(ring_xy), 0
-
-    points = list(body)
-    point_distances_km = [math.hypot(x, y) / 1000.0 for x, y in points]
-    removed = 0
-    while len(points) > 3:
-        n_points = len(points)
-        best_index: int | None = None
-        best_key: tuple[float, float, float, int] | None = None
-        for index in range(n_points):
-            prev_point = points[index - 1]
-            point = points[index]
-            next_point = points[(index + 1) % n_points]
-            prev_distance_m = math.hypot(point[0] - prev_point[0], point[1] - prev_point[1])
-            next_distance_m = math.hypot(next_point[0] - point[0], next_point[1] - point[1])
-            prev_threshold_m = _water_vertex_spacing_threshold_for_pair_m(
-                point_distances_km[index - 1],
-                point_distances_km[index],
-            )
-            next_threshold_m = _water_vertex_spacing_threshold_for_pair_m(
-                point_distances_km[index],
-                point_distances_km[(index + 1) % n_points],
-            )
-            prev_score = (
-                prev_distance_m / prev_threshold_m if prev_threshold_m > 0.0 else float("inf")
-            )
-            next_score = (
-                next_distance_m / next_threshold_m if next_threshold_m > 0.0 else float("inf")
-            )
-            score = min(prev_score, next_score)
-            key = (score, point[0], point[1], index)
-            if score < 1.0 and (best_key is None or key < best_key):
-                best_key = key
-                best_index = index
-        if best_index is None:
-            break
-        points.pop(best_index)
-        point_distances_km.pop(best_index)
-        removed += 1
-
+def _ring_area_xy(ring_xy: Sequence[tuple[float, float]]) -> float:
+    points = list(ring_xy)
     if len(points) < 3:
-        return list(ring_xy), 0
-    simplified = points + [points[0]]
-    return simplified, removed
+        return 0.0
+    if points[0] != points[-1]:
+        points.append(points[0])
+    if len(points) < 4:
+        return 0.0
+    area2 = 0.0
+    for (x0, y0), (x1, y1) in zip(points, points[1:], strict=False):
+        area2 += float(x0) * float(y1) - float(x1) * float(y0)
+    return abs(area2) * 0.5
 
 
-def _simplify_ring_lonlat_by_vertex_spacing(
+def _snap_value_to_grid_m(value_m: float, grid_size_m: float) -> float:
+    if grid_size_m <= 0.0:
+        raise ValueError("grid_size_m must be positive")
+    cell = float(grid_size_m)
+    return math.floor(float(value_m) / cell + 0.5) * cell
+
+
+def _grid_size_for_distance_m(distance_m: float) -> int:
+    distance_m = max(0.0, float(distance_m))
+    apparent_cell_m = max(
+        DEFAULT_WATER_SIMPLIFICATION_MIN_GRID_M,
+        distance_m * math.tan(math.radians(DEFAULT_WATER_SIMPLIFICATION_APPARENT_ANGLE_DEG)),
+    )
+    exponent = max(0, int(math.floor(math.log2(apparent_cell_m))))
+    return max(int(DEFAULT_WATER_SIMPLIFICATION_MIN_GRID_M), 1 << exponent)
+
+
+def _simplify_closed_ring_xy_by_distance_grid(
+    ring_xy: Sequence[tuple[float, float]],
+) -> tuple[list[tuple[float, float]] | None, bool]:
+    body = _ring_body_xy(ring_xy)
+    if len(body) < 3:
+        return list(ring_xy), False
+
+    snapped_body: list[tuple[float, float]] = []
+    seen_cells: set[tuple[float, float]] = set()
+    for x, y in body:
+        distance_m = math.hypot(float(x), float(y))
+        grid_size_m = float(_grid_size_for_distance_m(distance_m))
+        snapped = (
+            _snap_value_to_grid_m(float(x), grid_size_m),
+            _snap_value_to_grid_m(float(y), grid_size_m),
+        )
+        if snapped in seen_cells:
+            continue
+        if snapped_body and snapped_body[-1] == snapped:
+            continue
+        snapped_body.append(snapped)
+        seen_cells.add(snapped)
+
+    if len(snapped_body) < 3:
+        return None, True
+
+    closed_snapped = snapped_body + [snapped_body[0]]
+    if _ring_area_xy(closed_snapped) <= 0.0:
+        return None, True
+    return closed_snapped, True
+
+
+def _simplify_ring_lonlat_by_distance_grid(
     ring_lonlat: Sequence[tuple[float, float]],
     *,
     transformer: Transformer,
-) -> tuple[tuple[tuple[float, float], ...], int]:
+) -> tuple[tuple[tuple[float, float], ...] | None, bool]:
     ring_xy = project_ring_xy(tuple(ring_lonlat), transformer)
-    simplified_xy, removed = _simplify_closed_ring_xy_by_vertex_spacing(ring_xy)
-    if removed <= 0:
-        return tuple(tuple(point) for point in ring_lonlat), 0
+    simplified_xy, changed = _simplify_closed_ring_xy_by_distance_grid(ring_xy)
+    if simplified_xy is None:
+        return None, True
+    if not changed:
+        return tuple(tuple(point) for point in ring_lonlat), False
     xs = [point[0] for point in simplified_xy]
     ys = [point[1] for point in simplified_xy]
     lon_values, lat_values = transformer.transform(
@@ -834,7 +837,7 @@ def _simplify_ring_lonlat_by_vertex_spacing(
     simplified_ring = tuple((float(lon), float(lat)) for lon, lat in zip(lon_values, lat_values))
     if len(simplified_ring) < 4 or simplified_ring[0] != simplified_ring[-1]:
         simplified_ring = simplified_ring + (simplified_ring[0],)
-    return simplified_ring, removed
+    return simplified_ring, simplified_ring != tuple(tuple(point) for point in ring_lonlat)
 
 
 def _footprint_distance_km(
@@ -856,53 +859,6 @@ def _footprint_distance_km(
     return math.hypot(anchor_x, anchor_y) / 1000.0
 
 
-def _footprint_max_span_m(
-    footprint: WaterPolygonFootprint,
-    *,
-    transformer: Transformer,
-) -> float:
-    max_span_m = 0.0
-    for ring in footprint.outer_rings_lonlat:
-        ring_xy = project_ring_xy(ring, transformer)
-        xs = [float(x) for x, _ in ring_xy]
-        ys = [float(y) for _, y in ring_xy]
-        if not xs or not ys:
-            continue
-        max_span_m = max(
-            max_span_m,
-            max(xs) - min(xs),
-            max(ys) - min(ys),
-        )
-    return max_span_m
-
-
-def _footprint_surface_category(footprint: WaterPolygonFootprint) -> str:
-    if _footprint_is_sea_like(footprint):
-        return "sea"
-    if _footprint_is_river_like(footprint):
-        return "river"
-    if footprint.tags.get("water") == "lake":
-        return "lake"
-    return "other"
-
-
-def _footprint_is_small_far_water(
-    footprint: WaterPolygonFootprint,
-    *,
-    transformer: Transformer,
-    distance_km: float,
-) -> bool:
-    category = _footprint_surface_category(footprint)
-    if category in {"sea", "river"}:
-        return False
-    threshold_m = _water_vertex_spacing_threshold_m(distance_km)
-    if threshold_m <= 0.0:
-        return False
-    category_scale = DEFAULT_WATER_LAKE_DROP_THRESHOLD_SCALE if category in {"lake", "other"} else 1.0
-    size_threshold_m = threshold_m * category_scale
-    return _footprint_max_span_m(footprint, transformer=transformer) < size_threshold_m
-
-
 def simplify_water_footprints_for_observer(
     footprints: Sequence[WaterPolygonFootprint],
     *,
@@ -916,34 +872,36 @@ def simplify_water_footprints_for_observer(
         if footprint_distance_km <= 0.0:
             simplified.append(footprint)
             continue
-        if _footprint_is_small_far_water(
-            footprint,
-            transformer=transformer,
-            distance_km=footprint_distance_km,
-        ):
-            continue
 
         outer_rings: list[tuple[tuple[float, float], ...]] = []
         inner_rings: list[tuple[tuple[float, float], ...]] = []
-        removed_vertices = 0
+        changed = False
 
         for ring in footprint.outer_rings_lonlat:
-            simplified_ring, removed = _simplify_ring_lonlat_by_vertex_spacing(
+            simplified_ring, ring_changed = _simplify_ring_lonlat_by_distance_grid(
                 ring,
                 transformer=transformer,
             )
+            if simplified_ring is None:
+                changed = True
+                continue
             outer_rings.append(simplified_ring)
-            removed_vertices += removed
+            changed = changed or ring_changed
 
         for ring in footprint.inner_rings_lonlat:
-            simplified_ring, removed = _simplify_ring_lonlat_by_vertex_spacing(
+            simplified_ring, ring_changed = _simplify_ring_lonlat_by_distance_grid(
                 ring,
                 transformer=transformer,
             )
+            if simplified_ring is None:
+                changed = True
+                continue
             inner_rings.append(simplified_ring)
-            removed_vertices += removed
+            changed = changed or ring_changed
 
-        if removed_vertices <= 0:
+        if not outer_rings:
+            continue
+        if not changed:
             simplified.append(footprint)
             continue
         simplified.append(
