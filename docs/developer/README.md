@@ -23,6 +23,11 @@
 - `dev-samples/water_tile_overview.py`
   - sea mask tile の解像度別グリッド、`0`/`1`/`.tif` の分布、近傍プローブ、バンド別の実際の open tile 数を表示する確認用スクリプト
   - `--observer-ground-m 8651` のように高地の地表高さを渡して、観測地点まわりでどの tile がどう見えているかをざっくり確認するために使う
+- `dev-samples/render_water_footprints_svg.py`
+  - water overlay の cache JSON や footprint JSON を読み込み、各フットプリントを lon/lat 平面上の SVG として可視化するスクリプト
+  - 簡約化前後の cache を見比べて、リング形状や削減結果を確認する用途に使う
+  - `--show-labels` や `--ele-only` で表示を絞り込める
+  - 実行例: `uv run -p .venv/bin/python dev-samples/render_water_footprints_svg.py --input ~/.cache/zstarview/water_overlay/<file>.json`
 
 ## Notes
 
