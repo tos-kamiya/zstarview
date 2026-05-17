@@ -59,7 +59,7 @@ def _water_overlay_band_counts(dots: tuple[WaterOverlayPoint, ...] | list[WaterO
 
 def _water_overlay_band_stats_text(stats: WaterSurfaceBandStats) -> str:
     return (
-        f"{stats.band_name} tiles={int(stats.loaded_tile_count)} "
+        f"{stats.band_name} opened_tiles={int(stats.loaded_tile_count)} "
         f"raw={int(stats.raw_point_count)} "
         f"collapsed={int(stats.collapsed_point_count)} "
         f"visible={int(stats.visible_point_count)}"
