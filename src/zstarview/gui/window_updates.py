@@ -796,7 +796,7 @@ class SkyWindowUpdatesMixin:
         if isinstance(ground_elevation_m, (int, float)):
             ground_value = float(ground_elevation_m)
             self.terrain_horizon_state.ground_elevation_m = ground_value
-            self.viewer_data.ground_elevation_m = ground_value
+            self.viewer_data = replace(self.viewer_data, ground_elevation_m=ground_value)
         self.state.terrain_horizon_profile = payload["profile_altaz"]
         self.state.terrain_horizon_profile_distances_m = payload.get("profile_distances_m")
         self.state.terrain_horizon_secondary_profile_altaz_layers = payload.get(

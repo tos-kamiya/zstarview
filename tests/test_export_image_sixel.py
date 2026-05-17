@@ -220,10 +220,10 @@ def test_write_export_overlay_summary_to_stderr_emits_gui_metadata(
         city_name="Tokyo",
         view_center=(45.0, 180.0),
         observer_height_m=12.0,
+        height_add_m=12.0,
         ground_elevation_m=35.0,
         location_height_label="Tower height",
         location_height_m=634.0,
-        show_observer_height=True,
     )
     target = mod.SearchJumpTarget(
         label="Ceres",
@@ -270,17 +270,17 @@ def test_main_writes_overlay_summary_before_sixel(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     events: list[str] = []
+    search_overlay_target = mod.SearchJumpTarget(
+        label="Ceres",
+        kind="jpl_small_body",
+        sort_key=(0.0, "Ceres"),
+        object_key="2000001",
+    )
     viewer = mod.ViewerData(
         location=(35.0, 139.0),
         timezone_name="UTC",
         city_name="Tokyo",
         view_center=(45.0, 180.0),
-    )
-    viewer._search_overlay_target = mod.SearchJumpTarget(
-        label="Ceres",
-        kind="jpl_small_body",
-        sort_key=(0.0, "Ceres"),
-        object_key="2000001",
     )
     catalogs = SimpleNamespace(
         star_catalog_np=object(),
@@ -323,7 +323,7 @@ def test_main_writes_overlay_summary_before_sixel(
             viewer,
             user_options,
             runtime_options,
-            viewer._search_overlay_target,
+            search_overlay_target,
         ),
     )
     monkeypatch.setattr(

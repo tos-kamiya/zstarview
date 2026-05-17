@@ -284,11 +284,10 @@ def _build_window_inputs_from_args(
         view_center,
         edge_fov_deg=args.edge_fov_deg,
         content_fov_deg=args.content_fov_deg,
-        observer_height_m=city.observer_height_m if args.observer_height_m is None else args.observer_height_m,
         ground_elevation_m=city.ground_elevation_m,
         location_height_label=city.location_height_label,
         location_height_m=city.location_height_m,
-        show_observer_height=args.observer_height_m is not None,
+        height_add_m=city.height_add_m if args.observer_height_m is None else args.observer_height_m,
     )
 
     search_query = str(args.search or "").strip()
@@ -366,12 +365,15 @@ def _build_window_inputs_from_args(
         if altaz is not None:
             target_alt = _clamp_view_center_altitude(float(altaz[0]))
             target_az = float(altaz[1]) % 360.0
-            viewer_data.view_center = _search_view_center_for_target(
-                base_view_center=view_center,
-                target_alt_deg=target_alt,
-                target_az_deg=target_az,
-                fixed_alt=fixed_alt,
-                fixed_az=fixed_az,
+            viewer_data = replace(
+                viewer_data,
+                view_center=_search_view_center_for_target(
+                    base_view_center=view_center,
+                    target_alt_deg=target_alt,
+                    target_az_deg=target_az,
+                    fixed_alt=fixed_alt,
+                    fixed_az=fixed_az,
+                ),
             )
             search_overlay_target = replace(
                 target,

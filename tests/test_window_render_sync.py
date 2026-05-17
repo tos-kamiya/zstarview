@@ -305,6 +305,7 @@ def test_viewer_data_for_render_uses_render_view_center() -> None:
         city_name="Tokyo",
         view_center=(20.0, 30.0),
         observer_height_m=123.0,
+        height_add_m=1.7,
     )
     dummy.state = SkyWindowState(render_view_center=(60.0, 210.0))
 
@@ -312,9 +313,9 @@ def test_viewer_data_for_render_uses_render_view_center() -> None:
     assert got.view_center == (60.0, 210.0)
     assert got.location == (35.0, 139.0)
     assert got.observer_height_m == 123.0
+    assert got.height_add_m == 1.7
     assert got.location_height_label is None
     assert got.location_height_m == 0.0
-    assert got.show_observer_height is False
 
 
 def test_render_style_uses_window_observation_info_toggle() -> None:

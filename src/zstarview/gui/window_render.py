@@ -107,11 +107,11 @@ class SkyWindowRenderMixin:
             render_viewer.city_name,
             render_viewer.timezone_name,
             float(render_viewer.observer_height_m),
+            float(render_viewer.height_add_m),
             getattr(render_viewer, "ground_elevation_m", None),
             float(render_viewer.content_fov_deg),
             render_viewer.location_height_label,
             render_viewer.location_height_m,
-            bool(render_viewer.show_observer_height),
             bool(self.show_dso),
             bool(self.show_asterisms),
             bool(self.show_guidelines),
@@ -409,10 +409,10 @@ class SkyWindowRenderMixin:
             edge_fov_deg=self.viewer_data.edge_fov_deg,
             content_fov_deg=self.viewer_data.content_fov_deg,
             observer_height_m=self.viewer_data.observer_height_m,
+            height_add_m=self.viewer_data.height_add_m,
             ground_elevation_m=self.viewer_data.ground_elevation_m,
             location_height_label=self.viewer_data.location_height_label,
             location_height_m=self.viewer_data.location_height_m,
-            show_observer_height=self.viewer_data.show_observer_height,
         )
 
     def _render_inputs(

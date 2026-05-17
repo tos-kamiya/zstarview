@@ -125,14 +125,15 @@ def prepare_window_viewer_data(
     *,
     edge_fov_deg: float,
     content_fov_deg: float,
-    observer_height_m: float,
     ground_elevation_m: float,
     location_height_label: str | None,
     location_height_m: float,
-    show_observer_height: bool,
+    height_add_m: float,
 ) -> ViewerData:
     """Build the viewer input consumed by SkyWindow."""
     lat, lon, tz_name = city_data
+    location_height_m = max(0.0, float(location_height_m))
+    height_add_m = max(0.0, float(height_add_m))
     return ViewerData(
         location=(lat, lon),
         timezone_name=tz_name,
@@ -140,11 +141,11 @@ def prepare_window_viewer_data(
         view_center=view_center,
         edge_fov_deg=float(edge_fov_deg),
         content_fov_deg=float(content_fov_deg),
-        observer_height_m=float(observer_height_m),
+        observer_height_m=location_height_m + height_add_m,
+        height_add_m=height_add_m,
         ground_elevation_m=max(0.0, float(ground_elevation_m)),
         location_height_label=location_height_label,
-        location_height_m=max(0.0, float(location_height_m)),
-        show_observer_height=bool(show_observer_height),
+        location_height_m=location_height_m,
     )
 
 

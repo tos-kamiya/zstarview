@@ -43,3 +43,25 @@ def test_format_splash_location_does_not_repeat_lat_lon_name() -> None:
             "Height: ground 12.3 m, add 1.7 m"
         )
     )
+
+
+def test_format_splash_location_uses_additional_height_for_tower_base() -> None:
+    location = ResolvedLocation(
+        display_name="t/Tokyo Skytree",
+        lat=35.710055555,
+        lon=139.810722222,
+        tz="Asia/Tokyo",
+        persistence_key="t/Tokyo Skytree",
+        observer_height_m=635.7,
+        kind="tower",
+        ground_elevation_m=5.4,
+        location_height_m=634.0,
+    )
+
+    assert (
+        format_splash_location(location)
+        == (
+            "Location: t/Tokyo Skytree | Lat: 35.71006, Lon: 139.81072 | "
+            "Height: ground 5.4 m, building 634 m, add 1.7 m"
+        )
+    )

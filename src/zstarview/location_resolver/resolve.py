@@ -54,6 +54,7 @@ class ResolvedLocation:
     ground_elevation_m: float = 0.0
     location_height_label: str | None = None
     location_height_m: float = 0.0
+    height_add_m: float = 1.7
     cc: str = ""
 
 
@@ -267,12 +268,13 @@ def _maybe_apply_building_top_viewpoint(
         lon=location.lon,
         tz=location.tz,
         persistence_key=location.persistence_key,
-        observer_height_m=float(building_top_height_m) + DEFAULT_OBSERVER_HEIGHT_M,
+        observer_height_m=float(building_top_height_m) + float(location.height_add_m),
         kind=location.kind,
         persistence_value=location.persistence_value,
         ground_elevation_m=location.ground_elevation_m,
         location_height_label="Building",
         location_height_m=float(building_top_height_m),
+        height_add_m=location.height_add_m,
         cc=location.cc,
     )
 
@@ -337,7 +339,7 @@ def format_splash_location(city: ResolvedLocation) -> str:
             city.lon,
             ground_elevation_m=city.ground_elevation_m,
             location_height_m=city.location_height_m,
-            height_add_m=city.observer_height_m,
+            height_add_m=city.height_add_m,
         )
     )
 
@@ -401,6 +403,7 @@ def _viewpoint_to_location(
         ),
         location_height_label=location_height_label,
         location_height_m=location_height_m,
+        height_add_m=DEFAULT_OBSERVER_HEIGHT_M,
         cc=nearest_city.cc if nearest_city is not None else "",
     )
 
@@ -439,6 +442,7 @@ def _nominatim_result_to_location(
         ground_elevation_m=_resolve_ground_elevation_m(lat_deg=lat, lon_deg=lon),
         location_height_label=None,
         location_height_m=0.0,
+        height_add_m=DEFAULT_OBSERVER_HEIGHT_M,
         cc=nearest_city.cc if nearest_city is not None else "",
     )
 
@@ -477,6 +481,7 @@ def _restore_persisted_location(
                 ground_elevation_m=_resolve_ground_elevation_m(lat_deg=lat, lon_deg=lon),
                 cc=cc or "",
                 location_height_m=0.0,
+                height_add_m=DEFAULT_OBSERVER_HEIGHT_M,
             )
         logger.warning("Ignoring malformed persisted auto location payload")
         return None
@@ -709,6 +714,7 @@ def resolve_launch_location(
                     ground_elevation_m=_resolve_ground_elevation_m(lat_deg=lat, lon_deg=lon),
                     location_height_label=None,
                     location_height_m=0.0,
+                    height_add_m=DEFAULT_OBSERVER_HEIGHT_M,
                     cc=nearest_city.cc if nearest_city is not None else "",
                 ),
                 enabled=use_building_top,
@@ -811,6 +817,7 @@ def resolve_launch_location(
             ground_elevation_m=_resolve_ground_elevation_m(lat_deg=city.lat, lon_deg=city.lon),
             location_height_label=None,
             location_height_m=0.0,
+            height_add_m=DEFAULT_OBSERVER_HEIGHT_M,
             cc=city.cc,
         )
         persist_location = True

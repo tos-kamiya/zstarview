@@ -138,15 +138,14 @@ class _StartupBootstrap(QObject):
                 self._view_center,
                 edge_fov_deg=float(getattr(self._args, "edge_fov_deg", 95.0)),
                 content_fov_deg=float(getattr(self._args, "content_fov_deg", 110.0)),
-                observer_height_m=(
-                    city.observer_height_m
-                    if getattr(self._args, "observer_height_m", None) is None
-                    else float(getattr(self._args, "observer_height_m"))
-                ),
                 ground_elevation_m=city.ground_elevation_m,
                 location_height_label=city.location_height_label,
                 location_height_m=city.location_height_m,
-                show_observer_height=getattr(self._args, "observer_height_m", None) is not None,
+                height_add_m=(
+                    city.height_add_m
+                    if getattr(self._args, "observer_height_m", None) is None
+                    else float(getattr(self._args, "observer_height_m"))
+                ),
             )
             self.finished.emit(
                 {
@@ -405,10 +404,10 @@ def main() -> None:
             edge_fov_deg=args.edge_fov_deg,
             content_fov_deg=args.content_fov_deg,
             observer_height_m=1.7 if args.observer_height_m is None else args.observer_height_m,
+            height_add_m=1.7 if args.observer_height_m is None else args.observer_height_m,
             ground_elevation_m=0.0,
             location_height_label=None,
             location_height_m=0.0,
-            show_observer_height=args.observer_height_m is not None,
         ),
         catalogs,
         user_options=user_options,

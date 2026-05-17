@@ -93,7 +93,7 @@ def format_overlay_info_lines(
         viewer_data.lon_deg,
         ground_elevation_m=viewer_data.ground_elevation_m,
         location_height_m=viewer_data.location_height_m,
-        height_add_m=viewer_data.observer_height_m,
+        height_add_m=viewer_data.height_add_m,
     ) + lines
     lines.append(f"Alt {alt_deg:.0f}{deg}  Az {az_deg:.0f}{deg} ({compass})")
     if include_vmag_limit:
