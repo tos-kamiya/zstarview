@@ -13,7 +13,7 @@
 | `-A`, `--view-center-alt VIEW_CENTER_ALT` | Viewing altitude angle (90=zenith, 0=horizon). | `90` |
 | `--edge-fov-deg DEGREES` | Projection scale for the window edge. `95` means the window edge corresponds to `95°` from the view center. | `95` |
 | `--content-fov-deg DEGREES` | Shared overscan content FOV for all layers. The window edge still corresponds to `90°` from the view center; values above `90` let sky/cloud/background content extend beyond the window edge and reduce empty corner regions. Allowed range: `90`–`127`. | `110` |
-| `--height-add-m METERS` | Additional height above the active observation base in meters. This replaces the default add height of `1.7` meters. For tower and mountain viewpoints, the viewpoint's own height/elevation remains separate from this value. | `1.7` |
+| `--height-add-m METERS` | Additional height above the active observation base in meters. This replaces the default add height of `1.7` meters, which assumes a typical standing observer height. For tower and mountain viewpoints, the viewpoint's own height/elevation remains separate from this value. | `1.7` |
 | `--use-building-top` | Experimental. For city / `--place` / direct-coordinate / supported Google Maps URL input, if a building is found within about 5 meters of the resolved location, use that building's highest top height as the active observation base. Tower and mountain viewpoints are not affected. | off |
 
 Note: `--observer-height-m` remains available as a compatibility alias for `--height-add-m`.
