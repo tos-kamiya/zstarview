@@ -569,6 +569,7 @@ class WaterOverlayController(QObject):
                 observer_height_m=float(observer_height_m) + float(observer_ground_m),
                 max_distance_km=scan_radius_km,
                 target_ground_elevation_m_sampler=target_ground_sampler if use_target_sampler else None,
+                abort_event=self._download_abort_event,
             )
             scope_cache.sea_mask_dots = sea_mask_dots
             scope_cache.uses_dem_sampler = use_target_sampler

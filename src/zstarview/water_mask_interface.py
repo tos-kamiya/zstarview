@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import math
+import threading
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
 import numpy as np
 
+from .clouddisc.types import DownloadCancelledError
 from .location_resolver.place_projection import project_place_targets_to_altaz
 from .terrain import WGS84_GEOD, build_ray_scan_grid
 from .water_overlay import (
@@ -29,6 +32,23 @@ DEFAULT_WATER_REPRESENTATIVE_SWITCH_DISTANCE_KM_2 = 18.0
 DEFAULT_WATER_INTERFACE_BBOX_SCALE = 1.2
 DEFAULT_WATER_INTERFACE_POINT_STRIDE = 1
 DEFAULT_WATER_INTERFACE_SAMPLE_MIN_DISTANCE_M = 125.0
+
+
+def _raise_if_abort_requested(abort_event: threading.Event | None) -> None:
+    if abort_event is not None and abort_event.is_set():
+        raise DownloadCancelledError("water surface sampling cancelled")
+
+
+def _cooperative_yield(
+    abort_event: threading.Event | None,
+    *,
+    interval: int,
+    iteration_index: int,
+) -> None:
+    if interval <= 0 or iteration_index % interval != 0:
+        return
+    _raise_if_abort_requested(abort_event)
+    time.sleep(0)
 
 
 def _tile_paths(tile_root: Path) -> tuple[Path, ...]:
@@ -303,6 +323,7 @@ def _load_water_surface_interface_lonlat_points_for_root(
     min_distance_km: float = 0.0,
     max_distance_km: float | None = None,
     representative_block_size: int = 1,
+    abort_event: threading.Event | None = None,
 ) -> tuple[tuple[float, float], ...]:
     points, _stats = _load_water_surface_interface_lonlat_points_for_root_with_stats(
         center_lat_deg=center_lat_deg,
@@ -314,6 +335,7 @@ def _load_water_surface_interface_lonlat_points_for_root(
         min_distance_km=min_distance_km,
         max_distance_km=max_distance_km,
         representative_block_size=representative_block_size,
+        abort_event=abort_event,
     )
     return points
 
@@ -329,6 +351,7 @@ def _load_water_surface_interface_lonlat_points_for_root_with_stats(
     min_distance_km: float = 0.0,
     max_distance_km: float | None = None,
     representative_block_size: int = 1,
+    abort_event: threading.Event | None = None,
 ) -> tuple[tuple[tuple[float, float], ...], WaterSurfaceBandStats]:
     if radius_km <= 0.0:
         raise ValueError("radius_km must be positive")
@@ -357,10 +380,12 @@ def _load_water_surface_interface_lonlat_points_for_root_with_stats(
     loaded_tile_count = 0
     raw_point_count = 0
     collapsed_point_count = 0
-    for tile_path in _tile_paths(tile_root):
+    for tile_index, tile_path in enumerate(_tile_paths(tile_root)):
+        _cooperative_yield(abort_event, interval=4, iteration_index=tile_index)
         if _tile_marker_value(tile_path) is not None:
             continue
         with rasterio.open(tile_path) as dataset:
+            _raise_if_abort_requested(abort_event)
             overlap = _bbox_intersection(
                 expanded_bbox,
                 (dataset.bounds.left, dataset.bounds.bottom, dataset.bounds.right, dataset.bounds.top),
@@ -433,6 +458,7 @@ def _sample_water_surface_interface_ray_points_for_root_with_stats(
     target_ground_elevation_m_sampler: Callable[[float, float], float] | None = None,
     azimuth_step_deg: float = DEFAULT_WATER_AZIMUTH_STEP_DEG,
     sample_step_m: float = DEFAULT_WATER_SAMPLE_STEP_M,
+    abort_event: threading.Event | None = None,
 ) -> tuple[tuple[WaterOverlayPoint, ...], WaterSurfaceBandStats]:
     if radius_km <= 0.0:
         raise ValueError("radius_km must be positive")
@@ -461,9 +487,13 @@ def _sample_water_surface_interface_ray_points_for_root_with_stats(
     visible_point_count = 0
 
     for row_index, azimuth_deg in enumerate(ray_scan.azimuths_deg):
+        _cooperative_yield(abort_event, interval=4, iteration_index=row_index)
         row_lonlat_points: list[tuple[float, float]] = []
         row_meta: list[tuple[int, float]] = []
         for col_index, distance_m in enumerate(ray_scan.distance_grid_m[row_index]):
+            if col_index % 128 == 0:
+                _raise_if_abort_requested(abort_event)
+                time.sleep(0)
             lon = float(ray_scan.ray_lon_deg[row_index, col_index])
             lat = float(ray_scan.ray_lat_deg[row_index, col_index])
             row_lonlat_points.append((lon, lat))
@@ -605,6 +635,7 @@ def sample_water_surface_interface_points_with_stats(
     tile_root: Path | None = None,
     bbox_scale: float = DEFAULT_WATER_INTERFACE_BBOX_SCALE,
     stride: int = DEFAULT_WATER_INTERFACE_POINT_STRIDE,
+    abort_event: threading.Event | None = None,
 ) -> tuple[tuple[WaterOverlayPoint, ...], tuple[WaterSurfaceBandStats, ...]]:
     overlay_points: list[WaterOverlayPoint] = []
     band_stats: list[WaterSurfaceBandStats] = []
@@ -621,6 +652,7 @@ def sample_water_surface_interface_points_with_stats(
             radius_km=float(max_distance_km_band),
             tile_root=band_root,
             target_ground_elevation_m_sampler=target_ground_elevation_m_sampler,
+            abort_event=abort_event,
         )
         band_stats.append(stats)
         if not band_points:
@@ -638,6 +670,7 @@ def sample_water_surface_interface_points(
     tile_root: Path | None = None,
     bbox_scale: float = DEFAULT_WATER_INTERFACE_BBOX_SCALE,
     stride: int = DEFAULT_WATER_INTERFACE_POINT_STRIDE,
+    abort_event: threading.Event | None = None,
 ) -> tuple[WaterOverlayPoint, ...]:
     points, _loaded_tile_counts = sample_water_surface_interface_points_with_stats(
         observer_lat_deg=observer_lat_deg,
@@ -647,6 +680,7 @@ def sample_water_surface_interface_points(
         tile_root=tile_root,
         bbox_scale=bbox_scale,
         stride=stride,
+        abort_event=abort_event,
     )
     return points
 

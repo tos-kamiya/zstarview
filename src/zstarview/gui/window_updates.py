@@ -191,9 +191,9 @@ class SkyWindowUpdatesMixin:
         if state.banner_text:
             detail = _strip_status_prefix(state.banner_text, "Water:")
             return _status_segment(_STATUS_WATER, detail)
-        dots = state.dots
-        count = len(dots) if isinstance(dots, list) else 0
-        return _status_segment(_STATUS_WATER, str(count))
+        sea_count = "?" if state.sea_level_dots is None else str(len(state.sea_level_dots))
+        inland_count = "?" if state.inland_dots is None else str(len(state.inland_dots))
+        return _status_segment(_STATUS_WATER, f"{sea_count}+{inland_count}")
 
     def _urban_outline_status_line(self) -> str:
         if self.urban_outline_opacity <= 0.0:

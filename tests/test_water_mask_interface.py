@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import threading
+
 import numpy as np
 from rasterio.transform import Affine
+import pytest
 
 import zstarview.water_mask_interface as mod
 from zstarview.water_overlay import DEFAULT_WATER_SAMPLE_GROWTH_FACTOR
 from zstarview.water_mask_interface import WaterSurfaceBandStats
+from zstarview.clouddisc.types import DownloadCancelledError
 
 
 def test_extract_lonlat_points_from_mask_projects_all_water_pixels() -> None:
@@ -183,6 +187,36 @@ def test_sample_water_surface_interface_ray_points_start_at_125m(monkeypatch) ->
     )
     assert captured["distances"] == (349.0,)
     assert [point.scan_distance_index for point in points] == [0]
+
+
+def test_sample_water_surface_interface_ray_points_can_be_cancelled(monkeypatch) -> None:
+    abort_event = threading.Event()
+    abort_event.set()
+
+    monkeypatch.setattr(
+        mod,
+        "build_ray_scan_grid",
+        lambda **_kwargs: type(
+            "Scan",
+            (),
+            {
+                "azimuths_deg": [0.0],
+                "distance_grid_m": np.asarray([[349.0]], dtype=np.float64),
+                "ray_lon_deg": np.asarray([[139.001]], dtype=np.float64),
+                "ray_lat_deg": np.asarray([[35.001]], dtype=np.float64),
+            },
+        )(),
+    )
+
+    with pytest.raises(DownloadCancelledError):
+        mod._sample_water_surface_interface_ray_points_for_root_with_stats(  # noqa: SLF001
+            center_lat_deg=35.0,
+            center_lon_deg=139.0,
+            observer_height_m=1.7,
+            radius_km=10.0,
+            tile_root=mod.DEFAULT_WATER_TILES_ROOT_125M,
+            abort_event=abort_event,
+        )
 
 
 def test_sample_water_surface_horizon_points_uses_horizon_altaz(monkeypatch) -> None:

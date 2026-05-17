@@ -105,16 +105,32 @@ def test_terrain_and_urban_status_lines_show_icons() -> None:
 
 def test_water_status_line_shows_only_count_when_enabled() -> None:
     dummy = SimpleNamespace(
-        water_overlay_state=SimpleNamespace(
+        water_overlay_state=WaterOverlayState(
+            sea_level_dots=[object(), object()],
+            inland_dots=[object()],
             banner_text=None,
-            dots=[object(), object(), object()],
             current_source="Water: overpass",
-            current_mode="dem",
+            current_mode="sea",
         ),
         water_overlay_opacity=0.2,
     )
 
-    assert SkyWindow._water_overlay_status_line(dummy) == "W 3"
+    assert SkyWindow._water_overlay_status_line(dummy) == "W 2+1"
+
+
+def test_water_status_line_uses_question_mark_for_pending_counts() -> None:
+    dummy = SimpleNamespace(
+        water_overlay_state=WaterOverlayState(
+            sea_level_dots=[object(), object()],
+            inland_dots=None,
+            banner_text=None,
+            current_source="Water: overpass",
+            current_mode="sea",
+        ),
+        water_overlay_opacity=0.2,
+    )
+
+    assert SkyWindow._water_overlay_status_line(dummy) == "W 2+?"
 
 
 def test_water_overlay_started_does_not_override_visible_points_banner() -> None:
