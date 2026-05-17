@@ -498,6 +498,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `FramelessWindowFrame` は frameless 専用の外装であり、独自外枠、ハンバーガーボタン、専用 resize handle を持つ
   - `StandardSkyWindow` は OS 標準の `QMainWindow` とメニューバーを使い、独自外枠は描かない
   - 共通 action は `File`、`Search`、`Layers`、`View Direction` の 4 系統に編成する
+  - `View Direction` には 5° 刻みの粗調整 action、`Shift` 併用の 1° 精密調整 action、現在値を初期値にした `Set View Center...` 直接指定ダイアログをまとめる
   - `Layers` は空側の `Sky Color`、`Clouds`、`Satellites`、`Aircraft` と、地面側の `Night Lights`、`Urban Outline`、`Terrain Horizon`、`Earth Guide` に分ける
   - `Sky Guides` は地平線・赤道・黄道・never-rises 領域・方位ラベル・天頂マーカーをまとめた表示群として扱う
   - frameless ではハンバーガーメニューの 1 階層目に同じ 4 系統の submenu を並べる
@@ -1150,10 +1151,12 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `SkyWindowState`
   - 現在の視点
   - 直近の描画用視点
+  - `rotation_step` による 5° 刻みの粗調整
   - `viewport_interaction_mode` による簡易描画状態
   - `viewport_interaction_release_pending` による release 後の通常更新待ち状態
   - `viewport_interaction_stars` による簡易描画用の明るい星テーブル
   - `viewport_interaction_mode` は fast レンダリングの入口を選ぶ状態で、入力停止後に通常描画へ戻るまで保持する
+  - 1° 刻みの精密調整と `Set View Center...` のような直接指定は、`rotation_step` とは別の入力経路として扱ってよい
   - ホバー対象
   - ハイライト対象
   - 各更新パイプラインの UI 反映状態
