@@ -105,6 +105,8 @@ from .draggable_window import DraggableWindow
 from .composite import SkyCompositorCache
 from .cloud_state import CloudImageState
 from .cloud_controller import CloudController
+from .view_direction import clamp_view_center_alt_az, resolve_view_direction_step
+from .view_direction_dialog import ViewDirectionDialog
 from .satellite_state import SatelliteState
 from .satellite_controller import SatelliteController
 from .aircraft_state import AircraftState
@@ -1411,6 +1413,13 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
         self.observer_view_menu.addSeparator()
         self._add_menu_action(
+            self.observer_view_menu,
+            "Set View Center...",
+            triggered=self._open_view_direction_dialog,
+        )
+
+        self.observer_view_menu.addSeparator()
+        self._add_menu_action(
             self.search_menu,
             "Jump to Named Star...",
             shortcut=QKeySequence("Ctrl+J"),
@@ -2035,6 +2044,18 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if target is None:
             return
         self._jump_to_search_target(target)
+
+    def _open_view_direction_dialog(self) -> None:
+        dialog = ViewDirectionDialog(tuple(self.viewer_data.view_center), self)
+        if dialog.exec() == 0:
+            return
+        alt_deg, az_deg = dialog.selected_view_center()
+        self._set_view_center(
+            alt_deg,
+            az_deg,
+            interactive_viewport=True,
+            start_viewport_idle_timer=False,
+        )
 
     def _search_jpl_targets(self, query: str) -> list[SearchJumpTarget]:
         target_time_utc = self._target_time_utc()
@@ -3087,6 +3108,22 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         interactive_viewport: bool = False,
         start_viewport_idle_timer: bool = True,
     ) -> None:
+        alt, az = self.viewer_data.view_center
+        self._set_view_center(
+            alt + d_alt,
+            az + d_az,
+            interactive_viewport=interactive_viewport,
+            start_viewport_idle_timer=start_viewport_idle_timer,
+        )
+
+    def _set_view_center(
+        self,
+        alt_deg: float,
+        az_deg: float,
+        *,
+        interactive_viewport: bool = False,
+        start_viewport_idle_timer: bool = True,
+    ) -> None:
         if interactive_viewport:
             if not bool(getattr(self.state, "viewport_interaction_mode", False)):
                 self._begin_viewport_interaction_mode(
@@ -3094,12 +3131,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 )
         else:
             self._begin_interaction_mode()
-        alt, az = self.viewer_data.view_center
-        new_alt = max(
-            OBSERVER_MIN_ALT_DEG,
-            min(OBSERVER_MAX_ALT_DEG, alt + d_alt),
-        )
-        new_az = (az + d_az) % 360.0
+        new_alt, new_az = clamp_view_center_alt_az(alt_deg, az_deg)
         self.viewer_data = replace(self.viewer_data, view_center=(new_alt, new_az))
         self.state.render_view_center = (new_alt, new_az)
         self._sync_view_altitude_actions()
@@ -3124,37 +3156,49 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
         # --- View Control ---
         if key == Qt.Key.Key_Left:
+            step_deg = resolve_view_direction_step(
+                event.modifiers(), self.state.rotation_step
+            )
             if not event.isAutoRepeat():
                 self._viewport_rotation_keys().add(key)
             self._rotate_view(
-                d_az=-self.state.rotation_step,
+                d_az=-step_deg,
                 interactive_viewport=True,
                 start_viewport_idle_timer=False,
             )
             event.accept()
         elif key == Qt.Key.Key_Right:
+            step_deg = resolve_view_direction_step(
+                event.modifiers(), self.state.rotation_step
+            )
             if not event.isAutoRepeat():
                 self._viewport_rotation_keys().add(key)
             self._rotate_view(
-                d_az=self.state.rotation_step,
+                d_az=step_deg,
                 interactive_viewport=True,
                 start_viewport_idle_timer=False,
             )
             event.accept()
         elif key == Qt.Key.Key_Up:
+            step_deg = resolve_view_direction_step(
+                event.modifiers(), self.state.rotation_step
+            )
             if not event.isAutoRepeat():
                 self._viewport_rotation_keys().add(key)
             self._rotate_view(
-                d_alt=self.state.rotation_step,
+                d_alt=step_deg,
                 interactive_viewport=True,
                 start_viewport_idle_timer=False,
             )
             event.accept()
         elif key == Qt.Key.Key_Down:
+            step_deg = resolve_view_direction_step(
+                event.modifiers(), self.state.rotation_step
+            )
             if not event.isAutoRepeat():
                 self._viewport_rotation_keys().add(key)
             self._rotate_view(
-                d_alt=-self.state.rotation_step,
+                d_alt=-step_deg,
                 interactive_viewport=True,
                 start_viewport_idle_timer=False,
             )

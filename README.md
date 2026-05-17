@@ -230,7 +230,8 @@ The GUI supports direct keyboard and menu-based navigation, search, and overlay 
 #### Key Operations
 
 * **← / →**: Rotate view azimuth by ±5°
-* **↑ / ↓**: Change view altitude by ±5° (clamped to 0°..90°)
+* **↑ / ↓**: Change view altitude by ±5° (clamped to -45°..90°)
+* **Shift + arrow keys**: Fine-tune view direction by 1°
   While arrow-key input continues, the app keeps a simplified viewport-interaction mode for about 0.7 seconds after the last input. In this mode, it shows stars up to `Vmag <= 4.0`, the celestial equator, ecliptic, horizon, terrain horizon, direction labels, and the zenith marker; planets, full star density, sky-color disc, clouds, night lights, DSO, asterisms, and urban outlines are temporarily hidden.
 * **M**: Toggle moon enlarged to 5x size
 * **D**: Toggle DSO overlays
@@ -257,6 +258,7 @@ From the hamburger menu (`☰`), you can use:
 * **Jump to Named Star...**: Choose from representative named stars (`Vmag <= 2.0`), grouped into North / Equatorial / South, then jump the view center to that star.
 * **Search Objects...**: Search across named stars, supported asterisms, places, known artificial satellites, and JPL bodies, then jump to the selected target. If the local star/asterism search finds nothing, known artificial satellites use the app-side current position first; if a target is recognized as a known artificial satellite but its current position cannot be obtained, the search fails instead of falling back to JPL. Use `Keep marker` to keep both the marker and label visible after the jump.
 * **Search Places...**: Open a separate place-search dialog backed by OpenStreetMap Nominatim, list matching places/stations/facilities, and jump toward the selected ground location.
+* **Set View Center...**: Open a direct Alt/Az dialog with the current values prefilled, then apply the entered view center immediately.
 * **Enlarge Moon**: Toggle moon enlarged to 5x size.
 * **DSO**: Toggle deep-sky object overlays on/off.
 * **Asterisms**: Toggle asterism overlays on/off (when enabled, dim overlays stay visible; hovering a member star brightens the matching asterism and shows its label).
