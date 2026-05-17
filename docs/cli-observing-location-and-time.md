@@ -61,9 +61,9 @@ zstarview "Tokyo Tower" --height-add-m 150
 
 <table>
   <tr>
-    <td align="center" width="33%"><img src="docs/images/screenshot-from-tokyoskytree.png" alt="Built-in tower name example: Tokyo Skytree" width="100%" /></td>
-    <td align="center" width="33%"><img src="docs/images/screenshot-from-tokyoskytree-2.png" alt="Place search example: --place \"Tokyo Skytree\"" width="100%" /></td>
-    <td align="center" width="33%"><img src="docs/images/screenshot-from-tokyoskytree-3.png" alt="Manual height example: --place \"Tokyo Skytree\" --height-add-m 635.7" width="100%" /></td>
+    <td align="center" width="33%"><img src="images/screenshot-from-tokyoskytree.png" alt="Built-in tower name example: Tokyo Skytree" width="100%" /></td>
+    <td align="center" width="33%"><img src="images/screenshot-from-tokyoskytree-2.png" alt="Place search example: --place \"Tokyo Skytree\"" width="100%" /></td>
+    <td align="center" width="33%"><img src="images/screenshot-from-tokyoskytree-3.png" alt="Manual height example: --place \"Tokyo Skytree\" --height-add-m 635.7" width="100%" /></td>
   </tr>
   <tr>
     <td align="center">Built-in tower name</td>

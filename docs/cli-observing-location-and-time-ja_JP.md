@@ -61,9 +61,9 @@ zstarview "Tokyo Tower" --height-add-m 150
 
 <table>
   <tr>
-    <td align="center" width="33%"><img src="docs/images/screenshot-from-tokyoskytree.png" alt="同梱タワー名の例: 東京スカイツリー" width="100%" /></td>
-    <td align="center" width="33%"><img src="docs/images/screenshot-from-tokyoskytree-2.png" alt="地名検索の例: --place \"東京スカイツリー\"" width="100%" /></td>
-    <td align="center" width="33%"><img src="docs/images/screenshot-from-tokyoskytree-3.png" alt="手動高さの例: --place \"東京スカイツリー\" --height-add-m 635.7" width="100%" /></td>
+    <td align="center" width="33%"><img src="images/screenshot-from-tokyoskytree.png" alt="同梱タワー名の例: 東京スカイツリー" width="100%" /></td>
+    <td align="center" width="33%"><img src="images/screenshot-from-tokyoskytree-2.png" alt="地名検索の例: --place \"東京スカイツリー\"" width="100%" /></td>
+    <td align="center" width="33%"><img src="images/screenshot-from-tokyoskytree-3.png" alt="手動高さの例: --place \"東京スカイツリー\" --height-add-m 635.7" width="100%" /></td>
   </tr>
   <tr>
     <td align="center">同梱タワー名</td>
