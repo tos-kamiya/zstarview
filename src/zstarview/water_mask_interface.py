@@ -127,6 +127,16 @@ def _band_category_for_tile_root(tile_root: Path) -> str:
     return "sea"
 
 
+def _tile_grid_shape_for_root(tile_root: Path | None) -> tuple[int, int]:
+    if tile_root == DEFAULT_WATER_TILES_ROOT_125M:
+        return 16, 32
+    if tile_root == DEFAULT_WATER_TILES_ROOT_250M:
+        return 8, 16
+    if tile_root == DEFAULT_WATER_TILES_ROOT_500M:
+        return 4, 8
+    return 4, 8
+
+
 def _water_band_specs(
     *,
     tile_root: Path | None,
@@ -177,11 +187,17 @@ class WaterSurfaceBandStats:
     visible_point_count: int
 
 
-def _tile_key_for_lonlat(lon_deg: float, lat_deg: float) -> tuple[int, int]:
-    row = int(math.floor((90.0 - float(lat_deg)) / 45.0))
-    col = int(math.floor((float(lon_deg) + 180.0) / 45.0))
-    row = max(0, min(3, row))
-    col = max(0, min(7, col))
+def _tile_key_for_lonlat(
+    lon_deg: float,
+    lat_deg: float,
+    *,
+    tile_root: Path | None = None,
+) -> tuple[int, int]:
+    rows, cols = _tile_grid_shape_for_root(tile_root)
+    row = int(math.floor((90.0 - float(lat_deg)) / (180.0 / float(rows))))
+    col = int(math.floor((float(lon_deg) + 180.0) / (360.0 / float(cols))))
+    row = max(0, min(rows - 1, row))
+    col = max(0, min(cols - 1, col))
     return row, col
 
 
@@ -201,7 +217,7 @@ def _sample_water_mask_for_lonlat_points(
 
     points_by_tile: dict[tuple[int, int], list[tuple[int, float, float]]] = {}
     for point_index, (lon_deg, lat_deg) in enumerate(lonlat_points):
-        tile_key = _tile_key_for_lonlat(lon_deg, lat_deg)
+        tile_key = _tile_key_for_lonlat(lon_deg, lat_deg, tile_root=tile_root)
         points_by_tile.setdefault(tile_key, []).append((point_index, float(lon_deg), float(lat_deg)))
 
     tile_paths = {

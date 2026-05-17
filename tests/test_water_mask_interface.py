@@ -65,6 +65,12 @@ def test_collapse_tile_points_for_250m_root_picks_one_point() -> None:
     assert got == ((2.0, 1.0),)
 
 
+def test_tile_key_for_lonlat_uses_resolution_specific_grids() -> None:
+    assert mod._tile_key_for_lonlat(135.0, 0.0, tile_root=mod.DEFAULT_WATER_TILES_ROOT_125M) == (8, 28)  # noqa: SLF001
+    assert mod._tile_key_for_lonlat(135.0, 0.0, tile_root=mod.DEFAULT_WATER_TILES_ROOT_250M) == (4, 14)  # noqa: SLF001
+    assert mod._tile_key_for_lonlat(135.0, 0.0, tile_root=mod.DEFAULT_WATER_TILES_ROOT_500M) == (2, 7)  # noqa: SLF001
+
+
 def test_sample_water_surface_interface_points_labels_tile_bands(monkeypatch) -> None:
     def _fake_load(*, tile_root, **_kwargs):
         if tile_root == mod.DEFAULT_WATER_TILES_ROOT_125M:
@@ -295,6 +301,38 @@ def test_sample_water_mask_for_lonlat_points_uses_marker_tiles(tmp_path) -> None
     )
 
     assert flags == [True, False]
+
+
+def test_sample_water_mask_for_lonlat_points_uses_resolution_specific_keys(
+    tmp_path, monkeypatch
+) -> None:
+    root_125 = tmp_path / "125"
+    root_250 = tmp_path / "250"
+    root_500 = tmp_path / "500"
+    root_125.mkdir()
+    root_250.mkdir()
+    root_500.mkdir()
+
+    (root_125 / "tile_y8_x28.1").write_bytes(b"")
+    (root_250 / "tile_y4_x14.1").write_bytes(b"")
+    (root_500 / "tile_y2_x7.1").write_bytes(b"")
+
+    monkeypatch.setattr(mod, "DEFAULT_WATER_TILES_ROOT_125M", root_125)
+    monkeypatch.setattr(mod, "DEFAULT_WATER_TILES_ROOT_250M", root_250)
+    monkeypatch.setattr(mod, "DEFAULT_WATER_TILES_ROOT_500M", root_500)
+
+    assert mod._sample_water_mask_for_lonlat_points(  # noqa: SLF001
+        [(135.0, 0.0)],
+        tile_root=root_125,
+    ) == [True]
+    assert mod._sample_water_mask_for_lonlat_points(  # noqa: SLF001
+        [(135.0, 0.0)],
+        tile_root=root_250,
+    ) == [True]
+    assert mod._sample_water_mask_for_lonlat_points(  # noqa: SLF001
+        [(135.0, 0.0)],
+        tile_root=root_500,
+    ) == [True]
 
 
 def test_load_water_surface_interface_lonlat_points_skips_marker_tiles(
