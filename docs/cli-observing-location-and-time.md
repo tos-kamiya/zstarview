@@ -72,6 +72,10 @@ zstarview "Tokyo Tower" --height-add-m 150
   </tr>
 </table>
 
+#### Footnotes
+
+\*1 `--hours`, `--days`, and `--datetime` do not show cloud, aircraft, or artificial satellite overlays when the sky is not real-time.
+
 #### Mountain name input
 
 You can also start from the bundled mountain/viewpoint dataset.
@@ -140,3 +144,7 @@ Instead of a city name, you can directly specify coordinates.
 * When starting with direct coordinates, the timezone is resolved from the parsed location in the same way as `--place`. `--timezone TZ` overrides that result.
 * `--height-add-m` remains the primary way to specify the additive height above the active base. Google Maps URL altitude-like fields do not affect this value.
 * `--use-building-top` may be combined with direct-coordinate input. In this experimental mode, the app looks for a nearby building around the resolved point and uses its top as the observation base when found.
+
+#### Footnotes
+
+\*1 `--hours`, `--days`, and `--datetime` do not show cloud, aircraft, or artificial satellite overlays when the sky is not real-time.

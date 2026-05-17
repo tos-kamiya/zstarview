@@ -24,3 +24,9 @@
 Water-surface rendering uses two different data paths: sea dots come from local sea-mask tiles derived from [OSM Water Polygons](https://osmdata.openstreetmap.de/data/water-polygons.html), while inland water dots come from OpenStreetMap features fetched through the [Overpass API](https://overpass-api.de/).
 
 Some coastal, higher viewpoints can make a single Overpass fetch return around 9 MB of inland water data. The raw footprint is cached by viewpoint, but repeatedly changing viewpoints can accumulate download volume and may approach the public Overpass instance's rough 1 GB/day safety guideline.
+
+#### Footnotes
+
+\*2 Cloud rendering uses infrared data from meteorological satellites (**Himawari** and **NOAA GOES** series), retrieved from their public S3 buckets. See Troubleshooting for tips on slow networks or offline use (for example, disabling clouds with `-c 0`).
+
+\*4 Terrain horizon rendering downloads Copernicus DEM tiles on first use and reuses the cached DEM later. When enabled, the terrain profile also becomes the boundary for the ground-color fill inside the disc. The Earth guide is a separate layer with its own opacity toggle, and both layers currently share the dark olive-brown ground tone from the palette.

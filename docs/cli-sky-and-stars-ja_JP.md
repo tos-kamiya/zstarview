@@ -63,3 +63,7 @@ zstarview --show-dso-initial false --show-asterisms-initial true Tokyo
 - 春: `Big Dipper`（北斗七星）, `Little Dipper`, `Spring Triangle`, `Arc to Arcturus`, `Leo Sickle`, `Southern Triangle`
 - 夏: `Summer Triangle`（夏の大三角）, `Northern Cross`, `Teapot`, `Keystone`
 - 秋: `Great Square of Pegasus`（ペガススの四辺形）, `Circlet of Pisces`, `Water Jar of Aquarius`, `Cassiopeia W`, `House of Cepheus`, `Job's Coffin`
+
+#### 脚注
+
+※3 最も明るい等級差の倍率は、古典的な Pogson 値 \(100^{1/5}\approx2.512\) を超えられません。

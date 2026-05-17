@@ -63,3 +63,7 @@ These overlays are **asterisms** (popular line patterns), not formal IAU constel
 - Spring: `Big Dipper`, `Little Dipper`, `Spring Triangle`, `Arc to Arcturus`, `Leo Sickle`, `Southern Triangle`
 - Summer: `Summer Triangle`, `Northern Cross`, `Teapot`, `Keystone`
 - Autumn: `Great Square of Pegasus`, `Circlet of Pisces`, `Water Jar of Aquarius`, `Cassiopeia W`, `House of Cepheus`, `Job's Coffin`
+
+#### Footnotes
+
+\*3 The brightest-magnitude multiplier cannot exceed the classical Pogson value of \(100^{1/5}\approx2.512\).

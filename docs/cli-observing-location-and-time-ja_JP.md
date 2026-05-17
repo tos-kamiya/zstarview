@@ -72,6 +72,10 @@ zstarview "Tokyo Tower" --height-add-m 150
   </tr>
 </table>
 
+#### 脚注
+
+※1 `--hours`、`--days`、`--datetime` でリアルタイムではない星空を表示した場合、雲、航空機、人工衛星は描画されません。
+
 #### 山名入力
 
 同梱の山ビューポイントデータから起動することもできます。
@@ -150,3 +154,7 @@ zstarview "www.google.com/maps/@35.68,139.76,17z"
 zstarview "N35.68;E139.76" --datetime "2025-09-12 21 JST"
 zstarview "35.68;139.76" --height-add-m 120
 ```
+
+#### 脚注
+
+※1 `--hours`、`--days`、`--datetime` でリアルタイムではない星空を表示した場合、雲、航空機、人工衛星は描画されません。
