@@ -112,7 +112,6 @@ class _StartupBootstrap(QObject):
                 timezone_name=city.tz,
                 timezone_override=timezone_override,
             )
-            _verify_ephemeris_for_launch()
             startup_search_target = None
             if startup_search:
                 startup_target_time_utc = target_time_utc_from_delta(delta_t)
@@ -333,6 +332,11 @@ def main() -> None:
     startup_log_handler = BufferedStartupLogHandler()
     root_logger.addHandler(startup_log_handler)
     logger.info(f"{APP_DISPLAY_NAME} starting...")
+
+    try:
+        _verify_ephemeris_for_launch()
+    except LaunchSetupError:
+        raise SystemExit(1)
 
     theme = THEME_STYLES_BY_PRESET.get(args.theme, THEME_STYLES_BY_PRESET["night"])
     star_catalog = _load_star_catalog_for_launch(args.vmag_limit)

@@ -45,6 +45,7 @@ logger = logging.getLogger(__name__)
 
 def compute_sky_snapshot(
     *,
+    ephemeris: object,
     lat: float,
     lon: float,
     observer_height_m: float,
@@ -110,6 +111,7 @@ def compute_sky_snapshot(
         observer_height_m,
         time_obj,
         view_center,
+        ephemeris,
         content_fov_deg=content_fov_deg,
     )
     celestial_equator_points = calculate_celestial_equator_points(loc, time_obj)
@@ -208,6 +210,7 @@ class SkyDataWorker(QObject):
     def update(
         self,
         *,
+        ephemeris: object,
         lat: float,
         lon: float,
         observer_height_m: float,
@@ -237,6 +240,7 @@ class SkyDataWorker(QObject):
         self._spawn_worker(
             target=self._run_update,
             kwargs={
+                "ephemeris": ephemeris,
                 "lat": lat,
                 "lon": lon,
                 "observer_height_m": observer_height_m,
@@ -307,6 +311,7 @@ class SkyDataWorker(QObject):
     def _run_update(
         self,
         *,
+        ephemeris: object,
         lat: float,
         lon: float,
         observer_height_m: float,
@@ -330,6 +335,7 @@ class SkyDataWorker(QObject):
         try:
             with HEAVY_NATIVE_WORK_LOCK:
                 payload = compute_sky_snapshot(
+                    ephemeris=ephemeris,
                     lat=lat,
                     lon=lon,
                     observer_height_m=observer_height_m,

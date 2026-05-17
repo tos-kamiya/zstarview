@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Dict, Optional
 
 from ..aircraft import project_aircraft_snapshots
+from ..astro import load_ephemeris
 from ..paths import CACHE_PATH
 from ..satellites import project_satellite_records
 from ..search.jpl import project_jpl_target_altaz_from_state_vector
@@ -408,7 +409,11 @@ class SkyWindowUpdatesMixin:
             self.star_catalog_lod6_indices if use_lod6_catalog else None
         )
         worker_star_vmag_limit = None if use_lod6_catalog else star_vmag_limit
+        ephemeris = getattr(self, "_ephemeris", None)
+        if ephemeris is None:
+            ephemeris = load_ephemeris()
         started = self._sky_worker.update(
+            ephemeris=ephemeris,
             lat=lat,
             lon=lon,
             observer_height_m=self.viewer_data.observer_height_m,

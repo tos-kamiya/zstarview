@@ -50,6 +50,7 @@ from PySide6.QtWidgets import QWidget
 from ..__about__ import __version__
 from ..astro import (
     calculate_visible_stars,
+    load_ephemeris,
     radec_to_altaz as _radec_to_altaz,
 )
 from ..clouddisc import (
@@ -1064,6 +1065,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         # --- Data Update Timers and State ---
         self._is_shutting_down: bool = False
         self._setup_update_infrastructure()
+        self._ephemeris = load_ephemeris()
 
         # --- Cloud Data State and Cache ---
         self.cloud_state = CloudImageState()

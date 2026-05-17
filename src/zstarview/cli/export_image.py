@@ -1323,7 +1323,9 @@ def main() -> None:
     )
     star_vmag_limit = None if use_lod6_catalog else float(user_options.vmag_limit)
     theme = THEME_STYLES_BY_PRESET.get(user_options.visual_preset, THEME_STYLES_BY_PRESET["night"])
+    ephemeris = load_ephemeris()
     sky_payload = compute_sky_snapshot(
+        ephemeris=ephemeris,
         lat=float(viewer_data.lat_deg),
         lon=float(viewer_data.lon_deg),
         observer_height_m=float(viewer_data.observer_height_m),

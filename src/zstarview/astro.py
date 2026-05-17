@@ -488,7 +488,11 @@ def calculate_moon_phase_angle(observer: Topos, t: skyfield.timelib.Time, planet
     return e_to_moon.separation_from(e_to_sun).degrees
 
 
-def calculate_lunar_eclipse_data(t: astropy.time.Time, observer) -> LunarEclipseInfo:
+def calculate_lunar_eclipse_data(
+    t: astropy.time.Time,
+    observer,
+    planets: Any,
+) -> LunarEclipseInfo:
     """Calculate lunar eclipse parameters for a given time and observer.
 
     Returns an `EclipseInfo` object containing:
@@ -498,8 +502,6 @@ def calculate_lunar_eclipse_data(t: astropy.time.Time, observer) -> LunarEclipse
     - umbra and penumbra angular radii,
     - apparent moon radius.
     """
-    # Load planetary ephemerides
-    planets = load_ephemeris()
     earth = planets["earth"]
     sun = planets["sun"]
     moon = planets["moon"]
@@ -593,8 +595,11 @@ def _circle_overlap_area_fraction(R: float, r: float, d: float) -> float:
     return lens / (math.pi * R2)
 
 
-def calculate_solar_eclipse_data(t: astropy.time.Time, observer) -> SolarEclipseInfo:
-    planets = load_ephemeris()
+def calculate_solar_eclipse_data(
+    t: astropy.time.Time,
+    observer,
+    planets: Any,
+) -> SolarEclipseInfo:
     sun = planets["sun"]
     moon = planets["moon"]
 
@@ -657,12 +662,12 @@ def calculate_planets(
     observer_height_m: float,
     astropy_time: astropy.time.Time,
     view_center: Tuple[float, float],
+    planets: Any,
     content_fov_deg: float = FIELD_OF_VIEW_DEG,
 ) -> List[PlanetBody]:
     """Calculate all planetary bodies (Sun, Moon, planets)."""
     ts = skyfield.api.load.timescale()
     t = ts.from_astropy(astropy_time)
-    planets = load_ephemeris()
     observer = planets["earth"] + Topos(
         latitude_degrees=lat,
         longitude_degrees=lon,
@@ -688,10 +693,10 @@ def calculate_planets(
         pa = lei = None
         if name == "moon":
             pa = calculate_moon_phase_angle(observer, t, planets)
-            lei = calculate_lunar_eclipse_data(t, observer)
+            lei = calculate_lunar_eclipse_data(t, observer, planets)
         sei = None
         if name == "sun":
-            sei = calculate_solar_eclipse_data(t, observer)
+            sei = calculate_solar_eclipse_data(t, observer, planets)
 
         bodies.append(
             PlanetBody(
