@@ -52,6 +52,26 @@ zstarview "Tokyo Skytree"
 zstarview "Tokyo Tower" --height-add-m 150
 ```
 
+#### タワー名と `--place` の違い
+
+* 同梱のタワー/展望地点データにある名前、たとえば `Tokyo Skytree` を指定すると、データに登録されたタワー高が使われます。現在のデータでは東京スカイツリーは 634m なので、既定の `1.7m` を足した最終表示は `635.7m` になります。
+* `--place "東京スカイツリー"` は同じ文字列を Nominatim で地名検索するだけなので、タワーデータの高さは使われず、地表地点として扱われます。
+* `--place` を使ったままタワー相当の見え方にしたい場合は、`--height-add-m` で高さを手動指定します。たとえば `--place "東京スカイツリー" --height-add-m 635.7` とすると、タワー指定に近い表示にできます。
+* 同梱データにない建物でも、`--height-add-m` を使えば手動で見たい高さを指定できます。
+
+<table>
+  <tr>
+    <td align="center" width="33%"><img src="docs/images/screenshot-from-tokyoskytree.png" alt="同梱タワー名の例: 東京スカイツリー" width="100%" /></td>
+    <td align="center" width="33%"><img src="docs/images/screenshot-from-tokyoskytree-2.png" alt="地名検索の例: --place \"東京スカイツリー\"" width="100%" /></td>
+    <td align="center" width="33%"><img src="docs/images/screenshot-from-tokyoskytree-3.png" alt="手動高さの例: --place \"東京スカイツリー\" --height-add-m 635.7" width="100%" /></td>
+  </tr>
+  <tr>
+    <td align="center">同梱タワー名</td>
+    <td align="center">`--place` 検索</td>
+    <td align="center">`--place` + 手動高さ</td>
+  </tr>
+</table>
+
 #### 山名入力
 
 同梱の山ビューポイントデータから起動することもできます。

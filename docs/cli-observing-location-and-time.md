@@ -30,7 +30,6 @@ When `--use-building-top` is enabled, the observation base switches to a nearby 
 - The selected result is saved in config and reused on the next launch without re-querying Nominatim.
 - `--use-building-top` can be combined with `--place`. This mode is experimental and may delay startup because the app resolves nearby building data before opening the window.
 
-
 #### Tower name input
 
 You can also start from a built-in tower/viewpoint dataset generated from Wikidata.
@@ -52,6 +51,26 @@ Example:
 zstarview "Tokyo Skytree"
 zstarview "Tokyo Tower" --height-add-m 150
 ```
+
+#### Tower names vs `--place`
+
+* A built-in tower/viewpoint name such as `Tokyo Skytree` uses the stored tower height from the viewpoint dataset. In the current dataset, Tokyo Skytree is 634 m tall, so with the default `1.7 m` add height the total comes to `635.7 m`.
+* `--place "Tokyo Skytree"` resolves the same text as a place name through Nominatim and returns only the ground location. It does not load the tower dataset height.
+* If you want the tower-like viewpoint while using `--place`, set the additive height manually, for example `--place "Tokyo Skytree" --height-add-m 635.7`.
+* For a building that is not registered in the built-in tower dataset, `--height-add-m` is the way to set the viewing height manually.
+
+<table>
+  <tr>
+    <td align="center" width="33%"><img src="docs/images/screenshot-from-tokyoskytree.png" alt="Built-in tower name example: Tokyo Skytree" width="100%" /></td>
+    <td align="center" width="33%"><img src="docs/images/screenshot-from-tokyoskytree-2.png" alt="Place search example: --place \"Tokyo Skytree\"" width="100%" /></td>
+    <td align="center" width="33%"><img src="docs/images/screenshot-from-tokyoskytree-3.png" alt="Manual height example: --place \"Tokyo Skytree\" --height-add-m 635.7" width="100%" /></td>
+  </tr>
+  <tr>
+    <td align="center">Built-in tower name</td>
+    <td align="center">`--place` search</td>
+    <td align="center">`--place` + manual height</td>
+  </tr>
+</table>
 
 #### Mountain name input
 
