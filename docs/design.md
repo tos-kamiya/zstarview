@@ -759,6 +759,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `src/zstarview/gui/water_overlay_controller.py`
   - 海マスク更新の実行制御
   - latest-request-wins と TTL 判定を適用し、band cache と active point set の切り替えを管理する
+  - per-scope cache は `*_simplified.json` を正本として保存し、古い `*.json` がより新しい場合は observer 座標に基づいて簡約版を再生成してよい
   - terrain horizon が有効なときだけ水面ドットを表示し、地形地平線が非表示のときは水面ドットも抑止する
   - sea-mask の海面高を 0.0m 固定にしても、表示連動は terrain horizon に残すほうが見え方の整合性が高い
   - `Terrain Horizon` が OFF の間は `Water Surface` の QAction を無効化して、依存関係を GUI で明示する
@@ -787,6 +788,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - latest-request-wins と TTL 判定を適用し、band cache と active point set の切り替えを管理する
   - terrain horizon の ON/OFF に応じて、active dots を再選択してよい
   - 取得済みの band stats は保持してよく、terrain horizon の OFF は表示切り替えだけに使ってよい
+  - per-scope cache は `*_simplified.json` を正本として保存し、古い `*.json` がより新しい場合は observer 座標に基づいて簡約版を再生成してよい
 - `src/zstarview/render/terrain.py`
   - `WaterOverlayPoint` を小さな青色点として描画する
   - 点の alpha は `water_overlay_opacity` と距離減衰を反映し、terrain horizon の描画と同じ sky-dome 合成段へ重ねる

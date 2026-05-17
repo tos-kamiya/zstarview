@@ -38,6 +38,14 @@ def water_overlay_cache_path(
     *,
     cache_root: str | Path = WATER_OVERLAY_CACHE_ROOT_DIR,
 ) -> Path:
+    return Path(cache_root) / f"{scope_key}_simplified.json"
+
+
+def water_overlay_cache_legacy_path(
+    scope_key: str,
+    *,
+    cache_root: str | Path = WATER_OVERLAY_CACHE_ROOT_DIR,
+) -> Path:
     return Path(cache_root) / f"{scope_key}.json"
 
 
@@ -45,8 +53,77 @@ def load_water_overlay_cache(
     scope_key: str,
     *,
     cache_root: str | Path = WATER_OVERLAY_CACHE_ROOT_DIR,
+    observer_lat_deg: float | None = None,
+    observer_lon_deg: float | None = None,
 ) -> WaterOverlayCacheSnapshot | None:
+    simplified_path = water_overlay_cache_path(scope_key, cache_root=cache_root)
+    legacy_path = water_overlay_cache_legacy_path(scope_key, cache_root=cache_root)
+    simplified_snapshot = _load_snapshot_from_path(simplified_path)
+    legacy_snapshot = _load_snapshot_from_path(legacy_path)
+
+    simplified_mtime_ns = _file_mtime_ns(simplified_path)
+    legacy_mtime_ns = _file_mtime_ns(legacy_path)
+
+    if simplified_snapshot is not None:
+        if (
+            legacy_snapshot is not None
+            and legacy_mtime_ns is not None
+            and simplified_mtime_ns is not None
+            and legacy_mtime_ns > simplified_mtime_ns
+        ):
+            return _maybe_rebuild_simplified_cache(
+                scope_key,
+                cache_root=cache_root,
+                snapshot=legacy_snapshot,
+                observer_lat_deg=observer_lat_deg,
+                observer_lon_deg=observer_lon_deg,
+            )
+        return simplified_snapshot
+
+    if legacy_snapshot is not None:
+        if legacy_mtime_ns is not None and simplified_mtime_ns is not None:
+            if legacy_mtime_ns <= simplified_mtime_ns:
+                return legacy_snapshot
+        return _maybe_rebuild_simplified_cache(
+            scope_key,
+            cache_root=cache_root,
+            snapshot=legacy_snapshot,
+            observer_lat_deg=observer_lat_deg,
+            observer_lon_deg=observer_lon_deg,
+        )
+
+    return None
+
+
+def save_water_overlay_cache(
+    scope_key: str,
+    snapshot: WaterOverlayCacheSnapshot,
+    *,
+    cache_root: str | Path = WATER_OVERLAY_CACHE_ROOT_DIR,
+) -> Path:
     path = water_overlay_cache_path(scope_key, cache_root=cache_root)
+    return save_water_overlay_cache_to_path(path, scope_key=scope_key, snapshot=snapshot)
+
+
+def save_water_overlay_cache_to_path(
+    path: Path,
+    *,
+    scope_key: str,
+    snapshot: WaterOverlayCacheSnapshot,
+) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "cache_format_version": WATER_OVERLAY_CACHE_FORMAT_VERSION,
+        "scope_key": str(scope_key),
+        "fetched_at_utc": _serialize_optional_utc(snapshot.fetched_at_utc),
+        "water_polygon_count": int(snapshot.water_polygon_count),
+        "footprints": [_serialize_footprint(footprint) for footprint in snapshot.footprints],
+    }
+    path.write_text(json.dumps(payload, separators=(",", ":"), sort_keys=True), encoding="utf-8")
+    return path
+
+
+def _load_snapshot_from_path(path: Path) -> WaterOverlayCacheSnapshot | None:
     if not path.exists():
         return None
     try:
@@ -74,23 +151,41 @@ def load_water_overlay_cache(
         return None
 
 
-def save_water_overlay_cache(
+def _file_mtime_ns(path: Path) -> int | None:
+    try:
+        return path.stat().st_mtime_ns
+    except FileNotFoundError:
+        return None
+
+
+def _maybe_rebuild_simplified_cache(
     scope_key: str,
-    snapshot: WaterOverlayCacheSnapshot,
     *,
-    cache_root: str | Path = WATER_OVERLAY_CACHE_ROOT_DIR,
-) -> Path:
-    path = water_overlay_cache_path(scope_key, cache_root=cache_root)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    payload = {
-        "cache_format_version": WATER_OVERLAY_CACHE_FORMAT_VERSION,
-        "scope_key": str(scope_key),
-        "fetched_at_utc": _serialize_optional_utc(snapshot.fetched_at_utc),
-        "water_polygon_count": int(snapshot.water_polygon_count),
-        "footprints": [_serialize_footprint(footprint) for footprint in snapshot.footprints],
-    }
-    path.write_text(json.dumps(payload, separators=(",", ":"), sort_keys=True), encoding="utf-8")
-    return path
+    cache_root: str | Path,
+    snapshot: WaterOverlayCacheSnapshot,
+    observer_lat_deg: float | None,
+    observer_lon_deg: float | None,
+) -> WaterOverlayCacheSnapshot:
+    if observer_lat_deg is None or observer_lon_deg is None:
+        return snapshot
+    from ..water_overlay import simplify_water_footprints_for_observer
+
+    simplified_footprints = simplify_water_footprints_for_observer(
+        snapshot.footprints,
+        observer_lat_deg=float(observer_lat_deg),
+        observer_lon_deg=float(observer_lon_deg),
+    )
+    rebuilt = WaterOverlayCacheSnapshot(
+        footprints=simplified_footprints,
+        water_polygon_count=len(simplified_footprints),
+        fetched_at_utc=snapshot.fetched_at_utc,
+    )
+    save_water_overlay_cache(
+        scope_key,
+        rebuilt,
+        cache_root=cache_root,
+    )
+    return rebuilt
 
 
 def _serialize_footprint(footprint: WaterPolygonFootprint) -> dict[str, object]:

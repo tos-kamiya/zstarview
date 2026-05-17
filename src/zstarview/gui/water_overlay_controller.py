@@ -497,18 +497,6 @@ class WaterOverlayController(QObject):
             raise
         except Exception:
             if snapshot.footprints:
-                simplified_footprints = simplify_water_footprints_for_observer(
-                    snapshot.footprints,
-                    observer_lat_deg=float(lat_deg),
-                    observer_lon_deg=float(lon_deg),
-                )
-                if simplified_footprints != snapshot.footprints:
-                    snapshot = WaterOverlayCacheSnapshot(
-                        footprints=simplified_footprints,
-                        water_polygon_count=len(simplified_footprints),
-                        fetched_at_utc=snapshot.fetched_at_utc,
-                    )
-                    save_water_overlay_cache(scope_key, snapshot)
                 cache = _WaterOverlayScopeCache(
                     footprints=snapshot.footprints,
                     fetched_at_utc=snapshot.fetched_at_utc,
@@ -526,28 +514,20 @@ class WaterOverlayController(QObject):
         lon_deg: float,
         now: datetime,
     ) -> WaterOverlayCacheSnapshot | None:
-        snapshot = load_water_overlay_cache(scope_key)
+        snapshot = load_water_overlay_cache(
+            scope_key,
+            observer_lat_deg=float(lat_deg),
+            observer_lon_deg=float(lon_deg),
+        )
         if snapshot is None:
             return None
-        if water_overlay_cache_is_recent(
+        if not water_overlay_cache_is_recent(
             snapshot,
             now_utc=now,
             max_age_seconds=self._cache_retention_seconds,
         ):
-            simplified_footprints = simplify_water_footprints_for_observer(
-                snapshot.footprints,
-                observer_lat_deg=float(lat_deg),
-                observer_lon_deg=float(lon_deg),
-            )
-            if simplified_footprints != snapshot.footprints:
-                snapshot = WaterOverlayCacheSnapshot(
-                    footprints=simplified_footprints,
-                    water_polygon_count=len(simplified_footprints),
-                    fetched_at_utc=snapshot.fetched_at_utc,
-                )
-                save_water_overlay_cache(scope_key, snapshot)
-            return snapshot
-        return None
+            return None
+        return snapshot
 
     def _scope_cache_from_snapshot(
         self,

@@ -126,7 +126,7 @@ def test_water_overlay_controller_saves_fresh_disk_snapshot(monkeypatch) -> None
     assert saved["payload"][1].footprints == (footprint,)
 
 
-def test_water_overlay_controller_simplifies_recent_cached_footprints(
+def test_water_overlay_controller_uses_recent_cached_footprints_as_is(
     monkeypatch,
 ) -> None:
     controller = WaterOverlayController()
@@ -172,14 +172,8 @@ def test_water_overlay_controller_simplifies_recent_cached_footprints(
         now_utc=datetime.now(timezone.utc),
     )
 
-    assert len(scope_cache.footprints) == 1
-    assert len(scope_cache.footprints[0].outer_rings_lonlat[0]) < len(
-        footprint.outer_rings_lonlat[0]
-    )
-    assert saved["payload"][0] == "scope"
-    assert len(saved["payload"][1].footprints[0].outer_rings_lonlat[0]) < len(
-        footprint.outer_rings_lonlat[0]
-    )
+    assert scope_cache.footprints == snapshot.footprints
+    assert saved == {}
 
 
 def test_water_overlay_controller_uses_sea_mask_points_before_sampling(monkeypatch, caplog) -> None:
@@ -389,6 +383,16 @@ def test_run_update_does_not_refetch_dem_for_gui_mode(monkeypatch) -> None:
         )
         if footprints
         else (),
+    )
+    monkeypatch.setattr(
+        mod,
+        "sample_water_surface_interface_points_with_stats",
+        lambda **_kwargs: (
+            (
+                WaterOverlayPoint("sea", 1.0, 10.0, 0.5, water_category="sea-125"),
+            ),
+            (WaterSurfaceBandStats("125m", 1, 1, 1, 1),),
+        ),
     )
     monkeypatch.setattr(
         controller,
