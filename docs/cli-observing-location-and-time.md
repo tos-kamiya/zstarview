@@ -14,10 +14,9 @@
 | `--edge-fov-deg DEGREES` | Projection scale for the window edge. `95` means the window edge corresponds to `95°` from the view center. | `95` |
 | `--content-fov-deg DEGREES` | Shared overscan content FOV for all layers. The window edge still corresponds to `90°` from the view center; values above `90` let sky/cloud/background content extend beyond the window edge and reduce empty corner regions. Allowed range: `90`–`127`. | `110` |
 | `--height-add-m METERS` | Additional height above the active observation base in meters. This replaces the default add height of `1.7` meters, which assumes a typical standing observer height. For tower and mountain viewpoints, the viewpoint's own height/elevation remains separate from this value. | `1.7` |
-| `--use-building-top` | Experimental. For city / `--place` / direct-coordinate / supported Google Maps URL input, if a building is found within about 5 meters of the resolved location, use that building's highest top height as the active observation base. Tower and mountain viewpoints are not affected. | off |
+| `--use-building-top` | Use a nearby building top as the active observation base when one is found within about 5 meters of the resolved location. | off |
 
 Note: `--observer-height-m` remains available as a compatibility alias for `--height-add-m`.
-When `--use-building-top` is enabled, the observation base switches to a nearby building top when one is available, and `--height-add-m` is added on top of that base.
 
 #### About `--place`
 
@@ -28,7 +27,6 @@ When `--use-building-top` is enabled, the observation base switches to a nearby 
 - When multiple candidates are found, they are logged to the terminal and the top candidate is still used.
 - The full returned place name is shown in the GUI location label so mismatches are easier to notice.
 - The selected result is saved in config and reused on the next launch without re-querying Nominatim.
-- `--use-building-top` can be combined with `--place`. This mode is experimental and may delay startup because the app resolves nearby building data before opening the window.
 
 #### Tower name input
 
@@ -143,7 +141,6 @@ Instead of a city name, you can directly specify coordinates.
 * Zoom, altitude, heading, pitch, and similar trailing URL components are ignored.
 * When starting with direct coordinates, the timezone is resolved from the parsed location in the same way as `--place`. `--timezone TZ` overrides that result.
 * `--height-add-m` remains the primary way to specify the additive height above the active base. Google Maps URL altitude-like fields do not affect this value.
-* `--use-building-top` may be combined with direct-coordinate input. In this experimental mode, the app looks for a nearby building around the resolved point and uses its top as the observation base when found.
 
 #### Footnotes
 

@@ -303,10 +303,7 @@ zstarview -p "Matsue Station" -r 2.0 -b 20
 
 - `-r`, `--urban-outline-radius-km`: fetch radius in kilometers
 - `-b`, `--urban-outline-min-building-height-m`: minimum building height in meters
-- `--urban-outline-feature-type`: Overture cache mode; default `both`
-
-The cache key includes location, radius, and minimum building height, so changing
-those values creates a separate cached dataset.
+- `--urban-outline-feature-type`: choose which urban-outline data is used for display; default `both`
 
 </details>
 

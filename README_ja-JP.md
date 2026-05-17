@@ -304,10 +304,7 @@ zstarview -p "Matsue Station" -r 2.0 -b 20
 
 - `-r`, `--urban-outline-radius-km`: 取得半径（km）
 - `-b`, `--urban-outline-min-building-height-m`: 建物の最小高さ（m）
-- `--urban-outline-feature-type`: Overture キャッシュモード。既定値は `both`
-
-キャッシュキーには地点・半径・最小建物高さが含まれるため、これらを変えると
-別のキャッシュデータセットが作られます。
+- `--urban-outline-feature-type`: 都市アウトラインに含まれるデータのうち、表示に使うものを選びます。既定値は `both`
 
 </details>
 
