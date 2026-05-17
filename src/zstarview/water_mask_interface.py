@@ -217,6 +217,7 @@ def _sample_water_mask_for_lonlat_points_with_stats(
     lonlat_points: list[tuple[float, float]],
     *,
     tile_root: Path | None = None,
+    dataset_cache: dict[Path, object] | None = None,
 ) -> tuple[list[bool], int]:
     tile_root = DEFAULT_WATER_TILES_ROOT if tile_root is None else tile_root
     if not lonlat_points:
@@ -239,6 +240,10 @@ def _sample_water_mask_for_lonlat_points_with_stats(
     }
     water_flags = [False] * len(lonlat_points)
     opened_tile_count = 0
+    local_dataset_cache: dict[Path, object] | None = None
+    if dataset_cache is None:
+        local_dataset_cache = {}
+        dataset_cache = local_dataset_cache
     for tile_key, indexed_points in points_by_tile.items():
         tile_path = tile_paths.get(tile_key)
         if tile_path is None:
@@ -248,25 +253,33 @@ def _sample_water_mask_for_lonlat_points_with_stats(
             for point_index, _lon_deg, _lat_deg in indexed_points:
                 water_flags[point_index] = marker_value
             continue
-        opened_tile_count += 1
-        with rasterio.open(tile_path) as dataset:
-            bounded_points: list[tuple[int, float, float]] = []
-            for point_index, lon_deg, lat_deg in indexed_points:
-                if (
-                    dataset.bounds.left <= lon_deg <= dataset.bounds.right
-                    and dataset.bounds.bottom <= lat_deg <= dataset.bounds.top
-                ):
-                    bounded_points.append((point_index, lon_deg, lat_deg))
-            if not bounded_points:
-                continue
-            coords = [(lon_deg, lat_deg) for _point_index, lon_deg, lat_deg in bounded_points]
-            try:
-                samples = list(dataset.sample(coords))
-            except Exception:
-                continue
-            for (point_index, _lon_deg, _lat_deg), sample in zip(bounded_points, samples):
-                if sample.size > 0 and float(sample[0]) > 0.0:
-                    water_flags[point_index] = True
+        dataset = dataset_cache.get(tile_path)
+        if dataset is None:
+            dataset = rasterio.open(tile_path)
+            dataset_cache[tile_path] = dataset
+            opened_tile_count += 1
+        bounded_points: list[tuple[int, float, float]] = []
+        for point_index, lon_deg, lat_deg in indexed_points:
+            if (
+                dataset.bounds.left <= lon_deg <= dataset.bounds.right
+                and dataset.bounds.bottom <= lat_deg <= dataset.bounds.top
+            ):
+                bounded_points.append((point_index, lon_deg, lat_deg))
+        if not bounded_points:
+            continue
+        coords = [(lon_deg, lat_deg) for _point_index, lon_deg, lat_deg in bounded_points]
+        try:
+            samples = list(dataset.sample(coords))
+        except Exception:
+            continue
+        for (point_index, _lon_deg, _lat_deg), sample in zip(bounded_points, samples):
+            if sample.size > 0 and float(sample[0]) > 0.0:
+                water_flags[point_index] = True
+    if local_dataset_cache is not None:
+        for dataset in local_dataset_cache.values():
+            close = getattr(dataset, "close", None)
+            if callable(close):
+                close()
     return water_flags, opened_tile_count
 
 
@@ -515,80 +528,88 @@ def _sample_water_surface_interface_ray_points_for_root_with_stats(
     loaded_tile_count = 0
     raw_point_count = 0
     visible_point_count = 0
+    dataset_cache: dict[Path, object] = {}
 
-    for row_index, azimuth_deg in enumerate(ray_scan.azimuths_deg):
-        _cooperative_yield(abort_event, interval=4, iteration_index=row_index)
-        row_lonlat_points: list[tuple[float, float]] = []
-        row_meta: list[tuple[int, float]] = []
-        for col_index, distance_m in enumerate(ray_scan.distance_grid_m[row_index]):
-            if col_index % 128 == 0:
-                _raise_if_abort_requested(abort_event)
-                time.sleep(0)
-            lon = float(ray_scan.ray_lon_deg[row_index, col_index])
-            lat = float(ray_scan.ray_lat_deg[row_index, col_index])
-            row_lonlat_points.append((lon, lat))
-            row_meta.append((int(col_index), float(distance_m)))
-        raw_point_count += len(row_lonlat_points)
-        if not row_lonlat_points:
-            continue
-        row_water_flags, opened_tile_count = _sample_water_mask_for_lonlat_points_with_stats(
-            row_lonlat_points,
-            tile_root=tile_root,
-        )
-        loaded_tile_count += int(opened_tile_count)
-        water_meta: list[tuple[int, float, float, float, float]] = []
-        for (col_index, distance_m), (lon_deg, lat_deg), is_water in zip(
-            row_meta,
-            row_lonlat_points,
-            row_water_flags,
-        ):
-            if not is_water:
+    try:
+        for row_index, azimuth_deg in enumerate(ray_scan.azimuths_deg):
+            _cooperative_yield(abort_event, interval=4, iteration_index=row_index)
+            row_lonlat_points: list[tuple[float, float]] = []
+            row_meta: list[tuple[int, float]] = []
+            for col_index, distance_m in enumerate(ray_scan.distance_grid_m[row_index]):
+                if col_index % 128 == 0:
+                    _raise_if_abort_requested(abort_event)
+                    time.sleep(0)
+                lon = float(ray_scan.ray_lon_deg[row_index, col_index])
+                lat = float(ray_scan.ray_lat_deg[row_index, col_index])
+                row_lonlat_points.append((lon, lat))
+                row_meta.append((int(col_index), float(distance_m)))
+            raw_point_count += len(row_lonlat_points)
+            if not row_lonlat_points:
                 continue
-            target_height_m = 0.0
-            if target_ground_elevation_m_sampler is not None:
-                try:
-                    target_height_m = float(
-                        target_ground_elevation_m_sampler(float(lat_deg), float(lon_deg))
+            row_water_flags, opened_tile_count = _sample_water_mask_for_lonlat_points_with_stats(
+                row_lonlat_points,
+                tile_root=tile_root,
+                dataset_cache=dataset_cache,
+            )
+            loaded_tile_count += int(opened_tile_count)
+            water_meta: list[tuple[int, float, float, float, float]] = []
+            for (col_index, distance_m), (lon_deg, lat_deg), is_water in zip(
+                row_meta,
+                row_lonlat_points,
+                row_water_flags,
+            ):
+                if not is_water:
+                    continue
+                target_height_m = 0.0
+                if target_ground_elevation_m_sampler is not None:
+                    try:
+                        target_height_m = float(
+                            target_ground_elevation_m_sampler(float(lat_deg), float(lon_deg))
+                        )
+                    except Exception:
+                        target_height_m = 0.0
+                water_meta.append(
+                    (
+                        int(col_index),
+                        float(distance_m),
+                        float(lon_deg),
+                        float(lat_deg),
+                        float(target_height_m),
                     )
-                except Exception:
-                    target_height_m = 0.0
-            water_meta.append(
-                (
-                    int(col_index),
-                    float(distance_m),
-                    float(lon_deg),
-                    float(lat_deg),
-                    float(target_height_m),
                 )
+            if not water_meta:
+                continue
+            projections = project_place_targets_to_altaz(
+                observer_latitude_deg=float(center_lat_deg),
+                observer_longitude_deg=float(center_lon_deg),
+                observer_height_m=float(observer_height_m),
+                target_latitude_deg=[item[3] for item in water_meta],
+                target_longitude_deg=[item[2] for item in water_meta],
+                target_height_m=[item[4] for item in water_meta],
             )
-        if not water_meta:
-            continue
-        projections = project_place_targets_to_altaz(
-            observer_latitude_deg=float(center_lat_deg),
-            observer_longitude_deg=float(center_lon_deg),
-            observer_height_m=float(observer_height_m),
-            target_latitude_deg=[item[3] for item in water_meta],
-            target_longitude_deg=[item[2] for item in water_meta],
-            target_height_m=[item[4] for item in water_meta],
-        )
-        for (col_index, _distance_m, lon_deg, lat_deg, _target_height_m), projection in zip(
-            water_meta,
-            projections,
-            strict=False,
-        ):
-            overlay_points.append(
-                WaterOverlayPoint(
-                    water_id="water-mask",
-                    alt_deg=float(projection.alt_deg),
-                    az_deg=float(projection.az_deg),
-                    distance_km=float(projection.distance_km),
-                    alpha_scale=1.0,
-                    scan_azimuth_index=int(row_index),
-                    scan_distance_index=int(col_index),
-                    water_category=band_category,
+            for (col_index, _distance_m, lon_deg, lat_deg, _target_height_m), projection in zip(
+                water_meta,
+                projections,
+                strict=False,
+            ):
+                overlay_points.append(
+                    WaterOverlayPoint(
+                        water_id="water-mask",
+                        alt_deg=float(projection.alt_deg),
+                        az_deg=float(projection.az_deg),
+                        distance_km=float(projection.distance_km),
+                        alpha_scale=1.0,
+                        scan_azimuth_index=int(row_index),
+                        scan_distance_index=int(col_index),
+                        water_category=band_category,
+                    )
                 )
-            )
-            visible_point_count += 1
+                visible_point_count += 1
+    finally:
+        for dataset in dataset_cache.values():
+            close = getattr(dataset, "close", None)
+            if callable(close):
+                close()
 
     if band_category == "sea-125":
         band_name = "125m"
