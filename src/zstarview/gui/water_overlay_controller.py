@@ -33,10 +33,6 @@ from ..water_mask_interface import (
     WaterSurfaceBandStats,
     sample_water_surface_interface_points_with_stats,
 )
-from ..terrain import GeoTiffDem
-from ..terrain import build_download_bbox
-from ..terrain import fetch_copernicus_dem
-from ..terrain import sample_ground_elevation
 from ..paths import CACHE_PATH
 from .water_overlay_cache import (
     WaterOverlayCacheSnapshot,
@@ -694,45 +690,9 @@ class WaterOverlayController(QObject):
         observer_lon_deg: float,
         scan_radius_km: float,
     ) -> Callable[[float, float], float] | None:
-        try:
-            download = fetch_copernicus_dem(
-                observer_lat_deg=float(observer_lat_deg),
-                observer_lon_deg=float(observer_lon_deg),
-                max_distance_km=scan_radius_km,
-                margin_km=10.0,
-                cache_dir=self._dem_cache_dir,
-                abort_event=self._download_abort_event,
-            )
-            dem = GeoTiffDem(download.paths, default_elevation_m=0.0)
-        except DownloadCancelledError:
-            raise
-        except Exception:
-            return None
-
-        try:
-            bbox = build_download_bbox(
-                lat_deg=float(observer_lat_deg),
-                lon_deg=float(observer_lon_deg),
-                radius_km=scan_radius_km + 10.0,
-            )
-            dem_grid = dem.build_grid(bbox)
-        except DownloadCancelledError:
-            raise
-        except Exception:
-            dem.close()
-            return None
-
-        dem.close()
-
-        def sampler(latitude_deg: float, longitude_deg: float) -> float:
-            return sample_ground_elevation(
-                dem_grid,
-                latitude_deg=float(latitude_deg),
-                longitude_deg=float(longitude_deg),
-                dem_resampling="bilinear",
-            )
-
-        return sampler
+        # Disabled for now: the GUI water path relies on terrain-provided
+        # ground data and should not refetch Copernicus DEM tiles here.
+        return None
 
     def _store_scope_cache(
         self,

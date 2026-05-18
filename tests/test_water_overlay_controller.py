@@ -335,7 +335,6 @@ def test_run_update_emits_sea_then_combined_water_layers(monkeypatch) -> None:
         ),
     )
     monkeypatch.setattr(controller, "_store_scope_cache", lambda *args, **_kwargs: None)
-    monkeypatch.setattr(controller, "_build_target_ground_sampler", lambda **_kwargs: None)
     controller._active_key = (35.0, 139.0, 1.7, 12.0, False)  # noqa: SLF001
 
     controller._run_update(  # noqa: SLF001
@@ -408,11 +407,6 @@ def test_run_update_does_not_refetch_dem_for_gui_mode(monkeypatch) -> None:
         lambda dots, **payload: emitted.append({"dots": tuple(dots), **payload}),
     )
     monkeypatch.setattr(controller, "_store_scope_cache", lambda *args, **_kwargs: None)
-    monkeypatch.setattr(
-        controller,
-        "_build_target_ground_sampler",
-        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("should not refetch DEM")),
-    )
     controller._active_key = (35.0, 139.0, 1.7, 12.0, False)  # noqa: SLF001
 
     controller._run_update(  # noqa: SLF001

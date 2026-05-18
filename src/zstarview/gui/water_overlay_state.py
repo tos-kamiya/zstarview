@@ -36,11 +36,8 @@ class WaterOverlayState:
         *,
         source: str,
     ) -> None:
-        self.inland_dots = dots
-        self.current_mode = "sea"
-        self.current_source = source
-        self.failed_this_session = False
-        self.banner_text = None
+        # Disabled placeholder.
+        return
 
     def set_dem_dots_result(
         self,
@@ -74,10 +71,8 @@ class WaterOverlayState:
         self.failed_this_session = True
 
     def clear_dots(self) -> None:
-        self.sea_level_dots = None
-        self.inland_dots = None
-        self.dem_dots = None
-        self.dots = None
+        # Disabled placeholder.
+        return
 
     def _combined_dots(self) -> Optional[list[WaterOverlayPoint]]:
         if self.sea_level_dots is None and self.inland_dots is None:

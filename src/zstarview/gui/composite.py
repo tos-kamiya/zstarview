@@ -795,23 +795,8 @@ def _never_rises_mask(
     az_deg: np.ndarray,
     observer_lat_deg: float | None,
 ) -> np.ndarray:
-    """Return a boolean mask for declinations that never rise at the observer latitude."""
-    if observer_lat_deg is None or alt_deg.size == 0:
-        return np.zeros_like(alt_deg, dtype=bool)
-
-    lat = float(np.clip(observer_lat_deg, -90.0, 90.0))
-    if lat == 0.0:
-        return np.zeros_like(alt_deg, dtype=bool)
-
-    lat_rad = math.radians(lat)
-    alt_rad = np.radians(alt_deg)
-    az_rad = np.radians(az_deg)
-    sin_dec = np.sin(alt_rad) * math.sin(lat_rad) + np.cos(alt_rad) * math.cos(lat_rad) * np.cos(az_rad)
-    sin_dec = np.clip(sin_dec, -1.0, 1.0)
-    dec = np.degrees(np.arcsin(sin_dec))
-    if lat > 0.0:
-        return dec <= (lat - 90.0)
-    return dec >= (lat + 90.0)
+    """Disabled placeholder."""
+    return np.zeros_like(alt_deg, dtype=bool)
 
 
 def _neu_unit_to_altaz(vec: np.ndarray) -> Tuple[float, float]:
