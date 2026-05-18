@@ -13,10 +13,7 @@ import threading
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-import boto3
 import xarray as xr
-from botocore import UNSIGNED
-from botocore.config import Config
 
 from ..config import CloudDiscConfig
 from ..types import DataNotFoundError, CloudMeta
@@ -51,16 +48,6 @@ class GoesProvider:
         self.root.mkdir(parents=True, exist_ok=True)
         self._list_cache: Dict[Tuple[int, int, int, str], List[str]] = {}
 
-    def _s3(self, bucket: str) -> boto3.client:
-        """Creates an anonymous boto3 S3 client for the specified bucket."""
-        cfg = Config(
-            signature_version=UNSIGNED,  # No credentials needed for public bucket
-            retries={"max_attempts": 1, "mode": "standard"},
-            connect_timeout=self.cfg.connect_timeout,
-            read_timeout=self.cfg.read_timeout,
-        )
-        return boto3.client("s3", region_name=_GOES_REGION[bucket], config=cfg)
-
     def _list_hour(self, bucket: str, t: dt.datetime, *, abort_event: threading.Event | None = None) -> List[str]:
         """
         Lists all object keys for a given hour in the S3 bucket, with in-memory caching.
@@ -73,11 +60,9 @@ class GoesProvider:
             return self._list_cache[cache_key]
 
         prefix = f"ABI-L2-CMIPF/{t_utc.year:04d}/{_doy(t_utc):03d}/{t_utc.hour:02d}/"
-        s3 = self._s3(bucket)
         logger.debug("Listing s3://%s/%s", bucket, prefix)
 
         keys = list_s3_keys(
-            s3_client=s3,
             bucket=bucket,
             prefix=prefix,
             satellite=_GOES_BUCKET_TO_SATELLITE[bucket],
@@ -85,6 +70,7 @@ class GoesProvider:
             time_utc=t_utc,
             uri_label=f"S3 bucket s3://{bucket}/{prefix}",
             abort_event=abort_event,
+            timeout_s=max(self.cfg.connect_timeout, self.cfg.read_timeout),
         )
 
         logger.debug("Found %d objects under %s", len(keys), prefix)
@@ -115,11 +101,9 @@ class GoesProvider:
     def _download(self, bucket: str, key: str, *, abort_event: threading.Event | None = None) -> Path:
         """Downloads a file from S3, caching it locally using an atomic write."""
         dst = self.root / bucket / key
-        s3 = self._s3(bucket)
 
         logger.debug("Downloading s3://%s/%s", bucket, key)
         return download_s3_object(
-            s3_client=s3,
             bucket=bucket,
             key=key,
             dst=dst,
@@ -128,6 +112,7 @@ class GoesProvider:
             time_utc=dt.datetime.now(dt.timezone.utc),
             validate_func=lambda path: load_cmi_with_area(path),
             abort_event=abort_event,
+            timeout_s=max(self.cfg.connect_timeout, self.cfg.read_timeout),
         )
 
     def _fetch_bt_c13_once(self, sat: str, when_utc: dt.datetime, search_back_minutes: int, *, abort_event: threading.Event | None = None) -> Optional[Tuple[xr.DataArray, dt.datetime, List[Path]]]:

@@ -37,8 +37,6 @@ dependencies = [
   "numpy>=2.2,<2.4",
   "Pillow>=12,<13",
   "polars>=1.38,<2",
-  "boto3>=1.42,<2",
-  "botocore>=1.42,<2",
   "xarray>=2025.6,<2026.0; python_version < '3.11'",
   "xarray>=2026.0,<2027.0; python_version >= '3.11'",
   "h5netcdf>=1.8,<2",

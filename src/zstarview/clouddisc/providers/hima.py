@@ -9,11 +9,8 @@ import threading
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-import boto3
 import numpy as np
 import xarray as xr
-from botocore import UNSIGNED
-from botocore.config import Config
 
 from ..config import CloudDiscConfig
 from ..types import CloudMeta, DataNotFoundError, DownloadError
@@ -47,20 +44,10 @@ class HimaProvider:
         self.root_is = cfg.cache_root() / "hima_isatss"
         self.root_is.mkdir(parents=True, exist_ok=True)
 
-    def _s3(self):
-        s3_cfg = Config(
-            signature_version=UNSIGNED,
-            retries={"max_attempts": 1},
-            connect_timeout=self.cfg.connect_timeout,
-            read_timeout=self.cfg.read_timeout,
-        )
-        return boto3.client("s3", config=s3_cfg)
-
     def _download(self, bucket: str, key: str, *, abort_event: threading.Event | None = None) -> Path:
         dst = self.root_is / bucket / key
         logger.debug("Downloading s3://%s/%s", bucket, key)
         return download_s3_object(
-            s3_client=self._s3(),
             bucket=bucket,
             key=key,
             dst=dst,
@@ -69,19 +56,19 @@ class HimaProvider:
             time_utc=dt.datetime.now(dt.timezone.utc),
             validate_func=lambda path: load_template_from_tile(path, bucket=bucket),
             abort_event=abort_event,
+            timeout_s=max(self.cfg.connect_timeout, self.cfg.read_timeout),
         )
 
     def _find_isatss(self, when_utc: dt.datetime, *, abort_event: threading.Event | None = None) -> Tuple[Optional[str], Optional[List[str]], Optional[dt.datetime]]:
         """Find available ISatSS C13 tile keys, searching backwards by slot."""
-        s3_client = self._s3()
         for slot in range(0, self.cfg.search_back_minutes + 1, 10):
             search_time = when_utc - dt.timedelta(minutes=slot)
             try:
                 bucket, keys = find_matching_keys(
-                    s3_client,
                     search_time,
                     satellite="HIMAWARI",
                     product="ISatSS-B13",
+                    timeout_s=max(self.cfg.connect_timeout, self.cfg.read_timeout),
                 )
             except FileNotFoundError:
                 continue

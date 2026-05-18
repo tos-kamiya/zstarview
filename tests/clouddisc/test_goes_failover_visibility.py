@@ -64,7 +64,6 @@ def test_goes_does_not_cache_current_hour_listing(tmp_path, monkeypatch) -> None
             return now.astimezone(tz)
 
     monkeypatch.setattr(goes_module.dt, "datetime", FrozenDateTime)
-    monkeypatch.setattr(provider, "_s3", lambda bucket: object())
 
     def fake_list_s3_keys(**kwargs):
         del kwargs

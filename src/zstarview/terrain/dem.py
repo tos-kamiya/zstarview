@@ -3,17 +3,18 @@ from __future__ import annotations
 import json
 import logging
 import math
+import socket
 import threading
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Sequence
 
-import boto3
 import numpy as np
-from botocore import UNSIGNED
-from botocore.config import Config
 from pyproj import CRS, Geod, Transformer
+from urllib.error import HTTPError, URLError
+from urllib.parse import quote
+from urllib.request import Request, urlopen
 
 from ..clouddisc.types import DownloadCancelledError
 
@@ -22,6 +23,7 @@ WGS84_GEOD = Geod(ellps="WGS84")
 COPERNICUS_DEM_BUCKET = "copernicus-dem-90m"
 COPERNICUS_DEM_REGION = "eu-central-1"
 DEM_CACHE_TTL_DAYS = 90
+_DEM_CHUNK_SIZE = 1024 * 1024
 
 logger = logging.getLogger(__name__)
 
@@ -170,16 +172,6 @@ class GeoTiffDem:
         )
 
 
-def anonymous_s3_client():
-    cfg = Config(
-        signature_version=UNSIGNED,
-        retries={"max_attempts": 1, "mode": "standard"},
-        connect_timeout=20,
-        read_timeout=120,
-    )
-    return boto3.client("s3", region_name=COPERNICUS_DEM_REGION, config=cfg)
-
-
 def build_download_bbox(
     *,
     lat_deg: float,
@@ -311,6 +303,36 @@ def _normalize_utc(value: datetime) -> datetime:
     return value.astimezone(timezone.utc)
 
 
+def _copernicus_dem_url(key: str) -> str:
+    quoted_key = quote(key, safe="/-_.~")
+    return f"https://{COPERNICUS_DEM_BUCKET}.s3.{COPERNICUS_DEM_REGION}.amazonaws.com/{quoted_key}"
+
+
+def _request_timeout(timeout_s: float | None) -> float | None:
+    if timeout_s is None:
+        return None
+    timeout = float(timeout_s)
+    return timeout if timeout > 0.0 else 0.0
+
+
+def _download_dem_tile(
+    *,
+    key: str,
+    dst: Path,
+    abort_event: threading.Event | None,
+    timeout_s: float | None = 120.0,
+) -> None:
+    req = Request(_copernicus_dem_url(key), method="GET")
+    with urlopen(req, timeout=_request_timeout(timeout_s)) as resp, dst.open("wb") as handle:
+        while True:
+            if abort_event is not None and abort_event.is_set():
+                raise KeyboardInterrupt()
+            chunk = resp.read(_DEM_CHUNK_SIZE)
+            if not chunk:
+                break
+            handle.write(chunk)
+
+
 def fetch_copernicus_dem(
     *,
     observer_lat_deg: float,
@@ -334,7 +356,6 @@ def fetch_copernicus_dem(
     )
     tile_keys = collect_copernicus_tile_keys(bbox)
     cache_dir.mkdir(parents=True, exist_ok=True)
-    s3 = anonymous_s3_client()
     downloaded_paths: list[Path] = []
     downloaded_any = False
     stale_fallback_used = False
@@ -358,14 +379,7 @@ def fetch_copernicus_dem(
         dst.parent.mkdir(parents=True, exist_ok=True)
         tmp_path = dst.with_suffix(dst.suffix + ".tmp")
         try:
-            with tmp_path.open("wb") as handle:
-                callback = None
-                if abort_event is not None:
-                    def callback(_bytes_transferred: int) -> None:
-                        if abort_event.is_set():
-                            raise KeyboardInterrupt()
-
-                s3.download_fileobj(COPERNICUS_DEM_BUCKET, key, handle, Callback=callback)
+            _download_dem_tile(key=key, dst=tmp_path, abort_event=abort_event)
             if not _is_valid_dem_tile(tmp_path):
                 logger.warning(
                     "Discarding invalid downloaded DEM tile: s3://%s/%s",
@@ -384,13 +398,42 @@ def fetch_copernicus_dem(
             )
             downloaded_paths.append(dst)
             downloaded_any = True
-        except s3.exceptions.NoSuchKey:
+        except (KeyboardInterrupt, DownloadCancelledError) as exc:
+            raise DownloadCancelledError("Cancelled while downloading Copernicus DEM tiles") from exc
+        except HTTPError as exc:
+            if exc.code == 404:
+                if dst.exists():
+                    logger.warning("DEM refresh failed; using stale cached tile: %s", dst)
+                    downloaded_paths.append(dst)
+                    stale_fallback_used = True
+                continue
             if dst.exists():
                 logger.warning("DEM refresh failed; using stale cached tile: %s", dst)
                 downloaded_paths.append(dst)
                 stale_fallback_used = True
-        except KeyboardInterrupt as exc:
-            raise DownloadCancelledError("Cancelled while downloading Copernicus DEM tiles") from exc
+                continue
+            raise RuntimeError(
+                f"Failed to download s3://{COPERNICUS_DEM_BUCKET}/{key}: {exc}"
+            ) from exc
+        except URLError as exc:
+            reason = getattr(exc, "reason", None)
+            if isinstance(reason, (TimeoutError, socket.timeout)):
+                if dst.exists():
+                    logger.warning("DEM refresh failed; using stale cached tile: %s", dst)
+                    downloaded_paths.append(dst)
+                    stale_fallback_used = True
+                    continue
+                raise RuntimeError(
+                    f"Failed to download s3://{COPERNICUS_DEM_BUCKET}/{key}: {exc}"
+                ) from exc
+            if dst.exists():
+                logger.warning("DEM refresh failed; using stale cached tile: %s", dst)
+                downloaded_paths.append(dst)
+                stale_fallback_used = True
+                continue
+            raise RuntimeError(
+                f"Failed to download s3://{COPERNICUS_DEM_BUCKET}/{key}: {exc}"
+            ) from exc
         except Exception as exc:
             message = str(exc)
             if "404" in message or "Not Found" in message or "NoSuchKey" in message:

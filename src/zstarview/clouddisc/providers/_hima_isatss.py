@@ -85,16 +85,16 @@ def extract_tile_token(name: str) -> str:
     return match.group(1)
 
 
-def find_matching_keys(s3_client, when_utc: dt.datetime, *, satellite: str, product: str) -> tuple[str, list[str]]:
+def find_matching_keys(when_utc: dt.datetime, *, satellite: str, product: str, timeout_s: float | None = None) -> tuple[str, list[str]]:
     prefix = format_prefix(when_utc)
     for bucket in _HIMA_BUCKETS:
         keys = list_s3_keys(
-            s3_client=s3_client,
             bucket=bucket,
             prefix=prefix,
             satellite=satellite,
             product=product,
             time_utc=when_utc,
+            timeout_s=timeout_s,
         )
         matched = sorted(key for key in keys if "M1C13" in Path(key).name and key.endswith(".nc"))
         if matched:
