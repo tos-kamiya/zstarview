@@ -50,6 +50,7 @@ def test_load_ephemeris_provides_dummy_standard_streams_when_missing(monkeypatch
         return object()
 
     monkeypatch.setattr("zstarview.astro._starfield_load", fake_loader)
+    monkeypatch.setattr("zstarview.astro._cached_ephemeris", None)
     monkeypatch.setattr("sys.stdout", None)
     monkeypatch.setattr("sys.stderr", None)
 

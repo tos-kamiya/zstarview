@@ -351,7 +351,9 @@ class SkyWindowUpdatesMixin:
 
         if _initial_data_load_active(self):
             self._startup_initial_sky_loaded = True
-            self._continue_initial_data_load()
+            continue_initial_data_load = getattr(self, "_continue_initial_data_load", None)
+            if callable(continue_initial_data_load):
+                continue_initial_data_load()
             return
 
         if not self._sky_data_update_timer.isActive():

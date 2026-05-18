@@ -231,6 +231,7 @@ def test_sky_worker_shutdown_waits(monkeypatch) -> None:
 
     def trigger_update() -> None:
         controller.update(
+            ephemeris=object(),
             lat=35.0,
             lon=139.0,
             observer_height_m=1.7,
