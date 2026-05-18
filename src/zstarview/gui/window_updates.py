@@ -11,6 +11,7 @@ from typing import Dict, Optional
 
 from ..aircraft import project_aircraft_snapshots
 from ..astro import load_ephemeris
+from ..clouddisc.providers.select import GOES_SATELLITES
 from ..paths import CACHE_PATH
 from ..satellites import project_satellite_records
 from ..search.jpl import project_jpl_target_altaz_from_state_vector
@@ -21,7 +22,7 @@ _STATUS_CLOUD = "☁"
 _STATUS_WATER = "W"
 _STATUS_SATELLITE = "🛰"
 _STATUS_AIRCRAFT = "✈"
-_STATUS_TERRAIN = "▲"
+_STATUS_TERRAIN = "△"
 _STATUS_URBAN = "🂓"
 
 
@@ -37,6 +38,15 @@ def _strip_status_prefix(text: str, prefix: str) -> str:
     if clean.casefold().startswith(prefix.casefold()):
         clean = clean[len(prefix):].strip()
     return clean
+
+
+def _cloud_satellite_group(satellite: str) -> str:
+    sat = str(satellite).strip()
+    if sat in GOES_SATELLITES:
+        return "GOES"
+    if sat == "HIMAWARI":
+        return "HIMAWARI"
+    return sat
 
 
 def _jpl_debug_enabled() -> bool:
@@ -255,26 +265,28 @@ class SkyWindowUpdatesMixin:
         if cloud_disc_alpha <= 0.0:
             return _status_segment(_STATUS_CLOUD, "", hidden=True)
         sat = self.cloud_state.current_satellite or self._predicted_cloud_satellite()
+        sat_group = _cloud_satellite_group(sat)
         if self.cloud_state.banner_text:
             detail = _strip_status_prefix(self.cloud_state.banner_text, "Clouds:")
             detail_lower = detail.lower()
             if detail_lower.startswith("downloading"):
-                return _status_segment(_STATUS_CLOUD, f"{sat} downloading")
+                return _status_segment(_STATUS_CLOUD, f"{sat_group} downloading")
             if any(token in detail_lower for token in ("timed out", "error", "failed", "failure")):
-                return _status_segment(_STATUS_CLOUD, f"{sat} failed")
-            return _status_segment(_STATUS_CLOUD, f"{sat} {detail}")
+                return _status_segment(_STATUS_CLOUD, f"{sat_group} failed")
+            return _status_segment(_STATUS_CLOUD, f"{sat_group} {detail}")
         meta = self.cloud_state.meta
         if meta is not None:
             try:
                 t = meta.time_utc.strftime("%H:%MZ")
+                sat_group = _cloud_satellite_group(getattr(meta, "satellite", sat))
                 coverage = self.cloud_state.coverage_ratio
                 if coverage is not None and coverage < 0.999:
                     pct = int(round(max(0.0, min(1.0, float(coverage))) * 100.0))
-                    return _status_segment(_STATUS_CLOUD, f"{meta.satellite} {pct}% {t}")
-                return _status_segment(_STATUS_CLOUD, f"{meta.satellite} {meta.product} {t}")
+                    return _status_segment(_STATUS_CLOUD, f"{sat_group} {pct}% {t}")
+                return _status_segment(_STATUS_CLOUD, f"{sat_group} {t}")
             except Exception:
                 pass
-        return _status_segment(_STATUS_CLOUD, f"{sat} idle")
+        return _status_segment(_STATUS_CLOUD, f"{sat_group} idle")
 
     def _terrain_horizon_status_line(self) -> str:
         if self.terrain_horizon_opacity <= 0.0:
@@ -286,7 +298,11 @@ class SkyWindowUpdatesMixin:
             )
             return _status_segment(_STATUS_TERRAIN, detail)
         if self.terrain_horizon_state.current_source:
-            return _status_segment(_STATUS_TERRAIN, str(self.terrain_horizon_state.current_source))
+            detail = _strip_status_prefix(
+                self.terrain_horizon_state.current_source,
+                "Dem:",
+            )
+            return _status_segment(_STATUS_TERRAIN, detail)
         return ""
 
     def _water_overlay_status_line(self) -> str:
@@ -310,7 +326,11 @@ class SkyWindowUpdatesMixin:
             )
             return _status_segment(_STATUS_URBAN, detail)
         if self.urban_outline_state.current_source:
-            return _status_segment(_STATUS_URBAN, str(self.urban_outline_state.current_source))
+            detail = _strip_status_prefix(
+                self.urban_outline_state.current_source,
+                "Urban:",
+            )
+            return _status_segment(_STATUS_URBAN, detail)
         return ""
 
     def _aircraft_status_line(self) -> str:

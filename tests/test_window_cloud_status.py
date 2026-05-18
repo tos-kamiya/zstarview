@@ -18,29 +18,29 @@ def _dummy_window(cloud_state):
 
 def test_cloud_status_line_shows_downloading() -> None:
     state = SimpleNamespace(
-        current_satellite="HIMAWARI",
+        current_satellite="G19",
         banner_text="Clouds: downloading…",
         meta=None,
         coverage_ratio=None,
     )
     got = SkyWindow._cloud_status_line(_dummy_window(state))
-    assert got == "☁ HIMAWARI downloading"
+    assert got == "☁ GOES downloading"
 
 
 def test_cloud_status_line_shows_download_failed() -> None:
     state = SimpleNamespace(
-        current_satellite="HIMAWARI",
+        current_satellite="G18",
         banner_text="Clouds: Clouds fetch timed out",
         meta=None,
         coverage_ratio=None,
     )
     got = SkyWindow._cloud_status_line(_dummy_window(state))
-    assert got == "☁ HIMAWARI failed"
+    assert got == "☁ GOES failed"
 
 
 def test_cloud_status_line_shows_partial_when_coverage_incomplete() -> None:
     meta = SimpleNamespace(
-        satellite="HIMAWARI",
+        satellite="G19",
         product="ISatSS-B13",
         time_utc=datetime(2026, 3, 5, 1, 20, tzinfo=timezone.utc),
     )
@@ -51,7 +51,7 @@ def test_cloud_status_line_shows_partial_when_coverage_incomplete() -> None:
         coverage_ratio=0.72,
     )
     got = SkyWindow._cloud_status_line(_dummy_window(state))
-    assert got == "☁ HIMAWARI 72% 01:20Z"
+    assert got == "☁ GOES 72% 01:20Z"
 
 
 def test_cloud_status_line_shows_idle_without_meta_or_banner() -> None:
@@ -62,7 +62,7 @@ def test_cloud_status_line_shows_idle_without_meta_or_banner() -> None:
         coverage_ratio=None,
     )
     got = SkyWindow._cloud_status_line(_dummy_window(state))
-    assert got == "☁ G19 idle"
+    assert got == "☁ GOES idle"
 
 
 def test_satellite_status_line_shows_epoch_with_icon() -> None:
@@ -90,8 +90,8 @@ def test_aircraft_status_line_shows_last_success_with_icon() -> None:
 
 
 def test_terrain_and_urban_status_lines_show_icons() -> None:
-    terrain_state = SimpleNamespace(banner_text="Terrain horizon: loading DEM...", current_source="DEM")
-    urban_state = SimpleNamespace(banner_text="Urban outline: downloading...", current_source="overture")
+    terrain_state = SimpleNamespace(banner_text="Terrain horizon: loading DEM...", current_source="Dem: cache")
+    urban_state = SimpleNamespace(banner_text="Urban outline: downloading...", current_source="Urban: cache")
     dummy = SimpleNamespace(
         terrain_horizon_state=terrain_state,
         terrain_horizon_opacity=0.2,
@@ -99,7 +99,7 @@ def test_terrain_and_urban_status_lines_show_icons() -> None:
         urban_outline_opacity=0.2,
     )
 
-    assert SkyWindow._terrain_horizon_status_line(dummy) == "▲ loading DEM..."
+    assert SkyWindow._terrain_horizon_status_line(dummy) == "△ loading DEM..."
     assert SkyWindow._urban_outline_status_line(dummy) == "🂓 downloading..."
 
 
@@ -196,7 +196,7 @@ def test_hidden_status_lines_show_placeholder_icons() -> None:
     assert SkyWindow._cloud_status_line(dummy) == "☁ ---"
     assert SkyWindow._satellite_status_line(dummy) == "🛰 ---"
     assert SkyWindow._aircraft_status_line(dummy) == "✈ ---"
-    assert SkyWindow._terrain_horizon_status_line(dummy) == "▲ ---"
+    assert SkyWindow._terrain_horizon_status_line(dummy) == "△ ---"
     assert SkyWindow._urban_outline_status_line(dummy) == "🂓 ---"
 
 

@@ -680,15 +680,15 @@ def test_status_line_message_combines_cloud_and_terrain_segments() -> None:
     dummy._satellite_status_line = lambda: ""
     dummy._aircraft_status_line = lambda: ""
     dummy._jpl_small_body_status_line = lambda: ""
-    dummy._terrain_horizon_status_line = lambda: "Terrain horizon: loading DEM..."
+    dummy._terrain_horizon_status_line = lambda: "△ loading DEM..."
     dummy._water_overlay_status_line = lambda: ""
-    dummy._urban_outline_status_line = lambda: "Urban outline: downloading..."
+    dummy._urban_outline_status_line = lambda: "🂓 downloading..."
 
     got = SkyWindowUpdatesMixin._status_line_message(dummy)
 
     assert (
         got
-        == "⎮ Clouds [AUTO]: downloading ⎮ Terrain horizon: loading DEM... ⎮ Urban outline: downloading... ⎮"
+        == "⎮ Clouds [AUTO]: downloading ⎮ △ loading DEM... ⎮ 🂓 downloading... ⎮"
     )
 
 
@@ -698,13 +698,13 @@ def test_status_line_message_keeps_placeholder_icons_for_hidden_layers() -> None
     dummy._satellite_status_line = lambda: "🛰 ---"
     dummy._aircraft_status_line = lambda: "✈ ---"
     dummy._jpl_small_body_status_line = lambda: ""
-    dummy._terrain_horizon_status_line = lambda: "▲ ---"
+    dummy._terrain_horizon_status_line = lambda: "△ ---"
     dummy._water_overlay_status_line = lambda: ""
     dummy._urban_outline_status_line = lambda: "🂓 ---"
 
     got = SkyWindowUpdatesMixin._status_line_message(dummy)
 
-    assert got == "⎮ ☁ --- ⎮ 🛰 --- ⎮ ✈ --- ⎮ ▲ --- ⎮ 🂓 --- ⎮"
+    assert got == "⎮ ☁ --- ⎮ 🛰 --- ⎮ ✈ --- ⎮ △ --- ⎮ 🂓 --- ⎮"
 
 
 def test_jpl_small_body_status_line_includes_altaz() -> None:
