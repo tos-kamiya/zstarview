@@ -877,3 +877,10 @@
 
 - Validation
   - Confirmed the worker pool serializes tasks, the startup overlay tests still pass, the controller shutdown waits still behave, and the water overlay regression coverage passes after the GUI simplification.
+
+## 2026-05-19
+
+- Update scheduler design consolidation
+  - Decision: Consolidate the GUI update model around `fast-mode`, `normal-mode`, and deadline-based periodic refreshes. Fast-mode keeps only the latest view-change replay, while periodic cloud/satellite/aircraft refreshes are scheduled from the previous completion time instead of the previous timer tick.
+  - Rationale: This matches the desired user-visible behavior more closely than the previous timer-driven enqueue model. It prevents worker busy periods from accumulating stale ticks, keeps the splash phase deterministic, and makes the priority of menu, search, and view-change updates explicit.
+  - Status: The design document was updated to reflect the new model. Implementation is still to follow in the scheduler and update entry points.
