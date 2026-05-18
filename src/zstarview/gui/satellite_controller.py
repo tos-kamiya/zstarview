@@ -86,6 +86,10 @@ class SatelliteController(QObject):
             self._pending_request = None
         self._wait_for_workers(wait_timeout_s)
 
+    def has_in_flight_update(self) -> bool:
+        with self._lock:
+            return bool(self._running or self._pending_request is not None or self._active_workers)
+
     def update(
         self,
         *,

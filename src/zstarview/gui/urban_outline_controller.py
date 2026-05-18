@@ -80,6 +80,10 @@ class UrbanOutlineController(QObject):
         self._download_abort_event.set()
         self._wait_for_workers(wait_timeout_s)
 
+    def has_in_flight_update(self) -> bool:
+        with self._lock:
+            return bool(self._running or self._active_workers)
+
     def update(
         self,
         *,

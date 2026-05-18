@@ -977,6 +977,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._startup_window_shown = False
         self._startup_input_release_pending = False
         self._startup_input_blocked_state = True
+        self._sky_refresh_due = False
+        self._cloud_refresh_due = False
+        self._satellite_refresh_due = False
+        self._aircraft_refresh_due = False
+        self._persistent_search_refresh_due = False
         self._viewport_rotation_keys_down: set[int] = set()
         # Ensure overlay_info_bottom_left reflects the startup mode now that
         # the mutable state object exists. True==bottom-left, False==top-left.
@@ -1089,7 +1094,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._cloud_update_timer = QTimer(self)
         self._cloud_update_timer.setInterval(CLOUD_UPDATE_INTERVAL * 1000)
         self._cloud_update_timer.timeout.connect(
-            lambda: self.start_background_cloud_update(reason="timer")
+            self._on_cloud_refresh_timer
         )
         self._satellite_update_timer = QTimer(self)
         self._satellite_update_timer.setSingleShot(True)
@@ -1255,8 +1260,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
         self._sky_data_update_timer = QTimer(self)
         self._sky_data_update_timer.timeout.connect(
-            lambda: self.start_background_sky_data_update(reason="timer")
+            self._on_sky_refresh_timer
         )
+
+        self._scheduler_tick_timer = QTimer(self)
+        self._scheduler_tick_timer.setInterval(700)
+        self._scheduler_tick_timer.timeout.connect(self._on_scheduler_tick)
 
         self._asterism_check_timer = QTimer(self)
         self._asterism_check_timer.setInterval(1000)
@@ -1345,6 +1354,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._startup_initial_urban_loaded = False
         self._startup_initial_data_loaded = False
         self._post_startup_background_updates_started = False
+        self._sky_refresh_due = False
+        self._cloud_refresh_due = False
+        self._satellite_refresh_due = False
+        self._aircraft_refresh_due = False
+        self._persistent_search_refresh_due = False
         self.start_background_sky_data_update(is_initial_load=True)
 
     def _resize_client_area(self, target_client_width: int, target_client_height: int) -> None:
@@ -2185,6 +2199,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.state.persistent_search_next_refresh_utc = None
         self.state.persistent_search_last_refresh_utc = None
         self.state.persistent_search_last_error = None
+        self._persistent_search_refresh_due = False
         if hasattr(self, "_persistent_search_update_timer") and self._persistent_search_update_timer.isActive():
             self._persistent_search_update_timer.stop()
 
@@ -2212,30 +2227,30 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
         self._persistent_search_update_timer.start(delay_ms)
 
-    def _on_persistent_search_refresh_timer(self) -> None:
-        if self._is_shutting_down:
-            return
-        if self._viewport_interaction_active():
-            return
+    def _start_persistent_search_refresh(self, *, reason: str = "timer") -> bool:
         target = self._jpl_small_body_persistent_target()
         if target is None:
             self._clear_persistent_search()
-            return
+            return False
         query_time_utc = self.state.persistent_search_next_refresh_utc
         if query_time_utc is None:
             query_time_utc = target.target_time_utc or self._target_time_utc()
         if self._jpl_small_body_controller is None:
-            return
-        started = self._jpl_small_body_controller.update(
+            return False
+        return self._jpl_small_body_controller.update(
             observer_lat=float(self.viewer_data.location[0]),
             observer_lon=float(self.viewer_data.location[1]),
             observer_height_m=float(self.viewer_data.observer_height_m),
             target=target,
             target_time_utc=query_time_utc,
-            reason="timer",
+            reason=reason,
         )
-        if not started:
+
+    def _on_persistent_search_refresh_timer(self) -> None:
+        if self._is_shutting_down:
             return
+        self._persistent_search_refresh_due = True
+        self._on_scheduler_tick()
 
     def _on_jpl_started(self, payload: object) -> None:
         banner = ""
@@ -2622,14 +2637,15 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._post_startup_background_updates_started = True
         if not self._sky_data_update_timer.isActive():
             self._sky_data_update_timer.start(self.sky_update_interval * 1000)
+        if not self._scheduler_tick_timer.isActive():
+            self._scheduler_tick_timer.start()
         if self._clouddisc and self.cloud_disc_alpha > 0.0:
-            self.start_background_cloud_update(reason="startup")
-            if not self._cloud_update_timer.isActive():
-                self._cloud_update_timer.start()
+            self._cloud_refresh_due = True
         if self._satellite_layer_enabled():
-            self._enable_satellite_layer(reason="startup")
+            self._satellite_refresh_due = True
         if self._aircraft_layer_enabled():
-            self._enable_aircraft_layer(reason="startup")
+            self._aircraft_refresh_due = True
+        self._on_scheduler_tick()
 
     def _begin_shutdown(self) -> None:
         """Stop scheduling new background work while the app is closing."""
@@ -2656,6 +2672,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             shutdown_gui_worker_pool(wait=True)
             if self._sky_data_update_timer.isActive():
                 self._sky_data_update_timer.stop()
+            if self._scheduler_tick_timer.isActive():
+                self._scheduler_tick_timer.stop()
             if self._asterism_check_timer.isActive():
                 self._asterism_check_timer.stop()
             if self._cloud_update_timer.isActive():
@@ -2759,14 +2777,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def _on_satellite_refresh_timer(self) -> None:
         if not self._satellite_layer_enabled():
             return
-        if self._viewport_interaction_active():
-            return
-        started = self.start_background_satellite_update(reason="timer")
-        if not started:
-            self._schedule_next_satellite_refresh()
+        self._satellite_refresh_due = True
+        self._on_scheduler_tick()
 
     def _on_overlay_projection_timer(self) -> None:
-        if self._viewport_interaction_active():
+        if self._viewport_interaction_active() or self._background_updates_busy():
             return
         refresh_persistent_search = getattr(
             self,
@@ -2839,11 +2854,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def _on_aircraft_refresh_timer(self) -> None:
         if not self._aircraft_layer_enabled():
             return
-        if self._viewport_interaction_active():
-            return
-        started = self.start_background_aircraft_update(reason="timer")
-        if not started:
-            self._schedule_next_aircraft_refresh()
+        self._aircraft_refresh_due = True
+        self._on_scheduler_tick()
 
     def _enable_aircraft_layer(self, *, reason: str) -> None:
         if not self._aircraft_layer_enabled():

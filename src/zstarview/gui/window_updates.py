@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import time
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -59,6 +60,23 @@ class SkyWindowUpdatesMixin:
     def _viewport_interaction_active(self) -> bool:
         return bool(getattr(self.state, "viewport_interaction_mode", False))
 
+    def _background_updates_busy(self) -> bool:
+        controllers = (
+            getattr(self, "_sky_worker", None),
+            getattr(self, "_cloud_controller", None),
+            getattr(self, "_satellite_controller", None),
+            getattr(self, "_aircraft_controller", None),
+            getattr(self, "_jpl_small_body_controller", None),
+            getattr(self, "_terrain_horizon_controller", None),
+            getattr(self, "_water_overlay_controller", None),
+            getattr(self, "_urban_outline_controller", None),
+        )
+        for controller in controllers:
+            has_in_flight_update = getattr(controller, "has_in_flight_update", None)
+            if callable(has_in_flight_update) and has_in_flight_update():
+                return True
+        return False
+
     def _water_overlay_action_enabled(self) -> bool:
         if not bool(getattr(self, "_water_overlay_gui_allowed", True)):
             return False
@@ -68,6 +86,86 @@ class SkyWindowUpdatesMixin:
         action = getattr(self, "_action_toggle_water_overlay", None)
         if action is not None:
             action.setEnabled(self._water_overlay_action_enabled())
+
+    def _on_scheduler_tick(self) -> None:
+        if self._is_shutting_down:
+            return
+        now_ms = time.monotonic() * 1000.0
+        if (
+            self.state.jump_highlight_name is not None
+            and self.state.jump_highlight_until_ms > 0.0
+            and now_ms >= self.state.jump_highlight_until_ms
+        ):
+            self.state.jump_highlight_name = None
+            self.state.jump_highlight_altaz = None
+            self.state.jump_highlight_until_ms = 0.0
+            self.request_client_update()
+        if self._viewport_interaction_active():
+            return
+        if self._background_updates_busy():
+            return
+
+        if self.state.sky_update_pending:
+            started = self.start_background_sky_data_update(
+                star_vmag_limit=self.state.pending_star_vmag_limit,
+                reason="scheduler",
+                allow_during_viewport_interaction=False,
+            )
+            if started:
+                self.state.sky_update_pending = False
+                self.state.pending_star_vmag_limit = None
+                self._sky_refresh_due = False
+                return
+
+        if self._sky_refresh_due:
+            started = self.start_background_sky_data_update(
+                reason="scheduler",
+                allow_during_viewport_interaction=False,
+            )
+            if started:
+                self._sky_refresh_due = False
+                return
+
+        if self._persistent_search_refresh_due:
+            started = self._start_persistent_search_refresh(reason="scheduler")
+            if started:
+                self._persistent_search_refresh_due = False
+                return
+
+        if self._aircraft_refresh_due and self._aircraft_layer_enabled():
+            started = self.start_background_aircraft_update(reason="scheduler")
+            if started:
+                self._aircraft_refresh_due = False
+                return
+
+        if self._satellite_refresh_due and self._satellite_layer_enabled():
+            started = self.start_background_satellite_update(reason="scheduler")
+            if started:
+                self._satellite_refresh_due = False
+                return
+
+        if self._cloud_refresh_due and self._clouddisc and self.cloud_disc_alpha > 0.0:
+            if self._cloud_controller is None:
+                self._cloud_refresh_due = False
+                return
+            if self._cloud_controller.has_in_flight_update():
+                return
+            self.start_background_cloud_update(reason="scheduler")
+            if self._cloud_controller.has_in_flight_update():
+                self._cloud_refresh_due = False
+                return
+
+    def _on_sky_refresh_timer(self) -> None:
+        if self._is_shutting_down:
+            return
+        self._sky_refresh_due = True
+        self._on_scheduler_tick()
+
+    def _on_cloud_refresh_timer(self) -> None:
+        if self._is_shutting_down:
+            return
+        self._cloud_refresh_due = True
+        self._on_scheduler_tick()
 
     def _resolve_aircraft_debug_snapshot_dir(self) -> Path | None:
         raw = os.getenv("ZSTARVIEW_DEBUG_SAVE_AIRCRAFT_READY_FRAME", "").strip()
@@ -674,6 +772,9 @@ class SkyWindowUpdatesMixin:
             source_key=payload.get("source_key"),
             request_id=payload.get("request_id"),
         )
+        if hasattr(self, "_cloud_update_timer"):
+            self._cloud_update_timer.start(max(0, int(self._cloud_update_timer.interval())))
+        self._cloud_refresh_due = False
         self._compositor.invalidate()
         if self.state.interaction_mode:
             self.state.cloud_repaint_deferred = True
@@ -684,6 +785,9 @@ class SkyWindowUpdatesMixin:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.cloud_state.set_error_banner(banner)
+        if hasattr(self, "_cloud_update_timer"):
+            self._cloud_update_timer.start(max(0, int(self._cloud_update_timer.interval())))
+        self._cloud_refresh_due = False
         if self.state.interaction_mode:
             self.state.cloud_repaint_deferred = True
         if banner:

@@ -337,6 +337,7 @@ class CloudController(QObject):
             )
             missing_alpha = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
             cloud_amount_field = build_cloud_amount_field_from_rgba(cloud_rgba)
+            finished_at_utc = datetime.now(timezone.utc)
 
             with self._lock:
                 is_latest = (request_id == self._latest_request_id)
@@ -349,7 +350,8 @@ class CloudController(QObject):
                     "image": cloud_rgba,
                     "meta": meta,
                     "az": az,
-                    "time_utc": datetime.now(timezone.utc),
+                    "time_utc": finished_at_utc,
+                    "finished_at_utc": finished_at_utc,
                     "cloud_amount_field": cloud_amount_field,
                     "missing_mask": missing_alpha,
                     "coverage_ratio": coverage_ratio,
