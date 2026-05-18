@@ -47,7 +47,6 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtWidgets import QWidget
 
-from ..__about__ import __version__
 from ..astro import (
     calculate_visible_stars,
     load_ephemeris,
@@ -1436,7 +1435,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.search_menu = QMenu("Search", self)
         self.observer_view_menu = QMenu("View Direction", self)
         self.display_menu = QMenu("Layers", self)
-        self.help_menu = QMenu("Help", self)
         if not self._frameless_window:
             self.menu.addMenu(self.file_menu)
         self.menu.addMenu(self.search_menu)
@@ -1635,9 +1633,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             triggered=self.toggle_fullscreen,
         )
 
-        self.file_menu.addSeparator()
-        self.file_menu.addMenu(self.help_menu)
-        self.file_menu.addSeparator()
         request_quit = getattr(self, "_request_application_quit", None)
         exit_action = self._add_menu_action(
             self.file_menu,
@@ -1652,16 +1647,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self._vmag_limit_menu_text(),
         )
         vmag_limit_action.setEnabled(False)
-        version_action = self._add_menu_action(
-            self.help_menu,
-            f"Version {__version__}",
-        )
-        version_action.setEnabled(False)
-        self._add_menu_action(
-            self.help_menu,
-            "Code, Data Licenses, and Credits ->",
-            triggered=open_code_data_licenses_and_credits,
-        )
 
         if self._frameless_window:
             self.menu.addSeparator()
@@ -1669,8 +1654,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.menu.addAction(restore_default_size_action)
             self.menu.addAction(fit_to_screen_action)
             self.menu.addAction(fullscreen_action)
-            self.menu.addSeparator()
-            self.menu.addMenu(self.help_menu)
             self.menu.addSeparator()
             self.menu.addAction(exit_action)
 
@@ -1775,39 +1758,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._show_shutdown_message()
         QApplication.quit()
 
-    def _add_help_menu_actions(self, menu: QMenu) -> None:
-        version_action = self._add_menu_action(
-            menu,
-            f"Version {__version__}",
-        )
-        version_action.setEnabled(False)
-        self._add_menu_action(
-            menu,
-            "Code, Data Licenses, and Credits ->",
-            triggered=open_code_data_licenses_and_credits,
-        )
-
-    def _attach_help_menu_to_file_menu(self) -> None:
-        self.file_menu.addSeparator()
-        self.file_menu.addMenu(self.help_menu)
-        self.file_menu.addSeparator()
-
-    def _attach_help_menu_to_frameless_menu(
-        self,
-        square_client_area_action: QAction,
-        restore_default_size_action: QAction,
-        fullscreen_action: QAction,
-        exit_action: QAction,
-    ) -> None:
-        self.menu.addSeparator()
-        self.menu.addAction(square_client_area_action)
-        self.menu.addAction(restore_default_size_action)
-        self.menu.addAction(fullscreen_action)
-        self.menu.addSeparator()
-        self.menu.addMenu(self.help_menu)
-        self.menu.addSeparator()
-        self.menu.addAction(exit_action)
-
     def _attach_client_menu_button(self, parent: QWidget) -> None:
         """Attach the legacy popup-menu button directly on the client area."""
         self.menu_button = MenuButtonWidget(self.theme.window_chrome, parent)
@@ -1818,27 +1768,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
     def _vmag_limit_menu_text(self) -> str:
         return f"Vmag limit {self.vmag_limit:.1f}"
-
-    def _menu_button_style_sheet(self, theme) -> str:
-        chrome = theme.window_chrome
-        text = "#%02x%02x%02x" % chrome.menu_button_text_rgb
-        return (
-            "QPushButton {"
-            " border: none;"
-            " font-size: 16px;"
-            " background: transparent;"
-            f" color: {text};"
-            "}"
-            "QPushButton:hover {"
-            f" color: rgb({chrome.menu_hover_text_rgb[0]}, {chrome.menu_hover_text_rgb[1]}, {chrome.menu_hover_text_rgb[2]});"
-            f" background-color: rgba({chrome.menu_hover_bg_rgba[0]}, {chrome.menu_hover_bg_rgba[1]}, {chrome.menu_hover_bg_rgba[2]}, {chrome.menu_hover_bg_rgba[3]});"
-            "}"
-            "QPushButton:pressed {"
-            f" color: rgb({chrome.menu_pressed_text_rgb[0]}, {chrome.menu_pressed_text_rgb[1]}, {chrome.menu_pressed_text_rgb[2]});"
-            f" background-color: rgba({chrome.menu_pressed_bg_rgba[0]}, {chrome.menu_pressed_bg_rgba[1]}, {chrome.menu_pressed_bg_rgba[2]}, {chrome.menu_pressed_bg_rgba[3]});"
-            "}"
-            "QPushButton:menu-indicator { image: none; }"
-        )
 
     def _size_grip_style_sheet(self) -> str:
         return "QWidget { border: none; background: transparent;}"

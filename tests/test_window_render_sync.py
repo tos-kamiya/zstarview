@@ -16,7 +16,6 @@ from PySide6.QtGui import QResizeEvent
 import zstarview.render.pipeline as pipeline_module
 import zstarview.render.guides as render_guides_module
 import zstarview.render.overlay_info as render_overlay_info_module
-import zstarview.render.search_overlay as search_overlay_module
 import zstarview.render.terrain as render_terrain_module
 import zstarview.render.text as render_text_module
 import zstarview.gui.window as window_module
@@ -1658,140 +1657,6 @@ def test_jump_to_jpl_major_body_target_keeps_overlay_without_refresh() -> None:
     )
 
 
-def test_draw_persistent_search_overlay_draws_label_when_marker_is_kept(
-    monkeypatch,
-) -> None:
-    draw_calls: list[str] = []
-
-    class _Painter:
-        def viewport(self):
-            return QRect(0, 0, 200, 200)
-
-    monkeypatch.setattr(
-        search_overlay_module.render_guides,
-        "draw_gauge_cross",
-        lambda *_args, **_kwargs: draw_calls.append("marker"),
-    )
-    monkeypatch.setattr(
-        search_overlay_module.render_text,
-        "draw_outlined_text",
-        lambda *_args, **_kwargs: draw_calls.append("label"),
-    )
-    monkeypatch.setattr(search_overlay_module, "is_in_fov", lambda *_args, **_kwargs: True)
-    monkeypatch.setattr(
-        search_overlay_module,
-        "altaz_to_normalized_xy",
-        lambda alt, az, view_center, **_kwargs: (float(az), float(alt)),
-    )
-    monkeypatch.setattr(
-        search_overlay_module,
-        "normalized_to_screen_xy",
-        lambda nx, ny, _geometry: (float(nx), float(ny)),
-    )
-
-    dummy = _WindowStub()
-    dummy.visual_preset = "white"
-    dummy.text_font = QFont()
-    dummy.viewer_data = ViewerData(
-        location=(35.0, 139.0),
-        timezone_name="Asia/Tokyo",
-        city_name="Tokyo",
-        view_center=(20.0, 30.0),
-        observer_height_m=1.7,
-        content_fov_deg=180.0,
-    )
-    dummy.state = SkyWindowState(
-        render_view_center=(20.0, 30.0),
-        persistent_search_target=SearchJumpTarget(
-            label="Ceres",
-            kind="jpl_small_body",
-            sort_key=(0.0, "ceres"),
-            alt_deg=12.5,
-            az_deg=220.0,
-            persistent_keep_marker=True,
-        ),
-    )
-
-    window_render_module.SkyWindowRenderMixin._draw_persistent_search_overlay(
-        dummy,
-        _Painter(),
-        geometry=SimpleNamespace(center=(100, 100), radius=80),
-    )
-
-    assert draw_calls == ["marker", "label"]
-
-
-def test_draw_persistent_search_overlay_scales_marker_with_window_scale(
-    monkeypatch,
-) -> None:
-    marker_scales: list[float] = []
-
-    class _Painter:
-        def viewport(self):
-            return QRect(0, 0, 200, 200)
-
-    monkeypatch.setattr(
-        window_render_module,
-        "compute_star_render_upscale_factor",
-        lambda *_args, **_kwargs: 2.5,
-    )
-    monkeypatch.setattr(
-        search_overlay_module.render_guides,
-        "draw_gauge_cross",
-        lambda *_args, **kwargs: marker_scales.append(
-            float(kwargs.get("scale", 1.0))
-        ),
-    )
-    monkeypatch.setattr(
-        search_overlay_module.render_text,
-        "draw_outlined_text",
-        lambda *_args, **_kwargs: None,
-    )
-    monkeypatch.setattr(search_overlay_module, "is_in_fov", lambda *_args, **_kwargs: True)
-    monkeypatch.setattr(
-        search_overlay_module,
-        "altaz_to_normalized_xy",
-        lambda alt, az, view_center, **_kwargs: (float(az), float(alt)),
-    )
-    monkeypatch.setattr(
-        search_overlay_module,
-        "normalized_to_screen_xy",
-        lambda nx, ny, _geometry: (float(nx), float(ny)),
-    )
-
-    dummy = _WindowStub()
-    dummy.visual_preset = "white"
-    dummy.text_font = QFont()
-    dummy._star_render_expected_width = 600
-    dummy.viewer_data = ViewerData(
-        location=(35.0, 139.0),
-        timezone_name="Asia/Tokyo",
-        city_name="Tokyo",
-        view_center=(20.0, 30.0),
-        observer_height_m=1.7,
-        content_fov_deg=180.0,
-    )
-    dummy.state = SkyWindowState(
-        render_view_center=(20.0, 30.0),
-        persistent_search_target=SearchJumpTarget(
-            label="Ceres",
-            kind="jpl_small_body",
-            sort_key=(0.0, "ceres"),
-            alt_deg=12.5,
-            az_deg=220.0,
-            persistent_keep_marker=True,
-        ),
-    )
-
-    window_render_module.SkyWindowRenderMixin._draw_persistent_search_overlay(
-        dummy,
-        _Painter(),
-        geometry=SimpleNamespace(center=(100, 100), radius=80),
-    )
-
-    assert marker_scales == [1.05]
-
-
 def test_refresh_projected_satellite_overlay_falls_back_to_disk_cache(
     monkeypatch,
 ) -> None:
@@ -1934,39 +1799,6 @@ def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(
         ("stars", 4.0),
         ("terrain", None),
     ]
-
-
-def test_draw_cached_frame_reuses_existing_image() -> None:
-    draws: list[tuple[int, int]] = []
-    render_calls: list[str] = []
-
-    class _Painter:
-        def drawImage(self, x: int, y: int, image: QImage) -> None:  # noqa: N802 - Qt naming
-            draws.append((x, y))
-            assert not image.isNull()
-
-    dummy = _WindowStub()
-    dummy._frame_cache_key = None
-    dummy._frame_cache_image = None
-    dummy.size = lambda: window_render_module.QImage(
-        32, 24, QImage.Format.Format_ARGB32_Premultiplied
-    ).size()
-
-    def render_fn(frame_painter) -> None:
-        render_calls.append("render")
-        frame_painter.fillRect(0, 0, 32, 24, window_render_module.Qt.GlobalColor.black)
-
-    painter = _Painter()
-
-    window_render_module.SkyWindowRenderMixin._draw_cached_frame(
-        dummy, painter, ("same",), render_fn
-    )
-    window_render_module.SkyWindowRenderMixin._draw_cached_frame(
-        dummy, painter, ("same",), render_fn
-    )
-
-    assert render_calls == ["render"]
-    assert draws == [(0, 0), (0, 0)]
 
 
 def test_render_cached_frame_image_reuses_existing_image() -> None:

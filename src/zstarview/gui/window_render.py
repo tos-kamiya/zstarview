@@ -13,13 +13,11 @@ from ..render import geometry as render_geometry
 from ..render import satellites as render_satellites
 from ..render import stars as render_stars
 from ..render import text as render_text
-from ..render.search_overlay import draw_search_target_overlay
 from ..render.pipeline import (
     RenderSceneData,
     RenderHudState,
     RenderStyle,
     compute_star_render_surface_size,
-    compute_star_render_upscale_factor,
     render_base_scene_into_painter,
     render_fast_overlay_layers_into_painter,
     render_hud_overlay_into_painter,
@@ -156,21 +154,6 @@ class SkyWindowRenderMixin:
                 ]
             )
         return tuple(key_parts)
-
-    def _draw_cached_frame(
-        self,
-        painter: QPainter,
-        frame_key: tuple[object, ...],
-        render_fn: Callable[[QPainter], None],
-    ) -> None:
-        frame_cache_image = SkyWindowRenderMixin._render_cached_frame_image(
-            self,
-            frame_key=frame_key,
-            render_fn=render_fn,
-            cache_key_attr="_frame_cache_key",
-            cache_image_attr="_frame_cache_image",
-        )
-        painter.drawImage(0, 0, frame_cache_image)
 
     def _render_cached_frame_image(
         self,
@@ -604,33 +587,6 @@ class SkyWindowRenderMixin:
         )
         px, py = render_geometry.normalized_to_screen_xy(nx, ny, geometry)
         return ({"name": target_name}, QPointF(px, py))
-
-    def _draw_persistent_search_overlay(
-        self,
-        painter: QPainter,
-        geometry,
-    ) -> None:
-        target = getattr(self.state, "persistent_search_target", None)
-        if target is None:
-            return
-        if not bool(getattr(target, "persistent_keep_marker", False)):
-            return
-        draw_search_target_overlay(
-            painter,
-            geometry,
-            target,
-            view_center=self.state.render_view_center,
-            edge_fov_deg=float(self.viewer_data.edge_fov_deg),
-            content_fov_deg=float(self.viewer_data.content_fov_deg),
-            theme=self.theme,
-            text_font=self.text_font,
-            draw_marker=True,
-            draw_label=True,
-            marker_scale=compute_star_render_upscale_factor(
-                geometry.radius * 2,
-                int(self._star_render_expected_width),
-            ),
-        )
 
     def render_current_image(self, *, include_hud: bool = False) -> QImage:
         """Render the current window state into an off-screen image."""
