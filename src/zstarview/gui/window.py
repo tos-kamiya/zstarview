@@ -2672,7 +2672,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             shutdown_gui_worker_pool(wait=True)
             if self._sky_data_update_timer.isActive():
                 self._sky_data_update_timer.stop()
-            if self._scheduler_tick_timer.isActive():
+            if hasattr(self, "_scheduler_tick_timer") and self._scheduler_tick_timer.isActive():
                 self._scheduler_tick_timer.stop()
             if self._asterism_check_timer.isActive():
                 self._asterism_check_timer.stop()
