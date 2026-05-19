@@ -9,7 +9,7 @@ import re
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Sequence
 
 import numpy as np
 import xarray as xr
@@ -103,8 +103,7 @@ def find_matching_keys(when_utc: dt.datetime, *, satellite: str, product: str, t
 
 
 def load_template_from_tile(tile_path: Path, *, bucket: str) -> TemplateMeta:
-    ds = xr.open_dataset(tile_path)
-    try:
+    with xr.open_dataset(tile_path) as ds:
         tile_height = int(ds.sizes["y"])
         tile_width = int(ds.sizes["x"])
         product_rows = int(ds.attrs["product_rows"])
@@ -131,8 +130,6 @@ def load_template_from_tile(tile_path: Path, *, bucket: str) -> TemplateMeta:
             geos_scale=geos_scale,
             crs=crs,
         )
-    finally:
-        ds.close()
 
 
 def generate_sparse_layout(meta: TemplateMeta) -> list[TileRecord]:
@@ -323,26 +320,16 @@ def tile_distance_km(record: TileRecord, meta: TemplateMeta, *, observer_lat: fl
     return float(math.hypot(center_x - float(obs_x), center_y - float(obs_y)) / 1000.0)
 
 
-def _validate_same(values: Iterable[object], *, name: str) -> object:
-    seq = list(values)
-    first = seq[0]
-    for value in seq[1:]:
-        if value != first:
-            raise ValueError(f"Inconsistent {name}: {first!r} != {value!r}")
-    return first
-
-
 def stitch_tiles_from_paths(paths: Sequence[Path], *, source_label: str | None = None) -> xr.Dataset:
     if not paths:
         raise ValueError("No tile paths provided")
-    datasets = [xr.open_dataset(path) for path in paths]
-    try:
-        first = datasets[0]
+    with xr.open_dataset(paths[0]) as first:
         tile_height = int(first.sizes["y"])
         tile_width = int(first.sizes["x"])
-        product_rows = int(_validate_same((int(ds.attrs["product_rows"]) for ds in datasets), name="product_rows"))
-        product_cols = int(_validate_same((int(ds.attrs["product_columns"]) for ds in datasets), name="product_columns"))
-        channel_id = int(_validate_same((int(ds.attrs["channel_id"]) for ds in datasets), name="channel_id"))
+        first_projection_attrs = dict(first[GRID_VAR].attrs)
+        product_rows = int(first.attrs["product_rows"])
+        product_cols = int(first.attrs["product_columns"])
+        channel_id = int(first.attrs["channel_id"])
         x_step = float(first.x.values[1] - first.x.values[0])
         y_step = float(first.y.values[1] - first.y.values[0])
         x0 = float(first.x.values[0] - int(first.attrs["tile_column_offset"]) * x_step)
@@ -351,24 +338,25 @@ def stitch_tiles_from_paths(paths: Sequence[Path], *, source_label: str | None =
         full = np.full((product_rows, product_cols), np.nan, dtype=np.float32)
         coverage = np.zeros((product_rows, product_cols), dtype=np.uint8)
 
-        for path, ds in zip(paths, datasets):
-            row0 = int(ds.attrs["tile_row_offset"])
-            col0 = int(ds.attrs["tile_column_offset"])
-            row1 = row0 + tile_height
-            col1 = col0 + tile_width
-            tile = np.asarray(ds[DATA_VAR].values, dtype=np.float32)
-            if full[row0:row1, col0:col1].shape != tile.shape:
-                raise ValueError(f"Tile shape mismatch for {path.name}")
-            if np.any(coverage[row0:row1, col0:col1]):
-                raise ValueError(f"Tile overlap detected for {path.name}")
-            expected_x0 = x0 + col0 * x_step
-            expected_y0 = y0 + row0 * y_step
-            if not math.isclose(float(ds.x.values[0]), expected_x0, rel_tol=0.0, abs_tol=1e-6):
-                raise ValueError(f"x coordinate mismatch for {path.name}")
-            if not math.isclose(float(ds.y.values[0]), expected_y0, rel_tol=0.0, abs_tol=1e-6):
-                raise ValueError(f"y coordinate mismatch for {path.name}")
-            full[row0:row1, col0:col1] = tile
-            coverage[row0:row1, col0:col1] = 1
+        for path in paths:
+            with xr.open_dataset(path) as ds:
+                row0 = int(ds.attrs["tile_row_offset"])
+                col0 = int(ds.attrs["tile_column_offset"])
+                row1 = row0 + tile_height
+                col1 = col0 + tile_width
+                tile = np.asarray(ds[DATA_VAR].values, dtype=np.float32)
+                if full[row0:row1, col0:col1].shape != tile.shape:
+                    raise ValueError(f"Tile shape mismatch for {path.name}")
+                if np.any(coverage[row0:row1, col0:col1]):
+                    raise ValueError(f"Tile overlap detected for {path.name}")
+                expected_x0 = x0 + col0 * x_step
+                expected_y0 = y0 + row0 * y_step
+                if not math.isclose(float(ds.x.values[0]), expected_x0, rel_tol=0.0, abs_tol=1e-6):
+                    raise ValueError(f"x coordinate mismatch for {path.name}")
+                if not math.isclose(float(ds.y.values[0]), expected_y0, rel_tol=0.0, abs_tol=1e-6):
+                    raise ValueError(f"y coordinate mismatch for {path.name}")
+                full[row0:row1, col0:col1] = tile
+                coverage[row0:row1, col0:col1] = 1
 
         x = x0 + np.arange(product_cols, dtype=np.float64) * x_step
         y = y0 + np.arange(product_rows, dtype=np.float64) * y_step
@@ -382,7 +370,7 @@ def stitch_tiles_from_paths(paths: Sequence[Path], *, source_label: str | None =
             }
         )
         data = xr.DataArray(full, dims=("y", "x"), coords={"y": y, "x": x}, name=DATA_VAR, attrs=attrs)
-        projection = first[GRID_VAR].copy(deep=True)
+        projection = xr.DataArray(0, name=GRID_VAR, attrs=first_projection_attrs)
         merged = xr.Dataset(
             data_vars={DATA_VAR: data, GRID_VAR: projection, "tile_coverage_mask": (("y", "x"), coverage)},
             coords={"y": y, "x": x},
@@ -396,9 +384,6 @@ def stitch_tiles_from_paths(paths: Sequence[Path], *, source_label: str | None =
             }
         )
         return merged
-    finally:
-        for ds in datasets:
-            ds.close()
 
 
 def build_area_from_dataset(ds: xr.Dataset) -> GeoArea:
