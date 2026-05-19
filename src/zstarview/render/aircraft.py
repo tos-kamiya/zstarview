@@ -1,4 +1,3 @@
-from collections.abc import Iterable
 from typing import Any, Dict, List, Optional
 
 import astropy.time
@@ -7,7 +6,6 @@ from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 
 from ..aircraft.types import AircraftOverlayPoint
-from ..aircraft.types import AircraftSnapshot
 from ..aircraft_constants import AIRCRAFT_FADE_START_SECONDS, AIRCRAFT_OVERLAY_LINE_COLOR_RGB
 from ..astro import altaz_to_normalized_xy, is_in_fov
 from ..paths import FIELD_OF_VIEW_DEG, ThemeStyle
@@ -15,7 +13,6 @@ from ..types import ScreenGeometry
 from .geometry import normalized_to_screen_xy
 from .text import resolve_text_style
 from ..aircraft import project_aircraft_snapshots
-
 _AIRCRAFT_CALLSIGN_MAX_DISTANCE_KM = 10.0
 _AIRCRAFT_MAX_DRAW_DISTANCE_KM = 50.0
 
@@ -23,14 +20,13 @@ _AIRCRAFT_MAX_DRAW_DISTANCE_KM = 50.0
 def draw_aircraft_overlay(
     painter: QPainter,
     geometry: ScreenGeometry,
-    aircraft_points_or_snapshots: object | None = None,
+    aircraft_snapshots: object | None = None,
     view_center: tuple[float, float] | None = None,
     *,
     observer_lat: float | None = None,
     observer_lon: float | None = None,
     observer_height_m: float | None = None,
     time_obj: astropy.time.Time | None = None,
-    aircraft_points: list[AircraftOverlayPoint] | None = None,
     opacity: float = 1.0,
     line_width_scale: float = 1.0,
     label_candidates: Optional[List[Dict[str, Any]]] = None,
@@ -44,14 +40,13 @@ def draw_aircraft_overlay(
     if view_center is None:
         return
 
-    if aircraft_points is None:
-        aircraft_points = _resolve_aircraft_overlay_points(
-            aircraft_points_or_snapshots,
-            observer_lat=observer_lat,
-            observer_lon=observer_lon,
-            observer_height_m=observer_height_m,
-            time_obj=time_obj,
-        )
+    aircraft_points = _project_aircraft_snapshots(
+        aircraft_snapshots,
+        observer_lat=observer_lat,
+        observer_lon=observer_lon,
+        observer_height_m=observer_height_m,
+        time_obj=time_obj,
+    )
     if not aircraft_points:
         return
 
@@ -132,79 +127,30 @@ def draw_aircraft_overlay(
     painter.restore()
 
 
-def _resolve_aircraft_overlay_points(
-    aircraft_points_or_snapshots: object | None,
+def _project_aircraft_snapshots(
+    aircraft_snapshots: object | None,
     *,
     observer_lat: float | None = None,
     observer_lon: float | None = None,
     observer_height_m: float | None = None,
     time_obj: astropy.time.Time | None = None,
 ) -> list[AircraftOverlayPoint]:
-    if aircraft_points_or_snapshots is None:
+    if aircraft_snapshots is None:
         return []
-    if isinstance(aircraft_points_or_snapshots, list):
-        if aircraft_points_or_snapshots and isinstance(
-            aircraft_points_or_snapshots[0], AircraftOverlayPoint
-        ):
-            return [
-                point
-                for point in aircraft_points_or_snapshots
-                if isinstance(point, AircraftOverlayPoint)
-            ]
-        if aircraft_points_or_snapshots and isinstance(
-            aircraft_points_or_snapshots[0], AircraftSnapshot
-        ):
-            if (
-                time_obj is None
-                or observer_lat is None
-                or observer_lon is None
-                or observer_height_m is None
-            ):
-                return []
-            return project_aircraft_snapshots(
-                aircraft_points_or_snapshots,
-                observer_lat=float(observer_lat),
-                observer_lon=float(observer_lon),
-                observer_height_m=float(observer_height_m),
-                time_obj=time_obj,
-            )
-        if (
-            time_obj is None
-            or observer_lat is None
-            or observer_lon is None
-            or observer_height_m is None
-        ):
-            return []
-        return project_aircraft_snapshots(
-            aircraft_points_or_snapshots,
-            observer_lat=float(observer_lat),
-            observer_lon=float(observer_lon),
-            observer_height_m=float(observer_height_m),
-            time_obj=time_obj,
-        )
-    if isinstance(aircraft_points_or_snapshots, Iterable):
-        snapshot_list = list(aircraft_points_or_snapshots)
-        if snapshot_list and isinstance(snapshot_list[0], AircraftOverlayPoint):
-            return [
-                point
-                for point in snapshot_list
-                if isinstance(point, AircraftOverlayPoint)
-            ]
-        if (
-            time_obj is None
-            or observer_lat is None
-            or observer_lon is None
-            or observer_height_m is None
-        ):
-            return []
-        return project_aircraft_snapshots(
-            snapshot_list,
-            observer_lat=float(observer_lat),
-            observer_lon=float(observer_lon),
-            observer_height_m=float(observer_height_m),
-            time_obj=time_obj,
-        )
-    return []
+    if (
+        time_obj is None
+        or observer_lat is None
+        or observer_lon is None
+        or observer_height_m is None
+    ):
+        return []
+    return project_aircraft_snapshots(
+        aircraft_snapshots,
+        observer_lat=float(observer_lat),
+        observer_lon=float(observer_lon),
+        observer_height_m=float(observer_height_m),
+        time_obj=time_obj,
+    )
 
 
 def _aircraft_line_width_px(distance_km: float, *, width_scale: float = 1.0) -> float:

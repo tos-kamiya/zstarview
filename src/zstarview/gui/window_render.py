@@ -35,8 +35,7 @@ def _resolve_hover_targets(
     render_viewer: ViewerData,
     mouse_pos: QPoint | None,
     geometry: ScreenGeometry,
-    satellite_overlay_source: object | None = None,
-    satellite_overlay_points: object | None = None,
+    satellite_records_by_group: object | None = None,
     satellite_element_epoch_utc: object | None = None,
     observer_lat: float | None = None,
     observer_lon: float | None = None,
@@ -53,8 +52,6 @@ def _resolve_hover_targets(
     highlighted_satellite = None
     if mouse_pos is None:
         return highlighted_object, highlighted_dso, highlighted_satellite
-    if satellite_overlay_source is None:
-        satellite_overlay_source = satellite_overlay_points
 
     highlighted_object = render_stars.find_highlighted_object(
         celestial_data,
@@ -70,7 +67,7 @@ def _resolve_hover_targets(
             geometry,
         )
     highlighted_satellite = render_satellites.find_highlighted_satellite(
-        satellite_overlay_source,
+        satellite_records_by_group,
         mouse_pos,
         geometry,
         render_viewer.view_center,
@@ -163,11 +160,7 @@ class SkyWindowRenderMixin:
             satellite_state = getattr(self, "satellite_state", None)
             aircraft_state = getattr(self, "aircraft_state", None)
             satellite_overlay_source = getattr(satellite_state, "records_by_group", None)
-            if satellite_overlay_source is None:
-                satellite_overlay_source = self.state.satellite_overlay_points
             aircraft_overlay_source = getattr(aircraft_state, "snapshots", None)
-            if aircraft_overlay_source is None:
-                aircraft_overlay_source = self.state.aircraft_overlay_points
             key_parts.extend(
                 [
                     round(float(self.satellite_opacity), 3),
@@ -493,9 +486,7 @@ class SkyWindowRenderMixin:
             satellite_records_by_group=getattr(
                 getattr(self, "satellite_state", None), "records_by_group", None
             ),
-            satellite_overlay_points=getattr(state, "satellite_overlay_points", None),
             aircraft_snapshots=getattr(getattr(self, "aircraft_state", None), "snapshots", None),
-            aircraft_overlay_points=getattr(state, "aircraft_overlay_points", None),
             time_obj=time_obj,
             night_light_glow_profile=getattr(state, "night_light_glow_profile", None),
         )
@@ -779,10 +770,9 @@ class SkyWindowRenderMixin:
                     render_viewer=render_viewer,
                     mouse_pos=mouse_pos,
                     geometry=geometry,
-                    satellite_overlay_source=getattr(
+                    satellite_records_by_group=getattr(
                         getattr(self, "satellite_state", None), "records_by_group", None
-                    )
-                    or self.state.satellite_overlay_points,
+                    ),
                     satellite_element_epoch_utc=getattr(
                         getattr(self, "satellite_state", None), "element_epoch_utc", None
                     ),

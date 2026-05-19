@@ -26,11 +26,10 @@ except ImportError:  # pragma: no cover - non-Unix fallback
 from ..aircraft import (
     build_observer_bbox,
     fetch_cached_opensky_states,
-    project_aircraft_snapshots,
 )
 from ..overlay_time import classify_target_time, overlay_availability_for_delta
 from ..night_lights import compute_night_light_glow_profile
-from ..satellites import project_satellite_records, resolve_satellite_elements_for_time
+from ..satellites import resolve_satellite_elements_for_time
 from ..astro import load_ephemeris
 from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_lived_cache
 from ..catalog import load_dso_catalog, load_star_catalog
@@ -888,42 +887,33 @@ def _merge_outline_layers(
     return merged or None
 
 
-def _fetch_aircraft_overlay_points(
+def _fetch_aircraft_snapshots(
     *,
     viewer_data: ViewerData,
-    celestial_time_obj: object,
     deadline: float | None,
-) -> object | None:
+) -> list[object] | None:
     if _timed_out(deadline):
         raise TimeoutError("aircraft timed out")
     remaining = _remaining_timeout_seconds(deadline)
     timeout_s = 20.0 if remaining is None else max(0.1, min(20.0, remaining))
     bbox = build_observer_bbox(float(viewer_data.lat_deg), float(viewer_data.lon_deg))
     fetched = fetch_cached_opensky_states(bbox, timeout_s=timeout_s)
-    snapshots = fetched.snapshots
     logger.info("Aircraft source: %s", fetched.source)
     if _timed_out(deadline):
         raise TimeoutError("aircraft timed out")
-    return project_aircraft_snapshots(
-        snapshots,
-        observer_lat=float(viewer_data.lat_deg),
-        observer_lon=float(viewer_data.lon_deg),
-        observer_height_m=float(viewer_data.observer_height_m),
-        time_obj=celestial_time_obj,
-    )
+    return list(fetched.snapshots)
 
 
-def _fetch_satellite_overlay_points(
+def _fetch_satellite_records_by_group(
     *,
     viewer_data: ViewerData,
-    celestial_time_obj: object,
     target_time_utc,
     deadline: float | None,
     enabled_groups: tuple[str, ...] = (
         SATELLITE_ISS_CACHE_KEY,
         SATELLITE_HORIZONS_CACHE_KEY,
     ),
-) -> object | None:
+) -> dict[str, list[dict[str, object]]] | None:
     if _timed_out(deadline):
         raise TimeoutError("satellites timed out")
     remaining = _remaining_timeout_seconds(deadline)
@@ -944,13 +934,7 @@ def _fetch_satellite_overlay_points(
         records_by_group[group_key] = list(fetched.records)
     if _timed_out(deadline):
         raise TimeoutError("satellites timed out")
-    return project_satellite_records(
-        records_by_group,
-        observer_lat=float(viewer_data.lat_deg),
-        observer_lon=float(viewer_data.lon_deg),
-        observer_height_m=float(viewer_data.observer_height_m),
-        time_obj=celestial_time_obj,
-    )
+    return records_by_group
 
 
 def _render_image(
@@ -1449,12 +1433,11 @@ def main() -> None:
             if not allow_partial_data:
                 _abort_export_without_partial_data()
 
-    aircraft_overlay_points = None
+    aircraft_snapshots = None
     if user_options.aircraft_opacity > 0.0:
         try:
-            aircraft_overlay_points = _fetch_aircraft_overlay_points(
+            aircraft_snapshots = _fetch_aircraft_snapshots(
                 viewer_data=viewer_data,
-                celestial_time_obj=celestial_data.time,
                 deadline=deadline,
             )
         except Exception as exc:
@@ -1463,12 +1446,11 @@ def main() -> None:
             if not allow_partial_data:
                 _abort_export_without_partial_data()
 
-    satellite_overlay_points = None
+    satellite_records_by_group = None
     if user_options.satellite_opacity > 0.0:
         try:
-            satellite_overlay_points = _fetch_satellite_overlay_points(
+            satellite_records_by_group = _fetch_satellite_records_by_group(
                 viewer_data=viewer_data,
-                celestial_time_obj=celestial_data.time,
                 target_time_utc=celestial_data.time.to_datetime(timezone=timezone.utc),
                 deadline=deadline,
             )
@@ -1502,8 +1484,8 @@ def main() -> None:
         terrain_horizon_secondary_profile_distances_m_layers=terrain_horizon_secondary_profile_distances_m_layers,
         urban_outlines=urban_outlines,
         water_overlay_dots=water_overlay_dots,
-        satellite_overlay_points=satellite_overlay_points,
-        aircraft_overlay_points=aircraft_overlay_points,
+        satellite_records_by_group=satellite_records_by_group,
+        aircraft_snapshots=aircraft_snapshots,
         night_light_glow_profile=night_light_glow_profile,
     )
     image = _render_image(

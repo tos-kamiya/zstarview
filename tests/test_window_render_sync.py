@@ -241,8 +241,8 @@ def _make_scene(
         terrain_horizon_secondary_profile_altaz_layers=terrain_horizon_secondary_profile_altaz_layers,
         terrain_horizon_secondary_profile_distances_m_layers=terrain_horizon_secondary_profile_distances_m_layers,
         urban_outlines=urban_outlines,
-        satellite_overlay_points=None,
-        aircraft_overlay_points=None,
+        satellite_records_by_group=None,
+        aircraft_snapshots=None,
     )
 
 
@@ -676,7 +676,7 @@ def test_jump_to_satellite_target_uses_cached_satellite_records_below_horizon(
         observer_height_m=1.7,
     )
     dummy.state = SkyWindowState(
-        render_view_center=(20.0, 30.0), satellite_overlay_points=None
+        render_view_center=(20.0, 30.0)
     )
     dummy.satellite_state = SimpleNamespace(
         records_by_group={"iss": [{"OBJECT_NAME": "ISS (ZARYA)"}]},
@@ -759,7 +759,7 @@ def test_jump_to_satellite_target_sets_banner_when_not_available() -> None:
         observer_height_m=1.7,
     )
     dummy.state = SkyWindowState(
-        render_view_center=(20.0, 30.0), satellite_overlay_points=None
+        render_view_center=(20.0, 30.0)
     )
     dummy.satellite_state = SimpleNamespace(
         records_by_group={}, overlay_points=None, set_banner=Mock()
@@ -814,7 +814,7 @@ def test_jump_to_place_target_uses_projected_altaz(monkeypatch) -> None:
         observer_height_m=1.7,
     )
     dummy.state = SkyWindowState(
-        render_view_center=(20.0, 30.0), satellite_overlay_points=None
+        render_view_center=(20.0, 30.0)
     )
     dummy.satellite_state = SimpleNamespace(
         records_by_group={}, overlay_points=None, set_banner=Mock()
@@ -854,7 +854,6 @@ def test_jump_to_jpl_small_body_target_can_set_persistent_overlay(caplog) -> Non
     )
     dummy.state = SkyWindowState(
         render_view_center=(20.0, 30.0),
-        satellite_overlay_points=None,
         persistent_search_target=None,
     )
     dummy.satellite_state = SimpleNamespace(
@@ -920,7 +919,6 @@ def test_jump_to_jpl_small_body_target_uses_state_vector_when_present(monkeypatc
     )
     dummy.state = SkyWindowState(
         render_view_center=(20.0, 30.0),
-        satellite_overlay_points=None,
         persistent_search_target=None,
     )
     dummy.satellite_state = SimpleNamespace(
@@ -982,7 +980,6 @@ def test_jump_to_jpl_small_body_target_honors_fixed_search_axes() -> None:
     dummy._search_view_center_az_specified = False
     dummy.state = SkyWindowState(
         render_view_center=(5.0, 210.0),
-        satellite_overlay_points=None,
         persistent_search_target=None,
     )
     dummy.satellite_state = SimpleNamespace(
@@ -1037,7 +1034,6 @@ def test_jump_to_jpl_small_body_target_can_disable_fixed_search_axes() -> None:
     dummy._search_view_center_az_specified = True
     dummy.state = SkyWindowState(
         render_view_center=(5.0, 210.0),
-        satellite_overlay_points=None,
         persistent_search_target=None,
     )
     dummy.satellite_state = SimpleNamespace(
@@ -1090,7 +1086,6 @@ def test_jump_to_jpl_small_body_target_without_keep_flags_clears_overlay() -> No
     )
     dummy.state = SkyWindowState(
         render_view_center=(20.0, 30.0),
-        satellite_overlay_points=None,
         persistent_search_target=SearchJumpTarget(
             label="Old",
             kind="jpl_small_body",
@@ -1161,7 +1156,6 @@ def test_jpl_small_body_failure_reschedules_one_hour_later() -> None:
     )
     dummy.state = SkyWindowState(
         render_view_center=(20.0, 30.0),
-        satellite_overlay_points=None,
         persistent_search_target=current_target,
         persistent_search_next_refresh_utc=datetime(2026, 4, 18, 13, 0, tzinfo=timezone.utc),
         persistent_search_reference_time_utc=datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
@@ -1223,7 +1217,6 @@ def test_on_jpl_ready_logs_refreshed_persistent_target(caplog) -> None:
     )
     dummy.state = SkyWindowState(
         render_view_center=(20.0, 30.0),
-        satellite_overlay_points=None,
         persistent_search_target=current_target,
         persistent_search_next_refresh_utc=datetime(2026, 4, 18, 13, 0, tzinfo=timezone.utc),
         persistent_search_reference_time_utc=datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
@@ -1610,7 +1603,6 @@ def test_jump_to_jpl_major_body_target_keeps_overlay_without_refresh() -> None:
     )
     dummy.state = SkyWindowState(
         render_view_center=(20.0, 30.0),
-        satellite_overlay_points=None,
         persistent_search_target=None,
     )
     dummy.satellite_state = SimpleNamespace(
@@ -1884,7 +1876,6 @@ def test_render_frame_cache_key_ignores_hover_and_status_state() -> None:
     dummy.state.terrain_horizon_profile = [(1.0, 2.0)]
     dummy.state.urban_outlines = [object()]
     dummy.state.water_overlay_dots = [object()]
-    dummy.state.aircraft_overlay_points = [object()]
     dummy.state.mouse_pos = None
     dummy.state.jump_highlight_name = None
     dummy.state.jump_highlight_altaz = None
@@ -1949,7 +1940,6 @@ def test_render_frame_cache_key_tracks_water_overlay_state() -> None:
     dummy.state.terrain_horizon_profile = [(1.0, 2.0)]
     dummy.state.urban_outlines = [object()]
     dummy.state.water_overlay_dots = [object()]
-    dummy.state.aircraft_overlay_points = [object()]
 
     key_a = SkyWindow._render_frame_cache_key(
         dummy,
@@ -2008,8 +1998,6 @@ def test_present_frame_cache_key_tracks_hover_and_status_state() -> None:
     dummy.state.sky_disc_image = object()
     dummy.state.terrain_horizon_profile = [(1.0, 2.0)]
     dummy.state.urban_outlines = [object()]
-    dummy.state.satellite_overlay_points = [object()]
-    dummy.state.aircraft_overlay_points = [object()]
 
     base_key = SkyWindow._render_frame_cache_key(
         dummy,
@@ -2076,8 +2064,6 @@ def test_render_frame_cache_key_ignores_fast_overlay_state_for_base_cache() -> N
     dummy.state.sky_disc_image = object()
     dummy.state.terrain_horizon_profile = [(1.0, 2.0)]
     dummy.state.urban_outlines = [object()]
-    dummy.state.satellite_overlay_points = [object()]
-    dummy.state.aircraft_overlay_points = [object()]
 
     key_a = SkyWindow._render_frame_cache_key(
         dummy,
@@ -2087,8 +2073,6 @@ def test_render_frame_cache_key_ignores_fast_overlay_state_for_base_cache() -> N
         include_fast_overlays=False,
     )
 
-    dummy.state.satellite_overlay_points = [object(), object()]
-    dummy.state.aircraft_overlay_points = [object(), object()]
     dummy.satellite_opacity = 0.9
     dummy.aircraft_opacity = 0.8
 
@@ -2145,7 +2129,7 @@ def test_resolve_hover_targets_keeps_star_and_satellite_candidates_independent(
             render_viewer=viewer,
             mouse_pos=mouse_pos,
             geometry=geometry,
-            satellite_overlay_points=[object()],
+            satellite_records_by_group={"iss": [{"OBJECT_NAME": "ISS (ZARYA)"}]},
             show_dso=True,
         )
     )
@@ -2877,8 +2861,8 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         terrain_horizon_secondary_profile_altaz_layers=None,
         terrain_horizon_secondary_profile_distances_m_layers=None,
         urban_outlines=None,
-        satellite_overlay_points=None,
-        aircraft_overlay_points=None,
+        satellite_records_by_group=None,
+        aircraft_snapshots=None,
     )
     style = pipeline_module.RenderStyle(
         theme=pipeline_module.THEME_STYLES_BY_PRESET["night"],

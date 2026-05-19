@@ -843,7 +843,7 @@ def test_on_aircraft_ready_saves_debug_snapshot_when_enabled(
     dummy = SimpleNamespace()
     dummy.aircraft_state = _DummyAircraftState()
     dummy.aircraft_opacity = 1.0
-    dummy.state = SimpleNamespace(aircraft_overlay_points=None)
+    dummy.state = SimpleNamespace()
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request")
     dummy._schedule_next_aircraft_refresh = lambda: calls.append("schedule")
@@ -873,7 +873,7 @@ def test_on_aircraft_ready_saves_debug_snapshot_when_enabled(
         },
     )
 
-    assert dummy.state.aircraft_overlay_points is None
+    assert dummy.state is not None
     assert calls == ["schedule", "request", "render:True"]
     assert len(dummy_image.saved_paths) == 1
     assert (
@@ -889,7 +889,7 @@ def test_on_aircraft_ready_skips_debug_snapshot_when_disabled(monkeypatch) -> No
     dummy = SimpleNamespace()
     dummy.aircraft_state = _DummyAircraftState()
     dummy.aircraft_opacity = 1.0
-    dummy.state = SimpleNamespace(aircraft_overlay_points=None)
+    dummy.state = SimpleNamespace()
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request")
     dummy._schedule_next_aircraft_refresh = lambda: calls.append("schedule")
@@ -919,7 +919,7 @@ def test_on_aircraft_ready_skips_debug_snapshot_when_disabled(monkeypatch) -> No
         },
     )
 
-    assert dummy.state.aircraft_overlay_points is None
+    assert dummy.state is not None
     assert calls == ["schedule", "request"]
 
 
@@ -928,7 +928,7 @@ def test_on_aircraft_ready_skips_debug_snapshot_for_cache_fresh(monkeypatch, tmp
     dummy = SimpleNamespace()
     dummy.aircraft_state = _DummyAircraftState()
     dummy.aircraft_opacity = 1.0
-    dummy.state = SimpleNamespace(aircraft_overlay_points=None)
+    dummy.state = SimpleNamespace()
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request")
     dummy._schedule_next_aircraft_refresh = lambda: calls.append("schedule")
@@ -958,7 +958,7 @@ def test_on_aircraft_ready_skips_debug_snapshot_for_cache_fresh(monkeypatch, tmp
         },
     )
 
-    assert dummy.state.aircraft_overlay_points is None
+    assert dummy.state is not None
     assert calls == ["schedule", "request"]
     assert list(tmp_path.iterdir()) == []
 

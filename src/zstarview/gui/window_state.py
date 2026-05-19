@@ -7,9 +7,7 @@ from typing import Optional
 from PySide6.QtCore import QPoint
 from PySide6.QtGui import QImage
 
-from ..aircraft.types import AircraftOverlayPoint
 from ..search.models import SearchJumpTarget
-from ..satellites.types import SatelliteOverlayPoint
 from ..night_lights import NightLightGlowProfile
 from ..types import CelestialData, StarsTable, UrbanOutlinePolyline, ViewCenterAltAz
 from ..water_overlay import WaterOverlayPoint
@@ -53,6 +51,4 @@ class SkyWindowState:
     terrain_horizon_secondary_profile_distances_m_layers: Optional[list[list[float]]] = None
     urban_outlines: Optional[list[UrbanOutlinePolyline]] = None
     water_overlay_dots: Optional[list[WaterOverlayPoint]] = None
-    satellite_overlay_points: Optional[list[SatelliteOverlayPoint]] = None
-    aircraft_overlay_points: Optional[list[AircraftOverlayPoint]] = None
     night_light_glow_profile: Optional[NightLightGlowProfile] = None

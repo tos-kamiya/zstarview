@@ -1,4 +1,3 @@
-from collections.abc import Mapping
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -45,45 +44,12 @@ def _satellite_hover_radius_px(point: SatelliteOverlayPoint) -> float:
     )
 
 
-def _resolve_satellite_overlay_points(
-    satellite_points_or_records: object | None,
-    *,
-    observer_lat: float | None = None,
-    observer_lon: float | None = None,
-    observer_height_m: float | None = None,
-    time_obj: astropy.time.Time | None = None,
-) -> list[SatelliteOverlayPoint]:
-    if isinstance(satellite_points_or_records, Mapping):
-        if (
-            time_obj is None
-            or observer_lat is None
-            or observer_lon is None
-            or observer_height_m is None
-        ):
-            return []
-        return project_satellite_records(
-            satellite_points_or_records,
-            observer_lat=float(observer_lat),
-            observer_lon=float(observer_lon),
-            observer_height_m=float(observer_height_m),
-            time_obj=time_obj,
-        )
-    if satellite_points_or_records is None:
-        return []
-    return [
-        point
-        for point in satellite_points_or_records
-        if isinstance(point, SatelliteOverlayPoint)
-    ]
-
-
 def find_highlighted_satellite(
-    satellite_points_or_records: object | None = None,
+    satellite_records_by_group: object | None = None,
     mouse_pos: QPoint | QPointF | None = None,
     geometry: ScreenGeometry | None = None,
     view_center: tuple[float, float] | None = None,
     *,
-    satellite_overlay_points: object | None = None,
     observer_lat: float | None = None,
     observer_lon: float | None = None,
     observer_height_m: float | None = None,
@@ -92,8 +58,6 @@ def find_highlighted_satellite(
     edge_fov_deg: float = FIELD_OF_VIEW_DEG,
     content_fov_deg: float = FIELD_OF_VIEW_DEG,
 ) -> tuple[SatelliteOverlayPoint, QPointF] | None:
-    if satellite_points_or_records is None:
-        satellite_points_or_records = satellite_overlay_points
     if view_center is None or geometry is None:
         return None
     if element_epoch_utc is not None:
@@ -103,11 +67,18 @@ def find_highlighted_satellite(
             age_seconds = 0.0
         if age_seconds >= float(SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS):
             return None
-    satellite_points = _resolve_satellite_overlay_points(
-        satellite_points_or_records,
-        observer_lat=observer_lat,
-        observer_lon=observer_lon,
-        observer_height_m=observer_height_m,
+    if (
+        time_obj is None
+        or observer_lat is None
+        or observer_lon is None
+        or observer_height_m is None
+    ):
+        return None
+    satellite_points = project_satellite_records(
+        satellite_records_by_group or {},
+        observer_lat=float(observer_lat),
+        observer_lon=float(observer_lon),
+        observer_height_m=float(observer_height_m),
         time_obj=time_obj,
     )
     if not satellite_points or mouse_pos is None:
@@ -135,10 +106,9 @@ def find_highlighted_satellite(
 def draw_satellite_overlay(
     painter: QPainter,
     geometry: ScreenGeometry,
-    satellite_points_or_records: object | None = None,
+    satellite_records_by_group: object | None = None,
     view_center: tuple[float, float] | None = None,
     *,
-    satellite_points: list[SatelliteOverlayPoint] | None = None,
     observer_lat: float | None = None,
     observer_lon: float | None = None,
     observer_height_m: float | None = None,
@@ -166,14 +136,20 @@ def draw_satellite_overlay(
         if age_seconds >= float(SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS):
             return
 
-    if satellite_points is None:
-        satellite_points = _resolve_satellite_overlay_points(
-            satellite_points_or_records,
-            observer_lat=observer_lat,
-            observer_lon=observer_lon,
-            observer_height_m=observer_height_m,
-            time_obj=time_obj,
-        )
+    if (
+        time_obj is None
+        or observer_lat is None
+        or observer_lon is None
+        or observer_height_m is None
+    ):
+        return
+    satellite_points = project_satellite_records(
+        satellite_records_by_group or {},
+        observer_lat=float(observer_lat),
+        observer_lon=float(observer_lon),
+        observer_height_m=float(observer_height_m),
+        time_obj=time_obj,
+    )
     if not satellite_points:
         return
 

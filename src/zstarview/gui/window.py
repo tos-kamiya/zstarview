@@ -961,8 +961,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.state = SkyWindowState(
             render_view_center=tuple(self.viewer_data.view_center),
             urban_outlines=None,
-            satellite_overlay_points=None,
-            aircraft_overlay_points=None,
         )
         self._startup_initial_load_started = False
         self._startup_initial_sky_loaded = False

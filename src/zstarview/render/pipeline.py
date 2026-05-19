@@ -10,7 +10,6 @@ import numpy as np
 from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt
 from PySide6.QtGui import QFont, QImage, QPainter
 
-from ..aircraft.types import AircraftOverlayPoint
 from ..aircraft.types import AircraftSnapshot
 from ..gui.composite import CloudAmountField, SkyCompositorCache
 from ..night_lights import NightLightGlowProfile
@@ -94,9 +93,7 @@ class RenderSceneData:
     urban_outlines: list[UrbanOutlinePolyline] | None
     satellite_element_epoch_utc: datetime | None = None
     satellite_records_by_group: dict[str, list[SatelliteOmmRecord]] | None = None
-    satellite_overlay_points: list[SatelliteOverlayPoint] | None = None
     aircraft_snapshots: list[AircraftSnapshot] | None = None
-    aircraft_overlay_points: list[AircraftOverlayPoint] | None = None
     time_obj: astropy.time.Time | None = None
     night_light_glow_profile: NightLightGlowProfile | None = None
     water_overlay_dots: list[WaterOverlayPoint] | None = None
@@ -746,8 +743,10 @@ def _draw_aircraft_layer(
         geometry,
         scene.aircraft_snapshots,
         scene.viewer.view_center,
+        observer_lat=float(scene.viewer.location[0]),
+        observer_lon=float(scene.viewer.location[1]),
+        observer_height_m=float(scene.viewer.observer_height_m),
         time_obj=scene.time_obj,
-        aircraft_points=scene.aircraft_overlay_points,
         opacity=style.aircraft_opacity,
         line_width_scale=line_width_scale,
         label_candidates=label_candidates,
@@ -933,9 +932,11 @@ def _draw_satellite_layer(
         geometry,
         scene.satellite_records_by_group,
         scene.viewer.view_center,
+        observer_lat=float(scene.viewer.location[0]),
+        observer_lon=float(scene.viewer.location[1]),
+        observer_height_m=float(scene.viewer.observer_height_m),
         element_epoch_utc=scene.satellite_element_epoch_utc,
         time_obj=scene.time_obj,
-        satellite_points=scene.satellite_overlay_points,
         opacity=style.satellite_opacity,
         highlighted_satellite=(
             highlighted_satellite[0] if highlighted_satellite is not None else None
