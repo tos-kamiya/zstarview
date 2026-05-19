@@ -233,29 +233,42 @@ class SkyWindowUpdatesMixin:
             return Path(CACHE_PATH) / "debug" / "aircraft-ready"
         return Path(raw).expanduser()
 
-    def _maybe_save_aircraft_debug_snapshot(self, payload: Dict) -> None:
+    def _queue_aircraft_debug_snapshot(self, payload: Dict) -> None:
         output_dir = self._resolve_aircraft_debug_snapshot_dir()
         if output_dir is None:
             return
-        render_current_image = self.render_current_image
-        if not callable(render_current_image):
-            return
-        refreshed_at = payload.get("refreshed_at_utc")
-        if not isinstance(refreshed_at, datetime):
-            refreshed_at = datetime.now(timezone.utc)
         source = str(payload.get("source", "")).strip().lower() or "ready"
         if source == "cache-fresh":
             return
-        safe_source = "".join(
-            ch if (ch.isascii() and (ch.isalnum() or ch in {"-", "_", "."})) else "-"
-            for ch in source
-        ).strip("-")
-        if not safe_source:
-            safe_source = "ready"
-        filename = f"aircraft-ready-{refreshed_at.strftime('%Y%m%dT%H%M%SZ')}-{safe_source}.png"
+        self._aircraft_debug_snapshot_payload = dict(payload)
+        self._aircraft_debug_snapshot_save_queued = False
+
+    def _save_aircraft_debug_snapshot_image(
+        self,
+        image,
+        payload: Dict,
+    ) -> None:
+        current_payload = getattr(self, "_aircraft_debug_snapshot_payload", None)
+        if current_payload is not payload:
+            return
         try:
+            output_dir = self._resolve_aircraft_debug_snapshot_dir()
+            if output_dir is None:
+                return
+            refreshed_at = payload.get("refreshed_at_utc")
+            if not isinstance(refreshed_at, datetime):
+                refreshed_at = datetime.now(timezone.utc)
+            source = str(payload.get("source", "")).strip().lower() or "ready"
+            if source == "cache-fresh":
+                return
+            safe_source = "".join(
+                ch if (ch.isascii() and (ch.isalnum() or ch in {"-", "_", "."})) else "-"
+                for ch in source
+            ).strip("-")
+            if not safe_source:
+                safe_source = "ready"
+            filename = f"aircraft-ready-{refreshed_at.strftime('%Y%m%dT%H%M%SZ')}-{safe_source}.png"
             output_dir.mkdir(parents=True, exist_ok=True)
-            image = render_current_image(include_hud=True)
             output_path = output_dir / filename
             if not image.save(str(output_path), "PNG"):
                 logger.warning(
@@ -265,6 +278,11 @@ class SkyWindowUpdatesMixin:
             logger.info("Saved aircraft debug snapshot: %s", output_path)
         except Exception as exc:
             logger.warning("Aircraft debug snapshot failed: %s", exc, exc_info=True)
+        finally:
+            current_payload = getattr(self, "_aircraft_debug_snapshot_payload", None)
+            if current_payload is payload:
+                self._aircraft_debug_snapshot_payload = None
+                self._aircraft_debug_snapshot_save_queued = False
 
     def _status_line_message(self) -> str:
         vertical_bar = "\u23ae"
@@ -949,7 +967,7 @@ class SkyWindowUpdatesMixin:
             requested_update = True
         if not requested_update:
             self.request_client_update()
-        self._maybe_save_aircraft_debug_snapshot(payload)
+        self._queue_aircraft_debug_snapshot(payload)
 
     def _on_aircraft_failed(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()

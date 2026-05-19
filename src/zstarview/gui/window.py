@@ -489,6 +489,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._startup_window_shown = False
         self._startup_input_release_pending = False
         self._startup_input_blocked_state = True
+        self._aircraft_debug_snapshot_payload = None
+        self._aircraft_debug_snapshot_save_queued = False
         self._sky_refresh_due = False
         self._cloud_refresh_due = False
         self._satellite_refresh_due = False
@@ -1937,7 +1939,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         now = datetime.now(timezone.utc)
         self.state.sky_next_refresh_utc = now + timedelta(seconds=self.sky_update_interval)
         if self._clouddisc and self.cloud_disc_alpha > 0.0:
-            self.state.cloud_next_refresh_utc = now + timedelta(seconds=CLOUD_UPDATE_INTERVAL)
+            # Start the first cloud fetch immediately after startup so the overlay
+            # does not sit in the idle state for a full refresh interval.
+            self.start_background_cloud_update(reason="initial")
         if self._satellite_layer_enabled():
             if self.satellite_state.records_by_group and self.satellite_state.element_epoch_utc is not None:
                 self._schedule_next_satellite_refresh()

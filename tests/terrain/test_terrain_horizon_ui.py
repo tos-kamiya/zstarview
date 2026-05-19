@@ -12,10 +12,12 @@ from PySide6.QtGui import QImage, QPainter
 
 import zstarview.gui.terrain_controller as terrain_controller_module
 import zstarview.gui.window as window_module
+import zstarview.gui.window_render as window_render_module
 import zstarview.gui.window_widgets as window_widgets_module
 from zstarview.cli.args import SKY_OPACITY_DEFAULT
 from zstarview.gui.terrain_controller import TerrainHorizonController
 from zstarview.gui.window import SkyWindow
+from zstarview.gui.window_render import SkyWindowRenderMixin
 from zstarview.gui.window_inputs import prepare_window_user_options
 from zstarview.gui.window_updates import SkyWindowUpdatesMixin
 from zstarview.paths import THEME_STYLES_BY_PRESET
@@ -101,19 +103,6 @@ class _DummyAircraftState:
 
     def set_banner(self, text: str) -> None:
         self.banner_text = text
-
-
-class _DummyImage:
-    def __init__(self) -> None:
-        self.saved_paths: list[Path] = []
-        self.saved_formats: list[str | None] = []
-
-    def save(self, path: str, image_format: str | None = None) -> bool:
-        output_path = Path(path)
-        output_path.write_bytes(b"debug-png")
-        self.saved_paths.append(output_path)
-        self.saved_formats.append(image_format)
-        return True
 
 
 def _noop_request_client_update() -> None:
@@ -870,11 +859,10 @@ def test_start_background_aircraft_update_skips_when_layer_hidden() -> None:
     assert controller_calls == []
 
 
-def test_on_aircraft_ready_saves_debug_snapshot_when_enabled(
+def test_on_aircraft_ready_queues_debug_snapshot_when_enabled(
     monkeypatch, tmp_path: Path
 ) -> None:
     refreshed_at = datetime(2026, 3, 24, 12, 34, 56, tzinfo=timezone.utc)
-    dummy_image = _DummyImage()
     dummy = SimpleNamespace()
     dummy.aircraft_state = _DummyAircraftState()
     dummy.aircraft_opacity = 1.0
@@ -884,14 +872,11 @@ def test_on_aircraft_ready_saves_debug_snapshot_when_enabled(
     dummy._schedule_next_aircraft_refresh = lambda: calls.append("schedule")
     dummy.reproject_aircraft_overlay = lambda: calls.append("reproject")
     dummy.update = lambda: calls.append("update")
-    dummy.render_current_image = lambda **kwargs: (
-        calls.append(f"render:{kwargs.get('include_hud')}") or dummy_image
+    dummy.render_current_image = lambda **kwargs: (_ for _ in ()).throw(
+        AssertionError("should not render yet")
     )
-    dummy._maybe_save_aircraft_debug_snapshot = lambda payload: (
-        SkyWindowUpdatesMixin._maybe_save_aircraft_debug_snapshot(
-            dummy,
-            payload,
-        )
+    dummy._queue_aircraft_debug_snapshot = lambda payload: (
+        SkyWindowUpdatesMixin._queue_aircraft_debug_snapshot(dummy, payload)
     )
     dummy._resolve_aircraft_debug_snapshot_dir = lambda: (
         SkyWindowUpdatesMixin._resolve_aircraft_debug_snapshot_dir(dummy)
@@ -909,14 +894,56 @@ def test_on_aircraft_ready_saves_debug_snapshot_when_enabled(
     )
 
     assert dummy.state is not None
-    assert calls == ["schedule", "reproject", "render:True"]
-    assert len(dummy_image.saved_paths) == 1
-    assert (
-        dummy_image.saved_paths[0].name
-        == "aircraft-ready-20260324T123456Z-opensky-cache.png"
+    assert calls == ["schedule", "reproject"]
+    assert dummy._aircraft_debug_snapshot_payload is not None
+    assert dummy._aircraft_debug_snapshot_save_queued is False
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_aircraft_debug_snapshot_is_saved_after_paint(
+    monkeypatch, tmp_path: Path
+) -> None:
+    refreshed_at = datetime(2026, 3, 24, 12, 34, 56, tzinfo=timezone.utc)
+    dummy = SimpleNamespace()
+    dummy._aircraft_debug_snapshot_payload = {
+        "refreshed_at_utc": refreshed_at,
+        "source": "OpenSky cache",
+    }
+    dummy._aircraft_debug_snapshot_save_queued = False
+    dummy._resolve_aircraft_debug_snapshot_dir = lambda: tmp_path
+    dummy._save_aircraft_debug_snapshot_image = lambda image, payload: (
+        SkyWindowUpdatesMixin._save_aircraft_debug_snapshot_image(
+            dummy,
+            image,
+            payload,
+        )
     )
-    assert dummy_image.saved_paths[0].parent == tmp_path
-    assert dummy_image.saved_formats == ["PNG"]
+    scheduled_callbacks: list[object] = []
+
+    def _single_shot(_ms: int, callback) -> None:
+        scheduled_callbacks.append(callback)
+
+    monkeypatch.setattr(window_render_module.QTimer, "singleShot", _single_shot)
+
+    frame = QImage(8, 8, QImage.Format.Format_ARGB32_Premultiplied)
+    frame.fill(0)
+
+    SkyWindowRenderMixin._schedule_aircraft_debug_snapshot_save_after_paint(
+        dummy,
+        frame,
+    )
+
+    assert dummy._aircraft_debug_snapshot_save_queued is True
+    assert list(tmp_path.iterdir()) == []
+    assert len(scheduled_callbacks) == 1
+
+    scheduled_callbacks[0]()
+
+    saved = list(tmp_path.iterdir())
+    assert len(saved) == 1
+    assert saved[0].name == "aircraft-ready-20260324T123456Z-opensky-cache.png"
+    assert dummy._aircraft_debug_snapshot_payload is None
+    assert dummy._aircraft_debug_snapshot_save_queued is False
 
 
 def test_on_aircraft_ready_skips_debug_snapshot_when_disabled(monkeypatch) -> None:
@@ -933,11 +960,8 @@ def test_on_aircraft_ready_skips_debug_snapshot_when_disabled(monkeypatch) -> No
     dummy.render_current_image = lambda **kwargs: (_ for _ in ()).throw(
         AssertionError("should not render")
     )
-    dummy._maybe_save_aircraft_debug_snapshot = lambda payload: (
-        SkyWindowUpdatesMixin._maybe_save_aircraft_debug_snapshot(
-            dummy,
-            payload,
-        )
+    dummy._queue_aircraft_debug_snapshot = lambda payload: (
+        SkyWindowUpdatesMixin._queue_aircraft_debug_snapshot(dummy, payload)
     )
     dummy._resolve_aircraft_debug_snapshot_dir = lambda: (
         SkyWindowUpdatesMixin._resolve_aircraft_debug_snapshot_dir(dummy)
@@ -972,11 +996,8 @@ def test_on_aircraft_ready_skips_debug_snapshot_for_cache_fresh(monkeypatch, tmp
     dummy.render_current_image = lambda **kwargs: (_ for _ in ()).throw(
         AssertionError("should not render")
     )
-    dummy._maybe_save_aircraft_debug_snapshot = lambda payload: (
-        SkyWindowUpdatesMixin._maybe_save_aircraft_debug_snapshot(
-            dummy,
-            payload,
-        )
+    dummy._queue_aircraft_debug_snapshot = lambda payload: (
+        SkyWindowUpdatesMixin._queue_aircraft_debug_snapshot(dummy, payload)
     )
     dummy._resolve_aircraft_debug_snapshot_dir = lambda: (
         SkyWindowUpdatesMixin._resolve_aircraft_debug_snapshot_dir(dummy)
@@ -1221,6 +1242,41 @@ def test_initial_data_load_advances_through_terrain_water_and_urban() -> None:
     dummy._startup_initial_urban_loaded = True
     SkyWindowUpdatesMixin._continue_initial_data_load(dummy)
     assert calls == ["terrain:initial", "water:initial", "urban:initial", "finish"]
+
+
+def test_post_startup_background_updates_start_cloud_immediately() -> None:
+    dummy = SimpleNamespace()
+    dummy._is_shutting_down = False
+    dummy._post_startup_background_updates_started = False
+    dummy._startup_initial_data_loaded = True
+    dummy._clouddisc = object()
+    dummy.cloud_disc_alpha = 0.2
+    dummy.sky_update_interval = 600
+    dummy.state = SimpleNamespace(
+        sky_next_refresh_utc=None,
+        cloud_next_refresh_utc=None,
+        satellite_next_refresh_utc=None,
+        aircraft_next_refresh_utc=None,
+    )
+    timer_calls: list[int] = []
+    dummy._scheduler_tick_timer = SimpleNamespace(
+        isActive=lambda: False,
+        start=lambda ms=None: timer_calls.append(0 if ms is None else int(ms)),
+    )
+    dummy._satellite_layer_enabled = lambda: False
+    dummy._aircraft_layer_enabled = lambda: False
+    calls: list[str] = []
+    dummy.start_background_cloud_update = lambda **kwargs: calls.append(
+        str(kwargs.get("reason"))
+    )
+    dummy._on_scheduler_tick = lambda: calls.append("tick")
+
+    SkyWindow._start_post_startup_background_updates(dummy)
+
+    assert calls == ["initial", "tick"]
+    assert timer_calls == [0]
+    assert dummy.state.sky_next_refresh_utc is not None
+    assert dummy.state.cloud_next_refresh_utc is None
 
 
 def test_toggle_earth_guide_respects_cli_lockout() -> None:
