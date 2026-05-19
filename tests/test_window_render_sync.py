@@ -284,9 +284,6 @@ class _WindowStub:
     def _continue_initial_data_load(self) -> None:
         return None
 
-    def _sync_overlay_projection_timer(self) -> None:
-        return None
-
     def _startup_splash_visible(self) -> bool:
         overlay = self.__dict__.get("_startup_log_overlay")
         return bool(overlay is not None and overlay.isVisible())

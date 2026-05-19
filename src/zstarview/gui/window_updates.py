@@ -691,20 +691,17 @@ class SkyWindowUpdatesMixin:
         validity_remaining_ms = self._satellite_validity_remaining_ms()
         if validity_remaining_ms is not None and validity_remaining_ms <= 0:
             self.state.satellite_projection_next_refresh_utc = None
-            self._sync_overlay_projection_timer()
             self.request_client_update()
             self.start_background_satellite_update(reason="time-window-shift")
             return
         records_by_group = self.satellite_state.records_by_group or {}
         if not records_by_group:
             self.state.satellite_projection_next_refresh_utc = None
-            self._sync_overlay_projection_timer()
             self.request_client_update()
             return
         self.state.satellite_projection_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
             seconds=SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS
         )
-        self._sync_overlay_projection_timer()
         self.request_client_update()
 
     def refresh_projected_satellite_overlay(self) -> None:
@@ -920,13 +917,11 @@ class SkyWindowUpdatesMixin:
         snapshots = self.aircraft_state.snapshots
         if not snapshots:
             self.state.aircraft_projection_next_refresh_utc = None
-            self._sync_overlay_projection_timer()
             self.request_client_update()
             return
         self.state.aircraft_projection_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
             seconds=AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS
         )
-        self._sync_overlay_projection_timer()
         self.request_client_update()
 
     def refresh_projected_aircraft_overlay(self) -> None:

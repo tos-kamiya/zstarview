@@ -2423,9 +2423,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             return
         self._on_scheduler_tick()
 
-    def _sync_overlay_projection_timer(self) -> None:
-        return
-
     def _enable_satellite_layer(self, *, reason: str) -> None:
         if not self._satellite_layer_enabled():
             return

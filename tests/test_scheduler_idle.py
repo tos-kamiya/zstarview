@@ -70,9 +70,6 @@ class _SchedulerProbe(SkyWindowUpdatesMixin):
     def _aircraft_layer_enabled(self) -> bool:
         return True
 
-    def _sync_overlay_projection_timer(self) -> None:
-        return None
-
     def reproject_satellite_overlay(self) -> None:
         self.start_calls.append(("satellite_projection", {}))
         self.state.satellite_projection_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
