@@ -52,24 +52,6 @@ def _initial_data_load_active(obj: object) -> bool:
     )
 
 
-def _sync_overlay_projection_timer_if_available(obj: object) -> None:
-    obj._sync_overlay_projection_timer()
-
-
-def _get_projection_next_refresh_utc(
-    state: object,
-    new_attr: str,
-    old_attr: str,
-) -> datetime | None:
-    next_refresh_utc = getattr(state, new_attr, None)
-    if isinstance(next_refresh_utc, datetime):
-        return next_refresh_utc
-    next_refresh_utc = getattr(state, old_attr, None)
-    if isinstance(next_refresh_utc, datetime):
-        return next_refresh_utc
-    return None
-
-
 class SkyWindowUpdatesMixin:
     def _viewport_interaction_active(self) -> bool:
         return bool(self.state.viewport_interaction_mode)
@@ -92,11 +74,7 @@ class SkyWindowUpdatesMixin:
         return False
 
     def _satellite_projection_next_refresh_delay_ms(self) -> int | None:
-        next_refresh_utc = _get_projection_next_refresh_utc(
-            self.state,
-            "satellite_projection_next_refresh_utc",
-            "satellite_overlay_next_refresh_utc",
-        )
+        next_refresh_utc = self.state.satellite_projection_next_refresh_utc
         if next_refresh_utc is None:
             return None
         return max(
@@ -110,11 +88,7 @@ class SkyWindowUpdatesMixin:
         )
 
     def _aircraft_projection_next_refresh_delay_ms(self) -> int | None:
-        next_refresh_utc = _get_projection_next_refresh_utc(
-            self.state,
-            "aircraft_projection_next_refresh_utc",
-            "aircraft_overlay_next_refresh_utc",
-        )
+        next_refresh_utc = self.state.aircraft_projection_next_refresh_utc
         if next_refresh_utc is None:
             return None
         return max(
@@ -717,26 +691,20 @@ class SkyWindowUpdatesMixin:
         validity_remaining_ms = self._satellite_validity_remaining_ms()
         if validity_remaining_ms is not None and validity_remaining_ms <= 0:
             self.state.satellite_projection_next_refresh_utc = None
-            if hasattr(self.state, "satellite_overlay_next_refresh_utc"):
-                self.state.satellite_overlay_next_refresh_utc = None
-            _sync_overlay_projection_timer_if_available(self)
+            self._sync_overlay_projection_timer()
             self.request_client_update()
             self.start_background_satellite_update(reason="time-window-shift")
             return
         records_by_group = self.satellite_state.records_by_group or {}
         if not records_by_group:
             self.state.satellite_projection_next_refresh_utc = None
-            if hasattr(self.state, "satellite_overlay_next_refresh_utc"):
-                self.state.satellite_overlay_next_refresh_utc = None
-            _sync_overlay_projection_timer_if_available(self)
+            self._sync_overlay_projection_timer()
             self.request_client_update()
             return
         self.state.satellite_projection_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
             seconds=SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS
         )
-        if hasattr(self.state, "satellite_overlay_next_refresh_utc"):
-            self.state.satellite_overlay_next_refresh_utc = self.state.satellite_projection_next_refresh_utc
-        _sync_overlay_projection_timer_if_available(self)
+        self._sync_overlay_projection_timer()
         self.request_client_update()
 
     def refresh_projected_satellite_overlay(self) -> None:
@@ -952,17 +920,13 @@ class SkyWindowUpdatesMixin:
         snapshots = self.aircraft_state.snapshots
         if not snapshots:
             self.state.aircraft_projection_next_refresh_utc = None
-            if hasattr(self.state, "aircraft_overlay_next_refresh_utc"):
-                self.state.aircraft_overlay_next_refresh_utc = None
-            _sync_overlay_projection_timer_if_available(self)
+            self._sync_overlay_projection_timer()
             self.request_client_update()
             return
         self.state.aircraft_projection_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
             seconds=AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS
         )
-        if hasattr(self.state, "aircraft_overlay_next_refresh_utc"):
-            self.state.aircraft_overlay_next_refresh_utc = self.state.aircraft_projection_next_refresh_utc
-        _sync_overlay_projection_timer_if_available(self)
+        self._sync_overlay_projection_timer()
         self.request_client_update()
 
     def refresh_projected_aircraft_overlay(self) -> None:

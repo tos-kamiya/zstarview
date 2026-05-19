@@ -322,7 +322,7 @@ def main() -> None:
     if cli_exit_code is not None:
         raise SystemExit(cli_exit_code)
 
-    from ..gui.window import FramelessSkyWindow, StandardSkyWindow
+    from ..gui.window import SkyWindow, StandardSkyWindow
     from ..splash import setup_app
 
     app_name = APP_DISPLAY_NAME
@@ -406,7 +406,7 @@ def main() -> None:
         window_geometry_arg=args.window_geometry,
         window_frame_mode=args.window_frame,
     )
-    window_cls = FramelessSkyWindow if args.window_frame == "frameless" else StandardSkyWindow
+    window_cls = SkyWindow if args.window_frame == "frameless" else StandardSkyWindow
     main_win = window_cls(
         ViewerData(
             location=(0.0, 0.0),

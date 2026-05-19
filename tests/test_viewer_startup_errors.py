@@ -234,7 +234,7 @@ def _install_common_mocks(
                 location_height_m=42.0,
             ),
         )
-    monkeypatch.setattr("zstarview.gui.window.FramelessSkyWindow", _DummyWindow)
+    monkeypatch.setattr("zstarview.gui.window.SkyWindow", _DummyWindow)
     monkeypatch.setattr("zstarview.gui.window.StandardSkyWindow", _DummyWindow)
     return app, root_logger
 

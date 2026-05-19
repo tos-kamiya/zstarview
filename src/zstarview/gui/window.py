@@ -2976,7 +2976,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         event.accept()
 
 
-class FramelessSkyWindow(SkyWindowCoreMixin, DraggableWindow):
+class SkyWindow(SkyWindowCoreMixin, DraggableWindow):
     """Frameless host window using the custom chrome wrapper."""
 
     FRAMELESS_WINDOW = True
@@ -3010,6 +3010,3 @@ class StandardSkyWindow(SkyWindowCoreMixin, QMainWindow):
         menu_bar.addMenu(self.display_menu)
         menu_bar.addMenu(self.observer_view_menu)
         menu_bar.addMenu(self.help_menu)
-
-
-SkyWindow = FramelessSkyWindow
