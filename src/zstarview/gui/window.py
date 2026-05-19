@@ -50,7 +50,7 @@ from PySide6.QtWidgets import QWidget
 from ..astro import (
     calculate_visible_stars,
     load_ephemeris,
-    radec_to_altaz as _radec_to_altaz,
+    radec_to_altaz,
 )
 from ..clouddisc import (
     CloudDisc,
@@ -280,10 +280,6 @@ GITHUB_CODE_DATA_LICENSES_AND_CREDITS_URL = (
 
 def open_code_data_licenses_and_credits() -> None:
     QDesktopServices.openUrl(QUrl(GITHUB_CODE_DATA_LICENSES_AND_CREDITS_URL))
-
-
-def radec_to_altaz(*args, **kwargs):
-    return _radec_to_altaz(*args, **kwargs)
 
 
 WindowGeometryArg = Union[str, Tuple[int, int, int, int]]
