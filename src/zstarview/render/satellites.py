@@ -50,7 +50,6 @@ def find_highlighted_satellite(
     view_center: tuple[float, float] | None = None,
     *,
     viewer_data: ViewerData | None = None,
-    satellite_points: list[SatelliteOverlayPoint] | tuple[SatelliteOverlayPoint, ...] | None = None,
     observer_lat: float | None = None,
     observer_lon: float | None = None,
     observer_height_m: float | None = None,
@@ -68,26 +67,20 @@ def find_highlighted_satellite(
         content_fov_deg = float(viewer_data.content_fov_deg)
     if view_center is None or geometry is None:
         return None
-    if satellite_points is None:
-        if isinstance(satellite_records_by_group, (list, tuple)) and all(
-            isinstance(point, SatelliteOverlayPoint) for point in satellite_records_by_group
-        ):
-            satellite_points = satellite_records_by_group
-        else:
-            if (
-                time_obj is None
-                or observer_lat is None
-                or observer_lon is None
-                or observer_height_m is None
-            ):
-                return None
-            satellite_points = project_satellite_records(
-                satellite_records_by_group or {},
-                observer_lat=float(observer_lat),
-                observer_lon=float(observer_lon),
-                observer_height_m=float(observer_height_m),
-                time_obj=time_obj,
-            )
+    if (
+        time_obj is None
+        or observer_lat is None
+        or observer_lon is None
+        or observer_height_m is None
+    ):
+        return None
+    satellite_points = project_satellite_records(
+        satellite_records_by_group or {},
+        observer_lat=float(observer_lat),
+        observer_lon=float(observer_lon),
+        observer_height_m=float(observer_height_m),
+        time_obj=time_obj,
+    )
     if not satellite_points or mouse_pos is None:
         return None
 
@@ -117,7 +110,6 @@ def draw_satellite_overlay(
     view_center: tuple[float, float] | None = None,
     *,
     viewer_data: ViewerData | None = None,
-    satellite_points: list[SatelliteOverlayPoint] | tuple[SatelliteOverlayPoint, ...] | None = None,
     observer_lat: float | None = None,
     observer_lon: float | None = None,
     observer_height_m: float | None = None,
@@ -144,26 +136,20 @@ def draw_satellite_overlay(
     if view_center is None:
         return
 
-    if satellite_points is None:
-        if isinstance(satellite_records_by_group, (list, tuple)) and all(
-            isinstance(point, SatelliteOverlayPoint) for point in satellite_records_by_group
-        ):
-            satellite_points = satellite_records_by_group
-        else:
-            if (
-                time_obj is None
-                or observer_lat is None
-                or observer_lon is None
-                or observer_height_m is None
-            ):
-                return
-            satellite_points = project_satellite_records(
-                satellite_records_by_group or {},
-                observer_lat=float(observer_lat),
-                observer_lon=float(observer_lon),
-                observer_height_m=float(observer_height_m),
-                time_obj=time_obj,
-            )
+    if (
+        time_obj is None
+        or observer_lat is None
+        or observer_lon is None
+        or observer_height_m is None
+    ):
+        return
+    satellite_points = project_satellite_records(
+        satellite_records_by_group or {},
+        observer_lat=float(observer_lat),
+        observer_lon=float(observer_lon),
+        observer_height_m=float(observer_height_m),
+        time_obj=time_obj,
+    )
     if not satellite_points:
         return
 

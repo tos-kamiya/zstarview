@@ -24,7 +24,6 @@ def draw_aircraft_overlay(
     view_center: tuple[float, float] | None = None,
     *,
     viewer_data: ViewerData | None = None,
-    aircraft_points: list[AircraftOverlayPoint] | tuple[AircraftOverlayPoint, ...] | None = None,
     observer_lat: float | None = None,
     observer_lon: float | None = None,
     observer_height_m: float | None = None,
@@ -49,19 +48,13 @@ def draw_aircraft_overlay(
     if view_center is None:
         return
 
-    if aircraft_points is None:
-        if isinstance(aircraft_snapshots, (list, tuple)) and all(
-            isinstance(point, AircraftOverlayPoint) for point in aircraft_snapshots
-        ):
-            aircraft_points = aircraft_snapshots
-        else:
-            aircraft_points = _project_aircraft_snapshots(
-                aircraft_snapshots,
-                observer_lat=observer_lat,
-                observer_lon=observer_lon,
-                observer_height_m=observer_height_m,
-                time_obj=time_obj,
-            )
+    aircraft_points = _project_aircraft_snapshots(
+        aircraft_snapshots,
+        observer_lat=observer_lat,
+        observer_lon=observer_lon,
+        observer_height_m=observer_height_m,
+        time_obj=time_obj,
+    )
     if not aircraft_points:
         return
 
