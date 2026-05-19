@@ -38,10 +38,6 @@ def _resolve_hover_targets(
     mouse_pos: QPoint | None,
     geometry: ScreenGeometry,
     satellite_records_by_group: object | None = None,
-    satellite_element_epoch_utc: object | None = None,
-    observer_lat: float | None = None,
-    observer_lon: float | None = None,
-    observer_height_m: float | None = None,
     time_obj: object | None = None,
     show_dso: bool = False,
 ) -> tuple[
@@ -74,7 +70,6 @@ def _resolve_hover_targets(
         geometry,
         viewer_data=render_viewer,
         time_obj=time_obj,
-        element_epoch_utc=satellite_element_epoch_utc,
     )
     return highlighted_object, highlighted_dso, highlighted_satellite
 
@@ -758,10 +753,6 @@ class SkyWindowRenderMixin:
                     mouse_pos=mouse_pos,
                     geometry=geometry,
                     satellite_records_by_group=self.satellite_state.records_by_group,
-                    satellite_element_epoch_utc=self.satellite_state.element_epoch_utc,
-                    observer_lat=float(frame.viewer.location[0]),
-                    observer_lon=float(frame.viewer.location[1]),
-                    observer_height_m=float(frame.viewer.observer_height_m),
                     time_obj=scene.time_obj,
                     show_dso=bool(self.show_dso),
                 )

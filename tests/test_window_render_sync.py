@@ -19,6 +19,7 @@ import zstarview.gui.window_updates as window_updates_module
 import zstarview.render.guides as render_guides_module
 import zstarview.render.overlay_info as render_overlay_info_module
 import zstarview.render.pipeline as pipeline_module
+import zstarview.render.geometry as render_geometry
 import zstarview.render.solar_system as render_solar_system_module
 import zstarview.render.terrain as render_terrain_module
 import zstarview.render.text as render_text_module
@@ -566,8 +567,7 @@ def test_on_sky_data_calculated_updates_render_snapshot_once() -> None:
         "celestial": celestial,
         "sky_disc": sky_disc,
         "view_center": (20.0, 30.0),
-        "render_width_px": 640,
-        "render_height_px": 480,
+        "geometry": render_geometry.get_screen_geometry(640, 480, dummy.viewer_data.view_alt_deg),
         "render_generation": 0,
     }
     SkyWindow._on_sky_data_calculated(dummy, payload)
@@ -615,8 +615,7 @@ def test_on_sky_data_calculated_preserves_render_center_during_viewport_interact
             "celestial": object(),
             "sky_disc": object(),
             "view_center": (40.0, 150.0),
-            "render_width_px": 640,
-            "render_height_px": 480,
+            "geometry": render_geometry.get_screen_geometry(640, 480, dummy.viewer_data.view_alt_deg),
             "render_generation": 0,
         },
     )
@@ -665,8 +664,7 @@ def test_on_sky_data_calculated_triggers_release_followup_updates() -> None:
             "celestial": object(),
             "sky_disc": object(),
             "view_center": (40.0, 150.0),
-            "render_width_px": 640,
-            "render_height_px": 480,
+            "geometry": render_geometry.get_screen_geometry(640, 480, dummy.viewer_data.view_alt_deg),
             "render_generation": 0,
         },
     )
@@ -713,8 +711,7 @@ def test_on_sky_data_calculated_discards_stale_view_center_after_jump() -> None:
             "celestial": object(),
             "sky_disc": object(),
             "view_center": (0.0, 180.0),
-            "render_width_px": 640,
-            "render_height_px": 480,
+            "geometry": render_geometry.get_screen_geometry(640, 480, dummy.viewer_data.view_alt_deg),
             "render_generation": 0,
         },
     )
@@ -1824,8 +1821,7 @@ def test_on_sky_data_calculated_discards_stale_generation_and_requests_refresh()
             "celestial": object(),
             "sky_disc": object(),
             "view_center": (15.0, 120.0),
-            "render_width_px": 640,
-            "render_height_px": 480,
+            "geometry": render_geometry.get_screen_geometry(640, 480, dummy.viewer_data.view_alt_deg),
             "render_generation": 2,
         },
     )

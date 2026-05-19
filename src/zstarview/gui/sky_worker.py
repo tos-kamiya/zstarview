@@ -12,7 +12,7 @@ import threading
 import time
 from concurrent.futures import Future
 from datetime import datetime, timedelta, timezone
-from typing import Callable, Dict, Tuple
+from typing import Callable, Dict
 
 import astropy
 import astropy.time
@@ -34,9 +34,8 @@ from ..astro import (
 )
 from ..night_lights import compute_night_light_glow_profile
 from ..paths import ThemeStyle
-from ..render import geometry as render_geometry
 from ..render import sky_disc
-from ..types import CelestialData, StarCatalogMeta
+from ..types import CelestialData, ScreenGeometry, StarCatalogMeta, ViewerData
 from .native_work_lock import HEAVY_NATIVE_WORK_LOCK
 from .worker_pool import submit_gui_work, wait_for_gui_futures
 
@@ -46,10 +45,8 @@ logger = logging.getLogger(__name__)
 def compute_sky_snapshot(
     *,
     ephemeris: object,
-    lat: float,
-    lon: float,
-    observer_height_m: float,
-    view_center: Tuple[float, float],
+    viewer_data: ViewerData,
+    geometry: ScreenGeometry,
     star_catalog: pl.DataFrame | StarCatalogArrays,
     dso_catalog: DeepSkyCatalogArrays | None,
     star_vmag_limit: float | None,
@@ -57,18 +54,19 @@ def compute_sky_snapshot(
     delta_t: timedelta,
     sky_disc_alpha: float,
     sky_disc_style: str = sky_disc.SKY_DISC_STYLE_SMOOTH,
-    sky_disc_base_size: int,
-    edge_fov_deg: float,
-    content_fov_deg: float,
     theme: ThemeStyle,
     star_catalog_meta: StarCatalogMeta | None = None,
-    render_width_px: int | None = None,
-    render_height_px: int | None = None,
+    image_size: tuple[int, int] | None = None,
     render_generation: int = 0,
 ) -> Dict[str, object]:
     """Compute celestial data and sky-disc image synchronously."""
     now = datetime.now(timezone.utc) + delta_t
     time_obj = astropy.time.Time(now)
+    lat, lon = viewer_data.location
+    view_center = viewer_data.view_center
+    observer_height_m = float(viewer_data.observer_height_m)
+    edge_fov_deg = float(viewer_data.edge_fov_deg)
+    content_fov_deg = float(viewer_data.content_fov_deg)
 
     stars, loc = calculate_visible_stars(
         star_catalog,
@@ -139,14 +137,15 @@ def compute_sky_snapshot(
     sky_disc_img: QImage | None = None
     night_light_glow_profile = None
     if sun_altaz is not None:
-        render_width = max(2, int(render_width_px or sky_disc_base_size))
-        render_height = max(2, int(render_height_px or sky_disc_base_size))
-        fixed_geom = render_geometry.get_screen_geometry(render_width, render_height, view_center[0])
+        render_image_size = (
+            max(2, int(image_size[0])),
+            max(2, int(image_size[1])),
+        ) if image_size is not None else None
         ef = eclipse_factor_from_info(solar_eclipse_info)
         disc_opacity = float(theme.sky_disc.opacity)
         if sky_disc_alpha > 0.0:
             sky_disc_img = sky_disc.draw_sky_color_disc(
-                fixed_geom,
+                geometry,
                 view_center,
                 sun_altaz,
                 observer_lat_deg=lat,
@@ -155,16 +154,16 @@ def compute_sky_snapshot(
                 eclipse_factor=ef,
                 edge_fov_deg=edge_fov_deg,
                 content_fov_deg=content_fov_deg,
-                image_size=(render_width, render_height),
+                image_size=render_image_size,
                 sky_disc_style=sky_disc_style,
             )
         else:
             sky_disc_img = sky_disc.draw_uniform_sky_color_disc(
-                fixed_geom,
+                geometry,
                 view_center,
                 edge_fov_deg=edge_fov_deg,
                 content_fov_deg=content_fov_deg,
-                image_size=(render_width, render_height),
+                image_size=render_image_size,
                 disc_opacity=disc_opacity,
             )
         if float(sun_altaz[0]) < 0.0:
@@ -183,8 +182,7 @@ def compute_sky_snapshot(
         "night_light_glow_profile": night_light_glow_profile,
     }
     payload["view_center"] = (float(view_center[0]), float(view_center[1]))
-    payload["render_width_px"] = max(2, int(render_width_px or sky_disc_base_size))
-    payload["render_height_px"] = max(2, int(render_height_px or sky_disc_base_size))
+    payload["geometry"] = geometry
     payload["render_generation"] = int(render_generation)
     return payload
 
@@ -215,10 +213,8 @@ class SkyDataWorker(QObject):
         self,
         *,
         ephemeris: object,
-        lat: float,
-        lon: float,
-        observer_height_m: float,
-        view_center: Tuple[float, float],
+        viewer_data: ViewerData,
+        geometry: ScreenGeometry,
         star_catalog: pl.DataFrame | StarCatalogArrays,
         dso_catalog: DeepSkyCatalogArrays | None = None,
         star_vmag_limit: float | None = None,
@@ -226,13 +222,9 @@ class SkyDataWorker(QObject):
         delta_t: timedelta,
         sky_disc_alpha: float,
         sky_disc_style: str = sky_disc.SKY_DISC_STYLE_SMOOTH,
-        sky_disc_base_size: int,
-        edge_fov_deg: float,
-        content_fov_deg: float,
         theme: ThemeStyle,
         star_catalog_meta: StarCatalogMeta | None = None,
-        render_width_px: int | None = None,
-        render_height_px: int | None = None,
+        image_size: tuple[int, int] | None = None,
         render_generation: int = 0,
     ) -> bool:
         """Start background computation if idle; return False when already running."""
@@ -245,10 +237,8 @@ class SkyDataWorker(QObject):
             target=self._run_update,
             kwargs={
                 "ephemeris": ephemeris,
-                "lat": lat,
-                "lon": lon,
-                "observer_height_m": observer_height_m,
-                "view_center": view_center,
+                "viewer_data": viewer_data,
+                "geometry": geometry,
                 "star_catalog": star_catalog,
                 "dso_catalog": dso_catalog,
                 "star_vmag_limit": star_vmag_limit,
@@ -256,13 +246,9 @@ class SkyDataWorker(QObject):
                 "delta_t": delta_t,
                 "sky_disc_alpha": sky_disc_alpha,
                 "sky_disc_style": sky_disc_style,
-                "sky_disc_base_size": sky_disc_base_size,
-                "edge_fov_deg": edge_fov_deg,
-                "content_fov_deg": content_fov_deg,
                 "theme": theme,
                 "star_catalog_meta": star_catalog_meta,
-                "render_width_px": render_width_px,
-                "render_height_px": render_height_px,
+                "image_size": image_size,
                 "render_generation": render_generation,
             },
             label="sky",
@@ -316,10 +302,8 @@ class SkyDataWorker(QObject):
         self,
         *,
         ephemeris: object,
-        lat: float,
-        lon: float,
-        observer_height_m: float,
-        view_center: Tuple[float, float],
+        viewer_data: ViewerData,
+        geometry: ScreenGeometry,
         star_catalog: pl.DataFrame | StarCatalogArrays,
         dso_catalog: DeepSkyCatalogArrays | None,
         star_vmag_limit: float | None,
@@ -327,23 +311,17 @@ class SkyDataWorker(QObject):
         delta_t: timedelta,
         sky_disc_alpha: float,
         sky_disc_style: str,
-        sky_disc_base_size: int,
-        edge_fov_deg: float,
-        content_fov_deg: float,
         theme: ThemeStyle,
         star_catalog_meta: StarCatalogMeta | None,
-        render_width_px: int | None,
-        render_height_px: int | None,
+        image_size: tuple[int, int] | None,
         render_generation: int,
     ) -> None:
         try:
             with HEAVY_NATIVE_WORK_LOCK:
                 payload = compute_sky_snapshot(
                     ephemeris=ephemeris,
-                    lat=lat,
-                    lon=lon,
-                    observer_height_m=observer_height_m,
-                    view_center=view_center,
+                    viewer_data=viewer_data,
+                    geometry=geometry,
                     star_catalog=star_catalog,
                     dso_catalog=dso_catalog,
                     star_vmag_limit=star_vmag_limit,
@@ -351,13 +329,9 @@ class SkyDataWorker(QObject):
                     delta_t=delta_t,
                     sky_disc_alpha=sky_disc_alpha,
                     sky_disc_style=sky_disc_style,
-                    sky_disc_base_size=sky_disc_base_size,
-                    edge_fov_deg=edge_fov_deg,
-                    content_fov_deg=content_fov_deg,
                     theme=theme,
                     star_catalog_meta=star_catalog_meta,
-                    render_width_px=render_width_px,
-                    render_height_px=render_height_px,
+                    image_size=image_size,
                     render_generation=render_generation,
                 )
             with self._lock:

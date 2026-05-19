@@ -1308,10 +1308,12 @@ def main() -> None:
     ephemeris = load_ephemeris()
     sky_payload = compute_sky_snapshot(
         ephemeris=ephemeris,
-        lat=float(viewer_data.lat_deg),
-        lon=float(viewer_data.lon_deg),
-        observer_height_m=float(viewer_data.observer_height_m),
-        view_center=tuple(viewer_data.view_center),
+        viewer_data=viewer_data,
+        geometry=render_geometry.get_screen_geometry(
+            max(2, int(image_size[0])),
+            max(2, int(image_size[1])),
+            viewer_data.view_alt_deg,
+        ),
         star_catalog=star_catalog,
         dso_catalog=catalogs.dso_catalog_np,
         star_vmag_limit=star_vmag_limit,
@@ -1319,13 +1321,9 @@ def main() -> None:
         delta_t=runtime_options.delta_t,
         sky_disc_alpha=float(user_options.sky_disc_alpha),
         sky_disc_style=str(user_options.sky_disc_style),
-        sky_disc_base_size=max(image_size),
-        edge_fov_deg=float(viewer_data.edge_fov_deg),
-        content_fov_deg=float(viewer_data.content_fov_deg),
         theme=theme,
         star_catalog_meta=catalogs.star_catalog_meta,
-        render_width_px=int(image_size[0]),
-        render_height_px=int(image_size[1]),
+        image_size=(int(image_size[0]), int(image_size[1])),
         render_generation=0,
     )
     celestial_data = sky_payload["celestial"]

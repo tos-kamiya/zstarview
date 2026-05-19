@@ -17,6 +17,7 @@ from zstarview.gui.sky_worker import SkyDataWorker
 from zstarview.gui.terrain_controller import TerrainHorizonController
 from zstarview.gui.urban_outline_controller import UrbanOutlineController
 from zstarview.gui.water_overlay_controller import WaterOverlayController
+from zstarview.render import geometry as render_geometry
 from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.types import ViewerData
 
@@ -250,25 +251,28 @@ def test_sky_worker_shutdown_waits(monkeypatch) -> None:
     controller = SkyDataWorker()
 
     def trigger_update() -> None:
+        viewer_data = ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="UTC",
+            city_name="Tokyo",
+            view_center=(90.0, 180.0),
+            observer_height_m=1.7,
+            edge_fov_deg=90.0,
+            content_fov_deg=90.0,
+        )
         controller.update(
             ephemeris=object(),
-            lat=35.0,
-            lon=139.0,
-            observer_height_m=1.7,
-            view_center=(90.0, 180.0),
+            viewer_data=viewer_data,
+            geometry=render_geometry.get_screen_geometry(16, 16, viewer_data.view_alt_deg),
             star_catalog=np.empty(0, dtype=object),
             dso_catalog=None,
             star_vmag_limit=None,
             star_subset_indices=None,
             delta_t=timedelta(0),
             sky_disc_alpha=0.0,
-            sky_disc_base_size=16,
-            edge_fov_deg=90.0,
-            content_fov_deg=90.0,
             theme=THEME_STYLES_BY_PRESET["night"],
             star_catalog_meta=None,
-            render_width_px=16,
-            render_height_px=16,
+            image_size=(16, 16),
             render_generation=0,
         )
 

@@ -10,6 +10,8 @@ import pytest
 from zstarview.astro import _starfield_load, load_ephemeris
 from zstarview.gui.viewer import _verify_ephemeris_for_launch
 from zstarview.launch_time import LaunchSetupError
+from zstarview.render import geometry as render_geometry
+from zstarview.types import ViewerData
 
 
 def test_de442s_uses_naif_planets_url() -> None:
@@ -117,24 +119,27 @@ def test_compute_sky_snapshot_uses_provided_ephemeris(monkeypatch) -> None:
     monkeypatch.setattr(sky_worker.sky_disc, "draw_sky_color_disc", lambda *args, **kwargs: QImage())
     monkeypatch.setattr(sky_worker.sky_disc, "draw_uniform_sky_color_disc", lambda *args, **kwargs: QImage())
 
+    viewer_data = ViewerData(
+        location=(0.0, 0.0),
+        timezone_name="UTC",
+        city_name="Test",
+        view_center=(0.0, 0.0),
+        edge_fov_deg=90.0,
+        content_fov_deg=90.0,
+        observer_height_m=0.0,
+    )
     payload = sky_worker.compute_sky_snapshot(
         ephemeris=ephemeris,
-        lat=0.0,
-        lon=0.0,
-        observer_height_m=0.0,
-        view_center=(0.0, 0.0),
+        viewer_data=viewer_data,
+        geometry=render_geometry.get_screen_geometry(16, 16, viewer_data.view_alt_deg),
         star_catalog={"catalog_index": []},
         dso_catalog=None,
         star_vmag_limit=None,
         star_subset_indices=None,
         delta_t=timedelta(0),
         sky_disc_alpha=0.0,
-        sky_disc_base_size=16,
-        edge_fov_deg=90.0,
-        content_fov_deg=90.0,
         theme=THEME_STYLES_BY_PRESET["night"],
-        render_width_px=16,
-        render_height_px=16,
+        image_size=(16, 16),
         render_generation=0,
     )
 

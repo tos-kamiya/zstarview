@@ -12,6 +12,7 @@ from PySide6.QtGui import QImage, QPainter
 
 import zstarview.gui.terrain_controller as terrain_controller_module
 import zstarview.gui.window as window_module
+import zstarview.gui.window_widgets as window_widgets_module
 from zstarview.cli.args import SKY_OPACITY_DEFAULT
 from zstarview.gui.terrain_controller import TerrainHorizonController
 from zstarview.gui.window import SkyWindow
@@ -1809,7 +1810,7 @@ def test_resize_grip_widget_paints_a_visible_marker() -> None:
     img = QImage(30, 30, QImage.Format.Format_ARGB32_Premultiplied)
     img.fill(0)
     painter = QPainter(img)
-    window_module._draw_resize_grip_marker(painter, QRect(0, 0, 30, 30))
+    window_widgets_module._draw_resize_grip_marker(painter, QRect(0, 0, 30, 30))
     painter.end()
 
     arr = qimage_to_np_rgba(img)

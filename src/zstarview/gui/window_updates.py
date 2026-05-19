@@ -14,6 +14,7 @@ from ..clouddisc.providers.select import GOES_SATELLITES
 from ..paths import CACHE_PATH, CLOUD_UPDATE_INTERVAL
 from ..satellite_constants import SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS
 from ..search.jpl import project_jpl_target_altaz_from_state_vector
+from ..render import geometry as render_geometry
 
 logger = logging.getLogger(__name__)
 _STATUS_CLOUD = "☁"
@@ -442,27 +443,22 @@ class SkyWindowUpdatesMixin:
     def _on_sky_data_calculated(self, payload: Dict) -> None:
         current_generation = int(self._disc_generation)
         payload_generation = int(payload.get("render_generation", current_generation))
-        payload_width = int(
-            payload.get("render_width_px", max(2, int(self.client_width())))
+        payload_geometry = payload.get("geometry")
+        current_geometry = render_geometry.get_screen_geometry(
+            max(2, int(self.client_width())),
+            max(2, int(self.client_height())),
+            self.viewer_data.view_alt_deg,
         )
-        payload_height = int(
-            payload.get("render_height_px", max(2, int(self.client_height())))
-        )
-        current_width = max(2, int(self.client_width()))
-        current_height = max(2, int(self.client_height()))
         if (
             payload_generation != current_generation
-            or payload_width != current_width
-            or payload_height != current_height
+            or payload_geometry != current_geometry
         ):
             logger.debug(
-                "Discard stale sky payload generation=%s current=%s size=%sx%s current_size=%sx%s",
+                "Discard stale sky payload generation=%s current=%s geometry=%s current_geometry=%s",
                 payload_generation,
                 current_generation,
-                payload_width,
-                payload_height,
-                current_width,
-                current_height,
+                payload_geometry,
+                current_geometry,
             )
             if not self._is_shutting_down:
                 self.request_sky_data_update(reason="stale-render")
@@ -615,10 +611,12 @@ class SkyWindowUpdatesMixin:
             ephemeris = load_ephemeris()
         started = self._sky_worker.update(
             ephemeris=ephemeris,
-            lat=lat,
-            lon=lon,
-            observer_height_m=self.viewer_data.observer_height_m,
-            view_center=self.viewer_data.view_center,
+            viewer_data=self.viewer_data,
+            geometry=render_geometry.get_screen_geometry(
+                max(2, int(self.client_width())),
+                max(2, int(self.client_height())),
+                self.viewer_data.view_alt_deg,
+            ),
             star_catalog=star_catalog,
             dso_catalog=self.dso_catalog_np,
             star_vmag_limit=worker_star_vmag_limit,
@@ -626,13 +624,12 @@ class SkyWindowUpdatesMixin:
             delta_t=self.delta_t,
             sky_disc_alpha=self.sky_disc_alpha,
             sky_disc_style=self.sky_disc_style,
-            sky_disc_base_size=self.state.sky_disc_base_size,
-            edge_fov_deg=float(self.viewer_data.edge_fov_deg),
-            content_fov_deg=float(self.content_fov_deg),
             theme=self.theme,
             star_catalog_meta=self.star_catalog_meta,
-            render_width_px=max(2, int(self.client_width())),
-            render_height_px=max(2, int(self.client_height())),
+            image_size=(
+                max(2, int(self.client_width())),
+                max(2, int(self.client_height())),
+            ),
             render_generation=int(self._disc_generation),
         )
         if started:
