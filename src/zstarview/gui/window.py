@@ -1249,9 +1249,13 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.size_grip.raise_()
 
     def _sync_viewport_interaction_chrome_visibility(self) -> None:
-        if self.menu_button is None:
+        menu_button = getattr(self, "menu_button", None)
+        state = getattr(self, "state", None)
+        if menu_button is None or state is None:
             return
-        self.menu_button.setVisible(not bool(self.state.viewport_interaction_mode))
+        set_visible = getattr(menu_button, "setVisible", None)
+        if callable(set_visible):
+            set_visible(not bool(state.viewport_interaction_mode))
 
     def _sync_view_altitude_actions(self) -> None:
         alt, _ = self.viewer_data.view_center
@@ -1392,7 +1396,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             invalidate = cloud_controller.invalidate_pending_render_results
             if callable(invalidate):
                 invalidate()
-        self._sync_viewport_interaction_chrome_visibility()
+        SkyWindow._sync_viewport_interaction_chrome_visibility(self)
         if start_idle_timer:
             self._viewport_interaction_idle_timer.start()
 
@@ -1429,7 +1433,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             return
         self.state.viewport_interaction_mode = False
         self.state.viewport_interaction_stars = None
-        self._sync_viewport_interaction_chrome_visibility()
+        SkyWindow._sync_viewport_interaction_chrome_visibility(self)
         refresh_reason = (
             "view-change-release"
             if reason.endswith("release")
