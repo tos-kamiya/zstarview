@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import astropy.time
@@ -7,7 +7,6 @@ from PySide6.QtGui import QColor, QPainter
 
 from ..astro import altaz_to_normalized_xy, is_in_fov
 from ..paths import FIELD_OF_VIEW_DEG, ThemeStyle
-from ..satellite_constants import SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS
 from ..satellite_constants import (
     SATELLITE_OVERLAY_MARKER_COLOR_RGB,
     SATELLITE_OVERLAY_MARKER_MAX_ALPHA,
@@ -60,13 +59,6 @@ def find_highlighted_satellite(
 ) -> tuple[SatelliteOverlayPoint, QPointF] | None:
     if view_center is None or geometry is None:
         return None
-    if element_epoch_utc is not None:
-        try:
-            age_seconds = (datetime.now(timezone.utc) - element_epoch_utc).total_seconds()
-        except Exception:
-            age_seconds = 0.0
-        if age_seconds >= float(SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS):
-            return None
     if (
         time_obj is None
         or observer_lat is None
@@ -127,14 +119,6 @@ def draw_satellite_overlay(
         return
     if view_center is None:
         return
-
-    if element_epoch_utc is not None:
-        try:
-            age_seconds = (datetime.now(timezone.utc) - element_epoch_utc).total_seconds()
-        except Exception:
-            age_seconds = 0.0
-        if age_seconds >= float(SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS):
-            return
 
     if (
         time_obj is None

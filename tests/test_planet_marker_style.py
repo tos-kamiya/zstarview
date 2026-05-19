@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import astropy.time
 import math
+from datetime import datetime, timezone
 import numpy as np
 from PySide6.QtCore import QPoint, QPointF, QRectF
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QImage, QPainter
@@ -18,6 +19,7 @@ from zstarview.render import text as render_text
 from zstarview.paths import PALETTE_AIRCRAFT_AND_SATELLITE_RGB
 from zstarview.render.deep_sky_objects import DSO_LABEL_RGB
 from zstarview.paths import THEME_STYLES_BY_PRESET
+from zstarview.satellite_constants import SATELLITE_HORIZONS_CACHE_KEY
 from zstarview.aircraft.types import AircraftOverlayPoint
 from zstarview.satellites.types import SatelliteOverlayPoint
 from zstarview.types import (
@@ -654,6 +656,49 @@ def test_satellite_overlay_keeps_overscan_position_beyond_90_deg(monkeypatch) ->
     x, y = positions[0]
     assert math.isclose(x, 120.0, abs_tol=0.2)
     assert math.isclose(y, 189.1, abs_tol=0.3)
+
+
+def test_satellite_overlay_does_not_hide_old_element_epoch(monkeypatch) -> None:
+    cross_calls: list[tuple[float, float]] = []
+
+    monkeypatch.setattr(
+        render_satellites,
+        "draw_gauge_cross",
+        lambda _painter, _color, _center, *, scale=1.0, pen_width=1.0: (
+            cross_calls.append((scale, pen_width))
+        ),
+    )
+
+    image = QImage(40, 40, QImage.Format.Format_ARGB32_Premultiplied)
+    painter = QPainter(image)
+    try:
+        render_satellites.draw_satellite_overlay(
+            painter=painter,
+            geometry=ScreenGeometry(center=(20, 20), radius=20),
+            satellite_records_by_group={
+                SATELLITE_HORIZONS_CACHE_KEY: [
+                    {
+                        "OBJECT_NAME": "JWST",
+                        "ALT_DEG": 10.0,
+                        "AZ_DEG": 151.0,
+                    }
+                ]
+            },
+            view_center=(10.0, 151.0),
+            observer_lat=0.0,
+            observer_lon=0.0,
+            observer_height_m=0.0,
+            time_obj=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
+            element_epoch_utc=datetime(2020, 1, 1, tzinfo=timezone.utc),
+            opacity=1.0,
+            label_candidates=[],
+            content_fov_deg=110.0,
+            theme=THEME_STYLES_BY_PRESET["night"],
+        )
+    finally:
+        painter.end()
+
+    assert cross_calls == [(0.3, 1.0)]
 
 
 app = QApplication.instance() or QApplication([])

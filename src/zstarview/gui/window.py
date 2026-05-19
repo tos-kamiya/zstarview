@@ -2513,6 +2513,16 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.state.sky_next_refresh_utc = now + timedelta(seconds=self.sky_update_interval)
         if self._clouddisc and self.cloud_disc_alpha > 0.0:
             self.state.cloud_next_refresh_utc = now + timedelta(seconds=CLOUD_UPDATE_INTERVAL)
+        if self._satellite_layer_enabled():
+            if self.satellite_state.records_by_group and self.satellite_state.element_epoch_utc is not None:
+                self._schedule_next_satellite_refresh()
+            else:
+                self.state.satellite_next_refresh_utc = now
+        if self._aircraft_layer_enabled():
+            if self.aircraft_state.snapshots and self.aircraft_state.last_success_utc is not None:
+                self._schedule_next_aircraft_refresh()
+            else:
+                self.state.aircraft_next_refresh_utc = now
         if not self._scheduler_tick_timer.isActive():
             self._scheduler_tick_timer.start()
         self._on_scheduler_tick()

@@ -437,7 +437,7 @@ class SkyWindowUpdatesMixin:
             detail = _strip_status_prefix(aircraft_state.banner_text, "Aircraft:")
             return _status_segment(_STATUS_AIRCRAFT, detail)
         if aircraft_state.last_success_utc is None:
-            return ""
+            return _status_segment(_STATUS_AIRCRAFT, "idle")
         return _status_segment(_STATUS_AIRCRAFT, aircraft_state.last_success_utc.strftime("%H:%MZ"))
 
     def _satellite_status_line(self) -> str:
@@ -450,7 +450,7 @@ class SkyWindowUpdatesMixin:
             detail = _strip_status_prefix(satellite_state.banner_text, "Satellites:")
             return _status_segment(_STATUS_SATELLITE, detail)
         if satellite_state.element_epoch_utc is None:
-            return ""
+            return _status_segment(_STATUS_SATELLITE, "idle")
         return _status_segment(_STATUS_SATELLITE, satellite_state.element_epoch_utc.strftime("%H:%MZ"))
 
     def _jpl_small_body_status_line(self) -> str:
