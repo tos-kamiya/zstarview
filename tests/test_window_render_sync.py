@@ -234,6 +234,16 @@ class _WindowStub:
             return
         window_module.SkyWindow._end_viewport_interaction_mode(self, *args, **kwargs)
 
+    def _sync_viewport_interaction_chrome_visibility(self) -> None:
+        sync = self.__dict__.get("_sync_viewport_interaction_chrome_visibility")
+        if callable(sync):
+            sync()
+            return
+        menu_button = self.__dict__.get("menu_button")
+        state = self.__dict__.get("state")
+        if menu_button is not None and state is not None:
+            menu_button.setVisible(not bool(state.viewport_interaction_mode))
+
     def _target_time_utc(self):
         target_time_utc = self.__dict__.get("_target_time_utc")
         if callable(target_time_utc):
@@ -671,6 +681,14 @@ def test_on_sky_data_calculated_triggers_release_followup_updates() -> None:
     dummy.request_sky_data_update = lambda *_args, **_kwargs: None
     dummy._safe_request_cloud_repaint = lambda: None
     dummy.request_client_update = lambda: None
+    class _MenuButton:
+        def __init__(self) -> None:
+            self.visible = False
+
+        def setVisible(self, value: bool) -> None:
+            self.visible = value
+
+    dummy.menu_button = _MenuButton()
     cloud_calls: list[str] = []
     dummy.start_background_cloud_update = lambda **kwargs: cloud_calls.append(
         str(kwargs.get("reason"))
@@ -692,6 +710,7 @@ def test_on_sky_data_calculated_triggers_release_followup_updates() -> None:
 
     assert dummy.state.viewport_interaction_release_pending is False
     assert dummy.state.viewport_interaction_mode is False
+    assert dummy.menu_button.visible is True
     assert cloud_calls == ["view-change-release", "view-change-release"]
 
 
@@ -2058,6 +2077,148 @@ def test_render_cached_frame_image_reuses_existing_image() -> None:
 
     assert render_calls == ["render"]
     assert image_a.cacheKey() == image_b.cacheKey()
+
+
+def test_render_fast_frame_image_downsamples_base_scene(monkeypatch) -> None:
+    base_frame_sizes: list[tuple[int, int]] = []
+    status_rect_sizes: list[tuple[int, int]] = []
+    call_order: list[str] = []
+
+    def _capture_base_scene(*_args, **kwargs) -> None:
+        call_order.append("base")
+        frame = kwargs["frame"]
+        base_frame_sizes.append(
+            (
+                int(frame.viewport_rect.width()),
+                int(frame.viewport_rect.height()),
+            )
+        )
+
+    def _capture_status_line(*_args, **kwargs) -> None:
+        call_order.append("status")
+        frame = kwargs["frame"]
+        status_rect_sizes.append(
+            (
+                int(frame.viewport_rect.width()),
+                int(frame.viewport_rect.height()),
+            )
+        )
+
+    monkeypatch.setattr(
+        window_render_module,
+        "render_base_scene_into_painter",
+        _capture_base_scene,
+    )
+    monkeypatch.setattr(
+        window_render_module,
+        "render_status_line_into_painter",
+        _capture_status_line,
+    )
+    monkeypatch.setattr(
+        window_render_module.render_guides,
+        "draw_direction_labels",
+        lambda *_args, **_kwargs: call_order.append("labels"),
+    )
+
+    dummy = _WindowStub(
+        state=SkyWindowState(
+            render_view_center=(45.0, 180.0),
+            viewport_interaction_mode=True,
+        ),
+    )
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+        observer_height_m=1.7,
+    )
+    dummy._compositor = _DummyCompositor()
+    dummy._fast_frame_base_cache_key = None
+    dummy._fast_frame_base_cache_image = None
+    dummy._fast_frame_cache_key = None
+    dummy._fast_frame_cache_image = None
+    dummy.client_rect = lambda: QRect(0, 0, 1600, 900)
+    dummy.client_size = lambda: QSize(1600, 900)
+
+    scene = _make_scene(viewer=dummy.viewer_data)
+    style = _make_style(show_custom_window_frame=True)
+    hud = _make_hud(viewport_interaction_mode=True, status_message="fast")
+    frame = window_render_module.FrameContext(
+        viewer=scene.viewer,
+        time_obj=scene.time_obj,
+        geometry=render_geometry.get_screen_geometry(
+            1600,
+            900,
+            scene.viewer.view_alt_deg,
+        ),
+        viewport_rect=QRect(0, 0, 1600, 900),
+    )
+
+    image = window_render_module.SkyWindowRenderMixin._render_fast_frame_image(
+        dummy,
+        base_frame_key=("frame",),
+        frame=frame,
+        scene=scene,
+        style=style,
+        hud=hud,
+        highlighted_object=None,
+        highlighted_dso=None,
+        highlighted_satellite=None,
+    )
+
+    assert base_frame_sizes == [(600, 338)]
+    assert status_rect_sizes == [(1600, 900)]
+    assert call_order == ["base", "labels", "status"]
+    assert image.size() == QSize(1600, 900)
+
+
+def test_draw_background_layer_can_skip_menu_button(monkeypatch) -> None:
+    border_menu_flags: list[bool] = []
+
+    monkeypatch.setattr(
+        pipeline_module.render_background,
+        "draw_radial_background",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_background,
+        "draw_window_border",
+        lambda *_args, **kwargs: border_menu_flags.append(
+            bool(kwargs.get("draw_menu_button", True))
+        ),
+    )
+
+    pipeline_module._draw_background_layer(
+        painter=object(),
+        geometry=SimpleNamespace(),
+        viewport_rect=QRect(0, 0, 1600, 900),
+        scene=_make_scene(),
+        style=_make_style(show_custom_window_frame=True),
+        draw_menu_button=False,
+    )
+
+    assert border_menu_flags == [False]
+
+
+def test_viewport_interaction_hides_menu_button() -> None:
+    class _MenuButton:
+        def __init__(self) -> None:
+            self.visible = True
+
+        def setVisible(self, value: bool) -> None:
+            self.visible = value
+
+    dummy = _WindowStub()
+    dummy.state = SkyWindowState(render_view_center=(45.0, 180.0))
+    dummy.menu_button = _MenuButton()
+
+    SkyWindow._sync_viewport_interaction_chrome_visibility(dummy)
+    assert dummy.menu_button.visible is True
+
+    dummy.state.viewport_interaction_mode = True
+    SkyWindow._sync_viewport_interaction_chrome_visibility(dummy)
+    assert dummy.menu_button.visible is False
 
 
 def test_paint_event_skips_rendering_while_startup_overlay_visible(

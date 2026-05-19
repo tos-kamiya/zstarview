@@ -516,6 +516,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._frame_cache_image = None
         self._present_frame_cache_key: object | None = None
         self._present_frame_cache_image = None
+        self._fast_frame_base_cache_key: object | None = None
+        self._fast_frame_base_cache_image = None
+        self._fast_frame_cache_key: object | None = None
+        self._fast_frame_cache_image = None
         self.setWindowTitle(self.viewer_data.city_name)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setFocus(Qt.FocusReason.ActiveWindowFocusReason)
@@ -1244,6 +1248,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if self.size_grip is not None:
             self.size_grip.raise_()
 
+    def _sync_viewport_interaction_chrome_visibility(self) -> None:
+        if self.menu_button is None:
+            return
+        self.menu_button.setVisible(not bool(self.state.viewport_interaction_mode))
+
     def _sync_view_altitude_actions(self) -> None:
         alt, _ = self.viewer_data.view_center
         if self._action_raise_view is not None:
@@ -1383,6 +1392,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             invalidate = cloud_controller.invalidate_pending_render_results
             if callable(invalidate):
                 invalidate()
+        self._sync_viewport_interaction_chrome_visibility()
         if start_idle_timer:
             self._viewport_interaction_idle_timer.start()
 
@@ -1419,6 +1429,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             return
         self.state.viewport_interaction_mode = False
         self.state.viewport_interaction_stars = None
+        self._sync_viewport_interaction_chrome_visibility()
         refresh_reason = (
             "view-change-release"
             if reason.endswith("release")

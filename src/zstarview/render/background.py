@@ -332,6 +332,7 @@ def draw_window_border(
     rect: QRectF,
     *,
     theme: ThemeStyle,
+    draw_menu_button: bool = True,
 ) -> None:
     """Draw the menu and resize affordances for the custom window chrome."""
     border_width = FRAMELESS_WINDOW_BORDER_WIDTH
@@ -351,14 +352,6 @@ def draw_window_border(
     menu_top_edge = top
 
     painter.save()
-    painter.setPen(Qt.PenStyle.NoPen)
-    painter.setBrush(chrome_fill_color)
-    painter.drawRect(QRectF(menu_left_edge, menu_top_edge, menu_size, menu_size))
-    menu_icon_pen = QPen(chrome_line_color, 2.0)
-    menu_icon_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-    painter.setPen(menu_icon_pen)
-    menu_left = menu_left_edge + 9.0
-    menu_right = menu_left_edge + menu_size - 9.0
     if theme.window_background.draw_outer_border:
         border_width = float(GUI_BUTTON_SIZE)
         border_color = QColor(*theme.window_background.border_rgba)
@@ -375,6 +368,15 @@ def draw_window_border(
         )
         painter.fillRect(QRectF(left, top, border_w, height), border_color)
         painter.fillRect(QRectF(left + width - border_w, top, border_w, height), border_color)
-    for y in (menu_top_edge + 9.0, menu_top_edge + 14.0, menu_top_edge + 19.0):
-        painter.drawLine(QPointF(menu_left, y), QPointF(menu_right, y))
+    if draw_menu_button:
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(chrome_fill_color)
+        painter.drawRect(QRectF(menu_left_edge, menu_top_edge, menu_size, menu_size))
+        menu_icon_pen = QPen(chrome_line_color, 2.0)
+        menu_icon_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        painter.setPen(menu_icon_pen)
+        menu_left = menu_left_edge + 9.0
+        menu_right = menu_left_edge + menu_size - 9.0
+        for y in (menu_top_edge + 9.0, menu_top_edge + 14.0, menu_top_edge + 19.0):
+            painter.drawLine(QPointF(menu_left, y), QPointF(menu_right, y))
     painter.restore()

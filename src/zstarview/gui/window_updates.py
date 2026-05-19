@@ -514,6 +514,7 @@ class SkyWindowUpdatesMixin:
             self.state.viewport_interaction_release_pending = False
             self.state.viewport_interaction_mode = False
             self.state.viewport_interaction_stars = None
+            self._sync_viewport_interaction_chrome_visibility()
             if not self._is_shutting_down:
                 self.start_background_cloud_update(reason="view-change-release")
                 self.start_background_terrain_horizon_update(

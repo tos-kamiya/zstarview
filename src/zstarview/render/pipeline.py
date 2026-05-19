@@ -207,6 +207,7 @@ def render_base_scene_into_painter(
     draw_fast_overlays: bool = True,
     label_candidates: list[dict[str, Any]] | None = None,
     draw_labels: bool = True,
+    draw_direction_labels: bool = True,
 ) -> None:
     frame = _resolve_frame_context(
         frame=frame,
@@ -228,6 +229,7 @@ def render_base_scene_into_painter(
         viewport_rect=frame.viewport_rect,
         scene=scene,
         style=style,
+        draw_menu_button=not hud.viewport_interaction_mode,
     )
     sky_cloud_style = (
         replace(style, cloud_disc_alpha=0.0) if hud.viewport_interaction_mode else style
@@ -250,6 +252,7 @@ def render_base_scene_into_painter(
         viewport_rect=frame.viewport_rect,
         scene=scene,
         style=style,
+        draw_direction_labels=draw_direction_labels,
     )
     if hud.viewport_interaction_mode:
         _draw_viewport_interaction_layers(
@@ -551,6 +554,7 @@ def _draw_background_layer(
     viewport_rect: QRect,
     scene: RenderSceneData,
     style: RenderStyle,
+    draw_menu_button: bool = True,
 ) -> None:
     if not style.show_background_gradient:
         return
@@ -571,6 +575,7 @@ def _draw_background_layer(
             painter,
             QRectF(viewport_rect),
             theme=style.theme,
+            draw_menu_button=draw_menu_button,
         )
 
 
@@ -581,6 +586,7 @@ def _draw_guide_layer(
     viewport_rect: QRect,
     scene: RenderSceneData,
     style: RenderStyle,
+    draw_direction_labels: bool = True,
 ) -> None:
     """Draw guide annotations that should float above sky/cloud but below scene overlays."""
     if not style.show_guidelines:
@@ -595,16 +601,17 @@ def _draw_guide_layer(
             content_fov_deg=_content_fov_deg(scene),
         )
     content_fov_deg = _content_fov_deg(scene)
-    render_guides.draw_direction_labels(
-        painter,
-        geometry,
-        scene.viewer.view_center,
-        style.text_font,
-        None,
-        theme=style.theme,
-        edge_fov_deg=float(scene.viewer.edge_fov_deg),
-        content_fov_deg=content_fov_deg,
-    )
+    if draw_direction_labels:
+        render_guides.draw_direction_labels(
+            painter,
+            geometry,
+            scene.viewer.view_center,
+            style.text_font,
+            None,
+            theme=style.theme,
+            edge_fov_deg=float(scene.viewer.edge_fov_deg),
+            content_fov_deg=content_fov_deg,
+        )
     render_guides.draw_zenith_marker(
         painter,
         geometry,

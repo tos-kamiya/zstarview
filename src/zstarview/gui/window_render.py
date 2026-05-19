@@ -5,12 +5,13 @@ import time
 from typing import Callable, cast
 
 import astropy.time
-from PySide6.QtCore import QPoint, QPointF, QRect, Qt, QTimer
+from PySide6.QtCore import QPoint, QPointF, QRect, QSize, Qt, QTimer
 from PySide6.QtGui import QFont, QImage, QPainter, QPaintEvent
 
 from ..astro import altaz_to_normalized_xy, resolve_star_names
 from ..render import deep_sky_objects as render_deep_sky_objects
 from ..render import geometry as render_geometry
+from ..render import guides as render_guides
 from ..render import satellites as render_satellites
 from ..render import stars as render_stars
 from ..render import text as render_text
@@ -29,6 +30,7 @@ from ..satellites.types import SatelliteOverlayPoint
 from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
 
 logger = logging.getLogger(__name__)
+_FAST_FRAME_MAX_EDGE_PX = 600
 
 
 def _resolve_hover_targets(
@@ -183,11 +185,29 @@ class SkyWindowRenderMixin:
         cache_key_attr: str,
         cache_image_attr: str,
     ) -> QImage:
-        frame_cache_key = getattr(self, cache_key_attr)
-        frame_cache_image = cast(QImage | None, getattr(self, cache_image_attr))
+        return SkyWindowRenderMixin._render_cached_image(
+            self,
+            image_size=self.client_size(),
+            frame_key=frame_key,
+            render_fn=render_fn,
+            cache_key_attr=cache_key_attr,
+            cache_image_attr=cache_image_attr,
+        )
+
+    def _render_cached_image(
+        self,
+        *,
+        image_size: QSize,
+        frame_key: tuple[object, ...],
+        render_fn: Callable[[QPainter], None],
+        cache_key_attr: str,
+        cache_image_attr: str,
+    ) -> QImage:
+        frame_cache_key = getattr(self, cache_key_attr, None)
+        frame_cache_image = cast(QImage | None, getattr(self, cache_image_attr, None))
         if frame_cache_key != frame_key or frame_cache_image is None:
             frame = QImage(
-                self.client_size(),
+                image_size,
                 QImage.Format.Format_ARGB32_Premultiplied,
             )
             frame.fill(Qt.GlobalColor.transparent)
@@ -202,6 +222,16 @@ class SkyWindowRenderMixin:
             setattr(self, cache_key_attr, frame_key)
             return frame
         return cast(QImage, frame_cache_image)
+
+    def _fast_frame_render_size(self, frame: FrameContext) -> QSize:
+        win_w = max(1, int(frame.viewport_rect.width()))
+        win_h = max(1, int(frame.viewport_rect.height()))
+        max_edge = max(1, int(_FAST_FRAME_MAX_EDGE_PX))
+        scale = min(1.0, float(max_edge) / float(max(win_w, win_h)))
+        return QSize(
+            max(1, int(round(win_w * scale))),
+            max(1, int(round(win_h * scale))),
+        )
 
     def _present_frame_cache_key(
         self,
@@ -327,15 +357,81 @@ class SkyWindowRenderMixin:
         highlighted_dso: tuple[CelestialObject, QPointF] | None,
         highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None,
     ) -> QImage:
-        return self._render_present_frame_image(
-            base_frame_key=base_frame_key,
-            frame=frame,
-            scene=scene,
-            style=style,
-            hud=hud,
-            highlighted_object=highlighted_object,
-            highlighted_dso=highlighted_dso,
-            highlighted_satellite=highlighted_satellite,
+        # Fast mode renders the heavy scene into a capped-size buffer and then
+        # scales it up into the final window-sized frame.
+        fast_frame_size = SkyWindowRenderMixin._fast_frame_render_size(self, frame)
+        fast_viewport_rect = QRect(
+            0,
+            0,
+            fast_frame_size.width(),
+            fast_frame_size.height(),
+        )
+        fast_geometry = render_geometry.get_screen_geometry(
+            fast_frame_size.width(),
+            fast_frame_size.height(),
+            frame.viewer.view_center[0],
+        )
+        fast_frame = FrameContext(
+            viewer=frame.viewer,
+            time_obj=frame.time_obj,
+            geometry=fast_geometry,
+            viewport_rect=fast_viewport_rect,
+        )
+        fast_base_frame_key = (
+            base_frame_key,
+            int(fast_frame_size.width()),
+            int(fast_frame_size.height()),
+            "fast-base",
+        )
+        fast_base_frame_image = SkyWindowRenderMixin._render_cached_image(
+            self,
+            image_size=fast_frame_size,
+            frame_key=fast_base_frame_key,
+            render_fn=lambda frame_painter: render_base_scene_into_painter(
+                frame_painter,
+                frame=fast_frame,
+                scene=scene,
+                style=style,
+                hud=hud,
+                compositor=self._compositor,
+                draw_fast_overlays=False,
+                label_candidates=[],
+                draw_labels=False,
+                draw_direction_labels=False,
+            ),
+            cache_key_attr="_fast_frame_base_cache_key",
+            cache_image_attr="_fast_frame_base_cache_image",
+        )
+        return SkyWindowRenderMixin._render_cached_frame_image(
+            self,
+            frame_key=(
+                "fast-present",
+                base_frame_key,
+                int(fast_frame_size.width()),
+                int(fast_frame_size.height()),
+                str(hud.status_message),
+            ),
+            render_fn=lambda frame_painter: (
+                frame_painter.drawImage(frame.viewport_rect, fast_base_frame_image),
+                render_guides.draw_direction_labels(
+                    frame_painter,
+                    frame.geometry,
+                    frame.viewer.view_center,
+                    style.text_font,
+                    None,
+                    theme=style.theme,
+                    edge_fov_deg=float(frame.viewer.edge_fov_deg),
+                    content_fov_deg=float(frame.viewer.content_fov_deg),
+                ),
+                render_status_line_into_painter(
+                    frame_painter,
+                    frame=frame,
+                    style=style,
+                    hud=hud,
+                ),
+            ),
+            cache_key_attr="_fast_frame_cache_key",
+            cache_image_attr="_fast_frame_cache_image",
         )
 
     def _render_normal_frame_image(
