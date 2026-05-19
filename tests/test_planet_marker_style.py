@@ -554,6 +554,19 @@ def test_satellite_overlay_draws_below_horizon_marker_when_in_fov(monkeypatch) -
             cross_calls.append((scale, pen_width))
         ),
     )
+    monkeypatch.setattr(
+        render_satellites,
+        "project_satellite_records",
+        lambda *_args, **_kwargs: [
+            SatelliteOverlayPoint(
+                group_key="iss",
+                satellite_name="ISS (ZARYA)",
+                alt_deg=-40.0,
+                az_deg=151.0,
+                marker_scale=0.42,
+            )
+        ],
+    )
 
     image = QImage(40, 40, QImage.Format.Format_ARGB32_Premultiplied)
     painter = QPainter(image)
@@ -561,16 +574,15 @@ def test_satellite_overlay_draws_below_horizon_marker_when_in_fov(monkeypatch) -
         render_satellites.draw_satellite_overlay(
             painter=painter,
             geometry=ScreenGeometry(center=(20, 20), radius=20),
-            satellite_points=[
-                SatelliteOverlayPoint(
-                    group_key="iss",
-                    satellite_name="ISS (ZARYA)",
-                    alt_deg=-40.0,
-                    az_deg=151.0,
-                    marker_scale=0.42,
-                )
-            ],
-            view_center=(0.0, 151.0),
+            satellite_records_by_group={"iss": []},
+            viewer_data=ViewerData(
+                location=(35.0, 139.0),
+                timezone_name="UTC",
+                city_name="Tokyo",
+                view_center=(0.0, 151.0),
+                observer_height_m=1.7,
+            ),
+            time_obj=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
             opacity=1.0,
             label_candidates=[],
             theme=THEME_STYLES_BY_PRESET["night"],
@@ -591,6 +603,19 @@ def test_satellite_overlay_scales_marker_with_window_scale(monkeypatch) -> None:
             cross_calls.append((scale, pen_width))
         ),
     )
+    monkeypatch.setattr(
+        render_satellites,
+        "project_satellite_records",
+        lambda *_args, **_kwargs: [
+            SatelliteOverlayPoint(
+                group_key="iss",
+                satellite_name="ISS (ZARYA)",
+                alt_deg=-40.0,
+                az_deg=151.0,
+                marker_scale=0.42,
+            )
+        ],
+    )
 
     image = QImage(40, 40, QImage.Format.Format_ARGB32_Premultiplied)
     painter = QPainter(image)
@@ -598,16 +623,15 @@ def test_satellite_overlay_scales_marker_with_window_scale(monkeypatch) -> None:
         render_satellites.draw_satellite_overlay(
             painter=painter,
             geometry=ScreenGeometry(center=(20, 20), radius=20),
-            satellite_points=[
-                SatelliteOverlayPoint(
-                    group_key="iss",
-                    satellite_name="ISS (ZARYA)",
-                    alt_deg=-40.0,
-                    az_deg=151.0,
-                    marker_scale=0.42,
-                )
-            ],
-            view_center=(0.0, 151.0),
+            satellite_records_by_group={"iss": []},
+            viewer_data=ViewerData(
+                location=(35.0, 139.0),
+                timezone_name="UTC",
+                city_name="Tokyo",
+                view_center=(0.0, 151.0),
+                observer_height_m=1.7,
+            ),
+            time_obj=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
             opacity=1.0,
             label_candidates=[],
             marker_scale=2.5,
@@ -626,6 +650,19 @@ def test_satellite_overlay_keeps_overscan_position_beyond_90_deg(monkeypatch) ->
         positions.append((float(center.x()), float(center.y())))
 
     monkeypatch.setattr(render_satellites, "draw_gauge_cross", _record_cross)
+    monkeypatch.setattr(
+        render_satellites,
+        "project_satellite_records",
+        lambda *_args, **_kwargs: [
+            SatelliteOverlayPoint(
+                group_key="iss",
+                satellite_name="ISS (ZARYA)",
+                alt_deg=-50.0,
+                az_deg=180.0,
+                marker_scale=0.42,
+            )
+        ],
+    )
 
     image = QImage(240, 240, QImage.Format.Format_ARGB32_Premultiplied)
     painter = QPainter(image)
@@ -633,16 +670,17 @@ def test_satellite_overlay_keeps_overscan_position_beyond_90_deg(monkeypatch) ->
         render_satellites.draw_satellite_overlay(
             painter=painter,
             geometry=ScreenGeometry(center=(120, 120), radius=80),
-            satellite_points=[
-                SatelliteOverlayPoint(
-                    group_key="iss",
-                    satellite_name="ISS (ZARYA)",
-                    alt_deg=-50.0,
-                    az_deg=180.0,
-                    marker_scale=0.42,
-                )
-            ],
-            view_center=(45.0, 180.0),
+            satellite_records_by_group={"iss": []},
+            viewer_data=ViewerData(
+                location=(35.0, 139.0),
+                timezone_name="UTC",
+                city_name="Tokyo",
+                view_center=(45.0, 180.0),
+                edge_fov_deg=110.0,
+                content_fov_deg=110.0,
+                observer_height_m=1.7,
+            ),
+            time_obj=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
             opacity=1.0,
             label_candidates=[],
             edge_fov_deg=110.0,
@@ -708,6 +746,19 @@ def test_satellite_overlay_does_not_add_labels(monkeypatch) -> None:
     monkeypatch.setattr(
         render_satellites, "draw_gauge_cross", lambda *_args, **_kwargs: None
     )
+    monkeypatch.setattr(
+        render_satellites,
+        "project_satellite_records",
+        lambda *_args, **_kwargs: [
+            SatelliteOverlayPoint(
+                group_key="iss",
+                satellite_name="ISS (ZARYA)",
+                alt_deg=10.0,
+                az_deg=151.0,
+                marker_scale=0.42,
+            )
+        ],
+    )
 
     image = QImage(40, 40, QImage.Format.Format_ARGB32_Premultiplied)
     painter = QPainter(image)
@@ -716,16 +767,15 @@ def test_satellite_overlay_does_not_add_labels(monkeypatch) -> None:
         render_satellites.draw_satellite_overlay(
             painter=painter,
             geometry=ScreenGeometry(center=(20, 20), radius=20),
-            satellite_points=[
-                SatelliteOverlayPoint(
-                    group_key="iss",
-                    satellite_name="ISS (ZARYA)",
-                    alt_deg=10.0,
-                    az_deg=151.0,
-                    marker_scale=0.42,
-                )
-            ],
-            view_center=(0.0, 151.0),
+            satellite_records_by_group={"iss": []},
+            viewer_data=ViewerData(
+                location=(35.0, 139.0),
+                timezone_name="UTC",
+                city_name="Tokyo",
+                view_center=(0.0, 151.0),
+                observer_height_m=1.7,
+            ),
+            time_obj=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
             opacity=1.0,
             label_candidates=label_candidates,
             theme=THEME_STYLES_BY_PRESET["night"],
@@ -949,12 +999,24 @@ def test_find_highlighted_satellite_prefers_nearest_marker(monkeypatch) -> None:
             marker_scale=0.30,
         ),
     ]
+    monkeypatch.setattr(
+        render_satellites,
+        "project_satellite_records",
+        lambda *_args, **_kwargs: satellite_points,
+    )
 
     highlighted = render_satellites.find_highlighted_satellite(
-        satellite_points,
-        QPointF(121.0, 90.0),
-        geometry,
-        view_center,
+        satellite_records_by_group={"iss": []},
+        mouse_pos=QPointF(121.0, 90.0),
+        geometry=geometry,
+        viewer_data=ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="UTC",
+            city_name="Tokyo",
+            view_center=view_center,
+            observer_height_m=1.7,
+        ),
+        time_obj=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
     )
 
     assert highlighted is not None
@@ -962,7 +1024,7 @@ def test_find_highlighted_satellite_prefers_nearest_marker(monkeypatch) -> None:
     assert satellite.satellite_name == "ISS"
 
 
-def test_aircraft_label_uses_black_theme_style_in_day_theme() -> None:
+def test_aircraft_label_uses_black_theme_style_in_day_theme(monkeypatch) -> None:
     class _Painter:
         def save(self) -> None:
             pass
@@ -983,22 +1045,35 @@ def test_aircraft_label_uses_black_theme_style_in_day_theme() -> None:
             pass
 
     label_candidates: list[dict[str, object]] = []
+    aircraft_points = [
+        AircraftOverlayPoint(
+            icao24="abc123",
+            callsign="TEST123",
+            alt_deg=10.0,
+            az_deg=151.0,
+            trail_alt_az_points=((10.0, 151.0), (10.2, 151.3)),
+            distance_km=5.0,
+            age_seconds=10.0,
+            alpha_scale=1.0,
+        )
+    ]
+    monkeypatch.setattr(
+        render_aircraft,
+        "project_aircraft_snapshots",
+        lambda *_args, **_kwargs: aircraft_points,
+    )
     render_aircraft.draw_aircraft_overlay(
         painter=_Painter(),
         geometry=ScreenGeometry(center=(20, 20), radius=20),
-        aircraft_points=[
-            AircraftOverlayPoint(
-                icao24="abc123",
-                callsign="TEST123",
-                alt_deg=10.0,
-                az_deg=151.0,
-                trail_alt_az_points=((10.0, 151.0), (10.2, 151.3)),
-                distance_km=5.0,
-                age_seconds=10.0,
-                alpha_scale=1.0,
-            )
-        ],
-        view_center=(0.0, 151.0),
+        aircraft_snapshots={"dummy": True},
+        viewer_data=ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="UTC",
+            city_name="Tokyo",
+            view_center=(0.0, 151.0),
+            observer_height_m=1.7,
+        ),
+        time_obj=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
         opacity=1.0,
         label_candidates=label_candidates,
         theme=THEME_STYLES_BY_PRESET["day"],
