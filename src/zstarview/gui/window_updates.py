@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import os
-import sys
 import time
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -19,7 +18,6 @@ from ..satellite_constants import SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS
 from ..search.jpl import project_jpl_target_altaz_from_state_vector
 
 logger = logging.getLogger(__name__)
-_JPL_DEBUG_ENV = "ZSTARVIEW_DEBUG_JPL_SEARCH"
 _STATUS_CLOUD = "☁"
 _STATUS_WATER = "W"
 _STATUS_SATELLITE = "🛰"
@@ -49,18 +47,6 @@ def _cloud_satellite_group(satellite: str) -> str:
     if sat == "HIMAWARI":
         return "HIMAWARI"
     return sat
-
-
-def _jpl_debug_enabled() -> bool:
-    raw = os.getenv(_JPL_DEBUG_ENV, "").strip().casefold()
-    return raw in {"1", "true", "yes", "on"}
-
-
-def _jpl_debug_print(message: str) -> None:
-    if not _jpl_debug_enabled():
-        return
-    print(f"[jpl-debug] {message}", file=sys.stderr, flush=True)
-
 
 def _initial_data_load_active(obj: object) -> bool:
     return bool(obj._startup_initial_load_started) and not bool(
@@ -776,25 +762,8 @@ class SkyWindowUpdatesMixin:
             time_obj=self._current_time_obj(),
         )
         if projected_altaz is None:
-            _jpl_debug_print(
-                "refresh-project-none "
-                f"label={target.label} command={target.command} "
-                f"target_time_utc={target.target_time_utc!r} "
-                f"epoch={target.horizons_epoch_utc!r} "
-                f"pos={target.horizons_position_km!r} "
-                f"vel={target.horizons_velocity_km_s!r}"
-            )
             return
         alt_deg, az_deg = projected_altaz
-        _jpl_debug_print(
-            "refresh "
-            f"label={target.label} command={target.command} "
-            f"target_time_utc={target.target_time_utc!r} "
-            f"epoch={target.horizons_epoch_utc!r} "
-            f"pos={target.horizons_position_km!r} "
-            f"vel={target.horizons_velocity_km_s!r} "
-            f"projected_alt={float(alt_deg):.3f} projected_az={float(az_deg) % 360.0:.3f}"
-        )
         if (
             target.alt_deg is not None
             and target.az_deg is not None

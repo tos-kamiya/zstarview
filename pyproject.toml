@@ -145,6 +145,5 @@ zstarview = "zstarview.gui.viewer:main"
 zstarview-gui = "zstarview.gui.viewer:main"
 
 [project.scripts]
-zstarview-debug = "zstarview.gui.viewer:main"
 zstarview-make-desktop-file = "zstarview.cli.make_desktop_file:main"
 zstarview-export-image = "zstarview.cli.export_image:main"

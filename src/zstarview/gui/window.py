@@ -8,8 +8,6 @@ clouds, and all user interactions like rotation, zooming, and object highlightin
 """
 
 import logging
-import os
-import sys
 import time
 from html import escape
 from dataclasses import replace
@@ -167,49 +165,6 @@ def _resize_event_size(event: QResizeEvent, attr: str) -> tuple[int, int]:
     return (-1, -1)
 
 
-def _widget_rect_tuple(widget: QWidget) -> tuple[int, int, int, int]:
-    geometry = getattr(widget, "geometry", None)
-    if callable(geometry):
-        try:
-            rect = geometry()
-            return rect.getRect()
-        except Exception:
-            pass
-    return (-1, -1, -1, -1)
-
-
-def _widget_visible(widget: QWidget) -> bool:
-    visible = getattr(widget, "isVisible", None)
-    if callable(visible):
-        try:
-            return bool(visible())
-        except Exception:
-            pass
-    return False
-
-
-def _widget_parent_name(widget: QWidget) -> str:
-    parent_widget = getattr(widget, "parentWidget", None)
-    if callable(parent_widget):
-        try:
-            parent = parent_widget()
-            if parent is not None:
-                return type(parent).__name__
-        except Exception:
-            pass
-    return "None"
-
-
-def _chrome_debug_print(message: str) -> None:
-    if _chrome_debug_enabled():
-        print(message, file=sys.stderr, flush=True)
-
-
-def _chrome_event_name(event_type: QEvent.Type) -> str:
-    name = getattr(event_type, "name", None)
-    return str(name) if name is not None else str(int(event_type))
-
-
 def _draw_resize_grip_marker(painter: QPainter, rect: QRect) -> None:
     if rect.width() <= 2 or rect.height() <= 2:
         return
@@ -226,25 +181,6 @@ def _draw_resize_grip_marker(painter: QPainter, rect: QRect) -> None:
         QPointF(right, bottom - 16.0),
     )
     painter.restore()
-
-_JPL_DEBUG_ENV = "ZSTARVIEW_DEBUG_JPL_SEARCH"
-_CHROME_DEBUG_ENV = "ZSTARVIEW_DEBUG_WINDOW_CHROME"
-
-
-def _jpl_debug_enabled() -> bool:
-    raw = os.getenv(_JPL_DEBUG_ENV, "").strip().casefold()
-    return raw in {"1", "true", "yes", "on"}
-
-
-def _jpl_debug_print(message: str) -> None:
-    if not _jpl_debug_enabled():
-        return
-    print(f"[jpl-debug] {message}", file=sys.stderr, flush=True)
-
-
-def _chrome_debug_enabled() -> bool:
-    raw = os.getenv(_CHROME_DEBUG_ENV, "").strip().casefold()
-    return raw in {"1", "true", "yes", "on"}
 
 GITHUB_CODE_DATA_LICENSES_AND_CREDITS_URL = (
     "https://github.com/tos-kamiya/zstarview#code-data-licenses-and-credits"
@@ -614,52 +550,7 @@ class FramelessWindowFrame(QWidget):
     def overlay_widgets(self) -> list[QWidget]:
         return [self.menu_button, self.size_grip]
 
-    def _log_chrome_state(self, prefix: str) -> None:
-        if not _chrome_debug_enabled():
-            return
-        menu_geo = self.menu_button.geometry()
-        grip_geo = self.size_grip.geometry()
-        _chrome_debug_print(
-            "%s: frame=%sx%s client=%sx%s menu=%s visible=%s grip=%s visible=%s grip_parent=%s"
-            % (
-                prefix,
-                self.width(),
-                self.height(),
-                self._client_widget.width(),
-                self._client_widget.height(),
-                menu_geo.getRect(),
-                self.menu_button.isVisible(),
-                grip_geo.getRect(),
-                self.size_grip.isVisible(),
-                type(self.size_grip.parentWidget()).__name__,
-            )
-        )
-
     def eventFilter(self, watched: object, event: QEvent) -> bool:
-        if _chrome_debug_enabled() and isinstance(watched, QWidget):
-            if watched in {self.size_grip, self._client_widget}:
-                event_type = event.type()
-                if event_type in {
-                    QEvent.Type.Resize,
-                    QEvent.Type.Move,
-                    QEvent.Type.Show,
-                    QEvent.Type.Hide,
-                    QEvent.Type.Paint,
-                    QEvent.Type.MouseButtonPress,
-                    QEvent.Type.MouseButtonRelease,
-                    QEvent.Type.MouseMove,
-                }:
-                    _chrome_debug_print(
-                        "chrome-event: watched=%s type=%s geom=%s visible=%s"
-                        % (
-                            "size_grip"
-                            if watched is self.size_grip
-                            else "client_widget",
-                            _chrome_event_name(event_type),
-                            _widget_rect_tuple(watched),
-                            _widget_visible(watched),
-                        )
-                    )
         return super().eventFilter(watched, event)
 
     def _layout_chrome(self) -> None:
@@ -672,16 +563,8 @@ class FramelessWindowFrame(QWidget):
         )
         self.menu_button.raise_()
         self.size_grip.raise_()
-        self._log_chrome_state("layout-chrome")
 
     def resizeEvent(self, event: QResizeEvent) -> None:
-        if _chrome_debug_enabled():
-            old_w, old_h = _resize_event_size(event, "oldSize")
-            new_w, new_h = _resize_event_size(event, "size")
-            _chrome_debug_print(
-                "frameless-frame-resize: old=%sx%s new=%sx%s"
-                % (old_w, old_h, new_w, new_h)
-            )
         super().resizeEvent(event)
         self._layout_chrome()
 
@@ -1750,11 +1633,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def _handle_client_resize(self, event: QResizeEvent) -> None:
         old_w, old_h = _resize_event_size(event, "oldSize")
         new_w, new_h = _resize_event_size(event, "size")
-        if _chrome_debug_enabled():
-            _chrome_debug_print(
-                "client-resize: old=%sx%s new=%sx%s frameless=%s"
-                % (old_w, old_h, new_w, new_h, self._frameless_frame is not None)
-            )
         if not self._startup_initial_load_started:
             self._layout_startup_log_overlay()
             return
@@ -1771,15 +1649,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._compositor.invalidate()
         self.request_client_update()
         self._raise_overlay_widgets()
-        if self.size_grip is not None and _chrome_debug_enabled():
-            _chrome_debug_print(
-                "client-resize-post: grip=%s visible=%s parent=%s"
-                % (
-                    _widget_rect_tuple(self.size_grip),
-                    _widget_visible(self.size_grip),
-                    _widget_parent_name(self.size_grip),
-                )
-            )
 
     def _discard_stale_disc_images(self) -> None:
         discarded = False
@@ -1966,13 +1835,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
     def _search_jpl_targets(self, query: str) -> list[SearchJumpTarget]:
         target_time_utc = self._target_time_utc()
-        delta_t = self.delta_t
-        _jpl_debug_print(
-            "search "
-            f"query={query!r} "
-            f"delta_t={delta_t!r} "
-            f"target_time_utc={target_time_utc.astimezone(timezone.utc).isoformat()}"
-        )
         return search_jpl_targets(
             query,
             target_time_utc=target_time_utc,
@@ -2137,12 +1999,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             and isinstance(horizons_position_km, (list, tuple))
             and isinstance(horizons_velocity_km_s, (list, tuple))
         ):
-            _jpl_debug_print(
-                "ready-skip "
-                f"label={target.label} command={target.command} "
-                f"target_time_utc={target_time_utc.astimezone(timezone.utc).isoformat()} "
-                f"epoch={horizons_epoch_utc!r} pos={horizons_position_km!r} vel={horizons_velocity_km_s!r}"
-            )
             return
         vector_target = _replace_search_jump_target(
             current_target,
@@ -2158,23 +2014,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             time_obj=self._current_time_obj(),
         )
         if projected_altaz is None:
-            _jpl_debug_print(
-                "ready-project-none "
-                f"label={target.label} command={target.command} "
-                f"target_time_utc={target_time_utc.astimezone(timezone.utc).isoformat()} "
-                f"epoch={horizons_epoch_utc.astimezone(timezone.utc).isoformat()} "
-                f"pos={tuple(horizons_position_km)!r} vel={tuple(horizons_velocity_km_s)!r}"
-            )
             return
         alt_deg, az_deg = projected_altaz
-        _jpl_debug_print(
-            "ready "
-            f"label={target.label} command={target.command} "
-            f"target_time_utc={target_time_utc.astimezone(timezone.utc).isoformat()} "
-            f"epoch={horizons_epoch_utc.astimezone(timezone.utc).isoformat()} "
-            f"pos={tuple(horizons_position_km)!r} vel={tuple(horizons_velocity_km_s)!r} "
-            f"projected_alt={float(alt_deg):.3f} projected_az={float(az_deg) % 360.0:.3f}"
-        )
         updated_target = _replace_search_jump_target(
             vector_target,
             alt_deg=alt_deg,
@@ -2264,11 +2105,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                     target_time_utc=target.target_time_utc or current_time,
                 )
                 if state_vector is None:
-                    _jpl_debug_print(
-                        "jump-resolve-none "
-                        f"label={target.label} command={target.command} "
-                        f"target_time_utc={(target.target_time_utc or current_time).astimezone(timezone.utc).isoformat()}"
-                    )
                     return
                 horizons_epoch_utc, horizons_position_km, horizons_velocity_km_s = state_vector
                 state_vector_target = _replace_search_jump_target(
@@ -2285,24 +2121,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 time_obj=current_time_obj,
             )
             if target_altaz is None:
-                _jpl_debug_print(
-                    "jump-project-none "
-                    f"label={target.label} command={target.command} "
-                    f"target_time_utc={(target.target_time_utc or current_time).astimezone(timezone.utc).isoformat()} "
-                    f"epoch={state_vector_target.horizons_epoch_utc.astimezone(timezone.utc).isoformat() if state_vector_target.horizons_epoch_utc else '<none>'} "
-                    f"pos={state_vector_target.horizons_position_km!r} vel={state_vector_target.horizons_velocity_km_s!r}"
-                )
                 return
             target_alt = float(target_altaz[0])
             target_az = float(target_altaz[1]) % 360.0
-            _jpl_debug_print(
-                "jump "
-                f"label={target.label} command={target.command} "
-                f"target_time_utc={(target.target_time_utc or current_time).astimezone(timezone.utc).isoformat()} "
-                f"epoch={state_vector_target.horizons_epoch_utc.astimezone(timezone.utc).isoformat() if state_vector_target.horizons_epoch_utc else '<none>'} "
-                f"pos={state_vector_target.horizons_position_km!r} vel={state_vector_target.horizons_velocity_km_s!r} "
-                f"projected_alt={target_alt:.3f} projected_az={target_az:.3f}"
-            )
         else:
             target_alt, target_az = radec_to_altaz(
                 target.ra_hours,
@@ -2544,13 +2365,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
     def _target_time_utc(self) -> datetime:
         delta_t = self.delta_t
-        target_time_utc = target_time_utc_from_delta(delta_t)
-        _jpl_debug_print(
-            "target-time "
-            f"delta_t={delta_t!r} "
-            f"target_time_utc={target_time_utc.astimezone(timezone.utc).isoformat()}"
-        )
-        return target_time_utc
+        return target_time_utc_from_delta(delta_t)
 
     def _satellite_validity_remaining_ms(self) -> int | None:
         refreshed_at_utc = self.satellite_state.refreshed_at_utc
