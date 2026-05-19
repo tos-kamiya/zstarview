@@ -4,14 +4,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from ..aircraft.types import AircraftOverlayPoint, AircraftSnapshot
+from ..aircraft.types import AircraftSnapshot
 from ..aircraft.opensky import AircraftBoundingBox
 
 
 @dataclass
 class AircraftState:
     snapshots: Optional[list[AircraftSnapshot]] = None
-    overlay_points: Optional[list[AircraftOverlayPoint]] = None
     banner_text: Optional[str] = None
     failed_this_session: bool = False
     last_success_utc: Optional[datetime] = None
@@ -21,12 +20,10 @@ class AircraftState:
         self,
         snapshots: list[AircraftSnapshot],
         *,
-        overlay_points: list[AircraftOverlayPoint] | None = None,
         bbox: AircraftBoundingBox | None = None,
         refreshed_at_utc: datetime | None = None,
     ) -> None:
         self.snapshots = snapshots
-        self.overlay_points = overlay_points
         self.last_bbox = bbox
         self.last_success_utc = refreshed_at_utc
         self.failed_this_session = False

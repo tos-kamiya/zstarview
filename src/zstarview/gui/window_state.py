@@ -34,6 +34,10 @@ class SkyWindowState:
     persistent_search_next_refresh_utc: Optional[datetime] = None
     persistent_search_last_refresh_utc: Optional[datetime] = None
     persistent_search_last_error: Optional[str] = None
+    sky_next_refresh_utc: Optional[datetime] = None
+    cloud_next_refresh_utc: Optional[datetime] = None
+    satellite_next_refresh_utc: Optional[datetime] = None
+    aircraft_next_refresh_utc: Optional[datetime] = None
     satellite_projection_next_refresh_utc: Optional[datetime] = None
     aircraft_projection_next_refresh_utc: Optional[datetime] = None
     sky_update_pending: bool = False

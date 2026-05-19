@@ -14,6 +14,7 @@ from ..aircraft_constants import AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS
 from ..astro import load_ephemeris
 from ..clouddisc.providers.select import GOES_SATELLITES
 from ..paths import CACHE_PATH
+from ..paths import CLOUD_UPDATE_INTERVAL
 from ..satellite_constants import SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS
 from ..search.jpl import project_jpl_target_altaz_from_state_vector
 
@@ -158,6 +159,7 @@ class SkyWindowUpdatesMixin:
         if self._is_shutting_down:
             return
         now_ms = time.monotonic() * 1000.0
+        now_utc = datetime.now(timezone.utc)
         if (
             self.state.jump_highlight_name is not None
             and self.state.jump_highlight_until_ms > 0.0
@@ -171,7 +173,11 @@ class SkyWindowUpdatesMixin:
             return
         background_updates_busy = self._background_updates_busy()
 
-        if not background_updates_busy and self.state.sky_update_pending:
+        sky_next_refresh = getattr(self.state, "sky_next_refresh_utc", None)
+        if (
+            not background_updates_busy
+            and self.state.sky_update_pending
+        ):
             started = self.start_background_sky_data_update(
                 star_vmag_limit=self.state.pending_star_vmag_limit,
                 reason="scheduler",
@@ -180,50 +186,80 @@ class SkyWindowUpdatesMixin:
             if started:
                 self.state.sky_update_pending = False
                 self.state.pending_star_vmag_limit = None
-                self._sky_refresh_due = False
+                self.state.sky_next_refresh_utc = now_utc + timedelta(seconds=self.sky_update_interval)
                 return
 
-        if not background_updates_busy and self._sky_refresh_due:
+        if (
+            not background_updates_busy
+            and isinstance(sky_next_refresh, datetime)
+            and now_utc >= sky_next_refresh
+        ):
             started = self.start_background_sky_data_update(
                 reason="scheduler",
                 allow_during_viewport_interaction=False,
             )
             if started:
-                self._sky_refresh_due = False
+                self.state.sky_next_refresh_utc = now_utc + timedelta(seconds=self.sky_update_interval)
                 return
 
-        if not background_updates_busy and self._persistent_search_refresh_due:
-            started = self._start_persistent_search_refresh(reason="scheduler")
-            if started:
-                self._persistent_search_refresh_due = False
-                return
-
+        persistent_next_refresh = getattr(
+            self.state, "persistent_search_next_refresh_utc", None
+        )
         if (
             not background_updates_busy
-            and self._cloud_refresh_due
+            and isinstance(persistent_next_refresh, datetime)
+            and now_utc >= persistent_next_refresh
+        ):
+            started = self._start_persistent_search_refresh(reason="scheduler")
+            if started:
+                self.state.persistent_search_next_refresh_utc = persistent_next_refresh + timedelta(hours=1)
+                return
+
+        cloud_next_refresh = getattr(self.state, "cloud_next_refresh_utc", None)
+        if (
+            not background_updates_busy
+            and isinstance(cloud_next_refresh, datetime)
+            and now_utc >= cloud_next_refresh
             and self._clouddisc
             and self.cloud_disc_alpha > 0.0
         ):
-            if self._cloud_controller is None:
-                self._cloud_refresh_due = False
-                return
-            if self._cloud_controller.has_in_flight_update():
+            if self._cloud_controller is None or self._cloud_controller.has_in_flight_update():
                 return
             self.start_background_cloud_update(reason="scheduler")
             if self._cloud_controller.has_in_flight_update():
-                self._cloud_refresh_due = False
+                self.state.cloud_next_refresh_utc = now_utc + timedelta(seconds=CLOUD_UPDATE_INTERVAL)
                 return
 
-        if not background_updates_busy and self._satellite_refresh_due and self._satellite_layer_enabled():
+        satellite_next_refresh = getattr(
+            self.state, "satellite_next_refresh_utc", None
+        )
+        if (
+            not background_updates_busy
+            and self._satellite_layer_enabled()
+            and isinstance(satellite_next_refresh, datetime)
+            and now_utc >= satellite_next_refresh
+        ):
             started = self.start_background_satellite_update(reason="scheduler")
             if started:
-                self._satellite_refresh_due = False
+                self.state.satellite_next_refresh_utc = now_utc + timedelta(
+                    seconds=SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS
+                )
                 return
 
-        if not background_updates_busy and self._aircraft_refresh_due and self._aircraft_layer_enabled():
+        aircraft_next_refresh = getattr(
+            self.state, "aircraft_next_refresh_utc", None
+        )
+        if (
+            not background_updates_busy
+            and self._aircraft_layer_enabled()
+            and isinstance(aircraft_next_refresh, datetime)
+            and now_utc >= aircraft_next_refresh
+        ):
             started = self.start_background_aircraft_update(reason="scheduler")
             if started:
-                self._aircraft_refresh_due = False
+                self.state.aircraft_next_refresh_utc = now_utc + timedelta(
+                    seconds=AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS
+                )
                 return
 
         # Lowest-priority idle work: keep satellite and aircraft positions fresh.
@@ -234,18 +270,6 @@ class SkyWindowUpdatesMixin:
         if self._satellite_layer_enabled() and self._satellite_projection_next_refresh_delay_ms() == 0:
             self.reproject_satellite_overlay()
             return
-
-    def _on_sky_refresh_timer(self) -> None:
-        if self._is_shutting_down:
-            return
-        self._sky_refresh_due = True
-        self._on_scheduler_tick()
-
-    def _on_cloud_refresh_timer(self) -> None:
-        if self._is_shutting_down:
-            return
-        self._cloud_refresh_due = True
-        self._on_scheduler_tick()
 
     def _resolve_aircraft_debug_snapshot_dir(self) -> Path | None:
         raw = os.getenv("ZSTARVIEW_DEBUG_SAVE_AIRCRAFT_READY_FRAME", "").strip()
@@ -544,14 +568,13 @@ class SkyWindowUpdatesMixin:
                 continue_initial_data_load()
             return
 
-        if not self._sky_data_update_timer.isActive():
-            self._sky_data_update_timer.start(self.sky_update_interval * 1000)
-            if (
-                self._clouddisc
-                and self.cloud_disc_alpha > 0.0
-                and not self._cloud_update_timer.isActive()
-            ):
-                self._cloud_update_timer.start()
+        self.state.sky_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
+            seconds=self.sky_update_interval
+        )
+        if self._clouddisc and self.cloud_disc_alpha > 0.0:
+            self.state.cloud_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
+                seconds=CLOUD_UPDATE_INTERVAL
+            )
 
         if self.state.sky_update_pending and not self._is_shutting_down:
             self.request_sky_data_update(
@@ -820,7 +843,6 @@ class SkyWindowUpdatesMixin:
         banner = str(payload.get("banner", "")).strip()
         self.satellite_state.set_result(
             payload.get("records_by_group", {}),
-            overlay_points=None,
             element_epoch_utc=element_epoch,
             refreshed_at_utc=payload.get("refreshed_at_utc"),
         )
@@ -869,9 +891,9 @@ class SkyWindowUpdatesMixin:
             source_key=payload.get("source_key"),
             request_id=payload.get("request_id"),
         )
-        if hasattr(self, "_cloud_update_timer"):
-            self._cloud_update_timer.start(max(0, int(self._cloud_update_timer.interval())))
-        self._cloud_refresh_due = False
+        self.state.cloud_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
+            seconds=CLOUD_UPDATE_INTERVAL
+        )
         self._compositor.invalidate()
         if self.state.interaction_mode:
             self.state.cloud_repaint_deferred = True
@@ -882,9 +904,9 @@ class SkyWindowUpdatesMixin:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.cloud_state.set_error_banner(banner)
-        if hasattr(self, "_cloud_update_timer"):
-            self._cloud_update_timer.start(max(0, int(self._cloud_update_timer.interval())))
-        self._cloud_refresh_due = False
+        self.state.cloud_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
+            seconds=CLOUD_UPDATE_INTERVAL
+        )
         if self.state.interaction_mode:
             self.state.cloud_repaint_deferred = True
         if banner:
@@ -1008,7 +1030,6 @@ class SkyWindowUpdatesMixin:
         banner = str(payload.get("banner", "")).strip()
         self.aircraft_state.set_result(
             payload.get("snapshots", []),
-            overlay_points=None,
             bbox=payload.get("bbox"),
             refreshed_at_utc=refreshed_at,
         )

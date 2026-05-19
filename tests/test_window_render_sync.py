@@ -24,7 +24,6 @@ import zstarview.gui.window_updates as window_updates_module
 import zstarview.render.solar_system as render_solar_system_module
 from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.location_resolver import PlaceTargetProjection
-from zstarview.satellite_constants import SATELLITE_FAILURE_RETRY_SECONDS
 from zstarview.types import CelestialData, PlanetBody, UrbanOutlinePolyline, ViewerData
 from zstarview.gui.famous_star_shortcuts import SearchJumpTarget
 from zstarview.gui.window import SkyWindow
@@ -621,13 +620,16 @@ def test_schedule_satellite_retry_after_failure_uses_two_hour_backoff() -> None:
     dummy = _WindowStub()
     dummy.satellite_opacity = 0.5
     dummy._is_shutting_down = False
-    timer = _DummyTimer(active=False)
-    dummy._satellite_update_timer = timer
+    dummy.state = SimpleNamespace(satellite_next_refresh_utc=None)
     dummy._satellite_layer_enabled = lambda: True
 
     SkyWindow._schedule_satellite_retry_after_failure(dummy)
 
-    assert timer.started_with == [SATELLITE_FAILURE_RETRY_SECONDS * 1000]
+    assert dummy.state.satellite_next_refresh_utc is not None
+    assert (
+        dummy.state.satellite_next_refresh_utc
+        > datetime.now(timezone.utc)
+    )
 
 
 def test_satellite_validity_remaining_ms_uses_refresh_time() -> None:
@@ -680,7 +682,6 @@ def test_jump_to_satellite_target_uses_cached_satellite_records_below_horizon(
     )
     dummy.satellite_state = SimpleNamespace(
         records_by_group={"iss": [{"OBJECT_NAME": "ISS (ZARYA)"}]},
-        overlay_points=None,
         set_banner=Mock(),
     )
     dummy._sync_view_altitude_actions = Mock()
@@ -762,7 +763,7 @@ def test_jump_to_satellite_target_sets_banner_when_not_available() -> None:
         render_view_center=(20.0, 30.0)
     )
     dummy.satellite_state = SimpleNamespace(
-        records_by_group={}, overlay_points=None, set_banner=Mock()
+        records_by_group={}, set_banner=Mock()
     )
     dummy.update = Mock()
     dummy._load_cached_satellite_records = lambda groups: {}
@@ -817,7 +818,7 @@ def test_jump_to_place_target_uses_projected_altaz(monkeypatch) -> None:
         render_view_center=(20.0, 30.0)
     )
     dummy.satellite_state = SimpleNamespace(
-        records_by_group={}, overlay_points=None, set_banner=Mock()
+        records_by_group={}, set_banner=Mock()
     )
     dummy._sync_view_altitude_actions = Mock()
     dummy._begin_interaction_mode = Mock()
@@ -857,7 +858,7 @@ def test_jump_to_jpl_small_body_target_can_set_persistent_overlay(caplog) -> Non
         persistent_search_target=None,
     )
     dummy.satellite_state = SimpleNamespace(
-        records_by_group={}, overlay_points=None, set_banner=Mock()
+        records_by_group={}, set_banner=Mock()
     )
     dummy._target_time_utc = lambda: datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc)
     dummy._sync_view_altitude_actions = Mock()
@@ -922,7 +923,7 @@ def test_jump_to_jpl_small_body_target_uses_state_vector_when_present(monkeypatc
         persistent_search_target=None,
     )
     dummy.satellite_state = SimpleNamespace(
-        records_by_group={}, overlay_points=None, set_banner=Mock()
+        records_by_group={}, set_banner=Mock()
     )
     dummy._target_time_utc = lambda: datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc)
     dummy._sync_view_altitude_actions = Mock()
@@ -983,7 +984,7 @@ def test_jump_to_jpl_small_body_target_honors_fixed_search_axes() -> None:
         persistent_search_target=None,
     )
     dummy.satellite_state = SimpleNamespace(
-        records_by_group={}, overlay_points=None, set_banner=Mock()
+        records_by_group={}, set_banner=Mock()
     )
     dummy._sync_view_altitude_actions = Mock()
     dummy._begin_interaction_mode = Mock()
@@ -1037,7 +1038,7 @@ def test_jump_to_jpl_small_body_target_can_disable_fixed_search_axes() -> None:
         persistent_search_target=None,
     )
     dummy.satellite_state = SimpleNamespace(
-        records_by_group={}, overlay_points=None, set_banner=Mock()
+        records_by_group={}, set_banner=Mock()
     )
     dummy._sync_view_altitude_actions = Mock()
     dummy._begin_interaction_mode = Mock()
@@ -1096,7 +1097,7 @@ def test_jump_to_jpl_small_body_target_without_keep_flags_clears_overlay() -> No
         ),
     )
     dummy.satellite_state = SimpleNamespace(
-        records_by_group={}, overlay_points=None, set_banner=Mock()
+        records_by_group={}, set_banner=Mock()
     )
     dummy._sync_view_altitude_actions = Mock()
     dummy._begin_interaction_mode = Mock()
@@ -1161,7 +1162,7 @@ def test_jpl_small_body_failure_reschedules_one_hour_later() -> None:
         persistent_search_reference_time_utc=datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc),
     )
     dummy.satellite_state = SimpleNamespace(
-        records_by_group={}, overlay_points=None, set_banner=Mock()
+        records_by_group={}, set_banner=Mock()
     )
     dummy.request_client_update = Mock()
     dummy._schedule_persistent_search_refresh = Mock()
@@ -1606,7 +1607,7 @@ def test_jump_to_jpl_major_body_target_keeps_overlay_without_refresh() -> None:
         persistent_search_target=None,
     )
     dummy.satellite_state = SimpleNamespace(
-        records_by_group={}, overlay_points=None, set_banner=Mock()
+        records_by_group={}, set_banner=Mock()
     )
     dummy._sync_view_altitude_actions = Mock()
     dummy._begin_interaction_mode = Mock()
@@ -1663,7 +1664,6 @@ def test_reproject_satellite_overlay_falls_back_to_disk_cache(
     )
     dummy.satellite_state = SimpleNamespace(
         records_by_group={"iss": [{"OBJECT_NAME": "ISS (ZARYA)"}]},
-        overlay_points=None,
         element_epoch_utc=datetime.now(timezone.utc),
     )
     dummy.state = SkyWindowState(

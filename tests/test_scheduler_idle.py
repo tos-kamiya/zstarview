@@ -23,15 +23,16 @@ class _SchedulerProbe(SkyWindowUpdatesMixin):
             sky_update_pending=False,
             pending_star_vmag_limit=None,
             viewport_interaction_mode=False,
+            sky_next_refresh_utc=None,
+            cloud_next_refresh_utc=None,
+            persistent_search_next_refresh_utc=None,
+            satellite_next_refresh_utc=None,
             satellite_projection_next_refresh_utc=None,
+            aircraft_next_refresh_utc=None,
             aircraft_projection_next_refresh_utc=None,
         )
         self._is_shutting_down = False
-        self._sky_refresh_due = False
-        self._cloud_refresh_due = False
-        self._satellite_refresh_due = False
-        self._aircraft_refresh_due = False
-        self._persistent_search_refresh_due = False
+        self.sky_update_interval = 600
         self._clouddisc = object()
         self.cloud_disc_alpha = 1.0
         self._cloud_controller = _FakeBusyController(False)
@@ -91,30 +92,29 @@ class _SchedulerProbe(SkyWindowUpdatesMixin):
 
 def test_scheduler_tick_runs_one_task_per_idle_tick() -> None:
     probe = _SchedulerProbe()
-    probe._sky_refresh_due = True
-    probe._cloud_refresh_due = True
+    now = datetime.now(timezone.utc)
+    probe.state.sky_next_refresh_utc = now - timedelta(seconds=1)
+    probe.state.cloud_next_refresh_utc = now - timedelta(seconds=1)
 
     probe._on_scheduler_tick()
     assert [name for name, _ in probe.start_calls] == ["sky"]
-    assert probe._sky_refresh_due is False
-    assert probe._cloud_refresh_due is True
+    assert probe.state.sky_next_refresh_utc is not None
+    assert probe.state.cloud_next_refresh_utc is not None
 
     probe._on_scheduler_tick()
     assert [name for name, _ in probe.start_calls] == ["sky", "cloud"]
-    assert probe._cloud_refresh_due is False
 
 
 def test_scheduler_tick_skips_when_busy() -> None:
     probe = _SchedulerProbe()
-    probe._sky_refresh_due = True
-    probe._cloud_refresh_due = True
+    now = datetime.now(timezone.utc)
+    probe.state.sky_next_refresh_utc = now - timedelta(seconds=1)
+    probe.state.cloud_next_refresh_utc = now - timedelta(seconds=1)
     probe._sky_worker = _FakeBusyController(True)
 
     probe._on_scheduler_tick()
 
     assert probe.start_calls == []
-    assert probe._sky_refresh_due is True
-    assert probe._cloud_refresh_due is True
 
 
 def test_scheduler_tick_keeps_overlay_projection_when_busy() -> None:
@@ -134,7 +134,8 @@ def test_scheduler_tick_keeps_overlay_projection_when_busy() -> None:
 
 def test_scheduler_tick_puts_overlay_projection_after_cloud() -> None:
     probe = _SchedulerProbe()
-    probe._cloud_refresh_due = True
+    now = datetime.now(timezone.utc)
+    probe.state.cloud_next_refresh_utc = now - timedelta(seconds=1)
     probe.state.aircraft_projection_next_refresh_utc = datetime.now(timezone.utc) - timedelta(
         seconds=1
     )
@@ -162,9 +163,10 @@ def test_scheduler_tick_puts_overlay_projection_after_cloud() -> None:
 
 def test_scheduler_tick_groups_data_refreshes_together() -> None:
     probe = _SchedulerProbe()
-    probe._cloud_refresh_due = True
-    probe._satellite_refresh_due = True
-    probe._aircraft_refresh_due = True
+    now = datetime.now(timezone.utc)
+    probe.state.cloud_next_refresh_utc = now - timedelta(seconds=1)
+    probe.state.satellite_next_refresh_utc = now - timedelta(seconds=1)
+    probe.state.aircraft_next_refresh_utc = now - timedelta(seconds=1)
 
     probe._on_scheduler_tick()
     assert [name for name, _ in probe.start_calls] == ["cloud"]

@@ -90,10 +90,9 @@ class _DummyAircraftState:
         self.banner_text = None
         self.last_result = None
 
-    def set_result(self, snapshots, *, overlay_points, bbox, refreshed_at_utc) -> None:
+    def set_result(self, snapshots, *, bbox, refreshed_at_utc) -> None:
         self.last_result = {
             "snapshots": snapshots,
-            "overlay_points": overlay_points,
             "bbox": bbox,
             "refreshed_at_utc": refreshed_at_utc,
         }
@@ -866,7 +865,6 @@ def test_on_aircraft_ready_saves_debug_snapshot_when_enabled(
         dummy,
         {
             "snapshots": ["s1"],
-            "overlay_points": ["p1"],
             "bbox": "bbox",
             "refreshed_at_utc": refreshed_at,
             "source": "OpenSky cache",
@@ -912,7 +910,6 @@ def test_on_aircraft_ready_skips_debug_snapshot_when_disabled(monkeypatch) -> No
         dummy,
         {
             "snapshots": ["s1"],
-            "overlay_points": ["p1"],
             "bbox": "bbox",
             "refreshed_at_utc": refreshed_at,
             "source": "opensky",
@@ -951,7 +948,6 @@ def test_on_aircraft_ready_skips_debug_snapshot_for_cache_fresh(monkeypatch, tmp
         dummy,
         {
             "snapshots": ["s1"],
-            "overlay_points": ["p1"],
             "bbox": "bbox",
             "refreshed_at_utc": refreshed_at,
             "source": "cache-fresh",
