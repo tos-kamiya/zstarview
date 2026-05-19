@@ -1454,6 +1454,11 @@ def test_jump_to_search_target_keeps_negative_target_alt_for_highlight(
     monkeypatch.setattr(
         window_module, "radec_to_altaz", lambda *_args, **_kwargs: (-12.5, 210.0)
     )
+    monkeypatch.setattr(
+        window_module.QTimer,
+        "singleShot",
+        lambda ms, func: func(),
+    )
 
     dummy = SimpleNamespace()
     dummy.viewer_data = SimpleNamespace(
@@ -1475,7 +1480,19 @@ def test_jump_to_search_target_keeps_negative_target_alt_for_highlight(
     dummy.request_client_update = lambda: sync_calls.append("request-client")
     dummy._sync_view_altitude_actions = lambda: sync_calls.append("sync")
     dummy._current_time_obj = lambda: object()
-    dummy._begin_interaction_mode = lambda: sync_calls.append("begin")
+    def _begin_viewport_interaction_mode(*args, **kwargs) -> None:
+        sync_calls.append("begin-viewport")
+        dummy.state.viewport_interaction_mode = True
+
+    dummy._begin_viewport_interaction_mode = _begin_viewport_interaction_mode
+    dummy._update_viewport_interaction_stars = lambda: sync_calls.append(
+        "update-stars"
+    )
+    def _end_viewport_interaction_mode(*args, **kwargs) -> None:
+        sync_calls.append("request")
+        dummy.state.viewport_interaction_mode = False
+
+    dummy._end_viewport_interaction_mode = _end_viewport_interaction_mode
     dummy.request_sky_data_update = lambda: sync_calls.append("request")
     dummy.update = lambda: sync_calls.append("update")
     dummy._clear_persistent_search = lambda: sync_calls.append("clear")
@@ -1497,7 +1514,14 @@ def test_jump_to_search_target_keeps_negative_target_alt_for_highlight(
     assert dummy.state.jump_highlight_name == "Circlet"
     assert dummy.state.jump_highlight_altaz == (-12.5, 210.0)
     assert dummy.state.jump_highlight_until_ms > 0.0
-    assert sync_calls == ["sync", "clear", "begin", "request", "request-client"]
+    assert sync_calls == [
+        "begin-viewport",
+        "sync",
+        "update-stars",
+        "request-client",
+        "clear",
+        "request",
+    ]
 
 
 def test_jump_to_search_target_can_keep_marker_for_local_star(
@@ -1505,6 +1529,11 @@ def test_jump_to_search_target_can_keep_marker_for_local_star(
 ) -> None:
     monkeypatch.setattr(
         window_module, "radec_to_altaz", lambda *_args, **_kwargs: (14.25, 87.0)
+    )
+    monkeypatch.setattr(
+        window_module.QTimer,
+        "singleShot",
+        lambda ms, func: func(),
     )
 
     dummy = SimpleNamespace()
@@ -1527,7 +1556,19 @@ def test_jump_to_search_target_can_keep_marker_for_local_star(
     dummy.request_client_update = lambda: sync_calls.append("request-client")
     dummy._sync_view_altitude_actions = lambda: sync_calls.append("sync")
     dummy._current_time_obj = lambda: object()
-    dummy._begin_interaction_mode = lambda: sync_calls.append("begin")
+    def _begin_viewport_interaction_mode(*args, **kwargs) -> None:
+        sync_calls.append("begin-viewport")
+        dummy.state.viewport_interaction_mode = True
+
+    dummy._begin_viewport_interaction_mode = _begin_viewport_interaction_mode
+    dummy._update_viewport_interaction_stars = lambda: sync_calls.append(
+        "update-stars"
+    )
+    def _end_viewport_interaction_mode(*args, **kwargs) -> None:
+        sync_calls.append("request")
+        dummy.state.viewport_interaction_mode = False
+
+    dummy._end_viewport_interaction_mode = _end_viewport_interaction_mode
     dummy.request_sky_data_update = lambda: sync_calls.append("request")
     dummy._clear_persistent_search = lambda: sync_calls.append("clear")
     dummy._log_persistent_search_target_update = lambda **_kwargs: sync_calls.append(
@@ -1557,7 +1598,14 @@ def test_jump_to_search_target_can_keep_marker_for_local_star(
     assert dummy.state.persistent_search_target.label == "Sirius"
     assert dummy.state.persistent_search_target.persistent_keep_marker is True
     assert dummy.state.persistent_search_next_refresh_utc is None
-    assert sync_calls == ["sync", "log", "begin", "request", "request-client"]
+    assert sync_calls == [
+        "begin-viewport",
+        "sync",
+        "update-stars",
+        "request-client",
+        "log",
+        "request",
+    ]
 
 
 def test_rotate_view_in_orientation_mode_updates_render_center_without_full_refresh() -> (

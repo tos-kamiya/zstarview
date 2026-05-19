@@ -213,6 +213,27 @@ class _WindowStub:
         if callable(update):
             update()
 
+    def _begin_viewport_interaction_mode(self, *args, **kwargs) -> None:
+        begin = self.__dict__.get("_begin_viewport_interaction_mode")
+        if callable(begin):
+            begin(*args, **kwargs)
+            return
+        state = self.__dict__.get("state")
+        if state is not None:
+            setattr(state, "viewport_interaction_mode", True)
+
+    def _update_viewport_interaction_stars(self) -> None:
+        update = self.__dict__.get("_update_viewport_interaction_stars")
+        if callable(update):
+            update()
+
+    def _end_viewport_interaction_mode(self, *args, **kwargs) -> None:
+        end = self.__dict__.get("_end_viewport_interaction_mode")
+        if callable(end):
+            end(*args, **kwargs)
+            return
+        window_module.SkyWindow._end_viewport_interaction_mode(self, *args, **kwargs)
+
     def _target_time_utc(self):
         target_time_utc = self.__dict__.get("_target_time_utc")
         if callable(target_time_utc):
@@ -772,6 +793,11 @@ def test_jump_to_satellite_target_uses_cached_satellite_records_below_horizon(
     monkeypatch.setattr(
         window_module, "find_satellite_altaz", lambda *args, **kwargs: (-12.0, 123.0)
     )
+    monkeypatch.setattr(
+        window_module.QTimer,
+        "singleShot",
+        lambda ms, func: func(),
+    )
 
     dummy = _WindowStub()
     dummy.viewer_data = ViewerData(
@@ -908,6 +934,11 @@ def test_jump_to_place_target_uses_projected_altaz(monkeypatch) -> None:
                 target_height_m=float(kwargs["target_height_m"][0]),
             ),
         ),
+    )
+    monkeypatch.setattr(
+        window_module.QTimer,
+        "singleShot",
+        lambda ms, func: func(),
     )
 
     dummy = _WindowStub()
@@ -1594,6 +1625,114 @@ def test_handle_client_key_press_rotates_view_immediately() -> None:
     dummy._sync_view_altitude_actions.assert_called_once()
     dummy.request_client_update.assert_called_once()
     event.accept.assert_called_once()
+
+
+def test_set_view_center_leaves_viewport_fast_mode_after_dialog_change() -> None:
+    dummy = _WindowStub()
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(20.0, 30.0),
+        observer_height_m=1.7,
+    )
+    dummy.state = SkyWindowState(
+        render_view_center=(20.0, 30.0),
+        viewport_interaction_mode=True,
+        viewport_interaction_stars=object(),
+    )
+    dummy._sync_view_altitude_actions = Mock()
+    dummy.request_sky_data_update = Mock()
+    dummy.request_client_update = Mock()
+    dummy.start_background_cloud_update = Mock()
+    dummy.start_background_terrain_horizon_update = Mock()
+    dummy._end_viewport_interaction_mode = (
+        lambda *args, **kwargs: SkyWindow._end_viewport_interaction_mode(
+            dummy, *args, **kwargs
+        )
+    )
+
+    SkyWindow._set_view_center(
+        dummy,
+        25.0,
+        45.0,
+        interactive_viewport=False,
+        start_viewport_idle_timer=False,
+    )
+
+    assert dummy.viewer_data.view_center == (25.0, 45.0)
+    assert dummy.state.render_view_center == (25.0, 45.0)
+    assert dummy.state.viewport_interaction_mode is False
+    assert dummy.state.viewport_interaction_stars is None
+    dummy.request_sky_data_update.assert_called_once_with(
+        reason="view-change-idle",
+        allow_during_viewport_interaction=True,
+    )
+    dummy.start_background_cloud_update.assert_called_once_with(
+        reason="view-change-idle"
+    )
+    dummy.start_background_terrain_horizon_update.assert_called_once_with(
+        reason="view-change-idle"
+    )
+    dummy.request_client_update.assert_called_once()
+    dummy._sync_view_altitude_actions.assert_called_once()
+
+
+def test_open_view_direction_dialog_shows_fast_frame_before_release(monkeypatch) -> None:
+    dummy = _WindowStub()
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(20.0, 30.0),
+        observer_height_m=1.7,
+    )
+    dummy.state = SkyWindowState(
+        render_view_center=(20.0, 30.0),
+        viewport_interaction_mode=False,
+    )
+    set_calls: list[tuple[tuple[float, float], dict[str, object]]] = []
+    end_calls: list[str] = []
+
+    class _FakeDialog:
+        def __init__(self, view_center: tuple[float, float], parent) -> None:
+            self._view_center = view_center
+            self._parent = parent
+
+        def exec(self) -> int:
+            return 1
+
+        def selected_view_center(self) -> tuple[float, float]:
+            return (25.0, 45.0)
+
+    monkeypatch.setattr(window_module, "ViewDirectionDialog", _FakeDialog)
+    monkeypatch.setattr(
+        window_module.QTimer,
+        "singleShot",
+        lambda ms, func: end_calls.append(f"timer:{ms}") or func(),
+    )
+    dummy._set_view_center = lambda *args, **kwargs: set_calls.append(
+        (args, dict(kwargs))
+    )
+    dummy._end_viewport_interaction_mode = lambda *args, **kwargs: end_calls.append(
+        str(kwargs.get("reason"))
+    )
+    dummy._finalize_view_direction_dialog_change = (
+        lambda: SkyWindow._finalize_view_direction_dialog_change(dummy)
+    )
+
+    SkyWindow._open_view_direction_dialog(dummy)
+
+    assert set_calls == [
+        (
+            (25.0, 45.0),
+            {
+                "interactive_viewport": True,
+                "start_viewport_idle_timer": False,
+            },
+        )
+    ]
+    assert end_calls == ["timer:0", "view-change-release"]
 
 
 def test_handle_client_key_release_ends_viewport_interaction_mode() -> None:

@@ -1499,6 +1499,24 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             interactive_viewport=True,
             start_viewport_idle_timer=False,
         )
+        finalize_view_direction_change = getattr(
+            self, "_finalize_view_direction_change", None
+        )
+        if not callable(finalize_view_direction_change):
+            finalize_view_direction_change = lambda: SkyWindow._finalize_view_direction_change(  # noqa: E731
+                self
+            )
+        QTimer.singleShot(0, finalize_view_direction_change)
+
+    def _finalize_view_direction_change(self) -> None:
+        end_viewport_interaction_mode = getattr(
+            self, "_end_viewport_interaction_mode", None
+        )
+        if callable(end_viewport_interaction_mode):
+            end_viewport_interaction_mode(reason="view-change-release")
+
+    def _finalize_view_direction_dialog_change(self) -> None:
+        self._finalize_view_direction_change()
 
     def _search_jpl_targets(self, query: str) -> list[SearchJumpTarget]:
         target_time_utc = self._target_time_utc()
@@ -1816,11 +1834,24 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             OBSERVER_MIN_ALT_DEG, min(OBSERVER_MAX_ALT_DEG, target_alt)
         )
         new_az = float(base_az) % 360.0 if fixed_az else target_az
+        begin_viewport_interaction_mode = getattr(
+            self, "_begin_viewport_interaction_mode", None
+        )
+        if not bool(self.state.viewport_interaction_mode) and callable(
+            begin_viewport_interaction_mode
+        ):
+            begin_viewport_interaction_mode(start_idle_timer=False)
         self.viewer_data = _replace_viewer_data(
             self.viewer_data, view_center=(new_alt, new_az)
         )
         self.state.render_view_center = (new_alt, new_az)
         self._sync_view_altitude_actions()
+        update_viewport_interaction_stars = getattr(
+            self, "_update_viewport_interaction_stars", None
+        )
+        if callable(update_viewport_interaction_stars):
+            update_viewport_interaction_stars()
+        self.request_client_update()
 
         self.state.jump_highlight_name = target.label
         self.state.jump_highlight_altaz = (target_alt, target_az)
@@ -1859,10 +1890,14 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 self.state.persistent_search_next_refresh_utc = None
         else:
             self._clear_persistent_search()
-
-        self._begin_interaction_mode()
-        self.request_sky_data_update()
-        self.request_client_update()
+        finalize_view_direction_change = getattr(
+            self, "_finalize_view_direction_change", None
+        )
+        if not callable(finalize_view_direction_change):
+            finalize_view_direction_change = lambda: SkyWindow._finalize_view_direction_change(  # noqa: E731
+                self
+            )
+        QTimer.singleShot(0, finalize_view_direction_change)
 
     def _search_place_jump_targets(self, query: str) -> list[SearchJumpTarget]:
         candidates = search_place_candidates(query)
@@ -2474,8 +2509,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 self._begin_viewport_interaction_mode(
                     start_idle_timer=start_viewport_idle_timer
                 )
-        else:
-            self._begin_interaction_mode()
         new_alt, new_az = clamp_view_center_alt_az(alt_deg, az_deg)
         self.viewer_data = _replace_viewer_data(
             self.viewer_data, view_center=(new_alt, new_az)
@@ -2486,7 +2519,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self._update_viewport_interaction_stars()
             self.request_client_update()
             return
+        if self.state.viewport_interaction_mode:
+            self._end_viewport_interaction_mode(reason="view-change-idle")
+            return
+        self._begin_interaction_mode()
         self.request_sky_data_update()
+        self.request_client_update()
 
     def _viewport_rotation_keys(self) -> set[int]:
         return self._viewport_rotation_keys_down
