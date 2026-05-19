@@ -107,7 +107,7 @@ class SkyWindowRenderMixin:
             viewport_rect = QRect(0, 0, int(self.client_width()), int(self.client_height()))
             frame = FrameContext(
                 viewer=render_viewer,
-                time_obj=getattr(celestial_data, "time", None),
+                time_obj=celestial_data.time,
                 geometry=geometry,
                 viewport_rect=viewport_rect,
             )
@@ -124,7 +124,7 @@ class SkyWindowRenderMixin:
             frame.viewer.timezone_name,
             float(frame.viewer.observer_height_m),
             float(frame.viewer.height_add_m),
-            getattr(frame.viewer, "ground_elevation_m", None),
+            frame.viewer.ground_elevation_m,
             float(frame.viewer.content_fov_deg),
             frame.viewer.location_height_label,
             frame.viewer.location_height_m,
@@ -440,11 +440,7 @@ class SkyWindowRenderMixin:
             int(self.client_height()),
             viewer.view_center[0],
         )
-        current_time_obj_fn = getattr(self, "_current_time_obj", None)
-        if callable(current_time_obj_fn):
-            time_obj = current_time_obj_fn()
-        else:
-            time_obj = None
+        time_obj = self._current_time_obj()
         return FrameContext(
             viewer=viewer,
             time_obj=time_obj,

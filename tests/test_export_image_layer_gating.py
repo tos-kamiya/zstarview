@@ -152,7 +152,8 @@ def test_render_image_draws_direction_grid_when_requested(monkeypatch) -> None:
             view_center=(0.0, 0.0),
             edge_fov_deg=95.0,
             content_fov_deg=100.0,
-        )
+        ),
+        time_obj=None,
     )
     style = SimpleNamespace()
     compositor = SimpleNamespace()

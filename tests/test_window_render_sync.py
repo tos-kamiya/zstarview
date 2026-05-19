@@ -133,6 +133,12 @@ class _WindowStub:
             return target_time_utc()
         return datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc)
 
+    def _current_time_obj(self):
+        value = self.__dict__.get("_current_time_obj")
+        if callable(value):
+            return value()
+        return astropy.time.Time("2026-04-18T12:00:00", scale="utc")
+
     def _build_horizons_command(self, target: dict[str, object], *, group: str) -> str:
         spkid = str(target.get("spkid", "")).strip()
         if spkid:
@@ -1841,7 +1847,7 @@ def test_paint_event_skips_rendering_while_startup_overlay_visible(
 
 def test_render_frame_cache_key_ignores_hover_and_status_state() -> None:
     geometry = SimpleNamespace(center=(100, 100), radius=80)
-    celestial_data = object()
+    celestial_data = SimpleNamespace(time=None)
     viewer = ViewerData(
         location=(35.0, 139.0),
         timezone_name="Asia/Tokyo",
@@ -1906,7 +1912,7 @@ def test_render_frame_cache_key_ignores_hover_and_status_state() -> None:
 
 def test_render_frame_cache_key_tracks_water_overlay_state() -> None:
     geometry = SimpleNamespace(center=(100, 100), radius=80)
-    celestial_data = object()
+    celestial_data = SimpleNamespace(time=None)
     viewer = ViewerData(
         location=(35.0, 139.0),
         timezone_name="Asia/Tokyo",
@@ -1962,7 +1968,7 @@ def test_render_frame_cache_key_tracks_water_overlay_state() -> None:
 
 def test_present_frame_cache_key_tracks_hover_and_status_state() -> None:
     geometry = SimpleNamespace(center=(100, 100), radius=80)
-    celestial_data = object()
+    celestial_data = SimpleNamespace(time=None)
     viewer = ViewerData(
         location=(35.0, 139.0),
         timezone_name="Asia/Tokyo",
@@ -2028,7 +2034,7 @@ def test_present_frame_cache_key_tracks_hover_and_status_state() -> None:
 
 def test_render_frame_cache_key_ignores_fast_overlay_state_for_base_cache() -> None:
     geometry = SimpleNamespace(center=(100, 100), radius=80)
-    celestial_data = object()
+    celestial_data = SimpleNamespace(time=None)
     viewer = ViewerData(
         location=(35.0, 139.0),
         timezone_name="Asia/Tokyo",
@@ -2098,7 +2104,7 @@ def test_resolve_hover_targets_keeps_star_and_satellite_candidates_independent(
         observer_height_m=1.7,
     )
     geometry = SimpleNamespace(center=(100, 100), radius=80)
-    celestial_data = object()
+    celestial_data = SimpleNamespace(time=None)
     mouse_pos = QPoint(12, 34)
 
     star_hit = ({"name": "Vega"}, QPointF(10.0, 30.0))
