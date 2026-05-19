@@ -72,14 +72,9 @@ def _resolve_hover_targets(
         satellite_records_by_group,
         mouse_pos,
         geometry,
-        render_viewer.view_center,
-        observer_lat=observer_lat,
-        observer_lon=observer_lon,
-        observer_height_m=observer_height_m,
+        viewer_data=render_viewer,
         time_obj=time_obj,
         element_epoch_utc=satellite_element_epoch_utc,
-        edge_fov_deg=float(render_viewer.edge_fov_deg),
-        content_fov_deg=render_viewer.content_fov_deg,
     )
     return highlighted_object, highlighted_dso, highlighted_satellite
 
