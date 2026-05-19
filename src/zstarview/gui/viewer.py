@@ -426,6 +426,12 @@ def main() -> None:
         runtime_options=runtime_options,
         defer_initial_load=True,
     )
+    main_win._search_view_center_alt_specified = bool(
+        getattr(args, "view_center_alt_specified", False)
+    )
+    main_win._search_view_center_az_specified = bool(
+        getattr(args, "view_center_az_specified", False)
+    )
     startup_log_overlay = main_win._ensure_startup_log_overlay()
     startup_log_handler.set_consumer(startup_log_overlay.append_line)
     startup_log_overlay.show()

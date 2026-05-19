@@ -329,3 +329,25 @@ def test_main_hides_overlay_without_terrain_when_not_requested(monkeypatch) -> N
     assert _DummyWindow.last_instance.overlay.shown == 1
     assert _DummyWindow.last_instance.post_initial_hidden_states == [1]
     assert _DummyWindow.last_instance.overlay.hidden == 1
+
+
+def test_main_propagates_cli_view_center_flags_to_window(monkeypatch) -> None:
+    args = _make_args(close_on_startup_error=False)
+    args.view_center_alt_specified = True
+    args.view_center_az_specified = False
+    app, root_logger = _install_common_mocks(
+        monkeypatch,
+        args,
+        resolve_location_raises=False,
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        viewer.main()
+
+    assert exc_info.value.code == 0
+    assert app.quit_on_last == [True]
+    assert len(root_logger.added) == 1
+    assert root_logger.removed == root_logger.added
+    assert _DummyWindow.last_instance is not None
+    assert _DummyWindow.last_instance._search_view_center_alt_specified is True
+    assert _DummyWindow.last_instance._search_view_center_az_specified is False
