@@ -53,23 +53,37 @@ class _Args:
     allow_partial_data = False
     include_direction_grid = False
     window_frame = "frameless"
+    clear_long_lived_cache = False
+    print_cache_dir = False
+    sixel = False
     sky_opacity = SKY_OPACITY_DEFAULT
+    sky_disc_style = "smooth"
+    sky_disc_altaz_rings = "dimalt"
+    sky_disc_altaz_rings_hover = "altaz"
+    sky_update_interval = 60
+    night_light_opacity = 0.02
     cloud_opacity = 0.15
     satellite_opacity = 0.5
     aircraft_opacity = 0.5
     terrain_horizon_opacity = 0.05
+    earth_guide_opacity = 0.028
     urban_outline_opacity = 0.2
     ground_tint_opacity = 0.1
     enlarge_moon = False
+    bright_bodies = "outline"
     star_base_radius = 4.0
+    observation_info = "auto"
     show_dso_initial = None
     show_asterisms_initial = None
+    show_guidelines_initial = None
+    visibility_boost = 1.0
     urban_outline_radius_km = 2.5
     urban_outline_skyscraper_radius_km = 60.0
     urban_outline_min_height_m = 0.0
     urban_outline_feature_type = "both"
     urban_outline_skyscraper_only = False
     cloud_missing_tint_opacity = 0.0
+    water_surface_opacity = 0.12
     expected_render_width = 600
 
 

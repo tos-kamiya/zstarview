@@ -42,12 +42,10 @@ from ..data.import_overture_buildings import (
     resolve_overture_release_for_cache_root,
 )
 from ..data.skyscraper_tiles import (
-    SKYSCRAPER_OUTER_RADIUS_KM,
     SKYSCRAPER_TILES_FILE,
     select_skyscraper_seed_tiles_for_viewer,
     skyscraper_tile_derived_dir,
 )
-from ..cli.args import SKY_OPACITY_DEFAULT
 from ..launch_time import (
     LaunchSetupError,
     parse_launch_time_arguments,
@@ -141,6 +139,7 @@ class TerrainHorizonPayload(TypedDict):
 DEFAULT_CLOUD_ALT_MIN_DEG = 1.0
 DEFAULT_CLOUD_FOV_OVERSCAN_DEG = 2.0
 DEFAULT_CLOUD_BASE_SIZE = 256
+DEFAULT_EXPORT_IMAGE_SKY_UPDATE_INTERVAL = 60
 
 
 def _load_star_catalog_for_export(vmag_limit: float | None):
@@ -216,7 +215,7 @@ def _water_overlay_band_stats_text(stats: WaterSurfaceBandStats) -> str:
 
 
 def _water_overlay_band_counts(points: list[WaterOverlayPoint] | tuple[WaterOverlayPoint, ...]) -> tuple[int, int, int]:
-    counts = Counter(str(getattr(point, "water_category", "")).strip().lower() for point in points)
+    counts = Counter(str(point.water_category).strip().lower() for point in points)
     return (
         int(counts.get("sea-125", 0)),
         int(counts.get("sea-250", 0)),
@@ -235,10 +234,10 @@ def _build_window_inputs_from_args(
 ]:
     try:
         city = resolve_launch_location(
-            getattr(args, "city", ""),
-            place_query=getattr(args, "place", None),
-            place_countrycode=getattr(args, "place_countrycode", None),
-            place_lang=getattr(args, "place_lang", "en"),
+            args.city,
+            place_query=args.place,
+            place_countrycode=args.place_countrycode,
+            place_lang=args.place_lang,
             use_building_top=bool(getattr(args, "use_building_top", False)),
         )
     except LocationResolveError as exc:
@@ -394,75 +393,67 @@ def _build_window_inputs_from_args(
         vmag_brightness_scale=vmag_brightness_scale,
     )
     user_options = prepare_window_user_options(
-        sky_disc_alpha=getattr(args, "sky_opacity", SKY_OPACITY_DEFAULT),
-        sky_disc_style=getattr(args, "sky_disc_style", "smooth"),
-        sky_disc_altaz_rings=getattr(args, "sky_disc_altaz_rings", "dimalt"),
-        sky_disc_altaz_rings_hover=getattr(args, "sky_disc_altaz_rings_hover", "altaz"),
-        night_light_opacity=getattr(args, "night_light_opacity", 0.02),
+        sky_disc_alpha=args.sky_opacity,
+        sky_disc_style=args.sky_disc_style,
+        sky_disc_altaz_rings=args.sky_disc_altaz_rings,
+        sky_disc_altaz_rings_hover=args.sky_disc_altaz_rings_hover,
+        night_light_opacity=args.night_light_opacity,
         cloud_disc_alpha=(
             0.0
             if (not overlay_availability.cloud)
             or cloud_stripe_count == 0
             or cloud_stripe_width == 0.0
-            else getattr(args, "cloud_opacity", 0.075)
+            else args.cloud_opacity
         ),
         satellite_opacity=(
-            getattr(args, "satellite_opacity", 0.7)
+            args.satellite_opacity
             if overlay_availability.satellite
             else 0.0
         ),
         aircraft_opacity=(
-            getattr(args, "aircraft_opacity", 0.5)
+            args.aircraft_opacity
             if overlay_availability.aircraft
             else 0.0
         ),
-        terrain_horizon_opacity=getattr(args, "terrain_horizon_opacity", 0.003),
-        earth_guide_opacity=getattr(args, "earth_guide_opacity", 0.028),
-        urban_outline_opacity=getattr(args, "urban_outline_opacity", 0.2),
-        water_overlay_opacity=getattr(args, "water_surface_opacity", 0.12),
-        ground_tint_opacity=getattr(args, "ground_tint_opacity", 0.04),
-        enlarge_moon=bool(getattr(args, "enlarge_moon", False)),
-        bright_bodies_mode=str(getattr(args, "bright_bodies", "outline")),
+        terrain_horizon_opacity=args.terrain_horizon_opacity,
+        earth_guide_opacity=args.earth_guide_opacity,
+        urban_outline_opacity=args.urban_outline_opacity,
+        water_overlay_opacity=args.water_surface_opacity,
+        ground_tint_opacity=args.ground_tint_opacity,
+        enlarge_moon=bool(args.enlarge_moon),
+        bright_bodies_mode=str(args.bright_bodies),
         star_base_radius=args.star_base_radius,
         vmag_limit=args.vmag_limit,
         visual_preset=visual_preset,
         star_visibility_boost=star_visibility_boost,
-        visibility_boost=getattr(args, "visibility_boost", 1.0),
-        show_dso_initial=getattr(args, "show_dso_initial", None),
-        show_asterisms_initial=getattr(args, "show_asterisms_initial", None),
-        show_guidelines_initial=getattr(args, "show_guidelines_initial", None),
-        observation_info_mode=getattr(args, "observation_info", "auto"),
-        sky_disc_gui_allowed=getattr(args, "sky_opacity", SKY_OPACITY_DEFAULT) > 0.0,
-        cloud_gui_allowed=overlay_availability.cloud
-        and getattr(args, "cloud_opacity", 0.075) > 0.0,
-        satellite_gui_allowed=overlay_availability.satellite
-        and getattr(args, "satellite_opacity", 0.7) > 0.0,
-        aircraft_gui_allowed=overlay_availability.aircraft
-        and getattr(args, "aircraft_opacity", 0.5) > 0.0,
-        terrain_horizon_gui_allowed=getattr(args, "terrain_horizon_opacity", 0.003)
-        > 0.0,
-        earth_guide_gui_allowed=getattr(args, "earth_guide_opacity", 0.028) > 0.0,
-        night_light_gui_allowed=getattr(args, "night_light_opacity", 0.02) > 0.0,
-        urban_outline_gui_allowed=getattr(args, "urban_outline_opacity", 0.2) > 0.0,
+        visibility_boost=args.visibility_boost,
+        show_dso_initial=args.show_dso_initial,
+        show_asterisms_initial=args.show_asterisms_initial,
+        show_guidelines_initial=args.show_guidelines_initial,
+        observation_info_mode=args.observation_info,
+        sky_disc_gui_allowed=args.sky_opacity > 0.0,
+        cloud_gui_allowed=overlay_availability.cloud and args.cloud_opacity > 0.0,
+        satellite_gui_allowed=overlay_availability.satellite and args.satellite_opacity > 0.0,
+        aircraft_gui_allowed=overlay_availability.aircraft and args.aircraft_opacity > 0.0,
+        terrain_horizon_gui_allowed=args.terrain_horizon_opacity > 0.0,
+        earth_guide_gui_allowed=args.earth_guide_opacity > 0.0,
+        night_light_gui_allowed=args.night_light_opacity > 0.0,
+        urban_outline_gui_allowed=args.urban_outline_opacity > 0.0,
     )
     runtime_options = prepare_window_runtime_options(
         delta_t=delta_t,
-        sky_update_interval=60,
-        urban_outline_radius_km=getattr(args, "urban_outline_radius_km", 2.5),
-        urban_outline_skyscraper_radius_km=getattr(
-            args, "urban_outline_skyscraper_radius_km", SKYSCRAPER_OUTER_RADIUS_KM
-        ),
-        urban_outline_min_height_m=getattr(args, "urban_outline_min_height_m", 0.0),
-        urban_outline_feature_type=getattr(args, "urban_outline_feature_type", "both"),
-        urban_outline_skyscraper_only=bool(
-            getattr(args, "urban_outline_skyscraper_only", False)
-        ),
+        sky_update_interval=DEFAULT_EXPORT_IMAGE_SKY_UPDATE_INTERVAL,
+        urban_outline_radius_km=args.urban_outline_radius_km,
+        urban_outline_skyscraper_radius_km=args.urban_outline_skyscraper_radius_km,
+        urban_outline_min_height_m=args.urban_outline_min_height_m,
+        urban_outline_feature_type=args.urban_outline_feature_type,
+        urban_outline_skyscraper_only=bool(args.urban_outline_skyscraper_only),
         cloud_stripe_style=(cloud_stripe_count, cloud_stripe_width),
         cloud_stripe_mode=cloud_stripe_mode,
-        cloud_missing_tint_opacity=getattr(args, "cloud_missing_tint_opacity", 0.0),
-        visibility_boost=getattr(args, "visibility_boost", 1.0),
-        star_render_expected_width=getattr(args, "expected_render_width", 600),
-        content_fov_deg=getattr(args, "content_fov_deg", 110.0),
+        cloud_missing_tint_opacity=args.cloud_missing_tint_opacity,
+        visibility_boost=args.visibility_boost,
+        star_render_expected_width=args.expected_render_width,
+        content_fov_deg=args.content_fov_deg,
         window_geometry_arg=None,
         window_frame_mode="frameless",
     )
@@ -698,7 +689,7 @@ def _fetch_water_overlay_dots_layer(
     if _timed_out(deadline):
         raise TimeoutError("water timed out")
 
-    observer_ground_m = float(getattr(viewer_data, "ground_elevation_m", 0.0) or 0.0)
+    observer_ground_m = float(viewer_data.ground_elevation_m or 0.0)
     scan_radius_km = resolve_water_scan_radius_km(
         float(viewer_data.observer_height_m) + observer_ground_m,
         minimum_distance_km=DEFAULT_WATER_RADIUS_KM,
@@ -1271,19 +1262,19 @@ def _search_view_center_for_target(
 
 def main() -> None:
     args = parse_export_image_args()
-    if getattr(args, "print_cache_dir", False):
+    if args.print_cache_dir:
         print(CACHE_PATH)
         return
     setup_root_logger()
     logger.info("%s export-image starting...", APP_DISPLAY_NAME)
-    if getattr(args, "clear_long_lived_cache", False):
+    if args.clear_long_lived_cache:
         try:
             logger.info("Clearing long-lived cache on user request...")
             clear_long_lived_cache()
         except LongLivedCacheClearCooldownError as exc:
             logger.error("%s", exc)
             raise SystemExit(1)
-    wants_sixel = bool(getattr(args, "sixel", False))
+    wants_sixel = bool(args.sixel)
     img2sixel_bin = _require_img2sixel_binary() if wants_sixel else None
     if wants_sixel:
         _require_sixel_terminal_support()
@@ -1326,12 +1317,12 @@ def main() -> None:
         star_subset_indices=star_subset_indices,
         delta_t=runtime_options.delta_t,
         sky_disc_alpha=float(user_options.sky_disc_alpha),
-        sky_disc_style=str(getattr(user_options, "sky_disc_style", "smooth")),
+        sky_disc_style=str(user_options.sky_disc_style),
         sky_disc_base_size=max(image_size),
         edge_fov_deg=float(viewer_data.edge_fov_deg),
         content_fov_deg=float(viewer_data.content_fov_deg),
         theme=theme,
-        star_catalog_meta=getattr(catalogs, "star_catalog_meta", None),
+        star_catalog_meta=catalogs.star_catalog_meta,
         render_width_px=int(image_size[0]),
         render_height_px=int(image_size[1]),
         render_generation=0,
@@ -1385,7 +1376,7 @@ def main() -> None:
 
     night_light_glow_profile = None
     sun_alt_deg = None
-    for body in getattr(celestial_data, "planets", ()):
+    for body in celestial_data.planets:
         if body.name == "sun":
             sun_alt_deg = float(body.alt)
             break
@@ -1415,10 +1406,10 @@ def main() -> None:
                 _abort_export_without_partial_data()
 
     water_overlay_dots = None
-    water_overlay_opacity = float(getattr(user_options, "water_overlay_opacity", 0.12))
+    water_overlay_opacity = float(user_options.water_overlay_opacity)
     if water_overlay_opacity > 0.0:
         try:
-            observer_ground_m = float(getattr(viewer_data, "ground_elevation_m", 0.0) or 0.0)
+            observer_ground_m = float(viewer_data.ground_elevation_m or 0.0)
             scan_radius_km = resolve_water_scan_radius_km(
                 float(viewer_data.observer_height_m) + observer_ground_m,
                 minimum_distance_km=DEFAULT_WATER_RADIUS_KM,

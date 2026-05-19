@@ -142,35 +142,8 @@ logger = logging.getLogger(__name__)
 
 
 def _replace_search_jump_target(target: object, /, **changes: object) -> SearchJumpTarget:
-    """Return an updated SearchJumpTarget from a dataclass or a test stub."""
-    try:
-        return replace(target, **changes)  # type: ignore[arg-type]
-    except TypeError:
-        values = {
-            "label": getattr(target, "label", ""),
-            "kind": getattr(target, "kind", ""),
-            "sort_key": getattr(target, "sort_key", (0.0, "")),
-            "ra_hours": getattr(target, "ra_hours", 0.0),
-            "dec_deg": getattr(target, "dec_deg", 0.0),
-            "subtitle": getattr(target, "subtitle", ""),
-            "object_key": getattr(target, "object_key", ""),
-            "latitude_deg": getattr(target, "latitude_deg", None),
-            "longitude_deg": getattr(target, "longitude_deg", None),
-            "command": getattr(target, "command", ""),
-            "alt_deg": getattr(target, "alt_deg", None),
-            "az_deg": getattr(target, "az_deg", None),
-            "horizons_epoch_utc": getattr(target, "horizons_epoch_utc", None),
-            "horizons_position_km": getattr(target, "horizons_position_km", None),
-            "horizons_velocity_km_s": getattr(target, "horizons_velocity_km_s", None),
-            "target_time_utc": getattr(target, "target_time_utc", None),
-            "jpl_group": getattr(target, "jpl_group", ""),
-            "persistent_keep_marker": getattr(target, "persistent_keep_marker", False),
-            "preserve_cli_view_center": getattr(
-                target, "preserve_cli_view_center", None
-            ),
-        }
-        values.update(changes)
-        return SearchJumpTarget(**values)
+    """Return an updated SearchJumpTarget."""
+    return replace(target, **changes)  # type: ignore[arg-type]
 
 
 def _replace_viewer_data(viewer_data: object, /, **changes: object):
@@ -348,25 +321,25 @@ class SkyWindowClientWidget(SkyWindowRenderMixin, QWidget):
         super().resizeEvent(event)
 
     def leaveEvent(self, event: QEvent) -> None:
-        if getattr(self._owner, "_startup_input_blocked", lambda: False)():
+        if self._owner._startup_input_blocked():
             event.accept()
             return
         self._owner._handle_client_leave(event)
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
-        if getattr(self._owner, "_startup_input_blocked", lambda: False)():
+        if self._owner._startup_input_blocked():
             event.accept()
             return
         self._owner._handle_client_mouse_move(event)
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
-        if getattr(self._owner, "_startup_input_blocked", lambda: False)():
+        if self._owner._startup_input_blocked():
             event.accept()
             return
         self._owner._handle_client_key_press(event)
 
     def keyReleaseEvent(self, event: QKeyEvent) -> None:
-        if getattr(self._owner, "_startup_input_blocked", lambda: False)():
+        if self._owner._startup_input_blocked():
             event.accept()
             return
         self._owner._handle_client_key_release(event)
@@ -740,7 +713,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def eventFilter(self, watched: object, event: QEvent) -> bool:
         if isinstance(watched, QApplication):
             if event.type() in (QEvent.Type.KeyPress, QEvent.Type.KeyRelease):
-                if getattr(self, "_startup_input_blocked", lambda: False)():
+                if self._startup_input_blocked():
                     return True
                 key_event = event if isinstance(event, QKeyEvent) else None
                 if key_event is not None and key_event.key() in {
@@ -865,7 +838,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.terrain_horizon_opacity = user_options.terrain_horizon_opacity
         self.earth_guide_opacity = user_options.earth_guide_opacity
         self.water_overlay_opacity = user_options.water_overlay_opacity
-        requested_night_light_opacity = getattr(user_options, "night_light_opacity", 0.02)
+        requested_night_light_opacity = user_options.night_light_opacity
         self._night_light_toggle_supported = bool(user_options.night_light_gui_allowed)
         self._night_light_opacity_when_enabled = (
             requested_night_light_opacity
@@ -1424,13 +1397,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
 
         self.observer_view_menu.addSeparator()
-        open_view_direction_dialog = getattr(
-            self, "_open_view_direction_dialog", lambda: None
-        )
         self._add_menu_action(
             self.observer_view_menu,
             "Set View Center...",
-            triggered=open_view_direction_dialog,
+            triggered=self._open_view_direction_dialog,
         )
 
         self.observer_view_menu.addSeparator()
@@ -1523,10 +1493,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._action_toggle_night_lights = self._add_checkable_menu_action(
             self.display_menu,
             "Night Lights",
-            checked=float(getattr(self, "night_light_opacity", 0.0)) > 0.0,
-            enabled=bool(getattr(self, "_night_light_toggle_supported", False)),
+            checked=self.night_light_opacity > 0.0,
+            enabled=bool(self._night_light_toggle_supported),
             shortcut=QKeySequence(Qt.Key.Key_L),
-            triggered=getattr(self, "toggle_night_lights", lambda: None),
+            triggered=self.toggle_night_lights,
         )
         self._action_toggle_urban_outline = self._add_checkable_menu_action(
             self.display_menu,
@@ -1546,12 +1516,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.display_menu,
             "Water Surface",
             checked=self.water_overlay_opacity > 0.0,
-            enabled=getattr(
-                self,
-                "_water_overlay_action_enabled",
-                lambda: bool(getattr(self, "_water_overlay_gui_allowed", True))
-                and float(getattr(self, "terrain_horizon_opacity", 0.0)) > 0.0,
-            )(),
+            enabled=self._water_overlay_action_enabled(),
             shortcut=QKeySequence(Qt.Key.Key_W),
             triggered=self.toggle_water_overlay,
         )
@@ -1573,11 +1538,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             "Default Window Size",
             triggered=self._restore_default_window_size,
         )
-        fit_to_screen = getattr(self, "_fit_client_area_to_screen", None)
         fit_to_screen_action = self._add_menu_action(
             self.file_menu,
             "Fit to Screen",
-            triggered=fit_to_screen if callable(fit_to_screen) else None,
+            triggered=self._fit_client_area_to_screen,
         )
         fullscreen_action = self._add_menu_action(
             self.file_menu,
@@ -1586,12 +1550,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             triggered=self.toggle_fullscreen,
         )
 
-        request_quit = getattr(self, "_request_application_quit", None)
         exit_action = self._add_menu_action(
             self.file_menu,
             "Exit",
             shortcut=QKeySequence(Qt.Key.Key_Q),
-            triggered=request_quit if callable(request_quit) else None,
+            triggered=self._request_application_quit,
         )
 
         self.display_menu.addSeparator()
@@ -1953,10 +1916,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self._named_stars_search_all,
             self,
             cli_view_center_alt_specified=bool(
-                getattr(self, "_search_view_center_alt_specified", False)
+                self._search_view_center_alt_specified
             ),
             cli_view_center_az_specified=bool(
-                getattr(self, "_search_view_center_az_specified", False)
+                self._search_view_center_az_specified
             ),
             satellite_search_callback=self._search_satellite_targets,
             jpl_search_callback=self._search_jpl_targets,
@@ -1964,9 +1927,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if dialog.exec() == 0:
             return
         if dialog.should_clear_persistent_marker():
-            clear_persistent_search = getattr(self, "_clear_persistent_search", None)
-            if callable(clear_persistent_search):
-                clear_persistent_search()
+            self._clear_persistent_search()
             return
         target = dialog.selected_target()
         if target is None:
@@ -1978,10 +1939,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self._search_place_jump_targets,
             self,
             cli_view_center_alt_specified=bool(
-                getattr(self, "_search_view_center_alt_specified", False)
+                self._search_view_center_alt_specified
             ),
             cli_view_center_az_specified=bool(
-                getattr(self, "_search_view_center_az_specified", False)
+                self._search_view_center_az_specified
             ),
         )
         if dialog.exec() == 0:
@@ -2005,7 +1966,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
     def _search_jpl_targets(self, query: str) -> list[SearchJumpTarget]:
         target_time_utc = self._target_time_utc()
-        delta_t = getattr(self, "delta_t", None)
+        delta_t = self.delta_t
         _jpl_debug_print(
             "search "
             f"query={query!r} "
@@ -2071,7 +2032,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         target = self.state.persistent_search_target
         if target is None:
             return None
-        if not bool(getattr(target, "persistent_keep_marker", False)):
+        if not bool(target.persistent_keep_marker):
             return None
         return target
 
@@ -2142,13 +2103,13 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         logger.info(
             "JPL persistent target %s: label=%s kind=%s group=%s target_time_utc=%s alt=%.1f az=%.1f command=%s",
             action,
-            str(getattr(target, "label", "")).strip() or "<unnamed>",
-            str(getattr(target, "kind", "")).strip() or "<unknown>",
-            str(getattr(target, "jpl_group", "")).strip() or "<none>",
+            str(target.label).strip() or "<unnamed>",
+            str(target.kind).strip() or "<unknown>",
+            str(target.jpl_group).strip() or "<none>",
             target_time_utc.astimezone(timezone.utc).isoformat(),
             float(alt_deg),
             float(az_deg) % 360.0,
-            str(getattr(target, "command", "")).strip() or "<missing>",
+            str(target.command).strip() or "<missing>",
         )
 
     def _on_jpl_ready(self, payload: object) -> None:
@@ -2168,7 +2129,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         horizons_epoch_utc = payload.get("horizons_epoch_utc")
         horizons_position_km = payload.get("horizons_position_km")
         horizons_velocity_km_s = payload.get("horizons_velocity_km_s")
-        viewer_data = getattr(self, "viewer_data", None)
+        viewer_data = self.viewer_data
         projected_altaz = None
         if not (
             viewer_data is not None
@@ -2263,16 +2224,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def _jump_to_search_target(self, target: SearchJumpTarget) -> None:
         target_kind = target.kind
         state_vector_target = target
-        target_time_utc_fn = getattr(self, "_target_time_utc", None)
-        if callable(target_time_utc_fn):
-            current_time = target_time_utc_fn()
-        else:
-            current_time = datetime.now(timezone.utc)
-        current_time_obj_fn = getattr(self, "_current_time_obj", None)
-        if callable(current_time_obj_fn):
-            current_time_obj = current_time_obj_fn()
-        else:
-            current_time_obj = astropy.time.Time(current_time)
+        current_time = self._target_time_utc()
+        current_time_obj = self._current_time_obj()
         if target_kind == "satellite":
             if target.alt_deg is not None and target.az_deg is not None:
                 target_altaz = (float(target.alt_deg), float(target.az_deg) % 360.0)
@@ -2364,14 +2317,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         # When jumping to a target, keep the jump highlight altitude as-reported
         # (may be negative), but clamp the actual view center to the horizon (0°)
         # so the view doesn't go below the horizon automatically.
-        base_alt, base_az = tuple(
-            getattr(self, "_search_view_center_base", self.viewer_data.view_center)
-        )
-        preserve_cli_view_center = getattr(
-            target, "preserve_cli_view_center", None
-        )
-        fixed_alt = bool(getattr(self, "_search_view_center_alt_specified", False))
-        fixed_az = bool(getattr(self, "_search_view_center_az_specified", False))
+        base_alt, base_az = tuple(self._search_view_center_base)
+        preserve_cli_view_center = target.preserve_cli_view_center
+        fixed_alt = bool(self._search_view_center_alt_specified)
+        fixed_az = bool(self._search_view_center_az_specified)
         if preserve_cli_view_center is False:
             fixed_alt = False
             fixed_az = False
@@ -2388,7 +2337,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.state.jump_highlight_name = target.label
         self.state.jump_highlight_altaz = (target_alt, target_az)
         self.state.jump_highlight_until_ms = (time.monotonic() * 1000.0) + 3000.0
-        if bool(getattr(target, "persistent_keep_marker", False)):
+        if bool(target.persistent_keep_marker):
             reference_time_utc = target.target_time_utc or current_time
             horizons_epoch_utc = state_vector_target.horizons_epoch_utc
             horizons_position_km = state_vector_target.horizons_position_km
@@ -2402,17 +2351,13 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 horizons_position_km=horizons_position_km,
                 horizons_velocity_km_s=horizons_velocity_km_s,
             )
-            log_persistent_target_update = getattr(
-                self, "_log_persistent_search_target_update", None
+            self._log_persistent_search_target_update(
+                action="set",
+                target=updated_target,
+                target_time_utc=reference_time_utc,
+                alt_deg=target_alt,
+                az_deg=target_az,
             )
-            if callable(log_persistent_target_update):
-                log_persistent_target_update(
-                    action="set",
-                    target=updated_target,
-                    target_time_utc=reference_time_utc,
-                    alt_deg=target_alt,
-                    az_deg=target_az,
-                )
             self.state.persistent_search_target = updated_target
             self.state.persistent_search_reference_time_utc = reference_time_utc
             self.state.persistent_search_last_error = None
@@ -2425,9 +2370,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             else:
                 self.state.persistent_search_next_refresh_utc = None
         else:
-            clear_persistent_search = getattr(self, "_clear_persistent_search", None)
-            if callable(clear_persistent_search):
-                clear_persistent_search()
+            self._clear_persistent_search()
 
         self._begin_interaction_mode()
         self.request_sky_data_update()
@@ -2472,7 +2415,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         return records_by_group
 
     def _startup_input_blocked(self) -> bool:
-        return bool(getattr(self, "_startup_input_blocked_state", False))
+        return bool(self._startup_input_blocked_state)
 
     def _on_initial_data_loaded(self) -> None:
         self._startup_initial_data_loaded = True
@@ -2600,9 +2543,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.state.satellite_next_refresh_utc = None
 
     def _target_time_utc(self) -> datetime:
-        delta_t = getattr(self, "delta_t", None)
-        if delta_t is None:
-            delta_t = timedelta(0)
+        delta_t = self.delta_t
         target_time_utc = target_time_utc_from_delta(delta_t)
         _jpl_debug_print(
             "target-time "
@@ -2624,25 +2565,19 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def _schedule_next_satellite_refresh(self, delay_ms: int | None = None) -> None:
         if not self._satellite_layer_enabled() or self._is_shutting_down:
             return
-        state = getattr(self, "state", None)
-        if state is None:
-            return
         interval_ms = delay_ms
         if interval_ms is None:
             interval_ms = self._satellite_validity_remaining_ms()
         if interval_ms is None:
             interval_ms = SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS * 1000
-        state.satellite_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
+        self.state.satellite_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
             milliseconds=max(0, interval_ms)
         )
 
     def _schedule_satellite_retry_after_failure(self) -> None:
         if not self._satellite_layer_enabled() or self._is_shutting_down:
             return
-        state = getattr(self, "state", None)
-        if state is None:
-            return
-        state.satellite_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
+        self.state.satellite_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
             seconds=SATELLITE_FAILURE_RETRY_SECONDS
         )
 
@@ -2694,15 +2629,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def _schedule_next_aircraft_refresh(self, delay_ms: int | None = None) -> None:
         if not self._aircraft_layer_enabled() or self._is_shutting_down:
             return
-        state = getattr(self, "state", None)
-        if state is None:
-            return
         interval_ms = (
             AIRCRAFT_REFRESH_INTERVAL_SECONDS * 1000
             if delay_ms is None
             else int(delay_ms)
         )
-        state.aircraft_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
+        self.state.aircraft_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
             milliseconds=max(0, interval_ms)
         )
 
@@ -2907,7 +2839,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 self._action_toggle_terrain_horizon.setChecked(
                     self.terrain_horizon_opacity > 0.0
                 )
-            getattr(self, "_sync_water_overlay_action_enabled", lambda: None)()
+            self._sync_water_overlay_action_enabled()
             return
 
         enable_terrain = self.terrain_horizon_opacity <= 0.0
@@ -2920,20 +2852,14 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         ):
             self._action_toggle_terrain_horizon.setChecked(enable_terrain)
         self._refresh_water_overlay_active_dots()
-        getattr(self, "_sync_water_overlay_action_enabled", lambda: None)()
+        self._sync_water_overlay_action_enabled()
         self._compositor.invalidate()
         if enable_terrain:
             self.start_background_terrain_horizon_update(reason="toggle-on")
         self.request_client_update()
 
     def toggle_water_overlay(self) -> None:
-        water_overlay_action_enabled = getattr(
-            self,
-            "_water_overlay_action_enabled",
-            lambda: bool(getattr(self, "_water_overlay_gui_allowed", True))
-            and float(getattr(self, "terrain_horizon_opacity", 0.0)) > 0.0,
-        )
-        if not water_overlay_action_enabled():
+        if not self._water_overlay_action_enabled():
             if self._action_toggle_water_overlay is not None:
                 self._action_toggle_water_overlay.setChecked(
                     self.water_overlay_opacity > 0.0
@@ -2973,14 +2899,14 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.request_client_update()
 
     def toggle_night_lights(self) -> None:
-        if not bool(getattr(self, "_night_light_toggle_supported", False)):
+        if not bool(self._night_light_toggle_supported):
             if self._action_toggle_night_lights is not None:
                 self._action_toggle_night_lights.setChecked(
-                    float(getattr(self, "night_light_opacity", 0.0)) > 0.0
+                    self.night_light_opacity > 0.0
                 )
             return
 
-        enable_night_lights = float(getattr(self, "night_light_opacity", 0.0)) <= 0.0
+        enable_night_lights = self.night_light_opacity <= 0.0
         self.night_light_opacity = (
             self._night_light_opacity_when_enabled if enable_night_lights else 0.0
         )
@@ -3030,7 +2956,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         super().closeEvent(event)
 
     def _handle_client_mouse_move(self, event: QMouseEvent) -> None:
-        if getattr(self, "_startup_input_blocked", lambda: False)():
+        if self._startup_input_blocked():
             event.accept()
             return
         self.state.mouse_pos = event.pos()
@@ -3046,10 +2972,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         start_viewport_idle_timer: bool = True,
     ) -> None:
         alt, az = self.viewer_data.view_center
-        set_view_center = getattr(
-            type(self), "_set_view_center", SkyWindow._set_view_center
-        )
-        set_view_center(
+        SkyWindow._set_view_center(
             self,
             alt + d_alt,
             az + d_az,
@@ -3066,7 +2989,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         start_viewport_idle_timer: bool = True,
     ) -> None:
         if interactive_viewport:
-            if not bool(getattr(self.state, "viewport_interaction_mode", False)):
+            if not bool(self.state.viewport_interaction_mode):
                 self._begin_viewport_interaction_mode(
                     start_idle_timer=start_viewport_idle_timer
                 )
@@ -3085,14 +3008,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.request_sky_data_update()
 
     def _viewport_rotation_keys(self) -> set[int]:
-        keys = getattr(self, "_viewport_rotation_keys_down", None)
-        if keys is None:
-            keys = set()
-            self._viewport_rotation_keys_down = keys
-        return keys
+        return self._viewport_rotation_keys_down
 
     def _handle_client_key_press(self, event: QKeyEvent) -> None:
-        if getattr(self, "_startup_input_blocked", lambda: False)():
+        if self._startup_input_blocked():
             event.accept()
             return
         key = event.key()
@@ -3203,7 +3122,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             super().keyPressEvent(event)
 
     def _handle_client_key_release(self, event: QKeyEvent) -> None:
-        if getattr(self, "_startup_input_blocked", lambda: False)():
+        if self._startup_input_blocked():
             event.accept()
             return
         key = event.key()

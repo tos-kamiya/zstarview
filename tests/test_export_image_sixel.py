@@ -291,6 +291,7 @@ def test_main_writes_overlay_summary_before_sixel(
     user_options = SimpleNamespace(
         vmag_limit=6.0,
         sky_disc_alpha=0.0,
+        sky_disc_style="smooth",
         cloud_disc_alpha=0.0,
         water_overlay_opacity=0.0,
         satellite_opacity=0.0,
@@ -311,6 +312,9 @@ def test_main_writes_overlay_summary_before_sixel(
             layer_timeout_seconds=30.0,
             allow_partial_data=False,
             include_direction_grid=False,
+            print_cache_dir=False,
+            clear_long_lived_cache=False,
+            sky_disc_style="smooth",
         ),
     )
     monkeypatch.setattr(mod, "setup_root_logger", lambda: None)
@@ -339,7 +343,8 @@ def test_main_writes_overlay_summary_before_sixel(
         "compute_sky_snapshot",
         lambda **_kwargs: {
             "celestial": SimpleNamespace(
-                time=Time("2026-02-27T00:00:00", format="isot", scale="utc")
+                time=Time("2026-02-27T00:00:00", format="isot", scale="utc"),
+                planets=[SimpleNamespace(name="sun", alt=-10.0)],
             ),
             "sky_disc": None,
         },
@@ -388,6 +393,7 @@ def test_main_continues_when_cloud_layer_is_unavailable(
     user_options = SimpleNamespace(
         vmag_limit=6.0,
         sky_disc_alpha=0.0,
+        sky_disc_style="smooth",
         cloud_disc_alpha=0.25,
         water_overlay_opacity=0.0,
         satellite_opacity=0.0,
@@ -408,6 +414,9 @@ def test_main_continues_when_cloud_layer_is_unavailable(
             layer_timeout_seconds=30.0,
             allow_partial_data=False,
             include_direction_grid=False,
+            print_cache_dir=False,
+            clear_long_lived_cache=False,
+            sky_disc_style="smooth",
         ),
     )
     monkeypatch.setattr(mod, "setup_root_logger", lambda: None)
@@ -436,7 +445,8 @@ def test_main_continues_when_cloud_layer_is_unavailable(
         "compute_sky_snapshot",
         lambda **_kwargs: {
             "celestial": SimpleNamespace(
-                time=Time("2026-02-27T00:00:00", format="isot", scale="utc")
+                time=Time("2026-02-27T00:00:00", format="isot", scale="utc"),
+                planets=[SimpleNamespace(name="sun", alt=-10.0)],
             ),
             "sky_disc": None,
         },
@@ -488,6 +498,7 @@ def test_main_reports_partial_data_note_when_terrain_layer_aborts(
     user_options = SimpleNamespace(
         vmag_limit=6.0,
         sky_disc_alpha=0.0,
+        sky_disc_style="smooth",
         cloud_disc_alpha=0.0,
         water_overlay_opacity=0.0,
         satellite_opacity=0.0,
@@ -508,6 +519,9 @@ def test_main_reports_partial_data_note_when_terrain_layer_aborts(
             layer_timeout_seconds=30.0,
             allow_partial_data=False,
             include_direction_grid=False,
+            print_cache_dir=False,
+            clear_long_lived_cache=False,
+            sky_disc_style="smooth",
         ),
     )
     monkeypatch.setattr(mod, "setup_root_logger", lambda: None)
@@ -536,7 +550,8 @@ def test_main_reports_partial_data_note_when_terrain_layer_aborts(
         "compute_sky_snapshot",
         lambda **_kwargs: {
             "celestial": SimpleNamespace(
-                time=Time("2026-02-27T00:00:00", format="isot", scale="utc")
+                time=Time("2026-02-27T00:00:00", format="isot", scale="utc"),
+                planets=[SimpleNamespace(name="sun", alt=-10.0)],
             ),
             "sky_disc": None,
         },
@@ -573,6 +588,10 @@ def test_main_rejects_unsupported_sixel_terminal_before_loading_inputs(
             image_size=(4, 4),
             layer_timeout_seconds=30.0,
             allow_partial_data=False,
+            include_direction_grid=False,
+            print_cache_dir=False,
+            clear_long_lived_cache=False,
+            sky_disc_style="smooth",
         ),
     )
     monkeypatch.setattr(mod, "setup_root_logger", lambda: None)

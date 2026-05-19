@@ -278,6 +278,7 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         observation_info_mode="auto",
         observation_info_pinned=False,
         sky_disc_alpha=0.2,
+        night_light_opacity=0.022,
         cloud_disc_alpha=0.2,
         water_overlay_opacity=0.12,
         satellite_opacity=0.5,
@@ -285,11 +286,16 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         terrain_horizon_opacity=0.1,
         earth_guide_opacity=0.1,
         urban_outline_opacity=0.2,
+        _night_light_toggle_supported=True,
+        _water_overlay_gui_allowed=True,
+        _terrain_horizon_gui_allowed=True,
+        _water_overlay_action_enabled=lambda: True,
         vmag_limit=6.0,
         _rotate_view=lambda **_kwargs: None,
         _open_named_star_jump_dialog=lambda: None,
         _open_named_star_search_dialog=lambda: None,
         _open_place_search_dialog=lambda: None,
+        _open_view_direction_dialog=lambda: None,
         toggle_enlarge_moon=lambda: None,
         toggle_dso=lambda: None,
         toggle_asterisms=lambda: None,
@@ -303,9 +309,12 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         toggle_water_overlay=lambda: None,
         toggle_earth_guide=lambda: None,
         toggle_urban_outline=lambda: None,
+        toggle_night_lights=lambda: None,
         toggle_fullscreen=lambda: None,
         square_client_area=lambda: None,
         _restore_default_window_size=lambda: None,
+        _fit_client_area_to_screen=lambda: None,
+        _request_application_quit=lambda: None,
         addAction=lambda action: added_actions.append(action),
         _vmag_limit_menu_text=lambda: "Vmag limit 6.0",
     )
@@ -348,6 +357,7 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         observation_info_mode="auto",
         observation_info_pinned=False,
         sky_disc_alpha=0.2,
+        night_light_opacity=0.022,
         cloud_disc_alpha=0.2,
         water_overlay_opacity=0.12,
         satellite_opacity=0.5,
@@ -355,11 +365,16 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         terrain_horizon_opacity=0.1,
         earth_guide_opacity=0.1,
         urban_outline_opacity=0.2,
+        _night_light_toggle_supported=True,
+        _water_overlay_gui_allowed=True,
+        _terrain_horizon_gui_allowed=True,
+        _water_overlay_action_enabled=lambda: True,
         vmag_limit=6.0,
         _rotate_view=lambda **_kwargs: None,
         _open_named_star_jump_dialog=lambda: None,
         _open_named_star_search_dialog=lambda: None,
         _open_place_search_dialog=lambda: None,
+        _open_view_direction_dialog=lambda: None,
         toggle_enlarge_moon=lambda: None,
         toggle_dso=lambda: None,
         toggle_asterisms=lambda: None,
@@ -373,9 +388,12 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         toggle_water_overlay=lambda: None,
         toggle_earth_guide=lambda: None,
         toggle_urban_outline=lambda: None,
+        toggle_night_lights=lambda: None,
         toggle_fullscreen=lambda: None,
         square_client_area=lambda: None,
         _restore_default_window_size=lambda: None,
+        _fit_client_area_to_screen=lambda: None,
+        _request_application_quit=lambda: None,
         addAction=lambda _action: None,
         _vmag_limit_menu_text=lambda: "Vmag limit 6.0",
     )
@@ -433,6 +451,7 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
         night_light_opacity=0.022,
         _night_light_toggle_supported=True,
         urban_outline_opacity=0.2,
+        _water_overlay_action_enabled=lambda: True,
         vmag_limit=6.0,
         toggle_night_lights=lambda: None,
         toggle_urban_outline=lambda: None,
@@ -455,6 +474,9 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
         toggle_fullscreen=lambda: None,
         square_client_area=lambda: None,
         _restore_default_window_size=lambda: None,
+        _open_view_direction_dialog=lambda: None,
+        _fit_client_area_to_screen=lambda: None,
+        _request_application_quit=lambda: None,
         addAction=lambda action: None,
         _vmag_limit_menu_text=lambda: "Vmag limit 6.0",
     )
@@ -510,6 +532,7 @@ def test_build_window_menu_disables_water_surface_when_terrain_horizon_off(
         observation_info_mode="auto",
         observation_info_pinned=False,
         sky_disc_alpha=0.2,
+        night_light_opacity=0.022,
         cloud_disc_alpha=0.2,
         water_overlay_opacity=0.12,
         satellite_opacity=0.5,
@@ -517,6 +540,10 @@ def test_build_window_menu_disables_water_surface_when_terrain_horizon_off(
         terrain_horizon_opacity=0.0,
         earth_guide_opacity=0.1,
         urban_outline_opacity=0.2,
+        _night_light_toggle_supported=True,
+        _water_overlay_gui_allowed=True,
+        _terrain_horizon_gui_allowed=True,
+        _water_overlay_action_enabled=lambda: False,
         vmag_limit=6.0,
         _rotate_view=lambda **_kwargs: None,
         _open_named_star_jump_dialog=lambda: None,
@@ -535,9 +562,13 @@ def test_build_window_menu_disables_water_surface_when_terrain_horizon_off(
         toggle_water_overlay=lambda: None,
         toggle_earth_guide=lambda: None,
         toggle_urban_outline=lambda: None,
+        toggle_night_lights=lambda: None,
         toggle_fullscreen=lambda: None,
         square_client_area=lambda: None,
         _restore_default_window_size=lambda: None,
+        _open_view_direction_dialog=lambda: None,
+        _fit_client_area_to_screen=lambda: None,
+        _request_application_quit=lambda: None,
         addAction=lambda _action: None,
         _vmag_limit_menu_text=lambda: "Vmag limit 6.0",
     )
@@ -564,6 +595,7 @@ def test_toggle_terrain_horizon_disables_and_restores_water_surface_action() -> 
     dummy._action_toggle_water_overlay = _DummyAction(True)
     dummy.terrain_horizon_state = SimpleNamespace(ground_elevation_m=42.0)
     dummy._refresh_water_overlay_active_dots = lambda: None
+    dummy._sync_water_overlay_action_enabled = lambda: None
     dummy._water_overlay_action_enabled = lambda: SkyWindowUpdatesMixin._water_overlay_action_enabled(
         dummy
     )
@@ -761,6 +793,8 @@ def test_toggle_terrain_horizon_respects_cli_lockout() -> None:
     dummy.terrain_horizon_opacity = 0.0
     dummy._terrain_horizon_opacity_when_enabled = 0.25
     dummy._action_toggle_terrain_horizon = _DummyAction(False)
+    dummy._action_toggle_water_overlay = _DummyAction(False)
+    dummy._sync_water_overlay_action_enabled = lambda: None
     dummy.start_background_terrain_horizon_update = lambda **_kwargs: (
         _ for _ in ()
     ).throw(AssertionError("should not start"))
@@ -846,6 +880,7 @@ def test_on_aircraft_ready_saves_debug_snapshot_when_enabled(
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request")
     dummy._schedule_next_aircraft_refresh = lambda: calls.append("schedule")
+    dummy.reproject_aircraft_overlay = lambda: calls.append("reproject")
     dummy.update = lambda: calls.append("update")
     dummy.render_current_image = lambda **kwargs: (
         calls.append(f"render:{kwargs.get('include_hud')}") or dummy_image
@@ -872,7 +907,7 @@ def test_on_aircraft_ready_saves_debug_snapshot_when_enabled(
     )
 
     assert dummy.state is not None
-    assert calls == ["schedule", "request", "render:True"]
+    assert calls == ["schedule", "reproject", "render:True"]
     assert len(dummy_image.saved_paths) == 1
     assert (
         dummy_image.saved_paths[0].name
@@ -891,6 +926,7 @@ def test_on_aircraft_ready_skips_debug_snapshot_when_disabled(monkeypatch) -> No
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request")
     dummy._schedule_next_aircraft_refresh = lambda: calls.append("schedule")
+    dummy.reproject_aircraft_overlay = lambda: calls.append("reproject")
     dummy.update = lambda: calls.append("update")
     dummy.render_current_image = lambda **kwargs: (_ for _ in ()).throw(
         AssertionError("should not render")
@@ -917,7 +953,7 @@ def test_on_aircraft_ready_skips_debug_snapshot_when_disabled(monkeypatch) -> No
     )
 
     assert dummy.state is not None
-    assert calls == ["schedule", "request"]
+    assert calls == ["schedule", "reproject"]
 
 
 def test_on_aircraft_ready_skips_debug_snapshot_for_cache_fresh(monkeypatch, tmp_path) -> None:
@@ -929,6 +965,7 @@ def test_on_aircraft_ready_skips_debug_snapshot_for_cache_fresh(monkeypatch, tmp
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request")
     dummy._schedule_next_aircraft_refresh = lambda: calls.append("schedule")
+    dummy.reproject_aircraft_overlay = lambda: calls.append("reproject")
     dummy.update = lambda: calls.append("update")
     dummy.render_current_image = lambda **kwargs: (_ for _ in ()).throw(
         AssertionError("should not render")
@@ -955,7 +992,7 @@ def test_on_aircraft_ready_skips_debug_snapshot_for_cache_fresh(monkeypatch, tmp
     )
 
     assert dummy.state is not None
-    assert calls == ["schedule", "request"]
+    assert calls == ["schedule", "reproject"]
     assert list(tmp_path.iterdir()) == []
 
 
@@ -969,6 +1006,7 @@ def test_toggle_terrain_horizon_enables_opacity_and_requests_background_update()
     dummy._action_toggle_terrain_horizon = _DummyAction(False)
     dummy.terrain_horizon_state = SimpleNamespace(ground_elevation_m=17.5)
     dummy._refresh_water_overlay_active_dots = lambda: None
+    dummy._sync_water_overlay_action_enabled = lambda: None
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request")
     dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
@@ -992,6 +1030,7 @@ def test_toggle_terrain_horizon_off_keeps_retained_ground_elevation() -> None:
     dummy._action_toggle_terrain_horizon = _DummyAction(True)
     dummy.terrain_horizon_state = SimpleNamespace(ground_elevation_m=42.0)
     dummy._refresh_water_overlay_active_dots = lambda: None
+    dummy._sync_water_overlay_action_enabled = lambda: None
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request")
     dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
@@ -1034,11 +1073,15 @@ def test_terrain_horizon_failed_keeps_retained_ground_elevation() -> None:
     )
     dummy._refresh_water_overlay_active_dots = lambda: None
     dummy._is_shutting_down = True
+    dummy._startup_initial_load_started = False
+    dummy._startup_initial_data_loaded = False
+    dummy._sync_water_overlay_action_enabled = lambda: None
     dummy.start_background_water_overlay_update = lambda **_kwargs: (_ for _ in ()).throw(
         AssertionError("should not restart water overlay")
     )
     dummy._compositor = SimpleNamespace(invalidate=lambda: None)
     dummy.request_client_update = lambda: None
+    dummy._continue_initial_data_load = lambda: None
 
     SkyWindowUpdatesMixin._on_terrain_horizon_failed(dummy, {"banner": "Terrain horizon: unavailable"})
 
@@ -1060,6 +1103,9 @@ def test_water_overlay_ready_invalidates_and_requests_refresh() -> None:
     dummy._refresh_water_overlay_active_dots = lambda: calls.append("refresh")
     dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
     dummy.request_client_update = lambda: calls.append("request")
+    dummy._startup_initial_load_started = False
+    dummy._startup_initial_data_loaded = False
+    dummy._continue_initial_data_load = lambda: None
 
     SkyWindowUpdatesMixin._on_water_overlay_ready(  # noqa: SLF001
         dummy,
@@ -1359,6 +1405,13 @@ def test_jump_to_search_target_keeps_negative_target_alt_for_highlight(
         jump_highlight_name=None,
         jump_highlight_altaz=None,
         jump_highlight_until_ms=0.0,
+        render_view_center=(20.0, 30.0),
+        viewport_interaction_mode=False,
+        persistent_search_target=None,
+        persistent_search_reference_time_utc=None,
+        persistent_search_next_refresh_utc=None,
+        persistent_search_last_refresh_utc=None,
+        persistent_search_last_error=None,
     )
     sync_calls: list[str] = []
     dummy.request_client_update = lambda: sync_calls.append("request-client")
@@ -1367,15 +1420,26 @@ def test_jump_to_search_target_keeps_negative_target_alt_for_highlight(
     dummy._begin_interaction_mode = lambda: sync_calls.append("begin")
     dummy.request_sky_data_update = lambda: sync_calls.append("request")
     dummy.update = lambda: sync_calls.append("update")
+    dummy._clear_persistent_search = lambda: sync_calls.append("clear")
+    dummy._search_view_center_base = (20.0, 30.0)
+    dummy._search_view_center_alt_specified = False
+    dummy._search_view_center_az_specified = False
+    dummy._target_time_utc = lambda: datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc)
 
-    target = SimpleNamespace(label="Circlet", ra_hours=1.0, dec_deg=2.0, kind="star")
+    target = SearchJumpTarget(
+        label="Circlet",
+        kind="star",
+        sort_key=(0.0, "circlet"),
+        ra_hours=1.0,
+        dec_deg=2.0,
+    )
     SkyWindow._jump_to_search_target(dummy, target)
 
     assert dummy.viewer_data.view_center == (-12.5, 210.0)
     assert dummy.state.jump_highlight_name == "Circlet"
     assert dummy.state.jump_highlight_altaz == (-12.5, 210.0)
     assert dummy.state.jump_highlight_until_ms > 0.0
-    assert sync_calls == ["sync", "begin", "request", "request-client"]
+    assert sync_calls == ["sync", "clear", "begin", "request", "request-client"]
 
 
 def test_jump_to_search_target_can_keep_marker_for_local_star(
@@ -1398,6 +1462,8 @@ def test_jump_to_search_target_can_keep_marker_for_local_star(
         persistent_search_next_refresh_utc=None,
         persistent_search_last_refresh_utc=None,
         persistent_search_last_error=None,
+        render_view_center=(20.0, 30.0),
+        viewport_interaction_mode=False,
     )
     sync_calls: list[str] = []
     dummy.request_client_update = lambda: sync_calls.append("request-client")
@@ -1406,6 +1472,13 @@ def test_jump_to_search_target_can_keep_marker_for_local_star(
     dummy._begin_interaction_mode = lambda: sync_calls.append("begin")
     dummy.request_sky_data_update = lambda: sync_calls.append("request")
     dummy._clear_persistent_search = lambda: sync_calls.append("clear")
+    dummy._log_persistent_search_target_update = lambda **_kwargs: sync_calls.append(
+        "log"
+    )
+    dummy._search_view_center_base = (20.0, 30.0)
+    dummy._search_view_center_alt_specified = False
+    dummy._search_view_center_az_specified = False
+    dummy._target_time_utc = lambda: datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc)
 
     target = SearchJumpTarget(
         label="Sirius",
@@ -1426,7 +1499,7 @@ def test_jump_to_search_target_can_keep_marker_for_local_star(
     assert dummy.state.persistent_search_target.label == "Sirius"
     assert dummy.state.persistent_search_target.persistent_keep_marker is True
     assert dummy.state.persistent_search_next_refresh_utc is None
-    assert sync_calls == ["sync", "begin", "request", "request-client"]
+    assert sync_calls == ["sync", "log", "begin", "request", "request-client"]
 
 
 def test_rotate_view_in_orientation_mode_updates_render_center_without_full_refresh() -> (
@@ -1434,7 +1507,11 @@ def test_rotate_view_in_orientation_mode_updates_render_center_without_full_refr
 ):
     dummy = SimpleNamespace()
     dummy.viewer_data = SimpleNamespace(view_center=(20.0, 30.0))
-    dummy.state = SimpleNamespace(render_view_center=(20.0, 30.0))
+    dummy.state = SimpleNamespace(
+        render_view_center=(20.0, 30.0),
+        viewport_interaction_mode=False,
+        interaction_mode=False,
+    )
     calls: list[str] = []
     dummy.request_client_update = lambda: calls.append("request-client")
     dummy._begin_viewport_interaction_mode = lambda *args, **kwargs: calls.append(
@@ -1445,6 +1522,8 @@ def test_rotate_view_in_orientation_mode_updates_render_center_without_full_refr
     dummy._update_viewport_interaction_stars = lambda: calls.append("bright-stars")
     dummy.request_sky_data_update = lambda: calls.append("request")
     dummy.update = lambda: calls.append("update")
+    dummy._viewport_rotation_keys_down = set()
+    dummy._startup_input_blocked = lambda: False
 
     SkyWindow._rotate_view(dummy, d_alt=5.0, d_az=15.0, interactive_viewport=True)
 

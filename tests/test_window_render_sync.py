@@ -3,7 +3,7 @@ from __future__ import annotations
 import astropy.time
 import math
 from dataclasses import replace
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -86,8 +86,23 @@ class _WindowStub:
         self.earth_guide_opacity = values.get("earth_guide_opacity", 0.25)
         self.urban_outline_opacity = values.get("urban_outline_opacity", 0.2)
         self.show_urban_outline_layer = values.get("show_urban_outline_layer", True)
+        self._night_light_toggle_supported = values.get(
+            "_night_light_toggle_supported", True
+        )
+        self._water_overlay_gui_allowed = values.get(
+            "_water_overlay_gui_allowed", True
+        )
+        self._terrain_horizon_gui_allowed = values.get(
+            "_terrain_horizon_gui_allowed", True
+        )
         self.status_line_font = values.get("status_line_font", object())
         self.theme = values.get("theme", THEME_STYLES_BY_PRESET["night"])
+        self.bright_bodies_mode = values.get("bright_bodies_mode", "outline")
+        self.sky_disc_style = values.get("sky_disc_style", "smooth")
+        self.sky_disc_altaz_rings = values.get("sky_disc_altaz_rings", "dimalt")
+        self.sky_disc_altaz_rings_hover = values.get("sky_disc_altaz_rings_hover", "altaz")
+        self.night_light_opacity = values.get("night_light_opacity", 0.0)
+        self.water_overlay_opacity = values.get("water_overlay_opacity", 0.12)
         self._star_render_expected_width = values.get(
             "_star_render_expected_width", 600
         )
@@ -96,13 +111,84 @@ class _WindowStub:
         )
         self._disc_generation = values.get("_disc_generation", 0)
         self._client_widget = values.get("_client_widget", None)
-        self.cloud_state = values.get("cloud_state", None)
-        self.satellite_state = values.get("satellite_state", None)
+        self.cloud_state = values.get(
+            "cloud_state",
+            SimpleNamespace(image=None, missing_mask=None, cloud_amount_field=None),
+        )
+        self.satellite_state = values.get(
+            "satellite_state",
+            SimpleNamespace(element_epoch_utc=None, records_by_group=None),
+        )
+        self.aircraft_state = values.get(
+            "aircraft_state",
+            SimpleNamespace(snapshots=None),
+        )
         self.viewer_data = values.get("viewer_data", None)
+        self.delta_t = values.get("delta_t", timedelta(0))
         self._cloud_controller = values.get("_cloud_controller", None)
+        self._sky_worker = values.get("_sky_worker", None)
+        self._satellite_controller = values.get("_satellite_controller", None)
+        self._aircraft_controller = values.get("_aircraft_controller", None)
+        self._jpl_small_body_controller = values.get(
+            "_jpl_small_body_controller", None
+        )
+        self._terrain_horizon_controller = values.get(
+            "_terrain_horizon_controller", None
+        )
         self._water_overlay_controller = values.get("_water_overlay_controller", None)
+        self._urban_outline_controller = values.get(
+            "_urban_outline_controller", None
+        )
+        self._ephemeris = values.get("_ephemeris", None)
+        self._sky_disc_alpha_when_enabled = values.get(
+            "_sky_disc_alpha_when_enabled", 0.1
+        )
+        self._terrain_horizon_opacity_when_enabled = values.get(
+            "_terrain_horizon_opacity_when_enabled", 0.25
+        )
+        self._water_overlay_opacity_when_enabled = values.get(
+            "_water_overlay_opacity_when_enabled", 0.12
+        )
+        self._night_light_opacity_when_enabled = values.get(
+            "_night_light_opacity_when_enabled", 0.02
+        )
+        self._urban_outline_opacity_when_enabled = values.get(
+            "_urban_outline_opacity_when_enabled", 0.2
+        )
+        self._action_toggle_water_overlay = values.get(
+            "_action_toggle_water_overlay", None
+        )
         self._startup_initial_load_started = values.get(
             "_startup_initial_load_started", True
+        )
+        self._startup_initial_data_loaded = values.get(
+            "_startup_initial_data_loaded", False
+        )
+        self._startup_input_blocked_state = values.get(
+            "_startup_input_blocked_state", False
+        )
+        self._search_view_center_base = values.get(
+            "_search_view_center_base", (20.0, 30.0)
+        )
+        self._search_view_center_alt_specified = values.get(
+            "_search_view_center_alt_specified", False
+        )
+        self._search_view_center_az_specified = values.get(
+            "_search_view_center_az_specified", False
+        )
+        self._viewport_rotation_keys_down = values.get(
+            "_viewport_rotation_keys_down", set()
+        )
+        self._frame_cache_key = values.get("_frame_cache_key", None)
+        self._frame_cache_image = values.get("_frame_cache_image", None)
+        self._present_frame_cache_key = values.get("_present_frame_cache_key", None)
+        self._present_frame_cache_image = values.get("_present_frame_cache_image", None)
+        self._cached_base_label_candidates = values.get(
+            "_cached_base_label_candidates", []
+        )
+        self.terrain_horizon_state = values.get(
+            "terrain_horizon_state",
+            SimpleNamespace(gound_elevation_m=None, ground_elevation_m=None),
         )
         self.state = values.get("state", None)
 
@@ -191,10 +277,29 @@ class _WindowStub:
         state = self.state
         if state is None:
             return False
-        return bool(
-            getattr(state, "viewport_interaction_mode", False)
-            or getattr(state, "interaction_mode", False)
-        )
+        return bool(state.viewport_interaction_mode or state.interaction_mode)
+
+    def _startup_input_blocked(self) -> bool:
+        return bool(self._startup_input_blocked_state)
+
+    def _continue_initial_data_load(self) -> None:
+        return None
+
+    def _sync_overlay_projection_timer(self) -> None:
+        return None
+
+    def _startup_splash_visible(self) -> bool:
+        overlay = self.__dict__.get("_startup_log_overlay")
+        return bool(overlay is not None and overlay.isVisible())
+
+    def _water_overlay_action_enabled(self) -> bool:
+        return bool(self._water_overlay_gui_allowed) and self.terrain_horizon_opacity > 0.0
+
+    def _sync_water_overlay_action_enabled(self) -> None:
+        if self._action_toggle_water_overlay is not None:
+            self._action_toggle_water_overlay.setEnabled(
+                self._water_overlay_action_enabled()
+            )
 
 
 def _make_scene(

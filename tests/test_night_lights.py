@@ -69,7 +69,7 @@ def test_compute_night_light_glow_profile_uses_mocked_sampling(tmp_path, monkeyp
     monkeypatch.setattr(
         night_lights,
         "_build_azimuth_grid",
-        lambda terrain_profile_altaz=None: (
+        lambda *_args, **_kwargs: (
             np.asarray([0.0, 90.0, 180.0], dtype=np.float64),
             np.zeros(3, dtype=np.float64),
         ),
@@ -86,11 +86,15 @@ def test_compute_night_light_glow_profile_uses_mocked_sampling(tmp_path, monkeyp
         ),
     )
 
-    profile = night_lights.compute_night_light_glow_profile(
-        observer_lat_deg=35.0,
-        observer_lon_deg=139.0,
-        sun_alt_deg=-5.0,
-    )
+    night_lights._compute_night_light_base_profile.cache_clear()
+    try:
+        profile = night_lights.compute_night_light_glow_profile(
+            observer_lat_deg=35.0,
+            observer_lon_deg=139.0,
+            sun_alt_deg=-5.0,
+        )
+    finally:
+        night_lights._compute_night_light_base_profile.cache_clear()
 
     assert profile is not None
     assert len(profile.samples) == 3
@@ -112,7 +116,7 @@ def test_compute_night_light_glow_profile_has_band_profiles(tmp_path, monkeypatc
     monkeypatch.setattr(
         night_lights,
         "_build_azimuth_grid",
-        lambda terrain_profile_altaz=None: (
+        lambda *_args, **_kwargs: (
             np.asarray([0.0, 90.0, 180.0], dtype=np.float64),
             np.zeros(3, dtype=np.float64),
         ),
@@ -151,7 +155,7 @@ def test_compute_night_light_glow_profile_reuses_location_cache(tmp_path, monkey
     monkeypatch.setattr(
         night_lights,
         "_build_azimuth_grid",
-        lambda terrain_profile_altaz=None: (
+        lambda *_args, **_kwargs: (
             np.asarray([0.0, 90.0, 180.0], dtype=np.float64),
             np.zeros(3, dtype=np.float64),
         ),

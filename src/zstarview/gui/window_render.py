@@ -133,14 +133,14 @@ class SkyWindowRenderMixin:
             bool(self.show_guidelines),
             bool(self.show_observation_info),
             bool(self.enlarge_moon),
-            getattr(self, "bright_bodies_mode", "outline"),
+            self.bright_bodies_mode,
             round(float(self.vmag_limit), 3),
             round(float(self.sky_disc_alpha), 3),
-            getattr(self, "sky_disc_style", "smooth"),
+            self.sky_disc_style,
             round(float(self.cloud_disc_alpha), 3),
             round(float(self.terrain_horizon_opacity), 3),
             round(float(self.earth_guide_opacity), 3),
-            round(float(getattr(self, "night_light_opacity", 0.0)), 3),
+            round(float(self.night_light_opacity), 3),
             round(float(self.urban_outline_opacity), 3),
             bool(self.show_urban_outline_layer),
             self._render_cache_stamp(celestial_data),
@@ -167,10 +167,8 @@ class SkyWindowRenderMixin:
                 overlay_time_bucket = int(float(current_time_obj.unix) // 2.0)
             except Exception:
                 overlay_time_bucket = None
-            satellite_state = getattr(self, "satellite_state", None)
-            aircraft_state = getattr(self, "aircraft_state", None)
-            satellite_overlay_source = getattr(satellite_state, "records_by_group", None)
-            aircraft_overlay_source = getattr(aircraft_state, "snapshots", None)
+            satellite_overlay_source = self.satellite_state.records_by_group
+            aircraft_overlay_source = self.aircraft_state.snapshots
             key_parts.extend(
                 [
                     round(float(self.satellite_opacity), 3),
@@ -190,8 +188,8 @@ class SkyWindowRenderMixin:
         cache_key_attr: str,
         cache_image_attr: str,
     ) -> QImage:
-        frame_cache_key = getattr(self, cache_key_attr, None)
-        frame_cache_image = cast(QImage | None, getattr(self, cache_image_attr, None))
+        frame_cache_key = getattr(self, cache_key_attr)
+        frame_cache_image = cast(QImage | None, getattr(self, cache_image_attr))
         if frame_cache_key != frame_key or frame_cache_image is None:
             frame = QImage(
                 self.client_size(),
@@ -225,14 +223,14 @@ class SkyWindowRenderMixin:
             self.state.jump_highlight_altaz,
             round(float(self.state.jump_highlight_until_ms), 3),
         )
-        search_target = getattr(self.state, "persistent_search_target", None)
+        search_target = self.state.persistent_search_target
         search_key = None
         if search_target is not None:
             search_key = (
-                getattr(search_target, "label", None),
-                getattr(search_target, "alt_deg", None),
-                getattr(search_target, "az_deg", None),
-                bool(getattr(search_target, "persistent_keep_marker", False)),
+                search_target.label,
+                search_target.alt_deg,
+                search_target.az_deg,
+                bool(search_target.persistent_keep_marker),
             )
         overlay_time_bucket = None
         try:
@@ -243,17 +241,13 @@ class SkyWindowRenderMixin:
         return (
             "present-frame",
             base_frame_key,
-            str(getattr(self, "sky_disc_altaz_rings", "dimalt")),
-            str(getattr(self, "sky_disc_altaz_rings_hover", "altaz")),
+            str(self.sky_disc_altaz_rings),
+            str(self.sky_disc_altaz_rings_hover),
             round(float(self.satellite_opacity), 3),
             round(float(self.aircraft_opacity), 3),
             overlay_time_bucket,
-            self._render_cache_stamp(
-                getattr(getattr(self, "satellite_state", None), "records_by_group", None)
-            ),
-            self._render_cache_stamp(
-                getattr(getattr(self, "aircraft_state", None), "snapshots", None)
-            ),
+            self._render_cache_stamp(self.satellite_state.records_by_group),
+            self._render_cache_stamp(self.aircraft_state.snapshots),
             mouse_key,
             bool(hud.overlay_info_bottom_left),
             bool(hud.viewport_interaction_mode),
@@ -298,7 +292,7 @@ class SkyWindowRenderMixin:
             cache_key_attr="_frame_cache_key",
             cache_image_attr="_frame_cache_image",
         )
-        cached_base_label_candidates = getattr(self, "_cached_base_label_candidates", [])
+        cached_base_label_candidates = self._cached_base_label_candidates
         present_frame_key = SkyWindowRenderMixin._present_frame_cache_key(
             self,
             base_frame_key=base_frame_key,
@@ -416,7 +410,7 @@ class SkyWindowRenderMixin:
             highlighted_dso=highlighted_dso,
             highlighted_satellite=highlighted_satellite,
             label_candidates=label_candidates,
-            search_overlay_target=getattr(self.state, "persistent_search_target", None),
+            search_overlay_target=self.state.persistent_search_target,
         )
 
     def _frame_context_for_render(self, *, viewport_rect: QRect | None = None) -> FrameContext:
@@ -492,37 +486,21 @@ class SkyWindowRenderMixin:
         return RenderSceneData(
             viewer=render_viewer,
             celestial_data=celestial_data,
-            sky_disc_image=getattr(state, "sky_disc_image", None),
-            cloud_image=getattr(cloud_state, "image", None),
-            cloud_missing_mask=getattr(cloud_state, "missing_mask", None),
-            cloud_amount_field=getattr(cloud_state, "cloud_amount_field", None),
-            terrain_horizon_profile=getattr(state, "terrain_horizon_profile", None),
-            terrain_horizon_profile_distances_m=getattr(
-                state,
-                "terrain_horizon_profile_distances_m",
-                None,
-            ),
-            terrain_horizon_secondary_profile_altaz_layers=getattr(
-                state,
-                "terrain_horizon_secondary_profile_altaz_layers",
-                None,
-            ),
-            terrain_horizon_secondary_profile_distances_m_layers=getattr(
-                state,
-                "terrain_horizon_secondary_profile_distances_m_layers",
-                None,
-            ),
-            urban_outlines=getattr(state, "urban_outlines", None),
-            water_overlay_dots=getattr(state, "water_overlay_dots", None),
-            satellite_element_epoch_utc=getattr(
-                getattr(self, "satellite_state", None), "element_epoch_utc", None
-            ),
-            satellite_records_by_group=getattr(
-                getattr(self, "satellite_state", None), "records_by_group", None
-            ),
-            aircraft_snapshots=getattr(getattr(self, "aircraft_state", None), "snapshots", None),
+            sky_disc_image=state.sky_disc_image,
+            cloud_image=cloud_state.image,
+            cloud_missing_mask=cloud_state.missing_mask,
+            cloud_amount_field=cloud_state.cloud_amount_field,
+            terrain_horizon_profile=state.terrain_horizon_profile,
+            terrain_horizon_profile_distances_m=state.terrain_horizon_profile_distances_m,
+            terrain_horizon_secondary_profile_altaz_layers=state.terrain_horizon_secondary_profile_altaz_layers,
+            terrain_horizon_secondary_profile_distances_m_layers=state.terrain_horizon_secondary_profile_distances_m_layers,
+            urban_outlines=state.urban_outlines,
+            water_overlay_dots=state.water_overlay_dots,
+            satellite_element_epoch_utc=self.satellite_state.element_epoch_utc,
+            satellite_records_by_group=self.satellite_state.records_by_group,
+            aircraft_snapshots=self.aircraft_state.snapshots,
             time_obj=time_obj,
-            night_light_glow_profile=getattr(state, "night_light_glow_profile", None),
+            night_light_glow_profile=state.night_light_glow_profile,
         )
 
     def _render_style(self) -> RenderStyle:
@@ -539,22 +517,22 @@ class SkyWindowRenderMixin:
             show_asterisms=bool(self.show_asterisms),
             show_guidelines=bool(self.show_guidelines),
             enlarge_moon=bool(self.enlarge_moon),
-            bright_bodies_mode=str(getattr(self, "bright_bodies_mode", "outline")),
+            bright_bodies_mode=str(self.bright_bodies_mode),
             star_base_radius=float(self.star_base_radius),
             star_visibility_boost=float(self.star_visibility_boost),
             asterism_visibility_boost=float(self.asterism_visibility_boost),
             earth_guide_visibility_boost=float(self.earth_guide_visibility_boost),
             vmag_limit=float(self.vmag_limit),
-            sky_disc_altaz_rings=str(getattr(self, "sky_disc_altaz_rings", "dimalt")),
-            sky_disc_altaz_rings_hover=str(getattr(self, "sky_disc_altaz_rings_hover", "altaz")),
+            sky_disc_altaz_rings=str(self.sky_disc_altaz_rings),
+            sky_disc_altaz_rings_hover=str(self.sky_disc_altaz_rings_hover),
             cloud_disc_alpha=float(self.cloud_disc_alpha),
             satellite_opacity=float(self.satellite_opacity),
             terrain_horizon_opacity=float(self.terrain_horizon_opacity),
             earth_guide_opacity=float(self.earth_guide_opacity),
-            night_light_opacity=float(getattr(self, "night_light_opacity", 0.0)),
+            night_light_opacity=float(self.night_light_opacity),
             urban_outline_opacity=float(self.urban_outline_opacity),
             show_urban_outline_layer=bool(self.show_urban_outline_layer),
-            water_overlay_opacity=float(getattr(self, "water_overlay_opacity", 0.12)),
+            water_overlay_opacity=float(self.water_overlay_opacity),
             aircraft_opacity=float(self.aircraft_opacity),
             star_render_expected_width=int(self._star_render_expected_width),
         )
@@ -564,11 +542,9 @@ class SkyWindowRenderMixin:
         if hasattr(self, "_status_line_message"):
             status_message = self._status_line_message()
         mouse_pos = self.state.mouse_pos
-        if getattr(self, "_startup_input_blocked", lambda: False)():
+        if self._startup_input_blocked():
             mouse_pos = None
-        overlay_info_bottom_left = bool(
-            getattr(self.state, "overlay_info_bottom_left", False)
-        )
+        overlay_info_bottom_left = bool(self.state.overlay_info_bottom_left)
         if mouse_pos is not None:
             # Respect pinned CLI modes: when pinned, do not move the overlay based on mouse.
             if not self.observation_info_pinned:
@@ -583,9 +559,7 @@ class SkyWindowRenderMixin:
                 self.state.overlay_info_bottom_left = overlay_info_bottom_left
             else:
                 # Ensure the HUD uses the pinned position from state; do not override.
-                overlay_info_bottom_left = bool(
-                    getattr(self.state, "overlay_info_bottom_left", False)
-                )
+                overlay_info_bottom_left = bool(self.state.overlay_info_bottom_left)
         return RenderHudState(
             mouse_pos=mouse_pos,
             overlay_info_bottom_left=overlay_info_bottom_left,
@@ -715,7 +689,7 @@ class SkyWindowRenderMixin:
                     highlighted_object=highlighted_object,
                     highlighted_dso=highlighted_dso,
                     label_candidates=label_candidates,
-                    search_overlay_target=getattr(self.state, "persistent_search_target", None),
+                    search_overlay_target=self.state.persistent_search_target,
                 )
             else:
                 render_base_scene_into_painter(
@@ -731,15 +705,8 @@ class SkyWindowRenderMixin:
             painter.end()
 
     def paintEvent(self, event: QPaintEvent) -> None:
-        startup_splash_visible = getattr(self, "_startup_splash_visible", None)
-        if callable(startup_splash_visible):
-            if startup_splash_visible():
-                return
-        else:
-            owner = getattr(self, "_owner", self)
-            overlay = getattr(owner, "_startup_log_overlay", None)
-            if overlay is not None and overlay.isVisible():
-                return
+        if self._startup_splash_visible():
+            return
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
@@ -781,7 +748,7 @@ class SkyWindowRenderMixin:
             )
         else:
             mouse_pos = self.state.mouse_pos
-            if getattr(self, "_startup_input_blocked", lambda: False)():
+            if self._startup_input_blocked():
                 mouse_pos = None
 
             highlighted_object, highlighted_dso, highlighted_satellite = (
@@ -790,12 +757,8 @@ class SkyWindowRenderMixin:
                     render_viewer=frame.viewer,
                     mouse_pos=mouse_pos,
                     geometry=geometry,
-                    satellite_records_by_group=getattr(
-                        getattr(self, "satellite_state", None), "records_by_group", None
-                    ),
-                    satellite_element_epoch_utc=getattr(
-                        getattr(self, "satellite_state", None), "element_epoch_utc", None
-                    ),
+                    satellite_records_by_group=self.satellite_state.records_by_group,
+                    satellite_element_epoch_utc=self.satellite_state.element_epoch_utc,
                     observer_lat=float(frame.viewer.location[0]),
                     observer_lon=float(frame.viewer.location[1]),
                     observer_height_m=float(frame.viewer.observer_height_m),

@@ -63,15 +63,13 @@ def _jpl_debug_print(message: str) -> None:
 
 
 def _initial_data_load_active(obj: object) -> bool:
-    return bool(getattr(obj, "_startup_initial_load_started", False)) and not bool(
-        getattr(obj, "_startup_initial_data_loaded", False)
+    return bool(obj._startup_initial_load_started) and not bool(
+        obj._startup_initial_data_loaded
     )
 
 
 def _sync_overlay_projection_timer_if_available(obj: object) -> None:
-    sync = getattr(obj, "_sync_overlay_projection_timer", None)
-    if callable(sync):
-        sync()
+    obj._sync_overlay_projection_timer()
 
 
 def _get_projection_next_refresh_utc(
@@ -90,7 +88,7 @@ def _get_projection_next_refresh_utc(
 
 class SkyWindowUpdatesMixin:
     def _viewport_interaction_active(self) -> bool:
-        return bool(getattr(self.state, "viewport_interaction_mode", False))
+        return bool(self.state.viewport_interaction_mode)
 
     def _background_updates_busy(self) -> bool:
         controllers = (
@@ -146,12 +144,12 @@ class SkyWindowUpdatesMixin:
         )
 
     def _water_overlay_action_enabled(self) -> bool:
-        if not bool(getattr(self, "_water_overlay_gui_allowed", True)):
+        if not bool(self._water_overlay_gui_allowed):
             return False
-        return float(getattr(self, "terrain_horizon_opacity", 0.0)) > 0.0
+        return float(self.terrain_horizon_opacity) > 0.0
 
     def _sync_water_overlay_action_enabled(self) -> None:
-        action = getattr(self, "_action_toggle_water_overlay", None)
+        action = self._action_toggle_water_overlay
         if action is not None:
             action.setEnabled(self._water_overlay_action_enabled())
 
@@ -173,7 +171,7 @@ class SkyWindowUpdatesMixin:
             return
         background_updates_busy = self._background_updates_busy()
 
-        sky_next_refresh = getattr(self.state, "sky_next_refresh_utc", None)
+        sky_next_refresh = self.state.sky_next_refresh_utc
         if (
             not background_updates_busy
             and self.state.sky_update_pending
@@ -202,9 +200,7 @@ class SkyWindowUpdatesMixin:
                 self.state.sky_next_refresh_utc = now_utc + timedelta(seconds=self.sky_update_interval)
                 return
 
-        persistent_next_refresh = getattr(
-            self.state, "persistent_search_next_refresh_utc", None
-        )
+        persistent_next_refresh = self.state.persistent_search_next_refresh_utc
         if (
             not background_updates_busy
             and isinstance(persistent_next_refresh, datetime)
@@ -215,7 +211,7 @@ class SkyWindowUpdatesMixin:
                 self.state.persistent_search_next_refresh_utc = persistent_next_refresh + timedelta(hours=1)
                 return
 
-        cloud_next_refresh = getattr(self.state, "cloud_next_refresh_utc", None)
+        cloud_next_refresh = self.state.cloud_next_refresh_utc
         if (
             not background_updates_busy
             and isinstance(cloud_next_refresh, datetime)
@@ -230,9 +226,7 @@ class SkyWindowUpdatesMixin:
                 self.state.cloud_next_refresh_utc = now_utc + timedelta(seconds=CLOUD_UPDATE_INTERVAL)
                 return
 
-        satellite_next_refresh = getattr(
-            self.state, "satellite_next_refresh_utc", None
-        )
+        satellite_next_refresh = self.state.satellite_next_refresh_utc
         if (
             not background_updates_busy
             and self._satellite_layer_enabled()
@@ -246,9 +240,7 @@ class SkyWindowUpdatesMixin:
                 )
                 return
 
-        aircraft_next_refresh = getattr(
-            self.state, "aircraft_next_refresh_utc", None
-        )
+        aircraft_next_refresh = self.state.aircraft_next_refresh_utc
         if (
             not background_updates_busy
             and self._aircraft_layer_enabled()
@@ -454,18 +446,18 @@ class SkyWindowUpdatesMixin:
         return _status_segment(_STATUS_SATELLITE, satellite_state.element_epoch_utc.strftime("%H:%MZ"))
 
     def _jpl_small_body_status_line(self) -> str:
-        target = getattr(self.state, "persistent_search_target", None)
+        target = self.state.persistent_search_target
         if target is None:
             return ""
-        label = str(getattr(target, "label", "")).strip()
+        label = str(target.label).strip()
         if not label:
             return ""
         altaz_suffix = self._target_altaz_suffix(target)
-        next_refresh_utc = getattr(self.state, "persistent_search_next_refresh_utc", None)
-        last_error = str(getattr(self.state, "persistent_search_last_error", "")).strip()
+        next_refresh_utc = self.state.persistent_search_next_refresh_utc
+        last_error = str(self.state.persistent_search_last_error).strip()
         if last_error.casefold() == "none":
             last_error = ""
-        if getattr(target, "jpl_group", "") != "sb" and not last_error:
+        if target.jpl_group != "sb" and not last_error:
             return f"JPL [{label}]: held{altaz_suffix}"
         if isinstance(next_refresh_utc, datetime):
             refresh_part = next_refresh_utc.strftime("%H:%MZ")
@@ -473,13 +465,13 @@ class SkyWindowUpdatesMixin:
             refresh_part = "pending"
         if last_error:
             return f"JPL [{label}]: retry {refresh_part} ({last_error}){altaz_suffix}"
-        if getattr(target, "jpl_group", "") == "sb":
+        if target.jpl_group == "sb":
             return f"JPL [{label}]: retry {refresh_part}{altaz_suffix}"
         return f"JPL [{label}]: refresh {refresh_part}{altaz_suffix}"
 
     def _target_altaz_suffix(self, target: object) -> str:
-        alt = getattr(target, "alt_deg", None)
-        az = getattr(target, "az_deg", None)
+        alt = target.alt_deg
+        az = target.az_deg
         if alt is None or az is None:
             return ""
         try:
@@ -546,9 +538,7 @@ class SkyWindowUpdatesMixin:
         self.state.sky_disc_image = payload["sky_disc"]
         self.state.night_light_glow_profile = payload.get("night_light_glow_profile")
 
-        if (
-            getattr(self.state, "viewport_interaction_release_pending", False)
-        ):
+        if self.state.viewport_interaction_release_pending:
             self.state.viewport_interaction_release_pending = False
             self.state.viewport_interaction_mode = False
             self.state.viewport_interaction_stars = None
@@ -563,9 +553,7 @@ class SkyWindowUpdatesMixin:
 
         if _initial_data_load_active(self):
             self._startup_initial_sky_loaded = True
-            continue_initial_data_load = getattr(self, "_continue_initial_data_load", None)
-            if callable(continue_initial_data_load):
-                continue_initial_data_load()
+            self._continue_initial_data_load()
             return
 
         self.state.sky_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
@@ -664,7 +652,7 @@ class SkyWindowUpdatesMixin:
             self.star_catalog_lod6_indices if use_lod6_catalog else None
         )
         worker_star_vmag_limit = None if use_lod6_catalog else star_vmag_limit
-        ephemeris = getattr(self, "_ephemeris", None)
+        ephemeris = self._ephemeris
         if ephemeris is None:
             ephemeris = load_ephemeris()
         started = self._sky_worker.update(
@@ -771,14 +759,14 @@ class SkyWindowUpdatesMixin:
         self.reproject_satellite_overlay()
 
     def refresh_projected_persistent_search_target(self) -> None:
-        target = getattr(self.state, "persistent_search_target", None)
+        target = self.state.persistent_search_target
         if target is None:
             return
         if self._viewport_interaction_active():
             return
-        if not bool(getattr(target, "persistent_keep_marker", False)):
+        if not bool(target.persistent_keep_marker):
             return
-        if getattr(target, "kind", "") not in {"jpl_small_body", "jpl_body"}:
+        if target.kind not in {"jpl_small_body", "jpl_body"}:
             return
         projected_altaz = project_jpl_target_altaz_from_state_vector(
             target,
@@ -791,20 +779,20 @@ class SkyWindowUpdatesMixin:
             _jpl_debug_print(
                 "refresh-project-none "
                 f"label={target.label} command={target.command} "
-                f"target_time_utc={getattr(target, 'target_time_utc', None)!r} "
-                f"epoch={getattr(target, 'horizons_epoch_utc', None)!r} "
-                f"pos={getattr(target, 'horizons_position_km', None)!r} "
-                f"vel={getattr(target, 'horizons_velocity_km_s', None)!r}"
+                f"target_time_utc={target.target_time_utc!r} "
+                f"epoch={target.horizons_epoch_utc!r} "
+                f"pos={target.horizons_position_km!r} "
+                f"vel={target.horizons_velocity_km_s!r}"
             )
             return
         alt_deg, az_deg = projected_altaz
         _jpl_debug_print(
             "refresh "
             f"label={target.label} command={target.command} "
-            f"target_time_utc={getattr(target, 'target_time_utc', None)!r} "
-            f"epoch={getattr(target, 'horizons_epoch_utc', None)!r} "
-            f"pos={getattr(target, 'horizons_position_km', None)!r} "
-            f"vel={getattr(target, 'horizons_velocity_km_s', None)!r} "
+            f"target_time_utc={target.target_time_utc!r} "
+            f"epoch={target.horizons_epoch_utc!r} "
+            f"pos={target.horizons_position_km!r} "
+            f"vel={target.horizons_velocity_km_s!r} "
             f"projected_alt={float(alt_deg):.3f} projected_az={float(az_deg) % 360.0:.3f}"
         )
         if (
@@ -851,12 +839,8 @@ class SkyWindowUpdatesMixin:
         requested_update = False
         if float(self.satellite_opacity) > 0.0:
             self._schedule_next_satellite_refresh()
-            reproject = getattr(self, "reproject_satellite_overlay", None)
-            if callable(reproject):
-                reproject()
-            else:
-                self.request_client_update()
-                requested_update = True
+            self.reproject_satellite_overlay()
+            requested_update = True
         if not requested_update:
             self.request_client_update()
 
@@ -952,7 +936,7 @@ class SkyWindowUpdatesMixin:
         ground_m = self.terrain_horizon_state.ground_elevation_m
         if ground_m is not None:
             return max(0.0, float(ground_m))
-        viewer_ground_m = float(getattr(self.viewer_data, "ground_elevation_m", 0.0) or 0.0)
+        viewer_ground_m = float(self.viewer_data.ground_elevation_m or 0.0)
         return max(0.0, viewer_ground_m)
 
     def _water_overlay_use_dem_ground(self) -> bool:
@@ -1038,12 +1022,8 @@ class SkyWindowUpdatesMixin:
         requested_update = False
         if float(self.aircraft_opacity) > 0.0:
             self._schedule_next_aircraft_refresh()
-            reproject = getattr(self, "reproject_aircraft_overlay", None)
-            if callable(reproject):
-                reproject()
-            else:
-                self.request_client_update()
-                requested_update = True
+            self.reproject_aircraft_overlay()
+            requested_update = True
         if not requested_update:
             self.request_client_update()
         self._maybe_save_aircraft_debug_snapshot(payload)
@@ -1095,7 +1075,7 @@ class SkyWindowUpdatesMixin:
                     self.start_background_water_overlay_update(reason="initial")
             else:
                 self.start_background_water_overlay_update(reason="terrain-ready")
-        getattr(self, "_sync_water_overlay_action_enabled", lambda: None)()
+        self._sync_water_overlay_action_enabled()
         self._compositor.invalidate()
         self.request_client_update()
         if startup_initial_load and self.water_overlay_opacity <= 0.0:
@@ -1114,7 +1094,7 @@ class SkyWindowUpdatesMixin:
             self.terrain_horizon_state.set_error_banner(banner)
         if _initial_data_load_active(self):
             self._startup_initial_terrain_loaded = True
-        getattr(self, "_sync_water_overlay_action_enabled", lambda: None)()
+        self._sync_water_overlay_action_enabled()
         self._compositor.invalidate()
         self.request_client_update()
         if _initial_data_load_active(self):
