@@ -4,7 +4,8 @@ import logging
 import time
 from typing import Callable, cast
 
-from PySide6.QtCore import QPoint, QPointF, Qt
+import astropy.time
+from PySide6.QtCore import QPoint, QPointF, QRect, Qt
 from PySide6.QtGui import QFont, QImage, QPainter, QPaintEvent
 
 from ..astro import altaz_to_normalized_xy, resolve_star_names
@@ -14,6 +15,7 @@ from ..render import satellites as render_satellites
 from ..render import stars as render_stars
 from ..render import text as render_text
 from ..render.pipeline import (
+    FrameContext,
     RenderSceneData,
     RenderHudState,
     RenderStyle,
@@ -98,28 +100,39 @@ class SkyWindowRenderMixin:
     def _render_frame_cache_key(
         self,
         *,
-        geometry: ScreenGeometry,
+        frame: FrameContext | None = None,
+        geometry: ScreenGeometry | None = None,
         celestial_data: CelestialData,
-        render_viewer: ViewerData,
+        render_viewer: ViewerData | None = None,
         include_fast_overlays: bool = True,
-    ) -> tuple[object, ...]:
+        ) -> tuple[object, ...]:
+        if frame is None:
+            if geometry is None or render_viewer is None:
+                raise TypeError("frame or geometry/render_viewer must be provided")
+            viewport_rect = QRect(0, 0, int(self.client_width()), int(self.client_height()))
+            frame = FrameContext(
+                viewer=render_viewer,
+                time_obj=getattr(celestial_data, "time", None),
+                geometry=geometry,
+                viewport_rect=viewport_rect,
+            )
         key_parts: list[object] = [
             int(self.client_width()),
             int(self.client_height()),
-            tuple(geometry.center),
-            int(geometry.radius),
+            tuple(frame.geometry.center),
+            int(frame.geometry.radius),
             self.visual_preset,
             bool(self.state.viewport_interaction_mode),
             tuple(float(v) for v in self.state.render_view_center),
-            tuple(float(v) for v in render_viewer.location),
-            render_viewer.city_name,
-            render_viewer.timezone_name,
-            float(render_viewer.observer_height_m),
-            float(render_viewer.height_add_m),
-            getattr(render_viewer, "ground_elevation_m", None),
-            float(render_viewer.content_fov_deg),
-            render_viewer.location_height_label,
-            render_viewer.location_height_m,
+            tuple(float(v) for v in frame.viewer.location),
+            frame.viewer.city_name,
+            frame.viewer.timezone_name,
+            float(frame.viewer.observer_height_m),
+            float(frame.viewer.height_add_m),
+            getattr(frame.viewer, "ground_elevation_m", None),
+            float(frame.viewer.content_fov_deg),
+            frame.viewer.location_height_label,
+            frame.viewer.location_height_m,
             bool(self.show_dso),
             bool(self.show_asterisms),
             bool(self.show_guidelines),
@@ -153,7 +166,9 @@ class SkyWindowRenderMixin:
         if include_fast_overlays:
             overlay_time_bucket = None
             try:
-                current_time_obj = self._current_time_obj()
+                current_time_obj = frame.time_obj
+                if current_time_obj is None:
+                    current_time_obj = self._current_time_obj()
                 overlay_time_bucket = int(float(current_time_obj.unix) // 2.0)
             except Exception:
                 overlay_time_bucket = None
@@ -255,7 +270,7 @@ class SkyWindowRenderMixin:
         self,
         *,
         base_frame_key: tuple[object, ...],
-        geometry: ScreenGeometry,
+        frame: FrameContext,
         scene: RenderSceneData,
         style: RenderStyle,
         hud: RenderHudState,
@@ -270,8 +285,7 @@ class SkyWindowRenderMixin:
             render_fn=lambda frame_painter: (
                 render_base_scene_into_painter(
                     frame_painter,
-                    geometry=geometry,
-                    viewport_rect=self.client_rect(),
+                    frame=frame,
                     scene=scene,
                     style=style,
                     hud=hud,
@@ -304,7 +318,7 @@ class SkyWindowRenderMixin:
                     frame_painter=frame_painter,
                     base_frame_image=base_frame_image,
                     base_label_candidates=cached_base_label_candidates,
-                    geometry=geometry,
+                    frame=frame,
                     scene=scene,
                     style=style,
                     hud=hud,
@@ -321,7 +335,7 @@ class SkyWindowRenderMixin:
         self,
         *,
         base_frame_key: tuple[object, ...],
-        geometry: ScreenGeometry,
+        frame: FrameContext,
         scene: RenderSceneData,
         style: RenderStyle,
         hud: RenderHudState,
@@ -331,7 +345,7 @@ class SkyWindowRenderMixin:
     ) -> QImage:
         return self._render_present_frame_image(
             base_frame_key=base_frame_key,
-            geometry=geometry,
+            frame=frame,
             scene=scene,
             style=style,
             hud=hud,
@@ -344,7 +358,7 @@ class SkyWindowRenderMixin:
         self,
         *,
         base_frame_key: tuple[object, ...],
-        geometry: ScreenGeometry,
+        frame: FrameContext,
         scene: RenderSceneData,
         style: RenderStyle,
         hud: RenderHudState,
@@ -354,7 +368,7 @@ class SkyWindowRenderMixin:
     ) -> QImage:
         return self._render_present_frame_image(
             base_frame_key=base_frame_key,
-            geometry=geometry,
+            frame=frame,
             scene=scene,
             style=style,
             hud=hud,
@@ -369,7 +383,7 @@ class SkyWindowRenderMixin:
         frame_painter: QPainter,
         base_frame_image: QImage,
         base_label_candidates: list[dict[str, object]] | tuple[dict[str, object], ...] | None,
-        geometry: ScreenGeometry,
+        frame: FrameContext,
         scene: RenderSceneData,
         style: RenderStyle,
         hud: RenderHudState,
@@ -381,7 +395,7 @@ class SkyWindowRenderMixin:
         if hud.viewport_interaction_mode:
             render_status_line_into_painter(
                 frame_painter,
-                viewport_rect=self.client_rect(),
+                frame=frame,
                 style=style,
                 hud=hud,
             )
@@ -390,7 +404,7 @@ class SkyWindowRenderMixin:
         label_candidates: list[dict[str, object]] = list(base_label_candidates or [])
         render_fast_overlay_layers_into_painter(
             frame_painter,
-            geometry=geometry,
+            frame=frame,
             scene=scene,
             style=style,
             highlighted_satellite=highlighted_satellite,
@@ -399,8 +413,7 @@ class SkyWindowRenderMixin:
         )
         render_hud_overlay_into_painter(
             frame_painter,
-            geometry=geometry,
-            viewport_rect=self.client_rect(),
+            frame=frame,
             scene=scene,
             style=style,
             hud=hud,
@@ -409,6 +422,39 @@ class SkyWindowRenderMixin:
             highlighted_satellite=highlighted_satellite,
             label_candidates=label_candidates,
             search_overlay_target=getattr(self.state, "persistent_search_target", None),
+        )
+
+    def _frame_context_for_render(self, *, viewport_rect: QRect | None = None) -> FrameContext:
+        viewer = ViewerData(
+            location=self.viewer_data.location,
+            timezone_name=self.viewer_data.timezone_name,
+            city_name=self.viewer_data.city_name,
+            view_center=self.state.render_view_center,
+            edge_fov_deg=self.viewer_data.edge_fov_deg,
+            content_fov_deg=self.viewer_data.content_fov_deg,
+            observer_height_m=self.viewer_data.observer_height_m,
+            height_add_m=self.viewer_data.height_add_m,
+            ground_elevation_m=self.viewer_data.ground_elevation_m,
+            location_height_label=self.viewer_data.location_height_label,
+            location_height_m=self.viewer_data.location_height_m,
+        )
+        if viewport_rect is None:
+            viewport_rect = self.client_rect()
+        geometry = render_geometry.get_screen_geometry(
+            int(self.client_width()),
+            int(self.client_height()),
+            viewer.view_center[0],
+        )
+        current_time_obj_fn = getattr(self, "_current_time_obj", None)
+        if callable(current_time_obj_fn):
+            time_obj = current_time_obj_fn()
+        else:
+            time_obj = None
+        return FrameContext(
+            viewer=viewer,
+            time_obj=time_obj,
+            geometry=geometry,
+            viewport_rect=viewport_rect,
         )
 
     def _viewer_data_for_render(self) -> ViewerData:
@@ -430,13 +476,14 @@ class SkyWindowRenderMixin:
         self,
         *,
         celestial_data: CelestialData,
-        render_viewer: ViewerData,
+        frame: FrameContext,
     ) -> tuple[RenderSceneData, RenderStyle, RenderHudState]:
         return (
             SkyWindowRenderMixin._render_scene_data(
                 self,
                 celestial_data=celestial_data,
-                render_viewer=render_viewer,
+                render_viewer=frame.viewer,
+                time_obj=frame.time_obj,
             ),
             SkyWindowRenderMixin._render_style(self),
             SkyWindowRenderMixin._render_hud_state(self),
@@ -447,14 +494,10 @@ class SkyWindowRenderMixin:
         *,
         celestial_data: CelestialData,
         render_viewer: ViewerData,
+        time_obj: astropy.time.Time | None,
     ) -> RenderSceneData:
         state = self.state
         cloud_state = self.cloud_state
-        current_time_obj_fn = getattr(self, "_current_time_obj", None)
-        if callable(current_time_obj_fn):
-            time_obj = current_time_obj_fn()
-        else:
-            time_obj = getattr(celestial_data, "time", None)
         return RenderSceneData(
             viewer=render_viewer,
             celestial_data=celestial_data,
@@ -650,22 +693,16 @@ class SkyWindowRenderMixin:
                 )
                 return image
 
-            render_viewer = self._viewer_data_for_render()
-            geometry = render_geometry.get_screen_geometry(
-                int(self.client_width()),
-                int(self.client_height()),
-                render_viewer.view_center[0],
-            )
+            frame = self._frame_context_for_render(viewport_rect=self.client_rect())
             scene, style, hud = self._render_inputs(
                 celestial_data=celestial_data,
-                render_viewer=render_viewer,
+                frame=frame,
             )
             if include_hud:
                 label_candidates: list[dict[str, object]] = []
                 render_base_scene_into_painter(
                     painter,
-                    geometry=geometry,
-                    viewport_rect=self.client_rect(),
+                    frame=frame,
                     scene=scene,
                     style=style,
                     hud=hud,
@@ -675,13 +712,12 @@ class SkyWindowRenderMixin:
                 )
                 highlighted_object = None
                 highlighted_dso = None
-                jump_highlight = self._active_jump_highlight_object(geometry)
+                jump_highlight = self._active_jump_highlight_object(frame.geometry)
                 if jump_highlight is not None:
                     highlighted_object = jump_highlight
                 render_hud_overlay_into_painter(
                     painter,
-                    geometry=geometry,
-                    viewport_rect=self.client_rect(),
+                    frame=frame,
                     scene=scene,
                     style=style,
                     hud=hud,
@@ -693,8 +729,7 @@ class SkyWindowRenderMixin:
             else:
                 render_base_scene_into_painter(
                     painter,
-                    geometry=geometry,
-                    viewport_rect=self.client_rect(),
+                    frame=frame,
                     scene=scene,
                     style=style,
                     hud=hud,
@@ -730,28 +765,22 @@ class SkyWindowRenderMixin:
             )
             return
 
-        render_viewer = self._viewer_data_for_render()
-        alt = render_viewer.view_center[0]
-        geometry = render_geometry.get_screen_geometry(
-            int(self.client_width()),
-            int(self.client_height()),
-            alt,
-        )
+        frame = self._frame_context_for_render(viewport_rect=self.client_rect())
+        geometry = frame.geometry
         frame_key = self._render_frame_cache_key(
-            geometry=geometry,
+            frame=frame,
             celestial_data=celestial_data,
-            render_viewer=render_viewer,
             include_fast_overlays=False,
         )
         self._update_star_render_stats(geometry)
         scene, style, hud = self._render_inputs(
             celestial_data=celestial_data,
-            render_viewer=render_viewer,
+            frame=frame,
         )
         if self.state.viewport_interaction_mode:
             present_frame = self._render_fast_frame_image(
                 base_frame_key=frame_key,
-                geometry=geometry,
+                frame=frame,
                 scene=scene,
                 style=style,
                 hud=hud,
@@ -767,7 +796,7 @@ class SkyWindowRenderMixin:
             highlighted_object, highlighted_dso, highlighted_satellite = (
                 _resolve_hover_targets(
                     celestial_data=celestial_data,
-                    render_viewer=render_viewer,
+                    render_viewer=frame.viewer,
                     mouse_pos=mouse_pos,
                     geometry=geometry,
                     satellite_records_by_group=getattr(
@@ -776,9 +805,9 @@ class SkyWindowRenderMixin:
                     satellite_element_epoch_utc=getattr(
                         getattr(self, "satellite_state", None), "element_epoch_utc", None
                     ),
-                    observer_lat=float(render_viewer.location[0]),
-                    observer_lon=float(render_viewer.location[1]),
-                    observer_height_m=float(render_viewer.observer_height_m),
+                    observer_lat=float(frame.viewer.location[0]),
+                    observer_lon=float(frame.viewer.location[1]),
+                    observer_height_m=float(frame.viewer.observer_height_m),
                     time_obj=scene.time_obj,
                     show_dso=bool(self.show_dso),
                 )
@@ -788,7 +817,7 @@ class SkyWindowRenderMixin:
                 highlighted_object = jump_highlight
             present_frame = self._render_normal_frame_image(
                 base_frame_key=frame_key,
-                geometry=geometry,
+                frame=frame,
                 scene=scene,
                 style=style,
                 hud=hud,

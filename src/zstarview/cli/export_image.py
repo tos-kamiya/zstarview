@@ -77,6 +77,7 @@ from ..render import geometry as render_geometry
 from ..render import guides as render_guides
 from ..render import text as render_text
 from ..render.pipeline import (
+    FrameContext,
     RenderHudState,
     RenderSceneData,
     RenderStyle,
@@ -956,11 +957,16 @@ def _render_image(
         geometry = render_geometry.get_screen_geometry(
             width, height, scene.viewer.view_alt_deg
         )
+        frame = FrameContext(
+            viewer=scene.viewer,
+            time_obj=scene.time_obj,
+            geometry=geometry,
+            viewport_rect=QRect(0, 0, width, height),
+        )
         label_candidates: list[dict[str, object]] = []
         render_base_scene_into_painter(
             painter,
-            geometry=geometry,
-            viewport_rect=QRect(0, 0, width, height),
+            frame=frame,
             scene=scene,
             style=style,
             hud=RenderHudState(
@@ -977,25 +983,25 @@ def _render_image(
         if draw_direction_grid:
             render_guides.draw_direction_grid_overlay(
                 painter,
-                geometry,
+                frame.geometry,
                 (width, height),
-                scene.viewer.view_center,
-                edge_fov_deg=float(scene.viewer.edge_fov_deg),
-                content_fov_deg=float(scene.viewer.content_fov_deg),
+                frame.viewer.view_center,
+                edge_fov_deg=float(frame.viewer.edge_fov_deg),
+                content_fov_deg=float(frame.viewer.content_fov_deg),
             )
         if search_overlay_target is not None:
             draw_search_target_overlay(
                 painter,
-                geometry,
+                frame.geometry,
                 search_overlay_target,
-                view_center=scene.viewer.view_center,
-                edge_fov_deg=float(scene.viewer.edge_fov_deg),
-                content_fov_deg=float(scene.viewer.content_fov_deg),
+                view_center=frame.viewer.view_center,
+                edge_fov_deg=float(frame.viewer.edge_fov_deg),
+                content_fov_deg=float(frame.viewer.content_fov_deg),
                 theme=style.theme,
                 text_font=style.text_font,
                 draw_marker=True,
                 marker_scale=compute_star_render_upscale_factor(
-                    geometry.radius * 2,
+                    frame.geometry.radius * 2,
                     style.star_render_expected_width,
                 ),
                 label_candidates=label_candidates,

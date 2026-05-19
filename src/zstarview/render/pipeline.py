@@ -79,6 +79,14 @@ def compute_star_render_upscale_factor(
 
 
 @dataclass(frozen=True)
+class FrameContext:
+    viewer: ViewerData
+    time_obj: astropy.time.Time | None
+    geometry: ScreenGeometry
+    viewport_rect: QRect
+
+
+@dataclass(frozen=True)
 class RenderSceneData:
     viewer: ViewerData
     celestial_data: CelestialData
@@ -162,11 +170,31 @@ def _window_size(viewport_rect: QRect) -> tuple[int, int]:
     return (int(viewport_rect.width()), int(viewport_rect.height()))
 
 
+def _resolve_frame_context(
+    *,
+    frame: FrameContext | None,
+    scene: RenderSceneData,
+    geometry: ScreenGeometry | None,
+    viewport_rect: QRect | None,
+) -> FrameContext:
+    if frame is not None:
+        return frame
+    if geometry is None or viewport_rect is None:
+        raise TypeError("frame or geometry/viewport_rect must be provided")
+    return FrameContext(
+        viewer=scene.viewer,
+        time_obj=scene.time_obj,
+        geometry=geometry,
+        viewport_rect=viewport_rect,
+    )
+
+
 def render_base_scene_into_painter(
     painter: QPainter,
     *,
-    geometry: ScreenGeometry,
-    viewport_rect: QRect,
+    frame: FrameContext | None = None,
+    geometry: ScreenGeometry | None = None,
+    viewport_rect: QRect | None = None,
     scene: RenderSceneData,
     style: RenderStyle,
     hud: RenderHudState,
@@ -175,18 +203,24 @@ def render_base_scene_into_painter(
     label_candidates: list[dict[str, Any]] | None = None,
     draw_labels: bool = True,
 ) -> None:
-    win_w, win_h = _window_size(viewport_rect)
+    frame = _resolve_frame_context(
+        frame=frame,
+        scene=scene,
+        geometry=geometry,
+        viewport_rect=viewport_rect,
+    )
+    win_w, win_h = _window_size(frame.viewport_rect)
     star_surface_size = compute_star_render_surface_size(
         win_w,
         win_h,
-        geometry.radius * 2,
+        frame.geometry.radius * 2,
         style.star_render_expected_width,
     )
-    _clear_background_layer(painter, viewport_rect)
+    _clear_background_layer(painter, frame.viewport_rect)
     _draw_background_layer(
         painter,
-        geometry=geometry,
-        viewport_rect=viewport_rect,
+        geometry=frame.geometry,
+        viewport_rect=frame.viewport_rect,
         scene=scene,
         style=style,
     )
@@ -198,7 +232,7 @@ def render_base_scene_into_painter(
     )
     _draw_sky_cloud_layers(
         painter,
-        geometry=geometry,
+        geometry=frame.geometry,
         scene=sky_cloud_scene,
         style=sky_cloud_style,
         compositor=compositor,
@@ -207,16 +241,16 @@ def render_base_scene_into_painter(
     )
     _draw_guide_layer(
         painter,
-        geometry=geometry,
-        viewport_rect=viewport_rect,
+        geometry=frame.geometry,
+        viewport_rect=frame.viewport_rect,
         scene=scene,
         style=style,
     )
     if hud.viewport_interaction_mode:
         _draw_viewport_interaction_layers(
             painter,
-            geometry=geometry,
-            viewport_rect=viewport_rect,
+            geometry=frame.geometry,
+            viewport_rect=frame.viewport_rect,
             scene=scene,
             style=style,
             hud=hud,
@@ -227,7 +261,7 @@ def render_base_scene_into_painter(
     local_label_candidates = label_candidates if label_candidates is not None else []
     _draw_terrain_layers(
         painter,
-        geometry=geometry,
+        geometry=frame.geometry,
         scene=scene,
         style=style,
         highlighted_object=None,
@@ -236,15 +270,15 @@ def render_base_scene_into_painter(
     )
     _draw_star_layer(
         painter,
-        geometry=geometry,
-        viewport_rect=viewport_rect,
+        geometry=frame.geometry,
+        viewport_rect=frame.viewport_rect,
         scene=scene,
         style=style,
         star_render_surface_size=star_surface_size,
     )
     _draw_planet_layer(
         painter,
-        geometry=geometry,
+        geometry=frame.geometry,
         scene=scene,
         style=style,
         enlarge_moon=bool(style.enlarge_moon),
@@ -254,7 +288,7 @@ def render_base_scene_into_painter(
     if draw_fast_overlays:
         _draw_satellite_layer(
             painter,
-            geometry=geometry,
+            geometry=frame.geometry,
             scene=scene,
             style=style,
             highlighted_satellite=None,
@@ -262,7 +296,7 @@ def render_base_scene_into_painter(
         )
         _draw_aircraft_layer(
             painter,
-            geometry=geometry,
+            geometry=frame.geometry,
             scene=scene,
             style=style,
             label_candidates=local_label_candidates,
@@ -278,7 +312,9 @@ def render_base_scene_into_painter(
 def render_fast_overlay_layers_into_painter(
     painter: QPainter,
     *,
-    geometry: ScreenGeometry,
+    frame: FrameContext | None = None,
+    geometry: ScreenGeometry | None = None,
+    viewport_rect: QRect | None = None,
     scene: RenderSceneData,
     style: RenderStyle,
     highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None = None,
@@ -288,11 +324,17 @@ def render_fast_overlay_layers_into_painter(
     """Draw dynamic satellite/aircraft overlays and their labels."""
     if style.satellite_opacity <= 0.0 and style.aircraft_opacity <= 0.0:
         return
+    frame = _resolve_frame_context(
+        frame=frame,
+        scene=scene,
+        geometry=geometry,
+        viewport_rect=viewport_rect,
+    )
 
     local_label_candidates = label_candidates if label_candidates is not None else []
     _draw_satellite_layer(
         painter,
-        geometry=geometry,
+        geometry=frame.geometry,
         scene=scene,
         style=style,
         highlighted_satellite=highlighted_satellite,
@@ -300,7 +342,7 @@ def render_fast_overlay_layers_into_painter(
     )
     _draw_aircraft_layer(
         painter,
-        geometry=geometry,
+        geometry=frame.geometry,
         scene=scene,
         style=style,
         label_candidates=local_label_candidates,
@@ -316,8 +358,9 @@ def render_fast_overlay_layers_into_painter(
 def render_hud_overlay_into_painter(
     painter: QPainter,
     *,
-    geometry: ScreenGeometry,
-    viewport_rect: QRect,
+    frame: FrameContext | None = None,
+    geometry: ScreenGeometry | None = None,
+    viewport_rect: QRect | None = None,
     scene: RenderSceneData,
     style: RenderStyle,
     hud: RenderHudState,
@@ -327,10 +370,16 @@ def render_hud_overlay_into_painter(
     label_candidates: list[dict[str, Any]] | None = None,
     search_overlay_target: SearchJumpTarget | None = None,
 ) -> None:
+    frame = _resolve_frame_context(
+        frame=frame,
+        scene=scene,
+        geometry=geometry,
+        viewport_rect=viewport_rect,
+    )
     if hud.viewport_interaction_mode:
         _draw_status_line(
             painter,
-            viewport_rect=viewport_rect,
+            viewport_rect=frame.viewport_rect,
             style=style,
             hud=hud,
         )
@@ -338,8 +387,8 @@ def render_hud_overlay_into_painter(
 
     _draw_hover_overlay_layer(
         painter,
-        geometry=geometry,
-        viewport_rect=viewport_rect,
+        geometry=frame.geometry,
+        viewport_rect=frame.viewport_rect,
         scene=scene,
         style=style,
         mouse_pos=hud.mouse_pos,
@@ -351,7 +400,7 @@ def render_hud_overlay_into_painter(
     if search_overlay_target is not None:
         render_search_overlay.draw_search_target_overlay(
             painter,
-            geometry,
+            frame.geometry,
             search_overlay_target,
             view_center=scene.viewer.view_center,
             edge_fov_deg=float(scene.viewer.edge_fov_deg),
@@ -360,7 +409,7 @@ def render_hud_overlay_into_painter(
             draw_marker=True,
             draw_label=True,
             marker_scale=compute_star_render_upscale_factor(
-                geometry.radius * 2,
+                frame.geometry.radius * 2,
                 style.star_render_expected_width,
             ),
             label_candidates=label_candidates,
@@ -374,8 +423,8 @@ def render_hud_overlay_into_painter(
         )
     _draw_overlay_layer(
         painter,
-        geometry=geometry,
-        viewport_rect=viewport_rect,
+        geometry=frame.geometry,
+        viewport_rect=frame.viewport_rect,
         scene=scene,
         style=style,
         mouse_pos=hud.mouse_pos,
@@ -388,7 +437,7 @@ def render_hud_overlay_into_painter(
     )
     _draw_status_line(
         painter,
-        viewport_rect=viewport_rect,
+        viewport_rect=frame.viewport_rect,
         style=style,
         hud=hud,
     )
@@ -397,14 +446,25 @@ def render_hud_overlay_into_painter(
 def render_status_line_into_painter(
     painter: QPainter,
     *,
-    viewport_rect: QRect,
+    frame: FrameContext | None = None,
+    viewport_rect: QRect | None = None,
+    scene: RenderSceneData | None = None,
     style: RenderStyle,
     hud: RenderHudState,
 ) -> None:
     """Draw only the status line used during viewport interaction."""
+    if frame is None:
+        if viewport_rect is None or scene is None:
+            raise TypeError("frame or viewport_rect+scene must be provided")
+        frame = FrameContext(
+            viewer=scene.viewer,
+            time_obj=scene.time_obj,
+            geometry=ScreenGeometry(center=(0, 0), radius=0),
+            viewport_rect=viewport_rect,
+        )
     _draw_status_line(
         painter,
-        viewport_rect=viewport_rect,
+        viewport_rect=frame.viewport_rect,
         style=style,
         hud=hud,
     )
