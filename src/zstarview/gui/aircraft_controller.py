@@ -13,18 +13,15 @@ from PySide6.QtCore import QObject, Signal
 from ..aircraft import (
     AircraftBoundingBox,
     CachedAircraftSnapshotSet,
-    AircraftOverlayPoint,
     AircraftSnapshot,
     build_observer_bbox,
     fetch_cached_opensky_states,
-    project_aircraft_snapshots,
 )
 from .worker_pool import submit_gui_work, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
 
 AircraftFetcher = Callable[[AircraftBoundingBox], list[AircraftSnapshot] | CachedAircraftSnapshotSet]
-AircraftProjector = Callable[..., list[AircraftOverlayPoint]]
 
 
 class AircraftController(QObject):
@@ -38,12 +35,12 @@ class AircraftController(QObject):
         self,
         *,
         fetcher: AircraftFetcher | None = None,
-        projector: AircraftProjector | None = None,
+        projector: object | None = None,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._fetcher = fetcher or fetch_cached_opensky_states
-        self._projector = projector or project_aircraft_snapshots
+        self._projector = projector
         self._running = False
         self._stopping = False
         self._pending_request: Optional[dict[str, object]] = None
@@ -162,20 +159,12 @@ class AircraftController(QObject):
                 refreshed_at_utc = fetched.fetched_at_utc
                 source = fetched.source
                 is_stale = bool(fetched.is_stale)
-            overlay_points = self._projector(
-                snapshots,
-                observer_lat=observer_lat,
-                observer_lon=observer_lon,
-                observer_height_m=observer_height_m,
-                time_obj=time_obj,
-            )
             with self._lock:
                 should_emit = not self._stopping and request_id == self._latest_request_id
             if should_emit:
                 self.aircraft_ready.emit(
                     {
                         "snapshots": snapshots,
-                        "overlay_points": overlay_points,
                         "bbox": bbox,
                         "refreshed_at_utc": refreshed_at_utc,
                         "banner": (

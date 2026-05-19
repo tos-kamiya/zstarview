@@ -1657,18 +1657,9 @@ def test_jump_to_jpl_major_body_target_keeps_overlay_without_refresh() -> None:
     )
 
 
-def test_refresh_projected_satellite_overlay_falls_back_to_disk_cache(
+def test_reproject_satellite_overlay_falls_back_to_disk_cache(
     monkeypatch,
 ) -> None:
-    projected_points = [
-        SimpleNamespace(satellite_name="ISS (ZARYA)", alt_deg=-40.0, az_deg=151.0)
-    ]
-    monkeypatch.setattr(
-        window_updates_module,
-        "project_satellite_records",
-        lambda *args, **kwargs: projected_points,
-    )
-
     dummy = _WindowStub()
     dummy.satellite_opacity = 1.0
     dummy.viewer_data = ViewerData(
@@ -1678,22 +1669,23 @@ def test_refresh_projected_satellite_overlay_falls_back_to_disk_cache(
         view_center=(0.0, 151.0),
         observer_height_m=10.0,
     )
-    dummy.satellite_state = SimpleNamespace(records_by_group={}, overlay_points=None)
+    dummy.satellite_state = SimpleNamespace(
+        records_by_group={"iss": [{"OBJECT_NAME": "ISS (ZARYA)"}]},
+        overlay_points=None,
+        element_epoch_utc=datetime.now(timezone.utc),
+    )
     dummy.state = SkyWindowState(
-        render_view_center=(0.0, 151.0), satellite_overlay_points=None
+        render_view_center=(0.0, 151.0),
+        satellite_projection_next_refresh_utc=None,
     )
     dummy._enabled_satellite_groups = ("iss",)
     dummy._satellite_validity_remaining_ms = lambda: 1000
-    dummy._load_cached_satellite_records = lambda groups: {
-        "iss": [{"OBJECT_NAME": "ISS (ZARYA)"}]
-    }
     dummy._current_time_obj = lambda: astropy.time.Time("2026-03-23T12:13:24Z")
     dummy.update = Mock()
 
-    SkyWindow.refresh_projected_satellite_overlay(dummy)
+    SkyWindow.reproject_satellite_overlay(dummy)
 
-    assert dummy.satellite_state.overlay_points == projected_points
-    assert dummy.state.satellite_overlay_points == projected_points
+    assert dummy.state.satellite_projection_next_refresh_utc is not None
     dummy.update.assert_called_once()
 
 

@@ -1,10 +1,14 @@
+from collections.abc import Mapping
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+import astropy.time
 from PySide6.QtCore import QPoint, QPointF
 from PySide6.QtGui import QColor, QPainter
 
 from ..astro import altaz_to_normalized_xy, is_in_fov
 from ..paths import FIELD_OF_VIEW_DEG, ThemeStyle
+from ..satellite_constants import SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS
 from ..satellite_constants import (
     SATELLITE_OVERLAY_MARKER_COLOR_RGB,
     SATELLITE_OVERLAY_MARKER_MAX_ALPHA,
@@ -13,6 +17,7 @@ from ..satellites.types import SatelliteOverlayPoint
 from ..types import ScreenGeometry
 from .geometry import normalized_to_screen_xy
 from .guides import draw_gauge_cross
+from ..satellites import project_satellite_records
 
 _SATELLITE_HOVER_MIN_RADIUS_PX = 12.0
 _SATELLITE_HOVER_RADIUS_SCALE = 20.0
@@ -40,15 +45,71 @@ def _satellite_hover_radius_px(point: SatelliteOverlayPoint) -> float:
     )
 
 
-def find_highlighted_satellite(
-    satellite_points: list[SatelliteOverlayPoint] | None,
-    mouse_pos: QPoint | QPointF | None,
-    geometry: ScreenGeometry,
-    view_center: tuple[float, float],
+def _resolve_satellite_overlay_points(
+    satellite_points_or_records: object | None,
     *,
+    observer_lat: float | None = None,
+    observer_lon: float | None = None,
+    observer_height_m: float | None = None,
+    time_obj: astropy.time.Time | None = None,
+) -> list[SatelliteOverlayPoint]:
+    if isinstance(satellite_points_or_records, Mapping):
+        if (
+            time_obj is None
+            or observer_lat is None
+            or observer_lon is None
+            or observer_height_m is None
+        ):
+            return []
+        return project_satellite_records(
+            satellite_points_or_records,
+            observer_lat=float(observer_lat),
+            observer_lon=float(observer_lon),
+            observer_height_m=float(observer_height_m),
+            time_obj=time_obj,
+        )
+    if satellite_points_or_records is None:
+        return []
+    return [
+        point
+        for point in satellite_points_or_records
+        if isinstance(point, SatelliteOverlayPoint)
+    ]
+
+
+def find_highlighted_satellite(
+    satellite_points_or_records: object | None = None,
+    mouse_pos: QPoint | QPointF | None = None,
+    geometry: ScreenGeometry | None = None,
+    view_center: tuple[float, float] | None = None,
+    *,
+    satellite_overlay_points: object | None = None,
+    observer_lat: float | None = None,
+    observer_lon: float | None = None,
+    observer_height_m: float | None = None,
+    time_obj: astropy.time.Time | None = None,
+    element_epoch_utc: datetime | None = None,
     edge_fov_deg: float = FIELD_OF_VIEW_DEG,
     content_fov_deg: float = FIELD_OF_VIEW_DEG,
 ) -> tuple[SatelliteOverlayPoint, QPointF] | None:
+    if satellite_points_or_records is None:
+        satellite_points_or_records = satellite_overlay_points
+    if view_center is None or geometry is None:
+        return None
+    if element_epoch_utc is not None:
+        try:
+            age_seconds = (datetime.now(timezone.utc) - element_epoch_utc).total_seconds()
+        except Exception:
+            age_seconds = 0.0
+        if age_seconds >= float(SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS):
+            return None
+    satellite_points = _resolve_satellite_overlay_points(
+        satellite_points_or_records,
+        observer_lat=observer_lat,
+        observer_lon=observer_lon,
+        observer_height_m=observer_height_m,
+        time_obj=time_obj,
+    )
     if not satellite_points or mouse_pos is None:
         return None
 
@@ -74,9 +135,15 @@ def find_highlighted_satellite(
 def draw_satellite_overlay(
     painter: QPainter,
     geometry: ScreenGeometry,
-    satellite_points: list[SatelliteOverlayPoint] | None,
-    view_center: tuple[float, float],
+    satellite_points_or_records: object | None = None,
+    view_center: tuple[float, float] | None = None,
     *,
+    satellite_points: list[SatelliteOverlayPoint] | None = None,
+    observer_lat: float | None = None,
+    observer_lon: float | None = None,
+    observer_height_m: float | None = None,
+    time_obj: astropy.time.Time | None = None,
+    element_epoch_utc: datetime | None = None,
     opacity: float = 1.0,
     highlighted_satellite: SatelliteOverlayPoint | None = None,
     label_candidates: Optional[List[Dict[str, Any]]] = None,
@@ -86,7 +153,28 @@ def draw_satellite_overlay(
     marker_scale: float = 1.0,
 ) -> None:
     layer_opacity = max(0.0, min(1.0, float(opacity)))
-    if not satellite_points or layer_opacity <= 0.0:
+    if layer_opacity <= 0.0:
+        return
+    if view_center is None:
+        return
+
+    if element_epoch_utc is not None:
+        try:
+            age_seconds = (datetime.now(timezone.utc) - element_epoch_utc).total_seconds()
+        except Exception:
+            age_seconds = 0.0
+        if age_seconds >= float(SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS):
+            return
+
+    if satellite_points is None:
+        satellite_points = _resolve_satellite_overlay_points(
+            satellite_points_or_records,
+            observer_lat=observer_lat,
+            observer_lon=observer_lon,
+            observer_height_m=observer_height_m,
+            time_obj=time_obj,
+        )
+    if not satellite_points:
         return
 
     painter.save()

@@ -6,14 +6,15 @@ import sys
 import time
 from dataclasses import replace
 from datetime import datetime, timezone
+from datetime import timedelta
 from pathlib import Path
 from typing import Dict, Optional
 
-from ..aircraft import project_aircraft_snapshots
+from ..aircraft_constants import AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS
 from ..astro import load_ephemeris
 from ..clouddisc.providers.select import GOES_SATELLITES
 from ..paths import CACHE_PATH
-from ..satellites import project_satellite_records
+from ..satellite_constants import SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS
 from ..search.jpl import project_jpl_target_altaz_from_state_vector
 
 logger = logging.getLogger(__name__)
@@ -66,6 +67,26 @@ def _initial_data_load_active(obj: object) -> bool:
     )
 
 
+def _sync_overlay_projection_timer_if_available(obj: object) -> None:
+    sync = getattr(obj, "_sync_overlay_projection_timer", None)
+    if callable(sync):
+        sync()
+
+
+def _get_projection_next_refresh_utc(
+    state: object,
+    new_attr: str,
+    old_attr: str,
+) -> datetime | None:
+    next_refresh_utc = getattr(state, new_attr, None)
+    if isinstance(next_refresh_utc, datetime):
+        return next_refresh_utc
+    next_refresh_utc = getattr(state, old_attr, None)
+    if isinstance(next_refresh_utc, datetime):
+        return next_refresh_utc
+    return None
+
+
 class SkyWindowUpdatesMixin:
     def _viewport_interaction_active(self) -> bool:
         return bool(getattr(self.state, "viewport_interaction_mode", False))
@@ -86,6 +107,42 @@ class SkyWindowUpdatesMixin:
             if callable(has_in_flight_update) and has_in_flight_update():
                 return True
         return False
+
+    def _satellite_projection_next_refresh_delay_ms(self) -> int | None:
+        next_refresh_utc = _get_projection_next_refresh_utc(
+            self.state,
+            "satellite_projection_next_refresh_utc",
+            "satellite_overlay_next_refresh_utc",
+        )
+        if next_refresh_utc is None:
+            return None
+        return max(
+            0,
+            int(
+                round(
+                    (next_refresh_utc - datetime.now(timezone.utc)).total_seconds()
+                    * 1000.0
+                )
+            ),
+        )
+
+    def _aircraft_projection_next_refresh_delay_ms(self) -> int | None:
+        next_refresh_utc = _get_projection_next_refresh_utc(
+            self.state,
+            "aircraft_projection_next_refresh_utc",
+            "aircraft_overlay_next_refresh_utc",
+        )
+        if next_refresh_utc is None:
+            return None
+        return max(
+            0,
+            int(
+                round(
+                    (next_refresh_utc - datetime.now(timezone.utc)).total_seconds()
+                    * 1000.0
+                )
+            ),
+        )
 
     def _water_overlay_action_enabled(self) -> bool:
         if not bool(getattr(self, "_water_overlay_gui_allowed", True)):
@@ -112,10 +169,9 @@ class SkyWindowUpdatesMixin:
             self.request_client_update()
         if self._viewport_interaction_active():
             return
-        if self._background_updates_busy():
-            return
+        background_updates_busy = self._background_updates_busy()
 
-        if self.state.sky_update_pending:
+        if not background_updates_busy and self.state.sky_update_pending:
             started = self.start_background_sky_data_update(
                 star_vmag_limit=self.state.pending_star_vmag_limit,
                 reason="scheduler",
@@ -127,7 +183,7 @@ class SkyWindowUpdatesMixin:
                 self._sky_refresh_due = False
                 return
 
-        if self._sky_refresh_due:
+        if not background_updates_busy and self._sky_refresh_due:
             started = self.start_background_sky_data_update(
                 reason="scheduler",
                 allow_during_viewport_interaction=False,
@@ -136,25 +192,18 @@ class SkyWindowUpdatesMixin:
                 self._sky_refresh_due = False
                 return
 
-        if self._persistent_search_refresh_due:
+        if not background_updates_busy and self._persistent_search_refresh_due:
             started = self._start_persistent_search_refresh(reason="scheduler")
             if started:
                 self._persistent_search_refresh_due = False
                 return
 
-        if self._aircraft_refresh_due and self._aircraft_layer_enabled():
-            started = self.start_background_aircraft_update(reason="scheduler")
-            if started:
-                self._aircraft_refresh_due = False
-                return
-
-        if self._satellite_refresh_due and self._satellite_layer_enabled():
-            started = self.start_background_satellite_update(reason="scheduler")
-            if started:
-                self._satellite_refresh_due = False
-                return
-
-        if self._cloud_refresh_due and self._clouddisc and self.cloud_disc_alpha > 0.0:
+        if (
+            not background_updates_busy
+            and self._cloud_refresh_due
+            and self._clouddisc
+            and self.cloud_disc_alpha > 0.0
+        ):
             if self._cloud_controller is None:
                 self._cloud_refresh_due = False
                 return
@@ -164,6 +213,27 @@ class SkyWindowUpdatesMixin:
             if self._cloud_controller.has_in_flight_update():
                 self._cloud_refresh_due = False
                 return
+
+        if not background_updates_busy and self._satellite_refresh_due and self._satellite_layer_enabled():
+            started = self.start_background_satellite_update(reason="scheduler")
+            if started:
+                self._satellite_refresh_due = False
+                return
+
+        if not background_updates_busy and self._aircraft_refresh_due and self._aircraft_layer_enabled():
+            started = self.start_background_aircraft_update(reason="scheduler")
+            if started:
+                self._aircraft_refresh_due = False
+                return
+
+        # Lowest-priority idle work: keep satellite and aircraft positions fresh.
+        if self._aircraft_layer_enabled() and self._aircraft_projection_next_refresh_delay_ms() == 0:
+            self.reproject_aircraft_overlay()
+            return
+
+        if self._satellite_layer_enabled() and self._satellite_projection_next_refresh_delay_ms() == 0:
+            self.reproject_satellite_overlay()
+            return
 
     def _on_sky_refresh_timer(self) -> None:
         if self._is_shutting_down:
@@ -644,38 +714,38 @@ class SkyWindowUpdatesMixin:
             reason=reason,
         )
 
-    def refresh_projected_satellite_overlay(self) -> None:
+    def reproject_satellite_overlay(self) -> None:
         if float(self.satellite_opacity) <= 0.0:
             return
         if self._viewport_interaction_active():
             return
         validity_remaining_ms = self._satellite_validity_remaining_ms()
         if validity_remaining_ms is not None and validity_remaining_ms <= 0:
-            self.state.satellite_overlay_points = None
-            self.satellite_state.overlay_points = None
+            self.state.satellite_projection_next_refresh_utc = None
+            if hasattr(self.state, "satellite_overlay_next_refresh_utc"):
+                self.state.satellite_overlay_next_refresh_utc = None
+            _sync_overlay_projection_timer_if_available(self)
             self.request_client_update()
             self.start_background_satellite_update(reason="time-window-shift")
             return
         records_by_group = self.satellite_state.records_by_group or {}
         if not records_by_group:
-            records_by_group = self._load_cached_satellite_records(
-                tuple(self._enabled_satellite_groups)
-            )
-        if not records_by_group:
-            self.state.satellite_overlay_points = None
+            self.state.satellite_projection_next_refresh_utc = None
+            if hasattr(self.state, "satellite_overlay_next_refresh_utc"):
+                self.state.satellite_overlay_next_refresh_utc = None
+            _sync_overlay_projection_timer_if_available(self)
             self.request_client_update()
             return
-        lat, lon = self.viewer_data.location
-        overlay_points = project_satellite_records(
-            records_by_group,
-            observer_lat=lat,
-            observer_lon=lon,
-            observer_height_m=self.viewer_data.observer_height_m,
-            time_obj=self._current_time_obj(),
+        self.state.satellite_projection_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
+            seconds=SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS
         )
-        self.satellite_state.overlay_points = overlay_points
-        self.state.satellite_overlay_points = overlay_points
+        if hasattr(self.state, "satellite_overlay_next_refresh_utc"):
+            self.state.satellite_overlay_next_refresh_utc = self.state.satellite_projection_next_refresh_utc
+        _sync_overlay_projection_timer_if_available(self)
         self.request_client_update()
+
+    def refresh_projected_satellite_overlay(self) -> None:
+        self.reproject_satellite_overlay()
 
     def refresh_projected_persistent_search_target(self) -> None:
         target = getattr(self.state, "persistent_search_target", None)
@@ -750,16 +820,23 @@ class SkyWindowUpdatesMixin:
         banner = str(payload.get("banner", "")).strip()
         self.satellite_state.set_result(
             payload.get("records_by_group", {}),
-            overlay_points=payload.get("overlay_points"),
+            overlay_points=None,
             element_epoch_utc=element_epoch,
             refreshed_at_utc=payload.get("refreshed_at_utc"),
         )
         if banner:
             self.satellite_state.set_banner(banner)
+        requested_update = False
         if float(self.satellite_opacity) > 0.0:
-            self.state.satellite_overlay_points = payload.get("overlay_points")
             self._schedule_next_satellite_refresh()
-        self.request_client_update()
+            reproject = getattr(self, "reproject_satellite_overlay", None)
+            if callable(reproject):
+                reproject()
+            else:
+                self.request_client_update()
+                requested_update = True
+        if not requested_update:
+            self.request_client_update()
 
     def _on_satellite_failed(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
@@ -894,27 +971,29 @@ class SkyWindowUpdatesMixin:
             reason=reason,
         )
 
-    def refresh_projected_aircraft_overlay(self) -> None:
+    def reproject_aircraft_overlay(self) -> None:
         if float(self.aircraft_opacity) <= 0.0:
             return
         if self._viewport_interaction_active():
             return
         snapshots = self.aircraft_state.snapshots
         if not snapshots:
-            self.state.aircraft_overlay_points = None
+            self.state.aircraft_projection_next_refresh_utc = None
+            if hasattr(self.state, "aircraft_overlay_next_refresh_utc"):
+                self.state.aircraft_overlay_next_refresh_utc = None
+            _sync_overlay_projection_timer_if_available(self)
             self.request_client_update()
             return
-        lat, lon = self.viewer_data.location
-        overlay_points = project_aircraft_snapshots(
-            snapshots,
-            observer_lat=lat,
-            observer_lon=lon,
-            observer_height_m=self.viewer_data.observer_height_m,
-            time_obj=self._current_time_obj(),
+        self.state.aircraft_projection_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
+            seconds=AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS
         )
-        self.aircraft_state.overlay_points = overlay_points
-        self.state.aircraft_overlay_points = overlay_points
+        if hasattr(self.state, "aircraft_overlay_next_refresh_utc"):
+            self.state.aircraft_overlay_next_refresh_utc = self.state.aircraft_projection_next_refresh_utc
+        _sync_overlay_projection_timer_if_available(self)
         self.request_client_update()
+
+    def refresh_projected_aircraft_overlay(self) -> None:
+        self.reproject_aircraft_overlay()
 
     def _on_aircraft_started(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
@@ -929,16 +1008,23 @@ class SkyWindowUpdatesMixin:
         banner = str(payload.get("banner", "")).strip()
         self.aircraft_state.set_result(
             payload.get("snapshots", []),
-            overlay_points=payload.get("overlay_points"),
+            overlay_points=None,
             bbox=payload.get("bbox"),
             refreshed_at_utc=refreshed_at,
         )
         if banner:
             self.aircraft_state.set_banner(banner)
+        requested_update = False
         if float(self.aircraft_opacity) > 0.0:
-            self.state.aircraft_overlay_points = payload.get("overlay_points")
             self._schedule_next_aircraft_refresh()
-        self.request_client_update()
+            reproject = getattr(self, "reproject_aircraft_overlay", None)
+            if callable(reproject):
+                reproject()
+            else:
+                self.request_client_update()
+                requested_update = True
+        if not requested_update:
+            self.request_client_update()
         self._maybe_save_aircraft_debug_snapshot(payload)
 
     def _on_aircraft_failed(self, payload: Dict) -> None:

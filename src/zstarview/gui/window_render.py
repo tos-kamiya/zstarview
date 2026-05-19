@@ -35,8 +35,14 @@ def _resolve_hover_targets(
     render_viewer: ViewerData,
     mouse_pos: QPoint | None,
     geometry: ScreenGeometry,
-    satellite_overlay_points: list[object] | None,
-    show_dso: bool,
+    satellite_overlay_source: object | None = None,
+    satellite_overlay_points: object | None = None,
+    satellite_element_epoch_utc: object | None = None,
+    observer_lat: float | None = None,
+    observer_lon: float | None = None,
+    observer_height_m: float | None = None,
+    time_obj: object | None = None,
+    show_dso: bool = False,
 ) -> tuple[
     tuple[CelestialObject, QPointF] | None,
     tuple[CelestialObject, QPointF] | None,
@@ -47,6 +53,8 @@ def _resolve_hover_targets(
     highlighted_satellite = None
     if mouse_pos is None:
         return highlighted_object, highlighted_dso, highlighted_satellite
+    if satellite_overlay_source is None:
+        satellite_overlay_source = satellite_overlay_points
 
     highlighted_object = render_stars.find_highlighted_object(
         celestial_data,
@@ -62,10 +70,15 @@ def _resolve_hover_targets(
             geometry,
         )
     highlighted_satellite = render_satellites.find_highlighted_satellite(
-        satellite_overlay_points,
+        satellite_overlay_source,
         mouse_pos,
         geometry,
         render_viewer.view_center,
+        observer_lat=observer_lat,
+        observer_lon=observer_lon,
+        observer_height_m=observer_height_m,
+        time_obj=time_obj,
+        element_epoch_utc=satellite_element_epoch_utc,
         edge_fov_deg=float(render_viewer.edge_fov_deg),
         content_fov_deg=render_viewer.content_fov_deg,
     )
@@ -141,16 +154,27 @@ class SkyWindowRenderMixin:
             self._render_cache_stamp(self.state.water_overlay_dots),
         ]
         if include_fast_overlays:
+            overlay_time_bucket = None
+            try:
+                current_time_obj = self._current_time_obj()
+                overlay_time_bucket = int(float(current_time_obj.unix) // 2.0)
+            except Exception:
+                overlay_time_bucket = None
+            satellite_state = getattr(self, "satellite_state", None)
+            aircraft_state = getattr(self, "aircraft_state", None)
+            satellite_overlay_source = getattr(satellite_state, "records_by_group", None)
+            if satellite_overlay_source is None:
+                satellite_overlay_source = self.state.satellite_overlay_points
+            aircraft_overlay_source = getattr(aircraft_state, "snapshots", None)
+            if aircraft_overlay_source is None:
+                aircraft_overlay_source = self.state.aircraft_overlay_points
             key_parts.extend(
                 [
                     round(float(self.satellite_opacity), 3),
                     round(float(self.aircraft_opacity), 3),
-                    None
-                    if self.state.satellite_overlay_points is None
-                    else tuple(self.state.satellite_overlay_points),
-                    None
-                    if self.state.aircraft_overlay_points is None
-                    else tuple(self.state.aircraft_overlay_points),
+                    overlay_time_bucket,
+                    self._render_cache_stamp(satellite_overlay_source),
+                    self._render_cache_stamp(aircraft_overlay_source),
                 ]
             )
         return tuple(key_parts)
@@ -207,6 +231,12 @@ class SkyWindowRenderMixin:
                 getattr(search_target, "az_deg", None),
                 bool(getattr(search_target, "persistent_keep_marker", False)),
             )
+        overlay_time_bucket = None
+        try:
+            current_time_obj = self._current_time_obj()
+            overlay_time_bucket = int(float(current_time_obj.unix) // 2.0)
+        except Exception:
+            overlay_time_bucket = None
         return (
             "present-frame",
             base_frame_key,
@@ -214,8 +244,13 @@ class SkyWindowRenderMixin:
             str(getattr(self, "sky_disc_altaz_rings_hover", "altaz")),
             round(float(self.satellite_opacity), 3),
             round(float(self.aircraft_opacity), 3),
-            self._render_cache_stamp(self.state.satellite_overlay_points),
-            self._render_cache_stamp(self.state.aircraft_overlay_points),
+            overlay_time_bucket,
+            self._render_cache_stamp(
+                getattr(getattr(self, "satellite_state", None), "records_by_group", None)
+            ),
+            self._render_cache_stamp(
+                getattr(getattr(self, "aircraft_state", None), "snapshots", None)
+            ),
             mouse_key,
             bool(hud.overlay_info_bottom_left),
             bool(hud.viewport_interaction_mode),
@@ -422,6 +457,11 @@ class SkyWindowRenderMixin:
     ) -> RenderSceneData:
         state = self.state
         cloud_state = self.cloud_state
+        current_time_obj_fn = getattr(self, "_current_time_obj", None)
+        if callable(current_time_obj_fn):
+            time_obj = current_time_obj_fn()
+        else:
+            time_obj = getattr(celestial_data, "time", None)
         return RenderSceneData(
             viewer=render_viewer,
             celestial_data=celestial_data,
@@ -447,8 +487,16 @@ class SkyWindowRenderMixin:
             ),
             urban_outlines=getattr(state, "urban_outlines", None),
             water_overlay_dots=getattr(state, "water_overlay_dots", None),
+            satellite_element_epoch_utc=getattr(
+                getattr(self, "satellite_state", None), "element_epoch_utc", None
+            ),
+            satellite_records_by_group=getattr(
+                getattr(self, "satellite_state", None), "records_by_group", None
+            ),
             satellite_overlay_points=getattr(state, "satellite_overlay_points", None),
+            aircraft_snapshots=getattr(getattr(self, "aircraft_state", None), "snapshots", None),
             aircraft_overlay_points=getattr(state, "aircraft_overlay_points", None),
+            time_obj=time_obj,
             night_light_glow_profile=getattr(state, "night_light_glow_profile", None),
         )
 
@@ -731,7 +779,17 @@ class SkyWindowRenderMixin:
                     render_viewer=render_viewer,
                     mouse_pos=mouse_pos,
                     geometry=geometry,
-                    satellite_overlay_points=self.state.satellite_overlay_points,
+                    satellite_overlay_source=getattr(
+                        getattr(self, "satellite_state", None), "records_by_group", None
+                    )
+                    or self.state.satellite_overlay_points,
+                    satellite_element_epoch_utc=getattr(
+                        getattr(self, "satellite_state", None), "element_epoch_utc", None
+                    ),
+                    observer_lat=float(render_viewer.location[0]),
+                    observer_lon=float(render_viewer.location[1]),
+                    observer_height_m=float(render_viewer.observer_height_m),
+                    time_obj=scene.time_obj,
                     show_dso=bool(self.show_dso),
                 )
             )

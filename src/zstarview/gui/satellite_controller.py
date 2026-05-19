@@ -16,15 +16,13 @@ from ..overlay_time import TimeMode, classify_target_time
 from ..satellites import (
     CachedSatelliteElementSet,
     resolve_satellite_elements_for_time,
-    project_satellite_records,
 )
-from ..satellites.types import SatelliteOmmRecord, SatelliteOverlayPoint
+from ..satellites.types import SatelliteOmmRecord
 from .worker_pool import submit_gui_work, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
 
 SatelliteFetcher = Callable[..., CachedSatelliteElementSet]
-SatelliteProjector = Callable[..., list[SatelliteOverlayPoint]]
 EXPECTED_FETCH_FAILURE_MESSAGES = {
     "Satellites: time-shifted view is not supported",
 }
@@ -67,12 +65,12 @@ class SatelliteController(QObject):
         self,
         *,
         fetcher: Callable[..., CachedSatelliteElementSet] | None = None,
-        projector: SatelliteProjector | None = None,
+        projector: object | None = None,
         parent: QObject | None = None,
     ) -> None:
         super().__init__(parent)
         self._fetcher = fetcher or resolve_satellite_elements_for_time
-        self._projector = projector or project_satellite_records
+        self._projector = projector
         self._running = False
         self._stopping = False
         self._pending_request: Optional[dict[str, object]] = None
@@ -223,13 +221,6 @@ class SatelliteController(QObject):
                         self.satellite_failed.emit({"banner": banner})
                     return
                 raise RuntimeError("Satellites: no enabled groups")
-            overlay_points = self._projector(
-                records_by_group,
-                observer_lat=observer_lat,
-                observer_lon=observer_lon,
-                observer_height_m=observer_height_m,
-                time_obj=time_obj,
-            )
             with self._lock:
                 should_emit = not self._stopping and request_id == self._latest_request_id
             if should_emit:
@@ -239,7 +230,6 @@ class SatelliteController(QObject):
                 self.satellite_ready.emit(
                     {
                         "records_by_group": records_by_group,
-                        "overlay_points": overlay_points,
                         "element_epoch_utc": element_epoch_utc or target_time_utc,
                         "refreshed_at_utc": datetime.now(timezone.utc),
                         "banner": banner,

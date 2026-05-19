@@ -70,10 +70,8 @@ from ..satellite_constants import (
     SATELLITE_FAILURE_RETRY_SECONDS,
     SATELLITE_HORIZONS_CACHE_KEY,
     SATELLITE_ISS_CACHE_KEY,
-    SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS,
 )
 from ..aircraft_constants import AIRCRAFT_REFRESH_INTERVAL_SECONDS
-from ..aircraft_constants import AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS
 from ..paths import (
     APP_ICON_FILE,
     CACHE_PATH,
@@ -1108,13 +1106,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
         self._aircraft_update_timer.timeout.connect(self._on_aircraft_refresh_timer)
         self._overlay_projection_timer = QTimer(self)
-        self._overlay_projection_timer.setInterval(
-            min(
-                SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS,
-                AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS,
-            )
-            * 1000
-        )
+        self._overlay_projection_timer.setSingleShot(True)
         self._overlay_projection_timer.timeout.connect(
             self._on_overlay_projection_timer
         )
@@ -2664,6 +2656,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def _stop_satellite_timers(self) -> None:
         if self._satellite_update_timer.isActive():
             self._satellite_update_timer.stop()
+        self.state.satellite_projection_next_refresh_utc = None
         self._sync_overlay_projection_timer()
 
     def _target_time_utc(self) -> datetime:
@@ -2710,31 +2703,58 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._on_scheduler_tick()
 
     def _on_overlay_projection_timer(self) -> None:
-        if self._viewport_interaction_active() or self._background_updates_busy():
+        if self._is_shutting_down:
             return
-        refresh_persistent_search = getattr(
-            self,
-            "refresh_projected_persistent_search_target",
-            None,
-        )
-        if callable(refresh_persistent_search):
-            refresh_persistent_search()
-        if self._satellite_layer_enabled():
-            self.refresh_projected_satellite_overlay()
-        if self._aircraft_layer_enabled():
-            self.refresh_projected_aircraft_overlay()
+        self._on_scheduler_tick()
 
     def _sync_overlay_projection_timer(self) -> None:
         if self._is_shutting_down:
             if self._overlay_projection_timer.isActive():
                 self._overlay_projection_timer.stop()
             return
-        any_enabled = self._satellite_layer_enabled() or self._aircraft_layer_enabled()
-        if any_enabled:
-            if not self._overlay_projection_timer.isActive():
-                self._overlay_projection_timer.start()
-        elif self._overlay_projection_timer.isActive():
+        delay_candidates: list[int] = []
+        satellite_next_refresh = getattr(
+            self.state, "satellite_projection_next_refresh_utc", None
+        )
+        if self._satellite_layer_enabled() and isinstance(satellite_next_refresh, datetime):
+            delay_candidates.append(
+                max(
+                    0,
+                    int(
+                        round(
+                            (
+                                satellite_next_refresh
+                                - datetime.now(timezone.utc)
+                            ).total_seconds()
+                            * 1000.0
+                        )
+                    ),
+                )
+            )
+        aircraft_next_refresh = getattr(
+            self.state, "aircraft_projection_next_refresh_utc", None
+        )
+        if self._aircraft_layer_enabled() and isinstance(aircraft_next_refresh, datetime):
+            delay_candidates.append(
+                max(
+                    0,
+                    int(
+                        round(
+                            (
+                                aircraft_next_refresh
+                                - datetime.now(timezone.utc)
+                            ).total_seconds()
+                            * 1000.0
+                        )
+                    ),
+                )
+            )
+        if not delay_candidates:
             self._overlay_projection_timer.stop()
+            return
+        if self._overlay_projection_timer.isActive():
+            self._overlay_projection_timer.stop()
+        self._overlay_projection_timer.start(min(delay_candidates))
 
     def _enable_satellite_layer(self, *, reason: str) -> None:
         if not self._satellite_layer_enabled():
@@ -2744,7 +2764,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.satellite_state.records_by_group
             and self.satellite_state.element_epoch_utc is not None
         ):
-            self.refresh_projected_satellite_overlay()
+            self.reproject_satellite_overlay()
             remaining_ms = self._satellite_validity_remaining_ms()
             if remaining_ms is None:
                 self.start_background_satellite_update(reason=reason)
@@ -2762,6 +2782,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def _stop_aircraft_timers(self) -> None:
         if self._aircraft_update_timer.isActive():
             self._aircraft_update_timer.stop()
+        self.state.aircraft_projection_next_refresh_utc = None
         self._sync_overlay_projection_timer()
 
     def _aircraft_cache_age_seconds(self) -> float | None:
@@ -2794,7 +2815,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.aircraft_state.snapshots
             and self.aircraft_state.last_success_utc is not None
         ):
-            self.refresh_projected_aircraft_overlay()
+            self.reproject_aircraft_overlay()
             age_seconds = self._aircraft_cache_age_seconds()
             if age_seconds is None:
                 self.start_background_aircraft_update(reason=reason)

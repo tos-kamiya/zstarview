@@ -2,15 +2,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 import math
+from datetime import datetime
 from typing import Any
 
+import astropy.time
 import numpy as np
 from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt
 from PySide6.QtGui import QFont, QImage, QPainter
 
 from ..aircraft.types import AircraftOverlayPoint
+from ..aircraft.types import AircraftSnapshot
 from ..gui.composite import CloudAmountField, SkyCompositorCache
 from ..night_lights import NightLightGlowProfile
+from ..satellites.types import SatelliteOmmRecord
 from ..satellites.types import SatelliteOverlayPoint
 from ..water_overlay import WaterOverlayPoint
 from ..types import CelestialData, ScreenGeometry, ViewerData
@@ -88,8 +92,12 @@ class RenderSceneData:
     terrain_horizon_secondary_profile_altaz_layers: list[list[tuple[float, float]]] | None
     terrain_horizon_secondary_profile_distances_m_layers: list[list[float]] | None
     urban_outlines: list[UrbanOutlinePolyline] | None
-    satellite_overlay_points: list[SatelliteOverlayPoint] | None
-    aircraft_overlay_points: list[AircraftOverlayPoint] | None
+    satellite_element_epoch_utc: datetime | None = None
+    satellite_records_by_group: dict[str, list[SatelliteOmmRecord]] | None = None
+    satellite_overlay_points: list[SatelliteOverlayPoint] | None = None
+    aircraft_snapshots: list[AircraftSnapshot] | None = None
+    aircraft_overlay_points: list[AircraftOverlayPoint] | None = None
+    time_obj: astropy.time.Time | None = None
     night_light_glow_profile: NightLightGlowProfile | None = None
     water_overlay_dots: list[WaterOverlayPoint] | None = None
 
@@ -736,8 +744,10 @@ def _draw_aircraft_layer(
     render_aircraft.draw_aircraft_overlay(
         painter,
         geometry,
-        scene.aircraft_overlay_points,
+        scene.aircraft_snapshots,
         scene.viewer.view_center,
+        time_obj=scene.time_obj,
+        aircraft_points=scene.aircraft_overlay_points,
         opacity=style.aircraft_opacity,
         line_width_scale=line_width_scale,
         label_candidates=label_candidates,
@@ -921,8 +931,11 @@ def _draw_satellite_layer(
     render_satellites.draw_satellite_overlay(
         painter,
         geometry,
-        scene.satellite_overlay_points,
+        scene.satellite_records_by_group,
         scene.viewer.view_center,
+        element_epoch_utc=scene.satellite_element_epoch_utc,
+        time_obj=scene.time_obj,
+        satellite_points=scene.satellite_overlay_points,
         opacity=style.satellite_opacity,
         highlighted_satellite=(
             highlighted_satellite[0] if highlighted_satellite is not None else None

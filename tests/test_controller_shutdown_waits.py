@@ -111,6 +111,26 @@ def test_aircraft_controller_timeout_is_logged_without_traceback(monkeypatch, ca
     assert "Traceback (most recent call last)" not in caplog.text
 
 
+def test_aircraft_controller_does_not_project_in_fetch_stage() -> None:
+    projector_calls: list[object] = []
+
+    controller = AircraftController(
+        fetcher=lambda bbox: [],
+        projector=lambda *args, **kwargs: projector_calls.append((args, kwargs)),
+    )
+
+    controller._run_update(
+        observer_lat=35.0,
+        observer_lon=139.0,
+        observer_height_m=1.7,
+        time_obj=astropy.time.Time(datetime(2026, 4, 25, 0, 0, tzinfo=timezone.utc)),
+        reason="manual",
+        request_id=0,
+    )
+
+    assert projector_calls == []
+
+
 def test_jpl_controller_shutdown_waits(monkeypatch) -> None:
     controller = JplSmallBodyController()
     target = SimpleNamespace(label="demo", command="COMMAND", object_key="")

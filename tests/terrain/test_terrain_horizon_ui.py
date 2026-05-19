@@ -873,7 +873,7 @@ def test_on_aircraft_ready_saves_debug_snapshot_when_enabled(
         },
     )
 
-    assert dummy.state.aircraft_overlay_points == ["p1"]
+    assert dummy.state.aircraft_overlay_points is None
     assert calls == ["schedule", "request", "render:True"]
     assert len(dummy_image.saved_paths) == 1
     assert (
@@ -919,7 +919,7 @@ def test_on_aircraft_ready_skips_debug_snapshot_when_disabled(monkeypatch) -> No
         },
     )
 
-    assert dummy.state.aircraft_overlay_points == ["p1"]
+    assert dummy.state.aircraft_overlay_points is None
     assert calls == ["schedule", "request"]
 
 
@@ -958,7 +958,7 @@ def test_on_aircraft_ready_skips_debug_snapshot_for_cache_fresh(monkeypatch, tmp
         },
     )
 
-    assert dummy.state.aircraft_overlay_points == ["p1"]
+    assert dummy.state.aircraft_overlay_points is None
     assert calls == ["schedule", "request"]
     assert list(tmp_path.iterdir()) == []
 

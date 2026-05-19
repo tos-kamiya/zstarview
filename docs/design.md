@@ -704,19 +704,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 #### 4.4.10 更新スケジューラ
 
-- GUI の更新投入は `SkyWindow` 側の scheduler が管理し、worker busy 中は新しい重いタスクを積み上げない。
-- scheduler は少なくとも次の優先順位を持つ。
-  - fast-mode の再投影要求
-  - ユーザー操作由来の normal-mode 再描画要求
-  - メニュー操作由来の明示更新要求
-  - 定期 tick 由来の refresh / 再取得要求
-- fast-mode は alt/az 変更後の軽い再投影だけを担当し、ダウンロード済みデータの再計算は行わない。
-- fast-mode 要求は latest-wins でよく、消化される前に次の視点変更が来たら古い要求を差し替えてよい。
-- 定期更新対象の cloud / satellite / aircraft は、各 controller の finish 時刻を基準に `next_refresh_at = finished_at + interval` で次回期限を持つ。
-- tick は worker idle 時だけ 0.7 秒間隔で進め、期限到来や表示条件変化があるときだけ normal-mode の更新を 1 件起動してよい。
-- worker busy 中に tick が複数回発生しても、期限管理は絶対時刻で行い、未消化 tick を個別に積まずに次回 idle で 1 件だけ処理してよい。
-- ユーザーが検索 API を使って対象を選んだ場合は、UI スレッドが視線を更新し、マーカーの寿命だけを scheduler が管理してよい。
-- スプラッシュ中は cloud / satellite / aircraft の定期投入を開始せず、初期ロードは sky -> terrain -> water -> urban の依存順で直列に進めてよい。
+- GUI の更新投入や定期更新の詳細は `7. スレッドモデル` に集約する。
+- ここでは `SkyWindow` 側が更新要求をまとめ、worker busy 中に重いタスクを積み上げないことだけを押さえる。
 
 ### 4.5 雲データ処理
 
@@ -1228,8 +1217,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 3. 入力を、`--place` による online 検索地点または通常の都市・タワー・山・座標として解決する。
 4. 星カタログや補助データを読み込む。
 5. `SkyWindow` を生成し、初回描画を行う。
-6. スプラッシュ中は sky -> terrain -> water -> urban の初期データだけを直列で準備し、cloud / satellite / aircraft の定期更新は開始しない。
-7. ウィンドウが interactive になってから、cloud / satellite / aircraft の定期更新を idle ベースで開始する。
+6. スプラッシュ中は sky -> terrain -> water -> urban の初期データだけを直列で準備する。
+
+起動後のバックグラウンド更新の開始条件と scheduler の詳細は `7. スレッドモデル` にまとめる。
 
 ### 6.2 星空更新フロー
 
@@ -1241,14 +1231,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 この節は sky disc と恒星・太陽・月・惑星・補助線の共通更新フローを扱う。  
 雲、人工衛星、地形地平線、都市アウトライン、航空機は、それぞれ `6.3` から `6.8` の個別フローで扱う。
 
-視線変更とリサイズの連続入力時は、fast-mode と normal-mode を分けて扱う。
-
 1. `render_view_center` は即時更新する。
-2. fast-mode はダウンロード済みデータの再計算を行わず、最新 1 件だけ保持して再投影する。
-3. fast-mode 要求は latest-wins としてよく、未消化のまま次の視点変更が来たら古い要求を上書きしてよい。
-4. normal-mode は worker idle 時にのみ起動し、`render_view_center`、表示レイヤー、マーカー、データ世代が変化しているときだけ本描画へ進めてよい。
-5. 矢印キーの `release` は fast-mode を終える契機とし、normal-mode は idle 後に 1 件だけ起動してよい。
-6. fast-mode と normal-mode の切り替えは固定時間ではなく、最後の物理キー操作と worker 完了の 2 段階で扱ってよい。
+2. 視線変更とリサイズの連続入力時の fast-mode / normal-mode の詳細は `7. スレッドモデル` にまとめる。
 
 ### 6.3 人工衛星更新フロー
 
@@ -1261,16 +1245,16 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 7. fallback 取得に成功した場合は、その records、`element_epoch_utc`、取得試行時刻、成功状態、source=`celestrak` を `satellites/cache.py` で永続保存してよい。
 8. primary / fallback のどちらも失敗した場合は、失敗試行時刻、失敗理由、`failure_backoff_until_utc` を cache file に保存してよい。
 9. stale cache が残っていて `failure_backoff_until_utc` が未来の場合は、再起動後であっても network fetch を行わず `cache-backoff` として再利用してよい。
-10. `satellites/project.py` は `ISS` の正規化済み軌道要素を Skyfield `EarthSatellite` へ変換し、観測地点と現在時刻から `alt/az` を計算する。
-11. `satellites/project.py` は視野内にある人工衛星を `SatelliteOverlayPoint` へ落とし込み、地平線下も保持してよい。
+10. `satellites/project.py` は `ISS` の正規化済み軌道要素を保持し、描画時に観測地点と現在時刻から `alt/az` を計算してよい。
+11. `satellites/project.py` は視野内にある人工衛星を描画直前の `SatelliteOverlayPoint` 群へ落とし込み、地平線下も保持してよい。
 12. `satellites/project.py` は `ISS` に `marker_scale` とラベルを与えてよい。
 13. `window.py` は API 取得とは別に人工衛星位置再計算を行い、既定では `ISS` を有効対象として扱ってよい。
-14. 人工衛星の view-center 追従は fast-mode の再投影要求として扱い、ダウンロード済み records 自体は再計算しない。
+14. 人工衛星の view-center 追従は fast-mode に似た軽量再投影要求として扱い、ダウンロード済み records 自体は再取得しない。
 15. 人工衛星の定期再取得は、前回の取得完了時刻を起点に `interval` を数え直してよい。
-16. 人工衛星と航空機の位置再計算は、0.7 秒 tick に直接ぶら下げるのではなく、worker idle 時に normal-mode の 1 件として起動してよい。
+16. 人工衛星と航空機の位置更新は、0.7 秒 tick に直接ぶら下げるのではなく、worker idle 時に normal-mode の 1 件として起動してよい。
 17. records が fresh なら外部再取得を行わず marker 再計算だけで即時復帰してよい。
 18. records が stale でも失敗 backoff 中なら、cache fallback により marker 再計算だけで復帰してよい。
-19. `SkyWindow` は `satellite_ready` または位置再計算完了を受けたら `SkyWindowState` を更新し、再描画する。
+19. `SkyWindow` は `satellite_ready` または描画時投影完了を受けたら `SkyWindowState` を更新し、再描画する。
 20. 通常描画では人工衛星を `planets` の後、`aircraft` の前に描く。
 21. 初期実装では人工衛星と月・惑星の接近時に特別な隠蔽処理は行わなくてよい。
 22. `対象検索...` と CLI 検索の `satellite` 解決は `ISS` だけを対象にしてよく、`JWST` / `Voyager 1` / `Voyager 2` / `Parker` は JPL 検索結果として扱ってよい。継続表示は `command` と追跡状態を保持し、表示時に再投影してよい。
@@ -1365,11 +1349,11 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 8. 正規化時には `lat/lon` 欠損、`on_ground=true`、極端に低速な機体を落としてよい。
 9. OpenSky 取得が成功したときは、正規化済み `AircraftSnapshot` 列、取得時刻、`bbox`、source 名を `aircraft/cache.py` で永続保存してよい。
 10. OpenSky 取得が失敗した場合でも、同じ `bbox` の stale cache が fallback 上限以内なら、それを `aircraft_ready` 相当として返しつつ UI には stale 利用中であることを示してよい。
-11. `aircraft/project.py` は各 `AircraftSnapshot` の `velocity`、`heading`、`vertical_rate`、`last_contact` を使って短時間前進予測し、`2秒前 -> 現在 -> 2秒後` の折れ線端点を含む `AircraftOverlayPoint` を作る。
-12. `aircraft/project.py` は age に応じた alpha scale も計算し、`90秒` を超えた機体が次回取得まで徐々に薄くなるようにする。
-13. `window.py` は API 取得とは別に保持済み snapshot の再投影を持つが、0.7 秒 tick と worker idle を使って必要時だけ再投影してよい。
+11. `aircraft/project.py` は各 `AircraftSnapshot` の `velocity`、`heading`、`vertical_rate`、`last_contact` を保持し、描画時に短時間前進予測へ使ってよい。
+12. `aircraft/project.py` は描画時に age に応じた alpha scale も計算し、`90秒` を超えた機体が次回取得まで徐々に薄くなるようにしてよい。
+13. `window.py` は API 取得とは別に保持済み snapshot の描画時投影を持つが、0.7 秒 tick と worker idle を使って必要時だけ再投入してよい。
 14. `window.py` は fetch timer を single-shot で扱い、レイヤー再表示時には `AircraftState.last_success_utc` から cache age を計算して次回 API 呼び出し時刻を再調整してよい。
-15. 保持済み snapshot が新しければ、GUI で航空機レイヤーを再表示しても API を再問い合わせせず、再投影だけで即時復帰してよい。
+15. 保持済み snapshot が新しければ、GUI で航空機レイヤーを再表示しても API を再問い合わせせず、描画時投影だけで即時復帰してよい。
 16. 保持済み snapshot が更新間隔を超えて古いときだけ、レイヤー再表示時に即時再取得してよい。
 17. 描画時は観測地点から `50km` を超える機体を落とし、`10km` 以内かつ `90秒` 以内の機体だけに `callsign` を付けてよい。
 18. 新しい取得または fresh/stale cache 復元が成功したときだけ `AircraftState.snapshots` と `AircraftState.overlay_points` をまとめて置き換える。
@@ -1385,22 +1369,43 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - Qt イベントループ
   - 描画
   - メニュー、入力、状態反映
-- バックグラウンドワーカー
-  - 星空計算
-  - 雲データ取得と描画
-  - 地形地平線計算
-  - 都市アウトライン取得と outline 生成
-  - 人工衛星データ取得と可視マーカー生成
-  - 航空機データ取得と可視折れ線生成
-  - キャッシュ清掃の補助処理
-  - fast-mode / normal-mode の投入判定
+
+`SkyWindow` の更新スケジューラは、共有 worker pool を前提に次の責務を持つ。
+
+- fast-mode の再投影要求
+  - alt/az 変更後の軽い再投影だけを担当する
+  - ダウンロード済みデータの再計算は行わない
+  - 要求は latest-wins とし、消化前に次の視点変更が来たら古い要求を差し替えてよい
+- normal-mode の再描画要求
+  - ユーザー操作由来の再描画は worker idle 時にのみ進める
+  - 表示レイヤー、マーカー、データ世代が変化しているときだけ本描画へ進めてよい
+- 明示更新要求
+  - メニュー操作などの明示更新要求は、他の重いタスクと同様に 1 件ずつ扱う
+- 定期 refresh / 再取得要求
+  - cloud / satellite / aircraft の定期更新対象は、各 controller の finish 時刻を基準に `next_refresh_at = finished_at + interval` で次回期限を持つ
+  - tick は worker idle 時だけ 0.7 秒間隔で進め、期限到来や表示条件変化があるときだけ normal-mode の更新を 1 件起動してよい
+  - worker busy 中に tick が複数回発生しても、期限管理は絶対時刻で行い、未消化 tick を個別に積まずに次回 idle で 1 件だけ処理してよい
+  - 同時に複数の定期更新が成立した場合は、`aircraft -> satellite -> cloud` の順で 1 件ずつ起動する
+  - cloud / satellite / aircraft のデータ取得は同じ節で並べ、satellite / aircraft の描画時投影とは別の責務として扱う
+  - satellite / aircraft の描画時投影は最下位優先の scheduler タスクとして扱い、各 controller の `refreshed_at_utc + interval` を次回期限にしてよい
+  - satellite / aircraft の再投入は latest-win とし、古い投影要求は新しい要求で差し替えてよい
+
+起動時の投入順は次の通りとする。
+
+- スプラッシュ中は sky -> terrain -> water -> urban の初期データだけを直列で準備する
+- cloud / satellite / aircraft の定期投入は、ウィンドウが interactive になってから idle ベースで開始する
+
+補助的な更新の扱いは次の通りとする。
+
+- 検索 API 由来の対象選択では、UI スレッドが視線を更新し、scheduler はマーカーの寿命だけを管理してよい
+- fast-mode / normal-mode の切り替えは固定時間ではなく、最後の物理キー操作と worker 完了の 2 段階で扱ってよい
+- satellite / aircraft は、データ取得の再更新と描画時投影を分離し、前者は cloud と同じデータ更新ブロック、後者は最下位優先の投影ブロックで扱う
 
 設計上の原則は次の通り。
 
 - UI オブジェクト更新は必ず UI スレッドで行う。
 - バックグラウンド結果はシグナルで UI スレッドへ戻す。
 - 終了開始後は新規要求を止め、破棄済み UI への通知を避ける。
-- fast-mode の再投影要求は UI スレッド起点の latest-wins とし、古い視点の中間状態は捨ててよい。
 - ダウンロードや重い計算の再取得は、worker idle 時の scheduler が 1 件ずつ進める。
 
 ## 8. 状態管理
@@ -1415,8 +1420,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 ### 8.2 latest-request-wins
 
-- 視点変更の fast-mode 再投影は latest-wins としてよく、消化前に次の alt/az 変更が来たら古い要求を上書きしてよい。
-- ダウンロード済みデータの再取得は latest-wins ではなく、`finished_at + interval` に基づく deadline 管理で扱う。
+- 視点変更の fast-mode 再投影と、ダウンロード済みデータの再取得の扱いは `7. スレッドモデル` にまとめる。
 - 雲更新、人工衛星更新、航空機更新のダウンロード結果自体は後続の UI 状態へ積み上がるため、古い視点の中間描画だけを捨てる。
 - 検索由来の marker は UI スレッドで採用し、scheduler が寿命切れだけを消してよい。
 
@@ -1438,11 +1442,11 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 人工衛星の current 用軌道要素 cache の fresh 判定は `element_epoch_utc` 基準とし、現在の実装では `ISS` と Horizons spacecraft の両方に `24時間` を用いてよい。表示上の位置再計算は fast-mode か worker idle 後の normal-mode で行ってよい。
 - 人工衛星描画は realtime view の現在時刻だけを描き、タイムシフト表示では描かない。
 - 初期実装では軌跡線を持たない。
-- `satellite_opacity <= 0.0` または `ISS` 表示が無効の間は、人工衛星 fetch timer と位置再計算 timer を止めてよい。
+- `satellite_opacity <= 0.0` または `ISS` 表示が無効の間は、人工衛星 fetch timer と描画時投影 timer を止めてよい。
 - 描画は視野内に限定し、地平線下も表示してよい。
 - GUI 既定の有効対象は `ISS` としてよい。
-- `対象検索...` の `satellite` 経路も `ISS` 専用としてよく、Horizons spacecraft は検索時には JPL small-body / major-body 経路へ寄せてよい。継続表示時は `command` と追跡状態を保持し、2 秒 tick ではローカル再投影してよい。
-- 航空機と人工衛星の位置再計算は、共通 overlay projection timer を使わず、worker idle 時の tick で必要時だけ再投影してよい。
+- `対象検索...` の `satellite` 経路も `ISS` 専用としてよく、Horizons spacecraft は検索時には JPL small-body / major-body 経路へ寄せてよい。継続表示時は `command` と追跡状態を保持し、2 秒 tick ではローカル描画時投影をしてよい。
+- 航空機と人工衛星の位置更新は、共通 overlay projection timer を使わず、worker idle 時の tick で必要時だけ latest-win で再投入してよい。
 - GUI から再表示したときは `last_success_utc` を見て fresh cache を優先し、不要な `wheretheiss.at` / CelesTrak 再取得を避けてよい。
 - stale cache は通常は再取得優先でよいが、失敗 backoff 中は表示継続に使ってよい。
 - 人工衛星マーカーは常時ラベルを描かず、hover 名表示を前提としてよい。
@@ -1566,7 +1570,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 雲は更新タイミングごとに再取得の機会がある。
 - 地形地平線は同一セッション中の自動再試行を抑制する。
 - 航空機は `5分` タイマーごとに再取得の機会がある。
-- 航空機の予想再投影はセッション内 `2秒` タイマーで繰り返してよい。
+- 航空機の予想描画時投影はセッション内 `2秒` タイマーで繰り返してよい。
 - 航空機は OpenSky 再取得に失敗しても、同じ `bbox` の stale cache が fallback 上限以内ならそれを使って継続してよい。
 
 ## 10. データとキャッシュ
