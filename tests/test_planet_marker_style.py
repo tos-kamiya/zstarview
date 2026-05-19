@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import math
-from datetime import datetime, timezone
 
 import astropy.time
 import numpy as np
@@ -683,8 +682,6 @@ def test_satellite_overlay_keeps_overscan_position_beyond_90_deg(monkeypatch) ->
             time_obj=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
             opacity=1.0,
             label_candidates=[],
-            edge_fov_deg=110.0,
-            content_fov_deg=110.0,
             theme=THEME_STYLES_BY_PRESET["night"],
         )
     finally:
@@ -722,15 +719,18 @@ def test_satellite_overlay_does_not_hide_old_element_epoch(monkeypatch) -> None:
                     }
                 ]
             },
-            view_center=(10.0, 151.0),
-            observer_lat=0.0,
-            observer_lon=0.0,
-            observer_height_m=0.0,
+            viewer_data=ViewerData(
+                location=(0.0, 0.0),
+                timezone_name="UTC",
+                city_name="Test",
+                view_center=(10.0, 151.0),
+                edge_fov_deg=110.0,
+                content_fov_deg=110.0,
+                observer_height_m=0.0,
+            ),
             time_obj=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
-            element_epoch_utc=datetime(2020, 1, 1, tzinfo=timezone.utc),
             opacity=1.0,
             label_candidates=[],
-            content_fov_deg=110.0,
             theme=THEME_STYLES_BY_PRESET["night"],
         )
     finally:
@@ -1071,13 +1071,14 @@ def test_aircraft_label_uses_black_theme_style_in_day_theme(monkeypatch) -> None
             timezone_name="UTC",
             city_name="Tokyo",
             view_center=(0.0, 151.0),
+            edge_fov_deg=110.0,
+            content_fov_deg=180.0,
             observer_height_m=1.7,
         ),
         time_obj=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
         opacity=1.0,
         label_candidates=label_candidates,
         theme=THEME_STYLES_BY_PRESET["day"],
-        content_fov_deg=180.0,
     )
 
     assert len(label_candidates) == 1

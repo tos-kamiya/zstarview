@@ -117,21 +117,14 @@ def _draw_night_light_glow_impl(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
-    viewport_rect: QRectF,
     profile: NightLightGlowProfile | None,
     terrain_profile_altaz: list[tuple[float, float]] | None,
-    terrain_profile_distances_m: list[float] | None = None,
     terrain_secondary_profile_altaz_layers: list[list[tuple[float, float]]] | None = None,
-    terrain_secondary_profile_distances_m_layers: list[list[float]] | None = None,
     view_center: tuple[float, float],
-    theme: ThemeStyle,
     opacity: float = 1.0,
     sun_alt_deg: float | None = None,
     edge_fov_deg: float,
-    content_fov_deg: float,
 ) -> None:
-    del viewport_rect, theme, content_fov_deg
-
     layer_opacity = max(0.0, min(1.0, float(opacity)))
     sun_factor = 1.0 if sun_alt_deg is None else night_light_strength_factor(sun_alt_deg)
     if profile is None or not profile.samples or layer_opacity <= 0.0 or sun_factor <= 0.0:
@@ -306,18 +299,13 @@ def draw_night_light_glow_normal(
     _draw_night_light_glow_impl(
         painter,
         geometry=geometry,
-        viewport_rect=viewport_rect,
         profile=profile,
         terrain_profile_altaz=terrain_profile_altaz,
-        terrain_profile_distances_m=terrain_profile_distances_m,
         terrain_secondary_profile_altaz_layers=terrain_secondary_profile_altaz_layers,
-        terrain_secondary_profile_distances_m_layers=terrain_secondary_profile_distances_m_layers,
         view_center=view_center,
-        theme=theme,
         opacity=opacity,
         sun_alt_deg=sun_alt_deg,
         edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
     )
 
 

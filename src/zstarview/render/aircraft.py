@@ -11,7 +11,7 @@ from ..aircraft_constants import (
     AIRCRAFT_OVERLAY_LINE_COLOR_RGB,
 )
 from ..astro import altaz_to_normalized_xy, is_in_fov
-from ..paths import FIELD_OF_VIEW_DEG, ThemeStyle
+from ..paths import ThemeStyle
 from ..types import ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
 from .text import resolve_text_style
@@ -24,38 +24,26 @@ def draw_aircraft_overlay(
     painter: QPainter,
     geometry: ScreenGeometry,
     aircraft_snapshots: object | None = None,
-    view_center: tuple[float, float] | None = None,
     *,
     viewer_data: ViewerData | None = None,
-    observer_lat: float | None = None,
-    observer_lon: float | None = None,
-    observer_height_m: float | None = None,
     time_obj: astropy.time.Time | None = None,
     opacity: float = 1.0,
     line_width_scale: float = 1.0,
     label_candidates: Optional[List[Dict[str, Any]]] = None,
     theme: ThemeStyle,
-    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
-    content_fov_deg: float = FIELD_OF_VIEW_DEG,
 ) -> None:
-    if viewer_data is not None:
-        view_center = viewer_data.view_center
-        observer_lat = viewer_data.lat_deg
-        observer_lon = viewer_data.lon_deg
-        observer_height_m = viewer_data.observer_height_m
-        edge_fov_deg = float(viewer_data.edge_fov_deg)
-        content_fov_deg = float(viewer_data.content_fov_deg)
+    if viewer_data is None or time_obj is None:
+        return
+    view_center = viewer_data.view_center
+    edge_fov_deg = float(viewer_data.edge_fov_deg)
+    content_fov_deg = float(viewer_data.content_fov_deg)
     layer_opacity = max(0.0, min(1.0, float(opacity)))
     if layer_opacity <= 0.0:
-        return
-    if view_center is None:
         return
 
     aircraft_points = _project_aircraft_snapshots(
         aircraft_snapshots,
-        observer_lat=observer_lat,
-        observer_lon=observer_lon,
-        observer_height_m=observer_height_m,
+        viewer_data=viewer_data,
         time_obj=time_obj,
     )
     if not aircraft_points:
@@ -141,25 +129,18 @@ def draw_aircraft_overlay(
 def _project_aircraft_snapshots(
     aircraft_snapshots: object | None,
     *,
-    observer_lat: float | None = None,
-    observer_lon: float | None = None,
-    observer_height_m: float | None = None,
+    viewer_data: ViewerData | None = None,
     time_obj: astropy.time.Time | None = None,
 ) -> list[AircraftOverlayPoint]:
     if aircraft_snapshots is None:
         return []
-    if (
-        time_obj is None
-        or observer_lat is None
-        or observer_lon is None
-        or observer_height_m is None
-    ):
+    if viewer_data is None or time_obj is None:
         return []
     return project_aircraft_snapshots(
         aircraft_snapshots,
-        observer_lat=float(observer_lat),
-        observer_lon=float(observer_lon),
-        observer_height_m=float(observer_height_m),
+        observer_lat=float(viewer_data.lat_deg),
+        observer_lon=float(viewer_data.lon_deg),
+        observer_height_m=float(viewer_data.observer_height_m),
         time_obj=time_obj,
     )
 

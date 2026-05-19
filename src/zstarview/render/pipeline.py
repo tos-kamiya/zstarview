@@ -813,8 +813,6 @@ def _draw_aircraft_layer(
         line_width_scale=line_width_scale,
         label_candidates=label_candidates,
         theme=style.theme,
-        edge_fov_deg=float(scene.viewer.edge_fov_deg),
-        content_fov_deg=_content_fov_deg(scene),
     )
 
 
@@ -995,15 +993,12 @@ def _draw_satellite_layer(
         scene.satellite_records_by_group,
         viewer_data=scene.viewer,
         time_obj=scene.time_obj,
-        element_epoch_utc=scene.satellite_element_epoch_utc,
         opacity=style.satellite_opacity,
         highlighted_satellite=(
             highlighted_satellite[0] if highlighted_satellite is not None else None
         ),
         label_candidates=label_candidates,
         theme=style.theme,
-        edge_fov_deg=float(scene.viewer.edge_fov_deg),
-        content_fov_deg=_content_fov_deg(scene),
         marker_scale=compute_star_render_upscale_factor(
             geometry.radius * 2,
             style.star_render_expected_width,
