@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
 import math
+from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Any
 
@@ -13,19 +13,24 @@ from PySide6.QtGui import QFont, QImage, QPainter
 from ..aircraft.types import AircraftSnapshot
 from ..gui.composite import CloudAmountField, SkyCompositorCache
 from ..night_lights import NightLightGlowProfile
-from ..satellites.types import SatelliteOmmRecord
-from ..satellites.types import SatelliteOverlayPoint
-from ..water_overlay import WaterOverlayPoint
-from ..types import CelestialData, ScreenGeometry, ViewerData
-from ..types import CelestialObject, StarsTable, UrbanOutlinePolyline
-from ..search.models import SearchJumpTarget
 from ..paths import THEME_STYLES_BY_PRESET, ThemeStyle
+from ..satellites.types import SatelliteOmmRecord, SatelliteOverlayPoint
+from ..search.models import SearchJumpTarget
+from ..types import (
+    CelestialData,
+    CelestialObject,
+    ScreenGeometry,
+    StarsTable,
+    UrbanOutlinePolyline,
+    ViewerData,
+)
+from ..water_overlay import WaterOverlayPoint
+from . import aircraft as render_aircraft
 from . import asterisms as render_asterisms
 from . import background as render_background
 from . import deep_sky_objects as render_deep_sky_objects
 from . import guides as render_guides
 from . import overlay_info as render_overlay_info
-from . import aircraft as render_aircraft
 from . import satellites as render_satellites
 from . import search_overlay as render_search_overlay
 from . import solar_system as render_solar_system

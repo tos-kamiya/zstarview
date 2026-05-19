@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from typing import Callable, List, Tuple
 
 import numpy as np
-
 from PySide6.QtCore import QPoint, QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen, QPolygonF
 

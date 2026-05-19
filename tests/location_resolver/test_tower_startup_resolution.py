@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
+from zstarview.data.urban_outline_common import BuildingFootprint
 from zstarview.location_resolver import LocationResolveError, resolve_launch_location
 from zstarview.location_resolver.viewpoints import Viewpoint
-from zstarview.data.urban_outline_common import BuildingFootprint
 
 
 @pytest.fixture(autouse=True)

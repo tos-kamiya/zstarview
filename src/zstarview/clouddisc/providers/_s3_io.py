@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import builtins
 import logging
 import socket
 import threading
@@ -12,7 +13,6 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote, unquote, urlencode
 from urllib.request import Request, urlopen
 from xml.etree import ElementTree
-import builtins
 
 from ..types import CloudMeta, DownloadCancelledError, DownloadError, TimeoutError
 

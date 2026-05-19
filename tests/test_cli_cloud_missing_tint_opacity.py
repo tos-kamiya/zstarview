@@ -4,8 +4,8 @@ import math
 
 import pytest
 
-from zstarview.paths import CLOUD_MISSING_TINT_RGBA
 from zstarview.cli.args import parse_args
+from zstarview.paths import CLOUD_MISSING_TINT_RGBA
 
 
 def test_parse_args_cloud_missing_tint_opacity_default(monkeypatch) -> None:

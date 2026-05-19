@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import math
-import urllib.error
 import threading
+import urllib.error
 from unittest.mock import Mock
 
 import pytest
 
-from zstarview.render.terrain import _thin_water_overlay_dots_pairwise
-from zstarview.render.terrain import _water_overlay_distance_alpha_scale
-from zstarview.render.terrain import _water_overlay_point_color_rgb
+from zstarview.clouddisc.types import DownloadCancelledError
+from zstarview.render.terrain import (
+    _thin_water_overlay_dots_pairwise,
+    _water_overlay_distance_alpha_scale,
+    _water_overlay_point_color_rgb,
+)
 from zstarview.water_overlay import (
     WaterOverlayPoint,
     WaterPolygonFootprint,
@@ -19,14 +22,13 @@ from zstarview.water_overlay import (
     build_overpass_query,
     classify_water_surface_category,
     classify_water_surface_mode,
+    expanded_query_bbox_from_point,
     extract_water_polygons,
     horizon_distance_km_from_height,
-    expanded_query_bbox_from_point,
     resolve_water_scan_radius_km,
     sample_water_overlay_points,
     simplify_water_footprints_for_observer,
 )
-from zstarview.clouddisc.types import DownloadCancelledError
 
 
 def _node(node_id: int, lon: float, lat: float) -> dict[str, object]:

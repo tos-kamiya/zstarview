@@ -1,34 +1,33 @@
 from __future__ import annotations
 
-import astropy.time
 import math
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import astropy.time
 import numpy as np
 import pytest
 from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, QSize, Qt
-from PySide6.QtGui import QColor, QFont, QImage
-from PySide6.QtGui import QResizeEvent
+from PySide6.QtGui import QColor, QFont, QImage, QResizeEvent
+from PySide6.QtWidgets import QApplication
 
-import zstarview.render.pipeline as pipeline_module
-import zstarview.render.guides as render_guides_module
-import zstarview.render.overlay_info as render_overlay_info_module
-import zstarview.render.terrain as render_terrain_module
-import zstarview.render.text as render_text_module
 import zstarview.gui.window as window_module
 import zstarview.gui.window_render as window_render_module
 import zstarview.gui.window_updates as window_updates_module
+import zstarview.render.guides as render_guides_module
+import zstarview.render.overlay_info as render_overlay_info_module
+import zstarview.render.pipeline as pipeline_module
 import zstarview.render.solar_system as render_solar_system_module
-from zstarview.paths import THEME_STYLES_BY_PRESET
-from zstarview.location_resolver import PlaceTargetProjection
-from zstarview.types import CelestialData, PlanetBody, UrbanOutlinePolyline, ViewerData
+import zstarview.render.terrain as render_terrain_module
+import zstarview.render.text as render_text_module
 from zstarview.gui.famous_star_shortcuts import SearchJumpTarget
 from zstarview.gui.window import SkyWindow
 from zstarview.gui.window_state import SkyWindowState
-from PySide6.QtWidgets import QApplication
+from zstarview.location_resolver import PlaceTargetProjection
+from zstarview.paths import THEME_STYLES_BY_PRESET
+from zstarview.types import CelestialData, PlanetBody, UrbanOutlinePolyline, ViewerData
 
 _app = QApplication.instance() or QApplication([])
 

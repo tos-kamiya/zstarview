@@ -1,18 +1,18 @@
 import numpy as np
 from PySide6.QtCore import QRect
 
-from zstarview.paths import HatchConfig
 from zstarview.gui.composite import (
     CloudAmountField,
-    _cloud_stripe_fade_factor,
     _cloud_render_content_fov_deg,
-    _scaled_cloud_target_stripes,
+    _cloud_stripe_fade_factor,
     _render_alpha_scaled_cloud_stripes_rgba,
+    _scaled_cloud_target_stripes,
     _stripe_render_grids,
     build_cloud_amount_field,
     compose_cloud_over_sky,
     render_variable_width_cloud_stripes,
 )
+from zstarview.paths import HatchConfig
 from zstarview.render.pipeline import compute_star_render_surface_size
 from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 

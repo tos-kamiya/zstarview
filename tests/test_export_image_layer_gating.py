@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from datetime import timedelta
-import math
 from types import SimpleNamespace
 
-import zstarview.cli.export_image as mod
 import pytest
+
+import zstarview.cli.export_image as mod
 from zstarview.cli.args import SKY_OPACITY_DEFAULT
 from zstarview.gui.window_inputs import SkyWindowRuntimeOptions
 from zstarview.water_mask_interface import WaterSurfaceBandStats

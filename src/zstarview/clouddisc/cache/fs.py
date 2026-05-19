@@ -7,9 +7,9 @@ fetching it via a callback if it is not present. It handles atomic writes
 to prevent corrupted files from being created in case of an interruption.
 """
 
+import os
 from pathlib import Path
 from typing import Callable
-import os
 
 
 def ensure_local_file(root: Path, bucket: str, key: str, fetch_func: Callable[[object], None]) -> Path:

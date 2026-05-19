@@ -8,7 +8,7 @@ import math
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from skyfield.api import load, Topos
+from skyfield.api import Topos, load
 from skyfield.timelib import Time
 
 

@@ -6,7 +6,10 @@ import pytest
 
 from zstarview.cli.args import parse_args
 from zstarview.gui.viewer import main
-from zstarview.location_resolver import list_mountain_all_names, list_mountain_primary_names
+from zstarview.location_resolver import (
+    list_mountain_all_names,
+    list_mountain_primary_names,
+)
 
 
 def test_parse_args_accepts_list_viewpoints_for_mountains() -> None:

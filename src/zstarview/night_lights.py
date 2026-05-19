@@ -17,8 +17,8 @@ import numpy as np
 import rasterio
 from pyproj import Geod, Transformer
 
-from .terrain.horizon import DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM
 from .paths import NIGHT_LIGHTS_CACHE_DIR
+from .terrain.horizon import DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM
 
 logger = logging.getLogger(__name__)
 

@@ -1,19 +1,22 @@
 from __future__ import annotations
 
+import math
 from functools import lru_cache
 from pathlib import Path
 from types import SimpleNamespace
-import math
 
 import numpy as np
 
-from .data.derived_tile_cache import parse_derived_tile_buildings, select_derived_tile_envelopes
+from .data.derived_tile_cache import (
+    parse_derived_tile_buildings,
+    select_derived_tile_envelopes,
+)
 from .data.import_overture_buildings import DEFAULT_FETCH_RADIUS_KM
 from .data.urban_outline_common import BuildingFootprint
 from .data.urban_outline_from_buildings import (
-    compute_urban_outlines,
     UrbanOutlineResult,
     _maybe_linearize_run_points,
+    compute_urban_outlines,
 )
 from .paths import COPERNICUS_DEM_CACHE_DIR, OVERTURE_DERIVED_ROOT_DIR
 from .terrain import GeoTiffDem, build_download_bbox, fetch_copernicus_dem

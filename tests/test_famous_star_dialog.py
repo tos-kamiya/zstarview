@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from PySide6.QtWidgets import QApplication
 import polars as pl
+from PySide6.QtWidgets import QApplication
 
 from zstarview.gui.famous_star_dialog import NamedStarJumpDialog
 from zstarview.gui.famous_star_shortcuts import build_named_star_shortcuts

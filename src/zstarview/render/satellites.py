@@ -11,11 +11,11 @@ from ..satellite_constants import (
     SATELLITE_OVERLAY_MARKER_COLOR_RGB,
     SATELLITE_OVERLAY_MARKER_MAX_ALPHA,
 )
+from ..satellites import project_satellite_records
 from ..satellites.types import SatelliteOverlayPoint
 from ..types import ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
 from .guides import draw_gauge_cross
-from ..satellites import project_satellite_records
 
 _SATELLITE_HOVER_MIN_RADIUS_PX = 12.0
 _SATELLITE_HOVER_RADIUS_SCALE = 20.0

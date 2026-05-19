@@ -8,13 +8,13 @@ from zstarview.render.earth_guide import (
     EARTH_GUIDE_UNDERLAY_WIDTH,
     EarthGuideRing,
     _build_ring_fill_points,
+    _earth_guide_underlay_pass_specs,
     _effective_visible_altitude_limit_deg,
     _observer_dead_zone_km,
     _observer_visible_altitude_limit_deg,
-    _earth_guide_underlay_pass_specs,
+    draw_earth_guide,
     earth_guide_line_alpha,
     earth_guide_underlay_line_alpha,
-    draw_earth_guide,
     load_earth_guide_rings,
 )
 from zstarview.render.qt_image import qimage_to_np_rgba

@@ -9,25 +9,31 @@ from typing import Any, List, Optional, Tuple, TypedDict, cast
 import astropy
 import astropy.time
 import astropy.units as u
-from astropy.coordinates import AltAz, EarthLocation, GeocentricTrueEcliptic, SkyCoord
-from skyfield.api import Loader, Topos
-import skyfield.api
-from skyfield.magnitudelib import planetary_magnitude
 import numpy as np
 import polars as pl
+import skyfield.api
+from astropy.coordinates import AltAz, EarthLocation, GeocentricTrueEcliptic, SkyCoord
+from skyfield.api import Loader, Topos
+from skyfield.magnitudelib import planetary_magnitude
 
 from .asterisms import ASTERISM_REQUIRED_SOURCE_IDS
 from .paths import (
     CACHE_PATH,
-    FIELD_OF_VIEW_DEG,
-    STAR_FIELD_OF_VIEW_DEG,
-    PLANET_SYMBOLS,
-    PLANET_IDS,
     EPHEMERIS_FILENAME,
     EPHEMERIS_URL,
+    FIELD_OF_VIEW_DEG,
+    PLANET_IDS,
+    PLANET_SYMBOLS,
+    STAR_FIELD_OF_VIEW_DEG,
 )
-from .types import DeepSkyTable, LunarEclipseInfo, PlanetBody, SolarEclipseInfo, StarCatalogMeta, StarsTable
-
+from .types import (
+    DeepSkyTable,
+    LunarEclipseInfo,
+    PlanetBody,
+    SolarEclipseInfo,
+    StarCatalogMeta,
+    StarsTable,
+)
 
 # Skyfield ephemeris cache loader (separate from UI)
 _cache_path = Path(CACHE_PATH)

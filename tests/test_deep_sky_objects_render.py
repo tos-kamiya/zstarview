@@ -6,9 +6,9 @@ import astropy.time
 import numpy as np
 from PySide6.QtGui import QColor
 
-from zstarview.render.deep_sky_objects import DSO_LABEL_RGB
 from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.render import deep_sky_objects as render_deep_sky_objects
+from zstarview.render.deep_sky_objects import DSO_LABEL_RGB
 from zstarview.types import CelestialData, ScreenGeometry, ViewerData
 
 

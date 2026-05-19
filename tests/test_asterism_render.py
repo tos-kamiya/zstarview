@@ -8,7 +8,11 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication
 
 from zstarview.asterisms import Asterism
-from zstarview.paths import ASTERISM_CLIP_FIELD_OF_VIEW_DEG, PALETTE_ASTERISM_RGB, THEME_STYLES_BY_PRESET
+from zstarview.paths import (
+    ASTERISM_CLIP_FIELD_OF_VIEW_DEG,
+    PALETTE_ASTERISM_RGB,
+    THEME_STYLES_BY_PRESET,
+)
 from zstarview.render import asterisms as render_asterisms
 from zstarview.render import stars as render_stars
 from zstarview.types import CelestialData, ScreenGeometry, StarCatalogMeta, ViewerData

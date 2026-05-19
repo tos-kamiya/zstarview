@@ -1,15 +1,29 @@
 import logging
-import threading
 import sys
+import threading
 from pathlib import Path
 from typing import Callable, Tuple
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QGuiApplication, QIcon, QLinearGradient, QPainter, QPixmap
+from PySide6.QtGui import (
+    QColor,
+    QGuiApplication,
+    QIcon,
+    QLinearGradient,
+    QPainter,
+    QPixmap,
+)
 from PySide6.QtWidgets import QApplication, QSplashScreen
 
 from .__about__ import __version__
-from .paths import APP_AUTHOR, APP_DISPLAY_NAME, APP_ICON_FILE, APP_ID, CACHE_PATH, ThemeStyle
+from .paths import (
+    APP_AUTHOR,
+    APP_DISPLAY_NAME,
+    APP_ICON_FILE,
+    APP_ID,
+    CACHE_PATH,
+    ThemeStyle,
+)
 
 logger = logging.getLogger(__name__)
 

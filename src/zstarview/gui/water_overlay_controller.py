@@ -3,8 +3,8 @@ from __future__ import annotations
 import logging
 import threading
 import time
-from concurrent.futures import Future
 from collections import Counter
+from concurrent.futures import Future
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -12,35 +12,35 @@ from typing import Callable, Optional
 
 from PySide6.QtCore import QObject, Signal
 
-from ..types import ViewerData
 from ..clouddisc.types import DownloadCancelledError
+from ..paths import CACHE_PATH
+from ..types import ViewerData
+from ..water_mask_interface import (
+    WaterSurfaceBandStats,
+    sample_water_surface_interface_points_with_stats,
+)
 from ..water_overlay import (
+    DEFAULT_WATER_AZIMUTH_STEP_DEG,
     DEFAULT_WATER_OVERPASS_ENDPOINT,
-    DEFAULT_WATER_USER_AGENT,
     DEFAULT_WATER_RADIUS_KM,
     DEFAULT_WATER_SAMPLE_STEP_M,
-    DEFAULT_WATER_AZIMUTH_STEP_DEG,
+    DEFAULT_WATER_USER_AGENT,
+    WaterOverlayPoint,
     bbox_from_point,
     extract_water_polygons,
     fetch_overpass_json,
-    WaterOverlayPoint,
     fetch_water_overlay_footprints,
     resolve_water_scan_radius_km,
     sample_water_overlay_points,
     simplify_water_footprints_for_observer,
 )
-from ..water_mask_interface import (
-    WaterSurfaceBandStats,
-    sample_water_surface_interface_points_with_stats,
-)
-from ..paths import CACHE_PATH
 from .water_overlay_cache import (
-    WaterOverlayCacheSnapshot,
     WATER_OVERLAY_CACHE_RETENTION_SECONDS,
-    water_overlay_cache_scope_key,
+    WaterOverlayCacheSnapshot,
     load_water_overlay_cache,
     save_water_overlay_cache,
     water_overlay_cache_is_recent,
+    water_overlay_cache_scope_key,
 )
 from .worker_pool import submit_gui_work, wait_for_gui_futures
 

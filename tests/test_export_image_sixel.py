@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import subprocess
-from types import SimpleNamespace
 from io import BytesIO, StringIO
+from types import SimpleNamespace
 
-from astropy.time import Time
 import pytest
+from astropy.time import Time
 from PySide6.QtGui import QImage
 
 import zstarview.cli.export_image as mod

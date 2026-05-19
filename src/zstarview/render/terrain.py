@@ -12,9 +12,9 @@ from ..paths import (
     URBAN_OUTLINE_LAYER_LINE_COLOR,
     ThemeStyle,
 )
-from . import background as render_background
 from ..types import ScreenGeometry, UrbanOutlinePolyline
 from ..water_overlay import WaterOverlayPoint
+from . import background as render_background
 from .geometry import normalized_to_screen_xy
 from .guides import _clip_polyline_to_radius, split_by_gaps
 

@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import logging
 import math
 import os
-import shutil
 import select
+import shutil
 import subprocess
 import sys
 import time
 from collections import Counter
 from dataclasses import replace
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, TypedDict
 
@@ -27,9 +27,6 @@ from ..aircraft import (
     build_observer_bbox,
     fetch_cached_opensky_states,
 )
-from ..overlay_time import classify_target_time, overlay_availability_for_delta
-from ..night_lights import compute_night_light_glow_profile
-from ..satellites import resolve_satellite_elements_for_time
 from ..astro import load_ephemeris
 from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_lived_cache
 from ..catalog import load_dso_catalog, load_star_catalog
@@ -46,12 +43,25 @@ from ..data.skyscraper_tiles import (
     select_skyscraper_seed_tiles_for_viewer,
     skyscraper_tile_derived_dir,
 )
+from ..gui.composite import SkyCompositorCache, build_cloud_amount_field_from_rgba
+from ..gui.sky_worker import compute_sky_snapshot
+from ..gui.window_inputs import (
+    PreparedWindowCatalogs,
+    SkyWindowRuntimeOptions,
+    SkyWindowUserOptions,
+    prepare_window_catalogs,
+    prepare_window_runtime_options,
+    prepare_window_user_options,
+    prepare_window_viewer_data,
+)
 from ..launch_time import (
     LaunchSetupError,
     parse_launch_time_arguments,
 )
 from ..location_resolver import LocationResolveError, resolve_launch_location
 from ..logging_utils import setup_root_logger
+from ..night_lights import compute_night_light_glow_profile
+from ..overlay_time import classify_target_time, overlay_availability_for_delta
 from ..paths import (
     APP_DISPLAY_NAME,
     CACHE_PATH,
@@ -59,16 +69,16 @@ from ..paths import (
     CLOUD_SHELLS_KM,
     DSO_CSV_FILE,
     EPHEMERIS_FILENAME,
-    OBSERVER_MIN_ALT_DEG,
     OBSERVER_MAX_ALT_DEG,
+    OBSERVER_MIN_ALT_DEG,
     OVERTURE_DERIVED_ROOT_DIR,
     OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR,
-    THEME_STYLES_BY_PRESET,
-    ThemeStyle,
     STARS_CSV_FILE,
     STATUS_LINE_FONT_SIZE,
     TEXT_FONT_PATH,
     TEXT_FONT_SIZE,
+    THEME_STYLES_BY_PRESET,
+    ThemeStyle,
 )
 from ..render import background as render_background
 from ..render import geometry as render_geometry
@@ -83,18 +93,18 @@ from ..render.pipeline import (
     render_base_scene_into_painter,
 )
 from ..render.search_overlay import draw_search_target_overlay
-from ..search.resolver import compute_search_target_altaz, resolve_search_targets
-from ..search.jpl import search_jpl_targets
-from ..search.jpl import resolve_jpl_target_state_vector
-from ..search.models import SearchJumpTarget
-from ..search.satellites import resolve_satellite_target_altaz, search_satellite_targets
 from ..satellite_constants import SATELLITE_HORIZONS_CACHE_KEY, SATELLITE_ISS_CACHE_KEY
+from ..satellites import resolve_satellite_elements_for_time
+from ..search.jpl import resolve_jpl_target_state_vector, search_jpl_targets
+from ..search.models import SearchJumpTarget
+from ..search.resolver import compute_search_target_altaz, resolve_search_targets
+from ..search.satellites import resolve_satellite_target_altaz, search_satellite_targets
 from ..splash import setup_app
 from ..terrain import (
     EARTH_MEAN_RADIUS_M,
+    WGS84_GEOD,
     GeoTiffDem,
     ObserverLocation,
-    WGS84_GEOD,
     build_distance_samples,
     build_download_bbox,
     compute_flat_ground_horizon_layers,
@@ -103,27 +113,18 @@ from ..terrain import (
     reduce_profile_to_altaz,
     sample_ground_elevation,
 )
+from ..types import CelestialData, UrbanOutlinePolyline, ViewerData
+from ..urban_outline_layer import resolve_urban_outline_layer_for_viewer
+from ..water_mask_interface import (
+    WaterSurfaceBandStats,
+    sample_water_surface_interface_points_with_stats,
+)
 from ..water_overlay import (
     DEFAULT_WATER_RADIUS_KM,
     WaterOverlayPoint,
     resolve_water_scan_radius_km,
     sample_water_overlay_points_for_observer,
 )
-from ..water_mask_interface import sample_water_surface_interface_points_with_stats
-from ..water_mask_interface import WaterSurfaceBandStats
-from ..types import CelestialData, UrbanOutlinePolyline, ViewerData
-from ..gui.composite import SkyCompositorCache, build_cloud_amount_field_from_rgba
-from ..gui.sky_worker import compute_sky_snapshot
-from ..gui.window_inputs import (
-    PreparedWindowCatalogs,
-    SkyWindowRuntimeOptions,
-    SkyWindowUserOptions,
-    prepare_window_catalogs,
-    prepare_window_runtime_options,
-    prepare_window_user_options,
-    prepare_window_viewer_data,
-)
-from ..urban_outline_layer import resolve_urban_outline_layer_for_viewer
 from .args import parse_export_image_args
 
 logger = logging.getLogger(__name__)

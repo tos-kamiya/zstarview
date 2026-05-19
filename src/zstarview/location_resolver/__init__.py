@@ -7,15 +7,15 @@ from .mountains import (
     resolve_mountain_viewpoint,
 )
 from .nominatim import search_nominatim
+from .place_projection import (
+    PlaceTargetProjection,
+    project_place_targets_to_altaz,
+)
 from .place_search import (
     PlaceSearchCandidate,
     normalize_place_search_candidates,
     place_search_candidate_from_nominatim,
     search_place_candidates,
-)
-from .place_projection import (
-    PlaceTargetProjection,
-    project_place_targets_to_altaz,
 )
 from .resolve import (
     LocationResolveError,

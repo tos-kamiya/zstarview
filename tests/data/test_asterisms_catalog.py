@@ -1,7 +1,11 @@
 from pathlib import Path
 
+from zstarview.asterisms import (
+    ASTERISM_KEYS_BY_SOURCE_ID,
+    ASTERISMS,
+    pick_rotating_asterism,
+)
 from zstarview.catalog import load_star_catalog
-from zstarview.asterisms import ASTERISMS, ASTERISM_KEYS_BY_SOURCE_ID, pick_rotating_asterism
 
 
 def _catalog_source_ids() -> set[str]:

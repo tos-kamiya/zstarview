@@ -3,7 +3,6 @@ import re
 from typing import Optional, Tuple
 
 import numpy as np
-
 from PySide6.QtCore import QPoint, QPointF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
 

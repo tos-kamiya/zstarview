@@ -1,13 +1,18 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import logging
+from collections.abc import Callable, Sequence
+from datetime import datetime, timezone
 from typing import Mapping
-from collections.abc import Sequence
-from collections.abc import Callable
 
 from astropy import units as u
-from astropy.coordinates import AltAz, CartesianRepresentation, EarthLocation, GCRS, SkyCoord
+from astropy.coordinates import (
+    GCRS,
+    AltAz,
+    CartesianRepresentation,
+    EarthLocation,
+    SkyCoord,
+)
 
 from ..satellites import (
     fetch_horizons_lookup,

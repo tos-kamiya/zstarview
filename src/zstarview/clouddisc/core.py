@@ -10,8 +10,8 @@ from a specific observer's perspective.
 import datetime as dt
 import logging
 import threading
-from typing import Optional, Sequence, Tuple
 from dataclasses import replace
+from typing import Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -19,12 +19,30 @@ from .config import CloudDiscConfig
 from .projectors.az import az_project_lonlat_grid
 from .providers.goes import GoesProvider
 from .providers.hima import HimaProvider
-from .providers.select import GOES_SATELLITES, SUPPORTED_SATELLITES, pick_satellite, visible_satellites
-from .render.grayscale import _bt_to_weight, _suppress_low_cloud_weight, convert_bt_to_rgba_image
+from .providers.select import (
+    GOES_SATELLITES,
+    SUPPORTED_SATELLITES,
+    pick_satellite,
+    visible_satellites,
+)
+from .render.grayscale import (
+    _bt_to_weight,
+    _suppress_low_cloud_weight,
+    convert_bt_to_rgba_image,
+)
 from .sampling.bt_sampler import build_bt_sampler
-from .sampling.estimate_bt_warm_cold import estimate_bt_warm_from_equator_band, estimate_bt_cold_hybrid
-from .types import CloudMeta, CloudSourceData, RenderKey, SourceKey, VisibilityError, round_down_utc_to_slot
-
+from .sampling.estimate_bt_warm_cold import (
+    estimate_bt_cold_hybrid,
+    estimate_bt_warm_from_equator_band,
+)
+from .types import (
+    CloudMeta,
+    CloudSourceData,
+    RenderKey,
+    SourceKey,
+    VisibilityError,
+    round_down_utc_to_slot,
+)
 
 logger = logging.getLogger(__name__)
 

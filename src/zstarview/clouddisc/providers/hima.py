@@ -17,6 +17,7 @@ from ..types import CloudMeta, DataNotFoundError, DownloadError
 from ._hima_isatss import (
     DATA_VAR,
     ObserverTileSelection,
+    TileRecord,
     attach_area_to_dataset,
     extract_tile_token,
     find_matching_keys,
@@ -24,12 +25,10 @@ from ._hima_isatss import (
     load_template_from_tile,
     select_equator_tiles,
     select_needed_tiles,
-    TileRecord,
-    tile_distance_km,
     stitch_tiles_from_paths,
+    tile_distance_km,
 )
 from ._s3_io import download_s3_object
-
 
 logger = logging.getLogger(__name__)
 FAR_CLEAR_SKY_DISTANCE_KM = 50.0

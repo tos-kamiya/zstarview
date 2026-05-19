@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
 import math
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -9,16 +9,17 @@ import numpy as np
 import pytest
 from PySide6.QtCore import QRect
 from PySide6.QtGui import QImage, QPainter
+
 import zstarview.gui.terrain_controller as terrain_controller_module
 import zstarview.gui.window as window_module
 from zstarview.cli.args import SKY_OPACITY_DEFAULT
-from zstarview.paths import THEME_STYLES_BY_PRESET
-from zstarview.render.qt_image import qimage_to_np_rgba
-from zstarview.gui.window import SkyWindow
-from zstarview.search.models import SearchJumpTarget
 from zstarview.gui.terrain_controller import TerrainHorizonController
+from zstarview.gui.window import SkyWindow
 from zstarview.gui.window_inputs import prepare_window_user_options
 from zstarview.gui.window_updates import SkyWindowUpdatesMixin
+from zstarview.paths import THEME_STYLES_BY_PRESET
+from zstarview.render.qt_image import qimage_to_np_rgba
+from zstarview.search.models import SearchJumpTarget
 
 
 class _DummyAction:

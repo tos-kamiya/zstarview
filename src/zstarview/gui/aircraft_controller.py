@@ -12,8 +12,8 @@ from PySide6.QtCore import QObject, Signal
 
 from ..aircraft import (
     AircraftBoundingBox,
-    CachedAircraftSnapshotSet,
     AircraftSnapshot,
+    CachedAircraftSnapshotSet,
     build_observer_bbox,
     fetch_cached_opensky_states,
 )

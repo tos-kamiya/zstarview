@@ -12,25 +12,28 @@ from typing import Callable, Optional
 from PySide6.QtCore import QObject, Signal
 
 from ..clouddisc.types import DownloadCancelledError
+from ..data.import_overture_buildings import (
+    DEFAULT_FETCH_RADIUS_KM,
+    OVERTURE_CACHE_TTL_DAYS,
+    derive_dataset_name,
+    import_overture_buildings,
+    import_overture_buildings_for_bbox,
+    is_derived_dataset_stale,
+    resolve_overture_release_for_cache_root,
+)
 from ..data.skyscraper_tiles import (
     SKYSCRAPER_OUTER_RADIUS_KM,
     SkyscraperSeedTile,
     select_skyscraper_seed_tiles_for_viewer,
     skyscraper_tile_derived_dir,
 )
-from ..data.import_overture_buildings import (
-    DEFAULT_FETCH_RADIUS_KM,
-    OVERTURE_CACHE_TTL_DAYS,
-    derive_dataset_name,
-    is_derived_dataset_stale,
-    import_overture_buildings_for_bbox,
-    import_overture_buildings,
-    resolve_overture_release_for_cache_root,
+from ..paths import (
+    CACHE_PATH,
+    OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR,
+    SKYSCRAPER_TILES_FILE,
 )
-from ..urban_outline_layer import resolve_urban_outline_layer_for_viewer
-from ..paths import OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR, SKYSCRAPER_TILES_FILE
-from ..paths import CACHE_PATH
 from ..types import UrbanOutlinePolyline, ViewerData
+from ..urban_outline_layer import resolve_urban_outline_layer_for_viewer
 from .worker_pool import submit_gui_work, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)

@@ -1,5 +1,5 @@
-import os
 import argparse
+import os
 import os.path
 
 from ..paths import APP_DISPLAY_NAME, APP_ICON_FILE, APP_ID

@@ -9,16 +9,25 @@ clouds, and all user interactions like rotation, zooming, and object highlightin
 
 import logging
 import time
-from html import escape
 from dataclasses import replace
-from datetime import datetime, timezone
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
+from html import escape
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable, Optional, Tuple, Union
 
 import astropy.time
-from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, QSize, Qt, QTimer, QUrl, Signal
+from PySide6.QtCore import (
+    QEvent,
+    QPoint,
+    QPointF,
+    QRect,
+    QSize,
+    Qt,
+    QTimer,
+    QUrl,
+    Signal,
+)
 from PySide6.QtGui import (
     QAction,
     QCloseEvent,
@@ -31,8 +40,8 @@ from PySide6.QtGui import (
     QKeyEvent,
     QKeySequence,
     QMouseEvent,
-    QPaintEvent,
     QPainter,
+    QPaintEvent,
     QPen,
     QResizeEvent,
 )
@@ -42,54 +51,45 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMenu,
     QTextEdit,
+    QWidget,
 )
-from PySide6.QtWidgets import QWidget
 
+from ..aircraft_constants import AIRCRAFT_REFRESH_INTERVAL_SECONDS
+from ..asterisms import ASTERISM_KEYS_BY_SOURCE_ID
 from ..astro import (
     calculate_visible_stars,
     load_ephemeris,
     radec_to_altaz,
 )
+from ..cli.args import SKY_OPACITY_DEFAULT
 from ..clouddisc import (
     CloudDisc,
     CloudDiscConfig,
 )
 from ..clouddisc.providers.select import pick_satellite
-from ..cli.args import SKY_OPACITY_DEFAULT
-from ..overlay_time import overlay_availability_for_delta, target_time_utc_from_delta
-from ..satellites import (
-    fetch_horizons_lookup,
-    find_satellite_altaz,
-    load_satellite_cache,
-    satellite_cache_scope_key,
-)
-from ..satellite_constants import (
-    SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS,
-    SATELLITE_FAILURE_RETRY_SECONDS,
-    SATELLITE_HORIZONS_CACHE_KEY,
-    SATELLITE_ISS_CACHE_KEY,
-)
-from ..aircraft_constants import AIRCRAFT_REFRESH_INTERVAL_SECONDS
-from ..paths import (
-    APP_ICON_FILE,
-    CACHE_PATH,
-    CLOUD_UPDATE_INTERVAL,
-    GUI_BUTTON_SIZE,
-    TEXT_FONT_PATH,
-    TEXT_FONT_SIZE,
-    STATUS_LINE_FONT_SIZE,
-    OVERTURE_DERIVED_ROOT_DIR,
-    WINDOW_HEIGHT,
-    WINDOW_WIDTH,
-    CLOUD_MISSING_TINT_RGBA,
-    OBSERVER_MAX_ALT_DEG,
-    OBSERVER_MIN_ALT_DEG,
-    THEME_STYLES_BY_PRESET,
-)
 from ..config import load_last_window_geometry, save_last_window_geometry
 from ..location_resolver import (
     project_place_targets_to_altaz as _project_place_targets_to_altaz,
+)
+from ..location_resolver import (
     search_place_candidates,
+)
+from ..overlay_time import overlay_availability_for_delta, target_time_utc_from_delta
+from ..paths import (
+    APP_ICON_FILE,
+    CACHE_PATH,
+    CLOUD_MISSING_TINT_RGBA,
+    CLOUD_UPDATE_INTERVAL,
+    GUI_BUTTON_SIZE,
+    OBSERVER_MAX_ALT_DEG,
+    OBSERVER_MIN_ALT_DEG,
+    OVERTURE_DERIVED_ROOT_DIR,
+    STATUS_LINE_FONT_SIZE,
+    TEXT_FONT_PATH,
+    TEXT_FONT_SIZE,
+    THEME_STYLES_BY_PRESET,
+    WINDOW_HEIGHT,
+    WINDOW_WIDTH,
 )
 from ..render import geometry as render_geometry
 from ..render import stars as render_stars
@@ -97,44 +97,60 @@ from ..render.pipeline import (
     compute_star_render_surface_size,
     compute_star_render_upscale_factor,
 )
+from ..satellite_constants import (
+    SATELLITE_ELEMENT_REFRESH_INTERVAL_SECONDS,
+    SATELLITE_FAILURE_RETRY_SECONDS,
+    SATELLITE_HORIZONS_CACHE_KEY,
+    SATELLITE_ISS_CACHE_KEY,
+)
+from ..satellites import (
+    fetch_horizons_lookup,
+    find_satellite_altaz,
+    load_satellite_cache,
+    satellite_cache_scope_key,
+)
+from ..search.jpl import (
+    project_jpl_target_altaz_from_state_vector,
+    resolve_jpl_target_state_vector,
+    search_jpl_targets,
+)
+from ..search.models import SearchJumpTarget
+from ..search.satellites import search_satellite_targets
 from ..types import ViewerData
-from .draggable_window import DraggableWindow
-from .composite import SkyCompositorCache
-from .cloud_state import CloudImageState
-from .cloud_controller import CloudController
-from .view_direction import clamp_view_center_alt_az, resolve_view_direction_step
-from .view_direction_dialog import ViewDirectionDialog
-from .satellite_state import SatelliteState
-from .satellite_controller import SatelliteController
-from .aircraft_state import AircraftState
 from .aircraft_controller import AircraftController
-from .jpl_small_body_controller import JplSmallBodyController
-from .terrain_state import TerrainHorizonState
-from .terrain_controller import TerrainHorizonController
-from .water_overlay_controller import WaterOverlayController
-from .water_overlay_state import WaterOverlayState
+from .aircraft_state import AircraftState
+from .cloud_controller import CloudController
+from .cloud_state import CloudImageState
+from .composite import SkyCompositorCache
+from .draggable_window import DraggableWindow
 from .famous_star_dialog import NamedStarJumpDialog
 from .famous_star_search_dialog import NamedStarSearchDialog
-from .worker_pool import shutdown_gui_worker_pool
-from .place_search_dialog import PlaceSearchDialog
 from .famous_star_shortcuts import (
     NamedStarShortcut,
     build_place_search_jump_targets,
 )
-from ..search.jpl import search_jpl_targets
-from ..search.jpl import project_jpl_target_altaz_from_state_vector
-from ..search.jpl import resolve_jpl_target_state_vector
-from ..search.satellites import search_satellite_targets
-from ..search.models import SearchJumpTarget
-from ..asterisms import ASTERISM_KEYS_BY_SOURCE_ID
+from .jpl_small_body_controller import JplSmallBodyController
+from .place_search_dialog import PlaceSearchDialog
+from .satellite_controller import SatelliteController
+from .satellite_state import SatelliteState
 from .sky_worker import SkyDataWorker
-from .window_inputs import PreparedWindowCatalogs
-from .window_inputs import SkyWindowRuntimeOptions, SkyWindowUserOptions
+from .terrain_controller import TerrainHorizonController
+from .terrain_state import TerrainHorizonState
+from .urban_outline_controller import UrbanOutlineController
+from .urban_outline_state import UrbanOutlineState
+from .view_direction import clamp_view_center_alt_az, resolve_view_direction_step
+from .view_direction_dialog import ViewDirectionDialog
+from .water_overlay_controller import WaterOverlayController
+from .water_overlay_state import WaterOverlayState
+from .window_inputs import (
+    PreparedWindowCatalogs,
+    SkyWindowRuntimeOptions,
+    SkyWindowUserOptions,
+)
 from .window_render import SkyWindowRenderMixin
 from .window_state import SkyWindowState
 from .window_updates import SkyWindowUpdatesMixin
-from .urban_outline_controller import UrbanOutlineController
-from .urban_outline_state import UrbanOutlineState
+from .worker_pool import shutdown_gui_worker_pool
 
 logger = logging.getLogger(__name__)
 

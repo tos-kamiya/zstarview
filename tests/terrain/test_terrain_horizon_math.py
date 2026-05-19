@@ -1,32 +1,32 @@
 from __future__ import annotations
 
 import math
+
 import numpy as np
 import pytest
 from rasterio.transform import Affine
 
-from zstarview.terrain.dem import WGS84_GEOD
-from zstarview.terrain.horizon import (
-    DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM,
-    ObserverLocation,
-    compute_flat_ground_horizon_layers,
-    compute_horizon_layers,
-    _prune_secondary_peak_indices_by_visibility,
-    _prune_secondary_peak_indices_by_main_profile,
-    _select_distance_band_peak_index,
-    _should_break_secondary_ridge,
-    build_distance_samples,
-    compute_apparent_altitudes,
-)
 from zstarview.render.terrain import (
     _distance_band_alpha,
     _distance_band_underlay_alpha,
     _distance_band_underlay_width,
     _distance_band_widths,
     _terrain_secondary_ridge_glow_pass_specs,
+    draw_terrain_secondary_ridges,
 )
-from zstarview.render.terrain import draw_terrain_secondary_ridges
-from zstarview.terrain.dem import DemGrid, sample_ground_elevation
+from zstarview.terrain.dem import WGS84_GEOD, DemGrid, sample_ground_elevation
+from zstarview.terrain.horizon import (
+    DEFAULT_TERRAIN_DISTANCE_BAND_EDGES_KM,
+    ObserverLocation,
+    _prune_secondary_peak_indices_by_main_profile,
+    _prune_secondary_peak_indices_by_visibility,
+    _select_distance_band_peak_index,
+    _should_break_secondary_ridge,
+    build_distance_samples,
+    compute_apparent_altitudes,
+    compute_flat_ground_horizon_layers,
+    compute_horizon_layers,
+)
 
 
 class _IdentityTransformer:

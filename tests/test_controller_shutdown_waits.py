@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import time
 import threading
+import time
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from urllib.error import URLError
@@ -15,8 +15,8 @@ from zstarview.gui.jpl_small_body_controller import JplSmallBodyController
 from zstarview.gui.satellite_controller import SatelliteController
 from zstarview.gui.sky_worker import SkyDataWorker
 from zstarview.gui.terrain_controller import TerrainHorizonController
-from zstarview.gui.water_overlay_controller import WaterOverlayController
 from zstarview.gui.urban_outline_controller import UrbanOutlineController
+from zstarview.gui.water_overlay_controller import WaterOverlayController
 from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.types import ViewerData
 

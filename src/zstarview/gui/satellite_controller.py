@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import inspect
 import logging
 import threading
 import time
-import inspect
 from concurrent.futures import Future
 from datetime import datetime, timezone
 from typing import Callable, Optional

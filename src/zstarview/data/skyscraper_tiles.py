@@ -5,8 +5,12 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
-from .derived_tile_cache import TileEnvelope, envelope_max_distance_km, envelope_min_distance_km
 from ..paths import OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR, SKYSCRAPER_TILES_FILE
+from .derived_tile_cache import (
+    TileEnvelope,
+    envelope_max_distance_km,
+    envelope_min_distance_km,
+)
 
 SKYSCRAPER_OUTER_RADIUS_KM = 60.0
 

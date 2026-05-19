@@ -18,9 +18,9 @@ from pathlib import Path
 from typing import Sequence
 from urllib.request import Request, urlopen
 
+from zstarview.clouddisc.types import DownloadCancelledError
 from zstarview.data import build_derived_tile_index
 from zstarview.paths import CACHE_PATH
-from zstarview.clouddisc.types import DownloadCancelledError
 from zstarview.utils.latlon_format import (
     LAT_LON_CACHE_DECIMALS,
     format_lat_lon_cache_segment,

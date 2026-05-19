@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import math
+
 import astropy.time
 import astropy.units as u
-import math
 import numpy as np
 import polars as pl
 from astropy.coordinates import AltAz, EarthLocation, SkyCoord

@@ -1,19 +1,24 @@
+import hashlib
+import logging
 import math
 from typing import Optional, Tuple
 
-import hashlib
-import logging
 import numpy as np
-
 from PySide6.QtCore import QPoint, QPointF
 from PySide6.QtGui import (
     QImage,
     QPainter,
 )
 
-from ..types import ScreenGeometry, CelestialData, ViewerData, CelestialObject
-from ..astro import altaz_to_normalized_xy, resolve_star_names, resolve_star_source_ids, is_in_fov, is_in_fov_vectorized
 from ..asterisms import ASTERISM_REQUIRED_SOURCE_IDS
+from ..astro import (
+    altaz_to_normalized_xy,
+    is_in_fov,
+    is_in_fov_vectorized,
+    resolve_star_names,
+    resolve_star_source_ids,
+)
+from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
 from .geometry import (
     _altaz_to_normalized_xy_vectorized,
     _normalized_to_screen_xy_vectorized,

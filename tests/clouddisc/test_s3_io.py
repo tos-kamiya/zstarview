@@ -1,22 +1,28 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from pathlib import Path
 import io
 import sys
 import threading
+from datetime import datetime, timezone
+from pathlib import Path
 from urllib.error import URLError
 
 import pytest
-
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SRC_ROOT = PROJECT_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from zstarview.clouddisc.providers._s3_io import download_s3_object, list_s3_keys  # noqa: E402
-from zstarview.clouddisc.types import DownloadCancelledError, DownloadError, TimeoutError as CloudTimeoutError  # noqa: E402
+from zstarview.clouddisc.providers._s3_io import (  # noqa: E402
+    download_s3_object,
+    list_s3_keys,
+)
+from zstarview.clouddisc.types import (  # noqa: E402
+    DownloadCancelledError,
+    DownloadError,
+)
+from zstarview.clouddisc.types import TimeoutError as CloudTimeoutError  # noqa: E402
 
 
 def _list_xml(*keys: str, is_truncated: bool = False, next_token: str | None = None) -> bytes:

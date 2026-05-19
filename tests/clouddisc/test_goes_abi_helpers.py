@@ -7,7 +7,11 @@ import pytest
 import xarray as xr
 from pyproj import Transformer
 
-from zstarview.clouddisc.providers._goes_abi import DATA_VAR, GRID_VAR, load_cmi_with_area
+from zstarview.clouddisc.providers._goes_abi import (
+    DATA_VAR,
+    GRID_VAR,
+    load_cmi_with_area,
+)
 from zstarview.clouddisc.sampling.bt_sampler import build_bt_sampler
 
 pytestmark = [

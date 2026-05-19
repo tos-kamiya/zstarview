@@ -19,7 +19,6 @@ from ..geo_area import GeoArea
 from ..projectors.az import altaz_to_dir_ecef, geodetic_to_ecef
 from ._s3_io import list_s3_keys
 
-
 DATA_VAR = "Sectorized_CMI"
 GRID_VAR = "fixedgrid_projection"
 _RE_TILE = re.compile(r"-T(\d{3})_")

@@ -4,8 +4,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from PySide6.QtCore import QPoint, QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPen
 
-from ..satellite_constants import SATELLITE_OVERLAY_MARKER_COLOR_RGB
 from ..paths import ThemeStyle
+from ..satellite_constants import SATELLITE_OVERLAY_MARKER_COLOR_RGB
 from ..satellites.types import SatelliteOverlayPoint
 from ..types import (
     CelestialData,
@@ -15,9 +15,13 @@ from ..types import (
     ViewerData,
 )
 from .background import format_overlay_info_lines
-from .deep_sky_objects import _DSO_HOVER_SIZE_GAIN, _dso_ellipse_polygon
-from .deep_sky_objects import DSO_LABEL_RGB
-from .text import ResolvedTextStyle, get_text_outline_width, get_text_style, recolor_text_style
+from .deep_sky_objects import _DSO_HOVER_SIZE_GAIN, DSO_LABEL_RGB, _dso_ellipse_polygon
+from .text import (
+    ResolvedTextStyle,
+    get_text_outline_width,
+    get_text_style,
+    recolor_text_style,
+)
 
 
 def draw_overlay_info(

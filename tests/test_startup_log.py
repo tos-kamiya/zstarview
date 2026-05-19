@@ -7,7 +7,6 @@ from PySide6.QtWidgets import QApplication, QWidget
 from zstarview.gui.window import StartupLogOverlay
 from zstarview.startup_log import BufferedStartupLogHandler
 
-
 _app = QApplication.instance() or QApplication([])
 
 

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from zstarview.types import UrbanOutlinePolyline, ViewerData
 from zstarview.gui.urban_outline_controller import UrbanOutlineController
+from zstarview.types import UrbanOutlinePolyline, ViewerData
 
 
 def test_run_update_keeps_base_outlines_when_skyscraper_phase_fails(monkeypatch, tmp_path: Path) -> None:

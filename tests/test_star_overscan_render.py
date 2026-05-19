@@ -5,8 +5,8 @@ import numpy as np
 from PySide6.QtGui import QImage, QPainter
 
 from zstarview.render import stars as render_stars
-from zstarview.types import CelestialData, ScreenGeometry, StarCatalogMeta, ViewerData
 from zstarview.render.qt_image import qimage_to_np_rgba
+from zstarview.types import CelestialData, ScreenGeometry, StarCatalogMeta, ViewerData
 
 
 def _single_star_celestial_data(

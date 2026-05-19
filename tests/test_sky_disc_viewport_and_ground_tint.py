@@ -2,16 +2,16 @@ import numpy as np
 from PySide6.QtCore import QRectF
 from PySide6.QtGui import QColor, QImage, QPainter
 
-from zstarview.paths import THEME_STYLES_BY_PRESET
-from zstarview.paths import PALETTE_NEVER_RISES_RGB
 from zstarview.astro import altaz_to_normalized_xy
 from zstarview.gui.composite import SkyCompositorCache, _dimalt_ring_color_for_sky_image
+from zstarview.paths import PALETTE_NEVER_RISES_RGB, THEME_STYLES_BY_PRESET
 from zstarview.render.background import (
     dimalt_ring_pen_color_from_color,
     draw_radial_background,
     draw_window_border,
 )
 from zstarview.render.geometry import get_screen_geometry
+from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from zstarview.render.sky_disc import (
     NEVER_RISES_TINT_RGB,
     _render_sky_color_disc_cached,
@@ -20,7 +20,6 @@ from zstarview.render.sky_disc import (
     sky_color_samples,
 )
 from zstarview.types import ScreenGeometry
-from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 
 
 def test_sky_color_samples_get_brighter_as_alpha_increases() -> None:

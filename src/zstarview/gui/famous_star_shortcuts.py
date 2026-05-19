@@ -11,7 +11,6 @@ from ..asterisms import ASTERISMS
 from ..location_resolver import PlaceSearchCandidate
 from ..search.models import SearchJumpTarget
 
-
 DEC_BAND_NORTH = "north"
 DEC_BAND_EQUATOR = "equatorial"
 DEC_BAND_SOUTH = "south"

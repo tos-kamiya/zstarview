@@ -1,6 +1,6 @@
-from dataclasses import dataclass
 import os
 import os.path
+from dataclasses import dataclass
 
 from appdirs import user_cache_dir, user_log_dir
 

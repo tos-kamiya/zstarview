@@ -4,7 +4,6 @@ from pathlib import Path
 
 from zstarview.catalog import load_star_catalog
 
-
 HEADER = "HIP,HR,Name,RAh,Dec,Vmag,B-V,SourceCatalog,SourceId,TYC\n"
 
 

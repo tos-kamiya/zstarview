@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Callable
 
 from ..aircraft_constants import (
-    AIRCRAFT_REFRESH_INTERVAL_SECONDS,
     AIRCRAFT_CACHE_STALE_FALLBACK_SECONDS,
+    AIRCRAFT_REFRESH_INTERVAL_SECONDS,
 )
 from ..paths import AIRCRAFT_CACHE_ROOT_DIR
 from .opensky import AircraftBoundingBox, fetch_opensky_states

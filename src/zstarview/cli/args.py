@@ -1,7 +1,6 @@
 import argparse
 import sys
-from typing import Sequence
-from typing import Tuple, Union
+from typing import Sequence, Tuple, Union
 
 from ..__about__ import __version__
 from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM

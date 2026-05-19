@@ -5,7 +5,6 @@ from typing import Callable, Sequence
 
 from pyproj import CRS, Transformer
 
-
 DEFAULT_SPLIT_CELL_M = 300.0
 
 

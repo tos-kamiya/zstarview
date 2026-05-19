@@ -10,8 +10,8 @@ from urllib.error import URLError
 
 from PySide6.QtCore import QObject, Signal
 
-from ..search.jpl import extract_horizons_state_vector
 from ..satellites import fetch_horizons_vector_csv
+from ..search.jpl import extract_horizons_state_vector
 from ..search.models import SearchJumpTarget
 from .worker_pool import submit_gui_work, wait_for_gui_futures
 

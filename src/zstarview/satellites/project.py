@@ -1,13 +1,19 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from collections.abc import Mapping, Sequence
 import re
+from collections.abc import Mapping, Sequence
+from datetime import datetime, timezone
 
 import astropy.time
-from astropy import units as u
-from astropy.coordinates import AltAz, CartesianRepresentation, EarthLocation, GCRS, SkyCoord
 import skyfield.api
+from astropy import units as u
+from astropy.coordinates import (
+    GCRS,
+    AltAz,
+    CartesianRepresentation,
+    EarthLocation,
+    SkyCoord,
+)
 
 from ..satellite_constants import SATELLITE_HORIZONS_CACHE_KEY, SATELLITE_ISS_CACHE_KEY
 from .fetch import build_earth_satellites

@@ -1,18 +1,21 @@
 from typing import Any, Dict, List, Optional
 
 import astropy.time
-
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 
+from ..aircraft import project_aircraft_snapshots
 from ..aircraft.types import AircraftOverlayPoint
-from ..aircraft_constants import AIRCRAFT_FADE_START_SECONDS, AIRCRAFT_OVERLAY_LINE_COLOR_RGB
+from ..aircraft_constants import (
+    AIRCRAFT_FADE_START_SECONDS,
+    AIRCRAFT_OVERLAY_LINE_COLOR_RGB,
+)
 from ..astro import altaz_to_normalized_xy, is_in_fov
 from ..paths import FIELD_OF_VIEW_DEG, ThemeStyle
 from ..types import ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
 from .text import resolve_text_style
-from ..aircraft import project_aircraft_snapshots
+
 _AIRCRAFT_CALLSIGN_MAX_DISTANCE_KM = 10.0
 _AIRCRAFT_MAX_DRAW_DISTANCE_KM = 50.0
 

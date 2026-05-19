@@ -22,6 +22,9 @@
 - Tests + coverage: `coverage run -m pytest && coverage report`.
 - Build wheel/sdist: `python -m build` (requires `pip install build`).
 - GNOME launcher: `zstarview-make-desktop-file [--write]`.
+- Import cleanup: use `ruff check --select I --fix src/zstarview tests` for
+  import sorting, then run `ruff check src/zstarview tests` to catch any
+  residual import-related errors such as `E402` in path-hacked scripts.
 
 ## Coding Style & Naming Conventions
 - Python 3.10+. Follow PEP 8 with 4‑space indentation; add type hints where practical.

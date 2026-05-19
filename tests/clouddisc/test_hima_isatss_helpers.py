@@ -7,11 +7,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 import xarray as xr
-from pyproj import CRS
-from pyproj import Transformer
+from pyproj import CRS, Transformer
 
 from zstarview.clouddisc import CloudDiscConfig
-from zstarview.clouddisc.types import DataNotFoundError, DownloadCancelledError
+from zstarview.clouddisc.providers import hima as hima_module
 from zstarview.clouddisc.providers._hima_isatss import (
     DATA_VAR,
     GRID_VAR,
@@ -23,9 +22,9 @@ from zstarview.clouddisc.providers._hima_isatss import (
     select_needed_tiles,
     stitch_tiles_from_paths,
 )
-from zstarview.clouddisc.providers import hima as hima_module
 from zstarview.clouddisc.providers.hima import HimaProvider
 from zstarview.clouddisc.sampling.bt_sampler import build_bt_sampler
+from zstarview.clouddisc.types import DataNotFoundError, DownloadCancelledError
 
 pytestmark = [
     pytest.mark.filterwarnings(

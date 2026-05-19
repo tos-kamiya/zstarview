@@ -15,11 +15,10 @@ from .terrain import WGS84_GEOD, build_ray_scan_grid
 from .water_overlay import (
     DEFAULT_WATER_AZIMUTH_STEP_DEG,
     DEFAULT_WATER_SAMPLE_STEP_M,
-    build_geometric_distance_samples,
     WaterOverlayPoint,
     bbox_from_point,
+    build_geometric_distance_samples,
 )
-
 
 DEFAULT_WATER_TILES_ROOT_125M = Path(__file__).resolve().parent / "data" / "water_tiles_125m"
 DEFAULT_WATER_TILES_ROOT_250M = Path(__file__).resolve().parent / "data" / "water_tiles_250m"

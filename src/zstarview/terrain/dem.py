@@ -9,15 +9,14 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Sequence
-
-import numpy as np
-from pyproj import CRS, Geod, Transformer
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
-from ..clouddisc.types import DownloadCancelledError
+import numpy as np
+from pyproj import CRS, Geod, Transformer
 
+from ..clouddisc.types import DownloadCancelledError
 
 WGS84_GEOD = Geod(ellps="WGS84")
 COPERNICUS_DEM_BUCKET = "copernicus-dem-90m"

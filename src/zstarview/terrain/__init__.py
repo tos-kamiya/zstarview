@@ -1,9 +1,9 @@
 from .dem import (
     COPERNICUS_DEM_BUCKET,
+    WGS84_GEOD,
     DemGrid,
     DownloadedDem,
     GeoTiffDem,
-    WGS84_GEOD,
     build_download_bbox,
     fetch_copernicus_dem,
     sample_ground_elevation,

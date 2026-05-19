@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
 
-
 COARSE_GRID_ROWS = 4
 COARSE_GRID_COLS = 8
 

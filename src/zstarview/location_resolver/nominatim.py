@@ -4,7 +4,6 @@ import json
 import urllib.parse
 import urllib.request
 
-
 _VERSION = "0.2.0"
 _BASE_URL = "https://nominatim.openstreetmap.org/search"
 _DEFAULT_USER_AGENT = f"zstarview/{_VERSION}"

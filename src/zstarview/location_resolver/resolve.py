@@ -10,8 +10,18 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, List
 
 from ..config import load_last_city, save_last_city
-from ..paths import CITY_ADMIN1_CODES_FILE, CITY_COORD_FILE
-from ..paths import COPERNICUS_DEM_CACHE_DIR, OVERTURE_DERIVED_ROOT_DIR
+from ..paths import (
+    CITY_ADMIN1_CODES_FILE,
+    CITY_COORD_FILE,
+    COPERNICUS_DEM_CACHE_DIR,
+    OVERTURE_DERIVED_ROOT_DIR,
+)
+from ..terrain import (
+    GeoTiffDem,
+    build_download_bbox,
+    fetch_copernicus_dem,
+    sample_ground_elevation,
+)
 from ..utils.latlon_format import format_lat_lon_display
 from ..utils.location_display import format_location_summary
 from ..utils.resolve_city import (
@@ -26,7 +36,6 @@ from .mountains import resolve_mountain_viewpoint
 from .nominatim import search_nominatim
 from .towers import resolve_tower_viewpoint
 from .viewpoints import Viewpoint, prefixed_viewpoint_name, split_prefixed_viewpoint
-from ..terrain import GeoTiffDem, build_download_bbox, fetch_copernicus_dem, sample_ground_elevation
 
 if TYPE_CHECKING:
     from ..data.urban_outline_common import BuildingFootprint
@@ -196,7 +205,10 @@ def _resolve_building_top_height_m(
 ) -> float | None:
     derived_root = Path(derived_root_dir)
     all_buildings: list["BuildingFootprint"] = []
-    from ..data.derived_tile_cache import parse_derived_tile_buildings, select_derived_tile_envelopes
+    from ..data.derived_tile_cache import (
+        parse_derived_tile_buildings,
+        select_derived_tile_envelopes,
+    )
     from ..data.import_overture_buildings import import_overture_buildings
 
     for feature_type in ("building", "building_part"):

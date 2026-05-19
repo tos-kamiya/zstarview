@@ -1,17 +1,17 @@
 import polars as pl
 
-from zstarview.location_resolver import PlaceSearchCandidate
 from zstarview.gui.famous_star_shortcuts import (
     DEC_BAND_EQUATOR,
     DEC_BAND_NORTH,
     DEC_BAND_SOUTH,
+    build_named_star_shortcuts,
     build_place_search_jump_targets,
     build_search_jump_targets,
-    build_named_star_shortcuts,
     classify_declination_band,
     flatten_named_star_shortcuts,
 )
 from zstarview.gui.window_inputs import prepare_window_catalogs
+from zstarview.location_resolver import PlaceSearchCandidate
 
 
 def test_classify_declination_band_thresholds() -> None:

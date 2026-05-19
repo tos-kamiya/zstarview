@@ -16,8 +16,8 @@ from ..render import stars as render_stars
 from ..render import text as render_text
 from ..render.pipeline import (
     FrameContext,
-    RenderSceneData,
     RenderHudState,
+    RenderSceneData,
     RenderStyle,
     compute_star_render_surface_size,
     render_base_scene_into_painter,

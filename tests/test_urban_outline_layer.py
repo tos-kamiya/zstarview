@@ -2,15 +2,16 @@ from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
+
 import numpy as np
 
 from zstarview.data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
 from zstarview.data.urban_outline_common import BuildingFootprint
 from zstarview.types import UrbanOutlinePolyline, ViewerData
 from zstarview.urban_outline_layer import (
+    _build_observer_centric_urban_outline_result,
     _merge_building_footprints,
     _resolve_building_ground_elevations,
-    _build_observer_centric_urban_outline_result,
     resolve_urban_outline_layer_for_viewer,
 )
 

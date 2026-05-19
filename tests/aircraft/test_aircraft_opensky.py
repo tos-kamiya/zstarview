@@ -1,4 +1,7 @@
-from zstarview.aircraft.opensky import build_observer_bbox, normalize_opensky_state_vectors
+from zstarview.aircraft.opensky import (
+    build_observer_bbox,
+    normalize_opensky_state_vectors,
+)
 
 
 def test_build_observer_bbox_uses_one_degree_each_side() -> None:

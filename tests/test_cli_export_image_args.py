@@ -3,12 +3,12 @@ from __future__ import annotations
 import pytest
 
 from zstarview.__about__ import __version__
+from zstarview.cli.args import parse_export_image_args
 from zstarview.cli.export_image import (
     _clamp_view_center_altitude,
     _format_search_failure_message,
     _search_view_center_for_target,
 )
-from zstarview.cli.args import parse_export_image_args
 from zstarview.paths import OBSERVER_MAX_ALT_DEG, OBSERVER_MIN_ALT_DEG
 
 

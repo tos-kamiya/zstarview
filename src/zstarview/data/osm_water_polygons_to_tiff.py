@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import argparse
-from osgeo import gdal, ogr
-from pathlib import Path
 import os
+from pathlib import Path
+
+from osgeo import gdal, ogr
 
 gdal.UseExceptions()
 

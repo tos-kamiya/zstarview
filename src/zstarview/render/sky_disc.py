@@ -9,7 +9,6 @@ from ..paths import PALETTE_NEVER_RISES_RGB
 from ..types import ScreenGeometry
 from .qt_image import np_rgba_to_qimage
 
-
 TURBIDITY = 5  # 2 (clear blue sky) to 10 (hazy white sky)
 GROUND_TINT_RGB = np.array(PALETTE_NEVER_RISES_RGB, dtype=np.float32) / 255.0
 NEVER_RISES_TINT_RGB = np.array(PALETTE_NEVER_RISES_RGB, dtype=np.float32) / 255.0

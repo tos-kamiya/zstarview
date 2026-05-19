@@ -10,7 +10,6 @@ from pyproj import CRS, Transformer
 
 from zstarview.location_resolver import TowerViewpoint
 
-
 DEFAULT_MIN_BUILDING_HEIGHT_M = 40.0
 
 

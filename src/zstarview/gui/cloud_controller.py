@@ -10,8 +10,8 @@ from __future__ import annotations
 import logging
 import threading
 import time
-from datetime import datetime, timezone
 from concurrent.futures import Future
+from datetime import datetime, timezone
 from typing import Callable, Optional
 
 import numpy as np
@@ -28,8 +28,8 @@ from ..clouddisc import (
     VisibilityError,
     cleanup_satellite_cache,
 )
-from ..clouddisc.types import CloudSourceData
 from ..clouddisc.providers.select import pick_satellite
+from ..clouddisc.types import CloudSourceData
 from ..paths import CLOUD_SHELLS_KM
 from .composite import build_cloud_amount_field_from_rgba
 from .native_work_lock import HEAVY_NATIVE_WORK_LOCK

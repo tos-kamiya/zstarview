@@ -4,11 +4,16 @@ from datetime import datetime, timezone
 
 import pytest
 
-from zstarview.search.jpl import resolve_jpl_target_altaz
-from zstarview.search.jpl import resolve_jpl_target_state_vector
+from zstarview.search.jpl import (
+    resolve_jpl_target_altaz,
+    resolve_jpl_target_state_vector,
+)
 from zstarview.search.models import SearchJumpTarget
 from zstarview.search.query import parse_search_query, search_target_matches_query
-from zstarview.search.resolver import compute_search_target_altaz, resolve_search_targets
+from zstarview.search.resolver import (
+    compute_search_target_altaz,
+    resolve_search_targets,
+)
 
 
 def test_parse_search_query_supports_label_selector() -> None:

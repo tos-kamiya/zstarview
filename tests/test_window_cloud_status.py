@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
-from zstarview.gui.window import DEFAULT_CLOUD_ALT_MIN_DEG, SkyWindow
 from zstarview.gui.water_overlay_state import WaterOverlayState
+from zstarview.gui.window import DEFAULT_CLOUD_ALT_MIN_DEG, SkyWindow
 from zstarview.gui.window_updates import SkyWindowUpdatesMixin
 
 

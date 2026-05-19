@@ -3,15 +3,14 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import warnings
+from pathlib import Path
 
 import numpy as np
 import xarray as xr
 from pyproj import CRS
 
 from ..geo_area import GeoArea
-
 
 DATA_VAR = "CMI"
 GRID_VAR = "goes_imager_projection"

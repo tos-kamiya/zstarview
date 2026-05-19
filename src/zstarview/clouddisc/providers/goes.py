@@ -16,7 +16,7 @@ from typing import Dict, List, Optional, Tuple
 import xarray as xr
 
 from ..config import CloudDiscConfig
-from ..types import DataNotFoundError, CloudMeta
+from ..types import CloudMeta, DataNotFoundError
 from ._goes_abi import load_cmi_with_area
 from ._s3_io import download_s3_object, list_s3_keys
 from .select import GOES_SATELLITES, normalize_satellite_name

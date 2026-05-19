@@ -3,7 +3,10 @@ from __future__ import annotations
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication
 
-from zstarview.gui.view_direction import clamp_view_center_alt_az, resolve_view_direction_step
+from zstarview.gui.view_direction import (
+    clamp_view_center_alt_az,
+    resolve_view_direction_step,
+)
 from zstarview.gui.view_direction_dialog import ViewDirectionDialog
 
 app = QApplication.instance() or QApplication([])

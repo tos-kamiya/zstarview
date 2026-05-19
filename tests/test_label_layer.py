@@ -5,15 +5,15 @@ from PySide6.QtCore import QPointF, QRect, QRectF
 from PySide6.QtGui import QColor, QFont, QImage, QPainter
 from PySide6.QtWidgets import QApplication
 
-from zstarview.render import search_overlay as render_search_overlay
-from zstarview.render import pipeline as render_pipeline
-from zstarview.render import text as render_text
+from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.render import asterisms as render_asterisms
 from zstarview.render import deep_sky_objects as render_deep_sky_objects
-from zstarview.render import overlay_info as render_overlay_info
 from zstarview.render import guides as render_guides
+from zstarview.render import overlay_info as render_overlay_info
+from zstarview.render import pipeline as render_pipeline
+from zstarview.render import search_overlay as render_search_overlay
 from zstarview.render import solar_system as render_solar_system
-from zstarview.paths import THEME_STYLES_BY_PRESET
+from zstarview.render import text as render_text
 from zstarview.search.models import SearchJumpTarget
 from zstarview.types import ScreenGeometry
 

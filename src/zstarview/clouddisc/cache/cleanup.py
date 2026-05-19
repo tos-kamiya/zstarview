@@ -3,8 +3,8 @@
 Provides utility for cleaning up cache directories.
 """
 import logging
-from pathlib import Path
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 

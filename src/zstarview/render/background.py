@@ -3,8 +3,16 @@ from typing import Callable
 from zoneinfo import ZoneInfo
 
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen, QPolygonF, QRadialGradient
+from PySide6.QtGui import (
+    QColor,
+    QPainter,
+    QPainterPath,
+    QPen,
+    QPolygonF,
+    QRadialGradient,
+)
 
+from ..astro import altaz_to_normalized_xy
 from ..paths import (
     BACKGROUND_FIELD_OF_VIEW_DEG1,
     BACKGROUND_FIELD_OF_VIEW_DEG2,
@@ -12,10 +20,8 @@ from ..paths import (
     GUI_BUTTON_SIZE,
     ThemeStyle,
 )
-from ..astro import altaz_to_normalized_xy
-from ..utils.location_display import build_location_info_lines
 from ..types import CelestialData, ScreenGeometry, ViewerData
-
+from ..utils.location_display import build_location_info_lines
 
 FRAMELESS_WINDOW_BORDER_WIDTH = 24.0
 ALT_RING_HIGHLIGHT_ALPHA = 12

@@ -13,9 +13,9 @@ from PySide6.QtCore import QObject, Signal
 from ..clouddisc.types import DownloadCancelledError
 from ..terrain import (
     EARTH_MEAN_RADIUS_M,
+    WGS84_GEOD,
     GeoTiffDem,
     ObserverLocation,
-    WGS84_GEOD,
     build_distance_samples,
     build_download_bbox,
     compute_flat_ground_horizon_layers,

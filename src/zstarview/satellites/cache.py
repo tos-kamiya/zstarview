@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import inspect
 import json
 import logging
-import inspect
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -19,10 +19,10 @@ from ..satellite_constants import (
     SATELLITE_HORIZONS_CACHE_KEY,
 )
 from .fetch import (
-    extract_record_source,
     extract_element_epoch_utc,
-    fetch_iss_records,
+    extract_record_source,
     fetch_horizons_records,
+    fetch_iss_records,
     filter_records_for_group,
 )
 from .types import CachedSatelliteElementSet, SatelliteOmmRecord

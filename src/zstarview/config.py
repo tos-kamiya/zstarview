@@ -1,11 +1,11 @@
-import logging
 import json
+import logging
 from pathlib import Path
 from typing import Any, Optional, Tuple
 
 from appdirs import user_config_dir
 
-from .paths import APP_ID, APP_AUTHOR
+from .paths import APP_AUTHOR, APP_ID
 
 logger = logging.getLogger(__name__)
 

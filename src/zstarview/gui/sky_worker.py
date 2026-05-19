@@ -10,8 +10,8 @@ from __future__ import annotations
 import logging
 import threading
 import time
-from datetime import datetime, timedelta, timezone
 from concurrent.futures import Future
+from datetime import datetime, timedelta, timezone
 from typing import Callable, Dict, Tuple
 
 import astropy
@@ -25,17 +25,17 @@ from ..astro import (
     DeepSkyCatalogArrays,
     StarCatalogArrays,
     calculate_celestial_equator_points,
-    calculate_visible_deep_sky_objects,
     calculate_ecliptic_points,
     calculate_horizon_points,
     calculate_planets,
+    calculate_visible_deep_sky_objects,
     calculate_visible_stars,
     eclipse_factor_from_info,
 )
 from ..night_lights import compute_night_light_glow_profile
 from ..paths import ThemeStyle
-from ..render import sky_disc
 from ..render import geometry as render_geometry
+from ..render import sky_disc
 from ..types import CelestialData, StarCatalogMeta
 from .native_work_lock import HEAVY_NATIVE_WORK_LOCK
 from .worker_pool import submit_gui_work, wait_for_gui_futures

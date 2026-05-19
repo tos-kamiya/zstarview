@@ -9,17 +9,17 @@ from typing import Optional
 import numpy as np
 import polars as pl
 
-from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
-from ..paths import CLOUD_MISSING_TINT_RGBA
 from ..astro import (
     DeepSkyCatalogArrays,
     StarCatalogArrays,
-    prepare_star_catalog_meta,
     prepare_deep_sky_catalog_arrays,
     prepare_star_catalog_arrays,
+    prepare_star_catalog_meta,
 )
-from ..types import StarCatalogMeta, ViewerData
+from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
+from ..paths import CLOUD_MISSING_TINT_RGBA
 from ..search.models import SearchJumpTarget
+from ..types import StarCatalogMeta, ViewerData
 from .famous_star_shortcuts import (
     NamedStarShortcut,
     build_named_star_shortcuts,

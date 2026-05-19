@@ -6,9 +6,9 @@ from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import QApplication
 
-from zstarview.gui.place_search_dialog import PlaceSearchDialog
 from zstarview.gui.famous_star_search_dialog import NamedStarSearchDialog
 from zstarview.gui.famous_star_shortcuts import SearchJumpTarget
+from zstarview.gui.place_search_dialog import PlaceSearchDialog
 
 _app = QApplication.instance() or QApplication([])
 

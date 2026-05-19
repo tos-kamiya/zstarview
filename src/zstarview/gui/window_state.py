@@ -7,8 +7,8 @@ from typing import Optional
 from PySide6.QtCore import QPoint
 from PySide6.QtGui import QImage
 
-from ..search.models import SearchJumpTarget
 from ..night_lights import NightLightGlowProfile
+from ..search.models import SearchJumpTarget
 from ..types import CelestialData, StarsTable, UrbanOutlinePolyline, ViewCenterAltAz
 from ..water_overlay import WaterOverlayPoint
 

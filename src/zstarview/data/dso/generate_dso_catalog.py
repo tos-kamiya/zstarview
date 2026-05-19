@@ -15,7 +15,6 @@ import re
 from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple
 
-
 CSV_COLUMNS = [
     "Id",
     "Name",

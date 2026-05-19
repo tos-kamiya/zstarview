@@ -2,13 +2,18 @@ import math
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
-
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QRadialGradient
 
 from ..astro import altaz_to_normalized_xy, calculate_moon_render_data, is_in_fov
 from ..paths import ThemeStyle
-from ..types import CelestialData, CelestialObject, PlanetBody, ScreenGeometry, ViewerData
+from ..types import (
+    CelestialData,
+    CelestialObject,
+    PlanetBody,
+    ScreenGeometry,
+    ViewerData,
+)
 from ..utils.image import generate_moon_phase_rgba
 from .geometry import normalized_to_screen_xy
 from .guides import draw_gauge_cross
@@ -19,7 +24,12 @@ from .photometry import (
     planet_marker_color,
 )
 from .qt_image import np_rgba_to_qimage
-from .text import _rect_overlap_count, _text_bounds_at_baseline, draw_outlined_text, resolve_text_style
+from .text import (
+    _rect_overlap_count,
+    _text_bounds_at_baseline,
+    draw_outlined_text,
+    resolve_text_style,
+)
 
 
 def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:

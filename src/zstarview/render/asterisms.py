@@ -6,14 +6,19 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
 
-from ..astro import altaz_to_normalized_xy, resolve_star_source_ids
 from ..asterisms import ASTERISMS, pick_rotating_asterism
+from ..astro import altaz_to_normalized_xy, resolve_star_source_ids
 from ..paths import PALETTE_ASTERISM_RGB, ThemeStyle
 from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
-from .stars import _content_fov_deg_from_viewer
 from .geometry import normalized_to_screen_xy
 from .guides import _clip_polyline_to_radius, _great_circle_altaz_points, split_by_gaps
-from .text import _text_bounds_at_baseline, draw_outlined_text, recolor_text_style, resolve_text_style
+from .stars import _content_fov_deg_from_viewer
+from .text import (
+    _text_bounds_at_baseline,
+    draw_outlined_text,
+    recolor_text_style,
+    resolve_text_style,
+)
 
 ASTERISM_BASE_OUTLINE_WIDTH = 4.0
 ASTERISM_BASE_MID_WIDTH = 2.6

@@ -8,8 +8,8 @@ from types import SimpleNamespace
 import pytest
 
 from zstarview.astro import _starfield_load, load_ephemeris
-from zstarview.launch_time import LaunchSetupError
 from zstarview.gui.viewer import _verify_ephemeris_for_launch
+from zstarview.launch_time import LaunchSetupError
 
 
 def test_de442s_uses_naif_planets_url() -> None:

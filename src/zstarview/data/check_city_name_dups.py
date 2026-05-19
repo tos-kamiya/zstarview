@@ -7,10 +7,11 @@ Now prints human-readable admin1 (state/province) name if available from admin1C
 """
 
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import List, Dict, Tuple
+
 import argparse
 import sys
+from dataclasses import dataclass
+from typing import Dict, List, Tuple
 
 
 @dataclass

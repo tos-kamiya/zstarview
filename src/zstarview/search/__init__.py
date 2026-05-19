@@ -4,8 +4,8 @@ from .jpl import (
     build_horizons_command,
     extract_horizons_altaz,
     extract_horizons_state_vector,
-    search_jpl_targets,
     resolve_jpl_target_state_vector,
+    search_jpl_targets,
 )
 from .models import SearchJumpTarget, SearchRequest, SearchResolution
 from .query import SearchQuerySpec, parse_search_query, search_target_matches_query

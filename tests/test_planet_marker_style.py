@@ -1,26 +1,26 @@
 from __future__ import annotations
 
-import astropy.time
 import math
 from datetime import datetime, timezone
+
+import astropy.time
 import numpy as np
 from PySide6.QtCore import QPoint, QPointF, QRectF
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QImage, QPainter
 from PySide6.QtWidgets import QApplication
 
-from zstarview.render import background as render_background
+from zstarview.aircraft.types import AircraftOverlayPoint
+from zstarview.paths import PALETTE_AIRCRAFT_AND_SATELLITE_RGB, THEME_STYLES_BY_PRESET
 from zstarview.render import aircraft as render_aircraft
+from zstarview.render import background as render_background
 from zstarview.render import guides as render_guides
 from zstarview.render import overlay_info as render_overlay_info
 from zstarview.render import satellites as render_satellites
 from zstarview.render import solar_system as render_solar_system
 from zstarview.render import stars as render_stars
 from zstarview.render import text as render_text
-from zstarview.paths import PALETTE_AIRCRAFT_AND_SATELLITE_RGB
 from zstarview.render.deep_sky_objects import DSO_LABEL_RGB
-from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.satellite_constants import SATELLITE_HORIZONS_CACHE_KEY
-from zstarview.aircraft.types import AircraftOverlayPoint
 from zstarview.satellites.types import SatelliteOverlayPoint
 from zstarview.types import (
     CelestialData,

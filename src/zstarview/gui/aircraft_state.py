@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from ..aircraft.types import AircraftSnapshot
 from ..aircraft.opensky import AircraftBoundingBox
+from ..aircraft.types import AircraftSnapshot
 
 
 @dataclass

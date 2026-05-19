@@ -9,15 +9,17 @@ This module provides:
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from functools import lru_cache
-import math
 from typing import Optional, Tuple, cast
 
 import numpy as np
 from PySide6.QtCore import QPointF, QRect, QRectF, Qt
 from PySide6.QtGui import QColor, QImage, QPainter, QPainterPath, QPen, QPolygonF
 
+from ..astro import altaz_to_normalized_xy
+from ..night_lights import NightLightGlowProfile
 from ..paths import (
     CLOUD_HATCH_DEFAULT,
     CLOUD_MISSING_TINT_RGBA,
@@ -25,14 +27,17 @@ from ..paths import (
     HatchConfig,
     ThemeStyle,
 )
-from ..astro import altaz_to_normalized_xy
-from ..night_lights import NightLightGlowProfile
-from ..render.night_lights import draw_night_light_glow_normal
+from ..render.background import (
+    dimalt_ring_brightness_score_from_rgba,
+    dimalt_ring_pen_color_from_color,
+    draw_altitude_ring_overlay,
+)
 from ..render.earth_guide import (
     draw_earth_guide_fast,
     draw_earth_guide_normal,
     earth_guide_line_alpha,
 )
+from ..render.geometry import normalized_to_screen_xy
 from ..render.guides import (
     REFERENCE_LINE_FG_WIDTH,
     REFERENCE_LINE_MID_ALPHA,
@@ -42,14 +47,9 @@ from ..render.guides import (
     _clip_polyline_to_radius,
     split_by_gaps,
 )
-from ..render.geometry import normalized_to_screen_xy
-from ..render.background import (
-    dimalt_ring_brightness_score_from_rgba,
-    dimalt_ring_pen_color_from_color,
-    draw_altitude_ring_overlay,
-)
-from ..types import ScreenGeometry
+from ..render.night_lights import draw_night_light_glow_normal
 from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
+from ..types import ScreenGeometry
 
 NEVER_RISES_GUIDE_WIDTH_SCALE = 4.56
 NEVER_RISES_GUIDE_ALPHA_SCALE = 0.5

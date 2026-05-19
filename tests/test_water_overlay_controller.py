@@ -3,11 +3,10 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import zstarview.gui.water_overlay_controller as mod
-from zstarview.gui.water_overlay_controller import WaterOverlayController
 from zstarview.gui.water_overlay_cache import WaterOverlayCacheSnapshot
+from zstarview.gui.water_overlay_controller import WaterOverlayController
 from zstarview.water_mask_interface import WaterSurfaceBandStats
-from zstarview.water_overlay import WaterOverlayPoint
-from zstarview.water_overlay import WaterPolygonFootprint
+from zstarview.water_overlay import WaterOverlayPoint, WaterPolygonFootprint
 
 
 def test_water_overlay_controller_uses_compact_failure_banner_and_log(

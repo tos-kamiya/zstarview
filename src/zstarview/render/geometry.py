@@ -3,8 +3,8 @@ from typing import Tuple
 
 import numpy as np
 
-from ..types import ScreenGeometry
 from ..paths import OBSERVER_MAX_ALT_DEG, OBSERVER_MIN_ALT_DEG
+from ..types import ScreenGeometry
 
 
 def _altaz_to_normalized_xy_vectorized(

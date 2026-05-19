@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, Union, TypeAlias, TypedDict
+from typing import Any, Dict, List, Optional, Tuple, TypeAlias, TypedDict, Union
 
 import astropy
 import astropy.time

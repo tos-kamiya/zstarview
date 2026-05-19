@@ -8,9 +8,9 @@ from typing import Callable, Optional, Sequence
 from PySide6.QtCore import QEvent, Qt, Signal
 from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import (
+    QCheckBox,
     QDialog,
     QDialogButtonBox,
-    QCheckBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,

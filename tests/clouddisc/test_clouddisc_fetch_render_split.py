@@ -2,15 +2,16 @@ from __future__ import annotations
 
 import datetime as dt
 from pathlib import Path
+
 import numpy as np
 import xarray as xr
 
 from zstarview.clouddisc import CloudDisc, CloudDiscConfig
 from zstarview.clouddisc.core import (
-    DEFAULT_CLOUD_SHELLS_KM,
     DEFAULT_CLOUD_SHELL_BLEND_HIGH_CLOUD_AMOUNT,
     DEFAULT_CLOUD_SHELL_BLEND_LOW_CLOUD_AMOUNT,
     DEFAULT_CLOUD_SHELL_WEIGHTS,
+    DEFAULT_CLOUD_SHELLS_KM,
     _blend_cloud_shell_weights,
 )
 from zstarview.clouddisc.types import CloudMeta, CloudSourceData, SourceKey

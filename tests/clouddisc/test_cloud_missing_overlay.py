@@ -21,8 +21,8 @@ from zstarview.render.guides import (
     REFERENCE_LINE_OUTER_ALPHA,
     REFERENCE_LINE_OUTER_WIDTH,
 )
-from zstarview.types import ScreenGeometry
 from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
+from zstarview.types import ScreenGeometry
 
 
 def test_overlay_missing_with_hatch_tints_only_missing_region() -> None:

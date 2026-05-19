@@ -17,7 +17,11 @@ SRC_ROOT = REPO_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from zstarview.data.derived_tile_cache import parse_derived_tile_buildings, select_derived_tile_envelopes  # noqa: E402
+from zstarview.astro import altaz_to_normalized_xy  # noqa: E402
+from zstarview.data.derived_tile_cache import (  # noqa: E402
+    parse_derived_tile_buildings,
+    select_derived_tile_envelopes,
+)
 from zstarview.data.urban_outline_common import (  # noqa: E402
     BuildingFootprint,
     bbox_min_distance_m,
@@ -26,8 +30,11 @@ from zstarview.data.urban_outline_common import (  # noqa: E402
     project_ring_xy,
     sample_ring_points_xy,
 )
-from zstarview.astro import altaz_to_normalized_xy  # noqa: E402
-from zstarview.location_resolver import TowerViewpoint, load_tower_viewpoints, resolve_tower_viewpoint  # noqa: E402
+from zstarview.location_resolver import (  # noqa: E402
+    TowerViewpoint,
+    load_tower_viewpoints,
+    resolve_tower_viewpoint,
+)
 from zstarview.location_resolver.viewpoints import normalize_viewpoint_name  # noqa: E402
 
 DEFAULT_RADIUS_KM = 3.0

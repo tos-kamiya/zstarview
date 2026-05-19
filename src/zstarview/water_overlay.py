@@ -19,7 +19,6 @@ from .location_resolver.place_projection import project_place_targets_to_altaz
 from .terrain import WGS84_GEOD, build_ray_scan_grid
 from .water_surface_mesh import make_local_transformer, project_ring_xy
 
-
 EARTH_RADIUS_KM = 6371.0088
 DEFAULT_WATER_OVERPASS_ENDPOINT = "https://overpass-api.de/api/interpreter"
 DEFAULT_WATER_USER_AGENT = "zstarview-water-overlay/0.1"

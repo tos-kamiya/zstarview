@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import logging
+import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-import re
 from datetime import datetime, timezone
-import logging
 
 from ..satellites.cache import resolve_satellite_elements_for_time
 from ..satellites.project import find_satellite_altaz

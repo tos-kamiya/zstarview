@@ -4,7 +4,7 @@ Utilities for selecting the best geostationary satellite for a given location.
 """
 
 import math
-from typing import Dict, Tuple, List
+from typing import Dict, List, Tuple
 
 # Defines the sub-satellite longitude (the longitude directly below the satellite)
 # for each available geostationary satellite.

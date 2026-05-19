@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import csv
-from datetime import datetime, timezone
 import json
-from collections.abc import Iterable
 import logging
+from collections.abc import Iterable
+from datetime import datetime, timezone
+from urllib.error import URLError
 from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
-from urllib.error import URLError
 
-from skyfield.api import EarthSatellite
 import skyfield.api
+from skyfield.api import EarthSatellite
 
 from ..satellite_constants import (
     SATELLITE_FETCH_TIMEOUT_SECONDS,

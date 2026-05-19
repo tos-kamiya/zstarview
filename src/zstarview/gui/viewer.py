@@ -1,8 +1,8 @@
-import sys
 import faulthandler
+import json
 import logging
 import math
-import json
+import sys
 from dataclasses import replace
 from datetime import timedelta
 
@@ -11,7 +11,19 @@ from PySide6.QtCore import QObject, QTimer, Signal
 from ..astro import load_ephemeris
 from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_lived_cache
 from ..catalog import load_dso_catalog, load_star_catalog
+from ..cli.args import parse_args
+from ..gui.window_inputs import (
+    prepare_window_catalogs,
+    prepare_window_runtime_options,
+    prepare_window_user_options,
+    prepare_window_viewer_data,
+)
+from ..launch_time import (
+    LaunchSetupError,
+    parse_launch_time_arguments,
+)
 from ..location_resolver import (
+    LocationResolveError,
     find_exact_viewpoint_matches,
     list_mountain_all_names,
     list_mountain_primary_names,
@@ -19,41 +31,29 @@ from ..location_resolver import (
     list_tower_primary_names,
     load_mountain_viewpoints,
     load_tower_viewpoints,
-    LocationResolveError,
     mountain_viewpoint_to_dict,
     prefixed_viewpoint_name,
-    resolve_mountain_viewpoint,
     resolve_launch_location,
+    resolve_mountain_viewpoint,
     resolve_tower_viewpoint,
     split_prefixed_viewpoint,
     tower_viewpoint_to_dict,
 )
-from ..launch_time import (
-    LaunchSetupError,
-    parse_launch_time_arguments,
-)
 from ..logging_utils import setup_root_logger
+from ..overlay_time import target_time_utc_from_delta
 from ..paths import (
     APP_DISPLAY_NAME,
     DSO_CSV_FILE,
     EPHEMERIS_FILENAME,
     OBSERVER_MAX_ALT_DEG,
     OBSERVER_MIN_ALT_DEG,
-    THEME_STYLES_BY_PRESET,
     STARS_CSV_FILE,
+    THEME_STYLES_BY_PRESET,
 )
-from ..startup_log import BufferedStartupLogHandler
-from ..gui.window_inputs import (
-    prepare_window_catalogs,
-    prepare_window_runtime_options,
-    prepare_window_user_options,
-    prepare_window_viewer_data,
-)
-from ..overlay_time import target_time_utc_from_delta
 from ..search.jpl import search_jpl_targets
-from ..search.satellites import search_satellite_targets
 from ..search.resolver import resolve_search_targets
-from ..cli.args import parse_args
+from ..search.satellites import search_satellite_targets
+from ..startup_log import BufferedStartupLogHandler
 from ..types import ViewerData
 from .worker_pool import submit_gui_work
 
@@ -322,8 +322,8 @@ def main() -> None:
     if cli_exit_code is not None:
         raise SystemExit(cli_exit_code)
 
-    from ..splash import setup_app
     from ..gui.window import FramelessSkyWindow, StandardSkyWindow
+    from ..splash import setup_app
 
     app_name = APP_DISPLAY_NAME
     app = setup_app(app_name)

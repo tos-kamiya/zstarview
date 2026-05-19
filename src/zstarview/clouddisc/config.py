@@ -6,10 +6,10 @@ This module defines the `CloudDiscConfig` dataclass, which holds all the
 settings for fetching, caching, and processing satellite cloud data.
 """
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Tuple, Optional
-import os
+from typing import Optional, Tuple
 
 
 @dataclass(frozen=True)

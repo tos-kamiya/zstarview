@@ -3,13 +3,13 @@ from __future__ import annotations
 import threading
 
 import numpy as np
-from rasterio.transform import Affine
 import pytest
+from rasterio.transform import Affine
 
 import zstarview.water_mask_interface as mod
-from zstarview.water_overlay import DEFAULT_WATER_SAMPLE_GROWTH_FACTOR
-from zstarview.water_mask_interface import WaterSurfaceBandStats
 from zstarview.clouddisc.types import DownloadCancelledError
+from zstarview.water_mask_interface import WaterSurfaceBandStats
+from zstarview.water_overlay import DEFAULT_WATER_SAMPLE_GROWTH_FACTOR
 
 
 def test_extract_lonlat_points_from_mask_projects_all_water_pixels() -> None:
