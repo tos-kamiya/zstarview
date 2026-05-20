@@ -1,4 +1,5 @@
 import math
+from dataclasses import dataclass
 from typing import Callable, List, Tuple
 
 from PySide6.QtCore import QPointF, Qt
@@ -61,6 +62,18 @@ WATER_OVERLAY_RIVER_COLOR_RGB = (94, 214, 255)
 WATER_OVERLAY_POINT_RADIUS_PX = 3.0
 WATER_OVERLAY_DISTANCE_ALPHA_REFERENCE_KM = 128.0
 WATER_OVERLAY_DISTANCE_ALPHA_REFERENCE_SCALE = 16.0
+
+
+@dataclass(frozen=True)
+class TerrainHorizonRenderSpec:
+    opacity: float
+    base_width: float
+    far_base_width: float
+    fg_alpha: float
+    line_width_scale: float
+    color_rgb: tuple[int, int, int]
+    fast_mode: bool
+    distance_widths: bool
 
 
 def _urban_outline_foreground_alpha(opacity: float) -> float:
@@ -435,22 +448,15 @@ def _draw_terrain_profile_layer(
     terrain_profile_distances_m: list[float] | None,
     viewer: ViewerData,
     *,
-    opacity: float,
-    base_width: float,
-    far_base_width: float,
-    fg_alpha: float,
-    line_width_scale: float,
-    color_rgb: tuple[int, int, int],
-    fast_mode: bool,
-    distance_widths: bool,
+    spec: TerrainHorizonRenderSpec,
     is_in_fov_func: Callable[..., bool],
     altaz_to_normalized_xy_func: Callable[[float, float, Tuple[float, float]], Tuple[float, float]],
     normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], Tuple[float, float]],
     split_by_gaps_func: Callable[[List[Tuple[float, float]]], List[List[Tuple[float, float]]]],
 ) -> None:
-    if not terrain_profile_altaz or opacity <= 0.0:
+    if not terrain_profile_altaz or spec.opacity <= 0.0:
         return
-    effective_opacity = max(0.0, min(1.0, float(opacity)))
+    effective_opacity = max(0.0, min(1.0, float(spec.opacity)))
     if effective_opacity <= 0.0:
         return
     if terrain_profile_distances_m is not None and len(terrain_profile_distances_m) != len(terrain_profile_altaz):
@@ -496,10 +502,10 @@ def _draw_terrain_profile_layer(
         distances_m.append(distance_m)
     points = projected_points
 
-    color = QColor(*color_rgb)
-    color.setAlphaF(max(0.0, min(1.0, float(fg_alpha))))
-    width_scale = float(line_width_scale)
-    has_distance_widths = distance_widths and (not fast_mode) and terrain_profile_distances_m is not None
+    color = QColor(*spec.color_rgb)
+    color.setAlphaF(max(0.0, min(1.0, float(spec.fg_alpha))))
+    width_scale = float(spec.line_width_scale)
+    has_distance_widths = spec.distance_widths and (not spec.fast_mode) and terrain_profile_distances_m is not None
     if has_distance_widths:
         valid_distances = [distance for distance in distances_m if math.isfinite(float(distance))]
         max_distance_m = max(valid_distances) if valid_distances else float("nan")
@@ -515,7 +521,7 @@ def _draw_terrain_profile_layer(
         frag_points = [QPointF(*normalized_to_screen_xy_func(nx, ny, geometry)) for nx, ny in frag]
         if not has_distance_widths:
             poly = QPolygonF(frag_points)
-            pen = QPen(color, float(base_width) * width_scale, Qt.PenStyle.SolidLine)
+            pen = QPen(color, float(spec.base_width) * width_scale, Qt.PenStyle.SolidLine)
             pen.setCosmetic(True)
             pen.setCapStyle(Qt.PenCapStyle.RoundCap)
             pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
@@ -536,7 +542,7 @@ def _draw_terrain_profile_layer(
                         t = 0.0
                     else:
                         t = max(0.0, min(1.0, segment_dist_m / max_distance_m))
-                    base_width_m = float(base_width) - (t * (float(base_width) - float(far_base_width)))
+                    base_width_m = float(spec.base_width) - (t * (float(spec.base_width) - float(spec.far_base_width)))
                     pen = QPen(color, base_width_m * width_scale, Qt.PenStyle.SolidLine)
                     pen.setCosmetic(True)
                     pen.setCapStyle(Qt.PenCapStyle.RoundCap)

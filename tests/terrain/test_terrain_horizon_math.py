@@ -236,7 +236,7 @@ def test_draw_terrain_secondary_ridges_fast_mode_draws_main_profile(monkeypatch)
     def fake_draw_main(*_args, **_kwargs) -> None:
         captured.append("called")
 
-    monkeypatch.setattr("zstarview.render.terrain.draw_terrain_horizon_line", fake_draw_main)
+    monkeypatch.setattr("zstarview.render.terrain._draw_terrain_profile_layer", fake_draw_main)
 
     class _Painter:
         def save(self) -> None:
