@@ -119,9 +119,8 @@ def _project_reference_altaz_point(
     view_center: tuple[float, float],
     edge_fov_deg: float,
     content_fov_deg: float,
-    is_in_fov_func: Callable[..., bool],
     altaz_to_normalized_xy_func: Callable[..., tuple[float, float]] | None,
-) -> tuple[tuple[float, float], bool]:
+) -> tuple[float, float]:
     project_xy = (
         altaz_to_normalized_xy
         if altaz_to_normalized_xy_func is None
@@ -136,13 +135,7 @@ def _project_reference_altaz_point(
         )
     except TypeError:
         nx, ny = project_xy(float(alt_deg), float(az_deg), view_center)
-    visible = is_in_fov_func(
-        float(alt_deg),
-        float(az_deg),
-        view_center,
-        fov_deg=content_fov_deg,
-    )
-    return (float(nx), float(ny)), bool(visible)
+    return float(nx), float(ny)
 
 
 def _altaz_to_neu_unit(alt_deg: float, az_deg: float) -> np.ndarray:
@@ -322,8 +315,6 @@ def draw_sky_reference_lines(
     celestial_data: CelestialData,
     viewer_data: ViewerData,
     *,
-    content_fov_deg: float | None = None,
-    is_in_fov_func: Callable[..., bool] = is_in_fov,
     altaz_to_normalized_xy_func: Callable[..., tuple[float, float]] | None = None,
 ) -> None:
     """
@@ -334,7 +325,7 @@ def draw_sky_reference_lines(
         geometry: The screen geometry for coordinate conversion.
         celestial_data: The data containing the points for the reference lines.
     """
-    effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
+    effective_fov_deg = _content_fov_deg_from_viewer(viewer_data)
     painter.save()
 
     def _make_reference_pen(color: tuple[int, int, int], width: float, alpha: int, style: Qt.PenStyle | None = None) -> QPen:
@@ -361,7 +352,6 @@ def draw_sky_reference_lines(
                 view_center=viewer_data.view_center,
                 edge_fov_deg=float(viewer_data.edge_fov_deg),
                 content_fov_deg=effective_fov_deg,
-                is_in_fov_func=is_in_fov_func,
                 altaz_to_normalized_xy_func=altaz_to_normalized_xy_func,
             )
         projected_points: List[Tuple[float, float]] = []
@@ -372,9 +362,8 @@ def draw_sky_reference_lines(
                 view_center=viewer_data.view_center,
                 edge_fov_deg=float(viewer_data.edge_fov_deg),
                 content_fov_deg=effective_fov_deg,
-                is_in_fov_func=is_in_fov_func,
                 altaz_to_normalized_xy_func=altaz_to_normalized_xy_func,
-            )[0]
+            )
             projected_points.append((nx, ny))
         fragments = split_by_gaps(projected_points)
         for frag in fragments:

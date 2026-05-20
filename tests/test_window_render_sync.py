@@ -384,6 +384,19 @@ def _make_scene(
     )
 
 
+def _make_frame(
+    scene: pipeline_module.RenderSceneData,
+    geometry,
+    viewport_rect,
+) -> pipeline_module.FrameContext:
+    return pipeline_module.FrameContext(
+        viewer=scene.viewer,
+        time_obj=scene.time_obj,
+        geometry=geometry,
+        viewport_rect=viewport_rect,
+    )
+
+
 def _make_style(**overrides) -> pipeline_module.RenderStyle:
     values = {
         "visual_preset": "night",
@@ -2826,8 +2839,11 @@ def test_render_base_scene_skips_water_when_terrain_horizon_hidden(monkeypatch) 
 
     pipeline_module.render_base_scene_into_painter(
         painter=_Painter(),
-        geometry=SimpleNamespace(radius=600),
-        viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
+        frame=_make_frame(
+            scene,
+            SimpleNamespace(radius=600),
+            SimpleNamespace(width=lambda: 200, height=lambda: 200),
+        ),
         scene=scene,
         style=_make_style(terrain_horizon_opacity=0.0, water_overlay_opacity=0.5),
         compositor=object(),
@@ -3315,8 +3331,7 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
 
     pipeline_module.render_base_scene_into_painter(
         painter=object(),
-        geometry=geometry,
-        viewport_rect=viewport_rect,
+        frame=_make_frame(scene, geometry, viewport_rect),
         scene=scene,
         style=style,
         hud=hud,
@@ -3324,8 +3339,7 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
     )
     pipeline_module.render_hud_overlay_into_painter(
         painter=object(),
-        geometry=geometry,
-        viewport_rect=viewport_rect,
+        frame=_make_frame(scene, geometry, viewport_rect),
         scene=scene,
         style=style,
         hud=hud,
@@ -3385,20 +3399,24 @@ def test_render_hud_overlay_draws_persistent_search_label(monkeypatch) -> None:
         lambda *_args: captured.update({"labels": _args[1]}),
     )
 
+    scene = replace(
+        _make_scene(),
+        viewer=ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="Asia/Tokyo",
+            city_name="Tokyo",
+            view_center=(45.0, 180.0),
+            observer_height_m=1.7,
+        ),
+    )
     pipeline_module.render_hud_overlay_into_painter(
         painter=object(),
-        geometry=SimpleNamespace(center=(100, 100), radius=80),
-        viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
-        scene=replace(
-            _make_scene(),
-            viewer=ViewerData(
-                location=(35.0, 139.0),
-                timezone_name="Asia/Tokyo",
-                city_name="Tokyo",
-                view_center=(45.0, 180.0),
-                observer_height_m=1.7,
-            ),
+        frame=_make_frame(
+            scene,
+            SimpleNamespace(center=(100, 100), radius=80),
+            SimpleNamespace(width=lambda: 200, height=lambda: 200),
         ),
+        scene=scene,
         style=_make_style(star_render_expected_width=600),
         hud=_make_hud(),
         highlighted_object=None,
@@ -3422,6 +3440,7 @@ def test_render_scene_hides_cloud_bitmap_during_viewport_interaction(
     monkeypatch,
 ) -> None:
     captured: dict[str, object] = {}
+    scene = replace(_make_scene(), sky_disc_image=object())
 
     monkeypatch.setattr(
         pipeline_module, "_clear_background_layer", lambda *_args, **_kwargs: None
@@ -3450,9 +3469,12 @@ def test_render_scene_hides_cloud_bitmap_during_viewport_interaction(
 
     pipeline_module.render_base_scene_into_painter(
         painter=object(),
-        geometry=SimpleNamespace(center=(100, 100), radius=80),
-        viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
-        scene=replace(_make_scene(), sky_disc_image=object()),
+        frame=_make_frame(
+            scene,
+            SimpleNamespace(center=(100, 100), radius=80),
+            SimpleNamespace(width=lambda: 200, height=lambda: 200),
+        ),
+        scene=scene,
         style=_make_style(cloud_disc_alpha=0.2),
         hud=_make_hud(viewport_interaction_mode=True),
         compositor=object(),
@@ -3488,6 +3510,9 @@ def test_draw_guide_layer_draws_zenith_marker(monkeypatch) -> None:
 
 def test_render_base_scene_can_skip_fast_overlays(monkeypatch) -> None:
     calls: list[str] = []
+    scene = _make_scene()
+    geometry = SimpleNamespace(center=(100, 100), radius=80)
+    viewport_rect = SimpleNamespace(width=lambda: 200, height=lambda: 200)
 
     monkeypatch.setattr(
         pipeline_module,
@@ -3547,9 +3572,8 @@ def test_render_base_scene_can_skip_fast_overlays(monkeypatch) -> None:
 
     pipeline_module.render_base_scene_into_painter(
         painter=object(),
-        geometry=SimpleNamespace(center=(100, 100), radius=80),
-        viewport_rect=SimpleNamespace(width=lambda: 200, height=lambda: 200),
-        scene=_make_scene(),
+        frame=_make_frame(scene, geometry, viewport_rect),
+        scene=scene,
         style=_make_style(),
         hud=_make_hud(),
         compositor=object(),
@@ -3857,7 +3881,6 @@ def test_draw_sky_reference_lines_uses_render_view_center_projection(
             view_center=(55.0, 200.0),
             observer_height_m=10.0,
         ),
-        is_in_fov_func=lambda *_args, **_kwargs: True,
         altaz_to_normalized_xy_func=lambda alt, az, view_center, **_kwargs: (
             calls.append(view_center) or (alt, az)
         ),
@@ -3925,7 +3948,6 @@ def test_draw_sky_reference_lines_uses_wider_dash_patterns(monkeypatch) -> None:
             view_center=(55.0, 200.0),
             observer_height_m=10.0,
         ),
-        is_in_fov_func=lambda *_args, **_kwargs: True,
         altaz_to_normalized_xy_func=lambda alt, az, view_center, **_kwargs: (alt, az),
     )
 

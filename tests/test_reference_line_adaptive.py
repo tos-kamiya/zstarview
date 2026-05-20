@@ -71,8 +71,6 @@ def test_reference_line_fixed_sampling_keeps_polyline_length_stable() -> None:
                 "edge_fov_deg": 95.0,
             },
         )(),
-        content_fov_deg=180.0,
-        is_in_fov_func=lambda *_args, **_kwargs: True,
         altaz_to_normalized_xy_func=fake_projection,
     )
     draw_sky_reference_lines(
@@ -88,8 +86,6 @@ def test_reference_line_fixed_sampling_keeps_polyline_length_stable() -> None:
                 "edge_fov_deg": 95.0,
             },
         )(),
-        content_fov_deg=180.0,
-        is_in_fov_func=lambda *_args, **_kwargs: True,
         altaz_to_normalized_xy_func=fake_projection,
     )
 

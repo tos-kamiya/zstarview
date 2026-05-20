@@ -197,9 +197,7 @@ def _resolve_frame_context(
 def render_base_scene_into_painter(
     painter: QPainter,
     *,
-    frame: FrameContext | None = None,
-    geometry: ScreenGeometry | None = None,
-    viewport_rect: QRect | None = None,
+    frame: FrameContext,
     scene: RenderSceneData,
     style: RenderStyle,
     hud: RenderHudState,
@@ -209,12 +207,6 @@ def render_base_scene_into_painter(
     draw_labels: bool = True,
     draw_direction_labels: bool = True,
 ) -> None:
-    frame = _resolve_frame_context(
-        frame=frame,
-        scene=scene,
-        geometry=geometry,
-        viewport_rect=viewport_rect,
-    )
     win_w, win_h = _window_size(frame.viewport_rect)
     star_surface_size = compute_star_render_surface_size(
         win_w,
@@ -316,9 +308,7 @@ def render_base_scene_into_painter(
 def render_fast_overlay_layers_into_painter(
     painter: QPainter,
     *,
-    frame: FrameContext | None = None,
-    geometry: ScreenGeometry | None = None,
-    viewport_rect: QRect | None = None,
+    frame: FrameContext,
     scene: RenderSceneData,
     style: RenderStyle,
     highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None = None,
@@ -328,13 +318,6 @@ def render_fast_overlay_layers_into_painter(
     """Draw dynamic satellite/aircraft overlays and their labels."""
     if style.satellite_opacity <= 0.0 and style.aircraft_opacity <= 0.0:
         return
-    frame = _resolve_frame_context(
-        frame=frame,
-        scene=scene,
-        geometry=geometry,
-        viewport_rect=viewport_rect,
-    )
-
     local_label_candidates = label_candidates if label_candidates is not None else []
     _draw_satellite_layer(
         painter,
@@ -358,9 +341,7 @@ def render_fast_overlay_layers_into_painter(
 def render_hud_overlay_into_painter(
     painter: QPainter,
     *,
-    frame: FrameContext | None = None,
-    geometry: ScreenGeometry | None = None,
-    viewport_rect: QRect | None = None,
+    frame: FrameContext,
     scene: RenderSceneData,
     style: RenderStyle,
     hud: RenderHudState,
@@ -370,12 +351,6 @@ def render_hud_overlay_into_painter(
     label_candidates: list[dict[str, Any]] | None = None,
     search_overlay_target: SearchJumpTarget | None = None,
 ) -> None:
-    frame = _resolve_frame_context(
-        frame=frame,
-        scene=scene,
-        geometry=geometry,
-        viewport_rect=viewport_rect,
-    )
     if hud.viewport_interaction_mode:
         _draw_status_line(
             painter,
