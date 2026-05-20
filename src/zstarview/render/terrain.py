@@ -1,7 +1,7 @@
 import math
 from typing import Callable, List, Tuple
 
-from PySide6.QtCore import QPointF, QRectF, Qt
+from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy, is_in_fov
@@ -9,11 +9,9 @@ from ..paths import (
     PALETTE_ASTERISM_RGB,
     TERRAIN_HORIZON_LINE_COLOR,
     URBAN_OUTLINE_LAYER_LINE_COLOR,
-    ThemeStyle,
 )
 from ..types import ScreenGeometry, UrbanOutlinePolyline, ViewerData
 from ..water_overlay import WaterOverlayPoint
-from . import background as render_background
 from .geometry import normalized_to_screen_xy
 from .guides import _clip_polyline_to_radius, split_by_gaps
 
@@ -561,8 +559,6 @@ def draw_terrain_horizon_line(
     opacity: float = 1.0,
     line_width_scale: float = 1.0,
     fast_mode: bool = False,
-    viewport_rect: QRectF | None = None,
-    theme: ThemeStyle | None = None,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
     altaz_to_normalized_xy_func: Callable[[float, float, Tuple[float, float]], Tuple[float, float]] = altaz_to_normalized_xy,
     normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], Tuple[float, float]] = normalized_to_screen_xy,
@@ -572,21 +568,6 @@ def draw_terrain_horizon_line(
     view_center, edge_fov_deg, content_fov_deg = _viewer_projection_params(viewer)
     color_rgb = TERRAIN_HORIZON_LINE_COLOR
     fg_alpha = terrain_horizon_line_alpha(opacity)
-    if theme is not None and viewport_rect is not None:
-        background_edge_color = render_background.sample_background_disc_edge_color(
-            viewport_rect,
-            geometry,
-            theme=theme,
-            edge_fov_deg=float(edge_fov_deg),
-            content_fov_deg=float(content_fov_deg),
-            opaque=False,
-        )
-        color_rgb = (
-            background_edge_color.red(),
-            background_edge_color.green(),
-            background_edge_color.blue(),
-        )
-        fg_alpha = min(fg_alpha, float(background_edge_color.alphaF()))
     _draw_terrain_profile_layer(
         painter,
         geometry,
