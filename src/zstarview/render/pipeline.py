@@ -860,8 +860,8 @@ def _draw_planet_layer(
     render_solar_system.draw_solar_system_bodies(
         painter,
         geometry,
-        scene.celestial_data,
         scene.viewer,
+        scene.celestial_data,
         enlarge_moon,
         outline_bright_bodies=outline_bright_bodies,
         text_font=style.text_font,
@@ -977,8 +977,8 @@ def _draw_hover_overlay_layer(
     render_solar_system.draw_hovered_moon_overlay(
         painter,
         geometry,
-        scene.celestial_data,
         scene.viewer,
+        scene.celestial_data,
         highlighted_object,
         marker_scale=line_width_scale,
         outline_bright_bodies=_bright_bodies_mode(style) == "outline",

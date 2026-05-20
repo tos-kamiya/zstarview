@@ -240,8 +240,8 @@ def draw_planet_bloom(
 def draw_solar_system_bodies(
     painter: QPainter,
     geometry: ScreenGeometry,
-    celestial_data: CelestialData,
     viewer_data: ViewerData,
+    celestial_data: CelestialData,
     enlarge_moon: bool,
     outline_bright_bodies: bool = False,
     *,
@@ -389,8 +389,8 @@ def draw_solar_system_bodies(
 def draw_hovered_moon_overlay(
     painter: QPainter,
     geometry: ScreenGeometry,
-    celestial_data: CelestialData,
     viewer_data: ViewerData,
+    celestial_data: CelestialData,
     highlighted_object: Optional[Tuple[CelestialObject, QPointF]],
     *,
     marker_scale: float = 1.0,
