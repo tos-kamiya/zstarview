@@ -435,7 +435,7 @@ def _draw_terrain_profile_layer(
     geometry: ScreenGeometry,
     terrain_profile_altaz: list[tuple[float, float]] | None,
     terrain_profile_distances_m: list[float] | None,
-    view_center: tuple[float, float],
+    viewer: ViewerData,
     *,
     opacity: float,
     base_width: float,
@@ -459,6 +459,8 @@ def _draw_terrain_profile_layer(
         return
     if terrain_profile_distances_m is not None and len(terrain_profile_distances_m) != len(terrain_profile_altaz):
         terrain_profile_distances_m = None
+
+    view_center, edge_fov_deg, content_fov_deg = _viewer_projection_params(viewer)
 
     samples: list[tuple[float, float, float]] = []
     for index, (alt, az) in enumerate(terrain_profile_altaz):
@@ -590,7 +592,7 @@ def draw_terrain_horizon_line(
         geometry,
         terrain_profile_altaz,
         terrain_profile_distances_m,
-        view_center,
+        viewer,
         opacity=opacity,
         base_width=TERRAIN_HORIZON_FAST_WIDTH,
         far_base_width=TERRAIN_HORIZON_FAR_BASE_WIDTH,
