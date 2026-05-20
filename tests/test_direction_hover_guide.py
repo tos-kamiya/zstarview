@@ -87,8 +87,8 @@ def test_draw_direction_grid_overlay_draws_major_guides_and_minor_crosses(monkey
         draw_direction_grid_overlay(
             painter,
             geometry,
-            (400, 400),
             viewer_data,
+            (400, 400),
         )
     finally:
         painter.end()

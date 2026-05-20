@@ -312,8 +312,8 @@ def _clip_polyline_to_radius(
 def draw_sky_reference_lines(
     painter: QPainter,
     geometry: ScreenGeometry,
-    celestial_data: CelestialData,
     viewer_data: ViewerData,
+    celestial_data: CelestialData,
     *,
     altaz_to_normalized_xy_func: Callable[..., tuple[float, float]] | None = None,
 ) -> None:
@@ -734,8 +734,8 @@ def _draw_direction_cross_marker(
 def draw_direction_grid_overlay(
     painter: QPainter,
     geometry: ScreenGeometry,
-    surface_size: tuple[int, int],
     viewer_data: ViewerData,
+    surface_size: tuple[int, int],
 ) -> None:
     view_center = tuple(float(value) for value in viewer_data.view_center)
     edge_fov_deg = float(viewer_data.edge_fov_deg)

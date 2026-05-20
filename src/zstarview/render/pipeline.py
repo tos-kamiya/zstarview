@@ -435,8 +435,8 @@ def _draw_viewport_interaction_layers(
         render_guides.draw_sky_reference_lines(
             painter,
             geometry,
-            scene.celestial_data,
             scene.viewer,
+            scene.celestial_data,
         )
     _draw_star_layer(
         painter,
@@ -537,8 +537,8 @@ def _draw_guide_layer(
         render_guides.draw_direction_grid_overlay(
             painter,
             geometry,
-            _window_size(viewport_rect),
             scene.viewer,
+            _window_size(viewport_rect),
         )
     if draw_direction_labels:
         render_guides.draw_direction_labels(
@@ -658,8 +658,8 @@ def _draw_terrain_layers(
         render_guides.draw_sky_reference_lines(
             painter,
             geometry,
-            scene.celestial_data,
             scene.viewer,
+            scene.celestial_data,
         )
     render_terrain.draw_terrain_secondary_ridges(
         painter,
@@ -1024,8 +1024,8 @@ def _draw_hover_overlay_layer(
             render_guides.draw_direction_grid_overlay(
                 painter,
                 geometry,
-                _window_size(viewport_rect),
                 scene.viewer,
+                _window_size(viewport_rect),
             )
     render_overlay_info.draw_overlay_info(
         painter,

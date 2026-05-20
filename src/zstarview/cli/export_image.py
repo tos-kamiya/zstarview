@@ -976,8 +976,8 @@ def _render_image(
             render_guides.draw_direction_grid_overlay(
                 painter,
                 frame.geometry,
-                (width, height),
                 frame.viewer,
+                (width, height),
             )
         if search_overlay_target is not None:
             draw_search_target_overlay(
