@@ -12,7 +12,7 @@ from ..paths import (
     URBAN_OUTLINE_LAYER_LINE_COLOR,
     ThemeStyle,
 )
-from ..types import ScreenGeometry, UrbanOutlinePolyline
+from ..types import ScreenGeometry, UrbanOutlinePolyline, ViewerData
 from ..water_overlay import WaterOverlayPoint
 from . import background as render_background
 from .geometry import normalized_to_screen_xy
@@ -640,16 +640,14 @@ def draw_terrain_horizon_fast(
 def draw_terrain_secondary_ridges(
     painter: QPainter,
     geometry: ScreenGeometry,
+    viewer: ViewerData,
     terrain_secondary_ridges_layers: list[list[tuple[float, float]]] | None,
     terrain_secondary_ridges_distances_m_layers: list[list[float]] | None,
-    view_center: tuple[float, float],
     *,
     terrain_main_profile_altaz: list[tuple[float, float]] | None = None,
     terrain_main_profile_distances_m: list[float] | None = None,
     opacity: float = 0.25,
     line_width_scale: float = 1.0,
-    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
-    content_fov_deg: float = FIELD_OF_VIEW_DEG,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
     altaz_to_normalized_xy_func: Callable[[float, float, Tuple[float, float]], Tuple[float, float]] = altaz_to_normalized_xy,
     normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], Tuple[float, float]] = normalized_to_screen_xy,
@@ -672,6 +670,9 @@ def draw_terrain_secondary_ridges(
     overlay_scale = 1.7
     overlay_alpha_scale = 0.2
     max_visible_alt_by_bin: dict[int, float] = {}
+    view_center = tuple(float(value) for value in viewer.view_center)
+    edge_fov_deg = float(viewer.edge_fov_deg)
+    content_fov_deg = float(viewer.content_fov_deg)
     seam_az_deg = (float(view_center[1]) + 180.0) % 360.0
     alpha_distance_km = TERRAIN_DISTANCE_BAND_REFERENCE_ALPHA_DISTANCE_KM
 

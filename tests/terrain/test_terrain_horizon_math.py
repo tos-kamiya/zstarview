@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -196,6 +197,11 @@ def test_secondary_ridge_render_uses_four_km_alpha_for_all_bands(monkeypatch) ->
     draw_terrain_secondary_ridges(
         _FakePainter(),  # type: ignore[arg-type]
         geometry=type("Geometry", (), {"center": (0, 0), "radius": 100})(),
+        viewer=SimpleNamespace(
+            view_center=(0.0, 0.0),
+            edge_fov_deg=95.0,
+            content_fov_deg=110.0,
+        ),
         terrain_secondary_ridges_layers=[
             [(1.0, 10.0), (2.0, 20.0)],
             [(1.0, 10.0), (2.0, 20.0)],
@@ -204,7 +210,6 @@ def test_secondary_ridge_render_uses_four_km_alpha_for_all_bands(monkeypatch) ->
             [500.0, 500.0],
             [128000.0, 128000.0],
         ],
-        view_center=(0.0, 0.0),
         opacity=0.38,
         line_width_scale=1.0,
         is_in_fov_func=lambda *_args, **_kwargs: True,
@@ -252,9 +257,13 @@ def test_draw_terrain_secondary_ridges_fast_mode_draws_main_profile(monkeypatch)
     draw_terrain_secondary_ridges(
         _Painter(),  # type: ignore[arg-type]
         geometry=type("Geometry", (), {"center": (0, 0), "radius": 100})(),
+        viewer=SimpleNamespace(
+            view_center=(0.0, 0.0),
+            edge_fov_deg=95.0,
+            content_fov_deg=110.0,
+        ),
         terrain_secondary_ridges_layers=[[(1.0, 10.0), (2.0, 20.0)]],
         terrain_secondary_ridges_distances_m_layers=[[1_000.0, 2_000.0]],
-        view_center=(0.0, 0.0),
         terrain_main_profile_altaz=[(3.0, 30.0), (4.0, 40.0)],
         terrain_main_profile_distances_m=[5_000.0, 6_000.0],
         opacity=0.38,

@@ -4452,6 +4452,11 @@ def test_draw_terrain_secondary_ridges_use_fixed_widths(monkeypatch) -> None:
     render_terrain_module.draw_terrain_secondary_ridges(
         painter,
         geometry=SimpleNamespace(center=(0, 0), radius=1),
+        viewer=SimpleNamespace(
+            view_center=(45.0, 180.0),
+            edge_fov_deg=95.0,
+            content_fov_deg=110.0,
+        ),
         terrain_secondary_ridges_layers=[
             [(0.0, 0.0), (0.0, 0.1), (0.0, 0.2)],
             [(0.1, 0.0), (0.1, 0.1), (0.1, 0.2)],
@@ -4462,7 +4467,6 @@ def test_draw_terrain_secondary_ridges_use_fixed_widths(monkeypatch) -> None:
             [10_000.0, 12_000.0, 15_000.0],
             [50_000.0, 60_000.0, 70_000.0],
         ],
-        view_center=(45.0, 180.0),
         opacity=0.38,
         line_width_scale=1.0,
         is_in_fov_func=lambda *_args, **_kwargs: True,
@@ -4525,6 +4529,11 @@ def test_draw_terrain_secondary_ridges_swaps_visible_and_occluded_colors(monkeyp
     render_terrain_module.draw_terrain_secondary_ridges(
         painter,
         geometry=SimpleNamespace(center=(0, 0), radius=1),
+        viewer=SimpleNamespace(
+            view_center=(45.0, 180.0),
+            edge_fov_deg=95.0,
+            content_fov_deg=110.0,
+        ),
         terrain_secondary_ridges_layers=[
             [(20.0, 0.0), (20.0, 0.1)],
             [(10.0, 0.0), (10.0, 0.1)],
@@ -4533,7 +4542,6 @@ def test_draw_terrain_secondary_ridges_swaps_visible_and_occluded_colors(monkeyp
             [1_000.0, 2_000.0],
             [10_000.0, 12_000.0],
         ],
-        view_center=(45.0, 180.0),
         opacity=0.38,
         line_width_scale=1.0,
         is_in_fov_func=lambda *_args, **_kwargs: True,
@@ -4598,6 +4606,11 @@ def test_secondary_ridge_overlay_alpha_is_scaled_down(monkeypatch) -> None:
     render_terrain_module.draw_terrain_secondary_ridges(
         painter,
         geometry=SimpleNamespace(center=(0, 0), radius=1),
+        viewer=SimpleNamespace(
+            view_center=(45.0, 180.0),
+            edge_fov_deg=95.0,
+            content_fov_deg=110.0,
+        ),
         terrain_secondary_ridges_layers=[
             [(20.0, 0.0), (20.0, 0.1)],
             [(10.0, 0.0), (10.0, 0.1)],
@@ -4606,7 +4619,6 @@ def test_secondary_ridge_overlay_alpha_is_scaled_down(monkeypatch) -> None:
             [1_000.0, 2_000.0],
             [10_000.0, 12_000.0],
         ],
-        view_center=(45.0, 180.0),
         opacity=0.38,
         line_width_scale=1.0,
         is_in_fov_func=lambda *_args, **_kwargs: True,
@@ -4657,13 +4669,17 @@ def test_draw_terrain_secondary_ridges_bridges_seam_near_zero(monkeypatch) -> No
     render_terrain_module.draw_terrain_secondary_ridges(
         painter,
         geometry=SimpleNamespace(center=(0, 0), radius=1),
+        viewer=SimpleNamespace(
+            view_center=(45.0, 180.0),
+            edge_fov_deg=95.0,
+            content_fov_deg=110.0,
+        ),
         terrain_secondary_ridges_layers=[
             [(5.0, 359.0), (5.0, 0.0), (5.0, 1.0)],
         ],
         terrain_secondary_ridges_distances_m_layers=[
             [1_000.0, 2_000.0, 3_000.0],
         ],
-        view_center=(45.0, 180.0),
         opacity=0.38,
         line_width_scale=1.0,
         is_in_fov_func=lambda *_args, **_kwargs: True,

@@ -729,13 +729,11 @@ def _draw_terrain_layers(
     render_terrain.draw_terrain_secondary_ridges(
         painter,
         geometry,
+        scene.viewer,
         scene.terrain_secondary_ridges_altaz_layers,
         scene.terrain_secondary_ridges_distances_m_layers,
-        scene.viewer.view_center,
         opacity=max(0.0, float(style.terrain_horizon_opacity) * 0.72),
         line_width_scale=line_width_scale,
-        edge_fov_deg=float(scene.viewer.edge_fov_deg),
-        content_fov_deg=content_fov_deg,
     )
     if _should_draw_water_overlay(scene, style):
         water_dots = _terrain_horizon_water_overlay_dots(scene)
