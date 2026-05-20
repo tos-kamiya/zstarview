@@ -225,7 +225,8 @@ def terrain_secondary_ridge_line_alpha(opacity: float) -> float:
     return max(0.0, min(1.0, 0.03 + (opacity * 0.12)))
 
 
-def _azimuth_bin_key(az_deg: float, *, bin_size_deg: float = TERRAIN_SECONDARY_RIDGE_OCCLUSION_BIN_DEG) -> int:
+def _azimuth_bin_key(az_deg: float) -> int:
+    bin_size_deg = TERRAIN_SECONDARY_RIDGE_OCCLUSION_BIN_DEG
     if bin_size_deg <= 0.0:
         return 0
     az = float(az_deg) % 360.0

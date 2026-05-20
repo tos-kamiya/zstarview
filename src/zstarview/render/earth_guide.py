@@ -26,7 +26,6 @@ EARTH_GUIDE_FILL_CELL_AREA_DEG2 = 10.0
 EARTH_GUIDE_FILL_LINE_WIDTH_PX = 1.35
 EARTH_GUIDE_FILL_ALPHA = 0.12
 EARTH_GUIDE_FILL_FAST_MODE_THINNING = 3
-EARTH_GUIDE_FILL_SAMPLER_MODE = "equal_area"
 EARTH_GUIDE_FILL_SOUTH_POLE_CUTOFF_LAT_DEG = -60.0
 EARTH_GUIDE_FILL_LAT_BAND_DEG = 0.5
 EARTH_GUIDE_FILL_MAX_LON_GAP_DEG = 8.0
@@ -86,16 +85,13 @@ def _point_in_polygon_2d(x: float, y: float, polygon_xy: np.ndarray) -> bool:
     return inside
 
 
-def _fill_lat_band_key(lat_deg: float, band_deg: float = EARTH_GUIDE_FILL_LAT_BAND_DEG) -> int:
-    band = max(1.0e-3, float(band_deg))
+def _fill_lat_band_key(lat_deg: float) -> int:
+    band = max(1.0e-3, float(EARTH_GUIDE_FILL_LAT_BAND_DEG))
     return int(round(float(lat_deg) / band))
 
 
 def _build_ring_fill_points(
     ring: EarthGuideRing,
-    *,
-    sampler_mode: str = EARTH_GUIDE_FILL_SAMPLER_MODE,
-    target_cell_area_deg2: float = EARTH_GUIDE_FILL_CELL_AREA_DEG2,
 ) -> tuple[np.ndarray, np.ndarray]:
     points_lonlat = np.asarray(ring.points_lonlat_deg, dtype=np.float64)
     if len(points_lonlat) < 3:
@@ -118,54 +114,32 @@ def _build_ring_fill_points(
 
     lat_span = max(1.0e-6, lat_max - lat_min)
     approx_area = float(ring.approx_area_deg2 or max(1.0, lat_span * max(1.0e-6, lon_max - lon_min)))
-    cell_area = max(6.0, float(target_cell_area_deg2))
+    cell_area = max(6.0, float(EARTH_GUIDE_FILL_CELL_AREA_DEG2))
     target_points = max(8, int(round(approx_area / cell_area)))
-    sampler_mode = str(sampler_mode)
 
     points: list[tuple[float, float]] = []
-    if sampler_mode == "latlon":
-        lat_step = max(1.5, math.sqrt(cell_area))
-        lon_step = lat_step
-        lat_positions = np.arange(lat_min, lat_max + (lat_step * 0.5), lat_step, dtype=np.float64)
-        for row_index, lat in enumerate(lat_positions):
-            if not (lat_min <= float(lat) <= lat_max):
-                continue
-            lon_offset = 0.0 if (row_index % 2 == 0) else lon_step * 0.5
-            lon_positions = np.arange(
-                lon_min + lon_offset,
-                lon_max + lon_step,
-                lon_step,
-                dtype=np.float64,
-            )
-            for lon in lon_positions:
-                if _point_in_polygon_2d(float(lon), float(lat), lonlat_unwrapped):
-                    points.append((_wrap_lon_deg(float(lon)), float(lat)))
-    else:
-        band_count = max(2, int(round(math.sqrt(target_points))))
-        sin_min = math.sin(math.radians(lat_min))
-        sin_max = math.sin(math.radians(lat_max))
-        sin_span = max(1.0e-6, sin_max - sin_min)
-        row_height_deg = lat_span / float(band_count)
-        for row_index in range(band_count):
-            row_sin_min = sin_min + (sin_span * (row_index / band_count))
-            row_sin_max = sin_min + (sin_span * ((row_index + 1) / band_count))
-            row_lat = math.degrees(math.asin(max(-1.0, min(1.0, (row_sin_min + row_sin_max) * 0.5))))
-            cos_lat = max(0.2, math.cos(math.radians(row_lat)))
-            lon_step = max(1.5, cell_area / max(1.0e-6, row_height_deg * cos_lat))
-            lon_offset = 0.0 if (row_index % 2 == 0) else lon_step * 0.5
-            lon_positions = np.arange(
-                lon_min + lon_offset,
-                lon_max + lon_step,
-                lon_step,
-                dtype=np.float64,
-            )
-            if sampler_mode == "jitter":
-                jitter = min(0.35 * lon_step, 0.65)
-                lon_positions = lon_positions + ((row_index % 3) - 1) * jitter * 0.5
-            for lon in lon_positions:
-                lat = math.degrees(math.asin(max(-1.0, min(1.0, (row_sin_min + row_sin_max) * 0.5))))
-                if _point_in_polygon_2d(float(lon), float(lat), lonlat_unwrapped):
-                    points.append((_wrap_lon_deg(float(lon)), float(lat)))
+    band_count = max(2, int(round(math.sqrt(target_points))))
+    sin_min = math.sin(math.radians(lat_min))
+    sin_max = math.sin(math.radians(lat_max))
+    sin_span = max(1.0e-6, sin_max - sin_min)
+    row_height_deg = lat_span / float(band_count)
+    for row_index in range(band_count):
+        row_sin_min = sin_min + (sin_span * (row_index / band_count))
+        row_sin_max = sin_min + (sin_span * ((row_index + 1) / band_count))
+        row_lat = math.degrees(math.asin(max(-1.0, min(1.0, (row_sin_min + row_sin_max) * 0.5))))
+        cos_lat = max(0.2, math.cos(math.radians(row_lat)))
+        lon_step = max(1.5, cell_area / max(1.0e-6, row_height_deg * cos_lat))
+        lon_offset = 0.0 if (row_index % 2 == 0) else lon_step * 0.5
+        lon_positions = np.arange(
+            lon_min + lon_offset,
+            lon_max + lon_step,
+            lon_step,
+            dtype=np.float64,
+        )
+        for lon in lon_positions:
+            lat = math.degrees(math.asin(max(-1.0, min(1.0, (row_sin_min + row_sin_max) * 0.5))))
+            if _point_in_polygon_2d(float(lon), float(lat), lonlat_unwrapped):
+                points.append((_wrap_lon_deg(float(lon)), float(lat)))
 
     if not points:
         return (
@@ -661,8 +635,8 @@ def _ring_fragments_altaz(
 
 
 @lru_cache(maxsize=1)
-def load_earth_guide_rings(path_str: str = EARTH_GUIDE_LAND_FILE) -> tuple[EarthGuideRing, ...]:
-    path = Path(path_str)
+def load_earth_guide_rings() -> tuple[EarthGuideRing, ...]:
+    path = Path(EARTH_GUIDE_LAND_FILE)
     payload = json.loads(path.read_text(encoding="utf-8"))
     raw_rings = payload.get("rings", [])
     rings: list[EarthGuideRing] = []

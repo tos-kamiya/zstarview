@@ -84,13 +84,9 @@ def write_overture_release_check_metadata(
     return metadata_path
 
 
-def fetch_latest_overture_release(
-    *,
-    catalog_url: str = OVERTURE_RELEASE_CATALOG_URL,
-    timeout_seconds: float = OVERTURE_RELEASE_CATALOG_TIMEOUT_SECONDS,
-) -> str:
-    request = Request(catalog_url, headers={"User-Agent": "zstarview/1.0"})
-    with urlopen(request, timeout=float(timeout_seconds)) as response:  # nosec: B310
+def fetch_latest_overture_release() -> str:
+    request = Request(OVERTURE_RELEASE_CATALOG_URL, headers={"User-Agent": "zstarview/1.0"})
+    with urlopen(request, timeout=float(OVERTURE_RELEASE_CATALOG_TIMEOUT_SECONDS)) as response:  # nosec: B310
         payload = json.loads(response.read().decode("utf-8"))
     if not isinstance(payload, dict):
         raise ValueError("Unexpected Overture catalog payload")
@@ -104,8 +100,6 @@ def resolve_overture_release_for_cache_root(
     *,
     cache_root_dir: Path | None = None,
     now_utc: datetime | None = None,
-    catalog_url: str = OVERTURE_RELEASE_CATALOG_URL,
-    timeout_seconds: float = OVERTURE_RELEASE_CATALOG_TIMEOUT_SECONDS,
     abort_event: threading.Event | None = None,
 ) -> str | None:
     now = _normalize_utc(now_utc or datetime.now(timezone.utc))
@@ -127,10 +121,7 @@ def resolve_overture_release_for_cache_root(
     checked_payload["last_release_check_utc"] = now.isoformat()
     checked_payload.setdefault("checked_source", "stac")
     try:
-        latest_release = fetch_latest_overture_release(
-            catalog_url=catalog_url,
-            timeout_seconds=timeout_seconds,
-        )
+        latest_release = fetch_latest_overture_release()
     except Exception as exc:
         checked_payload["checked_success"] = False
         checked_payload["checked_error"] = str(exc)
@@ -338,7 +329,6 @@ def read_derived_dataset_fetched_at_utc(
     derived_dir: Path,
     *,
     now_utc: datetime | None = None,
-    migrate_missing: bool = True,
 ) -> datetime | None:
     metadata_path = derived_dataset_metadata_path(derived_dir)
     payload = read_derived_dataset_metadata(derived_dir) or {}
@@ -348,8 +338,6 @@ def read_derived_dataset_fetched_at_utc(
             return _parse_utc(raw_fetched_at)
         except Exception:
             pass
-    if not migrate_missing:
-        return None
     fallback_mtime = _path_mtime_utc(metadata_path)
     if fallback_mtime is None and derived_dir.exists():
         fallback_mtime = _path_mtime_utc(derived_dir)

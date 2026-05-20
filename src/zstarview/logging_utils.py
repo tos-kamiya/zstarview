@@ -8,16 +8,16 @@ from .paths import LOG_PATH
 logger = logging.getLogger(__name__)
 
 
-def _resolve_log_level(default: int = logging.INFO) -> int:
+def _resolve_log_level() -> int:
     raw = os.getenv("LOG_LEVEL", "").strip()
     if not raw:
-        return int(default)
+        return int(logging.INFO)
     if raw.isdigit():
         return int(raw)
     level = logging.getLevelName(raw.upper())
     if isinstance(level, int):
         return int(level)
-    return int(default)
+    return int(logging.INFO)
 
 
 def setup_root_logger() -> logging.Logger:

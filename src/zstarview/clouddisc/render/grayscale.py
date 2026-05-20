@@ -55,13 +55,10 @@ def _smoothstep(edge0: float, edge1: float, x: np.ndarray) -> np.ndarray:
 
 def _suppress_low_cloud_weight(
     weight: np.ndarray,
-    *,
-    floor: float = 0.03,
-    knee: float = 0.08,
 ) -> np.ndarray:
     """Suppress low cloud amounts so faint clear-sky stripes are less visible."""
-    floor = float(np.clip(floor, 0.0, 0.95))
-    knee = float(np.clip(max(knee, floor + 1e-6), floor + 1e-6, 0.99))
+    floor = 0.03
+    knee = 0.08
 
     # 1) Hard floor to remove tiny cloud/noise values.
     base = np.clip((weight - floor) / max(1e-6, (1.0 - floor)), 0.0, 1.0)

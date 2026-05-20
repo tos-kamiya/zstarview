@@ -73,8 +73,6 @@ def build_observer_bbox(
 
 def normalize_opensky_state_vectors(
     payload: dict[str, Any],
-    *,
-    min_airborne_speed_mps: float = MIN_AIRBORNE_SPEED_MPS,
 ) -> list[AircraftSnapshot]:
     states = payload.get("states")
     if not isinstance(states, list):
@@ -82,7 +80,7 @@ def normalize_opensky_state_vectors(
 
     normalized: list[AircraftSnapshot] = []
     for row in states:
-        snapshot = _parse_state_vector(row, min_airborne_speed_mps=min_airborne_speed_mps)
+        snapshot = _parse_state_vector(row)
         if snapshot is not None:
             normalized.append(snapshot)
     return normalized
@@ -108,8 +106,6 @@ def fetch_opensky_states(
 
 def _parse_state_vector(
     row: Any,
-    *,
-    min_airborne_speed_mps: float,
 ) -> Optional[AircraftSnapshot]:
     if not isinstance(row, Iterable) or isinstance(row, (str, bytes, dict)):
         return None
@@ -127,7 +123,7 @@ def _parse_state_vector(
     velocity_mps = _to_float(values[9])
     if on_ground:
         return None
-    if velocity_mps is not None and velocity_mps < float(min_airborne_speed_mps):
+    if velocity_mps is not None and velocity_mps < MIN_AIRBORNE_SPEED_MPS:
         return None
 
     last_contact = _to_int(values[4])

@@ -11,7 +11,7 @@ import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Sequence
 
 import numpy as np
 import rasterio
@@ -117,9 +117,9 @@ def _read_url(url: str, *, timeout_s: float = 60.0) -> str:
     return payload.decode("utf-8", errors="replace")
 
 
-def _parse_tile_urls(page_html: str, tile_names: Iterable[str] = NIGHT_LIGHTS_TILE_NAMES) -> dict[str, str]:
+def _parse_tile_urls(page_html: str) -> dict[str, str]:
     matched: dict[str, str] = {}
-    wanted = {str(name).upper() for name in tile_names}
+    wanted = {str(name).upper() for name in NIGHT_LIGHTS_TILE_NAMES}
     for match in _TILE_URL_RE.finditer(page_html):
         tile_name = match.group("tile").upper()
         if tile_name in wanted:
@@ -200,7 +200,6 @@ def _validate_geotiff(path: Path) -> None:
 def _ensure_night_light_tiles(
     *,
     cache_root: str | os.PathLike[str] | None = None,
-    tile_names: Sequence[str] = NIGHT_LIGHTS_TILE_NAMES,
     timeout_s: float = 60.0,
     download_timeout_s: float = 300.0,
 ) -> dict[str, Path]:
@@ -211,7 +210,7 @@ def _ensure_night_light_tiles(
         raise NightLightsManifestError("Night light manifest has invalid tile_urls.")
     dataset_root.mkdir(parents=True, exist_ok=True)
     resolved_paths: dict[str, Path] = {}
-    for tile_name in tile_names:
+    for tile_name in NIGHT_LIGHTS_TILE_NAMES:
         tile = str(tile_name).upper()
         if tile not in tile_urls_obj:
             raise NightLightsManifestError(f"Night light manifest missing tile {tile}.")
@@ -358,7 +357,8 @@ def _build_azimuth_grid(
     return az_values, alt_values
 
 
-def _circular_smooth(values: np.ndarray, width: int = NIGHT_LIGHTS_AZIMUTH_SMOOTHING_WIDTH) -> np.ndarray:
+def _circular_smooth(values: np.ndarray) -> np.ndarray:
+    width = NIGHT_LIGHTS_AZIMUTH_SMOOTHING_WIDTH
     if values.size == 0 or width <= 0:
         return values
     kernel = np.asarray([1.0, 2.0, 3.0, 2.0, 1.0], dtype=np.float64)

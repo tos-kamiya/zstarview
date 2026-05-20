@@ -199,11 +199,8 @@ def _resolve_building_top_height_m(
     *,
     lat_deg: float,
     lon_deg: float,
-    derived_root_dir: Path | str = OVERTURE_DERIVED_ROOT_DIR,
-    fetch_radius_km: float = BUILDING_TOP_FETCH_RADIUS_KM,
-    overturemaps_bin: str = "overturemaps",
 ) -> float | None:
-    derived_root = Path(derived_root_dir)
+    derived_root = Path(OVERTURE_DERIVED_ROOT_DIR)
     all_buildings: list["BuildingFootprint"] = []
     from ..data.derived_tile_cache import (
         parse_derived_tile_buildings,
@@ -216,12 +213,12 @@ def _resolve_building_top_height_m(
             derived_dir = import_overture_buildings(
                 lat_deg=lat_deg,
                 lon_deg=lon_deg,
-                radius_km=fetch_radius_km,
+                radius_km=BUILDING_TOP_FETCH_RADIUS_KM,
                 derived_root_dir=derived_root,
                 min_building_height_m=0.0,
                 feature_type=feature_type,
                 fmt="geojsonseq",
-                overturemaps_bin=overturemaps_bin,
+                overturemaps_bin="overturemaps",
                 dataset_name=None,
                 keep_download=None,
                 no_stac=False,
@@ -241,7 +238,7 @@ def _resolve_building_top_height_m(
                 derived_dir,
                 observer_lat_deg=lat_deg,
                 observer_lon_deg=lon_deg,
-                radius_km=fetch_radius_km,
+                radius_km=BUILDING_TOP_FETCH_RADIUS_KM,
             )
         except ValueError:
             continue
@@ -295,7 +292,6 @@ def _resolve_ground_elevation_m(
     *,
     lat_deg: float,
     lon_deg: float,
-    cache_dir: str | Path = COPERNICUS_DEM_CACHE_DIR,
 ) -> float:
     try:
         download = fetch_copernicus_dem(
@@ -303,7 +299,7 @@ def _resolve_ground_elevation_m(
             observer_lon_deg=lon_deg,
             max_distance_km=0.25,
             margin_km=0.0,
-            cache_dir=Path(cache_dir),
+            cache_dir=Path(COPERNICUS_DEM_CACHE_DIR),
         )
     except Exception:
         logger.warning(

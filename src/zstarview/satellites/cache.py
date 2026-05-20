@@ -142,7 +142,6 @@ def save_satellite_fetch_failure(
     error_text: str,
     cache_root: str | Path = SATELLITE_CACHE_ROOT_DIR,
     cache_scope_key: str | None = None,
-    backoff_seconds: int = SATELLITE_FAILURE_RETRY_SECONDS,
 ) -> Path:
     path = satellite_group_cache_path(
         group_key,
@@ -160,7 +159,7 @@ def save_satellite_fetch_failure(
     payload["last_fetch_failure_utc"] = attempted_at.isoformat()
     payload["failure_backoff_until_utc"] = (
         attempted_at.replace()
-        + timedelta(seconds=max(0, int(backoff_seconds)))
+        + timedelta(seconds=max(0, int(SATELLITE_FAILURE_RETRY_SECONDS)))
     ).isoformat()
     path.write_text(json.dumps(payload, separators=(",", ":"), sort_keys=True), encoding="utf-8")
     return path
