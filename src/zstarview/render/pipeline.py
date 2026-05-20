@@ -310,11 +310,7 @@ def render_base_scene_into_painter(
             label_candidates=local_label_candidates,
         )
     if draw_labels:
-        _draw_label_layer(
-            painter,
-            style=style,
-            label_candidates=local_label_candidates,
-        )
+        render_text._draw_label_candidates(painter, local_label_candidates, style.text_font)
 
 
 def render_fast_overlay_layers_into_painter(
@@ -356,11 +352,7 @@ def render_fast_overlay_layers_into_painter(
         label_candidates=local_label_candidates,
     )
     if draw_labels:
-        _draw_label_layer(
-            painter,
-            style=style,
-            label_candidates=local_label_candidates,
-        )
+        render_text._draw_label_candidates(painter, local_label_candidates, style.text_font)
 
 
 def render_hud_overlay_into_painter(
@@ -422,11 +414,7 @@ def render_hud_overlay_into_painter(
             theme=style.theme,
         )
     if label_candidates:
-        _draw_label_layer(
-            painter,
-            style=style,
-            label_candidates=label_candidates,
-        )
+        render_text._draw_label_candidates(painter, label_candidates, style.text_font)
     _draw_overlay_layer(
         painter,
         geometry=frame.geometry,
@@ -1105,16 +1093,6 @@ def _draw_hover_overlay_layer(
         draw_outlined_text_func=render_text.draw_outlined_text,
         text_bounds_at_baseline_func=render_text._text_bounds_at_baseline,
     )
-
-
-def _draw_label_layer(
-    painter: QPainter,
-    *,
-    style: RenderStyle,
-    label_candidates: list[dict[str, Any]],
-) -> None:
-    render_text._draw_label_candidates(painter, label_candidates, style.text_font)
-
 
 def _draw_status_line(
     painter: QPainter,

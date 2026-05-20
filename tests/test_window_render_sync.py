@@ -2779,7 +2779,11 @@ def test_render_base_scene_skips_water_when_terrain_horizon_hidden(monkeypatch) 
     monkeypatch.setattr(pipeline_module, "_draw_urban_outline_layer", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(pipeline_module, "_draw_star_layer", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(pipeline_module, "_draw_hover_overlay_layer", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(pipeline_module, "_draw_label_layer", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        pipeline_module.render_text,
+        "_draw_label_candidates",
+        lambda *_args, **_kwargs: None,
+    )
     monkeypatch.setattr(pipeline_module, "_draw_status_line", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(
         pipeline_module.render_stars,
@@ -3218,7 +3222,12 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
     )
     monkeypatch.setattr(
         pipeline_module,
-        "_draw_label_layer",
+        "render_text",
+        pipeline_module.render_text,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_text,
+        "_draw_label_candidates",
         lambda *_args, **_kwargs: calls.append("labels"),
     )
     monkeypatch.setattr(
@@ -3371,9 +3380,9 @@ def test_render_hud_overlay_draws_persistent_search_label(monkeypatch) -> None:
         fake_draw_search_target_overlay,
     )
     monkeypatch.setattr(
-        pipeline_module,
-        "_draw_label_layer",
-        lambda *_args, **kwargs: captured.update({"labels": kwargs["label_candidates"]}),
+        pipeline_module.render_text,
+        "_draw_label_candidates",
+        lambda *_args: captured.update({"labels": _args[1]}),
     )
 
     pipeline_module.render_hud_overlay_into_painter(
@@ -3527,7 +3536,12 @@ def test_render_base_scene_can_skip_fast_overlays(monkeypatch) -> None:
     )
     monkeypatch.setattr(
         pipeline_module,
-        "_draw_label_layer",
+        "render_text",
+        pipeline_module.render_text,
+    )
+    monkeypatch.setattr(
+        pipeline_module.render_text,
+        "_draw_label_candidates",
         lambda *_args, **_kwargs: calls.append("labels"),
     )
 
