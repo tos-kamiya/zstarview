@@ -5,7 +5,7 @@ import time
 from typing import Callable, cast
 
 import astropy.time
-from PySide6.QtCore import QPoint, QPointF, QRect, QSize, Qt, QTimer
+from PySide6.QtCore import QPoint, QPointF, QRect, QSize, Qt
 from PySide6.QtGui import QFont, QImage, QPainter, QPaintEvent
 
 from ..astro import altaz_to_normalized_xy, resolve_star_names
@@ -867,20 +867,4 @@ class SkyWindowRenderMixin:
                 highlighted_satellite=highlighted_satellite,
             )
         painter.drawImage(0, 0, present_frame)
-        self._schedule_aircraft_debug_snapshot_save_after_paint(present_frame)
-
-    def _schedule_aircraft_debug_snapshot_save_after_paint(self, present_frame: QImage) -> None:
-        payload = getattr(self, "_aircraft_debug_snapshot_payload", None)
-        if payload is None:
-            return
-        if bool(getattr(self, "_aircraft_debug_snapshot_save_queued", False)):
-            return
-        self._aircraft_debug_snapshot_save_queued = True
-        frame_copy = QImage(present_frame)
-        QTimer.singleShot(
-            0,
-            lambda frame=frame_copy, data=payload: self._save_aircraft_debug_snapshot_image(
-                frame,
-                data,
-            ),
-        )
+        self._flush_aircraft_debug_snapshot_save(present_frame)

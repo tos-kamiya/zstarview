@@ -8,12 +8,13 @@ clouds, and all user interactions like rotation, zooming, and object highlightin
 """
 
 import logging
+import os
 import time
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, Dict, Optional, Tuple, Union
 
 import astropy.time
 from PySide6.QtCore import (
@@ -489,8 +490,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._startup_window_shown = False
         self._startup_input_release_pending = False
         self._startup_input_blocked_state = True
-        self._aircraft_debug_snapshot_payload = None
-        self._aircraft_debug_snapshot_save_queued = False
+        self._pending_aircraft_debug_snapshot_path = None
         self._sky_refresh_due = False
         self._cloud_refresh_due = False
         self._satellite_refresh_due = False
@@ -730,6 +730,65 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         # --- Initial Data Load ---
         if not defer_initial_load:
             self.start_initial_data_load()
+
+    @staticmethod
+    def _resolve_aircraft_debug_snapshot_dir() -> Path | None:
+        raw = os.getenv("ZSTARVIEW_DEBUG_SAVE_AIRCRAFT_READY_FRAME", "").strip()
+        if not raw:
+            return None
+        lowered = raw.lower()
+        if lowered in {"0", "false", "no", "off"}:
+            return None
+        if lowered in {"1", "true", "yes", "on"}:
+            return Path(CACHE_PATH) / "debug" / "aircraft-ready"
+        return Path(raw).expanduser()
+
+    @staticmethod
+    def _resolve_aircraft_debug_snapshot_path(payload: Dict) -> Path | None:
+        output_dir = SkyWindowCoreMixin._resolve_aircraft_debug_snapshot_dir()
+        if output_dir is None:
+            return None
+        refreshed_at = payload.get("refreshed_at_utc")
+        if not isinstance(refreshed_at, datetime):
+            refreshed_at = datetime.now(timezone.utc)
+        source = str(payload.get("source", "")).strip().lower() or "ready"
+        safe_source = "".join(
+            ch if (ch.isascii() and (ch.isalnum() or ch in {"-", "_", "."})) else "-"
+            for ch in source
+        ).strip("-")
+        if not safe_source:
+            safe_source = "ready"
+        filename = (
+            f"aircraft-ready-{refreshed_at.strftime('%Y%m%dT%H%M%SZ')}-"
+            f"{safe_source}.png"
+        )
+        output_dir.mkdir(parents=True, exist_ok=True)
+        return output_dir / filename
+
+    def _queue_aircraft_debug_snapshot(self, payload: Dict) -> None:
+        output_path = SkyWindowCoreMixin._resolve_aircraft_debug_snapshot_path(payload)
+        if output_path is None:
+            return
+        self._pending_aircraft_debug_snapshot_path = output_path
+
+    @staticmethod
+    def _save_aircraft_debug_snapshot_image(image, output_path: Path) -> None:
+        try:
+            if not image.save(str(output_path), "PNG"):
+                logger.warning(
+                    "Failed to save aircraft debug snapshot: %s", output_path
+                )
+                return
+            logger.info("Saved aircraft debug snapshot: %s", output_path)
+        except Exception as exc:
+            logger.warning("Aircraft debug snapshot failed: %s", exc, exc_info=True)
+
+    def _flush_aircraft_debug_snapshot_save(self, present_frame) -> None:
+        output_path = getattr(self, "_pending_aircraft_debug_snapshot_path", None)
+        if not isinstance(output_path, Path):
+            return
+        self._pending_aircraft_debug_snapshot_path = None
+        self._save_aircraft_debug_snapshot_image(present_frame, output_path)
 
     def _setup_update_infrastructure(self) -> None:
         """Initialize timers, worker, and signal wiring for background updates."""

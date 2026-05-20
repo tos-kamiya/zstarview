@@ -1,17 +1,15 @@
 from __future__ import annotations
 
 import logging
-import os
 import time
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from typing import Dict, Optional
 
 from ..aircraft_constants import AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS
 from ..astro import load_ephemeris
 from ..clouddisc.providers.select import GOES_SATELLITES
-from ..paths import CACHE_PATH, CLOUD_UPDATE_INTERVAL
+from ..paths import CLOUD_UPDATE_INTERVAL
 from ..satellite_constants import SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS
 from ..search.jpl import project_jpl_target_altaz_from_state_vector
 from ..render import geometry as render_geometry
@@ -221,68 +219,6 @@ class SkyWindowUpdatesMixin:
         if self._satellite_layer_enabled() and self._satellite_projection_next_refresh_delay_ms() == 0:
             self.reproject_satellite_overlay()
             return
-
-    def _resolve_aircraft_debug_snapshot_dir(self) -> Path | None:
-        raw = os.getenv("ZSTARVIEW_DEBUG_SAVE_AIRCRAFT_READY_FRAME", "").strip()
-        if not raw:
-            return None
-        lowered = raw.lower()
-        if lowered in {"0", "false", "no", "off"}:
-            return None
-        if lowered in {"1", "true", "yes", "on"}:
-            return Path(CACHE_PATH) / "debug" / "aircraft-ready"
-        return Path(raw).expanduser()
-
-    def _queue_aircraft_debug_snapshot(self, payload: Dict) -> None:
-        output_dir = self._resolve_aircraft_debug_snapshot_dir()
-        if output_dir is None:
-            return
-        source = str(payload.get("source", "")).strip().lower() or "ready"
-        if source == "cache-fresh":
-            return
-        self._aircraft_debug_snapshot_payload = dict(payload)
-        self._aircraft_debug_snapshot_save_queued = False
-
-    def _save_aircraft_debug_snapshot_image(
-        self,
-        image,
-        payload: Dict,
-    ) -> None:
-        current_payload = getattr(self, "_aircraft_debug_snapshot_payload", None)
-        if current_payload is not payload:
-            return
-        try:
-            output_dir = self._resolve_aircraft_debug_snapshot_dir()
-            if output_dir is None:
-                return
-            refreshed_at = payload.get("refreshed_at_utc")
-            if not isinstance(refreshed_at, datetime):
-                refreshed_at = datetime.now(timezone.utc)
-            source = str(payload.get("source", "")).strip().lower() or "ready"
-            if source == "cache-fresh":
-                return
-            safe_source = "".join(
-                ch if (ch.isascii() and (ch.isalnum() or ch in {"-", "_", "."})) else "-"
-                for ch in source
-            ).strip("-")
-            if not safe_source:
-                safe_source = "ready"
-            filename = f"aircraft-ready-{refreshed_at.strftime('%Y%m%dT%H%M%SZ')}-{safe_source}.png"
-            output_dir.mkdir(parents=True, exist_ok=True)
-            output_path = output_dir / filename
-            if not image.save(str(output_path), "PNG"):
-                logger.warning(
-                    "Failed to save aircraft debug snapshot: %s", output_path
-                )
-                return
-            logger.info("Saved aircraft debug snapshot: %s", output_path)
-        except Exception as exc:
-            logger.warning("Aircraft debug snapshot failed: %s", exc, exc_info=True)
-        finally:
-            current_payload = getattr(self, "_aircraft_debug_snapshot_payload", None)
-            if current_payload is payload:
-                self._aircraft_debug_snapshot_payload = None
-                self._aircraft_debug_snapshot_save_queued = False
 
     def _status_line_message(self) -> str:
         vertical_bar = "\u23ae"

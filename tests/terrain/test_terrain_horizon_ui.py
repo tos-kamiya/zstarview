@@ -12,12 +12,10 @@ from PySide6.QtGui import QImage, QPainter
 
 import zstarview.gui.terrain_controller as terrain_controller_module
 import zstarview.gui.window as window_module
-import zstarview.gui.window_render as window_render_module
 import zstarview.gui.window_widgets as window_widgets_module
 from zstarview.cli.args import SKY_OPACITY_DEFAULT
 from zstarview.gui.terrain_controller import TerrainHorizonController
-from zstarview.gui.window import SkyWindow
-from zstarview.gui.window_render import SkyWindowRenderMixin
+from zstarview.gui.window import SkyWindow, SkyWindowCoreMixin
 from zstarview.gui.window_inputs import prepare_window_user_options
 from zstarview.gui.window_updates import SkyWindowUpdatesMixin
 from zstarview.paths import THEME_STYLES_BY_PRESET
@@ -876,10 +874,7 @@ def test_on_aircraft_ready_queues_debug_snapshot_when_enabled(
         AssertionError("should not render yet")
     )
     dummy._queue_aircraft_debug_snapshot = lambda payload: (
-        SkyWindowUpdatesMixin._queue_aircraft_debug_snapshot(dummy, payload)
-    )
-    dummy._resolve_aircraft_debug_snapshot_dir = lambda: (
-        SkyWindowUpdatesMixin._resolve_aircraft_debug_snapshot_dir(dummy)
+        SkyWindowCoreMixin._queue_aircraft_debug_snapshot(dummy, payload)
     )
     monkeypatch.setenv("ZSTARVIEW_DEBUG_SAVE_AIRCRAFT_READY_FRAME", str(tmp_path))
 
@@ -895,55 +890,70 @@ def test_on_aircraft_ready_queues_debug_snapshot_when_enabled(
 
     assert dummy.state is not None
     assert calls == ["schedule", "reproject"]
-    assert dummy._aircraft_debug_snapshot_payload is not None
-    assert dummy._aircraft_debug_snapshot_save_queued is False
+    assert dummy._pending_aircraft_debug_snapshot_path == (
+        tmp_path / "aircraft-ready-20260324T123456Z-opensky-cache.png"
+    )
     assert list(tmp_path.iterdir()) == []
 
 
-def test_aircraft_debug_snapshot_is_saved_after_paint(
-    monkeypatch, tmp_path: Path
+def test_aircraft_debug_snapshot_is_saved_during_paint(
+    tmp_path: Path,
 ) -> None:
-    refreshed_at = datetime(2026, 3, 24, 12, 34, 56, tzinfo=timezone.utc)
     dummy = SimpleNamespace()
-    dummy._aircraft_debug_snapshot_payload = {
-        "refreshed_at_utc": refreshed_at,
-        "source": "OpenSky cache",
-    }
-    dummy._aircraft_debug_snapshot_save_queued = False
-    dummy._resolve_aircraft_debug_snapshot_dir = lambda: tmp_path
-    dummy._save_aircraft_debug_snapshot_image = lambda image, payload: (
-        SkyWindowUpdatesMixin._save_aircraft_debug_snapshot_image(
-            dummy,
-            image,
-            payload,
-        )
+    dummy._pending_aircraft_debug_snapshot_path = (
+        tmp_path / "aircraft-ready-20260324T123456Z-opensky-cache.png"
     )
-    scheduled_callbacks: list[object] = []
-
-    def _single_shot(_ms: int, callback) -> None:
-        scheduled_callbacks.append(callback)
-
-    monkeypatch.setattr(window_render_module.QTimer, "singleShot", _single_shot)
+    dummy._save_aircraft_debug_snapshot_image = lambda image, output_path: (
+        SkyWindowCoreMixin._save_aircraft_debug_snapshot_image(image, output_path)
+    )
 
     frame = QImage(8, 8, QImage.Format.Format_ARGB32_Premultiplied)
     frame.fill(0)
 
-    SkyWindowRenderMixin._schedule_aircraft_debug_snapshot_save_after_paint(
-        dummy,
-        frame,
-    )
-
-    assert dummy._aircraft_debug_snapshot_save_queued is True
-    assert list(tmp_path.iterdir()) == []
-    assert len(scheduled_callbacks) == 1
-
-    scheduled_callbacks[0]()
+    SkyWindowCoreMixin._flush_aircraft_debug_snapshot_save(dummy, frame)
 
     saved = list(tmp_path.iterdir())
     assert len(saved) == 1
     assert saved[0].name == "aircraft-ready-20260324T123456Z-opensky-cache.png"
-    assert dummy._aircraft_debug_snapshot_payload is None
-    assert dummy._aircraft_debug_snapshot_save_queued is False
+    assert dummy._pending_aircraft_debug_snapshot_path is None
+
+
+def test_aircraft_debug_snapshot_saves_once_per_ready_update(
+    monkeypatch, tmp_path: Path
+) -> None:
+    refreshed_at_1 = datetime(2026, 3, 24, 12, 34, 56, tzinfo=timezone.utc)
+    refreshed_at_2 = datetime(2026, 3, 24, 12, 34, 57, tzinfo=timezone.utc)
+    dummy = SimpleNamespace()
+    monkeypatch.setenv("ZSTARVIEW_DEBUG_SAVE_AIRCRAFT_READY_FRAME", str(tmp_path))
+    dummy._save_aircraft_debug_snapshot_image = lambda image, output_path: (
+        SkyWindowCoreMixin._save_aircraft_debug_snapshot_image(image, output_path)
+    )
+
+    frame = QImage(8, 8, QImage.Format.Format_ARGB32_Premultiplied)
+    frame.fill(0)
+
+    SkyWindowCoreMixin._queue_aircraft_debug_snapshot(
+        dummy,
+        {"refreshed_at_utc": refreshed_at_1, "source": "OpenSky cache"},
+    )
+    SkyWindowCoreMixin._flush_aircraft_debug_snapshot_save(
+        dummy,
+        frame,
+    )
+    SkyWindowCoreMixin._queue_aircraft_debug_snapshot(
+        dummy,
+        {"refreshed_at_utc": refreshed_at_2, "source": "OpenSky cache"},
+    )
+    SkyWindowCoreMixin._flush_aircraft_debug_snapshot_save(
+        dummy,
+        frame,
+    )
+
+    saved = sorted(path.name for path in tmp_path.iterdir())
+    assert saved == [
+        "aircraft-ready-20260324T123456Z-opensky-cache.png",
+        "aircraft-ready-20260324T123457Z-opensky-cache.png",
+    ]
 
 
 def test_on_aircraft_ready_skips_debug_snapshot_when_disabled(monkeypatch) -> None:
@@ -961,10 +971,7 @@ def test_on_aircraft_ready_skips_debug_snapshot_when_disabled(monkeypatch) -> No
         AssertionError("should not render")
     )
     dummy._queue_aircraft_debug_snapshot = lambda payload: (
-        SkyWindowUpdatesMixin._queue_aircraft_debug_snapshot(dummy, payload)
-    )
-    dummy._resolve_aircraft_debug_snapshot_dir = lambda: (
-        SkyWindowUpdatesMixin._resolve_aircraft_debug_snapshot_dir(dummy)
+        SkyWindowCoreMixin._queue_aircraft_debug_snapshot(dummy, payload)
     )
     monkeypatch.delenv("ZSTARVIEW_DEBUG_SAVE_AIRCRAFT_READY_FRAME", raising=False)
 
@@ -997,10 +1004,7 @@ def test_on_aircraft_ready_skips_debug_snapshot_for_cache_fresh(monkeypatch, tmp
         AssertionError("should not render")
     )
     dummy._queue_aircraft_debug_snapshot = lambda payload: (
-        SkyWindowUpdatesMixin._queue_aircraft_debug_snapshot(dummy, payload)
-    )
-    dummy._resolve_aircraft_debug_snapshot_dir = lambda: (
-        SkyWindowUpdatesMixin._resolve_aircraft_debug_snapshot_dir(dummy)
+        SkyWindowCoreMixin._queue_aircraft_debug_snapshot(dummy, payload)
     )
     monkeypatch.setenv("ZSTARVIEW_DEBUG_SAVE_AIRCRAFT_READY_FRAME", str(tmp_path))
 
@@ -1016,6 +1020,9 @@ def test_on_aircraft_ready_skips_debug_snapshot_for_cache_fresh(monkeypatch, tmp
 
     assert dummy.state is not None
     assert calls == ["schedule", "reproject"]
+    assert dummy._pending_aircraft_debug_snapshot_path == (
+        tmp_path / "aircraft-ready-20260324T123456Z-cache-fresh.png"
+    )
     assert list(tmp_path.iterdir()) == []
 
 
