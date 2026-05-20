@@ -2678,7 +2678,7 @@ def test_draw_viewport_interaction_layers_skips_water_when_terrain_horizon_hidde
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
-        "draw_terrain_horizon_fast",
+        "_draw_terrain_profile_layer",
         lambda *_args, **_kwargs: calls.append("terrain"),
     )
     monkeypatch.setattr(
@@ -2742,7 +2742,7 @@ def test_draw_viewport_interaction_layers_prefers_scene_water_overlay_points(
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
-        "draw_terrain_horizon_fast",
+        "_draw_terrain_profile_layer",
         lambda *_args, **_kwargs: terrain_calls.append("terrain"),
     )
     monkeypatch.setattr(
@@ -2823,7 +2823,7 @@ def test_render_base_scene_skips_water_when_terrain_horizon_hidden(monkeypatch) 
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
-        "draw_terrain_horizon_fast",
+        "_draw_terrain_profile_layer",
         lambda *_args, **_kwargs: calls.append("terrain"),
     )
     monkeypatch.setattr(
@@ -4390,7 +4390,7 @@ def test_draw_terrain_horizon_line_scales_line_widths(monkeypatch) -> None:
             pass
 
     painter = _Painter()
-    render_terrain_module.draw_terrain_horizon_line(
+    render_terrain_module._draw_terrain_profile_layer(
         painter,
         geometry=SimpleNamespace(center=(0, 0), radius=1),
         terrain_profile_altaz=[(0.0, 0.0), (0.1, 0.1)],
@@ -4398,13 +4398,21 @@ def test_draw_terrain_horizon_line_scales_line_widths(monkeypatch) -> None:
         viewer=_viewer(),
         opacity=0.38,
         line_width_scale=2.0,
+        base_width=render_terrain_module.TERRAIN_HORIZON_FAST_WIDTH,
+        far_base_width=render_terrain_module.TERRAIN_HORIZON_FAR_BASE_WIDTH,
+        fg_alpha=render_terrain_module.terrain_horizon_line_alpha(0.38),
+        color_rgb=render_terrain_module.TERRAIN_HORIZON_LINE_COLOR,
         fast_mode=True,
+        distance_widths=True,
+        edge_fov_deg=95.0,
+        content_fov_deg=110.0,
         is_in_fov_func=lambda *_args, **_kwargs: True,
         altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
             float(az),
             float(alt),
         ),
         normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
+        split_by_gaps_func=lambda points: [points],
     )
 
     assert painter.pen_widths == [7.2]
@@ -4447,20 +4455,29 @@ def test_draw_terrain_horizon_line_scales_widths_by_distance(monkeypatch) -> Non
             pass
 
     painter = _Painter()
-    render_terrain_module.draw_terrain_horizon_line(
+    render_terrain_module._draw_terrain_profile_layer(
         painter,
         geometry=SimpleNamespace(center=(0, 0), radius=1),
         terrain_profile_altaz=[(0.0, 0.0), (0.0, 0.1), (0.0, 0.2)],
         terrain_profile_distances_m=[1_000.0, 50_000.0, 120_000.0],
         viewer=_viewer(),
         opacity=0.38,
+        base_width=render_terrain_module.TERRAIN_HORIZON_FAST_WIDTH,
+        far_base_width=render_terrain_module.TERRAIN_HORIZON_FAR_BASE_WIDTH,
+        fg_alpha=render_terrain_module.terrain_horizon_line_alpha(0.38),
         line_width_scale=1.0,
+        color_rgb=render_terrain_module.TERRAIN_HORIZON_LINE_COLOR,
+        fast_mode=False,
+        distance_widths=True,
+        edge_fov_deg=95.0,
+        content_fov_deg=110.0,
         is_in_fov_func=lambda *_args, **_kwargs: True,
         altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
             float(az),
             float(alt),
         ),
         normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
+        split_by_gaps_func=lambda points: [points],
     )
 
     assert len(painter.pen_widths) == 2
@@ -4775,17 +4792,27 @@ def test_draw_terrain_horizon_line_uses_edge_fov_for_projection() -> None:
 
     def _render(edge_fov_deg: float) -> list[tuple[float, float]]:
         painter = _Painter()
-        render_terrain_module.draw_terrain_horizon_line(
+        render_terrain_module._draw_terrain_profile_layer(
             painter,
             geometry=SimpleNamespace(center=(0, 0), radius=1),
             terrain_profile_altaz=[(0.0, 180.0), (0.0, 190.0)],
             terrain_profile_distances_m=None,
             viewer=_viewer(edge_fov_deg=edge_fov_deg, content_fov_deg=180.0),
             opacity=0.38,
+            base_width=render_terrain_module.TERRAIN_HORIZON_FAST_WIDTH,
+            far_base_width=render_terrain_module.TERRAIN_HORIZON_FAR_BASE_WIDTH,
+            fg_alpha=render_terrain_module.terrain_horizon_line_alpha(0.38),
+            color_rgb=render_terrain_module.TERRAIN_HORIZON_LINE_COLOR,
             fast_mode=True,
-            is_in_fov_func=lambda *_args, **_kwargs: True,
-            normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
-        )
+            distance_widths=True,
+            edge_fov_deg=edge_fov_deg,
+            content_fov_deg=180.0,
+                is_in_fov_func=lambda *_args, **_kwargs: True,
+                line_width_scale=1.0,
+                altaz_to_normalized_xy_func=render_terrain_module.altaz_to_normalized_xy,
+                normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
+                split_by_gaps_func=lambda points: [points],
+            )
         assert painter.polylines
         return painter.polylines[0]
 
@@ -4813,7 +4840,7 @@ def test_draw_terrain_horizon_line_rotates_profile_away_from_north_seam() -> Non
             self.polylines.append([(poly.at(i).x(), poly.at(i).y()) for i in range(poly.count())])
 
     painter = _Painter()
-    render_terrain_module.draw_terrain_horizon_line(
+    render_terrain_module._draw_terrain_profile_layer(
         painter,
         geometry=SimpleNamespace(center=(0, 0), radius=1),
         terrain_profile_altaz=[
@@ -4825,8 +4852,16 @@ def test_draw_terrain_horizon_line_rotates_profile_away_from_north_seam() -> Non
         terrain_profile_distances_m=None,
         viewer=_viewer(edge_fov_deg=120.0, content_fov_deg=180.0),
         opacity=0.38,
+        base_width=render_terrain_module.TERRAIN_HORIZON_FAST_WIDTH,
+        far_base_width=render_terrain_module.TERRAIN_HORIZON_FAR_BASE_WIDTH,
+        fg_alpha=render_terrain_module.terrain_horizon_line_alpha(0.38),
+        color_rgb=render_terrain_module.TERRAIN_HORIZON_LINE_COLOR,
         fast_mode=True,
+        distance_widths=True,
+        edge_fov_deg=120.0,
+        content_fov_deg=180.0,
         is_in_fov_func=lambda *_args, **_kwargs: True,
+        line_width_scale=1.0,
         altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
             float(az),
             float(alt),

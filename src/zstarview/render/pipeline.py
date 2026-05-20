@@ -448,7 +448,7 @@ def _draw_viewport_interaction_layers(
         draw_vmag_limit=ORIENTATION_INTERACTION_STAR_VMAG_LIMIT,
         fast_mode=True,
     )
-    render_terrain.draw_terrain_horizon_fast(
+    render_terrain._draw_terrain_profile_layer(
         painter,
         geometry,
         scene.terrain_horizon_profile,
@@ -456,6 +456,18 @@ def _draw_viewport_interaction_layers(
         scene.viewer,
         opacity=style.terrain_horizon_opacity,
         line_width_scale=line_width_scale,
+        base_width=render_terrain.TERRAIN_HORIZON_FAST_WIDTH,
+        far_base_width=render_terrain.TERRAIN_HORIZON_FAR_BASE_WIDTH,
+        fg_alpha=render_terrain.terrain_horizon_line_alpha(style.terrain_horizon_opacity),
+        color_rgb=render_terrain.TERRAIN_HORIZON_LINE_COLOR,
+        fast_mode=True,
+        distance_widths=True,
+        edge_fov_deg=float(scene.viewer.edge_fov_deg),
+        content_fov_deg=_content_fov_deg(scene),
+        is_in_fov_func=render_terrain.is_in_fov,
+        altaz_to_normalized_xy_func=render_terrain.altaz_to_normalized_xy,
+        normalized_to_screen_xy_func=render_terrain.normalized_to_screen_xy,
+        split_by_gaps_func=render_terrain.split_by_gaps,
     )
     if _should_draw_water_overlay(scene, style):
         water_dots = _terrain_horizon_water_overlay_dots(scene)
