@@ -578,7 +578,6 @@ class SkyWindowUpdatesMixin:
             star_subset_indices=star_subset_indices,
             delta_t=self.delta_t,
             sky_disc_alpha=self.sky_disc_alpha,
-            sky_disc_style=self.sky_disc_style,
             theme=self.theme,
             star_catalog_meta=self.star_catalog_meta,
             image_size=(

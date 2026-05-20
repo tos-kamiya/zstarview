@@ -35,7 +35,6 @@ SUN_GLOW_STRENGTH = 0.42
 SUNSET_STRENGTH = 0.264
 ANTI_SOLAR_STRENGTH = 0.16
 SATURATION_CHROMA_SCALE = 0.35
-SKY_DISC_STYLE_SMOOTH = "smooth"
 # Periodic sky updates include continuously changing sun coordinates, so this
 # cache mostly protects immediate duplicate requests. Keep it small because
 # each entry can be a full-window QImage backed by Qt memory.
@@ -194,7 +193,6 @@ def sky_color_samples(
 
 @lru_cache(maxsize=_SKY_DISC_RENDER_CACHE_SIZE)
 def _render_sky_color_disc_cached(
-    style: str,
     width: int,
     height: int,
     center_x: int,
@@ -248,7 +246,6 @@ def draw_sky_color_disc(
     geometry: ScreenGeometry,
     view_center: Tuple[float, float],
     sun_altaz: Tuple[float, float],
-    observer_lat_deg: float | None = None,
     *,
     exposure: float = 1.14,
     saturation: float = 1.35,
@@ -258,7 +255,6 @@ def draw_sky_color_disc(
     edge_fov_deg: float = 90.0,
     content_fov_deg: float,
     image_size: Tuple[int, int] | None = None,
-    sky_disc_style: str = SKY_DISC_STYLE_SMOOTH,
 ) -> QImage:
     """
     Draw sky color disc using one-pass NumPy inverse projection.
@@ -276,7 +272,6 @@ def draw_sky_color_disc(
     if radius < 1:
         return QImage(width, height, QImage.Format.Format_ARGB32_Premultiplied)
     return _render_sky_color_disc_cached(
-        SKY_DISC_STYLE_SMOOTH,
         width,
         height,
         int(local_geometry.center[0]),

@@ -1316,7 +1316,6 @@ def main() -> None:
         star_subset_indices=star_subset_indices,
         delta_t=runtime_options.delta_t,
         sky_disc_alpha=float(user_options.sky_disc_alpha),
-        sky_disc_style=str(user_options.sky_disc_style),
         theme=theme,
         star_catalog_meta=catalogs.star_catalog_meta,
         image_size=(int(image_size[0]), int(image_size[1])),
