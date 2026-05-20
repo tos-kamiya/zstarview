@@ -1,11 +1,8 @@
-from typing import Any, Dict, List, Optional
-
 import astropy.time
 from PySide6.QtCore import QPoint, QPointF
 from PySide6.QtGui import QColor, QPainter
 
 from ..astro import altaz_to_normalized_xy, is_in_fov
-from ..paths import ThemeStyle
 from ..satellite_constants import (
     SATELLITE_OVERLAY_MARKER_COLOR_RGB,
     SATELLITE_OVERLAY_MARKER_MAX_ALPHA,
@@ -18,21 +15,6 @@ from .guides import draw_gauge_cross
 
 _SATELLITE_HOVER_MIN_RADIUS_PX = 12.0
 _SATELLITE_HOVER_RADIUS_SCALE = 20.0
-
-
-def _project_altaz_to_normalized_xy(
-    alt_deg: float,
-    az_deg: float,
-    view_center: tuple[float, float],
-    *,
-    edge_fov_deg: float,
-) -> tuple[float, float]:
-    return altaz_to_normalized_xy(
-        alt_deg,
-        az_deg,
-        view_center,
-        edge_fov_deg=edge_fov_deg,
-    )
 
 
 def _satellite_hover_radius_px(point: SatelliteOverlayPoint) -> float:
@@ -76,7 +58,7 @@ def find_highlighted_satellite(
         az = float(point.az_deg)
         if not is_in_fov(alt, az, view_center, fov_deg=content_fov_deg):
             continue
-        nx, ny = _project_altaz_to_normalized_xy(alt, az, view_center, edge_fov_deg=edge_fov_deg)
+        nx, ny = altaz_to_normalized_xy(alt, az, view_center, edge_fov_deg=edge_fov_deg)
         px, py = normalized_to_screen_xy(nx, ny, geometry)
         dist_sq = (mouse_x - float(px)) ** 2 + (mouse_y - float(py)) ** 2
         hover_radius = _satellite_hover_radius_px(point)
@@ -95,8 +77,6 @@ def draw_satellite_overlay(
     time_obj: astropy.time.Time | None = None,
     opacity: float = 1.0,
     highlighted_satellite: SatelliteOverlayPoint | None = None,
-    label_candidates: Optional[List[Dict[str, Any]]] = None,
-    theme: ThemeStyle,
     marker_scale: float = 1.0,
 ) -> None:
     if viewer_data is None or time_obj is None:
@@ -130,7 +110,7 @@ def draw_satellite_overlay(
         az = float(point.az_deg)
         if not is_in_fov(alt, az, view_center, fov_deg=content_fov_deg):
             continue
-        nx, ny = _project_altaz_to_normalized_xy(alt, az, view_center, edge_fov_deg=edge_fov_deg)
+        nx, ny = altaz_to_normalized_xy(alt, az, view_center, edge_fov_deg=edge_fov_deg)
         px, py = normalized_to_screen_xy(nx, ny, geometry)
         pos = QPointF(float(px), float(py))
         draw_gauge_cross(

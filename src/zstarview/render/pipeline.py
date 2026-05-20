@@ -933,8 +933,6 @@ def _draw_satellite_layer(
         highlighted_satellite=(
             highlighted_satellite[0] if highlighted_satellite is not None else None
         ),
-        label_candidates=label_candidates,
-        theme=style.theme,
         marker_scale=compute_star_render_upscale_factor(
             geometry.radius * 2,
             style.star_render_expected_width,

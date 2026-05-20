@@ -583,8 +583,6 @@ def test_satellite_overlay_draws_below_horizon_marker_when_in_fov(monkeypatch) -
             ),
             time_obj=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
             opacity=1.0,
-            label_candidates=[],
-            theme=THEME_STYLES_BY_PRESET["night"],
         )
     finally:
         painter.end()
@@ -632,9 +630,7 @@ def test_satellite_overlay_scales_marker_with_window_scale(monkeypatch) -> None:
             ),
             time_obj=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
             opacity=1.0,
-            label_candidates=[],
             marker_scale=2.5,
-            theme=THEME_STYLES_BY_PRESET["night"],
         )
     finally:
         painter.end()
@@ -681,8 +677,6 @@ def test_satellite_overlay_keeps_overscan_position_beyond_90_deg(monkeypatch) ->
             ),
             time_obj=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
             opacity=1.0,
-            label_candidates=[],
-            theme=THEME_STYLES_BY_PRESET["night"],
         )
     finally:
         painter.end()
@@ -730,8 +724,6 @@ def test_satellite_overlay_does_not_hide_old_element_epoch(monkeypatch) -> None:
             ),
             time_obj=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
             opacity=1.0,
-            label_candidates=[],
-            theme=THEME_STYLES_BY_PRESET["night"],
         )
     finally:
         painter.end()
@@ -763,7 +755,6 @@ def test_satellite_overlay_does_not_add_labels(monkeypatch) -> None:
     image = QImage(40, 40, QImage.Format.Format_ARGB32_Premultiplied)
     painter = QPainter(image)
     try:
-        label_candidates: list[dict[str, object]] = []
         render_satellites.draw_satellite_overlay(
             painter=painter,
             geometry=ScreenGeometry(center=(20, 20), radius=20),
@@ -777,13 +768,9 @@ def test_satellite_overlay_does_not_add_labels(monkeypatch) -> None:
             ),
             time_obj=astropy.time.Time("2026-02-27T00:00:00", scale="utc"),
             opacity=1.0,
-            label_candidates=label_candidates,
-            theme=THEME_STYLES_BY_PRESET["night"],
         )
     finally:
         painter.end()
-
-    assert label_candidates == []
 
 
 def test_satellite_overlay_info_shows_hover_name(monkeypatch) -> None:
