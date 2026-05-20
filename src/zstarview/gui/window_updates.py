@@ -656,9 +656,6 @@ class SkyWindowUpdatesMixin:
         )
         self.request_client_update()
 
-    def refresh_projected_satellite_overlay(self) -> None:
-        self.reproject_satellite_overlay()
-
     def refresh_projected_persistent_search_target(self) -> None:
         target = self.state.persistent_search_target
         if target is None:
@@ -875,9 +872,6 @@ class SkyWindowUpdatesMixin:
             seconds=AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS
         )
         self.request_client_update()
-
-    def refresh_projected_aircraft_overlay(self) -> None:
-        self.reproject_aircraft_overlay()
 
     def _on_aircraft_started(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
