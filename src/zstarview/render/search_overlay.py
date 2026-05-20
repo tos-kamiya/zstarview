@@ -8,6 +8,7 @@ from PySide6.QtGui import QPainter
 from ..astro import altaz_to_normalized_xy, is_in_fov
 from ..paths import ThemeStyle
 from ..search.models import SearchJumpTarget
+from ..types import ViewerData
 from . import guides as render_guides
 from . import text as render_text
 from .geometry import normalized_to_screen_xy
@@ -33,10 +34,8 @@ def draw_search_target_overlay(
     geometry,
     target: SearchJumpTarget,
     *,
-    view_center: tuple[float, float],
-    edge_fov_deg: float,
-    content_fov_deg: float,
     text_font,
+    viewer_data: ViewerData,
     draw_marker: bool = True,
     draw_label: bool = True,
     marker_scale: float = 1.0,
@@ -44,6 +43,8 @@ def draw_search_target_overlay(
     label_reservations: Optional[List[QRectF]] = None,
     theme: ThemeStyle,
 ) -> None:
+    view_center = tuple(float(value) for value in viewer_data.view_center)
+    edge_fov_deg = float(viewer_data.edge_fov_deg)
     alt = getattr(target, "alt_deg", None)
     az = getattr(target, "az_deg", None)
     if alt is None or az is None:

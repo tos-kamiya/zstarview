@@ -15,7 +15,7 @@ from zstarview.render import search_overlay as render_search_overlay
 from zstarview.render import solar_system as render_solar_system
 from zstarview.render import text as render_text
 from zstarview.search.models import SearchJumpTarget
-from zstarview.types import ScreenGeometry
+from zstarview.types import ScreenGeometry, ViewerData
 
 _app = QApplication.instance() or QApplication([])
 
@@ -188,9 +188,14 @@ def test_draw_search_target_overlay_appends_label_candidate() -> None:
         painter,
         ScreenGeometry(center=(120, 60), radius=80),
         target,
-        view_center=(45.0, 180.0),
-        edge_fov_deg=95.0,
-        content_fov_deg=110.0,
+        viewer_data=ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="UTC",
+            city_name="Tokyo",
+            view_center=(45.0, 180.0),
+            edge_fov_deg=95.0,
+            content_fov_deg=110.0,
+        ),
         text_font=QFont(),
         draw_marker=False,
         label_candidates=label_candidates,
@@ -237,9 +242,14 @@ def test_draw_search_target_overlay_keeps_label_at_edge_of_content_fov() -> None
             painter,
             ScreenGeometry(center=(120, 60), radius=80),
             target,
-            view_center=(45.0, 180.0),
-            edge_fov_deg=95.0,
-            content_fov_deg=110.0,
+            viewer_data=ViewerData(
+                location=(35.0, 139.0),
+                timezone_name="UTC",
+                city_name="Tokyo",
+                view_center=(45.0, 180.0),
+                edge_fov_deg=95.0,
+                content_fov_deg=110.0,
+            ),
             text_font=QFont(),
             draw_marker=True,
             draw_label=True,
