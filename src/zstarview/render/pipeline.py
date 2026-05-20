@@ -594,29 +594,22 @@ def _draw_guide_layer(
             painter,
             geometry,
             _window_size(viewport_rect),
-            scene.viewer.view_center,
-            edge_fov_deg=float(scene.viewer.edge_fov_deg),
-            content_fov_deg=_content_fov_deg(scene),
+            scene.viewer,
         )
-    content_fov_deg = _content_fov_deg(scene)
     if draw_direction_labels:
         render_guides.draw_direction_labels(
             painter,
             geometry,
-            scene.viewer.view_center,
+            scene.viewer,
             style.text_font,
             None,
             theme=style.theme,
-            edge_fov_deg=float(scene.viewer.edge_fov_deg),
-            content_fov_deg=content_fov_deg,
         )
     render_guides.draw_zenith_marker(
         painter,
         geometry,
-        scene.viewer.view_center,
+        scene.viewer,
         theme=style.theme,
-        edge_fov_deg=float(scene.viewer.edge_fov_deg),
-        content_fov_deg=content_fov_deg,
     )
 
 
@@ -1062,10 +1055,8 @@ def _draw_hover_overlay_layer(
     if style.show_guidelines and mouse_pos is not None:
         direction_hover = render_guides.resolve_direction_marker_hover(
             geometry,
-            scene.viewer.view_center,
+            scene.viewer,
             mouse_pos,
-            edge_fov_deg=float(scene.viewer.edge_fov_deg),
-            content_fov_deg=_content_fov_deg(scene),
         )
     if direction_hover is not None:
         if style.sky_disc_altaz_rings_hover == "dimalt":
@@ -1094,9 +1085,7 @@ def _draw_hover_overlay_layer(
                 painter,
                 geometry,
                 _window_size(viewport_rect),
-                scene.viewer.view_center,
-                edge_fov_deg=float(scene.viewer.edge_fov_deg),
-                content_fov_deg=_content_fov_deg(scene),
+                scene.viewer,
             )
     render_overlay_info.draw_overlay_info(
         painter,

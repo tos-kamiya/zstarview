@@ -11,48 +11,58 @@ from zstarview.render.guides import (
     draw_direction_hover_guide,
     resolve_direction_marker_hover,
 )
-from zstarview.types import ScreenGeometry
+from zstarview.types import ScreenGeometry, ViewerData
 
 
 def test_resolve_direction_marker_hover_targets_marker_not_label() -> None:
     geometry = ScreenGeometry(center=(200, 200), radius=180)
-    view_center = (0.0, 0.0)
+    viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(0.0, 0.0),
+        edge_fov_deg=95.0,
+        content_fov_deg=100.0,
+    )
 
     marker_nx, marker_ny = altaz_to_normalized_xy(
         0.0,
         0.0,
-        view_center,
+        viewer_data.view_center,
         edge_fov_deg=95.0,
     )
     marker_x, marker_y = normalized_to_screen_xy(marker_nx, marker_ny, geometry)
     hovered = resolve_direction_marker_hover(
         geometry,
-        view_center,
+        viewer_data,
         QPoint(int(round(marker_x)), int(round(marker_y))),
-        edge_fov_deg=95.0,
-        content_fov_deg=100.0,
     )
     assert hovered is not None
     assert hovered.label == "N"
 
     hovered_label = resolve_direction_marker_hover(
         geometry,
-        view_center,
+        viewer_data,
         QPoint(int(round(marker_x + 40.0)), int(round(marker_y))),
-        edge_fov_deg=95.0,
-        content_fov_deg=100.0,
     )
     assert hovered_label is None
 
 
 def test_draw_direction_hover_guide_draws_for_hovered_marker() -> None:
     geometry = ScreenGeometry(center=(200, 200), radius=180)
-    view_center = (0.0, 0.0)
+    viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(0.0, 0.0),
+        edge_fov_deg=95.0,
+        content_fov_deg=100.0,
+    )
 
     marker_nx, marker_ny = altaz_to_normalized_xy(
         0.0,
         0.0,
-        view_center,
+        viewer_data.view_center,
         edge_fov_deg=95.0,
     )
     marker_x, marker_y = normalized_to_screen_xy(marker_nx, marker_ny, geometry)
@@ -66,10 +76,8 @@ def test_draw_direction_hover_guide_draws_for_hovered_marker() -> None:
             painter,
             geometry,
             (400, 400),
-            view_center,
+            viewer_data,
             mouse_pos,
-            edge_fov_deg=95.0,
-            content_fov_deg=100.0,
         )
     finally:
         painter.end()
@@ -84,7 +92,14 @@ def test_draw_direction_hover_guide_draws_for_hovered_marker() -> None:
 
 def test_draw_direction_hover_guide_draws_major_guides_and_minor_crosses(monkeypatch) -> None:
     geometry = ScreenGeometry(center=(200, 200), radius=180)
-    view_center = (0.0, 0.0)
+    viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(0.0, 0.0),
+        edge_fov_deg=95.0,
+        content_fov_deg=100.0,
+    )
     mouse_pos = QPoint(200, 200)
 
     monkeypatch.setattr(
@@ -128,10 +143,8 @@ def test_draw_direction_hover_guide_draws_major_guides_and_minor_crosses(monkeyp
             painter,
             geometry,
             (400, 400),
-            view_center,
+            viewer_data,
             mouse_pos,
-            edge_fov_deg=95.0,
-            content_fov_deg=100.0,
         )
     finally:
         painter.end()
@@ -143,7 +156,14 @@ def test_draw_direction_hover_guide_draws_major_guides_and_minor_crosses(monkeyp
 
 def test_draw_direction_grid_overlay_draws_major_guides_and_minor_crosses(monkeypatch) -> None:
     geometry = ScreenGeometry(center=(200, 200), radius=180)
-    view_center = (0.0, 0.0)
+    viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(0.0, 0.0),
+        edge_fov_deg=95.0,
+        content_fov_deg=100.0,
+    )
 
     call_count = 0
     widths: list[float] = []
@@ -179,9 +199,7 @@ def test_draw_direction_grid_overlay_draws_major_guides_and_minor_crosses(monkey
             painter,
             geometry,
             (400, 400),
-            view_center,
-            edge_fov_deg=95.0,
-            content_fov_deg=100.0,
+            viewer_data,
         )
     finally:
         painter.end()

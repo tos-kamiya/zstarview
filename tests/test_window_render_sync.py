@@ -3982,10 +3982,16 @@ def test_draw_direction_labels_uses_horizon_line_color(monkeypatch) -> None:
     render_guides_module.draw_direction_labels(
         _Painter(),
         geometry=SimpleNamespace(center=(0, 0), radius=1),
-        view_center=(30.0, 40.0),
+        viewer_data=ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="UTC",
+            city_name="Tokyo",
+            view_center=(30.0, 40.0),
+            edge_fov_deg=95.0,
+            content_fov_deg=180.0,
+        ),
         text_font=QFont(),
         theme=window_module.THEME_STYLES_BY_PRESET["white"],
-        content_fov_deg=180.0,
     )
 
     assert seen_colors

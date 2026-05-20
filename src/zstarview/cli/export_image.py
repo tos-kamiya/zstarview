@@ -977,9 +977,7 @@ def _render_image(
                 painter,
                 frame.geometry,
                 (width, height),
-                frame.viewer.view_center,
-                edge_fov_deg=float(frame.viewer.edge_fov_deg),
-                content_fov_deg=float(frame.viewer.content_fov_deg),
+                frame.viewer,
             )
         if search_overlay_target is not None:
             draw_search_target_overlay(

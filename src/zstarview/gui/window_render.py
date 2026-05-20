@@ -416,12 +416,10 @@ class SkyWindowRenderMixin:
                 render_guides.draw_direction_labels(
                     frame_painter,
                     frame.geometry,
-                    frame.viewer.view_center,
+                    frame.viewer,
                     style.text_font,
                     None,
                     theme=style.theme,
-                    edge_fov_deg=float(frame.viewer.edge_fov_deg),
-                    content_fov_deg=float(frame.viewer.content_fov_deg),
                 ),
                 render_status_line_into_painter(
                     frame_painter,

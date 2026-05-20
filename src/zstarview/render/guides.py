@@ -88,15 +88,15 @@ def _project_altaz_to_normalized_xy(
 
 def resolve_direction_marker_hover(
     geometry: ScreenGeometry,
-    view_center: tuple[float, float],
+    viewer_data: ViewerData,
     mouse_pos: QPoint | None,
-    *,
-    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
-    content_fov_deg: float = FIELD_OF_VIEW_DEG,
 ) -> DirectionMarkerHover | None:
     if mouse_pos is None:
         return None
 
+    view_center = tuple(float(value) for value in viewer_data.view_center)
+    edge_fov_deg = float(viewer_data.edge_fov_deg)
+    content_fov_deg = float(viewer_data.content_fov_deg)
     mouse_x = float(mouse_pos.x())
     mouse_y = float(mouse_pos.y())
     best: DirectionMarkerHover | None = None
@@ -468,11 +468,9 @@ def draw_gauge_cross(
 def draw_zenith_marker(
     painter: QPainter,
     geometry: ScreenGeometry,
-    view_center: Tuple[float, float],
+    viewer_data: ViewerData,
     *,
     theme: ThemeStyle,
-    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
-    content_fov_deg: float = FIELD_OF_VIEW_DEG,
 ) -> None:
     """
     Draws markers at zenith and nadir.
@@ -482,6 +480,9 @@ def draw_zenith_marker(
         geometry: The screen geometry for coordinate conversion.
         view_center: The current view center (altitude, azimuth).
     """
+    view_center = tuple(float(value) for value in viewer_data.view_center)
+    edge_fov_deg = float(viewer_data.edge_fov_deg)
+    content_fov_deg = float(viewer_data.content_fov_deg)
     az_ref = view_center[1]
     s = 7
     painter.setPen(QPen(QColor(*theme.text.foreground_rgb), 1))
@@ -502,13 +503,11 @@ def draw_zenith_marker(
 def draw_direction_labels(
     painter: QPainter,
     geometry: ScreenGeometry,
-    view_center: Tuple[float, float],
+    viewer_data: ViewerData,
     text_font: QFont,
     mouse_pos: QPoint | None = None,
     *,
     theme: ThemeStyle,
-    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
-    content_fov_deg: float = FIELD_OF_VIEW_DEG,
 ) -> None:
     """
     Draw compass direction labels and horizon markers on the horizon.
@@ -519,6 +518,9 @@ def draw_direction_labels(
         view_center: The current view center to determine which labels are visible.
         text_font: The QFont to use for the labels.
     """
+    view_center = tuple(float(value) for value in viewer_data.view_center)
+    edge_fov_deg = float(viewer_data.edge_fov_deg)
+    content_fov_deg = float(viewer_data.content_fov_deg)
     label_style = resolve_label_text_style(theme, text_font)
     label_style = ResolvedTextStyle(
         font=label_style.font,
@@ -759,21 +761,20 @@ def draw_direction_hover_guide(
     painter: QPainter,
     geometry: ScreenGeometry,
     surface_size: tuple[int, int],
-    view_center: tuple[float, float],
+    viewer_data: ViewerData,
     mouse_pos: QPoint | None,
-    *,
-    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
-    content_fov_deg: float = FIELD_OF_VIEW_DEG,
 ) -> None:
     hover = resolve_direction_marker_hover(
         geometry,
-        view_center,
+        viewer_data,
         mouse_pos,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
     )
     if hover is None:
         return
+
+    view_center = tuple(float(value) for value in viewer_data.view_center)
+    edge_fov_deg = float(viewer_data.edge_fov_deg)
+    content_fov_deg = float(viewer_data.content_fov_deg)
 
     _draw_direction_grid(
         painter,
@@ -789,11 +790,11 @@ def draw_direction_grid_overlay(
     painter: QPainter,
     geometry: ScreenGeometry,
     surface_size: tuple[int, int],
-    view_center: tuple[float, float],
-    *,
-    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
-    content_fov_deg: float = FIELD_OF_VIEW_DEG,
+    viewer_data: ViewerData,
 ) -> None:
+    view_center = tuple(float(value) for value in viewer_data.view_center)
+    edge_fov_deg = float(viewer_data.edge_fov_deg)
+    content_fov_deg = float(viewer_data.content_fov_deg)
     _draw_direction_grid(
         painter,
         geometry,
