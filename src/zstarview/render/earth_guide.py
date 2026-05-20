@@ -12,7 +12,7 @@ from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy, is_in_fov
 from ..paths import EARTH_GUIDE_LAND_FILE, EARTH_GUIDE_LINE_COLOR
-from ..types import ScreenGeometry
+from ..types import ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
 
 EARTH_MEAN_RADIUS_M = 6_371_008.8
@@ -687,15 +687,10 @@ def _draw_earth_guide_render(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
-    view_center: tuple[float, float],
-    observer_lat_deg: float,
-    observer_lon_deg: float,
-    observer_height_m: float,
+    viewer_data: ViewerData,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     earth_guide_opacity: float = 0.028,
     visibility_boost: float = 1.0,
-    edge_fov_deg: float = 90.0,
-    content_fov_deg: float = 90.0,
     fast_mode: bool = False,
 ) -> None:
     rings = load_earth_guide_rings()
@@ -703,6 +698,12 @@ def _draw_earth_guide_render(
         return
     if float(earth_guide_opacity) <= 0.0:
         return
+    view_center = tuple(float(value) for value in viewer_data.view_center)
+    observer_lat_deg = float(viewer_data.lat_deg)
+    observer_lon_deg = float(viewer_data.lon_deg)
+    observer_height_m = float(viewer_data.observer_height_m)
+    edge_fov_deg = float(viewer_data.edge_fov_deg)
+    content_fov_deg = float(viewer_data.content_fov_deg)
     origin, east, north, up = _observer_basis(
         observer_lat_deg,
         observer_lon_deg,
@@ -816,28 +817,18 @@ def _draw_earth_guide_fast_impl(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
-    view_center: tuple[float, float],
-    observer_lat_deg: float,
-    observer_lon_deg: float,
-    observer_height_m: float,
+    viewer_data: ViewerData,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     earth_guide_opacity: float = 0.028,
     visibility_boost: float = 1.0,
-    edge_fov_deg: float = 90.0,
-    content_fov_deg: float = 90.0,
 ) -> None:
     _draw_earth_guide_render(
         painter,
         geometry=geometry,
-        view_center=view_center,
-        observer_lat_deg=observer_lat_deg,
-        observer_lon_deg=observer_lon_deg,
-        observer_height_m=observer_height_m,
+        viewer_data=viewer_data,
         terrain_profile_altaz=terrain_profile_altaz,
         earth_guide_opacity=earth_guide_opacity,
         visibility_boost=visibility_boost,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
         fast_mode=True,
     )
 
@@ -846,28 +837,18 @@ def _draw_earth_guide_normal_impl(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
-    view_center: tuple[float, float],
-    observer_lat_deg: float,
-    observer_lon_deg: float,
-    observer_height_m: float,
+    viewer_data: ViewerData,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     earth_guide_opacity: float = 0.028,
     visibility_boost: float = 1.0,
-    edge_fov_deg: float = 90.0,
-    content_fov_deg: float = 90.0,
 ) -> None:
     _draw_earth_guide_render(
         painter,
         geometry=geometry,
-        view_center=view_center,
-        observer_lat_deg=observer_lat_deg,
-        observer_lon_deg=observer_lon_deg,
-        observer_height_m=observer_height_m,
+        viewer_data=viewer_data,
         terrain_profile_altaz=terrain_profile_altaz,
         earth_guide_opacity=earth_guide_opacity,
         visibility_boost=visibility_boost,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
         fast_mode=False,
     )
 
@@ -876,29 +857,19 @@ def draw_earth_guide_fast(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
-    view_center: tuple[float, float],
-    observer_lat_deg: float,
-    observer_lon_deg: float,
-    observer_height_m: float,
+    viewer_data: ViewerData,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     earth_guide_opacity: float = 0.028,
     visibility_boost: float = 1.0,
-    edge_fov_deg: float = 90.0,
-    content_fov_deg: float = 90.0,
 ) -> None:
     """Draw the reduced fast-mode earth guide."""
     _draw_earth_guide_fast_impl(
         painter,
         geometry=geometry,
-        view_center=view_center,
-        observer_lat_deg=observer_lat_deg,
-        observer_lon_deg=observer_lon_deg,
-        observer_height_m=observer_height_m,
+        viewer_data=viewer_data,
         terrain_profile_altaz=terrain_profile_altaz,
         earth_guide_opacity=earth_guide_opacity,
         visibility_boost=visibility_boost,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
     )
 
 
@@ -906,29 +877,19 @@ def draw_earth_guide_normal(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
-    view_center: tuple[float, float],
-    observer_lat_deg: float,
-    observer_lon_deg: float,
-    observer_height_m: float,
+    viewer_data: ViewerData,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     earth_guide_opacity: float = 0.028,
     visibility_boost: float = 1.0,
-    edge_fov_deg: float = 90.0,
-    content_fov_deg: float = 90.0,
 ) -> None:
     """Draw the full normal-mode earth guide."""
     _draw_earth_guide_normal_impl(
         painter,
         geometry=geometry,
-        view_center=view_center,
-        observer_lat_deg=observer_lat_deg,
-        observer_lon_deg=observer_lon_deg,
-        observer_height_m=observer_height_m,
+        viewer_data=viewer_data,
         terrain_profile_altaz=terrain_profile_altaz,
         earth_guide_opacity=earth_guide_opacity,
         visibility_boost=visibility_boost,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
     )
 
 
@@ -936,15 +897,10 @@ def draw_earth_guide(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
-    view_center: tuple[float, float],
-    observer_lat_deg: float,
-    observer_lon_deg: float,
-    observer_height_m: float,
+    viewer_data: ViewerData,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     earth_guide_opacity: float = 0.028,
     visibility_boost: float = 1.0,
-    edge_fov_deg: float = 90.0,
-    content_fov_deg: float = 90.0,
     fast_mode: bool = False,
 ) -> None:
     """Compatibility wrapper kept for existing callers and tests."""
@@ -952,27 +908,17 @@ def draw_earth_guide(
         _draw_earth_guide_fast_impl(
             painter,
             geometry=geometry,
-            view_center=view_center,
-            observer_lat_deg=observer_lat_deg,
-            observer_lon_deg=observer_lon_deg,
-            observer_height_m=observer_height_m,
+            viewer_data=viewer_data,
             terrain_profile_altaz=terrain_profile_altaz,
             earth_guide_opacity=earth_guide_opacity,
             visibility_boost=visibility_boost,
-            edge_fov_deg=edge_fov_deg,
-            content_fov_deg=content_fov_deg,
         )
         return
     _draw_earth_guide_normal_impl(
         painter,
         geometry=geometry,
-        view_center=view_center,
-        observer_lat_deg=observer_lat_deg,
-        observer_lon_deg=observer_lon_deg,
-        observer_height_m=observer_height_m,
+        viewer_data=viewer_data,
         terrain_profile_altaz=terrain_profile_altaz,
         earth_guide_opacity=earth_guide_opacity,
         visibility_boost=visibility_boost,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
     )

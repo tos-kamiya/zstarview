@@ -18,7 +18,27 @@ from zstarview.render.earth_guide import (
     load_earth_guide_rings,
 )
 from zstarview.render.qt_image import qimage_to_np_rgba
-from zstarview.types import ScreenGeometry
+from zstarview.types import ScreenGeometry, ViewerData
+
+
+def _viewer(
+    *,
+    view_center: tuple[float, float] = (0.0, 180.0),
+    observer_lat_deg: float = 35.68,
+    observer_lon_deg: float = 139.76,
+    observer_height_m: float = 635.0,
+    edge_fov_deg: float = 95.0,
+    content_fov_deg: float = 100.0,
+) -> ViewerData:
+    return ViewerData(
+        location=(observer_lat_deg, observer_lon_deg),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=view_center,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+        observer_height_m=observer_height_m,
+    )
 
 
 def test_load_earth_guide_rings_has_expected_runtime_payload() -> None:
@@ -37,13 +57,9 @@ def test_draw_earth_guide_renders_visible_lines_below_horizon() -> None:
         draw_earth_guide(
             painter,
             geometry=ScreenGeometry(center=(120, 120), radius=100),
-            view_center=(0.0, 180.0),
-            observer_lat_deg=35.68,
-            observer_lon_deg=139.76,
-            observer_height_m=635.0,
+            viewer_data=_viewer(),
             terrain_profile_altaz=None,
             earth_guide_opacity=0.028,
-            content_fov_deg=100.0,
         )
     finally:
         painter.end()
@@ -197,13 +213,16 @@ def test_draw_earth_guide_fast_mode_subsamples_rings(monkeypatch) -> None:
     draw_earth_guide(
         painter,
         geometry=ScreenGeometry(center=(120, 120), radius=100),
-        view_center=(0.0, 180.0),
-        observer_lat_deg=35.68,
-        observer_lon_deg=139.76,
-        observer_height_m=635.0,
+        viewer_data=_viewer(
+            view_center=(0.0, 180.0),
+            observer_lat_deg=35.68,
+            observer_lon_deg=139.76,
+            observer_height_m=635.0,
+            edge_fov_deg=90.0,
+            content_fov_deg=100.0,
+        ),
         terrain_profile_altaz=None,
         earth_guide_opacity=0.028,
-        content_fov_deg=100.0,
     )
     polyline_counts.append(len(painter.polylines))
     assert seen == ["ring-0", "ring-1", "ring-2", "ring-3"]
@@ -214,13 +233,9 @@ def test_draw_earth_guide_fast_mode_subsamples_rings(monkeypatch) -> None:
     draw_earth_guide(
         painter,
         geometry=ScreenGeometry(center=(120, 120), radius=100),
-        view_center=(0.0, 180.0),
-        observer_lat_deg=35.68,
-        observer_lon_deg=139.76,
-        observer_height_m=635.0,
+        viewer_data=_viewer(),
         terrain_profile_altaz=None,
         earth_guide_opacity=0.028,
-        content_fov_deg=100.0,
         fast_mode=True,
     )
     assert seen == ["ring-0", "ring-2"]
@@ -266,13 +281,9 @@ def test_draw_earth_guide_fast_mode_skips_fill_lines(monkeypatch) -> None:
     draw_earth_guide(
         painter,
         geometry=ScreenGeometry(center=(120, 120), radius=100),
-        view_center=(0.0, 180.0),
-        observer_lat_deg=35.68,
-        observer_lon_deg=139.76,
-        observer_height_m=635.0,
+        viewer_data=_viewer(),
         terrain_profile_altaz=None,
         earth_guide_opacity=0.028,
-        content_fov_deg=100.0,
         fast_mode=True,
     )
 
@@ -314,13 +325,9 @@ def test_draw_earth_guide_renders_fill_points_before_outline(monkeypatch) -> Non
     draw_earth_guide(
         painter,
         geometry=ScreenGeometry(center=(120, 120), radius=100),
-        view_center=(0.0, 180.0),
-        observer_lat_deg=35.68,
-        observer_lon_deg=139.76,
-        observer_height_m=635.0,
+        viewer_data=_viewer(),
         terrain_profile_altaz=None,
         earth_guide_opacity=0.028,
-        content_fov_deg=100.0,
     )
 
     assert len(painter.lines) > 0
@@ -341,13 +348,9 @@ def test_overlay_earth_guide_forwards_fast_mode(monkeypatch) -> None:
     out = render_composite._overlay_earth_guide(
         image,
         geometry=ScreenGeometry(center=(8, 8), radius=6),
-        view_center=(0.0, 180.0),
-        observer_lat_deg=35.68,
-        observer_lon_deg=139.76,
-        observer_height_m=635.0,
+        viewer_data=_viewer(view_center=(0.0, 180.0)),
         terrain_profile_altaz=None,
         earth_guide_opacity=0.028,
-        content_fov_deg=100.0,
         fast_mode=True,
     )
 
@@ -361,14 +364,10 @@ def test_draw_earth_guide_scales_fast_mode_lines_with_visibility_boost() -> None
     draw_earth_guide(
         painter,
         geometry=ScreenGeometry(center=(120, 120), radius=100),
-        view_center=(0.0, 180.0),
-        observer_lat_deg=35.68,
-        observer_lon_deg=139.76,
-        observer_height_m=635.0,
+        viewer_data=_viewer(),
         terrain_profile_altaz=None,
         earth_guide_opacity=0.028,
         visibility_boost=2.0,
-        content_fov_deg=100.0,
         fast_mode=True,
     )
 
@@ -402,14 +401,10 @@ def test_draw_earth_guide_boosts_only_thin_underlay_pass(monkeypatch) -> None:
     draw_earth_guide(
         painter,
         geometry=ScreenGeometry(center=(120, 120), radius=100),
-        view_center=(0.0, 180.0),
-        observer_lat_deg=35.68,
-        observer_lon_deg=139.76,
-        observer_height_m=635.0,
+        viewer_data=_viewer(),
         terrain_profile_altaz=None,
         earth_guide_opacity=0.028,
         visibility_boost=2.0,
-        content_fov_deg=100.0,
         fast_mode=False,
     )
 

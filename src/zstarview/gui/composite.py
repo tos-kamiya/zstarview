@@ -49,7 +49,7 @@ from ..render.guides import (
 )
 from ..render.night_lights import draw_night_light_glow_normal
 from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
-from ..types import ScreenGeometry
+from ..types import ScreenGeometry, ViewerData
 
 NEVER_RISES_GUIDE_WIDTH_SCALE = 4.56
 NEVER_RISES_GUIDE_ALPHA_SCALE = 0.5
@@ -981,18 +981,13 @@ def _overlay_earth_guide(
     base_img: QImage,
     *,
     geometry: ScreenGeometry,
-    view_center: Tuple[float, float],
-    observer_lat_deg: float | None,
-    observer_lon_deg: float | None,
-    observer_height_m: float = 0.0,
+    viewer_data: ViewerData | None,
     terrain_profile_altaz: list[tuple[float, float]] | None = None,
     earth_guide_opacity: float = 0.028,
     visibility_boost: float = 1.0,
-    edge_fov_deg: float = 90.0,
-    content_fov_deg: float,
     fast_mode: bool = False,
 ) -> QImage:
-    if observer_lat_deg is None or observer_lon_deg is None:
+    if viewer_data is None:
         return base_img
     out = (
         base_img
@@ -1006,15 +1001,10 @@ def _overlay_earth_guide(
         draw_earth_guide_fn(
             painter,
             geometry=geometry,
-            view_center=view_center,
-            observer_lat_deg=float(observer_lat_deg),
-            observer_lon_deg=float(observer_lon_deg),
-            observer_height_m=float(observer_height_m),
+            viewer_data=viewer_data,
             terrain_profile_altaz=terrain_profile_altaz,
             earth_guide_opacity=float(earth_guide_opacity),
             visibility_boost=float(visibility_boost),
-            edge_fov_deg=edge_fov_deg,
-            content_fov_deg=content_fov_deg,
         )
     finally:
         painter.end()
@@ -1337,18 +1327,26 @@ class SkyCompositorCache:
                 edge_fov_deg=edge_fov_deg,
                 content_fov_deg=content_fov_deg,
             )
+            earth_viewer_data = (
+                None
+                if observer_lat_deg is None or observer_lon_deg is None
+                else ViewerData(
+                    location=(float(observer_lat_deg), float(observer_lon_deg)),
+                    timezone_name="UTC",
+                    city_name="",
+                    view_center=view_center,
+                    edge_fov_deg=float(edge_fov_deg),
+                    content_fov_deg=float(content_fov_deg),
+                    observer_height_m=float(observer_height_m),
+                )
+            )
             composited = _overlay_earth_guide(
                 composited,
                 geometry=geometry,
-                view_center=view_center,
-                observer_lat_deg=observer_lat_deg,
-                observer_lon_deg=observer_lon_deg,
-                observer_height_m=observer_height_m,
+                viewer_data=earth_viewer_data,
                 terrain_profile_altaz=terrain_profile_altaz,
                 earth_guide_opacity=earth_guide_opacity,
                 visibility_boost=earth_guide_visibility_boost,
-                edge_fov_deg=edge_fov_deg,
-                content_fov_deg=content_fov_deg,
                 fast_mode=fast_mode,
             )
             if night_light_glow_profile is not None and not fast_mode and float(night_light_opacity) > 0.0:
