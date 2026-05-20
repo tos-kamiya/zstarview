@@ -89,9 +89,9 @@ def find_highlighted_satellite(
 def draw_satellite_overlay(
     painter: QPainter,
     geometry: ScreenGeometry,
+    viewer_data: ViewerData | None = None,
     satellite_records_by_group: object | None = None,
     *,
-    viewer_data: ViewerData | None = None,
     time_obj: astropy.time.Time | None = None,
     opacity: float = 1.0,
     highlighted_satellite: SatelliteOverlayPoint | None = None,

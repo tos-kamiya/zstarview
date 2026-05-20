@@ -926,8 +926,8 @@ def _draw_satellite_layer(
     render_satellites.draw_satellite_overlay(
         painter,
         geometry,
-        scene.satellite_records_by_group,
         viewer_data=scene.viewer,
+        satellite_records_by_group=scene.satellite_records_by_group,
         time_obj=scene.time_obj,
         opacity=style.satellite_opacity,
         highlighted_satellite=(
