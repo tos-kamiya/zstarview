@@ -2766,7 +2766,7 @@ def test_draw_viewport_interaction_layers_prefers_scene_water_overlay_points(
     monkeypatch.setattr(
         pipeline_module.render_terrain,
         "draw_water_overlay_dots",
-        lambda _p, _g, water_points, *_args, **_kwargs: seen_water_points.append(water_points),
+        lambda _p, _g, viewer, water_points, *_args, **_kwargs: seen_water_points.append(water_points),
     )
     monkeypatch.setattr(
         pipeline_module.render_terrain,
@@ -2923,7 +2923,7 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     monkeypatch.setattr(
         pipeline_module.render_terrain,
         "_draw_terrain_profile_layer",
-        lambda _p, _g, main_profile, main_distances, viewer, **kwargs: (
+        lambda _p, _g, viewer, main_profile, main_distances, **kwargs: (
             seen_main_profiles.append(main_profile),
             seen_view_centers.append(viewer.view_center),
             seen_line_width_scales.append(float(kwargs["spec"].line_width_scale)),
@@ -4411,9 +4411,9 @@ def test_draw_terrain_horizon_line_scales_line_widths(monkeypatch) -> None:
     render_terrain_module._draw_terrain_profile_layer(
         painter,
         geometry=SimpleNamespace(center=(0, 0), radius=1),
+        viewer=_viewer(),
         terrain_profile_altaz=[(0.0, 0.0), (0.1, 0.1)],
         terrain_profile_distances_m=None,
-        viewer=_viewer(),
         spec=_terrain_horizon_spec(opacity=0.38, line_width_scale=2.0, fast_mode=True),
         is_in_fov_func=lambda *_args, **_kwargs: True,
         altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
@@ -4467,9 +4467,9 @@ def test_draw_terrain_horizon_line_scales_widths_by_distance(monkeypatch) -> Non
     render_terrain_module._draw_terrain_profile_layer(
         painter,
         geometry=SimpleNamespace(center=(0, 0), radius=1),
+        viewer=_viewer(),
         terrain_profile_altaz=[(0.0, 0.0), (0.0, 0.1), (0.0, 0.2)],
         terrain_profile_distances_m=[1_000.0, 50_000.0, 120_000.0],
-        viewer=_viewer(),
         spec=_terrain_horizon_spec(opacity=0.38, line_width_scale=1.0, fast_mode=False),
         is_in_fov_func=lambda *_args, **_kwargs: True,
         altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
@@ -4795,9 +4795,9 @@ def test_draw_terrain_horizon_line_uses_edge_fov_for_projection() -> None:
         render_terrain_module._draw_terrain_profile_layer(
             painter,
             geometry=SimpleNamespace(center=(0, 0), radius=1),
+            viewer=_viewer(edge_fov_deg=edge_fov_deg, content_fov_deg=180.0),
             terrain_profile_altaz=[(0.0, 180.0), (0.0, 190.0)],
             terrain_profile_distances_m=None,
-            viewer=_viewer(edge_fov_deg=edge_fov_deg, content_fov_deg=180.0),
             spec=_terrain_horizon_spec(opacity=0.38, fast_mode=True),
             is_in_fov_func=lambda *_args, **_kwargs: True,
             altaz_to_normalized_xy_func=render_terrain_module.altaz_to_normalized_xy,
@@ -4834,6 +4834,7 @@ def test_draw_terrain_horizon_line_rotates_profile_away_from_north_seam() -> Non
     render_terrain_module._draw_terrain_profile_layer(
         painter,
         geometry=SimpleNamespace(center=(0, 0), radius=1),
+        viewer=_viewer(edge_fov_deg=120.0, content_fov_deg=180.0),
         terrain_profile_altaz=[
             (0.0, 0.0),
             (0.0, 10.0),
@@ -4841,7 +4842,6 @@ def test_draw_terrain_horizon_line_rotates_profile_away_from_north_seam() -> Non
             (0.0, 190.0),
         ],
         terrain_profile_distances_m=None,
-        viewer=_viewer(edge_fov_deg=120.0, content_fov_deg=180.0),
         spec=_terrain_horizon_spec(opacity=0.38, fast_mode=True),
         is_in_fov_func=lambda *_args, **_kwargs: True,
         altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (

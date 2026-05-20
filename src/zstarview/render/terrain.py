@@ -444,9 +444,9 @@ def _draw_terrain_secondary_ridge_glow(
 def _draw_terrain_profile_layer(
     painter: QPainter,
     geometry: ScreenGeometry,
+    viewer: ViewerData,
     terrain_profile_altaz: list[tuple[float, float]] | None,
     terrain_profile_distances_m: list[float] | None,
-    viewer: ViewerData,
     *,
     spec: TerrainHorizonRenderSpec,
     is_in_fov_func: Callable[..., bool],
@@ -765,8 +765,8 @@ def draw_terrain_secondary_ridges(
 def draw_urban_outlines(
     painter: QPainter,
     geometry: ScreenGeometry,
-    urban_outlines: list[UrbanOutlinePolyline] | None,
     viewer: ViewerData,
+    urban_outlines: list[UrbanOutlinePolyline] | None,
     *,
     opacity: float = 0.2,
     line_width_scale: float = 1.0,
@@ -938,8 +938,8 @@ def draw_urban_outlines(
 def draw_water_overlay_dots(
     painter: QPainter,
     geometry: ScreenGeometry,
-    water_dots: list[WaterOverlayPoint] | None,
     viewer: ViewerData,
+    water_dots: list[WaterOverlayPoint] | None,
     *,
     opacity: float = 0.85,
     line_width_scale: float = 1.0,

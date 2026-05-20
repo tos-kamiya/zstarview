@@ -451,9 +451,9 @@ def _draw_viewport_interaction_layers(
     render_terrain._draw_terrain_profile_layer(
         painter,
         geometry,
+        scene.viewer,
         scene.terrain_horizon_profile,
         scene.terrain_horizon_profile_distances_m,
-        scene.viewer,
         spec=render_terrain.TerrainHorizonRenderSpec(
             opacity=style.terrain_horizon_opacity,
             base_width=render_terrain.TERRAIN_HORIZON_FAST_WIDTH,
@@ -474,8 +474,8 @@ def _draw_viewport_interaction_layers(
         render_terrain.draw_water_overlay_dots(
             painter,
             geometry,
-            water_dots,
             scene.viewer,
+            water_dots,
             opacity=style.water_overlay_opacity,
             line_width_scale=line_width_scale,
         )
@@ -675,8 +675,8 @@ def _draw_terrain_layers(
         render_terrain.draw_water_overlay_dots(
             painter,
             geometry,
-            water_dots,
             scene.viewer,
+            water_dots,
             opacity=style.water_overlay_opacity,
             line_width_scale=line_width_scale,
         )
@@ -720,8 +720,8 @@ def _draw_urban_outline_layer(
     render_terrain.draw_urban_outlines(
         painter,
         geometry,
-        scene.urban_outlines,
         scene.viewer,
+        scene.urban_outlines,
         opacity=style.urban_outline_opacity,
         line_width_scale=1.0,
     )
