@@ -757,35 +757,6 @@ def _draw_direction_cross_marker(
     )
 
 
-def draw_direction_hover_guide(
-    painter: QPainter,
-    geometry: ScreenGeometry,
-    surface_size: tuple[int, int],
-    viewer_data: ViewerData,
-    mouse_pos: QPoint | None,
-) -> None:
-    hover = resolve_direction_marker_hover(
-        geometry,
-        viewer_data,
-        mouse_pos,
-    )
-    if hover is None:
-        return
-
-    view_center = tuple(float(value) for value in viewer_data.view_center)
-    edge_fov_deg = float(viewer_data.edge_fov_deg)
-    content_fov_deg = float(viewer_data.content_fov_deg)
-
-    _draw_direction_grid(
-        painter,
-        geometry,
-        surface_size,
-        view_center,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
-    )
-
-
 def draw_direction_grid_overlay(
     painter: QPainter,
     geometry: ScreenGeometry,
@@ -795,25 +766,6 @@ def draw_direction_grid_overlay(
     view_center = tuple(float(value) for value in viewer_data.view_center)
     edge_fov_deg = float(viewer_data.edge_fov_deg)
     content_fov_deg = float(viewer_data.content_fov_deg)
-    _draw_direction_grid(
-        painter,
-        geometry,
-        surface_size,
-        view_center,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
-    )
-
-
-def _draw_direction_grid(
-    painter: QPainter,
-    geometry: ScreenGeometry,
-    surface_size: tuple[int, int],
-    view_center: tuple[float, float],
-    *,
-    edge_fov_deg: float,
-    content_fov_deg: float,
-) -> None:
     painter.save()
     try:
         meridian_alt_samples = np.linspace(-90.0, 90.0, GRID_ALTITUDE_SAMPLES)
