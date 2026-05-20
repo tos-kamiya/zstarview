@@ -20,6 +20,7 @@ from ..render.pipeline import (
     RenderHudState,
     RenderSceneData,
     RenderStyle,
+    _draw_status_line,
     compute_star_render_surface_size,
     render_base_scene_into_painter,
     render_fast_overlay_layers_into_painter,
@@ -420,7 +421,7 @@ class SkyWindowRenderMixin:
                     None,
                     theme=style.theme,
                 ),
-                render_text._draw_status_line(
+                _draw_status_line(
                     frame_painter,
                     viewport_rect=frame.viewport_rect,
                     style=style,
@@ -470,7 +471,7 @@ class SkyWindowRenderMixin:
     ) -> None:
         frame_painter.drawImage(0, 0, base_frame_image)
         if hud.viewport_interaction_mode:
-            render_text._draw_status_line(
+            _draw_status_line(
                 frame_painter,
                 viewport_rect=frame.viewport_rect,
                 style=style,

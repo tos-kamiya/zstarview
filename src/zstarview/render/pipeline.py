@@ -453,11 +453,9 @@ def _draw_viewport_interaction_layers(
         geometry,
         scene.terrain_horizon_profile,
         scene.terrain_horizon_profile_distances_m,
-        scene.viewer.view_center,
+        scene.viewer,
         opacity=style.terrain_horizon_opacity,
         line_width_scale=line_width_scale,
-        edge_fov_deg=float(scene.viewer.edge_fov_deg),
-        content_fov_deg=_content_fov_deg(scene),
     )
     if _should_draw_water_overlay(scene, style):
         water_dots = _terrain_horizon_water_overlay_dots(scene)
@@ -465,11 +463,9 @@ def _draw_viewport_interaction_layers(
             painter,
             geometry,
             water_dots,
-            scene.viewer.view_center,
+            scene.viewer,
             opacity=style.water_overlay_opacity,
             line_width_scale=line_width_scale,
-            edge_fov_deg=float(scene.viewer.edge_fov_deg),
-            content_fov_deg=_content_fov_deg(scene),
         )
 
 
@@ -668,11 +664,9 @@ def _draw_terrain_layers(
             painter,
             geometry,
             water_dots,
-            scene.viewer.view_center,
+            scene.viewer,
             opacity=style.water_overlay_opacity,
             line_width_scale=line_width_scale,
-            edge_fov_deg=float(scene.viewer.edge_fov_deg),
-            content_fov_deg=content_fov_deg,
         )
     _draw_urban_outline_layer(
         painter,
@@ -715,11 +709,9 @@ def _draw_urban_outline_layer(
         painter,
         geometry,
         scene.urban_outlines,
-        scene.viewer.view_center,
+        scene.viewer,
         opacity=style.urban_outline_opacity,
         line_width_scale=1.0,
-        edge_fov_deg=float(scene.viewer.edge_fov_deg),
-        content_fov_deg=_content_fov_deg(scene),
     )
 
 

@@ -33,6 +33,19 @@ from zstarview.types import CelestialData, PlanetBody, UrbanOutlinePolyline, Vie
 _app = QApplication.instance() or QApplication([])
 
 
+def _viewer(
+    view_center: tuple[float, float] = (45.0, 180.0),
+    *,
+    edge_fov_deg: float = 95.0,
+    content_fov_deg: float = 110.0,
+) -> SimpleNamespace:
+    return SimpleNamespace(
+        view_center=view_center,
+        edge_fov_deg=edge_fov_deg,
+        content_fov_deg=content_fov_deg,
+    )
+
+
 class _DummyTimer:
     def __init__(self, active: bool) -> None:
         self._active = active
@@ -2123,7 +2136,7 @@ def test_render_fast_frame_image_downsamples_base_scene(monkeypatch) -> None:
         _capture_base_scene,
     )
     monkeypatch.setattr(
-        window_render_module.render_text,
+        window_render_module,
         "_draw_status_line",
         _capture_status_line,
     )
@@ -2892,9 +2905,9 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     monkeypatch.setattr(
         pipeline_module.render_terrain,
         "draw_terrain_horizon_fast",
-        lambda _p, _g, main_profile, main_distances, view_center, **kwargs: (
+        lambda _p, _g, main_profile, main_distances, viewer, **kwargs: (
             seen_main_profiles.append(main_profile),
-            seen_view_centers.append(view_center),
+            seen_view_centers.append(viewer.view_center),
             seen_line_width_scales.append(float(kwargs.get("line_width_scale", 1.0))),
             fast_calls.append(True),
         ),
@@ -4064,7 +4077,7 @@ def test_draw_urban_outlines_clips_two_point_outline_out_of_view(
         urban_outlines=[
             UrbanOutlinePolyline(points=[(-10.0, 10.0), (-12.0, 10.3)], height_m=50.0)
         ],
-        view_center=(45.0, 180.0),
+        viewer=_viewer(),
         opacity=0.38,
         is_in_fov_func=lambda *_args, **_kwargs: True,
         altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
@@ -4128,7 +4141,7 @@ def test_draw_urban_outlines_uses_fixed_alpha_and_near_underlay(monkeypatch) -> 
                 distance_km=0.5,
             ),
         ],
-        view_center=(45.0, 180.0),
+        viewer=_viewer(),
         opacity=0.2,
         is_in_fov_func=lambda *_args, **_kwargs: True,
         altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
@@ -4195,7 +4208,7 @@ def test_draw_urban_outlines_allows_sub_unit_width_scale(monkeypatch) -> None:
                 distance_km=0.01,
             )
         ],
-        view_center=(45.0, 180.0),
+        viewer=_viewer(),
         opacity=0.38,
         line_width_scale=0.5,
         is_in_fov_func=lambda *_args, **_kwargs: True,
@@ -4260,7 +4273,7 @@ def test_draw_urban_outlines_scales_alpha_for_subpixel_widths(monkeypatch) -> No
                 distance_km=0.01,
             )
         ],
-        view_center=(45.0, 180.0),
+        viewer=_viewer(),
         opacity=0.2,
         line_width_scale=0.1,
         is_in_fov_func=lambda *_args, **_kwargs: True,
@@ -4324,7 +4337,7 @@ def test_draw_urban_outlines_thickens_tall_buildings(monkeypatch) -> None:
                 distance_km=0.01,
             )
         ],
-        view_center=(45.0, 180.0),
+        viewer=_viewer(),
         opacity=0.38,
         line_width_scale=0.5,
         is_in_fov_func=lambda *_args, **_kwargs: True,
@@ -4382,7 +4395,7 @@ def test_draw_terrain_horizon_line_scales_line_widths(monkeypatch) -> None:
         geometry=SimpleNamespace(center=(0, 0), radius=1),
         terrain_profile_altaz=[(0.0, 0.0), (0.1, 0.1)],
         terrain_profile_distances_m=None,
-        view_center=(45.0, 180.0),
+        viewer=_viewer(),
         opacity=0.38,
         line_width_scale=2.0,
         fast_mode=True,
@@ -4439,7 +4452,7 @@ def test_draw_terrain_horizon_line_scales_widths_by_distance(monkeypatch) -> Non
         geometry=SimpleNamespace(center=(0, 0), radius=1),
         terrain_profile_altaz=[(0.0, 0.0), (0.0, 0.1), (0.0, 0.2)],
         terrain_profile_distances_m=[1_000.0, 50_000.0, 120_000.0],
-        view_center=(45.0, 180.0),
+        viewer=_viewer(),
         opacity=0.38,
         line_width_scale=1.0,
         is_in_fov_func=lambda *_args, **_kwargs: True,
@@ -4767,10 +4780,8 @@ def test_draw_terrain_horizon_line_uses_edge_fov_for_projection() -> None:
             geometry=SimpleNamespace(center=(0, 0), radius=1),
             terrain_profile_altaz=[(0.0, 180.0), (0.0, 190.0)],
             terrain_profile_distances_m=None,
-            view_center=(45.0, 180.0),
+            viewer=_viewer(edge_fov_deg=edge_fov_deg, content_fov_deg=180.0),
             opacity=0.38,
-            edge_fov_deg=edge_fov_deg,
-            content_fov_deg=180.0,
             fast_mode=True,
             is_in_fov_func=lambda *_args, **_kwargs: True,
             normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
@@ -4834,7 +4845,7 @@ def test_draw_terrain_horizon_line_uses_background_edge_color(monkeypatch) -> No
         geometry=SimpleNamespace(center=(0, 0), radius=1),
         terrain_profile_altaz=[(0.0, 0.0), (0.0, 0.1)],
         terrain_profile_distances_m=None,
-        view_center=(45.0, 180.0),
+        viewer=_viewer(),
         opacity=0.38,
         line_width_scale=1.0,
         fast_mode=True,
@@ -4879,10 +4890,8 @@ def test_draw_terrain_horizon_line_rotates_profile_away_from_north_seam() -> Non
             (0.0, 190.0),
         ],
         terrain_profile_distances_m=None,
-        view_center=(45.0, 180.0),
+        viewer=_viewer(edge_fov_deg=120.0, content_fov_deg=180.0),
         opacity=0.38,
-        edge_fov_deg=120.0,
-        content_fov_deg=180.0,
         fast_mode=True,
         is_in_fov_func=lambda *_args, **_kwargs: True,
         altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (

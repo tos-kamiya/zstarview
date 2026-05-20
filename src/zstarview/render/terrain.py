@@ -6,7 +6,6 @@ from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy, is_in_fov
 from ..paths import (
-    FIELD_OF_VIEW_DEG,
     PALETTE_ASTERISM_RGB,
     TERRAIN_HORIZON_LINE_COLOR,
     URBAN_OUTLINE_LAYER_LINE_COLOR,
@@ -91,6 +90,13 @@ def _urban_outline_underlay_alpha(opacity: float) -> float:
 def _dampen_alpha_for_narrow_width(alpha: float, width: float) -> float:
     width_alpha_scale = min(1.0, max(0.0, float(width)))
     return max(0.0, min(1.0, float(alpha) * width_alpha_scale))
+
+
+def _viewer_projection_params(viewer: ViewerData) -> tuple[tuple[float, float], float, float]:
+    view_center = tuple(float(value) for value in viewer.view_center)
+    edge_fov_deg = float(viewer.edge_fov_deg)
+    content_fov_deg = float(viewer.content_fov_deg)
+    return view_center, edge_fov_deg, content_fov_deg
 
 
 def _urban_outline_uses_underlay(distance_km: float) -> bool:
@@ -548,21 +554,20 @@ def draw_terrain_horizon_line(
     geometry: ScreenGeometry,
     terrain_profile_altaz: list[tuple[float, float]] | None,
     terrain_profile_distances_m: list[float] | None,
-    view_center: tuple[float, float],
+    viewer: ViewerData,
     *,
     opacity: float = 1.0,
     line_width_scale: float = 1.0,
     fast_mode: bool = False,
     viewport_rect: QRectF | None = None,
     theme: ThemeStyle | None = None,
-    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
-    content_fov_deg: float = FIELD_OF_VIEW_DEG,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
     altaz_to_normalized_xy_func: Callable[[float, float, Tuple[float, float]], Tuple[float, float]] = altaz_to_normalized_xy,
     normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], Tuple[float, float]] = normalized_to_screen_xy,
     split_by_gaps_func: Callable[[List[Tuple[float, float]]], List[List[Tuple[float, float]]]] = split_by_gaps,
 ) -> None:
     """Draw a terrain horizon polyline as an extra overlay over the geometric horizon."""
+    view_center, edge_fov_deg, content_fov_deg = _viewer_projection_params(viewer)
     color_rgb = TERRAIN_HORIZON_LINE_COLOR
     fg_alpha = terrain_horizon_line_alpha(opacity)
     if theme is not None and viewport_rect is not None:
@@ -608,12 +613,10 @@ def draw_terrain_horizon_fast(
     geometry: ScreenGeometry,
     terrain_profile_altaz: list[tuple[float, float]] | None,
     terrain_profile_distances_m: list[float] | None,
-    view_center: tuple[float, float],
+    viewer: ViewerData,
     *,
     opacity: float = 1.0,
     line_width_scale: float = 1.0,
-    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
-    content_fov_deg: float = FIELD_OF_VIEW_DEG,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
     altaz_to_normalized_xy_func: Callable[[float, float, Tuple[float, float]], Tuple[float, float]] = altaz_to_normalized_xy,
     normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], Tuple[float, float]] = normalized_to_screen_xy,
@@ -625,12 +628,10 @@ def draw_terrain_horizon_fast(
         geometry,
         terrain_profile_altaz=terrain_profile_altaz,
         terrain_profile_distances_m=terrain_profile_distances_m,
-        view_center=view_center,
+        viewer=viewer,
         opacity=opacity,
         line_width_scale=line_width_scale,
         fast_mode=True,
-        edge_fov_deg=edge_fov_deg,
-        content_fov_deg=content_fov_deg,
         is_in_fov_func=is_in_fov_func,
         altaz_to_normalized_xy_func=altaz_to_normalized_xy_func,
         normalized_to_screen_xy_func=normalized_to_screen_xy_func,
@@ -851,12 +852,10 @@ def draw_urban_outlines(
     painter: QPainter,
     geometry: ScreenGeometry,
     urban_outlines: list[UrbanOutlinePolyline] | None,
-    view_center: tuple[float, float],
+    viewer: ViewerData,
     *,
     opacity: float = 0.2,
     line_width_scale: float = 1.0,
-    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
-    content_fov_deg: float = FIELD_OF_VIEW_DEG,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
     altaz_to_normalized_xy_func: Callable[[float, float, Tuple[float, float]], Tuple[float, float]] = altaz_to_normalized_xy,
     normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], Tuple[float, float]] = normalized_to_screen_xy,
@@ -868,6 +867,7 @@ def draw_urban_outlines(
     if float(opacity) <= 0.0:
         return
 
+    view_center, edge_fov_deg, content_fov_deg = _viewer_projection_params(viewer)
     painter.save()
     width_scale = float(line_width_scale)
     for outline_entry in urban_outlines:
@@ -1025,12 +1025,10 @@ def draw_water_overlay_dots(
     painter: QPainter,
     geometry: ScreenGeometry,
     water_dots: list[WaterOverlayPoint] | None,
-    view_center: tuple[float, float],
+    viewer: ViewerData,
     *,
     opacity: float = 0.85,
     line_width_scale: float = 1.0,
-    edge_fov_deg: float = FIELD_OF_VIEW_DEG,
-    content_fov_deg: float = FIELD_OF_VIEW_DEG,
     pairwise_thinning: bool = True,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
     altaz_to_normalized_xy_func: Callable[[float, float, tuple[float, float]], tuple[float, float]] = altaz_to_normalized_xy,
@@ -1041,6 +1039,7 @@ def draw_water_overlay_dots(
     if not water_dots or layer_opacity <= 0.0:
         return
 
+    view_center, edge_fov_deg, content_fov_deg = _viewer_projection_params(viewer)
     dots_to_draw = (
         _thin_water_overlay_dots_pairwise(water_dots) if pairwise_thinning else list(water_dots)
     )
