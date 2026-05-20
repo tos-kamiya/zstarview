@@ -12,23 +12,6 @@ from ..types import ViewerData
 from . import guides as render_guides
 from . import text as render_text
 from .geometry import normalized_to_screen_xy
-
-
-def _project_altaz_to_normalized_xy(
-    alt_deg: float,
-    az_deg: float,
-    view_center: tuple[float, float],
-    *,
-    edge_fov_deg: float,
-) -> tuple[float, float]:
-    return altaz_to_normalized_xy(
-        alt_deg,
-        az_deg,
-        view_center,
-        edge_fov_deg=edge_fov_deg,
-    )
-
-
 def draw_search_target_overlay(
     painter: QPainter,
     geometry,
@@ -52,7 +35,7 @@ def draw_search_target_overlay(
     if not is_in_fov(float(alt), float(az), view_center, fov_deg=float(edge_fov_deg)):
         return
 
-    nx, ny = _project_altaz_to_normalized_xy(
+    nx, ny = altaz_to_normalized_xy(
         float(alt),
         float(az),
         view_center,

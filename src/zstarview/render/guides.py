@@ -71,21 +71,6 @@ def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
     return float(viewer_data.content_fov_deg)
 
 
-def _project_altaz_to_normalized_xy(
-    alt_deg: float,
-    az_deg: float,
-    view_center: tuple[float, float],
-    *,
-    edge_fov_deg: float,
-) -> tuple[float, float]:
-    return altaz_to_normalized_xy(
-        alt_deg,
-        az_deg,
-        view_center,
-        edge_fov_deg=edge_fov_deg,
-    )
-
-
 def resolve_direction_marker_hover(
     geometry: ScreenGeometry,
     viewer_data: ViewerData,
@@ -106,7 +91,7 @@ def resolve_direction_marker_hover(
     for label, az in DIRECTIONS.items():
         if not is_in_fov(marker_alt, az, view_center, fov_deg=content_fov_deg):
             continue
-        marker_nx, marker_ny = _project_altaz_to_normalized_xy(
+        marker_nx, marker_ny = altaz_to_normalized_xy(
             marker_alt,
             az,
             view_center,
@@ -489,7 +474,7 @@ def draw_zenith_marker(
     for alt in (90.0, -90.0):
         if not is_in_fov(alt, az_ref, view_center, fov_deg=content_fov_deg):
             continue
-        nx, ny = _project_altaz_to_normalized_xy(
+        nx, ny = altaz_to_normalized_xy(
             alt,
             az_ref,
             view_center,
@@ -545,14 +530,14 @@ def draw_direction_labels(
     for label, az in DIRECTIONS.items():
         if not is_in_fov(marker_alt, az, view_center, fov_deg=content_fov_deg):
             continue
-        marker_nx, marker_ny = _project_altaz_to_normalized_xy(
+        marker_nx, marker_ny = altaz_to_normalized_xy(
             marker_alt,
             az,
             view_center,
             edge_fov_deg=edge_fov_deg,
         )
         pos = QPointF(*normalized_to_screen_xy(marker_nx, marker_ny, geometry))
-        label_nx, label_ny = _project_altaz_to_normalized_xy(
+        label_nx, label_ny = altaz_to_normalized_xy(
             label_alt,
             az,
             view_center,
@@ -564,7 +549,7 @@ def draw_direction_labels(
         az_next = (az + tangent_probe_deg) % 360.0
         p_prev = QPointF(
             *normalized_to_screen_xy(
-                *_project_altaz_to_normalized_xy(
+                *altaz_to_normalized_xy(
                     marker_alt,
                     az_prev,
                     view_center,
@@ -575,7 +560,7 @@ def draw_direction_labels(
         )
         p_next = QPointF(
             *normalized_to_screen_xy(
-                *_project_altaz_to_normalized_xy(
+                *altaz_to_normalized_xy(
                     marker_alt,
                     az_next,
                     view_center,
@@ -692,25 +677,25 @@ def _draw_direction_cross_marker(
     az_lo = (float(az_deg) - delta) % 360.0
     az_hi = (float(az_deg) + delta) % 360.0
 
-    alt_lo_nx, alt_lo_ny = _project_altaz_to_normalized_xy(
+    alt_lo_nx, alt_lo_ny = altaz_to_normalized_xy(
         alt_lo,
         float(az_deg),
         view_center,
         edge_fov_deg=edge_fov_deg,
     )
-    alt_hi_nx, alt_hi_ny = _project_altaz_to_normalized_xy(
+    alt_hi_nx, alt_hi_ny = altaz_to_normalized_xy(
         alt_hi,
         float(az_deg),
         view_center,
         edge_fov_deg=edge_fov_deg,
     )
-    az_lo_nx, az_lo_ny = _project_altaz_to_normalized_xy(
+    az_lo_nx, az_lo_ny = altaz_to_normalized_xy(
         float(alt_deg),
         az_lo,
         view_center,
         edge_fov_deg=edge_fov_deg,
     )
-    az_hi_nx, az_hi_ny = _project_altaz_to_normalized_xy(
+    az_hi_nx, az_hi_ny = altaz_to_normalized_xy(
         float(alt_deg),
         az_hi,
         view_center,
@@ -792,7 +777,7 @@ def draw_direction_grid_overlay(
                 az_norm = float(az) % 360.0
                 if not is_in_fov(float(alt), az_norm, view_center, fov_deg=content_fov_deg):
                     continue
-                nx, ny = _project_altaz_to_normalized_xy(
+                nx, ny = altaz_to_normalized_xy(
                     float(alt),
                     az_norm,
                     view_center,
@@ -816,7 +801,7 @@ def draw_direction_grid_overlay(
                     float(alt), az, view_center, fov_deg=content_fov_deg
                 ):
                     continue
-                nx, ny = _project_altaz_to_normalized_xy(
+                nx, ny = altaz_to_normalized_xy(
                     float(alt),
                     az,
                     view_center,
@@ -837,7 +822,7 @@ def draw_direction_grid_overlay(
             for az in minor_azimuths:
                 if not is_in_fov(float(alt), float(az), view_center, fov_deg=content_fov_deg):
                     continue
-                nx, ny = _project_altaz_to_normalized_xy(
+                nx, ny = altaz_to_normalized_xy(
                     float(alt),
                     float(az),
                     view_center,

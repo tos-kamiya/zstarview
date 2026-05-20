@@ -8,7 +8,6 @@ from PySide6.QtWidgets import QApplication
 from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.render import asterisms as render_asterisms
 from zstarview.render import deep_sky_objects as render_deep_sky_objects
-from zstarview.render import guides as render_guides
 from zstarview.render import overlay_info as render_overlay_info
 from zstarview.render import pipeline as render_pipeline
 from zstarview.render import search_overlay as render_search_overlay
@@ -281,7 +280,6 @@ def test_hover_overlay_passes_label_candidates_to_asterisms(monkeypatch) -> None
     monkeypatch.setattr(render_asterisms, "draw_asterisms", fake_draw_asterisms)
     monkeypatch.setattr(render_solar_system, "draw_hovered_moon_overlay", lambda *args, **kwargs: None)
     monkeypatch.setattr(render_deep_sky_objects, "draw_dso_hover_info", lambda *args, **kwargs: None)
-    monkeypatch.setattr(render_guides, "draw_direction_hover_guide", lambda *args, **kwargs: None)
     monkeypatch.setattr(render_overlay_info, "draw_overlay_info", lambda *args, **kwargs: None)
     monkeypatch.setattr(render_pipeline, "_draw_dso_hover_layer", lambda *args, **kwargs: None)
 
