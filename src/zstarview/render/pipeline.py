@@ -742,8 +742,8 @@ def _draw_aircraft_layer(
     render_aircraft.draw_aircraft_overlay(
         painter,
         geometry,
-        scene.aircraft_snapshots,
         viewer_data=scene.viewer,
+        aircraft_snapshots=scene.aircraft_snapshots,
         time_obj=scene.time_obj,
         opacity=style.aircraft_opacity,
         line_width_scale=line_width_scale,

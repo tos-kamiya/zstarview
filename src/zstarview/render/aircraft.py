@@ -23,9 +23,9 @@ _AIRCRAFT_MAX_DRAW_DISTANCE_KM = 50.0
 def draw_aircraft_overlay(
     painter: QPainter,
     geometry: ScreenGeometry,
+    viewer_data: ViewerData | None = None,
     aircraft_snapshots: object | None = None,
     *,
-    viewer_data: ViewerData | None = None,
     time_obj: astropy.time.Time | None = None,
     opacity: float = 1.0,
     line_width_scale: float = 1.0,
