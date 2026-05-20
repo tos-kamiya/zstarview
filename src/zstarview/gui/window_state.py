@@ -51,8 +51,8 @@ class SkyWindowState:
     cloud_base_size: int = 256
     terrain_horizon_profile: Optional[list[tuple[float, float]]] = None
     terrain_horizon_profile_distances_m: Optional[list[float]] = None
-    terrain_horizon_secondary_profile_altaz_layers: Optional[list[list[tuple[float, float]]]] = None
-    terrain_horizon_secondary_profile_distances_m_layers: Optional[list[list[float]]] = None
+    terrain_secondary_ridges_altaz_layers: Optional[list[list[tuple[float, float]]]] = None
+    terrain_secondary_ridges_distances_m_layers: Optional[list[list[float]]] = None
     urban_outlines: Optional[list[UrbanOutlinePolyline]] = None
     water_overlay_dots: Optional[list[WaterOverlayPoint]] = None
     night_light_glow_profile: Optional[NightLightGlowProfile] = None

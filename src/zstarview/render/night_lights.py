@@ -119,7 +119,7 @@ def _draw_night_light_glow_impl(
     geometry: ScreenGeometry,
     profile: NightLightGlowProfile | None,
     terrain_profile_altaz: list[tuple[float, float]] | None,
-    terrain_secondary_profile_altaz_layers: list[list[tuple[float, float]]] | None = None,
+    terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
     view_center: tuple[float, float],
     opacity: float = 1.0,
     sun_alt_deg: float | None = None,
@@ -144,7 +144,7 @@ def _draw_night_light_glow_impl(
         (0.0, float(sample.azimuth_deg) % 360.0)
         for sample in profile.samples
     ]
-    if terrain_secondary_profile_altaz_layers:
+    if terrain_secondary_ridges_altaz_layers:
         if terrain_profile_altaz:
             layer_altaz_sets.append(list(terrain_profile_altaz))
         else:
@@ -154,8 +154,8 @@ def _draw_night_light_glow_impl(
             band_profile.samples
             for band_profile in getattr(profile, "band_profiles", ())
         )
-        layer_altaz_sets.extend(list(layer) for layer in terrain_secondary_profile_altaz_layers)
-        for band_index, _layer in enumerate(terrain_secondary_profile_altaz_layers):
+        layer_altaz_sets.extend(list(layer) for layer in terrain_secondary_ridges_altaz_layers)
+        for band_index, _layer in enumerate(terrain_secondary_ridges_altaz_layers):
             if band_profile_samples:
                 layer_profile_samples.append(
                     band_profile_samples[min(band_index, len(band_profile_samples) - 1)]
@@ -286,8 +286,8 @@ def draw_night_light_glow_normal(
     profile: NightLightGlowProfile | None,
     terrain_profile_altaz: list[tuple[float, float]] | None,
     terrain_profile_distances_m: list[float] | None = None,
-    terrain_secondary_profile_altaz_layers: list[list[tuple[float, float]]] | None = None,
-    terrain_secondary_profile_distances_m_layers: list[list[float]] | None = None,
+    terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
+    terrain_secondary_ridges_distances_m_layers: list[list[float]] | None = None,
     view_center: tuple[float, float],
     theme: ThemeStyle,
     opacity: float = 1.0,
@@ -301,7 +301,7 @@ def draw_night_light_glow_normal(
         geometry=geometry,
         profile=profile,
         terrain_profile_altaz=terrain_profile_altaz,
-        terrain_secondary_profile_altaz_layers=terrain_secondary_profile_altaz_layers,
+        terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
         view_center=view_center,
         opacity=opacity,
         sun_alt_deg=sun_alt_deg,
@@ -317,8 +317,8 @@ def draw_night_light_glow(
     profile: NightLightGlowProfile | None,
     terrain_profile_altaz: list[tuple[float, float]] | None,
     terrain_profile_distances_m: list[float] | None = None,
-    terrain_secondary_profile_altaz_layers: list[list[tuple[float, float]]] | None = None,
-    terrain_secondary_profile_distances_m_layers: list[list[float]] | None = None,
+    terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
+    terrain_secondary_ridges_distances_m_layers: list[list[float]] | None = None,
     view_center: tuple[float, float],
     theme: ThemeStyle,
     opacity: float = 1.0,
@@ -337,8 +337,8 @@ def draw_night_light_glow(
         profile=profile,
         terrain_profile_altaz=terrain_profile_altaz,
         terrain_profile_distances_m=terrain_profile_distances_m,
-        terrain_secondary_profile_altaz_layers=terrain_secondary_profile_altaz_layers,
-        terrain_secondary_profile_distances_m_layers=terrain_secondary_profile_distances_m_layers,
+        terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+        terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
         view_center=view_center,
         theme=theme,
         opacity=opacity,

@@ -336,8 +336,8 @@ def _make_scene(
     celestial_data: CelestialData | object | None = None,
     terrain_horizon_profile: object | None = None,
     terrain_horizon_profile_distances_m: object | None = None,
-    terrain_horizon_secondary_profile_altaz_layers: object | None = None,
-    terrain_horizon_secondary_profile_distances_m_layers: object | None = None,
+    terrain_secondary_ridges_altaz_layers: object | None = None,
+    terrain_secondary_ridges_distances_m_layers: object | None = None,
     urban_outlines: object | None = None,
 ) -> pipeline_module.RenderSceneData:
     if viewer is None:
@@ -376,8 +376,8 @@ def _make_scene(
         cloud_amount_field=None,
         terrain_horizon_profile=terrain_horizon_profile,
         terrain_horizon_profile_distances_m=terrain_horizon_profile_distances_m,
-        terrain_horizon_secondary_profile_altaz_layers=terrain_horizon_secondary_profile_altaz_layers,
-        terrain_horizon_secondary_profile_distances_m_layers=terrain_horizon_secondary_profile_distances_m_layers,
+        terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+        terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
         urban_outlines=urban_outlines,
         satellite_records_by_group=None,
         aircraft_snapshots=None,
@@ -3071,10 +3071,10 @@ def test_draw_terrain_layers_scales_asterisms_but_keeps_urban_outline_widths_fix
             ),
             celestial_data=object(),
             terrain_horizon_profile=[(1.0, 10.0), (2.0, 20.0)],
-            terrain_horizon_secondary_profile_altaz_layers=[
+            terrain_secondary_ridges_altaz_layers=[
                 [(1.0, 10.0), (2.0, 20.0)]
             ],
-            terrain_horizon_secondary_profile_distances_m_layers=[
+            terrain_secondary_ridges_distances_m_layers=[
                 [10_000.0, 12_000.0]
             ],
         ),
@@ -3261,8 +3261,8 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         cloud_amount_field=None,
         terrain_horizon_profile=None,
         terrain_horizon_profile_distances_m=None,
-        terrain_horizon_secondary_profile_altaz_layers=None,
-        terrain_horizon_secondary_profile_distances_m_layers=None,
+        terrain_secondary_ridges_altaz_layers=None,
+        terrain_secondary_ridges_distances_m_layers=None,
         urban_outlines=None,
         satellite_records_by_group=None,
         aircraft_snapshots=None,
@@ -4452,12 +4452,12 @@ def test_draw_terrain_secondary_ridges_use_fixed_widths(monkeypatch) -> None:
     render_terrain_module.draw_terrain_secondary_ridges(
         painter,
         geometry=SimpleNamespace(center=(0, 0), radius=1),
-        terrain_secondary_profile_layers=[
+        terrain_secondary_ridges_layers=[
             [(0.0, 0.0), (0.0, 0.1), (0.0, 0.2)],
             [(0.1, 0.0), (0.1, 0.1), (0.1, 0.2)],
             [(0.2, 0.0), (0.2, 0.1), (0.2, 0.2)],
         ],
-        terrain_secondary_profile_distances_m_layers=[
+        terrain_secondary_ridges_distances_m_layers=[
             [1_000.0, 2_000.0, 3_000.0],
             [10_000.0, 12_000.0, 15_000.0],
             [50_000.0, 60_000.0, 70_000.0],
@@ -4525,11 +4525,11 @@ def test_draw_terrain_secondary_ridges_swaps_visible_and_occluded_colors(monkeyp
     render_terrain_module.draw_terrain_secondary_ridges(
         painter,
         geometry=SimpleNamespace(center=(0, 0), radius=1),
-        terrain_secondary_profile_layers=[
+        terrain_secondary_ridges_layers=[
             [(20.0, 0.0), (20.0, 0.1)],
             [(10.0, 0.0), (10.0, 0.1)],
         ],
-        terrain_secondary_profile_distances_m_layers=[
+        terrain_secondary_ridges_distances_m_layers=[
             [1_000.0, 2_000.0],
             [10_000.0, 12_000.0],
         ],
@@ -4598,11 +4598,11 @@ def test_secondary_ridge_overlay_alpha_is_scaled_down(monkeypatch) -> None:
     render_terrain_module.draw_terrain_secondary_ridges(
         painter,
         geometry=SimpleNamespace(center=(0, 0), radius=1),
-        terrain_secondary_profile_layers=[
+        terrain_secondary_ridges_layers=[
             [(20.0, 0.0), (20.0, 0.1)],
             [(10.0, 0.0), (10.0, 0.1)],
         ],
-        terrain_secondary_profile_distances_m_layers=[
+        terrain_secondary_ridges_distances_m_layers=[
             [1_000.0, 2_000.0],
             [10_000.0, 12_000.0],
         ],
@@ -4657,10 +4657,10 @@ def test_draw_terrain_secondary_ridges_bridges_seam_near_zero(monkeypatch) -> No
     render_terrain_module.draw_terrain_secondary_ridges(
         painter,
         geometry=SimpleNamespace(center=(0, 0), radius=1),
-        terrain_secondary_profile_layers=[
+        terrain_secondary_ridges_layers=[
             [(5.0, 359.0), (5.0, 0.0), (5.0, 1.0)],
         ],
-        terrain_secondary_profile_distances_m_layers=[
+        terrain_secondary_ridges_distances_m_layers=[
             [1_000.0, 2_000.0, 3_000.0],
         ],
         view_center=(45.0, 180.0),

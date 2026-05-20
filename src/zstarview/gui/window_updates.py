@@ -809,8 +809,8 @@ class SkyWindowUpdatesMixin:
             reason=reason,
             terrain_horizon_profile_altaz=self.state.terrain_horizon_profile,
             terrain_horizon_profile_distances_m=self.state.terrain_horizon_profile_distances_m,
-            terrain_horizon_secondary_profile_altaz_layers=self.state.terrain_horizon_secondary_profile_altaz_layers,
-            terrain_horizon_secondary_profile_distances_m_layers=self.state.terrain_horizon_secondary_profile_distances_m_layers,
+            terrain_secondary_ridges_altaz_layers=self.state.terrain_secondary_ridges_altaz_layers,
+            terrain_secondary_ridges_distances_m_layers=self.state.terrain_secondary_ridges_distances_m_layers,
         )
 
     def _water_overlay_ground_elevation_m(self) -> float:
@@ -918,9 +918,9 @@ class SkyWindowUpdatesMixin:
         self.terrain_horizon_state.set_result(
             payload["profile_altaz"],
             profile_distances_m=payload.get("profile_distances_m"),
-            secondary_profile_altaz_layers=payload.get("secondary_profile_altaz_layers"),
-            secondary_profile_distances_m_layers=payload.get(
-                "secondary_profile_distances_m_layers"
+            secondary_ridges_altaz_layers=payload.get("secondary_ridges_altaz_layers"),
+            secondary_ridges_distances_m_layers=payload.get(
+                "secondary_ridges_distances_m_layers"
             ),
             source=str(payload.get("source", "")).strip(),
         )
@@ -931,11 +931,11 @@ class SkyWindowUpdatesMixin:
             self.viewer_data = replace(self.viewer_data, ground_elevation_m=ground_value)
         self.state.terrain_horizon_profile = payload["profile_altaz"]
         self.state.terrain_horizon_profile_distances_m = payload.get("profile_distances_m")
-        self.state.terrain_horizon_secondary_profile_altaz_layers = payload.get(
-            "secondary_profile_altaz_layers"
+        self.state.terrain_secondary_ridges_altaz_layers = payload.get(
+            "secondary_ridges_altaz_layers"
         )
-        self.state.terrain_horizon_secondary_profile_distances_m_layers = payload.get(
-            "secondary_profile_distances_m_layers"
+        self.state.terrain_secondary_ridges_distances_m_layers = payload.get(
+            "secondary_ridges_distances_m_layers"
         )
         self._refresh_water_overlay_active_dots()
         startup_initial_load = _initial_data_load_active(self)
@@ -959,8 +959,8 @@ class SkyWindowUpdatesMixin:
         self.terrain_horizon_state.clear_profile()
         self.state.terrain_horizon_profile = None
         self.state.terrain_horizon_profile_distances_m = None
-        self.state.terrain_horizon_secondary_profile_altaz_layers = None
-        self.state.terrain_horizon_secondary_profile_distances_m_layers = None
+        self.state.terrain_secondary_ridges_altaz_layers = None
+        self.state.terrain_secondary_ridges_distances_m_layers = None
         self._refresh_water_overlay_active_dots()
         if banner:
             self.terrain_horizon_state.set_error_banner(banner)

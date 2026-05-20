@@ -101,8 +101,8 @@ class RenderSceneData:
     cloud_amount_field: CloudAmountField | None
     terrain_horizon_profile: list[tuple[float, float]] | None
     terrain_horizon_profile_distances_m: list[float] | None
-    terrain_horizon_secondary_profile_altaz_layers: list[list[tuple[float, float]]] | None
-    terrain_horizon_secondary_profile_distances_m_layers: list[list[float]] | None
+    terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None
+    terrain_secondary_ridges_distances_m_layers: list[list[float]] | None
     urban_outlines: list[UrbanOutlinePolyline] | None
     satellite_element_epoch_utc: datetime | None = None
     satellite_records_by_group: dict[str, list[SatelliteOmmRecord]] | None = None
@@ -657,13 +657,13 @@ def _draw_sky_cloud_layers(
             if style.terrain_horizon_opacity > 0.0
             else None
         ),
-        terrain_secondary_profile_altaz_layers=(
-            scene.terrain_horizon_secondary_profile_altaz_layers
+        terrain_secondary_ridges_altaz_layers=(
+            scene.terrain_secondary_ridges_altaz_layers
             if style.terrain_horizon_opacity > 0.0
             else None
         ),
-        terrain_secondary_profile_distances_m_layers=(
-            scene.terrain_horizon_secondary_profile_distances_m_layers
+        terrain_secondary_ridges_distances_m_layers=(
+            scene.terrain_secondary_ridges_distances_m_layers
             if style.terrain_horizon_opacity > 0.0
             else None
         ),
@@ -729,8 +729,8 @@ def _draw_terrain_layers(
     render_terrain.draw_terrain_secondary_ridges(
         painter,
         geometry,
-        scene.terrain_horizon_secondary_profile_altaz_layers,
-        scene.terrain_horizon_secondary_profile_distances_m_layers,
+        scene.terrain_secondary_ridges_altaz_layers,
+        scene.terrain_secondary_ridges_distances_m_layers,
         scene.viewer.view_center,
         opacity=max(0.0, float(style.terrain_horizon_opacity) * 0.72),
         line_width_scale=line_width_scale,

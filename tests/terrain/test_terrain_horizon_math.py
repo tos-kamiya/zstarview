@@ -196,11 +196,11 @@ def test_secondary_ridge_render_uses_four_km_alpha_for_all_bands(monkeypatch) ->
     draw_terrain_secondary_ridges(
         _FakePainter(),  # type: ignore[arg-type]
         geometry=type("Geometry", (), {"center": (0, 0), "radius": 100})(),
-        terrain_secondary_profile_layers=[
+        terrain_secondary_ridges_layers=[
             [(1.0, 10.0), (2.0, 20.0)],
             [(1.0, 10.0), (2.0, 20.0)],
         ],
-        terrain_secondary_profile_distances_m_layers=[
+        terrain_secondary_ridges_distances_m_layers=[
             [500.0, 500.0],
             [128000.0, 128000.0],
         ],
@@ -252,8 +252,8 @@ def test_draw_terrain_secondary_ridges_fast_mode_draws_main_profile(monkeypatch)
     draw_terrain_secondary_ridges(
         _Painter(),  # type: ignore[arg-type]
         geometry=type("Geometry", (), {"center": (0, 0), "radius": 100})(),
-        terrain_secondary_profile_layers=[[(1.0, 10.0), (2.0, 20.0)]],
-        terrain_secondary_profile_distances_m_layers=[[1_000.0, 2_000.0]],
+        terrain_secondary_ridges_layers=[[(1.0, 10.0), (2.0, 20.0)]],
+        terrain_secondary_ridges_distances_m_layers=[[1_000.0, 2_000.0]],
         view_center=(0.0, 0.0),
         terrain_main_profile_altaz=[(3.0, 30.0), (4.0, 40.0)],
         terrain_main_profile_distances_m=[5_000.0, 6_000.0],

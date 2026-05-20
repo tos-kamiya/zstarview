@@ -1098,8 +1098,8 @@ def test_terrain_horizon_failed_keeps_retained_ground_elevation() -> None:
     dummy.state = SimpleNamespace(
         terrain_horizon_profile=[(1.0, 2.0)],
         terrain_horizon_profile_distances_m=[1.0],
-        terrain_horizon_secondary_profile_altaz_layers=[[(1.0, 2.0)]],
-        terrain_horizon_secondary_profile_distances_m_layers=[[1.0]],
+        terrain_secondary_ridges_altaz_layers=[[(1.0, 2.0)]],
+        terrain_secondary_ridges_distances_m_layers=[[1.0]],
     )
     dummy._refresh_water_overlay_active_dots = lambda: None
     dummy._is_shutting_down = True
@@ -1386,8 +1386,8 @@ def test_terrain_controller_uses_sea_level_horizon_when_dem_missing(
     assert payload["source"] == "Flat-ground fallback"
     assert len(payload["profile_altaz"]) == 360
     assert len(payload["profile_distances_m"]) == 360
-    assert len(payload["secondary_profile_altaz_layers"]) >= 1
-    assert len(payload["secondary_profile_distances_m_layers"]) >= 1
+    assert len(payload["secondary_ridges_altaz_layers"]) >= 1
+    assert len(payload["secondary_ridges_distances_m_layers"]) >= 1
     assert all(math.isfinite(alt) for alt, _az in payload["profile_altaz"])
     assert min(payload["profile_distances_m"]) > 0.0
     assert max(payload["profile_distances_m"]) == pytest.approx(min(payload["profile_distances_m"]))

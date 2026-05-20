@@ -8,8 +8,8 @@ from typing import Optional
 class TerrainHorizonState:
     profile_altaz: Optional[list[tuple[float, float]]] = None
     profile_distances_m: Optional[list[float]] = None
-    secondary_profile_altaz_layers: Optional[list[list[tuple[float, float]]]] = None
-    secondary_profile_distances_m_layers: Optional[list[list[float]]] = None
+    secondary_ridges_altaz_layers: Optional[list[list[tuple[float, float]]]] = None
+    secondary_ridges_distances_m_layers: Optional[list[list[float]]] = None
     # Retained ground elevation from the latest successful terrain update.
     ground_elevation_m: Optional[float] = None
     banner_text: Optional[str] = None
@@ -21,14 +21,14 @@ class TerrainHorizonState:
         profile_altaz: list[tuple[float, float]],
         *,
         profile_distances_m: Optional[list[float]] = None,
-        secondary_profile_altaz_layers: Optional[list[list[tuple[float, float]]]] = None,
-        secondary_profile_distances_m_layers: Optional[list[list[float]]] = None,
+        secondary_ridges_altaz_layers: Optional[list[list[tuple[float, float]]]] = None,
+        secondary_ridges_distances_m_layers: Optional[list[list[float]]] = None,
         source: str,
     ) -> None:
         self.profile_altaz = profile_altaz
         self.profile_distances_m = profile_distances_m
-        self.secondary_profile_altaz_layers = secondary_profile_altaz_layers
-        self.secondary_profile_distances_m_layers = secondary_profile_distances_m_layers
+        self.secondary_ridges_altaz_layers = secondary_ridges_altaz_layers
+        self.secondary_ridges_distances_m_layers = secondary_ridges_distances_m_layers
         self.current_source = source
         self.failed_this_session = False
         self.banner_text = None
@@ -40,5 +40,5 @@ class TerrainHorizonState:
     def clear_profile(self) -> None:
         self.profile_altaz = None
         self.profile_distances_m = None
-        self.secondary_profile_altaz_layers = None
-        self.secondary_profile_distances_m_layers = None
+        self.secondary_ridges_altaz_layers = None
+        self.secondary_ridges_distances_m_layers = None

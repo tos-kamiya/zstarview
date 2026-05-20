@@ -188,10 +188,10 @@ class TerrainHorizonController(QObject):
                 )
                 profile_altaz = reduce_profile_to_altaz(layers.main_profile)
                 profile_distances_m = [float(point.distance_m) for point in layers.main_profile]
-                secondary_profile_altaz_layers = [
+                secondary_ridges_altaz_layers = [
                     reduce_profile_to_altaz(layer) for layer in layers.secondary_layers
                 ]
-                secondary_profile_distances_m_layers = [
+                secondary_ridges_distances_m_layers = [
                     [float(point.distance_m) for point in layer] for layer in layers.secondary_layers
                 ]
                 with self._lock:
@@ -203,8 +203,8 @@ class TerrainHorizonController(QObject):
                         {
                             "profile_altaz": profile_altaz,
                             "profile_distances_m": profile_distances_m,
-                            "secondary_profile_altaz_layers": secondary_profile_altaz_layers,
-                            "secondary_profile_distances_m_layers": secondary_profile_distances_m_layers,
+                            "secondary_ridges_altaz_layers": secondary_ridges_altaz_layers,
+                            "secondary_ridges_distances_m_layers": secondary_ridges_distances_m_layers,
                             "ground_elevation_m": 0.0,
                             "source": "Flat-ground fallback",
                         }
@@ -248,10 +248,10 @@ class TerrainHorizonController(QObject):
 
             profile_altaz = reduce_profile_to_altaz(layers.main_profile)
             profile_distances_m = [float(point.distance_m) for point in layers.main_profile]
-            secondary_profile_altaz_layers = [
+            secondary_ridges_altaz_layers = [
                 reduce_profile_to_altaz(layer) for layer in layers.secondary_layers
             ]
-            secondary_profile_distances_m_layers = [
+            secondary_ridges_distances_m_layers = [
                 [float(point.distance_m) for point in layer] for layer in layers.secondary_layers
             ]
             with self._lock:
@@ -265,8 +265,8 @@ class TerrainHorizonController(QObject):
                         {
                             "profile_altaz": profile_altaz,
                             "profile_distances_m": profile_distances_m,
-                            "secondary_profile_altaz_layers": secondary_profile_altaz_layers,
-                            "secondary_profile_distances_m_layers": secondary_profile_distances_m_layers,
+                            "secondary_ridges_altaz_layers": secondary_ridges_altaz_layers,
+                            "secondary_ridges_distances_m_layers": secondary_ridges_distances_m_layers,
                             "ground_elevation_m": ground_m,
                             "source": "Dem: cache",
                         }

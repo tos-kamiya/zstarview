@@ -640,8 +640,8 @@ def draw_terrain_horizon_fast(
 def draw_terrain_secondary_ridges(
     painter: QPainter,
     geometry: ScreenGeometry,
-    terrain_secondary_profile_layers: list[list[tuple[float, float]]] | None,
-    terrain_secondary_profile_distances_m_layers: list[list[float]] | None,
+    terrain_secondary_ridges_layers: list[list[tuple[float, float]]] | None,
+    terrain_secondary_ridges_distances_m_layers: list[list[float]] | None,
     view_center: tuple[float, float],
     *,
     terrain_main_profile_altaz: list[tuple[float, float]] | None = None,
@@ -659,16 +659,16 @@ def draw_terrain_secondary_ridges(
     if opacity <= 0.0:
         return
 
-    if not terrain_secondary_profile_layers:
+    if not terrain_secondary_ridges_layers:
         return
 
     ridge_opacity = terrain_secondary_ridge_line_alpha(opacity)
     if ridge_opacity <= 0.0:
         return
 
-    if terrain_secondary_profile_distances_m_layers is not None and len(terrain_secondary_profile_distances_m_layers) != len(terrain_secondary_profile_layers):
-        terrain_secondary_profile_distances_m_layers = None
-    layer_count = len(terrain_secondary_profile_layers)
+    if terrain_secondary_ridges_distances_m_layers is not None and len(terrain_secondary_ridges_distances_m_layers) != len(terrain_secondary_ridges_layers):
+        terrain_secondary_ridges_distances_m_layers = None
+    layer_count = len(terrain_secondary_ridges_layers)
     overlay_scale = 1.7
     overlay_alpha_scale = 0.2
     max_visible_alt_by_bin: dict[int, float] = {}
@@ -697,9 +697,9 @@ def draw_terrain_secondary_ridges(
             and bridge_screen_gap <= TERRAIN_SECONDARY_RIDGE_SEAM_BRIDGE_SCREEN_GAP
         )
 
-    for layer_index, layer in enumerate(terrain_secondary_profile_layers):
-        if terrain_secondary_profile_distances_m_layers is not None:
-            layer_distances = terrain_secondary_profile_distances_m_layers[layer_index]
+    for layer_index, layer in enumerate(terrain_secondary_ridges_layers):
+        if terrain_secondary_ridges_distances_m_layers is not None:
+            layer_distances = terrain_secondary_ridges_distances_m_layers[layer_index]
         else:
             layer_distances = [float("nan")] * len(layer)
         finite_layer_distances_km = [

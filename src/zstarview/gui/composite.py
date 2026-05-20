@@ -1073,8 +1073,8 @@ class SkyCompositorCache:
         show_guidelines: bool = True,
         terrain_profile_altaz: list[tuple[float, float]] | None = None,
         terrain_profile_distances_m: list[float] | None = None,
-        terrain_secondary_profile_altaz_layers: list[list[tuple[float, float]]] | None = None,
-        terrain_secondary_profile_distances_m_layers: list[list[float]] | None = None,
+        terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
+        terrain_secondary_ridges_distances_m_layers: list[list[float]] | None = None,
         night_light_glow_profile: NightLightGlowProfile | None = None,
         terrain_horizon_opacity: float = 0.003,
         earth_guide_opacity: float = 0.028,
@@ -1123,17 +1123,17 @@ class SkyCompositorCache:
         terrain_secondary_key = (
             tuple(
                 tuple((round(float(alt), 3), round(float(az) % 360.0, 3)) for alt, az in layer)
-                for layer in terrain_secondary_profile_altaz_layers
+                for layer in terrain_secondary_ridges_altaz_layers
             )
-            if terrain_secondary_profile_altaz_layers
+            if terrain_secondary_ridges_altaz_layers
             else ()
         )
         terrain_secondary_distance_key = (
             tuple(
                 tuple(round(float(distance_m), 3) for distance_m in layer)
-                for layer in terrain_secondary_profile_distances_m_layers
+                for layer in terrain_secondary_ridges_distances_m_layers
             )
-            if terrain_secondary_profile_distances_m_layers
+            if terrain_secondary_ridges_distances_m_layers
             else ()
         )
         night_light_key = (
@@ -1374,9 +1374,9 @@ class SkyCompositorCache:
                         profile=night_light_glow_profile,
                         terrain_profile_altaz=terrain_profile_altaz if terrain_profile_altaz else None,
                         terrain_profile_distances_m=terrain_profile_distances_m,
-                        terrain_secondary_profile_altaz_layers=terrain_secondary_profile_altaz_layers,
-                        terrain_secondary_profile_distances_m_layers=(
-                            terrain_secondary_profile_distances_m_layers
+                        terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
+                        terrain_secondary_ridges_distances_m_layers=(
+                            terrain_secondary_ridges_distances_m_layers
                         ),
                         view_center=view_center,
                         theme=theme,

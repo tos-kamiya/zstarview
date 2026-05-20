@@ -288,8 +288,8 @@ def test_fetch_terrain_horizon_layer_uses_sea_level_fallback(monkeypatch) -> Non
 
     assert len(got["profile_altaz"]) == 360
     assert len(got["profile_distances_m"]) == 360
-    assert len(got["secondary_profile_altaz_layers"]) >= 1
-    assert len(got["secondary_profile_distances_m_layers"]) >= 1
+    assert len(got["secondary_ridges_altaz_layers"]) >= 1
+    assert len(got["secondary_ridges_distances_m_layers"]) >= 1
     assert all(math.isfinite(alt) for alt, _az in got["profile_altaz"])
     assert min(got["profile_distances_m"]) > 0.0
     assert max(got["profile_distances_m"]) == pytest.approx(min(got["profile_distances_m"]))
