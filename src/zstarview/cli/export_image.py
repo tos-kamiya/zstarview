@@ -902,10 +902,6 @@ def _fetch_satellite_records_by_group(
     viewer_data: ViewerData,
     target_time_utc,
     deadline: float | None,
-    enabled_groups: tuple[str, ...] = (
-        SATELLITE_ISS_CACHE_KEY,
-        SATELLITE_HORIZONS_CACHE_KEY,
-    ),
 ) -> dict[str, list[dict[str, object]]] | None:
     if _timed_out(deadline):
         raise TimeoutError("satellites timed out")
@@ -913,6 +909,10 @@ def _fetch_satellite_records_by_group(
     timeout_s = 20.0 if remaining is None else max(0.1, min(20.0, remaining))
     records_by_group: dict[str, list[dict[str, object]]] = {}
     time_mode = classify_target_time(target_time_utc)
+    enabled_groups = (
+        SATELLITE_ISS_CACHE_KEY,
+        SATELLITE_HORIZONS_CACHE_KEY,
+    )
     for group_key in enabled_groups:
         fetched = resolve_satellite_elements_for_time(
             group_key,
@@ -1444,6 +1444,10 @@ def main() -> None:
                 viewer_data=viewer_data,
                 target_time_utc=celestial_data.time.to_datetime(timezone=timezone.utc),
                 deadline=deadline,
+                enabled_groups=(
+                    SATELLITE_ISS_CACHE_KEY,
+                    SATELLITE_HORIZONS_CACHE_KEY,
+                ),
             )
         except Exception as exc:
             logger.warning("Export layer unavailable: satellites (%s)", exc)

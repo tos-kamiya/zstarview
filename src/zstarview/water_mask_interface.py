@@ -360,7 +360,6 @@ def _load_water_surface_interface_lonlat_points_for_root(
     center_lon_deg: float,
     radius_km: float,
     tile_root: Path,
-    bbox_scale: float = DEFAULT_WATER_INTERFACE_BBOX_SCALE,
     stride: int = DEFAULT_WATER_INTERFACE_POINT_STRIDE,
     min_distance_km: float = 0.0,
     max_distance_km: float | None = None,
@@ -372,7 +371,7 @@ def _load_water_surface_interface_lonlat_points_for_root(
         center_lon_deg=center_lon_deg,
         radius_km=radius_km,
         tile_root=tile_root,
-        bbox_scale=bbox_scale,
+        bbox_scale=DEFAULT_WATER_INTERFACE_BBOX_SCALE,
         stride=stride,
         min_distance_km=min_distance_km,
         max_distance_km=max_distance_km,
@@ -643,7 +642,6 @@ def load_water_surface_interface_lonlat_points(
     center_lon_deg: float,
     radius_km: float,
     tile_root: Path | None = None,
-    bbox_scale: float = DEFAULT_WATER_INTERFACE_BBOX_SCALE,
     stride: int = DEFAULT_WATER_INTERFACE_POINT_STRIDE,
 ) -> tuple[tuple[float, float], ...]:
     points: set[tuple[float, float]] = set()
@@ -655,12 +653,11 @@ def load_water_surface_interface_lonlat_points(
             continue
         band_points = _load_water_surface_interface_lonlat_points_for_root(
             center_lat_deg=float(center_lat_deg),
-            center_lon_deg=float(center_lon_deg),
-            radius_km=float(max_distance_km),
-            tile_root=band_root,
-            bbox_scale=bbox_scale,
-            stride=stride,
-            min_distance_km=float(min_distance_km),
+        center_lon_deg=float(center_lon_deg),
+        radius_km=float(max_distance_km),
+        tile_root=band_root,
+        stride=stride,
+        min_distance_km=float(min_distance_km),
             max_distance_km=max_distance_km,
             representative_block_size=representative_block_size,
         )
@@ -676,7 +673,6 @@ def sample_water_surface_interface_points_with_stats(
     max_distance_km: float,
     target_ground_elevation_m_sampler: Callable[[float, float], float] | None = None,
     tile_root: Path | None = None,
-    bbox_scale: float = DEFAULT_WATER_INTERFACE_BBOX_SCALE,
     stride: int = DEFAULT_WATER_INTERFACE_POINT_STRIDE,
     abort_event: threading.Event | None = None,
 ) -> tuple[tuple[WaterOverlayPoint, ...], tuple[WaterSurfaceBandStats, ...]]:
@@ -711,7 +707,6 @@ def sample_water_surface_interface_points(
     observer_height_m: float,
     max_distance_km: float,
     tile_root: Path | None = None,
-    bbox_scale: float = DEFAULT_WATER_INTERFACE_BBOX_SCALE,
     stride: int = DEFAULT_WATER_INTERFACE_POINT_STRIDE,
     abort_event: threading.Event | None = None,
 ) -> tuple[WaterOverlayPoint, ...]:
@@ -721,7 +716,6 @@ def sample_water_surface_interface_points(
         observer_height_m=observer_height_m,
         max_distance_km=max_distance_km,
         tile_root=tile_root,
-        bbox_scale=bbox_scale,
         stride=stride,
         abort_event=abort_event,
     )

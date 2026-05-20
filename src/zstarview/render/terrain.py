@@ -645,8 +645,6 @@ def draw_terrain_secondary_ridges(
     terrain_secondary_ridges_layers: list[list[tuple[float, float]]] | None,
     terrain_secondary_ridges_distances_m_layers: list[list[float]] | None,
     *,
-    terrain_main_profile_altaz: list[tuple[float, float]] | None = None,
-    terrain_main_profile_distances_m: list[float] | None = None,
     opacity: float = 0.25,
     line_width_scale: float = 1.0,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
@@ -863,7 +861,6 @@ def draw_urban_outlines(
     altaz_to_normalized_xy_func: Callable[[float, float, Tuple[float, float]], Tuple[float, float]] = altaz_to_normalized_xy,
     normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], Tuple[float, float]] = normalized_to_screen_xy,
     split_by_gaps_func: Callable[[List[Tuple[float, float]]], List[List[Tuple[float, float]]]] = split_by_gaps,
-    minimal_azimuth_cover_func: Callable[[List[float]], Tuple[float, float, float]] = _minimal_azimuth_cover,
 ) -> None:
     """Draw sampled building-top outlines directly on the sky dome."""
     if not urban_outlines:

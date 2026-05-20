@@ -810,8 +810,6 @@ def _neu_unit_to_altaz(vec: np.ndarray) -> Tuple[float, float]:
 
 def _never_rises_circle_altaz(
     observer_lat_deg: float | None,
-    *,
-    step_deg: float = 4.0,
 ) -> list[tuple[float, float]]:
     if observer_lat_deg is None:
         return []
@@ -828,6 +826,7 @@ def _never_rises_circle_altaz(
     cos_dec = math.cos(dec_rad)
 
     circle: list[tuple[float, float]] = []
+    step_deg = 4.0
     for theta_deg in range(0, 360 + int(step_deg), int(step_deg)):
         ha_rad = math.radians(float(theta_deg))
         sin_alt = (sin_lat * sin_dec) + (cos_lat * cos_dec * math.cos(ha_rad))

@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-05-19
+最終更新: 2026-05-21
 
 ## 1. この文書の位置づけ
 
@@ -778,6 +778,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `src/zstarview/render/terrain.py`
   - `WaterOverlayPoint` を小さな青色点として描画する
   - 点の alpha は `water_overlay_opacity` を基準にし、距離減衰を反映して terrain horizon の描画と同じ sky-dome 合成段へ重ねる
+  - 視点中心と edge/content FOV は `ViewerData` 側が所有する値として扱うのが自然で、`ScreenGeometry` には画面中心と半径だけを残す
 
 ### 4.6.1 水面レイヤー処理
 
@@ -927,6 +928,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 追加高さを UI 表示するかどうかのフラグ
   - 画面描画に必要な視点情報
   - `edge_fov_deg` は起動時固定値として扱い、実行中のリサイズや hover 状態では変えない
+- `ScreenGeometry`
+  - 描画キャンバスの中心と半径のみを表す
+  - 視点中心や FOV は持たない
 
 地点 dataset が持つ高さ情報と追加高さは別概念として扱う。
 

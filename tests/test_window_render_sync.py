@@ -2109,11 +2109,11 @@ def test_render_fast_frame_image_downsamples_base_scene(monkeypatch) -> None:
 
     def _capture_status_line(*_args, **kwargs) -> None:
         call_order.append("status")
-        frame = kwargs["frame"]
+        viewport_rect = kwargs["viewport_rect"]
         status_rect_sizes.append(
             (
-                int(frame.viewport_rect.width()),
-                int(frame.viewport_rect.height()),
+                int(viewport_rect.width()),
+                int(viewport_rect.height()),
             )
         )
 
@@ -2123,8 +2123,8 @@ def test_render_fast_frame_image_downsamples_base_scene(monkeypatch) -> None:
         _capture_base_scene,
     )
     monkeypatch.setattr(
-        window_render_module,
-        "render_status_line_into_painter",
+        window_render_module.render_text,
+        "_draw_status_line",
         _capture_status_line,
     )
     monkeypatch.setattr(

@@ -24,7 +24,6 @@ from ..render.pipeline import (
     render_base_scene_into_painter,
     render_fast_overlay_layers_into_painter,
     render_hud_overlay_into_painter,
-    render_status_line_into_painter,
 )
 from ..satellites.types import SatelliteOverlayPoint
 from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
@@ -421,9 +420,9 @@ class SkyWindowRenderMixin:
                     None,
                     theme=style.theme,
                 ),
-                render_status_line_into_painter(
+                render_text._draw_status_line(
                     frame_painter,
-                    frame=frame,
+                    viewport_rect=frame.viewport_rect,
                     style=style,
                     hud=hud,
                 ),
@@ -471,9 +470,9 @@ class SkyWindowRenderMixin:
     ) -> None:
         frame_painter.drawImage(0, 0, base_frame_image)
         if hud.viewport_interaction_mode:
-            render_status_line_into_painter(
+            render_text._draw_status_line(
                 frame_painter,
-                frame=frame,
+                viewport_rect=frame.viewport_rect,
                 style=style,
                 hud=hud,
             )

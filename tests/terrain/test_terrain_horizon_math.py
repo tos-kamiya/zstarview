@@ -264,8 +264,6 @@ def test_draw_terrain_secondary_ridges_fast_mode_draws_main_profile(monkeypatch)
         ),
         terrain_secondary_ridges_layers=[[(1.0, 10.0), (2.0, 20.0)]],
         terrain_secondary_ridges_distances_m_layers=[[1_000.0, 2_000.0]],
-        terrain_main_profile_altaz=[(3.0, 30.0), (4.0, 40.0)],
-        terrain_main_profile_distances_m=[5_000.0, 6_000.0],
         opacity=0.38,
         line_width_scale=1.0,
         is_in_fov_func=lambda *_args, **_kwargs: True,

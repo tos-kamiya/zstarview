@@ -46,7 +46,7 @@ def _fnum(text: str) -> Optional[float]:
         return None
 
 
-def _iter_lines(path: Path, encoding: str = "ascii") -> Iterator[str]:
+def _iter_lines(path: Path) -> Iterator[str]:
     if path.suffix.lower() == ".zip":
         with zipfile.ZipFile(path, "r") as zf:
             names = [n for n in zf.namelist() if not n.endswith("/")]
@@ -55,9 +55,9 @@ def _iter_lines(path: Path, encoding: str = "ascii") -> Iterator[str]:
             # hip_main.dat.zip in this repo contains a single payload.
             with zf.open(names[0], "r") as f:
                 for b in f:
-                    yield b.decode(encoding, errors="ignore")
+                    yield b.decode("ascii", errors="ignore")
         return
-    with path.open("r", encoding=encoding, errors="ignore") as f:
+    with path.open("r", encoding="ascii", errors="ignore") as f:
         yield from f
 
 

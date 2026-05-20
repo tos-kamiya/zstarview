@@ -415,7 +415,7 @@ def test_load_water_surface_interface_lonlat_points_combines_near_and_far_roots(
 ) -> None:
     seen: list[tuple[float, object]] = []
 
-    def _fake_load(*, center_lat_deg, center_lon_deg, radius_km, tile_root, bbox_scale, stride, **_kwargs):
+    def _fake_load(*, center_lat_deg, center_lon_deg, radius_km, tile_root, stride, **_kwargs):
         seen.append((float(radius_km), tile_root))
         if tile_root == mod.DEFAULT_WATER_TILES_ROOT_125M:
             return ((1.0, 1.0),)
