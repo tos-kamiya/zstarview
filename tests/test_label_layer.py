@@ -267,8 +267,8 @@ def test_hover_overlay_passes_label_candidates_to_asterisms(monkeypatch) -> None
     def fake_draw_asterisms(
         painter,
         geometry,
-        celestial_data,
         viewer_data,
+        celestial_data,
         highlighted_object,
         text_font,
         label_reservations=None,

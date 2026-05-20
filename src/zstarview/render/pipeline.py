@@ -640,8 +640,8 @@ def _draw_terrain_layers(
         render_asterisms.draw_asterisms(
             painter,
             geometry,
-            scene.celestial_data,
             scene.viewer,
+            scene.celestial_data,
             highlighted_object,
             style.text_font,
             label_reservations,
@@ -963,8 +963,8 @@ def _draw_hover_overlay_layer(
         render_asterisms.draw_asterisms(
             painter,
             geometry,
-            scene.celestial_data,
             scene.viewer,
+            scene.celestial_data,
             highlighted_object,
             style.text_font,
             theme=style.theme,

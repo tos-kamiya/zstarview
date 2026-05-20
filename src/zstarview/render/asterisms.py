@@ -31,8 +31,8 @@ ASTERISM_HIGHLIGHT_CORE_WIDTH = 1.0
 def draw_asterisms(
     painter: QPainter,
     geometry: ScreenGeometry,
-    celestial_data: CelestialData,
     viewer_data: ViewerData,
+    celestial_data: CelestialData,
     highlighted_object: Optional[Tuple[CelestialObject, QPointF]],
     text_font: QFont,
     label_reservations: Optional[List[QRectF]] = None,
