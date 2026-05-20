@@ -443,8 +443,6 @@ def _draw_terrain_profile_layer(
     color_rgb: tuple[int, int, int],
     fast_mode: bool,
     distance_widths: bool,
-    edge_fov_deg: float,
-    content_fov_deg: float,
     is_in_fov_func: Callable[..., bool],
     altaz_to_normalized_xy_func: Callable[[float, float, Tuple[float, float]], Tuple[float, float]],
     normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], Tuple[float, float]],

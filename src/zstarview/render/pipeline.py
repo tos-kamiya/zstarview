@@ -462,8 +462,6 @@ def _draw_viewport_interaction_layers(
         color_rgb=render_terrain.TERRAIN_HORIZON_LINE_COLOR,
         fast_mode=True,
         distance_widths=True,
-        edge_fov_deg=float(scene.viewer.edge_fov_deg),
-        content_fov_deg=_content_fov_deg(scene),
         is_in_fov_func=render_terrain.is_in_fov,
         altaz_to_normalized_xy_func=render_terrain.altaz_to_normalized_xy,
         normalized_to_screen_xy_func=render_terrain.normalized_to_screen_xy,

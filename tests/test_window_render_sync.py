@@ -4404,8 +4404,6 @@ def test_draw_terrain_horizon_line_scales_line_widths(monkeypatch) -> None:
         color_rgb=render_terrain_module.TERRAIN_HORIZON_LINE_COLOR,
         fast_mode=True,
         distance_widths=True,
-        edge_fov_deg=95.0,
-        content_fov_deg=110.0,
         is_in_fov_func=lambda *_args, **_kwargs: True,
         altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
             float(az),
@@ -4469,8 +4467,6 @@ def test_draw_terrain_horizon_line_scales_widths_by_distance(monkeypatch) -> Non
         color_rgb=render_terrain_module.TERRAIN_HORIZON_LINE_COLOR,
         fast_mode=False,
         distance_widths=True,
-        edge_fov_deg=95.0,
-        content_fov_deg=110.0,
         is_in_fov_func=lambda *_args, **_kwargs: True,
         altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
             float(az),
@@ -4805,14 +4801,12 @@ def test_draw_terrain_horizon_line_uses_edge_fov_for_projection() -> None:
             color_rgb=render_terrain_module.TERRAIN_HORIZON_LINE_COLOR,
             fast_mode=True,
             distance_widths=True,
-            edge_fov_deg=edge_fov_deg,
-            content_fov_deg=180.0,
-                is_in_fov_func=lambda *_args, **_kwargs: True,
-                line_width_scale=1.0,
-                altaz_to_normalized_xy_func=render_terrain_module.altaz_to_normalized_xy,
-                normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
-                split_by_gaps_func=lambda points: [points],
-            )
+            is_in_fov_func=lambda *_args, **_kwargs: True,
+            line_width_scale=1.0,
+            altaz_to_normalized_xy_func=render_terrain_module.altaz_to_normalized_xy,
+            normalized_to_screen_xy_func=lambda nx, ny, _geometry: (float(nx), float(ny)),
+            split_by_gaps_func=lambda points: [points],
+        )
         assert painter.polylines
         return painter.polylines[0]
 
@@ -4858,8 +4852,6 @@ def test_draw_terrain_horizon_line_rotates_profile_away_from_north_seam() -> Non
         color_rgb=render_terrain_module.TERRAIN_HORIZON_LINE_COLOR,
         fast_mode=True,
         distance_widths=True,
-        edge_fov_deg=120.0,
-        content_fov_deg=180.0,
         is_in_fov_func=lambda *_args, **_kwargs: True,
         line_width_scale=1.0,
         altaz_to_normalized_xy_func=lambda alt, az, _view_center, **_kwargs: (
