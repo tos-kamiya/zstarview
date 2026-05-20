@@ -94,8 +94,8 @@ def test_draw_deep_sky_shapes_uses_the_same_fill_color_in_all_themes(monkeypatch
         render_deep_sky_objects.draw_deep_sky_shapes(
             painter,
             geometry,
-            celestial_data,
             viewer,
+            celestial_data,
             theme=theme,
         )
         assert painter.brush_rgbs

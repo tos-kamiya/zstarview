@@ -632,8 +632,8 @@ def _draw_terrain_layers(
         render_deep_sky_objects.draw_deep_sky_shapes(
             painter,
             geometry,
-            scene.celestial_data,
             scene.viewer,
+            scene.celestial_data,
             theme=style.theme,
         )
     if style.show_asterisms:

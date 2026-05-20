@@ -145,8 +145,8 @@ def find_highlighted_dso(
 def draw_deep_sky_shapes(
     painter: QPainter,
     geometry: ScreenGeometry,
-    celestial_data: CelestialData,
     viewer_data: ViewerData,
+    celestial_data: CelestialData,
     *,
     theme: ThemeStyle,
 ) -> None:
