@@ -3,13 +3,12 @@ from __future__ import annotations
 import math
 
 import numpy as np
-from PySide6.QtCore import QPointF, QRectF, Qt
+from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPainter, QPolygonF
 
 from ..astro import altaz_to_normalized_xy
 from ..night_lights import NightLightGlowProfile, night_light_strength_factor
-from ..paths import ThemeStyle
-from ..types import ScreenGeometry
+from ..types import ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
 from .guides import split_by_gaps
 
@@ -282,20 +281,27 @@ def draw_night_light_glow_normal(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
-    viewport_rect: QRectF,
     profile: NightLightGlowProfile | None,
     terrain_profile_altaz: list[tuple[float, float]] | None,
-    terrain_profile_distances_m: list[float] | None = None,
     terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
-    terrain_secondary_ridges_distances_m_layers: list[list[float]] | None = None,
-    view_center: tuple[float, float],
-    theme: ThemeStyle,
+    viewer_data: ViewerData | None = None,
+    view_center: tuple[float, float] | None = None,
     opacity: float = 1.0,
     sun_alt_deg: float | None = None,
-    edge_fov_deg: float,
-    content_fov_deg: float,
+    edge_fov_deg: float | None = None,
+    content_fov_deg: float | None = None,
 ) -> None:
     """Draw the full normal-mode night light glow."""
+    if viewer_data is not None:
+        view_center = tuple(float(value) for value in viewer_data.view_center)
+        edge_fov_deg = float(viewer_data.edge_fov_deg)
+        content_fov_deg = float(viewer_data.content_fov_deg)
+    if view_center is None:
+        raise ValueError("view_center is required when viewer_data is not provided")
+    if edge_fov_deg is None:
+        raise ValueError("edge_fov_deg is required when viewer_data is not provided")
+    if content_fov_deg is None:
+        raise ValueError("content_fov_deg is required when viewer_data is not provided")
     _draw_night_light_glow_impl(
         painter,
         geometry=geometry,
@@ -313,34 +319,38 @@ def draw_night_light_glow(
     painter: QPainter,
     *,
     geometry: ScreenGeometry,
-    viewport_rect: QRectF,
     profile: NightLightGlowProfile | None,
     terrain_profile_altaz: list[tuple[float, float]] | None,
-    terrain_profile_distances_m: list[float] | None = None,
     terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
-    terrain_secondary_ridges_distances_m_layers: list[list[float]] | None = None,
-    view_center: tuple[float, float],
-    theme: ThemeStyle,
+    viewer_data: ViewerData | None = None,
+    view_center: tuple[float, float] | None = None,
     opacity: float = 1.0,
     sun_alt_deg: float | None = None,
-    edge_fov_deg: float,
-    content_fov_deg: float,
+    edge_fov_deg: float | None = None,
+    content_fov_deg: float | None = None,
     fast_mode: bool = False,
 ) -> None:
     """Compatibility wrapper kept for existing callers."""
     if fast_mode:
         return
+    if viewer_data is not None:
+        view_center = tuple(float(value) for value in viewer_data.view_center)
+        edge_fov_deg = float(viewer_data.edge_fov_deg)
+        content_fov_deg = float(viewer_data.content_fov_deg)
+    if view_center is None:
+        raise ValueError("view_center is required when viewer_data is not provided")
+    if edge_fov_deg is None:
+        raise ValueError("edge_fov_deg is required when viewer_data is not provided")
+    if content_fov_deg is None:
+        raise ValueError("content_fov_deg is required when viewer_data is not provided")
     draw_night_light_glow_normal(
         painter,
         geometry=geometry,
-        viewport_rect=viewport_rect,
         profile=profile,
         terrain_profile_altaz=terrain_profile_altaz,
-        terrain_profile_distances_m=terrain_profile_distances_m,
         terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
-        terrain_secondary_ridges_distances_m_layers=terrain_secondary_ridges_distances_m_layers,
+        viewer_data=viewer_data,
         view_center=view_center,
-        theme=theme,
         opacity=opacity,
         sun_alt_deg=sun_alt_deg,
         edge_fov_deg=edge_fov_deg,

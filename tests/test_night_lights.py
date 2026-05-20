@@ -1,17 +1,15 @@
 from __future__ import annotations
 
 import numpy as np
-from PySide6.QtCore import QRectF
 from PySide6.QtGui import QImage, QPainter
 from PySide6.QtWidgets import QApplication
 
 from zstarview import night_lights
-from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.render.night_lights import (
     draw_night_light_glow,
     night_light_distance_strength_factor,
 )
-from zstarview.types import ScreenGeometry
+from zstarview.types import ScreenGeometry, ViewerData
 
 app = QApplication.instance() or QApplication([])
 
@@ -201,21 +199,25 @@ def test_draw_night_light_glow_smoke() -> None:
             ),
             sun_alt_deg=-5.0,
         )
+        viewer_data = ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="UTC",
+            city_name="Tokyo",
+            view_center=(0.0, 180.0),
+            edge_fov_deg=95.0,
+            content_fov_deg=110.0,
+        )
         draw_night_light_glow(
             painter,
             geometry=ScreenGeometry(center=(100, 50), radius=45),
-            viewport_rect=QRectF(0.0, 0.0, 200.0, 100.0),
             profile=profile,
             terrain_profile_altaz=[
                 (0.0, 170.0),
                 (0.0, 180.0),
                 (0.0, 190.0),
             ],
-            view_center=(0.0, 180.0),
-            theme=THEME_STYLES_BY_PRESET["night"],
+            viewer_data=viewer_data,
             sun_alt_deg=-5.0,
-            edge_fov_deg=95.0,
-            content_fov_deg=110.0,
         )
     finally:
         painter.end()
@@ -256,18 +258,22 @@ def test_draw_night_light_glow_respects_opacity() -> None:
     full.fill(0)
     p_full = QPainter(full)
     try:
-        draw_night_light_glow(
-            p_full,
-                geometry=ScreenGeometry(center=(60, 40), radius=36),
-                viewport_rect=QRectF(0.0, 0.0, 120.0, 80.0),
-                profile=profile,
-                terrain_profile_altaz=[(0.0, 175.0), (0.0, 185.0)],
-                view_center=(0.0, 180.0),
-                theme=THEME_STYLES_BY_PRESET["night"],
-                opacity=1.0,
-                sun_alt_deg=-5.0,
+        viewer_data = ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="UTC",
+            city_name="Tokyo",
+            view_center=(0.0, 180.0),
             edge_fov_deg=95.0,
             content_fov_deg=110.0,
+        )
+        draw_night_light_glow(
+            p_full,
+            geometry=ScreenGeometry(center=(60, 40), radius=36),
+            profile=profile,
+            terrain_profile_altaz=[(0.0, 175.0), (0.0, 185.0)],
+            viewer_data=viewer_data,
+            opacity=1.0,
+            sun_alt_deg=-5.0,
         )
     finally:
         p_full.end()
@@ -276,18 +282,22 @@ def test_draw_night_light_glow_respects_opacity() -> None:
     dim.fill(0)
     p_dim = QPainter(dim)
     try:
-        draw_night_light_glow(
-            p_dim,
-                geometry=ScreenGeometry(center=(60, 40), radius=36),
-                viewport_rect=QRectF(0.0, 0.0, 120.0, 80.0),
-                profile=profile,
-                terrain_profile_altaz=[(0.0, 175.0), (0.0, 185.0)],
-                view_center=(0.0, 180.0),
-                theme=THEME_STYLES_BY_PRESET["night"],
-                opacity=0.25,
-                sun_alt_deg=-5.0,
+        viewer_data = ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="UTC",
+            city_name="Tokyo",
+            view_center=(0.0, 180.0),
             edge_fov_deg=95.0,
             content_fov_deg=110.0,
+        )
+        draw_night_light_glow(
+            p_dim,
+            geometry=ScreenGeometry(center=(60, 40), radius=36),
+            profile=profile,
+            terrain_profile_altaz=[(0.0, 175.0), (0.0, 185.0)],
+            viewer_data=viewer_data,
+            opacity=0.25,
+            sun_alt_deg=-5.0,
         )
     finally:
         p_dim.end()
@@ -296,18 +306,22 @@ def test_draw_night_light_glow_respects_opacity() -> None:
     zero.fill(0)
     p_zero = QPainter(zero)
     try:
-        draw_night_light_glow(
-            p_zero,
-                geometry=ScreenGeometry(center=(60, 40), radius=36),
-                viewport_rect=QRectF(0.0, 0.0, 120.0, 80.0),
-                profile=profile,
-                terrain_profile_altaz=[(0.0, 175.0), (0.0, 185.0)],
-                view_center=(0.0, 180.0),
-                theme=THEME_STYLES_BY_PRESET["night"],
-                opacity=0.0,
-                sun_alt_deg=-5.0,
+        viewer_data = ViewerData(
+            location=(35.0, 139.0),
+            timezone_name="UTC",
+            city_name="Tokyo",
+            view_center=(0.0, 180.0),
             edge_fov_deg=95.0,
             content_fov_deg=110.0,
+        )
+        draw_night_light_glow(
+            p_zero,
+            geometry=ScreenGeometry(center=(60, 40), radius=36),
+            profile=profile,
+            terrain_profile_altaz=[(0.0, 175.0), (0.0, 185.0)],
+            viewer_data=viewer_data,
+            opacity=0.0,
+            sun_alt_deg=-5.0,
         )
     finally:
         p_zero.end()
@@ -333,14 +347,17 @@ def test_draw_night_light_glow_uses_flat_horizon_when_missing_terrain() -> None:
         draw_night_light_glow(
             painter,
             geometry=ScreenGeometry(center=(100, 50), radius=45),
-            viewport_rect=QRectF(0.0, 0.0, 200.0, 100.0),
             profile=profile,
             terrain_profile_altaz=None,
-            view_center=(0.0, 180.0),
-            theme=THEME_STYLES_BY_PRESET["night"],
+            viewer_data=ViewerData(
+                location=(35.0, 139.0),
+                timezone_name="UTC",
+                city_name="Tokyo",
+                view_center=(0.0, 180.0),
+                edge_fov_deg=95.0,
+                content_fov_deg=110.0,
+            ),
             sun_alt_deg=-5.0,
-            edge_fov_deg=95.0,
-            content_fov_deg=110.0,
         )
     finally:
         painter.end()

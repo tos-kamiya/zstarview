@@ -1370,16 +1370,10 @@ class SkyCompositorCache:
                     draw_night_light_glow_normal(
                         night_painter,
                         geometry=night_geometry,
-                        viewport_rect=QRectF(0.0, 0.0, float(w), float(h)),
                         profile=night_light_glow_profile,
                         terrain_profile_altaz=terrain_profile_altaz if terrain_profile_altaz else None,
-                        terrain_profile_distances_m=terrain_profile_distances_m,
                         terrain_secondary_ridges_altaz_layers=terrain_secondary_ridges_altaz_layers,
-                        terrain_secondary_ridges_distances_m_layers=(
-                            terrain_secondary_ridges_distances_m_layers
-                        ),
                         view_center=view_center,
-                        theme=theme,
                         opacity=float(night_light_opacity),
                         sun_alt_deg=night_light_sun_alt_deg,
                         edge_fov_deg=edge_fov_deg,
