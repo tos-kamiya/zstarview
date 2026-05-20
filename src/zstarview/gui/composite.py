@@ -33,8 +33,7 @@ from ..render.background import (
     draw_altitude_ring_overlay,
 )
 from ..render.earth_guide import (
-    draw_earth_guide_fast,
-    draw_earth_guide_normal,
+    draw_earth_guide,
     earth_guide_line_alpha,
 )
 from ..render.geometry import normalized_to_screen_xy
@@ -997,14 +996,14 @@ def _overlay_earth_guide(
     painter = QPainter(out)
     painter.setRenderHint(QPainter.Antialiasing, True)
     try:
-        draw_earth_guide_fn = draw_earth_guide_fast if fast_mode else draw_earth_guide_normal
-        draw_earth_guide_fn(
+        draw_earth_guide(
             painter,
             geometry=geometry,
             viewer_data=viewer_data,
             terrain_profile_altaz=terrain_profile_altaz,
             earth_guide_opacity=float(earth_guide_opacity),
             visibility_boost=float(visibility_boost),
+            fast_mode=fast_mode,
         )
     finally:
         painter.end()

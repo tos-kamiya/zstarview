@@ -339,7 +339,7 @@ def test_overlay_earth_guide_forwards_fast_mode(monkeypatch) -> None:
 
     monkeypatch.setattr(
         render_composite,
-        "draw_earth_guide_fast",
+        "draw_earth_guide",
         lambda *_args, **_kwargs: calls.append(True),
     )
 

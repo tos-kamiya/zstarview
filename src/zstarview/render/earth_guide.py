@@ -813,84 +813,6 @@ def _draw_earth_guide_render(
         painter.restore()
 
 
-def _draw_earth_guide_fast_impl(
-    painter: QPainter,
-    *,
-    geometry: ScreenGeometry,
-    viewer_data: ViewerData,
-    terrain_profile_altaz: list[tuple[float, float]] | None = None,
-    earth_guide_opacity: float = 0.028,
-    visibility_boost: float = 1.0,
-) -> None:
-    _draw_earth_guide_render(
-        painter,
-        geometry=geometry,
-        viewer_data=viewer_data,
-        terrain_profile_altaz=terrain_profile_altaz,
-        earth_guide_opacity=earth_guide_opacity,
-        visibility_boost=visibility_boost,
-        fast_mode=True,
-    )
-
-
-def _draw_earth_guide_normal_impl(
-    painter: QPainter,
-    *,
-    geometry: ScreenGeometry,
-    viewer_data: ViewerData,
-    terrain_profile_altaz: list[tuple[float, float]] | None = None,
-    earth_guide_opacity: float = 0.028,
-    visibility_boost: float = 1.0,
-) -> None:
-    _draw_earth_guide_render(
-        painter,
-        geometry=geometry,
-        viewer_data=viewer_data,
-        terrain_profile_altaz=terrain_profile_altaz,
-        earth_guide_opacity=earth_guide_opacity,
-        visibility_boost=visibility_boost,
-        fast_mode=False,
-    )
-
-
-def draw_earth_guide_fast(
-    painter: QPainter,
-    *,
-    geometry: ScreenGeometry,
-    viewer_data: ViewerData,
-    terrain_profile_altaz: list[tuple[float, float]] | None = None,
-    earth_guide_opacity: float = 0.028,
-    visibility_boost: float = 1.0,
-) -> None:
-    """Draw the reduced fast-mode earth guide."""
-    _draw_earth_guide_fast_impl(
-        painter,
-        geometry=geometry,
-        viewer_data=viewer_data,
-        terrain_profile_altaz=terrain_profile_altaz,
-        earth_guide_opacity=earth_guide_opacity,
-        visibility_boost=visibility_boost,
-    )
-
-
-def draw_earth_guide_normal(
-    painter: QPainter,
-    *,
-    geometry: ScreenGeometry,
-    viewer_data: ViewerData,
-    terrain_profile_altaz: list[tuple[float, float]] | None = None,
-    earth_guide_opacity: float = 0.028,
-    visibility_boost: float = 1.0,
-) -> None:
-    """Draw the full normal-mode earth guide."""
-    _draw_earth_guide_normal_impl(
-        painter,
-        geometry=geometry,
-        viewer_data=viewer_data,
-        terrain_profile_altaz=terrain_profile_altaz,
-        earth_guide_opacity=earth_guide_opacity,
-        visibility_boost=visibility_boost,
-    )
 
 
 def draw_earth_guide(
@@ -903,22 +825,13 @@ def draw_earth_guide(
     visibility_boost: float = 1.0,
     fast_mode: bool = False,
 ) -> None:
-    """Compatibility wrapper kept for existing callers and tests."""
-    if fast_mode:
-        _draw_earth_guide_fast_impl(
-            painter,
-            geometry=geometry,
-            viewer_data=viewer_data,
-            terrain_profile_altaz=terrain_profile_altaz,
-            earth_guide_opacity=earth_guide_opacity,
-            visibility_boost=visibility_boost,
-        )
-        return
-    _draw_earth_guide_normal_impl(
+    """Draw the Earth guide, optionally using the reduced fast mode."""
+    _draw_earth_guide_render(
         painter,
         geometry=geometry,
         viewer_data=viewer_data,
         terrain_profile_altaz=terrain_profile_altaz,
         earth_guide_opacity=earth_guide_opacity,
         visibility_boost=visibility_boost,
+        fast_mode=fast_mode,
     )
