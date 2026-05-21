@@ -40,9 +40,10 @@ DEFAULT_CLOUD_FOV_OVERSCAN_DEG = 2.0
 
 
 class CloudController(QObject):
-    """Orchestrates cloud fetch/render and exposes state via Qt signals."""
+    """Orchestrates cloud source fetch and render work."""
 
     cloud_started = Signal(object)
+    cloud_source_ready = Signal(object)
     cloud_ready = Signal(object)
     cloud_failed = Signal(object)
 
@@ -51,10 +52,11 @@ class CloudController(QObject):
         self._clouddisc = clouddisc
         self._source_is_running = False
         self._render_is_running = False
-        self._pending_source_request: Optional[dict] = None
-        self._pending_render_request: Optional[dict] = None
+        self._pending_source_request: Optional[dict[str, object]] = None
+        self._pending_render_request: Optional[dict[str, object]] = None
         self._latest_source: Optional[CloudSourceData] = None
-        self._latest_request_id = 0
+        self._latest_source_request_id = 0
+        self._latest_render_request_id = 0
         self._stopping = False
         self._cleanup_counter = 0
         self._cleanup_interval = 10
@@ -75,7 +77,7 @@ class CloudController(QObject):
         with self._lock:
             if self._stopping:
                 return
-            self._latest_request_id += 1
+            self._latest_render_request_id += 1
             self._pending_render_request = None
 
     def has_in_flight_update(self) -> bool:
@@ -89,7 +91,54 @@ class CloudController(QObject):
                 or bool(self._active_workers)
             )
 
+    def has_source_data(self) -> bool:
+        with self._lock:
+            return self._latest_source is not None
+
     def update(
+        self,
+        *,
+        lat: float,
+        lon: float,
+        reason: str = "manual",
+    ) -> bool:
+        """Fetch a new cloud source, without rendering it."""
+        return self.update_source(lat=lat, lon=lon, reason=reason)
+
+    def update_source(
+        self,
+        *,
+        lat: float,
+        lon: float,
+        reason: str = "manual",
+    ) -> bool:
+        request = {
+            "lat": float(lat),
+            "lon": float(lon),
+            "reason": str(reason),
+        }
+        run_cleanup = False
+        with self._lock:
+            if self._stopping:
+                return False
+            self._latest_source_request_id += 1
+            request_id = int(self._latest_source_request_id)
+            request["request_id"] = request_id
+            if self._source_is_running:
+                self._pending_source_request = dict(request)
+                return False
+            self._source_is_running = True
+            run_cleanup = self._tick_cleanup()
+
+        if run_cleanup:
+            self._spawn_worker(target=self._cleanup_cache, kwargs={}, label="cleanup")
+
+        sat = self._predicted_satellite(request["lat"], request["lon"])
+        self.cloud_started.emit({"satellite": sat, "banner": "Clouds: downloading..."})
+        self._spawn_worker(target=self._run_source_update, kwargs=request, label="source")
+        return True
+
+    def update_render(
         self,
         *,
         lat: float,
@@ -100,69 +149,40 @@ class CloudController(QObject):
         content_fov_deg: float,
         reason: str = "manual",
         render_generation: int = 0,
-    ) -> None:
-        render_req = {
+    ) -> bool:
+        request = {
             "lat": float(lat),
             "lon": float(lon),
             "alt": float(alt),
             "az": float(az),
             "radius_px": int(radius_px),
             "content_fov_deg": float(content_fov_deg),
-            "reason": reason,
+            "reason": str(reason),
             "render_generation": int(render_generation),
         }
-        source_req = {
-            "lat": float(lat),
-            "lon": float(lon),
-            "reason": reason,
-        }
-        start_render_req: Optional[dict] = None
-        start_source_req: Optional[dict] = None
-        run_cleanup = False
-
         with self._lock:
             if self._stopping:
-                return
-            self._latest_request_id += 1
-            request_id = int(self._latest_request_id)
-            render_req["request_id"] = request_id
+                return False
+            source = self._latest_source
+            if source is None:
+                return False
+            self._latest_render_request_id += 1
+            request_id = int(self._latest_render_request_id)
+            request["request_id"] = request_id
+            request["source_id"] = id(source)
+            request["source_key"] = getattr(source, "source_key", None)
+            if self._render_is_running:
+                self._pending_render_request = dict(request)
+                return False
+            self._render_is_running = True
 
-            need_source = self._latest_source is None or self._should_refresh_source(reason)
-            if need_source:
-                self._pending_render_request = dict(render_req)
-                if self._source_is_running:
-                    self._pending_source_request = dict(source_req)
-                else:
-                    self._source_is_running = True
-                    start_source_req = dict(source_req)
-                    run_cleanup = self._tick_cleanup()
-            elif self._source_is_running:
-                self._pending_render_request = dict(render_req)
-            elif self._render_is_running:
-                self._pending_render_request = dict(render_req)
-            else:
-                start_render_req = dict(render_req)
-                self._render_is_running = True
-
-        if run_cleanup:
-            self._spawn_worker(target=self._cleanup_cache, kwargs={}, label="cleanup")
-
-        if start_source_req is not None:
-            sat = self._predicted_satellite(start_source_req["lat"], start_source_req["lon"])
-            self.cloud_started.emit({"satellite": sat, "banner": "Clouds: downloading..."})
-            self._spawn_worker(target=self._run_source_update, kwargs=start_source_req, label="source")
-
-        if start_render_req is not None:
-            self._spawn_worker(target=self._run_render_update, kwargs=start_render_req, label="render")
+        self._spawn_worker(target=self._run_render_update, kwargs=request, label="render")
+        return True
 
     def _tick_cleanup(self) -> bool:
         run = (self._cleanup_counter % self._cleanup_interval) == 0
         self._cleanup_counter += 1
         return run
-
-    @staticmethod
-    def _should_refresh_source(reason: str) -> bool:
-        return reason in {"initial", "timer", "toggle-on", "manual"}
 
     def _predicted_satellite(self, lat: float, lon: float) -> str:
         return pick_satellite(lat, lon, ("AUTO",))
@@ -224,8 +244,9 @@ class CloudController(QObject):
         lat: float,
         lon: float,
         reason: str,
+        request_id: int,
     ) -> None:
-        next_req: Optional[dict] = None
+        next_req: Optional[dict[str, object]] = None
         try:
             if reason == "initial":
                 logger.info("Fetching initial cloud data (reason=%s)...", reason)
@@ -240,24 +261,22 @@ class CloudController(QObject):
                         abort_event=self._download_abort_event,
                     )
                 with self._lock:
-                    if not self._stopping:
+                    is_latest = not self._stopping and request_id == self._latest_source_request_id
+                    if is_latest:
                         self._latest_source = source
-
-                rerender_req = None
-                with self._lock:
-                    if not self._stopping:
-                        if self._pending_source_request is not None:
-                            next_req = dict(self._pending_source_request)
-                            self._pending_source_request = None
-                        elif (
-                            self._pending_render_request is not None
-                            and not self._render_is_running
-                        ):
-                            rerender_req = dict(self._pending_render_request)
-                            self._pending_render_request = None
-                            self._render_is_running = True
-                if rerender_req is not None:
-                    self._spawn_worker(target=self._run_render_update, kwargs=rerender_req, label="render")
+                if is_latest:
+                    satellite = str(getattr(source, "satellite", "")).strip()
+                    product = str(getattr(source, "product", "")).strip()
+                    self.cloud_source_ready.emit(
+                        {
+                            "source": source,
+                            "satellite": satellite,
+                            "product": product,
+                            "source_key": getattr(source, "source_key", None),
+                            "refreshed_at_utc": datetime.now(timezone.utc),
+                            "banner": "Clouds: projecting...",
+                        }
+                    )
             except DownloadCancelledError:
                 logger.info("Cloud source download cancelled")
             except VisibilityError as e:
@@ -284,7 +303,7 @@ class CloudController(QObject):
             with self._lock:
                 self._source_is_running = False
                 if not self._stopping and self._pending_source_request is not None:
-                    next_req = self._pending_source_request
+                    next_req = dict(self._pending_source_request)
                     self._pending_source_request = None
             if next_req is not None:
                 sat = self._predicted_satellite(next_req["lat"], next_req["lon"])
@@ -305,9 +324,11 @@ class CloudController(QObject):
         content_fov_deg: float,
         reason: str,
         request_id: int,
+        source_id: int,
+        source_key: object | None = None,
         render_generation: int = 0,
     ) -> None:
-        next_req: Optional[dict] = None
+        next_req: Optional[dict[str, object]] = None
         try:
             with self._lock:
                 source = self._latest_source
@@ -340,9 +361,26 @@ class CloudController(QObject):
             finished_at_utc = datetime.now(timezone.utc)
 
             with self._lock:
-                is_latest = (request_id == self._latest_request_id)
+                current_source = self._latest_source
+                current_source_id = id(current_source) if current_source is not None else None
+                current_source_key = getattr(current_source, "source_key", None)
+                is_latest = (
+                    not self._stopping
+                    and request_id == self._latest_render_request_id
+                    and source_id == current_source_id
+                    and (
+                        source_key is None
+                        or source_key == current_source_key
+                    )
+                )
             if not is_latest:
-                logger.debug("Discard stale cloud render result request_id=%s latest=%s", request_id, self._latest_request_id)
+                logger.debug(
+                    "Discard stale cloud render result request_id=%s latest=%s source_id=%s current_source_id=%s",
+                    request_id,
+                    self._latest_render_request_id,
+                    source_id,
+                    current_source_id,
+                )
                 return
 
             self.cloud_ready.emit(
@@ -368,10 +406,8 @@ class CloudController(QObject):
                 if (
                     not self._stopping
                     and self._pending_render_request is not None
-                    and not self._source_is_running
-                    and self._pending_source_request is None
                 ):
-                    next_req = self._pending_render_request
+                    next_req = dict(self._pending_render_request)
                     self._pending_render_request = None
                     self._render_is_running = True
             if next_req is not None:

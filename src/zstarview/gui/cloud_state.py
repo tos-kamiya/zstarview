@@ -25,6 +25,7 @@ class CloudImageState:
     meta: Optional[Any] = None
     banner_text: Optional[str] = None
     current_satellite: Optional[str] = None
+    source_refreshed_at_utc: Optional[datetime] = None
     last_az: Optional[float] = None
     last_time_utc: Optional[datetime] = None
     source_key: Optional[SourceKey] = None
@@ -63,6 +64,24 @@ class CloudImageState:
         self.coverage_ratio = coverage_ratio
         self.missing_mask_key = missing_mask_key
         self.banner_text = None
+
+    def set_source_ready(
+        self,
+        *,
+        refreshed_at_utc: datetime,
+        satellite: str | None = None,
+        source_key: Optional[SourceKey] = None,
+        banner_text: str | None = None,
+    ) -> None:
+        self.source_refreshed_at_utc = refreshed_at_utc
+        if satellite:
+            self.current_satellite = str(satellite)
+        if source_key is not None:
+            self.source_key = source_key
+        if banner_text is not None:
+            self.banner_text = banner_text
+        else:
+            self.banner_text = None
 
     def set_error_banner(self, text: str) -> None:
         self.banner_text = text

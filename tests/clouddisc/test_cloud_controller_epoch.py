@@ -58,7 +58,7 @@ def test_cloud_render_discards_stale_request_id() -> None:
         src_paths=[Path("/tmp/fake.nc")],
     )
     controller._latest_source = source
-    controller._latest_request_id = 2
+    controller._latest_render_request_id = 2
     emitted = []
     controller.cloud_ready.connect(lambda payload: emitted.append(payload))
 
@@ -71,6 +71,7 @@ def test_cloud_render_discards_stale_request_id() -> None:
         content_fov_deg=90.0,
         reason="manual",
         request_id=1,
+        source_id=1,
     )
 
     assert emitted == []
@@ -80,9 +81,8 @@ def test_cloud_update_keeps_latest_pending_render_request() -> None:
     controller = CloudController(_FakeCloudDisc())
     controller._latest_source = object()
     controller._render_is_running = True
-    controller._source_is_running = True
 
-    controller.update(
+    controller.update_render(
         lat=35.0,
         lon=139.0,
         alt=45.0,
@@ -91,7 +91,7 @@ def test_cloud_update_keeps_latest_pending_render_request() -> None:
         content_fov_deg=90.0,
         reason="manual",
     )
-    controller.update(
+    controller.update_render(
         lat=35.0,
         lon=139.0,
         alt=50.0,

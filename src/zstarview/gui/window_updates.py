@@ -45,6 +45,16 @@ def _cloud_satellite_group(satellite: str) -> str:
         return "HIMAWARI"
     return sat
 
+
+def _request_cloud_projection_update(obj: object, *, reason: str) -> None:
+    projector = getattr(obj, "reproject_cloud_overlay", None)
+    if callable(projector):
+        projector(reason=reason)
+        return
+    fallback = getattr(obj, "start_background_cloud_update", None)
+    if callable(fallback):
+        fallback(reason=reason)
+
 def _initial_data_load_active(obj: object) -> bool:
     return bool(obj._startup_initial_load_started) and not bool(
         obj._startup_initial_data_loaded
@@ -54,6 +64,9 @@ def _initial_data_load_active(obj: object) -> bool:
 class SkyWindowUpdatesMixin:
     def _viewport_interaction_active(self) -> bool:
         return bool(self.state.viewport_interaction_mode)
+
+    def request_cloud_projection_update(self, *, reason: str) -> None:
+        _request_cloud_projection_update(self, reason=reason)
 
     def _background_updates_busy(self) -> bool:
         controllers = (
@@ -88,6 +101,20 @@ class SkyWindowUpdatesMixin:
 
     def _aircraft_projection_next_refresh_delay_ms(self) -> int | None:
         next_refresh_utc = self.state.aircraft_projection_next_refresh_utc
+        if next_refresh_utc is None:
+            return None
+        return max(
+            0,
+            int(
+                round(
+                    (next_refresh_utc - datetime.now(timezone.utc)).total_seconds()
+                    * 1000.0
+                )
+            ),
+        )
+
+    def _cloud_projection_next_refresh_delay_ms(self) -> int | None:
+        next_refresh_utc = getattr(self.state, "cloud_projection_next_refresh_utc", None)
         if next_refresh_utc is None:
             return None
         return max(
@@ -218,6 +245,10 @@ class SkyWindowUpdatesMixin:
 
         if self._satellite_layer_enabled() and self._satellite_projection_next_refresh_delay_ms() == 0:
             self.reproject_satellite_overlay()
+            return
+
+        if self._cloud_layer_enabled() and self._cloud_projection_next_refresh_delay_ms() == 0:
+            self._start_cloud_projection_update(reason="scheduler")
             return
 
     def _status_line_message(self) -> str:
@@ -452,7 +483,7 @@ class SkyWindowUpdatesMixin:
             self.state.viewport_interaction_stars = None
             self._sync_viewport_interaction_chrome_visibility()
             if not self._is_shutting_down:
-                self.start_background_cloud_update(reason="view-change-release")
+                _request_cloud_projection_update(self, reason="view-change-release")
                 self.start_background_terrain_horizon_update(
                     reason="view-change-release"
                 )
@@ -593,16 +624,35 @@ class SkyWindowUpdatesMixin:
                 logger.info("Updating sky data (reason=%s)...", reason)
         return started
 
+    def _cloud_layer_enabled(self) -> bool:
+        return self._clouddisc is not None and float(self.cloud_disc_alpha) > 0.0
+
     def start_background_cloud_update(self, reason: str = "manual") -> None:
         if self._is_shutting_down:
             return
         if self._viewport_interaction_active():
             return
-        if not (self._cloud_controller and self.cloud_disc_alpha > 0.0):
+        if not (self._cloud_controller and self._cloud_layer_enabled()):
             return
         lat, lon = self.viewer_data.location
+        self._cloud_controller.update_source(
+            lat=lat,
+            lon=lon,
+            reason=reason,
+        )
+
+    def _start_cloud_projection_update(self, reason: str = "manual") -> bool:
+        if self._is_shutting_down:
+            return False
+        if self._viewport_interaction_active():
+            return False
+        if not (self._cloud_controller and self._cloud_layer_enabled()):
+            return False
+        if not self._cloud_controller.has_source_data():
+            return False
+        lat, lon = self.viewer_data.location
         alt, az = self.viewer_data.view_center
-        self._cloud_controller.update(
+        return self._cloud_controller.update_render(
             lat=lat,
             lon=lon,
             alt=alt,
@@ -612,6 +662,20 @@ class SkyWindowUpdatesMixin:
             reason=reason,
             render_generation=int(self._disc_generation),
         )
+
+    def reproject_cloud_overlay(self, reason: str = "manual") -> None:
+        if self._is_shutting_down:
+            return
+        if self._viewport_interaction_active():
+            return
+        if not (self._cloud_controller and self._cloud_layer_enabled()):
+            return
+        if not self._cloud_controller.has_source_data():
+            self.state.cloud_projection_next_refresh_utc = None
+            self.start_background_cloud_update(reason=reason)
+            return
+        self.state.cloud_projection_next_refresh_utc = datetime.now(timezone.utc)
+        self._on_scheduler_tick()
 
     def start_background_satellite_update(self, reason: str = "manual") -> bool:
         if self._is_shutting_down:
@@ -697,6 +761,29 @@ class SkyWindowUpdatesMixin:
             self.cloud_state.current_satellite = sat
         if banner:
             self.cloud_state.set_error_banner(banner)
+        if sat or banner:
+            self.request_client_update()
+
+    def _on_cloud_source_ready(self, payload: Dict) -> None:
+        sat = str(payload.get("satellite", "")).strip()
+        source_key = payload.get("source_key")
+        refreshed_at = payload.get("refreshed_at_utc")
+        if not isinstance(refreshed_at, datetime):
+            refreshed_at = datetime.now(timezone.utc)
+        banner = str(payload.get("banner", "")).strip()
+        self.cloud_state.set_source_ready(
+            refreshed_at_utc=refreshed_at,
+            satellite=sat or None,
+            source_key=source_key,
+            banner_text=banner or "Clouds: projecting...",
+        )
+        self.state.cloud_next_refresh_utc = refreshed_at + timedelta(seconds=CLOUD_UPDATE_INTERVAL)
+        self.state.cloud_projection_next_refresh_utc = datetime.now(timezone.utc)
+        if self.state.interaction_mode:
+            self.state.cloud_repaint_deferred = True
+        else:
+            _request_cloud_projection_update(self, reason="source-ready")
+        self.request_client_update()
 
     def _on_satellite_started(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
@@ -742,7 +829,7 @@ class SkyWindowUpdatesMixin:
                 current_generation,
             )
             if not self._is_shutting_down:
-                self.start_background_cloud_update(reason="stale-render")
+                _request_cloud_projection_update(self, reason="stale-render")
             return
         self.cloud_state.set_result(
             payload["image"],
@@ -755,9 +842,7 @@ class SkyWindowUpdatesMixin:
             source_key=payload.get("source_key"),
             request_id=payload.get("request_id"),
         )
-        self.state.cloud_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
-            seconds=CLOUD_UPDATE_INTERVAL
-        )
+        self.state.cloud_projection_next_refresh_utc = None
         self._compositor.invalidate()
         if self.state.interaction_mode:
             self.state.cloud_repaint_deferred = True
@@ -771,6 +856,7 @@ class SkyWindowUpdatesMixin:
         self.state.cloud_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
             seconds=CLOUD_UPDATE_INTERVAL
         )
+        self.state.cloud_projection_next_refresh_utc = None
         if self.state.interaction_mode:
             self.state.cloud_repaint_deferred = True
         if banner:

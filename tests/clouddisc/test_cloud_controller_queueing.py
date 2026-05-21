@@ -18,25 +18,15 @@ class _DummyCloudDisc:
 def test_cloud_update_keeps_latest_pending_source_request() -> None:
     controller = CloudController(_DummyCloudDisc())
     controller._source_is_running = True
-    controller._render_is_running = True
-    controller._latest_source = object()
 
     controller.update(
         lat=35.0,
         lon=139.0,
-        alt=45.0,
-        az=180.0,
-        radius_px=256,
-        content_fov_deg=90.0,
         reason="timer",
     )
     controller.update(
         lat=36.0,
         lon=140.0,
-        alt=50.0,
-        az=200.0,
-        radius_px=256,
-        content_fov_deg=90.0,
         reason="timer",
     )
 
@@ -62,8 +52,9 @@ def test_source_completion_keeps_pending_render_queued_when_render_is_running() 
         "reason": "manual",
         "request_id": 10,
     }
+    controller._latest_source_request_id = 1
 
-    controller._run_source_update(lat=35.0, lon=139.0, reason="manual")
+    controller._run_source_update(lat=35.0, lon=139.0, reason="manual", request_id=1)
 
     assert controller._pending_render_request is not None
     assert controller._pending_render_request["request_id"] == 10
@@ -90,16 +81,11 @@ def test_cloud_update_defers_render_until_source_is_ready() -> None:
     controller.update(
         lat=35.0,
         lon=139.0,
-        alt=45.0,
-        az=180.0,
-        radius_px=256,
-        content_fov_deg=90.0,
         reason="initial",
     )
 
     assert [label for label, _kwargs in calls] == ["source"]
-    assert controller._pending_render_request is not None
-    assert controller._pending_render_request["request_id"] == 1
+    assert controller._pending_render_request is None
 
 
 def test_cloud_shutdown_waits_for_active_worker_threads(monkeypatch) -> None:
@@ -119,10 +105,6 @@ def test_cloud_shutdown_waits_for_active_worker_threads(monkeypatch) -> None:
     controller.update(
         lat=35.0,
         lon=139.0,
-        alt=45.0,
-        az=180.0,
-        radius_px=256,
-        content_fov_deg=90.0,
         reason="manual",
     )
 
@@ -166,10 +148,6 @@ def test_cloud_shutdown_cancels_active_source_download(monkeypatch) -> None:
     controller.update(
         lat=35.0,
         lon=139.0,
-        alt=45.0,
-        az=180.0,
-        radius_px=256,
-        content_fov_deg=90.0,
         reason="initial",
     )
 

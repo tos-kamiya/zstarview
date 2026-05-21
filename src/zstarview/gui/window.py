@@ -626,6 +626,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if self._clouddisc is not None:
             self._cloud_controller = CloudController(self._clouddisc, self)
             self._cloud_controller.cloud_started.connect(self._on_cloud_started)
+            self._cloud_controller.cloud_source_ready.connect(self._on_cloud_source_ready)
             self._cloud_controller.cloud_ready.connect(self._on_cloud_ready)
             self._cloud_controller.cloud_failed.connect(self._on_cloud_failed)
         self._satellite_controller = SatelliteController(parent=self)
@@ -1407,6 +1408,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.cloud_state.render_key = None
             self.cloud_state.request_id = None
             self.cloud_state.missing_mask_key = None
+            self.state.cloud_projection_next_refresh_utc = None
             self._compositor.invalidate()
 
     def _begin_interaction_mode(self) -> None:
@@ -1418,7 +1420,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             return
         self.state.interaction_mode = False
         self.request_sky_data_update(reason="interaction-idle")
-        self.start_background_cloud_update(reason="view-change-idle")
+        projector = getattr(self, "request_cloud_projection_update", None)
+        if callable(projector):
+            projector(reason="view-change-idle")
+        else:
+            self.start_background_cloud_update(reason="view-change-idle")
         self.start_background_terrain_horizon_update(reason="view-change-idle")
 
     def _begin_viewport_interaction_mode(
@@ -1449,6 +1455,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 cloud_state.render_key = None
                 cloud_state.request_id = None
                 cloud_state.missing_mask_key = None
+                self.state.cloud_projection_next_refresh_utc = None
         if cleared_cloud:
             self._compositor.invalidate()
         if cloud_controller is not None:
@@ -1498,7 +1505,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             if reason.endswith("release")
             else "view-change-idle"
         )
-        self.start_background_cloud_update(reason=refresh_reason)
+        projector = getattr(self, "request_cloud_projection_update", None)
+        if callable(projector):
+            projector(reason=refresh_reason)
+        else:
+            self.start_background_cloud_update(reason=refresh_reason)
         self.start_background_terrain_horizon_update(reason=refresh_reason)
         self.request_client_update()
 
@@ -2285,7 +2296,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self._action_toggle_clouds.setChecked(enable_clouds)
 
         if enable_clouds:
-            self.start_background_cloud_update(reason="toggle-on")
+            projector = getattr(self, "request_cloud_projection_update", None)
+            if callable(projector):
+                projector(reason="toggle-on")
+            else:
+                self.start_background_cloud_update(reason="toggle-on")
             self.state.cloud_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
                 seconds=CLOUD_UPDATE_INTERVAL
             )
