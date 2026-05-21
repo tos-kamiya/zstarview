@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-05-21
+最終更新: 2026-05-22
 
 ## 1. この文書の位置づけ
 
@@ -1013,12 +1013,14 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `image`: 雲レイヤーの `numpy RGBA`
   - `missing_mask`: 欠損領域を表す 2D `uint8` alpha 配列
   - `cloud_amount_field`: ストライプ線幅生成用の雲量場
-  - `meta`、`coverage_ratio`、`source_key`、`render_key`、`request_id` などの更新メタデータ
+  - `meta`、`coverage_ratio`、`source_key`、`render_key`、`request_id`、`source_refreshed_at_utc` などの更新メタデータ
 
 雲レイヤーの内部表現は、`CloudState` と `CloudImageState` が担う。  
 `CloudController` は取得結果を `QImage` に先に変換せず、NumPy ベースの雲バッファとして保持してよい。  
+`CloudController` は `update_source()` と `update_render()` を別経路として持ち、`cloud_source_ready` と `cloud_ready` を分けて通知してよい。  
 `SkyCompositorCache` は cloud image / missing mask / cloud amount field を NumPy ベースで扱い、ストライプ描画、masking、missing tint 適用をそのまま進めてよい。  
-雲投影モデルは、単一球殻だけに固定せず、同じ source から複数の代表高度球殻へ再投影してから混合してよい。
+雲投影モデルは、単一球殻だけに固定せず、同じ source から複数の代表高度球殻へ再投影してから混合してよい。  
+雲の source fetch は定期更新の対象としてよいが、view 依存の projection は source ready・viewport change・resize に応じて別途要求する demand-driven 処理として扱ってよい。
 
 内部表現の詳細は次の通り。
 
@@ -1046,6 +1048,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `SourceKey` に視点条件を加えた描画条件キー
 
 この分離により、ソース取得をやり直さずに視点変更のみ再描画できる。
+`SourceKey` が同じでも view 条件が変われば `RenderKey` は変わるので、取得と投影の latest-wins は別々に扱ってよい。
 
 ### 5.5 人工衛星関連
 
@@ -1286,11 +1289,12 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
    - Himawari の slot 選定では、全 88 タイルの完全性よりも、描画と warm-threshold 推定に必要なタイルの充足を優先してよい。
    - Himawari の描画用タイルに限り、観測地点から 50 km より遠い欠損は clear-sky 相当として扱ってよい。
    - Himawari の赤道帯タイルは別の warm-threshold 推定入力として扱い、欠損時は前回有効値へのフォールバックを優先してよい。
-4. 視点条件に応じて雲画像を描画する。
-5. 生成済み画像の反映は latest-wins でよく、古い視点の再投影結果は破棄してよい。
-6. 欠損領域がある場合は欠損マスクも渡す。
-7. 雲取得または再描画が進行中の間は、viewport interaction 開始時でも既存の雲バッファを保持してよい。確定結果が届いた時点でのみ、必要に応じて更新・破棄する。
-8. 定期更新は `finished_at + interval` を基準に次回期限を決め、worker idle の tick で期限到来時だけ再取得を起動してよい。
+4. source fetch が完了したら `cloud_source_ready` を発火し、必要なら即座に render request を再投入する。
+5. 視点条件に応じて雲画像を描画する。
+6. 生成済み画像の反映は latest-wins でよく、古い source や古い視点の再投影結果は破棄してよい。
+7. 欠損領域がある場合は欠損マスクも渡す。
+8. 雲取得または再描画が進行中の間は、viewport interaction 開始時でも既存の雲バッファを保持してよい。確定結果が届いた時点でのみ、必要に応じて更新・破棄する。
+9. 定期更新は `finished_at + interval` を基準に次回期限を決め、worker idle の tick で期限到来時だけ source fetch を起動してよい。projection は source ready / viewport change / resize 由来の demand-driven 更新として扱ってよい。
 
 ### 6.6 地形地平線更新フロー
 
@@ -1390,7 +1394,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - tick は worker idle 時だけ 0.7 秒間隔で進め、期限到来や表示条件変化があるときだけ normal-mode の更新を 1 件起動してよい
   - worker busy 中に tick が複数回発生しても、期限管理は絶対時刻で行い、未消化 tick を個別に積まずに次回 idle で 1 件だけ処理してよい
   - 同時に複数の定期更新が成立した場合は、`aircraft -> satellite -> cloud` の順で 1 件ずつ起動する
-  - cloud / satellite / aircraft のデータ取得は同じ節で並べ、satellite / aircraft の描画時投影とは別の責務として扱う
+  - cloud は source fetch だけを定期更新対象とし、projection は source ready / viewport change / resize 由来の demand-driven タスクとして別責務で扱ってよい
+  - satellite / aircraft のデータ取得は同じ節で並べ、satellite / aircraft の描画時投影とは別の責務として扱う
   - satellite / aircraft の描画時投影は最下位優先の scheduler タスクとして扱い、各 controller の `refreshed_at_utc + interval` を次回期限にしてよい
   - satellite / aircraft の再投入は latest-win とし、古い投影要求は新しい要求で差し替えてよい
 
@@ -1425,7 +1430,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 ### 8.2 latest-request-wins
 
 - 視点変更の fast-mode 再投影と、ダウンロード済みデータの再取得の扱いは `7. スレッドモデル` にまとめる。
-- 雲更新、人工衛星更新、航空機更新のダウンロード結果自体は後続の UI 状態へ積み上がるため、古い視点の中間描画だけを捨てる。
+- 雲は source fetch と projection を別の latest-wins 系列として扱い、古い source 結果や古い視点の再投影結果だけを捨ててよい。
+- 人工衛星更新、航空機更新のダウンロード結果自体は後続の UI 状態へ積み上がるため、古い視点の中間描画だけを捨てる。
 - 検索由来の marker は UI スレッドで採用し、scheduler が寿命切れだけを消してよい。
 
 ### 8.3 CLI と GUI の整合
@@ -1563,7 +1569,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 ### 9.2 補助機能エラー
 
-- 雲取得失敗は雲機能内で閉じる。
+- 雲の source fetch 失敗と projection 失敗は、どちらも雲機能内で閉じる。
 - 雲取得または再描画が in-flight の間は、既存の雲バッファを維持してよい。
 - 地形地平線取得失敗は terrain 機能内で閉じる。
 - 航空機取得失敗は aircraft 機能内で閉じる。
@@ -1571,7 +1577,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 ### 9.3 再試行方針
 
-- 雲は更新タイミングごとに再取得の機会がある。
+- 雲は source fetch の更新タイミングごとに再取得の機会がある。
+- 雲の projection は source ready / viewport change / resize に応じて再実行してよい。
 - 地形地平線は同一セッション中の自動再試行を抑制する。
 - 航空機は `5分` タイマーごとに再取得の機会がある。
 - 航空機の予想描画時投影はセッション内 `2秒` タイマーで繰り返してよい。
@@ -1802,7 +1809,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - タイムゾーン解釈
 - 星カタログ前処理
 - 惑星・恒星描画ルール
-- 雲更新キューイング
+- 雲 source fetch / projection 分離
 - 地形地平線計算
 - 航空機 state vector 正規化
 - 観測地点由来 `bbox` の生成

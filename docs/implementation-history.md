@@ -1,6 +1,6 @@
 # zstarview 実装履歴
 
-最終更新: 2026-05-17
+最終更新: 2026-05-22
 
 ## 1. この文書の位置づけ
 
@@ -47,6 +47,17 @@
   - Updated the dev-sample SVG previews and the water-run scan demo to avoid geometry-library dependencies outside SVG path generation.
 
 ## 4. 実装履歴
+
+### 2026-05-22
+
+- 雲の取得と投影の分離
+  - 気象衛星の更新を source fetch と projection に分けた。
+  - source fetch 中は `Downloading`、projection 中は `Projecting` を表示できるようにした。
+  - `cloud_source_ready` を導入し、取得完了後の投影更新を他の更新処理と分離した。
+  - source / render の latest-wins を別系統で扱うようにし、古い視点の再投影結果を捨てやすくした。
+
+- version bump
+  - `__version__` を `1.27.12` に上げた。
 
 ### 2026-05-17
 
