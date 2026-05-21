@@ -15,7 +15,7 @@ _DSO_SHAPE_SIZE_GAIN = 1.0
 _DSO_HOVER_SIZE_GAIN = 3.0
 _DSO_SHAPE_MIN_MAJOR_ARCMIN = 15.0
 _DSO_CATALOG_LIKE_NAME_RE = re.compile(r"^(M\d+|NGC\d+|IC\d+|MEL\d+|MWSC\d+)$", re.IGNORECASE)
-DSO_LABEL_RGB = (110, 185, 255)
+DSO_LABEL_RGB = (122, 173, 240)
 
 
 def _is_named_dso(name: object, obj_id: object) -> bool:
@@ -204,7 +204,7 @@ def draw_dso_hover_info(
     alt = float(obj.get("alt", 0.0))
     az = float(obj.get("az", 0.0))
     hover_fill_alpha = 70 if theme.label_outline_suppressed else 62
-    hover_pen_alpha = 220 if theme.label_outline_suppressed else 230
+    hover_pen_alpha = 180 if theme.label_outline_suppressed else 190
     hover_pen = QColor(DSO_LABEL_RGB[0], DSO_LABEL_RGB[1], DSO_LABEL_RGB[2], hover_pen_alpha)
     hover_fill = QColor(DSO_LABEL_RGB[0], DSO_LABEL_RGB[1], DSO_LABEL_RGB[2], hover_fill_alpha)
     base_poly = _dso_ellipse_polygon(

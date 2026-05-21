@@ -99,7 +99,7 @@ def test_draw_deep_sky_shapes_uses_the_same_fill_color_in_all_themes(monkeypatch
             theme=theme,
         )
         assert painter.brush_rgbs
-        assert painter.brush_rgbs[0][:3] == (110, 185, 255)
+        assert painter.brush_rgbs[0][:3] == (122, 173, 240)
 
 
 def test_draw_dso_hover_info_uses_dso_label_color_in_all_themes() -> None:
@@ -136,3 +136,5 @@ def test_draw_dso_hover_info_uses_dso_label_color_in_all_themes() -> None:
         )
         assert painter.pen_rgbs
         assert painter.pen_rgbs[-1][:3] == DSO_LABEL_RGB
+        expected_alpha = 180 if theme.label_outline_suppressed else 190
+        assert painter.pen_rgbs[-1][3] == expected_alpha
