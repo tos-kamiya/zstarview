@@ -1248,7 +1248,14 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
     def _ensure_startup_log_overlay(self) -> StartupLogOverlay:
         if self._startup_log_overlay is None:
-            self._startup_log_overlay = StartupLogOverlay(self._client_widget)
+            theme = THEME_STYLES_BY_PRESET.get(
+                self.visual_preset,
+                THEME_STYLES_BY_PRESET["night"],
+            )
+            self._startup_log_overlay = StartupLogOverlay(
+                self._client_widget,
+                text_rgb=theme.text.foreground_rgb,
+            )
         self._layout_startup_log_overlay()
         return self._startup_log_overlay
 

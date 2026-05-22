@@ -5,6 +5,7 @@ import logging
 from PySide6.QtWidgets import QApplication, QWidget
 
 from zstarview.gui.window import StartupLogOverlay
+from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.startup_log import BufferedStartupLogHandler
 
 _app = QApplication.instance() or QApplication([])
@@ -54,6 +55,18 @@ def test_startup_log_overlay_colors_errors() -> None:
     html = overlay.toHtml()
     assert "startup failed" in html
     assert "#ff8080" in html
+
+
+def test_startup_log_overlay_can_use_theme_text_color() -> None:
+    parent = QWidget()
+    theme = THEME_STYLES_BY_PRESET["day"]
+    overlay = StartupLogOverlay(parent, text_rgb=theme.text.foreground_rgb)
+
+    overlay.append_line("startup line", logging.INFO)
+    html = overlay.toHtml().lower()
+
+    red, green, blue = theme.text.foreground_rgb
+    assert f"#{red:02x}{green:02x}{blue:02x}" in html
 
 
 def test_startup_log_overlay_append_line_does_not_process_events(monkeypatch) -> None:

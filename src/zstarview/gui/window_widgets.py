@@ -98,8 +98,17 @@ class StartupLogOverlay(QTextEdit):
 
     line_received = Signal(str, int)
 
-    def __init__(self, parent: QWidget) -> None:
+    def __init__(
+        self,
+        parent: QWidget,
+        *,
+        text_rgb: tuple[int, int, int] | None = None,
+    ) -> None:
         super().__init__(parent)
+        if text_rgb is None:
+            text_rgb = (245, 245, 245)
+        red, green, blue = (int(text_rgb[0]), int(text_rgb[1]), int(text_rgb[2]))
+        self._info_color = f"#{red:02x}{green:02x}{blue:02x}"
         self.setReadOnly(True)
         self.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
         self.setUndoRedoEnabled(False)
@@ -108,7 +117,7 @@ class StartupLogOverlay(QTextEdit):
         self.setStyleSheet(
             "QTextEdit {"
             " background-color: rgba(0, 0, 0, 180);"
-            " color: rgba(245, 245, 245, 230);"
+            f" color: rgba({red}, {green}, {blue}, 230);"
             " border: 2px solid rgba(255, 255, 255, 60);"
             " padding: 10px 12px;"
             " font-family: monospace;"
@@ -129,7 +138,7 @@ class StartupLogOverlay(QTextEdit):
             return "#ff8080"
         if levelno >= logging.WARNING:
             return "#ffcf80"
-        return "#f5f5f5"
+        return self._info_color
 
     def _append_line(self, line: str, levelno: int) -> None:
         color = self._line_color(levelno)
