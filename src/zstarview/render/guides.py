@@ -368,6 +368,7 @@ def draw_sky_reference_lines(
         dash_pattern: List[int] | None,
         *,
         width_scale: float = 1.0,
+        fg_width: float | None = None,
     ) -> None:
         width_scale = max(1.0, float(width_scale))
         if len(altaz_points) == 1:
@@ -422,14 +423,21 @@ def draw_sky_reference_lines(
                 painter.setPen(mid)
                 painter.drawPolyline(poly)
 
-                fg = _make_reference_pen(color, REFERENCE_LINE_FG_WIDTH * width_scale, 255)
+                fg_pen_width = REFERENCE_LINE_FG_WIDTH if fg_width is None else float(fg_width)
+                fg = _make_reference_pen(color, fg_pen_width * width_scale, 255)
                 if dash_pattern:
                     fg.setDashPattern(dash_pattern)
                 painter.setPen(fg)
                 painter.drawPolyline(poly)
 
     # Keep the ecliptic dash cadence visible while drawing the equator as a solid line.
-    _draw_reference_line(celestial_data.celestial_equator_points, CELESTIAL_EQUATOR_COLOR, None, width_scale=1.14)
+    _draw_reference_line(
+        celestial_data.celestial_equator_points,
+        CELESTIAL_EQUATOR_COLOR,
+        None,
+        width_scale=1.0,
+        fg_width=GRID_LINE_WIDTH,
+    )
     _draw_reference_line(celestial_data.ecliptic_points, ECLIPTIC_COLOR, [4, 6], width_scale=1.14)
     _draw_reference_line(celestial_data.horizon_points, HORIZON_LINE_COLOR, [10, 1])
     painter.restore()

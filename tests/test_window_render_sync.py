@@ -4004,9 +4004,9 @@ def test_draw_sky_reference_lines_uses_wider_dash_patterns(monkeypatch) -> None:
     assert pen_alpha_values[0::3] == [18, 18, 18]
     assert pen_alpha_values[1::3] == [30, 30, 30]
     assert pen_alpha_values[2::3] == [255, 255, 255]
-    assert [round(width, 3) for width in pen_widths[0::3]] == [1.254, 1.254, 1.100]
-    assert [round(width, 3) for width in pen_widths[1::3]] == [0.855, 0.855, 0.750]
-    assert [round(width, 3) for width in pen_widths[2::3]] == [0.627, 0.627, 0.550]
+    assert [round(width, 3) for width in pen_widths[0::3]] == [1.100, 1.254, 1.100]
+    assert [round(width, 3) for width in pen_widths[1::3]] == [0.750, 0.855, 0.750]
+    assert [round(width, 3) for width in pen_widths[2::3]] == [0.510, 0.627, 0.550]
 
 
 def test_draw_direction_labels_uses_horizon_line_color(monkeypatch) -> None:

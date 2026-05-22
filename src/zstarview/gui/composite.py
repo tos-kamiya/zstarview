@@ -50,7 +50,7 @@ from ..render.night_lights import draw_night_light_glow_normal
 from ..render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from ..types import ScreenGeometry, ViewerData
 
-NEVER_RISES_GUIDE_WIDTH_SCALE = 4.56
+NEVER_RISES_GUIDE_WIDTH_SCALE = 4.5
 NEVER_RISES_GUIDE_ALPHA_SCALE = 0.5
 ALT_RING_DIMALT_SAMPLE_AZ_STEP_DEG = 30.0
 

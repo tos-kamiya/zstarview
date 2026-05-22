@@ -440,7 +440,7 @@ def test_never_rises_outline_uses_double_width_scale(monkeypatch) -> None:
         content_fov_deg=90.0,
     )
 
-    assert NEVER_RISES_GUIDE_WIDTH_SCALE == pytest.approx(4.56)
+    assert NEVER_RISES_GUIDE_WIDTH_SCALE == pytest.approx(4.5)
     assert dummy_painter.pen_widths == [
         pytest.approx(REFERENCE_LINE_OUTER_WIDTH * NEVER_RISES_GUIDE_WIDTH_SCALE),
         pytest.approx(REFERENCE_LINE_MID_WIDTH * NEVER_RISES_GUIDE_WIDTH_SCALE),
