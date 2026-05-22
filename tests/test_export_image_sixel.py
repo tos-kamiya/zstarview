@@ -298,6 +298,7 @@ def test_main_writes_overlay_summary_before_sixel(
         terrain_horizon_opacity=0.0,
         urban_outline_opacity=0.0,
         aircraft_opacity=0.0,
+        overlay_font_size=11,
         visual_preset="night",
     )
     runtime_options = SimpleNamespace(delta_t=0.0)
@@ -335,7 +336,7 @@ def test_main_writes_overlay_summary_before_sixel(
         "setup_app",
         lambda _name: SimpleNamespace(setQuitOnLastWindowClosed=lambda _flag: None),
     )
-    monkeypatch.setattr(mod, "_load_fonts", lambda: (object(), object()))
+    monkeypatch.setattr(mod, "_load_fonts", lambda *_args: (object(), object()))
     monkeypatch.setattr(mod, "_build_compositor", lambda *_args, **_kwargs: object())
     monkeypatch.setattr(mod, "_require_sixel_terminal_support", lambda: None)
     monkeypatch.setattr(
@@ -400,6 +401,7 @@ def test_main_continues_when_cloud_layer_is_unavailable(
         terrain_horizon_opacity=0.0,
         urban_outline_opacity=0.0,
         aircraft_opacity=0.0,
+        overlay_font_size=11,
         visual_preset="night",
     )
     runtime_options = SimpleNamespace(delta_t=0.0)
@@ -438,7 +440,7 @@ def test_main_continues_when_cloud_layer_is_unavailable(
         "setup_app",
         lambda _name: SimpleNamespace(setQuitOnLastWindowClosed=lambda _flag: None),
     )
-    monkeypatch.setattr(mod, "_load_fonts", lambda: (object(), object()))
+    monkeypatch.setattr(mod, "_load_fonts", lambda *_args: (object(), object()))
     monkeypatch.setattr(mod, "_build_compositor", lambda *_args, **_kwargs: object())
     monkeypatch.setattr(
         mod,
@@ -505,6 +507,7 @@ def test_main_reports_partial_data_note_when_terrain_layer_aborts(
         terrain_horizon_opacity=0.05,
         urban_outline_opacity=0.0,
         aircraft_opacity=0.0,
+        overlay_font_size=11,
         visual_preset="night",
     )
     runtime_options = SimpleNamespace(delta_t=0.0)
@@ -543,7 +546,7 @@ def test_main_reports_partial_data_note_when_terrain_layer_aborts(
         "setup_app",
         lambda _name: SimpleNamespace(setQuitOnLastWindowClosed=lambda _flag: None),
     )
-    monkeypatch.setattr(mod, "_load_fonts", lambda: (object(), object()))
+    monkeypatch.setattr(mod, "_load_fonts", lambda *_args: (object(), object()))
     monkeypatch.setattr(mod, "_build_compositor", lambda *_args, **_kwargs: object())
     monkeypatch.setattr(
         mod,

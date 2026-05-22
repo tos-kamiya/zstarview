@@ -76,7 +76,7 @@ from ..paths import (
     STARS_CSV_FILE,
     STATUS_LINE_FONT_SIZE,
     TEXT_FONT_PATH,
-    TEXT_FONT_SIZE,
+    OVERLAY_FONT_SIZE_DEFAULT,
     THEME_STYLES_BY_PRESET,
     ThemeStyle,
 )
@@ -421,6 +421,7 @@ def _build_window_inputs_from_args(
         urban_outline_opacity=args.urban_outline_opacity,
         water_overlay_opacity=args.water_surface_opacity,
         ground_tint_opacity=args.ground_tint_opacity,
+        overlay_font_size=args.overlay_font_size,
         enlarge_moon=bool(args.enlarge_moon),
         bright_bodies_mode=str(args.bright_bodies),
         star_base_radius=args.star_base_radius,
@@ -461,13 +462,14 @@ def _build_window_inputs_from_args(
     return catalogs, viewer_data, user_options, runtime_options, search_overlay_target
 
 
-def _load_fonts() -> tuple[QFont, QFont]:
+def _load_fonts(overlay_font_size: float = float(OVERLAY_FONT_SIZE_DEFAULT)) -> tuple[QFont, QFont]:
     text_font_id = QFontDatabase.addApplicationFont(TEXT_FONT_PATH)
     text_font_family = QFontDatabase.applicationFontFamilies(text_font_id)[0]
-    return (
-        QFont(text_font_family, TEXT_FONT_SIZE),
-        QFont(text_font_family, STATUS_LINE_FONT_SIZE),
-    )
+    text_font = QFont(text_font_family)
+    text_font.setPointSizeF(float(overlay_font_size))
+    status_line_font = QFont(text_font_family)
+    status_line_font.setPointSizeF(float(STATUS_LINE_FONT_SIZE))
+    return (text_font, status_line_font)
 
 
 def _build_compositor(
@@ -1286,7 +1288,7 @@ def main() -> None:
     app = setup_app(f"{APP_DISPLAY_NAME} Export Image")
     app.setQuitOnLastWindowClosed(False)
 
-    text_font, status_line_font = _load_fonts()
+    text_font, status_line_font = _load_fonts(user_options.overlay_font_size)
     compositor = _build_compositor(runtime_options, user_options)
     output_arg = args.output
     output_path = None if output_arg in {None, "-"} else Path(output_arg).expanduser()

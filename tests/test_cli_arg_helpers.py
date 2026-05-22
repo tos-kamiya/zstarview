@@ -6,6 +6,7 @@ import re
 import pytest
 
 from zstarview.cli import args as cli_args
+from zstarview.paths import OVERLAY_FONT_SIZE_DEFAULT
 
 
 def _build_export_like_parser() -> argparse.ArgumentParser:
@@ -108,6 +109,23 @@ def test_main_parser_accepts_height_add_option() -> None:
     args = cli_args.parse_args(["--height-add-m", "123", "Matsue"])
 
     assert float(args.observer_height_m) == 123.0
+
+
+def test_main_parser_sets_default_overlay_font_size() -> None:
+    args = cli_args.parse_args(["Matsue"])
+
+    assert args.overlay_font_size == OVERLAY_FONT_SIZE_DEFAULT
+
+
+def test_main_parser_accepts_overlay_font_size_override() -> None:
+    args = cli_args.parse_args(["--overlay-font-size", "14.5", "Matsue"])
+
+    assert args.overlay_font_size == 14.5
+
+
+def test_main_parser_rejects_overlay_font_size_out_of_range() -> None:
+    with pytest.raises(SystemExit):
+        cli_args.parse_args(["--overlay-font-size", "7", "Matsue"])
 
 
 def test_export_image_help_text_uses_shared_groups() -> None:

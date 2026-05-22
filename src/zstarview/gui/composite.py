@@ -24,7 +24,6 @@ from ..paths import (
     CLOUD_HATCH_DEFAULT,
     CLOUD_MISSING_TINT_RGBA,
     PALETTE_NEVER_RISES_GUIDE_RGB,
-    PALETTE_NEVER_RISES_RGB,
     HatchConfig,
     ThemeStyle,
 )

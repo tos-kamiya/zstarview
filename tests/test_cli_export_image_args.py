@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import pytest
+from PySide6.QtGui import QFont
 
 from zstarview.__about__ import __version__
 from zstarview.cli.args import parse_export_image_args
+import zstarview.cli.export_image as mod
 from zstarview.cli.export_image import (
     _clamp_view_center_altitude,
     _format_search_failure_message,
@@ -19,6 +21,8 @@ def test_parse_export_image_args_accepts_shared_and_export_specific_options() ->
             "Matsue Station",
             "--content-fov-deg",
             "110",
+            "--overlay-font-size",
+            "14.5",
             "--water-surface-opacity",
             "0.12",
             "--urban-outline-skyscraper-radius-km",
@@ -36,6 +40,7 @@ def test_parse_export_image_args_accepts_shared_and_export_specific_options() ->
 
     assert args.place == "Matsue Station"
     assert args.content_fov_deg == 110.0
+    assert args.overlay_font_size == 14.5
     assert args.water_surface_opacity == 0.12
     assert args.urban_outline_skyscraper_radius_km == 48.0
     assert args.image_size == (1280, 720)
@@ -44,6 +49,21 @@ def test_parse_export_image_args_accepts_shared_and_export_specific_options() ->
     assert args.include_direction_grid is True
     assert args.output == "out.png"
     assert args.sixel is False
+
+
+def test_load_fonts_uses_fractional_overlay_font_size(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(mod.QFontDatabase, "addApplicationFont", lambda _path: 1)
+    monkeypatch.setattr(
+        mod.QFontDatabase,
+        "applicationFontFamilies",
+        lambda _font_id: ["Test Font"],
+    )
+
+    text_font, status_line_font = mod._load_fonts(14.5)
+
+    assert isinstance(text_font, QFont)
+    assert text_font.pointSizeF() == 14.5
+    assert status_line_font.pointSizeF() == 8.0
 
 
 def test_parse_export_image_args_supports_version_option(

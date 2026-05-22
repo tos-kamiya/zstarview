@@ -17,7 +17,12 @@ from ..astro import (
     prepare_star_catalog_meta,
 )
 from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
-from ..paths import CLOUD_MISSING_TINT_RGBA
+from ..paths import (
+    CLOUD_MISSING_TINT_RGBA,
+    OVERLAY_FONT_SIZE_DEFAULT,
+    OVERLAY_FONT_SIZE_MAX,
+    OVERLAY_FONT_SIZE_MIN,
+)
 from ..search.models import SearchJumpTarget
 from ..types import StarCatalogMeta, ViewerData
 from .famous_star_shortcuts import (
@@ -56,6 +61,7 @@ class SkyWindowUserOptions:
     urban_outline_opacity: float = 0.2
     water_overlay_opacity: float = 0.12
     ground_tint_opacity: float = 0.04
+    overlay_font_size: float = float(OVERLAY_FONT_SIZE_DEFAULT)
     enlarge_moon: bool = False
     bright_bodies_mode: str = "outline"
     star_base_radius: float = 4.0
@@ -186,6 +192,7 @@ def prepare_window_user_options(
     urban_outline_opacity: float,
     water_overlay_opacity: float = 0.12,
     ground_tint_opacity: float,
+    overlay_font_size: float = float(OVERLAY_FONT_SIZE_DEFAULT),
     enlarge_moon: bool,
     bright_bodies_mode: str,
     star_base_radius: float,
@@ -208,6 +215,10 @@ def prepare_window_user_options(
 ) -> SkyWindowUserOptions:
     """Normalize user-facing options before constructing SkyWindow."""
     visibility_boost = max(1.0, float(visibility_boost))
+    overlay_font_size = min(
+        float(OVERLAY_FONT_SIZE_MAX),
+        max(float(OVERLAY_FONT_SIZE_MIN), float(overlay_font_size)),
+    )
     return SkyWindowUserOptions(
         sky_disc_alpha=_apply_visibility_boost(sky_disc_alpha, visibility_boost, 1.0),
         sky_disc_style=str(sky_disc_style).strip().lower(),
@@ -222,6 +233,7 @@ def prepare_window_user_options(
         urban_outline_opacity=_apply_visibility_boost(urban_outline_opacity, visibility_boost, 1.0),
         water_overlay_opacity=_apply_visibility_boost(water_overlay_opacity, visibility_boost, 1.0),
         ground_tint_opacity=_apply_visibility_boost(ground_tint_opacity, visibility_boost, 1.0),
+        overlay_font_size=overlay_font_size,
         enlarge_moon=bool(enlarge_moon),
         bright_bodies_mode=str(bright_bodies_mode).strip().lower(),
         star_base_radius=max(2.0, star_base_radius),

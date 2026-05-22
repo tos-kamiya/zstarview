@@ -4,7 +4,15 @@ from typing import Sequence, Tuple, Union
 
 from ..__about__ import __version__
 from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
-from ..paths import CLOUD_MISSING_TINT_RGBA, DIRECTIONS, WINDOW_HEIGHT, WINDOW_WIDTH
+from ..paths import (
+    CLOUD_MISSING_TINT_RGBA,
+    DIRECTIONS,
+    OVERLAY_FONT_SIZE_DEFAULT,
+    OVERLAY_FONT_SIZE_MAX,
+    OVERLAY_FONT_SIZE_MIN,
+    WINDOW_HEIGHT,
+    WINDOW_WIDTH,
+)
 
 WindowGeometryArg = Union[str, Tuple[int, int, int, int]]
 ImageSizeArg = Tuple[int, int]
@@ -106,6 +114,21 @@ def _parse_positive_int(value: str) -> int:
         ) from exc
     if out <= 0:
         raise argparse.ArgumentTypeError("Value must be > 0.")
+    return out
+
+
+def _parse_overlay_font_size(value: str) -> float:
+    """Parse the overlay font size used for canvas text."""
+    try:
+        out = float(value)
+    except (TypeError, ValueError) as exc:
+        raise argparse.ArgumentTypeError(
+            f"Invalid overlay font size: {value!r}"
+        ) from exc
+    if not (OVERLAY_FONT_SIZE_MIN <= out <= OVERLAY_FONT_SIZE_MAX):
+        raise argparse.ArgumentTypeError(
+            f"Value must be between {OVERLAY_FONT_SIZE_MIN} and {OVERLAY_FONT_SIZE_MAX}."
+        )
     return out
 
 
@@ -669,6 +692,17 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         help=(
             "Overlay opacity of the ground tint color below the geometric/terrain horizon "
             "(0.0 - 1.0, default: 0.04)."
+        ),
+    )
+    parser.add_argument(
+        "--overlay-font-size",
+        type=_parse_overlay_font_size,
+        default=OVERLAY_FONT_SIZE_DEFAULT,
+        metavar="POINTS",
+        help=(
+            "Base font size for window-drawn labels and HUD text only "
+            f"({OVERLAY_FONT_SIZE_MIN}-{OVERLAY_FONT_SIZE_MAX}, decimals allowed, default: {OVERLAY_FONT_SIZE_DEFAULT}). "
+            "This does not affect the status line, menus, dialogs, or standard Qt widgets."
         ),
     )
     parser.add_argument(

@@ -70,6 +70,7 @@ class _Args:
     earth_guide_opacity = 0.028
     urban_outline_opacity = 0.2
     ground_tint_opacity = 0.1
+    overlay_font_size = 11
     enlarge_moon = False
     bright_bodies = "outline"
     star_base_radius = 4.0
@@ -121,6 +122,7 @@ def test_build_window_inputs_disables_all_realtime_overlays_for_past(monkeypatch
     assert user_options.cloud_disc_alpha == 0.0
     assert user_options.aircraft_opacity == 0.0
     assert user_options.satellite_opacity == 0.0
+    assert user_options.overlay_font_size == 11
 
 
 def test_build_window_inputs_disables_all_realtime_overlays_for_future(monkeypatch) -> None:

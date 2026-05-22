@@ -80,7 +80,7 @@ from ..paths import (
     OVERTURE_DERIVED_ROOT_DIR,
     STATUS_LINE_FONT_SIZE,
     TEXT_FONT_PATH,
-    TEXT_FONT_SIZE,
+    OVERLAY_FONT_SIZE_DEFAULT,
     THEME_STYLES_BY_PRESET,
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
@@ -587,8 +587,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         # --- Fonts ---
         text_font_id = QFontDatabase.addApplicationFont(TEXT_FONT_PATH)
         text_font_family = QFontDatabase.applicationFontFamilies(text_font_id)[0]
-        self.text_font = QFont(text_font_family, TEXT_FONT_SIZE)
-        self.status_line_font = QFont(text_font_family, STATUS_LINE_FONT_SIZE)
+        self.text_font = QFont(text_font_family)
+        self.text_font.setPointSizeF(
+            float(getattr(user_options, "overlay_font_size", OVERLAY_FONT_SIZE_DEFAULT))
+        )
+        self.status_line_font = QFont(text_font_family)
+        self.status_line_font.setPointSizeF(float(STATUS_LINE_FONT_SIZE))
 
         # --- Data Update Timers and State ---
         self._is_shutting_down: bool = False

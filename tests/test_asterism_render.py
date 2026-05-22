@@ -11,7 +11,6 @@ from zstarview.asterisms import Asterism
 from zstarview.paths import (
     ASTERISM_CLIP_FIELD_OF_VIEW_DEG,
     PALETTE_ASTERISM_LABEL_RGB,
-    PALETTE_ASTERISM_RGB,
     THEME_STYLES_BY_PRESET,
 )
 from zstarview.render import asterisms as render_asterisms

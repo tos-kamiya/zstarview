@@ -178,6 +178,7 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
         aircraft_opacity=0.4,
         ground_tint_opacity=0.2,
         water_overlay_opacity=0.12,
+        overlay_font_size=20.5,
         enlarge_moon=False,
         bright_bodies_mode="outline",
         star_base_radius=4.0,
@@ -218,6 +219,7 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
     assert options.earth_guide_gui_allowed is False
     assert options.urban_outline_gui_allowed is False
     assert options.observation_info_mode is None
+    assert options.overlay_font_size == 18.0
 
 
 def test_toggle_clouds_respects_cli_lockout() -> None:

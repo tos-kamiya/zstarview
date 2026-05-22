@@ -164,6 +164,7 @@ def _make_args(*, close_on_startup_error: bool) -> SimpleNamespace:
         urban_outline_opacity=0.2,
         water_surface_opacity=0.12,
         ground_tint_opacity=0.04,
+        overlay_font_size=11,
         enlarge_moon=False,
         bright_bodies="outline",
         star_base_radius=4.0,
