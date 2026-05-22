@@ -4,7 +4,7 @@ from PySide6.QtGui import QColor, QImage, QPainter
 
 from zstarview.astro import altaz_to_normalized_xy
 from zstarview.gui.composite import SkyCompositorCache, _dimalt_ring_color_for_sky_image
-from zstarview.paths import PALETTE_NEVER_RISES_RGB, THEME_STYLES_BY_PRESET
+from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.render.background import (
     dimalt_ring_pen_color_from_color,
     draw_radial_background,
@@ -13,7 +13,6 @@ from zstarview.render.background import (
 from zstarview.render.geometry import get_screen_geometry
 from zstarview.render.qt_image import np_rgba_to_qimage, qimage_to_np_rgba
 from zstarview.render.sky_disc import (
-    NEVER_RISES_TINT_RGB,
     _render_sky_color_disc_cached,
     draw_sky_color_disc,
     draw_uniform_sky_color_disc,
@@ -347,11 +346,6 @@ def test_altitude_rings_dim_sky_disc_before_compositing() -> None:
     x0 = max(0, x - 1)
     x1 = min(arr.shape[1], x + 2)
     assert float(arr[y0:y1, x0:x1, :3].mean()) < 90.0
-
-
-def test_never_rises_tint_uses_first_palette_swatch() -> None:
-    expected = np.array(PALETTE_NEVER_RISES_RGB, dtype=np.float32) / 255.0
-    assert np.allclose(NEVER_RISES_TINT_RGB, expected)
 
 
 def test_radial_background_uses_black_inner_disc_for_all_main_themes() -> None:

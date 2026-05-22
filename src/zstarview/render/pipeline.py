@@ -555,6 +555,11 @@ def _draw_guide_layer(
         scene.viewer,
         theme=style.theme,
     )
+    render_guides.draw_celestial_pole_markers(
+        painter,
+        geometry,
+        scene.viewer,
+    )
 
 
 def _draw_sky_cloud_layers(

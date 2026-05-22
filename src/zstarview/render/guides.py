@@ -49,6 +49,7 @@ GRID_FINE_AZIMUTHS = tuple(
     for value in range(0, 360, 10)
 )
 GRID_PARALLEL_AZ_SAMPLES = 145
+AXIS_MARKER_HALF_SIZE_PX = 7
 
 
 def _is_major_grid_step(value: float) -> bool:
@@ -69,6 +70,30 @@ class DirectionMarkerHover:
 
 def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
     return float(viewer_data.content_fov_deg)
+
+
+def _draw_cross_marker_at_altaz(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    viewer_data: ViewerData,
+    *,
+    alt_deg: float,
+    az_deg: float,
+    color: tuple[int, int, int],
+) -> None:
+    if not is_in_fov(alt_deg, az_deg, tuple(float(value) for value in viewer_data.view_center), fov_deg=float(viewer_data.content_fov_deg)):
+        return
+    nx, ny = altaz_to_normalized_xy(
+        alt_deg,
+        az_deg,
+        tuple(float(value) for value in viewer_data.view_center),
+        edge_fov_deg=float(viewer_data.edge_fov_deg),
+    )
+    x, y = normalized_to_screen_xy(nx, ny, geometry)
+    s = AXIS_MARKER_HALF_SIZE_PX
+    painter.setPen(QPen(QColor(*color), 1))
+    painter.drawLine(QPointF(x - s, y - s), QPointF(x + s, y + s))
+    painter.drawLine(QPointF(x - s, y + s), QPointF(x + s, y - s))
 
 
 def resolve_direction_marker_hover(
@@ -340,7 +365,7 @@ def draw_sky_reference_lines(
     def _draw_reference_line(
         altaz_points: List[Tuple[float, float]],
         color: tuple[int, int, int],
-        dash_pattern: List[int],
+        dash_pattern: List[int] | None,
         *,
         width_scale: float = 1.0,
     ) -> None:
@@ -398,12 +423,13 @@ def draw_sky_reference_lines(
                 painter.drawPolyline(poly)
 
                 fg = _make_reference_pen(color, REFERENCE_LINE_FG_WIDTH * width_scale, 255)
-                fg.setDashPattern(dash_pattern)
+                if dash_pattern:
+                    fg.setDashPattern(dash_pattern)
                 painter.setPen(fg)
                 painter.drawPolyline(poly)
 
-    # Keep the equator/ecliptic dash cadence visibly separated at normal zoom.
-    _draw_reference_line(celestial_data.celestial_equator_points, CELESTIAL_EQUATOR_COLOR, [12, 6], width_scale=1.14)
+    # Keep the ecliptic dash cadence visible while drawing the equator as a solid line.
+    _draw_reference_line(celestial_data.celestial_equator_points, CELESTIAL_EQUATOR_COLOR, None, width_scale=1.14)
     _draw_reference_line(celestial_data.ecliptic_points, ECLIPTIC_COLOR, [4, 6], width_scale=1.14)
     _draw_reference_line(celestial_data.horizon_points, HORIZON_LINE_COLOR, [10, 1])
     painter.restore()
@@ -454,26 +480,41 @@ def draw_zenith_marker(
         geometry: The screen geometry for coordinate conversion.
         view_center: The current view center (altitude, azimuth).
     """
-    view_center = tuple(float(value) for value in viewer_data.view_center)
-    edge_fov_deg = float(viewer_data.edge_fov_deg)
-    content_fov_deg = float(viewer_data.content_fov_deg)
-    az_ref = view_center[1]
-    s = 7
     # Match the horizon-direction guide color so the zenith/nadir markers stay
     # visually aligned with the rest of the compass overlay in every theme.
-    painter.setPen(QPen(QColor(*HORIZON_LINE_COLOR), 1))
+    view_center = tuple(float(value) for value in viewer_data.view_center)
+    az_ref = view_center[1]
     for alt in (90.0, -90.0):
-        if not is_in_fov(alt, az_ref, view_center, fov_deg=content_fov_deg):
-            continue
-        nx, ny = altaz_to_normalized_xy(
-            alt,
-            az_ref,
-            view_center,
-            edge_fov_deg=edge_fov_deg,
+        _draw_cross_marker_at_altaz(
+            painter,
+            geometry,
+            viewer_data,
+            alt_deg=alt,
+            az_deg=az_ref,
+            color=HORIZON_LINE_COLOR,
         )
-        x, y = normalized_to_screen_xy(nx, ny, geometry)
-        painter.drawLine(QPointF(x - s, y - s), QPointF(x + s, y + s))
-        painter.drawLine(QPointF(x - s, y + s), QPointF(x + s, y - s))
+
+
+def draw_celestial_pole_markers(
+    painter: QPainter,
+    geometry: ScreenGeometry,
+    viewer_data: ViewerData,
+) -> None:
+    """Draw X markers at the north and south celestial poles."""
+    lat_deg = float(viewer_data.lat_deg)
+    pole_specs = (
+        (lat_deg, 0.0),
+        (-lat_deg, 180.0),
+    )
+    for alt_deg, az_deg in pole_specs:
+        _draw_cross_marker_at_altaz(
+            painter,
+            geometry,
+            viewer_data,
+            alt_deg=alt_deg,
+            az_deg=az_deg,
+            color=CELESTIAL_EQUATOR_COLOR,
+        )
 
 
 def draw_direction_labels(

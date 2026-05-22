@@ -3527,6 +3527,11 @@ def test_draw_guide_layer_draws_zenith_marker(monkeypatch) -> None:
         "draw_zenith_marker",
         lambda *_args, **_kwargs: calls.append("zenith"),
     )
+    monkeypatch.setattr(
+        pipeline_module.render_guides,
+        "draw_celestial_pole_markers",
+        lambda *_args, **_kwargs: calls.append("poles"),
+    )
 
     pipeline_module._draw_guide_layer(
         painter=object(),
@@ -3536,7 +3541,7 @@ def test_draw_guide_layer_draws_zenith_marker(monkeypatch) -> None:
         style=_make_style(show_guidelines=True),
     )
 
-    assert calls == ["direction", "zenith"]
+    assert calls == ["direction", "zenith", "poles"]
 
 
 def test_render_base_scene_can_skip_fast_overlays(monkeypatch) -> None:
@@ -3984,7 +3989,7 @@ def test_draw_sky_reference_lines_uses_wider_dash_patterns(monkeypatch) -> None:
 
     assert dash_patterns[0::3] == [[], [], []]
     assert dash_patterns[1::3] == [[], [], []]
-    assert dash_patterns[2::3] == [[12, 6], [4, 6], [10, 1]]
+    assert dash_patterns[2::3] == [[], [4, 6], [10, 1]]
     assert pen_styles[0::3] == [
         Qt.PenStyle.SolidLine,
         Qt.PenStyle.SolidLine,
@@ -4119,6 +4124,64 @@ def test_draw_zenith_marker_uses_horizon_line_color_for_all_themes(
     assert all(
         color == render_guides_module.HORIZON_LINE_COLOR for color in seen_colors
     )
+
+
+def test_draw_celestial_pole_markers_uses_celestial_equator_color_for_all_themes(
+    monkeypatch,
+) -> None:
+    seen_colors: list[tuple[int, int, int]] = []
+    seen_positions: list[tuple[float, float]] = []
+
+    class _FakePen:
+        def __init__(self, color, _width) -> None:
+            seen_colors.append((color.red(), color.green(), color.blue()))
+
+    class _Painter:
+        def setPen(self, _pen) -> None:
+            pass
+
+        def drawLine(self, *_args, **_kwargs) -> None:
+            pass
+
+    monkeypatch.setattr(render_guides_module, "QPen", _FakePen)
+    monkeypatch.setattr(
+        render_guides_module,
+        "is_in_fov",
+        lambda *_args, **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        render_guides_module,
+        "altaz_to_normalized_xy",
+        lambda alt, az, view_center, **_kwargs: (
+            seen_positions.append((float(alt), float(az))) or (float(az), float(alt))
+        ),
+    )
+    monkeypatch.setattr(
+        render_guides_module,
+        "normalized_to_screen_xy",
+        lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+
+    for theme in THEME_STYLES_BY_PRESET.values():
+        render_guides_module.draw_celestial_pole_markers(
+            _Painter(),
+            geometry=SimpleNamespace(center=(0, 0), radius=1),
+            viewer_data=ViewerData(
+                location=(35.0, 139.0),
+                timezone_name="UTC",
+                city_name="Tokyo",
+                view_center=(30.0, 40.0),
+                edge_fov_deg=95.0,
+                content_fov_deg=180.0,
+            ),
+        )
+
+    assert seen_colors
+    assert all(
+        color == render_guides_module.CELESTIAL_EQUATOR_COLOR for color in seen_colors
+    )
+    assert seen_positions[0::2] == [(35.0, 0.0)] * len(THEME_STYLES_BY_PRESET)
+    assert seen_positions[1::2] == [(-35.0, 180.0)] * len(THEME_STYLES_BY_PRESET)
 
 
 def test_draw_urban_outlines_clips_two_point_outline_out_of_view(
