@@ -18,7 +18,7 @@ from zstarview.render import satellites as render_satellites
 from zstarview.render import solar_system as render_solar_system
 from zstarview.render import stars as render_stars
 from zstarview.render import text as render_text
-from zstarview.render.deep_sky_objects import DSO_LABEL_RGB
+from zstarview.render.deep_sky_objects import DSO_LABEL_RGB, DSO_LABEL_TEXT_RGB
 from zstarview.satellite_constants import SATELLITE_HORIZONS_CACHE_KEY
 from zstarview.satellites.types import SatelliteOverlayPoint
 from zstarview.types import (
@@ -950,7 +950,7 @@ def test_overlay_info_colors_dso_labels_like_the_dso_marker() -> None:
 
     assert any(
         text == "Andromeda Galaxy"
-        and (color.red(), color.green(), color.blue()) == DSO_LABEL_RGB
+        and (color.red(), color.green(), color.blue()) == DSO_LABEL_TEXT_RGB
         for text, color in label_calls
     )
 

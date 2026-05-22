@@ -7,7 +7,7 @@ from PySide6.QtCore import QPoint, QPointF, Qt
 from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy
-from ..paths import ThemeStyle
+from ..paths import ThemeStyle, _rgb_from_hsv
 from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
 
@@ -16,6 +16,7 @@ _DSO_HOVER_SIZE_GAIN = 3.0
 _DSO_SHAPE_MIN_MAJOR_ARCMIN = 15.0
 _DSO_CATALOG_LIKE_NAME_RE = re.compile(r"^(M\d+|NGC\d+|IC\d+|MEL\d+|MWSC\d+)$", re.IGNORECASE)
 DSO_LABEL_RGB = (122, 173, 240)
+DSO_LABEL_TEXT_RGB = _rgb_from_hsv(214.1, 49.2, 86.0)
 
 
 def _is_named_dso(name: object, obj_id: object) -> bool:

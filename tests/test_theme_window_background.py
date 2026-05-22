@@ -21,11 +21,11 @@ def test_white_and_day_outline_colors_use_midpoint_tones() -> None:
     assert THEME_STYLES_BY_PRESET["day"].status_text.outline_rgba == (73, 42, 24, 165)
 
 
-def test_white_and_day_text_colors_are_slightly_brighter() -> None:
-    assert THEME_STYLES_BY_PRESET["white"].text.foreground_rgb == (229, 163, 100)
-    assert THEME_STYLES_BY_PRESET["white"].status_text.foreground_rgb == (220, 155, 94)
-    assert THEME_STYLES_BY_PRESET["day"].text.foreground_rgb == (233, 148, 112)
-    assert THEME_STYLES_BY_PRESET["day"].status_text.foreground_rgb == (224, 142, 106)
+def test_white_and_day_text_colors_are_slightly_darker() -> None:
+    assert THEME_STYLES_BY_PRESET["white"].text.foreground_rgb == (209, 149, 91)
+    assert THEME_STYLES_BY_PRESET["white"].status_text.foreground_rgb == (201, 142, 86)
+    assert THEME_STYLES_BY_PRESET["day"].text.foreground_rgb == (214, 136, 103)
+    assert THEME_STYLES_BY_PRESET["day"].status_text.foreground_rgb == (207, 131, 98)
 
 
 def test_transparent_theme_uses_low_alpha_dark_background() -> None:

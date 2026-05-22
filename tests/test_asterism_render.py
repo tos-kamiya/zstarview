@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QApplication
 from zstarview.asterisms import Asterism
 from zstarview.paths import (
     ASTERISM_CLIP_FIELD_OF_VIEW_DEG,
+    PALETTE_ASTERISM_LABEL_RGB,
     PALETTE_ASTERISM_RGB,
     THEME_STYLES_BY_PRESET,
 )
@@ -203,7 +204,7 @@ def test_draw_asterisms_hover_adds_bright_overlay_and_label(monkeypatch) -> None
     assert painter.pen_widths[-1] == 1.0
     assert [c["text"] for c in label_candidates] == ["Test Asterism"]
     label_style = label_candidates[0]["style"]
-    assert (label_style.text_color.red(), label_style.text_color.green(), label_style.text_color.blue()) == PALETTE_ASTERISM_RGB
+    assert (label_style.text_color.red(), label_style.text_color.green(), label_style.text_color.blue()) == PALETTE_ASTERISM_LABEL_RGB
 
 
 def test_draw_asterisms_deduplicates_shared_dim_segments(monkeypatch) -> None:

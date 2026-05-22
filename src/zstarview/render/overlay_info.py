@@ -15,7 +15,11 @@ from ..types import (
     ViewerData,
 )
 from .background import format_overlay_info_lines
-from .deep_sky_objects import _DSO_HOVER_SIZE_GAIN, DSO_LABEL_RGB, _dso_ellipse_polygon
+from .deep_sky_objects import (
+    DSO_LABEL_TEXT_RGB,
+    _DSO_HOVER_SIZE_GAIN,
+    _dso_ellipse_polygon,
+)
 from .text import (
     ResolvedTextStyle,
     get_text_outline_width,
@@ -110,7 +114,7 @@ def draw_overlay_info(
         pa_deg = float(dso_obj.get("pa_deg", 0.0))
         alt = float(dso_obj.get("alt", 0.0))
         az = float(dso_obj.get("az", 0.0))
-        dso_label_style = recolor_text_style(text_style, DSO_LABEL_RGB)
+        dso_label_style = recolor_text_style(text_style, DSO_LABEL_TEXT_RGB)
         hover_poly = _dso_ellipse_polygon(
             alt_deg=alt,
             az_deg=az,

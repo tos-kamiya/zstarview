@@ -1,3 +1,4 @@
+import colorsys
 import os
 import os.path
 from dataclasses import dataclass
@@ -152,6 +153,20 @@ def _theme_sky_disc(opacity: float) -> SkyDiscStyle:
     return SkyDiscStyle(opacity=float(opacity))
 
 
+def _rgb_from_hsv(h_deg: float, s_pct: float, v_pct: float) -> tuple[int, int, int]:
+    """Convert HSV values, given in degrees and percent, to an RGB tuple."""
+    red, green, blue = colorsys.hsv_to_rgb(
+        float(h_deg) / 360.0,
+        float(s_pct) / 100.0,
+        float(v_pct) / 100.0,
+    )
+    return (
+        int(round(red * 255.0)),
+        int(round(green * 255.0)),
+        int(round(blue * 255.0)),
+    )
+
+
 THEME_STYLES_BY_PRESET = {
     "night": ThemeStyle(
         text=TextStyle(
@@ -181,12 +196,12 @@ THEME_STYLES_BY_PRESET = {
     ),
     "white": ThemeStyle(
         text=TextStyle(
-            foreground_rgb=(229, 163, 100),
+            foreground_rgb=_rgb_from_hsv(29.3, 56.3, 82.0),
             outline_rgba=(79, 45, 19, 166),
             outline_width=3.0,
         ),
         status_text=TextStyle(
-            foreground_rgb=(220, 155, 94),
+            foreground_rgb=_rgb_from_hsv(29.0, 57.3, 79.0),
             outline_rgba=(76, 44, 19, 169),
             outline_width=3.0,
         ),
@@ -211,12 +226,12 @@ THEME_STYLES_BY_PRESET = {
     ),
     "day": ThemeStyle(
         text=TextStyle(
-            foreground_rgb=(233, 148, 112),
+            foreground_rgb=_rgb_from_hsv(17.9, 51.9, 84.0),
             outline_rgba=(78, 44, 25, 163),
             outline_width=3.0,
         ),
         status_text=TextStyle(
-            foreground_rgb=(224, 142, 106),
+            foreground_rgb=_rgb_from_hsv(18.3, 52.7, 81.0),
             outline_rgba=(73, 42, 24, 165),
             outline_width=3.0,
         ),
@@ -304,6 +319,7 @@ EARTH_GUIDE_LINE_COLOR = PALETTE_EARTH_GUIDE_RGB
 URBAN_OUTLINE_LAYER_LINE_COLOR = (214, 232, 255)
 CELESTIAL_EQUATOR_COLOR = PALETTE_NEVER_RISES_GUIDE_RGB
 ECLIPTIC_COLOR = (236, 173, 2)
+PALETTE_ASTERISM_LABEL_RGB = _rgb_from_hsv(187.1, 49.2, 86.0)
 
 CLOUD_UPDATE_INTERVAL = 10 * 60  # seconds
 
