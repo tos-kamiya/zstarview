@@ -23,7 +23,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 
 - **Deep-sky objects**: named galaxies/open clusters/globular clusters are shown as soft blue extents.
 - **Asterism overlay**: popular line patterns rather than formal IAU constellation boundaries are shown as dim ambient lines. Mouse-hovering a star in an asterism brightens the matching pattern and shows its label, with 3-second rotation when multiple asterisms share that star.
-- **Sky Guides**: guide overlays include the never-rises region as a guide-line style solid circle with its own warm guide color, distinct from the celestial equator, along with direction labels around the horizon and a zenith marker.
+- **Sky Guides**: guide overlays include the never-rises region as a guide-line style solid circle with its own warm guide color, distinct from the celestial equator, along with direction labels around the horizon, a zenith marker, and celestial pole markers.
 
 **Atmospheric and man-made overlays:**
 
@@ -232,7 +232,7 @@ The GUI supports direct keyboard and menu-based navigation, search, and overlay 
 * **← / →**: Rotate view azimuth by ±5°
 * **↑ / ↓**: Change view altitude by ±5° (clamped to -45°..90°)
 * **Shift + arrow keys**: Fine-tune view direction by 1°
-  While arrow-key input continues, the app keeps a simplified viewport-interaction mode for about 0.7 seconds after the last input. In this mode, it shows stars up to `Vmag <= 4.0`, the celestial equator, ecliptic, horizon, terrain horizon, direction labels, and the zenith marker; planets, full star density, sky-color disc, clouds, night lights, DSO, asterisms, and urban outlines are temporarily hidden.
+  While arrow-key input continues, the app keeps a simplified viewport-interaction mode for about 0.7 seconds after the last input. In this mode, it shows stars up to `Vmag <= 4.0`, the celestial equator, ecliptic, horizon, terrain horizon, direction labels, the zenith marker, and the celestial pole markers; planets, full star density, sky-color disc, clouds, night lights, DSO, asterisms, and urban outlines are temporarily hidden.
 * **M**: Toggle moon enlarged to 5x size
 * **D**: Toggle DSO overlays
 * **A**: Toggle asterism overlays
@@ -262,7 +262,7 @@ From the hamburger menu (`☰`), you can use:
 * **Enlarge Moon**: Toggle moon enlarged to 5x size.
 * **DSO**: Toggle deep-sky object overlays on/off.
 * **Asterisms**: Toggle asterism overlays on/off (when enabled, dim overlays stay visible; hovering a member star brightens the matching asterism and shows its label).
-* **Guidelines**: Toggle the geometric horizon, celestial equator, ecliptic, never-rises solid circle, direction labels, and zenith marker on/off.
+* **Guidelines**: Toggle the geometric horizon, celestial equator, ecliptic, never-rises solid circle, direction labels, zenith marker, and celestial pole markers on/off.
 * **Observation Info**: Toggle the observation-info block on/off. When shown, it stays at the bottom-left by default; `auto` keeps the older hover-avoid placement behavior.
 * **Sky Color**: Switch between the full sky-color gradient and the flat dark-disc fallback.
 * **Clouds**: Toggle real-time cloud overlays on/off.

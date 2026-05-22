@@ -431,10 +431,11 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `status`
 - ここでいう `overlay` は、地点名、Lat/Lon、`Ground ...; Building ...` の 1 行要約、時刻、Alt/Az などの static observation overlay を指す。`Vmag limit` は GUI メニューの disabled 項目で示す。
 - static overlay は hover 系 HUD と同じ更新タイミングに揃えるため、ベース描画ではなく HUD 描画側で重ねる。
-- `guide` は方位ラベルと天頂マーカーを含む独立レイヤーであり、空色・雲合成の上、通常の hover/HUD オーバーレイより手前に置く。
-- `guide` レイヤーには天頂マーカーの「×」が含まれる。
+- `guide` は方位ラベル、天頂マーカー、天の極マーカーを含む独立レイヤーであり、空色・雲合成の上、通常の hover/HUD オーバーレイより手前に置く。
+- `guide` レイヤーには天頂マーカーと天の極マーカーの「×」が含まれる。
 - 幾何学的な地平線、天の赤道、黄道、never-rises の円弧も `show_guidelines` に従う guide 系表示として扱う。
-- 幾何学的な地平線、天の赤道、黄道の線分は、固定刻みの点列をそのまま描くのではなく、画面空間の誤差に応じて再帰分割してから `drawPolyline()` へ渡してよい。
+- 幾何学的な地平線と黄道の線分は、固定刻みの点列をそのまま描くのではなく、画面空間の誤差に応じて再帰分割してから `drawPolyline()` へ渡してよい。
+- 天の赤道は同じ再帰分割を使いつつ、実線として描いてよい。
 - 再帰分割はスクリーン座標系で誤差を評価し、ウィンドウが大きいほど細かく、縮小時は粗くなるようにしてよい。
 - `show_guidelines == False` のときは、guide レイヤー本体だけでなく、viewport interaction 中の sky reference line 描画もまとめて省略してよい。
 - `show_overlay_info` は GUI 側の表示トグルとして保持し、既定では `True` でよい。
@@ -502,7 +503,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 共通 action は `File`、`Search`、`Layers`、`View Direction` の 4 系統に編成する
   - `View Direction` には 5° 刻みの粗調整 action、`Shift` 併用の 1° 精密調整 action、現在値を初期値にした `Set View Center...` 直接指定ダイアログをまとめる
   - `Layers` は空側の `Sky Color`、`Clouds`、`Satellites`、`Aircraft` と、地面側の `Night Lights`、`Urban Outline`、`Terrain Horizon`、`Earth Guide` に分ける
-  - `Sky Guides` は地平線・赤道・黄道・never-rises 領域・方位ラベル・天頂マーカーをまとめた表示群として扱う
+  - `Sky Guides` は地平線・赤道・黄道・never-rises 領域・方位ラベル・天頂マーカー・天の極マーカーをまとめた表示群として扱う
   - frameless ではハンバーガーメニューの 1 階層目に同じ 4 系統の submenu を並べる
 - `src/zstarview/gui/window_state.py`
   - 画面状態の保持
