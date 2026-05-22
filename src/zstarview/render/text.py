@@ -275,18 +275,8 @@ def resolve_label_text_style(
     *,
     opacity: float = 1.0,
 ) -> ResolvedTextStyle:
-    """Resolve a label style and suppress outlines in bright themes."""
-    style = resolve_text_style(theme, font, opacity=opacity)
-    if not theme.label_outline_suppressed:
-        return style
-    outline_color = QColor(style.outline_color)
-    outline_color.setAlpha(0)
-    return ResolvedTextStyle(
-        font=style.font,
-        text_color=style.text_color,
-        outline_color=outline_color,
-        outline_width=0.0,
-    )
+    """Resolve a label style using the theme's text and outline colors."""
+    return resolve_text_style(theme, font, opacity=opacity)
 
 
 def recolor_text_style(

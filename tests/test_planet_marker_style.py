@@ -474,6 +474,83 @@ def test_marker_scale_applies_to_planets_and_moon(monkeypatch) -> None:
     assert moon_draw_radii[1] == moon_draw_radii[0] * 2.0
 
 
+def test_day_and_white_themes_use_gray_planet_moon_sun_annotations(monkeypatch) -> None:
+    cross_colors: list[tuple[int, int, int]] = []
+    label_colors: list[tuple[int, int, int]] = []
+    label_outlines: list[tuple[int, int, int, int, float]] = []
+
+    def fake_draw_gauge_cross(_painter, color, _center, *, scale=1.0, pen_width=1.0):
+        cross_colors.append((color.red(), color.green(), color.blue()))
+
+    def fake_draw_outlined_text(_painter, text, _pos, _font, *_args, style=None, **_kwargs):
+        if style is not None:
+            label_colors.append(
+                (style.text_color.red(), style.text_color.green(), style.text_color.blue())
+            )
+            label_outlines.append((*style.outline_color.getRgb(), style.outline_width))
+
+    monkeypatch.setattr(render_solar_system, "draw_gauge_cross", fake_draw_gauge_cross)
+    monkeypatch.setattr(render_solar_system, "draw_outlined_text", fake_draw_outlined_text)
+    monkeypatch.setattr(render_solar_system, "draw_moon", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(render_solar_system, "draw_planet_disc", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(render_solar_system, "draw_planet_bloom", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(render_solar_system, "draw_planet_outline", lambda *_args, **_kwargs: None)
+
+    sun = PlanetBody(name="sun", alt=45.0, az=180.0, symbol="☉", is_visible=True)
+    moon = PlanetBody(name="moon", alt=45.0, az=180.0, symbol="☾", is_visible=True)
+    mars = PlanetBody(
+        name="mars",
+        alt=45.0,
+        az=180.0,
+        symbol="♂",
+        is_visible=True,
+        vmag=0.0,
+    )
+    viewer = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="UTC",
+        city_name="Tokyo",
+        view_center=(45.0, 180.0),
+    )
+    geometry = ScreenGeometry(center=(100, 100), radius=80)
+    celestial = _empty_celestial_data([sun, moon, mars])
+
+    for preset in ("day", "white"):
+        cross_colors.clear()
+        label_colors.clear()
+        render_solar_system.draw_solar_system_bodies(
+            painter=object(),
+            geometry=geometry,
+            celestial_data=celestial,
+            viewer_data=viewer,
+            enlarge_moon=False,
+            theme=THEME_STYLES_BY_PRESET[preset],
+        )
+
+        assert cross_colors
+        assert all(color == (180, 180, 180) for color in cross_colors)
+        assert label_colors
+        assert all(color == (180, 180, 180) for color in label_colors)
+        assert label_outlines
+        assert all(r == 0 and g == 0 and b == 0 and a == 76 and width == 3.0 for r, g, b, a, width in label_outlines)
+
+
+def test_day_and_white_label_outlines_match_night_theme() -> None:
+    night_style = render_text.resolve_label_text_style(
+        THEME_STYLES_BY_PRESET["night"],
+        QFont(),
+    )
+    night_outline = night_style.outline_color.getRgb()
+
+    for preset in ("day", "white"):
+        style = render_text.resolve_label_text_style(
+            THEME_STYLES_BY_PRESET[preset],
+            QFont(),
+        )
+        assert style.outline_color.getRgb() == night_outline
+        assert style.outline_width == night_style.outline_width
+
+
 def test_planet_draw_and_hover_ignore_horizon_visibility_flag(monkeypatch) -> None:
     disc_calls: list[tuple[float, int, tuple[int, int, int, int]]] = []
 

@@ -28,12 +28,25 @@ from .text import (
     _rect_overlap_count,
     _text_bounds_at_baseline,
     draw_outlined_text,
+    recolor_text_style,
     resolve_text_style,
 )
+
+_NIGHT_ANNOTATION_RGB = (180, 180, 180)
 
 
 def _content_fov_deg_from_viewer(viewer_data: ViewerData) -> float:
     return float(viewer_data.content_fov_deg)
+
+
+def _solar_system_annotation_rgb(theme: ThemeStyle) -> tuple[int, int, int]:
+    if theme.window_background.draw_outer_border:
+        return _NIGHT_ANNOTATION_RGB
+    return theme.text.foreground_rgb
+
+
+def _solar_system_label_style(theme: ThemeStyle, label_font: QFont) -> Any:
+    return recolor_text_style(resolve_text_style(theme, label_font), _solar_system_annotation_rgb(theme))
 
 
 def draw_moon(
@@ -259,13 +272,14 @@ def draw_solar_system_bodies(
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
     marker_scale = max(1.0, float(marker_scale))
 
-    text_color = QColor(*theme.text.foreground_rgb)
+    annotation_rgb = _solar_system_annotation_rgb(theme)
+    text_color = QColor(*annotation_rgb)
     if text_font is not None:
         painter.setFont(text_font)
         label_font = text_font
     else:
         label_font = painter.font() if hasattr(painter, "font") else QFont()
-    label_style = resolve_text_style(theme, label_font)
+    label_style = _solar_system_label_style(theme, label_font)
 
     for body in celestial_data.planets:
         if not is_in_fov(body.alt, body.az, viewer_data.view_center, fov_deg=effective_fov_deg):
