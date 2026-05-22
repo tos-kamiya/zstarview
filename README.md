@@ -23,7 +23,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 
 - **Deep-sky objects**: named galaxies/open clusters/globular clusters are shown as soft blue extents.
 - **Asterism overlay**: popular line patterns rather than formal IAU constellation boundaries are shown as dim ambient lines. Mouse-hovering a star in an asterism brightens the matching pattern and shows its label, with 3-second rotation when multiple asterisms share that star.
-- **Sky Guides**: guide overlays include the never-rises region as a guide-line style solid circle in the same visual family as the celestial equator, along with direction labels around the horizon and a zenith marker.
+- **Sky Guides**: guide overlays include the never-rises region as a guide-line style solid circle with its own warm guide color, distinct from the celestial equator, along with direction labels around the horizon and a zenith marker.
 
 **Atmospheric and man-made overlays:**
 
