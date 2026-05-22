@@ -4067,6 +4067,60 @@ def test_draw_direction_labels_uses_horizon_line_color(monkeypatch) -> None:
     )
 
 
+def test_draw_zenith_marker_uses_horizon_line_color_for_all_themes(
+    monkeypatch,
+) -> None:
+    seen_colors: list[tuple[int, int, int]] = []
+
+    class _FakePen:
+        def __init__(self, color, _width) -> None:
+            seen_colors.append((color.red(), color.green(), color.blue()))
+
+    class _Painter:
+        def setPen(self, _pen) -> None:
+            pass
+
+        def drawLine(self, *_args, **_kwargs) -> None:
+            pass
+
+    monkeypatch.setattr(render_guides_module, "QPen", _FakePen)
+    monkeypatch.setattr(
+        render_guides_module,
+        "is_in_fov",
+        lambda *_args, **_kwargs: True,
+    )
+    monkeypatch.setattr(
+        render_guides_module,
+        "altaz_to_normalized_xy",
+        lambda alt, az, view_center, **_kwargs: (float(az), float(alt)),
+    )
+    monkeypatch.setattr(
+        render_guides_module,
+        "normalized_to_screen_xy",
+        lambda nx, ny, _geometry: (float(nx), float(ny)),
+    )
+
+    for theme in THEME_STYLES_BY_PRESET.values():
+        render_guides_module.draw_zenith_marker(
+            _Painter(),
+            geometry=SimpleNamespace(center=(0, 0), radius=1),
+            viewer_data=ViewerData(
+                location=(35.0, 139.0),
+                timezone_name="UTC",
+                city_name="Tokyo",
+                view_center=(30.0, 40.0),
+                edge_fov_deg=95.0,
+                content_fov_deg=180.0,
+            ),
+            theme=theme,
+        )
+
+    assert seen_colors
+    assert all(
+        color == render_guides_module.HORIZON_LINE_COLOR for color in seen_colors
+    )
+
+
 def test_draw_urban_outlines_clips_two_point_outline_out_of_view(
     monkeypatch,
 ) -> None:

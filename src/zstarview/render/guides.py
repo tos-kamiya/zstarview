@@ -459,7 +459,9 @@ def draw_zenith_marker(
     content_fov_deg = float(viewer_data.content_fov_deg)
     az_ref = view_center[1]
     s = 7
-    painter.setPen(QPen(QColor(*theme.text.foreground_rgb), 1))
+    # Match the horizon-direction guide color so the zenith/nadir markers stay
+    # visually aligned with the rest of the compass overlay in every theme.
+    painter.setPen(QPen(QColor(*HORIZON_LINE_COLOR), 1))
     for alt in (90.0, -90.0):
         if not is_in_fov(alt, az_ref, view_center, fov_deg=content_fov_deg):
             continue

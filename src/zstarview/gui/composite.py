@@ -23,6 +23,7 @@ from ..night_lights import NightLightGlowProfile
 from ..paths import (
     CLOUD_HATCH_DEFAULT,
     CLOUD_MISSING_TINT_RGBA,
+    PALETTE_NEVER_RISES_GUIDE_RGB,
     PALETTE_NEVER_RISES_RGB,
     HatchConfig,
     ThemeStyle,
@@ -919,7 +920,7 @@ def _overlay_never_rises_outline(
     painter = QPainter(paint_img)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
     try:
-        outline_color = np.array(PALETTE_NEVER_RISES_RGB, dtype=np.uint8)
+        outline_color = np.array(PALETTE_NEVER_RISES_GUIDE_RGB, dtype=np.uint8)
         pen_color = QColor(int(outline_color[0]), int(outline_color[1]), int(outline_color[2]))
         outer = QColor(pen_color)
         outer.setAlpha(int(np.clip(round(REFERENCE_LINE_OUTER_ALPHA * NEVER_RISES_GUIDE_ALPHA_SCALE), 0, 255)))
