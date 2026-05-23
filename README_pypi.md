@@ -90,27 +90,11 @@ pip install zstarview
 First run check:
 
 ```bash
-zstarview auto -A5 -Zn
+zstarview-gui
 ```
 
-This starts zstarview using automatic location detection (`auto`), with the
-view centered near the northern horizon (`-A5 -Zn`).
-
-## Quick Start
-
-```bash
-zstarview [options] [location]
-```
-
-Examples:
-
-```bash
-zstarview Tokyo
-zstarview "Tokyo Skytree"
-zstarview "35.68;139.76"
-zstarview --place "Matsue Station" --place-countrycode jp
-zstarview -Z E -A 25 Tokyo
-```
+This opens the startup dialog first. Use `zstarview-gui` for the default GUI
+launch flow after installation.
 
 ## Highlights
 
@@ -123,31 +107,18 @@ zstarview -Z E -A 25 Tokyo
 - Fresh current caches are reused for up to 24 hours for both the ISS cache and the Horizons-backed spacecraft cache.
 - Terrain horizon and earth guide: Copernicus DEM data can be used to render the local terrain skyline and ground region, with a separate below-horizon continental hatch layer for orientation.
 - Urban outline overlay: major rooflines are drawn for the current viewpoint, with optional distant skyscrapers in dense urban areas.
-- Night lights overlay: NASA Earth at Night / Black Marble 2016 Grayscale 500m GeoTIFF tiles are downloaded on demand, cached locally, and rendered as a separate glow layer above the horizon and terrain ridges. Tune it with `--night-light-opacity`.
+- Night lights overlay: NASA Earth at Night / Black Marble 2016 Grayscale 500m GeoTIFF tiles are downloaded on demand, cached locally, and rendered as a separate glow layer above the horizon and terrain ridges.
 - Flexible location input: start from a city, tower, mountain, lat/lon, or online place/station search.
 - Adjustable view center: change the view center from the CLI or with the arrow keys.
 - Python support: routinely tested on CPython 3.10, 3.11, 3.12, 3.13, and 3.14.
 
-## Common Options
+## Entry Points
 
-- `--place QUERY`
-- `--place-countrycode CODE`
-- `--place-lang LANG`
-- `--datetime "YYYY-MM-DD HH[:MM[:SS]] [TZ]"`
-- `-Z, --view-center-az VIEW_CENTER_AZ`
-- `-A, --view-center-alt VIEW_CENTER_ALT`
-- `--observer-height-m METERS`
-- `-V, --vmag-limit V_MAG_LIMIT`
-- `--theme {night,day,white,black,transparent,transparent10..90}`
-- `-o, --output PATH` for `zstarview-export-image`
+This package provides three entry points:
 
-Notes:
-
-- `--place` uses the public OpenStreetMap Nominatim search service and sends a single request with a User-Agent and `Accept-Language`.
-- Satellite cloud rendering downloads Himawari/GOES data from public S3 buckets.
-- Terrain horizon rendering downloads Copernicus DEM tiles on first use and reuses cached data later.
-- Night-light tiles are downloaded on demand and cached locally.
-- Detailed layer-tuning options such as per-layer opacity remain available in the main README, including `--night-light-opacity`.
+- `zstarview-gui` for the interactive startup dialog and GUI launcher, with its own startup profile separate from the legacy CLI config.
+- `zstarview` for GUI launches driven by command-line options, sharing the same option families described in the main README and the CLI reference docs.
+- `zstarview-export-image` for headless one-shot image export, using the same option families as `zstarview` where applicable.
 
 ## Code, Data Licenses, and Credits
 
