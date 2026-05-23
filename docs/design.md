@@ -60,7 +60,11 @@
 - `src/zstarview/gui/viewer.py`
   - GUI アプリケーションの主エントリポイント
   - 起動シーケンスの組み立て
+  - `zstarview-gui` の起動前設定ダイアログを起動し、確定値を GUI 初期状態へ反映する
   - startup overlay は初期 sky データと terrain DEM の両方が揃うまで維持し、ready/fail の両経路で初回表示の切り替えを行う
+- `src/zstarview/gui/startup_dialog.py`
+  - GUI 起動前設定ダイアログを定義する
+  - 前回起動値の編集、Reset 操作、確定/取消の結果を返す
 - `src/zstarview/cli/args.py`
   - CLI オプション定義と値解釈
   - タワー一覧・タワー詳細 JSON 出力の即時終了オプションを扱う
@@ -81,7 +85,8 @@
   - `ip-api.com` へのリクエストと結果のパースを担当する
 - `src/zstarview/config.py`
   - ユーザー設定の保存と読込
-  - 前回地点を legacy 文字列または構造化地点オブジェクトとして保存する
+  - `zstarview` / `zstarview-export-image` の legacy 共有設定として前回地点と window_geometry を保存する
+  - `zstarview-gui` 用の別起動プロファイル保存は `gui-launch-profile.json` として、この legacy 共有設定とは独立に扱う
 - `src/zstarview/paths.py`
   - 設定・キャッシュ・データのパス解決
   - テーマ preset ごとの共有表示定義を持つ

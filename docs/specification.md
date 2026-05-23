@@ -348,6 +348,41 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
     - SIXEL 変換は、一時ファイルを使わず、生成済み画像を PNG bytes 化して `img2sixel -` の標準入力へ流す方式を前提としてよい。
     - `--sixel` 指定時は、処理開始前に `img2sixel` コマンドの存在を確認し、さらに端末へ device attributes `ESC[c` を問い合わせて SIXEL 対応を確認し、いずれかが満たされなければ明示的なエラーで終了する。
     - `--output -` と `--sixel` の同時指定は、標準出力の用途が衝突するため受け付けない。
+
+#### 5.1.5 起動前設定ダイアログ
+
+- `zstarview` を直接起動する代わりに、起動前設定ダイアログを開いて初期設定を入力し、その内容を CLI 引数相当として反映したうえで GUI を起動してよい。
+- このダイアログは、通常の `zstarview` 起動に対する前段のヘルパとして振る舞ってよい。
+- `OK` で確定した場合は、入力内容を内部的に CLI 引数相当へ変換し、その設定で `zstarview` を起動してよい。
+- `Cancel` で閉じた場合は、`zstarview` を起動してはならない。
+- `Reset` ボタンを備えてよく、押した場合はダイアログ内の入力値を既定値へ戻してよい。
+- 変換後の初期状態は、同じ値を CLI で直接与えた場合と同等の見え方・動作になることを目標としてよい。
+- ダイアログの初期値は、前回確定した設定を引き継いでよい。前回設定がない場合は、各 CLI の既定値を使ってよい。
+- 少なくとも次のグループを入力できてよい。
+  - 観測地点
+  - 観測時刻
+  - 視線中心
+  - 視野スケール
+  - テーマ
+  - Sky Guides や各種 overlay の初期表示状態
+  - 各 overlay の初期 opacity
+- `zstarview-export-image` のような headless 向けの単発画像書き出し専用オプションは、このダイアログの対象外としてよい。
+- その場で CLI の制約に反する入力があった場合は、起動前にエラーを表示して確定を止めてよい。
+- 起動先の `zstarview` が開始に失敗した場合は、ヘルパ側で失敗を通知して再試行できるようにしてよい。
+
+#### 5.1.6 `zstarview-gui` 起動モード
+
+- `zstarview-gui` は、`zstarview` と同じ GUI 本体を起動するが、起動前設定ダイアログを先に開くための専用エントリポイントとして扱ってよい。
+- `zstarview-gui` は、起動前設定ダイアログで入力された値を、ほぼすべて次回起動のデフォルトとして保存してよい。
+- `zstarview-gui` の保存対象は、観測地点、観測時刻、視線中心、視野スケール、テーマ、各 overlay の初期表示状態、各 overlay の初期 opacity、`--enlarge-moon`、`--bright-bodies`、`--overlay-font-size`、`--visibility-boost`、`--observation-info`、起動前の検索条件、および GUI 起動時に初期値として意味を持つ項目を含めてよい。
+- `zstarview-gui` の保存対象には、`zstarview-export-image` 専用の headless オプションは含めてはならない。
+- `zstarview-gui` の前回起動値は、`~/.config/zstarview/gui-launch-profile.json` へ保存してよい。
+- `zstarview-gui` の前回起動値が存在する場合、起動前設定ダイアログはその値を初期値として表示してよい。
+- 前回起動値が存在しない場合は、`zstarview` の CLI 既定値を初期値として表示してよい。
+- `Reset` ボタンは、この `zstarview-gui` 専用の前回起動値を既定値へ戻すために使ってよい。`gui-launch-profile.json` の内容だけを初期化し、`config.json` の legacy 保存内容は変更しなくてよい。
+- `zstarview` および `zstarview-export-image` は、従来どおり `~/.config/zstarview/config.json` を使い、`city` と `window_geometry` のみを前回値として引き継いでよい。
+- `zstarview` および `zstarview-export-image` は、`zstarview-gui` 専用の保存ファイルを読んで既定値を上書きしてはならない。
+- `zstarview-gui` は、`zstarview` 本体を別プロセスとして起動しなくてよい。起動前設定ダイアログの確定後は、同一プロセス内でそのまま GUI 本体を起動してよい。
 - `--search QUERY`
   - 起動時に対象検索を 1 つだけ実行してよい。
   - 検索対象の解決は local-first を基本とする。
@@ -914,9 +949,12 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 
 ## 9. 設定保持仕様
 
-- 最後に使用した地点を保存する。
-- ウィンドウ位置やサイズなどの GUI 状態を保存する。
-- ローカル設定ファイルはユーザー環境下に保存し、リポジトリには含めない。
+- `~/.config/zstarview/config.json` は、従来の共有設定として扱い、`zstarview` と `zstarview-export-image` で共有してよい。
+- この共有設定には、少なくとも `city` と `window_geometry` だけを保存してよい。
+- `zstarview-gui` は、この共有設定とは別に `~/.config/zstarview/gui-launch-profile.json` へ、起動前ダイアログの前回値を保存してよい。
+- `zstarview-gui` の保存内容には、GUI 起動時のほぼすべての初期値を含めてよい。
+- `zstarview-gui` 用の Reset 操作は、この `gui-launch-profile.json` の内容を既定値へ戻してよい。
+- ローカル設定ファイルはいずれもユーザー環境下に保存し、リポジトリには含めない。
 
 ## 10. エラー時の利用者向け挙動
 
