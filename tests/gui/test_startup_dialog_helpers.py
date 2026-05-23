@@ -17,6 +17,8 @@ def test_startup_dialog_numeric_coercion_uses_fallbacks() -> None:
 def test_startup_dialog_tabs_follow_requested_order() -> None:
     dialog = StartupDialog()
 
+    assert dialog.width() == 640
+    assert dialog.height() == 380
     assert dialog._tabs.count() == 5
     assert dialog._tabs.tabText(0) == "Location & Time"
     assert dialog._tabs.tabText(1) == "Stars"
@@ -33,3 +35,5 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
     assert dialog._overlay_sections["Sky"].is_expanded() is True
     dialog._overlay_sections["Sky"]._button.setChecked(False)
     assert dialog._overlay_sections["Sky"].is_expanded() is False
+    assert "overlay_font_size" in dialog._widgets
+    assert dialog._reset_button.text() == "Reset to Default Values"

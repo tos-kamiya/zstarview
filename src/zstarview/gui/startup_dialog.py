@@ -153,7 +153,7 @@ class StartupDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("zstarview-gui startup")
         self.setModal(True)
-        self.resize(920, 760)
+        self.resize(640, 380)
 
         self._defaults = default_gui_launch_profile()
         self._base_profile = dict(self._defaults)
@@ -207,7 +207,7 @@ class StartupDialog(QDialog):
 
         button_row = QHBoxLayout()
         button_row.addStretch(1)
-        self._reset_button = QPushButton("Reset", self)
+        self._reset_button = QPushButton("Reset to Default Values", self)
         self._reset_button.clicked.connect(self.reset_to_defaults)
         button_row.addWidget(self._reset_button)
 
@@ -259,6 +259,7 @@ class StartupDialog(QDialog):
             _FieldSpec("window_frame", "Window frame", "choice", "General", choices=("frameless", "window")),
             _FieldSpec("observation_info", "Observation info", "choice", "General", choices=("auto", "top", "bottom", "off")),
             _FieldSpec("visibility_boost", "Visibility boost", "float", "General", minimum=1.0, maximum=10.0, step=0.1),
+            _FieldSpec("overlay_font_size", "Overlay font size", "float", "General", minimum=float(OVERLAY_FONT_SIZE_MIN), maximum=float(OVERLAY_FONT_SIZE_MAX), step=0.5),
             _FieldSpec("search", "Search query", "text", "Search Objects at Startup"),
             _FieldSpec("search_keep_marker", "Keep marker", "bool", "Search Objects at Startup"),
             _FieldSpec("cloud_opacity", "Cloud opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
@@ -270,7 +271,7 @@ class StartupDialog(QDialog):
             _FieldSpec("earth_guide_opacity", "Earth guide opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.001),
             _FieldSpec("night_light_opacity", "Night light opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("ground_tint_opacity", "Ground tint opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
-            _FieldSpec("overlay_font_size", "Overlay font size", "float", "Overlays", minimum=float(OVERLAY_FONT_SIZE_MIN), maximum=float(OVERLAY_FONT_SIZE_MAX), step=0.5),
+            _FieldSpec("overlay_font_size", "Overlay font size", "float", "General", minimum=float(OVERLAY_FONT_SIZE_MIN), maximum=float(OVERLAY_FONT_SIZE_MAX), step=0.5),
             _FieldSpec("urban_outline_opacity", "Urban outline opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("water_surface_opacity", "Water surface opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("urban_outline_feature_type", "Urban outline mode", "choice", "Overlays", choices=("both", "building")),
@@ -294,7 +295,6 @@ class StartupDialog(QDialog):
                     "earth_guide_opacity",
                     "night_light_opacity",
                     "ground_tint_opacity",
-                    "overlay_font_size",
                     "water_surface_opacity",
                 ),
             ),
