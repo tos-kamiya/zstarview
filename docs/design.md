@@ -71,9 +71,10 @@
   - `City` 行には `Auto` ボタンを置き、現在地自動取得の結果を `City` 欄へ反映してよい
   - `Location` タブでは `City` と `Place` を排他的なモードとして扱い、`Place` モードでは `Place query` を必須としてよい
   - `View` タブには視線中心と FOV 系の値を集約してよい
-  - `Time` タブでは `Hours` / `Days` による相対シフトと `Date/time` / `Timezone` による絶対時刻を分離して見せ、同時指定は受け付けない
-  - `Time` タブでは `Time shift` と `Absolute time` の前にチェックボックスを置き、どちらか一方だけを有効にしつつ両方無効の初期状態も表現してよい
-  - `Time` タブには、未指定時は現在時刻を使うことを示す説明文を置いてよい
+  - `View center alt` の入力欄には "Alt value: 0 is horizontal, 90 is zenith." のような補助説明を添えてよい
+  - `View center az` には `N` / `E` / `S` / `W` のショートカットボタンを置いてよい
+  - `Time` タブでは `Time Source` として `Current time`、`Relative time`、`Absolute time` のラジオボタンを置き、`Relative time` では `Hours` / `Days`、`Absolute time` では `Date/time` / `Timezone` を入力してよい
+  - `Current time` を既定にしてよく、`Relative time` と `Absolute time` は同時に有効にしてはならない
   - dataset 参照専用オプションは対象外として扱う
 - `src/zstarview/cli/args.py`
   - CLI オプション定義と値解釈

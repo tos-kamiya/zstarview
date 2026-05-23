@@ -385,9 +385,10 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
   - 起動時の検索条件
 - `City` 欄には `Auto` ボタンを備えてよく、押した場合は現在地自動取得と同等の解決結果を `City` 欄へ反映してよい。
 - `View` タブには `view_center_alt`、`view_center_az`、`edge_fov_deg`、`content_fov_deg` を置いてよい。
-- `Time` タブでは、`Hours` / `Days` による相対シフトと `Date/time` / `Timezone` による絶対時刻を分けて扱ってよく、両者は同時に指定してはならない。
-- `Time` タブでは、`Time shift` と `Absolute time` の前にチェックボックスを置いて、どちらか一方だけを有効にしつつ、どちらも無効のままにしておく状態も許してよい。
-- `Time` タブには、「何も設定しない場合は現在時刻を使う」という説明を置いてよい。
+- `View center alt` の入力欄の上には、"Alt value: 0 is horizontal, 90 is zenith." のような補助説明を置いてよい。
+- `View center az` には `N` / `E` / `S` / `W` のボタンを置き、それぞれ `0` / `90` / `180` / `270` 度を入力してよい。
+- `Time` タブでは、`Time Source` として `Current time`、`Relative time`、`Absolute time` のラジオボタンを置いてよく、`Relative time` は `Hours` / `Days`、`Absolute time` は `Date/time` / `Timezone` をそれぞれ使ってよい。
+- `Time` タブでは、`Current time` を既定にしてよく、`Relative time` と `Absolute time` は同時に有効にしてはならない。
 - `zstarview-export-image` のような headless 向けの単発画像書き出し専用オプションは、このダイアログの対象外としてよい。
 - その場で CLI の制約に反する入力があった場合は、起動前にエラーを表示して確定を止めてよい。
 - 起動先の `zstarview` が開始に失敗した場合は、ヘルパ側で失敗を通知して再試行できるようにしてよい。

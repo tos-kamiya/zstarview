@@ -160,7 +160,7 @@ class StartupDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("zstarview-gui startup")
         self.setModal(True)
-        self.resize(480, 380)
+        self.resize(480, 456)
 
         self._defaults = default_gui_launch_profile()
         self._base_profile = dict(self._defaults)
@@ -182,9 +182,13 @@ class StartupDialog(QDialog):
         self._location_city_radio: QRadioButton | None = None
         self._location_place_radio: QRadioButton | None = None
         self._location_mode_button_group = QButtonGroup(self)
-        self._time_shift_checkbox: QCheckBox | None = None
-        self._absolute_time_checkbox: QCheckBox | None = None
-        self._time_intro_label: QLabel | None = None
+        self._time_source_button_group = QButtonGroup(self)
+        self._time_current_radio: QRadioButton | None = None
+        self._time_relative_radio: QRadioButton | None = None
+        self._time_absolute_radio: QRadioButton | None = None
+        self._view_center_az_widget: QDoubleSpinBox | None = None
+        self._view_center_alt_hint_label: QLabel | None = None
+        self._view_center_az_buttons: dict[str, QPushButton] = {}
 
         outer_layout = QVBoxLayout(self)
         outer_layout.setContentsMargins(12, 12, 12, 12)
@@ -391,22 +395,32 @@ class StartupDialog(QDialog):
         layout.addRow("Location source", radio_row)
 
     def _build_time_tab(self, tab_widget: QWidget, layout: QVBoxLayout) -> None:
-        intro = QLabel(
-            "If nothing is set, the current time is used.",
-            tab_widget,
+        source_label = QLabel("Time source", tab_widget)
+        source_row = QWidget(tab_widget)
+        source_layout = QHBoxLayout(source_row)
+        source_layout.setContentsMargins(0, 0, 0, 0)
+        source_layout.setSpacing(12)
+        self._time_current_radio = QRadioButton("Current time", tab_widget)
+        self._time_relative_radio = QRadioButton("Relative time", tab_widget)
+        self._time_absolute_radio = QRadioButton("Absolute time", tab_widget)
+        self._time_source_button_group.addButton(self._time_current_radio)
+        self._time_source_button_group.addButton(self._time_relative_radio)
+        self._time_source_button_group.addButton(self._time_absolute_radio)
+        self._time_current_radio.toggled.connect(
+            lambda checked: self._set_time_source("current", checked)
         )
-        intro.setWordWrap(True)
-        self._time_intro_label = intro
-        layout.addWidget(intro)
-
-        self._time_shift_checkbox = QCheckBox("Time shift", tab_widget)
-        self._absolute_time_checkbox = QCheckBox("Absolute time", tab_widget)
-        self._time_shift_checkbox.toggled.connect(
-            lambda checked: self._set_time_mode("shift", checked)
+        self._time_relative_radio.toggled.connect(
+            lambda checked: self._set_time_source("relative", checked)
         )
-        self._absolute_time_checkbox.toggled.connect(
-            lambda checked: self._set_time_mode("absolute", checked)
+        self._time_absolute_radio.toggled.connect(
+            lambda checked: self._set_time_source("absolute", checked)
         )
+        source_layout.addWidget(self._time_current_radio)
+        source_layout.addWidget(self._time_relative_radio)
+        source_layout.addWidget(self._time_absolute_radio)
+        source_layout.addStretch(1)
+        layout.addWidget(source_label)
+        layout.addWidget(source_row)
 
         shift_container = QWidget(tab_widget)
         shift_layout = QFormLayout(shift_container)
@@ -433,9 +447,7 @@ class StartupDialog(QDialog):
         self._time_group_widgets["shift"] = []
         self._time_group_widgets["absolute"] = []
 
-        layout.addWidget(self._time_shift_checkbox)
         layout.addWidget(shift_container)
-        layout.addWidget(self._absolute_time_checkbox)
         layout.addWidget(absolute_container)
         layout.addStretch(1)
 
@@ -481,7 +493,7 @@ class StartupDialog(QDialog):
         else:
             self._apply_location_mode(mode)
 
-    def _time_mode_from_profile(self, profile: dict[str, Any]) -> str:
+    def _time_source_from_profile(self, profile: dict[str, Any]) -> str:
         hours = float(profile.get("hours", 0.0) or 0.0)
         days = float(profile.get("days", 0.0) or 0.0)
         datetime_text = str(profile.get("datetime", "") or "").strip()
@@ -489,41 +501,51 @@ class StartupDialog(QDialog):
         if datetime_text or timezone_text:
             return "absolute"
         if abs(hours) > 1e-12 or abs(days) > 1e-12:
-            return "shift"
-        return "none"
+            return "relative"
+        return "current"
 
     def _set_time_group_enabled(self, group: str, enabled: bool) -> None:
         for widget in self._time_group_widgets.get(group, []):
             widget.setEnabled(enabled)
 
-    def _apply_time_mode(self, mode: str) -> None:
-        if self._time_shift_checkbox is None or self._absolute_time_checkbox is None:
+    def _apply_time_source(self, mode: str) -> None:
+        if (
+            self._time_current_radio is None
+            or self._time_relative_radio is None
+            or self._time_absolute_radio is None
+        ):
             return
-        shift_checked = mode == "shift"
+        current_checked = mode == "current"
+        relative_checked = mode == "relative"
         absolute_checked = mode == "absolute"
-        shift_blocked = self._time_shift_checkbox.blockSignals(True)
-        absolute_blocked = self._absolute_time_checkbox.blockSignals(True)
+        current_blocked = self._time_current_radio.blockSignals(True)
+        relative_blocked = self._time_relative_radio.blockSignals(True)
+        absolute_blocked = self._time_absolute_radio.blockSignals(True)
         try:
-            self._time_shift_checkbox.setChecked(shift_checked)
-            self._absolute_time_checkbox.setChecked(absolute_checked)
+            self._time_current_radio.setChecked(current_checked)
+            self._time_relative_radio.setChecked(relative_checked)
+            self._time_absolute_radio.setChecked(absolute_checked)
         finally:
-            self._time_shift_checkbox.blockSignals(shift_blocked)
-            self._absolute_time_checkbox.blockSignals(absolute_blocked)
-        self._set_time_group_enabled("shift", shift_checked)
+            self._time_current_radio.blockSignals(current_blocked)
+            self._time_relative_radio.blockSignals(relative_blocked)
+            self._time_absolute_radio.blockSignals(absolute_blocked)
+        self._set_time_group_enabled("shift", relative_checked)
         self._set_time_group_enabled("absolute", absolute_checked)
 
-    def _set_time_mode(self, mode: str, checked: bool) -> None:
+    def _set_time_source(self, mode: str, checked: bool) -> None:
         if checked:
-            self._apply_time_mode(mode)
+            self._apply_time_source(mode)
             return
-        other_mode = "absolute" if mode == "shift" else "shift"
-        other_checkbox = (
-            self._absolute_time_checkbox if other_mode == "absolute" else self._time_shift_checkbox
-        )
-        if other_checkbox is not None and other_checkbox.isChecked():
-            self._apply_time_mode(other_mode)
+        if self._time_current_radio is not None and self._time_current_radio.isChecked():
+            self._apply_time_source("current")
+            return
+        if self._time_relative_radio is not None and self._time_relative_radio.isChecked():
+            self._apply_time_source("relative")
+            return
+        if self._time_absolute_radio is not None and self._time_absolute_radio.isChecked():
+            self._apply_time_source("absolute")
         else:
-            self._apply_time_mode("none")
+            self._apply_time_source("current")
 
     def _add_spec(self, spec: _FieldSpec) -> None:
         location_group: str | None = None
@@ -570,6 +592,8 @@ class StartupDialog(QDialog):
             widget.setRange(spec.minimum, spec.maximum)
             widget.setSingleStep(spec.step)
             widget.setKeyboardTracking(False)
+            if spec.key == "view_center_az":
+                self._view_center_az_widget = widget
         elif spec.kind == "int":
             widget = QSpinBox(self)
             widget.setRange(int(spec.minimum), int(spec.maximum))
@@ -594,7 +618,37 @@ class StartupDialog(QDialog):
             self._time_group_widgets[time_group].append(widget)
         if location_group is not None:
             self._location_group_widgets[location_group].append(widget)
+        if spec.key == "view_center_alt":
+            row_widget = QWidget(self)
+            row_layout = QVBoxLayout(row_widget)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+            row_layout.setSpacing(6)
+            self._view_center_alt_hint_label = QLabel("Alt value: 0 is horizontal, 90 is zenith.", self)
+            self._view_center_alt_hint_label.setWordWrap(True)
+            row_layout.addWidget(self._view_center_alt_hint_label)
+            row_layout.addWidget(widget)
+            layout.addRow(spec.label, row_widget)
+            return
+        if spec.key == "view_center_az":
+            row_widget = QWidget(self)
+            row_layout = QHBoxLayout(row_widget)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+            row_layout.setSpacing(6)
+            row_layout.addWidget(widget, 1)
+            for label, value in (("N", 0.0), ("E", 90.0), ("S", 180.0), ("W", 270.0)):
+                button = QPushButton(label, self)
+                button.setFixedWidth(28)
+                button.clicked.connect(lambda _checked=False, angle=value: self._set_view_center_az(angle))
+                row_layout.addWidget(button)
+                self._view_center_az_buttons[label] = button
+            layout.addRow(spec.label, row_widget)
+            return
         layout.addRow(spec.label, widget)
+
+    def _set_view_center_az(self, value: float) -> None:
+        if self._view_center_az_widget is None:
+            return
+        self._view_center_az_widget.setValue(float(value))
 
     def _start_city_auto(self) -> None:
         if self._city_auto_button is not None:
@@ -650,7 +704,7 @@ class StartupDialog(QDialog):
                 index = widget.findText(text)
                 widget.setCurrentIndex(max(0, index))
         self._apply_location_mode(self._location_mode_from_profile(profile))
-        self._apply_time_mode(self._time_mode_from_profile(profile))
+        self._apply_time_source(self._time_source_from_profile(profile))
 
     def reset_to_defaults(self) -> None:
         self._base_profile = dict(self._defaults)
@@ -685,10 +739,15 @@ class StartupDialog(QDialog):
             profile["place_lang"] = None
         elif self._location_place_radio is not None and self._location_place_radio.isChecked():
             profile["city"] = ""
-        if self._time_shift_checkbox is not None and self._time_shift_checkbox.isChecked():
+        time_source = "current"
+        if self._time_relative_radio is not None and self._time_relative_radio.isChecked():
+            time_source = "relative"
+        elif self._time_absolute_radio is not None and self._time_absolute_radio.isChecked():
+            time_source = "absolute"
+        if time_source == "relative":
             profile["datetime"] = None
             profile["timezone"] = None
-        elif self._absolute_time_checkbox is not None and self._absolute_time_checkbox.isChecked():
+        elif time_source == "absolute":
             profile["hours"] = 0.0
             profile["days"] = 0.0
         else:
@@ -722,15 +781,23 @@ class StartupDialog(QDialog):
         place_query = str(profile.get("place", "") or "").strip()
         if self._location_place_radio is not None and self._location_place_radio.isChecked() and not place_query:
             raise ValueError("Place query is required when Place query mode is selected")
+        time_source = "current"
+        if self._time_relative_radio is not None and self._time_relative_radio.isChecked():
+            time_source = "relative"
+        elif self._time_absolute_radio is not None and self._time_absolute_radio.isChecked():
+            time_source = "absolute"
         hours = float(profile.get("hours", 0.0) or 0.0)
         days = float(profile.get("days", 0.0) or 0.0)
         datetime_text = str(profile.get("datetime", "") or "").strip()
-        timezone_text = str(profile.get("timezone", "") or "").strip()
         has_relative_shift = abs(hours) > 1e-12 or abs(days) > 1e-12
-        if has_relative_shift and datetime_text:
-            raise ValueError("Relative shift and absolute time cannot be used together")
-        if timezone_text and not datetime_text:
-            raise ValueError("Timezone requires Date/time")
+        if time_source == "relative":
+            if not has_relative_shift:
+                raise ValueError("Relative time requires Hours or Days")
+            if datetime_text:
+                raise ValueError("Relative shift and absolute time cannot be used together")
+        elif time_source == "absolute":
+            if not datetime_text:
+                raise ValueError("Date/time is required when Absolute time is selected")
 
     def _show_validation_error(self, message: str) -> None:
         self._show_error_dialog("Invalid input", message)
