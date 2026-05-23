@@ -123,15 +123,25 @@ pipx upgrade zstarview
 First run check:
 
 ```bash
-zstarview auto -A5 -Zn
+zstarview-gui
 ```
 
-This starts zstarview using automatic location detection (`auto`), with the
-view centered near the northern horizon (`-A5 -Zn`).
+This opens the startup dialog first. Use `zstarview-gui` for the default GUI
+launch flow after installation.
 
 > Note: Troubleshooting tips (including X11 libraries and slow network) are summarized below.
 
 ## Usage
+
+Use `zstarview-gui` for the interactive startup dialog, `zstarview` for GUI
+launches driven by CLI options, and `zstarview-export-image` for headless
+one-shot image export.
+
+After launching `zstarview-gui`, the `Auto` button in the Location tab uses
+network connection information to estimate the current observer location and
+fills it into the dialog.
+
+The CLI reference below documents `zstarview` and `zstarview-export-image`.
 
 ```bash
 zstarview [options] [location]

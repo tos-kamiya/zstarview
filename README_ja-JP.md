@@ -124,14 +124,22 @@ pipx upgrade zstarview
 最初の動作確認:
 
 ```bash
-zstarview auto -A5 -Zn
+zstarview-gui
 ```
 
-これは、現在地を自動検出して (`auto`)、北側の低い空を中心に表示する (`-A5 -Zn`) 起動例です。
+これは、起動前ダイアログを開いてから GUI を開始する既定の起動方法です。インストール直後は `zstarview-gui` を使ってください。
 
 > 注記: X11 ライブラリやネットワークが細い場合の回避策などは、下のトラブルシューティングを参照してください。
 
 ## 使い方
+
+`zstarview-gui` は起動前ダイアログ付きの対話的な GUI 起動用、
+`zstarview` は CLI 指定で GUI を起動する用、
+`zstarview-export-image` は GUI を起動せずに 1 枚書き出す用です。
+
+`zstarview-gui` 起動後は、Location タブの `Auto` ボタンでネットワーク接続の情報を使って現在位置を観測者の位置として推定し、ダイアログへ反映できます。
+
+以下の CLI リファレンスは `zstarview` と `zstarview-export-image` の引数について説明しています。
 
 ```bash
 zstarview [options] [location]
