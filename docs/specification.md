@@ -358,6 +358,14 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 - `Reset` ボタンを備えてよく、押した場合はダイアログ内の入力値を既定値へ戻してよい。
 - 変換後の初期状態は、同じ値を CLI で直接与えた場合と同等の見え方・動作になることを目標としてよい。
 - ダイアログの初期値は、前回確定した設定を引き継いでよい。前回設定がない場合は、各 CLI の既定値を使ってよい。
+- ダイアログは、README の CLI オプション群に対応するタブへ分けてよい。
+- タブの並びは README のオプション群の並びに合わせてよく、少なくとも次の区分を持ってよい。
+  - `Observing Location and Time`
+  - `Viewpoint Dataset Queries for Observing Locations`
+  - `Search Objects at startup`
+  - `Sky and Stars`
+  - `Overlays`
+  - `General`
 - 少なくとも次のグループを入力できてよい。
   - 観測地点
   - 観測時刻
