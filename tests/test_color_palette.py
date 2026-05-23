@@ -18,7 +18,7 @@ from zstarview.satellite_constants import SATELLITE_OVERLAY_MARKER_COLOR_RGB
 
 def test_overlay_colors_follow_the_palette_swatches() -> None:
     assert PALETTE_EARTH_GUIDE_RGB == (112, 99, 89)
-    assert PALETTE_NEVER_RISES_RGB == (240, 173, 122)
+    assert PALETTE_NEVER_RISES_RGB == (192, 192, 192)
     assert PALETTE_NEVER_RISES_GUIDE_RGB == PALETTE_NEVER_RISES_RGB
     assert PALETTE_TERRAIN_HORIZON_RGB == (216, 206, 192)
     assert TERRAIN_HORIZON_LINE_COLOR == PALETTE_TERRAIN_HORIZON_RGB

@@ -384,8 +384,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 `color-palette.png` の RGB 値は、描画色の調整時に参照する固定メモとして以下を残す。
 
-- 1色目: `(240, 173, 122)` / `#F0AD7A`
-  - never-rises tint
+- 1色目: `(192, 192, 192)` / `#C0C0C0`
+  - never-rises tint (neutral gray)
 - 2色目: `(206, 122, 240)` / `#CE7AF0`
   - aircraft overlay
   - satellite marker
