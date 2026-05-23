@@ -24,12 +24,21 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
 
     assert dialog.width() == 400
     assert dialog.height() == 380
-    assert dialog._tabs.count() == 5
+    assert dialog._tabs.count() == 6
     assert dialog._tabs.tabText(0) == "Location"
-    assert dialog._tabs.tabText(1) == "Time"
-    assert dialog._tabs.tabText(2) == "Stars"
-    assert dialog._tabs.tabText(3) == "Overlays"
-    assert dialog._tabs.tabText(4) == "General"
+    assert dialog._tabs.tabText(1) == "View"
+    assert dialog._tabs.tabText(2) == "Time"
+    assert dialog._tabs.tabText(3) == "Stars"
+    assert dialog._tabs.tabText(4) == "Overlays"
+    assert dialog._tabs.tabText(5) == "General"
+    assert dialog._location_city_radio.text() == "City"
+    assert dialog._location_place_radio.text() == "Place query"
+    assert dialog._location_city_radio.isChecked() is True
+    assert dialog._location_place_radio.isChecked() is False
+    assert dialog._widgets["city"].isEnabled() is True
+    assert dialog._widgets["place"].isEnabled() is False
+    assert dialog._widgets["view_center_alt"].isEnabled() is True
+    assert dialog._widgets["edge_fov_deg"].isEnabled() is True
     assert dialog._time_shift_checkbox.text() == "Time shift"
     assert dialog._absolute_time_checkbox.text() == "Absolute time"
     assert dialog._time_shift_checkbox.isChecked() is False
@@ -53,6 +62,24 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
     assert isinstance(terrain_widget, QDoubleSpinBox)
     assert terrain_widget.decimals() == 3
     assert terrain_widget.value() == 0.003
+
+
+def test_startup_dialog_location_mode_checkboxes_are_exclusive() -> None:
+    dialog = StartupDialog()
+
+    dialog._location_place_radio.setChecked(True)
+
+    assert dialog._location_place_radio.isChecked() is True
+    assert dialog._location_city_radio.isChecked() is False
+    assert dialog._widgets["city"].isEnabled() is False
+    assert dialog._widgets["place"].isEnabled() is True
+
+    dialog._location_city_radio.setChecked(True)
+
+    assert dialog._location_city_radio.isChecked() is True
+    assert dialog._location_place_radio.isChecked() is False
+    assert dialog._widgets["city"].isEnabled() is True
+    assert dialog._widgets["place"].isEnabled() is False
 
 
 def test_startup_dialog_time_mode_checkboxes_are_exclusive() -> None:

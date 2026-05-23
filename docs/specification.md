@@ -361,6 +361,7 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 - ダイアログは、README の CLI オプション群に対応するタブへ分けてよい。
 - タブの並びは次の順序としてよい。
   - `Location`
+  - `View`
   - `Time`
   - `Stars`
   - `Overlays`
@@ -369,6 +370,9 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 - `Overlays` タブは、`Sky`、`Clouds`、`Aircraft and Satellites`、`Ground and Guides`、`Urban Outline` などの折りたたみ可能なサブグループに分けてよい。
 - 少なくとも次のグループを入力できてよい。
   - 観測地点
+  - 地点検索モード
+  - `City` と `Place` の入力は排他的に扱ってよい
+  - `Place` モードでは `Place query` が必須で、`Place country code` と `Place language` は補助指定として使ってよい
   - 観測時刻の相対シフト
   - 絶対時刻
   - 視線中心
@@ -380,6 +384,7 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
   - 各 overlay の初期 opacity
   - 起動時の検索条件
 - `City` 欄には `Auto` ボタンを備えてよく、押した場合は現在地自動取得と同等の解決結果を `City` 欄へ反映してよい。
+- `View` タブには `view_center_alt`、`view_center_az`、`edge_fov_deg`、`content_fov_deg` を置いてよい。
 - `Time` タブでは、`Hours` / `Days` による相対シフトと `Date/time` / `Timezone` による絶対時刻を分けて扱ってよく、両者は同時に指定してはならない。
 - `Time` タブでは、`Time shift` と `Absolute time` の前にチェックボックスを置いて、どちらか一方だけを有効にしつつ、どちらも無効のままにしておく状態も許してよい。
 - `zstarview-export-image` のような headless 向けの単発画像書き出し専用オプションは、このダイアログの対象外としてよい。

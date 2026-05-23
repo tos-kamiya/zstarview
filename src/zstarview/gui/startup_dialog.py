@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QPushButton,
     QScrollArea,
+    QRadioButton,
     QSpinBox,
     QTabWidget,
     QToolButton,
@@ -167,6 +168,7 @@ class StartupDialog(QDialog):
 
         self._widgets: dict[str, Any] = {}
         self._tab_layouts: dict[str, QFormLayout] = {}
+        self._location_group_widgets: dict[str, list[QWidget]] = {"city": [], "place": []}
         self._time_group_layouts: dict[str, QFormLayout] = {}
         self._time_group_widgets: dict[str, list[QWidget]] = {}
         self._overlay_layouts: dict[str, QFormLayout] = {}
@@ -176,6 +178,8 @@ class StartupDialog(QDialog):
         self._auto_location_resolver = auto_location_resolver or _resolve_auto_location_for_dialog
         self.city_auto_finished.connect(self._on_city_auto_finished)
         self._city_auto_button: QPushButton | None = None
+        self._location_city_radio: QRadioButton | None = None
+        self._location_place_radio: QRadioButton | None = None
         self._time_shift_checkbox: QCheckBox | None = None
         self._absolute_time_checkbox: QCheckBox | None = None
 
@@ -187,6 +191,7 @@ class StartupDialog(QDialog):
 
         tab_order = (
             "Location",
+            "View",
             "Time",
             "Stars",
             "Overlays",
@@ -197,7 +202,28 @@ class StartupDialog(QDialog):
             scroll_area = QScrollArea(self)
             scroll_area.setWidgetResizable(True)
             scroll_area.setFrameShape(QFrame.Shape.NoFrame)
-            if tab_name == "Time":
+            if tab_name == "Location":
+                tab_layout = QFormLayout(tab_widget)
+                tab_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
+                tab_layout.setFormAlignment(
+                    Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
+                )
+                tab_layout.setFieldGrowthPolicy(
+                    QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
+                )
+                self._tab_layouts[tab_name] = tab_layout
+                self._build_location_mode_selector(tab_widget, tab_layout)
+            elif tab_name == "View":
+                tab_layout = QFormLayout(tab_widget)
+                tab_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
+                tab_layout.setFormAlignment(
+                    Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
+                )
+                tab_layout.setFieldGrowthPolicy(
+                    QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
+                )
+                self._tab_layouts[tab_name] = tab_layout
+            elif tab_name == "Time":
                 tab_layout = QVBoxLayout(tab_widget)
                 tab_layout.setContentsMargins(0, 0, 0, 0)
                 tab_layout.setSpacing(12)
@@ -251,10 +277,10 @@ class StartupDialog(QDialog):
             _FieldSpec("place_lang", "Place language", "text", "Location"),
             _FieldSpec("observer_height_m", "Observer height", "float", "Location", minimum=0.0, maximum=10000.0, step=0.1),
             _FieldSpec("use_building_top", "Use building top", "bool", "Location"),
-            _FieldSpec("view_center_alt", "View center alt", "float", "Location", minimum=-90.0, maximum=90.0, step=1.0),
-            _FieldSpec("view_center_az", "View center az", "float", "Location", minimum=0.0, maximum=360.0, step=1.0),
-            _FieldSpec("edge_fov_deg", "Edge FOV", "float", "Location", minimum=0.1, maximum=135.0, step=0.5),
-            _FieldSpec("content_fov_deg", "Content FOV", "float", "Location", minimum=90.0, maximum=135.0, step=0.5),
+            _FieldSpec("view_center_alt", "View center alt", "float", "View", minimum=-90.0, maximum=90.0, step=1.0),
+            _FieldSpec("view_center_az", "View center az", "float", "View", minimum=0.0, maximum=360.0, step=1.0),
+            _FieldSpec("edge_fov_deg", "Edge FOV", "float", "View", minimum=0.1, maximum=135.0, step=0.5),
+            _FieldSpec("content_fov_deg", "Content FOV", "float", "View", minimum=90.0, maximum=135.0, step=0.5),
             _FieldSpec("hours", "Hours", "float", "Time", minimum=-9999.0, maximum=9999.0, step=0.5),
             _FieldSpec("days", "Days", "float", "Time", minimum=-9999.0, maximum=9999.0, step=0.5),
             _FieldSpec("datetime", "Date/time", "text", "Time"),
@@ -334,6 +360,31 @@ class StartupDialog(QDialog):
                 self._overlay_section_by_key[key] = title
         layout.addStretch(1)
 
+    def _build_location_mode_selector(self, tab_widget: QWidget, layout: QFormLayout) -> None:
+        intro = QLabel(
+            "Choose one location source. City and Place settings are mutually exclusive.",
+            tab_widget,
+        )
+        intro.setWordWrap(True)
+        layout.addRow(intro)
+
+        radio_row = QWidget(tab_widget)
+        radio_layout = QHBoxLayout(radio_row)
+        radio_layout.setContentsMargins(0, 0, 0, 0)
+        radio_layout.setSpacing(12)
+        self._location_city_radio = QRadioButton("City", tab_widget)
+        self._location_place_radio = QRadioButton("Place query", tab_widget)
+        self._location_city_radio.toggled.connect(
+            lambda checked: self._set_location_mode("city", checked)
+        )
+        self._location_place_radio.toggled.connect(
+            lambda checked: self._set_location_mode("place", checked)
+        )
+        radio_layout.addWidget(self._location_city_radio)
+        radio_layout.addWidget(self._location_place_radio)
+        radio_layout.addStretch(1)
+        layout.addRow("Location source", radio_row)
+
     def _build_time_tab(self, tab_widget: QWidget, layout: QVBoxLayout) -> None:
         intro = QLabel(
             "Use either relative time shift or absolute time. Leaving both unchecked means no time override.",
@@ -382,6 +433,48 @@ class StartupDialog(QDialog):
         layout.addWidget(absolute_container)
         layout.addStretch(1)
 
+    def _location_mode_from_profile(self, profile: dict[str, Any]) -> str:
+        place_query = str(profile.get("place", "") or "").strip()
+        place_countrycode = str(profile.get("place_countrycode", "") or "").strip()
+        if place_query or place_countrycode:
+            return "place"
+        return "city"
+
+    def _set_location_group_enabled(self, group: str, enabled: bool) -> None:
+        for widget in self._location_group_widgets.get(group, []):
+            widget.setEnabled(enabled)
+
+    def _apply_location_mode(self, mode: str) -> None:
+        if self._location_city_radio is None or self._location_place_radio is None:
+            return
+        city_checked = mode == "city"
+        place_checked = mode == "place"
+        city_blocked = self._location_city_radio.blockSignals(True)
+        place_blocked = self._location_place_radio.blockSignals(True)
+        try:
+            self._location_city_radio.setChecked(city_checked)
+            self._location_place_radio.setChecked(place_checked)
+        finally:
+            self._location_city_radio.blockSignals(city_blocked)
+            self._location_place_radio.blockSignals(place_blocked)
+        self._set_location_group_enabled("city", city_checked)
+        self._set_location_group_enabled("place", place_checked)
+        if self._city_auto_button is not None:
+            self._city_auto_button.setEnabled(city_checked)
+
+    def _set_location_mode(self, mode: str, checked: bool) -> None:
+        if checked:
+            self._apply_location_mode(mode)
+            return
+        other_mode = "place" if mode == "city" else "city"
+        other_radio = (
+            self._location_place_radio if other_mode == "place" else self._location_city_radio
+        )
+        if other_radio is not None and other_radio.isChecked():
+            self._apply_location_mode(other_mode)
+        else:
+            self._apply_location_mode(mode)
+
     def _time_mode_from_profile(self, profile: dict[str, Any]) -> str:
         hours = float(profile.get("hours", 0.0) or 0.0)
         days = float(profile.get("days", 0.0) or 0.0)
@@ -427,6 +520,7 @@ class StartupDialog(QDialog):
             self._apply_time_mode("none")
 
     def _add_spec(self, spec: _FieldSpec) -> None:
+        location_group: str | None = None
         time_group: str | None = None
         if spec.tab == "Time":
             if spec.key in {"hours", "days"}:
@@ -458,6 +552,7 @@ class StartupDialog(QDialog):
                 row_layout.addWidget(self._city_auto_button)
                 widget = line_edit
                 self._widgets[spec.key] = widget
+                self._location_group_widgets["city"].extend([widget, self._city_auto_button])
                 layout.addRow(spec.label, row_widget)
                 return
             widget = QLineEdit(self)
@@ -486,8 +581,13 @@ class StartupDialog(QDialog):
         else:
             raise ValueError(f"Unsupported field kind: {spec.kind}")
         self._widgets[spec.key] = widget
-        if time_group is not None:
+        if spec.tab == "Location":
+            if spec.key in {"place", "place_countrycode", "place_lang"}:
+                location_group = "place"
+        elif time_group is not None:
             self._time_group_widgets[time_group].append(widget)
+        if location_group is not None:
+            self._location_group_widgets[location_group].append(widget)
         layout.addRow(spec.label, widget)
 
     def _start_city_auto(self) -> None:
@@ -543,6 +643,7 @@ class StartupDialog(QDialog):
                     text = str(value if value is not None else self._defaults.get(key, ""))
                 index = widget.findText(text)
                 widget.setCurrentIndex(max(0, index))
+        self._apply_location_mode(self._location_mode_from_profile(profile))
         self._apply_time_mode(self._time_mode_from_profile(profile))
 
     def reset_to_defaults(self) -> None:
@@ -572,6 +673,12 @@ class StartupDialog(QDialog):
                     profile[key] = _tri_bool_to_value(text)
                 else:
                     profile[key] = text
+        if self._location_city_radio is not None and self._location_city_radio.isChecked():
+            profile["place"] = None
+            profile["place_countrycode"] = None
+            profile["place_lang"] = None
+        elif self._location_place_radio is not None and self._location_place_radio.isChecked():
+            profile["city"] = ""
         if self._time_shift_checkbox is not None and self._time_shift_checkbox.isChecked():
             profile["datetime"] = None
             profile["timezone"] = None
@@ -606,6 +713,9 @@ class StartupDialog(QDialog):
                 _parse_cloud_stripe(cloud_stripe)
             except Exception as exc:
                 raise ValueError("Invalid cloud stripe value") from exc
+        place_query = str(profile.get("place", "") or "").strip()
+        if self._location_place_radio is not None and self._location_place_radio.isChecked() and not place_query:
+            raise ValueError("Place query is required when Place query mode is selected")
         hours = float(profile.get("hours", 0.0) or 0.0)
         days = float(profile.get("days", 0.0) or 0.0)
         datetime_text = str(profile.get("datetime", "") or "").strip()
