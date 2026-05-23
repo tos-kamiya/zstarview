@@ -158,7 +158,7 @@ class StartupDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("zstarview-gui startup")
         self.setModal(True)
-        self.resize(640, 380)
+        self.resize(400, 380)
 
         self._defaults = default_gui_launch_profile()
         self._base_profile = dict(self._defaults)
@@ -187,7 +187,6 @@ class StartupDialog(QDialog):
             "Stars",
             "Overlays",
             "General",
-            "Search Objects at Startup",
         )
         for tab_name in tab_order:
             tab_widget = QWidget(self)
@@ -291,8 +290,6 @@ class StartupDialog(QDialog):
             _FieldSpec("observation_info", "Observation info", "choice", "General", choices=("auto", "top", "bottom", "off")),
             _FieldSpec("visibility_boost", "Visibility boost", "float", "General", minimum=1.0, maximum=10.0, step=0.1),
             _FieldSpec("overlay_font_size", "Overlay font size", "float", "General", minimum=float(OVERLAY_FONT_SIZE_MIN), maximum=float(OVERLAY_FONT_SIZE_MAX), step=0.5),
-            _FieldSpec("search", "Search query", "text", "Search Objects at Startup"),
-            _FieldSpec("search_keep_marker", "Keep marker", "bool", "Search Objects at Startup"),
             _FieldSpec("cloud_opacity", "Cloud opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("cloud_stripe", "Cloud stripe", "text", "Overlays"),
             _FieldSpec("cloud_missing_tint_opacity", "Cloud missing tint", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),

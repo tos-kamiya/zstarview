@@ -22,15 +22,14 @@ def test_startup_dialog_numeric_coercion_uses_fallbacks() -> None:
 def test_startup_dialog_tabs_follow_requested_order() -> None:
     dialog = StartupDialog()
 
-    assert dialog.width() == 640
+    assert dialog.width() == 400
     assert dialog.height() == 380
-    assert dialog._tabs.count() == 6
+    assert dialog._tabs.count() == 5
     assert dialog._tabs.tabText(0) == "Location"
     assert dialog._tabs.tabText(1) == "Time"
     assert dialog._tabs.tabText(2) == "Stars"
     assert dialog._tabs.tabText(3) == "Overlays"
     assert dialog._tabs.tabText(4) == "General"
-    assert dialog._tabs.tabText(5) == "Search Objects at Startup"
     assert dialog._widgets["time_shift_heading"].text() == "<b>Time shift</b>"
     assert dialog._widgets["time_absolute_heading"].text() == "<b>Absolute time</b>"
     assert set(dialog._overlay_sections) == {

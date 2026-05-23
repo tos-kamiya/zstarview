@@ -365,7 +365,6 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
   - `Stars`
   - `Overlays`
   - `General`
-  - `Search Objects at Startup`
 - ただし、`--list-viewpoints`、`--list-viewpoint-names`、`--show-viewpoint-json` のような dataset 参照専用オプションは、このダイアログには含めてはならない。
 - `Overlays` タブは、`Sky`、`Clouds`、`Aircraft and Satellites`、`Ground and Guides`、`Urban Outline` などの折りたたみ可能なサブグループに分けてよい。
 - 少なくとも次のグループを入力できてよい。
