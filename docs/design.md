@@ -359,20 +359,23 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 
 `ThemeStyle.text` は HUD、マウスホバー中の名前ラベル、惑星ラベルなどの通常文字列に使われる。  
 `ThemeStyle.status_text` はステータス行などの補助文字列に使われる。  
-白系テーマは、読みやすさを少し上げるため、暖色寄りのままやや白に近い値へ寄せてある。
+白系テーマは、通常文字を `day` と同じ RGB で、`white` 側だけ alpha を 255 にしている。ステータス行は `day` と同じグレーで、より不透明にしてある。アウトラインは `night` と同じ黒を共通で使う。
 
 - `night`
   - text: `(180, 180, 180)` / `#B4B4B4`
   - status_text: `(190, 190, 160)` / `#BEBEA0`
 - `white`
-  - text: `(229, 163, 100)` / `#E5A364`
-  - status_text: `(220, 155, 94)` / `#DC9B5E`
+  - text: `(214, 136, 103, 255)` / `#D68867FF`
+  - status_text: `(190, 190, 160, 255)` / `#BEBEA0FF`
+  - text/status outline: `(0, 0, 0, 76)` / `#0000004C`
 - `day`
   - text: `(233, 148, 112)` / `#E99470`
-  - status_text: `(224, 142, 106)` / `#E08E6A`
+  - status_text: `(190, 190, 160)` / `#BEBEA0`
+  - text/status outline: `(0, 0, 0, 76)` / `#0000004C`
 - `black`
   - text: `(246, 249, 255)` / `#F6F9FF`
   - status_text: `(255, 220, 220)` / `#FFDCDC`
+  - text/status outline: `(0, 0, 0, 76)` / `#0000004C`
 - `transparent`
   - text: `(242, 245, 250)` / `#F2F5FA`
   - status_text: `(255, 224, 224)` / `#FFE0E0`

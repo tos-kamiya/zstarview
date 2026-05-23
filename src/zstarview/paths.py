@@ -198,13 +198,13 @@ THEME_STYLES_BY_PRESET = {
     ),
     "white": ThemeStyle(
         text=TextStyle(
-            foreground_rgb=_rgb_from_hsv(29.3, 56.3, 82.0),
-            outline_rgba=(79, 45, 19, 166),
+            foreground_rgb=(214, 136, 103, 255),
+            outline_rgba=(0, 0, 0, 76),
             outline_width=3.0,
         ),
         status_text=TextStyle(
-            foreground_rgb=_rgb_from_hsv(29.0, 57.3, 79.0),
-            outline_rgba=(76, 44, 19, 169),
+            foreground_rgb=(190, 190, 160, 255),
+            outline_rgba=(0, 0, 0, 76),
             outline_width=3.0,
         ),
         window_background=WindowBackgroundStyle(
@@ -229,12 +229,12 @@ THEME_STYLES_BY_PRESET = {
     "day": ThemeStyle(
         text=TextStyle(
             foreground_rgb=_rgb_from_hsv(17.9, 51.9, 84.0),
-            outline_rgba=(78, 44, 25, 163),
+            outline_rgba=(0, 0, 0, 76),
             outline_width=3.0,
         ),
         status_text=TextStyle(
-            foreground_rgb=_rgb_from_hsv(18.3, 52.7, 81.0),
-            outline_rgba=(73, 42, 24, 165),
+            foreground_rgb=(190, 190, 160),
+            outline_rgba=(0, 0, 0, 76),
             outline_width=3.0,
         ),
         window_background=WindowBackgroundStyle(
@@ -259,11 +259,11 @@ THEME_STYLES_BY_PRESET = {
     "black": ThemeStyle(
         text=TextStyle(
             foreground_rgb=(246, 249, 255),
-            outline_rgba=(2, 2, 3, 236),
+            outline_rgba=(0, 0, 0, 76),
         ),
         status_text=TextStyle(
             foreground_rgb=(255, 220, 220),
-            outline_rgba=(2, 2, 3, 236),
+            outline_rgba=(0, 0, 0, 76),
         ),
         window_background=WindowBackgroundStyle(
             base_rgb=(12, 12, 12),

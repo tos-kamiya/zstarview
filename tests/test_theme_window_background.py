@@ -14,18 +14,24 @@ def test_white_and_day_window_background_share_the_same_base_rgb() -> None:
     assert white_bg.base_rgb[0] > day_bg.base_rgb[0]
 
 
-def test_white_and_day_outline_colors_use_midpoint_tones() -> None:
-    assert THEME_STYLES_BY_PRESET["white"].text.outline_rgba == (79, 45, 19, 166)
-    assert THEME_STYLES_BY_PRESET["white"].status_text.outline_rgba == (76, 44, 19, 169)
-    assert THEME_STYLES_BY_PRESET["day"].text.outline_rgba == (78, 44, 25, 163)
-    assert THEME_STYLES_BY_PRESET["day"].status_text.outline_rgba == (73, 42, 24, 165)
+def test_night_style_outline_colors_are_shared_by_bright_and_black_themes() -> None:
+    for preset in ("night", "white", "day", "black"):
+        theme = THEME_STYLES_BY_PRESET[preset]
+        assert theme.text.outline_rgba == (0, 0, 0, 76)
+        assert theme.status_text.outline_rgba == (0, 0, 0, 76)
 
 
-def test_white_and_day_text_colors_are_slightly_darker() -> None:
-    assert THEME_STYLES_BY_PRESET["white"].text.foreground_rgb == (209, 149, 91)
-    assert THEME_STYLES_BY_PRESET["white"].status_text.foreground_rgb == (201, 142, 86)
+def test_white_text_matches_day_with_higher_opacity() -> None:
+    assert THEME_STYLES_BY_PRESET["white"].text.foreground_rgb == (214, 136, 103, 255)
     assert THEME_STYLES_BY_PRESET["day"].text.foreground_rgb == (214, 136, 103)
-    assert THEME_STYLES_BY_PRESET["day"].status_text.foreground_rgb == (207, 131, 98)
+
+
+def test_white_status_text_matches_day_with_higher_opacity() -> None:
+    assert THEME_STYLES_BY_PRESET["day"].status_text.foreground_rgb == (190, 190, 160)
+    assert THEME_STYLES_BY_PRESET["white"].status_text.foreground_rgb == (190, 190, 160, 255)
+    assert THEME_STYLES_BY_PRESET["white"].status_text.foreground_rgb[:3] == THEME_STYLES_BY_PRESET[
+        "day"
+    ].status_text.foreground_rgb
 
 
 def test_transparent_theme_uses_low_alpha_dark_background() -> None:

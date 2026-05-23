@@ -1,6 +1,6 @@
 # zstarview 実装履歴
 
-最終更新: 2026-05-22
+最終更新: 2026-05-23
 
 ## 1. この文書の位置づけ
 
@@ -55,6 +55,18 @@
   - source fetch 中は `Downloading`、projection 中は `Projecting` を表示できるようにした。
   - `cloud_source_ready` を導入し、取得完了後の投影更新を他の更新処理と分離した。
   - source / render の latest-wins を別系統で扱うようにし、古い視点の再投影結果を捨てやすくした。
+
+### 2026-05-23
+
+- ステータス行の白系テーマ文字色調整
+  - `white` のステータス文字を `day` と同じグレーへ揃え、alpha を 255 にしてより不透明にした。
+  - ステータス行の可読性を保ちながら、`white` だけが `day` よりはっきり見えるようにした。
+- `white` 通常文字の `day` 統一
+  - `white` の通常文字を `day` と同じ RGB に戻し、`white` 側だけ alpha を 255 にした。
+  - 色相や明るさの差をなくし、`white` は不透明度だけで区別する方針に揃えた。
+- ステータス行と通常文字の白系テーマアウトライン透明化
+  - `day`、`white`、`black` の `ThemeStyle.text.outline_rgba` と `ThemeStyle.status_text.outline_rgba` を `night` と同じ黒の outline に揃えた。
+  - 文字色はそのまま維持し、アウトラインだけを `night` 基準へ統一して見た目の差を減らした。
 
 - version bump
   - `__version__` を `1.27.12` に上げた。
