@@ -45,17 +45,6 @@ Use `-V magnitude` to limit the displayed stars to those brighter than the given
 The default is `-V 7.0`. The bundled catalog currently supports up to `-V 10.5`, for which the candidate star set contains about 536,000 stars.
 Note that higher values will increase rendering time.
 
-#### About theme presets
-
-Use `--theme` to change the background treatment and contrast style.
-
-* `night`: default dark theme
-* `black`: darker opaque background
-* `transparent`: dark translucent background for already-dark desktops; this is the `transparent-40` alias and uses a flat, uniform alpha
-* `transparent-10` through `transparent-90`: 10-step transparent presets
-* `day`: bright sky/background treatment
-* `white`: brightest light theme
-
 ### Supported Asterisms
 
 These overlays are **asterisms** (popular line patterns), not formal IAU constellation boundaries.
