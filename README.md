@@ -128,6 +128,8 @@ zstarview-gui
 
 This opens the startup dialog first. Use `zstarview-gui` for the default GUI
 launch flow after installation.
+If you select `City` as the location source and press `Auto Search`, the
+startup dialog fills in your current location automatically.
 
 > Note: Troubleshooting tips (including X11 libraries and slow network) are summarized below.
 
