@@ -271,7 +271,6 @@ class StartupDialog(QDialog):
             _FieldSpec("earth_guide_opacity", "Earth guide opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.001),
             _FieldSpec("night_light_opacity", "Night light opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("ground_tint_opacity", "Ground tint opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
-            _FieldSpec("overlay_font_size", "Overlay font size", "float", "General", minimum=float(OVERLAY_FONT_SIZE_MIN), maximum=float(OVERLAY_FONT_SIZE_MAX), step=0.5),
             _FieldSpec("urban_outline_opacity", "Urban outline opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("water_surface_opacity", "Water surface opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("urban_outline_feature_type", "Urban outline mode", "choice", "Overlays", choices=("both", "building")),
