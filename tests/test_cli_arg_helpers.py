@@ -100,8 +100,10 @@ def test_main_help_text_uses_readme_like_groups() -> None:
     assert general_match is not None
     assert "--observation-info" in general_match.group("section")
     assert "--visibility-boost" in general_match.group("section")
+    assert "--overlay-font-size" in general_match.group("section")
     assert overlays_match is not None
     assert "--visibility-boost" not in overlays_match.group("section")
+    assert "--overlay-font-size" not in overlays_match.group("section")
     assert re.search(r"^\s+--list\s", help_text, re.M) is None
 
 
@@ -141,8 +143,10 @@ def test_export_image_help_text_uses_shared_groups() -> None:
     assert general_match is not None
     assert "--observation-info" in general_match.group("section")
     assert "--visibility-boost" in general_match.group("section")
+    assert "--overlay-font-size" in general_match.group("section")
     assert overlays_match is not None
     assert "--visibility-boost" not in overlays_match.group("section")
+    assert "--overlay-font-size" not in overlays_match.group("section")
     assert "--include-direction-grid" in help_text
     assert "--window-frame" not in help_text
     assert re.search(r"^\s+--list\s", help_text, re.M) is not None

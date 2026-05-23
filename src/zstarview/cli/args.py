@@ -695,17 +695,6 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         ),
     )
     parser.add_argument(
-        "--overlay-font-size",
-        type=_parse_overlay_font_size,
-        default=OVERLAY_FONT_SIZE_DEFAULT,
-        metavar="POINTS",
-        help=(
-            "Base font size for window-drawn labels and HUD text only "
-            f"({OVERLAY_FONT_SIZE_MIN}-{OVERLAY_FONT_SIZE_MAX}, decimals allowed, default: {OVERLAY_FONT_SIZE_DEFAULT}). "
-            "This does not affect the status line, menus, dialogs, or standard Qt widgets."
-        ),
-    )
-    parser.add_argument(
         "-u",
         "--urban-outline-opacity",
         type=float,
@@ -832,6 +821,17 @@ def add_general_arguments(
         help=(
             "Tiered opacity boost for hard-to-see layers (0.0 - 1.0 base, default: 1.0). "
             "Values above 1.0 increase supplemental layers more than small figure layers."
+        ),
+    )
+    parser.add_argument(
+        "--overlay-font-size",
+        type=_parse_overlay_font_size,
+        default=OVERLAY_FONT_SIZE_DEFAULT,
+        metavar="POINTS",
+        help=(
+            "Base font size for window-drawn labels and HUD text only "
+            f"({OVERLAY_FONT_SIZE_MIN}-{OVERLAY_FONT_SIZE_MAX}, decimals allowed, default: {OVERLAY_FONT_SIZE_DEFAULT}). "
+            "This does not affect the status line, menus, dialogs, or standard Qt widgets."
         ),
     )
     parser.add_argument(
