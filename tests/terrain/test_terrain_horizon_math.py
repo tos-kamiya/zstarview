@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import math
+import warnings
 from types import SimpleNamespace
 
 import numpy as np
 import pytest
 from rasterio.transform import Affine
+from pyproj import Transformer
 
 from zstarview.render.terrain import (
     _distance_band_alpha,
@@ -385,3 +387,24 @@ def test_sample_ground_elevation_uses_default_elevation_for_nodata() -> None:
     )
 
     assert got == 0.0
+
+
+def test_sample_ground_elevation_single_point_avoids_pyproj_warning() -> None:
+    grid = DemGrid(
+        array=np.array([[1.5]], dtype=np.float64),
+        transform=Affine.translation(0.0, 1.0) * Affine.scale(1.0, -1.0),
+        crs="EPSG:4326",
+        default_elevation_m=0.0,
+        _to_grid=Transformer.from_crs("EPSG:4326", "EPSG:4326", always_xy=True),
+    )
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        got = sample_ground_elevation(
+            grid,
+            latitude_deg=0.5,
+            longitude_deg=0.5,
+        )
+
+    assert got == 1.5
+    assert not any(issubclass(item.category, DeprecationWarning) for item in caught)

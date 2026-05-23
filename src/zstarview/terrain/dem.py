@@ -53,7 +53,12 @@ class DemGrid:
         lon_deg = np.asarray(lon_deg, dtype=np.float64)
         lat_deg = np.asarray(lat_deg, dtype=np.float64)
         sample_shape = lon_deg.shape
-        x, y = self._to_grid.transform(lon_deg.ravel(), lat_deg.ravel())
+        if lon_deg.size == 1:
+            x, y = self._to_grid.transform(float(lon_deg.reshape(())), float(lat_deg.reshape(())))
+            x = np.asarray([x], dtype=np.float64)
+            y = np.asarray([y], dtype=np.float64)
+        else:
+            x, y = self._to_grid.transform(lon_deg.ravel(), lat_deg.ravel())
         x = np.asarray(x, dtype=np.float64).reshape(sample_shape)
         y = np.asarray(y, dtype=np.float64).reshape(sample_shape)
         result = np.full(lon_deg.shape, np.nan, dtype=np.float64)
