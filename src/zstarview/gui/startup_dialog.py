@@ -48,7 +48,7 @@ class _FieldSpec:
     kind: Literal["text", "float", "int", "bool", "choice", "note"]
     tab: str
     choices: tuple[str, ...] = ()
-    decimals: int = 2
+    decimals: int = 3
     minimum: float = 0.0
     maximum: float = 1.0
     step: float = 1.0

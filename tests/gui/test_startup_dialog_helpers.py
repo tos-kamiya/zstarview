@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from PySide6.QtWidgets import QDoubleSpinBox
 from PySide6.QtWidgets import QApplication
 
 from zstarview.gui.startup_dialog import _coerce_float_value, _coerce_int_value
@@ -37,3 +38,7 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
     assert dialog._overlay_sections["Sky"].is_expanded() is False
     assert "overlay_font_size" in dialog._widgets
     assert dialog._reset_button.text() == "Reset to Default Values"
+    terrain_widget = dialog._widgets["terrain_horizon_opacity"]
+    assert isinstance(terrain_widget, QDoubleSpinBox)
+    assert terrain_widget.decimals() == 3
+    assert terrain_widget.value() == 0.003
