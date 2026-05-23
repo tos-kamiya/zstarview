@@ -38,6 +38,7 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
     assert dialog._location_city_radio.isChecked() is True
     assert dialog._location_place_radio.isChecked() is False
     assert dialog._widgets["city"].isEnabled() is True
+    assert dialog._widgets["city"].minimumHeight() == 40
     assert "place" not in dialog._widgets
     assert "place_countrycode" not in dialog._widgets
     assert "place_lang" not in dialog._widgets
@@ -200,12 +201,12 @@ def test_startup_dialog_city_auto_button_fills_city(monkeypatch) -> None:
 
     dialog = StartupDialog(auto_location_resolver=fake_auto_resolver)
     city_widget = dialog._widgets["city"]
-    city_widget.setText("Tokyo")
+    city_widget.setPlainText("Tokyo")
 
     dialog._city_auto_button.click()
 
     assert calls == ["called"]
-    assert city_widget.text() == "JP/Matsue"
+    assert city_widget.toPlainText() == "JP/Matsue"
     assert dialog._city_auto_button.isEnabled() is True
 
 
@@ -293,7 +294,7 @@ def test_startup_dialog_place_search_uses_search_dialog_and_saves_selection(monk
     dialog._city_search_button.click()
 
     assert recorded_calls == [("Matsue Station", None, "en")]
-    assert dialog._widgets["city"].text() == "Matsue Station"
+    assert dialog._widgets["city"].toPlainText() == "Matsue Station, Matsue, Shimane, Japan"
     profile = dialog.selected_profile()
     assert isinstance(profile["city"], dict)
     assert profile["city"]["resolver"] == "nominatim"

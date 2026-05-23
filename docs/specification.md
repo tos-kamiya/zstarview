@@ -383,7 +383,8 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
   - Sky Guides や各種 overlay の初期表示状態
   - 各 overlay の初期 opacity
   - 起動時の検索条件
-- `City` 欄には `Auto Search` ボタンを備えてよく、押した場合は現在地自動取得と同等の解決結果を `City` 欄へ反映してよい。
+- `City` 欄には複数行表示の入力欄を用いてよく、その上に `Auto Search` ボタンと `Search ...` ボタンを並べて配置してよい。
+- `Auto Search` ボタンは、押した場合に現在地自動取得と同等の解決結果を `City` 欄へ反映してよい。
 - `Search ...` ボタンは専用の place search dialog を開くために使ってよく、起動前ダイアログには query / country code / language の入力欄を持たせなくてよい。
 - place search dialog では、`Search query` は必須入力として扱い、`Place country code` と `Place language` は検索オプションとして補助的に使ってよい。
 - 空欄の `Place country code` は未指定として正規化し、空欄の `Place language` は `en` として正規化してよい。

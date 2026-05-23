@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
     QLabel,
+    QPlainTextEdit,
     QLineEdit,
     QFrame,
     QPushButton,
@@ -493,6 +494,28 @@ class StartupDialog(QDialog):
         else:
             self._apply_location_mode(mode)
 
+    def _city_widget(self) -> QPlainTextEdit | None:
+        widget = self._widgets.get("city")
+        if isinstance(widget, QPlainTextEdit):
+            return widget
+        return None
+
+    def _get_city_text(self) -> str:
+        widget = self._city_widget()
+        if widget is None:
+            return ""
+        return widget.toPlainText().strip()
+
+    def _set_city_text(self, text: str) -> None:
+        widget = self._city_widget()
+        if widget is None:
+            return
+        blocked = widget.blockSignals(True)
+        try:
+            widget.setPlainText(text)
+        finally:
+            widget.blockSignals(blocked)
+
     def _place_payload_from_target(
         self,
         query: str,
@@ -512,6 +535,7 @@ class StartupDialog(QDialog):
             "query": query,
             "countrycode": countrycode,
             "language": language,
+            "display_name": label.strip(),
             "result": {
                 "name": label.strip(),
                 "lat": float(latitude),
@@ -573,13 +597,9 @@ class StartupDialog(QDialog):
             self._show_validation_error("Selected place candidate is invalid")
             return
         self._set_place_selection(payload)
-        city_widget = self._widgets.get("city")
-        if isinstance(city_widget, QLineEdit):
-            blocked = city_widget.blockSignals(True)
-            try:
-                city_widget.setText(str(getattr(selected, "label", "")).strip())
-            finally:
-                city_widget.blockSignals(blocked)
+        display_name = str(getattr(selected, "object_key", "") or getattr(selected, "label", "")).strip()
+        if display_name:
+            self._set_city_text(display_name)
 
     def _time_source_from_profile(self, profile: dict[str, Any]) -> str:
         hours = float(profile.get("hours", 0.0) or 0.0)
@@ -637,8 +657,8 @@ class StartupDialog(QDialog):
 
     def _restore_place_selection(self, profile: dict[str, Any]) -> None:
         city_value = profile.get("city")
-        city_widget = self._widgets.get("city")
-        if not isinstance(city_widget, QLineEdit):
+        city_widget = self._city_widget()
+        if city_widget is None:
             self._set_place_selection(None)
             return
         if not isinstance(city_value, dict):
@@ -678,20 +698,12 @@ class StartupDialog(QDialog):
             if subtitle:
                 payload["subtitle"] = subtitle
             self._set_place_selection(payload)
-            blocked = city_widget.blockSignals(True)
-            try:
-                city_widget.setText(str(result.get("name", "")).strip())
-            finally:
-                city_widget.blockSignals(blocked)
+            display_name = str(city_value.get("display_name", "")).strip() or str(result.get("name", "")).strip()
+            self._set_city_text(display_name)
             return
         if resolver == "auto":
             display_name = str(city_value.get("display_name", "")).strip()
-            if display_name:
-                blocked = city_widget.blockSignals(True)
-                try:
-                    city_widget.setText(display_name)
-                finally:
-                    city_widget.blockSignals(blocked)
+            self._set_city_text(display_name)
             self._set_place_selection(None)
             return
         self._set_place_selection(None)
@@ -716,21 +728,28 @@ class StartupDialog(QDialog):
         widget: QWidget
         if spec.kind == "text":
             if spec.key == "city":
-                line_edit = QLineEdit(self)
+                city_edit = QPlainTextEdit(self)
                 if spec.placeholder:
-                    line_edit.setPlaceholderText(spec.placeholder)
+                    city_edit.setPlaceholderText(spec.placeholder)
+                city_edit.setLineWrapMode(QPlainTextEdit.LineWrapMode.WidgetWidth)
+                city_edit.setMinimumHeight(40)
                 row_widget = QWidget(self)
-                row_layout = QHBoxLayout(row_widget)
+                row_layout = QVBoxLayout(row_widget)
                 row_layout.setContentsMargins(0, 0, 0, 0)
                 row_layout.setSpacing(6)
-                row_layout.addWidget(line_edit, 1)
+                button_row = QHBoxLayout()
+                button_row.setContentsMargins(0, 0, 0, 0)
+                button_row.setSpacing(6)
                 self._city_auto_button = QPushButton("Auto Search", self)
                 self._city_auto_button.clicked.connect(self._start_city_auto)
-                row_layout.addWidget(self._city_auto_button)
+                button_row.addWidget(self._city_auto_button)
                 self._city_search_button = QPushButton("Search ...", self)
                 self._city_search_button.clicked.connect(self._open_place_search_dialog)
-                row_layout.addWidget(self._city_search_button)
-                widget = line_edit
+                button_row.addWidget(self._city_search_button)
+                button_row.addStretch(1)
+                row_layout.addLayout(button_row)
+                row_layout.addWidget(city_edit)
+                widget = city_edit
                 self._widgets[spec.key] = widget
                 self._location_group_widgets["city"].extend([widget, self._city_auto_button])
                 self._location_group_widgets["place"].append(self._city_search_button)
@@ -828,18 +847,14 @@ class StartupDialog(QDialog):
         if self._city_auto_button is not None:
             self._city_auto_button.setEnabled(True)
         if isinstance(payload, ResolvedLocation):
-            city_widget = self._widgets.get("city")
-            if isinstance(city_widget, QLineEdit):
-                city_widget.setText(payload.display_name)
-                city_widget.setCursorPosition(len(payload.display_name))
-                city_widget.selectAll()
+            self._set_city_text(payload.display_name)
             return
         self._show_error_dialog("Auto location failed", status_text)
 
     def _restore_from_profile(self, profile: dict[str, Any]) -> None:
         for key, widget in self._widgets.items():
             value = profile.get(key, self._defaults.get(key))
-            if key == "city" and isinstance(value, dict):
+            if key == "city":
                 continue
             if isinstance(widget, QLineEdit):
                 widget.setText(_as_text(value, key=key))
@@ -859,21 +874,20 @@ class StartupDialog(QDialog):
                 index = widget.findText(text)
                 widget.setCurrentIndex(max(0, index))
         city_value = profile.get("city")
-        city_widget = self._widgets.get("city")
-        if isinstance(city_widget, QLineEdit):
-            if isinstance(city_value, dict):
-                resolver = str(city_value.get("resolver", "")).strip().lower()
-                if resolver == "auto":
-                    display_name = str(city_value.get("display_name", "")).strip()
-                    if display_name:
-                        city_widget.setText(display_name)
-                    self._clear_place_selection()
-                elif resolver == "nominatim":
-                    self._restore_place_selection(profile)
-                else:
-                    self._clear_place_selection()
+        if isinstance(city_value, dict):
+            resolver = str(city_value.get("resolver", "")).strip().lower()
+            if resolver == "auto":
+                display_name = str(city_value.get("display_name", "")).strip()
+                if display_name:
+                    self._set_city_text(display_name)
+                self._clear_place_selection()
+            elif resolver == "nominatim":
+                self._restore_place_selection(profile)
             else:
                 self._clear_place_selection()
+        else:
+            self._set_city_text(_as_text(city_value, key="city"))
+            self._clear_place_selection()
         self._apply_location_mode(self._location_mode_from_profile(profile))
         self._apply_time_source(self._time_source_from_profile(profile))
 
@@ -884,6 +898,9 @@ class StartupDialog(QDialog):
     def selected_profile(self) -> dict[str, Any]:
         profile = dict(self._base_profile)
         for key, widget in self._widgets.items():
+            if key == "city":
+                profile[key] = self._get_city_text()
+                continue
             if isinstance(widget, QLineEdit):
                 text = widget.text().strip()
                 if key == "window_geometry":
@@ -905,7 +922,7 @@ class StartupDialog(QDialog):
                 else:
                     profile[key] = text
         if self._location_city_radio is not None and self._location_city_radio.isChecked():
-            self._set_place_selection(None)
+            self._clear_place_selection()
         elif self._location_place_radio is not None and self._location_place_radio.isChecked():
             if self._place_selected_payload is not None:
                 profile["city"] = self._place_selected_payload

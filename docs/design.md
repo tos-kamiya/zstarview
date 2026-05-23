@@ -68,7 +68,8 @@
   - README の GUI 対応 CLI グループ見出しに対応するタブを持ち、`Location`、`View`、`Time`、`Stars`、`Overlays`、`General` の順に分けて起動前の入力を見通しよく整理する
   - `Overlays` は `Sky`、`Clouds`、`Aircraft and Satellites`、`Ground and Guides`、`Urban Outline` の折りたたみ可能なサブグループへ分けてよい
   - `overlay_font_size` は `General` 側で扱い、全体の表示密度を調整する設定として保持してよい
-  - `City` 行には `Auto Search` ボタンを置き、現在地自動取得の結果を `City` 欄へ反映してよい
+  - `City` 行には複数行表示の入力欄を置き、その上に `Auto Search` と `Search ...` のボタン行を配置してよい
+  - `Auto Search` ボタンは現在地自動取得の結果を `City` 欄へ反映してよい
   - `Location` タブでは `City` と `Search results` を排他的なモードとして扱い、`Search ...` ボタンから専用の place search dialog を開いてよい
   - place search dialog では、自由入力をそのまま Nominatim に投げるのではなく、明示的な検索実行の後に候補一覧から 1 件を選ぶフローとして扱ってよい
   - `Place country code` は空欄なら未指定、`Place language` は空欄なら `en` として正規化し、`None` を Nominatim 呼び出しへ流さない
