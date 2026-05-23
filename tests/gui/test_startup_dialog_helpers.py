@@ -30,8 +30,12 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
     assert dialog._tabs.tabText(2) == "Stars"
     assert dialog._tabs.tabText(3) == "Overlays"
     assert dialog._tabs.tabText(4) == "General"
-    assert dialog._widgets["time_shift_heading"].text() == "<b>Time shift</b>"
-    assert dialog._widgets["time_absolute_heading"].text() == "<b>Absolute time</b>"
+    assert dialog._time_shift_checkbox.text() == "Time shift"
+    assert dialog._absolute_time_checkbox.text() == "Absolute time"
+    assert dialog._time_shift_checkbox.isChecked() is False
+    assert dialog._absolute_time_checkbox.isChecked() is False
+    assert dialog._widgets["hours"].isEnabled() is False
+    assert dialog._widgets["datetime"].isEnabled() is False
     assert set(dialog._overlay_sections) == {
         "Sky",
         "Clouds",
@@ -49,6 +53,25 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
     assert isinstance(terrain_widget, QDoubleSpinBox)
     assert terrain_widget.decimals() == 3
     assert terrain_widget.value() == 0.003
+
+
+def test_startup_dialog_time_mode_checkboxes_are_exclusive() -> None:
+    dialog = StartupDialog()
+
+    dialog._time_shift_checkbox.setChecked(True)
+    dialog._absolute_time_checkbox.setChecked(True)
+
+    assert dialog._absolute_time_checkbox.isChecked() is True
+    assert dialog._time_shift_checkbox.isChecked() is False
+    assert dialog._widgets["datetime"].isEnabled() is True
+    assert dialog._widgets["hours"].isEnabled() is False
+
+    dialog._absolute_time_checkbox.setChecked(False)
+
+    assert dialog._time_shift_checkbox.isChecked() is False
+    assert dialog._absolute_time_checkbox.isChecked() is False
+    assert dialog._widgets["hours"].isEnabled() is False
+    assert dialog._widgets["datetime"].isEnabled() is False
 
 
 def test_startup_dialog_time_modes_are_mutually_exclusive() -> None:

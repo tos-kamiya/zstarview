@@ -167,6 +167,8 @@ class StartupDialog(QDialog):
 
         self._widgets: dict[str, Any] = {}
         self._tab_layouts: dict[str, QFormLayout] = {}
+        self._time_group_layouts: dict[str, QFormLayout] = {}
+        self._time_group_widgets: dict[str, list[QWidget]] = {}
         self._overlay_layouts: dict[str, QFormLayout] = {}
         self._overlay_sections: dict[str, _CollapsibleSection] = {}
         self._overlay_section_by_key: dict[str, str] = {}
@@ -174,6 +176,8 @@ class StartupDialog(QDialog):
         self._auto_location_resolver = auto_location_resolver or _resolve_auto_location_for_dialog
         self.city_auto_finished.connect(self._on_city_auto_finished)
         self._city_auto_button: QPushButton | None = None
+        self._time_shift_checkbox: QCheckBox | None = None
+        self._absolute_time_checkbox: QCheckBox | None = None
 
         outer_layout = QVBoxLayout(self)
         outer_layout.setContentsMargins(12, 12, 12, 12)
@@ -193,7 +197,12 @@ class StartupDialog(QDialog):
             scroll_area = QScrollArea(self)
             scroll_area.setWidgetResizable(True)
             scroll_area.setFrameShape(QFrame.Shape.NoFrame)
-            if tab_name == "Overlays":
+            if tab_name == "Time":
+                tab_layout = QVBoxLayout(tab_widget)
+                tab_layout.setContentsMargins(0, 0, 0, 0)
+                tab_layout.setSpacing(12)
+                self._build_time_tab(tab_widget, tab_layout)
+            elif tab_name == "Overlays":
                 tab_layout = QVBoxLayout(tab_widget)
                 tab_layout.setContentsMargins(0, 0, 0, 0)
                 tab_layout.setSpacing(10)
@@ -246,29 +255,8 @@ class StartupDialog(QDialog):
             _FieldSpec("view_center_az", "View center az", "float", "Location", minimum=0.0, maximum=360.0, step=1.0),
             _FieldSpec("edge_fov_deg", "Edge FOV", "float", "Location", minimum=0.1, maximum=135.0, step=0.5),
             _FieldSpec("content_fov_deg", "Content FOV", "float", "Location", minimum=90.0, maximum=135.0, step=0.5),
-            _FieldSpec(
-                "time_mode_note",
-                "",
-                "note",
-                "Time",
-                note="Use either relative shift (Hours/Days) or absolute time (Date/time + Timezone).",
-            ),
-            _FieldSpec(
-                "time_shift_heading",
-                "",
-                "note",
-                "Time",
-                note="<b>Time shift</b>",
-            ),
             _FieldSpec("hours", "Hours", "float", "Time", minimum=-9999.0, maximum=9999.0, step=0.5),
             _FieldSpec("days", "Days", "float", "Time", minimum=-9999.0, maximum=9999.0, step=0.5),
-            _FieldSpec(
-                "time_absolute_heading",
-                "",
-                "note",
-                "Time",
-                note="<b>Absolute time</b>",
-            ),
             _FieldSpec("datetime", "Date/time", "text", "Time"),
             _FieldSpec("timezone", "Timezone", "text", "Time"),
             _FieldSpec("sky_opacity", "Sky opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
@@ -346,8 +334,110 @@ class StartupDialog(QDialog):
                 self._overlay_section_by_key[key] = title
         layout.addStretch(1)
 
+    def _build_time_tab(self, tab_widget: QWidget, layout: QVBoxLayout) -> None:
+        intro = QLabel(
+            "Use either relative time shift or absolute time. Leaving both unchecked means no time override.",
+            tab_widget,
+        )
+        intro.setWordWrap(True)
+        layout.addWidget(intro)
+
+        self._time_shift_checkbox = QCheckBox("Time shift", tab_widget)
+        self._absolute_time_checkbox = QCheckBox("Absolute time", tab_widget)
+        self._time_shift_checkbox.toggled.connect(
+            lambda checked: self._set_time_mode("shift", checked)
+        )
+        self._absolute_time_checkbox.toggled.connect(
+            lambda checked: self._set_time_mode("absolute", checked)
+        )
+
+        shift_container = QWidget(tab_widget)
+        shift_layout = QFormLayout(shift_container)
+        shift_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
+        shift_layout.setFormAlignment(
+            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
+        )
+        shift_layout.setFieldGrowthPolicy(
+            QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
+        )
+
+        absolute_container = QWidget(tab_widget)
+        absolute_layout = QFormLayout(absolute_container)
+        absolute_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
+        absolute_layout.setFormAlignment(
+            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
+        )
+        absolute_layout.setFieldGrowthPolicy(
+            QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
+        )
+
+        self._time_group_layouts["shift"] = shift_layout
+        self._time_group_layouts["absolute"] = absolute_layout
+        self._time_group_widgets["shift"] = []
+        self._time_group_widgets["absolute"] = []
+
+        layout.addWidget(self._time_shift_checkbox)
+        layout.addWidget(shift_container)
+        layout.addWidget(self._absolute_time_checkbox)
+        layout.addWidget(absolute_container)
+        layout.addStretch(1)
+
+    def _time_mode_from_profile(self, profile: dict[str, Any]) -> str:
+        hours = float(profile.get("hours", 0.0) or 0.0)
+        days = float(profile.get("days", 0.0) or 0.0)
+        datetime_text = str(profile.get("datetime", "") or "").strip()
+        timezone_text = str(profile.get("timezone", "") or "").strip()
+        if datetime_text or timezone_text:
+            return "absolute"
+        if abs(hours) > 1e-12 or abs(days) > 1e-12:
+            return "shift"
+        return "none"
+
+    def _set_time_group_enabled(self, group: str, enabled: bool) -> None:
+        for widget in self._time_group_widgets.get(group, []):
+            widget.setEnabled(enabled)
+
+    def _apply_time_mode(self, mode: str) -> None:
+        if self._time_shift_checkbox is None or self._absolute_time_checkbox is None:
+            return
+        shift_checked = mode == "shift"
+        absolute_checked = mode == "absolute"
+        shift_blocked = self._time_shift_checkbox.blockSignals(True)
+        absolute_blocked = self._absolute_time_checkbox.blockSignals(True)
+        try:
+            self._time_shift_checkbox.setChecked(shift_checked)
+            self._absolute_time_checkbox.setChecked(absolute_checked)
+        finally:
+            self._time_shift_checkbox.blockSignals(shift_blocked)
+            self._absolute_time_checkbox.blockSignals(absolute_blocked)
+        self._set_time_group_enabled("shift", shift_checked)
+        self._set_time_group_enabled("absolute", absolute_checked)
+
+    def _set_time_mode(self, mode: str, checked: bool) -> None:
+        if checked:
+            self._apply_time_mode(mode)
+            return
+        other_mode = "absolute" if mode == "shift" else "shift"
+        other_checkbox = (
+            self._absolute_time_checkbox if other_mode == "absolute" else self._time_shift_checkbox
+        )
+        if other_checkbox is not None and other_checkbox.isChecked():
+            self._apply_time_mode(other_mode)
+        else:
+            self._apply_time_mode("none")
+
     def _add_spec(self, spec: _FieldSpec) -> None:
-        if spec.tab == "Overlays":
+        time_group: str | None = None
+        if spec.tab == "Time":
+            if spec.key in {"hours", "days"}:
+                layout = self._time_group_layouts["shift"]
+                time_group = "shift"
+            elif spec.key in {"datetime", "timezone"}:
+                layout = self._time_group_layouts["absolute"]
+                time_group = "absolute"
+            else:
+                raise ValueError(f"Unsupported time field: {spec.key}")
+        elif spec.tab == "Overlays":
             section = self._overlay_section_by_key[spec.key]
             layout = self._overlay_layouts[section]
         else:
@@ -396,6 +486,8 @@ class StartupDialog(QDialog):
         else:
             raise ValueError(f"Unsupported field kind: {spec.kind}")
         self._widgets[spec.key] = widget
+        if time_group is not None:
+            self._time_group_widgets[time_group].append(widget)
         layout.addRow(spec.label, widget)
 
     def _start_city_auto(self) -> None:
@@ -451,6 +543,7 @@ class StartupDialog(QDialog):
                     text = str(value if value is not None else self._defaults.get(key, ""))
                 index = widget.findText(text)
                 widget.setCurrentIndex(max(0, index))
+        self._apply_time_mode(self._time_mode_from_profile(profile))
 
     def reset_to_defaults(self) -> None:
         self._base_profile = dict(self._defaults)
@@ -479,6 +572,17 @@ class StartupDialog(QDialog):
                     profile[key] = _tri_bool_to_value(text)
                 else:
                     profile[key] = text
+        if self._time_shift_checkbox is not None and self._time_shift_checkbox.isChecked():
+            profile["datetime"] = None
+            profile["timezone"] = None
+        elif self._absolute_time_checkbox is not None and self._absolute_time_checkbox.isChecked():
+            profile["hours"] = 0.0
+            profile["days"] = 0.0
+        else:
+            profile["hours"] = 0.0
+            profile["days"] = 0.0
+            profile["datetime"] = None
+            profile["timezone"] = None
         return profile
 
     def accept(self) -> None:

@@ -70,6 +70,7 @@
   - `overlay_font_size` は `General` 側で扱い、全体の表示密度を調整する設定として保持してよい
   - `City` 行には `Auto` ボタンを置き、現在地自動取得の結果を `City` 欄へ反映してよい
   - `Time` タブでは `Hours` / `Days` による相対シフトと `Date/time` / `Timezone` による絶対時刻を分離して見せ、同時指定は受け付けない
+  - `Time` タブでは `Time shift` と `Absolute time` の前にチェックボックスを置き、どちらか一方だけを有効にしつつ両方無効の初期状態も表現してよい
   - dataset 参照専用オプションは対象外として扱う
 - `src/zstarview/cli/args.py`
   - CLI オプション定義と値解釈
