@@ -126,7 +126,6 @@ class StartupDialog(QDialog):
 
         tab_order = (
             "Observing Location and Time",
-            "Viewpoint Dataset Queries for Observing Locations",
             "Search Objects at startup",
             "Sky and Stars",
             "Overlays",
@@ -148,7 +147,6 @@ class StartupDialog(QDialog):
             self._tabs.addTab(scroll_area, tab_name)
 
         self._add_specs()
-        self._add_dataset_query_note()
         self._restore_from_profile(self._base_profile)
 
         button_row = QHBoxLayout()
@@ -227,16 +225,6 @@ class StartupDialog(QDialog):
         )
         for spec in specs:
             self._add_spec(spec)
-
-    def _add_dataset_query_note(self) -> None:
-        note = QLabel(
-            "Dataset query options are CLI-only and do not affect the GUI launcher profile.",
-            self,
-        )
-        note.setWordWrap(True)
-        self._tab_layouts["Viewpoint Dataset Queries for Observing Locations"].addRow(
-            note
-        )
 
     def _add_spec(self, spec: _FieldSpec) -> None:
         layout = self._tab_layouts[spec.tab]

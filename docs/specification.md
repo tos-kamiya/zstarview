@@ -361,11 +361,11 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 - ダイアログは、README の CLI オプション群に対応するタブへ分けてよい。
 - タブの並びは README のオプション群の並びに合わせてよく、少なくとも次の区分を持ってよい。
   - `Observing Location and Time`
-  - `Viewpoint Dataset Queries for Observing Locations`
   - `Search Objects at startup`
   - `Sky and Stars`
   - `Overlays`
   - `General`
+- ただし、`--list-viewpoints`、`--list-viewpoint-names`、`--show-viewpoint-json` のような dataset 参照専用オプションは、このダイアログには含めてはならない。
 - 少なくとも次のグループを入力できてよい。
   - 観測地点
   - 観測時刻
