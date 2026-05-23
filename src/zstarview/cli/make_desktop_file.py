@@ -6,8 +6,8 @@ from ..paths import APP_DISPLAY_NAME, APP_ICON_FILE, APP_ID
 
 _dir = os.path.dirname(os.path.abspath(__file__))
 
-APP_COMMAND = "zstarview"
-DESKTOP_FILE = f"{APP_ID}.desktop"
+APP_COMMAND = "zstarview-gui"
+DESKTOP_FILE = f"{APP_COMMAND}.desktop"
 
 DESKTOP_TEMPLATE = """[Desktop Entry]
 Type=Application
@@ -28,7 +28,11 @@ def main():
     parser.add_argument(
         "--write",
         action="store_true",
-        help=f"Write the desktop file to ~/.local/share/applications/{APP_ID} (default: output the file in the current directory)",
+        help=(
+            "Write the desktop file to "
+            f"~/.local/share/applications/{DESKTOP_FILE} "
+            "(default: output the file in the current directory)"
+        ),
     )
     args = parser.parse_args()
 

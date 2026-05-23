@@ -217,14 +217,14 @@ a `.desktop` file is required for the correct icon to appear in the taskbar.
 This application includes a helper command to generate it:
 
 ```bash
-# Create zstarview.desktop in the current directory
+# Create zstarview-gui.desktop in the current directory
 zstarview-make-desktop-file
 
 # Install to ~/.local/share/applications
 zstarview-make-desktop-file --write
 ```
 
-* Without `--write`, the file `zstarview.desktop` is created in the current directory.
+* Without `--write`, the file `zstarview-gui.desktop` is created in the current directory.
 * With `--write`, it is installed to `~/.local/share/applications` and registered with the desktop database.
 
 > **Note:** This launcher integration is only intended for GNOME-based environments.

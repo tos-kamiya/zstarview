@@ -216,14 +216,14 @@ GNOME 系デスクトップ環境（Ubuntu Dock や DockToPanel を含む）で�
 本アプリにはこれを生成する補助コマンドが付属しています。
 
 ```bash
-# カレントディレクトリに zstarview.desktop を作成
+# カレントディレクトリに zstarview-gui.desktop を作成
 zstarview-make-desktop-file
 
 # ~/.local/share/applications にインストール
 zstarview-make-desktop-file --write
 ```
 
-* `--write` を付けない場合は、カレントディレクトリに `zstarview.desktop` が作成されます。
+* `--write` を付けない場合は、カレントディレクトリに `zstarview-gui.desktop` が作成されます。
 * `--write` を付けると `~/.local/share/applications` に書き込み、デスクトップデータベースに登録します。
 
 > **注:** このランチャー機能は GNOME 系環境専用です。  
