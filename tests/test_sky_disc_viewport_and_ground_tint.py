@@ -3,7 +3,11 @@ from PySide6.QtCore import QRectF
 from PySide6.QtGui import QColor, QImage, QPainter
 
 from zstarview.astro import altaz_to_normalized_xy
-from zstarview.gui.composite import SkyCompositorCache, _dimalt_ring_color_for_sky_image
+from zstarview.gui.composite import (
+    SkyCompositorCache,
+    _apply_ground_reset,
+    _dimalt_ring_color_for_sky_image,
+)
 from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.render.background import (
     dimalt_ring_pen_color_from_color,
@@ -346,6 +350,27 @@ def test_altitude_rings_dim_sky_disc_before_compositing() -> None:
     x0 = max(0, x - 1)
     x1 = min(arr.shape[1], x + 2)
     assert float(arr[y0:y1, x0:x1, :3].mean()) < 90.0
+
+
+def test_ground_reset_keeps_transparent_theme_below_horizon_semi_transparent() -> None:
+    geom = ScreenGeometry(center=(80, 80), radius=80)
+    base = QImage(160, 160, QImage.Format.Format_ARGB32_Premultiplied)
+    base.fill(0)
+
+    result = _apply_ground_reset(
+        base,
+        geometry=geom,
+        view_center=(0.0, 0.0),
+        terrain_profile_altaz=None,
+        ground_reset_rgba=(4, 4, 4, 102),
+        edge_fov_deg=90.0,
+        content_fov_deg=90.0,
+    )
+    arr = qimage_to_np_rgba(result)
+
+    assert int(arr[80, 80, 3]) == 0
+    assert int(arr[140, 80, 3]) == 102
+    assert np.array_equal(arr[140, 80, :3], np.array([4, 4, 4]))
 
 
 def test_radial_background_uses_black_inner_disc_for_all_main_themes() -> None:

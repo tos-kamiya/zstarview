@@ -48,6 +48,18 @@ def _sun_alt_deg(celestial_data: CelestialData) -> float | None:
     return None
 
 
+def _ground_reset_rgba_for_theme(theme: ThemeStyle) -> tuple[int, int, int, int]:
+    """Return the below-horizon reset fill tuned for the active theme."""
+    red, green, blue, alpha = theme.window_background.inner_rgba
+    alpha = int(round(255.0 * float(theme.sky_disc.opacity)))
+    return (
+        int(red),
+        int(green),
+        int(blue),
+        int(np.clip(alpha, 0, 255)),
+    )
+
+
 def compute_star_render_surface_size(
     width_px: int,
     height_px: int,
@@ -612,7 +624,7 @@ def _draw_sky_cloud_layers(
         earth_guide_visibility_boost=style.earth_guide_visibility_boost,
         night_light_opacity=style.night_light_opacity,
         night_light_sun_alt_deg=_sun_alt_deg(scene.celestial_data),
-        ground_reset_rgba=style.theme.window_background.inner_rgba,
+        ground_reset_rgba=_ground_reset_rgba_for_theme(style.theme),
         theme=style.theme,
         content_fov_deg=_content_fov_deg(scene),
         fast_mode=bool(fast_mode),

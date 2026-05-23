@@ -872,8 +872,9 @@ def _apply_ground_reset(
     rgb = out[..., :3][inside].astype(np.float32) / 255.0
     alpha = out[..., 3][inside].astype(np.float32) / 255.0
     reset_rgb = np.array(ground_reset_rgba[:3], dtype=np.float32) / 255.0
+    reset_alpha = float(np.clip(float(ground_reset_rgba[3]) / 255.0, 0.0, 1.0))
     rgb[ground_mask] = reset_rgb[None, :]
-    alpha[ground_mask] = 1.0
+    alpha[ground_mask] = reset_alpha
     out[..., :3][inside] = np.clip(np.round(rgb * 255.0), 0, 255).astype(np.uint8)
     out[..., 3][inside] = np.clip(np.round(alpha * 255.0), 0, 255).astype(np.uint8)
     return np_rgba_to_qimage(out)
