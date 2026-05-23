@@ -93,8 +93,9 @@ First run check:
 zstarview-gui
 ```
 
-This opens the startup dialog first. Use `zstarview-gui` for the default GUI
-launch flow after installation.
+This opens the startup dialog first. If you select `City` as the location
+source and press `Auto Search`, the dialog fills in your current location
+automatically.
 
 ## Highlights
 
