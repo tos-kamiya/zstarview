@@ -34,6 +34,10 @@ from ..paths import (
 from .launch_profile import default_gui_launch_profile
 
 TriBool = Literal["default", "true", "false"]
+_FLOAT_DEFAULTS: dict[str, float] = {
+    "observer_height_m": 1.7,
+}
+_INT_DEFAULTS: dict[str, int] = {}
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,6 +78,24 @@ def _tri_bool_to_value(text: str) -> bool | None:
     if lowered == "false":
         return False
     raise ValueError(f"Invalid tri-state boolean: {text!r}")
+
+
+def _coerce_float_value(key: str, value: Any, fallback: float) -> float:
+    if value is None:
+        return float(_FLOAT_DEFAULTS.get(key, fallback))
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return float(_FLOAT_DEFAULTS.get(key, fallback))
+
+
+def _coerce_int_value(key: str, value: Any, fallback: int) -> int:
+    if value is None:
+        return int(_INT_DEFAULTS.get(key, fallback))
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return int(_INT_DEFAULTS.get(key, fallback))
 
 
 class StartupDialog(QDialog):
@@ -254,15 +276,11 @@ class StartupDialog(QDialog):
             if isinstance(widget, QLineEdit):
                 widget.setText(_as_text(value, key=key))
             elif isinstance(widget, QDoubleSpinBox):
-                try:
-                    widget.setValue(float(value))
-                except (TypeError, ValueError):
-                    widget.setValue(float(self._defaults.get(key, 0.0)))
+                widget.setValue(
+                    _coerce_float_value(key, value, float(widget.value()))
+                )
             elif isinstance(widget, QSpinBox):
-                try:
-                    widget.setValue(int(value))
-                except (TypeError, ValueError):
-                    widget.setValue(int(self._defaults.get(key, 0)))
+                widget.setValue(_coerce_int_value(key, value, int(widget.value())))
             elif isinstance(widget, QCheckBox):
                 widget.setChecked(bool(value))
             elif isinstance(widget, QComboBox):

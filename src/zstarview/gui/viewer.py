@@ -251,7 +251,18 @@ def _make_gui_profile_io(profile: dict[str, object]) -> tuple[
 
 
 def _apply_gui_profile_to_args(args: object, profile: dict[str, object]) -> None:
+    blankable_fields = {
+        "place",
+        "place_countrycode",
+        "place_lang",
+        "datetime",
+        "timezone",
+        "search",
+    }
     for key, value in profile.items():
+        if key in blankable_fields and isinstance(value, str) and not value.strip():
+            setattr(args, key, None)
+            continue
         setattr(args, key, value)
 
     cloud_stripe = profile.get("cloud_stripe")
