@@ -10,6 +10,10 @@ from ..paths import (
     OVERLAY_FONT_SIZE_DEFAULT,
     OVERLAY_FONT_SIZE_MAX,
     OVERLAY_FONT_SIZE_MIN,
+    THEME_PRESET_NAMES,
+    TRANSPARENT_THEME_ALIAS,
+    TRANSPARENT_THEME_DEFAULT_PRESET,
+    TRANSPARENT_THEME_OPACITY_VALUES,
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
 )
@@ -50,13 +54,19 @@ def _parse_theme(value: str) -> str:
         "day": "day",
         "white": "white",
         "black": "black",
-        "transparent": "transparent",
-        "translucent": "transparent",
+        TRANSPARENT_THEME_ALIAS: TRANSPARENT_THEME_DEFAULT_PRESET,
+        "translucent": TRANSPARENT_THEME_DEFAULT_PRESET,
     }
     if key in allowed:
         return allowed[key]
+    if key.startswith(f"{TRANSPARENT_THEME_ALIAS}-"):
+        suffix = key.removeprefix(f"{TRANSPARENT_THEME_ALIAS}-")
+        if suffix.isdigit() and len(suffix) == 2:
+            opacity = int(suffix)
+            if opacity in TRANSPARENT_THEME_OPACITY_VALUES:
+                return key
     raise argparse.ArgumentTypeError(
-        f"Invalid theme: {value!r}. Use one of: night, day, white, black, transparent."
+        f"Invalid theme: {value!r}. Use one of: {', '.join(THEME_PRESET_NAMES)}."
     )
 
 
@@ -800,7 +810,7 @@ def add_general_arguments(
         "--theme",
         type=_parse_theme,
         default="night",
-        metavar="{night,day,white,black,transparent}",
+        metavar="{night,day,white,black,transparent,transparent-10..90}",
         help="Theme preset for background and star contrast (default: night).",
     )
     parser.add_argument(

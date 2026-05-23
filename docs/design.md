@@ -86,7 +86,9 @@
   - タワー一覧・タワー詳細 JSON 出力の即時終了オプションを扱う
   - `--place`、`--place-countrycode`、`--place-lang` の online 地点検索オプションを扱う
   - `--search`、`--list`、`--search-keep-marker` の検索オプションを扱い、GUI 起動時検索と export-image で同じ引数定義を共有する
-- `--theme` は `night`、`day`、`white`、`black`、`transparent` の 5 preset を受け付ける
+- `--theme` は `night`、`day`、`white`、`black`、`transparent`、`transparent-10` から `transparent-90` までの 10 刻みを受け付ける
+  - `transparent` は `transparent-40` の別名として正規化してよい
+  - `transparent-NN` 形式は `ThemeStyle.sky_disc.opacity = NN / 100.0` として扱ってよい
   - `--edge-fov-deg` は起動時の画面投影スケールを、`--content-fov-deg` は描画対象の保持範囲を制御する
   - `--night-light-opacity` は夜間光オーバーレイの基礎強度を制御し、GUI の Layers メニュー上の Night Lights トグルと同じ意味を持つ
   - `--water-surface-opacity` は水面レイヤーの初期表示強度を制御し、GUI の Layers メニュー上の `Water Surface` トグルと同じ意味を持つ
@@ -382,6 +384,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - sky disc opacity: `0.4`
   - window chrome: menu square uses theme-contrast fill and hamburger lines;
     grip uses a dedicated resize-handle widget that draws a single diagonal stroke itself
+  - `transparent` は `transparent-40` の互換別名として扱ってよい
+  - `transparent-10` から `transparent-90` は、同じスタイルで sky disc opacity だけを `0.1` から `0.9` まで変えた派生 preset として扱ってよい
 
 #### 4.3.3 カラーパレット参照
 

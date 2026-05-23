@@ -38,6 +38,7 @@ from ..location_resolver.place_search import search_place_candidates
 from ..paths import (
     OVERLAY_FONT_SIZE_MAX,
     OVERLAY_FONT_SIZE_MIN,
+    THEME_PRESET_NAMES,
 )
 from .launch_profile import default_gui_launch_profile
 from .worker_pool import submit_gui_work
@@ -303,7 +304,7 @@ class StartupDialog(QDialog):
             _FieldSpec("show_dso_initial", "DSO visibility", "choice", "Stars", choices=("default", "true", "false")),
             _FieldSpec("show_asterisms_initial", "Asterisms visibility", "choice", "Stars", choices=("default", "true", "false")),
             _FieldSpec("show_guidelines_initial", "Guidelines visibility", "choice", "Stars", choices=("default", "true", "false")),
-            _FieldSpec("theme", "Theme", "choice", "General", choices=("night", "day", "white", "black", "transparent")),
+            _FieldSpec("theme", "Theme", "choice", "General", choices=THEME_PRESET_NAMES),
             _FieldSpec("window_geometry", "Window geometry", "text", "General"),
             _FieldSpec("window_frame", "Window frame", "choice", "General", choices=("frameless", "window")),
             _FieldSpec("observation_info", "Observation info", "choice", "General", choices=("auto", "top", "bottom", "off")),

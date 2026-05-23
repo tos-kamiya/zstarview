@@ -157,13 +157,15 @@ README より詳細に、何ができるか、どう振る舞うか、どのよ�
   - `window` では独自外枠、ハンバーガーメニュー、サイズ変更グリップは表示しない。
   - `window` のタイトルバー表示は地点名のみとしてよい。
 - `--theme`
-  - `night`、`day`、`white`、`black`、`transparent` を受け付ける。
+  - `night`、`day`、`white`、`black`、`transparent`、`transparent-10` から `transparent-90` までの 10 刻みを受け付ける。
+  - `transparent` は `transparent-40` の別名として扱ってよい。
   - テーマは、少なくとも通常ラベル、ステータス行、ウィンドウ背景、スプラッシュスクリーンの配色と透明度に反映される。
   - `day` と `white` のスプラッシュメッセージ文字色は黒寄りにしてよい。
   - `day` と `white` のステータス行文字色は、`night` と同じグレーにしてよい。
   - `day` と `white` では、暗いテーマよりも文字アウトライン幅を広くしてよい。
-  - `transparent` は黒寄りの半透明背景を使うテーマとしてよい。背景は実質的にフラットで、半径方向の alpha 変化を入れないようにしてよい。
-  - `transparent` では空色ディスクの見た目にも、他テーマより低い alpha を使ってよい。目安は `0.4` 前後としてよい。
+  - `transparent-10` から `transparent-90` までは、`0.1` から `0.9` の見た目透明度を持つ派生テーマとしてよい。
+  - `transparent` 系は黒寄りの半透明背景を使うテーマとしてよい。背景は実質的にフラットで、半径方向の alpha 変化を入れないようにしてよい。
+  - `transparent` 系では空色ディスクの見た目にも、指定した alpha に応じた低い不透明度を使ってよい。`transparent-40` は `0.4` 前後としてよい。
   - カスタムウィンドウ枠は、背景が明るければ暗色、暗ければ明色の高コントラスト線で描画してよい。
 - `--urban-outline-opacity`
 - `--water-surface-opacity`
@@ -229,7 +231,8 @@ README より詳細に、何ができるか、どう振る舞うか、どのよ�
   - 対象は、幾何学的な地平線、天の赤道、黄道、方位ラベル、天頂マーカー、および never-rises 領域とする。
   - never-rises 領域はこの設定に従い、個別の CLI オプションは設けなくてよい。
 - `-t`, `--theme`
-  - テーマ preset は `night`、`day`、`white`、`black` の 4 種のみを受け付ける。
+  - テーマ preset は `night`、`day`、`white`、`black`、`transparent`、`transparent-10` から `transparent-90` までの 10 刻みを受け付ける。
+  - `transparent` は `transparent-40` の別名として扱ってよい。
 
 詳細なオプション一覧は README を正本とし、本書では動作仕様を補足する。
 

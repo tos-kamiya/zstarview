@@ -1,7 +1,7 @@
 import colorsys
 import os
 import os.path
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from appdirs import user_cache_dir, user_log_dir
 
@@ -57,6 +57,14 @@ PALETTE_TERRAIN_HORIZON_RGB = (216, 206, 192)
 PALETTE_AIRCRAFT_AND_SATELLITE_RGB = (249, 130, 255)
 PALETTE_HORIZON_AND_LABEL_RGB = (206, 240, 122)
 PALETTE_ASTERISM_RGB = (122, 226, 240)
+
+TRANSPARENT_THEME_OPACITY_VALUES = tuple(range(10, 100, 10))
+TRANSPARENT_THEME_ALIAS = "transparent"
+TRANSPARENT_THEME_DEFAULT_PRESET = "transparent-40"
+TRANSPARENT_THEME_PRESETS = tuple(
+    f"transparent-{opacity}" for opacity in TRANSPARENT_THEME_OPACITY_VALUES
+)
+THEME_PRESET_NAMES = ("night", "day", "white", "black", TRANSPARENT_THEME_ALIAS, *TRANSPARENT_THEME_PRESETS)
 
 
 @dataclass(frozen=True, slots=True)
@@ -153,6 +161,10 @@ def _theme_window_chrome(
 
 def _theme_sky_disc(opacity: float) -> SkyDiscStyle:
     return SkyDiscStyle(opacity=float(opacity))
+
+
+def _theme_with_sky_disc_opacity(theme: ThemeStyle, opacity: float) -> ThemeStyle:
+    return replace(theme, sky_disc=_theme_sky_disc(opacity))
 
 
 def _rgb_from_hsv(h_deg: float, s_pct: float, v_pct: float) -> tuple[int, int, int]:
@@ -282,7 +294,7 @@ THEME_STYLES_BY_PRESET = {
         ),
         star_visibility_boost=1.0,
     ),
-    "transparent": ThemeStyle(
+    TRANSPARENT_THEME_ALIAS: ThemeStyle(
         text=TextStyle(
             foreground_rgb=(242, 245, 250),
             outline_rgba=(4, 4, 6, 214),
@@ -310,6 +322,14 @@ THEME_STYLES_BY_PRESET = {
         star_visibility_boost=1.0,
     ),
 }
+
+_transparent_base_theme = THEME_STYLES_BY_PRESET[TRANSPARENT_THEME_ALIAS]
+for opacity_value in TRANSPARENT_THEME_OPACITY_VALUES:
+    preset_name = f"transparent-{opacity_value}"
+    THEME_STYLES_BY_PRESET[preset_name] = _theme_with_sky_disc_opacity(
+        _transparent_base_theme,
+        float(opacity_value) / 100.0,
+    )
 
 HORIZON_LINE_COLOR = PALETTE_HORIZON_AND_LABEL_RGB
 TERRAIN_HORIZON_LINE_COLOR = PALETTE_TERRAIN_HORIZON_RGB
