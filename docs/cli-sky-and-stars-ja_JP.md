@@ -50,7 +50,8 @@ zstarview --show-dso-initial false --show-asterisms-initial true Tokyo
 
 * `night`: 標準の暗色テーマ
 * `black`: より黒く不透明な背景
-* `transparent`: 黒寄りの半透明背景。デスクトップ側も暗い場合に向く
+* `transparent`: 黒寄りの半透明背景。`transparent-40` の別名です。デスクトップ側も暗い場合に向きます
+* `transparent-10` から `transparent-90`: `transparent` 系の 10 刻み透明度プリセット
 * `day`: 明るい昼空寄りの背景表現
 * `white`: 最も明るい淡色テーマ
 

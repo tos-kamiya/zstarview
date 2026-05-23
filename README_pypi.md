@@ -138,7 +138,9 @@ zstarview -Z E -A 25 Tokyo
 - `-A, --view-center-alt VIEW_CENTER_ALT`
 - `--observer-height-m METERS`
 - `-V, --vmag-limit V_MAG_LIMIT`
-- `--theme {night,day,white,black,transparent}`
+- `--theme {night,day,white,black,transparent,transparent-10..90}`
+  - `transparent` is the `transparent-40` alias.
+  - `transparent-10` through `transparent-90` are 10-step transparent presets.
 - `-o, --output PATH` for `zstarview-export-image`
 
 Notes:
