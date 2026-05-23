@@ -1256,7 +1256,13 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             )
             self._startup_log_overlay = StartupLogOverlay(
                 self._client_widget,
-                text_rgb=theme.text.foreground_rgb,
+                text_rgb=theme.splash.info_text_rgb,
+                background_rgba=(
+                    int(theme.window_background.base_rgb[0]),
+                    int(theme.window_background.base_rgb[1]),
+                    int(theme.window_background.base_rgb[2]),
+                    180,
+                ),
             )
         self._layout_startup_log_overlay()
         return self._startup_log_overlay

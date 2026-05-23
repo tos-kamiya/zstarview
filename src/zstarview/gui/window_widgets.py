@@ -103,11 +103,25 @@ class StartupLogOverlay(QTextEdit):
         parent: QWidget,
         *,
         text_rgb: tuple[int, int, int] | None = None,
+        background_rgba: tuple[int, int, int, int] | None = None,
     ) -> None:
         super().__init__(parent)
         if text_rgb is None:
             text_rgb = (245, 245, 245)
+        if background_rgba is None:
+            background_rgba = (0, 0, 0, 180)
         red, green, blue = (int(text_rgb[0]), int(text_rgb[1]), int(text_rgb[2]))
+        bg_red, bg_green, bg_blue, bg_alpha = (
+            int(background_rgba[0]),
+            int(background_rgba[1]),
+            int(background_rgba[2]),
+            int(background_rgba[3]),
+        )
+        border_rgb = (
+            (0, 0, 0)
+            if ((77 * bg_red + 150 * bg_green + 29 * bg_blue) >> 8) >= 128
+            else (255, 255, 255)
+        )
         self._info_color = f"#{red:02x}{green:02x}{blue:02x}"
         self.setReadOnly(True)
         self.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
@@ -116,9 +130,9 @@ class StartupLogOverlay(QTextEdit):
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         self.setStyleSheet(
             "QTextEdit {"
-            " background-color: rgba(0, 0, 0, 180);"
+            f" background-color: rgba({bg_red}, {bg_green}, {bg_blue}, {bg_alpha});"
             f" color: rgba({red}, {green}, {blue}, 230);"
-            " border: 2px solid rgba(255, 255, 255, 60);"
+            f" border: 2px solid rgba({border_rgb[0]}, {border_rgb[1]}, {border_rgb[2]}, 60);"
             " padding: 10px 12px;"
             " font-family: monospace;"
             " font-size: 10px;"

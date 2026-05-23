@@ -13,4 +13,9 @@ def test_splash_info_color_uses_theme_text_color() -> None:
             info_color.red(),
             info_color.green(),
             info_color.blue(),
-        ) == theme.text.foreground_rgb
+        ) == theme.splash.info_text_rgb
+
+
+def test_day_and_white_splash_info_color_is_dark() -> None:
+    assert THEME_STYLES_BY_PRESET["day"].splash.info_text_rgb == (32, 32, 32)
+    assert THEME_STYLES_BY_PRESET["white"].splash.info_text_rgb == (32, 32, 32)

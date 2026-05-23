@@ -221,7 +221,7 @@ THEME_STYLES_BY_PRESET = {
         splash=SplashStyle(
             gradient_rgb=((252, 252, 252), (234, 234, 234), (206, 206, 206)),
             frame_rgb=(158, 178, 206),
-            info_text_rgb=(229, 163, 100),
+            info_text_rgb=(32, 32, 32),
         ),
         star_visibility_boost=1.12,
         label_outline_suppressed=True,
@@ -251,7 +251,7 @@ THEME_STYLES_BY_PRESET = {
         splash=SplashStyle(
             gradient_rgb=((240, 248, 255), (226, 240, 252), (206, 228, 246)),
             frame_rgb=(158, 182, 206),
-            info_text_rgb=(233, 148, 112),
+            info_text_rgb=(32, 32, 32),
         ),
         star_visibility_boost=1.05,
         label_outline_suppressed=True,

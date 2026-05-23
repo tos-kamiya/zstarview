@@ -50,7 +50,7 @@ def _get_splash_palette(theme: ThemeStyle) -> tuple[list[QColor], QColor, QColor
             _with_alpha(QColor(*splash.gradient_rgb[2]), background_alpha),
         ],
         _with_alpha(QColor(*splash.frame_rgb), background_alpha),
-        QColor(*theme.text.foreground_rgb),
+        QColor(*splash.info_text_rgb),
     )
 
 

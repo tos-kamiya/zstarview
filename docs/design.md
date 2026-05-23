@@ -352,7 +352,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `render/background.py` は `ThemeStyle.window_background` と `ThemeStyle.window_chrome` を参照元として、背景 gradient と frameless 用 border 色を決める。
 - `gui/sky_worker.py` は `ThemeStyle.sky_disc` を参照して sky-disc opacity を決める。
 - `gui/sky_worker.py` は sky-disc の render surface 寸法を含めて生成し、描画結果を worker 側の入力で再利用してよい。
-- `splash.py` は `ThemeStyle.splash` を色定義の参照元とし、背景 alpha は `ThemeStyle.window_background` から導出した平均 alpha を使う。
+- `splash.py` は `ThemeStyle.splash` を色定義の参照元とし、背景 alpha は `ThemeStyle.window_background` から導出した平均 alpha を使う。メッセージ文字色は `ThemeStyle.splash.info_text_rgb` を使う。
 - 明るい preset (`day`, `white`) では、暗い preset (`night`, `black`) より広い文字アウトライン幅を持てる。
 
 #### 4.3.2 テーマ文字色メモ

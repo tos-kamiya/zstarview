@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import logging
+from types import SimpleNamespace
 
 from PySide6.QtWidgets import QApplication, QWidget
 
-from zstarview.gui.window import StartupLogOverlay
+import zstarview.gui.window as window_module
+from zstarview.gui.window import SkyWindow, StartupLogOverlay
 from zstarview.paths import THEME_STYLES_BY_PRESET
 from zstarview.startup_log import BufferedStartupLogHandler
 
@@ -67,6 +69,33 @@ def test_startup_log_overlay_can_use_theme_text_color() -> None:
 
     red, green, blue = theme.text.foreground_rgb
     assert f"#{red:02x}{green:02x}{blue:02x}" in html
+
+
+def test_startup_log_overlay_uses_splash_info_color_for_day_theme(monkeypatch) -> None:
+    captured: dict[str, tuple[int, ...] | None] = {"text_rgb": None, "background_rgba": None}
+
+    class _FakeOverlay:
+        def __init__(self, _parent, *, text_rgb=None, background_rgba=None):
+            captured["text_rgb"] = text_rgb
+            captured["background_rgba"] = background_rgba
+            self.text_rgb = text_rgb
+
+    dummy = SimpleNamespace(
+        visual_preset="day",
+        _client_widget=QWidget(),
+        _startup_log_overlay=None,
+        _layout_startup_log_overlay=lambda: None,
+    )
+    monkeypatch.setattr(window_module, "StartupLogOverlay", _FakeOverlay)
+
+    overlay = SkyWindow._ensure_startup_log_overlay(dummy)
+
+    assert overlay is dummy._startup_log_overlay
+    assert captured["text_rgb"] == THEME_STYLES_BY_PRESET["day"].splash.info_text_rgb
+    assert captured["background_rgba"] == (
+        *THEME_STYLES_BY_PRESET["day"].window_background.base_rgb,
+        180,
+    )
 
 
 def test_startup_log_overlay_append_line_does_not_process_events(monkeypatch) -> None:
