@@ -374,9 +374,11 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
   - 視野スケール
   - Sky opacity と sky disc 表示
   - テーマ
+  - Overlay font size
   - Sky Guides や各種 overlay の初期表示状態
   - 各 overlay の初期 opacity
   - 起動時の検索条件
+- `City` 欄には `Auto` ボタンを備えてよく、押した場合は現在地自動取得と同等の解決結果を `City` 欄へ反映してよい。
 - `zstarview-export-image` のような headless 向けの単発画像書き出し専用オプションは、このダイアログの対象外としてよい。
 - その場で CLI の制約に反する入力があった場合は、起動前にエラーを表示して確定を止めてよい。
 - 起動先の `zstarview` が開始に失敗した場合は、ヘルパ側で失敗を通知して再試行できるようにしてよい。

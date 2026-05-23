@@ -3,8 +3,10 @@ from __future__ import annotations
 from PySide6.QtWidgets import QDoubleSpinBox
 from PySide6.QtWidgets import QApplication
 
+import zstarview.gui.startup_dialog as startup_dialog_module
 from zstarview.gui.startup_dialog import _coerce_float_value, _coerce_int_value
 from zstarview.gui.startup_dialog import StartupDialog
+from zstarview.location_resolver import ResolvedLocation
 
 _app = QApplication.instance() or QApplication([])
 
@@ -43,3 +45,36 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
     assert isinstance(terrain_widget, QDoubleSpinBox)
     assert terrain_widget.decimals() == 3
     assert terrain_widget.value() == 0.003
+
+
+def test_startup_dialog_city_auto_button_fills_city(monkeypatch) -> None:
+    monkeypatch.setattr(
+        startup_dialog_module,
+        "submit_gui_work",
+        lambda target, *args, **kwargs: target(*args, **kwargs),
+    )
+
+    calls: list[str] = []
+
+    def fake_auto_resolver() -> ResolvedLocation:
+        calls.append("called")
+        return ResolvedLocation(
+            display_name="JP/Matsue",
+            lat=35.4723,
+            lon=133.0505,
+            tz="Asia/Tokyo",
+            persistence_key="auto:35.472300,133.050500",
+            observer_height_m=1.7,
+            kind="auto",
+            cc="JP",
+        )
+
+    dialog = StartupDialog(auto_location_resolver=fake_auto_resolver)
+    city_widget = dialog._widgets["city"]
+    city_widget.setText("Tokyo")
+
+    dialog._city_auto_button.click()
+
+    assert calls == ["called"]
+    assert city_widget.text() == "JP/Matsue"
+    assert dialog._city_auto_button.isEnabled() is True

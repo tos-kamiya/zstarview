@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Callable, Literal
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -32,7 +32,9 @@ from ..paths import (
     OVERLAY_FONT_SIZE_MAX,
     OVERLAY_FONT_SIZE_MIN,
 )
+from ..location_resolver import ResolvedLocation, resolve_launch_location
 from .launch_profile import default_gui_launch_profile
+from .worker_pool import submit_gui_work
 
 TriBool = Literal["default", "true", "false"]
 _FLOAT_DEFAULTS: dict[str, float] = {
@@ -144,10 +146,13 @@ def _coerce_int_value(key: str, value: Any, fallback: int) -> int:
 
 
 class StartupDialog(QDialog):
+    city_auto_finished = Signal(int, object, str)
+
     def __init__(
         self,
         profile: dict[str, Any] | None = None,
         *,
+        auto_location_resolver: Callable[[], ResolvedLocation] | None = None,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -165,6 +170,10 @@ class StartupDialog(QDialog):
         self._overlay_layouts: dict[str, QFormLayout] = {}
         self._overlay_sections: dict[str, _CollapsibleSection] = {}
         self._overlay_section_by_key: dict[str, str] = {}
+        self._city_auto_request_id = 0
+        self._auto_location_resolver = auto_location_resolver or _resolve_auto_location_for_dialog
+        self.city_auto_finished.connect(self._on_city_auto_finished)
+        self._city_auto_button: QPushButton | None = None
 
         outer_layout = QVBoxLayout(self)
         outer_layout.setContentsMargins(12, 12, 12, 12)
@@ -326,6 +335,22 @@ class StartupDialog(QDialog):
             layout = self._tab_layouts[spec.tab]
         widget: QWidget
         if spec.kind == "text":
+            if spec.key == "city":
+                line_edit = QLineEdit(self)
+                if spec.placeholder:
+                    line_edit.setPlaceholderText(spec.placeholder)
+                row_widget = QWidget(self)
+                row_layout = QHBoxLayout(row_widget)
+                row_layout.setContentsMargins(0, 0, 0, 0)
+                row_layout.setSpacing(6)
+                row_layout.addWidget(line_edit, 1)
+                self._city_auto_button = QPushButton("Auto", self)
+                self._city_auto_button.clicked.connect(self._start_city_auto)
+                row_layout.addWidget(self._city_auto_button)
+                widget = line_edit
+                self._widgets[spec.key] = widget
+                layout.addRow(spec.label, row_widget)
+                return
             widget = QLineEdit(self)
             if spec.placeholder:
                 widget.setPlaceholderText(spec.placeholder)
@@ -353,6 +378,39 @@ class StartupDialog(QDialog):
             raise ValueError(f"Unsupported field kind: {spec.kind}")
         self._widgets[spec.key] = widget
         layout.addRow(spec.label, widget)
+
+    def _start_city_auto(self) -> None:
+        if self._city_auto_button is not None:
+            self._city_auto_button.setEnabled(False)
+        self._city_auto_request_id += 1
+        request_id = self._city_auto_request_id
+        submit_gui_work(self._run_city_auto, request_id=request_id)
+
+    def _run_city_auto(self, request_id: int) -> None:
+        try:
+            resolved = self._auto_location_resolver()
+        except Exception as exc:  # pragma: no cover - surfaced through signal delivery
+            self.city_auto_finished.emit(request_id, None, f"Auto location failed: {exc}")
+            return
+        self.city_auto_finished.emit(
+            request_id,
+            resolved,
+            f"Auto location: {resolved.display_name}",
+        )
+
+    def _on_city_auto_finished(self, request_id: int, payload: object, status_text: str) -> None:
+        if request_id != self._city_auto_request_id:
+            return
+        if self._city_auto_button is not None:
+            self._city_auto_button.setEnabled(True)
+        if isinstance(payload, ResolvedLocation):
+            city_widget = self._widgets.get("city")
+            if isinstance(city_widget, QLineEdit):
+                city_widget.setText(payload.display_name)
+                city_widget.setCursorPosition(len(payload.display_name))
+                city_widget.selectAll()
+            return
+        self._show_error_dialog("Auto location failed", status_text)
 
     def _restore_from_profile(self, profile: dict[str, Any]) -> None:
         for key, widget in self._widgets.items():
@@ -427,8 +485,11 @@ class StartupDialog(QDialog):
                 raise ValueError("Invalid cloud stripe value") from exc
 
     def _show_validation_error(self, message: str) -> None:
+        self._show_error_dialog("Invalid input", message)
+
+    def _show_error_dialog(self, title: str, message: str) -> None:
         dialog = QDialog(self)
-        dialog.setWindowTitle("Invalid input")
+        dialog.setWindowTitle(title)
         dialog_layout = QVBoxLayout(dialog)
         label = QLabel(message, dialog)
         label.setWordWrap(True)
@@ -437,3 +498,11 @@ class StartupDialog(QDialog):
         button_box.accepted.connect(dialog.accept)
         dialog_layout.addWidget(button_box)
         dialog.exec()
+
+
+def _resolve_auto_location_for_dialog() -> ResolvedLocation:
+    return resolve_launch_location(
+        "auto",
+        load_last_city_func=lambda: None,
+        save_last_city_func=lambda _value: None,
+    )
