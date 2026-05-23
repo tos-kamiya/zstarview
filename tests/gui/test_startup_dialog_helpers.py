@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from PySide6.QtWidgets import QDoubleSpinBox
 from PySide6.QtWidgets import QApplication
 
@@ -22,12 +24,15 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
 
     assert dialog.width() == 640
     assert dialog.height() == 380
-    assert dialog._tabs.count() == 5
-    assert dialog._tabs.tabText(0) == "Location & Time"
-    assert dialog._tabs.tabText(1) == "Stars"
-    assert dialog._tabs.tabText(2) == "Overlays"
-    assert dialog._tabs.tabText(3) == "General"
-    assert dialog._tabs.tabText(4) == "Search Objects at Startup"
+    assert dialog._tabs.count() == 6
+    assert dialog._tabs.tabText(0) == "Location"
+    assert dialog._tabs.tabText(1) == "Time"
+    assert dialog._tabs.tabText(2) == "Stars"
+    assert dialog._tabs.tabText(3) == "Overlays"
+    assert dialog._tabs.tabText(4) == "General"
+    assert dialog._tabs.tabText(5) == "Search Objects at Startup"
+    assert dialog._widgets["time_shift_heading"].text() == "<b>Time shift</b>"
+    assert dialog._widgets["time_absolute_heading"].text() == "<b>Absolute time</b>"
     assert set(dialog._overlay_sections) == {
         "Sky",
         "Clouds",
@@ -45,6 +50,31 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
     assert isinstance(terrain_widget, QDoubleSpinBox)
     assert terrain_widget.decimals() == 3
     assert terrain_widget.value() == 0.003
+
+
+def test_startup_dialog_time_modes_are_mutually_exclusive() -> None:
+    dialog = StartupDialog()
+    base_profile = {
+        "window_geometry": "restore",
+        "cloud_stripe": "width,50,0.85",
+    }
+
+    with pytest.raises(ValueError, match="Relative shift and absolute time"):
+        dialog._validate_profile(
+            {
+                **base_profile,
+                "hours": 1.0,
+                "datetime": "2026-05-23 12:00",
+            }
+        )
+
+    with pytest.raises(ValueError, match="Timezone requires Date/time"):
+        dialog._validate_profile(
+            {
+                **base_profile,
+                "timezone": "Asia/Tokyo",
+            }
+        )
 
 
 def test_startup_dialog_city_auto_button_fills_city(monkeypatch) -> None:

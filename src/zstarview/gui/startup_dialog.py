@@ -182,7 +182,8 @@ class StartupDialog(QDialog):
         outer_layout.addWidget(self._tabs, 1)
 
         tab_order = (
-            "Location & Time",
+            "Location",
+            "Time",
             "Stars",
             "Overlays",
             "General",
@@ -231,25 +232,46 @@ class StartupDialog(QDialog):
 
     def _add_specs(self) -> None:
         specs = (
-            _FieldSpec("city", "City", "text", "Location & Time"),
-            _FieldSpec("place", "Place query", "text", "Location & Time"),
+            _FieldSpec("city", "City", "text", "Location"),
+            _FieldSpec("place", "Place query", "text", "Location"),
             _FieldSpec(
                 "place_countrycode",
                 "Place country code",
                 "text",
-                "Location & Time",
+                "Location",
             ),
-            _FieldSpec("place_lang", "Place language", "text", "Location & Time"),
-            _FieldSpec("hours", "Hours", "float", "Location & Time", minimum=-9999.0, maximum=9999.0, step=0.5),
-            _FieldSpec("days", "Days", "float", "Location & Time", minimum=-9999.0, maximum=9999.0, step=0.5),
-            _FieldSpec("datetime", "Date/time", "text", "Location & Time"),
-            _FieldSpec("timezone", "Timezone", "text", "Location & Time"),
-            _FieldSpec("observer_height_m", "Observer height", "float", "Location & Time", minimum=0.0, maximum=10000.0, step=0.1),
-            _FieldSpec("use_building_top", "Use building top", "bool", "Location & Time"),
-            _FieldSpec("view_center_alt", "View center alt", "float", "Location & Time", minimum=-90.0, maximum=90.0, step=1.0),
-            _FieldSpec("view_center_az", "View center az", "float", "Location & Time", minimum=0.0, maximum=360.0, step=1.0),
-            _FieldSpec("edge_fov_deg", "Edge FOV", "float", "Location & Time", minimum=0.1, maximum=135.0, step=0.5),
-            _FieldSpec("content_fov_deg", "Content FOV", "float", "Location & Time", minimum=90.0, maximum=135.0, step=0.5),
+            _FieldSpec("place_lang", "Place language", "text", "Location"),
+            _FieldSpec("observer_height_m", "Observer height", "float", "Location", minimum=0.0, maximum=10000.0, step=0.1),
+            _FieldSpec("use_building_top", "Use building top", "bool", "Location"),
+            _FieldSpec("view_center_alt", "View center alt", "float", "Location", minimum=-90.0, maximum=90.0, step=1.0),
+            _FieldSpec("view_center_az", "View center az", "float", "Location", minimum=0.0, maximum=360.0, step=1.0),
+            _FieldSpec("edge_fov_deg", "Edge FOV", "float", "Location", minimum=0.1, maximum=135.0, step=0.5),
+            _FieldSpec("content_fov_deg", "Content FOV", "float", "Location", minimum=90.0, maximum=135.0, step=0.5),
+            _FieldSpec(
+                "time_mode_note",
+                "",
+                "note",
+                "Time",
+                note="Use either relative shift (Hours/Days) or absolute time (Date/time + Timezone).",
+            ),
+            _FieldSpec(
+                "time_shift_heading",
+                "",
+                "note",
+                "Time",
+                note="<b>Time shift</b>",
+            ),
+            _FieldSpec("hours", "Hours", "float", "Time", minimum=-9999.0, maximum=9999.0, step=0.5),
+            _FieldSpec("days", "Days", "float", "Time", minimum=-9999.0, maximum=9999.0, step=0.5),
+            _FieldSpec(
+                "time_absolute_heading",
+                "",
+                "note",
+                "Time",
+                note="<b>Absolute time</b>",
+            ),
+            _FieldSpec("datetime", "Date/time", "text", "Time"),
+            _FieldSpec("timezone", "Timezone", "text", "Time"),
             _FieldSpec("sky_opacity", "Sky opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("sky_disc_style", "Sky disc style", "choice", "Overlays", choices=("smooth",)),
             _FieldSpec("sky_disc_altaz_rings", "Sky disc rings", "choice", "Overlays", choices=("off", "dimalt", "altaz")),
@@ -483,6 +505,15 @@ class StartupDialog(QDialog):
                 _parse_cloud_stripe(cloud_stripe)
             except Exception as exc:
                 raise ValueError("Invalid cloud stripe value") from exc
+        hours = float(profile.get("hours", 0.0) or 0.0)
+        days = float(profile.get("days", 0.0) or 0.0)
+        datetime_text = str(profile.get("datetime", "") or "").strip()
+        timezone_text = str(profile.get("timezone", "") or "").strip()
+        has_relative_shift = abs(hours) > 1e-12 or abs(days) > 1e-12
+        if has_relative_shift and datetime_text:
+            raise ValueError("Relative shift and absolute time cannot be used together")
+        if timezone_text and not datetime_text:
+            raise ValueError("Timezone requires Date/time")
 
     def _show_validation_error(self, message: str) -> None:
         self._show_error_dialog("Invalid input", message)
