@@ -22,7 +22,7 @@ def test_startup_dialog_numeric_coercion_uses_fallbacks() -> None:
 def test_startup_dialog_tabs_follow_requested_order() -> None:
     dialog = StartupDialog()
 
-    assert dialog.width() == 400
+    assert dialog.width() == 480
     assert dialog.height() == 380
     assert dialog._tabs.count() == 6
     assert dialog._tabs.tabText(0) == "Location"
@@ -39,6 +39,7 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
     assert dialog._widgets["place"].isEnabled() is False
     assert dialog._widgets["view_center_alt"].isEnabled() is True
     assert dialog._widgets["edge_fov_deg"].isEnabled() is True
+    assert dialog._time_intro_label.text() == "If nothing is set, the current time is used."
     assert dialog._time_shift_checkbox.text() == "Time shift"
     assert dialog._absolute_time_checkbox.text() == "Absolute time"
     assert dialog._time_shift_checkbox.isChecked() is False

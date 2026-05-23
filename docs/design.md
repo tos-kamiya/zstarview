@@ -73,6 +73,7 @@
   - `View` タブには視線中心と FOV 系の値を集約してよい
   - `Time` タブでは `Hours` / `Days` による相対シフトと `Date/time` / `Timezone` による絶対時刻を分離して見せ、同時指定は受け付けない
   - `Time` タブでは `Time shift` と `Absolute time` の前にチェックボックスを置き、どちらか一方だけを有効にしつつ両方無効の初期状態も表現してよい
+  - `Time` タブには、未指定時は現在時刻を使うことを示す説明文を置いてよい
   - dataset 参照専用オプションは対象外として扱う
 - `src/zstarview/cli/args.py`
   - CLI オプション定義と値解釈

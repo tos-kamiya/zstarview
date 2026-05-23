@@ -5,6 +5,7 @@ from typing import Any, Callable, Literal
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
+    QButtonGroup,
     QCheckBox,
     QComboBox,
     QDialog,
@@ -159,7 +160,7 @@ class StartupDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("zstarview-gui startup")
         self.setModal(True)
-        self.resize(400, 380)
+        self.resize(480, 380)
 
         self._defaults = default_gui_launch_profile()
         self._base_profile = dict(self._defaults)
@@ -180,8 +181,10 @@ class StartupDialog(QDialog):
         self._city_auto_button: QPushButton | None = None
         self._location_city_radio: QRadioButton | None = None
         self._location_place_radio: QRadioButton | None = None
+        self._location_mode_button_group = QButtonGroup(self)
         self._time_shift_checkbox: QCheckBox | None = None
         self._absolute_time_checkbox: QCheckBox | None = None
+        self._time_intro_label: QLabel | None = None
 
         outer_layout = QVBoxLayout(self)
         outer_layout.setContentsMargins(12, 12, 12, 12)
@@ -374,6 +377,8 @@ class StartupDialog(QDialog):
         radio_layout.setSpacing(12)
         self._location_city_radio = QRadioButton("City", tab_widget)
         self._location_place_radio = QRadioButton("Place query", tab_widget)
+        self._location_mode_button_group.addButton(self._location_city_radio)
+        self._location_mode_button_group.addButton(self._location_place_radio)
         self._location_city_radio.toggled.connect(
             lambda checked: self._set_location_mode("city", checked)
         )
@@ -387,10 +392,11 @@ class StartupDialog(QDialog):
 
     def _build_time_tab(self, tab_widget: QWidget, layout: QVBoxLayout) -> None:
         intro = QLabel(
-            "Use either relative time shift or absolute time. Leaving both unchecked means no time override.",
+            "If nothing is set, the current time is used.",
             tab_widget,
         )
         intro.setWordWrap(True)
+        self._time_intro_label = intro
         layout.addWidget(intro)
 
         self._time_shift_checkbox = QCheckBox("Time shift", tab_widget)
