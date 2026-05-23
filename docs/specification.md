@@ -359,21 +359,24 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 - 変換後の初期状態は、同じ値を CLI で直接与えた場合と同等の見え方・動作になることを目標としてよい。
 - ダイアログの初期値は、前回確定した設定を引き継いでよい。前回設定がない場合は、各 CLI の既定値を使ってよい。
 - ダイアログは、README の CLI オプション群に対応するタブへ分けてよい。
-- タブの並びは README のオプション群の並びに合わせてよく、少なくとも次の区分を持ってよい。
-  - `Observing Location and Time`
-  - `Search Objects at startup`
-  - `Sky and Stars`
+- タブの並びは次の順序としてよい。
+  - `Location & Time`
+  - `Stars`
+  - `Sky`
   - `Overlays`
   - `General`
+  - `Search Objects at Startup`
 - ただし、`--list-viewpoints`、`--list-viewpoint-names`、`--show-viewpoint-json` のような dataset 参照専用オプションは、このダイアログには含めてはならない。
 - 少なくとも次のグループを入力できてよい。
   - 観測地点
   - 観測時刻
   - 視線中心
   - 視野スケール
+  - Sky opacity と sky disc 表示
   - テーマ
   - Sky Guides や各種 overlay の初期表示状態
   - 各 overlay の初期 opacity
+  - 起動時の検索条件
 - `zstarview-export-image` のような headless 向けの単発画像書き出し専用オプションは、このダイアログの対象外としてよい。
 - その場で CLI の制約に反する入力があった場合は、起動前にエラーを表示して確定を止めてよい。
 - 起動先の `zstarview` が開始に失敗した場合は、ヘルパ側で失敗を通知して再試行できるようにしてよい。

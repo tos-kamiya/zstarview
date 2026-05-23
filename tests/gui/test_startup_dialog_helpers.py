@@ -1,9 +1,26 @@
 from __future__ import annotations
 
+from PySide6.QtWidgets import QApplication
+
 from zstarview.gui.startup_dialog import _coerce_float_value, _coerce_int_value
+from zstarview.gui.startup_dialog import StartupDialog
+
+_app = QApplication.instance() or QApplication([])
 
 
 def test_startup_dialog_numeric_coercion_uses_fallbacks() -> None:
     assert _coerce_float_value("observer_height_m", None, 0.0) == 1.7
     assert _coerce_float_value("other", None, 2.5) == 2.5
     assert _coerce_int_value("other", None, 7) == 7
+
+
+def test_startup_dialog_tabs_follow_requested_order() -> None:
+    dialog = StartupDialog()
+
+    assert dialog._tabs.count() == 6
+    assert dialog._tabs.tabText(0) == "Location & Time"
+    assert dialog._tabs.tabText(1) == "Stars"
+    assert dialog._tabs.tabText(2) == "Sky"
+    assert dialog._tabs.tabText(3) == "Overlays"
+    assert dialog._tabs.tabText(4) == "General"
+    assert dialog._tabs.tabText(5) == "Search Objects at Startup"
