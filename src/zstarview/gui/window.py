@@ -61,7 +61,6 @@ from ..clouddisc import (
     CloudDiscConfig,
 )
 from ..clouddisc.providers.select import pick_satellite
-from ..config import load_last_window_geometry, save_last_window_geometry
 from ..location_resolver import (
     project_place_targets_to_altaz as _project_place_targets_to_altaz,
 )
@@ -358,6 +357,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._named_stars_by_band = catalogs.named_stars_by_band
         self._named_stars_search_all = catalogs.named_stars_search_all
         self.delta_t = runtime_options.delta_t
+        self.runtime_options = runtime_options
         overlay_availability = overlay_availability_for_delta(self.delta_t)
         self.sky_disc_alpha = user_options.sky_disc_alpha
         self.sky_disc_style = user_options.sky_disc_style
@@ -537,7 +537,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._frameless_window = bool(self.FRAMELESS_WINDOW)
         requested_geometry: Optional[Tuple[int, int, int, int]] = None
         if runtime_options.window_geometry_arg == "restore":
-            requested_geometry = load_last_window_geometry()
+            load_window_geometry = runtime_options.load_last_window_geometry
+            if load_window_geometry is not None:
+                requested_geometry = load_window_geometry()
         elif isinstance(runtime_options.window_geometry_arg, tuple):
             requested_geometry = runtime_options.window_geometry_arg
         if requested_geometry is not None:
@@ -2567,7 +2569,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
     def closeEvent(self, event: QCloseEvent) -> None:
         g = self.geometry()
-        save_last_window_geometry(g.x(), g.y(), self.client_width(), self.client_height())
+        save_window_geometry = self.runtime_options.save_last_window_geometry
+        if save_window_geometry is not None:
+            save_window_geometry(g.x(), g.y(), self.client_width(), self.client_height())
         self._begin_shutdown()
         super().closeEvent(event)
 

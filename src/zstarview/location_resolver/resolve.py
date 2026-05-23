@@ -7,7 +7,7 @@ import urllib.error
 import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any, Callable, List
 
 from ..config import load_last_city, save_last_city
 from ..paths import (
@@ -674,8 +674,10 @@ def resolve_launch_location(
     place_countrycode: str | None = None,
     place_lang: str = "en",
     use_building_top: bool = False,
+    load_last_city_func: Callable[[], str | dict[str, Any] | None] = load_last_city,
+    save_last_city_func: Callable[[str | dict[str, Any]], None] = save_last_city,
 ) -> ResolvedLocation:
-    last_city = load_last_city()
+    last_city = load_last_city_func()
     stored_location: dict[str, Any] | None = None
     if not args_city and place_query is None:
         if isinstance(last_city, str):
@@ -836,7 +838,7 @@ def resolve_launch_location(
     )
 
     if persist_location:
-        save_last_city(
+        save_last_city_func(
             resolved_location.persistence_value
             if resolved_location.persistence_value is not None
             else resolved_location.persistence_key

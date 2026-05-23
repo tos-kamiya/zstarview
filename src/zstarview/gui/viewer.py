@@ -5,13 +5,16 @@ import math
 import sys
 from dataclasses import replace
 from datetime import timedelta
+from collections.abc import Callable
+from pathlib import Path
 
 from PySide6.QtCore import QObject, QTimer, Signal
 
 from ..astro import load_ephemeris
 from ..cache_maintenance import LongLivedCacheClearCooldownError, clear_long_lived_cache
 from ..catalog import load_dso_catalog, load_star_catalog
-from ..cli.args import parse_args
+from ..cli.args import parse_args, _parse_cloud_stripe, _parse_window_geometry
+from ..config import load_last_city, load_last_window_geometry, save_last_city, save_last_window_geometry
 from ..gui.window_inputs import (
     prepare_window_catalogs,
     prepare_window_runtime_options,
@@ -56,6 +59,12 @@ from ..search.satellites import search_satellite_targets
 from ..startup_log import BufferedStartupLogHandler
 from ..types import ViewerData
 from .worker_pool import submit_gui_work
+from .launch_profile import (
+    default_gui_launch_profile,
+    load_gui_launch_profile,
+    save_gui_launch_profile,
+)
+from .startup_dialog import StartupDialog
 
 logger = logging.getLogger(__name__)
 
@@ -79,11 +88,15 @@ class _StartupBootstrap(QObject):
         args: object,
         catalogs: object,
         view_center: tuple[float, float],
+        load_last_city_func,
+        save_last_city_func,
     ) -> None:
         super().__init__()
         self._args = args
         self._catalogs = catalogs
         self._view_center = (float(view_center[0]), float(view_center[1]))
+        self._load_last_city_func = load_last_city_func
+        self._save_last_city_func = save_last_city_func
         self._started = False
 
     def start(self) -> None:
@@ -101,6 +114,8 @@ class _StartupBootstrap(QObject):
                 place_countrycode=getattr(self._args, "place_countrycode", None),
                 place_lang=getattr(self._args, "place_lang", "en"),
                 use_building_top=bool(getattr(self._args, "use_building_top", False)),
+                load_last_city_func=self._load_last_city_func,
+                save_last_city_func=self._save_last_city_func,
             )
             timezone_override = getattr(self._args, "timezone", None)
             if timezone_override is not None:
@@ -189,6 +204,82 @@ class _StartupRevealGate:
 
     def is_ready(self) -> bool:
         return self._initial_loaded and self._terrain_resolved
+
+
+def _is_gui_launcher() -> bool:
+    return Path(sys.argv[0]).name == "zstarview-gui"
+
+
+def _make_gui_profile_io(profile: dict[str, object]) -> tuple[
+    Callable[[], str | dict[str, object] | None],
+    Callable[[str | dict[str, object]], None],
+    Callable[[], tuple[int, int, int, int] | None],
+    Callable[[int, int, int, int], None],
+]:
+    def load_city() -> str | dict[str, object] | None:
+        value = profile.get("city")
+        if isinstance(value, (str, dict)):
+            return value
+        return None
+
+    def save_city(value: str | dict[str, object]) -> None:
+        profile["city"] = value
+        save_gui_launch_profile(profile)
+
+    def load_geometry() -> tuple[int, int, int, int] | None:
+        value = profile.get("window_geometry")
+        if isinstance(value, tuple):
+            return value
+        if isinstance(value, list) and len(value) == 4:
+            try:
+                return tuple(int(item) for item in value)  # type: ignore[return-value]
+            except (TypeError, ValueError):
+                return None
+        if isinstance(value, str):
+            try:
+                parsed = _parse_window_geometry(value)
+            except Exception:
+                return None
+            return parsed if isinstance(parsed, tuple) else None
+        return None
+
+    def save_geometry(x: int, y: int, width: int, height: int) -> None:
+        profile["window_geometry"] = [int(x), int(y), int(width), int(height)]
+        save_gui_launch_profile(profile)
+
+    return load_city, save_city, load_geometry, save_geometry
+
+
+def _apply_gui_profile_to_args(args: object, profile: dict[str, object]) -> None:
+    for key, value in profile.items():
+        setattr(args, key, value)
+
+    cloud_stripe = profile.get("cloud_stripe")
+    if isinstance(cloud_stripe, str) and cloud_stripe.strip():
+        try:
+            setattr(args, "cloud_stripe", _parse_cloud_stripe(cloud_stripe))
+        except Exception:
+            pass
+    window_geometry = profile.get("window_geometry")
+    if isinstance(window_geometry, str) and window_geometry.strip():
+        setattr(args, "window_geometry", window_geometry)
+    elif isinstance(window_geometry, list) and len(window_geometry) == 4:
+        try:
+            setattr(
+                args,
+                "window_geometry",
+                tuple(int(item) for item in window_geometry),
+            )
+        except (TypeError, ValueError):
+            pass
+
+    defaults = default_gui_launch_profile()
+    if "view_center_alt" in profile:
+        default_alt = defaults.get("view_center_alt", 90.0)
+        setattr(args, "view_center_alt_specified", profile["view_center_alt"] != default_alt)
+    if "view_center_az" in profile:
+        default_az = defaults.get("view_center_az", 180.0)
+        setattr(args, "view_center_az_specified", profile["view_center_az"] != default_az)
 
 
 def _load_star_catalog_for_launch(vmag_limit: float | None):
@@ -328,6 +419,18 @@ def main() -> None:
     app_name = APP_DISPLAY_NAME
     app = setup_app(app_name)
 
+    gui_launcher = _is_gui_launcher()
+    gui_profile: dict[str, object] | None = None
+    if gui_launcher:
+        gui_profile = dict(default_gui_launch_profile())
+        gui_profile.update(load_gui_launch_profile())
+        dialog = StartupDialog(profile=gui_profile)
+        if dialog.exec() != 1:
+            raise SystemExit(0)
+        gui_profile = dialog.selected_profile()
+        save_gui_launch_profile(gui_profile)
+        _apply_gui_profile_to_args(args, gui_profile)
+
     root_logger = setup_root_logger()
     startup_log_handler = BufferedStartupLogHandler()
     root_logger.addHandler(startup_log_handler)
@@ -345,6 +448,13 @@ def main() -> None:
     visual_preset = args.theme
     star_visibility_boost = theme.star_visibility_boost
     vmag_brightness_scale = -math.log10(args.vmag_brightness_multiplier)
+    if gui_profile is not None:
+        load_city_func, save_city_func, load_geometry_func, save_geometry_func = _make_gui_profile_io(gui_profile)
+    else:
+        load_city_func = load_last_city
+        save_city_func = save_last_city
+        load_geometry_func = load_last_window_geometry
+        save_geometry_func = save_last_window_geometry
     catalogs = prepare_window_catalogs(
         star_catalog,
         dso_catalog=dso_catalog,
@@ -406,6 +516,8 @@ def main() -> None:
         content_fov_deg=args.content_fov_deg,
         window_geometry_arg=args.window_geometry,
         window_frame_mode=args.window_frame,
+        load_last_window_geometry=load_geometry_func,
+        save_last_window_geometry=save_geometry_func,
     )
     window_cls = SkyWindow if args.window_frame == "frameless" else StandardSkyWindow
     main_win = window_cls(
@@ -474,6 +586,8 @@ def main() -> None:
             args=args,
             catalogs=catalogs,
             view_center=view_center,
+            load_last_city_func=load_city_func,
+            save_last_city_func=save_city_func,
         )
 
         def _on_initial_loaded() -> None:

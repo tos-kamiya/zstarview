@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Optional
+from typing import Callable, Optional
 
 import numpy as np
 import polars as pl
@@ -103,6 +103,8 @@ class SkyWindowRuntimeOptions:
     content_fov_deg: float = 110.0
     window_geometry_arg: Optional[str | tuple[int, int, int, int]] = None
     window_frame_mode: str = "frameless"
+    load_last_window_geometry: Callable[[], Optional[tuple[int, int, int, int]]] | None = None
+    save_last_window_geometry: Callable[[int, int, int, int], None] | None = None
 
 
 def _apply_visibility_boost(opacity: float, visibility_boost: float, tier_scale: float) -> float:
@@ -274,6 +276,8 @@ def prepare_window_runtime_options(
     content_fov_deg: float,
     window_geometry_arg: Optional[str | tuple[int, int, int, int]],
     window_frame_mode: str,
+    load_last_window_geometry: Callable[[], Optional[tuple[int, int, int, int]]] | None = None,
+    save_last_window_geometry: Callable[[int, int, int, int], None] | None = None,
 ) -> SkyWindowRuntimeOptions:
     """Normalize runtime options before constructing SkyWindow."""
     visibility_boost = max(1.0, float(visibility_boost))
@@ -292,4 +296,6 @@ def prepare_window_runtime_options(
         content_fov_deg=max(90.0, min(127.0, float(content_fov_deg))),
         window_geometry_arg=window_geometry_arg,
         window_frame_mode=("window" if str(window_frame_mode).strip().lower() == "window" else "frameless"),
+        load_last_window_geometry=load_last_window_geometry,
+        save_last_window_geometry=save_last_window_geometry,
     )
