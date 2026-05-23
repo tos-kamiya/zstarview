@@ -800,7 +800,7 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
   - 空側のまとまりは `Sky Color`、`Clouds`、`Satellites`、`Aircraft` として扱ってよい。
   - 地面側のまとまりは `Night Lights`、`Urban Outline`、`Terrain Horizon`、`Water Surface`、`Earth Guide` として扱ってよい。
   - `Sky Color` は sky color disc を on/off してよい。
-  - `Sky Guides` は幾何学的地平線、天の赤道、黄道、never-rises 領域、方位ラベル、天頂マーカーをまとめて on/off してよい。
+  - `Sky Guides` は幾何学的地平線、実線部を長めにした天の赤道の点線、黄道、never-rises 領域、方位ラベル、天頂マーカーをまとめて on/off してよい。
   - `Night Lights` は独立トグルとして扱い、夜間光オーバーレイだけを on/off してよい。
   - `Night Lights` の強度は `--night-light-opacity` に従ってよい。
   - `Water Surface` は水面レイヤーだけを on/off してよく、`--water-surface-opacity` に従ってよい。

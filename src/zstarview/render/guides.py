@@ -430,11 +430,11 @@ def draw_sky_reference_lines(
                 painter.setPen(fg)
                 painter.drawPolyline(poly)
 
-    # Keep the ecliptic dash cadence visible while drawing the equator as a solid line.
+    # Keep the ecliptic dash cadence visible while restoring the equator as a longer dash.
     _draw_reference_line(
         celestial_data.celestial_equator_points,
         CELESTIAL_EQUATOR_COLOR,
-        None,
+        [16, 6],
         width_scale=1.0,
         fg_width=GRID_LINE_WIDTH,
     )
