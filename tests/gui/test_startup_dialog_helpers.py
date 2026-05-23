@@ -17,10 +17,19 @@ def test_startup_dialog_numeric_coercion_uses_fallbacks() -> None:
 def test_startup_dialog_tabs_follow_requested_order() -> None:
     dialog = StartupDialog()
 
-    assert dialog._tabs.count() == 6
+    assert dialog._tabs.count() == 5
     assert dialog._tabs.tabText(0) == "Location & Time"
     assert dialog._tabs.tabText(1) == "Stars"
-    assert dialog._tabs.tabText(2) == "Sky"
-    assert dialog._tabs.tabText(3) == "Overlays"
-    assert dialog._tabs.tabText(4) == "General"
-    assert dialog._tabs.tabText(5) == "Search Objects at Startup"
+    assert dialog._tabs.tabText(2) == "Overlays"
+    assert dialog._tabs.tabText(3) == "General"
+    assert dialog._tabs.tabText(4) == "Search Objects at Startup"
+    assert set(dialog._overlay_sections) == {
+        "Sky",
+        "Clouds",
+        "Aircraft and Satellites",
+        "Ground and Guides",
+        "Urban Outline",
+    }
+    assert dialog._overlay_sections["Sky"].is_expanded() is True
+    dialog._overlay_sections["Sky"]._button.setChecked(False)
+    assert dialog._overlay_sections["Sky"].is_expanded() is False

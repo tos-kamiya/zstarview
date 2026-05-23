@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QSpinBox,
     QTabWidget,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -53,6 +54,50 @@ class _FieldSpec:
     step: float = 1.0
     placeholder: str = ""
     note: str = ""
+
+
+class _CollapsibleSection(QWidget):
+    def __init__(self, title: str, *, expanded: bool = True, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._button = QToolButton(self)
+        self._button.setText(title)
+        self._button.setCheckable(True)
+        self._button.setChecked(expanded)
+        self._button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self._button.setArrowType(
+            Qt.ArrowType.DownArrow if expanded else Qt.ArrowType.RightArrow
+        )
+        self._button.toggled.connect(self._set_expanded)
+
+        self._content = QWidget(self)
+        self._content_layout = QFormLayout(self._content)
+        self._content_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
+        self._content_layout.setFormAlignment(
+            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
+        )
+        self._content_layout.setFieldGrowthPolicy(
+            QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
+        )
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(2)
+        layout.addWidget(self._button)
+        layout.addWidget(self._content)
+        self._set_expanded(expanded)
+
+    @property
+    def form_layout(self) -> QFormLayout:
+        return self._content_layout
+
+    def is_expanded(self) -> bool:
+        return bool(self._button.isChecked())
+
+    def _set_expanded(self, expanded: bool) -> None:
+        self._button.setArrowType(
+            Qt.ArrowType.DownArrow if expanded else Qt.ArrowType.RightArrow
+        )
+        self._content.setVisible(expanded)
 
 
 def _as_text(value: Any, *, key: str) -> str:
@@ -117,6 +162,9 @@ class StartupDialog(QDialog):
 
         self._widgets: dict[str, Any] = {}
         self._tab_layouts: dict[str, QFormLayout] = {}
+        self._overlay_layouts: dict[str, QFormLayout] = {}
+        self._overlay_sections: dict[str, _CollapsibleSection] = {}
+        self._overlay_section_by_key: dict[str, str] = {}
 
         outer_layout = QVBoxLayout(self)
         outer_layout.setContentsMargins(12, 12, 12, 12)
@@ -127,23 +175,30 @@ class StartupDialog(QDialog):
         tab_order = (
             "Location & Time",
             "Stars",
-            "Sky",
             "Overlays",
             "General",
             "Search Objects at Startup",
         )
         for tab_name in tab_order:
             tab_widget = QWidget(self)
-            tab_layout = QFormLayout(tab_widget)
-            tab_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
-            tab_layout.setFormAlignment(
-                Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
-            )
-            tab_layout.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
-            self._tab_layouts[tab_name] = tab_layout
             scroll_area = QScrollArea(self)
             scroll_area.setWidgetResizable(True)
             scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+            if tab_name == "Overlays":
+                tab_layout = QVBoxLayout(tab_widget)
+                tab_layout.setContentsMargins(0, 0, 0, 0)
+                tab_layout.setSpacing(10)
+                self._build_overlay_tab(tab_widget, tab_layout)
+            else:
+                tab_layout = QFormLayout(tab_widget)
+                tab_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
+                tab_layout.setFormAlignment(
+                    Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
+                )
+                tab_layout.setFieldGrowthPolicy(
+                    QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow
+                )
+                self._tab_layouts[tab_name] = tab_layout
             scroll_area.setWidget(tab_widget)
             self._tabs.addTab(scroll_area, tab_name)
 
@@ -186,10 +241,10 @@ class StartupDialog(QDialog):
             _FieldSpec("view_center_az", "View center az", "float", "Location & Time", minimum=0.0, maximum=360.0, step=1.0),
             _FieldSpec("edge_fov_deg", "Edge FOV", "float", "Location & Time", minimum=0.1, maximum=135.0, step=0.5),
             _FieldSpec("content_fov_deg", "Content FOV", "float", "Location & Time", minimum=90.0, maximum=135.0, step=0.5),
-            _FieldSpec("sky_opacity", "Sky opacity", "float", "Sky", minimum=0.0, maximum=1.0, step=0.01),
-            _FieldSpec("sky_disc_style", "Sky disc style", "choice", "Sky", choices=("smooth",)),
-            _FieldSpec("sky_disc_altaz_rings", "Sky disc rings", "choice", "Sky", choices=("off", "dimalt", "altaz")),
-            _FieldSpec("sky_disc_altaz_rings_hover", "Hover rings", "choice", "Sky", choices=("off", "dimalt", "altaz")),
+            _FieldSpec("sky_opacity", "Sky opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
+            _FieldSpec("sky_disc_style", "Sky disc style", "choice", "Overlays", choices=("smooth",)),
+            _FieldSpec("sky_disc_altaz_rings", "Sky disc rings", "choice", "Overlays", choices=("off", "dimalt", "altaz")),
+            _FieldSpec("sky_disc_altaz_rings_hover", "Hover rings", "choice", "Overlays", choices=("off", "dimalt", "altaz")),
             _FieldSpec("vmag_limit", "Vmag limit", "float", "Stars", minimum=0.0, maximum=20.0, step=0.1),
             _FieldSpec("vmag_brightness_multiplier", "Brightness multiplier", "float", "Stars", minimum=1.0, maximum=3.0, step=0.01),
             _FieldSpec("enlarge_moon", "Enlarge moon", "bool", "Stars"),
@@ -199,6 +254,13 @@ class StartupDialog(QDialog):
             _FieldSpec("show_dso_initial", "DSO visibility", "choice", "Stars", choices=("default", "true", "false")),
             _FieldSpec("show_asterisms_initial", "Asterisms visibility", "choice", "Stars", choices=("default", "true", "false")),
             _FieldSpec("show_guidelines_initial", "Guidelines visibility", "choice", "Stars", choices=("default", "true", "false")),
+            _FieldSpec("theme", "Theme", "choice", "General", choices=("night", "day", "white", "black", "transparent")),
+            _FieldSpec("window_geometry", "Window geometry", "text", "General"),
+            _FieldSpec("window_frame", "Window frame", "choice", "General", choices=("frameless", "window")),
+            _FieldSpec("observation_info", "Observation info", "choice", "General", choices=("auto", "top", "bottom", "off")),
+            _FieldSpec("visibility_boost", "Visibility boost", "float", "General", minimum=1.0, maximum=10.0, step=0.1),
+            _FieldSpec("search", "Search query", "text", "Search Objects at Startup"),
+            _FieldSpec("search_keep_marker", "Keep marker", "bool", "Search Objects at Startup"),
             _FieldSpec("cloud_opacity", "Cloud opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("cloud_stripe", "Cloud stripe", "text", "Overlays"),
             _FieldSpec("cloud_missing_tint_opacity", "Cloud missing tint", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
@@ -216,19 +278,53 @@ class StartupDialog(QDialog):
             _FieldSpec("urban_outline_skyscraper_radius_km", "Skyscraper radius km", "float", "Overlays", minimum=0.0, maximum=1000.0, step=0.1),
             _FieldSpec("urban_outline_min_height_m", "Min building height", "float", "Overlays", minimum=0.0, maximum=100000.0, step=0.1),
             _FieldSpec("urban_outline_skyscraper_only", "Skyscraper only", "bool", "Overlays"),
-            _FieldSpec("theme", "Theme", "choice", "General", choices=("night", "day", "white", "black", "transparent")),
-            _FieldSpec("window_geometry", "Window geometry", "text", "General"),
-            _FieldSpec("window_frame", "Window frame", "choice", "General", choices=("frameless", "window")),
-            _FieldSpec("observation_info", "Observation info", "choice", "General", choices=("auto", "top", "bottom", "off")),
-            _FieldSpec("visibility_boost", "Visibility boost", "float", "General", minimum=1.0, maximum=10.0, step=0.1),
-            _FieldSpec("search", "Search query", "text", "Search Objects at Startup"),
-            _FieldSpec("search_keep_marker", "Keep marker", "bool", "Search Objects at Startup"),
         )
         for spec in specs:
             self._add_spec(spec)
 
+    def _build_overlay_tab(self, tab_widget: QWidget, layout: QVBoxLayout) -> None:
+        section_defs = (
+            ("Sky", ("sky_opacity", "sky_disc_style", "sky_disc_altaz_rings", "sky_disc_altaz_rings_hover")),
+            ("Clouds", ("cloud_opacity", "cloud_stripe", "cloud_missing_tint_opacity")),
+            ("Aircraft and Satellites", ("aircraft_opacity", "satellite_opacity")),
+            (
+                "Ground and Guides",
+                (
+                    "terrain_horizon_opacity",
+                    "earth_guide_opacity",
+                    "night_light_opacity",
+                    "ground_tint_opacity",
+                    "overlay_font_size",
+                    "water_surface_opacity",
+                ),
+            ),
+            (
+                "Urban Outline",
+                (
+                    "urban_outline_opacity",
+                    "urban_outline_feature_type",
+                    "urban_outline_radius_km",
+                    "urban_outline_skyscraper_radius_km",
+                    "urban_outline_min_height_m",
+                    "urban_outline_skyscraper_only",
+                ),
+            ),
+        )
+        for title, keys in section_defs:
+            section = _CollapsibleSection(title, parent=tab_widget)
+            layout.addWidget(section)
+            self._overlay_sections[title] = section
+            self._overlay_layouts[title] = section.form_layout
+            for key in keys:
+                self._overlay_section_by_key[key] = title
+        layout.addStretch(1)
+
     def _add_spec(self, spec: _FieldSpec) -> None:
-        layout = self._tab_layouts[spec.tab]
+        if spec.tab == "Overlays":
+            section = self._overlay_section_by_key[spec.key]
+            layout = self._overlay_layouts[section]
+        else:
+            layout = self._tab_layouts[spec.tab]
         widget: QWidget
         if spec.kind == "text":
             widget = QLineEdit(self)

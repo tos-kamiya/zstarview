@@ -65,7 +65,8 @@
 - `src/zstarview/gui/startup_dialog.py`
   - GUI 起動前設定ダイアログを定義する
   - 前回起動値の編集、Reset 操作、確定/取消の結果を返す
-  - README の GUI 対応 CLI グループ見出しに対応するタブを持ち、`Location & Time`、`Stars`、`Sky`、`Overlays`、`General`、`Search Objects at Startup` の順に分けて起動前の入力を見通しよく整理する
+  - README の GUI 対応 CLI グループ見出しに対応するタブを持ち、`Location & Time`、`Stars`、`Overlays`、`General`、`Search Objects at Startup` の順に分けて起動前の入力を見通しよく整理する
+  - `Overlays` は `Sky`、`Clouds`、`Aircraft and Satellites`、`Ground and Guides`、`Urban Outline` の折りたたみ可能なサブグループへ分けてよい
   - dataset 参照専用オプションは対象外として扱う
 - `src/zstarview/cli/args.py`
   - CLI オプション定義と値解釈
