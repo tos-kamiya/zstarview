@@ -117,7 +117,7 @@ zstarview -Z E -A 25 Tokyo
 - Stars: the sky view shows stars from the selected catalog, with asterisms and other overlays layered on top.
 - Solar-system bodies: supports Sun, Moon, and major planets.
 - Deep-sky objects: named galaxies/open clusters/globular clusters are shown as soft blue extents.
-- Asterism overlay: popular line patterns are shown as dim guide lines, alongside other sky guides such as the never-rises region, which uses a distinct warm guide color, plus the zenith and celestial pole markers.
+- Asterism overlay: popular line patterns are shown as dim guide lines, alongside other sky guides such as the never-rises region, which uses a distinct neutral gray, plus the zenith and celestial pole markers.
 - Satellite cloud imagery and sky-color disc: real-time Himawari/GOES satellite data are downloaded and rendered as a stylized hatched overlay, with the sky-color disc still visible beneath the clouds.
 - Aircraft and artificial satellite overlays: nearby aircraft from OpenSky can be drawn on the sky view, and ISS, JWST, Voyager 1, Voyager 2, and Parker can be drawn as small purple markers between the planet and aircraft layers. ISS uses `wheretheiss.at` with CelesTrak fallback, while the other four spacecraft use JPL Horizons.
 - Fresh current caches are reused for up to 24 hours for both the ISS cache and the Horizons-backed spacecraft cache.

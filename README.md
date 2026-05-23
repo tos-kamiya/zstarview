@@ -23,7 +23,7 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 
 - **Deep-sky objects**: named galaxies/open clusters/globular clusters are shown as soft blue extents.
 - **Asterism overlay**: popular line patterns rather than formal IAU constellation boundaries are shown as dim ambient lines. Mouse-hovering a star in an asterism brightens the matching pattern and shows its label, with 3-second rotation when multiple asterisms share that star.
-- **Sky Guides**: guide overlays include the never-rises region as a guide-line style solid circle, and the celestial equator as a dashed line with longer on-segments in the same warm guide color, along with direction labels around the horizon, a zenith marker, and celestial pole markers.
+- **Sky Guides**: guide overlays include the never-rises region as a guide-line style solid circle, and the celestial equator as a dashed line with longer on-segments in the same neutral gray, along with direction labels around the horizon, a zenith marker, and celestial pole markers.
 
 **Atmospheric and man-made overlays:**
 
@@ -272,7 +272,7 @@ From the hamburger menu (`☰`), you can use:
 * **Enlarge Moon**: Toggle moon enlarged to 5x size.
 * **DSO**: Toggle deep-sky object overlays on/off.
 * **Asterisms**: Toggle asterism overlays on/off (when enabled, dim overlays stay visible; hovering a member star brightens the matching asterism and shows its label).
-* **Guidelines**: Toggle the geometric horizon, celestial equator, ecliptic, never-rises solid circle, direction labels, zenith marker, and celestial pole markers on/off. The celestial equator uses a longer dashed stroke in the same warm guide color as the never-rises circle.
+* **Guidelines**: Toggle the geometric horizon, celestial equator, ecliptic, never-rises solid circle, direction labels, zenith marker, and celestial pole markers on/off. The celestial equator uses a longer dashed stroke in the same neutral gray as the never-rises circle.
 * **Observation Info**: Toggle the observation-info block on/off. When shown, it stays at the bottom-left by default; `auto` keeps the older hover-avoid placement behavior.
 * **Sky Color**: Switch between the full sky-color gradient and the flat dark-disc fallback.
 * **Clouds**: Toggle real-time cloud overlays on/off.
