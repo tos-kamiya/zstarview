@@ -265,6 +265,13 @@ def _apply_gui_profile_to_args(args: object, profile: dict[str, object]) -> None
             continue
         setattr(args, key, value)
 
+    city_value = profile.get("city")
+    if isinstance(city_value, dict):
+        setattr(args, "city", "")
+        setattr(args, "place", None)
+        setattr(args, "place_countrycode", None)
+        setattr(args, "place_lang", "en")
+
     cloud_stripe = profile.get("cloud_stripe")
     if isinstance(cloud_stripe, str) and cloud_stripe.strip():
         try:

@@ -22,6 +22,23 @@ def test_gui_launch_profile_roundtrip(tmp_path, monkeypatch) -> None:
     assert loaded["theme"] == "day"
     assert loaded["cloud_stripe"] == "width,50,0.85"
 
+    structured_profile = {
+        "city": {
+            "resolver": "nominatim",
+            "query": "Matsue Station",
+            "result": {
+                "name": "Matsue Station, Matsue, Shimane, Japan",
+                "lat": 35.4641778,
+                "lon": 133.0628539,
+            },
+        }
+    }
+    launch_profile.save_gui_launch_profile(structured_profile)
+    structured_loaded = launch_profile.load_gui_launch_profile()
+    assert structured_loaded["city"]["resolver"] == "nominatim"
+    assert structured_loaded["city"]["query"] == "Matsue Station"
+    assert structured_loaded["city"]["result"]["name"] == "Matsue Station, Matsue, Shimane, Japan"
+
     launch_profile.reset_gui_launch_profile()
     reset = launch_profile.load_gui_launch_profile()
     assert reset["theme"] == "night"

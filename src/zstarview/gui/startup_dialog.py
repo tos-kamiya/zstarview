@@ -30,11 +30,14 @@ from ..cli.args import (
     _parse_cloud_stripe,
     _parse_window_geometry,
 )
+from .place_search_dialog import PlaceSearchDialog
+from .famous_star_shortcuts import build_place_search_jump_targets
+from ..location_resolver import ResolvedLocation, resolve_launch_location
+from ..location_resolver.place_search import search_place_candidates
 from ..paths import (
     OVERLAY_FONT_SIZE_MAX,
     OVERLAY_FONT_SIZE_MIN,
 )
-from ..location_resolver import ResolvedLocation, resolve_launch_location
 from .launch_profile import default_gui_launch_profile
 from .worker_pool import submit_gui_work
 
@@ -179,6 +182,8 @@ class StartupDialog(QDialog):
         self._auto_location_resolver = auto_location_resolver or _resolve_auto_location_for_dialog
         self.city_auto_finished.connect(self._on_city_auto_finished)
         self._city_auto_button: QPushButton | None = None
+        self._city_search_button: QPushButton | None = None
+        self._place_selected_payload: dict[str, Any] | None = None
         self._location_city_radio: QRadioButton | None = None
         self._location_place_radio: QRadioButton | None = None
         self._location_mode_button_group = QButtonGroup(self)
@@ -274,14 +279,6 @@ class StartupDialog(QDialog):
     def _add_specs(self) -> None:
         specs = (
             _FieldSpec("city", "City", "text", "Location"),
-            _FieldSpec("place", "Place query", "text", "Location"),
-            _FieldSpec(
-                "place_countrycode",
-                "Place country code",
-                "text",
-                "Location",
-            ),
-            _FieldSpec("place_lang", "Place language", "text", "Location"),
             _FieldSpec("observer_height_m", "Observer height", "float", "Location", minimum=0.0, maximum=10000.0, step=0.1),
             _FieldSpec("use_building_top", "Use building top", "bool", "Location"),
             _FieldSpec("view_center_alt", "View center alt", "float", "View", minimum=-90.0, maximum=90.0, step=1.0),
@@ -369,7 +366,7 @@ class StartupDialog(QDialog):
 
     def _build_location_mode_selector(self, tab_widget: QWidget, layout: QFormLayout) -> None:
         intro = QLabel(
-            "Choose one location source. City and Place settings are mutually exclusive.",
+            "Choose one location source. City and Search results are mutually exclusive.",
             tab_widget,
         )
         intro.setWordWrap(True)
@@ -380,7 +377,7 @@ class StartupDialog(QDialog):
         radio_layout.setContentsMargins(0, 0, 0, 0)
         radio_layout.setSpacing(12)
         self._location_city_radio = QRadioButton("City", tab_widget)
-        self._location_place_radio = QRadioButton("Place query", tab_widget)
+        self._location_place_radio = QRadioButton("Search results", tab_widget)
         self._location_mode_button_group.addButton(self._location_city_radio)
         self._location_mode_button_group.addButton(self._location_place_radio)
         self._location_city_radio.toggled.connect(
@@ -452,10 +449,11 @@ class StartupDialog(QDialog):
         layout.addStretch(1)
 
     def _location_mode_from_profile(self, profile: dict[str, Any]) -> str:
-        place_query = str(profile.get("place", "") or "").strip()
-        place_countrycode = str(profile.get("place_countrycode", "") or "").strip()
-        if place_query or place_countrycode:
-            return "place"
+        city_value = profile.get("city")
+        if isinstance(city_value, dict):
+            resolver = str(city_value.get("resolver", "")).strip().lower()
+            if resolver == "nominatim":
+                return "place"
         return "city"
 
     def _set_location_group_enabled(self, group: str, enabled: bool) -> None:
@@ -479,6 +477,8 @@ class StartupDialog(QDialog):
         self._set_location_group_enabled("place", place_checked)
         if self._city_auto_button is not None:
             self._city_auto_button.setEnabled(city_checked)
+        if self._city_search_button is not None:
+            self._city_search_button.setEnabled(place_checked)
 
     def _set_location_mode(self, mode: str, checked: bool) -> None:
         if checked:
@@ -492,6 +492,94 @@ class StartupDialog(QDialog):
             self._apply_location_mode(other_mode)
         else:
             self._apply_location_mode(mode)
+
+    def _place_payload_from_target(
+        self,
+        query: str,
+        countrycode: str | None,
+        language: str,
+        target: object,
+    ) -> dict[str, Any] | None:
+        label = getattr(target, "object_key", "") or getattr(target, "label", "")
+        if not isinstance(label, str) or not label.strip():
+            return None
+        latitude = getattr(target, "latitude_deg", None)
+        longitude = getattr(target, "longitude_deg", None)
+        if not isinstance(latitude, (int, float)) or not isinstance(longitude, (int, float)):
+            return None
+        payload: dict[str, Any] = {
+            "resolver": "nominatim",
+            "query": query,
+            "countrycode": countrycode,
+            "language": language,
+            "result": {
+                "name": label.strip(),
+                "lat": float(latitude),
+                "lon": float(longitude),
+            },
+        }
+        subtitle = getattr(target, "subtitle", "")
+        if isinstance(subtitle, str) and subtitle.strip():
+            payload["subtitle"] = subtitle.strip()
+        return payload
+
+    def _set_place_selection(self, payload: dict[str, Any] | None) -> None:
+        self._place_selected_payload = payload
+
+    def _clear_place_selection(self) -> None:
+        self._set_place_selection(None)
+
+    def _build_place_result_payload(
+        self,
+        query: str,
+        countrycode: str | None,
+        language: str,
+        target: object,
+    ) -> dict[str, Any] | None:
+        payload = self._place_payload_from_target(query, countrycode, language, target)
+        if payload is None:
+            return None
+        return payload
+
+    def _open_place_search_dialog(self) -> None:
+        def _search_callback(search_query: str, countrycode: str | None, language: str):
+            candidates = search_place_candidates(
+                search_query,
+                countrycode=countrycode,
+                language=language,
+            )
+            return build_place_search_jump_targets(candidates)
+
+        dialog = PlaceSearchDialog(
+            _search_callback,
+            parent=self,
+            initial_query="",
+            initial_countrycode="",
+            initial_language="en",
+            show_cli_view_center_checkbox=False,
+        )
+        dialog.setWindowTitle("Search Place for Startup")
+        if dialog.exec() != 1:
+            return
+        selected = dialog.selected_target()
+        if selected is None:
+            self._show_validation_error("Select one place candidate before continuing")
+            return
+        query = dialog.search_query()
+        countrycode = dialog.search_countrycode()
+        language = dialog.search_language()
+        payload = self._build_place_result_payload(query, countrycode, language, selected)
+        if payload is None:
+            self._show_validation_error("Selected place candidate is invalid")
+            return
+        self._set_place_selection(payload)
+        city_widget = self._widgets.get("city")
+        if isinstance(city_widget, QLineEdit):
+            blocked = city_widget.blockSignals(True)
+            try:
+                city_widget.setText(str(getattr(selected, "label", "")).strip())
+            finally:
+                city_widget.blockSignals(blocked)
 
     def _time_source_from_profile(self, profile: dict[str, Any]) -> str:
         hours = float(profile.get("hours", 0.0) or 0.0)
@@ -547,6 +635,67 @@ class StartupDialog(QDialog):
         else:
             self._apply_time_source("current")
 
+    def _restore_place_selection(self, profile: dict[str, Any]) -> None:
+        city_value = profile.get("city")
+        city_widget = self._widgets.get("city")
+        if not isinstance(city_widget, QLineEdit):
+            self._set_place_selection(None)
+            return
+        if not isinstance(city_value, dict):
+            self._set_place_selection(None)
+            return
+        resolver = str(city_value.get("resolver", "")).strip().lower()
+        if resolver == "nominatim":
+            query = str(city_value.get("query", "")).strip()
+            result = city_value.get("result")
+            if not isinstance(result, dict):
+                self._set_place_selection(None)
+                return
+            try:
+                lat = float(result.get("lat"))
+                lon = float(result.get("lon"))
+            except (TypeError, ValueError):
+                self._set_place_selection(None)
+                return
+            payload = {
+                "resolver": "nominatim",
+                "query": query,
+                "countrycode": city_value.get("countrycode"),
+                "language": str(city_value.get("language", "")).strip() or "en",
+                "result": {
+                    "name": str(result.get("name", "")).strip(),
+                    "lat": lat,
+                    "lon": lon,
+                },
+            }
+            if result.get("category") is not None:
+                payload["result"]["category"] = result.get("category")
+            if result.get("type") is not None:
+                payload["result"]["type"] = result.get("type")
+            if result.get("importance") is not None:
+                payload["result"]["importance"] = result.get("importance")
+            subtitle = str(city_value.get("subtitle", "")).strip()
+            if subtitle:
+                payload["subtitle"] = subtitle
+            self._set_place_selection(payload)
+            blocked = city_widget.blockSignals(True)
+            try:
+                city_widget.setText(str(result.get("name", "")).strip())
+            finally:
+                city_widget.blockSignals(blocked)
+            return
+        if resolver == "auto":
+            display_name = str(city_value.get("display_name", "")).strip()
+            if display_name:
+                blocked = city_widget.blockSignals(True)
+                try:
+                    city_widget.setText(display_name)
+                finally:
+                    city_widget.blockSignals(blocked)
+            self._set_place_selection(None)
+            return
+        self._set_place_selection(None)
+
     def _add_spec(self, spec: _FieldSpec) -> None:
         location_group: str | None = None
         time_group: str | None = None
@@ -575,12 +724,16 @@ class StartupDialog(QDialog):
                 row_layout.setContentsMargins(0, 0, 0, 0)
                 row_layout.setSpacing(6)
                 row_layout.addWidget(line_edit, 1)
-                self._city_auto_button = QPushButton("Auto", self)
+                self._city_auto_button = QPushButton("Auto Search", self)
                 self._city_auto_button.clicked.connect(self._start_city_auto)
                 row_layout.addWidget(self._city_auto_button)
+                self._city_search_button = QPushButton("Search ...", self)
+                self._city_search_button.clicked.connect(self._open_place_search_dialog)
+                row_layout.addWidget(self._city_search_button)
                 widget = line_edit
                 self._widgets[spec.key] = widget
                 self._location_group_widgets["city"].extend([widget, self._city_auto_button])
+                self._location_group_widgets["place"].append(self._city_search_button)
                 layout.addRow(spec.label, row_widget)
                 return
             widget = QLineEdit(self)
@@ -612,8 +765,8 @@ class StartupDialog(QDialog):
             raise ValueError(f"Unsupported field kind: {spec.kind}")
         self._widgets[spec.key] = widget
         if spec.tab == "Location":
-            if spec.key in {"place", "place_countrycode", "place_lang"}:
-                location_group = "place"
+            if spec.key == "city":
+                location_group = "city"
         elif time_group is not None:
             self._time_group_widgets[time_group].append(widget)
         if location_group is not None:
@@ -686,6 +839,8 @@ class StartupDialog(QDialog):
     def _restore_from_profile(self, profile: dict[str, Any]) -> None:
         for key, widget in self._widgets.items():
             value = profile.get(key, self._defaults.get(key))
+            if key == "city" and isinstance(value, dict):
+                continue
             if isinstance(widget, QLineEdit):
                 widget.setText(_as_text(value, key=key))
             elif isinstance(widget, QDoubleSpinBox):
@@ -703,6 +858,22 @@ class StartupDialog(QDialog):
                     text = str(value if value is not None else self._defaults.get(key, ""))
                 index = widget.findText(text)
                 widget.setCurrentIndex(max(0, index))
+        city_value = profile.get("city")
+        city_widget = self._widgets.get("city")
+        if isinstance(city_widget, QLineEdit):
+            if isinstance(city_value, dict):
+                resolver = str(city_value.get("resolver", "")).strip().lower()
+                if resolver == "auto":
+                    display_name = str(city_value.get("display_name", "")).strip()
+                    if display_name:
+                        city_widget.setText(display_name)
+                    self._clear_place_selection()
+                elif resolver == "nominatim":
+                    self._restore_place_selection(profile)
+                else:
+                    self._clear_place_selection()
+            else:
+                self._clear_place_selection()
         self._apply_location_mode(self._location_mode_from_profile(profile))
         self._apply_time_source(self._time_source_from_profile(profile))
 
@@ -734,11 +905,12 @@ class StartupDialog(QDialog):
                 else:
                     profile[key] = text
         if self._location_city_radio is not None and self._location_city_radio.isChecked():
-            profile["place"] = None
-            profile["place_countrycode"] = None
-            profile["place_lang"] = None
+            self._set_place_selection(None)
         elif self._location_place_radio is not None and self._location_place_radio.isChecked():
-            profile["city"] = ""
+            if self._place_selected_payload is not None:
+                profile["city"] = self._place_selected_payload
+            else:
+                profile["city"] = ""
         time_source = "current"
         if self._time_relative_radio is not None and self._time_relative_radio.isChecked():
             time_source = "relative"
@@ -778,9 +950,10 @@ class StartupDialog(QDialog):
                 _parse_cloud_stripe(cloud_stripe)
             except Exception as exc:
                 raise ValueError("Invalid cloud stripe value") from exc
-        place_query = str(profile.get("place", "") or "").strip()
-        if self._location_place_radio is not None and self._location_place_radio.isChecked() and not place_query:
-            raise ValueError("Place query is required when Place query mode is selected")
+        if self._location_place_radio is not None and self._location_place_radio.isChecked():
+            city_payload = profile.get("city")
+            if not isinstance(city_payload, dict) or str(city_payload.get("resolver", "")).strip().lower() != "nominatim":
+                raise ValueError("Search and select a place candidate before confirming")
         time_source = "current"
         if self._time_relative_radio is not None and self._time_relative_radio.isChecked():
             time_source = "relative"

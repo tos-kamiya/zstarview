@@ -9,6 +9,8 @@ import zstarview.gui.startup_dialog as startup_dialog_module
 from zstarview.gui.startup_dialog import _coerce_float_value, _coerce_int_value
 from zstarview.gui.startup_dialog import StartupDialog
 from zstarview.location_resolver import ResolvedLocation
+from zstarview.location_resolver import PlaceSearchCandidate
+from zstarview.search.models import SearchJumpTarget
 
 _app = QApplication.instance() or QApplication([])
 
@@ -32,11 +34,16 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
     assert dialog._tabs.tabText(4) == "Overlays"
     assert dialog._tabs.tabText(5) == "General"
     assert dialog._location_city_radio.text() == "City"
-    assert dialog._location_place_radio.text() == "Place query"
+    assert dialog._location_place_radio.text() == "Search results"
     assert dialog._location_city_radio.isChecked() is True
     assert dialog._location_place_radio.isChecked() is False
     assert dialog._widgets["city"].isEnabled() is True
-    assert dialog._widgets["place"].isEnabled() is False
+    assert "place" not in dialog._widgets
+    assert "place_countrycode" not in dialog._widgets
+    assert "place_lang" not in dialog._widgets
+    assert dialog._city_auto_button.text() == "Auto Search"
+    assert dialog._city_search_button.text() == "Search ..."
+    assert dialog._city_search_button.isEnabled() is False
     assert dialog._widgets["view_center_alt"].isEnabled() is True
     assert dialog._view_center_alt_hint_label.text() == "Alt value: 0 is horizontal, 90 is zenith."
     assert dialog._widgets["edge_fov_deg"].isEnabled() is True
@@ -77,14 +84,16 @@ def test_startup_dialog_location_mode_checkboxes_are_exclusive() -> None:
     assert dialog._location_place_radio.isChecked() is True
     assert dialog._location_city_radio.isChecked() is False
     assert dialog._widgets["city"].isEnabled() is False
-    assert dialog._widgets["place"].isEnabled() is True
+    assert dialog._city_auto_button.isEnabled() is False
+    assert dialog._city_search_button.isEnabled() is True
 
     dialog._location_city_radio.setChecked(True)
 
     assert dialog._location_city_radio.isChecked() is True
     assert dialog._location_place_radio.isChecked() is False
     assert dialog._widgets["city"].isEnabled() is True
-    assert dialog._widgets["place"].isEnabled() is False
+    assert dialog._city_auto_button.isEnabled() is True
+    assert dialog._city_search_button.isEnabled() is False
 
 
 def test_startup_dialog_view_center_az_buttons_set_cardinal_angles() -> None:
@@ -198,3 +207,95 @@ def test_startup_dialog_city_auto_button_fills_city(monkeypatch) -> None:
     assert calls == ["called"]
     assert city_widget.text() == "JP/Matsue"
     assert dialog._city_auto_button.isEnabled() is True
+
+
+def test_startup_dialog_place_search_uses_search_dialog_and_saves_selection(monkeypatch) -> None:
+    recorded_calls: list[tuple[str, str | None, str]] = []
+
+    def fake_search_place_candidates(
+        query: str,
+        *,
+        countrycode: str | None = None,
+        language: str = "en",
+        limit: int = 5,
+        user_agent: str = "",
+    ) -> tuple[PlaceSearchCandidate, ...]:
+        recorded_calls.append((query, countrycode, language))
+        del limit, user_agent
+        return (
+            PlaceSearchCandidate(
+                name="Matsue Station",
+                display_name="Matsue Station, Matsue, Shimane, Japan",
+                latitude_deg=35.4641778,
+                longitude_deg=133.0628539,
+                category="railway",
+                type_name="station",
+                importance=0.9,
+            ),
+        )
+
+    class FakePlaceSearchDialog:
+        next_query = "Matsue Station"
+        next_countrycode = None
+        next_language = "en"
+
+        def __init__(
+            self,
+            place_search_callback,
+            parent=None,
+            *,
+            initial_query: str = "",
+            initial_countrycode: str = "",
+            initial_language: str = "en",
+            show_cli_view_center_checkbox: bool = True,
+            **_kwargs,
+        ) -> None:
+            del parent, initial_query, initial_countrycode, initial_language, show_cli_view_center_checkbox
+            self._place_search_callback = place_search_callback
+            self._targets: list[SearchJumpTarget] = []
+
+        def setWindowTitle(self, _title: str) -> None:
+            pass
+
+        def exec(self) -> int:
+            self._targets = list(
+                self._place_search_callback(
+                    self.next_query,
+                    self.next_countrycode,
+                    self.next_language,
+                )
+            )
+            return 1
+
+        def selected_target(self) -> SearchJumpTarget | None:
+            return self._targets[0] if self._targets else None
+
+        def search_query(self) -> str:
+            return self.next_query
+
+        def search_countrycode(self) -> str | None:
+            return self.next_countrycode
+
+        def search_language(self) -> str:
+            return self.next_language
+
+    monkeypatch.setattr(startup_dialog_module, "PlaceSearchDialog", FakePlaceSearchDialog)
+    monkeypatch.setattr(startup_dialog_module, "search_place_candidates", fake_search_place_candidates)
+
+    dialog = StartupDialog(
+        profile={
+            "window_geometry": "restore",
+            "cloud_stripe": "width,50,0.85",
+        }
+    )
+    dialog._location_place_radio.setChecked(True)
+
+    dialog._city_search_button.click()
+
+    assert recorded_calls == [("Matsue Station", None, "en")]
+    assert dialog._widgets["city"].text() == "Matsue Station"
+    profile = dialog.selected_profile()
+    assert isinstance(profile["city"], dict)
+    assert profile["city"]["resolver"] == "nominatim"
+    assert profile["city"]["query"] == "Matsue Station"
+    assert dialog._place_selected_payload is not None

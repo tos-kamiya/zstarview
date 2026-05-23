@@ -6,6 +6,7 @@ from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import QApplication
 
+import zstarview.gui.place_search_dialog as place_search_dialog_module
 from zstarview.gui.famous_star_search_dialog import NamedStarSearchDialog
 from zstarview.gui.famous_star_shortcuts import SearchJumpTarget
 from zstarview.gui.place_search_dialog import PlaceSearchDialog
@@ -32,7 +33,7 @@ def test_place_search_dialog_enter_in_search_field_triggers_search() -> None:
 
 def test_place_search_dialog_disables_cli_view_center_checkbox_without_cli_axes() -> None:
     dialog = PlaceSearchDialog(
-        lambda _query: [],
+        lambda _query, _countrycode, _language: [],
         cli_view_center_alt_specified=False,
         cli_view_center_az_specified=False,
     )
@@ -43,7 +44,7 @@ def test_place_search_dialog_disables_cli_view_center_checkbox_without_cli_axes(
 
 def test_place_search_dialog_enables_cli_view_center_checkbox_with_cli_axes() -> None:
     dialog = PlaceSearchDialog(
-        lambda _query: [],
+        lambda _query, _countrycode, _language: [],
         cli_view_center_alt_specified=True,
         cli_view_center_az_specified=False,
     )
@@ -54,7 +55,7 @@ def test_place_search_dialog_enables_cli_view_center_checkbox_with_cli_axes() ->
 
 def test_place_search_dialog_selected_target_carries_cli_view_center_choice() -> None:
     dialog = PlaceSearchDialog(
-        lambda _query: [],
+        lambda _query, _countrycode, _language: [],
         cli_view_center_alt_specified=True,
         cli_view_center_az_specified=False,
     )
@@ -75,6 +76,26 @@ def test_place_search_dialog_selected_target_carries_cli_view_center_choice() ->
 
     assert target is not None
     assert target.preserve_cli_view_center is False
+
+
+def test_place_search_dialog_passes_query_countrycode_and_language_to_callback(monkeypatch) -> None:
+    monkeypatch.setattr(
+        place_search_dialog_module,
+        "submit_gui_work",
+        lambda target, *args, **kwargs: target(*args, **kwargs),
+    )
+    seen: list[tuple[str, str | None, str]] = []
+
+    dialog = PlaceSearchDialog(
+        lambda query, countrycode, language: seen.append((query, countrycode, language)) or [],
+        initial_query="Matsue Station",
+        initial_countrycode="jp",
+        initial_language="ja",
+    )
+
+    dialog._start_place_search()
+
+    assert seen == [("Matsue Station", "jp", "ja")]
 
 
 def test_named_star_search_dialog_uses_local_match_before_jpl() -> None:

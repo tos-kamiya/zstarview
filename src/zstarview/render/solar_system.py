@@ -29,7 +29,7 @@ from .text import (
     _text_bounds_at_baseline,
     draw_outlined_text,
     recolor_text_style,
-    resolve_text_style,
+    resolve_label_text_style,
 )
 
 _NIGHT_ANNOTATION_RGB = (180, 180, 180)
@@ -46,7 +46,10 @@ def _solar_system_annotation_rgb(theme: ThemeStyle) -> tuple[int, int, int]:
 
 
 def _solar_system_label_style(theme: ThemeStyle, label_font: QFont) -> Any:
-    return recolor_text_style(resolve_text_style(theme, label_font), _solar_system_annotation_rgb(theme))
+    return recolor_text_style(
+        resolve_label_text_style(theme, label_font),
+        _solar_system_annotation_rgb(theme),
+    )
 
 
 def draw_moon(

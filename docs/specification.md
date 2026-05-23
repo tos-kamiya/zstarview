@@ -371,8 +371,8 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 - 少なくとも次のグループを入力できてよい。
   - 観測地点
   - 地点検索モード
-  - `City` と `Place` の入力は排他的に扱ってよい
-  - `Place` モードでは `Place query` が必須で、`Place country code` と `Place language` は補助指定として使ってよい
+  - `City` と `Search results` の入力は排他的に扱ってよい
+  - `Search results` モードでは、`Search ...` ボタンから開く専用の place search dialog で `Search query` を必須としてよい
   - 観測時刻の相対シフト
   - 絶対時刻
   - 視線中心
@@ -383,7 +383,14 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
   - Sky Guides や各種 overlay の初期表示状態
   - 各 overlay の初期 opacity
   - 起動時の検索条件
-- `City` 欄には `Auto` ボタンを備えてよく、押した場合は現在地自動取得と同等の解決結果を `City` 欄へ反映してよい。
+- `City` 欄には `Auto Search` ボタンを備えてよく、押した場合は現在地自動取得と同等の解決結果を `City` 欄へ反映してよい。
+- `Search ...` ボタンは専用の place search dialog を開くために使ってよく、起動前ダイアログには query / country code / language の入力欄を持たせなくてよい。
+- place search dialog では、`Search query` は必須入力として扱い、`Place country code` と `Place language` は検索オプションとして補助的に使ってよい。
+- 空欄の `Place country code` は未指定として正規化し、空欄の `Place language` は `en` として正規化してよい。
+- `None` をそのまま Nominatim の検索関数へ渡してはならない。
+- place search dialog から place 検索を行う場合は、候補 0 件や通信失敗時に確定を進めてはならない。
+- place search dialog で複数候補が返った場合は、利用者が 1 件を明示的に選ぶまで確定してはならない。`--place` のように top 候補を自動採用してはならない。
+- 選択した place 候補は、次回起動時に再検索しなくてよいよう、構造化された候補情報として `zstarview-gui` の起動プロファイルへ保存してよい。
 - `View` タブには `view_center_alt`、`view_center_az`、`edge_fov_deg`、`content_fov_deg` を置いてよい。
 - `View center alt` の入力欄の上には、"Alt value: 0 is horizontal, 90 is zenith." のような補助説明を置いてよい。
 - `View center az` には `N` / `E` / `S` / `W` のボタンを置き、それぞれ `0` / `90` / `180` / `270` 度を入力してよい。
@@ -398,6 +405,7 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 - `zstarview-gui` は、`zstarview` と同じ GUI 本体を起動するが、起動前設定ダイアログを先に開くための専用エントリポイントとして扱ってよい。
 - `zstarview-gui` は、起動前設定ダイアログで入力された値を、ほぼすべて次回起動のデフォルトとして保存してよい。
 - `zstarview-gui` の保存対象は、観測地点、観測時刻、視線中心、視野スケール、テーマ、各 overlay の初期表示状態、各 overlay の初期 opacity、`--enlarge-moon`、`--bright-bodies`、`--overlay-font-size`、`--visibility-boost`、`--observation-info`、起動前の検索条件、および GUI 起動時に初期値として意味を持つ項目を含めてよい。
+- `zstarview-gui` の検索条件には、必要なら候補選択に使った構造化 place 結果を含めてよい。
 - `zstarview-gui` の保存対象には、`zstarview-export-image` 専用の headless オプションは含めてはならない。
 - `zstarview-gui` の前回起動値は、`~/.config/zstarview/gui-launch-profile.json` へ保存してよい。
 - `zstarview-gui` の前回起動値が存在する場合、起動前設定ダイアログはその値を初期値として表示してよい。
@@ -875,9 +883,11 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 
 - GUI は恒星・アステリズム検索とは別に、Nominatim を使った place 検索ダイアログを提供してよい。
 - place 検索は GUI 内機能としてのみ提供し、CLI オプションは追加しない。
-- place 検索は専用ダイアログで自由文字列クエリを受け付け、利用者が明示的に検索を実行したときだけ Nominatim の候補一覧を取得してよい。
+- place 検索は専用ダイアログまたは startup dialog 内の埋め込み検索パネルで自由文字列クエリを受け付け、利用者が明示的に検索を実行したときだけ Nominatim の候補一覧を取得してよい。
+- 検索後は候補一覧から 1 件を選択して確定する形としてよく、トップ候補の自動採用は避けてよい。
 - place 検索のメニュー項目にはキーボードショートカットを必須としない。
 - 候補が複数ある場合は、利用者が候補を選べる一覧を表示してよい。
+- 検索入力の空欄は Nominatim 呼び出しへ渡す前に正規化し、`countrycode` は空欄なら未指定、`language` は空欄なら `en` にしてよい。
 - 候補一覧には少なくとも place 名を含め、必要に応じて種別や長い表示名を併記してよい。
 - 選択した place は、その緯度経度を現在の観測地点から見た方位角・仰角へ変換して扱う。
 - place を選択した場合は、恒星検索と同様に、その対象方向へ視界中心を移してよい。
@@ -975,6 +985,7 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 - `~/.config/zstarview/config.json` は、従来の共有設定として扱い、`zstarview` と `zstarview-export-image` で共有してよい。
 - この共有設定には、少なくとも `city` と `window_geometry` だけを保存してよい。
 - `zstarview-gui` は、この共有設定とは別に `~/.config/zstarview/gui-launch-profile.json` へ、起動前ダイアログの前回値を保存してよい。
+- `gui-launch-profile.json` には、必要なら候補選択済みの structured place payload を含めてよい。
 - `zstarview-gui` の保存内容には、GUI 起動時のほぼすべての初期値を含めてよい。
 - `zstarview-gui` 用の Reset 操作は、この `gui-launch-profile.json` の内容を既定値へ戻してよい。
 - ローカル設定ファイルはいずれもユーザー環境下に保存し、リポジトリには含めない。

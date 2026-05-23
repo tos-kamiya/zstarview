@@ -1997,8 +1997,13 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             )
         QTimer.singleShot(0, finalize_view_direction_change)
 
-    def _search_place_jump_targets(self, query: str) -> list[SearchJumpTarget]:
-        candidates = search_place_candidates(query)
+    def _search_place_jump_targets(
+        self,
+        query: str,
+        countrycode: str | None = None,
+        language: str = "en",
+    ) -> list[SearchJumpTarget]:
+        candidates = search_place_candidates(query, countrycode=countrycode, language=language)
         return build_place_search_jump_targets(candidates)
 
     def _jump_to_named_star(self, star: NamedStarShortcut) -> None:

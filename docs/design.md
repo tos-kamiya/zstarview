@@ -68,8 +68,12 @@
   - README の GUI 対応 CLI グループ見出しに対応するタブを持ち、`Location`、`View`、`Time`、`Stars`、`Overlays`、`General` の順に分けて起動前の入力を見通しよく整理する
   - `Overlays` は `Sky`、`Clouds`、`Aircraft and Satellites`、`Ground and Guides`、`Urban Outline` の折りたたみ可能なサブグループへ分けてよい
   - `overlay_font_size` は `General` 側で扱い、全体の表示密度を調整する設定として保持してよい
-  - `City` 行には `Auto` ボタンを置き、現在地自動取得の結果を `City` 欄へ反映してよい
-  - `Location` タブでは `City` と `Place` を排他的なモードとして扱い、`Place` モードでは `Place query` を必須としてよい
+  - `City` 行には `Auto Search` ボタンを置き、現在地自動取得の結果を `City` 欄へ反映してよい
+  - `Location` タブでは `City` と `Search results` を排他的なモードとして扱い、`Search ...` ボタンから専用の place search dialog を開いてよい
+  - place search dialog では、自由入力をそのまま Nominatim に投げるのではなく、明示的な検索実行の後に候補一覧から 1 件を選ぶフローとして扱ってよい
+  - `Place country code` は空欄なら未指定、`Place language` は空欄なら `en` として正規化し、`None` を Nominatim 呼び出しへ流さない
+  - 起動前ダイアログの place 検索は、既存の `place_search_dialog.py` の候補選択フローを再利用してよく、トップ候補の自動採用は避けてよい
+  - 選択した place 候補は、必要なら structured payload として launch profile に保存してよい
   - `View` タブには視線中心と FOV 系の値を集約してよい
   - `View center alt` の入力欄には "Alt value: 0 is horizontal, 90 is zenith." のような補助説明を添えてよい
   - `View center az` には `N` / `E` / `S` / `W` のショートカットボタンを置いてよい
@@ -550,6 +554,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 代表恒星ジャンプ UI
 - `src/zstarview/gui/famous_star_search_dialog.py`
   - 星・アステリズム・place・JPL 小天体検索 UI
+- `src/zstarview/gui/place_search_dialog.py`
+  - Nominatim place 候補の明示的な検索と選択を行う専用ダイアログ
 - `src/zstarview/gui/famous_star_shortcuts.py`
   - ジャンプ・検索用データの整形
 
@@ -560,6 +566,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `place` ターゲットは天体や人工衛星と異なり、時間変化で位置更新される対象としては扱わない。
 - Nominatim への問い合わせ自体は既存の location resolver 系の責務に寄せてよい。
 - GUI 検索用には、起動地点解決用の `--place` とは別に、検索候補を `place` ターゲットへ正規化する薄い変換層を持ってよい。
+- 起動前ダイアログ側の place 検索は、`search_place_candidates()` で候補一覧を取得し、利用者が選んだ 1 件だけを観測地点へ反映するフローとしてよい。
+- この起動前フローでは、`query` 必須、`countrycode` 任意、`language` は空欄なら `en` にするなど、UI 境界で空欄を正規化してよい。
+- この起動前フローでは、`None` が Nominatim の `Accept-Language` や `countrycodes` にそのまま渡らないようにしてよい。
 - この変換層は検索候補の `display_name`、緯度経度、および候補種別の整形だけを担当し、GUI の jump 制御や描画状態は持たない。
 - GUI では、恒星・アステリズム検索ダイアログと place 検索ダイアログを分けてよい。
 - place の Nominatim 問い合わせは、place 専用ダイアログ内の明示的な検索操作で開始してよく、入力変更のたびに自動問い合わせしなくてよい。
@@ -578,7 +587,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 検索失敗、候補なし、タイムアウト、レート制限時は、検索 UI またはステータス表示へ簡潔に返してよい。
 - 失敗時に描画 state や視界中心を変更してはならない。
 - 検索ダイアログを開くメニュー項目は、debug-oriented な補助機能としてキーボードショートカットを持たなくてよい。
-- 初期仕様では、place 検索結果の永続保存、検索履歴、CLI からの place ターゲット検索、place ターゲットの継続追跡は扱わない。
+- 起動前ダイアログに関しては、選択した place 候補を launch profile に保存し、次回起動の初期値として再利用してよい。
 
 #### 4.4.2 検索ダイアログの持続表示オプション
 

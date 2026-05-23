@@ -674,9 +674,13 @@ def resolve_launch_location(
     place_countrycode: str | None = None,
     place_lang: str = "en",
     use_building_top: bool = False,
-    load_last_city_func: Callable[[], str | dict[str, Any] | None] = load_last_city,
-    save_last_city_func: Callable[[str | dict[str, Any]], None] = save_last_city,
+    load_last_city_func: Callable[[], str | dict[str, Any] | None] | None = None,
+    save_last_city_func: Callable[[str | dict[str, Any]], None] | None = None,
 ) -> ResolvedLocation:
+    if load_last_city_func is None:
+        load_last_city_func = load_last_city
+    if save_last_city_func is None:
+        save_last_city_func = save_last_city
     last_city = load_last_city_func()
     stored_location: dict[str, Any] | None = None
     if not args_city and place_query is None:
@@ -838,11 +842,15 @@ def resolve_launch_location(
     )
 
     if persist_location:
-        save_last_city_func(
+        payload = (
             resolved_location.persistence_value
             if resolved_location.persistence_value is not None
             else resolved_location.persistence_key
         )
+        if save_last_city_func is save_last_city:
+            save_last_city(payload)
+        else:
+            save_last_city_func(payload)
         if resolved_location.kind == "tower":
             logger.info("Tower: %s", resolved_location.persistence_key)
         elif resolved_location.kind == "mountain":

@@ -276,7 +276,16 @@ def resolve_label_text_style(
     opacity: float = 1.0,
 ) -> ResolvedTextStyle:
     """Resolve a label style using the theme's text and outline colors."""
-    return resolve_text_style(theme, font, opacity=opacity)
+    style = resolve_text_style(theme, font, opacity=opacity)
+    if theme.label_outline_suppressed:
+        outline_color = QColor(0, 0, 0, 76)
+        style = ResolvedTextStyle(
+            font=style.font,
+            text_color=style.text_color,
+            outline_color=outline_color,
+            outline_width=style.outline_width,
+        )
+    return style
 
 
 def recolor_text_style(
