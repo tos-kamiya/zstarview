@@ -4,6 +4,18 @@
 
 **Zenith Star View** は、選んだ場所の空を表示するデスクトップ向けのスカイビューアです。
 
+<table align="right">
+  <tr>
+    <td align="center">
+      <img src="docs/images/clickpy-top25-20260523.png" alt="clickpy Top 25 medal" width="160" />
+      <br />
+      <sub>2026-05-23 時点の clickpy Top 25</sub>
+      <br />
+      <sub><a href="https://clickpy.clickhouse.com/dashboard/zstarview">clickpy のページを見る</a></sub>
+    </td>
+  </tr>
+</table>
+
 指定した場所と時刻の天球に、恒星、太陽、月、惑星、DSO、アステリズムを表示します。
 必要に応じて、地形地平線、都市アウトライン、夜間光、近傍の航空機と人工衛星も重ねて表示できます。
 観測地点は都市名やビューポイント名、緯度経度、オンライン地名検索、Google Maps の URL などで指定できます。

@@ -5,6 +5,18 @@ See the starry sky, even when it's cloudy or the sun is out.
 **Zenith Star View** is a desktop sky viewer for your chosen location.
 The name emphasizes the *zenith*, the point directly overhead.
 
+<table align="right">
+  <tr>
+    <td align="center">
+      <img src="docs/images/clickpy-top25-20260523.png" alt="clickpy Top 25 medal" width="160" />
+      <br />
+      <sub>clickpy Top 25 as of 2026-05-23</sub>
+      <br />
+      <sub><a href="https://clickpy.clickhouse.com/dashboard/zstarview">View on clickpy</a></sub>
+    </td>
+  </tr>
+</table>
+
 It renders an all-sky view with stars, the Sun, Moon, planets, deep-sky objects, and guide overlays.
 When enabled, it can also add real-time cloud imagery, terrain horizon, urban outlines, night lights, and nearby aircraft.
 Locations can be set by city or viewpoint name, direct coordinates, online place search, or supported Google Maps URLs.
