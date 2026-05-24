@@ -512,6 +512,6 @@ Windows では、Windows セキュリティにより Python 拡張モジュー�
 
 → [仕様書](docs/specification.md), [設計書](docs/design.md)
 
-→ [リリースノート](docs/release-notes.md)
+→ [リリースノート](release-notes.md)
 
 → [2026〜2028年の月食（皆既・部分）, 2026〜2028年の皆既日食](docs/appendix-eclipses-ja_JP.md)

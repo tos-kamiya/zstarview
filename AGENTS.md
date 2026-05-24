@@ -43,6 +43,8 @@
 ## Commit & Pull Request Guidelines
 - Commits: use Conventional Commits (e.g., `feat:`, `fix:`, `docs:`, `chore:`).
 - Pull requests: include a clear description and rationale; reference issues (e.g., `Closes #123`); add repro/validation steps and screenshots or short clips for UI changes; keep scope small and focused.
+- When bumping the package version, add or update the corresponding entry in `release-notes.md` in the same change unless the bump is purely internal and intentionally undocumented.
+- When drafting release notes, review the change set back to the previous version-bump commit so the entry covers the full release window, not only the immediate parent commit.
 
 ### Commit Message Format
 - Subject: a single line using Conventional Commits (imperative, concise). Example:
