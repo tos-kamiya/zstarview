@@ -914,3 +914,6 @@
   - Updated the fast viewport-interaction rendering path so it still draws the Sun, Moon, and planets instead of dropping the entire solar-system layer.
   - Kept labels disabled in that path so the interaction frame stays lightweight while the user is panning, rotating, or resizing.
   - Added regression coverage around `_draw_viewport_interaction_layers()` and synced the README, specification, and design docs with the current behavior.
+
+- version bump
+  - `__version__` を `1.28.6` に上げた。
