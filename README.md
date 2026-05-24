@@ -506,4 +506,6 @@ All paths below are relative to `src/zstarview/data/`.
 
 → [Specification](docs/specification.md), [Design](docs/design.md)
 
+→ [Release Notes](docs/release-notes.md)
+
 → [Lunar eclipses in 2026-2028, Solar eclipses 2026-2028](docs/appendix-eclipses.md)
