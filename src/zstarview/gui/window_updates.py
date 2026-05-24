@@ -499,10 +499,6 @@ class SkyWindowUpdatesMixin:
         self.state.sky_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
             seconds=self.sky_update_interval
         )
-        if self._clouddisc and self.cloud_disc_alpha > 0.0:
-            self.state.cloud_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
-                seconds=CLOUD_UPDATE_INTERVAL
-            )
 
         if self.state.sky_update_pending and not self._is_shutting_down:
             self.request_sky_data_update(

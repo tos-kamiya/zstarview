@@ -677,6 +677,8 @@ def test_on_sky_data_calculated_preserves_render_center_during_viewport_interact
     dummy.sky_update_interval = 60
     dummy.initial_data_loaded = _DummySignal()
     dummy._is_shutting_down = False
+    dummy._startup_initial_load_started = False
+    dummy._startup_initial_data_loaded = True
     dummy._disc_generation = 0
     dummy.width = lambda: 640
     dummy.height = lambda: 480
@@ -756,6 +758,49 @@ def test_on_sky_data_calculated_triggers_release_followup_updates() -> None:
     assert dummy.state.viewport_interaction_mode is False
     assert dummy.menu_button.visible is True
     assert cloud_calls == ["view-change-release", "view-change-release"]
+
+
+def test_on_sky_data_calculated_keeps_existing_cloud_refresh_deadline() -> None:
+    dummy = _WindowStub()
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(20.0, 30.0),
+        observer_height_m=1.7,
+    )
+    cloud_deadline = datetime(2026, 5, 25, 0, 10, tzinfo=timezone.utc)
+    dummy.state = SkyWindowState(
+        render_view_center=(20.0, 30.0),
+        cloud_next_refresh_utc=cloud_deadline,
+    )
+    dummy._compositor = _DummyCompositor()
+    dummy._sky_data_update_timer = _DummyTimer(active=True)
+    dummy._cloud_update_timer = _DummyTimer(active=False)
+    dummy._clouddisc = object()
+    dummy.cloud_disc_alpha = 0.2
+    dummy.sky_update_interval = 60
+    dummy.initial_data_loaded = _DummySignal()
+    dummy._is_shutting_down = False
+    dummy._disc_generation = 0
+    dummy.width = lambda: 640
+    dummy.height = lambda: 480
+    dummy.request_sky_data_update = lambda *_args, **_kwargs: None
+    dummy._safe_request_cloud_repaint = lambda: None
+    dummy.update = lambda: None
+
+    SkyWindow._on_sky_data_calculated(
+        dummy,
+        {
+            "celestial": object(),
+            "sky_disc": object(),
+            "view_center": (20.0, 30.0),
+            "geometry": render_geometry.get_screen_geometry(640, 480, dummy.viewer_data.view_alt_deg),
+            "render_generation": 0,
+        },
+    )
+
+    assert dummy.state.cloud_next_refresh_utc == cloud_deadline
 
 
 def test_on_sky_data_calculated_discards_stale_view_center_after_jump() -> None:

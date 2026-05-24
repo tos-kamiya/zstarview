@@ -1,6 +1,9 @@
 # zstarview Release Notes
 
-This draft was compiled from `releases.txt`, git history, and `pyproject.toml` diffs.
+## 1.28.7 - 2026-05-25
+- Restored fixed-interval cloud refresh scheduling so sky updates no longer keep postponing the next cloud download.
+
+The entries below were generated later from `releases.txt`, git history, and `pyproject.toml` diffs.
 It treats the first commit that changed `src/zstarview/__about__.py` to a released version as that release commit.
 
 ## 1.28.6 - 2026-05-24
