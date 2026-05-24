@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-05-22
+最終更新: 2026-05-24
 
 ## 1. この文書の位置づけ
 
@@ -487,7 +487,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `stars` の通常描画では、`7px` 以上の恒星のみ 2px 枠線矩形へ切り替え、それ未満は塗りつぶし矩形を維持してよい。`bright_bodies_mode == "outline"` の明るい星ダイヤはこの切り替えより優先してよい。
 - `paintEvent()` はベースフレームをキャッシュし、その上に hover/HUD を都度重ねる構成になっている。
 - `paintEvent()` は `viewport_interaction_mode` に応じて fast / normal の描画入口を切り替える。
-- fast 側では、星・地平線・Earth guide の簡易入口を使い、夜間光グローや詳細 overlay を normal 側に寄せる。
+- fast 側では、`vmag <= 4.0` の星を使う簡易 star 入口に加えて、既存の solar-system layer をラベルなしで重ね、太陽・月・惑星の見失いを防ぐ。夜間光グローや詳細 overlay は normal 側に寄せる。
 - ベースフレーム cache key から `mouse_pos`、hover 対象名、jump highlight 名、status message を外し、キャッシュ効率を上げている。
 - `labels` レイヤーは、各候補の既定配置矩形を見て局所グループを作り、グループ内では重心に近い候補から先に配置する軽量なクラスタ方式を使ってよい。
 - 文字色は、星名や惑星名は既定のテーマ文字色を使い、DSO とアステリズムのホバーラベルはそれぞれ本体色に寄せてよい。

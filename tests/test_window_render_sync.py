@@ -2074,6 +2074,11 @@ def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(
         "_draw_star_layer",
         lambda *_args, **kwargs: calls.append(("stars", kwargs.get("draw_vmag_limit"))),
     )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_planet_layer",
+        lambda *_args, **kwargs: calls.append(("planets", kwargs.get("draw_labels"))),
+    )
     pipeline_module._draw_viewport_interaction_layers(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
@@ -2086,6 +2091,7 @@ def test_draw_viewport_interaction_layers_limits_stars_to_bright_subset(
     assert calls == [
         ("reference", None),
         ("stars", 4.0),
+        ("planets", False),
         ("terrain", None),
     ]
 
@@ -2626,6 +2632,11 @@ def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(
     )
     monkeypatch.setattr(
         pipeline_module,
+        "_draw_planet_layer",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
         "_draw_star_layer",
         lambda *_args, **_kwargs: None,
     )
@@ -2729,6 +2740,11 @@ def test_draw_viewport_interaction_layers_skips_water_when_terrain_horizon_hidde
         "draw_stars_normal",
         lambda *_args, **_kwargs: None,
     )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_planet_layer",
+        lambda *_args, **_kwargs: None,
+    )
 
     scene = replace(
         _make_scene(terrain_horizon_profile=[(1.0, 10.0)]),
@@ -2791,6 +2807,11 @@ def test_draw_viewport_interaction_layers_prefers_scene_water_overlay_points(
     monkeypatch.setattr(
         pipeline_module.render_stars,
         "draw_stars_normal",
+        lambda *_args, **_kwargs: None,
+    )
+    monkeypatch.setattr(
+        pipeline_module,
+        "_draw_planet_layer",
         lambda *_args, **_kwargs: None,
     )
 
@@ -2950,6 +2971,9 @@ def test_draw_viewport_interaction_layers_draws_terrain_profile(monkeypatch) -> 
     monkeypatch.setattr(
         pipeline_module, "_draw_star_layer", lambda *_args, **_kwargs: None
     )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_planet_layer", lambda *_args, **_kwargs: None
+    )
     pipeline_module._draw_viewport_interaction_layers(
         painter=object(),
         geometry=SimpleNamespace(radius=600),
@@ -3011,6 +3035,9 @@ def test_draw_viewport_interaction_layers_skips_urban_outlines(monkeypatch) -> N
     urban_outlines = [[(-1.0, 10.0), (-2.0, 20.0)]]
     monkeypatch.setattr(
         pipeline_module, "_draw_star_layer", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        pipeline_module, "_draw_planet_layer", lambda *_args, **_kwargs: None
     )
     pipeline_module._draw_viewport_interaction_layers(
         painter=object(),

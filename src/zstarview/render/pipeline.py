@@ -460,6 +460,16 @@ def _draw_viewport_interaction_layers(
         draw_vmag_limit=ORIENTATION_INTERACTION_STAR_VMAG_LIMIT,
         fast_mode=True,
     )
+    _draw_planet_layer(
+        painter,
+        geometry=geometry,
+        scene=scene,
+        style=style,
+        enlarge_moon=bool(style.enlarge_moon),
+        outline_bright_bodies=_bright_bodies_mode(style) == "outline",
+        label_candidates=[],
+        draw_labels=False,
+    )
     render_terrain._draw_terrain_profile_layer(
         painter,
         geometry,
@@ -869,6 +879,7 @@ def _draw_planet_layer(
     enlarge_moon: bool,
     outline_bright_bodies: bool = False,
     label_candidates: list[dict[str, Any]],
+    draw_labels: bool = True,
 ) -> None:
     marker_scale = compute_star_render_upscale_factor(
         geometry.radius * 2,
@@ -883,7 +894,7 @@ def _draw_planet_layer(
         outline_bright_bodies=outline_bright_bodies,
         text_font=style.text_font,
         label_candidates=label_candidates,
-        draw_labels=True,
+        draw_labels=draw_labels,
         theme=style.theme,
         edge_fov_deg=float(scene.viewer.edge_fov_deg),
         content_fov_deg=_content_fov_deg(scene),

@@ -244,7 +244,7 @@ The GUI supports direct keyboard and menu-based navigation, search, and overlay 
 * **← / →**: Rotate view azimuth by ±5°
 * **↑ / ↓**: Change view altitude by ±5° (clamped to -45°..90°)
 * **Shift + arrow keys**: Fine-tune view direction by 1°
-  While arrow-key input continues, the app keeps a simplified viewport-interaction mode for about 0.7 seconds after the last input. In this mode, it shows stars up to `Vmag <= 4.0`, the celestial equator, ecliptic, horizon, terrain horizon, direction labels, the zenith marker, and the celestial pole markers; planets, full star density, sky-color disc, clouds, night lights, DSO, asterisms, and urban outlines are temporarily hidden.
+  While arrow-key input continues, the app keeps a simplified viewport-interaction mode for about 0.7 seconds after the last input. In this mode, it shows stars up to `Vmag <= 4.0`, the Sun, Moon, planets, the celestial equator, ecliptic, horizon, terrain horizon, direction labels, the zenith marker, and the celestial pole markers; full star density, sky-color disc, clouds, night lights, DSO, asterisms, and urban outlines are temporarily hidden.
 * **M**: Toggle moon enlarged to 5x size
 * **D**: Toggle DSO overlays
 * **A**: Toggle asterism overlays

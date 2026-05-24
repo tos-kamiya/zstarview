@@ -1,6 +1,6 @@
 # zstarview 実装履歴
 
-最終更新: 2026-05-23
+最終更新: 2026-05-24
 
 ## 1. この文書の位置づけ
 
@@ -907,3 +907,10 @@
   - Decision: Consolidate the GUI update model around `fast-mode`, `normal-mode`, and deadline-based periodic refreshes. Fast-mode keeps only the latest view-change replay, while periodic cloud/satellite/aircraft refreshes are scheduled from the previous completion time instead of the previous timer tick.
   - Rationale: This matches the desired user-visible behavior more closely than the previous timer-driven enqueue model. It prevents worker busy periods from accumulating stale ticks, keeps the splash phase deterministic, and makes the priority of menu, search, and view-change updates explicit.
   - Status: The design document was updated to reflect the new model. The first implementation pass now routes timer-driven refreshes through an idle-gated scheduler tick and adds regression coverage for one-task-per-idle-tick behavior.
+
+## 2026-05-24
+
+- Viewport interaction mode restores solar-system bodies
+  - Updated the fast viewport-interaction rendering path so it still draws the Sun, Moon, and planets instead of dropping the entire solar-system layer.
+  - Kept labels disabled in that path so the interaction frame stays lightweight while the user is panning, rotating, or resizing.
+  - Added regression coverage around `_draw_viewport_interaction_layers()` and synced the README, specification, and design docs with the current behavior.
