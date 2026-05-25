@@ -82,40 +82,6 @@ uv run -p .venv/bin/python dev-samples/geo_satellite_static_rgb_mask.py \
   -o Europe-IR-static-mask.png
 ```
 
-## Meteosat / geosatellite API pixel map fit
-
-- `fit_geostationary_image_mapping.py`
-- Fits a geostationary pixel-to-lat/lon transform from a Meteosat or other
-  geosatellite API image plus a `latlonmap.txt`-style control-point file. It
-  locates the exact RGB marker pixels, solves the affine transform from
-  projection space to image pixels, and can optionally dump full-resolution
-  lon/lat grids to `.npz`.
-
-Run it with:
-
-```bash
-uv run -p .venv/bin/python dev-samples/fit_geostationary_image_mapping.py \
-  meteosat.png \
-  latlonmap.txt \
-  --dump-grid meteosat_lonlat.npz \
-  --query 640,360
-```
-
-## Geostationary lat/lon grid overlay
-
-- `draw_geostationary_latlon_grid.py`
-- Draws a 10-degree lat/lon grid on top of a geostationary image. Lines at
-  30-degree multiples are red; the rest are black. It can read a precomputed
-  `.npz` lon/lat grid or fit the image from a companion `latlonmap.txt`.
-
-Run it with:
-
-```bash
-uv run -p .venv/bin/python dev-samples/draw_geostationary_latlon_grid.py \
-  meteosat.png \
-  -o meteosat_grid.png
-```
-
 ## Equidistant Conic fit probe
 
 - `fit_equidistant_conic_image_mapping.py`
