@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-05-24
+最終更新: 2026-05-26
 
 ## 1. この文書の位置づけ
 
@@ -109,6 +109,21 @@
   - 設定・キャッシュ・データのパス解決
   - テーマ preset ごとの共有表示定義を持つ
   - 夜間光 cache root の解決を持つ
+
+### 4.1.1 Geosatellite validation assets
+
+`dev-samples/` には、MET Norway Geo-Satellite API の Europe infrared 画像を使った投影検証用の小さな CLI を置く。
+
+- `dev-samples/fit_equidistant_conic_image_mapping.py`
+  - `raw-data/latlonmap.txt` の `lat, lon #RRGGBB` 制御点を読み込む。
+  - 入力画像中からその RGB の完全一致ピクセルを探し、制御点を画像座標へ写す。
+  - その対応点に対して Equidistant Conic を当てはめ、pixel -> projection の affine を推定する。
+  - `--dump-grid` 指定時は、画像と同じ解像度の `lon_deg` / `lat_deg` グリッドを `raw-data/eqdc_lonlat.npz` に保存する。
+- `dev-samples/draw_equidistant_conic_latlon_grid.py`
+  - `raw-data/eqdc_lonlat.npz` を読み込み、同じ 10 度間隔の緯度経度線を画像へ重ねる。
+  - 30 度区切りの線は赤、それ以外は黒として描く。
+
+この検証アセットは、`https://api.met.no/weatherapi/geosatellite/1.4/?area=europe&type=infrared` で取得した Europe infrared 画像を対象にする。画像は既に何らかの再投影済みであると仮定し、物理的な衛星射影の厳密復元ではなく、可視化上の lat/lon 整合性を確認するために使う。
 
 ### 4.2 ドメイン計算
 

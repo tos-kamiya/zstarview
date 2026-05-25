@@ -1,6 +1,6 @@
 # zstarview 実装履歴
 
-最終更新: 2026-05-24
+最終更新: 2026-05-26
 
 ## 1. この文書の位置づけ
 
@@ -202,6 +202,13 @@
 
 - version bump
   - `__version__` を `1.20.17` に上げた。
+
+### 2026-05-26
+
+- Equidistant Conic validation asset
+  - `dev-samples/fit_equidistant_conic_image_mapping.py` を追加し、`latlonmap.txt` の RGB 制御点から Equidistant Conic 仮説を当てはめて `eqdc_lonlat.npz` を生成できるようにした。
+  - `dev-samples/draw_equidistant_conic_latlon_grid.py` を追加し、生成済みの `eqdc_lonlat.npz` を使って同じ 10 度グリッドを画像へ重ねられるようにした。
+  - 検証対象は MET Norway Geo-Satellite API の `https://api.met.no/weatherapi/geosatellite/1.4/?area=europe&type=infrared` から取得した Europe infrared 画像とした。
 
 ### 2025-09-16
 
