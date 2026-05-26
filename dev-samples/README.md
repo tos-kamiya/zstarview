@@ -9,6 +9,11 @@ For the Geo-satellite-related helpers, see:
 
 - [`geo-satellite-index.md`](geo-satellite-index.md)
 
+Current default artifacts for the Europe workflow:
+
+- `raw-data/Europe-IR-gray-common-mask.png`
+- `raw-data/eqdc_lonlat.npz`
+
 ## Water tile intersection check
 
 - `find_water_tile_intersections.py`
@@ -75,6 +80,56 @@ uv run -p .venv/bin/python dev-samples/geo_satellite_gray_common_mask.py \
   Europe-IR-20260525174500.png \
   Europe-IR-20260525204500.png \
   -o Europe-IR-gray-common-mask.png
+```
+
+## Geo-satellite cloud inpaint
+
+- `geo_satellite_cloud_inpaint.py`
+- Fills masked regions in a grayscale cloud image by propagating nearby pixel
+  values inward.
+- This is the next step after building a cloud proxy and a gray-common mask:
+  use the cloud image as the base, and use the mask image to mark line-art or
+  boundary regions that should be filled from surrounding pixels.
+
+Run it with:
+
+```bash
+uv run -p .venv/bin/python dev-samples/geo_satellite_cloud_inpaint.py \
+  Europe-IR-cloud-proxy.png \
+  raw-data/Europe-IR-gray-common-mask.png \
+  -o Europe-IR-cloud-inpainted.png
+```
+
+## Geo-satellite cloudimage projection
+
+- `geo_satellite_cloudimage.py`
+- Projects a grayscale cloud image back into an observer-centric cloud disc
+  using the fitted lon/lat grid from the Europe image workflow.
+- Input:
+  - one grayscale cloud image, such as the output of `geo_satellite_cloud_inpaint.py`
+  - one observer spec in the form `@lat,lon`
+  - the fitted grid `.npz` produced by the geometry-fit helper
+- Output:
+  - one grayscale PNG cloud disc with the source image mapped into the
+    observer's `alt/az` view
+- Constraints:
+  - `@lat,lon` must fall inside the Europe workflow band: latitude `32N` to
+    `73N`, longitude `15W` to `35E`.
+- This script is intended for exploratory use under `dev-samples/`, not as a
+  core app test target.
+- The grid file defaults to `raw-data/eqdc_lonlat.npz`.
+
+Run it with:
+
+```bash
+uv run -p .venv/bin/python dev-samples/geo_satellite_cloudimage.py \
+  Europe-IR-cloud-inpainted.png \
+  '@51.5074,-0.1278' \
+  --alt 25 \
+  --az 180 \
+  --fov 60 \
+  --cloud-height-km 5 \
+  -o Europe-IR-cloud-disc.png
 ```
 
 ## Equidistant Conic fit probe

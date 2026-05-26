@@ -3,6 +3,28 @@
 This page lists the exploratory Geo-satellite-related scripts in `dev-samples/`
 and the inputs and outputs they expect.
 
+## Recommended pipeline
+
+For the current Europe workflow, the default artifacts are:
+
+- `raw-data/Europe-IR-gray-common-mask.png`
+- `raw-data/eqdc_lonlat.npz`
+
+The recommended sequence is:
+
+1. Start from one or more `Europe-IR-*.png` frames.
+2. Build a cloud proxy from a single frame with `geo_satellite_cloud_proxy.py`.
+3. Build or refresh the shared gray-common mask with
+   `geo_satellite_gray_common_mask.py`.
+4. Fill the mask into the cloud proxy with `geo_satellite_cloud_inpaint.py`.
+5. Project the inpainted cloud image into the observer-centric disc with
+   `geo_satellite_cloudimage.py`.
+6. Optionally overlay the lon/lat grid with
+   `draw_equidistant_conic_latlon_grid.py`.
+
+The inpaint step defaults to `raw-data/Europe-IR-gray-common-mask.png`, and the
+cloudimage step defaults to `raw-data/eqdc_lonlat.npz`.
+
 ## Cloud proxy from one frame
 
 - Script: `geo_satellite_cloud_proxy.py`
@@ -46,6 +68,67 @@ uv run -p .venv/bin/python dev-samples/geo_satellite_gray_common_mask.py \
   Europe-IR-20260525174500.png \
   Europe-IR-20260525204500.png \
   -o Europe-IR-gray-common-mask.png
+```
+
+## Cloud inpaint from a cloud image and a mask
+
+- Script: `geo_satellite_cloud_inpaint.py`
+- Purpose: fill masked regions in a grayscale cloud image by propagating
+  nearby pixel values inward.
+- Input:
+  - one grayscale cloud image, such as the output of `geo_satellite_cloud_proxy.py`
+  - one grayscale mask image, such as `raw-data/Europe-IR-gray-common-mask.png`
+- Output:
+  - one grayscale PNG with the masked regions filled
+- Notes:
+  - This is the next step after cloud proxy + mask extraction.
+  - White mask pixels are treated as holes that should be filled from the
+    surrounding cloud image.
+  - The default mask path is `raw-data/Europe-IR-gray-common-mask.png`.
+
+Example:
+
+```bash
+uv run -p .venv/bin/python dev-samples/geo_satellite_cloud_inpaint.py \
+  Europe-IR-cloud-proxy.png \
+  Europe-IR-gray-common-mask.png \
+  -o Europe-IR-cloud-inpainted.png
+```
+
+## Cloudimage projection from a cloud image
+
+- Script: `geo_satellite_cloudimage.py`
+- Purpose: map a grayscale cloud image back into an observer-centric cloud
+  disc using the fitted lon/lat grid from the Europe image workflow.
+- Input:
+  - one grayscale cloud image, such as the output of `geo_satellite_cloud_inpaint.py`
+  - one observer spec in the form `@lat,lon`
+  - one fitted grid `.npz`, typically `raw-data/eqdc_lonlat.npz`
+- Output:
+  - one grayscale PNG cloud disc
+- Notes:
+  - Uses the observer's `lat`, `lon`, `alt`, `az`, and `fov` in the same
+    style as `zstarview.cloudimage`.
+  - The fitted grid `.npz` supplies the Europe image geometry needed to map
+    lon/lat back into the source cloud image.
+  - `--cloud-height-km` sets the cloud-top height above the Earth's surface,
+    not the final shell radius.
+  - The observer location must stay inside the Europe workflow band:
+    latitude `32N` to `73N`, longitude `15W` to `35E`.
+  - The default grid path is `raw-data/eqdc_lonlat.npz`.
+  - This is a `dev-samples` validation helper, not a core app test target.
+
+Example:
+
+```bash
+uv run -p .venv/bin/python dev-samples/geo_satellite_cloudimage.py \
+  Europe-IR-cloud-inpainted.png \
+  '@51.5074,-0.1278' \
+  --alt 25 \
+  --az 180 \
+  --fov 60 \
+  --cloud-height-km 5 \
+  -o Europe-IR-cloud-disc.png
 ```
 
 ## Geostationary mapping fit
