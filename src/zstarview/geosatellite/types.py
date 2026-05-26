@@ -15,6 +15,7 @@ class GeoSatelliteDownloadResult:
     """Metadata and payload for a downloaded Geo-satellite frame."""
 
     fetched_at_utc: dt.datetime
+    captured_at_utc: dt.datetime | None
     kind: GeoSatelliteKind
     source_url: str
     png_bytes: bytes

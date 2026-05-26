@@ -810,9 +810,11 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
     - 入力設定、ダウンロード結果、中間 proxy、マスク、再投影結果の内部型を定義する。
   - `client.py`
     - 独自 `User-Agent` を付けた MET Norway API 呼び出しを担当する。
+    - `available.json` から利用可能な最新静的画像時刻を解決し、その時刻を実フレーム時刻として返してよい。
     - 200 以外、画像として読めない応答、通信失敗は失敗として正規化してよい。
   - `cache.py`
     - 最新取得画像と中間生成物のローカル保存と再利用を扱う。
+    - raw cache のキーは実フレーム時刻に基づけてよく、available で解決した最新 slot を短時間だけローカル保持してよい。
     - キャッシュは既存の cloud cache とは別系統として扱ってよい。
   - `proxy.py`
     - 色付き Geo-satellite 画像を雲らしさのグレースケール近似へ変換する。
@@ -839,6 +841,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - raw download cache: MET Norway から取得した元 PNG と応答メタデータ
   - intermediate cache: proxy 画像、gray-common mask 反映後の補完画像
 - raw download cache のキーは、時刻と `infrared` のみでよい。1 枚絵の最新取得を前提とするため、タイル単位の細かな分割や複雑なバージョニングは不要としてよい。
+- raw download cache の時刻は、実際に配信された衛星画像の時刻として扱ってよい。`available.json` の問い合わせ結果を短時間だけローカル保持し、同じ最新時刻を繰り返し問い合わせない設計としてよい。
 - intermediate cache は、元画像の content hash と mask / proxy / lonlat mapping の組み合わせで再利用してよい。
 - `raw-data/Europe-IR-gray-common-mask.png` と `raw-data/eqdc_lonlat.npz` は、キャッシュの有効期間中に変化しない前提としてよく、個別のバージョンキーを持たなくてよい。
 - 最終の rendered disc は、`zstarview` の通常の cloud render と同じくウィンドウサイズや出力サイズに依存するため、Geo-satellite 側でも永続 cache しなくてよい。

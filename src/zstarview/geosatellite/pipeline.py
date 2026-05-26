@@ -11,16 +11,20 @@ from PIL import Image
 
 from ..paths import GEOSATELLITE_GRAY_COMMON_MASK_FILE
 from .cache import (
+    AVAILABLE_CACHE_MAX_AGE_SECONDS,
     compute_digest,
     intermediate_inpainted_path,
     intermediate_manifest_path,
     intermediate_proxy_path,
+    latest_available_cache_is_recent,
+    read_latest_available_cache,
     read_intermediate_cache,
     read_raw_cache,
+    write_latest_available_cache,
     write_intermediate_cache,
     write_raw_cache,
 )
-from .client import download_latest_image
+from .client import download_latest_image, fetch_latest_available_image_time
 from .mask import DEFAULT_GRAY_SPREAD, DEFAULT_WHITE_BRIGHTNESS, fill_masked_regions, load_default_mask
 from .projection import (
     DEFAULT_CLOUD_HEIGHT_KM,
@@ -95,10 +99,59 @@ def build_inpainted_image(
 
 def build_download_result_from_cache(
     *,
-    fetched_at_utc: dt.datetime,
+    image_time_utc: dt.datetime,
     kind: GeoSatelliteKind,
 ) -> GeoSatelliteDownloadResult | None:
-    return read_raw_cache(fetched_at_utc=fetched_at_utc, kind=kind)
+    return read_raw_cache(image_time_utc=image_time_utc, kind=kind)
+
+
+def _resolve_latest_available_image_time(
+    *,
+    kind: GeoSatelliteKind,
+    area: str = "europe",
+    size: str = "normal",
+    max_age_seconds: float = AVAILABLE_CACHE_MAX_AGE_SECONDS,
+) -> dt.datetime:
+    now_utc = dt.datetime.now(dt.timezone.utc)
+    cached = read_latest_available_cache(area=area, kind=kind, size=size)
+    if cached is not None and latest_available_cache_is_recent(
+        cached,
+        now_utc=now_utc,
+        max_age_seconds=max_age_seconds,
+    ):
+        cached_text = cached.get("available_time_utc") or cached.get("fetched_at_utc")
+        if isinstance(cached_text, str) and cached_text:
+            try:
+                return dt.datetime.fromisoformat(cached_text).astimezone(dt.timezone.utc).replace(second=0, microsecond=0)
+            except ValueError:
+                pass
+    try:
+        available_time_utc, entry_count, source_url = fetch_latest_available_image_time(
+            kind=kind,
+            area=area,
+            size=size,
+        )
+    except Exception:
+        if cached is not None:
+            cached_text = cached.get("available_time_utc") or cached.get("fetched_at_utc")
+            if isinstance(cached_text, str) and cached_text:
+                logger.warning(
+                    "Geo-sat available list fetch failed; using cached latest slot: %s %s",
+                    kind,
+                    cached_text,
+                )
+                return dt.datetime.fromisoformat(cached_text).astimezone(dt.timezone.utc).replace(second=0, microsecond=0)
+        raise
+    write_latest_available_cache(
+        area=area,
+        kind=kind,
+        size=size,
+        available_time_utc=available_time_utc,
+        fetched_at_utc=now_utc,
+        source_url=source_url,
+        entry_count=entry_count,
+    )
+    return available_time_utc
 
 
 def run_geo_satellite_pipeline(
@@ -119,12 +172,12 @@ def run_geo_satellite_pipeline(
     """Run the experimental Geo-satellite workflow end to end."""
     if raw_png is None:
         if download_time_utc is None:
-            download_time_utc = dt.datetime.now(dt.timezone.utc).replace(second=0, microsecond=0)
+            download_time_utc = _resolve_latest_available_image_time(kind=kind)
         cache_slot = download_time_utc.astimezone(dt.timezone.utc).strftime("%Y%m%dT%H%MZ")
-        cached = build_download_result_from_cache(fetched_at_utc=download_time_utc, kind=kind)
+        cached = build_download_result_from_cache(image_time_utc=download_time_utc, kind=kind)
         if cached is None:
             logger.info("Geo-sat raw cache miss: %s %s", kind, cache_slot)
-            download = download_latest_image(kind=kind)
+            download = download_latest_image(kind=kind, requested_time_utc=download_time_utc)
             download_path, metadata_path = write_raw_cache(download)
             download = replace(download, cache_path=download_path, metadata_path=metadata_path)
         else:
@@ -135,6 +188,7 @@ def run_geo_satellite_pipeline(
             download_time_utc = dt.datetime.now(dt.timezone.utc)
         download = GeoSatelliteDownloadResult(
             fetched_at_utc=download_time_utc,
+            captured_at_utc=download_time_utc,
             kind=kind,
             source_url="memory",
             png_bytes=raw_png,

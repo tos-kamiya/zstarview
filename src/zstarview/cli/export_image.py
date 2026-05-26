@@ -529,9 +529,14 @@ def _fetch_cloud_layer(
         )
         if _timed_out(deadline):
             raise TimeoutError("cloud timed out")
+        download_result = result.download
+        captured_at_utc = getattr(download_result, "captured_at_utc", None) or getattr(
+            download_result,
+            "fetched_at_utc",
+        )
         logger.info(
             "Geo-sat + %s",
-            result.download.fetched_at_utc.astimezone(timezone.utc).isoformat(),
+            captured_at_utc.astimezone(timezone.utc).isoformat(),
         )
         cloud_rgba = render_gray_image_to_cloud_rgba(result.disc_gray)
         cloud_amount_field = build_cloud_amount_field_from_rgba(cloud_rgba)
