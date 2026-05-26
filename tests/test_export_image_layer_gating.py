@@ -290,7 +290,8 @@ def test_fetch_cloud_layer_uses_geo_satellite_branch_when_enabled(monkeypatch) -
 
     calls: dict[str, object] = {}
 
-    monkeypatch.setattr(mod, "_timed_out", lambda _deadline: False)
+    timeout_checks = [False, True]
+    monkeypatch.setattr(mod, "_timed_out", lambda _deadline: timeout_checks.pop(0) if timeout_checks else False)
     monkeypatch.setattr(mod, "is_within_europe_band", lambda *_args: True)
     monkeypatch.setattr(
         mod,
@@ -334,6 +335,7 @@ def test_fetch_cloud_layer_uses_geo_satellite_branch_when_enabled(monkeypatch) -
     assert missing_mask is None
     assert cloud_amount_field.source_cache_key == 4 * 4 * 180
     assert cloud_coverage_ratio == pytest.approx(1.0)
+    assert timeout_checks == [True]
 
 
 def test_fetch_terrain_horizon_layer_uses_sea_level_fallback(monkeypatch) -> None:

@@ -267,7 +267,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 画像書き出し CLI 固有オプションは少なくとも次を想定する。
   - `--output`
   - `--image-size`
-  - `--layer-timeout-seconds`
+- `--layer-timeout-seconds`
   - `--allow-partial-data`
   - `--include-direction-grid`
   - `--sixel`
@@ -298,7 +298,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 検索が 0 件または複数件のとき、`--list` が無ければ候補一覧を stderr へ出して非 0 終了し、`--list` があれば stdout へ 1 行 1 件で列挙して 0 終了してよい。
 - `opacity == 0` で無効化されたレイヤーは、取得キュー自体に積まず、layer timeout の待機対象からも外す。
 - 実装では `SkyWindow` と GUI controller 群には依存せず、sky/cloud/terrain/urban/aircraft を共有の取得ロジックで集めてから、shared pipeline で `QImage` へ 1 回だけ描画して保存する。
-- 各レイヤーの取得は独立した timeout budget を使い、あるレイヤーの待ち時間が後続レイヤーの失敗理由になってはならない。
+- 各レイヤーのダウンロード取得は独立した timeout budget を使い、あるレイヤーのダウンロード待ち時間が後続レイヤーの失敗理由になってはならない。
 - 保存は全レイヤーの取得結果がそろった後に 1 回だけ行い、途中成果物をファイルへ書き出してはならない。
 - export-image の雲経路は、GUI と同じく `numpy RGBA` と 2D missing-mask alpha を保持し、最終合成段まで `QImage` へ早期変換しない。
 - `zstarview-export-image` の検索解決は headless ルールを優先し、0 件または複数件では表示だけを行って終了し、1 件に解決できた場合だけ描画へ進む。

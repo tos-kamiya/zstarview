@@ -527,8 +527,6 @@ def _fetch_cloud_layer(
             az=float(viewer_data.view_az_deg),
             fov_deg=float(viewer_data.edge_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
         )
-        if _timed_out(deadline):
-            raise TimeoutError("cloud timed out")
         download_result = result.download
         captured_at_utc = getattr(download_result, "captured_at_utc", None) or getattr(
             download_result,
@@ -576,8 +574,6 @@ def _fetch_cloud_layer(
             cloud_shells_km=CLOUD_SHELLS_KM,
         )
     )
-    if _timed_out(deadline):
-        raise TimeoutError("cloud timed out")
     missing_mask_alpha = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
     cloud_amount_field = build_cloud_amount_field_from_rgba(cloud_rgba)
     return (cloud_rgba, missing_mask_alpha, cloud_amount_field, float(_coverage_ratio))
@@ -660,8 +656,6 @@ def _fetch_terrain_horizon_layer(
         )
     finally:
         dem.close()
-    if _timed_out(deadline):
-        raise TimeoutError("terrain timed out")
     return {
         "profile_altaz": reduce_profile_to_altaz(layers.main_profile),
         "profile_distances_m": [float(point.distance_m) for point in layers.main_profile],
@@ -732,8 +726,6 @@ def _fetch_water_overlay_dots_layer(
         float(viewer_data.observer_height_m) + observer_ground_m,
         minimum_distance_km=DEFAULT_WATER_RADIUS_KM,
     )
-    if _timed_out(deadline):
-        raise TimeoutError("water timed out")
     sea_dots, band_stats = sample_water_surface_interface_points_with_stats(
         observer_lat_deg=float(viewer_data.lat_deg),
         observer_lon_deg=float(viewer_data.lon_deg),
@@ -829,8 +821,6 @@ def _fetch_urban_outline_layer(
             overture_release=current_overture_release,
             skip_release_lookup=True,
         )
-        if _timed_out(deadline):
-            raise TimeoutError("urban timed out")
 
     outlines = None
     if required_dirs:
@@ -882,8 +872,6 @@ def _fetch_urban_outline_layer(
             overture_release=current_overture_release,
             skip_release_lookup=True,
         )
-        if _timed_out(deadline):
-            raise TimeoutError("urban timed out")
     if skyscraper_dirs:
         skyscraper_outlines = resolve_urban_outline_layer_for_viewer(
             viewer_data,
@@ -929,8 +917,6 @@ def _fetch_aircraft_snapshots(
     bbox = build_observer_bbox(float(viewer_data.lat_deg), float(viewer_data.lon_deg))
     fetched = fetch_cached_opensky_states(bbox, timeout_s=timeout_s)
     logger.info("Aircraft source: %s", fetched.source)
-    if _timed_out(deadline):
-        raise TimeoutError("aircraft timed out")
     return list(fetched.snapshots)
 
 
@@ -962,8 +948,6 @@ def _fetch_satellite_records_by_group(
         )
         logger.info("Satellite source [%s]: %s", group_key, fetched.source)
         records_by_group[group_key] = list(fetched.records)
-    if _timed_out(deadline):
-        raise TimeoutError("satellites timed out")
     return records_by_group
 
 
