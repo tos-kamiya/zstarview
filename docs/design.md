@@ -263,6 +263,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - この経路は `zstarview.gui.viewer` の GUI `main()` と別の `main` を持つ。
 - console script の実体は `zstarview.cli.export_image` とする。
 - parser は `zstarview.cli.args` の helper 群を組み合わせて構築し、地点、時刻、視線、描画オプションは通常 CLI と共有する。
+- この経路は batch renderer として振る舞い、必須レイヤーの取得がすべて完了するまで最終保存を行ってはならない。
 - 画像書き出し CLI 固有オプションは少なくとも次を想定する。
   - `--output`
   - `--image-size`
@@ -281,8 +282,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - export 画像では static overlay info を画像に焼き込まず、代わりに stderr へ compact summary を出してよい。
   - summary には、地点名がある場合は名前行と `Lat: ..., Lon: ... | Height: ground ..., [building ... , ]add ...` の 1 行要約、時刻、Alt/Az を含めてよい。
 - export 画像では GUI 向けの外周背景グラデーションも描かず、`content_fov_deg` の外側は透明のままにする。
-- 外部依存レイヤーの取得は逐次でも並列でもよいが、CLI 側では「いつまで待つか」と「部分データを許容するか」を引数で決められるようにする。
-- 既定は安全側として「部分データは保存しない」とし、明示的に `--allow-partial-data` を指定したときだけ部分出力を許可する。
+- 外部依存レイヤーの取得は逐次でも並列でもよいが、CLI 側では各レイヤーごとの待ち時間上限を持たせ、あるレイヤーの遅延が他レイヤーの取得余地を削ってはならない。
+- 既定は安全側として「必要なレイヤーがすべてそろったときだけ保存する」とし、明示的に `--allow-partial-data` を指定したときだけ部分出力を許可する。
 - `--sixel` は `--output` と併用可能とし、実装順序は「まずファイル保存、その後に端末出力」とする。
 - `--sixel` 出力が失敗しても、ファイル保存済みなら警告扱いで成功終了としてよい。
 - SIXEL 変換は、一時 PNG ファイルを経由せず、`QImage` を `QBuffer` 等で PNG bytes 化して `img2sixel -` の stdin へ流すパイプ方式を前提とする。
@@ -296,7 +297,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `-A` と `-Z` は、それぞれ仰角と方位の固定値として扱い、未指定の軸だけ検索結果の `alt/az` で補完してよい。
 - 検索が 0 件または複数件のとき、`--list` が無ければ候補一覧を stderr へ出して非 0 終了し、`--list` があれば stdout へ 1 行 1 件で列挙して 0 終了してよい。
 - `opacity == 0` で無効化されたレイヤーは、取得キュー自体に積まず、layer timeout の待機対象からも外す。
-- 実装では `SkyWindow` と GUI controller 群には依存せず、sky/cloud/terrain/urban/aircraft を同期的に順番に取得してから、shared pipeline で `QImage` へ 1 回だけ描画して保存する。
+- 実装では `SkyWindow` と GUI controller 群には依存せず、sky/cloud/terrain/urban/aircraft を共有の取得ロジックで集めてから、shared pipeline で `QImage` へ 1 回だけ描画して保存する。
+- 各レイヤーの取得は独立した timeout budget を使い、あるレイヤーの待ち時間が後続レイヤーの失敗理由になってはならない。
+- 保存は全レイヤーの取得結果がそろった後に 1 回だけ行い、途中成果物をファイルへ書き出してはならない。
 - export-image の雲経路は、GUI と同じく `numpy RGBA` と 2D missing-mask alpha を保持し、最終合成段まで `QImage` へ早期変換しない。
 - `zstarview-export-image` の検索解決は headless ルールを優先し、0 件または複数件では表示だけを行って終了し、1 件に解決できた場合だけ描画へ進む。
 - 1 件に解決できた場合は、検索結果の `alt/az` を使って未指定の軸だけを補完し、固定軸はそのまま残す。
