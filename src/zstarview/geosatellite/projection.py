@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 from pyproj import Transformer
 
-from ..clouddisc.projectors.az import az_project_lonlat_grid
 from .cache import read_projection_cache, write_projection_cache
 from ..paths import GEOSATELLITE_EQDC_LONLAT_FILE
 from ..utils.geostationary_image_mapping import build_equidistant_conic_projection
@@ -19,6 +19,7 @@ EARTH_RADIUS_KM = 6371.0
 DEFAULT_CLOUD_HEIGHT_KM = 5.0
 DEFAULT_GRID_NPZ = Path(GEOSATELLITE_EQDC_LONLAT_FILE)
 DEFAULT_MIN_ALT_DEG = 3.0
+DEFAULT_PROJECTION_SAMPLE_STEP = 2
 MAX_FOV_DEG = 135.0
 EUROPE_MIN_LAT_DEG = 32.0
 EUROPE_MAX_LAT_DEG = 73.0
@@ -176,6 +177,7 @@ def _projection_cache_key(
     fov_deg: float,
     cloud_height_km: float,
     radius_px: int,
+    sample_step: int,
     grid_npz: Path,
 ) -> str:
     grid_path = grid_npz.expanduser().resolve()
@@ -197,6 +199,7 @@ def _projection_cache_key(
         "observer_lat": round(float(observer_lat), 6),
         "observer_lon": round(float(observer_lon), 6),
         "radius_px": int(radius_px),
+        "sample_step": int(sample_step),
         "source_shape": [int(source_shape[0]), int(source_shape[1])],
     }
     return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
@@ -213,20 +216,91 @@ def _build_projection_sample(
     grid_npz: Path,
     cloud_height_km: float,
     radius_px: int,
+    sample_step: int,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     projection_inverse = _load_projection_inverse(grid_npz.expanduser())
+    image_size = 2 * int(radius_px)
+    sample_step = int(sample_step)
+    if sample_step < 1:
+        raise ValueError("sample_step must be >= 1")
+    if image_size % sample_step != 0:
+        raise ValueError("sample_step must evenly divide the output diameter")
+    coarse_size = image_size // sample_step
+    pixel_coords = ((np.arange(coarse_size, dtype=np.float32) + 0.5) * float(sample_step)) - float(radius_px)
+    x, y = np.meshgrid(pixel_coords, -pixel_coords)
     cloud_shell_km = float(EARTH_RADIUS_KM) + float(cloud_height_km)
-    lon_grid, lat_grid, inside = az_project_lonlat_grid(
-        observer_lat,
-        observer_lon,
-        alt,
-        az,
-        radius_px,
-        float(cloud_shell_km),
-        alt_min_deg=float(DEFAULT_MIN_ALT_DEG),
-        mask_fov_deg=float(fov_deg),
-        edge_fov_deg=float(fov_deg),
+    fov_limit = float(fov_deg) * math.sqrt(2.0)
+    if float(fov_deg) > fov_limit + 1e-6:
+        raise ValueError(f"mask_fov_deg ({fov_deg} deg) exceeds geometric limit ({fov_limit:.2f} deg)")
+    if not (0 < float(fov_deg) <= 180.0):
+        raise ValueError("edge_fov_deg must be in (0, 180]")
+
+    observer_pos_ecef = np.asarray(
+        [
+            float(EARTH_RADIUS_KM) * math.cos(math.radians(observer_lat)) * math.cos(math.radians(observer_lon)),
+            float(EARTH_RADIUS_KM) * math.cos(math.radians(observer_lat)) * math.sin(math.radians(observer_lon)),
+            float(EARTH_RADIUS_KM) * math.sin(math.radians(observer_lat)),
+        ],
+        dtype=np.float64,
     )
+    up_vec = np.asarray(
+        [
+            math.cos(math.radians(observer_lat)) * math.cos(math.radians(observer_lon)),
+            math.cos(math.radians(observer_lat)) * math.sin(math.radians(observer_lon)),
+            math.sin(math.radians(observer_lat)),
+        ],
+        dtype=np.float64,
+    )
+    east = np.asarray([-math.sin(math.radians(observer_lon)), math.cos(math.radians(observer_lon)), 0.0], dtype=np.float64)
+    north = np.asarray(
+        [
+            -math.sin(math.radians(observer_lat)) * math.cos(math.radians(observer_lon)),
+            -math.sin(math.radians(observer_lat)) * math.sin(math.radians(observer_lon)),
+            math.cos(math.radians(observer_lat)),
+        ],
+        dtype=np.float64,
+    )
+    az_rad = math.radians(az)
+    alt_rad = math.radians(alt)
+    center_view_dir = (
+        math.sin(alt_rad) * up_vec
+        + math.cos(alt_rad) * (math.sin(az_rad) * east + math.cos(az_rad) * north)
+    )
+    center_view_dir /= np.linalg.norm(center_view_dir) or 1.0
+    ty_unnormalized = up_vec - np.dot(up_vec, center_view_dir) * center_view_dir
+    ty = ty_unnormalized / (np.linalg.norm(ty_unnormalized) or 1.0)
+    tx = np.cross(center_view_dir, ty)
+
+    pixel_radius = np.hypot(x, y)
+    rho_deg = (float(fov_deg) * pixel_radius / float(radius_px)).astype(np.float32)
+    psi = np.arctan2(y, x)
+    cos_rho = np.cos(np.deg2rad(rho_deg))
+    sin_rho = np.sin(np.deg2rad(rho_deg))
+    b = np.cos(psi)[..., None] * tx + np.sin(psi)[..., None] * ty
+    d = cos_rho[..., None] * center_view_dir + sin_rho[..., None] * b
+    d /= np.linalg.norm(d, axis=2, keepdims=True) + 1e-12
+    alt_vis = np.degrees(np.arcsin(np.dot(d, up_vec)))
+    visible_mask = alt_vis >= float(DEFAULT_MIN_ALT_DEG)
+    fov_mask = rho_deg <= float(fov_deg) + 1e-6
+    inside = fov_mask & visible_mask
+
+    b_quad = 2.0 * np.sum(observer_pos_ecef * d, axis=2)
+    c_quad = float(np.dot(observer_pos_ecef, observer_pos_ecef)) - float(cloud_shell_km * cloud_shell_km)
+    discriminant = b_quad * b_quad - 4.0 * c_quad
+    valid_intersection = discriminant >= 0
+    sqrt_disc = np.sqrt(np.maximum(discriminant, 0.0))
+    t1 = (-b_quad - sqrt_disc) / 2.0
+    t2 = (-b_quad + sqrt_disc) / 2.0
+    t = np.where(t1 > 1e-6, t1, np.where(t2 > 1e-6, t2, np.nan))
+    P = observer_pos_ecef + d * t[..., None]
+    x_int, y_int, z_int = P[..., 0], P[..., 1], P[..., 2]
+    lon_grid = np.full((coarse_size, coarse_size), np.nan, dtype=np.float32)
+    lat_grid = np.full((coarse_size, coarse_size), np.nan, dtype=np.float32)
+    lon_grid[valid_intersection] = np.degrees(np.arctan2(y_int, x_int))[valid_intersection]
+    hyp = np.hypot(x_int, y_int)
+    lat_grid[valid_intersection] = np.degrees(np.arctan2(z_int, hyp))[valid_intersection]
+    lon_grid[~inside] = np.nan
+    lat_grid[~inside] = np.nan
     x_src, y_src = projection_inverse.lonlat_to_pixel(lon_grid, lat_grid)
     valid = inside & np.isfinite(x_src) & np.isfinite(y_src)
     return (
@@ -259,6 +333,7 @@ def project_gray_image_to_disc(
         fov_deg=fov_deg,
         cloud_height_km=cloud_height_km,
         radius_px=radius_px,
+        sample_step=DEFAULT_PROJECTION_SAMPLE_STEP,
         grid_npz=grid_npz,
     )
     cached = read_projection_cache(cache_key=cache_key, source_shape=source_shape)
@@ -273,6 +348,7 @@ def project_gray_image_to_disc(
             grid_npz=grid_npz,
             cloud_height_km=cloud_height_km,
             radius_px=radius_px,
+            sample_step=DEFAULT_PROJECTION_SAMPLE_STEP,
         )
         write_projection_cache(
             cache_key=cache_key,
@@ -285,6 +361,9 @@ def project_gray_image_to_disc(
         x_src, y_src, valid = cached
     sampled = _sample_bilinear(np.asarray(source_gray), x_src, y_src)
     output = np.zeros((image_size, image_size), dtype=np.uint8)
+    if DEFAULT_PROJECTION_SAMPLE_STEP > 1:
+        sampled = np.repeat(np.repeat(sampled, DEFAULT_PROJECTION_SAMPLE_STEP, axis=0), DEFAULT_PROJECTION_SAMPLE_STEP, axis=1)
+        valid = np.repeat(np.repeat(valid, DEFAULT_PROJECTION_SAMPLE_STEP, axis=0), DEFAULT_PROJECTION_SAMPLE_STEP, axis=1)
     output[valid] = np.clip(np.rint(sampled[valid]), 0.0, 255.0).astype(np.uint8, copy=False)
     return output
 
