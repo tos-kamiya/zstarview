@@ -32,6 +32,8 @@ def test_parse_export_image_args_accepts_shared_and_export_specific_options() ->
             "--layer-timeout-seconds",
             "12.5",
             "--allow-partial-data",
+            "--geo-satellite",
+            "true",
             "--include-direction-grid",
             "-o",
             "out.png",
@@ -46,6 +48,7 @@ def test_parse_export_image_args_accepts_shared_and_export_specific_options() ->
     assert args.image_size == (1280, 720)
     assert args.layer_timeout_seconds == 12.5
     assert args.allow_partial_data is True
+    assert args.geo_satellite is True
     assert args.include_direction_grid is True
     assert args.output == "out.png"
     assert args.sixel is False

@@ -80,6 +80,8 @@ from ..paths import (
     THEME_STYLES_BY_PRESET,
     ThemeStyle,
 )
+from ..geosatellite.pipeline import is_within_europe_band, run_geo_satellite_pipeline
+from ..geosatellite.projection import render_gray_image_to_cloud_rgba
 from ..render import background as render_background
 from ..render import geometry as render_geometry
 from ..render import guides as render_guides
@@ -406,6 +408,7 @@ def _build_window_inputs_from_args(
             or cloud_stripe_width == 0.0
             else args.cloud_opacity
         ),
+        geo_satellite=bool(args.geo_satellite),
         satellite_opacity=(
             args.satellite_opacity
             if overlay_availability.satellite
@@ -511,6 +514,33 @@ def _fetch_cloud_layer(
         return (None, None, None, None)
     if _timed_out(deadline):
         raise TimeoutError("cloud timed out")
+
+    if bool(getattr(user_options, "geo_satellite", False)) and is_within_europe_band(
+        float(viewer_data.lat_deg),
+        float(viewer_data.lon_deg),
+    ):
+        logger.info("Geo-sat + Downloading")
+        result = run_geo_satellite_pipeline(
+            observer_lat=float(viewer_data.lat_deg),
+            observer_lon=float(viewer_data.lon_deg),
+            alt=float(viewer_data.view_alt_deg),
+            az=float(viewer_data.view_az_deg),
+            fov_deg=float(viewer_data.edge_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
+        )
+        if _timed_out(deadline):
+            raise TimeoutError("cloud timed out")
+        logger.info(
+            "Geo-sat + %s",
+            result.download.fetched_at_utc.astimezone(timezone.utc).isoformat(),
+        )
+        cloud_rgba = render_gray_image_to_cloud_rgba(result.disc_gray)
+        cloud_amount_field = build_cloud_amount_field_from_rgba(cloud_rgba)
+        missing_mask = None
+        cloud_coverage_ratio = float(
+            np.count_nonzero(cloud_rgba[..., 3]) / max(1, cloud_rgba[..., 3].size)
+        )
+        logger.info("Geo-sat + Projecting")
+        return (cloud_rgba, missing_mask, cloud_amount_field, cloud_coverage_ratio)
 
     clouddisc = CloudDisc(
         CloudDiscConfig(
@@ -1331,6 +1361,10 @@ def main() -> None:
     cloud_missing_mask = None
     cloud_amount_field = None
     cloud_coverage_ratio: float | None = None
+    use_geo_satellite = bool(
+        user_options.geo_satellite
+        and is_within_europe_band(float(viewer_data.lat_deg), float(viewer_data.lon_deg))
+    )
     if user_options.cloud_disc_alpha > 0.0:
         try:
             (
@@ -1344,7 +1378,11 @@ def main() -> None:
                 deadline=deadline,
             )
         except Exception as exc:
-            logger.warning("Export layer unavailable: cloud (%s)", exc)
+            logger.warning(
+                "Export layer unavailable: %s (%s)",
+                "Geo-sat" if use_geo_satellite else "cloud",
+                exc,
+            )
 
     terrain_horizon_profile = None
     terrain_horizon_profile_distances_m = None

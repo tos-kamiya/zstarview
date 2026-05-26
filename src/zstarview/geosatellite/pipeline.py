@@ -1,0 +1,202 @@
+from __future__ import annotations
+
+import datetime as dt
+import io
+from dataclasses import replace
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
+from ..paths import GEOSATELLITE_GRAY_COMMON_MASK_FILE
+from .cache import (
+    compute_digest,
+    intermediate_inpainted_path,
+    intermediate_manifest_path,
+    intermediate_proxy_path,
+    read_intermediate_cache,
+    read_raw_cache,
+    write_intermediate_cache,
+    write_raw_cache,
+)
+from .client import download_latest_image
+from .mask import DEFAULT_GRAY_SPREAD, DEFAULT_WHITE_BRIGHTNESS, fill_masked_regions, load_default_mask
+from .projection import (
+    DEFAULT_CLOUD_HEIGHT_KM,
+    DEFAULT_GRID_NPZ,
+    DEFAULT_RENDER_RADIUS_PX,
+    EUROPE_MAX_LAT_DEG,
+    EUROPE_MAX_LON_DEG,
+    EUROPE_MIN_LAT_DEG,
+    EUROPE_MIN_LON_DEG,
+    project_gray_image_to_disc,
+)
+from .proxy import DEFAULT_CONTRAST_HIGH, DEFAULT_CONTRAST_LOW, DEFAULT_LOGO_MASK_FRAC, build_cloud_proxy
+from .types import GeoSatelliteDownloadResult, GeoSatelliteIntermediateResult, GeoSatelliteKind, GeoSatellitePipelineResult
+
+
+def is_within_europe_band(lat: float, lon: float) -> bool:
+    return EUROPE_MIN_LAT_DEG <= float(lat) <= EUROPE_MAX_LAT_DEG and EUROPE_MIN_LON_DEG <= float(lon) <= EUROPE_MAX_LON_DEG
+
+
+def _load_png_image(png_bytes: bytes) -> Image.Image:
+    with Image.open(io.BytesIO(png_bytes)) as image:
+        return image.convert("RGB")
+
+
+def _load_mask_image(mask_path: Path | None) -> Image.Image:
+    if mask_path is None:
+        return load_default_mask()
+    with Image.open(mask_path) as image:
+        return image.convert("L")
+
+
+def _mask_digest(mask_image: Image.Image) -> str:
+    return compute_digest(np.asarray(mask_image, dtype=np.uint8).tobytes())
+
+
+def build_proxy_image(
+    image: Image.Image,
+    *,
+    mask_logo: bool = True,
+    mask_frac: tuple[float, float] = DEFAULT_LOGO_MASK_FRAC,
+    contrast_low: float = DEFAULT_CONTRAST_LOW,
+    contrast_high: float = DEFAULT_CONTRAST_HIGH,
+) -> Image.Image:
+    return build_cloud_proxy(
+        image,
+        mask_logo=mask_logo,
+        mask_frac=mask_frac,
+        contrast_low=contrast_low,
+        contrast_high=contrast_high,
+    )
+
+
+def build_inpainted_image(
+    proxy_image: Image.Image,
+    mask_image: Image.Image,
+    *,
+    mask_threshold: float = 127.0,
+    gray_spread: float = DEFAULT_GRAY_SPREAD,
+    white_brightness: float = DEFAULT_WHITE_BRIGHTNESS,
+) -> Image.Image:
+    # gray_spread and white_brightness are kept as explicit knobs for compatibility
+    # with the exploratory dev-sample workflow, even though the mask image is now the
+    # main driver for the hole filling stage.
+    del gray_spread, white_brightness
+    proxy_array = np.asarray(proxy_image.convert("L"), dtype=np.float32)
+    mask_array = np.asarray(mask_image.convert("L"), dtype=np.float32) >= float(mask_threshold)
+    inpainted = fill_masked_regions(proxy_array, mask_array)
+    return Image.fromarray(np.rint(inpainted).astype(np.uint8), mode="L")
+
+
+def build_download_result_from_cache(
+    *,
+    fetched_at_utc: dt.datetime,
+    kind: GeoSatelliteKind,
+) -> GeoSatelliteDownloadResult | None:
+    return read_raw_cache(fetched_at_utc=fetched_at_utc, kind=kind)
+
+
+def run_geo_satellite_pipeline(
+    *,
+    observer_lat: float,
+    observer_lon: float,
+    alt: float,
+    az: float,
+    fov_deg: float,
+    kind: GeoSatelliteKind = "infrared",
+    cloud_height_km: float = DEFAULT_CLOUD_HEIGHT_KM,
+    radius_px: int = DEFAULT_RENDER_RADIUS_PX,
+    raw_png: bytes | None = None,
+    download_time_utc: dt.datetime | None = None,
+    mask_path: Path | None = Path(GEOSATELLITE_GRAY_COMMON_MASK_FILE),
+    grid_npz: Path = DEFAULT_GRID_NPZ,
+) -> GeoSatellitePipelineResult:
+    """Run the experimental Geo-satellite workflow end to end."""
+    if raw_png is None:
+        if download_time_utc is None:
+            download_time_utc = dt.datetime.now(dt.timezone.utc).replace(second=0, microsecond=0)
+        cached = build_download_result_from_cache(fetched_at_utc=download_time_utc, kind=kind)
+        if cached is None:
+            download = download_latest_image(kind=kind)
+            download_path, metadata_path = write_raw_cache(download)
+            download = replace(download, cache_path=download_path, metadata_path=metadata_path)
+        else:
+            download = cached
+    else:
+        if download_time_utc is None:
+            download_time_utc = dt.datetime.now(dt.timezone.utc)
+        download = GeoSatelliteDownloadResult(
+            fetched_at_utc=download_time_utc,
+            kind=kind,
+            source_url="memory",
+            png_bytes=raw_png,
+            content_type="image/png",
+        )
+
+    raw_digest = compute_digest(download.png_bytes)
+    mask_image = _load_mask_image(mask_path)
+    mask_digest = _mask_digest(mask_image)
+    intermediate_cached = read_intermediate_cache(raw_digest, mask_digest=mask_digest)
+    if intermediate_cached is not None:
+        proxy_image, inpainted_image, manifest = intermediate_cached
+        proxy_array = np.asarray(proxy_image, dtype=np.uint8)
+        inpainted_array = np.asarray(inpainted_image, dtype=np.uint8)
+        proxy_path = intermediate_proxy_path(raw_digest, mask_digest=mask_digest)
+        inpainted_path = intermediate_inpainted_path(raw_digest, mask_digest=mask_digest)
+        manifest_path = intermediate_manifest_path(raw_digest, mask_digest=mask_digest)
+        manifest = {
+            **manifest,
+            "proxy_path": str(proxy_path),
+            "inpainted_path": str(inpainted_path),
+            "manifest_path": str(manifest_path),
+        }
+    else:
+        source_image = _load_png_image(download.png_bytes)
+        proxy_image = build_proxy_image(source_image)
+        inpainted_image = build_inpainted_image(proxy_image, mask_image)
+        proxy_array = np.asarray(proxy_image, dtype=np.uint8)
+        inpainted_array = np.asarray(inpainted_image, dtype=np.uint8)
+        manifest = {
+            "raw_digest": raw_digest,
+            "mask_digest": mask_digest,
+            "kind": kind,
+            "mask_path": str(mask_path) if mask_path is not None else None,
+        }
+        proxy_path, inpainted_path, manifest_path = write_intermediate_cache(
+            raw_digest=raw_digest,
+            mask_digest=mask_digest,
+            proxy_image=proxy_image,
+            inpainted_image=inpainted_image,
+            manifest=manifest,
+        )
+        manifest = {
+            **manifest,
+            "proxy_path": str(proxy_path),
+            "inpainted_path": str(inpainted_path),
+            "manifest_path": str(manifest_path),
+        }
+
+    disc_gray = project_gray_image_to_disc(
+        inpainted_array,
+        observer_lat=observer_lat,
+        observer_lon=observer_lon,
+        alt=alt,
+        az=az,
+        fov_deg=fov_deg,
+        grid_npz=grid_npz,
+        cloud_height_km=cloud_height_km,
+        radius_px=radius_px,
+    )
+
+    intermediate = GeoSatelliteIntermediateResult(
+        raw_digest=raw_digest,
+        proxy_gray=proxy_array,
+        inpainted_gray=inpainted_array,
+        manifest=manifest,
+        proxy_path=proxy_path,
+        inpainted_path=inpainted_path,
+        mask_path=mask_path,
+    )
+    return GeoSatellitePipelineResult(download=download, intermediate=intermediate, disc_gray=disc_gray)

@@ -54,6 +54,7 @@ class SkyWindowUserOptions:
     sky_disc_altaz_rings_hover: str = "altaz"
     night_light_opacity: float = 0.02
     cloud_disc_alpha: float = 0.075
+    geo_satellite: bool = False
     satellite_opacity: float = 0.7
     aircraft_opacity: float = 0.4
     terrain_horizon_opacity: float = 0.003
@@ -187,6 +188,7 @@ def prepare_window_user_options(
     sky_disc_altaz_rings_hover: str,
     night_light_opacity: float = 0.02,
     cloud_disc_alpha: float,
+    geo_satellite: bool = False,
     satellite_opacity: float,
     aircraft_opacity: float,
     terrain_horizon_opacity: float,
@@ -228,6 +230,7 @@ def prepare_window_user_options(
         sky_disc_altaz_rings_hover=str(sky_disc_altaz_rings_hover).strip().lower(),
         night_light_opacity=_apply_visibility_boost(night_light_opacity, visibility_boost, 1.0),
         cloud_disc_alpha=_apply_visibility_boost(cloud_disc_alpha, visibility_boost, 1.0),
+        geo_satellite=bool(geo_satellite),
         satellite_opacity=_apply_visibility_boost(satellite_opacity, visibility_boost, 1.0),
         aircraft_opacity=_apply_visibility_boost(aircraft_opacity, visibility_boost, 1.0),
         terrain_horizon_opacity=_apply_visibility_boost(terrain_horizon_opacity, visibility_boost, 1.0),

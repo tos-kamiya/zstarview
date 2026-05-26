@@ -25,6 +25,9 @@ MOUNTAIN_VIEWPOINTS_FILE = os.path.join(_dir, "data", "viewpoints", "mountain_vi
 APP_ICON_FILE = os.path.join(_dir, "data", "icon-256.png")
 SKYSCRAPER_TILES_FILE = os.path.join(_dir, "data", "skyscraper_tiles_z14.json")
 EARTH_GUIDE_LAND_FILE = os.path.join(_dir, "data", "earth_guide_land_110m.json")
+GEOSATELLITE_DATA_DIR = os.path.join(_dir, "data", "geosatellite")
+GEOSATELLITE_EQDC_LONLAT_FILE = os.path.join(GEOSATELLITE_DATA_DIR, "eqdc_lonlat.npz")
+GEOSATELLITE_GRAY_COMMON_MASK_FILE = os.path.join(GEOSATELLITE_DATA_DIR, "Europe-IR-gray-common-mask.png")
 CACHE_PATH = user_cache_dir(appname=APP_ID, appauthor=APP_AUTHOR)
 LOG_PATH = user_log_dir(appname=APP_ID, appauthor=APP_AUTHOR)
 COPERNICUS_DEM_CACHE_DIR = os.path.join(CACHE_PATH, "copernicus-dem")
@@ -33,6 +36,7 @@ OVERTURE_SKYSCRAPER_DERIVED_ROOT_DIR = os.path.join(CACHE_PATH, "overture_skyscr
 AIRCRAFT_CACHE_ROOT_DIR = os.path.join(CACHE_PATH, "aircraft", "opensky")
 SATELLITE_CACHE_ROOT_DIR = os.path.join(CACHE_PATH, "satellites", "celestrak")
 NIGHT_LIGHTS_CACHE_DIR = os.path.join(CACHE_PATH, "night_lights")
+GEOSATELLITE_CACHE_ROOT_DIR = os.path.join(CACHE_PATH, "geosatellite")
 
 # Window UI
 GUI_BUTTON_SIZE = 30

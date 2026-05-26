@@ -3,9 +3,11 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from datetime import timedelta
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import pytest
+import numpy as np
 
 import zstarview.cli.export_image as mod
 from zstarview.cli.args import SKY_OPACITY_DEFAULT
@@ -64,6 +66,7 @@ class _Args:
     sky_update_interval = 60
     night_light_opacity = 0.02
     cloud_opacity = 0.15
+    geo_satellite = False
     satellite_opacity = 0.5
     aircraft_opacity = 0.5
     terrain_horizon_opacity = 0.05
@@ -270,6 +273,67 @@ def test_fetch_water_overlay_layer_uses_observer_ground_and_eye_height(monkeypat
     )
     assert "Water band stats: 500m tiles=1 raw=9 collapsed=1 visible=1" in caplog.text
     assert "Water mask dots: 1 visible, nearest sea dot 0.500 km, bands: 125m=0 250m=0 500m=1" in caplog.text
+
+
+def test_fetch_cloud_layer_uses_geo_satellite_branch_when_enabled(monkeypatch) -> None:
+    viewer_data = SimpleNamespace(
+        lat_deg=51.5,
+        lon_deg=-0.1,
+        view_alt_deg=12.0,
+        view_az_deg=180.0,
+        edge_fov_deg=60.0,
+    )
+    user_options = SimpleNamespace(
+        cloud_disc_alpha=0.2,
+        geo_satellite=True,
+    )
+
+    calls: dict[str, object] = {}
+
+    monkeypatch.setattr(mod, "_timed_out", lambda _deadline: False)
+    monkeypatch.setattr(mod, "is_within_europe_band", lambda *_args: True)
+    monkeypatch.setattr(
+        mod,
+        "run_geo_satellite_pipeline",
+        lambda **kwargs: calls.setdefault(
+            "pipeline",
+            SimpleNamespace(
+                download=SimpleNamespace(
+                    fetched_at_utc=datetime(2026, 5, 26, tzinfo=timezone.utc)
+                ),
+                disc_gray=np.full((4, 4), 180, dtype=np.uint8),
+            ),
+        ),
+    )
+    monkeypatch.setattr(
+        mod,
+        "render_gray_image_to_cloud_rgba",
+        lambda gray: np.dstack(
+            [
+                np.full((*gray.shape, 3), 255, dtype=np.uint8),
+                gray.astype(np.uint8)[..., None],
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        mod,
+        "build_cloud_amount_field_from_rgba",
+        lambda cloud_rgba: SimpleNamespace(
+            source_cache_key=int(np.asarray(cloud_rgba)[..., 3].sum())
+        ),
+    )
+
+    cloud_rgba, missing_mask, cloud_amount_field, cloud_coverage_ratio = mod._fetch_cloud_layer(
+        viewer_data=viewer_data,
+        user_options=user_options,
+        deadline=None,
+    )
+
+    assert "pipeline" in calls
+    assert cloud_rgba.shape == (4, 4, 4)
+    assert missing_mask is None
+    assert cloud_amount_field.source_cache_key == 4 * 4 * 180
+    assert cloud_coverage_ratio == pytest.approx(1.0)
 
 
 def test_fetch_terrain_horizon_layer_uses_sea_level_fallback(monkeypatch) -> None:

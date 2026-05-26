@@ -911,6 +911,16 @@ def add_export_image_arguments(parser: argparse.ArgumentParser) -> None:
         help="Allow saving an image even when enabled external layers fail or time out.",
     )
     export_group.add_argument(
+        "--geo-satellite",
+        type=_parse_bool,
+        default=False,
+        metavar="true|false",
+        help=(
+            "Use Geo-satellite infrared cloud data instead of GOES/Himawari "
+            "when the observer is inside the Europe workflow band (true/false)."
+        ),
+    )
+    export_group.add_argument(
         "--include-direction-grid",
         action="store_true",
         help="Include the direction grid in exported images, with 30-degree major lines and 10-degree intersection crosses.",
@@ -1331,6 +1341,7 @@ def _validate_dataset_query_compatibility(
             or has_non_default("visibility_boost")
             or has_non_default("cloud_stripe")
             or has_non_default("cloud_missing_tint_opacity")
+            or has_non_default("geo_satellite")
             or has_non_default("sky_update_interval")
             or has_non_default("show_dso_initial")
             or has_non_default("show_asterisms_initial")
