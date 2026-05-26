@@ -19,7 +19,7 @@ EARTH_RADIUS_KM = 6371.0
 DEFAULT_CLOUD_HEIGHT_KM = 5.0
 DEFAULT_GRID_NPZ = Path(GEOSATELLITE_EQDC_LONLAT_FILE)
 DEFAULT_MIN_ALT_DEG = 3.0
-DEFAULT_PROJECTION_SAMPLE_STEP = 2
+DEFAULT_PROJECTION_SAMPLE_STEP = 4
 MAX_FOV_DEG = 135.0
 EUROPE_MIN_LAT_DEG = 32.0
 EUROPE_MAX_LAT_DEG = 73.0
@@ -223,9 +223,7 @@ def _build_projection_sample(
     sample_step = int(sample_step)
     if sample_step < 1:
         raise ValueError("sample_step must be >= 1")
-    if image_size % sample_step != 0:
-        raise ValueError("sample_step must evenly divide the output diameter")
-    coarse_size = image_size // sample_step
+    coarse_size = int(math.ceil(image_size / float(sample_step)))
     pixel_coords = ((np.arange(coarse_size, dtype=np.float32) + 0.5) * float(sample_step)) - float(radius_px)
     x, y = np.meshgrid(pixel_coords, -pixel_coords)
     cloud_shell_km = float(EARTH_RADIUS_KM) + float(cloud_height_km)
@@ -362,8 +360,14 @@ def project_gray_image_to_disc(
     sampled = _sample_bilinear(np.asarray(source_gray), x_src, y_src)
     output = np.zeros((image_size, image_size), dtype=np.uint8)
     if DEFAULT_PROJECTION_SAMPLE_STEP > 1:
-        sampled = np.repeat(np.repeat(sampled, DEFAULT_PROJECTION_SAMPLE_STEP, axis=0), DEFAULT_PROJECTION_SAMPLE_STEP, axis=1)
-        valid = np.repeat(np.repeat(valid, DEFAULT_PROJECTION_SAMPLE_STEP, axis=0), DEFAULT_PROJECTION_SAMPLE_STEP, axis=1)
+        sampled = np.repeat(np.repeat(sampled, DEFAULT_PROJECTION_SAMPLE_STEP, axis=0), DEFAULT_PROJECTION_SAMPLE_STEP, axis=1)[
+            :image_size,
+            :image_size,
+        ]
+        valid = np.repeat(np.repeat(valid, DEFAULT_PROJECTION_SAMPLE_STEP, axis=0), DEFAULT_PROJECTION_SAMPLE_STEP, axis=1)[
+            :image_size,
+            :image_size,
+        ]
     output[valid] = np.clip(np.rint(sampled[valid]), 0.0, 255.0).astype(np.uint8, copy=False)
     return output
 
