@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -8,6 +9,7 @@ import numpy as np
 from pyproj import Transformer
 
 from ..clouddisc.projectors.az import az_project_lonlat_grid
+from .cache import read_projection_cache, write_projection_cache
 from ..paths import GEOSATELLITE_EQDC_LONLAT_FILE
 from ..utils.geostationary_image_mapping import build_equidistant_conic_projection
 
@@ -70,12 +72,12 @@ def validate_observer_bounds(lat: float, lon: float) -> None:
 @dataclass(frozen=True, slots=True)
 class ProjectionInverse:
     projection: object
+    lonlat_to_proj: Transformer
     inverse_matrix: np.ndarray
     offset: np.ndarray
 
     def lonlat_to_pixel(self, lon_deg: np.ndarray, lat_deg: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-        to_proj = Transformer.from_crs("EPSG:4326", self.projection, always_xy=True)
-        x_proj, y_proj = to_proj.transform(lon_deg, lat_deg)
+        x_proj, y_proj = self.lonlat_to_proj.transform(lon_deg, lat_deg)
         proj = np.stack(
             [
                 np.asarray(x_proj, dtype=np.float64) - float(self.offset[0]),
@@ -124,7 +126,12 @@ def _load_projection_inverse(grid_npz: Path) -> ProjectionInverse:
             raise ValueError("Projection matrix is singular and cannot be inverted.")
         inverse = np.linalg.inv(matrix)
         offset = np.array([float(coeffs_x[2]), float(coeffs_y[2])], dtype=np.float64)
-    return ProjectionInverse(projection=projection, inverse_matrix=inverse, offset=offset)
+    return ProjectionInverse(
+        projection=projection,
+        lonlat_to_proj=Transformer.from_crs("EPSG:4326", projection, always_xy=True),
+        inverse_matrix=inverse,
+        offset=offset,
+    )
 
 
 def _sample_bilinear(gray: np.ndarray, x: np.ndarray, y: np.ndarray) -> np.ndarray:
@@ -159,20 +166,55 @@ def _sample_bilinear(gray: np.ndarray, x: np.ndarray, y: np.ndarray) -> np.ndarr
     return out
 
 
-def project_gray_image_to_disc(
-    source_gray: np.ndarray,
+def _projection_cache_key(
+    *,
+    source_shape: tuple[int, int],
+    observer_lat: float,
+    observer_lon: float,
+    alt: float,
+    az: float,
+    fov_deg: float,
+    cloud_height_km: float,
+    radius_px: int,
+    grid_npz: Path,
+) -> str:
+    grid_path = grid_npz.expanduser().resolve()
+    try:
+        grid_stat = grid_path.stat()
+        grid_mtime_ns = int(grid_stat.st_mtime_ns)
+        grid_size = int(grid_stat.st_size)
+    except OSError:
+        grid_mtime_ns = -1
+        grid_size = -1
+    payload = {
+        "alt": round(float(alt), 6),
+        "az": round(float(az), 6),
+        "cloud_height_km": round(float(cloud_height_km), 6),
+        "edge_fov_deg": round(float(fov_deg), 6),
+        "grid_mtime_ns": grid_mtime_ns,
+        "grid_path": str(grid_path),
+        "grid_size": grid_size,
+        "observer_lat": round(float(observer_lat), 6),
+        "observer_lon": round(float(observer_lon), 6),
+        "radius_px": int(radius_px),
+        "source_shape": [int(source_shape[0]), int(source_shape[1])],
+    }
+    return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def _build_projection_sample(
+    source_shape: tuple[int, int],
     *,
     observer_lat: float,
     observer_lon: float,
     alt: float,
     az: float,
     fov_deg: float,
-    grid_npz: Path = DEFAULT_GRID_NPZ,
-    cloud_height_km: float = DEFAULT_CLOUD_HEIGHT_KM,
-    radius_px: int = DEFAULT_RENDER_RADIUS_PX,
-) -> np.ndarray:
+    grid_npz: Path,
+    cloud_height_km: float,
+    radius_px: int,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     projection_inverse = _load_projection_inverse(grid_npz.expanduser())
-    image_size = 2 * int(radius_px)
     cloud_shell_km = float(EARTH_RADIUS_KM) + float(cloud_height_km)
     lon_grid, lat_grid, inside = az_project_lonlat_grid(
         observer_lat,
@@ -186,9 +228,63 @@ def project_gray_image_to_disc(
         edge_fov_deg=float(fov_deg),
     )
     x_src, y_src = projection_inverse.lonlat_to_pixel(lon_grid, lat_grid)
-    sampled = _sample_bilinear(source_gray, x_src, y_src)
-    output = np.zeros((image_size, image_size), dtype=np.uint8)
     valid = inside & np.isfinite(x_src) & np.isfinite(y_src)
+    return (
+        np.asarray(x_src, dtype=np.float32),
+        np.asarray(y_src, dtype=np.float32),
+        np.asarray(valid, dtype=bool),
+    )
+
+
+def project_gray_image_to_disc(
+    source_gray: np.ndarray,
+    *,
+    observer_lat: float,
+    observer_lon: float,
+    alt: float,
+    az: float,
+    fov_deg: float,
+    grid_npz: Path = DEFAULT_GRID_NPZ,
+    cloud_height_km: float = DEFAULT_CLOUD_HEIGHT_KM,
+    radius_px: int = DEFAULT_RENDER_RADIUS_PX,
+) -> np.ndarray:
+    image_size = 2 * int(radius_px)
+    source_shape = tuple(int(dim) for dim in np.asarray(source_gray).shape[:2])
+    cache_key = _projection_cache_key(
+        source_shape=source_shape,
+        observer_lat=observer_lat,
+        observer_lon=observer_lon,
+        alt=alt,
+        az=az,
+        fov_deg=fov_deg,
+        cloud_height_km=cloud_height_km,
+        radius_px=radius_px,
+        grid_npz=grid_npz,
+    )
+    cached = read_projection_cache(cache_key=cache_key, source_shape=source_shape)
+    if cached is None:
+        x_src, y_src, valid = _build_projection_sample(
+            source_shape,
+            observer_lat=observer_lat,
+            observer_lon=observer_lon,
+            alt=alt,
+            az=az,
+            fov_deg=fov_deg,
+            grid_npz=grid_npz,
+            cloud_height_km=cloud_height_km,
+            radius_px=radius_px,
+        )
+        write_projection_cache(
+            cache_key=cache_key,
+            source_shape=source_shape,
+            x_src=x_src,
+            y_src=y_src,
+            valid_mask=valid,
+        )
+    else:
+        x_src, y_src, valid = cached
+    sampled = _sample_bilinear(np.asarray(source_gray), x_src, y_src)
+    output = np.zeros((image_size, image_size), dtype=np.uint8)
     output[valid] = np.clip(np.rint(sampled[valid]), 0.0, 255.0).astype(np.uint8, copy=False)
     return output
 

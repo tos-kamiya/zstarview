@@ -12,7 +12,7 @@ from zstarview.geosatellite.cache import raw_metadata_path, raw_png_path, read_r
 from zstarview.geosatellite.types import GeoSatelliteDownloadResult
 from zstarview.geosatellite.mask import build_common_mask, fill_masked_regions
 from zstarview.geosatellite.pipeline import run_geo_satellite_pipeline
-from zstarview.geosatellite.projection import render_gray_image_to_cloud_rgba
+from zstarview.geosatellite.projection import project_gray_image_to_disc, render_gray_image_to_cloud_rgba
 from zstarview.geosatellite.pipeline import is_within_europe_band
 from zstarview.geosatellite.proxy import build_cloud_proxy
 
@@ -281,3 +281,51 @@ def test_raw_cache_uses_fixed_latest_files(monkeypatch: pytest.MonkeyPatch, tmp_
     assert cached is not None
     assert cached.captured_at_utc == stamp
     assert cached.fetched_at_utc == dt.datetime(2026, 5, 26, 9, 31, tzinfo=dt.timezone.utc)
+
+
+def test_project_gray_image_to_disc_reuses_cached_projection(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from zstarview.geosatellite import cache as geo_cache
+    from zstarview.geosatellite import projection as geo_projection
+
+    cache_root = tmp_path / "geo-cache"
+    monkeypatch.setattr(geo_cache, "GEOSATELLITE_CACHE_ROOT_DIR", str(cache_root))
+
+    source = np.arange(9, dtype=np.uint8).reshape(3, 3)
+    x_src = np.array([[0.0, 1.0], [0.0, 1.0]], dtype=np.float32)
+    y_src = np.array([[0.0, 0.0], [1.0, 1.0]], dtype=np.float32)
+    valid = np.ones((2, 2), dtype=bool)
+    calls = {"count": 0}
+
+    def fake_build_projection_sample(*_args, **_kwargs):
+        calls["count"] += 1
+        return x_src, y_src, valid
+
+    monkeypatch.setattr(geo_projection, "_build_projection_sample", fake_build_projection_sample)
+
+    first = project_gray_image_to_disc(
+        source,
+        observer_lat=51.5,
+        observer_lon=-0.1,
+        alt=10.0,
+        az=180.0,
+        fov_deg=60.0,
+        grid_npz=Path("src/zstarview/data/geosatellite/eqdc_lonlat.npz"),
+        cloud_height_km=5.0,
+        radius_px=1,
+    )
+    second = project_gray_image_to_disc(
+        source,
+        observer_lat=51.5,
+        observer_lon=-0.1,
+        alt=10.0,
+        az=180.0,
+        fov_deg=60.0,
+        grid_npz=Path("src/zstarview/data/geosatellite/eqdc_lonlat.npz"),
+        cloud_height_km=5.0,
+        radius_px=1,
+    )
+
+    assert calls["count"] == 1
+    assert np.array_equal(first, second)
+    assert (cache_root / "projection" / "latest.npz").exists()
+    assert (cache_root / "projection" / "latest.json").exists()

@@ -6,10 +6,12 @@ import json
 import shutil
 from pathlib import Path
 
+import numpy as np
 from ..paths import GEOSATELLITE_CACHE_ROOT_DIR
 from .types import GeoSatelliteDownloadResult
 
 RAW_CACHE_DIRNAME = "raw"
+PROJECTION_CACHE_DIRNAME = "projection"
 AVAILABLE_CACHE_DIRNAME = "available"
 AVAILABLE_CACHE_MAX_AGE_SECONDS = 300.0
 
@@ -20,6 +22,10 @@ def geo_satellite_cache_root() -> Path:
 
 def geo_satellite_raw_cache_dir() -> Path:
     return geo_satellite_cache_root() / RAW_CACHE_DIRNAME
+
+
+def geo_satellite_projection_cache_dir() -> Path:
+    return geo_satellite_cache_root() / PROJECTION_CACHE_DIRNAME
 
 
 def geo_satellite_available_cache_dir() -> Path:
@@ -62,6 +68,74 @@ def purge_legacy_raw_cache(*, kind: str) -> None:
 
 def purge_intermediate_cache() -> None:
     shutil.rmtree(geo_satellite_cache_root() / "intermediate", ignore_errors=True)
+
+
+def projection_latest_path() -> Path:
+    return geo_satellite_projection_cache_dir() / "latest.npz"
+
+
+def projection_metadata_path() -> Path:
+    return geo_satellite_projection_cache_dir() / "latest.json"
+
+
+def write_projection_cache(
+    *,
+    cache_key: str,
+    source_shape: tuple[int, int],
+    x_src: np.ndarray,
+    y_src: np.ndarray,
+    valid_mask: np.ndarray,
+) -> tuple[Path, Path]:
+    npz_path = projection_latest_path()
+    metadata_path = projection_metadata_path()
+    npz_path.parent.mkdir(parents=True, exist_ok=True)
+    metadata_path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(
+        npz_path,
+        x_src=np.asarray(x_src, dtype=np.float32),
+        y_src=np.asarray(y_src, dtype=np.float32),
+        valid_mask=np.asarray(valid_mask, dtype=np.uint8),
+    )
+    metadata_path.write_text(
+        json.dumps(
+            {
+                "cache_key": cache_key,
+                "source_shape": [int(source_shape[0]), int(source_shape[1])],
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    return npz_path, metadata_path
+
+
+def read_projection_cache(
+    *,
+    cache_key: str,
+    source_shape: tuple[int, int],
+) -> tuple[np.ndarray, np.ndarray, np.ndarray] | None:
+    npz_path = projection_latest_path()
+    metadata_path = projection_metadata_path()
+    if not npz_path.exists() or not metadata_path.exists():
+        return None
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    if str(metadata.get("cache_key")) != cache_key:
+        return None
+    stored_shape = metadata.get("source_shape")
+    if not isinstance(stored_shape, list) or len(stored_shape) != 2:
+        return None
+    if int(stored_shape[0]) != int(source_shape[0]) or int(stored_shape[1]) != int(source_shape[1]):
+        return None
+    with np.load(npz_path, allow_pickle=False) as data:
+        x_src = np.asarray(data["x_src"], dtype=np.float32)
+        y_src = np.asarray(data["y_src"], dtype=np.float32)
+        valid_mask = np.asarray(data["valid_mask"], dtype=np.uint8).astype(bool, copy=False)
+    return x_src, y_src, valid_mask
 
 
 def write_raw_cache(result: GeoSatelliteDownloadResult) -> tuple[Path, Path]:
