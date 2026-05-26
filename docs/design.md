@@ -790,6 +790,64 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `src/zstarview/clouddisc/cache/*.py`
   - キャッシュ保存と清掃
 
+#### 4.5.1 Europe/GOES 分離ルール
+
+- Europe 側の Geo-satellite 由来の補助資産を使う場合、責務領域はおおむね観測者緯度 `32N` 〜 `73N`、経度 `15W` 〜 `35E` として扱ってよい。
+- この境界は地理座標ベースで決め、画像座標の単純な左右分割に依存しない。
+- Europe 側の雲候補は、視線の低仰角端を `alt >= 3.0°` で切る前提で扱ってよい。
+- GOES 側との切り替えは、必要なら数度の重なり帯を残してフェードさせてよく、境界線はハードカットに固定しない。
+- 高緯度の永続的な雲帯や雪氷由来の白色領域は、Europe 側の補助資産だけで完全に除去しようとせず、別時刻の画像や地理マスクと組み合わせて扱ってよい。
+
+#### 4.5.2 実験的 Geo-satellite 雲経路
+
+- `src/zstarview/geosatellite/`
+  - MET Norway Geo-Satellite API からの取得、ローカルキャッシュ、色付き配信画像からの雲 proxy 化、固定マスク補完、再投影を扱う実験用パッケージとして扱ってよい。
+  - このパッケージは `src/zstarview/clouddisc/` とは別ルートとして置き、Himawari / GOES 実装に依存しない独立ツリーとして扱ってよい。
+  - `types.py`
+    - 入力設定、ダウンロード結果、中間 proxy、マスク、再投影結果の内部型を定義する。
+  - `client.py`
+    - 独自 `User-Agent` を付けた MET Norway API 呼び出しを担当する。
+    - 200 以外、画像として読めない応答、通信失敗は失敗として正規化してよい。
+  - `cache.py`
+    - 最新取得画像と中間生成物のローカル保存と再利用を扱う。
+    - キャッシュは既存の cloud cache とは別系統として扱ってよい。
+  - `proxy.py`
+    - 色付き Geo-satellite 画像を雲らしさのグレースケール近似へ変換する。
+  - `mask.py`
+    - 固定の gray-common mask を使って境界線や地図オーバーレイを抑え、穴埋めを行う。
+  - `projection.py`
+    - `eqdc_lonlat.npz` を使って Europe 画像を観測者中心の雲ディスクへ再投影する。
+  - `pipeline.py`
+    - `fetch -> proxy -> mask/inpaint -> projection` の順で処理する実験パイプラインをまとめる。
+- この経路は、既存の GOES/Himawari 雲経路を置き換えるのではなく、Europe 側の補助ソースとして併用する前提で扱ってよい。
+- 実験機能が有効で、かつ観測者が責務領域内にいる場合は、雲データ源として Geo-satellite のみを使ってよい。
+- その場合、GOES/Himawari と Geo-satellite のフェード合成は行わず、標準経路を混ぜない。
+- 責務領域の外では、Geo-satellite 側を使わず既存の GOES/Himawari 経路をそのまま使ってよい。
+- 取得失敗時は、Geo-satellite 側の表示を失敗として正規化し、必要なら既存の GOES/Himawari 経路へは戻さず、空の失敗表示または前回成功画像の維持などを別途設計してよい。
+- 実験経路のデバッグ用固定資産として、`raw-data/Europe-IR-gray-common-mask.png` と `raw-data/eqdc_lonlat.npz` を既定値として使ってよい。
+- 実装の可視化確認には `dev-samples/geo_satellite_cloud_proxy.py`、`geo_satellite_gray_common_mask.py`、`geo_satellite_cloud_inpaint.py`、`geo_satellite_cloudimage.py` の流れを参照してよい。
+- GUI 側では `src/zstarview/gui/geosatellite_controller.py` と `src/zstarview/gui/geosatellite_state.py` のような別系統の実行・状態管理を持ってよく、既存の `cloud_controller.py` とは切り分けてよい。
+- CLI では `--geo-satellite true|false` でこの経路を明示的に有効化・無効化してよい。
+- CLI では `--geo-satellite` 未指定を既定の `false` とし、責務領域外では既存の GOES/Himawari を継続利用してよい。
+- 画像種別は当面 `infrared` 固定としてよく、`visible` 切り替えは実験経路の拡張点として別途扱ってよい。
+- 実験経路を有効にした場合でも、通常の cloud opacity や cloud-related HUD との見え方は共通の描画層に載せてよいが、データ取得元は混ぜずに一方に固定してよい。
+- キャッシュは `clouddisc` と共有せず、Geo-satellite 専用の別 root に置いてよい。
+- キャッシュ階層は少なくとも次の 2 段に分けてよい。
+  - raw download cache: MET Norway から取得した元 PNG と応答メタデータ
+  - intermediate cache: proxy 画像、gray-common mask 反映後の補完画像
+- raw download cache のキーは、時刻と `infrared` のみでよい。1 枚絵の最新取得を前提とするため、タイル単位の細かな分割や複雑なバージョニングは不要としてよい。
+- intermediate cache は、元画像の content hash と mask / proxy / lonlat mapping の組み合わせで再利用してよい。
+- `raw-data/Europe-IR-gray-common-mask.png` と `raw-data/eqdc_lonlat.npz` は、キャッシュの有効期間中に変化しない前提としてよく、個別のバージョンキーを持たなくてよい。
+- 最終の rendered disc は、`zstarview` の通常の cloud render と同じくウィンドウサイズや出力サイズに依存するため、Geo-satellite 側でも永続 cache しなくてよい。
+- rendered disc は、必要になった時点で都度生成してよく、サイズ依存の出力をそのまま保存する設計にしなくてよい。
+- Geo-satellite は実験経路なので、厳密な長期 TTL を要求せず、再実行時に source から再取得できることを優先してよい。
+- ただし、直近成功キャッシュは、取得失敗時のフォールバック表示や再描画短縮に使ってよい。
+- 実験経路は CLI のみを公開範囲とし、GUI の menu item や設定保存には載せてはならない。
+- 実行モデルは Himawari/GOES と同様に、GUI 側の worker/task として起動し、取得と投影を段階的なタスクとして扱ってよい。
+- ログは Himawari/GOES と同様にダウンロード段を中心に出し、失敗理由の細部は必要以上に増やさなくてよい。
+- GUI の表示文言は、既存の cloud 状態表示に揃え、`Geo-sat + Downloading`、`Geo-sat + Projecting`、`Geo-sat + <timestamp>`、`Geo-sat + error` のように短くしてよい。
+- 将来の拡張余地は、現在の GUI / CLI には見せず、設計メモとしてだけ保持してよい。
+
 ### 4.6 地形地平線処理
 
 - `src/zstarview/gui/terrain_controller.py`
