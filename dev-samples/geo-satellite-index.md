@@ -7,8 +7,8 @@ and the inputs and outputs they expect.
 
 For the current Europe workflow, the default artifacts are:
 
-- `raw-data/Europe-IR-gray-common-mask.png`
-- `raw-data/eqdc_lonlat.npz`
+- `raw-data/geosatellite/Europe-IR-gray-common-mask.png`
+- `raw-data/geosatellite/eqdc_lonlat.npz`
 
 The recommended sequence is:
 
@@ -22,8 +22,8 @@ The recommended sequence is:
 6. Optionally overlay the lon/lat grid with
    `draw_equidistant_conic_latlon_grid.py`.
 
-The inpaint step defaults to `raw-data/Europe-IR-gray-common-mask.png`, and the
-cloudimage step defaults to `raw-data/eqdc_lonlat.npz`.
+The inpaint step defaults to `raw-data/geosatellite/Europe-IR-gray-common-mask.png`, and the
+cloudimage step defaults to `raw-data/geosatellite/eqdc_lonlat.npz`.
 
 ## Cloud proxy from one frame
 
@@ -64,10 +64,10 @@ Example:
 
 ```bash
 uv run -p .venv/bin/python dev-samples/geo_satellite_gray_common_mask.py \
-  Europe-IR-20260525130000.png \
-  Europe-IR-20260525174500.png \
-  Europe-IR-20260525204500.png \
-  -o Europe-IR-gray-common-mask.png
+  raw-data/geosatellite/Europe-IR-20260525130000.png \
+  raw-data/geosatellite/Europe-IR-20260525174500.png \
+  raw-data/geosatellite/Europe-IR-20260525204500.png \
+  -o raw-data/geosatellite/Europe-IR-gray-common-mask.png
 ```
 
 ## Cloud inpaint from a cloud image and a mask
@@ -77,21 +77,21 @@ uv run -p .venv/bin/python dev-samples/geo_satellite_gray_common_mask.py \
   nearby pixel values inward.
 - Input:
   - one grayscale cloud image, such as the output of `geo_satellite_cloud_proxy.py`
-  - one grayscale mask image, such as `raw-data/Europe-IR-gray-common-mask.png`
+  - one grayscale mask image, such as `raw-data/geosatellite/Europe-IR-gray-common-mask.png`
 - Output:
   - one grayscale PNG with the masked regions filled
 - Notes:
   - This is the next step after cloud proxy + mask extraction.
   - White mask pixels are treated as holes that should be filled from the
     surrounding cloud image.
-  - The default mask path is `raw-data/Europe-IR-gray-common-mask.png`.
+  - The default mask path is `raw-data/geosatellite/Europe-IR-gray-common-mask.png`.
 
 Example:
 
 ```bash
 uv run -p .venv/bin/python dev-samples/geo_satellite_cloud_inpaint.py \
   Europe-IR-cloud-proxy.png \
-  Europe-IR-gray-common-mask.png \
+  raw-data/geosatellite/Europe-IR-gray-common-mask.png \
   -o Europe-IR-cloud-inpainted.png
 ```
 
@@ -103,7 +103,7 @@ uv run -p .venv/bin/python dev-samples/geo_satellite_cloud_inpaint.py \
 - Input:
   - one grayscale cloud image, such as the output of `geo_satellite_cloud_inpaint.py`
   - one observer spec in the form `@lat,lon`
-  - one fitted grid `.npz`, typically `raw-data/eqdc_lonlat.npz`
+  - one fitted grid `.npz`, typically `raw-data/geosatellite/eqdc_lonlat.npz`
 - Output:
   - one grayscale PNG cloud disc
 - Notes:
@@ -115,7 +115,7 @@ uv run -p .venv/bin/python dev-samples/geo_satellite_cloud_inpaint.py \
     not the final shell radius.
   - The observer location must stay inside the Europe workflow band:
     latitude `32N` to `73N`, longitude `15W` to `35E`.
-  - The default grid path is `raw-data/eqdc_lonlat.npz`.
+  - The default grid path is `raw-data/geosatellite/eqdc_lonlat.npz`.
   - This is a `dev-samples` validation helper, not a core app test target.
 
 Example:
@@ -137,8 +137,8 @@ uv run -p .venv/bin/python dev-samples/geo_satellite_cloudimage.py \
 - Purpose: estimate an Equidistant Conic style pixel-to-lat/lon mapping from a
   geostationary-style image and a control-point list.
 - Input:
-  - one source image, such as `raw-data/Europe-IR.png`
-  - one control-point file, such as `raw-data/latlonmap.txt`
+  - one source image, such as `raw-data/geosatellite/Europe-IR.png`
+  - one control-point file, such as `raw-data/geosatellite/latlonmap.txt`
 - Output:
   - a fitted lon/lat grid file when `--dump-grid` is used
 - Notes:
@@ -148,9 +148,9 @@ Example:
 
 ```bash
 uv run -p .venv/bin/python dev-samples/fit_equidistant_conic_image_mapping.py \
-  raw-data/Europe-IR.png \
-  raw-data/latlonmap.txt \
-  --dump-grid raw-data/eqdc_lonlat.npz
+  raw-data/geosatellite/Europe-IR.png \
+  raw-data/geosatellite/latlonmap.txt \
+  --dump-grid raw-data/geosatellite/eqdc_lonlat.npz
 ```
 
 ## Geostationary grid overlay
@@ -159,7 +159,7 @@ uv run -p .venv/bin/python dev-samples/fit_equidistant_conic_image_mapping.py \
 - Purpose: draw a latitude/longitude grid on top of a geostationary-style
   image using a precomputed lon/lat grid.
 - Input:
-  - one source image, such as `raw-data/Europe-IR.png`
+  - one source image, such as `raw-data/geosatellite/Europe-IR.png`
   - one `--grid-npz` file produced by the fit script
 - Output:
   - one PNG image with the grid overlay
@@ -171,7 +171,7 @@ Example:
 
 ```bash
 uv run -p .venv/bin/python dev-samples/draw_equidistant_conic_latlon_grid.py \
-  raw-data/Europe-IR.png \
-  --grid-npz raw-data/eqdc_lonlat.npz \
-  -o raw-data/eqdc_grid.png
+  raw-data/geosatellite/Europe-IR.png \
+  --grid-npz raw-data/geosatellite/eqdc_lonlat.npz \
+  -o raw-data/geosatellite/eqdc_grid.png
 ```

@@ -115,12 +115,12 @@
 `dev-samples/` には、MET Norway Geo-Satellite API の Europe infrared 画像を使った投影検証用の小さな CLI を置く。
 
 - `dev-samples/fit_equidistant_conic_image_mapping.py`
-  - `raw-data/latlonmap.txt` の `lat, lon #RRGGBB` 制御点を読み込む。
+- `raw-data/geosatellite/latlonmap.txt` の `lat, lon #RRGGBB` 制御点を読み込む。
   - 入力画像中からその RGB の完全一致ピクセルを探し、制御点を画像座標へ写す。
   - その対応点に対して Equidistant Conic を当てはめ、pixel -> projection の affine を推定する。
-  - `--dump-grid` 指定時は、画像と同じ解像度の `lon_deg` / `lat_deg` グリッドを `raw-data/eqdc_lonlat.npz` に保存する。
+- `--dump-grid` 指定時は、画像と同じ解像度の `lon_deg` / `lat_deg` グリッドを `raw-data/geosatellite/eqdc_lonlat.npz` に保存する。
 - `dev-samples/draw_equidistant_conic_latlon_grid.py`
-  - `raw-data/eqdc_lonlat.npz` を読み込み、同じ 10 度間隔の緯度経度線を画像へ重ねる。
+- `raw-data/geosatellite/eqdc_lonlat.npz` を読み込み、同じ 10 度間隔の緯度経度線を画像へ重ねる。
   - 30 度区切りの線は赤、それ以外は黒として描く。
 
 この検証アセットは、`https://api.met.no/weatherapi/geosatellite/1.4/?area=europe&type=infrared` で取得した Europe infrared 画像を対象にする。画像は既に何らかの再投影済みであると仮定し、物理的な衛星射影の厳密復元ではなく、可視化上の lat/lon 整合性を確認するために使う。
@@ -831,7 +831,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - その場合、GOES/Himawari と Geo-satellite のフェード合成は行わず、標準経路を混ぜない。
 - 責務領域の外では、Geo-satellite 側を使わず既存の GOES/Himawari 経路をそのまま使ってよい。
 - 取得失敗時は、Geo-satellite 側の表示を失敗として正規化し、必要なら既存の GOES/Himawari 経路へは戻さず、空の失敗表示または前回成功画像の維持などを別途設計してよい。
-- 実験経路のデバッグ用固定資産として、`raw-data/Europe-IR-gray-common-mask.png` と `raw-data/eqdc_lonlat.npz` を既定値として使ってよい。
+- 実験経路のデバッグ用固定資産として、`raw-data/geosatellite/Europe-IR-gray-common-mask.png` と `raw-data/geosatellite/eqdc_lonlat.npz` を既定値として使ってよい。
 - 実装の可視化確認には `dev-samples/geo_satellite_cloud_proxy.py`、`geo_satellite_gray_common_mask.py`、`geo_satellite_cloud_inpaint.py`、`geo_satellite_cloudimage.py` の流れを参照してよい。
 - GUI 側では `src/zstarview/gui/geosatellite_controller.py` と `src/zstarview/gui/geosatellite_state.py` のような別系統の実行・状態管理を持ってよく、既存の `cloud_controller.py` とは切り分けてよい。
 - CLI では `--geo-satellite true|false` でこの経路を明示的に有効化・無効化してよい。
@@ -845,7 +845,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - projection cache: 観測者条件と grid 版に紐づくサンプル座標マップを latest 1 件だけ保持してよい。
 - raw download cache は `latest` 1 枚だけを維持し、実際に配信された衛星画像の時刻を metadata に残してよい。1 枚絵の最新取得を前提とするため、タイル単位の細かな分割や複雑なバージョニングは不要としてよい。
 - `available.json` の問い合わせ結果を短時間だけローカル保持し、同じ最新時刻を繰り返し問い合わせない設計としてよい。
-- `raw-data/Europe-IR-gray-common-mask.png` と `raw-data/eqdc_lonlat.npz` は、キャッシュの有効期間中に変化しない前提としてよく、個別のバージョンキーを持たなくてよい。
+- `raw-data/geosatellite/Europe-IR-gray-common-mask.png` と `raw-data/geosatellite/eqdc_lonlat.npz` は、キャッシュの有効期間中に変化しない前提としてよく、個別のバージョンキーを持たなくてよい。
 - 最終の rendered disc は、`zstarview` の通常の cloud render と同じくウィンドウサイズや出力サイズに依存するため、Geo-satellite 側でも永続 cache しなくてよい。
 - rendered disc は、必要になった時点で都度生成してよく、サイズ依存の出力をそのまま保存する設計にしなくてよい。
 - Geo-satellite は実験経路なので、厳密な長期 TTL を要求せず、再実行時に source から再取得できることを優先してよい。

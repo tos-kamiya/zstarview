@@ -11,8 +11,8 @@ For the Geo-satellite-related helpers, see:
 
 Current default artifacts for the Europe workflow:
 
-- `raw-data/Europe-IR-gray-common-mask.png`
-- `raw-data/eqdc_lonlat.npz`
+- `raw-data/geosatellite/Europe-IR-gray-common-mask.png`
+- `raw-data/geosatellite/eqdc_lonlat.npz`
 
 ## Water tile intersection check
 
@@ -76,10 +76,10 @@ Run it with:
 
 ```bash
 uv run -p .venv/bin/python dev-samples/geo_satellite_gray_common_mask.py \
-  Europe-IR-20260525130000.png \
-  Europe-IR-20260525174500.png \
-  Europe-IR-20260525204500.png \
-  -o Europe-IR-gray-common-mask.png
+  raw-data/geosatellite/Europe-IR-20260525130000.png \
+  raw-data/geosatellite/Europe-IR-20260525174500.png \
+  raw-data/geosatellite/Europe-IR-20260525204500.png \
+  -o raw-data/geosatellite/Europe-IR-gray-common-mask.png
 ```
 
 ## Geo-satellite cloud inpaint
@@ -96,7 +96,7 @@ Run it with:
 ```bash
 uv run -p .venv/bin/python dev-samples/geo_satellite_cloud_inpaint.py \
   Europe-IR-cloud-proxy.png \
-  raw-data/Europe-IR-gray-common-mask.png \
+  raw-data/geosatellite/Europe-IR-gray-common-mask.png \
   -o Europe-IR-cloud-inpainted.png
 ```
 
@@ -117,7 +117,7 @@ uv run -p .venv/bin/python dev-samples/geo_satellite_cloud_inpaint.py \
     `73N`, longitude `15W` to `35E`.
 - This script is intended for exploratory use under `dev-samples/`, not as a
   core app test target.
-- The grid file defaults to `raw-data/eqdc_lonlat.npz`.
+- The grid file defaults to `raw-data/geosatellite/eqdc_lonlat.npz`.
 
 Run it with:
 
@@ -144,9 +144,9 @@ Run it with:
 
 ```bash
 uv run -p .venv/bin/python dev-samples/fit_equidistant_conic_image_mapping.py \
-  raw-data/Europe-IR.png \
-  raw-data/latlonmap.txt \
-  --dump-grid raw-data/eqdc_lonlat.npz
+  raw-data/geosatellite/Europe-IR.png \
+  raw-data/geosatellite/latlonmap.txt \
+  --dump-grid raw-data/geosatellite/eqdc_lonlat.npz
 ```
 
 ## Equidistant Conic grid overlay
@@ -159,7 +159,7 @@ Run it with:
 
 ```bash
 uv run -p .venv/bin/python dev-samples/draw_equidistant_conic_latlon_grid.py \
-  raw-data/Europe-IR.png \
-  --grid-npz raw-data/eqdc_lonlat.npz \
-  -o raw-data/eqdc_grid.png
+  raw-data/geosatellite/Europe-IR.png \
+  --grid-npz raw-data/geosatellite/eqdc_lonlat.npz \
+  -o raw-data/geosatellite/eqdc_grid.png
 ```

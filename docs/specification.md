@@ -253,8 +253,8 @@ README より詳細に、何ができるか、どう振る舞うか、どのよ�
 
 - `eqdc_lonlat.npz`
   - `MET Norway Geo-Satellite API` の `https://api.met.no/weatherapi/geosatellite/1.4/?area=europe&type=infrared` から取得した Europe infrared 画像を前提に生成する。
-  - 生成時は `dev-samples/fit_equidistant_conic_image_mapping.py` を用い、`raw-data/latlonmap.txt` の RGB 制御点を画像中で探し、Equidistant Conic 仮説に対する lon/lat グリッドを出力する。
-  - 生成した `raw-data/eqdc_lonlat.npz` は `dev-samples/draw_equidistant_conic_latlon_grid.py` で読み込み、同じ 10 度間隔の緯度経度グリッドを重ねる検証に使う。
+  - 生成時は `dev-samples/fit_equidistant_conic_image_mapping.py` を用い、`raw-data/geosatellite/latlonmap.txt` の RGB 制御点を画像中で探し、Equidistant Conic 仮説に対する lon/lat グリッドを出力する。
+  - 生成した `raw-data/geosatellite/eqdc_lonlat.npz` は `dev-samples/draw_equidistant_conic_latlon_grid.py` で読み込み、同じ 10 度間隔の緯度経度グリッドを重ねる検証に使う。
   - このファイルは一般利用者向けの保存物ではなく、特定の衛星画像と制御点集合に対する検証補助データである。
 
 #### 5.1.1 描画視野オプション
