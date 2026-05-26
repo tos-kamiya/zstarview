@@ -13,15 +13,11 @@ from ..paths import GEOSATELLITE_GRAY_COMMON_MASK_FILE
 from .cache import (
     AVAILABLE_CACHE_MAX_AGE_SECONDS,
     compute_digest,
-    intermediate_inpainted_path,
-    intermediate_manifest_path,
-    intermediate_proxy_path,
     latest_available_cache_is_recent,
     read_latest_available_cache,
-    read_intermediate_cache,
     read_raw_cache,
+    purge_intermediate_cache,
     write_latest_available_cache,
-    write_intermediate_cache,
     write_raw_cache,
 )
 from .client import download_latest_image, fetch_latest_available_image_time
@@ -170,6 +166,7 @@ def run_geo_satellite_pipeline(
     grid_npz: Path = DEFAULT_GRID_NPZ,
 ) -> GeoSatellitePipelineResult:
     """Run the experimental Geo-satellite workflow end to end."""
+    purge_intermediate_cache()
     if raw_png is None:
         if download_time_utc is None:
             download_time_utc = _resolve_latest_available_image_time(kind=kind)
@@ -198,45 +195,17 @@ def run_geo_satellite_pipeline(
     raw_digest = compute_digest(download.png_bytes)
     mask_image = _load_mask_image(mask_path)
     mask_digest = _mask_digest(mask_image)
-    intermediate_cached = read_intermediate_cache(raw_digest, mask_digest=mask_digest)
-    if intermediate_cached is not None:
-        proxy_image, inpainted_image, manifest = intermediate_cached
-        proxy_array = np.asarray(proxy_image, dtype=np.uint8)
-        inpainted_array = np.asarray(inpainted_image, dtype=np.uint8)
-        proxy_path = intermediate_proxy_path(raw_digest, mask_digest=mask_digest)
-        inpainted_path = intermediate_inpainted_path(raw_digest, mask_digest=mask_digest)
-        manifest_path = intermediate_manifest_path(raw_digest, mask_digest=mask_digest)
-        manifest = {
-            **manifest,
-            "proxy_path": str(proxy_path),
-            "inpainted_path": str(inpainted_path),
-            "manifest_path": str(manifest_path),
-        }
-    else:
-        source_image = _load_png_image(download.png_bytes)
-        proxy_image = build_proxy_image(source_image)
-        inpainted_image = build_inpainted_image(proxy_image, mask_image)
-        proxy_array = np.asarray(proxy_image, dtype=np.uint8)
-        inpainted_array = np.asarray(inpainted_image, dtype=np.uint8)
-        manifest = {
-            "raw_digest": raw_digest,
-            "mask_digest": mask_digest,
-            "kind": kind,
-            "mask_path": str(mask_path) if mask_path is not None else None,
-        }
-        proxy_path, inpainted_path, manifest_path = write_intermediate_cache(
-            raw_digest=raw_digest,
-            mask_digest=mask_digest,
-            proxy_image=proxy_image,
-            inpainted_image=inpainted_image,
-            manifest=manifest,
-        )
-        manifest = {
-            **manifest,
-            "proxy_path": str(proxy_path),
-            "inpainted_path": str(inpainted_path),
-            "manifest_path": str(manifest_path),
-        }
+    source_image = _load_png_image(download.png_bytes)
+    proxy_image = build_proxy_image(source_image)
+    inpainted_image = build_inpainted_image(proxy_image, mask_image)
+    proxy_array = np.asarray(proxy_image, dtype=np.uint8)
+    inpainted_array = np.asarray(inpainted_image, dtype=np.uint8)
+    manifest = {
+        "raw_digest": raw_digest,
+        "mask_digest": mask_digest,
+        "kind": kind,
+        "mask_path": str(mask_path) if mask_path is not None else None,
+    }
 
     disc_gray = project_gray_image_to_disc(
         inpainted_array,
@@ -255,8 +224,8 @@ def run_geo_satellite_pipeline(
         proxy_gray=proxy_array,
         inpainted_gray=inpainted_array,
         manifest=manifest,
-        proxy_path=proxy_path,
-        inpainted_path=inpainted_path,
+        proxy_path=None,
+        inpainted_path=None,
         mask_path=mask_path,
     )
     return GeoSatellitePipelineResult(download=download, intermediate=intermediate, disc_gray=disc_gray)

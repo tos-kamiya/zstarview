@@ -3,15 +3,13 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import json
+import shutil
 from pathlib import Path
-
-from PIL import Image
 
 from ..paths import GEOSATELLITE_CACHE_ROOT_DIR
 from .types import GeoSatelliteDownloadResult
 
 RAW_CACHE_DIRNAME = "raw"
-INTERMEDIATE_CACHE_DIRNAME = "intermediate"
 AVAILABLE_CACHE_DIRNAME = "available"
 AVAILABLE_CACHE_MAX_AGE_SECONDS = 300.0
 
@@ -24,10 +22,6 @@ def geo_satellite_raw_cache_dir() -> Path:
     return geo_satellite_cache_root() / RAW_CACHE_DIRNAME
 
 
-def geo_satellite_intermediate_cache_dir() -> Path:
-    return geo_satellite_cache_root() / INTERMEDIATE_CACHE_DIRNAME
-
-
 def geo_satellite_available_cache_dir() -> Path:
     return geo_satellite_cache_root() / AVAILABLE_CACHE_DIRNAME
 
@@ -37,24 +31,46 @@ def _format_time_slot(timeslot_utc: dt.datetime) -> str:
     return slot.strftime("%Y%m%dT%H%MZ")
 
 
-def raw_cache_stem(*, image_time_utc: dt.datetime, kind: str) -> str:
-    return f"{_format_time_slot(image_time_utc)}_{kind}"
+def raw_png_path() -> Path:
+    return geo_satellite_raw_cache_dir() / "latest.png"
 
 
-def raw_png_path(*, image_time_utc: dt.datetime, kind: str) -> Path:
-    return geo_satellite_raw_cache_dir() / f"{raw_cache_stem(image_time_utc=image_time_utc, kind=kind)}.png"
+def raw_metadata_path() -> Path:
+    return geo_satellite_raw_cache_dir() / "latest.json"
 
 
-def raw_metadata_path(*, image_time_utc: dt.datetime, kind: str) -> Path:
-    return geo_satellite_raw_cache_dir() / f"{raw_cache_stem(image_time_utc=image_time_utc, kind=kind)}.json"
+def _legacy_raw_paths(*, kind: str) -> list[Path]:
+    raw_dir = geo_satellite_raw_cache_dir()
+    paths: list[Path] = []
+    if not raw_dir.exists():
+        return paths
+    paths.extend(raw_dir.glob(f"*_{kind}.png"))
+    paths.extend(raw_dir.glob(f"*_{kind}.json"))
+    return paths
+
+
+def purge_legacy_raw_cache(*, kind: str) -> None:
+    current_paths = {raw_png_path(), raw_metadata_path()}
+    for path in _legacy_raw_paths(kind=kind):
+        if path in current_paths:
+            continue
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            continue
+
+
+def purge_intermediate_cache() -> None:
+    shutil.rmtree(geo_satellite_cache_root() / "intermediate", ignore_errors=True)
 
 
 def write_raw_cache(result: GeoSatelliteDownloadResult) -> tuple[Path, Path]:
     image_time_utc = result.captured_at_utc or result.fetched_at_utc
-    png_path = raw_png_path(image_time_utc=image_time_utc, kind=result.kind)
-    metadata_path = raw_metadata_path(image_time_utc=image_time_utc, kind=result.kind)
+    png_path = raw_png_path()
+    metadata_path = raw_metadata_path()
     png_path.parent.mkdir(parents=True, exist_ok=True)
     metadata_path.parent.mkdir(parents=True, exist_ok=True)
+    purge_legacy_raw_cache(kind=result.kind)
     png_path.write_bytes(result.png_bytes)
     metadata_path.write_text(
         json.dumps(
@@ -75,16 +91,26 @@ def write_raw_cache(result: GeoSatelliteDownloadResult) -> tuple[Path, Path]:
 
 
 def read_raw_cache(*, image_time_utc: dt.datetime, kind: str) -> GeoSatelliteDownloadResult | None:
-    png_path = raw_png_path(image_time_utc=image_time_utc, kind=kind)
-    metadata_path = raw_metadata_path(image_time_utc=image_time_utc, kind=kind)
+    png_path = raw_png_path()
+    metadata_path = raw_metadata_path()
     if not png_path.exists() or not metadata_path.exists():
         return None
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    if str(metadata.get("kind")) != kind:
+        return None
     png_bytes = png_path.read_bytes()
     captured_at_text = metadata.get("captured_at_utc") or metadata.get("fetched_at_utc")
+    normalized_expected = image_time_utc.astimezone(dt.timezone.utc).replace(second=0, microsecond=0)
+    normalized_captured = (
+        dt.datetime.fromisoformat(str(captured_at_text)).astimezone(dt.timezone.utc).replace(second=0, microsecond=0)
+        if captured_at_text
+        else None
+    )
+    if normalized_captured is None or normalized_captured != normalized_expected:
+        return None
     return GeoSatelliteDownloadResult(
         fetched_at_utc=dt.datetime.fromisoformat(str(metadata["fetched_at_utc"])),
-        captured_at_utc=dt.datetime.fromisoformat(str(captured_at_text)) if captured_at_text else None,
+        captured_at_utc=normalized_captured,
         kind=str(metadata["kind"]),
         source_url=str(metadata["source_url"]),
         png_bytes=png_bytes,
@@ -99,7 +125,7 @@ def compute_digest(data: bytes) -> str:
 
 
 def intermediate_cache_dir(raw_digest: str, *, mask_digest: str) -> Path:
-    return geo_satellite_intermediate_cache_dir() / raw_digest / mask_digest
+    return geo_satellite_cache_root() / "intermediate" / raw_digest / mask_digest
 
 
 def intermediate_proxy_path(raw_digest: str, *, mask_digest: str) -> Path:
@@ -186,39 +212,3 @@ def latest_available_cache_is_recent(
         fetched_at = fetched_at.replace(tzinfo=dt.timezone.utc)
     age_seconds = (now_utc.astimezone(dt.timezone.utc) - fetched_at.astimezone(dt.timezone.utc)).total_seconds()
     return age_seconds >= 0.0 and age_seconds <= float(max_age_seconds)
-
-
-def write_intermediate_cache(
-    *,
-    raw_digest: str,
-    mask_digest: str,
-    proxy_image: Image.Image,
-    inpainted_image: Image.Image,
-    manifest: dict[str, object],
-) -> tuple[Path, Path, Path]:
-    proxy_path = intermediate_proxy_path(raw_digest, mask_digest=mask_digest)
-    inpainted_path = intermediate_inpainted_path(raw_digest, mask_digest=mask_digest)
-    manifest_path = intermediate_manifest_path(raw_digest, mask_digest=mask_digest)
-    proxy_path.parent.mkdir(parents=True, exist_ok=True)
-    proxy_image.save(proxy_path)
-    inpainted_image.save(inpainted_path)
-    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
-    return proxy_path, inpainted_path, manifest_path
-
-
-def read_intermediate_cache(
-    raw_digest: str,
-    *,
-    mask_digest: str,
-) -> tuple[Image.Image, Image.Image, dict[str, object]] | None:
-    proxy_path = intermediate_proxy_path(raw_digest, mask_digest=mask_digest)
-    inpainted_path = intermediate_inpainted_path(raw_digest, mask_digest=mask_digest)
-    manifest_path = intermediate_manifest_path(raw_digest, mask_digest=mask_digest)
-    if not proxy_path.exists() or not inpainted_path.exists() or not manifest_path.exists():
-        return None
-    with Image.open(proxy_path) as proxy_image:
-        proxy = proxy_image.convert("L")
-    with Image.open(inpainted_path) as inpainted_image:
-        inpainted = inpainted_image.convert("L")
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    return proxy, inpainted, manifest
