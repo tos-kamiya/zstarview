@@ -359,3 +359,181 @@ def test_fetch_terrain_horizon_layer_uses_sea_level_fallback(monkeypatch) -> Non
     assert all(math.isfinite(alt) for alt, _az in got["profile_altaz"])
     assert min(got["profile_distances_m"]) > 0.0
     assert max(got["profile_distances_m"]) == pytest.approx(min(got["profile_distances_m"]))
+
+
+def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
+    deadline_calls = 0
+    real_deadline_after = mod._deadline_after
+    utc_timezone = timezone.utc
+
+    def _counting_deadline_after(timeout_seconds: float) -> float | None:
+        nonlocal deadline_calls
+        deadline_calls += 1
+        return real_deadline_after(timeout_seconds)
+
+    class _DummyTime:
+        def to_datetime(self, timezone=None):  # noqa: ANN001
+            return datetime(2026, 5, 26, tzinfo=utc_timezone)
+
+    catalogs = SimpleNamespace(
+        star_catalog_np=object(),
+        star_catalog_lod6_indices=object(),
+        star_catalog_meta=None,
+        dso_catalog_np=None,
+    )
+    viewer = SimpleNamespace(
+        lat_deg=51.5,
+        lon_deg=-0.1,
+        observer_height_m=1.7,
+        ground_elevation_m=0.0,
+        view_alt_deg=12.0,
+        view_az_deg=180.0,
+        edge_fov_deg=60.0,
+    )
+    user_options = SimpleNamespace(
+        vmag_limit=6.0,
+        sky_disc_alpha=0.05,
+        sky_disc_style="smooth",
+        cloud_disc_alpha=0.2,
+        geo_satellite=True,
+        water_overlay_opacity=0.12,
+        satellite_opacity=0.2,
+        terrain_horizon_opacity=0.05,
+        urban_outline_opacity=0.0,
+        aircraft_opacity=0.2,
+        overlay_font_size=11,
+        visual_preset="night",
+        cloud_missing_tint_opacity=0.0,
+    )
+    runtime_options = SimpleNamespace(
+        delta_t=0.0,
+        star_render_expected_width=600,
+        urban_outline_skyscraper_only=False,
+        urban_outline_feature_type="both",
+        urban_outline_radius_km=2.5,
+        urban_outline_skyscraper_radius_km=60.0,
+        urban_outline_min_height_m=0.0,
+    )
+
+    monkeypatch.setattr(
+        mod,
+        "parse_export_image_args",
+        lambda: SimpleNamespace(
+            city="London",
+            place=None,
+            place_countrycode=None,
+            place_lang="en",
+            timezone=None,
+            datetime=None,
+            days=0,
+            hours=0,
+            vmag_limit=6.0,
+            view_center_alt=90.0,
+            view_center_az=180.0,
+            cloud_stripe=("width", 50, 0.2),
+            theme="night",
+            vmag_brightness_multiplier=2.5,
+            content_fov_deg=100.0,
+            edge_fov_deg=95.0,
+            observer_height_m=None,
+            search="",
+            list=False,
+            view_center_alt_specified=False,
+            view_center_az_specified=False,
+            output="-",
+            image_size=(64, 64),
+            layer_timeout_seconds=30.0,
+            allow_partial_data=False,
+            include_direction_grid=False,
+            window_frame="frameless",
+            clear_long_lived_cache=False,
+            print_cache_dir=False,
+            sixel=False,
+            sky_opacity=SKY_OPACITY_DEFAULT,
+            sky_disc_style="smooth",
+            sky_disc_altaz_rings="dimalt",
+            sky_disc_altaz_rings_hover="altaz",
+            sky_update_interval=60,
+            night_light_opacity=0.0,
+            cloud_opacity=0.15,
+            geo_satellite=True,
+            satellite_opacity=0.2,
+            aircraft_opacity=0.2,
+            terrain_horizon_opacity=0.05,
+            earth_guide_opacity=0.028,
+            urban_outline_opacity=0.0,
+            ground_tint_opacity=0.1,
+            overlay_font_size=11,
+            enlarge_moon=False,
+            bright_bodies="outline",
+            star_base_radius=4.0,
+            observation_info="auto",
+            show_dso_initial=None,
+            show_asterisms_initial=None,
+            show_guidelines_initial=None,
+            visibility_boost=1.0,
+            urban_outline_radius_km=2.5,
+            urban_outline_skyscraper_radius_km=60.0,
+            urban_outline_min_height_m=0.0,
+            urban_outline_feature_type="both",
+            urban_outline_skyscraper_only=False,
+            cloud_missing_tint_opacity=0.0,
+            water_surface_opacity=0.12,
+            expected_render_width=600,
+        ),
+    )
+    monkeypatch.setattr(mod, "setup_root_logger", lambda: None)
+    monkeypatch.setattr(mod, "_deadline_after", _counting_deadline_after)
+    monkeypatch.setattr(mod, "setup_app", lambda _name: SimpleNamespace(setQuitOnLastWindowClosed=lambda _flag: None))
+    monkeypatch.setattr(mod, "_load_fonts", lambda *_args: (object(), object()))
+    monkeypatch.setattr(mod, "_build_compositor", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(mod, "_build_window_inputs_from_args", lambda _args: (catalogs, viewer, user_options, runtime_options, None))
+    monkeypatch.setattr(mod, "load_ephemeris", lambda: object())
+    monkeypatch.setattr(
+        mod,
+        "compute_sky_snapshot",
+        lambda **_kwargs: {
+            "celestial": SimpleNamespace(
+                time=_DummyTime(),
+                planets=[SimpleNamespace(name="sun", alt=-10.0)],
+            ),
+            "sky_disc": None,
+        },
+    )
+    monkeypatch.setattr(mod, "is_within_europe_band", lambda *_args: True)
+    monkeypatch.setattr(
+        mod,
+        "_fetch_cloud_layer",
+        lambda **_kwargs: (
+            np.zeros((2, 2, 4), dtype=np.uint8),
+            None,
+            SimpleNamespace(),
+            1.0,
+        ),
+    )
+    monkeypatch.setattr(
+        mod,
+        "_fetch_terrain_horizon_layer",
+        lambda **_kwargs: {
+            "profile_altaz": [(0.0, 0.0)],
+            "profile_distances_m": [0.0],
+            "secondary_ridges_altaz_layers": [],
+            "secondary_ridges_distances_m_layers": [],
+        },
+    )
+    monkeypatch.setattr(mod, "_build_water_target_ground_sampler", lambda **_kwargs: lambda *_args: 0.0)
+    monkeypatch.setattr(mod, "_fetch_water_overlay_dots_layer", lambda **_kwargs: [])
+    monkeypatch.setattr(mod, "_fetch_aircraft_snapshots", lambda **_kwargs: [])
+    monkeypatch.setattr(mod, "_fetch_satellite_records_by_group", lambda **_kwargs: {})
+    monkeypatch.setattr(
+        mod,
+        "_build_render_style",
+        lambda **_kwargs: SimpleNamespace(vmag_limit=6.0),
+    )
+    monkeypatch.setattr(mod, "_write_export_overlay_summary_to_stderr", lambda **_kwargs: None)
+    monkeypatch.setattr(mod, "_render_image", lambda **_kwargs: SimpleNamespace())
+    monkeypatch.setattr(mod, "_write_png_to_stdout", lambda _image: True)
+
+    mod.main()
+
+    assert deadline_calls == 5

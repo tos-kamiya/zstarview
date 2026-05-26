@@ -293,6 +293,7 @@ def test_main_writes_overlay_summary_before_sixel(
         sky_disc_alpha=0.0,
         sky_disc_style="smooth",
         cloud_disc_alpha=0.0,
+        geo_satellite=False,
         water_overlay_opacity=0.0,
         satellite_opacity=0.0,
         terrain_horizon_opacity=0.0,
@@ -375,7 +376,7 @@ def test_main_writes_overlay_summary_before_sixel(
     assert events == ["summary:Ceres", "sixel:/usr/bin/img2sixel"]
 
 
-def test_main_continues_when_cloud_layer_is_unavailable(
+def test_main_aborts_when_cloud_layer_is_unavailable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     events: list[str] = []
@@ -396,6 +397,7 @@ def test_main_continues_when_cloud_layer_is_unavailable(
         sky_disc_alpha=0.0,
         sky_disc_style="smooth",
         cloud_disc_alpha=0.25,
+        geo_satellite=False,
         water_overlay_opacity=0.0,
         satellite_opacity=0.0,
         terrain_horizon_opacity=0.0,
@@ -476,9 +478,10 @@ def test_main_continues_when_cloud_layer_is_unavailable(
         lambda _image, *, img2sixel_bin: events.append(f"sixel:{img2sixel_bin}") or True,
     )
 
-    mod.main()
+    with pytest.raises(SystemExit):
+        mod.main()
 
-    assert events == ["summary", "sixel:/usr/bin/img2sixel"]
+    assert events == []
 
 
 def test_main_reports_partial_data_note_when_terrain_layer_aborts(
@@ -502,6 +505,7 @@ def test_main_reports_partial_data_note_when_terrain_layer_aborts(
         sky_disc_alpha=0.0,
         sky_disc_style="smooth",
         cloud_disc_alpha=0.0,
+        geo_satellite=False,
         water_overlay_opacity=0.0,
         satellite_opacity=0.0,
         terrain_horizon_opacity=0.05,

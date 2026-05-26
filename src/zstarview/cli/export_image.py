@@ -1323,7 +1323,7 @@ def main() -> None:
     output_arg = args.output
     output_path = None if output_arg in {None, "-"} else Path(output_arg).expanduser()
     image_size = tuple(int(v) for v in args.image_size)
-    deadline = _deadline_after(float(args.layer_timeout_seconds))
+    layer_timeout_seconds = float(args.layer_timeout_seconds)
     allow_partial_data = bool(args.allow_partial_data)
 
     use_lod6_catalog = float(user_options.vmag_limit) <= 6.0
@@ -1367,6 +1367,7 @@ def main() -> None:
     )
     if user_options.cloud_disc_alpha > 0.0:
         try:
+            cloud_deadline = _deadline_after(layer_timeout_seconds)
             (
                 cloud_image,
                 cloud_missing_mask,
@@ -1375,7 +1376,7 @@ def main() -> None:
             ) = _fetch_cloud_layer(
                 viewer_data=viewer_data,
                 user_options=user_options,
-                deadline=deadline,
+                deadline=cloud_deadline,
             )
         except Exception as exc:
             logger.warning(
@@ -1383,6 +1384,9 @@ def main() -> None:
                 "Geo-sat" if use_geo_satellite else "cloud",
                 exc,
             )
+            layer_failures.append("cloud")
+            if not allow_partial_data:
+                _abort_export_without_partial_data()
 
     terrain_horizon_profile = None
     terrain_horizon_profile_distances_m = None
@@ -1390,9 +1394,10 @@ def main() -> None:
     terrain_secondary_ridges_distances_m_layers = None
     if user_options.terrain_horizon_opacity > 0.0:
         try:
+            terrain_deadline = _deadline_after(layer_timeout_seconds)
             terrain_horizon_payload = _fetch_terrain_horizon_layer(
                 viewer_data=viewer_data,
-                deadline=deadline,
+                deadline=terrain_deadline,
             )
             terrain_horizon_profile = terrain_horizon_payload["profile_altaz"]
             terrain_horizon_profile_distances_m = terrain_horizon_payload["profile_distances_m"]
@@ -1428,10 +1433,11 @@ def main() -> None:
     urban_outlines = None
     if user_options.urban_outline_opacity > 0.0:
         try:
+            urban_deadline = _deadline_after(layer_timeout_seconds)
             urban_outlines = _fetch_urban_outline_layer(
                 viewer_data=viewer_data,
                 runtime_options=runtime_options,
-                deadline=deadline,
+                deadline=urban_deadline,
             )
         except Exception as exc:
             logger.warning("Export layer unavailable: urban (%s)", exc)
@@ -1443,6 +1449,7 @@ def main() -> None:
     water_overlay_opacity = float(user_options.water_overlay_opacity)
     if water_overlay_opacity > 0.0:
         try:
+            water_deadline = _deadline_after(layer_timeout_seconds)
             observer_ground_m = float(viewer_data.ground_elevation_m or 0.0)
             scan_radius_km = resolve_water_scan_radius_km(
                 float(viewer_data.observer_height_m) + observer_ground_m,
@@ -1451,11 +1458,11 @@ def main() -> None:
             water_target_ground_sampler = _build_water_target_ground_sampler(
                 viewer_data=viewer_data,
                 scan_radius_km=scan_radius_km,
-                deadline=deadline,
+                deadline=water_deadline,
             )
             water_overlay_dots = _fetch_water_overlay_dots_layer(
                 viewer_data=viewer_data,
-                deadline=deadline,
+                deadline=water_deadline,
                 target_ground_sampler=water_target_ground_sampler,
             )
         except Exception as exc:
@@ -1467,9 +1474,10 @@ def main() -> None:
     aircraft_snapshots = None
     if user_options.aircraft_opacity > 0.0:
         try:
+            aircraft_deadline = _deadline_after(layer_timeout_seconds)
             aircraft_snapshots = _fetch_aircraft_snapshots(
                 viewer_data=viewer_data,
-                deadline=deadline,
+                deadline=aircraft_deadline,
             )
         except Exception as exc:
             logger.warning("Export layer unavailable: aircraft (%s)", exc)
@@ -1480,10 +1488,11 @@ def main() -> None:
     satellite_records_by_group = None
     if user_options.satellite_opacity > 0.0:
         try:
+            satellite_deadline = _deadline_after(layer_timeout_seconds)
             satellite_records_by_group = _fetch_satellite_records_by_group(
                 viewer_data=viewer_data,
                 target_time_utc=celestial_data.time.to_datetime(timezone=timezone.utc),
-                deadline=deadline,
+                deadline=satellite_deadline,
                 enabled_groups=(
                     SATELLITE_ISS_CACHE_KEY,
                     SATELLITE_HORIZONS_CACHE_KEY,
