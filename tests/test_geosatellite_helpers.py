@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import datetime as dt
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,7 @@ import numpy as np
 from PIL import Image
 
 from zstarview.geosatellite.cache import compute_digest, raw_cache_stem
+from zstarview.geosatellite.types import GeoSatelliteDownloadResult
 from zstarview.geosatellite.mask import build_common_mask, fill_masked_regions
 from zstarview.geosatellite.pipeline import run_geo_satellite_pipeline
 from zstarview.geosatellite.projection import render_gray_image_to_cloud_rgba
@@ -129,6 +131,51 @@ def test_run_geo_satellite_pipeline_separates_mask_digest(monkeypatch: pytest.Mo
     assert result_a.intermediate.manifest["mask_digest"] != result_b.intermediate.manifest["mask_digest"]
     assert result_a.intermediate.proxy_path != result_b.intermediate.proxy_path
     assert result_a.intermediate.inpainted_path != result_b.intermediate.inpainted_path
+
+
+def test_run_geo_satellite_pipeline_uses_raw_cache_hit(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
+    from zstarview.geosatellite import pipeline as geo_pipeline
+
+    cache_root = tmp_path / "geo-cache"
+    monkeypatch.setattr(
+        geo_pipeline,
+        "download_latest_image",
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("download should not run on cache hit")),
+    )
+    monkeypatch.setattr(geo_pipeline, "read_raw_cache", lambda **_kwargs: GeoSatelliteDownloadResult(
+        fetched_at_utc=dt.datetime(2026, 5, 26, 9, 30, tzinfo=dt.timezone.utc),
+        kind="infrared",
+        source_url="cache",
+        png_bytes=raw_png,
+        content_type="image/png",
+        cache_path=cache_root / "raw.png",
+        metadata_path=cache_root / "raw.json",
+    ))
+    monkeypatch.setattr(geo_pipeline, "read_intermediate_cache", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(geo_pipeline, "write_raw_cache", lambda result: (cache_root / "raw.png", cache_root / "raw.json"))
+    monkeypatch.setattr(geo_pipeline, "write_intermediate_cache", lambda **_kwargs: (cache_root / "proxy.png", cache_root / "inpainted.png", cache_root / "manifest.json"))
+    monkeypatch.setattr(geo_pipeline, "build_proxy_image", lambda image, **_kwargs: Image.fromarray(np.full((64, 64), 128, dtype=np.uint8), mode="L"))
+    monkeypatch.setattr(geo_pipeline, "build_inpainted_image", lambda proxy_image, mask_image, **_kwargs: proxy_image)
+    monkeypatch.setattr(geo_pipeline, "project_gray_image_to_disc", lambda *_args, **_kwargs: np.zeros((8, 8), dtype=np.uint8))
+
+    raw_image = Image.new("RGB", (64, 64), (128, 128, 128))
+    raw_buffer = io.BytesIO()
+    raw_image.save(raw_buffer, format="PNG")
+    raw_png = raw_buffer.getvalue()
+
+    with caplog.at_level("INFO", logger="zstarview.geosatellite.pipeline"):
+        result = run_geo_satellite_pipeline(
+            observer_lat=51.5,
+            observer_lon=-0.1,
+            alt=10.0,
+            az=180.0,
+            fov_deg=60.0,
+            download_time_utc=dt.datetime(2026, 5, 26, 9, 30, tzinfo=dt.timezone.utc),
+            grid_npz=Path("src/zstarview/data/geosatellite/eqdc_lonlat.npz"),
+        )
+
+    assert result.download.source_url == "cache"
+    assert "Geo-sat raw cache hit: infrared 20260526T0930Z" in caplog.text
 
 
 def test_cache_key_uses_minute_precision() -> None:

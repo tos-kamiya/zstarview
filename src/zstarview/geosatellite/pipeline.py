@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 import io
+import logging
 from dataclasses import replace
 from pathlib import Path
 
@@ -33,6 +34,8 @@ from .projection import (
 )
 from .proxy import DEFAULT_CONTRAST_HIGH, DEFAULT_CONTRAST_LOW, DEFAULT_LOGO_MASK_FRAC, build_cloud_proxy
 from .types import GeoSatelliteDownloadResult, GeoSatelliteIntermediateResult, GeoSatelliteKind, GeoSatellitePipelineResult
+
+logger = logging.getLogger(__name__)
 
 
 def is_within_europe_band(lat: float, lon: float) -> bool:
@@ -117,12 +120,15 @@ def run_geo_satellite_pipeline(
     if raw_png is None:
         if download_time_utc is None:
             download_time_utc = dt.datetime.now(dt.timezone.utc).replace(second=0, microsecond=0)
+        cache_slot = download_time_utc.astimezone(dt.timezone.utc).strftime("%Y%m%dT%H%MZ")
         cached = build_download_result_from_cache(fetched_at_utc=download_time_utc, kind=kind)
         if cached is None:
+            logger.info("Geo-sat raw cache miss: %s %s", kind, cache_slot)
             download = download_latest_image(kind=kind)
             download_path, metadata_path = write_raw_cache(download)
             download = replace(download, cache_path=download_path, metadata_path=metadata_path)
         else:
+            logger.info("Geo-sat raw cache hit: %s %s", kind, cache_slot)
             download = cached
     else:
         if download_time_utc is None:
