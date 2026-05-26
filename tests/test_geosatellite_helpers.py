@@ -291,9 +291,9 @@ def test_project_gray_image_to_disc_reuses_cached_projection(monkeypatch: pytest
     monkeypatch.setattr(geo_cache, "GEOSATELLITE_CACHE_ROOT_DIR", str(cache_root))
 
     source = np.arange(9, dtype=np.uint8).reshape(3, 3)
-    x_src = np.array([[0.0]], dtype=np.float32)
-    y_src = np.array([[0.0]], dtype=np.float32)
-    valid = np.ones((1, 1), dtype=bool)
+    x_src = np.array([[0.0, 1.0], [0.0, 1.0]], dtype=np.float32)
+    y_src = np.array([[0.0, 0.0], [1.0, 1.0]], dtype=np.float32)
+    valid = np.ones((2, 2), dtype=bool)
     calls = {"count": 0}
 
     def fake_build_projection_sample(*_args, **_kwargs):
