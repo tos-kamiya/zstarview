@@ -5,6 +5,10 @@ Exploratory scripts and one-off investigation helpers live here.
 These files are not part of the main application surface. They are useful for
 debugging, data inspection, and reproducible experiments.
 
+For the Geo-satellite-related helpers, see:
+
+- [`geo-satellite-index.md`](geo-satellite-index.md)
+
 ## Water tile intersection check
 
 - `find_water_tile_intersections.py`
@@ -38,9 +42,12 @@ water mask sampling path.
 ## Geo-satellite cloud proxy
 
 - `geo_satellite_cloud_proxy.py`
-- Converts a color geosatellite-style image into a grayscale proxy that
-  emphasizes bright, low-saturation cloud regions while suppressing blue sea,
-  green land, and the top-left logo area by default.
+- Converts a single color geosatellite-style image into a grayscale cloud
+  likelihood proxy.
+- This is the main exploratory path for white-ish cloud extraction from one
+  frame.
+- It emphasizes bright, low-saturation cloud regions while suppressing blue
+  sea, green land, and the top-left logo area by default.
 
 Run it with:
 
@@ -48,38 +55,26 @@ Run it with:
 uv run -p .venv/bin/python dev-samples/geo_satellite_cloud_proxy.py input.png -o output.png
 ```
 
-## Geo-satellite cloud proxy from 3 frames
+## Geo-satellite gray-common mask
 
-- `geo_satellite_cloud_proxy_temporal.py`
-- Combines 3 images, suppresses temporally static overlays, and then builds a
-  grayscale cloud proxy. This is useful for removing thin map borders and
-  other persistent line art.
-
-Run it with:
-
-```bash
-uv run -p .venv/bin/python dev-samples/geo_satellite_cloud_proxy_temporal.py \
-  Europe-IR-20260525130000.png \
-  Europe-IR-20260525143000.png \
-  Europe-IR-20260525174500.png \
-  -o Europe-IR-proxy.png
-```
-
-## Geo-satellite static RGB mask
-
-- `geo_satellite_static_rgb_mask.py`
-- Extracts bright line-like pixels that remain in the same place across 3
-  images by subtracting a local background first. This is useful for isolating
-  map overlays or other static line art before further processing.
+- `geo_satellite_gray_common_mask.py`
+- Extracts pixels that stay gray-ish and not too white across multiple images.
+- This is the current line-art extraction path: it removes strong sea/land
+  color first, then intersects the remaining gray-like pixels to keep the
+  boundary-like structure that stays common across the provided frames.
+- The output is a grayscale mask that can be reused as a boundary mask or as a
+  guide for later fill/inpaint-style experiments.
+- The default thresholds keep somewhat darker gray tones while rejecting more
+  of the brightest whites.
 
 Run it with:
 
 ```bash
-uv run -p .venv/bin/python dev-samples/geo_satellite_static_rgb_mask.py \
+uv run -p .venv/bin/python dev-samples/geo_satellite_gray_common_mask.py \
   Europe-IR-20260525130000.png \
-  Europe-IR-20260525143000.png \
   Europe-IR-20260525174500.png \
-  -o Europe-IR-static-mask.png
+  Europe-IR-20260525204500.png \
+  -o Europe-IR-gray-common-mask.png
 ```
 
 ## Equidistant Conic fit probe
