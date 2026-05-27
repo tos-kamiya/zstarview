@@ -852,7 +852,7 @@ def _fetch_water_overlay_dots_layer(
         target_ground_elevation_m_sampler=target_ground_sampler,
         max_distance_km=scan_radius_km,
         front_hemisphere_view_center=tuple(float(value) for value in viewer_data.view_center),
-        front_hemisphere_fov_deg=90.0,
+        front_hemisphere_fov_deg=float(viewer_data.content_fov_deg),
     )
     _log_export_image_timing("water overlay dots", time.perf_counter() - t0, enabled=timing_enabled)
     water_dots = tuple(sea_dots) + tuple(inland_dots)
@@ -949,7 +949,7 @@ def _fetch_urban_outline_layer(
             derived_root_dir=derived_root_dir,
             derived_dirs=tuple(required_dirs),
             front_hemisphere_view_center=tuple(float(value) for value in viewer_data.view_center),
-            front_hemisphere_fov_deg=90.0,
+            front_hemisphere_fov_deg=float(viewer_data.content_fov_deg),
         )
     _log_export_image_timing("urban outline resolve", time.perf_counter() - t0, enabled=timing_enabled)
     _log_export_image_timing("urban outlines", time.perf_counter() - total_start, enabled=timing_enabled)
@@ -1008,7 +1008,7 @@ def _fetch_urban_outline_layer(
             min_distance_km=float(runtime_options.urban_outline_radius_km),
             min_height_m=max(150.0, float(runtime_options.urban_outline_min_height_m)),
             front_hemisphere_view_center=tuple(float(value) for value in viewer_data.view_center),
-            front_hemisphere_fov_deg=90.0,
+            front_hemisphere_fov_deg=float(viewer_data.content_fov_deg),
         )
         _log_export_image_timing("urban skyscraper resolve", time.perf_counter() - t0, enabled=timing_enabled)
         outlines = _merge_outline_layers(outlines, skyscraper_outlines)

@@ -306,8 +306,8 @@ def test_project_observer_centric_urban_outline_result_can_cull_back_half_points
                 distance_km=0.85,
                 points=(
                     SimpleNamespace(altitude_deg=0.0, azimuth_deg=0.0),
+                    SimpleNamespace(altitude_deg=0.0, azimuth_deg=100.0),
                     SimpleNamespace(altitude_deg=0.0, azimuth_deg=180.0),
-                    SimpleNamespace(altitude_deg=0.0, azimuth_deg=5.0),
                 ),
             ),
         )
@@ -318,11 +318,12 @@ def test_project_observer_centric_urban_outline_result_can_cull_back_half_points
         view_center=(0.0, 0.0),
         edge_fov_deg=90.0,
         front_hemisphere_view_center=(0.0, 0.0),
-        front_hemisphere_fov_deg=90.0,
+        front_hemisphere_fov_deg=110.0,
     )
 
     assert got is not None
     assert len(got) == 1
+    assert any(point[1] == 100.0 for point in got[0].points)
     assert all(point[1] != 180.0 for point in got[0].points)
 
 

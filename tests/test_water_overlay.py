@@ -669,10 +669,10 @@ def test_sample_water_overlay_points_can_cull_back_half_rows(monkeypatch) -> Non
     )
 
     ray_scan = SimpleNamespace(
-        azimuths_deg=np.array([0.0, 180.0], dtype=np.float64),
-        distance_grid_m=np.array([[10.0], [10.0]], dtype=np.float64),
-        ray_lon_deg=np.array([[0.0], [0.0]], dtype=np.float64),
-        ray_lat_deg=np.array([[0.0], [0.0]], dtype=np.float64),
+        azimuths_deg=np.array([0.0, 100.0, 180.0], dtype=np.float64),
+        distance_grid_m=np.array([[10.0], [10.0], [10.0]], dtype=np.float64),
+        ray_lon_deg=np.array([[0.0], [0.0], [0.0]], dtype=np.float64),
+        ray_lat_deg=np.array([[0.0], [0.0], [0.0]], dtype=np.float64),
     )
     project_calls: list[tuple[tuple[float, ...], tuple[float, ...]]] = []
 
@@ -702,8 +702,8 @@ def test_sample_water_overlay_points_can_cull_back_half_rows(monkeypatch) -> Non
         sample_step_m=1.0,
         azimuth_step_deg=1.0,
         front_hemisphere_view_center=(0.0, 0.0),
-        front_hemisphere_fov_deg=90.0,
+        front_hemisphere_fov_deg=110.0,
     )
 
-    assert len(points) == 1
-    assert len(project_calls) == 1
+    assert len(points) == 2
+    assert len(project_calls) == 2
