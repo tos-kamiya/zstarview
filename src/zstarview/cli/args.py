@@ -402,6 +402,20 @@ def add_search_arguments(
     )
 
 
+def add_geo_satellite_argument(parser: argparse.ArgumentParser) -> None:
+    """Add the Geo-satellite cloud data toggle."""
+    parser.add_argument(
+        "--geo-satellite",
+        type=_parse_bool,
+        default=False,
+        metavar="true|false",
+        help=(
+            "Use Geo-satellite infrared cloud data instead of GOES/Himawari "
+            "when the observer is inside the Europe workflow band (true/false)."
+        ),
+    )
+
+
 def add_observing_arguments(parser: argparse._ActionsContainer) -> None:
     """Add observing location, time, and view-center arguments."""
     add_location_arguments(parser)
@@ -875,6 +889,7 @@ def add_export_image_arguments(parser: argparse.ArgumentParser) -> None:
     add_search_arguments(search_group, include_list=True)
     add_sky_and_star_arguments(sky_group, include_sky_update_interval=False)
     add_overlay_arguments(overlay_group)
+    add_geo_satellite_argument(export_group)
     add_general_arguments(
         general_group,
         include_window_geometry=False,
@@ -909,16 +924,6 @@ def add_export_image_arguments(parser: argparse.ArgumentParser) -> None:
         "--allow-partial-data",
         action="store_true",
         help="Allow saving an image even when enabled external layers fail or time out.",
-    )
-    export_group.add_argument(
-        "--geo-satellite",
-        type=_parse_bool,
-        default=False,
-        metavar="true|false",
-        help=(
-            "Use Geo-satellite infrared cloud data instead of GOES/Himawari "
-            "when the observer is inside the Europe workflow band (true/false)."
-        ),
     )
     export_group.add_argument(
         "--include-direction-grid",
@@ -1222,6 +1227,7 @@ def add_main_arguments(parser: argparse.ArgumentParser) -> None:
     add_dataset_query_arguments(dataset_group)
     add_sky_and_star_arguments(sky_group)
     add_overlay_arguments(overlay_group)
+    add_geo_satellite_argument(general_group)
     add_general_arguments(general_group)
 
 

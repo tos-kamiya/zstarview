@@ -125,6 +125,12 @@ def test_main_parser_accepts_overlay_font_size_override() -> None:
     assert args.overlay_font_size == 14.5
 
 
+def test_main_parser_accepts_geo_satellite_option() -> None:
+    args = cli_args.parse_args(["--geo-satellite", "true", "Matsue"])
+
+    assert args.geo_satellite is True
+
+
 def test_main_parser_rejects_overlay_font_size_out_of_range() -> None:
     with pytest.raises(SystemExit):
         cli_args.parse_args(["--overlay-font-size", "7", "Matsue"])
