@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-05-26
+最終更新: 2026-05-27
 
 ## 1. この文書の位置づけ
 
@@ -1672,6 +1672,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 判定条件は距離だけに固定せず、外周リングの見かけ方位幅や投影 bbox の大きさを併用してよい。遠距離・小面積ほど穴リングを省略し、近距離では従来どおり保持する。
 - さらに、輪郭の screen-space 縦幅が十分小さい場合は、`compute_urban_outlines()` 側で polyline を 2 点線分へ落としてよい。これは `draw_urban_outlines()` ではなく、都市アウトライン生成結果の表現選択として扱う。
 - 縦幅のしきい値は、画面上で見分けがつかない程度の薄さを基準にし、距離や FOV に応じて固定ピクセル閾値ではなく投影後の高さで判定してよい。初期実装では、正規化スクリーン座標系での縦幅がごく小さい run を対象にしてよい。
+- `zstarview-export-image` は固定視線の単発書き出しなので、urban outline と water の cache を完全なまま保持したうえで、描画前の observer-centric data から現在の視線の背面半球を落としてよい。GUI は起動後に az が変化しうるため、同じ省略を前提にしてはならない。
+- その culling は cache 保存前ではなく、cache 読込後の in-memory 処理として行ってよい。cache の正本は GUI 互換の完全版とし、export-image の最適化は表示用の一時的な絞り込みに限定する。
+- 背面半球の判定は az だけでなく `view_center` と表示 FOV を基準にしてよい。境界をまたぐ ring や footprint は丸ごと消さず、必要に応じて見える側だけを残す。
 - `viewport_interaction_mode` 中は都市アウトライン描画を抑止し、方向キー操作の負荷を下げる。
 - ハンバーガーメニュー表示そのものでは `viewport_interaction_mode` へ入らない。メニュー起動で `paintEvent` が走っても、最終フレームキャッシュの再利用で余分な重い描画を避ける。
 
@@ -1813,6 +1816,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 12. band stats の `loaded_tile_count` は、総 tile 数ではなく、実際に open した sea-mask tile の回数として扱ってよい。
 13. cache key は観測地点中心の `lat/lon` と距離帯、tile root から導出し、`bbox` はその派生値として扱ってよい。inland water の OSM footprint は `CACHE_PATH/water_overlay` 配下に JSON cache として保持してよい。
 14. `Water Surface` の GUI トグルや `--water-surface-opacity 0` は初期表示の有無を変えてよく、tile cache を破棄する必要はない。
+15. `zstarview-export-image` は、water overlay の cache を読み込んだ後の点群生成で、現在の視線の背面半球に入る footprint や sample point を省略してよい。ただし cache file 自体は完全な footprint set を保持し、GUI の再利用と互換であること。
 
 #### 10.4.2 Overture 建物フロー
 

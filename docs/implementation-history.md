@@ -1,6 +1,6 @@
 # zstarview 実装履歴
 
-最終更新: 2026-05-26
+最終更新: 2026-05-27
 
 ## 1. この文書の位置づけ
 
@@ -925,3 +925,11 @@
 
 - version bump
   - `__version__` を `1.28.6` に上げた。
+
+## 2026-05-27
+
+- Fixed-view export-image culling方針
+  - `zstarview-export-image` は単発の固定視線書き出しなので、urban outline と water は cache を GUI 互換の完全版のまま保持しつつ、cache 読込後の in-memory 計算では背面半球を省略してよい方針にした。
+  - 省略判定は az の単純な裏表だけでなく `view_center` と表示 FOV を基準にし、境界をまたぐ ring や footprint は必要に応じて見える側だけを残す。
+  - GUI は起動後に az が変化しうるため、同じ省略を前提にした cache にはしない。
+  - この方針は、urban outline resolve が支配的になっている export-image の固定視線経路を軽くするための設計メモとして残す。
