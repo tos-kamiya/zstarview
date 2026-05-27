@@ -833,7 +833,10 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 取得失敗時は、Geo-satellite 側の表示を失敗として正規化し、必要なら既存の GOES/Himawari 経路へは戻さず、空の失敗表示または前回成功画像の維持などを別途設計してよい。
 - 実験経路のデバッグ用固定資産として、`raw-data/geosatellite/Europe-IR-gray-common-mask.png` と `raw-data/geosatellite/eqdc_lonlat.npz` を既定値として使ってよい。
 - 実装の可視化確認には `dev-samples/geo_satellite_cloud_proxy.py`、`geo_satellite_gray_common_mask.py`、`geo_satellite_cloud_inpaint.py`、`geo_satellite_cloudimage.py` の流れを参照してよい。
-- GUI 側では `src/zstarview/gui/geosatellite_controller.py` と `src/zstarview/gui/geosatellite_state.py` のような別系統の実行・状態管理を持ってよく、既存の `cloud_controller.py` とは切り分けてよい。
+- GUI 側では `src/zstarview/gui/geosatellite_controller.py` と `src/zstarview/gui/geosatellite_state.py` のような別系統の実行・状態管理を持ち、既存の `cloud_controller.py` とは切り分けてよい。
+- `SkyWindow` は Geo-satellite 専用コントローラーを所有し、標準 cloud とは独立した worker/task として download / projection を段階的に進めてよい。
+- GUI の起動時設定として `geo_satellite` を保持してよく、起動ダイアログまたは同等の設定 UI から有効・無効を切り替えてよい。
+- GUI の実行時 UI では、必要なら display menu にも同一の toggle action を置いてよいが、標準 cloud の toggle とは別操作として扱ってよい。
 - CLI では `--geo-satellite true|false` でこの経路を明示的に有効化・無効化してよい。
 - CLI では `--geo-satellite` 未指定を既定の `false` とし、責務領域外では既存の GOES/Himawari を継続利用してよい。
 - 画像種別は当面 `infrared` 固定としてよく、`visible` 切り替えは実験経路の拡張点として別途扱ってよい。
@@ -850,10 +853,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - rendered disc は、必要になった時点で都度生成してよく、サイズ依存の出力をそのまま保存する設計にしなくてよい。
 - Geo-satellite は実験経路なので、厳密な長期 TTL を要求せず、再実行時に source から再取得できることを優先してよい。
 - ただし、直近成功キャッシュは、取得失敗時のフォールバック表示や再描画短縮に使ってよい。
-- 実験経路は CLI のみを公開範囲とし、GUI の menu item や設定保存には載せてはならない。
-- 実行モデルは Himawari/GOES と同様に、GUI 側の worker/task として起動し、取得と投影を段階的なタスクとして扱ってよい。
-- ログは Himawari/GOES と同様にダウンロード段を中心に出し、失敗理由の細部は必要以上に増やさなくてよい。
-- GUI の表示文言は、既存の cloud 状態表示に揃え、`Geo-sat + Downloading`、`Geo-sat + Projecting`、`Geo-sat + <timestamp>`、`Geo-sat + error` のように短くしてよい。
+- GUI 側の status line は、標準 cloud と同じ 1 行帯に載せてよく、Geo-satellite 専用の status state から `Geo-sat + Downloading`、`Geo-sat + Projecting`、`Geo-sat + <timestamp>`、`Geo-sat + error` を短く出してよい。
+- 失敗表示は標準 cloud の失敗表示とは区別してよく、Geo-satellite が失敗しても GUI 全体は継続してよい。
+- 実装の公開範囲は GUI/CLI の両方とし、GUI の startup dialog と runtime toggle で有効化できる前提にしてよい。
 - 将来の拡張余地は、現在の GUI / CLI には見せず、設計メモとしてだけ保持してよい。
 
 ### 4.6 地形地平線処理
