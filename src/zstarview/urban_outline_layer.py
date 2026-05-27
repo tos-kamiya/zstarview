@@ -7,6 +7,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
+from .astro import is_in_fov_vectorized
 from .data.derived_tile_cache import (
     parse_derived_tile_buildings,
     select_derived_tile_envelopes,
@@ -35,6 +36,8 @@ def resolve_urban_outline_layer_for_viewer(
     radius_km: float = DEFAULT_FETCH_RADIUS_KM,
     min_distance_km: float = 0.0,
     min_height_m: float = 0.0,
+    front_hemisphere_view_center: tuple[float, float] | None = None,
+    front_hemisphere_fov_deg: float = 90.0,
 ) -> list[UrbanOutlinePolyline] | None:
     observer_centric_result = _build_observer_centric_urban_outline_result(
         lat_deg=float(viewer_data.lat_deg),
@@ -52,6 +55,8 @@ def resolve_urban_outline_layer_for_viewer(
         observer_centric_result,
         view_center=tuple(float(v) for v in viewer_data.view_center),
         edge_fov_deg=float(viewer_data.edge_fov_deg),
+        front_hemisphere_view_center=front_hemisphere_view_center,
+        front_hemisphere_fov_deg=front_hemisphere_fov_deg,
     )
 
 
@@ -133,6 +138,8 @@ def _project_observer_centric_urban_outline_result(
     *,
     view_center: tuple[float, float],
     edge_fov_deg: float,
+    front_hemisphere_view_center: tuple[float, float] | None = None,
+    front_hemisphere_fov_deg: float = 90.0,
 ) -> list[UrbanOutlinePolyline] | None:
     if result is None:
         return None
@@ -142,10 +149,13 @@ def _project_observer_centric_urban_outline_result(
             outline,
             view_center=view_center,
             edge_fov_deg=edge_fov_deg,
+            front_hemisphere_view_center=front_hemisphere_view_center,
+            front_hemisphere_fov_deg=front_hemisphere_fov_deg,
         )
         for outline in result.outlines
     ]
-    return outlines or None
+    projected = [outline for outline in outlines if outline is not None]
+    return projected or None
 
 
 def _project_observer_centric_outline(
@@ -153,8 +163,20 @@ def _project_observer_centric_outline(
     *,
     view_center: tuple[float, float],
     edge_fov_deg: float,
+    front_hemisphere_view_center: tuple[float, float] | None = None,
+    front_hemisphere_fov_deg: float = 90.0,
 ) -> UrbanOutlinePolyline | None:
     run_points = list(outline.points)
+    if front_hemisphere_view_center is not None and run_points:
+        alt = np.array([point.altitude_deg for point in run_points], dtype=np.float64)
+        az = np.array([point.azimuth_deg for point in run_points], dtype=np.float64)
+        visible = is_in_fov_vectorized(
+            alt,
+            az,
+            tuple(float(value) for value in front_hemisphere_view_center),
+            fov_deg=float(front_hemisphere_fov_deg),
+        )
+        run_points = [point for point, keep in zip(run_points, visible, strict=False) if bool(keep)]
     run_points = _maybe_linearize_run_points(
         run_points,
         view_center=view_center,

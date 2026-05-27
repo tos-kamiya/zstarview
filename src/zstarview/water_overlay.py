@@ -15,6 +15,7 @@ from pyproj import Transformer
 from pyproj.enums import TransformDirection
 
 from .clouddisc.types import DownloadCancelledError
+from .astro import is_in_fov
 from .location_resolver.place_projection import project_place_targets_to_altaz
 from .terrain import WGS84_GEOD, build_ray_scan_grid
 from .water_surface_mesh import make_local_transformer, project_ring_xy
@@ -517,6 +518,8 @@ def sample_water_overlay_points_for_observer(
     user_agent: str = DEFAULT_WATER_USER_AGENT,
     timeout_s: float = DEFAULT_WATER_TIMEOUT_S,
     abort_event: threading.Event | None = None,
+    front_hemisphere_view_center: tuple[float, float] | None = None,
+    front_hemisphere_fov_deg: float = 90.0,
 ) -> tuple[WaterOverlayPoint, ...]:
     footprints = fetch_water_overlay_footprints(
         observer_lat_deg=observer_lat_deg,
@@ -541,6 +544,8 @@ def sample_water_overlay_points_for_observer(
         target_ground_elevation_m_sampler=target_ground_elevation_m_sampler,
         max_distance_km=max_distance_km,
         abort_event=abort_event,
+        front_hemisphere_view_center=front_hemisphere_view_center,
+        front_hemisphere_fov_deg=front_hemisphere_fov_deg,
     )
 
 
@@ -921,6 +926,8 @@ def sample_water_overlay_points(
     sample_step_m: float = DEFAULT_WATER_SAMPLE_STEP_M,
     azimuth_step_deg: float = DEFAULT_WATER_AZIMUTH_STEP_DEG,
     abort_event: threading.Event | None = None,
+    front_hemisphere_view_center: tuple[float, float] | None = None,
+    front_hemisphere_fov_deg: float = 90.0,
 ) -> tuple[WaterOverlayPoint, ...]:
     if max_distance_km <= 0.0:
         raise ValueError("max_distance_km must be positive")
@@ -946,9 +953,23 @@ def sample_water_overlay_points(
     points: list[WaterOverlayPoint] = []
     observer_height = float(observer_height_m)
     footprint_bounds = tuple((_footprint_bounds(footprint), footprint) for footprint in footprints)
+    front_hemisphere_view_center = (
+        tuple(float(value) for value in front_hemisphere_view_center)
+        if front_hemisphere_view_center is not None
+        else None
+    )
+    front_hemisphere_fov_deg = float(front_hemisphere_fov_deg)
+    front_hemisphere_enabled = front_hemisphere_view_center is not None
 
     for row_index, azimuth_deg in enumerate(ray_scan.azimuths_deg):
         _cooperative_yield(abort_event, interval=8, iteration_index=row_index)
+        if front_hemisphere_enabled and not is_in_fov(
+            0.0,
+            float(azimuth_deg),
+            front_hemisphere_view_center,
+            fov_deg=front_hemisphere_fov_deg,
+        ):
+            continue
         matched_records: list[tuple[int, float, float, float, float, WaterPolygonFootprint]] = []
         for col_index, distance_m in enumerate(ray_scan.distance_grid_m[row_index]):
             if col_index % 128 == 0:
@@ -997,6 +1018,13 @@ def sample_water_overlay_points(
             projections,
             strict=False,
         ):
+            if front_hemisphere_enabled and not is_in_fov(
+                float(projection.alt_deg),
+                float(projection.az_deg),
+                front_hemisphere_view_center,
+                fov_deg=front_hemisphere_fov_deg,
+            ):
+                continue
             points.append(
                 WaterOverlayPoint(
                     water_id="water",

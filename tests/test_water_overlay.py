@@ -3,8 +3,10 @@ from __future__ import annotations
 import math
 import threading
 import urllib.error
+from types import SimpleNamespace
 from unittest.mock import Mock
 
+import numpy as np
 import pytest
 
 from zstarview.clouddisc.types import DownloadCancelledError
@@ -644,3 +646,64 @@ def test_build_overpass_query_excludes_coastline() -> None:
     assert 'natural"="coastline' not in query
     assert 'natural"="water' in query
     assert 'waterway"="riverbank' in query
+
+
+def test_sample_water_overlay_points_can_cull_back_half_rows(monkeypatch) -> None:
+    from zstarview import water_overlay
+
+    footprint = WaterPolygonFootprint(
+        water_id="water",
+        kind="natural_water",
+        outer_rings_lonlat=(
+            (
+                (-0.0010, -0.0010),
+                (0.0010, -0.0010),
+                (0.0010, 0.0010),
+                (-0.0010, 0.0010),
+                (-0.0010, -0.0010),
+            ),
+        ),
+        inner_rings_lonlat=(),
+        source="way",
+        tags={"natural": "water"},
+    )
+
+    ray_scan = SimpleNamespace(
+        azimuths_deg=np.array([0.0, 180.0], dtype=np.float64),
+        distance_grid_m=np.array([[10.0], [10.0]], dtype=np.float64),
+        ray_lon_deg=np.array([[0.0], [0.0]], dtype=np.float64),
+        ray_lat_deg=np.array([[0.0], [0.0]], dtype=np.float64),
+    )
+    project_calls: list[tuple[tuple[float, ...], tuple[float, ...]]] = []
+
+    monkeypatch.setattr(water_overlay, "build_ray_scan_grid", lambda **_kwargs: ray_scan)
+    monkeypatch.setattr(water_overlay, "_point_in_footprint", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(
+        water_overlay,
+        "project_place_targets_to_altaz",
+        lambda **kwargs: project_calls.append(
+            (
+                tuple(kwargs["target_latitude_deg"]),
+                tuple(kwargs["target_longitude_deg"]),
+            )
+        )
+        or [
+            SimpleNamespace(alt_deg=0.0, az_deg=0.0, distance_km=1.0)
+            for _ in kwargs["target_latitude_deg"]
+        ],
+    )
+
+    points = water_overlay.sample_water_overlay_points(
+        (footprint,),
+        observer_lat_deg=0.0,
+        observer_lon_deg=0.0,
+        observer_height_m=0.0,
+        max_distance_km=1.0,
+        sample_step_m=1.0,
+        azimuth_step_deg=1.0,
+        front_hemisphere_view_center=(0.0, 0.0),
+        front_hemisphere_fov_deg=90.0,
+    )
+
+    assert len(points) == 1
+    assert len(project_calls) == 1

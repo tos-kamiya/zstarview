@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 
@@ -11,6 +12,7 @@ from zstarview.types import UrbanOutlinePolyline, ViewerData
 from zstarview.urban_outline_layer import (
     _build_observer_centric_urban_outline_result,
     _merge_building_footprints,
+    _project_observer_centric_urban_outline_result,
     _resolve_building_ground_elevations,
     resolve_urban_outline_layer_for_viewer,
 )
@@ -294,6 +296,34 @@ def test_resolve_urban_outline_layer_for_viewer_prefers_explicit_derived_dir(
         )
     ]
     assert seen_dirs == [tokyo_dir]
+
+
+def test_project_observer_centric_urban_outline_result_can_cull_back_half_points() -> None:
+    result = SimpleNamespace(
+        outlines=(
+            SimpleNamespace(
+                height_m=45.0,
+                distance_km=0.85,
+                points=(
+                    SimpleNamespace(altitude_deg=0.0, azimuth_deg=0.0),
+                    SimpleNamespace(altitude_deg=0.0, azimuth_deg=180.0),
+                    SimpleNamespace(altitude_deg=0.0, azimuth_deg=5.0),
+                ),
+            ),
+        )
+    )
+
+    got = _project_observer_centric_urban_outline_result(
+        result,
+        view_center=(0.0, 0.0),
+        edge_fov_deg=90.0,
+        front_hemisphere_view_center=(0.0, 0.0),
+        front_hemisphere_fov_deg=90.0,
+    )
+
+    assert got is not None
+    assert len(got) == 1
+    assert all(point[1] != 180.0 for point in got[0].points)
 
 
 def test_resolve_urban_outline_layer_for_viewer_reprojects_cached_topocentric_result(
