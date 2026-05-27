@@ -209,6 +209,7 @@
   - `dev-samples/fit_equidistant_conic_image_mapping.py` を追加し、`latlonmap.txt` の RGB 制御点から Equidistant Conic 仮説を当てはめて `eqdc_lonlat.npz` を生成できるようにした。
   - `dev-samples/draw_equidistant_conic_latlon_grid.py` を追加し、生成済みの `eqdc_lonlat.npz` を使って同じ 10 度グリッドを画像へ重ねられるようにした。
   - 検証対象は MET Norway Geo-Satellite API の `https://api.met.no/weatherapi/geosatellite/1.4/?area=europe&type=infrared` から取得した Europe infrared 画像とした。
+  - `raw-data/geosatellite/README.md` にも同じ取得元 URL を追記し、検証アセットの出所を明示した。
 
 ### 2025-09-16
 
