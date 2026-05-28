@@ -1,5 +1,10 @@
 # zstarview Release Notes
 
+## 1.28.9 - 2026-05-28
+- Added an experimental, opt-in Geo-satellite cloud path for the Europe workflow band, with GUI wiring and status handling.
+- Improved urban-outline pruning and status reporting, including split base/skyscraper counts and updated overlay documentation.
+- Updated credits and README references, and removed temporary export-image timing instrumentation.
+
 ## 1.28.8 - 2026-05-28
 - Fixed startup overlay handling so explicit `-a 0` and `-c 0` disable aircraft and cloud overlays for the session, even when Geo-satellite is enabled.
 - Updated the CLI and design/specification docs to reflect the explicit-disable behavior.
