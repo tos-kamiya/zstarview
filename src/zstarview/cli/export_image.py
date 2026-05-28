@@ -158,17 +158,6 @@ DEFAULT_CLOUD_ALT_MIN_DEG = 1.0
 DEFAULT_CLOUD_FOV_OVERSCAN_DEG = 2.0
 DEFAULT_CLOUD_BASE_SIZE = 256
 DEFAULT_EXPORT_IMAGE_SKY_UPDATE_INTERVAL = 60
-EXPORT_IMAGE_TIMING_ENV = "ZSTARVIEW_EXPORT_IMAGE_TIMING"
-
-
-def _export_image_timing_enabled() -> bool:
-    value = os.environ.get(EXPORT_IMAGE_TIMING_ENV, "")
-    return value.strip().lower() not in {"", "0", "false", "no", "off"}
-
-
-def _log_export_image_timing(stage: str, elapsed_s: float, *, enabled: bool) -> None:
-    if enabled:
-        logger.info("[timing] %s: %.3f s", stage, elapsed_s)
 
 
 def _load_star_catalog_for_export(vmag_limit: float | None):
@@ -537,7 +526,6 @@ def _fetch_cloud_layer(
     user_options: SkyWindowUserOptions,
     deadline: float | None,
 ) -> tuple[np.ndarray | None, np.ndarray | None, object | None, float | None]:
-    timing_enabled = _export_image_timing_enabled()
     if user_options.cloud_disc_alpha <= 0.0:
         return (None, None, None, None)
     if _timed_out(deadline):
@@ -548,7 +536,6 @@ def _fetch_cloud_layer(
         float(viewer_data.lon_deg),
     ):
         logger.info("Geo-sat + Downloading")
-        t0 = time.perf_counter()
         result = run_geo_satellite_pipeline(
             observer_lat=float(viewer_data.lat_deg),
             observer_lon=float(viewer_data.lon_deg),
@@ -556,7 +543,6 @@ def _fetch_cloud_layer(
             az=float(viewer_data.view_az_deg),
             fov_deg=float(viewer_data.edge_fov_deg) + DEFAULT_CLOUD_FOV_OVERSCAN_DEG,
         )
-        _log_export_image_timing("geo-sat pipeline", time.perf_counter() - t0, enabled=timing_enabled)
         download_result = result.download
         captured_at_utc = getattr(download_result, "captured_at_utc", None) or getattr(
             download_result,
@@ -566,12 +552,8 @@ def _fetch_cloud_layer(
             "Geo-sat + %s",
             captured_at_utc.astimezone(timezone.utc).isoformat(),
         )
-        t0 = time.perf_counter()
         cloud_rgba = render_gray_image_to_cloud_rgba(result.disc_gray)
-        _log_export_image_timing("geo-sat gray->rgba", time.perf_counter() - t0, enabled=timing_enabled)
-        t0 = time.perf_counter()
         cloud_amount_field = build_cloud_amount_field_from_rgba(cloud_rgba)
-        _log_export_image_timing("geo-sat rgba->cloud field", time.perf_counter() - t0, enabled=timing_enabled)
         missing_mask = None
         cloud_coverage_ratio = float(
             np.count_nonzero(cloud_rgba[..., 3]) / max(1, cloud_rgba[..., 3].size)
@@ -593,7 +575,6 @@ def _fetch_cloud_layer(
         lat=float(viewer_data.lat_deg),
         lon=float(viewer_data.lon_deg),
     )
-    t0 = time.perf_counter()
     cloud_rgba, _meta, missing_mask, _coverage_ratio = (
         clouddisc.render_from_source_with_coverage(
             source=source,
@@ -609,11 +590,8 @@ def _fetch_cloud_layer(
             cloud_shells_km=CLOUD_SHELLS_KM,
         )
     )
-    _log_export_image_timing("clouddisc render", time.perf_counter() - t0, enabled=timing_enabled)
-    t0 = time.perf_counter()
     missing_mask_alpha = np.where(missing_mask > 0, 255, 0).astype(np.uint8)
     cloud_amount_field = build_cloud_amount_field_from_rgba(cloud_rgba)
-    _log_export_image_timing("clouddisc rgba->cloud field", time.perf_counter() - t0, enabled=timing_enabled)
     return (cloud_rgba, missing_mask_alpha, cloud_amount_field, float(_coverage_ratio))
 
 
@@ -712,8 +690,6 @@ def _build_water_target_ground_sampler(
     scan_radius_km: float,
     deadline: float | None,
 ) -> Callable[[float, float], float] | None:
-    timing_enabled = _export_image_timing_enabled()
-    t0 = time.perf_counter()
     if _timed_out(deadline):
         raise TimeoutError("water timed out")
     try:
@@ -725,7 +701,6 @@ def _build_water_target_ground_sampler(
             cache_dir=Path(CACHE_PATH) / "copernicus-dem",
         )
     except Exception:
-        _log_export_image_timing("water target ground sampler", time.perf_counter() - t0, enabled=timing_enabled)
         return None
 
     dem = GeoTiffDem(download.paths, default_elevation_m=0.0)
@@ -738,11 +713,9 @@ def _build_water_target_ground_sampler(
         dem_grid = dem.build_grid(bbox)
     except Exception:
         dem.close()
-        _log_export_image_timing("water target ground sampler", time.perf_counter() - t0, enabled=timing_enabled)
         return None
 
     dem.close()
-    _log_export_image_timing("water target ground sampler", time.perf_counter() - t0, enabled=timing_enabled)
 
     def sampler(latitude_deg: float, longitude_deg: float) -> float:
         return sample_ground_elevation(
@@ -825,8 +798,6 @@ def _fetch_water_overlay_dots_layer(
     deadline: float | None,
     target_ground_sampler: Callable[[float, float], float] | None = None,
 ) -> list[WaterOverlayPoint] | None:
-    timing_enabled = _export_image_timing_enabled()
-    t0 = time.perf_counter()
     if _timed_out(deadline):
         raise TimeoutError("water timed out")
 
@@ -857,7 +828,6 @@ def _fetch_water_overlay_dots_layer(
         front_hemisphere_view_center=tuple(float(value) for value in viewer_data.view_center),
         front_hemisphere_fov_deg=float(viewer_data.content_fov_deg),
     )
-    _log_export_image_timing("water overlay dots", time.perf_counter() - t0, enabled=timing_enabled)
     water_dots = tuple(sea_dots) + tuple(inland_dots)
     nearest_distance_km = min((float(dot.distance_km) for dot in water_dots), default=None)
     band_100_count, band_250_count, band_500_count = _water_overlay_band_counts(water_dots)
@@ -892,8 +862,6 @@ def _fetch_urban_outline_layer(
     runtime_options: SkyWindowRuntimeOptions,
     deadline: float | None,
 ) -> list[UrbanOutlinePolyline] | None:
-    timing_enabled = _export_image_timing_enabled()
-    total_start = time.perf_counter()
     if _timed_out(deadline):
         raise TimeoutError("urban timed out")
     current_overture_release = resolve_overture_release_for_cache_root(
@@ -926,7 +894,6 @@ def _fetch_urban_outline_layer(
             expected_overture_release=current_overture_release,
         ):
             continue
-        t0 = time.perf_counter()
         import_overture_buildings(
             lat_deg=float(viewer_data.lat_deg),
             lon_deg=float(viewer_data.lon_deg),
@@ -942,9 +909,7 @@ def _fetch_urban_outline_layer(
             overture_release=current_overture_release,
             skip_release_lookup=True,
         )
-        _log_export_image_timing("urban overture build", time.perf_counter() - t0, enabled=timing_enabled)
 
-    t0 = time.perf_counter()
     outlines = None
     if required_dirs:
         outlines = resolve_urban_outline_layer_for_viewer(
@@ -955,8 +920,6 @@ def _fetch_urban_outline_layer(
             front_hemisphere_view_center=tuple(float(value) for value in viewer_data.view_center),
             front_hemisphere_fov_deg=float(viewer_data.content_fov_deg),
         )
-    _log_export_image_timing("urban outline resolve", time.perf_counter() - t0, enabled=timing_enabled)
-    _log_export_image_timing("urban outlines", time.perf_counter() - total_start, enabled=timing_enabled)
 
     skyscraper_tiles = ()
     if float(runtime_options.urban_outline_skyscraper_radius_km) > 0.0:
@@ -980,7 +943,6 @@ def _fetch_urban_outline_layer(
             expected_overture_release=current_overture_release,
         ):
             continue
-        t0 = time.perf_counter()
         import_overture_buildings_for_bbox(
             bbox=(
                 tile.envelope.min_lon_deg,
@@ -1001,9 +963,7 @@ def _fetch_urban_outline_layer(
             overture_release=current_overture_release,
             skip_release_lookup=True,
         )
-        _log_export_image_timing("urban skyscraper overture build", time.perf_counter() - t0, enabled=timing_enabled)
     if skyscraper_dirs:
-        t0 = time.perf_counter()
         skyscraper_outlines = resolve_urban_outline_layer_for_viewer(
             viewer_data,
             derived_root_dir=skyscraper_derived_root,
@@ -1015,9 +975,7 @@ def _fetch_urban_outline_layer(
             front_hemisphere_view_center=tuple(float(value) for value in viewer_data.view_center),
             front_hemisphere_fov_deg=float(viewer_data.content_fov_deg),
         )
-        _log_export_image_timing("urban skyscraper resolve", time.perf_counter() - t0, enabled=timing_enabled)
         outlines = _merge_outline_layers(outlines, skyscraper_outlines)
-    _log_export_image_timing("urban layer total", time.perf_counter() - total_start, enabled=timing_enabled)
     return outlines
 
 
