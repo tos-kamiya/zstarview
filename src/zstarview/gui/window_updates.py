@@ -417,6 +417,14 @@ class SkyWindowUpdatesMixin:
                 "Urban outline:",
             )
             return _status_segment(_STATUS_URBAN, detail)
+        base_count = getattr(self.urban_outline_state, "base_outline_count", None)
+        skyscraper_count = getattr(self.urban_outline_state, "skyscraper_outline_count", None)
+        if base_count is not None or skyscraper_count is not None:
+            if base_count is not None and skyscraper_count is not None:
+                return _status_segment(_STATUS_URBAN, f"{base_count}+{skyscraper_count}")
+            if base_count is not None:
+                return _status_segment(_STATUS_URBAN, str(base_count))
+            return _status_segment(_STATUS_URBAN, str(skyscraper_count))
         if self.urban_outline_state.outlines is not None:
             return _status_segment(_STATUS_URBAN, str(len(self.urban_outline_state.outlines)))
         if self.urban_outline_state.current_source:
@@ -1289,6 +1297,8 @@ class SkyWindowUpdatesMixin:
         self.urban_outline_state.set_result(
             outlines,
             source=str(payload.get("source", "")).strip() or "ready",
+            base_outline_count=payload.get("base_outline_count"),
+            skyscraper_outline_count=payload.get("skyscraper_outline_count"),
         )
         self.state.urban_outlines = outlines
         if _initial_data_load_active(self):

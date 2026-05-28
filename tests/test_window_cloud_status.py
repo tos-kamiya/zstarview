@@ -95,6 +95,8 @@ def test_terrain_and_urban_status_lines_show_icons() -> None:
     urban_state = SimpleNamespace(
         banner_text=None,
         outlines=[object(), object(), object()],
+        base_outline_count=2,
+        skyscraper_outline_count=3,
         current_source="Urban: cache",
     )
     dummy = SimpleNamespace(
@@ -105,6 +107,20 @@ def test_terrain_and_urban_status_lines_show_icons() -> None:
     )
 
     assert SkyWindow._terrain_horizon_status_line(dummy) == "△ loading DEM..."
+    assert SkyWindow._urban_outline_status_line(dummy) == "🂓 2+3"
+
+
+def test_urban_status_line_falls_back_to_merged_count_when_split_counts_missing() -> None:
+    urban_state = SimpleNamespace(
+        banner_text=None,
+        outlines=[object(), object(), object()],
+        current_source="Urban: cache",
+    )
+    dummy = SimpleNamespace(
+        urban_outline_state=urban_state,
+        urban_outline_opacity=0.2,
+    )
+
     assert SkyWindow._urban_outline_status_line(dummy) == "🂓 3"
 
 

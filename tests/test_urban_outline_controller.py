@@ -28,7 +28,11 @@ def test_run_update_keeps_base_outlines_when_skyscraper_phase_fails(monkeypatch,
     )
     monkeypatch.setattr(
         "zstarview.gui.urban_outline_controller.resolve_urban_outline_layer_for_viewer",
-        lambda *_args, **kwargs: ["base-outline"] if kwargs.get("derived_root_dir") == controller._derived_root_dir else None,
+        lambda *_args, **kwargs: (
+            ["base-outline"]
+            if kwargs.get("derived_root_dir") == controller._derived_root_dir
+            else None
+        ),
     )
     monkeypatch.setattr(
         "zstarview.gui.urban_outline_controller.resolve_overture_release_for_cache_root",
@@ -71,7 +75,14 @@ def test_run_update_keeps_base_outlines_when_skyscraper_phase_fails(monkeypatch,
 
     controller._run_update(viewer_data=viewer, dataset_name="tokyo-test", reason="manual")
 
-    assert ready_payloads == [{"outlines": ["base-outline"], "source": "Urban: cache"}]
+    assert ready_payloads == [
+        {
+            "outlines": ["base-outline"],
+            "source": "Urban: cache",
+            "base_outline_count": 1,
+            "skyscraper_outline_count": None,
+        }
+    ]
 
 
 def test_run_update_skips_base_outlines_in_skyscraper_only_mode(
@@ -160,6 +171,8 @@ def test_run_update_skips_base_outlines_in_skyscraper_only_mode(
                 )
             ],
             "source": "Urban: cache",
+            "base_outline_count": None,
+            "skyscraper_outline_count": 1,
         }
     ]
 
@@ -201,7 +214,7 @@ def test_run_update_refreshes_stale_base_cache(monkeypatch, tmp_path: Path) -> N
     )
     monkeypatch.setattr(
         "zstarview.gui.urban_outline_controller.resolve_urban_outline_layer_for_viewer",
-        lambda *_args, **_kwargs: ["outline"],
+        lambda *_args, **kwargs: ["outline"] if kwargs.get("derived_root_dir") == controller._derived_root_dir else None,
     )
     monkeypatch.setattr(
         "zstarview.gui.urban_outline_controller.resolve_overture_release_for_cache_root",
@@ -211,7 +224,14 @@ def test_run_update_refreshes_stale_base_cache(monkeypatch, tmp_path: Path) -> N
     controller._run_update(viewer_data=viewer, dataset_name="tokyo-test", reason="manual")
 
     assert refresh_calls == ["refresh"]
-    assert ready_payloads == [{"outlines": ["outline"], "source": "Urban: cache"}]
+    assert ready_payloads == [
+        {
+            "outlines": ["outline"],
+            "source": "Urban: cache",
+            "base_outline_count": 1,
+            "skyscraper_outline_count": None,
+        }
+    ]
 
 
 def test_run_update_refreshes_when_release_changes(monkeypatch, tmp_path: Path) -> None:
@@ -255,10 +275,17 @@ def test_run_update_refreshes_when_release_changes(monkeypatch, tmp_path: Path) 
     )
     monkeypatch.setattr(
         "zstarview.gui.urban_outline_controller.resolve_urban_outline_layer_for_viewer",
-        lambda *_args, **_kwargs: ["outline"],
+        lambda *_args, **kwargs: ["outline"] if kwargs.get("derived_root_dir") == controller._derived_root_dir else None,
     )
 
     controller._run_update(viewer_data=viewer, dataset_name="tokyo-test", reason="manual")
 
     assert refresh_calls == ["refresh"]
-    assert ready_payloads == [{"outlines": ["outline"], "source": "Urban: cache"}]
+    assert ready_payloads == [
+        {
+            "outlines": ["outline"],
+            "source": "Urban: cache",
+            "base_outline_count": 1,
+            "skyscraper_outline_count": None,
+        }
+    ]

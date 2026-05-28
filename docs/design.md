@@ -1319,6 +1319,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - jump highlight は恒星・ISS に加えて GUI place 検索で選ばれた固定地表点も含めてよい
 - `UrbanOutlineState`
   - 都市アウトライン点列
+  - 必要に応じて base レイヤーと skyscraper レイヤーの件数を別々に保持する
   - 読込中 / 取得中バナー
   - 失敗表示状態
   - `cache` または `overture` などの現在ソース表示

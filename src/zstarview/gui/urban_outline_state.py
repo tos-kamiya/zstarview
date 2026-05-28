@@ -9,6 +9,8 @@ from ..types import UrbanOutlinePolyline
 @dataclass
 class UrbanOutlineState:
     outlines: Optional[list[UrbanOutlinePolyline]] = None
+    base_outline_count: Optional[int] = None
+    skyscraper_outline_count: Optional[int] = None
     banner_text: Optional[str] = None
     failed_this_session: bool = False
     current_source: Optional[str] = None
@@ -18,8 +20,12 @@ class UrbanOutlineState:
         outlines: list[UrbanOutlinePolyline] | None,
         *,
         source: str,
+        base_outline_count: int | None = None,
+        skyscraper_outline_count: int | None = None,
     ) -> None:
         self.outlines = outlines
+        self.base_outline_count = base_outline_count
+        self.skyscraper_outline_count = skyscraper_outline_count
         self.current_source = source
         self.failed_this_session = False
         self.banner_text = None
@@ -30,3 +36,5 @@ class UrbanOutlineState:
 
     def clear_outlines(self) -> None:
         self.outlines = None
+        self.base_outline_count = None
+        self.skyscraper_outline_count = None

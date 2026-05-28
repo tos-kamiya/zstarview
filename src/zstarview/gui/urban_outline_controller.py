@@ -257,6 +257,7 @@ class UrbanOutlineController(QObject):
                     raise
 
             outlines = None
+            base_outline_count: int | None = None
             if required_dirs:
                 outlines = resolve_urban_outline_layer_for_viewer(
                     viewer_data,
@@ -264,7 +265,10 @@ class UrbanOutlineController(QObject):
                     derived_dirs=tuple(path for _, path in required_dirs),
                     max_candidates=self._max_candidates,
                 )
+                if outlines is not None:
+                    base_outline_count = len(outlines)
             merged_outlines = outlines
+            skyscraper_outline_count: int | None = None
             try:
                 skyscraper_tiles = self._selected_skyscraper_tiles(viewer_data)
                 skyscraper_dirs: list[Path] = []
@@ -343,6 +347,8 @@ class UrbanOutlineController(QObject):
                     min_height_m=max(SKYSCRAPER_MIN_HEIGHT_M, self._min_building_height_m),
                     max_candidates=self._max_candidates,
                 )
+                if skyscraper_outlines is not None:
+                    skyscraper_outline_count = len(skyscraper_outlines)
                 merged_outlines = self._merge_outline_layers(outlines, skyscraper_outlines)
             except Exception as exc:
                 logger.warning("Skyscraper urban-outline update failed: %s", exc, exc_info=True)
@@ -354,6 +360,8 @@ class UrbanOutlineController(QObject):
                     {
                         "outlines": merged_outlines,
                         "source": source,
+                        "base_outline_count": base_outline_count,
+                        "skyscraper_outline_count": skyscraper_outline_count,
                     }
                 )
         except Exception as exc:
