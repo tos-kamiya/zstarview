@@ -25,6 +25,8 @@ def test_parse_export_image_args_accepts_shared_and_export_specific_options() ->
             "14.5",
             "--water-surface-opacity",
             "0.12",
+            "--urban-outline-max-candidates",
+            "2500",
             "--urban-outline-skyscraper-radius-km",
             "48",
             "--image-size",
@@ -44,6 +46,7 @@ def test_parse_export_image_args_accepts_shared_and_export_specific_options() ->
     assert args.content_fov_deg == 110.0
     assert args.overlay_font_size == 14.5
     assert args.water_surface_opacity == 0.12
+    assert args.urban_outline_max_candidates == 2500
     assert args.urban_outline_skyscraper_radius_km == 48.0
     assert args.image_size == (1280, 720)
     assert args.layer_timeout_seconds == 12.5
@@ -134,6 +137,15 @@ def test_parse_export_image_args_accepts_clear_long_lived_cache() -> None:
     args = parse_export_image_args(["--clear-long-lived-cache", "-o", "out.png"])
 
     assert args.clear_long_lived_cache is True
+
+
+def test_parse_export_image_args_warns_for_deprecated_urban_outline_min_height(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    parse_export_image_args(["--urban-outline-min-building-height-m", "10", "-o", "out.png"])
+
+    captured = capsys.readouterr()
+    assert "deprecated" in captured.err
 
 
 def test_parse_export_image_args_accepts_print_cache_dir_without_output() -> None:

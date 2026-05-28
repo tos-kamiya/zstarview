@@ -28,6 +28,7 @@ def test_prepare_window_runtime_options_boosts_cloud_missing_tint() -> None:
         urban_outline_radius_km=2.5,
         urban_outline_skyscraper_radius_km=60.0,
         urban_outline_min_height_m=0.0,
+        urban_outline_max_candidates=5000,
         urban_outline_feature_type="both",
         urban_outline_skyscraper_only=False,
         cloud_stripe_style=(50, 0.85),

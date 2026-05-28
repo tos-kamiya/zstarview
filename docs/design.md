@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-05-27
+最終更新: 2026-05-28
 
 ## 1. この文書の位置づけ
 
@@ -1676,6 +1676,15 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 判定条件は距離だけに固定せず、外周リングの見かけ方位幅や投影 bbox の大きさを併用してよい。遠距離・小面積ほど穴リングを省略し、近距離では従来どおり保持する。
 - さらに、輪郭の screen-space 縦幅が十分小さい場合は、`compute_urban_outlines()` 側で polyline を 2 点線分へ落としてよい。これは `draw_urban_outlines()` ではなく、都市アウトライン生成結果の表現選択として扱う。
 - 縦幅のしきい値は、画面上で見分けがつかない程度の薄さを基準にし、距離や FOV に応じて固定ピクセル閾値ではなく投影後の高さで判定してよい。初期実装では、正規化スクリーン座標系での縦幅がごく小さい run を対象にしてよい。
+- さらに、`compute_urban_outlines()` またはその直前の observer-centric layer で outline を間引く場合は、outline 単位でスコアを計算して上位 N 本を保持してよい。
+  - スコアは、見かけの横幅と見かけの高さの大きい方を基本としてよい。
+  - 見かけの横幅は、`azimuth_deg` の円周上の span として扱い、0/360 度をまたぐ点列でも最大ギャップを除いて測ってよい。
+  - 見かけの高さは、建物の ground-to-top 高さを距離で角度化した近似値としてよい。
+  - 具体的には、`width_deg = 360 - max_gap_deg`、`height_deg = degrees(atan2(building.height_m, distance_m))` とし、`score = max(width_deg, height_deg)` としてよい。
+  - 断片の複雑さが高い建物は、同一建物の複数 outline が上位に残ってよい。建物単位での一意化は必須ではない。
+  - この間引きは、最終出力後の切り詰めではなく、`sample_ring_points_xy()` のような重い処理に入る前の候補選別として実装してよい。
+  - この間引きは描画前の in-memory 近似として扱い、cache の正本から削除しなくてよい。
+  - 候補数の上限は `--urban-outline-max-candidates` で調整してよい。`-b` は建物高さの前処理フィルタとして残してよいが、性能調整の主手段とはみなさなくてよい。
 - `zstarview-export-image` は固定視線の単発書き出しなので、urban outline と water の cache を完全なまま保持したうえで、描画前の observer-centric data から現在の視線の背面半球を落としてよい。GUI は起動後に az が変化しうるため、同じ省略を前提にしてはならない。
 - その culling は cache 保存前ではなく、cache 読込後の in-memory 処理として行ってよい。cache の正本は GUI 互換の完全版とし、export-image の最適化は表示用の一時的な絞り込みに限定する。
 - 背面半球の判定は az だけでなく `view_center` と表示 FOV を基準にしてよい。境界をまたぐ ring や footprint は丸ごと消さず、必要に応じて見える側だけを残す。

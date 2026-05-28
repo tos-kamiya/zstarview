@@ -51,6 +51,7 @@ class UrbanOutlineController(QObject):
         *,
         derived_root_dir: Path,
         min_building_height_m: float = 0.0,
+        max_candidates: int = 5000,
         radius_km: float = DEFAULT_FETCH_RADIUS_KM,
         skyscraper_outer_radius_km: float = SKYSCRAPER_OUTER_RADIUS_KM,
         feature_type: str = "both",
@@ -63,6 +64,7 @@ class UrbanOutlineController(QObject):
         super().__init__(parent)
         self._derived_root_dir = Path(derived_root_dir)
         self._min_building_height_m = float(min_building_height_m)
+        self._max_candidates = max(0, int(max_candidates))
         self._radius_km = float(radius_km)
         self._skyscraper_outer_radius_km = float(skyscraper_outer_radius_km)
         self._feature_type = str(feature_type)
@@ -260,6 +262,7 @@ class UrbanOutlineController(QObject):
                     viewer_data,
                     derived_root_dir=self._derived_root_dir,
                     derived_dirs=tuple(path for _, path in required_dirs),
+                    max_candidates=self._max_candidates,
                 )
             merged_outlines = outlines
             try:
@@ -338,6 +341,7 @@ class UrbanOutlineController(QObject):
                     radius_km=self._skyscraper_outer_radius_km,
                     min_distance_km=self._radius_km,
                     min_height_m=max(SKYSCRAPER_MIN_HEIGHT_M, self._min_building_height_m),
+                    max_candidates=self._max_candidates,
                 )
                 merged_outlines = self._merge_outline_layers(outlines, skyscraper_outlines)
             except Exception as exc:

@@ -85,6 +85,7 @@ class _Args:
     urban_outline_radius_km = 2.5
     urban_outline_skyscraper_radius_km = 60.0
     urban_outline_min_height_m = 0.0
+    urban_outline_max_candidates = 5000
     urban_outline_feature_type = "both"
     urban_outline_skyscraper_only = False
     cloud_missing_tint_opacity = 0.0
@@ -236,6 +237,8 @@ def test_fetch_water_overlay_layer_uses_observer_ground_and_eye_height(monkeypat
         lon_deg=139.0,
         observer_height_m=1.7,
         ground_elevation_m=42.0,
+        view_center=(45.0, 180.0),
+        content_fov_deg=110.0,
     )
     captured: dict[str, float] = {}
 

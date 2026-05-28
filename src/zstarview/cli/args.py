@@ -29,6 +29,7 @@ _EDGE_FOV_MAX = 135.0
 _CONTENT_FOV_MIN = 90.0
 _CONTENT_FOV_MAX = 135.0
 _COMMITTED_VMAG_LIMIT_MAX = 10.5
+_URBAN_OUTLINE_MAX_CANDIDATES_DEFAULT = 5000
 
 
 def _parse_azimuth(value: str) -> float:
@@ -124,6 +125,19 @@ def _parse_positive_int(value: str) -> int:
         ) from exc
     if out <= 0:
         raise argparse.ArgumentTypeError("Value must be > 0.")
+    return out
+
+
+def _parse_non_negative_int(value: str) -> int:
+    """Parse an integer >= 0."""
+    try:
+        out = int(value)
+    except (TypeError, ValueError) as exc:
+        raise argparse.ArgumentTypeError(
+            f"Invalid non-negative integer: {value!r}"
+        ) from exc
+    if out < 0:
+        raise argparse.ArgumentTypeError("Value must be >= 0.")
     return out
 
 
@@ -774,8 +788,18 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         type=_parse_non_negative_float,
         default=0.0,
         help=(
-            "Minimum building height in meters for buildings included in the urban outline overlay "
-            "(default: 0.0). This value becomes part of the cache key."
+            "Deprecated. Minimum building height in meters for buildings included in the urban outline overlay "
+            "(default: 0.0). Use --urban-outline-max-candidates for performance tuning."
+        ),
+    )
+    parser.add_argument(
+        "--urban-outline-max-candidates",
+        type=_parse_non_negative_int,
+        default=_URBAN_OUTLINE_MAX_CANDIDATES_DEFAULT,
+        help=(
+            "Maximum number of urban-outline ring candidates to keep before expensive sampling "
+            f"(default: {_URBAN_OUTLINE_MAX_CANDIDATES_DEFAULT}). "
+            "Set to 0 to disable the layer."
         ),
     )
     parser.add_argument(
@@ -1144,8 +1168,18 @@ def add_render_arguments(
         type=_parse_non_negative_float,
         default=0.0,
         help=(
-            "Minimum building height in meters for buildings included in the urban outline overlay "
-            "(default: 0.0). This value becomes part of the cache key."
+            "Deprecated. Minimum building height in meters for buildings included in the urban outline overlay "
+            "(default: 0.0). Use --urban-outline-max-candidates for performance tuning."
+        ),
+    )
+    parser.add_argument(
+        "--urban-outline-max-candidates",
+        type=_parse_non_negative_int,
+        default=_URBAN_OUTLINE_MAX_CANDIDATES_DEFAULT,
+        help=(
+            "Maximum number of urban-outline ring candidates to keep before expensive sampling "
+            f"(default: {_URBAN_OUTLINE_MAX_CANDIDATES_DEFAULT}). "
+            "Set to 0 to disable the layer."
         ),
     )
     parser.add_argument(
@@ -1340,6 +1374,7 @@ def _validate_dataset_query_compatibility(
             or has_non_default("water_surface_opacity")
             or has_non_default("urban_outline_radius_km")
             or has_non_default("urban_outline_min_height_m")
+            or has_non_default("urban_outline_max_candidates")
             or has_non_default("urban_outline_feature_type")
             or has_non_default("urban_outline_skyscraper_only")
             or has_non_default("clear_long_lived_cache")
@@ -1419,6 +1454,20 @@ def _normalize_vmag_limit(args: argparse.Namespace) -> None:
         args.vmag_limit = min(float(args.vmag_limit), _COMMITTED_VMAG_LIMIT_MAX)
 
 
+def _warn_deprecated_urban_outline_min_height_option(
+    parser: argparse.ArgumentParser,
+    args: argparse.Namespace,
+) -> None:
+    if not hasattr(args, "urban_outline_min_height_m"):
+        return
+    if float(args.urban_outline_min_height_m) == float(parser.get_default("urban_outline_min_height_m")):
+        return
+    print(
+        "warning: --urban-outline-min-building-height-m is deprecated; use --urban-outline-max-candidates for performance tuning",
+        file=sys.stderr,
+    )
+
+
 def _argv_has_option(argv: Sequence[str], *option_names: str) -> bool:
     for token in argv:
         for option_name in option_names:
@@ -1441,6 +1490,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     _validate_dataset_query_compatibility(parser, args)
     _validate_location_argument_combinations(parser, args)
     _validate_urban_outline_argument_combinations(parser, args)
+    _warn_deprecated_urban_outline_min_height_option(parser, args)
     _validate_fov_relationship(parser, args)
     _validate_main_search_arguments(parser, args, raw_argv)
     args.view_center_alt_specified = _argv_has_option(
@@ -1462,6 +1512,7 @@ def parse_export_image_args(argv: Sequence[str] | None = None) -> argparse.Names
     _normalize_vmag_limit(args)
     _validate_location_argument_combinations(parser, args)
     _validate_urban_outline_argument_combinations(parser, args)
+    _warn_deprecated_urban_outline_min_height_option(parser, args)
     _validate_fov_relationship(parser, args)
     _validate_main_search_arguments(parser, args, raw_argv)
     if args.print_cache_dir:

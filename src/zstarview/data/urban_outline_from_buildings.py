@@ -185,6 +185,7 @@ def compute_urban_outlines(
     view_center: tuple[float, float] | None = None,
     edge_fov_deg: float = 90.0,
     edge_sample_step_m: float,
+    max_candidates: int = MAX_URBAN_OUTLINE_CANDIDATES,
 ) -> UrbanOutlineResult:
     if radius_km <= 0.0:
         raise ValueError("--radius-km must be positive.")
@@ -203,6 +204,7 @@ def compute_urban_outlines(
     buildings_considered = 0
     candidate_heap: list[tuple[float, int, _UrbanOutlineRingCandidate]] = []
     candidate_order = 0
+    candidate_capacity = max(0, int(max_candidates))
 
     for building in buildings:
         projected_rings = tuple(project_ring_xy(ring, transformer) for ring in building.rings_lonlat)
@@ -236,7 +238,9 @@ def compute_urban_outlines(
                 min_distance_m=min_distance_m,
             )
             candidate_order += 1
-            if len(candidate_heap) < MAX_URBAN_OUTLINE_CANDIDATES:
+            if candidate_capacity == 0:
+                continue
+            if len(candidate_heap) < candidate_capacity:
                 heapq.heappush(candidate_heap, (candidate.score, candidate.order, candidate))
             elif candidate.score > candidate_heap[0][0]:
                 heapq.heapreplace(candidate_heap, (candidate.score, candidate.order, candidate))

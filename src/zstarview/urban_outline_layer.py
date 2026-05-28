@@ -36,6 +36,7 @@ def resolve_urban_outline_layer_for_viewer(
     radius_km: float = DEFAULT_FETCH_RADIUS_KM,
     min_distance_km: float = 0.0,
     min_height_m: float = 0.0,
+    max_candidates: int = 5000,
     front_hemisphere_view_center: tuple[float, float] | None = None,
     front_hemisphere_fov_deg: float = 90.0,
 ) -> list[UrbanOutlinePolyline] | None:
@@ -50,6 +51,7 @@ def resolve_urban_outline_layer_for_viewer(
         radius_km=float(radius_km),
         min_distance_km=float(min_distance_km),
         min_height_m=float(min_height_m),
+        max_candidates=max(0, int(max_candidates)),
     )
     return _project_observer_centric_urban_outline_result(
         observer_centric_result,
@@ -73,6 +75,7 @@ def _build_observer_centric_urban_outline_result(
     radius_km: float = DEFAULT_FETCH_RADIUS_KM,
     min_distance_km: float = 0.0,
     min_height_m: float = 0.0,
+    max_candidates: int = 5000,
 ) -> UrbanOutlineResult | None:
     if derived_dirs is not None:
         candidate_dirs = tuple(path for path in derived_dirs if path.exists())
@@ -129,6 +132,7 @@ def _build_observer_centric_urban_outline_result(
         view_center=None,
         edge_fov_deg=90.0,
         edge_sample_step_m=10.0,
+        max_candidates=max_candidates,
     )
     return result
 

@@ -144,6 +144,8 @@ from .args import parse_export_image_args
 
 logger = logging.getLogger(__name__)
 
+sample_water_overlay_points_for_observer = sample_water_overlay_points
+
 
 class TerrainHorizonPayload(TypedDict):
     profile_altaz: list[tuple[float, float]]
@@ -475,6 +477,7 @@ def _build_window_inputs_from_args(
         urban_outline_radius_km=args.urban_outline_radius_km,
         urban_outline_skyscraper_radius_km=args.urban_outline_skyscraper_radius_km,
         urban_outline_min_height_m=args.urban_outline_min_height_m,
+        urban_outline_max_candidates=args.urban_outline_max_candidates,
         urban_outline_feature_type=args.urban_outline_feature_type,
         urban_outline_skyscraper_only=bool(args.urban_outline_skyscraper_only),
         cloud_stripe_style=(cloud_stripe_count, cloud_stripe_width),
@@ -843,8 +846,8 @@ def _fetch_water_overlay_dots_layer(
         scan_radius_km=scan_radius_km,
         deadline=deadline,
     )
-    inland_dots = sample_water_overlay_points(
-        water_footprints,
+    inland_dots = sample_water_overlay_points_for_observer(
+        footprints=water_footprints,
         observer_lat_deg=float(viewer_data.lat_deg),
         observer_lon_deg=float(viewer_data.lon_deg),
         observer_height_m=float(viewer_data.observer_height_m) + observer_ground_m,
@@ -948,6 +951,7 @@ def _fetch_urban_outline_layer(
             viewer_data,
             derived_root_dir=derived_root_dir,
             derived_dirs=tuple(required_dirs),
+            max_candidates=int(runtime_options.urban_outline_max_candidates),
             front_hemisphere_view_center=tuple(float(value) for value in viewer_data.view_center),
             front_hemisphere_fov_deg=float(viewer_data.content_fov_deg),
         )
@@ -1007,6 +1011,7 @@ def _fetch_urban_outline_layer(
             radius_km=float(runtime_options.urban_outline_skyscraper_radius_km),
             min_distance_km=float(runtime_options.urban_outline_radius_km),
             min_height_m=max(150.0, float(runtime_options.urban_outline_min_height_m)),
+            max_candidates=int(runtime_options.urban_outline_max_candidates),
             front_hemisphere_view_center=tuple(float(value) for value in viewer_data.view_center),
             front_hemisphere_fov_deg=float(viewer_data.content_fov_deg),
         )

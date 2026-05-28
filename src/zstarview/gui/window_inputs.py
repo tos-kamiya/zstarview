@@ -17,6 +17,7 @@ from ..astro import (
     prepare_star_catalog_meta,
 )
 from ..data.skyscraper_tiles import SKYSCRAPER_OUTER_RADIUS_KM
+from ..data.urban_outline_from_buildings import MAX_URBAN_OUTLINE_CANDIDATES
 from ..paths import (
     CLOUD_MISSING_TINT_RGBA,
     OVERLAY_FONT_SIZE_DEFAULT,
@@ -95,6 +96,7 @@ class SkyWindowRuntimeOptions:
     urban_outline_radius_km: float = 2.5
     urban_outline_skyscraper_radius_km: float = SKYSCRAPER_OUTER_RADIUS_KM
     urban_outline_min_height_m: float = 0.0
+    urban_outline_max_candidates: int = MAX_URBAN_OUTLINE_CANDIDATES
     urban_outline_feature_type: str = "both"
     urban_outline_skyscraper_only: bool = False
     cloud_stripe_style: tuple[int, float] = (50, 0.85)
@@ -269,6 +271,7 @@ def prepare_window_runtime_options(
     urban_outline_radius_km: float,
     urban_outline_skyscraper_radius_km: float,
     urban_outline_min_height_m: float,
+    urban_outline_max_candidates: int,
     urban_outline_feature_type: str,
     urban_outline_skyscraper_only: bool,
     cloud_stripe_style: tuple[int, float],
@@ -290,6 +293,7 @@ def prepare_window_runtime_options(
         urban_outline_radius_km=max(0.0, float(urban_outline_radius_km)),
         urban_outline_skyscraper_radius_km=max(0.0, float(urban_outline_skyscraper_radius_km)),
         urban_outline_min_height_m=max(0.0, float(urban_outline_min_height_m)),
+        urban_outline_max_candidates=max(0, int(urban_outline_max_candidates)),
         urban_outline_feature_type=str(urban_outline_feature_type),
         urban_outline_skyscraper_only=bool(urban_outline_skyscraper_only),
         cloud_stripe_style=cloud_stripe_style,

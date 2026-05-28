@@ -416,6 +416,7 @@ def test_compute_urban_outlines_limits_candidate_sampling_before_expensive_proje
         (low, high),
         radius_km=5.0,
         edge_sample_step_m=10.0,
+        max_candidates=1,
     )
 
     assert len(sampled_rings) == 1

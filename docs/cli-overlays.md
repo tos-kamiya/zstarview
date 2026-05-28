@@ -18,7 +18,8 @@
 | `--urban-outline-feature-type {both,building}` | Choose which urban-outline data to use for display. `both` combines `building` and `building_part`, preferring parts when available. | `both` |
 | `-r`, `--urban-outline-radius-km RADIUS_KM` | Fetch and render urban-outline buildings within this radius from the observer location. | `2.5` |
 | `--urban-outline-skyscraper-radius-km RADIUS_KM` | Outer radius of the far-range skyscraper helper layer. Use `0` to disable skyscraper-tile lookup for that run; otherwise the value must be greater than or equal to `--urban-outline-radius-km`. | `60.0` |
-| `-b`, `--urban-outline-min-building-height-m METERS` | Ignore buildings lower than this height when fetching/caching the urban outline. | `0.0` |
+| `-b`, `--urban-outline-min-building-height-m METERS` | Deprecated. Ignore buildings lower than this height when fetching/caching the urban outline. | `0.0` |
+| `--urban-outline-max-candidates N` | Keep at most `N` urban-outline ring candidates before expensive sampling. Use `0` to disable the layer. | `5000` |
 
 <a id="about-water-surface"></a>
 
