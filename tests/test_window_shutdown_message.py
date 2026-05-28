@@ -81,6 +81,7 @@ def test_begin_shutdown_shows_message_around_controller_shutdown() -> None:
             shutdown=lambda: call_order.append("worker"),
         ),
         _cloud_controller=None,
+        _geosatellite_controller=None,
         _satellite_controller=None,
         _aircraft_controller=None,
         _jpl_small_body_controller=None,

@@ -146,6 +146,10 @@ class _WindowStub:
             "cloud_state",
             SimpleNamespace(image=None, missing_mask=None, cloud_amount_field=None),
         )
+        self.geosatellite_state = values.get(
+            "geosatellite_state",
+            SimpleNamespace(image=None, missing_mask=None, cloud_amount_field=None),
+        )
         self.satellite_state = values.get(
             "satellite_state",
             SimpleNamespace(element_epoch_utc=None, records_by_group=None),
@@ -157,6 +161,8 @@ class _WindowStub:
         self.viewer_data = values.get("viewer_data", None)
         self.delta_t = values.get("delta_t", timedelta(0))
         self._cloud_controller = values.get("_cloud_controller", None)
+        self._geosatellite_controller = values.get("_geosatellite_controller", None)
+        self._geo_satellite_enabled = values.get("_geo_satellite_enabled", False)
         self._sky_worker = values.get("_sky_worker", None)
         self._satellite_controller = values.get("_satellite_controller", None)
         self._aircraft_controller = values.get("_aircraft_controller", None)
@@ -222,6 +228,17 @@ class _WindowStub:
             SimpleNamespace(gound_elevation_m=None, ground_elevation_m=None),
         )
         self.state = values.get("state", None)
+
+    def _geo_satellite_mode_active(self) -> bool:
+        return bool(
+            self._geo_satellite_enabled
+            and self._geosatellite_controller is not None
+        )
+
+    def _render_cloud_state(self):
+        if self._geo_satellite_mode_active():
+            return self.geosatellite_state
+        return self.cloud_state
 
     def client_width(self) -> int:
         width = self.width

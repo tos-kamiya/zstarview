@@ -270,8 +270,9 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         observation_info_pinned=False,
         sky_disc_alpha=0.2,
         night_light_opacity=0.022,
-        cloud_disc_alpha=0.2,
-        water_overlay_opacity=0.12,
+            cloud_disc_alpha=0.2,
+            _geo_satellite_enabled=False,
+            water_overlay_opacity=0.12,
         satellite_opacity=0.5,
         aircraft_opacity=0.5,
         terrain_horizon_opacity=0.1,
@@ -293,8 +294,9 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         toggle_guidelines=lambda: None,
         toggle_observation_info=lambda: None,
         toggle_sky_disc=lambda: None,
-        toggle_clouds=lambda: None,
-        toggle_satellites=lambda: None,
+            toggle_clouds=lambda: None,
+            toggle_geo_satellite=lambda: None,
+            toggle_satellites=lambda: None,
         toggle_aircraft=lambda: None,
         toggle_terrain_horizon=lambda: None,
         toggle_water_overlay=lambda: None,
@@ -349,8 +351,9 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         observation_info_pinned=False,
         sky_disc_alpha=0.2,
         night_light_opacity=0.022,
-        cloud_disc_alpha=0.2,
-        water_overlay_opacity=0.12,
+            cloud_disc_alpha=0.2,
+            _geo_satellite_enabled=False,
+            water_overlay_opacity=0.12,
         satellite_opacity=0.5,
         aircraft_opacity=0.5,
         terrain_horizon_opacity=0.1,
@@ -372,8 +375,9 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         toggle_guidelines=lambda: None,
         toggle_observation_info=lambda: None,
         toggle_sky_disc=lambda: None,
-        toggle_clouds=lambda: None,
-        toggle_satellites=lambda: None,
+            toggle_clouds=lambda: None,
+            toggle_geo_satellite=lambda: None,
+            toggle_satellites=lambda: None,
         toggle_aircraft=lambda: None,
         toggle_terrain_horizon=lambda: None,
         toggle_water_overlay=lambda: None,
@@ -432,9 +436,10 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
         show_observation_info=True,
         observation_info_mode="auto",
         observation_info_pinned=False,
-        sky_disc_alpha=0.2,
-        cloud_disc_alpha=0.2,
-        water_overlay_opacity=0.12,
+            sky_disc_alpha=0.2,
+            cloud_disc_alpha=0.2,
+            _geo_satellite_enabled=False,
+            water_overlay_opacity=0.12,
         satellite_opacity=0.5,
         aircraft_opacity=0.5,
         terrain_horizon_opacity=0.1,
@@ -455,9 +460,10 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
         toggle_asterisms=lambda: None,
         toggle_guidelines=lambda: None,
         toggle_observation_info=lambda: None,
-        toggle_sky_disc=lambda: None,
-        toggle_clouds=lambda: None,
-        toggle_satellites=lambda: None,
+            toggle_sky_disc=lambda: None,
+            toggle_clouds=lambda: None,
+            toggle_geo_satellite=lambda: None,
+            toggle_satellites=lambda: None,
         toggle_aircraft=lambda: None,
         toggle_terrain_horizon=lambda: None,
         toggle_water_overlay=lambda: None,
@@ -493,6 +499,7 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
         "Observation Info",
         "Sky Color",
         "Clouds",
+        "Geo-satellite",
         "Satellites",
         "Aircraft",
         "Night Lights",
@@ -522,10 +529,11 @@ def test_build_window_menu_disables_water_surface_when_terrain_horizon_off(
         show_observation_info=True,
         observation_info_mode="auto",
         observation_info_pinned=False,
-        sky_disc_alpha=0.2,
-        night_light_opacity=0.022,
-        cloud_disc_alpha=0.2,
-        water_overlay_opacity=0.12,
+            sky_disc_alpha=0.2,
+            night_light_opacity=0.022,
+            cloud_disc_alpha=0.2,
+            _geo_satellite_enabled=False,
+            water_overlay_opacity=0.12,
         satellite_opacity=0.5,
         aircraft_opacity=0.5,
         terrain_horizon_opacity=0.0,
@@ -545,9 +553,10 @@ def test_build_window_menu_disables_water_surface_when_terrain_horizon_off(
         toggle_asterisms=lambda: None,
         toggle_guidelines=lambda: None,
         toggle_observation_info=lambda: None,
-        toggle_sky_disc=lambda: None,
-        toggle_clouds=lambda: None,
-        toggle_satellites=lambda: None,
+            toggle_sky_disc=lambda: None,
+            toggle_clouds=lambda: None,
+            toggle_geo_satellite=lambda: None,
+            toggle_satellites=lambda: None,
         toggle_aircraft=lambda: None,
         toggle_terrain_horizon=lambda: None,
         toggle_water_overlay=lambda: None,
@@ -1692,6 +1701,14 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_and_invalidates_ol
         request_id=42,
         missing_mask_key=99,
     )
+    dummy.geosatellite_state = SimpleNamespace(
+        image=None,
+        missing_mask=None,
+        cloud_amount_field=None,
+        render_key=None,
+        request_id=None,
+        missing_mask_key=None,
+    )
     dummy._compositor = SimpleNamespace(
         invalidate=lambda: calls.append("invalidate-compositor")
     )
@@ -1728,6 +1745,14 @@ def test_begin_viewport_interaction_mode_clears_cloud_buffers_even_while_cloud_u
         render_key="render-key",
         request_id=42,
         missing_mask_key=99,
+    )
+    dummy.geosatellite_state = SimpleNamespace(
+        image=None,
+        missing_mask=None,
+        cloud_amount_field=None,
+        render_key=None,
+        request_id=None,
+        missing_mask_key=None,
     )
     dummy._compositor = SimpleNamespace(
         invalidate=lambda: calls.append("invalidate-compositor")
@@ -1768,6 +1793,14 @@ def test_handle_client_resize_clears_visible_cloud_buffers() -> None:
         render_key="render-key",
         request_id=42,
         missing_mask_key=99,
+    )
+    dummy.geosatellite_state = SimpleNamespace(
+        image=None,
+        missing_mask=None,
+        cloud_amount_field=None,
+        render_key=None,
+        request_id=None,
+        missing_mask_key=None,
     )
     dummy._compositor = SimpleNamespace(invalidate=lambda: calls.append("invalidate"))
     dummy._cloud_controller = SimpleNamespace(
@@ -1865,6 +1898,14 @@ def test_discard_stale_disc_images_clears_cached_sky_and_cloud_buffers() -> None
         render_key="render-key",
         request_id=42,
         missing_mask_key=99,
+    )
+    dummy.geosatellite_state = SimpleNamespace(
+        image=None,
+        missing_mask=None,
+        cloud_amount_field=None,
+        render_key=None,
+        request_id=None,
+        missing_mask_key=None,
     )
     dummy._compositor = SimpleNamespace(
         invalidate=lambda: compositor_calls.append("invalidate")

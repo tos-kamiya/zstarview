@@ -311,7 +311,6 @@ class StartupDialog(QDialog):
             _FieldSpec("visibility_boost", "Visibility boost", "float", "General", minimum=1.0, maximum=10.0, step=0.1),
             _FieldSpec("overlay_font_size", "Overlay font size", "float", "General", minimum=float(OVERLAY_FONT_SIZE_MIN), maximum=float(OVERLAY_FONT_SIZE_MAX), step=0.5),
             _FieldSpec("cloud_opacity", "Cloud opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
-            _FieldSpec("geo_satellite", "Geo-satellite", "bool", "Overlays"),
             _FieldSpec("cloud_stripe", "Cloud stripe", "text", "Overlays"),
             _FieldSpec("cloud_missing_tint_opacity", "Cloud missing tint", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("aircraft_opacity", "Aircraft opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
