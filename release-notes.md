@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.28.8 - 2026-05-28
+- Fixed startup overlay handling so explicit `-a 0` and `-c 0` disable aircraft and cloud overlays for the session, even when Geo-satellite is enabled.
+- Updated the CLI and design/specification docs to reflect the explicit-disable behavior.
+
 ## 1.28.7 - 2026-05-25
 - Restored fixed-interval cloud refresh scheduling so sky updates no longer keep postponing the next cloud download.
 
