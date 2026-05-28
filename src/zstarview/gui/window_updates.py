@@ -9,6 +9,7 @@ from typing import Dict, Optional
 from ..aircraft_constants import AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS
 from ..astro import load_ephemeris
 from ..clouddisc.providers.select import GOES_SATELLITES
+from ..geosatellite.pipeline import is_within_europe_band
 from ..paths import CLOUD_UPDATE_INTERVAL
 from ..satellite_constants import SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS
 from ..search.jpl import project_jpl_target_altaz_from_state_vector
@@ -47,6 +48,12 @@ def _cloud_satellite_group(satellite: str) -> str:
 
 
 def _request_cloud_projection_update(obj: object, *, reason: str) -> None:
+    geo_mode_active = getattr(obj, "_geo_satellite_mode_active", None)
+    if callable(geo_mode_active) and geo_mode_active():
+        geo_projector = getattr(obj, "reproject_geo_satellite_overlay", None)
+        if callable(geo_projector):
+            geo_projector(reason=reason)
+            return
     projector = getattr(obj, "reproject_cloud_overlay", None)
     if callable(projector):
         projector(reason=reason)
@@ -68,10 +75,24 @@ class SkyWindowUpdatesMixin:
     def request_cloud_projection_update(self, *, reason: str) -> None:
         _request_cloud_projection_update(self, reason=reason)
 
+    def _geo_satellite_mode_active(self) -> bool:
+        return bool(
+            getattr(self, "_geo_satellite_enabled", False)
+            and getattr(self, "_geosatellite_controller", None) is not None
+            and float(self.cloud_disc_alpha) > 0.0
+            and is_within_europe_band(float(self.viewer_data.lat_deg), float(self.viewer_data.lon_deg))
+        )
+
+    def _active_cloud_state(self):
+        if self._geo_satellite_mode_active():
+            return self.geosatellite_state
+        return self.cloud_state
+
     def _background_updates_busy(self) -> bool:
         controllers = (
             getattr(self, "_sky_worker", None),
             getattr(self, "_cloud_controller", None),
+            getattr(self, "_geosatellite_controller", None),
             getattr(self, "_satellite_controller", None),
             getattr(self, "_aircraft_controller", None),
             getattr(self, "_jpl_small_body_controller", None),
@@ -137,6 +158,13 @@ class SkyWindowUpdatesMixin:
         if action is not None:
             action.setEnabled(self._water_overlay_action_enabled())
 
+    def _cloud_layer_enabled(self) -> bool:
+        if float(self.cloud_disc_alpha) <= 0.0:
+            return False
+        if self._geo_satellite_mode_active():
+            return self._geosatellite_controller is not None
+        return self._clouddisc is not None
+
     def _on_scheduler_tick(self) -> None:
         if self._is_shutting_down:
             return
@@ -200,13 +228,17 @@ class SkyWindowUpdatesMixin:
             not background_updates_busy
             and isinstance(cloud_next_refresh, datetime)
             and now_utc >= cloud_next_refresh
-            and self._clouddisc
-            and self.cloud_disc_alpha > 0.0
+            and self._cloud_layer_enabled()
         ):
-            if self._cloud_controller is None or self._cloud_controller.has_in_flight_update():
+            controller = (
+                self._geosatellite_controller
+                if self._geo_satellite_mode_active()
+                else self._cloud_controller
+            )
+            if controller is None or controller.has_in_flight_update():
                 return
             self.start_background_cloud_update(reason="scheduler")
-            if self._cloud_controller.has_in_flight_update():
+            if controller.has_in_flight_update():
                 self.state.cloud_next_refresh_utc = now_utc + timedelta(seconds=CLOUD_UPDATE_INTERVAL)
                 return
 
@@ -294,6 +326,36 @@ class SkyWindowUpdatesMixin:
         cloud_disc_alpha = float(self.cloud_disc_alpha)
         if cloud_disc_alpha <= 0.0:
             return _status_segment(_STATUS_CLOUD, "", hidden=True)
+        if self._geo_satellite_mode_active():
+            state = self.geosatellite_state
+            if state.banner_text:
+                detail = _strip_status_prefix(state.banner_text, "Geo-sat")
+                detail_lower = detail.lower()
+                if detail_lower.startswith("+"):
+                    detail = detail[1:].strip()
+                    detail_lower = detail.lower()
+                if detail_lower.startswith("downloading"):
+                    return _status_segment(_STATUS_CLOUD, "Geo-sat + Downloading")
+                if detail_lower.startswith("projecting"):
+                    return _status_segment(_STATUS_CLOUD, "Geo-sat + Projecting")
+                if any(token in detail_lower for token in ("timed out", "error", "failed", "failure")):
+                    return _status_segment(_STATUS_CLOUD, "Geo-sat + error")
+                return _status_segment(_STATUS_CLOUD, f"Geo-sat + {detail}")
+            captured_at_utc = (
+                state.captured_at_utc
+                or getattr(state.meta, "time_utc", None)
+                or state.fetched_at_utc
+                or state.last_time_utc
+            )
+            if captured_at_utc is not None:
+                try:
+                    return _status_segment(
+                        _STATUS_CLOUD,
+                        f"Geo-sat + {captured_at_utc.astimezone(timezone.utc).strftime('%H:%MZ')}",
+                    )
+                except Exception:
+                    pass
+            return _status_segment(_STATUS_CLOUD, "Geo-sat + idle")
         sat = self.cloud_state.current_satellite or self._predicted_cloud_satellite()
         sat_group = _cloud_satellite_group(sat)
         if self.cloud_state.banner_text:
@@ -355,6 +417,8 @@ class SkyWindowUpdatesMixin:
                 "Urban outline:",
             )
             return _status_segment(_STATUS_URBAN, detail)
+        if self.urban_outline_state.outlines is not None:
+            return _status_segment(_STATUS_URBAN, str(len(self.urban_outline_state.outlines)))
         if self.urban_outline_state.current_source:
             detail = _strip_status_prefix(
                 self.urban_outline_state.current_source,
@@ -621,12 +685,19 @@ class SkyWindowUpdatesMixin:
         return started
 
     def _cloud_layer_enabled(self) -> bool:
-        return self._clouddisc is not None and float(self.cloud_disc_alpha) > 0.0
+        if float(self.cloud_disc_alpha) <= 0.0:
+            return False
+        if self._geo_satellite_mode_active():
+            return self._geosatellite_controller is not None
+        return self._clouddisc is not None and self._cloud_controller is not None
 
     def start_background_cloud_update(self, reason: str = "manual") -> None:
         if self._is_shutting_down:
             return
         if self._viewport_interaction_active():
+            return
+        if self._geo_satellite_mode_active():
+            self.start_background_geo_satellite_update(reason=reason)
             return
         if not (self._cloud_controller and self._cloud_layer_enabled()):
             return
@@ -637,11 +708,36 @@ class SkyWindowUpdatesMixin:
             reason=reason,
         )
 
+    def start_background_geo_satellite_update(self, reason: str = "manual") -> bool:
+        if self._is_shutting_down:
+            return False
+        if self._viewport_interaction_active():
+            return False
+        if not self._geo_satellite_mode_active():
+            return False
+        if self._geosatellite_controller is None:
+            return False
+        lat, lon = self.viewer_data.location
+        return self._geosatellite_controller.update(
+            observer_lat=lat,
+            observer_lon=lon,
+            alt=float(self.viewer_data.view_alt_deg),
+            az=float(self.viewer_data.view_az_deg),
+            fov_deg=float(self.viewer_data.edge_fov_deg) + 2.0,
+            render_generation=int(self._disc_generation),
+            reason=reason,
+        )
+
+    def reproject_geo_satellite_overlay(self, reason: str = "manual") -> None:
+        self.start_background_geo_satellite_update(reason=reason)
+
     def _start_cloud_projection_update(self, reason: str = "manual") -> bool:
         if self._is_shutting_down:
             return False
         if self._viewport_interaction_active():
             return False
+        if self._geo_satellite_mode_active():
+            return self.start_background_geo_satellite_update(reason=reason)
         if not (self._cloud_controller and self._cloud_layer_enabled()):
             return False
         if not self._cloud_controller.has_source_data():
@@ -664,6 +760,9 @@ class SkyWindowUpdatesMixin:
             return
         if self._viewport_interaction_active():
             return
+        if self._geo_satellite_mode_active():
+            self.start_background_geo_satellite_update(reason=reason)
+            return
         if not (self._cloud_controller and self._cloud_layer_enabled()):
             return
         if not self._cloud_controller.has_source_data():
@@ -672,6 +771,79 @@ class SkyWindowUpdatesMixin:
             return
         self.state.cloud_projection_next_refresh_utc = datetime.now(timezone.utc)
         self._on_scheduler_tick()
+
+    def _on_geosatellite_started(self, payload: Dict) -> None:
+        banner = str(payload.get("banner", "")).strip()
+        if banner:
+            self.geosatellite_state.set_banner(banner)
+        self.request_client_update()
+
+    def _on_geosatellite_source_ready(self, payload: Dict) -> None:
+        refreshed_at = payload.get("refreshed_at_utc")
+        if not isinstance(refreshed_at, datetime):
+            refreshed_at = datetime.now(timezone.utc)
+        banner = str(payload.get("banner", "")).strip()
+        self.geosatellite_state.set_source_ready(
+            refreshed_at_utc=refreshed_at,
+            banner_text=banner or "Geo-sat + Projecting",
+            current_source="Geo-sat",
+        )
+        self.state.cloud_projection_next_refresh_utc = None
+        self.request_client_update()
+
+    def _on_geosatellite_ready(self, payload: Dict) -> None:
+        current_generation = int(self._disc_generation)
+        payload_generation = int(payload.get("render_generation", current_generation))
+        if payload_generation != current_generation and not self._is_shutting_down:
+            logger.debug(
+                "Discard stale Geo-satellite payload generation=%s current=%s",
+                payload_generation,
+                current_generation,
+            )
+            return
+        captured_at_utc = payload.get("captured_at_utc")
+        if not isinstance(captured_at_utc, datetime):
+            captured_at_utc = payload.get("time_utc")
+        if not isinstance(captured_at_utc, datetime):
+            captured_at_utc = datetime.now(timezone.utc)
+        fetched_at_utc = payload.get("fetched_at_utc")
+        if not isinstance(fetched_at_utc, datetime):
+            fetched_at_utc = captured_at_utc
+        self.geosatellite_state.set_result(
+            payload["image"],
+            payload.get("meta"),
+            az=float(payload["az"]),
+            time_utc=captured_at_utc,
+            cloud_amount_field=payload.get("cloud_amount_field"),
+            missing_mask=payload.get("missing_mask"),
+            coverage_ratio=payload.get("coverage_ratio"),
+            source_key=payload.get("source_key"),
+            request_id=payload.get("request_id"),
+            current_source="Geo-sat",
+            captured_at_utc=captured_at_utc,
+            fetched_at_utc=fetched_at_utc,
+        )
+        refreshed_at_utc = payload.get("refreshed_at_utc")
+        if not isinstance(refreshed_at_utc, datetime):
+            refreshed_at_utc = datetime.now(timezone.utc)
+        self.state.cloud_next_refresh_utc = refreshed_at_utc + timedelta(seconds=CLOUD_UPDATE_INTERVAL)
+        self.state.cloud_projection_next_refresh_utc = None
+        self._compositor.invalidate()
+        if self.state.interaction_mode:
+            self.state.cloud_repaint_deferred = True
+            return
+        self._safe_request_cloud_repaint()
+
+    def _on_geosatellite_failed(self, payload: Dict) -> None:
+        banner = str(payload.get("banner", "")).strip()
+        if banner:
+            self.geosatellite_state.set_error_banner(banner)
+        self.state.cloud_next_refresh_utc = datetime.now(timezone.utc) + timedelta(seconds=CLOUD_UPDATE_INTERVAL)
+        self.state.cloud_projection_next_refresh_utc = None
+        if self.state.interaction_mode:
+            self.state.cloud_repaint_deferred = True
+        if banner:
+            self._safe_request_cloud_repaint()
 
     def start_background_satellite_update(self, reason: str = "manual") -> bool:
         if self._is_shutting_down:

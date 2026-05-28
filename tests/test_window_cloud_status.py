@@ -12,6 +12,7 @@ def _dummy_window(cloud_state):
     return SimpleNamespace(
         cloud_state=cloud_state,
         cloud_disc_alpha=0.2,
+        _geo_satellite_mode_active=lambda: False,
         _predicted_cloud_satellite=lambda: "G19",
     )
 
@@ -91,7 +92,11 @@ def test_aircraft_status_line_shows_last_success_with_icon() -> None:
 
 def test_terrain_and_urban_status_lines_show_icons() -> None:
     terrain_state = SimpleNamespace(banner_text="Terrain horizon: loading DEM...", current_source="Dem: cache")
-    urban_state = SimpleNamespace(banner_text="Urban outline: downloading...", current_source="Urban: cache")
+    urban_state = SimpleNamespace(
+        banner_text=None,
+        outlines=[object(), object(), object()],
+        current_source="Urban: cache",
+    )
     dummy = SimpleNamespace(
         terrain_horizon_state=terrain_state,
         terrain_horizon_opacity=0.2,
@@ -100,7 +105,7 @@ def test_terrain_and_urban_status_lines_show_icons() -> None:
     )
 
     assert SkyWindow._terrain_horizon_status_line(dummy) == "△ loading DEM..."
-    assert SkyWindow._urban_outline_status_line(dummy) == "🂓 downloading..."
+    assert SkyWindow._urban_outline_status_line(dummy) == "🂓 3"
 
 
 def test_water_status_line_shows_only_count_when_enabled() -> None:
