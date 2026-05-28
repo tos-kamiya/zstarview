@@ -211,6 +211,13 @@
   - 検証対象は MET Norway Geo-Satellite API の `https://api.met.no/weatherapi/geosatellite/1.4/?area=europe&type=infrared` から取得した Europe infrared 画像とした。
   - `raw-data/geosatellite/README.md` にも同じ取得元 URL を追記し、検証アセットの出所を明示した。
 
+### 2026-05-28
+
+- Geo-satellite gray-common-mask refresh
+  - `dev-samples/geo_satellite_gray_common_mask.py` で gray-common mask を再生成した。
+  - 入力は `Europe-IR-20260525130000.png` から `Europe-IR-20260528114500.png` までの 6 枚とし、`--gray-spread 0.35` と `--white-brightness 0.63` を使った。
+  - 生成結果を `raw-data/geosatellite/Europe-IR-gray-common-mask.png` と `src/zstarview/data/geosatellite/Europe-IR-gray-common-mask.png` に反映した。
+
 ### 2025-09-16
 
 - 実装履歴文書の前身を作成
