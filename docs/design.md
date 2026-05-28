@@ -829,6 +829,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - この経路は、既存の GOES/Himawari 雲経路を置き換えるのではなく、Europe 側の補助ソースとして併用する前提で扱ってよい。
 - 実験機能が有効で、かつ観測者が責務領域内にいる場合は、雲データ源として Geo-satellite のみを使ってよい。
 - その場合、GOES/Himawari と Geo-satellite のフェード合成は行わず、標準経路を混ぜない。
+- ただし、`--cloud-opacity 0` で明示的に雲表示を無効化しているセッションでは、`--geo-satellite true` を有効にしても雲表示を自動で復帰させてはならない。
 - 責務領域の外では、Geo-satellite 側を使わず既存の GOES/Himawari 経路をそのまま使ってよい。
 - 取得失敗時は、Geo-satellite 側の表示を失敗として正規化し、必要なら既存の GOES/Himawari 経路へは戻さず、空の失敗表示または前回成功画像の維持などを別途設計してよい。
 - 実験経路のデバッグ用固定資産として、`raw-data/geosatellite/Europe-IR-gray-common-mask.png` と `raw-data/geosatellite/eqdc_lonlat.npz` を既定値として使ってよい。
@@ -1465,7 +1466,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 ### 6.8 航空機オーバーレイ更新フロー
 
 1. `SkyWindow` は `AircraftController` を生成するが、初回更新要求は startup の初期データ直列化が終わって worker idle になった後に出してよい。
-2. `SkyWindowUserOptions` は `aircraft_opacity` と `aircraft_gui_allowed` を持ち、`--aircraft-opacity 0.0` のときは起動直後から航空機問い合わせを行わない。
+2. `SkyWindowUserOptions` は `aircraft_opacity` と `aircraft_gui_allowed` を持ち、`--aircraft-opacity 0.0` のときは起動直後から航空機問い合わせを行わない。`cloud_disc_alpha` も同様に、`--cloud-opacity 0.0` の明示指定を startup delta の再適用や Geo-satellite の有効化で戻してはならない。
 3. `AircraftController` は観測地点の `lat/lon` から OpenSky 用 `bbox` を作る。南北は既定 `±1.0°`、東西は緯度に応じて最低 `90km` を確保しつつ、面積は `25 square degrees` 以下へ抑える。
 4. `AircraftController` は明示更新要求または次回 fetch timer に従い、OpenSky 取得を 1 回だけ開始する。
 5. `AircraftController` は `bbox` を確定したら、まず `aircraft/cache.py` に同じ `bbox` の fresh cache があるかを確認してよい。
@@ -1556,7 +1557,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - CLI で与えられた初期オプションは、起動後の GUI 状態の初期値になる。
 - ただし CLI で明示的に無効化した機能の一部は、セッション中の GUI 再有効化を禁止する。
 - 代表例が `--terrain-horizon-opacity 0` による地形地平線ロックアウトである。
-- `--sky-opacity 0`、`--cloud-opacity 0`、`--terrain-horizon-opacity 0`、`--earth-guide-opacity 0`、`--urban-outline-opacity 0` は、そのセッションで各 GUI トグルをロックアウトする。
+- `--sky-opacity 0`、`--cloud-opacity 0`、`--aircraft-opacity 0`、`--satellite-opacity 0`、`--terrain-horizon-opacity 0`、`--earth-guide-opacity 0`、`--urban-outline-opacity 0` は、そのセッションで各 GUI トグルをロックアウトする。
+- `--cloud-opacity 0` は `--geo-satellite true` と併用してもロックアウトを維持し、Geo-satellite 有効化だけでは雲表示を再有効化しない。
 - `--visibility-boost` のような視認性補正は、CLI 層で `SkyWindowUserOptions` の opacity 群へ変換し、下流の描画コードには最終値だけを渡してよい。
 - 補助レイヤーと小さい図形レイヤーは同じ倍率で持ち上げ、主役レイヤーは据え置きという profile として扱ってよい。
 - 変換の初期案としては、地形地平線、Earth guide、都市アウトライン、cloud missing tint のような補助レイヤーは `visibility_boost` をそのまま適用し、sky disc、cloud disc、航空機、人工衛星、アステリズム、月マーカー、短いラベル、ground tint のような小さい図形や薄い補助表示も同じ倍率で適用してよい。地形地平線、Earth guide、アステリズムのような線主体レイヤーは、必要に応じて線幅だけでなく alpha も同じ倍率で持ち上げてよい。ground tint の既定濃さは `0.04` 程度、never-rises tint は `0.06` 程度でよい。

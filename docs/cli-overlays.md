@@ -2,7 +2,7 @@
 
 | Option | Description | Default |
 | :----- | :---------- | :------ |
-| `-c`, `--cloud-opacity CLOUD_OPACITY` | Opacity of cloud rendering (0.0–1.0). Use 0.0 to disable. \*2 | `0.07` |
+| `-c`, `--cloud-opacity CLOUD_OPACITY` | Opacity of cloud rendering (0.0–1.0). Use 0.0 to disable for the session, even when `--geo-satellite true` is enabled. \*2 | `0.07` |
 | `--cloud-stripe MODE[,COUNT[,WIDTH]]` | Cloud stripe style. `width` draws centered symmetric stripes whose visible width varies with cloud amount; `alpha` keeps width fixed and varies stripe alpha. `COUNT` is treated as the stripe density for the default 600x600 star render surface, and the effective count is scaled to match the star layer's downsampled surface size. `width` expands to `width,50,0.85`; `alpha` expands to `alpha,50,0.25`. If count or width is `0`, cloud rendering is disabled. | `width,50,0.85` |
 | `--cloud-missing-tint-opacity OPACITY` | Opacity of missing-cloud-data yellow tint (0.0–1.0). | `0.176` |
 | `--night-light-opacity OPACITY` | Opacity of the NASA night lights overlay (0.0–1.0). Use 0.0 to disable the on-demand Black Marble download and drawing for that run. | `0.022` |
@@ -24,7 +24,7 @@
 
 #### Footnotes
 
-\*2 Cloud rendering uses infrared data from meteorological satellites (**Himawari** and **NOAA GOES** series), retrieved from their public S3 buckets. See Troubleshooting for tips on slow networks or offline use (for example, disabling clouds with `-c 0`).
+\*2 Cloud rendering uses infrared data from meteorological satellites (**Himawari** and **NOAA GOES** series), retrieved from their public S3 buckets. See Troubleshooting for tips on slow networks or offline use (for example, disabling clouds with `-c 0`). If Geo-satellite is enabled, `-c 0` still keeps cloud rendering disabled until the user re-enables it manually.
 
 \*5 Water-surface rendering uses two data paths: sea dots come from local sea-mask tiles derived from [OSM Water Polygons](https://osmdata.openstreetmap.de/data/water-polygons.html), while inland water dots come from OpenStreetMap features fetched through the [Overpass API](https://overpass-api.de/). Some coastal, higher viewpoints can make a single Overpass fetch return around 9 MB of inland water data. The raw footprint is cached by viewpoint, but repeatedly changing viewpoints can accumulate download volume and may approach the public Overpass instance's rough 1 GB/day safety guideline.
 
