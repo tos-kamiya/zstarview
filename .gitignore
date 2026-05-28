@@ -1,6 +1,9 @@
 cloud_tile_cache/
 dev-samples/
 node_modules/
+.serena/
+dist/
+raw-data/
 .codex/
 package.json
 package-lock.json

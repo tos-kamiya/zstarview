@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import io
 import datetime as dt
+from concurrent.futures import Future
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 import numpy as np
@@ -329,3 +331,66 @@ def test_project_gray_image_to_disc_reuses_cached_projection(monkeypatch: pytest
     assert np.array_equal(first, second)
     assert (cache_root / "projection" / "latest.npz").exists()
     assert (cache_root / "projection" / "latest.json").exists()
+
+
+def test_geosatellite_controller_emits_progress_and_result(monkeypatch: pytest.MonkeyPatch) -> None:
+    from zstarview.gui import geosatellite_controller as geo_ctl
+
+    controller = geo_ctl.GeoSatelliteController()
+    events: list[tuple[str, dict[str, object]]] = []
+    controller.geo_started.connect(lambda payload: events.append(("started", payload)))
+    controller.geo_source_ready.connect(lambda payload: events.append(("source", payload)))
+    controller.geo_ready.connect(lambda payload: events.append(("ready", payload)))
+    controller.geo_failed.connect(lambda payload: events.append(("failed", payload)))
+
+    def fake_submit_gui_work(target, /, *args, **kwargs):
+        target(*args, **kwargs)
+        future: Future[None] = Future()
+        future.set_result(None)
+        return future
+
+    def fake_pipeline(*, status_callback=None, **kwargs):
+        download = SimpleNamespace(
+            captured_at_utc=dt.datetime(2026, 5, 26, 9, 30, tzinfo=dt.timezone.utc),
+            fetched_at_utc=dt.datetime(2026, 5, 26, 9, 31, tzinfo=dt.timezone.utc),
+            kind="infrared",
+        )
+        if status_callback is not None:
+            status_callback("downloading", {"kind": "infrared"})
+            status_callback(
+                "projecting",
+                {
+                    "download": download,
+                    "captured_at_utc": download.captured_at_utc,
+                    "fetched_at_utc": download.fetched_at_utc,
+                },
+            )
+        return SimpleNamespace(
+            download=download,
+            intermediate=SimpleNamespace(raw_digest="ab" * 32),
+            disc_gray=np.array([[1, 2], [3, 4]], dtype=np.uint8),
+        )
+
+    monkeypatch.setattr(geo_ctl, "submit_gui_work", fake_submit_gui_work)
+    monkeypatch.setattr(geo_ctl, "run_geo_satellite_pipeline", fake_pipeline)
+
+    started = controller.update(
+        observer_lat=51.5,
+        observer_lon=-0.1,
+        alt=10.0,
+        az=180.0,
+        fov_deg=60.0,
+        render_generation=7,
+        reason="manual",
+    )
+
+    assert started is True
+    assert [name for name, _payload in events] == ["started", "source", "ready"]
+    assert events[0][1]["banner"] == "Geo-sat + Downloading"
+    assert events[1][1]["banner"] == "Geo-sat + Projecting"
+    ready_payload = events[2][1]
+    assert ready_payload["render_generation"] == 7
+    assert ready_payload["meta"].satellite == "Geo-sat"
+    assert ready_payload["image"].shape == (2, 2, 4)
+    assert ready_payload["cloud_amount_field"] is not None
+    assert ready_payload["banner"] == ""

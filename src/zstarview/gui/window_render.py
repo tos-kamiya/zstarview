@@ -82,6 +82,12 @@ class SkyWindowRenderMixin:
         overlay = getattr(owner, "_startup_log_overlay", None)
         return bool(overlay is not None and overlay.isVisible())
 
+    def _render_cloud_state(self):
+        active = getattr(self, "_active_cloud_state", None)
+        if callable(active):
+            return active()
+        return self.cloud_state
+
     def _render_cache_stamp(self, value: object) -> object:
         if value is None:
             return None
@@ -143,11 +149,11 @@ class SkyWindowRenderMixin:
             self._render_cache_stamp(celestial_data),
             self._render_cache_stamp(self.state.sky_disc_image),
             self._render_cache_stamp(self.state.night_light_glow_profile),
-            self._render_cache_stamp(self.cloud_state.image),
-            self._render_cache_stamp(self.cloud_state.missing_mask),
+            self._render_cache_stamp(self._render_cloud_state().image),
+            self._render_cache_stamp(self._render_cloud_state().missing_mask),
             None
-            if self.cloud_state.cloud_amount_field is None
-            else int(self.cloud_state.cloud_amount_field.source_cache_key),
+            if self._render_cloud_state().cloud_amount_field is None
+            else int(self._render_cloud_state().cloud_amount_field.source_cache_key),
             self._render_cache_stamp(self.state.terrain_horizon_profile),
             self._render_cache_stamp(self.state.terrain_horizon_profile_distances_m),
             self._render_cache_stamp(self.state.terrain_secondary_ridges_altaz_layers),
@@ -571,7 +577,7 @@ class SkyWindowRenderMixin:
         time_obj: astropy.time.Time | None,
     ) -> RenderSceneData:
         state = self.state
-        cloud_state = self.cloud_state
+        cloud_state = self._render_cloud_state()
         return RenderSceneData(
             viewer=render_viewer,
             celestial_data=celestial_data,

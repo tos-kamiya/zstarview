@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime as dt
 import io
 import logging
+from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 
@@ -36,6 +37,7 @@ from .proxy import DEFAULT_CONTRAST_HIGH, DEFAULT_CONTRAST_LOW, DEFAULT_LOGO_MAS
 from .types import GeoSatelliteDownloadResult, GeoSatelliteIntermediateResult, GeoSatelliteKind, GeoSatellitePipelineResult
 
 logger = logging.getLogger(__name__)
+GeoSatelliteStatusCallback = Callable[[str, dict[str, object]], None]
 
 
 def is_within_europe_band(lat: float, lon: float) -> bool:
@@ -164,9 +166,19 @@ def run_geo_satellite_pipeline(
     download_time_utc: dt.datetime | None = None,
     mask_path: Path | None = Path(GEOSATELLITE_GRAY_COMMON_MASK_FILE),
     grid_npz: Path = DEFAULT_GRID_NPZ,
+    status_callback: GeoSatelliteStatusCallback | None = None,
 ) -> GeoSatellitePipelineResult:
     """Run the experimental Geo-satellite workflow end to end."""
     purge_intermediate_cache()
+    if status_callback is not None:
+        status_callback(
+            "downloading",
+            {
+                "kind": kind,
+                "observer_lat": float(observer_lat),
+                "observer_lon": float(observer_lon),
+            },
+        )
     if raw_png is None:
         if download_time_utc is None:
             download_time_utc = _resolve_latest_available_image_time(kind=kind)
@@ -190,6 +202,17 @@ def run_geo_satellite_pipeline(
             source_url="memory",
             png_bytes=raw_png,
             content_type="image/png",
+        )
+
+    if status_callback is not None:
+        status_callback(
+            "projecting",
+            {
+                "download": download,
+                "captured_at_utc": download.captured_at_utc,
+                "fetched_at_utc": download.fetched_at_utc,
+                "kind": kind,
+            },
         )
 
     raw_digest = compute_digest(download.png_bytes)
