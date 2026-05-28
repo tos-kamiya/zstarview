@@ -13,7 +13,6 @@ from .types import GeoSatelliteDownloadResult, GeoSatelliteKind
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_GEO_SATELLITE_URL = "https://api.met.no/weatherapi/geosatellite/1.4/?area=europe&type=infrared"
 DEFAULT_USER_AGENT = "zstarview/1.0 github.com/tos-kamiya/zstarview"
 DEFAULT_TIMEOUT_SECONDS = 30.0
 DEFAULT_GEO_SATELLITE_AREA = "europe"

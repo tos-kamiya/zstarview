@@ -1,28 +1,11 @@
 from __future__ import annotations
 
-import argparse
-
 import numpy as np
 from PIL import Image
 
 DEFAULT_LOGO_MASK_FRAC = (0.16, 0.10)
 DEFAULT_CONTRAST_LOW = 5.0
 DEFAULT_CONTRAST_HIGH = 98.0
-
-
-def _parse_fraction_pair(value: str) -> tuple[float, float]:
-    text = (value or "").strip()
-    parts = [part.strip() for part in text.split(",")]
-    if len(parts) != 2:
-        raise argparse.ArgumentTypeError("Expected two comma-separated fractions, e.g. '0.16,0.10'.")
-    try:
-        x = float(parts[0])
-        y = float(parts[1])
-    except ValueError as exc:
-        raise argparse.ArgumentTypeError("Fractions must be numeric.") from exc
-    if not (0.0 <= x <= 1.0 and 0.0 <= y <= 1.0):
-        raise argparse.ArgumentTypeError("Fractions must be between 0 and 1.")
-    return (x, y)
 
 
 def _apply_logo_mask(
