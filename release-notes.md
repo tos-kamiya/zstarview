@@ -1,9 +1,9 @@
 # zstarview Release Notes
 
 ## 1.28.9 - 2026-05-28
-- Added an experimental, opt-in Geo-satellite cloud path for the Europe workflow band, with GUI wiring and status handling.
-- Improved urban-outline pruning and status reporting, including split base/skyscraper counts and updated overlay documentation.
-- Updated credits and README references, and removed temporary export-image timing instrumentation.
+- Added an experimental, opt-in Geo-satellite cloud path for the Europe workflow band, with GUI wiring, status handling, and `--geo-satellite` CLI docs.
+- Improved urban-outline pruning and status reporting, including the new `--urban-outline-max-candidates` knob, split base/skyscraper counts, and updated overlay docs.
+- Updated the README credits/license section for MET Norway Geo-satellite attribution and clarified the opt-in behavior in the main README.
 
 ## 1.28.8 - 2026-05-28
 - Fixed startup overlay handling so explicit `-a 0` and `-c 0` disable aircraft and cloud overlays for the session, even when Geo-satellite is enabled.
