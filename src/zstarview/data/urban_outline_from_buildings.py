@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import heapq
 import json
 import sys
 from dataclasses import dataclass
@@ -40,6 +41,7 @@ from zstarview.location_resolver.viewpoints import normalize_viewpoint_name  # n
 DEFAULT_RADIUS_KM = 3.0
 DEFAULT_MIN_BUILDING_HEIGHT_M = 40.0
 DEFAULT_EDGE_SAMPLE_STEP_M = 10.0
+MAX_URBAN_OUTLINE_CANDIDATES = 5000
 HOLE_RING_SUPPRESSION_MIN_DISTANCE_M = 1000.0
 HOLE_RING_SUPPRESSION_MAX_SPAN_M = 250.0
 VERTICAL_THIN_RUN_MAX_NORMALIZED_HEIGHT = 0.01
@@ -65,6 +67,16 @@ class UrbanOutlineResult:
     outlines: tuple[UrbanOutlinePolyline, ...]
     buildings_considered: int
     outlines_emitted: int
+
+
+@dataclass(frozen=True)
+class _UrbanOutlineRingCandidate:
+    score: float
+    order: int
+    building: BuildingFootprint
+    ring_xy: np.ndarray
+    building_distance_m: float
+    min_distance_m: float
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -189,7 +201,8 @@ def compute_urban_outlines(
     observer_height_m = float(getattr(tower, "viewpoint_height_m", getattr(tower, "observer_height_m", 0.0)) or 0.0)
     observer_elevation_m = float(observer_ground_elevation_m) + observer_height_m
     buildings_considered = 0
-    outlines: list[UrbanOutlinePolyline] = []
+    candidate_heap: list[tuple[float, int, _UrbanOutlineRingCandidate]] = []
+    candidate_order = 0
 
     for building in buildings:
         projected_rings = tuple(project_ring_xy(ring, transformer) for ring in building.rings_lonlat)
@@ -204,35 +217,46 @@ def compute_urban_outlines(
         if max_distance <= min_distance_m:
             continue
         buildings_considered += 1
-        outer_ring_xy = projected_rings[0]
+        for ring_index, ring_xy in enumerate(projected_rings):
+            if ring_index > 0 and _should_skip_hole_ring(ring_xy, building_distance_m=min_distance):
+                continue
+            score = _urban_outline_ring_candidate_score(
+                building=building,
+                ring_xy=ring_xy,
+                building_distance_m=min_distance,
+            )
+            if score <= 0.0:
+                continue
+            candidate = _UrbanOutlineRingCandidate(
+                score=score,
+                order=candidate_order,
+                building=building,
+                ring_xy=ring_xy,
+                building_distance_m=min_distance,
+                min_distance_m=min_distance_m,
+            )
+            candidate_order += 1
+            if len(candidate_heap) < MAX_URBAN_OUTLINE_CANDIDATES:
+                heapq.heappush(candidate_heap, (candidate.score, candidate.order, candidate))
+            elif candidate.score > candidate_heap[0][0]:
+                heapq.heapreplace(candidate_heap, (candidate.score, candidate.order, candidate))
+
+    selected_candidates = [entry[2] for entry in candidate_heap]
+    selected_candidates.sort(key=lambda candidate: candidate.order)
+    outlines: list[UrbanOutlinePolyline] = []
+    for candidate in selected_candidates:
         _emit_ring_outlines(
-            building=building,
-            ring_xy=outer_ring_xy,
+            building=candidate.building,
+            ring_xy=candidate.ring_xy,
             observer_elevation_m=observer_elevation_m,
-            building_distance_m=min_distance,
-            min_distance_m=min_distance_m,
+            building_distance_m=candidate.building_distance_m,
+            min_distance_m=candidate.min_distance_m,
             radius_m=radius_m,
             edge_sample_step_m=edge_sample_step_m,
             view_center=view_center,
             edge_fov_deg=edge_fov_deg,
             outlines=outlines,
         )
-        for ring_xy in projected_rings[1:]:
-            if _should_skip_hole_ring(ring_xy, building_distance_m=min_distance):
-                continue
-            _emit_ring_outlines(
-                building=building,
-                ring_xy=ring_xy,
-                observer_elevation_m=observer_elevation_m,
-                building_distance_m=min_distance,
-                min_distance_m=min_distance_m,
-                radius_m=radius_m,
-                edge_sample_step_m=edge_sample_step_m,
-                view_center=view_center,
-                edge_fov_deg=edge_fov_deg,
-                outlines=outlines,
-            )
-
     return UrbanOutlineResult(
         tower=tower,
         outlines=tuple(outlines),
@@ -332,6 +356,51 @@ def _maybe_linearize_run_points(
         run_points[start_index],
         run_points[end_index],
     ]
+
+
+def _urban_outline_ring_candidate_score(
+    *,
+    building: BuildingFootprint,
+    ring_xy: np.ndarray,
+    building_distance_m: float,
+) -> float:
+    width_deg = _urban_outline_ring_width_angle_deg(
+        ring_xy,
+        building_distance_m=building_distance_m,
+    )
+    height_deg = _urban_outline_height_angle_deg(building.height_m, building_distance_m)
+    return max(width_deg, height_deg)
+
+
+def _urban_outline_ring_width_angle_deg(
+    ring_xy: np.ndarray,
+    *,
+    building_distance_m: float,
+) -> float:
+    if ring_xy.ndim != 2 or ring_xy.shape[0] < 2:
+        return 0.0
+    if np.array_equal(ring_xy[0], ring_xy[-1]):
+        ring_xy = ring_xy[:-1]
+    if ring_xy.shape[0] < 2:
+        return 0.0
+    center_xy = np.mean(ring_xy, axis=0)
+    center_distance_m = float(np.hypot(center_xy[0], center_xy[1]))
+    if center_distance_m <= 1e-6:
+        width_m = float(max(np.ptp(ring_xy[:, 0]), np.ptp(ring_xy[:, 1])))
+        return float(np.degrees(np.arctan2(width_m, max(1.0, float(building_distance_m)))))
+
+    forward_xy = center_xy / center_distance_m
+    side_xy = np.array((-forward_xy[1], forward_xy[0]), dtype=np.float64)
+    projected = ring_xy @ side_xy
+    width_m = float(np.ptp(projected))
+    return float(np.degrees(np.arctan2(width_m, max(1.0, float(building_distance_m)))))
+
+
+def _urban_outline_height_angle_deg(height_m: float, distance_km: float) -> float:
+    if height_m <= 0.0:
+        return 0.0
+    distance_m = max(1.0, float(distance_km) * 1000.0)
+    return float(np.degrees(np.arctan2(float(height_m), distance_m)))
 
 
 def np_hypot_xy(points_xy):

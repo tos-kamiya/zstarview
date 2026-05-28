@@ -5,6 +5,8 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+import numpy as np
+
 
 def _load_module():
     root = Path(__file__).resolve().parents[1]
@@ -343,3 +345,78 @@ def test_maybe_linearize_run_points_keeps_distinct_endpoints_for_tight_vertical_
     )
 
     assert result == run_points
+
+
+def test_urban_outline_ring_width_angle_uses_perpendicular_projection() -> None:
+    mod = _load_module()
+    ring_xy = np.array(
+        [
+            [100.0, -25.0],
+            [100.0, 25.0],
+            [120.0, 25.0],
+            [120.0, -25.0],
+            [100.0, -25.0],
+        ],
+        dtype=np.float64,
+    )
+
+    width_deg = mod._urban_outline_ring_width_angle_deg(
+        ring_xy,
+        building_distance_m=1000.0,
+    )
+
+    assert width_deg > 0.0
+
+
+def test_compute_urban_outlines_limits_candidate_sampling_before_expensive_projection(monkeypatch) -> None:
+    mod = _load_module()
+    sampled_rings: list[np.ndarray] = []
+
+    def fake_sample_ring_points_xy(ring_xy: np.ndarray, *, sample_step_m: float) -> np.ndarray:
+        sampled_rings.append(np.array(ring_xy, copy=True))
+        return np.array(ring_xy, copy=True)
+
+    monkeypatch.setattr(mod, "sample_ring_points_xy", fake_sample_ring_points_xy)
+    monkeypatch.setattr(mod, "MAX_URBAN_OUTLINE_CANDIDATES", 1)
+
+    tower = SimpleNamespace(
+        latitude_deg=35.710055555,
+        longitude_deg=139.810722222,
+        viewpoint_height_m=10.0,
+    )
+    low = mod.BuildingFootprint(
+        building_id="low",
+        height_m=20.0,
+        rings_lonlat=(
+            (
+                (139.8120, 35.7100),
+                (139.8121, 35.7100),
+                (139.8121, 35.7101),
+                (139.8120, 35.7101),
+                (139.8120, 35.7100),
+            ),
+        ),
+    )
+    high = mod.BuildingFootprint(
+        building_id="high",
+        height_m=5000.0,
+        rings_lonlat=(
+            (
+                (139.8130, 35.7100),
+                (139.8131, 35.7100),
+                (139.8131, 35.7101),
+                (139.8130, 35.7101),
+                (139.8130, 35.7100),
+            ),
+        ),
+    )
+
+    result = mod.compute_urban_outlines(
+        tower,
+        (low, high),
+        radius_km=5.0,
+        edge_sample_step_m=10.0,
+    )
+
+    assert len(sampled_rings) == 1
+    assert result.outlines_emitted == 1
