@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from zstarview.gui.viewer import _apply_gui_profile_to_args
+import zstarview.gui.viewer as viewer
 
 
 def test_apply_gui_profile_to_args_parses_profile_values() -> None:
@@ -16,7 +16,7 @@ def test_apply_gui_profile_to_args_parses_profile_values() -> None:
         "view_center_az": 200.0,
     }
 
-    _apply_gui_profile_to_args(args, profile)
+    viewer._apply_gui_profile_to_args(args, profile)
 
     assert args.city == "Tokyo"
     assert args.place is None
@@ -44,9 +44,54 @@ def test_apply_gui_profile_to_args_ignores_structured_city_payload_for_cli_args(
         "window_geometry": "restore",
     }
 
-    _apply_gui_profile_to_args(args, profile)
+    viewer._apply_gui_profile_to_args(args, profile)
 
     assert args.city == ""
     assert args.place is None
     assert args.place_countrycode is None
     assert args.place_lang == "en"
+
+
+def test_apply_gui_profile_to_args_preserves_explicit_cli_values(monkeypatch) -> None:
+    args = SimpleNamespace(
+        aircraft_opacity=0.0,
+        city="CLI city",
+        place="CLI place",
+        place_countrycode="us",
+        place_lang="ja",
+    )
+    profile = {
+        "aircraft_opacity": 0.4,
+        "city": {
+            "resolver": "nominatim",
+            "query": "Matsue Station",
+            "result": {
+                "name": "Matsue Station, Matsue, Shimane, Japan",
+                "lat": 35.4641778,
+                "lon": 133.0628539,
+            },
+        },
+        "place": "Profile place",
+        "place_countrycode": "jp",
+        "place_lang": "en",
+    }
+
+    monkeypatch.setattr(
+        viewer,
+        "default_gui_launch_profile",
+        lambda: {
+            "aircraft_opacity": 0.4,
+            "city": "",
+            "place": None,
+            "place_countrycode": None,
+            "place_lang": "en",
+        },
+    )
+
+    viewer._apply_gui_profile_to_args(args, profile)
+
+    assert args.aircraft_opacity == 0.0
+    assert args.city == "CLI city"
+    assert args.place == "CLI place"
+    assert args.place_countrycode == "us"
+    assert args.place_lang == "ja"

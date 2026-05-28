@@ -114,6 +114,8 @@ from .aircraft_controller import AircraftController
 from .aircraft_state import AircraftState
 from .cloud_controller import CloudController
 from .cloud_state import CloudImageState
+from .geosatellite_controller import GeoSatelliteController
+from .geosatellite_state import GeoSatelliteState
 from .composite import SkyCompositorCache
 from .draggable_window import DraggableWindow
 from .famous_star_dialog import NamedStarJumpDialog
@@ -368,8 +370,17 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             if user_options.sky_disc_alpha > 0.0
             else SKY_OPACITY_DEFAULT
         )
+        requested_cloud_alpha = user_options.cloud_disc_alpha
+        self._cloud_requested_enabled = requested_cloud_alpha > 0.0
+        # Cloud opacity is disabled if we are looking at a time-shifted view,
+        # as we can only fetch current cloud data.
+        self._cloud_alpha_when_enabled = (
+            requested_cloud_alpha if requested_cloud_alpha > 0.0 else 0.2
+        )
+        self.cloud_disc_alpha: float = requested_cloud_alpha
         requested_satellite_opacity = user_options.satellite_opacity
         self._satellite_toggle_supported = overlay_availability.satellite
+        self._satellite_requested_enabled = requested_satellite_opacity > 0.0
         self._satellite_opacity_when_enabled = (
             requested_satellite_opacity if requested_satellite_opacity > 0.0 else 1.0
         )
@@ -378,6 +389,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
         requested_aircraft_opacity = user_options.aircraft_opacity
         self._aircraft_toggle_supported = overlay_availability.aircraft
+        self._aircraft_requested_enabled = requested_aircraft_opacity > 0.0
         self._aircraft_opacity_when_enabled = (
             requested_aircraft_opacity if requested_aircraft_opacity > 0.0 else 1.0
         )
@@ -421,6 +433,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         )
         self._sky_disc_gui_allowed = bool(user_options.sky_disc_gui_allowed)
         self._cloud_gui_allowed = bool(user_options.cloud_gui_allowed)
+        self._geo_satellite_enabled = bool(user_options.geo_satellite)
         self._satellite_gui_allowed = bool(user_options.satellite_gui_allowed)
         self._aircraft_gui_allowed = bool(user_options.aircraft_gui_allowed)
         self._terrain_horizon_gui_allowed = bool(
@@ -459,15 +472,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.earth_guide_visibility_boost = user_options.earth_guide_visibility_boost
         self._star_render_expected_width = runtime_options.star_render_expected_width
         self.content_fov_deg = float(runtime_options.content_fov_deg)
-        self._cloud_toggle_supported = overlay_availability.cloud
-
-        # Cloud opacity is disabled if we are looking at a time-shifted view,
-        # as we can only fetch current cloud data.
-        requested_cloud_alpha = user_options.cloud_disc_alpha
-        self._cloud_alpha_when_enabled = (
-            requested_cloud_alpha if requested_cloud_alpha > 0.0 else 0.2
-        )
-        self.cloud_disc_alpha: float = requested_cloud_alpha
+        self._cloud_toggle_supported = overlay_availability.cloud or self._geo_satellite_enabled
         if not self._cloud_toggle_supported:
             self.cloud_disc_alpha = 0.0
 
@@ -565,6 +570,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.size_grip: Optional[QWidget] = None
         self._action_enlarge_moon: Optional[QAction] = None
         self._action_toggle_clouds: Optional[QAction] = None
+        self._action_toggle_geo_satellite: Optional[QAction] = None
         self._action_toggle_satellites: Optional[QAction] = None
         self._action_toggle_aircraft: Optional[QAction] = None
         self._action_toggle_terrain_horizon: Optional[QAction] = None
@@ -603,12 +609,14 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
         # --- Cloud Data State and Cache ---
         self.cloud_state = CloudImageState()
+        self.geosatellite_state = GeoSatelliteState()
         self.satellite_state = SatelliteState()
         self.aircraft_state = AircraftState()
         self.terrain_horizon_state = TerrainHorizonState()
         self.water_overlay_state = WaterOverlayState()
         self.urban_outline_state = UrbanOutlineState()
         self._cloud_controller: Optional[CloudController] = None
+        self._geosatellite_controller: Optional[GeoSatelliteController] = None
         self._satellite_controller: Optional[SatelliteController] = None
         self._aircraft_controller: Optional[AircraftController] = None
         self._jpl_small_body_controller: Optional[JplSmallBodyController] = None
@@ -635,6 +643,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self._cloud_controller.cloud_source_ready.connect(self._on_cloud_source_ready)
             self._cloud_controller.cloud_ready.connect(self._on_cloud_ready)
             self._cloud_controller.cloud_failed.connect(self._on_cloud_failed)
+        self._geosatellite_controller = GeoSatelliteController(parent=self)
+        self._geosatellite_controller.geo_started.connect(self._on_geosatellite_started)
+        self._geosatellite_controller.geo_source_ready.connect(self._on_geosatellite_source_ready)
+        self._geosatellite_controller.geo_ready.connect(self._on_geosatellite_ready)
+        self._geosatellite_controller.geo_failed.connect(self._on_geosatellite_failed)
         self._satellite_controller = SatelliteController(parent=self)
         self._satellite_controller.satellite_started.connect(self._on_satellite_started)
         self._satellite_controller.satellite_ready.connect(self._on_satellite_ready)
@@ -650,7 +663,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if self._action_toggle_clouds is not None:
             self._action_toggle_clouds.setEnabled(
                 self._cloud_toggle_supported
-                and self._clouddisc is not None
+                and (self._clouddisc is not None or self._geo_satellite_enabled)
                 and self._cloud_gui_allowed
             )
         if self._action_toggle_satellites is not None:
@@ -843,40 +856,26 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.delta_t = delta_t
         overlay_availability = overlay_availability_for_delta(self.delta_t)
         self._satellite_toggle_supported = overlay_availability.satellite
-        self._satellite_opacity_when_enabled = (
-            self._satellite_opacity_when_enabled
-            if self._satellite_opacity_when_enabled > 0.0
-            else 1.0
-        )
-        self.satellite_opacity = (
-            self._satellite_opacity_when_enabled
-            if self._satellite_toggle_supported
-            else 0.0
-        )
+        if not self._satellite_toggle_supported:
+            self.satellite_opacity = 0.0
+        elif self._satellite_requested_enabled:
+            self.satellite_opacity = self._satellite_opacity_when_enabled
         self._aircraft_toggle_supported = overlay_availability.aircraft
-        self._aircraft_opacity_when_enabled = (
-            self._aircraft_opacity_when_enabled
-            if self._aircraft_opacity_when_enabled > 0.0
-            else 1.0
-        )
-        self.aircraft_opacity = (
-            self._aircraft_opacity_when_enabled
-            if self._aircraft_toggle_supported
-            else 0.0
-        )
+        if not self._aircraft_toggle_supported:
+            self.aircraft_opacity = 0.0
+        elif self._aircraft_requested_enabled:
+            self.aircraft_opacity = self._aircraft_opacity_when_enabled
         self._cloud_toggle_supported = overlay_availability.cloud
-        self._cloud_alpha_when_enabled = (
-            self._cloud_alpha_when_enabled
-            if self._cloud_alpha_when_enabled > 0.0
-            else 0.2
-        )
-        self.cloud_disc_alpha = (
-            self._cloud_alpha_when_enabled if self._cloud_toggle_supported else 0.0
-        )
+        if self._geo_satellite_enabled:
+            self._cloud_toggle_supported = True
+        if not self._cloud_toggle_supported:
+            self.cloud_disc_alpha = 0.0
+        elif self._cloud_requested_enabled:
+            self.cloud_disc_alpha = self._cloud_alpha_when_enabled
         if self._action_toggle_clouds is not None:
             self._action_toggle_clouds.setEnabled(
                 self._cloud_toggle_supported
-                and self._clouddisc is not None
+                and (self._clouddisc is not None or self._geo_satellite_enabled)
                 and self._cloud_gui_allowed
             )
         if self._action_toggle_satellites is not None:
@@ -1094,6 +1093,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             checked=self.cloud_disc_alpha > 0.0,
             shortcut=QKeySequence(Qt.Key.Key_C),
             triggered=self.toggle_clouds,
+        )
+        self._action_toggle_geo_satellite = self._add_checkable_menu_action(
+            self.display_menu,
+            "Geo-satellite",
+            checked=self._geo_satellite_enabled,
+            triggered=self.toggle_geo_satellite,
         )
         self._action_toggle_satellites = self._add_checkable_menu_action(
             self.display_menu,
@@ -1423,10 +1428,22 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if self.cloud_state.cloud_amount_field is not None:
             self.cloud_state.cloud_amount_field = None
             discarded = True
+        if self.geosatellite_state.image is not None:
+            self.geosatellite_state.image = None
+            discarded = True
+        if self.geosatellite_state.missing_mask is not None:
+            self.geosatellite_state.missing_mask = None
+            discarded = True
+        if self.geosatellite_state.cloud_amount_field is not None:
+            self.geosatellite_state.cloud_amount_field = None
+            discarded = True
         if discarded:
             self.cloud_state.render_key = None
             self.cloud_state.request_id = None
             self.cloud_state.missing_mask_key = None
+            self.geosatellite_state.render_key = None
+            self.geosatellite_state.request_id = None
+            self.geosatellite_state.missing_mask_key = None
             self.state.cloud_projection_next_refresh_utc = None
             self._compositor.invalidate()
 
@@ -1457,6 +1474,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.state.viewport_interaction_mode = True
         self.state.viewport_interaction_release_pending = False
         cloud_state = self.cloud_state
+        geo_state = self.geosatellite_state
         cloud_controller = self._cloud_controller
         preserve_cloud_buffers = bool(preserve_cloud_buffers)
         cleared_cloud = False
@@ -1475,6 +1493,19 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 cloud_state.request_id = None
                 cloud_state.missing_mask_key = None
                 self.state.cloud_projection_next_refresh_utc = None
+        if geo_state is not None and not preserve_cloud_buffers:
+            if geo_state.image is not None:
+                geo_state.image = None
+                cleared_cloud = True
+            if geo_state.missing_mask is not None:
+                geo_state.missing_mask = None
+                cleared_cloud = True
+            if geo_state.cloud_amount_field is not None:
+                geo_state.cloud_amount_field = None
+                cleared_cloud = True
+            geo_state.render_key = None
+            geo_state.request_id = None
+            geo_state.missing_mask_key = None
         if cleared_cloud:
             self._compositor.invalidate()
         if cloud_controller is not None:
@@ -2082,7 +2113,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._post_startup_background_updates_started = True
         now = datetime.now(timezone.utc)
         self.state.sky_next_refresh_utc = now + timedelta(seconds=self.sky_update_interval)
-        if self._clouddisc and self.cloud_disc_alpha > 0.0:
+        if self.cloud_disc_alpha > 0.0:
             # Start the first cloud fetch immediately after startup so the overlay
             # does not sit in the idle state for a full refresh interval.
             self.start_background_cloud_update(reason="initial")
@@ -2110,6 +2141,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self._sky_worker.shutdown()
             if self._cloud_controller is not None:
                 self._cloud_controller.shutdown()
+            if self._geosatellite_controller is not None:
+                self._geosatellite_controller.shutdown()
             if self._satellite_controller is not None:
                 self._satellite_controller.shutdown()
             if self._aircraft_controller is not None:
@@ -2304,7 +2337,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def toggle_clouds(self) -> None:
         if (
             not self._cloud_toggle_supported
-            or self._clouddisc is None
             or not self._cloud_gui_allowed
         ):
             if self._action_toggle_clouds is not None:
@@ -2331,6 +2363,39 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         else:
             self.state.cloud_next_refresh_utc = None
 
+        self.request_client_update()
+
+    def toggle_geo_satellite(self) -> None:
+        self._geo_satellite_enabled = not bool(self._geo_satellite_enabled)
+        if (
+            self._action_toggle_geo_satellite is not None
+            and self._action_toggle_geo_satellite.isChecked() != self._geo_satellite_enabled
+        ):
+            self._action_toggle_geo_satellite.setChecked(self._geo_satellite_enabled)
+        if self._geo_satellite_enabled:
+            self._cloud_toggle_supported = True
+        else:
+            self._cloud_toggle_supported = bool(self._clouddisc is not None)
+            if self._clouddisc is None:
+                self.cloud_disc_alpha = 0.0
+        if self._action_toggle_clouds is not None:
+            self._action_toggle_clouds.setEnabled(
+                self._cloud_toggle_supported
+                and (self._clouddisc is not None or self._geo_satellite_enabled)
+                and self._cloud_gui_allowed
+            )
+
+        projector = getattr(self, "request_cloud_projection_update", None)
+        if callable(projector):
+            projector(reason="toggle-geo-satellite")
+        elif self._geo_satellite_enabled:
+            self.start_background_geo_satellite_update(reason="toggle-geo-satellite")
+        else:
+            self.start_background_cloud_update(reason="toggle-geo-satellite")
+
+        self.state.cloud_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
+            seconds=CLOUD_UPDATE_INTERVAL
+        )
         self.request_client_update()
 
     def toggle_satellites(self) -> None:

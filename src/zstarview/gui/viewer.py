@@ -251,6 +251,7 @@ def _make_gui_profile_io(profile: dict[str, object]) -> tuple[
 
 
 def _apply_gui_profile_to_args(args: object, profile: dict[str, object]) -> None:
+    defaults = default_gui_launch_profile()
     blankable_fields = {
         "place",
         "place_countrycode",
@@ -259,14 +260,40 @@ def _apply_gui_profile_to_args(args: object, profile: dict[str, object]) -> None
         "timezone",
         "search",
     }
+    location_fields = {
+        "city",
+        "place",
+        "place_countrycode",
+        "place_lang",
+    }
+
+    def _is_explicit(key: str) -> bool:
+        if not hasattr(args, key):
+            return False
+        if key not in defaults:
+            return True
+        return getattr(args, key) != defaults[key]
+
+    def _can_apply_profile_field(key: str) -> bool:
+        return not _is_explicit(key)
+
+    structured_city = profile.get("city")
+    structured_city_allowed = not any(_is_explicit(field) for field in location_fields)
+
     for key, value in profile.items():
+        if key == "city" and isinstance(structured_city, dict):
+            if not structured_city_allowed:
+                continue
+        elif not _can_apply_profile_field(key):
+            continue
+
         if key in blankable_fields and isinstance(value, str) and not value.strip():
             setattr(args, key, None)
             continue
         setattr(args, key, value)
 
     city_value = profile.get("city")
-    if isinstance(city_value, dict):
+    if isinstance(city_value, dict) and structured_city_allowed:
         setattr(args, "city", "")
         setattr(args, "place", None)
         setattr(args, "place_countrycode", None)
@@ -291,7 +318,6 @@ def _apply_gui_profile_to_args(args: object, profile: dict[str, object]) -> None
         except (TypeError, ValueError):
             pass
 
-    defaults = default_gui_launch_profile()
     if "view_center_alt" in profile:
         default_alt = defaults.get("view_center_alt", 90.0)
         setattr(args, "view_center_alt_specified", profile["view_center_alt"] != default_alt)
@@ -490,6 +516,7 @@ def main() -> None:
         sky_disc_altaz_rings_hover=args.sky_disc_altaz_rings_hover,
         night_light_opacity=args.night_light_opacity,
         cloud_disc_alpha=0.0 if cloud_stripe_count == 0 or cloud_stripe_width == 0.0 else args.cloud_opacity,
+        geo_satellite=bool(args.geo_satellite),
         satellite_opacity=args.satellite_opacity,
         aircraft_opacity=args.aircraft_opacity,
         terrain_horizon_opacity=args.terrain_horizon_opacity,
