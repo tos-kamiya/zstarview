@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.28.10 - 2026-05-28
+- Kept `zstarview-gui` aligned with the CLI-only Geo-satellite behavior, so the startup dialog no longer exposes that toggle while the internal GUI path still honors the feature when enabled from the command line.
+- Refreshed the bundled Geo-satellite gray-common mask assets and documented the regenerated six-frame workflow used to rebuild them.
+
 ## 1.28.9 - 2026-05-28
 - Added an experimental, opt-in Geo-satellite cloud path for the Europe workflow band, with GUI wiring, status handling, and `--geo-satellite` CLI docs.
 - Improved urban-outline pruning and status reporting, including the new `--urban-outline-max-candidates` knob, split base/skyscraper counts, and updated overlay docs.
