@@ -113,6 +113,7 @@ class _WindowStub:
         self.cloud_disc_alpha = values.get("cloud_disc_alpha", 0.0)
         self.satellite_opacity = values.get("satellite_opacity", 0.0)
         self.aircraft_opacity = values.get("aircraft_opacity", 0.0)
+        self.tropical_cyclone_opacity = values.get("tropical_cyclone_opacity", 0.4)
         self.terrain_horizon_opacity = values.get("terrain_horizon_opacity", 0.25)
         self.earth_guide_opacity = values.get("earth_guide_opacity", 0.25)
         self.urban_outline_opacity = values.get("urban_outline_opacity", 0.2)
@@ -122,6 +123,9 @@ class _WindowStub:
         )
         self._water_overlay_gui_allowed = values.get(
             "_water_overlay_gui_allowed", True
+        )
+        self._tropical_cyclone_toggle_supported = values.get(
+            "_tropical_cyclone_toggle_supported", True
         )
         self._terrain_horizon_gui_allowed = values.get(
             "_terrain_horizon_gui_allowed", True
@@ -485,6 +489,8 @@ def _make_style(**overrides) -> pipeline_module.RenderStyle:
         "urban_outline_opacity": 0.2,
         "show_urban_outline_layer": True,
         "aircraft_opacity": 0.0,
+        "tropical_cyclone_opacity": 0.4,
+        "show_tropical_cyclone_overlay": True,
         "star_render_expected_width": 600,
     }
     values.update(overrides)
@@ -2041,6 +2047,16 @@ def test_end_viewport_interaction_mode_release_clears_interaction_when_sky_updat
     dummy.request_client_update.assert_called_once()
 
 
+def test_tropical_cyclone_layer_is_disabled_when_opacity_is_zero() -> None:
+    dummy = _WindowStub(
+        show_tropical_cyclone_overlay=True,
+        tropical_cyclone_opacity=0.0,
+        _tropical_cyclone_controller=object(),
+    )
+
+    assert window_updates_module.SkyWindowUpdatesMixin._tropical_cyclone_layer_enabled(dummy) is False
+
+
 def test_jump_to_jpl_major_body_target_keeps_overlay_without_refresh() -> None:
     dummy = _WindowStub()
     dummy.viewer_data = ViewerData(
@@ -3581,6 +3597,8 @@ def test_render_scene_draws_dso_hover_immediately_before_overlay(monkeypatch) ->
         urban_outline_opacity=0.0,
         show_urban_outline_layer=False,
         aircraft_opacity=0.0,
+        tropical_cyclone_opacity=0.4,
+        show_tropical_cyclone_overlay=True,
         star_render_expected_width=600,
     )
     hud = pipeline_module.RenderHudState(

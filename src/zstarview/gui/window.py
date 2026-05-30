@@ -81,6 +81,7 @@ from ..paths import (
     TEXT_FONT_PATH,
     OVERLAY_FONT_SIZE_DEFAULT,
     THEME_STYLES_BY_PRESET,
+    TROPICAL_CYCLONE_DEFAULT_OPACITY,
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
 )
@@ -423,6 +424,19 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             if user_options.water_overlay_opacity > 0.0
             else 0.12
         )
+        self._tropical_cyclone_toggle_supported = bool(
+            user_options.tropical_cyclone_gui_allowed
+        )
+        self._tropical_cyclone_opacity_when_enabled = (
+            user_options.tropical_cyclone_opacity
+            if user_options.tropical_cyclone_opacity > 0.0
+            else TROPICAL_CYCLONE_DEFAULT_OPACITY
+        )
+        self.tropical_cyclone_opacity = (
+            user_options.tropical_cyclone_opacity
+            if self._tropical_cyclone_toggle_supported
+            else 0.0
+        )
         self._earth_guide_opacity_when_enabled = (
             user_options.earth_guide_opacity
             if user_options.earth_guide_opacity > 0.0
@@ -446,7 +460,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._water_overlay_gui_allowed = True
         self.show_urban_outline_layer: bool = self.urban_outline_opacity > 0.0
         self.show_water_overlay_layer: bool = self.water_overlay_opacity > 0.0
-        self.show_tropical_cyclone_overlay: bool = True
+        self.show_tropical_cyclone_overlay: bool = self.tropical_cyclone_opacity > 0.0
         self.enlarge_moon = user_options.enlarge_moon
         self.bright_bodies_mode = user_options.bright_bodies_mode
         self.star_base_radius = user_options.star_base_radius
@@ -665,16 +679,17 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._aircraft_controller.aircraft_started.connect(self._on_aircraft_started)
         self._aircraft_controller.aircraft_ready.connect(self._on_aircraft_ready)
         self._aircraft_controller.aircraft_failed.connect(self._on_aircraft_failed)
-        self._tropical_cyclone_controller = TropicalCycloneController(parent=self)
-        self._tropical_cyclone_controller.cyclone_started.connect(
-            self._on_tropical_cyclone_started
-        )
-        self._tropical_cyclone_controller.cyclone_ready.connect(
-            self._on_tropical_cyclone_ready
-        )
-        self._tropical_cyclone_controller.cyclone_failed.connect(
-            self._on_tropical_cyclone_failed
-        )
+        if self._tropical_cyclone_toggle_supported:
+            self._tropical_cyclone_controller = TropicalCycloneController(parent=self)
+            self._tropical_cyclone_controller.cyclone_started.connect(
+                self._on_tropical_cyclone_started
+            )
+            self._tropical_cyclone_controller.cyclone_ready.connect(
+                self._on_tropical_cyclone_ready
+            )
+            self._tropical_cyclone_controller.cyclone_failed.connect(
+                self._on_tropical_cyclone_failed
+            )
         self._jpl_small_body_controller = JplSmallBodyController(parent=self)
         self._jpl_small_body_controller.jpl_started.connect(self._on_jpl_started)
         self._jpl_small_body_controller.jpl_ready.connect(self._on_jpl_ready)
@@ -692,6 +707,10 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if self._action_toggle_aircraft is not None:
             self._action_toggle_aircraft.setEnabled(
                 self._aircraft_toggle_supported and self._aircraft_gui_allowed
+            )
+        if self._action_toggle_tropical_cyclone is not None:
+            self._action_toggle_tropical_cyclone.setEnabled(
+                self._tropical_cyclone_toggle_supported
             )
 
         terrain_cache_dir = Path(CACHE_PATH) / "copernicus-dem"
@@ -1138,6 +1157,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self.display_menu,
             "Typhoon / Cyclone",
             checked=self.show_tropical_cyclone_overlay,
+            enabled=self._tropical_cyclone_toggle_supported,
             triggered=self.toggle_tropical_cyclone_overlay,
         )
         self.display_menu.addSeparator()
@@ -2490,10 +2510,24 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.request_client_update()
 
     def toggle_tropical_cyclone_overlay(self) -> None:
-        self.show_tropical_cyclone_overlay = not bool(self.show_tropical_cyclone_overlay)
+        if not self._tropical_cyclone_toggle_supported:
+            if self._action_toggle_tropical_cyclone is not None:
+                self._action_toggle_tropical_cyclone.setChecked(False)
+            return
+
+        if self.tropical_cyclone_opacity > 0.0:
+            self._tropical_cyclone_opacity_when_enabled = self.tropical_cyclone_opacity
+        enable_tropical_cyclone = self.tropical_cyclone_opacity <= 0.0
+        self.tropical_cyclone_opacity = (
+            self._tropical_cyclone_opacity_when_enabled
+            if enable_tropical_cyclone
+            else 0.0
+        )
+        self.show_tropical_cyclone_overlay = bool(self.tropical_cyclone_opacity > 0.0)
         if (
             self._action_toggle_tropical_cyclone is not None
-            and self._action_toggle_tropical_cyclone.isChecked() != self.show_tropical_cyclone_overlay
+            and self._action_toggle_tropical_cyclone.isChecked()
+            != self.show_tropical_cyclone_overlay
         ):
             self._action_toggle_tropical_cyclone.setChecked(self.show_tropical_cyclone_overlay)
         if self.show_tropical_cyclone_overlay and self.tropical_cyclone_state.snapshot is None:

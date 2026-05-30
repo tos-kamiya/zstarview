@@ -434,6 +434,7 @@ def _build_window_inputs_from_args(
             if overlay_availability.aircraft
             else 0.0
         ),
+        tropical_cyclone_opacity=args.tropical_cyclone_opacity,
         terrain_horizon_opacity=args.terrain_horizon_opacity,
         earth_guide_opacity=args.earth_guide_opacity,
         urban_outline_opacity=args.urban_outline_opacity,
@@ -455,6 +456,7 @@ def _build_window_inputs_from_args(
         cloud_gui_allowed=overlay_availability.cloud and args.cloud_opacity > 0.0,
         satellite_gui_allowed=overlay_availability.satellite and args.satellite_opacity > 0.0,
         aircraft_gui_allowed=overlay_availability.aircraft and args.aircraft_opacity > 0.0,
+        tropical_cyclone_gui_allowed=args.tropical_cyclone_opacity > 0.0,
         terrain_horizon_gui_allowed=args.terrain_horizon_opacity > 0.0,
         earth_guide_gui_allowed=args.earth_guide_opacity > 0.0,
         night_light_gui_allowed=args.night_light_opacity > 0.0,

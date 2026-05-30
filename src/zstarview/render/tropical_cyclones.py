@@ -16,7 +16,7 @@ from .geometry import normalized_to_screen_xy
 
 TROPICAL_CYCLONE_TARGET_HEIGHT_M = 0.0
 TROPICAL_CYCLONE_MAX_DISTANCE_KM = 128.0
-TROPICAL_CYCLONE_COLOR_RGBA = (240, 122, 122, 102)
+TROPICAL_CYCLONE_COLOR_RGB = (240, 122, 122)
 TROPICAL_CYCLONE_LABEL_RGBA = (240, 122, 122, 255)
 
 
@@ -128,6 +128,7 @@ def draw_tropical_cyclone_overlay(
     snapshot: TropicalCycloneSnapshot | None,
     when_utc: datetime | None,
     theme: ThemeStyle,
+    opacity: float,
     enabled: bool = True,
 ) -> None:
     if not enabled or snapshot is None:
@@ -149,11 +150,17 @@ def draw_tropical_cyclone_overlay(
 
     painter.save()
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+    marker_alpha = int(round(255.0 * min(1.0, max(0.0, float(opacity)))))
     _draw_inverted_triangle(
         painter,
         point,
         geometry=geometry,
-        color_rgba=TROPICAL_CYCLONE_COLOR_RGBA,
+        color_rgba=(
+            int(TROPICAL_CYCLONE_COLOR_RGB[0]),
+            int(TROPICAL_CYCLONE_COLOR_RGB[1]),
+            int(TROPICAL_CYCLONE_COLOR_RGB[2]),
+            marker_alpha,
+        ),
     )
     _draw_label(
         painter,

@@ -124,6 +124,18 @@ def test_parse_args_satellite_opacity_override(monkeypatch) -> None:
     assert math.isclose(float(args.satellite_opacity), 0.3, rel_tol=0.0, abs_tol=1e-9)
 
 
+def test_parse_args_tropical_cyclone_opacity_default(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview"])
+    args = parse_args()
+    assert math.isclose(float(args.tropical_cyclone_opacity), 0.4, rel_tol=0.0, abs_tol=1e-9)
+
+
+def test_parse_args_tropical_cyclone_opacity_override(monkeypatch) -> None:
+    monkeypatch.setattr("sys.argv", ["zstarview", "--tropical-cyclone-opacity", "0.25"])
+    args = parse_args()
+    assert math.isclose(float(args.tropical_cyclone_opacity), 0.25, rel_tol=0.0, abs_tol=1e-9)
+
+
 def test_parse_args_urban_outline_radius_override(monkeypatch) -> None:
     monkeypatch.setattr("sys.argv", ["zstarview", "--urban-outline-radius-km", "1.8"])
     args = parse_args()

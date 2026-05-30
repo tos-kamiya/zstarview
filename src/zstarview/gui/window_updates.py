@@ -182,6 +182,7 @@ class SkyWindowUpdatesMixin:
     def _tropical_cyclone_layer_enabled(self) -> bool:
         return bool(
             getattr(self, "show_tropical_cyclone_overlay", False)
+            and float(getattr(self, "tropical_cyclone_opacity", 0.0)) > 0.0
             and self._tropical_cyclone_controller is not None
         )
 

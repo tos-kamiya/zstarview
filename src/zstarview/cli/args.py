@@ -14,6 +14,7 @@ from ..paths import (
     TRANSPARENT_THEME_ALIAS,
     TRANSPARENT_THEME_DEFAULT_PRESET,
     TRANSPARENT_THEME_OPACITY_VALUES,
+    TROPICAL_CYCLONE_DEFAULT_OPACITY,
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
 )
@@ -688,6 +689,16 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         ),
     )
     parser.add_argument(
+        "--tropical-cyclone-opacity",
+        type=float,
+        default=TROPICAL_CYCLONE_DEFAULT_OPACITY,
+        help=(
+            "Opacity of the tropical cyclone overlay (0.0 - 1.0, default: "
+            f"{TROPICAL_CYCLONE_DEFAULT_OPACITY}). "
+            "Set to 0.0 to disable cyclone API fetch and rendering for that run."
+        ),
+    )
+    parser.add_argument(
         "--show-guidelines-initial",
         type=_parse_bool,
         default=None,
@@ -1102,6 +1113,16 @@ def add_render_arguments(
         help=(
             "Opacity of the artificial satellite overlay (0.0 - 1.0, default: 0.7). "
             "Set to 0.0 to disable satellite element fetch and rendering."
+        ),
+    )
+    parser.add_argument(
+        "--tropical-cyclone-opacity",
+        type=float,
+        default=TROPICAL_CYCLONE_DEFAULT_OPACITY,
+        help=(
+            "Opacity of the tropical cyclone overlay (0.0 - 1.0, default: "
+            f"{TROPICAL_CYCLONE_DEFAULT_OPACITY}). "
+            "Set to 0.0 to disable cyclone API fetch and rendering for that run."
         ),
     )
     parser.add_argument(

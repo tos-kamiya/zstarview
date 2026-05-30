@@ -23,6 +23,7 @@ from ..paths import (
     OVERLAY_FONT_SIZE_DEFAULT,
     OVERLAY_FONT_SIZE_MAX,
     OVERLAY_FONT_SIZE_MIN,
+    TROPICAL_CYCLONE_DEFAULT_OPACITY,
 )
 from ..search.models import SearchJumpTarget
 from ..types import StarCatalogMeta, ViewerData
@@ -58,6 +59,7 @@ class SkyWindowUserOptions:
     geo_satellite: bool = False
     satellite_opacity: float = 0.7
     aircraft_opacity: float = 0.4
+    tropical_cyclone_opacity: float = TROPICAL_CYCLONE_DEFAULT_OPACITY
     terrain_horizon_opacity: float = 0.003
     earth_guide_opacity: float = 0.028
     urban_outline_opacity: float = 0.2
@@ -81,6 +83,7 @@ class SkyWindowUserOptions:
     cloud_gui_allowed: bool = True
     satellite_gui_allowed: bool = True
     aircraft_gui_allowed: bool = True
+    tropical_cyclone_gui_allowed: bool = True
     terrain_horizon_gui_allowed: bool = True
     earth_guide_gui_allowed: bool = True
     night_light_gui_allowed: bool = True
@@ -193,6 +196,7 @@ def prepare_window_user_options(
     geo_satellite: bool = False,
     satellite_opacity: float,
     aircraft_opacity: float,
+    tropical_cyclone_opacity: float = TROPICAL_CYCLONE_DEFAULT_OPACITY,
     terrain_horizon_opacity: float,
     earth_guide_opacity: float,
     urban_outline_opacity: float,
@@ -214,6 +218,7 @@ def prepare_window_user_options(
     cloud_gui_allowed: bool,
     satellite_gui_allowed: bool,
     aircraft_gui_allowed: bool,
+    tropical_cyclone_gui_allowed: bool,
     terrain_horizon_gui_allowed: bool,
     earth_guide_gui_allowed: bool,
     night_light_gui_allowed: bool = True,
@@ -235,6 +240,11 @@ def prepare_window_user_options(
         geo_satellite=bool(geo_satellite),
         satellite_opacity=_apply_visibility_boost(satellite_opacity, visibility_boost, 1.0),
         aircraft_opacity=_apply_visibility_boost(aircraft_opacity, visibility_boost, 1.0),
+        tropical_cyclone_opacity=_apply_visibility_boost(
+            tropical_cyclone_opacity,
+            visibility_boost,
+            1.0,
+        ),
         terrain_horizon_opacity=_apply_visibility_boost(terrain_horizon_opacity, visibility_boost, 1.0),
         earth_guide_opacity=_apply_visibility_boost(earth_guide_opacity, visibility_boost, 1.0),
         urban_outline_opacity=_apply_visibility_boost(urban_outline_opacity, visibility_boost, 1.0),
@@ -257,6 +267,7 @@ def prepare_window_user_options(
         cloud_gui_allowed=bool(cloud_gui_allowed),
         satellite_gui_allowed=bool(satellite_gui_allowed),
         aircraft_gui_allowed=bool(aircraft_gui_allowed),
+        tropical_cyclone_gui_allowed=bool(tropical_cyclone_gui_allowed),
         terrain_horizon_gui_allowed=bool(terrain_horizon_gui_allowed),
         earth_guide_gui_allowed=bool(earth_guide_gui_allowed),
         night_light_gui_allowed=bool(night_light_gui_allowed),

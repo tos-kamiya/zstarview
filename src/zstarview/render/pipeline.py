@@ -156,6 +156,7 @@ class RenderStyle:
     show_urban_outline_layer: bool = True
     water_overlay_opacity: float = 0.12
     aircraft_opacity: float = 0.5
+    tropical_cyclone_opacity: float = 0.4
     show_tropical_cyclone_overlay: bool = True
     star_render_expected_width: int = 600
     theme: ThemeStyle = THEME_STYLES_BY_PRESET["night"]
@@ -326,7 +327,8 @@ def render_base_scene_into_painter(
         snapshot=scene.tropical_cyclone_snapshot,
         when_utc=frame.time_obj.to_datetime() if frame.time_obj is not None else None,
         theme=style.theme,
-        enabled=bool(style.show_tropical_cyclone_overlay),
+        opacity=float(style.tropical_cyclone_opacity),
+        enabled=bool(style.show_tropical_cyclone_overlay and style.tropical_cyclone_opacity > 0.0),
     )
 
 

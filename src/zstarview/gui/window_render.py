@@ -144,6 +144,7 @@ class SkyWindowRenderMixin:
             bool(self.show_guidelines),
             bool(self.show_observation_info),
             bool(getattr(self, "show_tropical_cyclone_overlay", False)),
+            round(float(getattr(self, "tropical_cyclone_opacity", 0.0)), 3),
             bool(self.enlarge_moon),
             self.bright_bodies_mode,
             round(float(self.vmag_limit), 3),
@@ -282,6 +283,7 @@ class SkyWindowRenderMixin:
             round(float(self.satellite_opacity), 3),
             round(float(self.aircraft_opacity), 3),
             bool(getattr(self, "show_tropical_cyclone_overlay", False)),
+            round(float(getattr(self, "tropical_cyclone_opacity", 0.0)), 3),
             overlay_time_bucket,
             self._render_cache_stamp(self.satellite_state.records_by_group),
             self._render_cache_stamp(self.aircraft_state.snapshots),
@@ -642,6 +644,7 @@ class SkyWindowRenderMixin:
             show_urban_outline_layer=bool(self.show_urban_outline_layer),
             water_overlay_opacity=float(self.water_overlay_opacity),
             aircraft_opacity=float(self.aircraft_opacity),
+            tropical_cyclone_opacity=float(getattr(self, "tropical_cyclone_opacity", 0.0)),
             show_tropical_cyclone_overlay=bool(getattr(self, "show_tropical_cyclone_overlay", False)),
             star_render_expected_width=int(self._star_render_expected_width),
         )

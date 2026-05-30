@@ -172,6 +172,7 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
         sky_disc_altaz_rings_hover="altaz",
         cloud_disc_alpha=0.075,
         satellite_opacity=0.7,
+        tropical_cyclone_opacity=0.4,
         terrain_horizon_opacity=1.5,
         earth_guide_opacity=1.5,
         urban_outline_opacity=1.5,
@@ -194,6 +195,7 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
         cloud_gui_allowed=False,
         satellite_gui_allowed=True,
         aircraft_gui_allowed=False,
+        tropical_cyclone_gui_allowed=False,
         terrain_horizon_gui_allowed=False,
         earth_guide_gui_allowed=False,
         urban_outline_gui_allowed=False,
@@ -203,6 +205,7 @@ def test_prepare_window_user_options_normalizes_terrain_horizon_fields() -> None
     assert options.earth_guide_opacity == 1.0
     assert options.earth_guide_visibility_boost == 2.0
     assert options.urban_outline_opacity == 1.0
+    assert options.tropical_cyclone_opacity == pytest.approx(0.8)
     assert options.sky_disc_alpha == pytest.approx(0.2)
     assert options.sky_disc_style == "smooth"
     assert options.sky_disc_altaz_rings == "dimalt"
@@ -270,14 +273,16 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         observation_info_pinned=False,
         sky_disc_alpha=0.2,
         night_light_opacity=0.022,
-            cloud_disc_alpha=0.2,
-            _geo_satellite_enabled=False,
-            water_overlay_opacity=0.12,
+        cloud_disc_alpha=0.2,
+        _geo_satellite_enabled=False,
+        water_overlay_opacity=0.12,
         satellite_opacity=0.5,
         aircraft_opacity=0.5,
         terrain_horizon_opacity=0.1,
         earth_guide_opacity=0.1,
         urban_outline_opacity=0.2,
+        show_tropical_cyclone_overlay=False,
+        _tropical_cyclone_toggle_supported=False,
         _night_light_toggle_supported=True,
         _water_overlay_gui_allowed=True,
         _terrain_horizon_gui_allowed=True,
@@ -302,6 +307,7 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         toggle_water_overlay=lambda: None,
         toggle_earth_guide=lambda: None,
         toggle_urban_outline=lambda: None,
+        toggle_tropical_cyclone_overlay=lambda: None,
         toggle_night_lights=lambda: None,
         toggle_fullscreen=lambda: None,
         square_client_area=lambda: None,
@@ -351,14 +357,16 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         observation_info_pinned=False,
         sky_disc_alpha=0.2,
         night_light_opacity=0.022,
-            cloud_disc_alpha=0.2,
-            _geo_satellite_enabled=False,
-            water_overlay_opacity=0.12,
+        cloud_disc_alpha=0.2,
+        _geo_satellite_enabled=False,
+        water_overlay_opacity=0.12,
         satellite_opacity=0.5,
         aircraft_opacity=0.5,
         terrain_horizon_opacity=0.1,
         earth_guide_opacity=0.1,
         urban_outline_opacity=0.2,
+        show_tropical_cyclone_overlay=False,
+        _tropical_cyclone_toggle_supported=False,
         _night_light_toggle_supported=True,
         _water_overlay_gui_allowed=True,
         _terrain_horizon_gui_allowed=True,
@@ -383,6 +391,7 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         toggle_water_overlay=lambda: None,
         toggle_earth_guide=lambda: None,
         toggle_urban_outline=lambda: None,
+        toggle_tropical_cyclone_overlay=lambda: None,
         toggle_night_lights=lambda: None,
         toggle_fullscreen=lambda: None,
         square_client_area=lambda: None,
@@ -447,10 +456,13 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
         night_light_opacity=0.022,
         _night_light_toggle_supported=True,
         urban_outline_opacity=0.2,
+        show_tropical_cyclone_overlay=False,
+        _tropical_cyclone_toggle_supported=False,
         _water_overlay_action_enabled=lambda: True,
         vmag_limit=6.0,
         toggle_night_lights=lambda: None,
         toggle_urban_outline=lambda: None,
+        toggle_tropical_cyclone_overlay=lambda: None,
         _rotate_view=lambda **_kwargs: None,
         _open_named_star_jump_dialog=lambda: None,
         _open_named_star_search_dialog=lambda: None,
@@ -502,6 +514,7 @@ def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:
         "Geo-satellite",
         "Satellites",
         "Aircraft",
+        "Typhoon / Cyclone",
         "Night Lights",
         "Urban Outline",
         "Terrain Horizon",
@@ -539,6 +552,8 @@ def test_build_window_menu_disables_water_surface_when_terrain_horizon_off(
         terrain_horizon_opacity=0.0,
         earth_guide_opacity=0.1,
         urban_outline_opacity=0.2,
+        show_tropical_cyclone_overlay=False,
+        _tropical_cyclone_toggle_supported=False,
         _night_light_toggle_supported=True,
         _water_overlay_gui_allowed=True,
         _terrain_horizon_gui_allowed=True,
@@ -562,6 +577,7 @@ def test_build_window_menu_disables_water_surface_when_terrain_horizon_off(
         toggle_water_overlay=lambda: None,
         toggle_earth_guide=lambda: None,
         toggle_urban_outline=lambda: None,
+        toggle_tropical_cyclone_overlay=lambda: None,
         toggle_night_lights=lambda: None,
         toggle_fullscreen=lambda: None,
         square_client_area=lambda: None,
@@ -710,6 +726,7 @@ def test_status_line_message_combines_cloud_and_terrain_segments() -> None:
     dummy._cloud_status_line = lambda: "Clouds [AUTO]: downloading"
     dummy._satellite_status_line = lambda: ""
     dummy._aircraft_status_line = lambda: ""
+    dummy._tropical_cyclone_status_line = lambda: ""
     dummy._jpl_small_body_status_line = lambda: ""
     dummy._terrain_horizon_status_line = lambda: "△ loading DEM..."
     dummy._water_overlay_status_line = lambda: ""
@@ -728,6 +745,7 @@ def test_status_line_message_keeps_placeholder_icons_for_hidden_layers() -> None
     dummy._cloud_status_line = lambda: "☁ ---"
     dummy._satellite_status_line = lambda: "🛰 ---"
     dummy._aircraft_status_line = lambda: "✈ ---"
+    dummy._tropical_cyclone_status_line = lambda: ""
     dummy._jpl_small_body_status_line = lambda: ""
     dummy._terrain_horizon_status_line = lambda: "△ ---"
     dummy._water_overlay_status_line = lambda: ""
@@ -1276,6 +1294,7 @@ def test_post_startup_background_updates_start_cloud_immediately() -> None:
         satellite_next_refresh_utc=None,
         aircraft_next_refresh_utc=None,
     )
+    dummy._tropical_cyclone_controller = None
     timer_calls: list[int] = []
     dummy._scheduler_tick_timer = SimpleNamespace(
         isActive=lambda: False,
@@ -1673,6 +1692,12 @@ def test_end_viewport_interaction_mode_requests_full_refresh() -> None:
     dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(
         str(kwargs.get("reason"))
     )
+    dummy.request_cloud_projection_update = lambda **kwargs: calls.append(
+        str(kwargs.get("reason"))
+    )
+    dummy.reproject_tropical_cyclone_overlay = lambda **kwargs: calls.append(
+        "cyclone"
+    )
     dummy.update = lambda: calls.append("update")
 
     SkyWindow._end_viewport_interaction_mode(dummy)
@@ -1683,6 +1708,7 @@ def test_end_viewport_interaction_mode_requests_full_refresh() -> None:
         "viewport-interaction-idle",
         "view-change-idle",
         "view-change-idle",
+        "cyclone",
         "request-client",
     ]
 
