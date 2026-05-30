@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from PySide6.QtWidgets import QFormLayout
 from PySide6.QtWidgets import QDoubleSpinBox
 from PySide6.QtWidgets import QApplication
 
@@ -58,14 +59,17 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
     assert dialog._time_absolute_radio.isChecked() is False
     assert dialog._widgets["hours"].isEnabled() is False
     assert dialog._widgets["datetime"].isEnabled() is False
-    assert set(dialog._overlay_sections) == {
+    assert list(dialog._overlay_sections) == [
         "Sky",
         "Clouds",
+        "Tropical Cyclone",
         "Aircraft and Satellites",
         "Ground and Guides",
         "Urban Outline",
-    }
+    ]
     assert dialog._overlay_sections["Sky"].is_expanded() is True
+    assert "tropical_cyclone_opacity" in dialog._widgets
+    assert dialog._overlay_section_by_key["tropical_cyclone_opacity"] == "Tropical Cyclone"
     dialog._overlay_sections["Sky"]._button.setChecked(False)
     assert dialog._overlay_sections["Sky"].is_expanded() is False
     assert "overlay_font_size" in dialog._widgets
@@ -75,6 +79,21 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
     assert isinstance(terrain_widget, QDoubleSpinBox)
     assert terrain_widget.decimals() == 3
     assert terrain_widget.value() == 0.003
+    ground_layout = dialog._overlay_layouts["Ground and Guides"]
+    assert isinstance(ground_layout, QFormLayout)
+    assert [
+        ground_layout.itemAt(index, QFormLayout.ItemRole.LabelRole).widget().text()
+        for index in range(ground_layout.rowCount())
+    ] == [
+        "Terrain horizon opacity",
+        "Earth guide opacity",
+        "Ground tint opacity",
+        "Water surface opacity",
+        "Night light opacity",
+    ]
+    cyclone_widget = dialog._widgets["tropical_cyclone_opacity"]
+    assert isinstance(cyclone_widget, QDoubleSpinBox)
+    assert 0.0 <= cyclone_widget.value() <= 1.0
 
 
 def test_startup_dialog_location_mode_checkboxes_are_exclusive() -> None:
@@ -300,3 +319,20 @@ def test_startup_dialog_place_search_uses_search_dialog_and_saves_selection(monk
     assert profile["city"]["resolver"] == "nominatim"
     assert profile["city"]["query"] == "Matsue Station"
     assert dialog._place_selected_payload is not None
+
+
+def test_startup_dialog_preserves_tropical_cyclone_opacity_in_profile() -> None:
+    dialog = StartupDialog(
+        profile={
+            "window_geometry": "restore",
+            "cloud_stripe": "width,50,0.85",
+            "tropical_cyclone_opacity": 0.27,
+        }
+    )
+
+    cyclone_widget = dialog._widgets["tropical_cyclone_opacity"]
+    assert isinstance(cyclone_widget, QDoubleSpinBox)
+    assert cyclone_widget.value() == pytest.approx(0.27)
+
+    profile = dialog.selected_profile()
+    assert profile["tropical_cyclone_opacity"] == pytest.approx(0.27)

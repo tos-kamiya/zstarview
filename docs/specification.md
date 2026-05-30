@@ -410,7 +410,7 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
   - `Overlays`
   - `General`
 - ただし、`--list-viewpoints`、`--list-viewpoint-names`、`--show-viewpoint-json` のような dataset 参照専用オプションは、このダイアログには含めてはならない。
-- `Overlays` タブは、`Sky`、`Clouds`、`Aircraft and Satellites`、`Ground and Guides`、`Urban Outline` などの折りたたみ可能なサブグループに分けてよい。
+- `Overlays` タブは、`Sky`、`Clouds`、`Tropical Cyclone`、`Aircraft and Satellites`、`Ground and Guides`、`Urban Outline` などの折りたたみ可能なサブグループに分けてよい。
 - 少なくとも次のグループを入力できてよい。
   - 観測地点
   - 地点検索モード
@@ -448,7 +448,7 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 
 - `zstarview-gui` は、`zstarview` と同じ GUI 本体を起動するが、起動前設定ダイアログを先に開くための専用エントリポイントとして扱ってよい。
 - `zstarview-gui` は、起動前設定ダイアログで入力された値を、ほぼすべて次回起動のデフォルトとして保存してよい。
-- `zstarview-gui` の保存対象は、観測地点、観測時刻、視線中心、視野スケール、テーマ、各 overlay の初期表示状態、各 overlay の初期 opacity、`--enlarge-moon`、`--bright-bodies`、`--overlay-font-size`、`--visibility-boost`、`--observation-info`、起動前の検索条件、および GUI 起動時に初期値として意味を持つ項目を含めてよい。
+- `zstarview-gui` の保存対象は、観測地点、観測時刻、視線中心、視野スケール、テーマ、各 overlay の初期表示状態、各 overlay の初期 opacity、`--enlarge-moon`、`--bright-bodies`、`--overlay-font-size`、`--visibility-boost`、`--observation-info`、起動前の検索条件、および GUI 起動時に初期値として意味を持つ項目を含めてよい。各 overlay の初期 opacity には、雲、人工衛星、航空機、台風・サイクロン、地形地平線、地球ガイド、夜間光、地面ティント、都市アウトライン、水面を含めてよい。
 - `zstarview-gui` の検索条件には、必要なら候補選択に使った構造化 place 結果を含めてよい。
 - `zstarview-gui` の保存対象には、`zstarview-export-image` 専用の headless オプションは含めてはならない。
 - `zstarview-gui` の前回起動値は、`~/.config/zstarview/gui-launch-profile.json` へ保存してよい。

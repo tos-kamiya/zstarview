@@ -13,6 +13,7 @@ def test_gui_launch_profile_roundtrip(tmp_path, monkeypatch) -> None:
         "window_geometry": "restore",
         "theme": "day",
         "cloud_stripe": "width,50,0.85",
+        "tropical_cyclone_opacity": 0.27,
     }
 
     launch_profile.save_gui_launch_profile(profile)
@@ -21,6 +22,7 @@ def test_gui_launch_profile_roundtrip(tmp_path, monkeypatch) -> None:
     assert loaded["window_geometry"] == "restore"
     assert loaded["theme"] == "day"
     assert loaded["cloud_stripe"] == "width,50,0.85"
+    assert loaded["tropical_cyclone_opacity"] == 0.27
 
     structured_profile = {
         "city": {

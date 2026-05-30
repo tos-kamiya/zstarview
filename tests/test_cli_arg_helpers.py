@@ -25,6 +25,11 @@ def _build_export_like_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _assert_tokens_in_order(text: str, tokens: list[str]) -> None:
+    positions = [text.index(token) for token in tokens]
+    assert positions == sorted(positions)
+
+
 def test_render_argument_helpers_can_build_parser_without_gui_only_options() -> None:
     parser = _build_export_like_parser()
 
@@ -104,6 +109,24 @@ def test_main_help_text_uses_readme_like_groups() -> None:
     assert overlays_match is not None
     assert "--visibility-boost" not in overlays_match.group("section")
     assert "--overlay-font-size" not in overlays_match.group("section")
+    _assert_tokens_in_order(
+        overlays_match.group("section"),
+        [
+            "--cloud-opacity",
+            "--cloud-stripe",
+            "--cloud-missing-tint-opacity",
+            "--tropical-cyclone-opacity",
+            "--aircraft-opacity",
+            "--satellite-opacity",
+            "--show-guidelines-initial",
+            "--terrain-horizon-opacity",
+            "--earth-guide-opacity",
+            "--ground-tint-opacity",
+            "--water-surface-opacity",
+            "--night-light-opacity",
+            "--urban-outline-opacity",
+        ],
+    )
     assert re.search(r"^\s+--list\s", help_text, re.M) is None
 
 
@@ -153,6 +176,20 @@ def test_export_image_help_text_uses_shared_groups() -> None:
     assert overlays_match is not None
     assert "--visibility-boost" not in overlays_match.group("section")
     assert "--overlay-font-size" not in overlays_match.group("section")
+    _assert_tokens_in_order(
+        overlays_match.group("section"),
+        [
+            "--cloud-opacity",
+            "--tropical-cyclone-opacity",
+            "--aircraft-opacity",
+            "--satellite-opacity",
+            "--terrain-horizon-opacity",
+            "--earth-guide-opacity",
+            "--water-surface-opacity",
+            "--night-light-opacity",
+            "--urban-outline-opacity",
+        ],
+    )
     assert "--include-direction-grid" in help_text
     assert "--window-frame" not in help_text
     assert re.search(r"^\s+--list\s", help_text, re.M) is not None

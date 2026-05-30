@@ -67,7 +67,7 @@
   - GUI 起動前設定ダイアログを定義する
   - 前回起動値の編集、Reset 操作、確定/取消の結果を返す
   - README の GUI 対応 CLI グループ見出しに対応するタブを持ち、`Location`、`View`、`Time`、`Stars`、`Overlays`、`General` の順に分けて起動前の入力を見通しよく整理する
-  - `Overlays` は `Sky`、`Clouds`、`Aircraft and Satellites`、`Ground and Guides`、`Urban Outline` の折りたたみ可能なサブグループへ分けてよい
+  - `Overlays` は `Sky`、`Clouds`、`Tropical Cyclone`、`Aircraft and Satellites`、`Ground and Guides`、`Urban Outline` の折りたたみ可能なサブグループへ分けてよい
   - `overlay_font_size` は `General` 側で扱い、全体の表示密度を調整する設定として保持してよい
   - `City` 行には複数行表示の入力欄を置き、その上に `Auto Search` と `Search ...` のボタン行を配置してよい
   - `Auto Search` ボタンは現在地自動取得の結果を `City` 欄へ反映してよい

@@ -670,6 +670,16 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         ),
     )
     parser.add_argument(
+        "--tropical-cyclone-opacity",
+        type=float,
+        default=TROPICAL_CYCLONE_DEFAULT_OPACITY,
+        help=(
+            "Opacity of the tropical cyclone overlay (0.0 - 1.0, default: "
+            f"{TROPICAL_CYCLONE_DEFAULT_OPACITY}). "
+            "Set to 0.0 to disable cyclone API fetch and rendering for that run."
+        ),
+    )
+    parser.add_argument(
         "-a",
         "--aircraft-opacity",
         type=float,
@@ -686,16 +696,6 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         help=(
             "Opacity of the artificial satellite overlay (0.0 - 1.0, default: 0.7). "
             "Set to 0.0 to disable satellite element fetch and rendering."
-        ),
-    )
-    parser.add_argument(
-        "--tropical-cyclone-opacity",
-        type=float,
-        default=TROPICAL_CYCLONE_DEFAULT_OPACITY,
-        help=(
-            "Opacity of the tropical cyclone overlay (0.0 - 1.0, default: "
-            f"{TROPICAL_CYCLONE_DEFAULT_OPACITY}). "
-            "Set to 0.0 to disable cyclone API fetch and rendering for that run."
         ),
     )
     parser.add_argument(
@@ -726,21 +726,30 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         ),
     )
     parser.add_argument(
-        "--night-light-opacity",
-        type=float,
-        default=0.022,
-        help=(
-            "Opacity of the night light overlay (0.0 - 1.0, default: 0.022). "
-            "Set to 0.0 to disable night light rendering and lock the GUI toggle off for that session."
-        ),
-    )
-    parser.add_argument(
         "--ground-tint-opacity",
         type=float,
         default=0.04,
         help=(
             "Overlay opacity of the ground tint color below the geometric/terrain horizon "
             "(0.0 - 1.0, default: 0.04)."
+        ),
+    )
+    parser.add_argument(
+        "--water-surface-opacity",
+        type=float,
+        default=0.12,
+        help=(
+            "Opacity of the water surface layer (0.0 - 1.0, default: 0.12). "
+            "Set to 0.0 to disable water surface rendering at startup."
+        ),
+    )
+    parser.add_argument(
+        "--night-light-opacity",
+        type=float,
+        default=0.022,
+        help=(
+            "Opacity of the night light overlay (0.0 - 1.0, default: 0.022). "
+            "Set to 0.0 to disable night light rendering and lock the GUI toggle off for that session."
         ),
     )
     parser.add_argument(
@@ -751,15 +760,6 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
         help=(
             "Opacity of the urban outline overlay (0.0 - 1.0, default: 0.2). "
             "Set to 0.0 to disable urban outline rendering at startup."
-        ),
-    )
-    parser.add_argument(
-        "--water-surface-opacity",
-        type=float,
-        default=0.12,
-        help=(
-            "Opacity of the water surface layer (0.0 - 1.0, default: 0.12). "
-            "Set to 0.0 to disable water surface rendering at startup."
         ),
     )
     parser.add_argument(
@@ -1097,6 +1097,16 @@ def add_render_arguments(
         ),
     )
     parser.add_argument(
+        "--tropical-cyclone-opacity",
+        type=float,
+        default=TROPICAL_CYCLONE_DEFAULT_OPACITY,
+        help=(
+            "Opacity of the tropical cyclone overlay (0.0 - 1.0, default: "
+            f"{TROPICAL_CYCLONE_DEFAULT_OPACITY}). "
+            "Set to 0.0 to disable cyclone API fetch and rendering for that run."
+        ),
+    )
+    parser.add_argument(
         "-a",
         "--aircraft-opacity",
         type=float,
@@ -1113,16 +1123,6 @@ def add_render_arguments(
         help=(
             "Opacity of the artificial satellite overlay (0.0 - 1.0, default: 0.7). "
             "Set to 0.0 to disable satellite element fetch and rendering."
-        ),
-    )
-    parser.add_argument(
-        "--tropical-cyclone-opacity",
-        type=float,
-        default=TROPICAL_CYCLONE_DEFAULT_OPACITY,
-        help=(
-            "Opacity of the tropical cyclone overlay (0.0 - 1.0, default: "
-            f"{TROPICAL_CYCLONE_DEFAULT_OPACITY}). "
-            "Set to 0.0 to disable cyclone API fetch and rendering for that run."
         ),
     )
     parser.add_argument(
@@ -1144,21 +1144,21 @@ def add_render_arguments(
         ),
     )
     parser.add_argument(
-        "--night-light-opacity",
-        type=float,
-        default=0.02,
-        help=(
-            "Opacity of the night light overlay (0.0 - 1.0, default: 0.02). "
-            "Set to 0.0 to disable night light rendering and lock the GUI toggle off for that session."
-        ),
-    )
-    parser.add_argument(
         "--urban-outline-opacity",
         type=float,
         default=0.2,
         help=(
             "Opacity of the urban outline overlay (0.0 - 1.0, default: 0.2). "
             "Set to 0.0 to disable urban outline rendering at startup."
+        ),
+    )
+    parser.add_argument(
+        "--night-light-opacity",
+        type=float,
+        default=0.02,
+        help=(
+            "Opacity of the night light overlay (0.0 - 1.0, default: 0.02). "
+            "Set to 0.0 to disable night light rendering and lock the GUI toggle off for that session."
         ),
     )
     parser.add_argument(
