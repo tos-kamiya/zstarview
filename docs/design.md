@@ -1,6 +1,6 @@
 # zstarview 設計書
 
-最終更新: 2026-05-28
+最終更新: 2026-05-30
 
 ## 1. この文書の位置づけ
 
@@ -51,6 +51,7 @@
   - 水面レイヤー取得
   - Overture 建物データ取得
   - 夜間光 GeoTIFF 取得
+  - 台風・サイクロンの公開 ArcGIS FeatureServer 取得
   - キャッシュ管理
 
 ## 4. モジュール構成
@@ -109,6 +110,7 @@
   - 設定・キャッシュ・データのパス解決
   - テーマ preset ごとの共有表示定義を持つ
   - 夜間光 cache root の解決を持つ
+  - 台風・サイクロンの long-lived cache root の解決を持ってよい
 
 ### 4.1.1 Geosatellite validation assets
 
@@ -1489,6 +1491,25 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 21. `SkyWindow` は `aircraft_ready` または予想再投影完了を受けたら `SkyWindowState` を更新し、再描画する。
 22. `viewport_interaction_mode` 中は航空機オーバーレイ描画を抑止してよい。モード終了後に保持済み `overlay_points` で通常描画へ戻る。
 23. 定期再取得は `finished_at + interval` を基準にし、worker idle の tick でだけ次回 API 呼び出しを立ててよい。
+
+### 4.8 台風・サイクロン連携
+
+- 台風・サイクロン補助レイヤーは、公開 ArcGIS FeatureServer の `Active_Hurricanes_v1` から取得してよい。
+- この経路は API key や token を前提としない公開レイヤー利用として扱ってよい。
+- データの中心は `Observed Position`、`Forecast Position`、風域ポリゴン群でよい。
+- `Observed Position` は storm ごとの最新観測 1 点を採用し、現在位置の起点としてよい。
+- `Forecast Position` は同一 storm の予報点列を保持し、`ADVDATE` ごとに束ねてよい。
+- `Forecast Position` の位置列は `VALIDTIME` / `FLDATELBL` / `DATELBL` / `TAU` を持ち、描画側では時刻順の予報列として扱ってよい。
+- 風域レイヤーは `Tropical Storm Force (34kts)`、`Strong Tropical Storm (50kts)`、`Hurricane Force (64kts+)`、`Observed Wind Swath` を扱ってよい。
+- 風域レイヤーはポリゴンとして保持し、風域の有無は storm の状態によって変わってよい。
+- `ADVDATE` の更新確認は軽量問い合わせで行ってよく、`90分` 間隔を目安にしてよい。
+- フル取得した payload は、同じ storm と `ADVDATE` をキーにして `3時間` 程度キャッシュしてよい。
+- `ADVDATE` が変わったら、新しい予報としてキャッシュを差し替えてよい。
+- 現在時刻の位置推定は、現在時刻を挟む前後の予報点で内分してよい。
+- 予報時刻列の端では、端点をそのまま使ってよい。
+- 台風の「目」を表す専用属性はこの連携では期待せず、中心位置と風域を使って表現してよい。
+- トルネードはこの連携の対象外とする。
+- 描画方法は未確定とし、現時点では取得・正規化・キャッシュ更新の責務だけを設計対象としてよい。
 
 ## 7. スレッドモデル
 

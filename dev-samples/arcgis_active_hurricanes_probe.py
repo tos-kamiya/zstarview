@@ -127,6 +127,14 @@ def format_observed_date(attributes: dict[str, Any]) -> str | None:
     return None
 
 
+def format_valid_time(attributes: dict[str, Any]) -> str | None:
+    valid_time = attributes.get("VALIDTIME")
+    formatted = format_epoch_ms(valid_time)
+    if formatted is not None:
+        return f"VALIDTIME={formatted}"
+    return None
+
+
 def summarize_point_geometry(geometry: dict[str, Any] | None) -> str:
     if not geometry:
         return "geometry=none"
@@ -161,6 +169,8 @@ def pick_summary_fields(attributes: dict[str, Any]) -> list[str]:
         "FCSTPRD",
         "TAU",
         "VALIDTIME",
+        "DATELBL",
+        "FLDATELBL",
         "LAT",
         "LON",
         "MAXWIND",
@@ -168,6 +178,10 @@ def pick_summary_fields(attributes: dict[str, Any]) -> list[str]:
         "MSLP",
         "TCDIR",
         "TCSPD",
+        "DVLBL",
+        "SSNUM",
+        "STORMNUM",
+        "STORMSRC",
         "RADII",
         "TCWW",
         "STATUS",
@@ -188,6 +202,9 @@ def pick_summary_fields(attributes: dict[str, Any]) -> list[str]:
     observed_date = format_observed_date(attributes)
     if observed_date is not None:
         parts.insert(0, observed_date)
+    valid_time = format_valid_time(attributes)
+    if valid_time is not None:
+        parts.insert(1 if observed_date is not None else 0, valid_time)
     return parts
 
 
@@ -277,6 +294,32 @@ def query_layer(
     )
 
 
+def feature_attrs(feature: dict[str, Any]) -> dict[str, Any]:
+    attrs = feature.get("attributes")
+    if isinstance(attrs, dict):
+        return attrs
+    return {}
+
+
+def matches_storm(feature: dict[str, Any], storm_name: str, basin: str | None = None) -> bool:
+    attrs = feature_attrs(feature)
+    name = attrs.get("STORMNAME")
+    if not isinstance(name, str) or name != storm_name:
+        return False
+    if basin is None:
+        return True
+    value = attrs.get("BASIN")
+    return isinstance(value, str) and value == basin
+
+
+def wind_layer_filter(
+    features: list[dict[str, Any]],
+    storm_name: str,
+    basin: str | None,
+) -> list[dict[str, Any]]:
+    return [feature for feature in features if matches_storm(feature, storm_name, basin)]
+
+
 def main() -> int:
     args = build_arg_parser().parse_args()
 
@@ -355,7 +398,7 @@ def main() -> int:
         latest_query = query_layer(
             args,
             0,
-            where=where_for_storm(storm_name, basin_text),
+            where="1=1",
             limit=1,
         )
         error = latest_query.get("error")
@@ -364,16 +407,23 @@ def main() -> int:
         else:
             features = latest_query.get("features")
             if isinstance(features, list) and features and isinstance(features[0], dict):
-                attrs = features[0].get("attributes")
-                if isinstance(attrs, dict):
+                match = next(
+                    (
+                        feature
+                        for feature in features
+                        if matches_storm(feature, storm_name, basin_text)
+                    ),
+                    None,
+                )
+                if match is not None:
+                    attrs = feature_attrs(match)
                     advdate = attrs.get("ADVDATE")
                     if isinstance(advdate, (int, float)):
                         forecast_advdate = int(advdate)
-        forecast_where = where_for_storm(storm_name, basin_text, advdate=forecast_advdate) if forecast_advdate is not None else where_for_storm(storm_name, basin_text)
         query = query_layer(
             args,
             0,
-            where=forecast_where,
+            where="1=1",
             limit=max(1, args.limit * 10),
         )
         error = query.get("error")
@@ -382,10 +432,21 @@ def main() -> int:
         else:
             features = query.get("features")
             if isinstance(features, list):
-                print(f"    forecast_position_count: {len(features)}")
-                for feature in features:
-                    if isinstance(feature, dict):
-                        print_feature(feature, meta.get("geometryType") if isinstance(meta.get("geometryType"), str) else None)
+                filtered = [
+                    feature
+                    for feature in features
+                    if isinstance(feature, dict)
+                    and matches_storm(feature, storm_name, basin_text)
+                ]
+                if forecast_advdate is not None:
+                    filtered = [
+                        feature
+                        for feature in filtered
+                        if feature_attrs(feature).get("ADVDATE") == forecast_advdate
+                    ]
+                print(f"    forecast_position_count: {len(filtered)}")
+                for feature in filtered:
+                    print_feature(feature, meta.get("geometryType") if isinstance(meta.get("geometryType"), str) else None)
             else:
                 print("    ! query returned no features array")
 
@@ -397,7 +458,7 @@ def main() -> int:
         query = query_layer(
             args,
             layer_id,
-            where=where_for_storm(storm_name, basin_text),
+            where="1=1",
             limit=max(1, args.limit * 10),
         )
         error = query.get("error")
@@ -408,11 +469,15 @@ def main() -> int:
         if not isinstance(features, list):
             print("    ! query returned no features array")
             continue
-        print(f"    wind_polygon_count: {len(features)}")
-        for feature in features:
-            if isinstance(feature, dict):
-                print_feature(feature, meta.get("geometryType") if isinstance(meta.get("geometryType"), str) else None)
-        if not features:
+        filtered_features = wind_layer_filter(
+            [feature for feature in features if isinstance(feature, dict)],
+            storm_name,
+            basin_text,
+        )
+        print(f"    wind_polygon_count: {len(filtered_features)}")
+        for feature in filtered_features:
+            print_feature(feature, meta.get("geometryType") if isinstance(meta.get("geometryType"), str) else None)
+        if not filtered_features:
             print("    (no features returned)")
 
     return 0
