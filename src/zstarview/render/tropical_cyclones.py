@@ -13,24 +13,8 @@ from ..tropical_cyclones.models import TropicalCycloneSnapshot
 from .geometry import normalized_to_screen_xy
 
 TROPICAL_CYCLONE_TARGET_HEIGHT_M = 0.0
-
-
-def _debug_projection_line(
-    *,
-    kind: str,
-    label: str,
-    lat_deg: float,
-    lon_deg: float,
-    alt_deg: float,
-    az_deg: float,
-) -> None:
-    print(
-        (
-            f"tropical_cyclone {kind} {label}: "
-            f"lat={lat_deg:.3f} lon={lon_deg:.3f} alt={alt_deg:.3f} az={az_deg:.3f}"
-        ),
-        flush=True,
-    )
+TROPICAL_CYCLONE_COLOR_RGBA = (240, 122, 122, 102)
+TROPICAL_CYCLONE_LABEL_RGBA = (240, 122, 122, 255)
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,14 +58,6 @@ def _project_point(
         view_center,
         edge_fov_deg=float(viewer.edge_fov_deg),
     )
-    _debug_projection_line(
-        kind="point",
-        label="storm",
-        lat_deg=float(lat_deg),
-        lon_deg=float(lon_deg),
-        alt_deg=float(projection.alt_deg),
-        az_deg=float(projection.az_deg),
-    )
     return _RenderPoint(
         nx=float(nx),
         ny=float(ny),
@@ -120,18 +96,14 @@ def _draw_inverted_triangle(
 ) -> None:
     # Scale the symbol down as the storm is farther away from the observer.
     scale = max(0.45, min(1.15, 20.0 / max(1.0, point.distance_km)))
-    body_height = 20.0 * scale
-    body_width = 14.0 * scale
+    leg = 16.0 * scale
     tip = QPointF(*normalized_to_screen_xy(point.nx, point.ny, geometry))
-    top_left = QPointF(tip.x() - body_width, tip.y() - body_height)
-    top_right = QPointF(tip.x() + body_width, tip.y() - body_height)
+    top_left = QPointF(tip.x() - leg, tip.y() - leg)
+    top_right = QPointF(tip.x() + leg, tip.y() - leg)
     polygon = QPolygonF([tip, top_left, top_right])
-    pen = QPen(QColor(*color_rgba), 1.6)
-    pen.setCosmetic(True)
-    painter.setPen(pen)
+    painter.setPen(Qt.PenStyle.NoPen)
     painter.setBrush(QColor(*color_rgba))
     painter.drawPolygon(polygon)
-    painter.drawLine(top_left, top_right)
 
 
 def _draw_label(
@@ -175,18 +147,17 @@ def draw_tropical_cyclone_overlay(
 
     painter.save()
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-    triangle_color = (255, 74, 74, 230)
     _draw_inverted_triangle(
         painter,
         point,
         geometry=geometry,
-        color_rgba=triangle_color,
+        color_rgba=TROPICAL_CYCLONE_COLOR_RGBA,
     )
     _draw_label(
         painter,
         point,
         geometry=geometry,
-        color_rgba=triangle_color,
+        color_rgba=TROPICAL_CYCLONE_LABEL_RGBA,
         text=snapshot.storm_name,
     )
     painter.restore()
