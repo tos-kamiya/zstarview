@@ -69,6 +69,7 @@ class _Args:
     geo_satellite = False
     satellite_opacity = 0.5
     aircraft_opacity = 0.5
+    tropical_cyclone_opacity = 0.4
     terrain_horizon_opacity = 0.05
     earth_guide_opacity = 0.028
     urban_outline_opacity = 0.2

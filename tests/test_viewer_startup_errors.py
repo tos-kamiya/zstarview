@@ -160,6 +160,7 @@ def _make_args(*, close_on_startup_error: bool) -> SimpleNamespace:
         geo_satellite=False,
         satellite_opacity=0.7,
         aircraft_opacity=0.4,
+        tropical_cyclone_opacity=0.4,
         terrain_horizon_opacity=0.003,
         earth_guide_opacity=0.028,
         urban_outline_opacity=0.2,

@@ -84,6 +84,7 @@ def test_begin_shutdown_shows_message_around_controller_shutdown() -> None:
         _geosatellite_controller=None,
         _satellite_controller=None,
         _aircraft_controller=None,
+        _tropical_cyclone_controller=None,
         _jpl_small_body_controller=None,
         _terrain_horizon_controller=None,
         _water_overlay_controller=None,
