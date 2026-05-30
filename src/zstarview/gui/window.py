@@ -1566,12 +1566,27 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             return
         if not self.state.viewport_interaction_mode:
             return
-        self.request_sky_data_update(
-            reason=reason,
-            allow_during_viewport_interaction=True,
+        sky_update_started = bool(
+            self.request_sky_data_update(
+                reason=reason,
+                allow_during_viewport_interaction=True,
+            )
         )
         if reason.endswith("release"):
+            if not sky_update_started:
+                self.state.viewport_interaction_mode = False
+                self.state.viewport_interaction_stars = None
+                self.state.viewport_interaction_release_pending = False
+                SkyWindow._sync_viewport_interaction_chrome_visibility(self)
+                cyclone_projector = getattr(self, "reproject_tropical_cyclone_overlay", None)
+                if callable(cyclone_projector):
+                    cyclone_projector()
+                self.request_client_update()
+                return
             self.state.viewport_interaction_release_pending = True
+            cyclone_projector = getattr(self, "reproject_tropical_cyclone_overlay", None)
+            if callable(cyclone_projector):
+                cyclone_projector(allow_during_viewport_interaction=True)
             return
         self.state.viewport_interaction_mode = False
         self.state.viewport_interaction_stars = None
@@ -1587,6 +1602,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         else:
             self.start_background_cloud_update(reason=refresh_reason)
         self.start_background_terrain_horizon_update(reason=refresh_reason)
+        cyclone_projector = getattr(self, "reproject_tropical_cyclone_overlay", None)
+        if callable(cyclone_projector):
+            cyclone_projector()
         self.request_client_update()
 
     def show_menu(self) -> None:

@@ -653,6 +653,9 @@ class SkyWindowUpdatesMixin:
                 self.start_background_terrain_horizon_update(
                     reason="view-change-release"
                 )
+                cyclone_projector = getattr(self, "reproject_tropical_cyclone_overlay", None)
+                if callable(cyclone_projector):
+                    cyclone_projector()
 
         self._compositor.invalidate()
         self.request_client_update()
@@ -714,7 +717,7 @@ class SkyWindowUpdatesMixin:
         *,
         reason: str = "manual",
         allow_during_viewport_interaction: bool = False,
-    ) -> None:
+    ) -> bool:
         if self._viewport_interaction_active() and not allow_during_viewport_interaction:
             self.state.sky_update_pending = True
             self.state.pending_star_vmag_limit = star_vmag_limit
@@ -722,7 +725,7 @@ class SkyWindowUpdatesMixin:
                 "Sky data update deferred during viewport interaction (reason=%s).",
                 reason,
             )
-            return
+            return False
         if self.start_background_sky_data_update(
             star_vmag_limit=star_vmag_limit,
             reason=reason,
@@ -730,13 +733,14 @@ class SkyWindowUpdatesMixin:
         ):
             self.state.sky_update_pending = False
             self.state.pending_star_vmag_limit = None
-            return
+            return True
         self.state.sky_update_pending = True
         self.state.pending_star_vmag_limit = star_vmag_limit
         logger.debug(
             "Sky data update deferred; worker is busy (reason=%s).",
             reason,
         )
+        return False
 
     def start_background_sky_data_update(
         self,
@@ -1323,10 +1327,14 @@ class SkyWindowUpdatesMixin:
             self.tropical_cyclone_state.set_error_banner(banner)
         self.request_client_update()
 
-    def reproject_tropical_cyclone_overlay(self) -> None:
+    def reproject_tropical_cyclone_overlay(
+        self,
+        *,
+        allow_during_viewport_interaction: bool = False,
+    ) -> None:
         if not self._tropical_cyclone_layer_enabled():
             return
-        if self._viewport_interaction_active():
+        if self._viewport_interaction_active() and not allow_during_viewport_interaction:
             return
         state = getattr(self, "tropical_cyclone_state", None)
         snapshot = getattr(state, "snapshot", None)

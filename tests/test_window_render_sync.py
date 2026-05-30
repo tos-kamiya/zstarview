@@ -744,6 +744,7 @@ def test_on_sky_data_calculated_triggers_release_followup_updates() -> None:
     dummy.request_sky_data_update = lambda *_args, **_kwargs: None
     dummy._safe_request_cloud_repaint = lambda: None
     dummy.request_client_update = lambda: None
+    dummy.reproject_tropical_cyclone_overlay = Mock()
     class _MenuButton:
         def __init__(self) -> None:
             self.visible = False
@@ -775,6 +776,7 @@ def test_on_sky_data_calculated_triggers_release_followup_updates() -> None:
     assert dummy.state.viewport_interaction_mode is False
     assert dummy.menu_button.visible is True
     assert cloud_calls == ["view-change-release", "view-change-release"]
+    dummy.reproject_tropical_cyclone_overlay.assert_called_once_with()
 
 
 def test_on_sky_data_calculated_keeps_existing_cloud_refresh_deadline() -> None:
@@ -1876,6 +1878,7 @@ def test_handle_client_key_release_ends_viewport_interaction_mode() -> None:
     dummy.request_sky_data_update = Mock()
     dummy.start_background_cloud_update = Mock()
     dummy.start_background_terrain_horizon_update = Mock()
+    dummy.reproject_tropical_cyclone_overlay = Mock()
     dummy.request_client_update = Mock()
 
     event = SimpleNamespace(
@@ -1944,6 +1947,7 @@ def test_end_viewport_interaction_mode_marks_idle_reason() -> None:
     dummy.request_sky_data_update = Mock()
     dummy.start_background_cloud_update = Mock()
     dummy.start_background_terrain_horizon_update = Mock()
+    dummy.reproject_tropical_cyclone_overlay = Mock()
     dummy.request_client_update = Mock()
 
     SkyWindow._end_viewport_interaction_mode(dummy)
@@ -1958,6 +1962,68 @@ def test_end_viewport_interaction_mode_marks_idle_reason() -> None:
     dummy.start_background_terrain_horizon_update.assert_called_once_with(
         reason="view-change-idle"
     )
+    dummy.reproject_tropical_cyclone_overlay.assert_called_once_with()
+    dummy.request_client_update.assert_called_once()
+
+
+def test_end_viewport_interaction_mode_release_reprojects_tropical_cyclone(
+) -> None:
+    dummy = _WindowStub()
+    dummy.state = SkyWindowState(
+        render_view_center=(20.0, 30.0),
+        viewport_interaction_mode=True,
+    )
+    dummy.request_sky_data_update = Mock()
+    dummy.start_background_cloud_update = Mock()
+    dummy.start_background_terrain_horizon_update = Mock()
+    dummy.reproject_tropical_cyclone_overlay = Mock()
+    dummy.request_client_update = Mock()
+
+    SkyWindow._end_viewport_interaction_mode(
+        dummy,
+        reason="viewport-interaction-release",
+    )
+
+    dummy.request_sky_data_update.assert_called_once_with(
+        reason="viewport-interaction-release",
+        allow_during_viewport_interaction=True,
+    )
+    dummy.reproject_tropical_cyclone_overlay.assert_called_once_with(
+        allow_during_viewport_interaction=True,
+    )
+    dummy.start_background_cloud_update.assert_not_called()
+    dummy.start_background_terrain_horizon_update.assert_not_called()
+    dummy.request_client_update.assert_not_called()
+
+
+def test_end_viewport_interaction_mode_release_clears_interaction_when_sky_update_is_busy(
+) -> None:
+    dummy = _WindowStub()
+    dummy.state = SkyWindowState(
+        render_view_center=(20.0, 30.0),
+        viewport_interaction_mode=True,
+    )
+    dummy.request_sky_data_update = Mock(return_value=False)
+    dummy.start_background_cloud_update = Mock()
+    dummy.start_background_terrain_horizon_update = Mock()
+    dummy.reproject_tropical_cyclone_overlay = Mock()
+    dummy.request_client_update = Mock()
+
+    SkyWindow._end_viewport_interaction_mode(
+        dummy,
+        reason="viewport-interaction-release",
+    )
+
+    assert dummy.state.viewport_interaction_mode is False
+    assert dummy.state.viewport_interaction_stars is None
+    assert dummy.state.viewport_interaction_release_pending is False
+    dummy.request_sky_data_update.assert_called_once_with(
+        reason="viewport-interaction-release",
+        allow_during_viewport_interaction=True,
+    )
+    dummy.start_background_cloud_update.assert_not_called()
+    dummy.start_background_terrain_horizon_update.assert_not_called()
+    dummy.reproject_tropical_cyclone_overlay.assert_called_once_with()
     dummy.request_client_update.assert_called_once()
 
 
