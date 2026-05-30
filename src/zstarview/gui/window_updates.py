@@ -64,12 +64,6 @@ def _request_cloud_projection_update(obj: object, *, reason: str) -> None:
         fallback(reason=reason)
 
 
-def _request_tropical_cyclone_update(obj: object, *, reason: str) -> None:
-    updater = getattr(obj, "start_background_tropical_cyclone_update", None)
-    if callable(updater):
-        updater(reason=reason)
-
-
 def _initial_data_load_active(obj: object) -> bool:
     return bool(obj._startup_initial_load_started) and not bool(
         obj._startup_initial_data_loaded
@@ -652,9 +646,7 @@ class SkyWindowUpdatesMixin:
                 self.start_background_terrain_horizon_update(
                     reason="view-change-release"
                 )
-                cyclone_projector = getattr(self, "reproject_tropical_cyclone_overlay", None)
-                if callable(cyclone_projector):
-                    cyclone_projector()
+                self.reproject_tropical_cyclone_overlay()
 
         self._compositor.invalidate()
         self.request_client_update()
@@ -1335,11 +1327,10 @@ class SkyWindowUpdatesMixin:
             return
         if self._viewport_interaction_active() and not allow_during_viewport_interaction:
             return
-        state = getattr(self, "tropical_cyclone_state", None)
-        snapshot = getattr(state, "snapshot", None)
+        state = self.tropical_cyclone_state
+        snapshot = state.snapshot
         if snapshot is None:
-            if state is not None:
-                state.projection_next_refresh_utc = None
+            state.projection_next_refresh_utc = None
             self.state.tropical_cyclone_projection_next_refresh_utc = None
             self.request_client_update()
             return

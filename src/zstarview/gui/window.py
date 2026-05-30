@@ -1482,11 +1482,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             return
         self.state.interaction_mode = False
         self.request_sky_data_update(reason="interaction-idle")
-        projector = getattr(self, "request_cloud_projection_update", None)
-        if callable(projector):
-            projector(reason="view-change-idle")
-        else:
-            self.start_background_cloud_update(reason="view-change-idle")
+        self.request_cloud_projection_update(reason="view-change-idle")
         self.start_background_terrain_horizon_update(reason="view-change-idle")
 
     def _begin_viewport_interaction_mode(
@@ -1578,15 +1574,13 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 self.state.viewport_interaction_stars = None
                 self.state.viewport_interaction_release_pending = False
                 SkyWindow._sync_viewport_interaction_chrome_visibility(self)
-                cyclone_projector = getattr(self, "reproject_tropical_cyclone_overlay", None)
-                if callable(cyclone_projector):
-                    cyclone_projector()
+                self.reproject_tropical_cyclone_overlay()
                 self.request_client_update()
                 return
             self.state.viewport_interaction_release_pending = True
-            cyclone_projector = getattr(self, "reproject_tropical_cyclone_overlay", None)
-            if callable(cyclone_projector):
-                cyclone_projector(allow_during_viewport_interaction=True)
+            self.reproject_tropical_cyclone_overlay(
+                allow_during_viewport_interaction=True
+            )
             return
         self.state.viewport_interaction_mode = False
         self.state.viewport_interaction_stars = None
@@ -1596,15 +1590,9 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             if reason.endswith("release")
             else "view-change-idle"
         )
-        projector = getattr(self, "request_cloud_projection_update", None)
-        if callable(projector):
-            projector(reason=refresh_reason)
-        else:
-            self.start_background_cloud_update(reason=refresh_reason)
+        self.request_cloud_projection_update(reason=refresh_reason)
         self.start_background_terrain_horizon_update(reason=refresh_reason)
-        cyclone_projector = getattr(self, "reproject_tropical_cyclone_overlay", None)
-        if callable(cyclone_projector):
-            cyclone_projector()
+        self.reproject_tropical_cyclone_overlay()
         self.request_client_update()
 
     def show_menu(self) -> None:
@@ -2419,11 +2407,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self._action_toggle_clouds.setChecked(enable_clouds)
 
         if enable_clouds:
-            projector = getattr(self, "request_cloud_projection_update", None)
-            if callable(projector):
-                projector(reason="toggle-on")
-            else:
-                self.start_background_cloud_update(reason="toggle-on")
+            self.request_cloud_projection_update(reason="toggle-on")
             self.state.cloud_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
                 seconds=CLOUD_UPDATE_INTERVAL
             )
@@ -2452,13 +2436,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 and self._cloud_gui_allowed
             )
 
-        projector = getattr(self, "request_cloud_projection_update", None)
-        if callable(projector):
-            projector(reason="toggle-geo-satellite")
-        elif self._geo_satellite_enabled:
-            self.start_background_geo_satellite_update(reason="toggle-geo-satellite")
-        else:
-            self.start_background_cloud_update(reason="toggle-geo-satellite")
+        self.request_cloud_projection_update(reason="toggle-geo-satellite")
 
         self.state.cloud_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
             seconds=CLOUD_UPDATE_INTERVAL
@@ -2519,9 +2497,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         ):
             self._action_toggle_tropical_cyclone.setChecked(self.show_tropical_cyclone_overlay)
         if self.show_tropical_cyclone_overlay and self.tropical_cyclone_state.snapshot is None:
-            starter = getattr(self, "start_background_tropical_cyclone_update", None)
-            if callable(starter):
-                starter(reason="toggle-on")
+            self.start_background_tropical_cyclone_update(reason="toggle-on")
         self.request_client_update()
 
     def toggle_dso(self) -> None:

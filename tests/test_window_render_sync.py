@@ -261,6 +261,19 @@ class _WindowStub:
         if callable(update):
             update()
 
+    def request_cloud_projection_update(self, *, reason: str) -> None:
+        return None
+
+    def reproject_tropical_cyclone_overlay(
+        self,
+        *,
+        allow_during_viewport_interaction: bool = False,
+    ) -> None:
+        return None
+
+    def start_background_tropical_cyclone_update(self, reason: str = "manual") -> bool:
+        return False
+
     def _begin_viewport_interaction_mode(self, *args, **kwargs) -> None:
         begin = self.__dict__.get("_begin_viewport_interaction_mode")
         if callable(begin):
@@ -1778,6 +1791,7 @@ def test_set_view_center_leaves_viewport_fast_mode_after_dialog_change() -> None
             dummy, *args, **kwargs
         )
     )
+    dummy.request_cloud_projection_update = Mock()
 
     SkyWindow._set_view_center(
         dummy,
@@ -1795,7 +1809,7 @@ def test_set_view_center_leaves_viewport_fast_mode_after_dialog_change() -> None
         reason="view-change-idle",
         allow_during_viewport_interaction=True,
     )
-    dummy.start_background_cloud_update.assert_called_once_with(
+    dummy.request_cloud_projection_update.assert_called_once_with(
         reason="view-change-idle"
     )
     dummy.start_background_terrain_horizon_update.assert_called_once_with(
@@ -1945,7 +1959,7 @@ def test_end_viewport_interaction_mode_marks_idle_reason() -> None:
         viewport_interaction_mode=True,
     )
     dummy.request_sky_data_update = Mock()
-    dummy.start_background_cloud_update = Mock()
+    dummy.request_cloud_projection_update = Mock()
     dummy.start_background_terrain_horizon_update = Mock()
     dummy.reproject_tropical_cyclone_overlay = Mock()
     dummy.request_client_update = Mock()
@@ -1956,7 +1970,7 @@ def test_end_viewport_interaction_mode_marks_idle_reason() -> None:
         reason="viewport-interaction-idle",
         allow_during_viewport_interaction=True,
     )
-    dummy.start_background_cloud_update.assert_called_once_with(
+    dummy.request_cloud_projection_update.assert_called_once_with(
         reason="view-change-idle"
     )
     dummy.start_background_terrain_horizon_update.assert_called_once_with(
@@ -1974,7 +1988,7 @@ def test_end_viewport_interaction_mode_release_reprojects_tropical_cyclone(
         viewport_interaction_mode=True,
     )
     dummy.request_sky_data_update = Mock()
-    dummy.start_background_cloud_update = Mock()
+    dummy.request_cloud_projection_update = Mock()
     dummy.start_background_terrain_horizon_update = Mock()
     dummy.reproject_tropical_cyclone_overlay = Mock()
     dummy.request_client_update = Mock()
@@ -1991,7 +2005,7 @@ def test_end_viewport_interaction_mode_release_reprojects_tropical_cyclone(
     dummy.reproject_tropical_cyclone_overlay.assert_called_once_with(
         allow_during_viewport_interaction=True,
     )
-    dummy.start_background_cloud_update.assert_not_called()
+    dummy.request_cloud_projection_update.assert_not_called()
     dummy.start_background_terrain_horizon_update.assert_not_called()
     dummy.request_client_update.assert_not_called()
 
@@ -2004,7 +2018,7 @@ def test_end_viewport_interaction_mode_release_clears_interaction_when_sky_updat
         viewport_interaction_mode=True,
     )
     dummy.request_sky_data_update = Mock(return_value=False)
-    dummy.start_background_cloud_update = Mock()
+    dummy.request_cloud_projection_update = Mock()
     dummy.start_background_terrain_horizon_update = Mock()
     dummy.reproject_tropical_cyclone_overlay = Mock()
     dummy.request_client_update = Mock()
@@ -2021,7 +2035,7 @@ def test_end_viewport_interaction_mode_release_clears_interaction_when_sky_updat
         reason="viewport-interaction-release",
         allow_during_viewport_interaction=True,
     )
-    dummy.start_background_cloud_update.assert_not_called()
+    dummy.request_cloud_projection_update.assert_not_called()
     dummy.start_background_terrain_horizon_update.assert_not_called()
     dummy.reproject_tropical_cyclone_overlay.assert_called_once_with()
     dummy.request_client_update.assert_called_once()
