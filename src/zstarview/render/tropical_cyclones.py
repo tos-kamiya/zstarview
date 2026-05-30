@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import timezone
 
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QPainter, QPen
+from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen
 
 from ..paths import ThemeStyle
-from ..tropical_cyclones.models import TropicalCycloneSnapshot
+from ..tropical_cyclones.models import TropicalCyclonePolygon, TropicalCycloneSnapshot
 
 
 def _project_lon_lat_to_rect(
@@ -24,6 +25,93 @@ def _project_lon_lat_to_rect(
 def _fmt_point(snapshot: TropicalCycloneSnapshot) -> str:
     point = snapshot.observed_position
     return f"{point.lat_deg:.1f}, {point.lon_deg:.1f}"
+
+
+@dataclass(frozen=True, slots=True)
+class _WindBandStyle:
+    fill_rgba: tuple[int, int, int, int]
+    outline_rgba: tuple[int, int, int, int]
+    label: str
+
+
+def _wind_band_style(name: str) -> _WindBandStyle:
+    lower = name.casefold()
+    if "64" in lower or "hurricane force" in lower:
+        return _WindBandStyle(
+            fill_rgba=(255, 70, 70, 72),
+            outline_rgba=(255, 145, 145, 190),
+            label="64kt+",
+        )
+    if "50" in lower or "strong tropical storm" in lower:
+        return _WindBandStyle(
+            fill_rgba=(255, 150, 70, 62),
+            outline_rgba=(255, 195, 130, 180),
+            label="50kt+",
+        )
+    if "34" in lower or "tropical storm force" in lower:
+        return _WindBandStyle(
+            fill_rgba=(255, 215, 80, 50),
+            outline_rgba=(255, 235, 160, 160),
+            label="34kt+",
+        )
+    if "observed" in lower:
+        return _WindBandStyle(
+            fill_rgba=(80, 180, 255, 40),
+            outline_rgba=(160, 220, 255, 160),
+            label="obs",
+        )
+    return _WindBandStyle(
+        fill_rgba=(255, 255, 255, 30),
+        outline_rgba=(220, 220, 220, 110),
+        label=name,
+    )
+
+
+def _draw_polygon_ring(
+    painter: QPainter,
+    ring: tuple[tuple[float, float], ...],
+    rect: QRectF,
+    *,
+    fill_rgba: tuple[int, int, int, int],
+    outline_rgba: tuple[int, int, int, int],
+) -> None:
+    if len(ring) < 3:
+        return
+    path = QPainterPath()
+    first = _project_lon_lat_to_rect(ring[0][1], ring[0][0], rect)
+    path.moveTo(first)
+    for lat_deg, lon_deg in ring[1:]:
+        point = _project_lon_lat_to_rect(lon_deg, lat_deg, rect)
+        path.lineTo(point)
+    path.closeSubpath()
+    painter.setPen(QPen(QColor(*outline_rgba), 1.2))
+    painter.setBrush(QColor(*fill_rgba))
+    painter.drawPath(path)
+
+
+def _draw_wind_polygon(
+    painter: QPainter,
+    polygon: TropicalCyclonePolygon,
+    rect: QRectF,
+) -> None:
+    style = _wind_band_style(polygon.name)
+    for ring in polygon.rings:
+        _draw_polygon_ring(
+            painter,
+            ring,
+            rect,
+            fill_rgba=style.fill_rgba,
+            outline_rgba=style.outline_rgba,
+        )
+
+
+def _legend_entries(snapshot: TropicalCycloneSnapshot) -> list[_WindBandStyle]:
+    entries: list[_WindBandStyle] = []
+    for polygon in snapshot.wind_polygons:
+        style = _wind_band_style(polygon.name)
+        if all(style.label != existing.label for existing in entries):
+            entries.append(style)
+    return entries
 
 
 def draw_tropical_cyclone_overlay(
@@ -99,16 +187,8 @@ def draw_tropical_cyclone_overlay(
     painter.setBrush(QColor(0, 0, 0, 26))
     painter.drawRoundedRect(map_rect, 8.0, 8.0)
 
-    grid_pen = QPen(QColor(255, 255, 255, 28), 1.0)
-    painter.setPen(grid_pen)
-    for lon in (-180, -120, -60, 0, 60, 120, 180):
-        p1 = _project_lon_lat_to_rect(lon, -90, map_rect)
-        p2 = _project_lon_lat_to_rect(lon, 90, map_rect)
-        painter.drawLine(p1, p2)
-    for lat in (-60, -30, 0, 30, 60):
-        p1 = _project_lon_lat_to_rect(-180, lat, map_rect)
-        p2 = _project_lon_lat_to_rect(180, lat, map_rect)
-        painter.drawLine(p1, p2)
+    for polygon in snapshot.wind_polygons:
+        _draw_wind_polygon(painter, polygon, map_rect)
 
     forecast = list(snapshot.forecast_positions)
     if forecast:
@@ -132,6 +212,14 @@ def draw_tropical_cyclone_overlay(
     painter.setBrush(QColor(255, 70, 70, 230))
     painter.setPen(QPen(QColor(255, 210, 210, 240), 1.5))
     painter.drawEllipse(current_point, 4.5, 4.5)
+    painter.drawLine(
+        QPointF(current_point.x() - 6.0, current_point.y()),
+        QPointF(current_point.x() + 6.0, current_point.y()),
+    )
+    painter.drawLine(
+        QPointF(current_point.x(), current_point.y() - 6.0),
+        QPointF(current_point.x(), current_point.y() + 6.0),
+    )
 
     painter.setFont(subtitle_font)
     forecast_label_pen = QPen(QColor(255, 235, 200, 210), 1.0)
@@ -146,5 +234,25 @@ def draw_tropical_cyclone_overlay(
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
             label,
         )
+
+    legend_entries = _legend_entries(snapshot)
+    if legend_entries:
+        legend_font = QFont(subtitle_font)
+        legend_font.setPointSizeF(max(6.0, float(subtitle_font.pointSizeF()) * 0.9))
+        painter.setFont(legend_font)
+        legend_x = map_rect.left() + 6.0
+        legend_y = map_rect.bottom() - 6.0 - (len(legend_entries) * 12.0)
+        for idx, entry in enumerate(legend_entries):
+            row_y = legend_y + idx * 12.0
+            swatch = QRectF(legend_x, row_y + 2.0, 9.0, 9.0)
+            painter.setPen(QPen(QColor(*entry.outline_rgba), 1.0))
+            painter.setBrush(QColor(*entry.fill_rgba))
+            painter.drawRoundedRect(swatch, 2.0, 2.0)
+            painter.setPen(QColor(*theme.text.foreground_rgb[:3]))
+            painter.drawText(
+                QRectF(legend_x + 12.0, row_y, 60.0, 12.0),
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                entry.label,
+            )
 
     painter.restore()
