@@ -44,6 +44,23 @@ Use `--observer-ground-m 8651` to inspect a high mountain site such as
 Everest. Add `--ray-scan` to show the full ray-scan summary that mirrors the
 water mask sampling path.
 
+## Public ArcGIS hurricane feed probe
+
+- `arcgis_active_hurricanes_probe.py`
+- Fetches the public `Active_Hurricanes_v1` ArcGIS FeatureServer without an
+  API key or token and prints the current position, forecast position, and
+  wind polygon layers for the active storm.
+- The `Observed Position` layer is queried in latest-DTG order so the script
+  can show the current position explicitly.
+- This is useful for checking whether a public tropical cyclone feed can be
+  consumed directly before wiring up any authenticated ArcGIS workflow.
+
+Run it with:
+
+```bash
+uv run -p .venv/bin/python dev-samples/arcgis_active_hurricanes_probe.py
+```
+
 ## Geo-satellite cloud proxy
 
 - `geo_satellite_cloud_proxy.py`
