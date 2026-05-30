@@ -13,15 +13,18 @@ from .models import TropicalCycloneSnapshot
 TROPICAL_CYCLONE_CACHE_TTL_SECONDS = 3 * 60 * 60
 TROPICAL_CYCLONE_CHECK_INTERVAL_SECONDS = 90 * 60
 TROPICAL_CYCLONE_CACHE_FILENAME = "active_hurricanes.json"
+TROPICAL_CYCLONE_CACHE_VERSION = 3
 
 
 @dataclass(frozen=True, slots=True)
 class TropicalCycloneCacheEntry:
     snapshot: TropicalCycloneSnapshot
     cached_at_utc: datetime
+    cache_version: int = TROPICAL_CYCLONE_CACHE_VERSION
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "cache_version": int(self.cache_version),
             "cached_at_utc": self.cached_at_utc.astimezone(timezone.utc)
             .isoformat()
             .replace("+00:00", "Z"),
@@ -30,6 +33,12 @@ class TropicalCycloneCacheEntry:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> TropicalCycloneCacheEntry | None:
+        cache_version_raw = data.get("cache_version")
+        cache_version = (
+            int(cache_version_raw)
+            if isinstance(cache_version_raw, (int, float))
+            else 0
+        )
         cached_at_raw = data.get("cached_at_utc")
         snapshot_raw = data.get("snapshot")
         if not isinstance(snapshot_raw, dict):
@@ -40,7 +49,11 @@ class TropicalCycloneCacheEntry:
         cached_at = _parse_datetime(cached_at_raw)
         if cached_at is None:
             return None
-        return cls(snapshot=snapshot, cached_at_utc=cached_at)
+        return cls(
+            snapshot=snapshot,
+            cached_at_utc=cached_at,
+            cache_version=cache_version,
+        )
 
 
 def _parse_datetime(value: object) -> datetime | None:
@@ -105,3 +118,9 @@ def is_tropical_cyclone_cache_stale(
         now_utc = datetime.now(timezone.utc)
     age_seconds = (now_utc - entry.cached_at_utc).total_seconds()
     return age_seconds >= float(TROPICAL_CYCLONE_CACHE_TTL_SECONDS)
+
+
+def is_tropical_cyclone_cache_current(
+    entry: TropicalCycloneCacheEntry,
+) -> bool:
+    return int(entry.cache_version) == int(TROPICAL_CYCLONE_CACHE_VERSION)

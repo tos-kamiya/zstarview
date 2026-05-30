@@ -2158,14 +2158,19 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 self.tropical_cyclone_state.snapshot is not None
                 and self.tropical_cyclone_state.cached_at_utc is not None
             ):
-                self.tropical_cyclone_state.next_check_utc = (
-                    self.tropical_cyclone_state.cached_at_utc
-                    + timedelta(minutes=90)
-                )
-                self.tropical_cyclone_state.next_refresh_utc = (
-                    self.tropical_cyclone_state.cached_at_utc
-                    + timedelta(hours=3)
-                )
+                snapshot = self.tropical_cyclone_state.snapshot
+                if snapshot is not None and snapshot.has_projectable_timeline():
+                    self.tropical_cyclone_state.next_check_utc = (
+                        self.tropical_cyclone_state.cached_at_utc
+                        + timedelta(minutes=90)
+                    )
+                    self.tropical_cyclone_state.next_refresh_utc = (
+                        self.tropical_cyclone_state.cached_at_utc
+                        + timedelta(hours=3)
+                    )
+                else:
+                    self.tropical_cyclone_state.next_check_utc = now
+                    self.tropical_cyclone_state.next_refresh_utc = now
             else:
                 self.tropical_cyclone_state.next_check_utc = now
                 self.tropical_cyclone_state.next_refresh_utc = now

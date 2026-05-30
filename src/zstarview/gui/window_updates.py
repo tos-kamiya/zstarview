@@ -14,6 +14,7 @@ from ..paths import CLOUD_UPDATE_INTERVAL
 from ..satellite_constants import SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS
 from ..search.jpl import project_jpl_target_altaz_from_state_vector
 from ..render import geometry as render_geometry
+from ..tropical_cyclones.models import project_tropical_cyclone_snapshot
 
 logger = logging.getLogger(__name__)
 _STATUS_CLOUD = "☁"
@@ -143,6 +144,24 @@ class SkyWindowUpdatesMixin:
             ),
         )
 
+    def _tropical_cyclone_projection_next_refresh_delay_ms(self) -> int | None:
+        next_refresh_utc = getattr(
+            self.state,
+            "tropical_cyclone_projection_next_refresh_utc",
+            None,
+        )
+        if next_refresh_utc is None:
+            return None
+        return max(
+            0,
+            int(
+                round(
+                    (next_refresh_utc - datetime.now(timezone.utc)).total_seconds()
+                    * 1000.0
+                )
+            ),
+        )
+
     def _cloud_projection_next_refresh_delay_ms(self) -> int | None:
         next_refresh_utc = getattr(self.state, "cloud_projection_next_refresh_utc", None)
         if next_refresh_utc is None:
@@ -197,6 +216,21 @@ class SkyWindowUpdatesMixin:
         if self._viewport_interaction_active():
             return
         background_updates_busy = self._background_updates_busy()
+
+        cyclone_state = getattr(self, "tropical_cyclone_state", None)
+        cyclone_projection_next_refresh = getattr(
+            cyclone_state,
+            "projection_next_refresh_utc",
+            None,
+        )
+        if (
+            not background_updates_busy
+            and self._tropical_cyclone_layer_enabled()
+            and isinstance(cyclone_projection_next_refresh, datetime)
+            and now_utc >= cyclone_projection_next_refresh
+        ):
+            self.reproject_tropical_cyclone_overlay()
+            return
 
         sky_next_refresh = self.state.sky_next_refresh_utc
         if (
@@ -1280,12 +1314,44 @@ class SkyWindowUpdatesMixin:
             next_refresh_utc=next_refresh,
             banner_text=banner or None,
         )
+        self.reproject_tropical_cyclone_overlay()
         self.request_client_update()
 
     def _on_tropical_cyclone_failed(self, payload: Dict) -> None:
         banner = str(payload.get("banner", "")).strip()
         if banner:
             self.tropical_cyclone_state.set_error_banner(banner)
+        self.request_client_update()
+
+    def reproject_tropical_cyclone_overlay(self) -> None:
+        if not self._tropical_cyclone_layer_enabled():
+            return
+        if self._viewport_interaction_active():
+            return
+        state = getattr(self, "tropical_cyclone_state", None)
+        snapshot = getattr(state, "snapshot", None)
+        if snapshot is None:
+            if state is not None:
+                state.projection_next_refresh_utc = None
+            self.request_client_update()
+            return
+        time_obj = self._current_time_obj()
+        current_time_utc = (
+            time_obj.to_datetime(timezone.utc) if time_obj is not None else datetime.now(timezone.utc)
+        )
+        projected_snapshot = project_tropical_cyclone_snapshot(
+            snapshot,
+            current_time_utc,
+        )
+        next_refresh = datetime.now(timezone.utc) + timedelta(
+            seconds=AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS
+        )
+        if state is not None:
+            state.set_projection(
+                projected_snapshot,
+                projection_next_refresh_utc=next_refresh,
+            )
+        self.state.tropical_cyclone_projection_next_refresh_utc = next_refresh
         self.request_client_update()
 
     def _on_terrain_horizon_started(self, payload: Dict) -> None:

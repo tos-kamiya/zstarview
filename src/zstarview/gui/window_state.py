@@ -41,6 +41,7 @@ class SkyWindowState:
     aircraft_next_refresh_utc: Optional[datetime] = None
     satellite_projection_next_refresh_utc: Optional[datetime] = None
     aircraft_projection_next_refresh_utc: Optional[datetime] = None
+    tropical_cyclone_projection_next_refresh_utc: Optional[datetime] = None
     sky_update_pending: bool = False
     pending_star_vmag_limit: Optional[float] = None
     cloud_repaint_deferred: bool = False

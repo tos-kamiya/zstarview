@@ -14,7 +14,9 @@ from ..paths import TROPICAL_CYCLONE_CACHE_DIR
 from ..tropical_cyclones.cache import (
     TROPICAL_CYCLONE_CACHE_TTL_SECONDS,
     TROPICAL_CYCLONE_CHECK_INTERVAL_SECONDS,
+    TROPICAL_CYCLONE_CACHE_VERSION,
     TropicalCycloneCacheEntry,
+    is_tropical_cyclone_cache_current,
     is_tropical_cyclone_cache_stale,
     load_tropical_cyclone_cache,
     save_tropical_cyclone_cache,
@@ -204,6 +206,7 @@ class TropicalCycloneController(QObject):
             if (
                 cached_entry is not None
                 and not cached_is_stale
+                and is_tropical_cyclone_cache_current(cached_entry)
                 and now < cached_entry.cached_at_utc + timedelta(seconds=TROPICAL_CYCLONE_CHECK_INTERVAL_SECONDS)
             ):
                 self._emit_ready(
@@ -234,6 +237,9 @@ class TropicalCycloneController(QObject):
             if (
                 cached_snapshot is not None
                 and not cached_is_stale
+                and cached_entry is not None
+                and is_tropical_cyclone_cache_current(cached_entry)
+                and cached_snapshot.has_projectable_timeline()
                 and isinstance(latest_storm_name, str)
                 and latest_storm_name == cached_snapshot.storm_name
                 and (
@@ -265,7 +271,11 @@ class TropicalCycloneController(QObject):
                 user_agent=self._user_agent,
             )
             cached_at = datetime.now(timezone.utc)
-            entry = TropicalCycloneCacheEntry(snapshot=snapshot, cached_at_utc=cached_at)
+            entry = TropicalCycloneCacheEntry(
+                snapshot=snapshot,
+                cached_at_utc=cached_at,
+                cache_version=TROPICAL_CYCLONE_CACHE_VERSION,
+            )
             try:
                 save_tropical_cyclone_cache(entry, cache_root=self._cache_root)
             except Exception:

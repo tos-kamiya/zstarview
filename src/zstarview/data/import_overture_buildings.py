@@ -617,6 +617,8 @@ def build_derived_tile_payload(
 
 
 def iter_download_features(download_path: Path, *, fmt: str) -> Sequence[dict[str, object]]:
+    if not download_path.exists():
+        return ()
     if fmt == "geojsonseq":
         features: list[dict[str, object]] = []
         with download_path.open("r", encoding="utf-8") as handle:

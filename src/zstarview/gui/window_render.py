@@ -161,6 +161,9 @@ class SkyWindowRenderMixin:
             self._render_cache_stamp(self.state.terrain_secondary_ridges_distances_m_layers),
             self._render_cache_stamp(self.state.urban_outlines),
             self._render_cache_stamp(self.state.water_overlay_dots),
+            self._render_cache_stamp(
+                getattr(getattr(self, "tropical_cyclone_state", None), "projected_snapshot", None)
+            ),
             self._render_cache_stamp(getattr(self, "tropical_cyclone_state", None) and getattr(self.tropical_cyclone_state, "snapshot", None)),
             getattr(getattr(self, "tropical_cyclone_state", None), "banner_text", None),
         ]
@@ -597,7 +600,10 @@ class SkyWindowRenderMixin:
             terrain_secondary_ridges_distances_m_layers=state.terrain_secondary_ridges_distances_m_layers,
             urban_outlines=state.urban_outlines,
             water_overlay_dots=state.water_overlay_dots,
-            tropical_cyclone_snapshot=getattr(getattr(self, "tropical_cyclone_state", None), "snapshot", None),
+            tropical_cyclone_snapshot=(
+                getattr(getattr(self, "tropical_cyclone_state", None), "projected_snapshot", None)
+                or getattr(getattr(self, "tropical_cyclone_state", None), "snapshot", None)
+            ),
             satellite_element_epoch_utc=self.satellite_state.element_epoch_utc,
             satellite_records_by_group=self.satellite_state.records_by_group,
             aircraft_snapshots=self.aircraft_state.snapshots,

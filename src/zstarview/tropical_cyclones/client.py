@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import re
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -112,6 +113,56 @@ def _parse_epoch_ms(value: object) -> dt.datetime | None:
     return stamp
 
 
+def _parse_label_time_utc(label: object) -> dt.datetime | None:
+    if not isinstance(label, str) or not label.strip():
+        return None
+    text = label.strip()
+    match = re.fullmatch(
+        r"(?P<date>\d{4}-\d{2}-\d{2}) "
+        r"(?P<hour>\d{1,2}):(?P<minute>\d{2})"
+        r"(?: (?P<ampm>AM|PM))?"
+        r"(?: [A-Za-z]{3})? UTC",
+        text,
+    )
+    if match is not None:
+        hour = int(match.group("hour"))
+        minute = int(match.group("minute"))
+        ampm = match.group("ampm")
+        if ampm is not None:
+            hour %= 12
+            if ampm == "PM":
+                hour += 12
+        year_s, month_s, day_s = match.group("date").split("-")
+        return dt.datetime(
+            int(year_s),
+            int(month_s),
+            int(day_s),
+            hour,
+            minute,
+            tzinfo=dt.timezone.utc,
+        )
+    return None
+
+
+def _parse_valid_time_utc(attrs: dict[str, Any], *, prefer_label: bool = False) -> dt.datetime | None:
+    if prefer_label:
+        parsed_label = _parse_label_time_utc(attrs.get("FLDATELBL"))
+        if parsed_label is not None:
+            return parsed_label
+
+    valid_time = attrs.get("VALIDTIME")
+    parsed = _parse_epoch_ms(valid_time)
+    if parsed is not None:
+        return parsed
+
+    if not prefer_label:
+        parsed_label = _parse_label_time_utc(attrs.get("FLDATELBL"))
+        if parsed_label is not None:
+            return parsed_label
+
+    return _parse_epoch_ms(attrs.get("DTG"))
+
+
 def _parse_point(feature: dict[str, Any], *, label_field: str | None = None) -> TropicalCyclonePoint | None:
     attrs = _feature_attrs(feature)
     geometry = _geometry(feature)
@@ -129,10 +180,17 @@ def _parse_point(feature: dict[str, Any], *, label_field: str | None = None) -> 
         value = attrs.get(label_field)
         if isinstance(value, str) and value.strip():
             label = value.strip()
+    valid_time_utc = _parse_valid_time_utc(attrs, prefer_label=label_field == "FLDATELBL")
+    if valid_time_utc is None:
+        advdate = _parse_epoch_ms(attrs.get("ADVDATE"))
+        if advdate is not None and isinstance(tau, (int, float)):
+            valid_time_utc = advdate + dt.timedelta(hours=float(tau))
+        elif advdate is not None:
+            valid_time_utc = advdate
     return TropicalCyclonePoint(
         lat_deg=float(y),
         lon_deg=float(x),
-        valid_time_utc=_parse_epoch_ms(attrs.get("VALIDTIME") or attrs.get("DTG")),
+        valid_time_utc=valid_time_utc,
         label=label,
         tau_hr=int(tau) if isinstance(tau, (int, float)) else None,
         maxwind_kt=float(attrs["MAXWIND"]) if isinstance(attrs.get("MAXWIND"), (int, float)) else None,

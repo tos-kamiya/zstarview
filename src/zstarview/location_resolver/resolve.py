@@ -301,7 +301,14 @@ def _resolve_ground_elevation_m(
             margin_km=0.0,
             cache_dir=Path(COPERNICUS_DEM_CACHE_DIR),
         )
-    except Exception:
+    except Exception as exc:
+        if isinstance(exc, RuntimeError) and "No Copernicus DEM tiles were downloaded" in str(exc):
+            logger.info(
+                "Ground elevation lookup unavailable for lat=%.6f lon=%.6f; using 0.0 m",
+                lat_deg,
+                lon_deg,
+            )
+            return 0.0
         logger.warning(
             "Ground elevation lookup failed for lat=%.6f lon=%.6f",
             lat_deg,
