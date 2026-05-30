@@ -2577,10 +2577,9 @@ def test_render_frame_cache_key_tracks_projected_tropical_cyclone_state() -> Non
     dummy.state.terrain_horizon_profile = [(1.0, 2.0)]
     dummy.state.urban_outlines = [object()]
     dummy.state.water_overlay_dots = [object()]
-    dummy.tropical_cyclone_state = SimpleNamespace(
-        snapshot=object(),
-        projected_snapshot=object(),
-        banner_text=None,
+    dummy.tropical_cyclone_state = SimpleNamespace(snapshot=object(), banner_text=None)
+    dummy._current_time_obj = lambda: astropy.time.Time(
+        "2026-04-18T12:00:00", scale="utc"
     )
 
     key_a = SkyWindow._render_frame_cache_key(
@@ -2590,7 +2589,9 @@ def test_render_frame_cache_key_tracks_projected_tropical_cyclone_state() -> Non
         render_viewer=viewer,
     )
 
-    dummy.tropical_cyclone_state.projected_snapshot = object()
+    dummy._current_time_obj = lambda: astropy.time.Time(
+        "2026-04-18T12:00:03", scale="utc"
+    )
 
     key_b = SkyWindow._render_frame_cache_key(
         dummy,

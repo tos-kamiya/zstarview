@@ -324,6 +324,7 @@ def render_base_scene_into_painter(
         geometry=frame.geometry,
         viewer=scene.viewer,
         snapshot=scene.tropical_cyclone_snapshot,
+        when_utc=frame.time_obj.to_datetime() if frame.time_obj is not None else None,
         theme=style.theme,
         enabled=bool(style.show_tropical_cyclone_overlay),
     )

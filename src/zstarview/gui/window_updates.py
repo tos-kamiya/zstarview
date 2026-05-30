@@ -14,7 +14,6 @@ from ..paths import CLOUD_UPDATE_INTERVAL
 from ..satellite_constants import SATELLITE_POSITION_REFRESH_INTERVAL_SECONDS
 from ..search.jpl import project_jpl_target_altaz_from_state_vector
 from ..render import geometry as render_geometry
-from ..tropical_cyclones.models import project_tropical_cyclone_snapshot
 
 logger = logging.getLogger(__name__)
 _STATUS_CLOUD = "☁"
@@ -1341,24 +1340,14 @@ class SkyWindowUpdatesMixin:
         if snapshot is None:
             if state is not None:
                 state.projection_next_refresh_utc = None
+            self.state.tropical_cyclone_projection_next_refresh_utc = None
             self.request_client_update()
             return
-        time_obj = self._current_time_obj()
-        current_time_utc = (
-            time_obj.to_datetime(timezone.utc) if time_obj is not None else datetime.now(timezone.utc)
-        )
-        projected_snapshot = project_tropical_cyclone_snapshot(
-            snapshot,
-            current_time_utc,
-        )
         next_refresh = datetime.now(timezone.utc) + timedelta(
             seconds=AIRCRAFT_PREDICTION_REFRESH_INTERVAL_SECONDS
         )
         if state is not None:
-            state.set_projection(
-                projected_snapshot,
-                projection_next_refresh_utc=next_refresh,
-            )
+            state.projection_next_refresh_utc = next_refresh
         self.state.tropical_cyclone_projection_next_refresh_utc = next_refresh
         self.request_client_update()
 

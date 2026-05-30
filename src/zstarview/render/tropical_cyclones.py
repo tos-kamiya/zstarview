@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
@@ -10,6 +11,7 @@ from ..location_resolver.place_projection import project_place_targets_to_altaz
 from ..paths import ThemeStyle
 from ..types import ScreenGeometry, ViewerData
 from ..tropical_cyclones.models import TropicalCycloneSnapshot
+from ..tropical_cyclones.models import project_tropical_cyclone_snapshot
 from .geometry import normalized_to_screen_xy
 
 TROPICAL_CYCLONE_TARGET_HEIGHT_M = 0.0
@@ -124,6 +126,7 @@ def draw_tropical_cyclone_overlay(
     geometry: ScreenGeometry,
     viewer: ViewerData,
     snapshot: TropicalCycloneSnapshot | None,
+    when_utc: datetime | None,
     theme: ThemeStyle,
     enabled: bool = True,
 ) -> None:
@@ -131,7 +134,10 @@ def draw_tropical_cyclone_overlay(
         return
     del theme
 
-    observed = snapshot.observed_position
+    if when_utc is None:
+        when_utc = datetime.now(timezone.utc)
+    projected_snapshot = project_tropical_cyclone_snapshot(snapshot, when_utc)
+    observed = projected_snapshot.observed_position
     point = _project_point(
         observed.lat_deg,
         observed.lon_deg,
@@ -154,6 +160,6 @@ def draw_tropical_cyclone_overlay(
         point,
         geometry=geometry,
         color_rgba=TROPICAL_CYCLONE_LABEL_RGBA,
-        text=snapshot.storm_name,
+        text=projected_snapshot.storm_name,
     )
     painter.restore()

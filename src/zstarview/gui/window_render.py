@@ -114,6 +114,14 @@ class SkyWindowRenderMixin:
                 geometry=geometry,
                 viewport_rect=viewport_rect,
             )
+        cyclone_time_bucket = None
+        try:
+            current_time_obj = frame.time_obj
+            if current_time_obj is None:
+                current_time_obj = self._current_time_obj()
+            cyclone_time_bucket = int(float(current_time_obj.unix) // 2.0)
+        except Exception:
+            cyclone_time_bucket = None
         key_parts: list[object] = [
             int(self.client_width()),
             int(self.client_height()),
@@ -161,21 +169,12 @@ class SkyWindowRenderMixin:
             self._render_cache_stamp(self.state.terrain_secondary_ridges_distances_m_layers),
             self._render_cache_stamp(self.state.urban_outlines),
             self._render_cache_stamp(self.state.water_overlay_dots),
-            self._render_cache_stamp(
-                getattr(getattr(self, "tropical_cyclone_state", None), "projected_snapshot", None)
-            ),
             self._render_cache_stamp(getattr(self, "tropical_cyclone_state", None) and getattr(self.tropical_cyclone_state, "snapshot", None)),
+            cyclone_time_bucket,
             getattr(getattr(self, "tropical_cyclone_state", None), "banner_text", None),
         ]
         if include_fast_overlays:
-            overlay_time_bucket = None
-            try:
-                current_time_obj = frame.time_obj
-                if current_time_obj is None:
-                    current_time_obj = self._current_time_obj()
-                overlay_time_bucket = int(float(current_time_obj.unix) // 2.0)
-            except Exception:
-                overlay_time_bucket = None
+            overlay_time_bucket = cyclone_time_bucket
             satellite_overlay_source = self.satellite_state.records_by_group
             aircraft_overlay_source = self.aircraft_state.snapshots
             key_parts.extend(
@@ -600,9 +599,10 @@ class SkyWindowRenderMixin:
             terrain_secondary_ridges_distances_m_layers=state.terrain_secondary_ridges_distances_m_layers,
             urban_outlines=state.urban_outlines,
             water_overlay_dots=state.water_overlay_dots,
-            tropical_cyclone_snapshot=(
-                getattr(getattr(self, "tropical_cyclone_state", None), "projected_snapshot", None)
-                or getattr(getattr(self, "tropical_cyclone_state", None), "snapshot", None)
+            tropical_cyclone_snapshot=getattr(
+                getattr(self, "tropical_cyclone_state", None),
+                "snapshot",
+                None,
             ),
             satellite_element_epoch_utc=self.satellite_state.element_epoch_utc,
             satellite_records_by_group=self.satellite_state.records_by_group,
