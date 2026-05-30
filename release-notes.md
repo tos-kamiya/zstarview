@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.28.11 - 2026-05-30
+- Fixed the tropical cyclone overlay so the projected storm position advances over time instead of staying pinned to the cached advisory point.
+- Removed the temporary cyclone debug prints and kept the render cache keyed on the projected storm state so the display updates when the projection changes.
+
 ## 1.28.10 - 2026-05-28
 - Kept `zstarview-gui` aligned with the CLI-only Geo-satellite behavior, so the startup dialog no longer exposes that toggle while the internal GUI path still honors the feature when enabled from the command line.
 - Refreshed the bundled Geo-satellite gray-common mask assets and documented the regenerated six-frame workflow used to rebuild them.
