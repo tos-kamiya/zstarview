@@ -128,6 +128,8 @@ from .jpl_small_body_controller import JplSmallBodyController
 from .place_search_dialog import PlaceSearchDialog
 from .satellite_controller import SatelliteController
 from .satellite_state import SatelliteState
+from .tropical_cyclone_controller import TropicalCycloneController
+from .tropical_cyclone_state import TropicalCycloneState
 from .sky_worker import SkyDataWorker
 from .terrain_controller import TerrainHorizonController
 from .terrain_state import TerrainHorizonState
@@ -444,6 +446,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._water_overlay_gui_allowed = True
         self.show_urban_outline_layer: bool = self.urban_outline_opacity > 0.0
         self.show_water_overlay_layer: bool = self.water_overlay_opacity > 0.0
+        self.show_tropical_cyclone_overlay: bool = True
         self.enlarge_moon = user_options.enlarge_moon
         self.bright_bodies_mode = user_options.bright_bodies_mode
         self.star_base_radius = user_options.star_base_radius
@@ -581,6 +584,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._action_toggle_earth_guide: Optional[QAction] = None
         self._action_toggle_night_lights: Optional[QAction] = None
         self._action_toggle_urban_outline: Optional[QAction] = None
+        self._action_toggle_tropical_cyclone: Optional[QAction] = None
         self._action_toggle_dso: Optional[QAction] = None
         self._action_toggle_asterisms: Optional[QAction] = None
         self._action_toggle_guidelines: Optional[QAction] = None
@@ -615,6 +619,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.geosatellite_state = GeoSatelliteState()
         self.satellite_state = SatelliteState()
         self.aircraft_state = AircraftState()
+        self.tropical_cyclone_state = TropicalCycloneState()
         self.terrain_horizon_state = TerrainHorizonState()
         self.water_overlay_state = WaterOverlayState()
         self.urban_outline_state = UrbanOutlineState()
@@ -622,6 +627,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._geosatellite_controller: Optional[GeoSatelliteController] = None
         self._satellite_controller: Optional[SatelliteController] = None
         self._aircraft_controller: Optional[AircraftController] = None
+        self._tropical_cyclone_controller: Optional[TropicalCycloneController] = None
         self._jpl_small_body_controller: Optional[JplSmallBodyController] = None
         self._terrain_horizon_controller: Optional[TerrainHorizonController] = None
         self._water_overlay_controller: Optional[WaterOverlayController] = None
@@ -659,6 +665,16 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._aircraft_controller.aircraft_started.connect(self._on_aircraft_started)
         self._aircraft_controller.aircraft_ready.connect(self._on_aircraft_ready)
         self._aircraft_controller.aircraft_failed.connect(self._on_aircraft_failed)
+        self._tropical_cyclone_controller = TropicalCycloneController(parent=self)
+        self._tropical_cyclone_controller.cyclone_started.connect(
+            self._on_tropical_cyclone_started
+        )
+        self._tropical_cyclone_controller.cyclone_ready.connect(
+            self._on_tropical_cyclone_ready
+        )
+        self._tropical_cyclone_controller.cyclone_failed.connect(
+            self._on_tropical_cyclone_failed
+        )
         self._jpl_small_body_controller = JplSmallBodyController(parent=self)
         self._jpl_small_body_controller.jpl_started.connect(self._on_jpl_started)
         self._jpl_small_body_controller.jpl_ready.connect(self._on_jpl_ready)
@@ -1117,6 +1133,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             checked=self.aircraft_opacity > 0.0,
             shortcut=QKeySequence(Qt.Key.Key_P),
             triggered=self.toggle_aircraft,
+        )
+        self._action_toggle_tropical_cyclone = self._add_checkable_menu_action(
+            self.display_menu,
+            "Typhoon / Cyclone",
+            checked=self.show_tropical_cyclone_overlay,
+            triggered=self.toggle_tropical_cyclone_overlay,
         )
         self.display_menu.addSeparator()
         self._action_toggle_night_lights = self._add_checkable_menu_action(
@@ -2131,6 +2153,22 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 self._schedule_next_aircraft_refresh()
             else:
                 self.state.aircraft_next_refresh_utc = now
+        if self._tropical_cyclone_controller is not None:
+            if (
+                self.tropical_cyclone_state.snapshot is not None
+                and self.tropical_cyclone_state.cached_at_utc is not None
+            ):
+                self.tropical_cyclone_state.next_check_utc = (
+                    self.tropical_cyclone_state.cached_at_utc
+                    + timedelta(minutes=90)
+                )
+                self.tropical_cyclone_state.next_refresh_utc = (
+                    self.tropical_cyclone_state.cached_at_utc
+                    + timedelta(hours=3)
+                )
+            else:
+                self.tropical_cyclone_state.next_check_utc = now
+                self.tropical_cyclone_state.next_refresh_utc = now
         if not self._scheduler_tick_timer.isActive():
             self._scheduler_tick_timer.start()
         self._on_scheduler_tick()
@@ -2151,6 +2189,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 self._satellite_controller.shutdown()
             if self._aircraft_controller is not None:
                 self._aircraft_controller.shutdown()
+            if self._tropical_cyclone_controller is not None:
+                self._tropical_cyclone_controller.shutdown()
             if self._jpl_small_body_controller is not None:
                 self._jpl_small_body_controller.shutdown()
             if self._terrain_horizon_controller is not None:
@@ -2446,6 +2486,19 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         else:
             self._stop_aircraft_timers()
 
+        self.request_client_update()
+
+    def toggle_tropical_cyclone_overlay(self) -> None:
+        self.show_tropical_cyclone_overlay = not bool(self.show_tropical_cyclone_overlay)
+        if (
+            self._action_toggle_tropical_cyclone is not None
+            and self._action_toggle_tropical_cyclone.isChecked() != self.show_tropical_cyclone_overlay
+        ):
+            self._action_toggle_tropical_cyclone.setChecked(self.show_tropical_cyclone_overlay)
+        if self.show_tropical_cyclone_overlay and self.tropical_cyclone_state.snapshot is None:
+            starter = getattr(self, "start_background_tropical_cyclone_update", None)
+            if callable(starter):
+                starter(reason="toggle-on")
         self.request_client_update()
 
     def toggle_dso(self) -> None:

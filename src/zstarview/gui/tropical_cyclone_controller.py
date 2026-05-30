@@ -1,0 +1,304 @@
+from __future__ import annotations
+
+import logging
+import threading
+import time
+from concurrent.futures import Future
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Callable, Optional
+
+from PySide6.QtCore import QObject, Signal
+
+from ..paths import TROPICAL_CYCLONE_CACHE_DIR
+from ..tropical_cyclones.cache import (
+    TROPICAL_CYCLONE_CACHE_TTL_SECONDS,
+    TROPICAL_CYCLONE_CHECK_INTERVAL_SECONDS,
+    TropicalCycloneCacheEntry,
+    is_tropical_cyclone_cache_stale,
+    load_tropical_cyclone_cache,
+    save_tropical_cyclone_cache,
+)
+from ..tropical_cyclones.client import (
+    DEFAULT_SERVICE_URL,
+    DEFAULT_TIMEOUT_S,
+    DEFAULT_USER_AGENT,
+    TropicalCycloneFetchError,
+    fetch_active_hurricanes_snapshot,
+    fetch_latest_observed_feature,
+)
+from ..tropical_cyclones.models import TropicalCycloneSnapshot
+from .worker_pool import submit_gui_work, wait_for_gui_futures
+
+logger = logging.getLogger(__name__)
+
+
+class TropicalCycloneController(QObject):
+    cyclone_started = Signal(object)
+    cyclone_ready = Signal(object)
+    cyclone_failed = Signal(object)
+
+    def __init__(
+        self,
+        *,
+        service_url: str = DEFAULT_SERVICE_URL,
+        cache_root: Path | str = TROPICAL_CYCLONE_CACHE_DIR,
+        timeout_s: float = DEFAULT_TIMEOUT_S,
+        user_agent: str = DEFAULT_USER_AGENT,
+        parent: QObject | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self._service_url = str(service_url)
+        self._cache_root = Path(cache_root)
+        self._timeout_s = float(timeout_s)
+        self._user_agent = str(user_agent)
+        self._running = False
+        self._stopping = False
+        self._pending_request: Optional[dict[str, object]] = None
+        self._latest_request_id = 0
+        self._active_workers: set[Future[None]] = set()
+        self._lock = threading.Lock()
+
+    def shutdown(self, *, wait_timeout_s: float | None = None) -> None:
+        with self._lock:
+            self._stopping = True
+            self._pending_request = None
+        self._wait_for_workers(wait_timeout_s)
+
+    def has_in_flight_update(self) -> bool:
+        with self._lock:
+            return bool(self._running or self._pending_request is not None or self._active_workers)
+
+    def update(self, *, reason: str = "manual") -> bool:
+        request = {"reason": str(reason)}
+        with self._lock:
+            if self._stopping:
+                return False
+            self._latest_request_id += 1
+            request["request_id"] = int(self._latest_request_id)
+            if self._running:
+                self._pending_request = dict(request)
+                return False
+            self._running = True
+
+        self.cyclone_started.emit({"banner": "Typhoon: checking..."})
+        self._spawn_worker(target=self._run_update, kwargs=request, label="cyclone")
+        return True
+
+    def _spawn_worker(
+        self,
+        *,
+        target: Callable[..., None],
+        kwargs: dict[str, object],
+        label: str,
+    ) -> None:
+        def runner() -> None:
+            target(**kwargs)
+
+        worker = submit_gui_work(runner)
+        with self._lock:
+            if self._stopping:
+                return
+            self._active_workers.add(worker)
+            if worker.done():
+                self._active_workers.discard(worker)
+                return
+        worker.add_done_callback(self._unregister_worker)
+
+    def _unregister_worker(self, worker: Future[None]) -> None:
+        with self._lock:
+            self._active_workers.discard(worker)
+
+    def _wait_for_workers(self, wait_timeout_s: float | None) -> None:
+        deadline = None if wait_timeout_s is None else time.monotonic() + max(0.0, float(wait_timeout_s))
+        while True:
+            with self._lock:
+                workers = tuple(self._active_workers)
+            if not workers:
+                return
+            if deadline is None:
+                wait_for_gui_futures(workers, None)
+                continue
+            remaining = deadline - time.monotonic()
+            if remaining <= 0.0:
+                logger.warning(
+                    "Timed out waiting for %d tropical-cyclone worker task(s) to finish during shutdown",
+                    len(workers),
+                )
+                return
+            wait_for_gui_futures(workers, remaining)
+
+    def _cache_payload(
+        self,
+        snapshot: TropicalCycloneSnapshot,
+        *,
+        cached_at_utc: datetime,
+        last_checked_utc: datetime,
+        next_check_utc: datetime,
+        next_refresh_utc: datetime,
+        banner: str = "",
+    ) -> dict[str, object]:
+        return {
+            "snapshot": snapshot.to_dict(),
+            "cached_at_utc": cached_at_utc,
+            "last_checked_utc": last_checked_utc,
+            "next_check_utc": next_check_utc,
+            "next_refresh_utc": next_refresh_utc,
+            "banner": banner,
+            "service_url": self._service_url,
+        }
+
+    def _payload_from_cache_entry(
+        self,
+        entry: TropicalCycloneCacheEntry,
+        *,
+        now_utc: datetime,
+        next_check_utc: datetime | None = None,
+        banner: str = "",
+    ) -> dict[str, object]:
+        cached_at = entry.cached_at_utc
+        next_check = (
+            next_check_utc
+            if next_check_utc is not None
+            else max(
+                now_utc,
+                cached_at + timedelta(seconds=TROPICAL_CYCLONE_CHECK_INTERVAL_SECONDS),
+            )
+        )
+        next_refresh = cached_at + timedelta(seconds=TROPICAL_CYCLONE_CACHE_TTL_SECONDS)
+        return self._cache_payload(
+            entry.snapshot,
+            cached_at_utc=cached_at,
+            last_checked_utc=now_utc,
+            next_check_utc=next_check,
+            next_refresh_utc=next_refresh,
+            banner=banner,
+        )
+
+    def _emit_ready(
+        self,
+        payload: dict[str, object],
+        *,
+        request_id: int,
+    ) -> None:
+        with self._lock:
+            should_emit = not self._stopping and request_id == self._latest_request_id
+        if should_emit:
+            self.cyclone_ready.emit(payload)
+
+    def _emit_failed(self, banner: str, *, request_id: int) -> None:
+        with self._lock:
+            should_emit = not self._stopping and request_id == self._latest_request_id
+        if should_emit:
+            self.cyclone_failed.emit({"banner": banner})
+
+    def _run_update(self, *, reason: str, request_id: int) -> None:
+        next_request: Optional[dict[str, object]] = None
+        try:
+            logger.info("Updating tropical cyclone overlay (%s)...", reason)
+            now = datetime.now(timezone.utc)
+            cached_entry = load_tropical_cyclone_cache(self._cache_root)
+            cached_is_stale = False
+            if cached_entry is not None:
+                cached_is_stale = is_tropical_cyclone_cache_stale(cached_entry, now_utc=now)
+            if (
+                cached_entry is not None
+                and not cached_is_stale
+                and now < cached_entry.cached_at_utc + timedelta(seconds=TROPICAL_CYCLONE_CHECK_INTERVAL_SECONDS)
+            ):
+                self._emit_ready(
+                    self._payload_from_cache_entry(
+                        cached_entry,
+                        now_utc=now,
+                        next_check_utc=cached_entry.cached_at_utc
+                        + timedelta(seconds=TROPICAL_CYCLONE_CHECK_INTERVAL_SECONDS),
+                    ),
+                    request_id=request_id,
+                )
+                return
+
+            latest_feature = fetch_latest_observed_feature(
+                service_url=self._service_url,
+                timeout_s=self._timeout_s,
+                user_agent=self._user_agent,
+            )
+            latest_attrs = latest_feature.get("attributes")
+            if not isinstance(latest_attrs, dict):
+                raise TropicalCycloneFetchError("Observed position payload missing attributes")
+            latest_storm_name = latest_attrs.get("STORMNAME")
+            latest_basin = latest_attrs.get("BASIN")
+            latest_advdate = latest_attrs.get("ADVDATE")
+            latest_advdate_int = int(latest_advdate) if isinstance(latest_advdate, (int, float)) else None
+
+            cached_snapshot = cached_entry.snapshot if cached_entry is not None else None
+            if (
+                cached_snapshot is not None
+                and not cached_is_stale
+                and isinstance(latest_storm_name, str)
+                and latest_storm_name == cached_snapshot.storm_name
+                and (
+                    (latest_basin is None and cached_snapshot.basin is None)
+                    or (
+                        isinstance(latest_basin, str)
+                        and latest_basin == cached_snapshot.basin
+                    )
+                )
+                and latest_advdate_int is not None
+                and cached_snapshot.advdate_utc is not None
+            ):
+                cached_advdate_ms = int(cached_snapshot.advdate_utc.timestamp() * 1000.0)
+                if cached_advdate_ms == latest_advdate_int:
+                    self._emit_ready(
+                        self._payload_from_cache_entry(
+                            cached_entry,
+                            now_utc=now,
+                            next_check_utc=now
+                            + timedelta(seconds=TROPICAL_CYCLONE_CHECK_INTERVAL_SECONDS),
+                        ),
+                        request_id=request_id,
+                    )
+                    return
+
+            snapshot = fetch_active_hurricanes_snapshot(
+                service_url=self._service_url,
+                timeout_s=self._timeout_s,
+                user_agent=self._user_agent,
+            )
+            cached_at = datetime.now(timezone.utc)
+            entry = TropicalCycloneCacheEntry(snapshot=snapshot, cached_at_utc=cached_at)
+            try:
+                save_tropical_cyclone_cache(entry, cache_root=self._cache_root)
+            except Exception:
+                logger.warning("Failed to write tropical cyclone cache", exc_info=True)
+            payload = self._cache_payload(
+                snapshot,
+                cached_at_utc=cached_at,
+                last_checked_utc=cached_at,
+                next_check_utc=cached_at + timedelta(seconds=TROPICAL_CYCLONE_CHECK_INTERVAL_SECONDS),
+                next_refresh_utc=cached_at + timedelta(seconds=TROPICAL_CYCLONE_CACHE_TTL_SECONDS),
+            )
+            self._emit_ready(payload, request_id=request_id)
+        except Exception as exc:
+            logger.warning("Tropical cyclone update failed: %s", exc, exc_info=True)
+            cached_entry = load_tropical_cyclone_cache(self._cache_root)
+            if cached_entry is not None:
+                payload = self._payload_from_cache_entry(
+                    cached_entry,
+                    now_utc=datetime.now(timezone.utc),
+                    next_check_utc=datetime.now(timezone.utc)
+                    + timedelta(seconds=TROPICAL_CYCLONE_CHECK_INTERVAL_SECONDS),
+                    banner="Typhoon: unavailable",
+                )
+                self._emit_ready(payload, request_id=request_id)
+            else:
+                self._emit_failed("Typhoon: unavailable", request_id=request_id)
+        finally:
+            with self._lock:
+                self._running = False
+                if not self._stopping and self._pending_request is not None:
+                    next_request = dict(self._pending_request)
+                    self._pending_request = None
+                    self._running = True
+            if next_request is not None:
+                self.cyclone_started.emit({"banner": "Typhoon: checking..."})
+                self._spawn_worker(target=self._run_update, kwargs=next_request, label="cyclone")

@@ -16,6 +16,7 @@ from ..night_lights import NightLightGlowProfile
 from ..paths import THEME_STYLES_BY_PRESET, ThemeStyle
 from ..satellites.types import SatelliteOmmRecord, SatelliteOverlayPoint
 from ..search.models import SearchJumpTarget
+from ..tropical_cyclones.models import TropicalCycloneSnapshot
 from ..types import (
     CelestialData,
     CelestialObject,
@@ -33,6 +34,7 @@ from . import guides as render_guides
 from . import overlay_info as render_overlay_info
 from . import satellites as render_satellites
 from . import search_overlay as render_search_overlay
+from . import tropical_cyclones as render_tropical_cyclones
 from . import solar_system as render_solar_system
 from . import stars as render_stars
 from . import terrain as render_terrain
@@ -122,6 +124,7 @@ class RenderSceneData:
     time_obj: astropy.time.Time | None = None
     night_light_glow_profile: NightLightGlowProfile | None = None
     water_overlay_dots: list[WaterOverlayPoint] | None = None
+    tropical_cyclone_snapshot: TropicalCycloneSnapshot | None = None
 
 
 @dataclass(frozen=True)
@@ -153,6 +156,7 @@ class RenderStyle:
     show_urban_outline_layer: bool = True
     water_overlay_opacity: float = 0.12
     aircraft_opacity: float = 0.5
+    show_tropical_cyclone_overlay: bool = True
     star_render_expected_width: int = 600
     theme: ThemeStyle = THEME_STYLES_BY_PRESET["night"]
 
@@ -315,6 +319,19 @@ def render_base_scene_into_painter(
         )
     if draw_labels:
         render_text._draw_label_candidates(painter, local_label_candidates, style.text_font)
+    render_tropical_cyclones.draw_tropical_cyclone_overlay(
+        painter,
+        QRectF(
+            0.0,
+            0.0,
+            float(frame.viewport_rect.width()),
+            float(frame.viewport_rect.height()),
+        ),
+        scene.tropical_cyclone_snapshot,
+        theme=style.theme,
+        text_font=style.text_font,
+        enabled=bool(style.show_tropical_cyclone_overlay),
+    )
 
 
 def render_fast_overlay_layers_into_painter(

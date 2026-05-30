@@ -20,6 +20,7 @@ _STATUS_CLOUD = "☁"
 _STATUS_WATER = "W"
 _STATUS_SATELLITE = "🛰"
 _STATUS_AIRCRAFT = "✈"
+_STATUS_TROPICAL_CYCLONE = "TC"
 _STATUS_TERRAIN = "△"
 _STATUS_URBAN = "🂓"
 
@@ -62,6 +63,13 @@ def _request_cloud_projection_update(obj: object, *, reason: str) -> None:
     if callable(fallback):
         fallback(reason=reason)
 
+
+def _request_tropical_cyclone_update(obj: object, *, reason: str) -> None:
+    updater = getattr(obj, "start_background_tropical_cyclone_update", None)
+    if callable(updater):
+        updater(reason=reason)
+
+
 def _initial_data_load_active(obj: object) -> bool:
     return bool(obj._startup_initial_load_started) and not bool(
         obj._startup_initial_data_loaded
@@ -95,6 +103,7 @@ class SkyWindowUpdatesMixin:
             getattr(self, "_geosatellite_controller", None),
             getattr(self, "_satellite_controller", None),
             getattr(self, "_aircraft_controller", None),
+            getattr(self, "_tropical_cyclone_controller", None),
             getattr(self, "_jpl_small_body_controller", None),
             getattr(self, "_terrain_horizon_controller", None),
             getattr(self, "_water_overlay_controller", None),
@@ -164,6 +173,12 @@ class SkyWindowUpdatesMixin:
         if self._geo_satellite_mode_active():
             return self._geosatellite_controller is not None
         return self._clouddisc is not None
+
+    def _tropical_cyclone_layer_enabled(self) -> bool:
+        return bool(
+            getattr(self, "show_tropical_cyclone_overlay", False)
+            and self._tropical_cyclone_controller is not None
+        )
 
     def _on_scheduler_tick(self) -> None:
         if self._is_shutting_down:
@@ -270,6 +285,23 @@ class SkyWindowUpdatesMixin:
                 )
                 return
 
+        cyclone_state = getattr(self, "tropical_cyclone_state", None)
+        cyclone_next_check = getattr(cyclone_state, "next_check_utc", None)
+        cyclone_next_refresh = getattr(cyclone_state, "next_refresh_utc", None)
+        if (
+            not background_updates_busy
+            and self._tropical_cyclone_layer_enabled()
+            and (
+                (isinstance(cyclone_next_refresh, datetime) and now_utc >= cyclone_next_refresh)
+                or (isinstance(cyclone_next_check, datetime) and now_utc >= cyclone_next_check)
+            )
+        ):
+            controller = self._tropical_cyclone_controller
+            if controller is not None and not controller.has_in_flight_update():
+                started = self.start_background_tropical_cyclone_update(reason="scheduler")
+                if started:
+                    return
+
         # Lowest-priority idle work: keep satellite and aircraft positions fresh.
         if self._aircraft_layer_enabled() and self._aircraft_projection_next_refresh_delay_ms() == 0:
             self.reproject_aircraft_overlay()
@@ -299,6 +331,9 @@ class SkyWindowUpdatesMixin:
             aircraft_message = aircraft_status_line()
             if aircraft_message:
                 parts.append(aircraft_message)
+        cyclone_message = self._tropical_cyclone_status_line()
+        if cyclone_message:
+            parts.append(cyclone_message)
         jpl_message = self._jpl_small_body_status_line()
         if jpl_message:
             parts.append(jpl_message)
@@ -434,6 +469,31 @@ class SkyWindowUpdatesMixin:
             )
             return _status_segment(_STATUS_URBAN, detail)
         return ""
+
+    def _tropical_cyclone_status_line(self) -> str:
+        if not getattr(self, "show_tropical_cyclone_overlay", False):
+            return _status_segment(_STATUS_TROPICAL_CYCLONE, "", hidden=True)
+        state = getattr(self, "tropical_cyclone_state", None)
+        if state is None:
+            return _status_segment(_STATUS_TROPICAL_CYCLONE, "idle")
+        if state.banner_text:
+            detail = _strip_status_prefix(state.banner_text, "Typhoon:")
+            return _status_segment(_STATUS_TROPICAL_CYCLONE, detail)
+        snapshot = state.snapshot
+        if snapshot is None:
+            return _status_segment(_STATUS_TROPICAL_CYCLONE, "idle")
+        advdate = snapshot.advdate_utc
+        if advdate is not None:
+            try:
+                advdate_text = advdate.astimezone(timezone.utc).strftime("%m-%d %H:%MZ")
+            except Exception:
+                advdate_text = "?"
+        else:
+            advdate_text = "?"
+        return _status_segment(
+            _STATUS_TROPICAL_CYCLONE,
+            f"{snapshot.storm_name} {advdate_text}",
+        )
 
     def _aircraft_status_line(self) -> str:
         if float(self.aircraft_opacity) <= 0.0:
@@ -1167,6 +1227,65 @@ class SkyWindowUpdatesMixin:
             self.aircraft_state.set_error_banner(banner)
         if float(self.aircraft_opacity) > 0.0:
             self._schedule_next_aircraft_refresh()
+        self.request_client_update()
+
+    def start_background_tropical_cyclone_update(self, reason: str = "manual") -> bool:
+        if self._is_shutting_down:
+            return False
+        if not self._tropical_cyclone_layer_enabled():
+            return False
+        controller = self._tropical_cyclone_controller
+        if controller is None:
+            return False
+        return controller.update(reason=reason)
+
+    def _on_tropical_cyclone_started(self, payload: Dict) -> None:
+        banner = str(payload.get("banner", "")).strip()
+        if banner:
+            self.tropical_cyclone_state.banner_text = banner
+        self.request_client_update()
+
+    def _on_tropical_cyclone_ready(self, payload: Dict) -> None:
+        snapshot = payload.get("snapshot")
+        if isinstance(snapshot, dict):
+            from ..tropical_cyclones.models import TropicalCycloneSnapshot
+
+            parsed_snapshot = TropicalCycloneSnapshot.from_dict(snapshot)
+        else:
+            parsed_snapshot = None
+        if parsed_snapshot is None:
+            banner = str(payload.get("banner", "")).strip()
+            if banner:
+                self.tropical_cyclone_state.set_error_banner(banner)
+            self.request_client_update()
+            return
+        cached_at = payload.get("cached_at_utc")
+        if not isinstance(cached_at, datetime):
+            cached_at = datetime.now(timezone.utc)
+        last_checked = payload.get("last_checked_utc")
+        if not isinstance(last_checked, datetime):
+            last_checked = cached_at
+        next_check = payload.get("next_check_utc")
+        if not isinstance(next_check, datetime):
+            next_check = cached_at + timedelta(minutes=90)
+        next_refresh = payload.get("next_refresh_utc")
+        if not isinstance(next_refresh, datetime):
+            next_refresh = cached_at + timedelta(hours=3)
+        banner = str(payload.get("banner", "")).strip()
+        self.tropical_cyclone_state.set_result(
+            parsed_snapshot,
+            cached_at_utc=cached_at,
+            last_checked_utc=last_checked,
+            next_check_utc=next_check,
+            next_refresh_utc=next_refresh,
+            banner_text=banner or None,
+        )
+        self.request_client_update()
+
+    def _on_tropical_cyclone_failed(self, payload: Dict) -> None:
+        banner = str(payload.get("banner", "")).strip()
+        if banner:
+            self.tropical_cyclone_state.set_error_banner(banner)
         self.request_client_update()
 
     def _on_terrain_horizon_started(self, payload: Dict) -> None:

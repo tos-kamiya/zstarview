@@ -135,6 +135,7 @@ class SkyWindowRenderMixin:
             bool(self.show_asterisms),
             bool(self.show_guidelines),
             bool(self.show_observation_info),
+            bool(getattr(self, "show_tropical_cyclone_overlay", False)),
             bool(self.enlarge_moon),
             self.bright_bodies_mode,
             round(float(self.vmag_limit), 3),
@@ -160,6 +161,8 @@ class SkyWindowRenderMixin:
             self._render_cache_stamp(self.state.terrain_secondary_ridges_distances_m_layers),
             self._render_cache_stamp(self.state.urban_outlines),
             self._render_cache_stamp(self.state.water_overlay_dots),
+            self._render_cache_stamp(getattr(self, "tropical_cyclone_state", None) and getattr(self.tropical_cyclone_state, "snapshot", None)),
+            getattr(getattr(self, "tropical_cyclone_state", None), "banner_text", None),
         ]
         if include_fast_overlays:
             overlay_time_bucket = None
@@ -276,9 +279,12 @@ class SkyWindowRenderMixin:
             str(self.sky_disc_altaz_rings_hover),
             round(float(self.satellite_opacity), 3),
             round(float(self.aircraft_opacity), 3),
+            bool(getattr(self, "show_tropical_cyclone_overlay", False)),
             overlay_time_bucket,
             self._render_cache_stamp(self.satellite_state.records_by_group),
             self._render_cache_stamp(self.aircraft_state.snapshots),
+            self._render_cache_stamp(getattr(self, "tropical_cyclone_state", None) and getattr(self.tropical_cyclone_state, "snapshot", None)),
+            getattr(getattr(self, "tropical_cyclone_state", None), "banner_text", None),
             mouse_key,
             bool(hud.overlay_info_bottom_left),
             bool(hud.viewport_interaction_mode),
@@ -591,6 +597,7 @@ class SkyWindowRenderMixin:
             terrain_secondary_ridges_distances_m_layers=state.terrain_secondary_ridges_distances_m_layers,
             urban_outlines=state.urban_outlines,
             water_overlay_dots=state.water_overlay_dots,
+            tropical_cyclone_snapshot=getattr(getattr(self, "tropical_cyclone_state", None), "snapshot", None),
             satellite_element_epoch_utc=self.satellite_state.element_epoch_utc,
             satellite_records_by_group=self.satellite_state.records_by_group,
             aircraft_snapshots=self.aircraft_state.snapshots,
@@ -629,6 +636,7 @@ class SkyWindowRenderMixin:
             show_urban_outline_layer=bool(self.show_urban_outline_layer),
             water_overlay_opacity=float(self.water_overlay_opacity),
             aircraft_opacity=float(self.aircraft_opacity),
+            show_tropical_cyclone_overlay=bool(getattr(self, "show_tropical_cyclone_overlay", False)),
             star_render_expected_width=int(self._star_render_expected_width),
         )
 
