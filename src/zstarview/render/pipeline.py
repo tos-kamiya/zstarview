@@ -321,15 +321,10 @@ def render_base_scene_into_painter(
         render_text._draw_label_candidates(painter, local_label_candidates, style.text_font)
     render_tropical_cyclones.draw_tropical_cyclone_overlay(
         painter,
-        QRectF(
-            0.0,
-            0.0,
-            float(frame.viewport_rect.width()),
-            float(frame.viewport_rect.height()),
-        ),
-        scene.tropical_cyclone_snapshot,
+        geometry=frame.geometry,
+        viewer=scene.viewer,
+        snapshot=scene.tropical_cyclone_snapshot,
         theme=style.theme,
-        text_font=style.text_font,
         enabled=bool(style.show_tropical_cyclone_overlay),
     )
 

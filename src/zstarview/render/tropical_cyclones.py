@@ -1,258 +1,192 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import timezone
 
-from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath, QPen
+from PySide6.QtCore import QPointF, Qt
+from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 
+from ..astro import altaz_to_normalized_xy, is_in_fov
+from ..location_resolver.place_projection import project_place_targets_to_altaz
 from ..paths import ThemeStyle
-from ..tropical_cyclones.models import TropicalCyclonePolygon, TropicalCycloneSnapshot
+from ..types import ScreenGeometry, ViewerData
+from ..tropical_cyclones.models import TropicalCycloneSnapshot
+from .geometry import normalized_to_screen_xy
+
+TROPICAL_CYCLONE_TARGET_HEIGHT_M = 0.0
 
 
-def _project_lon_lat_to_rect(
-    lon_deg: float,
+def _debug_projection_line(
+    *,
+    kind: str,
+    label: str,
     lat_deg: float,
-    rect: QRectF,
-) -> QPointF:
-    lon = (float(lon_deg) + 180.0) / 360.0
-    lat = (90.0 - float(lat_deg)) / 180.0
-    x = rect.left() + rect.width() * max(0.0, min(1.0, lon))
-    y = rect.top() + rect.height() * max(0.0, min(1.0, lat))
-    return QPointF(x, y)
-
-
-def _fmt_point(snapshot: TropicalCycloneSnapshot) -> str:
-    point = snapshot.observed_position
-    return f"{point.lat_deg:.1f}, {point.lon_deg:.1f}"
-
-
-@dataclass(frozen=True, slots=True)
-class _WindBandStyle:
-    fill_rgba: tuple[int, int, int, int]
-    outline_rgba: tuple[int, int, int, int]
-    label: str
-
-
-def _wind_band_style(name: str) -> _WindBandStyle:
-    lower = name.casefold()
-    if "64" in lower or "hurricane force" in lower:
-        return _WindBandStyle(
-            fill_rgba=(255, 70, 70, 72),
-            outline_rgba=(255, 145, 145, 190),
-            label="64kt+",
-        )
-    if "50" in lower or "strong tropical storm" in lower:
-        return _WindBandStyle(
-            fill_rgba=(255, 150, 70, 62),
-            outline_rgba=(255, 195, 130, 180),
-            label="50kt+",
-        )
-    if "34" in lower or "tropical storm force" in lower:
-        return _WindBandStyle(
-            fill_rgba=(255, 215, 80, 50),
-            outline_rgba=(255, 235, 160, 160),
-            label="34kt+",
-        )
-    if "observed" in lower:
-        return _WindBandStyle(
-            fill_rgba=(80, 180, 255, 40),
-            outline_rgba=(160, 220, 255, 160),
-            label="obs",
-        )
-    return _WindBandStyle(
-        fill_rgba=(255, 255, 255, 30),
-        outline_rgba=(220, 220, 220, 110),
-        label=name,
+    lon_deg: float,
+    alt_deg: float,
+    az_deg: float,
+) -> None:
+    print(
+        (
+            f"tropical_cyclone {kind} {label}: "
+            f"lat={lat_deg:.3f} lon={lon_deg:.3f} alt={alt_deg:.3f} az={az_deg:.3f}"
+        ),
+        flush=True,
     )
 
 
-def _draw_polygon_ring(
-    painter: QPainter,
-    ring: tuple[tuple[float, float], ...],
-    rect: QRectF,
+@dataclass(frozen=True, slots=True)
+class _RenderPoint:
+    nx: float
+    ny: float
+    alt_deg: float
+    az_deg: float
+    distance_km: float
+
+
+def _project_point(
+    lat_deg: float,
+    lon_deg: float,
     *,
-    fill_rgba: tuple[int, int, int, int],
-    outline_rgba: tuple[int, int, int, int],
-) -> None:
-    if len(ring) < 3:
-        return
-    path = QPainterPath()
-    first = _project_lon_lat_to_rect(ring[0][1], ring[0][0], rect)
-    path.moveTo(first)
-    for lat_deg, lon_deg in ring[1:]:
-        point = _project_lon_lat_to_rect(lon_deg, lat_deg, rect)
-        path.lineTo(point)
-    path.closeSubpath()
-    painter.setPen(QPen(QColor(*outline_rgba), 1.2))
-    painter.setBrush(QColor(*fill_rgba))
-    painter.drawPath(path)
+    viewer: ViewerData,
+    height_m: float,
+) -> _RenderPoint | None:
+    projections = project_place_targets_to_altaz(
+        observer_latitude_deg=float(viewer.lat_deg),
+        observer_longitude_deg=float(viewer.lon_deg),
+        observer_height_m=float(viewer.ground_elevation_m),
+        target_latitude_deg=[float(lat_deg)],
+        target_longitude_deg=[float(lon_deg)],
+        target_height_m=[float(height_m)],
+    )
+    if not projections:
+        return None
+    projection = projections[0]
+    view_center = tuple(float(value) for value in viewer.view_center)
+    if not is_in_fov(
+        float(projection.alt_deg),
+        float(projection.az_deg),
+        view_center,
+        fov_deg=float(viewer.content_fov_deg),
+    ):
+        return None
+    nx, ny = altaz_to_normalized_xy(
+        float(projection.alt_deg),
+        float(projection.az_deg),
+        view_center,
+        edge_fov_deg=float(viewer.edge_fov_deg),
+    )
+    _debug_projection_line(
+        kind="point",
+        label="storm",
+        lat_deg=float(lat_deg),
+        lon_deg=float(lon_deg),
+        alt_deg=float(projection.alt_deg),
+        az_deg=float(projection.az_deg),
+    )
+    return _RenderPoint(
+        nx=float(nx),
+        ny=float(ny),
+        alt_deg=float(projection.alt_deg),
+        az_deg=float(projection.az_deg),
+        distance_km=float(projection.distance_km),
+    )
 
 
-def _draw_wind_polygon(
+def _draw_line(
     painter: QPainter,
-    polygon: TropicalCyclonePolygon,
-    rect: QRectF,
+    start: tuple[float, float],
+    end: tuple[float, float],
+    *,
+    geometry: ScreenGeometry,
+    color_rgba: tuple[int, int, int, int],
+    width_px: float,
 ) -> None:
-    style = _wind_band_style(polygon.name)
-    for ring in polygon.rings:
-        _draw_polygon_ring(
-            painter,
-            ring,
-            rect,
-            fill_rgba=style.fill_rgba,
-            outline_rgba=style.outline_rgba,
-        )
+    pen = QPen(QColor(*color_rgba), float(width_px), Qt.PenStyle.SolidLine)
+    pen.setCosmetic(True)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+    painter.setPen(pen)
+    painter.drawLine(
+        QPointF(*normalized_to_screen_xy(start[0], start[1], geometry)),
+        QPointF(*normalized_to_screen_xy(end[0], end[1], geometry)),
+    )
 
 
-def _legend_entries(snapshot: TropicalCycloneSnapshot) -> list[_WindBandStyle]:
-    entries: list[_WindBandStyle] = []
-    for polygon in snapshot.wind_polygons:
-        style = _wind_band_style(polygon.name)
-        if all(style.label != existing.label for existing in entries):
-            entries.append(style)
-    return entries
+def _draw_inverted_triangle(
+    painter: QPainter,
+    point: _RenderPoint,
+    *,
+    geometry: ScreenGeometry,
+    color_rgba: tuple[int, int, int, int],
+) -> None:
+    # Scale the symbol down as the storm is farther away from the observer.
+    scale = max(0.45, min(1.15, 20.0 / max(1.0, point.distance_km)))
+    body_height = 20.0 * scale
+    body_width = 14.0 * scale
+    tip = QPointF(*normalized_to_screen_xy(point.nx, point.ny, geometry))
+    top_left = QPointF(tip.x() - body_width, tip.y() - body_height)
+    top_right = QPointF(tip.x() + body_width, tip.y() - body_height)
+    polygon = QPolygonF([tip, top_left, top_right])
+    pen = QPen(QColor(*color_rgba), 1.6)
+    pen.setCosmetic(True)
+    painter.setPen(pen)
+    painter.setBrush(QColor(*color_rgba))
+    painter.drawPolygon(polygon)
+    painter.drawLine(top_left, top_right)
+
+
+def _draw_label(
+    painter: QPainter,
+    point: _RenderPoint,
+    *,
+    geometry: ScreenGeometry,
+    color_rgba: tuple[int, int, int, int],
+    text: str,
+) -> None:
+    x, y = normalized_to_screen_xy(point.nx, point.ny, geometry)
+    painter.setPen(QColor(*color_rgba))
+    painter.drawText(
+        QPointF(x - 28.0, y + 20.0),
+        text,
+    )
 
 
 def draw_tropical_cyclone_overlay(
     painter: QPainter,
-    viewport_rect: QRectF,
-    snapshot: TropicalCycloneSnapshot | None,
     *,
+    geometry: ScreenGeometry,
+    viewer: ViewerData,
+    snapshot: TropicalCycloneSnapshot | None,
     theme: ThemeStyle,
-    text_font: QFont,
     enabled: bool = True,
 ) -> None:
     if not enabled or snapshot is None:
         return
+    del theme
 
-    margin = 14.0
-    card_w = min(320.0, max(230.0, viewport_rect.width() * 0.38))
-    card_h = min(190.0, max(140.0, viewport_rect.height() * 0.26))
-    card = QRectF(
-        viewport_rect.right() - margin - card_w,
-        viewport_rect.bottom() - margin - card_h,
-        card_w,
-        card_h,
+    observed = snapshot.observed_position
+    point = _project_point(
+        observed.lat_deg,
+        observed.lon_deg,
+        viewer=viewer,
+        height_m=TROPICAL_CYCLONE_TARGET_HEIGHT_M,
     )
+    if point is None:
+        return
 
     painter.save()
-    painter.setRenderHint(QPainter.Antialiasing, True)
-
-    bg = theme.window_chrome.menu_fill_rgba
-    border = theme.window_background.border_rgba
-    painter.setPen(QPen(QColor(*border), 1.2))
-    painter.setBrush(QColor(bg[0], bg[1], bg[2], min(220, max(90, bg[3]))))
-    painter.drawRoundedRect(card, 10.0, 10.0)
-
-    padding = 10.0
-    title_rect = QRectF(
-        card.left() + padding,
-        card.top() + padding,
-        card.width() - padding * 2.0,
-        22.0,
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+    triangle_color = (255, 74, 74, 230)
+    _draw_inverted_triangle(
+        painter,
+        point,
+        geometry=geometry,
+        color_rgba=triangle_color,
     )
-    font = QFont(text_font)
-    font.setPointSizeF(max(8.0, float(text_font.pointSizeF()) * 0.92))
-    painter.setFont(font)
-    painter.setPen(QColor(*theme.text.foreground_rgb[:3]))
-    title = snapshot.storm_name
-    if snapshot.basin:
-        title = f"{title} ({snapshot.basin})"
-    painter.drawText(title_rect, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, title)
-
-    subtitle_font = QFont(text_font)
-    subtitle_font.setPointSizeF(max(7.0, float(text_font.pointSizeF()) * 0.78))
-    painter.setFont(subtitle_font)
-    painter.setPen(QColor(*theme.status_text.foreground_rgb[:3]))
-    subtitle_y = title_rect.bottom() + 2.0
-    if snapshot.advdate_utc is not None:
-        advdate_text = snapshot.advdate_utc.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%MZ")
-    else:
-        advdate_text = "?"
-    painter.drawText(
-        QRectF(card.left() + padding, subtitle_y, card.width() - padding * 2.0, 18.0),
-        Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
-        f"ADVDATE {advdate_text}  |  {snapshot.observed_position.lat_deg:.1f}, {snapshot.observed_position.lon_deg:.1f}",
+    _draw_label(
+        painter,
+        point,
+        geometry=geometry,
+        color_rgba=triangle_color,
+        text=snapshot.storm_name,
     )
-
-    map_top = subtitle_y + 20.0
-    map_rect = QRectF(
-        card.left() + padding,
-        map_top,
-        card.width() - padding * 2.0,
-        card.bottom() - padding - map_top,
-    )
-    painter.setPen(QPen(QColor(255, 255, 255, 32), 1.0))
-    painter.setBrush(QColor(0, 0, 0, 26))
-    painter.drawRoundedRect(map_rect, 8.0, 8.0)
-
-    for polygon in snapshot.wind_polygons:
-        _draw_wind_polygon(painter, polygon, map_rect)
-
-    forecast = list(snapshot.forecast_positions)
-    if forecast:
-        line_pen = QPen(QColor(255, 170, 70, 210), 2.0)
-        painter.setPen(line_pen)
-        prev_point = _project_lon_lat_to_rect(
-            snapshot.observed_position.lon_deg,
-            snapshot.observed_position.lat_deg,
-            map_rect,
-        )
-        for point in forecast:
-            next_point = _project_lon_lat_to_rect(point.lon_deg, point.lat_deg, map_rect)
-            painter.drawLine(prev_point, next_point)
-            prev_point = next_point
-
-    current_point = _project_lon_lat_to_rect(
-        snapshot.observed_position.lon_deg,
-        snapshot.observed_position.lat_deg,
-        map_rect,
-    )
-    painter.setBrush(QColor(255, 70, 70, 230))
-    painter.setPen(QPen(QColor(255, 210, 210, 240), 1.5))
-    painter.drawEllipse(current_point, 4.5, 4.5)
-    painter.drawLine(
-        QPointF(current_point.x() - 6.0, current_point.y()),
-        QPointF(current_point.x() + 6.0, current_point.y()),
-    )
-    painter.drawLine(
-        QPointF(current_point.x(), current_point.y() - 6.0),
-        QPointF(current_point.x(), current_point.y() + 6.0),
-    )
-
-    painter.setFont(subtitle_font)
-    forecast_label_pen = QPen(QColor(255, 235, 200, 210), 1.0)
-    painter.setPen(forecast_label_pen)
-    for idx, point in enumerate(forecast[:5], start=1):
-        marker = _project_lon_lat_to_rect(point.lon_deg, point.lat_deg, map_rect)
-        painter.setBrush(QColor(255, 170, 70, 220))
-        painter.drawEllipse(marker, 3.0, 3.0)
-        label = point.label or (f"+{point.tau_hr}h" if point.tau_hr is not None else str(idx))
-        painter.drawText(
-            QRectF(marker.x() + 5.0, marker.y() - 8.0, 60.0, 16.0),
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
-            label,
-        )
-
-    legend_entries = _legend_entries(snapshot)
-    if legend_entries:
-        legend_font = QFont(subtitle_font)
-        legend_font.setPointSizeF(max(6.0, float(subtitle_font.pointSizeF()) * 0.9))
-        painter.setFont(legend_font)
-        legend_x = map_rect.left() + 6.0
-        legend_y = map_rect.bottom() - 6.0 - (len(legend_entries) * 12.0)
-        for idx, entry in enumerate(legend_entries):
-            row_y = legend_y + idx * 12.0
-            swatch = QRectF(legend_x, row_y + 2.0, 9.0, 9.0)
-            painter.setPen(QPen(QColor(*entry.outline_rgba), 1.0))
-            painter.setBrush(QColor(*entry.fill_rgba))
-            painter.drawRoundedRect(swatch, 2.0, 2.0)
-            painter.setPen(QColor(*theme.text.foreground_rgb[:3]))
-            painter.drawText(
-                QRectF(legend_x + 12.0, row_y, 60.0, 12.0),
-                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
-                entry.label,
-            )
-
     painter.restore()
