@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.28.12 - 2026-05-30
+- Removed the temporary tropical cyclone scaffolding in the window and updates paths, switching the overlay refresh flow to direct method calls instead of defensive `getattr` lookups.
+- Kept the cyclone render projection on the draw path and cleaned up the release/update wiring so the overlay refreshes without the earlier temporary hooks.
+
 ## 1.28.11 - 2026-05-30
 - Fixed the tropical cyclone overlay so the projected storm position advances over time instead of staying pinned to the cached advisory point.
 - Removed the temporary cyclone debug prints and kept the render cache keyed on the projected storm state so the display updates when the projection changes.
