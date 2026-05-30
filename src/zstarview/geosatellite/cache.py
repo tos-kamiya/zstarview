@@ -32,11 +32,6 @@ def geo_satellite_available_cache_dir() -> Path:
     return geo_satellite_cache_root() / AVAILABLE_CACHE_DIRNAME
 
 
-def _format_time_slot(timeslot_utc: dt.datetime) -> str:
-    slot = timeslot_utc.astimezone(dt.timezone.utc).replace(second=0, microsecond=0)
-    return slot.strftime("%Y%m%dT%H%MZ")
-
-
 def raw_png_path() -> Path:
     return geo_satellite_raw_cache_dir() / "latest.png"
 
@@ -196,22 +191,6 @@ def read_raw_cache(*, image_time_utc: dt.datetime, kind: str) -> GeoSatelliteDow
 
 def compute_digest(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
-
-
-def intermediate_cache_dir(raw_digest: str, *, mask_digest: str) -> Path:
-    return geo_satellite_cache_root() / "intermediate" / raw_digest / mask_digest
-
-
-def intermediate_proxy_path(raw_digest: str, *, mask_digest: str) -> Path:
-    return intermediate_cache_dir(raw_digest, mask_digest=mask_digest) / "proxy.png"
-
-
-def intermediate_inpainted_path(raw_digest: str, *, mask_digest: str) -> Path:
-    return intermediate_cache_dir(raw_digest, mask_digest=mask_digest) / "inpainted.png"
-
-
-def intermediate_manifest_path(raw_digest: str, *, mask_digest: str) -> Path:
-    return intermediate_cache_dir(raw_digest, mask_digest=mask_digest) / "manifest.json"
 
 
 def latest_available_path(*, area: str, kind: str, size: str = "normal") -> Path:

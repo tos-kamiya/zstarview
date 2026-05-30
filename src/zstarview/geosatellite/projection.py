@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import argparse
 import json
 import math
 from dataclasses import dataclass
@@ -20,54 +19,10 @@ DEFAULT_CLOUD_HEIGHT_KM = 5.0
 DEFAULT_GRID_NPZ = Path(GEOSATELLITE_EQDC_LONLAT_FILE)
 DEFAULT_MIN_ALT_DEG = 3.0
 DEFAULT_PROJECTION_SAMPLE_STEP = 1
-MAX_FOV_DEG = 135.0
 EUROPE_MIN_LAT_DEG = 32.0
 EUROPE_MAX_LAT_DEG = 73.0
 EUROPE_MIN_LON_DEG = -15.0
 EUROPE_MAX_LON_DEG = 35.0
-
-
-def parse_observer_spec(value: str) -> tuple[float, float]:
-    text = (value or "").strip()
-    if not text.startswith("@"):
-        raise argparse.ArgumentTypeError("Observer must be given as '@lat,lon'.")
-    payload = text[1:].strip()
-    parts = [part.strip() for part in payload.split(",")]
-    if len(parts) != 2 or not parts[0] or not parts[1]:
-        raise argparse.ArgumentTypeError("Observer must be given as '@lat,lon'.")
-    try:
-        lat = float(parts[0])
-        lon = float(parts[1])
-    except ValueError as exc:
-        raise argparse.ArgumentTypeError("Observer must be given as '@lat,lon'.") from exc
-    if not (-90.0 <= lat <= 90.0):
-        raise argparse.ArgumentTypeError("Latitude must be between -90 and 90 degrees.")
-    if not (-180.0 <= lon <= 180.0):
-        raise argparse.ArgumentTypeError("Longitude must be between -180 and 180 degrees.")
-    return float(lat), float(lon)
-
-
-def parse_fov_deg(value: str) -> float:
-    try:
-        fov = float(value)
-    except ValueError as exc:
-        raise argparse.ArgumentTypeError(f"Invalid FOV: {value!r}") from exc
-    if not (0.0 < fov <= MAX_FOV_DEG):
-        raise argparse.ArgumentTypeError(
-            f"FOV must be greater than 0 and at most {MAX_FOV_DEG:.0f} degrees."
-        )
-    return float(fov)
-
-
-def validate_observer_bounds(lat: float, lon: float) -> None:
-    if not (EUROPE_MIN_LAT_DEG <= lat <= EUROPE_MAX_LAT_DEG):
-        raise argparse.ArgumentTypeError(
-            f"Latitude must be between {EUROPE_MIN_LAT_DEG:.0f} and {EUROPE_MAX_LAT_DEG:.0f} degrees for the Europe workflow."
-        )
-    if not (EUROPE_MIN_LON_DEG <= lon <= EUROPE_MAX_LON_DEG):
-        raise argparse.ArgumentTypeError(
-            f"Longitude must be between {EUROPE_MIN_LON_DEG:.0f} and {EUROPE_MAX_LON_DEG:.0f} degrees for the Europe workflow."
-        )
 
 
 @dataclass(frozen=True, slots=True)

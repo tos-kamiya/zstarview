@@ -179,13 +179,6 @@ class SkyWindowUpdatesMixin:
         if action is not None:
             action.setEnabled(self._water_overlay_action_enabled())
 
-    def _cloud_layer_enabled(self) -> bool:
-        if float(self.cloud_disc_alpha) <= 0.0:
-            return False
-        if self._geo_satellite_mode_active():
-            return self._geosatellite_controller is not None
-        return self._clouddisc is not None
-
     def _tropical_cyclone_layer_enabled(self) -> bool:
         return bool(
             getattr(self, "show_tropical_cyclone_overlay", False)
