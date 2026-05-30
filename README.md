@@ -49,8 +49,8 @@ Locations can be set by city or viewpoint name, direct coordinates, online place
 
 - **Earth guide**: an independent layer draws a simplified continental hatch pattern below the horizon in the same ground tone to help with orientation.
 - **Terrain horizon**: Copernicus DEM data can be downloaded to render the local terrain skyline. The terrain overlay shows banded ridge lines in the same horizon color, with nearby bands drawn thicker and distant bands drawn thinner. Blue-tinted ridge lines mark the parts visible from the observer, not hidden by nearer ridges. The disc is filled with the same ground tone below the terrain horizon, or below the geometric horizon when terrain is disabled.
-- **Urban outline**: major rooflines are drawn as a white urban outline overlay for the current viewpoint. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 60km radius.
 - **Water surface**: nearby water bodies are rendered as small blue dots. Sea points come from OSM Water Polygons sea-mask tiles, while inland water points come from OpenStreetMap features fetched via Overpass API. See [About Water Surface](docs/cli-overlays.md#about-water-surface).
+- **Urban outline**: major rooflines are drawn as a white urban outline overlay for the current viewpoint. In some skyscraper-heavy cities, distant skyscrapers can also be added from within a 60km radius.
 - **Night lights**: NASA Earth at Night / Black Marble 2016 Grayscale 500m GeoTIFF tiles are downloaded on demand, cached locally, and rendered as a separate glow layer above the horizon and terrain ridges.
 
 ## Screenshots

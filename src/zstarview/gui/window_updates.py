@@ -342,6 +342,9 @@ class SkyWindowUpdatesMixin:
         cloud_message = self._cloud_status_line()
         if cloud_message:
             parts.append(cloud_message)
+        cyclone_message = self._tropical_cyclone_status_line()
+        if cyclone_message:
+            parts.append(cyclone_message)
         satellite_status_line = self._satellite_status_line
         if callable(satellite_status_line):
             satellite_message = satellite_status_line()
@@ -352,9 +355,6 @@ class SkyWindowUpdatesMixin:
             aircraft_message = aircraft_status_line()
             if aircraft_message:
                 parts.append(aircraft_message)
-        cyclone_message = self._tropical_cyclone_status_line()
-        if cyclone_message:
-            parts.append(cyclone_message)
         jpl_message = self._jpl_small_body_status_line()
         if jpl_message:
             parts.append(jpl_message)

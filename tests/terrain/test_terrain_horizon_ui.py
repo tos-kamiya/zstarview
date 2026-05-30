@@ -756,6 +756,22 @@ def test_status_line_message_keeps_placeholder_icons_for_hidden_layers() -> None
     assert got == "⎮ ☁ --- ⎮ 🛰 --- ⎮ ✈ --- ⎮ △ --- ⎮ 🂓 --- ⎮"
 
 
+def test_status_line_message_orders_cyclone_before_satellite_and_aircraft() -> None:
+    dummy = SimpleNamespace()
+    dummy._cloud_status_line = lambda: "☁ cloud"
+    dummy._satellite_status_line = lambda: "🛰 sat"
+    dummy._aircraft_status_line = lambda: "✈ aircraft"
+    dummy._tropical_cyclone_status_line = lambda: "TC cyclone"
+    dummy._jpl_small_body_status_line = lambda: ""
+    dummy._terrain_horizon_status_line = lambda: "△ terrain"
+    dummy._water_overlay_status_line = lambda: "W water"
+    dummy._urban_outline_status_line = lambda: "🂓 urban"
+
+    got = SkyWindowUpdatesMixin._status_line_message(dummy)
+
+    assert got == "⎮ ☁ cloud ⎮ TC cyclone ⎮ 🛰 sat ⎮ ✈ aircraft ⎮ △ terrain ⎮ W water ⎮ 🂓 urban ⎮"
+
+
 def test_jpl_small_body_status_line_includes_altaz() -> None:
     dummy = SimpleNamespace()
     dummy.state = SimpleNamespace(
