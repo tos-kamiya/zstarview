@@ -1,6 +1,6 @@
 # zstarview 実装履歴
 
-最終更新: 2026-05-27
+最終更新: 2026-05-30
 
 ## 1. この文書の位置づけ
 
@@ -940,3 +940,12 @@
   - 省略判定は az の単純な裏表だけでなく `view_center` と表示 FOV を基準にし、境界をまたぐ ring や footprint は必要に応じて見える側だけを残す。
   - GUI は起動後に az が変化しうるため、同じ省略を前提にした cache にはしない。
   - この方針は、urban outline resolve が支配的になっている export-image の固定視線経路を軽くするための設計メモとして残す。
+
+## 2026-05-30
+
+- 台風オーバーレイの描画時投影整理
+  - 台風・サイクロンの現在位置投影を state から外し、描画時に current time を基準へして再計算する形へ寄せた。
+  - `TropicalCycloneState` は source snapshot と cache / refresh metadata だけを持ち、projected geometry は持たないようにした。
+  - 画面上では、投影済み位置の小型マーカーと storm name ラベルだけを描く前提へ整理し、観測者距離 `128km` を超える場合は描画しないようにした。
+  - release / idle 経路で残っていた防御的な `getattr` scaffolding を外し、実際の mixin メソッドへ直呼びするようにした。
+  - spec / design も、以前の 3D / 地面描画候補の記述から、現在の draw-time projection ベースの小型マーカー表示へ合わせて更新した。
