@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
+import zstarview.render.tropical_cyclones as render_tropical_cyclones
 from zstarview.tropical_cyclones.cache import (
     TropicalCycloneCacheEntry,
     load_tropical_cyclone_cache,
@@ -185,3 +187,49 @@ def test_forecast_fldatelbl_is_preferred_over_validtime() -> None:
 
     assert point is not None
     assert point.valid_time_utc == datetime(2026, 5, 31, 6, 0, tzinfo=timezone.utc)
+
+
+def test_tropical_cyclone_projection_is_limited_by_distance_km(monkeypatch) -> None:
+    viewer = SimpleNamespace(
+        lat_deg=36.75,
+        lon_deg=147.65,
+        ground_elevation_m=0.0,
+        view_center=(45.0, 180.0),
+        content_fov_deg=110.0,
+        edge_fov_deg=95.0,
+    )
+
+    def _fake_project(*_args, **_kwargs):
+        return [SimpleNamespace(alt_deg=10.0, az_deg=20.0, distance_km=128.0)]
+
+    monkeypatch.setattr(
+        render_tropical_cyclones,
+        "project_place_targets_to_altaz",
+        _fake_project,
+    )
+    point = render_tropical_cyclones._project_point(
+        36.8,
+        147.7,
+        viewer=viewer,
+        height_m=0.0,
+    )
+
+    assert point is not None
+
+    def _too_far(*_args, **_kwargs):
+        return [SimpleNamespace(alt_deg=10.0, az_deg=20.0, distance_km=128.0001)]
+
+    monkeypatch.setattr(
+        render_tropical_cyclones,
+        "project_place_targets_to_altaz",
+        _too_far,
+    )
+    assert (
+        render_tropical_cyclones._project_point(
+            36.8,
+            147.7,
+            viewer=viewer,
+            height_m=0.0,
+        )
+        is None
+    )

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 
-from ..astro import altaz_to_normalized_xy, is_in_fov
+from ..astro import altaz_to_normalized_xy
 from ..location_resolver.place_projection import project_place_targets_to_altaz
 from ..paths import ThemeStyle
 from ..types import ScreenGeometry, ViewerData
@@ -13,6 +13,7 @@ from ..tropical_cyclones.models import TropicalCycloneSnapshot
 from .geometry import normalized_to_screen_xy
 
 TROPICAL_CYCLONE_TARGET_HEIGHT_M = 0.0
+TROPICAL_CYCLONE_MAX_DISTANCE_KM = 128.0
 TROPICAL_CYCLONE_COLOR_RGBA = (240, 122, 122, 102)
 TROPICAL_CYCLONE_LABEL_RGBA = (240, 122, 122, 255)
 
@@ -44,14 +45,9 @@ def _project_point(
     if not projections:
         return None
     projection = projections[0]
-    view_center = tuple(float(value) for value in viewer.view_center)
-    if not is_in_fov(
-        float(projection.alt_deg),
-        float(projection.az_deg),
-        view_center,
-        fov_deg=float(viewer.content_fov_deg),
-    ):
+    if float(projection.distance_km) > float(TROPICAL_CYCLONE_MAX_DISTANCE_KM):
         return None
+    view_center = tuple(float(value) for value in viewer.view_center)
     nx, ny = altaz_to_normalized_xy(
         float(projection.alt_deg),
         float(projection.az_deg),
