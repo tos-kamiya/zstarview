@@ -113,7 +113,7 @@ class _WindowStub:
         self.cloud_disc_alpha = values.get("cloud_disc_alpha", 0.0)
         self.satellite_opacity = values.get("satellite_opacity", 0.0)
         self.aircraft_opacity = values.get("aircraft_opacity", 0.0)
-        self.tropical_cyclone_opacity = values.get("tropical_cyclone_opacity", 0.4)
+        self.tropical_cyclone_opacity = values.get("tropical_cyclone_opacity", 0.25)
         self.terrain_horizon_opacity = values.get("terrain_horizon_opacity", 0.25)
         self.earth_guide_opacity = values.get("earth_guide_opacity", 0.25)
         self.urban_outline_opacity = values.get("urban_outline_opacity", 0.2)

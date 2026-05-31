@@ -217,7 +217,7 @@ def test_tropical_cyclone_projection_is_limited_by_distance_km(monkeypatch) -> N
     assert point is not None
 
     def _too_far(*_args, **_kwargs):
-        return [SimpleNamespace(alt_deg=10.0, az_deg=20.0, distance_km=128.0001)]
+        return [SimpleNamespace(alt_deg=10.0, az_deg=20.0, distance_km=400.0001)]
 
     monkeypatch.setattr(
         render_tropical_cyclones,
@@ -233,3 +233,121 @@ def test_tropical_cyclone_projection_is_limited_by_distance_km(monkeypatch) -> N
         )
         is None
     )
+
+
+def test_tropical_cyclone_cone_projects_tip_and_base(monkeypatch) -> None:
+    viewer = SimpleNamespace(
+        lat_deg=36.75,
+        lon_deg=147.65,
+        ground_elevation_m=0.0,
+        view_center=(45.0, 180.0),
+        content_fov_deg=110.0,
+        edge_fov_deg=95.0,
+    )
+    calls: list[float] = []
+
+    def _fake_project(*_args, **kwargs):
+        height_value = kwargs["target_height_m"]
+        if isinstance(height_value, list):
+            height_m = float(height_value[0])
+        else:
+            height_m = float(height_value)
+        calls.append(height_m)
+        return [
+            SimpleNamespace(
+                alt_deg=10.0 + (height_m / 10_000.0),
+                az_deg=20.0,
+                distance_km=120.0 + (height_m / 100_000.0),
+            )
+        ]
+
+    monkeypatch.setattr(
+        render_tropical_cyclones,
+        "project_place_targets_to_altaz",
+        _fake_project,
+    )
+
+    cone = render_tropical_cyclones._project_cyclone_cone(
+        36.8,
+        147.7,
+        viewer=viewer,
+        maxwind_kt=90.0,
+    )
+
+    assert cone is not None
+    assert calls[0] == 0.0
+    assert calls[1] == 10_000.0
+    assert all(height_m == 10_000.0 for height_m in calls[1:])
+    assert len(calls) == 2 + render_tropical_cyclones.TROPICAL_CYCLONE_BASE_RING_SAMPLES
+    assert len(cone.base_ring_points) == render_tropical_cyclones.TROPICAL_CYCLONE_BASE_RING_SAMPLES
+    assert cone.base_radius_km > 0.0
+
+
+def test_tropical_cyclone_base_radius_scales_with_wind(monkeypatch) -> None:
+    viewer = SimpleNamespace(
+        lat_deg=36.75,
+        lon_deg=147.65,
+        ground_elevation_m=0.0,
+        view_center=(45.0, 180.0),
+        content_fov_deg=110.0,
+        edge_fov_deg=95.0,
+    )
+
+    def _fake_project(*_args, **kwargs):
+        height_value = kwargs["target_height_m"]
+        if isinstance(height_value, list):
+            height_m = float(height_value[0])
+        else:
+            height_m = float(height_value)
+        return [
+            SimpleNamespace(
+                alt_deg=10.0 + (height_m / 10_000.0),
+                az_deg=20.0,
+                distance_km=120.0 + (height_m / 100_000.0),
+            )
+        ]
+
+    monkeypatch.setattr(
+        render_tropical_cyclones,
+        "project_place_targets_to_altaz",
+        _fake_project,
+    )
+
+    weak_cone = render_tropical_cyclones._project_cyclone_cone(
+        36.8,
+        147.7,
+        viewer=viewer,
+        maxwind_kt=35.0,
+    )
+    strong_cone = render_tropical_cyclones._project_cyclone_cone(
+        36.8,
+        147.7,
+        viewer=viewer,
+        maxwind_kt=120.0,
+    )
+
+    assert weak_cone is not None
+    assert strong_cone is not None
+    assert strong_cone.base_radius_km > weak_cone.base_radius_km
+
+
+def test_tropical_cyclone_convex_hull_discards_interior_points() -> None:
+    from PySide6.QtCore import QPointF
+
+    hull = render_tropical_cyclones._convex_hull(
+        [
+            QPointF(0.0, 0.0),
+            QPointF(2.0, 0.0),
+            QPointF(2.0, 2.0),
+            QPointF(0.0, 2.0),
+            QPointF(1.0, 1.0),
+        ]
+    )
+
+    assert len(hull) == 4
+    assert {(p.x(), p.y()) for p in hull} == {
+        (0.0, 0.0),
+        (2.0, 0.0),
+        (2.0, 2.0),
+        (0.0, 2.0),
+    }
