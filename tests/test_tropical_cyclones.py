@@ -191,7 +191,7 @@ def test_forecast_fldatelbl_is_preferred_over_validtime() -> None:
     assert point.valid_time_utc == datetime(2026, 5, 31, 6, 0, tzinfo=timezone.utc)
 
 
-def test_tropical_cyclone_projection_is_limited_by_distance_km(monkeypatch) -> None:
+def test_tropical_cyclone_draw_uses_far_marker_beyond_distance_limit(monkeypatch) -> None:
     viewer = SimpleNamespace(
         lat_deg=36.75,
         lon_deg=147.65,
@@ -200,41 +200,68 @@ def test_tropical_cyclone_projection_is_limited_by_distance_km(monkeypatch) -> N
         content_fov_deg=110.0,
         edge_fov_deg=95.0,
     )
-
-    def _fake_project(*_args, **_kwargs):
-        return [SimpleNamespace(alt_deg=10.0, az_deg=20.0, distance_km=128.0)]
-
-    monkeypatch.setattr(
-        render_tropical_cyclones,
-        "project_place_targets_to_altaz",
-        _fake_project,
+    snapshot = TropicalCycloneSnapshot(
+        storm_name="Jangmi",
+        basin="WP",
+        advdate_utc=datetime(2026, 5, 30, 2, 10, tzinfo=timezone.utc),
+        observed_position=TropicalCyclonePoint(
+            lat_deg=12.3,
+            lon_deg=145.6,
+            valid_time_utc=datetime(2026, 5, 30, 2, 0, tzinfo=timezone.utc),
+        ),
+        wind_polygons=(),
     )
-    point = render_tropical_cyclones._project_point(
-        36.8,
-        147.7,
-        viewer=viewer,
-        height_m=0.0,
-    )
+    calls: list[tuple[str, object]] = []
 
-    assert point is not None
-
-    def _too_far(*_args, **_kwargs):
-        return [SimpleNamespace(alt_deg=10.0, az_deg=20.0, distance_km=400.0001)]
-
-    monkeypatch.setattr(
-        render_tropical_cyclones,
-        "project_place_targets_to_altaz",
-        _too_far,
-    )
-    assert (
-        render_tropical_cyclones._project_point(
-            36.8,
-            147.7,
-            viewer=viewer,
-            height_m=0.0,
+    def _fake_center(*_args, **_kwargs):
+        return render_tropical_cyclones._RenderPoint(
+            nx=0.1,
+            ny=0.2,
+            alt_deg=10.0,
+            az_deg=20.0,
+            distance_km=400.0001,
         )
-        is None
+
+    def _fake_far_marker(*_args, **_kwargs):
+        calls.append(("far", None))
+        return QPointF(12.0, 34.0)
+
+    def _fake_column(*_args, **_kwargs):
+        calls.append(("column", None))
+        return ()
+
+    monkeypatch.setattr(render_tropical_cyclones, "_project_point_no_cutoff", _fake_center)
+    monkeypatch.setattr(render_tropical_cyclones, "_draw_far_cyclone_marker", _fake_far_marker)
+    monkeypatch.setattr(render_tropical_cyclones, "_project_cyclone_column_points", _fake_column)
+
+    class _FakePainter:
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setRenderHint(self, *_args, **_kwargs) -> None:
+            pass
+
+        def setPen(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawText(self, *_args, **_kwargs) -> None:
+            pass
+
+    render_tropical_cyclones.draw_tropical_cyclone_overlay(
+        _FakePainter(),
+        geometry=ScreenGeometry(center=(100, 100), radius=80),
+        viewer=viewer,
+        snapshot=snapshot,
+        when_utc=datetime(2026, 5, 30, 2, 30, tzinfo=timezone.utc),
+        theme=SimpleNamespace(),
+        opacity=0.4,
+        enabled=True,
     )
+
+    assert calls == [("far", None)]
 
 
 def test_tropical_cyclone_far_marker_projects_without_cutoff(monkeypatch) -> None:
@@ -306,7 +333,7 @@ def test_tropical_cyclone_far_label_uses_lower_alpha() -> None:
     assert render_tropical_cyclones.TROPICAL_CYCLONE_FAR_LABEL_RGBA[3] == 153
 
 
-def test_tropical_cyclone_falls_back_to_one_pixel_line_when_cylinder_fails(
+def test_tropical_cyclone_draws_column_line_with_water_dot_width(
     monkeypatch,
 ) -> None:
     viewer = SimpleNamespace(
@@ -339,29 +366,53 @@ def test_tropical_cyclone_falls_back_to_one_pixel_line_when_cylinder_fails(
             distance_km=399.0,
         )
 
-    def _fake_top(*_args, **_kwargs):
-        return render_tropical_cyclones._RenderPoint(
-            nx=0.2,
-            ny=0.4,
-            alt_deg=15.0,
-            az_deg=20.0,
-            distance_km=399.5,
+    def _fake_column(*_args, **_kwargs):
+        return (
+            render_tropical_cyclones._RenderPoint(
+                nx=0.1,
+                ny=0.2,
+                alt_deg=10.0,
+                az_deg=20.0,
+                distance_km=399.0,
+            ),
+            render_tropical_cyclones._RenderPoint(
+                nx=0.13,
+                ny=0.25,
+                alt_deg=11.0,
+                az_deg=20.0,
+                distance_km=399.1,
+            ),
+            render_tropical_cyclones._RenderPoint(
+                nx=0.16,
+                ny=0.31,
+                alt_deg=12.0,
+                az_deg=20.0,
+                distance_km=399.2,
+            ),
+            render_tropical_cyclones._RenderPoint(
+                nx=0.2,
+                ny=0.4,
+                alt_deg=15.0,
+                az_deg=20.0,
+                distance_km=399.5,
+            ),
         )
 
-    def _fake_cylinder(*_args, **_kwargs):
-        return None
-
-    def _fake_line(painter, start, end, **kwargs):
-        calls.append(("line", (start, end, kwargs)))
+    def _fake_line(painter, points, **kwargs):
+        calls.append(("line", (points, kwargs)))
 
     def _fake_far_marker(*_args, **_kwargs):
         calls.append(("far", None))
         return QPointF(12.0, 34.0)
 
-    monkeypatch.setattr(render_tropical_cyclones, "_project_point_no_cutoff", _fake_top)
-    monkeypatch.setattr(render_tropical_cyclones, "_project_cyclone_cylinder", _fake_cylinder)
-    monkeypatch.setattr(render_tropical_cyclones, "_draw_line", _fake_line)
+    def _fake_filled_marker(*_args, **_kwargs):
+        calls.append(("filled", None))
+
+    monkeypatch.setattr(render_tropical_cyclones, "_project_point_no_cutoff", _fake_center)
+    monkeypatch.setattr(render_tropical_cyclones, "_project_cyclone_column_points", _fake_column)
+    monkeypatch.setattr(render_tropical_cyclones, "_draw_column_line", _fake_line)
     monkeypatch.setattr(render_tropical_cyclones, "_draw_far_cyclone_marker", _fake_far_marker)
+    monkeypatch.setattr(render_tropical_cyclones, "_draw_filled_cyclone_marker", _fake_filled_marker)
 
     class _FakePainter:
         def save(self) -> None:
@@ -394,7 +445,12 @@ def test_tropical_cyclone_falls_back_to_one_pixel_line_when_cylinder_fails(
         enabled=True,
     )
 
-    assert calls and calls[0][0] == "line"
+    assert [kind for kind, _ in calls] == ["filled", "line"]
+    line_call = calls[1][1]
+    assert len(line_call[0]) == 4
+    assert line_call[1]["width_px"] == pytest.approx(
+        render_tropical_cyclones.TROPICAL_CYCLONE_COLUMN_WIDTH_PX
+    )
     assert not any(kind == "far" for kind, _ in calls)
 
 
@@ -429,111 +485,36 @@ def test_tropical_cyclone_draws_filled_marker_at_base_when_in_range(monkeypatch)
             distance_km=100.0,
         )
 
-    def _fake_cylinder(*_args, **_kwargs):
-        return render_tropical_cyclones._CycloneCylinderGeometry(
-            top_center_point=render_tropical_cyclones._RenderPoint(
+    def _fake_column(*_args, **_kwargs):
+        return (
+            render_tropical_cyclones._RenderPoint(
+                nx=0.1,
+                ny=0.2,
+                alt_deg=10.0,
+                az_deg=20.0,
+                distance_km=100.0,
+            ),
+            render_tropical_cyclones._RenderPoint(
+                nx=0.13,
+                ny=0.25,
+                alt_deg=11.0,
+                az_deg=20.0,
+                distance_km=100.0,
+            ),
+            render_tropical_cyclones._RenderPoint(
+                nx=0.16,
+                ny=0.31,
+                alt_deg=12.0,
+                az_deg=20.0,
+                distance_km=100.0,
+            ),
+            render_tropical_cyclones._RenderPoint(
                 nx=0.2,
                 ny=0.4,
                 alt_deg=15.0,
                 az_deg=20.0,
                 distance_km=100.0,
             ),
-            ring_points_by_height=(
-                (
-                    render_tropical_cyclones._RenderPoint(
-                        nx=0.0,
-                        ny=0.0,
-                        alt_deg=0.0,
-                        az_deg=0.0,
-                        distance_km=100.0,
-                    ),
-                    render_tropical_cyclones._RenderPoint(
-                        nx=0.1,
-                        ny=0.0,
-                        alt_deg=0.0,
-                        az_deg=0.0,
-                        distance_km=100.0,
-                    ),
-                    render_tropical_cyclones._RenderPoint(
-                        nx=0.0,
-                        ny=0.1,
-                        alt_deg=0.0,
-                        az_deg=0.0,
-                        distance_km=100.0,
-                    ),
-                ),
-                (
-                    render_tropical_cyclones._RenderPoint(
-                        nx=0.0,
-                        ny=0.0,
-                        alt_deg=5.0,
-                        az_deg=0.0,
-                        distance_km=100.0,
-                    ),
-                    render_tropical_cyclones._RenderPoint(
-                        nx=0.1,
-                        ny=0.0,
-                        alt_deg=5.0,
-                        az_deg=0.0,
-                        distance_km=100.0,
-                    ),
-                    render_tropical_cyclones._RenderPoint(
-                        nx=0.0,
-                        ny=0.1,
-                        alt_deg=5.0,
-                        az_deg=0.0,
-                        distance_km=100.0,
-                    ),
-                ),
-                (
-                    render_tropical_cyclones._RenderPoint(
-                        nx=0.0,
-                        ny=0.0,
-                        alt_deg=10.0,
-                        az_deg=0.0,
-                        distance_km=100.0,
-                    ),
-                    render_tropical_cyclones._RenderPoint(
-                        nx=0.1,
-                        ny=0.0,
-                        alt_deg=10.0,
-                        az_deg=0.0,
-                        distance_km=100.0,
-                    ),
-                    render_tropical_cyclones._RenderPoint(
-                        nx=0.0,
-                        ny=0.1,
-                        alt_deg=10.0,
-                        az_deg=0.0,
-                        distance_km=100.0,
-                    ),
-                ),
-                (
-                    render_tropical_cyclones._RenderPoint(
-                        nx=0.0,
-                        ny=0.0,
-                        alt_deg=15.0,
-                        az_deg=0.0,
-                        distance_km=100.0,
-                    ),
-                    render_tropical_cyclones._RenderPoint(
-                        nx=0.1,
-                        ny=0.0,
-                        alt_deg=15.0,
-                        az_deg=0.0,
-                        distance_km=100.0,
-                    ),
-                    render_tropical_cyclones._RenderPoint(
-                        nx=0.0,
-                        ny=0.1,
-                        alt_deg=15.0,
-                        az_deg=0.0,
-                        distance_km=100.0,
-                    ),
-                ),
-            ),
-            radius_km=0.5,
-            height_km=15.0,
         )
 
     def _fake_filled_marker(*_args, **_kwargs):
@@ -547,10 +528,10 @@ def test_tropical_cyclone_draws_filled_marker_at_base_when_in_range(monkeypatch)
         calls.append(("line", None))
 
     monkeypatch.setattr(render_tropical_cyclones, "_project_point_no_cutoff", _fake_center)
-    monkeypatch.setattr(render_tropical_cyclones, "_project_cyclone_cylinder", _fake_cylinder)
+    monkeypatch.setattr(render_tropical_cyclones, "_project_cyclone_column_points", _fake_column)
     monkeypatch.setattr(render_tropical_cyclones, "_draw_filled_cyclone_marker", _fake_filled_marker)
     monkeypatch.setattr(render_tropical_cyclones, "_draw_far_cyclone_marker", _fake_far_marker)
-    monkeypatch.setattr(render_tropical_cyclones, "_draw_line", _fake_line)
+    monkeypatch.setattr(render_tropical_cyclones, "_draw_column_line", _fake_line)
 
     class _FakePainter:
         def save(self) -> None:
@@ -593,11 +574,7 @@ def test_tropical_cyclone_draws_filled_marker_at_base_when_in_range(monkeypatch)
     assert not any(kind == "far" for kind, _ in calls)
 
 
-def test_tropical_cyclone_side_radius_is_fixed() -> None:
-    assert render_tropical_cyclones._cyclone_side_radius_km() == pytest.approx(0.5)
-
-
-def test_tropical_cyclone_cylinder_projects_top_and_base(monkeypatch) -> None:
+def test_tropical_cyclone_column_projects_height_samples(monkeypatch) -> None:
     viewer = SimpleNamespace(
         lat_deg=36.75,
         lon_deg=147.65,
@@ -629,96 +606,19 @@ def test_tropical_cyclone_cylinder_projects_top_and_base(monkeypatch) -> None:
         _fake_project,
     )
 
-    cylinder = render_tropical_cyclones._project_cyclone_cylinder(
+    column_points = render_tropical_cyclones._project_cyclone_column_points(
         36.8,
         147.7,
         viewer=viewer,
-        maxwind_kt=90.0,
     )
 
-    assert cylinder is not None
+    assert column_points is not None
     assert calls[0] == 0.0
-    assert calls[1] == 0.0
-    assert calls.count(0.0) == 10
-    assert calls.count(5000.0) == 9
-    assert calls.count(10000.0) == 9
-    assert calls.count(15000.0) == 9
-    assert len(calls) == 37
-    assert len(cylinder.ring_points_by_height) == 4
-    assert all(
-        len(ring_points) == render_tropical_cyclones.TROPICAL_CYCLONE_CYLINDER_RING_SAMPLES
-        for ring_points in cylinder.ring_points_by_height
+    assert calls == [
+        float(height_km) * 1000.0
+        for height_km in render_tropical_cyclones.TROPICAL_CYCLONE_COLUMN_HEIGHTS_KM
+    ]
+    assert len(column_points) == 4
+    assert [point.alt_deg for point in column_points] == pytest.approx(
+        [10.0, 10.5, 11.0, 11.5]
     )
-    assert cylinder.radius_km == pytest.approx(render_tropical_cyclones._cyclone_side_radius_km())
-    assert cylinder.height_km == pytest.approx(render_tropical_cyclones.TROPICAL_CYCLONE_CYLINDER_HEIGHT_KM)
-
-
-def test_tropical_cyclone_cylinder_side_radius_is_fixed(monkeypatch) -> None:
-    viewer = SimpleNamespace(
-        lat_deg=36.75,
-        lon_deg=147.65,
-        ground_elevation_m=0.0,
-        view_center=(45.0, 180.0),
-        content_fov_deg=110.0,
-        edge_fov_deg=95.0,
-    )
-
-    def _fake_project(*_args, **kwargs):
-        height_value = kwargs["target_height_m"]
-        if isinstance(height_value, list):
-            height_m = float(height_value[0])
-        else:
-            height_m = float(height_value)
-        return [
-            SimpleNamespace(
-                alt_deg=10.0 + (height_m / 10_000.0),
-                az_deg=20.0,
-                distance_km=120.0 + (height_m / 100_000.0),
-            )
-        ]
-
-    monkeypatch.setattr(
-        render_tropical_cyclones,
-        "project_place_targets_to_altaz",
-        _fake_project,
-    )
-
-    weak_cylinder = render_tropical_cyclones._project_cyclone_cylinder(
-        36.8,
-        147.7,
-        viewer=viewer,
-        maxwind_kt=35.0,
-    )
-    strong_cylinder = render_tropical_cyclones._project_cyclone_cylinder(
-        36.8,
-        147.7,
-        viewer=viewer,
-        maxwind_kt=120.0,
-    )
-
-    assert weak_cylinder is not None
-    assert strong_cylinder is not None
-    assert weak_cylinder.radius_km == pytest.approx(0.5)
-    assert strong_cylinder.radius_km == pytest.approx(0.5)
-
-
-def test_tropical_cyclone_convex_hull_discards_interior_points() -> None:
-    from PySide6.QtCore import QPointF
-
-    hull = render_tropical_cyclones._convex_hull(
-        [
-            QPointF(0.0, 0.0),
-            QPointF(2.0, 0.0),
-            QPointF(2.0, 2.0),
-            QPointF(0.0, 2.0),
-            QPointF(1.0, 1.0),
-        ]
-    )
-
-    assert len(hull) == 4
-    assert {(p.x(), p.y()) for p in hull} == {
-        (0.0, 0.0),
-        (2.0, 0.0),
-        (2.0, 2.0),
-        (0.0, 2.0),
-    }

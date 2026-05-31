@@ -170,11 +170,9 @@ class SkyWindowRenderMixin:
             self._render_cache_stamp(self.state.terrain_secondary_ridges_distances_m_layers),
             self._render_cache_stamp(self.state.urban_outlines),
             self._render_cache_stamp(self.state.water_overlay_dots),
-            self._render_cache_stamp(getattr(self, "tropical_cyclone_state", None) and getattr(self.tropical_cyclone_state, "snapshot", None)),
-            cyclone_time_bucket,
-            getattr(getattr(self, "tropical_cyclone_state", None), "banner_text", None),
         ]
         if include_fast_overlays:
+            cyclone_state = getattr(self, "tropical_cyclone_state", None)
             overlay_time_bucket = cyclone_time_bucket
             satellite_overlay_source = self.satellite_state.records_by_group
             aircraft_overlay_source = self.aircraft_state.snapshots
@@ -185,6 +183,8 @@ class SkyWindowRenderMixin:
                     overlay_time_bucket,
                     self._render_cache_stamp(satellite_overlay_source),
                     self._render_cache_stamp(aircraft_overlay_source),
+                    self._render_cache_stamp(cyclone_state and getattr(cyclone_state, "snapshot", None)),
+                    getattr(cyclone_state, "banner_text", None),
                 ]
             )
         return tuple(key_parts)
@@ -399,6 +399,17 @@ class SkyWindowRenderMixin:
             int(fast_frame_size.height()),
             "fast-base",
         )
+        overlay_time_bucket = None
+        try:
+            current_time_obj = frame.time_obj
+            if current_time_obj is None:
+                current_time_obj = self._current_time_obj()
+            overlay_time_bucket = int(float(current_time_obj.unix) // 2.0)
+        except Exception:
+            overlay_time_bucket = None
+        cache_stamp = getattr(self, "_render_cache_stamp", None)
+        if not callable(cache_stamp):
+            cache_stamp = lambda value: SkyWindowRenderMixin._render_cache_stamp(self, value)
         fast_base_frame_image = SkyWindowRenderMixin._render_cached_image(
             self,
             image_size=fast_frame_size,
@@ -426,9 +437,23 @@ class SkyWindowRenderMixin:
                 int(fast_frame_size.width()),
                 int(fast_frame_size.height()),
                 str(hud.status_message),
+                round(float(self.satellite_opacity), 3),
+                round(float(self.aircraft_opacity), 3),
+                overlay_time_bucket,
+                cache_stamp(self.satellite_state.records_by_group),
+                cache_stamp(self.aircraft_state.snapshots),
+                cache_stamp(getattr(self, "tropical_cyclone_state", None) and getattr(self.tropical_cyclone_state, "snapshot", None)),
+                getattr(getattr(self, "tropical_cyclone_state", None), "banner_text", None),
             ),
             render_fn=lambda frame_painter: (
                 frame_painter.drawImage(frame.viewport_rect, fast_base_frame_image),
+                render_fast_overlay_layers_into_painter(
+                    frame_painter,
+                    frame=fast_frame,
+                    scene=scene,
+                    style=style,
+                    draw_labels=False,
+                ),
                 render_guides.draw_direction_labels(
                     frame_painter,
                     frame.geometry,
@@ -787,6 +812,14 @@ class SkyWindowRenderMixin:
                     label_candidates=label_candidates,
                     draw_labels=False,
                 )
+                render_fast_overlay_layers_into_painter(
+                    painter,
+                    frame=frame,
+                    scene=scene,
+                    style=style,
+                    label_candidates=label_candidates,
+                    draw_labels=True,
+                )
                 highlighted_object = None
                 highlighted_dso = None
                 jump_highlight = self._active_jump_highlight_object(frame.geometry)
@@ -811,6 +844,13 @@ class SkyWindowRenderMixin:
                     style=style,
                     hud=hud,
                     compositor=self._compositor,
+                )
+                render_fast_overlay_layers_into_painter(
+                    painter,
+                    frame=frame,
+                    scene=scene,
+                    style=style,
+                    draw_labels=True,
                 )
             return image
         finally:

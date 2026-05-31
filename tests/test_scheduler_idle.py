@@ -30,6 +30,7 @@ class _SchedulerProbe(SkyWindowUpdatesMixin):
             satellite_projection_next_refresh_utc=None,
             aircraft_next_refresh_utc=None,
             aircraft_projection_next_refresh_utc=None,
+            tropical_cyclone_projection_next_refresh_utc=None,
         )
         self._is_shutting_down = False
         self.sky_update_interval = 600
@@ -38,10 +39,14 @@ class _SchedulerProbe(SkyWindowUpdatesMixin):
         self._cloud_controller = _FakeBusyController(False)
         self._satellite_controller = _FakeBusyController(False)
         self._aircraft_controller = _FakeBusyController(False)
+        self._tropical_cyclone_controller = _FakeBusyController(False)
         self._jpl_small_body_controller = _FakeBusyController(False)
         self._terrain_horizon_controller = _FakeBusyController(False)
         self._water_overlay_controller = _FakeBusyController(False)
         self._urban_outline_controller = _FakeBusyController(False)
+        self.tropical_cyclone_state = SimpleNamespace(
+            projection_next_refresh_utc=None,
+        )
         self.start_calls: list[tuple[str, dict[str, object]]] = []
         self.client_updates = 0
 
@@ -81,6 +86,15 @@ class _SchedulerProbe(SkyWindowUpdatesMixin):
         self.state.aircraft_projection_next_refresh_utc = datetime.now(timezone.utc) + timedelta(
             seconds=2
         )
+
+    def _tropical_cyclone_layer_enabled(self) -> bool:
+        return True
+
+    def reproject_tropical_cyclone_overlay(self) -> None:
+        self.start_calls.append(("tropical_projection", {}))
+        next_refresh = datetime.now(timezone.utc) + timedelta(seconds=2)
+        self.state.tropical_cyclone_projection_next_refresh_utc = next_refresh
+        self.tropical_cyclone_state.projection_next_refresh_utc = next_refresh
 
     def _start_persistent_search_refresh(self, *, reason: str = "timer") -> bool:
         self.start_calls.append(("jpl", {"reason": reason}))
@@ -156,6 +170,23 @@ def test_scheduler_tick_puts_overlay_projection_after_cloud() -> None:
         "aircraft_projection",
         "satellite_projection",
     ]
+
+
+def test_scheduler_tick_projects_tropical_cyclone_even_when_busy() -> None:
+    probe = _SchedulerProbe()
+    probe._sky_worker = _FakeBusyController(True)
+    probe.state.tropical_cyclone_projection_next_refresh_utc = datetime.now(timezone.utc) - timedelta(
+        seconds=1
+    )
+
+    probe._on_scheduler_tick()
+
+    assert [name for name, _ in probe.start_calls] == ["tropical_projection"]
+    assert probe.state.tropical_cyclone_projection_next_refresh_utc is not None
+    assert (
+        probe.state.tropical_cyclone_projection_next_refresh_utc
+        > datetime.now(timezone.utc)
+    )
 
 
 def test_scheduler_tick_groups_data_refreshes_together() -> None:

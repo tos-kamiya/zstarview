@@ -320,16 +320,6 @@ def render_base_scene_into_painter(
         )
     if draw_labels:
         render_text._draw_label_candidates(painter, local_label_candidates, style.text_font)
-    render_tropical_cyclones.draw_tropical_cyclone_overlay(
-        painter,
-        geometry=frame.geometry,
-        viewer=scene.viewer,
-        snapshot=scene.tropical_cyclone_snapshot,
-        when_utc=frame.time_obj.to_datetime() if frame.time_obj is not None else None,
-        theme=style.theme,
-        opacity=float(style.tropical_cyclone_opacity),
-        enabled=bool(style.show_tropical_cyclone_overlay and style.tropical_cyclone_opacity > 0.0),
-    )
 
 
 def render_fast_overlay_layers_into_painter(
@@ -342,8 +332,12 @@ def render_fast_overlay_layers_into_painter(
     label_candidates: list[dict[str, Any]] | None = None,
     draw_labels: bool = True,
 ) -> None:
-    """Draw dynamic satellite/aircraft overlays and their labels."""
-    if style.satellite_opacity <= 0.0 and style.aircraft_opacity <= 0.0:
+    """Draw dynamic satellite, aircraft, and cyclone overlays and their labels."""
+    if (
+        style.satellite_opacity <= 0.0
+        and style.aircraft_opacity <= 0.0
+        and float(style.tropical_cyclone_opacity) <= 0.0
+    ):
         return
     local_label_candidates = label_candidates if label_candidates is not None else []
     _draw_satellite_layer(
@@ -363,6 +357,16 @@ def render_fast_overlay_layers_into_painter(
     )
     if draw_labels:
         render_text._draw_label_candidates(painter, local_label_candidates, style.text_font)
+    render_tropical_cyclones.draw_tropical_cyclone_overlay(
+        painter,
+        geometry=frame.geometry,
+        viewer=scene.viewer,
+        snapshot=scene.tropical_cyclone_snapshot,
+        when_utc=frame.time_obj.to_datetime() if frame.time_obj is not None else None,
+        theme=style.theme,
+        opacity=float(style.tropical_cyclone_opacity),
+        enabled=bool(style.show_tropical_cyclone_overlay and style.tropical_cyclone_opacity > 0.0),
+    )
 
 
 def render_hud_overlay_into_painter(

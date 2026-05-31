@@ -204,21 +204,6 @@ class SkyWindowUpdatesMixin:
             return
         background_updates_busy = self._background_updates_busy()
 
-        cyclone_state = getattr(self, "tropical_cyclone_state", None)
-        cyclone_projection_next_refresh = getattr(
-            cyclone_state,
-            "projection_next_refresh_utc",
-            None,
-        )
-        if (
-            not background_updates_busy
-            and self._tropical_cyclone_layer_enabled()
-            and isinstance(cyclone_projection_next_refresh, datetime)
-            and now_utc >= cyclone_projection_next_refresh
-        ):
-            self.reproject_tropical_cyclone_overlay()
-            return
-
         sky_next_refresh = self.state.sky_next_refresh_utc
         if (
             not background_updates_busy
@@ -323,9 +308,13 @@ class SkyWindowUpdatesMixin:
                 if started:
                     return
 
-        # Lowest-priority idle work: keep satellite and aircraft positions fresh.
+        # Lowest-priority idle work: keep satellite, aircraft, and cyclone overlays fresh.
         if self._aircraft_layer_enabled() and self._aircraft_projection_next_refresh_delay_ms() == 0:
             self.reproject_aircraft_overlay()
+            return
+
+        if self._tropical_cyclone_layer_enabled() and self._tropical_cyclone_projection_next_refresh_delay_ms() == 0:
+            self.reproject_tropical_cyclone_overlay()
             return
 
         if self._satellite_layer_enabled() and self._satellite_projection_next_refresh_delay_ms() == 0:
