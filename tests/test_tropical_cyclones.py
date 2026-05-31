@@ -287,7 +287,11 @@ def test_tropical_cyclone_far_label_uses_lower_alpha() -> None:
     assert render_tropical_cyclones.TROPICAL_CYCLONE_FAR_LABEL_RGBA[3] == 153
 
 
-def test_tropical_cyclone_cone_projects_tip_and_base(monkeypatch) -> None:
+def test_tropical_cyclone_side_radius_is_fixed() -> None:
+    assert render_tropical_cyclones._cyclone_side_radius_km() == pytest.approx(0.5)
+
+
+def test_tropical_cyclone_cylinder_projects_top_and_base(monkeypatch) -> None:
     viewer = SimpleNamespace(
         lat_deg=36.75,
         lon_deg=147.65,
@@ -319,23 +323,31 @@ def test_tropical_cyclone_cone_projects_tip_and_base(monkeypatch) -> None:
         _fake_project,
     )
 
-    cone = render_tropical_cyclones._project_cyclone_cone(
+    cylinder = render_tropical_cyclones._project_cyclone_cylinder(
         36.8,
         147.7,
         viewer=viewer,
         maxwind_kt=90.0,
     )
 
-    assert cone is not None
+    assert cylinder is not None
     assert calls[0] == 0.0
-    assert calls[1] == 15_000.0
-    assert all(height_m == 15_000.0 for height_m in calls[1:])
-    assert len(calls) == 2 + render_tropical_cyclones.TROPICAL_CYCLONE_BASE_RING_SAMPLES
-    assert len(cone.base_ring_points) == render_tropical_cyclones.TROPICAL_CYCLONE_BASE_RING_SAMPLES
-    assert cone.base_radius_km > 0.0
+    assert calls[1] == 0.0
+    assert calls.count(0.0) == 10
+    assert calls.count(5000.0) == 9
+    assert calls.count(10000.0) == 9
+    assert calls.count(15000.0) == 9
+    assert len(calls) == 37
+    assert len(cylinder.ring_points_by_height) == 4
+    assert all(
+        len(ring_points) == render_tropical_cyclones.TROPICAL_CYCLONE_CYLINDER_RING_SAMPLES
+        for ring_points in cylinder.ring_points_by_height
+    )
+    assert cylinder.radius_km == pytest.approx(render_tropical_cyclones._cyclone_side_radius_km())
+    assert cylinder.height_km == pytest.approx(render_tropical_cyclones.TROPICAL_CYCLONE_CYLINDER_HEIGHT_KM)
 
 
-def test_tropical_cyclone_base_radius_scales_with_wind(monkeypatch) -> None:
+def test_tropical_cyclone_cylinder_side_radius_is_fixed(monkeypatch) -> None:
     viewer = SimpleNamespace(
         lat_deg=36.75,
         lon_deg=147.65,
@@ -365,22 +377,23 @@ def test_tropical_cyclone_base_radius_scales_with_wind(monkeypatch) -> None:
         _fake_project,
     )
 
-    weak_cone = render_tropical_cyclones._project_cyclone_cone(
+    weak_cylinder = render_tropical_cyclones._project_cyclone_cylinder(
         36.8,
         147.7,
         viewer=viewer,
         maxwind_kt=35.0,
     )
-    strong_cone = render_tropical_cyclones._project_cyclone_cone(
+    strong_cylinder = render_tropical_cyclones._project_cyclone_cylinder(
         36.8,
         147.7,
         viewer=viewer,
         maxwind_kt=120.0,
     )
 
-    assert weak_cone is not None
-    assert strong_cone is not None
-    assert strong_cone.base_radius_km > weak_cone.base_radius_km
+    assert weak_cylinder is not None
+    assert strong_cylinder is not None
+    assert weak_cylinder.radius_km == pytest.approx(0.5)
+    assert strong_cylinder.radius_km == pytest.approx(0.5)
 
 
 def test_tropical_cyclone_convex_hull_discards_interior_points() -> None:

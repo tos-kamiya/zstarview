@@ -16,12 +16,11 @@ from ..tropical_cyclones.models import project_tropical_cyclone_snapshot
 from .geometry import normalized_to_screen_xy
 
 TROPICAL_CYCLONE_TARGET_HEIGHT_M = 0.0
-TROPICAL_CYCLONE_MARKER_BASE_HEIGHT_M = 15_000.0
 TROPICAL_CYCLONE_MAX_DISTANCE_KM = 400.0
-TROPICAL_CYCLONE_BASE_RADIUS_KM_MIN = 6.0
-TROPICAL_CYCLONE_BASE_RADIUS_KM_MAX = 24.0
-TROPICAL_CYCLONE_BASE_RADIUS_KM_PER_KT = 0.12
-TROPICAL_CYCLONE_BASE_RING_SAMPLES = 16
+TROPICAL_CYCLONE_CYLINDER_HEIGHT_KM = 15.0
+TROPICAL_CYCLONE_CYLINDER_LAYER_HEIGHTS_KM = (0.0, 5.0, 10.0, 15.0)
+TROPICAL_CYCLONE_CYLINDER_SIDE_RADIUS_KM = 0.5
+TROPICAL_CYCLONE_CYLINDER_RING_SAMPLES = 8
 TROPICAL_CYCLONE_FAR_MARKER_HALF_WIDTH_PX = 6.0
 TROPICAL_CYCLONE_FAR_MARKER_HALF_HEIGHT_PX = 4.5
 TROPICAL_CYCLONE_FAR_LABEL_OFFSET_X_PX = 8.0
@@ -41,11 +40,11 @@ class _RenderPoint:
 
 
 @dataclass(frozen=True, slots=True)
-class _CycloneConeGeometry:
-    tip_point: _RenderPoint
-    base_center_point: _RenderPoint
-    base_ring_points: tuple[_RenderPoint, ...]
-    base_radius_km: float
+class _CycloneCylinderGeometry:
+    top_center_point: _RenderPoint
+    ring_points_by_height: tuple[tuple[_RenderPoint, ...], ...]
+    radius_km: float
+    height_km: float
 
 
 def _point_key(point: QPointF) -> tuple[float, float]:
@@ -180,6 +179,10 @@ def _project_point_no_cutoff(
     )
 
 
+def _cyclone_side_radius_km() -> float:
+    return float(TROPICAL_CYCLONE_CYLINDER_SIDE_RADIUS_KM)
+
+
 def _far_marker_polygon(point: _RenderPoint, *, geometry: ScreenGeometry) -> QPolygonF:
     center_x, center_y = normalized_to_screen_xy(point.nx, point.ny, geometry)
     half_width_px = float(TROPICAL_CYCLONE_FAR_MARKER_HALF_WIDTH_PX)
@@ -193,62 +196,64 @@ def _far_marker_polygon(point: _RenderPoint, *, geometry: ScreenGeometry) -> QPo
     )
 
 
-def _project_cyclone_cone(
+def _project_cyclone_cylinder(
     lat_deg: float,
     lon_deg: float,
     *,
     viewer: ViewerData,
     maxwind_kt: float | None,
-) -> _CycloneConeGeometry | None:
-    tip_point = _project_point(
+) -> _CycloneCylinderGeometry | None:
+    base_center_point = _project_point(
         lat_deg,
         lon_deg,
         viewer=viewer,
         height_m=TROPICAL_CYCLONE_TARGET_HEIGHT_M,
     )
-    if tip_point is None:
-        return None
-    base_center_point = _project_point(
-        lat_deg,
-        lon_deg,
-        viewer=viewer,
-        height_m=TROPICAL_CYCLONE_MARKER_BASE_HEIGHT_M,
-    )
     if base_center_point is None:
         return None
-    base_radius_km = max(
-        TROPICAL_CYCLONE_BASE_RADIUS_KM_MIN,
-        min(
-            TROPICAL_CYCLONE_BASE_RADIUS_KM_MAX,
-            float(maxwind_kt) * TROPICAL_CYCLONE_BASE_RADIUS_KM_PER_KT
-            if maxwind_kt is not None
-            else 35.0 * TROPICAL_CYCLONE_BASE_RADIUS_KM_PER_KT,
-        ),
-    )
-    base_ring_points: list[_RenderPoint] = []
-    for index in range(TROPICAL_CYCLONE_BASE_RING_SAMPLES):
-        bearing_deg = 360.0 * float(index) / float(TROPICAL_CYCLONE_BASE_RING_SAMPLES)
-        ring_lat_deg, ring_lon_deg = _destination_point(
+    height_km = float(TROPICAL_CYCLONE_CYLINDER_HEIGHT_KM)
+    top_center_point: _RenderPoint | None = None
+    ring_points_by_height: list[tuple[_RenderPoint, ...]] = []
+    side_radius_km = _cyclone_side_radius_km()
+    for layer_height_km in TROPICAL_CYCLONE_CYLINDER_LAYER_HEIGHTS_KM:
+        layer_center_point = _project_point(
             lat_deg,
             lon_deg,
-            distance_km=base_radius_km,
-            bearing_deg=bearing_deg,
-        )
-        ring_point = _project_point_no_cutoff(
-            ring_lat_deg,
-            ring_lon_deg,
             viewer=viewer,
-            height_m=TROPICAL_CYCLONE_MARKER_BASE_HEIGHT_M,
+            height_m=float(layer_height_km) * 1000.0,
         )
-        if ring_point is not None:
-            base_ring_points.append(ring_point)
-    if len(base_ring_points) < 3:
+        if layer_center_point is None:
+            return None
+        if math.isclose(float(layer_height_km), height_km):
+            top_center_point = layer_center_point
+        ring_radius_km = side_radius_km
+        ring_points: list[_RenderPoint] = []
+        for index in range(TROPICAL_CYCLONE_CYLINDER_RING_SAMPLES):
+            bearing_deg = 360.0 * float(index) / float(TROPICAL_CYCLONE_CYLINDER_RING_SAMPLES)
+            ring_lat_deg, ring_lon_deg = _destination_point(
+                lat_deg,
+                lon_deg,
+                distance_km=ring_radius_km,
+                bearing_deg=bearing_deg,
+            )
+            ring_point = _project_point_no_cutoff(
+                ring_lat_deg,
+                ring_lon_deg,
+                viewer=viewer,
+                height_m=float(layer_height_km) * 1000.0,
+            )
+            if ring_point is not None:
+                ring_points.append(ring_point)
+        if len(ring_points) < 3:
+            return None
+        ring_points_by_height.append(tuple(ring_points))
+    if top_center_point is None:
         return None
-    return _CycloneConeGeometry(
-        tip_point=tip_point,
-        base_center_point=base_center_point,
-        base_ring_points=tuple(base_ring_points),
-        base_radius_km=base_radius_km,
+    return _CycloneCylinderGeometry(
+        top_center_point=top_center_point,
+        ring_points_by_height=tuple(ring_points_by_height),
+        radius_km=side_radius_km,
+        height_km=height_km,
     )
 
 
@@ -274,7 +279,7 @@ def _draw_line(
 
 def _draw_cyclone_marker(
     painter: QPainter,
-    cone: _CycloneConeGeometry,
+    cylinder: _CycloneCylinderGeometry,
     *,
     geometry: ScreenGeometry,
     color_rgba: tuple[int, int, int, int],
@@ -282,16 +287,23 @@ def _draw_cyclone_marker(
     pen = QPen(QColor(*color_rgba), 1.5, Qt.PenStyle.SolidLine)
     pen.setCosmetic(True)
     painter.setPen(pen)
-    projected_points = [
-        QPointF(*normalized_to_screen_xy(point.nx, point.ny, geometry))
-        for point in cone.base_ring_points
+    if len(cylinder.ring_points_by_height) < 4:
+        return
+    rings = [
+        [
+            QPointF(*normalized_to_screen_xy(point.nx, point.ny, geometry))
+            for point in ring_points
+        ]
+        for ring_points in cylinder.ring_points_by_height
     ]
-    projected_points.append(QPointF(*normalized_to_screen_xy(cone.tip_point.nx, cone.tip_point.ny, geometry)))
-    hull_points = _convex_hull(projected_points)
-    if len(hull_points) < 3:
+    top_points = rings[-1]
+    if len(top_points) < 3:
         return
     painter.setBrush(QColor(*color_rgba))
-    painter.drawPolygon(QPolygonF(hull_points))
+    painter.drawPolygon(QPolygonF(top_points))
+    for lower_ring, upper_ring in zip(rings[:-1], rings[1:], strict=False):
+        for lower_point, upper_point in zip(lower_ring, upper_ring, strict=False):
+            painter.drawLine(lower_point, upper_point)
 
 
 def _draw_far_cyclone_marker(
@@ -349,20 +361,22 @@ def draw_tropical_cyclone_overlay(
         int(round(255.0 * min(1.0, max(0.0, float(opacity))))),
     )
     if float(center_point.distance_km) > float(TROPICAL_CYCLONE_MAX_DISTANCE_KM):
-        cone = None
+        cylinder = None
+        label_rgba = TROPICAL_CYCLONE_FAR_LABEL_RGBA
     else:
-        cone = _project_cyclone_cone(
+        cylinder = _project_cyclone_cylinder(
             observed.lat_deg,
             observed.lon_deg,
             viewer=viewer,
             maxwind_kt=observed.maxwind_kt,
         )
-        if cone is None:
+        if cylinder is None:
             return
+        label_rgba = TROPICAL_CYCLONE_LABEL_RGBA
 
     painter.save()
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-    if cone is None:
+    if cylinder is None:
         label_pos = _draw_far_cyclone_marker(
             painter,
             center_point,
@@ -372,21 +386,18 @@ def draw_tropical_cyclone_overlay(
     else:
         _draw_cyclone_marker(
             painter,
-            cone,
+            cylinder,
             geometry=geometry,
             color_rgba=marker_rgba,
         )
-        screen_x, screen_y = normalized_to_screen_xy(cone.tip_point.nx, cone.tip_point.ny, geometry)
-        label_pos = QPointF(
-            float(screen_x),
-            float(screen_y + 14.0),
-    )
-    if label_pos is not None:
-        painter.setPen(
-            QColor(
-                *(TROPICAL_CYCLONE_FAR_LABEL_RGBA if cone is None else TROPICAL_CYCLONE_LABEL_RGBA)
-            )
+        screen_x, screen_y = normalized_to_screen_xy(
+            cylinder.top_center_point.nx,
+            cylinder.top_center_point.ny,
+            geometry,
         )
+        label_pos = QPointF(float(screen_x + 14.0), float(screen_y - 14.0))
+    painter.setPen(QColor(*label_rgba))
+    if label_pos is not None:
         painter.drawText(
             label_pos,
             projected_snapshot.storm_name,
