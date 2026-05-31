@@ -1511,7 +1511,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 予報時刻列の端では、端点をそのまま使ってよい。
 - 描画側は `project_tropical_cyclone_snapshot(snapshot, when_utc)` を使って、現在時刻へ投影した snapshot を毎回生成してよい。
 - その投影結果から得た観測点を、`400km` の observer-distance cutoff で選別してよい。
-- 現在の visible presentation は、投影済み位置の円すい状マーカーと storm name ラベルとし、頂点は地面 / 水面高さ、底面はその地点の地面 / 水面に平行な `10km` 高度の円盤として扱ってよい。
+- `400km` を超える storm は、塗りつぶさない下向き三角の模式マーカーと storm name ラベルだけを描いてよい。ラベルはマーカー右上へ置いてよい。
+- `400km` 以内の storm の visible presentation は、投影済み位置の円すい状マーカーと storm name ラベルとし、頂点は地面 / 水面高さ、底面はその地点の地面 / 水面に平行な `15km` 高度の円盤として扱ってよい。
 - 円盤の半径は `MAXWIND` / `maxwind_kt` を反映してよく、強い storm ほど大きくしてよい。
 - 風域ポリゴンや 3D 危険度地形は将来拡張として残してよい。
 - `TropicalCycloneState` は source snapshot と refresh / cache metadata を保持するだけにしてよく、projected geometry を状態として持たなくてよい。
@@ -1582,7 +1583,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 視点変更の fast-mode 再投影と、ダウンロード済みデータの再取得の扱いは `7. スレッドモデル` にまとめる。
 - 雲は source fetch と projection を別の latest-wins 系列として扱い、古い source 結果や古い視点の再投影結果だけを捨ててよい。
 - 人工衛星更新、航空機更新のダウンロード結果自体は後続の UI 状態へ積み上がるため、古い視点の中間描画だけを捨てる。
-- 台風は projection 結果を state に保持せず、draw 時に current time へ投影し直してよい。描画側で 400km の cut-off を超えた marker は省いてよい。
+- 台風は projection 結果を state に保持せず、draw 時に current time へ投影し直してよい。描画側では 400km 超の marker を省かず、模式マーカーへ切り替えてよい。
 - 検索由来の marker は UI スレッドで採用し、scheduler が寿命切れだけを消してよい。
 
 ### 8.3 CLI と GUI の整合

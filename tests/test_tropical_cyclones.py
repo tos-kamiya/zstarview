@@ -20,6 +20,7 @@ from zstarview.tropical_cyclones.models import (
     TropicalCycloneSnapshot,
     project_tropical_cyclone_snapshot,
 )
+from zstarview.types import ScreenGeometry
 
 
 def _snapshot() -> TropicalCycloneSnapshot:
@@ -235,6 +236,57 @@ def test_tropical_cyclone_projection_is_limited_by_distance_km(monkeypatch) -> N
     )
 
 
+def test_tropical_cyclone_far_marker_projects_without_cutoff(monkeypatch) -> None:
+    viewer = SimpleNamespace(
+        lat_deg=36.75,
+        lon_deg=147.65,
+        ground_elevation_m=0.0,
+        view_center=(45.0, 180.0),
+        content_fov_deg=110.0,
+        edge_fov_deg=95.0,
+    )
+
+    def _too_far(*_args, **_kwargs):
+        return [SimpleNamespace(alt_deg=10.0, az_deg=20.0, distance_km=400.0001)]
+
+    monkeypatch.setattr(
+        render_tropical_cyclones,
+        "project_place_targets_to_altaz",
+        _too_far,
+    )
+    point = render_tropical_cyclones._project_point_no_cutoff(
+        36.8,
+        147.7,
+        viewer=viewer,
+        height_m=0.0,
+    )
+
+    assert point is not None
+    assert point.distance_km == pytest.approx(400.0001)
+
+
+def test_tropical_cyclone_far_marker_polygon_is_triangle() -> None:
+    point = render_tropical_cyclones._RenderPoint(
+        nx=0.25,
+        ny=-0.1,
+        alt_deg=10.0,
+        az_deg=20.0,
+        distance_km=450.0,
+    )
+    geometry = ScreenGeometry(center=(200, 100), radius=80)
+
+    polygon = render_tropical_cyclones._far_marker_polygon(point, geometry=geometry)
+
+    assert polygon.count() == 3
+    assert polygon[0].y() == polygon[1].y()
+    assert polygon[2].y() > polygon[0].y()
+    assert polygon[2].x() == pytest.approx((polygon[0].x() + polygon[1].x()) / 2.0)
+
+
+def test_tropical_cyclone_far_label_uses_lower_alpha() -> None:
+    assert render_tropical_cyclones.TROPICAL_CYCLONE_FAR_LABEL_RGBA[3] == 153
+
+
 def test_tropical_cyclone_cone_projects_tip_and_base(monkeypatch) -> None:
     viewer = SimpleNamespace(
         lat_deg=36.75,
@@ -276,8 +328,8 @@ def test_tropical_cyclone_cone_projects_tip_and_base(monkeypatch) -> None:
 
     assert cone is not None
     assert calls[0] == 0.0
-    assert calls[1] == 10_000.0
-    assert all(height_m == 10_000.0 for height_m in calls[1:])
+    assert calls[1] == 15_000.0
+    assert all(height_m == 15_000.0 for height_m in calls[1:])
     assert len(calls) == 2 + render_tropical_cyclones.TROPICAL_CYCLONE_BASE_RING_SAMPLES
     assert len(cone.base_ring_points) == render_tropical_cyclones.TROPICAL_CYCLONE_BASE_RING_SAMPLES
     assert cone.base_radius_km > 0.0
