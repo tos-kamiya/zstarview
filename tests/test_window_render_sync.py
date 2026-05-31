@@ -190,6 +190,10 @@ class _WindowStub:
         self._water_overlay_opacity_when_enabled = values.get(
             "_water_overlay_opacity_when_enabled", 0.12
         )
+        self.start_background_water_overlay_update = values.get(
+            "start_background_water_overlay_update",
+            lambda **_kwargs: False,
+        )
         self._night_light_opacity_when_enabled = values.get(
             "_night_light_opacity_when_enabled", 0.02
         )

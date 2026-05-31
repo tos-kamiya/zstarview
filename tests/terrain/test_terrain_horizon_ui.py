@@ -1852,6 +1852,7 @@ def test_handle_client_resize_clears_visible_cloud_buffers() -> None:
         start=lambda: calls.append("start-timer")
     )
     dummy._startup_initial_load_started = True
+    dummy.water_overlay_opacity = 0.0
     dummy.request_sky_data_update = lambda: calls.append("sky")
     dummy.request_client_update = lambda: calls.append("client")
     dummy.start_background_cloud_update = lambda **kwargs: calls.append(
