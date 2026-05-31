@@ -1,5 +1,10 @@
 # zstarview Release Notes
 
+## Unreleased - 2026-05-31
+- Refined the tropical cyclone overlay into a cone-shaped outer contour, with a `maxwind_kt`-driven base radius, a `400km` visibility cutoff, and the label anchored below the cone tip.
+- Lowered the default tropical cyclone opacity to `0.25` while keeping `0.0` as the explicit disable value for cyclone fetch and drawing.
+- Updated the cyclone specification, design notes, and overlay CLI docs to match the current render behavior.
+
 ## 1.29.0 - 2026-05-30
 - Added a tropical cyclone opacity option that also disables cyclone API fetches when set to `0.0`, and wired the value through both GUI and export-image flows.
 - Reordered the bottom status line so cyclone status now appears right after clouds, and updated the README overlay descriptions to follow the Earth guide, terrain horizon, water surface, urban outline, and night lights order.
