@@ -802,6 +802,76 @@ def test_on_sky_data_calculated_triggers_release_followup_updates() -> None:
     dummy.reproject_tropical_cyclone_overlay.assert_called_once_with()
 
 
+def test_on_sky_data_calculated_uses_idle_completion_reason() -> None:
+    dummy = _WindowStub()
+    dummy.viewer_data = ViewerData(
+        location=(35.0, 139.0),
+        timezone_name="Asia/Tokyo",
+        city_name="Tokyo",
+        view_center=(40.0, 150.0),
+        observer_height_m=1.7,
+    )
+    dummy.state = SkyWindowState(
+        render_view_center=(40.0, 150.0),
+        viewport_interaction_mode=True,
+        viewport_interaction_release_pending=True,
+        viewport_interaction_completion_reason="view-change-idle",
+    )
+    dummy._compositor = _DummyCompositor()
+    dummy._sky_data_update_timer = _DummyTimer(active=True)
+    dummy._cloud_update_timer = _DummyTimer(active=False)
+    dummy._clouddisc = None
+    dummy.cloud_disc_alpha = 0.2
+    dummy.sky_update_interval = 60
+    dummy.initial_data_loaded = _DummySignal()
+    dummy._is_shutting_down = False
+    dummy._disc_generation = 0
+    dummy.width = lambda: 640
+    dummy.height = lambda: 480
+    dummy.request_sky_data_update = lambda *_args, **_kwargs: None
+    dummy._safe_request_cloud_repaint = lambda: None
+    dummy.request_client_update = lambda: None
+    dummy.reproject_tropical_cyclone_overlay = Mock()
+
+    class _MenuButton:
+        def __init__(self) -> None:
+            self.visible = False
+
+        def setVisible(self, value: bool) -> None:
+            self.visible = value
+
+    dummy.menu_button = _MenuButton()
+    cloud_calls: list[str] = []
+    dummy.start_background_cloud_update = lambda **kwargs: cloud_calls.append(
+        str(kwargs.get("reason"))
+    )
+    dummy.start_background_terrain_horizon_update = lambda **kwargs: cloud_calls.append(
+        str(kwargs.get("reason"))
+    )
+
+    SkyWindow._on_sky_data_calculated(
+        dummy,
+        {
+            "celestial": object(),
+            "sky_disc": object(),
+            "view_center": (40.0, 150.0),
+            "geometry": render_geometry.get_screen_geometry(
+                640,
+                480,
+                dummy.viewer_data.view_alt_deg,
+            ),
+            "render_generation": 0,
+        },
+    )
+
+    assert dummy.state.viewport_interaction_release_pending is False
+    assert dummy.state.viewport_interaction_completion_reason is None
+    assert dummy.state.viewport_interaction_mode is False
+    assert dummy.menu_button.visible is True
+    assert cloud_calls == ["view-change-idle", "view-change-idle"]
+    dummy.reproject_tropical_cyclone_overlay.assert_called_once_with()
+
+
 def test_on_sky_data_calculated_keeps_existing_cloud_refresh_deadline() -> None:
     dummy = _WindowStub()
     dummy.viewer_data = ViewerData(
@@ -1976,18 +2046,19 @@ def test_end_viewport_interaction_mode_marks_idle_reason() -> None:
 
     SkyWindow._end_viewport_interaction_mode(dummy)
 
+    assert dummy.state.viewport_interaction_mode is True
+    assert dummy.state.viewport_interaction_release_pending is True
+    assert dummy.state.viewport_interaction_completion_reason == "view-change-idle"
     dummy.request_sky_data_update.assert_called_once_with(
         reason="viewport-interaction-idle",
         allow_during_viewport_interaction=True,
     )
-    dummy.request_cloud_projection_update.assert_called_once_with(
-        reason="view-change-idle"
+    dummy.request_cloud_projection_update.assert_not_called()
+    dummy.start_background_terrain_horizon_update.assert_not_called()
+    dummy.reproject_tropical_cyclone_overlay.assert_called_once_with(
+        allow_during_viewport_interaction=True,
     )
-    dummy.start_background_terrain_horizon_update.assert_called_once_with(
-        reason="view-change-idle"
-    )
-    dummy.reproject_tropical_cyclone_overlay.assert_called_once_with()
-    dummy.request_client_update.assert_called_once()
+    dummy.request_client_update.assert_not_called()
 
 
 def test_end_viewport_interaction_mode_release_reprojects_tropical_cyclone(

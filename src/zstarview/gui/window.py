@@ -1595,17 +1595,27 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
                 self.state.viewport_interaction_mode = False
                 self.state.viewport_interaction_stars = None
                 self.state.viewport_interaction_release_pending = False
+                self.state.viewport_interaction_completion_reason = None
                 SkyWindow._sync_viewport_interaction_chrome_visibility(self)
                 self.reproject_tropical_cyclone_overlay()
                 self.request_client_update()
                 return
             self.state.viewport_interaction_release_pending = True
+            self.state.viewport_interaction_completion_reason = "view-change-release"
+            self.reproject_tropical_cyclone_overlay(
+                allow_during_viewport_interaction=True
+            )
+            return
+        if sky_update_started and reason.startswith("viewport-interaction-"):
+            self.state.viewport_interaction_release_pending = True
+            self.state.viewport_interaction_completion_reason = "view-change-idle"
             self.reproject_tropical_cyclone_overlay(
                 allow_during_viewport_interaction=True
             )
             return
         self.state.viewport_interaction_mode = False
         self.state.viewport_interaction_stars = None
+        self.state.viewport_interaction_completion_reason = None
         SkyWindow._sync_viewport_interaction_chrome_visibility(self)
         refresh_reason = (
             "view-change-release"

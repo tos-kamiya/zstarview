@@ -46,6 +46,7 @@ class SkyWindowState:
     pending_star_vmag_limit: Optional[float] = None
     cloud_repaint_deferred: bool = False
     viewport_interaction_release_pending: bool = False
+    viewport_interaction_completion_reason: Optional[str] = None
     last_star_render_stats: Optional[tuple[int, int, int, int]] = None
     celestial_data: Optional[CelestialData] = None
     sky_disc_base_size: int = 1024

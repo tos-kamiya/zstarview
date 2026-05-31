@@ -620,14 +620,19 @@ class SkyWindowUpdatesMixin:
         self.state.night_light_glow_profile = payload.get("night_light_glow_profile")
 
         if self.state.viewport_interaction_release_pending:
+            refresh_reason = (
+                self.state.viewport_interaction_completion_reason
+                or "view-change-release"
+            )
             self.state.viewport_interaction_release_pending = False
+            self.state.viewport_interaction_completion_reason = None
             self.state.viewport_interaction_mode = False
             self.state.viewport_interaction_stars = None
             self._sync_viewport_interaction_chrome_visibility()
             if not self._is_shutting_down:
-                _request_cloud_projection_update(self, reason="view-change-release")
+                _request_cloud_projection_update(self, reason=refresh_reason)
                 self.start_background_terrain_horizon_update(
-                    reason="view-change-release"
+                    reason=refresh_reason
                 )
                 self.reproject_tropical_cyclone_overlay()
 
