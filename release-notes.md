@@ -1,5 +1,10 @@
 # zstarview Release Notes
 
+## 1.29.2 - 2026-05-31
+- Scaled the water-surface point density by render surface size, with `2.0° / 1.0° / 0.5°` tiers and thresholds at `1200px` and `2400px`.
+- Kept 4K-class surfaces on the `1.0°` tier so the water dots stay visually separated instead of merging into a band.
+- Updated the water-surface specification, design notes, cache scope handling, and export-image path to follow the new density tiers.
+
 ## 1.29.1 - 2026-05-31
 - Refined the tropical cyclone overlay into a cone-shaped outer contour, with a `maxwind_kt`-driven base radius, a `400km` visibility cutoff, and the label anchored below the cone tip.
 - Lowered the default tropical cyclone opacity to `0.25` while keeping `0.0` as the explicit disable value for cyclone fetch and drawing.
