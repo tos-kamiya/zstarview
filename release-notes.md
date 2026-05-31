@@ -1,5 +1,11 @@
 # zstarview Release Notes
 
+## 1.29.4 - 2026-06-01
+- Moved tropical cyclone rendering into the fast overlay path so cyclone markers update consistently with other dynamic overlays.
+- Replaced the near-cyclone cylinder with a ground-to-`15km` centerline and added a filled base marker for storms within `400km`.
+- Hid aircraft, satellite, and cyclone dynamic overlays during fast-mode resize/viewport interaction frames to avoid stale pre-resize positions.
+- Kept fast mode active until refreshed sky data arrives, preventing normal rendering from combining a new view center with old star/DSO subsets.
+
 ## 1.29.3 - 2026-05-31
 - Simplified the tropical cyclone fallback presentation to a fixed `15km`-tall, `500m`-radius cylinder when wind polygons are unavailable.
 - Removed the wind-speed-dependent top cap radius from the fallback cyclone body so the schematic marker stays deterministic.
