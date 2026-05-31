@@ -196,6 +196,19 @@ def _far_marker_polygon(point: _RenderPoint, *, geometry: ScreenGeometry) -> QPo
     )
 
 
+def _filled_marker_polygon(point: _RenderPoint, *, geometry: ScreenGeometry) -> QPolygonF:
+    center_x, center_y = normalized_to_screen_xy(point.nx, point.ny, geometry)
+    half_width_px = float(TROPICAL_CYCLONE_FAR_MARKER_HALF_WIDTH_PX)
+    height_px = float(TROPICAL_CYCLONE_FAR_MARKER_HALF_HEIGHT_PX) * 2.0
+    return QPolygonF(
+        [
+            QPointF(center_x - half_width_px, center_y - height_px),
+            QPointF(center_x + half_width_px, center_y - height_px),
+            QPointF(center_x, center_y),
+        ]
+    )
+
+
 def _project_cyclone_cylinder(
     lat_deg: float,
     lon_deg: float,
@@ -326,6 +339,20 @@ def _draw_far_cyclone_marker(
     )
 
 
+def _draw_filled_cyclone_marker(
+    painter: QPainter,
+    point: _RenderPoint,
+    *,
+    geometry: ScreenGeometry,
+    color_rgba: tuple[int, int, int, int],
+) -> None:
+    pen = QPen(QColor(*color_rgba), 1.5, Qt.PenStyle.SolidLine)
+    pen.setCosmetic(True)
+    painter.setPen(pen)
+    painter.setBrush(QColor(*color_rgba))
+    painter.drawPolygon(_filled_marker_polygon(point, geometry=geometry))
+
+
 def draw_tropical_cyclone_overlay(
     painter: QPainter,
     *,
@@ -362,6 +389,7 @@ def draw_tropical_cyclone_overlay(
     )
     if float(center_point.distance_km) > float(TROPICAL_CYCLONE_MAX_DISTANCE_KM):
         cylinder = None
+        line_top_point = None
         label_rgba = TROPICAL_CYCLONE_FAR_LABEL_RGBA
     else:
         cylinder = _project_cyclone_cylinder(
@@ -371,22 +399,52 @@ def draw_tropical_cyclone_overlay(
             maxwind_kt=observed.maxwind_kt,
         )
         if cylinder is None:
-            return
-        label_rgba = TROPICAL_CYCLONE_LABEL_RGBA
+            line_top_point = _project_point_no_cutoff(
+                observed.lat_deg,
+                observed.lon_deg,
+                viewer=viewer,
+                height_m=float(TROPICAL_CYCLONE_CYLINDER_HEIGHT_KM) * 1000.0,
+            )
+            label_rgba = TROPICAL_CYCLONE_LABEL_RGBA
+        else:
+            line_top_point = None
+            label_rgba = TROPICAL_CYCLONE_LABEL_RGBA
 
     painter.save()
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
     if cylinder is None:
-        label_pos = _draw_far_cyclone_marker(
-            painter,
-            center_point,
-            geometry=geometry,
-            color_rgba=marker_rgba,
-        )
+        if line_top_point is not None:
+            _draw_line(
+                painter,
+                (center_point.nx, center_point.ny),
+                (line_top_point.nx, line_top_point.ny),
+                geometry=geometry,
+                color_rgba=marker_rgba,
+                width_px=1.0,
+            )
+            screen_x, screen_y = normalized_to_screen_xy(
+                line_top_point.nx,
+                line_top_point.ny,
+                geometry,
+            )
+            label_pos = QPointF(float(screen_x + 8.0), float(screen_y - 8.0))
+        else:
+            label_pos = _draw_far_cyclone_marker(
+                painter,
+                center_point,
+                geometry=geometry,
+                color_rgba=marker_rgba,
+            )
     else:
         _draw_cyclone_marker(
             painter,
             cylinder,
+            geometry=geometry,
+            color_rgba=marker_rgba,
+        )
+        _draw_filled_cyclone_marker(
+            painter,
+            center_point,
             geometry=geometry,
             color_rgba=marker_rgba,
         )

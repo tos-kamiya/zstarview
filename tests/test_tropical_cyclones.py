@@ -5,6 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from PySide6.QtCore import QPointF
 
 import zstarview.render.tropical_cyclones as render_tropical_cyclones
 from zstarview.tropical_cyclones.cache import (
@@ -283,8 +284,313 @@ def test_tropical_cyclone_far_marker_polygon_is_triangle() -> None:
     assert polygon[2].x() == pytest.approx((polygon[0].x() + polygon[1].x()) / 2.0)
 
 
+def test_tropical_cyclone_filled_marker_tips_at_contact_point() -> None:
+    point = render_tropical_cyclones._RenderPoint(
+        nx=0.25,
+        ny=-0.1,
+        alt_deg=10.0,
+        az_deg=20.0,
+        distance_km=120.0,
+    )
+    geometry = ScreenGeometry(center=(200, 100), radius=80)
+
+    polygon = render_tropical_cyclones._filled_marker_polygon(point, geometry=geometry)
+
+    assert polygon.count() == 3
+    assert polygon[2].x() == pytest.approx((polygon[0].x() + polygon[1].x()) / 2.0)
+    assert polygon[2].y() > polygon[0].y()
+    assert polygon[2].y() > polygon[1].y()
+
+
 def test_tropical_cyclone_far_label_uses_lower_alpha() -> None:
     assert render_tropical_cyclones.TROPICAL_CYCLONE_FAR_LABEL_RGBA[3] == 153
+
+
+def test_tropical_cyclone_falls_back_to_one_pixel_line_when_cylinder_fails(
+    monkeypatch,
+) -> None:
+    viewer = SimpleNamespace(
+        lat_deg=36.75,
+        lon_deg=147.65,
+        ground_elevation_m=0.0,
+        view_center=(45.0, 180.0),
+        content_fov_deg=110.0,
+        edge_fov_deg=95.0,
+    )
+    snapshot = TropicalCycloneSnapshot(
+        storm_name="Jangmi",
+        basin="WP",
+        advdate_utc=datetime(2026, 5, 30, 2, 10, tzinfo=timezone.utc),
+        observed_position=TropicalCyclonePoint(
+            lat_deg=12.3,
+            lon_deg=145.6,
+            valid_time_utc=datetime(2026, 5, 30, 2, 0, tzinfo=timezone.utc),
+        ),
+        wind_polygons=(),
+    )
+    calls: list[tuple[str, object]] = []
+
+    def _fake_center(*_args, **_kwargs):
+        return render_tropical_cyclones._RenderPoint(
+            nx=0.1,
+            ny=0.2,
+            alt_deg=10.0,
+            az_deg=20.0,
+            distance_km=399.0,
+        )
+
+    def _fake_top(*_args, **_kwargs):
+        return render_tropical_cyclones._RenderPoint(
+            nx=0.2,
+            ny=0.4,
+            alt_deg=15.0,
+            az_deg=20.0,
+            distance_km=399.5,
+        )
+
+    def _fake_cylinder(*_args, **_kwargs):
+        return None
+
+    def _fake_line(painter, start, end, **kwargs):
+        calls.append(("line", (start, end, kwargs)))
+
+    def _fake_far_marker(*_args, **_kwargs):
+        calls.append(("far", None))
+        return QPointF(12.0, 34.0)
+
+    monkeypatch.setattr(render_tropical_cyclones, "_project_point_no_cutoff", _fake_top)
+    monkeypatch.setattr(render_tropical_cyclones, "_project_cyclone_cylinder", _fake_cylinder)
+    monkeypatch.setattr(render_tropical_cyclones, "_draw_line", _fake_line)
+    monkeypatch.setattr(render_tropical_cyclones, "_draw_far_cyclone_marker", _fake_far_marker)
+
+    class _FakePainter:
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setRenderHint(self, *_args, **_kwargs) -> None:
+            pass
+
+        def setPen(self, *_args, **_kwargs) -> None:
+            pass
+
+        def setBrush(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawText(self, *_args, **_kwargs) -> None:
+            pass
+
+    painter = _FakePainter()
+    render_tropical_cyclones.draw_tropical_cyclone_overlay(
+        painter,
+        geometry=ScreenGeometry(center=(100, 100), radius=80),
+        viewer=viewer,
+        snapshot=snapshot,
+        when_utc=datetime(2026, 5, 30, 2, 30, tzinfo=timezone.utc),
+        theme=SimpleNamespace(),
+        opacity=0.4,
+        enabled=True,
+    )
+
+    assert calls and calls[0][0] == "line"
+    assert not any(kind == "far" for kind, _ in calls)
+
+
+def test_tropical_cyclone_draws_filled_marker_at_base_when_in_range(monkeypatch) -> None:
+    viewer = SimpleNamespace(
+        lat_deg=36.75,
+        lon_deg=147.65,
+        ground_elevation_m=0.0,
+        view_center=(45.0, 180.0),
+        content_fov_deg=110.0,
+        edge_fov_deg=95.0,
+    )
+    snapshot = TropicalCycloneSnapshot(
+        storm_name="Jangmi",
+        basin="WP",
+        advdate_utc=datetime(2026, 5, 30, 2, 10, tzinfo=timezone.utc),
+        observed_position=TropicalCyclonePoint(
+            lat_deg=12.3,
+            lon_deg=145.6,
+            valid_time_utc=datetime(2026, 5, 30, 2, 0, tzinfo=timezone.utc),
+        ),
+        wind_polygons=(),
+    )
+    calls: list[tuple[str, object]] = []
+
+    def _fake_center(*_args, **_kwargs):
+        return render_tropical_cyclones._RenderPoint(
+            nx=0.1,
+            ny=0.2,
+            alt_deg=10.0,
+            az_deg=20.0,
+            distance_km=100.0,
+        )
+
+    def _fake_cylinder(*_args, **_kwargs):
+        return render_tropical_cyclones._CycloneCylinderGeometry(
+            top_center_point=render_tropical_cyclones._RenderPoint(
+                nx=0.2,
+                ny=0.4,
+                alt_deg=15.0,
+                az_deg=20.0,
+                distance_km=100.0,
+            ),
+            ring_points_by_height=(
+                (
+                    render_tropical_cyclones._RenderPoint(
+                        nx=0.0,
+                        ny=0.0,
+                        alt_deg=0.0,
+                        az_deg=0.0,
+                        distance_km=100.0,
+                    ),
+                    render_tropical_cyclones._RenderPoint(
+                        nx=0.1,
+                        ny=0.0,
+                        alt_deg=0.0,
+                        az_deg=0.0,
+                        distance_km=100.0,
+                    ),
+                    render_tropical_cyclones._RenderPoint(
+                        nx=0.0,
+                        ny=0.1,
+                        alt_deg=0.0,
+                        az_deg=0.0,
+                        distance_km=100.0,
+                    ),
+                ),
+                (
+                    render_tropical_cyclones._RenderPoint(
+                        nx=0.0,
+                        ny=0.0,
+                        alt_deg=5.0,
+                        az_deg=0.0,
+                        distance_km=100.0,
+                    ),
+                    render_tropical_cyclones._RenderPoint(
+                        nx=0.1,
+                        ny=0.0,
+                        alt_deg=5.0,
+                        az_deg=0.0,
+                        distance_km=100.0,
+                    ),
+                    render_tropical_cyclones._RenderPoint(
+                        nx=0.0,
+                        ny=0.1,
+                        alt_deg=5.0,
+                        az_deg=0.0,
+                        distance_km=100.0,
+                    ),
+                ),
+                (
+                    render_tropical_cyclones._RenderPoint(
+                        nx=0.0,
+                        ny=0.0,
+                        alt_deg=10.0,
+                        az_deg=0.0,
+                        distance_km=100.0,
+                    ),
+                    render_tropical_cyclones._RenderPoint(
+                        nx=0.1,
+                        ny=0.0,
+                        alt_deg=10.0,
+                        az_deg=0.0,
+                        distance_km=100.0,
+                    ),
+                    render_tropical_cyclones._RenderPoint(
+                        nx=0.0,
+                        ny=0.1,
+                        alt_deg=10.0,
+                        az_deg=0.0,
+                        distance_km=100.0,
+                    ),
+                ),
+                (
+                    render_tropical_cyclones._RenderPoint(
+                        nx=0.0,
+                        ny=0.0,
+                        alt_deg=15.0,
+                        az_deg=0.0,
+                        distance_km=100.0,
+                    ),
+                    render_tropical_cyclones._RenderPoint(
+                        nx=0.1,
+                        ny=0.0,
+                        alt_deg=15.0,
+                        az_deg=0.0,
+                        distance_km=100.0,
+                    ),
+                    render_tropical_cyclones._RenderPoint(
+                        nx=0.0,
+                        ny=0.1,
+                        alt_deg=15.0,
+                        az_deg=0.0,
+                        distance_km=100.0,
+                    ),
+                ),
+            ),
+            radius_km=0.5,
+            height_km=15.0,
+        )
+
+    def _fake_filled_marker(*_args, **_kwargs):
+        calls.append(("filled", None))
+
+    def _fake_far_marker(*_args, **_kwargs):
+        calls.append(("far", None))
+        return QPointF(12.0, 34.0)
+
+    def _fake_line(*_args, **_kwargs):
+        calls.append(("line", None))
+
+    monkeypatch.setattr(render_tropical_cyclones, "_project_point_no_cutoff", _fake_center)
+    monkeypatch.setattr(render_tropical_cyclones, "_project_cyclone_cylinder", _fake_cylinder)
+    monkeypatch.setattr(render_tropical_cyclones, "_draw_filled_cyclone_marker", _fake_filled_marker)
+    monkeypatch.setattr(render_tropical_cyclones, "_draw_far_cyclone_marker", _fake_far_marker)
+    monkeypatch.setattr(render_tropical_cyclones, "_draw_line", _fake_line)
+
+    class _FakePainter:
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setRenderHint(self, *_args, **_kwargs) -> None:
+            pass
+
+        def setPen(self, *_args, **_kwargs) -> None:
+            pass
+
+        def setBrush(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawText(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawPolygon(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawLine(self, *_args, **_kwargs) -> None:
+            pass
+
+    painter = _FakePainter()
+    render_tropical_cyclones.draw_tropical_cyclone_overlay(
+        painter,
+        geometry=ScreenGeometry(center=(100, 100), radius=80),
+        viewer=viewer,
+        snapshot=snapshot,
+        when_utc=datetime(2026, 5, 30, 2, 30, tzinfo=timezone.utc),
+        theme=SimpleNamespace(),
+        opacity=0.4,
+        enabled=True,
+    )
+
+    assert ("filled", None) in calls
+    assert not any(kind == "far" for kind, _ in calls)
 
 
 def test_tropical_cyclone_side_radius_is_fixed() -> None:
