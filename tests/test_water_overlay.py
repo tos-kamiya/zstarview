@@ -28,6 +28,7 @@ from zstarview.water_overlay import (
     extract_water_polygons,
     horizon_distance_km_from_height,
     resolve_water_scan_radius_km,
+    resolve_water_surface_azimuth_step_deg,
     sample_water_overlay_points,
     simplify_water_footprints_for_observer,
 )
@@ -338,6 +339,13 @@ def test_water_simplification_grid_size_grows_in_powers_of_two() -> None:
     assert water_overlay._grid_size_for_distance_m(150.0) == 1  # noqa: SLF001
     assert water_overlay._grid_size_for_distance_m(250.0) == 2  # noqa: SLF001
     assert water_overlay._grid_size_for_distance_m(500.0) == 4  # noqa: SLF001
+
+
+def test_resolve_water_surface_azimuth_step_deg_scales_with_surface_size() -> None:
+    assert resolve_water_surface_azimuth_step_deg(800, 800) == 2.0
+    assert resolve_water_surface_azimuth_step_deg(1280, 720) == 1.0
+    assert resolve_water_surface_azimuth_step_deg(2399, 2160) == 1.0
+    assert resolve_water_surface_azimuth_step_deg(2400, 2160) == 0.5
 
 
 def test_sample_water_overlay_points_uses_fallback_surface_height() -> None:

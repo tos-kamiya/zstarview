@@ -31,6 +31,7 @@ from ..water_overlay import (
     fetch_overpass_json,
     fetch_water_overlay_footprints,
     resolve_water_scan_radius_km,
+    resolve_water_surface_azimuth_step_deg,
     sample_water_overlay_points,
     simplify_water_footprints_for_observer,
 )
@@ -105,10 +106,10 @@ class WaterOverlayController(QObject):
         self._cache_retention_seconds = int(WATER_OVERLAY_CACHE_RETENTION_SECONDS)
         self._running = False
         self._stopping = False
-        self._active_key: Optional[tuple[float, float, float, float, bool]] = None
-        self._completed_key: Optional[tuple[float, float, float, float, bool]] = None
-        self._failed_key: Optional[tuple[float, float, float, float, bool]] = None
-        self._pending_request: tuple[ViewerData, float, bool, str] | None = None
+        self._active_key: Optional[tuple[float, float, float, float, bool, float]] = None
+        self._completed_key: Optional[tuple[float, float, float, float, bool, float]] = None
+        self._failed_key: Optional[tuple[float, float, float, float, bool, float]] = None
+        self._pending_request: tuple[ViewerData, float, bool, str, tuple[int, int] | None] | None = None
         self._scope_cache: dict[str, _WaterOverlayScopeCache] = {}
         self._active_workers: set[Future[None]] = set()
         self._download_abort_event = threading.Event()
@@ -131,6 +132,7 @@ class WaterOverlayController(QObject):
         observer_ground_m: float,
         use_dem_ground: bool,
         reason: str = "manual",
+        surface_size_px: tuple[int, int] | None = None,
         terrain_horizon_profile_altaz: list[tuple[float, float]] | None = None,
         terrain_horizon_profile_distances_m: list[float] | None = None,
         terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
@@ -141,17 +143,24 @@ class WaterOverlayController(QObject):
             observer_absolute_height_m,
             minimum_distance_km=self._radius_km,
         )
+        azimuth_step_deg = (
+            resolve_water_surface_azimuth_step_deg(*surface_size_px)
+            if surface_size_px is not None
+            else float(self._azimuth_step_deg)
+        )
         key = (
             float(viewer_data.lat_deg),
             float(viewer_data.lon_deg),
             float(viewer_data.observer_height_m),
             float(observer_ground_m),
             bool(use_dem_ground),
+            float(azimuth_step_deg),
         )
         scope_key = water_overlay_cache_scope_key(
             observer_lat_deg=float(viewer_data.lat_deg),
             observer_lon_deg=float(viewer_data.lon_deg),
             radius_km=scan_radius_km,
+            azimuth_step_deg=float(azimuth_step_deg),
         )
         with self._lock:
             in_memory_scope = self._scope_cache.get(scope_key)
@@ -189,6 +198,7 @@ class WaterOverlayController(QObject):
                         float(observer_ground_m),
                         bool(use_dem_ground),
                         reason,
+                        surface_size_px,
                     )
                 return False
             if self._completed_key == key:
@@ -211,6 +221,7 @@ class WaterOverlayController(QObject):
                     "reason": reason,
                     "key": key,
                     "scope_key": scope_key,
+                    "azimuth_step_deg": float(azimuth_step_deg),
                     "scan_radius_km": scan_radius_km,
                     "cached_scope": cached_scope,
                     "terrain_horizon_profile_altaz": terrain_horizon_profile_altaz,
@@ -278,7 +289,7 @@ class WaterOverlayController(QObject):
         observer_ground_m: float,
         use_dem_ground: bool,
         reason: str,
-        key: tuple[float, float, float, float, bool],
+        key: tuple[float, float, float, float, bool, float],
         scope_key: str,
         scan_radius_km: float,
         cached_scope: _WaterOverlayScopeCache | None,
@@ -286,6 +297,7 @@ class WaterOverlayController(QObject):
         terrain_horizon_profile_distances_m: list[float] | None = None,
         terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
         terrain_secondary_ridges_distances_m_layers: list[list[float]] | None = None,
+        azimuth_step_deg: float = DEFAULT_WATER_AZIMUTH_STEP_DEG,
     ) -> None:
         now_utc = datetime.now(timezone.utc)
         try:
@@ -318,6 +330,7 @@ class WaterOverlayController(QObject):
                 observer_ground_m=float(observer_ground_m),
                 use_dem_ground=bool(use_dem_ground),
                 scan_radius_km=scan_radius_km,
+                azimuth_step_deg=float(azimuth_step_deg),
                 # The GUI already has terrain ground information from the terrain
                 # controller. Re-fetching Copernicus DEM tiles here duplicates a
                 # large native path and has been a crash source during startup.
@@ -414,12 +427,19 @@ class WaterOverlayController(QObject):
                 pending_request = self._pending_request
                 self._pending_request = None
             if pending_request is not None and not self._stopping:
-                pending_viewer_data, pending_ground_m, pending_use_dem, pending_reason = pending_request
+                (
+                    pending_viewer_data,
+                    pending_ground_m,
+                    pending_use_dem,
+                    pending_reason,
+                    pending_surface_size_px,
+                ) = pending_request
                 self.update(
                     viewer_data=pending_viewer_data,
                     observer_ground_m=pending_ground_m,
                     use_dem_ground=pending_use_dem,
                     reason=pending_reason,
+                    surface_size_px=pending_surface_size_px,
                 )
 
     def _ensure_scope_cache(
@@ -554,12 +574,13 @@ class WaterOverlayController(QObject):
         use_dem_ground: bool,
         scan_radius_km: float,
         target_ground_sampler: Callable[[float, float], float] | None,
-        key: tuple[float, float, float, float, bool],
+        key: tuple[float, float, float, float, bool, float],
         scope_key: str,
         terrain_horizon_profile_altaz: list[tuple[float, float]] | None = None,
         terrain_horizon_profile_distances_m: list[float] | None = None,
         terrain_secondary_ridges_altaz_layers: list[list[tuple[float, float]]] | None = None,
         terrain_secondary_ridges_distances_m_layers: list[list[float]] | None = None,
+        azimuth_step_deg: float = DEFAULT_WATER_AZIMUTH_STEP_DEG,
     ) -> tuple[
         tuple,
         tuple | None,
@@ -578,6 +599,7 @@ class WaterOverlayController(QObject):
                 observer_lon_deg=observer_lon_deg,
                 observer_height_m=float(observer_height_m) + float(observer_ground_m),
                 max_distance_km=scan_radius_km,
+                azimuth_step_deg=float(azimuth_step_deg),
                 abort_event=self._download_abort_event,
             )
             logger.info(
@@ -646,6 +668,7 @@ class WaterOverlayController(QObject):
                 fallback_surface_height_m=float(observer_ground_m),
                 target_ground_elevation_m_sampler=target_ground_sampler if use_target_sampler else None,
                 max_distance_km=scan_radius_km,
+                azimuth_step_deg=float(azimuth_step_deg),
                 abort_event=self._download_abort_event,
             )
             logger.info(
@@ -665,6 +688,7 @@ class WaterOverlayController(QObject):
                 fallback_surface_height_m=float(observer_ground_m),
                 target_ground_elevation_m_sampler=target_ground_sampler,
                 max_distance_km=scan_radius_km,
+                azimuth_step_deg=float(azimuth_step_deg),
                 abort_event=self._download_abort_event,
             )
             dem_dots: tuple | None = tuple(sea_mask_dots) + tuple(inland_dem_dots)

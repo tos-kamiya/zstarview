@@ -129,6 +129,7 @@ from ..water_overlay import (
     WaterPolygonFootprint,
     fetch_water_overlay_footprints,
     resolve_water_scan_radius_km,
+    resolve_water_surface_azimuth_step_deg,
     sample_water_overlay_points,
     simplify_water_footprints_for_observer,
 )
@@ -797,6 +798,7 @@ def _load_or_fetch_water_overlay_footprints(
 def _fetch_water_overlay_dots_layer(
     *,
     viewer_data: ViewerData,
+    surface_size_px: tuple[int, int],
     deadline: float | None,
     target_ground_sampler: Callable[[float, float], float] | None = None,
 ) -> list[WaterOverlayPoint] | None:
@@ -808,11 +810,13 @@ def _fetch_water_overlay_dots_layer(
         float(viewer_data.observer_height_m) + observer_ground_m,
         minimum_distance_km=DEFAULT_WATER_RADIUS_KM,
     )
+    azimuth_step_deg = resolve_water_surface_azimuth_step_deg(*surface_size_px)
     sea_dots, band_stats = sample_water_surface_interface_points_with_stats(
         observer_lat_deg=float(viewer_data.lat_deg),
         observer_lon_deg=float(viewer_data.lon_deg),
         observer_height_m=float(viewer_data.observer_height_m) + observer_ground_m,
         max_distance_km=scan_radius_km,
+        azimuth_step_deg=azimuth_step_deg,
     )
     water_footprints = _load_or_fetch_water_overlay_footprints(
         viewer_data=viewer_data,
@@ -827,6 +831,7 @@ def _fetch_water_overlay_dots_layer(
         fallback_surface_height_m=float(observer_ground_m),
         target_ground_elevation_m_sampler=target_ground_sampler,
         max_distance_km=scan_radius_km,
+        azimuth_step_deg=azimuth_step_deg,
         front_hemisphere_view_center=tuple(float(value) for value in viewer_data.view_center),
         front_hemisphere_fov_deg=float(viewer_data.content_fov_deg),
     )
@@ -1547,6 +1552,7 @@ def main() -> None:
             )
             water_overlay_dots = _fetch_water_overlay_dots_layer(
                 viewer_data=viewer_data,
+                surface_size_px=tuple(int(value) for value in args.image_size),
                 deadline=water_deadline,
                 target_ground_sampler=water_target_ground_sampler,
             )

@@ -877,6 +877,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 海は `OSM Water Polygons` 由来のローカル sea-mask tile 群を主入力にする
   - 川・湖・運河・水路などの inland water は Overpass API 経由の OSM フットプリントを別系統で取得する
   - `water_tiles_125m`、`water_tiles_250m`、`water_tiles_500m` を距離帯で切り替え、遠方 `500m` 帯は in-memory の代表点へ縮約する
+  - 水面の azimuth サンプリング step は描画サーフェイスの大きさに応じて `2.0° / 1.0° / 0.5°` を切り替え、`1200px` 以上で `1.0°`、`2400px` 以上で `0.5°` としてよい
   - sea-mask の評価は band 外側・ray 内側の順で進め、各 band 内では `rasterio.open()` した tile を短命キャッシュして再利用する
   - 海面は観測地点中心の地理座標を `target_height_m = 0.0` に投影した点として扱い、sea-mask 側では DEM を参照しない
   - inland water は別系統で DEM を使ってよいが、sea-mask の海面高は常に 0.0m に固定してよい
@@ -887,6 +888,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 海マスク更新の実行制御
   - latest-request-wins と TTL 判定を適用し、band cache と active point set の切り替えを管理する
   - per-scope cache は `*_simplified.json` を正本として保存し、古い `*.json` がより新しい場合は observer 座標に基づいて簡約版を再生成してよい
+  - surface size に応じて water sampling step を選び、cache scope key に step を含めて再利用範囲を分けてよい
   - terrain horizon が有効なときだけ水面ドットを表示し、地形地平線が非表示のときは水面ドットも抑止する
   - sea-mask の海面高を 0.0m 固定にしても、表示連動は terrain horizon に残すほうが見え方の整合性が高い
   - `Terrain Horizon` が OFF の間は `Water Surface` の QAction を無効化して、依存関係を GUI で明示する

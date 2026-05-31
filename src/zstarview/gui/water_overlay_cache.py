@@ -29,12 +29,19 @@ def water_overlay_cache_scope_key(
     observer_lat_deg: float,
     observer_lon_deg: float,
     radius_km: float,
+    azimuth_step_deg: float | None = None,
 ) -> str:
-    return "earth_{lat:+08.4f}_{lon:+09.4f}_r{radius:.2f}".format(
+    key = "earth_{lat:+08.4f}_{lon:+09.4f}_r{radius:.2f}".format(
         lat=float(observer_lat_deg),
         lon=float(observer_lon_deg),
         radius=float(radius_km),
     )
+    if azimuth_step_deg is None:
+        return key
+    step = float(azimuth_step_deg)
+    if abs(step - 2.0) < 1.0e-6:
+        return key
+    return f"{key}_a{step:.2f}"
 
 
 def water_overlay_cache_path(

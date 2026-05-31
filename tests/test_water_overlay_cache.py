@@ -9,6 +9,7 @@ from zstarview.gui.water_overlay_cache import (
     load_water_overlay_cache,
     save_water_overlay_cache,
     water_overlay_cache_legacy_path,
+    water_overlay_cache_scope_key,
     water_overlay_cache_path,
 )
 from zstarview.water_overlay import WaterPolygonFootprint
@@ -57,6 +58,23 @@ def test_save_and_load_water_overlay_cache_roundtrip(tmp_path) -> None:
     assert loaded is not None
     assert loaded.water_polygon_count == 1
     assert len(loaded.footprints) == 1
+
+
+def test_water_overlay_cache_scope_key_adds_density_suffix_for_non_default_steps() -> None:
+    base = water_overlay_cache_scope_key(
+        observer_lat_deg=0.0,
+        observer_lon_deg=0.0,
+        radius_km=2.0,
+    )
+    dense = water_overlay_cache_scope_key(
+        observer_lat_deg=0.0,
+        observer_lon_deg=0.0,
+        radius_km=2.0,
+        azimuth_step_deg=1.0,
+    )
+
+    assert base == "earth_+00.0000_+000.0000_r2.00"
+    assert dense == "earth_+00.0000_+000.0000_r2.00_a1.00"
 
 
 def test_load_water_overlay_cache_migrates_newer_legacy_cache(tmp_path, caplog) -> None:

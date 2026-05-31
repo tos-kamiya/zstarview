@@ -28,6 +28,8 @@ DEFAULT_WATER_RADIUS_KM = 2.0
 DEFAULT_WATER_HORIZON_MARGIN_KM = 1.0
 DEFAULT_WATER_SAMPLE_STEP_M = 1.25**5
 DEFAULT_WATER_AZIMUTH_STEP_DEG = 2.0
+WATER_SURFACE_AZIMUTH_STEP_MEDIUM_MIN_EDGE_PX = 1200
+WATER_SURFACE_AZIMUTH_STEP_FINE_MIN_EDGE_PX = 2400
 DEFAULT_WATER_SAMPLE_GROWTH_FACTOR = 1.15
 DEFAULT_WATER_ALPHA_MIN = 0.04
 DEFAULT_WATER_SIMPLIFICATION_APPARENT_ANGLE_DEG = 0.5
@@ -142,6 +144,23 @@ def resolve_water_scan_radius_km(
         horizon_distance_km_from_height(observer_height_m) + float(horizon_margin_km),
     )
     return min(float(DEFAULT_WATER_SCAN_RADIUS_MAX_KM), float(scan_radius_km))
+
+
+def resolve_water_surface_azimuth_step_deg(
+    surface_width_px: int,
+    surface_height_px: int,
+) -> float:
+    """Pick a water-surface azimuth step from the current render surface size.
+
+    The default 2-degree sampling stays in place for compact surfaces. Larger
+    surfaces progressively switch to 1-degree and then 0.5-degree sampling.
+    """
+    max_edge_px = max(1, int(surface_width_px), int(surface_height_px))
+    if max_edge_px >= WATER_SURFACE_AZIMUTH_STEP_FINE_MIN_EDGE_PX:
+        return 0.5
+    if max_edge_px >= WATER_SURFACE_AZIMUTH_STEP_MEDIUM_MIN_EDGE_PX:
+        return 1.0
+    return DEFAULT_WATER_AZIMUTH_STEP_DEG
 
 
 def build_geometric_distance_samples(

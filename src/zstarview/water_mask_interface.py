@@ -674,8 +674,11 @@ def sample_water_surface_interface_points_with_stats(
     target_ground_elevation_m_sampler: Callable[[float, float], float] | None = None,
     tile_root: Path | None = None,
     stride: int = DEFAULT_WATER_INTERFACE_POINT_STRIDE,
+    azimuth_step_deg: float = DEFAULT_WATER_AZIMUTH_STEP_DEG,
     abort_event: threading.Event | None = None,
 ) -> tuple[tuple[WaterOverlayPoint, ...], tuple[WaterSurfaceBandStats, ...]]:
+    if azimuth_step_deg <= 0.0:
+        raise ValueError("azimuth_step_deg must be positive")
     overlay_points: list[WaterOverlayPoint] = []
     band_stats: list[WaterSurfaceBandStats] = []
     for band_root, min_distance_km, max_distance_km_band, representative_block_size in _water_band_specs(
@@ -691,6 +694,7 @@ def sample_water_surface_interface_points_with_stats(
             radius_km=float(max_distance_km_band),
             tile_root=band_root,
             target_ground_elevation_m_sampler=target_ground_elevation_m_sampler,
+            azimuth_step_deg=float(azimuth_step_deg),
             abort_event=abort_event,
         )
         band_stats.append(stats)
@@ -708,6 +712,7 @@ def sample_water_surface_interface_points(
     max_distance_km: float,
     tile_root: Path | None = None,
     stride: int = DEFAULT_WATER_INTERFACE_POINT_STRIDE,
+    azimuth_step_deg: float = DEFAULT_WATER_AZIMUTH_STEP_DEG,
     abort_event: threading.Event | None = None,
 ) -> tuple[WaterOverlayPoint, ...]:
     points, _loaded_tile_counts = sample_water_surface_interface_points_with_stats(
@@ -717,6 +722,7 @@ def sample_water_surface_interface_points(
         max_distance_km=max_distance_km,
         tile_root=tile_root,
         stride=stride,
+        azimuth_step_deg=azimuth_step_deg,
         abort_event=abort_event,
     )
     return points

@@ -1457,6 +1457,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
         # Invalidate the composition cache since the size has changed
         self._compositor.invalidate()
+        if self.water_overlay_opacity > 0.0:
+            self.start_background_water_overlay_update(reason="resize")
         self.request_client_update()
         self._raise_overlay_widgets()
 
