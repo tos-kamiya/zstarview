@@ -6,7 +6,7 @@
 
 この文書は、`zstarview` の機能仕様を利用者視点でまとめたものである。  
 README より詳細に、何ができるか、どう振る舞うか、どのような制約があるかを記述する。  
-内部モジュール構成や実装手順は `docs/design.md` と `docs/implementation-history.md` に分離する。
+内部モジュール構成や実装手順は `docs/design.md` に分離し、過去の実装履歴はアーカイブとして `docs/implementation-archive.md` に残す。
 
 ## 2. 製品概要
 

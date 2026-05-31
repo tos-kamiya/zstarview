@@ -10,8 +10,10 @@
 ## Documentation Roles
 - `docs/specification.md`: User-facing functional specification. Keep it more detailed than `README.md`, but focused on externally visible behavior, supported inputs, UI behavior, constraints, and failure behavior.
 - `docs/design.md`: Internal design reference. Document architecture, module responsibilities, processing flows, thread model, and key data structures here.
-- `docs/implementation-history.md`: Chronological implementation notes. Keep dated change notes, `TODO`, and `INPROGRESS` items here rather than in the specification or design docs.
-- When updating docs, preserve this separation of concerns instead of mixing user-visible behavior, internal design, and work-in-progress notes in the same file.
+- `release-notes.md`: User-facing public release history. Keep this focused on shipped behavior changes.
+- `dev-notes/session-YYYY-MM-DD.md`: Internal development history. Use this for dated decision logs, rationale, command transcripts, TODO, and INPROGRESS notes.
+- `docs/implementation-archive.md`: Historical archive of older implementation notes. Do not add new entries here or use it as a source of truth for current behavior.
+- When updating docs, preserve this separation of concerns instead of mixing user-visible behavior, internal design, public release history, internal session history, and archive material in the same file.
 
 ## Build, Test, and Development Commands
 - Create venv + editable install:

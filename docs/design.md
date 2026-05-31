@@ -6,7 +6,7 @@
 
 この文書は、`zstarview` の内部設計をまとめたものである。  
 アーキテクチャ、モジュール責務、主要データ構造、処理フロー、スレッド分離、外部依存の境界を扱う。  
-利用者向けの機能説明は `docs/specification.md`、時系列の作業記録や TODO は `docs/implementation-history.md` を参照する。
+利用者向けの機能説明は `docs/specification.md`、内部判断の履歴は `dev-notes/session-YYYY-MM-DD.md`、過去の実装履歴アーカイブは `docs/implementation-archive.md` を参照する。
 
 ## 2. 設計方針
 
@@ -2000,5 +2000,5 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 利用者から見た機能と動作
 - `docs/design.md`
   - 内部構造、責務分割、データ構造、処理フロー
-- `docs/implementation-history.md`
+- `docs/implementation-archive.md`
   - 実装の時系列メモ、TODO、INPROGRESS、変更の履歴
