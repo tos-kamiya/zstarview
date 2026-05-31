@@ -409,7 +409,9 @@ class SkyWindowRenderMixin:
             overlay_time_bucket = None
         cache_stamp = getattr(self, "_render_cache_stamp", None)
         if not callable(cache_stamp):
-            cache_stamp = lambda value: SkyWindowRenderMixin._render_cache_stamp(self, value)
+            def cache_stamp(value: object) -> int:
+                return SkyWindowRenderMixin._render_cache_stamp(self, value)
+
         fast_base_frame_image = SkyWindowRenderMixin._render_cached_image(
             self,
             image_size=fast_frame_size,
@@ -447,13 +449,6 @@ class SkyWindowRenderMixin:
             ),
             render_fn=lambda frame_painter: (
                 frame_painter.drawImage(frame.viewport_rect, fast_base_frame_image),
-                render_fast_overlay_layers_into_painter(
-                    frame_painter,
-                    frame=fast_frame,
-                    scene=scene,
-                    style=style,
-                    draw_labels=False,
-                ),
                 render_guides.draw_direction_labels(
                     frame_painter,
                     frame.geometry,

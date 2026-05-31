@@ -2316,10 +2316,18 @@ def test_render_fast_frame_image_downsamples_base_scene(monkeypatch) -> None:
             )
         )
 
+    def _capture_fast_overlays(*_args, **kwargs) -> None:
+        call_order.append("fast-overlays")
+
     monkeypatch.setattr(
         window_render_module,
         "render_base_scene_into_painter",
         _capture_base_scene,
+    )
+    monkeypatch.setattr(
+        window_render_module,
+        "render_fast_overlay_layers_into_painter",
+        _capture_fast_overlays,
     )
     monkeypatch.setattr(
         window_render_module,
