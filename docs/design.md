@@ -1512,10 +1512,11 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 描画側は `project_tropical_cyclone_snapshot(snapshot, when_utc)` を使って、現在時刻へ投影した snapshot を毎回生成してよい。
 - その投影結果から得た観測点を、`400km` の observer-distance cutoff で選別してよい。
 - `400km` を超える storm は、塗りつぶさない下向き三角の模式マーカーと storm name ラベルだけを描いてよい。ラベルはマーカー右上へ置いてよい。
-- `400km` 以内の storm の visible presentation は、投影済み位置の円柱状マーカーと storm name ラベルとし、`0km`、`5km`、`10km`、`15km` の層構造として扱ってよい。
-- 側面の柱は半径 `500m` で、周上サンプルは `8` 点としてよい。
-- 円柱高さは `15km` に固定してよい。
-- 風域ポリゴンが取得できない storm は、この固定円柱で代用してよい。
+- `400km` 以内の storm の visible presentation は、地表/水面位置から `5km` 上空に投影した塗りつぶし下向き三角マーカー、地表/水面位置までの細い接続線、storm name ラベルとして扱ってよい。
+- 接続線は `1km` ごとに再投影した点列を使い、アステリズム hover の 3 重線幅を流用してよい。
+- マーカー本体の塗りは、表示用の視認性のため `opacity` に対して `0.4` 程度の alpha を使ってよい。
+- `5km` の高さは物理的な storm 高さ表現ではなく、地表/水面からマーカーを浮かせて読みやすくするための表示用オフセットとして扱ってよい。
+- 風域ポリゴンが取得できない storm は、この固定マーカーで代用してよい。
 - 風域ポリゴンや 3D 危険度地形は将来拡張として残してよい。
 - `TropicalCycloneState` は source snapshot と refresh / cache metadata を保持するだけにしてよく、projected geometry を状態として持たなくてよい。
 - `reproject_tropical_cyclone_overlay()` は投影計算ではなく、再描画と次回更新時刻の管理だけを担当してよい。
