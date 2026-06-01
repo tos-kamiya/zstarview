@@ -226,13 +226,8 @@ def test_tropical_cyclone_draw_uses_far_marker_beyond_distance_limit(monkeypatch
         calls.append(("far", None))
         return QPointF(12.0, 34.0)
 
-    def _fake_column(*_args, **_kwargs):
-        calls.append(("column", None))
-        return ()
-
     monkeypatch.setattr(render_tropical_cyclones, "_project_point_no_cutoff", _fake_center)
     monkeypatch.setattr(render_tropical_cyclones, "_draw_far_cyclone_marker", _fake_far_marker)
-    monkeypatch.setattr(render_tropical_cyclones, "_project_cyclone_column_points", _fake_column)
 
     class _FakePainter:
         def save(self) -> None:
@@ -333,9 +328,81 @@ def test_tropical_cyclone_far_label_uses_lower_alpha() -> None:
     assert render_tropical_cyclones.TROPICAL_CYCLONE_FAR_LABEL_RGBA[3] == 153
 
 
-def test_tropical_cyclone_draws_column_line_with_water_dot_width(
-    monkeypatch,
-) -> None:
+def test_tropical_cyclone_tether_matches_asterism_hover_passes() -> None:
+    tether_points = (
+        render_tropical_cyclones._RenderPoint(
+            nx=0.1,
+            ny=0.2,
+            alt_deg=10.0,
+            az_deg=20.0,
+            distance_km=120.0,
+        ),
+        render_tropical_cyclones._RenderPoint(
+            nx=0.12,
+            ny=0.23,
+            alt_deg=11.0,
+            az_deg=20.0,
+            distance_km=120.0,
+        ),
+        render_tropical_cyclones._RenderPoint(
+            nx=0.14,
+            ny=0.26,
+            alt_deg=12.0,
+            az_deg=20.0,
+            distance_km=120.0,
+        ),
+        render_tropical_cyclones._RenderPoint(
+            nx=0.16,
+            ny=0.29,
+            alt_deg=13.0,
+            az_deg=20.0,
+            distance_km=120.0,
+        ),
+        render_tropical_cyclones._RenderPoint(
+            nx=0.18,
+            ny=0.32,
+            alt_deg=14.0,
+            az_deg=20.0,
+            distance_km=120.0,
+        ),
+        render_tropical_cyclones._RenderPoint(
+            nx=0.2,
+            ny=0.35,
+            alt_deg=15.0,
+            az_deg=20.0,
+            distance_km=120.0,
+        ),
+    )
+    pen_widths: list[float] = []
+    pen_alphas: list[int] = []
+    line_calls: list[tuple[QPointF, QPointF]] = []
+
+    class _FakePainter:
+        def setPen(self, pen, *_args, **_kwargs) -> None:
+            pen_widths.append(float(pen.widthF()))
+            pen_alphas.append(int(pen.color().alpha()))
+
+        def drawLine(self, start, end) -> None:
+            line_calls.append((start, end))
+
+    render_tropical_cyclones._draw_marker_tether(
+        _FakePainter(),
+        tether_points,
+        geometry=ScreenGeometry(center=(100, 100), radius=80),
+        color_rgba=(240, 122, 122, 200),
+    )
+
+    assert pen_widths == [
+        width_px for width_px, _alpha_scale in render_tropical_cyclones.TROPICAL_CYCLONE_TETHER_PASSES
+    ]
+    assert pen_alphas == [
+        round(255 * alpha_scale)
+        for _width_px, alpha_scale in render_tropical_cyclones.TROPICAL_CYCLONE_TETHER_PASSES
+    ]
+    assert len(line_calls) == 15
+
+
+def test_tropical_cyclone_draws_filled_marker_at_5km_when_in_range(monkeypatch) -> None:
     viewer = SimpleNamespace(
         lat_deg=36.75,
         lon_deg=147.65,
@@ -356,61 +423,39 @@ def test_tropical_cyclone_draws_column_line_with_water_dot_width(
         wind_polygons=(),
     )
     calls: list[tuple[str, object]] = []
+    filled_colors: list[tuple[int, int, int, int]] = []
 
-    def _fake_center(*_args, **_kwargs):
-        return render_tropical_cyclones._RenderPoint(
-            nx=0.1,
-            ny=0.2,
-            alt_deg=10.0,
-            az_deg=20.0,
-            distance_km=399.0,
-        )
-
-    def _fake_column(*_args, **_kwargs):
-        return (
-            render_tropical_cyclones._RenderPoint(
+    def _fake_project(*_args, **kwargs):
+        height_m = float(kwargs["height_m"])
+        if height_m == 0.0:
+            return render_tropical_cyclones._RenderPoint(
                 nx=0.1,
                 ny=0.2,
                 alt_deg=10.0,
                 az_deg=20.0,
                 distance_km=399.0,
-            ),
-            render_tropical_cyclones._RenderPoint(
-                nx=0.13,
-                ny=0.25,
-                alt_deg=11.0,
-                az_deg=20.0,
-                distance_km=399.1,
-            ),
-            render_tropical_cyclones._RenderPoint(
-                nx=0.16,
-                ny=0.31,
-                alt_deg=12.0,
-                az_deg=20.0,
-                distance_km=399.2,
-            ),
-            render_tropical_cyclones._RenderPoint(
-                nx=0.2,
-                ny=0.4,
-                alt_deg=15.0,
-                az_deg=20.0,
-                distance_km=399.5,
-            ),
+            )
+        return render_tropical_cyclones._RenderPoint(
+            nx=0.2,
+            ny=0.35,
+            alt_deg=15.0,
+            az_deg=20.0,
+            distance_km=399.0,
         )
 
-    def _fake_line(painter, points, **kwargs):
-        calls.append(("line", (points, kwargs)))
+    def _fake_tether(_painter, tether_points, **_kwargs):
+        calls.append(("tether", tuple(tether_points)))
 
     def _fake_far_marker(*_args, **_kwargs):
         calls.append(("far", None))
         return QPointF(12.0, 34.0)
 
-    def _fake_filled_marker(*_args, **_kwargs):
-        calls.append(("filled", None))
+    def _fake_filled_marker(_painter, point, **_kwargs):
+        calls.append(("filled", point))
+        filled_colors.append(tuple(_kwargs["color_rgba"]))
 
-    monkeypatch.setattr(render_tropical_cyclones, "_project_point_no_cutoff", _fake_center)
-    monkeypatch.setattr(render_tropical_cyclones, "_project_cyclone_column_points", _fake_column)
-    monkeypatch.setattr(render_tropical_cyclones, "_draw_column_line", _fake_line)
+    monkeypatch.setattr(render_tropical_cyclones, "_project_point_no_cutoff", _fake_project)
+    monkeypatch.setattr(render_tropical_cyclones, "_draw_marker_tether", _fake_tether)
     monkeypatch.setattr(render_tropical_cyclones, "_draw_far_cyclone_marker", _fake_far_marker)
     monkeypatch.setattr(render_tropical_cyclones, "_draw_filled_cyclone_marker", _fake_filled_marker)
 
@@ -445,16 +490,106 @@ def test_tropical_cyclone_draws_column_line_with_water_dot_width(
         enabled=True,
     )
 
-    assert [kind for kind, _ in calls] == ["filled", "line"]
-    line_call = calls[1][1]
-    assert len(line_call[0]) == 4
-    assert line_call[1]["width_px"] == pytest.approx(
-        render_tropical_cyclones.TROPICAL_CYCLONE_COLUMN_WIDTH_PX
-    )
+    assert [kind for kind, _ in calls] == ["tether", "filled"]
+    tether_points = calls[0][1]
+    ground_point = tether_points[0]
+    marker_point = tether_points[-1]
+    assert ground_point.alt_deg == pytest.approx(10.0)
+    assert marker_point.alt_deg == pytest.approx(15.0)
+    assert calls[1][1] == marker_point
     assert not any(kind == "far" for kind, _ in calls)
+    assert filled_colors == [
+        (
+            render_tropical_cyclones.TROPICAL_CYCLONE_COLOR_RGB[0],
+            render_tropical_cyclones.TROPICAL_CYCLONE_COLOR_RGB[1],
+            render_tropical_cyclones.TROPICAL_CYCLONE_COLOR_RGB[2],
+            round(255 * render_tropical_cyclones.TROPICAL_CYCLONE_MARKER_ALPHA_SCALE),
+        )
+    ]
 
 
-def test_tropical_cyclone_draws_filled_marker_at_base_when_in_range(monkeypatch) -> None:
+def test_tropical_cyclone_in_range_marker_projects_5km_height(monkeypatch) -> None:
+    viewer = SimpleNamespace(
+        lat_deg=36.75,
+        lon_deg=147.65,
+        ground_elevation_m=0.0,
+        view_center=(45.0, 180.0),
+        content_fov_deg=110.0,
+        edge_fov_deg=95.0,
+    )
+    snapshot = TropicalCycloneSnapshot(
+        storm_name="Jangmi",
+        basin="WP",
+        advdate_utc=datetime(2026, 5, 30, 2, 10, tzinfo=timezone.utc),
+        observed_position=TropicalCyclonePoint(
+            lat_deg=12.3,
+            lon_deg=145.6,
+            valid_time_utc=datetime(2026, 5, 30, 2, 0, tzinfo=timezone.utc),
+        ),
+        wind_polygons=(),
+    )
+    requested_heights: list[float] = []
+
+    def _fake_project(*_args, **kwargs):
+        height_m = float(kwargs["height_m"])
+        requested_heights.append(height_m)
+        return render_tropical_cyclones._RenderPoint(
+            nx=0.1,
+            ny=0.2,
+            alt_deg=10.0,
+            az_deg=20.0,
+            distance_km=120.0,
+        )
+
+    monkeypatch.setattr(render_tropical_cyclones, "_project_point_no_cutoff", _fake_project)
+    monkeypatch.setattr(render_tropical_cyclones, "_draw_marker_tether", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        render_tropical_cyclones,
+        "_draw_filled_cyclone_marker",
+        lambda *_args, **_kwargs: None,
+    )
+
+    class _FakePainter:
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setRenderHint(self, *_args, **_kwargs) -> None:
+            pass
+
+        def setPen(self, *_args, **_kwargs) -> None:
+            pass
+
+        def setBrush(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawText(self, *_args, **_kwargs) -> None:
+            pass
+
+    render_tropical_cyclones.draw_tropical_cyclone_overlay(
+        _FakePainter(),
+        geometry=ScreenGeometry(center=(100, 100), radius=80),
+        viewer=viewer,
+        snapshot=snapshot,
+        when_utc=datetime(2026, 5, 30, 2, 30, tzinfo=timezone.utc),
+        theme=SimpleNamespace(),
+        opacity=0.4,
+        enabled=True,
+    )
+
+    assert requested_heights == [
+        0.0,
+        render_tropical_cyclones.TROPICAL_CYCLONE_MARKER_HEIGHT_M,
+        1000.0,
+        2000.0,
+        3000.0,
+        4000.0,
+    ]
+
+
+def test_tropical_cyclone_draws_filled_marker_and_tether_when_in_range(monkeypatch) -> None:
     viewer = SimpleNamespace(
         lat_deg=36.75,
         lon_deg=147.65,
@@ -476,45 +611,22 @@ def test_tropical_cyclone_draws_filled_marker_at_base_when_in_range(monkeypatch)
     )
     calls: list[tuple[str, object]] = []
 
-    def _fake_center(*_args, **_kwargs):
-        return render_tropical_cyclones._RenderPoint(
-            nx=0.1,
-            ny=0.2,
-            alt_deg=10.0,
-            az_deg=20.0,
-            distance_km=100.0,
-        )
-
-    def _fake_column(*_args, **_kwargs):
-        return (
-            render_tropical_cyclones._RenderPoint(
+    def _fake_project(*_args, **kwargs):
+        height_m = float(kwargs["height_m"])
+        if height_m == 0.0:
+            return render_tropical_cyclones._RenderPoint(
                 nx=0.1,
                 ny=0.2,
                 alt_deg=10.0,
                 az_deg=20.0,
                 distance_km=100.0,
-            ),
-            render_tropical_cyclones._RenderPoint(
-                nx=0.13,
-                ny=0.25,
-                alt_deg=11.0,
-                az_deg=20.0,
-                distance_km=100.0,
-            ),
-            render_tropical_cyclones._RenderPoint(
-                nx=0.16,
-                ny=0.31,
-                alt_deg=12.0,
-                az_deg=20.0,
-                distance_km=100.0,
-            ),
-            render_tropical_cyclones._RenderPoint(
-                nx=0.2,
-                ny=0.4,
-                alt_deg=15.0,
-                az_deg=20.0,
-                distance_km=100.0,
-            ),
+            )
+        return render_tropical_cyclones._RenderPoint(
+            nx=0.2,
+            ny=0.35,
+            alt_deg=15.0,
+            az_deg=20.0,
+            distance_km=100.0,
         )
 
     def _fake_filled_marker(*_args, **_kwargs):
@@ -524,14 +636,13 @@ def test_tropical_cyclone_draws_filled_marker_at_base_when_in_range(monkeypatch)
         calls.append(("far", None))
         return QPointF(12.0, 34.0)
 
-    def _fake_line(*_args, **_kwargs):
-        calls.append(("line", None))
+    def _fake_tether(*_args, **_kwargs):
+        calls.append(("tether", None))
 
-    monkeypatch.setattr(render_tropical_cyclones, "_project_point_no_cutoff", _fake_center)
-    monkeypatch.setattr(render_tropical_cyclones, "_project_cyclone_column_points", _fake_column)
+    monkeypatch.setattr(render_tropical_cyclones, "_project_point_no_cutoff", _fake_project)
     monkeypatch.setattr(render_tropical_cyclones, "_draw_filled_cyclone_marker", _fake_filled_marker)
     monkeypatch.setattr(render_tropical_cyclones, "_draw_far_cyclone_marker", _fake_far_marker)
-    monkeypatch.setattr(render_tropical_cyclones, "_draw_column_line", _fake_line)
+    monkeypatch.setattr(render_tropical_cyclones, "_draw_marker_tether", _fake_tether)
 
     class _FakePainter:
         def save(self) -> None:
@@ -570,55 +681,5 @@ def test_tropical_cyclone_draws_filled_marker_at_base_when_in_range(monkeypatch)
         enabled=True,
     )
 
-    assert ("filled", None) in calls
+    assert [kind for kind, _ in calls] == ["tether", "filled"]
     assert not any(kind == "far" for kind, _ in calls)
-
-
-def test_tropical_cyclone_column_projects_height_samples(monkeypatch) -> None:
-    viewer = SimpleNamespace(
-        lat_deg=36.75,
-        lon_deg=147.65,
-        ground_elevation_m=0.0,
-        view_center=(45.0, 180.0),
-        content_fov_deg=110.0,
-        edge_fov_deg=95.0,
-    )
-    calls: list[float] = []
-
-    def _fake_project(*_args, **kwargs):
-        height_value = kwargs["target_height_m"]
-        if isinstance(height_value, list):
-            height_m = float(height_value[0])
-        else:
-            height_m = float(height_value)
-        calls.append(height_m)
-        return [
-            SimpleNamespace(
-                alt_deg=10.0 + (height_m / 10_000.0),
-                az_deg=20.0,
-                distance_km=120.0 + (height_m / 100_000.0),
-            )
-        ]
-
-    monkeypatch.setattr(
-        render_tropical_cyclones,
-        "project_place_targets_to_altaz",
-        _fake_project,
-    )
-
-    column_points = render_tropical_cyclones._project_cyclone_column_points(
-        36.8,
-        147.7,
-        viewer=viewer,
-    )
-
-    assert column_points is not None
-    assert calls[0] == 0.0
-    assert calls == [
-        float(height_km) * 1000.0
-        for height_km in render_tropical_cyclones.TROPICAL_CYCLONE_COLUMN_HEIGHTS_KM
-    ]
-    assert len(column_points) == 4
-    assert [point.alt_deg for point in column_points] == pytest.approx(
-        [10.0, 10.5, 11.0, 11.5]
-    )

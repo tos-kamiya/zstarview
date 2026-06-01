@@ -12,13 +12,23 @@ from ..paths import ThemeStyle
 from ..types import ScreenGeometry, ViewerData
 from ..tropical_cyclones.models import TropicalCycloneSnapshot
 from ..tropical_cyclones.models import project_tropical_cyclone_snapshot
+from .asterisms import (
+    ASTERISM_HIGHLIGHT_CORE_WIDTH,
+    ASTERISM_HIGHLIGHT_MID_WIDTH,
+    ASTERISM_HIGHLIGHT_OUTER_WIDTH,
+)
 from .geometry import normalized_to_screen_xy
-from .terrain import WATER_OVERLAY_POINT_RADIUS_PX
 
 TROPICAL_CYCLONE_TARGET_HEIGHT_M = 0.0
+TROPICAL_CYCLONE_MARKER_HEIGHT_M = 5000.0
+TROPICAL_CYCLONE_TETHER_STEP_M = 1000.0
 TROPICAL_CYCLONE_MAX_DISTANCE_KM = 400.0
-TROPICAL_CYCLONE_COLUMN_HEIGHTS_KM = (0.0, 5.0, 10.0, 15.0)
-TROPICAL_CYCLONE_COLUMN_WIDTH_PX = WATER_OVERLAY_POINT_RADIUS_PX
+TROPICAL_CYCLONE_TETHER_PASSES = (
+    (ASTERISM_HIGHLIGHT_OUTER_WIDTH, 0.25),
+    (ASTERISM_HIGHLIGHT_MID_WIDTH, 0.50),
+    (ASTERISM_HIGHLIGHT_CORE_WIDTH, 0.80),
+)
+TROPICAL_CYCLONE_MARKER_ALPHA_SCALE = 0.40
 TROPICAL_CYCLONE_FAR_MARKER_HALF_WIDTH_PX = 6.0
 TROPICAL_CYCLONE_FAR_MARKER_HALF_HEIGHT_PX = 4.5
 TROPICAL_CYCLONE_FAR_LABEL_OFFSET_X_PX = 8.0
@@ -97,49 +107,60 @@ def _filled_marker_polygon(point: _RenderPoint, *, geometry: ScreenGeometry) -> 
     )
 
 
-def _project_cyclone_column_points(
+def _project_marker_tether_points(
+    *,
+    ground_point: _RenderPoint,
     lat_deg: float,
     lon_deg: float,
-    *,
     viewer: ViewerData,
 ) -> tuple[_RenderPoint, ...] | None:
-    points: list[_RenderPoint] = []
-    for height_km in TROPICAL_CYCLONE_COLUMN_HEIGHTS_KM:
+    max_height_m = int(round(float(TROPICAL_CYCLONE_MARKER_HEIGHT_M)))
+    step_m = int(round(float(TROPICAL_CYCLONE_TETHER_STEP_M)))
+    if step_m <= 0:
+        return None
+
+    tether_points: list[_RenderPoint] = [ground_point]
+    height_m = step_m
+    while height_m < max_height_m:
         point = _project_point_no_cutoff(
             lat_deg,
             lon_deg,
             viewer=viewer,
-            height_m=float(height_km) * 1000.0,
+            height_m=float(height_m),
         )
         if point is None:
             return None
-        points.append(point)
-    return tuple(points)
+        tether_points.append(point)
+        height_m += step_m
+
+    return tuple(tether_points)
 
 
-def _draw_column_line(
+def _draw_marker_tether(
     painter: QPainter,
-    points: tuple[_RenderPoint, ...],
+    tether_points: tuple[_RenderPoint, ...],
     *,
     geometry: ScreenGeometry,
     color_rgba: tuple[int, int, int, int],
-    width_px: float,
 ) -> None:
-    pen = QPen(QColor(*color_rgba), float(width_px), Qt.PenStyle.SolidLine)
-    pen.setCosmetic(True)
-    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-    painter.setPen(pen)
-    if len(points) < 2:
+    if len(tether_points) < 2:
         return
-    painter.drawPolyline(
-        QPolygonF(
-            [
-                QPointF(*normalized_to_screen_xy(point.nx, point.ny, geometry))
-                for point in points
-            ]
+    for width_px, pass_alpha_scale in TROPICAL_CYCLONE_TETHER_PASSES:
+        tether_rgba = (
+            int(color_rgba[0]),
+            int(color_rgba[1]),
+            int(color_rgba[2]),
+            max(1, int(round(255.0 * float(pass_alpha_scale)))),
         )
-    )
+        pen = QPen(QColor(*tether_rgba), float(width_px), Qt.PenStyle.SolidLine)
+        pen.setCosmetic(True)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(pen)
+        for start_point, end_point in zip(tether_points, tether_points[1:]):
+            start = QPointF(*normalized_to_screen_xy(start_point.nx, start_point.ny, geometry))
+            end = QPointF(*normalized_to_screen_xy(end_point.nx, end_point.ny, geometry))
+            painter.drawLine(start, end)
 
 
 def _draw_far_cyclone_marker(
@@ -213,19 +234,29 @@ def draw_tropical_cyclone_overlay(
         int(round(255.0 * min(1.0, max(0.0, float(opacity))))),
     )
     if float(center_point.distance_km) > float(TROPICAL_CYCLONE_MAX_DISTANCE_KM):
-        column_points = None
+        marker_point = None
         label_rgba = TROPICAL_CYCLONE_FAR_LABEL_RGBA
     else:
-        column_points = _project_cyclone_column_points(
+        marker_point = _project_point_no_cutoff(
             observed.lat_deg,
             observed.lon_deg,
             viewer=viewer,
+            height_m=TROPICAL_CYCLONE_MARKER_HEIGHT_M,
         )
-        label_rgba = TROPICAL_CYCLONE_LABEL_RGBA
+        if marker_point is None:
+            label_rgba = TROPICAL_CYCLONE_FAR_LABEL_RGBA
+        else:
+            label_rgba = TROPICAL_CYCLONE_LABEL_RGBA
+    marker_fill_rgba = (
+        int(TROPICAL_CYCLONE_COLOR_RGB[0]),
+        int(TROPICAL_CYCLONE_COLOR_RGB[1]),
+        int(TROPICAL_CYCLONE_COLOR_RGB[2]),
+        max(1, int(round(255.0 * float(TROPICAL_CYCLONE_MARKER_ALPHA_SCALE)))),
+    )
 
     painter.save()
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-    if column_points is None:
+    if marker_point is None:
         label_pos = _draw_far_cyclone_marker(
             painter,
             center_point,
@@ -233,29 +264,39 @@ def draw_tropical_cyclone_overlay(
             color_rgba=marker_rgba,
         )
     else:
-        if len(column_points) >= 2:
-            _draw_filled_cyclone_marker(
+        tether_points = _project_marker_tether_points(
+            ground_point=center_point,
+            lat_deg=observed.lat_deg,
+            lon_deg=observed.lon_deg,
+            viewer=viewer,
+        )
+        if tether_points is None:
+            label_pos = _draw_far_cyclone_marker(
                 painter,
                 center_point,
                 geometry=geometry,
                 color_rgba=marker_rgba,
             )
-            _draw_column_line(
+        else:
+            tether_points = (*tether_points, marker_point)
+            _draw_marker_tether(
                 painter,
-                column_points,
+                tether_points,
                 geometry=geometry,
                 color_rgba=marker_rgba,
-                width_px=TROPICAL_CYCLONE_COLUMN_WIDTH_PX,
             )
-            top_point = column_points[-1]
+            _draw_filled_cyclone_marker(
+                painter,
+                marker_point,
+                geometry=geometry,
+                color_rgba=marker_fill_rgba,
+            )
             screen_x, screen_y = normalized_to_screen_xy(
-                top_point.nx,
-                top_point.ny,
+                marker_point.nx,
+                marker_point.ny,
                 geometry,
             )
             label_pos = QPointF(float(screen_x + 8.0), float(screen_y - 8.0))
-        else:
-            label_pos = None
     painter.setPen(QColor(*label_rgba))
     if label_pos is not None:
         painter.drawText(
