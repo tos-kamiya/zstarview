@@ -774,6 +774,10 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - クラウドディスク生成のオーケストレーション
   - `CloudDiscConfig.alt_min_deg` による可視高度下限の適用
   - 同一 `CloudSourceData` に対する repeated render では brightness-temperature sampler を再利用してよい
+- `src/zstarview/clouddisc/workers/cloud_source.py`
+  - cloud source fetch の task boundary
+  - 将来の out-of-process worker からも呼べるよう、正規化済み request と fetch entrypoint を分離してよい
+  - GOES / Himawari の取得分岐はここへ集約し、本体側は取得後の state 更新だけを担ってよい
 - `src/zstarview/clouddisc/providers/*.py`
   - 衛星データ取得
   - GOES は `CMIPF C13` NetCDF を `xarray` で直接読み、`goes_imager_projection` から内部の geostationary `area` 定義を再構築する

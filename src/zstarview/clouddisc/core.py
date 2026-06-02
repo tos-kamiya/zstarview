@@ -30,6 +30,8 @@ from .render.grayscale import (
     _suppress_low_cloud_weight,
     convert_bt_to_rgba_image,
 )
+from .workers.cloud_source import CloudSourceFetchRequest, fetch_cloud_source
+from .workers.constants import DEFAULT_CLOUD_SHELLS_KM
 from .sampling.bt_sampler import build_bt_sampler
 from .sampling.estimate_bt_warm_cold import (
     estimate_bt_cold_hybrid,
@@ -46,7 +48,6 @@ from .types import (
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CLOUD_SHELLS_KM: tuple[float, ...] = (6371.0 + 3.0, 6371.0 + 5.0, 6371.0 + 7.0)
 DEFAULT_CLOUD_SHELL_WEIGHTS: tuple[float, ...] = (0.20, 0.60, 0.20)
 DEFAULT_CLOUD_SHELL_LOW_WEIGHTS: tuple[float, ...] = (0.0, 1.0, 0.0)
 DEFAULT_CLOUD_SHELL_BLEND_LOW_CLOUD_AMOUNT: float = 0.25
@@ -171,54 +172,13 @@ class CloudDisc:
         abort_event: threading.Event | None = None,
     ) -> CloudSourceData:
         """Fetch cloud source data independently from camera-dependent rendering."""
-        source_key = self.make_source_key(lat=lat, lon=lon, when_utc=when_utc)
-        sat = source_key.satellite
-        when = source_key.timeslot_utc
-        sat_used = sat
-        shell_max_km = max(float(v) for v in cloud_shells_km) if cloud_shells_km else (6371.0 + 5.0)
-        if sat in GOES_SATELLITES:
-            goes_visible = tuple(visible_satellites(lat, lon, GOES_SATELLITES))
-            res, sat_used = self.goes.fetch_bt_c13_with_failover(
-                sat=sat,
-                when_utc=when,
-                allowed_sats=goes_visible,
-                abort_event=abort_event,
-            )
-            da, used_time, src_paths = res
-            product = "CMIPF-C13"
-        elif sat == "HIMAWARI":
-            da, used_time, src_paths = self.hima.fetch_bt_c13(
-                when_utc=when,
-                observer_lat=lat,
-                observer_lon=lon,
-                cloud_shell_km=shell_max_km,
-                abort_event=abort_event,
-            )
-            product = "ISatSS-B13"
-        else:
-            raise VisibilityError(f"No suitable satellite provider found for '{sat}'")
-        logger.info("Using %s (%s) data from time=%s", sat_used, product, used_time.isoformat())
-        source_expected_count = getattr(da, "attrs", {}).get("source_expected_count")
-        source_available_count = getattr(da, "attrs", {}).get("source_available_count")
-        source_completeness_ratio = getattr(da, "attrs", {}).get("source_completeness_ratio")
-        return CloudSourceData(
-            source_key=SourceKey(
-                satellite=sat_used,
-                provider=("GOES" if sat_used in GOES_SATELLITES else "HIMAWARI"),
-                timeslot_utc=source_key.timeslot_utc,
-                sat_priority=source_key.sat_priority,
-            ),
-            data_array=da,
-            satellite=sat_used,
-            product=product,
-            time_utc=used_time,
-            src_paths=src_paths,
-            source_expected_count=int(source_expected_count) if source_expected_count is not None else None,
-            source_available_count=int(source_available_count) if source_available_count is not None else None,
-            source_completeness_ratio=(
-                float(source_completeness_ratio) if source_completeness_ratio is not None else None
-            ),
+        request = CloudSourceFetchRequest(
+            lat=lat,
+            lon=lon,
+            when_utc=when_utc,
+            cloud_shells_km=tuple(float(v) for v in cloud_shells_km),
         )
+        return fetch_cloud_source(self, request, abort_event=abort_event)
 
     def render_from_source(
         self,
