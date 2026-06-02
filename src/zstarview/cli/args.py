@@ -737,9 +737,9 @@ def add_overlay_arguments(parser: argparse._ActionsContainer) -> None:
     parser.add_argument(
         "--water-surface-opacity",
         type=float,
-        default=0.12,
+        default=0.4,
         help=(
-            "Opacity of the water surface layer (0.0 - 1.0, default: 0.12). "
+            "Opacity of the water surface layer (0.0 - 1.0, default: 0.4). "
             "Set to 0.0 to disable water surface rendering at startup."
         ),
     )

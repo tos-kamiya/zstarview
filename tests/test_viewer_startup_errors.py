@@ -164,7 +164,7 @@ def _make_args(*, close_on_startup_error: bool) -> SimpleNamespace:
         terrain_horizon_opacity=0.003,
         earth_guide_opacity=0.028,
         urban_outline_opacity=0.2,
-        water_surface_opacity=0.12,
+        water_surface_opacity=0.4,
         ground_tint_opacity=0.04,
         overlay_font_size=11,
         enlarge_moon=False,

@@ -63,7 +63,7 @@ class SkyWindowUserOptions:
     terrain_horizon_opacity: float = 0.003
     earth_guide_opacity: float = 0.028
     urban_outline_opacity: float = 0.2
-    water_overlay_opacity: float = 0.12
+    water_overlay_opacity: float = 0.4
     ground_tint_opacity: float = 0.04
     overlay_font_size: float = float(OVERLAY_FONT_SIZE_DEFAULT)
     enlarge_moon: bool = False
@@ -200,7 +200,7 @@ def prepare_window_user_options(
     terrain_horizon_opacity: float,
     earth_guide_opacity: float,
     urban_outline_opacity: float,
-    water_overlay_opacity: float = 0.12,
+    water_overlay_opacity: float = 0.4,
     ground_tint_opacity: float,
     overlay_font_size: float = float(OVERLAY_FONT_SIZE_DEFAULT),
     enlarge_moon: bool,

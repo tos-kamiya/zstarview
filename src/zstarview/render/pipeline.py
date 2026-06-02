@@ -154,7 +154,7 @@ class RenderStyle:
     night_light_opacity: float = 0.02
     urban_outline_opacity: float = 0.2
     show_urban_outline_layer: bool = True
-    water_overlay_opacity: float = 0.12
+    water_overlay_opacity: float = 0.4
     aircraft_opacity: float = 0.5
     tropical_cyclone_opacity: float = 0.4
     show_tropical_cyclone_overlay: bool = True

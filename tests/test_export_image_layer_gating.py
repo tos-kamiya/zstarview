@@ -90,7 +90,7 @@ class _Args:
     urban_outline_feature_type = "both"
     urban_outline_skyscraper_only = False
     cloud_missing_tint_opacity = 0.0
-    water_surface_opacity = 0.12
+    water_surface_opacity = 0.4
     expected_render_width = 600
 
 
@@ -276,7 +276,7 @@ def test_fetch_water_overlay_layer_uses_observer_ground_and_eye_height(monkeypat
 
     assert got == [WaterOverlayPoint("water", 10.0, 20.0, 0.5, water_category="sea-500")]
     assert captured["observer_height_m"] == 43.7
-    assert captured["azimuth_step_deg"] == 1.0
+    assert captured["azimuth_step_deg"] == 2.0
     assert captured["max_distance_km"] == mod.resolve_water_scan_radius_km(
         43.7,
         minimum_distance_km=mod.DEFAULT_WATER_RADIUS_KM,
@@ -408,7 +408,7 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
         sky_disc_style="smooth",
         cloud_disc_alpha=0.2,
         geo_satellite=True,
-        water_overlay_opacity=0.12,
+        water_overlay_opacity=0.4,
         satellite_opacity=0.2,
         terrain_horizon_opacity=0.05,
         urban_outline_opacity=0.0,
@@ -490,7 +490,7 @@ def test_main_uses_independent_layer_deadlines(monkeypatch) -> None:
             urban_outline_feature_type="both",
             urban_outline_skyscraper_only=False,
             cloud_missing_tint_opacity=0.0,
-            water_surface_opacity=0.12,
+            water_surface_opacity=0.4,
             expected_render_width=600,
         ),
     )

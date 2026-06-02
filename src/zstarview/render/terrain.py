@@ -60,6 +60,9 @@ WATER_OVERLAY_SEA_500_COLOR_RGB = (255, 170, 64)
 WATER_OVERLAY_LAKE_COLOR_RGB = (104, 196, 168)
 WATER_OVERLAY_RIVER_COLOR_RGB = (94, 214, 255)
 WATER_OVERLAY_POINT_RADIUS_PX = 3.0
+WATER_OVERLAY_MARKER_MAJOR_RADIUS_SCALE = 1.18
+WATER_OVERLAY_MARKER_MINOR_RADIUS_SCALE = 0.46
+WATER_OVERLAY_MARKER_PEN_WIDTH_SCALE = 0.42
 WATER_OVERLAY_DISTANCE_ALPHA_REFERENCE_KM = 128.0
 WATER_OVERLAY_DISTANCE_ALPHA_REFERENCE_SCALE = 16.0
 
@@ -291,6 +294,29 @@ def _water_overlay_point_color_rgb(water_point: WaterOverlayPoint) -> tuple[int,
     if category == "lake":
         return WATER_OVERLAY_LAKE_COLOR_RGB
     return WATER_OVERLAY_POINT_COLOR_RGB
+
+
+def _water_overlay_marker_geometry(
+    line_width_scale: float,
+    *,
+    distance_km: float = 0.0,
+) -> tuple[float, float, float]:
+    scale = max(1.0, float(line_width_scale))
+    base_radius = WATER_OVERLAY_POINT_RADIUS_PX * scale
+    distance_scale = max(0.15, _water_overlay_distance_alpha_scale(distance_km))
+    major_radius = base_radius * WATER_OVERLAY_MARKER_MAJOR_RADIUS_SCALE
+    minor_radius = base_radius * WATER_OVERLAY_MARKER_MINOR_RADIUS_SCALE * distance_scale
+    pen_width = max(1.0, base_radius * WATER_OVERLAY_MARKER_PEN_WIDTH_SCALE)
+    return major_radius, minor_radius, pen_width
+
+
+def _water_overlay_marker_rotation_deg(
+    px: float,
+    py: float,
+    geometry: ScreenGeometry,
+) -> float:
+    # Keep the marker horizontal; the projection foreshortens the vertical axis by distance.
+    return 0.0
 
 
 def _water_overlay_distance_alpha_scale(distance_km: float) -> float:
@@ -948,7 +974,7 @@ def draw_water_overlay_dots(
     altaz_to_normalized_xy_func: Callable[[float, float, tuple[float, float]], tuple[float, float]] = altaz_to_normalized_xy,
     normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], tuple[float, float]] = normalized_to_screen_xy,
 ) -> None:
-    """Draw sampled water surface dots as small blue dots."""
+    """Draw sampled water surface points as thin ground-plane outlines."""
     layer_opacity = max(0.0, min(1.0, float(opacity)))
     if not water_dots or layer_opacity <= 0.0:
         return
@@ -968,9 +994,6 @@ def draw_water_overlay_dots(
     dot_alpha = max(0, min(255, int(round(255.0 * layer_opacity))))
 
     painter.save()
-    painter.setPen(Qt.PenStyle.NoPen)
-    scale = max(1.0, float(line_width_scale))
-    base_radius = WATER_OVERLAY_POINT_RADIUS_PX * scale
     for point in visible_points:
         alt = float(point.alt_deg)
         az = float(point.az_deg)
@@ -990,14 +1013,29 @@ def draw_water_overlay_dots(
             )
         px, py = normalized_to_screen_xy_func(nx, ny, geometry)
         distance_alpha = _water_overlay_distance_alpha_scale(float(point.distance_km))
+        major_radius, minor_radius, pen_width = _water_overlay_marker_geometry(
+            line_width_scale,
+            distance_km=float(point.distance_km),
+        )
         point_alpha = max(0, min(255, int(round(dot_alpha * float(point.alpha_scale) * distance_alpha))))
-        dot_color = QColor(
+        outline_color = QColor(
             *_water_overlay_point_color_rgb(point),
             point_alpha,
         )
-        painter.setBrush(dot_color)
-        radius = base_radius
-        painter.drawEllipse(QPointF(float(px), float(py)), radius, radius)
+        pen = QPen(outline_color)
+        pen.setWidthF(float(pen_width))
+        pen.setCosmetic(True)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(pen)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.save()
+        painter.translate(float(px), float(py))
+        if minor_radius <= max(0.6, major_radius * 0.18):
+            painter.drawLine(QPointF(-major_radius, 0.0), QPointF(major_radius, 0.0))
+        else:
+            painter.drawEllipse(QPointF(0.0, 0.0), major_radius, minor_radius)
+        painter.restore()
     painter.restore()
 
 

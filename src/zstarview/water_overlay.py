@@ -27,7 +27,7 @@ DEFAULT_WATER_TIMEOUT_S = 60.0
 DEFAULT_WATER_RADIUS_KM = 2.0
 DEFAULT_WATER_HORIZON_MARGIN_KM = 1.0
 DEFAULT_WATER_SAMPLE_STEP_M = 1.25**5
-DEFAULT_WATER_AZIMUTH_STEP_DEG = 2.0
+DEFAULT_WATER_AZIMUTH_STEP_DEG = 4.0
 WATER_SURFACE_AZIMUTH_STEP_MEDIUM_MIN_EDGE_PX = 1200
 WATER_SURFACE_AZIMUTH_STEP_FINE_MIN_EDGE_PX = 2400
 DEFAULT_WATER_SAMPLE_GROWTH_FACTOR = 1.15
@@ -152,14 +152,14 @@ def resolve_water_surface_azimuth_step_deg(
 ) -> float:
     """Pick a water-surface azimuth step from the current render surface size.
 
-    The default 2-degree sampling stays in place for compact surfaces. Larger
-    surfaces progressively switch to 1-degree and then 0.5-degree sampling.
+    The default 4-degree sampling stays in place for compact surfaces. Larger
+    surfaces progressively switch to 2-degree and then 1-degree sampling.
     """
     max_edge_px = max(1, int(surface_width_px), int(surface_height_px))
     if max_edge_px >= WATER_SURFACE_AZIMUTH_STEP_FINE_MIN_EDGE_PX:
-        return 0.5
-    if max_edge_px >= WATER_SURFACE_AZIMUTH_STEP_MEDIUM_MIN_EDGE_PX:
         return 1.0
+    if max_edge_px >= WATER_SURFACE_AZIMUTH_STEP_MEDIUM_MIN_EDGE_PX:
+        return 2.0
     return DEFAULT_WATER_AZIMUTH_STEP_DEG
 
 
