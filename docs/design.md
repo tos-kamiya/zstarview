@@ -778,6 +778,13 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - cloud source fetch の task boundary
   - 将来の out-of-process worker からも呼べるよう、正規化済み request と fetch entrypoint を分離してよい
   - GOES / Himawari の取得分岐はここへ集約し、本体側は取得後の state 更新だけを担ってよい
+- `src/zstarview/clouddisc/workers/cloud_source_worker.py`
+  - cloud source の one-shot subprocess entrypoint
+  - 親 GUI は request を CLI 引数で渡し、worker は 1 件処理して result ファイルを出して終了してよい
+  - `heartbeat` は持たず、親は子 PID と result ファイルの timeout だけを見てよい
+  - result は request id と時刻を含む JSON manifest とし、必要なら worker 固有の cache artifact 参照を含めてよい
+  - 複数 GUI 起動時の衝突を避けるため、親 PID と起動時刻を含む work dir を使ってよい
+  - worker 側の失敗やストール時は、親が子を kill して再起動してよい
 - `src/zstarview/clouddisc/providers/*.py`
   - 衛星データ取得
   - GOES は `CMIPF C13` NetCDF を `xarray` で直接読み、`goes_imager_projection` から内部の geostationary `area` 定義を再構築する
