@@ -65,9 +65,7 @@ def draw_asterisms(
         return
 
     is_bright_theme = theme.label_outline_suppressed
-    highlight_outer_color = QColor(*PALETTE_ASTERISM_RGB, 14 if is_bright_theme else 10)
-    highlight_mid_color = QColor(*PALETTE_ASTERISM_RGB, 54 if is_bright_theme else 40)
-    highlight_core_color = QColor(*PALETTE_ASTERISM_RGB, 124 if is_bright_theme else 92)
+    highlight_mid_color = QColor(*PALETTE_ASTERISM_RGB, 150 if is_bright_theme else 120)
 
     painter.save()
     effective_fov_deg = _content_fov_deg_from_viewer(viewer_data) if content_fov_deg is None else float(content_fov_deg)
@@ -118,16 +116,10 @@ def draw_asterisms(
     def _draw_one_asterism(asterism: Any, pens: Iterable[QPen]) -> List[QPointF]:
         return _draw_segments(asterism.segments(), pens)
 
-    def _base_passes() -> tuple[QPen, ...]:
-        outer_color = QColor(*PALETTE_ASTERISM_RGB, 7 if is_bright_theme else 5)
-        mid_color = QColor(*PALETTE_ASTERISM_RGB, 14 if is_bright_theme else 10)
-        core_color = QColor(*PALETTE_ASTERISM_RGB, min(255, int(round((22 if is_bright_theme else 16) * base_alpha_scale))))
+    def _base_pass() -> QPen:
+        core_color = QColor(*PALETTE_ASTERISM_RGB, min(255, int(round((32 if is_bright_theme else 24) * base_alpha_scale))))
         core_width_scale = base_width_scale if base_width_scale > 1.0 else width_scale
-        return (
-            _make_pen(outer_color, ASTERISM_BASE_OUTLINE_WIDTH * width_scale),
-            _make_pen(mid_color, ASTERISM_BASE_MID_WIDTH * width_scale),
-            _make_pen(core_color, ASTERISM_BASE_LINE_WIDTH * core_width_scale),
-        )
+        return _make_pen(core_color, ASTERISM_BASE_MID_WIDTH * core_width_scale)
 
     highlighted_asterism = None
     if draw_highlight and highlighted_object is not None:
@@ -146,15 +138,13 @@ def draw_asterisms(
                 if source_a == source_b:
                     continue
                 base_segments.add(tuple(sorted((source_a, source_b))))
-        _draw_segments(sorted(base_segments), _base_passes())
+        _draw_segments(sorted(base_segments), (_base_pass(),))
 
     if highlighted_asterism is not None:
-        highlight_outer_pen = _make_pen(highlight_outer_color, ASTERISM_HIGHLIGHT_OUTER_WIDTH * width_scale)
-        highlight_mid_pen = _make_pen(highlight_mid_color, ASTERISM_HIGHLIGHT_MID_WIDTH * width_scale)
-        highlight_core_pen = _make_pen(highlight_core_color, ASTERISM_HIGHLIGHT_CORE_WIDTH * width_scale)
+        highlight_pen = _make_pen(highlight_mid_color, ASTERISM_HIGHLIGHT_MID_WIDTH * width_scale)
         label_points = _draw_one_asterism(
             highlighted_asterism,
-            (highlight_outer_pen, highlight_mid_pen, highlight_core_pen),
+            (highlight_pen,),
         )
 
     if label_points:

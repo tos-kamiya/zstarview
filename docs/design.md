@@ -337,6 +337,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `src/zstarview/render/asterisms.py`
   - アステリズム線の描画
   - 大円弧をサンプルし、アステリズム専用の広い FOV 境界で円形クリップして描画
+  - 現在は単線描画で、通常時は中間太さの単線をやや強めの alpha で使い、hover 時は同じ単線のままさらに強い alpha を使う
 - `src/zstarview/render/guides.py`
   - 天の赤道、黄道、地平線などの補助線を `(alt, az)` サンプル列から描画時に `render_view_center` 基準で投影する
 - `src/zstarview/render/background.py`

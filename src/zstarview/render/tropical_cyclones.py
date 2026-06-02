@@ -14,8 +14,6 @@ from ..tropical_cyclones.models import TropicalCycloneSnapshot
 from ..tropical_cyclones.models import project_tropical_cyclone_snapshot
 from .asterisms import (
     ASTERISM_HIGHLIGHT_CORE_WIDTH,
-    ASTERISM_HIGHLIGHT_MID_WIDTH,
-    ASTERISM_HIGHLIGHT_OUTER_WIDTH,
 )
 from .geometry import normalized_to_screen_xy
 
@@ -24,8 +22,6 @@ TROPICAL_CYCLONE_MARKER_HEIGHT_M = 5000.0
 TROPICAL_CYCLONE_TETHER_STEP_M = 1000.0
 TROPICAL_CYCLONE_MAX_DISTANCE_KM = 400.0
 TROPICAL_CYCLONE_TETHER_PASSES = (
-    (ASTERISM_HIGHLIGHT_OUTER_WIDTH, 0.25),
-    (ASTERISM_HIGHLIGHT_MID_WIDTH, 0.50),
     (ASTERISM_HIGHLIGHT_CORE_WIDTH, 0.80),
 )
 TROPICAL_CYCLONE_MARKER_ALPHA_SCALE = 0.40
@@ -145,22 +141,22 @@ def _draw_marker_tether(
 ) -> None:
     if len(tether_points) < 2:
         return
-    for width_px, pass_alpha_scale in TROPICAL_CYCLONE_TETHER_PASSES:
-        tether_rgba = (
-            int(color_rgba[0]),
-            int(color_rgba[1]),
-            int(color_rgba[2]),
-            max(1, int(round(255.0 * float(pass_alpha_scale)))),
-        )
-        pen = QPen(QColor(*tether_rgba), float(width_px), Qt.PenStyle.SolidLine)
-        pen.setCosmetic(True)
-        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-        painter.setPen(pen)
-        for start_point, end_point in zip(tether_points, tether_points[1:]):
-            start = QPointF(*normalized_to_screen_xy(start_point.nx, start_point.ny, geometry))
-            end = QPointF(*normalized_to_screen_xy(end_point.nx, end_point.ny, geometry))
-            painter.drawLine(start, end)
+    width_px, pass_alpha_scale = TROPICAL_CYCLONE_TETHER_PASSES[0]
+    tether_rgba = (
+        int(color_rgba[0]),
+        int(color_rgba[1]),
+        int(color_rgba[2]),
+        max(1, int(round(255.0 * float(pass_alpha_scale)))),
+    )
+    pen = QPen(QColor(*tether_rgba), float(width_px), Qt.PenStyle.SolidLine)
+    pen.setCosmetic(True)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+    painter.setPen(pen)
+    for start_point, end_point in zip(tether_points, tether_points[1:]):
+        start = QPointF(*normalized_to_screen_xy(start_point.nx, start_point.ny, geometry))
+        end = QPointF(*normalized_to_screen_xy(end_point.nx, end_point.ny, geometry))
+        painter.drawLine(start, end)
 
 
 def _draw_far_cyclone_marker(

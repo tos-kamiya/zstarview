@@ -98,7 +98,7 @@ def test_draw_asterisms_draws_dim_overlay_without_hover(monkeypatch) -> None:
         theme=THEME_STYLES_BY_PRESET["night"],
     )
 
-    assert painter.polyline_count == 3
+    assert painter.polyline_count == 1
 
 
 def test_draw_asterisms_keeps_dim_overlay_base_widths_fixed(monkeypatch) -> None:
@@ -121,8 +121,8 @@ def test_draw_asterisms_keeps_dim_overlay_base_widths_fixed(monkeypatch) -> None
         line_width_scale=2.0,
     )
 
-    assert painter.polyline_count == 3
-    assert painter.pen_widths == [8.0, 5.2, 2.8]
+    assert painter.polyline_count == 1
+    assert painter.pen_widths == [5.2]
 
 
 def test_draw_asterisms_scales_dim_overlay_alpha_with_visibility_boost(monkeypatch) -> None:
@@ -146,12 +146,8 @@ def test_draw_asterisms_scales_dim_overlay_alpha_with_visibility_boost(monkeypat
         base_line_alpha_scale=2.0,
     )
 
-    assert painter.pen_alphas[:3] == [
-        pytest.approx(5 / 255.0),
-        pytest.approx(10 / 255.0),
-        pytest.approx(32 / 255.0),
-    ]
-    assert painter.pen_widths[:3] == [4.0, 2.6, 2.8]
+    assert painter.pen_alphas == [pytest.approx(48 / 255.0)]
+    assert painter.pen_widths == [5.2]
 
 
 def test_draw_asterisms_dim_overlay_uses_softer_alpha(monkeypatch) -> None:
@@ -199,8 +195,9 @@ def test_draw_asterisms_hover_adds_bright_overlay_and_label(monkeypatch) -> None
         theme=THEME_STYLES_BY_PRESET["night"],
     )
 
-    assert painter.polyline_count == 6
-    assert painter.pen_widths[-1] == 1.0
+    assert painter.polyline_count == 2
+    assert painter.pen_alphas == [pytest.approx(24 / 255.0), pytest.approx(120 / 255.0)]
+    assert painter.pen_widths[-1] == 3.2
     assert [c["text"] for c in label_candidates] == ["Test Asterism"]
     label_style = label_candidates[0]["style"]
     assert (label_style.text_color.red(), label_style.text_color.green(), label_style.text_color.blue()) == PALETTE_ASTERISM_LABEL_RGB
@@ -226,7 +223,7 @@ def test_draw_asterisms_deduplicates_shared_dim_segments(monkeypatch) -> None:
         theme=THEME_STYLES_BY_PRESET["night"],
     )
 
-    assert painter.polyline_count == 3
+    assert painter.polyline_count == 1
 
 
 def test_draw_asterisms_clips_with_asterism_specific_wide_fov(monkeypatch) -> None:
@@ -280,7 +277,7 @@ def test_draw_asterisms_clips_with_asterism_specific_wide_fov(monkeypatch) -> No
         theme=THEME_STYLES_BY_PRESET["night"],
     )
 
-    assert painter.polyline_count == 3
+    assert painter.polyline_count == 1
     ys = [point[1] for polyline in painter.polylines for point in polyline]
     assert ys
     assert max(ys) <= geometry.center[1] + (geometry.radius * (ASTERISM_CLIP_FIELD_OF_VIEW_DEG / 90.0)) + 1.0e-6
@@ -309,7 +306,7 @@ def test_draw_asterisms_scales_line_widths_with_star_upscale(monkeypatch) -> Non
         theme=THEME_STYLES_BY_PRESET["night"],
     )
 
-    assert painter.pen_widths[:6] == [8.0, 5.2, 2.8, 10.0, 6.4, 2.0]
+    assert painter.pen_widths[:2] == [5.2, 6.4]
     assert [c["text"] for c in label_candidates] == ["Test Asterism"]
 
 

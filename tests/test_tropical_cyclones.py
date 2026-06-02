@@ -392,14 +392,9 @@ def test_tropical_cyclone_tether_matches_asterism_hover_passes() -> None:
         color_rgba=(240, 122, 122, 200),
     )
 
-    assert pen_widths == [
-        width_px for width_px, _alpha_scale in render_tropical_cyclones.TROPICAL_CYCLONE_TETHER_PASSES
-    ]
-    assert pen_alphas == [
-        round(255 * alpha_scale)
-        for _width_px, alpha_scale in render_tropical_cyclones.TROPICAL_CYCLONE_TETHER_PASSES
-    ]
-    assert len(line_calls) == 15
+    assert pen_widths == [1.0]
+    assert pen_alphas == [204]
+    assert len(line_calls) == 5
 
 
 def test_tropical_cyclone_draws_filled_marker_at_5km_when_in_range(monkeypatch) -> None:
