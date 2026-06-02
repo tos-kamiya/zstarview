@@ -35,12 +35,8 @@ def test_cloud_update_keeps_latest_pending_source_request() -> None:
     assert controller._pending_source_request["lon"] == 140.0
 
 
-def test_source_completion_keeps_pending_render_queued_when_render_is_running() -> None:
-    class _SourceOnlyCloudDisc(_DummyCloudDisc):
-        def fetch_source(self, *, lat: float, lon: float, abort_event=None):
-            return object()
-
-    controller = CloudController(_SourceOnlyCloudDisc())
+def test_source_completion_keeps_pending_render_queued_when_render_is_running(monkeypatch) -> None:
+    controller = CloudController(_DummyCloudDisc())
     controller._render_is_running = True
     controller._pending_render_request = {
         "lat": 35.0,
@@ -53,6 +49,11 @@ def test_source_completion_keeps_pending_render_queued_when_render_is_running() 
         "request_id": 10,
     }
     controller._latest_source_request_id = 1
+
+    monkeypatch.setattr(
+        "zstarview.gui.cloud_controller.run_cloud_source_worker_process",
+        lambda *args, **kwargs: object(),
+    )
 
     controller._run_source_update(lat=35.0, lon=139.0, reason="manual", request_id=1)
 
@@ -131,19 +132,17 @@ def test_cloud_shutdown_waits_for_active_worker_threads(monkeypatch) -> None:
 
 def test_cloud_shutdown_cancels_active_source_download(monkeypatch) -> None:
     started = threading.Event()
-    seen_abort_event = threading.Event()
 
-    class _CancelableCloudDisc(_DummyCloudDisc):
-        def fetch_source(self, *, lat: float, lon: float, abort_event=None):
-            assert abort_event is not None
-            seen_abort_event.set()
-            started.set()
-            while not abort_event.is_set():
-                time.sleep(0.01)
-            raise DownloadCancelledError("Cancelled while downloading")
+    def fake_run_cloud_source_worker_process(*_args, abort_event=None, **_kwargs):
+        assert abort_event is not None
+        started.set()
+        while not abort_event.is_set():
+            time.sleep(0.01)
+        raise DownloadCancelledError("Cancelled while downloading")
 
-    controller = CloudController(_CancelableCloudDisc())
+    controller = CloudController(_DummyCloudDisc())
     controller._latest_source = None
+    monkeypatch.setattr("zstarview.gui.cloud_controller.run_cloud_source_worker_process", fake_run_cloud_source_worker_process)
 
     controller.update(
         lat=35.0,
@@ -152,7 +151,6 @@ def test_cloud_shutdown_cancels_active_source_download(monkeypatch) -> None:
     )
 
     assert started.wait(timeout=1.0)
-    assert seen_abort_event.wait(timeout=1.0)
 
     shutdown_done = threading.Event()
 

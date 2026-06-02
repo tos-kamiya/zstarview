@@ -782,7 +782,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - cloud source の one-shot subprocess entrypoint
   - 親 GUI は request を CLI 引数で渡し、worker は 1 件処理して result ファイルを出して終了してよい
   - `heartbeat` は持たず、親は子 PID と result ファイルの timeout だけを見てよい
-  - result は request id と時刻を含む JSON manifest とし、必要なら worker 固有の cache artifact 参照を含めてよい
+  - result は request id と時刻を含む JSON manifest とし、payload 本体は `source.pkl` のような pickle artifact に分離してよい
   - 複数 GUI 起動時の衝突を避けるため、親 PID と起動時刻を含む work dir を使ってよい
   - worker 側の失敗やストール時は、親が子を kill して再起動してよい
 - `src/zstarview/clouddisc/providers/*.py`

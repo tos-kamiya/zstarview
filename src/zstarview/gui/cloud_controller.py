@@ -30,6 +30,8 @@ from ..clouddisc import (
 )
 from ..clouddisc.providers.select import pick_satellite
 from ..clouddisc.types import CloudSourceData
+from ..clouddisc.workers.cloud_source import build_cloud_source_fetch_request
+from ..clouddisc.workers.cloud_source_worker import run_cloud_source_worker_process
 from ..paths import CLOUD_SHELLS_KM
 from .composite import build_cloud_amount_field_from_rgba
 from .native_work_lock import HEAVY_NATIVE_WORK_LOCK
@@ -254,12 +256,13 @@ class CloudController(QObject):
                 logger.info("Fetching cloud source data (reason=%s)...", reason)
 
             try:
-                with HEAVY_NATIVE_WORK_LOCK:
-                    source = self._clouddisc.fetch_source(
-                        lat=lat,
-                        lon=lon,
-                        abort_event=self._download_abort_event,
-                    )
+                source_request = build_cloud_source_fetch_request(lat=lat, lon=lon)
+                source = run_cloud_source_worker_process(
+                    self._clouddisc,
+                    source_request,
+                    request_id=request_id,
+                    abort_event=self._download_abort_event,
+                )
                 with self._lock:
                     is_latest = not self._stopping and request_id == self._latest_source_request_id
                     if is_latest:
