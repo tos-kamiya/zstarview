@@ -55,6 +55,25 @@ def test_cloud_status_line_shows_partial_when_coverage_incomplete() -> None:
     assert got == "☁ GOES 72% 01:20Z"
 
 
+def test_cloud_status_line_shows_question_mark_for_partial_source() -> None:
+    meta = SimpleNamespace(
+        satellite="HIMAWARI",
+        product="ISatSS-B13",
+        time_utc=datetime(2026, 3, 5, 1, 20, tzinfo=timezone.utc),
+    )
+    state = SimpleNamespace(
+        current_satellite=None,
+        banner_text=None,
+        meta=meta,
+        coverage_ratio=1.0,
+        source_expected_count=88,
+        source_available_count=82,
+        source_completeness_ratio=82.0 / 88.0,
+    )
+    got = SkyWindow._cloud_status_line(_dummy_window(state))
+    assert got == "☁ HIMAWARI ? 01:20Z"
+
+
 def test_cloud_status_line_shows_idle_without_meta_or_banner() -> None:
     state = SimpleNamespace(
         current_satellite=None,

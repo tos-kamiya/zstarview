@@ -58,7 +58,12 @@ class HimaProvider:
             timeout_s=max(self.cfg.connect_timeout, self.cfg.read_timeout),
         )
 
-    def _find_isatss(self, when_utc: dt.datetime, *, abort_event: threading.Event | None = None) -> Tuple[Optional[str], Optional[List[str]], Optional[dt.datetime]]:
+    def _find_isatss(
+        self,
+        when_utc: dt.datetime,
+        *,
+        abort_event: threading.Event | None = None,
+    ) -> Tuple[Optional[str], Optional[List[str]], Optional[dt.datetime], Optional[int]]:
         """Find available ISatSS C13 tile keys, searching backwards by slot."""
         for slot in range(0, self.cfg.search_back_minutes + 1, 10):
             search_time = when_utc - dt.timedelta(minutes=slot)
@@ -80,8 +85,8 @@ class HimaProvider:
                 expected_tile_count,
                 format_prefix(search_time),
             )
-            return bucket, keys, search_time
-        return None, None, None
+            return bucket, keys, search_time, expected_tile_count
+        return None, None, None, None
 
     def _build_observer_selection(
         self,
@@ -260,8 +265,13 @@ class HimaProvider:
         chosen timeslot are used.
         """
         logger.info("Searching for Himawari ISatSS M1C13 data...")
-        bucket, keys, used_time = self._find_isatss(when_utc, abort_event=abort_event)
-        if not bucket or not keys or used_time is None:
+        found = self._find_isatss(when_utc, abort_event=abort_event)
+        if len(found) == 4:
+            bucket, keys, used_time, expected_tile_count = found
+        else:
+            bucket, keys, used_time = found
+            expected_tile_count = len(keys) if keys is not None else None
+        if not bucket or not keys or used_time is None or expected_tile_count is None:
             meta = CloudMeta(satellite="HIMAWARI", product="ISatSS-B13", time_utc=when_utc, src_paths=[])
             raise DataNotFoundError("Himawari ISatSS B13 data not found in search window", meta=meta)
 
@@ -295,6 +305,9 @@ class HimaProvider:
             if selection.missing_equator_tiles:
                 da.attrs["equator_band_missing"] = True
             da.attrs["source_bucket"] = bucket
+            da.attrs["source_expected_count"] = int(expected_tile_count)
+            da.attrs["source_available_count"] = int(len(keys))
+            da.attrs["source_completeness_ratio"] = float(len(keys)) / float(expected_tile_count)
             rounded = used_time.replace(minute=(used_time.minute // 10) * 10, tzinfo=dt.timezone.utc)
             return da, rounded, paths
         except DownloadError:

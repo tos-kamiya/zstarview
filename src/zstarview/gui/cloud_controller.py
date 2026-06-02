@@ -396,6 +396,9 @@ class CloudController(QObject):
                     "request_id": request_id,
                     "source_key": getattr(source, "source_key", None),
                     "render_generation": int(render_generation),
+                    "source_expected_count": getattr(source, "source_expected_count", None),
+                    "source_available_count": getattr(source, "source_available_count", None),
+                    "source_completeness_ratio": getattr(source, "source_completeness_ratio", None),
                 }
             )
         except Exception as e:

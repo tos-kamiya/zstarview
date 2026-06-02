@@ -82,6 +82,9 @@ class CloudSourceData:
     time_utc: dt.datetime
     src_paths: List[Path]
     sampler: Any = None
+    source_expected_count: Optional[int] = None
+    source_available_count: Optional[int] = None
+    source_completeness_ratio: Optional[float] = None
 
 
 @dataclass

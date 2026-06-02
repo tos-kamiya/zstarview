@@ -198,6 +198,9 @@ class CloudDisc:
         else:
             raise VisibilityError(f"No suitable satellite provider found for '{sat}'")
         logger.info("Using %s (%s) data from time=%s", sat_used, product, used_time.isoformat())
+        source_expected_count = getattr(da, "attrs", {}).get("source_expected_count")
+        source_available_count = getattr(da, "attrs", {}).get("source_available_count")
+        source_completeness_ratio = getattr(da, "attrs", {}).get("source_completeness_ratio")
         return CloudSourceData(
             source_key=SourceKey(
                 satellite=sat_used,
@@ -210,6 +213,11 @@ class CloudDisc:
             product=product,
             time_utc=used_time,
             src_paths=src_paths,
+            source_expected_count=int(source_expected_count) if source_expected_count is not None else None,
+            source_available_count=int(source_available_count) if source_available_count is not None else None,
+            source_completeness_ratio=(
+                float(source_completeness_ratio) if source_completeness_ratio is not None else None
+            ),
         )
 
     def render_from_source(

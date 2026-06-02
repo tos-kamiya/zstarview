@@ -33,6 +33,9 @@ class CloudImageState:
     request_id: Optional[int] = None
     coverage_ratio: Optional[float] = None
     missing_mask_key: Optional[int] = None
+    source_expected_count: Optional[int] = None
+    source_available_count: Optional[int] = None
+    source_completeness_ratio: Optional[float] = None
 
     def set_result(
         self,
@@ -48,6 +51,9 @@ class CloudImageState:
         request_id: Optional[int] = None,
         coverage_ratio: Optional[float] = None,
         missing_mask_key: Optional[int] = None,
+        source_expected_count: Optional[int] = None,
+        source_available_count: Optional[int] = None,
+        source_completeness_ratio: Optional[float] = None,
     ) -> None:
         self.image = image
         self.missing_mask = missing_mask
@@ -63,6 +69,9 @@ class CloudImageState:
         self.request_id = request_id
         self.coverage_ratio = coverage_ratio
         self.missing_mask_key = missing_mask_key
+        self.source_expected_count = source_expected_count
+        self.source_available_count = source_available_count
+        self.source_completeness_ratio = source_completeness_ratio
         self.banner_text = None
 
     def set_source_ready(

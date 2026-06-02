@@ -4,6 +4,7 @@ import datetime as dt
 from pathlib import Path
 
 import numpy as np
+import pytest
 import xarray as xr
 
 from zstarview.clouddisc import CloudDisc, CloudDiscConfig
@@ -187,6 +188,42 @@ def test_fetch_source_uses_max_shell_for_himawari_selection(monkeypatch, tmp_pat
 
     assert source.satellite == "HIMAWARI"
     assert calls == [6379.0]
+
+
+def test_fetch_source_propagates_himawari_slot_completeness(monkeypatch, tmp_path: Path) -> None:
+    clouddisc = CloudDisc(CloudDiscConfig(cache_dir=tmp_path))
+    source = CloudSourceData(
+        source_key=SourceKey(
+            satellite="HIMAWARI",
+            timeslot_utc=dt.datetime(2026, 3, 4, 12, 30, tzinfo=dt.timezone.utc),
+            provider="HIMAWARI",
+        ),
+        data_array=xr.DataArray(
+            np.zeros((1, 1), dtype=np.float32),
+            attrs={
+                "source_expected_count": 88,
+                "source_available_count": 82,
+                "source_completeness_ratio": 82.0 / 88.0,
+            },
+        ),
+        satellite="HIMAWARI",
+        product="ISatSS-B13",
+        time_utc=dt.datetime(2026, 3, 4, 12, 30, tzinfo=dt.timezone.utc),
+        src_paths=[],
+    )
+
+    monkeypatch.setattr(clouddisc, "_select_satellite", lambda _lat, _lon: "HIMAWARI")
+    monkeypatch.setattr(clouddisc.hima, "fetch_bt_c13", lambda **_kwargs: (source.data_array, source.time_utc, []))
+
+    fetched = clouddisc.fetch_source(
+        lat=35.0,
+        lon=139.0,
+        when_utc=dt.datetime(2026, 3, 4, 12, 37, tzinfo=dt.timezone.utc),
+    )
+
+    assert fetched.source_expected_count == 88
+    assert fetched.source_available_count == 82
+    assert fetched.source_completeness_ratio == pytest.approx(82.0 / 88.0)
 
 
 def test_render_from_source_with_coverage_blends_multiple_shells(monkeypatch, tmp_path: Path) -> None:

@@ -217,11 +217,12 @@ def test_find_isatss_accepts_incomplete_latest_slot(tmp_path: Path, monkeypatch:
     monkeypatch.setattr(hima_module, "find_matching_keys", fake_find_matching_keys)
     monkeypatch.setattr(provider, "_download", lambda bucket, key, abort_event=None: template_paths[0])
 
-    bucket, keys, used_time = provider._find_isatss(latest_time)
+    bucket, keys, used_time, expected_tile_count = provider._find_isatss(latest_time)
 
     assert bucket == "noaa-himawari9"
     assert keys == incomplete_keys
     assert used_time == latest_time
+    assert expected_tile_count == 88
 
 
 def test_fetch_bt_c13_stops_when_cancelled(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

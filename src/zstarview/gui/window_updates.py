@@ -416,6 +416,18 @@ class SkyWindowUpdatesMixin:
             try:
                 t = meta.time_utc.strftime("%H:%MZ")
                 sat_group = _cloud_satellite_group(getattr(meta, "satellite", sat))
+                source_ratio = getattr(self.cloud_state, "source_completeness_ratio", None)
+                if source_ratio is None:
+                    expected = getattr(self.cloud_state, "source_expected_count", None)
+                    available = getattr(self.cloud_state, "source_available_count", None)
+                    if (
+                        expected is not None
+                        and available is not None
+                        and int(expected) > 0
+                    ):
+                        source_ratio = float(available) / float(expected)
+                if source_ratio is not None and float(source_ratio) < 0.999:
+                    return _status_segment(_STATUS_CLOUD, f"{sat_group} ? {t}")
                 coverage = self.cloud_state.coverage_ratio
                 if coverage is not None and coverage < 0.999:
                     pct = int(round(max(0.0, min(1.0, float(coverage))) * 100.0))
@@ -1094,6 +1106,9 @@ class SkyWindowUpdatesMixin:
             coverage_ratio=payload.get("coverage_ratio"),
             source_key=payload.get("source_key"),
             request_id=payload.get("request_id"),
+            source_expected_count=payload.get("source_expected_count"),
+            source_available_count=payload.get("source_available_count"),
+            source_completeness_ratio=payload.get("source_completeness_ratio"),
         )
         self.state.cloud_projection_next_refresh_utc = None
         self._compositor.invalidate()
