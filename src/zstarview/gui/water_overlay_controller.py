@@ -109,7 +109,7 @@ class WaterOverlayController(QObject):
         self._active_key: Optional[tuple[float, float, float, float, bool, float]] = None
         self._completed_key: Optional[tuple[float, float, float, float, bool, float]] = None
         self._failed_key: Optional[tuple[float, float, float, float, bool, float]] = None
-        self._pending_request: tuple[ViewerData, float, bool, str, tuple[int, int] | None] | None = None
+        self._pending_request: tuple[ViewerData, float, bool, str, bool, tuple[int, int] | None] | None = None
         self._scope_cache: dict[str, _WaterOverlayScopeCache] = {}
         self._active_workers: set[Future[None]] = set()
         self._download_abort_event = threading.Event()
@@ -132,6 +132,7 @@ class WaterOverlayController(QObject):
         observer_ground_m: float,
         use_dem_ground: bool,
         reason: str = "manual",
+        fast_mode: bool = False,
         surface_size_px: tuple[int, int] | None = None,
         terrain_horizon_profile_altaz: list[tuple[float, float]] | None = None,
         terrain_horizon_profile_distances_m: list[float] | None = None,
@@ -144,9 +145,13 @@ class WaterOverlayController(QObject):
             minimum_distance_km=self._radius_km,
         )
         azimuth_step_deg = (
-            resolve_water_surface_azimuth_step_deg(*surface_size_px)
-            if surface_size_px is not None
-            else float(self._azimuth_step_deg)
+            float(self._azimuth_step_deg)
+            if bool(fast_mode)
+            else (
+                resolve_water_surface_azimuth_step_deg(*surface_size_px)
+                if surface_size_px is not None
+                else float(self._azimuth_step_deg)
+            )
         )
         key = (
             float(viewer_data.lat_deg),
@@ -198,6 +203,7 @@ class WaterOverlayController(QObject):
                         float(observer_ground_m),
                         bool(use_dem_ground),
                         reason,
+                        bool(fast_mode),
                         surface_size_px,
                     )
                 return False
@@ -432,6 +438,7 @@ class WaterOverlayController(QObject):
                     pending_ground_m,
                     pending_use_dem,
                     pending_reason,
+                    pending_fast_mode,
                     pending_surface_size_px,
                 ) = pending_request
                 self.update(
@@ -439,6 +446,7 @@ class WaterOverlayController(QObject):
                     observer_ground_m=pending_ground_m,
                     use_dem_ground=pending_use_dem,
                     reason=pending_reason,
+                    fast_mode=pending_fast_mode,
                     surface_size_px=pending_surface_size_px,
                 )
 

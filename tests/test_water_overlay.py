@@ -451,9 +451,9 @@ def test_water_simplification_grid_size_grows_in_powers_of_two() -> None:
 
 def test_resolve_water_surface_azimuth_step_deg_scales_with_surface_size() -> None:
     assert resolve_water_surface_azimuth_step_deg(800, 800) == 4.0
-    assert resolve_water_surface_azimuth_step_deg(1280, 720) == 2.0
-    assert resolve_water_surface_azimuth_step_deg(2399, 2160) == 2.0
-    assert resolve_water_surface_azimuth_step_deg(2400, 2160) == 1.0
+    assert resolve_water_surface_azimuth_step_deg(1280, 720) == 4.0
+    assert resolve_water_surface_azimuth_step_deg(2399, 2160) == 4.0
+    assert resolve_water_surface_azimuth_step_deg(2400, 2160) == 4.0
 
 
 def test_sample_water_overlay_points_uses_fallback_surface_height() -> None:

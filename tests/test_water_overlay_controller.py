@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
 import zstarview.gui.water_overlay_controller as mod
 from zstarview.gui.water_overlay_cache import WaterOverlayCacheSnapshot
 from zstarview.gui.water_overlay_controller import WaterOverlayController
 from zstarview.water_mask_interface import WaterSurfaceBandStats
-from zstarview.water_overlay import WaterOverlayPoint, WaterPolygonFootprint
+from zstarview.water_overlay import (
+    DEFAULT_WATER_AZIMUTH_STEP_DEG,
+    WaterOverlayPoint,
+    WaterPolygonFootprint,
+)
 
 
 def test_water_overlay_controller_uses_compact_failure_banner_and_log(
@@ -131,6 +136,28 @@ def test_water_overlay_controller_saves_fresh_disk_snapshot(monkeypatch) -> None
     assert scope_cache.footprints == expected
     assert saved["payload"][0] == "scope"
     assert saved["payload"][1].footprints == expected
+
+
+def test_water_overlay_controller_fast_mode_uses_sparsest_sampling(monkeypatch) -> None:
+    controller = WaterOverlayController()
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        controller,
+        "_spawn_worker",
+        lambda *, target, kwargs, label: captured.setdefault("kwargs", kwargs),
+    )
+
+    controller.update(
+        viewer_data=SimpleNamespace(lat_deg=35.0, lon_deg=139.0, observer_height_m=1.7),
+        observer_ground_m=0.0,
+        use_dem_ground=False,
+        reason="viewport",
+        fast_mode=True,
+        surface_size_px=(4096, 4096),
+    )
+
+    assert float(captured["kwargs"]["azimuth_step_deg"]) == DEFAULT_WATER_AZIMUTH_STEP_DEG
 
 
 def test_water_overlay_controller_uses_recent_cached_footprints_as_is(

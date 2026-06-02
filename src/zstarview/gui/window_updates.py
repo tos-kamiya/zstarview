@@ -1161,6 +1161,7 @@ class SkyWindowUpdatesMixin:
             observer_ground_m=self._water_overlay_ground_elevation_m(),
             use_dem_ground=self._water_overlay_use_dem_ground(),
             reason=reason,
+            fast_mode=self._viewport_interaction_active(),
             surface_size_px=surface_size_px,
             terrain_horizon_profile_altaz=self.state.terrain_horizon_profile,
             terrain_horizon_profile_distances_m=self.state.terrain_horizon_profile_distances_m,
