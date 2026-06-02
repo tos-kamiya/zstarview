@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.29.5 - 2026-06-02
+- Changed the cloud HUD to show `?` for partial Himawari slots so incomplete-but-usable satellite data no longer looks like an internal error.
+- Kept the terminal INFO logs detailed, including tile counts and slot selection rationale, so partial-cloud diagnosis still has enough context.
+
 ## 1.29.4 - 2026-06-01
 - Moved tropical cyclone rendering into the fast overlay path so cyclone markers update consistently with other dynamic overlays.
 - Replaced the near-cyclone cylinder with a ground-to-`15km` centerline and added a filled base marker for storms within `400km`.
