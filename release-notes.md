@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.29.7 - 2026-06-02
+- Refined the water overlay presentation so water markers now use a fixed coarse `4-degree` sampling across all resolutions and a flatter screen-space shape near the horizon.
+- Simplified asterism rendering to a single line with a stronger hover alpha, and simplified the tropical cyclone tether to a single thin stroke.
+
 ## 1.29.6 - 2026-06-02
 - Moved GUI cloud-source fetching to a one-shot subprocess so Himawari and GOES native work no longer runs in the main window process.
 - Kept `zstarview-export-image` on the existing one-shot in-process path, since it already runs as a single-shot export command.
