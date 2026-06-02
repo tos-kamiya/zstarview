@@ -1143,6 +1143,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 `SkyCompositorCache` は cloud image / missing mask / cloud amount field を NumPy ベースで扱い、ストライプ描画、masking、missing tint 適用をそのまま進めてよい。  
 雲投影モデルは、単一球殻だけに固定せず、同じ source から複数の代表高度球殻へ再投影してから混合してよい。  
 雲の source fetch は定期更新の対象としてよいが、view 依存の projection は source ready・viewport change・resize に応じて別途要求する demand-driven 処理として扱ってよい。
+雲ソースが描画可能だが部分欠損している場合は、HUD の status line では `?` に正規化してよい。`?` は内部エラーではなく、不完全だが利用可能な状態を示す記号として扱い、`INFO` ログ側でのみ `12/88` のような具体的な欠損状況を出してよい。
 
 内部表現の詳細は次の通り。
 
