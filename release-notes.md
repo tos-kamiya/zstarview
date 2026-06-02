@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.29.6 - 2026-06-02
+- Moved GUI cloud-source fetching to a one-shot subprocess so Himawari and GOES native work no longer runs in the main window process.
+- Kept `zstarview-export-image` on the existing one-shot in-process path, since it already runs as a single-shot export command.
+
 ## 1.29.5 - 2026-06-02
 - Changed the cloud HUD to show `?` for partial Himawari slots so incomplete-but-usable satellite data no longer looks like an internal error.
 - Kept the terminal INFO logs detailed, including tile counts and slot selection rationale, so partial-cloud diagnosis still has enough context.
