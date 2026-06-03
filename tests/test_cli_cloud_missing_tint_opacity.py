@@ -127,7 +127,7 @@ def test_parse_args_satellite_opacity_override(monkeypatch) -> None:
 def test_parse_args_tropical_cyclone_opacity_default(monkeypatch) -> None:
     monkeypatch.setattr("sys.argv", ["zstarview"])
     args = parse_args()
-    assert math.isclose(float(args.tropical_cyclone_opacity), 0.25, rel_tol=0.0, abs_tol=1e-9)
+    assert math.isclose(float(args.tropical_cyclone_opacity), 0.7, rel_tol=0.0, abs_tol=1e-9)
 
 
 def test_parse_args_tropical_cyclone_opacity_override(monkeypatch) -> None:
