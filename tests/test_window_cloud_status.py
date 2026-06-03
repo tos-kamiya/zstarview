@@ -25,7 +25,7 @@ def test_cloud_status_line_shows_downloading() -> None:
         coverage_ratio=None,
     )
     got = SkyWindow._cloud_status_line(_dummy_window(state))
-    assert got == "☁ GOES downloading"
+    assert got == "☁ GOES G19 downloading"
 
 
 def test_cloud_status_line_shows_download_failed() -> None:
@@ -36,7 +36,7 @@ def test_cloud_status_line_shows_download_failed() -> None:
         coverage_ratio=None,
     )
     got = SkyWindow._cloud_status_line(_dummy_window(state))
-    assert got == "☁ GOES failed"
+    assert got == "☁ GOES G18 failed"
 
 
 def test_cloud_status_line_shows_partial_when_coverage_incomplete() -> None:
@@ -52,7 +52,7 @@ def test_cloud_status_line_shows_partial_when_coverage_incomplete() -> None:
         coverage_ratio=0.72,
     )
     got = SkyWindow._cloud_status_line(_dummy_window(state))
-    assert got == "☁ GOES 72% 01:20Z"
+    assert got == "☁ GOES G19 72% 01:20Z"
 
 
 def test_cloud_status_line_shows_question_mark_for_partial_source() -> None:
@@ -82,7 +82,7 @@ def test_cloud_status_line_shows_idle_without_meta_or_banner() -> None:
         coverage_ratio=None,
     )
     got = SkyWindow._cloud_status_line(_dummy_window(state))
-    assert got == "☁ GOES idle"
+    assert got == "☁ GOES G19 idle"
 
 
 def test_satellite_status_line_shows_epoch_with_icon() -> None:

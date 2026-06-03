@@ -48,6 +48,14 @@ def _cloud_satellite_group(satellite: str) -> str:
     return sat
 
 
+def _cloud_source_label(satellite: str) -> str:
+    sat = str(satellite).strip()
+    group = _cloud_satellite_group(sat)
+    if group == sat:
+        return sat
+    return f"{group} {sat}"
+
+
 def _request_cloud_projection_update(obj: object, *, reason: str) -> None:
     geo_mode_active = getattr(obj, "_geo_satellite_mode_active", None)
     if callable(geo_mode_active) and geo_mode_active():
@@ -402,20 +410,20 @@ class SkyWindowUpdatesMixin:
                     pass
             return _status_segment(_STATUS_CLOUD, "Geo-sat + idle")
         sat = self.cloud_state.current_satellite or self._predicted_cloud_satellite()
-        sat_group = _cloud_satellite_group(sat)
+        sat_label = _cloud_source_label(sat)
         if self.cloud_state.banner_text:
             detail = _strip_status_prefix(self.cloud_state.banner_text, "Clouds:")
             detail_lower = detail.lower()
             if detail_lower.startswith("downloading"):
-                return _status_segment(_STATUS_CLOUD, f"{sat_group} downloading")
+                return _status_segment(_STATUS_CLOUD, f"{sat_label} downloading")
             if any(token in detail_lower for token in ("timed out", "error", "failed", "failure")):
-                return _status_segment(_STATUS_CLOUD, f"{sat_group} failed")
-            return _status_segment(_STATUS_CLOUD, f"{sat_group} {detail}")
+                return _status_segment(_STATUS_CLOUD, f"{sat_label} failed")
+            return _status_segment(_STATUS_CLOUD, f"{sat_label} {detail}")
         meta = self.cloud_state.meta
         if meta is not None:
             try:
                 t = meta.time_utc.strftime("%H:%MZ")
-                sat_group = _cloud_satellite_group(getattr(meta, "satellite", sat))
+                sat_label = _cloud_source_label(getattr(meta, "satellite", sat))
                 source_ratio = getattr(self.cloud_state, "source_completeness_ratio", None)
                 if source_ratio is None:
                     expected = getattr(self.cloud_state, "source_expected_count", None)
@@ -427,15 +435,15 @@ class SkyWindowUpdatesMixin:
                     ):
                         source_ratio = float(available) / float(expected)
                 if source_ratio is not None and float(source_ratio) < 0.999:
-                    return _status_segment(_STATUS_CLOUD, f"{sat_group} ? {t}")
+                    return _status_segment(_STATUS_CLOUD, f"{sat_label} ? {t}")
                 coverage = self.cloud_state.coverage_ratio
                 if coverage is not None and coverage < 0.999:
                     pct = int(round(max(0.0, min(1.0, float(coverage))) * 100.0))
-                    return _status_segment(_STATUS_CLOUD, f"{sat_group} {pct}% {t}")
-                return _status_segment(_STATUS_CLOUD, f"{sat_group} {t}")
+                    return _status_segment(_STATUS_CLOUD, f"{sat_label} {pct}% {t}")
+                return _status_segment(_STATUS_CLOUD, f"{sat_label} {t}")
             except Exception:
                 pass
-        return _status_segment(_STATUS_CLOUD, f"{sat_group} idle")
+        return _status_segment(_STATUS_CLOUD, f"{sat_label} idle")
 
     def _terrain_horizon_status_line(self) -> str:
         if self.terrain_horizon_opacity <= 0.0:
