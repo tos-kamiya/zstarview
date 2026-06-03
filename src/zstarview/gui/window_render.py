@@ -13,6 +13,7 @@ from ..render import deep_sky_objects as render_deep_sky_objects
 from ..render import geometry as render_geometry
 from ..render import guides as render_guides
 from ..render import satellites as render_satellites
+from ..render import tropical_cyclones as render_tropical_cyclones
 from ..render import stars as render_stars
 from ..render import text as render_text
 from ..render.pipeline import (
@@ -27,6 +28,7 @@ from ..render.pipeline import (
     render_hud_overlay_into_painter,
 )
 from ..satellites.types import SatelliteOverlayPoint
+from ..tropical_cyclones.models import TropicalCycloneSnapshot
 from ..types import CelestialData, CelestialObject, ScreenGeometry, ViewerData
 
 logger = logging.getLogger(__name__)
@@ -40,18 +42,26 @@ def _resolve_hover_targets(
     mouse_pos: QPoint | None,
     geometry: ScreenGeometry,
     satellite_records_by_group: object | None = None,
+    tropical_cyclone_snapshots: object | None = None,
     time_obj: object | None = None,
     show_dso: bool = False,
 ) -> tuple[
     tuple[CelestialObject, QPointF] | None,
     tuple[CelestialObject, QPointF] | None,
     tuple[SatelliteOverlayPoint, QPointF] | None,
+    tuple[TropicalCycloneSnapshot, QPointF] | None,
 ]:
     highlighted_object = None
     highlighted_dso = None
     highlighted_satellite = None
+    highlighted_tropical_cyclone = None
     if mouse_pos is None:
-        return highlighted_object, highlighted_dso, highlighted_satellite
+        return (
+            highlighted_object,
+            highlighted_dso,
+            highlighted_satellite,
+            highlighted_tropical_cyclone,
+        )
 
     highlighted_object = render_stars.find_highlighted_object(
         celestial_data,
@@ -73,7 +83,19 @@ def _resolve_hover_targets(
         viewer_data=render_viewer,
         time_obj=time_obj,
     )
-    return highlighted_object, highlighted_dso, highlighted_satellite
+    highlighted_tropical_cyclone = render_tropical_cyclones.find_highlighted_tropical_cyclone(
+        tropical_cyclone_snapshots,
+        mouse_pos,
+        geometry,
+        viewer_data=render_viewer,
+        time_obj=time_obj.to_datetime() if hasattr(time_obj, "to_datetime") else None,
+    )
+    return (
+        highlighted_object,
+        highlighted_dso,
+        highlighted_satellite,
+        highlighted_tropical_cyclone,
+    )
 
 
 class SkyWindowRenderMixin:
@@ -94,6 +116,18 @@ class SkyWindowRenderMixin:
         if hasattr(value, "cacheKey"):
             return int(value.cacheKey())
         return id(value)
+
+    def _tropical_cyclone_snapshot_cache_value(self) -> object:
+        state = getattr(self, "tropical_cyclone_state", None)
+        if state is None:
+            return None
+        snapshots = getattr(state, "snapshots", None)
+        if snapshots:
+            return snapshots
+        legacy_snapshot = getattr(state, "snapshot", None)
+        if legacy_snapshot is None:
+            return None
+        return (legacy_snapshot,)
 
     def _render_frame_cache_key(
         self,
@@ -183,7 +217,9 @@ class SkyWindowRenderMixin:
                     overlay_time_bucket,
                     self._render_cache_stamp(satellite_overlay_source),
                     self._render_cache_stamp(aircraft_overlay_source),
-                    self._render_cache_stamp(cyclone_state and getattr(cyclone_state, "snapshot", None)),
+                    self._render_cache_stamp(
+                        SkyWindowRenderMixin._tropical_cyclone_snapshot_cache_value(self)
+                    ),
                     getattr(cyclone_state, "banner_text", None),
                 ]
             )
@@ -287,7 +323,9 @@ class SkyWindowRenderMixin:
             overlay_time_bucket,
             self._render_cache_stamp(self.satellite_state.records_by_group),
             self._render_cache_stamp(self.aircraft_state.snapshots),
-            self._render_cache_stamp(getattr(self, "tropical_cyclone_state", None) and getattr(self.tropical_cyclone_state, "snapshot", None)),
+            self._render_cache_stamp(
+                SkyWindowRenderMixin._tropical_cyclone_snapshot_cache_value(self)
+            ),
             getattr(getattr(self, "tropical_cyclone_state", None), "banner_text", None),
             mouse_key,
             bool(hud.overlay_info_bottom_left),
@@ -307,6 +345,7 @@ class SkyWindowRenderMixin:
         highlighted_object: tuple[CelestialObject, QPointF] | None,
         highlighted_dso: tuple[CelestialObject, QPointF] | None,
         highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None,
+        highlighted_tropical_cyclone: tuple[TropicalCycloneSnapshot, QPointF] | None,
     ) -> QImage:
         base_label_candidates: list[dict[str, object]] = []
         base_frame_image = SkyWindowRenderMixin._render_cached_frame_image(
@@ -355,6 +394,7 @@ class SkyWindowRenderMixin:
                     highlighted_object=highlighted_object,
                     highlighted_dso=highlighted_dso,
                     highlighted_satellite=highlighted_satellite,
+                    highlighted_tropical_cyclone=highlighted_tropical_cyclone,
                 )
             ),
             cache_key_attr="_present_frame_cache_key",
@@ -372,6 +412,7 @@ class SkyWindowRenderMixin:
         highlighted_object: tuple[CelestialObject, QPointF] | None,
         highlighted_dso: tuple[CelestialObject, QPointF] | None,
         highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None,
+        highlighted_tropical_cyclone: tuple[TropicalCycloneSnapshot, QPointF] | None,
     ) -> QImage:
         # Fast mode renders the heavy scene into a capped-size buffer and then
         # scales it up into the final window-sized frame.
@@ -444,7 +485,9 @@ class SkyWindowRenderMixin:
                 overlay_time_bucket,
                 cache_stamp(self.satellite_state.records_by_group),
                 cache_stamp(self.aircraft_state.snapshots),
-                cache_stamp(getattr(self, "tropical_cyclone_state", None) and getattr(self.tropical_cyclone_state, "snapshot", None)),
+                cache_stamp(
+                    SkyWindowRenderMixin._tropical_cyclone_snapshot_cache_value(self)
+                ),
                 getattr(getattr(self, "tropical_cyclone_state", None), "banner_text", None),
             ),
             render_fn=lambda frame_painter: (
@@ -479,6 +522,7 @@ class SkyWindowRenderMixin:
         highlighted_object: tuple[CelestialObject, QPointF] | None,
         highlighted_dso: tuple[CelestialObject, QPointF] | None,
         highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None,
+        highlighted_tropical_cyclone: tuple[TropicalCycloneSnapshot, QPointF] | None,
     ) -> QImage:
         return self._render_present_frame_image(
             base_frame_key=base_frame_key,
@@ -489,6 +533,7 @@ class SkyWindowRenderMixin:
             highlighted_object=highlighted_object,
             highlighted_dso=highlighted_dso,
             highlighted_satellite=highlighted_satellite,
+            highlighted_tropical_cyclone=highlighted_tropical_cyclone,
         )
 
     def _draw_present_frame_layers(
@@ -504,6 +549,7 @@ class SkyWindowRenderMixin:
         highlighted_object: tuple[CelestialObject, QPointF] | None,
         highlighted_dso: tuple[CelestialObject, QPointF] | None,
         highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None,
+        highlighted_tropical_cyclone: tuple[TropicalCycloneSnapshot, QPointF] | None,
     ) -> None:
         frame_painter.drawImage(0, 0, base_frame_image)
         if hud.viewport_interaction_mode:
@@ -522,6 +568,9 @@ class SkyWindowRenderMixin:
             scene=scene,
             style=style,
             highlighted_satellite=highlighted_satellite,
+            highlighted_tropical_cyclone=(
+                highlighted_tropical_cyclone[0] if highlighted_tropical_cyclone is not None else None
+            ),
             label_candidates=label_candidates,
             draw_labels=False,
         )
@@ -608,6 +657,12 @@ class SkyWindowRenderMixin:
     ) -> RenderSceneData:
         state = self.state
         cloud_state = self._render_cloud_state()
+        tropical_cyclone_state = getattr(self, "tropical_cyclone_state", None)
+        tropical_cyclone_snapshots = getattr(tropical_cyclone_state, "snapshots", None)
+        if not tropical_cyclone_snapshots:
+            legacy_snapshot = getattr(tropical_cyclone_state, "snapshot", None)
+            if legacy_snapshot is not None:
+                tropical_cyclone_snapshots = (legacy_snapshot,)
         return RenderSceneData(
             viewer=render_viewer,
             celestial_data=celestial_data,
@@ -621,11 +676,7 @@ class SkyWindowRenderMixin:
             terrain_secondary_ridges_distances_m_layers=state.terrain_secondary_ridges_distances_m_layers,
             urban_outlines=state.urban_outlines,
             water_overlay_dots=state.water_overlay_dots,
-            tropical_cyclone_snapshot=getattr(
-                getattr(self, "tropical_cyclone_state", None),
-                "snapshot",
-                None,
-            ),
+            tropical_cyclone_snapshots=tropical_cyclone_snapshots,
             satellite_element_epoch_utc=self.satellite_state.element_epoch_utc,
             satellite_records_by_group=self.satellite_state.records_by_group,
             aircraft_snapshots=self.aircraft_state.snapshots,
@@ -812,6 +863,7 @@ class SkyWindowRenderMixin:
                     frame=frame,
                     scene=scene,
                     style=style,
+                    highlighted_tropical_cyclone=None,
                     label_candidates=label_candidates,
                     draw_labels=True,
                 )
@@ -845,6 +897,7 @@ class SkyWindowRenderMixin:
                     frame=frame,
                     scene=scene,
                     style=style,
+                    highlighted_tropical_cyclone=None,
                     draw_labels=True,
                 )
             return image
@@ -892,19 +945,21 @@ class SkyWindowRenderMixin:
                 highlighted_object=None,
                 highlighted_dso=None,
                 highlighted_satellite=None,
+                highlighted_tropical_cyclone=None,
             )
         else:
             mouse_pos = self.state.mouse_pos
             if self._startup_input_blocked():
                 mouse_pos = None
 
-            highlighted_object, highlighted_dso, highlighted_satellite = (
+            highlighted_object, highlighted_dso, highlighted_satellite, highlighted_tropical_cyclone = (
                 _resolve_hover_targets(
                     celestial_data=celestial_data,
                     render_viewer=frame.viewer,
                     mouse_pos=mouse_pos,
                     geometry=geometry,
                     satellite_records_by_group=self.satellite_state.records_by_group,
+                    tropical_cyclone_snapshots=self.tropical_cyclone_state.snapshots,
                     time_obj=scene.time_obj,
                     show_dso=bool(self.show_dso),
                 )
@@ -921,6 +976,7 @@ class SkyWindowRenderMixin:
                 highlighted_object=highlighted_object,
                 highlighted_dso=highlighted_dso,
                 highlighted_satellite=highlighted_satellite,
+                highlighted_tropical_cyclone=highlighted_tropical_cyclone,
             )
         painter.drawImage(0, 0, present_frame)
         self._flush_aircraft_debug_snapshot_save(present_frame)

@@ -2456,6 +2456,7 @@ def test_render_fast_frame_image_downsamples_base_scene(monkeypatch) -> None:
         highlighted_object=None,
         highlighted_dso=None,
         highlighted_satellite=None,
+        highlighted_tropical_cyclone=None,
     )
 
     assert base_frame_sizes == [(600, 338)]
@@ -2950,7 +2951,7 @@ def test_resolve_hover_targets_keeps_star_and_satellite_candidates_independent(
         lambda *_args, **_kwargs: satellite_hit,
     )
 
-    highlighted_object, highlighted_dso, highlighted_satellite = (
+    highlighted_object, highlighted_dso, highlighted_satellite, highlighted_tropical_cyclone = (
         window_render_module._resolve_hover_targets(
             celestial_data=celestial_data,
             render_viewer=viewer,
@@ -2964,6 +2965,7 @@ def test_resolve_hover_targets_keeps_star_and_satellite_candidates_independent(
     assert highlighted_object == star_hit
     assert highlighted_dso == {"name": "DSO"}
     assert highlighted_satellite == satellite_hit
+    assert highlighted_tropical_cyclone is None
 
 
 def test_draw_viewport_interaction_layers_prefers_interaction_star_subset(

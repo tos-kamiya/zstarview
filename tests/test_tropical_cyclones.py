@@ -517,6 +517,216 @@ def test_tropical_cyclone_far_label_uses_lower_alpha() -> None:
     assert render_tropical_cyclones.TROPICAL_CYCLONE_FAR_LABEL_RGBA[3] == 153
 
 
+def test_tropical_cyclone_far_label_is_hidden_without_hover(monkeypatch) -> None:
+    viewer = SimpleNamespace(
+        lat_deg=36.75,
+        lon_deg=147.65,
+        ground_elevation_m=0.0,
+        view_center=(45.0, 180.0),
+        content_fov_deg=110.0,
+        edge_fov_deg=95.0,
+    )
+    snapshot = TropicalCycloneSnapshot(
+        storm_name="Jangmi",
+        basin="WP",
+        advdate_utc=datetime(2026, 5, 30, 2, 10, tzinfo=timezone.utc),
+        observed_position=TropicalCyclonePoint(
+            lat_deg=12.3,
+            lon_deg=145.6,
+            valid_time_utc=datetime(2026, 5, 30, 2, 0, tzinfo=timezone.utc),
+        ),
+        wind_polygons=(),
+    )
+    calls: list[str] = []
+
+    def _fake_center(*_args, **_kwargs):
+        return render_tropical_cyclones._RenderPoint(
+            nx=0.1,
+            ny=0.2,
+            alt_deg=10.0,
+            az_deg=20.0,
+            distance_km=400.0001,
+        )
+
+    def _fake_far_marker(*_args, **_kwargs):
+        calls.append("far")
+        return QPointF(12.0, 34.0)
+
+    class _FakePainter:
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setRenderHint(self, *_args, **_kwargs) -> None:
+            pass
+
+        def setPen(self, *_args, **_kwargs) -> None:
+            pass
+
+        def setBrush(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawPolygon(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawText(self, *_args, **_kwargs) -> None:
+            raise AssertionError("far label should be hidden when not hovered")
+
+    monkeypatch.setattr(render_tropical_cyclones, "_project_point_no_cutoff", _fake_center)
+    monkeypatch.setattr(render_tropical_cyclones, "_draw_far_cyclone_marker", _fake_far_marker)
+
+    render_tropical_cyclones.draw_tropical_cyclone_overlay(
+        _FakePainter(),
+        geometry=ScreenGeometry(center=(100, 100), radius=80),
+        viewer=viewer,
+        snapshot=snapshot,
+        when_utc=datetime(2026, 5, 30, 2, 30, tzinfo=timezone.utc),
+        theme=SimpleNamespace(),
+        opacity=0.4,
+        highlighted=False,
+        enabled=True,
+    )
+
+    assert calls == ["far"]
+
+
+def test_tropical_cyclone_far_label_is_drawn_when_hovered(monkeypatch) -> None:
+    viewer = SimpleNamespace(
+        lat_deg=36.75,
+        lon_deg=147.65,
+        ground_elevation_m=0.0,
+        view_center=(45.0, 180.0),
+        content_fov_deg=110.0,
+        edge_fov_deg=95.0,
+    )
+    snapshot = TropicalCycloneSnapshot(
+        storm_name="Jangmi",
+        basin="WP",
+        advdate_utc=datetime(2026, 5, 30, 2, 10, tzinfo=timezone.utc),
+        observed_position=TropicalCyclonePoint(
+            lat_deg=12.3,
+            lon_deg=145.6,
+            valid_time_utc=datetime(2026, 5, 30, 2, 0, tzinfo=timezone.utc),
+        ),
+        wind_polygons=(),
+    )
+    calls: list[str] = []
+
+    def _fake_center(*_args, **_kwargs):
+        return render_tropical_cyclones._RenderPoint(
+            nx=0.1,
+            ny=0.2,
+            alt_deg=10.0,
+            az_deg=20.0,
+            distance_km=400.0001,
+        )
+
+    def _fake_far_marker(*_args, **_kwargs):
+        calls.append("far")
+        return QPointF(12.0, 34.0)
+
+    class _FakePainter:
+        def save(self) -> None:
+            pass
+
+        def restore(self) -> None:
+            pass
+
+        def setRenderHint(self, *_args, **_kwargs) -> None:
+            pass
+
+        def setPen(self, *_args, **_kwargs) -> None:
+            pass
+
+        def setBrush(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawPolygon(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawText(self, pos, text) -> None:
+            calls.append(f"text:{text}")
+            assert isinstance(pos, QPointF)
+
+    monkeypatch.setattr(render_tropical_cyclones, "_project_point_no_cutoff", _fake_center)
+    monkeypatch.setattr(render_tropical_cyclones, "_draw_far_cyclone_marker", _fake_far_marker)
+
+    render_tropical_cyclones.draw_tropical_cyclone_overlay(
+        _FakePainter(),
+        geometry=ScreenGeometry(center=(100, 100), radius=80),
+        viewer=viewer,
+        snapshot=snapshot,
+        when_utc=datetime(2026, 5, 30, 2, 30, tzinfo=timezone.utc),
+        theme=SimpleNamespace(),
+        opacity=0.4,
+        highlighted=True,
+        enabled=True,
+    )
+
+    assert calls == ["far", "text:Jangmi"]
+
+
+def test_find_highlighted_tropical_cyclone_prefers_nearest_far_marker(monkeypatch) -> None:
+    snapshots = (
+        TropicalCycloneSnapshot(
+            storm_name="Near",
+            basin="WP",
+            advdate_utc=datetime(2026, 5, 30, 2, 10, tzinfo=timezone.utc),
+            observed_position=TropicalCyclonePoint(lat_deg=10.0, lon_deg=20.0),
+            wind_polygons=(),
+        ),
+        TropicalCycloneSnapshot(
+            storm_name="Far",
+            basin="WP",
+            advdate_utc=datetime(2026, 5, 30, 2, 10, tzinfo=timezone.utc),
+            observed_position=TropicalCyclonePoint(lat_deg=30.0, lon_deg=40.0),
+            wind_polygons=(),
+        ),
+    )
+
+    def _identity_project(snapshot, _when_utc):
+        return snapshot
+
+    def _fake_center(lat_deg, lon_deg, *, viewer, height_m):
+        del viewer, height_m
+        if lat_deg == 10.0 and lon_deg == 20.0:
+            return render_tropical_cyclones._RenderPoint(
+                nx=10.0,
+                ny=10.0,
+                alt_deg=10.0,
+                az_deg=20.0,
+                distance_km=450.0,
+            )
+        return render_tropical_cyclones._RenderPoint(
+            nx=40.0,
+            ny=40.0,
+            alt_deg=10.0,
+            az_deg=20.0,
+            distance_km=450.0,
+        )
+
+    def _identity_screen(nx, ny, geometry):
+        del geometry
+        return float(nx), float(ny)
+
+    monkeypatch.setattr(render_tropical_cyclones, "project_tropical_cyclone_snapshot", _identity_project)
+    monkeypatch.setattr(render_tropical_cyclones, "_project_point_no_cutoff", _fake_center)
+    monkeypatch.setattr(render_tropical_cyclones, "normalized_to_screen_xy", _identity_screen)
+
+    highlighted = render_tropical_cyclones.find_highlighted_tropical_cyclone(
+        snapshots,
+        QPointF(12.0, 12.0),
+        ScreenGeometry(center=(100, 100), radius=80),
+        viewer_data=SimpleNamespace(),
+        time_obj=datetime(2026, 5, 30, 2, 30, tzinfo=timezone.utc),
+    )
+
+    assert highlighted is not None
+    assert highlighted[0].storm_name == "Near"
+
+
 def test_tropical_cyclone_tether_matches_asterism_hover_passes() -> None:
     tether_points = (
         render_tropical_cyclones._RenderPoint(

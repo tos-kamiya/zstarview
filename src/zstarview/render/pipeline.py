@@ -124,7 +124,7 @@ class RenderSceneData:
     time_obj: astropy.time.Time | None = None
     night_light_glow_profile: NightLightGlowProfile | None = None
     water_overlay_dots: list[WaterOverlayPoint] | None = None
-    tropical_cyclone_snapshot: TropicalCycloneSnapshot | None = None
+    tropical_cyclone_snapshots: tuple[TropicalCycloneSnapshot, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -329,6 +329,7 @@ def render_fast_overlay_layers_into_painter(
     scene: RenderSceneData,
     style: RenderStyle,
     highlighted_satellite: tuple[SatelliteOverlayPoint, QPointF] | None = None,
+    highlighted_tropical_cyclone: TropicalCycloneSnapshot | None = None,
     label_candidates: list[dict[str, Any]] | None = None,
     draw_labels: bool = True,
 ) -> None:
@@ -357,16 +358,21 @@ def render_fast_overlay_layers_into_painter(
     )
     if draw_labels:
         render_text._draw_label_candidates(painter, local_label_candidates, style.text_font)
-    render_tropical_cyclones.draw_tropical_cyclone_overlay(
-        painter,
-        geometry=frame.geometry,
-        viewer=scene.viewer,
-        snapshot=scene.tropical_cyclone_snapshot,
-        when_utc=frame.time_obj.to_datetime() if frame.time_obj is not None else None,
-        theme=style.theme,
-        opacity=float(style.tropical_cyclone_opacity),
-        enabled=bool(style.show_tropical_cyclone_overlay and style.tropical_cyclone_opacity > 0.0),
-    )
+    for snapshot in scene.tropical_cyclone_snapshots or ():
+        render_tropical_cyclones.draw_tropical_cyclone_overlay(
+            painter,
+            geometry=frame.geometry,
+            viewer=scene.viewer,
+            snapshot=snapshot,
+            when_utc=frame.time_obj.to_datetime() if frame.time_obj is not None else None,
+            theme=style.theme,
+            opacity=float(style.tropical_cyclone_opacity),
+            highlighted=bool(
+                highlighted_tropical_cyclone is not None
+                and snapshot == highlighted_tropical_cyclone
+            ),
+            enabled=bool(style.show_tropical_cyclone_overlay and style.tropical_cyclone_opacity > 0.0),
+        )
 
 
 def render_hud_overlay_into_painter(

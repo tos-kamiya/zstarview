@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from PySide6.QtCore import QPointF, Qt
+from PySide6.QtCore import QPoint, QPointF, Qt
 from PySide6.QtGui import QColor, QPainter, QPen, QPolygonF
 
 from ..astro import altaz_to_normalized_xy
@@ -27,6 +27,7 @@ TROPICAL_CYCLONE_TETHER_PASSES = (
 TROPICAL_CYCLONE_MARKER_ALPHA_SCALE = 0.40
 TROPICAL_CYCLONE_FAR_MARKER_HALF_WIDTH_PX = 6.0
 TROPICAL_CYCLONE_FAR_MARKER_HALF_HEIGHT_PX = 4.5
+TROPICAL_CYCLONE_FAR_HOVER_RADIUS_PX = 16.0
 TROPICAL_CYCLONE_FAR_LABEL_OFFSET_X_PX = 8.0
 TROPICAL_CYCLONE_FAR_LABEL_OFFSET_Y_PX = 8.0
 TROPICAL_CYCLONE_COLOR_RGB = (240, 122, 122)
@@ -193,6 +194,44 @@ def _draw_filled_cyclone_marker(
     painter.drawPolygon(_filled_marker_polygon(point, geometry=geometry))
 
 
+def find_highlighted_tropical_cyclone(
+    snapshots: tuple[TropicalCycloneSnapshot, ...] | list[TropicalCycloneSnapshot] | object | None = None,
+    mouse_pos: QPoint | QPointF | None = None,
+    geometry: ScreenGeometry | None = None,
+    *,
+    viewer_data: ViewerData | None = None,
+    time_obj: datetime | None = None,
+) -> tuple[TropicalCycloneSnapshot, QPointF] | None:
+    if viewer_data is None or time_obj is None or mouse_pos is None or geometry is None:
+        return None
+    if not isinstance(snapshots, (list, tuple)) or not snapshots:
+        return None
+
+    mouse_x = float(mouse_pos.x())
+    mouse_y = float(mouse_pos.y())
+    best_match: tuple[TropicalCycloneSnapshot, QPointF] | None = None
+    best_dist_sq = float("inf")
+    for snapshot in snapshots:
+        if not isinstance(snapshot, TropicalCycloneSnapshot):
+            continue
+        projected_snapshot = project_tropical_cyclone_snapshot(snapshot, time_obj)
+        observed = projected_snapshot.observed_position
+        center_point = _project_point_no_cutoff(
+            observed.lat_deg,
+            observed.lon_deg,
+            viewer=viewer_data,
+            height_m=TROPICAL_CYCLONE_TARGET_HEIGHT_M,
+        )
+        if center_point is None or float(center_point.distance_km) <= float(TROPICAL_CYCLONE_MAX_DISTANCE_KM):
+            continue
+        pos_x, pos_y = normalized_to_screen_xy(center_point.nx, center_point.ny, geometry)
+        dist_sq = (mouse_x - float(pos_x)) ** 2 + (mouse_y - float(pos_y)) ** 2
+        if dist_sq <= float(TROPICAL_CYCLONE_FAR_HOVER_RADIUS_PX) ** 2 and dist_sq < best_dist_sq:
+            best_dist_sq = dist_sq
+            best_match = (snapshot, QPointF(float(pos_x), float(pos_y)))
+    return best_match
+
+
 def draw_tropical_cyclone_overlay(
     painter: QPainter,
     *,
@@ -202,6 +241,7 @@ def draw_tropical_cyclone_overlay(
     when_utc: datetime | None,
     theme: ThemeStyle,
     opacity: float,
+    highlighted: bool = False,
     enabled: bool = True,
 ) -> None:
     if not enabled:
@@ -259,6 +299,8 @@ def draw_tropical_cyclone_overlay(
             geometry=geometry,
             color_rgba=marker_rgba,
         )
+        if not highlighted:
+            label_pos = None
     else:
         tether_points = _project_marker_tether_points(
             ground_point=center_point,
