@@ -1513,6 +1513,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 台風・サイクロン補助レイヤーは、公開 ArcGIS FeatureServer の `Active_Hurricanes_v1` から取得してよい。
 - この経路は API key や token を前提としない公開レイヤー利用として扱ってよい。
 - データの中心は `Observed Position`、`Forecast Position`、風域ポリゴン群でよい。
+- 取得時は active storm の集合を先に作り、その storm 群に対して観測点・予報点・風域をまとめて引いてよい。
 - `Observed Position` は storm ごとの最新観測 1 点を採用し、現在位置の起点としてよい。
 - `Forecast Position` は同一 storm の予報点列を保持し、`ADVDATE` ごとに束ねてよい。
 - `Forecast Position` の位置列は `VALIDTIME` / `FLDATELBL` / `DATELBL` / `TAU` を持ち、描画側では時刻順の予報列として扱ってよい。
@@ -1523,8 +1524,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `ADVDATE` が変わったら、新しい予報としてキャッシュを差し替えてよい。
 - 表示位置は、描画時の現在時刻に合わせて予報列を内分して求めてよい。
 - 予報時刻列の端では、端点をそのまま使ってよい。
-- 描画側は `project_tropical_cyclone_snapshot(snapshot, when_utc)` を使って、現在時刻へ投影した snapshot を毎回生成してよい。
-- その投影結果から得た観測点を、`400km` の observer-distance cutoff で選別してよい。
+- 描画側は `project_tropical_cyclone_snapshot(snapshot, when_utc)` を使って、現在時刻へ投影した snapshot 群を毎回生成してよい。
+- その投影結果から得た各 storm の観測点を、`400km` の observer-distance cutoff で選別してよい。
 - `400km` を超える storm は、塗りつぶさない下向き三角の模式マーカーと storm name ラベルだけを描いてよい。ラベルはマーカー右上へ置いてよい。
 - `400km` 以内の storm の visible presentation は、地表/水面位置から `5km` 上空に投影した塗りつぶし下向き三角マーカー、地表/水面位置までの細い接続線、storm name ラベルとして扱ってよい。
 - 接続線は `1km` ごとに再投影した点列を使い、アステリズム hover の 3 重線幅を流用してよい。
@@ -1532,11 +1533,11 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `5km` の高さは物理的な storm 高さ表現ではなく、地表/水面からマーカーを浮かせて読みやすくするための表示用オフセットとして扱ってよい。
 - 風域ポリゴンが取得できない storm は、この固定マーカーで代用してよい。
 - 風域ポリゴンや 3D 危険度地形は将来拡張として残してよい。
-- `TropicalCycloneState` は source snapshot と refresh / cache metadata を保持するだけにしてよく、projected geometry を状態として持たなくてよい。
+- `TropicalCycloneState` は source snapshot 群と refresh / cache metadata を保持するだけにしてよく、projected geometry を状態として持たなくてよい。
 - `reproject_tropical_cyclone_overlay()` は投影計算ではなく、再描画と次回更新時刻の管理だけを担当してよい。
 - 台風の「目」を表す専用属性はこの連携では期待せず、中心位置と風域を使って表現してよい。
 - トルネードはこの連携の対象外とする。
-- 描画方法は未確定とし、現時点では取得・正規化・キャッシュ更新と、描画時の現在時刻投影に基づく小型マーカー表示だけを設計対象としてよい。
+- 描画方法は未確定とし、現時点では取得・正規化・キャッシュ更新と、描画時の現在時刻投影に基づく全 storm 同時表示だけを設計対象としてよい。
 
 ## 7. スレッドモデル
 
@@ -1593,14 +1594,14 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - 地形地平線専用状態は `TerrainHorizonState` に分離する。
 - 人工衛星専用状態は `SatelliteState` に分離する。
 - 航空機専用状態は `AircraftState` に分離する。
-- 台風専用状態は `TropicalCycloneState` に分離し、元の snapshot と cache / refresh metadata だけを保持してよい。
+- 台風専用状態は `TropicalCycloneState` に分離し、元の snapshot 群と cache / refresh metadata だけを保持してよい。
 
 ### 8.2 latest-request-wins
 
 - 視点変更の fast-mode 再投影と、ダウンロード済みデータの再取得の扱いは `7. スレッドモデル` にまとめる。
 - 雲は source fetch と projection を別の latest-wins 系列として扱い、古い source 結果や古い視点の再投影結果だけを捨ててよい。
 - 人工衛星更新、航空機更新のダウンロード結果自体は後続の UI 状態へ積み上がるため、古い視点の中間描画だけを捨てる。
-- 台風は projection 結果を state に保持せず、draw 時に current time へ投影し直してよい。描画側では 400km 超の marker を省かず、模式マーカーへ切り替えてよい。
+- 台風は projection 結果を state に保持せず、draw 時に current time へ投影し直してよい。描画側では 400km 超の marker を省かず、全 storm を模式マーカーへ切り替えてよい。
 - 検索由来の marker は UI スレッドで採用し、scheduler が寿命切れだけを消してよい。
 
 ### 8.3 CLI と GUI の整合
