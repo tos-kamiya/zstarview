@@ -8,17 +8,17 @@ from pathlib import Path
 from typing import Any
 
 from ..paths import TROPICAL_CYCLONE_CACHE_DIR
-from .models import TropicalCycloneSnapshot
+from .models import TropicalCycloneSnapshotCollection
 
 TROPICAL_CYCLONE_CACHE_TTL_SECONDS = 3 * 60 * 60
 TROPICAL_CYCLONE_CHECK_INTERVAL_SECONDS = 90 * 60
 TROPICAL_CYCLONE_CACHE_FILENAME = "active_hurricanes.json"
-TROPICAL_CYCLONE_CACHE_VERSION = 3
+TROPICAL_CYCLONE_CACHE_VERSION = 4
 
 
 @dataclass(frozen=True, slots=True)
 class TropicalCycloneCacheEntry:
-    snapshot: TropicalCycloneSnapshot
+    snapshot_collection: TropicalCycloneSnapshotCollection
     cached_at_utc: datetime
     cache_version: int = TROPICAL_CYCLONE_CACHE_VERSION
 
@@ -28,7 +28,7 @@ class TropicalCycloneCacheEntry:
             "cached_at_utc": self.cached_at_utc.astimezone(timezone.utc)
             .isoformat()
             .replace("+00:00", "Z"),
-            "snapshot": self.snapshot.to_dict(),
+            "snapshot_collection": self.snapshot_collection.to_dict(),
         }
 
     @classmethod
@@ -40,17 +40,20 @@ class TropicalCycloneCacheEntry:
             else 0
         )
         cached_at_raw = data.get("cached_at_utc")
-        snapshot_raw = data.get("snapshot")
-        if not isinstance(snapshot_raw, dict):
-            return None
-        snapshot = TropicalCycloneSnapshot.from_dict(snapshot_raw)
-        if snapshot is None:
+        snapshot_collection_raw = data.get("snapshot_collection")
+        if isinstance(snapshot_collection_raw, dict):
+            snapshot_collection = TropicalCycloneSnapshotCollection.from_dict(
+                snapshot_collection_raw
+            )
+        else:
+            snapshot_collection = TropicalCycloneSnapshotCollection.from_dict(data)
+        if snapshot_collection is None:
             return None
         cached_at = _parse_datetime(cached_at_raw)
         if cached_at is None:
             return None
         return cls(
-            snapshot=snapshot,
+            snapshot_collection=snapshot_collection,
             cached_at_utc=cached_at,
             cache_version=cache_version,
         )
@@ -91,7 +94,16 @@ def load_tropical_cyclone_cache(
         return None
     if not isinstance(raw, dict):
         return None
-    return TropicalCycloneCacheEntry.from_dict(raw)
+    entry = TropicalCycloneCacheEntry.from_dict(raw)
+    if entry is None:
+        return None
+    if not is_tropical_cyclone_cache_current(entry):
+        try:
+            path.unlink(missing_ok=True)
+        except Exception:
+            pass
+        return None
+    return entry
 
 
 def save_tropical_cyclone_cache(

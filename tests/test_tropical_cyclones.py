@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -8,7 +9,9 @@ import pytest
 from PySide6.QtCore import QPointF
 
 import zstarview.render.tropical_cyclones as render_tropical_cyclones
+import zstarview.tropical_cyclones.client as cyclone_client
 from zstarview.tropical_cyclones.cache import (
+    TROPICAL_CYCLONE_CACHE_VERSION,
     TropicalCycloneCacheEntry,
     load_tropical_cyclone_cache,
     save_tropical_cyclone_cache,
@@ -18,6 +21,7 @@ from zstarview.data.import_overture_buildings import iter_download_features
 from zstarview.tropical_cyclones.models import (
     TropicalCyclonePoint,
     TropicalCyclonePolygon,
+    TropicalCycloneSnapshotCollection,
     TropicalCycloneSnapshot,
     project_tropical_cyclone_snapshot,
 )
@@ -62,6 +66,15 @@ def _snapshot() -> TropicalCycloneSnapshot:
     )
 
 
+def _collection(*snapshots: TropicalCycloneSnapshot) -> TropicalCycloneSnapshotCollection:
+    return TropicalCycloneSnapshotCollection(
+        snapshots=tuple(snapshots or (_snapshot(),)),
+        source_url="https://example.invalid/service",
+        service_name="Active Hurricanes",
+        refreshed_at_utc=datetime(2026, 5, 30, 2, 20, tzinfo=timezone.utc),
+    )
+
+
 def test_tropical_cyclone_snapshot_roundtrip() -> None:
     snapshot = _snapshot()
     loaded = TropicalCycloneSnapshot.from_dict(snapshot.to_dict())
@@ -70,9 +83,9 @@ def test_tropical_cyclone_snapshot_roundtrip() -> None:
 
 
 def test_tropical_cyclone_cache_roundtrip(tmp_path) -> None:
-    snapshot = _snapshot()
+    collection = _collection(_snapshot())
     entry = TropicalCycloneCacheEntry(
-        snapshot=snapshot,
+        snapshot_collection=collection,
         cached_at_utc=datetime(2026, 5, 30, 2, 30, tzinfo=timezone.utc),
     )
 
@@ -81,7 +94,8 @@ def test_tropical_cyclone_cache_roundtrip(tmp_path) -> None:
 
     assert loaded == entry
     assert loaded is not None
-    assert loaded.cache_version >= 1
+    assert loaded.cache_version == TROPICAL_CYCLONE_CACHE_VERSION
+    assert loaded.snapshot_collection == collection
 
 
 def test_tropical_cyclone_cache_entry_loads_legacy_payload() -> None:
@@ -95,7 +109,54 @@ def test_tropical_cyclone_cache_entry_loads_legacy_payload() -> None:
 
     assert loaded is not None
     assert loaded.cache_version == 0
-    assert loaded.snapshot == _snapshot()
+    assert loaded.snapshot_collection.snapshots == (_snapshot(),)
+
+
+def test_tropical_cyclone_cache_loader_discards_old_version(tmp_path) -> None:
+    cache_path = tmp_path / "active_hurricanes.json"
+    cache_path.write_text(
+        json.dumps(
+            {
+                "cache_version": 3,
+                "cached_at_utc": "2026-05-30T02:30:00Z",
+                "snapshot": _snapshot().to_dict(),
+            },
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+
+    loaded = load_tropical_cyclone_cache(cache_root=tmp_path)
+
+    assert loaded is None
+    assert not cache_path.exists()
+
+
+def test_tropical_cyclone_snapshot_collection_roundtrip() -> None:
+    collection = _collection(
+        _snapshot(),
+        TropicalCycloneSnapshot(
+            storm_name="One-e",
+            basin="WP",
+            advdate_utc=datetime(2026, 5, 30, 8, 0, tzinfo=timezone.utc),
+            observed_position=TropicalCyclonePoint(
+                lat_deg=18.4,
+                lon_deg=132.1,
+                valid_time_utc=datetime(2026, 5, 30, 8, 0, tzinfo=timezone.utc),
+            ),
+            forecast_positions=(),
+            wind_polygons=(),
+            source_url="https://example.invalid/service",
+            service_name="Active Hurricanes",
+            refreshed_at_utc=datetime(2026, 5, 30, 2, 20, tzinfo=timezone.utc),
+            current_storm_id="WP022026",
+        ),
+    )
+
+    loaded = TropicalCycloneSnapshotCollection.from_dict(collection.to_dict())
+
+    assert loaded == collection
 
 
 def test_tropical_cyclone_projection_moves_snapshot_forward() -> None:
@@ -189,6 +250,134 @@ def test_forecast_fldatelbl_is_preferred_over_validtime() -> None:
 
     assert point is not None
     assert point.valid_time_utc == datetime(2026, 5, 31, 6, 0, tzinfo=timezone.utc)
+
+
+def test_fetch_active_hurricanes_snapshot_returns_all_active_storms(monkeypatch) -> None:
+    obs_time_a = datetime(2026, 5, 30, 2, 0, tzinfo=timezone.utc)
+    obs_time_b = datetime(2026, 5, 30, 8, 0, tzinfo=timezone.utc)
+    advdate_a = datetime(2026, 5, 30, 0, 0, tzinfo=timezone.utc)
+    advdate_b = datetime(2026, 5, 30, 6, 0, tzinfo=timezone.utc)
+
+    def _feature(storm_name: str, basin: str, storm_id: str, dtg: datetime, advdate: datetime, x: float, y: float) -> dict:
+        return {
+            "attributes": {
+                "STORMNAME": storm_name,
+                "BASIN": basin,
+                "ATCFID": storm_id,
+                "DTG": int(dtg.timestamp() * 1000.0),
+                "ADVDATE": int(advdate.timestamp() * 1000.0),
+                "DATELBL": dtg.strftime("%Y-%m-%d %H:%M UTC"),
+                "FCSTPRD": 0,
+            },
+            "geometry": {
+                "x": x,
+                "y": y,
+            },
+        }
+
+    observed_features = [
+        _feature("One-e", "WP", "WP022026", obs_time_b, advdate_b, 132.1, 18.4),
+        _feature("Jangmi", "WP", "WP012026", obs_time_a, advdate_a, 145.6, 12.3),
+    ]
+    forecast_features = [
+        {
+            "attributes": {
+                "STORMNAME": "One-e",
+                "BASIN": "WP",
+                "ATCFID": "WP022026",
+                "ADVDATE": int(advdate_b.timestamp() * 1000.0),
+                "VALIDTIME": int((advdate_b + timedelta(hours=12)).timestamp() * 1000.0),
+                "FLDATELBL": "2026-05-30 06:00 PM Sat UTC",
+                "TAU": 12,
+                "FCSTPRD": 12,
+                "MAXWIND": 40,
+            },
+            "geometry": {
+                "x": 133.0,
+                "y": 18.9,
+            },
+        },
+        {
+            "attributes": {
+                "STORMNAME": "Jangmi",
+                "BASIN": "WP",
+                "ATCFID": "WP012026",
+                "ADVDATE": int(advdate_a.timestamp() * 1000.0),
+                "VALIDTIME": int((advdate_a + timedelta(hours=12)).timestamp() * 1000.0),
+                "FLDATELBL": "2026-05-30 12:00 PM Sat UTC",
+                "TAU": 12,
+                "FCSTPRD": 12,
+                "MAXWIND": 35,
+            },
+            "geometry": {
+                "x": 146.0,
+                "y": 13.0,
+            },
+        },
+    ]
+    wind_feature = {
+        "attributes": {
+            "STORMNAME": "Jangmi",
+            "BASIN": "WP",
+            "ATCFID": "WP012026",
+            "ADVDATE": int(advdate_a.timestamp() * 1000.0),
+        },
+        "geometry": {
+            "rings": [
+                [[145.0, 12.0], [146.0, 12.0], [146.0, 13.0], [145.0, 13.0], [145.0, 12.0]]
+            ],
+        },
+    }
+    wind_feature_b = {
+        "attributes": {
+            "STORMNAME": "One-e",
+            "BASIN": "WP",
+            "ATCFID": "WP022026",
+            "ADVDATE": int(advdate_b.timestamp() * 1000.0),
+        },
+        "geometry": {
+            "rings": [
+                [[132.0, 18.0], [133.0, 18.0], [133.0, 19.0], [132.0, 19.0], [132.0, 18.0]]
+            ],
+        },
+    }
+
+    def _fake_fetch_json(url: str, *, timeout_s: float, user_agent: str) -> dict[str, object]:
+        if url.endswith("?f=json"):
+            return {
+                "name": "Active Hurricanes",
+                "layers": [
+                    {"id": 0, "name": "Forecast Position"},
+                    {"id": 1, "name": "Observed Position"},
+                    {"id": 7, "name": "Tropical Storm Force (34kts)"},
+                    {"id": 8, "name": "Strong Tropical Storm (50kts)"},
+                    {"id": 9, "name": "Hurricane Force (64kts+)"},
+                    {"id": 11, "name": "Observed Wind Swath"},
+                ],
+            }
+        raise AssertionError(f"unexpected fetch_json url: {url}")
+
+    def _fake_query_json(base_url: str, path: str, *, params, timeout_s: float, user_agent: str) -> dict[str, object]:
+        if path == "1/query":
+            return {"features": observed_features}
+        if path == "0/query":
+            return {"features": forecast_features}
+        if path in {"7/query", "8/query", "9/query", "11/query"}:
+            layer_id = int(path.split("/", 1)[0])
+            feature = wind_feature if layer_id != 7 else wind_feature_b
+            return {"features": [feature]}
+        raise AssertionError(f"unexpected query path: {path}")
+
+    monkeypatch.setattr(cyclone_client, "fetch_json", _fake_fetch_json)
+    monkeypatch.setattr(cyclone_client, "query_json", _fake_query_json)
+
+    collection = cyclone_client.fetch_active_hurricanes_snapshot()
+
+    assert collection.service_name == "Active Hurricanes"
+    assert len(collection.snapshots) == 2
+    assert collection.snapshots[0].storm_name == "One-e"
+    assert collection.snapshots[1].storm_name == "Jangmi"
+    assert collection.summary_text().startswith("2 storms")
 
 
 def test_tropical_cyclone_draw_uses_far_marker_beyond_distance_limit(monkeypatch) -> None:
