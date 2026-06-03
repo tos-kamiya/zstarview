@@ -501,21 +501,43 @@ class SkyWindowUpdatesMixin:
         if state.banner_text:
             detail = _strip_status_prefix(state.banner_text, "Typhoon:")
             return _status_segment(_STATUS_TROPICAL_CYCLONE, detail)
-        snapshot = state.snapshot
-        if snapshot is None:
+        snapshots = getattr(state, "snapshots", ())
+        if not snapshots:
+            legacy_snapshot = getattr(state, "snapshot", None)
+            if legacy_snapshot is not None:
+                snapshots = (legacy_snapshot,)
+        if not snapshots:
             return _status_segment(_STATUS_TROPICAL_CYCLONE, "idle")
-        advdate = snapshot.advdate_utc
-        if advdate is not None:
-            try:
-                advdate_text = advdate.astimezone(timezone.utc).strftime("%m-%d %H:%MZ")
-            except Exception:
+        collection = getattr(state, "snapshot_collection", None)
+        if hasattr(collection, "summary_text"):
+            return _status_segment(_STATUS_TROPICAL_CYCLONE, collection.summary_text())
+        if len(snapshots) == 1:
+            snapshot = snapshots[0]
+            advdate = snapshot.advdate_utc
+            if advdate is not None:
+                try:
+                    advdate_text = advdate.astimezone(timezone.utc).strftime("%m-%d %H:%MZ")
+                except Exception:
+                    advdate_text = "?"
+            else:
                 advdate_text = "?"
-        else:
-            advdate_text = "?"
-        return _status_segment(
-            _STATUS_TROPICAL_CYCLONE,
-            f"{snapshot.storm_name} {advdate_text}",
+            return _status_segment(
+                _STATUS_TROPICAL_CYCLONE,
+                f"{snapshot.storm_name} {advdate_text}",
+            )
+        preview_names = ", ".join(
+            snapshot.storm_name for snapshot in snapshots[:3] if snapshot.storm_name
         )
+        if len(snapshots) > 3:
+            preview_names = (
+                f"{preview_names}, +{len(snapshots) - 3}"
+                if preview_names
+                else f"+{len(snapshots) - 3}"
+            )
+        detail = f"{len(snapshots)} storms"
+        if preview_names:
+            detail = f"{detail}: {preview_names}"
+        return _status_segment(_STATUS_TROPICAL_CYCLONE, detail)
 
     def _aircraft_status_line(self) -> str:
         if float(self.aircraft_opacity) <= 0.0:
@@ -1281,14 +1303,24 @@ class SkyWindowUpdatesMixin:
         self.request_client_update()
 
     def _on_tropical_cyclone_ready(self, payload: Dict) -> None:
-        snapshot = payload.get("snapshot")
-        if isinstance(snapshot, dict):
-            from ..tropical_cyclones.models import TropicalCycloneSnapshot
+        snapshot_collection_payload = payload.get("snapshot_collection")
+        if isinstance(snapshot_collection_payload, dict):
+            from ..tropical_cyclones.models import TropicalCycloneSnapshotCollection
 
-            parsed_snapshot = TropicalCycloneSnapshot.from_dict(snapshot)
+            parsed_collection = TropicalCycloneSnapshotCollection.from_dict(
+                snapshot_collection_payload
+            )
         else:
-            parsed_snapshot = None
-        if parsed_snapshot is None:
+            legacy_snapshot_payload = payload.get("snapshot")
+            if isinstance(legacy_snapshot_payload, dict):
+                from ..tropical_cyclones.models import TropicalCycloneSnapshotCollection
+
+                parsed_collection = TropicalCycloneSnapshotCollection.from_dict(
+                    {"snapshot": legacy_snapshot_payload}
+                )
+            else:
+                parsed_collection = None
+        if parsed_collection is None:
             banner = str(payload.get("banner", "")).strip()
             if banner:
                 self.tropical_cyclone_state.set_error_banner(banner)
@@ -1308,12 +1340,14 @@ class SkyWindowUpdatesMixin:
             next_refresh = cached_at + timedelta(hours=3)
         banner = str(payload.get("banner", "")).strip()
         self.tropical_cyclone_state.set_result(
-            parsed_snapshot,
+            parsed_collection.snapshots,
             cached_at_utc=cached_at,
             last_checked_utc=last_checked,
             next_check_utc=next_check,
             next_refresh_utc=next_refresh,
             banner_text=banner or None,
+            source_url=parsed_collection.source_url or None,
+            current_source=parsed_collection.service_name or None,
         )
         self.reproject_tropical_cyclone_overlay()
         self.request_client_update()
@@ -1334,8 +1368,12 @@ class SkyWindowUpdatesMixin:
         if self._viewport_interaction_active() and not allow_during_viewport_interaction:
             return
         state = self.tropical_cyclone_state
-        snapshot = state.snapshot
-        if snapshot is None:
+        snapshots = getattr(state, "snapshots", ())
+        if not snapshots:
+            legacy_snapshot = getattr(state, "snapshot", None)
+            if legacy_snapshot is not None:
+                snapshots = (legacy_snapshot,)
+        if not snapshots:
             state.projection_next_refresh_utc = None
             self.state.tropical_cyclone_projection_next_refresh_utc = None
             self.request_client_update()

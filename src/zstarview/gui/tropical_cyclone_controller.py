@@ -29,7 +29,7 @@ from ..tropical_cyclones.client import (
     fetch_active_hurricanes_snapshot,
     fetch_latest_observed_feature,
 )
-from ..tropical_cyclones.models import TropicalCycloneSnapshot
+from ..tropical_cyclones.models import TropicalCycloneSnapshotCollection
 from .worker_pool import submit_gui_work, wait_for_gui_futures
 
 logger = logging.getLogger(__name__)
@@ -132,7 +132,7 @@ class TropicalCycloneController(QObject):
 
     def _cache_payload(
         self,
-        snapshot: TropicalCycloneSnapshot,
+        snapshot_collection: TropicalCycloneSnapshotCollection,
         *,
         cached_at_utc: datetime,
         last_checked_utc: datetime,
@@ -141,7 +141,7 @@ class TropicalCycloneController(QObject):
         banner: str = "",
     ) -> dict[str, object]:
         return {
-            "snapshot": snapshot.to_dict(),
+            "snapshot_collection": snapshot_collection.to_dict(),
             "cached_at_utc": cached_at_utc,
             "last_checked_utc": last_checked_utc,
             "next_check_utc": next_check_utc,
@@ -169,7 +169,7 @@ class TropicalCycloneController(QObject):
         )
         next_refresh = cached_at + timedelta(seconds=TROPICAL_CYCLONE_CACHE_TTL_SECONDS)
         return self._cache_payload(
-            entry.snapshot,
+            entry.snapshot_collection,
             cached_at_utc=cached_at,
             last_checked_utc=now_utc,
             next_check_utc=next_check,
@@ -233,7 +233,12 @@ class TropicalCycloneController(QObject):
             latest_advdate = latest_attrs.get("ADVDATE")
             latest_advdate_int = int(latest_advdate) if isinstance(latest_advdate, (int, float)) else None
 
-            cached_snapshot = cached_entry.snapshot if cached_entry is not None else None
+            cached_collection = cached_entry.snapshot_collection if cached_entry is not None else None
+            cached_snapshot = (
+                cached_collection.snapshots[0]
+                if cached_collection is not None and cached_collection.snapshots
+                else None
+            )
             if (
                 cached_snapshot is not None
                 and not cached_is_stale
@@ -272,7 +277,7 @@ class TropicalCycloneController(QObject):
             )
             cached_at = datetime.now(timezone.utc)
             entry = TropicalCycloneCacheEntry(
-                snapshot=snapshot,
+                snapshot_collection=snapshot,
                 cached_at_utc=cached_at,
                 cache_version=TROPICAL_CYCLONE_CACHE_VERSION,
             )

@@ -18,6 +18,7 @@ from .models import (
     TropicalCyclonePoint,
     TropicalCyclonePolygon,
     TropicalCycloneSnapshot,
+    TropicalCycloneSnapshotCollection,
     project_tropical_cyclone_snapshot,
 )
 
@@ -32,6 +33,7 @@ __all__ = [
     "TropicalCyclonePoint",
     "TropicalCyclonePolygon",
     "TropicalCycloneSnapshot",
+    "TropicalCycloneSnapshotCollection",
     "project_tropical_cyclone_snapshot",
     "fetch_active_hurricanes_snapshot",
     "fetch_latest_observed_feature",

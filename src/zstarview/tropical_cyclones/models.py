@@ -212,6 +212,74 @@ class TropicalCycloneSnapshot:
         return False
 
 
+@dataclass(frozen=True, slots=True)
+class TropicalCycloneSnapshotCollection:
+    snapshots: tuple[TropicalCycloneSnapshot, ...]
+    source_url: str = ""
+    service_name: str = ""
+    refreshed_at_utc: datetime | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "snapshots": [snapshot.to_dict() for snapshot in self.snapshots],
+            "source_url": self.source_url,
+            "service_name": self.service_name,
+            "refreshed_at_utc": _dt_to_iso(self.refreshed_at_utc),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> TropicalCycloneSnapshotCollection | None:
+        snapshots_data = data.get("snapshots")
+        snapshots: list[TropicalCycloneSnapshot] = []
+        if isinstance(snapshots_data, list):
+            for item in snapshots_data:
+                if isinstance(item, dict):
+                    snapshot = TropicalCycloneSnapshot.from_dict(item)
+                    if snapshot is not None:
+                        snapshots.append(snapshot)
+        else:
+            legacy_snapshot = TropicalCycloneSnapshot.from_dict(data.get("snapshot") or {})
+            if legacy_snapshot is not None:
+                snapshots.append(legacy_snapshot)
+        source_url = data.get("source_url")
+        service_name = data.get("service_name")
+        return cls(
+            snapshots=tuple(snapshots),
+            source_url=source_url if isinstance(source_url, str) else "",
+            service_name=service_name if isinstance(service_name, str) else "",
+            refreshed_at_utc=_dt_from_iso(data.get("refreshed_at_utc")),
+        )
+
+    def has_projectable_timeline(self) -> bool:
+        return any(snapshot.has_projectable_timeline() for snapshot in self.snapshots)
+
+    def storm_names(self) -> tuple[str, ...]:
+        return tuple(snapshot.storm_name for snapshot in self.snapshots if snapshot.storm_name)
+
+    def summary_text(self) -> str:
+        count = len(self.snapshots)
+        if count <= 0:
+            return "idle"
+        names = self.storm_names()
+        if count == 1 and names:
+            snapshot = self.snapshots[0]
+            advdate = snapshot.advdate_utc
+            if advdate is not None:
+                try:
+                    advdate_text = advdate.astimezone(timezone.utc).strftime("%m-%d %H:%MZ")
+                except Exception:
+                    advdate_text = "?"
+            else:
+                advdate_text = "?"
+            return f"{snapshot.storm_name} {advdate_text}"
+        if names:
+            preview = ", ".join(names[:3])
+            if count > 3:
+                preview = f"{preview}, +{count - 3}"
+            return f"{count} storms: {preview}"
+        return f"{count} storms"
+
+
 def _point_time_utc(
     snapshot: TropicalCycloneSnapshot,
     point: TropicalCyclonePoint,

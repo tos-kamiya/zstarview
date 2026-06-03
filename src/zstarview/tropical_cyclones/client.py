@@ -12,6 +12,7 @@ from typing import Any
 from .models import (
     TropicalCyclonePoint,
     TropicalCyclonePolygon,
+    TropicalCycloneSnapshotCollection,
     TropicalCycloneSnapshot,
 )
 
@@ -240,6 +241,43 @@ def _where_for_storm(storm_name: str, basin: str | None = None, *, advdate: int 
     return " AND ".join(parts)
 
 
+def _storm_identity(attrs: dict[str, Any]) -> str | None:
+    storm_id = attrs.get("ATCFID")
+    if isinstance(storm_id, str) and storm_id.strip():
+        return storm_id.strip()
+    storm_num = attrs.get("STORMNUM")
+    if storm_num is not None:
+        storm_num_text = str(storm_num).strip()
+        if storm_num_text:
+            basin = attrs.get("BASIN")
+            basin_text = basin.strip() if isinstance(basin, str) and basin.strip() else ""
+            if basin_text:
+                return f"{basin_text}:{storm_num_text}"
+            return storm_num_text
+    storm_name = attrs.get("STORMNAME")
+    if isinstance(storm_name, str) and storm_name.strip():
+        basin = attrs.get("BASIN")
+        basin_text = basin.strip() if isinstance(basin, str) and basin.strip() else ""
+        if basin_text:
+            return f"{basin_text}:{storm_name.strip()}"
+        return storm_name.strip()
+    return None
+
+
+def _storm_name_for_attrs(attrs: dict[str, Any]) -> str | None:
+    storm_name = attrs.get("STORMNAME")
+    if isinstance(storm_name, str) and storm_name.strip():
+        return storm_name.strip()
+    return None
+
+
+def _storm_basin_for_attrs(attrs: dict[str, Any]) -> str | None:
+    basin = attrs.get("BASIN")
+    if isinstance(basin, str) and basin.strip():
+        return basin.strip()
+    return None
+
+
 def _query_layer(
     service_url: str,
     layer_id: int,
@@ -354,33 +392,39 @@ def fetch_active_hurricanes_snapshot(
     service_url: str = DEFAULT_SERVICE_URL,
     timeout_s: float = DEFAULT_TIMEOUT_S,
     user_agent: str = DEFAULT_USER_AGENT,
-) -> TropicalCycloneSnapshot:
+) -> TropicalCycloneSnapshotCollection:
     service = fetch_json(
         f"{service_url}?f=json",
         timeout_s=timeout_s,
         user_agent=user_agent,
     )
     service_name = service_label(service_url, service)
-    observed_feature = fetch_latest_observed_feature(
-        service_url=service_url,
+    observed_query = _query_layer(
+        service_url,
+        CURRENT_OBSERVED_LAYER_ID,
+        where="1=1",
+        limit=DEFAULT_FEATURE_LIMIT,
         timeout_s=timeout_s,
         user_agent=user_agent,
+        order_by_fields="DTG DESC, OBJECTID DESC",
     )
-    observed_attrs = _feature_attrs(observed_feature)
-    storm_name = observed_attrs.get("STORMNAME")
-    if not isinstance(storm_name, str) or not storm_name.strip():
-        raise TropicalCycloneFetchError("Observed position record is missing STORMNAME")
-    basin = observed_attrs.get("BASIN")
-    basin_text = basin if isinstance(basin, str) and basin.strip() else None
-    storm_id = observed_attrs.get("ATCFID")
-    if not isinstance(storm_id, str) or not storm_id.strip():
-        storm_id = observed_attrs.get("STORMNUM")
-        storm_id = str(storm_id).strip() if storm_id is not None else None
-    advdate = observed_attrs.get("ADVDATE")
-    advdate_utc = _parse_epoch_ms(advdate)
-    observed_point = _parse_point(observed_feature, label_field="DATELBL")
-    if observed_point is None:
-        raise TropicalCycloneFetchError("Observed position geometry could not be parsed")
+    observed_error = observed_query.get("error")
+    if isinstance(observed_error, dict):
+        raise TropicalCycloneFetchError(str(observed_error.get("message", "observed query failed")))
+    observed_features = observed_query.get("features")
+    if not isinstance(observed_features, list):
+        raise TropicalCycloneFetchError("Observed query returned no features array")
+    observed_by_storm_key: dict[str, dict[str, Any]] = {}
+    observed_order: list[str] = []
+    for feature in observed_features:
+        if not isinstance(feature, dict):
+            continue
+        attrs = _feature_attrs(feature)
+        storm_key = _storm_identity(attrs)
+        if storm_key is None or storm_key in observed_by_storm_key:
+            continue
+        observed_by_storm_key[storm_key] = feature
+        observed_order.append(storm_key)
 
     forecast_limit = DEFAULT_FEATURE_LIMIT
     forecast_query = _query_layer(
@@ -398,28 +442,20 @@ def fetch_active_hurricanes_snapshot(
     forecast_features = forecast_query.get("features")
     if not isinstance(forecast_features, list):
         raise TropicalCycloneFetchError("Forecast query returned no features array")
-    forecast_advdate = _latest_forecast_advdate(
-        [feature for feature in forecast_features if isinstance(feature, dict)],
-        storm_name,
-        basin_text,
-    )
-    filtered_forecast = [
-        feature
-        for feature in forecast_features
-        if isinstance(feature, dict)
-        and _matches_storm(feature, storm_name, basin_text)
-        and (
-            forecast_advdate is None
-            or _feature_attrs(feature).get("ADVDATE") == forecast_advdate
-        )
-    ]
-    forecast_points: list[TropicalCyclonePoint] = []
-    for feature in _sort_forecast_features(filtered_forecast):
-        point = _parse_point(feature, label_field="FLDATELBL")
-        if point is not None:
-            forecast_points.append(point)
+    active_storm_keys = set(observed_by_storm_key.keys())
+    forecast_features_by_storm_key: dict[str, list[dict[str, Any]]] = {key: [] for key in active_storm_keys}
+    for feature in forecast_features:
+        if not isinstance(feature, dict):
+            continue
+        attrs = _feature_attrs(feature)
+        storm_key = _storm_identity(attrs)
+        if storm_key is None or storm_key not in active_storm_keys:
+            continue
+        forecast_features_by_storm_key.setdefault(storm_key, []).append(feature)
 
-    wind_polygons: list[TropicalCyclonePolygon] = []
+    wind_features_by_storm_key: dict[str, list[tuple[int, str, dict[str, Any]]]] = {
+        key: [] for key in active_storm_keys
+    }
     for layer_id in WIND_LAYER_IDS:
         wind_query = _query_layer(
             service_url,
@@ -445,21 +481,88 @@ def fetch_active_hurricanes_snapshot(
                         layer_name = candidate_name.strip()
                     break
         for feature in wind_features:
-            if not isinstance(feature, dict) or not _matches_storm(feature, storm_name, basin_text):
+            if not isinstance(feature, dict):
                 continue
+            attrs = _feature_attrs(feature)
+            storm_key = _storm_identity(attrs)
+            if storm_key is None or storm_key not in active_storm_keys:
+                continue
+            wind_features_by_storm_key.setdefault(storm_key, []).append((layer_id, layer_name, feature))
+
+    snapshots: list[TropicalCycloneSnapshot] = []
+    refreshed_at_utc = dt.datetime.now(dt.timezone.utc)
+    for storm_key in observed_order:
+        observed_feature = observed_by_storm_key.get(storm_key)
+        if observed_feature is None:
+            continue
+        observed_attrs = _feature_attrs(observed_feature)
+        storm_name = _storm_name_for_attrs(observed_attrs)
+        if storm_name is None:
+            continue
+        basin_text = _storm_basin_for_attrs(observed_attrs)
+        storm_id = observed_attrs.get("ATCFID")
+        if not isinstance(storm_id, str) or not storm_id.strip():
+            storm_id = observed_attrs.get("STORMNUM")
+            storm_id = str(storm_id).strip() if storm_id is not None else None
+        advdate = observed_attrs.get("ADVDATE")
+        advdate_utc = _parse_epoch_ms(advdate)
+        observed_point = _parse_point(observed_feature, label_field="DATELBL")
+        if observed_point is None:
+            continue
+
+        storm_forecast_features = forecast_features_by_storm_key.get(storm_key, [])
+        forecast_advdate = _latest_forecast_advdate(
+            storm_forecast_features,
+            storm_name,
+            basin_text,
+        )
+        filtered_forecast = [
+            feature
+            for feature in storm_forecast_features
+            if _matches_storm(feature, storm_name, basin_text)
+            and (
+                forecast_advdate is None
+                or _feature_attrs(feature).get("ADVDATE") == forecast_advdate
+            )
+        ]
+        forecast_points: list[TropicalCyclonePoint] = []
+        for feature in _sort_forecast_features(filtered_forecast):
+            point = _parse_point(feature, label_field="FLDATELBL")
+            if point is not None:
+                forecast_points.append(point)
+
+        wind_polygons: list[TropicalCyclonePolygon] = []
+        for layer_id, layer_name, feature in wind_features_by_storm_key.get(storm_key, []):
             polygon = _polygon_from_feature(feature, layer_id=layer_id, name=layer_name)
             if polygon is not None:
                 wind_polygons.append(polygon)
 
-    return TropicalCycloneSnapshot(
-        storm_name=storm_name,
-        basin=basin_text,
-        advdate_utc=advdate_utc,
-        observed_position=observed_point,
-        forecast_positions=tuple(forecast_points),
-        wind_polygons=tuple(wind_polygons),
+        snapshots.append(
+            TropicalCycloneSnapshot(
+                storm_name=storm_name,
+                basin=basin_text,
+                advdate_utc=advdate_utc,
+                observed_position=observed_point,
+                forecast_positions=tuple(forecast_points),
+                wind_polygons=tuple(wind_polygons),
+                source_url=service_url,
+                service_name=service_name,
+                refreshed_at_utc=refreshed_at_utc,
+                current_storm_id=storm_id,
+            )
+        )
+
+    snapshots.sort(
+        key=lambda snapshot: (
+            snapshot.advdate_utc or dt.datetime.min.replace(tzinfo=dt.timezone.utc),
+            snapshot.storm_name,
+            snapshot.current_storm_id or "",
+        ),
+        reverse=True,
+    )
+    return TropicalCycloneSnapshotCollection(
+        snapshots=tuple(snapshots),
         source_url=service_url,
         service_name=service_name,
-        refreshed_at_utc=dt.datetime.now(dt.timezone.utc),
-        current_storm_id=storm_id,
+        refreshed_at_utc=refreshed_at_utc,
     )

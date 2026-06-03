@@ -2192,12 +2192,16 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             else:
                 self.state.aircraft_next_refresh_utc = now
         if self._tropical_cyclone_controller is not None:
+            cyclone_snapshots = self.tropical_cyclone_state.snapshots
+            if not cyclone_snapshots:
+                legacy_snapshot = getattr(self.tropical_cyclone_state, "snapshot", None)
+                if legacy_snapshot is not None:
+                    cyclone_snapshots = (legacy_snapshot,)
             if (
-                self.tropical_cyclone_state.snapshot is not None
+                cyclone_snapshots
                 and self.tropical_cyclone_state.cached_at_utc is not None
             ):
-                snapshot = self.tropical_cyclone_state.snapshot
-                if snapshot is not None and snapshot.has_projectable_timeline():
+                if any(snapshot.has_projectable_timeline() for snapshot in cyclone_snapshots):
                     self.tropical_cyclone_state.next_check_utc = (
                         self.tropical_cyclone_state.cached_at_utc
                         + timedelta(minutes=90)
@@ -2542,7 +2546,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             != self.show_tropical_cyclone_overlay
         ):
             self._action_toggle_tropical_cyclone.setChecked(self.show_tropical_cyclone_overlay)
-        if self.show_tropical_cyclone_overlay and self.tropical_cyclone_state.snapshot is None:
+        cyclone_snapshots = self.tropical_cyclone_state.snapshots
+        if not cyclone_snapshots:
+            legacy_snapshot = getattr(self.tropical_cyclone_state, "snapshot", None)
+            if legacy_snapshot is not None:
+                cyclone_snapshots = (legacy_snapshot,)
+        if self.show_tropical_cyclone_overlay and not cyclone_snapshots:
             self.start_background_tropical_cyclone_update(reason="toggle-on")
         self.request_client_update()
 

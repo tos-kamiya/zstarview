@@ -4,12 +4,16 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from ..tropical_cyclones.models import TropicalCycloneSnapshot
+from ..tropical_cyclones.models import (
+    TropicalCycloneSnapshot,
+    TropicalCycloneSnapshotCollection,
+)
 
 
 @dataclass
 class TropicalCycloneState:
-    snapshot: Optional[TropicalCycloneSnapshot] = None
+    snapshots: tuple[TropicalCycloneSnapshot, ...] = ()
+    snapshot_collection: Optional[TropicalCycloneSnapshotCollection] = None
     banner_text: Optional[str] = None
     failed_this_session: bool = False
     cached_at_utc: Optional[datetime] = None
@@ -22,22 +26,34 @@ class TropicalCycloneState:
 
     def set_result(
         self,
-        snapshot: TropicalCycloneSnapshot,
+        snapshots: tuple[TropicalCycloneSnapshot, ...],
         *,
         cached_at_utc: datetime | None = None,
         last_checked_utc: datetime | None = None,
         next_check_utc: datetime | None = None,
         next_refresh_utc: datetime | None = None,
         banner_text: str | None = None,
+        source_url: str | None = None,
+        current_source: str | None = None,
     ) -> None:
-        self.snapshot = snapshot
+        self.snapshots = tuple(snapshots)
+        if source_url is None and self.snapshots:
+            source_url = self.snapshots[0].source_url or None
+        if current_source is None and self.snapshots:
+            current_source = self.snapshots[0].service_name or None
+        self.snapshot_collection = TropicalCycloneSnapshotCollection(
+            snapshots=self.snapshots,
+            source_url=source_url or "",
+            service_name=current_source or "",
+            refreshed_at_utc=cached_at_utc,
+        )
         self.cached_at_utc = cached_at_utc
         self.last_checked_utc = last_checked_utc
         self.next_check_utc = next_check_utc
         self.next_refresh_utc = next_refresh_utc
         self.projection_next_refresh_utc = None
-        self.source_url = snapshot.source_url or None
-        self.current_source = snapshot.service_name or None
+        self.source_url = source_url
+        self.current_source = current_source
         self.failed_this_session = False
         self.banner_text = banner_text
 
