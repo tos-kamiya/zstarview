@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.29.9 - 2026-06-03
+- Made the cloud HUD show concrete GOES satellite names such as `GOES G18` and `GOES G19` so partial coverage and source anomalies are easier to distinguish at a glance.
+- Kept the existing partial-cloud `?` and failure states unchanged while improving the source label shown in the status line.
+
 ## 1.29.8 - 2026-06-03
 - Expanded the tropical cyclone overlay to fetch and render every active storm returned by the ArcGIS service, instead of selecting only the latest observed storm.
 - Versioned the tropical cyclone cache, discarded stale cache files immediately, and re-fetched fresh data when the schema changes.
