@@ -1,5 +1,11 @@
 # zstarview Release Notes
 
+## 1.29.8 - 2026-06-03
+- Expanded the tropical cyclone overlay to fetch and render every active storm returned by the ArcGIS service, instead of selecting only the latest observed storm.
+- Versioned the tropical cyclone cache, discarded stale cache files immediately, and re-fetched fresh data when the schema changes.
+- Reduced clutter in the tropical cyclone overlay by showing out-of-range storm-name labels only on hover, while keeping the far marker visible.
+- Raised the default tropical cyclone opacity to `0.7` so the overlay stands out more clearly by default.
+
 ## 1.29.7 - 2026-06-02
 - Refined the water overlay presentation so water markers now use a fixed coarse `4-degree` sampling across all resolutions and a flatter screen-space shape near the horizon.
 - Simplified asterism rendering to a single line with a stronger hover alpha, and simplified the tropical cyclone tether to a single thin stroke.
