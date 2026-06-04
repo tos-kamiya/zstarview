@@ -1020,7 +1020,7 @@ def draw_water_overlay_dots(
             line_width_scale,
             distance_m=scan_distance_m,
         )
-        point_alpha = max(0, min(255, int(round(dot_alpha * float(point.alpha_scale) * distance_alpha))))
+        point_alpha = max(0, min(255, int(round(dot_alpha * distance_alpha))))
         outline_color = QColor(
             *_water_overlay_point_color_rgb(point),
             point_alpha,
