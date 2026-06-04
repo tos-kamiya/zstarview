@@ -1,5 +1,10 @@
 # zstarview Release Notes
 
+## 1.29.10 - 2026-06-04
+- Added a `Geo-satellite` startup checkbox in the GUI startup dialog under `General`, matching the CLI option grouping.
+- Kept the GUI `Geo-satellite` menu item disabled until the resolved observer location is known, then grey it out only when the observer is outside the Europe band.
+- Made the tropical cyclone far marker use the same highlight-width pattern as the satellite crosshair: `1.0` normally and `2.0` when highlighted.
+
 ## 1.29.9 - 2026-06-03
 - Made the cloud HUD show concrete GOES satellite names such as `GOES G18` and `GOES G19` so partial coverage and source anomalies are easier to distinguish at a glance.
 - Kept the existing partial-cloud `?` and failure states unchanged while improving the source label shown in the status line.
