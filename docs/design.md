@@ -890,7 +890,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 海は `OSM Water Polygons` 由来のローカル sea-mask tile 群を主入力にする
   - 川・湖・運河・水路などの inland water は Overpass API 経由の OSM フットプリントを別系統で取得する
   - `water_tiles_125m`、`water_tiles_250m`、`water_tiles_500m` を距離帯で切り替え、遠方 `500m` 帯は in-memory の代表点へ縮約する
-  - 水面の azimuth サンプリング step は全解像度で `4.0°` に固定し、fast-mode でも解像度依存の細分化は行わない
+  - 水面の azimuth サンプリング step は全解像度で `2.0°` に固定し、fast-mode でも解像度依存の細分化は行わない
   - sea-mask の評価は band 外側・ray 内側の順で進め、各 band 内では `rasterio.open()` した tile を短命キャッシュして再利用する
   - 海面は観測地点中心の地理座標を `target_height_m = 0.0` に投影した点として扱い、sea-mask 側では DEM を参照しない
   - inland water は別系統で DEM を使ってよいが、sea-mask の海面高は常に 0.0m に固定してよい
@@ -910,9 +910,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 取得完了後の active marker set は band stats と共に GUI / export-image へ渡す
   - band stats の `loaded_tile_count` は、実際に open した sea-mask tile の回数として扱い、総 tile 数ではない
 - `src/zstarview/render/terrain.py`
-  - `WaterOverlayPoint` を薄い楕円または水平に潰れた線分として描画する
+  - `WaterOverlayPoint` を小さな塗りつぶし円として描画する
   - 点の alpha は `water_overlay_opacity` を基準にし、距離減衰を反映して terrain horizon の描画と同じ sky-dome 合成段へ重ねる
-  - marker はスクリーン上では回転せず、距離に応じて minor axis だけを foreshorten してよい
+  - marker はスクリーン上では回転しない
   - 視点中心と edge/content FOV は `ViewerData` 側が所有する値として扱うのが自然で、`ScreenGeometry` には画面中心と半径だけを残す
 
 ### 4.6.1 水面レイヤー処理
@@ -936,9 +936,9 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 取得済みの band stats は保持してよく、terrain horizon の OFF は表示切り替えだけに使ってよい
   - per-scope cache は `*_simplified.json` を正本として保存し、古い `*.json` がより新しい場合は observer 座標に基づいて簡約版を再生成してよい
 - `src/zstarview/render/terrain.py`
-  - `WaterOverlayPoint` を薄い楕円または水平に潰れた線分として描画する
+  - `WaterOverlayPoint` を小さな塗りつぶし円として描画する
   - 点の alpha は `water_overlay_opacity` と距離減衰を反映し、terrain horizon の描画と同じ sky-dome 合成段へ重ねる
-  - marker はスクリーン上では回転せず、距離に応じて minor axis だけを foreshorten してよい
+  - marker はスクリーン上では回転しない
 - `src/zstarview/gui/window.py`
   - `Water Surface` メニュー項目、`W` ショートカット、初期 opacity の入力を GUI 操作へ接続する
 - `src/zstarview/gui/window_updates.py`
@@ -1880,7 +1880,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 8. sea だけが先に計算できた場合は sea-only の中間更新を emit し、その後 inland 完了時に sea + inland の合成結果を emit してよい。
 9. 水面マーカーは `target_height_m = 0.0` の地表貼り付けとして扱ってよく、地形地平線が非表示のときは水面マーカーも非表示にしてよい。
 10. マーカー化後の alpha は `water_overlay_opacity` を基準にし、距離に応じた指数減衰をかけてよい。
-11. `WaterOverlayPoint` は `render/terrain.py` で薄い楕円または水平に潰れた線分として描画し、海と inland で色を分けてよい。
+11. `WaterOverlayPoint` は `render/terrain.py` で小さな塗りつぶし円として描画し、海と inland で色を分けてよい。
 12. band stats の `loaded_tile_count` は、総 tile 数ではなく、実際に open した sea-mask tile の回数として扱ってよい。
 13. cache key は観測地点中心の `lat/lon` と距離帯、tile root から導出し、`bbox` はその派生値として扱ってよい。inland water の OSM footprint は `CACHE_PATH/water_overlay` 配下に JSON cache として保持してよい。
 14. `Water Surface` の GUI トグルや `--water-surface-opacity 0` は初期表示の有無を変えてよく、tile cache を破棄する必要はない。
