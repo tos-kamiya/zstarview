@@ -668,6 +668,68 @@ def test_tropical_cyclone_far_label_is_drawn_when_hovered(monkeypatch) -> None:
     assert calls == ["far", "text:Jangmi"]
 
 
+def test_tropical_cyclone_far_marker_uses_thinner_pen_when_not_highlighted() -> None:
+    point = render_tropical_cyclones._RenderPoint(
+        nx=0.1,
+        ny=0.2,
+        alt_deg=10.0,
+        az_deg=20.0,
+        distance_km=400.0001,
+    )
+    pen_widths: list[float] = []
+
+    class _FakePainter:
+        def setPen(self, pen, *_args, **_kwargs) -> None:
+            pen_widths.append(float(pen.widthF()))
+
+        def setBrush(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawPolygon(self, *_args, **_kwargs) -> None:
+            pass
+
+    render_tropical_cyclones._draw_far_cyclone_marker(
+        _FakePainter(),
+        point,
+        geometry=ScreenGeometry(center=(100, 100), radius=80),
+        color_rgba=(240, 122, 122, 200),
+        highlighted=False,
+    )
+
+    assert pen_widths == [1.0]
+
+
+def test_tropical_cyclone_far_marker_uses_wider_pen_when_highlighted() -> None:
+    point = render_tropical_cyclones._RenderPoint(
+        nx=0.1,
+        ny=0.2,
+        alt_deg=10.0,
+        az_deg=20.0,
+        distance_km=400.0001,
+    )
+    pen_widths: list[float] = []
+
+    class _FakePainter:
+        def setPen(self, pen, *_args, **_kwargs) -> None:
+            pen_widths.append(float(pen.widthF()))
+
+        def setBrush(self, *_args, **_kwargs) -> None:
+            pass
+
+        def drawPolygon(self, *_args, **_kwargs) -> None:
+            pass
+
+    render_tropical_cyclones._draw_far_cyclone_marker(
+        _FakePainter(),
+        point,
+        geometry=ScreenGeometry(center=(100, 100), radius=80),
+        color_rgba=(240, 122, 122, 200),
+        highlighted=True,
+    )
+
+    assert pen_widths == [2.0]
+
+
 def test_find_highlighted_tropical_cyclone_prefers_nearest_far_marker(monkeypatch) -> None:
     snapshots = (
         TropicalCycloneSnapshot(

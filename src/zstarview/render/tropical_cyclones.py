@@ -166,8 +166,10 @@ def _draw_far_cyclone_marker(
     *,
     geometry: ScreenGeometry,
     color_rgba: tuple[int, int, int, int],
+    highlighted: bool = False,
 ) -> QPointF:
-    pen = QPen(QColor(*color_rgba), 1.5, Qt.PenStyle.SolidLine)
+    pen_width = 2.0 if highlighted else 1.0
+    pen = QPen(QColor(*color_rgba), float(pen_width), Qt.PenStyle.SolidLine)
     pen.setCosmetic(True)
     painter.setPen(pen)
     painter.setBrush(Qt.BrushStyle.NoBrush)
@@ -298,6 +300,7 @@ def draw_tropical_cyclone_overlay(
             center_point,
             geometry=geometry,
             color_rgba=marker_rgba,
+            highlighted=highlighted,
         )
         if not highlighted:
             label_pos = None
@@ -314,6 +317,7 @@ def draw_tropical_cyclone_overlay(
                 center_point,
                 geometry=geometry,
                 color_rgba=marker_rgba,
+                highlighted=highlighted,
             )
         else:
             tether_points = (*tether_points, marker_point)
