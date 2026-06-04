@@ -276,7 +276,7 @@ def test_fetch_water_overlay_layer_uses_observer_ground_and_eye_height(monkeypat
 
     assert got == [WaterOverlayPoint("water", 10.0, 20.0, 0.5, water_category="sea-500")]
     assert captured["observer_height_m"] == 43.7
-    assert captured["azimuth_step_deg"] == 4.0
+    assert captured["azimuth_step_deg"] == 2.0
     assert captured["max_distance_km"] == mod.resolve_water_scan_radius_km(
         43.7,
         minimum_distance_km=mod.DEFAULT_WATER_RADIUS_KM,

@@ -281,6 +281,7 @@ def render_base_scene_into_painter(
         geometry=frame.geometry,
         scene=scene,
         style=style,
+        fast_mode=not draw_fast_overlays,
         highlighted_object=None,
         label_reservations=label_reservations,
         label_candidates=local_label_candidates,
@@ -671,6 +672,7 @@ def _draw_terrain_layers(
     geometry: ScreenGeometry,
     scene: RenderSceneData,
     style: RenderStyle,
+    fast_mode: bool = False,
     highlighted_object: tuple[CelestialObject, QPointF] | None,
     label_reservations: list[QRectF],
     label_candidates: list[dict[str, Any]],
@@ -731,6 +733,7 @@ def _draw_terrain_layers(
             water_dots,
             opacity=style.water_overlay_opacity,
             line_width_scale=line_width_scale,
+            fast_mode=fast_mode,
         )
     _draw_urban_outline_layer(
         painter,

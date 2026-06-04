@@ -60,6 +60,7 @@ WATER_OVERLAY_SEA_500_COLOR_RGB = (255, 170, 64)
 WATER_OVERLAY_LAKE_COLOR_RGB = (104, 196, 168)
 WATER_OVERLAY_RIVER_COLOR_RGB = (94, 214, 255)
 WATER_OVERLAY_POINT_RADIUS_PX = 3.0
+WATER_OVERLAY_FAST_POINT_RADIUS_SCALE = 0.65
 WATER_OVERLAY_MARKER_MAJOR_RADIUS_SCALE = 1.18
 WATER_OVERLAY_MARKER_MINOR_RADIUS_SCALE = 0.46
 WATER_OVERLAY_MARKER_PEN_WIDTH_SCALE = 0.42
@@ -969,12 +970,13 @@ def draw_water_overlay_dots(
     *,
     opacity: float = 0.85,
     line_width_scale: float = 1.0,
+    fast_mode: bool = False,
     pairwise_thinning: bool = True,
     is_in_fov_func: Callable[..., bool] = is_in_fov,
     altaz_to_normalized_xy_func: Callable[[float, float, tuple[float, float]], tuple[float, float]] = altaz_to_normalized_xy,
     normalized_to_screen_xy_func: Callable[[float, float, ScreenGeometry], tuple[float, float]] = normalized_to_screen_xy,
 ) -> None:
-    """Draw sampled water surface points as thin ground-plane outlines."""
+    """Draw sampled water surface points as small filled circles."""
     layer_opacity = max(0.0, min(1.0, float(opacity)))
     if not water_dots or layer_opacity <= 0.0:
         return
@@ -1013,7 +1015,7 @@ def draw_water_overlay_dots(
             )
         px, py = normalized_to_screen_xy_func(nx, ny, geometry)
         distance_alpha = _water_overlay_distance_alpha_scale(float(point.distance_km))
-        major_radius, minor_radius, pen_width = _water_overlay_marker_geometry(
+        major_radius, _minor_radius, _pen_width = _water_overlay_marker_geometry(
             line_width_scale,
             distance_km=float(point.distance_km),
         )
@@ -1022,19 +1024,12 @@ def draw_water_overlay_dots(
             *_water_overlay_point_color_rgb(point),
             point_alpha,
         )
-        pen = QPen(outline_color)
-        pen.setWidthF(float(pen_width))
-        pen.setCosmetic(True)
-        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-        painter.setPen(pen)
-        painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.save()
         painter.translate(float(px), float(py))
-        if minor_radius <= max(0.6, major_radius * 0.18):
-            painter.drawLine(QPointF(-major_radius, 0.0), QPointF(major_radius, 0.0))
-        else:
-            painter.drawEllipse(QPointF(0.0, 0.0), major_radius, minor_radius)
+        fast_radius = max(1.0, major_radius * WATER_OVERLAY_FAST_POINT_RADIUS_SCALE)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(outline_color)
+        painter.drawEllipse(QPointF(0.0, 0.0), fast_radius, fast_radius)
         painter.restore()
     painter.restore()
 
