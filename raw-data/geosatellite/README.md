@@ -20,7 +20,10 @@ uv run -p .venv/bin/python dev-samples/geo_satellite_gray_common_mask.py \
   raw-data/geosatellite/Europe-IR-20260526201500.png \
   raw-data/geosatellite/Europe-IR-20260527120000.png \
   raw-data/geosatellite/Europe-IR-20260528114500.png \
-  -o raw-data/geosatellite/Europe-IR-gray-common-mask.png
+  raw-data/geosatellite/Europe-IR-20260604141500.png \
+  -o raw-data/geosatellite/Europe-IR-gray-common-mask.png \
+  --gray-spread 0.35 \
+  --white-brightness 0.63
 ```
 
 ## Files in this directory
@@ -31,6 +34,7 @@ uv run -p .venv/bin/python dev-samples/geo_satellite_gray_common_mask.py \
 - `Europe-IR-20260526201500.png`
 - `Europe-IR-20260527120000.png`
 - `Europe-IR-20260528114500.png`
+- `Europe-IR-20260604141500.png`
 - `Europe-IR-gray-common-mask.png`
 - `Europe-IR.png`
 - `eqdc_grid.png`
@@ -43,8 +47,8 @@ uv run -p .venv/bin/python dev-samples/geo_satellite_gray_common_mask.py \
   above.
 - `Europe-IR.png`, `eqdc_lonlat.npz`, `eqdc_grid.png`, and `latlonmap.txt`
   are the companion assets for the projection and grid-fitting workflow.
-- The current gray-common mask uses six source frames, including
-  `Europe-IR-20260528114500.png`, to better match the shared cloudy-area
+- The current gray-common mask uses seven source frames, including
+  `Europe-IR-20260604141500.png`, to better match the shared cloudy-area
   footprint across the selected captures.
 - The source frames in this directory were downloaded from the MET Norway
   Geo-Satellite API URL above.
