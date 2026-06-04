@@ -304,9 +304,9 @@ def _water_overlay_marker_geometry(
 ) -> tuple[float, float, float]:
     scale = max(1.0, float(line_width_scale))
     base_radius = WATER_OVERLAY_POINT_RADIUS_PX * scale
-    distance_scale = max(0.15, _water_overlay_distance_alpha_scale(distance_m))
-    major_radius = base_radius * WATER_OVERLAY_MARKER_MAJOR_RADIUS_SCALE
-    minor_radius = base_radius * WATER_OVERLAY_MARKER_MINOR_RADIUS_SCALE * distance_scale
+    distance_scale = max(0.35, _water_overlay_distance_alpha_scale(distance_m))
+    major_radius = base_radius * WATER_OVERLAY_MARKER_MAJOR_RADIUS_SCALE * distance_scale
+    minor_radius = major_radius
     pen_width = max(1.0, base_radius * WATER_OVERLAY_MARKER_PEN_WIDTH_SCALE)
     return major_radius, minor_radius, pen_width
 

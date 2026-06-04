@@ -153,16 +153,17 @@ def test_water_overlay_point_color_rgb_distinguishes_sea_125_and_inland_water() 
 def test_water_overlay_marker_geometry_flattens_the_marker() -> None:
     major_radius, minor_radius, pen_width = _water_overlay_marker_geometry(1.0)
 
-    assert major_radius > minor_radius
+    assert major_radius == pytest.approx(minor_radius)
     assert pen_width >= 1.0
 
 
-def test_water_overlay_marker_geometry_flattens_more_with_distance() -> None:
+def test_water_overlay_marker_geometry_shrinks_with_distance() -> None:
     near_major, near_minor, _ = _water_overlay_marker_geometry(1.0, distance_m=0.0)
     far_major, far_minor, _ = _water_overlay_marker_geometry(1.0, distance_m=256_000.0)
 
-    assert near_major == pytest.approx(far_major)
-    assert near_minor > far_minor
+    assert near_major == pytest.approx(near_minor)
+    assert far_major == pytest.approx(far_minor)
+    assert near_major > far_major
 
 
 def test_draw_water_overlay_dots_uses_filled_circle_marker() -> None:
@@ -241,6 +242,7 @@ def test_draw_water_overlay_dots_uses_filled_circle_marker() -> None:
         assert center.y() == pytest.approx(0.0)
         assert rx == pytest.approx(ry)
         assert rx < 3.0
+    assert draw_ellipse_calls[0][2] > draw_ellipse_calls[1][2]
     assert _water_overlay_marker_rotation_deg(118.0, 74.0, geometry) == 0.0
     assert set_brush_calls[0][1].alpha() > 0
     assert set_pen_calls[0][1] == Qt.PenStyle.NoPen
