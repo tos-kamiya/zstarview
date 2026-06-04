@@ -310,6 +310,7 @@ class StartupDialog(QDialog):
             _FieldSpec("observation_info", "Observation info", "choice", "General", choices=("auto", "top", "bottom", "off")),
             _FieldSpec("visibility_boost", "Visibility boost", "float", "General", minimum=1.0, maximum=10.0, step=0.1),
             _FieldSpec("overlay_font_size", "Overlay font size", "float", "General", minimum=float(OVERLAY_FONT_SIZE_MIN), maximum=float(OVERLAY_FONT_SIZE_MAX), step=0.5),
+            _FieldSpec("geo_satellite", "Geo-satellite", "bool", "General"),
             _FieldSpec("cloud_opacity", "Cloud opacity", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
             _FieldSpec("cloud_stripe", "Cloud stripe", "text", "Overlays"),
             _FieldSpec("cloud_missing_tint_opacity", "Cloud missing tint", "float", "Overlays", minimum=0.0, maximum=1.0, step=0.01),
@@ -334,7 +335,7 @@ class StartupDialog(QDialog):
     def _build_overlay_tab(self, tab_widget: QWidget, layout: QVBoxLayout) -> None:
         section_defs = (
             ("Sky", ("sky_opacity", "sky_disc_style", "sky_disc_altaz_rings", "sky_disc_altaz_rings_hover")),
-            ("Clouds", ("cloud_opacity", "cloud_stripe", "cloud_missing_tint_opacity")),
+            ("Clouds", ("cloud_opacity", "geo_satellite", "cloud_stripe", "cloud_missing_tint_opacity")),
             ("Tropical Cyclone", ("tropical_cyclone_opacity",)),
             ("Aircraft and Satellites", ("aircraft_opacity", "satellite_opacity")),
             (

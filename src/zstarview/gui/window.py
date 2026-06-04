@@ -103,6 +103,7 @@ from ..satellites import (
     load_satellite_cache,
     satellite_cache_scope_key,
 )
+from ..geosatellite.pipeline import is_within_europe_band
 from ..search.jpl import (
     project_jpl_target_altaz_from_state_vector,
     resolve_jpl_target_state_vector,
@@ -450,6 +451,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._sky_disc_gui_allowed = bool(user_options.sky_disc_gui_allowed)
         self._cloud_gui_allowed = bool(user_options.cloud_gui_allowed)
         self._geo_satellite_enabled = bool(user_options.geo_satellite)
+        self._geo_satellite_location_resolved = False
         self._satellite_gui_allowed = bool(user_options.satellite_gui_allowed)
         self._aircraft_gui_allowed = bool(user_options.aircraft_gui_allowed)
         self._terrain_horizon_gui_allowed = bool(
@@ -886,9 +888,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
     def apply_startup_viewer_data(self, viewer_data: ViewerData) -> None:
         """Replace the temporary startup viewer data with the resolved location."""
         self.viewer_data = viewer_data
+        self._geo_satellite_location_resolved = True
         self._search_view_center_base = tuple(self.viewer_data.view_center)
         self.state.render_view_center = tuple(self.viewer_data.view_center)
         self.setWindowTitle(self.viewer_data.city_name)
+        self._sync_geo_satellite_action_state()
 
     def apply_startup_delta_t(self, delta_t: timedelta) -> None:
         """Replace the temporary startup delta with the resolved launch time delta."""
@@ -1136,7 +1140,8 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self._action_toggle_geo_satellite = self._add_checkable_menu_action(
             self.display_menu,
             "Geo-satellite",
-            checked=self._geo_satellite_enabled,
+            checked=self._geo_satellite_enabled and self._geo_satellite_toggle_supported(),
+            enabled=self._geo_satellite_toggle_supported(),
             triggered=self.toggle_geo_satellite,
         )
         self._action_toggle_satellites = self._add_checkable_menu_action(
@@ -2294,6 +2299,21 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         lat, lon = self.viewer_data.location
         return pick_satellite(lat, lon, ("AUTO",))
 
+    def _geo_satellite_toggle_supported(self) -> bool:
+        if not bool(getattr(self, "_geo_satellite_location_resolved", False)):
+            return True
+        lat, lon = self.viewer_data.location
+        return is_within_europe_band(float(lat), float(lon))
+
+    def _sync_geo_satellite_action_state(self) -> None:
+        if self._action_toggle_geo_satellite is None:
+            return
+        supported = self._geo_satellite_toggle_supported()
+        self._action_toggle_geo_satellite.setEnabled(supported)
+        self._action_toggle_geo_satellite.setChecked(
+            bool(self._geo_satellite_enabled) and supported
+        )
+
     def _satellite_layer_enabled(self) -> bool:
         return self._satellite_toggle_supported and self.satellite_opacity > 0.0
 
@@ -2453,12 +2473,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.request_client_update()
 
     def toggle_geo_satellite(self) -> None:
+        if not self._geo_satellite_toggle_supported():
+            self._sync_geo_satellite_action_state()
+            return
         self._geo_satellite_enabled = not bool(self._geo_satellite_enabled)
-        if (
-            self._action_toggle_geo_satellite is not None
-            and self._action_toggle_geo_satellite.isChecked() != self._geo_satellite_enabled
-        ):
-            self._action_toggle_geo_satellite.setChecked(self._geo_satellite_enabled)
+        self._sync_geo_satellite_action_state()
         if self._geo_satellite_enabled:
             self._cloud_toggle_supported = True
         else:

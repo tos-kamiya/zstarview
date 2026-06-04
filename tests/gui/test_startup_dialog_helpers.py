@@ -4,6 +4,7 @@ import pytest
 
 from PySide6.QtWidgets import QFormLayout
 from PySide6.QtWidgets import QDoubleSpinBox
+from PySide6.QtWidgets import QCheckBox
 from PySide6.QtWidgets import QApplication
 
 import zstarview.gui.startup_dialog as startup_dialog_module
@@ -70,6 +71,22 @@ def test_startup_dialog_tabs_follow_requested_order() -> None:
     assert dialog._overlay_sections["Sky"].is_expanded() is True
     assert "tropical_cyclone_opacity" in dialog._widgets
     assert dialog._overlay_section_by_key["tropical_cyclone_opacity"] == "Tropical Cyclone"
+    geo_widget = dialog._widgets["geo_satellite"]
+    assert isinstance(geo_widget, QCheckBox)
+    assert geo_widget.isChecked() is False
+    general_layout = dialog._tab_layouts["General"]
+    assert [
+        general_layout.itemAt(index, QFormLayout.ItemRole.LabelRole).widget().text()
+        for index in range(general_layout.rowCount())
+    ] == [
+        "Theme",
+        "Window geometry",
+        "Window frame",
+        "Observation info",
+        "Visibility boost",
+        "Overlay font size",
+        "Geo-satellite",
+    ]
     dialog._overlay_sections["Sky"]._button.setChecked(False)
     assert dialog._overlay_sections["Sky"].is_expanded() is False
     assert "overlay_font_size" in dialog._widgets
@@ -336,3 +353,20 @@ def test_startup_dialog_preserves_tropical_cyclone_opacity_in_profile() -> None:
 
     profile = dialog.selected_profile()
     assert profile["tropical_cyclone_opacity"] == pytest.approx(0.27)
+
+
+def test_startup_dialog_restores_geo_satellite_checkbox_from_profile() -> None:
+    dialog = StartupDialog(
+        profile={
+            "window_geometry": "restore",
+            "cloud_stripe": "width,50,0.85",
+            "geo_satellite": True,
+        }
+    )
+
+    geo_widget = dialog._widgets["geo_satellite"]
+    assert isinstance(geo_widget, QCheckBox)
+    assert geo_widget.isChecked() is True
+
+    profile = dialog.selected_profile()
+    assert profile["geo_satellite"] is True
