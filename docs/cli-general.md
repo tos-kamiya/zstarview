@@ -9,5 +9,9 @@
 | `--include-direction-grid` | `zstarview-export-image` only. Include the direction grid in exported images, with 30-degree major lines and 10-degree intersection crosses. | |
 | `-t`, `--theme {night,day,white,black,transparent,transparent-10..90}` | Theme preset for background and star contrast. `transparent` is the `transparent-40` alias; `transparent-10` through `transparent-90` are 10-step transparent presets. | `night` |
 | `--visibility-boost MULTIPLIER` | Visibility boost for faint support layers. Values above `1.0` raise opacity for layers such as the terrain horizon, Earth guide, urban outline, sky disc, cloud disc, satellites, aircraft, and ground tint. | `1.0` |
-| `--geo-satellite true\|false` | Experimental option. Enable the Geo-satellite cloud rendering path for observers inside the Europe workflow band (`32.0`–`73.0` latitude, `-15.0`–`35.0` longitude). Outside that band, the app continues to use the standard GOES/Himawari path. | `false` |
+| `--geo-satellite true\|false` | Experimental option. Enable the Geo-satellite cloud rendering path for observers inside the Europe workflow band (`32.0`–`73.0` latitude, `-15.0`–`35.0` longitude). Outside that band, the app continues to use the standard GOES/Himawari path. \*3 | `false` |
 | `--clear-long-lived-cache` | Troubleshooting option. Delete long-lived DEM and urban-outline caches before startup. If used again within 3 days, startup is refused and the app tells you when retry is allowed. | |
+
+#### Footnotes
+
+\*3 Geo-satellite remains experimental because the upstream imagery is a display-oriented product rather than raw cloud data. Coastlines, borders, and other masked regions can have gaps that require inpainting or other fallback handling, so the path is useful but not yet as robust as the standard GOES/Himawari flow.
