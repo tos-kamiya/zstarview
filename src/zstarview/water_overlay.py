@@ -85,6 +85,7 @@ class WaterOverlayPoint:
     az_deg: float
     distance_km: float
     alpha_scale: float = 1.0
+    scan_distance_m: float | None = None
     scan_azimuth_index: int | None = None
     scan_distance_index: int | None = None
     water_category: str = "lake"
@@ -1040,6 +1041,7 @@ def sample_water_overlay_points(
                     az_deg=float(projection.az_deg),
                     distance_km=float(projection.distance_km),
                     alpha_scale=water_overlay_alpha_scale(float(distance_m), float(max_distance_km) * 1000.0),
+                    scan_distance_m=float(distance_m),
                     scan_azimuth_index=int(row_index),
                     scan_distance_index=int(col_index),
                     water_category=classify_water_surface_category(

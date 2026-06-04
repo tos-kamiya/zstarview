@@ -158,8 +158,8 @@ def test_water_overlay_marker_geometry_flattens_the_marker() -> None:
 
 
 def test_water_overlay_marker_geometry_flattens_more_with_distance() -> None:
-    near_major, near_minor, _ = _water_overlay_marker_geometry(1.0, distance_km=0.0)
-    far_major, far_minor, _ = _water_overlay_marker_geometry(1.0, distance_km=256.0)
+    near_major, near_minor, _ = _water_overlay_marker_geometry(1.0, distance_m=0.0)
+    far_major, far_minor, _ = _water_overlay_marker_geometry(1.0, distance_m=256_000.0)
 
     assert near_major == pytest.approx(far_major)
     assert near_minor > far_minor
@@ -202,8 +202,8 @@ def test_draw_water_overlay_dots_uses_filled_circle_marker() -> None:
         content_fov_deg=110.0,
     )
     water_dots = [
-        WaterOverlayPoint("near", 10.0, 20.0, 0.5, water_category="lake"),
-        WaterOverlayPoint("far", 12.0, 40.0, 256.0, water_category="lake"),
+        WaterOverlayPoint("near", 10.0, 20.0, 0.5, scan_distance_m=500.0, water_category="lake"),
+        WaterOverlayPoint("far", 12.0, 40.0, 256.0, scan_distance_m=256_000.0, water_category="lake"),
     ]
 
     draw_water_overlay_dots(
@@ -283,7 +283,7 @@ def test_draw_water_overlay_dots_uses_fast_mode_filled_circle() -> None:
         content_fov_deg=110.0,
     )
     water_dots = [
-        WaterOverlayPoint("near", 10.0, 20.0, 0.5, water_category="lake"),
+        WaterOverlayPoint("near", 10.0, 20.0, 0.5, scan_distance_m=500.0, water_category="lake"),
     ]
 
     draw_water_overlay_dots(
@@ -322,8 +322,8 @@ def test_draw_water_overlay_dots_uses_fast_mode_filled_circle() -> None:
 
 def test_water_overlay_distance_alpha_scale_decays_with_distance() -> None:
     assert _water_overlay_distance_alpha_scale(0.0) == 1.0
-    assert _water_overlay_distance_alpha_scale(128.0) == pytest.approx(0.0625, rel=1e-6)
-    assert _water_overlay_distance_alpha_scale(256.0) == pytest.approx(0.00390625, rel=1e-6)
+    assert _water_overlay_distance_alpha_scale(128_000.0) == pytest.approx(0.0625, rel=1e-6)
+    assert _water_overlay_distance_alpha_scale(256_000.0) == pytest.approx(0.00390625, rel=1e-6)
 
 
 def test_water_surface_height_selection_prefers_explicit_level() -> None:

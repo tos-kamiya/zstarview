@@ -589,6 +589,7 @@ def _sample_water_surface_interface_ray_points_for_root_with_stats(
                         az_deg=float(projection.az_deg),
                         distance_km=float(projection.distance_km),
                         alpha_scale=1.0,
+                        scan_distance_m=float(distance_m),
                         scan_azimuth_index=int(row_index),
                         scan_distance_index=int(col_index),
                         water_category=band_category,
@@ -816,6 +817,7 @@ def sample_water_surface_horizon_points(
                 alt_deg=float(alt_deg),
                 az_deg=float(az_deg),
                 distance_km=float(distance_m) / 1000.0,
+                scan_distance_m=float(distance_m),
                 water_category="sea",
             )
         )
@@ -830,6 +832,7 @@ def sample_water_surface_horizon_points(
                 alt_deg=float(alt_deg),
                 az_deg=float(az_deg),
                 distance_km=float(distance_m) / 1000.0,
+                scan_distance_m=float(distance_m),
                 water_category="sea",
             )
         )
@@ -844,6 +847,7 @@ def sample_water_surface_horizon_points(
                 alt_deg=float(alt_deg),
                 az_deg=float(az_deg),
                 distance_km=float(distance_m) / 1000.0,
+                scan_distance_m=float(distance_m),
                 water_category="sea",
             )
         )

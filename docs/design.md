@@ -911,7 +911,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - band stats の `loaded_tile_count` は、実際に open した sea-mask tile の回数として扱い、総 tile 数ではない
 - `src/zstarview/render/terrain.py`
   - `WaterOverlayPoint` を小さな塗りつぶし円として描画する
-  - 点の alpha は `water_overlay_opacity` を基準にし、距離減衰を反映して terrain horizon の描画と同じ sky-dome 合成段へ重ねる
+  - 点の alpha は `water_overlay_opacity` と `scan_distance_m` を基準にし、terrain horizon の描画と同じ sky-dome 合成段へ重ねる
   - marker はスクリーン上では回転しない
   - 視点中心と edge/content FOV は `ViewerData` 側が所有する値として扱うのが自然で、`ScreenGeometry` には画面中心と半径だけを残す
 
@@ -937,7 +937,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - per-scope cache は `*_simplified.json` を正本として保存し、古い `*.json` がより新しい場合は observer 座標に基づいて簡約版を再生成してよい
 - `src/zstarview/render/terrain.py`
   - `WaterOverlayPoint` を小さな塗りつぶし円として描画する
-  - 点の alpha は `water_overlay_opacity` と距離減衰を反映し、terrain horizon の描画と同じ sky-dome 合成段へ重ねる
+  - 点の alpha は `water_overlay_opacity` と `scan_distance_m` を基準にし、terrain horizon の描画と同じ sky-dome 合成段へ重ねる
   - marker はスクリーン上では回転しない
 - `src/zstarview/gui/window.py`
   - `Water Surface` メニュー項目、`W` ショートカット、初期 opacity の入力を GUI 操作へ接続する

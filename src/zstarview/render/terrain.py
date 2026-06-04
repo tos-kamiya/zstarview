@@ -300,11 +300,11 @@ def _water_overlay_point_color_rgb(water_point: WaterOverlayPoint) -> tuple[int,
 def _water_overlay_marker_geometry(
     line_width_scale: float,
     *,
-    distance_km: float = 0.0,
+    distance_m: float = 0.0,
 ) -> tuple[float, float, float]:
     scale = max(1.0, float(line_width_scale))
     base_radius = WATER_OVERLAY_POINT_RADIUS_PX * scale
-    distance_scale = max(0.15, _water_overlay_distance_alpha_scale(distance_km))
+    distance_scale = max(0.15, _water_overlay_distance_alpha_scale(distance_m))
     major_radius = base_radius * WATER_OVERLAY_MARKER_MAJOR_RADIUS_SCALE
     minor_radius = base_radius * WATER_OVERLAY_MARKER_MINOR_RADIUS_SCALE * distance_scale
     pen_width = max(1.0, base_radius * WATER_OVERLAY_MARKER_PEN_WIDTH_SCALE)
@@ -320,13 +320,13 @@ def _water_overlay_marker_rotation_deg(
     return 0.0
 
 
-def _water_overlay_distance_alpha_scale(distance_km: float) -> float:
-    distance_km = max(0.0, float(distance_km))
-    if distance_km <= 0.0:
+def _water_overlay_distance_alpha_scale(distance_m: float) -> float:
+    distance_m = max(0.0, float(distance_m))
+    if distance_m <= 0.0:
         return 1.0
-    reference = max(1.0, float(WATER_OVERLAY_DISTANCE_ALPHA_REFERENCE_KM))
+    reference = max(1.0, float(WATER_OVERLAY_DISTANCE_ALPHA_REFERENCE_KM) * 1000.0)
     factor = max(1.0, float(WATER_OVERLAY_DISTANCE_ALPHA_REFERENCE_SCALE))
-    return float(math.exp(-math.log(factor) * (distance_km / reference)))
+    return float(math.exp(-math.log(factor) * (distance_m / reference)))
 
 
 def _distance_band_widths(
@@ -1014,10 +1014,11 @@ def draw_water_overlay_dots(
                 edge_fov_deg=float(edge_fov_deg),
             )
         px, py = normalized_to_screen_xy_func(nx, ny, geometry)
-        distance_alpha = _water_overlay_distance_alpha_scale(float(point.distance_km))
+        scan_distance_m = float(getattr(point, "scan_distance_m", 0.0) or 0.0)
+        distance_alpha = _water_overlay_distance_alpha_scale(scan_distance_m)
         major_radius, _minor_radius, _pen_width = _water_overlay_marker_geometry(
             line_width_scale,
-            distance_km=float(point.distance_km),
+            distance_m=scan_distance_m,
         )
         point_alpha = max(0, min(255, int(round(dot_alpha * float(point.alpha_scale) * distance_alpha))))
         outline_color = QColor(
