@@ -2,7 +2,7 @@
 
 | オプション | 説明 | デフォルト |
 | :--- | :--- | :--- |
-| `--search QUERY` | 起動時に対象を解決します。GUI の `対象検索...` と同じ local-first 検索を使い、既知の人工衛星はアプリ側の現在位置を優先し、人工衛星として認識されたのに現在位置を取得できない場合はエラーにして JPL へはフォールバックしません。CLI / export-image 側の JPL 解決は major body / small body を含めてもよいです。`=` がなければラベルまたは ID で検索します（例: `Ceres`, `2000001`）。 | |
+| `--search QUERY` | 起動時に対象を解決します。GUI の `対象検索...` と同じ local-first 検索を使い、ISS はアプリ側の現在位置を優先し、ISS として認識されたのに現在位置を取得できない場合はエラーにして JPL へはフォールバックしません。JPL-backed spacecraft は JPL 経路を使い、CLI / export-image 側の JPL 解決は major body / small body を含めてもよいです。`=` がなければラベルまたは ID で検索します（例: `Ceres`, `2000001`）。 | |
 | `--search label=QUERY` | ラベルだけを検索します（例: `label=Ceres`）。 | |
 | `--search id=QUERY` | ID だけを検索します（例: `id=2000001`）。 | |
 | `--search-keep-marker` | 選択対象をマーカーとラベル付きで継続表示します。 | |
