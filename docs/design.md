@@ -635,13 +635,16 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - `対象検索...` は local first で実行し、恒星、アステリズム、place を先に調べてよい。
 - local 候補が見つからない場合だけ、`ISS` 専用の衛星検索経路を現在位置基準で試してよい。
 - `ISS` として認識されたのに現在位置ベースの位置解決に失敗した場合は、その検索を失敗として扱ってよく、同じ検索語を JPL へ自動フォールバックしてはならない。
-- local / `ISS` の両方で候補が見つからない場合だけ JPL 小天体検索へフォールバックしてよい。`JWST` / `Voyager 1` / `Voyager 2` / `Parker` はこの JPL 経路で扱い、以後の継続表示も同一の追跡状態で維持してよい。
+- local / `ISS` の両方で候補が見つからない場合だけ JPL 検索へフォールバックしてよい。`JWST` / `Voyager 1` / `Voyager 2` / `Parker` / `Europa Clipper` / `Lucy` / `Psyche` / `JUICE` / `Solar Orbiter` / `BepiColombo` はこの JPL 経路で扱い、以後の継続表示も同一の追跡状態で維持してよい。
 - 検索・継続表示の分類は次の対応として扱ってよい。
   - `local` = 恒星 / アステリズム / place
   - `satellite` = `ISS`
-  - `JPL-backed spacecraft` = `JWST` / `Voyager 1` / `Voyager 2` / `Parker`
+  - `JPL-backed spacecraft` = `JWST` / `Voyager 1` / `Voyager 2` / `Parker` / `Europa Clipper` / `Lucy` / `Psyche` / `JUICE` / `Solar Orbiter` / `BepiColombo`
   - `solar-system bodies` = `Sun` / `Moon` / 惑星
   - `JPL small bodies` = 小惑星 / 彗星など
+- 検索結果の表示ラベルは分類から固定的に決めてよい。`satellite` は `Satellite`、`JPL-backed spacecraft` は `Spacecraft` とし、JPL-backed spacecraft を small-body 検索結果や同名天体の分類ラベルで表示しなくてよい。
+- JPL-backed spacecraft の候補解決では、必要に応じて期待する Horizons `spkid` / `pdes` / 正規化名を使って宇宙機本体を固定してよい。特に `Lucy` は `Lucy (spacecraft)`、`Psyche` は `Psyche (spacecraft)` を選び、ブースターや小惑星本体を選ばない。
+- JPL-backed spacecraft の lookup / vector / observer request は、Horizons 専用 queue に積んで逐次処理してよい。queue worker は前回 Horizons request 完了から少なくとも `30秒` 空けて次の request を実行し、起動後に spacecraft marker が段階的に増えることを許容してよい。
 - JPL フォールバックは major body と small body の両方を検索対象に含めてよい。
 - 検索欄の直下には、JPL データベースを明示して探すボタンを置いてよい。
 - `Sun` / `Moon` / 惑星 は JPL フォールバック対象から除外し、solar-system 側に委ねてよい。
@@ -724,7 +727,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 - GUI 側は、候補が 1 件に解決した場合だけその対象へ視線を向け、必要なら `persistent_search_target` と `persistent_search_keep_marker` を初回描画前に設定する。
 - `--search-keep-marker` が付いている場合、GUI 起動直後の初期フレームから marker と label を表示する。
 - GUI の検索ダイアログで CLI 視線保持チェックが無効な場合は、検索結果に `preserve_cli_view_center=False` を持たせて `_jump_to_search_target()` へ渡してよい。
-- `JWST` / `Voyager 1` / `Voyager 2` / `Parker` の場合は、初回結果の `alt/az` を固定座標として保存せず、後続の描画 tick で追跡状態から再投影してよい。
+- JPL-backed spacecraft の場合は、初回結果の `alt/az` を固定座標として保存せず、後続の描画 tick で追跡状態から再投影してよい。
 - 候補が 0 件または複数件の場合、GUI は終了せず、`対象検索...` ダイアログへ検索語と候補一覧を渡して再選択を促す。
 - GUI 側の初期検索は、対話ダイアログからの検索と同じ候補モデルを使い、ポスト処理だけを分ける。
 - `zstarview-export-image` 側は同じ共通解決層を使うが、0 件または複数件のときは描画へ進まず、`--list` の有無に応じて列挙終了かエラー終了を選ぶ。`--list` は export-image にだけ存在する。
@@ -988,6 +991,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - fallback 用 CelesTrak `stations` endpoint の組み立て
   - ISS TLE payload と fallback OMM/JSON payload の正規化
   - JPL Horizons lookup/observer API を使う overlay 用 spacecraft ephemeris fetch
+  - Horizons request を逐次 queue 化するための request 単位または queue worker との境界
   - Skyfield へ渡す軌道要素表現への変換
 - `src/zstarview/satellites/cache.py`
   - ISS と Horizons spacecraft 用人工衛星キャッシュ file path 管理
@@ -995,8 +999,10 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - `ISS` と Horizons spacecraft の fresh TTL 判定
   - 失敗メタデータと `failure_backoff_until_utc` の永続化
   - stale cache の backoff 再利用
+  - JPL-backed spacecraft の部分取得 cache を保持し、取得済み対象だけでも fresh / stale 判定へ使う
 - `src/zstarview/satellites/types.py`
   - cache 読込結果をまとめる内部モデル
+  - Horizons request queue の pending / running / completed / failed 状態を表す軽量モデル
 
 ### 4.9 人工衛星位置計算と描画
 
@@ -1396,14 +1402,15 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 13. `window.py` は API 取得とは別に人工衛星位置再計算を行い、既定では `ISS` を有効対象として扱ってよい。
 14. 人工衛星の view-center 追従は fast-mode に似た軽量再投影要求として扱い、ダウンロード済み records 自体は再取得しない。
 15. 人工衛星の定期再取得は、前回の取得完了時刻を起点に `interval` を数え直してよい。
-16. 人工衛星と航空機の位置更新は、0.7 秒 tick に直接ぶら下げるのではなく、worker idle 時に normal-mode の 1 件として起動してよい。
-17. records が fresh なら外部再取得を行わず marker 再計算だけで即時復帰してよい。
-18. records が stale でも失敗 backoff 中なら、cache fallback により marker 再計算だけで復帰してよい。
-19. `SkyWindow` は `satellite_ready` または描画時投影完了を受けたら `SkyWindowState` を更新し、再描画する。
-20. 通常描画では人工衛星を `planets` の後、`aircraft` の前に描く。
-21. 初期実装では人工衛星と月・惑星の接近時に特別な隠蔽処理は行わなくてよい。
-22. `対象検索...` と CLI 検索の `satellite` 解決は `ISS` だけを対象にしてよく、`JWST` / `Voyager 1` / `Voyager 2` / `Parker` は JPL 検索結果として扱ってよい。継続表示は `command` と追跡状態を保持し、表示時に再投影してよい。
-23. `build_search_jump_targets(..., include_satellites=False)` を使う経路では、ローカル検索候補へ衛星ショートカットを混ぜなくてよい。
+16. Horizons-backed spacecraft の定期再取得は、対象ごとの request を queue に積み、少なくとも `30秒` 間隔で 1 件ずつ処理してよい。全対象の取得完了を待たず、取得済み対象だけで marker 再計算へ進んでよい。
+17. 人工衛星と航空機の位置更新は、0.7 秒 tick に直接ぶら下げるのではなく、worker idle 時に normal-mode の 1 件として起動してよい。
+18. records が fresh なら外部再取得を行わず marker 再計算だけで即時復帰してよい。
+19. records が stale でも失敗 backoff 中なら、cache fallback により marker 再計算だけで復帰してよい。
+20. `SkyWindow` は `satellite_ready` または描画時投影完了を受けたら `SkyWindowState` を更新し、再描画する。Horizons-backed spacecraft の queue が 1 対象を完了した場合も、部分取得結果として同じ更新経路を使ってよい。
+21. 通常描画では人工衛星を `planets` の後、`aircraft` の前に描く。
+22. 初期実装では人工衛星と月・惑星の接近時に特別な隠蔽処理は行わなくてよい。
+23. `対象検索...` と CLI 検索の `satellite` 解決は `ISS` だけを対象にしてよく、JPL-backed spacecraft は JPL 検索結果として扱ってよい。検索結果ラベルは `Spacecraft` に固定し、継続表示は `command` と追跡状態を保持し、表示時に再投影してよい。
+24. `build_search_jump_targets(..., include_satellites=False)` を使う経路では、ローカル検索候補へ衛星ショートカットを混ぜなくてよい。
 
 ### 6.4 時刻モードによる補助レイヤー可否判定
 

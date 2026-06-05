@@ -860,15 +860,18 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 - 検索と永続表示の分類は次の対応としてよい。
   - `local` = 恒星 / アステリズム
   - `satellite` = `ISS`
-  - `JPL-backed spacecraft` = `JWST` / `Voyager 1` / `Voyager 2` / `Parker`
+  - `JPL-backed spacecraft` = `JWST` / `Voyager 1` / `Voyager 2` / `Parker` / `Europa Clipper` / `Lucy` / `Psyche` / `JUICE` / `Solar Orbiter` / `BepiColombo`
   - `solar-system bodies` = `Sun` / `Moon` / 惑星
   - `JPL small bodies` = 小惑星 / 彗星など
-- 現在の表示対象は `ISS`, `JWST`, `Voyager 1`, `Voyager 2`, `Parker` としてよい。`ISS` だけは地球周回衛星データ経路を使い、残りの 4 体は JPL Horizons 由来の追跡状態を基準にしてよい。残りの 4 体は、毎回の描画で Horizons へ問い合わせ直さず、保持した対象識別子と追跡状態から描画時に位置を再計算してよい。
+- 検索結果やジャンプ候補のユーザー向け分類ラベルは固定してよい。`ISS` は `Satellite`、JPL-backed spacecraft はすべて `Spacecraft` と表示してよい。JPL-backed spacecraft を `Satellite` や `Small body` として表示しなくてよい。
+- 現在の表示対象は `ISS`, `JWST`, `Voyager 1`, `Voyager 2`, `Parker`, `Europa Clipper`, `Lucy`, `Psyche`, `JUICE`, `Solar Orbiter`, `BepiColombo` としてよい。`ISS` だけは地球周回衛星データ経路を使い、残りの JPL-backed spacecraft は JPL Horizons 由来の追跡状態を基準にしてよい。JPL-backed spacecraft は、毎回の描画で Horizons へ問い合わせ直さず、保持した対象識別子と追跡状態から描画時に位置を再計算してよい。
 - `ISS` の軌道要素は TLE / OMM 相当データとしてローカルキャッシュしてよく、主取得先は `wheretheiss.at`、fallback は `CelesTrak stations` としてよい。`element_epoch_utc` を基準に fresh 判定し、現在の実装では `24時間` を使ってよい。
-- 残りの 4 体は Horizons-backed spacecraft として扱い、`command` や `epoch` のような追跡状態を保持してよい。表示上の位置は、その追跡状態を使ってローカル計算してよく、Horizons への再問い合わせは粗い更新周期に限ってよい。`ISS` と Horizons-backed spacecraft を同じ取得経路に混ぜなくてよい。
-- `対象検索...` の衛星検索経路は `ISS` のみに限定してよく、`JWST`, `Voyager 1`, `Voyager 2`, `Parker` は JPL 検索経路で扱ってよい。これらの結果を継続表示する場合は、対象識別子を保持し、見かけ位置は描画時に再計算してよい。
-- `ISS` と残り 4 体の再取得は、失敗時に `2時間` の backoff を置いてよく、backoff 中は stale cache を使って表示継続してよい。タイムシフト表示では取得も表示も行わなくてよい。
+- JPL-backed spacecraft は Horizons-backed spacecraft として扱い、`command` や `epoch` のような追跡状態を保持してよい。表示上の位置は、その追跡状態を使ってローカル計算してよく、Horizons への再問い合わせは粗い更新周期に限ってよい。`ISS` と Horizons-backed spacecraft を同じ取得経路に混ぜなくてよい。
+- JPL-backed spacecraft の Horizons request は、短時間にまとめて送らず、少なくとも `30秒` 間隔の逐次 queue で処理してよい。起動後に全対象がそろうまで `10分` 程度かかってもよく、成功した対象から順に表示へ追加してよい。既存の fresh cache や stale cache がある対象は queue 完了を待たずに表示してよい。
+- `対象検索...` の衛星検索経路は `ISS` のみに限定してよく、JPL-backed spacecraft は JPL 検索経路で扱ってよい。これらの結果を継続表示する場合は、対象識別子を保持し、見かけ位置は描画時に再計算してよい。`Lucy` は `Lucy (spacecraft)`、`Psyche` は `Psyche (spacecraft)` のように宇宙機本体へ固定し、ブースターや小惑星本体などの同名候補を選ばなくてよい。
+- `ISS` と JPL-backed spacecraft の再取得は、失敗時に `2時間` の backoff を置いてよく、backoff 中は stale cache を使って表示継続してよい。タイムシフト表示では取得も表示も行わなくてよい。
 - 表示位置の決定はネットワーク取得とは分離し、保持済み軌道要素や追跡状態を描画時に現在時刻へ当てはめて行ってよい。人工衛星と航空機は同じ `2秒` ごとの `latest-win` 更新対象として扱ってよく、遅延した中間更新は破棄して最新の保持データだけを描画してよい。
+- JPL-backed spacecraft の逐次取得中は、人工衛星レイヤーを「部分取得済み」として扱ってよい。未取得対象が残っていても星空や他の補助表示を止めず、queue で新しい対象が取得できた時点でマーカー列を更新してよい。
 - 視野内の人工衛星は地平線下でも描画してよく、星空表示や他のレイヤーは人工衛星の取得失敗時も継続してよい。レイヤーを一時的に非表示にしても、保持済み軌道要素と最終更新時刻は捨てなくてよい。
 - 人工衛星は、航空機と同系統の紫色で、惑星マーカーに似た小型クロス記号として描画してよく、常時ラベルではなく hover 情報として名前を出してよい。惑星・月より後、航空機より前に描画してよい。
 
@@ -963,8 +966,8 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
   - `Jump to Named Star...`
   - `対象検索...`
   - `Search Places...`
-- `対象検索...` は、恒星、アステリズム、place を先に検索し、見つからない場合は `ISS` だけをアプリ側の現在位置で解決してよい。対象が `ISS` として認識されたのに現在位置を取得できない場合はエラーとしてよく、その場合は JPL へフォールバックしてはならない。`JWST`, `Voyager 1`, `Voyager 2`, `Parker` は JPL 経路で解決し、継続表示時も対象識別子ベースで保持してよい。
-- `zstarview` は `--search QUERY` を受け付け、起動直後に local-first の検索を実行し、`ISS` だけはアプリ側の現在位置で解決してよい。対象が `ISS` として認識されたのに現在位置を取得できない場合はエラーとしてよく、その場合は JPL へフォールバックしてはならない。JPL 側は GUI ダイアログとは別に、major body / small body を含む広い候補探索を使ってよい。`JWST`, `Voyager 1`, `Voyager 2`, `Parker` の継続表示は、検索時に得た追跡状態を保持し、描画時に位置を再計算してよい。
+- `対象検索...` は、恒星、アステリズム、place を先に検索し、見つからない場合は `ISS` だけをアプリ側の現在位置で解決してよい。対象が `ISS` として認識されたのに現在位置を取得できない場合はエラーとしてよく、その場合は JPL へフォールバックしてはならない。JPL-backed spacecraft は JPL 経路で解決し、検索結果ラベルを `Spacecraft` に固定し、継続表示時も対象識別子ベースで保持してよい。
+- `zstarview` は `--search QUERY` を受け付け、起動直後に local-first の検索を実行し、`ISS` だけはアプリ側の現在位置で解決してよい。対象が `ISS` として認識されたのに現在位置を取得できない場合はエラーとしてよく、その場合は JPL へフォールバックしてはならない。JPL 側は GUI ダイアログとは別に、major body / small body を含む広い候補探索を使ってよい。JPL-backed spacecraft の継続表示は、検索時に得た追跡状態を保持し、描画時に位置を再計算してよい。検索結果ラベルは `Spacecraft` に固定してよい。
 - `zstarview` の `--search-keep-marker` は、検索結果を起動後も継続表示するために使ってよい。継続表示には marker と label の両方を含めてよい。
 - `zstarview-export-image` の検索解決は、GUI と同じ検索規則を使ってよいが、曖昧さが残る場合は非対話エラーで終了してよい。
 - `zstarview-export-image` の検索結果 marker/label は、出力画像に重ねてよい。
@@ -1012,7 +1015,7 @@ CLI には次のビューポイント dataset 参照専用オプションがあ�
 
 ### 8.4 GUI 人工衛星・JPL検索
 
-- `対象検索...` の検索欄は、恒星、アステリズム、place を先に扱い、見つからない場合は `ISS` だけを現在位置で解決してよい。対象が `ISS` として認識されたのに現在位置を取得できない場合はエラーとしてよく、その場合は JPL へフォールバックしてはならない。`JWST`, `Voyager 1`, `Voyager 2`, `Parker` は JPL 経路で保持し、表示更新は描画時に位置を再計算してよい。
+- `対象検索...` の検索欄は、恒星、アステリズム、place を先に扱い、見つからない場合は `ISS` だけを現在位置で解決してよい。対象が `ISS` として認識されたのに現在位置を取得できない場合はエラーとしてよく、その場合は JPL へフォールバックしてはならない。JPL-backed spacecraft は JPL 経路で保持し、検索結果ラベルを `Spacecraft` に固定し、表示更新は描画時に位置を再計算してよい。
 - 検索欄の直下には、JPL データベース検索を明示するためのボタンを置いてよい。
 - `Sun` / `Moon` / 惑星は JPL 検索へフォールバックせず、既存の solar-system 表示側で扱ってよい。
 - 小天体候補を選んだ場合は、その時刻と観測地点における見かけの Alt/Az を求め、現在の視界中心をその方向へ移してよい。
