@@ -1,5 +1,10 @@
 # zstarview Release Notes
 
+## 1.29.12 - 2026-06-06
+- Added six more Horizons-backed spacecraft targets, fixed the search and shortcut labels to use `Spacecraft`, and kept ISS on the separate satellite path.
+- Restored the shared GUI worker pool model and raised its concurrency to `2` so long-running background tasks block each other less often.
+- Updated the JPL search expectations for the new `sct` lookup pass and cleaned up an unused render import.
+
 ## 1.29.11 - 2026-06-05
 - Refined the water-surface overlay to use fixed `2.0°` sampling, scan-distance-based opacity, and small unfilled ellipses that flatten faster toward the horizon while staying less visually dominant.
 - Refreshed the bundled Europe Geo-satellite gray-common mask with an updated IR frame set and thresholds, improving the packaged mask used by the Geo-satellite cloud path.
