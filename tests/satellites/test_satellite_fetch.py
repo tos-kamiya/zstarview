@@ -113,6 +113,9 @@ def test_extract_horizons_altaz_returns_elevation_then_azimuth() -> None:
 def test_fetch_horizons_records_builds_spacecraft_rows(monkeypatch) -> None:
     lookup_calls: list[str] = []
     vector_calls: list[str] = []
+    target_specs = HORIZONS_TARGETS_BY_KEY["horizons"]
+    expected_lookup_calls = [target.aliases[0] for target in target_specs]
+    expected_names = [target.label for target in target_specs]
 
     def fake_lookup(search_text: str, **_kwargs):
         lookup_calls.append(search_text)
@@ -122,6 +125,7 @@ def test_fetch_horizons_records_builds_spacecraft_rows(monkeypatch) -> None:
                     "name": f"{search_text} (spacecraft)",
                     "spkid": f"{search_text}-spkid",
                     "alias": [search_text],
+                    "type": "spacecraft",
                 }
             ]
         }
@@ -141,12 +145,53 @@ def test_fetch_horizons_records_builds_spacecraft_rows(monkeypatch) -> None:
         observer_height_m=50.0,
     )
 
-    assert lookup_calls == ["JWST", "Voyager 1", "Voyager 2", "Parker Solar Probe"]
-    assert vector_calls == ["JWST-spkid", "Voyager 1-spkid", "Voyager 2-spkid", "Parker Solar Probe-spkid"]
-    assert [record["OBJECT_NAME"] for record in records] == ["JWST", "Voyager 1", "Voyager 2", "Parker"]
-    assert [record["HORIZONS_X_KM"] for record in records] == [1.0, 1.0, 1.0, 1.0]
-    assert [record["HORIZONS_VZ_KM_S"] for record in records] == [0.3, 0.3, 0.3, 0.3]
+    assert lookup_calls == expected_lookup_calls
+    assert vector_calls == [f"{alias}-spkid" for alias in expected_lookup_calls]
+    assert [record["OBJECT_NAME"] for record in records] == expected_names
+    assert [record["HORIZONS_X_KM"] for record in records] == [1.0] * len(expected_names)
+    assert [record["HORIZONS_VZ_KM_S"] for record in records] == [0.3] * len(expected_names)
     assert all(record["_SOURCE"] == "horizons" for record in records)
+
+
+def test_fetch_horizons_records_prefers_expected_spacecraft(monkeypatch) -> None:
+    def fake_lookup(search_text: str, **_kwargs):
+        if search_text == "Lucy":
+            return {
+                "result": [
+                    {
+                        "name": "Lucy Centaur RB Booster (spacecraft)",
+                        "spkid": "-490",
+                        "pdes": "2021-093B",
+                        "type": "spacecraft",
+                    },
+                    {
+                        "name": "Lucy (spacecraft)",
+                        "spkid": "-49",
+                        "pdes": "2021-093A",
+                        "type": "spacecraft",
+                    },
+                ]
+            }
+        return {"result": []}
+
+    def fake_csv(command: str, **_kwargs):
+        assert command == "-49"
+        return [["2026-Apr-17 12:00:00", "1.0", "2.0", "3.0", "0.1", "0.2", "0.3"]]
+
+    monkeypatch.setattr("zstarview.satellites.fetch.fetch_horizons_lookup", fake_lookup)
+    monkeypatch.setattr("zstarview.satellites.fetch.fetch_horizons_vector_csv", fake_csv)
+
+    records = fetch_horizons_records(
+        "horizons",
+        target_time_utc=datetime(2026, 4, 17, 12, 0, tzinfo=timezone.utc),
+        observer_lat=35.0,
+        observer_lon=139.0,
+        observer_height_m=50.0,
+    )
+
+    assert [record["OBJECT_NAME"] for record in records] == ["Lucy"]
+    assert records[0]["HORIZONS_TARGET_NAME"] == "Lucy (spacecraft)"
+    assert records[0]["HORIZONS_SPKID"] == "-49"
 
 
 def test_fetch_horizons_records_skips_julian_date_prefix(monkeypatch) -> None:
@@ -157,6 +202,7 @@ def test_fetch_horizons_records_skips_julian_date_prefix(monkeypatch) -> None:
                     "name": f"{search_text} (spacecraft)",
                     "spkid": f"{search_text}-spkid",
                     "alias": [search_text],
+                    "type": "spacecraft",
                 }
             ]
         }
@@ -189,8 +235,9 @@ def test_fetch_horizons_records_skips_julian_date_prefix(monkeypatch) -> None:
         observer_height_m=50.0,
     )
 
-    assert [record["HORIZONS_X_KM"] for record in records] == [1.0, 1.0, 1.0, 1.0]
-    assert [record["HORIZONS_VZ_KM_S"] for record in records] == [0.3, 0.3, 0.3, 0.3]
+    expected_count = len(HORIZONS_TARGETS_BY_KEY["horizons"])
+    assert [record["HORIZONS_X_KM"] for record in records] == [1.0] * expected_count
+    assert [record["HORIZONS_VZ_KM_S"] for record in records] == [0.3] * expected_count
 
 
 def test_build_celestrak_group_url_uses_group_and_json_format() -> None:

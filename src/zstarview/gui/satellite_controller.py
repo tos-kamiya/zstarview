@@ -183,6 +183,36 @@ class SatelliteController(QObject):
             failure_messages: list[str] = []
             target_time_utc = time_obj.to_datetime(timezone=timezone.utc)
             time_mode: TimeMode = classify_target_time(target_time_utc)
+
+            def emit_partial_horizons_record(record: SatelliteOmmRecord) -> None:
+                horizons_group_key = "horizons"
+                horizons_records = list(records_by_group.get(horizons_group_key, []))
+                record_name = str(record.get("OBJECT_NAME", "")).strip()
+                if record_name:
+                    horizons_records = [
+                        existing
+                        for existing in horizons_records
+                        if str(existing.get("OBJECT_NAME", "")).strip() != record_name
+                    ]
+                horizons_records.append(dict(record))
+                records_by_group[horizons_group_key] = horizons_records
+                with self._lock:
+                    should_emit_partial = (
+                        not self._stopping and request_id == self._latest_request_id
+                    )
+                if should_emit_partial:
+                    self.satellite_ready.emit(
+                        {
+                            "records_by_group": {
+                                key: list(value)
+                        for key, value in records_by_group.items()
+                            },
+                            "element_epoch_utc": target_time_utc,
+                            "refreshed_at_utc": datetime.now(timezone.utc),
+                            "banner": "Satellites: partial",
+                        }
+                    )
+
             for group_key in enabled_groups:
                 try:
                     fetched = _call_fetcher_with_supported_kwargs(
@@ -193,6 +223,9 @@ class SatelliteController(QObject):
                         observer_lat=observer_lat,
                         observer_lon=observer_lon,
                         observer_height_m=observer_height_m,
+                        horizons_record_callback=emit_partial_horizons_record
+                        if group_key == "horizons"
+                        else None,
                     )
                 except Exception as exc:
                     if _is_expected_fetch_failure(exc):

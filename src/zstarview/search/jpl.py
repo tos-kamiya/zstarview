@@ -90,7 +90,7 @@ def search_jpl_targets(
     query: str,
     *,
     target_time_utc: datetime | None = None,
-    groups: Sequence[str] = ("mb", "sb"),
+    groups: Sequence[str] = ("sct", "mb", "sb"),
     timeout_s: float | None = None,
     lookup_base_url: str | None = None,
     lookup_fetch: Callable[..., dict[str, object]] | None = None,
@@ -108,7 +108,15 @@ def search_jpl_targets(
     resolved_time_utc = target_time_utc or datetime.now(timezone.utc)
     targets: list[SearchJumpTarget] = []
     for group in tuple(str(group).strip() for group in groups if str(group).strip()):
-        group_label = "major body" if group == "mb" else "small body" if group == "sb" else group
+        group_label = (
+            "major body"
+            if group == "mb"
+            else "small body"
+            if group == "sb"
+            else "spacecraft"
+            if group == "sct"
+            else group
+        )
         try:
             lookup_payload = lookup_impl(search_text, group=group, **fetch_kwargs)
         except Exception as exc:
@@ -128,13 +136,17 @@ def search_jpl_targets(
                 continue
             type_name = str(item.get("type", "")).strip()
             pdes = str(item.get("pdes", "")).strip()
-            subtitle_parts = [part for part in (group_label, type_name, pdes) if part]
+            if group == "sct" and type_name.casefold() == "spacecraft":
+                subtitle = "Spacecraft"
+            else:
+                subtitle_parts = [part for part in (group_label, type_name, pdes) if part]
+                subtitle = " / ".join(subtitle_parts) if subtitle_parts else "JPL Body"
             targets.append(
                 SearchJumpTarget(
                     label=name,
                     kind="jpl_body",
                     sort_key=(0.0 if group == "mb" else 1.0, name.casefold()),
-                    subtitle=" / ".join(subtitle_parts) if subtitle_parts else "JPL Body",
+                    subtitle=subtitle,
                     object_key=str(item.get("spkid", "")).strip(),
                     command=command,
                     target_time_utc=resolved_time_utc,

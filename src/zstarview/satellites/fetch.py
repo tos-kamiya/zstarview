@@ -3,8 +3,10 @@ from __future__ import annotations
 import csv
 import json
 import logging
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
+from dataclasses import dataclass
 from datetime import datetime, timezone
+from time import monotonic, sleep
 from urllib.error import URLError
 from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
@@ -21,6 +23,16 @@ from .types import SatelliteOmmRecord
 
 logger = logging.getLogger(__name__)
 
+
+@dataclass(frozen=True)
+class HorizonsTargetSpec:
+    label: str
+    aliases: tuple[str, ...]
+    spkid: str
+    pdes: str = ""
+    target_name: str = ""
+
+
 CELESTRAK_GP_JSON_URL = "https://celestrak.org/NORAD/elements/gp.php"
 WHERETHEISS_API_URL = "https://api.wheretheiss.at/v1"
 HORIZONS_LOOKUP_API_URL = "https://ssd.jpl.nasa.gov/api/horizons_lookup.api"
@@ -30,10 +42,76 @@ CELESTRAK_GROUP_BY_KEY = {
 }
 HORIZONS_TARGETS_BY_KEY = {
     SATELLITE_HORIZONS_CACHE_KEY: (
-        ("JWST", ("JWST", "James Webb Space Telescope", "James Webb")),
-        ("Voyager 1", ("Voyager 1", "Voyager-1")),
-        ("Voyager 2", ("Voyager 2", "Voyager-2")),
-        ("Parker", ("Parker Solar Probe", "Parker", "Solar Probe Plus")),
+        HorizonsTargetSpec(
+            label="JWST",
+            aliases=("JWST", "James Webb Space Telescope", "James Webb"),
+            spkid="-170",
+            pdes="2021-130A",
+            target_name="James Webb Space Telescope (spacecraft)",
+        ),
+        HorizonsTargetSpec(
+            label="Voyager 1",
+            aliases=("Voyager 1", "Voyager-1"),
+            spkid="-31",
+            pdes="1977-084A",
+            target_name="Voyager 1 (spacecraft)",
+        ),
+        HorizonsTargetSpec(
+            label="Voyager 2",
+            aliases=("Voyager 2", "Voyager-2"),
+            spkid="-32",
+            pdes="1977-076A",
+            target_name="Voyager 2 (spacecraft)",
+        ),
+        HorizonsTargetSpec(
+            label="Parker",
+            aliases=("Parker Solar Probe", "Parker", "Solar Probe Plus"),
+            spkid="-96",
+            pdes="2018-065A",
+            target_name="Parker Solar Probe (spacecraft)",
+        ),
+        HorizonsTargetSpec(
+            label="Europa Clipper",
+            aliases=("Europa Clipper",),
+            spkid="-159",
+            pdes="2024-182A",
+            target_name="Europa Clipper (spacecraft)",
+        ),
+        HorizonsTargetSpec(
+            label="Lucy",
+            aliases=("Lucy",),
+            spkid="-49",
+            pdes="2021-093A",
+            target_name="Lucy (spacecraft)",
+        ),
+        HorizonsTargetSpec(
+            label="Psyche",
+            aliases=("Psyche", "Psyche spacecraft"),
+            spkid="-255",
+            pdes="2023-157A",
+            target_name="Psyche (spacecraft)",
+        ),
+        HorizonsTargetSpec(
+            label="JUICE",
+            aliases=("JUICE",),
+            spkid="-28",
+            pdes="2023-053A",
+            target_name="JUICE (spacecraft)",
+        ),
+        HorizonsTargetSpec(
+            label="Solar Orbiter",
+            aliases=("Solar Orbiter", "Solo"),
+            spkid="-144",
+            pdes="2020-010A",
+            target_name="Solar Orbiter (spacecraft)",
+        ),
+        HorizonsTargetSpec(
+            label="BepiColombo",
+            aliases=("BepiColombo", "MPO MMO"),
+            spkid="-121",
+            pdes="2018-080A",
+            target_name="BepiColombo (spacecraft)",
+        ),
     ),
 }
 _ISS_NORAD_CAT_ID = "25544"
@@ -281,32 +359,54 @@ def fetch_horizons_records(
     timeout_s: float = SATELLITE_FETCH_TIMEOUT_SECONDS,
     lookup_base_url: str = HORIZONS_LOOKUP_API_URL,
     horizons_base_url: str = HORIZONS_API_URL,
+    request_interval_s: float = 0.0,
+    record_callback: Callable[[SatelliteOmmRecord], None] | None = None,
 ) -> list[SatelliteOmmRecord]:
     del observer_lat, observer_lon, observer_height_m
     if group_key != SATELLITE_HORIZONS_CACHE_KEY:
         raise KeyError(group_key)
     records: list[SatelliteOmmRecord] = []
-    for label, aliases in HORIZONS_TARGETS_BY_KEY[SATELLITE_HORIZONS_CACHE_KEY]:
+    last_request_completed_at: float | None = None
+
+    def wait_for_request_slot() -> None:
+        nonlocal last_request_completed_at
+        interval_s = max(0.0, float(request_interval_s))
+        if last_request_completed_at is not None and interval_s > 0.0:
+            remaining_s = interval_s - (monotonic() - last_request_completed_at)
+            if remaining_s > 0.0:
+                sleep(remaining_s)
+
+    def mark_request_completed() -> None:
+        nonlocal last_request_completed_at
+        last_request_completed_at = monotonic()
+
+    for target_spec in HORIZONS_TARGETS_BY_KEY[SATELLITE_HORIZONS_CACHE_KEY]:
         resolved = _resolve_horizons_target(
-            label,
-            aliases,
+            target_spec,
             timeout_s=timeout_s,
             lookup_base_url=lookup_base_url,
+            wait_for_request_slot=wait_for_request_slot,
+            mark_request_completed=mark_request_completed,
         )
         if resolved is None:
             continue
         command = str(resolved.get("spkid", "")).strip()
         if not command:
+            command = target_spec.spkid
+        if not command:
             continue
         try:
+            wait_for_request_slot()
             rows = fetch_horizons_vector_csv(
                 command,
                 target_time_utc=target_time_utc,
                 timeout_s=timeout_s,
                 base_url=horizons_base_url,
             )
+            mark_request_completed()
         except Exception as exc:
-            _log_fetch_attempt_failure(f"Horizons {label}", exc)
+            mark_request_completed()
+            _log_fetch_attempt_failure(f"Horizons {target_spec.label}", exc)
             continue
         parsed_state_vector: tuple[float, float, float, float, float, float] | None = None
         for row in rows:
@@ -315,23 +415,25 @@ def fetch_horizons_records(
                 break
         if parsed_state_vector is None:
             continue
-        records.append(
-            {
-                "OBJECT_NAME": label,
-                "HORIZONS_TARGET_NAME": str(resolved.get("name", label)).strip() or label,
-                "HORIZONS_SPKID": command,
-                "EPOCH": target_time_utc.astimezone(timezone.utc).isoformat(),
-                "HORIZONS_X_KM": float(parsed_state_vector[0]),
-                "HORIZONS_Y_KM": float(parsed_state_vector[1]),
-                "HORIZONS_Z_KM": float(parsed_state_vector[2]),
-                "HORIZONS_VX_KM_S": float(parsed_state_vector[3]),
-                "HORIZONS_VY_KM_S": float(parsed_state_vector[4]),
-                "HORIZONS_VZ_KM_S": float(parsed_state_vector[5]),
-                "HORIZONS_CENTER": "500@399",
-                "HORIZONS_REF_SYSTEM": "ICRF",
-                _SOURCE_KEY: "horizons",
-            }
-        )
+        record: SatelliteOmmRecord = {
+            "OBJECT_NAME": target_spec.label,
+            "HORIZONS_TARGET_NAME": str(resolved.get("name", target_spec.label)).strip() or target_spec.label,
+            "HORIZONS_SPKID": command,
+            "HORIZONS_PDES": target_spec.pdes,
+            "EPOCH": target_time_utc.astimezone(timezone.utc).isoformat(),
+            "HORIZONS_X_KM": float(parsed_state_vector[0]),
+            "HORIZONS_Y_KM": float(parsed_state_vector[1]),
+            "HORIZONS_Z_KM": float(parsed_state_vector[2]),
+            "HORIZONS_VX_KM_S": float(parsed_state_vector[3]),
+            "HORIZONS_VY_KM_S": float(parsed_state_vector[4]),
+            "HORIZONS_VZ_KM_S": float(parsed_state_vector[5]),
+            "HORIZONS_CENTER": "500@399",
+            "HORIZONS_REF_SYSTEM": "ICRF",
+            _SOURCE_KEY: "horizons",
+        }
+        records.append(record)
+        if record_callback is not None:
+            record_callback(dict(record))
     if not records:
         raise RuntimeError("Horizons fetch returned no spacecraft records")
     return records
@@ -371,30 +473,66 @@ def normalize_wheretheiss_tle_payload(payload: object) -> list[SatelliteOmmRecor
 
 
 def _resolve_horizons_target(
-    label: str,
-    aliases: tuple[str, ...],
+    target_spec: HorizonsTargetSpec,
     *,
     timeout_s: float,
     lookup_base_url: str,
+    wait_for_request_slot: Callable[[], None] | None = None,
+    mark_request_completed: Callable[[], None] | None = None,
 ) -> dict[str, object] | None:
-    for alias in aliases:
+    for alias in target_spec.aliases:
         try:
+            if wait_for_request_slot is not None:
+                wait_for_request_slot()
             payload = fetch_horizons_lookup(alias, timeout_s=timeout_s, base_url=lookup_base_url)
+            if mark_request_completed is not None:
+                mark_request_completed()
         except Exception as exc:
-            _log_fetch_attempt_failure(f"Horizons lookup {label}", exc)
+            if mark_request_completed is not None:
+                mark_request_completed()
+            _log_fetch_attempt_failure(f"Horizons lookup {target_spec.label}", exc)
             continue
         if not isinstance(payload, dict):
             continue
         result = payload.get("result")
         if not isinstance(result, list) or not result:
             continue
+        exact = _pick_expected_horizons_spacecraft(target_spec, result)
+        if exact is not None:
+            return exact
         exact = _pick_exact_horizons_match(alias, result)
         if exact is not None:
             return exact
-        first = result[0]
-        if isinstance(first, dict):
-            return first
+        for item in result:
+            if isinstance(item, dict) and _is_horizons_spacecraft(item):
+                return item
     return None
+
+
+def _pick_expected_horizons_spacecraft(
+    target_spec: HorizonsTargetSpec,
+    results: list[object],
+) -> dict[str, object] | None:
+    expected_name = _normalize_horizons_name(target_spec.target_name)
+    for item in results:
+        if not isinstance(item, dict):
+            continue
+        if not _is_horizons_spacecraft(item):
+            continue
+        spkid = str(item.get("spkid", "")).strip()
+        pdes = str(item.get("pdes", "")).strip()
+        name = _normalize_horizons_name(str(item.get("name", "")))
+        if target_spec.spkid and spkid == target_spec.spkid:
+            return item
+        if target_spec.pdes and pdes == target_spec.pdes:
+            return item
+        if expected_name and name == expected_name:
+            return item
+    return None
+
+
+def _is_horizons_spacecraft(item: dict[str, object]) -> bool:
+    return str(item.get("type", "")).strip().casefold() == "spacecraft"
 
 
 def _pick_exact_horizons_match(search_text: str, results: list[object]) -> dict[str, object] | None:
@@ -403,6 +541,8 @@ def _pick_exact_horizons_match(search_text: str, results: list[object]) -> dict[
         return None
     for item in results:
         if not isinstance(item, dict):
+            continue
+        if not _is_horizons_spacecraft(item):
             continue
         name = _normalize_horizons_name(str(item.get("name", "")))
         raw_aliases = item.get("alias", []) or []

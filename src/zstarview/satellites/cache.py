@@ -19,6 +19,7 @@ from ..satellite_constants import (
     SATELLITE_HORIZONS_CACHE_KEY,
 )
 from .fetch import (
+    HORIZONS_TARGETS_BY_KEY,
     extract_element_epoch_utc,
     extract_record_source,
     fetch_horizons_records,
@@ -178,6 +179,8 @@ def fetch_cached_satellite_elements(
     observer_lat: float | None = None,
     observer_lon: float | None = None,
     observer_height_m: float | None = None,
+    horizons_request_interval_s: float = 0.0,
+    horizons_record_callback: Callable[[SatelliteOmmRecord], None] | None = None,
 ) -> CachedSatelliteElementSet:
     now = _normalize_utc(now_utc or current_utc_time())
     ttl_seconds = _group_validity_seconds(group_key, fresh_ttl_seconds)
@@ -193,9 +196,11 @@ def fetch_cached_satellite_elements(
     payload = _load_cache_payload(path)
     metadata = _fetch_metadata_from_payload(payload)
     cached = _load_cached_set_from_path(path, group_key=group_key)
+    cache_has_all_targets = _cache_has_all_expected_targets(group_key, cached)
     if (
         not force_refresh
         and cached is not None
+        and cache_has_all_targets
         and _within_validity(now, cached.element_epoch_utc, ttl_seconds)
     ):
         return CachedSatelliteElementSet(
@@ -237,6 +242,8 @@ def fetch_cached_satellite_elements(
             observer_lat=observer_lat,
             observer_lon=observer_lon,
             observer_height_m=observer_height_m,
+            request_interval_s=horizons_request_interval_s,
+            record_callback=horizons_record_callback,
         )
     except Exception as exc:
         save_satellite_fetch_failure(
@@ -284,6 +291,8 @@ def resolve_satellite_elements_for_time(
     observer_lat: float | None = None,
     observer_lon: float | None = None,
     observer_height_m: float | None = None,
+    horizons_request_interval_s: float = 0.0,
+    horizons_record_callback: Callable[[SatelliteOmmRecord], None] | None = None,
 ) -> CachedSatelliteElementSet:
     if time_mode != "present":
         raise RuntimeError("Satellites: time-shifted view is not supported")
@@ -315,6 +324,8 @@ def resolve_satellite_elements_for_time(
         observer_lat=observer_lat,
         observer_lon=observer_lon,
         observer_height_m=observer_height_m,
+        horizons_request_interval_s=horizons_request_interval_s,
+        horizons_record_callback=horizons_record_callback,
     )
 
 
@@ -422,6 +433,24 @@ def _fetch_metadata_from_payload(payload: object) -> SatelliteFetchMetadata:
         last_fetch_failure_utc=_parse_optional_utc(payload.get("last_fetch_failure_utc")),
         failure_backoff_until_utc=_parse_optional_utc(payload.get("failure_backoff_until_utc")),
     )
+
+
+def _cache_has_all_expected_targets(
+    group_key: str,
+    cached: CachedSatelliteElementSet | None,
+) -> bool:
+    if cached is None or group_key != SATELLITE_HORIZONS_CACHE_KEY:
+        return True
+    expected_names = {
+        str(target.label).strip()
+        for target in HORIZONS_TARGETS_BY_KEY[SATELLITE_HORIZONS_CACHE_KEY]
+    }
+    cached_names = {
+        str(record.get("OBJECT_NAME", "")).strip()
+        for record in cached.records
+        if str(record.get("OBJECT_NAME", "")).strip()
+    }
+    return expected_names.issubset(cached_names)
 
 
 def _within_validity(

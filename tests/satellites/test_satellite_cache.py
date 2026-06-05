@@ -8,7 +8,9 @@ import pytest
 from zstarview.satellite_constants import (
     SATELLITE_CACHE_FORMAT_VERSION,
     SATELLITE_GROUP_VALIDITY_SECONDS,
+    SATELLITE_HORIZONS_CACHE_KEY,
 )
+from zstarview.satellites.fetch import HORIZONS_TARGETS_BY_KEY
 from zstarview.satellites.cache import (
     fetch_cached_satellite_elements,
     load_satellite_cache,
@@ -274,6 +276,36 @@ def test_fetch_cached_satellite_elements_uses_iss_ttl(tmp_path) -> None:
     assert SATELLITE_GROUP_VALIDITY_SECONDS["horizons"] == 24 * 60 * 60
     assert called is False
     assert result.source == "cache-fresh"
+
+
+def test_incomplete_horizons_cache_is_not_treated_as_fresh(tmp_path) -> None:
+    element_epoch = datetime(2026, 3, 22, 12, 0, tzinfo=timezone.utc)
+    save_satellite_cache(
+        SATELLITE_HORIZONS_CACHE_KEY,
+        [{"OBJECT_NAME": "JWST", "_SOURCE": "horizons", "EPOCH": element_epoch.isoformat()}],
+        element_epoch_utc=element_epoch,
+        fetched_at_utc=element_epoch,
+        cache_root=tmp_path,
+    )
+    expected_names = [target.label for target in HORIZONS_TARGETS_BY_KEY[SATELLITE_HORIZONS_CACHE_KEY]]
+    fetched = [
+        {"OBJECT_NAME": name, "_SOURCE": "horizons", "EPOCH": element_epoch.isoformat()}
+        for name in expected_names
+    ]
+
+    def fetcher(group_key: str, **_kwargs):
+        assert group_key == SATELLITE_HORIZONS_CACHE_KEY
+        return fetched
+
+    result = fetch_cached_satellite_elements(
+        SATELLITE_HORIZONS_CACHE_KEY,
+        fetcher=fetcher,
+        cache_root=tmp_path,
+        now_utc=element_epoch + timedelta(hours=1),
+    )
+
+    assert result.source == "horizons"
+    assert [record["OBJECT_NAME"] for record in result.records] == expected_names
 
 
 def test_resolve_satellite_elements_for_non_present_rejects_time_shifted_views(tmp_path) -> None:

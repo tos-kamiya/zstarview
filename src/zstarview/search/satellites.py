@@ -94,7 +94,7 @@ def search_satellite_targets(
             kind="satellite",
             sort_key=(0.0, target_spec.label.casefold()),
             object_key=target_spec.label,
-            subtitle="Artificial satellite",
+            subtitle="Satellite",
             target_time_utc=search_time_utc,
         )
         for target_spec in matching_specs

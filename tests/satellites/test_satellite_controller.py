@@ -7,6 +7,7 @@ from urllib.error import URLError
 import astropy.time
 
 from zstarview.gui.satellite_controller import SatelliteController
+from zstarview.satellite_constants import SATELLITE_HORIZONS_CACHE_KEY
 from zstarview.satellites import CachedSatelliteElementSet
 
 
@@ -123,3 +124,53 @@ def test_satellite_controller_does_not_project_in_fetch_stage() -> None:
     )
 
     assert projector_calls == []
+
+
+def test_horizons_partial_records_are_emitted_progressively() -> None:
+    ready_payloads: list[dict[str, object]] = []
+
+    def fetcher(
+        group_key: str,
+        *,
+        target_time_utc: datetime,
+        horizons_record_callback,
+        **_kwargs,
+    ) -> CachedSatelliteElementSet:
+        assert group_key == SATELLITE_HORIZONS_CACHE_KEY
+        first = {"OBJECT_NAME": "JWST", "_SOURCE": "horizons", "EPOCH": target_time_utc.isoformat()}
+        second = {"OBJECT_NAME": "Voyager 1", "_SOURCE": "horizons", "EPOCH": target_time_utc.isoformat()}
+        horizons_record_callback(first)
+        horizons_record_callback(second)
+        return CachedSatelliteElementSet(
+            group_key=group_key,
+            element_epoch_utc=target_time_utc,
+            records=[first, second],
+            fetched_at_utc=target_time_utc,
+            source="horizons",
+        )
+
+    controller = SatelliteController(
+        fetcher=fetcher,
+        projector=lambda *args, **kwargs: [],
+    )
+    controller.satellite_ready.connect(ready_payloads.append)
+
+    controller._run_update(
+        observer_lat=35.0,
+        observer_lon=139.0,
+        observer_height_m=0.0,
+        time_obj=astropy.time.Time(datetime.now(timezone.utc)),
+        enabled_groups=(SATELLITE_HORIZONS_CACHE_KEY,),
+        reason="test",
+        request_id=0,
+    )
+
+    emitted_names = [
+        [
+            record["OBJECT_NAME"]
+            for record in payload["records_by_group"][SATELLITE_HORIZONS_CACHE_KEY]
+        ]
+        for payload in ready_payloads
+    ]
+    assert emitted_names == [["JWST"], ["JWST", "Voyager 1"], ["JWST", "Voyager 1"]]
+    assert ready_payloads[0]["banner"] == "Satellites: partial"
