@@ -5,7 +5,6 @@ from typing import Tuple
 import numpy as np
 from PySide6.QtGui import QImage
 
-from ..paths import PALETTE_NEVER_RISES_RGB
 from ..types import ScreenGeometry
 from .qt_image import np_rgba_to_qimage
 

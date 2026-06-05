@@ -1782,7 +1782,7 @@ def test_search_jpl_targets_limits_candidates_to_500(monkeypatch) -> None:
 
     targets = SkyWindow._search_jpl_targets(dummy, "PANSTARRS")
 
-    assert lookup_calls == ["mb", "sb"]
+    assert lookup_calls == ["sct", "mb", "sb"]
     assert len(targets) == 500
     assert targets[0].label == "PANSTARRS-0"
     assert targets[-1].label == "PANSTARRS-499"
