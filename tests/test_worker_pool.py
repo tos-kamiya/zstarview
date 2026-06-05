@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import threading
-import time
 
 from zstarview.gui.worker_pool import shutdown_gui_worker_pool, submit_gui_work
 
 
-def test_shared_gui_worker_pool_serializes_tasks() -> None:
+def test_shared_gui_worker_pool_allows_two_concurrent_tasks() -> None:
     first_started = threading.Event()
     second_started = threading.Event()
     release_first = threading.Event()
@@ -22,12 +21,10 @@ def test_shared_gui_worker_pool_serializes_tasks() -> None:
     assert first_started.wait(timeout=1.0)
 
     second_future = submit_gui_work(second_task)
-    time.sleep(0.05)
-    assert not second_started.is_set()
+    assert second_started.wait(timeout=1.0)
 
     release_first.set()
     assert first_future.result(timeout=1.0) is None
-    assert second_started.wait(timeout=1.0)
     assert second_future.result(timeout=1.0) is None
 
     shutdown_gui_worker_pool(wait=True)

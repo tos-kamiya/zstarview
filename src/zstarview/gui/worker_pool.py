@@ -15,10 +15,10 @@ def _get_gui_worker_pool() -> ThreadPoolExecutor:
         if _GUI_WORKER_POOL is None:
             # Shared GUI worker pool for all long-running background work.
             #
-            # The pool is intentionally size 1 so sky/cloud/terrain/search/bootstrap
-            # work cannot overlap in native-heavy code paths.
+            # Size 2 keeps the UI responsive when one worker is blocked on I/O or
+            # a slow native-heavy task while still limiting concurrency.
             _GUI_WORKER_POOL = ThreadPoolExecutor(
-                max_workers=1,
+                max_workers=2,
                 thread_name_prefix="zstarview-gui",
             )
         return _GUI_WORKER_POOL
