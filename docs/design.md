@@ -910,8 +910,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 取得完了後の active marker set は band stats と共に GUI / export-image へ渡す
   - band stats の `loaded_tile_count` は、実際に open した sea-mask tile の回数として扱い、総 tile 数ではない
 - `src/zstarview/render/terrain.py`
-  - `WaterOverlayPoint` を小さな塗りつぶし円として描画する
-  - 点の alpha と半径は `water_overlay_opacity` と `scan_distance_m` を基準にし、terrain horizon の描画と同じ sky-dome 合成段へ重ねる
+  - `WaterOverlayPoint` を観測地点からの距離に応じて早めに縦が潰れる小さな中空楕円として描画する
+  - 点の alpha と楕円の半径は `water_overlay_opacity` と `scan_distance_m` を基準にし、terrain horizon の描画と同じ sky-dome 合成段へ重ねる
   - marker はスクリーン上では回転しない
   - 視点中心と edge/content FOV は `ViewerData` 側が所有する値として扱うのが自然で、`ScreenGeometry` には画面中心と半径だけを残す
 
@@ -936,8 +936,8 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
   - 取得済みの band stats は保持してよく、terrain horizon の OFF は表示切り替えだけに使ってよい
   - per-scope cache は `*_simplified.json` を正本として保存し、古い `*.json` がより新しい場合は observer 座標に基づいて簡約版を再生成してよい
 - `src/zstarview/render/terrain.py`
-  - `WaterOverlayPoint` を小さな塗りつぶし円として描画する
-  - 点の alpha と半径は `water_overlay_opacity` と `scan_distance_m` を基準にし、terrain horizon の描画と同じ sky-dome 合成段へ重ねる
+  - `WaterOverlayPoint` を観測地点からの距離に応じて早めに縦が潰れる小さな中空楕円として描画する
+  - 点の alpha と楕円の半径は `water_overlay_opacity` と `scan_distance_m` を基準にし、terrain horizon の描画と同じ sky-dome 合成段へ重ねる
   - marker はスクリーン上では回転しない
 - `src/zstarview/gui/window.py`
   - `Water Surface` メニュー項目、`W` ショートカット、初期 opacity の入力を GUI 操作へ接続する
@@ -1880,7 +1880,7 @@ GUI 常駐とは別に、1 枚の画像を書き出して終了する headless C
 8. sea だけが先に計算できた場合は sea-only の中間更新を emit し、その後 inland 完了時に sea + inland の合成結果を emit してよい。
 9. 水面マーカーは `target_height_m = 0.0` の地表貼り付けとして扱ってよく、地形地平線が非表示のときは水面マーカーも非表示にしてよい。
 10. マーカー化後の alpha は `water_overlay_opacity` を基準にし、距離に応じた指数減衰をかけてよい。
-11. `WaterOverlayPoint` は `render/terrain.py` で小さな塗りつぶし円として描画し、海と inland で色を分けてよい。
+11. `WaterOverlayPoint` は `render/terrain.py` で観測地点からの距離に応じて早めに縦が潰れる小さな中空楕円として描画し、海と inland で色を分けてよい。
 12. band stats の `loaded_tile_count` は、総 tile 数ではなく、実際に open した sea-mask tile の回数として扱ってよい。
 13. cache key は観測地点中心の `lat/lon` と距離帯、tile root から導出し、`bbox` はその派生値として扱ってよい。inland water の OSM footprint は `CACHE_PATH/water_overlay` 配下に JSON cache として保持してよい。
 14. `Water Surface` の GUI トグルや `--water-surface-opacity 0` は初期表示の有無を変えてよく、tile cache を破棄する必要はない。

@@ -153,7 +153,7 @@ def test_water_overlay_point_color_rgb_distinguishes_sea_125_and_inland_water() 
 def test_water_overlay_marker_geometry_flattens_the_marker() -> None:
     major_radius, minor_radius, pen_width = _water_overlay_marker_geometry(1.0)
 
-    assert major_radius == pytest.approx(minor_radius)
+    assert major_radius > minor_radius
     assert pen_width >= 1.0
 
 
@@ -161,12 +161,13 @@ def test_water_overlay_marker_geometry_shrinks_with_distance() -> None:
     near_major, near_minor, _ = _water_overlay_marker_geometry(1.0, distance_m=0.0)
     far_major, far_minor, _ = _water_overlay_marker_geometry(1.0, distance_m=256_000.0)
 
-    assert near_major == pytest.approx(near_minor)
-    assert far_major == pytest.approx(far_minor)
     assert near_major > far_major
+    assert near_minor > far_minor
+    assert (near_minor / near_major) < 0.5
+    assert far_minor == pytest.approx(0.6)
 
 
-def test_draw_water_overlay_dots_uses_filled_circle_marker() -> None:
+def test_draw_water_overlay_dots_uses_unfilled_ellipse_marker() -> None:
     class PainterStub:
         def __init__(self) -> None:
             self.calls: list[tuple[object, ...]] = []
@@ -240,15 +241,15 @@ def test_draw_water_overlay_dots_uses_filled_circle_marker() -> None:
     for _, center, rx, ry in draw_ellipse_calls:
         assert center.x() == pytest.approx(0.0)
         assert center.y() == pytest.approx(0.0)
-        assert rx == pytest.approx(ry)
-        assert rx < 3.0
+        assert rx > ry
     assert draw_ellipse_calls[0][2] > draw_ellipse_calls[1][2]
+    assert draw_ellipse_calls[0][3] > draw_ellipse_calls[1][3]
     assert _water_overlay_marker_rotation_deg(118.0, 74.0, geometry) == 0.0
-    assert set_brush_calls[0][1].alpha() > 0
-    assert set_pen_calls[0][1] == Qt.PenStyle.NoPen
+    assert set_brush_calls[0][1] == Qt.BrushStyle.NoBrush
+    assert set_pen_calls[0][1].color().alpha() > 0
 
 
-def test_draw_water_overlay_dots_uses_fast_mode_filled_circle() -> None:
+def test_draw_water_overlay_dots_uses_fast_mode_unfilled_ellipse() -> None:
     class PainterStub:
         def __init__(self) -> None:
             self.calls: list[tuple[object, ...]] = []
@@ -316,10 +317,9 @@ def test_draw_water_overlay_dots_uses_fast_mode_filled_circle() -> None:
     _, center, rx, ry = draw_ellipse_calls[0]
     assert center.x() == pytest.approx(0.0)
     assert center.y() == pytest.approx(0.0)
-    assert rx == pytest.approx(ry)
-    assert rx < 3.0
-    assert set_brush_calls
-    assert set_pen_calls[-1][1] == Qt.PenStyle.NoPen
+    assert rx > ry
+    assert set_brush_calls[-1][1] == Qt.BrushStyle.NoBrush
+    assert set_pen_calls[-1][1].color().alpha() > 0
 
 
 def test_water_overlay_distance_alpha_scale_decays_with_distance() -> None:

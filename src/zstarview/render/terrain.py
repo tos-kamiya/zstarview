@@ -60,8 +60,7 @@ WATER_OVERLAY_SEA_500_COLOR_RGB = (255, 170, 64)
 WATER_OVERLAY_LAKE_COLOR_RGB = (104, 196, 168)
 WATER_OVERLAY_RIVER_COLOR_RGB = (94, 214, 255)
 WATER_OVERLAY_POINT_RADIUS_PX = 3.0
-WATER_OVERLAY_FAST_POINT_RADIUS_SCALE = 0.65
-WATER_OVERLAY_MARKER_MAJOR_RADIUS_SCALE = 1.18
+WATER_OVERLAY_MARKER_MAJOR_RADIUS_SCALE = 0.59
 WATER_OVERLAY_MARKER_MINOR_RADIUS_SCALE = 0.46
 WATER_OVERLAY_MARKER_PEN_WIDTH_SCALE = 0.42
 WATER_OVERLAY_DISTANCE_ALPHA_REFERENCE_KM = 128.0
@@ -306,7 +305,7 @@ def _water_overlay_marker_geometry(
     base_radius = WATER_OVERLAY_POINT_RADIUS_PX * scale
     distance_scale = max(0.35, _water_overlay_distance_alpha_scale(distance_m))
     major_radius = base_radius * WATER_OVERLAY_MARKER_MAJOR_RADIUS_SCALE * distance_scale
-    minor_radius = major_radius
+    minor_radius = max(0.6, major_radius * max(0.2, 0.48 * distance_scale))
     pen_width = max(1.0, base_radius * WATER_OVERLAY_MARKER_PEN_WIDTH_SCALE)
     return major_radius, minor_radius, pen_width
 
@@ -1027,10 +1026,14 @@ def draw_water_overlay_dots(
         )
         painter.save()
         painter.translate(float(px), float(py))
-        fast_radius = max(1.0, major_radius * WATER_OVERLAY_FAST_POINT_RADIUS_SCALE)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(outline_color)
-        painter.drawEllipse(QPointF(0.0, 0.0), fast_radius, fast_radius)
+        pen = QPen(outline_color)
+        pen.setWidthF(float(_pen_width))
+        pen.setCosmetic(True)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(pen)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawEllipse(QPointF(0.0, 0.0), major_radius, _minor_radius)
         painter.restore()
     painter.restore()
 
