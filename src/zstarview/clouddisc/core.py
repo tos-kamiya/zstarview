@@ -16,7 +16,8 @@ from typing import Optional, Sequence, Tuple
 import numpy as np
 
 from .config import CloudDiscConfig
-from .projectors.az import az_project_lonlat_grid
+from .projectors.az import az_project_lonlat_grid as _az_project_lonlat_grid
+from .projectors.az import build_projection_context, project_lonlat_grid_from_context
 from .providers.goes import GoesProvider
 from .providers.hima import HimaProvider
 from .providers.select import (
@@ -47,6 +48,10 @@ from .types import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Backward-compatible module attribute for existing tests and callers that
+# monkeypatch the older single-step projection helper.
+az_project_lonlat_grid = _az_project_lonlat_grid
 
 DEFAULT_CLOUD_SHELL_WEIGHTS: tuple[float, ...] = (0.20, 0.60, 0.20)
 DEFAULT_CLOUD_SHELL_LOW_WEIGHTS: tuple[float, ...] = (0.0, 1.0, 0.0)
@@ -259,18 +264,19 @@ class CloudDisc:
         bt_for_threshold: np.ndarray | None = None
         threshold_mask_inside: np.ndarray | None = None
 
+        projection_context = build_projection_context(
+            lat0_deg=lat,
+            lon0_deg=lon,
+            alt0_deg=render_key.alt_deg,
+            az0_deg=render_key.az_deg,
+            radius_px=render_key.radius_px + 1,
+            alt_min_deg=self.cfg.alt_min_deg,
+            edge_fov_deg=render_key.edge_fov_deg,
+            mask_fov_deg=render_key.mask_fov_deg,
+        )
+
         for cloud_shell_km in shell_radii_km:
-            lon_grid, lat_grid, mask_inside = az_project_lonlat_grid(
-                lat0_deg=lat,
-                lon0_deg=lon,
-                alt0_deg=render_key.alt_deg,
-                az0_deg=render_key.az_deg,
-                radius_px=render_key.radius_px + 1,
-                cloud_shell_km=cloud_shell_km,
-                alt_min_deg=self.cfg.alt_min_deg,
-                edge_fov_deg=render_key.edge_fov_deg,
-                mask_fov_deg=render_key.mask_fov_deg,
-            )
+            lon_grid, lat_grid, mask_inside = project_lonlat_grid_from_context(projection_context, cloud_shell_km)
             bt = sampler(lon_grid, lat_grid)
             finite_bt = np.isfinite(bt)
             projected_layers.append((bt, mask_inside))

@@ -10,12 +10,23 @@ to screen pixels.
 """
 
 import math
+from dataclasses import dataclass
 from typing import Tuple
 
 import numpy as np
 
 # Standard Earth radius in kilometers, assuming a spherical Earth.
 EARTH_R_KM = 6371.0
+
+
+@dataclass(frozen=True, slots=True)
+class ProjectionContext:
+    """Shell-independent state for one observer/view projection."""
+
+    image_size: int
+    observer_pos_ecef: np.ndarray
+    ray_dirs: np.ndarray
+    mask_inside: np.ndarray
 
 
 def deg2rad(degrees: float) -> float:
@@ -94,23 +105,18 @@ def altaz_to_dir_ecef(alt_deg: float, az_deg: float, lat0_deg: float, lon0_deg: 
     return direction_vector / (np.linalg.norm(direction_vector) or 1.0)
 
 
-def az_project_lonlat_grid(
+def build_projection_context(
     lat0_deg: float,
     lon0_deg: float,
     alt0_deg: float,
     az0_deg: float,
     radius_px: int,
-    cloud_shell_km: float,
     alt_min_deg: float = 0.0,
     mask_fov_deg: float = 90.0,
     edge_fov_deg: float = 90.0,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> ProjectionContext:
     """
-    Projects a 2D image grid onto a spherical shell to find the corresponding longitudes and latitudes.
-
-    This is the core inverse projection function. For each pixel in a square output
-    image, it calculates a ray from the observer and finds where that ray intersects
-    a spherical "cloud shell". It then returns the geo-coordinates of that intersection.
+    Build shell-independent projection state for a single observer/view.
 
     Args:
         lat0_deg: Observer's latitude in degrees.
@@ -118,13 +124,12 @@ def az_project_lonlat_grid(
         alt0_deg: Observer's viewing altitude in degrees.
         az0_deg: Observer's viewing azimuth in degrees.
         radius_px: Radius of the output disc in pixels (image is 2R x 2R).
-        cloud_shell_km: Radius of the cloud sphere in kilometers.
         alt_min_deg: Minimum altitude to be considered visible (horizon cutoff).
         mask_fov_deg: Field-of-view angle for the visibility mask.
         edge_fov_deg: Field-of-view angle that the disc radius represents (projection scale).
 
     Returns:
-        A tuple (lon_grid, lat_grid, mask_inside) where grids are 2D numpy arrays.
+        A ProjectionContext containing ray directions and visibility masks.
     """
     image_size = 2 * radius_px
 
@@ -165,6 +170,24 @@ def az_project_lonlat_grid(
     fov_mask = rho_deg <= mask_fov_deg + 1e-6  # Within the specified field of view
     mask_inside = fov_mask & visible_mask
 
+    return ProjectionContext(
+        image_size=image_size,
+        observer_pos_ecef=observer_pos_ecef,
+        ray_dirs=d,
+        mask_inside=mask_inside,
+    )
+
+
+def project_lonlat_grid_from_context(
+    context: ProjectionContext,
+    cloud_shell_km: float,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Project one cloud shell using precomputed shell-independent state."""
+    observer_pos_ecef = context.observer_pos_ecef
+    d = context.ray_dirs
+    image_size = context.image_size
+    mask_inside = context.mask_inside
+
     # --- Step 5: Solve for the intersection of each ray with the cloud sphere ---
     # This is a standard line-sphere intersection problem, solving a quadratic equation for t.
     b_quad = 2.0 * np.sum(observer_pos_ecef * d, axis=2)
@@ -196,3 +219,28 @@ def az_project_lonlat_grid(
     lat_grid[~mask_inside] = np.nan
 
     return lon_grid, lat_grid, mask_inside
+
+
+def az_project_lonlat_grid(
+    lat0_deg: float,
+    lon0_deg: float,
+    alt0_deg: float,
+    az0_deg: float,
+    radius_px: int,
+    cloud_shell_km: float,
+    alt_min_deg: float = 0.0,
+    mask_fov_deg: float = 90.0,
+    edge_fov_deg: float = 90.0,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Project a 2D image grid onto one spherical shell."""
+    context = build_projection_context(
+        lat0_deg=lat0_deg,
+        lon0_deg=lon0_deg,
+        alt0_deg=alt0_deg,
+        az0_deg=az0_deg,
+        radius_px=radius_px,
+        alt_min_deg=alt_min_deg,
+        mask_fov_deg=mask_fov_deg,
+        edge_fov_deg=edge_fov_deg,
+    )
+    return project_lonlat_grid_from_context(context, cloud_shell_km)

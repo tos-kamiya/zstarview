@@ -130,8 +130,8 @@ def test_render_from_source_reuses_sampler_for_same_source(monkeypatch, tmp_path
 
     monkeypatch.setattr("zstarview.clouddisc.core.build_bt_sampler", fake_build_bt_sampler)
     monkeypatch.setattr(
-        "zstarview.clouddisc.core.az_project_lonlat_grid",
-        lambda **_kwargs: (
+        "zstarview.clouddisc.core.project_lonlat_grid_from_context",
+        lambda *args, **_kwargs: (
             np.array([[139.0, 139.1], [139.2, 139.3]], dtype=np.float32),
             np.array([[35.0, 35.1], [35.2, 35.3]], dtype=np.float32),
             np.array([[True, True], [True, True]], dtype=bool),
@@ -254,7 +254,7 @@ def test_render_from_source_with_coverage_blends_multiple_shells(monkeypatch, tm
     }
     shell_values = {6374.0: 6310.0, 6376.0: 6320.0, 6378.0: 6400.0}
 
-    def fake_project(*, cloud_shell_km, **_kwargs):
+    def fake_project(_context, cloud_shell_km):
         mask = shell_masks[float(cloud_shell_km)]
         lon_grid = np.full(mask.shape, shell_values[float(cloud_shell_km)], dtype=np.float32)
         lat_grid = np.zeros(mask.shape, dtype=np.float32)
@@ -267,7 +267,7 @@ def test_render_from_source_with_coverage_blends_multiple_shells(monkeypatch, tm
         return out
 
     monkeypatch.setattr("zstarview.clouddisc.core.build_bt_sampler", fake_build_bt_sampler)
-    monkeypatch.setattr("zstarview.clouddisc.core.az_project_lonlat_grid", fake_project)
+    monkeypatch.setattr("zstarview.clouddisc.core.project_lonlat_grid_from_context", fake_project)
     monkeypatch.setattr(
         "zstarview.clouddisc.core.estimate_bt_warm_from_equator_band",
         lambda *_args, **_kwargs: (280.0, np.array([280.0], dtype=np.float32)),
@@ -327,8 +327,8 @@ def test_render_from_source_reuses_previous_bt_warm_when_equator_band_missing(mo
 
     monkeypatch.setattr("zstarview.clouddisc.core.build_bt_sampler", fake_build_bt_sampler)
     monkeypatch.setattr(
-        "zstarview.clouddisc.core.az_project_lonlat_grid",
-        lambda **_kwargs: (
+        "zstarview.clouddisc.core.project_lonlat_grid_from_context",
+        lambda *args, **_kwargs: (
             np.array([[139.0, 139.1], [139.2, 139.3]], dtype=np.float32),
             np.array([[35.0, 35.1], [35.2, 35.3]], dtype=np.float32),
             np.array([[True, True], [True, True]], dtype=bool),
