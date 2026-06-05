@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.29.11 - 2026-06-05
+- Refined the water-surface overlay to use fixed `2.0°` sampling, scan-distance-based opacity, and small unfilled ellipses that flatten faster toward the horizon while staying less visually dominant.
+- Refreshed the bundled Europe Geo-satellite gray-common mask with an updated IR frame set and thresholds, improving the packaged mask used by the Geo-satellite cloud path.
+
 ## 1.29.10 - 2026-06-04
 - Added a `Geo-satellite` startup checkbox in the GUI startup dialog under `General`, matching the CLI option grouping.
 - Kept the GUI `Geo-satellite` menu item disabled until the resolved observer location is known, then grey it out only when the observer is outside the Europe band.
