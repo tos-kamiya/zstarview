@@ -4,12 +4,12 @@
 
 この文書は、`zstarview` の機能仕様を利用者視点でまとめた正本である。
 README より詳細に、何ができるか、どう振る舞うか、どのような制約があるかを記述する。
-内部モジュール構成や実装手順は `docs/design.md` に分離し、過去の実装履歴はアーカイブとして `docs/implementation-archive.md` に残す。
+内部モジュール構成や実装手順は `docs/design.md` と `docs/design/*.md` に分離し、過去の実装履歴はアーカイブとして `docs/implementation-archive.md` に残す。
 
 ## 1. この文書の位置づけ
 
 本書は、`zstarview` が利用者に対して何を提供し、どのように振る舞うかをまとめた機能仕様である。
-内部モジュール構成やスレッドモデルは `docs/design.md`、過去の実装履歴は `docs/implementation-archive.md`、日々の判断記録は `dev-notes/session-YYYY-MM-DD.md` に分離する。
+内部モジュール構成やスレッドモデルは `docs/design.md` と `docs/design/*.md`、過去の実装履歴は `docs/implementation-archive.md`、日々の判断記録は `dev-notes/session-YYYY-MM-DD.md` に分離する。
 
 ## 2. 製品概要
 

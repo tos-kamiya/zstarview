@@ -18,7 +18,7 @@
 - TODO
 - 実装上の判断メモ
 
-利用者向け仕様は `docs/specification.md`、内部設計の正本は `docs/design.md` を参照する。
+利用者向け仕様は `docs/specification.md`、内部設計の入口は `docs/design.md`、詳細は `docs/design/*.md` を参照する。
 
 ## 2. 書き方のルール
 
