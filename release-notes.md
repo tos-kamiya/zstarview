@@ -1,5 +1,8 @@
 # zstarview Release Notes
 
+## 1.29.14 - 2026-06-06
+- Inland water polygons without explicit `ele` or `water_level` now use DEM-backed ground height in `zstarview-export-image`, so lakes and rivers follow the sampled terrain height instead of the observer-ground fallback.
+
 ## 1.29.13 - 2026-06-06
 - Fixed the `--window-frame window` startup path so the standard decorated window now builds its shared `Help` menu correctly.
 - Added an `INFO` shutdown log message for user-initiated exits, including the File menu Exit action, the window close button, and the frameless hamburger menu Exit action.
