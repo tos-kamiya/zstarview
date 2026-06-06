@@ -709,24 +709,17 @@ def _water_surface_height_m(
         return explicit_target_height_m
     if _footprint_is_sea_like(footprint):
         return 0.0
-    if _footprint_is_river_like(footprint):
-        if target_ground_elevation_m_sampler is not None:
-            try:
-                return float(target_ground_elevation_m_sampler(latitude_deg, longitude_deg))
-            except Exception:
-                return float(fallback_surface_height_m)
-        return float(fallback_surface_height_m)
+    if target_ground_elevation_m_sampler is not None:
+        try:
+            return float(target_ground_elevation_m_sampler(latitude_deg, longitude_deg))
+        except Exception:
+            return float(fallback_surface_height_m)
     return float(fallback_surface_height_m)
 
 
 def _footprint_is_sea_like(footprint: WaterPolygonFootprint) -> bool:
     tags = footprint.tags
     return classify_water_surface_category(tags, kind=footprint.kind) == "sea"
-
-
-def _footprint_is_river_like(footprint: WaterPolygonFootprint) -> bool:
-    tags = footprint.tags
-    return classify_water_surface_category(tags, kind=footprint.kind) == "river"
 
 
 def _raise_if_abort_requested(abort_event: threading.Event | None) -> None:

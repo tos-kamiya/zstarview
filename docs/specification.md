@@ -382,6 +382,7 @@ Sky Guides とは、幾何学的地平線、天の赤道、黄道、方位ラベ
 
 - 海と inland water を別ソースとして扱ってよい。
 - 水面レイヤーは `Water Surface` と表示してよい。
+- inland water は、`ele` / `water_level` がなければ DEM から推定した高さを使ってよい。
 - `Terrain Horizon` が無効な間は水面レイヤーも表示しなくてよい。
 - `W` で on/off してよい。
 

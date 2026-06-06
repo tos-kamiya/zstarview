@@ -285,6 +285,56 @@ def test_fetch_water_overlay_layer_uses_observer_ground_and_eye_height(monkeypat
     assert "Water mask dots: 1 visible, nearest sea dot 0.500 km, bands: 125m=0 250m=0 500m=1" in caplog.text
 
 
+def test_fetch_water_overlay_layer_passes_target_ground_sampler(monkeypatch) -> None:
+    viewer_data = SimpleNamespace(
+        lat_deg=35.0,
+        lon_deg=139.0,
+        observer_height_m=1.7,
+        ground_elevation_m=42.0,
+        view_center=(45.0, 180.0),
+        content_fov_deg=110.0,
+    )
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        mod,
+        "sample_water_surface_interface_points_with_stats",
+        lambda **_kwargs: (
+            (WaterOverlayPoint("water", 10.0, 20.0, 0.5, water_category="sea-500"),),
+            (
+                WaterSurfaceBandStats("125m", 0, 0, 0, 0),
+                WaterSurfaceBandStats("250m", 0, 0, 0, 0),
+                WaterSurfaceBandStats("500m", 1, 9, 1, 1),
+            ),
+        ),
+    )
+    monkeypatch.setattr(mod, "_load_or_fetch_water_overlay_footprints", lambda **_kwargs: ("footprint",))
+
+    def _sample_water_overlay_points_for_observer(*_args, **kwargs):
+        captured["target_ground_elevation_m_sampler"] = kwargs["target_ground_elevation_m_sampler"]
+        sampler = kwargs["target_ground_elevation_m_sampler"]
+        if sampler is None:
+            raise AssertionError("expected a DEM sampler")
+        captured["sampler_value"] = float(sampler(35.0, 139.0))
+        return (WaterOverlayPoint("inland", 11.0, 314.0, 1.5, water_category="lake"),)
+
+    monkeypatch.setattr(mod, "sample_water_overlay_points_for_observer", _sample_water_overlay_points_for_observer)
+
+    got = mod._fetch_water_overlay_dots_layer(
+        viewer_data=viewer_data,
+        surface_size_px=(1280, 720),
+        deadline=None,
+        target_ground_sampler=lambda *_args: 77.0,
+    )
+
+    assert got == [
+        WaterOverlayPoint("water", 10.0, 20.0, 0.5, water_category="sea-500"),
+        WaterOverlayPoint("inland", 11.0, 314.0, 1.5, water_category="lake"),
+    ]
+    assert captured["target_ground_elevation_m_sampler"] is not None
+    assert captured["sampler_value"] == 77.0
+
+
 def test_fetch_cloud_layer_uses_geo_satellite_branch_when_enabled(monkeypatch) -> None:
     viewer_data = SimpleNamespace(
         lat_deg=51.5,

@@ -39,7 +39,6 @@ from zstarview.water_overlay import (
 )
 from zstarview.types import ViewerData
 
-
 def _node(node_id: int, lon: float, lat: float) -> dict[str, object]:
     return {
         "type": "node",
@@ -571,7 +570,7 @@ def test_sample_water_overlay_points_uses_fallback_surface_height() -> None:
     assert max(point.alt_deg for point in sea_level_points) < -20.0
 
 
-def test_sample_water_overlay_points_uses_ground_sampler_for_river_like_only() -> None:
+def test_sample_water_overlay_points_uses_ground_sampler_for_inland_water() -> None:
     lake = WaterPolygonFootprint(
         water_id="lake",
         kind="natural_water",
@@ -631,7 +630,7 @@ def test_sample_water_overlay_points_uses_ground_sampler_for_river_like_only() -
         azimuth_step_deg=90.0,
     )
 
-    assert lake_sampler.call_count == 0
+    assert lake_sampler.call_count > 0
     assert river_sampler.call_count > 0
 
 
