@@ -172,6 +172,23 @@
   - refresh / cache metadata
   - projected geometry を状態として持たなくてよい
 
+### 2.11 設定とキャッシュメタデータ
+
+- `ConfigData`
+  - `config.json` に保存する共有設定のまとまり
+  - 前回地点、window geometry、共有する表示初期値などを保持する
+- `GuiLaunchProfile`
+  - `zstarview-gui` 用の起動前ダイアログ設定
+  - GUI 固有の初期値や選択状態を保持する
+- `CacheMetadata`
+  - `fetched_at_utc`
+  - `source`
+  - `source_version` や `release`
+  - `ttl_class`
+  - `last_checked_at_utc`
+  - `stale` / `invalid` の判定に使う属性
+- 設定ファイルや cache sidecar の具体的な読み書きタイミングは runtime の責務であり、この文書では保存対象の形だけを扱う
+
 ## 3. 入口ごとの状態の違い
 
 ### 3.1 `zstarview`
