@@ -1023,11 +1023,13 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         self.search_menu = QMenu("Search", self)
         self.observer_view_menu = QMenu("View Direction", self)
         self.display_menu = QMenu("Layers", self)
+        self.help_menu = QMenu("Help", self)
         if not self._frameless_window:
             self.menu.addMenu(self.file_menu)
         self.menu.addMenu(self.search_menu)
         self.menu.addMenu(self.display_menu)
         self.menu.addMenu(self.observer_view_menu)
+        self.menu.addMenu(self.help_menu)
 
         self._add_menu_action(
             self.observer_view_menu,
@@ -1239,6 +1241,12 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             self._vmag_limit_menu_text(),
         )
         vmag_limit_action.setEnabled(False)
+
+        self._add_menu_action(
+            self.help_menu,
+            "Code, Data, Licenses, and Credits...",
+            triggered=open_code_data_licenses_and_credits,
+        )
 
         if self._frameless_window:
             self.menu.addSeparator()

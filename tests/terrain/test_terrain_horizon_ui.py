@@ -331,7 +331,7 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         if isinstance(entry, _DummyMenuAction) and not entry.separator
     ]
 
-    assert root_titles == ["Search", "Layers", "View Direction"]
+    assert root_titles == ["Search", "Layers", "View Direction", "Help"]
     assert root_actions == [
         "Square Client Area",
         "Default Window Size",
@@ -421,7 +421,7 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         if isinstance(entry, _DummyMenuAction) and not entry.separator
     ]
 
-    assert root_titles == ["File", "Search", "Layers", "View Direction"]
+    assert root_titles == ["File", "Search", "Layers", "View Direction", "Help"]
     assert root_actions == []
     assert file_actions[:5] == [
         "Square Client Area",
