@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.29.13 - 2026-06-06
+- Fixed the `--window-frame window` startup path so the standard decorated window now builds its shared `Help` menu correctly.
+- Added an `INFO` shutdown log message for user-initiated exits, including the File menu Exit action, the window close button, and the frameless hamburger menu Exit action.
+
 ## 1.29.12 - 2026-06-06
 - Added six more Horizons-backed spacecraft targets, fixed the search and shortcut labels to use `Spacecraft`, and kept ISS on the separate satellite path.
 - Restored the shared GUI worker pool model and raised its concurrency to `2` so long-running background tasks block each other less often.
