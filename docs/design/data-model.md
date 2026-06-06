@@ -195,3 +195,5 @@
 - `SkyWindowState` は UI 固有の transient state であり、renderer へはできるだけ直接漏らさない。
 - `CloudState`、`TerrainHorizonState`、`AircraftState`、`SatelliteState`、`UrbanOutlineState` は、各パイプラインの責務に閉じ込める。
 - 入口ごとの違いは「状態の初期化」と「保存先」に寄せ、データモデル自体は揃える。
+- task queue、worker、timer、signal handoff、latest-request-wins の実行順は runtime の責務であり、この文書では保持する値だけを定義する。
+- `request_id` や `refresh_at` のような更新制御用の値は、必要なら state の一部として持たせてよいが、投入順や破棄条件の説明は runtime に置く。

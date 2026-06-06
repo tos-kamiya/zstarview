@@ -9,6 +9,41 @@
 - 視点変更や再取得は latest-request-wins で扱う。
 - worker が busy の間に古い周期 tick を溜め込まない。
 
+## GUI 状態更新
+
+この節では、GUI のイベント、タスク、キュー、worker スレッドが、どの順で状態更新に結び付くかを定義する。
+
+### 入力イベント
+
+- マウス、キーボード、メニュー、ダイアログ確定などの入力は UI スレッドで受ける。
+- 入力イベントは、その場で重い計算をせず、更新要求または操作コマンドへ正規化する。
+- 視点変更、トグル切替、検索確定、再取得要求は、まず UI state を更新するための意図として扱う。
+
+### task と queue
+
+- UI スレッドは、更新要求を controller 単位の task に変換して worker pool に送る。
+- 共有 worker pool は、同時実行を避けるため基本的に 1 件ずつ task を処理する。
+- 各 task は request id か同等の識別子を持ち、古い task の結果で UI state を巻き戻さない。
+- 定期更新の tick は、worker busy 中は溜め込まず、次回 idle で 1 件だけ進める。
+
+### worker スレッド
+
+- worker は、天体計算、雲投影、地形地平線、都市アウトライン、航空機、人工衛星、検索候補の解決などの重い処理を担う。
+- worker は UI widget を直接触らず、結果データだけを返す。
+- worker の結果は、完了時に UI スレッドへ signal または同等の queued handoff で戻す。
+
+### UI state の反映
+
+- UI スレッドは、worker の結果を受けて `SkyWindowState` や各 overlay state を更新する。
+- 更新後は必要な frame cache を無効化し、再描画要求を出す。
+- `latest-request-wins` の条件により、古い結果は state へ反映せず破棄してよい。
+
+### shutdown と cancellation
+
+- window teardown 開始後は、新規 task の投入を止める。
+- 進行中 task は可能ならキャンセルし、破棄済み UI への更新通知を避ける。
+- 終了処理は、worker の完了通知よりも UI の安全性を優先する。
+
 ## 処理フロー
 
 - 起動フロー: 引数解析、地点解決、時刻正規化、保存状態復元を行い、その後に GUI かレンダリング系へ進む。

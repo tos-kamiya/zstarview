@@ -24,7 +24,7 @@
 - [entrypoints.md](design/entrypoints.md)
   - `zstarview` / `zstarview-gui` / `zstarview-export-image` の責務、CLI 共有、設定保存
 - [runtime.md](design/runtime.md)
-  - スレッドモデル、処理フロー、エラー処理、キャッシュ方針
+  - スレッドモデル、GUI 状態更新、処理フロー、エラー処理、キャッシュ方針
 - [data-model.md](design/data-model.md)
   - 主要データ構造、状態オブジェクト、アプリ間で共有する scene/state の境界
 - [rendering-pipeline.md](design/rendering-pipeline.md)
