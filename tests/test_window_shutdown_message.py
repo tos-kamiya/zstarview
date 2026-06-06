@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from types import SimpleNamespace
 
 from PySide6.QtCore import Qt
@@ -103,3 +104,35 @@ def test_begin_shutdown_shows_message_around_controller_shutdown() -> None:
     window_module.SkyWindowCoreMixin._begin_shutdown(dummy)
 
     assert call_order == ["show", "worker", "hide"]
+
+
+def test_begin_shutdown_logs_user_initiated_shutdown(caplog) -> None:
+    dummy = SimpleNamespace(
+        _is_shutting_down=False,
+        _show_shutdown_message=lambda: None,
+        _hide_shutdown_message=lambda: None,
+        _sky_worker=SimpleNamespace(shutdown=lambda: None),
+        _cloud_controller=None,
+        _geosatellite_controller=None,
+        _satellite_controller=None,
+        _aircraft_controller=None,
+        _tropical_cyclone_controller=None,
+        _jpl_small_body_controller=None,
+        _terrain_horizon_controller=None,
+        _water_overlay_controller=None,
+        _urban_outline_controller=None,
+        _sky_data_update_timer=_TimerStub(False),
+        _asterism_check_timer=_TimerStub(False),
+        _cloud_update_timer=_TimerStub(False),
+        _satellite_update_timer=_TimerStub(False),
+        _overlay_projection_timer=_TimerStub(False),
+        _aircraft_update_timer=_TimerStub(False),
+        _persistent_search_update_timer=_TimerStub(False),
+        _interaction_idle_timer=_TimerStub(False),
+        _viewport_interaction_idle_timer=_TimerStub(False),
+    )
+
+    with caplog.at_level(logging.INFO, logger="zstarview.gui.window"):
+        window_module.SkyWindowCoreMixin._begin_shutdown(dummy)
+
+    assert "Shutdown requested; closing application." in caplog.text

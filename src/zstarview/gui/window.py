@@ -2238,6 +2238,7 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
         if self._is_shutting_down:
             return
         self._is_shutting_down = True
+        logger.info("Shutdown requested; closing application.")
         self._show_shutdown_message()
         try:
             self._sky_worker.shutdown()
