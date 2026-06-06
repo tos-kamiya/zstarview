@@ -82,6 +82,34 @@ def test_tropical_cyclone_snapshot_roundtrip() -> None:
     assert loaded == snapshot
 
 
+def test_tropical_cyclone_summary_text_omits_question_mark_when_advdate_is_unneeded() -> None:
+    snapshot = TropicalCycloneSnapshot(
+        storm_name="Amanda",
+        basin="ep",
+        advdate_utc=None,
+        observed_position=TropicalCyclonePoint(
+            lat_deg=13.0,
+            lon_deg=-134.2,
+            valid_time_utc=datetime(2026, 6, 6, 0, 0, tzinfo=timezone.utc),
+        ),
+        forecast_positions=(),
+        wind_polygons=(),
+        source_url="https://example.invalid/service",
+        service_name="FeatureServer",
+        refreshed_at_utc=datetime(2026, 6, 6, 4, 50, tzinfo=timezone.utc),
+        current_storm_id="1",
+    )
+    collection = TropicalCycloneSnapshotCollection(
+        snapshots=(snapshot,),
+        source_url="https://example.invalid/service",
+        service_name="FeatureServer",
+        refreshed_at_utc=datetime(2026, 6, 6, 4, 50, tzinfo=timezone.utc),
+    )
+
+    assert snapshot.advdate_is_required_for_projection() is False
+    assert collection.summary_text() == "Amanda"
+
+
 def test_tropical_cyclone_cache_roundtrip(tmp_path) -> None:
     collection = _collection(_snapshot())
     entry = TropicalCycloneCacheEntry(

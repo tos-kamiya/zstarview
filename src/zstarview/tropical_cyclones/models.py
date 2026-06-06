@@ -211,6 +211,13 @@ class TropicalCycloneSnapshot:
                     return True
         return False
 
+    def advdate_is_required_for_projection(self) -> bool:
+        if not self.forecast_positions:
+            return False
+        if self.observed_position.valid_time_utc is None:
+            return True
+        return any(point.valid_time_utc is None for point in self.forecast_positions)
+
 
 @dataclass(frozen=True, slots=True)
 class TropicalCycloneSnapshotCollection:
@@ -270,8 +277,8 @@ class TropicalCycloneSnapshotCollection:
                 except Exception:
                     advdate_text = "?"
             else:
-                advdate_text = "?"
-            return f"{snapshot.storm_name} {advdate_text}"
+                advdate_text = "?" if snapshot.advdate_is_required_for_projection() else ""
+            return f"{snapshot.storm_name} {advdate_text}".strip()
         if names:
             preview = ", ".join(names[:3])
             if count > 3:
