@@ -1,5 +1,9 @@
 # zstarview Release Notes
 
+## 1.30.1 - 2026-06-07
+- Aligned `zstarview-export-image` water-overlay generation with the GUI path so inland water no longer gets refit against a fresh DEM during export.
+- Tightened the export-image terrain-horizon scan density to reduce narrow-sector ridge misses in export output.
+
 ## 1.30.0 - 2026-06-06
 - Simplified tropical cyclone summary text so multiple storms now show only the count, keeping the overlay label compact.
 
