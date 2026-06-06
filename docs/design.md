@@ -27,7 +27,7 @@
   - 主要データ構造、状態オブジェクト、アプリ間で共有する scene/state の境界
 - [rendering-pipeline.md](design/rendering-pipeline.md)
   - 描画パイプライン、オーバーレイ合成、ラベル、外部依存
-- [legacy.md](design/legacy.md)
+- [legacy-archive.md](design/legacy-archive.md)
   - 分割前の単一ファイル版の記録。参照用の履歴として残す
 
 利用者向けの機能説明は [specification.md](specification.md) を参照する。
