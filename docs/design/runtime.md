@@ -58,6 +58,14 @@
 - 起動失敗と、後段の補助レイヤー失敗を分けて扱う。
 - download / projection / partial data / unavailable の状態文言を表示に出す。
 
+## ログと診断出力
+
+- ログは診断用であり、UI 表示そのものとは分けて扱う。
+- terminal、console、log、CLI help、exception message、subprocess の stdout/stderr に出る文字列は ASCII-only を原則とする。
+- UI 専用文字列は、画面表示のために必要な場合だけ非 ASCII を許容する。
+- 外部入力や外部データに含まれる非 ASCII 文字は、必要なら escape するか要約してログに残す。
+- ユーザー向けの日本語説明は、ログではなく UI や仕様文書へ出す。
+
 ## 設定の保存と復元
 
 - `zstarview` と `zstarview-export-image` は共有設定を `~/.config/zstarview/config.json` から読む。

@@ -539,6 +539,12 @@ GUI では `--search QUERY` に相当する検索を 1 件だけ実行してよ�
 
 - 利用者向け仕様、内部設計、実装履歴を別文書として維持すること。
 
+### 11.4 出力の文字種
+
+- terminal、console、log、CLI help、exception message、subprocess の stdout/stderr に出る文字列は、ASCII-only を原則とする。
+- UI 専用文字列は、画面表示のために必要な場合だけ非 ASCII を許容してよい。
+- 外部データ由来の非 ASCII を出力に含める必要がある場合は、要約または escape して出してよい。
+
 ## 12. 既知の制約
 
 - 雲表示は外部の衛星データ供給状況に依存する。
