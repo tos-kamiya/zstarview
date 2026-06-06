@@ -159,6 +159,8 @@ DEFAULT_CLOUD_ALT_MIN_DEG = 1.0
 DEFAULT_CLOUD_FOV_OVERSCAN_DEG = 2.0
 DEFAULT_CLOUD_BASE_SIZE = 256
 DEFAULT_EXPORT_IMAGE_SKY_UPDATE_INTERVAL = 60
+DEFAULT_EXPORT_IMAGE_TERRAIN_AZIMUTH_STEP_DEG = 0.5
+DEFAULT_EXPORT_IMAGE_TERRAIN_SAMPLE_STEP_M = 60.0
 
 
 def _load_star_catalog_for_export(vmag_limit: float | None):
@@ -628,8 +630,11 @@ def _fetch_terrain_horizon_layer(
         layers = compute_flat_ground_horizon_layers(
             geod=WGS84_GEOD,
             observer=observer,
-            azimuth_step_deg=1.0,
-            distance_samples_m=build_distance_samples(128.0, 90.0),
+            azimuth_step_deg=DEFAULT_EXPORT_IMAGE_TERRAIN_AZIMUTH_STEP_DEG,
+            distance_samples_m=build_distance_samples(
+                128.0,
+                DEFAULT_EXPORT_IMAGE_TERRAIN_SAMPLE_STEP_M,
+            ),
             earth_radius_m=EARTH_MEAN_RADIUS_M,
             refraction_coefficient=0.13,
         )
@@ -667,8 +672,11 @@ def _fetch_terrain_horizon_layer(
             dem_grid=dem_grid,
             geod=WGS84_GEOD,
             observer=observer,
-            azimuth_step_deg=1.0,
-            distance_samples_m=build_distance_samples(128.0, 90.0),
+            azimuth_step_deg=DEFAULT_EXPORT_IMAGE_TERRAIN_AZIMUTH_STEP_DEG,
+            distance_samples_m=build_distance_samples(
+                128.0,
+                DEFAULT_EXPORT_IMAGE_TERRAIN_SAMPLE_STEP_M,
+            ),
             dem_resampling="bilinear",
             earth_radius_m=EARTH_MEAN_RADIUS_M,
             refraction_coefficient=0.13,
@@ -1540,21 +1548,14 @@ def main() -> None:
     if water_overlay_opacity > 0.0:
         try:
             water_deadline = _deadline_after(layer_timeout_seconds)
-            observer_ground_m = float(viewer_data.ground_elevation_m or 0.0)
-            scan_radius_km = resolve_water_scan_radius_km(
-                float(viewer_data.observer_height_m) + observer_ground_m,
-                minimum_distance_km=DEFAULT_WATER_RADIUS_KM,
-            )
-            water_target_ground_sampler = _build_water_target_ground_sampler(
-                viewer_data=viewer_data,
-                scan_radius_km=scan_radius_km,
-                deadline=water_deadline,
-            )
+            # Match the GUI water path: use the terrain-controller ground height
+            # already present in ViewerData, but do not refit inland-water
+            # heights against a fresh DEM inside export-image.
             water_overlay_dots = _fetch_water_overlay_dots_layer(
                 viewer_data=viewer_data,
                 surface_size_px=tuple(int(value) for value in args.image_size),
                 deadline=water_deadline,
-                target_ground_sampler=water_target_ground_sampler,
+                target_ground_sampler=None,
             )
         except Exception as exc:
             logger.warning("Export layer unavailable: water (%s)", exc)

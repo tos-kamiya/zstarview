@@ -414,8 +414,8 @@ def test_fetch_terrain_horizon_layer_uses_sea_level_fallback(monkeypatch) -> Non
 
     got = mod._fetch_terrain_horizon_layer(viewer_data=viewer_data, deadline=None)
 
-    assert len(got["profile_altaz"]) == 360
-    assert len(got["profile_distances_m"]) == 360
+    assert len(got["profile_altaz"]) == 720
+    assert len(got["profile_distances_m"]) == 720
     assert len(got["secondary_ridges_altaz_layers"]) >= 1
     assert len(got["secondary_ridges_distances_m_layers"]) >= 1
     assert all(math.isfinite(alt) for alt, _az in got["profile_altaz"])
