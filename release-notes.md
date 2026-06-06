@@ -1,5 +1,8 @@
 # zstarview Release Notes
 
+## 1.30.0 - 2026-06-06
+- Simplified tropical cyclone summary text so multiple storms now show only the count, keeping the overlay label compact.
+
 ## 1.29.14 - 2026-06-06
 - Inland water polygons without explicit `ele` or `water_level` now use DEM-backed ground height in `zstarview-export-image`, so lakes and rivers follow the sampled terrain height instead of the observer-ground fallback.
 
