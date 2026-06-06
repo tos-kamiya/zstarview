@@ -279,11 +279,6 @@ class TropicalCycloneSnapshotCollection:
             else:
                 advdate_text = "?" if snapshot.advdate_is_required_for_projection() else ""
             return f"{snapshot.storm_name} {advdate_text}".strip()
-        if names:
-            preview = ", ".join(names[:3])
-            if count > 3:
-                preview = f"{preview}, +{count - 3}"
-            return f"{count} storms: {preview}"
         return f"{count} storms"
 
 

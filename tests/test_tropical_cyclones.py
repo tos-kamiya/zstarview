@@ -110,6 +110,35 @@ def test_tropical_cyclone_summary_text_omits_question_mark_when_advdate_is_unnee
     assert collection.summary_text() == "Amanda"
 
 
+def test_tropical_cyclone_summary_text_shows_count_only_for_multiple_storms() -> None:
+    collection = TropicalCycloneSnapshotCollection(
+        snapshots=(
+            _snapshot(),
+            TropicalCycloneSnapshot(
+                storm_name="One-e",
+                basin="wp",
+                advdate_utc=datetime(2026, 5, 30, 8, 0, tzinfo=timezone.utc),
+                observed_position=TropicalCyclonePoint(
+                    lat_deg=18.4,
+                    lon_deg=132.1,
+                    valid_time_utc=datetime(2026, 5, 30, 8, 0, tzinfo=timezone.utc),
+                ),
+                forecast_positions=(),
+                wind_polygons=(),
+                source_url="https://example.invalid/service",
+                service_name="FeatureServer",
+                refreshed_at_utc=datetime(2026, 5, 30, 2, 20, tzinfo=timezone.utc),
+                current_storm_id="WP022026",
+            ),
+        ),
+        source_url="https://example.invalid/service",
+        service_name="FeatureServer",
+        refreshed_at_utc=datetime(2026, 5, 30, 2, 20, tzinfo=timezone.utc),
+    )
+
+    assert collection.summary_text() == "2 storms"
+
+
 def test_tropical_cyclone_cache_roundtrip(tmp_path) -> None:
     collection = _collection(_snapshot())
     entry = TropicalCycloneCacheEntry(
