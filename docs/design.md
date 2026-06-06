@@ -21,14 +21,12 @@
 
 - [overview.md](design/overview.md)
   - 設計方針、全体アーキテクチャ、3 つのアプリの共通前提
-- [entrypoints.md](design/entrypoints.md)
-  - `zstarview` / `zstarview-gui` / `zstarview-export-image` の責務、CLI 共有、設定保存
 - [runtime.md](design/runtime.md)
   - スレッドモデル、GUI 状態更新、処理フロー、エラー処理、キャッシュ方針
 - [data-model.md](design/data-model.md)
   - 主要データ構造、状態オブジェクト、アプリ間で共有する scene/state の境界
 - [rendering-pipeline.md](design/rendering-pipeline.md)
-  - 描画パイプライン、補助レイヤー、外部依存
+  - 描画パイプライン、オーバーレイ合成、ラベル、外部依存
 - [legacy.md](design/legacy.md)
   - 分割前の単一ファイル版の記録。参照用の履歴として残す
 
