@@ -104,6 +104,7 @@ from ..search.satellites import resolve_satellite_target_altaz, search_satellite
 from ..splash import setup_app
 from ..terrain import (
     EARTH_MEAN_RADIUS_M,
+    DEFAULT_TERRAIN_DISTANCE_SAMPLE_STEP_M,
     WGS84_GEOD,
     GeoTiffDem,
     ObserverLocation,
@@ -160,7 +161,7 @@ DEFAULT_CLOUD_FOV_OVERSCAN_DEG = 2.0
 DEFAULT_CLOUD_BASE_SIZE = 256
 DEFAULT_EXPORT_IMAGE_SKY_UPDATE_INTERVAL = 60
 DEFAULT_EXPORT_IMAGE_TERRAIN_AZIMUTH_STEP_DEG = 0.5
-DEFAULT_EXPORT_IMAGE_TERRAIN_SAMPLE_STEP_M = 60.0
+DEFAULT_EXPORT_IMAGE_TERRAIN_SAMPLE_STEP_M = DEFAULT_TERRAIN_DISTANCE_SAMPLE_STEP_M
 
 
 def _load_star_catalog_for_export(vmag_limit: float | None):

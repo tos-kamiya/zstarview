@@ -7,6 +7,7 @@ from typing import Sequence
 import numpy as np
 
 EARTH_MEAN_RADIUS_M = 6_371_008.8
+DEFAULT_TERRAIN_DISTANCE_SAMPLE_STEP_M = 60.0
 
 
 @dataclass(frozen=True)

@@ -13,6 +13,7 @@ from PySide6.QtCore import QObject, Signal
 from ..clouddisc.types import DownloadCancelledError
 from ..terrain import (
     EARTH_MEAN_RADIUS_M,
+    DEFAULT_TERRAIN_DISTANCE_SAMPLE_STEP_M,
     WGS84_GEOD,
     GeoTiffDem,
     ObserverLocation,
@@ -41,7 +42,7 @@ class TerrainHorizonController(QObject):
         observer_eye_m: float = 1.7,
         max_distance_km: float = 128.0,
         download_margin_km: float = 10.0,
-        sample_step_m: float = 90.0,
+        sample_step_m: float = DEFAULT_TERRAIN_DISTANCE_SAMPLE_STEP_M,
         azimuth_step_deg: float = 1.0,
         dem_resampling: str = "bilinear",
         earth_radius_m: float = EARTH_MEAN_RADIUS_M,

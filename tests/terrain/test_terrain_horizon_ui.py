@@ -15,6 +15,7 @@ import zstarview.gui.window as window_module
 import zstarview.gui.window_widgets as window_widgets_module
 from zstarview.cli.args import SKY_OPACITY_DEFAULT
 from zstarview.gui.terrain_controller import TerrainHorizonController
+from zstarview.terrain import DEFAULT_TERRAIN_DISTANCE_SAMPLE_STEP_M
 from zstarview.gui.window import SkyWindow, SkyWindowCoreMixin
 from zstarview.gui.window_inputs import prepare_window_user_options
 from zstarview.gui.window_updates import SkyWindowUpdatesMixin
@@ -1441,6 +1442,12 @@ def test_terrain_controller_uses_sea_level_horizon_when_dem_missing(
     assert all(math.isfinite(alt) for alt, _az in payload["profile_altaz"])
     assert min(payload["profile_distances_m"]) > 0.0
     assert max(payload["profile_distances_m"]) == pytest.approx(min(payload["profile_distances_m"]))
+
+
+def test_terrain_controller_uses_shared_dem_scan_step(tmp_path) -> None:
+    controller = TerrainHorizonController(cache_dir=tmp_path)
+
+    assert controller._sample_step_m == pytest.approx(DEFAULT_TERRAIN_DISTANCE_SAMPLE_STEP_M)
 
 
 def test_toggle_sky_disc_enables_gradient_and_requests_refresh() -> None:

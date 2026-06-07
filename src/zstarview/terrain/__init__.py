@@ -10,6 +10,7 @@ from .dem import (
 )
 from .horizon import (
     EARTH_MEAN_RADIUS_M,
+    DEFAULT_TERRAIN_DISTANCE_SAMPLE_STEP_M,
     HorizonLayerSet,
     HorizonProfilePoint,
     ObserverLocation,
@@ -29,6 +30,7 @@ __all__ = [
     "DemGrid",
     "DownloadedDem",
     "EARTH_MEAN_RADIUS_M",
+    "DEFAULT_TERRAIN_DISTANCE_SAMPLE_STEP_M",
     "GeoTiffDem",
     "HorizonLayerSet",
     "HorizonProfilePoint",
