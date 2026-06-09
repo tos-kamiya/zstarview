@@ -6,6 +6,7 @@ from PySide6.QtWidgets import QApplication
 
 from zstarview import night_lights
 from zstarview.render.night_lights import draw_night_light_glow
+from zstarview.render import night_lights as night_lights_render
 from zstarview.types import ScreenGeometry, ViewerData
 
 app = QApplication.instance() or QApplication([])
@@ -42,6 +43,24 @@ def test_night_light_strength_factor_is_continuous() -> None:
     assert 0.0 < night_lights.night_light_strength_factor(-3.0) < 1.0
     assert night_lights.night_light_strength_factor(-6.0) == 1.0
     assert night_lights.night_light_strength_factor(-10.0) == 1.0
+
+
+def test_night_light_band_width_scale_decreases_with_distance() -> None:
+    near = night_lights_render._night_light_band_width_scale(0.5)
+    mid = night_lights_render._night_light_band_width_scale(1.0)
+    far = night_lights_render._night_light_band_width_scale(128.0)
+
+    assert near == 1.0
+    assert near > mid > far
+    assert far >= night_lights_render.NIGHT_LIGHTS_MIN_WIDTH_SCALE
+
+
+def test_night_light_distance_attenuation_uses_inverse_square() -> None:
+    attenuation = night_lights._night_light_distance_attenuation(
+        np.asarray([1000.0, 2000.0, 4000.0], dtype=np.float64)
+    )
+
+    assert np.allclose(attenuation, np.asarray([1.0, 0.25, 0.0625], dtype=np.float64))
 
 
 def test_compute_night_light_glow_profile_uses_mocked_sampling(tmp_path, monkeypatch) -> None:

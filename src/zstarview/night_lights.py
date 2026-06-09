@@ -31,10 +31,9 @@ NIGHT_LIGHTS_TILE_WIDTH_DEG = 90.0
 NIGHT_LIGHTS_TILE_HEIGHT_DEG = 90.0
 NIGHT_LIGHTS_MAX_DISTANCE_KM = 128.0
 NIGHT_LIGHTS_DISTANCE_STEP_KM = 0.5
-NIGHT_LIGHTS_ATTENUATION_SCALE_M = 22_000.0
 NIGHT_LIGHTS_AZIMUTH_SMOOTHING_WIDTH = 2
 NIGHT_LIGHTS_BAND_CENTER_OFFSET_DEG = 1.5
-NIGHT_LIGHTS_BAND_HALF_WIDTH_DEG = 3.0
+NIGHT_LIGHTS_BAND_HALF_WIDTH_DEG = 1.5
 NIGHT_LIGHTS_MAX_ALPHA = 0.48
 NIGHT_LIGHTS_RGB = (240, 173, 122)
 NIGHT_LIGHTS_SUN_BLEND_START_ALT_DEG = -6.0
@@ -283,6 +282,11 @@ def _sample_dataset_points(
     return np.asarray(values, dtype=np.float64)
 
 
+def _night_light_distance_attenuation(distances_m: np.ndarray) -> np.ndarray:
+    distances_km = np.maximum(np.asarray(distances_m, dtype=np.float64) / 1000.0, 1.0)
+    return 1.0 / np.square(distances_km)
+
+
 def _sample_ray_brightness_curve(
     *,
     tile_paths: dict[str, Path],
@@ -320,9 +324,7 @@ def _sample_ray_brightness_curve(
         indices = grouped_indices[tile_name]
         samples[np.asarray(indices, dtype=np.int64)] = tile_samples
 
-    attenuation = np.exp(-distances_m / float(NIGHT_LIGHTS_ATTENUATION_SCALE_M)) / (
-        np.maximum(distances_m / 1000.0, 1.0) + 1.0
-    )
+    attenuation = _night_light_distance_attenuation(distances_m)
     return np.cumsum(samples * attenuation)
 
 
@@ -482,9 +484,9 @@ def _compute_night_light_base_profile(
     scale = float(np.percentile(full_raw_strengths, 95))
     if not math.isfinite(scale) or scale <= 0.0:
         return None
-    full_strengths = np.clip(np.sqrt(np.clip(full_raw_strengths / scale, 0.0, None)) * 1.35, 0.0, 1.0)
+    full_strengths = np.clip(np.sqrt(np.clip(full_raw_strengths / scale, 0.0, None)), 0.0, 1.0)
     band_strengths = [
-        np.clip(np.sqrt(np.clip(raw_strengths / scale, 0.0, None)) * 1.35, 0.0, 1.0)
+        np.clip(np.sqrt(np.clip(raw_strengths / scale, 0.0, None)), 0.0, 1.0)
         for raw_strengths in raw_strengths_by_band
     ]
     if not np.any(full_strengths > 0.0) or not any(np.any(strengths > 0.0) for strengths in band_strengths):

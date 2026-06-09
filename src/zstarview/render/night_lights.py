@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import math
-
 import numpy as np
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPainter, QPolygonF
@@ -12,85 +10,33 @@ from ..types import ScreenGeometry, ViewerData
 from .geometry import normalized_to_screen_xy
 from .guides import split_by_gaps
 
-NIGHT_LIGHTS_BASE_ALPHA_SCALE = 1.0
-NIGHT_LIGHTS_BAND_SPECS: tuple[tuple[float, float], ...] = (
-    (0.1, 3.2),
-    (0.3, 1.7),
-    (0.50, 0.9),
-    (1.0, 0.5),
-)
 NIGHT_LIGHTS_MIN_BRIGHTNESS = 0.02
 NIGHT_LIGHTS_GLOW_RGB = (244, 246, 248)
-NIGHT_LIGHTS_DRAW_AZIMUTH_STEP_DEG = 0.5
 NIGHT_LIGHTS_DISTANCE_NEAR_KM = 0.5
 NIGHT_LIGHTS_DISTANCE_FAR_KM = 128.0
+NIGHT_LIGHTS_MIN_WIDTH_SCALE = 0.35
 
 
-def _band_width_px(
-    *,
-    center_alt_deg: float,
-    band_half_width_deg: float,
-    view_center: tuple[float, float],
-    geometry: ScreenGeometry,
-    edge_fov_deg: float,
+def _night_light_band_width_scale(distance_km: float) -> float:
+    d = max(
+        float(NIGHT_LIGHTS_DISTANCE_NEAR_KM),
+        min(float(NIGHT_LIGHTS_DISTANCE_FAR_KM), float(distance_km)),
+    )
+    scale = float(NIGHT_LIGHTS_DISTANCE_NEAR_KM) / d
+    return max(float(NIGHT_LIGHTS_MIN_WIDTH_SCALE), min(1.0, scale))
+
+
+def _layer_distance_km(
+    profile: NightLightGlowProfile,
+    layer_index: int,
 ) -> float:
-    try:
-        nx1, ny1 = altaz_to_normalized_xy(
-            float(center_alt_deg),
-            float(view_center[1]),
-            view_center,
-            edge_fov_deg=float(edge_fov_deg),
-        )
-        nx2, ny2 = altaz_to_normalized_xy(
-            float(center_alt_deg) + float(band_half_width_deg),
-            float(view_center[1]),
-            view_center,
-            edge_fov_deg=float(edge_fov_deg),
-        )
-    except Exception:
-        return max(1.0, float(geometry.radius) * 0.02)
-    x1, y1 = normalized_to_screen_xy(nx1, ny1, geometry)
-    x2, y2 = normalized_to_screen_xy(nx2, ny2, geometry)
-    return max(1.0, math.hypot(float(x2) - float(x1), float(y2) - float(y1)) * 2.0)
-
-
-def _build_band_polygon(
-    points: list[QPointF],
-    *,
-    half_width_px: float,
-) -> QPolygonF:
-    if len(points) < 2:
-        return QPolygonF()
-
-    half_width = max(0.5, float(half_width_px))
-    left_points: list[QPointF] = []
-    right_points: list[QPointF] = []
-    last_index = len(points) - 1
-    for index, point in enumerate(points):
-        if index == 0:
-            tangent_x = float(points[1].x()) - float(point.x())
-            tangent_y = float(points[1].y()) - float(point.y())
-        elif index == last_index:
-            tangent_x = float(point.x()) - float(points[index - 1].x())
-            tangent_y = float(point.y()) - float(points[index - 1].y())
-        else:
-            tangent_x = float(points[index + 1].x()) - float(points[index - 1].x())
-            tangent_y = float(points[index + 1].y()) - float(points[index - 1].y())
-        length = math.hypot(tangent_x, tangent_y)
-        if length <= 1.0e-9:
-            normal_x, normal_y = 0.0, 1.0
-        else:
-            normal_x = -tangent_y / length
-            normal_y = tangent_x / length
-        offset_x = normal_x * half_width
-        offset_y = normal_y * half_width
-        left_points.append(QPointF(float(point.x()) + offset_x, float(point.y()) + offset_y))
-        right_points.append(QPointF(float(point.x()) - offset_x, float(point.y()) - offset_y))
-
-    polygon = QPolygonF(left_points + list(reversed(right_points)))
-    if not polygon.isEmpty():
-        polygon.append(left_points[0])
-    return polygon
+    band_profiles = tuple(getattr(profile, "band_profiles", ()))
+    if not band_profiles:
+        return float(NIGHT_LIGHTS_DISTANCE_NEAR_KM)
+    if layer_index <= 0:
+        return float(NIGHT_LIGHTS_DISTANCE_NEAR_KM)
+    band_index = min(layer_index - 1, len(band_profiles) - 1)
+    return float(band_profiles[band_index].max_distance_km)
 
 
 def _seam_relative_azimuth_deg(azimuth_deg: float, seam_az_deg: float) -> float:
@@ -157,7 +103,6 @@ def _draw_night_light_glow_impl(
         painter.restore()
         return
 
-    band_half_width_deg = float(profile.band_half_width_deg)
     for layer_index, layer_altaz in enumerate(layer_altaz_sets):
         if not layer_altaz or len(layer_altaz) < 2:
             continue
@@ -201,13 +146,13 @@ def _draw_night_light_glow_impl(
         layer_strengths = np.interp(layer_az, night_az_ext, night_strengths_ext)
         draw_az = layer_az
         projected_points: list[tuple[float, float]] = []
+        projected_draw_az: list[float] = []
+        projected_horizon_alts: list[float] = []
         strengths: list[float] = []
-        center_alts: list[float] = []
         for seam_az_deg_value, horizon_alt, strength in zip(draw_az.tolist(), layer_horizon_alt.tolist(), layer_strengths.tolist()):
-            center_alt = float(horizon_alt) + float(profile.band_center_offset_deg)
             try:
                 nx, ny = altaz_to_normalized_xy(
-                    center_alt,
+                    float(horizon_alt),
                     (float(seam_az_deg_value) + seam_az_deg) % 360.0,
                     view_center,
                     edge_fov_deg=float(edge_fov_deg),
@@ -215,21 +160,24 @@ def _draw_night_light_glow_impl(
             except Exception:
                 continue
             projected_points.append((float(nx), float(ny)))
+            projected_draw_az.append(float(seam_az_deg_value))
+            projected_horizon_alts.append(float(horizon_alt))
             strengths.append(float(strength))
-            center_alts.append(center_alt)
 
         if len(projected_points) < 2:
             continue
 
-        width_px = _band_width_px(
-            center_alt_deg=float(sum(center_alts) / len(center_alts)),
-            band_half_width_deg=band_half_width_deg,
-            view_center=view_center,
-            geometry=geometry,
-            edge_fov_deg=edge_fov_deg,
-        )
-        if width_px <= 0.0:
+        layer_distance_km = _layer_distance_km(profile, layer_index)
+        width_scale = _night_light_band_width_scale(layer_distance_km)
+        band_thickness_deg = float(profile.band_half_width_deg) * 2.0 * width_scale
+
+        alpha = min(1.0, layer_opacity * sun_factor)
+        if alpha <= 0.0:
             continue
+        color = QColor(*fill_rgb)
+        color.setAlphaF(alpha)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(color)
 
         point_index = 0
         for fragment in split_by_gaps(projected_points):
@@ -237,32 +185,49 @@ def _draw_night_light_glow_impl(
                 point_index += len(fragment)
                 continue
             frag_strengths = strengths[point_index:point_index + len(fragment)]
-            frag_points = [QPointF(*normalized_to_screen_xy(nx, ny, geometry)) for nx, ny in fragment]
             frag_strength = max(float(value) for value in frag_strengths)
             if frag_strength < NIGHT_LIGHTS_MIN_BRIGHTNESS:
                 point_index += len(fragment)
                 continue
 
-            alpha = min(
-                1.0,
-                frag_strength
-                * NIGHT_LIGHTS_BASE_ALPHA_SCALE
-                * layer_opacity
-                * sun_factor
-            )
-            color = QColor(*fill_rgb)
-
-            for alpha_scale, width_scale in NIGHT_LIGHTS_BAND_SPECS:
-                color.setAlphaF(max(0.0, min(1.0, alpha * alpha_scale)))
-                painter.setPen(Qt.PenStyle.NoPen)
-                painter.setBrush(color)
-                band_polygon = _build_band_polygon(
-                    frag_points,
-                    half_width_px=width_px * float(width_scale) * 0.5,
-                )
-                if band_polygon.isEmpty():
+            lower_points: list[QPointF] = []
+            upper_points: list[QPointF] = []
+            for seam_az_deg_value, horizon_alt, _strength in zip(
+                projected_draw_az[point_index:point_index + len(fragment)],
+                projected_horizon_alts[point_index:point_index + len(fragment)],
+                frag_strengths,
+            ):
+                az = (float(seam_az_deg_value) + seam_az_deg) % 360.0
+                lower_alt = float(horizon_alt)
+                upper_alt = float(horizon_alt) + float(band_thickness_deg)
+                try:
+                    lower_nx, lower_ny = altaz_to_normalized_xy(
+                        lower_alt,
+                        az,
+                        view_center,
+                        edge_fov_deg=float(edge_fov_deg),
+                    )
+                    upper_nx, upper_ny = altaz_to_normalized_xy(
+                        upper_alt,
+                        az,
+                        view_center,
+                        edge_fov_deg=float(edge_fov_deg),
+                    )
+                except Exception:
                     continue
-                painter.drawPolygon(band_polygon)
+                lower_points.append(QPointF(*normalized_to_screen_xy(lower_nx, lower_ny, geometry)))
+                upper_points.append(QPointF(*normalized_to_screen_xy(upper_nx, upper_ny, geometry)))
+
+            if len(lower_points) < 2 or len(upper_points) < 2:
+                point_index += len(fragment)
+                continue
+
+            band_polygon = QPolygonF(lower_points + list(reversed(upper_points)))
+            if band_polygon.isEmpty():
+                point_index += len(fragment)
+                continue
+            band_polygon.append(lower_points[0])
+            painter.drawPolygon(band_polygon)
             point_index += len(fragment)
 
     painter.restore()
