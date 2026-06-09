@@ -17,12 +17,16 @@ NIGHT_LIGHTS_DISTANCE_FAR_KM = 128.0
 NIGHT_LIGHTS_MIN_WIDTH_SCALE = 0.35
 
 
-def _night_light_band_width_scale(distance_km: float) -> float:
+def _night_light_distance_scale(distance_km: float) -> float:
     d = max(
         float(NIGHT_LIGHTS_DISTANCE_NEAR_KM),
         min(float(NIGHT_LIGHTS_DISTANCE_FAR_KM), float(distance_km)),
     )
-    scale = float(NIGHT_LIGHTS_DISTANCE_NEAR_KM) / d
+    return float(np.sqrt(float(NIGHT_LIGHTS_DISTANCE_NEAR_KM) / d))
+
+
+def _night_light_band_width_scale(distance_km: float) -> float:
+    scale = _night_light_distance_scale(distance_km)
     return max(float(NIGHT_LIGHTS_MIN_WIDTH_SCALE), min(1.0, scale))
 
 
@@ -37,6 +41,20 @@ def _layer_distance_km(
         return float(NIGHT_LIGHTS_DISTANCE_NEAR_KM)
     band_index = min(layer_index - 1, len(band_profiles) - 1)
     return float(band_profiles[band_index].max_distance_km)
+
+
+def _band_lower_edge_altitudes(
+    current_layer_altitudes: np.ndarray,
+    previous_layer_altitudes: np.ndarray | None,
+) -> np.ndarray:
+    current = np.asarray(current_layer_altitudes, dtype=np.float64)
+    if previous_layer_altitudes is None:
+        previous = np.zeros_like(current)
+    else:
+        previous = np.asarray(previous_layer_altitudes, dtype=np.float64)
+        if previous.shape != current.shape:
+            raise ValueError("previous_layer_altitudes must match current_layer_altitudes")
+    return 0.9 * previous + 0.1 * current
 
 
 def _seam_relative_azimuth_deg(azimuth_deg: float, seam_az_deg: float) -> float:
@@ -103,6 +121,8 @@ def _draw_night_light_glow_impl(
         painter.restore()
         return
 
+    previous_layer_az_ext: np.ndarray | None = None
+    previous_layer_horizon_alt_ext: np.ndarray | None = None
     for layer_index, layer_altaz in enumerate(layer_altaz_sets):
         if not layer_altaz or len(layer_altaz) < 2:
             continue
@@ -141,18 +161,35 @@ def _draw_night_light_glow_impl(
         )
         layer_horizon_alt = np.asarray([alt for alt, _ in layer_samples], dtype=np.float64)
         if layer_az.size < 2:
+            previous_layer_az_ext = np.concatenate([layer_az[-1:] - 360.0, layer_az, layer_az[:1] + 360.0])
+            previous_layer_horizon_alt_ext = np.concatenate(
+                [layer_horizon_alt[-1:], layer_horizon_alt, layer_horizon_alt[:1]]
+            )
             continue
 
         layer_strengths = np.interp(layer_az, night_az_ext, night_strengths_ext)
+        if previous_layer_az_ext is None or previous_layer_horizon_alt_ext is None:
+            previous_layer_horizon_alt = np.zeros_like(layer_horizon_alt)
+        else:
+            previous_layer_horizon_alt = np.interp(
+                layer_az,
+                previous_layer_az_ext,
+                previous_layer_horizon_alt_ext,
+            )
+        band_lower_edge_alts = _band_lower_edge_altitudes(layer_horizon_alt, previous_layer_horizon_alt)
         draw_az = layer_az
         projected_points: list[tuple[float, float]] = []
         projected_draw_az: list[float] = []
-        projected_horizon_alts: list[float] = []
+        projected_lower_alts: list[float] = []
         strengths: list[float] = []
-        for seam_az_deg_value, horizon_alt, strength in zip(draw_az.tolist(), layer_horizon_alt.tolist(), layer_strengths.tolist()):
+        for seam_az_deg_value, lower_alt, strength in zip(
+            draw_az.tolist(),
+            band_lower_edge_alts.tolist(),
+            layer_strengths.tolist(),
+        ):
             try:
                 nx, ny = altaz_to_normalized_xy(
-                    float(horizon_alt),
+                    float(lower_alt),
                     (float(seam_az_deg_value) + seam_az_deg) % 360.0,
                     view_center,
                     edge_fov_deg=float(edge_fov_deg),
@@ -161,17 +198,18 @@ def _draw_night_light_glow_impl(
                 continue
             projected_points.append((float(nx), float(ny)))
             projected_draw_az.append(float(seam_az_deg_value))
-            projected_horizon_alts.append(float(horizon_alt))
+            projected_lower_alts.append(float(lower_alt))
             strengths.append(float(strength))
 
         if len(projected_points) < 2:
             continue
 
         layer_distance_km = _layer_distance_km(profile, layer_index)
+        distance_scale = _night_light_distance_scale(layer_distance_km)
         width_scale = _night_light_band_width_scale(layer_distance_km)
         band_thickness_deg = float(profile.band_half_width_deg) * 2.0 * width_scale
 
-        alpha = min(1.0, layer_opacity * sun_factor)
+        alpha = min(1.0, layer_opacity * sun_factor * distance_scale)
         if alpha <= 0.0:
             continue
         color = QColor(*fill_rgb)
@@ -192,14 +230,13 @@ def _draw_night_light_glow_impl(
 
             lower_points: list[QPointF] = []
             upper_points: list[QPointF] = []
-            for seam_az_deg_value, horizon_alt, _strength in zip(
+            for seam_az_deg_value, lower_alt, _strength in zip(
                 projected_draw_az[point_index:point_index + len(fragment)],
-                projected_horizon_alts[point_index:point_index + len(fragment)],
+                projected_lower_alts[point_index:point_index + len(fragment)],
                 frag_strengths,
             ):
                 az = (float(seam_az_deg_value) + seam_az_deg) % 360.0
-                lower_alt = float(horizon_alt)
-                upper_alt = float(horizon_alt) + float(band_thickness_deg)
+                upper_alt = float(lower_alt) + float(band_thickness_deg)
                 try:
                     lower_nx, lower_ny = altaz_to_normalized_xy(
                         lower_alt,
@@ -229,6 +266,11 @@ def _draw_night_light_glow_impl(
             band_polygon.append(lower_points[0])
             painter.drawPolygon(band_polygon)
             point_index += len(fragment)
+
+        previous_layer_az_ext = np.concatenate([layer_az[-1:] - 360.0, layer_az, layer_az[:1] + 360.0])
+        previous_layer_horizon_alt_ext = np.concatenate(
+            [layer_horizon_alt[-1:], layer_horizon_alt, layer_horizon_alt[:1]]
+        )
 
     painter.restore()
 

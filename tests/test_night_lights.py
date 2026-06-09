@@ -55,12 +55,36 @@ def test_night_light_band_width_scale_decreases_with_distance() -> None:
     assert far >= night_lights_render.NIGHT_LIGHTS_MIN_WIDTH_SCALE
 
 
+def test_night_light_distance_scale_uses_inverse_sqrt() -> None:
+    near = night_lights_render._night_light_distance_scale(0.5)
+    mid = night_lights_render._night_light_distance_scale(2.0)
+    far = night_lights_render._night_light_distance_scale(8.0)
+
+    assert near == 1.0
+    assert np.isclose(mid, 0.5)
+    assert np.isclose(far, 0.25)
+
+
 def test_night_light_distance_attenuation_uses_inverse_square() -> None:
     attenuation = night_lights._night_light_distance_attenuation(
         np.asarray([1000.0, 2000.0, 4000.0], dtype=np.float64)
     )
 
     assert np.allclose(attenuation, np.asarray([1.0, 0.25, 0.0625], dtype=np.float64))
+
+
+def test_band_lower_edge_altitudes_use_previous_layer_internal_division() -> None:
+    current = np.asarray([2.0, 4.0], dtype=np.float64)
+    previous = np.asarray([0.0, 2.0], dtype=np.float64)
+
+    assert np.allclose(
+        night_lights_render._band_lower_edge_altitudes(current, None),
+        np.asarray([0.2, 0.4], dtype=np.float64),
+    )
+    assert np.allclose(
+        night_lights_render._band_lower_edge_altitudes(current, previous),
+        np.asarray([0.2, 2.2], dtype=np.float64),
+    )
 
 
 def test_compute_night_light_glow_profile_uses_mocked_sampling(tmp_path, monkeypatch) -> None:

@@ -647,7 +647,10 @@ class WaterOverlayController(QObject):
             )
 
         footprints = scope_cache.footprints
-        if not footprints:
+        # A cached empty result still means "no water polygons nearby"; do not
+        # force a fresh Overpass lookup just because the cached footprint set
+        # happens to be empty.
+        if not footprints and scope_cache.fetched_at_utc is None:
             logger.info("Water surface mask: fetching Overpass water polygons...")
             footprints = fetch_water_overlay_footprints(
                 observer_lat_deg=observer_lat_deg,
