@@ -13,6 +13,7 @@ from PySide6.QtGui import QImage, QPainter
 import zstarview.gui.terrain_controller as terrain_controller_module
 import zstarview.gui.window as window_module
 import zstarview.gui.window_widgets as window_widgets_module
+from zstarview.__about__ import __version__
 from zstarview.cli.args import SKY_OPACITY_DEFAULT
 from zstarview.gui.terrain_controller import TerrainHorizonController
 from zstarview.terrain import DEFAULT_TERRAIN_DISTANCE_SAMPLE_STEP_M
@@ -331,6 +332,16 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         for entry in dummy.menu.entries
         if isinstance(entry, _DummyMenuAction) and not entry.separator
     ]
+    help_actions = [
+        entry.text
+        for entry in dummy.help_menu.entries
+        if isinstance(entry, _DummyMenuAction) and not entry.separator
+    ]
+    help_enabled = [
+        entry.isEnabled()
+        for entry in dummy.help_menu.entries
+        if isinstance(entry, _DummyMenuAction) and not entry.separator
+    ]
 
     assert root_titles == ["Search", "Layers", "View Direction", "Help"]
     assert root_actions == [
@@ -340,6 +351,11 @@ def test_build_window_menu_flattens_file_actions_for_frameless(monkeypatch) -> N
         "Fullscreen",
         "Exit",
     ]
+    assert help_actions == [
+        "Code, Data, Licenses, and Credits...",
+        f"Version {__version__}",
+    ]
+    assert help_enabled == [True, False]
 
 
 def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -> None:
@@ -421,6 +437,16 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         for entry in dummy.file_menu.entries
         if isinstance(entry, _DummyMenuAction) and not entry.separator
     ]
+    help_actions = [
+        entry.text
+        for entry in dummy.help_menu.entries
+        if isinstance(entry, _DummyMenuAction) and not entry.separator
+    ]
+    help_enabled = [
+        entry.isEnabled()
+        for entry in dummy.help_menu.entries
+        if isinstance(entry, _DummyMenuAction) and not entry.separator
+    ]
 
     assert root_titles == ["File", "Search", "Layers", "View Direction", "Help"]
     assert root_actions == []
@@ -431,6 +457,11 @@ def test_build_window_menu_keeps_file_submenu_for_standard_window(monkeypatch) -
         "Fullscreen",
         "Exit",
     ]
+    assert help_actions == [
+        "Code, Data, Licenses, and Credits...",
+        f"Version {__version__}",
+    ]
+    assert help_enabled == [True, False]
 
 
 def test_build_window_menu_groups_layers_by_sky_and_ground(monkeypatch) -> None:

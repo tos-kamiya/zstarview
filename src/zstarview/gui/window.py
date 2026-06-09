@@ -85,6 +85,7 @@ from ..paths import (
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
 )
+from ..__about__ import __version__
 from ..render import geometry as render_geometry
 from ..render import stars as render_stars
 from ..render.pipeline import (
@@ -1247,6 +1248,11 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             "Code, Data, Licenses, and Credits...",
             triggered=open_code_data_licenses_and_credits,
         )
+        version_action = self._add_menu_action(
+            self.help_menu,
+            f"Version {__version__}",
+        )
+        version_action.setEnabled(False)
 
         if self._frameless_window:
             self.menu.addSeparator()
