@@ -242,10 +242,13 @@ def test_draw_night_light_glow_smoke() -> None:
             painter,
             geometry=ScreenGeometry(center=(100, 50), radius=45),
             profile=profile,
-            terrain_profile_altaz=[
-                (0.0, 170.0),
-                (0.0, 180.0),
-                (0.0, 190.0),
+            terrain_profile_altaz=None,
+            terrain_secondary_ridges_altaz_layers=[
+                [
+                    (0.0, 170.0),
+                    (0.0, 180.0),
+                    (0.0, 190.0),
+                ]
             ],
             viewer_data=viewer_data,
             sun_alt_deg=-5.0,
@@ -301,7 +304,8 @@ def test_draw_night_light_glow_respects_opacity() -> None:
             p_full,
             geometry=ScreenGeometry(center=(60, 40), radius=36),
             profile=profile,
-            terrain_profile_altaz=[(0.0, 175.0), (0.0, 185.0)],
+            terrain_profile_altaz=None,
+            terrain_secondary_ridges_altaz_layers=[[(0.0, 175.0), (0.0, 185.0)]],
             viewer_data=viewer_data,
             opacity=1.0,
             sun_alt_deg=-5.0,
@@ -325,7 +329,8 @@ def test_draw_night_light_glow_respects_opacity() -> None:
             p_dim,
             geometry=ScreenGeometry(center=(60, 40), radius=36),
             profile=profile,
-            terrain_profile_altaz=[(0.0, 175.0), (0.0, 185.0)],
+            terrain_profile_altaz=None,
+            terrain_secondary_ridges_altaz_layers=[[(0.0, 175.0), (0.0, 185.0)]],
             viewer_data=viewer_data,
             opacity=0.25,
             sun_alt_deg=-5.0,
@@ -349,7 +354,8 @@ def test_draw_night_light_glow_respects_opacity() -> None:
             p_zero,
             geometry=ScreenGeometry(center=(60, 40), radius=36),
             profile=profile,
-            terrain_profile_altaz=[(0.0, 175.0), (0.0, 185.0)],
+            terrain_profile_altaz=None,
+            terrain_secondary_ridges_altaz_layers=[[(0.0, 175.0), (0.0, 185.0)]],
             viewer_data=viewer_data,
             opacity=0.0,
             sun_alt_deg=-5.0,
@@ -362,7 +368,7 @@ def test_draw_night_light_glow_respects_opacity() -> None:
     assert not any(zero.pixelColor(x, y).alpha() > 0 for x in range(zero.width()) for y in range(zero.height()))
 
 
-def test_draw_night_light_glow_uses_flat_horizon_when_missing_terrain() -> None:
+def test_draw_night_light_glow_does_not_draw_without_secondary_ridges() -> None:
     image = QImage(200, 100, QImage.Format.Format_ARGB32_Premultiplied)
     image.fill(0)
     painter = QPainter(image)
@@ -393,7 +399,7 @@ def test_draw_night_light_glow_uses_flat_horizon_when_missing_terrain() -> None:
     finally:
         painter.end()
 
-    assert any(
+    assert not any(
         image.pixelColor(x, y).alpha() > 0
         for x in range(image.width())
         for y in range(image.height())

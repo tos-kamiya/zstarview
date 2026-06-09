@@ -88,16 +88,7 @@ def _draw_night_light_glow_impl(
 
     layer_altaz_sets: list[list[tuple[float, float]]] = []
     layer_profile_samples: list[tuple] = []
-    flat_layer_altaz = [
-        (0.0, float(sample.azimuth_deg) % 360.0)
-        for sample in profile.samples
-    ]
     if terrain_secondary_ridges_altaz_layers:
-        if terrain_profile_altaz:
-            layer_altaz_sets.append(list(terrain_profile_altaz))
-        else:
-            layer_altaz_sets.append(flat_layer_altaz)
-        layer_profile_samples.append(profile.samples)
         band_profile_samples = tuple(
             band_profile.samples
             for band_profile in getattr(profile, "band_profiles", ())
@@ -110,23 +101,15 @@ def _draw_night_light_glow_impl(
                 )
             else:
                 layer_profile_samples.append(profile.samples)
-    elif terrain_profile_altaz:
-        layer_altaz_sets.append(list(terrain_profile_altaz))
-        layer_profile_samples.append(profile.samples)
-    else:
-        layer_altaz_sets.append(flat_layer_altaz)
-        layer_profile_samples.append(profile.samples)
 
     if not layer_altaz_sets:
         painter.restore()
         return
 
-    previous_layer_az_ext: np.ndarray | None = None
-    previous_layer_horizon_alt_ext: np.ndarray | None = None
-    for layer_index, layer_altaz in enumerate(layer_altaz_sets):
+    for layer_index, layer_altaz in enumerate(layer_altaz_sets, start=1):
         if not layer_altaz or len(layer_altaz) < 2:
             continue
-        selected_samples = layer_profile_samples[min(layer_index, len(layer_profile_samples) - 1)]
+        selected_samples = layer_profile_samples[min(layer_index - 1, len(layer_profile_samples) - 1)]
         ordered = sorted(
             (
                 sample
@@ -161,22 +144,10 @@ def _draw_night_light_glow_impl(
         )
         layer_horizon_alt = np.asarray([alt for alt, _ in layer_samples], dtype=np.float64)
         if layer_az.size < 2:
-            previous_layer_az_ext = np.concatenate([layer_az[-1:] - 360.0, layer_az, layer_az[:1] + 360.0])
-            previous_layer_horizon_alt_ext = np.concatenate(
-                [layer_horizon_alt[-1:], layer_horizon_alt, layer_horizon_alt[:1]]
-            )
             continue
 
         layer_strengths = np.interp(layer_az, night_az_ext, night_strengths_ext)
-        if previous_layer_az_ext is None or previous_layer_horizon_alt_ext is None:
-            previous_layer_horizon_alt = np.zeros_like(layer_horizon_alt)
-        else:
-            previous_layer_horizon_alt = np.interp(
-                layer_az,
-                previous_layer_az_ext,
-                previous_layer_horizon_alt_ext,
-            )
-        band_lower_edge_alts = _band_lower_edge_altitudes(layer_horizon_alt, previous_layer_horizon_alt)
+        band_lower_edge_alts = _band_lower_edge_altitudes(layer_horizon_alt, layer_horizon_alt)
         draw_az = layer_az
         projected_points: list[tuple[float, float]] = []
         projected_draw_az: list[float] = []
@@ -266,11 +237,6 @@ def _draw_night_light_glow_impl(
             band_polygon.append(lower_points[0])
             painter.drawPolygon(band_polygon)
             point_index += len(fragment)
-
-        previous_layer_az_ext = np.concatenate([layer_az[-1:] - 360.0, layer_az, layer_az[:1] + 360.0])
-        previous_layer_horizon_alt_ext = np.concatenate(
-            [layer_horizon_alt[-1:], layer_horizon_alt, layer_horizon_alt[:1]]
-        )
 
     painter.restore()
 
