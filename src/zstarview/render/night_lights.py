@@ -97,21 +97,6 @@ def _seam_relative_azimuth_deg(azimuth_deg: float, seam_az_deg: float) -> float:
     return (float(azimuth_deg) - float(seam_az_deg)) % 360.0
 
 
-def night_light_distance_strength_factor(distance_km: float, band_count: int) -> float:
-    if band_count <= 1:
-        return 1.0
-    near_km = float(NIGHT_LIGHTS_DISTANCE_NEAR_KM)
-    far_km = float(NIGHT_LIGHTS_DISTANCE_FAR_KM)
-    d = max(near_km, min(far_km, float(distance_km)))
-    span = math.log(far_km / near_km) if far_km > near_km else 0.0
-    if span <= 0.0:
-        t = 0.0
-    else:
-        t = max(0.0, min(1.0, math.log(d / near_km) / span))
-    eased_t = t ** 0.9
-    return 0.2 + (0.8 * eased_t)
-
-
 def _draw_night_light_glow_impl(
     painter: QPainter,
     *,
@@ -258,7 +243,13 @@ def _draw_night_light_glow_impl(
                 point_index += len(fragment)
                 continue
 
-            alpha = min(1.0, frag_strength * NIGHT_LIGHTS_BASE_ALPHA_SCALE * layer_opacity * sun_factor)
+            alpha = min(
+                1.0,
+                frag_strength
+                * NIGHT_LIGHTS_BASE_ALPHA_SCALE
+                * layer_opacity
+                * sun_factor
+            )
             color = QColor(*fill_rgb)
 
             for alpha_scale, width_scale in NIGHT_LIGHTS_BAND_SPECS:
