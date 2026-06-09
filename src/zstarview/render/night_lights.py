@@ -35,12 +35,9 @@ def _layer_distance_km(
     layer_index: int,
 ) -> float:
     band_profiles = tuple(getattr(profile, "band_profiles", ()))
-    if not band_profiles:
-        return float(NIGHT_LIGHTS_DISTANCE_NEAR_KM)
-    if layer_index <= 0:
-        return float(NIGHT_LIGHTS_DISTANCE_NEAR_KM)
-    band_index = min(layer_index - 1, len(band_profiles) - 1)
-    return float(band_profiles[band_index].max_distance_km)
+    assert band_profiles, "profile.band_profiles must not be empty"
+    assert 0 <= int(layer_index) < len(band_profiles), "layer_index out of range"
+    return float(band_profiles[int(layer_index)].max_distance_km)
 
 
 def _band_lower_edge_altitudes(
@@ -106,10 +103,11 @@ def _draw_night_light_glow_impl(
         painter.restore()
         return
 
-    for layer_index, layer_altaz in enumerate(layer_altaz_sets, start=1):
+    # Secondary ridge layers are zero-based here: layer 0 is the first secondary ridge.
+    for layer_index, layer_altaz in enumerate(layer_altaz_sets):
         if not layer_altaz or len(layer_altaz) < 2:
             continue
-        selected_samples = layer_profile_samples[min(layer_index - 1, len(layer_profile_samples) - 1)]
+        selected_samples = layer_profile_samples[min(layer_index, len(layer_profile_samples) - 1)]
         ordered = sorted(
             (
                 sample

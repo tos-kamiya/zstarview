@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 from PySide6.QtGui import QImage, QPainter
 from PySide6.QtWidgets import QApplication
 
@@ -63,6 +64,44 @@ def test_night_light_distance_scale_uses_inverse_sqrt() -> None:
     assert near == 1.0
     assert np.isclose(mid, 0.5)
     assert np.isclose(far, 0.25)
+
+
+def test_layer_distance_km_treats_zero_as_first_secondary_ridge() -> None:
+    profile = night_lights.NightLightGlowProfile(
+        samples=(
+            night_lights.NightLightGlowSample(azimuth_deg=0.0, horizon_alt_deg=0.0, strength=1.0),
+        ),
+        sun_alt_deg=-5.0,
+        band_profiles=(
+            night_lights.NightLightDistanceBandProfile(
+                min_distance_km=0.5,
+                max_distance_km=3.0,
+                samples=(
+                    night_lights.NightLightGlowSample(
+                        azimuth_deg=0.0,
+                        horizon_alt_deg=0.0,
+                        strength=1.0,
+                    ),
+                ),
+            ),
+            night_lights.NightLightDistanceBandProfile(
+                min_distance_km=3.0,
+                max_distance_km=9.0,
+                samples=(
+                    night_lights.NightLightGlowSample(
+                        azimuth_deg=0.0,
+                        horizon_alt_deg=0.0,
+                        strength=1.0,
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    assert np.isclose(night_lights_render._layer_distance_km(profile, 0), 3.0)
+    assert np.isclose(night_lights_render._layer_distance_km(profile, 1), 9.0)
+    with pytest.raises(AssertionError):
+        night_lights_render._layer_distance_km(profile, 2)
 
 
 def test_night_light_distance_attenuation_uses_inverse_square() -> None:
@@ -229,6 +268,29 @@ def test_draw_night_light_glow_smoke() -> None:
                 night_lights.NightLightGlowSample(azimuth_deg=190.0, horizon_alt_deg=0.0, strength=0.4),
             ),
             sun_alt_deg=-5.0,
+            band_profiles=(
+                night_lights.NightLightDistanceBandProfile(
+                    min_distance_km=0.5,
+                    max_distance_km=3.0,
+                    samples=(
+                        night_lights.NightLightGlowSample(
+                            azimuth_deg=170.0,
+                            horizon_alt_deg=0.0,
+                            strength=0.4,
+                        ),
+                        night_lights.NightLightGlowSample(
+                            azimuth_deg=180.0,
+                            horizon_alt_deg=0.0,
+                            strength=1.0,
+                        ),
+                        night_lights.NightLightGlowSample(
+                            azimuth_deg=190.0,
+                            horizon_alt_deg=0.0,
+                            strength=0.4,
+                        ),
+                    ),
+                ),
+            ),
         )
         viewer_data = ViewerData(
             location=(35.0, 139.0),
@@ -286,6 +348,24 @@ def test_draw_night_light_glow_respects_opacity() -> None:
             ),
         ),
         sun_alt_deg=-5.0,
+        band_profiles=(
+            night_lights.NightLightDistanceBandProfile(
+                min_distance_km=0.5,
+                max_distance_km=3.0,
+                samples=(
+                    night_lights.NightLightGlowSample(
+                        azimuth_deg=175.0,
+                        horizon_alt_deg=0.0,
+                        strength=0.7,
+                    ),
+                    night_lights.NightLightGlowSample(
+                        azimuth_deg=185.0,
+                        horizon_alt_deg=0.0,
+                        strength=1.0,
+                    ),
+                ),
+            ),
+        )
     )
 
     full = QImage(120, 80, QImage.Format.Format_ARGB32_Premultiplied)
