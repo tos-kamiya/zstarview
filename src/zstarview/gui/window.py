@@ -1476,8 +1476,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
 
         # Invalidate the composition cache since the size has changed
         self._compositor.invalidate()
-        if self.water_overlay_opacity > 0.0:
-            self.start_background_water_overlay_update(reason="resize")
         self.request_client_update()
         self._raise_overlay_widgets()
 
@@ -2715,8 +2713,6 @@ class SkyWindowCoreMixin(SkyWindowRenderMixin, SkyWindowUpdatesMixin):
             and self._action_toggle_water_overlay.isChecked() != enable_water_overlay
         ):
             self._action_toggle_water_overlay.setChecked(enable_water_overlay)
-        if enable_water_overlay and self.terrain_horizon_state.ground_elevation_m is not None:
-            self.start_background_water_overlay_update(reason="toggle-on")
         self.request_client_update()
 
     def toggle_earth_guide(self) -> None:

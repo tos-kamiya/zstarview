@@ -711,15 +711,6 @@ class SkyWindowUpdatesMixin:
             if self.start_background_terrain_horizon_update(reason="initial"):
                 return
             return
-        if (
-            self.terrain_horizon_opacity > 0.0
-            and self.water_overlay_opacity > 0.0
-            and self.terrain_horizon_state.profile_altaz is not None
-            and not self._startup_initial_water_loaded
-        ):
-            if self.start_background_water_overlay_update(reason="initial"):
-                return
-            return
         if self.urban_outline_opacity > 0.0 and not self._startup_initial_urban_loaded:
             if self.start_background_urban_outline_update(reason="initial"):
                 return
@@ -1182,6 +1173,10 @@ class SkyWindowUpdatesMixin:
         if self._is_shutting_down:
             return False
         if self.water_overlay_opacity <= 0.0:
+            return False
+        if self.terrain_horizon_opacity <= 0.0:
+            return False
+        if self.terrain_horizon_state.profile_altaz is None:
             return False
         if self._water_overlay_controller is None:
             return False

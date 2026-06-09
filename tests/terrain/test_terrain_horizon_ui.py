@@ -16,6 +16,7 @@ import zstarview.gui.window_widgets as window_widgets_module
 from zstarview.__about__ import __version__
 from zstarview.cli.args import SKY_OPACITY_DEFAULT
 from zstarview.gui.terrain_controller import TerrainHorizonController
+from zstarview.types import ViewerData
 from zstarview.terrain import DEFAULT_TERRAIN_DISTANCE_SAMPLE_STEP_M
 from zstarview.gui.window import SkyWindow, SkyWindowCoreMixin
 from zstarview.gui.window_inputs import prepare_window_user_options
@@ -1290,7 +1291,7 @@ def test_start_initial_data_load_skips_water_when_terrain_disabled() -> None:
     assert calls == ["sky:True"]
 
 
-def test_initial_data_load_advances_through_terrain_water_and_urban() -> None:
+def test_initial_data_load_advances_through_terrain_and_urban() -> None:
     dummy = SimpleNamespace()
     dummy._is_shutting_down = False
     dummy._startup_initial_load_started = True
@@ -1307,9 +1308,6 @@ def test_initial_data_load_advances_through_terrain_water_and_urban() -> None:
     dummy.start_background_terrain_horizon_update = lambda **kwargs: calls.append(
         f"terrain:{kwargs.get('reason')}"
     ) or True
-    dummy.start_background_water_overlay_update = lambda **kwargs: calls.append(
-        f"water:{kwargs.get('reason')}"
-    ) or True
     dummy.start_background_urban_outline_update = lambda **kwargs: calls.append(
         f"urban:{kwargs.get('reason')}"
     ) or True
@@ -1321,15 +1319,58 @@ def test_initial_data_load_advances_through_terrain_water_and_urban() -> None:
     dummy._startup_initial_terrain_loaded = True
     dummy.terrain_horizon_state.profile_altaz = [(0.0, 0.0)]
     SkyWindowUpdatesMixin._continue_initial_data_load(dummy)
-    assert calls == ["terrain:initial", "water:initial"]
-
-    dummy._startup_initial_water_loaded = True
-    SkyWindowUpdatesMixin._continue_initial_data_load(dummy)
-    assert calls == ["terrain:initial", "water:initial", "urban:initial"]
+    assert calls == ["terrain:initial", "urban:initial"]
 
     dummy._startup_initial_urban_loaded = True
     SkyWindowUpdatesMixin._continue_initial_data_load(dummy)
-    assert calls == ["terrain:initial", "water:initial", "urban:initial", "finish"]
+    assert calls == ["terrain:initial", "urban:initial", "finish"]
+
+
+def test_terrain_horizon_ready_triggers_water_overlay_update() -> None:
+    dummy = SimpleNamespace()
+    dummy._is_shutting_down = False
+    dummy._startup_initial_load_started = True
+    dummy._startup_initial_data_loaded = False
+    dummy._startup_initial_sky_loaded = True
+    dummy._startup_initial_terrain_loaded = False
+    dummy._startup_initial_water_loaded = False
+    dummy._startup_initial_urban_loaded = False
+    dummy.terrain_horizon_opacity = 0.2
+    dummy.water_overlay_opacity = 0.2
+    dummy.terrain_horizon_state = SimpleNamespace(
+        ground_elevation_m=None,
+        set_result=lambda *args, **kwargs: None,
+    )
+    dummy.viewer_data = ViewerData(location=(0.0, 0.0), timezone_name="UTC", city_name="Test")
+    dummy.state = SimpleNamespace(
+        terrain_horizon_profile=None,
+        terrain_horizon_profile_distances_m=None,
+        terrain_secondary_ridges_altaz_layers=None,
+        terrain_secondary_ridges_distances_m_layers=None,
+    )
+    dummy._refresh_water_overlay_active_dots = lambda: None
+    dummy._sync_water_overlay_action_enabled = lambda: None
+    dummy._compositor = SimpleNamespace(invalidate=lambda: None)
+    dummy.request_client_update = lambda: None
+    calls: list[str] = []
+    dummy.start_background_water_overlay_update = lambda **kwargs: calls.append(
+        str(kwargs.get("reason"))
+    ) or True
+    dummy._continue_initial_data_load = lambda: calls.append("continue")
+
+    SkyWindowUpdatesMixin._on_terrain_horizon_ready(
+        dummy,
+        {
+            "profile_altaz": [(0.0, 0.0)],
+            "profile_distances_m": [1.0],
+            "secondary_ridges_altaz_layers": [],
+            "secondary_ridges_distances_m_layers": [],
+            "ground_elevation_m": 42.0,
+            "source": "test",
+        },
+    )
+
+    assert calls == ["initial"]
 
 
 def test_post_startup_background_updates_start_cloud_immediately() -> None:

@@ -210,6 +210,57 @@ def test_water_overlay_controller_uses_recent_cached_footprints_as_is(
     assert saved == {}
 
 
+def test_water_overlay_controller_does_not_refetch_empty_cached_footprints(
+    monkeypatch,
+) -> None:
+    controller = WaterOverlayController()
+    sample_stats = (
+        WaterSurfaceBandStats("125m", 0, 0, 0, 0),
+        WaterSurfaceBandStats("250m", 0, 0, 0, 0),
+        WaterSurfaceBandStats("500m", 0, 0, 0, 0),
+    )
+
+    monkeypatch.setattr(
+        mod,
+        "sample_water_surface_interface_points_with_stats",
+        lambda **kwargs: ((), sample_stats),
+    )
+    monkeypatch.setattr(
+        mod,
+        "fetch_water_overlay_footprints",
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("should not fetch overpass")),
+    )
+    monkeypatch.setattr(mod, "sample_water_overlay_points", lambda *args, **kwargs: ())
+
+    scope_cache = mod._WaterOverlayScopeCache(  # noqa: SLF001
+        footprints=(),
+        fetched_at_utc=datetime.now(timezone.utc),
+    )
+
+    active_dots, sea_mask_dots, sea_dots, inland_dots, dem_dots, band_stats, footprints = (
+        controller._build_requested_variants(  # noqa: SLF001
+            scope_cache,
+            observer_lat_deg=0.0,
+            observer_lon_deg=0.0,
+            observer_height_m=0.0,
+            observer_ground_m=0.0,
+            use_dem_ground=False,
+            scan_radius_km=2.0,
+            target_ground_sampler=None,
+            key=(0.0, 0.0, 0.0, 0.0, False, DEFAULT_WATER_AZIMUTH_STEP_DEG),
+            scope_key="scope",
+        )
+    )
+
+    assert active_dots == ()
+    assert sea_mask_dots == ()
+    assert sea_dots == ()
+    assert inland_dots == ()
+    assert dem_dots is None
+    assert band_stats == sample_stats
+    assert footprints == ()
+
+
 def test_water_overlay_controller_uses_sea_mask_points_before_sampling(monkeypatch, caplog) -> None:
     controller = WaterOverlayController()
     observed: dict[str, object] = {}
